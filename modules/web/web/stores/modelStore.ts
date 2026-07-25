@@ -131,6 +131,8 @@ export interface WebModelStore<TModel extends BaseModel> extends ScopedStore {
   BrowseMany: ClientModelService<typeof BaseModel.BrowseMany<TModel>>;
   Update: ClientModelService<typeof BaseModel.Update<TModel>>;
   UpdateById: ClientModelService<typeof BaseModel.UpdateById<TModel>>;
+  Copy: ClientModelService<typeof BaseModel.Copy<TModel>>;
+  NameSearch: ClientModelService<typeof BaseModel.NameSearch<TModel>>;
   Count: ClientModelService<typeof BaseModel.Count<TModel>>;
   Search: ClientModelService<typeof BaseModel.Search<TModel>>;
   ReadGroup: ClientModelService<typeof BaseModel.ReadGroup<TModel>>;

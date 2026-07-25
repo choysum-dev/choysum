@@ -67,6 +67,7 @@ import { defaultModelValues, runModelOnchange } from './model_runtime_service_fa
 import { deleteModels, deleteModelById } from './model_delete_service_facade';
 import { createModel, createManyModels } from './model_create_service_facade';
 import { copyModel } from './model_copy';
+import { nameSearchModels } from './model_namesearch';
 import { updateModels, updateModelById } from './model_update_service_facade';
 import { fieldsGetModels, type FieldsGetFieldMeta } from './model_fields_get_facade';
 import {
@@ -548,6 +549,19 @@ class BaseModel {
     defaults?: Partial<Record<string, unknown>>
   ): Promise<T> {
     return await copyModel<T>(this as unknown as RuntimeModelCtor<T>, id, defaults);
+  }
+
+  /**
+   * Name-match entry for relation typeahead (overridable).
+   * Default: DisplayName `like` keyword And domain → Search.
+   */
+  static async NameSearch<T extends BaseModel>(
+    this: BaseModelCtor<T>,
+    name: string,
+    condition: QueryCondition<T> | [] = [],
+    options?: SearchOptions<T>
+  ): Promise<T[]> {
+    return await nameSearchModels<T>(this as unknown as RuntimeModelCtor<T> & typeof BaseModel, name, condition, options);
   }
 
   /**

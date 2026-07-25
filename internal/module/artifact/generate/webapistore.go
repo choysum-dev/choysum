@@ -336,23 +336,25 @@ func (g *webApiStoreGenerator) generate(ctx context.Context, app *meta.IrApplica
 
 	// Preload BaseModel service names so the template can filter base CRUD services.
 	baseServiceNames := map[string]bool{
-		"Browse":         true,
-		"BrowseMany":     true,
-		"Search":         true,
-		"Count":          true,
-		"Create":         true,
-		"CreateMany":     true,
-		"Update":         true,
-		"UpdateById":     true,
-		"Delete":         true,
-		"DeleteById":     true,
-		"DefaultGet":     true,
+		"Browse":                   true,
+		"BrowseMany":               true,
+		"Search":                   true,
+		"NameSearch":               true,
+		"Copy":                     true,
+		"Count":                    true,
+		"Create":                   true,
+		"CreateMany":               true,
+		"Update":                   true,
+		"UpdateById":               true,
+		"Delete":                   true,
+		"DeleteById":               true,
+		"DefaultGet":               true,
 		"FieldsGet":                true,
 		"GetFieldTranslations":     true,
 		"UpdateFieldTranslations":  true,
 		"Onchange":                 true,
-		"ReadGroup":      true,
-		"ReadGroupCount": true,
+		"ReadGroup":                true,
+		"ReadGroupCount":           true,
 	}
 	for _, m := range app.Models {
 		if m.Name == "BaseModel" {

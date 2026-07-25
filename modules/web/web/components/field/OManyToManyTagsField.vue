@@ -128,7 +128,6 @@ import type { UseField } from '@/web/web/composables/useField';
 import OViewScope from '@/web/web/components/view/OViewScope.vue';
 import type { SelectionExpose } from '@/web/web/components/view/listViewTypes';
 import { createStoreByModel } from '@/web/web/stores/registry';
-import { buildKeywordCondition, resolveKeywordFieldsByMeta } from '@/web/web/query/utils/condition/builder';
 import { createTranslate } from '@/web/web/i18n';
 import type { TagClickPayload } from '@/web/web/components/field/manyToManyTagsTypes';
 
@@ -253,17 +252,6 @@ const labelFields = computed<string[]>(() => {
   const list = Array.isArray(raw) ? raw : [raw];
   const base = ['DisplayName', 'Name', 'Title', 'Code', 'Id'];
   return Array.from(new Set([...list.map(x => String(x || '').trim()).filter(Boolean), ...base]));
-});
-
-const searchableFields = computed<string[]>(() => {
-  const candidates = Array.from(new Set(['DisplayName', ...labelFields.value, 'Id', 'Name', 'Code']));
-  return resolveKeywordFieldsByMeta(candidates, {
-    fieldsMeta: relationStore.value?.fieldsMetadata,
-    fallbackTextTypes: ['char', 'varchar', 'text'],
-    includeIdInFallback: true,
-    mapDisplayNameToName: true,
-    fallbackWhenFilteredEmpty: true,
-  });
 });
 
 function extractId(v: any): string | undefined {
@@ -428,23 +416,6 @@ const effectiveConditions = computed<QueryCondition<any> | []>(() => {
   return { And: parts } as any;
 });
 
-function keywordCondition(keyword: string): QueryCondition<any> | undefined {
-  return (
-    buildKeywordCondition(keyword, searchableFields.value, {
-      operator: 'ilike',
-      normalizeLike: false,
-      fallbackWhenFilteredEmpty: false,
-    }) || undefined
-  );
-}
-
-function mergeCondition(base: QueryCondition<any> | [], keyword: string): QueryCondition<any> | [] {
-  const q = keywordCondition(keyword);
-  if (!q) return base;
-  if (Array.isArray(base) && base.length === 0) return q;
-  return { And: [base as any, q] } as any;
-}
-
 function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
@@ -484,9 +455,9 @@ async function handleRemoteSearch(keyword: string) {
 
   loading.value = true;
   try {
-    const condition = mergeCondition(effectiveConditions.value, keyword);
-    const records = await store.Search(
-      condition as any,
+    const records = await store.NameSearch(
+      String(keyword || '').trim(),
+      effectiveConditions.value as any,
       {
         fields: Array.from(new Set(['Id', ...labelFields.value])) as any,
         limit: props.suggestLimit,

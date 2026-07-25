@@ -48,14 +48,14 @@ describe('OManyToManyRefTagsField mapping/contract', () => {
     expect(s).toContain('o-m2m-tags__suggestion-hit');
   });
 
-  it('builds keyword condition from metadata-aware searchable fields', () => {
+  it('wires remote typeahead to NameSearch instead of FE keyword Search', () => {
     const s = source();
 
-    expect(s).toContain('const searchableFields = computed<string[]>(() => {');
-    expect(s).toContain('resolveKeywordFieldsByMeta(candidates, {');
-    expect(s).toContain('fieldsMeta: relationStore.value?.fieldsMetadata');
-    expect(s).toContain('buildKeywordCondition(keyword, searchableFields.value, {');
-    expect(s).toContain("operator: 'ilike'");
+    expect(s).toContain('store.NameSearch(');
+    expect(s).not.toContain('const searchableFields = computed<string[]>(() => {');
+    expect(s).not.toContain('buildKeywordCondition(keyword, searchableFields.value, {');
+    expect(s).not.toContain("operator: 'ilike'");
+    expect(s).not.toContain('const condition = mergeCondition(effectiveConditions.value, keyword);');
   });
 
   it('keeps selected options in the options list for el-select-v2 tag rendering', () => {
