@@ -734,9 +734,13 @@ test('Field decorator accepts copy:false and rejects non-boolean copy', () => {
   class CopyFlagModel extends BaseModel {
     @Field({ type: 'varchar', size: 32, copy: false } as any)
     Code!: string;
+
+    @Field({ type: 'varchar', size: 32, copy: true } as any)
+    Name!: string;
   }
-  const meta = MetadataStorage.instance.getModelMetadata(CopyFlagModel as any).fields.get('Code') as any;
-  expect(meta.copy).toBe(false);
+  const fields = MetadataStorage.instance.getModelMetadata(CopyFlagModel as any).fields;
+  expect(fields.get('Code')?.copy).toBe(false);
+  expect(fields.get('Name')?.copy).toBe(true);
 
   expect(() => {
     class BadCopy extends BaseModel {
