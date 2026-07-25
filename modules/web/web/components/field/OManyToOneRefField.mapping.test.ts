@@ -36,4 +36,13 @@ describe('OManyToOneRefField mapping/contract', () => {
     expect(s).toContain("emit('value-click', { id, item: resolveDisplayItem(val), label: getDisplayLabel(val), source: 'display', event });");
     expect(s).toContain('.o-field-display-text--clickable');
   });
+
+  it('wires remote typeahead to NameSearch with DisplayName fields', () => {
+    const s = source();
+
+    expect(s).toContain('relationStore.value?.NameSearch(');
+    expect(s).toContain("fields: ['Id', 'DisplayName']");
+    expect(s).not.toContain('buildKeywordCondition');
+    expect(s).not.toContain('relationStore.value?.Search(final');
+  });
 });

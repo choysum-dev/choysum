@@ -107,7 +107,6 @@ import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useF
 import OViewScope from '@/web/web/components/view/OViewScope.vue';
 import type { SelectionExpose } from '@/web/web/components/view/listViewTypes';
 import { useProvidedOnchange } from '@/web/web/composables/useOnchange';
-import { buildKeywordCondition } from '@/web/web/query/utils/condition/builder';
 import { createTranslate } from '@/web/web/i18n';
 import type { ValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 
@@ -499,23 +498,9 @@ async function handleRemoteSearch(query: string, recordRef?: any) {
     parts.push(...externalConditions.value);
     parts.push(...pickOnchangeConditions(recordRef));
 
-    const kw = (query ?? '').trim();
-    if (kw) {
-      const kwExpr = buildKeywordCondition(kw, ['DisplayName'], {
-        fieldsMeta: relationStore.value?.fieldsMetadata,
-        operator: 'like',
-        normalizeLike: true,
-        mapDisplayNameToName: true,
-        fallbackTextTypes: ['char', 'varchar'],
-        includeIdInFallback: false,
-        fallbackWhenFilteredEmpty: true,
-      });
-      if (kwExpr) parts.push(kwExpr);
-    }
-
     const final: QueryCondition<any> | [] = parts.length === 0 ? ([] as any) : parts.length === 1 ? parts[0] : ({ And: parts } as any);
 
-    const result = (await relationStore.value?.Search(final as any, {
+    const result = (await relationStore.value?.NameSearch(String(query ?? '').trim(), final as any, {
       fields: ['Id', 'DisplayName'],
       limit: props.pageSize ?? 20,
     })) as V[] | undefined;
