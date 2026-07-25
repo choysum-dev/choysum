@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { mount, flushPromises } from '@vue/test-utils';
-import { computed, nextTick, ref } from 'vue';
+import { computed, defineComponent, h, nextTick, ref } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { UseField } from '@/web/web/composables/useField';
@@ -65,6 +65,34 @@ function makeM2MBinding(relationStore: any): UseField {
   } as UseField;
 }
 
+/** Stub that forwards remoteMethod with a chosen query payload. */
+const SelectV2Stub = defineComponent({
+  name: 'ElSelectV2',
+  props: {
+    remoteMethod: { type: Function, default: undefined },
+  },
+  setup(props) {
+    return () =>
+      h('div', { class: 'select-stub' }, [
+        h('button', {
+          class: 'trigger-remote',
+          type: 'button',
+          onClick: () => props.remoteMethod?.('  alice  '),
+        }),
+        h('button', {
+          class: 'trigger-remote-null',
+          type: 'button',
+          onClick: () => props.remoteMethod?.(null as any),
+        }),
+        h('button', {
+          class: 'trigger-remote-empty',
+          type: 'button',
+          onClick: () => props.remoteMethod?.(''),
+        }),
+      ]);
+  },
+});
+
 const fieldStubs = {
   OFieldBase: {
     props: ['binding'],
@@ -73,14 +101,8 @@ const fieldStubs = {
       <slot name="display" :fieldValue="() => ({ value: null })" :record="{ Id: '1' }" />
     </div>`,
   },
-  'el-select-v2': {
-    props: ['remoteMethod', 'options', 'loading', 'modelValue', 'disabled'],
-    template: `<button class="trigger-remote" type="button" @click="remoteMethod && remoteMethod('  alice  ')" />`,
-  },
-  ElSelectV2: {
-    props: ['remoteMethod', 'options', 'loading', 'modelValue', 'disabled'],
-    template: `<button class="trigger-remote" type="button" @click="remoteMethod && remoteMethod('  alice  ')" />`,
-  },
+  'el-select-v2': SelectV2Stub,
+  ElSelectV2: SelectV2Stub,
   'el-dialog': true,
   ElDialog: true,
   'el-button': true,
@@ -89,6 +111,12 @@ const fieldStubs = {
   ElTag: true,
   OViewScope: true,
 };
+
+async function clickRemote(wrapper: ReturnType<typeof mount>, cls = '.trigger-remote') {
+  await wrapper.get(cls).trigger('click');
+  await flushPromises();
+  await nextTick();
+}
 
 describe('relation typeahead NameSearch wiring', () => {
   it('OManyToOneField remote search calls NameSearch with trimmed keyword', async () => {
@@ -103,9 +131,7 @@ describe('relation typeahead NameSearch wiring', () => {
       global: { stubs: fieldStubs },
     });
 
-    await wrapper.get('.trigger-remote').trigger('click');
-    await flushPromises();
-    await nextTick();
+    await clickRemote(wrapper);
 
     expect(NameSearch).toHaveBeenCalledTimes(1);
     expect(NameSearch).toHaveBeenCalledWith('alice', [], {
@@ -113,6 +139,35 @@ describe('relation typeahead NameSearch wiring', () => {
       limit: 15,
     });
     expect(Search).not.toHaveBeenCalled();
+  });
+
+  it('OManyToOneField covers nullish query and missing relationStore branches', async () => {
+    const NameSearch = vi.fn(async () => undefined);
+    const withStore = mount(OManyToOneField as any, {
+      props: {
+        binding: makeM2OBinding({ NameSearch }),
+        renderMode: 'form',
+      },
+      global: { stubs: fieldStubs },
+    });
+    // Hit `query ?? ''` when remote-method passes null.
+    await clickRemote(withStore, '.trigger-remote-null');
+    expect(NameSearch).toHaveBeenCalledWith('', [], {
+      fields: ['Id', 'DisplayName'],
+      limit: 20,
+    });
+
+    // Hit `relationStore?.` short-circuit when store is unresolved.
+    NameSearch.mockClear();
+    const withoutStore = mount(OManyToOneField as any, {
+      props: {
+        binding: makeM2OBinding(undefined),
+        renderMode: 'form',
+      },
+      global: { stubs: fieldStubs },
+    });
+    await clickRemote(withoutStore);
+    expect(NameSearch).not.toHaveBeenCalled();
   });
 
   it('OManyToOneRefField remote search calls NameSearch with trimmed keyword', async () => {
@@ -127,9 +182,7 @@ describe('relation typeahead NameSearch wiring', () => {
       global: { stubs: fieldStubs },
     });
 
-    await wrapper.get('.trigger-remote').trigger('click');
-    await flushPromises();
-    await nextTick();
+    await clickRemote(wrapper);
 
     expect(NameSearch).toHaveBeenCalledTimes(1);
     expect(NameSearch).toHaveBeenCalledWith('alice', [], {
@@ -137,6 +190,33 @@ describe('relation typeahead NameSearch wiring', () => {
       limit: 12,
     });
     expect(Search).not.toHaveBeenCalled();
+  });
+
+  it('OManyToOneRefField covers nullish query and missing relationStore branches', async () => {
+    const NameSearch = vi.fn(async () => undefined);
+    const withStore = mount(OManyToOneRefField as any, {
+      props: {
+        binding: makeM2OBinding({ NameSearch }),
+        renderMode: 'form',
+      },
+      global: { stubs: fieldStubs },
+    });
+    await clickRemote(withStore, '.trigger-remote-null');
+    expect(NameSearch).toHaveBeenCalledWith('', [], {
+      fields: ['Id', 'DisplayName'],
+      limit: 20,
+    });
+
+    NameSearch.mockClear();
+    const withoutStore = mount(OManyToOneRefField as any, {
+      props: {
+        binding: makeM2OBinding(undefined),
+        renderMode: 'form',
+      },
+      global: { stubs: fieldStubs },
+    });
+    await clickRemote(withoutStore);
+    expect(NameSearch).not.toHaveBeenCalled();
   });
 
   it('OManyToManyTagsField remote search calls NameSearch with effective conditions', async () => {
@@ -151,9 +231,7 @@ describe('relation typeahead NameSearch wiring', () => {
       global: { stubs: fieldStubs },
     });
 
-    await wrapper.get('.trigger-remote').trigger('click');
-    await flushPromises();
-    await nextTick();
+    await clickRemote(wrapper);
 
     expect(NameSearch).toHaveBeenCalledTimes(1);
     const [keyword, condition, options] = NameSearch.mock.calls[0]!;
@@ -168,6 +246,24 @@ describe('relation typeahead NameSearch wiring', () => {
     expect(Search).not.toHaveBeenCalled();
   });
 
+  it('OManyToManyTagsField covers falsy keyword branch for NameSearch', async () => {
+    const NameSearch = vi.fn(async () => []);
+    const wrapper = mount(OManyToManyTagsField as any, {
+      props: {
+        binding: makeM2MBinding({ NameSearch }),
+        renderMode: 'form',
+      },
+      global: { stubs: fieldStubs },
+    });
+
+    await clickRemote(wrapper, '.trigger-remote-empty');
+    expect(NameSearch).toHaveBeenCalledWith('', [], expect.objectContaining({ limit: 20 }));
+
+    NameSearch.mockClear();
+    await clickRemote(wrapper, '.trigger-remote-null');
+    expect(NameSearch).toHaveBeenCalledWith('', [], expect.objectContaining({ limit: 20 }));
+  });
+
   it('OManyToManyRefTagsField remote search calls NameSearch with hydration fields', async () => {
     const NameSearch = vi.fn(async () => [{ Id: 't1', DisplayName: 'Alice' }]);
     const Search = vi.fn(async () => []);
@@ -180,9 +276,7 @@ describe('relation typeahead NameSearch wiring', () => {
       global: { stubs: fieldStubs },
     });
 
-    await wrapper.get('.trigger-remote').trigger('click');
-    await flushPromises();
-    await nextTick();
+    await clickRemote(wrapper);
 
     expect(NameSearch).toHaveBeenCalledTimes(1);
     const [keyword, condition, options] = NameSearch.mock.calls[0]!;
@@ -196,5 +290,25 @@ describe('relation typeahead NameSearch wiring', () => {
     );
     // Remote typeahead must not fall back to Search (Id-in hydrate is unused with empty selection).
     expect(Search).not.toHaveBeenCalled();
+  });
+
+  it('OManyToManyRefTagsField covers falsy keyword branch for NameSearch', async () => {
+    const NameSearch = vi.fn(async () => []);
+    const Search = vi.fn(async () => []);
+    const wrapper = mount(OManyToManyRefTagsField as any, {
+      props: {
+        binding: makeM2MBinding({ NameSearch, Search }),
+        renderMode: 'form',
+      },
+      global: { stubs: fieldStubs },
+    });
+
+    await clickRemote(wrapper, '.trigger-remote-empty');
+    expect(NameSearch).toHaveBeenCalledWith('', [], expect.objectContaining({ limit: 20 }));
+    expect(Search).not.toHaveBeenCalled();
+
+    NameSearch.mockClear();
+    await clickRemote(wrapper, '.trigger-remote-null');
+    expect(NameSearch).toHaveBeenCalledWith('', [], expect.objectContaining({ limit: 20 }));
   });
 });
