@@ -194,5 +194,7 @@ describe('relation typeahead NameSearch wiring', () => {
         fields: expect.arrayContaining(['Id', 'DisplayName']),
       })
     );
+    // Remote typeahead must not fall back to Search (Id-in hydrate is unused with empty selection).
+    expect(Search).not.toHaveBeenCalled();
   });
 });
