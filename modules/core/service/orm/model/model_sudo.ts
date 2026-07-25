@@ -4,6 +4,7 @@
 import { getRuntimeComputeAuditBucketValue, getRuntimeEnvBoolean, setRuntimeComputeAuditBucketValue } from '@/core/utils/env';
 import { asObjectRecord } from '@/core/utils/object';
 import type { ObjectRecord } from '../../../utils/types';
+import { getCurrentReq, getOrInitReqServiceState } from '../../runtime/context';
 import { withRepositoryAuthzRuleBypass } from '../repository/authz';
 
 type SudoAuditEntry = {
@@ -13,12 +14,26 @@ type SudoAuditEntry = {
   hint?: string;
 };
 
-function resolveSudoAuditBucket(): { sudoHits: SudoAuditEntry[] } {
+type SudoAuditBucket = { sudoHits: SudoAuditEntry[] };
+
+function ensureSudoHits(carrier: ObjectRecord): SudoAuditBucket {
+  if (!Array.isArray(carrier.sudoHits)) carrier.sudoHits = [];
+  return carrier as SudoAuditBucket;
+}
+
+/**
+ * Prefer request-scoped service state so sudoHits do not accumulate across requests.
+ * Fall back to the process global bucket when no req is available (scripts / D10).
+ */
+function resolveSudoAuditBucket(): SudoAuditBucket {
+  const state = asObjectRecord(getOrInitReqServiceState(getCurrentReq()));
+  if (state) return ensureSudoHits(state);
+
   const bucketRecord = asObjectRecord(getRuntimeComputeAuditBucketValue());
   const bucket: ObjectRecord = bucketRecord ?? {};
-  if (!Array.isArray(bucket.sudoHits)) bucket.sudoHits = [];
+  const resolved = ensureSudoHits(bucket);
   setRuntimeComputeAuditBucketValue(bucket);
-  return bucket as { sudoHits: SudoAuditEntry[] };
+  return resolved;
 }
 
 function sudoAuditEnabled(): boolean {

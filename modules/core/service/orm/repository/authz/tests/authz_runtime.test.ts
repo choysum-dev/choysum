@@ -184,7 +184,14 @@ test('authz runtime combined RR+FR bypass is sync-friendly and nested', () => {
       await withRepositoryAuthzRuleBypass(async () => {
         expect(getRepositoryRecordRuleBypassDepth()).toBe(1);
         expect(getRepositoryFieldRuleBypassDepth()).toBe(1);
+        await withRepositoryAuthzRuleBypass(async () => {
+          expect(getRepositoryRecordRuleBypassDepth()).toBe(2);
+          expect(getRepositoryFieldRuleBypassDepth()).toBe(2);
+        });
+        expect(getRepositoryRecordRuleBypassDepth()).toBe(1);
+        expect(getRepositoryFieldRuleBypassDepth()).toBe(1);
       });
+      expect(getRepositoryRecordRuleBypassDepth()).toBe(0);
       expect(getRepositoryFieldRuleBypassDepth()).toBe(0);
     }
   );
