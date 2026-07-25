@@ -3,7 +3,7 @@
 
 import { asObjectRecord } from '../../../utils/object';
 import { getJsCtxRoot } from './source';
-import { assertNoOverlappingAsyncScope, isPromiseLikeResult, runWithAsyncScopeTracking } from './async_scope';
+import { isPromiseLikeResult } from './async_scope';
 
 /** Request-scoped userId override stack (nested withUser). */
 const USER_ID_OVERRIDE_KEY = Symbol.for('choysum.userid.override');
@@ -72,12 +72,11 @@ export function getUserId(): string | undefined {
  * Runs a function with a temporary userId override for authz / getUserId().
  *
  * Does not wrap withContext and does not elevate privileges (use Model.sudo for bypass).
- * Sync and async `fn` are both supported (aligned with withContext).
- * Overlapping async withUser/withContext scopes are rejected (no QuickJS AsyncLocalStorage).
+ * Sync and async `fn` are both supported (aligned with withContext), including nested
+ * withUser after an outer await. Concurrent sibling scopes (e.g. Promise.all of two
+ * withUser) are unsupported without AsyncLocalStorage and can corrupt the stack.
  */
 export function withUser<R>(userId: string, fn: () => R): R {
-  assertNoOverlappingAsyncScope('withUser');
-
   const normalized = normalizeUserId(userId);
   const entry: UserIdOverrideEntry = { userId: normalized };
   const jsCtx = asUserIdCarrier(getJsCtxRoot());
@@ -95,36 +94,32 @@ export function withUser<R>(userId: string, fn: () => R): R {
       if (stack!.length === 0) delete jsCtx[USER_ID_OVERRIDE_KEY];
     };
 
-    return runWithAsyncScopeTracking(() => {
-      try {
-        const result = fn();
-        if (isPromiseLikeResult(result)) {
-          return Promise.resolve(result).finally(restore) as unknown as R;
-        }
-        restore();
-        return result;
-      } catch (error) {
-        restore();
-        throw error;
+    try {
+      const result = fn();
+      if (isPromiseLikeResult(result)) {
+        return Promise.resolve(result).finally(restore) as unknown as R;
       }
-    });
+      restore();
+      return result;
+    } catch (error) {
+      restore();
+      throw error;
+    }
   }
 
   processLevelUserIdStack.push(entry);
   const restoreProcess = () => {
     removeStackEntry(processLevelUserIdStack, entry);
   };
-  return runWithAsyncScopeTracking(() => {
-    try {
-      const result = fn();
-      if (isPromiseLikeResult(result)) {
-        return Promise.resolve(result).finally(restoreProcess) as unknown as R;
-      }
-      restoreProcess();
-      return result;
-    } catch (error) {
-      restoreProcess();
-      throw error;
+  try {
+    const result = fn();
+    if (isPromiseLikeResult(result)) {
+      return Promise.resolve(result).finally(restoreProcess) as unknown as R;
     }
-  });
+    restoreProcess();
+    return result;
+  } catch (error) {
+    restoreProcess();
+    throw error;
+  }
 }

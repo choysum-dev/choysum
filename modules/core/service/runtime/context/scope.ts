@@ -3,7 +3,7 @@
 
 import { getJsCtxRoot, type Context } from './source';
 import { asObjectRecord } from '../../../utils/object';
-import { assertNoOverlappingAsyncScope, isPromiseLikeResult, runWithAsyncScopeTracking } from './async_scope';
+import { isPromiseLikeResult } from './async_scope';
 
 // Symbol keys for request-scoped overrides and frozen cache values.
 const CTX_OVERRIDE_KEY = Symbol.for('choysum.ctx.override');
@@ -134,11 +134,11 @@ export function getContextClientTimezone(): string | undefined {
 /**
  * Runs a function with a temporary business-context override.
  *
- * Overlapping async withContext/withUser scopes are rejected (no QuickJS AsyncLocalStorage).
+ * Sync and async `fn` are supported, including nested withContext after an outer
+ * await. Concurrent sibling scopes (e.g. Promise.all of two withContext) are
+ * unsupported without AsyncLocalStorage and can corrupt the shared carrier.
  */
 export function withContext<R>(ctx: Partial<Context> | (() => Partial<Context>), fn: () => R, opts?: { merge?: boolean }): R {
-  assertNoOverlappingAsyncScope('withContext');
-
   const jsCtx = asContextCarrier(getJsCtxRoot());
   const base = getReadonlyCtx() as Record<string, unknown>;
   const source = typeof ctx === 'function' ? ctx() || {} : ctx || {};
@@ -151,40 +151,36 @@ export function withContext<R>(ctx: Partial<Context> | (() => Partial<Context>),
     const prev = jsCtx[CTX_OVERRIDE_KEY] as Context | undefined;
     jsCtx[CTX_OVERRIDE_KEY] = frozen;
 
-    return runWithAsyncScopeTracking(() => {
-      try {
-        const result = fn();
-        if (isPromiseLikeResult(result)) {
-          return Promise.resolve(result).finally(() => {
-            if (prev) jsCtx[CTX_OVERRIDE_KEY] = prev;
-            else delete jsCtx[CTX_OVERRIDE_KEY];
-          }) as unknown as R;
-        }
-        if (prev) jsCtx[CTX_OVERRIDE_KEY] = prev;
-        else delete jsCtx[CTX_OVERRIDE_KEY];
-        return result;
-      } catch (error) {
-        if (prev) jsCtx[CTX_OVERRIDE_KEY] = prev;
-        else delete jsCtx[CTX_OVERRIDE_KEY];
-        throw error;
-      }
-    });
-  }
-
-  processLevelCtxStack.push(frozen);
-  return runWithAsyncScopeTracking(() => {
     try {
       const result = fn();
       if (isPromiseLikeResult(result)) {
         return Promise.resolve(result).finally(() => {
-          processLevelCtxStack.pop();
+          if (prev) jsCtx[CTX_OVERRIDE_KEY] = prev;
+          else delete jsCtx[CTX_OVERRIDE_KEY];
         }) as unknown as R;
       }
-      processLevelCtxStack.pop();
+      if (prev) jsCtx[CTX_OVERRIDE_KEY] = prev;
+      else delete jsCtx[CTX_OVERRIDE_KEY];
       return result;
     } catch (error) {
-      processLevelCtxStack.pop();
+      if (prev) jsCtx[CTX_OVERRIDE_KEY] = prev;
+      else delete jsCtx[CTX_OVERRIDE_KEY];
       throw error;
     }
-  });
+  }
+
+  processLevelCtxStack.push(frozen);
+  try {
+    const result = fn();
+    if (isPromiseLikeResult(result)) {
+      return Promise.resolve(result).finally(() => {
+        processLevelCtxStack.pop();
+      }) as unknown as R;
+    }
+    processLevelCtxStack.pop();
+    return result;
+  } catch (error) {
+    processLevelCtxStack.pop();
+    throw error;
+  }
 }

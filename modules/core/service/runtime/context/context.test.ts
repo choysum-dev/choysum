@@ -310,7 +310,7 @@ test('withUser rejects empty userId and works on process stack without jsCtx', (
   });
 });
 
-test('overlapping async withUser/withContext scopes are rejected', async () => {
+test('nested withContext/withUser after outer await remains allowed', async () => {
   const root = {
     request: {
       context: {
@@ -321,29 +321,32 @@ test('overlapping async withUser/withContext scopes are rejected', async () => {
   };
 
   await withTempChoysum(root, async () => {
-    let releaseSlow: (() => void) | undefined;
-    const slowGate = new Promise<void>(resolve => {
-      releaseSlow = resolve;
+    const nestedUser = await withUser('U-A', async () => {
+      await Promise.resolve();
+      return withUser('U-B', async () => {
+        await Promise.resolve();
+        return getUserId();
+      });
     });
-
-    const slow = withUser('U-SLOW', async () => {
-      await slowGate;
-      return getUserId();
-    });
-
-    expect(() => withUser('U-FAST', async () => getUserId())).toThrow('overlapping async withUser');
-    expect(() => withContext({ lang: 'ja' }, async () => getContextLang())).toThrow('overlapping async withContext');
-
-    releaseSlow?.();
-    await slow;
+    expect(nestedUser).toBe('U-B');
     expect(getUserId()).toBe('U-ROOT');
 
-    // Sequential async scopes remain allowed.
-    await withUser('U-A', async () => {
-      expect(getUserId()).toBe('U-A');
+    const nestedLang = await withContext({ lang: 'en' }, async () => {
+      await Promise.resolve();
+      return withContext({ lang: 'zh_CN' }, async () => {
+        await Promise.resolve();
+        return getContextLang();
+      });
     });
-    await withUser('U-B', async () => {
-      expect(getUserId()).toBe('U-B');
+    expect(nestedLang).toBe('zh_CN');
+    expect(getContextLang()).toBe('en');
+
+    // Sequential async scopes remain allowed.
+    await withUser('U-SEQ-A', async () => {
+      expect(getUserId()).toBe('U-SEQ-A');
+    });
+    await withUser('U-SEQ-B', async () => {
+      expect(getUserId()).toBe('U-SEQ-B');
     });
   });
 });
