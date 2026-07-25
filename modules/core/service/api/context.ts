@@ -18,6 +18,7 @@ export {
   getReqMeta,
   getUserId,
   withContext,
+  withUser,
   deleteReqStateKeysByPrefix,
   invalidateJsCtxSymbolCache,
   withBypassDepths,

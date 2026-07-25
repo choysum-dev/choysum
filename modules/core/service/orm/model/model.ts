@@ -40,6 +40,8 @@ import {
   getModelCompanyTimezone,
   getModelUserId,
   withModelContext,
+  withModelUser,
+  withModelElevate,
   getInstanceModelContext,
   getInstanceModelCompanyId,
   getInstanceModelCompanyIds,
@@ -48,6 +50,8 @@ import {
   getInstanceModelCompanyTimezone,
   getInstanceModelUserId,
   withInstanceModelContext,
+  withInstanceModelUser,
+  withInstanceModelElevate,
 } from './model_context_facade';
 import {
   updateModelInstance,
@@ -314,6 +318,9 @@ class BaseModel {
 
   /**
    * Runs a function with additional static model context.
+   *
+   * Business ctx only (lang / company / tz…). Does not change authz userId —
+   * use {@link BaseModel.withUser} to impersonate.
    */
   static withContext<R>(ctx: Partial<Context> | (() => Partial<Context>), fn: () => R, opts?: { merge?: boolean }): R {
     return withModelContext(ctx, fn, opts);
@@ -324,6 +331,36 @@ class BaseModel {
    */
   withContext<R>(ctx: Partial<Context> | (() => Partial<Context>), fn: () => R, opts?: { merge?: boolean }): R {
     return withInstanceModelContext(this, ctx, fn, opts);
+  }
+
+  /**
+   * Runs a function with a temporary userId override for rule evaluation.
+   * Does not elevate privileges — compose with {@link BaseModel.sudo} when needed.
+   */
+  static withUser<R>(userId: string, fn: () => R): R {
+    return withModelUser(userId, fn);
+  }
+
+  /**
+   * Runs a function with a temporary userId override bound to this model instance.
+   */
+  withUser<R>(userId: string, fn: () => R): R {
+    return withInstanceModelUser(this, userId, fn);
+  }
+
+  /**
+   * Runs a function with RecordRule + FieldRule bypass (company scope retained).
+   * Sync and async `fn` are both supported (required for virtual compute reads).
+   */
+  static sudo<R>(fn: () => R): R {
+    return withModelElevate(fn);
+  }
+
+  /**
+   * Runs a function with RecordRule + FieldRule bypass bound to this model instance.
+   */
+  sudo<R>(fn: () => R): R {
+    return withInstanceModelElevate(this, fn);
   }
 
   /**

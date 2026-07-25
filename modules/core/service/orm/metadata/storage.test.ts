@@ -405,7 +405,6 @@ test('metadata storage merges behavior handler maps and applies subclass overrid
             deps: ['Amount', 'Tax'],
             store: false,
             searchable: true,
-            runAs: 'sudo',
           },
         ],
       ]),
@@ -429,7 +428,6 @@ test('metadata storage merges behavior handler maps and applies subclass overrid
     deps: ['Amount', 'Tax'],
     store: false,
     searchable: true,
-    runAs: 'sudo',
   });
   expect(merged.sqlComputeHandlers?.get('DisplayName')?.method).toBe('sqlDisplayNameParent');
   expect(merged.searchHandlers?.get('VirtualName')?.method).toBe('searchVirtualNameParent');

@@ -22,7 +22,6 @@ test('@Compute registers handler metadata with defaults', () => {
       deps: ['Id', 'Id'],
       store: false,
       searchable: true,
-      runAs: 'sudo',
     })
     computeName() {
       return undefined;
@@ -38,7 +37,6 @@ test('@Compute registers handler metadata with defaults', () => {
     deps: ['Id'],
     store: false,
     searchable: true,
-    runAs: 'sudo',
   });
 
   resetModelMetadata(ComputeDecoratorModel as any);
@@ -142,16 +140,16 @@ test('@Compute rejects non-function descriptor value', () => {
   }).toThrow('must decorate an instance method');
 });
 
-test('@Compute rejects invalid runAs', () => {
+test('@Compute rejects author-facing runAs option', () => {
   expect(() => {
     class ComputeBadRunAsModel extends BaseModel {
-      @Compute<any>('Name', { deps: ['Id'], runAs: 'admin' as any })
+      @Compute<any>('Name', { deps: ['Id'], runAs: 'sudo' } as any)
       computeName() {
         return undefined;
       }
     }
     return ComputeBadRunAsModel;
-  }).toThrow('runAs must be user or sudo');
+  }).toThrow('runAs is removed');
 });
 
 test('@Compute with store=false handles missing field entry gracefully', () => {

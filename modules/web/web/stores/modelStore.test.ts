@@ -20,7 +20,6 @@ describe('getFieldMetadataView', () => {
       relatedPath: 'CompanyId.Name',
       relatedStore: true,
       searchable: true,
-      runAs: 'system',
     };
 
     const normalized = getFieldMetadataView(meta);
@@ -34,7 +33,6 @@ describe('getFieldMetadataView', () => {
     expect(normalized.relatedPath).toBe('CompanyId.Name');
     expect(normalized.relatedStore).toBe(true);
     expect(normalized.searchable).toBe(true);
-    expect(normalized.runAs).toBe('system');
   });
 
   it('marks relation only by declared relation field types', () => {

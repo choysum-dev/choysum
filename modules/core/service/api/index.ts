@@ -17,6 +17,7 @@ export {
   getReqMeta,
   getUserId,
   withContext,
+  withUser,
 } from './context';
 
 export {

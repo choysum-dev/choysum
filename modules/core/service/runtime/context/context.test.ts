@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { __deepFreezeForTest, getIdentity, getReqMeta, getUserId } from './source';
+import { __deepFreezeForTest, getIdentity, getReqMeta } from './source';
+import { getUserId, withUser } from './user';
 import { getActiveCompanyId, getContextLang, getContextTimezone, getContextCompanyTimezone, getContextClientTimezone, getEnabledCompanyIds, getReadonlyCtx, withContext } from './scope';
 
 function withTempChoysum<T>(root: any, fn: () => T): T {
@@ -264,4 +265,189 @@ test('runtime context source deep-freeze helper handles primitive, frozen and du
   expect(Object.isFrozen(out.left)).toBe(true);
   expect(Object.isFrozen(out.right)).toBe(true);
   expect(Object.isFrozen(out.left.leaf)).toBe(true);
+});
+
+test('withUser overrides getUserId nested and restores; withContext({ userId }) does not', async () => {
+  const root = {
+    request: {
+      context: {
+        identity: { userId: 'U-ROOT' },
+        ctx: { lang: 'en' },
+      },
+    },
+  };
+
+  await withTempChoysum(root, async () => {
+    expect(getUserId()).toBe('U-ROOT');
+
+    withContext({ userId: 'U-FAKE' } as any, () => {
+      expect(getUserId()).toBe('U-ROOT');
+    });
+
+    const nested = withUser('U-A', () => {
+      expect(getUserId()).toBe('U-A');
+      return withUser('U-B', () => getUserId());
+    });
+    expect(nested).toBe('U-B');
+    expect(getUserId()).toBe('U-ROOT');
+
+    await withUser('U-ASYNC', async () => {
+      expect(getUserId()).toBe('U-ASYNC');
+      return Promise.resolve();
+    });
+    expect(getUserId()).toBe('U-ROOT');
+  });
+});
+
+test('withUser rejects empty userId and works on process stack without jsCtx', () => {
+  expect(() => withUser('  ', () => undefined)).toThrow('non-empty userId');
+  expect(() => withUser(null as any, () => undefined)).toThrow('non-empty userId');
+
+  withTempChoysum(undefined, () => {
+    expect(getUserId()).toBe(undefined);
+    const value = withUser('U-PROC', () => getUserId());
+    expect(value).toBe('U-PROC');
+    expect(getUserId()).toBe(undefined);
+
+    expect(() =>
+      withUser('U-THROW', () => {
+        throw new Error('process-boom');
+      })
+    ).toThrow('process-boom');
+    expect(getUserId()).toBe(undefined);
+  });
+});
+
+test('withUser supports async process stack and coerces non-string userId', async () => {
+  await withTempChoysum(undefined, async () => {
+    const asyncValue = await withUser(42 as any, async () => {
+      expect(getUserId()).toBe('42');
+      await Promise.resolve();
+      return getUserId();
+    });
+    expect(asyncValue).toBe('42');
+    expect(getUserId()).toBe(undefined);
+  });
+});
+
+test('withUser request stack restores on sync throw and accepts legacy string entries', () => {
+  const root = {
+    request: {
+      context: {
+        identity: { userId: 'U-ROOT' },
+      },
+    },
+  };
+
+  withTempChoysum(root, () => {
+    expect(() =>
+      withUser('U-FAIL', () => {
+        throw new Error('req-boom');
+      })
+    ).toThrow('req-boom');
+    expect(getUserId()).toBe('U-ROOT');
+
+    const key = Symbol.for('choysum.userid.override');
+    const jsCtx = (globalThis as any).$choysum.request.context;
+    jsCtx[key] = ['U-LEGACY', { userId: '' }, { userId: 'U-OBJ' }];
+    expect(getUserId()).toBe('U-OBJ');
+    jsCtx[key] = ['U-LEGACY'];
+    expect(getUserId()).toBe('U-LEGACY');
+    // Empty string top fails both object and non-empty-string branches → fall back to identity.
+    jsCtx[key] = [''];
+    expect(getUserId()).toBe('U-ROOT');
+    jsCtx[key] = [null];
+    expect(getUserId()).toBe('U-ROOT');
+    delete jsCtx[key];
+    expect(getUserId()).toBe('U-ROOT');
+  });
+});
+
+test('withUser concurrent siblings restore by entry identity out of order', async () => {
+  const root = {
+    request: {
+      context: {
+        identity: { userId: 'U-ROOT' },
+      },
+    },
+  };
+
+  await withTempChoysum(root, async () => {
+    let releaseSlow: (() => void) | undefined;
+    const slowGate = new Promise<void>(resolve => {
+      releaseSlow = resolve;
+    });
+
+    const slow = withUser('U-SLOW', async () => {
+      await slowGate;
+      return getUserId();
+    });
+
+    const fast = withUser('U-FAST', async () => getUserId());
+    expect(await fast).toBe('U-FAST');
+    releaseSlow?.();
+    expect(await slow).toBe('U-SLOW');
+    expect(getUserId()).toBe('U-ROOT');
+  });
+});
+
+test('nested withContext/withUser after outer await remains allowed', async () => {
+  const root = {
+    request: {
+      context: {
+        identity: { userId: 'U-ROOT' },
+        ctx: { lang: 'en' },
+      },
+    },
+  };
+
+  await withTempChoysum(root, async () => {
+    const nestedUser = await withUser('U-A', async () => {
+      await Promise.resolve();
+      return withUser('U-B', async () => {
+        await Promise.resolve();
+        return getUserId();
+      });
+    });
+    expect(nestedUser).toBe('U-B');
+    expect(getUserId()).toBe('U-ROOT');
+
+    const nestedLang = await withContext({ lang: 'en' }, async () => {
+      await Promise.resolve();
+      return withContext({ lang: 'zh_CN' }, async () => {
+        await Promise.resolve();
+        return getContextLang();
+      });
+    });
+    expect(nestedLang).toBe('zh_CN');
+    expect(getContextLang()).toBe('en');
+
+    // Sequential async scopes remain allowed.
+    await withUser('U-SEQ-A', async () => {
+      expect(getUserId()).toBe('U-SEQ-A');
+    });
+    await withUser('U-SEQ-B', async () => {
+      expect(getUserId()).toBe('U-SEQ-B');
+    });
+  });
+});
+
+test('nested withUser inside async prelude before yield remains allowed', async () => {
+  const root = {
+    request: {
+      context: {
+        identity: { userId: 'U-ROOT' },
+      },
+    },
+  };
+
+  await withTempChoysum(root, async () => {
+    const nested = await withUser('U-A', async () => {
+      const inner = withUser('U-B', () => getUserId());
+      expect(inner).toBe('U-B');
+      return getUserId();
+    });
+    expect(nested).toBe('U-A');
+    expect(getUserId()).toBe('U-ROOT');
+  });
 });

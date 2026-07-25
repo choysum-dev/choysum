@@ -32,6 +32,7 @@ export {
   withRepositoryRecordRuleBypass,
   getRepositoryFieldRuleBypassDepth,
   withRepositoryFieldRuleBypass,
+  withRepositoryAuthzRuleBypass,
   getRepositoryValidationBypassState,
   getRepositoryValidationBypassDepth,
   withRepositoryValidationBypass,

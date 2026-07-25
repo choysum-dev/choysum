@@ -50,7 +50,6 @@ export interface ComputeHandlerMeta {
   deps: string[];
   store: boolean;
   searchable?: boolean;
-  runAs?: 'user' | 'sudo';
 }
 
 /**

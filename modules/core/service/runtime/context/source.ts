@@ -72,11 +72,3 @@ export function getReqMeta(): Readonly<JsRequestMeta> {
   return deepFreeze({ ...(asObjectRecord(jsCtx?.req) ?? {}) }) as Readonly<JsRequestMeta>;
 }
 
-/**
- * Returns the current user Id from jsCtx, if available.
- */
-export function getUserId(): string | undefined {
-  const jsCtx = getJsCtxRoot();
-  const identity = asObjectRecord(jsCtx?.identity);
-  return typeof identity?.userId === 'string' ? identity.userId : undefined;
-}

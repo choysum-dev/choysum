@@ -6,11 +6,6 @@ import type { DialectName } from '../repository/repository_dialect';
 import type { ObjectRecord } from '../../../utils/types';
 
 /**
- * Execution identity used when compute handlers run.
- */
-export type ComputeRunAs = 'user' | 'sudo';
-
-/**
  * Operator type accepted by compute search handlers.
  */
 export type ComputeOperator = Operator;
@@ -32,7 +27,6 @@ export interface ComputeInverseContext<TModel, TValue> {
   model: TModel;
   value: TValue;
   previousValue: TValue | undefined;
-  runAs: ComputeRunAs;
 }
 
 /**
@@ -48,7 +42,6 @@ export interface ComputeSearchContext<TDep extends string = string> {
   op: ComputeOperator;
   value: unknown;
   dialect: DialectName;
-  runAs: ComputeRunAs;
 }
 
 /**

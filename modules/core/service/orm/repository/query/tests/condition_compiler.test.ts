@@ -3,7 +3,7 @@
 
 import { convertCondition } from '..';
 import { MetadataStorage } from '../../../metadata/storage';
-import { getReadonlyCtx, withContext } from '../../../../runtime/context';
+import { withContext } from '../../../../runtime/context';
 
 function withFakeMetadata<T>(metas: Map<Function, any>, fn: () => T): T {
   const storage = MetadataStorage.instance as any;
@@ -729,7 +729,7 @@ test('repository condition compiler resolves compute.search handler from static 
   class DemoModel {
     static fromStaticMethod(ctx: any) {
       return {
-        domain: ['Name', '=', `${ctx.value}:${ctx.dialect}:${ctx.runAs}`],
+        domain: ['Name', '=', `${ctx.value}:${ctx.dialect}`],
       };
     }
   }
@@ -765,7 +765,7 @@ test('repository condition compiler resolves compute.search handler from static 
   };
 
   const result = convertCondition(db as any, () => '' as any, meta, eb, ['VirtualScore', '=', 11] as any, 'demo_table');
-  expect(result).toEqual({ lhs: 'Name', op: '=', rhs: '11:postgres:user' });
+  expect(result).toEqual({ lhs: 'Name', op: '=', rhs: '11:postgres' });
 });
 
 test('repository condition compiler resolves compute.search handler from prototype method', () => {
@@ -850,12 +850,11 @@ test('repository condition compiler throws when compute.search handler is missin
   expect(message).toBe('compute.search handler not found: DemoModel.PersistedScore -> missingHandler');
 });
 
-test('repository condition compiler executes compute.search with runAs=sudo marker and writes audit entry', () => {
+test('repository condition compiler executes compute.search without runAs wrapper', () => {
   class DemoModel {
     static buildVirtualScoreDomain(ctx: any) {
-      const readonlyCtx = getReadonlyCtx() as any;
       return {
-        domain: ['Name', '=', `${ctx.value}:${readonlyCtx.__computeRunAs || 'none'}`],
+        domain: ['Name', '=', String(ctx.value)],
       };
     }
   }
@@ -877,7 +876,6 @@ test('repository condition compiler executes compute.search with runAs=sudo mark
               store: false,
               searchable: true,
               search: 'buildVirtualScoreDomain',
-              runAs: 'sudo',
             },
           },
         },
@@ -892,16 +890,8 @@ test('repository condition compiler executes compute.search with runAs=sudo mark
     },
   };
 
-  delete (globalThis as any).__choysumComputeAudit;
   const result = convertCondition(db as any, () => 'postgres', meta, eb, ['VirtualScore', '=', 9] as any, 'demo_table');
-  expect(result).toEqual({ lhs: 'Name', op: '=', rhs: '9:sudo' });
-
-  const hits = ((globalThis as any).__choysumComputeAudit?.runAsHits || []) as any[];
-  expect(hits.length).toBe(1);
-  expect(hits[0]?.phase).toBe('search');
-  expect(hits[0]?.runAs).toBe('sudo');
-  expect(hits[0]?.field).toBe('VirtualScore');
-  expect(hits[0]?.mode).toBe('query');
+  expect(result).toEqual({ lhs: 'Name', op: '=', rhs: '9' });
 });
 
 test('repository condition compiler fails fast when compute.search handler returns Promise', () => {

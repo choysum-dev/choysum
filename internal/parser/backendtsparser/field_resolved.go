@@ -167,16 +167,11 @@ func collectFieldBehaviorBindings(methods []*parser.MemberMethod) (map[string]*r
 				if v, ok := opts["searchable"].(bool); ok {
 					searchable = toBoolPtr(v)
 				}
-				runAs := ""
-				if v, ok := opts["runAs"].(string); ok {
-					runAs = strings.TrimSpace(v)
-				}
 				binding.compute = &meta.IrFieldBehaviorComputeSpec{
 					Method:     method.Name,
 					Deps:       deps,
 					Store:      store,
 					Searchable: searchable,
-					RunAs:      runAs,
 				}
 			case "SqlCompute":
 				if binding.sqlCompute != nil {
@@ -541,11 +536,6 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		spec.Resolved.Searchable = meta.IrResolvedValue[*bool]{Value: &v, Source: "@Search"}
 	} else if spec.Behavior.Compute != nil && spec.Behavior.Compute.Searchable != nil {
 		spec.Resolved.Searchable = meta.IrResolvedValue[*bool]{Value: spec.Behavior.Compute.Searchable, Source: "@Compute.searchable"}
-	}
-
-	if spec.Behavior.Compute != nil && strings.TrimSpace(spec.Behavior.Compute.RunAs) != "" {
-		runAs := strings.TrimSpace(spec.Behavior.Compute.RunAs)
-		spec.Resolved.RunAs = meta.IrResolvedValue[*string]{Value: &runAs, Source: "@Compute.runAs"}
 	}
 
 	columnType := resolveColumnType(fieldType)

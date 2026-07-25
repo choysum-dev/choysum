@@ -4,13 +4,11 @@
 import type BaseModel from '../model/model';
 import { MetadataStorage } from '../metadata/storage';
 import type { ComputeDep, ModelCtor } from '../metadata/field';
-import type { ComputeRunAs } from '../metadata/compute';
 
 export type ComputeOptions<TModel extends BaseModel = BaseModel> = {
   deps: Array<ComputeDep<TModel>>;
   store?: boolean;
   searchable?: boolean;
-  runAs?: ComputeRunAs;
 };
 
 export function Compute<TModel extends BaseModel>(field: Extract<keyof TModel, string>, options: ComputeOptions<TModel>): MethodDecorator {
@@ -36,9 +34,9 @@ export function Compute<TModel extends BaseModel>(field: Extract<keyof TModel, s
       throw new Error(`@Compute(${fieldName}) deps must be a non-empty array`);
     }
 
-    const runAs = options?.runAs;
-    if (runAs != null && runAs !== 'user' && runAs !== 'sudo') {
-      throw new Error(`@Compute(${fieldName}) runAs must be user or sudo`);
+    const optionsRecord = options as Record<string, unknown> | undefined;
+    if (optionsRecord && Object.prototype.hasOwnProperty.call(optionsRecord, 'runAs')) {
+      throw new Error(`@Compute(${fieldName}) runAs is removed; call BaseModel.sudo / withUser inside the method body`);
     }
 
     const ctor = target.constructor as ModelCtor<BaseModel>;
@@ -62,7 +60,6 @@ export function Compute<TModel extends BaseModel>(field: Extract<keyof TModel, s
       deps,
       store: options?.store !== false,
       searchable: typeof options?.searchable === 'boolean' ? options.searchable : undefined,
-      runAs,
     });
 
     MetadataStorage.instance.setModelMetadata(ctor, {

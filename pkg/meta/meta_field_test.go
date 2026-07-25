@@ -135,7 +135,6 @@ func TestIrField_SetResolvedSpec(t *testing.T) {
 	t.Run("spec with related and resolved values", func(t *testing.T) {
 		field := &IrField{}
 		searchable := ptr(true)
-		runAs := ptr("admin")
 		spec := &IrFieldResolvedSpec{
 			FieldName: "total",
 			Structural: IrFieldStructuralSpec{
@@ -148,13 +147,11 @@ func TestIrField_SetResolvedSpec(t *testing.T) {
 				},
 			},
 			Resolved: struct {
-				Store      IrResolvedValue[bool]    `json:"store"`
-				Searchable IrResolvedValue[*bool]   `json:"searchable"`
-				RunAs      IrResolvedValue[*string] `json:"runAs"`
+				Store      IrResolvedValue[bool]  `json:"store"`
+				Searchable IrResolvedValue[*bool] `json:"searchable"`
 			}{
 				Store:      IrResolvedValue[bool]{Value: false, Source: "related"},
 				Searchable: IrResolvedValue[*bool]{Value: searchable, Source: "explicit"},
-				RunAs:      IrResolvedValue[*string]{Value: runAs, Source: "explicit"},
 			},
 		}
 		if err := field.SetResolvedSpec(spec); err != nil {
@@ -171,8 +168,8 @@ func TestIrField_SetResolvedSpec(t *testing.T) {
 		if roundtrip.Resolved.Searchable.Value == nil || *roundtrip.Resolved.Searchable.Value != true {
 			t.Fatal("expected Searchable.Value = true")
 		}
-		if roundtrip.Resolved.RunAs.Value == nil || *roundtrip.Resolved.RunAs.Value != "admin" {
-			t.Fatalf("expected RunAs.Value = admin")
+		if strings.Contains(field.ResolvedSpec, `"runAs"`) {
+			t.Fatalf("resolved metadata must omit removed runAs contract, got %s", field.ResolvedSpec)
 		}
 	})
 }
