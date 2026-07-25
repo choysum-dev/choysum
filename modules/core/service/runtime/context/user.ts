@@ -4,11 +4,13 @@
 import { asObjectRecord } from '../../../utils/object';
 import { getJsCtxRoot } from './source';
 
-/** Request-scoped userId override stack (nested withUser). */
+/** Request-scoped userId override stack (nested / concurrent withUser). */
 const USER_ID_OVERRIDE_KEY = Symbol.for('choysum.userid.override');
 
+type UserIdOverrideEntry = { userId: string };
+
 /** Process-level override stack used when no jsCtx is available (scripts / background). */
-const processLevelUserIdStack: string[] = [];
+const processLevelUserIdStack: UserIdOverrideEntry[] = [];
 
 type UserIdCarrier = Record<PropertyKey, unknown>;
 
@@ -29,11 +31,23 @@ function isPromiseLike<T = unknown>(value: unknown): value is PromiseLike<T> {
   return !!value && typeof (value as { then?: unknown }).then === 'function';
 }
 
-function peekOverrideFromCarrier(carrier: UserIdCarrier | undefined): string | undefined {
-  const stack = carrier?.[USER_ID_OVERRIDE_KEY];
+function peekStackTop(stack: unknown): string | undefined {
   if (!Array.isArray(stack) || stack.length === 0) return undefined;
-  const top = stack[stack.length - 1];
+  const top = stack[stack.length - 1] as UserIdOverrideEntry | string | undefined;
+  if (top && typeof top === 'object' && typeof top.userId === 'string' && top.userId) {
+    return top.userId;
+  }
+  // Legacy string entries (should not appear after this change).
   return typeof top === 'string' && top ? top : undefined;
+}
+
+function removeStackEntry(stack: UserIdOverrideEntry[], entry: UserIdOverrideEntry): void {
+  const idx = stack.indexOf(entry);
+  if (idx !== -1) stack.splice(idx, 1);
+}
+
+function peekOverrideFromCarrier(carrier: UserIdCarrier | undefined): string | undefined {
+  return peekStackTop(carrier?.[USER_ID_OVERRIDE_KEY]);
 }
 
 /**
@@ -43,10 +57,7 @@ function peekOverrideFromCarrier(carrier: UserIdCarrier | undefined): string | u
 export function peekUserIdOverride(): string | undefined {
   const fromRequest = peekOverrideFromCarrier(asUserIdCarrier(getJsCtxRoot()));
   if (fromRequest) return fromRequest;
-  if (processLevelUserIdStack.length > 0) {
-    return processLevelUserIdStack[processLevelUserIdStack.length - 1];
-  }
-  return undefined;
+  return peekStackTop(processLevelUserIdStack);
 }
 
 /**
@@ -66,21 +77,23 @@ export function getUserId(): string | undefined {
  *
  * Does not wrap withContext and does not elevate privileges (use Model.sudo for bypass).
  * Sync and async `fn` are both supported (aligned with withContext).
+ * Concurrent sibling withUser calls remove their own stack entry by identity (not LIFO pop).
  */
 export function withUser<R>(userId: string, fn: () => R): R {
   const normalized = normalizeUserId(userId);
+  const entry: UserIdOverrideEntry = { userId: normalized };
   const jsCtx = asUserIdCarrier(getJsCtxRoot());
 
   if (jsCtx) {
-    let stack = jsCtx[USER_ID_OVERRIDE_KEY] as string[] | undefined;
+    let stack = jsCtx[USER_ID_OVERRIDE_KEY] as UserIdOverrideEntry[] | undefined;
     if (!Array.isArray(stack)) {
       stack = [];
       jsCtx[USER_ID_OVERRIDE_KEY] = stack;
     }
-    stack.push(normalized);
+    stack.push(entry);
 
     const restore = () => {
-      stack!.pop();
+      removeStackEntry(stack!, entry);
       if (stack!.length === 0) delete jsCtx[USER_ID_OVERRIDE_KEY];
     };
 
@@ -97,18 +110,19 @@ export function withUser<R>(userId: string, fn: () => R): R {
     }
   }
 
-  processLevelUserIdStack.push(normalized);
+  processLevelUserIdStack.push(entry);
+  const restoreProcess = () => {
+    removeStackEntry(processLevelUserIdStack, entry);
+  };
   try {
     const result = fn();
     if (isPromiseLike(result)) {
-      return Promise.resolve(result).finally(() => {
-        processLevelUserIdStack.pop();
-      }) as unknown as R;
+      return Promise.resolve(result).finally(restoreProcess) as unknown as R;
     }
-    processLevelUserIdStack.pop();
+    restoreProcess();
     return result;
   } catch (error) {
-    processLevelUserIdStack.pop();
+    restoreProcess();
     throw error;
   }
 }

@@ -154,8 +154,11 @@ export function getRepositoryRecordRuleBypassDepth(): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
 }
 
-function restoreBypassDepth(state: RepositoryReqServiceState, key: 'recordRuleBypassDepth' | 'fieldRuleBypassDepth', previousDepth: number): void {
-  if (previousDepth > 0) state[key] = previousDepth;
+function restoreBypassDepth(state: RepositoryReqServiceState, key: 'recordRuleBypassDepth' | 'fieldRuleBypassDepth'): void {
+  // Decrement rather than write back previousDepth so concurrent sibling bypasses
+  // that share request service state survive out-of-order completion (aligned with withBypassDepths).
+  const current = typeof state[key] === 'number' && Number.isFinite(state[key]) ? (state[key] as number) : 0;
+  if (current > 1) state[key] = current - 1;
   else delete state[key];
 }
 
@@ -188,7 +191,7 @@ export function withRepositoryRecordRuleBypass<T>(fn: () => T): T {
 
   const previousDepth = getRepositoryRecordRuleBypassDepth();
   state.recordRuleBypassDepth = previousDepth + 1;
-  return runWithBypassRestore(fn, () => restoreBypassDepth(state, 'recordRuleBypassDepth', previousDepth));
+  return runWithBypassRestore(fn, () => restoreBypassDepth(state, 'recordRuleBypassDepth'));
 }
 
 export function getRepositoryFieldRuleBypassDepth(): number {
@@ -209,7 +212,7 @@ export function withRepositoryFieldRuleBypass<T>(fn: () => T): T {
 
   const previousDepth = getRepositoryFieldRuleBypassDepth();
   state.fieldRuleBypassDepth = previousDepth + 1;
-  return runWithBypassRestore(fn, () => restoreBypassDepth(state, 'fieldRuleBypassDepth', previousDepth));
+  return runWithBypassRestore(fn, () => restoreBypassDepth(state, 'fieldRuleBypassDepth'));
 }
 
 /**
@@ -227,8 +230,8 @@ export function withRepositoryAuthzRuleBypass<T>(fn: () => T): T {
   state.fieldRuleBypassDepth = previousFieldDepth + 1;
 
   return runWithBypassRestore(fn, () => {
-    restoreBypassDepth(state, 'recordRuleBypassDepth', previousRecordDepth);
-    restoreBypassDepth(state, 'fieldRuleBypassDepth', previousFieldDepth);
+    restoreBypassDepth(state, 'recordRuleBypassDepth');
+    restoreBypassDepth(state, 'fieldRuleBypassDepth');
   });
 }
 

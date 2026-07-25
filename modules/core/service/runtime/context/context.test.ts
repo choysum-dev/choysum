@@ -309,3 +309,38 @@ test('withUser rejects empty userId and works on process stack without jsCtx', (
     expect(getUserId()).toBe(undefined);
   });
 });
+
+test('withUser concurrent sibling overrides restore by entry identity', async () => {
+  const root = {
+    request: {
+      context: {
+        identity: { userId: 'U-ROOT' },
+      },
+    },
+  };
+
+  await withTempChoysum(root, async () => {
+    let releaseSlow: (() => void) | undefined;
+    const slowGate = new Promise<void>(resolve => {
+      releaseSlow = resolve;
+    });
+
+    const slow = withUser('U-SLOW', async () => {
+      await slowGate;
+      expect(getUserId()).toBe('U-SLOW');
+      return getUserId();
+    });
+
+    const fast = withUser('U-FAST', async () => {
+      expect(getUserId()).toBe('U-FAST');
+      return getUserId();
+    });
+
+    await fast;
+    // Fast finished first; slow entry must still be on the stack (not LIFO-popped away).
+    expect(getUserId()).toBe('U-SLOW');
+    releaseSlow?.();
+    await slow;
+    expect(getUserId()).toBe('U-ROOT');
+  });
+});

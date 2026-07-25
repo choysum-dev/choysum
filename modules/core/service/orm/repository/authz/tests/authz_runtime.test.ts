@@ -212,6 +212,40 @@ test('authz runtime field bypass nested depth restores previous value', async ()
   );
 });
 
+test('authz runtime concurrent sibling bypasses survive out-of-order completion', async () => {
+  await withPatchedChoysum(
+    {
+      request: {
+        context: {
+          req: {},
+        },
+      },
+    },
+    async () => {
+      let releaseSlow: (() => void) | undefined;
+      const slowGate = new Promise<void>(resolve => {
+        releaseSlow = resolve;
+      });
+
+      const slow = withRepositoryRecordRuleBypass(async () => {
+        await slowGate;
+        expect(getRepositoryRecordRuleBypassDepth()).toBeGreaterThanOrEqual(1);
+      });
+
+      const fast = withRepositoryRecordRuleBypass(async () => {
+        expect(getRepositoryRecordRuleBypassDepth()).toBe(2);
+      });
+
+      await fast;
+      // First-started bypass must still be elevated after the second finishes.
+      expect(getRepositoryRecordRuleBypassDepth()).toBe(1);
+      releaseSlow?.();
+      await slow;
+      expect(getRepositoryRecordRuleBypassDepth()).toBe(0);
+    }
+  );
+});
+
 test('authz runtime log mode and audit switch normalize mixed env values', () => {
   const originalEnv = (globalThis as any).__CHOYSUM_RUNTIME_ENV__;
   try {
