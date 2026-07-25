@@ -606,3 +606,21 @@ test('coverage: remaining branch partials in helpers', async () => {
   }
 });
 
+test('buildCopyValues rejects null or non-object source rows', () => {
+  let nullMsg = '';
+  try {
+    buildCopyValues(CopyScalarWidget as any, null as any);
+  } catch (error) {
+    nullMsg = String((error as Error).message || error);
+  }
+  expect(nullMsg).toContain('source row must be a non-null object');
+
+  let badMsg = '';
+  try {
+    buildCopyValues(CopyScalarWidget as any, 'not-a-row' as any);
+  } catch (error) {
+    badMsg = String((error as Error).message || error);
+  }
+  expect(badMsg).toContain('source row must be a non-null object');
+});
+

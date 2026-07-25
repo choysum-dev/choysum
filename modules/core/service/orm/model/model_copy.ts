@@ -145,22 +145,27 @@ export function buildCopyValues(
   defaults?: Partial<Record<string, unknown>>,
   state?: CopyWalkState
 ): UnknownRecord {
+  const sourceRecord = asObjectRecord(row);
+  if (!sourceRecord) {
+    throw new Error('[Copy] source row must be a non-null object');
+  }
+
   const meta = getModelRuntimeMetadata(ModelCtor);
   const walk: CopyWalkState = state || {
     ancestorIds: new Set<string>(),
     depth: 0,
   };
 
-  const sourceId = extractRelationId(row.Id ?? row.id);
+  const sourceId = extractRelationId(sourceRecord.Id ?? sourceRecord.id);
   if (sourceId) walk.ancestorIds.add(sourceId);
 
   const out: UnknownRecord = {};
 
   for (const [fieldName, field] of meta.fields || []) {
     if (shouldSkipFieldForCopy(meta, fieldName, field)) continue;
-    if (!(fieldName in row)) continue;
+    if (!(fieldName in sourceRecord)) continue;
 
-    const raw = row[fieldName];
+    const raw = sourceRecord[fieldName];
     if (raw === undefined) continue;
 
     if (field.type === 'OneToMany') {
