@@ -56,6 +56,8 @@ type FieldDecoratorOptionBag = {
   round?: unknown;
   /** Data i18n: store per-language values as a JSON/JSONB lang map. */
   translate?: unknown;
+  /** Whether the field participates in Model.Copy (default true when omitted). */
+  copy?: unknown;
 };
 
 function normalizeFieldString(name: string, value: unknown): { string?: string; stringText?: TermReference } {
@@ -117,6 +119,10 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
       throw new Error(`@Field(${name}) translate must be a boolean`);
     }
     const translate = optionBag.translate === true;
+    if (optionBag.copy !== undefined && typeof optionBag.copy !== 'boolean') {
+      throw new Error(`@Field(${name}) copy must be a boolean`);
+    }
+    const copyFlag = optionBag.copy === false ? false : optionBag.copy === true ? true : undefined;
     if (translate) {
       if (type !== 'char' && type !== 'varchar' && type !== 'text') {
         throw new Error(`@Field(${name}) translate is only supported on char/varchar/text fields`);
@@ -446,6 +452,8 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
     if (normalizedRelated) meta.related = normalizedRelated;
     if (normalizedStorageHints) meta.storageHints = normalizedStorageHints;
     if (translate) meta.translate = true;
+    if (copyFlag === false) meta.copy = false;
+    else if (copyFlag === true) meta.copy = true;
 
     // Write metadata
     const ctor = target.constructor as ModelCtor<BaseModel> & typeof BaseModel;

@@ -101,6 +101,11 @@ type FlatCommonOptions = {
    * See `.dev/docs/infra/i18n/data-i18n-design.md`.
    */
   translate?: boolean;
+  /**
+   * Whether the field participates in Model.Copy payloads.
+   * Omit / true = include; false = skip. Default is true when omitted.
+   */
+  copy?: boolean;
 };
 
 type FlatNoRelationOption = { relation?: never };
@@ -460,6 +465,11 @@ export interface FieldMetadata {
    * `size` remains a per-lang value limit in storageHints; it is not a varchar column width.
    */
   translate?: boolean;
+  /**
+   * Whether the field participates in Model.Copy payloads.
+   * Omit / true = include; false = skip.
+   */
+  copy?: boolean;
 }
 
 // Decrement tuple (limits max recursion depth to avoid excessive type expansion)

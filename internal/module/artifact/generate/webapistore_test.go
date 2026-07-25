@@ -363,3 +363,37 @@ func TestConvertFieldToMetadata_TranslateContract(t *testing.T) {
 		t.Fatalf("existing Size must win over zero storage hint, got %#v", metadata3.Size)
 	}
 }
+
+func TestConvertFieldToMetadata_CopyContract(t *testing.T) {
+	falseVal := false
+	field := &meta.IrField{Name: "Code", FieldType: "varchar"}
+	spec := &meta.IrFieldResolvedSpec{
+		FieldName: "Code",
+		Structural: meta.IrFieldStructuralSpec{
+			Copy: &falseVal,
+		},
+	}
+	if err := field.SetResolvedSpec(spec); err != nil {
+		t.Fatalf("SetResolvedSpec: %v", err)
+	}
+	metadata := convertFieldToMetadata(field)
+	if metadata.Copy == nil || *metadata.Copy {
+		t.Fatalf("expected Copy=false, got %#v", metadata.Copy)
+	}
+
+	trueVal := true
+	field2 := &meta.IrField{Name: "Name", FieldType: "varchar"}
+	spec2 := &meta.IrFieldResolvedSpec{
+		FieldName: "Name",
+		Structural: meta.IrFieldStructuralSpec{
+			Copy: &trueVal,
+		},
+	}
+	if err := field2.SetResolvedSpec(spec2); err != nil {
+		t.Fatalf("SetResolvedSpec true: %v", err)
+	}
+	metadata2 := convertFieldToMetadata(field2)
+	if metadata2.Copy != nil {
+		t.Fatalf("copy:true must omit Copy flag, got %#v", metadata2.Copy)
+	}
+}

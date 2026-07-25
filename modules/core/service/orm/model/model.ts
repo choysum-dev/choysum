@@ -66,6 +66,7 @@ import { getModelRepository } from './model_internal_facade';
 import { defaultModelValues, runModelOnchange } from './model_runtime_service_facade';
 import { deleteModels, deleteModelById } from './model_delete_service_facade';
 import { createModel, createManyModels } from './model_create_service_facade';
+import { copyModel } from './model_copy';
 import { updateModels, updateModelById } from './model_update_service_facade';
 import { fieldsGetModels, type FieldsGetFieldMeta } from './model_fields_get_facade';
 import {
@@ -366,7 +367,7 @@ class BaseModel {
   /**
    * Primary key for the model instance.
    */
-  @Field({ type: 'char', size: 20, primaryKey: true })
+  @Field({ type: 'char', size: 20, primaryKey: true, copy: false })
   public readonly Id: string;
 
   /**
@@ -397,6 +398,7 @@ class BaseModel {
   @Field({
     type: 'datetime',
     index: true,
+    copy: false,
     string: _lt('Created At', { scope: 'core.model.BaseModel.fields' }),
   })
   public readonly CreatedAt: Date;
@@ -407,6 +409,7 @@ class BaseModel {
   @Field({
     type: 'datetime',
     index: true,
+    copy: false,
     string: _lt('Updated At', { scope: 'core.model.BaseModel.fields' }),
   })
   public UpdatedAt: Date;
@@ -417,6 +420,7 @@ class BaseModel {
   @Field({
     type: 'datetime',
     index: true,
+    copy: false,
     string: _lt('Deleted At', { scope: 'core.model.BaseModel.fields' }),
   })
   public DeletedAt: Date;
@@ -448,6 +452,17 @@ class BaseModel {
    */
   static getRepository<T extends BaseModel>(this: BaseModelCtor<T>): Repository {
     return getModelRepository(this as unknown as RuntimeModelCtor<T>);
+  }
+
+  /**
+   * Duplicates this instance via Model.Copy(this.Id, defaults).
+   */
+  async copy(defaults?: Partial<Record<string, unknown>>): Promise<this> {
+    const id = String((this as { Id?: string }).Id || '').trim();
+    if (!id) {
+      throw new Error('Cannot copy an instance without Id');
+    }
+    return (await copyModel(this.constructor as unknown as RuntimeModelCtor<this>, id, defaults)) as this;
   }
 
   /**
@@ -521,6 +536,18 @@ class BaseModel {
     translations: Record<string, string | false>
   ): Promise<boolean> {
     return await updateModelFieldTranslations(this as unknown as RuntimeModelCtor<T>, id, fieldName, translations);
+  }
+
+  /**
+   * Duplicates one record by Id using field `copy` metadata, then Create.
+   * Soft-deleted sources and relation rows follow default Browse visibility.
+   */
+  static async Copy<T extends BaseModel>(
+    this: BaseModelCtor<T>,
+    id: string,
+    defaults?: Partial<Record<string, unknown>>
+  ): Promise<T> {
+    return await copyModel<T>(this as unknown as RuntimeModelCtor<T>, id, defaults);
   }
 
   /**

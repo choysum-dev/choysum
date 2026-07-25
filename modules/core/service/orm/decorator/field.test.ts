@@ -729,3 +729,21 @@ test('Field decorator rejects translate on non-text field types', () => {
     return BadTypeTranslate;
   }).toThrow('translate is only supported on char/varchar/text fields');
 });
+
+test('Field decorator accepts copy:false and rejects non-boolean copy', () => {
+  class CopyFlagModel extends BaseModel {
+    @Field({ type: 'varchar', size: 32, copy: false } as any)
+    Code!: string;
+  }
+  const meta = MetadataStorage.instance.getModelMetadata(CopyFlagModel as any).fields.get('Code') as any;
+  expect(meta.copy).toBe(false);
+
+  expect(() => {
+    class BadCopy extends BaseModel {
+      @Field({ type: 'varchar', copy: 'no' as any } as any)
+      Name!: string;
+    }
+    return BadCopy;
+  }).toThrow('copy must be a boolean');
+});
+

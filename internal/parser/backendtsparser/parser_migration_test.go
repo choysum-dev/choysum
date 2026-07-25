@@ -2015,3 +2015,48 @@ func TestParseDecoratorStringArg_EdgeCases(t *testing.T) {
 		t.Fatalf("expected 'single', got %q", got)
 	}
 }
+
+func TestTsParser_CopyFalseField(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/copy_field.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('CopyPilot')
+export default class CopyPilot extends BaseModel {
+  @Field({ type: 'varchar', size: 64, copy: false })
+  public Code: string
+
+  @Field({ type: 'varchar', size: 64 })
+  public Name: string
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	fieldByName := map[string]*meta.IrField{}
+	for _, f := range r.Model.Fields {
+		fieldByName[f.Name] = f
+	}
+
+	codeSpec, err := fieldByName["Code"].GetResolvedSpec()
+	if err != nil || codeSpec == nil {
+		t.Fatalf("Code resolved spec: err=%v", err)
+	}
+	if codeSpec.Structural.Copy == nil || *codeSpec.Structural.Copy {
+		t.Fatalf("expected Copy=false on Code, got %#v", codeSpec.Structural.Copy)
+	}
+
+	nameSpec, err := fieldByName["Name"].GetResolvedSpec()
+	if err != nil || nameSpec == nil {
+		t.Fatalf("Name resolved spec: err=%v", err)
+	}
+	if nameSpec.Structural.Copy != nil {
+		t.Fatalf("omitted copy must leave Structural.Copy nil, got %#v", nameSpec.Structural.Copy)
+	}
+}

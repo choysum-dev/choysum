@@ -53,6 +53,7 @@ type FieldMetadata struct {
 	IsReadonly               *bool   `json:"isReadonly,omitempty"`
 	Indexed                  *bool   `json:"indexed,omitempty"`
 	Translate                *bool   `json:"translate,omitempty"`
+	Copy                     *bool   `json:"copy,omitempty"`
 
 	RelationInverseField     *string `json:"relationInverseField,omitempty"`
 	RelationJoinModel        *string `json:"relationJoinModel,omitempty"`
@@ -129,6 +130,10 @@ func applyResolvedFieldContract(metadata *FieldMetadata, field *meta.IrField) {
 			size := *resolved.Structural.StorageHints.Size
 			metadata.Size = &size
 		}
+	}
+	if resolved.Structural.Copy != nil && !*resolved.Structural.Copy {
+		f := false
+		metadata.Copy = &f
 	}
 }
 
