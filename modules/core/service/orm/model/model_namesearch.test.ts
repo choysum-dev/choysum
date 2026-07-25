@@ -39,6 +39,11 @@ class NameSearchOverrideWidget extends BaseModel {
   }
 }
 
+test('buildNameSearchCondition treats nullish name as empty', () => {
+  expect(buildNameSearchCondition(null as any, [])).toEqual([]);
+  expect(buildNameSearchCondition(undefined as any, ['Code', '=', 'X'] as any)).toEqual(['Code', '=', 'X']);
+});
+
 test('buildNameSearchCondition adds DisplayName like for non-empty name', () => {
   expect(buildNameSearchCondition('  alice  ', [])).toEqual(['DisplayName', 'like', '%alice%']);
 });
@@ -89,6 +94,10 @@ test('nameSearchModels NameSearch path calls Search with merged condition and de
       options: { limit: 7, fields: ['Id', 'DisplayName'] },
     },
   ]);
+
+  calls.length = 0;
+  await nameSearchModels(Fake as any, null as any);
+  expect(calls).toEqual([{ condition: [], options: { fields: ['Id', 'DisplayName'] } }]);
 });
 
 test('BaseModel.NameSearch delegates to nameSearchModels via Search', async () => {
@@ -106,6 +115,17 @@ test('BaseModel.NameSearch delegates to nameSearchModels via Search', async () =
       {
         condition: ['DisplayName', 'like', '%Wid%'],
         options: { limit: 3, fields: ['Id', 'DisplayName'] },
+      },
+    ]);
+
+    // Hit default `condition = []` parameter branch (omit 2nd/3rd args).
+    seen.length = 0;
+    const rowsDefault = await NameSearchWidget.NameSearch('OnlyName');
+    expect(rowsDefault).toEqual([{ Id: 'w1', DisplayName: 'Widget' }]);
+    expect(seen).toEqual([
+      {
+        condition: ['DisplayName', 'like', '%OnlyName%'],
+        options: { fields: ['Id', 'DisplayName'] },
       },
     ]);
   } finally {
