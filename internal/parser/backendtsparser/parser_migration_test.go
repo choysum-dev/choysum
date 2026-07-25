@@ -292,6 +292,58 @@ export default class Demo extends BaseModel {
 	}
 }
 
+func TestTsParser_ParseModelOmitsLegacyComputeRunAs(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/demo_runas.ts"
+	content := `import { Model, Field, Compute } from '../../core/service';
+import BaseModel from './base';
+
+@Model('DemoRunAs')
+export default class DemoRunAs extends BaseModel {
+  @Field({ type: 'varchar', size: 64 })
+  public Name: string
+
+  @Compute<DemoRunAs>('Name', { deps: ['Id'], store: false, runAs: 'sudo' })
+  computeName() {
+    return this.Name
+  }
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	if r.Model == nil {
+		t.Fatal("expected parsed model")
+	}
+
+	var nameField *meta.IrField
+	for _, field := range r.Model.Fields {
+		if field.Name == "Name" {
+			nameField = field
+			break
+		}
+	}
+	if nameField == nil {
+		t.Fatal("expected Name field")
+	}
+
+	spec, err := nameField.GetResolvedSpec()
+	if err != nil || spec == nil {
+		t.Fatalf("parse Name resolved spec failed: %v spec=%v", err, spec)
+	}
+	if spec.Behavior.Compute == nil || spec.Behavior.Compute.Method != "computeName" {
+		t.Fatalf("unexpected compute behavior: %+v", spec.Behavior)
+	}
+	if strings.Contains(nameField.ResolvedSpec, `"runAs"`) {
+		t.Fatalf("resolved metadata must omit removed runAs contract, got %s", nameField.ResolvedSpec)
+	}
+}
+
 func TestTsParser_ParseModelRejectsLegacyFieldSyntax(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}

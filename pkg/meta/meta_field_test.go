@@ -168,6 +168,9 @@ func TestIrField_SetResolvedSpec(t *testing.T) {
 		if roundtrip.Resolved.Searchable.Value == nil || *roundtrip.Resolved.Searchable.Value != true {
 			t.Fatal("expected Searchable.Value = true")
 		}
+		if strings.Contains(field.ResolvedSpec, `"runAs"`) {
+			t.Fatalf("resolved metadata must omit removed runAs contract, got %s", field.ResolvedSpec)
+		}
 	})
 }
 

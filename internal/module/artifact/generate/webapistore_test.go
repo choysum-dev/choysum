@@ -6,6 +6,7 @@ package generator
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -83,6 +84,13 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	if metadata.Translate != nil {
 		t.Fatalf("non-translate field must omit Translate, got %#v", metadata.Translate)
 	}
+	encodedMetadata, err := json.Marshal(metadata)
+	if err != nil {
+		t.Fatalf("marshal field metadata: %v", err)
+	}
+	if strings.Contains(string(encodedMetadata), `"runAs"`) {
+		t.Fatalf("field metadata must omit removed runAs key, got %s", string(encodedMetadata))
+	}
 
 	relationFields, importModels := analyzeRelationFields(testApp().Models[1])
 	if len(relationFields) != 2 {
@@ -143,6 +151,9 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	}
 	if !strings.Contains(string(storeContent), `string: "Amount"`) || !strings.Contains(string(storeContent), "stringText:") || !strings.Contains(string(storeContent), stringKey) {
 		t.Fatalf("expected field string/stringText in generated store content: %s", string(storeContent))
+	}
+	if strings.Contains(string(storeContent), "runAs:") || strings.Contains(string(storeContent), `"runAs"`) {
+		t.Fatalf("generated store must omit removed runAs key: %s", string(storeContent))
 	}
 	if _, err := os.Stat(filepath.Join(webStoreDir, "stores", "index.ts")); err != nil {
 		t.Fatalf("expected stores/index.ts: %v", err)
