@@ -44,6 +44,7 @@ export default class Token extends BaseModel {
     size: 36,
     notNull: true,
     unique: true,
+    copy: false,
     string: _lt('Token ID', { scope: 'auth.model.Token.fields' }),
   })
   TokenId: string;
@@ -67,6 +68,7 @@ export default class Token extends BaseModel {
     type: 'datetime',
     notNull: true,
     index: true,
+    copy: false,
     string: _lt('Expires At', { scope: 'auth.model.Token.fields' }),
   })
   ExpiresAt: Date;
@@ -78,6 +80,7 @@ export default class Token extends BaseModel {
     type: 'boolean',
     default: () => false,
     index: true,
+    copy: false,
     string: _lt('Revoked', { scope: 'auth.model.Token.fields' }),
   })
   Revoked: boolean;
@@ -88,6 +91,7 @@ export default class Token extends BaseModel {
   @Field({
     type: 'datetime',
     index: true,
+    copy: false,
     string: _lt('Revoked At', { scope: 'auth.model.Token.fields' }),
   })
   RevokedAt: Date;
@@ -98,6 +102,7 @@ export default class Token extends BaseModel {
   @Field({
     type: 'varchar',
     size: 255,
+    copy: false,
     string: _lt('Revocation Reason', { scope: 'auth.model.Token.fields' }),
   })
   RevocationReason: string;
@@ -107,6 +112,7 @@ export default class Token extends BaseModel {
    */
   @Field({
     type: 'jsonobject',
+    copy: false,
     string: _lt('Metadata', { scope: 'auth.model.Token.fields' }),
   })
   Metadata: Record<string, any>;

@@ -493,6 +493,9 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		translate = true
 		spec.Structural.Translate = toBoolPtr(true)
 	}
+	if v, ok := options["copy"].(bool); ok && !v {
+		spec.Structural.Copy = toBoolPtr(false)
+	}
 	switch raw := options["default"].(type) {
 	case string:
 		trimmed := strings.TrimSpace(raw)

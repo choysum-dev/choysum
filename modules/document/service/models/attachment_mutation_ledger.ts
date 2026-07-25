@@ -41,6 +41,7 @@ export default class AttachmentMutationLedger extends BaseModel {
     size: 100,
     notNull: true,
     uniqueIndex: 'uidx_document_mutation_company_action_id',
+    copy: false,
     string: _lt('Mutation', { scope: 'document.model.AttachmentMutationLedger.fields' }),
   })
   MutationId: string;

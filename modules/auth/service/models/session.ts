@@ -28,6 +28,7 @@ export default class Session extends BaseModel {
     type: 'varchar',
     size: 36,
     index: true,
+    copy: false,
     string: _lt('Access Token ID', { scope: 'auth.model.Session.fields' }),
   })
   AccessTokenId: string;
@@ -58,6 +59,7 @@ export default class Session extends BaseModel {
     type: 'datetime',
     notNull: true,
     index: true,
+    copy: false,
     string: _lt('Expires At', { scope: 'auth.model.Session.fields' }),
   })
   ExpiresAt: Date;
@@ -68,6 +70,7 @@ export default class Session extends BaseModel {
   @Field({
     type: 'datetime',
     index: true,
+    copy: false,
     string: _lt('Last Activity', { scope: 'auth.model.Session.fields' }),
   })
   LastActivityAt: Date;
@@ -80,6 +83,7 @@ export default class Session extends BaseModel {
     size: 20,
     default: () => 'active',
     index: true,
+    copy: false,
     string: _lt('Status', { scope: 'auth.model.Session.fields' }),
   })
   Status: string;

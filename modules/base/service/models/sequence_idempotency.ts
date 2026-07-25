@@ -51,6 +51,7 @@ export default class SequenceIdempotency extends BaseModel {
     notNull: true,
     uniqueIndex: 'uidx_base_sequence_idem_seq_key',
     index: true,
+    copy: false,
     string: _lt('Idempotency Key', { scope: 'base.model.SequenceIdempotency.fields' }),
   })
   IdempotencyKey: string;
@@ -73,6 +74,7 @@ export default class SequenceIdempotency extends BaseModel {
   @Field({
     type: 'bigint',
     notNull: true,
+    copy: false,
     string: _lt('Start', { scope: 'base.model.SequenceIdempotency.fields' }),
   })
   RangeStart: bigint;
@@ -80,6 +82,7 @@ export default class SequenceIdempotency extends BaseModel {
   @Field({
     type: 'bigint',
     notNull: true,
+    copy: false,
     string: _lt('End', { scope: 'base.model.SequenceIdempotency.fields' }),
   })
   RangeEnd: bigint;
@@ -87,6 +90,7 @@ export default class SequenceIdempotency extends BaseModel {
   @Field({
     type: 'varchar',
     size: 128,
+    copy: false,
     string: _lt('Request Hash', { scope: 'base.model.SequenceIdempotency.fields' }),
   })
   RequestHash?: string;
@@ -95,6 +99,7 @@ export default class SequenceIdempotency extends BaseModel {
     type: 'datetime',
     notNull: true,
     index: true,
+    copy: false,
     string: _lt('Expires At', { scope: 'base.model.SequenceIdempotency.fields' }),
   })
   ExpiresAt: Date;

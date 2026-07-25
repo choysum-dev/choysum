@@ -95,6 +95,7 @@ export default class User extends BaseModel {
     type: 'varchar',
     size: 255,
     notNull: true,
+    copy: false,
     string: _lt('Password Hash', { scope: 'auth.model.User.fields' }),
   })
   PasswordHash: string;
@@ -251,6 +252,7 @@ export default class User extends BaseModel {
   @Field({
     type: 'OneToMany',
     relation: { targetModel: () => Session, inverseField: 'UserId' },
+    copy: false,
     string: _lt('Sessions', { scope: 'auth.model.User.fields' }),
   })
   Sessions: Session[];
@@ -261,6 +263,7 @@ export default class User extends BaseModel {
   @Field({
     type: 'OneToMany',
     relation: { targetModel: () => Token, inverseField: 'UserId' },
+    copy: false,
     string: _lt('Tokens', { scope: 'auth.model.User.fields' }),
   })
   Tokens: Token[];

@@ -21,6 +21,8 @@ export type FieldsGetFieldMeta = {
   scale?: number;
   isReadonly?: boolean;
   indexed?: boolean;
+  /** false when @Field({ copy: false }); omitted means default true. */
+  copy?: boolean;
   [key: string]: unknown;
 };
 
@@ -197,6 +199,9 @@ function buildFieldMeta(
 
   if (field.translate === true) {
     meta.translate = true;
+  }
+  if (field.copy === false) {
+    meta.copy = false;
   }
   const hintSize = field.storageHints?.size;
   if (typeof hintSize === 'number' && Number.isInteger(hintSize) && hintSize > 0 && meta.size == null) {

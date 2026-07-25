@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"text/template"
 
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -162,13 +163,13 @@ func TestWebApiStoreGenerate(t *testing.T) {
 
 func TestWebApiStoreGenerate_DynamicSelectionOmitsInlineArray(t *testing.T) {
 	field := &meta.IrField{
-		BaseModel:       meta.BaseModel{Id: sql.NullString{String: "field-dyn", Valid: true}},
-		Name:            "Status",
-		FieldType:       "selection",
+		BaseModel:        meta.BaseModel{Id: sql.NullString{String: "field-dyn", Valid: true}},
+		Name:             "Status",
+		FieldType:        "selection",
 		TsTypeAnnotation: "string",
-		SelectionKind:   "dynamic",
-		SelectionMethod: "StatusOptions",
-		Selection:       `[{"value":"should","label":"NotEmit"}]`,
+		SelectionKind:    "dynamic",
+		SelectionMethod:  "StatusOptions",
+		Selection:        `[{"value":"should","label":"NotEmit"}]`,
 	}
 	metadata := convertFieldToMetadata(field)
 	if metadata.SelectionKind == nil || *metadata.SelectionKind != "dynamic" {
@@ -250,7 +251,7 @@ func TestStripSelectionLabelTextJSON_InvalidOrEmpty(t *testing.T) {
 	if got := stripSelectionLabelTextJSON("   "); got != "   " {
 		t.Fatalf("whitespace input should pass through: %q", got)
 	}
-	raw := `not-json`;
+	raw := `not-json`
 	if got := stripSelectionLabelTextJSON(raw); got != raw {
 		t.Fatalf("invalid json should pass through: %q", got)
 	}
@@ -361,5 +362,59 @@ func TestConvertFieldToMetadata_TranslateContract(t *testing.T) {
 	}
 	if metadata3.Size == nil || *metadata3.Size != 80 {
 		t.Fatalf("existing Size must win over zero storage hint, got %#v", metadata3.Size)
+	}
+}
+
+func TestConvertFieldToMetadata_CopyContract(t *testing.T) {
+	falseVal := false
+	field := &meta.IrField{Name: "Code", FieldType: "varchar"}
+	spec := &meta.IrFieldResolvedSpec{
+		FieldName: "Code",
+		Structural: meta.IrFieldStructuralSpec{
+			Copy: &falseVal,
+		},
+	}
+	if err := field.SetResolvedSpec(spec); err != nil {
+		t.Fatalf("SetResolvedSpec: %v", err)
+	}
+	metadata := convertFieldToMetadata(field)
+	if metadata.Copy == nil || *metadata.Copy {
+		t.Fatalf("expected Copy=false, got %#v", metadata.Copy)
+	}
+
+	trueVal := true
+	field2 := &meta.IrField{Name: "Name", FieldType: "varchar"}
+	spec2 := &meta.IrFieldResolvedSpec{
+		FieldName: "Name",
+		Structural: meta.IrFieldStructuralSpec{
+			Copy: &trueVal,
+		},
+	}
+	if err := field2.SetResolvedSpec(spec2); err != nil {
+		t.Fatalf("SetResolvedSpec true: %v", err)
+	}
+	metadata2 := convertFieldToMetadata(field2)
+	if metadata2.Copy != nil {
+		t.Fatalf("copy:true must omit Copy flag, got %#v", metadata2.Copy)
+	}
+}
+
+func TestWebApiStoreTemplate_EmitsCopyFalse(t *testing.T) {
+	falseVal := false
+	tpl := template.Must(template.New("field").Parse(`{{- if ne .Copy nil}}copy: false,{{- end}}`))
+	var buf strings.Builder
+	if err := tpl.Execute(&buf, FieldMetadata{Copy: &falseVal}); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+	if got := buf.String(); got != "copy: false," {
+		t.Fatalf("expected copy: false emission, got %q", got)
+	}
+
+	buf.Reset()
+	if err := tpl.Execute(&buf, FieldMetadata{}); err != nil {
+		t.Fatalf("execute nil: %v", err)
+	}
+	if got := buf.String(); got != "" {
+		t.Fatalf("expected omit when Copy nil, got %q", got)
 	}
 }
