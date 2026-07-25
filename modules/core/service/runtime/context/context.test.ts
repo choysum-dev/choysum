@@ -353,6 +353,11 @@ test('withUser request stack restores on sync throw and accepts legacy string en
     expect(getUserId()).toBe('U-OBJ');
     jsCtx[key] = ['U-LEGACY'];
     expect(getUserId()).toBe('U-LEGACY');
+    // Empty string top fails both object and non-empty-string branches → fall back to identity.
+    jsCtx[key] = [''];
+    expect(getUserId()).toBe('U-ROOT');
+    jsCtx[key] = [null];
+    expect(getUserId()).toBe('U-ROOT');
     delete jsCtx[key];
     expect(getUserId()).toBe('U-ROOT');
   });

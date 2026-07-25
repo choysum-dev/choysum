@@ -195,6 +195,42 @@ test('authz runtime bypass restore runs on sync throw', async () => {
   );
 });
 
+test('authz runtime bypass restore treats non-finite depth as zero', async () => {
+  await withPatchedChoysum(
+    {
+      request: {
+        context: {
+          req: {},
+        },
+      },
+    },
+    async () => {
+      withRepositoryRecordRuleBypass(() => {
+        const req = getRepositoryCurrentReq();
+        const state = getOrInitRepositoryReqServiceState(req)!;
+        state.recordRuleBypassDepth = Number.NaN;
+      });
+      expect(getRepositoryRecordRuleBypassDepth()).toBe(0);
+
+      withRepositoryFieldRuleBypass(() => {
+        const req = getRepositoryCurrentReq();
+        const state = getOrInitRepositoryReqServiceState(req)!;
+        state.fieldRuleBypassDepth = Number.POSITIVE_INFINITY;
+      });
+      expect(getRepositoryFieldRuleBypassDepth()).toBe(0);
+
+      withRepositoryAuthzRuleBypass(() => {
+        const req = getRepositoryCurrentReq();
+        const state = getOrInitRepositoryReqServiceState(req)!;
+        state.recordRuleBypassDepth = 'x' as any;
+        state.fieldRuleBypassDepth = undefined;
+      });
+      expect(getRepositoryRecordRuleBypassDepth()).toBe(0);
+      expect(getRepositoryFieldRuleBypassDepth()).toBe(0);
+    }
+  );
+});
+
 test('authz runtime combined RR+FR bypass is sync-friendly and nested', () => {
   return withPatchedChoysum(
     {
