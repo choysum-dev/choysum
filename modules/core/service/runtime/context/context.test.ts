@@ -310,11 +310,12 @@ test('withUser rejects empty userId and works on process stack without jsCtx', (
   });
 });
 
-test('withUser concurrent sibling overrides restore by entry identity', async () => {
+test('overlapping async withUser/withContext scopes are rejected', async () => {
   const root = {
     request: {
       context: {
         identity: { userId: 'U-ROOT' },
+        ctx: { lang: 'en' },
       },
     },
   };
@@ -327,20 +328,42 @@ test('withUser concurrent sibling overrides restore by entry identity', async ()
 
     const slow = withUser('U-SLOW', async () => {
       await slowGate;
-      expect(getUserId()).toBe('U-SLOW');
       return getUserId();
     });
 
-    const fast = withUser('U-FAST', async () => {
-      expect(getUserId()).toBe('U-FAST');
-      return getUserId();
-    });
+    expect(() => withUser('U-FAST', async () => getUserId())).toThrow('overlapping async withUser');
+    expect(() => withContext({ lang: 'ja' }, async () => getContextLang())).toThrow('overlapping async withContext');
 
-    await fast;
-    // Fast finished first; slow entry must still be on the stack (not LIFO-popped away).
-    expect(getUserId()).toBe('U-SLOW');
     releaseSlow?.();
     await slow;
+    expect(getUserId()).toBe('U-ROOT');
+
+    // Sequential async scopes remain allowed.
+    await withUser('U-A', async () => {
+      expect(getUserId()).toBe('U-A');
+    });
+    await withUser('U-B', async () => {
+      expect(getUserId()).toBe('U-B');
+    });
+  });
+});
+
+test('nested withUser inside async prelude before yield remains allowed', async () => {
+  const root = {
+    request: {
+      context: {
+        identity: { userId: 'U-ROOT' },
+      },
+    },
+  };
+
+  await withTempChoysum(root, async () => {
+    const nested = await withUser('U-A', async () => {
+      const inner = withUser('U-B', () => getUserId());
+      expect(inner).toBe('U-B');
+      return getUserId();
+    });
+    expect(nested).toBe('U-A');
     expect(getUserId()).toBe('U-ROOT');
   });
 });

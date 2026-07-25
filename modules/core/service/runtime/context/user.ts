@@ -3,8 +3,9 @@
 
 import { asObjectRecord } from '../../../utils/object';
 import { getJsCtxRoot } from './source';
+import { assertNoOverlappingAsyncScope, isPromiseLikeResult, runWithAsyncScopeTracking } from './async_scope';
 
-/** Request-scoped userId override stack (nested / concurrent withUser). */
+/** Request-scoped userId override stack (nested withUser). */
 const USER_ID_OVERRIDE_KEY = Symbol.for('choysum.userid.override');
 
 type UserIdOverrideEntry = { userId: string };
@@ -27,17 +28,12 @@ function normalizeUserId(userId: unknown): string {
   return normalized;
 }
 
-function isPromiseLike<T = unknown>(value: unknown): value is PromiseLike<T> {
-  return !!value && typeof (value as { then?: unknown }).then === 'function';
-}
-
 function peekStackTop(stack: unknown): string | undefined {
   if (!Array.isArray(stack) || stack.length === 0) return undefined;
   const top = stack[stack.length - 1] as UserIdOverrideEntry | string | undefined;
   if (top && typeof top === 'object' && typeof top.userId === 'string' && top.userId) {
     return top.userId;
   }
-  // Legacy string entries (should not appear after this change).
   return typeof top === 'string' && top ? top : undefined;
 }
 
@@ -77,9 +73,11 @@ export function getUserId(): string | undefined {
  *
  * Does not wrap withContext and does not elevate privileges (use Model.sudo for bypass).
  * Sync and async `fn` are both supported (aligned with withContext).
- * Concurrent sibling withUser calls remove their own stack entry by identity (not LIFO pop).
+ * Overlapping async withUser/withContext scopes are rejected (no QuickJS AsyncLocalStorage).
  */
 export function withUser<R>(userId: string, fn: () => R): R {
+  assertNoOverlappingAsyncScope('withUser');
+
   const normalized = normalizeUserId(userId);
   const entry: UserIdOverrideEntry = { userId: normalized };
   const jsCtx = asUserIdCarrier(getJsCtxRoot());
@@ -97,32 +95,36 @@ export function withUser<R>(userId: string, fn: () => R): R {
       if (stack!.length === 0) delete jsCtx[USER_ID_OVERRIDE_KEY];
     };
 
-    try {
-      const result = fn();
-      if (isPromiseLike(result)) {
-        return Promise.resolve(result).finally(restore) as unknown as R;
+    return runWithAsyncScopeTracking(() => {
+      try {
+        const result = fn();
+        if (isPromiseLikeResult(result)) {
+          return Promise.resolve(result).finally(restore) as unknown as R;
+        }
+        restore();
+        return result;
+      } catch (error) {
+        restore();
+        throw error;
       }
-      restore();
-      return result;
-    } catch (error) {
-      restore();
-      throw error;
-    }
+    });
   }
 
   processLevelUserIdStack.push(entry);
   const restoreProcess = () => {
     removeStackEntry(processLevelUserIdStack, entry);
   };
-  try {
-    const result = fn();
-    if (isPromiseLike(result)) {
-      return Promise.resolve(result).finally(restoreProcess) as unknown as R;
+  return runWithAsyncScopeTracking(() => {
+    try {
+      const result = fn();
+      if (isPromiseLikeResult(result)) {
+        return Promise.resolve(result).finally(restoreProcess) as unknown as R;
+      }
+      restoreProcess();
+      return result;
+    } catch (error) {
+      restoreProcess();
+      throw error;
     }
-    restoreProcess();
-    return result;
-  } catch (error) {
-    restoreProcess();
-    throw error;
-  }
+  });
 }
