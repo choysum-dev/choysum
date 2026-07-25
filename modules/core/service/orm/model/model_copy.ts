@@ -111,10 +111,11 @@ export function buildCopyBrowseSelection(meta: ModelMetadata, depth = 0): FieldS
 }
 
 function copyScalarOrManyToOneValue(value: unknown): unknown {
-  if (value === null) return null;
-  const id = extractRelationId(value);
-  // Prefer Id when Browse nested a ManyToOne object; otherwise keep scalar as-is.
-  if (id != null && typeof value === 'object') return id;
+  if (value == null) return null;
+  // Nested Browse objects must resolve to FK id or null — never pass raw objects into Create.
+  if (typeof value === 'object') {
+    return extractRelationId(value);
+  }
   return value;
 }
 

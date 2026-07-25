@@ -269,3 +269,34 @@ test('buildCopyValues skips soft-deleted-shaped missing relation rows already fi
   expect(values.Lines).toBeUndefined();
   expect(values.Tags).toBeUndefined();
 });
+
+test('buildCopyValues resolves ManyToOne objects to Id or null', () => {
+  const withId = buildCopyValues(CopyLineWidget as any, {
+    Id: 'line-1',
+    Name: 'L1',
+    OrderId: { Id: 'ord-9', Name: 'Order' },
+  });
+  expect(withId.OrderId).toBe('ord-9');
+
+  const missingId = buildCopyValues(CopyLineWidget as any, {
+    Id: 'line-2',
+    Name: 'L2',
+    OrderId: {},
+  });
+  expect(missingId.OrderId).toBeNull();
+
+  const asString = buildCopyValues(CopyLineWidget as any, {
+    Id: 'line-3',
+    Name: 'L3',
+    OrderId: 'ord-3',
+  });
+  expect(asString.OrderId).toBe('ord-3');
+
+  const asNull = buildCopyValues(CopyLineWidget as any, {
+    Id: 'line-4',
+    Name: 'L4',
+    OrderId: null,
+  });
+  expect(asNull.OrderId).toBeNull();
+});
+
