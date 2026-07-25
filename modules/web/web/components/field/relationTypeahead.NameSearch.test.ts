@@ -308,7 +308,9 @@ describe('relation typeahead NameSearch wiring', () => {
     expect(Search).not.toHaveBeenCalled();
 
     NameSearch.mockClear();
+    Search.mockClear();
     await clickRemote(wrapper, '.trigger-remote-null');
     expect(NameSearch).toHaveBeenCalledWith('', [], expect.objectContaining({ limit: 20 }));
+    expect(Search).not.toHaveBeenCalled();
   });
 });
