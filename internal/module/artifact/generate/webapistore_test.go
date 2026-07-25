@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"text/template"
 
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -162,13 +163,13 @@ func TestWebApiStoreGenerate(t *testing.T) {
 
 func TestWebApiStoreGenerate_DynamicSelectionOmitsInlineArray(t *testing.T) {
 	field := &meta.IrField{
-		BaseModel:       meta.BaseModel{Id: sql.NullString{String: "field-dyn", Valid: true}},
-		Name:            "Status",
-		FieldType:       "selection",
+		BaseModel:        meta.BaseModel{Id: sql.NullString{String: "field-dyn", Valid: true}},
+		Name:             "Status",
+		FieldType:        "selection",
 		TsTypeAnnotation: "string",
-		SelectionKind:   "dynamic",
-		SelectionMethod: "StatusOptions",
-		Selection:       `[{"value":"should","label":"NotEmit"}]`,
+		SelectionKind:    "dynamic",
+		SelectionMethod:  "StatusOptions",
+		Selection:        `[{"value":"should","label":"NotEmit"}]`,
 	}
 	metadata := convertFieldToMetadata(field)
 	if metadata.SelectionKind == nil || *metadata.SelectionKind != "dynamic" {
@@ -250,7 +251,7 @@ func TestStripSelectionLabelTextJSON_InvalidOrEmpty(t *testing.T) {
 	if got := stripSelectionLabelTextJSON("   "); got != "   " {
 		t.Fatalf("whitespace input should pass through: %q", got)
 	}
-	raw := `not-json`;
+	raw := `not-json`
 	if got := stripSelectionLabelTextJSON(raw); got != raw {
 		t.Fatalf("invalid json should pass through: %q", got)
 	}
@@ -395,5 +396,25 @@ func TestConvertFieldToMetadata_CopyContract(t *testing.T) {
 	metadata2 := convertFieldToMetadata(field2)
 	if metadata2.Copy != nil {
 		t.Fatalf("copy:true must omit Copy flag, got %#v", metadata2.Copy)
+	}
+}
+
+func TestWebApiStoreTemplate_EmitsCopyFalse(t *testing.T) {
+	falseVal := false
+	tpl := template.Must(template.New("field").Parse(`{{- if ne .Copy nil}}copy: false,{{- end}}`))
+	var buf strings.Builder
+	if err := tpl.Execute(&buf, FieldMetadata{Copy: &falseVal}); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+	if got := buf.String(); got != "copy: false," {
+		t.Fatalf("expected copy: false emission, got %q", got)
+	}
+
+	buf.Reset()
+	if err := tpl.Execute(&buf, FieldMetadata{}); err != nil {
+		t.Fatalf("execute nil: %v", err)
+	}
+	if got := buf.String(); got != "" {
+		t.Fatalf("expected omit when Copy nil, got %q", got)
 	}
 }

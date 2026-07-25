@@ -458,7 +458,7 @@ class BaseModel {
    * Duplicates this instance via Model.Copy(this.Id, defaults).
    */
   async copy(defaults?: Partial<Record<string, unknown>>): Promise<this> {
-    const id = String((this as { Id?: string }).Id || '').trim();
+    const id = String(this.Id || '').trim();
     if (!id) {
       throw new Error('Cannot copy an instance without Id');
     }

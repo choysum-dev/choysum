@@ -21,10 +21,6 @@ type CopyWalkState = {
   depth: number;
 };
 
-function isRelationType(type: unknown): boolean {
-  return type === 'ManyToOne' || type === 'OneToMany' || type === 'ManyToMany';
-}
-
 function isAttachmentType(type: unknown): boolean {
   const normalized = String(type || '')
     .trim()
@@ -115,7 +111,6 @@ export function buildCopyBrowseSelection(meta: ModelMetadata, depth = 0): FieldS
 }
 
 function copyScalarOrManyToOneValue(value: unknown): unknown {
-  if (value === undefined) return undefined;
   if (value === null) return null;
   const id = extractRelationId(value);
   // Prefer Id when Browse nested a ManyToOne object; otherwise keep scalar as-is.
