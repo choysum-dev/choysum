@@ -41,8 +41,11 @@ export function pickRootOnchangeSelection(
   if (!Array.isArray(raw) || raw.length === 0) return null;
   const m = raw.find((s: any) => s && s.field === field);
   if (!m) return null;
+  // Only apply a domain when selection is an explicit array (including []).
+  // Missing / non-array selection must not be treated as "no options".
+  if (!Array.isArray(m.selection)) return null;
   return {
-    values: Array.isArray(m.selection) ? m.selection : [],
+    values: m.selection,
     disabled: Array.isArray(m.disabled) ? m.disabled : undefined,
   };
 }
@@ -89,10 +92,13 @@ export function resolveStatusbarOptions(args: {
   }
 
   let pool: string[];
-  if (Array.isArray(args.onchangeValues) && args.onchangeValues.length > 0) {
+  // Explicit array (including []) is an authoritative onchange domain.
+  // undefined/null means "no onchange filter" → fall back to meta.
+  const hasOnchangeDomain = Array.isArray(args.onchangeValues);
+  if (hasOnchangeDomain) {
     pool = [];
     const seen = new Set<string>();
-    for (const raw of args.onchangeValues) {
+    for (const raw of args.onchangeValues!) {
       const value = raw != null ? String(raw) : '';
       if (!value || seen.has(value)) continue;
       if (metaMap.size > 0 && !metaMap.has(value)) continue;
@@ -105,14 +111,16 @@ export function resolveStatusbarOptions(args: {
     pool = [];
   }
 
+  const hasAuthoritativePool = hasOnchangeDomain || metaMap.size > 0;
+
   const whitelist = Array.isArray(args.whitelist)
     ? args.whitelist.map(v => (v != null ? String(v) : '')).filter(Boolean)
     : null;
 
   let values: string[];
   if (whitelist && whitelist.length > 0) {
-    const poolSet = new Set(pool);
-    if (pool.length > 0) {
+    if (hasAuthoritativePool) {
+      const poolSet = new Set(pool);
       values = whitelist.filter(v => poolSet.has(v));
     } else {
       // No meta/onchange pool — still honor whitelist as bare values (labels = values).

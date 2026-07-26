@@ -63,9 +63,11 @@ describe('pickRootOnchangeSelection', () => {
         'State'
       )
     ).toEqual({ values: ['draft', 'done'], disabled: ['done'] });
-    expect(
-      pickRootOnchangeSelection({ selection: [{ field: 'State', selection: 'bad' }] }, 'State')
-    ).toEqual({ values: [], disabled: undefined });
+    expect(pickRootOnchangeSelection({ selection: [{ field: 'State', selection: 'bad' }] }, 'State')).toBeNull();
+    expect(pickRootOnchangeSelection({ selection: [{ field: 'State', selection: [] }] }, 'State')).toEqual({
+      values: [],
+      disabled: undefined,
+    });
   });
 });
 
@@ -177,6 +179,18 @@ describe('resolveStatusbarOptions', () => {
       { value: 'draft', disabled: false },
       { value: 'done', disabled: true },
     ]);
+  });
+
+  it('honors explicit empty onchange domain (no fallthrough to meta)', () => {
+    expect(resolveStatusbarOptions({ meta, onchangeValues: [] }).map(o => o.value)).toEqual([]);
+    expect(
+      resolveStatusbarOptions({
+        meta,
+        onchangeValues: [],
+        whitelist: ['draft', 'done'],
+        current: 'draft',
+      }).map(o => o.value)
+    ).toEqual(['draft']);
   });
 
   it('keeps onchange values when meta is empty', () => {
