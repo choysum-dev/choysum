@@ -22,7 +22,7 @@ import {
   encodeRepositoryMutationPayloads,
   validateRepositoryMutationPayload,
 } from './mutation_payload_helpers';
-import { stampMonetaryScalesForWrite } from '../projection/monetary_scale';
+import { stampMonetaryScalesForWriteMany } from '../projection/monetary_scale';
 import {
   applyRepositoryUpdateCondition,
   loadRepositoryUpdateValidationCurrentRows,
@@ -107,12 +107,18 @@ export async function prepareRepositoryUpdateSanitizedPayload(
     [vals]
   )[0] as Entity;
   const currentRows = await loadRepositoryUpdateValidationCurrentRows(params, targetIds);
-  // Stamp monetary scales per target when currency Id comes from the locked current row.
+  // Stamp monetary scales per target (one batched Currency browse across all targets).
+  const stampedList = await stampMonetaryScalesForWriteMany(
+    params.meta,
+    targetIds.map(id => ({
+      input: { ...preparedVals } as Entity,
+      current: currentRows.get(id) ?? null,
+    }))
+  );
   const stampedByTarget = new Map<string, Entity>();
-  for (const id of targetIds) {
-    const current = currentRows.get(id);
-    stampedByTarget.set(id, await stampMonetaryScalesForWrite(params.meta, { ...preparedVals }, current ?? null));
-  }
+  targetIds.forEach((id, index) => {
+    stampedByTarget.set(id, stampedList[index] as Entity);
+  });
   for (const id of targetIds) {
     await validateRepositoryMutationPayload(
       {

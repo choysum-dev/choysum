@@ -43,8 +43,8 @@ export const {{.Model.Name}}FieldsMetadata = {
     {{- if $field.Size}}size: {{$field.Size}},{{- end}}
     {{- if $field.Precision}}precision: {{$field.Precision}},{{- end}}
     {{- if $field.Scale}}scale: {{$field.Scale}},{{- end}}
-    {{- if $field.ScaleField}}scaleField: '{{$field.ScaleField}}',{{- end}}
-    {{- if $field.CurrencyField}}currencyField: '{{$field.CurrencyField}}',{{- end}}
+    {{- if $field.ScaleField}}scaleField: {{$field.ScaleField}},{{- end}}
+    {{- if $field.CurrencyField}}currencyField: {{$field.CurrencyField}},{{- end}}
     {{- if $field.Round}}round: '{{$field.Round}}',{{- end}}
     {{- if $field.IsReadonly}}isReadonly: {{$field.IsReadonly}},{{- end}}
     {{- if $field.Indexed}}indexed: {{$field.Indexed}},{{- end}}

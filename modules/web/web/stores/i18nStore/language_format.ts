@@ -156,9 +156,11 @@ export function formatNumberFromConfig(
 
 /**
  * Format currency with Language-driven separators and symbol position/spacing.
+ * Prefer a pre-quantized decimal string over `number` when precision matters
+ * (large monetary / high-scale decimals), to avoid IEEE-754 conversion.
  */
 export function formatCurrencyFromConfig(
-  value: number,
+  value: number | string,
   config: {
     thousandsSeparator?: string;
     decimalSeparator?: string;
@@ -172,7 +174,10 @@ export function formatCurrencyFromConfig(
   currencyCode?: string
 ): string {
   const digits = config.decimalDigits ?? 2;
-  const amount = formatNumberFromConfig(value, config, { digits });
+  const amount =
+    typeof value === 'string'
+      ? formatFixedDecimalString(value, config)
+      : formatNumberFromConfig(value, config, { digits });
   const symbol = config.symbol || currencyCode || config.code || '';
   if (!symbol) {
     return amount;

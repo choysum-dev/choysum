@@ -61,6 +61,18 @@ export function validateModelMonetaryCurrencyFields(meta: ModelMetadata): void {
     if (!sibling) {
       throw new Error(`@Field(${fieldName}) currencyField "${currencyField}" does not exist on the model`);
     }
+    // ManyToOne target metadata may not be registered yet during circular/late module load.
+    // Skip unresolved targets here; Ref string targets and fully registered M2O still validate.
+    if (sibling.type === 'ManyToOne') {
+      const resolved = resolveManyToOneTargetFullName(sibling);
+      if (!resolved) continue;
+      if (resolved !== BASE_CURRENCY_FULL_NAME) {
+        throw new Error(
+          `@Field(${fieldName}) currencyField "${currencyField}" must be ManyToOne or ManyToOneRef targeting ${BASE_CURRENCY_FULL_NAME}`
+        );
+      }
+      continue;
+    }
     if (!isCurrencyRelationField(sibling)) {
       throw new Error(
         `@Field(${fieldName}) currencyField "${currencyField}" must be ManyToOne or ManyToOneRef targeting ${BASE_CURRENCY_FULL_NAME}`

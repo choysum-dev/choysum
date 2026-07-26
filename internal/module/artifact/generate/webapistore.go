@@ -189,12 +189,14 @@ func convertFieldToMetadata(field *meta.IrField) FieldMetadata {
 	if field.Scale > 0 {
 		metadata.Scale = &field.Scale
 	}
-	// Pass through scaleField.
+	// Pass through scaleField / currencyField as JS string literals (strconv.Quote).
 	if field.ScaleField != "" {
-		metadata.ScaleField = &field.ScaleField
+		quoted := strconv.Quote(strings.TrimSpace(field.ScaleField))
+		metadata.ScaleField = &quoted
 	}
 	if field.CurrencyField != "" {
-		metadata.CurrencyField = &field.CurrencyField
+		quoted := strconv.Quote(strings.TrimSpace(field.CurrencyField))
+		metadata.CurrencyField = &quoted
 	}
 	if field.IsReadonly {
 		metadata.IsReadonly = &field.IsReadonly

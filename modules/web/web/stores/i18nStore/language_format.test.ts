@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { SUPPORTED_LOCALES } from './locales';
 import {
+  formatCurrencyFromConfig,
   formatNumberFromConfig,
   formatFixedDecimalString,
   parseGrouping,
@@ -91,5 +92,22 @@ describe('language_format (P2)', () => {
         grouping: [3, 0],
       })
     ).toBe('1.234.567,890000000000000000');
+  });
+
+  it('formats currency from a pre-quantized string without Number conversion', () => {
+    expect(
+      formatCurrencyFromConfig(
+        '9007199254740993.12',
+        {
+          thousandsSeparator: ',',
+          decimalSeparator: '.',
+          grouping: [3, 0],
+          decimalDigits: 2,
+          position: 'before',
+          spacing: true,
+        },
+        'USD'
+      )
+    ).toBe('USD 9,007,199,254,740,993.12');
   });
 });

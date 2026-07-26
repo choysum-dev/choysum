@@ -143,7 +143,7 @@ const effectivePrecision = computed<number>(() => metaPrecision.value ?? props.p
 const effectiveRound = computed<Decimal.Rounding>(() => props.roundingMode ?? Decimal.ROUND_HALF_UP);
 
 function resolveScaleFrom(obj: any): number {
-  return resolveMonetaryScaleFromRecord(obj, currencyFieldName.value, String(binding.prop), props.scale ?? 2);
+  return resolveMonetaryScaleFromRecord(obj, currencyFieldName.value, String(binding.prop), props.scale ?? 6);
 }
 
 function resolveDisplayValue(raw: any, obj: any): any {
@@ -256,7 +256,7 @@ const OMonetaryCell = defineComponent({
         const n = fn ? fn() : undefined;
         if (typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= 18) return n;
       } catch {}
-      return 6;
+      return props.scale ?? 6;
     }
 
     function bounds() {
@@ -264,9 +264,12 @@ const OMonetaryCell = defineComponent({
     }
 
     function onInput(raw: string) {
-      if (raw === '') {
+      if (raw === '' && props.nullable) {
         editingRaw.value = null;
         buffer.setEditing(null);
+        return;
+      }
+      if (raw === '' && !props.nullable) {
         return;
       }
       if (!/^[-]?\d*(\.\d*)?$/.test(raw)) return;

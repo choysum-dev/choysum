@@ -185,6 +185,27 @@ test('resolveMonetaryScaleFromPayload / ForWrite / FromRow cover S1 and E1 branc
   ).toBeUndefined();
 });
 
+test('validateModelMonetaryCurrencyFields skips unresolved ManyToOne targets during load', () => {
+  expect(() =>
+    validateModelMonetaryCurrencyFields({
+      fields: new Map([
+        [
+          'CurrencyId',
+          {
+            type: 'ManyToOne',
+            relation: {
+              targetModel: () => {
+                throw new Error('not registered yet');
+              },
+            },
+          },
+        ],
+        ['Amount', { type: 'monetary', column: { currencyField: 'CurrencyId' } }],
+      ]),
+    } as any)
+  ).not.toThrow();
+});
+
 test('validateModelMonetaryCurrencyFields accepts ManyToOne targeting base.Currency', () => {
   @Model('Currency', { application: 'base' })
   class BaseCurrencyModel extends BaseModel {}

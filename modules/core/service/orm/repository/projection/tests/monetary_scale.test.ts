@@ -9,6 +9,7 @@ import {
   currencyIdOf,
   readCurrencyDigitsInline,
   stampMonetaryScalesForWrite,
+  stampMonetaryScalesForWriteMany,
 } from '../monetary_scale';
 
 function monetaryMeta() {
@@ -74,6 +75,34 @@ test('stampMonetaryScalesForWrite browses currency digits and throws E1 when mis
     CurrencyId: { Id: 'C1', DecimalDigits: 4 },
   } as any);
   expect((currencyOnly as any)[buildHiddenScaleAlias('Amount')]).toBe(4);
+});
+
+test('stampMonetaryScalesForWriteMany batches one browse across entities', async () => {
+  const meta = monetaryMeta();
+  let browseCalls = 0;
+  const browser = async (ids: string[]) => {
+    browseCalls += 1;
+    expect([...ids].sort()).toEqual(['C1', 'C2']);
+    return new Map([
+      ['C1', 2],
+      ['C2', 0],
+    ]);
+  };
+
+  const stamped = await stampMonetaryScalesForWriteMany(
+    meta,
+    [
+      { input: { Amount: '1.239', CurrencyId: 'C1' } as any },
+      { input: { Amount: '9.87', CurrencyId: 'C2' } as any },
+    ],
+    browser
+  );
+
+  expect(browseCalls).toBe(1);
+  expect((stamped[0] as any)[buildHiddenScaleAlias('Amount')]).toBe(2);
+  expect((stamped[1] as any)[buildHiddenScaleAlias('Amount')]).toBe(0);
+  expect(await stampMonetaryScalesForWriteMany(meta, [], browser)).toEqual([]);
+  expect(browseCalls).toBe(1);
 });
 
 test('collectMonetaryCurrencyFieldCompanions and inline helpers', () => {

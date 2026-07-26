@@ -81,6 +81,9 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	if metadata.RelatedPath == nil || *metadata.RelatedPath != "CurrencyId.Symbol" || metadata.Searchable == nil || !*metadata.Searchable {
 		t.Fatalf("expected related/searchable fields, got %#v", metadata)
 	}
+	if metadata.ScaleField == nil || *metadata.ScaleField != `"currencyScale"` {
+		t.Fatalf("expected quoted scaleField JS literal, got %#v", metadata.ScaleField)
+	}
 	if metadata.ShouldCreateColumn == nil || !*metadata.ShouldCreateColumn {
 		t.Fatalf("expected ShouldCreateColumn=true, got %#v", metadata)
 	}
@@ -593,6 +596,31 @@ func TestConvertFieldToMetadata_CopyContract(t *testing.T) {
 	metadata2 := convertFieldToMetadata(field2)
 	if metadata2.Copy != nil {
 		t.Fatalf("copy:true must omit Copy flag, got %#v", metadata2.Copy)
+	}
+}
+
+func TestConvertFieldToMetadata_QuotesCurrencyFieldEscapes(t *testing.T) {
+	field := &meta.IrField{
+		Name:          "Amount",
+		FieldType:     "Monetary",
+		CurrencyField: `Cur"Id\Path`,
+		ScaleField:    " scale Field ",
+	}
+	metadata := convertFieldToMetadata(field)
+	if metadata.CurrencyField == nil || *metadata.CurrencyField != `"Cur\"Id\\Path"` {
+		t.Fatalf("expected escaped currencyField JS literal, got %#v", metadata.CurrencyField)
+	}
+	if metadata.ScaleField == nil || *metadata.ScaleField != `"scale Field"` {
+		t.Fatalf("expected trimmed quoted scaleField JS literal, got %#v", metadata.ScaleField)
+	}
+
+	tpl := template.Must(template.New("field").Parse(`{{- if .CurrencyField}}currencyField: {{.CurrencyField}},{{- end}}`))
+	var buf strings.Builder
+	if err := tpl.Execute(&buf, metadata); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+	if got := buf.String(); got != `currencyField: "Cur\"Id\\Path",` {
+		t.Fatalf("expected safe template emission, got %q", got)
 	}
 }
 

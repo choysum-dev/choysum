@@ -101,6 +101,57 @@ export async function stampMonetaryScalesForWrite(
   return input;
 }
 
+function collectPendingCurrencyIdsForStamp(meta: ModelMetadata, input: Entity, current?: Entity | null): string[] {
+  const inputRecord = asObjectRecord(input);
+  if (!inputRecord || !meta.fields) return [];
+  const ids: string[] = [];
+  for (const [fieldName, fm] of meta.fields) {
+    if (!fm || fm.type !== 'monetary') continue;
+    const writingAmount = fieldName in inputRecord && inputRecord[fieldName] != null && inputRecord[fieldName] !== '';
+    const currencyField = getCurrencyFieldName(fm.column);
+    const writingCurrency = !!currencyField && currencyField in inputRecord;
+    if (!writingAmount && !writingCurrency) continue;
+    try {
+      const resolved = resolveMonetaryScaleFromPayload({ ...fm, name: fieldName } as FieldMetadata, input, current);
+      if (resolved.needsBrowse && resolved.currencyId) ids.push(resolved.currencyId);
+    } catch {
+      // E1 is raised during the actual stamp pass.
+    }
+  }
+  return ids;
+}
+
+/**
+ * Stamp monetary scales for many write payloads with one batched Currency.BrowseMany.
+ */
+export async function stampMonetaryScalesForWriteMany(
+  meta: ModelMetadata,
+  items: Array<{ input: Entity; current?: Entity | null }>,
+  browseDigits: MonetaryDigitsBrowser = browseCurrencyDecimalDigits
+): Promise<Entity[]> {
+  if (!items.length) return [];
+
+  const pendingIds: string[] = [];
+  for (const item of items) {
+    pendingIds.push(...collectPendingCurrencyIdsForStamp(meta, item.input, item.current));
+  }
+  const digitsById = await browseDigits(pendingIds);
+  const cachedBrowse: MonetaryDigitsBrowser = async ids => {
+    const out = new Map<string, number>();
+    for (const id of ids) {
+      const digits = digitsById.get(id);
+      if (digits != null) out.set(id, digits);
+    }
+    return out;
+  };
+
+  const out: Entity[] = [];
+  for (const item of items) {
+    out.push(await stampMonetaryScalesForWrite(meta, item.input, item.current, cachedBrowse));
+  }
+  return out;
+}
+
 /** Companion currency field names for monetary fields in `fieldNames`. */
 export function collectMonetaryCurrencyFieldCompanions(meta: ModelMetadata, fieldNames: Iterable<string>): string[] {
   const out: string[] = [];

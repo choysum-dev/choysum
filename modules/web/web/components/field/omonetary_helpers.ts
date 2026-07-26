@@ -97,14 +97,15 @@ export function formatMonetaryDisplayText(
   const scale = opts.scale;
   try {
     const q = d.toDecimalPlaces(scale, opts.roundingMode);
+    const fixed = q.toFixed(scale);
     const code = readCurrencyCode(opts.currency);
     const symbol = readCurrencySymbol(opts.currency);
     const formatters = opts.formatters;
     const numberFormat = { ...(formatters?.numberFormat || {}), decimalDigits: scale };
     if (code && formatters?.formatCurrencyFromConfig) {
-      return formatters.formatCurrencyFromConfig(Number(q.toString()), numberFormat, code);
+      // Pass the quantized decimal string (not Number) to preserve full precision.
+      return formatters.formatCurrencyFromConfig(fixed, numberFormat, code);
     }
-    const fixed = q.toFixed(scale);
     const formatted = formatters?.formatFixedDecimalString
       ? formatters.formatFixedDecimalString(fixed, numberFormat)
       : fixed;

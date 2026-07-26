@@ -65,6 +65,24 @@ describe('omonetary_helpers display and parse', () => {
     });
     expect(withCode).toBe('FMT:USD');
 
+    let currencyFmtArg: number | string | undefined;
+    const large = formatMonetaryDisplayText('9007199254740993.12', {
+      scale: 2,
+      roundingMode: Decimal.ROUND_HALF_UP,
+      currency: { Code: 'USD' },
+      formatters: {
+        formatCurrencyFromConfig: (v, _c, code) => {
+          currencyFmtArg = v;
+          return `FMT:${code}:${v}`;
+        },
+        formatFixedDecimalString: fixed => fixed,
+        numberFormat: { decimalDigits: 2 },
+      },
+    });
+    expect(typeof currencyFmtArg).toBe('string');
+    expect(currencyFmtArg).toBe('9007199254740993.12');
+    expect(large).toBe('FMT:USD:9007199254740993.12');
+
     const withSymbol = formatMonetaryDisplayText('12.345', {
       scale: 2,
       roundingMode: Decimal.ROUND_HALF_UP,
@@ -101,7 +119,7 @@ describe('omonetary_helpers display and parse', () => {
     expect(clampMonetaryValue(new Decimal('1.239'), 2, Decimal.ROUND_HALF_UP, bounds).toString()).toBe('1.24');
     expect(
       clampMonetaryValue(new Decimal('12345678901'), 0, Decimal.ROUND_HALF_UP, { precision: 5 }).toString()
-    ).not.toBe('');
+    ).toBe('12346');
     expect(
       clampMonetaryValue(new Decimal('50'), 0, Decimal.ROUND_HALF_UP, {
         precision: 10,

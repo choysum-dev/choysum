@@ -19,6 +19,7 @@ import {
 import { getRuntimeErrorMessage, runWithValidationBypass } from './model_write_helpers';
 import type { UnknownRecord } from '../../../utils/types';
 import { asObjectRecord } from '../../../utils/object';
+import { getCurrencyFieldName } from '../metadata/decimal_like';
 import { createServiceByModel } from '../../rpc';
 import { applyInverseWriteback } from '../../runtime/compute/inverse_writeback';
 import { _t } from '@/core/service/i18n_binder';
@@ -271,12 +272,6 @@ function getScaleFieldName(spec: unknown): string | undefined {
   const record = asObjectRecord(spec);
   const scaleField = record?.scaleField;
   return typeof scaleField === 'string' && scaleField ? scaleField : undefined;
-}
-
-function getCurrencyFieldName(spec: unknown): string | undefined {
-  const record = asObjectRecord(spec);
-  const currencyField = record?.currencyField;
-  return typeof currencyField === 'string' && currencyField ? currencyField : undefined;
 }
 
 export const __collectUpdateAttachmentWriteActionsForTest = collectAttachmentWriteActions;
