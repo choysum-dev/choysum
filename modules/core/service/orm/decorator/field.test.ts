@@ -772,12 +772,44 @@ test('Field decorator stores monetary currencyField and rejects scale options', 
   }).toThrow('monetary requires a non-empty currencyField');
 
   expect(() => {
+    class MonetaryBlankCurrency extends BaseModel {
+      @Field({ type: 'monetary', currencyField: '   ' } as any)
+      Amount!: string;
+    }
+    return MonetaryBlankCurrency;
+  }).toThrow('monetary requires a non-empty currencyField');
+
+  expect(() => {
+    class MonetaryPaddedCurrency extends BaseModel {
+      @Field({ type: 'monetary', currencyField: ' CurrencyId ' } as any)
+      Amount!: string;
+    }
+    return MonetaryPaddedCurrency;
+  }).toThrow('must not contain leading or trailing whitespace');
+
+  expect(() => {
     class MonetaryWithScale extends BaseModel {
       @Field({ type: 'monetary', currencyField: 'CurrencyId', scale: 2 } as any)
       Amount!: string;
     }
     return MonetaryWithScale;
   }).toThrow('monetary forbids scale');
+
+  expect(() => {
+    class MonetaryWithPrecision extends BaseModel {
+      @Field({ type: 'monetary', currencyField: 'CurrencyId', precision: 12 } as any)
+      Amount!: string;
+    }
+    return MonetaryWithPrecision;
+  }).toThrow('monetary forbids scale');
+
+  expect(() => {
+    class MonetaryWithRound extends BaseModel {
+      @Field({ type: 'monetary', currencyField: 'CurrencyId', round: 'ROUND_HALF_UP' } as any)
+      Amount!: string;
+    }
+    return MonetaryWithRound;
+  }).toThrow('does not support round');
 
   expect(() => {
     class DecimalWithCurrency extends BaseModel {

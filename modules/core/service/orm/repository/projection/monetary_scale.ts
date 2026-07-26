@@ -25,7 +25,9 @@ type CurrencyBrowseCtor = {
   BrowseMany?: (ids: string[], fields?: string[]) => Promise<CurrencyRow[]>;
 };
 
-async function browseCurrencyDecimalDigits(currencyIds: string[]): Promise<Map<string, number>> {
+export type MonetaryDigitsBrowser = (currencyIds: string[]) => Promise<Map<string, number>>;
+
+export async function browseCurrencyDecimalDigits(currencyIds: string[]): Promise<Map<string, number>> {
   const out = new Map<string, number>();
   const ids = [...new Set(currencyIds.map(id => String(id || '').trim()).filter(Boolean))];
   if (!ids.length) return out;
@@ -54,7 +56,8 @@ async function browseCurrencyDecimalDigits(currencyIds: string[]): Promise<Map<s
 export async function stampMonetaryScalesForWrite(
   meta: ModelMetadata,
   input: Entity,
-  current?: Entity | null
+  current?: Entity | null,
+  browseDigits: MonetaryDigitsBrowser = browseCurrencyDecimalDigits
 ): Promise<Entity> {
   const inputRecord = asObjectRecord(input);
   if (!inputRecord || !meta.fields) return input;
@@ -85,7 +88,7 @@ export async function stampMonetaryScalesForWrite(
   }
 
   if (pendingFields.length) {
-    const digitsById = await browseCurrencyDecimalDigits(pendingIds);
+    const digitsById = await browseDigits(pendingIds);
     for (const { fieldName, currencyId } of pendingFields) {
       const digits = digitsById.get(currencyId);
       if (digits == null) {

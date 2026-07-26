@@ -159,6 +159,39 @@ test('repository create write helpers prepare entities with generated ids, defau
   ]);
 });
 
+test('repository create write helpers stamp monetary scales before validate/encode', async () => {
+  const encodedInputs: any[] = [];
+  const entities = await prepareRepositoryCreateEntities(
+    {
+      meta: {
+        fields: new Map([
+          ['CurrencyId', { type: 'ManyToOneRef', column: { name: 'CurrencyId' } }],
+          ['Amount', { type: 'monetary', name: 'Amount', column: { name: 'Amount', currencyField: 'CurrencyId' } }],
+        ]),
+      } as any,
+      async assertFieldRuleWriteAllowed() {},
+      generateId() {
+        return 'id_m';
+      },
+      applyDefaultCompanyIdOnCreate(entity) {
+        return entity;
+      },
+      async validateFields(input) {
+        expect((input as any).$dec$Amount__scale).toBe(0);
+      },
+      encodeForDb(input) {
+        encodedInputs.push(input);
+        return input as any;
+      },
+    },
+    [{ Amount: '12.6', CurrencyId: { Id: 'C1', DecimalDigits: 0 } } as any]
+  );
+
+  expect(entities).toHaveLength(1);
+  expect(encodedInputs[0].$dec$Amount__scale).toBe(0);
+  expect(encodedInputs[0].Id).toBe('id_m');
+});
+
 test('repository create write helpers prepare translated fields before encode', async () => {
   const encodedInputs: any[] = [];
   const entities = await withContext({ lang: 'zh_CN' }, () =>
