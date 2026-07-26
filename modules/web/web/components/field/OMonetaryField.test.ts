@@ -26,6 +26,10 @@ const i18nStoreMock = vi.hoisted(() => ({
   },
 }));
 
+const useFieldMock = vi.hoisted(() => ({
+  impl: null as null | ((...args: any[]) => any),
+}));
+
 vi.mock('@/web/web/stores/i18nStore', async () => {
   const actual = await vi.importActual<typeof import('@/web/web/stores/i18nStore')>('@/web/web/stores/i18nStore');
   return {
@@ -33,6 +37,17 @@ vi.mock('@/web/web/stores/i18nStore', async () => {
     useI18nStore: () => {
       if (i18nStoreMock.throwOnAccess) throw new Error('i18n boom');
       return { currentLocale: i18nStoreMock.currentLocale };
+    },
+  };
+});
+
+vi.mock('@/web/web/composables/useField', async () => {
+  const actual = await vi.importActual<typeof import('@/web/web/composables/useField')>('@/web/web/composables/useField');
+  return {
+    ...actual,
+    useField: (...args: any[]) => {
+      if (useFieldMock.impl) return useFieldMock.impl(...args);
+      return (actual as any).useField(...args);
     },
   };
 });
@@ -443,5 +458,46 @@ describe('OMonetaryField', () => {
     await flushPromises();
     const base = wrapper.findComponent({ name: 'OFieldBaseStub' });
     expect(base.props('fromView')('not-a-number')).toBeNull();
+  });
+
+  it('bootstraps via useField when binding is omitted and handles empty prop / default scale', async () => {
+    const binding = makeBinding({ Amount: new Decimal('1'), CurrencyId: {} });
+    (binding as any).prop = '';
+    let called = false;
+    useFieldMock.impl = () => {
+      called = true;
+      return binding;
+    };
+    try {
+      const wrapper = mount(OMonetaryField as any, {
+        props: {
+          store: {} as any,
+          prop: 'Amount',
+          renderMode: 'form',
+          readonly: true,
+          agg: 'sum',
+        },
+        global: {
+          stubs: {
+            OFieldBase: fieldBaseStub,
+            ElInput: elInputStub,
+          },
+        },
+      });
+      await flushPromises();
+      expect(called).toBe(true);
+      expect(wrapper.find('.o-field-display-text').exists()).toBe(true);
+
+      const editBinding = makeBinding({ Amount: new Decimal('1'), CurrencyId: {} });
+      const edit = mountEdit(editBinding);
+      await flushPromises();
+      const input = edit.find('input.el-input');
+      await input.setValue('1.5');
+      await flushPromises();
+      // No scale prop + no currency digits → currentScale falls back to 6 and commits.
+      expect(new Decimal(editBinding.__value.value).toString()).toBe('1.5');
+    } finally {
+      useFieldMock.impl = null;
+    }
   });
 });

@@ -159,7 +159,7 @@ export function formatNumberFromConfig(
  * Longer fractional tails are preserved (precision-safe for pre-quantized monetary strings).
  */
 function ensureDecimalDigitsString(fixed: string, digits: number): string {
-  const text = String(fixed ?? '').trim();
+  const text = String(fixed).trim();
   if (!text || !Number.isInteger(digits) || digits < 0) return text;
   const negative = text.startsWith('-');
   const body = negative ? text.slice(1) : text;

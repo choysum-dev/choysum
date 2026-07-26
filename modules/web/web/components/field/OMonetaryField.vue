@@ -140,7 +140,7 @@ watch([currencyFieldName, () => String(binding.prop)], () => registerSiblingCurr
 
 const metaPrecision = computed<number | undefined>(() => (binding.meta as any)?.precision);
 const effectivePrecision = computed<number>(() => metaPrecision.value ?? props.precision ?? 38);
-const effectiveRound = computed<Decimal.Rounding>(() => props.roundingMode ?? Decimal.ROUND_HALF_UP);
+const effectiveRound = computed<Decimal.Rounding>(() => props.roundingMode);
 
 function resolveScaleFrom(obj: any): number {
   return resolveMonetaryScaleFromRecord(obj, currencyFieldName.value, String(binding.prop), props.scale ?? 6);
@@ -164,8 +164,8 @@ const fromView = (v: ViewType) => {
   return (d ?? null) as unknown as V;
 };
 
-function toDisplayText(v: any, getScale?: () => number, record?: any) {
-  const scale = typeof getScale === 'function' ? getScale() : resolveScaleFrom(record);
+function toDisplayText(v: any, getScale: () => number, record?: any) {
+  const scale = getScale();
   try {
     const i18n = useI18nStore();
     return formatMonetaryDisplayText(v, {
@@ -251,9 +251,8 @@ const OMonetaryCell = defineComponent({
     );
 
     function currentScale(): number {
-      const fn = (p.options as any)?.getScale as (() => number) | undefined;
       try {
-        const n = fn ? fn() : undefined;
+        const n = (p.options as any).getScale();
         if (typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= 18) return n;
       } catch {}
       return props.scale ?? 6;
@@ -335,7 +334,7 @@ const internalRule = {
   },
   trigger: 'blur',
 } as RuleItem;
-const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internalRule]);
+const mergedRules = computed<RuleItem[]>(() => [...props.rules, internalRule]);
 </script>
 
 <style scoped lang="scss">

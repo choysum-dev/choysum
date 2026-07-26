@@ -154,7 +154,7 @@ test('validateModelMonetaryCurrencyFields covers missing and invalid siblings', 
 
   const emptyFullMeta = MetadataStorage.instance.getModelMetadata(CurrencyNoFullName as never) as any;
   const prevFull = emptyFullMeta.fullModelName;
-  emptyFullMeta.fullModelName = '   ';
+  emptyFullMeta.fullModelName = '';
   try {
     // Unresolved/empty fullModelName soft-skips M2O target checks during late load.
     validateModelMonetaryCurrencyFields({

@@ -148,6 +148,23 @@ test('stampMonetaryScalesForWriteMany soft-skips collect when currencyField miss
   expect(err.includes('currency required for monetary field Amount')).toBe(true);
 });
 
+test('stampMonetaryScalesForWriteMany collectPending covers null input and idle monetary rows', async () => {
+  const meta = monetaryMeta();
+  const browser = async () => new Map();
+
+  // Non-object input → collectPending early-return ([]); stamp pass returns input unchanged.
+  expect(await stampMonetaryScalesForWriteMany(meta, [{ input: null as any }], browser)).toEqual([null]);
+
+  // Neither amount nor currency written → continue in collectPending; stamp is a no-op.
+  const idle = await stampMonetaryScalesForWriteMany(meta, [{ input: { Note: 'x' } as any }], browser);
+  expect(idle).toEqual([{ Note: 'x' }]);
+
+  // fields missing → collectPending returns [].
+  expect(await stampMonetaryScalesForWriteMany({ fields: undefined } as any, [{ input: { Amount: 1 } as any }], browser)).toEqual([
+    { Amount: 1 },
+  ]);
+});
+
 test('collectMonetaryCurrencyFieldCompanions and inline helpers', () => {
   const meta = monetaryMeta();
   expect(collectMonetaryCurrencyFieldCompanions(meta, ['Amount', 'Note', 'Missing'])).toEqual(['CurrencyId']);

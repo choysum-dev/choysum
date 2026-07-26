@@ -251,6 +251,16 @@ describe('omonetary_helpers aggregate display', () => {
     expect(
       resolveAggregateDisplayValue(null, { Amount__sum: null }, { bindingProp: 'Amount' })
     ).toBeNull();
+
+    // Legacy __count is excluded from strict pure-agg matching, so leaf uniqueness wins.
+    expect(
+      resolveAggregateDisplayValue(null, { metrics: { Amount__count: 3 } }, { bindingProp: 'line.Amount' })
+    ).toBe(3);
+    expect(
+      resolveAggregateDisplayValue(null, { metrics: { Amount__count: null } }, { bindingProp: 'line.Amount' })
+    ).toBeNull();
+    expect(resolveAggregateDisplayValue(null, { Amount__count: 3 }, { bindingProp: 'line.Amount' })).toBe(3);
+    expect(resolveAggregateDisplayValue(null, { Amount__count: null }, { bindingProp: 'line.Amount' })).toBeNull();
   });
 
   it('builds currency sibling registration paths', () => {

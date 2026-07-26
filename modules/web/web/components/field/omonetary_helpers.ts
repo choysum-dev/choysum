@@ -154,7 +154,6 @@ export function resolveAggregateDisplayValue(
   }
 
   for (const k of candidates) {
-    if (!k) continue;
     if (metrics && metrics[k] != null) return metrics[k];
     if (row[k] != null) return row[k];
   }
@@ -201,7 +200,6 @@ export function parseStrictMonetary(
   if (!/^[-]?\d*(\.\d*)?$/.test(t)) return null;
   try {
     const d = new Decimal(t);
-    if (!d.isFinite()) return null;
     const places = d.decimalPlaces();
     if (places != null && places > scale) return null;
     const digits = d.abs().sd(true);
@@ -221,7 +219,7 @@ export function clampMonetaryValue(
   opts: { precision: number; min?: Decimal | null; max?: Decimal | null }
 ): Decimal {
   let v = d.toDecimalPlaces(scale, roundingMode);
-  const digits = v.abs().sd(true) ?? 0;
+  const digits = v.abs().sd(true) || 0;
   if (digits > opts.precision) {
     const shift = digits - opts.precision;
     v = v.div(new Decimal(10).pow(shift)).toDecimalPlaces(scale, roundingMode);
@@ -246,8 +244,8 @@ export function validateMonetaryValue(
   if (value == null || value === '') return null;
   const d = asMonetaryDecimal(value);
   if (!d || !d.isFinite()) return t('Must be a valid number');
-  if ((d.decimalPlaces() ?? 0) > scale) return t('Decimal places must not exceed %s', scale);
-  const digits = d.abs().sd(true) ?? 0;
+  if (d.decimalPlaces() > scale) return t('Decimal places must not exceed %s', scale);
+  const digits = d.abs().sd(true) || 0;
   if (digits > opts.precision) return t('Total digits must not exceed %s', opts.precision);
   if (opts.min && d.lessThan(opts.min)) return t('Must not be less than %s', opts.min.toString());
   if (opts.max && d.greaterThan(opts.max)) return t('Must not be greater than %s', opts.max.toString());
