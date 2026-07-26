@@ -309,6 +309,35 @@ describe('OStatusbarField', () => {
     expect(wrapper.get('.o-statusbar').attributes('data-disabled')).toBe('true');
   });
 
+  it('treats non-boolean/non-function readonly as writable and evaluates null field value', async () => {
+    const store = makeStore();
+    // Bypass default `readonly: false` so exprReadonly hits the final `return false`.
+    let wrapper = mountStatusbar(
+      { clickable: true, readonly: null as any },
+      makeBinding({ meta: staticMeta, store, value: 'draft' }).binding
+    );
+    await flushPromises();
+    expect(wrapper.get('.o-statusbar').attributes('data-disabled')).toBe('false');
+    wrapper.unmount();
+
+    // Cover `fieldRef().value ?? null` when the field value is null.
+    const seen: Array<unknown> = [];
+    const { binding } = makeBinding({ meta: staticMeta, store, value: null });
+    wrapper = mountStatusbar(
+      {
+        clickable: true,
+        readonly: ({ value }: { value: unknown }) => {
+          seen.push(value);
+          return false;
+        },
+      },
+      binding
+    );
+    await flushPromises();
+    expect(seen).toContain(null);
+    expect(wrapper.get('.o-statusbar').attributes('data-disabled')).toBe('false');
+  });
+
   it('applies statusbarVisible and selection whitelist; keeps current fallback', async () => {
     const store = makeStore();
     let wrapper = mountStatusbar(
@@ -487,6 +516,18 @@ describe('OStatusbarField', () => {
     await flushPromises();
     expect(String(wrapper2.get('.ob').attributes('data-form-item-class'))).toContain('a');
     expect(String(wrapper2.get('.ob').attributes('data-form-item-class'))).toContain('b');
+    wrapper2.unmount();
+
+    // Cover `formItemProps ?? {}` and `rules ?? []` nullish arms (bypass prop defaults).
+    const captureRulesNull = { current: null as any[] | null };
+    const wrapper3 = mountStatusbar(
+      { formItemProps: null as any, rules: null as any },
+      makeBinding({ meta: staticMeta, store }).binding,
+      { captureRules: captureRulesNull }
+    );
+    await flushPromises();
+    expect(String(wrapper3.get('.ob').attributes('data-form-item-class'))).toContain('o-statusbar-form-item');
+    expect(captureRulesNull.current?.length).toBe(1);
   });
 
   it('covers store without getFieldMeta and empty onchange domain via provide', async () => {

@@ -141,8 +141,9 @@ export function resolveStatusbarOptions(args: {
   const disabledSet = new Set(disabledList.map(v => String(v)));
   const out: StatusbarOption[] = [];
   const seen = new Set<string>();
+  // Empties are already stripped while building whitelist/pool; only dedupe here.
   for (const value of values) {
-    if (!value || seen.has(value)) continue;
+    if (seen.has(value)) continue;
     seen.add(value);
     out.push({
       value,

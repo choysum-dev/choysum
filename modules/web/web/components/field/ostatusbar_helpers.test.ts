@@ -246,6 +246,15 @@ describe('resolveStatusbarOptions', () => {
       }).map(o => o.value)
     ).toEqual(['done', 'draft']);
   });
+
+  it('dedupes duplicate whitelist entries in the final options list', () => {
+    expect(
+      resolveStatusbarOptions({
+        meta,
+        whitelist: ['draft', 'draft', 'done'],
+      }).map(o => o.value)
+    ).toEqual(['draft', 'done']);
+  });
 });
 
 describe('toSegmentedOptions / canSelect / validate', () => {
