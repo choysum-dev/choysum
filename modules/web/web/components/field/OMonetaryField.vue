@@ -260,8 +260,8 @@ function resolveDisplayValue(raw: any, obj: any): any {
     if (uniq && metrics[uniq] != null) return metrics[uniq];
   }
 
-  // Retry a unique match at the top level
-  const tkeys = Object.keys(obj || {});
+  // Retry a unique match at the top level (obj is non-null after the early return above)
+  const tkeys = Object.keys(obj);
   // Prefer strict top-level matching without __count
   const tStrictByPath = tkeys.filter(k => k.startsWith(path + '__')).filter(k => PURE_AGG_SUFFIX.some(s => k.endsWith(s)));
   if (tStrictByPath.length === 1 && obj[tStrictByPath[0]] != null) return obj[tStrictByPath[0]];
