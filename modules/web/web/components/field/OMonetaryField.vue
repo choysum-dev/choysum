@@ -253,9 +253,10 @@ const OMonetaryCell = defineComponent({
     function currentScale(): number {
       try {
         const n = (p.options as any).getScale();
+        // getScale already applies props.scale as fallback; reject out-of-range results.
         if (typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= 18) return n;
       } catch {}
-      return props.scale ?? 6;
+      return 6;
     }
 
     function bounds() {

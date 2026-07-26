@@ -219,7 +219,7 @@ export function clampMonetaryValue(
   opts: { precision: number; min?: Decimal | null; max?: Decimal | null }
 ): Decimal {
   let v = d.toDecimalPlaces(scale, roundingMode);
-  const digits = v.abs().sd(true) || 0;
+  const digits = v.abs().sd(true);
   if (digits > opts.precision) {
     const shift = digits - opts.precision;
     v = v.div(new Decimal(10).pow(shift)).toDecimalPlaces(scale, roundingMode);
@@ -245,7 +245,7 @@ export function validateMonetaryValue(
   const d = asMonetaryDecimal(value);
   if (!d || !d.isFinite()) return t('Must be a valid number');
   if (d.decimalPlaces() > scale) return t('Decimal places must not exceed %s', scale);
-  const digits = d.abs().sd(true) || 0;
+  const digits = d.abs().sd(true);
   if (digits > opts.precision) return t('Total digits must not exceed %s', opts.precision);
   if (opts.min && d.lessThan(opts.min)) return t('Must not be less than %s', opts.min.toString());
   if (opts.max && d.greaterThan(opts.max)) return t('Must not be greater than %s', opts.max.toString());
