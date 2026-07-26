@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { SUPPORTED_LOCALES } from './locales';
 import {
+  formatCurrencyFromConfig,
   formatNumberFromConfig,
   formatFixedDecimalString,
   parseGrouping,
@@ -91,5 +92,148 @@ describe('language_format (P2)', () => {
         grouping: [3, 0],
       })
     ).toBe('1.234.567,890000000000000000');
+  });
+
+  it('formats currency from a pre-quantized string without Number conversion', () => {
+    expect(
+      formatCurrencyFromConfig(
+        '9007199254740993.12',
+        {
+          thousandsSeparator: ',',
+          decimalSeparator: '.',
+          grouping: [3, 0],
+          decimalDigits: 2,
+          position: 'before',
+          spacing: true,
+        },
+        'USD'
+      )
+    ).toBe('USD 9,007,199,254,740,993.12');
+  });
+
+  it('pads currency string fractional digits to decimalDigits without Number conversion', () => {
+    expect(
+      formatCurrencyFromConfig('1.2', {
+        thousandsSeparator: ',',
+        decimalSeparator: '.',
+        grouping: [3, 0],
+        decimalDigits: 2,
+        position: 'after',
+        spacing: true,
+      }, 'USD')
+    ).toBe('1.20 USD');
+
+    expect(
+      formatCurrencyFromConfig('-5', {
+        thousandsSeparator: ',',
+        decimalSeparator: '.',
+        grouping: [3, 0],
+        decimalDigits: 3,
+        symbol: '$',
+        position: 'before',
+        spacing: false,
+      })
+    ).toBe('$-5.000');
+
+    // Longer tails stay intact (precision-safe).
+    expect(
+      formatCurrencyFromConfig('1.2345', {
+        thousandsSeparator: ',',
+        decimalSeparator: '.',
+        grouping: [3, 0],
+        decimalDigits: 2,
+      })
+    ).toBe('1.2345');
+  });
+
+  it('covers ensureDecimalDigitsString edge cases for currency formatting', () => {
+    expect(formatCurrencyFromConfig('  ', { decimalDigits: 2 }, 'USD')).toBe('USD');
+    expect(formatCurrencyFromConfig('', { decimalDigits: 2 })).toBe('');
+
+    expect(
+      formatCurrencyFromConfig('12', {
+        thousandsSeparator: ',',
+        decimalSeparator: '.',
+        grouping: [3, 0],
+        decimalDigits: 0,
+      }, 'USD')
+    ).toBe('USD12');
+
+    expect(
+      formatCurrencyFromConfig('-12', {
+        thousandsSeparator: ',',
+        decimalSeparator: '.',
+        grouping: [3, 0],
+        decimalDigits: 0,
+      })
+    ).toBe('-12');
+
+    expect(
+      formatCurrencyFromConfig('12.30', {
+        thousandsSeparator: ',',
+        decimalSeparator: '.',
+        grouping: [3, 0],
+        decimalDigits: 0,
+      }, 'USD')
+    ).toBe('USD12.30');
+
+    expect(
+      formatCurrencyFromConfig('1.2', {
+        thousandsSeparator: ',',
+        decimalSeparator: '.',
+        grouping: [3, 0],
+        decimalDigits: -1 as any,
+      })
+    ).toBe('1.2');
+
+    expect(
+      formatCurrencyFromConfig('1.2', {
+        thousandsSeparator: ',',
+        decimalSeparator: '.',
+        grouping: [3, 0],
+        decimalDigits: 1.5 as any,
+      })
+    ).toBe('1.2');
+
+    expect(
+      formatCurrencyFromConfig('1.2', {
+        thousandsSeparator: ',',
+        decimalSeparator: '.',
+        grouping: [3, 0],
+      })
+    ).toBe('1.20');
+
+    expect(
+      formatCurrencyFromConfig(12.5, {
+        thousandsSeparator: ',',
+        decimalSeparator: '.',
+        grouping: [3, 0],
+        decimalDigits: 2,
+        position: 'before',
+        spacing: true,
+      }, 'USD')
+    ).toBe('USD 12.50');
+
+    expect(
+      formatCurrencyFromConfig('.5', {
+        thousandsSeparator: ',',
+        decimalSeparator: '.',
+        grouping: [3, 0],
+        decimalDigits: 2,
+        spacing: true,
+      }, 'USD')
+    ).toBe('USD 0.50');
+
+    expect(
+      formatCurrencyFromConfig('-.5', {
+        thousandsSeparator: ',',
+        decimalSeparator: '.',
+        grouping: [3, 0],
+        decimalDigits: 2,
+        symbol: '$',
+        position: 'before',
+        spacing: false,
+      })
+    ).toBe('$-0.50');
   });
 });

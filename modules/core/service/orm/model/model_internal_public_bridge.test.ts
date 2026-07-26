@@ -815,6 +815,357 @@ test('UpdateOperations.Update covers compute graph diffusion, collection prefetc
   }
 });
 
+test('UpdateOperations.Update includes monetary currencyField companions on lock and scalar write', async () => {
+  const originalPrepareForUpdate = RelationFactory.prepareForUpdate;
+  const originalResolveRepository = (UpdateOperations as any).resolveRepository;
+  const originalTriggerUpstream = ComputeCascadeEngine.triggerUpstream;
+  const originalTriggerDownstream = ComputeCascadeEngine.triggerDownstream;
+  const originalCollectUpstreamInverseFields = ComputeCascadeEngine.collectUpstreamInverseFields;
+
+  const meta = MetadataStorage.instance.getModelMetadata(ModelInternalPublicBridge as any) as any;
+  const originalComputeGraph = meta.computeGraph;
+  const snapshotFields = new Map(meta.fields);
+  const searchCalls: any[] = [];
+  const updateCalls: any[] = [];
+
+  try {
+    meta.fields.set('CurrencyId', { type: 'ManyToOneRef', column: { name: 'CurrencyId' } });
+    meta.fields.set('Amount', { type: 'monetary', column: { currencyField: 'CurrencyId' } });
+    meta.computeGraph = undefined;
+
+    RelationFactory.prepareForUpdate = (async (_ModelCtor: any, values: any) => ({
+      processedValue: { ...values },
+      relations: {
+        oneToManyRelations: [],
+        manyToManyRelations: [],
+        touchedCollections: new Set<string>(),
+      },
+    })) as any;
+
+    (UpdateOperations as any).resolveRepository = (() => ({
+      count: async () => 1,
+      search: async (_condition: any, options: any) => {
+        searchCalls.push(options);
+        return [
+          {
+            Id: 'ROW-M',
+            UpdatedAt: new Date('2024-01-01T00:00:00.000Z'),
+            Amount: '1.00',
+            CurrencyId: { Id: 'C1', DecimalDigits: 2 },
+          },
+        ];
+      },
+      update: async (values: any) => {
+        updateCalls.push(values);
+      },
+      withValidationBypass: async (fn: () => Promise<any>) => await fn(),
+    })) as any;
+
+    ComputeCascadeEngine.collectUpstreamInverseFields = (() => []) as any;
+    ComputeCascadeEngine.triggerUpstream = (async () => {}) as any;
+    ComputeCascadeEngine.triggerDownstream = (async () => {}) as any;
+
+    const result = await UpdateOperations.Update(
+      ModelInternalPublicBridge as any,
+      ['Id', '=', 'ROW-M'] as any,
+      { Amount: '2.50' } as any
+    );
+
+    expect(result).toEqual([{ Id: 'ROW-M' }]);
+    expect(searchCalls[0]?.fields).toContain('Amount');
+    expect(searchCalls[0]?.fields).toContain('CurrencyId');
+    expect(updateCalls[0]?.Amount).toBe('2.50');
+    expect(updateCalls[0]?.CurrencyId).toEqual({ Id: 'C1', DecimalDigits: 2 });
+  } finally {
+    RelationFactory.prepareForUpdate = originalPrepareForUpdate;
+    (UpdateOperations as any).resolveRepository = originalResolveRepository;
+    ComputeCascadeEngine.triggerUpstream = originalTriggerUpstream;
+    ComputeCascadeEngine.triggerDownstream = originalTriggerDownstream;
+    ComputeCascadeEngine.collectUpstreamInverseFields = originalCollectUpstreamInverseFields;
+    meta.computeGraph = originalComputeGraph;
+    meta.fields = new Map(snapshotFields);
+  }
+});
+
+test('UpdateOperations.Update skips monetary companions when currencyField is absent', async () => {
+  const originalPrepareForUpdate = RelationFactory.prepareForUpdate;
+  const originalResolveRepository = (UpdateOperations as any).resolveRepository;
+  const originalTriggerUpstream = ComputeCascadeEngine.triggerUpstream;
+  const originalTriggerDownstream = ComputeCascadeEngine.triggerDownstream;
+  const originalCollectUpstreamInverseFields = ComputeCascadeEngine.collectUpstreamInverseFields;
+
+  const meta = MetadataStorage.instance.getModelMetadata(ModelInternalPublicBridge as any) as any;
+  const originalComputeGraph = meta.computeGraph;
+  const snapshotFields = new Map(meta.fields);
+  const searchCalls: any[] = [];
+
+  try {
+    meta.fields.set('Amount', { type: 'monetary', column: {} });
+    meta.computeGraph = undefined;
+
+    RelationFactory.prepareForUpdate = (async (_ModelCtor: any, values: any) => ({
+      processedValue: { ...values },
+      relations: {
+        oneToManyRelations: [],
+        manyToManyRelations: [],
+        touchedCollections: new Set<string>(),
+      },
+    })) as any;
+
+    (UpdateOperations as any).resolveRepository = (() => ({
+      count: async () => 1,
+      search: async (_condition: any, options: any) => {
+        searchCalls.push(options);
+        return [
+          {
+            Id: 'ROW-M2',
+            UpdatedAt: new Date('2024-01-01T00:00:00.000Z'),
+            Amount: '1.00',
+          },
+        ];
+      },
+      update: async () => {},
+      withValidationBypass: async (fn: () => Promise<any>) => await fn(),
+    })) as any;
+
+    ComputeCascadeEngine.collectUpstreamInverseFields = (() => []) as any;
+    ComputeCascadeEngine.triggerUpstream = (async () => {}) as any;
+    ComputeCascadeEngine.triggerDownstream = (async () => {}) as any;
+
+    await UpdateOperations.Update(ModelInternalPublicBridge as any, ['Id', '=', 'ROW-M2'] as any, { Amount: '2.50' } as any);
+
+    expect(searchCalls[0]?.fields).toContain('Amount');
+    expect(searchCalls[0]?.fields || []).not.toContain('CurrencyId');
+  } finally {
+    RelationFactory.prepareForUpdate = originalPrepareForUpdate;
+    (UpdateOperations as any).resolveRepository = originalResolveRepository;
+    ComputeCascadeEngine.triggerUpstream = originalTriggerUpstream;
+    ComputeCascadeEngine.triggerDownstream = originalTriggerDownstream;
+    ComputeCascadeEngine.collectUpstreamInverseFields = originalCollectUpstreamInverseFields;
+    meta.computeGraph = originalComputeGraph;
+    meta.fields = new Map(snapshotFields);
+  }
+});
+
+test('UpdateOperations.Update handles monetary field with undefined column metadata', async () => {
+  const originalPrepareForUpdate = RelationFactory.prepareForUpdate;
+  const originalResolveRepository = (UpdateOperations as any).resolveRepository;
+  const originalTriggerUpstream = ComputeCascadeEngine.triggerUpstream;
+  const originalTriggerDownstream = ComputeCascadeEngine.triggerDownstream;
+  const originalCollectUpstreamInverseFields = ComputeCascadeEngine.collectUpstreamInverseFields;
+
+  const meta = MetadataStorage.instance.getModelMetadata(ModelInternalPublicBridge as any) as any;
+  const originalComputeGraph = meta.computeGraph;
+  const snapshotFields = new Map(meta.fields);
+  const searchCalls: any[] = [];
+
+  try {
+    meta.fields.set('Amount', { type: 'monetary', column: undefined });
+    meta.computeGraph = undefined;
+
+    RelationFactory.prepareForUpdate = (async (_ModelCtor: any, values: any) => ({
+      processedValue: { ...values },
+      relations: {
+        oneToManyRelations: [],
+        manyToManyRelations: [],
+        touchedCollections: new Set<string>(),
+      },
+    })) as any;
+
+    (UpdateOperations as any).resolveRepository = (() => ({
+      count: async () => 1,
+      search: async (_condition: any, options: any) => {
+        searchCalls.push(options);
+        return [
+          {
+            Id: 'ROW-M3',
+            UpdatedAt: new Date('2024-01-01T00:00:00.000Z'),
+            Amount: '1.00',
+          },
+        ];
+      },
+      update: async () => {},
+      withValidationBypass: async (fn: () => Promise<any>) => await fn(),
+    })) as any;
+
+    ComputeCascadeEngine.collectUpstreamInverseFields = (() => []) as any;
+    ComputeCascadeEngine.triggerUpstream = (async () => {}) as any;
+    ComputeCascadeEngine.triggerDownstream = (async () => {}) as any;
+
+    await UpdateOperations.Update(ModelInternalPublicBridge as any, ['Id', '=', 'ROW-M3'] as any, { Amount: '2.50' } as any);
+    expect(searchCalls[0]?.fields).toContain('Amount');
+  } finally {
+    RelationFactory.prepareForUpdate = originalPrepareForUpdate;
+    (UpdateOperations as any).resolveRepository = originalResolveRepository;
+    ComputeCascadeEngine.triggerUpstream = originalTriggerUpstream;
+    ComputeCascadeEngine.triggerDownstream = originalTriggerDownstream;
+    ComputeCascadeEngine.collectUpstreamInverseFields = originalCollectUpstreamInverseFields;
+    meta.computeGraph = originalComputeGraph;
+    meta.fields = new Map(snapshotFields);
+  }
+});
+
+test('UpdateOperations.Update keeps monetary currency already present in the update payload', async () => {
+  const originalPrepareForUpdate = RelationFactory.prepareForUpdate;
+  const originalResolveRepository = (UpdateOperations as any).resolveRepository;
+  const originalTriggerUpstream = ComputeCascadeEngine.triggerUpstream;
+  const originalTriggerDownstream = ComputeCascadeEngine.triggerDownstream;
+  const originalCollectUpstreamInverseFields = ComputeCascadeEngine.collectUpstreamInverseFields;
+
+  const meta = MetadataStorage.instance.getModelMetadata(ModelInternalPublicBridge as any) as any;
+  const originalComputeGraph = meta.computeGraph;
+  const snapshotFields = new Map(meta.fields);
+  const updateCalls: any[] = [];
+
+  try {
+    meta.fields.set('CurrencyId', { type: 'ManyToOneRef', column: { name: 'CurrencyId' } });
+    meta.fields.set('Amount', { type: 'monetary', column: { currencyField: 'CurrencyId' } });
+    meta.computeGraph = undefined;
+
+    RelationFactory.prepareForUpdate = (async (_ModelCtor: any, values: any) => ({
+      processedValue: { ...values },
+      relations: {
+        oneToManyRelations: [],
+        manyToManyRelations: [],
+        touchedCollections: new Set<string>(),
+      },
+    })) as any;
+
+    (UpdateOperations as any).resolveRepository = (() => ({
+      count: async () => 1,
+      search: async () => [
+        {
+          Id: 'ROW-M2',
+          UpdatedAt: new Date('2024-01-01T00:00:00.000Z'),
+          Amount: '1.00',
+          CurrencyId: { Id: 'C-OLD', DecimalDigits: 2 },
+        },
+      ],
+      update: async (values: any) => {
+        updateCalls.push(values);
+      },
+      withValidationBypass: async (fn: () => Promise<any>) => await fn(),
+    })) as any;
+
+    ComputeCascadeEngine.collectUpstreamInverseFields = (() => []) as any;
+    ComputeCascadeEngine.triggerUpstream = (async () => {}) as any;
+    ComputeCascadeEngine.triggerDownstream = (async () => {}) as any;
+
+    await UpdateOperations.Update(
+      ModelInternalPublicBridge as any,
+      ['Id', '=', 'ROW-M2'] as any,
+      { Amount: '2.50', CurrencyId: { Id: 'C-NEW', DecimalDigits: 0 } } as any
+    );
+
+    expect(updateCalls[0]?.CurrencyId).toEqual({ Id: 'C-NEW', DecimalDigits: 0 });
+  } finally {
+    RelationFactory.prepareForUpdate = originalPrepareForUpdate;
+    (UpdateOperations as any).resolveRepository = originalResolveRepository;
+    ComputeCascadeEngine.triggerUpstream = originalTriggerUpstream;
+    ComputeCascadeEngine.triggerDownstream = originalTriggerDownstream;
+    ComputeCascadeEngine.collectUpstreamInverseFields = originalCollectUpstreamInverseFields;
+    meta.computeGraph = originalComputeGraph;
+    meta.fields = new Map(snapshotFields);
+  }
+});
+
+test('UpdateOperations.Update writes monetary compute follow-up with currency companions', async () => {
+  class ChildModel {}
+
+  const originalPrepareForUpdate = RelationFactory.prepareForUpdate;
+  const originalResolveRepository = (UpdateOperations as any).resolveRepository;
+  const originalGetRepository = RepositoryFactory.getRepository;
+  const originalTriggerUpstream = ComputeCascadeEngine.triggerUpstream;
+  const originalTriggerDownstream = ComputeCascadeEngine.triggerDownstream;
+  const originalCollectUpstreamInverseFields = ComputeCascadeEngine.collectUpstreamInverseFields;
+  const originalRecompute = ComputeEngine.recompute;
+
+  const meta = MetadataStorage.instance.getModelMetadata(ModelInternalPublicBridge as any) as any;
+  const originalComputeGraph = meta.computeGraph;
+  const snapshotFields = new Map(meta.fields);
+  const searchCalls: any[] = [];
+  const updateCalls: any[] = [];
+
+  try {
+    meta.fields.set('CurrencyId', { type: 'ManyToOneRef', column: { name: 'CurrencyId' } });
+    meta.fields.set('Amount', { type: 'monetary', column: { currencyField: 'CurrencyId' } });
+    meta.fields.set('Total', { type: 'monetary', column: { currencyField: 'CurrencyId' } });
+    meta.fields.set('Lines', { type: 'OneToMany', relation: { targetModel: () => ChildModel, inverseField: 'ParentId' } });
+    meta.computeGraph = {
+      computeFields: new Set<string>(['Total']),
+      fastReverseDeps: new Map<string, string[]>([['Lines', ['Total']]]),
+      computeScalarDeps: new Map<string, string[][]>([['Total', ['Amount'] as any]]),
+      computeCollectionPathDeps: new Map<string, Array<{ collection: string; chain: string[] }>>([
+        ['Total', [{ collection: 'Lines', chain: ['Name'] }]],
+      ]),
+    } as any;
+
+    RelationFactory.prepareForUpdate = (async (_ModelCtor: any, values: any) => ({
+      processedValue: { ...values },
+      relations: {
+        oneToManyRelations: [],
+        manyToManyRelations: [],
+        touchedCollections: new Set<string>(['Lines']),
+      },
+    })) as any;
+
+    (UpdateOperations as any).resolveRepository = (() => ({
+      count: async () => 1,
+      search: async (_condition: any, options: any) => {
+        searchCalls.push(options);
+        return [
+          {
+            Id: 'ROW-MC',
+            UpdatedAt: new Date('2024-01-01T00:00:00.000Z'),
+            Amount: '1.00',
+            Total: '1.00',
+            CurrencyId: { Id: 'C1', DecimalDigits: 2 },
+          },
+        ];
+      },
+      update: async (values: any) => {
+        updateCalls.push(values);
+      },
+      withValidationBypass: async (fn: () => Promise<any>) => await fn(),
+    })) as any;
+
+    RepositoryFactory.getRepository = ((ModelCtor: any) => {
+      if (ModelCtor === ChildModel) {
+        return {
+          search: async () => [{ Id: 'C-1', Name: 'line' }],
+        } as any;
+      }
+      throw new Error('unexpected repository ctor');
+    }) as any;
+
+    ComputeEngine.recompute = (async (_meta: any, entity: any) => {
+      entity.Total = '3.00';
+    }) as any;
+    ComputeCascadeEngine.collectUpstreamInverseFields = (() => []) as any;
+    ComputeCascadeEngine.triggerUpstream = (async () => {}) as any;
+    ComputeCascadeEngine.triggerDownstream = (async () => {}) as any;
+
+    await UpdateOperations.Update(ModelInternalPublicBridge as any, ['Id', '=', 'ROW-MC'] as any, { Name: 'next' } as any);
+
+    expect(searchCalls[0]?.fields).toContain('Amount');
+    expect(searchCalls[0]?.fields).toContain('CurrencyId');
+    expect(searchCalls[0]?.fields).toContain('Total');
+    const followUp = updateCalls.find(v => v?.Total != null);
+    expect(followUp?.Total).toBe('3.00');
+    expect(followUp?.CurrencyId).toEqual({ Id: 'C1', DecimalDigits: 2 });
+  } finally {
+    RelationFactory.prepareForUpdate = originalPrepareForUpdate;
+    (UpdateOperations as any).resolveRepository = originalResolveRepository;
+    RepositoryFactory.getRepository = originalGetRepository;
+    ComputeCascadeEngine.triggerUpstream = originalTriggerUpstream;
+    ComputeCascadeEngine.triggerDownstream = originalTriggerDownstream;
+    ComputeCascadeEngine.collectUpstreamInverseFields = originalCollectUpstreamInverseFields;
+    ComputeEngine.recompute = originalRecompute;
+    meta.computeGraph = originalComputeGraph;
+    meta.fields = new Map(snapshotFields);
+  }
+});
+
 test('UpdateOperations.Update tolerates undefined relation batch result and supports String(e) fallback in relation errors', async () => {
   const originalPrepareForUpdate = RelationFactory.prepareForUpdate;
   const originalResolveRepository = (UpdateOperations as any).resolveRepository;

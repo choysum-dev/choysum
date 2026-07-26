@@ -1581,6 +1581,246 @@ func TestBackendPluginSetFieldMeta_AdditionalPaths(t *testing.T) {
 	}
 }
 
+func TestBackendPluginSetFieldMeta_CurrencyFieldPaths(t *testing.T) {
+	testRuntimeScope := newPluginTestScope()
+	fieldDecoratorModuleSpec, fieldDecoratorReferenceIdent := meta.FieldDecoratorModuleSpec(testRuntimeScope)
+	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
+		Env:    testRuntimeScope,
+		Module: &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
+	}}
+
+	result := &parser.ParserResult{
+		Path: "/virtual/modules/auth/service/models/invoice.ts",
+		Model: &meta.IrModel{
+			Name: "Invoice",
+			Fields: []*meta.IrField{
+				{
+					Name: "AmountFromColumn",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments:      []*meta.IrArgument{{Value: `{"type":"monetary","column":{"currencyField":"CurrencyId"}}`, Type: "ObjectLiteral"}},
+					}},
+				},
+				{
+					Name: "AmountFromSelect",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments:      []*meta.IrArgument{{Value: `{"type":"monetary","select":{"currencyField":"PayCurrencyId"}}`, Type: "ObjectLiteral"}},
+					}},
+				},
+				{
+					Name: "AmountFromFlat",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments:      []*meta.IrArgument{{Value: `{"type":"monetary","currencyField":" CurrencyId "}`, Type: "ObjectLiteral"}},
+					}},
+				},
+				{
+					Name: "ScaleFromFlat",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments:      []*meta.IrArgument{{Value: `{"type":"decimal","scaleField":" AmountScale "}`, Type: "ObjectLiteral"}},
+					}},
+				},
+				{
+					Name: "InvalidCurrency",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments:      []*meta.IrArgument{{Value: `{"type":"monetary","column":{"currencyField":1},"currencyField":""}`, Type: "ObjectLiteral"}},
+					}},
+				},
+				{
+					Name: "ColumnWinsOverFlat",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments:      []*meta.IrArgument{{Value: `{"type":"monetary","column":{"currencyField":"ColCur"},"currencyField":"FlatCur"}`, Type: "ObjectLiteral"}},
+					}},
+				},
+				{
+					Name: "SelectIgnoredWhenColumnPresent",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments:      []*meta.IrArgument{{Value: `{"type":"monetary","column":{},"select":{"currencyField":"SelCur","scaleField":"SelScale"}}`, Type: "ObjectLiteral"}},
+					}},
+				},
+				{
+					Name: "EmptyColumnFallsBackToFlat",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments:      []*meta.IrArgument{{Value: `{"type":"monetary","column":{"currencyField":""},"currencyField":"FlatCur"}`, Type: "ObjectLiteral"}},
+					}},
+				},
+				{
+					Name: "WhitespaceFlatIgnored",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments:      []*meta.IrArgument{{Value: `{"type":"monetary","currencyField":"   ","scaleField":true}`, Type: "ObjectLiteral"}},
+					}},
+				},
+				{
+					Name: "SelectScaleWhenNoColumn",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments:      []*meta.IrArgument{{Value: `{"type":"decimal","select":{"scaleField":"PayScale"}}`, Type: "ObjectLiteral"}},
+					}},
+				},
+				{
+					Name: "NonStringColumnScaleIgnored",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments:      []*meta.IrArgument{{Value: `{"type":"decimal","column":{"scaleField":2},"scaleField":" FlatScale "}`, Type: "ObjectLiteral"}},
+					}},
+				},
+			},
+		},
+	}
+
+	if err := plugin.setFieldMeta([]*parser.ParserResult{result}); err != nil {
+		t.Fatalf("setFieldMeta() error = %v", err)
+	}
+
+	if got := result.Model.Fields[0].CurrencyField; got != "CurrencyId" {
+		t.Fatalf("column currencyField: got %q", got)
+	}
+	if got := result.Model.Fields[1].CurrencyField; got != "PayCurrencyId" {
+		t.Fatalf("select currencyField: got %q", got)
+	}
+	if got := result.Model.Fields[2].CurrencyField; got != "CurrencyId" {
+		t.Fatalf("flat currencyField trim: got %q", got)
+	}
+	if got := result.Model.Fields[3].ScaleField; got != "AmountScale" {
+		t.Fatalf("flat scaleField trim: got %q", got)
+	}
+	if got := result.Model.Fields[4].CurrencyField; got != "" {
+		t.Fatalf("invalid currencyField must stay empty, got %q", got)
+	}
+	if got := result.Model.Fields[5].CurrencyField; got != "ColCur" {
+		t.Fatalf("column must win over flat currencyField, got %q", got)
+	}
+	if got := result.Model.Fields[6].CurrencyField; got != "" {
+		t.Fatalf("select currencyField must be ignored when column present, got %q", got)
+	}
+	if got := result.Model.Fields[6].ScaleField; got != "" {
+		t.Fatalf("select scaleField must be ignored when column present, got %q", got)
+	}
+	if got := result.Model.Fields[7].CurrencyField; got != "FlatCur" {
+		t.Fatalf("empty column currencyField should fall back to flat, got %q", got)
+	}
+	if got := result.Model.Fields[8].CurrencyField; got != "" {
+		t.Fatalf("whitespace-only flat currencyField must stay empty, got %q", got)
+	}
+	if got := result.Model.Fields[8].ScaleField; got != "" {
+		t.Fatalf("non-string flat scaleField must stay empty, got %q", got)
+	}
+	if got := result.Model.Fields[9].ScaleField; got != "PayScale" {
+		t.Fatalf("select scaleField without column: got %q", got)
+	}
+	if got := result.Model.Fields[10].ScaleField; got != "FlatScale" {
+		t.Fatalf("non-string column scaleField should fall back to flat, got %q", got)
+	}
+}
+
+func TestBackendPluginSetFieldMeta_FlatAndSelectNumericOptions(t *testing.T) {
+	testRuntimeScope := newPluginTestScope()
+	fieldDecoratorModuleSpec, fieldDecoratorReferenceIdent := meta.FieldDecoratorModuleSpec(testRuntimeScope)
+	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
+		Env:    testRuntimeScope,
+		Module: &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
+	}}
+
+	result := &parser.ParserResult{
+		Path: "/virtual/modules/auth/service/models/numeric_opts.ts",
+		Model: &meta.IrModel{
+			Name: "NumericOpts",
+			Fields: []*meta.IrField{
+				{
+					Name: "FlatNumeric",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments: []*meta.IrArgument{{
+							Value: `{"type":"decimal","size":12,"precision":10,"scale":4,"round":"half_up","notNull":true}`,
+							Type:  "ObjectLiteral",
+						}},
+					}},
+				},
+				{
+					Name: "SelectNumeric",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments: []*meta.IrArgument{{
+							Value: `{"type":"decimal","select":{"precision":8,"scale":3,"currencyField":1}}`,
+							Type:  "ObjectLiteral",
+						}},
+					}},
+				},
+				{
+					Name: "RequiredAlias",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments: []*meta.IrArgument{{
+							Value: `{"type":"char","required":true,"size":16}`,
+							Type:  "ObjectLiteral",
+						}},
+					}},
+				},
+			},
+		},
+	}
+
+	if err := plugin.setFieldMeta([]*parser.ParserResult{result}); err != nil {
+		t.Fatalf("setFieldMeta() error = %v", err)
+	}
+
+	flat := result.Model.Fields[0]
+	if flat.Size != 12 || flat.Precision != 10 || flat.Scale != 4 || !flat.NotNull {
+		t.Fatalf("unexpected flat numeric metadata: %#v", flat)
+	}
+	if flat.Round == nil || *flat.Round == "" {
+		t.Fatalf("expected flat round metadata, got %#v", flat.Round)
+	}
+
+	sel := result.Model.Fields[1]
+	if sel.Precision != 8 || sel.Scale != 3 {
+		t.Fatalf("unexpected select numeric metadata: %#v", sel)
+	}
+	if sel.CurrencyField != "" {
+		t.Fatalf("non-string select currencyField must stay empty, got %q", sel.CurrencyField)
+	}
+
+	req := result.Model.Fields[2]
+	if !req.NotNull || req.Size != 16 {
+		t.Fatalf("unexpected required/size metadata: %#v", req)
+	}
+}
+
 func TestBackendPluginSetFieldMeta_UsesRuntimeScopeFromDefinePlugins(t *testing.T) {
 	baseScope, baseDB := newPluginSessionTestScope(t)
 	runtimeScope, runtimeDB := newPluginSessionTestScope(t)

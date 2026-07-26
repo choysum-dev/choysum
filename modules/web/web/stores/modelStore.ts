@@ -33,6 +33,7 @@ export type WebFieldMetadata = {
   precision?: number;
   scale?: number;
   scaleField?: string;
+  currencyField?: string;
   round?: string;
   isReadonly?: boolean;
   indexed?: boolean;

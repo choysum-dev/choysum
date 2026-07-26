@@ -47,16 +47,12 @@ export default class UoM extends BaseModel {
   @Field({
     type: 'decimal',
     notNull: true,
-    precision: 38,
-    scale: 18,
     string: _lt('Conversion Factor', { scope: 'base.model.UoM.fields' }),
   })
   Factor: any;
 
   @Field({
     type: 'decimal',
-    precision: 38,
-    scale: 18,
     string: _lt('Rounding', { scope: 'base.model.UoM.fields' }),
   })
   Rounding?: any;

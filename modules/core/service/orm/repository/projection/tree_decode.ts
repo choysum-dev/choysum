@@ -60,7 +60,7 @@ export function decodeRowWithTree(meta: ModelMetadata, node: SelectionNode, row:
       continue;
     }
 
-    if (fieldType !== 'decimal') continue;
+    if (fieldType !== 'decimal' && fieldType !== 'monetary') continue;
 
     const val = rowRecord[col];
     if (val == null) continue;

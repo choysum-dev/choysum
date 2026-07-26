@@ -19,6 +19,7 @@ import {
 import { getRuntimeErrorMessage, runWithValidationBypass } from './model_write_helpers';
 import type { UnknownRecord } from '../../../utils/types';
 import { asObjectRecord } from '../../../utils/object';
+import { getCurrencyFieldName } from '../metadata/decimal_like';
 import { createServiceByModel } from '../../rpc';
 import { applyInverseWriteback } from '../../runtime/compute/inverse_writeback';
 import { _t } from '@/core/service/i18n_binder';
@@ -390,7 +391,7 @@ export class UpdateOperations {
     const queryFields = new Set<string>(['Id', 'UpdatedAt']);
     const upstreamInverseFields = new Set<string>(collectModelUpstreamInverseFields(ModelCtor));
 
-    // Helper: add a field to queryFields and include its scaleField when the field is decimal.
+    // Helper: add a field to queryFields and include scaleField / currencyField companions.
     const addFieldWithScale = (fieldName: string | undefined, set: Set<string>) => {
       if (!fieldName) return;
       set.add(fieldName);
@@ -399,6 +400,12 @@ export class UpdateOperations {
         const scaleField = getScaleFieldName(fm.column || {});
         if (scaleField) {
           set.add(scaleField);
+        }
+      }
+      if (fm?.type === 'monetary') {
+        const currencyField = getCurrencyFieldName(fm.column || {});
+        if (currencyField) {
+          set.add(currencyField);
         }
       }
     };
@@ -442,15 +449,24 @@ export class UpdateOperations {
         }
       }
 
-      // Helper: include scaleField companions for decimal updates.
+      // Helper: include scaleField / currencyField companions for decimal / monetary updates.
       const addScaleForUpdates = (fieldSet: Set<string>, source: UnknownRecord, target: UnknownRecord) => {
         fieldSet.forEach(fieldName => {
           const fm = meta.fields.get(fieldName);
-          if (fm?.type !== 'decimal') return;
-          const scaleField = getScaleFieldName(fm.column || {});
-          if (scaleField) {
-            if (source[scaleField] !== undefined && !(scaleField in target)) {
-              target[scaleField] = source[scaleField];
+          if (fm?.type === 'decimal') {
+            const scaleField = getScaleFieldName(fm.column || {});
+            if (scaleField) {
+              if (source[scaleField] !== undefined && !(scaleField in target)) {
+                target[scaleField] = source[scaleField];
+              }
+            }
+          }
+          if (fm?.type === 'monetary') {
+            const currencyField = getCurrencyFieldName(fm.column || {});
+            if (currencyField) {
+              if (source[currencyField] !== undefined && !(currencyField in target)) {
+                target[currencyField] = source[currencyField];
+              }
             }
           }
         });

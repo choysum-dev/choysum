@@ -283,6 +283,7 @@ export class EntityConverter {
       case 'datetime':
         return 'date';
       case 'decimal':
+      case 'monetary':
         return 'decimal';
       // Handle bigint model types here; otherwise runtime BigInt values are normalized later.
       case 'bigint':

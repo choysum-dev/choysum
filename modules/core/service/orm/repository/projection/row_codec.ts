@@ -3,11 +3,13 @@
 
 import type { Entity } from '../types';
 import type { FieldMetadata, ModelMetadata } from '../../metadata';
+import { isDecimalLikeField } from '../../metadata/decimal_like';
 import { DEC_SCALE_ALIAS_PREFIX, buildHiddenScaleAlias } from '../hidden_scale_alias';
 import { asBigdecimal, isBigdecimalEnvelope, isDecimal, normalizeDecimalByMeta } from '@/core/utils/decimal';
 import { asObjectRecord, hasOwnKey } from '../../../../utils/object';
 import type { UnknownRecord } from '../../../../utils/types';
 import { decodeTranslatedFieldValue, encodeTranslatedMapForDb, isTranslatedLangMap } from './translated_field_codec';
+import { resolveMonetaryScaleForWrite, resolveMonetaryScaleFromRow } from './monetary_scale';
 
 type DecimalMetaLike = {
   column?: UnknownRecord;
@@ -63,7 +65,7 @@ function shouldPersistPhysicalField(meta: ModelMetadata, fm: FieldMetadata | und
 
 function toDecimalMetaWithScale(fm: FieldMetadata | undefined, scale: number | undefined): FieldMetadata | DecimalMetaLike | undefined {
   if (scale == null) return fm;
-  return { column: { ...getFieldSpec(fm), scale } };
+  return { column: { ...getFieldSpec(fm), scale, round: getFieldSpec(fm).round ?? 'ROUND_HALF_UP' } };
 }
 
 function maybeJsonFast(str: string): boolean {
@@ -89,7 +91,11 @@ export function parseJsonObjectFieldValue(v: unknown): unknown {
 }
 
 export function resolveDecimalScaleForWrite(fm: FieldMetadata | undefined, input: Entity): number | undefined {
-  if (!fm || fm.type !== 'decimal') return undefined;
+  if (!fm) return undefined;
+  if (fm.type === 'monetary') {
+    return resolveMonetaryScaleForWrite(fm, input);
+  }
+  if (fm.type !== 'decimal') return undefined;
   const spec = getFieldSpec(fm);
   if (typeof spec.scale === 'number') return spec.scale;
   const sField = spec.scaleField;
@@ -105,7 +111,11 @@ export function resolveDecimalScaleForWrite(fm: FieldMetadata | undefined, input
 
 export function resolveDecimalScaleFromRow(meta: ModelMetadata, fm: FieldMetadata | undefined, fieldName: string, row: unknown): number | undefined {
   void meta;
-  if (!fm || fm.type !== 'decimal') return undefined;
+  if (!fm) return undefined;
+  if (fm.type === 'monetary') {
+    return resolveMonetaryScaleFromRow(fm, fieldName, row);
+  }
+  if (fm.type !== 'decimal') return undefined;
   const spec = getFieldSpec(fm);
   if (typeof spec.scale === 'number') return spec.scale;
 
@@ -212,15 +222,18 @@ export function encodeForDb(meta: ModelMetadata, input: Entity): Entity {
       continue;
     }
 
-    if (fm?.type === 'decimal' && v != null) {
+    if (fm && isDecimalLikeField(fm) && v != null) {
       try {
         const source = isBigdecimalEnvelope(v) ? v.$bigdecimal : v;
-        const effScale = resolveDecimalScaleForWrite(fm, input);
+        const fmForScale: FieldMetadata = { ...fm, name: k, type: fm.type };
+        const effScale = resolveDecimalScaleForWrite(fmForScale, input);
         const overrideFm = toDecimalMetaWithScale(fm, effScale);
 
         const d = normalizeDecimalByMeta(overrideFm, source);
         out[k] = d ? { $bigdecimal: d.toString() } : asBigdecimal(v);
-      } catch {
+      } catch (err) {
+        // Monetary E1 must not be swallowed; decimal keeps legacy soft-fallback.
+        if (fm.type === 'monetary') throw err;
         out[k] = asBigdecimal(v);
       }
       continue;
@@ -250,10 +263,11 @@ export function decodeFromDb(meta: ModelMetadata, row: Entity): Entity {
       return;
     }
 
-    if (t === 'decimal') {
+    if (isDecimalLikeField(f)) {
       if (cur == null) return;
 
-      const effScale = resolveDecimalScaleFromRow(meta, f, k, out);
+      const fmForScale: FieldMetadata = { ...f, name: k, type: f.type };
+      const effScale = resolveDecimalScaleFromRow(meta, fmForScale, k, out);
       const overrideFm = toDecimalMetaWithScale(f, effScale);
 
       try {

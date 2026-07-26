@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { KernelValidationError, validateFields } from '..';
+import { buildHiddenScaleAlias } from '../../hidden_scale_alias';
 
 function expectKernelError(fn: () => void, code: string, field: string) {
   let error: unknown;
@@ -38,6 +39,43 @@ test('repository kernel validation enforces create required fields and decimal f
 
   expectKernelError(() => validateFields(meta, {}, { mode: 'create', rules: ['required'] }), 'kernel_required_missing', 'RequiredName');
   expectKernelError(() => validateFields(meta, { Amount: 'abc' }, { rules: ['decimal'] }), 'kernel_decimal_invalid', 'Amount');
+});
+
+test('repository kernel validation quantizes monetary using stamped currency digits', () => {
+  const meta = {
+    fields: new Map<string, any>([
+      ['CurrencyId', { type: 'ManyToOneRef', column: { name: 'CurrencyId' } }],
+      ['Amount', { type: 'monetary', name: 'Amount', column: { name: 'Amount', currencyField: 'CurrencyId' } }],
+    ]),
+  } as any;
+
+  expect(() =>
+    validateFields(
+      meta,
+      { Amount: '1.23', CurrencyId: { Id: 'C1', DecimalDigits: 2 } },
+      { rules: ['decimal'] }
+    )
+  ).not.toThrow();
+
+  expectKernelError(
+    () => validateFields(meta, { Amount: 'not-a-decimal', CurrencyId: { Id: 'C1', DecimalDigits: 2 } }, { rules: ['decimal'] }),
+    'kernel_decimal_invalid',
+    'Amount'
+  );
+
+  // Empty / missing monetary values are skipped.
+  expect(() => validateFields(meta, { Amount: '' }, { rules: ['decimal'] })).not.toThrow();
+});
+
+test('repository kernel validation stamps monetary scale when column metadata is absent', () => {
+  const alias = buildHiddenScaleAlias('Amount');
+  const meta = {
+    fields: new Map<string, any>([['Amount', { type: 'monetary', name: 'Amount', column: undefined }]]),
+  } as any;
+
+  expect(() =>
+    validateFields(meta, { Amount: '1.25', [alias]: 2 }, { rules: ['decimal'] })
+  ).not.toThrow();
 });
 
 test('repository kernel validation enforces many2one and many2one-ref reference shapes', () => {

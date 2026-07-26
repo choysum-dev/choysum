@@ -19,6 +19,7 @@ const scalarTypes = new Set<FieldType>([
   'bigint',
   'number',
   'decimal',
+  'monetary',
   'boolean',
   'datetime',
   'date',
@@ -48,6 +49,7 @@ type FieldDecoratorOptionBag = {
   precision?: unknown;
   scale?: unknown;
   scaleField?: unknown;
+  currencyField?: unknown;
   primaryKey?: unknown;
   unique?: unknown;
   uniqueIndex?: unknown;
@@ -157,7 +159,8 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
       optionBag.checkConstraint !== undefined ||
       optionBag.default !== undefined ||
       optionBag.round !== undefined ||
-      optionBag.scaleField !== undefined;
+      optionBag.scaleField !== undefined ||
+      optionBag.currencyField !== undefined;
     const hasRelated = optionBag.related !== undefined;
 
     let normalizedStorageHints: FieldMetadata['storageHints'] | undefined;
@@ -204,6 +207,9 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
       }
 
       if (optionBag.precision !== undefined) {
+        if (type === 'monetary') {
+          throw new Error(`@Field(${name}) monetary forbids scale, scaleField, and precision (use Currency.DecimalDigits)`);
+        }
         if (!isInt(optionBag.precision) || optionBag.precision < 1 || optionBag.precision > 38) {
           throw new Error(`@Field(${name}) precision must be in 1..38`);
         }
@@ -214,6 +220,9 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
       }
 
       if (optionBag.scale !== undefined) {
+        if (type === 'monetary') {
+          throw new Error(`@Field(${name}) monetary forbids scale, scaleField, and precision (use Currency.DecimalDigits)`);
+        }
         if (!isInt(optionBag.scale) || optionBag.scale < 0 || optionBag.scale > 18) {
           throw new Error(`@Field(${name}) scale must be in 0..18`);
         }
@@ -272,6 +281,7 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
       if (optionBag.default !== undefined) normalizedColumn.default = optionBag.default;
       if (optionBag.round !== undefined) normalizedColumn.round = optionBag.round;
       if (optionBag.scaleField !== undefined) normalizedColumn.scaleField = optionBag.scaleField;
+      if (optionBag.currencyField !== undefined) normalizedColumn.currencyField = optionBag.currencyField;
     }
 
     const hasColumn = normalizedColumn !== undefined;
@@ -376,6 +386,26 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
 
     if (optionBag.scaleField !== undefined && type !== 'decimal') {
       throw new Error(`@Field(${name}) scaleField is only supported on decimal fields`);
+    }
+
+    if (optionBag.currencyField !== undefined && type !== 'monetary') {
+      throw new Error(`@Field(${name}) currencyField is only supported on monetary fields`);
+    }
+
+    if (type === 'monetary') {
+      const currencyField = optionBag.currencyField;
+      if (typeof currencyField !== 'string' || !currencyField.trim()) {
+        throw new Error(`@Field(${name}) monetary requires a non-empty currencyField`);
+      }
+      if (currencyField !== currencyField.trim()) {
+        throw new Error(`@Field(${name}) currencyField must not contain leading or trailing whitespace`);
+      }
+      // scale/precision/scaleField are rejected earlier in storage-hint / scaleField validation.
+      if (optionBag.round !== undefined) {
+        throw new Error(`@Field(${name}) monetary does not support round (P0 uses HALF_UP)`);
+      }
+      // currencyField already forces normalizedColumn via hasFlatColumnOptions; keep trimmed value.
+      normalizedColumn!.currencyField = currencyField.trim();
     }
 
     // Decimal option validation (DDL stays NUMERIC(38,18); scale metadata is validated here)

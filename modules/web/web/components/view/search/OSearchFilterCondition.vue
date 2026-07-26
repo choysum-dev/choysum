@@ -75,6 +75,7 @@ import OIntField from '@/web/web/components/field/OIntField.vue';
 import OBigintField from '@/web/web/components/field/OBigintField.vue';
 import ONumberField from '@/web/web/components/field/ONumberField.vue';
 import ODecimalField from '@/web/web/components/field/ODecimalField.vue';
+import OMonetaryField from '@/web/web/components/field/OMonetaryField.vue';
 import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
 import ODateField from '@/web/web/components/field/ODateField.vue';
 import OTimeField from '@/web/web/components/field/OTimeField.vue';
@@ -126,6 +127,8 @@ const fieldComponent = computed(() => {
       return ONumberField;
     case 'decimal':
       return ODecimalField;
+    case 'monetary':
+      return OMonetaryField;
     case 'boolean':
       return OBooleanField;
     case 'date':

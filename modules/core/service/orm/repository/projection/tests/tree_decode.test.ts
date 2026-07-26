@@ -51,6 +51,30 @@ test('repository tree decode normalizes selected scalar columns and removes hidd
   expect(hiddenScaleAlias in decoded).toBe(false);
 });
 
+test('repository tree decode normalizes monetary fields from currency digits and removes hidden scale aliases', () => {
+  class DemoModel {}
+
+  const meta = {
+    type: DemoModel,
+    fields: new Map([
+      ['CurrencyId', { type: 'ManyToOneRef', column: { name: 'CurrencyId' } }],
+      ['Amount', { type: 'monetary', column: { name: 'Amount', currencyField: 'CurrencyId' } }],
+    ]),
+  } as any;
+
+  const hiddenScaleAlias = buildHiddenScaleAlias('Amount');
+  const row = {
+    Amount: { $bigdecimal: '7.891' },
+    CurrencyId: { Id: 'C1', DecimalDigits: 1 },
+    [hiddenScaleAlias]: 1,
+  } as any;
+
+  const decoded = decodeRowWithTree(meta, { columns: new Set(['Amount']), relations: new Map() } as any, row) as any;
+
+  expect(decoded.Amount.toString()).toBe('7.9');
+  expect(hiddenScaleAlias in decoded).toBe(false);
+});
+
 test('repository tree decode recursively normalizes many2one alias payloads and to-many relation rows', () => {
   class DemoModel {}
   class OwnerModel {}

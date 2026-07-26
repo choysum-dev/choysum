@@ -188,8 +188,9 @@ type IrField struct {
 	Size       int     `gorm:"type:int" json:"size"`
 	Precision  int     `json:"precision,omitempty"`
 	Scale      int     `json:"scale,omitempty"`
-	ScaleField string  `gorm:"type:varchar(255);" json:"scale_field,omitempty"`
-	Round      *string `json:"round,omitempty"`
+	ScaleField    string  `gorm:"type:varchar(255);" json:"scale_field,omitempty"`
+	CurrencyField string  `gorm:"type:varchar(255);" json:"currency_field,omitempty"`
+	Round         *string `json:"round,omitempty"`
 
 	ResolvedSpec string `gorm:"type:text" json:"resolved_spec,omitempty"`
 

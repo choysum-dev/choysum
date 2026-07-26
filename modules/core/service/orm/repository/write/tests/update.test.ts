@@ -137,6 +137,95 @@ test('repository update sanitized payload prepare validates current rows and ret
   ]);
 });
 
+test('repository update sanitized payload stamps monetary digits and rejects mismatched multi-row scales', async () => {
+  const meta = {
+    fields: new Map([
+      ['CurrencyId', { type: 'ManyToOneRef', column: { name: 'CurrencyId' } }],
+      ['Amount', { type: 'monetary', name: 'Amount', column: { name: 'Amount', currencyField: 'CurrencyId' } }],
+    ]),
+  } as any;
+
+  const makeDeps = (rows: any[]) => ({
+    meta,
+    table: 'demo_table',
+    db: {
+      selectFrom() {
+        return {
+          select() {
+            return {
+              where() {
+                return { kind: 'q' };
+              },
+            };
+          },
+        };
+      },
+    },
+    getScalarFields() {
+      return [];
+    },
+    makeSelectCtx() {
+      return {};
+    },
+    aliasSelection(selection: unknown, alias: string) {
+      return { selection, alias };
+    },
+    applySoftLayer(condition: any) {
+      return condition;
+    },
+    isEmptyCondition() {
+      return false;
+    },
+    convertCondition() {
+      return {};
+    },
+    async execute() {
+      return rows;
+    },
+    decodeFromDb(row: any) {
+      return row;
+    },
+    async assertFieldRuleWriteAllowed() {},
+    applyDefaultCompanyIdOnUpdate(vals: any) {
+      return vals;
+    },
+    async validateFields() {},
+    encodeForDb(input: any) {
+      return input;
+    },
+  });
+
+  const single = await prepareRepositoryUpdateSanitizedPayload(
+    makeDeps([{ Id: 'r1', CurrencyId: { Id: 'C1', DecimalDigits: 0 } }]) as any,
+    { Amount: '12.6' } as any,
+    ['r1']
+  );
+  expect((single as any).$dec$Amount__scale).toBe(0);
+
+  let err: unknown;
+  try {
+    await prepareRepositoryUpdateSanitizedPayload(
+      makeDeps([
+        { Id: 'r1', CurrencyId: { Id: 'C1', DecimalDigits: 0 } },
+        { Id: 'r2', CurrencyId: { Id: 'C2', DecimalDigits: 2 } },
+      ]) as any,
+      { Amount: '12.6' } as any,
+      ['r1', 'r2']
+    );
+  } catch (e) {
+    err = e;
+  }
+  expect(String((err as Error)?.message || err)).toMatch(/same currency decimal digits/);
+
+  // Missing current row → current: null via ?? while inline currency still stamps.
+  const missingCurrent = await prepareRepositoryUpdateSanitizedPayload(
+    makeDeps([{ Id: 'r1', CurrencyId: { Id: 'C1', DecimalDigits: 2 } }]) as any,
+    { Amount: '1.20', CurrencyId: { Id: 'C1', DecimalDigits: 2 } } as any,
+    ['r1', 'ghost']
+  );
+  expect((missingCurrent as any).$dec$Amount__scale).toBe(2);
+});
+
 test('repository update sanitized payload rejects bulk translated field writes', async () => {
   let err: unknown;
   try {

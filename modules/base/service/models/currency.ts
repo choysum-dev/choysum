@@ -70,8 +70,6 @@ export default class Currency extends BaseModel {
   @Field({
     type: 'decimal',
     notNull: true,
-    precision: 38,
-    scale: 18,
     string: _lt('Rounding Precision', { scope: 'base.model.Currency.fields' }),
   })
   Rounding: any;

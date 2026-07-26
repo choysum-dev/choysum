@@ -155,10 +155,33 @@ export function formatNumberFromConfig(
 }
 
 /**
+ * Pad a decimal string to at least `digits` fractional places without Number().
+ * Longer fractional tails are preserved (precision-safe for pre-quantized monetary strings).
+ */
+function ensureDecimalDigitsString(fixed: string, digits: number): string {
+  const text = String(fixed).trim();
+  if (!text || !Number.isInteger(digits) || digits < 0) return text;
+  const negative = text.startsWith('-');
+  const body = negative ? text.slice(1) : text;
+  const [intRaw, fracRaw] = body.split('.');
+  const intPart = intRaw || '0';
+  if (digits === 0) {
+    if (fracRaw == null) return negative ? `-${intPart}` : intPart;
+    return text;
+  }
+  const frac = fracRaw ?? '';
+  const normalizedFrac = frac.length >= digits ? frac : frac.padEnd(digits, '0');
+  const out = `${intPart}.${normalizedFrac}`;
+  return negative ? `-${out}` : out;
+}
+
+/**
  * Format currency with Language-driven separators and symbol position/spacing.
+ * Prefer a pre-quantized decimal string over `number` when precision matters
+ * (large monetary / high-scale decimals), to avoid IEEE-754 conversion.
  */
 export function formatCurrencyFromConfig(
-  value: number,
+  value: number | string,
   config: {
     thousandsSeparator?: string;
     decimalSeparator?: string;
@@ -172,7 +195,10 @@ export function formatCurrencyFromConfig(
   currencyCode?: string
 ): string {
   const digits = config.decimalDigits ?? 2;
-  const amount = formatNumberFromConfig(value, config, { digits });
+  const amount =
+    typeof value === 'string'
+      ? formatFixedDecimalString(ensureDecimalDigitsString(value, digits), config)
+      : formatNumberFromConfig(value, config, { digits });
   const symbol = config.symbol || currencyCode || config.code || '';
   if (!symbol) {
     return amount;

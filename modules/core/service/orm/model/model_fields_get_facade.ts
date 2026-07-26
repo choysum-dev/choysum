@@ -190,11 +190,21 @@ function buildFieldMeta(
     if (selection) meta.selection = selection;
   }
 
-  const column = field.column as { notNull?: boolean; size?: number; precision?: number; scale?: number; index?: boolean | string } | undefined;
+  const column = field.column as {
+    notNull?: boolean;
+    size?: number;
+    precision?: number;
+    scale?: number;
+    scaleField?: string;
+    currencyField?: string;
+    index?: boolean | string;
+  } | undefined;
   if (column?.notNull === true) meta.notNull = true;
   if (typeof column?.size === 'number') meta.size = column.size;
   if (typeof column?.precision === 'number') meta.precision = column.precision;
   if (typeof column?.scale === 'number') meta.scale = column.scale;
+  if (typeof column?.scaleField === 'string' && column.scaleField.trim()) meta.scaleField = column.scaleField.trim();
+  if (typeof column?.currencyField === 'string' && column.currencyField.trim()) meta.currencyField = column.currencyField.trim();
   if (column?.index !== undefined && column.index !== false) meta.indexed = true;
 
   if (field.translate === true) {

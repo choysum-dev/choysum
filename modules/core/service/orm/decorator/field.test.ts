@@ -751,3 +751,88 @@ test('Field decorator accepts copy:false and rejects non-boolean copy', () => {
   }).toThrow('copy must be a boolean');
 });
 
+test('Field decorator stores monetary currencyField and rejects scale options', () => {
+  class MonetaryOkModel extends BaseModel {
+    @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Currency' }, size: 20 } as any)
+    CurrencyId!: string;
+
+    @Field({ type: 'monetary', currencyField: 'CurrencyId' } as any)
+    Amount!: string;
+  }
+  const amount = MetadataStorage.instance.getModelMetadata(MonetaryOkModel as any).fields.get('Amount');
+  expect(amount?.type).toBe('monetary');
+  expect((amount?.column as any)?.currencyField).toBe('CurrencyId');
+
+  expect(() => {
+    class MonetaryMissingCurrency extends BaseModel {
+      @Field({ type: 'monetary' } as any)
+      Amount!: string;
+    }
+    return MonetaryMissingCurrency;
+  }).toThrow('monetary requires a non-empty currencyField');
+
+  expect(() => {
+    class MonetaryBlankCurrency extends BaseModel {
+      @Field({ type: 'monetary', currencyField: '   ' } as any)
+      Amount!: string;
+    }
+    return MonetaryBlankCurrency;
+  }).toThrow('monetary requires a non-empty currencyField');
+
+  expect(() => {
+    class MonetaryPaddedCurrency extends BaseModel {
+      @Field({ type: 'monetary', currencyField: ' CurrencyId ' } as any)
+      Amount!: string;
+    }
+    return MonetaryPaddedCurrency;
+  }).toThrow('must not contain leading or trailing whitespace');
+
+  expect(() => {
+    class MonetaryWithScale extends BaseModel {
+      @Field({ type: 'monetary', currencyField: 'CurrencyId', scale: 2 } as any)
+      Amount!: string;
+    }
+    return MonetaryWithScale;
+  }).toThrow('monetary forbids scale');
+
+  expect(() => {
+    class MonetaryWithPrecision extends BaseModel {
+      @Field({ type: 'monetary', currencyField: 'CurrencyId', precision: 12 } as any)
+      Amount!: string;
+    }
+    return MonetaryWithPrecision;
+  }).toThrow('monetary forbids scale');
+
+  expect(() => {
+    class MonetaryWithRound extends BaseModel {
+      @Field({ type: 'monetary', currencyField: 'CurrencyId', round: 'ROUND_HALF_UP' } as any)
+      Amount!: string;
+    }
+    return MonetaryWithRound;
+  }).toThrow('does not support round');
+
+  expect(() => {
+    class MonetaryWithScaleField extends BaseModel {
+      @Field({ type: 'monetary', currencyField: 'CurrencyId', scaleField: 'AmountScale' } as any)
+      Amount!: string;
+    }
+    return MonetaryWithScaleField;
+  }).toThrow('scaleField is only supported on decimal fields');
+
+  expect(() => {
+    class DecimalWithCurrency extends BaseModel {
+      @Field({ type: 'decimal', currencyField: 'CurrencyId' } as any)
+      Amount!: string;
+    }
+    return DecimalWithCurrency;
+  }).toThrow('currencyField is only supported on monetary fields');
+
+  expect(() => {
+    class MonetaryWithNonStringCurrency extends BaseModel {
+      @Field({ type: 'monetary', currencyField: 1 as any } as any)
+      Amount!: string;
+    }
+    return MonetaryWithNonStringCurrency;
+  }).toThrow('monetary requires a non-empty currencyField');
+});
+

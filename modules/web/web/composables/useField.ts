@@ -353,6 +353,7 @@ export function useField<T = any, P extends string = string, V = any>(opts: {
     try {
       const t = (leafMetaRef.value?.type || '').toLowerCase();
       const scaleField = (leafMetaRef.value as any)?.scaleField as string | undefined;
+      // Monetary uses Currency.DecimalDigits (not scaleField); only decimal registers scale max.
       if (t === 'decimal' && scaleField) {
         const segs2 = segs.slice();
         segs2[segs2.length - 1] = scaleField;

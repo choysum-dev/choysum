@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import Decimal from '@/core/utils/decimal';
 import { buildHiddenScaleAlias } from '../../hidden_scale_alias';
 import {
   cleanupHiddenScaleKeys,
@@ -106,6 +107,8 @@ test('repository row codec parse helpers and scale resolvers cover fallback bran
   expect(resolveDecimalScaleFromRow(meta, undefined as any, 'Amount', {})).toBeUndefined();
   expect(resolveDecimalScaleFromRow(meta, { type: 'decimal', column: { scale: 4 } } as any, 'Amount', {})).toBe(4);
   expect(resolveDecimalScaleFromRow(meta, { type: 'decimal', column: {} } as any, 'Amount', {})).toBeUndefined();
+  expect(resolveDecimalScaleFromRow(meta, { type: 'varchar' } as any, 'X', {})).toBeUndefined();
+  expect(resolveDecimalScaleForWrite(undefined, {} as any)).toBeUndefined();
   expect(resolveDecimalScaleFromRow(meta, { type: 'decimal', column: { scaleField: 'AmountScale' } } as any, 'Amount', { AmountScale: '2' })).toBe(2);
   expect(
     resolveDecimalScaleFromRow(meta, { type: 'decimal', column: { scaleField: 'AmountScale' } } as any, 'Amount', { [buildHiddenScaleAlias('Amount')]: 1 })
@@ -265,4 +268,78 @@ test('repository row codec encodeForDb translate field null, JSON passthrough, a
 
   expect(() => encodeForDb(meta, { Name: 'plain' } as any)).toThrow(/must be prepared as a lang map/);
   expect(() => encodeForDb(meta, { Name: 123 } as any)).toThrow(/expects a lang map object or null/);
+});
+
+test('repository row codec monetary quantize uses currency digits and E1 without currency', () => {
+  const meta = {
+    fields: new Map<string, any>([
+      ['CurrencyId', { type: 'ManyToOneRef', column: { name: 'CurrencyId' } }],
+      ['Amount', { type: 'monetary', name: 'Amount', column: { name: 'Amount', currencyField: 'CurrencyId' } }],
+    ]),
+  } as any;
+
+  const encoded = encodeForDb(meta, {
+    CurrencyId: { Id: 'CUR-1', DecimalDigits: 0 },
+    Amount: '12.6',
+  } as any);
+  expect(encoded.Amount).toEqual({ $bigdecimal: '13' });
+
+  expect(() => encodeForDb(meta, { Amount: '12.6' } as any)).toThrow(/currency required for monetary field Amount/);
+
+  const stampedAlias = buildHiddenScaleAlias('Amount');
+  const encodedFromStamp = encodeForDb(meta, {
+    Amount: '1.234',
+    [stampedAlias]: 2,
+  } as any);
+  expect(encodedFromStamp.Amount).toEqual({ $bigdecimal: '1.23' });
+
+  const decoded = decodeFromDb(meta, {
+    Amount: { $bigdecimal: '1.239' },
+    CurrencyId: { Id: 'CUR-1', DecimalDigits: 2 },
+  } as any);
+  expect(String(decoded.Amount)).toBe('1.24');
+
+  expect(resolveDecimalScaleForWrite(meta.fields.get('Amount'), { CurrencyId: { DecimalDigits: 0 } } as any)).toBe(0);
+  expect(() => resolveDecimalScaleForWrite(meta.fields.get('Amount'), {} as any)).toThrow(/currency required/);
+  expect(resolveDecimalScaleFromRow(meta, meta.fields.get('Amount'), 'Amount', { [stampedAlias]: 2 })).toBe(2);
+  expect(resolveDecimalScaleFromRow(meta, meta.fields.get('Amount'), 'Amount', { CurrencyId: 'C1' })).toBeUndefined();
+
+  const decodedNoDigits = decodeFromDb(meta, {
+    Amount: { $bigdecimal: '1.239' },
+    CurrencyId: 'C1',
+  } as any);
+  expect(decodedNoDigits.Amount != null).toBe(true);
+});
+
+test('repository row codec decimal soft-fallback and Decimal instance decode', () => {
+  const decimalMeta = {
+    fields: new Map<string, any>([
+      ['Amount', { type: 'decimal', name: 'Amount', column: { name: 'Amount', scaleField: 'AmountScale' } }],
+      ['AmountScale', { type: 'int', column: { name: 'AmountScale' } }],
+    ]),
+  } as any;
+
+  // Missing scaleField: decimal encode soft-falls back instead of throwing.
+  const soft = encodeForDb(decimalMeta, { Amount: '1.25' } as any) as any;
+  expect(soft.Amount).toEqual({ $bigdecimal: '1.25' });
+
+  const monetaryMeta = {
+    fields: new Map<string, any>([
+      ['CurrencyId', { type: 'ManyToOneRef', column: { name: 'CurrencyId' } }],
+      ['Amount', { type: 'monetary', name: 'Amount', column: { name: 'Amount', currencyField: 'CurrencyId' } }],
+    ]),
+  } as any;
+
+  const decoded = decodeFromDb(monetaryMeta, {
+    Amount: new Decimal('1.239'),
+    CurrencyId: { Id: 'C1', DecimalDigits: 2 },
+  } as any) as any;
+  expect(String(decoded.Amount)).toBe('1.24');
+
+  // Soft catch on decode keeps the original value when normalize fails.
+  const decodedBad = decodeFromDb(monetaryMeta, {
+    Amount: { $bigdecimal: 'not-a-number' },
+    CurrencyId: { Id: 'C1', DecimalDigits: 2 },
+  } as any) as any;
+  expect(decodedBad.Amount).toEqual({ $bigdecimal: 'not-a-number' });
 });

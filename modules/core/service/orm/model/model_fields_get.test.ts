@@ -605,3 +605,56 @@ test('FieldsGet still translates bare string titles when application is blank (T
     resetTestState();
   }
 });
+
+@Model('FieldsGetMonetaryWidget', { application: 'demo' })
+class FieldsGetMonetaryWidget extends BaseModel {
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Currency' }, size: 20, string: 'Currency' })
+  CurrencyId!: string;
+
+  @Field({ type: 'monetary', currencyField: 'CurrencyId', string: 'Amount' })
+  Amount!: any;
+}
+
+test('FieldsGet exposes monetary type and currencyField', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'en_US' });
+  setTestI18nBridge({ t: (_m, _l, _s, src) => src });
+  RepositoryFactory.setRepository(FieldsGetMonetaryWidget as any, {
+    getDenyReadFields: async () => ({ denyReadFields: [] }),
+  } as any);
+
+  try {
+    const out = await FieldsGetMonetaryWidget.FieldsGet(['Amount'], ['type', 'currencyField']);
+    expect(out.Amount?.type).toBe('monetary');
+    expect(out.Amount?.currencyField).toBe('CurrencyId');
+    expect(out.Amount?.scale).toBeUndefined();
+  } finally {
+    resetTestState();
+  }
+});
+
+@Model('FieldsGetDecimalScaleWidget', { application: 'demo' })
+class FieldsGetDecimalScaleWidget extends BaseModel {
+  @Field({ type: 'int', string: 'Scale' })
+  AmountScale!: number;
+
+  @Field({ type: 'decimal', scaleField: 'AmountScale', string: 'Amount' })
+  Amount!: any;
+}
+
+test('FieldsGet exposes decimal scaleField', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'en_US' });
+  setTestI18nBridge({ t: (_m, _l, _s, src) => src });
+  RepositoryFactory.setRepository(FieldsGetDecimalScaleWidget as any, {
+    getDenyReadFields: async () => ({ denyReadFields: [] }),
+  } as any);
+
+  try {
+    const out = await FieldsGetDecimalScaleWidget.FieldsGet(['Amount'], ['type', 'scaleField']);
+    expect(out.Amount?.type).toBe('decimal');
+    expect(out.Amount?.scaleField).toBe('AmountScale');
+  } finally {
+    resetTestState();
+  }
+});

@@ -80,7 +80,7 @@ export function convertCondition(
   const wrapIfDecimal = (fieldName: string | undefined, op: unknown, rhs: unknown) => {
     if (!fieldName) return rhs;
     const fieldMeta = meta.fields.get(fieldName);
-    if (fieldMeta?.type !== 'decimal') return rhs;
+    if (fieldMeta?.type !== 'decimal' && fieldMeta?.type !== 'monetary') return rhs;
 
     const lowerOp = String(op || '').toLowerCase();
     if (lowerOp === 'in' || lowerOp === 'not in') {
@@ -115,7 +115,7 @@ export function convertCondition(
   };
 
   const wrapByMeta = (fieldMeta: FieldMetadata | undefined, op: unknown, rhs: unknown) => {
-    if (!fieldMeta || fieldMeta.type !== 'decimal') return rhs;
+    if (!fieldMeta || (fieldMeta.type !== 'decimal' && fieldMeta.type !== 'monetary')) return rhs;
     const lowerOp = String(op || '').toLowerCase();
     if (lowerOp === 'in' || lowerOp === 'not in') {
       return Array.isArray(rhs) ? rhs.map(value => asBigdecimal(value)) : rhs;

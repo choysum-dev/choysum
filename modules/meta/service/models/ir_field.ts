@@ -93,6 +93,9 @@ export default class IrField extends BaseModel {
   @Field({ type: 'varchar', size: 255, string: _lt('Scale Field', { scope: 'meta.model.IrField.fields' }) })
   ScaleField?: string;
 
+  @Field({ type: 'varchar', size: 255, string: _lt('Currency Field', { scope: 'meta.model.IrField.fields' }) })
+  CurrencyField?: string;
+
   @Field({ type: 'varchar', size: 255, string: _lt('Round', { scope: 'meta.model.IrField.fields' }) })
   Round?: string;
 

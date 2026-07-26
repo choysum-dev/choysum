@@ -22,13 +22,13 @@ SPDX-License-Identifier: Apache-2.0
   >
     <!-- Form and inline editing: normalize and compare using the current record/row scale -->
     <template #edit="{ fieldValue, record }">
-      <ODecimalCell :field-value="fieldValue" :options="makeBufferOptions(() => resolveScaleFrom(record().value))" :placeholder="placeholder" v-bind="$attrs" />
+      <ODecimalCell :field-value="fieldValue" :options="makeBufferOptions(() => resolveEditScaleFrom(record().value))" :placeholder="placeholder" v-bind="$attrs" />
     </template>
 
-    <!-- Display: format with dynamic scale (rounding plus fixed decimal places) -->
+    <!-- Display: fixed scale pads; free decimals keep significant digits -->
     <template #display="{ fieldValue, record }">
       <span class="o-field-display-text">{{
-        toDisplayText(resolveDisplayValue(fieldValue().value, record().value), () => resolveScaleFrom(record().value))
+        toDisplayText(resolveDisplayValue(fieldValue().value, record().value), () => resolveFixedScaleFrom(record().value))
       }}</span>
     </template>
   </OFieldBase>
@@ -47,11 +47,12 @@ import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/us
 import Decimal, { isDecimal, toDecimalRounding, type DecimalRound } from '@/core/utils/decimal';
 import { createTranslate } from '@/web/web/i18n';
 import { useI18nStore, formatFixedDecimalString } from '@/web/web/stores/i18nStore';
+import { formatODecimalDisplayText, resolveODecimalEditScale, resolveODecimalCellScale } from './odecimal_helpers';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/ODecimalField' });
 
 
-defineOptions({ name: 'ODecimalField' });
+defineOptions({ name: 'ODecimalField', inheritAttrs: false });
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 
@@ -146,8 +147,8 @@ function getByPath(obj: any, path: string) {
     .reduce((a, k) => (a == null ? a : a[k]), obj);
 }
 
-// Read dynamic scale from the current object (record/row); prefer scaleField, then meta.scale / props.scale / 6
-function resolveScaleFrom(obj: any): number {
+// Declared business fixed scale only (scaleField / meta.scale / props.scale). No default pad width.
+function resolveFixedScaleFrom(obj: any): number | undefined {
   try {
     const s = scaleFieldName.value;
     if (s) {
@@ -171,7 +172,16 @@ function resolveScaleFrom(obj: any): number {
       if (Number.isInteger(n2) && n2 >= 0 && n2 <= 18) return n2;
     }
   } catch {}
-  return metaScale.value ?? props.scale ?? 6;
+  const fromMeta = metaScale.value ?? props.scale;
+  if (typeof fromMeta === 'number' && Number.isInteger(fromMeta) && fromMeta >= 0 && fromMeta <= 18) {
+    return fromMeta;
+  }
+  return undefined;
+}
+
+// Edit/validate: fixed scale when declared, otherwise NUMERIC soft max (18).
+function resolveEditScaleFrom(obj: any): number {
+  return resolveODecimalEditScale(resolveFixedScaleFrom(obj));
 }
 
 /* ================== Aggregate value resolution (display-mode fallback) ================== */
@@ -278,27 +288,22 @@ const fromView = (v: ViewType) => {
   return (d ?? null) as unknown as V;
 };
 
-// Display mode: round by dynamic scale, then apply Language separators/grouping.
-function toDisplayText(v: any, getScale?: () => number) {
+// Display: pad only when a fixed scale is declared; otherwise significant digits.
+function toDisplayText(v: any, getFixedScale: () => number | undefined) {
   if (v == null || v === '') return '';
   const d = asDecimal(v);
   if (!d) return '';
-  const scale = typeof getScale === 'function' ? getScale() : (metaScale.value ?? props.scale ?? 6);
+  const fixedScale = getFixedScale();
+  let numberFormat: { thousandsSeparator?: string; decimalSeparator?: string; grouping?: number[] } | undefined;
   try {
-    const q = d.toDecimalPlaces(scale, effectiveRound.value);
-    const fixed = q.toFixed(scale);
-    try {
-      const numberFormat = useI18nStore().currentLocale?.numberFormat;
-      if (numberFormat) {
-        return formatFixedDecimalString(fixed, numberFormat);
-      }
-    } catch {
-      // Pinia / i18n may be unavailable in isolated mounts; fall back to plain fixed.
-    }
-    return fixed;
+    numberFormat = useI18nStore().currentLocale?.numberFormat;
   } catch {
-    return d.toString();
+    // Pinia / i18n may be unavailable in isolated mounts; fall back to plain text.
   }
+  return formatODecimalDisplayText(d, fixedScale, effectiveRound.value, {
+    numberFormat,
+    formatFixedDecimalString,
+  });
 }
 
 /* ================== Buffer options (inject getScale from context) ================== */
@@ -323,6 +328,7 @@ function makeBufferOptions(getScale: () => number) {
 /* ================== Editable cell (uses dynamic scale) ================== */
 const ODecimalCell = defineComponent({
   name: 'ODecimalCell',
+  inheritAttrs: false,
   props: {
     fieldValue: { type: Function, required: true },
     options: { type: Object, required: true }, // Must include getScale()
@@ -360,12 +366,7 @@ const ODecimalCell = defineComponent({
     );
 
     function currentScale(): number {
-      const fn = (p.options as any)?.getScale as (() => number) | undefined;
-      try {
-        const n = fn ? fn() : undefined;
-        if (typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= 18) return n;
-      } catch {}
-      return 6;
+      return resolveODecimalCellScale((p.options as any)?.getScale);
     }
 
     function onInput(raw: string) {
@@ -480,7 +481,7 @@ const internalRule = {
   validator: (_r: unknown, value: unknown, cb: (error?: Error) => void) => {
     // Form rules cannot access a row object, so derive scale from the root record here
     const rec = binding.recordRef().value;
-    const scale = resolveScaleFrom(rec);
+    const scale = resolveEditScaleFrom(rec);
     const msg = isValidValue(value, scale);
     if (msg) return cb(new Error(msg));
     cb();
