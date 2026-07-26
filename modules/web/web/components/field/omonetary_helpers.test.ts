@@ -40,6 +40,7 @@ describe('omonetary_helpers currency resolution', () => {
     expect(readCurrencyDigits(null)).toBeUndefined();
     expect(readCurrencyDigits('x')).toBeUndefined();
     expect(readCurrencyDigits({ DecimalDigits: 2 })).toBe(2);
+    expect(readCurrencyDigits({ DecimalDigits: 1.5 })).toBeUndefined();
     expect(readCurrencyDigits({ decimalDigits: 19 })).toBeUndefined();
     expect(readCurrencyCode(null)).toBeUndefined();
     expect(readCurrencyCode({ Code: ' usd ' })).toBe('usd');
@@ -124,6 +125,8 @@ describe('omonetary_helpers display and parse', () => {
     expect(isIntermediateMonetaryInput(null)).toBe(false);
     expect(isIntermediateMonetaryInput('-')).toBe(true);
     expect(isIntermediateMonetaryInput('12.')).toBe(true);
+    expect(isIntermediateMonetaryInput('.')).toBe(true);
+    expect(isIntermediateMonetaryInput('-.')).toBe(true);
     expect(isIntermediateMonetaryInput('12.3')).toBe(false);
 
     const bounds = { precision: 10, min: new Decimal(0), max: new Decimal(100) };
@@ -137,6 +140,9 @@ describe('omonetary_helpers display and parse', () => {
     expect(
       clampMonetaryValue(new Decimal('12345678901'), 0, Decimal.ROUND_HALF_UP, { precision: 5 }).toString()
     ).toBe('12346');
+    expect(
+      clampMonetaryValue(new Decimal('150'), 0, Decimal.ROUND_HALF_UP, { precision: 10, max: new Decimal(100) }).toString()
+    ).toBe('100');
     expect(
       clampMonetaryValue(new Decimal('50'), 0, Decimal.ROUND_HALF_UP, {
         precision: 10,
@@ -197,6 +203,15 @@ describe('omonetary_helpers aggregate display', () => {
       resolveAggregateDisplayValue(null, { metrics: { Amount__max: 5 } }, { bindingProp: 'Amount' })
     ).toBe(5);
     expect(resolveAggregateDisplayValue(null, { Amount__min: 1 }, { bindingProp: 'Amount' })).toBe(1);
+    expect(
+      resolveAggregateDisplayValue('', { metrics: { Amount__sum: 9 } }, { bindingProp: 'Amount', agg: 'sum' })
+    ).toBe(9);
+    expect(
+      resolveAggregateDisplayValue(null, { metrics: { __count: 4 } }, { bindingProp: 'Amount', agg: { agg: 'count' } })
+    ).toBe(4);
+    expect(
+      resolveAggregateDisplayValue(null, { metrics: { Amount__sum: 8 } }, { bindingProp: 'line.Amount' })
+    ).toBe(8);
     expect(
       resolveAggregateDisplayValue(null, { metrics: { Amount__count_distinct: 4 } }, { bindingProp: 'line.Amount' })
     ).toBe(4);

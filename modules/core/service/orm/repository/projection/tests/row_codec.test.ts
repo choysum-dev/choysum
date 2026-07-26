@@ -295,4 +295,15 @@ test('repository row codec monetary quantize uses currency digits and E1 without
     CurrencyId: { Id: 'CUR-1', DecimalDigits: 2 },
   } as any);
   expect(String(decoded.Amount)).toBe('1.24');
+
+  expect(resolveDecimalScaleForWrite(meta.fields.get('Amount'), { CurrencyId: { DecimalDigits: 0 } } as any)).toBe(0);
+  expect(() => resolveDecimalScaleForWrite(meta.fields.get('Amount'), {} as any)).toThrow(/currency required/);
+  expect(resolveDecimalScaleFromRow(meta, meta.fields.get('Amount'), 'Amount', { [stampedAlias]: 2 })).toBe(2);
+  expect(resolveDecimalScaleFromRow(meta, meta.fields.get('Amount'), 'Amount', { CurrencyId: 'C1' })).toBeUndefined();
+
+  const decodedNoDigits = decodeFromDb(meta, {
+    Amount: { $bigdecimal: '1.239' },
+    CurrencyId: 'C1',
+  } as any);
+  expect(decodedNoDigits.Amount != null).toBe(true);
 });

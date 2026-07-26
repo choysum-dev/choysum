@@ -826,5 +826,13 @@ test('Field decorator stores monetary currencyField and rejects scale options', 
     }
     return DecimalWithCurrency;
   }).toThrow('currencyField is only supported on monetary fields');
+
+  expect(() => {
+    class MonetaryWithNonStringCurrency extends BaseModel {
+      @Field({ type: 'monetary', currencyField: 1 as any } as any)
+      Amount!: string;
+    }
+    return MonetaryWithNonStringCurrency;
+  }).toThrow('monetary requires a non-empty currencyField');
 });
 

@@ -124,6 +124,14 @@ test('stampMonetaryScalesForWrite covers currency-only browse and empty amount e
     manyErr = String((error as Error).message || error);
   }
   expect(manyErr.includes('currency required for monetary field Amount')).toBe(true);
+
+  let currencyOnlyMiss = '';
+  try {
+    await stampMonetaryScalesForWrite(meta, { CurrencyId: 'MISSING' } as any, null, async () => new Map());
+  } catch (error) {
+    currencyOnlyMiss = String((error as Error).message || error);
+  }
+  expect(currencyOnlyMiss.includes('currency required for monetary field Amount')).toBe(true);
 });
 
 test('collectMonetaryCurrencyFieldCompanions and inline helpers', () => {

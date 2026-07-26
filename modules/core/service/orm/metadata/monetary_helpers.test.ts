@@ -254,5 +254,11 @@ test('resolveMonetaryScaleFromPayload ignores non-integer hidden scale alias', (
     })
   ).toEqual({ scale: 2, currencyId: 'C1', needsBrowse: false });
 
+  expect(resolveMonetaryScaleFromPayload(fm, { [hidden]: '3' })).toEqual({ scale: 3, needsBrowse: false });
   expect(() => resolveMonetaryScaleForWrite(undefined as any, {})).toThrow(/currency required/);
+  expect(() =>
+    resolveMonetaryScaleForWrite({ type: 'monetary', column: {} } as any, { Amount: 1 })
+  ).toThrow(/unknown|currency required/);
+
+  expect(resolveMonetaryScaleFromRow(fm, 'Amount', { [hidden]: 'x' })).toBeUndefined();
 });

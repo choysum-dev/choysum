@@ -1639,6 +1639,60 @@ func TestBackendPluginSetFieldMeta_CurrencyFieldPaths(t *testing.T) {
 						Arguments:      []*meta.IrArgument{{Value: `{"type":"monetary","column":{"currencyField":1},"currencyField":""}`, Type: "ObjectLiteral"}},
 					}},
 				},
+				{
+					Name: "ColumnWinsOverFlat",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments:      []*meta.IrArgument{{Value: `{"type":"monetary","column":{"currencyField":"ColCur"},"currencyField":"FlatCur"}`, Type: "ObjectLiteral"}},
+					}},
+				},
+				{
+					Name: "SelectIgnoredWhenColumnPresent",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments:      []*meta.IrArgument{{Value: `{"type":"monetary","column":{},"select":{"currencyField":"SelCur","scaleField":"SelScale"}}`, Type: "ObjectLiteral"}},
+					}},
+				},
+				{
+					Name: "EmptyColumnFallsBackToFlat",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments:      []*meta.IrArgument{{Value: `{"type":"monetary","column":{"currencyField":""},"currencyField":"FlatCur"}`, Type: "ObjectLiteral"}},
+					}},
+				},
+				{
+					Name: "WhitespaceFlatIgnored",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments:      []*meta.IrArgument{{Value: `{"type":"monetary","currencyField":"   ","scaleField":true}`, Type: "ObjectLiteral"}},
+					}},
+				},
+				{
+					Name: "SelectScaleWhenNoColumn",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments:      []*meta.IrArgument{{Value: `{"type":"decimal","select":{"scaleField":"PayScale"}}`, Type: "ObjectLiteral"}},
+					}},
+				},
+				{
+					Name: "NonStringColumnScaleIgnored",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments:      []*meta.IrArgument{{Value: `{"type":"decimal","column":{"scaleField":2},"scaleField":" FlatScale "}`, Type: "ObjectLiteral"}},
+					}},
+				},
 			},
 		},
 	}
@@ -1661,6 +1715,30 @@ func TestBackendPluginSetFieldMeta_CurrencyFieldPaths(t *testing.T) {
 	}
 	if got := result.Model.Fields[4].CurrencyField; got != "" {
 		t.Fatalf("invalid currencyField must stay empty, got %q", got)
+	}
+	if got := result.Model.Fields[5].CurrencyField; got != "ColCur" {
+		t.Fatalf("column must win over flat currencyField, got %q", got)
+	}
+	if got := result.Model.Fields[6].CurrencyField; got != "" {
+		t.Fatalf("select currencyField must be ignored when column present, got %q", got)
+	}
+	if got := result.Model.Fields[6].ScaleField; got != "" {
+		t.Fatalf("select scaleField must be ignored when column present, got %q", got)
+	}
+	if got := result.Model.Fields[7].CurrencyField; got != "FlatCur" {
+		t.Fatalf("empty column currencyField should fall back to flat, got %q", got)
+	}
+	if got := result.Model.Fields[8].CurrencyField; got != "" {
+		t.Fatalf("whitespace-only flat currencyField must stay empty, got %q", got)
+	}
+	if got := result.Model.Fields[8].ScaleField; got != "" {
+		t.Fatalf("non-string flat scaleField must stay empty, got %q", got)
+	}
+	if got := result.Model.Fields[9].ScaleField; got != "PayScale" {
+		t.Fatalf("select scaleField without column: got %q", got)
+	}
+	if got := result.Model.Fields[10].ScaleField; got != "FlatScale" {
+		t.Fatalf("non-string column scaleField should fall back to flat, got %q", got)
 	}
 }
 

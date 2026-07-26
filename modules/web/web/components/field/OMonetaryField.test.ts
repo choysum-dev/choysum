@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { mount, flushPromises } from '@vue/test-utils';
-import { computed, defineComponent, h, nextTick, ref } from 'vue';
+import { computed, defineComponent, h, nextTick, reactive, ref } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 import Decimal from '@/core/utils/decimal';
 import type { UseField } from '@/web/web/composables/useField';
@@ -40,14 +40,15 @@ vi.mock('@/web/web/stores/i18nStore', async () => {
 function makeBinding(
   record: Record<string, unknown>,
   meta: Record<string, unknown> = { currencyField: 'CurrencyId', type: 'monetary' }
-): UseField & { __registered: string[]; __value: any; __recordRef: any } {
+): UseField & { __registered: string[]; __value: any; __recordRef: any; meta: any } {
   const value = ref(record.Amount ?? null);
   const recordRef = ref(record);
   const registered: string[] = [];
+  const reactiveMeta = reactive({ ...meta });
   return {
     env: { isForm: true, isEditMode: true, viewMode: 'edit', fieldPrefix: null },
     prop: 'Amount',
-    meta: meta as any,
+    meta: reactiveMeta as any,
     fieldRef: () => value as any,
     fieldRefOf: () => value as any,
     recordRef: () => computed(() => recordRef.value) as any,
@@ -245,6 +246,60 @@ describe('OMonetaryField', () => {
     expect(wrapper.find('.o-field-display-text').text().length).toBeGreaterThan(0);
   });
 
+  it('clears on blur after empty nullable input and rejects intermediate dash', async () => {
+    const binding = makeBinding({
+      Amount: new Decimal('2'),
+      CurrencyId: { DecimalDigits: 2 },
+    });
+    const wrapper = mountEdit(binding, { nullable: true });
+    await flushPromises();
+    const input = wrapper.find('input.el-input');
+    await input.setValue('');
+    await input.trigger('blur');
+    await flushPromises();
+    expect(binding.__value.value).toBeNull();
+
+    binding.__value.value = new Decimal('2');
+    await input.setValue('-');
+    await input.trigger('blur');
+    await flushPromises();
+    expect(binding.__value.value).toBeNull();
+  });
+
+  it('uses props.scale when currency digits are unavailable', async () => {
+    const binding = makeBinding({ Amount: new Decimal('1'), CurrencyId: {} }, { type: 'monetary', currencyField: 'CurrencyId' });
+    const wrapper = mountEdit(binding, { scale: 1 });
+    await flushPromises();
+    const input = wrapper.find('input.el-input');
+    await input.setValue('1.23');
+    await flushPromises();
+    expect(new Decimal(binding.__value.value).toString()).toBe('1');
+    await input.setValue('1.2');
+    await flushPromises();
+    expect(new Decimal(binding.__value.value).toString()).toBe('1.2');
+  });
+
+  it('re-registers currency paths when currencyField changes', async () => {
+    const binding = makeBinding({ Amount: '1', CurrencyId: { DecimalDigits: 2 } });
+    mountEdit(binding);
+    await flushPromises();
+    const before = binding.__registered.length;
+    (binding as any).meta.currencyField = 'PayCurrencyId';
+    await nextTick();
+    await flushPromises();
+    expect(binding.__registered.length).toBeGreaterThan(before);
+    expect(binding.__registered).toContain('PayCurrencyId');
+  });
+
+  it('maps toView/fromView invalid values to null', async () => {
+    const binding = makeBinding({ Amount: '1', CurrencyId: { DecimalDigits: 2 } });
+    const wrapper = mountEdit(binding);
+    await flushPromises();
+    const base = wrapper.findComponent({ name: 'OFieldBaseStub' });
+    expect(base.props('toView')('nope')).toBeNull();
+    expect(base.props('fromView')('')).toBeNull();
+  });
+
   it('validates monetary values via internal rule using currency digits', async () => {
     const binding = makeBinding({
       Amount: '1.239',
@@ -299,5 +354,13 @@ describe('OMonetaryField', () => {
       });
     });
     expect(err?.message).toMatch(/less than/i);
+
+    await new Promise<void>(resolve => {
+      monetaryRule.validator({}, '101', (e?: Error) => {
+        err = e;
+        resolve();
+      });
+    });
+    expect(err?.message).toMatch(/greater than/i);
   });
 });
