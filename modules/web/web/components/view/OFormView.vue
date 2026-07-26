@@ -67,6 +67,7 @@ SPDX-License-Identifier: Apache-2.0
           </div>
         </div>
         <div class="form-view__header-right">
+          <slot name="statusbar" />
           <slot name="header-right"> </slot>
         </div>
       </div>
@@ -179,6 +180,7 @@ defineSlots<{
   breadcrumb(): any;
   'system-actions'(): any;
   'user-actions'(): any;
+  statusbar(): any;
   'header-right'(): any;
   default(props: { formData: Partial<ClientModel<T>>; viewMode: ViewMode; loading: boolean }): any;
 }>();
@@ -733,6 +735,7 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  gap: 12px;
 }
 
 .form-view__content {
