@@ -51,3 +51,14 @@ export function resolveODecimalEditScale(fixedScale: number | undefined): number
   }
   return 18;
 }
+
+/** Cell edit scale: prefer getScale() when in 0..18, else DB soft max 18. */
+export function resolveODecimalCellScale(getScale?: () => number): number {
+  try {
+    const n = typeof getScale === 'function' ? getScale() : undefined;
+    if (typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= 18) return n;
+  } catch {
+    /* ignore invalid getScale */
+  }
+  return 18;
+}

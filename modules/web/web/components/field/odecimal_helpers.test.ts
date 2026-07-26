@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import Decimal from '@/core/utils/decimal';
 // Import pure formatters only — i18nStore/index pulls Pinia persist(localStorage).
 import { formatFixedDecimalString } from '@/web/web/stores/i18nStore/language_format';
-import { formatODecimalDisplayText, resolveODecimalEditScale } from './odecimal_helpers';
+import { formatODecimalDisplayText, resolveODecimalEditScale, resolveODecimalCellScale } from './odecimal_helpers';
 
 describe('formatODecimalDisplayText', () => {
   it('pads when a fixed scale is declared', () => {
@@ -57,5 +57,21 @@ describe('resolveODecimalEditScale', () => {
     expect(resolveODecimalEditScale(2)).toBe(2);
     expect(resolveODecimalEditScale(undefined)).toBe(18);
     expect(resolveODecimalEditScale(-1)).toBe(18);
+  });
+});
+
+describe('resolveODecimalCellScale', () => {
+  it('prefers a valid getScale result and falls back to 18', () => {
+    expect(resolveODecimalCellScale(() => 2)).toBe(2);
+    expect(resolveODecimalCellScale(() => 0)).toBe(0);
+    expect(resolveODecimalCellScale(() => 18)).toBe(18);
+    expect(resolveODecimalCellScale(() => 19)).toBe(18);
+    expect(resolveODecimalCellScale(() => 1.5)).toBe(18);
+    expect(resolveODecimalCellScale(undefined)).toBe(18);
+    expect(
+      resolveODecimalCellScale(() => {
+        throw new Error('scale boom');
+      })
+    ).toBe(18);
   });
 });

@@ -199,6 +199,19 @@ describe('ODecimalField', () => {
     }
   });
 
+  it('renders when currentLocale is null (no numberFormat)', async () => {
+    const prev = i18nStoreMock.currentLocale;
+    i18nStoreMock.currentLocale = null;
+    try {
+      const binding = makeBinding({ Amount: new Decimal('3.5') }, { type: 'decimal', scale: 2 });
+      const wrapper = mountField(binding, { readonly: true });
+      await flushPromises();
+      expect(wrapper.find('.o-field-display-text').text()).toBe('3.50');
+    } finally {
+      i18nStoreMock.currentLocale = prev;
+    }
+  });
+
   it('live-commits edits using DB soft max 18 when scale is unset', async () => {
     const binding = makeBinding({ Amount: new Decimal('1') });
     const wrapper = mountField(binding);

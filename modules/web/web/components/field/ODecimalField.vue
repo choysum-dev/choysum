@@ -47,7 +47,7 @@ import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/us
 import Decimal, { isDecimal, toDecimalRounding, type DecimalRound } from '@/core/utils/decimal';
 import { createTranslate } from '@/web/web/i18n';
 import { useI18nStore, formatFixedDecimalString } from '@/web/web/stores/i18nStore';
-import { formatODecimalDisplayText, resolveODecimalEditScale } from './odecimal_helpers';
+import { formatODecimalDisplayText, resolveODecimalEditScale, resolveODecimalCellScale } from './odecimal_helpers';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/ODecimalField' });
 
@@ -289,25 +289,21 @@ const fromView = (v: ViewType) => {
 };
 
 // Display: pad only when a fixed scale is declared; otherwise significant digits.
-function toDisplayText(v: any, getFixedScale?: () => number | undefined) {
+function toDisplayText(v: any, getFixedScale: () => number | undefined) {
   if (v == null || v === '') return '';
   const d = asDecimal(v);
   if (!d) return '';
-  const fixedScale = typeof getFixedScale === 'function' ? getFixedScale() : resolveFixedScaleFrom(undefined);
+  const fixedScale = getFixedScale();
   let numberFormat: { thousandsSeparator?: string; decimalSeparator?: string; grouping?: number[] } | undefined;
   try {
     numberFormat = useI18nStore().currentLocale?.numberFormat;
   } catch {
     // Pinia / i18n may be unavailable in isolated mounts; fall back to plain text.
   }
-  try {
-    return formatODecimalDisplayText(d, fixedScale, effectiveRound.value, {
-      numberFormat,
-      formatFixedDecimalString,
-    });
-  } catch {
-    return d.toString();
-  }
+  return formatODecimalDisplayText(d, fixedScale, effectiveRound.value, {
+    numberFormat,
+    formatFixedDecimalString,
+  });
 }
 
 /* ================== Buffer options (inject getScale from context) ================== */
@@ -370,12 +366,7 @@ const ODecimalCell = defineComponent({
     );
 
     function currentScale(): number {
-      const fn = (p.options as any)?.getScale as (() => number) | undefined;
-      try {
-        const n = fn ? fn() : undefined;
-        if (typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= 18) return n;
-      } catch {}
-      return 18;
+      return resolveODecimalCellScale((p.options as any)?.getScale);
     }
 
     function onInput(raw: string) {
