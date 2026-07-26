@@ -223,3 +223,36 @@ test('validateModelMonetaryCurrencyFields accepts ManyToOne targeting base.Curre
     ]),
   } as any);
 });
+
+test('validateModelMonetaryCurrencyFields rejects ManyToOne targeting non-Currency', () => {
+  @Model('Country', { application: 'base' })
+  class BaseCountryModel extends BaseModel {}
+
+  expect(() =>
+    validateModelMonetaryCurrencyFields({
+      fields: new Map([
+        [
+          'CurrencyId',
+          {
+            type: 'ManyToOne',
+            relation: { targetModel: () => BaseCountryModel },
+          },
+        ],
+        ['Amount', { type: 'monetary', column: { currencyField: 'CurrencyId' } }],
+      ]),
+    } as any)
+  ).toThrow(`targeting ${BASE_CURRENCY_FULL_NAME}`);
+});
+
+test('resolveMonetaryScaleFromPayload ignores non-integer hidden scale alias', () => {
+  const fm = { type: 'monetary', name: 'Amount', column: { currencyField: 'CurrencyId' } } as any;
+  const hidden = buildHiddenScaleAlias('Amount');
+  expect(
+    resolveMonetaryScaleFromPayload(fm, {
+      [hidden]: 'x',
+      CurrencyId: { Id: 'C1', DecimalDigits: 2 },
+    })
+  ).toEqual({ scale: 2, currencyId: 'C1', needsBrowse: false });
+
+  expect(() => resolveMonetaryScaleForWrite(undefined as any, {})).toThrow(/currency required/);
+});

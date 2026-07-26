@@ -599,6 +599,22 @@ func TestConvertFieldToMetadata_CopyContract(t *testing.T) {
 	}
 }
 
+func TestConvertFieldToMetadata_OmitsEmptyScaleAndCurrencyFields(t *testing.T) {
+	field := &meta.IrField{
+		Name:          "Amount",
+		FieldType:     "Monetary",
+		CurrencyField: "",
+		ScaleField:    "",
+	}
+	metadata := convertFieldToMetadata(field)
+	if metadata.CurrencyField != nil {
+		t.Fatalf("expected nil CurrencyField for empty string, got %#v", metadata.CurrencyField)
+	}
+	if metadata.ScaleField != nil {
+		t.Fatalf("expected nil ScaleField for empty string, got %#v", metadata.ScaleField)
+	}
+}
+
 func TestConvertFieldToMetadata_QuotesCurrencyFieldEscapes(t *testing.T) {
 	field := &meta.IrField{
 		Name:          "Amount",

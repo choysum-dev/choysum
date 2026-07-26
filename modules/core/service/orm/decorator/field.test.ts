@@ -812,6 +812,14 @@ test('Field decorator stores monetary currencyField and rejects scale options', 
   }).toThrow('does not support round');
 
   expect(() => {
+    class MonetaryWithScaleField extends BaseModel {
+      @Field({ type: 'monetary', currencyField: 'CurrencyId', scaleField: 'AmountScale' } as any)
+      Amount!: string;
+    }
+    return MonetaryWithScaleField;
+  }).toThrow('scaleField is only supported on decimal fields');
+
+  expect(() => {
     class DecimalWithCurrency extends BaseModel {
       @Field({ type: 'decimal', currencyField: 'CurrencyId' } as any)
       Amount!: string;

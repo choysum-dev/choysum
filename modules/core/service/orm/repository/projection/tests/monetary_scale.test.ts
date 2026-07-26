@@ -105,10 +105,39 @@ test('stampMonetaryScalesForWriteMany batches one browse across entities', async
   expect(browseCalls).toBe(1);
 });
 
+test('stampMonetaryScalesForWrite covers currency-only browse and empty amount edges', async () => {
+  const meta = monetaryMeta();
+  const browser = async (ids: string[]) => {
+    expect(ids).toEqual(['C9']);
+    return new Map([['C9', 3]]);
+  };
+  const currencyOnly = await stampMonetaryScalesForWrite(meta, { CurrencyId: 'C9' } as any, null, browser);
+  expect((currencyOnly as any)[buildHiddenScaleAlias('Amount')]).toBe(3);
+
+  const emptyAmount = await stampMonetaryScalesForWrite(meta, { Amount: '', CurrencyId: { Id: 'C1', DecimalDigits: 1 } } as any);
+  expect((emptyAmount as any)[buildHiddenScaleAlias('Amount')]).toBe(1);
+
+  let manyErr = '';
+  try {
+    await stampMonetaryScalesForWriteMany(meta, [{ input: { Amount: '1.2' } as any }]);
+  } catch (error) {
+    manyErr = String((error as Error).message || error);
+  }
+  expect(manyErr.includes('currency required for monetary field Amount')).toBe(true);
+});
+
 test('collectMonetaryCurrencyFieldCompanions and inline helpers', () => {
   const meta = monetaryMeta();
   expect(collectMonetaryCurrencyFieldCompanions(meta, ['Amount', 'Note', 'Missing'])).toEqual(['CurrencyId']);
   expect(collectMonetaryCurrencyFieldCompanions({ fields: undefined } as any, ['Amount'])).toEqual([]);
+  expect(
+    collectMonetaryCurrencyFieldCompanions(
+      {
+        fields: new Map([['Amount', { type: 'monetary', column: {} }]]),
+      } as any,
+      ['Amount']
+    )
+  ).toEqual([]);
   expect(readCurrencyDigitsInline({ DecimalDigits: 2 })).toBe(2);
   expect(currencyIdOf(' X ')).toBe('X');
 });

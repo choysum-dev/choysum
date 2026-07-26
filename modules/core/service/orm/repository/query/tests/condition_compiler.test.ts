@@ -29,6 +29,19 @@ function createExpressionBuilder() {
   return eb;
 }
 
+test('repository condition compiler wraps monetary rhs like decimal', () => {
+  class DemoModel {}
+  const meta = {
+    type: DemoModel,
+    tableName: () => 'demo_table',
+    fields: new Map([['Amount', { type: 'monetary', column: { name: 'Amount' } }]]),
+  } as any;
+  const eb = createExpressionBuilder();
+  const db: any = { fn: { any: (v: any) => ({ any: v }) } };
+  const result = convertCondition(db, () => 'sqlite', meta, eb, ['Amount', '=', '12.34'] as any, 'demo_table') as any;
+  expect(result).toEqual({ lhs: 'Amount', op: '=', rhs: { $bigdecimal: '12.34' } });
+});
+
 test('repository condition compiler normalizes null comparisons and decimal constants', () => {
   class DemoModel {}
 

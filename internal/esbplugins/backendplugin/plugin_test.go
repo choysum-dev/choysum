@@ -1581,6 +1581,89 @@ func TestBackendPluginSetFieldMeta_AdditionalPaths(t *testing.T) {
 	}
 }
 
+func TestBackendPluginSetFieldMeta_CurrencyFieldPaths(t *testing.T) {
+	testRuntimeScope := newPluginTestScope()
+	fieldDecoratorModuleSpec, fieldDecoratorReferenceIdent := meta.FieldDecoratorModuleSpec(testRuntimeScope)
+	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
+		Env:    testRuntimeScope,
+		Module: &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
+	}}
+
+	result := &parser.ParserResult{
+		Path: "/virtual/modules/auth/service/models/invoice.ts",
+		Model: &meta.IrModel{
+			Name: "Invoice",
+			Fields: []*meta.IrField{
+				{
+					Name: "AmountFromColumn",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments:      []*meta.IrArgument{{Value: `{"type":"monetary","column":{"currencyField":"CurrencyId"}}`, Type: "ObjectLiteral"}},
+					}},
+				},
+				{
+					Name: "AmountFromSelect",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments:      []*meta.IrArgument{{Value: `{"type":"monetary","select":{"currencyField":"PayCurrencyId"}}`, Type: "ObjectLiteral"}},
+					}},
+				},
+				{
+					Name: "AmountFromFlat",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments:      []*meta.IrArgument{{Value: `{"type":"monetary","currencyField":" CurrencyId "}`, Type: "ObjectLiteral"}},
+					}},
+				},
+				{
+					Name: "ScaleFromFlat",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments:      []*meta.IrArgument{{Value: `{"type":"decimal","scaleField":" AmountScale "}`, Type: "ObjectLiteral"}},
+					}},
+				},
+				{
+					Name: "InvalidCurrency",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments:      []*meta.IrArgument{{Value: `{"type":"monetary","column":{"currencyField":1},"currencyField":""}`, Type: "ObjectLiteral"}},
+					}},
+				},
+			},
+		},
+	}
+
+	if err := plugin.setFieldMeta([]*parser.ParserResult{result}); err != nil {
+		t.Fatalf("setFieldMeta() error = %v", err)
+	}
+
+	if got := result.Model.Fields[0].CurrencyField; got != "CurrencyId" {
+		t.Fatalf("column currencyField: got %q", got)
+	}
+	if got := result.Model.Fields[1].CurrencyField; got != "PayCurrencyId" {
+		t.Fatalf("select currencyField: got %q", got)
+	}
+	if got := result.Model.Fields[2].CurrencyField; got != "CurrencyId" {
+		t.Fatalf("flat currencyField trim: got %q", got)
+	}
+	if got := result.Model.Fields[3].ScaleField; got != "AmountScale" {
+		t.Fatalf("flat scaleField trim: got %q", got)
+	}
+	if got := result.Model.Fields[4].CurrencyField; got != "" {
+		t.Fatalf("invalid currencyField must stay empty, got %q", got)
+	}
+}
+
 func TestBackendPluginSetFieldMeta_UsesRuntimeScopeFromDefinePlugins(t *testing.T) {
 	baseScope, baseDB := newPluginSessionTestScope(t)
 	runtimeScope, runtimeDB := newPluginSessionTestScope(t)

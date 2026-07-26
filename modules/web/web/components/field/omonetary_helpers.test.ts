@@ -32,6 +32,9 @@ describe('omonetary_helpers currency resolution', () => {
     expect(resolveCurrencyValue({ nested: { CurrencyId: { Code: 'JPY' } } }, 'CurrencyId', 'nested.Amount')).toEqual({
       Code: 'JPY',
     });
+    expect(
+      resolveCurrencyValue({ CurrencyId: { Code: 'TOP' }, nested: {} }, 'CurrencyId', 'nested.Amount')
+    ).toEqual({ Code: 'TOP' });
     expect(resolveCurrencyValue({}, 'CurrencyId', '')).toBeUndefined();
 
     expect(readCurrencyDigits(null)).toBeUndefined();
@@ -100,6 +103,18 @@ describe('omonetary_helpers display and parse', () => {
       currency: null,
     });
     expect(plain).toBe('1.20');
+
+    expect(
+      formatMonetaryDisplayText('12.3', {
+        scale: 1,
+        roundingMode: Decimal.ROUND_HALF_UP,
+        currency: { Code: 'USD', Symbol: '$' },
+        formatters: {
+          formatCurrencyFromConfig: undefined as any,
+          formatFixedDecimalString: fixed => `FIX:${fixed}`,
+        },
+      })
+    ).toBe('$ FIX:12.3');
   });
 
   it('parses, clamps, validates, and compares', () => {
@@ -116,6 +131,8 @@ describe('omonetary_helpers display and parse', () => {
     expect(parseStrictMonetary('1.23', 2, bounds)?.toString()).toBe('1.23');
     expect(parseStrictMonetary('abc', 2, bounds)).toBeNull();
     expect(parseStrictMonetary('-1', 2, bounds)).toBeNull();
+    expect(parseStrictMonetary('', 2, bounds)).toBeNull();
+    expect(parseStrictMonetary('101', 2, bounds)).toBeNull();
     expect(clampMonetaryValue(new Decimal('1.239'), 2, Decimal.ROUND_HALF_UP, bounds).toString()).toBe('1.24');
     expect(
       clampMonetaryValue(new Decimal('12345678901'), 0, Decimal.ROUND_HALF_UP, { precision: 5 }).toString()
@@ -180,6 +197,13 @@ describe('omonetary_helpers aggregate display', () => {
       resolveAggregateDisplayValue(null, { metrics: { Amount__max: 5 } }, { bindingProp: 'Amount' })
     ).toBe(5);
     expect(resolveAggregateDisplayValue(null, { Amount__min: 1 }, { bindingProp: 'Amount' })).toBe(1);
+    expect(
+      resolveAggregateDisplayValue(null, { metrics: { Amount__count_distinct: 4 } }, { bindingProp: 'line.Amount' })
+    ).toBe(4);
+    expect(
+      resolveAggregateDisplayValue(null, { metrics: { Amount__sum: 1, Amount__avg: 2 } }, { bindingProp: 'Amount' })
+    ).toBeNull();
+    expect(resolveAggregateDisplayValue(null, { Amount__sum: 1, Amount__avg: 2 }, { bindingProp: 'Amount' })).toBeNull();
     expect(resolveAggregateDisplayValue(null, { Other: 1 }, { bindingProp: 'Amount' })).toBeNull();
   });
 

@@ -395,6 +395,18 @@ test('repository read aggregate helpers normalize decimal when aggregate value i
   expect(rows).toEqual([{ Amount__sum: 12.35 }]);
 });
 
+test('repository read aggregate helpers normalize monetary aggregations like decimal', () => {
+  const meta = {
+    fields: new Map([['Amount', { type: 'monetary', column: { currencyField: 'CurrencyId' } }]]),
+  } as any;
+
+  const rows = [{ Amount__sum: '12.3456' }] as any[];
+  const normalized = normalizeRepositoryAggregateDecimals(meta, rows, [{ field: 'Amount', agg: 'sum', alias: 'Amount__sum' }] as any);
+
+  expect(normalized).toBe(rows);
+  expect(typeof rows[0].Amount__sum === 'number' || typeof rows[0].Amount__sum === 'object').toBe(true);
+});
+
 test('repository read aggregate helpers fallback unknown aggregate kind to count expression', () => {
   const { params } = createAggregateParams();
 
