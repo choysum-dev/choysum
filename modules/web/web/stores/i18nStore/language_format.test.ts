@@ -202,5 +202,38 @@ describe('language_format (P2)', () => {
         grouping: [3, 0],
       })
     ).toBe('1.20');
+
+    expect(
+      formatCurrencyFromConfig(12.5, {
+        thousandsSeparator: ',',
+        decimalSeparator: '.',
+        grouping: [3, 0],
+        decimalDigits: 2,
+        position: 'before',
+        spacing: true,
+      }, 'USD')
+    ).toBe('USD 12.50');
+
+    expect(
+      formatCurrencyFromConfig('.5', {
+        thousandsSeparator: ',',
+        decimalSeparator: '.',
+        grouping: [3, 0],
+        decimalDigits: 2,
+        spacing: true,
+      }, 'USD')
+    ).toBe('USD 0.50');
+
+    expect(
+      formatCurrencyFromConfig('-.5', {
+        thousandsSeparator: ',',
+        decimalSeparator: '.',
+        grouping: [3, 0],
+        decimalDigits: 2,
+        symbol: '$',
+        position: 'before',
+        spacing: false,
+      })
+    ).toBe('$-0.50');
   });
 });

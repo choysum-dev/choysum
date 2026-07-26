@@ -72,6 +72,12 @@ test('isCurrencyRelationField accepts Ref and local ManyToOne to base.Currency',
     } as any)
   ).toBe(false);
   expect(isCurrencyRelationField({ type: 'ManyToOneRef', relation: undefined } as any)).toBe(false);
+  expect(
+    isCurrencyRelationField({
+      type: 'ManyToOneRef',
+      relation: { targetModel: (() => 'base.Currency') as any },
+    } as any)
+  ).toBe(false);
 
   @Model('Currency', { application: 'base' })
   class LocalCurrency extends BaseModel {}
@@ -193,6 +199,12 @@ test('resolveMonetaryScaleFromPayload / ForWrite / FromRow cover S1 and E1 branc
   expect(() => resolveMonetaryScaleFromPayload(fm, {})).toThrow(/currency required/);
   expect(() =>
     resolveMonetaryScaleFromPayload({ type: 'monetary', name: 'Amount', column: {} } as any, { Amount: 1 })
+  ).toThrow(/currency required/);
+  expect(() =>
+    resolveMonetaryScaleFromPayload({ type: 'monetary', name: '', column: { currencyField: 'CurrencyId' } } as any, {})
+  ).toThrow(/currency required for monetary field CurrencyId/);
+  expect(() =>
+    resolveMonetaryScaleFromPayload({ type: 'monetary', name: 'Amount', column: { currencyField: 'CurrencyId' } } as any, null)
   ).toThrow(/currency required/);
 
   expect(resolveMonetaryScaleForWrite(fm, { [hidden]: 4 })).toBe(4);

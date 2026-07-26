@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { KernelValidationError, validateFields } from '..';
+import { buildHiddenScaleAlias } from '../../hidden_scale_alias';
 
 function expectKernelError(fn: () => void, code: string, field: string) {
   let error: unknown;
@@ -64,6 +65,17 @@ test('repository kernel validation quantizes monetary using stamped currency dig
 
   // Empty / missing monetary values are skipped.
   expect(() => validateFields(meta, { Amount: '' }, { rules: ['decimal'] })).not.toThrow();
+});
+
+test('repository kernel validation stamps monetary scale when column metadata is absent', () => {
+  const alias = buildHiddenScaleAlias('Amount');
+  const meta = {
+    fields: new Map<string, any>([['Amount', { type: 'monetary', name: 'Amount', column: undefined }]]),
+  } as any;
+
+  expect(() =>
+    validateFields(meta, { Amount: '1.25', [alias]: 2 }, { rules: ['decimal'] })
+  ).not.toThrow();
 });
 
 test('repository kernel validation enforces many2one and many2one-ref reference shapes', () => {

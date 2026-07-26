@@ -632,3 +632,29 @@ test('FieldsGet exposes monetary type and currencyField', async () => {
     resetTestState();
   }
 });
+
+@Model('FieldsGetDecimalScaleWidget', { application: 'demo' })
+class FieldsGetDecimalScaleWidget extends BaseModel {
+  @Field({ type: 'int', string: 'Scale' })
+  AmountScale!: number;
+
+  @Field({ type: 'decimal', scaleField: 'AmountScale', string: 'Amount' })
+  Amount!: any;
+}
+
+test('FieldsGet exposes decimal scaleField', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'en_US' });
+  setTestI18nBridge({ t: (_m, _l, _s, src) => src });
+  RepositoryFactory.setRepository(FieldsGetDecimalScaleWidget as any, {
+    getDenyReadFields: async () => ({ denyReadFields: [] }),
+  } as any);
+
+  try {
+    const out = await FieldsGetDecimalScaleWidget.FieldsGet(['Amount'], ['type', 'scaleField']);
+    expect(out.Amount?.type).toBe('decimal');
+    expect(out.Amount?.scaleField).toBe('AmountScale');
+  } finally {
+    resetTestState();
+  }
+});

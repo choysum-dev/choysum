@@ -146,6 +146,8 @@ describe('omonetary_helpers display and parse', () => {
     expect(parseStrictMonetary('-1', 2, bounds)).toBeNull();
     expect(parseStrictMonetary('', 2, bounds)).toBeNull();
     expect(parseStrictMonetary('101', 2, bounds)).toBeNull();
+    expect(parseStrictMonetary('Infinity', 2, { precision: 10 })).toBeNull();
+    expect(parseStrictMonetary('99', 0, { precision: 1 })).toBeNull();
     expect(clampMonetaryValue(new Decimal('1.239'), 2, Decimal.ROUND_HALF_UP, bounds).toString()).toBe('1.24');
     expect(
       clampMonetaryValue(new Decimal('12345678901'), 0, Decimal.ROUND_HALF_UP, { precision: 5 }).toString()
@@ -230,6 +232,25 @@ describe('omonetary_helpers aggregate display', () => {
     ).toBeNull();
     expect(resolveAggregateDisplayValue(null, { Amount__sum: 1, Amount__avg: 2 }, { bindingProp: 'Amount' })).toBeNull();
     expect(resolveAggregateDisplayValue(null, { Other: 1 }, { bindingProp: 'Amount' })).toBeNull();
+
+    expect(
+      resolveAggregateDisplayValue(null, { metrics: { Amount__sum: 9 } }, { bindingProp: undefined as any, agg: 'sum' })
+    ).toBeNull();
+    expect(
+      resolveAggregateDisplayValue(null, { metrics: { custom: 1 } }, { bindingProp: 'Amount', agg: { alias: 'custom' } as any })
+    ).toBeNull();
+    expect(
+      resolveAggregateDisplayValue(null, { metrics: { Amount__sum: 7 } }, { bindingProp: 'Amount', agg: { agg: 'sum', alias: '   ' } })
+    ).toBe(7);
+    expect(
+      resolveAggregateDisplayValue(null, { metrics: { Amount__sum: null } }, { bindingProp: 'Amount' })
+    ).toBeNull();
+    expect(
+      resolveAggregateDisplayValue(null, { Amount__sum: 4 }, { bindingProp: 'line.Amount' })
+    ).toBe(4);
+    expect(
+      resolveAggregateDisplayValue(null, { Amount__sum: null }, { bindingProp: 'Amount' })
+    ).toBeNull();
   });
 
   it('builds currency sibling registration paths', () => {

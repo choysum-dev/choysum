@@ -325,8 +325,7 @@ const internalRule = {
       value,
       scale,
       { precision: effectivePrecision.value, min: minD.value, max: maxD.value },
-      (msg, a, b) => {
-        if (a !== undefined && b !== undefined) return _t(msg as any, a as any, b as any);
+      (msg, a) => {
         if (a !== undefined) return _t(msg as any, a as any);
         return _t(msg as any);
       }

@@ -216,6 +216,14 @@ test('repository update sanitized payload stamps monetary digits and rejects mis
     err = e;
   }
   expect(String((err as Error)?.message || err)).toMatch(/same currency decimal digits/);
+
+  // Missing current row → current: null via ?? while inline currency still stamps.
+  const missingCurrent = await prepareRepositoryUpdateSanitizedPayload(
+    makeDeps([{ Id: 'r1', CurrencyId: { Id: 'C1', DecimalDigits: 2 } }]) as any,
+    { Amount: '1.20', CurrencyId: { Id: 'C1', DecimalDigits: 2 } } as any,
+    ['r1', 'ghost']
+  );
+  expect((missingCurrent as any).$dec$Amount__scale).toBe(2);
 });
 
 test('repository update sanitized payload rejects bulk translated field writes', async () => {

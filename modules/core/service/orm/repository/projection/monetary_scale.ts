@@ -82,9 +82,7 @@ export async function stampMonetaryScalesForWrite(
       pendingFields.push({ fieldName, currencyId: resolved.currencyId });
       continue;
     }
-    if (writingAmount) {
-      throw monetaryCurrencyRequiredError(fieldName);
-    }
+    // resolveMonetaryScaleFromPayload already throws E1 when currency cannot be resolved.
   }
 
   if (pendingFields.length) {

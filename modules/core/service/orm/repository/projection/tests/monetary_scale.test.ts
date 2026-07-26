@@ -177,6 +177,11 @@ test('browseCurrencyDecimalDigits uses BaseModel.resolveModelConstructor when pr
     expect((await browseCurrencyDecimalDigits(['C1'])).size).toBe(0);
 
     (BaseModel as any).resolveModelConstructor = () => ({
+      BrowseMany: async () => null,
+    });
+    expect((await browseCurrencyDecimalDigits(['C1'])).size).toBe(0);
+
+    (BaseModel as any).resolveModelConstructor = () => ({
       BrowseMany: async () => [
         { Id: 'C1', DecimalDigits: 2 },
         { Id: '', DecimalDigits: 2 },

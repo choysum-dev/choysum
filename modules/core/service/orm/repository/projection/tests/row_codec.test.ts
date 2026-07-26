@@ -107,6 +107,8 @@ test('repository row codec parse helpers and scale resolvers cover fallback bran
   expect(resolveDecimalScaleFromRow(meta, undefined as any, 'Amount', {})).toBeUndefined();
   expect(resolveDecimalScaleFromRow(meta, { type: 'decimal', column: { scale: 4 } } as any, 'Amount', {})).toBe(4);
   expect(resolveDecimalScaleFromRow(meta, { type: 'decimal', column: {} } as any, 'Amount', {})).toBeUndefined();
+  expect(resolveDecimalScaleFromRow(meta, { type: 'varchar' } as any, 'X', {})).toBeUndefined();
+  expect(resolveDecimalScaleForWrite(undefined, {} as any)).toBeUndefined();
   expect(resolveDecimalScaleFromRow(meta, { type: 'decimal', column: { scaleField: 'AmountScale' } } as any, 'Amount', { AmountScale: '2' })).toBe(2);
   expect(
     resolveDecimalScaleFromRow(meta, { type: 'decimal', column: { scaleField: 'AmountScale' } } as any, 'Amount', { [buildHiddenScaleAlias('Amount')]: 1 })

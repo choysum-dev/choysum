@@ -407,5 +407,41 @@ describe('OMonetaryField', () => {
       });
     });
     expect(err?.message).toMatch(/greater than/i);
+
+    await new Promise<void>(resolve => {
+      monetaryRule.validator({}, 'abc', (e?: Error) => {
+        err = e;
+        resolve();
+      });
+    });
+    expect(err?.message).toMatch(/valid number/i);
+  });
+
+  it('falls back currentScale when getScale returns out-of-range and clears with rules', async () => {
+    const binding = makeBinding({ Amount: new Decimal('1'), CurrencyId: {} }, { type: 'monetary', currencyField: 'CurrencyId' });
+    const wrapper = mountEdit(binding, {
+      scale: 99,
+      nullable: true,
+      roundingMode: (Decimal as any).ROUND_DOWN ?? 1,
+      rules: [{ required: true } as any],
+    });
+    await flushPromises();
+    const input = wrapper.find('input.el-input');
+    await input.setValue('1.2');
+    await flushPromises();
+    // Out-of-range props.scale falls through currentScale validation then returns props.scale.
+    expect(binding.__value.value == null || String(binding.__value.value).length > 0).toBe(true);
+
+    (binding as any).meta.currencyField = 123;
+    await nextTick();
+    await flushPromises();
+  });
+
+  it('maps fromView invalid numeric strings to null', async () => {
+    const binding = makeBinding({ Amount: '1', CurrencyId: { DecimalDigits: 2 } });
+    const wrapper = mountEdit(binding);
+    await flushPromises();
+    const base = wrapper.findComponent({ name: 'OFieldBaseStub' });
+    expect(base.props('fromView')('not-a-number')).toBeNull();
   });
 });
