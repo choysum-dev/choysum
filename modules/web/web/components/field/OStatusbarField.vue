@@ -25,7 +25,7 @@ SPDX-License-Identifier: Apache-2.0
     <template #edit="{ fieldValue, record }">
       <el-segmented
         class="o-statusbar"
-        :model-value="normalizeValue(fieldValue().value)"
+        :model-value="normalizeSegmentedModelValue(fieldValue().value)"
         :options="segmentedOptions(record)"
         :disabled="!isInteractive || pending"
         size="default"
@@ -36,7 +36,7 @@ SPDX-License-Identifier: Apache-2.0
     <template #display="{ fieldValue, record }">
       <el-segmented
         class="o-statusbar"
-        :model-value="normalizeValue(fieldValue().value)"
+        :model-value="normalizeSegmentedModelValue(fieldValue().value)"
         :options="segmentedOptions(record)"
         :disabled="!isInteractive || pending"
         size="default"
@@ -60,8 +60,17 @@ import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useF
 import { createTranslate } from '@/web/web/i18n';
 import { FIELD_PRESENTATION_FIELDS_GET_ATTRS } from '@/web/web/stores/fieldsGet';
 import {
-  gateBeforeChange,
+  applyStatusbarSelect,
+  currentFromFieldValue,
+  currentFromRowRef,
+  fromStatusbarView,
+  normalizeSegmentedModelValue,
+  pickRootOnchangeSelection,
   resolveStatusbarOptions,
+  resolveStatusbarWhitelist,
+  toSegmentedOptions,
+  toStatusbarView,
+  validateStatusbarValue,
   type StatusbarBeforeChange,
   type StatusbarMetaOption,
   type StatusbarOption,
@@ -122,8 +131,8 @@ const props = withDefaults(
 
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
 
-const toView = (raw: any): string | null => (raw == null ? null : String(raw));
-const fromView = (v: string | null) => (v ?? null) as unknown as V;
+const toView = (raw: any): string | null => toStatusbarView(raw);
+const fromView = (v: string | null) => fromStatusbarView(v) as unknown as V;
 
 const lastOnchangeResult = inject<Ref<any | null>>('lastOnchangeResult', ref(null));
 const pending = ref(false);
@@ -173,11 +182,7 @@ const exprReadonly = computed(() => {
 
 const isInteractive = computed(() => props.clickable && !props.disabled && !exprReadonly.value && !metaReadonly.value);
 
-const whitelist = computed(() => {
-  if (Array.isArray(props.statusbarVisible) && props.statusbarVisible.length > 0) return props.statusbarVisible;
-  if (Array.isArray(props.selection) && props.selection.length > 0) return props.selection;
-  return null;
-});
+const whitelist = computed(() => resolveStatusbarWhitelist(props.statusbarVisible, props.selection));
 
 onMounted(() => {
   const store = modelStore.value;
@@ -186,40 +191,12 @@ onMounted(() => {
   void store.ensureFieldsGet([leaf], [...FIELD_PRESENTATION_FIELDS_GET_ATTRS]);
 });
 
-function pickOnchangeSelection(): { values: string[]; disabled?: string[] } | null {
-  const raw = lastOnchangeResult.value?.selection || [];
-  if (!Array.isArray(raw) || !raw.length) return null;
-  const key = baseField.value;
-  const m = raw.find((s: any) => s && s.field === key);
-  if (!m) return null;
-  return {
-    values: Array.isArray(m.selection) ? m.selection : [],
-    disabled: Array.isArray(m.disabled) ? m.disabled : undefined,
-  };
-}
-
-function normalizeValue(raw: unknown): string | undefined {
-  if (raw == null || raw === '') return undefined;
-  return String(raw);
-}
-
 function optionsFor(rowRef?: any): StatusbarOption[] {
-  const filt = pickOnchangeSelection();
-  let current: string | null = null;
-  try {
-    if (rowRef != null) {
-      const row = typeof rowRef === 'function' ? rowRef() : rowRef;
-      const rec = row && typeof row === 'object' && 'value' in row ? (row as any).value : row;
-      const leaf = leafKey.value;
-      if (rec && leaf && rec[leaf] != null) current = String(rec[leaf]);
-    }
-  } catch {
-    current = null;
-  }
+  const filt = pickRootOnchangeSelection(lastOnchangeResult.value, baseField.value);
+  let current = currentFromRowRef(rowRef, leafKey.value);
   if (current == null) {
     try {
-      const v = binding.fieldRef().value;
-      current = v != null && v !== '' ? String(v) : null;
+      current = currentFromFieldValue(binding.fieldRef().value);
     } catch {
       current = null;
     }
@@ -235,46 +212,47 @@ function optionsFor(rowRef?: any): StatusbarOption[] {
 }
 
 function segmentedOptions(rowRef?: any) {
-  return optionsFor(rowRef).map(o => ({
-    label: o.label,
-    value: o.value,
-    disabled: o.disabled,
-  }));
+  return toSegmentedOptions(optionsFor(rowRef));
 }
 
 async function onSelect(getter: () => WritableComputedRef<string | null>, raw: string | number | boolean) {
   if (!isInteractive.value || pending.value) return;
-  const next = raw == null ? '' : String(raw);
-  if (!next) return;
   const current = getter().value != null ? String(getter().value) : null;
-  if (next === current) return;
-
-  const allowed = optionsFor().some(o => o.value === next && !o.disabled);
-  if (!allowed) return;
-
   pending.value = true;
   try {
-    const ok = await gateBeforeChange(props.beforeChange, next, current);
-    if (ok) getter().value = next as any;
+    await applyStatusbarSelect({
+      interactive: true,
+      pending: false,
+      nextRaw: raw,
+      current,
+      options: optionsFor(),
+      beforeChange: props.beforeChange,
+      write: next => {
+        getter().value = next as any;
+      },
+    });
   } finally {
     pending.value = false;
   }
 }
 
-const mergedFormItemProps = computed(() => ({
-  class: 'o-statusbar-form-item',
-  ...(props.formItemProps || {}),
-}));
+const mergedFormItemProps = computed(() => {
+  const extra = props.formItemProps || {};
+  const extraClass = (extra as { class?: unknown }).class;
+  return {
+    ...extra,
+    class: ['o-statusbar-form-item', extraClass].flat().filter(Boolean),
+  };
+});
 
 const internalRule = {
   type: 'string',
   validator: (_r: unknown, value: unknown, cb: (error?: Error) => void) => {
-    // Treat null/undefined/'' as unset (empty is stripped from option pools).
-    if (value == null || value === '') return cb();
-    if (typeof value !== 'string') return cb(new Error(_t('Value must be a string')));
-    const ok = optionsFor().some(o => o.value === value);
-    if (!ok) return cb(new Error(_t('Invalid option value: %s', value)));
-    cb();
+    const err = validateStatusbarValue(value, optionsFor(), {
+      mustBeString: _t('Value must be a string'),
+      invalid: v => _t('Invalid option value: %s', v),
+    });
+    err ? cb(err) : cb();
   },
 } as RuleItem;
 const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internalRule]);

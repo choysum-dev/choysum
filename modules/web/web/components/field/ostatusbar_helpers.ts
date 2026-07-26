@@ -11,6 +11,64 @@ export type StatusbarOption = {
 
 export type StatusbarBeforeChange = (next: string, prev: string | null) => boolean | Promise<boolean>;
 
+export function toStatusbarView(raw: unknown): string | null {
+  return raw == null ? null : String(raw);
+}
+
+export function fromStatusbarView(v: string | null): string | null {
+  return v ?? null;
+}
+
+export function normalizeSegmentedModelValue(raw: unknown): string | undefined {
+  if (raw == null || raw === '') return undefined;
+  return String(raw);
+}
+
+export function resolveStatusbarWhitelist(
+  statusbarVisible?: string[] | null,
+  selection?: string[] | null
+): string[] | null {
+  if (Array.isArray(statusbarVisible) && statusbarVisible.length > 0) return statusbarVisible;
+  if (Array.isArray(selection) && selection.length > 0) return selection;
+  return null;
+}
+
+export function pickRootOnchangeSelection(
+  lastOnchange: { selection?: unknown } | null | undefined,
+  field: string
+): { values: string[]; disabled?: string[] } | null {
+  const raw = lastOnchange?.selection;
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const m = raw.find((s: any) => s && s.field === field);
+  if (!m) return null;
+  return {
+    values: Array.isArray(m.selection) ? m.selection : [],
+    disabled: Array.isArray(m.disabled) ? m.disabled : undefined,
+  };
+}
+
+export function currentFromRowRef(rowRef: unknown, leaf: string): string | null {
+  if (rowRef == null || !leaf) return null;
+  try {
+    const row = typeof rowRef === 'function' ? (rowRef as () => unknown)() : rowRef;
+    const rec = row && typeof row === 'object' && 'value' in (row as object) ? (row as { value: unknown }).value : row;
+    if (rec && typeof rec === 'object' && (rec as any)[leaf] != null) {
+      return String((rec as any)[leaf]);
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export function currentFromFieldValue(raw: unknown): string | null {
+  try {
+    return raw != null && raw !== '' ? String(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Resolve visible statusbar options (D5):
  * meta → optional onchange filter → whitelist order → ensure current value is present.
@@ -89,6 +147,34 @@ export function resolveStatusbarOptions(args: {
   return out;
 }
 
+export function toSegmentedOptions(options: StatusbarOption[]) {
+  return options.map(o => ({
+    label: o.label,
+    value: o.value,
+    disabled: o.disabled,
+  }));
+}
+
+/** Returns an Error when invalid; null when ok / unset. */
+export function validateStatusbarValue(
+  value: unknown,
+  options: Array<{ value: string }>,
+  messages: { mustBeString: string; invalid: (v: string) => string }
+): Error | null {
+  if (value == null || value === '') return null;
+  if (typeof value !== 'string') return new Error(messages.mustBeString);
+  const ok = options.some(o => o.value === value);
+  if (!ok) return new Error(messages.invalid(value));
+  return null;
+}
+
+export function canSelectStatusbarValue(
+  next: string,
+  options: StatusbarOption[]
+): boolean {
+  return options.some(o => o.value === next && !o.disabled);
+}
+
 /** D7: no hook → allow; only explicit `true` proceeds; throw/reject → cancel. */
 export async function gateBeforeChange(
   beforeChange: StatusbarBeforeChange | undefined,
@@ -101,4 +187,24 @@ export async function gateBeforeChange(
   } catch {
     return false;
   }
+}
+
+export async function applyStatusbarSelect(args: {
+  interactive: boolean;
+  pending: boolean;
+  nextRaw: string | number | boolean | null | undefined;
+  current: string | null;
+  options: StatusbarOption[];
+  beforeChange?: StatusbarBeforeChange;
+  write: (next: string) => void;
+}): Promise<'skipped' | 'cancelled' | 'written'> {
+  if (!args.interactive || args.pending) return 'skipped';
+  const next = args.nextRaw == null ? '' : String(args.nextRaw);
+  if (!next) return 'skipped';
+  if (next === args.current) return 'skipped';
+  if (!canSelectStatusbarValue(next, args.options)) return 'skipped';
+  const ok = await gateBeforeChange(args.beforeChange, next, args.current);
+  if (!ok) return 'cancelled';
+  args.write(next);
+  return 'written';
 }
