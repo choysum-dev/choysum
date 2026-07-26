@@ -176,6 +176,10 @@ function toDisplayText(v: any, getScale: () => number, record?: any) {
         formatCurrencyFromConfig,
         formatFixedDecimalString,
         numberFormat: i18n.currentLocale?.numberFormat,
+        currencyFormat: {
+          position: i18n.currentLocale?.currencyFormat?.position,
+          spacing: i18n.currentLocale?.currencyFormat?.spacing,
+        },
       },
     });
   } catch {

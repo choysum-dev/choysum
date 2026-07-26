@@ -3,6 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import Decimal from '@/core/utils/decimal';
+import { formatCurrencyFromConfig, formatFixedDecimalString } from '@/web/web/stores/i18nStore';
 import {
   asMonetaryDecimal,
   clampMonetaryValue,
@@ -63,27 +64,57 @@ describe('omonetary_helpers currency resolution', () => {
 });
 
 describe('omonetary_helpers display and parse', () => {
-  it('formats with code, symbol, and fallbacks', () => {
+  it('formats with symbol preferred over code, and Language position/spacing', () => {
     expect(formatMonetaryDisplayText(null, { scale: 2, roundingMode: Decimal.ROUND_HALF_UP, currency: null })).toBe('');
     expect(formatMonetaryDisplayText('bad', { scale: 2, roundingMode: Decimal.ROUND_HALF_UP, currency: null })).toBe('');
 
-    const withCode = formatMonetaryDisplayText('12.345', {
+    // Symbol wins over Code when both are present.
+    const withSymbol = formatMonetaryDisplayText('12.345', {
+      scale: 2,
+      roundingMode: Decimal.ROUND_HALF_UP,
+      currency: { Code: 'USD', Symbol: '$' },
+      formatters: {
+        formatCurrencyFromConfig,
+        formatFixedDecimalString,
+        numberFormat: { thousandsSeparator: ',', decimalSeparator: '.', grouping: [3, 0] },
+        currencyFormat: { position: 'before', spacing: true },
+      },
+    });
+    expect(withSymbol).toBe('$ 12.35');
+
+    // No Symbol → fall back to Code.
+    const withCodeOnly = formatMonetaryDisplayText('12.345', {
       scale: 2,
       roundingMode: Decimal.ROUND_HALF_UP,
       currency: { Code: 'USD' },
       formatters: {
-        formatCurrencyFromConfig: (_v, _c, code) => `FMT:${code}`,
-        formatFixedDecimalString: fixed => `FIX:${fixed}`,
-        numberFormat: { decimalDigits: 2 },
+        formatCurrencyFromConfig,
+        formatFixedDecimalString,
+        numberFormat: { thousandsSeparator: ',', decimalSeparator: '.', grouping: [3, 0] },
+        currencyFormat: { position: 'before', spacing: true },
       },
     });
-    expect(withCode).toBe('FMT:USD');
+    expect(withCodeOnly).toBe('USD 12.35');
+
+    // Language position=after (common for ar / some EU locales) — not the same as document RTL.
+    const after = formatMonetaryDisplayText('12.345', {
+      scale: 2,
+      roundingMode: Decimal.ROUND_HALF_UP,
+      currency: { Symbol: '€' },
+      formatters: {
+        formatCurrencyFromConfig,
+        formatFixedDecimalString,
+        numberFormat: { thousandsSeparator: '.', decimalSeparator: ',', grouping: [3, 0] },
+        currencyFormat: { position: 'after', spacing: true },
+      },
+    });
+    expect(after).toBe('12,35 €');
 
     let currencyFmtArg: number | string | undefined;
     const large = formatMonetaryDisplayText('9007199254740993.12', {
       scale: 2,
       roundingMode: Decimal.ROUND_HALF_UP,
-      currency: { Code: 'USD' },
+      currency: { Symbol: '$', Code: 'USD' },
       formatters: {
         formatCurrencyFromConfig: (v, _c, code) => {
           currencyFmtArg = v;
@@ -97,17 +128,6 @@ describe('omonetary_helpers display and parse', () => {
     expect(currencyFmtArg).toBe('9007199254740993.12');
     expect(large).toBe('FMT:USD:9007199254740993.12');
 
-    const withSymbol = formatMonetaryDisplayText('12.345', {
-      scale: 2,
-      roundingMode: Decimal.ROUND_HALF_UP,
-      currency: { Symbol: '$' },
-      formatters: {
-        formatCurrencyFromConfig: () => 'unused',
-        formatFixedDecimalString: fixed => fixed,
-      },
-    });
-    expect(withSymbol).toBe('$ 12.35');
-
     const plain = formatMonetaryDisplayText(new Decimal('1.2'), {
       scale: 2,
       roundingMode: Decimal.ROUND_HALF_UP,
@@ -115,6 +135,7 @@ describe('omonetary_helpers display and parse', () => {
     });
     expect(plain).toBe('1.20');
 
+    // No formatCurrencyFromConfig → still prefer Symbol with layout.
     expect(
       formatMonetaryDisplayText('12.3', {
         scale: 1,
@@ -123,6 +144,7 @@ describe('omonetary_helpers display and parse', () => {
         formatters: {
           formatCurrencyFromConfig: undefined as any,
           formatFixedDecimalString: fixed => `FIX:${fixed}`,
+          currencyFormat: { position: 'before', spacing: true },
         },
       })
     ).toBe('$ FIX:12.3');

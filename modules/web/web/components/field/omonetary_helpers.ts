@@ -70,6 +70,11 @@ export function asMonetaryDecimal(v: unknown): Decimal | null {
   }
 }
 
+export type MonetaryCurrencyFormat = {
+  position?: 'before' | 'after';
+  spacing?: boolean;
+};
+
 export type MonetaryDisplayFormatters = {
   formatCurrencyFromConfig: typeof formatCurrencyFromConfig;
   formatFixedDecimalString: typeof formatFixedDecimalString;
@@ -79,9 +84,17 @@ export type MonetaryDisplayFormatters = {
     grouping?: number[];
     decimalDigits?: number;
   };
+  /** Language/catalog layout only — do not pass catalog symbol (row Currency.Symbol wins). */
+  currencyFormat?: MonetaryCurrencyFormat;
 };
 
-/** Format a monetary amount for display (symbol/code + quantized digits). */
+function composeCurrencyMark(mark: string, amount: string, layout?: MonetaryCurrencyFormat): string {
+  const space = layout?.spacing ? ' ' : '';
+  if (layout?.position === 'after') return `${amount}${space}${mark}`;
+  return `${mark}${space}${amount}`;
+}
+
+/** Format a monetary amount for display (Currency.Symbol preferred, else Code). */
 export function formatMonetaryDisplayText(
   value: unknown,
   opts: {
@@ -98,18 +111,30 @@ export function formatMonetaryDisplayText(
   try {
     const q = d.toDecimalPlaces(scale, opts.roundingMode);
     const fixed = q.toFixed(scale);
-    const code = readCurrencyCode(opts.currency);
     const symbol = readCurrencySymbol(opts.currency);
+    const code = readCurrencyCode(opts.currency);
+    const mark = symbol || code;
     const formatters = opts.formatters;
+    const layout = formatters?.currencyFormat;
     const numberFormat = { ...(formatters?.numberFormat || {}), decimalDigits: scale };
-    if (code && formatters?.formatCurrencyFromConfig) {
-      // Pass the quantized decimal string (not Number) to preserve full precision.
-      return formatters.formatCurrencyFromConfig(fixed, numberFormat, code);
+    if (mark && formatters?.formatCurrencyFromConfig) {
+      // Symbol from the currency row; Language only supplies position/spacing (+ separators via numberFormat).
+      return formatters.formatCurrencyFromConfig(
+        fixed,
+        {
+          ...numberFormat,
+          position: layout?.position,
+          spacing: layout?.spacing,
+          symbol,
+          code,
+        },
+        code
+      );
     }
     const formatted = formatters?.formatFixedDecimalString
       ? formatters.formatFixedDecimalString(fixed, numberFormat)
       : fixed;
-    return symbol ? `${symbol} ${formatted}` : formatted;
+    return mark ? composeCurrencyMark(mark, formatted, layout) : formatted;
   } catch {
     return d.toString();
   }
