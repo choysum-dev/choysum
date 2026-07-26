@@ -53,8 +53,13 @@ const staticMeta: WebFieldMetadata = {
   ],
 };
 
-function mountStatusbar(props: Record<string, unknown>, binding: UseField) {
+function mountStatusbar(
+  props: Record<string, unknown>,
+  binding: UseField,
+  opts?: { slot?: 'edit' | 'display' }
+) {
   const fieldRef = binding.fieldRef();
+  const slotName = opts?.slot ?? 'edit';
   return mount(OStatusbarField as any, {
     props: {
       binding,
@@ -68,11 +73,11 @@ function mountStatusbar(props: Record<string, unknown>, binding: UseField) {
           setup() {
             const fieldValue = () => fieldRef as any;
             const record = () => ({ Id: '1', State: (fieldRef as any).value });
-            return { fieldValue, record };
+            return { fieldValue, record, slotName };
           },
           template: `
             <div class="ob">
-              <slot name="edit" :fieldValue="fieldValue" :record="record" />
+              <slot :name="slotName" :fieldValue="fieldValue" :record="record" />
             </div>
           `,
         },
@@ -171,6 +176,46 @@ describe('OStatusbarField', () => {
     await wrapper.get('[data-value="confirmed"]').trigger('click');
     await flushPromises();
     expect(value.value).toBe('confirmed');
+  });
+
+  it('clickable still writes from display slot (viewMode-independent)', async () => {
+    const helpers = createFieldsGetHelpers(
+      { fieldsMetadata: { State: staticMeta }, FieldsGet: async () => ({ State: staticMeta }) },
+      { getLang: () => 'en_US' }
+    );
+    const store = { fieldsMetadata: { State: staticMeta }, ...helpers };
+    const { binding, value } = makeBinding({ meta: staticMeta, store, value: 'draft', isEditMode: false });
+    const wrapper = mountStatusbar({ clickable: true }, binding, { slot: 'display' });
+    await flushPromises();
+    expect(wrapper.get('.o-statusbar').attributes('data-disabled')).toBe('false');
+    await wrapper.get('[data-value="done"]').trigger('click');
+    await flushPromises();
+    expect(value.value).toBe('done');
+  });
+
+  it('fails closed when readonly predicate throws', async () => {
+    const helpers = createFieldsGetHelpers(
+      { fieldsMetadata: { State: staticMeta }, FieldsGet: async () => ({ State: staticMeta }) },
+      { getLang: () => 'en_US' }
+    );
+    const store = { fieldsMetadata: { State: staticMeta }, ...helpers };
+    const { binding } = makeBinding({ meta: staticMeta, store, value: 'draft' });
+    const wrapper = mountStatusbar(
+      {
+        clickable: true,
+        readonly: () => {
+          throw new Error('boom');
+        },
+      },
+      binding
+    );
+    await flushPromises();
+    expect(wrapper.get('.o-statusbar').attributes('data-disabled')).toBe('true');
+  });
+
+  it('treats empty string as unset in internal validation (source contract)', () => {
+    const src = readFileSync(resolve(__dirname, './OStatusbarField.vue'), 'utf8');
+    expect(src).toMatch(/value == null \|\| value === ''/);
   });
 
   it('applies statusbarVisible whitelist and keeps current fallback', async () => {

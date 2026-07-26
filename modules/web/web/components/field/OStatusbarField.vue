@@ -164,7 +164,8 @@ const exprReadonly = computed(() => {
       const value = (binding.fieldRef().value ?? null) as V | null;
       return !!r({ record, value, env: binding.env });
     } catch {
-      return false;
+      // Fail closed: indeterminate readonly must not become writable.
+      return true;
     }
   }
   return false;
@@ -268,7 +269,8 @@ const mergedFormItemProps = computed(() => ({
 const internalRule = {
   type: 'string',
   validator: (_r: unknown, value: unknown, cb: (error?: Error) => void) => {
-    if (value == null) return cb();
+    // Treat null/undefined/'' as unset (empty is stripped from option pools).
+    if (value == null || value === '') return cb();
     if (typeof value !== 'string') return cb(new Error(_t('Value must be a string')));
     const ok = optionsFor().some(o => o.value === value);
     if (!ok) return cb(new Error(_t('Invalid option value: %s', value)));
