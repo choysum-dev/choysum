@@ -140,27 +140,30 @@ const pending = ref(false);
 const baseField = computed(() => String(binding.prop));
 const leafKey = computed(() => {
   const segs = baseField.value.split('.').filter(Boolean);
-  return segs[segs.length - 1] || '';
+  return segs.length > 0 ? segs[segs.length - 1]! : '';
 });
 
-const modelStore = computed(() => (binding.store || props.store) as WebModelStore<T> | undefined);
+const modelStore = computed(() => (binding.store ?? props.store) as WebModelStore<T> | undefined);
 
 const metaOptions = computed<StatusbarMetaOption[]>(() => {
   const leaf = leafKey.value;
   const store = modelStore.value;
-  const meta = (leaf && store?.getFieldMeta?.(leaf)) || binding.meta;
+  const fromStore = leaf && store?.getFieldMeta ? store.getFieldMeta(leaf) : undefined;
+  const meta = fromStore || binding.meta;
   const sel = meta?.selection;
   if (!Array.isArray(sel) || sel.length === 0) return [];
-  return sel.map((item: { value: unknown; label?: unknown }) => ({
-    value: String(item.value),
-    label: String(item.label ?? item.value),
-  }));
+  return sel.map((item: { value: unknown; label?: unknown }) => {
+    const value = String(item.value);
+    const label = item.label == null ? value : String(item.label);
+    return { value, label };
+  });
 });
 
 const metaReadonly = computed(() => {
   const leaf = leafKey.value;
   const store = modelStore.value;
-  const meta = (leaf && store?.getFieldMeta?.(leaf)) || binding.meta;
+  const fromStore = leaf && store?.getFieldMeta ? store.getFieldMeta(leaf) : undefined;
+  const meta = fromStore || binding.meta;
   return meta?.isReadonly === true;
 });
 
@@ -195,11 +198,7 @@ function optionsFor(rowRef?: any): StatusbarOption[] {
   const filt = pickRootOnchangeSelection(lastOnchangeResult.value, baseField.value);
   let current = currentFromRowRef(rowRef, leafKey.value);
   if (current == null) {
-    try {
-      current = currentFromFieldValue(binding.fieldRef().value);
-    } catch {
-      current = null;
-    }
+    current = readFieldCurrent();
   }
 
   return resolveStatusbarOptions({
@@ -209,6 +208,14 @@ function optionsFor(rowRef?: any): StatusbarOption[] {
     onchangeValues: filt?.values,
     onchangeDisabled: filt?.disabled,
   });
+}
+
+function readFieldCurrent(): string | null {
+  try {
+    return currentFromFieldValue(binding.fieldRef().value);
+  } catch {
+    return null;
+  }
 }
 
 function segmentedOptions(rowRef?: any) {
@@ -237,11 +244,16 @@ async function onSelect(getter: () => WritableComputedRef<string | null>, raw: s
 }
 
 const mergedFormItemProps = computed(() => {
-  const extra = props.formItemProps || {};
+  const extra = props.formItemProps ?? {};
   const extraClass = (extra as { class?: unknown }).class;
+  const classes = ['o-statusbar-form-item'];
+  if (extraClass != null && extraClass !== '') {
+    if (Array.isArray(extraClass)) classes.push(...extraClass.map(String));
+    else classes.push(String(extraClass));
+  }
   return {
     ...extra,
-    class: ['o-statusbar-form-item', extraClass].flat().filter(Boolean),
+    class: classes,
   };
 });
 
@@ -252,10 +264,11 @@ const internalRule = {
       mustBeString: _t('Value must be a string'),
       invalid: v => _t('Invalid option value: %s', v),
     });
-    err ? cb(err) : cb();
+    if (err) cb(err);
+    else cb();
   },
 } as RuleItem;
-const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internalRule]);
+const mergedRules = computed<RuleItem[]>(() => [...(props.rules ?? []), internalRule]);
 </script>
 
 <style lang="scss" scoped>

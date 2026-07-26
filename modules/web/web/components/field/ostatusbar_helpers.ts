@@ -88,7 +88,8 @@ export function resolveStatusbarOptions(args: {
   for (const item of meta) {
     const value = item?.value != null ? String(item.value) : '';
     if (!value || metaMap.has(value)) continue;
-    metaMap.set(value, String(item.label ?? value));
+    const label = item.label == null ? value : String(item.label);
+    metaMap.set(value, label);
   }
 
   let pool: string[];
@@ -98,7 +99,7 @@ export function resolveStatusbarOptions(args: {
   if (hasOnchangeDomain) {
     pool = [];
     const seen = new Set<string>();
-    for (const raw of args.onchangeValues!) {
+    for (const raw of args.onchangeValues as string[]) {
       const value = raw != null ? String(raw) : '';
       if (!value || seen.has(value)) continue;
       if (metaMap.size > 0 && !metaMap.has(value)) continue;
@@ -113,12 +114,18 @@ export function resolveStatusbarOptions(args: {
 
   const hasAuthoritativePool = hasOnchangeDomain || metaMap.size > 0;
 
-  const whitelist = Array.isArray(args.whitelist)
-    ? args.whitelist.map(v => (v != null ? String(v) : '')).filter(Boolean)
-    : null;
+  let whitelist: string[] | null = null;
+  if (Array.isArray(args.whitelist)) {
+    whitelist = [];
+    for (const raw of args.whitelist) {
+      if (raw == null) continue;
+      const value = String(raw);
+      if (value) whitelist.push(value);
+    }
+  }
 
   let values: string[];
-  if (whitelist && whitelist.length > 0) {
+  if (whitelist != null && whitelist.length > 0) {
     if (hasAuthoritativePool) {
       const poolSet = new Set(pool);
       values = whitelist.filter(v => poolSet.has(v));
@@ -130,7 +137,8 @@ export function resolveStatusbarOptions(args: {
     values = pool;
   }
 
-  const disabledSet = new Set((args.onchangeDisabled || []).map(v => String(v)));
+  const disabledList = Array.isArray(args.onchangeDisabled) ? args.onchangeDisabled : [];
+  const disabledSet = new Set(disabledList.map(v => String(v)));
   const out: StatusbarOption[] = [];
   const seen = new Set<string>();
   for (const value of values) {

@@ -481,6 +481,29 @@ describe('OStatusbarField', () => {
     expect(cb).toHaveBeenCalled();
     const errors = cb.mock.calls.map((c: any[]) => c[0]).filter(Boolean);
     expect(errors.some((e: Error) => /string|Invalid/i.test(String(e?.message || e)))).toBe(true);
+    wrapper.unmount();
+
+    const wrapper2 = mountStatusbar({ formItemProps: { class: ['a', 'b'] } }, makeBinding({ meta: staticMeta, store }).binding);
+    await flushPromises();
+    expect(String(wrapper2.get('.ob').attributes('data-form-item-class'))).toContain('a');
+    expect(String(wrapper2.get('.ob').attributes('data-form-item-class'))).toContain('b');
+  });
+
+  it('covers store without getFieldMeta and empty onchange domain via provide', async () => {
+    const store = {
+      fieldsMetadata: { State: staticMeta },
+      ensureFieldsGet: vi.fn(async () => ({})),
+      // no getFieldMeta → fall back to binding.meta
+    };
+    const { binding, value } = makeBinding({ meta: staticMeta, store, value: 'draft' });
+    const onchange = ref({ selection: [{ field: 'State', selection: [] }] });
+    const wrapper = mountStatusbar({ clickable: true }, binding, { provideOnchange: onchange });
+    await flushPromises();
+    // Empty onchange domain → only current remains.
+    expect(JSON.parse(wrapper.get('.o-statusbar').attributes('data-options') || '[]').map((o: any) => o.value)).toEqual(['draft']);
+    await wrapper.get('[data-value="draft"]').trigger('click');
+    await flushPromises();
+    expect(value.value).toBe('draft');
   });
 
   it('falls back to field value when row omits leaf', async () => {
@@ -531,6 +554,17 @@ describe('OStatusbarField', () => {
     });
     await flushPromises();
     expect(wrapper.get('.o-statusbar').attributes('data-options')).toBeTruthy();
+  });
+
+  it('skips select when not interactive', async () => {
+    const store = makeStore();
+    const { binding, value } = makeBinding({ meta: staticMeta, store, value: 'draft' });
+    const wrapper = mountStatusbar({ clickable: false }, binding);
+    await flushPromises();
+    await wrapper.get('.seg-empty').trigger('click');
+    await wrapper.get('[data-value="done"]').trigger('click');
+    await flushPromises();
+    expect(value.value).toBe('draft');
   });
 
   it('ensures FieldsGet on mount', async () => {

@@ -193,6 +193,41 @@ describe('resolveStatusbarOptions', () => {
     ).toEqual(['draft']);
   });
 
+  it('ignores non-array whitelist and empty whitelist arrays', () => {
+    expect(resolveStatusbarOptions({ meta, whitelist: 'nope' as any }).map(o => o.value)).toEqual([
+      'draft',
+      'confirmed',
+      'done',
+      'cancel',
+    ]);
+    expect(resolveStatusbarOptions({ meta, whitelist: [] }).map(o => o.value)).toEqual([
+      'draft',
+      'confirmed',
+      'done',
+      'cancel',
+    ]);
+    expect(resolveStatusbarOptions({ meta, onchangeDisabled: undefined as any }).map(o => o.disabled)).toEqual([
+      false,
+      false,
+      false,
+      false,
+    ]);
+  });
+
+  it('uses label when present and value when label is nullish', () => {
+    expect(
+      resolveStatusbarOptions({
+        meta: [
+          { value: 'a', label: 'Alpha' },
+          { value: 'b', label: null as any },
+        ],
+      })
+    ).toEqual([
+      { value: 'a', label: 'Alpha', disabled: false },
+      { value: 'b', label: 'b', disabled: false },
+    ]);
+  });
+
   it('keeps onchange values when meta is empty', () => {
     expect(
       resolveStatusbarOptions({
