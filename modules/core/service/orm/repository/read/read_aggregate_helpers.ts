@@ -199,7 +199,7 @@ export function normalizeRepositoryAggregateDecimals(
   for (const agg of aggs) {
     if (agg.agg === 'count' || agg.agg === 'count_distinct') continue;
     const fieldMeta = agg.field.includes('.') ? resolveRepositoryLeafFieldMeta(meta, agg.field) : (meta.fields.get(agg.field) as FieldMetadata | undefined);
-    if (fieldMeta && fieldMeta.type === 'decimal') {
+    if (fieldMeta && (fieldMeta.type === 'decimal' || fieldMeta.type === 'monetary')) {
       need.set(agg.alias, fieldMeta);
     }
   }

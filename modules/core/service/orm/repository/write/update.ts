@@ -22,6 +22,7 @@ import {
   encodeRepositoryMutationPayloads,
   validateRepositoryMutationPayload,
 } from './mutation_payload_helpers';
+import { stampMonetaryScalesForWrite } from '../projection/monetary_scale';
 import {
   applyRepositoryUpdateCondition,
   loadRepositoryUpdateValidationCurrentRows,
@@ -106,14 +107,22 @@ export async function prepareRepositoryUpdateSanitizedPayload(
     [vals]
   )[0] as Entity;
   const currentRows = await loadRepositoryUpdateValidationCurrentRows(params, targetIds);
-  await validateRepositoryMutationPayload(
-    {
-      validateFields: (input, mode, current) => params.validateFields(input, mode, current),
-    },
-    preparedVals,
-    'update',
-    targetIds.map(id => currentRows.get(id))
-  );
+  // Stamp monetary scales per target when currency Id comes from the locked current row.
+  const stampedByTarget = new Map<string, Entity>();
+  for (const id of targetIds) {
+    const current = currentRows.get(id);
+    stampedByTarget.set(id, await stampMonetaryScalesForWrite(params.meta, { ...preparedVals }, current ?? null));
+  }
+  for (const id of targetIds) {
+    await validateRepositoryMutationPayload(
+      {
+        validateFields: (input, mode, current) => params.validateFields(input, mode, current),
+      },
+      stampedByTarget.get(id) as Entity,
+      'update',
+      [currentRows.get(id)]
+    );
+  }
 
   if (payloadHasTranslatedFieldWrite(params.meta, preparedVals) && targetIds.length > 1) {
     throw new Error(
@@ -121,8 +130,21 @@ export async function prepareRepositoryUpdateSanitizedPayload(
     );
   }
 
+  // Encode uses a single payload; require identical stamped monetary scales across targets.
+  const encodeSource = stampedByTarget.get(targetIds[0]) as Entity;
+  if (targetIds.length > 1) {
+    const firstJson = JSON.stringify(encodeSource);
+    for (let i = 1; i < targetIds.length; i++) {
+      if (JSON.stringify(stampedByTarget.get(targetIds[i])) !== firstJson) {
+        throw new Error(
+          'Updating monetary fields on multiple rows requires the same currency decimal digits for all targets; update rows separately'
+        );
+      }
+    }
+  }
+
   const current = targetIds.length === 1 ? currentRows.get(targetIds[0]) : undefined;
-  const valsForEncode = applyTranslatedFieldsForWrite(params.meta, preparedVals, {
+  const valsForEncode = applyTranslatedFieldsForWrite(params.meta, encodeSource, {
     mode: 'update',
     current: current ?? null,
   });

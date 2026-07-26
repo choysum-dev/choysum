@@ -266,3 +266,33 @@ test('repository row codec encodeForDb translate field null, JSON passthrough, a
   expect(() => encodeForDb(meta, { Name: 'plain' } as any)).toThrow(/must be prepared as a lang map/);
   expect(() => encodeForDb(meta, { Name: 123 } as any)).toThrow(/expects a lang map object or null/);
 });
+
+test('repository row codec monetary quantize uses currency digits and E1 without currency', () => {
+  const meta = {
+    fields: new Map<string, any>([
+      ['CurrencyId', { type: 'ManyToOneRef', column: { name: 'CurrencyId' } }],
+      ['Amount', { type: 'monetary', name: 'Amount', column: { name: 'Amount', currencyField: 'CurrencyId' } }],
+    ]),
+  } as any;
+
+  const encoded = encodeForDb(meta, {
+    CurrencyId: { Id: 'CUR-1', DecimalDigits: 0 },
+    Amount: '12.6',
+  } as any);
+  expect(encoded.Amount).toEqual({ $bigdecimal: '13' });
+
+  expect(() => encodeForDb(meta, { Amount: '12.6' } as any)).toThrow(/currency required for monetary field Amount/);
+
+  const stampedAlias = buildHiddenScaleAlias('Amount');
+  const encodedFromStamp = encodeForDb(meta, {
+    Amount: '1.234',
+    [stampedAlias]: 2,
+  } as any);
+  expect(encodedFromStamp.Amount).toEqual({ $bigdecimal: '1.23' });
+
+  const decoded = decodeFromDb(meta, {
+    Amount: { $bigdecimal: '1.239' },
+    CurrencyId: { Id: 'CUR-1', DecimalDigits: 2 },
+  } as any);
+  expect(String(decoded.Amount)).toBe('1.24');
+});

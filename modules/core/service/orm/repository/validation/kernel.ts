@@ -8,6 +8,7 @@ import { normalizeDecimalByMeta } from '@/core/utils/decimal';
 import { asObjectRecord, hasOwnKey } from '../../../../utils/object';
 import type { ObjectRecord } from '../../../../utils/types';
 import { _t } from '@/core/service/i18n_binder';
+import { resolveDecimalScaleForWrite } from '../projection/row_codec';
 
 export type ValidationMode = 'create' | 'update' | 'preview';
 
@@ -202,13 +203,22 @@ export function validateDecimalFields(meta: ModelMetadata, input: Entity): void 
   if (!inputRecord) return;
 
   meta.fields.forEach((fieldMeta, fieldName) => {
-    if (fieldMeta.type !== 'decimal') return;
+    if (fieldMeta.type !== 'decimal' && fieldMeta.type !== 'monetary') return;
     if (!hasOwnKey(inputRecord, fieldName)) return;
 
     const value = inputRecord[fieldName];
     if (value === null || value === undefined || value === '') return;
 
-    const normalized = normalizeDecimalByMeta(fieldMeta, value);
+    let metaForNormalize = fieldMeta;
+    if (fieldMeta.type === 'monetary') {
+      // Prefer scale stamped by stampMonetaryScalesForWrite (hidden alias / currency digits).
+      const scale = resolveDecimalScaleForWrite({ ...fieldMeta, name: fieldName }, input);
+      if (typeof scale === 'number') {
+        metaForNormalize = { column: { ...(fieldMeta.column || {}), scale, round: 'ROUND_HALF_UP' } } as typeof fieldMeta;
+      }
+    }
+
+    const normalized = normalizeDecimalByMeta(metaForNormalize, value);
     if (!normalized) {
       throw new KernelValidationError(
         'kernel_decimal_invalid',

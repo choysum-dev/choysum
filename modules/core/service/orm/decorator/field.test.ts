@@ -751,3 +751,40 @@ test('Field decorator accepts copy:false and rejects non-boolean copy', () => {
   }).toThrow('copy must be a boolean');
 });
 
+test('Field decorator stores monetary currencyField and rejects scale options', () => {
+  class MonetaryOkModel extends BaseModel {
+    @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Currency' }, size: 20 } as any)
+    CurrencyId!: string;
+
+    @Field({ type: 'monetary', currencyField: 'CurrencyId' } as any)
+    Amount!: string;
+  }
+  const amount = MetadataStorage.instance.getModelMetadata(MonetaryOkModel as any).fields.get('Amount');
+  expect(amount?.type).toBe('monetary');
+  expect((amount?.column as any)?.currencyField).toBe('CurrencyId');
+
+  expect(() => {
+    class MonetaryMissingCurrency extends BaseModel {
+      @Field({ type: 'monetary' } as any)
+      Amount!: string;
+    }
+    return MonetaryMissingCurrency;
+  }).toThrow('monetary requires a non-empty currencyField');
+
+  expect(() => {
+    class MonetaryWithScale extends BaseModel {
+      @Field({ type: 'monetary', currencyField: 'CurrencyId', scale: 2 } as any)
+      Amount!: string;
+    }
+    return MonetaryWithScale;
+  }).toThrow('monetary forbids scale');
+
+  expect(() => {
+    class DecimalWithCurrency extends BaseModel {
+      @Field({ type: 'decimal', currencyField: 'CurrencyId' } as any)
+      Amount!: string;
+    }
+    return DecimalWithCurrency;
+  }).toThrow('currencyField is only supported on monetary fields');
+});
+

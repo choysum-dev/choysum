@@ -23,6 +23,7 @@ var defaultValues = map[string]interface{}{
 	"float":    0.0,
 	"number":   0.0,
 	"decimal":  decimal.Decimal{},
+	"monetary": decimal.Decimal{},
 	"bool":     false,
 	"boolean":  false,
 	"time":     time.Time{},
@@ -134,8 +135,9 @@ func buildColumnTypeTag(dialect string, columnType string, meta map[string]inter
 		// - PostgreSQL/SQLite allow no length, but use 255 for consistent behavior.
 		return fmt.Sprintf("type:%s(255)", columnType)
 
-	case "decimal":
+	case "decimal", "monetary":
 		// Cross-dialect convention: fixed DECIMAL(38,18), ignore meta precision/scale.
+		// monetary shares physical storage with decimal (logical FieldType may stay monetary).
 		return "type:decimal(38,18)"
 
 	case "bigint":

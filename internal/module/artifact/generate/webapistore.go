@@ -75,6 +75,8 @@ type FieldMetadata struct {
 
 	// ScaleField points to the dynamic decimal scale source.
 	ScaleField *string `json:"scaleField,omitempty"`
+	// CurrencyField points to the sibling currency relation for monetary fields.
+	CurrencyField *string `json:"currencyField,omitempty"`
 }
 
 func toStringPtr(value string) *string {
@@ -190,6 +192,9 @@ func convertFieldToMetadata(field *meta.IrField) FieldMetadata {
 	// Pass through scaleField.
 	if field.ScaleField != "" {
 		metadata.ScaleField = &field.ScaleField
+	}
+	if field.CurrencyField != "" {
+		metadata.CurrencyField = &field.CurrencyField
 	}
 	if field.IsReadonly {
 		metadata.IsReadonly = &field.IsReadonly

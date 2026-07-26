@@ -212,6 +212,9 @@ func resolveColumnType(fieldType string) string {
 		return "jsonobject"
 	case "binary", "image":
 		return "blob"
+	case "monetary":
+		// Physical storage matches decimal (DECIMAL(38,18)); logical FieldType stays monetary.
+		return "decimal"
 	default:
 		return fieldType
 	}

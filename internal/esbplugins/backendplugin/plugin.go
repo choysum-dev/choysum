@@ -890,6 +890,12 @@ func (p *BackendPlugin) setFieldMeta(parserResults []*parser.ParserResult) error
 							field.ScaleField = s
 						}
 					}
+					// Pass through currencyField (monetary).
+					if v, ok := col["currencyField"]; ok {
+						if s, ok2 := v.(string); ok2 && s != "" {
+							field.CurrencyField = s
+						}
+					}
 					// Store round as a normalized string.
 					if r := toRoundStr(col["round"]); r != nil {
 						field.Round = r
@@ -932,6 +938,11 @@ func (p *BackendPlugin) setFieldMeta(parserResults []*parser.ParserResult) error
 								field.ScaleField = s
 							}
 						}
+						if v, ok := sel["currencyField"]; ok && field.CurrencyField == "" {
+							if s, ok2 := v.(string); ok2 && s != "" {
+								field.CurrencyField = s
+							}
+						}
 						// If column did not define round, allow it to come from select.
 						if field.Round == nil {
 							if r := toRoundStr(sel["round"]); r != nil {
@@ -939,6 +950,31 @@ func (p *BackendPlugin) setFieldMeta(parserResults []*parser.ParserResult) error
 							}
 						}
 					}
+				}
+
+				// Flat @Field options (PR-1): top-level scaleField / currencyField.
+				if v, ok := options["scaleField"].(string); ok && strings.TrimSpace(v) != "" && field.ScaleField == "" {
+					field.ScaleField = strings.TrimSpace(v)
+				}
+				if v, ok := options["currencyField"].(string); ok && strings.TrimSpace(v) != "" && field.CurrencyField == "" {
+					field.CurrencyField = strings.TrimSpace(v)
+				}
+				if size, ok := options["size"]; ok && field.Size == 0 {
+					field.Size = asInt(size)
+				}
+				if prec, ok := options["precision"]; ok && field.Precision == 0 {
+					field.Precision = asInt(prec)
+				}
+				if scale, ok := options["scale"]; ok && field.Scale == 0 {
+					field.Scale = asInt(scale)
+				}
+				if field.Round == nil {
+					if r := toRoundStr(options["round"]); r != nil {
+						field.Round = r
+					}
+				}
+				if asBool(options["notNull"]) || asBool(options["required"]) {
+					field.NotNull = true
 				}
 
 				// Validate required structure only for scalar fields that create physical columns.

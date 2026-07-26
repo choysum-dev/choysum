@@ -273,6 +273,12 @@ function getScaleFieldName(spec: unknown): string | undefined {
   return typeof scaleField === 'string' && scaleField ? scaleField : undefined;
 }
 
+function getCurrencyFieldName(spec: unknown): string | undefined {
+  const record = asObjectRecord(spec);
+  const currencyField = record?.currencyField;
+  return typeof currencyField === 'string' && currencyField ? currencyField : undefined;
+}
+
 export const __collectUpdateAttachmentWriteActionsForTest = collectAttachmentWriteActions;
 
 /**
@@ -390,7 +396,7 @@ export class UpdateOperations {
     const queryFields = new Set<string>(['Id', 'UpdatedAt']);
     const upstreamInverseFields = new Set<string>(collectModelUpstreamInverseFields(ModelCtor));
 
-    // Helper: add a field to queryFields and include its scaleField when the field is decimal.
+    // Helper: add a field to queryFields and include scaleField / currencyField companions.
     const addFieldWithScale = (fieldName: string | undefined, set: Set<string>) => {
       if (!fieldName) return;
       set.add(fieldName);
@@ -399,6 +405,12 @@ export class UpdateOperations {
         const scaleField = getScaleFieldName(fm.column || {});
         if (scaleField) {
           set.add(scaleField);
+        }
+      }
+      if (fm?.type === 'monetary') {
+        const currencyField = getCurrencyFieldName(fm.column || {});
+        if (currencyField) {
+          set.add(currencyField);
         }
       }
     };
@@ -442,15 +454,24 @@ export class UpdateOperations {
         }
       }
 
-      // Helper: include scaleField companions for decimal updates.
+      // Helper: include scaleField / currencyField companions for decimal / monetary updates.
       const addScaleForUpdates = (fieldSet: Set<string>, source: UnknownRecord, target: UnknownRecord) => {
         fieldSet.forEach(fieldName => {
           const fm = meta.fields.get(fieldName);
-          if (fm?.type !== 'decimal') return;
-          const scaleField = getScaleFieldName(fm.column || {});
-          if (scaleField) {
-            if (source[scaleField] !== undefined && !(scaleField in target)) {
-              target[scaleField] = source[scaleField];
+          if (fm?.type === 'decimal') {
+            const scaleField = getScaleFieldName(fm.column || {});
+            if (scaleField) {
+              if (source[scaleField] !== undefined && !(scaleField in target)) {
+                target[scaleField] = source[scaleField];
+              }
+            }
+          }
+          if (fm?.type === 'monetary') {
+            const currencyField = getCurrencyFieldName(fm.column || {});
+            if (currencyField) {
+              if (source[currencyField] !== undefined && !(currencyField in target)) {
+                target[currencyField] = source[currencyField];
+              }
             }
           }
         });

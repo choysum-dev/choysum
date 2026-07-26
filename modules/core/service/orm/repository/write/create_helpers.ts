@@ -19,6 +19,7 @@ import {
 } from './mutation_payload_helpers';
 import { _t } from '@/core/service/i18n_binder';
 import { applyTranslatedFieldsForWrite } from '../projection/translated_field_codec';
+import { stampMonetaryScalesForWrite } from '../projection/monetary_scale';
 
 export type RepositoryCreateWriteAuthzDeps = {
   meta: ModelMetadata;
@@ -65,7 +66,11 @@ export async function prepareRepositoryCreateEntities(params: RepositoryCreateWr
     },
     entitiesWithId
   );
+  const stampedEntities: Entity[] = [];
   for (const entity of preparedEntities) {
+    stampedEntities.push(await stampMonetaryScalesForWrite(params.meta, entity));
+  }
+  for (const entity of stampedEntities) {
     await validateRepositoryMutationPayload(
       {
         validateFields: (input, mode) => params.validateFields(input, mode),
@@ -75,7 +80,7 @@ export async function prepareRepositoryCreateEntities(params: RepositoryCreateWr
     );
   }
 
-  const entitiesForEncode = preparedEntities.map(entity =>
+  const entitiesForEncode = stampedEntities.map(entity =>
     applyTranslatedFieldsForWrite(params.meta, entity, { mode: 'create' })
   );
   return encodeRepositoryMutationPayloads(params, entitiesForEncode);

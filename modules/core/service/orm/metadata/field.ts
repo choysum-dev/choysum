@@ -111,7 +111,8 @@ type FlatCommonOptions = {
 type FlatNoRelationOption = { relation?: never };
 type FlatNoSelectionOption = { selection?: never };
 type FlatNoSizeOption = { size?: never };
-type FlatNoDecimalOptions = { precision?: never; scale?: never; round?: never };
+type FlatNoDecimalOptions = { precision?: never; scale?: never; round?: never; scaleField?: never };
+type FlatNoMonetaryOptions = { currencyField?: never };
 
 type FlatRefRelationOption<TTarget extends BaseModel> = {
   targetModel: string;
@@ -159,25 +160,50 @@ type FlatCharOrVarcharFieldOptions<T extends BaseModel> = {
 } & FlatCommonOptions &
   FlatNoRelationOption &
   FlatNoSelectionOption &
-  FlatNoDecimalOptions;
+  FlatNoDecimalOptions &
+  FlatNoMonetaryOptions;
 
 type FlatScalarFieldOptions<T extends BaseModel> = {
-  type: Exclude<FieldType, 'char' | 'varchar' | 'decimal' | 'selection' | 'ManyToOneRef' | 'ManyToManyRef' | 'ManyToOne' | 'OneToMany' | 'ManyToMany'>;
+  type: Exclude<
+    FieldType,
+    'char' | 'varchar' | 'decimal' | 'monetary' | 'selection' | 'ManyToOneRef' | 'ManyToManyRef' | 'ManyToOne' | 'OneToMany' | 'ManyToMany'
+  >;
 } & FlatCommonOptions &
   FlatNoRelationOption &
   FlatNoSelectionOption &
   FlatNoSizeOption &
-  FlatNoDecimalOptions;
+  FlatNoDecimalOptions &
+  FlatNoMonetaryOptions;
 
 type FlatDecimalFieldOptions<T extends BaseModel> = {
   type: 'decimal';
   precision?: number;
   scale?: number;
+  scaleField?: string;
   round?: DecimalRound;
 } & FlatCommonOptions &
   FlatNoRelationOption &
   FlatNoSelectionOption &
-  FlatNoSizeOption;
+  FlatNoSizeOption &
+  FlatNoMonetaryOptions;
+
+/** Keys that may reference a currency relation (C3 when typed as Currency; else keyof T for Ref-as-string). */
+export type MonetaryCurrencyFieldKey<T extends BaseModel> = Extract<
+  | KeysOfType<T, BaseModel>
+  | KeysOfType<T, BaseModel | undefined>
+  | KeysOfType<T, BaseModel | null | undefined>
+  | (keyof T & string),
+  string
+>;
+
+type FlatMonetaryFieldOptions<T extends BaseModel> = {
+  type: 'monetary';
+  currencyField: MonetaryCurrencyFieldKey<T>;
+} & FlatCommonOptions &
+  FlatNoRelationOption &
+  FlatNoSelectionOption &
+  FlatNoSizeOption &
+  FlatNoDecimalOptions;
 
 type FlatSelectionFieldOptions<T extends BaseModel> = {
   type: 'selection';
@@ -235,6 +261,7 @@ export type FlatFieldOptions<T extends BaseModel = BaseModel, TJoin extends Base
   | FlatCharOrVarcharFieldOptions<T>
   | FlatScalarFieldOptions<T>
   | FlatDecimalFieldOptions<T>
+  | FlatMonetaryFieldOptions<T>
   | FlatSelectionFieldOptions<T>
   | FlatManyToOneRefFieldOptions<T, TTarget>
   | FlatManyToManyRefFieldOptions<T, TTarget>
@@ -284,6 +311,7 @@ export type FieldType =
   | 'bigint'
   | 'number'
   | 'decimal'
+  | 'monetary'
   | 'boolean'
   | 'datetime'
   | 'date'
@@ -423,6 +451,13 @@ export interface ColumnOptions<TModel extends BaseModel = BaseModel, TValue = un
    * - Defaults to ROUND_HALF_UP when omitted
    */
   round?: DecimalRound;
+  /** Sibling field holding dynamic scale (decimal only). */
+  scaleField?: string;
+  /** Sibling currency relation field name (monetary only). */
+  currencyField?: string;
+  precision?: number;
+  scale?: number;
+  size?: number;
 }
 
 type RuntimeRelationMetadata = {
