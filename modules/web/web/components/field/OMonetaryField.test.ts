@@ -300,6 +300,51 @@ describe('OMonetaryField', () => {
     expect(base.props('fromView')('')).toBeNull();
   });
 
+  it('covers idle equals paths and intermediate blur clears', async () => {
+    const binding = makeBinding({
+      Amount: new Decimal('1.20'),
+      CurrencyId: { DecimalDigits: 2 },
+    });
+    const wrapper = mountEdit(binding, { bufferStrategy: 'idle', bufferIdleDelay: 10_000, nullable: true });
+    await flushPromises();
+    const input = wrapper.find('input.el-input');
+
+    // Same quantized value should be treated as equal by buffer equals().
+    await input.setValue('1.20');
+    await input.trigger('blur');
+    await flushPromises();
+    expect(new Decimal(binding.__value.value).toString()).toBe('1.2');
+
+    await input.setValue('.');
+    await input.trigger('blur');
+    await flushPromises();
+    expect(binding.__value.value).toBeNull();
+
+    binding.__value.value = new Decimal('2');
+    await input.setValue('-.');
+    await input.trigger('blur');
+    await flushPromises();
+    expect(binding.__value.value).toBeNull();
+  });
+
+  it('renders aggregate object-form metrics and meta precision', async () => {
+    const binding = makeBinding(
+      {
+        Amount: null,
+        metrics: { TotalAmount: new Decimal('3.5') },
+        CurrencyId: { DecimalDigits: 1, Code: 'USD' },
+      },
+      { type: 'monetary', currencyField: 'CurrencyId', precision: 12 }
+    );
+    const wrapper = mountEdit(binding, {
+      agg: { agg: 'sum', alias: 'TotalAmount' },
+      readonly: true,
+      precision: undefined,
+    });
+    await flushPromises();
+    expect(wrapper.find('.o-field-display-text').text().length).toBeGreaterThan(0);
+  });
+
   it('validates monetary values via internal rule using currency digits', async () => {
     const binding = makeBinding({
       Amount: '1.239',

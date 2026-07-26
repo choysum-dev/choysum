@@ -3,6 +3,7 @@
 
 import BaseModel from '../model/model';
 import { Model } from '../decorator/model';
+import { MetadataStorage } from './storage';
 import { getCurrencyFieldName, isDecimalLikeField, isDecimalLikeFieldType } from './decimal_like';
 import {
   BASE_CURRENCY_FULL_NAME,
@@ -141,6 +142,30 @@ test('validateModelMonetaryCurrencyFields covers missing and invalid siblings', 
       ['Broken', null as any],
     ]),
   } as any);
+
+  @Model('CurrencyNoFullName', { application: 'base' })
+  class CurrencyNoFullName extends BaseModel {}
+
+  const emptyFullMeta = MetadataStorage.instance.getModelMetadata(CurrencyNoFullName as never) as any;
+  const prevFull = emptyFullMeta.fullModelName;
+  emptyFullMeta.fullModelName = '   ';
+  try {
+    // Unresolved/empty fullModelName soft-skips M2O target checks during late load.
+    validateModelMonetaryCurrencyFields({
+      fields: new Map([
+        [
+          'CurrencyId',
+          {
+            type: 'ManyToOne',
+            relation: { targetModel: () => CurrencyNoFullName },
+          },
+        ],
+        ['Amount', { type: 'monetary', column: { currencyField: 'CurrencyId' } }],
+      ]),
+    } as any);
+  } finally {
+    emptyFullMeta.fullModelName = prevFull;
+  }
 });
 
 test('resolveMonetaryScaleFromPayload / ForWrite / FromRow cover S1 and E1 branches', () => {

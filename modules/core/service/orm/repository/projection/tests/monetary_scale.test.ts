@@ -134,6 +134,20 @@ test('stampMonetaryScalesForWrite covers currency-only browse and empty amount e
   expect(currencyOnlyMiss.includes('currency required for monetary field Amount')).toBe(true);
 });
 
+test('stampMonetaryScalesForWriteMany soft-skips collect when currencyField missing', async () => {
+  const meta = {
+    fields: new Map([['Amount', { type: 'monetary', column: {} }]]),
+  } as any;
+  let err = '';
+  try {
+    // collectPendingCurrencyIdsForStamp swallows resolve errors; stamp pass then raises E1.
+    await stampMonetaryScalesForWriteMany(meta, [{ input: { Amount: '1.20' } as any }]);
+  } catch (error) {
+    err = String((error as Error).message || error);
+  }
+  expect(err.includes('currency required for monetary field Amount')).toBe(true);
+});
+
 test('collectMonetaryCurrencyFieldCompanions and inline helpers', () => {
   const meta = monetaryMeta();
   expect(collectMonetaryCurrencyFieldCompanions(meta, ['Amount', 'Note', 'Missing'])).toEqual(['CurrencyId']);

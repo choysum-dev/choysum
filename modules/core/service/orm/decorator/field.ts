@@ -400,15 +400,12 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
       if (currencyField !== currencyField.trim()) {
         throw new Error(`@Field(${name}) currencyField must not contain leading or trailing whitespace`);
       }
-      if (optionBag.scale !== undefined || optionBag.scaleField !== undefined || optionBag.precision !== undefined) {
-        throw new Error(`@Field(${name}) monetary forbids scale, scaleField, and precision (use Currency.DecimalDigits)`);
-      }
+      // scale/precision/scaleField are rejected earlier in storage-hint / scaleField validation.
       if (optionBag.round !== undefined) {
         throw new Error(`@Field(${name}) monetary does not support round (P0 uses HALF_UP)`);
       }
-      // Ensure currencyField is persisted even when no other column options were provided.
-      if (!normalizedColumn) normalizedColumn = {};
-      normalizedColumn.currencyField = currencyField.trim();
+      // currencyField already forces normalizedColumn via hasFlatColumnOptions; keep trimmed value.
+      normalizedColumn!.currencyField = currencyField.trim();
     }
 
     // Decimal option validation (DDL stays NUMERIC(38,18); scale metadata is validated here)

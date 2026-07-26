@@ -887,6 +887,66 @@ test('UpdateOperations.Update includes monetary currencyField companions on lock
   }
 });
 
+test('UpdateOperations.Update skips monetary companions when currencyField is absent', async () => {
+  const originalPrepareForUpdate = RelationFactory.prepareForUpdate;
+  const originalResolveRepository = (UpdateOperations as any).resolveRepository;
+  const originalTriggerUpstream = ComputeCascadeEngine.triggerUpstream;
+  const originalTriggerDownstream = ComputeCascadeEngine.triggerDownstream;
+  const originalCollectUpstreamInverseFields = ComputeCascadeEngine.collectUpstreamInverseFields;
+
+  const meta = MetadataStorage.instance.getModelMetadata(ModelInternalPublicBridge as any) as any;
+  const originalComputeGraph = meta.computeGraph;
+  const snapshotFields = new Map(meta.fields);
+  const searchCalls: any[] = [];
+
+  try {
+    meta.fields.set('Amount', { type: 'monetary', column: {} });
+    meta.computeGraph = undefined;
+
+    RelationFactory.prepareForUpdate = (async (_ModelCtor: any, values: any) => ({
+      processedValue: { ...values },
+      relations: {
+        oneToManyRelations: [],
+        manyToManyRelations: [],
+        touchedCollections: new Set<string>(),
+      },
+    })) as any;
+
+    (UpdateOperations as any).resolveRepository = (() => ({
+      count: async () => 1,
+      search: async (_condition: any, options: any) => {
+        searchCalls.push(options);
+        return [
+          {
+            Id: 'ROW-M2',
+            UpdatedAt: new Date('2024-01-01T00:00:00.000Z'),
+            Amount: '1.00',
+          },
+        ];
+      },
+      update: async () => {},
+      withValidationBypass: async (fn: () => Promise<any>) => await fn(),
+    })) as any;
+
+    ComputeCascadeEngine.collectUpstreamInverseFields = (() => []) as any;
+    ComputeCascadeEngine.triggerUpstream = (async () => {}) as any;
+    ComputeCascadeEngine.triggerDownstream = (async () => {}) as any;
+
+    await UpdateOperations.Update(ModelInternalPublicBridge as any, ['Id', '=', 'ROW-M2'] as any, { Amount: '2.50' } as any);
+
+    expect(searchCalls[0]?.fields).toContain('Amount');
+    expect(searchCalls[0]?.fields || []).not.toContain('CurrencyId');
+  } finally {
+    RelationFactory.prepareForUpdate = originalPrepareForUpdate;
+    (UpdateOperations as any).resolveRepository = originalResolveRepository;
+    ComputeCascadeEngine.triggerUpstream = originalTriggerUpstream;
+    ComputeCascadeEngine.triggerDownstream = originalTriggerDownstream;
+    ComputeCascadeEngine.collectUpstreamInverseFields = originalCollectUpstreamInverseFields;
+    meta.computeGraph = originalComputeGraph;
+    meta.fields = new Map(snapshotFields);
+  }
+});
+
 test('UpdateOperations.Update keeps monetary currency already present in the update payload', async () => {
   const originalPrepareForUpdate = RelationFactory.prepareForUpdate;
   const originalResolveRepository = (UpdateOperations as any).resolveRepository;

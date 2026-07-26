@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import Decimal from '@/core/utils/decimal';
 import { buildHiddenScaleAlias } from '../../hidden_scale_alias';
 import {
   cleanupHiddenScaleKeys,
@@ -306,4 +307,37 @@ test('repository row codec monetary quantize uses currency digits and E1 without
     CurrencyId: 'C1',
   } as any);
   expect(decodedNoDigits.Amount != null).toBe(true);
+});
+
+test('repository row codec decimal soft-fallback and Decimal instance decode', () => {
+  const decimalMeta = {
+    fields: new Map<string, any>([
+      ['Amount', { type: 'decimal', name: 'Amount', column: { name: 'Amount', scaleField: 'AmountScale' } }],
+      ['AmountScale', { type: 'int', column: { name: 'AmountScale' } }],
+    ]),
+  } as any;
+
+  // Missing scaleField: decimal encode soft-falls back instead of throwing.
+  const soft = encodeForDb(decimalMeta, { Amount: '1.25' } as any) as any;
+  expect(soft.Amount).toEqual({ $bigdecimal: '1.25' });
+
+  const monetaryMeta = {
+    fields: new Map<string, any>([
+      ['CurrencyId', { type: 'ManyToOneRef', column: { name: 'CurrencyId' } }],
+      ['Amount', { type: 'monetary', name: 'Amount', column: { name: 'Amount', currencyField: 'CurrencyId' } }],
+    ]),
+  } as any;
+
+  const decoded = decodeFromDb(monetaryMeta, {
+    Amount: new Decimal('1.239'),
+    CurrencyId: { Id: 'C1', DecimalDigits: 2 },
+  } as any) as any;
+  expect(String(decoded.Amount)).toBe('1.24');
+
+  // Soft catch on decode keeps the original value when normalize fails.
+  const decodedBad = decodeFromDb(monetaryMeta, {
+    Amount: { $bigdecimal: 'not-a-number' },
+    CurrencyId: { Id: 'C1', DecimalDigits: 2 },
+  } as any) as any;
+  expect(decodedBad.Amount).toEqual({ $bigdecimal: 'not-a-number' });
 });

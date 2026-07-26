@@ -1742,6 +1742,85 @@ func TestBackendPluginSetFieldMeta_CurrencyFieldPaths(t *testing.T) {
 	}
 }
 
+func TestBackendPluginSetFieldMeta_FlatAndSelectNumericOptions(t *testing.T) {
+	testRuntimeScope := newPluginTestScope()
+	fieldDecoratorModuleSpec, fieldDecoratorReferenceIdent := meta.FieldDecoratorModuleSpec(testRuntimeScope)
+	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
+		Env:    testRuntimeScope,
+		Module: &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
+	}}
+
+	result := &parser.ParserResult{
+		Path: "/virtual/modules/auth/service/models/numeric_opts.ts",
+		Model: &meta.IrModel{
+			Name: "NumericOpts",
+			Fields: []*meta.IrField{
+				{
+					Name: "FlatNumeric",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments: []*meta.IrArgument{{
+							Value: `{"type":"decimal","size":12,"precision":10,"scale":4,"round":"half_up","notNull":true}`,
+							Type:  "ObjectLiteral",
+						}},
+					}},
+				},
+				{
+					Name: "SelectNumeric",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments: []*meta.IrArgument{{
+							Value: `{"type":"decimal","select":{"precision":8,"scale":3,"currencyField":1}}`,
+							Type:  "ObjectLiteral",
+						}},
+					}},
+				},
+				{
+					Name: "RequiredAlias",
+					Decorators: []*meta.IrDecorator{{
+						Name:           "Field",
+						ModuleSpecPath: fieldDecoratorModuleSpec,
+						ReferenceIdent: fieldDecoratorReferenceIdent,
+						Arguments: []*meta.IrArgument{{
+							Value: `{"type":"char","required":true,"size":16}`,
+							Type:  "ObjectLiteral",
+						}},
+					}},
+				},
+			},
+		},
+	}
+
+	if err := plugin.setFieldMeta([]*parser.ParserResult{result}); err != nil {
+		t.Fatalf("setFieldMeta() error = %v", err)
+	}
+
+	flat := result.Model.Fields[0]
+	if flat.Size != 12 || flat.Precision != 10 || flat.Scale != 4 || !flat.NotNull {
+		t.Fatalf("unexpected flat numeric metadata: %#v", flat)
+	}
+	if flat.Round == nil || *flat.Round == "" {
+		t.Fatalf("expected flat round metadata, got %#v", flat.Round)
+	}
+
+	sel := result.Model.Fields[1]
+	if sel.Precision != 8 || sel.Scale != 3 {
+		t.Fatalf("unexpected select numeric metadata: %#v", sel)
+	}
+	if sel.CurrencyField != "" {
+		t.Fatalf("non-string select currencyField must stay empty, got %q", sel.CurrencyField)
+	}
+
+	req := result.Model.Fields[2]
+	if !req.NotNull || req.Size != 16 {
+		t.Fatalf("unexpected required/size metadata: %#v", req)
+	}
+}
+
 func TestBackendPluginSetFieldMeta_UsesRuntimeScopeFromDefinePlugins(t *testing.T) {
 	baseScope, baseDB := newPluginSessionTestScope(t)
 	runtimeScope, runtimeDB := newPluginSessionTestScope(t)

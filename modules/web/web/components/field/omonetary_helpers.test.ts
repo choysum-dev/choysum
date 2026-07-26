@@ -49,6 +49,16 @@ describe('omonetary_helpers currency resolution', () => {
     expect(readCurrencySymbol({ symbol: '  ' })).toBeUndefined();
     expect(resolveMonetaryScaleFromRecord({ CurrencyId: { DecimalDigits: 0 } }, 'CurrencyId', 'Amount')).toBe(0);
     expect(resolveMonetaryScaleFromRecord({}, 'CurrencyId', 'Amount', 5)).toBe(5);
+
+    const boom = new Proxy(
+      {},
+      {
+        get() {
+          throw new Error('currency path boom');
+        },
+      }
+    );
+    expect(resolveMonetaryScaleFromRecord(boom, 'CurrencyId', 'Amount', 7)).toBe(7);
   });
 });
 

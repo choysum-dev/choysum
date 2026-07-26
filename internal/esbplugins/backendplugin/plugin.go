@@ -819,15 +819,13 @@ func (p *BackendPlugin) setFieldMeta(parserResults []*parser.ParserResult) error
 		return t == "ManyToOne" || t == "OneToMany" || t == "ManyToMany"
 	}
 
-	needsStructure := func(t string) (needSize, needDecimal bool) {
+	needsStructure := func(t string) (needSize bool) {
 		switch t {
 		case "char", "varchar":
-			return true, false
-		case "decimal":
-			// DDL already uses DECIMAL(38,18), so business-layer precision/scale are optional.
-			return false, false
+			return true
 		default:
-			return false, false
+			// decimal/monetary: DDL uses NUMERIC(38,18); business precision/scale are optional.
+			return false
 		}
 	}
 
@@ -982,16 +980,13 @@ func (p *BackendPlugin) setFieldMeta(parserResults []*parser.ParserResult) error
 					if (model.AutoMigrate != nil && !*model.AutoMigrate) || model.Readonly {
 						continue
 					}
-					needSize, needDec := needsStructure(ftype)
+					needSize := needsStructure(ftype)
 					_, hasSelect := options["select"]
 					if !hasSelect { // Treat select as a virtual column that does not require physical structure.
 						if needSize && field.Size == 0 {
 							return fmt.Errorf("model %s field %s(type=%s) missing required size (provide column.size or select.size)", model.Name, field.Name, ftype)
 						}
-						// Decimal fields no longer require precision/scale because DDL uses NUMERIC(38,18).
-						if needDec && (field.Precision == 0 || field.Scale == 0) {
-							return fmt.Errorf("model %s field %s(type=%s) missing precision/scale (provide column.precision/scale or select.precision/scale)", model.Name, field.Name, ftype)
-						}
+						// Decimal/monetary no longer require precision/scale: DDL uses NUMERIC(38,18).
 					}
 
 				}
