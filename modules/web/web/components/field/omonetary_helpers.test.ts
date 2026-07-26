@@ -150,6 +150,32 @@ describe('omonetary_helpers display and parse', () => {
         },
       })
     ).toBe('$ FIX:12.3');
+
+    // composeCurrencyMark after / no-spacing branches (no formatCurrencyFromConfig).
+    expect(
+      formatMonetaryDisplayText('12.3', {
+        scale: 1,
+        roundingMode: Decimal.ROUND_HALF_UP,
+        currency: { Symbol: '€' },
+        formatters: {
+          formatCurrencyFromConfig: undefined as any,
+          formatFixedDecimalString: fixed => fixed,
+          currencyFormat: { position: 'after', spacing: true },
+        },
+      })
+    ).toBe('12.3 €');
+    expect(
+      formatMonetaryDisplayText('12.3', {
+        scale: 1,
+        roundingMode: Decimal.ROUND_HALF_UP,
+        currency: { Symbol: '$' },
+        formatters: {
+          formatCurrencyFromConfig: undefined as any,
+          formatFixedDecimalString: fixed => fixed,
+          currencyFormat: { position: 'before', spacing: false },
+        },
+      })
+    ).toBe('$12.3');
   });
 
   it('parses, clamps, validates, and compares', () => {

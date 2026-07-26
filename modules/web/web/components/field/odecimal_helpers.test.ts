@@ -39,6 +39,17 @@ describe('formatODecimalDisplayText', () => {
       })
     ).toBe('1,234.50');
   });
+
+  it('falls back to plain text when formatFixedDecimalString throws', () => {
+    expect(
+      formatODecimalDisplayText(new Decimal('1.5'), 2, Decimal.ROUND_HALF_UP, {
+        numberFormat: { thousandsSeparator: ',', decimalSeparator: '.' },
+        formatFixedDecimalString: () => {
+          throw new Error('fmt boom');
+        },
+      })
+    ).toBe('1.50');
+  });
 });
 
 describe('resolveODecimalEditScale', () => {
