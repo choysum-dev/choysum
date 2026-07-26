@@ -110,4 +110,39 @@ describe('language_format (P2)', () => {
       )
     ).toBe('USD 9,007,199,254,740,993.12');
   });
+
+  it('pads currency string fractional digits to decimalDigits without Number conversion', () => {
+    expect(
+      formatCurrencyFromConfig('1.2', {
+        thousandsSeparator: ',',
+        decimalSeparator: '.',
+        grouping: [3, 0],
+        decimalDigits: 2,
+        position: 'after',
+        spacing: true,
+      }, 'USD')
+    ).toBe('1.20 USD');
+
+    expect(
+      formatCurrencyFromConfig('-5', {
+        thousandsSeparator: ',',
+        decimalSeparator: '.',
+        grouping: [3, 0],
+        decimalDigits: 3,
+        symbol: '$',
+        position: 'before',
+        spacing: false,
+      })
+    ).toBe('$-5.000');
+
+    // Longer tails stay intact (precision-safe).
+    expect(
+      formatCurrencyFromConfig('1.2345', {
+        thousandsSeparator: ',',
+        decimalSeparator: '.',
+        grouping: [3, 0],
+        decimalDigits: 2,
+      })
+    ).toBe('1.2345');
+  });
 });
