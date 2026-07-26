@@ -71,6 +71,22 @@ const dialogStubs = {
   },
 };
 
+const loadingDirective = {
+  mounted() {},
+  updated() {},
+};
+
+function mountDialog(props: Record<string, unknown>) {
+  return mount(OFieldTranslationsDialog, {
+    props: props as any,
+    global: {
+      stubs: dialogStubs,
+      // Element Plus v-loading is not installed in unit tests.
+      directives: { loading: loadingDirective },
+    },
+  });
+}
+
 async function flushOpen() {
   await nextTick();
   await Promise.resolve();
@@ -87,16 +103,13 @@ describe('OFieldTranslationsDialog', () => {
     const Browse = vi.fn(async () => ({ Name: '您好' }));
     const GetFieldTranslations = vi.fn(async () => ({ en_US: 'Hello', zh_CN: '你好' }));
 
-    const wrapper = mount(OFieldTranslationsDialog, {
-      props: {
+    const wrapper = mountDialog({
         modelValue: true,
         store: { GetFieldTranslations, UpdateFieldTranslations, Browse } as any,
         recordId: 'lang-1',
         fieldName: 'Name',
         fieldLabel: 'Name',
-      },
-      global: { stubs: dialogStubs },
-    });
+      });
 
     await flushOpen();
 
@@ -126,16 +139,13 @@ describe('OFieldTranslationsDialog', () => {
     const Browse = vi.fn(async () => ({ Name: 'Hello' }));
     const GetFieldTranslations = vi.fn(async () => ({ en_US: 'Hello', zh_CN: '你好' }));
 
-    const wrapper = mount(OFieldTranslationsDialog, {
-      props: {
+    const wrapper = mountDialog({
         modelValue: true,
         store: { GetFieldTranslations, UpdateFieldTranslations, Browse } as any,
         recordId: 'lang-1',
         fieldName: 'Name',
         fieldLabel: 'Name',
-      },
-      global: { stubs: dialogStubs },
-    });
+      });
 
     await flushOpen();
     await wrapper.findAll('.input')[1]!.setValue('');
@@ -159,8 +169,7 @@ describe('OFieldTranslationsDialog', () => {
       zh_CN: '英语（美国）',
     }));
 
-    const wrapper = mount(OFieldTranslationsDialog, {
-      props: {
+    const wrapper = mountDialog({
         modelValue: true,
         store: { GetFieldTranslations, UpdateFieldTranslations, Browse } as any,
         recordId: 'lang-1',
@@ -168,9 +177,7 @@ describe('OFieldTranslationsDialog', () => {
         fieldLabel: 'Name',
         draftValue: '英语（美国）111',
         draftLang: 'zh_CN',
-      },
-      global: { stubs: dialogStubs },
-    });
+      });
 
     await flushOpen();
     const inputs = wrapper.findAll('.input');
@@ -195,16 +202,13 @@ describe('OFieldTranslationsDialog', () => {
     const GetFieldTranslations = vi.fn(async () => {
       throw new Error('load boom');
     });
-    const wrapper = mount(OFieldTranslationsDialog, {
-      props: {
+    const wrapper = mountDialog({
         modelValue: true,
         store: { GetFieldTranslations, UpdateFieldTranslations: vi.fn(), Browse: vi.fn() } as any,
         recordId: 'lang-1',
         fieldName: 'Name',
         fieldLabel: 'Name',
-      },
-      global: { stubs: dialogStubs },
-    });
+      });
     await flushOpen();
     expect(ElMessage.error).toHaveBeenCalled();
     expect(wrapper.findAll('.input')).toHaveLength(0);
@@ -213,15 +217,12 @@ describe('OFieldTranslationsDialog', () => {
   it('injects en_US when active languages omit it and uses code as label fallback', async () => {
     languageResponses.langs = [{ Code: 'zh_CN', Name: '' }];
     const GetFieldTranslations = vi.fn(async () => ({ en_US: 'Hello', zh_CN: '你好' }));
-    const wrapper = mount(OFieldTranslationsDialog, {
-      props: {
+    const wrapper = mountDialog({
         modelValue: true,
         store: { GetFieldTranslations, UpdateFieldTranslations: vi.fn(), Browse: vi.fn(async () => ({})) } as any,
         recordId: 'lang-1',
         fieldName: 'Name',
-      },
-      global: { stubs: dialogStubs },
-    });
+      });
     await flushOpen();
     const labels = wrapper.findAll('.item').map(el => el.attributes('data-label'));
     expect(labels[0]).toBe('English (US)');
@@ -238,16 +239,13 @@ describe('OFieldTranslationsDialog', () => {
     const Browse = vi.fn(async () => ({ Name: '' }));
     const GetFieldTranslations = vi.fn(async () => ({ en_US: 'Hello', zh_CN: '你好' }));
 
-    const wrapper = mount(OFieldTranslationsDialog, {
-      props: {
+    const wrapper = mountDialog({
         modelValue: true,
         store: { GetFieldTranslations, UpdateFieldTranslations, Browse } as any,
         recordId: 'lang-1',
         fieldName: 'Name',
         maxLength: 40,
-      },
-      global: { stubs: dialogStubs },
-    });
+      });
     await flushOpen();
     expect(wrapper.get('.input').attributes('data-maxlength')).toBe('40');
 
@@ -257,16 +255,13 @@ describe('OFieldTranslationsDialog', () => {
     await flushOpen();
     expect(UpdateFieldTranslations).toHaveBeenCalledWith('lang-1', 'Name', { en_US: '' });
 
-    const wrapper2 = mount(OFieldTranslationsDialog, {
-      props: {
+    const wrapper2 = mountDialog({
         modelValue: true,
         store: { GetFieldTranslations, UpdateFieldTranslations: vi.fn(), Browse: vi.fn() } as any,
         recordId: 'lang-1',
         fieldName: 'Name',
         fieldLabel: 'Name',
-      },
-      global: { stubs: dialogStubs },
-    });
+      });
     await flushOpen();
     await wrapper2.findAll('.btn')[0]!.trigger('click');
     expect(wrapper2.emitted('update:modelValue')?.at(-1)?.[0]).toBe(false);
@@ -280,16 +275,13 @@ describe('OFieldTranslationsDialog', () => {
     const UpdateFieldTranslations = vi.fn(async () => true);
     const Browse = vi.fn(async () => ({ Name: 'Hello' }));
     const GetFieldTranslations = vi.fn(async () => ({ en_US: 'Hello', zh_CN: '你好' }));
-    const wrapper = mount(OFieldTranslationsDialog, {
-      props: {
+    const wrapper = mountDialog({
         modelValue: true,
         store: { GetFieldTranslations, UpdateFieldTranslations, Browse } as any,
         recordId: 'lang-1',
         fieldName: 'Name',
         fieldLabel: 'Name',
-      },
-      global: { stubs: dialogStubs },
-    });
+      });
     await flushOpen();
     const buttons = wrapper.findAll('.btn');
     await buttons[buttons.length - 1]!.trigger('click');
@@ -310,16 +302,13 @@ describe('OFieldTranslationsDialog', () => {
     });
     const Browse = vi.fn(async () => ({ Name: 'Hello' }));
     const GetFieldTranslations = vi.fn(async () => ({ en_US: 'Hello', zh_CN: '你好' }));
-    const wrapper = mount(OFieldTranslationsDialog, {
-      props: {
+    const wrapper = mountDialog({
         modelValue: true,
         store: { GetFieldTranslations, UpdateFieldTranslations, Browse } as any,
         recordId: 'lang-1',
         fieldName: 'Name',
         fieldLabel: 'Name',
-      },
-      global: { stubs: dialogStubs },
-    });
+      });
     await flushOpen();
     await wrapper.findAll('.input')[1]!.setValue('新');
     const buttons = wrapper.findAll('.btn');
@@ -340,16 +329,13 @@ describe('OFieldTranslationsDialog', () => {
       en_US: 'English (US)',
       zh_CN: '英语（美国）',
     }));
-    const wrapper = mount(OFieldTranslationsDialog, {
-      props: {
+    const wrapper = mountDialog({
         modelValue: true,
         store: { GetFieldTranslations, UpdateFieldTranslations: vi.fn(), Browse: vi.fn() } as any,
         recordId: 'lang-1',
         fieldName: 'Name',
         draftValue: '草稿中文',
-      },
-      global: { stubs: dialogStubs },
-    });
+      });
     await flushOpen();
     expect(wrapper.findAll('.input')[1]!.element).toMatchObject({ value: '草稿中文' });
   });
@@ -365,16 +351,13 @@ describe('OFieldTranslationsDialog', () => {
       en_US: 'Hello',
       zh_CN: '你好',
     }));
-    const wrapper = mount(OFieldTranslationsDialog, {
-      props: {
+    const wrapper = mountDialog({
         modelValue: true,
         store: { GetFieldTranslations, UpdateFieldTranslations: vi.fn(), Browse: vi.fn() } as any,
         recordId: 'lang-1',
         fieldName: 'Name',
         draftValue: 'ignored-draft',
-      },
-      global: { stubs: dialogStubs },
-    });
+      });
     await flushOpen();
     expect(wrapper.findAll('.input')[0]!.element).toMatchObject({ value: 'Hello' });
     expect(wrapper.findAll('.input')[1]!.element).toMatchObject({ value: '你好' });
@@ -389,17 +372,14 @@ describe('OFieldTranslationsDialog', () => {
       { Code: 'zh_CN', Name: 'Chinese (Simplified)' },
     ];
     const GetFieldTranslations = vi.fn(async () => ({ en_US: 'Hello', zh_CN: '你好' }));
-    const wrapper = mount(OFieldTranslationsDialog, {
-      props: {
+    const wrapper = mountDialog({
         modelValue: true,
         store: { GetFieldTranslations, UpdateFieldTranslations: vi.fn(), Browse: vi.fn() } as any,
         recordId: 'lang-1',
         fieldName: 'Name',
         draftLang: 'zh_CN',
         draftValue: null,
-      },
-      global: { stubs: dialogStubs },
-    });
+      });
     await flushOpen();
     expect(wrapper.findAll('.input')).toHaveLength(2);
     expect(wrapper.findAll('.input')[1]!.element).toMatchObject({ value: '' });
@@ -416,15 +396,12 @@ describe('OFieldTranslationsDialog', () => {
     const UpdateFieldTranslations = vi.fn(async () => true);
     const Browse = vi.fn(async () => ({ Name: 'Hello' }));
     const GetFieldTranslations = vi.fn(async () => null as any);
-    const wrapper = mount(OFieldTranslationsDialog, {
-      props: {
+    const wrapper = mountDialog({
         modelValue: true,
         store: { GetFieldTranslations, UpdateFieldTranslations, Browse } as any,
         recordId: 'lang-1',
         fieldName: 'Name',
-      },
-      global: { stubs: dialogStubs },
-    });
+      });
     await flushOpen();
     await wrapper.findAll('.input')[0]!.setValue('Hello');
     await wrapper.findAll('.input')[1]!.setValue('你好');
@@ -446,15 +423,12 @@ describe('OFieldTranslationsDialog', () => {
     const UpdateFieldTranslations = vi.fn(async () => true);
     const Browse = vi.fn(async () => ({}));
     const GetFieldTranslations = vi.fn(async () => ({ en_US: 'Hello' }));
-    const wrapper = mount(OFieldTranslationsDialog, {
-      props: {
+    const wrapper = mountDialog({
         modelValue: true,
         store: { GetFieldTranslations, UpdateFieldTranslations, Browse } as any,
         recordId: 'lang-1',
         fieldName: 'Name',
-      },
-      global: { stubs: dialogStubs },
-    });
+      });
     await flushOpen();
     await wrapper.findAll('.input')[0]!.setValue('Hello!');
     const buttons = wrapper.findAll('.btn');
