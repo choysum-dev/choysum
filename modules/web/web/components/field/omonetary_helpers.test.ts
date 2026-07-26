@@ -112,20 +112,22 @@ describe('omonetary_helpers display and parse', () => {
     expect(quantizeMonetaryForCompare(null, 2, Decimal.ROUND_HALF_UP)).toBeNull();
     expect(quantizeMonetaryForCompare('1.239', 2, Decimal.ROUND_HALF_UP)?.toString()).toBe('1.24');
 
-    // formatters throw → fall back to toString path inside outer catch via broken DecimalPlaces? use invalid scale-free path
+    // formatters throw → fall back to Decimal#toString
     expect(
-      formatMonetaryDisplayText(
-        {
-          toDecimalPlaces() {
-            throw new Error('boom');
+      formatMonetaryDisplayText('1.25', {
+        scale: 2,
+        roundingMode: Decimal.ROUND_HALF_UP,
+        currency: { Code: 'USD' },
+        formatters: {
+          formatCurrencyFromConfig: () => {
+            throw new Error('fmt boom');
           },
-          toString() {
-            return 'FALLBACK';
+          formatFixedDecimalString: () => {
+            throw new Error('fix boom');
           },
-        } as any,
-        { scale: 2, roundingMode: Decimal.ROUND_HALF_UP, currency: null }
-      )
-    ).toBe('FALLBACK');
+        },
+      })
+    ).toBe('1.25');
 
     const t = (msg: string, ...args: unknown[]) => `${msg}:${args.join(',')}`;
     expect(validateMonetaryValue(null, 2, bounds, t)).toBeNull();
