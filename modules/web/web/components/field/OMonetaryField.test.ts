@@ -31,9 +31,12 @@ const useFieldMock = vi.hoisted(() => ({
 }));
 
 vi.mock('@/web/web/stores/i18nStore', async () => {
-  const actual = await vi.importActual<typeof import('@/web/web/stores/i18nStore')>('@/web/web/stores/i18nStore');
+  // Avoid i18nStore/index (Pinia persist/localStorage + vue-devtools IndexedDB).
+  const formatters = await vi.importActual<typeof import('@/web/web/stores/i18nStore/language_format')>(
+    '@/web/web/stores/i18nStore/language_format'
+  );
   return {
-    ...actual,
+    ...formatters,
     useI18nStore: () => {
       if (i18nStoreMock.throwOnAccess) throw new Error('i18n boom');
       return { currentLocale: i18nStoreMock.currentLocale };
@@ -80,7 +83,22 @@ function makeBinding(
 
 const fieldBaseStub = defineComponent({
   name: 'OFieldBaseStub',
-  props: ['binding', 'toView', 'fromView', 'rules'],
+  inheritAttrs: false,
+  props: {
+    binding: { type: Object, required: true },
+    toView: { type: Function, default: undefined },
+    fromView: { type: Function, default: undefined },
+    rules: { type: Array, default: undefined },
+    label: { type: String, default: undefined },
+    formItemProps: { type: Object, default: undefined },
+    vColumnProps: { type: Object, default: undefined },
+    required: { type: [Boolean, Function, Object], default: undefined },
+    readonly: { type: [Boolean, Function, Object], default: undefined },
+    visible: { type: [Boolean, Function, Object], default: undefined },
+    cellVisible: { type: [Boolean, Function, Object], default: undefined },
+    renderMode: { type: String, default: undefined },
+    showInlineError: { type: Boolean, default: undefined },
+  },
   setup(p, { slots }) {
     // Pass the live ref through so cell commits mutate binding state.
     const fieldValue = () => (p.binding as any).fieldRef();
@@ -90,12 +108,27 @@ const fieldBaseStub = defineComponent({
   },
 });
 
-const elInputStub = {
-  props: ['modelValue', 'placeholder'],
+const elInputStub = defineComponent({
+  name: 'ElInput',
+  inheritAttrs: false,
+  props: {
+    modelValue: { type: [String, Number, null] as any, default: null },
+    placeholder: { type: String, default: undefined },
+    inputmode: { type: String, default: undefined },
+    class: { type: [String, Object, Array], default: undefined },
+  },
   emits: ['update:modelValue', 'blur'],
-  template:
-    '<input class="el-input" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" @blur="$emit(\'blur\')" />',
-};
+  setup(p, { emit }) {
+    return () =>
+      h('input', {
+        class: 'el-input',
+        value: p.modelValue ?? '',
+        placeholder: p.placeholder,
+        onInput: (e: Event) => emit('update:modelValue', (e.target as HTMLInputElement).value),
+        onBlur: () => emit('blur'),
+      });
+  },
+});
 
 function mountEdit(binding: any, props: Record<string, unknown> = {}) {
   return mount(OMonetaryField as any, {
@@ -110,6 +143,7 @@ function mountEdit(binding: any, props: Record<string, unknown> = {}) {
       stubs: {
         OFieldBase: fieldBaseStub,
         ElInput: elInputStub,
+        'el-input': elInputStub,
       },
     },
   });
@@ -371,11 +405,28 @@ describe('OMonetaryField', () => {
         stubs: {
           OFieldBase: defineComponent({
             name: 'OFieldBaseStub',
-            props: ['rules'],
+            inheritAttrs: false,
+            props: {
+              rules: { type: Array, default: undefined },
+              binding: { type: Object, default: undefined },
+              label: { type: String, default: undefined },
+              toView: { type: Function, default: undefined },
+              fromView: { type: Function, default: undefined },
+              formItemProps: { type: Object, default: undefined },
+              vColumnProps: { type: Object, default: undefined },
+              required: { type: [Boolean, Function, Object], default: undefined },
+              readonly: { type: [Boolean, Function, Object], default: undefined },
+              visible: { type: [Boolean, Function, Object], default: undefined },
+              cellVisible: { type: [Boolean, Function, Object], default: undefined },
+              renderMode: { type: String, default: undefined },
+              showInlineError: { type: Boolean, default: undefined },
+            },
             setup(p) {
               return () => h('div', { class: 'rules', 'data-count': String((p.rules as any[])?.length || 0) });
             },
           }),
+          ElInput: elInputStub,
+          'el-input': elInputStub,
         },
       },
     });
@@ -481,6 +532,7 @@ describe('OMonetaryField', () => {
           stubs: {
             OFieldBase: fieldBaseStub,
             ElInput: elInputStub,
+            'el-input': elInputStub,
           },
         },
       });

@@ -57,8 +57,6 @@ export default class ExchangeRate extends BaseModel {
   @Field({
     type: 'decimal',
     notNull: true,
-    precision: 38,
-    scale: 18,
     string: _lt('Exchange Rate', { scope: 'base.model.ExchangeRate.fields' }),
   })
   Rate: any;

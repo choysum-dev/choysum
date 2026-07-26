@@ -1,9 +1,11 @@
+// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from 'vitest';
 import Decimal from '@/core/utils/decimal';
-import { formatCurrencyFromConfig, formatFixedDecimalString } from '@/web/web/stores/i18nStore';
+// Import pure formatters only — i18nStore/index pulls Pinia persist(localStorage).
+import { formatCurrencyFromConfig, formatFixedDecimalString } from '@/web/web/stores/i18nStore/language_format';
 import {
   asMonetaryDecimal,
   clampMonetaryValue,

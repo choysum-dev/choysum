@@ -65,7 +65,7 @@ import {
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/OMonetaryField' });
 
-defineOptions({ name: 'OMonetaryField' });
+defineOptions({ name: 'OMonetaryField', inheritAttrs: false });
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 type ViewType = string | null;
@@ -218,6 +218,7 @@ function makeBufferOptions(getScale: () => number) {
 
 const OMonetaryCell = defineComponent({
   name: 'OMonetaryCell',
+  inheritAttrs: false,
   props: {
     fieldValue: { type: Function, required: true },
     options: { type: Object, required: true },
