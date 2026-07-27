@@ -187,7 +187,7 @@
         "Kind": "grant",
         "IrApplicationId": null,
         "IrModelId": { "modelRef": "auth.User" },
-        "Condition": { "And": [] },
+        "Condition": { "And": [["Id", "=", "$userId"]] },
         "PermRead": true,
         "PermWrite": true,
         "PermCreate": false,

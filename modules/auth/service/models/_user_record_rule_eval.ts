@@ -132,7 +132,10 @@ function ruleAudienceScope(roleId: string, roleScopesById: Record<string, RoleSc
     // Everyone rules (RoleId null): no role-company gate; companyFilter stays orthogonal if added later.
     return { global: true, companies: [] };
   }
-  return roleScopesById?.[roleId] || { global: true, companies: [] };
+  const mapped = roleScopesById?.[roleId];
+  if (mapped) return mapped;
+  // Missing scope for a concrete role: deny-leaning (empty company gate) rather than global.
+  return { global: false, companies: [] };
 }
 
 function buildRuleExpr(rule: any, companyGateEnabled: boolean, roleScopesById: Record<string, RoleScope>): any {
@@ -207,12 +210,21 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
       audienceOr.push(['RoleId', 'in', roleIds] as any);
     }
 
+    const RULE_FETCH_LIMIT = 5000;
     const allRules = await RoleRecordRule.Search(
       {
         And: [{ Or: audienceOr }, [permField as any, '=', true], { Or: scopeOr }],
       } as any,
-      { fields: ['RoleId', 'Kind', 'Condition', 'IrModelId', 'IrApplicationId'], limit: 5000 }
+      { fields: ['RoleId', 'Kind', 'Condition', 'IrModelId', 'IrApplicationId'], limit: RULE_FETCH_LIMIT + 1 }
     );
+
+    if ((allRules || []).length > RULE_FETCH_LIMIT) {
+      // Fail closed: omitted restrict rows would otherwise silently widen access.
+      console.error(
+        `RoleRecordRule evaluation truncated for ${input.appName}.${input.modelName} op=${input.opValue}: matched >${RULE_FETCH_LIMIT} rows`
+      );
+      return { kind: 'false', reason: `record_rule_truncated_${input.opValue}_deny` };
+    }
 
     const grantExprs: any[] = [];
     const restrictExprs: any[] = [];
