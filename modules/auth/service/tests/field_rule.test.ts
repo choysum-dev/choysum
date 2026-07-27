@@ -1270,6 +1270,35 @@ test('P4 field rule deny-default: no roles denies all non-system fields', async 
   expect(out.denyReadFields.includes('DisplayName')).toBe(false);
 });
 
+test('P4 field rule deny-default: only system fields yields no_fields_deny_by_default', async () => {
+  resetRequestContext();
+  setReq({ depth: 0, fieldRuleMode: '' });
+
+  const origIrFieldSearch = (IrField as any).Search;
+  (IrField as any).Search = async () => [
+    { Id: 'sys_id', Name: 'Id' },
+    { Id: 'sys_dn', Name: 'DisplayName' },
+    { Id: 'sys_ca', Name: 'CreatedAt' },
+  ];
+
+  try {
+    const out = await withModelContext({} as any, async () => {
+      return await evaluateFieldRules({
+        appName: 'auth',
+        modelName: 'CompanyScopedResource',
+        rawModel: 'auth.CompanyScopedResource',
+        roleIds: ['role_unused'],
+      });
+    }, { merge: false });
+
+    expect(out.reason).toBe('no_fields_deny_by_default');
+    expect(out.denyReadFields).toEqual([]);
+    expect(out.denyWriteFields).toEqual([]);
+  } finally {
+    (IrField as any).Search = origIrFieldSearch;
+  }
+});
+
 test('P4 field rule deny-default: roles without FR rows deny all non-system fields', async () => {
   resetRequestContext();
 
@@ -1376,6 +1405,50 @@ test('P4 field rule deny-default: uncovered field is denied when other FR rows e
   );
   expect(Object.prototype.hasOwnProperty.call(row as any, 'Name')).toBe(true);
   expect(Object.prototype.hasOwnProperty.call(row as any, 'CompanyId')).toBe(false);
+});
+
+test('P4 field rule deny-default: null FR Search result denies all non-system fields', async () => {
+  resetRequestContext();
+
+  const c1 = { Id: uid('C1') };
+  const { roleId } = await withModelContext(
+    { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
+    async () => {
+      const uid1 = await createUser(c1.Id);
+      setIdentity(uid1);
+      const rid = await createRole();
+      await grantRoleGlobal(uid1, rid, c1.Id);
+      return { roleId: rid };
+    },
+    { merge: false }
+  );
+
+  const jsCtx = ensureRequestContext();
+  delete (jsCtx as any)[FR_CACHE_KEY];
+  setReq({ depth: 0, fieldRuleMode: '' });
+
+  const origSearch = (RoleFieldRule as any).Search;
+  (RoleFieldRule as any).Search = async () => null;
+
+  try {
+    const out = await withModelContext(
+      { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
+      async () => {
+        return await evaluateFieldRules({
+          appName: 'auth',
+          modelName: 'CompanyScopedResource',
+          rawModel: 'auth.CompanyScopedResource',
+          roleIds: [roleId],
+        });
+      },
+      { merge: false }
+    );
+
+    expect(out.reason).toBe('no_field_rules_deny_by_default');
+    expect(out.denyReadFields.includes('Name')).toBe(true);
+  } finally {
+    (RoleFieldRule as any).Search = origSearch;
+  }
 });
 
 // ---------------------------------------------------------------------------
