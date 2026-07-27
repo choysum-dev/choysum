@@ -1060,7 +1060,8 @@ test('RoleRecordRule coverage: empty RoleId string, CreateMany null, Field Kind 
       } as any,
       ['Id', 'RoleId', 'Kind'] as any
     );
-    expect((emptyStr as any)?.RoleId == null || (emptyStr as any)?.RoleId === '').toBe(true);
+    // Must normalize away to null — do not accept persisted ''.
+    expect((emptyStr as any)?.RoleId == null).toBe(true);
 
     // CreateMany(null) uses `values || []` then persists empty list.
     const none = await RoleRecordRule.CreateMany(null as any, ['Id'] as any);
