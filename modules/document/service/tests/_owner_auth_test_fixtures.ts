@@ -17,10 +17,12 @@ const FR_FIXTURE_ROLE_CODE = 'document.fixture.fr_allow';
 const KNOWN_DOCUMENT_TEST_USER_IDS = ['usr_document_test', 'usr_scope_a', 'usr_scope_b'];
 
 let authUserOwnerGrantsSeeded = false;
-let authUserOwnerFrSeeded = false;
 let createdOwnerGrantRuleId = '';
 let createdOwnerFrRuleId = '';
 let createdOwnerFrRoleId = '';
+/** Resolution memo (may point at reused pre-existing rows that teardown must not delete). */
+let resolvedOwnerFrRoleId = '';
+let ownerFrRuleEnsured = false;
 const createdOwnerFrUserRoleIds: string[] = [];
 const createdOwnerFrUserIds: string[] = [];
 let previousRecordRuleEnabled: unknown = undefined;
@@ -184,12 +186,11 @@ export async function ensureAuthUserOwnerFieldRuleGrants(): Promise<void> {
     await invalidateAuthzCachesForUsers(Array.from(userIds));
   });
 
-  authUserOwnerFrSeeded = true;
   clearRequestAuthzCaches();
 }
 
 async function ensureFixtureFrRole(): Promise<string> {
-  if (createdOwnerFrRoleId) return createdOwnerFrRoleId;
+  if (resolvedOwnerFrRoleId) return resolvedOwnerFrRoleId;
 
   const existingRoles = await Role.Search(['Code', '=', FR_FIXTURE_ROLE_CODE] as any, {
     fields: ['Id'],
@@ -198,6 +199,7 @@ async function ensureFixtureFrRole(): Promise<string> {
   const existingId = String((existingRoles as any)?.[0]?.Id || '').trim();
   if (existingId) {
     // Reuse across the suite; only delete if we created it in this process.
+    resolvedOwnerFrRoleId = existingId;
     return existingId;
   }
 
@@ -213,11 +215,12 @@ async function ensureFixtureFrRole(): Promise<string> {
   );
   createdOwnerFrRoleId = String((createdRole as any)?.Id || '').trim();
   if (!createdOwnerFrRoleId) throw new Error('failed to create document FR fixture role');
+  resolvedOwnerFrRoleId = createdOwnerFrRoleId;
   return createdOwnerFrRoleId;
 }
 
 async function ensureFixtureFrRule(roleId: string): Promise<void> {
-  if (createdOwnerFrRuleId) return;
+  if (ownerFrRuleEnsured) return;
 
   const existingFr = await RoleFieldRule.Search(
     {
@@ -234,6 +237,7 @@ async function ensureFixtureFrRule(roleId: string): Promise<void> {
   );
   if ((existingFr || []).length > 0) {
     // Pre-existing rule; leave teardown alone.
+    ownerFrRuleEnsured = true;
     return;
   }
 
@@ -250,6 +254,7 @@ async function ensureFixtureFrRule(roleId: string): Promise<void> {
   );
   createdOwnerFrRuleId = String((createdFr as any)?.Id || '').trim();
   if (!createdOwnerFrRuleId) throw new Error('failed to create document FR fixture rule');
+  ownerFrRuleEnsured = true;
 }
 
 async function ensureFixtureUser(userId: string): Promise<void> {
@@ -328,7 +333,8 @@ export async function restoreDocumentOwnerAuthFixtures(): Promise<void> {
 
   // Always allow a later ensure* to re-seed / refresh caches.
   authUserOwnerGrantsSeeded = false;
-  authUserOwnerFrSeeded = false;
+  resolvedOwnerFrRoleId = '';
+  ownerFrRuleEnsured = false;
 
   await withPermissionGraphBypass(async () => {
     if (createdOwnerGrantRuleId) {

@@ -19,6 +19,7 @@ import {
   ensureAuthUserOwnerFieldRuleGrants,
   disableRepositoryRecordRuleForDocumentTests,
   disableRepositoryFieldRuleForDocumentTests,
+  restoreDocumentOwnerAuthFixtures,
 } from './_owner_auth_test_fixtures';
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
@@ -1174,4 +1175,8 @@ test('document.attachment_binding: BatchDescribe rejects when attachmentBindingI
   expect(caught!.domain).toBe('document');
   expect(caught!.code).toBe('INVALID_ARGUMENT');
   expect(caught!.metadata?.field).toBe('attachmentBindingIds');
+});
+
+test('document owner auth fixtures: restore env and suite-owned RR/FR fixtures (binding suite)', async () => {
+  await restoreDocumentOwnerAuthFixtures();
 });
