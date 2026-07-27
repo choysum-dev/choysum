@@ -1038,3 +1038,109 @@ test('RoleRecordRule RoleId: restrict with null RoleId does not emit grant warn'
     console.warn = originalWarn;
   }
 });
+
+test('RoleRecordRule coverage: CreateMany, blank object RoleId, Update Kind/RoleId paths', async () => {
+  resetRequestContext();
+  setupAllowlistForFixtures();
+
+  const warnings: string[] = [];
+  const originalWarn = console.warn;
+  console.warn = ((...args: unknown[]) => {
+    warnings.push(args.map(a => String(a)).join(' '));
+  }) as typeof console.warn;
+
+  try {
+    await withModelContext({ activeCompanyId: uid('C'), enabledCompanyIds: [uid('C')] } as any, async () => {
+      const roleId = await createRole();
+      const modelId = await resolveModelId('auth', 'CompanyScopedResource');
+
+      // CreateMany with concrete RoleId + grant must not warn (isEveryone=false).
+      const many = await RoleRecordRule.CreateMany(
+        [
+          {
+            RoleId: { Id: roleId } as any,
+            Kind: 'grant',
+            IrModelId: modelId,
+            IrApplicationId: null,
+            PermRead: true,
+          } as any,
+        ],
+        ['Id', 'Kind', 'RoleId'] as any
+      );
+      expect(many.length).toBe(1);
+      expect(String((many[0] as any)?.Kind || '')).toBe('grant');
+      expect(warnings.some(w => w.includes('wide-open grant'))).toBe(false);
+
+      // Blank object RoleId → null (everyone) + grant → warn.
+      warnings.length = 0;
+      const blankRole = await RoleRecordRule.Create(
+        {
+          RoleId: { Id: '   ' } as any,
+          Kind: 'grant',
+          IrModelId: modelId,
+          IrApplicationId: null,
+          PermRead: true,
+        } as any,
+        ['Id', 'RoleId'] as any
+      );
+      expect((blankRole as any)?.RoleId == null || (blankRole as any)?.RoleId === '').toBe(true);
+      expect(warnings.some(w => w.includes('Kind=grant') && w.includes('RoleId=null'))).toBe(true);
+
+      // Create omitting RoleId key entirely → everyone grant warn.
+      warnings.length = 0;
+      const omittedRole = await RoleRecordRule.Create(
+        {
+          Kind: 'grant',
+          IrModelId: modelId,
+          IrApplicationId: null,
+          PermRead: true,
+        } as any,
+        ['Id', 'RoleId'] as any
+      );
+      expect((omittedRole as any)?.RoleId == null || (omittedRole as any)?.RoleId === '').toBe(true);
+      expect(warnings.some(w => w.includes('wide-open grant'))).toBe(true);
+
+      const id = String((many[0] as any).Id || '').trim();
+      expect(id.length > 0).toBe(true);
+
+      // Update Kind without RoleId: early-return in warn helper (no RoleId touch).
+      warnings.length = 0;
+      await RoleRecordRule.UpdateById(id, { Kind: 'grant' } as any, ['Id', 'Kind'] as any);
+      expect(warnings.some(w => w.includes('wide-open grant'))).toBe(false);
+
+      // Update clearing RoleId with Kind=grant → warn.
+      warnings.length = 0;
+      await RoleRecordRule.Update(['Id', '=', id] as any, { Kind: 'grant', RoleId: null } as any, ['Id', 'RoleId'] as any);
+      expect(warnings.some(w => w.includes('Kind=grant') && w.includes('RoleId=null'))).toBe(true);
+
+      // Update Kind to restrict with RoleId string id (non-object branch).
+      await RoleRecordRule.UpdateById(
+        id,
+        {
+          Kind: 'restrict',
+          RoleId: roleId,
+        } as any,
+        ['Id', 'Kind', 'RoleId'] as any
+      );
+      const rows = await RoleRecordRule.Search(
+        ['Id', '=', id] as any,
+        { fields: ['Id', 'Kind', 'RoleId'], limit: 1 } as any
+      );
+      expect(rows.length).toBe(1);
+      expect(String((rows[0] as any)?.Kind || '')).toBe('restrict');
+      expect(String((rows[0] as any)?.RoleId?.Id || (rows[0] as any)?.RoleId || '').trim()).toBe(roleId);
+
+      // Invalid Kind on UpdateById.
+      let threw = false;
+      try {
+        await RoleRecordRule.UpdateById(id, { Kind: 'open' } as any, ['Id'] as any);
+      } catch (err: any) {
+        threw = true;
+        expect(String(err?.message || err)).toContain("invalid RoleRecordRule Kind: must be 'grant' or 'restrict'");
+      }
+      expect(threw).toBe(true);
+    });
+  } finally {
+    console.warn = originalWarn;
+  }
+});
