@@ -483,6 +483,8 @@ test('P3-1: same request UserRole.CreateMany invalidates authz context', async (
 
       const before = await User.CheckMethodAccess(c2.Id, `/auth.User/${browse.name}`);
 
+      // Mid-request fixture write: re-enable allowlist (deny-default blocks UserRole create).
+      setupAllowlistForFixtures();
       await UserRole.CreateMany(
         [
           {
@@ -493,6 +495,7 @@ test('P3-1: same request UserRole.CreateMany invalidates authz context', async (
         ] as any,
         ['Id'] as any
       );
+      disableAllowlist();
 
       const after = await User.CheckMethodAccess(c2.Id, `/auth.User/${browse.name}`);
       return { before, after };
