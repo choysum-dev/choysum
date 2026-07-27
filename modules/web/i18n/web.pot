@@ -92,27 +92,27 @@ msgctxt "web/components/field/ODatetimeField"
 msgid "Invalid date time"
 msgstr ""
 
-#: web/components/field/ODecimalField.vue:434
+#: web/components/field/ODecimalField.vue:435
 msgctxt "web/components/field/ODecimalField"
 msgid "Decimal places must not exceed %s"
 msgstr ""
 
-#: web/components/field/ODecimalField.vue:433
+#: web/components/field/ODecimalField.vue:434
 msgctxt "web/components/field/ODecimalField"
 msgid "Must be a valid number"
 msgstr ""
 
-#: web/components/field/ODecimalField.vue:438
+#: web/components/field/ODecimalField.vue:439
 msgctxt "web/components/field/ODecimalField"
 msgid "Must not be greater than %s"
 msgstr ""
 
-#: web/components/field/ODecimalField.vue:437
+#: web/components/field/ODecimalField.vue:438
 msgctxt "web/components/field/ODecimalField"
 msgid "Must not be less than %s"
 msgstr ""
 
-#: web/components/field/ODecimalField.vue:436
+#: web/components/field/ODecimalField.vue:437
 msgctxt "web/components/field/ODecimalField"
 msgid "Total digits must not exceed %s"
 msgstr ""
@@ -326,7 +326,7 @@ msgctxt "web/components/field/OManyToManyRefTagsField"
 msgid "OK"
 msgstr ""
 
-#: web/components/field/OManyToManyRefTagsField.vue:96
+#: web/components/field/OManyToManyRefTagsField.vue:95
 msgctxt "web/components/field/OManyToManyRefTagsField"
 msgid "Please select..."
 msgstr ""
@@ -336,17 +336,17 @@ msgctxt "web/components/field/OManyToManyRefTagsField"
 msgid "Search more"
 msgstr ""
 
-#: web/components/field/OManyToManyRefTagsField.vue:97
+#: web/components/field/OManyToManyRefTagsField.vue:96
 msgctxt "web/components/field/OManyToManyRefTagsField"
 msgid "Select related items"
 msgstr ""
 
-#: web/components/field/OManyToManyRefTagsField.vue:478
+#: web/components/field/OManyToManyRefTagsField.vue:449
 msgctxt "web/components/field/OManyToManyRefTagsField"
 msgid "relationStore is unresolved; cannot open picker"
 msgstr ""
 
-#: web/components/field/OManyToManyRefTagsField.vue:474
+#: web/components/field/OManyToManyRefTagsField.vue:445
 msgctxt "web/components/field/OManyToManyRefTagsField"
 msgid "searchList is not configured; cannot open picker"
 msgstr ""
@@ -371,7 +371,7 @@ msgctxt "web/components/field/OManyToManyTagsField"
 msgid "OK"
 msgstr ""
 
-#: web/components/field/OManyToManyTagsField.vue:95
+#: web/components/field/OManyToManyTagsField.vue:94
 msgctxt "web/components/field/OManyToManyTagsField"
 msgid "Please select..."
 msgstr ""
@@ -381,17 +381,17 @@ msgctxt "web/components/field/OManyToManyTagsField"
 msgid "Search more"
 msgstr ""
 
-#: web/components/field/OManyToManyTagsField.vue:96
+#: web/components/field/OManyToManyTagsField.vue:95
 msgctxt "web/components/field/OManyToManyTagsField"
 msgid "Select related items"
 msgstr ""
 
-#: web/components/field/OManyToManyTagsField.vue:477
+#: web/components/field/OManyToManyTagsField.vue:448
 msgctxt "web/components/field/OManyToManyTagsField"
 msgid "relationStore is unresolved; cannot open picker"
 msgstr ""
 
-#: web/components/field/OManyToManyTagsField.vue:473
+#: web/components/field/OManyToManyTagsField.vue:444
 msgctxt "web/components/field/OManyToManyTagsField"
 msgid "searchList is not configured; cannot open picker"
 msgstr ""
@@ -411,7 +411,7 @@ msgctxt "web/components/field/OManyToOneField"
 msgid "OK"
 msgstr ""
 
-#: web/components/field/OManyToOneField.vue:93
+#: web/components/field/OManyToOneField.vue:92
 msgctxt "web/components/field/OManyToOneField"
 msgid "Please select..."
 msgstr ""
@@ -421,7 +421,7 @@ msgctxt "web/components/field/OManyToOneField"
 msgid "Search more"
 msgstr ""
 
-#: web/components/field/OManyToOneField.vue:94
+#: web/components/field/OManyToOneField.vue:93
 msgctxt "web/components/field/OManyToOneField"
 msgid "Select record"
 msgstr ""
@@ -436,7 +436,7 @@ msgctxt "web/components/field/OManyToOneRefField"
 msgid "OK"
 msgstr ""
 
-#: web/components/field/OManyToOneRefField.vue:93
+#: web/components/field/OManyToOneRefField.vue:92
 msgctxt "web/components/field/OManyToOneRefField"
 msgid "Please select..."
 msgstr ""
@@ -446,7 +446,7 @@ msgctxt "web/components/field/OManyToOneRefField"
 msgid "Search more"
 msgstr ""
 
-#: web/components/field/OManyToOneRefField.vue:94
+#: web/components/field/OManyToOneRefField.vue:93
 msgctxt "web/components/field/OManyToOneRefField"
 msgid "Select record"
 msgstr ""
@@ -565,6 +565,16 @@ msgstr ""
 
 #: web/components/field/OSelectionField.vue:332
 msgctxt "web/components/field/OSelectionField"
+msgid "Value must be a string"
+msgstr ""
+
+#: web/components/field/OStatusbarField.vue:217
+msgctxt "web/components/field/OStatusbarField"
+msgid "Invalid option value: %s"
+msgstr ""
+
+#: web/components/field/OStatusbarField.vue:216
+msgctxt "web/components/field/OStatusbarField"
 msgid "Value must be a string"
 msgstr ""
 
@@ -748,19 +758,19 @@ msgctxt "web/components/view/OChartView"
 msgid "Stack"
 msgstr ""
 
-#: web/components/view/OFormView.vue:539
+#: web/components/view/OFormView.vue:540
 msgctxt "web/components/view/OFormView"
 msgid "Are you sure you want to delete the current record? This action cannot be undone."
 msgstr ""
 
 #: web/components/view/OFormView.vue:37
 #: web/components/view/OFormView.vue:51
-#: web/components/view/OFormView.vue:541
+#: web/components/view/OFormView.vue:542
 msgctxt "web/components/view/OFormView"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/view/OFormView.vue:539
+#: web/components/view/OFormView.vue:540
 msgctxt "web/components/view/OFormView"
 msgid "Confirm delete"
 msgstr ""
@@ -770,19 +780,19 @@ msgctxt "web/components/view/OFormView"
 msgid "Copy"
 msgstr ""
 
-#: web/components/view/OFormView.vue:407
-#: web/components/view/OFormView.vue:456
+#: web/components/view/OFormView.vue:408
+#: web/components/view/OFormView.vue:457
 msgctxt "web/components/view/OFormView"
 msgid "Created successfully"
 msgstr ""
 
 #: web/components/view/OFormView.vue:27
-#: web/components/view/OFormView.vue:540
+#: web/components/view/OFormView.vue:541
 msgctxt "web/components/view/OFormView"
 msgid "Delete"
 msgstr ""
 
-#: web/components/view/OFormView.vue:585
+#: web/components/view/OFormView.vue:586
 msgctxt "web/components/view/OFormView"
 msgid "Delete failed"
 msgstr ""
@@ -802,18 +812,18 @@ msgctxt "web/components/view/OFormView"
 msgid "New"
 msgstr ""
 
-#: web/components/view/OFormView.vue:477
+#: web/components/view/OFormView.vue:478
 msgctxt "web/components/view/OFormView"
 msgid "Operation failed"
 msgstr ""
 
-#: web/components/view/OFormView.vue:279
-#: web/components/view/OFormView.vue:288
+#: web/components/view/OFormView.vue:280
+#: web/components/view/OFormView.vue:289
 msgctxt "web/components/view/OFormView"
 msgid "Please fix the errors in the form first"
 msgstr ""
 
-#: web/components/view/OFormView.vue:552
+#: web/components/view/OFormView.vue:553
 msgctxt "web/components/view/OFormView"
 msgid "Record deleted"
 msgstr ""
@@ -823,12 +833,12 @@ msgctxt "web/components/view/OFormView"
 msgid "Refresh"
 msgstr ""
 
-#: web/components/view/OFormView.vue:519
+#: web/components/view/OFormView.vue:520
 msgctxt "web/components/view/OFormView"
 msgid "Refresh failed"
 msgstr ""
 
-#: web/components/view/OFormView.vue:516
+#: web/components/view/OFormView.vue:517
 msgctxt "web/components/view/OFormView"
 msgid "Refreshed"
 msgstr ""
@@ -839,18 +849,18 @@ msgctxt "web/components/view/OFormView"
 msgid "Reset"
 msgstr ""
 
-#: web/components/view/OFormView.vue:144
+#: web/components/view/OFormView.vue:145
 msgctxt "web/components/view/OFormView"
 msgid "Save"
 msgstr ""
 
-#: web/components/view/OFormView.vue:407
-#: web/components/view/OFormView.vue:456
+#: web/components/view/OFormView.vue:408
+#: web/components/view/OFormView.vue:457
 msgctxt "web/components/view/OFormView"
 msgid "Saved successfully"
 msgstr ""
 
-#: web/components/view/OFormView.vue:144
+#: web/components/view/OFormView.vue:145
 msgctxt "web/components/view/OFormView"
 msgid "Saving..."
 msgstr ""
@@ -985,7 +995,7 @@ msgctxt "web/components/view/OSearchView"
 msgid "Search..."
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:229
+#: web/components/view/search/OSearch.vue:245
 msgctxt "web/components/view/search/OSearch"
 msgid "Add at least one complete condition before saving"
 msgstr ""
@@ -1110,7 +1120,7 @@ msgctxt "web/components/view/search/OSearchFilterCondition"
 msgid "Add values"
 msgstr ""
 
-#: web/components/view/search/OSearchFilterCondition.vue:104
+#: web/components/view/search/OSearchFilterCondition.vue:107
 msgctxt "web/components/view/search/OSearchFilterCondition"
 msgid "Enter JSON"
 msgstr ""
@@ -1125,7 +1135,7 @@ msgctxt "web/components/view/search/OSearchFilterCondition"
 msgid "Operator"
 msgstr ""
 
-#: web/components/view/search/OSearchFilterCondition.vue:106
+#: web/components/view/search/OSearchFilterCondition.vue:109
 msgctxt "web/components/view/search/OSearchFilterCondition"
 msgid "Please select..."
 msgstr ""
@@ -1140,27 +1150,27 @@ msgctxt "web/components/view/search/OSearchFilterCondition"
 msgid "Select a field"
 msgstr ""
 
-#: web/components/view/search/OSearchFilterCondition.vue:96
+#: web/components/view/search/OSearchFilterCondition.vue:99
 msgctxt "web/components/view/search/OSearchFilterCondition"
 msgid "Select a record"
 msgstr ""
 
-#: web/components/view/search/OSearchFilterCondition.vue:98
+#: web/components/view/search/OSearchFilterCondition.vue:101
 msgctxt "web/components/view/search/OSearchFilterCondition"
 msgid "Select date"
 msgstr ""
 
-#: web/components/view/search/OSearchFilterCondition.vue:100
+#: web/components/view/search/OSearchFilterCondition.vue:103
 msgctxt "web/components/view/search/OSearchFilterCondition"
 msgid "Select date and time"
 msgstr ""
 
-#: web/components/view/search/OSearchFilterCondition.vue:102
+#: web/components/view/search/OSearchFilterCondition.vue:105
 msgctxt "web/components/view/search/OSearchFilterCondition"
 msgid "Select time"
 msgstr ""
 
-#: web/components/view/search/OSearchFilterCondition.vue:108
+#: web/components/view/search/OSearchFilterCondition.vue:111
 msgctxt "web/components/view/search/OSearchFilterCondition"
 msgid "Value"
 msgstr ""
@@ -1220,14 +1230,14 @@ msgctxt "web/composables/search/useGroupingOptions"
 msgid "Year"
 msgstr ""
 
-#: web/composables/search/useSearch.ts:54
-#: web/composables/search/useSearch.ts:66
+#: web/composables/search/useSearch.ts:55
+#: web/composables/search/useSearch.ts:67
 msgctxt "web/composables/search/useSearch"
 msgid "(empty)"
 msgstr ""
 
-#: web/composables/search/useSearch.ts:69
-#: web/composables/search/useSearch.ts:80
+#: web/composables/search/useSearch.ts:70
+#: web/composables/search/useSearch.ts:81
 msgctxt "web/composables/search/useSearch"
 msgid "Not configured"
 msgstr ""

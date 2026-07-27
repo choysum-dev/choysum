@@ -121,7 +121,12 @@ msgctxt "meta.model.IrField.fields"
 msgid "Accessibility Modifier"
 msgstr "可访问性修饰符"
 
-#: service/models/ir_field.ts:105
+#: service/models/ir_field.ts:96
+msgctxt "meta.model.IrField.fields"
+msgid "Currency Field"
+msgstr "货币字段"
+
+#: service/models/ir_field.ts:108
 msgctxt "meta.model.IrField.fields"
 msgid "Decorators"
 msgstr "装饰器"
@@ -136,7 +141,7 @@ msgctxt "meta.model.IrField.fields"
 msgid "Indexed"
 msgstr "已索引"
 
-#: service/models/ir_field.ts:99
+#: service/models/ir_field.ts:102
 msgctxt "meta.model.IrField.fields"
 msgid "Model"
 msgstr "模型"
@@ -216,7 +221,7 @@ msgctxt "meta.model.IrField.fields"
 msgid "Required"
 msgstr "必填"
 
-#: service/models/ir_field.ts:96
+#: service/models/ir_field.ts:99
 msgctxt "meta.model.IrField.fields"
 msgid "Round"
 msgstr "舍入"
@@ -1400,4 +1405,3 @@ msgstr "结果"
 msgctxt "web/views/ModuleLogListView"
 msgid "Started At"
 msgstr "开始时间"
-
