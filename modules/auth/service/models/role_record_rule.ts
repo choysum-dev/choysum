@@ -9,22 +9,56 @@ import { _lt } from '../i18n';
 import Role from './role';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { invalidateAllAuthzCaches } from './_request_cache_invalidation';
+import { assertExclusiveScope } from './_rule_scope_helpers';
+
+/**
+ * RecordRule merge operator (Security Algebra §5.4).
+ *
+ * - grant: matching conditions OR together (open domain)
+ * - restrict: matching conditions AND onto the grant domain
+ */
+export type RoleRecordRuleKind = 'grant' | 'restrict';
 
 /**
  * RoleRecordRule stores record-level condition filters and CRUD permission
  * overrides for a role at global, application, or model scope.
+ *
+ * Audience axis: `RoleId` null means the rule applies to everyone; non-null
+ * means it applies to that role only. This is orthogonal to Kind and to
+ * model/app/global scope.
  */
 @Model('RoleRecordRule')
 export default class RoleRecordRule extends BaseModel {
   /**
    * Role that owns this record-rule entry.
+   *
+   * Null = applies to all users (audience=everyone). Prefer concrete RoleId
+   * for grant packs; null + Kind=grant is allowed but warned.
    */
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => Role },
+    notNull: false,
     string: _lt('Role', { scope: 'auth.model.RoleRecordRule.fields' }),
   })
-  RoleId: Role;
+  RoleId?: Role; // notNull:false; null/omitted = everyone (avoid `Role | null` — metadata FK parser rejects unions)
+
+
+  /**
+   * Merge operator: grant (OR) or restrict (AND). Default grant for legacy rows.
+   */
+  @Field({
+    type: 'selection',
+    selection: [
+      { value: 'grant', label: _lt('Grant', { scope: 'auth.model.RoleRecordRule.fields' }) },
+      { value: 'restrict', label: _lt('Restrict', { scope: 'auth.model.RoleRecordRule.fields' }) },
+    ],
+    default: () => 'grant',
+    size: 16,
+    index: true,
+    string: _lt('Kind', { scope: 'auth.model.RoleRecordRule.fields' }),
+  })
+  Kind: RoleRecordRuleKind;
 
   /**
    * Application-level scope when the rule targets an entire application.
@@ -43,11 +77,12 @@ export default class RoleRecordRule extends BaseModel {
    * Model-level scope when the rule targets one concrete model.
    */
   @Field({
-    type: 'ManyToOneRef', relation: { targetModel: 'meta.IrModel' },
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'meta.IrModel' },
     notNull: false,
-      size: 20,
-      index: true,
-      checkConstraint: `(
+    size: 20,
+    index: true,
+    checkConstraint: `(
         (deleted_at IS NOT NULL)
         OR (ir_model_id IS NOT NULL AND ir_application_id IS NULL)
         OR (ir_model_id IS NULL AND ir_application_id IS NOT NULL)
@@ -108,31 +143,85 @@ export default class RoleRecordRule extends BaseModel {
   PermDelete: boolean;
 
   /**
-   * Validate that the requested scope resolves to model, application, or global.
+   * Normalize Kind and reject unsupported values.
    */
-  private static _validateScopeShape(values: Record<string, any>, mode: 'create' | 'update'): void {
-    const touchesScope = Object.prototype.hasOwnProperty.call(values, 'IrModelId') || Object.prototype.hasOwnProperty.call(values, 'IrApplicationId');
-    if (!touchesScope) return;
+  private static _normalizeKind(v: any): RoleRecordRuleKind {
+    const kind = String(v ?? 'grant')
+      .trim()
+      .toLowerCase();
+    if (kind === 'grant' || kind === 'restrict') return kind;
+    throw new Error("invalid RoleRecordRule Kind: must be 'grant' or 'restrict'");
+  }
 
-    if (mode === 'update') {
-      const hasAll = Object.prototype.hasOwnProperty.call(values, 'IrModelId') && Object.prototype.hasOwnProperty.call(values, 'IrApplicationId');
-      if (!hasAll) {
-        throw new Error('invalid RoleRecordRule scope update: must provide IrModelId/IrApplicationId together');
-      }
+  /**
+   * Normalize and validate Kind on create/update.
+   *
+   * On create, if Kind is omitted, leave it unset so the Field `default: () => 'grant'`
+   * applies at persistence time (keeps schema default reachable for coverage/runtime).
+   */
+  private static _validateKind(values: Record<string, any>, mode: 'create' | 'update'): void {
+    const touchesKind = Object.prototype.hasOwnProperty.call(values, 'Kind');
+    if (!touchesKind) return;
+    (values as any).Kind = this._normalizeKind((values as any).Kind);
+  }
+
+  /**
+   * Normalize RoleId when present (empty / blank → null = everyone).
+   */
+  private static _normalizeRoleId(values: Record<string, any>, _mode: 'create' | 'update'): void {
+    const touchesRole = Object.prototype.hasOwnProperty.call(values, 'RoleId');
+    if (!touchesRole) return;
+
+    const raw = (values as any).RoleId;
+    if (raw == null || raw === '') {
+      (values as any).RoleId = null;
+      return;
     }
-
-    const irModelId = normalizeRefId((values as any).IrModelId);
-    const irApplicationId = normalizeRefId((values as any).IrApplicationId);
-
-    const isModel = irModelId != null && irApplicationId == null;
-    const isApplication = irModelId == null && irApplicationId != null;
-    const isGlobal = irModelId == null && irApplicationId == null;
-    if (!isModel && !isApplication && !isGlobal) {
-      throw new Error('invalid RoleRecordRule scope: must be exactly one of model/application/global');
+    if (typeof raw === 'object') {
+      const id = normalizeRefId(raw);
+      (values as any).RoleId = id ? { Id: id } : null;
+      return;
     }
+    // normalizeRefId trims whitespace; blank strings become null (everyone).
+    const id = normalizeRefId(raw);
+    (values as any).RoleId = id;
+  }
 
-    (values as any).IrModelId = irModelId;
-    (values as any).IrApplicationId = irApplicationId;
+  /**
+   * Warn when Kind=grant applies to everyone (RoleId null) — open-for-all risk.
+   *
+   * Limitation: this helper only sees the mutation payload. Partial updates that
+   * omit Kind or RoleId do not load the persisted row, so e.g. clearing RoleId
+   * while Kind stays grant (or setting Kind=grant while RoleId stays null) may
+   * not warn. Full create paths and updates that send both fields are covered.
+   */
+  private static _warnGrantForEveryone(values: Record<string, any>, mode: 'create' | 'update'): void {
+    const kind = String((values as any).Kind ?? (mode === 'create' ? 'grant' : ''))
+      .trim()
+      .toLowerCase();
+    if (kind !== 'grant') return;
+
+    const touchesRole = Object.prototype.hasOwnProperty.call(values, 'RoleId');
+    if (mode === 'update' && !touchesRole) return;
+
+    const roleId = normalizeRefId((values as any).RoleId);
+    // Create without RoleId (or explicit null) ⇒ everyone; update clearing RoleId ⇒ everyone.
+    const isEveryone = !roleId;
+    if (!isEveryone) return;
+
+    console.warn(
+      'RoleRecordRule: Kind=grant with RoleId=null applies to all users (wide-open grant); prefer attaching grants to a concrete role'
+    );
+  }
+
+  /**
+   * Run scope / Kind / RoleId validation before mutating RoleRecordRule rows.
+   */
+  private static _prepareValues(values: Record<string, any>, mode: 'create' | 'update'): void {
+    assertExclusiveScope(values, mode, 'record');
+    this._validateKind(values, mode);
+    this._normalizeRoleId(values, mode);
+    this._warnGrantForEveryone(values, mode);
   }
 
   /**
@@ -143,7 +232,7 @@ export default class RoleRecordRule extends BaseModel {
     value: Partial<Insertable<T & BaseModel>>,
     returnFields?: FieldSelection<T>
   ): Promise<T> {
-    RoleRecordRule._validateScopeShape(value as any, 'create');
+    RoleRecordRule._prepareValues(value as any, 'create');
     const out = await super.Create(value as any, returnFields as any);
     invalidateAllAuthzCaches();
     return out as unknown as T;
@@ -157,8 +246,9 @@ export default class RoleRecordRule extends BaseModel {
     values: Partial<Insertable<T & BaseModel>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
-    for (const v of values || []) RoleRecordRule._validateScopeShape(v as any, 'create');
-    const out = await super.CreateMany(values as any, returnFields as any);
+    const rows = values || [];
+    for (const v of rows) RoleRecordRule._prepareValues(v as any, 'create');
+    const out = await super.CreateMany(rows as any, returnFields as any);
     invalidateAllAuthzCaches();
     return out as unknown as T[];
   }
@@ -173,7 +263,7 @@ export default class RoleRecordRule extends BaseModel {
     returnFields?: FieldSelection<T>,
     options?: any
   ): Promise<Partial<T>[]> {
-    RoleRecordRule._validateScopeShape(values as any, 'update');
+    RoleRecordRule._prepareValues(values as any, 'update');
     const out = await super.Update(condition as any, values as any, returnFields as any, options as any);
     invalidateAllAuthzCaches();
     return out as unknown as Partial<T>[];
@@ -189,7 +279,7 @@ export default class RoleRecordRule extends BaseModel {
     returnFields?: FieldSelection<T>,
     options?: any
   ): Promise<Partial<T>> {
-    RoleRecordRule._validateScopeShape(values as any, 'update');
+    RoleRecordRule._prepareValues(values as any, 'update');
     const out = await super.UpdateById(id as any, values as any, returnFields as any, options as any);
     invalidateAllAuthzCaches();
     return out as unknown as Partial<T>;
