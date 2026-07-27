@@ -21,4 +21,6 @@ ignore:
   - "**/*_test.go"
   - "**/*.spec.ts"
   - "**/*.test.ts"
+  # Test helpers/fixtures under service/tests (not product code; *.test.ts already ignored).
+  - "modules/**/service/tests/**"
   - ".dev/**"
