@@ -161,4 +161,9 @@ export async function restoreDocumentOwnerAuthFixtures(): Promise<void> {
     }
   });
   createdOwnerGrantRuleId = '';
+
+  // Drop request-scoped RR memo so a reused context cannot keep the deleted grant.
+  const root: any = (globalThis as any).$choysum ?? {};
+  const jsCtx = root?.request?.context;
+  if (jsCtx) delete jsCtx[RR_CACHE_KEY];
 }
