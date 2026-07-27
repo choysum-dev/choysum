@@ -159,3 +159,18 @@ test('rule scope helpers: update without scope keys is a no-op', () => {
   expect(fieldOnlyPerm.PermRead).toBe('allow');
   expect(Object.prototype.hasOwnProperty.call(fieldOnlyPerm, 'IrFieldId')).toBe(false);
 });
+
+test('rule scope helpers: unknown profile throws', () => {
+  expect(() => assertExclusiveScope({}, 'create', 'bogus' as any)).toThrow('unknown rule scope profile: bogus');
+});
+
+test('rule scope helpers: update with all sibling fields succeeds', () => {
+  const record: Record<string, any> = { IrModelId: 'm1', IrApplicationId: null };
+  assertExclusiveScope(record, 'update', 'record');
+  expect(record.IrModelId).toBe('m1');
+  expect(record.IrApplicationId).toBe(null);
+
+  const method: Record<string, any> = { IrServiceId: null, IrModelId: null, IrApplicationId: 'a1' };
+  assertExclusiveScope(method, 'update', 'method');
+  expect(method.IrApplicationId).toBe('a1');
+});
