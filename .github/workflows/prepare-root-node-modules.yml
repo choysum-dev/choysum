@@ -49,34 +49,56 @@ jobs:
         with:
           ref: ${{ inputs.run_ref }}
 
-      - name: Setup Node
-        if: ${{ inputs.docs_only != 'true' }}
-        uses: actions/setup-node@v7
-        with:
-          node-version: 22
-
-      - name: Install root test toolchain dependencies
+      - name: Compute root node_modules dependencies
+        id: deps
         if: ${{ inputs.docs_only != 'true' }}
         env:
           TARGET_MODULES_JSON: ${{ inputs.target_modules_json }}
+          ARCHIVE_PATH: ${{ inputs.archive_path }}
         run: |
           set -euo pipefail
           deps_file=".choysum/tmp/root-node-modules-deps.txt"
-          mkdir -p "$(dirname "$deps_file")"
+          mkdir -p "$(dirname "$deps_file")" "$(dirname "$ARCHIVE_PATH")"
 
           python3 scripts/ci/compute_root_node_modules_deps.py \
             --modules-path modules \
             --target-modules-json "$TARGET_MODULES_JSON" \
             --output "$deps_file"
 
-          echo "Computed root node_modules dependencies ($(wc -l < "$deps_file") entries):"
+          deps_hash="$(sha256sum "$deps_file" | awk '{print $1}')"
+          echo "Computed root node_modules dependencies ($(wc -l < "$deps_file") entries, hash=${deps_hash}):"
           cat "$deps_file"
 
-          xargs npm install --include=dev --no-package-lock --no-save < "$deps_file"
+          echo "deps_file=$deps_file" >> "$GITHUB_OUTPUT"
+          echo "deps_hash=$deps_hash" >> "$GITHUB_OUTPUT"
+
+      # Cache the packed archive (skip npm install + tar on hit).
+      # Note: specs that use @latest stay at that tag in the deps hash; resolved
+      # versions may lag until the deps list itself changes.
+      - name: Restore root node_modules archive cache
+        id: nm-cache
+        if: ${{ inputs.docs_only != 'true' }}
+        uses: actions/cache@v6
+        with:
+          path: ${{ inputs.archive_path }}
+          key: ${{ runner.os }}-root-nm-v1-node22-${{ steps.deps.outputs.deps_hash }}
+
+      - name: Setup Node
+        if: ${{ inputs.docs_only != 'true' && steps.nm-cache.outputs.cache-hit != 'true' }}
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Install root test toolchain dependencies
+        if: ${{ inputs.docs_only != 'true' && steps.nm-cache.outputs.cache-hit != 'true' }}
+        run: |
+          set -euo pipefail
+          xargs npm install --include=dev --no-package-lock --no-save < "${{ steps.deps.outputs.deps_file }}"
 
       - name: Pack root node_modules
-        if: ${{ inputs.docs_only != 'true' }}
+        if: ${{ inputs.docs_only != 'true' && steps.nm-cache.outputs.cache-hit != 'true' }}
         run: |
+          set -euo pipefail
           ARCHIVE_PATH="${{ inputs.archive_path }}"
           mkdir -p "$(dirname "$ARCHIVE_PATH")"
           tar -czf "$ARCHIVE_PATH" node_modules

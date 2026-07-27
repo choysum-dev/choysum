@@ -48,14 +48,40 @@ jobs:
           artifact-name: ${{ inputs.embedded_assets_artifact_name }}
           archive-path: ${{ inputs.embedded_assets_archive_path }}
 
+      - name: Compute embedded assets hash for CLI cache key
+        id: embed-key
+        run: |
+          set -euo pipefail
+          embed_hash="$(
+            {
+              find internal/bootstrap/web/dist pkg/jsengine/scripts/vuesfc/dist -type f -print0 \
+                | sort -z \
+                | xargs -0 sha256sum
+            } | sha256sum | awk '{print $1}'
+          )"
+          echo "embed_hash=$embed_hash" >> "$GITHUB_OUTPUT"
+          echo "Embedded assets hash: $embed_hash"
+          mkdir -p "$(dirname "${{ inputs.choysum_binary_path }}")"
+
+      # Exact-key only — never restore-keys (wrong binary would silently ship).
+      - name: Restore choysum CLI cache
+        id: cli-cache
+        uses: actions/cache@v6
+        with:
+          path: ${{ inputs.choysum_binary_path }}
+          key: ${{ runner.os }}-choysum-cli-v1-${{ hashFiles('go.mod', 'go.sum', 'main.go', 'cmd/**/*.go', 'internal/**/*.go', 'pkg/**/*.go') }}-${{ steps.embed-key.outputs.embed_hash }}
+
       - name: Setup Go
+        if: ${{ steps.cli-cache.outputs.cache-hit != 'true' }}
         uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
 
       - name: Build choysum CLI
+        if: ${{ steps.cli-cache.outputs.cache-hit != 'true' }}
         run: |
+          set -euo pipefail
           CHOYSUM_BINARY_PATH="${{ inputs.choysum_binary_path }}"
           mkdir -p "$(dirname "$CHOYSUM_BINARY_PATH")"
           go build -o "$CHOYSUM_BINARY_PATH" .
