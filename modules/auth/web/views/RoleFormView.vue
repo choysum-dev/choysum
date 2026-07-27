@@ -257,14 +257,10 @@ function resolveUiResourceTypeIcon(type?: string) {
 }
 
 /** New RecordRule rows default to grant (RoleId is always this role via O2M inverse). */
-function defaultRecordRule(): Record<string, any> {
-  return { Kind: 'grant' };
-}
+const defaultRecordRule: Record<string, any> = { Kind: 'grant' };
 
 /** New MethodAccess rows default to allow (deny is an explicit brake). */
-function defaultMethodAccess(): Record<string, any> {
-  return { Mode: 'allow' };
-}
+const defaultMethodAccess: Record<string, any> = { Mode: 'allow' };
 
 const activeTab = ref('users');
 const advancedPanels = ref('');
