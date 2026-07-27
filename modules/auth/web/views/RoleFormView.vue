@@ -109,13 +109,13 @@ SPDX-License-Identifier: Apache-2.0
             <el-collapse-item name="record_rules" :title="_t('Record Rules')">
               <el-alert
                 class="rfv-rr-alert"
-                type="warning"
+                type="info"
                 :closable="false"
                 show-icon
-                :title="_t('Grant + all users is a wide-open rule')"
+                :title="_t('This form only edits rules for this role')"
                 :description="
                   _t(
-                    'Kind=grant with empty Applies-to Role applies to every user. Prefer this role for grants; use empty Role mainly with Kind=restrict. Model/Application empty means scope-global (all models), which is separate from all-users audience. All-users rows leave this role list after save.'
+                    'OneToMany rows are always bound to the current role. All-users or cross-role Record/Field/Method/UI rules belong in dedicated menus, not here. Model/Application empty means scope-global (all models), which is not the same as all-users audience.'
                   )
                 "
               />
@@ -124,13 +124,6 @@ SPDX-License-Identifier: Apache-2.0
               </p>
               <OOneToManyField :store="store" prop="RecordRules" label="" :default-record="defaultRecordRule">
                 <OSelectionField :store="store" prop="RecordRules.Kind" />
-                <OManyToOneRefField
-                  :store="store"
-                  prop="RecordRules.RoleId"
-                  :label="_t('Applies to Role (empty = all users)')"
-                  :placeholder="_t('This role; clear for all users')"
-                  :condition="recordRuleAudienceCondition"
-                />
                 <OManyToOneRefField :store="store" prop="RecordRules.IrApplicationId" />
                 <OManyToOneRefField :store="store" prop="RecordRules.IrModelId" />
                 <OJsonobjectField :store="store" prop="RecordRules.Condition" :allow-array="true" />
@@ -263,33 +256,15 @@ function resolveUiResourceTypeIcon(type?: string) {
   }
 }
 
-function resolveCurrentRoleId(): string {
-  const fromProp = String(recordId || '').trim();
-  if (fromProp) return fromProp;
-  const fromStore = String((store as any)?.currentId || (store as any)?.id || (store as any)?.record?.Id || '').trim();
-  return fromStore;
-}
-
-/** New RecordRule rows default to grant + this role (audience=this role). */
+/** New RecordRule rows default to grant (RoleId is always this role via O2M inverse). */
 function defaultRecordRule(): Record<string, any> {
-  const roleId = resolveCurrentRoleId();
-  return {
-    Kind: 'grant',
-    ...(roleId ? { RoleId: roleId } : {}),
-  };
+  return { Kind: 'grant' };
 }
 
 /** New MethodAccess rows default to allow (deny is an explicit brake). */
 function defaultMethodAccess(): Record<string, any> {
   return { Mode: 'allow' };
 }
-
-/** Audience picker: this role only (clear the field for all users). */
-const recordRuleAudienceCondition = computed(() => {
-  const roleId = resolveCurrentRoleId();
-  if (!roleId) return undefined;
-  return { And: [['Id', '=', roleId]] } as any;
-});
 
 const activeTab = ref('users');
 const advancedPanels = ref('');

@@ -29,7 +29,7 @@ describe('Role UiResources field binding', () => {
     expect(source).not.toContain('OAuthUiResourceTreeField');
   });
 
-  it('keeps Advanced Mode as data/RPC grant surface with Kind and app scope', () => {
+  it('keeps Advanced Mode as this-role data/RPC grant surface with Kind and app scope', () => {
     const source = roleFormSource();
 
     expect(source).toContain(':label="_t(\'Advanced Mode\')"');
@@ -40,8 +40,10 @@ describe('Role UiResources field binding', () => {
     expect(source).not.toContain('Manual Maintenance');
 
     expect(source).toContain('RecordRules.Kind');
-    expect(source).toContain('RecordRules.RoleId');
-    expect(source).toContain('Applies to Role (empty = all users)');
+    expect(source).not.toContain('RecordRules.RoleId');
+    expect(source).not.toContain('Applies to Role (empty = all users)');
+    expect(source).toContain('This form only edits rules for this role');
+    expect(source).toContain('dedicated menus');
     expect(source).toContain('RecordRules.IrApplicationId');
     expect(source).toContain('FieldRules.IrApplicationId');
     expect(source).toContain('MethodAccesses.IrApplicationId');
@@ -49,9 +51,7 @@ describe('Role UiResources field binding', () => {
     expect(source).toContain(':default-record="defaultMethodAccess"');
     expect(source).toContain("Mode: 'allow'");
     expect(source).toContain("Kind: 'grant'");
-    expect(source).toContain('Grant + all users is a wide-open rule');
     expect(source).toContain('scope-global');
-    expect(source).toContain('all-users audience');
 
     expect(source).toContain('prop="UiResources"');
     expect(source).toContain('UiResources.Mode');

@@ -111,7 +111,7 @@ export class OneToManyProcessor<T extends BaseModel = BaseModel> extends Relatio
             // Strip compute fields so clients cannot override them.
             const itemObj = this.stripChildComputeFields(targetModel, item);
             const id = this.extractId(item);
-            const processedItem = this.withInverseField(targetModel, itemObj, inverseField, parentId);
+            const processedItem = { ...itemObj, [inverseField]: parentId };
 
             if (id && existingIdSet.has(id)) {
               const { Id, ...dataToUpdate } = processedItem;
@@ -151,7 +151,7 @@ export class OneToManyProcessor<T extends BaseModel = BaseModel> extends Relatio
           try {
             const itemObj = this.stripChildComputeFields(targetModel, item);
             const id = this.extractId(item);
-            const processedItem = this.withInverseField(targetModel, itemObj, inverseField, parentId);
+            const processedItem = { ...itemObj, [inverseField]: parentId };
 
             if (id && existingIdSet.has(id)) {
               const { Id, ...dataToUpdate } = processedItem;
@@ -233,7 +233,7 @@ export class OneToManyProcessor<T extends BaseModel = BaseModel> extends Relatio
               continue;
             }
             const itemObj = this.stripChildComputeFields(targetModel, item);
-            const processedItem = this.withInverseField(targetModel, itemObj, inverseField, parentId);
+            const processedItem = { ...itemObj, [inverseField]: parentId };
             const createdId = await createRelationModel(targetModel, processedItem);
             if (createdId) affectedIds.push(createdId);
           } catch (e) {
@@ -301,11 +301,11 @@ export class OneToManyProcessor<T extends BaseModel = BaseModel> extends Relatio
                 const id = this.extractId(item);
 
                 if (id && existingIds.has(id)) {
-                  entitiesToUpdate.set(id, this.withInverseField(targetModel, itemObj, inverseField, parentId));
+                  entitiesToUpdate.set(id, { ...itemObj, [inverseField]: parentId });
                 } else if (id) {
-                  entitiesToUpdate.set(id, this.withInverseField(targetModel, itemObj, inverseField, parentId));
+                  entitiesToUpdate.set(id, { ...itemObj, [inverseField]: parentId });
                 } else {
-                  toCreateList.push({ parentId, payload: this.withInverseField(targetModel, itemObj, inverseField, parentId) });
+                  toCreateList.push({ parentId, payload: { ...itemObj, [inverseField]: parentId } });
                 }
               } catch (e) {
                 allErrors.push(e instanceof Error ? e : new Error(String(e)));
@@ -411,7 +411,7 @@ export class OneToManyProcessor<T extends BaseModel = BaseModel> extends Relatio
                   continue;
                 }
                 const itemObj = this.stripChildComputeFields(targetModel, item);
-                const payload = this.withInverseField(targetModel, itemObj, inverseField, parentId);
+                const payload = { ...itemObj, [inverseField]: parentId };
                 const createdId = await createRelationModel(targetModel, payload);
                 if (createdId) allSuccessIds.push(createdId);
               } catch (e) {
@@ -764,62 +764,4 @@ export class OneToManyProcessor<T extends BaseModel = BaseModel> extends Relatio
     return obj;
   }
 
-  /**
-   * Resolve the inverse FK written onto a OneToMany child row.
-   *
-   * Default: bind to the parent id (normal O2M membership).
-   * Exception: when the inverse field is nullable and the payload explicitly
-   * clears it (null / empty), preserve null so forms can express "everyone"
-   * audience (e.g. auth.RoleRecordRule.RoleId) without the parent overwrite.
-   */
-  private resolveInverseFieldValue(
-    targetModel: ModelCtor<BaseModel> & typeof BaseModel,
-    inverseField: string,
-    itemObj: ObjectRecord,
-    parentId: string
-  ): string | null {
-    if (!Object.prototype.hasOwnProperty.call(itemObj, inverseField)) {
-      return parentId;
-    }
-    if (!this.isExplicitNullInverseValue(itemObj[inverseField])) {
-      return parentId;
-    }
-    if (!this.isInverseFieldNullable(targetModel, inverseField)) {
-      return parentId;
-    }
-    return null;
-  }
-
-  private withInverseField(
-    targetModel: ModelCtor<BaseModel> & typeof BaseModel,
-    itemObj: ObjectRecord,
-    inverseField: string,
-    parentId: string
-  ): ObjectRecord {
-    return {
-      ...itemObj,
-      [inverseField]: this.resolveInverseFieldValue(targetModel, inverseField, itemObj, parentId),
-    };
-  }
-
-  private isExplicitNullInverseValue(raw: unknown): boolean {
-    if (raw === null || raw === undefined) return true;
-    if (typeof raw === 'string' && !raw.trim()) return true;
-    if (typeof raw === 'object') {
-      const id = String((raw as any)?.Id ?? (raw as any)?.id ?? '').trim();
-      return !id;
-    }
-    return false;
-  }
-
-  private isInverseFieldNullable(targetModel: ModelCtor<BaseModel> & typeof BaseModel, inverseField: string): boolean {
-    try {
-      const meta = MetadataStorage.instance.getModelMetadata(targetModel);
-      const field = meta.fields?.get(inverseField);
-      if (!field) return false;
-      return field.notNull !== true;
-    } catch {
-      return false;
-    }
-  }
 }

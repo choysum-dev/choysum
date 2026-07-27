@@ -1660,3 +1660,11 @@ msgstr ""
 msgctxt "web/views/RoleFormView"
 msgid "Kind=grant with empty Applies-to Role applies to every user. Prefer this role for grants; use empty Role mainly with Kind=restrict. Model/Application empty means scope-global (all models), which is separate from all-users audience. All-users rows leave this role list after save."
 msgstr ""
+
+msgctxt "web/views/RoleFormView"
+msgid "This form only edits rules for this role"
+msgstr ""
+
+msgctxt "web/views/RoleFormView"
+msgid "OneToMany rows are always bound to the current role. All-users or cross-role Record/Field/Method/UI rules belong in dedicated menus, not here. Model/Application empty means scope-global (all models), which is not the same as all-users audience."
+msgstr ""

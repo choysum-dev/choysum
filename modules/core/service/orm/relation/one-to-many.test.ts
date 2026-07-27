@@ -195,28 +195,6 @@ test('one-to-many processor replace array keeps existing child, strips compute f
   expect(OneToManyProcessorChild.createCalls).toEqual([{ Name: 'new-row', ParentId: 'p1' }]);
 });
 
-test('one-to-many processor preserves explicit null inverse when nullable', async () => {
-  resetChildMetadata();
-
-  const store = createRelationRepository(childCtor, []);
-  RepositoryFactory.setRepository(childCtor, store.repo as unknown as Parameters<typeof RepositoryFactory.setRepository>[1]);
-
-  const processor = new OneToManyProcessor(parentCtor);
-  const result = await processor.processRelationUpdate('p1', {
-    type: 'OneToMany',
-    fieldName: 'Lines',
-    targetModel: childCtor,
-    inverseField: 'ParentId',
-    operations: {
-      create: [{ Name: 'everyone-row', ParentId: null }],
-    },
-  } as unknown as Parameters<OneToManyProcessor['processRelationUpdate']>[1]);
-
-  expect(result.errors).toEqual([]);
-  expect(result.entityIds).toEqual(['CREATED-1']);
-  expect(OneToManyProcessorChild.createCalls).toEqual([{ Name: 'everyone-row', ParentId: null }]);
-});
-
 test('one-to-many processor update reports child outside parent scope and skips update helper', async () => {
   resetChildMetadata();
 

@@ -1248,23 +1248,13 @@ msgstr "界面资源明细（手动旁路）"
 
 #: web/views/RoleFormView.vue
 msgctxt "web/views/RoleFormView"
-msgid "Applies to Role (empty = all users)"
-msgstr "应用到角色（空=全体用户）"
+msgid "This form only edits rules for this role"
+msgstr "本表单只编辑当前角色的规则"
 
 #: web/views/RoleFormView.vue
 msgctxt "web/views/RoleFormView"
-msgid "This role; clear for all users"
-msgstr "本角色；清空表示全体用户"
-
-#: web/views/RoleFormView.vue
-msgctxt "web/views/RoleFormView"
-msgid "Grant + all users is a wide-open rule"
-msgstr "Grant + 全体用户是宽开规则"
-
-#: web/views/RoleFormView.vue
-msgctxt "web/views/RoleFormView"
-msgid "Kind=grant with empty Applies-to Role applies to every user. Prefer this role for grants; use empty Role mainly with Kind=restrict. Model/Application empty means scope-global (all models), which is separate from all-users audience. All-users rows leave this role list after save."
-msgstr "Kind=grant 且「应用到角色」为空时对全体用户生效。Grant 请优先挂本角色；Role 为空主要用于 Kind=restrict。模型/应用皆空表示 scope-global（全部模型），与「全体用户」适用轴不同。全体用户规则保存后会离开本角色列表。"
+msgid "OneToMany rows are always bound to the current role. All-users or cross-role Record/Field/Method/UI rules belong in dedicated menus, not here. Model/Application empty means scope-global (all models), which is not the same as all-users audience."
+msgstr "OneToMany 行始终绑定当前角色。全体用户或跨角色的 Record/Field/Method/UI 规则应在独立菜单中维护，而不是这里。模型/应用皆空表示 scope-global（全部模型），与「全体用户」适用轴不同。"
 
 #: web/views/RoleFormView.vue
 msgctxt "web/views/RoleFormView"
