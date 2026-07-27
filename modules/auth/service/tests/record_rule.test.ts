@@ -1079,6 +1079,19 @@ test('RoleRecordRule coverage: empty RoleId string, CreateMany null, Field Kind 
       ['Id', 'Kind'] as any
     );
     expect(String((withDefault as any)?.Kind || '')).toBe('grant');
+
+    // Kind present but nullish hits `_normalizeKind`'s `v ?? 'grant'` branch.
+    const nullKind = await RoleRecordRule.Create(
+      {
+        RoleId: { Id: roleId } as any,
+        Kind: null as any,
+        IrModelId: modelId,
+        IrApplicationId: null,
+        PermRead: true,
+      } as any,
+      ['Id', 'Kind'] as any
+    );
+    expect(String((nullKind as any)?.Kind || '')).toBe('grant');
   });
 });
 
