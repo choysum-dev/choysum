@@ -9,8 +9,10 @@ import RoleRecordRule from '@/auth/service/models/role_record_rule';
 import RoleFieldRule from '@/auth/service/models/role_field_rule';
 import { createServiceByModel } from '@/core/service/rpc';
 import type IrApplicationModel from '@/meta/service/models/ir_application';
+import type IrModelModel from '@/meta/service/models/ir_model';
 
 const IrApplication = createServiceByModel<typeof IrApplicationModel>('meta.IrApplication');
+const IrModel = createServiceByModel<typeof IrModelModel>('meta.IrModel');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -102,6 +104,8 @@ function setupAllowlistForFixtures(): void {
 
       'meta.IrApplication:read',
       'IrApplication:read',
+      'meta.IrModel:read',
+      'IrModel:read',
     ],
   });
 }
@@ -229,6 +233,37 @@ test('PR-C-2 gift pack: bootstrap seeds sys.admin global RR+FR and base.user app
           { fields: ['Id'], limit: 1 } as any
         );
         expect((fr || []).length > 0).toBe(true);
+      }
+
+      // Token/Session self-service grants must be owner-scoped (not TRUE).
+      for (const modelName of ['Token', 'Session']) {
+        const modelRows = await IrModel.Search(
+          {
+            And: [
+              ['Name', '=', modelName],
+              ['Application', '=', 'auth'],
+            ],
+          } as any,
+          { fields: ['Id'], limit: 1 } as any
+        );
+        const modelId = String((modelRows as any)?.[0]?.Id || '').trim();
+        expect(Boolean(modelId)).toBe(true);
+        const ownerRr = await RoleRecordRule.Search(
+          {
+            And: [
+              ['RoleId', '=', baseUserRoleId],
+              ['Kind', '=', 'grant'],
+              ['IrModelId', '=', modelId],
+              ['PermCreate', '=', true],
+              ['PermWrite', '=', true],
+            ],
+          } as any,
+          { fields: ['Id', 'Condition'], limit: 1 } as any
+        );
+        expect((ownerRr || []).length > 0).toBe(true);
+        const condText = JSON.stringify((ownerRr as any)?.[0]?.Condition ?? '');
+        expect(condText.includes('$userId')).toBe(true);
+        expect(condText.includes('UserId')).toBe(true);
       }
     },
     { merge: false }
