@@ -853,3 +853,158 @@ test('RoleRecordRule: permission-only update must not rewrite scoped fields to g
     expect((rows[0] as any)?.PermWrite).toBe(true);
   });
 });
+
+test('RoleRecordRule Kind: create defaults to grant and accepts restrict', async () => {
+  resetRequestContext();
+  setupAllowlistForFixtures();
+
+  await withModelContext({ activeCompanyId: uid('C'), enabledCompanyIds: [uid('C')] } as any, async () => {
+    const roleId = await createRole();
+    const modelId = await resolveModelId('auth', 'CompanyScopedResource');
+
+    const granted = await RoleRecordRule.Create(
+      {
+        RoleId: { Id: roleId } as any,
+        IrModelId: modelId,
+        IrApplicationId: null,
+        Condition: null,
+        PermRead: true,
+      } as any,
+      ['Id', 'Kind', 'RoleId'] as any
+    );
+
+    expect(String((granted as any)?.Kind || '')).toBe('grant');
+    expect(String((granted as any)?.RoleId?.Id || (granted as any)?.RoleId || '').trim()).toBe(roleId);
+
+    const restricted = await RoleRecordRule.Create(
+      {
+        RoleId: { Id: roleId } as any,
+        Kind: 'restrict',
+        IrModelId: modelId,
+        IrApplicationId: null,
+        Condition: { And: [['Name', '!=', 'done']] } as any,
+        PermWrite: true,
+      } as any,
+      ['Id', 'Kind'] as any
+    );
+
+    expect(String((restricted as any)?.Kind || '')).toBe('restrict');
+
+    const rows = await RoleRecordRule.Search(
+      ['Id', 'in', [String((granted as any).Id), String((restricted as any).Id)]] as any,
+      { fields: ['Id', 'Kind'], limit: 10 } as any
+    );
+    const byId = new Map(rows.map((r: any) => [String(r.Id), String(r.Kind)]));
+    expect(byId.get(String((granted as any).Id))).toBe('grant');
+    expect(byId.get(String((restricted as any).Id))).toBe('restrict');
+  });
+});
+
+test('RoleRecordRule Kind: rejects invalid values', async () => {
+  resetRequestContext();
+  setupAllowlistForFixtures();
+
+  await withModelContext({ activeCompanyId: uid('C'), enabledCompanyIds: [uid('C')] } as any, async () => {
+    const roleId = await createRole();
+    const modelId = await resolveModelId('auth', 'CompanyScopedResource');
+
+    let threw = false;
+    try {
+      await RoleRecordRule.Create(
+        {
+          RoleId: { Id: roleId } as any,
+          Kind: 'open',
+          IrModelId: modelId,
+          IrApplicationId: null,
+          PermRead: true,
+        } as any,
+        ['Id'] as any
+      );
+    } catch (err: any) {
+      threw = true;
+      expect(String(err?.message || err)).toContain("invalid RoleRecordRule Kind: must be 'grant' or 'restrict'");
+    }
+    expect(threw).toBe(true);
+  });
+});
+
+test('RoleRecordRule RoleId: null means everyone and warns on grant', async () => {
+  resetRequestContext();
+  setupAllowlistForFixtures();
+
+  const warnings: string[] = [];
+  const originalWarn = console.warn;
+  console.warn = ((...args: unknown[]) => {
+    warnings.push(args.map(a => String(a)).join(' '));
+  }) as typeof console.warn;
+
+  try {
+    await withModelContext({ activeCompanyId: uid('C'), enabledCompanyIds: [uid('C')] } as any, async () => {
+      const modelId = await resolveModelId('auth', 'CompanyScopedResource');
+
+      const row = await RoleRecordRule.Create(
+        {
+          RoleId: null,
+          Kind: 'grant',
+          IrModelId: modelId,
+          IrApplicationId: null,
+          Condition: null,
+          PermRead: true,
+        } as any,
+        ['Id', 'Kind', 'RoleId'] as any
+      );
+
+      const id = String((row as any)?.Id || '').trim();
+      expect(id.length > 0).toBe(true);
+      expect(String((row as any)?.Kind || '')).toBe('grant');
+      expect((row as any)?.RoleId == null || (row as any)?.RoleId === '').toBe(true);
+
+      const rows = await RoleRecordRule.Search(
+        ['Id', '=', id] as any,
+        { fields: ['Id', 'Kind', 'RoleId', 'IrModelId'], limit: 1 } as any
+      );
+      expect(rows.length).toBe(1);
+      expect(String((rows[0] as any)?.Kind || '')).toBe('grant');
+      expect((rows[0] as any)?.RoleId == null || (rows[0] as any)?.RoleId === '').toBe(true);
+      expect(String((rows[0] as any)?.IrModelId || '').trim()).toBe(modelId);
+
+      expect(warnings.some(w => w.includes('Kind=grant') && w.includes('RoleId=null'))).toBe(true);
+    });
+  } finally {
+    console.warn = originalWarn;
+  }
+});
+
+test('RoleRecordRule RoleId: restrict with null RoleId does not emit grant warn', async () => {
+  resetRequestContext();
+  setupAllowlistForFixtures();
+
+  const warnings: string[] = [];
+  const originalWarn = console.warn;
+  console.warn = ((...args: unknown[]) => {
+    warnings.push(args.map(a => String(a)).join(' '));
+  }) as typeof console.warn;
+
+  try {
+    await withModelContext({ activeCompanyId: uid('C'), enabledCompanyIds: [uid('C')] } as any, async () => {
+      const modelId = await resolveModelId('auth', 'CompanyScopedResource');
+
+      const row = await RoleRecordRule.Create(
+        {
+          RoleId: null,
+          Kind: 'restrict',
+          IrModelId: modelId,
+          IrApplicationId: null,
+          Condition: { And: [['Name', '!=', 'x']] } as any,
+          PermWrite: true,
+        } as any,
+        ['Id', 'Kind', 'RoleId'] as any
+      );
+
+      expect(String((row as any)?.Kind || '')).toBe('restrict');
+      expect(warnings.some(w => w.includes('wide-open grant'))).toBe(false);
+    });
+  } finally {
+    console.warn = originalWarn;
+  }
+});
