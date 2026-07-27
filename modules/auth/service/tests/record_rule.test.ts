@@ -1039,6 +1039,46 @@ test('RoleRecordRule RoleId: restrict with null RoleId does not emit grant warn'
   }
 });
 
+test('RoleRecordRule coverage: empty RoleId string, CreateMany null, Field Kind default', async () => {
+  resetRequestContext();
+  setupAllowlistForFixtures();
+
+  await withModelContext({ activeCompanyId: uid('C'), enabledCompanyIds: [uid('C')] } as any, async () => {
+    const roleId = await createRole();
+    const modelId = await resolveModelId('auth', 'CompanyScopedResource');
+
+    // Exact empty string RoleId hits `raw === ''` branch (not whitespace).
+    const emptyStr = await RoleRecordRule.Create(
+      {
+        RoleId: '' as any,
+        Kind: 'restrict',
+        IrModelId: modelId,
+        IrApplicationId: null,
+        PermRead: true,
+      } as any,
+      ['Id', 'RoleId', 'Kind'] as any
+    );
+    expect((emptyStr as any)?.RoleId == null || (emptyStr as any)?.RoleId === '').toBe(true);
+
+    // CreateMany(null) uses `values || []` then persists empty list.
+    const none = await RoleRecordRule.CreateMany(null as any, ['Id'] as any);
+    expect(Array.isArray(none)).toBe(true);
+    expect(none.length).toBe(0);
+
+    // Omit Kind entirely so Field default: () => 'grant' is applied by persistence.
+    const withDefault = await RoleRecordRule.Create(
+      {
+        RoleId: { Id: roleId } as any,
+        IrModelId: modelId,
+        IrApplicationId: null,
+        PermRead: true,
+      } as any,
+      ['Id', 'Kind'] as any
+    );
+    expect(String((withDefault as any)?.Kind || '')).toBe('grant');
+  });
+});
+
 test('RoleRecordRule coverage: CreateMany, blank object RoleId, Update Kind/RoleId paths', async () => {
   resetRequestContext();
   setupAllowlistForFixtures();

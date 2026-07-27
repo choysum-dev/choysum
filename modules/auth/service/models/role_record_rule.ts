@@ -155,10 +155,13 @@ export default class RoleRecordRule extends BaseModel {
 
   /**
    * Normalize and validate Kind on create/update.
+   *
+   * On create, if Kind is omitted, leave it unset so the Field `default: () => 'grant'`
+   * applies at persistence time (keeps schema default reachable for coverage/runtime).
    */
   private static _validateKind(values: Record<string, any>, mode: 'create' | 'update'): void {
     const touchesKind = Object.prototype.hasOwnProperty.call(values, 'Kind');
-    if (!touchesKind && mode !== 'create') return;
+    if (!touchesKind) return;
     (values as any).Kind = this._normalizeKind((values as any).Kind);
   }
 
@@ -243,8 +246,9 @@ export default class RoleRecordRule extends BaseModel {
     values: Partial<Insertable<T & BaseModel>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
-    for (const v of values || []) RoleRecordRule._prepareValues(v as any, 'create');
-    const out = await super.CreateMany(values as any, returnFields as any);
+    const rows = values || [];
+    for (const v of rows) RoleRecordRule._prepareValues(v as any, 'create');
+    const out = await super.CreateMany(rows as any, returnFields as any);
     invalidateAllAuthzCaches();
     return out as unknown as T[];
   }
