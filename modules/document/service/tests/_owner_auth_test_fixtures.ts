@@ -192,13 +192,20 @@ export async function ensureAuthUserOwnerFieldRuleGrants(): Promise<void> {
 async function ensureFixtureFrRole(): Promise<string> {
   if (resolvedOwnerFrRoleId) return resolvedOwnerFrRoleId;
 
+  // Include soft-deleted rows: Code is UNIQUE across deleted rows, so a prior
+  // suite teardown that soft-deleted this fixture would otherwise make Create fail.
   const existingRoles = await Role.Search(['Code', '=', FR_FIXTURE_ROLE_CODE] as any, {
-    fields: ['Id'],
+    fields: ['Id', 'DeletedAt'],
     limit: 1,
+    withDeleted: true,
   } as any);
-  const existingId = String((existingRoles as any)?.[0]?.Id || '').trim();
+  const existing = (existingRoles as any)?.[0];
+  const existingId = String(existing?.Id || '').trim();
   if (existingId) {
-    // Reuse across the suite; only delete if we created it in this process.
+    if (existing?.DeletedAt != null) {
+      const repo = Role.getRepository().withDeleted();
+      await repo.update({ DeletedAt: null, IsActive: true } as any, ['Id', '=', existingId] as any);
+    }
     resolvedOwnerFrRoleId = existingId;
     return existingId;
   }
@@ -233,10 +240,16 @@ async function ensureFixtureFrRule(roleId: string): Promise<void> {
         ['PermWrite', '=', 'allow'],
       ],
     } as any,
-    { fields: ['Id'], limit: 1 } as any
+    { fields: ['Id', 'DeletedAt'], limit: 1, withDeleted: true } as any
   );
-  if ((existingFr || []).length > 0) {
-    // Pre-existing rule; leave teardown alone.
+  const existing = (existingFr as any)?.[0];
+  const existingId = String(existing?.Id || '').trim();
+  if (existingId) {
+    if (existing?.DeletedAt != null) {
+      const repo = RoleFieldRule.getRepository().withDeleted();
+      await repo.update({ DeletedAt: null } as any, ['Id', '=', existingId] as any);
+    }
+    // Pre-existing / revived rule; leave teardown alone.
     ownerFrRuleEnsured = true;
     return;
   }
@@ -258,8 +271,19 @@ async function ensureFixtureFrRule(roleId: string): Promise<void> {
 }
 
 async function ensureFixtureUser(userId: string): Promise<void> {
-  const existing = await User.Search(['Id', '=', userId] as any, { fields: ['Id'], limit: 1 } as any);
-  if ((existing || []).length > 0) return;
+  const existing = await User.Search(['Id', '=', userId] as any, {
+    fields: ['Id', 'DeletedAt'],
+    limit: 1,
+    withDeleted: true,
+  } as any);
+  const row = (existing as any)?.[0];
+  if (row) {
+    if (row.DeletedAt != null) {
+      const repo = User.getRepository().withDeleted();
+      await repo.update({ DeletedAt: null, IsActive: true } as any, ['Id', '=', userId] as any);
+    }
+    return;
+  }
 
   await User.Create(
     {
@@ -352,28 +376,11 @@ export async function restoreDocumentOwnerAuthFixtures(): Promise<void> {
       });
     }
 
-    if (createdOwnerFrRuleId) {
-      await safeDeleteById(async () => RoleFieldRule.DeleteById(createdOwnerFrRuleId), createdOwnerFrRuleId, async id => {
-        const stillThere = await RoleFieldRule.Search([['Id', '=', id]] as any, { fields: ['Id'], limit: 1 } as any);
-        return (stillThere || []).length > 0;
-      });
-      createdOwnerFrRuleId = '';
-    }
-
-    if (createdOwnerFrRoleId) {
-      await safeDeleteById(async () => Role.DeleteById(createdOwnerFrRoleId), createdOwnerFrRoleId, async id => {
-        const stillThere = await Role.Search([['Id', '=', id]] as any, { fields: ['Id'], limit: 1 } as any);
-        return (stillThere || []).length > 0;
-      });
-      createdOwnerFrRoleId = '';
-    }
-
-    for (const userId of createdOwnerFrUserIds.splice(0)) {
-      await safeDeleteById(async () => User.DeleteById(userId), userId, async id => {
-        const stillThere = await User.Search([['Id', '=', id]] as any, { fields: ['Id'], limit: 1 } as any);
-        return (stillThere || []).length > 0;
-      });
-    }
+    // Keep FR fixture Role/RoleFieldRule/User for the process lifetime.
+    // Soft-deleting them leaves UNIQUE indexes occupied and breaks the next suite.
+    createdOwnerFrRuleId = '';
+    createdOwnerFrRoleId = '';
+    createdOwnerFrUserIds.length = 0;
   });
 
   clearRequestAuthzCaches();
