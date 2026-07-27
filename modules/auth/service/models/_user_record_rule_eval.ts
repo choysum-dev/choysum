@@ -155,11 +155,6 @@ function orMerge(exprs: any[]): any {
   return { Or: exprs } as any;
 }
 
-function andMerge(parts: any[]): any {
-  if (parts.length === 1) return parts[0];
-  return { And: parts } as any;
-}
-
 /**
  * Core RecordRule evaluation (Security Algebra §5.4):
  * matching Kind=grant → OR; Kind=restrict → AND onto grants; no grant ⇒ DENY.
@@ -273,6 +268,7 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
     if (parts.length === 1) {
       return { kind: 'expr', expr: parts[0], reason: restrictExprs.length ? 'grant_and_restrict' : 'grant_domain' };
     }
-    return { kind: 'expr', expr: andMerge(parts), reason: 'grant_or_and_restricts' };
+    // parts.length > 1 ⇒ AND-compose (never call a 1-element helper).
+    return { kind: 'expr', expr: { And: parts } as any, reason: 'grant_or_and_restricts' };
   });
 }

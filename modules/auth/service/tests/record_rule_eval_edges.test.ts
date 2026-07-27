@@ -418,3 +418,132 @@ test('P2-2 eval edges: app-scoped grant participates when IrApplication resolves
     (RoleRecordRule as any).Search = origSearch;
   }
 });
+
+test('P2-2 eval edges: defensive fallbacks for empty/null inputs', async () => {
+  resetRequestContext();
+  const modelId = await resolveModelId('auth', 'CompanyScopedResource');
+  const roleId = uid('role');
+  const origSearch = (RoleRecordRule as any).Search;
+  const origAppSearch = (IrApplication as any).Search;
+  const origCount = (IrField as any).Count;
+  const origGetReq = (globalThis as any).$choysum?.request;
+
+  try {
+    // Empty app/model names hit String(x || '') arms in the meta cache key.
+    const env0 = await evaluateRecordRuleCondition({
+      appName: '',
+      modelName: '',
+      hasCompany: false,
+      opValue: 'read',
+      roleIds: [],
+      roleScopesById: {},
+    });
+    expect(env0.kind).toBe('false');
+    expect(String(env0.reason || '')).toBe('model_not_found');
+
+    // Empty role id entries filtered; null roleIds/roleScopes use || defaults.
+    (RoleRecordRule as any).Search = async () => [
+      {
+        RoleId: { Id: roleId },
+        Kind: null, // normalizeKind → grant
+        Condition: { And: [['Name', '=', 'z']] },
+        IrModelId: modelId,
+        IrApplicationId: null,
+      },
+    ];
+    const env = await evaluateRecordRuleCondition({
+      appName: 'auth',
+      modelName: 'CompanyScopedResource',
+      hasCompany: false,
+      opValue: 'read',
+      roleIds: null as any,
+      roleScopesById: undefined as any,
+    });
+    // No roles + only RoleId-null audience in query, but mock returns role-scoped row → still accepted by loop.
+    // With roleIds null, audience is everyone-only; mock still returns our row and eval uses it.
+    expect(['expr', 'false']).toContain(env.kind);
+
+    const env2 = await evaluateRecordRuleCondition({
+      appName: 'auth',
+      modelName: 'CompanyScopedResource',
+      hasCompany: true,
+      opValue: 'read',
+      roleIds: ['', '  ', roleId],
+      roleScopesById: { [roleId]: { global: false, companies: undefined as any } },
+    });
+    expect(env2.kind).toBe('expr');
+    expect(JSON.stringify((env2 as any).expr || {})).toContain('CompanyId');
+
+    // IrApplication empty ⇒ irApplicationId '' ⇒ skip app-scoped arm in scopeOr.
+    (IrApplication as any).Search = async () => [];
+    (RoleRecordRule as any).Search = async () => null; // allRules || []
+    const env3 = await evaluateRecordRuleCondition({
+      appName: 'auth',
+      modelName: 'CompanyScopedResource',
+      hasCompany: false,
+      opValue: 'read',
+      roleIds: [roleId],
+      roleScopesById: {},
+    });
+    expect(env3.kind).toBe('false');
+    expect(String(env3.reason || '')).toContain('no_grant');
+
+    // Everyone RoleId-null hits ruleAudienceScope empty-roleId arm with company gate on.
+    (RoleRecordRule as any).Search = async () => [
+      {
+        RoleId: null,
+        Kind: 'grant',
+        Condition: { And: [['Name', '=', 'everyone']] },
+        IrModelId: modelId,
+        IrApplicationId: null,
+      },
+    ];
+    (IrField as any).Count = async () => 1;
+    resetRequestContext();
+    const envEveryone = await evaluateRecordRuleCondition({
+      appName: 'auth',
+      modelName: 'CompanyScopedResource',
+      hasCompany: true,
+      opValue: 'read',
+      roleIds: [],
+      roleScopesById: {},
+    });
+    expect(envEveryone.kind).toBe('expr');
+    // Everyone scope is treated as global ⇒ no CompanyId gate clause.
+    expect(JSON.stringify((envEveryone as any).expr || {})).not.toContain('CompanyId');
+
+    // Missing request while company-scoped gate runs ⇒ req? undefined arm in computeCompanyGateMode.
+    const root = (globalThis as any).$choysum;
+    const prevRequest = root.request;
+    root.request = undefined;
+    (IrField as any).Count = async () => 1;
+    (RoleRecordRule as any).Search = async () => [
+      {
+        RoleId: { Id: roleId },
+        Kind: 'grant',
+        Condition: { And: [['Name', '=', 'gated']] },
+        IrModelId: modelId,
+        IrApplicationId: null,
+      },
+    ];
+    const env4 = await evaluateRecordRuleCondition({
+      appName: 'auth',
+      modelName: 'CompanyScopedResource',
+      hasCompany: true,
+      opValue: 'read',
+      roleIds: [roleId],
+      // global:true hits buildCompanyGateExpr early return when gate enabled.
+      roleScopesById: { [roleId]: { global: true, companies: [] } },
+    });
+    expect(env4.kind).toBe('expr');
+    expect(JSON.stringify((env4 as any).expr || {})).not.toContain('CompanyId');
+    root.request = prevRequest;
+  } finally {
+    (RoleRecordRule as any).Search = origSearch;
+    (IrApplication as any).Search = origAppSearch;
+    (IrField as any).Count = origCount;
+    if (origGetReq !== undefined) {
+      (globalThis as any).$choysum.request = origGetReq;
+    }
+  }
+});
