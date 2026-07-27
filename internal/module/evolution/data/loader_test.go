@@ -2286,6 +2286,196 @@ func TestResolveRefBySearch_ComparisonOperators(t *testing.T) {
 	}
 }
 
+func TestResolveValue_SearchDomainNestedModelRef(t *testing.T) {
+	t.Parallel()
+
+	l, db := newTestLoader(t)
+
+	var userModel meta.IrModel
+	if err := db.Where("application = ? AND name = ?", "auth", "User").First(&userModel).Error; err != nil {
+		t.Fatalf("lookup auth.User model: %v", err)
+	}
+	userModelID := strings.TrimSpace(userModel.Id.String)
+	if userModelID == "" {
+		t.Fatalf("expected non-empty user model id")
+	}
+
+	// Register meta.IrField so search model resolution works.
+	if err := db.Where("application = ? AND name = ?", "meta", "IrField").First(&meta.IrModel{}).Error; err != nil {
+		if err := db.Create(&meta.IrModel{Name: "IrField", Application: "meta", Path: "/tmp", ModelTable: "meta_ir_field"}).Error; err != nil {
+			t.Fatalf("seed meta_ir_model meta.IrField: %v", err)
+		}
+	}
+
+	langField := &meta.IrField{Name: "Language"}
+	langField.ModelId.Valid = true
+	langField.ModelId.String = userModelID
+	if err := db.Create(langField).Error; err != nil {
+		t.Fatalf("seed meta_ir_field: %v", err)
+	}
+	langFieldID := strings.TrimSpace(langField.Id.String)
+	if langFieldID == "" {
+		t.Fatalf("expected non-empty language field id")
+	}
+
+	rec := record{Module: "auth", ExternalID: "fr", Model: "auth.RoleFieldRule"}
+	got, err := l.resolveValue(db, "/tmp/data.json", 0, rec, "values.IrFieldId", map[string]any{
+		"search": map[string]any{
+			"model": "meta.IrField",
+			"domain": []any{
+				[]any{"Name", "=", "Language"},
+				[]any{"ModelId", "=", map[string]any{"modelRef": "auth.User"}},
+			},
+			"limit": float64(1),
+		},
+	})
+	if err != nil {
+		t.Fatalf("resolveValue(search nested modelRef) error = %v", err)
+	}
+	ids, ok := got.([]string)
+	if !ok || len(ids) != 1 || ids[0] != langFieldID {
+		t.Fatalf("resolveValue(search nested modelRef) = %#v, want [%q]", got, langFieldID)
+	}
+}
+
+func TestResolveSearchDomainRefs_AllBranches(t *testing.T) {
+	t.Parallel()
+
+	l, db := newTestLoader(t)
+	rec := record{Module: "auth", ExternalID: "fr", Model: "auth.RoleFieldRule"}
+
+	if err := db.Table("auth_user").Create(map[string]any{
+		"id": "user-collapse-1", "created_at": time.Now(), "updated_at": time.Now(),
+	}).Error; err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+
+	t.Run("nil and non-array and empty", func(t *testing.T) {
+		got, err := l.resolveSearchDomainRefs(db, "/tmp/d.json", 0, rec, "domain", nil)
+		if err != nil || got != nil {
+			t.Fatalf("nil domain = %#v, %v", got, err)
+		}
+		got, err = l.resolveSearchDomainRefs(db, "/tmp/d.json", 0, rec, "domain", "not-an-array")
+		if err != nil || got != "not-an-array" {
+			t.Fatalf("non-array domain = %#v, %v", got, err)
+		}
+		got, err = l.resolveSearchDomainRefs(db, "/tmp/d.json", 0, rec, "domain", []any{})
+		if err != nil {
+			t.Fatalf("empty domain error = %v", err)
+		}
+		arr, ok := got.([]any)
+		if !ok || len(arr) != 0 {
+			t.Fatalf("empty domain = %#v", got)
+		}
+	})
+
+	t.Run("and or not combinators", func(t *testing.T) {
+		andGot, err := l.resolveSearchDomainRefs(db, "/tmp/d.json", 0, rec, "domain", []any{
+			"&",
+			[]any{"id", "=", "a"},
+			[]any{"name", "=", "b"},
+		})
+		if err != nil {
+			t.Fatalf("& domain error = %v", err)
+		}
+		andArr, ok := andGot.([]any)
+		if !ok || len(andArr) != 3 || andArr[0] != "&" {
+			t.Fatalf("& domain = %#v", andGot)
+		}
+
+		orGot, err := l.resolveSearchDomainRefs(db, "/tmp/d.json", 0, rec, "domain", []any{
+			"|",
+			[]any{"id", "=", "a"},
+			[]any{"id", "=", "b"},
+		})
+		if err != nil {
+			t.Fatalf("| domain error = %v", err)
+		}
+		orArr, ok := orGot.([]any)
+		if !ok || len(orArr) != 3 || orArr[0] != "|" {
+			t.Fatalf("| domain = %#v", orGot)
+		}
+
+		notShort, err := l.resolveSearchDomainRefs(db, "/tmp/d.json", 0, rec, "domain", []any{"!"})
+		if err != nil {
+			t.Fatalf("! short error = %v", err)
+		}
+		if short, ok := notShort.([]any); !ok || len(short) != 1 || short[0] != "!" {
+			t.Fatalf("! short = %#v", notShort)
+		}
+
+		notGot, err := l.resolveSearchDomainRefs(db, "/tmp/d.json", 0, rec, "domain", []any{
+			"!",
+			[]any{"id", "=", "a"},
+		})
+		if err != nil {
+			t.Fatalf("! domain error = %v", err)
+		}
+		notArr, ok := notGot.([]any)
+		if !ok || len(notArr) != 2 || notArr[0] != "!" {
+			t.Fatalf("! domain = %#v", notGot)
+		}
+	})
+
+	t.Run("leaf collapses singleton search and copies extras", func(t *testing.T) {
+		got, err := l.resolveSearchDomainRefs(db, "/tmp/d.json", 0, rec, "domain", []any{
+			"group_id",
+			"=",
+			map[string]any{
+				"search": map[string]any{
+					"model":  "auth.User",
+					"domain": []any{[]any{"id", "=", "user-collapse-1"}},
+					"limit":  float64(1),
+				},
+			},
+			"extra-ignored-by-sql",
+		})
+		if err != nil {
+			t.Fatalf("leaf collapse error = %v", err)
+		}
+		arr, ok := got.([]any)
+		if !ok || len(arr) != 4 {
+			t.Fatalf("leaf collapse shape = %#v", got)
+		}
+		if arr[2] != "user-collapse-1" {
+			t.Fatalf("leaf collapse value = %#v, want user-collapse-1", arr[2])
+		}
+		if arr[3] != "extra-ignored-by-sql" {
+			t.Fatalf("leaf extra = %#v", arr[3])
+		}
+	})
+
+	t.Run("error paths", func(t *testing.T) {
+		badLeaf := []any{"ModelId", "=", map[string]any{"modelRef": "missing.Model"}}
+		if _, err := l.resolveSearchDomainRefs(db, "/tmp/d.json", 0, rec, "domain", badLeaf); err == nil {
+			t.Fatal("expected leaf resolveValue error")
+		}
+		if _, err := l.resolveSearchDomainRefs(db, "/tmp/d.json", 0, rec, "domain", []any{"&", badLeaf, []any{"id", "=", "x"}}); err == nil {
+			t.Fatal("expected & child error")
+		}
+		if _, err := l.resolveSearchDomainRefs(db, "/tmp/d.json", 0, rec, "domain", []any{"|", badLeaf, []any{"id", "=", "x"}}); err == nil {
+			t.Fatal("expected | child error")
+		}
+		if _, err := l.resolveSearchDomainRefs(db, "/tmp/d.json", 0, rec, "domain", []any{"!", badLeaf}); err == nil {
+			t.Fatal("expected ! child error")
+		}
+		if _, err := l.resolveSearchDomainRefs(db, "/tmp/d.json", 0, rec, "domain", []any{badLeaf, []any{"id", "=", "x"}}); err == nil {
+			t.Fatal("expected implicit AND child error")
+		}
+
+		// resolveValue search path must surface domain-resolution errors.
+		_, err := l.resolveValue(db, "/tmp/d.json", 0, rec, "values.IrFieldId", map[string]any{
+			"search": map[string]any{
+				"model":  "auth.User",
+				"domain": []any{badLeaf},
+			},
+		})
+		if err == nil {
+			t.Fatal("expected resolveValue search domain error")
+		}
+	})
+}
+
 func TestResolveValue_SearchDomainResolution(t *testing.T) {
 	t.Parallel()
 

@@ -1333,6 +1333,11 @@ func (l *Loader) resolveValue(tx *gorm.DB, filePath string, recordIndex int, rec
 			}
 			return resID, nil
 		case refQuerySpecKindSearch:
+			domain, err := l.resolveSearchDomainRefs(tx, filePath, recordIndex, rec, fieldPath+".domain", spec.Search.Domain)
+			if err != nil {
+				return nil, err
+			}
+			spec.Search.Domain = domain
 			ids, err := l.resolveRefBySearch(tx, spec.Search)
 			if err != nil {
 				return nil, newRefLoadError(LoadErrorKindRef, LoadErrorCodeResolveRefFailed, filePath, recordIndex, rec, fieldPath, "search", "resolve search failed", err)
@@ -1646,6 +1651,83 @@ func parseSearchSpec(raw map[string]any) (searchSpec, error) {
 }
 
 // --- Search query executor ---------------------------------------------------------
+
+// resolveSearchDomainRefs walks a search domain tree and resolves nested ref queries
+// (ref / refBy / search / modelRef / serviceRef) in leaf values so seeds can write
+// e.g. ["ModelId", "=", {"modelRef": "auth.User"}].
+func (l *Loader) resolveSearchDomainRefs(tx *gorm.DB, filePath string, recordIndex int, rec record, fieldPath string, domain any) (any, error) {
+	if domain == nil {
+		return nil, nil
+	}
+	arr, ok := domain.([]any)
+	if !ok {
+		return domain, nil
+	}
+	if len(arr) == 0 {
+		return arr, nil
+	}
+
+	firstStr, firstIsStr := arr[0].(string)
+	if firstIsStr {
+		switch firstStr {
+		case "&", "|":
+			out := make([]any, len(arr))
+			out[0] = firstStr
+			for i, child := range arr[1:] {
+				resolved, err := l.resolveSearchDomainRefs(tx, filePath, recordIndex, rec, fieldPath, child)
+				if err != nil {
+					return nil, err
+				}
+				out[i+1] = resolved
+			}
+			return out, nil
+		case "!":
+			if len(arr) < 2 {
+				return arr, nil
+			}
+			resolved, err := l.resolveSearchDomainRefs(tx, filePath, recordIndex, rec, fieldPath, arr[1])
+			if err != nil {
+				return nil, err
+			}
+			return []any{firstStr, resolved}, nil
+		}
+	}
+
+	// Leaf: [field, operator, value?]
+	if firstIsStr && len(arr) >= 2 {
+		if op, ok := arr[1].(string); ok && validateSearchOperator(op) {
+			out := make([]any, len(arr))
+			out[0] = arr[0]
+			out[1] = arr[1]
+			if len(arr) >= 3 {
+				resolved, err := l.resolveValue(tx, filePath, recordIndex, rec, fieldPath, arr[2])
+				if err != nil {
+					return nil, err
+				}
+				// Collapse singleton search results so "=" comparisons receive a scalar id.
+				if ids, ok := resolved.([]string); ok && len(ids) == 1 {
+					resolved = ids[0]
+				}
+				out[2] = resolved
+				for i := 3; i < len(arr); i++ {
+					out[i] = arr[i]
+				}
+			}
+			return out, nil
+		}
+	}
+
+	// Implicit AND: [node1, node2, ...]
+	out := make([]any, len(arr))
+	for i, child := range arr {
+		resolved, err := l.resolveSearchDomainRefs(tx, filePath, recordIndex, rec, fieldPath, child)
+		if err != nil {
+			return nil, err
+		}
+		out[i] = resolved
+	}
+	return out, nil
+}
 
 // resolveRefBySearch resolves a searchSpec against the database and returns matching record IDs.
 func (l *Loader) resolveRefBySearch(tx *gorm.DB, spec searchSpec) ([]string, error) {
