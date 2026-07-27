@@ -12,6 +12,26 @@ let createdOwnerGrantRuleId = '';
 let previousRecordRuleEnabled: unknown = undefined;
 let capturedRecordRuleEnv = false;
 
+function isEmptyCondition(cond: unknown): boolean {
+  if (cond == null) return true;
+  if (typeof cond !== 'object' || Array.isArray(cond)) return false;
+  const keys = Object.keys(cond as Record<string, unknown>);
+  if (keys.length === 0) return true;
+  if (keys.length === 1) {
+    const key = keys[0];
+    const val = (cond as Record<string, unknown>)[key];
+    if ((key === 'And' || key === 'Or') && Array.isArray(val) && val.length === 0) return true;
+  }
+  return false;
+}
+
+function isNotFoundDeleteError(err: unknown): boolean {
+  const code = String((err as any)?.code || '').toLowerCase();
+  if (code === 'not_found' || code === 'notfound' || code === '5') return true;
+  const msg = String((err as any)?.message || err || '').toLowerCase();
+  return msg.includes('not found') || msg.includes('not_found');
+}
+
 /**
  * Document unit tests historically relied on repository RecordRule allow-by-default
  * for UploadSession / Binding / Content CRUD. Under deny-default those writes need
@@ -51,6 +71,7 @@ export async function ensureAuthUserOwnerRecordRuleGrants(): Promise<void> {
       throw new Error('meta model auth.User not found for document owner RR fixture');
     }
 
+    // Reuse only an exact fixture-shaped grant (R/W only, empty Condition).
     const existing = await RoleRecordRule.Search(
       {
         And: [
@@ -60,13 +81,15 @@ export async function ensureAuthUserOwnerRecordRuleGrants(): Promise<void> {
           ['IrApplicationId', 'is', null],
           ['PermRead', '=', true],
           ['PermWrite', '=', true],
+          ['PermCreate', '=', false],
+          ['PermDelete', '=', false],
         ],
       } as any,
-      { fields: ['Id'], limit: 1 } as any
+      { fields: ['Id', 'Condition'], limit: 8 } as any
     );
-    if ((existing || []).length > 0) {
-      // Reuse a pre-existing rule; do not delete it on teardown.
-      authUserOwnerGrantsSeeded = true;
+    const reusable = (existing || []).find(r => isEmptyCondition((r as any)?.Condition));
+    if (reusable) {
+      // Pre-existing exact-shape rule; do not delete it on teardown.
       return;
     }
 
@@ -112,12 +135,30 @@ export async function restoreDocumentOwnerAuthFixtures(): Promise<void> {
     previousRecordRuleEnabled = undefined;
   }
 
-  if (createdOwnerGrantRuleId) {
-    const ruleId = createdOwnerGrantRuleId;
-    createdOwnerGrantRuleId = '';
-    authUserOwnerGrantsSeeded = false;
-    await withPermissionGraphBypass(async () => {
-      await RoleRecordRule.DeleteById(ruleId).catch(() => undefined);
-    });
-  }
+  // Always allow a later ensure* to re-seed / refresh RR cache, even when a
+  // pre-existing rule was reused (createdOwnerGrantRuleId empty).
+  authUserOwnerGrantsSeeded = false;
+
+  if (!createdOwnerGrantRuleId) return;
+
+  const ruleId = createdOwnerGrantRuleId;
+  await withPermissionGraphBypass(async () => {
+    try {
+      await RoleRecordRule.DeleteById(ruleId);
+    } catch (err) {
+      if (isNotFoundDeleteError(err)) {
+        // Already gone — treat as successful cleanup.
+        return;
+      }
+      // Confirm absence before giving up; keep teardown non-brittle for transient errors.
+      const stillThere = await RoleRecordRule.Search([['Id', '=', ruleId]] as any, {
+        fields: ['Id'],
+        limit: 1,
+      } as any);
+      if ((stillThere || []).length > 0) {
+        throw err;
+      }
+    }
+  });
+  createdOwnerGrantRuleId = '';
 }
