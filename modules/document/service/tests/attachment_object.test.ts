@@ -6,7 +6,13 @@ import { ChoysumError } from '@/core/service/error';
 import AttachmentObject from '../models/attachment_object';
 import UploadSession from '../models/upload_session';
 import StoredContent from '../models/stored_content';
-import { ensureAuthUserOwnerRecordRuleGrants, disableRepositoryRecordRuleForDocumentTests, restoreDocumentOwnerAuthFixtures } from './_owner_auth_test_fixtures';
+import {
+  ensureAuthUserOwnerRecordRuleGrants,
+  ensureAuthUserOwnerFieldRuleGrants,
+  disableRepositoryRecordRuleForDocumentTests,
+  disableRepositoryFieldRuleForDocumentTests,
+  restoreDocumentOwnerAuthFixtures,
+} from './_owner_auth_test_fixtures';
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -51,6 +57,7 @@ function resetRequestContext(): void {
   delete (jsCtx as any)[RR_CACHE_KEY];
   delete (jsCtx as any)[FR_CACHE_KEY];
   disableRepositoryRecordRuleForDocumentTests();
+  disableRepositoryFieldRuleForDocumentTests();
 }
 
 async function withDocumentScope<T>(fn: () => Promise<T>): Promise<T> {
@@ -61,6 +68,7 @@ async function withDocumentScope<T>(fn: () => Promise<T>): Promise<T> {
     } as any,
     async () => {
       await ensureAuthUserOwnerRecordRuleGrants();
+      await ensureAuthUserOwnerFieldRuleGrants();
       return fn();
     },
     { merge: false }
@@ -84,6 +92,7 @@ async function withScope<T>(companyId: string, userId: string, fn: () => Promise
         userId,
       };
       await ensureAuthUserOwnerRecordRuleGrants();
+      await ensureAuthUserOwnerFieldRuleGrants();
       return fn();
     },
     { merge: false }

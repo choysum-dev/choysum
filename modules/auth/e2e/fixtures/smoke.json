@@ -94,6 +94,19 @@
     },
     {
       "module": "auth",
+      "external_id": "e2e_rfr_sys_admin_global_allow_rw",
+      "model": "auth.RoleFieldRule",
+      "values": {
+        "RoleId": { "ref": "auth.e2e_role_sys_admin" },
+        "IrApplicationId": null,
+        "IrModelId": null,
+        "IrFieldId": null,
+        "PermRead": "allow",
+        "PermWrite": "allow"
+      }
+    },
+    {
+      "module": "auth",
       "external_id": "e2e_admin_userrole_base_user_main",
       "model": "auth.UserRole",
       "values": {
