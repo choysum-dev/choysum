@@ -1249,7 +1249,7 @@ msgstr ""
 
 #: web/views/RoleFormView.vue:86
 msgctxt "web/views/RoleFormView"
-msgid "Field Rules (Manual Maintenance)"
+msgid "Field Rules"
 msgstr ""
 
 #: web/views/RoleFormView.vue:49
@@ -1259,12 +1259,12 @@ msgstr ""
 
 #: web/views/RoleFormView.vue:95
 msgctxt "web/views/RoleFormView"
-msgid "Method Access (Manual Maintenance)"
+msgid "Method Access"
 msgstr ""
 
 #: web/views/RoleFormView.vue:75
 msgctxt "web/views/RoleFormView"
-msgid "Record Rules (Manual Maintenance)"
+msgid "Record Rules"
 msgstr ""
 
 #: web/views/RoleFormView.vue:40
@@ -1304,7 +1304,7 @@ msgstr ""
 
 #: web/views/RoleFormView.vue:103
 msgctxt "web/views/RoleFormView"
-msgid "UI Resource Details (Manual Maintenance)"
+msgid "UI Resource Details (manual bypass)"
 msgstr ""
 
 #: web/views/RoleFormView.vue:42
@@ -1624,3 +1624,39 @@ msgctxt "web/views/UserSearchView"
 msgid "Active"
 msgstr ""
 
+
+msgctxt "web/views/RoleFormView"
+msgid "Applies to Role (empty = all users)"
+msgstr ""
+
+msgctxt "web/views/RoleFormView"
+msgid "This role; clear for all users"
+msgstr ""
+
+msgctxt "web/views/RoleFormView"
+msgid "Grant + all users is a wide-open rule"
+msgstr ""
+
+msgctxt "web/views/RoleFormView"
+msgid "Configure record/field/RPC grants under deny-default. The UI resource tree does not derive Record or Field rules; Advanced is the main place for data and method access."
+msgstr ""
+
+msgctxt "web/views/RoleFormView"
+msgid "Without a matching grant, records are invisible or not writable (deny-default)."
+msgstr ""
+
+msgctxt "web/views/RoleFormView"
+msgid "Field visibility under deny-default. Leave Application/Model/Field empty for wider scopes."
+msgstr ""
+
+msgctxt "web/views/RoleFormView"
+msgid "RPC allow/deny under deny-default. New rows default to allow; use deny as an explicit brake."
+msgstr ""
+
+msgctxt "web/views/RoleFormView"
+msgid "Secondary to the UI Resource Access tree above. Prefer the tree for day-to-day grants."
+msgstr ""
+
+msgctxt "web/views/RoleFormView"
+msgid "Kind=grant with empty Applies-to Role applies to every user. Prefer this role for grants; use empty Role mainly with Kind=restrict. Model/Application empty means scope-global (all models), which is separate from all-users audience. All-users rows leave this role list after save."
+msgstr ""

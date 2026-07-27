@@ -1221,27 +1221,77 @@ msgctxt "web/views/RoleFormView"
 msgid "Edit Role"
 msgstr "编辑角色"
 
-#: web/views/RoleFormView.vue:86
+#: web/views/RoleFormView.vue
 msgctxt "web/views/RoleFormView"
-msgid "Field Rules (Manual Maintenance)"
-msgstr "字段规则（手动维护）"
+msgid "Field Rules"
+msgstr "字段规则"
 
-#: web/views/RoleFormView.vue:49
+#: web/views/RoleFormView.vue
 msgctxt "web/views/RoleFormView"
 msgid "Included Roles"
 msgstr "包含的角色"
 
-#: web/views/RoleFormView.vue:95
+#: web/views/RoleFormView.vue
 msgctxt "web/views/RoleFormView"
-msgid "Method Access (Manual Maintenance)"
-msgstr "方法访问（手动维护）"
+msgid "Method Access"
+msgstr "方法访问"
 
-#: web/views/RoleFormView.vue:75
+#: web/views/RoleFormView.vue
 msgctxt "web/views/RoleFormView"
-msgid "Record Rules (Manual Maintenance)"
-msgstr "记录规则（手动维护）"
+msgid "Record Rules"
+msgstr "记录规则"
 
-#: web/views/RoleFormView.vue:40
+#: web/views/RoleFormView.vue
+msgctxt "web/views/RoleFormView"
+msgid "UI Resource Details (manual bypass)"
+msgstr "界面资源明细（手动旁路）"
+
+#: web/views/RoleFormView.vue
+msgctxt "web/views/RoleFormView"
+msgid "Applies to Role (empty = all users)"
+msgstr "应用到角色（空=全体用户）"
+
+#: web/views/RoleFormView.vue
+msgctxt "web/views/RoleFormView"
+msgid "This role; clear for all users"
+msgstr "本角色；清空表示全体用户"
+
+#: web/views/RoleFormView.vue
+msgctxt "web/views/RoleFormView"
+msgid "Grant + all users is a wide-open rule"
+msgstr "Grant + 全体用户是宽开规则"
+
+#: web/views/RoleFormView.vue
+msgctxt "web/views/RoleFormView"
+msgid "Kind=grant with empty Applies-to Role applies to every user. Prefer this role for grants; use empty Role mainly with Kind=restrict. Model/Application empty means scope-global (all models), which is separate from all-users audience. All-users rows leave this role list after save."
+msgstr "Kind=grant 且「应用到角色」为空时对全体用户生效。Grant 请优先挂本角色；Role 为空主要用于 Kind=restrict。模型/应用皆空表示 scope-global（全部模型），与「全体用户」适用轴不同。全体用户规则保存后会离开本角色列表。"
+
+#: web/views/RoleFormView.vue
+msgctxt "web/views/RoleFormView"
+msgid "Configure record/field/RPC grants under deny-default. The UI resource tree does not derive Record or Field rules; Advanced is the main place for data and method access."
+msgstr "在 deny-default 下配置记录/字段/RPC 授权。UI 资源树不会派生 Record/Field 规则；高级模式是数据权与方法权的主配置面。"
+
+#: web/views/RoleFormView.vue
+msgctxt "web/views/RoleFormView"
+msgid "Without a matching grant, records are invisible or not writable (deny-default)."
+msgstr "没有 matching grant 时，记录不可见或不可写（deny-default）。"
+
+#: web/views/RoleFormView.vue
+msgctxt "web/views/RoleFormView"
+msgid "Field visibility under deny-default. Leave Application/Model/Field empty for wider scopes."
+msgstr "deny-default 下的字段可见性。应用/模型/字段留空表示更宽 scope。"
+
+#: web/views/RoleFormView.vue
+msgctxt "web/views/RoleFormView"
+msgid "RPC allow/deny under deny-default. New rows default to allow; use deny as an explicit brake."
+msgstr "deny-default 下的 RPC 允许/拒绝。新建默认 allow；用 deny 作显式刹车。"
+
+#: web/views/RoleFormView.vue
+msgctxt "web/views/RoleFormView"
+msgid "Secondary to the UI Resource Access tree above. Prefer the tree for day-to-day grants."
+msgstr "相对上方「UI 资源访问」树为旁路；日常授权请优先用树。"
+
+#: web/views/RoleFormView.vue
 msgctxt "web/views/RoleFormView"
 msgid "Related Data"
 msgstr "关联数据"
@@ -1278,8 +1328,8 @@ msgstr "界面资源访问"
 
 #: web/views/RoleFormView.vue:103
 msgctxt "web/views/RoleFormView"
-msgid "UI Resource Details (Manual Maintenance)"
-msgstr "界面资源明细（手动维护）"
+msgid "UI Resource Details (manual bypass)"
+msgstr "界面资源明细（手动旁路）"
 
 #: web/views/RoleFormView.vue:42
 msgctxt "web/views/RoleFormView"

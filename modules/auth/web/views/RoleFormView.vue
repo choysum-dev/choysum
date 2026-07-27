@@ -98,9 +98,40 @@ SPDX-License-Identifier: Apache-2.0
         </el-tab-pane>
 
         <el-tab-pane :label="_t('Advanced Mode')" name="advanced">
+          <p class="rfv-advanced__hint">
+            {{
+              _t(
+                'Configure record/field/RPC grants under deny-default. The UI resource tree does not derive Record or Field rules; Advanced is the main place for data and method access.'
+              )
+            }}
+          </p>
           <el-collapse v-model="advancedPanels" class="rfv-advanced" accordion>
-            <el-collapse-item name="record_rules" :title="_t('Record Rules (Manual Maintenance)')">
-              <OOneToManyField :store="store" prop="RecordRules" label="">
+            <el-collapse-item name="record_rules" :title="_t('Record Rules')">
+              <el-alert
+                class="rfv-rr-alert"
+                type="warning"
+                :closable="false"
+                show-icon
+                :title="_t('Grant + all users is a wide-open rule')"
+                :description="
+                  _t(
+                    'Kind=grant with empty Applies-to Role applies to every user. Prefer this role for grants; use empty Role mainly with Kind=restrict. Model/Application empty means scope-global (all models), which is separate from all-users audience. All-users rows leave this role list after save.'
+                  )
+                "
+              />
+              <p class="rfv-advanced__hint rfv-advanced__hint--tight">
+                {{ _t('Without a matching grant, records are invisible or not writable (deny-default).') }}
+              </p>
+              <OOneToManyField :store="store" prop="RecordRules" label="" :default-record="defaultRecordRule">
+                <OSelectionField :store="store" prop="RecordRules.Kind" />
+                <OManyToOneRefField
+                  :store="store"
+                  prop="RecordRules.RoleId"
+                  :label="_t('Applies to Role (empty = all users)')"
+                  :placeholder="_t('This role; clear for all users')"
+                  :condition="recordRuleAudienceCondition"
+                />
+                <OManyToOneRefField :store="store" prop="RecordRules.IrApplicationId" />
                 <OManyToOneRefField :store="store" prop="RecordRules.IrModelId" />
                 <OJsonobjectField :store="store" prop="RecordRules.Condition" :allow-array="true" />
                 <OBooleanField :store="store" prop="RecordRules.PermRead" />
@@ -110,8 +141,12 @@ SPDX-License-Identifier: Apache-2.0
               </OOneToManyField>
             </el-collapse-item>
 
-            <el-collapse-item name="field_rules" :title="_t('Field Rules (Manual Maintenance)')">
+            <el-collapse-item name="field_rules" :title="_t('Field Rules')">
+              <p class="rfv-advanced__hint rfv-advanced__hint--tight">
+                {{ _t('Field visibility under deny-default. Leave Application/Model/Field empty for wider scopes.') }}
+              </p>
               <OOneToManyField :store="store" prop="FieldRules" label="">
+                <OManyToOneRefField :store="store" prop="FieldRules.IrApplicationId" />
                 <OManyToOneRefField :store="store" prop="FieldRules.IrModelId" />
                 <OManyToOneRefField :store="store" prop="FieldRules.IrFieldId" />
                 <OSelectionField :store="store" prop="FieldRules.PermRead" />
@@ -119,15 +154,22 @@ SPDX-License-Identifier: Apache-2.0
               </OOneToManyField>
             </el-collapse-item>
 
-            <el-collapse-item name="method_accesses" :title="_t('Method Access (Manual Maintenance)')">
-              <OOneToManyField :store="store" prop="MethodAccesses" label="">
+            <el-collapse-item name="method_accesses" :title="_t('Method Access')">
+              <p class="rfv-advanced__hint rfv-advanced__hint--tight">
+                {{ _t('RPC allow/deny under deny-default. New rows default to allow; use deny as an explicit brake.') }}
+              </p>
+              <OOneToManyField :store="store" prop="MethodAccesses" label="" :default-record="defaultMethodAccess">
+                <OManyToOneRefField :store="store" prop="MethodAccesses.IrApplicationId" />
                 <OManyToOneRefField :store="store" prop="MethodAccesses.IrModelId" />
                 <OManyToOneRefField :store="store" prop="MethodAccesses.IrServiceId" />
                 <OSelectionField :store="store" prop="MethodAccesses.Mode" />
               </OOneToManyField>
             </el-collapse-item>
 
-            <el-collapse-item name="ui_resources" :title="_t('UI Resource Details (Manual Maintenance)')">
+            <el-collapse-item name="ui_resources" :title="_t('UI Resource Details (manual bypass)')">
+              <p class="rfv-advanced__hint rfv-advanced__hint--tight">
+                {{ _t('Secondary to the UI Resource Access tree above. Prefer the tree for day-to-day grants.') }}
+              </p>
               <OOneToManyField :store="store" prop="UiResources" label="">
                 <OSelectionField :store="store" prop="UiResources.Mode" />
                 <OManyToOneRefField :store="store" prop="UiResources.IrApplicationId" />
@@ -147,7 +189,7 @@ import type { RouteLocationRaw } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type Role from '@/auth/service/models/role';
 
-import { ElCard, ElRow, ElCol, ElTabs, ElTabPane, ElCollapse, ElCollapseItem, ElIcon } from 'element-plus';
+import { ElCard, ElRow, ElCol, ElTabs, ElTabPane, ElCollapse, ElCollapseItem, ElIcon, ElAlert } from 'element-plus';
 import { Menu as MenuIcon, Connection, Operation, QuestionFilled } from '@element-plus/icons-vue';
 
 import OFormView from '@/web/web/components/view/OFormView.vue';
@@ -221,6 +263,34 @@ function resolveUiResourceTypeIcon(type?: string) {
   }
 }
 
+function resolveCurrentRoleId(): string {
+  const fromProp = String(recordId || '').trim();
+  if (fromProp) return fromProp;
+  const fromStore = String((store as any)?.currentId || (store as any)?.id || (store as any)?.record?.Id || '').trim();
+  return fromStore;
+}
+
+/** New RecordRule rows default to grant + this role (audience=this role). */
+function defaultRecordRule(): Record<string, any> {
+  const roleId = resolveCurrentRoleId();
+  return {
+    Kind: 'grant',
+    ...(roleId ? { RoleId: roleId } : {}),
+  };
+}
+
+/** New MethodAccess rows default to allow (deny is an explicit brake). */
+function defaultMethodAccess(): Record<string, any> {
+  return { Mode: 'allow' };
+}
+
+/** Audience picker: this role only (clear the field for all users). */
+const recordRuleAudienceCondition = computed(() => {
+  const roleId = resolveCurrentRoleId();
+  if (!roleId) return undefined;
+  return { And: [['Id', '=', roleId]] } as any;
+});
+
 const activeTab = ref('users');
 const advancedPanels = ref('');
 </script>
@@ -239,6 +309,21 @@ const advancedPanels = ref('');
 
 .rfv-advanced {
   margin-top: 4px;
+}
+
+.rfv-advanced__hint {
+  margin: 0 0 12px;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.rfv-advanced__hint--tight {
+  margin-bottom: 8px;
+}
+
+.rfv-rr-alert {
+  margin-bottom: 10px;
 }
 
 .rfv-ui-resource-node {
