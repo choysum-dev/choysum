@@ -1,10 +1,6 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { withContext as withModelContext } from '@/core/service/api/context';
-import User from '@/auth/service/models/user';
-import Role from '@/auth/service/models/role';
-import UserRole from '@/auth/service/models/user_role';
 import RoleRecordRule from '@/auth/service/models/role_record_rule';
 import { evaluateRecordRuleCondition } from '@/auth/service/models/_user_record_rule_eval';
 import { createServiceByModel } from '@/core/service/rpc';
@@ -46,121 +42,6 @@ function uid(prefix: string): string {
   const xid = (globalThis as any).$choysum?.xid?.New?.();
   const u = typeof xid === 'string' && xid.trim() ? xid.trim() : String(Date.now());
   return `${prefix}_${u}`;
-}
-
-function setIdentity(userId?: string): void {
-  const jsCtx = ensureRequestContext();
-  if (!jsCtx.identity) jsCtx.identity = {};
-  if (userId) jsCtx.identity.userId = userId;
-  else delete jsCtx.identity.userId;
-}
-
-function setReq(patch: Record<string, any>): void {
-  const jsCtx = ensureRequestContext();
-  if (!jsCtx.req) jsCtx.req = {};
-  Object.assign(jsCtx.req, patch);
-}
-
-function setupAllowlistForFixtures(): void {
-  setReq({
-    depth: 0,
-    recordRuleMode: 'allowlist',
-    recordRuleAllow: [
-      'auth.User:read',
-      'auth.User:write',
-      'auth.User:create',
-      'auth.User:delete',
-      'User:read',
-      'User:write',
-      'User:create',
-      'User:delete',
-      'auth.Role:read',
-      'auth.Role:write',
-      'auth.Role:create',
-      'auth.Role:delete',
-      'Role:read',
-      'Role:write',
-      'Role:create',
-      'Role:delete',
-      'auth.UserRole:read',
-      'auth.UserRole:write',
-      'auth.UserRole:create',
-      'auth.UserRole:delete',
-      'UserRole:read',
-      'UserRole:write',
-      'UserRole:create',
-      'UserRole:delete',
-      'auth.RoleRecordRule:read',
-      'auth.RoleRecordRule:write',
-      'auth.RoleRecordRule:create',
-      'auth.RoleRecordRule:delete',
-      'RoleRecordRule:read',
-      'RoleRecordRule:write',
-      'RoleRecordRule:create',
-      'RoleRecordRule:delete',
-      'auth.CompanyScopedResource:read',
-      'auth.CompanyScopedResource:write',
-      'auth.CompanyScopedResource:create',
-      'auth.CompanyScopedResource:delete',
-      'CompanyScopedResource:read',
-      'CompanyScopedResource:write',
-      'CompanyScopedResource:create',
-      'CompanyScopedResource:delete',
-      'meta.IrModel:read',
-      'meta.IrApplication:read',
-      'meta.IrField:read',
-      'IrModel:read',
-      'IrApplication:read',
-      'IrField:read',
-    ],
-  });
-}
-
-async function createUser(companyId: string): Promise<string> {
-  const created = await User.Create(
-    {
-      Username: uid('u'),
-      PasswordHash: 'test',
-      FirstName: 'T',
-      LastName: 'U',
-      CompanyId: companyId,
-      CompanyIds: [companyId],
-      IsActive: true,
-    } as any,
-    ['Id'] as any
-  );
-  return created.Id;
-}
-
-async function createRole(): Promise<string> {
-  const created = await Role.Create(
-    {
-      Name: uid('role'),
-      Code: uid('ROLE'),
-      Description: 'test',
-      IsActive: true,
-      IsSystem: false,
-    } as any,
-    ['Id'] as any
-  );
-  return created.Id;
-}
-
-async function grantRoleGlobal(userId: string, roleId: string, companyId: string): Promise<void> {
-  await withModelContext(
-    { activeCompanyId: companyId, enabledCompanyIds: [companyId] } as any,
-    async () => {
-      await UserRole.Create(
-        {
-          UserId: { Id: userId } as any,
-          RoleId: { Id: roleId } as any,
-          CompanyId: null as any,
-        } as any,
-        ['Id'] as any
-      );
-    },
-    { merge: false }
-  );
 }
 
 async function resolveModelId(appName: string, modelName: string): Promise<string> {
@@ -228,226 +109,139 @@ test('P2-2 eval edges: Search truncation fail-closed', async () => {
 
 test('P2-2 eval edges: missing roleScopesById applies deny-lean company gate', async () => {
   resetRequestContext();
-  setupAllowlistForFixtures();
-  const c1 = { Id: uid('C1') };
-
-  const { roleId } = await withModelContext(
-    { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
-    async () => {
-      const uid1 = await createUser(c1.Id);
-      setIdentity(uid1);
-      const roleId = await createRole();
-      await grantRoleGlobal(uid1, roleId, c1.Id);
-      const modelId = await resolveModelId('auth', 'CompanyScopedResource');
-      await RoleRecordRule.Create(
-        {
-          RoleId: { Id: roleId } as any,
-          Kind: 'grant',
-          IrModelId: modelId,
-          Condition: { And: [['Name', '=', 'x']] } as any,
-          PermRead: true,
-          PermWrite: false,
-          PermCreate: false,
-          PermDelete: false,
-        } as any,
-        ['Id'] as any
-      );
-      return { roleId };
+  // Isolate from suite-seeded RoleRecordRule rows (full CI unit shard shares one DB).
+  const modelId = await resolveModelId('auth', 'CompanyScopedResource');
+  const roleId = uid('role');
+  const origSearch = (RoleRecordRule as any).Search;
+  const origCount = (IrField as any).Count;
+  (IrField as any).Count = async () => 1; // force company gate enabled
+  (RoleRecordRule as any).Search = async () => [
+    {
+      RoleId: { Id: roleId },
+      Kind: 'grant',
+      Condition: { And: [['Name', '=', 'x']] },
+      IrModelId: modelId,
+      IrApplicationId: null,
     },
-    { merge: false }
-  );
-
-  // roleIds present but roleScopesById omits the role → deny-lean gate (empty company in).
-  const env = await evaluateRecordRuleCondition({
-    appName: 'auth',
-    modelName: 'CompanyScopedResource',
-    hasCompany: true,
-    opValue: 'read',
-    roleIds: [roleId],
-    roleScopesById: {},
-  });
-  expect(env.kind).toBe('expr');
-  const json = JSON.stringify((env as any).expr || {});
-  expect(json).toContain('CompanyId');
-  expect(json).toContain('Name');
-  // Deny-lean scope → CompanyId in [].
-  expect(json.includes('[]')).toBe(true);
+  ];
+  try {
+    // roleIds present but roleScopesById omits the role → deny-lean gate (empty company in).
+    const env = await evaluateRecordRuleCondition({
+      appName: 'auth',
+      modelName: 'CompanyScopedResource',
+      hasCompany: true,
+      opValue: 'read',
+      roleIds: [roleId],
+      roleScopesById: {},
+    });
+    expect(env.kind).toBe('expr');
+    const json = JSON.stringify((env as any).expr || {});
+    expect(json).toContain('CompanyId');
+    expect(json).toContain('Name');
+    // Deny-lean scope → CompanyId in [].
+    expect(json.includes('[]')).toBe(true);
+  } finally {
+    (RoleRecordRule as any).Search = origSearch;
+    (IrField as any).Count = origCount;
+  }
 });
 
 test('P2-2 eval edges: true-condition variants and multi grant+restrict compose', async () => {
   resetRequestContext();
-  setupAllowlistForFixtures();
-  const c1 = { Id: uid('C1') };
+  const modelId = await resolveModelId('auth', 'CompanyScopedResource');
+  const roleId = uid('role');
+  const origSearch = (RoleRecordRule as any).Search;
 
-  const roleId = await withModelContext(
-    { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
-    async () => {
-      const uid1 = await createUser(c1.Id);
-      setIdentity(uid1);
-      const roleId = await createRole();
-      await grantRoleGlobal(uid1, roleId, c1.Id);
-      const modelId = await resolveModelId('auth', 'CompanyScopedResource');
-
-      // Two constrained grants (forces orMerge) + one restrict (forces andMerge).
-      await RoleRecordRule.Create(
-        {
-          RoleId: { Id: roleId } as any,
-          Kind: 'grant',
-          IrModelId: modelId,
-          Condition: { And: [['Name', '=', 'a']] } as any,
-          PermRead: true,
-          PermWrite: false,
-          PermCreate: false,
-          PermDelete: false,
-        } as any,
-        ['Id'] as any
-      );
-      await RoleRecordRule.Create(
-        {
-          RoleId: { Id: roleId } as any,
-          Kind: 'grant',
-          IrModelId: modelId,
-          Condition: { Or: [['Name', '=', 'b']] } as any,
-          PermRead: true,
-          PermWrite: false,
-          PermCreate: false,
-          PermDelete: false,
-        } as any,
-        ['Id'] as any
-      );
-      await RoleRecordRule.Create(
-        {
-          RoleId: { Id: roleId } as any,
-          Kind: 'restrict',
-          IrModelId: modelId,
-          Condition: { And: [['Name', '!=', 'z']] } as any,
-          PermRead: true,
-          PermWrite: false,
-          PermCreate: false,
-          PermDelete: false,
-        } as any,
-        ['Id'] as any
-      );
-
-      // True-condition variants that should behave as unconstrained for a separate role grant.
-      await RoleRecordRule.Create(
-        {
-          RoleId: { Id: roleId } as any,
-          Kind: 'grant',
-          IrModelId: modelId,
-          Condition: { Or: [] } as any,
-          PermWrite: true,
-          PermRead: false,
-          PermCreate: false,
-          PermDelete: false,
-        } as any,
-        ['Id'] as any
-      );
-      await RoleRecordRule.Create(
-        {
-          RoleId: { Id: roleId } as any,
-          Kind: 'grant',
-          IrModelId: modelId,
-          Condition: {} as any,
-          PermWrite: true,
-          PermRead: false,
-          PermCreate: false,
-          PermDelete: false,
-        } as any,
-        ['Id'] as any
-      );
-      await RoleRecordRule.Create(
-        {
-          RoleId: { Id: roleId } as any,
-          Kind: 'grant',
-          IrModelId: modelId,
-          Condition: '' as any,
-          PermWrite: true,
-          PermRead: false,
-          PermCreate: false,
-          PermDelete: false,
-        } as any,
-        ['Id'] as any
-      );
-      await RoleRecordRule.Create(
-        {
-          RoleId: { Id: roleId } as any,
-          Kind: 'grant',
-          IrModelId: modelId,
-          Condition: [] as any,
-          PermWrite: true,
-          PermRead: false,
-          PermCreate: false,
-          PermDelete: false,
-        } as any,
-        ['Id'] as any
-      );
-
-      return roleId;
+  const readRows = [
+    {
+      RoleId: { Id: roleId },
+      Kind: 'grant',
+      Condition: { And: [['Name', '=', 'a']] },
+      IrModelId: modelId,
+      IrApplicationId: null,
     },
-    { merge: false }
-  );
+    {
+      RoleId: { Id: roleId },
+      Kind: 'grant',
+      Condition: { Or: [['Name', '=', 'b']] },
+      IrModelId: modelId,
+      IrApplicationId: null,
+    },
+    {
+      RoleId: { Id: roleId },
+      Kind: 'restrict',
+      Condition: { And: [['Name', '!=', 'z']] },
+      IrModelId: modelId,
+      IrApplicationId: null,
+    },
+  ];
+  const writeRows = [
+    {
+      RoleId: { Id: roleId },
+      Kind: 'grant',
+      Condition: { Or: [] },
+      IrModelId: modelId,
+      IrApplicationId: null,
+    },
+    {
+      RoleId: { Id: roleId },
+      Kind: 'grant',
+      Condition: {},
+      IrModelId: modelId,
+      IrApplicationId: null,
+    },
+    {
+      RoleId: { Id: roleId },
+      Kind: 'grant',
+      Condition: '',
+      IrModelId: modelId,
+      IrApplicationId: null,
+    },
+    {
+      RoleId: { Id: roleId },
+      Kind: 'grant',
+      Condition: [],
+      IrModelId: modelId,
+      IrApplicationId: null,
+    },
+  ];
 
-  const composed = await evaluateRecordRuleCondition({
-    appName: 'auth',
-    modelName: 'CompanyScopedResource',
-    hasCompany: false,
-    opValue: 'read',
-    roleIds: [roleId],
-    roleScopesById: { [roleId]: { global: true, companies: [] } },
-  });
-  expect(composed.kind).toBe('expr');
-  expect(String((composed as any).reason || '')).toBe('grant_or_and_restricts');
+  try {
+    (RoleRecordRule as any).Search = async () => readRows;
+    const composed = await evaluateRecordRuleCondition({
+      appName: 'auth',
+      modelName: 'CompanyScopedResource',
+      hasCompany: false,
+      opValue: 'read',
+      roleIds: [roleId],
+      roleScopesById: { [roleId]: { global: true, companies: [] } },
+    });
+    expect(composed.kind).toBe('expr');
+    expect(String((composed as any).reason || '')).toBe('grant_or_and_restricts');
 
-  const writeTrue = await evaluateRecordRuleCondition({
-    appName: 'auth',
-    modelName: 'CompanyScopedResource',
-    hasCompany: false,
-    opValue: 'write',
-    roleIds: [roleId],
-    roleScopesById: { [roleId]: { global: true, companies: [] } },
-  });
-  expect(writeTrue.kind).toBe('true');
-  expect(String((writeTrue as any).reason || '')).toBe('grant_unconstrained');
+    (RoleRecordRule as any).Search = async () => writeRows;
+    const writeTrue = await evaluateRecordRuleCondition({
+      appName: 'auth',
+      modelName: 'CompanyScopedResource',
+      hasCompany: false,
+      opValue: 'write',
+      roleIds: [roleId],
+      roleScopesById: { [roleId]: { global: true, companies: [] } },
+    });
+    expect(writeTrue.kind).toBe('true');
+    expect(String((writeTrue as any).reason || '')).toBe('grant_unconstrained');
+  } finally {
+    (RoleRecordRule as any).Search = origSearch;
+  }
 });
 
 test('P2-2 eval edges: mismatched rule scopes skipped; company-gate meta error disables gate', async () => {
   resetRequestContext();
-  setupAllowlistForFixtures();
-  const c1 = { Id: uid('C1') };
-
-  const roleId = await withModelContext(
-    { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
-    async () => {
-      const uid1 = await createUser(c1.Id);
-      setIdentity(uid1);
-      const roleId = await createRole();
-      await grantRoleGlobal(uid1, roleId, c1.Id);
-      const modelId = await resolveModelId('auth', 'CompanyScopedResource');
-      const userModelId = await resolveModelId('auth', 'User');
-
-      await RoleRecordRule.Create(
-        {
-          RoleId: { Id: roleId } as any,
-          Kind: 'grant',
-          IrModelId: modelId,
-          Condition: { And: [['Name', '=', 'ok']] } as any,
-          PermRead: true,
-          PermWrite: false,
-          PermCreate: false,
-          PermDelete: false,
-        } as any,
-        ['Id'] as any
-      );
-      // Wrong model id on a returned row is skipped by scope filter when Search is mocked.
-      void userModelId;
-      return roleId;
-    },
-    { merge: false }
-  );
-
   const modelId = await resolveModelId('auth', 'CompanyScopedResource');
+  const roleId = uid('role');
+  const companyId = uid('C1');
   const origSearch = (RoleRecordRule as any).Search;
+  const origCount = (IrField as any).Count;
   (RoleRecordRule as any).Search = async () => [
     {
       RoleId: { Id: roleId },
@@ -472,8 +266,6 @@ test('P2-2 eval edges: mismatched rule scopes skipped; company-gate meta error d
       IrApplicationId: null,
     },
   ];
-
-  const origCount = (IrField as any).Count;
   (IrField as any).Count = async () => {
     throw new Error('meta boom');
   };
@@ -485,7 +277,7 @@ test('P2-2 eval edges: mismatched rule scopes skipped; company-gate meta error d
       hasCompany: true,
       opValue: 'read',
       roleIds: [roleId],
-      roleScopesById: { [roleId]: { global: false, companies: [c1.Id] } },
+      roleScopesById: { [roleId]: { global: false, companies: [companyId] } },
     });
     // Company gate disabled due to IrField.Count error; grant expr remains.
     expect(env.kind).toBe('expr');
@@ -498,183 +290,131 @@ test('P2-2 eval edges: mismatched rule scopes skipped; company-gate meta error d
 
 test('P2-2 eval edges: company-scoped model without CompanyId field disables gate', async () => {
   resetRequestContext();
+  const modelId = await resolveModelId('auth', 'CompanyScopedResource');
+  const roleId = uid('role');
+  const companyId = uid('C1');
+  const origSearch = (RoleRecordRule as any).Search;
   const origCount = (IrField as any).Count;
   (IrField as any).Count = async () => 0;
+  (RoleRecordRule as any).Search = async () => [
+    {
+      RoleId: { Id: roleId },
+      Kind: 'grant',
+      Condition: { And: [['Name', '=', 'nogate']] },
+      IrModelId: modelId,
+      IrApplicationId: null,
+    },
+  ];
   try {
-    // Use a real company-scoped model so computeCompanyGateMode reaches the field probe.
-    setupAllowlistForFixtures();
-    const c1 = { Id: uid('C1') };
-    const roleId = await withModelContext(
-      { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
-      async () => {
-        const uid1 = await createUser(c1.Id);
-        setIdentity(uid1);
-        const roleId = await createRole();
-        await grantRoleGlobal(uid1, roleId, c1.Id);
-        const modelId = await resolveModelId('auth', 'CompanyScopedResource');
-        await RoleRecordRule.Create(
-          {
-            RoleId: { Id: roleId } as any,
-            Kind: 'grant',
-            IrModelId: modelId,
-            Condition: { And: [['Name', '=', 'nogate']] } as any,
-            PermRead: true,
-            PermWrite: false,
-            PermCreate: false,
-            PermDelete: false,
-          } as any,
-          ['Id'] as any
-        );
-        return roleId;
-      },
-      { merge: false }
-    );
-
     const env = await evaluateRecordRuleCondition({
       appName: 'auth',
       modelName: 'CompanyScopedResource',
       hasCompany: true,
       opValue: 'read',
       roleIds: [roleId],
-      roleScopesById: { [roleId]: { global: false, companies: [c1.Id] } },
+      roleScopesById: { [roleId]: { global: false, companies: [companyId] } },
     });
     expect(env.kind).toBe('expr');
     // Gate disabled → condition alone, no CompanyId clause.
     expect(JSON.stringify((env as any).expr || {})).not.toContain('CompanyId');
   } finally {
+    (RoleRecordRule as any).Search = origSearch;
     (IrField as any).Count = origCount;
   }
 });
 
 test('P2-2 eval edges: unconstrained grant with one restrict uses grant_and_restrict', async () => {
   resetRequestContext();
-  setupAllowlistForFixtures();
-  const c1 = { Id: uid('C1') };
+  const modelId = await resolveModelId('auth', 'CompanyScopedResource');
+  const userModelId = await resolveModelId('auth', 'User');
+  const roleId = uid('role');
+  const companyId = uid('C1');
+  const origSearch = (RoleRecordRule as any).Search;
 
-  const roleId = await withModelContext(
-    { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
-    async () => {
-      const uid1 = await createUser(c1.Id);
-      setIdentity(uid1);
-      const roleId = await createRole();
-      await grantRoleGlobal(uid1, roleId, c1.Id);
-      const modelId = await resolveModelId('auth', 'CompanyScopedResource');
-      await RoleRecordRule.Create(
-        {
-          RoleId: { Id: roleId } as any,
-          Kind: 'grant',
-          IrModelId: modelId,
-          Condition: null as any,
-          PermRead: true,
-          PermWrite: false,
-          PermCreate: false,
-          PermDelete: false,
-        } as any,
-        ['Id'] as any
-      );
-      await RoleRecordRule.Create(
-        {
-          RoleId: { Id: roleId } as any,
-          Kind: 'restrict',
-          IrModelId: modelId,
-          Condition: { And: [['Name', '!=', 'nope']] } as any,
-          PermRead: true,
-          PermWrite: false,
-          PermCreate: false,
-          PermDelete: false,
-        } as any,
-        ['Id'] as any
-      );
+  try {
+    (RoleRecordRule as any).Search = async () => [
+      {
+        RoleId: { Id: roleId },
+        Kind: 'grant',
+        Condition: null,
+        IrModelId: modelId,
+        IrApplicationId: null,
+      },
+      {
+        RoleId: { Id: roleId },
+        Kind: 'restrict',
+        Condition: { And: [['Name', '!=', 'nope']] },
+        IrModelId: modelId,
+        IrApplicationId: null,
+      },
+    ];
+    const andRestrict = await evaluateRecordRuleCondition({
+      appName: 'auth',
+      modelName: 'CompanyScopedResource',
+      hasCompany: false,
+      opValue: 'read',
+      roleIds: [roleId],
+      roleScopesById: { [roleId]: { global: true, companies: [] } },
+    });
+    expect(andRestrict.kind).toBe('expr');
+    expect(String((andRestrict as any).reason || '')).toBe('grant_and_restrict');
 
-      const userModelId = await resolveModelId('auth', 'User');
-      await RoleRecordRule.Create(
-        {
-          RoleId: { Id: roleId } as any,
-          Kind: 'grant',
-          IrModelId: userModelId,
-          Condition: { And: [['Id', '!=', '']] } as any,
-          PermRead: true,
-          PermWrite: false,
-          PermCreate: false,
-          PermDelete: false,
-        } as any,
-        ['Id'] as any
-      );
-      return roleId;
-    },
-    { merge: false }
-  );
-
-  const andRestrict = await evaluateRecordRuleCondition({
-    appName: 'auth',
-    modelName: 'CompanyScopedResource',
-    hasCompany: false,
-    opValue: 'read',
-    roleIds: [roleId],
-    roleScopesById: { [roleId]: { global: true, companies: [] } },
-  });
-  expect(andRestrict.kind).toBe('expr');
-  expect(String((andRestrict as any).reason || '')).toBe('grant_and_restrict');
-
-  // User is not company-scoped → gate stays off even with hasCompany.
-  const userEnv = await evaluateRecordRuleCondition({
-    appName: 'auth',
-    modelName: 'User',
-    hasCompany: true,
-    opValue: 'read',
-    roleIds: [roleId],
-    roleScopesById: { [roleId]: { global: false, companies: [c1.Id] } },
-  });
-  expect(userEnv.kind).toBe('expr');
-  expect(JSON.stringify((userEnv as any).expr || {})).not.toContain('CompanyId');
+    (RoleRecordRule as any).Search = async () => [
+      {
+        RoleId: { Id: roleId },
+        Kind: 'grant',
+        Condition: { And: [['Id', '!=', '']] },
+        IrModelId: userModelId,
+        IrApplicationId: null,
+      },
+    ];
+    // User is not company-scoped → gate stays off even with hasCompany.
+    const userEnv = await evaluateRecordRuleCondition({
+      appName: 'auth',
+      modelName: 'User',
+      hasCompany: true,
+      opValue: 'read',
+      roleIds: [roleId],
+      roleScopesById: { [roleId]: { global: false, companies: [companyId] } },
+    });
+    expect(userEnv.kind).toBe('expr');
+    expect(JSON.stringify((userEnv as any).expr || {})).not.toContain('CompanyId');
+  } finally {
+    (RoleRecordRule as any).Search = origSearch;
+  }
 });
 
 test('P2-2 eval edges: app-scoped grant participates when IrApplication resolves', async () => {
   resetRequestContext();
-  setupAllowlistForFixtures();
-  const c1 = { Id: uid('C1') };
-
-  const roleId = await withModelContext(
-    { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
-    async () => {
-      const uid1 = await createUser(c1.Id);
-      setIdentity(uid1);
-      const roleId = await createRole();
-      await grantRoleGlobal(uid1, roleId, c1.Id);
-      const apps = await IrApplication.Search({ And: [['Name', '=', 'auth']] } as any, {
-        fields: ['Id'],
-        limit: 1,
-      } as any);
-      const appId = String((apps[0] as any)?.Id || '').trim();
-      expect(appId.length > 0).toBe(true);
-
-      await RoleRecordRule.Create(
-        {
-          RoleId: { Id: roleId } as any,
-          Kind: 'grant',
-          IrModelId: null,
-          IrApplicationId: appId,
-          Condition: { And: [['Name', '=', 'from_app']] } as any,
-          PermRead: true,
-          PermWrite: false,
-          PermCreate: false,
-          PermDelete: false,
-        } as any,
-        ['Id'] as any
-      );
-      return roleId;
+  const apps = await IrApplication.Search({ And: [['Name', '=', 'auth']] } as any, {
+    fields: ['Id'],
+    limit: 1,
+  } as any);
+  const appId = String((apps[0] as any)?.Id || '').trim();
+  expect(appId.length > 0).toBe(true);
+  const roleId = uid('role');
+  const origSearch = (RoleRecordRule as any).Search;
+  (RoleRecordRule as any).Search = async () => [
+    {
+      RoleId: { Id: roleId },
+      Kind: 'grant',
+      Condition: { And: [['Name', '=', 'from_app']] },
+      IrModelId: null,
+      IrApplicationId: appId,
     },
-    { merge: false }
-  );
-
-  const env = await evaluateRecordRuleCondition({
-    appName: 'auth',
-    modelName: 'CompanyScopedResource',
-    hasCompany: false,
-    opValue: 'read',
-    roleIds: [roleId],
-    roleScopesById: { [roleId]: { global: true, companies: [] } },
-  });
-  expect(env.kind).toBe('expr');
-  expect(JSON.stringify((env as any).expr || {})).toContain('from_app');
+  ];
+  try {
+    const env = await evaluateRecordRuleCondition({
+      appName: 'auth',
+      modelName: 'CompanyScopedResource',
+      hasCompany: false,
+      opValue: 'read',
+      roleIds: [roleId],
+      roleScopesById: { [roleId]: { global: true, companies: [] } },
+    });
+    expect(env.kind).toBe('expr');
+    expect(JSON.stringify((env as any).expr || {})).toContain('from_app');
+  } finally {
+    (RoleRecordRule as any).Search = origSearch;
+  }
 });
