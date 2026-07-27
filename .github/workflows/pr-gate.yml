@@ -123,7 +123,10 @@ jobs:
     steps:
       - name: Skip Go baseline when routing says no
         if: ${{ needs.discover-impact.outputs.run_go_test != 'true' }}
-        run: echo "go test skipped by routing (run_go_test=${{ needs.discover-impact.outputs.run_go_test }}; reason=${{ needs.discover-impact.outputs.reason }})"
+        env:
+          RUN_GO_TEST: ${{ needs.discover-impact.outputs.run_go_test }}
+          DISCOVER_REASON: ${{ needs.discover-impact.outputs.reason }}
+        run: echo "go test skipped by routing (run_go_test=${RUN_GO_TEST}; reason=${DISCOVER_REASON})"
 
       - name: Checkout
         if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}

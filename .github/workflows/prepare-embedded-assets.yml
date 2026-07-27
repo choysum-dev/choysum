@@ -44,7 +44,7 @@ jobs:
         with:
           ref: ${{ inputs.run_ref }}
 
-      # Skip go generate when bootstrap/vuesfc sources are unchanged (wall-clock win on most PRs).
+      # Skip go generate when bootstrap/vuesfc sources (+ generator Go deps) are unchanged.
       - name: Restore embedded assets cache
         id: embedded-cache
         if: ${{ inputs.docs_only != 'true' }}
@@ -53,8 +53,10 @@ jobs:
           path: |
             internal/bootstrap/web/dist
             pkg/jsengine/scripts/vuesfc/dist
-          key: ${{ runner.os }}-embedded-v1-${{ hashFiles('go.mod', 'go.sum', 'internal/bootstrap/web/generate.go', 'internal/bootstrap/web/gen.go', 'internal/bootstrap/web/package.json', 'internal/bootstrap/web/tsconfig.json', 'internal/bootstrap/web/index.html', 'internal/bootstrap/web/src/**', 'pkg/jsengine/scripts/vuesfc/**/*.go', 'pkg/jsengine/scripts/vuesfc/package.json', 'pkg/jsengine/scripts/vuesfc/tsconfig.json', 'pkg/jsengine/scripts/vuesfc/src/**') }}
+          key: ${{ runner.os }}-embedded-v2-${{ hashFiles('go.mod', 'go.sum', 'internal/bootstrap/web/generate.go', 'internal/bootstrap/web/gen.go', 'internal/bootstrap/web/package.json', 'internal/bootstrap/web/tsconfig.json', 'internal/bootstrap/web/index.html', 'internal/bootstrap/web/src/**', 'pkg/jsengine/scripts/vuesfc/**/*.go', 'pkg/jsengine/scripts/vuesfc/package.json', 'pkg/jsengine/scripts/vuesfc/tsconfig.json', 'pkg/jsengine/scripts/vuesfc/src/**', 'internal/esmresolver/**/*.go', 'internal/vueplugin/**/*.go', 'internal/defaultengine/**/*.go', 'internal/defaultjsexecutor/**/*.go', 'internal/module/artifact/generate/grpcwebplugin/gots/**/*.go', 'pkg/config/**/*.go', 'pkg/jsexecutor/**/*.go', 'pkg/scope/**/*.go') }}
 
+      # Generators honor CHOYSUM_HOME as the cache root (else ~/.choysum). Align with
+      # the workspace path we restore/save below so ESM hits are effective.
       - name: Cache esm packages for go generate
         if: ${{ inputs.docs_only != 'true' && steps.embedded-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache@v6
@@ -73,10 +75,14 @@ jobs:
 
       - name: Build Vue SFC embed asset (go generate)
         if: ${{ inputs.docs_only != 'true' && steps.embedded-cache.outputs.cache-hit != 'true' }}
+        env:
+          CHOYSUM_HOME: ${{ github.workspace }}/.choysum
         run: go generate ./pkg/jsengine/scripts/vuesfc/...
 
       - name: Generate bootstrap web assets (go generate)
         if: ${{ inputs.docs_only != 'true' && steps.embedded-cache.outputs.cache-hit != 'true' }}
+        env:
+          CHOYSUM_HOME: ${{ github.workspace }}/.choysum
         run: go generate ./internal/bootstrap/web/...
 
       - name: Pack embedded assets

@@ -220,6 +220,10 @@ def pull_request_outputs(modules):
     docs_only = not fallback_full
 
     for path in changed_paths:
+        # Check before module-path handling so modules/**/*.go still arms go-test.
+        if is_go_test_path(path):
+            go_test_hit = True
+
         module, kind = classify_module_path(path, module_names)
         if module is not None:
             direct_modules.add(module)
@@ -239,8 +243,6 @@ def pull_request_outputs(modules):
             continue
 
         docs_only = False
-        if is_go_test_path(path):
-            go_test_hit = True
         if is_build_pipeline_path(path):
             build_hit = True
             shared_hit = True
