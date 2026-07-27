@@ -73,15 +73,14 @@ jobs:
           echo "deps_hash=$deps_hash" >> "$GITHUB_OUTPUT"
 
       # Cache the packed archive (skip npm install + tar on hit).
-      # Note: specs that use @latest stay at that tag in the deps hash; resolved
-      # versions may lag until the deps list itself changes.
+      # Keyed by the computed deps list (toolchain pins + module ranges).
       - name: Restore root node_modules archive cache
         id: nm-cache
         if: ${{ inputs.docs_only != 'true' }}
         uses: actions/cache@v6
         with:
           path: ${{ inputs.archive_path }}
-          key: ${{ runner.os }}-root-nm-v1-node22-${{ steps.deps.outputs.deps_hash }}
+          key: ${{ runner.os }}-root-nm-v2-node22-${{ steps.deps.outputs.deps_hash }}
 
       - name: Setup Node
         if: ${{ inputs.docs_only != 'true' && steps.nm-cache.outputs.cache-hit != 'true' }}
