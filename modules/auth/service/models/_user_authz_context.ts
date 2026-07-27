@@ -150,7 +150,11 @@ export async function computePermStateVersion(userId: string): Promise<number> {
       const directRoleIds = Array.from(new Set((userRoles || []).map(ur => maybeId((ur as any).RoleId)).filter(Boolean) as string[]));
 
       const effectiveRoleIds = await expandRoleClosure(directRoleIds);
-      if (effectiveRoleIds.length === 0) return urMax;
+      if (effectiveRoleIds.length === 0) {
+        // Role-less users still consume everyone (RoleId null) record rules.
+        const everyoneRrMax = await maxUpdatedAt(RoleRecordRule, ['RoleId', 'is', null] as any);
+        return Math.max(urMax, everyoneRrMax);
+      }
 
       const [roleMax, inhMax, maMax, rrMax, rfMax, ruMax] = await Promise.all([
         maxUpdatedAt(Role, ['Id', 'in', effectiveRoleIds] as any),
@@ -161,7 +165,9 @@ export async function computePermStateVersion(userId: string): Promise<number> {
           ],
         } as any),
         maxUpdatedAt(RoleMethodAccess, ['RoleId', 'in', effectiveRoleIds] as any),
-        maxUpdatedAt(RoleRecordRule, ['RoleId', 'in', effectiveRoleIds] as any),
+        maxUpdatedAt(RoleRecordRule, {
+          Or: [['RoleId', 'is', null], ['RoleId', 'in', effectiveRoleIds]],
+        } as any),
         maxUpdatedAt(RoleFieldRule, ['RoleId', 'in', effectiveRoleIds] as any),
         maxUpdatedAt(RoleUiResource, ['RoleId', 'in', effectiveRoleIds] as any),
       ]);

@@ -161,6 +161,54 @@
         "IrUiResourceId": null,
         "Mode": "allow"
       }
+    },
+    {
+      "module": "auth",
+      "external_id": "rrr_sys_admin_global_grant_all",
+      "model": "auth.RoleRecordRule",
+      "values": {
+        "RoleId": { "ref": "auth.role_sys_admin" },
+        "Kind": "grant",
+        "IrApplicationId": null,
+        "IrModelId": null,
+        "Condition": { "And": [] },
+        "PermRead": true,
+        "PermWrite": true,
+        "PermCreate": true,
+        "PermDelete": true
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "rrr_base_user_auth_user_rw",
+      "model": "auth.RoleRecordRule",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "Kind": "grant",
+        "IrApplicationId": null,
+        "IrModelId": { "modelRef": "auth.User" },
+        "Condition": { "And": [["Id", "=", "$userId"]] },
+        "PermRead": true,
+        "PermWrite": true,
+        "PermCreate": false,
+        "PermDelete": false
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "rrr_base_user_base_company_read",
+      "model": "auth.RoleRecordRule",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "Kind": "grant",
+        "IrApplicationId": null,
+        "IrModelId": { "modelRef": "base.Company" },
+        "Condition": { "And": [] },
+        "PermRead": true,
+        "PermWrite": false,
+        "PermCreate": false,
+        "PermDelete": false
+      }
     }
   ]
 }

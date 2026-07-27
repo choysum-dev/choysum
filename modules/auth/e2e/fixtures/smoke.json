@@ -78,6 +78,22 @@
     },
     {
       "module": "auth",
+      "external_id": "e2e_rrr_sys_admin_global_grant_all",
+      "model": "auth.RoleRecordRule",
+      "values": {
+        "RoleId": { "ref": "auth.e2e_role_sys_admin" },
+        "Kind": "grant",
+        "IrApplicationId": null,
+        "IrModelId": null,
+        "Condition": { "And": [] },
+        "PermRead": true,
+        "PermWrite": true,
+        "PermCreate": true,
+        "PermDelete": true
+      }
+    },
+    {
+      "module": "auth",
       "external_id": "e2e_admin_userrole_base_user_main",
       "model": "auth.UserRole",
       "values": {

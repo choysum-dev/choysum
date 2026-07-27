@@ -361,8 +361,11 @@ test('P3-2: meta lookups are request-scoped memoized for record/field/method eva
       { merge: false }
     );
 
-    expect(out.rr1.kind).toBe('true');
-    expect(out.rr2.kind).toBe('true');
+    // Empty roleIds + no everyone grant ⇒ RecordRule deny-default (§5.4 / PR-B-2).
+    expect(out.rr1.kind).toBe('false');
+    expect(out.rr2.kind).toBe('false');
+    expect(String(out.rr1.reason || '')).toContain('no_grant');
+    expect(String(out.rr2.reason || '')).toContain('no_grant');
     expect(out.fr1.reason).toBe('no_roles_allow_by_default');
     expect(out.fr2.reason).toBe('no_roles_allow_by_default');
     expect(out.meta1).toBeTruthy();
@@ -480,6 +483,8 @@ test('P3-1: same request UserRole.CreateMany invalidates authz context', async (
 
       const before = await User.CheckMethodAccess(c2.Id, `/auth.User/${browse.name}`);
 
+      // Mid-request fixture write: re-enable allowlist (deny-default blocks UserRole create).
+      setupAllowlistForFixtures();
       await UserRole.CreateMany(
         [
           {
@@ -490,6 +495,7 @@ test('P3-1: same request UserRole.CreateMany invalidates authz context', async (
         ] as any,
         ['Id'] as any
       );
+      disableAllowlist();
 
       const after = await User.CheckMethodAccess(c2.Id, `/auth.User/${browse.name}`);
       return { before, after };
