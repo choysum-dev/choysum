@@ -8,6 +8,7 @@ import type IrApplicationModel from '@/meta/service/models/ir_application';
 import type IrFieldModel from '@/meta/service/models/ir_field';
 import type IrModelModel from '@/meta/service/models/ir_model';
 import RoleRecordRule from './role_record_rule';
+import type { RoleRecordRuleKind } from './role_record_rule';
 import { maybeId } from './_user_authz_shared';
 
 const IrApplication = createServiceByModel<typeof IrApplicationModel>('meta.IrApplication');
@@ -103,20 +104,59 @@ function buildCompanyGateExpr(scope: RoleScope, companyGateEnabled: boolean): an
   return { Or: [companyIn, shared] } as any;
 }
 
+function normalizeKind(raw: unknown): RoleRecordRuleKind {
+  const kind = String(raw ?? 'grant')
+    .trim()
+    .toLowerCase();
+  return kind === 'restrict' ? 'restrict' : 'grant';
+}
+
+function isTrueCondition(cond: unknown): boolean {
+  return cond === undefined || cond === null || (Array.isArray(cond) && cond.length === 0);
+}
+
+function ruleAudienceScope(roleId: string, roleScopesById: Record<string, RoleScope>): RoleScope {
+  if (!roleId) {
+    // Everyone rules (RoleId null): no role-company gate; companyFilter stays orthogonal if added later.
+    return { global: true, companies: [] };
+  }
+  return roleScopesById?.[roleId] || { global: true, companies: [] };
+}
+
+function buildRuleExpr(rule: any, companyGateEnabled: boolean, roleScopesById: Record<string, RoleScope>): any {
+  const roleId = maybeId(rule?.RoleId) || '';
+  const scope = ruleAudienceScope(roleId, roleScopesById);
+  const gate = buildCompanyGateExpr(scope, companyGateEnabled);
+  const cond = rule?.Condition;
+  if (isTrueCondition(cond)) {
+    return gate; // null ⇒ unconstrained TRUE for this rule
+  }
+  if (!gate) return cond;
+  return { And: [gate, cond] } as any;
+}
+
+function orMerge(exprs: any[]): any {
+  if (exprs.length === 1) return exprs[0];
+  return { Or: exprs } as any;
+}
+
+function andMerge(parts: any[]): any {
+  if (parts.length === 1) return parts[0];
+  return { And: parts } as any;
+}
+
 /**
- * Core RecordRule evaluation: resolve meta, pick-one scope, load rules, and merge conditions.
+ * Core RecordRule evaluation (Security Algebra §5.4):
+ * matching Kind=grant → OR; Kind=restrict → AND onto grants; no grant ⇒ DENY.
+ * RoleId null = everyone; all matching scopes participate (no pick-one).
  */
 export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): Promise<ConditionEnvelope> {
   const { irApplicationId, modelHit, modelId } = await resolveRecordRuleMetaCached(input.appName, input.modelName);
   if (!modelId) return { kind: 'false', reason: 'model_not_found' };
 
   const companyGate = await computeCompanyGateMode(modelId, Boolean(modelHit?.CompanyScoped), input.hasCompany);
-
-  if (input.roleIds.length === 0) {
-    return { kind: 'true', reason: `no_roles_${input.opValue}_allow` };
-  }
-
   const permField = PERM_FIELD_BY_OP[input.opValue];
+  const roleIds = (input.roleIds || []).map(id => String(id || '').trim()).filter(Boolean);
 
   const scopeOr: any[] = [
     {
@@ -143,59 +183,65 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
     },
   ];
 
+  // Audience: everyone (RoleId null) OR any of the caller's effective roles.
+  const audienceOr: any[] = [['RoleId', 'is', null] as any];
+  if (roleIds.length > 0) {
+    audienceOr.push(['RoleId', 'in', roleIds] as any);
+  }
+
   const allRules = await RoleRecordRule.Search(
     {
-      And: [['RoleId', 'in', input.roleIds], [permField as any, '=', true], { Or: scopeOr }],
+      And: [{ Or: audienceOr }, [permField as any, '=', true], { Or: scopeOr }],
     } as any,
-    { fields: ['RoleId', 'Condition', 'IrModelId', 'IrApplicationId'], limit: 5000 }
+    { fields: ['RoleId', 'Kind', 'Condition', 'IrModelId', 'IrApplicationId'], limit: 5000 }
   );
 
-  const modelRules: any[] = [];
-  const appRules: any[] = [];
-  const globalRules: any[] = [];
+  const grantExprs: any[] = [];
+  const restrictExprs: any[] = [];
+  let hasUnconstrainedGrant = false;
 
   for (const r of allRules || []) {
     const rModelId = maybeId((r as any).IrModelId);
     const rAppId = maybeId((r as any).IrApplicationId);
+    const modelScoped = rModelId === modelId && !rAppId;
+    const appScoped = !rModelId && !!irApplicationId && rAppId === irApplicationId;
+    const globalScoped = !rModelId && !rAppId;
+    if (!modelScoped && !appScoped && !globalScoped) continue;
 
-    if (rModelId === modelId && !rAppId) {
-      modelRules.push(r);
-    } else if (!rModelId && rAppId === irApplicationId) {
-      appRules.push(r);
-    } else if (!rModelId && !rAppId) {
-      globalRules.push(r);
-    }
-  }
-
-  const rules = modelRules.length > 0 ? modelRules : appRules.length > 0 ? appRules : globalRules;
-
-  if (!rules || rules.length === 0) {
-    return { kind: 'true', reason: `no_rules_${input.opValue}_allow` };
-  }
-
-  const exprs: any[] = [];
-  for (const r of rules || []) {
-    const roleId = maybeId((r as any).RoleId) || '';
-    const scope = input.roleScopesById?.[roleId] || { global: true, companies: [] };
-    const gate = buildCompanyGateExpr(scope, companyGate.enabled);
-    const cond = (r as any).Condition;
-
-    const isTrueCond = cond === undefined || cond === null || (Array.isArray(cond) && cond.length === 0);
-    if (isTrueCond && !gate) {
-      return { kind: 'true', reason: 'global_allow_rule' };
+    const kind = normalizeKind((r as any).Kind);
+    const expr = buildRuleExpr(r, companyGate.enabled, input.roleScopesById || {});
+    if (kind === 'restrict') {
+      if (expr != null) restrictExprs.push(expr);
+      // Unconstrained restrict (TRUE) is a no-op AND — skip.
+      continue;
     }
 
-    const expr = isTrueCond ? gate : !gate ? cond : ({ And: [gate, cond] } as any);
-    if (expr !== undefined && expr !== null) {
-      exprs.push(expr);
+    if (expr == null) {
+      hasUnconstrainedGrant = true;
+      continue;
     }
+    grantExprs.push(expr);
   }
 
-  if (exprs.length === 0) {
-    return { kind: 'true', reason: companyGate.enabled ? 'rules_with_empty_condition_or_company_gate' : 'rules_with_empty_condition' };
+  const hasGrant = hasUnconstrainedGrant || grantExprs.length > 0;
+  if (!hasGrant) {
+    return { kind: 'false', reason: `no_grant_${input.opValue}_deny` };
   }
-  if (exprs.length === 1) {
-    return { kind: 'expr', expr: exprs[0], reason: 'single_rule' };
+
+  const parts: any[] = [];
+  if (!hasUnconstrainedGrant) {
+    parts.push(orMerge(grantExprs));
   }
-  return { kind: 'expr', expr: { Or: exprs } as any, reason: 'or_merged' };
+  // Unconstrained grant ⇒ grant domain is TRUE; only restricts (if any) remain.
+  for (const r of restrictExprs) {
+    parts.push(r);
+  }
+
+  if (parts.length === 0) {
+    return { kind: 'true', reason: 'grant_unconstrained' };
+  }
+  if (parts.length === 1) {
+    return { kind: 'expr', expr: parts[0], reason: restrictExprs.length ? 'grant_and_restrict' : 'grant_domain' };
+  }
+  return { kind: 'expr', expr: andMerge(parts), reason: 'grant_or_and_restricts' };
 }

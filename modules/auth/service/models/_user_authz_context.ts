@@ -161,7 +161,9 @@ export async function computePermStateVersion(userId: string): Promise<number> {
           ],
         } as any),
         maxUpdatedAt(RoleMethodAccess, ['RoleId', 'in', effectiveRoleIds] as any),
-        maxUpdatedAt(RoleRecordRule, ['RoleId', 'in', effectiveRoleIds] as any),
+        maxUpdatedAt(RoleRecordRule, {
+          Or: [['RoleId', 'is', null], ['RoleId', 'in', effectiveRoleIds]],
+        } as any),
         maxUpdatedAt(RoleFieldRule, ['RoleId', 'in', effectiveRoleIds] as any),
         maxUpdatedAt(RoleUiResource, ['RoleId', 'in', effectiveRoleIds] as any),
       ]);
