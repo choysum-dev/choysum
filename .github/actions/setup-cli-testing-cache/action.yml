@@ -1,0 +1,24 @@
+name: Setup CLI testing pkg cache
+description: >
+  Point CHOYSUM_TEST_TMP at a workspace path and restore/save the durable
+  ESM/types pkg cache used during module prepare-runtime (unit/e2e/typecheck).
+
+runs:
+  using: composite
+  steps:
+    - name: Configure CHOYSUM_TEST_TMP
+      shell: bash
+      run: |
+        set -euo pipefail
+        cli_tmp="${GITHUB_WORKSPACE}/.choysum/tmp/cli-testing"
+        mkdir -p "$cli_tmp"
+        echo "CHOYSUM_TEST_TMP=$cli_tmp" >> "$GITHUB_ENV"
+        echo "CLI testing tmp: $cli_tmp"
+
+    - name: Cache CLI testing pkg (ESM/types)
+      uses: actions/cache@v6
+      with:
+        path: .choysum/tmp/cli-testing/cache/pkg
+        key: ${{ runner.os }}-cli-pkg-v1-${{ hashFiles('go.mod', 'go.sum', 'modules/*/package.json') }}
+        restore-keys: |
+          ${{ runner.os }}-cli-pkg-v1-
