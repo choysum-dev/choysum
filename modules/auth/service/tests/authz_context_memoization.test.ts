@@ -366,8 +366,12 @@ test('P3-2: meta lookups are request-scoped memoized for record/field/method eva
     expect(out.rr2.kind).toBe('false');
     expect(String(out.rr1.reason || '')).toContain('no_grant');
     expect(String(out.rr2.reason || '')).toContain('no_grant');
-    expect(out.fr1.reason).toBe('no_roles_allow_by_default');
-    expect(out.fr2.reason).toBe('no_roles_allow_by_default');
+    // Empty roleIds ⇒ FieldRule deny-default (§5.5 / PR-C-1): all non-system fields denied.
+    expect(out.fr1.reason).toBe('no_roles_deny_by_default');
+    expect(out.fr2.reason).toBe('no_roles_deny_by_default');
+    expect(Array.isArray(out.fr1.denyReadFields)).toBe(true);
+    expect(out.fr1.denyReadFields.length > 0).toBe(true);
+    expect(out.fr1.denyWriteFields).toEqual(out.fr1.denyReadFields);
     expect(out.meta1).toBeTruthy();
     expect(out.meta2).toBeTruthy();
 

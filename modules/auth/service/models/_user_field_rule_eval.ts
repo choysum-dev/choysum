@@ -125,8 +125,16 @@ async function resolveModelIds(appName: string, modelName: string): Promise<stri
   });
 }
 
+function denyAllNonSystemFields(fieldNames: string[], reason: string): FieldRuleEvalResult {
+  const names = [...fieldNames].sort();
+  return { denyReadFields: names, denyWriteFields: [...names], reason };
+}
+
 /**
  * Core FieldRule evaluation: resolve meta, load rules, partition by scope, and decide per-field.
+ *
+ * Deny-by-default (§5.5 / PR-C-1): no matching allow ⇒ field enters deny lists.
+ * More-specific scope wins; same-scope deny-wins; read-deny ⇒ write-deny.
  */
 export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<FieldRuleEvalResult> {
   const [applicationIds, modelIds] = await Promise.all([resolveApplicationIds(input.appName), resolveModelIds(input.appName, input.modelName)]);
@@ -139,11 +147,7 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
       .withMetadata({ model: input.rawModel });
   }
 
-  if (input.roleIds.length === 0) {
-    return { denyReadFields: [], denyWriteFields: [], reason: 'no_roles_allow_by_default' };
-  }
-
-  // Load meta fields
+  // Load meta fields (needed for deny-all early exits and per-field decisions).
   const fields = await IrField.Search(['ModelId', 'in', modelIds] as any, { fields: ['Id', 'Name'], limit: 5000 } as any);
   const fieldNameById = new Map<string, string>();
   const fieldIdsByName = new Map<string, string[]>();
@@ -160,8 +164,15 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
     fieldIdsByName.set(name, xs);
   }
 
+  const fieldNames = Array.from(fieldIdsByName.keys()).sort();
+
   if (fieldIdsByName.size === 0) {
-    return { denyReadFields: [], denyWriteFields: [], reason: 'no_fields_allow_by_default' };
+    // Nothing to deny (system fields are never listed).
+    return { denyReadFields: [], denyWriteFields: [], reason: 'no_fields_deny_by_default' };
+  }
+
+  if (input.roleIds.length === 0) {
+    return denyAllNonSystemFields(fieldNames, 'no_roles_deny_by_default');
   }
 
   const modelIdSet = new Set<string>(modelIds);
@@ -217,7 +228,7 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
   );
 
   if (!rules || rules.length === 0) {
-    return { denyReadFields: [], denyWriteFields: [], reason: 'no_field_rules_allow_by_default' };
+    return denyAllNonSystemFields(fieldNames, 'no_field_rules_deny_by_default');
   }
 
   // Partition by scope
@@ -276,15 +287,15 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
       const d = decideInScope(b, dim);
       if (d) return d;
     }
-    return 'allow';
+    return 'deny';
   }
 
   const denyReadFields: string[] = [];
   const denyWriteFields: string[] = [];
-  const fieldNames = Array.from(fieldIdsByName.keys()).sort();
   for (const name of fieldNames) {
     const readDecision = decideEffective(name, 'read');
     let writeDecision = decideEffective(name, 'write');
+    // read-deny ⇒ write-deny (cannot write what you cannot read).
     if (readDecision === 'deny') writeDecision = 'deny';
     if (readDecision === 'deny') denyReadFields.push(name);
     if (writeDecision === 'deny') denyWriteFields.push(name);

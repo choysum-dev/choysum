@@ -9,6 +9,7 @@ import User from '@/auth/service/models/user';
 import Role from '@/auth/service/models/role';
 import UserRole from '@/auth/service/models/user_role';
 import RoleFieldRule from '@/auth/service/models/role_field_rule';
+import { evaluateFieldRules } from '@/auth/service/models/_user_field_rule_eval';
 import { createServiceByModel } from '@/core/service/rpc';
 import type IrApplicationModel from '@/meta/service/models/ir_application';
 import type IrModelModel from '@/meta/service/models/ir_model';
@@ -246,51 +247,69 @@ async function resolveFieldId(modelId: string, fieldName: string): Promise<strin
   return id;
 }
 
+async function withFieldRuleSkip<T>(fn: () => Promise<T>): Promise<T> {
+  const jsCtx = ensureRequestContext();
+  const prev = jsCtx.req?.fieldRuleMode;
+  setReq({ fieldRuleMode: 'skip' });
+  try {
+    return await fn();
+  } finally {
+    setReq({ fieldRuleMode: prev ?? '' });
+  }
+}
+
 async function createUser(companyId: string): Promise<string> {
-  const created = await User.Create(
-    {
-      Username: uid('u'),
-      PasswordHash: 'test',
-      FirstName: 'T',
-      LastName: 'U',
-      CompanyId: companyId,
-      CompanyIds: [companyId],
-      IsActive: true,
-    } as any,
-    ['Id'] as any
-  );
-  return created.Id;
+  // Fixtures must bypass FieldRule: deny-default would block User.Create with no FR grants (PR-C-1).
+  return await withFieldRuleSkip(async () => {
+    const created = await User.Create(
+      {
+        Username: uid('u'),
+        PasswordHash: 'test',
+        FirstName: 'T',
+        LastName: 'U',
+        CompanyId: companyId,
+        CompanyIds: [companyId],
+        IsActive: true,
+      } as any,
+      ['Id'] as any
+    );
+    return created.Id;
+  });
 }
 
 async function createRole(): Promise<string> {
-  const created = await Role.Create(
-    {
-      Name: uid('role'),
-      Code: uid('ROLE'),
-      Description: 'test',
-      IsActive: true,
-      IsSystem: false,
-    } as any,
-    ['Id'] as any
-  );
-  return created.Id;
+  return await withFieldRuleSkip(async () => {
+    const created = await Role.Create(
+      {
+        Name: uid('role'),
+        Code: uid('ROLE'),
+        Description: 'test',
+        IsActive: true,
+        IsSystem: false,
+      } as any,
+      ['Id'] as any
+    );
+    return created.Id;
+  });
 }
 
 async function grantRoleGlobal(userId: string, roleId: string, companyId: string): Promise<void> {
-  await withModelContext(
-    { activeCompanyId: companyId, enabledCompanyIds: [companyId] } as any,
-    async () => {
-      await UserRole.Create(
-        {
-          UserId: { Id: userId } as any,
-          RoleId: { Id: roleId } as any,
-          CompanyId: null as any, // global role
-        } as any,
-        ['Id'] as any
-      );
-    },
-    { merge: false }
-  );
+  await withFieldRuleSkip(async () => {
+    await withModelContext(
+      { activeCompanyId: companyId, enabledCompanyIds: [companyId] } as any,
+      async () => {
+        await UserRole.Create(
+          {
+            UserId: { Id: userId } as any,
+            RoleId: { Id: roleId } as any,
+            CompanyId: null as any, // global role
+          } as any,
+          ['Id'] as any
+        );
+      },
+      { merge: false }
+    );
+  });
 }
 
 test('P4 field rule: denyWriteFields blocks update when payload includes denied field', async () => {
@@ -370,14 +389,16 @@ test('P4 field rule: same request RoleFieldRule write invalidates request cache'
       const roleId = await createRole();
 
       // grant global role
-      await UserRole.Create(
-        {
-          UserId: { Id: actorId } as any,
-          RoleId: { Id: roleId } as any,
-          CompanyId: null as any,
-        } as any,
-        ['Id'] as any
-      );
+      await withFieldRuleSkip(async () => {
+        await UserRole.Create(
+          {
+            UserId: { Id: actorId } as any,
+            RoleId: { Id: roleId } as any,
+            CompanyId: null as any,
+          } as any,
+          ['Id'] as any
+        );
+      });
 
       const locationModelId = await resolveModelId('auth', 'CompanyScopedResource');
       const nameFieldId = await resolveFieldId(locationModelId, 'Name');
@@ -386,11 +407,22 @@ test('P4 field rule: same request RoleFieldRule write invalidates request cache'
       setReq({ depth: 0, fieldRuleMode: 'skip' });
       const created = await CompanyScopedResource.Create({ Name: uid('csr_midreq') }, ['Id'] as any);
 
-      // warm request-level field rule cache (allow-by-default)
+      // Under deny-default, seed an allow so the warm Update can succeed and populate the request cache.
+      await RoleFieldRule.Create(
+        {
+          RoleId: { Id: roleId } as any,
+          IrModelId: locationModelId,
+          IrFieldId: nameFieldId,
+          PermRead: 'allow',
+          PermWrite: 'allow',
+        } as any,
+        ['Id'] as any
+      );
+
       setReq({ depth: 0, fieldRuleMode: '' });
       await CompanyScopedResource.Update(['Id', '=', created.Id] as any, { Name: uid('csr_pre') } as any, []);
 
-      // mutate permission graph mid-request: deny writing Name
+      // mutate permission graph mid-request: deny writing Name (same-scope deny-wins)
       await RoleFieldRule.Create(
         {
           RoleId: { Id: roleId } as any,
@@ -626,8 +658,31 @@ test('P4 field rule: top-level response recursively strips denyReadFields for re
 
       const userModelId = await resolveModelId('auth', 'User');
       const usernameFieldId = await resolveFieldId(userModelId, 'Username');
+      const urModelId = await resolveModelId('auth', 'UserRole');
+      const userIdFieldId = await resolveFieldId(urModelId, 'UserId');
 
-      // Deny read on User.Username; nested $rel$_UserId payload must be stripped accordingly.
+      // Deny-default: allow reading the UserRole.UserId relation and User model fields,
+      // then deny Username specifically so nested strip can be asserted.
+      await RoleFieldRule.Create(
+        {
+          RoleId: { Id: rid } as any,
+          IrModelId: urModelId,
+          IrFieldId: userIdFieldId,
+          PermRead: 'allow',
+          PermWrite: 'allow',
+        } as any,
+        ['Id'] as any
+      );
+      await RoleFieldRule.Create(
+        {
+          RoleId: { Id: rid } as any,
+          IrModelId: userModelId,
+          IrFieldId: null,
+          PermRead: 'allow',
+          PermWrite: 'allow',
+        } as any,
+        ['Id'] as any
+      );
       await RoleFieldRule.Create(
         {
           RoleId: { Id: rid } as any,
@@ -817,12 +872,14 @@ test('P4 field rule wildcard: model deny-write + field allow-write overrides for
       const nameFieldId = await resolveFieldId(locationModelId, 'Name');
 
       // Model wildcard: deny writing all fields in this model.
+      // Deny-default + read-deny⇒write-deny: also seed model allow-read so field write allow can take effect.
       await RoleFieldRule.Create(
         {
           RoleId: { Id: roleId } as any,
           IrApplicationId: null,
           IrModelId: locationModelId,
           IrFieldId: null,
+          PermRead: 'allow',
           PermWrite: 'deny',
         } as any,
         ['Id'] as any
@@ -835,6 +892,7 @@ test('P4 field rule wildcard: model deny-write + field allow-write overrides for
           IrApplicationId: null,
           IrModelId: locationModelId,
           IrFieldId: nameFieldId,
+          PermRead: 'allow',
           PermWrite: 'allow',
         } as any,
         ['Id'] as any
@@ -1186,6 +1244,138 @@ test('RoleFieldRule: permission-only update must not rewrite scoped fields to gl
     },
     { merge: false }
   );
+});
+
+// ---------------------------------------------------------------------------
+// PR-C-1: FieldRule deny-by-default
+// ---------------------------------------------------------------------------
+
+test('P4 field rule deny-default: no roles denies all non-system fields', async () => {
+  resetRequestContext();
+  setReq({ depth: 0, fieldRuleMode: '' });
+
+  const out = await withModelContext({} as any, async () => {
+    return await evaluateFieldRules({
+      appName: 'auth',
+      modelName: 'CompanyScopedResource',
+      rawModel: 'auth.CompanyScopedResource',
+      roleIds: [],
+    });
+  }, { merge: false });
+
+  expect(out.reason).toBe('no_roles_deny_by_default');
+  expect(out.denyReadFields).toEqual(out.denyWriteFields);
+  expect(out.denyReadFields.includes('Name')).toBe(true);
+  expect(out.denyReadFields.includes('Id')).toBe(false);
+  expect(out.denyReadFields.includes('DisplayName')).toBe(false);
+});
+
+test('P4 field rule deny-default: roles without FR rows deny all non-system fields', async () => {
+  resetRequestContext();
+
+  const c1 = { Id: uid('C1') };
+  const { roleId } = await withModelContext(
+    { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
+    async () => {
+      const uid1 = await createUser(c1.Id);
+      setIdentity(uid1);
+      const rid = await createRole();
+      await grantRoleGlobal(uid1, rid, c1.Id);
+      return { roleId: rid };
+    },
+    { merge: false }
+  );
+
+  const jsCtx = ensureRequestContext();
+  delete (jsCtx as any)[FR_CACHE_KEY];
+  setReq({ depth: 0, fieldRuleMode: '' });
+
+  const out = await withModelContext(
+    { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
+    async () => {
+      return await evaluateFieldRules({
+        appName: 'auth',
+        modelName: 'CompanyScopedResource',
+        rawModel: 'auth.CompanyScopedResource',
+        roleIds: [roleId],
+      });
+    },
+    { merge: false }
+  );
+
+  expect(out.reason).toBe('no_field_rules_deny_by_default');
+  expect(out.denyReadFields).toEqual(out.denyWriteFields);
+  expect(out.denyReadFields.includes('Name')).toBe(true);
+});
+
+test('P4 field rule deny-default: uncovered field is denied when other FR rows exist', async () => {
+  resetRequestContext();
+
+  const c1 = { Id: uid('C1') };
+  const { actorId, roleId, locationId } = await withModelContext(
+    { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
+    async () => {
+      const uid1 = await createUser(c1.Id);
+      setIdentity(uid1);
+      const rid = await createRole();
+      await grantRoleGlobal(uid1, rid, c1.Id);
+
+      const locationModelId = await resolveModelId('auth', 'CompanyScopedResource');
+      const nameFieldId = await resolveFieldId(locationModelId, 'Name');
+
+      // Only Name is allowed; CompanyId and other fields remain uncovered ⇒ denied.
+      await RoleFieldRule.Create(
+        {
+          RoleId: { Id: rid } as any,
+          IrModelId: locationModelId,
+          IrFieldId: nameFieldId,
+          PermRead: 'allow',
+          PermWrite: 'allow',
+        } as any,
+        ['Id'] as any
+      );
+
+      setReq({ depth: 0, fieldRuleMode: 'skip' });
+      const created = await CompanyScopedResource.Create({ Name: uid('csr_dd') }, ['Id'] as any);
+      return { actorId: uid1, roleId: rid, locationId: created.Id };
+    },
+    { merge: false }
+  );
+
+  const jsCtx = ensureRequestContext();
+  delete (jsCtx as any)[FR_CACHE_KEY];
+  setReq({ depth: 0, fieldRuleMode: '' });
+  setIdentity(actorId);
+
+  const spec = await withModelContext(
+    { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
+    async () => {
+      return await evaluateFieldRules({
+        appName: 'auth',
+        modelName: 'CompanyScopedResource',
+        rawModel: 'auth.CompanyScopedResource',
+        roleIds: [roleId],
+      });
+    },
+    { merge: false }
+  );
+
+  expect(spec.reason).toBe('ok');
+  expect(spec.denyReadFields.includes('Name')).toBe(false);
+  expect(spec.denyWriteFields.includes('Name')).toBe(false);
+  expect(spec.denyReadFields.includes('CompanyId')).toBe(true);
+  expect(spec.denyWriteFields.includes('CompanyId')).toBe(true);
+
+  const row = await withModelContext(
+    { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
+    async () => {
+      setReq({ depth: 0, kind: 'grpc', fieldRuleMode: '' });
+      return await CompanyScopedResource.Browse(locationId, ['Id', 'Name', 'CompanyId'] as any);
+    },
+    { merge: false }
+  );
+  expect(Object.prototype.hasOwnProperty.call(row as any, 'Name')).toBe(true);
+  expect(Object.prototype.hasOwnProperty.call(row as any, 'CompanyId')).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
