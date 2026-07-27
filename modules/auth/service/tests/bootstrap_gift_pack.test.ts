@@ -332,8 +332,9 @@ test('PR-C-2 gift pack: base.user can read Company columns but not write them', 
         async () => {
           const rrRead = await User.GetRecordRuleCondition('base.Company', 'read');
           const rrWrite = await User.GetRecordRuleCondition('base.Company', 'write');
-          const fr = await User.GetFieldRuleSpec('base.Company');
-          return { rrRead, rrWrite, fr };
+          const frCompany = await User.GetFieldRuleSpec('base.Company');
+          const frUser = await User.GetFieldRuleSpec('auth.User');
+          return { rrRead, rrWrite, frCompany, frUser };
         },
         { merge: false }
       );
@@ -343,8 +344,16 @@ test('PR-C-2 gift pack: base.user can read Company columns but not write them', 
 
   expect(String((out.rrRead as any)?.kind || '')).not.toBe('false');
   expect(String((out.rrWrite as any)?.kind || '')).toBe('false');
-  expect(((out.fr as any)?.denyReadFields || []).includes('Name')).toBe(false);
-  expect(((out.fr as any)?.denyWriteFields || []).includes('Name')).toBe(true);
+  expect(((out.frCompany as any)?.denyReadFields || []).includes('Name')).toBe(false);
+  expect(((out.frCompany as any)?.denyWriteFields || []).includes('Name')).toBe(true);
+
+  // Profile writes are field-allowlisted; sensitive auth.User fields stay deny-write.
+  expect(((out.frUser as any)?.denyWriteFields || []).includes('Language')).toBe(false);
+  expect(((out.frUser as any)?.denyWriteFields || []).includes('Timezone')).toBe(false);
+  expect(((out.frUser as any)?.denyWriteFields || []).includes('PasswordHash')).toBe(true);
+  expect(((out.frUser as any)?.denyWriteFields || []).includes('IsActive')).toBe(true);
+  expect(((out.frUser as any)?.denyWriteFields || []).includes('CompanyId')).toBe(true);
+  expect(((out.frUser as any)?.denyWriteFields || []).includes('CompanyIds')).toBe(true);
 });
 
 test('PR-C-2 gift pack: role without packs remains deny-default empty', async () => {

@@ -339,6 +339,182 @@
         "IrModelId": { "modelRef": "auth.User" },
         "IrFieldId": null,
         "PermRead": "allow",
+        "PermWrite": null
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "rfr_base_user_auth_user_first_name_w",
+      "model": "auth.RoleFieldRule",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "IrApplicationId": null,
+        "IrModelId": { "modelRef": "auth.User" },
+        "IrFieldId": {
+          "search": {
+            "model": "meta.IrField",
+            "domain": [
+              ["Name", "=", "FirstName"],
+              ["ModelId", "=", { "modelRef": "auth.User" }]
+            ],
+            "limit": 1
+          }
+        },
+        "PermRead": null,
+        "PermWrite": "allow"
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "rfr_base_user_auth_user_last_name_w",
+      "model": "auth.RoleFieldRule",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "IrApplicationId": null,
+        "IrModelId": { "modelRef": "auth.User" },
+        "IrFieldId": {
+          "search": {
+            "model": "meta.IrField",
+            "domain": [
+              ["Name", "=", "LastName"],
+              ["ModelId", "=", { "modelRef": "auth.User" }]
+            ],
+            "limit": 1
+          }
+        },
+        "PermRead": null,
+        "PermWrite": "allow"
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "rfr_base_user_auth_user_email_w",
+      "model": "auth.RoleFieldRule",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "IrApplicationId": null,
+        "IrModelId": { "modelRef": "auth.User" },
+        "IrFieldId": {
+          "search": {
+            "model": "meta.IrField",
+            "domain": [
+              ["Name", "=", "Email"],
+              ["ModelId", "=", { "modelRef": "auth.User" }]
+            ],
+            "limit": 1
+          }
+        },
+        "PermRead": null,
+        "PermWrite": "allow"
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "rfr_base_user_auth_user_phone_w",
+      "model": "auth.RoleFieldRule",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "IrApplicationId": null,
+        "IrModelId": { "modelRef": "auth.User" },
+        "IrFieldId": {
+          "search": {
+            "model": "meta.IrField",
+            "domain": [
+              ["Name", "=", "Phone"],
+              ["ModelId", "=", { "modelRef": "auth.User" }]
+            ],
+            "limit": 1
+          }
+        },
+        "PermRead": null,
+        "PermWrite": "allow"
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "rfr_base_user_auth_user_avatar_w",
+      "model": "auth.RoleFieldRule",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "IrApplicationId": null,
+        "IrModelId": { "modelRef": "auth.User" },
+        "IrFieldId": {
+          "search": {
+            "model": "meta.IrField",
+            "domain": [
+              ["Name", "=", "Avatar"],
+              ["ModelId", "=", { "modelRef": "auth.User" }]
+            ],
+            "limit": 1
+          }
+        },
+        "PermRead": null,
+        "PermWrite": "allow"
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "rfr_base_user_auth_user_language_w",
+      "model": "auth.RoleFieldRule",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "IrApplicationId": null,
+        "IrModelId": { "modelRef": "auth.User" },
+        "IrFieldId": {
+          "search": {
+            "model": "meta.IrField",
+            "domain": [
+              ["Name", "=", "Language"],
+              ["ModelId", "=", { "modelRef": "auth.User" }]
+            ],
+            "limit": 1
+          }
+        },
+        "PermRead": null,
+        "PermWrite": "allow"
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "rfr_base_user_auth_user_timezone_w",
+      "model": "auth.RoleFieldRule",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "IrApplicationId": null,
+        "IrModelId": { "modelRef": "auth.User" },
+        "IrFieldId": {
+          "search": {
+            "model": "meta.IrField",
+            "domain": [
+              ["Name", "=", "Timezone"],
+              ["ModelId", "=", { "modelRef": "auth.User" }]
+            ],
+            "limit": 1
+          }
+        },
+        "PermRead": null,
+        "PermWrite": "allow"
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "rfr_base_user_auth_user_preferences_w",
+      "model": "auth.RoleFieldRule",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "IrApplicationId": null,
+        "IrModelId": { "modelRef": "auth.User" },
+        "IrFieldId": {
+          "search": {
+            "model": "meta.IrField",
+            "domain": [
+              ["Name", "=", "Preferences"],
+              ["ModelId", "=", { "modelRef": "auth.User" }]
+            ],
+            "limit": 1
+          }
+        },
+        "PermRead": null,
         "PermWrite": "allow"
       }
     },
