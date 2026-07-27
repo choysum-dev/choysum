@@ -34,6 +34,7 @@ jobs:
       impacted_smoke_e2e_modules_json: ${{ steps.discover.outputs.impacted_smoke_e2e_modules_json }}
       run_full_matrix: ${{ steps.discover.outputs.run_full_matrix }}
       run_bootstrap_verify: ${{ steps.discover.outputs.run_bootstrap_verify }}
+      run_go_test: ${{ steps.discover.outputs.run_go_test }}
       run_pr_smoke_e2e: ${{ steps.discover.outputs.run_pr_smoke_e2e }}
       reason: ${{ steps.discover.outputs.reason }}
     steps:
@@ -120,59 +121,56 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - name: Skip Go baseline for docs-only changes
-        if: ${{ needs.discover-impact.outputs.docs_only == 'true' }}
-        run: echo "go build/go test skipped by routing"
+      - name: Skip Go baseline when routing says no
+        if: ${{ needs.discover-impact.outputs.run_go_test != 'true' }}
+        run: echo "go test skipped by routing (run_go_test=${{ needs.discover-impact.outputs.run_go_test }}; reason=${{ needs.discover-impact.outputs.reason }})"
 
       - name: Checkout
-        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
+        if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
         uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.ref }}
 
       - name: Download and extract embedded assets
-        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
+        if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
         uses: ./.github/actions/download-extract-embedded-assets
         with:
           artifact-name: pr-embedded-assets
           archive-path: .choysum/tmp/pr-embedded-assets.tar.gz
 
       - name: Download root node_modules
-        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
+        if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
         uses: actions/download-artifact@v8
         with:
           name: pr-root-node-modules
           path: .choysum/tmp
 
       - name: Extract root node_modules
-        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
+        if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
         run: tar -xzf .choysum/tmp/pr-root-node-modules.tar.gz -C .
 
       - name: Setup Go
-        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
+        if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
         uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
 
       - name: Setup Node
-        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
+        if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
         uses: actions/setup-node@v7
         with:
           node-version: 22
 
-      - name: Run go build
-        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
-        run: go build ./...
-
+      # Coverage compile already typechecks; a separate `go build ./...` only doubles wall clock.
       - name: Run go test
-        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
+        if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
         run: |
           mkdir -p .choysum/coverage/pr
           go test ./... -count=1 -covermode=atomic -coverprofile=.choysum/coverage/pr/go.out
 
       - name: Upload Go coverage to Codecov
-        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
+        if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
         uses: codecov/codecov-action@v7
         with:
           disable_search: true

@@ -30,11 +30,25 @@ SHARED_EXACT = {
     "main.go",
     "main_test.go",
     "go.mod",
+    "go.sum",
     "package.json",
     "package-lock.json",
     "codecov.yml",
     "config.sample.yaml",
 }
+
+# Paths that require the PR Gate go-test baseline (compile + coverage).
+GO_TEST_EXACT = {
+    "main.go",
+    "main_test.go",
+    "go.mod",
+    "go.sum",
+}
+GO_TEST_PREFIXES = (
+    "cmd/",
+    "internal/",
+    "pkg/",
+)
 
 
 def sorted_json(values):
@@ -105,6 +119,17 @@ def is_shared_path(path):
     return path in SHARED_EXACT or any(path.startswith(prefix) for prefix in SHARED_PREFIXES)
 
 
+def is_go_test_path(path):
+    """Return True when a changed path should trigger PR Gate go-test."""
+    if path in GO_TEST_EXACT:
+        return True
+    if path.endswith(".go"):
+        return True
+    if is_build_pipeline_path(path):
+        return True
+    return any(path.startswith(prefix) for prefix in GO_TEST_PREFIXES)
+
+
 def build_reverse_graph(modules):
     reverse_graph = {module: set() for module in modules}
     for module in modules:
@@ -156,6 +181,7 @@ def merge_group_or_dispatch_outputs(modules, reason):
         "impacted_smoke_e2e_modules_json": sorted_json(smoke_modules),
         "run_full_matrix": "true",
         "run_bootstrap_verify": "true",
+        "run_go_test": "true",
         "run_pr_smoke_e2e": "true" if smoke_modules else "false",
         "reason": reason,
     }
@@ -190,6 +216,7 @@ def pull_request_outputs(modules):
     local_modules = set()
     build_hit = False
     shared_hit = fallback_full
+    go_test_hit = fallback_full
     docs_only = not fallback_full
 
     for path in changed_paths:
@@ -212,6 +239,8 @@ def pull_request_outputs(modules):
             continue
 
         docs_only = False
+        if is_go_test_path(path):
+            go_test_hit = True
         if is_build_pipeline_path(path):
             build_hit = True
             shared_hit = True
@@ -226,6 +255,7 @@ def pull_request_outputs(modules):
     if docs_only:
         run_full = False
         run_bootstrap = False
+        go_test_hit = False
         reason = "docs-only"
     else:
         final_impacted.update(impacted_modules)
@@ -273,6 +303,7 @@ def pull_request_outputs(modules):
         "impacted_smoke_e2e_modules_json": sorted_json(smoke_modules),
         "run_full_matrix": "true" if run_full else "false",
         "run_bootstrap_verify": "true" if run_bootstrap else "false",
+        "run_go_test": "true" if go_test_hit else "false",
         "run_pr_smoke_e2e": "true" if smoke_modules else "false",
         "reason": reason,
     }
