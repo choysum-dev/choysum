@@ -41,7 +41,8 @@ export default class RoleRecordRule extends BaseModel {
     notNull: false,
     string: _lt('Role', { scope: 'auth.model.RoleRecordRule.fields' }),
   })
-  RoleId?: Role;
+  RoleId?: Role; // notNull:false; null/omitted = everyone (avoid `Role | null` — metadata FK parser rejects unions)
+
 
   /**
    * Merge operator: grant (OR) or restrict (AND). Default grant for legacy rows.
@@ -164,10 +165,9 @@ export default class RoleRecordRule extends BaseModel {
   /**
    * Normalize RoleId when present (empty / blank → null = everyone).
    */
-  private static _normalizeRoleId(values: Record<string, any>, mode: 'create' | 'update'): void {
+  private static _normalizeRoleId(values: Record<string, any>, _mode: 'create' | 'update'): void {
     const touchesRole = Object.prototype.hasOwnProperty.call(values, 'RoleId');
-    if (!touchesRole && mode !== 'create') return;
-    if (!touchesRole && mode === 'create') return;
+    if (!touchesRole) return;
 
     const raw = (values as any).RoleId;
     if (raw == null || raw === '') {
@@ -179,12 +179,18 @@ export default class RoleRecordRule extends BaseModel {
       (values as any).RoleId = id ? { Id: id } : null;
       return;
     }
+    // normalizeRefId trims whitespace; blank strings become null (everyone).
     const id = normalizeRefId(raw);
     (values as any).RoleId = id;
   }
 
   /**
    * Warn when Kind=grant applies to everyone (RoleId null) — open-for-all risk.
+   *
+   * Limitation: this helper only sees the mutation payload. Partial updates that
+   * omit Kind or RoleId do not load the persisted row, so e.g. clearing RoleId
+   * while Kind stays grant (or setting Kind=grant while RoleId stays null) may
+   * not warn. Full create paths and updates that send both fields are covered.
    */
   private static _warnGrantForEveryone(values: Record<string, any>, mode: 'create' | 'update'): void {
     const kind = String((values as any).Kind ?? (mode === 'create' ? 'grant' : ''))

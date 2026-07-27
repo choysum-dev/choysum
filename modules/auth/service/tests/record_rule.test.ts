@@ -975,6 +975,36 @@ test('RoleRecordRule RoleId: null means everyone and warns on grant', async () =
   }
 });
 
+test('RoleRecordRule RoleId: whitespace string normalizes to null (everyone)', async () => {
+  resetRequestContext();
+  setupAllowlistForFixtures();
+
+  await withModelContext({ activeCompanyId: uid('C'), enabledCompanyIds: [uid('C')] } as any, async () => {
+    const modelId = await resolveModelId('auth', 'CompanyScopedResource');
+
+    const row = await RoleRecordRule.Create(
+      {
+        RoleId: '   ' as any,
+        Kind: 'restrict',
+        IrModelId: modelId,
+        IrApplicationId: null,
+        Condition: null,
+        PermRead: true,
+      } as any,
+      ['Id', 'RoleId', 'Kind'] as any
+    );
+
+    expect((row as any)?.RoleId == null || (row as any)?.RoleId === '').toBe(true);
+
+    const rows = await RoleRecordRule.Search(
+      ['Id', '=', String((row as any).Id)] as any,
+      { fields: ['Id', 'RoleId'], limit: 1 } as any
+    );
+    expect(rows.length).toBe(1);
+    expect((rows[0] as any)?.RoleId == null || (rows[0] as any)?.RoleId === '').toBe(true);
+  });
+});
+
 test('RoleRecordRule RoleId: restrict with null RoleId does not emit grant warn', async () => {
   resetRequestContext();
   setupAllowlistForFixtures();
