@@ -129,6 +129,9 @@ jobs:
       - name: Make choysum CLI executable
         run: chmod +x .choysum/tmp/choysum
 
+      - name: Setup CLI testing pkg cache
+        uses: ./.github/actions/setup-cli-testing-cache
+
       - name: Setup Playwright
         uses: ./.github/actions/setup-playwright
 

@@ -44,19 +44,39 @@ jobs:
         with:
           ref: ${{ inputs.run_ref }}
 
-      - name: Setup Go
+      # Skip go generate when bootstrap/vuesfc sources are unchanged (wall-clock win on most PRs).
+      - name: Restore embedded assets cache
+        id: embedded-cache
         if: ${{ inputs.docs_only != 'true' }}
+        uses: actions/cache@v6
+        with:
+          path: |
+            internal/bootstrap/web/dist
+            pkg/jsengine/scripts/vuesfc/dist
+          key: ${{ runner.os }}-embedded-v1-${{ hashFiles('go.mod', 'go.sum', 'internal/bootstrap/web/generate.go', 'internal/bootstrap/web/gen.go', 'internal/bootstrap/web/package.json', 'internal/bootstrap/web/tsconfig.json', 'internal/bootstrap/web/index.html', 'internal/bootstrap/web/src/**', 'pkg/jsengine/scripts/vuesfc/**/*.go', 'pkg/jsengine/scripts/vuesfc/package.json', 'pkg/jsengine/scripts/vuesfc/tsconfig.json', 'pkg/jsengine/scripts/vuesfc/src/**') }}
+
+      - name: Cache esm packages for go generate
+        if: ${{ inputs.docs_only != 'true' && steps.embedded-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache@v6
+        with:
+          path: .choysum/pkg/esm
+          key: ${{ runner.os }}-esm-generate-v1-${{ hashFiles('go.mod', 'go.sum', 'internal/bootstrap/web/package.json', 'pkg/jsengine/scripts/vuesfc/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-esm-generate-v1-
+
+      - name: Setup Go
+        if: ${{ inputs.docs_only != 'true' && steps.embedded-cache.outputs.cache-hit != 'true' }}
         uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
 
       - name: Build Vue SFC embed asset (go generate)
-        if: ${{ inputs.docs_only != 'true' }}
+        if: ${{ inputs.docs_only != 'true' && steps.embedded-cache.outputs.cache-hit != 'true' }}
         run: go generate ./pkg/jsengine/scripts/vuesfc/...
 
       - name: Generate bootstrap web assets (go generate)
-        if: ${{ inputs.docs_only != 'true' }}
+        if: ${{ inputs.docs_only != 'true' && steps.embedded-cache.outputs.cache-hit != 'true' }}
         run: go generate ./internal/bootstrap/web/...
 
       - name: Pack embedded assets
