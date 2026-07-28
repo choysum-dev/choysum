@@ -1425,6 +1425,24 @@ func TestEnforceMethodAccessDecisionObservabilityLogging(t *testing.T) {
 			t.Fatalf("expected acl_check_failed decision summary, got:\n%s", logs)
 		}
 	})
+
+	t.Run("logAuthzDecisionSummary no-ops on nil scope logger or payload", func(t *testing.T) {
+		payload := map[string]any{"event": "authz.decision_summary", "layer": "method_access"}
+		// Each OR branch of the early-return guard must be exercised.
+		logAuthzDecisionSummary(nil, payload, false)
+
+		nilLoggerScope := newHelperScope(t.TempDir())
+		nilLoggerScope.logger = nil
+		logAuthzDecisionSummary(nilLoggerScope, payload, true)
+
+		runtimeScope := newHelperScope(t.TempDir())
+		var logBuf bytes.Buffer
+		runtimeScope.logger = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+		logAuthzDecisionSummary(runtimeScope, nil, false)
+		if logBuf.Len() != 0 {
+			t.Fatalf("expected nil payload to skip logging, got %q", logBuf.String())
+		}
+	})
 }
 
 func TestAuthorizeInternalCallerFromContext(t *testing.T) {
