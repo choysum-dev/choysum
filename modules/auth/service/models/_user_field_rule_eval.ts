@@ -246,7 +246,8 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
     const permRead = normalizeFieldPerm(pickField(r, ['PermRead', 'perm_read', 'permRead']));
     const permWrite = normalizeFieldPerm(pickField(r, ['PermWrite', 'perm_write', 'permWrite']));
 
-    const rule = { __rid: rid, irApp, irModel, irField, permRead, permWrite };
+    const rule: Record<string, unknown> = { irApp, irModel, irField, permRead, permWrite };
+    if (rid) rule.__rid = rid;
 
     const isField = irField != null && irModel != null && irApp == null;
     const isModel = irField == null && irModel != null && irApp == null;

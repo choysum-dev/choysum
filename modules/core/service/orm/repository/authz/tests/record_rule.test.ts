@@ -117,6 +117,94 @@ test('record rule coordinator expr applies token replacement and emits allow sum
   expect(summaries[0]?.basis).toBe('record_rule_expr_applied');
 });
 
+test('record rule coordinator forwards hitRuleIds on deny allow and permissionDenied metadata', async () => {
+  const readDeny = createCoordinatorDeps({
+    getRecordRuleEnvelope: async () => ({ kind: 'false', reason: 'no_grant', hitRuleIds: ['rr_2', 'rr_1', 'rr_1'] }),
+  });
+  await applyRepositoryRecordRuleToCondition(readDeny.deps, ['Name', '=', 'demo'] as any, 'read');
+  expect(readDeny.summaries[0]?.hitRuleIds).toEqual(['rr_2', 'rr_1', 'rr_1']);
+
+  const writeDeny = createCoordinatorDeps({
+    getRecordRuleEnvelope: async () => ({ kind: 'false', reason: 'no_grant', hitRuleIds: ['rr_b', '', 'rr_a', null as any, 0 as any] }),
+  });
+  try {
+    await applyRepositoryRecordRuleToCondition(writeDeny.deps, ['Name', '=', 'demo'] as any, 'write');
+  } catch {
+    // expected
+  }
+  expect(writeDeny.denied[0]?.metadata?.hitRuleIds).toBe('0,rr_a,rr_b');
+
+  const writeDenyEmptyHits = createCoordinatorDeps({
+    getRecordRuleEnvelope: async () => ({ kind: 'false', reason: 'no_grant', hitRuleIds: ['', '  '] }),
+  });
+  try {
+    await applyRepositoryRecordRuleToCondition(writeDenyEmptyHits.deps, ['Name', '=', 'demo'] as any, 'write');
+  } catch {
+    // expected
+  }
+  expect(writeDenyEmptyHits.denied[0]?.metadata?.hitRuleIds).toBe(undefined);
+
+  const exprAllow = createCoordinatorDeps({
+    getRecordRuleEnvelope: async () => ({
+      kind: 'expr',
+      expr: ['OwnerId', '=', '$userId'],
+      reason: 'grant_domain',
+      hitRuleIds: ['rr_expr'],
+    }),
+    replaceRecordRuleTokens: () => ['OwnerId', '=', 'user_1'],
+  });
+  await applyRepositoryRecordRuleToCondition(exprAllow.deps, ['Name', '=', 'demo'] as any, 'read');
+  expect(exprAllow.summaries[0]?.hitRuleIds).toEqual(['rr_expr']);
+
+  const createDeny = createCoordinatorDeps({
+    getRecordRuleEnvelope: async () => ({ kind: 'false', reason: 'deny_create', hitRuleIds: ['rr_create'] }),
+  });
+  try {
+    await assertRepositoryRecordRuleCreateAllowed(createDeny.deps);
+  } catch {
+    // expected
+  }
+  expect(createDeny.denied[0]?.metadata?.hitRuleIds).toBe('rr_create');
+
+  const targetMismatch = createCoordinatorDeps({
+    getRecordRuleEnvelope: async () => ({ kind: 'expr', expr: ['Id', '=', 'x'], reason: 'rr', hitRuleIds: ['rr_target'] }),
+    replaceRecordRuleTokens: (condition: unknown) => condition,
+    countConditionMatches: async () => 0,
+  });
+  try {
+    await assertRepositoryRecordRuleAllTargetsAllowed(targetMismatch.deps, 'write', ['id_1']);
+  } catch {
+    // expected
+  }
+  expect(targetMismatch.denied[0]?.metadata?.hitRuleIds).toBe('rr_target');
+
+  const targetFalse = createCoordinatorDeps({
+    getRecordRuleEnvelope: async () => ({ kind: 'false', reason: 'target_false', hitRuleIds: ['rr_tf'] }),
+  });
+  try {
+    await assertRepositoryRecordRuleAllTargetsAllowed(targetFalse.deps, 'delete', ['id_1']);
+  } catch {
+    // expected
+  }
+  expect(targetFalse.denied[0]?.metadata?.hitRuleIds).toBe('rr_tf');
+
+  const createdMismatch = createCoordinatorDeps({
+    replaceRecordRuleTokens: (condition: unknown) => condition,
+    countConditionMatches: async () => 0,
+  });
+  try {
+    await assertRepositoryRecordRuleAllCreatedAllowed(createdMismatch.deps, ['id_1'], {
+      kind: 'expr',
+      expr: ['Id', '=', 'x'],
+      reason: 'rr',
+      hitRuleIds: ['rr_created'],
+    } as any);
+  } catch {
+    // expected
+  }
+  expect(createdMismatch.denied[0]?.metadata?.hitRuleIds).toBe('rr_created');
+});
+
 test('record rule target-guard validates full match count and throws on partial mismatch', async () => {
   const { deps, calls } = createCoordinatorDeps({
     getRecordRuleEnvelope: async () => ({ kind: 'expr', expr: ['OwnerId', '=', '$userId'], reason: 'rr_expr' }),

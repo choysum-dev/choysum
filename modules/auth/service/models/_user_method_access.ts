@@ -149,7 +149,7 @@ export async function evaluateRoleMethodAccess(
   const hitRuleIds: string[] = [];
   for (const a of accesses || []) {
     const mode = String((a as any).Mode || '').toLowerCase();
-    const ruleId = String((a as any)?.Id || '').trim();
+    const ruleId = String((a as any)?.Id ?? '').trim();
     if (mode === 'deny') {
       denied = true;
       if (ruleId) hitRuleIds.push(ruleId);

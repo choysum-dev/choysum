@@ -1451,6 +1451,71 @@ test('P4 field rule deny-default: null FR Search result denies all non-system fi
   }
 });
 
+test('P4 field rule observability: hitRuleIds collect present Ids and tolerate missing Id rows', async () => {
+  resetRequestContext();
+
+  const c1 = { Id: uid('C1') };
+  const { roleId } = await withModelContext(
+    { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
+    async () => {
+      const uid1 = await createUser(c1.Id);
+      setIdentity(uid1);
+      const rid = await createRole();
+      await grantRoleGlobal(uid1, rid, c1.Id);
+      return { roleId: rid };
+    },
+    { merge: false }
+  );
+
+  const modelId = await resolveModelId('auth', 'CompanyScopedResource');
+  const nameFieldId = await resolveFieldId(modelId, 'Name');
+
+  const jsCtx = ensureRequestContext();
+  delete (jsCtx as any)[FR_CACHE_KEY];
+  setReq({ depth: 0, fieldRuleMode: '' });
+
+  const origSearch = (RoleFieldRule as any).Search;
+  (RoleFieldRule as any).Search = async () => [
+    {
+      Id: 'fr_hit_1',
+      IrApplicationId: null,
+      IrModelId: modelId,
+      IrFieldId: nameFieldId,
+      PermRead: 'allow',
+      PermWrite: 'allow',
+    },
+    {
+      Id: '',
+      IrApplicationId: null,
+      IrModelId: modelId,
+      IrFieldId: null,
+      PermRead: 'allow',
+      PermWrite: 'allow',
+    },
+  ];
+
+  try {
+    const out = await withModelContext(
+      { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
+      async () => {
+        return await evaluateFieldRules({
+          appName: 'auth',
+          modelName: 'CompanyScopedResource',
+          rawModel: 'auth.CompanyScopedResource',
+          roleIds: [roleId],
+        });
+      },
+      { merge: false }
+    );
+
+    expect(out.reason).toBe('ok');
+    expect(out.hitRuleIds).toEqual(['fr_hit_1']);
+    expect(out.denyReadFields.includes('Name')).toBe(false);
+  } finally {
+    (RoleFieldRule as any).Search = origSearch;
+  }
+});
+
 // ---------------------------------------------------------------------------
 // OnchangeIrModelId coverage
 // ---------------------------------------------------------------------------

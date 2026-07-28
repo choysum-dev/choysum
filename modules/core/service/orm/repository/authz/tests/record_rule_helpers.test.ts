@@ -498,6 +498,28 @@ test('record rule helper normalizes true false expr and empty envelopes from ser
           reason: 'ok',
         });
 
+        (AuthUserService as any).GetRecordRuleCondition = async () => ({
+          kind: 'true',
+          reason: 'with_hits',
+          hitRuleIds: [' rr_2 ', '', 'rr_1', 'rr_1'],
+        });
+        expect(await fetchRepositoryRecordRuleEnvelope(createDeps({ userId: 'u3b' }).deps, 'read')).toEqual({
+          kind: 'true',
+          reason: 'with_hits',
+          hitRuleIds: ['rr_1', 'rr_2'],
+        });
+
+        (AuthUserService as any).GetRecordRuleCondition = async () => ({
+          kind: 'false',
+          reason: 'csv_hits',
+          hitRuleIds: 'rr_b,rr_a,rr_a',
+        });
+        expect(await fetchRepositoryRecordRuleEnvelope(createDeps({ userId: 'u3c' }).deps, 'read')).toEqual({
+          kind: 'false',
+          reason: 'csv_hits',
+          hitRuleIds: ['rr_a', 'rr_b'],
+        });
+
         (AuthUserService as any).GetRecordRuleCondition = async () => undefined;
         expect(await fetchRepositoryRecordRuleEnvelope(createDeps({ userId: 'u4' }).deps, 'read')).toEqual({
           kind: 'false',
