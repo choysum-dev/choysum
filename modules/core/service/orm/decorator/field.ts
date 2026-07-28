@@ -60,6 +60,10 @@ type FieldDecoratorOptionBag = {
   translate?: unknown;
   /** Whether the field participates in Model.Copy (default true when omitted). */
   copy?: unknown;
+  /**
+   * Odoo-style check_company for ManyToOne / ManyToOneRef (parent↔related CompanyId).
+   */
+  checkCompany?: unknown;
 };
 
 function normalizeFieldString(name: string, value: unknown): { string?: string; stringText?: TermReference } {
@@ -125,6 +129,13 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
       throw new Error(`@Field(${name}) copy must be a boolean`);
     }
     const copyFlag = optionBag.copy === false ? false : optionBag.copy === true ? true : undefined;
+    if (optionBag.checkCompany !== undefined && typeof optionBag.checkCompany !== 'boolean') {
+      throw new Error(`@Field(${name}) checkCompany must be a boolean`);
+    }
+    if (optionBag.checkCompany === true && type !== 'ManyToOne' && type !== 'ManyToOneRef') {
+      throw new Error(`@Field(${name}) checkCompany is only supported on ManyToOne / ManyToOneRef fields`);
+    }
+    const checkCompany = optionBag.checkCompany === true;
     if (translate) {
       if (type !== 'char' && type !== 'varchar' && type !== 'text') {
         throw new Error(`@Field(${name}) translate is only supported on char/varchar/text fields`);
@@ -484,6 +495,7 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
     if (translate) meta.translate = true;
     if (copyFlag === false) meta.copy = false;
     else if (copyFlag === true) meta.copy = true;
+    if (checkCompany) meta.checkCompany = true;
 
     // Write metadata
     const ctor = target.constructor as ModelCtor<BaseModel> & typeof BaseModel;

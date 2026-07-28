@@ -751,6 +751,47 @@ test('Field decorator accepts copy:false and rejects non-boolean copy', () => {
   }).toThrow('copy must be a boolean');
 });
 
+test('Field decorator accepts checkCompany on ManyToOne and rejects elsewhere', () => {
+  class CheckCompanyOkModel extends BaseModel {
+    @Field({
+      type: 'ManyToOne',
+      checkCompany: true,
+      relation: { targetModel: () => FieldTargetModel },
+    } as any)
+    PartnerId!: FieldTargetModel;
+
+    @Field({
+      type: 'ManyToOneRef',
+      checkCompany: true,
+      relation: { targetModel: 'test.FieldTargetModel' },
+    } as any)
+    PartnerRefId!: string;
+  }
+  const fields = MetadataStorage.instance.getModelMetadata(CheckCompanyOkModel as any).fields;
+  expect(fields.get('PartnerId')?.checkCompany).toBe(true);
+  expect(fields.get('PartnerRefId')?.checkCompany).toBe(true);
+
+  expect(() => {
+    class BadCheckCompanyType extends BaseModel {
+      @Field({ type: 'varchar', checkCompany: true } as any)
+      Name!: string;
+    }
+    return BadCheckCompanyType;
+  }).toThrow('checkCompany is only supported on ManyToOne / ManyToOneRef fields');
+
+  expect(() => {
+    class BadCheckCompanyValue extends BaseModel {
+      @Field({
+        type: 'ManyToOne',
+        checkCompany: 'yes' as any,
+        relation: { targetModel: () => FieldTargetModel },
+      } as any)
+      PartnerId!: FieldTargetModel;
+    }
+    return BadCheckCompanyValue;
+  }).toThrow('checkCompany must be a boolean');
+});
+
 test('Field decorator stores monetary currencyField and rejects scale options', () => {
   class MonetaryOkModel extends BaseModel {
     @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Currency' }, size: 20 } as any)

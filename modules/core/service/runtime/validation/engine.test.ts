@@ -108,6 +108,18 @@ class PlatformCompanySourceModel extends BaseModel {
   TargetId?: PlatformCompanyTargetModel;
 }
 
+class PlatformCheckCompanySourceModel extends BaseModel {
+  @Field({ type: 'varchar', size: 36 })
+  CompanyId?: string;
+
+  @Field({
+    type: 'ManyToOne',
+    checkCompany: true,
+    relation: { targetModel: () => PlatformCompanyTargetModel },
+  })
+  TargetId?: PlatformCompanyTargetModel;
+}
+
 class PlatformCompanyRefSourceModel extends BaseModel {
   @Field({
     type: 'ManyToOneRef',
@@ -557,6 +569,133 @@ test('validation engine reports whitelist hit callback for create write allowlis
   expect(issues).toEqual([]);
   expect(hits.length).toBe(1);
   expect(hits[0]).toEqual(['ComputedName', 'VirtualName']);
+});
+
+test('validation engine reports check_company violation when related company differs from parent', async () => {
+  const targetMetadata = MetadataStorage.instance.getModelMetadata(PlatformCompanyTargetModel as any);
+  MetadataStorage.instance.setModelMetadata(
+    PlatformCompanyTargetModel as any,
+    {
+      ...targetMetadata,
+      companyScoped: true,
+    } as any
+  );
+
+  RepositoryFactory.setRepository(
+    PlatformCompanyTargetModel as any,
+    {
+      withDeleted() {
+        return this;
+      },
+      async search() {
+        return [{ Id: 'target_check_1', CompanyId: 'company_b' }];
+      },
+    } as any
+  );
+
+  const metadata = MetadataStorage.instance.getModelMetadata(PlatformCheckCompanySourceModel as any);
+  const issues = await ValidationEngine.validate(
+    {
+      mode: 'update',
+      model: PlatformCheckCompanySourceModel as any,
+      metadata,
+      values: { TargetId: 'target_check_1', CompanyId: 'company_a' },
+      changedFields: new Set(['TargetId']),
+      repository: {} as any,
+      requestContext: {
+        enabledCompanyIds: ['company_a', 'company_b'],
+        activeCompanyId: 'company_a',
+      },
+    } as any,
+    {
+      includeKernel: false,
+      includeConstraints: false,
+    }
+  );
+
+  expect(issues).toEqual([
+    {
+      scope: 'platform',
+      field: 'TargetId',
+      code: 'platform_check_company_violation',
+      message:
+        'reference "TargetId" belongs to company "company_b", which is incompatible with parent company "company_a"',
+      severity: 'error',
+    },
+  ]);
+});
+
+test('validation engine allows check_company when related row is shared (CompanyId null)', async () => {
+  RepositoryFactory.setRepository(
+    PlatformCompanyTargetModel as any,
+    {
+      withDeleted() {
+        return this;
+      },
+      async search() {
+        return [{ Id: 'target_shared_1', CompanyId: null }];
+      },
+    } as any
+  );
+
+  const metadata = MetadataStorage.instance.getModelMetadata(PlatformCheckCompanySourceModel as any);
+  const issues = await ValidationEngine.validate(
+    {
+      mode: 'create',
+      model: PlatformCheckCompanySourceModel as any,
+      metadata,
+      values: { TargetId: 'target_shared_1' },
+      changedFields: new Set(['TargetId']),
+      repository: {} as any,
+      requestContext: {
+        enabledCompanyIds: ['company_a'],
+        activeCompanyId: 'company_a',
+      },
+    } as any,
+    {
+      includeKernel: false,
+      includeConstraints: false,
+    }
+  );
+
+  expect(issues).toEqual([]);
+});
+
+test('validation engine allows check_company when parent and related companies match', async () => {
+  RepositoryFactory.setRepository(
+    PlatformCompanyTargetModel as any,
+    {
+      withDeleted() {
+        return this;
+      },
+      async search() {
+        return [{ Id: 'target_same_1', CompanyId: 'company_a' }];
+      },
+    } as any
+  );
+
+  const metadata = MetadataStorage.instance.getModelMetadata(PlatformCheckCompanySourceModel as any);
+  const issues = await ValidationEngine.validate(
+    {
+      mode: 'update',
+      model: PlatformCheckCompanySourceModel as any,
+      metadata,
+      current: { CompanyId: 'company_a' },
+      values: { TargetId: 'target_same_1' },
+      changedFields: new Set(['TargetId']),
+      repository: {} as any,
+      requestContext: {
+        enabledCompanyIds: ['company_a'],
+        activeCompanyId: 'company_a',
+      },
+    } as any,
+    {
+      includeKernel: false,
+      includeConstraints: false,
+    }
+  );
+
+  expect(issues).toEqual([]);
 });
 
 test('validation engine reports platform issue for cross-company many2one reference', async () => {

@@ -1,32 +1,32 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
-#: service/orm/model/model.ts:363
+#: service/orm/model/model.ts:403
 msgctxt "core.model.BaseModel.fields"
 msgid "Created At"
 msgstr "创建时间"
 
-#: service/orm/model/model.ts:383
+#: service/orm/model/model.ts:425
 msgctxt "core.model.BaseModel.fields"
 msgid "Deleted At"
 msgstr "删除时间"
 
-#: service/orm/model/model.ts:342
+#: service/orm/model/model.ts:381
 msgctxt "core.model.BaseModel.fields"
 msgid "Display Name"
 msgstr "显示名称"
 
-#: service/orm/metadata/storage.ts:569
+#: service/orm/metadata/storage.ts:568
 msgctxt "core.model.BaseModel.fields"
 msgid "Parent Path"
 msgstr "父级路径"
 
-#: service/orm/model/model.ts:373
+#: service/orm/model/model.ts:414
 msgctxt "core.model.BaseModel.fields"
 msgid "Updated At"
 msgstr "更新时间"
 
-#: service/orm/model/model.ts:260
+#: service/orm/model/model.ts:266
 msgctxt "service/orm/model/model"
 msgid "current user is required"
 msgstr "需要当前用户"
@@ -51,7 +51,7 @@ msgctxt "service/orm/model/model_soft_delete_scope"
 msgid "withDeleted and onlyDeleted cannot both be true"
 msgstr "withDeleted 与 onlyDeleted 不能同时为 true"
 
-#: service/orm/model/model_update.ts:632
+#: service/orm/model/model_update.ts:648
 msgctxt "service/orm/model/model_update"
 msgid "Update failed: Record %s not found."
 msgstr "更新失败：未找到记录 %s。"
@@ -66,7 +66,7 @@ msgctxt "service/orm/repository/authz/company_scope"
 msgid "companyScoped model is missing CompanyId field"
 msgstr "companyScoped 模型缺少 CompanyId 字段"
 
-#: service/orm/repository/authz/company_scope.ts:173
+#: service/orm/repository/authz/company_scope.ts:174
 msgctxt "service/orm/repository/authz/company_scope"
 msgid "missing ctx.activeCompanyId for company scoped create"
 msgstr "公司范围创建缺少 ctx.activeCompanyId"
@@ -76,102 +76,102 @@ msgctxt "service/orm/repository/authz/company_scope"
 msgid "missing ctx.enabledCompanyIds/activeCompanyId for company scoped operation"
 msgstr "公司范围操作缺少 ctx.enabledCompanyIds/activeCompanyId"
 
-#: service/orm/repository/authz/field_rule_helpers.ts:143
+#: service/orm/repository/authz/field_rule_helpers.ts:177
 msgctxt "service/orm/repository/authz/field_rule_helpers"
 msgid "failed to fetch field rule spec"
 msgstr "获取字段规则规格失败"
 
-#: service/orm/repository/authz/field_rule_helpers.ts:179
+#: service/orm/repository/authz/field_rule_helpers.ts:222
 msgctxt "service/orm/repository/authz/field_rule_helpers"
 msgid "field rule readonly violation"
 msgstr "字段规则只读约束冲突"
 
-#: service/orm/repository/authz/record_rule.ts:153
+#: service/orm/repository/authz/record_rule.ts:181
 msgctxt "service/orm/repository/authz/record_rule"
 msgid "created set violates record rule"
 msgstr "创建结果违反记录规则"
 
-#: service/orm/repository/authz/record_rule.ts:102 service/orm/repository/authz/record_rule.ts:131 service/orm/repository/authz/record_rule.ts:63
+#: service/orm/repository/authz/record_rule.ts:119 service/orm/repository/authz/record_rule.ts:154 service/orm/repository/authz/record_rule.ts:76
 msgctxt "service/orm/repository/authz/record_rule"
 msgid "record rule denied"
 msgstr "记录规则拒绝"
 
-#: service/orm/repository/authz/record_rule.ts:114
+#: service/orm/repository/authz/record_rule.ts:136
 msgctxt "service/orm/repository/authz/record_rule"
 msgid "target set violates record rule"
 msgstr "目标集合违反记录规则"
 
-#: service/orm/repository/authz/record_rule_helpers.ts:109
+#: service/orm/repository/authz/record_rule_helpers.ts:116
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "entry record rule allowlist miss"
 msgstr "记录规则白名单未命中"
 
-#: service/orm/repository/authz/record_rule_helpers.ts:137
+#: service/orm/repository/authz/record_rule_helpers.ts:151
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "failed to fetch record rule condition"
 msgstr "获取记录规则条件失败"
 
-#: service/orm/repository/authz/record_rule_helpers.ts:201
+#: service/orm/repository/authz/record_rule_helpers.ts:215
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "invalid JSON in record rule condition"
 msgstr "记录规则条件中的 JSON 无效"
 
-#: service/orm/repository/authz/record_rule_helpers.ts:226
+#: service/orm/repository/authz/record_rule_helpers.ts:240
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "invalid record rule condition shape (type=%s, isArray=%s, preview=%s)"
 msgstr "记录规则条件形状无效（type=%s, isArray=%s, preview=%s）"
 
-#: service/orm/repository/authz/record_rule_helpers.ts:152
+#: service/orm/repository/authz/record_rule_helpers.ts:166
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "missing ctx.activeCompanyId for $companyId token"
 msgstr "$companyId 令牌缺少 ctx.activeCompanyId"
 
-#: service/orm/repository/authz/record_rule_helpers.ts:164
+#: service/orm/repository/authz/record_rule_helpers.ts:178
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "missing ctx.enabledCompanyIds for $companyIds token"
 msgstr "$companyIds 令牌缺少 ctx.enabledCompanyIds"
 
-#: service/orm/repository/authz/record_rule_helpers.ts:250
+#: service/orm/repository/authz/record_rule_helpers.ts:264
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "missing identity.userId for $userId token"
 msgstr "$userId 令牌缺少 identity.userId"
 
-#: service/orm/repository/authz/record_rule_helpers.ts:264
+#: service/orm/repository/authz/record_rule_helpers.ts:278
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "unknown token in record rule condition"
 msgstr "记录规则条件中存在未知令牌"
 
-#: service/orm/repository/validation/kernel.ts:119 service/orm/repository/validation/kernel.ts:144
+#: service/orm/repository/validation/kernel.ts:120 service/orm/repository/validation/kernel.ts:145
 msgctxt "service/orm/repository/validation/kernel"
 msgid "Field \"%s\" cannot be null"
 msgstr "字段 \"%s\" 不能为 null"
 
-#: service/orm/repository/validation/kernel.ts:187
+#: service/orm/repository/validation/kernel.ts:188
 msgctxt "service/orm/repository/validation/kernel"
 msgid "Field \"%s\" has an invalid reference shape and must be an Id or an object containing Id/id"
 msgstr "字段 \"%s\" 的引用形状无效，必须是 Id 或包含 Id/id 的对象"
 
-#: service/orm/repository/validation/kernel.ts:74
+#: service/orm/repository/validation/kernel.ts:75
 msgctxt "service/orm/repository/validation/kernel"
 msgid "Field \"%s\" has value \"%s\" outside the allowed selection values. Allowed values: %s"
 msgstr "字段 \"%s\" 的值 \"%s\" 不在允许的选项中。允许的值：%s"
 
-#: service/orm/repository/validation/kernel.ts:50
+#: service/orm/repository/validation/kernel.ts:51
 msgctxt "service/orm/repository/validation/kernel"
 msgid "Field \"%s\" is not a valid int"
 msgstr "字段 \"%s\" 不是有效的整数"
 
-#: service/orm/repository/validation/kernel.ts:134
+#: service/orm/repository/validation/kernel.ts:135
 msgctxt "service/orm/repository/validation/kernel"
 msgid "Field \"%s\" is required"
 msgstr "字段 \"%s\" 为必填"
 
-#: service/orm/repository/validation/kernel.ts:214
+#: service/orm/repository/validation/kernel.ts:224
 msgctxt "service/orm/repository/validation/kernel"
 msgid "Field \"%s\" must be a valid decimal that satisfies the precision and scale limits"
 msgstr "字段 \"%s\" 必须是满足精度与小数位限制的有效小数"
 
-#: service/orm/repository/write/create_helpers.ts:44
+#: service/orm/repository/write/create_helpers.ts:45
 msgctxt "service/orm/repository/write/create_helpers"
 msgid "record rule denied"
 msgstr "记录规则拒绝"
@@ -196,12 +196,17 @@ msgctxt "service/runtime/validation/engine"
 msgid "model \"%s\" is readonly and cannot be written"
 msgstr "模型 \"%s\" 为只读，不能写入"
 
-#: service/runtime/validation/engine.ts:251 service/runtime/validation/engine.ts:275 service/runtime/validation/engine.ts:323
+#: service/runtime/validation/engine.ts:349
+msgctxt "service/runtime/validation/engine"
+msgid "reference \"%s\" belongs to company \"%s\", which is incompatible with parent company \"%s\""
+msgstr "引用 \"%s\" 属于公司 \"%s\"，与父记录公司 \"%s\" 不兼容"
+
+#: service/runtime/validation/engine.ts:251 service/runtime/validation/engine.ts:275 service/runtime/validation/engine.ts:330
 msgctxt "service/runtime/validation/engine"
 msgid "reference \"%s\" points to company \"%s\", which is outside ctx.enabledCompanyIds"
 msgstr "引用 \"%s\" 指向公司 \"%s\"，不在 ctx.enabledCompanyIds 中"
 
-#: service/runtime/validation/engine.ts:304
+#: service/runtime/validation/engine.ts:306
 msgctxt "service/runtime/validation/engine"
 msgid "reference \"%s\" with id \"%s\" is not visible in current company scope"
 msgstr "引用 \"%s\"（id \"%s\"）在当前公司范围内不可见"

@@ -284,8 +284,10 @@ export class ValidationEngine {
         continue;
       }
 
-      const targetIsCompanyScoped = Boolean(targetMeta.companyScoped && targetMeta.fields?.has('CompanyId'));
-      if (!targetIsCompanyScoped) {
+      const targetHasCompanyId = Boolean(targetMeta.fields?.has('CompanyId'));
+      const targetIsCompanyScoped = Boolean(targetMeta.companyScoped && targetHasCompanyId);
+      // Load related CompanyId for company-scoped visibility checks and/or Odoo-style check_company.
+      if (!targetIsCompanyScoped && !(meta.checkCompany && targetHasCompanyId)) {
         continue;
       }
 
@@ -315,7 +317,12 @@ export class ValidationEngine {
       const firstRow = (rows[0] ?? {}) as ObjectRecord;
       const targetCompanyId = String(firstRow.CompanyId ?? '').trim();
 
-      if (targetCompanyId && enabledCompanyIds.length > 0 && !enabledCompanyIds.includes(targetCompanyId)) {
+      if (
+        targetIsCompanyScoped &&
+        targetCompanyId &&
+        enabledCompanyIds.length > 0 &&
+        !enabledCompanyIds.includes(targetCompanyId)
+      ) {
         issues.push({
           scope: 'platform',
           field,
@@ -328,6 +335,27 @@ export class ValidationEngine {
           ),
           severity: 'error',
         });
+        continue;
+      }
+
+      // PR-D-1 / Odoo check_company: related company must match parent company (shared/NULL related always ok).
+      if (meta.checkCompany) {
+        const parentCompanyId = this.resolveParentCompanyId(ctx);
+        if (parentCompanyId && targetCompanyId && parentCompanyId !== targetCompanyId) {
+          issues.push({
+            scope: 'platform',
+            field,
+            code: 'platform_check_company_violation',
+            message: _t(
+              'reference "%s" belongs to company "%s", which is incompatible with parent company "%s"',
+              { scope: 'service/runtime/validation/engine' },
+              field,
+              targetCompanyId,
+              parentCompanyId
+            ),
+            severity: 'error',
+          });
+        }
       }
     }
 
@@ -426,6 +454,21 @@ export class ValidationEngine {
     const raw = ctx.enabledCompanyIds ?? ctx.EnabledCompanyIds ?? ctx.activeCompanyId ?? ctx.ActiveCompanyId;
     const values = Array.isArray(raw) ? raw : raw == null ? [] : [raw];
     return Array.from(new Set(values.map(v => String(v ?? '').trim()).filter(Boolean)));
+  }
+
+  /**
+   * Resolve the parent row's CompanyId for check_company comparisons.
+   *
+   * Prefers the write payload, then the existing row (`current`), then the request
+   * active company (covers Create before repository defaulting fills CompanyId).
+   */
+  private static resolveParentCompanyId(ctx: ConstraintContext): string {
+    const fromValues = this.resolveReferenceId((ctx.values as ObjectRecord | undefined)?.CompanyId);
+    if (fromValues) return fromValues;
+    const fromCurrent = this.resolveReferenceId((ctx.current as ObjectRecord | undefined)?.CompanyId);
+    if (fromCurrent) return fromCurrent;
+    const req = (ctx.requestContext && typeof ctx.requestContext === 'object' ? ctx.requestContext : {}) as ObjectRecord;
+    return String(req.activeCompanyId ?? req.ActiveCompanyId ?? '').trim();
   }
 
   /**
