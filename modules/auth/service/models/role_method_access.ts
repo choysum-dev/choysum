@@ -7,8 +7,8 @@ import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
 import { _lt } from '../i18n';
 import Role from './role';
-import { normalizeRefId } from '@/core/service/utils/normalization';
 import { invalidateAllAuthzCaches } from './_request_cache_invalidation';
+import { assertExclusiveScope } from './_rule_scope_helpers';
 
 /**
  * RoleMethodAccess stores role-level RPC allow and deny overrides at global,
@@ -102,43 +102,6 @@ export default class RoleMethodAccess extends BaseModel {
   Source: 'manual' | 'ui';
 
   /**
-   * Validate that the requested scope resolves to service, model, application, or global.
-   */
-  private static _validateScopeShape(values: Record<string, any>, mode: 'create' | 'update'): void {
-    const touchesScope =
-      Object.prototype.hasOwnProperty.call(values, 'IrServiceId') ||
-      Object.prototype.hasOwnProperty.call(values, 'IrModelId') ||
-      Object.prototype.hasOwnProperty.call(values, 'IrApplicationId');
-    if (!touchesScope) return;
-
-    if (mode === 'update') {
-      const hasAll =
-        Object.prototype.hasOwnProperty.call(values, 'IrServiceId') &&
-        Object.prototype.hasOwnProperty.call(values, 'IrModelId') &&
-        Object.prototype.hasOwnProperty.call(values, 'IrApplicationId');
-      if (!hasAll) {
-        throw new Error('invalid RoleMethodAccess scope update: must provide IrServiceId/IrModelId/IrApplicationId together');
-      }
-    }
-
-    const irServiceId = normalizeRefId((values as any).IrServiceId);
-    const irModelId = normalizeRefId((values as any).IrModelId);
-    const irApplicationId = normalizeRefId((values as any).IrApplicationId);
-
-    const isService = irServiceId != null && irModelId == null && irApplicationId == null;
-    const isModel = irServiceId == null && irModelId != null && irApplicationId == null;
-    const isApplication = irServiceId == null && irModelId == null && irApplicationId != null;
-    const isGlobal = irServiceId == null && irModelId == null && irApplicationId == null;
-    if (!isService && !isModel && !isApplication && !isGlobal) {
-      throw new Error('invalid RoleMethodAccess scope: must be exactly one of service/model/application/global');
-    }
-
-    (values as any).IrServiceId = irServiceId;
-    (values as any).IrModelId = irModelId;
-    (values as any).IrApplicationId = irApplicationId;
-  }
-
-  /**
    * Create one RoleMethodAccess row and invalidate request-scoped auth caches.
    */
   static override async Create<T extends BaseModel>(
@@ -146,7 +109,7 @@ export default class RoleMethodAccess extends BaseModel {
     value: Partial<Insertable<T & BaseModel>>,
     returnFields?: FieldSelection<T>
   ): Promise<T> {
-    RoleMethodAccess._validateScopeShape(value as any, 'create');
+    assertExclusiveScope(value as any, 'create', 'method');
     const out = await super.Create(value as any, returnFields as any);
     invalidateAllAuthzCaches();
     return out as unknown as T;
@@ -160,7 +123,7 @@ export default class RoleMethodAccess extends BaseModel {
     values: Partial<Insertable<T & BaseModel>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
-    for (const v of values || []) RoleMethodAccess._validateScopeShape(v as any, 'create');
+    for (const v of values || []) assertExclusiveScope(v as any, 'create', 'method');
     const out = await super.CreateMany(values as any, returnFields as any);
     invalidateAllAuthzCaches();
     return out as unknown as T[];
@@ -176,7 +139,7 @@ export default class RoleMethodAccess extends BaseModel {
     returnFields?: FieldSelection<T>,
     options?: any
   ): Promise<Partial<T>[]> {
-    RoleMethodAccess._validateScopeShape(values as any, 'update');
+    assertExclusiveScope(values as any, 'update', 'method');
     const out = await super.Update(condition as any, values as any, returnFields as any, options as any);
     invalidateAllAuthzCaches();
     return out as unknown as Partial<T>[];
@@ -192,7 +155,7 @@ export default class RoleMethodAccess extends BaseModel {
     returnFields?: FieldSelection<T>,
     options?: any
   ): Promise<Partial<T>> {
-    RoleMethodAccess._validateScopeShape(values as any, 'update');
+    assertExclusiveScope(values as any, 'update', 'method');
     const out = await super.UpdateById(id as any, values as any, returnFields as any, options as any);
     invalidateAllAuthzCaches();
     return out as unknown as Partial<T>;

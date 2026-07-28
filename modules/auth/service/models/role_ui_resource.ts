@@ -7,8 +7,8 @@ import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
 import { _lt } from '../i18n';
 import Role from './role';
-import { normalizeRefId } from '@/core/service/utils/normalization';
 import { invalidateAllAuthzCaches } from './_request_cache_invalidation';
+import { assertExclusiveScope } from './_rule_scope_helpers';
 
 /**
  * Permission mode for a role-to-UI-resource grant.
@@ -90,34 +90,6 @@ export default class RoleUiResource extends BaseModel {
   }
 
   /**
-   * Validate that the UI-resource scope is one of resource, application, or global.
-   */
-  private static _validateScopeShape(values: Record<string, any>, mode: 'create' | 'update'): void {
-    const touchesScope = Object.prototype.hasOwnProperty.call(values, 'IrUiResourceId') || Object.prototype.hasOwnProperty.call(values, 'IrApplicationId');
-    if (!touchesScope) return;
-
-    if (mode === 'update') {
-      const hasAll = Object.prototype.hasOwnProperty.call(values, 'IrUiResourceId') && Object.prototype.hasOwnProperty.call(values, 'IrApplicationId');
-      if (!hasAll) {
-        throw new Error('invalid RoleUiResource scope update: must provide IrUiResourceId/IrApplicationId together');
-      }
-    }
-
-    const irUiResourceId = normalizeRefId((values as any).IrUiResourceId);
-    const irApplicationId = normalizeRefId((values as any).IrApplicationId);
-
-    const isResource = irUiResourceId != null && irApplicationId == null;
-    const isApplication = irUiResourceId == null && irApplicationId != null;
-    const isGlobal = irUiResourceId == null && irApplicationId == null;
-    if (!isResource && !isApplication && !isGlobal) {
-      throw new Error('invalid RoleUiResource scope: must be exactly one of resource/application/global');
-    }
-
-    (values as any).IrUiResourceId = irUiResourceId;
-    (values as any).IrApplicationId = irApplicationId;
-  }
-
-  /**
    * Normalize and validate the Mode field for create and update operations.
    */
   private static _validateMode(values: Record<string, any>, mode: 'create' | 'update'): void {
@@ -135,7 +107,7 @@ export default class RoleUiResource extends BaseModel {
     value: Partial<Insertable<T & BaseModel>>,
     returnFields?: FieldSelection<T>
   ): Promise<T> {
-    RoleUiResource._validateScopeShape(value as any, 'create');
+    assertExclusiveScope(value as any, 'create', 'ui');
     RoleUiResource._validateMode(value as any, 'create');
     const out = await super.Create(value as any, returnFields as any);
     invalidateAllAuthzCaches();
@@ -151,7 +123,7 @@ export default class RoleUiResource extends BaseModel {
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
     for (const v of values || []) {
-      RoleUiResource._validateScopeShape(v as any, 'create');
+      assertExclusiveScope(v as any, 'create', 'ui');
       RoleUiResource._validateMode(v as any, 'create');
     }
     const out = await super.CreateMany(values as any, returnFields as any);
@@ -169,7 +141,7 @@ export default class RoleUiResource extends BaseModel {
     returnFields?: FieldSelection<T>,
     options?: any
   ): Promise<Partial<T>[]> {
-    RoleUiResource._validateScopeShape(values as any, 'update');
+    assertExclusiveScope(values as any, 'update', 'ui');
     RoleUiResource._validateMode(values as any, 'update');
     const out = await super.Update(condition as any, values as any, returnFields as any, options as any);
     invalidateAllAuthzCaches();
@@ -186,7 +158,7 @@ export default class RoleUiResource extends BaseModel {
     returnFields?: FieldSelection<T>,
     options?: any
   ): Promise<Partial<T>> {
-    RoleUiResource._validateScopeShape(values as any, 'update');
+    assertExclusiveScope(values as any, 'update', 'ui');
     RoleUiResource._validateMode(values as any, 'update');
     const out = await super.UpdateById(id as any, values as any, returnFields as any, options as any);
     invalidateAllAuthzCaches();
