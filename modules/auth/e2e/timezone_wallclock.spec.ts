@@ -3,6 +3,7 @@
 
 import { test, expect, type Page } from '@playwright/test';
 import fs from 'node:fs';
+import { loginAsE2EAdmin } from './utils/login.ts';
 
 /**
  * Scenario #12 / §11.4 S2: changing User.Timezone updates list datetime wall-clock
@@ -26,15 +27,6 @@ function readRuntimeInfo(): RuntimeInfo {
   }
   const raw = fs.readFileSync(runtimePath, 'utf-8');
   return JSON.parse(raw) as RuntimeInfo;
-}
-
-async function loginAsE2EAdmin(page: Page, baseURL: string) {
-  await page.goto(`${baseURL}/web/auth/users`, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('input[placeholder*="username"]', { timeout: 15_000 });
-  await page.getByPlaceholder(/username/i).fill('e2e-admin');
-  await page.getByPlaceholder(/password/i).fill('e2e-admin');
-  await page.locator('button[type="submit"]').click();
-  await expect(page).toHaveURL(/\/web\/auth\/users/, { timeout: 20_000 });
 }
 
 async function firstDatetimeDisplayText(page: Page): Promise<string> {

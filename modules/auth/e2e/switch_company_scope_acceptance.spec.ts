@@ -8,6 +8,7 @@ import { createClient, type Interceptor, ConnectError, Code } from '@connectrpc/
 import { createGrpcWebTransport } from '@connectrpc/connect-web';
 import { create } from '@bufbuild/protobuf';
 import { ValueSchema, ListValueSchema, StructSchema, NullValue, type Value } from '@bufbuild/protobuf/wkt';
+import { loginAsE2EAdmin } from './utils/login.ts';
 
 type RuntimeInfo = {
   baseURL: string;
@@ -233,16 +234,6 @@ function makeUserClient(baseURL: string, accessToken: string, userService: any):
     interceptors: [makeAuthInterceptor(accessToken)],
   });
   return createClient(userService as any, transport) as any;
-}
-
-async function loginAsE2EAdmin(page: any, baseURL: string): Promise<void> {
-  await page.goto(`${baseURL}/web/auth/users`, { waitUntil: 'domcontentloaded' });
-
-  await page.waitForSelector('input[placeholder*="username"]', { timeout: 10_000 });
-  await page.getByPlaceholder(/username/i).fill('e2e-admin');
-  await page.getByPlaceholder(/password/i).fill('e2e-admin');
-  await page.locator('button[type="submit"]').click();
-  await expect(page).toHaveURL(/\/web\/auth\/users/, { timeout: 15_000 });
 }
 
 async function waitForServerLogContains(needle: string, timeoutMs = 10_000): Promise<void> {
