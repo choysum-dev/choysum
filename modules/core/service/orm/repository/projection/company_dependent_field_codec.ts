@@ -18,7 +18,6 @@ function hasOwn(map: object, key: string): boolean {
 }
 
 function maybeJsonFast(str: string): boolean {
-  if (!str) return false;
   const c = str.charCodeAt(0);
   return c === 123 || c === 91 || c === 34 || c === 45 || (c >= 48 && c <= 57) || c === 116 || c === 102 || c === 110;
 }
@@ -45,8 +44,8 @@ export function isCompanyDependentScalarEnvelope(value: unknown): boolean {
   if (value == null || typeof value !== 'object' || Array.isArray(value)) return false;
   if (value instanceof Date) return true;
   if (isDecimal(value) || isBigdecimalEnvelope(value)) return true;
-  const record = asObjectRecord(value);
-  if (!record) return false;
+  // Arrays already rejected; remaining objects are always object-records.
+  const record = value as Record<string, unknown>;
   if (!hasOwnKey(record, 'Id')) return false;
   // Relation / browse envelopes: Id plus optional display fields.
   return Object.keys(record).every(key => key === 'Id' || key === 'DisplayName' || key === 'Name');

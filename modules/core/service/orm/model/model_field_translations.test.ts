@@ -211,3 +211,41 @@ test('FieldTranslationsWidget static APIs and update empty-id validation', async
     UpdateOperations.Update = originalUpdate;
   }
 });
+
+test('updateModelFieldTranslations accepts UpdatedAt string/number and invalid stamp', async () => {
+  const originalRepo = RepositoryFactory.getRepository;
+  const originalUpdate = UpdateOperations.Update;
+  let written: { condition: any } | undefined;
+  try {
+    RepositoryFactory.getRepository = (() => ({
+      async search() {
+        return [{ Id: 'w1', UpdatedAt: '2024-06-01T00:00:00.000Z', Name: { en_US: 'Hello' } }];
+      },
+    })) as any;
+    UpdateOperations.Update = (async (_c: any, condition: any) => {
+      written = { condition };
+      return [{ Id: 'w1' }];
+    }) as any;
+    expect(await updateModelFieldTranslations(FieldTranslationsWidget as any, 'w1', 'Name', { zh_CN: '新' })).toBe(true);
+    expect(written?.condition?.And?.[1]?.[2]).toEqual(new Date('2024-06-01T00:00:00.000Z'));
+
+    RepositoryFactory.getRepository = (() => ({
+      async search() {
+        return [{ Id: 'w1', UpdatedAt: Date.parse('2024-07-01T00:00:00.000Z'), Name: { en_US: 'Hello' } }];
+      },
+    })) as any;
+    expect(await updateModelFieldTranslations(FieldTranslationsWidget as any, 'w1', 'Name', { zh_CN: '二' })).toBe(true);
+    expect(written?.condition?.And?.[1]?.[2]).toEqual(new Date('2024-07-01T00:00:00.000Z'));
+
+    RepositoryFactory.getRepository = (() => ({
+      async search() {
+        return [{ Id: 'w1', UpdatedAt: 'not-a-date', Name: { en_US: 'Hello' } }];
+      },
+    })) as any;
+    expect(await updateModelFieldTranslations(FieldTranslationsWidget as any, 'w1', 'Name', { zh_CN: '三' })).toBe(true);
+    expect(written?.condition).toEqual(['Id', '=', 'w1']);
+  } finally {
+    RepositoryFactory.getRepository = originalRepo;
+    UpdateOperations.Update = originalUpdate;
+  }
+});

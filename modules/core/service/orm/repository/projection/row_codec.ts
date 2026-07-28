@@ -312,24 +312,17 @@ export function decodeFromDb(meta: ModelMetadata, row: Entity): Entity {
               mapOut[ck] = null;
               continue;
             }
-            try {
-              const source = isBigdecimalEnvelope(cv) ? cv.$bigdecimal : cv;
-              const d = normalizeDecimalByMeta(overrideFm, source);
-              mapOut[ck] = d ?? cv;
-            } catch {
-              mapOut[ck] = cv;
-            }
+            const source = isBigdecimalEnvelope(cv) ? cv.$bigdecimal : cv;
+            const d = normalizeDecimalByMeta(overrideFm, source);
+            mapOut[ck] = d ?? cv;
           }
           out[k] = mapOut;
           return;
         }
-        try {
+        {
           const source = isBigdecimalEnvelope(decoded) ? decoded.$bigdecimal : decoded;
           const d = normalizeDecimalByMeta(overrideFm, source);
-          if (d) out[k] = d;
-          else out[k] = decoded;
-        } catch {
-          out[k] = decoded;
+          out[k] = d ?? decoded;
         }
         return;
       }

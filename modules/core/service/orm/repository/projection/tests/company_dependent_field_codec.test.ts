@@ -18,6 +18,7 @@ import {
   normalizeCompanyDependentScalarValue,
   parseCompanyDependentStoredMap,
   payloadHasCompanyDependentFieldWrite,
+  resolveCompanyDependentCompanyId,
   unwrapCompanyDependentValue,
 } from '../company_dependent_field_codec';
 
@@ -381,4 +382,28 @@ test('companyDependent apply write covers replace ctx, missing company, skips', 
     )
   );
   expect(replaced).toEqual({ Cost: { C9: 9 } });
+});
+
+test('companyDependent normalize hits invalid-decimal fallbacks and empty merge null', () => {
+  expect(parseCompanyDependentStoredMap('hello')).toBeNull(); // !maybeJsonFast → bare string
+  expect(parseCompanyDependentStoredMap('world')).toBeNull();
+
+  const decimalFm = { type: 'decimal', column: { scale: 2 } } as any;
+  expect(normalizeCompanyDependentScalarValue({ $bigdecimal: 'not-a-number' }, decimalFm)).toBe('not-a-number');
+  expect(normalizeCompanyDependentScalarValue('nope', decimalFm)).toBe('nope');
+  // Decimal instance that normalizes to undefined → toString fallback.
+  const badDec = new Decimal(NaN);
+  expect(normalizeCompanyDependentScalarValue(badDec, decimalFm)).toBe(badDec.toString());
+
+  expect(
+    mergeCompanyDependentWrite({
+      fieldName: 'Cost',
+      value: {},
+      companyId: 'C1',
+      currentMap: null,
+      mode: 'update',
+    })
+  ).toBeNull();
+
+  expect(withContext({ activeCompanyId: '' }, () => resolveCompanyDependentCompanyId())).toBeUndefined();
 });

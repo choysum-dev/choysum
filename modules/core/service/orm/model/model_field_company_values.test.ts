@@ -219,3 +219,43 @@ test('updateModelFieldCompanyValues accepts UpdatedAt string/number and rejects 
     UpdateOperations.Update = originalUpdate;
   }
 });
+
+test('get/update company values cover undefined fieldName/id coercions', async () => {
+  let err: unknown;
+  try {
+    await getModelFieldCompanyValues(FieldCompanyValuesWidget as any, 'w1', undefined as any);
+  } catch (e) {
+    err = e;
+  }
+  expect(String((err as Error)?.message || err)).toMatch(/non-empty fieldName/);
+
+  err = undefined;
+  try {
+    await updateModelFieldCompanyValues(FieldCompanyValuesWidget as any, undefined as any, 'Cost', { C1: 1 });
+  } catch (e) {
+    err = e;
+  }
+  expect(String((err as Error)?.message || err)).toMatch(/non-empty id/);
+});
+
+test('updateModelFieldCompanyValues ignores Invalid Date UpdatedAt', async () => {
+  const originalRepo = RepositoryFactory.getRepository;
+  const originalUpdate = UpdateOperations.Update;
+  let written: { condition: any } | undefined;
+  try {
+    RepositoryFactory.getRepository = (() => ({
+      async search() {
+        return [{ Id: 'w1', UpdatedAt: new Date('invalid'), Cost: { C1: 1 } }];
+      },
+    })) as any;
+    UpdateOperations.Update = (async (_c: any, condition: any) => {
+      written = { condition };
+      return [{ Id: 'w1' }];
+    }) as any;
+    expect(await updateModelFieldCompanyValues(FieldCompanyValuesWidget as any, 'w1', 'Cost', { C1: 2 })).toBe(true);
+    expect(written?.condition).toEqual(['Id', '=', 'w1']);
+  } finally {
+    RepositoryFactory.getRepository = originalRepo;
+    UpdateOperations.Update = originalUpdate;
+  }
+});

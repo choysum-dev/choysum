@@ -68,3 +68,12 @@ test('buildCompanyDependentFieldUnwrapExpr covers all dialect aliases', () => {
   }
   expect(quoteJsonObjectPath('a\\b"c')).toBe('$."a\\\\b\\"c"');
 });
+
+test('buildCompanyDependentFieldUnwrapExpr defaults empty dialect to postgres path', () => {
+  const eb = createExpressionBuilder();
+  const expr = buildCompanyDependentFieldUnwrapExpr('', eb, 't.Cost', 'comp_main') as any;
+  const raw = JSON.stringify(expr.toOperationNode());
+  expect(raw.includes('->>')).toBe(true);
+  const expr2 = buildCompanyDependentFieldUnwrapExpr(undefined as any, eb, 't.Cost', 'comp_main') as any;
+  expect(typeof expr2.toOperationNode).toBe('function');
+});

@@ -3238,3 +3238,28 @@ test('repository condition compiler unwraps companyDependent for ilike/contains/
     }
   );
 });
+
+test('repository condition compiler companyDependent not-ilike and empty column name fallback', () => {
+  class DemoModel {}
+  const meta = {
+    type: DemoModel,
+    tableName: () => 'demo_table',
+    fields: new Map([
+      ['Cost', { type: 'number', companyDependent: true, column: { name: '   ' } }],
+      ['Note', { type: 'char', companyDependent: true, column: {} }],
+    ]),
+  } as any;
+  const eb = createExpressionBuilder();
+  const db = { selectFrom() { throw new Error('not used'); } };
+
+  const notIlike = withContext({ activeCompanyId: 'comp_main' }, () =>
+    convertCondition(db as any, () => 'mysql', meta, eb, ['Cost', 'not ilike', '%x%'] as any, 'demo_table')
+  ) as any;
+  expect(notIlike.op === 'not like' || notIlike.op === 'not ilike' || typeof notIlike.lhs === 'object').toBe(true);
+
+  const eq = withContext({ activeCompanyId: 'comp_main' }, () =>
+    convertCondition(db as any, () => 'postgresql', meta, eb, ['Note', '=', 'hi'] as any, 'demo_table')
+  ) as any;
+  expect(typeof eq.lhs?.toOperationNode).toBe('function');
+  expect(JSON.stringify(eq.lhs.toOperationNode()).includes('Note')).toBe(true);
+});

@@ -195,3 +195,37 @@ test('repository ordering unwraps companyDependent scalar fields', () => {
   const expr = calls[0].arg(eb);
   expect(typeof (expr as any).toOperationNode).toBe('function');
 });
+
+test('repository ordering companyDependent falls back when getDialect is omitted', () => {
+  const calls: Array<Record<string, any>> = [];
+  const query = {
+    orderBy(arg: any, direction: string) {
+      calls.push({ arg, direction });
+      return this;
+    },
+  };
+
+  applyOrderByToQuery(
+    query as any,
+    {
+      fields: new Map([['Cost', { companyDependent: true, column: { name: 'Cost' } }]]),
+      type: { name: 'Demo' },
+    } as any,
+    'demo_table',
+    [{ field: 'Cost', order: 'asc' }],
+    {
+      resolvePathField() {
+        throw new Error('unused');
+      },
+      resolveSelectField() {
+        throw new Error('unused');
+      },
+      // getDialect intentionally omitted → || 'postgres'
+    }
+  );
+
+  expect(typeof calls[0].arg).toBe('function');
+  const eb: any = (lhs: any, op: any, rhs: any) => ({ lhs, op, rhs });
+  eb.ref = (path: string) => ({ kind: 'ref', path });
+  expect(typeof calls[0].arg(eb).toOperationNode).toBe('function');
+});

@@ -622,4 +622,51 @@ describe('OFieldBase company values action', () => {
     });
     expect(wrapper.find('.o-field-base__company-values-btn').exists()).toBe(false);
   });
+
+  it('panelRecordId catch hides company-values action', async () => {
+    const boomRecord = makeBinding({ string: 'Cost', companyDependent: true });
+    boomRecord.meta = { string: 'Cost', companyDependent: true } as any;
+    let recordRefCalls = 0;
+    const okRecord = computed(() => ({ Id: '1' }));
+    boomRecord.recordRef = () => {
+      recordRefCalls += 1;
+      if (recordRefCalls === 1) return okRecord as any;
+      return {
+        get value() {
+          throw new Error('record boom');
+        },
+      } as any;
+    };
+
+    const hidden = mount(OFieldBase, {
+      props: { binding: boomRecord, renderMode: 'form' },
+      slots: { edit: () => h(EditStub) },
+      global: { stubs: { ...fieldBaseStubs, OFieldCompanyValuesDialog: true } },
+    });
+    expect(hidden.find('.o-field-base__company-values-btn').exists()).toBe(false);
+  });
+
+  it('blank field type yields undefined companyValues fieldType', async () => {
+    const binding = makeBinding({ string: 'Cost', companyDependent: true });
+    binding.meta = { string: 'Cost', companyDependent: true, type: '   ' } as any;
+
+    const wrapper = mount(OFieldBase, {
+      props: { binding, renderMode: 'form' },
+      slots: { edit: () => h(EditStub) },
+      global: {
+        stubs: {
+          ...fieldBaseStubs,
+          OFieldCompanyValuesDialog: {
+            name: 'OFieldCompanyValuesDialog',
+            props: ['modelValue', 'fieldType'],
+            template: '<div class="company-dialog-stub" :data-open="modelValue" :data-type="String(fieldType)" />',
+          },
+        },
+      },
+    });
+    await wrapper.find('.o-field-base__company-values-btn').trigger('click');
+    await nextTick();
+    expect(wrapper.find('.company-dialog-stub').attributes('data-type')).toBe('undefined');
+  });
+
 });

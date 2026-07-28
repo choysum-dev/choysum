@@ -606,4 +606,125 @@ describe('OFieldCompanyValuesDialog', () => {
     await flushOpen();
     expect(UpdateFieldCompanyValues).toHaveBeenCalledWith('r1', 'Flag', { comp_eu: false, comp_main: false });
   });
+
+  it('covers remaining coerce and error fallbacks', async () => {
+    const { ElMessage } = await import('element-plus');
+    authStoreState.throwOnAccess = false;
+    authStoreState.metadata = {
+      allowedCompanyIds: ['comp_main', 'comp_eu'],
+      enabledCompanyIds: ['comp_main', 'comp_eu'],
+      activeCompanyId: 'comp_main',
+    };
+    companyResponses.rows = [
+      { Id: 'comp_main', DisplayName: 'Main' },
+      { Id: '', DisplayName: 'Ghost' },
+      { Id: 'comp_eu', DisplayName: 'EU' },
+    ];
+
+    // integer / float / decimal / bigint / boolean whitespace
+    for (const [fieldType, input, expected] of [
+      ['integer', '7', 7],
+      ['bigint', '8', 8],
+      ['float', '1.25', 1.25],
+      ['decimal', '2.5', 2.5],
+    ] as const) {
+      const UpdateFieldCompanyValues = vi.fn(async () => true);
+      const wrapper = mountDialog({
+        modelValue: true,
+        store: {
+          GetFieldCompanyValues: vi.fn(async () => ({ comp_main: '1' })),
+          UpdateFieldCompanyValues,
+          Browse: vi.fn(async () => ({ X: expected })),
+        } as any,
+        recordId: 'r1',
+        fieldName: 'X',
+        fieldLabel: 'X',
+        fieldType,
+      });
+      await flushOpen();
+      await wrapper.findAll('.input')[inputIndexByLabel(wrapper, 'EU')]!.setValue(input);
+      const buttons = wrapper.findAll('.btn');
+      await buttons[buttons.length - 1]!.trigger('click');
+      await flushOpen();
+      expect(UpdateFieldCompanyValues).toHaveBeenCalledWith('r1', 'X', { comp_eu: expected });
+      wrapper.unmount();
+    }
+
+    // boolean whitespace-only → true via coerce
+    const UpdateBool = vi.fn(async () => true);
+    const boolWrapper = mountDialog({
+      modelValue: true,
+      store: {
+        GetFieldCompanyValues: vi.fn(async () => ({ comp_main: false, comp_eu: false })),
+        UpdateFieldCompanyValues: UpdateBool,
+        Browse: vi.fn(async () => ({ Flag: true })),
+      } as any,
+      recordId: 'r1',
+      fieldName: 'Flag',
+      fieldType: 'boolean',
+    });
+    await flushOpen();
+    await boolWrapper.findAll('.input')[inputIndexByLabel(boolWrapper, 'EU')]!.setValue('   ');
+    await boolWrapper.findAll('.btn')[boolWrapper.findAll('.btn').length - 1]!.trigger('click');
+    await flushOpen();
+    expect(UpdateBool).toHaveBeenCalledWith('r1', 'Flag', { comp_eu: true });
+    boolWrapper.unmount();
+
+    // load error without Error.message (string throw) hits err || fallback chain
+    const GetFail = vi.fn(async () => {
+      throw 'load-string';
+    });
+    const failWrapper = mountDialog({
+      modelValue: true,
+      store: { GetFieldCompanyValues: GetFail, UpdateFieldCompanyValues: vi.fn(), Browse: vi.fn() } as any,
+      recordId: 'r1',
+      fieldName: 'Cost',
+    });
+    await flushOpen();
+    expect(ElMessage.error).toHaveBeenCalled();
+    failWrapper.unmount();
+
+    // save error without message
+    const UpdateFail = vi.fn(async () => {
+      throw 'save-string';
+    });
+    const saveWrapper = mountDialog({
+      modelValue: true,
+      store: {
+        GetFieldCompanyValues: vi.fn(async () => ({ comp_main: '1' })),
+        UpdateFieldCompanyValues: UpdateFail,
+        Browse: vi.fn(),
+      } as any,
+      recordId: 'r1',
+      fieldName: 'Cost',
+      fieldType: 'char',
+    });
+    await flushOpen();
+    await saveWrapper.findAll('.input')[inputIndexByLabel(saveWrapper, 'EU')]!.setValue('z');
+    await saveWrapper.findAll('.btn')[saveWrapper.findAll('.btn').length - 1]!.trigger('click');
+    await flushOpen();
+    expect(ElMessage.error).toHaveBeenCalled();
+
+    // empty allowlist → enabled ∪ keys; Search non-array
+    authStoreState.metadata = {
+      allowedCompanyIds: [],
+      enabledCompanyIds: ['comp_main'],
+      activeCompanyId: 'comp_main',
+    };
+    companyResponses.rows = null as any;
+    const emptyAllow = mountDialog({
+      modelValue: true,
+      store: {
+        GetFieldCompanyValues: vi.fn(async () => ({ comp_main: '1', extra: '2' })),
+        UpdateFieldCompanyValues: vi.fn(),
+        Browse: vi.fn(),
+      } as any,
+      recordId: 'r1',
+      fieldName: 'Cost',
+      maxLength: undefined,
+    });
+    await flushOpen();
+    expect(emptyAllow.findAll('.item').length).toBeGreaterThan(0);
+  });
+
 });
