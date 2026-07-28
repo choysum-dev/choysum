@@ -779,6 +779,109 @@ test('validation engine rechecks checkCompany relations when only CompanyId chan
   ]);
 });
 
+test('validation engine covers checkCompany enqueue and ref-id edge branches', async () => {
+  RepositoryFactory.setRepository(
+    PlatformCompanyTargetModel as any,
+    {
+      withDeleted() {
+        return this;
+      },
+      async search() {
+        return [{ Id: 'target_edge_enqueue', CompanyId: 'company_a' }];
+      },
+    } as any
+  );
+
+  const baseMeta = MetadataStorage.instance.getModelMetadata(PlatformCheckCompanySourceModel as any);
+  const enrichedFields = new Map(baseMeta.fields);
+  // ManyToOneRef + checkCompany: exercises `type !== ManyToOne && type !== ManyToOneRef` false path.
+  enrichedFields.set('TargetRefId', {
+    name: 'TargetRefId',
+    type: 'ManyToOneRef',
+    checkCompany: true,
+    relation: { targetModel: () => PlatformCompanyTargetModel },
+  } as any);
+  // Non-relation checkCompany (metadata-only): skipped by the type guard continue.
+  enrichedFields.set('Label', {
+    name: 'Label',
+    type: 'varchar',
+    checkCompany: true,
+  } as any);
+  const enrichedMeta = { ...baseMeta, fields: enrichedFields };
+
+  // CompanyId only in values (not changedFields) still enqueues checkCompany relations.
+  const fromValuesOnly = await ValidationEngine.validate(
+    {
+      mode: 'update',
+      model: PlatformCheckCompanySourceModel as any,
+      metadata: enrichedMeta,
+      current: {
+        CompanyId: 'company_a',
+        TargetId: 'target_edge_enqueue',
+        TargetRefId: 'target_edge_enqueue',
+      },
+      values: { CompanyId: 'company_b' },
+      changedFields: new Set(),
+      repository: {} as any,
+      requestContext: {
+        enabledCompanyIds: ['company_a', 'company_b'],
+        activeCompanyId: 'company_b',
+      },
+    } as any,
+    { includeKernel: false, includeConstraints: false }
+  );
+  expect(fromValuesOnly.map(i => i.field).sort()).toEqual(['TargetId', 'TargetRefId']);
+  expect(fromValuesOnly.every(i => i.code === 'platform_check_company_violation')).toBe(true);
+
+  // Falsy changedFields / values fall back to [] / {} while still resolving from current.
+  const falsyCtxBags = await ValidationEngine.validate(
+    {
+      mode: 'update',
+      model: PlatformCheckCompanySourceModel as any,
+      metadata: enrichedMeta,
+      current: {
+        CompanyId: 'company_a',
+        TargetId: 'target_edge_enqueue',
+        TargetRefId: 'target_edge_enqueue',
+      },
+      values: undefined,
+      changedFields: undefined,
+      repository: {} as any,
+      requestContext: {
+        enabledCompanyIds: ['company_a', 'company_b'],
+        activeCompanyId: 'company_a',
+      },
+    } as any,
+    { includeKernel: false, includeConstraints: false }
+  );
+  expect(falsyCtxBags).toEqual([]);
+
+  // CompanyId change with values omitted: enqueue via changedFields and resolve relation from current.
+  const omittedValues = await ValidationEngine.validate(
+    {
+      mode: 'update',
+      model: PlatformCheckCompanySourceModel as any,
+      metadata: enrichedMeta,
+      current: {
+        CompanyId: 'company_a',
+        TargetId: 'target_edge_enqueue',
+        TargetRefId: 'target_edge_enqueue',
+      },
+      values: undefined,
+      changedFields: new Set(['CompanyId']),
+      repository: {} as any,
+      requestContext: {
+        enabledCompanyIds: ['company_a', 'company_b'],
+        activeCompanyId: 'company_b',
+      },
+    } as any,
+    { includeKernel: false, includeConstraints: false }
+  );
+  // Parent company falls back to current CompanyId (company_a) when values omit CompanyId key,
+  // so related company_a remains compatible.
+  expect(omittedValues).toEqual([]);
+});
+
 test('validation engine allows check_company when parent and related companies match', async () => {
   RepositoryFactory.setRepository(
     PlatformCompanyTargetModel as any,

@@ -163,7 +163,7 @@ export class ValidationEngine {
       (ctx.mode === 'create' || ctx.mode === 'update') &&
       (ctx.changedFields?.has('CompanyId') || Object.prototype.hasOwnProperty.call(ctx.values || {}, 'CompanyId'))
     ) {
-      for (const [name, fieldMeta] of ctx.metadata.fields || []) {
+      for (const [name, fieldMeta] of ctx.metadata.fields) {
         if (!fieldMeta?.checkCompany) continue;
         if (fieldMeta.type !== 'ManyToOne' && fieldMeta.type !== 'ManyToOneRef') continue;
         fields.add(name);
