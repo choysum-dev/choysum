@@ -100,4 +100,67 @@ describe('auth view action wiring', () => {
     expect(form).toContain(':has-action="hasAction"');
     expect(form).toContain('usePermission');
   });
+
+  it('wires RoleRecordRule list/form views to permission-aware action ids', () => {
+    const list = viewSource('RoleRecordRuleListView.vue');
+    const form = viewSource('RoleRecordRuleFormView.vue');
+
+    expect(list).toContain("defineModelActions('auth.RoleRecordRule', {");
+    expect(list).toContain("entityTitle: _lt('Record Rule')");
+    expect(list).toContain(':action-ids="{ create: recordRuleActions.create, delete: recordRuleActions.delete }"');
+    expect(list).toContain('usePermission');
+    expect(list).toContain('/auth/record-rules/');
+
+    expect(form).toContain("defineModelActions('auth.RoleRecordRule', {");
+    expect(form).toContain('prop="RoleId"');
+    expect(form).toContain('prop="Kind"');
+    expect(form).toContain('RoleRecordRuleAudienceHints');
+    expect(form).toContain('usePermission');
+  });
+
+  it('wires RoleFieldRule list/form views to permission-aware action ids', () => {
+    const list = viewSource('RoleFieldRuleListView.vue');
+    const form = viewSource('RoleFieldRuleFormView.vue');
+
+    expect(list).toContain("defineModelActions('auth.RoleFieldRule', {");
+    expect(list).toContain("entityTitle: _lt('Field Rule')");
+    expect(list).toContain(':action-ids="{ create: fieldRuleActions.create, delete: fieldRuleActions.delete }"');
+    expect(list).toContain('/auth/field-rules/');
+
+    expect(form).toContain("defineModelActions('auth.RoleFieldRule', {");
+    expect(form).toContain('prop="RoleId"');
+    expect(form).toContain('prop="IrFieldId"');
+    expect(form).toContain('usePermission');
+  });
+
+  it('wires RoleMethodAccess list/form views to permission-aware action ids', () => {
+    const list = viewSource('RoleMethodAccessListView.vue');
+    const form = viewSource('RoleMethodAccessFormView.vue');
+
+    expect(list).toContain("defineModelActions('auth.RoleMethodAccess', {");
+    expect(list).toContain("entityTitle: _lt('Method Access')");
+    expect(list).toContain(':action-ids="{ create: methodAccessActions.create, delete: methodAccessActions.delete }"');
+    expect(list).toContain('/auth/method-accesses/');
+
+    expect(form).toContain("defineModelActions('auth.RoleMethodAccess', {");
+    expect(form).toContain('prop="RoleId"');
+    expect(form).toContain('prop="IrServiceId"');
+    expect(form).toContain('prop="Mode"');
+    expect(form).toContain('usePermission');
+  });
+
+  it('wires RoleUiResource list/form views to permission-aware action ids', () => {
+    const list = viewSource('RoleUiResourceListView.vue');
+    const form = viewSource('RoleUiResourceFormView.vue');
+
+    expect(list).toContain("defineModelActions('auth.RoleUiResource', {");
+    expect(list).toContain("entityTitle: _lt('UI Resource Grant')");
+    expect(list).toContain(':action-ids="{ create: uiResourceGrantActions.create, delete: uiResourceGrantActions.delete }"');
+    expect(list).toContain('/auth/ui-resource-grants/');
+
+    expect(form).toContain("defineModelActions('auth.RoleUiResource', {");
+    expect(form).toContain('prop="RoleId"');
+    expect(form).toContain('prop="IrUiResourceId"');
+    expect(form).toContain('usePermission');
+  });
 });

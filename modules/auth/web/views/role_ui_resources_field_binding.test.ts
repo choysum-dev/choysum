@@ -50,7 +50,7 @@ describe('Role UiResources field binding', () => {
     expect(source).not.toContain('RecordRules.RoleId');
     expect(source).not.toContain('Applies to Role (empty = all users)');
     expect(source).toContain('This form only edits rules for this role');
-    expect(source).toContain('dedicated menus');
+    expect(source).toContain('Access Control → Access Rules');
     expect(source).toContain('RecordRules.IrApplicationId');
     expect(source).toContain('FieldRules.IrApplicationId');
     expect(source).toContain('MethodAccesses.IrApplicationId');
