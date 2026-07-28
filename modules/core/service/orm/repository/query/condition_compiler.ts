@@ -35,14 +35,16 @@ function supportsContainsFieldType(fieldMeta: FieldMetadata | undefined): boolea
 }
 
 /** Prefer explicit column.name when present (ManyToOne FK remap); else logical field name. */
-function resolveStoredColumnName(fieldMeta: FieldMetadata | undefined, fieldName: string): string {
-  const column = fieldMeta == null ? undefined : (fieldMeta as { column?: unknown }).column;
-  if (column == null || typeof column !== 'object') return fieldName;
-  if (!('name' in (column as object))) return fieldName;
+function resolveStoredColumnName(fieldMeta: FieldMetadata, fieldName: string): string {
+  const column = (fieldMeta as { column?: unknown }).column;
+  if (column == null) return fieldName;
+  if (typeof column !== 'object') return fieldName;
+  if (!('name' in column)) return fieldName;
   const name = (column as { name?: unknown }).name;
   if (typeof name !== 'string') return fieldName;
   const trimmed = name.trim();
-  return trimmed ? trimmed : fieldName;
+  if (!trimmed) return fieldName;
+  return trimmed;
 }
 
 function isPostgresDialect(dialect: string): boolean {
@@ -188,11 +190,14 @@ export function convertCondition(
               lhsExpr = resolved;
             } else if (meta.fields.get(fieldName)?.translate) {
               lhsExpr = buildTranslatedFieldUnwrapExpr(dialect, eb, `${selfTable}.${fieldName}`);
-            } else if (meta.fields.get(fieldName)?.companyDependent) {
-              const col = resolveStoredColumnName(meta.fields.get(fieldName), fieldName);
-              lhsExpr = buildCompanyDependentFieldUnwrapExpr(dialect, eb, `${selfTable}.${col}`);
             } else {
-              lhsExpr = repositoryPredicateRef(eb, `${selfTable}.${fieldName}`);
+              const leafMeta = meta.fields.get(fieldName);
+              if (leafMeta?.companyDependent) {
+                const col = resolveStoredColumnName(leafMeta, fieldName);
+                lhsExpr = buildCompanyDependentFieldUnwrapExpr(dialect, eb, `${selfTable}.${col}`);
+              } else {
+                lhsExpr = repositoryPredicateRef(eb, `${selfTable}.${fieldName}`);
+              }
             }
           }
         } else {
@@ -253,12 +258,15 @@ export function convertCondition(
                 throw new Error(`field sql compute handler is missing: ${modelLabel}.${fieldName}`);
               }
               lhsExpr = resolved;
-            } else if (meta.fields.get(fieldName)?.companyDependent) {
-              // Unwrap active-company scalar so contains does not match the whole company map blob.
-              const col = resolveStoredColumnName(meta.fields.get(fieldName), fieldName);
-              lhsExpr = buildCompanyDependentFieldUnwrapExpr(dialect, eb, `${selfTable}.${col}`);
             } else {
-              lhsExpr = repositoryPredicateRef(eb, `${selfTable}.${fieldName}`);
+              const leafMeta = meta.fields.get(fieldName);
+              if (leafMeta?.companyDependent) {
+                // Unwrap active-company scalar so contains does not match the whole company map blob.
+                const col = resolveStoredColumnName(leafMeta, fieldName);
+                lhsExpr = buildCompanyDependentFieldUnwrapExpr(dialect, eb, `${selfTable}.${col}`);
+              } else {
+                lhsExpr = repositoryPredicateRef(eb, `${selfTable}.${fieldName}`);
+              }
             }
           }
         } else {
@@ -380,9 +388,12 @@ export function convertCondition(
             .where(`t.deleted_at`, 'is', null);
         }
 
-        const fkLhs = fieldMeta.companyDependent
-          ? buildCompanyDependentFieldUnwrapExpr(dialect as DialectName, eb, `${selfTable}.${fkCol}`)
-          : repositoryPredicateRef(eb, `${selfTable}.${fkCol}`);
+        let fkLhs: unknown;
+        if (fieldMeta.companyDependent) {
+          fkLhs = buildCompanyDependentFieldUnwrapExpr(dialect as DialectName, eb, `${selfTable}.${fkCol}`);
+        } else {
+          fkLhs = repositoryPredicateRef(eb, `${selfTable}.${fkCol}`);
+        }
         return repositoryPredicateCall(eb, fkLhs, 'in', subquery);
       }
 
@@ -422,8 +433,9 @@ export function convertCondition(
           );
         }
 
-        if (fieldMeta?.companyDependent) {
-          const dialect = String(getDialect() || 'postgres') as DialectName;
+        if (fieldMeta && fieldMeta.companyDependent) {
+          const rawDialect = getDialect();
+          const dialect = (rawDialect ? String(rawDialect) : 'postgres') as DialectName;
           const col = resolveStoredColumnName(fieldMeta, fieldName);
           const unwrap = buildCompanyDependentFieldUnwrapExpr(dialect, eb, `${selfTable}.${col}`);
           const right = wrapIfDecimal(fieldName, effectiveOp, effectiveRhs);

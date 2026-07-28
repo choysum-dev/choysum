@@ -471,7 +471,7 @@ describe('OFieldBase company values action', () => {
             props: ['modelValue', 'fieldName', 'maxLength', 'draftValue', 'fieldType'],
             emits: ['update:modelValue', 'saved'],
             template:
-              '<div class="company-dialog-stub" :data-open="modelValue" :data-field="fieldName" :data-max="maxLength" :data-draft="draftValue" :data-type="fieldType"><button class="emit-saved" @click="$emit(\'saved\', \'11.5\')" /></div>',
+              '<div class="company-dialog-stub" :data-open="modelValue" :data-field="fieldName" :data-max="maxLength" :data-draft="draftValue" :data-type="fieldType"><button class="emit-close" @click="$emit(\'update:modelValue\', false)" /><button class="emit-saved" @click="$emit(\'saved\', \'11.5\')" /></div>',
           },
         },
       },
@@ -486,6 +486,11 @@ describe('OFieldBase company values action', () => {
     expect(dialog.attributes('data-max')).toBe('80');
     expect(dialog.attributes('data-draft')).toBe('old');
     expect(dialog.attributes('data-type')).toBe('number');
+    await dialog.find('.emit-close').trigger('click');
+    await nextTick();
+    expect(wrapper.find('.company-dialog-stub').attributes('data-open')).toBe('false');
+    await wrapper.find('.o-field-base__company-values-btn').trigger('click');
+    await nextTick();
     await dialog.find('.emit-saved').trigger('click');
     expect(value.value).toBe('11.5');
   });
@@ -635,6 +640,8 @@ describe('OFieldBase company values action', () => {
       },
     });
     expect(wrapper.find('.o-field-base__company-values-btn').exists()).toBe(false);
+    // Force-evaluate the computed (form branch is not rendered in table mode).
+    expect((wrapper.vm as any).$.setupState.showCompanyValuesAction).toBe(false);
   });
 
   it('panelRecordId catch hides company-values action', async () => {

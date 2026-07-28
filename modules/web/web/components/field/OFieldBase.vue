@@ -427,7 +427,7 @@ const showCompanyValuesAction = computed(() => {
   if (!binding.env.isEditMode) return false;
   if (!panelRecordId.value) return false;
   const meta = effectiveFieldMeta.value as { companyDependent?: boolean } | undefined;
-  return meta != null && meta.companyDependent === true;
+  return Boolean(meta && meta.companyDependent === true);
 });
 
 const companyValuesFieldType = computed(() => {
@@ -478,7 +478,7 @@ function onCompanyValuesSaved(nextValue: unknown) {
     const fieldRef = valueForm() as WritableComputedRef<View> | null | undefined;
     if (fieldRef == null) return;
     fieldRef.value = nextValue as View;
-  } catch {
+  } catch (_err) {
     // Ignore draft write failures; Browse already refreshed server state.
   }
 }
@@ -718,13 +718,7 @@ const effectiveEditForRow = (row: T) => binding.env.isEditMode && cellVisibleFor
 
 /* Clear server errors when the field value changes, after all variable definitions */
 watch(
-  () => {
-    try {
-      return rawValueForm()?.value;
-    } catch {
-      return undefined;
-    }
-  },
+  () => rawValueForm().value,
   () => {
     if (serverError.value && fieldErrors?.value) {
       fieldErrors.value.delete(String(binding.prop));

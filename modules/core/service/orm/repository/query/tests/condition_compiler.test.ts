@@ -1918,6 +1918,11 @@ test('repository condition compiler companyDependent comparison uses physical co
     convertCondition(db as any, () => '', meta, eb, ['Owner', '=', 'p1'] as any, 'demo_table')
   ) as any;
   expect(typeof emptyDialect.lhs?.toOperationNode).toBe('function');
+
+  const nullDialect = withContext({ activeCompanyId: 'comp_main' }, () =>
+    convertCondition(db as any, () => null as any, meta, eb, ['Owner', '=', 'p1'] as any, 'demo_table')
+  ) as any;
+  expect(typeof nullDialect.lhs?.toOperationNode).toBe('function');
 });
 
 test('repository condition compiler contains without selfTable falls back to raw ref path', () => {
