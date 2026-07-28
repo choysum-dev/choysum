@@ -661,6 +661,64 @@ test('validation engine allows check_company when related row is shared (Company
   expect(issues).toEqual([]);
 });
 
+test('validation engine skips check_company when parent CompanyId is explicitly shared', async () => {
+  RepositoryFactory.setRepository(
+    PlatformCompanyTargetModel as any,
+    {
+      withDeleted() {
+        return this;
+      },
+      async search() {
+        return [{ Id: 'target_parent_shared', CompanyId: 'company_b' }];
+      },
+    } as any
+  );
+
+  const metadata = MetadataStorage.instance.getModelMetadata(PlatformCheckCompanySourceModel as any);
+
+  const fromValues = await ValidationEngine.validate(
+    {
+      mode: 'update',
+      model: PlatformCheckCompanySourceModel as any,
+      metadata,
+      current: { CompanyId: 'company_a' },
+      values: { TargetId: 'target_parent_shared', CompanyId: null },
+      changedFields: new Set(['TargetId', 'CompanyId']),
+      repository: {} as any,
+      requestContext: {
+        enabledCompanyIds: ['company_a', 'company_b'],
+        activeCompanyId: 'company_a',
+      },
+    } as any,
+    {
+      includeKernel: false,
+      includeConstraints: false,
+    }
+  );
+  expect(fromValues).toEqual([]);
+
+  const fromCurrent = await ValidationEngine.validate(
+    {
+      mode: 'update',
+      model: PlatformCheckCompanySourceModel as any,
+      metadata,
+      current: { CompanyId: null },
+      values: { TargetId: 'target_parent_shared' },
+      changedFields: new Set(['TargetId']),
+      repository: {} as any,
+      requestContext: {
+        enabledCompanyIds: ['company_a', 'company_b'],
+        activeCompanyId: 'company_a',
+      },
+    } as any,
+    {
+      includeKernel: false,
+      includeConstraints: false,
+    }
+  );
+  expect(fromCurrent).toEqual([]);
+});
+
 test('validation engine allows check_company when parent and related companies match', async () => {
   RepositoryFactory.setRepository(
     PlatformCompanyTargetModel as any,

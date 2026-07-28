@@ -459,14 +459,20 @@ export class ValidationEngine {
   /**
    * Resolve the parent row's CompanyId for check_company comparisons.
    *
-   * Prefers the write payload, then the existing row (`current`), then the request
-   * active company (covers Create before repository defaulting fills CompanyId).
+   * Prefers an explicit `CompanyId` in the write payload, then on the existing
+   * row (`current`). Only when neither source declares the key do we fall back
+   * to the request active company (Create before repository defaulting fills
+   * CompanyId). Explicit null/empty means shared parent and must not fall through.
    */
   private static resolveParentCompanyId(ctx: ConstraintContext): string {
-    const fromValues = this.resolveReferenceId((ctx.values as ObjectRecord | undefined)?.CompanyId);
-    if (fromValues) return fromValues;
-    const fromCurrent = this.resolveReferenceId((ctx.current as ObjectRecord | undefined)?.CompanyId);
-    if (fromCurrent) return fromCurrent;
+    const values = ctx.values as ObjectRecord | undefined;
+    if (values && Object.prototype.hasOwnProperty.call(values, 'CompanyId')) {
+      return this.resolveReferenceId(values.CompanyId) ?? '';
+    }
+    const current = ctx.current as ObjectRecord | undefined;
+    if (current && Object.prototype.hasOwnProperty.call(current, 'CompanyId')) {
+      return this.resolveReferenceId(current.CompanyId) ?? '';
+    }
     const req = (ctx.requestContext && typeof ctx.requestContext === 'object' ? ctx.requestContext : {}) as ObjectRecord;
     return String(req.activeCompanyId ?? req.ActiveCompanyId ?? '').trim();
   }
