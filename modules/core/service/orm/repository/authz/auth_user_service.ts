@@ -70,11 +70,9 @@ export function isAuthServiceUnavailable(err: unknown): boolean {
  */
 export function isAuthServiceNotPresent(err: unknown): boolean {
   const errRecord = asObjectRecord(err);
+  // ChoysumError exposes grpcCode as an own property, so the object-code check covers it.
   const code = errRecord?.grpcCode ?? errRecord?.code;
   if (code === GrpcCode.Unimplemented || code === GrpcCode.NotFound) return true;
-  if (err instanceof ChoysumError) {
-    return err.grpcCode === GrpcCode.Unimplemented || err.grpcCode === GrpcCode.NotFound;
-  }
 
   const msg = String(errRecord?.message ?? (err instanceof Error ? err.message : '') ?? '');
   if (/no registered proto files for app\s+auth/i.test(msg)) return true;

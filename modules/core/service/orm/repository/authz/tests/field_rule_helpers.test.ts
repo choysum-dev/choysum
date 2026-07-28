@@ -156,6 +156,11 @@ test('buildFailClosedFieldRuleSpec skips system fields and tolerates missing fie
     denyWriteFields: [],
     reason: 'auth_service_unavailable',
   });
+  expect(buildFailClosedFieldRuleSpec({ fields: undefined } as any, 'auth_service_unavailable')).toEqual({
+    denyReadFields: [],
+    denyWriteFields: [],
+    reason: 'auth_service_unavailable',
+  });
   expect(
     buildFailClosedFieldRuleSpec(
       {
@@ -169,6 +174,29 @@ test('buildFailClosedFieldRuleSpec skips system fields and tolerates missing fie
   ).toEqual({
     denyReadFields: ['Secret'],
     denyWriteFields: ['Secret'],
+    reason: 'auth_service_unavailable',
+  });
+  // Skip blank / whitespace-only keys and remaining system fields.
+  expect(
+    buildFailClosedFieldRuleSpec(
+      {
+        fields: new Map<any, any>([
+          ['', {}],
+          ['   ', {}],
+          [null, {}],
+          [undefined, {}],
+          ['CreatedAt', {}],
+          ['UpdatedAt', {}],
+          ['DeletedAt', {}],
+          ['DisplayName', {}],
+          ['Body', {}],
+        ]),
+      } as any,
+      'auth_service_unavailable'
+    )
+  ).toEqual({
+    denyReadFields: ['Body'],
+    denyWriteFields: ['Body'],
     reason: 'auth_service_unavailable',
   });
 });
