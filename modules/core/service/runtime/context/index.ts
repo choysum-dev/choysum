@@ -14,3 +14,9 @@ export {
   memoizeInReqState,
 } from './request';
 export { getReadonlyCtx, getCtxValue, getActiveCompanyId, getEnabledCompanyIds, getContextLang, getContextTimezone, getContextCompanyTimezone, getContextClientTimezone, withContext } from './scope';
+export {
+  normalizeWithCompanyPatch,
+  withCompany,
+  type WithCompanyTarget,
+  type WithCompanyPatch,
+} from './with_company';

@@ -134,8 +134,10 @@ test('model context accessors are available on static and instance surfaces', ()
   expect(instanceWithContext).toBe('ok');
 
   expect(typeof ModelSurfaceHarness.withUser).toBe('function');
+  expect(typeof ModelSurfaceHarness.withCompany).toBe('function');
   expect(typeof ModelSurfaceHarness.sudo).toBe('function');
   expect(typeof instance.withUser).toBe('function');
+  expect(typeof instance.withCompany).toBe('function');
   expect(typeof instance.sudo).toBe('function');
 });
 
@@ -167,6 +169,50 @@ test('model withUser and sudo static/instance wrappers invoke context facades', 
 
     const instanceSudo = instance.sudo(() => 'instance-sudo');
     expect(instanceSudo).toBe('instance-sudo');
+  } finally {
+    if (hadPrev) globalAny.$choysum = prev;
+    else delete globalAny.$choysum;
+  }
+});
+
+test('model withCompany static/instance wrappers override company getters and restore', () => {
+  const globalAny = globalThis as any;
+  const hadPrev = Object.prototype.hasOwnProperty.call(globalAny, '$choysum');
+  const prev = globalAny.$choysum;
+  globalAny.$choysum = {
+    request: {
+      context: {
+        identity: { userId: 'U-ROOT' },
+        ctx: {
+          activeCompanyId: 'OUTER',
+          enabledCompanyIds: ['OUTER'],
+          lang: 'en',
+        },
+      },
+    },
+  };
+
+  try {
+    const instance = makeInstance({ Id: 'CO-1', Name: 'company' });
+
+    const staticView = ModelSurfaceHarness.withCompany(' C-STATIC ', () => ({
+      companyId: ModelSurfaceHarness.companyId,
+      companyIds: ModelSurfaceHarness.companyIds,
+      lang: ModelSurfaceHarness.lang,
+    }));
+    expect(staticView).toEqual({ companyId: 'C-STATIC', companyIds: ['C-STATIC'], lang: 'en' });
+
+    const instanceView = instance.withCompany(
+      { activeCompanyId: 'C-INST', enabledCompanyIds: ['C-INST', 'C2'] },
+      () => ({
+        companyId: instance.companyId,
+        companyIds: instance.companyIds,
+      })
+    );
+    expect(instanceView).toEqual({ companyId: 'C-INST', companyIds: ['C-INST', 'C2'] });
+
+    expect(ModelSurfaceHarness.companyId).toBe('OUTER');
+    expect(ModelSurfaceHarness.companyIds).toEqual(['OUTER']);
   } finally {
     if (hadPrev) globalAny.$choysum = prev;
     else delete globalAny.$choysum;

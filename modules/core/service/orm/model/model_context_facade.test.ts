@@ -19,6 +19,8 @@ import {
   getModelUserId,
   withInstanceModelContext,
   withModelContext,
+  withInstanceModelCompany,
+  withModelCompany,
 } from './model_context_facade';
 
 function withTempChoysum<T>(root: any, fn: () => T): T {
@@ -117,6 +119,70 @@ test('model context facade reads instance values from constructor statics and de
   expect(ctorCalls.length).toBe(1);
   expect(ctorCalls[0]?.ctx).toBe(source as any);
   expect(ctorCalls[0]?.opts).toEqual({ merge: false });
+});
+
+test('model context facade withCompany overrides and restores company getters; merges lang', async () => {
+  const root = {
+    request: {
+      context: {
+        ctx: {
+          activeCompanyId: 'OUTER',
+          enabledCompanyIds: ['OUTER', 'OTHER'],
+          lang: 'en',
+        },
+      },
+    },
+  };
+
+  await withTempChoysum(root, async () => {
+    expect(getModelCompanyId()).toBe('OUTER');
+    expect(getModelCompanyIds()).toEqual(['OUTER', 'OTHER']);
+
+    const nested = await withModelContext({ lang: 'fr' }, async () => {
+      return withModelCompany({ activeCompanyId: 'IN', enabledCompanyIds: ['IN', 'X'] }, async () => {
+        expect(getModelCompanyId()).toBe('IN');
+        expect(getModelCompanyIds()).toEqual(['IN', 'X']);
+        expect(getModelLang()).toBe('fr');
+        await Promise.resolve();
+        return getModelLang();
+      });
+    });
+
+    expect(nested).toBe('fr');
+    expect(getModelCompanyId()).toBe('OUTER');
+    expect(getModelCompanyIds()).toEqual(['OUTER', 'OTHER']);
+    expect(getModelLang()).toBe('en');
+  });
+});
+
+test('model context facade instance withCompany delegates to constructor', () => {
+  const calls: Array<{ company: unknown }> = [];
+  const ctor = {
+    ctx: {},
+    companyId: undefined,
+    companyIds: [],
+    lang: undefined,
+    tz: undefined,
+    companyTz: undefined,
+    userId: undefined,
+    withContext() {
+      return undefined;
+    },
+    withUser() {
+      return undefined;
+    },
+    withCompany(company: unknown, fn: () => string) {
+      calls.push({ company });
+      return fn();
+    },
+    sudo() {
+      return undefined;
+    },
+  };
+  const instance = { constructor: ctor } as any;
+  const value = withInstanceModelCompany(instance, 'C-DEL', () => 'ok');
+  expect(value).toBe('ok');
+  expect(calls).toEqual([{ company: 'C-DEL' }]);
 });
 
 test('Model.companyTz and Model.tz map display vs company business timezone', async () => {

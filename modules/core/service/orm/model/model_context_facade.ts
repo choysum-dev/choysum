@@ -11,6 +11,8 @@ import {
   getUserId,
   withContext,
   withUser,
+  withCompany,
+  type WithCompanyTarget,
 } from '../../runtime/context';
 import type { Context } from '../../runtime/context';
 import { withModelSudo } from './model_sudo';
@@ -25,6 +27,7 @@ type ModelContextFacadeCtor = {
   userId: string | undefined;
   withContext<R>(ctx: Partial<Context> | (() => Partial<Context>), fn: () => R, opts?: { merge?: boolean }): R;
   withUser<R>(userId: string, fn: () => R): R;
+  withCompany<R>(company: WithCompanyTarget, fn: () => R): R;
   sudo<R>(fn: () => R): R;
 };
 
@@ -72,6 +75,10 @@ export function withModelUser<R>(userId: string, fn: () => R): R {
   return withUser(userId, fn);
 }
 
+export function withModelCompany<R>(company: WithCompanyTarget, fn: () => R): R {
+  return withCompany(company, fn);
+}
+
 export function withModelElevate<R>(fn: () => R): R {
   return withModelSudo(fn);
 }
@@ -115,6 +122,10 @@ export function withInstanceModelContext<R>(
 
 export function withInstanceModelUser<R>(instance: ModelInstanceLike, userId: string, fn: () => R): R {
   return getModelContextFacadeCtor(instance).withUser(userId, fn);
+}
+
+export function withInstanceModelCompany<R>(instance: ModelInstanceLike, company: WithCompanyTarget, fn: () => R): R {
+  return getModelContextFacadeCtor(instance).withCompany(company, fn);
 }
 
 export function withInstanceModelElevate<R>(instance: ModelInstanceLike, fn: () => R): R {
