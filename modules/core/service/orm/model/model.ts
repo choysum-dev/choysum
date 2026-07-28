@@ -41,6 +41,7 @@ import {
   getModelUserId,
   withModelContext,
   withModelUser,
+  withModelCompany,
   withModelElevate,
   getInstanceModelContext,
   getInstanceModelCompanyId,
@@ -51,8 +52,10 @@ import {
   getInstanceModelUserId,
   withInstanceModelContext,
   withInstanceModelUser,
+  withInstanceModelCompany,
   withInstanceModelElevate,
 } from './model_context_facade';
+import type { WithCompanyTarget } from '../../runtime/context';
 import {
   updateModelInstance,
   deleteModelInstance,
@@ -348,6 +351,25 @@ class BaseModel {
    */
   withUser<R>(userId: string, fn: () => R): R {
     return withInstanceModelUser(this, userId, fn);
+  }
+
+  /**
+   * Runs a function with a temporary company view (`activeCompanyId` / `enabledCompanyIds`).
+   *
+   * Thin `withContext` wrapper. Does not elevate privileges, does not change
+   * userId, and does **not** clamp against `allowedCompanyIds` — trust stays at
+   * token / SwitchCompanyScope. Compose with {@link BaseModel.sudo} /
+   * {@link BaseModel.withUser} when needed.
+   */
+  static withCompany<R>(company: WithCompanyTarget, fn: () => R): R {
+    return withModelCompany(company, fn);
+  }
+
+  /**
+   * Runs a function with a temporary company view bound to this model instance.
+   */
+  withCompany<R>(company: WithCompanyTarget, fn: () => R): R {
+    return withInstanceModelCompany(this, company, fn);
   }
 
   /**
