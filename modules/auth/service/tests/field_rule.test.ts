@@ -1240,7 +1240,22 @@ test('RoleFieldRule: permission-only update must not rewrite scoped fields to gl
       expect(String((rows[0] as any)?.IrModelId || '').trim()).toBe(modelId);
       expect(String((rows[0] as any)?.IrApplicationId || '').trim()).toBe('');
       expect(String((rows[0] as any)?.PermRead || '').trim()).toBe('deny');
-      expect(String((rows[0] as any)?.PermWrite || '').trim()).toBe('');
+      // Untouched PermWrite must survive a partial permission update.
+      expect(String((rows[0] as any)?.PermWrite || '').trim()).toBe('deny');
+
+      await RoleFieldRule.Update(
+        ['Id', '=', id] as any,
+        { PermWrite: 'allow' } as any,
+        ['Id'] as any
+      );
+
+      const afterWriteOnly = await RoleFieldRule.Search(
+        ['Id', '=', id] as any,
+        { fields: ['Id', 'PermRead', 'PermWrite'], limit: 1 } as any
+      );
+      expect(afterWriteOnly.length).toBe(1);
+      expect(String((afterWriteOnly[0] as any)?.PermRead || '').trim()).toBe('deny');
+      expect(String((afterWriteOnly[0] as any)?.PermWrite || '').trim()).toBe('allow');
     },
     { merge: false }
   );
@@ -1546,4 +1561,135 @@ test('RoleFieldRule OnchangeIrModelId clears IrFieldId and blocks picker when mo
 
   expect(result.condition).toEqual([{ field: 'IrFieldId', condition: ['Id', '=', '0'] }]);
   expect(result.value).toEqual({ IrFieldId: null });
+});
+
+test('RoleFieldRule coverage: CreateMany, perm validation branches, and Update paths', async () => {
+  resetRequestContext();
+
+  const c1 = { Id: uid('C1') };
+
+  await withModelContext(
+    { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
+    async () => {
+      const uid1 = await createUser(c1.Id);
+      setIdentity(uid1);
+
+      const roleId = await createRole();
+      await grantRoleGlobal(uid1, roleId, c1.Id);
+
+      const modelId = await resolveModelId('auth', 'CompanyScopedResource');
+      const fieldId = await resolveFieldId(modelId, 'Name');
+
+      const none = await RoleFieldRule.CreateMany(null as any, ['Id'] as any);
+      expect(Array.isArray(none)).toBe(true);
+      expect(none.length).toBe(0);
+
+      const many = await RoleFieldRule.CreateMany(
+        [
+          {
+            RoleId: { Id: roleId } as any,
+            IrModelId: modelId,
+            IrFieldId: fieldId,
+            IrApplicationId: null,
+            PermRead: 'allow',
+            PermWrite: 'deny',
+          } as any,
+        ],
+        ['Id', 'PermRead', 'PermWrite'] as any
+      );
+      expect(many.length).toBe(1);
+      const id = String((many[0] as any)?.Id || '').trim();
+      expect(id.length > 0).toBe(true);
+
+      // Update with no perm keys: _validatePerms early-returns without rewriting perms.
+      await RoleFieldRule.Update(['Id', '=', id] as any, {} as any, ['Id'] as any);
+      const afterEmpty = await RoleFieldRule.Search(
+        ['Id', '=', id] as any,
+        { fields: ['Id', 'PermRead', 'PermWrite'], limit: 1 } as any
+      );
+      expect(String((afterEmpty[0] as any)?.PermRead || '').trim()).toBe('allow');
+      expect(String((afterEmpty[0] as any)?.PermWrite || '').trim()).toBe('deny');
+
+      // Create without any perm rejects.
+      let missingPerm = '';
+      try {
+        await RoleFieldRule.Create(
+          {
+            RoleId: { Id: roleId } as any,
+            IrModelId: modelId,
+            IrFieldId: fieldId,
+            IrApplicationId: null,
+          } as any,
+          ['Id'] as any
+        );
+      } catch (e: any) {
+        missingPerm = String(e?.message || e);
+      }
+      expect(missingPerm.includes('must provide at least one of PermRead/PermWrite')).toBe(true);
+
+      // Update that explicitly clears both perms rejects.
+      let clearedBoth = '';
+      try {
+        await RoleFieldRule.UpdateById(id, { PermRead: null, PermWrite: null } as any, ['Id'] as any);
+      } catch (e: any) {
+        clearedBoth = String(e?.message || e);
+      }
+      expect(clearedBoth.includes('must provide at least one of PermRead/PermWrite')).toBe(true);
+
+      // Invalid perm token rejects.
+      let badPerm = '';
+      try {
+        await RoleFieldRule.Create(
+          {
+            RoleId: { Id: roleId } as any,
+            IrModelId: modelId,
+            IrFieldId: fieldId,
+            IrApplicationId: null,
+            PermRead: 'maybe',
+          } as any,
+          ['Id'] as any
+        );
+      } catch (e: any) {
+        badPerm = String(e?.message || e);
+      }
+      expect(badPerm.includes('invalid RoleFieldRule perm value')).toBe(true);
+
+      // Create with only PermWrite (no PermRead key) still materializes both columns.
+      const writeOnly = await RoleFieldRule.Create(
+        {
+          RoleId: { Id: roleId } as any,
+          IrModelId: modelId,
+          IrFieldId: null,
+          IrApplicationId: null,
+          PermWrite: 'allow',
+        } as any,
+        ['Id', 'PermRead', 'PermWrite'] as any
+      );
+      expect(String((writeOnly as any)?.PermWrite || '').trim()).toBe('allow');
+      expect((writeOnly as any)?.PermRead == null || String((writeOnly as any)?.PermRead || '').trim() === '').toBe(true);
+
+      // Update with both keys present and non-null (dual-key success path).
+      await RoleFieldRule.UpdateById(
+        id,
+        { PermRead: 'deny', PermWrite: 'allow' } as any,
+        ['Id'] as any
+      );
+      const afterBoth = await RoleFieldRule.Search(
+        ['Id', '=', id] as any,
+        { fields: ['Id', 'PermRead', 'PermWrite'], limit: 1 } as any
+      );
+      expect(String((afterBoth[0] as any)?.PermRead || '').trim()).toBe('deny');
+      expect(String((afterBoth[0] as any)?.PermWrite || '').trim()).toBe('allow');
+
+      // Blank-string perm normalizes to null on a single-key update (sibling preserved).
+      await RoleFieldRule.UpdateById(id, { PermRead: '   ' } as any, ['Id'] as any);
+      const afterBlank = await RoleFieldRule.Search(
+        ['Id', '=', id] as any,
+        { fields: ['Id', 'PermRead', 'PermWrite'], limit: 1 } as any
+      );
+      expect(String((afterBlank[0] as any)?.PermRead || '').trim()).toBe('');
+      expect(String((afterBlank[0] as any)?.PermWrite || '').trim()).toBe('allow');
+    },
+    { merge: false }
+  );
 });

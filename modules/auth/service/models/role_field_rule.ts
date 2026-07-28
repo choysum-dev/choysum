@@ -8,8 +8,8 @@ import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
 import { _lt } from '../i18n';
 import Role from './role';
-import { normalizeRefId } from '@/core/service/utils/normalization';
 import { invalidateAllAuthzCaches } from './_request_cache_invalidation';
+import { assertExclusiveScope } from './_rule_scope_helpers';
 
 /**
  * RoleFieldRule stores field-level read and write overrides for a role at
@@ -117,57 +117,38 @@ export default class RoleFieldRule extends BaseModel {
   }
 
   /**
-   * Validate that the requested scope resolves to field, model, application, or global.
+   * Normalize PermRead/PermWrite.
+   *
+   * On update, only rewrite keys present in `values` so a partial patch does not
+   * null out the untouched permission column. Create still requires at least one.
    */
-  private static _validateScopeShape(values: Record<string, any>, mode: 'create' | 'update'): void {
-    const touchesScope =
-      Object.prototype.hasOwnProperty.call(values, 'IrFieldId') ||
-      Object.prototype.hasOwnProperty.call(values, 'IrModelId') ||
-      Object.prototype.hasOwnProperty.call(values, 'IrApplicationId');
+  private static _validatePerms(values: Record<string, any>, mode: 'create' | 'update'): void {
+    const hasRead = Object.prototype.hasOwnProperty.call(values, 'PermRead');
+    const hasWrite = Object.prototype.hasOwnProperty.call(values, 'PermWrite');
+    if (!hasRead && !hasWrite && mode !== 'create') return;
 
-    const touchesPerm = Object.prototype.hasOwnProperty.call(values, 'PermRead') || Object.prototype.hasOwnProperty.call(values, 'PermWrite');
-
-    if (!touchesScope && !touchesPerm) return;
-
-    if (mode === 'update' && touchesScope) {
-      const hasAll =
-        Object.prototype.hasOwnProperty.call(values, 'IrFieldId') &&
-        Object.prototype.hasOwnProperty.call(values, 'IrModelId') &&
-        Object.prototype.hasOwnProperty.call(values, 'IrApplicationId');
-      if (!hasAll) {
-        throw new Error('invalid RoleFieldRule scope update: must provide IrFieldId/IrModelId/IrApplicationId together');
-      }
+    if (hasRead || mode === 'create') {
+      (values as any).PermRead = this._normalizePerm((values as any).PermRead);
+    }
+    if (hasWrite || mode === 'create') {
+      (values as any).PermWrite = this._normalizePerm((values as any).PermWrite);
     }
 
-    if (touchesScope || mode === 'create') {
-      const irFieldId = normalizeRefId((values as any).IrFieldId);
-      const irModelId = normalizeRefId((values as any).IrModelId);
-      const irApplicationId = normalizeRefId((values as any).IrApplicationId);
-
-      const isField = irFieldId != null && irModelId != null && irApplicationId == null;
-      const isModel = irFieldId == null && irModelId != null && irApplicationId == null;
-      const isApplication = irFieldId == null && irModelId == null && irApplicationId != null;
-      const isGlobal = irFieldId == null && irModelId == null && irApplicationId == null;
-      if (!isField && !isModel && !isApplication && !isGlobal) {
-        throw new Error('invalid RoleFieldRule scope: must be exactly one of field/model/application/global');
-      }
-
-      (values as any).IrFieldId = irFieldId;
-      (values as any).IrModelId = irModelId;
-      (values as any).IrApplicationId = irApplicationId;
-    }
-
-    if (touchesPerm || mode === 'create') {
-      const permRead = this._normalizePerm((values as any).PermRead);
-      const permWrite = this._normalizePerm((values as any).PermWrite);
-
-      (values as any).PermRead = permRead;
-      (values as any).PermWrite = permWrite;
-
-      if (permRead == null && permWrite == null) {
+    // Create always materializes both keys; reject empty. Update only rejects when
+    // the caller explicitly clears both in the same payload.
+    if (mode === 'create' || (hasRead && hasWrite)) {
+      if ((values as any).PermRead == null && (values as any).PermWrite == null) {
         throw new Error('invalid RoleFieldRule: must provide at least one of PermRead/PermWrite');
       }
     }
+  }
+
+  /**
+   * Run scope and permission validation before mutating RoleFieldRule rows.
+   */
+  private static _prepareValues(values: Record<string, any>, mode: 'create' | 'update'): void {
+    assertExclusiveScope(values, mode, 'field');
+    this._validatePerms(values, mode);
   }
 
   /**
@@ -178,7 +159,7 @@ export default class RoleFieldRule extends BaseModel {
     value: Partial<Insertable<T & BaseModel>>,
     returnFields?: FieldSelection<T>
   ): Promise<T> {
-    RoleFieldRule._validateScopeShape(value as any, 'create');
+    RoleFieldRule._prepareValues(value as any, 'create');
     const out = await super.Create(value as any, returnFields as any);
     invalidateAllAuthzCaches();
     return out as unknown as T;
@@ -192,8 +173,9 @@ export default class RoleFieldRule extends BaseModel {
     values: Partial<Insertable<T & BaseModel>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
-    for (const v of values || []) RoleFieldRule._validateScopeShape(v as any, 'create');
-    const out = await super.CreateMany(values as any, returnFields as any);
+    const rows = values || [];
+    for (const v of rows) RoleFieldRule._prepareValues(v as any, 'create');
+    const out = await super.CreateMany(rows as any, returnFields as any);
     invalidateAllAuthzCaches();
     return out as unknown as T[];
   }
@@ -208,7 +190,7 @@ export default class RoleFieldRule extends BaseModel {
     returnFields?: FieldSelection<T>,
     options?: any
   ): Promise<Partial<T>[]> {
-    RoleFieldRule._validateScopeShape(values as any, 'update');
+    RoleFieldRule._prepareValues(values as any, 'update');
     const out = await super.Update(condition as any, values as any, returnFields as any, options as any);
     invalidateAllAuthzCaches();
     return out as unknown as Partial<T>[];
@@ -224,7 +206,7 @@ export default class RoleFieldRule extends BaseModel {
     returnFields?: FieldSelection<T>,
     options?: any
   ): Promise<Partial<T>> {
-    RoleFieldRule._validateScopeShape(values as any, 'update');
+    RoleFieldRule._prepareValues(values as any, 'update');
     const out = await super.UpdateById(id as any, values as any, returnFields as any, options as any);
     invalidateAllAuthzCaches();
     return out as unknown as Partial<T>;

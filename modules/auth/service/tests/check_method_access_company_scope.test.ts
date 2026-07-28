@@ -677,3 +677,44 @@ test('RoleMethodAccess: permission-only update must not rewrite scoped fields to
     expect(String((rows[0] as any)?.Mode || '').trim()).toBe('deny');
   });
 });
+
+test('RoleMethodAccess coverage: CreateMany and condition Update hit assertExclusiveScope', async () => {
+  resetRequestContext();
+  setupAllowlistForFixtures();
+
+  await withModelContext({ activeCompanyId: uid('C'), enabledCompanyIds: [uid('C')] } as any, async () => {
+    const role = await createRole('ROLE_METHOD_SCOPE_COV');
+    const userModelId = await resolveModelId('auth', 'User');
+    const browse = await resolveService(userModelId, 'browse');
+
+    const none = await RoleMethodAccess.CreateMany(null as any, ['Id'] as any);
+    expect(Array.isArray(none)).toBe(true);
+    expect(none.length).toBe(0);
+
+    const many = await RoleMethodAccess.CreateMany(
+      [
+        {
+          RoleId: { Id: role.id } as any,
+          IrServiceId: browse.id,
+          IrModelId: null,
+          IrApplicationId: null,
+          Mode: 'allow',
+        } as any,
+      ],
+      ['Id', 'Mode'] as any
+    );
+    expect(many.length).toBe(1);
+    const id = String((many[0] as any)?.Id || '').trim();
+    expect(id.length > 0).toBe(true);
+
+    await RoleMethodAccess.Update(['Id', '=', id] as any, { Mode: 'deny' } as any, ['Id'] as any);
+
+    const rows = await RoleMethodAccess.Search(
+      ['Id', '=', id] as any,
+      { fields: ['Id', 'IrServiceId', 'IrModelId', 'IrApplicationId', 'Mode'], limit: 1 } as any
+    );
+    expect(rows.length).toBe(1);
+    expect(String((rows[0] as any)?.IrServiceId || '').trim()).toBe(browse.id);
+    expect(String((rows[0] as any)?.Mode || '').trim()).toBe('deny');
+  });
+});

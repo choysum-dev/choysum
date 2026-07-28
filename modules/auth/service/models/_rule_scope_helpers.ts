@@ -6,7 +6,7 @@ import { normalizeRefId } from '@/core/service/utils/normalization';
 /**
  * Scope profile for the four Role* rule models.
  *
- * Extracted in PR-E-1; call-site wiring lands in PR-E-2.
+ * Extracted in PR-E-1; wired into method/record/field/ui models in PR-E-2.
  */
 export type RuleScopeProfile = 'method' | 'record' | 'field' | 'ui';
 
