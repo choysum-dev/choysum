@@ -29,6 +29,33 @@ export const authMenus: MenuItem[] = [
         path: '/auth/roles',
         sequence: 30,
       }),
+      // Pathless group: cross-role / everyone rule catalog (PR-C-5). Flat leaf URLs.
+      defineMenu('auth.menu.access_rules', {
+        title: _lt('Access Rules'),
+        sequence: 35,
+        children: [
+          defineMenu('auth.menu.record_rule_list', {
+            title: _lt('Record Rules'),
+            path: '/auth/record-rules',
+            sequence: 10,
+          }),
+          defineMenu('auth.menu.field_rule_list', {
+            title: _lt('Field Rules'),
+            path: '/auth/field-rules',
+            sequence: 20,
+          }),
+          defineMenu('auth.menu.method_access_list', {
+            title: _lt('Method Access'),
+            path: '/auth/method-accesses',
+            sequence: 30,
+          }),
+          defineMenu('auth.menu.ui_resource_grant_list', {
+            title: _lt('UI Resource Grants'),
+            path: '/auth/ui-resource-grants',
+            sequence: 40,
+          }),
+        ],
+      }),
       defineMenu('auth.menu.session_list', {
         title: _lt('Session List'),
         path: '/auth/sessions',

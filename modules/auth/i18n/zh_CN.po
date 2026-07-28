@@ -806,20 +806,45 @@ msgctxt "web/menu/menus"
 msgid "Access Control"
 msgstr "访问控制"
 
+#: web/menu/menus.ts:34
+msgctxt "web/menu/menus"
+msgid "Access Rules"
+msgstr "授权规则"
+
+#: web/menu/menus.ts:43
+msgctxt "web/menu/menus"
+msgid "Field Rules"
+msgstr "字段规则"
+
+#: web/menu/menus.ts:48
+msgctxt "web/menu/menus"
+msgid "Method Access"
+msgstr "方法访问"
+
+#: web/menu/menus.ts:38
+msgctxt "web/menu/menus"
+msgid "Record Rules"
+msgstr "记录规则"
+
 #: web/menu/menus.ts:28
 msgctxt "web/menu/menus"
 msgid "Role List"
 msgstr "角色列表"
 
-#: web/menu/menus.ts:33
+#: web/menu/menus.ts:60
 msgctxt "web/menu/menus"
 msgid "Session List"
 msgstr "会话列表"
 
-#: web/menu/menus.ts:38
+#: web/menu/menus.ts:65
 msgctxt "web/menu/menus"
 msgid "Token List"
 msgstr "令牌列表"
+
+#: web/menu/menus.ts:53
+msgctxt "web/menu/menus"
+msgid "UI Resource Grants"
+msgstr "UI 资源授权"
 
 #: web/menu/menus.ts:23
 msgctxt "web/menu/menus"
@@ -1046,6 +1071,21 @@ msgctxt "web/pages/Register"
 msgid "and"
 msgstr "和"
 
+#: web/route/routes.ts:250
+msgctxt "web/route/routes"
+msgid "Create Field Rule"
+msgstr "创建字段规则"
+
+#: web/route/routes.ts:295
+msgctxt "web/route/routes"
+msgid "Create Method Access"
+msgstr "创建方法访问"
+
+#: web/route/routes.ts:205
+msgctxt "web/route/routes"
+msgid "Create Record Rule"
+msgstr "创建记录规则"
+
 #: web/route/routes.ts:95
 msgctxt "web/route/routes"
 msgid "Create Role"
@@ -1061,10 +1101,25 @@ msgctxt "web/route/routes"
 msgid "Create Token"
 msgstr "新建令牌"
 
+#: web/route/routes.ts:340
+msgctxt "web/route/routes"
+msgid "Create UI Resource Grant"
+msgstr "创建 UI 资源授权"
+
 #: web/route/routes.ts:64
 msgctxt "web/route/routes"
 msgid "Create User"
 msgstr "新建用户"
+
+#: web/route/routes.ts:235
+msgctxt "web/route/routes"
+msgid "Field Rule Details"
+msgstr "字段规则详情"
+
+#: web/route/routes.ts:221
+msgctxt "web/route/routes"
+msgid "Field Rule List"
+msgstr "字段规则列表"
 
 #: web/route/routes.ts:16
 msgctxt "web/route/routes"
@@ -1076,7 +1131,27 @@ msgctxt "web/route/routes"
 msgid "Logout"
 msgstr "退出登录"
 
-#: web/route/routes.ts:178
+#: web/route/routes.ts:280
+msgctxt "web/route/routes"
+msgid "Method Access Details"
+msgstr "方法访问详情"
+
+#: web/route/routes.ts:266
+msgctxt "web/route/routes"
+msgid "Method Access List"
+msgstr "方法访问列表"
+
+#: web/route/routes.ts:190
+msgctxt "web/route/routes"
+msgid "Record Rule Details"
+msgstr "记录规则详情"
+
+#: web/route/routes.ts:176
+msgctxt "web/route/routes"
+msgid "Record Rule List"
+msgstr "记录规则列表"
+
+#: web/route/routes.ts:359
 msgctxt "web/route/routes"
 msgid "Register"
 msgstr "注册"
@@ -1115,6 +1190,16 @@ msgstr "令牌详情"
 msgctxt "web/route/routes"
 msgid "Token Management"
 msgstr "令牌管理"
+
+#: web/route/routes.ts:325
+msgctxt "web/route/routes"
+msgid "UI Resource Grant Details"
+msgstr "UI 资源授权详情"
+
+#: web/route/routes.ts:311
+msgctxt "web/route/routes"
+msgid "UI Resource Grant List"
+msgstr "UI 资源授权列表"
 
 #: web/route/routes.ts:54
 msgctxt "web/route/routes"
@@ -1201,6 +1286,76 @@ msgctxt "web/stores/auth/actions"
 msgid "SwitchCompanyScope returned an invalid response"
 msgstr "切换公司范围返回了无效响应"
 
+#: web/views/RoleFieldRuleFormView.vue:39
+msgctxt "web/views/RoleFieldRuleFormView"
+msgid "Copy Field Rule"
+msgstr "复制字段规则"
+
+#: web/views/RoleFieldRuleFormView.vue:39
+msgctxt "web/views/RoleFieldRuleFormView"
+msgid "Create Field Rule"
+msgstr "创建字段规则"
+
+#: web/views/RoleFieldRuleFormView.vue:10
+msgctxt "web/views/RoleFieldRuleFormView"
+msgid "Cross-role field rule editor"
+msgstr "跨角色字段规则编辑"
+
+#: web/views/RoleFieldRuleFormView.vue:39
+msgctxt "web/views/RoleFieldRuleFormView"
+msgid "Delete Field Rule"
+msgstr "删除字段规则"
+
+#: web/views/RoleFieldRuleFormView.vue:39
+msgctxt "web/views/RoleFieldRuleFormView"
+msgid "Edit Field Rule"
+msgstr "编辑字段规则"
+
+#: web/views/RoleFieldRuleFormView.vue:39 web/views/RoleFieldRuleFormView.vue:9
+msgctxt "web/views/RoleFieldRuleFormView"
+msgid "Field Rule"
+msgstr "字段规则"
+
+#: web/views/RoleFieldRuleFormView.vue:10
+msgctxt "web/views/RoleFieldRuleFormView"
+msgid "Role is required. Leave Application/Model/Field empty for wider scopes (global / app / model)."
+msgstr "角色为必填。应用/模型/字段留空表示更大作用域（全局 / 应用 / 模型）。"
+
+#: web/views/RoleFieldRuleFormView.vue:13
+msgctxt "web/views/RoleFieldRuleFormView"
+msgid "Select Role"
+msgstr "选择角色"
+
+#: web/views/RoleFieldRuleFormView.vue:34
+msgctxt "web/views/RoleFieldRuleFormView"
+msgid "System Information"
+msgstr "系统信息"
+
+#: web/views/RoleFieldRuleListView.vue:34
+msgctxt "web/views/RoleFieldRuleListView"
+msgid "Copy Field Rule"
+msgstr "复制字段规则"
+
+#: web/views/RoleFieldRuleListView.vue:34
+msgctxt "web/views/RoleFieldRuleListView"
+msgid "Create Field Rule"
+msgstr "创建字段规则"
+
+#: web/views/RoleFieldRuleListView.vue:34
+msgctxt "web/views/RoleFieldRuleListView"
+msgid "Delete Field Rule"
+msgstr "删除字段规则"
+
+#: web/views/RoleFieldRuleListView.vue:34
+msgctxt "web/views/RoleFieldRuleListView"
+msgid "Edit Field Rule"
+msgstr "编辑字段规则"
+
+#: web/views/RoleFieldRuleListView.vue:34
+msgctxt "web/views/RoleFieldRuleListView"
+msgid "Field Rule"
+msgstr "字段规则"
+
 #: web/views/RoleFormView.vue:66
 msgctxt "web/views/RoleFormView"
 msgid "Accessible UI Resources"
@@ -1220,6 +1375,7 @@ msgstr "基本信息"
 msgctxt "web/views/RoleFormView"
 msgid "Click a node label to inspect Requires → derived RPCs (checkbox still controls the grant)."
 msgstr "点击节点标签可查看 Requires → 派生 RPC（勾选框仍控制授权）。"
+
 #: web/views/RoleFormView.vue:107
 msgctxt "web/views/RoleFormView"
 msgid "Configure record/field/RPC grants under deny-default. The UI resource tree does not derive Record or Field rules; Advanced is the main place for data and method access."
@@ -1272,8 +1428,8 @@ msgstr "该资源没有 Requires — 授予它不会派生 Method 访问。"
 
 #: web/views/RoleFormView.vue:115
 msgctxt "web/views/RoleFormView"
-msgid "OneToMany rows are always bound to the current role. All-users or cross-role Record/Field/Method/UI rules belong in dedicated menus, not here. Model/Application empty means scope-global (all models), which is not the same as all-users audience."
-msgstr "OneToMany 行始终绑定当前角色。全体用户或跨角色的 Record/Field/Method/UI 规则应在独立菜单中维护，而不是这里。模型/应用皆空表示 scope-global（全部模型），与「全体用户」适用轴不同。"
+msgid "OneToMany rows are always bound to the current role. All-users or cross-role Record/Field/Method/UI rules belong under Access Control → Access Rules, not here. Model/Application empty means scope-global (all models), which is not the same as all-users audience."
+msgstr "一对多行始终绑定到当前角色。面向全体用户或跨角色的记录/字段/方法/UI 规则请到「访问控制 → 授权规则」管理，不要在此编辑。模型/应用为空表示作用域全局（全部模型），与「全体用户」适用轴不是同一概念。"
 
 #: web/views/RoleFormView.vue:58
 msgctxt "web/views/RoleFormView"
@@ -1384,6 +1540,226 @@ msgstr "编辑角色"
 msgctxt "web/views/RoleListView"
 msgid "Role"
 msgstr "角色"
+
+#: web/views/RoleMethodAccessFormView.vue:39
+msgctxt "web/views/RoleMethodAccessFormView"
+msgid "Copy Method Access"
+msgstr "复制方法访问"
+
+#: web/views/RoleMethodAccessFormView.vue:39
+msgctxt "web/views/RoleMethodAccessFormView"
+msgid "Create Method Access"
+msgstr "创建方法访问"
+
+#: web/views/RoleMethodAccessFormView.vue:10
+msgctxt "web/views/RoleMethodAccessFormView"
+msgid "Cross-role method access editor"
+msgstr "跨角色方法访问编辑"
+
+#: web/views/RoleMethodAccessFormView.vue:39
+msgctxt "web/views/RoleMethodAccessFormView"
+msgid "Delete Method Access"
+msgstr "删除方法访问"
+
+#: web/views/RoleMethodAccessFormView.vue:39
+msgctxt "web/views/RoleMethodAccessFormView"
+msgid "Edit Method Access"
+msgstr "编辑方法访问"
+
+#: web/views/RoleMethodAccessFormView.vue:39 web/views/RoleMethodAccessFormView.vue:9
+msgctxt "web/views/RoleMethodAccessFormView"
+msgid "Method Access"
+msgstr "方法访问"
+
+#: web/views/RoleMethodAccessFormView.vue:11
+msgctxt "web/views/RoleMethodAccessFormView"
+msgid "Role is required. New rows default to Mode=deny on the model; prefer allow for grants and deny as an explicit brake."
+msgstr "角色为必填。模型默认 Mode=deny；授权请用 allow，deny 用作显式刹车。"
+
+#: web/views/RoleMethodAccessFormView.vue:15
+msgctxt "web/views/RoleMethodAccessFormView"
+msgid "Select Role"
+msgstr "选择角色"
+
+#: web/views/RoleMethodAccessFormView.vue:36
+msgctxt "web/views/RoleMethodAccessFormView"
+msgid "System Information"
+msgstr "系统信息"
+
+#: web/views/RoleMethodAccessListView.vue:34
+msgctxt "web/views/RoleMethodAccessListView"
+msgid "Copy Method Access"
+msgstr "复制方法访问"
+
+#: web/views/RoleMethodAccessListView.vue:34
+msgctxt "web/views/RoleMethodAccessListView"
+msgid "Create Method Access"
+msgstr "创建方法访问"
+
+#: web/views/RoleMethodAccessListView.vue:34
+msgctxt "web/views/RoleMethodAccessListView"
+msgid "Delete Method Access"
+msgstr "删除方法访问"
+
+#: web/views/RoleMethodAccessListView.vue:34
+msgctxt "web/views/RoleMethodAccessListView"
+msgid "Edit Method Access"
+msgstr "编辑方法访问"
+
+#: web/views/RoleMethodAccessListView.vue:34
+msgctxt "web/views/RoleMethodAccessListView"
+msgid "Method Access"
+msgstr "方法访问"
+
+#: web/views/RoleRecordRuleAudienceHints.vue:3
+msgctxt "web/views/RoleRecordRuleAudienceHints"
+msgid "Audience and scope are separate"
+msgstr "适用对象与作用域彼此独立"
+
+#: web/views/RoleRecordRuleAudienceHints.vue:4
+msgctxt "web/views/RoleRecordRuleAudienceHints"
+msgid "Empty Role means all users (audience). Empty Application and Model means scope-global (all models). Do not treat empty Role as the same as scope-global."
+msgstr "角色为空表示全体用户（适用对象）。应用与模型皆空表示作用域全局（全部模型）。不要把空角色与作用域全局混为一谈。"
+
+#: web/views/RoleRecordRuleAudienceHints.vue:9
+msgctxt "web/views/RoleRecordRuleAudienceHints"
+msgid "Kind=grant with an empty Role applies to everyone and can open a large domain. Prefer attaching grants to a concrete role, or use Kind=restrict for all-users rows."
+msgstr "Kind=grant 且角色为空会作用于全体用户，可能开放过大域。建议将 grant 挂到具体角色，或对全体用户行使用 Kind=restrict。"
+
+#: web/views/RoleRecordRuleAudienceHints.vue:8
+msgctxt "web/views/RoleRecordRuleAudienceHints"
+msgid "Wide-open grant for all users"
+msgstr "面向全体用户的宽开授权"
+
+#: web/views/RoleRecordRuleFormView.vue:42
+msgctxt "web/views/RoleRecordRuleFormView"
+msgid "Copy Record Rule"
+msgstr "复制记录规则"
+
+#: web/views/RoleRecordRuleFormView.vue:42
+msgctxt "web/views/RoleRecordRuleFormView"
+msgid "Create Record Rule"
+msgstr "创建记录规则"
+
+#: web/views/RoleRecordRuleFormView.vue:42
+msgctxt "web/views/RoleRecordRuleFormView"
+msgid "Delete Record Rule"
+msgstr "删除记录规则"
+
+#: web/views/RoleRecordRuleFormView.vue:42
+msgctxt "web/views/RoleRecordRuleFormView"
+msgid "Edit Record Rule"
+msgstr "编辑记录规则"
+
+#: web/views/RoleRecordRuleFormView.vue:42 web/views/RoleRecordRuleFormView.vue:9
+msgctxt "web/views/RoleRecordRuleFormView"
+msgid "Record Rule"
+msgstr "记录规则"
+
+#: web/views/RoleRecordRuleFormView.vue:13
+msgctxt "web/views/RoleRecordRuleFormView"
+msgid "Select Role"
+msgstr "选择角色"
+
+#: web/views/RoleRecordRuleFormView.vue:43
+msgctxt "web/views/RoleRecordRuleFormView"
+msgid "System Information"
+msgstr "系统信息"
+
+#: web/views/RoleRecordRuleListView.vue:35
+msgctxt "web/views/RoleRecordRuleListView"
+msgid "Copy Record Rule"
+msgstr "复制记录规则"
+
+#: web/views/RoleRecordRuleListView.vue:35
+msgctxt "web/views/RoleRecordRuleListView"
+msgid "Create Record Rule"
+msgstr "创建记录规则"
+
+#: web/views/RoleRecordRuleListView.vue:35
+msgctxt "web/views/RoleRecordRuleListView"
+msgid "Delete Record Rule"
+msgstr "删除记录规则"
+
+#: web/views/RoleRecordRuleListView.vue:35
+msgctxt "web/views/RoleRecordRuleListView"
+msgid "Edit Record Rule"
+msgstr "编辑记录规则"
+
+#: web/views/RoleRecordRuleListView.vue:35
+msgctxt "web/views/RoleRecordRuleListView"
+msgid "Record Rule"
+msgstr "记录规则"
+
+#: web/views/RoleUiResourceFormView.vue:39
+msgctxt "web/views/RoleUiResourceFormView"
+msgid "Copy UI Resource Grant"
+msgstr "复制 UI 资源授权"
+
+#: web/views/RoleUiResourceFormView.vue:39
+msgctxt "web/views/RoleUiResourceFormView"
+msgid "Create UI Resource Grant"
+msgstr "创建 UI 资源授权"
+
+#: web/views/RoleUiResourceFormView.vue:10
+msgctxt "web/views/RoleUiResourceFormView"
+msgid "Cross-role UI resource grant editor"
+msgstr "跨角色 UI 资源授权编辑"
+
+#: web/views/RoleUiResourceFormView.vue:39
+msgctxt "web/views/RoleUiResourceFormView"
+msgid "Delete UI Resource Grant"
+msgstr "删除 UI 资源授权"
+
+#: web/views/RoleUiResourceFormView.vue:39
+msgctxt "web/views/RoleUiResourceFormView"
+msgid "Edit UI Resource Grant"
+msgstr "编辑 UI 资源授权"
+
+#: web/views/RoleUiResourceFormView.vue:11
+msgctxt "web/views/RoleUiResourceFormView"
+msgid "Role is required. Prefer the Role form UI tree for day-to-day grants; use this page for cross-role browse and manual bypass rows. Empty Application and UI Resource means global allow/deny for that role."
+msgstr "角色为必填。日常授权请优先使用角色表单中的 UI 资源树；本页用于跨角色浏览与手动旁路行。应用与 UI 资源皆空表示该角色的全局允许/拒绝。"
+
+#: web/views/RoleUiResourceFormView.vue:17
+msgctxt "web/views/RoleUiResourceFormView"
+msgid "Select Role"
+msgstr "选择角色"
+
+#: web/views/RoleUiResourceFormView.vue:32
+msgctxt "web/views/RoleUiResourceFormView"
+msgid "System Information"
+msgstr "系统信息"
+
+#: web/views/RoleUiResourceFormView.vue:39 web/views/RoleUiResourceFormView.vue:9
+msgctxt "web/views/RoleUiResourceFormView"
+msgid "UI Resource Grant"
+msgstr "UI 资源授权"
+
+#: web/views/RoleUiResourceListView.vue:34
+msgctxt "web/views/RoleUiResourceListView"
+msgid "Copy UI Resource Grant"
+msgstr "复制 UI 资源授权"
+
+#: web/views/RoleUiResourceListView.vue:34
+msgctxt "web/views/RoleUiResourceListView"
+msgid "Create UI Resource Grant"
+msgstr "创建 UI 资源授权"
+
+#: web/views/RoleUiResourceListView.vue:34
+msgctxt "web/views/RoleUiResourceListView"
+msgid "Delete UI Resource Grant"
+msgstr "删除 UI 资源授权"
+
+#: web/views/RoleUiResourceListView.vue:34
+msgctxt "web/views/RoleUiResourceListView"
+msgid "Edit UI Resource Grant"
+msgstr "编辑 UI 资源授权"
+
+#: web/views/RoleUiResourceListView.vue:34
+msgctxt "web/views/RoleUiResourceListView"
+msgid "UI Resource Grant"
+msgstr "UI 资源授权"
 
 #: web/views/SessionFormView.vue:39
 msgctxt "web/views/SessionFormView"
@@ -1669,3 +2045,4 @@ msgstr "用户"
 msgctxt "web/views/UserSearchView"
 msgid "Active"
 msgstr "启用"
+
