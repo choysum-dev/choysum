@@ -2213,10 +2213,8 @@ test('repository condition compiler parent_of on Id falls back to default id and
     modelName: 'DemoModel',
     parentField: 'ParentId',
     tableName: () => 'demo_table',
-    fields: new Map([
-      ['Id', {}],
-      ['ParentPath', {}],
-    ]),
+    // Omit Id/ParentPath field metadata so resolveStoredColumnName falls back to logical names.
+    fields: new Map(),
   } as any;
 
   const eb = createExpressionBuilder();
@@ -2256,10 +2254,8 @@ test('repository condition compiler parent_of on relation field falls back to de
     modelName: 'OwnerModel',
     parentField: 'ParentId',
     tableName: () => 'owner_table',
-    fields: new Map([
-      ['Id', {}],
-      ['ParentPath', {}],
-    ]),
+    // Omit Id/ParentPath so target column resolution uses logical-name fallbacks.
+    fields: new Map(),
   } as any;
 
   const demoMeta = {

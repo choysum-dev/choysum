@@ -35,7 +35,8 @@ function supportsContainsFieldType(fieldMeta: FieldMetadata | undefined): boolea
 }
 
 /** Prefer explicit column.name when present (ManyToOne FK remap); else logical field name. */
-function resolveStoredColumnName(fieldMeta: FieldMetadata, fieldName: string): string {
+function resolveStoredColumnName(fieldMeta: FieldMetadata | undefined, fieldName: string): string {
+  if (fieldMeta == null) return fieldName;
   const column = (fieldMeta as { column?: unknown }).column;
   if (column == null) return fieldName;
   if (typeof column !== 'object') return fieldName;
@@ -281,10 +282,8 @@ export function convertCondition(
         if (!meta.parentField) throw new Error(`Model ${meta.modelName || meta.className} does not configure parentField and cannot use ${lowerOp}`);
 
         const table = meta.tableName();
-        const idField = meta.fields.get('Id');
-        const idColSelf = idField ? resolveStoredColumnName(idField, 'Id') : 'Id';
-        const parentPathField = meta.fields.get('ParentPath');
-        const parentPathCol = parentPathField ? resolveStoredColumnName(parentPathField, 'ParentPath') : 'ParentPath';
+        const idColSelf = resolveStoredColumnName(meta.fields.get('Id'), 'Id');
+        const parentPathCol = resolveStoredColumnName(meta.fields.get('ParentPath'), 'ParentPath');
         const dialect = String(getDialect() || 'postgres').toLowerCase();
 
         const sourcePathSubquery = db
@@ -332,10 +331,8 @@ export function convertCondition(
         }
 
         const fkCol = resolveStoredColumnName(fieldMeta, fieldName);
-        const idField = targetMeta.fields.get('Id');
-        const idCol = idField ? resolveStoredColumnName(idField, 'Id') : 'Id';
-        const parentPathField = targetMeta.fields.get('ParentPath');
-        const parentPathCol = parentPathField ? resolveStoredColumnName(parentPathField, 'ParentPath') : 'ParentPath';
+        const idCol = resolveStoredColumnName(targetMeta.fields.get('Id'), 'Id');
+        const parentPathCol = resolveStoredColumnName(targetMeta.fields.get('ParentPath'), 'ParentPath');
         const dialect = String(getDialect() || 'postgres').toLowerCase();
 
         const sourcePathSubquery = db
@@ -412,8 +409,7 @@ export function convertCondition(
         }
 
         if (fieldMeta && fieldMeta.companyDependent) {
-          const rawDialect = getDialect();
-          const dialect = (rawDialect ? String(rawDialect) : 'postgres') as DialectName;
+          const dialect = String(getDialect() || 'postgres') as DialectName;
           const col = resolveStoredColumnName(fieldMeta, fieldName);
           const unwrap = buildCompanyDependentFieldUnwrapExpr(dialect, eb, `${selfTable}.${col}`);
           const right = wrapIfDecimal(fieldName, effectiveOp, effectiveRhs);
