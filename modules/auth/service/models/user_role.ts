@@ -8,7 +8,11 @@ import type { QueryCondition } from '@/core/service/api/query';
 import { _lt } from '../i18n';
 import User from './user';
 import Role from './role';
-import { invalidateAllAuthzCaches, invalidateAuthzCachesForUsers } from './_request_cache_invalidation';
+import {
+  mutateThenInvalidateAllAuthzCaches,
+  mutateThenInvalidateAuthzCachesForUsers,
+  userIdsFromUserRolePayloads,
+} from './_authz_mutation_helpers';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 
 /**
@@ -64,15 +68,12 @@ export default class UserRole extends BaseModel {
     value: Partial<Insertable<T & BaseModel>>,
     returnFields?: FieldSelection<T>
   ): Promise<T> {
-    const created = await super.Create(value as any, returnFields as any);
-
     // Role assignments can change effective permissions within the same request;
-    // invalidate request-scoped authz/field/record caches for correctness.
-    const rows: any[] = Array.isArray(value as any) ? (value as any) : [value];
-    const userIds = rows.map((v: any) => normalizeRefId(v?.UserId)).filter(Boolean) as string[];
-    invalidateAuthzCachesForUsers(userIds);
-
-    return created as unknown as T;
+    // invalidate request-scoped authz/field/record caches for the affected users only.
+    return mutateThenInvalidateAuthzCachesForUsers(userIdsFromUserRolePayloads(value), async () => {
+      const created = await super.Create(value as any, returnFields as any);
+      return created as unknown as T;
+    });
   }
 
   /**
@@ -83,15 +84,10 @@ export default class UserRole extends BaseModel {
     values: Partial<Insertable<T & BaseModel>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
-    const created = await super.CreateMany(values as any, returnFields as any);
-
-    // Role assignments can change effective permissions within the same request;
-    // invalidate request-scoped authz/field/record caches for correctness.
-    const rows: any[] = Array.isArray(values as any) ? (values as any) : [];
-    const userIds = rows.map((v: any) => normalizeRefId(v?.UserId)).filter(Boolean) as string[];
-    invalidateAuthzCachesForUsers(userIds);
-
-    return created as unknown as T[];
+    return mutateThenInvalidateAuthzCachesForUsers(userIdsFromUserRolePayloads(values), async () => {
+      const created = await super.CreateMany(values as any, returnFields as any);
+      return created as unknown as T[];
+    });
   }
 
   /**
@@ -104,10 +100,10 @@ export default class UserRole extends BaseModel {
     returnFields?: FieldSelection<T>,
     options?: any
   ): Promise<Partial<T>[]> {
-    const out = await super.Update(condition as any, values as any, returnFields as any, options as any);
-    // Conservative: any mutation to the permission graph can make request-scoped authz decisions stale.
-    invalidateAllAuthzCaches();
-    return out as unknown as Partial<T>[];
+    return mutateThenInvalidateAllAuthzCaches(async () => {
+      const out = await super.Update(condition as any, values as any, returnFields as any, options as any);
+      return out as unknown as Partial<T>[];
+    });
   }
 
   /**
@@ -120,9 +116,10 @@ export default class UserRole extends BaseModel {
     returnFields?: FieldSelection<T>,
     options?: any
   ): Promise<Partial<T>> {
-    const out = await super.UpdateById(id as any, values as any, returnFields as any, options as any);
-    invalidateAllAuthzCaches();
-    return out as unknown as Partial<T>;
+    return mutateThenInvalidateAllAuthzCaches(async () => {
+      const out = await super.UpdateById(id as any, values as any, returnFields as any, options as any);
+      return out as unknown as Partial<T>;
+    });
   }
 
   /**
@@ -133,17 +130,13 @@ export default class UserRole extends BaseModel {
     condition: QueryCondition<T>,
     options?: any
   ): Promise<number> {
-    const out = await super.Delete(condition as any, options as any);
-    invalidateAllAuthzCaches();
-    return out;
+    return mutateThenInvalidateAllAuthzCaches(() => super.Delete(condition as any, options as any));
   }
 
   /**
    * Delete one UserRole row by Id and invalidate request-scoped auth caches.
    */
   static override async DeleteById<T extends BaseModel>(this: { new (...args: any[]): T } & typeof BaseModel, id: string, options?: any): Promise<number> {
-    const out = await super.DeleteById(id as any, options as any);
-    invalidateAllAuthzCaches();
-    return out;
+    return mutateThenInvalidateAllAuthzCaches(() => super.DeleteById(id as any, options as any));
   }
 }

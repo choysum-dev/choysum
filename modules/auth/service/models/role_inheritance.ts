@@ -7,7 +7,7 @@ import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
 import { _lt } from '../i18n';
 import Role from './role';
-import { invalidateAllAuthzCaches } from './_request_cache_invalidation';
+import { mutateThenInvalidateAllAuthzCaches } from './_authz_mutation_helpers';
 
 /**
  * RoleInheritance links a parent role to a child role so effective permissions
@@ -43,9 +43,10 @@ export default class RoleInheritance extends BaseModel {
     value: Partial<Insertable<T & BaseModel>>,
     returnFields?: FieldSelection<T>
   ): Promise<T> {
-    const out = await super.Create(value as any, returnFields as any);
-    invalidateAllAuthzCaches();
-    return out as unknown as T;
+    return mutateThenInvalidateAllAuthzCaches(async () => {
+      const out = await super.Create(value as any, returnFields as any);
+      return out as unknown as T;
+    });
   }
 
   /**
@@ -56,9 +57,10 @@ export default class RoleInheritance extends BaseModel {
     values: Partial<Insertable<T & BaseModel>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
-    const out = await super.CreateMany(values as any, returnFields as any);
-    invalidateAllAuthzCaches();
-    return out as unknown as T[];
+    return mutateThenInvalidateAllAuthzCaches(async () => {
+      const out = await super.CreateMany(values as any, returnFields as any);
+      return out as unknown as T[];
+    });
   }
 
   /**
@@ -71,9 +73,10 @@ export default class RoleInheritance extends BaseModel {
     returnFields?: FieldSelection<T>,
     options?: any
   ): Promise<Partial<T>[]> {
-    const out = await super.Update(condition as any, values as any, returnFields as any, options as any);
-    invalidateAllAuthzCaches();
-    return out as unknown as Partial<T>[];
+    return mutateThenInvalidateAllAuthzCaches(async () => {
+      const out = await super.Update(condition as any, values as any, returnFields as any, options as any);
+      return out as unknown as Partial<T>[];
+    });
   }
 
   /**
@@ -86,9 +89,10 @@ export default class RoleInheritance extends BaseModel {
     returnFields?: FieldSelection<T>,
     options?: any
   ): Promise<Partial<T>> {
-    const out = await super.UpdateById(id as any, values as any, returnFields as any, options as any);
-    invalidateAllAuthzCaches();
-    return out as unknown as Partial<T>;
+    return mutateThenInvalidateAllAuthzCaches(async () => {
+      const out = await super.UpdateById(id as any, values as any, returnFields as any, options as any);
+      return out as unknown as Partial<T>;
+    });
   }
 
   /**
@@ -99,17 +103,13 @@ export default class RoleInheritance extends BaseModel {
     condition: QueryCondition<T>,
     options?: any
   ): Promise<number> {
-    const out = await super.Delete(condition as any, options as any);
-    invalidateAllAuthzCaches();
-    return out;
+    return mutateThenInvalidateAllAuthzCaches(() => super.Delete(condition as any, options as any));
   }
 
   /**
    * Delete one RoleInheritance row by Id and invalidate request-scoped auth caches.
    */
   static override async DeleteById<T extends BaseModel>(this: { new (...args: any[]): T } & typeof BaseModel, id: string, options?: any): Promise<number> {
-    const out = await super.DeleteById(id as any, options as any);
-    invalidateAllAuthzCaches();
-    return out;
+    return mutateThenInvalidateAllAuthzCaches(() => super.DeleteById(id as any, options as any));
   }
 }
