@@ -87,12 +87,16 @@ export default class RoleMethodAccess extends BaseModel {
 
   /**
    * Source of the method-access entry.
+   *
+   * UI-Option-A: authority lives in RoleUiResource; Method rows are manual-only.
+   * Legacy `ui` values may still exist in DB but are ignored by ACL evaluators and
+   * are coerced to `manual` on write (PR-E-4).
    */
   @Field({
     type: 'selection',
     selection: [
       { value: 'manual', label: _lt('Manual', { scope: 'auth.model.RoleMethodAccess.fields' }) },
-      { value: 'ui', label: _lt('UI', { scope: 'auth.model.RoleMethodAccess.fields' }) },
+      { value: 'ui', label: _lt('UI (legacy)', { scope: 'auth.model.RoleMethodAccess.fields' }) },
     ],
     default: () => 'manual',
     size: 16,
@@ -100,6 +104,16 @@ export default class RoleMethodAccess extends BaseModel {
     string: _lt('Source', { scope: 'auth.model.RoleMethodAccess.fields' }),
   })
   Source: 'manual' | 'ui';
+
+  /**
+   * UI-Option-A: never persist Source=ui (runtime ui-derived ACL replaces materialization).
+   */
+  private static _coerceSourceManual(values: Record<string, any>, mode: 'create' | 'update'): void {
+    if (!values) return;
+    const touchesSource = Object.prototype.hasOwnProperty.call(values, 'Source');
+    if (!touchesSource && mode !== 'create') return;
+    (values as any).Source = 'manual';
+  }
 
   /**
    * Create one RoleMethodAccess row and invalidate request-scoped auth caches.
@@ -110,6 +124,7 @@ export default class RoleMethodAccess extends BaseModel {
     returnFields?: FieldSelection<T>
   ): Promise<T> {
     assertExclusiveScope(value as any, 'create', 'method');
+    RoleMethodAccess._coerceSourceManual(value as any, 'create');
     return mutateThenInvalidateAllAuthzCaches(async () => {
       const out = await super.Create(value as any, returnFields as any);
       return out as unknown as T;
@@ -125,7 +140,10 @@ export default class RoleMethodAccess extends BaseModel {
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
     const rows = values || [];
-    for (const v of rows) assertExclusiveScope(v as any, 'create', 'method');
+    for (const v of rows) {
+      assertExclusiveScope(v as any, 'create', 'method');
+      RoleMethodAccess._coerceSourceManual(v as any, 'create');
+    }
     return mutateThenInvalidateAllAuthzCaches(async () => {
       const out = await super.CreateMany(rows as any, returnFields as any);
       return out as unknown as T[];
@@ -143,6 +161,7 @@ export default class RoleMethodAccess extends BaseModel {
     options?: any
   ): Promise<Partial<T>[]> {
     assertExclusiveScope(values as any, 'update', 'method');
+    RoleMethodAccess._coerceSourceManual(values as any, 'update');
     return mutateThenInvalidateAllAuthzCaches(async () => {
       const out = await super.Update(condition as any, values as any, returnFields as any, options as any);
       return out as unknown as Partial<T>[];
@@ -160,6 +179,7 @@ export default class RoleMethodAccess extends BaseModel {
     options?: any
   ): Promise<Partial<T>> {
     assertExclusiveScope(values as any, 'update', 'method');
+    RoleMethodAccess._coerceSourceManual(values as any, 'update');
     return mutateThenInvalidateAllAuthzCaches(async () => {
       const out = await super.UpdateById(id as any, values as any, returnFields as any, options as any);
       return out as unknown as Partial<T>;

@@ -718,3 +718,39 @@ test('RoleMethodAccess coverage: CreateMany and condition Update hit assertExclu
     expect(String((rows[0] as any)?.Mode || '').trim()).toBe('deny');
   });
 });
+
+test('RoleMethodAccess: Create/Update coerce Source=ui to manual (UI-Option-A)', async () => {
+  resetRequestContext();
+  setupAllowlistForFixtures();
+
+  await withModelContext({ activeCompanyId: uid('C'), enabledCompanyIds: [uid('C')] } as any, async () => {
+    const role = await createRole('ROLE_METHOD_SOURCE_MANUAL');
+    const userModelId = await resolveModelId('auth', 'User');
+    const browse = await resolveService(userModelId, 'browse');
+
+    const created = await RoleMethodAccess.Create(
+      {
+        RoleId: { Id: role.id } as any,
+        IrServiceId: browse.id,
+        IrModelId: null,
+        IrApplicationId: null,
+        Mode: 'allow',
+        Source: 'ui',
+      } as any,
+      ['Id', 'Source'] as any
+    );
+    expect(String((created as any)?.Source || '').trim()).toBe('manual');
+
+    const id = String((created as any)?.Id || '').trim();
+    await RoleMethodAccess.UpdateById(id, { Source: 'ui' } as any, ['Id', 'Source'] as any);
+    const rows = await RoleMethodAccess.Search(['Id', '=', id] as any, { fields: ['Id', 'Source'], limit: 1 } as any);
+    expect(rows.length).toBe(1);
+    expect(String((rows[0] as any)?.Source || '').trim()).toBe('manual');
+  });
+});
+
+test('RoleMethodAccess: _coerceSourceManual no-ops on nullish values', () => {
+  // Private helper is reachable for coverage; must not throw TypeError on null/undefined.
+  expect(() => (RoleMethodAccess as any)._coerceSourceManual(null, 'create')).not.toThrow();
+  expect(() => (RoleMethodAccess as any)._coerceSourceManual(undefined, 'update')).not.toThrow();
+});

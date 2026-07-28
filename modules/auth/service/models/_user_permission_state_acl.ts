@@ -44,10 +44,12 @@ export async function buildAclAggregation(
   roleIds: string[],
   roleScopesById: Record<string, { global: boolean; companies: string[] }>
 ): Promise<AclAggregationResult> {
-  const accesses = await RoleMethodAccess.Search(['RoleId', 'in', roleIds] as any, {
-    fields: ['RoleId', 'IrServiceId', 'IrModelId', 'IrApplicationId', 'Mode'],
+  const accessesRaw = await RoleMethodAccess.Search(['RoleId', 'in', roleIds] as any, {
+    fields: ['RoleId', 'IrServiceId', 'IrModelId', 'IrApplicationId', 'Mode', 'Source'],
     limit: 50000,
   });
+  // UI-Option-A: ignore legacy Source=ui rows in PermissionState ACL aggregation.
+  const accesses = (accessesRaw || []).filter(a => String((a as any).Source || 'manual').toLowerCase() !== 'ui');
 
   const aggByCompany = new Map<string, Map<string, ServiceAgg>>();
   const companyGlobalAllow = new Set<string>();

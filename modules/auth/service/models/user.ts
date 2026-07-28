@@ -10,7 +10,6 @@ import { newAuthError, wrapAuthError, GrpcCode, AuthErrCode } from '../error';
 import { _t, _lt } from '../i18n';
 import Session from './session';
 import Role from './role';
-import RoleMethodAccess from './role_method_access';
 import Token from './token';
 import UserRole from './user_role';
 import { parseModelFullName, parseServiceFullName } from '@/core/service/utils/model_parsing';
@@ -47,7 +46,7 @@ import { buildAclAggregation } from './_user_permission_state_acl';
 import { buildUiPermissionProjection } from './_user_permission_state_ui';
 import { evaluateFieldRules } from './_user_field_rule_eval';
 import { evaluateRecordRuleCondition } from './_user_record_rule_eval';
-import { buildAuthzContext, computeEffectiveRoleScopes, computePermStateVersion, expandRoleClosure, maxUpdatedAt } from './_user_authz_context';
+import { buildAuthzContext, computePermStateVersion } from './_user_authz_context';
 
 /**
  * Auth user model with identity, token, and company-scope operations.
@@ -420,7 +419,7 @@ export default class User extends BaseModel {
   static async extractUserMetadata(user: User): Promise<TokenMetadata> {
     const userId = String((user as any)?.Id || '').trim();
     const userVersion = Number(new Date((user as any)?.UpdatedAt || Date.now()));
-    const permStateVersion = userId ? await this._computePermStateVersion(userId) : 0;
+    const permStateVersion = userId ? await computePermStateVersion(userId) : 0;
     const companyScope = computeTokenCompanyScope(user as any);
 
     let companyTimezone: string | undefined;
@@ -676,7 +675,7 @@ export default class User extends BaseModel {
       }
 
       return await withPermissionGraphBypass(async () => {
-        const permStateVersion = await this._computePermStateVersion(userId);
+        const permStateVersion = await computePermStateVersion(userId);
         const authz = await this._getAuthzContext();
         const roleIds = authz.roleIds;
 
@@ -715,25 +714,6 @@ export default class User extends BaseModel {
     return await memoizeInReqState(state, KEY, async () =>
       buildAuthzContext({ userId, activeCompanyId: companyScope.activeCompanyId, enabledCompanyIds: enabledCompanyIdsKey })
     );
-  }
-
-  /**
-   * Return the latest UpdatedAt timestamp matching a condition.
-   */
-  private static async _maxUpdatedAt(model: any, cond: any): Promise<number> {
-    return await maxUpdatedAt(model, cond);
-  }
-
-  private static async _computePermStateVersion(userId: string): Promise<number> {
-    return await computePermStateVersion(userId);
-  }
-
-  private static async _expandRoleClosure(directRoleIds: string[]): Promise<string[]> {
-    return await expandRoleClosure(directRoleIds);
-  }
-
-  private static async _computeEffectiveRoleScopes(userRoles: any[]): Promise<Map<string, { global: boolean; companies: Set<string> }>> {
-    return await computeEffectiveRoleScopes(userRoles);
   }
 
   /**

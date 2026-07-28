@@ -26,7 +26,9 @@ SPDX-License-Identifier: Apache-2.0
         show-icon
         :title="_t('Cross-role method access editor')"
         :description="
-          _t('Role is required. New rows default to Mode=deny on the model; prefer allow for grants and deny as an explicit brake.')
+          _t(
+            'Role is required. New rows default to Mode=deny on the model; prefer allow for grants and deny as an explicit brake. Source is always manual under UI-Option-A (UI grants live in RoleUiResource; do not materialize Method).'
+          )
         "
       />
       <el-row :gutter="12">
