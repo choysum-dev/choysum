@@ -240,7 +240,7 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { useI18n } from 'vue-i18n';
 import { createTranslate, translateTerm } from '@/web/web/i18n';
 import type { TermReference } from '@/core/service/i18n';
-import { normalizeUiResourceRequires } from '@/auth/web/views/role_ui_requires_explain';
+import { selectInspectedUiResource, getInspectedUiResourceId, getInspectedUiResourceRequires } from '@/auth/web/views/role_ui_requires_explain';
 
 defineOptions({ name: 'RoleFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('auth', { scope: 'web/views/RoleFormView' });
@@ -295,20 +295,14 @@ function resolveUiResourceTypeIcon(type?: string) {
 
 const inspectedUiResource = ref<Record<string, any> | null>(null);
 
-const inspectedUiResourceId = computed(() => String(inspectedUiResource.value?.Id ?? '').trim());
+const inspectedUiResourceId = computed(() => getInspectedUiResourceId(inspectedUiResource.value));
 
 const inspectedUiResourceLabel = computed(() => resolveUiResourceLabel(inspectedUiResource.value as UiResourceRow | undefined));
 
-const inspectedRequires = computed(() =>
-  normalizeUiResourceRequires(inspectedUiResource.value?.Requires ?? inspectedUiResource.value?.requires)
-);
+const inspectedRequires = computed(() => getInspectedUiResourceRequires(inspectedUiResource.value));
 
 function inspectUiResource(row: any) {
-  if (!row || typeof row !== 'object') {
-    inspectedUiResource.value = null;
-    return;
-  }
-  inspectedUiResource.value = row;
+  inspectedUiResource.value = selectInspectedUiResource(row);
 }
 
 /** New RecordRule rows default to grant (RoleId is always this role via O2M inverse). */
@@ -319,6 +313,17 @@ const defaultMethodAccess: Record<string, any> = { Mode: 'allow' };
 
 const activeTab = ref('users');
 const advancedPanels = ref('');
+
+defineExpose({
+  inspectUiResource,
+  inspectedUiResource,
+  inspectedUiResourceId,
+  inspectedUiResourceLabel,
+  inspectedRequires,
+  activeTab,
+  advancedPanels,
+  resolveUiResourceTypeIcon,
+});
 </script>
 
 <style scoped>

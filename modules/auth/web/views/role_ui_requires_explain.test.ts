@@ -2,15 +2,51 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from 'vitest';
-import { normalizeUiResourceRequires } from './role_ui_requires_explain';
+import {
+  getInspectedUiResourceId,
+  getInspectedUiResourceRequires,
+  normalizeUiResourceRequires,
+  selectInspectedUiResource,
+} from './role_ui_requires_explain';
 
 describe('normalizeUiResourceRequires', () => {
-  it('parses arrays and JSON strings; dedupes empties', () => {
-    expect(normalizeUiResourceRequires(['rpc:/auth.User/Browse', 'rpc:/auth.User/Browse', ''])).toEqual([
+  it('returns empty for nullish, blank strings, and non-arrays', () => {
+    expect(normalizeUiResourceRequires(null)).toEqual([]);
+    expect(normalizeUiResourceRequires(undefined)).toEqual([]);
+    expect(normalizeUiResourceRequires('')).toEqual([]);
+    expect(normalizeUiResourceRequires('   ')).toEqual([]);
+    expect(normalizeUiResourceRequires(42)).toEqual([]);
+    expect(normalizeUiResourceRequires({ rpc: 'x' })).toEqual([]);
+    expect(normalizeUiResourceRequires('{"a":1}')).toEqual([]);
+  });
+
+  it('parses arrays and JSON array strings; dedupes empties', () => {
+    expect(normalizeUiResourceRequires(['rpc:/auth.User/Browse', 'rpc:/auth.User/Browse', '', null])).toEqual([
       'rpc:/auth.User/Browse',
     ]);
     expect(normalizeUiResourceRequires('["rpc:/auth.User/Update"]')).toEqual(['rpc:/auth.User/Update']);
-    expect(normalizeUiResourceRequires(null)).toEqual([]);
     expect(normalizeUiResourceRequires('rpc:/auth.User/Create')).toEqual(['rpc:/auth.User/Create']);
+    expect(normalizeUiResourceRequires('not-json[')).toEqual(['not-json[']);
+  });
+});
+
+describe('selectInspectedUiResource', () => {
+  it('keeps objects and clears invalid rows', () => {
+    const row = { Id: '1' };
+    expect(selectInspectedUiResource(row)).toBe(row);
+    expect(selectInspectedUiResource(null)).toBeNull();
+    expect(selectInspectedUiResource(undefined)).toBeNull();
+    expect(selectInspectedUiResource('x')).toBeNull();
+    expect(selectInspectedUiResource(0)).toBeNull();
+  });
+});
+
+describe('inspected row helpers', () => {
+  it('reads id and Requires/requires', () => {
+    expect(getInspectedUiResourceId(null)).toBe('');
+    expect(getInspectedUiResourceId({ Id: '  abc  ' })).toBe('abc');
+    expect(getInspectedUiResourceRequires(null)).toEqual([]);
+    expect(getInspectedUiResourceRequires({ Requires: ['rpc:/a/b'] })).toEqual(['rpc:/a/b']);
+    expect(getInspectedUiResourceRequires({ requires: '["rpc:/c/d"]' })).toEqual(['rpc:/c/d']);
   });
 });

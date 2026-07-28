@@ -27,3 +27,25 @@ export function normalizeUiResourceRequires(raw: unknown): string[] {
   }
   return out;
 }
+
+/**
+ * Choose the UI resource row to inspect (null clears the panel).
+ */
+export function selectInspectedUiResource(row: unknown): Record<string, any> | null {
+  if (!row || typeof row !== 'object') return null;
+  return row as Record<string, any>;
+}
+
+/**
+ * Stable id string for the inspected UI resource row.
+ */
+export function getInspectedUiResourceId(row: Record<string, any> | null | undefined): string {
+  return String(row?.Id ?? '').trim();
+}
+
+/**
+ * Requires list for the inspected UI resource (Supports Requires / requires).
+ */
+export function getInspectedUiResourceRequires(row: Record<string, any> | null | undefined): string[] {
+  return normalizeUiResourceRequires(row?.Requires ?? row?.requires);
+}

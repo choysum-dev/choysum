@@ -28,10 +28,10 @@ describe('Role UiResources field binding', () => {
     expect(source).toContain('resolveUiResourceTypeIcon(row?.Type)');
     expect(source).toContain('inspectUiResource(row)');
     expect(source).toContain('type="button"');
+    expect(source).toContain('getInspectedUiResourceRequires');
     expect(source).toContain('Requires → derived Method RPCs');
     expect(source).toContain('UI-Option-A');
     expect(source).toContain('Primary path: check resources in this tree');
-    expect(source).toContain('normalizeUiResourceRequires');
     expect(source).not.toContain('OAuthUiResourceTreeField');
   });
 
