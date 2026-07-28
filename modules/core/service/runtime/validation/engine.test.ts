@@ -733,6 +733,52 @@ test('validation engine skips check_company when parent CompanyId is explicitly 
   expect(fromCurrent).toEqual([]);
 });
 
+test('validation engine rechecks checkCompany relations when only CompanyId changes', async () => {
+  RepositoryFactory.setRepository(
+    PlatformCompanyTargetModel as any,
+    {
+      withDeleted() {
+        return this;
+      },
+      async search() {
+        return [{ Id: 'target_prev_company', CompanyId: 'company_a' }];
+      },
+    } as any
+  );
+
+  const metadata = MetadataStorage.instance.getModelMetadata(PlatformCheckCompanySourceModel as any);
+  const issues = await ValidationEngine.validate(
+    {
+      mode: 'update',
+      model: PlatformCheckCompanySourceModel as any,
+      metadata,
+      current: { CompanyId: 'company_a', TargetId: 'target_prev_company' },
+      values: { CompanyId: 'company_b' },
+      changedFields: new Set(['CompanyId']),
+      repository: {} as any,
+      requestContext: {
+        enabledCompanyIds: ['company_a', 'company_b'],
+        activeCompanyId: 'company_b',
+      },
+    } as any,
+    {
+      includeKernel: false,
+      includeConstraints: false,
+    }
+  );
+
+  expect(issues).toEqual([
+    {
+      scope: 'platform',
+      field: 'TargetId',
+      code: 'platform_check_company_violation',
+      message:
+        'reference "TargetId" belongs to company "company_a", which is incompatible with parent company "company_b"',
+      severity: 'error',
+    },
+  ]);
+});
+
 test('validation engine allows check_company when parent and related companies match', async () => {
   RepositoryFactory.setRepository(
     PlatformCompanyTargetModel as any,

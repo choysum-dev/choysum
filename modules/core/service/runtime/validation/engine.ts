@@ -157,7 +157,18 @@ export class ValidationEngine {
       ];
     }
 
-    const fields = Array.from(new Set<string>([...Array.from(ctx.changedFields || []), ...Object.keys(ctx.values || {})]));
+    const fields = new Set<string>([...Array.from(ctx.changedFields || []), ...Object.keys(ctx.values || {})]);
+    // Odoo-style: changing parent CompanyId must re-check existing checkCompany relations.
+    if (
+      (ctx.mode === 'create' || ctx.mode === 'update') &&
+      (ctx.changedFields?.has('CompanyId') || Object.prototype.hasOwnProperty.call(ctx.values || {}, 'CompanyId'))
+    ) {
+      for (const [name, fieldMeta] of ctx.metadata.fields || []) {
+        if (!fieldMeta?.checkCompany) continue;
+        if (fieldMeta.type !== 'ManyToOne' && fieldMeta.type !== 'ManyToOneRef') continue;
+        fields.add(name);
+      }
+    }
     const createWriteWhitelist = new Set((options?.createWriteWhitelist || []).map(field => String(field || '').trim()).filter(Boolean));
     const whitelistedHits: string[] = [];
 
@@ -236,7 +247,14 @@ export class ValidationEngine {
         continue;
       }
 
-      const refId = this.resolveReferenceId(ctx.values?.[field]);
+      // Prefer the write payload; for checkCompany revalidation after CompanyId-only
+      // updates, fall back to the current related id when the relation key is omitted.
+      let refId: string | undefined;
+      if (Object.prototype.hasOwnProperty.call(ctx.values || {}, field)) {
+        refId = this.resolveReferenceId(ctx.values?.[field]);
+      } else if (meta.checkCompany) {
+        refId = this.resolveReferenceId((ctx.current as ObjectRecord | undefined)?.[field]);
+      }
       if (!refId) {
         continue;
       }
