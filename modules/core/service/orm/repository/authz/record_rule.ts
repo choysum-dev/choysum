@@ -31,7 +31,7 @@ type RepositoryRecordRuleCoordinatorDeps = {
 };
 
 function encodeHitRuleIds(ids: string[] | undefined): string | undefined {
-  const cleaned = Array.from(new Set((ids || []).map(id => String(id || '').trim()).filter(Boolean))).sort();
+  const cleaned = Array.from(new Set((ids || []).map(id => String(id ?? '').trim()).filter(Boolean))).sort();
   return cleaned.length ? cleaned.join(',') : undefined;
 }
 

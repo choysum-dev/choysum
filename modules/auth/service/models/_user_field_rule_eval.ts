@@ -313,7 +313,7 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
         ...appRules,
         ...globalRules,
       ]
-        .map(r => String((r as any)?.__rid || '').trim())
+        .map(r => String((r as any)?.__rid ?? '').trim())
         .filter(Boolean)
     )
   ).sort();

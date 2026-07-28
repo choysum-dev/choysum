@@ -87,9 +87,19 @@ function normalizeRepositoryRecordRuleEnvelope(input: unknown): ConditionEnvelop
   const value = asObjectRecord(input) ?? {};
   const kind = String(value.kind || '').trim();
   const reason = typeof value.reason === 'string' ? value.reason : undefined;
-  const hitRuleIds = Array.isArray(value.hitRuleIds)
-    ? Array.from(new Set(value.hitRuleIds.map((id: unknown) => String(id ?? '').trim()).filter(Boolean))).sort()
-    : [];
+  const hitRuleIdsRaw = value.hitRuleIds;
+  const hitRuleIds = Array.isArray(hitRuleIdsRaw)
+    ? Array.from(new Set(hitRuleIdsRaw.map((id: unknown) => String(id ?? '').trim()).filter(Boolean))).sort()
+    : typeof hitRuleIdsRaw === 'string'
+      ? Array.from(
+          new Set(
+            hitRuleIdsRaw
+              .split(',')
+              .map((id: string) => id.trim())
+              .filter(Boolean)
+          )
+        ).sort()
+      : [];
   const diagnostics = {
     reason,
     ...(hitRuleIds.length ? { hitRuleIds } : {}),
