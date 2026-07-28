@@ -109,6 +109,7 @@ export default class RoleMethodAccess extends BaseModel {
    * UI-Option-A: never persist Source=ui (runtime ui-derived ACL replaces materialization).
    */
   private static _coerceSourceManual(values: Record<string, any>, mode: 'create' | 'update'): void {
+    if (!values) return;
     const touchesSource = Object.prototype.hasOwnProperty.call(values, 'Source');
     if (!touchesSource && mode !== 'create') return;
     (values as any).Source = 'manual';
