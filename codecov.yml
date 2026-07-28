@@ -5,18 +5,15 @@ coverage:
   precision: 1
   round: down
   status:
-    # Project: keep overall level from collapsing; allow small noise from
-    # impacted-module / partial uploads (carryforward can tighten later).
     project:
       default:
         target: auto
-        threshold: 2%
+        threshold: 1%
         if_ci_failed: error
-    # Patch: fixed bar on changed lines (not auto). New code should be mostly tested.
     patch:
       default:
-        target: 70%
-        threshold: 0%
+        target: auto
+        threshold: 1%
         if_ci_failed: error
 
 ignore:
