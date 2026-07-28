@@ -192,6 +192,28 @@
         "PermWrite": "allow"
       }
     },
+    {
+      "module": "auth",
+      "external_id": "rfr_sys_admin_auth_user_password_hash_deny",
+      "model": "auth.RoleFieldRule",
+      "values": {
+        "RoleId": { "ref": "auth.role_sys_admin" },
+        "IrApplicationId": null,
+        "IrModelId": { "modelRef": "auth.User" },
+        "IrFieldId": {
+          "search": {
+            "model": "meta.IrField",
+            "domain": [
+              ["Name", "=", "PasswordHash"],
+              ["ModelId", "=", { "modelRef": "auth.User" }]
+            ],
+            "limit": 1
+          }
+        },
+        "PermRead": "deny",
+        "PermWrite": "deny"
+      }
+    },
 
     {
       "module": "auth",
@@ -340,6 +362,28 @@
         "IrFieldId": null,
         "PermRead": "allow",
         "PermWrite": null
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "rfr_base_user_auth_user_password_hash_deny",
+      "model": "auth.RoleFieldRule",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "IrApplicationId": null,
+        "IrModelId": { "modelRef": "auth.User" },
+        "IrFieldId": {
+          "search": {
+            "model": "meta.IrField",
+            "domain": [
+              ["Name", "=", "PasswordHash"],
+              ["ModelId", "=", { "modelRef": "auth.User" }]
+            ],
+            "limit": 1
+          }
+        },
+        "PermRead": "deny",
+        "PermWrite": "deny"
       }
     },
     {

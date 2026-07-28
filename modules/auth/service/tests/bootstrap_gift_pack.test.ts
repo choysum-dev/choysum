@@ -10,9 +10,11 @@ import RoleFieldRule from '@/auth/service/models/role_field_rule';
 import { createServiceByModel } from '@/core/service/rpc';
 import type IrApplicationModel from '@/meta/service/models/ir_application';
 import type IrModelModel from '@/meta/service/models/ir_model';
+import type IrFieldModel from '@/meta/service/models/ir_field';
 
 const IrApplication = createServiceByModel<typeof IrApplicationModel>('meta.IrApplication');
 const IrModel = createServiceByModel<typeof IrModelModel>('meta.IrModel');
+const IrField = createServiceByModel<typeof IrFieldModel>('meta.IrField');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -205,6 +207,45 @@ test('PR-C-2 gift pack: bootstrap seeds sys.admin global RR+FR and base.user app
       );
       expect((sysAdminFr || []).length > 0).toBe(true);
 
+      const userModelRows = await IrModel.Search(
+        {
+          And: [
+            ['Name', '=', 'User'],
+            ['Application', '=', 'auth'],
+          ],
+        } as any,
+        { fields: ['Id'], limit: 1 } as any
+      );
+      const userModelId = String((userModelRows as any)?.[0]?.Id || '').trim();
+      expect(Boolean(userModelId)).toBe(true);
+      const passwordFieldRows = await IrField.Search(
+        {
+          And: [
+            ['Name', '=', 'PasswordHash'],
+            ['ModelId', '=', userModelId],
+          ],
+        } as any,
+        { fields: ['Id'], limit: 1 } as any
+      );
+      const passwordFieldId = String((passwordFieldRows as any)?.[0]?.Id || '').trim();
+      expect(Boolean(passwordFieldId)).toBe(true);
+
+      for (const roleId of [sysAdminRoleId, baseUserRoleId]) {
+        const passwordDeny = await RoleFieldRule.Search(
+          {
+            And: [
+              ['RoleId', '=', roleId],
+              ['IrModelId', '=', userModelId],
+              ['IrFieldId', '=', passwordFieldId],
+              ['PermRead', '=', 'deny'],
+              ['PermWrite', '=', 'deny'],
+            ],
+          } as any,
+          { fields: ['Id'], limit: 1 } as any
+        );
+        expect((passwordDeny || []).length > 0).toBe(true);
+      }
+
       for (const appId of [authAppId, baseAppId, metaAppId]) {
         const rr = await RoleRecordRule.Search(
           {
@@ -288,8 +329,9 @@ test('PR-C-2 gift pack: admin with sys.admin can read Company rows and columns',
         async () => {
           const rr = await User.GetRecordRuleCondition('base.Company', 'read');
           const fr = await User.GetFieldRuleSpec('base.Company');
+          const frUser = await User.GetFieldRuleSpec('auth.User');
           const ps = await User.GetPermissionState();
-          return { rr, fr, ps };
+          return { rr, fr, frUser, ps };
         },
         { merge: false }
       );
@@ -301,6 +343,9 @@ test('PR-C-2 gift pack: admin with sys.admin can read Company rows and columns',
   expect(Array.isArray((out.fr as any)?.denyReadFields)).toBe(true);
   expect(((out.fr as any)?.denyReadFields || []).includes('Name')).toBe(false);
   expect(((out.fr as any)?.denyWriteFields || []).includes('Name')).toBe(false);
+  // PR-D-2: global FR allow still clamps PasswordHash via field-scope deny overlay.
+  expect(((out.frUser as any)?.denyReadFields || []).includes('PasswordHash')).toBe(true);
+  expect(((out.frUser as any)?.denyWriteFields || []).includes('PasswordHash')).toBe(true);
   expect(out.ps?.byCompany?.['*']?.ui?.routes).toEqual(['*']);
 });
 
@@ -348,8 +393,10 @@ test('PR-C-2 gift pack: base.user can read Company columns but not write them', 
   expect(((out.frCompany as any)?.denyWriteFields || []).includes('Name')).toBe(true);
 
   // Profile writes are field-allowlisted; sensitive auth.User fields stay deny-write.
+  // PR-D-2: PasswordHash also has an explicit field-scope deny overlay (deny-read + deny-write).
   expect(((out.frUser as any)?.denyWriteFields || []).includes('Language')).toBe(false);
   expect(((out.frUser as any)?.denyWriteFields || []).includes('Timezone')).toBe(false);
+  expect(((out.frUser as any)?.denyReadFields || []).includes('PasswordHash')).toBe(true);
   expect(((out.frUser as any)?.denyWriteFields || []).includes('PasswordHash')).toBe(true);
   expect(((out.frUser as any)?.denyWriteFields || []).includes('IsActive')).toBe(true);
   expect(((out.frUser as any)?.denyWriteFields || []).includes('CompanyId')).toBe(true);

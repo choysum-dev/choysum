@@ -1422,6 +1422,71 @@ test('P4 field rule deny-default: uncovered field is denied when other FR rows e
   expect(Object.prototype.hasOwnProperty.call(row as any, 'CompanyId')).toBe(false);
 });
 
+test('PR-D-2: wide model allow + field-scope deny clamps sensitive column', async () => {
+  resetRequestContext();
+
+  const c1 = { Id: uid('C1') };
+  const { roleId } = await withModelContext(
+    { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
+    async () => {
+      const uid1 = await createUser(c1.Id);
+      setIdentity(uid1);
+      const rid = await createRole();
+      await grantRoleGlobal(uid1, rid, c1.Id);
+
+      const locationModelId = await resolveModelId('auth', 'CompanyScopedResource');
+      const nameFieldId = await resolveFieldId(locationModelId, 'Name');
+
+      await RoleFieldRule.Create(
+        {
+          RoleId: { Id: rid } as any,
+          IrModelId: locationModelId,
+          IrFieldId: null,
+          PermRead: 'allow',
+          PermWrite: 'allow',
+        } as any,
+        ['Id'] as any
+      );
+      await RoleFieldRule.Create(
+        {
+          RoleId: { Id: rid } as any,
+          IrModelId: locationModelId,
+          IrFieldId: nameFieldId,
+          PermRead: 'deny',
+          PermWrite: 'deny',
+        } as any,
+        ['Id'] as any
+      );
+
+      return { roleId: rid };
+    },
+    { merge: false }
+  );
+
+  const jsCtx = ensureRequestContext();
+  delete (jsCtx as any)[FR_CACHE_KEY];
+  setReq({ depth: 0, fieldRuleMode: '' });
+
+  const spec = await withModelContext(
+    { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
+    async () => {
+      return await evaluateFieldRules({
+        appName: 'auth',
+        modelName: 'CompanyScopedResource',
+        rawModel: 'auth.CompanyScopedResource',
+        roleIds: [roleId],
+      });
+    },
+    { merge: false }
+  );
+
+  expect(spec.reason).toBe('ok');
+  expect(spec.denyReadFields.includes('Name')).toBe(true);
+  expect(spec.denyWriteFields.includes('Name')).toBe(true);
+  expect(spec.denyReadFields.includes('CompanyId')).toBe(false);
+  expect(spec.denyWriteFields.includes('CompanyId')).toBe(false);
+});
+
 test('P4 field rule deny-default: null FR Search result denies all non-system fields', async () => {
   resetRequestContext();
 
