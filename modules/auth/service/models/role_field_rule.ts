@@ -173,8 +173,9 @@ export default class RoleFieldRule extends BaseModel {
     values: Partial<Insertable<T & BaseModel>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
-    for (const v of values || []) RoleFieldRule._prepareValues(v as any, 'create');
-    const out = await super.CreateMany(values as any, returnFields as any);
+    const rows = values || [];
+    for (const v of rows) RoleFieldRule._prepareValues(v as any, 'create');
+    const out = await super.CreateMany(rows as any, returnFields as any);
     invalidateAllAuthzCaches();
     return out as unknown as T[];
   }

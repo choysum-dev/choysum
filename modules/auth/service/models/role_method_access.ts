@@ -123,8 +123,9 @@ export default class RoleMethodAccess extends BaseModel {
     values: Partial<Insertable<T & BaseModel>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
-    for (const v of values || []) assertExclusiveScope(v as any, 'create', 'method');
-    const out = await super.CreateMany(values as any, returnFields as any);
+    const rows = values || [];
+    for (const v of rows) assertExclusiveScope(v as any, 'create', 'method');
+    const out = await super.CreateMany(rows as any, returnFields as any);
     invalidateAllAuthzCaches();
     return out as unknown as T[];
   }

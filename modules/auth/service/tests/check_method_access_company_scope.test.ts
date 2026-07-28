@@ -687,6 +687,10 @@ test('RoleMethodAccess coverage: CreateMany and condition Update hit assertExclu
     const userModelId = await resolveModelId('auth', 'User');
     const browse = await resolveService(userModelId, 'browse');
 
+    const none = await RoleMethodAccess.CreateMany(null as any, ['Id'] as any);
+    expect(Array.isArray(none)).toBe(true);
+    expect(none.length).toBe(0);
+
     const many = await RoleMethodAccess.CreateMany(
       [
         {

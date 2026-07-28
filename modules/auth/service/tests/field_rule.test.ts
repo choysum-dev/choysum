@@ -1580,6 +1580,10 @@ test('RoleFieldRule coverage: CreateMany, perm validation branches, and Update p
       const modelId = await resolveModelId('auth', 'CompanyScopedResource');
       const fieldId = await resolveFieldId(modelId, 'Name');
 
+      const none = await RoleFieldRule.CreateMany(null as any, ['Id'] as any);
+      expect(Array.isArray(none)).toBe(true);
+      expect(none.length).toBe(0);
+
       const many = await RoleFieldRule.CreateMany(
         [
           {
@@ -1649,6 +1653,42 @@ test('RoleFieldRule coverage: CreateMany, perm validation branches, and Update p
         badPerm = String(e?.message || e);
       }
       expect(badPerm.includes('invalid RoleFieldRule perm value')).toBe(true);
+
+      // Create with only PermWrite (no PermRead key) still materializes both columns.
+      const writeOnly = await RoleFieldRule.Create(
+        {
+          RoleId: { Id: roleId } as any,
+          IrModelId: modelId,
+          IrFieldId: null,
+          IrApplicationId: null,
+          PermWrite: 'allow',
+        } as any,
+        ['Id', 'PermRead', 'PermWrite'] as any
+      );
+      expect(String((writeOnly as any)?.PermWrite || '').trim()).toBe('allow');
+      expect((writeOnly as any)?.PermRead == null || String((writeOnly as any)?.PermRead || '').trim() === '').toBe(true);
+
+      // Update with both keys present and non-null (dual-key success path).
+      await RoleFieldRule.UpdateById(
+        id,
+        { PermRead: 'deny', PermWrite: 'allow' } as any,
+        ['Id'] as any
+      );
+      const afterBoth = await RoleFieldRule.Search(
+        ['Id', '=', id] as any,
+        { fields: ['Id', 'PermRead', 'PermWrite'], limit: 1 } as any
+      );
+      expect(String((afterBoth[0] as any)?.PermRead || '').trim()).toBe('deny');
+      expect(String((afterBoth[0] as any)?.PermWrite || '').trim()).toBe('allow');
+
+      // Blank-string perm normalizes to null on a single-key update (sibling preserved).
+      await RoleFieldRule.UpdateById(id, { PermRead: '   ' } as any, ['Id'] as any);
+      const afterBlank = await RoleFieldRule.Search(
+        ['Id', '=', id] as any,
+        { fields: ['Id', 'PermRead', 'PermWrite'], limit: 1 } as any
+      );
+      expect(String((afterBlank[0] as any)?.PermRead || '').trim()).toBe('');
+      expect(String((afterBlank[0] as any)?.PermWrite || '').trim()).toBe('allow');
     },
     { merge: false }
   );
