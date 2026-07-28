@@ -7,7 +7,7 @@ import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
 import { _lt } from '../i18n';
 import Role from './role';
-import { invalidateAllAuthzCaches } from './_request_cache_invalidation';
+import { mutateThenInvalidateAllAuthzCaches } from './_authz_mutation_helpers';
 import { assertExclusiveScope } from './_rule_scope_helpers';
 
 /**
@@ -109,9 +109,10 @@ export default class RoleUiResource extends BaseModel {
   ): Promise<T> {
     assertExclusiveScope(value as any, 'create', 'ui');
     RoleUiResource._validateMode(value as any, 'create');
-    const out = await super.Create(value as any, returnFields as any);
-    invalidateAllAuthzCaches();
-    return out as unknown as T;
+    return mutateThenInvalidateAllAuthzCaches(async () => {
+      const out = await super.Create(value as any, returnFields as any);
+      return out as unknown as T;
+    });
   }
 
   /**
@@ -127,9 +128,10 @@ export default class RoleUiResource extends BaseModel {
       assertExclusiveScope(v as any, 'create', 'ui');
       RoleUiResource._validateMode(v as any, 'create');
     }
-    const out = await super.CreateMany(rows as any, returnFields as any);
-    invalidateAllAuthzCaches();
-    return out as unknown as T[];
+    return mutateThenInvalidateAllAuthzCaches(async () => {
+      const out = await super.CreateMany(rows as any, returnFields as any);
+      return out as unknown as T[];
+    });
   }
 
   /**
@@ -144,9 +146,10 @@ export default class RoleUiResource extends BaseModel {
   ): Promise<Partial<T>[]> {
     assertExclusiveScope(values as any, 'update', 'ui');
     RoleUiResource._validateMode(values as any, 'update');
-    const out = await super.Update(condition as any, values as any, returnFields as any, options as any);
-    invalidateAllAuthzCaches();
-    return out as unknown as Partial<T>[];
+    return mutateThenInvalidateAllAuthzCaches(async () => {
+      const out = await super.Update(condition as any, values as any, returnFields as any, options as any);
+      return out as unknown as Partial<T>[];
+    });
   }
 
   /**
@@ -161,9 +164,10 @@ export default class RoleUiResource extends BaseModel {
   ): Promise<Partial<T>> {
     assertExclusiveScope(values as any, 'update', 'ui');
     RoleUiResource._validateMode(values as any, 'update');
-    const out = await super.UpdateById(id as any, values as any, returnFields as any, options as any);
-    invalidateAllAuthzCaches();
-    return out as unknown as Partial<T>;
+    return mutateThenInvalidateAllAuthzCaches(async () => {
+      const out = await super.UpdateById(id as any, values as any, returnFields as any, options as any);
+      return out as unknown as Partial<T>;
+    });
   }
 
   /**
@@ -174,17 +178,13 @@ export default class RoleUiResource extends BaseModel {
     condition: QueryCondition<T>,
     options?: any
   ): Promise<number> {
-    const out = await super.Delete(condition as any, options as any);
-    invalidateAllAuthzCaches();
-    return out;
+    return mutateThenInvalidateAllAuthzCaches(() => super.Delete(condition as any, options as any));
   }
 
   /**
    * Delete one RoleUiResource row by Id and invalidate request-scoped auth caches.
    */
   static override async DeleteById<T extends BaseModel>(this: { new (...args: any[]): T } & typeof BaseModel, id: string, options?: any): Promise<number> {
-    const out = await super.DeleteById(id as any, options as any);
-    invalidateAllAuthzCaches();
-    return out;
+    return mutateThenInvalidateAllAuthzCaches(() => super.DeleteById(id as any, options as any));
   }
 }

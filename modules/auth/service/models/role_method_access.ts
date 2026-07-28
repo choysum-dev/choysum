@@ -7,7 +7,7 @@ import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
 import { _lt } from '../i18n';
 import Role from './role';
-import { invalidateAllAuthzCaches } from './_request_cache_invalidation';
+import { mutateThenInvalidateAllAuthzCaches } from './_authz_mutation_helpers';
 import { assertExclusiveScope } from './_rule_scope_helpers';
 
 /**
@@ -110,9 +110,10 @@ export default class RoleMethodAccess extends BaseModel {
     returnFields?: FieldSelection<T>
   ): Promise<T> {
     assertExclusiveScope(value as any, 'create', 'method');
-    const out = await super.Create(value as any, returnFields as any);
-    invalidateAllAuthzCaches();
-    return out as unknown as T;
+    return mutateThenInvalidateAllAuthzCaches(async () => {
+      const out = await super.Create(value as any, returnFields as any);
+      return out as unknown as T;
+    });
   }
 
   /**
@@ -125,9 +126,10 @@ export default class RoleMethodAccess extends BaseModel {
   ): Promise<T[]> {
     const rows = values || [];
     for (const v of rows) assertExclusiveScope(v as any, 'create', 'method');
-    const out = await super.CreateMany(rows as any, returnFields as any);
-    invalidateAllAuthzCaches();
-    return out as unknown as T[];
+    return mutateThenInvalidateAllAuthzCaches(async () => {
+      const out = await super.CreateMany(rows as any, returnFields as any);
+      return out as unknown as T[];
+    });
   }
 
   /**
@@ -141,9 +143,10 @@ export default class RoleMethodAccess extends BaseModel {
     options?: any
   ): Promise<Partial<T>[]> {
     assertExclusiveScope(values as any, 'update', 'method');
-    const out = await super.Update(condition as any, values as any, returnFields as any, options as any);
-    invalidateAllAuthzCaches();
-    return out as unknown as Partial<T>[];
+    return mutateThenInvalidateAllAuthzCaches(async () => {
+      const out = await super.Update(condition as any, values as any, returnFields as any, options as any);
+      return out as unknown as Partial<T>[];
+    });
   }
 
   /**
@@ -157,9 +160,10 @@ export default class RoleMethodAccess extends BaseModel {
     options?: any
   ): Promise<Partial<T>> {
     assertExclusiveScope(values as any, 'update', 'method');
-    const out = await super.UpdateById(id as any, values as any, returnFields as any, options as any);
-    invalidateAllAuthzCaches();
-    return out as unknown as Partial<T>;
+    return mutateThenInvalidateAllAuthzCaches(async () => {
+      const out = await super.UpdateById(id as any, values as any, returnFields as any, options as any);
+      return out as unknown as Partial<T>;
+    });
   }
 
   /**
@@ -170,17 +174,13 @@ export default class RoleMethodAccess extends BaseModel {
     condition: QueryCondition<T>,
     options?: any
   ): Promise<number> {
-    const out = await super.Delete(condition as any, options as any);
-    invalidateAllAuthzCaches();
-    return out;
+    return mutateThenInvalidateAllAuthzCaches(() => super.Delete(condition as any, options as any));
   }
 
   /**
    * Delete one RoleMethodAccess row by Id and invalidate request-scoped auth caches.
    */
   static override async DeleteById<T extends BaseModel>(this: { new (...args: any[]): T } & typeof BaseModel, id: string, options?: any): Promise<number> {
-    const out = await super.DeleteById(id as any, options as any);
-    invalidateAllAuthzCaches();
-    return out;
+    return mutateThenInvalidateAllAuthzCaches(() => super.DeleteById(id as any, options as any));
   }
 }
