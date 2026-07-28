@@ -1284,6 +1284,59 @@ func TestEnforceMethodAccessExecutorPaths(t *testing.T) {
 }
 
 func TestEnforceMethodAccessDecisionObservabilityLogging(t *testing.T) {
+	t.Run("decision envelope forwards reason and hitRuleIds into decision_summary", func(t *testing.T) {
+		runtimeScope := newHelperScope(t.TempDir())
+		runtimeScope.cfg.Auth.Enabled = true
+		runtimeScope.cfg.Auth.GrpcMethodAccess = true
+		runtimeScope.cfg.Auth.GrpcEntryPolicy = nil
+		runtimeScope.cfg.Auth.AuthzDecisionLog = "all"
+		runtimeScope.cfg.Auth.AuthzDecisionAudit = true
+
+		var logBuf bytes.Buffer
+		runtimeScope.logger = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+
+		executor := newACLTestExecutor(t, runtimeScope, func(ctx context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+			return &jsengine.JsResponse{
+				Id: req.Id,
+				Result: map[string]any{
+					"allowed":    false,
+					"reason":     "method_access_deny",
+					"hitRuleIds": []any{" ma_2 ", "", "ma_1", "ma_1"},
+				},
+			}, nil
+		})
+
+		svc := &ApplicationService{
+			runtimeScope:  runtimeScope,
+			jsExecutor:    executor,
+			hasGrpcMethod: func(fullMethod string) bool { return fullMethod == "/auth.User/CheckMethodAccess" },
+		}
+		ctx := auth.ContextWithIdentity(context.Background(), &testIdentity{userID: "u-e5", tokenID: "t1"})
+		jsCtx := map[string]interface{}{
+			"req": map[string]any{"depth": 0},
+			"ctx": map[string]any{"activeCompanyId": "company-a"},
+		}
+
+		err := svc.enforceMethodAccess(ctx, runtimeScope, jsCtx, "/sales.Order/Deny")
+		if status.Code(err) != codes.PermissionDenied {
+			t.Fatalf("expected permission denied, got %v", err)
+		}
+		logs := logBuf.String()
+		for _, want := range []string{
+			"event=authz.decision_summary",
+			"layer=method_access",
+			"decision=deny",
+			"basis=acl_denied",
+			"reason=method_access_deny",
+			"hitRuleIds=\"[ma_1 ma_2]\"",
+			"audit=true",
+		} {
+			if !strings.Contains(logs, want) {
+				t.Fatalf("expected log to contain %q, got:\n%s", want, logs)
+			}
+		}
+	})
+
 	t.Run("allow and deny emit camelCase decision_summary with audit", func(t *testing.T) {
 		runtimeScope := newHelperScope(t.TempDir())
 		runtimeScope.cfg.Auth.Enabled = true

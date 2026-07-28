@@ -25,6 +25,15 @@ export type UiGrantExpansion = {
   resourceModesByKey: Record<string, Array<'allow' | 'deny'>>;
 };
 
+/**
+ * Method ACL decision envelope shared by CheckMethodAccess and UI-derived eval (PR-E-5 / W10).
+ */
+export type MethodAccessDecision = {
+  allowed: boolean;
+  reason: string;
+  hitRuleIds: string[];
+};
+
 function getMethodAccessReqState(): Record<string, unknown> | undefined {
   const req = getCurrentReq();
   return req ? getOrInitReqServiceState(req) : undefined;
@@ -315,19 +324,25 @@ export async function evaluateUiDerivedMethodDecision(
   roleIds: string[],
   modelKey: string,
   methodLower: string
-): Promise<{ allowed: boolean; denied: boolean }> {
+): Promise<{ allowed: boolean; denied: boolean; hitRuleIds: string[]; reason: string }> {
   const mkey = String(modelKey || '').trim();
   const m = String(methodLower || '')
     .trim()
     .toLowerCase();
-  if (!mkey || !m) return { allowed: false, denied: false };
+  if (!mkey || !m) {
+    return { allowed: false, denied: false, hitRuleIds: [], reason: 'method_access_ui_no_match' };
+  }
 
   const expansion = await loadUiGrantExpansionForRoles(roleIds);
   const resources = expansion.resources || [];
-  if (resources.length === 0) return { allowed: false, denied: false };
+  if (resources.length === 0) {
+    return { allowed: false, denied: false, hitRuleIds: [], reason: 'method_access_ui_no_match' };
+  }
 
   let allowed = false;
   let denied = false;
+  const allowHitRuleIds: string[] = [];
+  const denyHitRuleIds: string[] = [];
 
   for (const row of resources) {
     const requires = parseJsonStringArray((row as any)?.Requires ?? (row as any)?.requires);
@@ -357,12 +372,33 @@ export async function evaluateUiDerivedMethodDecision(
       for (const mode of expansion.resourceModesByKey?.[key] || []) matchedModes.add(mode);
     }
 
+    const resourceId = String((row as any)?.Id ?? (row as any)?.id ?? '').trim();
     if (matchedModes.has('deny')) {
       denied = true;
+      if (resourceId) denyHitRuleIds.push(resourceId);
       continue;
     }
-    if (matchedModes.has('allow')) allowed = true;
+    if (matchedModes.has('allow')) {
+      allowed = true;
+      if (resourceId) allowHitRuleIds.push(resourceId);
+    }
   }
 
-  return { allowed, denied };
+  if (denied) {
+    return {
+      allowed: false,
+      denied: true,
+      hitRuleIds: Array.from(new Set(denyHitRuleIds)).sort(),
+      reason: 'method_access_ui_deny',
+    };
+  }
+  if (allowed) {
+    return {
+      allowed: true,
+      denied: false,
+      hitRuleIds: Array.from(new Set(allowHitRuleIds)).sort(),
+      reason: 'method_access_ui_allow',
+    };
+  }
+  return { allowed: false, denied: false, hitRuleIds: [], reason: 'method_access_ui_no_match' };
 }

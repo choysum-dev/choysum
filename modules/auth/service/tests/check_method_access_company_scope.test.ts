@@ -292,10 +292,13 @@ test('P3-2: CheckMethodAccess respects company-scoped roles', async () => {
   );
 
   // role is scoped to c2 => only c2 should pass
-  expect(out.allowC1).toBe(false);
-  expect(out.allowC2).toBe(true);
+  expect(out.allowC1?.allowed).toBe(false);
+  expect(out.allowC2?.allowed).toBe(true);
+  expect(typeof out.allowC2?.reason).toBe('string');
+  expect(Array.isArray(out.allowC2?.hitRuleIds)).toBe(true);
   // empty companyId must fail-closed
-  expect(out.allowEmpty).toBe(false);
+  expect(out.allowEmpty?.allowed).toBe(false);
+  expect(out.allowEmpty?.reason).toBe('missing_company_id');
 });
 
 test('P3-2: CheckMethodAccess global role applies to any company', async () => {
@@ -345,8 +348,8 @@ test('P3-2: CheckMethodAccess global role applies to any company', async () => {
     { merge: false }
   );
 
-  expect(out.allowC1).toBe(true);
-  expect(out.allowC2).toBe(true);
+  expect(out.allowC1?.allowed).toBe(true);
+  expect(out.allowC2?.allowed).toBe(true);
 });
 
 test('P3-2: CheckMethodAccess application wildcard allow applies to any method within app', async () => {
@@ -395,7 +398,7 @@ test('P3-2: CheckMethodAccess application wildcard allow applies to any method w
     { merge: false }
   );
 
-  expect(out.ok).toBe(true);
+  expect(out.ok?.allowed).toBe(true);
 });
 
 test('P3-2: CheckMethodAccess deny wins across scopes (app allow + service deny)', async () => {
@@ -436,8 +439,8 @@ test('P3-2: CheckMethodAccess deny wins across scopes (app allow + service deny)
     { merge: false }
   );
 
-  expect(out.allowBrowse).toBe(true);
-  expect(out.allowLogout).toBe(false);
+  expect(out.allowBrowse?.allowed).toBe(true);
+  expect(out.allowLogout?.allowed).toBe(false);
 });
 
 test('P3-2: CheckMethodAccess global wildcard allow grants access across apps', async () => {
@@ -469,7 +472,7 @@ test('P3-2: CheckMethodAccess global wildcard allow grants access across apps', 
     { merge: false }
   );
 
-  expect(out.ok).toBe(true);
+  expect(out.ok?.allowed).toBe(true);
 });
 
 test('P3-2: CheckMethodAccess ui deny overrides ui allow on same runtime method', async () => {
@@ -507,7 +510,7 @@ test('P3-2: CheckMethodAccess ui deny overrides ui allow on same runtime method'
     { merge: false }
   );
 
-  expect(out.ok).toBe(false);
+  expect(out.ok?.allowed).toBe(false);
 });
 
 test('P3-2: evaluateUiDerivedMethodDecision marks denied when allow and deny both match', async () => {
@@ -533,6 +536,8 @@ test('P3-2: evaluateUiDerivedMethodDecision marks denied when allow and deny bot
     const out = await evaluateUiDerivedMethodDecision(['ROLE-1'], 'auth.User', 'browse');
     expect(out.allowed).toBe(false);
     expect(out.denied).toBe(true);
+    expect(out.reason).toBe('method_access_ui_deny');
+    expect(out.hitRuleIds).toEqual(['RES-DENY']);
   } finally {
     (RoleUiResource as any).Search = originalRoleUiSearch;
     (IrUiResource as any).Search = originalIrUiSearch;
@@ -576,7 +581,7 @@ test('P3-2: CheckMethodAccess manual allow remains authoritative over ui deny', 
     { merge: false }
   );
 
-  expect(out.ok).toBe(true);
+  expect(out.ok?.allowed).toBe(true);
 });
 
 test('RoleMethodAccess db check: deleted rows bypass scope xor', async () => {
