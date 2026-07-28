@@ -51,6 +51,37 @@ test('normalizeWithCompanyPatch keeps explicit enabled that omit active (caller 
   });
 });
 
+test('normalizeWithCompanyPatch covers non-string primitives and non-array enabled', () => {
+  // Non-string / non-object target (typeof !== 'object') and non-null trimNonEmpty arm.
+  expect(normalizeWithCompanyPatch(42 as any)).toEqual({
+    activeCompanyId: '42',
+    enabledCompanyIds: ['42'],
+  });
+  expect(() => normalizeWithCompanyPatch(undefined as any)).toThrow('non-empty activeCompanyId');
+
+  // Non-array enabledCompanyIds wraps into a one-element list.
+  expect(
+    normalizeWithCompanyPatch({
+      activeCompanyId: 'C1',
+      enabledCompanyIds: ' C2 ' as any,
+    })
+  ).toEqual({
+    activeCompanyId: 'C1',
+    enabledCompanyIds: ['C2'],
+  });
+
+  // Non-string enabled items exercise trimNonEmpty's String(value) path.
+  expect(
+    normalizeWithCompanyPatch({
+      activeCompanyId: 'C1',
+      enabledCompanyIds: [7, 'C1', null, 'C2'] as any,
+    })
+  ).toEqual({
+    activeCompanyId: 'C1',
+    enabledCompanyIds: ['7', 'C1', 'C2'],
+  });
+});
+
 test('withCompany overrides company getters and restores outer view', async () => {
   const globalAny = globalThis as any;
   const hadPrev = Object.prototype.hasOwnProperty.call(globalAny, '$choysum');
