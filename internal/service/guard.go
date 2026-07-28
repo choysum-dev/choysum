@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -137,22 +138,23 @@ func (g serviceGuard) runMethodAccess(ctx context.Context, runtimeScope scope.Sc
 			}
 
 			payload := map[string]any{
-				"event":               "authz.decision",
-				"layer":               "acl",
-				"decision":            decision,
-				"basis":               basis,
-				"full_method":         fullMethod,
-				"user_id":             userID,
-				"active_company_id":   activeCompanyID,
-				"enabled_company_ids": enabledCompanyIDs,
+				"event":             "authz.decision_summary",
+				"layer":             "method_access",
+				"decision":          decision,
+				"basis":             basis,
+				"reason":            basis,
+				"fullMethod":        fullMethod,
+				"userId":            userID,
+				"activeCompanyId":   activeCompanyID,
+				"enabledCompanyIds": enabledCompanyIDs,
 			}
 			for key, value := range extra {
 				payload[key] = value
 			}
 
-			g.runtimeScope.Logger().Info("authz decision", "event", payload["event"], "layer", payload["layer"], "decision", payload["decision"], "basis", payload["basis"], "full_method", payload["full_method"], "user_id", payload["user_id"], "active_company_id", payload["active_company_id"], "enabled_company_ids", payload["enabled_company_ids"], "extra", extra)
+			logAuthzDecisionSummary(g.runtimeScope, payload, false)
 			if auditEnabled {
-				g.runtimeScope.Logger().Info("authz decision", "audit", true, "event", payload["event"], "layer", payload["layer"], "decision", payload["decision"], "basis", payload["basis"], "full_method", payload["full_method"], "user_id", payload["user_id"], "active_company_id", payload["active_company_id"], "enabled_company_ids", payload["enabled_company_ids"], "extra", extra)
+				logAuthzDecisionSummary(g.runtimeScope, payload, true)
 			}
 		}
 	}
@@ -227,6 +229,25 @@ func (g serviceGuard) runMethodAccess(ctx context.Context, runtimeScope scope.Sc
 
 	emit("allow", "acl_allowed", map[string]any{})
 	return routing, nil
+}
+
+func logAuthzDecisionSummary(runtimeScope scope.Scope, payload map[string]any, audit bool) {
+	if runtimeScope == nil || runtimeScope.Logger() == nil || payload == nil {
+		return
+	}
+	keys := make([]string, 0, len(payload))
+	for key := range payload {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	attrs := make([]any, 0, len(keys)*2+2)
+	if audit {
+		attrs = append(attrs, "audit", true)
+	}
+	for _, key := range keys {
+		attrs = append(attrs, key, payload[key])
+	}
+	runtimeScope.Logger().Info("authz decision", attrs...)
 }
 
 func (g serviceGuard) checkMethodAccess(ctx context.Context, runtimeScope scope.Scope, jsCtx map[string]interface{}, fullMethod string, companyID string) (bool, *jsengine.JsExecutionRouting, error) {

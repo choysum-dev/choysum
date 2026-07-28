@@ -434,6 +434,60 @@ test('authz runtime decision summary log mode off/deny/all with audit toggle', a
     expect(logs.length).toBe(3);
     expect(logs[1].includes('[AUTHZ]')).toBe(true);
     expect(logs[2].includes('[AUDIT]')).toBe(true);
+
+    logs.length = 0;
+    emitRepositoryAuthzDecisionSummary({
+      decision: 'deny',
+      layer: 'record_rule',
+      basis: 'record_rule_denied',
+      metadata: { reason: 'no_grant_read_deny', hitRuleIds: 'rule_b,rule_a,rule_a' },
+    });
+    expect(logs.length).toBe(2);
+    expect(logs[0].includes('"reason":"no_grant_read_deny"')).toBe(true);
+    expect(logs[0].includes('"hitRuleIds":["rule_a","rule_b"]')).toBe(true);
+
+    logs.length = 0;
+    emitRepositoryAuthzDecisionSummary({
+      decision: 'deny',
+      layer: 'record_rule',
+      reason: '  top_level  ',
+      hitRuleIds: [' hit_2 ', '', null as any, 'hit_1', 'hit_1'],
+      metadata: { reason: 'ignored_when_top_level_present', hitRuleIds: 'should_not_win' },
+    });
+    expect(logs.length).toBe(2);
+    expect(logs[0].includes('"reason":"top_level"')).toBe(true);
+    expect(logs[0].includes('"hitRuleIds":["hit_1","hit_2"]')).toBe(true);
+
+    logs.length = 0;
+    emitRepositoryAuthzDecisionSummary({
+      decision: 'deny',
+      layer: 'field_rule',
+      basis: 'field_rule_readonly_violation',
+      hitRuleIds: ['', '  '],
+      metadata: {},
+    });
+    expect(logs.length).toBe(2);
+    expect(logs[0].includes('hitRuleIds')).toBe(false);
+
+    logs.length = 0;
+    emitRepositoryAuthzDecisionSummary({
+      decision: 'deny',
+      layer: 'record_rule',
+      reason: '   ',
+      metadata: { reason: 'from_metadata' },
+    });
+    expect(logs.length).toBe(2);
+    expect(logs[0].includes('"reason":"from_metadata"')).toBe(true);
+
+    logs.length = 0;
+    emitRepositoryAuthzDecisionSummary({
+      decision: 'deny',
+      layer: 'record_rule',
+      hitRuleIds: 42 as any,
+      metadata: 'not-an-object' as any,
+    });
+    expect(logs.length).toBe(2);
+    expect(logs[0].includes('hitRuleIds')).toBe(false);
   } finally {
     (console as any).error = originalError;
     (globalThis as any).__CHOYSUM_RUNTIME_ENV__ = originalEnv;

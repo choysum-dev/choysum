@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { normalizeConditionEnvelope, normalizeFieldRuleSpec, replaceConditionExprTokens } from './authz_helpers';
+import { normalizeConditionEnvelope, normalizeFieldRuleSpec, normalizeHitRuleIds, replaceConditionExprTokens } from './authz_helpers';
 
 test('authz helpers normalize condition envelope for true/false/expr and invalid inputs', () => {
   expect(normalizeConditionEnvelope(undefined as any)).toEqual({
@@ -34,11 +34,62 @@ test('authz helpers normalize condition envelope for true/false/expr and invalid
       kind: 'expr',
       expr: ['OwnerId', '=', '$userId'],
       reason: '  scoped  ',
+      hitRuleIds: [' rule_b ', '', 'rule_a', 'rule_a'],
     })
   ).toEqual({
     kind: 'expr',
     expr: ['OwnerId', '=', '$userId'],
     reason: 'scoped',
+    hitRuleIds: ['rule_a', 'rule_b'],
+  });
+
+  expect(
+    normalizeConditionEnvelope({
+      kind: 'true',
+      reason: 'allow',
+      hitRuleIds: 'hit_2,hit_1,hit_1',
+    })
+  ).toEqual({
+    kind: 'true',
+    reason: 'allow',
+    hitRuleIds: ['hit_1', 'hit_2'],
+  });
+
+  expect(
+    normalizeConditionEnvelope({
+      kind: 'false',
+      reason: 'deny',
+      hitRuleIds: ['', '  '],
+    })
+  ).toEqual({
+    kind: 'false',
+    reason: 'deny',
+  });
+
+  expect(
+    normalizeConditionEnvelope({
+      kind: 'false',
+      reason: 'deny_hits',
+      hitRuleIds: ['rr_z', 'rr_a'],
+    })
+  ).toEqual({
+    kind: 'false',
+    reason: 'deny_hits',
+    hitRuleIds: ['rr_a', 'rr_z'],
+  });
+
+  expect(
+    normalizeConditionEnvelope({
+      kind: 'expr',
+      expr: { And: [['Id', '=', '1']] },
+      reason: 'object_expr',
+      hitRuleIds: 'only_one',
+    })
+  ).toEqual({
+    kind: 'expr',
+    expr: { And: [['Id', '=', '1']] },
+    reason: 'object_expr',
+    hitRuleIds: ['only_one'],
   });
 
   expect(
@@ -53,12 +104,35 @@ test('authz helpers normalize condition envelope for true/false/expr and invalid
 
   expect(
     normalizeConditionEnvelope({
+      kind: 'expr',
+      expr: 'not-a-condition',
+      reason: 'bad_expr',
+    })
+  ).toEqual({
+    kind: 'false',
+    reason: 'invalid_record_rule_envelope',
+  });
+
+  expect(
+    normalizeConditionEnvelope({
       kind: 'unknown',
       reason: 'x',
     })
   ).toEqual({
     kind: 'false',
     reason: 'invalid_record_rule_envelope',
+  });
+
+  expect(
+    normalizeConditionEnvelope({
+      kind: 'expr',
+      expr: ['OwnerId', '=', '1'],
+      reason: 'no_hits',
+    })
+  ).toEqual({
+    kind: 'expr',
+    expr: ['OwnerId', '=', '1'],
+    reason: 'no_hits',
   });
 });
 
@@ -144,11 +218,13 @@ test('authz helpers normalize field rule spec and reason from loose payloads', (
       denyReadFields: [' Name ', '', 'Name', null, 'Id'],
       denyWriteFields: [' Amount ', '', 'Amount', 'Locked'],
       reason: '  from_auth  ',
+      hitRuleIds: ['fr_2', 'fr_1', 'fr_1'],
     })
   ).toEqual({
     denyReadFields: ['Name', 'Id'],
     denyWriteFields: ['Amount', 'Locked'],
     reason: 'from_auth',
+    hitRuleIds: ['fr_1', 'fr_2'],
   });
 
   expect(
@@ -162,4 +238,28 @@ test('authz helpers normalize field rule spec and reason from loose payloads', (
     denyWriteFields: [],
     reason: undefined,
   });
+
+  expect(
+    normalizeFieldRuleSpec({
+      denyReadFields: [],
+      denyWriteFields: [],
+      hitRuleIds: ' fr_b , ,fr_a ',
+    })
+  ).toEqual({
+    denyReadFields: [],
+    denyWriteFields: [],
+    reason: undefined,
+    hitRuleIds: ['fr_a', 'fr_b'],
+  });
+});
+
+test('authz helpers normalizeHitRuleIds covers array string and non-list inputs', () => {
+  expect(normalizeHitRuleIds([' b ', '', 'a', 'a', null, undefined, 0])).toEqual(['0', 'a', 'b']);
+  expect(normalizeHitRuleIds([])).toBe(undefined);
+  expect(normalizeHitRuleIds(['', '  '])).toBe(undefined);
+  expect(normalizeHitRuleIds(' z ,y, y ,')).toEqual(['y', 'z']);
+  expect(normalizeHitRuleIds('')).toBe(undefined);
+  expect(normalizeHitRuleIds(', ,')).toBe(undefined);
+  expect(normalizeHitRuleIds(undefined)).toBe(undefined);
+  expect(normalizeHitRuleIds(12 as any)).toBe(undefined);
 });

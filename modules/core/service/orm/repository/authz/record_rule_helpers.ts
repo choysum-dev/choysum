@@ -6,6 +6,7 @@ import { AuthUserService, isAuthServiceNotPresent, isAuthServiceUnavailable } fr
 import { getRepositoryCurrentReq } from './authz_runtime';
 import type { RepositoryPermissionDeniedFn } from './types';
 import type { BaseQueryCondition, ConditionEnvelope, RecordRuleOp } from '../types';
+import { normalizeHitRuleIds } from '@/core/service/api/authz_helpers';
 import { asObjectRecord, isObjectRecord } from '../../../../utils/object';
 import type { UnknownRecord } from '../../../../utils/types';
 import { _t } from '@/core/service/i18n_binder';
@@ -86,11 +87,17 @@ function getRepositoryTopLevelRecordRuleAllowlist(): { enabled: boolean; allow: 
 function normalizeRepositoryRecordRuleEnvelope(input: unknown): ConditionEnvelope {
   const value = asObjectRecord(input) ?? {};
   const kind = String(value.kind || '').trim();
-  if (kind === 'true') return { kind: 'true', reason: typeof value.reason === 'string' ? value.reason : undefined };
-  if (kind === 'false') return { kind: 'false', reason: typeof value.reason === 'string' ? value.reason : undefined };
+  const reason = typeof value.reason === 'string' ? value.reason : undefined;
+  const hitRuleIds = normalizeHitRuleIds(value.hitRuleIds);
+  const diagnostics = {
+    reason,
+    ...(hitRuleIds ? { hitRuleIds } : {}),
+  };
+  if (kind === 'true') return { kind: 'true', ...diagnostics };
+  if (kind === 'false') return { kind: 'false', ...diagnostics };
   if (kind === 'expr') {
     if (!value.expr) return { kind: 'false', reason: 'invalid_record_rule_envelope_missing_expr' };
-    return { kind: 'expr', expr: value.expr as BaseQueryCondition, reason: typeof value.reason === 'string' ? value.reason : undefined };
+    return { kind: 'expr', expr: value.expr as BaseQueryCondition, ...diagnostics };
   }
   return { kind: 'false', reason: 'invalid_record_rule_envelope_kind' };
 }

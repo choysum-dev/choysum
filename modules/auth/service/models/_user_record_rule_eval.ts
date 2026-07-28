@@ -210,7 +210,7 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
       {
         And: [{ Or: audienceOr }, [permField as any, '=', true], { Or: scopeOr }],
       } as any,
-      { fields: ['RoleId', 'Kind', 'Condition', 'IrModelId', 'IrApplicationId'], limit: RULE_FETCH_LIMIT + 1 }
+      { fields: ['Id', 'RoleId', 'Kind', 'Condition', 'IrModelId', 'IrApplicationId'], limit: RULE_FETCH_LIMIT + 1 }
     );
 
     if ((allRules || []).length > RULE_FETCH_LIMIT) {
@@ -223,6 +223,7 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
 
     const grantExprs: any[] = [];
     const restrictExprs: any[] = [];
+    const hitRuleIds: string[] = [];
     let hasUnconstrainedGrant = false;
 
     for (const r of allRules || []) {
@@ -235,22 +236,29 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
 
       const kind = normalizeKind((r as any).Kind);
       const expr = buildRuleExpr(r, companyGate.enabled, input.roleScopesById || {});
+      const ruleId = String((r as any)?.Id || '').trim();
       if (kind === 'restrict') {
-        if (expr != null) restrictExprs.push(expr);
+        if (expr != null) {
+          restrictExprs.push(expr);
+          if (ruleId) hitRuleIds.push(ruleId);
+        }
         // Unconstrained restrict (TRUE) is a no-op AND — skip.
         continue;
       }
 
       if (expr == null) {
         hasUnconstrainedGrant = true;
+        if (ruleId) hitRuleIds.push(ruleId);
         continue;
       }
       grantExprs.push(expr);
+      if (ruleId) hitRuleIds.push(ruleId);
     }
 
+    const uniqueHitRuleIds = Array.from(new Set(hitRuleIds)).sort();
     const hasGrant = hasUnconstrainedGrant || grantExprs.length > 0;
     if (!hasGrant) {
-      return { kind: 'false', reason: `no_grant_${input.opValue}_deny` };
+      return { kind: 'false', reason: `no_grant_${input.opValue}_deny`, hitRuleIds: uniqueHitRuleIds };
     }
 
     const parts: any[] = [];
@@ -263,12 +271,17 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
     }
 
     if (parts.length === 0) {
-      return { kind: 'true', reason: 'grant_unconstrained' };
+      return { kind: 'true', reason: 'grant_unconstrained', hitRuleIds: uniqueHitRuleIds };
     }
     if (parts.length === 1) {
-      return { kind: 'expr', expr: parts[0], reason: restrictExprs.length ? 'grant_and_restrict' : 'grant_domain' };
+      return {
+        kind: 'expr',
+        expr: parts[0],
+        reason: restrictExprs.length ? 'grant_and_restrict' : 'grant_domain',
+        hitRuleIds: uniqueHitRuleIds,
+      };
     }
     // parts.length > 1 ⇒ AND-compose (never call a 1-element helper).
-    return { kind: 'expr', expr: { And: parts } as any, reason: 'grant_or_and_restricts' };
+    return { kind: 'expr', expr: { And: parts } as any, reason: 'grant_or_and_restricts', hitRuleIds: uniqueHitRuleIds };
   });
 }

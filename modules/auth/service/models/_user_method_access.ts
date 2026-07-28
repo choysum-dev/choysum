@@ -133,26 +133,36 @@ export async function resolveMethodAccessMeta(
 /**
  * Evaluate explicit RoleMethodAccess rules with deny-wins semantics.
  */
-export async function evaluateRoleMethodAccess(roleIds: string[], scopeOr: any[]): Promise<{ denied: boolean; allowed: boolean }> {
+export async function evaluateRoleMethodAccess(
+  roleIds: string[],
+  scopeOr: any[]
+): Promise<{ denied: boolean; allowed: boolean; hitRuleIds: string[]; reason: string }> {
   const accesses = await RoleMethodAccess.Search(
     {
       And: [['RoleId', 'in', roleIds], { Or: scopeOr } as any],
     } as any,
-    { fields: ['Mode'], limit: 5000 }
+    { fields: ['Id', 'Mode'], limit: 5000 }
   );
 
-  let denied = false;
   let allowed = false;
+  const allowHitRuleIds: string[] = [];
   for (const a of accesses || []) {
     const mode = String((a as any).Mode || '').toLowerCase();
+    const ruleId = String((a as any)?.Id ?? '').trim();
     if (mode === 'deny') {
-      denied = true;
-      break;
+      // Deny wins: only the deciding deny rule participates in diagnostics.
+      const hitRuleIds = ruleId ? [ruleId] : [];
+      return { denied: true, allowed: false, hitRuleIds, reason: 'method_access_deny' };
     }
-    if (mode === 'allow') allowed = true;
+    if (mode === 'allow') {
+      allowed = true;
+      if (ruleId) allowHitRuleIds.push(ruleId);
+    }
   }
 
-  return { denied, allowed };
+  const uniqueHitRuleIds = Array.from(new Set(allowHitRuleIds)).sort();
+  if (allowed) return { denied: false, allowed: true, hitRuleIds: uniqueHitRuleIds, reason: 'method_access_allow' };
+  return { denied: false, allowed: false, hitRuleIds: uniqueHitRuleIds, reason: 'method_access_no_manual_rule' };
 }
 
 /**
