@@ -137,12 +137,14 @@ export async function evaluateRoleMethodAccess(
   roleIds: string[],
   scopeOr: any[]
 ): Promise<{ denied: boolean; allowed: boolean; hitRuleIds: string[]; reason: string }> {
-  const accesses = await RoleMethodAccess.Search(
+  const accessesRaw = await RoleMethodAccess.Search(
     {
       And: [['RoleId', 'in', roleIds], { Or: scopeOr } as any],
     } as any,
-    { fields: ['Id', 'Mode'], limit: 5000 }
+    { fields: ['Id', 'Mode', 'Source'], limit: 5000 }
   );
+  // UI-Option-A: Source=ui rows are not manual ACL (runtime ui-derived path owns UI→Method).
+  const accesses = (accessesRaw || []).filter(a => String((a as any).Source || 'manual').toLowerCase() !== 'ui');
 
   let allowed = false;
   const allowHitRuleIds: string[] = [];

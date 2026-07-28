@@ -65,6 +65,26 @@ test('evaluateRoleMethodAccess returns deny allow and empty diagnostics with hit
       hitRuleIds: [],
       reason: 'method_access_no_manual_rule',
     });
+
+    // UI-Option-A: Source=ui rows are ignored by the manual ACL evaluator.
+    (RoleMethodAccess as any).Search = async () => [
+      { Id: 'ma_ui_only', Mode: 'allow', Source: 'ui' },
+      { Id: 'ma_manual', Mode: 'allow', Source: 'manual' },
+    ];
+    expect(await evaluateRoleMethodAccess(['role_1'], [[['IrModelId', '=', 'm1']] as any])).toEqual({
+      denied: false,
+      allowed: true,
+      hitRuleIds: ['ma_manual'],
+      reason: 'method_access_allow',
+    });
+
+    (RoleMethodAccess as any).Search = async () => [{ Id: 'ma_ui_deny', Mode: 'deny', Source: 'ui' }];
+    expect(await evaluateRoleMethodAccess(['role_1'], [[['IrModelId', '=', 'm1']] as any])).toEqual({
+      denied: false,
+      allowed: false,
+      hitRuleIds: [],
+      reason: 'method_access_no_manual_rule',
+    });
   } finally {
     (RoleMethodAccess as any).Search = orig;
   }
