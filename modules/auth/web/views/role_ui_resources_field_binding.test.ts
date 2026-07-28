@@ -29,14 +29,29 @@ describe('Role UiResources field binding', () => {
     expect(source).not.toContain('OAuthUiResourceTreeField');
   });
 
-  it('keeps UiResources and rule tables in advanced manual mode', () => {
+  it('keeps Advanced Mode as this-role data/RPC grant surface with Kind and app scope', () => {
     const source = roleFormSource();
 
     expect(source).toContain(':label="_t(\'Advanced Mode\')"');
-    expect(source).toContain("Record Rules (Manual Maintenance)");
-    expect(source).toContain("Field Rules (Manual Maintenance)");
-    expect(source).toContain("Method Access (Manual Maintenance)");
-    expect(source).toContain("UI Resource Details (Manual Maintenance)");
+    expect(source).toContain("Record Rules'");
+    expect(source).toContain("Field Rules'");
+    expect(source).toContain("Method Access'");
+    expect(source).toContain("UI Resource Details (manual bypass)'");
+    expect(source).not.toContain('Manual Maintenance');
+
+    expect(source).toContain('RecordRules.Kind');
+    expect(source).not.toContain('RecordRules.RoleId');
+    expect(source).not.toContain('Applies to Role (empty = all users)');
+    expect(source).toContain('This form only edits rules for this role');
+    expect(source).toContain('dedicated menus');
+    expect(source).toContain('RecordRules.IrApplicationId');
+    expect(source).toContain('FieldRules.IrApplicationId');
+    expect(source).toContain('MethodAccesses.IrApplicationId');
+    expect(source).toContain(':default-record="defaultRecordRule"');
+    expect(source).toContain(':default-record="defaultMethodAccess"');
+    expect(source).toContain("Mode: 'allow'");
+    expect(source).toContain("Kind: 'grant'");
+    expect(source).toContain('scope-global');
 
     expect(source).toContain('prop="UiResources"');
     expect(source).toContain('UiResources.Mode');

@@ -127,7 +127,12 @@ msgctxt "meta.model.IrField.fields"
 msgid "Accessibility Modifier"
 msgstr ""
 
-#: service/models/ir_field.ts:105
+#: service/models/ir_field.ts:96
+msgctxt "meta.model.IrField.fields"
+msgid "Currency Field"
+msgstr ""
+
+#: service/models/ir_field.ts:108
 msgctxt "meta.model.IrField.fields"
 msgid "Decorators"
 msgstr ""
@@ -142,7 +147,7 @@ msgctxt "meta.model.IrField.fields"
 msgid "Indexed"
 msgstr ""
 
-#: service/models/ir_field.ts:99
+#: service/models/ir_field.ts:102
 msgctxt "meta.model.IrField.fields"
 msgid "Model"
 msgstr ""
@@ -222,7 +227,7 @@ msgctxt "meta.model.IrField.fields"
 msgid "Required"
 msgstr ""
 
-#: service/models/ir_field.ts:96
+#: service/models/ir_field.ts:99
 msgctxt "meta.model.IrField.fields"
 msgid "Round"
 msgstr ""

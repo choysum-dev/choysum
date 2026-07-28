@@ -53,6 +53,9 @@ describe('auth view action wiring', () => {
     expect(form).toContain('UiResources.Mode');
     expect(form).toContain('UiResources.IrApplicationId');
     expect(form).toContain('UiResources.IrUiResourceId');
+    expect(form).toContain('RecordRules.Kind');
+    expect(form).toContain('MethodAccesses.IrApplicationId');
+    expect(form).not.toContain('Manual Maintenance');
     expect(form).toContain('usePermission');
   });
 
