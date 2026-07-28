@@ -69,6 +69,16 @@ SPDX-License-Identifier: Apache-2.0
           </OManyToManyField>
         </el-tab-pane>
         <el-tab-pane :label="_t('UI Resource Access')" name="ui_permissions">
+          <p class="rfv-advanced__hint">
+            {{
+              _t(
+                'Primary path: check resources in this tree. Checking a resource uniformly derives Method allow for its Requires (UI-Option-A; no read/write split). Advanced → UI Resource Details is a manual bypass only.'
+              )
+            }}
+          </p>
+          <p class="rfv-advanced__hint rfv-advanced__hint--tight">
+            {{ _t('Click a node label to inspect Requires → derived RPCs (checkbox still controls the grant).') }}
+          </p>
           <OManyToManyRefTreeField
             :store="store"
             prop="AccessUiResourceIds"
@@ -82,19 +92,45 @@ SPDX-License-Identifier: Apache-2.0
                 ['ParentId', 'is', null],
               ],
             }"
-            :fields="['Type']"
+            :fields="['Type', 'Requires']"
             :default-expand-all="true"
             :check-strictly="false"
           >
             <template #node="{ row, label }">
-              <span class="rfv-ui-resource-node">
+              <button
+                type="button"
+                class="rfv-ui-resource-node"
+                :class="{ 'is-inspected': isInspectedUiResourceRow(inspectedUiResourceId, row) }"
+                @click.stop="inspectUiResource(row)"
+              >
                 <el-icon class="rfv-ui-resource-node__icon">
                   <component :is="resolveUiResourceTypeIcon(row?.Type)" />
                 </el-icon>
                 <span class="rfv-ui-resource-node__label">{{ resolveUiResourceLabel(row, label) }}</span>
-              </span>
+              </button>
             </template>
           </OManyToManyRefTreeField>
+          <div v-if="inspectedUiResource" class="rfv-ui-requires">
+            <div class="rfv-ui-requires__title">
+              {{ _t('Requires → derived Method RPCs') }}
+              <span class="rfv-ui-requires__resource">{{ inspectedUiResourceLabel }}</span>
+            </div>
+            <p class="rfv-advanced__hint rfv-advanced__hint--tight">
+              {{
+                _t(
+                  'Under UI-Option-A, these RPCs are uniformly Method-allow when this resource is granted (unless a manual Method deny brakes them). Record/Field rules are not derived from UI.'
+                )
+              }}
+            </p>
+            <ul v-if="inspectedRequires.length > 0" class="rfv-ui-requires__list">
+              <li v-for="req in inspectedRequires" :key="req">
+                <code>{{ req }}</code>
+              </li>
+            </ul>
+            <p v-else class="rfv-ui-requires__empty">
+              {{ _t('No Requires on this resource — granting it does not derive Method access.') }}
+            </p>
+          </div>
         </el-tab-pane>
 
         <el-tab-pane :label="_t('Advanced Mode')" name="advanced">
@@ -204,6 +240,7 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { useI18n } from 'vue-i18n';
 import { createTranslate, translateTerm } from '@/web/web/i18n';
 import type { TermReference } from '@/core/service/i18n';
+import { selectInspectedUiResource, getInspectedUiResourceId, getInspectedUiResourceRequires, isInspectedUiResourceRow } from '@/auth/web/views/role_ui_requires_explain';
 
 defineOptions({ name: 'RoleFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('auth', { scope: 'web/views/RoleFormView' });
@@ -256,6 +293,18 @@ function resolveUiResourceTypeIcon(type?: string) {
   }
 }
 
+const inspectedUiResource = ref<Record<string, any> | null>(null);
+
+const inspectedUiResourceId = computed(() => getInspectedUiResourceId(inspectedUiResource.value));
+
+const inspectedUiResourceLabel = computed(() => resolveUiResourceLabel(inspectedUiResource.value as UiResourceRow | undefined));
+
+const inspectedRequires = computed(() => getInspectedUiResourceRequires(inspectedUiResource.value));
+
+function inspectUiResource(row: any) {
+  inspectedUiResource.value = selectInspectedUiResource(row);
+}
+
 /** New RecordRule rows default to grant (RoleId is always this role via O2M inverse). */
 const defaultRecordRule: Record<string, any> = { Kind: 'grant' };
 
@@ -264,6 +313,18 @@ const defaultMethodAccess: Record<string, any> = { Mode: 'allow' };
 
 const activeTab = ref('users');
 const advancedPanels = ref('');
+
+defineExpose({
+  inspectUiResource,
+  inspectedUiResource,
+  inspectedUiResourceId,
+  inspectedUiResourceLabel,
+  inspectedRequires,
+  activeTab,
+  advancedPanels,
+  resolveUiResourceTypeIcon,
+  resolveUiResourceLabel,
+});
 </script>
 
 <style scoped>
@@ -301,10 +362,58 @@ const advancedPanels = ref('');
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 0 4px;
+  margin: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  line-height: inherit;
+  text-align: left;
+}
+
+.rfv-ui-resource-node.is-inspected {
+  background: var(--el-color-primary-light-9);
+  color: var(--el-color-primary);
 }
 
 .rfv-ui-resource-node__icon {
   color: var(--el-text-color-secondary);
   font-size: 14px;
+}
+
+.rfv-ui-requires {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 6px;
+  background: var(--el-fill-color-blank);
+}
+
+.rfv-ui-requires__title {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.rfv-ui-requires__resource {
+  margin-left: 8px;
+  font-weight: 500;
+  color: var(--el-text-color-regular);
+}
+
+.rfv-ui-requires__list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.rfv-ui-requires__empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
 }
 </style>

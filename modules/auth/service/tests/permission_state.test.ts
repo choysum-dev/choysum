@@ -897,6 +897,8 @@ test('PermissionState: explicit RoleUiResource grant materializes UI whitelist w
 });
 
 test('PermissionState: explicit action grant projects owning route and menu chain', async () => {
+  // UI-Option-A: granting the ACTION resource derives Method allow for its Requires,
+  // so the action remains visible even when Method ACL does not list that RPC.
   resetRequestContext();
   const c1 = { Id: uid('C1') };
 
@@ -1032,6 +1034,150 @@ test('PermissionState: explicit action allow + route deny must not project route
   expect((globalUi.routes ?? []).includes('auth.route.explicit_action_deny_page')).toBe(false);
   expect((globalUi.menus ?? []).includes('auth.menu.explicit_action_deny_child')).toBe(false);
   expect((globalUi.menus ?? []).includes('auth.menu.explicit_action_deny_parent')).toBe(false);
+});
+
+test('PermissionState: Method deny brakes explicit ACTION even when UI grants it (UI∧Method)', async () => {
+  resetRequestContext();
+  const c1 = { Id: uid('C1') };
+
+  setupAllowlistForFixtures();
+  const out = await withModelContext(
+    { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
+    async () => {
+      const userId = await createUser(c1.Id);
+      setIdentity(userId);
+
+      const r = await createRole('ROLE_UI_ACTION_METHOD_DENY');
+      await UserRole.Create(
+        {
+          UserId: { Id: userId } as any,
+          RoleId: { Id: r.id } as any,
+          CompanyId: null as any,
+        } as any,
+        ['Id'] as any
+      );
+
+      const userModelId = await resolveModelId('auth', 'User');
+      const browse = await resolveService(userModelId, 'browse');
+      const requireKey = `rpc:/auth.User/${browse.name}`;
+
+      await createUiResource({
+        resourceId: 'auth.menu.method_deny_parent',
+        type: 'MENU',
+        requires: [requireKey],
+      });
+      await createUiResource({
+        resourceId: 'auth.route.method_deny_page',
+        type: 'ROUTE',
+        requires: [requireKey],
+      });
+      await createUiResource({
+        resourceId: 'auth.action.method_deny_edit',
+        type: 'ACTION',
+        requires: [requireKey],
+      });
+      await createMenuRouteRelation({
+        menuResourceId: 'auth.menu.method_deny_parent',
+        routeResourceId: 'auth.route.method_deny_page',
+      });
+      await createRouteActionRelation({
+        routeResourceId: 'auth.route.method_deny_page',
+        actionResourceId: 'auth.action.method_deny_edit',
+      });
+
+      await createRoleUiResourceGrant({ roleId: r.id, resourceId: 'auth.action.method_deny_edit', Mode: 'allow' });
+      await RoleMethodAccess.Create(
+        {
+          RoleId: { Id: r.id } as any,
+          IrServiceId: browse.id,
+          IrModelId: null,
+          IrApplicationId: null,
+          Mode: 'deny',
+        } as any,
+        ['Id'] as any
+      );
+
+      disableAllowlist();
+      const ps = await User.GetPermissionState();
+      return { ps };
+    },
+    { merge: false }
+  );
+
+  const globalUi = out.ps.byCompany['*']?.ui ?? {};
+  expect((globalUi.actions ?? []).includes('auth.action.method_deny_edit')).toBe(false);
+});
+
+test('PermissionState: Method deny prevents ACTION wildcard under global UI allow', async () => {
+  resetRequestContext();
+  const c1 = { Id: uid('C1') };
+
+  setupAllowlistForFixtures();
+  const out = await withModelContext(
+    { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
+    async () => {
+      const userId = await createUser(c1.Id);
+      setIdentity(userId);
+
+      const r = await createRole('ROLE_UI_GLOBAL_METHOD_DENY');
+      await UserRole.Create(
+        {
+          UserId: { Id: userId } as any,
+          RoleId: { Id: r.id } as any,
+          CompanyId: null as any,
+        } as any,
+        ['Id'] as any
+      );
+
+      const userModelId = await resolveModelId('auth', 'User');
+      const browse = await resolveService(userModelId, 'browse');
+      const requireKey = `rpc:/auth.User/${browse.name}`;
+
+      await createUiResource({
+        resourceId: 'auth.action.global_method_deny_edit',
+        type: 'ACTION',
+        requires: [requireKey],
+      });
+      await createUiResource({
+        resourceId: 'auth.action.global_method_deny_empty',
+        type: 'ACTION',
+        requires: [],
+      });
+
+      // Global UI allow (empty app + resource) → routes/menus stay '*', but Method deny must brake actions.
+      await RoleUiResource.Create(
+        {
+          RoleId: { Id: r.id } as any,
+          IrApplicationId: null as any,
+          IrUiResourceId: null as any,
+          Mode: 'allow',
+        } as any,
+        ['Id'] as any
+      );
+      await RoleMethodAccess.Create(
+        {
+          RoleId: { Id: r.id } as any,
+          IrServiceId: browse.id,
+          IrModelId: null,
+          IrApplicationId: null,
+          Mode: 'deny',
+        } as any,
+        ['Id'] as any
+      );
+
+      disableAllowlist();
+      const ps = await User.GetPermissionState();
+      return { ps };
+    },
+    { merge: false }
+  );
+
+  const globalUi = out.ps.byCompany['*']?.ui ?? {};
+  expect(globalUi.routes).toEqual(['*']);
+  expect(globalUi.menus).toEqual(['*']);
+  expect(globalUi.actions).not.toEqual(['*']);
+  expect((globalUi.actions ?? []).includes('auth.action.global_method_deny_edit')).toBe(false);
+  expect((globalUi.actions ?? []).includes('auth.action.global_method_deny_empty')).toBe(true);
 });
 
 test('PermissionState smoke: declared resource -> persisted dictionary -> explicit grant -> ui whitelist', async () => {

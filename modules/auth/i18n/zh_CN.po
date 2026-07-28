@@ -1201,12 +1201,12 @@ msgctxt "web/stores/auth/actions"
 msgid "SwitchCompanyScope returned an invalid response"
 msgstr "切换公司范围返回了无效响应"
 
-#: web/views/RoleFormView.vue:56
+#: web/views/RoleFormView.vue:66
 msgctxt "web/views/RoleFormView"
 msgid "Accessible UI Resources"
 msgstr "可访问的界面资源"
 
-#: web/views/RoleFormView.vue:73
+#: web/views/RoleFormView.vue:104
 msgctxt "web/views/RoleFormView"
 msgid "Advanced Mode"
 msgstr "高级模式"
@@ -1216,37 +1216,41 @@ msgctxt "web/views/RoleFormView"
 msgid "Basic Information"
 msgstr "基本信息"
 
-#: web/views/RoleFormView.vue:76
+#: web/views/RoleFormView.vue:64
+msgctxt "web/views/RoleFormView"
+msgid "Click a node label to inspect Requires → derived RPCs (checkbox still controls the grant)."
+msgstr "点击节点标签可查看 Requires → 派生 RPC（勾选框仍控制授权）。"
+#: web/views/RoleFormView.vue:107
 msgctxt "web/views/RoleFormView"
 msgid "Configure record/field/RPC grants under deny-default. The UI resource tree does not derive Record or Field rules; Advanced is the main place for data and method access."
 msgstr "在 deny-default 下配置记录/字段/RPC 授权。UI 资源树不会派生 Record/Field 规则；高级模式是数据权与方法权的主配置面。"
 
-#: web/views/RoleFormView.vue:49
+#: web/views/RoleFormView.vue:50
 msgctxt "web/views/RoleFormView"
 msgid "Copy Role"
 msgstr "复制角色"
 
-#: web/views/RoleFormView.vue:49
+#: web/views/RoleFormView.vue:50
 msgctxt "web/views/RoleFormView"
 msgid "Create Role"
 msgstr "新建角色"
 
-#: web/views/RoleFormView.vue:49
+#: web/views/RoleFormView.vue:50
 msgctxt "web/views/RoleFormView"
 msgid "Delete Role"
 msgstr "删除角色"
 
-#: web/views/RoleFormView.vue:49
+#: web/views/RoleFormView.vue:50
 msgctxt "web/views/RoleFormView"
 msgid "Edit Role"
 msgstr "编辑角色"
 
-#: web/views/RoleFormView.vue:103
+#: web/views/RoleFormView.vue:134
 msgctxt "web/views/RoleFormView"
 msgid "Field Rules"
 msgstr "字段规则"
 
-#: web/views/RoleFormView.vue:105
+#: web/views/RoleFormView.vue:136
 msgctxt "web/views/RoleFormView"
 msgid "Field visibility under deny-default. Leave Application/Model/Field empty for wider scopes."
 msgstr "deny-default 下的字段可见性。应用/模型/字段留空表示更宽 scope。"
@@ -1256,22 +1260,32 @@ msgctxt "web/views/RoleFormView"
 msgid "Included Roles"
 msgstr "包含的角色"
 
-#: web/views/RoleFormView.vue:116
+#: web/views/RoleFormView.vue:147
 msgctxt "web/views/RoleFormView"
 msgid "Method Access"
 msgstr "方法访问"
 
-#: web/views/RoleFormView.vue:84
+#: web/views/RoleFormView.vue:99
+msgctxt "web/views/RoleFormView"
+msgid "No Requires on this resource — granting it does not derive Method access."
+msgstr "该资源没有 Requires — 授予它不会派生 Method 访问。"
+
+#: web/views/RoleFormView.vue:115
 msgctxt "web/views/RoleFormView"
 msgid "OneToMany rows are always bound to the current role. All-users or cross-role Record/Field/Method/UI rules belong in dedicated menus, not here. Model/Application empty means scope-global (all models), which is not the same as all-users audience."
 msgstr "OneToMany 行始终绑定当前角色。全体用户或跨角色的 Record/Field/Method/UI 规则应在独立菜单中维护，而不是这里。模型/应用皆空表示 scope-global（全部模型），与「全体用户」适用轴不同。"
 
-#: web/views/RoleFormView.vue:118
+#: web/views/RoleFormView.vue:58
+msgctxt "web/views/RoleFormView"
+msgid "Primary path: check resources in this tree. Checking a resource uniformly derives Method allow for its Requires (UI-Option-A; no read/write split). Advanced → UI Resource Details is a manual bypass only."
+msgstr "主路径：在此树中勾选资源。勾选资源会对其 Requires 一律派生 Method allow（UI-Option-A；不分读写）。高级模式 → UI 资源明细仅为手动旁路。"
+
+#: web/views/RoleFormView.vue:149
 msgctxt "web/views/RoleFormView"
 msgid "RPC allow/deny under deny-default. New rows default to allow; use deny as an explicit brake."
 msgstr "deny-default 下的 RPC 允许/拒绝。新建默认 allow；用 deny 作显式刹车。"
 
-#: web/views/RoleFormView.vue:82
+#: web/views/RoleFormView.vue:113
 msgctxt "web/views/RoleFormView"
 msgid "Record Rules"
 msgstr "记录规则"
@@ -1281,17 +1295,22 @@ msgctxt "web/views/RoleFormView"
 msgid "Related Data"
 msgstr "关联数据"
 
-#: web/views/RoleFormView.vue:32
+#: web/views/RoleFormView.vue:33
 msgctxt "web/views/RoleFormView"
 msgid "Required"
 msgstr "必填"
 
-#: web/views/RoleFormView.vue:49
+#: web/views/RoleFormView.vue:83
+msgctxt "web/views/RoleFormView"
+msgid "Requires → derived Method RPCs"
+msgstr "Requires → 派生 Method RPC"
+
+#: web/views/RoleFormView.vue:50
 msgctxt "web/views/RoleFormView"
 msgid "Role"
 msgstr "角色"
 
-#: web/views/RoleFormView.vue:130
+#: web/views/RoleFormView.vue:161
 msgctxt "web/views/RoleFormView"
 msgid "Secondary to the UI Resource Access tree above. Prefer the tree for day-to-day grants."
 msgstr "相对上方「UI 资源访问」树为旁路；日常授权请优先用树。"
@@ -1311,7 +1330,7 @@ msgctxt "web/views/RoleFormView"
 msgid "System Information"
 msgstr "系统信息"
 
-#: web/views/RoleFormView.vue:83
+#: web/views/RoleFormView.vue:114
 msgctxt "web/views/RoleFormView"
 msgid "This form only edits rules for this role"
 msgstr "本表单只编辑当前角色的规则"
@@ -1321,17 +1340,22 @@ msgctxt "web/views/RoleFormView"
 msgid "UI Resource Access"
 msgstr "界面资源访问"
 
-#: web/views/RoleFormView.vue:128
+#: web/views/RoleFormView.vue:159
 msgctxt "web/views/RoleFormView"
 msgid "UI Resource Details (manual bypass)"
 msgstr "界面资源明细（手动旁路）"
+
+#: web/views/RoleFormView.vue:88
+msgctxt "web/views/RoleFormView"
+msgid "Under UI-Option-A, these RPCs are uniformly Method-allow when this resource is granted (unless a manual Method deny brakes them). Record/Field rules are not derived from UI."
+msgstr "在 UI-Option-A 下，授予该资源后这些 RPC 一律 Method-allow（除非手动 Method deny 刹车）。Record/Field 规则不会从 UI 派生。"
 
 #: web/views/RoleFormView.vue:42
 msgctxt "web/views/RoleFormView"
 msgid "Users"
 msgstr "用户"
 
-#: web/views/RoleFormView.vue:89
+#: web/views/RoleFormView.vue:120
 msgctxt "web/views/RoleFormView"
 msgid "Without a matching grant, records are invisible or not writable (deny-default)."
 msgstr "没有 matching grant 时，记录不可见或不可写（deny-default）。"
