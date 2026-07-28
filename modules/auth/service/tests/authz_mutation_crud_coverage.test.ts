@@ -13,44 +13,11 @@ import { createServiceByModel } from '@/core/service/rpc';
 import type IrModelModel from '@/meta/service/models/ir_model';
 import type IrServiceModel from '@/meta/service/models/ir_service';
 import type IrFieldModel from '@/meta/service/models/ir_field';
+import { ensureRequestContext, resetRequestContext, uid } from '@/auth/service/tests/_request_context_fixtures';
 
 const IrModel = createServiceByModel<typeof IrModelModel>('meta.IrModel');
 const IrService = createServiceByModel<typeof IrServiceModel>('meta.IrService');
 const IrField = createServiceByModel<typeof IrFieldModel>('meta.IrField');
-
-const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
-const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
-
-function ensureRequestContext(): any {
-  const root: any = (globalThis as any).$choysum ?? {};
-  if (!root.request) root.request = {};
-  if (!root.request.context) root.request.context = {};
-
-  const jsCtx = root.request.context;
-  if (!jsCtx.ctx) jsCtx.ctx = {};
-  if (!jsCtx.req) jsCtx.req = {};
-  if (!jsCtx.identity) jsCtx.identity = {};
-
-  (globalThis as any).$choysum = root;
-  return jsCtx;
-}
-
-function resetRequestContext(): void {
-  const jsCtx = ensureRequestContext();
-  jsCtx.ctx = {};
-  jsCtx.req = { depth: 0, fieldRuleMode: 'skip' };
-  jsCtx.identity = {};
-  delete (jsCtx as any)[Symbol.for('choysum.ctx.override')];
-  delete (jsCtx as any)[Symbol.for('choysum.ctx.frozen')];
-  delete (jsCtx as any)[RR_CACHE_KEY];
-  delete (jsCtx as any)[FR_CACHE_KEY];
-}
-
-function uid(prefix: string): string {
-  const xid = (globalThis as any).$choysum?.xid?.New?.();
-  const u = typeof xid === 'string' && xid.trim() ? xid.trim() : String(Date.now());
-  return `${prefix}_${u}`;
-}
 
 function setIdentity(userId?: string): void {
   const jsCtx = ensureRequestContext();

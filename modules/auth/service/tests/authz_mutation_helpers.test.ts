@@ -11,29 +11,7 @@ import {
   buildMethodAccessCacheKey,
   buildUiGrantCacheKey,
 } from '@/auth/service/models/_request_cache_invalidation';
-
-function ensureRequestContext(): any {
-  const root: any = (globalThis as any).$choysum ?? {};
-  if (!root.request) root.request = {};
-  if (!root.request.context) root.request.context = {};
-
-  const jsCtx = root.request.context;
-  if (!jsCtx.ctx) jsCtx.ctx = {};
-  if (!jsCtx.req) jsCtx.req = {};
-  if (!jsCtx.identity) jsCtx.identity = {};
-
-  (globalThis as any).$choysum = root;
-  return jsCtx;
-}
-
-function resetRequestContext(): void {
-  const jsCtx = ensureRequestContext();
-  jsCtx.ctx = {};
-  jsCtx.req = { depth: 0 };
-  jsCtx.identity = {};
-  delete (jsCtx as any)[Symbol.for('choysum.recordrule.cache')];
-  delete (jsCtx as any)[Symbol.for('choysum.fieldrule.cache')];
-}
+import { ensureRequestContext, resetRequestContext } from '@/auth/service/tests/_request_context_fixtures';
 
 function ensureServiceState(): Record<string, unknown> {
   const jsCtx = ensureRequestContext();
@@ -103,6 +81,24 @@ test('authz mutation helpers: failed mutate does not invalidate', async () => {
   let threw = false;
   try {
     await mutateThenInvalidateAllAuthzCaches(async () => {
+      throw new Error('mutate boom');
+    });
+  } catch (e: any) {
+    threw = String(e?.message || e).includes('mutate boom');
+  }
+  expect(threw).toBe(true);
+  expect(state[key]).toEqual({ keep: true });
+});
+
+test('authz mutation helpers: failed mutate does not invalidate (forUsers)', async () => {
+  resetRequestContext();
+  const state = ensureServiceState();
+  const key = buildAuthzContextCacheKey('u9', 'c9');
+  state[key] = { keep: true };
+
+  let threw = false;
+  try {
+    await mutateThenInvalidateAuthzCachesForUsers(['u9'], async () => {
       throw new Error('mutate boom');
     });
   } catch (e: any) {
