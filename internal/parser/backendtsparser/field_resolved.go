@@ -501,13 +501,12 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		companyDependent = true
 		spec.Structural.CompanyDependent = toBoolPtr(true)
 	}
-	if v, ok := options["copy"].(bool); ok && !v {
-		spec.Structural.Copy = toBoolPtr(false)
+	if v, ok := options["copy"].(bool); ok {
+		// Retain explicit copy:true/false (matches TS decorator).
+		spec.Structural.Copy = toBoolPtr(v)
 	} else if companyDependent {
 		// Default copy:false for companyDependent when omitted (matches TS decorator).
-		if _, ok := options["copy"]; !ok {
-			spec.Structural.Copy = toBoolPtr(false)
-		}
+		spec.Structural.Copy = toBoolPtr(false)
 	}
 	switch raw := options["default"].(type) {
 	case string:
