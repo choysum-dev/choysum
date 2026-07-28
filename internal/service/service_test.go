@@ -557,10 +557,10 @@ func TestNormalizeIANATimezone(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name  string
-		in    string
-		ok    bool
-		want  string
+		name string
+		in   string
+		ok   bool
+		want string
 	}{
 		{name: "empty", in: "", ok: false},
 		{name: "whitespace", in: "   ", ok: false},
@@ -1279,6 +1279,150 @@ func TestEnforceMethodAccessExecutorPaths(t *testing.T) {
 		err := svc.enforceMethodAccessStrict(ctx, runtimeScope, map[string]interface{}{"req": map[string]any{"depth": 0}}, "/sales.Order/Delete")
 		if status.Code(err) != codes.PermissionDenied {
 			t.Fatalf("expected strict ACL to ignore entry policy skips and deny access, got %v", err)
+		}
+	})
+}
+
+func TestEnforceMethodAccessDecisionObservabilityLogging(t *testing.T) {
+	t.Run("allow and deny emit camelCase decision_summary with audit", func(t *testing.T) {
+		runtimeScope := newHelperScope(t.TempDir())
+		runtimeScope.cfg.Auth.Enabled = true
+		runtimeScope.cfg.Auth.GrpcMethodAccess = true
+		runtimeScope.cfg.Auth.GrpcEntryPolicy = nil
+		runtimeScope.cfg.Auth.AuthzDecisionLog = "all"
+		runtimeScope.cfg.Auth.AuthzDecisionAudit = true
+
+		var logBuf bytes.Buffer
+		runtimeScope.logger = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+
+		executor := newACLTestExecutor(t, runtimeScope, func(ctx context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+			allowed := false
+			if len(req.Args) == 2 {
+				if method, ok := req.Args[1].(string); ok && method == "/sales.Order/Allow" {
+					allowed = true
+				}
+			}
+			return &jsengine.JsResponse{Id: req.Id, Result: allowed}, nil
+		})
+
+		svc := &ApplicationService{
+			runtimeScope:  runtimeScope,
+			jsExecutor:    executor,
+			hasGrpcMethod: func(fullMethod string) bool { return fullMethod == "/auth.User/CheckMethodAccess" },
+		}
+		ctx := auth.ContextWithIdentity(context.Background(), &testIdentity{userID: "u-obs", tokenID: "t1"})
+		jsCtx := map[string]interface{}{
+			"req": map[string]any{"depth": 0},
+			"ctx": map[string]any{
+				"activeCompanyId":   "company-a",
+				"enabledCompanyIds": []any{"company-a", " ", "company-b"},
+			},
+		}
+
+		if _, err := svc.guard().authorizeUnary(ctx, runtimeScope, jsCtx, "/sales.Order/Allow"); err != nil {
+			t.Fatalf("authorizeUnary(allow) error = %v", err)
+		}
+		err := svc.enforceMethodAccess(ctx, runtimeScope, jsCtx, "/sales.Order/Deny")
+		if status.Code(err) != codes.PermissionDenied {
+			t.Fatalf("expected deny ACL, got %v", err)
+		}
+
+		logs := logBuf.String()
+		for _, want := range []string{
+			"authz.decision_summary",
+			"method_access",
+			"fullMethod",
+			"userId",
+			"activeCompanyId",
+			"enabledCompanyIds",
+			"acl_allowed",
+			"acl_denied",
+			"audit=true",
+		} {
+			if !strings.Contains(logs, want) {
+				t.Fatalf("expected decision log to contain %q, got:\n%s", want, logs)
+			}
+		}
+	})
+
+	t.Run("deny mode with companyId fallback and string company list", func(t *testing.T) {
+		runtimeScope := newHelperScope(t.TempDir())
+		runtimeScope.cfg.Auth.Enabled = true
+		runtimeScope.cfg.Auth.GrpcMethodAccess = true
+		runtimeScope.cfg.Auth.GrpcEntryPolicy = nil
+		runtimeScope.cfg.Auth.AuthzDecisionLog = "deny"
+		runtimeScope.cfg.Auth.AuthzDecisionAudit = false
+
+		var logBuf bytes.Buffer
+		runtimeScope.logger = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+
+		executor := newACLTestExecutor(t, runtimeScope, func(ctx context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+			return &jsengine.JsResponse{Id: req.Id, Result: false}, nil
+		})
+
+		svc := &ApplicationService{
+			runtimeScope:  runtimeScope,
+			jsExecutor:    executor,
+			hasGrpcMethod: func(fullMethod string) bool { return fullMethod == "/auth.User/CheckMethodAccess" },
+		}
+		ctx := auth.ContextWithIdentity(context.Background(), &testIdentity{userID: "u-obs-2", tokenID: "t2"})
+		jsCtx := map[string]interface{}{
+			"req": map[string]any{"depth": 0},
+			"ctx": map[string]any{
+				"companyId":         "legacy-c1",
+				"enabledCompanyIds": []string{"legacy-c1", "legacy-c2"},
+			},
+		}
+
+		err := svc.enforceMethodAccess(ctx, runtimeScope, jsCtx, "/sales.Order/Delete")
+		if status.Code(err) != codes.PermissionDenied {
+			t.Fatalf("expected deny ACL, got %v", err)
+		}
+
+		logs := logBuf.String()
+		for _, want := range []string{
+			"authz.decision_summary",
+			"method_access",
+			"acl_denied",
+			"legacy-c1",
+		} {
+			if !strings.Contains(logs, want) {
+				t.Fatalf("expected decision log to contain %q, got:\n%s", want, logs)
+			}
+		}
+		if strings.Contains(logs, "audit=true") {
+			t.Fatalf("did not expect audit log when AuthzDecisionAudit=false, got:\n%s", logs)
+		}
+	})
+
+	t.Run("check failure emits acl_check_failed extra", func(t *testing.T) {
+		runtimeScope := newHelperScope(t.TempDir())
+		runtimeScope.cfg.Auth.Enabled = true
+		runtimeScope.cfg.Auth.GrpcMethodAccess = true
+		runtimeScope.cfg.Auth.GrpcEntryPolicy = nil
+		runtimeScope.cfg.Auth.AuthzDecisionLog = "deny"
+
+		var logBuf bytes.Buffer
+		runtimeScope.logger = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+
+		executor := newACLTestExecutor(t, runtimeScope, func(ctx context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+			return nil, errors.New("acl boom")
+		})
+
+		svc := &ApplicationService{
+			runtimeScope:  runtimeScope,
+			jsExecutor:    executor,
+			hasGrpcMethod: func(fullMethod string) bool { return fullMethod == "/auth.User/CheckMethodAccess" },
+		}
+		ctx := auth.ContextWithIdentity(context.Background(), &testIdentity{userID: "u-obs-3", tokenID: "t3"})
+
+		err := svc.enforceMethodAccess(ctx, runtimeScope, map[string]interface{}{"req": map[string]any{"depth": 0}}, "/sales.Order/Delete")
+		if status.Code(err) != codes.Unavailable {
+			t.Fatalf("expected check failure unavailable, got %v", err)
+		}
+		logs := logBuf.String()
+		if !strings.Contains(logs, "acl_check_failed") || !strings.Contains(logs, "authz.decision_summary") {
+			t.Fatalf("expected acl_check_failed decision summary, got:\n%s", logs)
 		}
 	})
 }

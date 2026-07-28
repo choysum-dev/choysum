@@ -520,6 +520,39 @@ test('record rule helper normalizes true false expr and empty envelopes from ser
           hitRuleIds: ['rr_a', 'rr_b'],
         });
 
+        (AuthUserService as any).GetRecordRuleCondition = async () => ({
+          kind: 'true',
+          reason: 'nullish_hits',
+          hitRuleIds: [null, undefined, '', '  ', 'rr_keep', 0],
+        });
+        expect(await fetchRepositoryRecordRuleEnvelope(createDeps({ userId: 'u3d' }).deps, 'read')).toEqual({
+          kind: 'true',
+          reason: 'nullish_hits',
+          hitRuleIds: ['0', 'rr_keep'],
+        });
+
+        (AuthUserService as any).GetRecordRuleCondition = async () => ({
+          kind: 'expr',
+          expr: ['Id', '=', '1'],
+          reason: 'non_list_hits',
+          hitRuleIds: 123,
+        });
+        expect(await fetchRepositoryRecordRuleEnvelope(createDeps({ userId: 'u3e' }).deps, 'read')).toEqual({
+          kind: 'expr',
+          expr: ['Id', '=', '1'],
+          reason: 'non_list_hits',
+        });
+
+        (AuthUserService as any).GetRecordRuleCondition = async () => ({
+          kind: 'false',
+          reason: 'blank_csv',
+          hitRuleIds: ' , , ',
+        });
+        expect(await fetchRepositoryRecordRuleEnvelope(createDeps({ userId: 'u3f' }).deps, 'read')).toEqual({
+          kind: 'false',
+          reason: 'blank_csv',
+        });
+
         (AuthUserService as any).GetRecordRuleCondition = async () => undefined;
         expect(await fetchRepositoryRecordRuleEnvelope(createDeps({ userId: 'u4' }).deps, 'read')).toEqual({
           kind: 'false',

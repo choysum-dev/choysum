@@ -104,12 +104,35 @@ test('authz helpers normalize condition envelope for true/false/expr and invalid
 
   expect(
     normalizeConditionEnvelope({
+      kind: 'expr',
+      expr: 'not-a-condition',
+      reason: 'bad_expr',
+    })
+  ).toEqual({
+    kind: 'false',
+    reason: 'invalid_record_rule_envelope',
+  });
+
+  expect(
+    normalizeConditionEnvelope({
       kind: 'unknown',
       reason: 'x',
     })
   ).toEqual({
     kind: 'false',
     reason: 'invalid_record_rule_envelope',
+  });
+
+  expect(
+    normalizeConditionEnvelope({
+      kind: 'expr',
+      expr: ['OwnerId', '=', '1'],
+      reason: 'no_hits',
+    })
+  ).toEqual({
+    kind: 'expr',
+    expr: ['OwnerId', '=', '1'],
+    reason: 'no_hits',
   });
 });
 

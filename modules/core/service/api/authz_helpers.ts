@@ -42,19 +42,23 @@ export function normalizeConditionEnvelope(value: unknown): ConditionEnvelope {
   if (kind === 'false') {
     return hitRuleIds ? { kind: 'false', reason, hitRuleIds } : { kind: 'false', reason };
   }
-  if (kind === 'expr' && (Array.isArray(record.expr) || asPlainRecord(record.expr))) {
-    return hitRuleIds
-      ? {
-          kind: 'expr',
-          expr: record.expr as ConditionExpr,
-          reason,
-          hitRuleIds,
-        }
-      : {
-          kind: 'expr',
-          expr: record.expr as ConditionExpr,
-          reason,
-        };
+  if (kind === 'expr') {
+    const exprIsArray = Array.isArray(record.expr);
+    const exprRecord = asPlainRecord(record.expr);
+    if (exprIsArray || exprRecord) {
+      return hitRuleIds
+        ? {
+            kind: 'expr',
+            expr: record.expr as ConditionExpr,
+            reason,
+            hitRuleIds,
+          }
+        : {
+            kind: 'expr',
+            expr: record.expr as ConditionExpr,
+            reason,
+          };
+    }
   }
 
   return { kind: 'false', reason: 'invalid_record_rule_envelope' };
