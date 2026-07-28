@@ -22,7 +22,7 @@ describe('Access Rules admin field binding (PR-C-5)', () => {
     expect(form).toContain('RoleRecordRuleAudienceHints');
     expect(hints).toContain('Wide-open grant for all users');
     expect(hints).toContain('Audience and scope are separate');
-    expect(hints).toContain("kind !== 'grant'");
+    expect(hints).toContain('isGrantEveryoneWarning');
   });
 
   it('requires RoleId on Field / Method / UI grant forms', () => {

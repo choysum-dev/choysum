@@ -37,6 +37,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, inject } from 'vue';
 import { ElAlert } from 'element-plus';
 import { createTranslate } from '@/web/web/i18n';
+import { isGrantEveryoneWarning } from '@/auth/web/views/role_record_rule_audience';
 
 defineOptions({ name: 'RoleRecordRuleAudienceHints' });
 const { _t } = createTranslate('auth', { scope: 'web/views/RoleRecordRuleAudienceHints' });
@@ -44,24 +45,7 @@ const { _t } = createTranslate('auth', { scope: 'web/views/RoleRecordRuleAudienc
 /** Injected by OFormView via formController.provideToChildren(). */
 const formRoot = inject<{ draft?: Record<string, any> } | null>('form-root', null);
 
-/**
- * True when Kind is grant (or defaulting to grant) and RoleId is empty (= everyone).
- */
-const showGrantEveryoneWarning = computed(() => {
-  const draft = formRoot?.draft as Record<string, any> | null | undefined;
-  if (!draft) return false;
-  const kind = String(draft.Kind ?? 'grant')
-    .trim()
-    .toLowerCase();
-  if (kind !== 'grant') return false;
-  const role = draft.RoleId;
-  if (role == null || role === '') return true;
-  if (typeof role === 'object') {
-    const id = String((role as any).Id ?? '').trim();
-    return !id;
-  }
-  return !String(role).trim();
-});
+const showGrantEveryoneWarning = computed(() => isGrantEveryoneWarning(formRoot?.draft as Record<string, any> | null | undefined));
 </script>
 
 <style scoped>
