@@ -56,6 +56,7 @@ type FieldMetadata struct {
 	IsReadonly               *bool   `json:"isReadonly,omitempty"`
 	Indexed                  *bool   `json:"indexed,omitempty"`
 	Translate                *bool   `json:"translate,omitempty"`
+	CompanyDependent         *bool   `json:"companyDependent,omitempty"`
 	Copy                     *bool   `json:"copy,omitempty"`
 
 	RelationInverseField     *string `json:"relationInverseField,omitempty"`
@@ -131,6 +132,14 @@ func applyResolvedFieldContract(metadata *FieldMetadata, field *meta.IrField) {
 	if resolved.Structural.Translate != nil && *resolved.Structural.Translate {
 		t := true
 		metadata.Translate = &t
+		if metadata.Size == nil && resolved.Structural.StorageHints != nil && resolved.Structural.StorageHints.Size != nil && *resolved.Structural.StorageHints.Size > 0 {
+			size := *resolved.Structural.StorageHints.Size
+			metadata.Size = &size
+		}
+	}
+	if resolved.Structural.CompanyDependent != nil && *resolved.Structural.CompanyDependent {
+		cd := true
+		metadata.CompanyDependent = &cd
 		if metadata.Size == nil && resolved.Structural.StorageHints != nil && resolved.Structural.StorageHints.Size != nil && *resolved.Structural.StorageHints.Size > 0 {
 			size := *resolved.Structural.StorageHints.Size
 			metadata.Size = &size

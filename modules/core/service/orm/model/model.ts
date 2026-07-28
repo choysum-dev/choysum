@@ -78,6 +78,11 @@ import {
   updateModelFieldTranslations,
   type FieldTranslationsMap,
 } from './model_field_translations';
+import {
+  getModelFieldCompanyValues,
+  updateModelFieldCompanyValues,
+  type FieldCompanyValuesMap,
+} from './model_field_company_values';
 import { currentBridgeFrame } from '../../runtime/compute/bridge';
 
 // Delegated implementation.
@@ -559,6 +564,32 @@ class BaseModel {
     translations: Record<string, string | false>
   ): Promise<boolean> {
     return await updateModelFieldTranslations(this as unknown as RuntimeModelCtor<T>, id, fieldName, translations);
+  }
+
+  /**
+   * Returns the stored company map for a companyDependent field.
+   * Optional `companyIds` filters to the requested keys that exist.
+   */
+  static async GetFieldCompanyValues<T extends BaseModel>(
+    this: BaseModelCtor<T>,
+    id: string,
+    fieldName: string,
+    companyIds?: string[]
+  ): Promise<FieldCompanyValuesMap> {
+    return await getModelFieldCompanyValues(this as unknown as RuntimeModelCtor<T>, id, fieldName, companyIds);
+  }
+
+  /**
+   * Patches company-dependent field values by company id.
+   * Scalar/`unknown` writes the key; `false` deletes it (D5 / D12).
+   */
+  static async UpdateFieldCompanyValues<T extends BaseModel>(
+    this: BaseModelCtor<T>,
+    id: string,
+    fieldName: string,
+    values: Record<string, unknown | false>
+  ): Promise<boolean> {
+    return await updateModelFieldCompanyValues(this as unknown as RuntimeModelCtor<T>, id, fieldName, values);
   }
 
   /**

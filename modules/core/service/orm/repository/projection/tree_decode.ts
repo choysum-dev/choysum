@@ -14,6 +14,7 @@ import { REL_ALIAS_PREFIX } from '../../relation/relation_alias';
 import { isBigdecimalEnvelope, isDecimal, normalizeDecimalByMeta } from '@/core/utils/decimal';
 import { cleanupHiddenScaleKeys, parseJsonObjectFieldValue, resolveDecimalScaleFromRow } from './row_codec';
 import { decodeTranslatedFieldValue } from './translated_field_codec';
+import { decodeCompanyDependentFieldValue } from './company_dependent_field_codec';
 import type { SelectionNode } from './selection_tree';
 import { asObjectRecord } from '../../../../utils/object';
 
@@ -27,6 +28,11 @@ export function decodeRowWithTree(meta: ModelMetadata, node: SelectionNode, row:
 
     if (fieldMeta?.translate) {
       rowRecord[col] = decodeTranslatedFieldValue(rowRecord[col]);
+      continue;
+    }
+
+    if (fieldMeta?.companyDependent) {
+      rowRecord[col] = decodeCompanyDependentFieldValue(rowRecord[col]);
       continue;
     }
 

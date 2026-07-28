@@ -27,6 +27,7 @@ import {
   fieldHasTranslatedTrigramIndex,
   resolveTranslatedTrigramPrefilterPattern,
 } from './translated_field_sql';
+import { buildCompanyDependentFieldUnwrapExpr } from './company_dependent_field_sql';
 
 function supportsContainsFieldType(fieldMeta: FieldMetadata | undefined): boolean {
   const fieldType = fieldMeta?.type;
@@ -176,6 +177,8 @@ export function convertCondition(
               lhsExpr = resolved;
             } else if (meta.fields.get(fieldName)?.translate) {
               lhsExpr = buildTranslatedFieldUnwrapExpr(dialect, eb, `${selfTable}.${fieldName}`);
+            } else if (meta.fields.get(fieldName)?.companyDependent) {
+              lhsExpr = buildCompanyDependentFieldUnwrapExpr(dialect, eb, `${selfTable}.${fieldName}`);
             } else {
               lhsExpr = repositoryPredicateRef(eb, `${selfTable}.${fieldName}`);
             }
@@ -398,6 +401,13 @@ export function convertCondition(
             effectiveRhs,
             exact
           );
+        }
+
+        if (fieldMeta?.companyDependent) {
+          const dialect = String(getDialect() || 'postgres') as DialectName;
+          const unwrap = buildCompanyDependentFieldUnwrapExpr(dialect, eb, `${selfTable}.${fieldName}`);
+          const right = wrapIfDecimal(fieldName, effectiveOp, effectiveRhs);
+          return repositoryPredicateCall(eb, unwrap, effectiveOp, right);
         }
 
         const right = wrapIfDecimal(fieldName, effectiveOp, effectiveRhs);

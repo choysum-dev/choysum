@@ -99,11 +99,19 @@ type FlatCommonOptions = {
    * Only valid on char/varchar/text; mutually exclusive with unique/uniqueIndex.
    * Optional search acceleration: `index: 'trigram'` (Postgres GIN; see data-i18n-design §7.1).
    * See `.dev/docs/infra/i18n/data-i18n-design.md`.
+   * Mutually exclusive with `companyDependent`.
    */
   translate?: boolean;
   /**
+   * Company-dependent: store per-company values as a JSON/JSONB `{ companyId: value }` map.
+   * Mutually exclusive with `translate`. Default `copy: false` when omitted.
+   * See `.dev/docs/core/service/orm/company-dependent-design.md`.
+   */
+  companyDependent?: boolean;
+  /**
    * Whether the field participates in Model.Copy payloads.
-   * Omit / true = include; false = skip. Default is true when omitted.
+   * Omit / true = include; false = skip. Default is true when omitted
+   * (except companyDependent fields default to false).
    */
   copy?: boolean;
   /**
@@ -504,8 +512,14 @@ export interface FieldMetadata {
   /**
    * Data i18n: physical column is JSON/JSONB lang map (see data-i18n-design.md).
    * `size` remains a per-lang value limit in storageHints; it is not a varchar column width.
+   * Mutually exclusive with `companyDependent`.
    */
   translate?: boolean;
+  /**
+   * Company-dependent: physical column is JSON/JSONB company map
+   * (see company-dependent-design.md). Mutually exclusive with `translate`.
+   */
+  companyDependent?: boolean;
   /**
    * Whether the field participates in Model.Copy payloads.
    * Omit / true = include; false = skip.

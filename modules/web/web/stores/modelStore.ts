@@ -46,6 +46,8 @@ export type WebFieldMetadata = {
   selectionKind?: 'static' | 'dynamic';
   /** Data-i18n: field values stored as lang maps (see data-i18n-design). */
   translate?: boolean;
+  /** Company-dependent: field values stored as company maps (see company-dependent-design). */
+  companyDependent?: boolean;
   relationModel?: string;
   relationFilter?: string;
   relationModelParentField?: string;
@@ -147,6 +149,8 @@ export interface WebModelStore<TModel extends BaseModel> extends ScopedStore {
   FieldsGet: ClientModelService<typeof BaseModel.FieldsGet>;
   GetFieldTranslations: ClientModelService<typeof BaseModel.GetFieldTranslations>;
   UpdateFieldTranslations: ClientModelService<typeof BaseModel.UpdateFieldTranslations>;
+  GetFieldCompanyValues: ClientModelService<typeof BaseModel.GetFieldCompanyValues>;
+  UpdateFieldCompanyValues: ClientModelService<typeof BaseModel.UpdateFieldCompanyValues>;
 
   /**
    * Fetch (or reuse cached) FieldsGet presentation overlay for the active terminology lang.

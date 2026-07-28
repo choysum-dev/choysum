@@ -730,6 +730,47 @@ test('Field decorator rejects translate on non-text field types', () => {
   }).toThrow('translate is only supported on char/varchar/text fields');
 });
 
+test('Field decorator accepts companyDependent and defaults copy false', () => {
+  class CompanyDependentModel extends BaseModel {
+    @Field({ type: 'float', companyDependent: true } as any)
+    Cost!: number;
+
+    @Field({ type: 'float', companyDependent: true, copy: true } as any)
+    CostCopy!: number;
+  }
+  const fields = MetadataStorage.instance.getModelMetadata(CompanyDependentModel as any).fields;
+  expect(fields.get('Cost')?.companyDependent).toBe(true);
+  expect(fields.get('Cost')?.copy).toBe(false);
+  expect(fields.get('CostCopy')?.companyDependent).toBe(true);
+  expect(fields.get('CostCopy')?.copy).toBe(true);
+});
+
+test('Field decorator rejects companyDependent with translate / unique / bad type', () => {
+  expect(() => {
+    class Both extends BaseModel {
+      @Field({ type: 'char', translate: true, companyDependent: true } as any)
+      Name!: string;
+    }
+    return Both;
+  }).toThrow('cannot combine translate and companyDependent');
+
+  expect(() => {
+    class BadUnique extends BaseModel {
+      @Field({ type: 'float', companyDependent: true, unique: true } as any)
+      Cost!: number;
+    }
+    return BadUnique;
+  }).toThrow('companyDependent cannot be combined with unique/uniqueIndex');
+
+  expect(() => {
+    class BadType extends BaseModel {
+      @Field({ type: 'OneToMany', companyDependent: true } as any)
+      Lines!: any;
+    }
+    return BadType;
+  }).toThrow('companyDependent is not supported on type');
+});
+
 test('Field decorator accepts copy:false and rejects non-boolean copy', () => {
   class CopyFlagModel extends BaseModel {
     @Field({ type: 'varchar', size: 32, copy: false } as any)

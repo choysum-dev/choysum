@@ -210,6 +210,9 @@ function buildFieldMeta(
   if (field.translate === true) {
     meta.translate = true;
   }
+  if (field.companyDependent === true) {
+    meta.companyDependent = true;
+  }
   if (field.copy === false) {
     meta.copy = false;
   }

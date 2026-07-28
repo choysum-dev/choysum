@@ -1,0 +1,272 @@
+<!--
+SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+SPDX-License-Identifier: Apache-2.0
+-->
+
+<template>
+  <el-dialog
+    v-model="visible"
+    :title="dialogTitle"
+    width="560px"
+    append-to-body
+    destroy-on-close
+    class="o-field-company-values-dialog"
+    @opened="onOpened"
+    @closed="emit('closed')"
+  >
+    <div v-loading="loading" class="o-field-company-values-dialog__body">
+      <el-form label-position="left" label-width="168px" @submit.prevent>
+        <el-form-item v-for="row in rows" :key="row.companyId" :label="row.label">
+          <el-input
+            v-model="row.value"
+            :maxlength="maxLength ?? undefined"
+            :show-word-limit="maxLength != null"
+            clearable
+          />
+        </el-form-item>
+      </el-form>
+    </div>
+
+    <template #footer>
+      <el-button @click="visible = false">{{ _t('Cancel') }}</el-button>
+      <el-button type="primary" :loading="saving" native-type="button" @click="handleSave">
+        {{ _t('Save company values') }}
+      </el-button>
+    </template>
+  </el-dialog>
+</template>
+
+<script setup lang="ts">
+import { computed, ref } from 'vue';
+import { ElButton, ElDialog, ElForm, ElFormItem, ElInput, ElMessage } from 'element-plus';
+import { useAuthStore } from '@/auth/web/stores/auth';
+import { createTranslate } from '@/web/web/i18n';
+import { createStoreByModel } from '@/web/web/stores/registry';
+import type { WebModelStore } from '@/web/web/stores/modelStore';
+
+defineOptions({ name: 'OFieldCompanyValuesDialog' });
+
+type CompanyValueRow = {
+  companyId: string;
+  label: string;
+  value: string;
+  initial: string;
+  existed: boolean;
+};
+
+const props = defineProps<{
+  modelValue: boolean;
+  store: WebModelStore<any>;
+  recordId: string;
+  fieldName: string;
+  fieldLabel?: string;
+  maxLength?: number;
+  /** Unsaved form value for the current company; applied on open. */
+  draftValue?: string | null;
+  /** Optional company override; defaults to auth activeCompanyId. */
+  draftCompanyId?: string;
+}>();
+
+const emit = defineEmits<{
+  'update:modelValue': [boolean];
+  saved: [value: unknown];
+  closed: [];
+}>();
+
+const { _t } = createTranslate('web', { scope: 'web/components/field/OFieldCompanyValuesDialog' });
+const companyStore = createStoreByModel('base.Company');
+
+const visible = computed({
+  get: () => props.modelValue,
+  set: v => emit('update:modelValue', v),
+});
+
+const dialogTitle = computed(() => {
+  const label = String(props.fieldLabel || props.fieldName || '').trim();
+  return label ? _t('Company values: %s', label) : _t('Company values');
+});
+
+const loading = ref(false);
+const saving = ref(false);
+const rows = ref<CompanyValueRow[]>([]);
+
+function uniqIds(ids: string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of ids) {
+    const id = String(raw || '').trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+}
+
+function readAuthCompanyMeta(): {
+  allowedCompanyIds: string[];
+  enabledCompanyIds: string[];
+  activeCompanyId: string;
+} {
+  try {
+    const authStore = useAuthStore();
+    const meta = ((authStore.identity as any)?.metadata ?? {}) as any;
+    const allowedCompanyIds = Array.isArray(meta.allowedCompanyIds)
+      ? meta.allowedCompanyIds.map((x: any) => String(x ?? '').trim()).filter(Boolean)
+      : [];
+    const enabledCompanyIds = Array.isArray(meta.enabledCompanyIds)
+      ? meta.enabledCompanyIds.map((x: any) => String(x ?? '').trim()).filter(Boolean)
+      : [];
+    const activeCompanyId = String(meta.activeCompanyId ?? '').trim();
+    return { allowedCompanyIds, enabledCompanyIds, activeCompanyId };
+  } catch {
+    return { allowedCompanyIds: [], enabledCompanyIds: [], activeCompanyId: '' };
+  }
+}
+
+/** Prefer company display name; fall back to id. */
+function formatCompanyLabel(name: unknown, companyId: string): string {
+  const display = String(name ?? '').trim();
+  return display || companyId;
+}
+
+function resolveDraftCompanyId(): string {
+  const fromProp = String(props.draftCompanyId || '').trim();
+  if (fromProp) return fromProp;
+  return readAuthCompanyMeta().activeCompanyId;
+}
+
+/**
+ * Overlay the form draft onto the current-company row only.
+ * Keep `initial` as the server value so Save still detects the draft as dirty.
+ */
+function applyDraftValue(byId: Map<string, CompanyValueRow>) {
+  if (props.draftValue === undefined) return;
+  const companyId = resolveDraftCompanyId();
+  if (!companyId) return;
+  const row = byId.get(companyId);
+  if (!row) return;
+  row.value = props.draftValue == null ? '' : String(props.draftValue);
+}
+
+/**
+ * Row set = allowedCompanyIds, or enabled ∪ map keys when allowlist is empty (D8).
+ */
+function resolveRowCompanyIds(map: Record<string, unknown>, auth: ReturnType<typeof readAuthCompanyMeta>): string[] {
+  const mapKeys = Object.keys(map || {}).map(k => String(k || '').trim()).filter(Boolean);
+  if (auth.allowedCompanyIds.length) {
+    return uniqIds(auth.allowedCompanyIds);
+  }
+  return uniqIds([...auth.enabledCompanyIds, ...mapKeys]);
+}
+
+async function loadRows() {
+  loading.value = true;
+  try {
+    const auth = readAuthCompanyMeta();
+    const map = (await (props.store as any).GetFieldCompanyValues(
+      props.recordId,
+      props.fieldName
+    )) as Record<string, unknown>;
+    const current = map && typeof map === 'object' ? map : {};
+    const companyIds = resolveRowCompanyIds(current, auth);
+
+    let companies: Array<{ Id?: string; DisplayName?: string }> = [];
+    if (companyIds.length) {
+      const rowsRaw = (await (companyStore as any).Search(['Id', 'in', companyIds] as any, {
+        fields: ['Id', 'DisplayName'],
+        limit: 1000,
+      } as any)) as any[];
+      companies = Array.isArray(rowsRaw) ? rowsRaw : [];
+    }
+
+    const nameById = new Map<string, string>();
+    for (const c of companies) {
+      const id = String(c?.Id || '').trim();
+      if (!id) continue;
+      nameById.set(id, String(c?.DisplayName ?? '').trim());
+    }
+
+    const byId = new Map<string, CompanyValueRow>();
+    for (const companyId of companyIds) {
+      const existed = Object.prototype.hasOwnProperty.call(current, companyId);
+      const raw = existed ? current[companyId] : undefined;
+      const asText = raw == null ? '' : String(raw);
+      byId.set(companyId, {
+        companyId,
+        label: formatCompanyLabel(nameById.get(companyId), companyId),
+        value: asText,
+        initial: asText,
+        existed,
+      });
+    }
+
+    applyDraftValue(byId);
+
+    const ordered = Array.from(byId.values());
+    ordered.sort((a, b) => a.label.localeCompare(b.label));
+    rows.value = ordered;
+  } catch (err: any) {
+    ElMessage.error(String(err?.message || err || _t('Failed to load company values')));
+    rows.value = [];
+  } finally {
+    loading.value = false;
+  }
+}
+
+function onOpened() {
+  void loadRows();
+}
+
+async function handleSave() {
+  saving.value = true;
+  try {
+    const patch: Record<string, string | false> = {};
+    for (const row of rows.value) {
+      const next = row.value;
+      if (row.existed && next === row.initial) continue;
+      if (!row.existed && next === '') continue;
+      // Clearing any company key removes it (no undeletable base; D12 uses false for delete).
+      if (row.existed && next === '') {
+        patch[row.companyId] = false;
+        continue;
+      }
+      patch[row.companyId] = next;
+    }
+
+    if (Object.keys(patch).length) {
+      await (props.store as any).UpdateFieldCompanyValues(props.recordId, props.fieldName, patch);
+    }
+
+    const refreshed = (await (props.store as any).Browse(props.recordId, [props.fieldName])) as Record<string, unknown>;
+    const nextValue = refreshed?.[props.fieldName];
+    emit('saved', nextValue == null ? null : nextValue);
+    ElMessage.success(_t('Company values saved'));
+    visible.value = false;
+  } catch (err: any) {
+    ElMessage.error(String(err?.message || err || _t('Failed to save company values')));
+  } finally {
+    saving.value = false;
+  }
+}
+</script>
+
+<style scoped>
+.o-field-company-values-dialog__body {
+  min-height: 120px;
+}
+.o-field-company-values-dialog__body :deep(.el-form-item) {
+  margin-bottom: 14px;
+  align-items: flex-start;
+}
+.o-field-company-values-dialog__body :deep(.el-form-item__label) {
+  line-height: 32px;
+  color: var(--el-text-color-regular);
+  justify-content: flex-start;
+  text-align: left;
+  padding-right: 12px;
+}
+.o-field-company-values-dialog__body :deep(.el-form-item__content) {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+</style>

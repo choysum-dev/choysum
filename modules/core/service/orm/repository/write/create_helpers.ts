@@ -19,6 +19,7 @@ import {
 } from './mutation_payload_helpers';
 import { _t } from '@/core/service/i18n_binder';
 import { applyTranslatedFieldsForWrite } from '../projection/translated_field_codec';
+import { applyCompanyDependentFieldsForWrite } from '../projection/company_dependent_field_codec';
 import { stampMonetaryScalesForWriteMany } from '../projection/monetary_scale';
 
 export type RepositoryCreateWriteAuthzDeps = {
@@ -80,8 +81,9 @@ export async function prepareRepositoryCreateEntities(params: RepositoryCreateWr
     );
   }
 
-  const entitiesForEncode = stampedEntities.map(entity =>
-    applyTranslatedFieldsForWrite(params.meta, entity, { mode: 'create' })
-  );
+  const entitiesForEncode = stampedEntities.map(entity => {
+    const withTranslate = applyTranslatedFieldsForWrite(params.meta, entity, { mode: 'create' });
+    return applyCompanyDependentFieldsForWrite(params.meta, withTranslate, { mode: 'create' });
+  });
   return encodeRepositoryMutationPayloads(params, entitiesForEncode);
 }

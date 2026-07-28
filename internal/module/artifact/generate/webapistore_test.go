@@ -565,6 +565,47 @@ func TestConvertFieldToMetadata_TranslateContract(t *testing.T) {
 	}
 }
 
+func TestConvertFieldToMetadata_CompanyDependentContract(t *testing.T) {
+	trueVal := true
+	size := 120
+	field := &meta.IrField{Name: "Cost", FieldType: "float"}
+	spec := &meta.IrFieldResolvedSpec{
+		FieldName: "Cost",
+		Structural: meta.IrFieldStructuralSpec{
+			CompanyDependent: &trueVal,
+			StorageHints: &meta.IrFieldStructuralStorageHints{
+				Size: &size,
+			},
+		},
+	}
+	if err := field.SetResolvedSpec(spec); err != nil {
+		t.Fatalf("SetResolvedSpec: %v", err)
+	}
+	metadata := convertFieldToMetadata(field)
+	if metadata.CompanyDependent == nil || !*metadata.CompanyDependent {
+		t.Fatalf("expected CompanyDependent=true, got %#v", metadata.CompanyDependent)
+	}
+	if metadata.Size == nil || *metadata.Size != 120 {
+		t.Fatalf("expected Size from storage hints, got %#v", metadata.Size)
+	}
+
+	falseVal := false
+	field2 := &meta.IrField{Name: "Note", FieldType: "varchar", Size: 40}
+	spec2 := &meta.IrFieldResolvedSpec{
+		FieldName: "Note",
+		Structural: meta.IrFieldStructuralSpec{
+			CompanyDependent: &falseVal,
+		},
+	}
+	if err := field2.SetResolvedSpec(spec2); err != nil {
+		t.Fatalf("SetResolvedSpec false: %v", err)
+	}
+	metadata2 := convertFieldToMetadata(field2)
+	if metadata2.CompanyDependent != nil {
+		t.Fatalf("companyDependent:false must omit CompanyDependent flag, got %#v", metadata2.CompanyDependent)
+	}
+}
+
 func TestConvertFieldToMetadata_CopyContract(t *testing.T) {
 	falseVal := false
 	field := &meta.IrField{Name: "Code", FieldType: "varchar"}

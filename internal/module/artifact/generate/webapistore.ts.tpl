@@ -49,6 +49,7 @@ export const {{.Model.Name}}FieldsMetadata = {
     {{- if $field.IsReadonly}}isReadonly: {{$field.IsReadonly}},{{- end}}
     {{- if $field.Indexed}}indexed: {{$field.Indexed}},{{- end}}
     {{- if $field.Translate}}translate: {{$field.Translate}},{{- end}}
+    {{- if $field.CompanyDependent}}companyDependent: {{$field.CompanyDependent}},{{- end}}
     {{- if ne $field.Copy nil}}copy: false,{{- end}}
     {{- if $field.RelationInverseField}}relationInverseField: '{{$field.RelationInverseField}}',{{- end}}
     {{- if $field.RelationJoinModel}}relationJoinModel: '{{$field.RelationJoinModel}}',{{- end}}

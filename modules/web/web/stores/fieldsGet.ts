@@ -23,6 +23,7 @@ export const FIELD_PRESENTATION_FIELDS_GET_ATTRS = [
   'isReadonly',
   'notNull',
   'translate',
+  'companyDependent',
   'size',
 ] as const;
 

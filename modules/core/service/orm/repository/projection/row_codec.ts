@@ -9,6 +9,11 @@ import { asBigdecimal, isBigdecimalEnvelope, isDecimal, normalizeDecimalByMeta }
 import { asObjectRecord, hasOwnKey } from '../../../../utils/object';
 import type { UnknownRecord } from '../../../../utils/types';
 import { decodeTranslatedFieldValue, encodeTranslatedMapForDb, isTranslatedLangMap } from './translated_field_codec';
+import {
+  decodeCompanyDependentFieldValue,
+  encodeCompanyDependentMapForDb,
+  isCompanyValueMap,
+} from './company_dependent_field_codec';
 import { resolveMonetaryScaleForWrite, resolveMonetaryScaleFromRow } from './monetary_scale';
 
 type DecimalMetaLike = {
@@ -213,6 +218,26 @@ export function encodeForDb(meta: ModelMetadata, input: Entity): Entity {
       continue;
     }
 
+    if (fm?.companyDependent && fm.column) {
+      if (v == null) {
+        out[k] = null;
+      } else if (isCompanyValueMap(v)) {
+        out[k] = encodeCompanyDependentMapForDb(v);
+      } else if (typeof v === 'string') {
+        const trimmed = v.trim();
+        if (trimmed.startsWith('{')) {
+          out[k] = v;
+        } else {
+          throw new Error(
+            `Company-dependent field "${k}" must be prepared as a company map before encodeForDb; got a bare string`
+          );
+        }
+      } else {
+        throw new Error(`Company-dependent field "${k}" expects a company map object or null for DB encode`);
+      }
+      continue;
+    }
+
     if (fm?.type === 'jsonobject' && fm.column) {
       if (v == null) {
         out[k] = null;
@@ -255,6 +280,11 @@ export function decodeFromDb(meta: ModelMetadata, row: Entity): Entity {
 
     if (f.translate) {
       out[k] = decodeTranslatedFieldValue(cur);
+      return;
+    }
+
+    if (f.companyDependent) {
+      out[k] = decodeCompanyDependentFieldValue(cur);
       return;
     }
 

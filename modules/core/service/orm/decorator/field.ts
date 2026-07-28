@@ -58,6 +58,8 @@ type FieldDecoratorOptionBag = {
   round?: unknown;
   /** Data i18n: store per-language values as a JSON/JSONB lang map. */
   translate?: unknown;
+  /** Company-dependent: store per-company values as a JSON/JSONB company map. */
+  companyDependent?: unknown;
   /** Whether the field participates in Model.Copy (default true when omitted). */
   copy?: unknown;
   /**
@@ -125,10 +127,24 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
       throw new Error(`@Field(${name}) translate must be a boolean`);
     }
     const translate = optionBag.translate === true;
+    if (optionBag.companyDependent !== undefined && typeof optionBag.companyDependent !== 'boolean') {
+      throw new Error(`@Field(${name}) companyDependent must be a boolean`);
+    }
+    const companyDependent = optionBag.companyDependent === true;
+    if (translate && companyDependent) {
+      throw new Error(`@Field(${name}) cannot combine translate and companyDependent`);
+    }
     if (optionBag.copy !== undefined && typeof optionBag.copy !== 'boolean') {
       throw new Error(`@Field(${name}) copy must be a boolean`);
     }
-    const copyFlag = optionBag.copy === false ? false : optionBag.copy === true ? true : undefined;
+    const copyFlag =
+      optionBag.copy === false
+        ? false
+        : optionBag.copy === true
+          ? true
+          : companyDependent
+            ? false
+            : undefined;
     if (optionBag.checkCompany !== undefined && typeof optionBag.checkCompany !== 'boolean') {
       throw new Error(`@Field(${name}) checkCompany must be a boolean`);
     }
@@ -152,6 +168,34 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
       }
       if (optionBag.index !== undefined && optionBag.index !== 'trigram') {
         throw new Error(`@Field(${name}) translate only supports index: 'trigram' (or omit index)`);
+      }
+    }
+    if (companyDependent) {
+      const allowed = new Set([
+        'char',
+        'varchar',
+        'text',
+        'boolean',
+        'integer',
+        'float',
+        'decimal',
+        'monetary',
+        'date',
+        'datetime',
+        'selection',
+        'ManyToOne',
+        'ManyToOneRef',
+      ]);
+      if (!allowed.has(String(type))) {
+        throw new Error(
+          `@Field(${name}) companyDependent is not supported on type "${type}"`
+        );
+      }
+      const uniqueIndexOn =
+        optionBag.uniqueIndex === true ||
+        (typeof optionBag.uniqueIndex === 'string' && optionBag.uniqueIndex.trim().length > 0);
+      if (optionBag.unique === true || uniqueIndexOn) {
+        throw new Error(`@Field(${name}) companyDependent cannot be combined with unique/uniqueIndex`);
       }
     }
 
@@ -279,8 +323,10 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
       normalizedColumn = {};
       if (normalizedStorageHints?.required === true) normalizedColumn.notNull = true;
       if (normalizedStorageHints?.indexed === true) normalizedColumn.index = true;
-      // translate: size is a per-lang value limit only (D14); do not set physical varchar(n).
-      if (normalizedStorageHints?.size != null && !translate) normalizedColumn.size = normalizedStorageHints.size;
+      // translate / companyDependent: size is a logical value limit only; do not set physical varchar(n).
+      if (normalizedStorageHints?.size != null && !translate && !companyDependent) {
+        normalizedColumn.size = normalizedStorageHints.size;
+      }
       if (normalizedStorageHints?.precision != null) normalizedColumn.precision = normalizedStorageHints.precision;
       if (normalizedStorageHints?.scale != null) normalizedColumn.scale = normalizedStorageHints.scale;
 
@@ -493,6 +539,7 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
     if (normalizedRelated) meta.related = normalizedRelated;
     if (normalizedStorageHints) meta.storageHints = normalizedStorageHints;
     if (translate) meta.translate = true;
+    if (companyDependent) meta.companyDependent = true;
     if (copyFlag === false) meta.copy = false;
     else if (copyFlag === true) meta.copy = true;
     if (checkCompany) meta.checkCompany = true;
