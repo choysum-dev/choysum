@@ -824,19 +824,44 @@ msgctxt "web/menu/menus"
 msgid "Access Control"
 msgstr ""
 
+#: web/menu/menus.ts:34
+msgctxt "web/menu/menus"
+msgid "Access Rules"
+msgstr ""
+
+#: web/menu/menus.ts:43
+msgctxt "web/menu/menus"
+msgid "Field Rules"
+msgstr ""
+
+#: web/menu/menus.ts:48
+msgctxt "web/menu/menus"
+msgid "Method Access"
+msgstr ""
+
+#: web/menu/menus.ts:38
+msgctxt "web/menu/menus"
+msgid "Record Rules"
+msgstr ""
+
 #: web/menu/menus.ts:28
 msgctxt "web/menu/menus"
 msgid "Role List"
 msgstr ""
 
-#: web/menu/menus.ts:33
+#: web/menu/menus.ts:60
 msgctxt "web/menu/menus"
 msgid "Session List"
 msgstr ""
 
-#: web/menu/menus.ts:38
+#: web/menu/menus.ts:65
 msgctxt "web/menu/menus"
 msgid "Token List"
+msgstr ""
+
+#: web/menu/menus.ts:53
+msgctxt "web/menu/menus"
+msgid "UI Resource Grants"
 msgstr ""
 
 #: web/menu/menus.ts:23
@@ -1072,6 +1097,21 @@ msgctxt "web/pages/Register"
 msgid "and"
 msgstr ""
 
+#: web/route/routes.ts:250
+msgctxt "web/route/routes"
+msgid "Create Field Rule"
+msgstr ""
+
+#: web/route/routes.ts:295
+msgctxt "web/route/routes"
+msgid "Create Method Access"
+msgstr ""
+
+#: web/route/routes.ts:205
+msgctxt "web/route/routes"
+msgid "Create Record Rule"
+msgstr ""
+
 #: web/route/routes.ts:95
 msgctxt "web/route/routes"
 msgid "Create Role"
@@ -1087,9 +1127,24 @@ msgctxt "web/route/routes"
 msgid "Create Token"
 msgstr ""
 
+#: web/route/routes.ts:340
+msgctxt "web/route/routes"
+msgid "Create UI Resource Grant"
+msgstr ""
+
 #: web/route/routes.ts:64
 msgctxt "web/route/routes"
 msgid "Create User"
+msgstr ""
+
+#: web/route/routes.ts:235
+msgctxt "web/route/routes"
+msgid "Field Rule Details"
+msgstr ""
+
+#: web/route/routes.ts:221
+msgctxt "web/route/routes"
+msgid "Field Rule List"
 msgstr ""
 
 #: web/route/routes.ts:16
@@ -1102,7 +1157,27 @@ msgctxt "web/route/routes"
 msgid "Logout"
 msgstr ""
 
-#: web/route/routes.ts:178
+#: web/route/routes.ts:280
+msgctxt "web/route/routes"
+msgid "Method Access Details"
+msgstr ""
+
+#: web/route/routes.ts:266
+msgctxt "web/route/routes"
+msgid "Method Access List"
+msgstr ""
+
+#: web/route/routes.ts:190
+msgctxt "web/route/routes"
+msgid "Record Rule Details"
+msgstr ""
+
+#: web/route/routes.ts:176
+msgctxt "web/route/routes"
+msgid "Record Rule List"
+msgstr ""
+
+#: web/route/routes.ts:359
 msgctxt "web/route/routes"
 msgid "Register"
 msgstr ""
@@ -1140,6 +1215,16 @@ msgstr ""
 #: web/route/routes.ts:136
 msgctxt "web/route/routes"
 msgid "Token Management"
+msgstr ""
+
+#: web/route/routes.ts:325
+msgctxt "web/route/routes"
+msgid "UI Resource Grant Details"
+msgstr ""
+
+#: web/route/routes.ts:311
+msgctxt "web/route/routes"
+msgid "UI Resource Grant List"
 msgstr ""
 
 #: web/route/routes.ts:54
@@ -1227,6 +1312,77 @@ msgctxt "web/stores/auth/actions"
 msgid "SwitchCompanyScope returned an invalid response"
 msgstr ""
 
+#: web/views/RoleFieldRuleFormView.vue:39
+msgctxt "web/views/RoleFieldRuleFormView"
+msgid "Copy Field Rule"
+msgstr ""
+
+#: web/views/RoleFieldRuleFormView.vue:39
+msgctxt "web/views/RoleFieldRuleFormView"
+msgid "Create Field Rule"
+msgstr ""
+
+#: web/views/RoleFieldRuleFormView.vue:10
+msgctxt "web/views/RoleFieldRuleFormView"
+msgid "Cross-role field rule editor"
+msgstr ""
+
+#: web/views/RoleFieldRuleFormView.vue:39
+msgctxt "web/views/RoleFieldRuleFormView"
+msgid "Delete Field Rule"
+msgstr ""
+
+#: web/views/RoleFieldRuleFormView.vue:39
+msgctxt "web/views/RoleFieldRuleFormView"
+msgid "Edit Field Rule"
+msgstr ""
+
+#: web/views/RoleFieldRuleFormView.vue:39
+#: web/views/RoleFieldRuleFormView.vue:9
+msgctxt "web/views/RoleFieldRuleFormView"
+msgid "Field Rule"
+msgstr ""
+
+#: web/views/RoleFieldRuleFormView.vue:10
+msgctxt "web/views/RoleFieldRuleFormView"
+msgid "Role is required. Leave Application/Model/Field empty for wider scopes (global / app / model)."
+msgstr ""
+
+#: web/views/RoleFieldRuleFormView.vue:13
+msgctxt "web/views/RoleFieldRuleFormView"
+msgid "Select Role"
+msgstr ""
+
+#: web/views/RoleFieldRuleFormView.vue:34
+msgctxt "web/views/RoleFieldRuleFormView"
+msgid "System Information"
+msgstr ""
+
+#: web/views/RoleFieldRuleListView.vue:34
+msgctxt "web/views/RoleFieldRuleListView"
+msgid "Copy Field Rule"
+msgstr ""
+
+#: web/views/RoleFieldRuleListView.vue:34
+msgctxt "web/views/RoleFieldRuleListView"
+msgid "Create Field Rule"
+msgstr ""
+
+#: web/views/RoleFieldRuleListView.vue:34
+msgctxt "web/views/RoleFieldRuleListView"
+msgid "Delete Field Rule"
+msgstr ""
+
+#: web/views/RoleFieldRuleListView.vue:34
+msgctxt "web/views/RoleFieldRuleListView"
+msgid "Edit Field Rule"
+msgstr ""
+
+#: web/views/RoleFieldRuleListView.vue:34
+msgctxt "web/views/RoleFieldRuleListView"
+msgid "Field Rule"
+msgstr ""
+
 #: web/views/RoleFormView.vue:66
 msgctxt "web/views/RoleFormView"
 msgid "Accessible UI Resources"
@@ -1299,7 +1455,7 @@ msgstr ""
 
 #: web/views/RoleFormView.vue:115
 msgctxt "web/views/RoleFormView"
-msgid "OneToMany rows are always bound to the current role. All-users or cross-role Record/Field/Method/UI rules belong in dedicated menus, not here. Model/Application empty means scope-global (all models), which is not the same as all-users audience."
+msgid "OneToMany rows are always bound to the current role. All-users or cross-role Record/Field/Method/UI rules belong under Access Control → Access Rules, not here. Model/Application empty means scope-global (all models), which is not the same as all-users audience."
 msgstr ""
 
 #: web/views/RoleFormView.vue:58
@@ -1410,6 +1566,229 @@ msgstr ""
 #: web/views/RoleListView.vue:33
 msgctxt "web/views/RoleListView"
 msgid "Role"
+msgstr ""
+
+#: web/views/RoleMethodAccessFormView.vue:39
+msgctxt "web/views/RoleMethodAccessFormView"
+msgid "Copy Method Access"
+msgstr ""
+
+#: web/views/RoleMethodAccessFormView.vue:39
+msgctxt "web/views/RoleMethodAccessFormView"
+msgid "Create Method Access"
+msgstr ""
+
+#: web/views/RoleMethodAccessFormView.vue:10
+msgctxt "web/views/RoleMethodAccessFormView"
+msgid "Cross-role method access editor"
+msgstr ""
+
+#: web/views/RoleMethodAccessFormView.vue:39
+msgctxt "web/views/RoleMethodAccessFormView"
+msgid "Delete Method Access"
+msgstr ""
+
+#: web/views/RoleMethodAccessFormView.vue:39
+msgctxt "web/views/RoleMethodAccessFormView"
+msgid "Edit Method Access"
+msgstr ""
+
+#: web/views/RoleMethodAccessFormView.vue:39
+#: web/views/RoleMethodAccessFormView.vue:9
+msgctxt "web/views/RoleMethodAccessFormView"
+msgid "Method Access"
+msgstr ""
+
+#: web/views/RoleMethodAccessFormView.vue:11
+msgctxt "web/views/RoleMethodAccessFormView"
+msgid "Role is required. New rows default to Mode=deny on the model; prefer allow for grants and deny as an explicit brake."
+msgstr ""
+
+#: web/views/RoleMethodAccessFormView.vue:15
+msgctxt "web/views/RoleMethodAccessFormView"
+msgid "Select Role"
+msgstr ""
+
+#: web/views/RoleMethodAccessFormView.vue:36
+msgctxt "web/views/RoleMethodAccessFormView"
+msgid "System Information"
+msgstr ""
+
+#: web/views/RoleMethodAccessListView.vue:34
+msgctxt "web/views/RoleMethodAccessListView"
+msgid "Copy Method Access"
+msgstr ""
+
+#: web/views/RoleMethodAccessListView.vue:34
+msgctxt "web/views/RoleMethodAccessListView"
+msgid "Create Method Access"
+msgstr ""
+
+#: web/views/RoleMethodAccessListView.vue:34
+msgctxt "web/views/RoleMethodAccessListView"
+msgid "Delete Method Access"
+msgstr ""
+
+#: web/views/RoleMethodAccessListView.vue:34
+msgctxt "web/views/RoleMethodAccessListView"
+msgid "Edit Method Access"
+msgstr ""
+
+#: web/views/RoleMethodAccessListView.vue:34
+msgctxt "web/views/RoleMethodAccessListView"
+msgid "Method Access"
+msgstr ""
+
+#: web/views/RoleRecordRuleAudienceHints.vue:3
+msgctxt "web/views/RoleRecordRuleAudienceHints"
+msgid "Audience and scope are separate"
+msgstr ""
+
+#: web/views/RoleRecordRuleAudienceHints.vue:4
+msgctxt "web/views/RoleRecordRuleAudienceHints"
+msgid "Empty Role means all users (audience). Empty Application and Model means scope-global (all models). Do not treat empty Role as the same as scope-global."
+msgstr ""
+
+#: web/views/RoleRecordRuleAudienceHints.vue:9
+msgctxt "web/views/RoleRecordRuleAudienceHints"
+msgid "Kind=grant with an empty Role applies to everyone and can open a large domain. Prefer attaching grants to a concrete role, or use Kind=restrict for all-users rows."
+msgstr ""
+
+#: web/views/RoleRecordRuleAudienceHints.vue:8
+msgctxt "web/views/RoleRecordRuleAudienceHints"
+msgid "Wide-open grant for all users"
+msgstr ""
+
+#: web/views/RoleRecordRuleFormView.vue:42
+msgctxt "web/views/RoleRecordRuleFormView"
+msgid "Copy Record Rule"
+msgstr ""
+
+#: web/views/RoleRecordRuleFormView.vue:42
+msgctxt "web/views/RoleRecordRuleFormView"
+msgid "Create Record Rule"
+msgstr ""
+
+#: web/views/RoleRecordRuleFormView.vue:42
+msgctxt "web/views/RoleRecordRuleFormView"
+msgid "Delete Record Rule"
+msgstr ""
+
+#: web/views/RoleRecordRuleFormView.vue:42
+msgctxt "web/views/RoleRecordRuleFormView"
+msgid "Edit Record Rule"
+msgstr ""
+
+#: web/views/RoleRecordRuleFormView.vue:42
+#: web/views/RoleRecordRuleFormView.vue:9
+msgctxt "web/views/RoleRecordRuleFormView"
+msgid "Record Rule"
+msgstr ""
+
+#: web/views/RoleRecordRuleFormView.vue:13
+msgctxt "web/views/RoleRecordRuleFormView"
+msgid "Select Role"
+msgstr ""
+
+#: web/views/RoleRecordRuleFormView.vue:43
+msgctxt "web/views/RoleRecordRuleFormView"
+msgid "System Information"
+msgstr ""
+
+#: web/views/RoleRecordRuleListView.vue:35
+msgctxt "web/views/RoleRecordRuleListView"
+msgid "Copy Record Rule"
+msgstr ""
+
+#: web/views/RoleRecordRuleListView.vue:35
+msgctxt "web/views/RoleRecordRuleListView"
+msgid "Create Record Rule"
+msgstr ""
+
+#: web/views/RoleRecordRuleListView.vue:35
+msgctxt "web/views/RoleRecordRuleListView"
+msgid "Delete Record Rule"
+msgstr ""
+
+#: web/views/RoleRecordRuleListView.vue:35
+msgctxt "web/views/RoleRecordRuleListView"
+msgid "Edit Record Rule"
+msgstr ""
+
+#: web/views/RoleRecordRuleListView.vue:35
+msgctxt "web/views/RoleRecordRuleListView"
+msgid "Record Rule"
+msgstr ""
+
+#: web/views/RoleUiResourceFormView.vue:39
+msgctxt "web/views/RoleUiResourceFormView"
+msgid "Copy UI Resource Grant"
+msgstr ""
+
+#: web/views/RoleUiResourceFormView.vue:39
+msgctxt "web/views/RoleUiResourceFormView"
+msgid "Create UI Resource Grant"
+msgstr ""
+
+#: web/views/RoleUiResourceFormView.vue:10
+msgctxt "web/views/RoleUiResourceFormView"
+msgid "Cross-role UI resource grant editor"
+msgstr ""
+
+#: web/views/RoleUiResourceFormView.vue:39
+msgctxt "web/views/RoleUiResourceFormView"
+msgid "Delete UI Resource Grant"
+msgstr ""
+
+#: web/views/RoleUiResourceFormView.vue:39
+msgctxt "web/views/RoleUiResourceFormView"
+msgid "Edit UI Resource Grant"
+msgstr ""
+
+#: web/views/RoleUiResourceFormView.vue:11
+msgctxt "web/views/RoleUiResourceFormView"
+msgid "Role is required. Prefer the Role form UI tree for day-to-day grants; use this page for cross-role browse and manual bypass rows. Empty Application and UI Resource means global allow/deny for that role."
+msgstr ""
+
+#: web/views/RoleUiResourceFormView.vue:17
+msgctxt "web/views/RoleUiResourceFormView"
+msgid "Select Role"
+msgstr ""
+
+#: web/views/RoleUiResourceFormView.vue:32
+msgctxt "web/views/RoleUiResourceFormView"
+msgid "System Information"
+msgstr ""
+
+#: web/views/RoleUiResourceFormView.vue:39
+#: web/views/RoleUiResourceFormView.vue:9
+msgctxt "web/views/RoleUiResourceFormView"
+msgid "UI Resource Grant"
+msgstr ""
+
+#: web/views/RoleUiResourceListView.vue:34
+msgctxt "web/views/RoleUiResourceListView"
+msgid "Copy UI Resource Grant"
+msgstr ""
+
+#: web/views/RoleUiResourceListView.vue:34
+msgctxt "web/views/RoleUiResourceListView"
+msgid "Create UI Resource Grant"
+msgstr ""
+
+#: web/views/RoleUiResourceListView.vue:34
+msgctxt "web/views/RoleUiResourceListView"
+msgid "Delete UI Resource Grant"
+msgstr ""
+
+#: web/views/RoleUiResourceListView.vue:34
+msgctxt "web/views/RoleUiResourceListView"
+msgid "Edit UI Resource Grant"
+msgstr ""
+
+#: web/views/RoleUiResourceListView.vue:34
+msgctxt "web/views/RoleUiResourceListView"
+msgid "UI Resource Grant"
 msgstr ""
 
 #: web/views/SessionFormView.vue:39

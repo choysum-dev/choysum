@@ -151,7 +151,7 @@ SPDX-License-Identifier: Apache-2.0
                 :title="_t('This form only edits rules for this role')"
                 :description="
                   _t(
-                    'OneToMany rows are always bound to the current role. All-users or cross-role Record/Field/Method/UI rules belong in dedicated menus, not here. Model/Application empty means scope-global (all models), which is not the same as all-users audience.'
+                    'OneToMany rows are always bound to the current role. All-users or cross-role Record/Field/Method/UI rules belong under Access Control → Access Rules, not here. Model/Application empty means scope-global (all models), which is not the same as all-users audience.'
                   )
                 "
               />
