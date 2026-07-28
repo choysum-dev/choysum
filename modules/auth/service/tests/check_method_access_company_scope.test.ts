@@ -748,3 +748,9 @@ test('RoleMethodAccess: Create/Update coerce Source=ui to manual (UI-Option-A)',
     expect(String((rows[0] as any)?.Source || '').trim()).toBe('manual');
   });
 });
+
+test('RoleMethodAccess: _coerceSourceManual no-ops on nullish values', () => {
+  // Private helper is reachable for coverage; must not throw TypeError on null/undefined.
+  expect(() => (RoleMethodAccess as any)._coerceSourceManual(null, 'create')).not.toThrow();
+  expect(() => (RoleMethodAccess as any)._coerceSourceManual(undefined, 'update')).not.toThrow();
+});
