@@ -1203,6 +1203,29 @@ func TestEnforceMethodAccessExecutorPaths(t *testing.T) {
 		}
 	})
 
+	t.Run("ACL decision map missing allowed becomes unavailable", func(t *testing.T) {
+		runtimeScope := newHelperScope(t.TempDir())
+		runtimeScope.cfg.Auth.Enabled = true
+		runtimeScope.cfg.Auth.GrpcMethodAccess = true
+		runtimeScope.cfg.Auth.GrpcEntryPolicy = nil
+
+		executor := newACLTestExecutor(t, runtimeScope, func(ctx context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+			return &jsengine.JsResponse{Id: req.Id, Result: map[string]any{"reason": "method_access_deny"}}, nil
+		})
+
+		svc := &ApplicationService{
+			runtimeScope:  runtimeScope,
+			jsExecutor:    executor,
+			hasGrpcMethod: func(fullMethod string) bool { return fullMethod == "/auth.User/CheckMethodAccess" },
+		}
+		ctx := auth.ContextWithIdentity(context.Background(), &testIdentity{userID: "u1", tokenID: "t1"})
+
+		err := svc.enforceMethodAccess(ctx, runtimeScope, map[string]interface{}{"req": map[string]any{"depth": 0}}, "/sales.Order/Delete")
+		if status.Code(err) != codes.Unavailable || !strings.Contains(status.Convert(err).Message(), "invalid or missing 'allowed' field") {
+			t.Fatalf("expected missing allowed field to map to unavailable, got %v", err)
+		}
+	})
+
 	t.Run("denied ACL returns permission denied", func(t *testing.T) {
 		runtimeScope := newHelperScope(t.TempDir())
 		runtimeScope.cfg.Auth.Enabled = true

@@ -311,7 +311,7 @@ func parseCheckMethodAccessResult(result any) (allowed bool, diag methodAccessDi
 	case map[string]any:
 		allowedVal, ok := typed["allowed"].(bool)
 		if !ok {
-			return false, methodAccessDiagnostics{}, fmt.Errorf("invalid CheckMethodAccess result type: %T", result)
+			return false, methodAccessDiagnostics{}, fmt.Errorf("invalid or missing 'allowed' field in CheckMethodAccess result map")
 		}
 		reason, _ := typed["reason"].(string)
 		return allowedVal, methodAccessDiagnostics{
