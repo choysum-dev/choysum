@@ -645,6 +645,8 @@ describe('OFieldBase company values action', () => {
   });
 
   it('panelRecordId catch hides company-values action', async () => {
+    // recordRef() is also read at setup for recordFormRef (outside the panelRecordId
+    // try/catch), so the first call must succeed; later reads exercise the catch.
     const boomRecord = makeBinding({ string: 'Cost', companyDependent: true });
     boomRecord.meta = { string: 'Cost', companyDependent: true } as any;
     let recordRefCalls = 0;
@@ -664,6 +666,7 @@ describe('OFieldBase company values action', () => {
       slots: { edit: () => h(EditStub) },
       global: { stubs: { ...fieldBaseStubs, OFieldCompanyValuesDialog: true } },
     });
+    expect(recordRefCalls).toBeGreaterThanOrEqual(2);
     expect(hidden.find('.o-field-base__company-values-btn').exists()).toBe(false);
   });
 
@@ -740,8 +743,10 @@ describe('OFieldBase company values action', () => {
     expect(wrapper.find('.company-dialog-stub').attributes('data-draft')).toBe('');
     expect(wrapper.find('.el-icon-stub').exists()).toBe(true);
 
-    // onCompanyValuesSaved: falsy fieldRef skips assignment
+    // onCompanyValuesSaved: falsy fieldRef skips assignment — capture stays untouched
     binding.fieldRef = () => null as any;
-    await expect(wrapper.find('.emit-saved').trigger('click')).resolves.toBeUndefined();
+    nullValue.value = null;
+    await wrapper.find('.emit-saved').trigger('click');
+    expect(nullValue.value).toBeNull();
   });
 });

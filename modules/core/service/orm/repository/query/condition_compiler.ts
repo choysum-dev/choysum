@@ -281,19 +281,10 @@ export function convertCondition(
         if (!meta.parentField) throw new Error(`Model ${meta.modelName || meta.className} does not configure parentField and cannot use ${lowerOp}`);
 
         const table = meta.tableName();
-        const idColumn = meta.fields.get('Id')?.column as unknown;
-        const idColSelf =
-          typeof idColumn === 'object' && idColumn !== null && 'name' in idColumn && typeof (idColumn as { name?: unknown }).name === 'string'
-            ? (idColumn as { name: string }).name
-            : 'Id';
-        const parentPathColumn = meta.fields.get('ParentPath')?.column as unknown;
-        const parentPathCol =
-          typeof parentPathColumn === 'object' &&
-          parentPathColumn !== null &&
-          'name' in parentPathColumn &&
-          typeof (parentPathColumn as { name?: unknown }).name === 'string'
-            ? (parentPathColumn as { name: string }).name
-            : 'ParentPath';
+        const idField = meta.fields.get('Id');
+        const idColSelf = idField ? resolveStoredColumnName(idField, 'Id') : 'Id';
+        const parentPathField = meta.fields.get('ParentPath');
+        const parentPathCol = parentPathField ? resolveStoredColumnName(parentPathField, 'ParentPath') : 'ParentPath';
         const dialect = String(getDialect() || 'postgres').toLowerCase();
 
         const sourcePathSubquery = db
@@ -340,24 +331,11 @@ export function convertCondition(
           throw new Error(`Target model ${targetMeta.modelName || targetMeta.className} does not configure parentField and cannot use ${lowerOp}`);
         }
 
-        const fkColumn = fieldMeta?.column as unknown;
-        const fkCol =
-          typeof fkColumn === 'object' && fkColumn !== null && 'name' in fkColumn && typeof (fkColumn as { name?: unknown }).name === 'string'
-            ? (fkColumn as { name: string }).name
-            : fieldName;
-        const idColumn = targetMeta.fields.get('Id')?.column as unknown;
-        const idCol =
-          typeof idColumn === 'object' && idColumn !== null && 'name' in idColumn && typeof (idColumn as { name?: unknown }).name === 'string'
-            ? (idColumn as { name: string }).name
-            : 'Id';
-        const parentPathColumn = targetMeta.fields.get('ParentPath')?.column as unknown;
-        const parentPathCol =
-          typeof parentPathColumn === 'object' &&
-          parentPathColumn !== null &&
-          'name' in parentPathColumn &&
-          typeof (parentPathColumn as { name?: unknown }).name === 'string'
-            ? (parentPathColumn as { name: string }).name
-            : 'ParentPath';
+        const fkCol = resolveStoredColumnName(fieldMeta, fieldName);
+        const idField = targetMeta.fields.get('Id');
+        const idCol = idField ? resolveStoredColumnName(idField, 'Id') : 'Id';
+        const parentPathField = targetMeta.fields.get('ParentPath');
+        const parentPathCol = parentPathField ? resolveStoredColumnName(parentPathField, 'ParentPath') : 'ParentPath';
         const dialect = String(getDialect() || 'postgres').toLowerCase();
 
         const sourcePathSubquery = db

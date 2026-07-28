@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { applyOrderByToQuery, computeFallbackOrder, normalizeOrderBy, resolveEffectiveOrder } from '..';
+import { withContext } from '../../../../runtime/context';
 
 test('repository ordering normalizes inputs and falls back to Id desc', () => {
   expect(normalizeOrderBy(undefined as any)).toBe(undefined);
@@ -168,32 +169,41 @@ test('repository ordering unwraps companyDependent scalar fields', () => {
     },
   };
 
-  applyOrderByToQuery(
-    query as any,
-    {
-      fields: new Map([['Cost', { companyDependent: true, column: { name: 'Cost' } }]]),
-      type: { name: 'Demo' },
-    } as any,
-    'demo_table',
-    [{ field: 'Cost', order: 'desc' }],
-    {
-      resolvePathField() {
-        throw new Error('path resolution should not be used for companyDependent scalar');
-      },
-      resolveSelectField() {
-        throw new Error('select resolution should not be used for companyDependent scalar');
-      },
-      getDialect: () => 'postgres',
-    }
-  );
+  withContext({ activeCompanyId: 'comp_main' }, () => {
+    applyOrderByToQuery(
+      query as any,
+      {
+        fields: new Map([['Cost', { companyDependent: true, column: { name: 'Cost' } }]]),
+        type: { name: 'Demo' },
+      } as any,
+      'demo_table',
+      [{ field: 'Cost', order: 'desc' }],
+      {
+        resolvePathField() {
+          throw new Error('path resolution should not be used for companyDependent scalar');
+        },
+        resolveSelectField() {
+          throw new Error('select resolution should not be used for companyDependent scalar');
+        },
+        getDialect: () => 'postgres',
+      }
+    );
 
-  expect(calls.length).toBe(1);
-  expect(calls[0].direction).toBe('desc');
-  expect(typeof calls[0].arg).toBe('function');
-  const eb: any = (lhs: any, op: any, rhs: any) => ({ lhs, op, rhs });
-  eb.ref = (path: string) => ({ kind: 'ref', path });
-  const expr = calls[0].arg(eb);
-  expect(typeof (expr as any).toOperationNode).toBe('function');
+    expect(calls.length).toBe(1);
+    expect(calls[0].direction).toBe('desc');
+    expect(typeof calls[0].arg).toBe('function');
+    const eb: any = (lhs: any, op: any, rhs: any) => ({ lhs, op, rhs });
+    eb.ref = (path: string) => ({
+      toOperationNode: () => ({ kind: 'ReferenceNode', path }),
+    });
+    // Unwrap runs when the orderBy callback is invoked — keep active company in scope.
+    const expr = calls[0].arg(eb);
+    expect(typeof (expr as any).toOperationNode).toBe('function');
+    const node = JSON.stringify((expr as any).toOperationNode());
+    expect(node.includes('Cost')).toBe(true);
+    expect(node.includes('->>')).toBe(true);
+    expect(node.includes('comp_main')).toBe(true);
+  });
 });
 
 test('repository ordering companyDependent falls back when getDialect is omitted', () => {
@@ -205,27 +215,35 @@ test('repository ordering companyDependent falls back when getDialect is omitted
     },
   };
 
-  applyOrderByToQuery(
-    query as any,
-    {
-      fields: new Map([['Cost', { companyDependent: true, column: { name: 'Cost' } }]]),
-      type: { name: 'Demo' },
-    } as any,
-    'demo_table',
-    [{ field: 'Cost', order: 'asc' }],
-    {
-      resolvePathField() {
-        throw new Error('unused');
-      },
-      resolveSelectField() {
-        throw new Error('unused');
-      },
-      // getDialect intentionally omitted → || 'postgres'
-    }
-  );
+  withContext({ activeCompanyId: 'comp_main' }, () => {
+    applyOrderByToQuery(
+      query as any,
+      {
+        fields: new Map([['Cost', { companyDependent: true, column: { name: 'Cost' } }]]),
+        type: { name: 'Demo' },
+      } as any,
+      'demo_table',
+      [{ field: 'Cost', order: 'asc' }],
+      {
+        resolvePathField() {
+          throw new Error('unused');
+        },
+        resolveSelectField() {
+          throw new Error('unused');
+        },
+        // getDialect intentionally omitted → || 'postgres'
+      }
+    );
 
-  expect(typeof calls[0].arg).toBe('function');
-  const eb: any = (lhs: any, op: any, rhs: any) => ({ lhs, op, rhs });
-  eb.ref = (path: string) => ({ kind: 'ref', path });
-  expect(typeof calls[0].arg(eb).toOperationNode).toBe('function');
+    expect(typeof calls[0].arg).toBe('function');
+    const eb: any = (lhs: any, op: any, rhs: any) => ({ lhs, op, rhs });
+    eb.ref = (path: string) => ({
+      toOperationNode: () => ({ kind: 'ReferenceNode', path }),
+    });
+    const expr = calls[0].arg(eb);
+    expect(typeof expr.toOperationNode).toBe('function');
+    const node = JSON.stringify(expr.toOperationNode());
+    expect(node.includes('Cost')).toBe(true);
+    expect(node.includes('->>')).toBe(true);
+  });
 });

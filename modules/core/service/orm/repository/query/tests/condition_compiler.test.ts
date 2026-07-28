@@ -3266,7 +3266,7 @@ test('repository condition compiler companyDependent not-ilike and empty column 
   const notIlike = withContext({ activeCompanyId: 'comp_main' }, () =>
     convertCondition(db as any, () => 'mysql', meta, eb, ['Cost', 'not ilike', '%x%'] as any, 'demo_table')
   ) as any;
-  expect(notIlike.op === 'not like' || notIlike.op === 'not ilike' || typeof notIlike.lhs === 'object').toBe(true);
+  expect(notIlike.op).toBe('not like');
 
   const eq = withContext({ activeCompanyId: 'comp_main' }, () =>
     convertCondition(db as any, () => 'postgresql', meta, eb, ['Note', '=', 'hi'] as any, 'demo_table')

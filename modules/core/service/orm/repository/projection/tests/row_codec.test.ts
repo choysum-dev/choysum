@@ -392,13 +392,4 @@ test('repository row codec encode/decode companyDependent fields', async () => {
     const decoded = decodeFromDb(meta, { Amount: JSON.stringify({ C1: 'not-a-number' }) } as any) as any;
     expect(decoded.Amount).toBe('not-a-number');
   });
-
-  // Date / Decimal scalar envelopes must not be treated as prefetch maps.
-  await withContext({ activeCompanyId: 'C1' }, async () => {
-    const when = new Date('2024-01-01T00:00:00.000Z');
-    // Store as map then unwrap to string; separately ensure isPrefetchMap rejects Date envelopes via unit of decode path with prefetch off.
-    const decoded = decodeFromDb(meta, { Amount: JSON.stringify({ C1: '3.5' }) } as any) as any;
-    expect(decoded.Amount.toString()).toBe('3.5');
-    void when;
-  });
 });

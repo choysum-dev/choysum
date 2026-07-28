@@ -3,10 +3,21 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { mount } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
 
 import OFieldCompanyValuesDialog from './OFieldCompanyValuesDialog.vue';
+
+const DEFAULT_COMPANY_ROWS = [
+  { Id: 'comp_main', DisplayName: 'Main Company' },
+  { Id: 'comp_eu', DisplayName: 'EU Company' },
+] as Array<{ Id: string; DisplayName: string }>;
+
+const DEFAULT_AUTH_METADATA = {
+  allowedCompanyIds: ['comp_main', 'comp_eu'] as string[],
+  enabledCompanyIds: ['comp_main'] as string[],
+  activeCompanyId: 'comp_main',
+};
 
 const { companyResponses } = vi.hoisted(() => ({
   companyResponses: {
@@ -75,8 +86,9 @@ const dialogStubs = {
       '<input class="input" :value="modelValue" :data-maxlength="maxlength" :data-word-limit="showWordLimit" @input="$emit(\'update:modelValue\', $event.target.value)" />',
   },
   'el-button': {
-    props: ['loading', 'type'],
-    template: '<button class="btn" @click="$emit(\'click\')"><slot /></button>',
+    props: ['loading', 'type', 'nativeType'],
+    emits: ['click'],
+    template: '<button class="btn" type="button" @click="$emit(\'click\')"><slot /></button>',
   },
 };
 
@@ -106,6 +118,16 @@ function inputIndexByLabel(wrapper: ReturnType<typeof mountDialog>, label: strin
 }
 
 describe('OFieldCompanyValuesDialog', () => {
+  beforeEach(async () => {
+    authStoreState.throwOnAccess = false;
+    authStoreState.nullIdentity = false;
+    authStoreState.metadata = { ...DEFAULT_AUTH_METADATA };
+    companyResponses.rows = DEFAULT_COMPANY_ROWS.map(r => ({ ...r }));
+    const { ElMessage } = await import('element-plus');
+    vi.mocked(ElMessage.error).mockClear();
+    vi.mocked(ElMessage.success).mockClear();
+  });
+
   it('loads allowed companies and saves UpdateFieldCompanyValues patch', async () => {
     authStoreState.throwOnAccess = false;
     authStoreState.metadata = {
@@ -262,8 +284,8 @@ describe('OFieldCompanyValuesDialog', () => {
     });
     await flushOpen();
     const labels = wrapper.findAll('.item').map(el => el.attributes('data-label'));
-    expect(labels).toContain('Main Company');
-    expect(labels).toContain('EU Company');
+    expect(labels).toEqual(expect.arrayContaining(['Main Company', 'EU Company']));
+    expect(labels).toHaveLength(2);
     expect(wrapper.get('.dialog').attributes('data-title')).toMatch(/Company values/);
   });
 
@@ -496,7 +518,44 @@ describe('OFieldCompanyValuesDialog', () => {
     expect(wrapper.emitted('saved')?.[0]?.[0]).toBeNull();
   });
 
-  it('coerces boolean/int/monetary patch values and skips empty new rows', async () => {
+  it.each([
+    {
+      name: 'boolean yes token',
+      fieldType: 'boolean',
+      fieldName: 'Flag',
+      fieldLabel: 'Flag',
+      initial: { comp_main: true },
+      browse: { Flag: true },
+      edits: [
+        { label: 'EU', value: 'yes' },
+        { label: 'US', value: '' },
+      ],
+      expectedPatch: { comp_eu: true },
+    },
+    {
+      name: 'int finite and non-finite',
+      fieldType: 'int',
+      fieldName: 'Qty',
+      fieldLabel: 'Qty',
+      initial: { comp_main: 1 },
+      browse: { Qty: 2 },
+      edits: [
+        { label: 'EU', value: '42' },
+        { label: 'US', value: 'NaN-ish' },
+      ],
+      expectedPatch: { comp_eu: 42, comp_us: 'NaN-ish' },
+    },
+    {
+      name: 'monetary number',
+      fieldType: 'monetary',
+      fieldName: 'Amount',
+      fieldLabel: '',
+      initial: { comp_main: '1.0' },
+      browse: { Amount: 1 },
+      edits: [{ label: 'EU', value: '3.5' }],
+      expectedPatch: { comp_eu: 3.5 },
+    },
+  ] as const)('coerces patch values: $name', async ({ fieldType, fieldName, fieldLabel, initial, browse, edits, expectedPatch }) => {
     authStoreState.metadata = {
       allowedCompanyIds: ['comp_main', 'comp_eu', 'comp_us'],
       enabledCompanyIds: ['comp_main', 'comp_eu', 'comp_us'],
@@ -509,72 +568,26 @@ describe('OFieldCompanyValuesDialog', () => {
     ];
 
     const UpdateFieldCompanyValues = vi.fn(async () => true);
-    const Browse = vi.fn(async () => ({ Flag: true }));
-    const GetFieldCompanyValues = vi.fn(async () => ({ comp_main: true }));
-
-    const boolWrapper = mountDialog({
-      modelValue: true,
-      store: { GetFieldCompanyValues, UpdateFieldCompanyValues, Browse } as any,
-      recordId: 'r1',
-      fieldName: 'Flag',
-      fieldLabel: 'Flag',
-      fieldType: 'boolean',
-    });
-    await flushOpen();
-    const euIdx = inputIndexByLabel(boolWrapper, 'EU');
-    await boolWrapper.findAll('.input')[euIdx]!.setValue('yes');
-    const usIdx = inputIndexByLabel(boolWrapper, 'US');
-    await boolWrapper.findAll('.input')[usIdx]!.setValue(''); // new empty → skip
-    let buttons = boolWrapper.findAll('.btn');
-    await buttons[buttons.length - 1]!.trigger('click');
-    await flushOpen();
-    expect(UpdateFieldCompanyValues).toHaveBeenCalledWith('r1', 'Flag', { comp_eu: true });
-    boolWrapper.unmount();
-
-    UpdateFieldCompanyValues.mockClear();
-    const GetFieldCompanyValuesInt = vi.fn(async () => ({ comp_main: 1 }));
-    const intWrapper = mountDialog({
+    const wrapper = mountDialog({
       modelValue: true,
       store: {
-        GetFieldCompanyValues: GetFieldCompanyValuesInt,
+        GetFieldCompanyValues: vi.fn(async () => ({ ...initial })),
         UpdateFieldCompanyValues,
-        Browse: vi.fn(async () => ({ Qty: 2 })),
+        Browse: vi.fn(async () => ({ ...browse })),
       } as any,
       recordId: 'r1',
-      fieldName: 'Qty',
-      fieldLabel: 'Qty',
-      fieldType: 'int',
+      fieldName,
+      fieldLabel,
+      fieldType,
     });
     await flushOpen();
-    await intWrapper.findAll('.input')[inputIndexByLabel(intWrapper, 'EU')]!.setValue('42');
-    await intWrapper.findAll('.input')[inputIndexByLabel(intWrapper, 'US')]!.setValue('NaN-ish');
-    buttons = intWrapper.findAll('.btn');
+    for (const edit of edits) {
+      await wrapper.findAll('.input')[inputIndexByLabel(wrapper, edit.label)]!.setValue(edit.value);
+    }
+    const buttons = wrapper.findAll('.btn');
     await buttons[buttons.length - 1]!.trigger('click');
     await flushOpen();
-    expect(UpdateFieldCompanyValues).toHaveBeenCalledWith('r1', 'Qty', { comp_eu: 42, comp_us: 'NaN-ish' });
-    intWrapper.unmount();
-
-    UpdateFieldCompanyValues.mockClear();
-    const GetFieldCompanyValuesMoney = vi.fn(async () => ({ comp_main: '1.0' }));
-    const moneyWrapper = mountDialog({
-      modelValue: true,
-      store: {
-        GetFieldCompanyValues: GetFieldCompanyValuesMoney,
-        UpdateFieldCompanyValues,
-        Browse: vi.fn(async () => ({ Amount: 1 })),
-      } as any,
-      recordId: 'r1',
-      fieldName: 'Amount',
-      fieldLabel: '',
-      fieldType: 'monetary',
-    });
-    await flushOpen();
-    expect(moneyWrapper.text().toLowerCase()).toMatch(/company values/);
-    await moneyWrapper.findAll('.input')[inputIndexByLabel(moneyWrapper, 'EU')]!.setValue('3.5');
-    buttons = moneyWrapper.findAll('.btn');
-    await buttons[buttons.length - 1]!.trigger('click');
-    await flushOpen();
-    expect(UpdateFieldCompanyValues).toHaveBeenCalledWith('r1', 'Amount', { comp_eu: 3.5 });
+    expect(UpdateFieldCompanyValues).toHaveBeenCalledWith('r1', fieldName, expectedPatch);
   });
 
   it('coerces boolean falsey tokens and empty boolean text', async () => {
@@ -609,9 +622,8 @@ describe('OFieldCompanyValuesDialog', () => {
     expect(UpdateFieldCompanyValues).toHaveBeenCalledWith('r1', 'Flag', { comp_eu: false, comp_main: false });
   });
 
-  it('covers remaining coerce and error fallbacks', async () => {
-    const { ElMessage } = await import('element-plus');
-    authStoreState.throwOnAccess = false;
+
+  it('coerces whitespace-only boolean as true', async () => {
     authStoreState.metadata = {
       allowedCompanyIds: ['comp_main', 'comp_eu'],
       enabledCompanyIds: ['comp_main', 'comp_eu'],
@@ -619,40 +631,8 @@ describe('OFieldCompanyValuesDialog', () => {
     };
     companyResponses.rows = [
       { Id: 'comp_main', DisplayName: 'Main' },
-      { Id: '', DisplayName: 'Ghost' },
       { Id: 'comp_eu', DisplayName: 'EU' },
     ];
-
-    // integer / float / decimal / bigint / boolean whitespace
-    for (const [fieldType, input, expected] of [
-      ['integer', '7', 7],
-      ['bigint', '8', 8],
-      ['float', '1.25', 1.25],
-      ['decimal', '2.5', 2.5],
-    ] as const) {
-      const UpdateFieldCompanyValues = vi.fn(async () => true);
-      const wrapper = mountDialog({
-        modelValue: true,
-        store: {
-          GetFieldCompanyValues: vi.fn(async () => ({ comp_main: '1' })),
-          UpdateFieldCompanyValues,
-          Browse: vi.fn(async () => ({ X: expected })),
-        } as any,
-        recordId: 'r1',
-        fieldName: 'X',
-        fieldLabel: 'X',
-        fieldType,
-      });
-      await flushOpen();
-      await wrapper.findAll('.input')[inputIndexByLabel(wrapper, 'EU')]!.setValue(input);
-      const buttons = wrapper.findAll('.btn');
-      await buttons[buttons.length - 1]!.trigger('click');
-      await flushOpen();
-      expect(UpdateFieldCompanyValues).toHaveBeenCalledWith('r1', 'X', { comp_eu: expected });
-      wrapper.unmount();
-    }
-
-    // boolean whitespace-only → true via coerce
     const UpdateBool = vi.fn(async () => true);
     const boolWrapper = mountDialog({
       modelValue: true,
@@ -670,9 +650,56 @@ describe('OFieldCompanyValuesDialog', () => {
     await boolWrapper.findAll('.btn')[boolWrapper.findAll('.btn').length - 1]!.trigger('click');
     await flushOpen();
     expect(UpdateBool).toHaveBeenCalledWith('r1', 'Flag', { comp_eu: true });
-    boolWrapper.unmount();
+  });
 
-    // load error without Error.message (string throw) hits err || fallback chain
+  it.each([
+    ['integer', '7', 7],
+    ['bigint', '8', 8],
+    ['float', '1.25', 1.25],
+    ['decimal', '2.5', 2.5],
+  ] as const)('coerces %s patch values', async (fieldType, input, expected) => {
+    authStoreState.metadata = {
+      allowedCompanyIds: ['comp_main', 'comp_eu'],
+      enabledCompanyIds: ['comp_main', 'comp_eu'],
+      activeCompanyId: 'comp_main',
+    };
+    companyResponses.rows = [
+      { Id: 'comp_main', DisplayName: 'Main' },
+      { Id: '', DisplayName: 'Ghost' },
+      { Id: 'comp_eu', DisplayName: 'EU' },
+    ];
+    const UpdateFieldCompanyValues = vi.fn(async () => true);
+    const wrapper = mountDialog({
+      modelValue: true,
+      store: {
+        GetFieldCompanyValues: vi.fn(async () => ({ comp_main: '1' })),
+        UpdateFieldCompanyValues,
+        Browse: vi.fn(async () => ({ X: expected })),
+      } as any,
+      recordId: 'r1',
+      fieldName: 'X',
+      fieldLabel: 'X',
+      fieldType,
+    });
+    await flushOpen();
+    await wrapper.findAll('.input')[inputIndexByLabel(wrapper, 'EU')]!.setValue(input);
+    const buttons = wrapper.findAll('.btn');
+    await buttons[buttons.length - 1]!.trigger('click');
+    await flushOpen();
+    expect(UpdateFieldCompanyValues).toHaveBeenCalledWith('r1', 'X', { comp_eu: expected });
+  });
+
+  it('shows load error for string throw and save error for string throw', async () => {
+    const { ElMessage } = await import('element-plus');
+    authStoreState.metadata = {
+      allowedCompanyIds: ['comp_main', 'comp_eu'],
+      enabledCompanyIds: ['comp_main', 'comp_eu'],
+      activeCompanyId: 'comp_main',
+    };
+    companyResponses.rows = [
+      { Id: 'comp_main', DisplayName: 'Main' },
+      { Id: 'comp_eu', DisplayName: 'EU' },
+    ];
     const GetFail = vi.fn(async () => {
       throw 'load-string';
     });
@@ -683,10 +710,12 @@ describe('OFieldCompanyValuesDialog', () => {
       fieldName: 'Cost',
     });
     await flushOpen();
-    expect(ElMessage.error).toHaveBeenCalled();
+    expect(GetFail).toHaveBeenCalled();
+    expect(ElMessage.error).toHaveBeenCalledTimes(1);
+    expect(ElMessage.error).toHaveBeenCalledWith('load-string');
     failWrapper.unmount();
 
-    // save error without message
+    vi.mocked(ElMessage.error).mockClear();
     const UpdateFail = vi.fn(async () => {
       throw 'save-string';
     });
@@ -702,12 +731,16 @@ describe('OFieldCompanyValuesDialog', () => {
       fieldType: 'char',
     });
     await flushOpen();
+    vi.mocked(ElMessage.error).mockClear();
     await saveWrapper.findAll('.input')[inputIndexByLabel(saveWrapper, 'EU')]!.setValue('z');
     await saveWrapper.findAll('.btn')[saveWrapper.findAll('.btn').length - 1]!.trigger('click');
     await flushOpen();
-    expect(ElMessage.error).toHaveBeenCalled();
+    expect(UpdateFail).toHaveBeenCalledTimes(1);
+    expect(ElMessage.error).toHaveBeenCalledTimes(1);
+    expect(ElMessage.error).toHaveBeenCalledWith('save-string');
+  });
 
-    // empty allowlist → enabled ∪ keys; Search non-array
+  it('falls back to enabled ∪ map keys for empty allowlist with non-array Search', async () => {
     authStoreState.metadata = {
       allowedCompanyIds: [],
       enabledCompanyIds: ['comp_main'],
@@ -726,13 +759,12 @@ describe('OFieldCompanyValuesDialog', () => {
       maxLength: undefined,
     });
     await flushOpen();
-    expect(emptyAllow.findAll('.item').length).toBeGreaterThan(0);
+    const labels = emptyAllow.findAll('.item').map(el => el.attributes('data-label'));
+    expect(labels).toEqual(expect.arrayContaining(['comp_main', 'extra']));
+    expect(labels).toHaveLength(2);
   });
 
-
   it('covers native el-dialog render path without stub', async () => {
-    authStoreState.throwOnAccess = false;
-    authStoreState.nullIdentity = false;
     authStoreState.metadata = {
       allowedCompanyIds: ['comp_main'],
       enabledCompanyIds: ['comp_main'],
@@ -754,18 +786,18 @@ describe('OFieldCompanyValuesDialog', () => {
         stubs: {
           ...dialogStubs,
           'el-dialog': false,
+          // Keep dialog content in-tree so body is queryable under happy-dom.
+          Teleport: true,
         },
         directives: { loading: loadingDirective },
       },
     });
     await flushOpen();
-    expect(wrapper.find('.o-field-company-values-dialog__body').exists() || wrapper.html().length > 0).toBe(true);
+    expect(wrapper.find('.o-field-company-values-dialog__body').exists()).toBe(true);
     wrapper.unmount();
   });
 
-  it('covers draft missing row, nullish auth ids, and error fallback ternary', async () => {
-    const { ElMessage } = await import('element-plus');
-    authStoreState.throwOnAccess = false;
+  it('applies draft only when company row exists', async () => {
     authStoreState.metadata = {
       allowedCompanyIds: [null, 'comp_main', '', 'comp_eu', 'comp_main'] as any,
       enabledCompanyIds: [undefined, 'comp_main'] as any,
@@ -776,13 +808,12 @@ describe('OFieldCompanyValuesDialog', () => {
       { Id: 'comp_eu', DisplayName: 'EU' },
       { Id: '', DisplayName: 'skip' },
     ];
-
-    // draftCompanyId not in row set → applyDraftValue early !row return
+    const UpdateFieldCompanyValues = vi.fn(async () => true);
     const wrapper = mountDialog({
       modelValue: true,
       store: {
         GetFieldCompanyValues: vi.fn(async () => null),
-        UpdateFieldCompanyValues: vi.fn(),
+        UpdateFieldCompanyValues,
         Browse: vi.fn(),
       } as any,
       recordId: 'r1',
@@ -797,9 +828,11 @@ describe('OFieldCompanyValuesDialog', () => {
     expect(wrapper.findAll('.input')[0]!.attributes('data-maxlength')).toBe('10');
     expect(wrapper.findAll('.input')[0]!.attributes('data-word-limit')).not.toBe('false');
     await wrapper.find('form').trigger('submit');
-    wrapper.unmount();
+    expect(UpdateFieldCompanyValues).not.toHaveBeenCalled();
+    expect(wrapper.find('.dialog').exists()).toBe(true);
+  });
 
-    // identity without metadata object
+  it('renders no rows when identity is null', async () => {
     authStoreState.nullIdentity = true;
     companyResponses.rows = [];
     const nullIdent = mountDialog({
@@ -814,10 +847,9 @@ describe('OFieldCompanyValuesDialog', () => {
     });
     await flushOpen();
     expect(nullIdent.findAll('.item').length).toBe(0);
-    nullIdent.unmount();
-    authStoreState.nullIdentity = false;
+  });
 
-    // non-array allow/enabled lists
+  it('falls back to map keys when allow/enabled lists are non-arrays', async () => {
     authStoreState.metadata = {
       allowedCompanyIds: 'nope' as any,
       enabledCompanyIds: null as any,
@@ -835,10 +867,12 @@ describe('OFieldCompanyValuesDialog', () => {
       fieldName: 'Cost',
     });
     await flushOpen();
-    expect(w2.findAll('.item').length).toBeGreaterThan(0);
-    w2.unmount();
+    const labels = w2.findAll('.item').map(el => el.attributes('data-label'));
+    expect(labels).toEqual(expect.arrayContaining(['Main', 'orphan']));
+    expect(labels).toHaveLength(2);
+  });
 
-    // float non-finite keeps raw text; load/save errors with nullish err hit _t fallback
+  it('keeps non-finite float text in the patch', async () => {
     authStoreState.metadata = {
       allowedCompanyIds: ['comp_main', 'comp_eu'],
       enabledCompanyIds: ['comp_main', 'comp_eu'],
@@ -865,9 +899,51 @@ describe('OFieldCompanyValuesDialog', () => {
     await floatWrapper.findAll('.btn')[floatWrapper.findAll('.btn').length - 1]!.trigger('click');
     await flushOpen();
     expect(UpdateFieldCompanyValues).toHaveBeenCalledWith('r1', 'Amount', { comp_eu: 'not-a-num' });
-    floatWrapper.unmount();
+  });
 
-    ElMessage.error.mockClear?.();
+  it.each([
+    { name: 'null throw', throwValue: null },
+    { name: 'undefined throw', throwValue: undefined },
+    { name: 'blank message', throwValue: { message: '   ' } },
+    { name: 'object without message', throwValue: { code: 1 } },
+    { name: 'empty string', throwValue: '' },
+  ])('formats save error fallback for $name', async ({ throwValue }) => {
+    const { ElMessage } = await import('element-plus');
+    authStoreState.metadata = {
+      allowedCompanyIds: ['comp_main', 'comp_eu'],
+      enabledCompanyIds: ['comp_main', 'comp_eu'],
+      activeCompanyId: 'comp_main',
+    };
+    companyResponses.rows = [
+      { Id: 'comp_main', DisplayName: 'Main' },
+      { Id: 'comp_eu', DisplayName: 'EU' },
+    ];
+    const UpdateFail = vi.fn(async () => {
+      throw throwValue;
+    });
+    const wrapper = mountDialog({
+      modelValue: true,
+      store: {
+        GetFieldCompanyValues: vi.fn(async () => ({ comp_main: '1' })),
+        UpdateFieldCompanyValues: UpdateFail,
+        Browse: vi.fn(),
+      } as any,
+      recordId: 'r1',
+      fieldName: 'Cost',
+    });
+    await flushOpen();
+    vi.mocked(ElMessage.error).mockClear();
+    await wrapper.findAll('.input')[inputIndexByLabel(wrapper, 'EU')]!.setValue('z');
+    await wrapper.findAll('.btn')[wrapper.findAll('.btn').length - 1]!.trigger('click');
+    await flushOpen();
+    expect(UpdateFail).toHaveBeenCalledTimes(1);
+    expect(ElMessage.error).toHaveBeenCalledTimes(1);
+    expect(String(vi.mocked(ElMessage.error).mock.calls.at(-1)?.[0] ?? '')).toMatch(/Failed to save company values/i);
+  });
+
+  it('formats load error fallback for null throw', async () => {
+    const { ElMessage } = await import('element-plus');
+    vi.mocked(ElMessage.error).mockClear();
     const loadNull = mountDialog({
       modelValue: true,
       store: {
@@ -881,84 +957,20 @@ describe('OFieldCompanyValuesDialog', () => {
       fieldName: 'Cost',
     });
     await flushOpen();
-    expect(ElMessage.error).toHaveBeenCalled();
+    expect(ElMessage.error).toHaveBeenCalledTimes(1);
     loadNull.unmount();
+  });
 
-    const saveNull = mountDialog({
-      modelValue: true,
-      store: {
-        GetFieldCompanyValues: vi.fn(async () => ({ comp_main: '1' })),
-        UpdateFieldCompanyValues: vi.fn(async () => {
-          throw undefined;
-        }),
-        Browse: vi.fn(),
-      } as any,
-      recordId: 'r1',
-      fieldName: 'Cost',
-    });
-    await flushOpen();
-    await saveNull.findAll('.input')[inputIndexByLabel(saveNull, 'EU')]!.setValue('z');
-    await saveNull.findAll('.btn')[saveNull.findAll('.btn').length - 1]!.trigger('click');
-    await flushOpen();
-    expect(ElMessage.error).toHaveBeenCalled();
-
-    // error object with empty message falls through; object without message hits typeof-object branch
-    const saveEmptyMsg = mountDialog({
-      modelValue: true,
-      store: {
-        GetFieldCompanyValues: vi.fn(async () => ({ comp_main: '1' })),
-        UpdateFieldCompanyValues: vi.fn(async () => {
-          throw { message: '   ' };
-        }),
-        Browse: vi.fn(),
-      } as any,
-      recordId: 'r1',
-      fieldName: 'Cost',
-    });
-    await flushOpen();
-    await saveEmptyMsg.findAll('.input')[inputIndexByLabel(saveEmptyMsg, 'EU')]!.setValue('z');
-    await saveEmptyMsg.findAll('.btn')[saveEmptyMsg.findAll('.btn').length - 1]!.trigger('click');
-    await flushOpen();
-    expect(ElMessage.error).toHaveBeenCalled();
-
-    const saveNoMsg = mountDialog({
-      modelValue: true,
-      store: {
-        GetFieldCompanyValues: vi.fn(async () => ({ comp_main: '1' })),
-        UpdateFieldCompanyValues: vi.fn(async () => {
-          throw { code: 1 };
-        }),
-        Browse: vi.fn(),
-      } as any,
-      recordId: 'r1',
-      fieldName: 'Cost',
-    });
-    await flushOpen();
-    await saveNoMsg.findAll('.input')[inputIndexByLabel(saveNoMsg, 'EU')]!.setValue('z');
-    await saveNoMsg.findAll('.btn')[saveNoMsg.findAll('.btn').length - 1]!.trigger('click');
-    await flushOpen();
-    expect(ElMessage.error).toHaveBeenCalled();
-
-    // empty-string throw → formatCaughtError asText falsy → fallback
-    const saveEmptyStr = mountDialog({
-      modelValue: true,
-      store: {
-        GetFieldCompanyValues: vi.fn(async () => ({ comp_main: '1' })),
-        UpdateFieldCompanyValues: vi.fn(async () => {
-          throw '';
-        }),
-        Browse: vi.fn(),
-      } as any,
-      recordId: 'r1',
-      fieldName: 'Cost',
-    });
-    await flushOpen();
-    await saveEmptyStr.findAll('.input')[inputIndexByLabel(saveEmptyStr, 'EU')]!.setValue('z');
-    await saveEmptyStr.findAll('.btn')[saveEmptyStr.findAll('.btn').length - 1]!.trigger('click');
-    await flushOpen();
-    expect(ElMessage.error).toHaveBeenCalled();
-
-    // Browse returns null → nextValue undefined path; closed emit
+  it('emits null saved value when Browse returns null', async () => {
+    authStoreState.metadata = {
+      allowedCompanyIds: ['comp_main', 'comp_eu'],
+      enabledCompanyIds: ['comp_main', 'comp_eu'],
+      activeCompanyId: 'comp_main',
+    };
+    companyResponses.rows = [
+      { Id: 'comp_main', DisplayName: 'Main' },
+      { Id: 'comp_eu', DisplayName: 'EU' },
+    ];
     const browseNull = mountDialog({
       modelValue: true,
       store: {

@@ -1598,8 +1598,8 @@ export default class CompanyDepPilot extends BaseModel {
 		t.Fatalf("expected ManyToOne companyDependent → jsonobject, got %q", partnerSpec.Migration.ResolvedColumnType)
 	}
 	// Explicit copy:true must not force the companyDependent default Copy=false.
-	if partnerSpec.Structural.Copy != nil && !*partnerSpec.Structural.Copy {
-		t.Fatalf("expected explicit copy:true to avoid Copy=false default, got %#v", partnerSpec.Structural.Copy)
+	if partnerSpec.Structural.Copy == nil || !*partnerSpec.Structural.Copy {
+		t.Fatalf("expected explicit copy:true to be retained, got %#v", partnerSpec.Structural.Copy)
 	}
 
 	assertDiag := func(fieldName, code string) {
