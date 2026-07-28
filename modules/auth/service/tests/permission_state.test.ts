@@ -1108,6 +1108,78 @@ test('PermissionState: Method deny brakes explicit ACTION even when UI grants it
   expect((globalUi.actions ?? []).includes('auth.action.method_deny_edit')).toBe(false);
 });
 
+test('PermissionState: Method deny prevents ACTION wildcard under global UI allow', async () => {
+  resetRequestContext();
+  const c1 = { Id: uid('C1') };
+
+  setupAllowlistForFixtures();
+  const out = await withModelContext(
+    { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
+    async () => {
+      const userId = await createUser(c1.Id);
+      setIdentity(userId);
+
+      const r = await createRole('ROLE_UI_GLOBAL_METHOD_DENY');
+      await UserRole.Create(
+        {
+          UserId: { Id: userId } as any,
+          RoleId: { Id: r.id } as any,
+          CompanyId: null as any,
+        } as any,
+        ['Id'] as any
+      );
+
+      const userModelId = await resolveModelId('auth', 'User');
+      const browse = await resolveService(userModelId, 'browse');
+      const requireKey = `rpc:/auth.User/${browse.name}`;
+
+      await createUiResource({
+        resourceId: 'auth.action.global_method_deny_edit',
+        type: 'ACTION',
+        requires: [requireKey],
+      });
+      await createUiResource({
+        resourceId: 'auth.action.global_method_deny_empty',
+        type: 'ACTION',
+        requires: [],
+      });
+
+      // Global UI allow (empty app + resource) → routes/menus stay '*', but Method deny must brake actions.
+      await RoleUiResource.Create(
+        {
+          RoleId: { Id: r.id } as any,
+          IrApplicationId: null as any,
+          IrUiResourceId: null as any,
+          Mode: 'allow',
+        } as any,
+        ['Id'] as any
+      );
+      await RoleMethodAccess.Create(
+        {
+          RoleId: { Id: r.id } as any,
+          IrServiceId: browse.id,
+          IrModelId: null,
+          IrApplicationId: null,
+          Mode: 'deny',
+        } as any,
+        ['Id'] as any
+      );
+
+      disableAllowlist();
+      const ps = await User.GetPermissionState();
+      return { ps };
+    },
+    { merge: false }
+  );
+
+  const globalUi = out.ps.byCompany['*']?.ui ?? {};
+  expect(globalUi.routes).toEqual(['*']);
+  expect(globalUi.menus).toEqual(['*']);
+  expect(globalUi.actions).not.toEqual(['*']);
+  expect((globalUi.actions ?? []).includes('auth.action.global_method_deny_edit')).toBe(false);
+  expect((globalUi.actions ?? []).includes('auth.action.global_method_deny_empty')).toBe(true);
+});
+
 test('PermissionState smoke: declared resource -> persisted dictionary -> explicit grant -> ui whitelist', async () => {
   resetRequestContext();
   const c1 = { Id: uid('C1') };

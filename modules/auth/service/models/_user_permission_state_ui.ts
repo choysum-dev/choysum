@@ -248,7 +248,38 @@ export async function buildUiPermissionProjection(
     if (!hasAnyExplicitUiDeny && ((hasGlobalAllow && !hasGlobalDeny) || hasExplicitGlobalUiAllow)) {
       ui.routes = ['*'];
       ui.menus = ['*'];
-      ui.actions = ['*'];
+
+      const requiresAllowSet = new Set<string>([
+        ...(acl.requiresAllowKeysByCompany.get(companyKey) ?? []),
+        ...(companyKey !== '*' ? (acl.requiresAllowKeysByCompany.get('*') ?? []) : []),
+      ]);
+      const requiresDenySet = new Set<string>([
+        ...(acl.requiresDenyKeysByCompany.get(companyKey) ?? []),
+        ...(companyKey !== '*' ? (acl.requiresDenyKeysByCompany.get('*') ?? []) : []),
+      ]);
+
+      // Keep ACTION wildcard only when no Method deny can brake write buttons (UI∧Method).
+      if (requiresDenySet.size === 0) {
+        ui.actions = ['*'];
+        continue;
+      }
+
+      const actionMethodAllowSet = new Set<string>(requiresAllowSet);
+      if (hasExplicitGlobalUiAllow) {
+        for (const r of allResources) {
+          for (const req of r.requires) {
+            const k = normalizeRpcRequireKey(req);
+            if (k) actionMethodAllowSet.add(k);
+          }
+        }
+      }
+      const actionSet = new Set<string>();
+      for (const r of allResources) {
+        if (r.type !== 'ACTION') continue;
+        if (!isUiResourceAllowed(r.requires, actionMethodAllowSet, requiresDenySet)) continue;
+        actionSet.add(r.resourceId);
+      }
+      ui.actions = sortStrings(Array.from(actionSet));
       continue;
     }
 

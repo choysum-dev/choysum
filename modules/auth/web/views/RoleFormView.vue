@@ -97,7 +97,8 @@ SPDX-License-Identifier: Apache-2.0
             :check-strictly="false"
           >
             <template #node="{ row, label }">
-              <span
+              <button
+                type="button"
                 class="rfv-ui-resource-node"
                 :class="{ 'is-inspected': inspectedUiResourceId === String(row?.Id ?? '') }"
                 @click.stop="inspectUiResource(row)"
@@ -106,7 +107,7 @@ SPDX-License-Identifier: Apache-2.0
                   <component :is="resolveUiResourceTypeIcon(row?.Type)" />
                 </el-icon>
                 <span class="rfv-ui-resource-node__label">{{ resolveUiResourceLabel(row, label) }}</span>
-              </span>
+              </button>
             </template>
           </OManyToManyRefTreeField>
           <div v-if="inspectedUiResource" class="rfv-ui-requires">
@@ -358,6 +359,13 @@ const advancedPanels = ref('');
   cursor: pointer;
   border-radius: 4px;
   padding: 0 4px;
+  margin: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  line-height: inherit;
+  text-align: left;
 }
 
 .rfv-ui-resource-node.is-inspected {

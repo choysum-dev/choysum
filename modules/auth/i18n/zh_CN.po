@@ -1278,7 +1278,7 @@ msgstr "OneToMany 行始终绑定当前角色。全体用户或跨角色的 Reco
 #: web/views/RoleFormView.vue:58
 msgctxt "web/views/RoleFormView"
 msgid "Primary path: check resources in this tree. Checking a resource uniformly derives Method allow for its Requires (UI-Option-A; no read/write split). Advanced → UI Resource Details is a manual bypass only."
-msgstr "主路径：在此树中勾选资源。勾选资源会对其 Requires 一律派生 Method allow（UI-Option-A；不分读写）。高级模式 → UI 资源明细仅为手维旁路。"
+msgstr "主路径：在此树中勾选资源。勾选资源会对其 Requires 一律派生 Method allow（UI-Option-A；不分读写）。高级模式 → UI 资源明细仅为手动旁路。"
 
 #: web/views/RoleFormView.vue:149
 msgctxt "web/views/RoleFormView"
