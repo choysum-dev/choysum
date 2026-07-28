@@ -165,7 +165,7 @@ async function loadRows() {
   loading.value = true;
   try {
     const auth = readAuthCompanyMeta();
-    const map = (await (props.store as any).GetFieldCompanyValues(
+    const map = (await props.store.GetFieldCompanyValues(
       props.recordId,
       props.fieldName
     )) as Record<string, unknown>;
@@ -256,10 +256,10 @@ async function handleSave() {
     }
 
     if (Object.keys(patch).length) {
-      await (props.store as any).UpdateFieldCompanyValues(props.recordId, props.fieldName, patch);
+      await props.store.UpdateFieldCompanyValues(props.recordId, props.fieldName, patch);
     }
 
-    const refreshed = (await (props.store as any).Browse(props.recordId, [props.fieldName])) as Record<string, unknown>;
+    const refreshed = (await props.store.Browse(props.recordId, [props.fieldName])) as Record<string, unknown>;
     const nextValue = refreshed?.[props.fieldName];
     emit('saved', nextValue == null ? null : nextValue);
     ElMessage.success(_t('Company values saved'));
