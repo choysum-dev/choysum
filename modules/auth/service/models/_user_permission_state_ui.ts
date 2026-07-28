@@ -6,6 +6,7 @@ import IrUiResourceMenuRoute from '@/meta/service/models/ir_ui_resource_menu_rou
 import IrUiResourceRouteAction from '@/meta/service/models/ir_ui_resource_route_action';
 import RoleUiResource from './role_ui_resource';
 import { isUiResourceAllowed, maybeId, normalizeScopeRefId, normalizeUiResourceId, parseJsonStringArray, sortStrings } from './_user_authz_shared';
+import { normalizeRpcRequireKey } from '@/core/service/utils/normalization';
 import { applyToScope, type AclAggregationResult } from './_user_permission_state_acl';
 
 type UiResourceMeta = {
@@ -260,6 +261,16 @@ export async function buildUiPermissionProjection(
       ...(companyKey !== '*' ? (acl.requiresDenyKeysByCompany.get('*') ?? []) : []),
     ]);
 
+    // UI-Option-A Method half for ACTION only: explicit UI allow derives Method allow for Requires.
+    const actionMethodAllowSet = new Set<string>(requiresAllowSet);
+    for (const r of allResources) {
+      if (isExplicitUiDenied(r) || !isExplicitUiAllowed(r)) continue;
+      for (const req of r.requires) {
+        const k = normalizeRpcRequireKey(req);
+        if (k) actionMethodAllowSet.add(k);
+      }
+    }
+
     const routeSet = new Set<string>();
     const menuSet = new Set<string>();
     const actionSet = new Set<string>();
@@ -277,6 +288,9 @@ export async function buildUiPermissionProjection(
         if (allowedByExplicit) explicitRouteSet.add(r.resourceId);
       } else if (r.type === 'MENU') menuSet.add(r.resourceId);
       else if (r.type === 'ACTION') {
+        // Write Action visibility ⇔ UI ∧ Method (Requires). Method deny-wins hides the button.
+        const methodOk = isUiResourceAllowed(r.requires, actionMethodAllowSet, requiresDenySet);
+        if (!methodOk) continue;
         actionSet.add(r.resourceId);
         if (allowedByExplicit) explicitActionSet.add(r.resourceId);
       }

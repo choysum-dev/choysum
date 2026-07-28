@@ -1227,12 +1227,12 @@ msgctxt "web/stores/auth/actions"
 msgid "SwitchCompanyScope returned an invalid response"
 msgstr ""
 
-#: web/views/RoleFormView.vue:56
+#: web/views/RoleFormView.vue:66
 msgctxt "web/views/RoleFormView"
 msgid "Accessible UI Resources"
 msgstr ""
 
-#: web/views/RoleFormView.vue:73
+#: web/views/RoleFormView.vue:104
 msgctxt "web/views/RoleFormView"
 msgid "Advanced Mode"
 msgstr ""
@@ -1242,37 +1242,42 @@ msgctxt "web/views/RoleFormView"
 msgid "Basic Information"
 msgstr ""
 
-#: web/views/RoleFormView.vue:76
+#: web/views/RoleFormView.vue:64
+msgctxt "web/views/RoleFormView"
+msgid "Click a node label to inspect Requires → derived RPCs (checkbox still controls the grant)."
+msgstr ""
+
+#: web/views/RoleFormView.vue:107
 msgctxt "web/views/RoleFormView"
 msgid "Configure record/field/RPC grants under deny-default. The UI resource tree does not derive Record or Field rules; Advanced is the main place for data and method access."
 msgstr ""
 
-#: web/views/RoleFormView.vue:49
+#: web/views/RoleFormView.vue:50
 msgctxt "web/views/RoleFormView"
 msgid "Copy Role"
 msgstr ""
 
-#: web/views/RoleFormView.vue:49
+#: web/views/RoleFormView.vue:50
 msgctxt "web/views/RoleFormView"
 msgid "Create Role"
 msgstr ""
 
-#: web/views/RoleFormView.vue:49
+#: web/views/RoleFormView.vue:50
 msgctxt "web/views/RoleFormView"
 msgid "Delete Role"
 msgstr ""
 
-#: web/views/RoleFormView.vue:49
+#: web/views/RoleFormView.vue:50
 msgctxt "web/views/RoleFormView"
 msgid "Edit Role"
 msgstr ""
 
-#: web/views/RoleFormView.vue:103
+#: web/views/RoleFormView.vue:134
 msgctxt "web/views/RoleFormView"
 msgid "Field Rules"
 msgstr ""
 
-#: web/views/RoleFormView.vue:105
+#: web/views/RoleFormView.vue:136
 msgctxt "web/views/RoleFormView"
 msgid "Field visibility under deny-default. Leave Application/Model/Field empty for wider scopes."
 msgstr ""
@@ -1282,22 +1287,32 @@ msgctxt "web/views/RoleFormView"
 msgid "Included Roles"
 msgstr ""
 
-#: web/views/RoleFormView.vue:116
+#: web/views/RoleFormView.vue:147
 msgctxt "web/views/RoleFormView"
 msgid "Method Access"
 msgstr ""
 
-#: web/views/RoleFormView.vue:84
+#: web/views/RoleFormView.vue:99
+msgctxt "web/views/RoleFormView"
+msgid "No Requires on this resource — granting it does not derive Method access."
+msgstr ""
+
+#: web/views/RoleFormView.vue:115
 msgctxt "web/views/RoleFormView"
 msgid "OneToMany rows are always bound to the current role. All-users or cross-role Record/Field/Method/UI rules belong in dedicated menus, not here. Model/Application empty means scope-global (all models), which is not the same as all-users audience."
 msgstr ""
 
-#: web/views/RoleFormView.vue:118
+#: web/views/RoleFormView.vue:58
+msgctxt "web/views/RoleFormView"
+msgid "Primary path: check resources in this tree. Checking a resource uniformly derives Method allow for its Requires (UI-Option-A; no read/write split). Advanced → UI Resource Details is a manual bypass only."
+msgstr ""
+
+#: web/views/RoleFormView.vue:149
 msgctxt "web/views/RoleFormView"
 msgid "RPC allow/deny under deny-default. New rows default to allow; use deny as an explicit brake."
 msgstr ""
 
-#: web/views/RoleFormView.vue:82
+#: web/views/RoleFormView.vue:113
 msgctxt "web/views/RoleFormView"
 msgid "Record Rules"
 msgstr ""
@@ -1307,17 +1322,22 @@ msgctxt "web/views/RoleFormView"
 msgid "Related Data"
 msgstr ""
 
-#: web/views/RoleFormView.vue:32
+#: web/views/RoleFormView.vue:33
 msgctxt "web/views/RoleFormView"
 msgid "Required"
 msgstr ""
 
-#: web/views/RoleFormView.vue:49
+#: web/views/RoleFormView.vue:83
+msgctxt "web/views/RoleFormView"
+msgid "Requires → derived Method RPCs"
+msgstr ""
+
+#: web/views/RoleFormView.vue:50
 msgctxt "web/views/RoleFormView"
 msgid "Role"
 msgstr ""
 
-#: web/views/RoleFormView.vue:130
+#: web/views/RoleFormView.vue:161
 msgctxt "web/views/RoleFormView"
 msgid "Secondary to the UI Resource Access tree above. Prefer the tree for day-to-day grants."
 msgstr ""
@@ -1337,7 +1357,7 @@ msgctxt "web/views/RoleFormView"
 msgid "System Information"
 msgstr ""
 
-#: web/views/RoleFormView.vue:83
+#: web/views/RoleFormView.vue:114
 msgctxt "web/views/RoleFormView"
 msgid "This form only edits rules for this role"
 msgstr ""
@@ -1347,9 +1367,14 @@ msgctxt "web/views/RoleFormView"
 msgid "UI Resource Access"
 msgstr ""
 
-#: web/views/RoleFormView.vue:128
+#: web/views/RoleFormView.vue:159
 msgctxt "web/views/RoleFormView"
 msgid "UI Resource Details (manual bypass)"
+msgstr ""
+
+#: web/views/RoleFormView.vue:88
+msgctxt "web/views/RoleFormView"
+msgid "Under UI-Option-A, these RPCs are uniformly Method-allow when this resource is granted (unless a manual Method deny brakes them). Record/Field rules are not derived from UI."
 msgstr ""
 
 #: web/views/RoleFormView.vue:42
@@ -1357,7 +1382,7 @@ msgctxt "web/views/RoleFormView"
 msgid "Users"
 msgstr ""
 
-#: web/views/RoleFormView.vue:89
+#: web/views/RoleFormView.vue:120
 msgctxt "web/views/RoleFormView"
 msgid "Without a matching grant, records are invisible or not writable (deny-default)."
 msgstr ""
