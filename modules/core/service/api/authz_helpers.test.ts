@@ -34,11 +34,13 @@ test('authz helpers normalize condition envelope for true/false/expr and invalid
       kind: 'expr',
       expr: ['OwnerId', '=', '$userId'],
       reason: '  scoped  ',
+      hitRuleIds: [' rule_b ', '', 'rule_a', 'rule_a'],
     })
   ).toEqual({
     kind: 'expr',
     expr: ['OwnerId', '=', '$userId'],
     reason: 'scoped',
+    hitRuleIds: ['rule_a', 'rule_b'],
   });
 
   expect(
@@ -144,11 +146,13 @@ test('authz helpers normalize field rule spec and reason from loose payloads', (
       denyReadFields: [' Name ', '', 'Name', null, 'Id'],
       denyWriteFields: [' Amount ', '', 'Amount', 'Locked'],
       reason: '  from_auth  ',
+      hitRuleIds: ['fr_2', 'fr_1', 'fr_1'],
     })
   ).toEqual({
     denyReadFields: ['Name', 'Id'],
     denyWriteFields: ['Amount', 'Locked'],
     reason: 'from_auth',
+    hitRuleIds: ['fr_1', 'fr_2'],
   });
 
   expect(

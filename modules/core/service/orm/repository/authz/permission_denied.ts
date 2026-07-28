@@ -33,6 +33,11 @@ export function createRepositoryPermissionDeniedError(
     companyMode: req.companyMode,
     recordRuleMode: req.recordRuleMode,
     fieldRuleMode: req.fieldRuleMode,
+    reason: String(metadata?.reason || code).trim(),
+    hitRuleIds: String(metadata?.hitRuleIds || '')
+      .split(',')
+      .map(id => id.trim())
+      .filter(Boolean),
     message,
     metadata: metadata || {},
   });

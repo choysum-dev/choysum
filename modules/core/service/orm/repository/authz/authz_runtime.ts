@@ -65,10 +65,34 @@ export function emitRepositoryAuthzDecisionSummary(summary: RepositoryAuthzDecis
   if (mode === 'off') return;
   if (mode === 'deny' && decision !== 'deny') return;
 
+  const metadata = summary?.metadata && typeof summary.metadata === 'object' ? summary.metadata : undefined;
+  const reason =
+    typeof summary?.reason === 'string' && summary.reason.trim()
+      ? summary.reason.trim()
+      : typeof metadata?.reason === 'string'
+        ? metadata.reason.trim()
+        : '';
+  const hitRuleIdsRaw = summary?.hitRuleIds ?? metadata?.hitRuleIds;
+  const hitRuleIds = Array.isArray(hitRuleIdsRaw)
+    ? Array.from(new Set(hitRuleIdsRaw.map(id => String(id ?? '').trim()).filter(Boolean))).sort()
+    : typeof hitRuleIdsRaw === 'string'
+      ? Array.from(
+          new Set(
+            hitRuleIdsRaw
+              .split(',')
+              .map(id => id.trim())
+              .filter(Boolean)
+          )
+        ).sort()
+      : [];
+
   const payload: ObjectRecord = {
     event: 'authz.decision_summary',
     ...summary,
   };
+  if (reason) payload.reason = reason;
+  if (hitRuleIds.length) payload.hitRuleIds = hitRuleIds;
+  else delete payload.hitRuleIds;
 
   try {
     console.error(`[AUTHZ] ${JSON.stringify(payload)}`);

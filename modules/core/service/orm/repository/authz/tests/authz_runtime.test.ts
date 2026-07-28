@@ -434,6 +434,17 @@ test('authz runtime decision summary log mode off/deny/all with audit toggle', a
     expect(logs.length).toBe(3);
     expect(logs[1].includes('[AUTHZ]')).toBe(true);
     expect(logs[2].includes('[AUDIT]')).toBe(true);
+
+    logs.length = 0;
+    emitRepositoryAuthzDecisionSummary({
+      decision: 'deny',
+      layer: 'record_rule',
+      basis: 'record_rule_denied',
+      metadata: { reason: 'no_grant_read_deny', hitRuleIds: 'rule_b,rule_a,rule_a' },
+    });
+    expect(logs.length).toBe(2);
+    expect(logs[0].includes('"reason":"no_grant_read_deny"')).toBe(true);
+    expect(logs[0].includes('"hitRuleIds":["rule_a","rule_b"]')).toBe(true);
   } finally {
     (console as any).error = originalError;
     (globalThis as any).__CHOYSUM_RUNTIME_ENV__ = originalEnv;

@@ -66,6 +66,8 @@ test('repository permission denied builds PermissionDenied error and emits deny 
       companyMode: 'strict',
       recordRuleMode: 'default',
       fieldRuleMode: 'default',
+      reason: 'record_rule_denied',
+      hitRuleIds: [],
       message: 'record rule denied',
       metadata: { targetCount: '2' },
     },
@@ -160,6 +162,8 @@ test('repository permission denied forwards metadata keyset to summary and error
   });
   expect(summaries.length).toBe(1);
   expect(Object.keys(summaries[0]?.metadata || {}).sort()).toEqual(['allowedCount', 'reason', 'targetCount']);
+  expect(summaries[0]?.reason).toBe('policy');
+  expect(summaries[0]?.hitRuleIds).toEqual([]);
 });
 
 test('repository permission denied resolves model fallback from modelName to name', () => {

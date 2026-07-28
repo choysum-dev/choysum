@@ -19,6 +19,7 @@ export type RepositoryFieldRuleSpec = {
   denyReadFields: string[];
   denyWriteFields: string[];
   reason?: string;
+  hitRuleIds?: string[];
 };
 
 export type RepositoryFieldRuleDeps = {
@@ -124,10 +125,12 @@ function normalizeRepositoryFieldRuleSpec(input: unknown): RepositoryFieldRuleSp
     return Array.from(new Set(output)).sort();
   };
 
+  const hitRuleIds = toStringArray(value.hitRuleIds);
   return {
     denyReadFields: toStringArray(value.denyReadFields),
     denyWriteFields: toStringArray(value.denyWriteFields),
     reason: typeof value.reason === 'string' ? value.reason : undefined,
+    hitRuleIds: hitRuleIds.length ? hitRuleIds : undefined,
   };
 }
 
@@ -206,17 +209,19 @@ export async function assertRepositoryFieldRuleWriteAllowed(params: RepositoryFi
 
   const method = typeof req?.method === 'string' ? req.method : '';
   const model = (params.meta.fullModelName || params.meta.modelName || params.meta.name || 'Unknown') as string;
+  const metadata: Record<string, string> = {
+    model,
+    access: 'write',
+    field: deniedFields[0],
+    fields: deniedFields.join(','),
+    method,
+    reason: spec.reason || 'denied',
+  };
+  if (spec.hitRuleIds?.length) metadata.hitRuleIds = spec.hitRuleIds.join(',');
   throw params.permissionDenied(
     'field_rule_readonly_violation',
     _t('field rule readonly violation', { scope: 'service/orm/repository/authz/field_rule_helpers' }),
-    {
-      model,
-      access: 'write',
-      field: deniedFields[0],
-      fields: deniedFields.join(','),
-      method,
-      reason: spec.reason || 'denied',
-    }
+    metadata
   );
 }
 

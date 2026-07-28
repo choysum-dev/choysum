@@ -5,7 +5,7 @@ import type { ObjectRecord } from '../../../../utils/types';
 
 export type RepositoryPermissionDeniedFn = (code: string, message: string, metadata?: Record<string, string>) => Error;
 
-export type RepositoryAuthzDecisionLayer = 'record_rule' | 'company_filter' | 'field_rule' | 'unknown';
+export type RepositoryAuthzDecisionLayer = 'method_access' | 'record_rule' | 'company_filter' | 'field_rule' | 'unknown';
 
 export type RepositoryAuthzDecision = 'allow' | 'deny';
 
@@ -23,7 +23,10 @@ export type RepositoryAuthzDecisionSummary = ObjectRecord & {
   companyMode?: string;
   recordRuleMode?: string;
   fieldRuleMode?: string;
+  /** Machine-readable decision reason (promoted from metadata.reason when missing). */
   reason?: string;
+  /** Role* rule row Ids that participated in the decision. */
+  hitRuleIds?: string[];
   message?: string;
   metadata?: Record<string, string>;
 };

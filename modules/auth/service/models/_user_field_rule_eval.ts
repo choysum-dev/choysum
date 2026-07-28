@@ -61,6 +61,7 @@ export type FieldRuleEvalResult = {
   denyReadFields: string[];
   denyWriteFields: string[];
   reason: string;
+  hitRuleIds?: string[];
 };
 
 function getFieldRuleReqState(): Record<string, unknown> | undefined {
@@ -125,9 +126,9 @@ async function resolveModelIds(appName: string, modelName: string): Promise<stri
   });
 }
 
-function denyAllNonSystemFields(fieldNames: string[], reason: string): FieldRuleEvalResult {
+function denyAllNonSystemFields(fieldNames: string[], reason: string, hitRuleIds?: string[]): FieldRuleEvalResult {
   const names = [...fieldNames].sort();
-  return { denyReadFields: names, denyWriteFields: [...names], reason };
+  return { denyReadFields: names, denyWriteFields: [...names], reason, hitRuleIds };
 }
 
 /**
@@ -304,5 +305,18 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
   denyReadFields.sort();
   denyWriteFields.sort();
 
-  return { denyReadFields, denyWriteFields, reason: 'ok' };
+  const hitRuleIds = Array.from(
+    new Set(
+      [
+        ...Array.from(fieldRulesByFieldName.values()).flat(),
+        ...modelRules,
+        ...appRules,
+        ...globalRules,
+      ]
+        .map(r => String((r as any)?.__rid || '').trim())
+        .filter(Boolean)
+    )
+  ).sort();
+
+  return { denyReadFields, denyWriteFields, reason: 'ok', hitRuleIds };
 }

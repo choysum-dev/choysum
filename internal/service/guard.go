@@ -137,22 +137,23 @@ func (g serviceGuard) runMethodAccess(ctx context.Context, runtimeScope scope.Sc
 			}
 
 			payload := map[string]any{
-				"event":               "authz.decision",
-				"layer":               "acl",
-				"decision":            decision,
-				"basis":               basis,
-				"full_method":         fullMethod,
-				"user_id":             userID,
-				"active_company_id":   activeCompanyID,
-				"enabled_company_ids": enabledCompanyIDs,
+				"event":             "authz.decision_summary",
+				"layer":             "method_access",
+				"decision":          decision,
+				"basis":             basis,
+				"reason":            basis,
+				"fullMethod":        fullMethod,
+				"userId":            userID,
+				"activeCompanyId":   activeCompanyID,
+				"enabledCompanyIds": enabledCompanyIDs,
 			}
 			for key, value := range extra {
 				payload[key] = value
 			}
 
-			g.runtimeScope.Logger().Info("authz decision", "event", payload["event"], "layer", payload["layer"], "decision", payload["decision"], "basis", payload["basis"], "full_method", payload["full_method"], "user_id", payload["user_id"], "active_company_id", payload["active_company_id"], "enabled_company_ids", payload["enabled_company_ids"], "extra", extra)
+			g.runtimeScope.Logger().Info("authz decision", "event", payload["event"], "layer", payload["layer"], "decision", payload["decision"], "basis", payload["basis"], "reason", payload["reason"], "fullMethod", payload["fullMethod"], "userId", payload["userId"], "activeCompanyId", payload["activeCompanyId"], "enabledCompanyIds", payload["enabledCompanyIds"], "extra", extra)
 			if auditEnabled {
-				g.runtimeScope.Logger().Info("authz decision", "audit", true, "event", payload["event"], "layer", payload["layer"], "decision", payload["decision"], "basis", payload["basis"], "full_method", payload["full_method"], "user_id", payload["user_id"], "active_company_id", payload["active_company_id"], "enabled_company_ids", payload["enabled_company_ids"], "extra", extra)
+				g.runtimeScope.Logger().Info("authz decision", "audit", true, "event", payload["event"], "layer", payload["layer"], "decision", payload["decision"], "basis", payload["basis"], "reason", payload["reason"], "fullMethod", payload["fullMethod"], "userId", payload["userId"], "activeCompanyId", payload["activeCompanyId"], "enabledCompanyIds", payload["enabledCompanyIds"], "extra", extra)
 			}
 		}
 	}

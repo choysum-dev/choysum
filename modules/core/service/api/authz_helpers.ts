@@ -12,6 +12,21 @@ function asPlainRecord(value: unknown): Record<string, unknown> | null {
 }
 
 /**
+ * Normalize hit rule Ids from array or comma-separated string payloads.
+ */
+export function normalizeHitRuleIds(value: unknown): string[] | undefined {
+  if (Array.isArray(value)) {
+    const ids = normalizeStringArray(value).sort();
+    return ids.length ? ids : undefined;
+  }
+  if (typeof value === 'string') {
+    const ids = normalizeStringArray(value.split(',')).sort();
+    return ids.length ? ids : undefined;
+  }
+  return undefined;
+}
+
+/**
  * Normalize a loose value into a condition-envelope shape.
  */
 export function normalizeConditionEnvelope(value: unknown): ConditionEnvelope {
@@ -19,14 +34,27 @@ export function normalizeConditionEnvelope(value: unknown): ConditionEnvelope {
   if (!record) return { kind: 'false', reason: 'invalid_record_rule_envelope' };
 
   const kind = normalizeOptionalString(record.kind);
-  if (kind === 'true') return { kind: 'true', reason: normalizeOptionalString(record.reason) };
-  if (kind === 'false') return { kind: 'false', reason: normalizeOptionalString(record.reason) };
+  const reason = normalizeOptionalString(record.reason);
+  const hitRuleIds = normalizeHitRuleIds(record.hitRuleIds);
+  if (kind === 'true') {
+    return hitRuleIds ? { kind: 'true', reason, hitRuleIds } : { kind: 'true', reason };
+  }
+  if (kind === 'false') {
+    return hitRuleIds ? { kind: 'false', reason, hitRuleIds } : { kind: 'false', reason };
+  }
   if (kind === 'expr' && (Array.isArray(record.expr) || asPlainRecord(record.expr))) {
-    return {
-      kind: 'expr',
-      expr: record.expr as ConditionExpr,
-      reason: normalizeOptionalString(record.reason),
-    };
+    return hitRuleIds
+      ? {
+          kind: 'expr',
+          expr: record.expr as ConditionExpr,
+          reason,
+          hitRuleIds,
+        }
+      : {
+          kind: 'expr',
+          expr: record.expr as ConditionExpr,
+          reason,
+        };
   }
 
   return { kind: 'false', reason: 'invalid_record_rule_envelope' };
@@ -36,6 +64,7 @@ export type FieldRuleSpec = {
   denyReadFields: string[];
   denyWriteFields: string[];
   reason?: string;
+  hitRuleIds?: string[];
 };
 
 /**
@@ -47,10 +76,12 @@ export function normalizeFieldRuleSpec(value: unknown): FieldRuleSpec {
     return { denyReadFields: [], denyWriteFields: [] };
   }
 
+  const hitRuleIds = normalizeHitRuleIds(record.hitRuleIds);
   return {
     denyReadFields: normalizeStringArray(record.denyReadFields),
     denyWriteFields: normalizeStringArray(record.denyWriteFields),
     reason: normalizeOptionalString(record.reason),
+    ...(hitRuleIds ? { hitRuleIds } : {}),
   };
 }
 

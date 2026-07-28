@@ -86,11 +86,19 @@ function getRepositoryTopLevelRecordRuleAllowlist(): { enabled: boolean; allow: 
 function normalizeRepositoryRecordRuleEnvelope(input: unknown): ConditionEnvelope {
   const value = asObjectRecord(input) ?? {};
   const kind = String(value.kind || '').trim();
-  if (kind === 'true') return { kind: 'true', reason: typeof value.reason === 'string' ? value.reason : undefined };
-  if (kind === 'false') return { kind: 'false', reason: typeof value.reason === 'string' ? value.reason : undefined };
+  const reason = typeof value.reason === 'string' ? value.reason : undefined;
+  const hitRuleIds = Array.isArray(value.hitRuleIds)
+    ? Array.from(new Set(value.hitRuleIds.map((id: unknown) => String(id ?? '').trim()).filter(Boolean))).sort()
+    : [];
+  const diagnostics = {
+    reason,
+    ...(hitRuleIds.length ? { hitRuleIds } : {}),
+  };
+  if (kind === 'true') return { kind: 'true', ...diagnostics };
+  if (kind === 'false') return { kind: 'false', ...diagnostics };
   if (kind === 'expr') {
     if (!value.expr) return { kind: 'false', reason: 'invalid_record_rule_envelope_missing_expr' };
-    return { kind: 'expr', expr: value.expr as BaseQueryCondition, reason: typeof value.reason === 'string' ? value.reason : undefined };
+    return { kind: 'expr', expr: value.expr as BaseQueryCondition, ...diagnostics };
   }
   return { kind: 'false', reason: 'invalid_record_rule_envelope_kind' };
 }

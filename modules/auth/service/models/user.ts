@@ -861,7 +861,12 @@ export default class User extends BaseModel {
    * - model should be "<app>.<Model>" such as "auth.User".
    * - the return value is a structured object that maps to google.protobuf.Value on the proto side.
    */
-  static async GetFieldRuleSpec(model: string): Promise<{ denyReadFields: string[]; denyWriteFields: string[]; reason?: string }> {
+  static async GetFieldRuleSpec(model: string): Promise<{
+    denyReadFields: string[];
+    denyWriteFields: string[];
+    reason?: string;
+    hitRuleIds?: string[];
+  }> {
     try {
       const userId = this.userId;
       if (!userId) {

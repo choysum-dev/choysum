@@ -150,6 +150,7 @@ export function applyRepositoryCompanyLayer(params: RepositoryCompanyScopeDeps, 
     userId: String(params.userId || '').trim(),
     activeCompanyId: scope.activeCompanyId,
     enabledCompanyIds: scope.enabledCompanyIds,
+    reason: 'company_filter_applied',
   });
 
   return Array.isArray(condition) && condition.length === 0 ? companyCondition : { And: [condition, companyCondition] };
