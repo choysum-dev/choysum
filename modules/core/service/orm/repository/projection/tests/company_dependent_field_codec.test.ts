@@ -1,14 +1,23 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import Decimal from 'decimal.js';
 import { withContext } from '../../../../runtime/context';
 import {
   applyCompanyDependentFieldsForWrite,
   applyFieldCompanyValuesPatch,
+  assertCompanyDependentCompanyKey,
   decodeCompanyDependentFieldValue,
+  deleteCompanyKey,
   encodeCompanyDependentMapForDb,
+  fieldIsCompanyDependent,
+  getCompanyDependentWriteReplace,
+  getPrefetchCompanies,
+  isCompanyDependentScalarEnvelope,
   mergeCompanyDependentWrite,
+  normalizeCompanyDependentScalarValue,
   parseCompanyDependentStoredMap,
+  payloadHasCompanyDependentFieldWrite,
   unwrapCompanyDependentValue,
 } from '../company_dependent_field_codec';
 
@@ -195,4 +204,181 @@ test('companyDependent encodeForDb prefers company map over ManyToOne Id strip',
   } as any;
   const encoded = encodeForDb(meta, { PartnerId: { C1: 'p1', C2: 'p2' } } as any);
   expect(encoded).toEqual({ PartnerId: JSON.stringify({ C1: 'p1', C2: 'p2' }) });
+});
+
+test('companyDependent parse/normalize/helpers cover remaining branches', () => {
+  expect(parseCompanyDependentStoredMap(null)).toBeNull();
+  expect(parseCompanyDependentStoredMap('')).toBeNull();
+  expect(parseCompanyDependentStoredMap('   ')).toBeNull();
+  expect(parseCompanyDependentStoredMap('not-json')).toBeNull();
+  expect(parseCompanyDependentStoredMap('{"C1":1}')).toEqual({ C1: 1 });
+  expect(parseCompanyDependentStoredMap('{}')).toBeNull();
+  expect(parseCompanyDependentStoredMap('{"":1," C2 ":2}')).toEqual({ C2: 2 });
+  expect(parseCompanyDependentStoredMap([])).toBeNull();
+  expect(parseCompanyDependentStoredMap({ Id: 'p1' })).toBeNull();
+  expect(parseCompanyDependentStoredMap('true')).toBeNull();
+  expect(parseCompanyDependentStoredMap('[1]')).toBeNull();
+  expect(parseCompanyDependentStoredMap('"x"')).toBeNull();
+  expect(parseCompanyDependentStoredMap('-1')).toBeNull();
+  expect(parseCompanyDependentStoredMap('12')).toBeNull();
+  expect(parseCompanyDependentStoredMap('false')).toBeNull();
+  expect(parseCompanyDependentStoredMap('null')).toBeNull();
+  expect(parseCompanyDependentStoredMap('{bad')).toBeNull();
+
+  expect(isCompanyDependentScalarEnvelope(null)).toBe(false);
+  expect(isCompanyDependentScalarEnvelope([])).toBe(false);
+  expect(isCompanyDependentScalarEnvelope({ Id: 'p1', DisplayName: 'P' })).toBe(true);
+  expect(isCompanyDependentScalarEnvelope({ Id: 'p1', Name: 'P' })).toBe(true);
+  expect(isCompanyDependentScalarEnvelope({ Id: 'p1', Extra: 1 })).toBe(false);
+  expect(isCompanyDependentScalarEnvelope({ $bigdecimal: '1.2' })).toBe(true);
+
+  expect(normalizeCompanyDependentScalarValue(null)).toBeNull();
+  expect(normalizeCompanyDependentScalarValue({ Id: null })).toBeNull();
+  expect(normalizeCompanyDependentScalarValue({ $bigdecimal: '1.25' })).toBe('1.25');
+  expect(
+    normalizeCompanyDependentScalarValue(
+      { $bigdecimal: '1.234' },
+      { type: 'decimal', column: { precision: 10, scale: 2 } } as any
+    )
+  ).toBe('1.23');
+  expect(normalizeCompanyDependentScalarValue(true)).toBe(true);
+  expect(normalizeCompanyDependentScalarValue('1.5', { type: 'decimal', column: { scale: 1 } } as any)).toBe('1.5');
+  expect(normalizeCompanyDependentScalarValue(2, { type: 'monetary', column: { scale: 0 } } as any)).toBe('2');
+
+  const dec = new Decimal('3.1415');
+  expect(normalizeCompanyDependentScalarValue(dec)).toBe('3.1415');
+  expect(normalizeCompanyDependentScalarValue(dec, { type: 'decimal', column: { scale: 2 } } as any)).toBe('3.14');
+
+  expect(() => assertCompanyDependentCompanyKey('', 'Cost')).toThrow(/non-empty company id/);
+  expect(() => assertCompanyDependentCompanyKey('  ', 'Cost')).toThrow(/non-empty company id/);
+  expect(assertCompanyDependentCompanyKey(' C1 ', 'Cost')).toBe('C1');
+
+  expect(deleteCompanyKey({ C1: 1 }, 'MISSING', 'Cost')).toEqual({ C1: 1 });
+  expect(deleteCompanyKey({}, 'C1', 'Cost')).toBeNull();
+
+  expect(fieldIsCompanyDependent({ companyDependent: true } as any)).toBe(true);
+  expect(fieldIsCompanyDependent({ companyDependent: false } as any)).toBe(false);
+  expect(fieldIsCompanyDependent(undefined)).toBe(false);
+
+  const meta = {
+    fields: new Map([
+      ['Cost', { companyDependent: true }],
+      ['Name', { companyDependent: false }],
+    ]),
+  } as any;
+  expect(payloadHasCompanyDependentFieldWrite(meta, null as any)).toBe(false);
+  expect(payloadHasCompanyDependentFieldWrite(meta, { Name: 'x' } as any)).toBe(false);
+  expect(payloadHasCompanyDependentFieldWrite(meta, { Cost: undefined } as any)).toBe(false);
+  expect(payloadHasCompanyDependentFieldWrite(meta, { Cost: 1 } as any)).toBe(true);
+
+  expect(withContext({ prefetchCompanies: true }, () => getPrefetchCompanies())).toBe(true);
+  expect(withContext({ companyWriteReplace: true }, () => getCompanyDependentWriteReplace())).toBe(true);
+});
+
+test('companyDependent merge/patch/encode remaining error and decimal paths', () => {
+  expect(() =>
+    mergeCompanyDependentWrite({
+      fieldName: 'Cost',
+      value: { C1: false },
+      companyId: 'C1',
+      currentMap: null,
+      mode: 'update',
+    })
+  ).toThrow(/does not accept false/);
+
+  // Arrays are objects but not company maps → reject.
+  expect(() =>
+    mergeCompanyDependentWrite({
+      fieldName: 'Cost',
+      value: [1, 2],
+      companyId: 'C1',
+      currentMap: null,
+      mode: 'update',
+    })
+  ).toThrow(/expects scalar/);
+
+  expect(
+    mergeCompanyDependentWrite({
+      fieldName: 'Cost',
+      value: {},
+      companyId: 'C1',
+      currentMap: { C1: 1 },
+      mode: 'update',
+      replace: true,
+    })
+  ).toBeNull();
+
+  expect(
+    mergeCompanyDependentWrite({
+      fieldName: 'Active',
+      value: false,
+      companyId: 'C1',
+      currentMap: null,
+      mode: 'create',
+    })
+  ).toEqual({ C1: false });
+
+  expect(
+    mergeCompanyDependentWrite({
+      fieldName: 'Qty',
+      value: 7n,
+      companyId: 'C1',
+      currentMap: null,
+      mode: 'create',
+    })
+  ).toEqual({ C1: 7n });
+
+  expect(() =>
+    applyFieldCompanyValuesPatch({
+      fieldName: 'Cost',
+      currentMap: null,
+      values: null as any,
+    })
+  ).toThrow(/must be an object map/);
+
+  expect(
+    applyFieldCompanyValuesPatch({
+      fieldName: 'Cost',
+      currentMap: { C1: 1 },
+      values: { C3: 9 },
+    })
+  ).toEqual({ C1: 1, C3: 9 });
+
+  expect(encodeCompanyDependentMapForDb({ C1: '1.234' }, { type: 'decimal', column: { scale: 2 } } as any)).toBe(
+    JSON.stringify({ C1: '1.23' })
+  );
+
+  expect(decodeCompanyDependentFieldValue(JSON.stringify({ C1: 1 }))).toBeNull();
+  expect(decodeCompanyDependentFieldValue(JSON.stringify({ C1: 1 }), { companyId: 'C1' })).toBe(1);
+  expect(decodeCompanyDependentFieldValue(JSON.stringify({ C1: 1 }), { prefetchCompanies: true })).toEqual({ C1: 1 });
+});
+
+test('companyDependent apply write covers replace ctx, missing company, skips', () => {
+  const meta = {
+    fields: new Map([
+      ['Cost', { name: 'Cost', type: 'number', companyDependent: true, column: {} }],
+      ['Name', { name: 'Name', type: 'char', column: {} }],
+    ]),
+  } as any;
+
+  expect(applyCompanyDependentFieldsForWrite(meta, null as any, { mode: 'create', companyId: 'C1' })).toBeNull();
+  expect(applyCompanyDependentFieldsForWrite(meta, { Name: 'x' } as any, { mode: 'create', companyId: 'C1' })).toEqual({
+    Name: 'x',
+  });
+  expect(applyCompanyDependentFieldsForWrite(meta, { Cost: undefined } as any, { mode: 'create', companyId: 'C1' })).toEqual({
+    Cost: undefined,
+  });
+
+  expect(() => applyCompanyDependentFieldsForWrite(meta, { Cost: 1 } as any, { mode: 'create' })).toThrow(
+    /requires an active company id/
+  );
+
+  const replaced = withContext({ company_write_replace: true }, () =>
+    applyCompanyDependentFieldsForWrite(
+      meta,
+      { Cost: { C9: 9 } } as any,
+      { mode: 'update', companyId: 'C1', current: { Cost: { C1: 1, C2: 2 } } }
+    )
+  );
+  expect(replaced).toEqual({ Cost: { C9: 9 } });
 });

@@ -343,3 +343,53 @@ test('repository row codec decimal soft-fallback and Decimal instance decode', (
   } as any) as any;
   expect(decodedBad.Amount).toEqual({ $bigdecimal: 'not-a-number' });
 });
+
+test('repository row codec encode/decode companyDependent fields', async () => {
+  const { withContext } = await import('../../../../runtime/context');
+  const meta = {
+    fields: new Map([
+      ['Cost', { name: 'Cost', type: 'number', companyDependent: true, column: {} }],
+      ['Amount', { name: 'Amount', type: 'decimal', companyDependent: true, column: { precision: 10, scale: 2 } }],
+    ]),
+  } as any;
+
+  expect(encodeForDb(meta, { Cost: null } as any)).toEqual({ Cost: null });
+  expect(encodeForDb(meta, { Cost: { C1: 1.5 } } as any)).toEqual({ Cost: JSON.stringify({ C1: 1.5 }) });
+  expect(encodeForDb(meta, { Cost: '{"C1":1}' } as any)).toEqual({ Cost: '{"C1":1}' });
+  expect(() => encodeForDb(meta, { Cost: '12.5' } as any)).toThrow(/must be prepared as a company map/);
+  expect(() => encodeForDb(meta, { Cost: { Id: 'p1' } } as any)).toThrow(/expects a company map object or null/);
+
+  await withContext({ activeCompanyId: 'C1' }, async () => {
+    const decoded = decodeFromDb(meta, { Cost: JSON.stringify({ C1: 9, C2: 8 }) } as any) as any;
+    expect(decoded.Cost).toBe(9);
+  });
+
+  await withContext({ activeCompanyId: 'C1', prefetch_companies: true }, async () => {
+    const decoded = decodeFromDb(meta, { Cost: JSON.stringify({ C1: 9, C2: 8 }) } as any) as any;
+    expect(decoded.Cost).toEqual({ C1: 9, C2: 8 });
+  });
+
+  await withContext({ activeCompanyId: 'C1' }, async () => {
+    const decoded = decodeFromDb(meta, { Cost: null } as any) as any;
+    expect(decoded.Cost).toBeNull();
+  });
+
+  await withContext({ activeCompanyId: 'C1', prefetch_companies: true }, async () => {
+    const decoded = decodeFromDb(meta, {
+      Amount: JSON.stringify({ C1: { $bigdecimal: '1.239' }, C2: null, C3: 'bad' }),
+    } as any) as any;
+    expect(decoded.Amount.C1.toString()).toBe('1.24');
+    expect(decoded.Amount.C2).toBeNull();
+    expect(decoded.Amount.C3).toBe('bad');
+  });
+
+  await withContext({ activeCompanyId: 'C1' }, async () => {
+    const decoded = decodeFromDb(meta, { Amount: JSON.stringify({ C1: { $bigdecimal: '2.5' } }) } as any) as any;
+    expect(decoded.Amount.toString()).toBe('2.5');
+  });
+
+  await withContext({ activeCompanyId: 'C1' }, async () => {
+    const decoded = decodeFromDb(meta, { Amount: JSON.stringify({ C1: 'not-a-number' }) } as any) as any;
+    expect(decoded.Amount).toBe('not-a-number');
+  });
+});

@@ -12,6 +12,7 @@ import { decodeTranslatedFieldValue, encodeTranslatedMapForDb, isTranslatedLangM
 import {
   decodeCompanyDependentFieldValue,
   encodeCompanyDependentMapForDb,
+  isCompanyDependentScalarEnvelope,
   isCompanyValueMap,
 } from './company_dependent_field_codec';
 import { resolveMonetaryScaleForWrite, resolveMonetaryScaleFromRow } from './monetary_scale';
@@ -295,7 +296,16 @@ export function decodeFromDb(meta: ModelMetadata, row: Entity): Entity {
         const effScale = resolveDecimalScaleFromRow(meta, fmForScale, k, out);
         const overrideFm = toDecimalMetaWithScale(f, effScale);
         // Prefetch returns the full company map — normalize each entry.
-        if (decoded && typeof decoded === 'object' && !Array.isArray(decoded) && !(decoded instanceof Date) && !isDecimal(decoded)) {
+        // Scalar envelopes ($bigdecimal / Decimal / Date) must not be treated as maps.
+        const isPrefetchMap =
+          decoded &&
+          typeof decoded === 'object' &&
+          !Array.isArray(decoded) &&
+          !(decoded instanceof Date) &&
+          !isDecimal(decoded) &&
+          !isBigdecimalEnvelope(decoded) &&
+          !isCompanyDependentScalarEnvelope(decoded);
+        if (isPrefetchMap) {
           const mapOut: UnknownRecord = {};
           for (const [ck, cv] of Object.entries(decoded as UnknownRecord)) {
             if (cv == null) {

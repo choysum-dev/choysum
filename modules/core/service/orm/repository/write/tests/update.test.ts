@@ -293,6 +293,73 @@ test('repository update sanitized payload rejects bulk translated field writes',
   expect(String((err as Error)?.message || err)).toMatch(/one record at a time/);
 });
 
+test('repository update sanitized payload rejects bulk companyDependent field writes', async () => {
+  let err: unknown;
+  try {
+    await prepareRepositoryUpdateSanitizedPayload(
+      {
+        meta: {
+          fields: new Map([['Cost', { companyDependent: true, column: { name: 'Cost' } }]]),
+        } as any,
+        table: 'demo_table',
+        db: {
+          selectFrom() {
+            return {
+              select() {
+                return {
+                  where() {
+                    return { kind: 'q' };
+                  },
+                };
+              },
+            };
+          },
+        },
+        getScalarFields() {
+          return [];
+        },
+        makeSelectCtx() {
+          return {};
+        },
+        aliasSelection(selection, alias) {
+          return { selection, alias };
+        },
+        applySoftLayer(condition) {
+          return condition;
+        },
+        isEmptyCondition() {
+          return false;
+        },
+        convertCondition() {
+          return true;
+        },
+        async execute() {
+          return [
+            { Id: 'row_1', Cost: '{"C1":1}' },
+            { Id: 'row_2', Cost: '{"C1":2}' },
+          ] as any;
+        },
+        decodeFromDb(row) {
+          return row;
+        },
+        async assertFieldRuleWriteAllowed() {},
+        applyDefaultCompanyIdOnUpdate(vals) {
+          return vals as any;
+        },
+        async validateFields() {},
+        encodeForDb(input) {
+          return input as any;
+        },
+      },
+      { Cost: 9 } as any,
+      ['row_1', 'row_2']
+    );
+  } catch (e) {
+    err = e;
+  }
+  expect(String((err as Error)?.message || err)).toMatch(/company-dependent fields on multiple rows/);
+});
+
 test('repository update payload prepare resolves targets validates current rows and returns sanitized payload', async () => {
   const calls: Array<Record<string, any>> = [];
   const currentRowsQuery = { kind: 'current-rows-query' };

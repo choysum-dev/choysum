@@ -3146,3 +3146,95 @@ test('repository condition compiler dotted path guards fail before leaf-meta fal
   expect(collectMessage('Name.Inner')).toContain('intermediate segment Name is not ManyToOne');
   expect(collectMessage('Owner.Name')).toContain('intermediate segment Owner is not ManyToOne');
 });
+
+test('repository condition compiler unwraps companyDependent for ilike/contains/parent_of', () => {
+  class DemoModel {}
+  class OwnerModel {}
+
+  const ownerMeta = {
+    type: OwnerModel,
+    modelName: 'OwnerModel',
+    parentField: 'ParentId',
+    tableName: () => 'owner_table',
+    fields: new Map([
+      ['Id', { column: { name: 'Id' } }],
+      ['ParentPath', { column: { name: 'ParentPath' } }],
+    ]),
+  } as any;
+
+  const meta = {
+    type: DemoModel,
+    modelName: 'DemoModel',
+    tableName: () => 'demo_table',
+    fields: new Map([
+      ['Cost', { type: 'number', companyDependent: true, column: { name: 'Cost' } }],
+      [
+        'Owner',
+        {
+          type: 'ManyToOne',
+          companyDependent: true,
+          column: { name: 'OwnerId' },
+          relation: { targetModel: () => OwnerModel },
+        },
+      ],
+    ]),
+  } as any;
+
+  const eb = createExpressionBuilder();
+  const db = {
+    selectFrom(table: string) {
+      const ops: any[] = [{ type: 'selectFrom', table }];
+      return {
+        ops,
+        select(selection: any) {
+          ops.push({ type: 'select', selection });
+          return this;
+        },
+        where(lhs: any, op: any, rhs: any) {
+          ops.push({ type: 'where', lhs, op, rhs });
+          return this;
+        },
+        limit(n: number) {
+          ops.push({ type: 'limit', n });
+          return this;
+        },
+      };
+    },
+  };
+
+  withFakeMetadata(
+    new Map([
+      [DemoModel, meta],
+      [OwnerModel, ownerMeta],
+    ]),
+    () => {
+      const ilike = withContext({ activeCompanyId: 'comp_main' }, () =>
+        convertCondition(db as any, () => 'postgres', meta, eb, ['Cost', 'ilike', '%1%'] as any, 'demo_table')
+      ) as any;
+      expect(ilike.op).toBe('ilike');
+      expect(typeof ilike.lhs?.toOperationNode).toBe('function');
+
+      const warns: string[] = [];
+      const originalWarn = console.warn;
+      console.warn = (msg: any) => {
+        warns.push(String(msg));
+      };
+      try {
+        const contains = withContext({ activeCompanyId: 'comp_main' }, () =>
+          convertCondition(db as any, () => 'postgres', meta, eb, ['Cost', 'contains', { k: 1 }] as any, 'demo_table')
+        ) as any;
+        expect(typeof contains.lhs?.toOperationNode).toBe('function');
+        expect(warns.some(w => w.includes('contains is recommended only for JSON'))).toBe(false);
+      } finally {
+        console.warn = originalWarn;
+      }
+
+      const parentOf = withContext({ activeCompanyId: 'comp_main' }, () =>
+        convertCondition(db as any, () => 'postgres', meta, eb, ['Owner', 'parent_of', 'row_1'] as any, 'demo_table')
+      ) as any;
+      expect(parentOf.op).toBe('in');
+      expect(typeof parentOf.lhs?.toOperationNode).toBe('function');
+      expect(JSON.stringify(parentOf.lhs.toOperationNode()).includes('OwnerId')).toBe(true);
+    }
+  );
+});

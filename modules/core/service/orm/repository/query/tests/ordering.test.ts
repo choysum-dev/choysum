@@ -158,3 +158,40 @@ test('repository ordering unwraps translated scalar fields', () => {
   const expr = calls[0].arg(eb);
   expect(typeof (expr as any).toOperationNode).toBe('function');
 });
+
+test('repository ordering unwraps companyDependent scalar fields', () => {
+  const calls: Array<Record<string, any>> = [];
+  const query = {
+    orderBy(arg: any, direction: string) {
+      calls.push({ arg, direction });
+      return this;
+    },
+  };
+
+  applyOrderByToQuery(
+    query as any,
+    {
+      fields: new Map([['Cost', { companyDependent: true, column: { name: 'Cost' } }]]),
+      type: { name: 'Demo' },
+    } as any,
+    'demo_table',
+    [{ field: 'Cost', order: 'desc' }],
+    {
+      resolvePathField() {
+        throw new Error('path resolution should not be used for companyDependent scalar');
+      },
+      resolveSelectField() {
+        throw new Error('select resolution should not be used for companyDependent scalar');
+      },
+      getDialect: () => 'postgres',
+    }
+  );
+
+  expect(calls.length).toBe(1);
+  expect(calls[0].direction).toBe('desc');
+  expect(typeof calls[0].arg).toBe('function');
+  const eb: any = (lhs: any, op: any, rhs: any) => ({ lhs, op, rhs });
+  eb.ref = (path: string) => ({ kind: 'ref', path });
+  const expr = calls[0].arg(eb);
+  expect(typeof (expr as any).toOperationNode).toBe('function');
+});

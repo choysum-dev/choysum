@@ -791,6 +791,57 @@ test('Field decorator rejects companyDependent with translate / unique / bad typ
     }
     return BadType;
   }).toThrow('companyDependent is not supported on type');
+
+  expect(() => {
+    class BadBool extends BaseModel {
+      @Field({ type: 'number', companyDependent: 'yes' as any })
+      Cost!: number;
+    }
+    return BadBool;
+  }).toThrow('companyDependent must be a boolean');
+
+  expect(() => {
+    class BadUniqueIndex extends BaseModel {
+      @Field({ type: 'number', companyDependent: true, uniqueIndex: 'uq_cost' } as any)
+      Cost!: number;
+    }
+    return BadUniqueIndex;
+  }).toThrow('companyDependent cannot be combined with unique/uniqueIndex');
+
+  expect(() => {
+    class BadIndexTrue extends BaseModel {
+      @Field({ type: 'number', companyDependent: true, index: true } as any)
+      Cost!: number;
+    }
+    return BadIndexTrue;
+  }).toThrow('companyDependent does not support indexed/index');
+
+  expect(() => {
+    class BadIndexName extends BaseModel {
+      @Field({ type: 'number', companyDependent: true, index: 'idx_cost' } as any)
+      Cost!: number;
+    }
+    return BadIndexName;
+  }).toThrow('companyDependent does not support indexed/index');
+});
+
+test('Field decorator accepts companyDependent on selection/ManyToOne without physical size', () => {
+  class Partner extends BaseModel {}
+  class M extends BaseModel {
+    @Field({ type: 'selection', selection: [{ value: 'a', label: 'A' }], companyDependent: true } as any)
+    Mode!: string;
+
+    @Field({ type: 'ManyToOne', companyDependent: true, relation: { targetModel: () => Partner } } as any)
+    Owner!: any;
+
+    @Field({ type: 'boolean', companyDependent: true })
+    Active!: boolean;
+  }
+  const fields = MetadataStorage.instance.getModelMetadata(M as any).fields;
+  expect(fields.get('Mode')?.companyDependent).toBe(true);
+  expect(fields.get('Owner')?.companyDependent).toBe(true);
+  expect(fields.get('Active')?.companyDependent).toBe(true);
+  expect((fields.get('Mode')?.column as any)?.size).toBeUndefined();
 });
 
 test('Field decorator accepts copy:false and rejects non-boolean copy', () => {

@@ -493,4 +493,117 @@ describe('OFieldCompanyValuesDialog', () => {
     await flushOpen();
     expect(wrapper.emitted('saved')?.[0]?.[0]).toBeNull();
   });
+
+  it('coerces boolean/int/monetary patch values and skips empty new rows', async () => {
+    authStoreState.metadata = {
+      allowedCompanyIds: ['comp_main', 'comp_eu', 'comp_us'],
+      enabledCompanyIds: ['comp_main', 'comp_eu', 'comp_us'],
+      activeCompanyId: 'comp_main',
+    };
+    companyResponses.rows = [
+      { Id: 'comp_main', DisplayName: 'Main' },
+      { Id: 'comp_eu', DisplayName: 'EU' },
+      { Id: 'comp_us', DisplayName: 'US' },
+    ];
+
+    const UpdateFieldCompanyValues = vi.fn(async () => true);
+    const Browse = vi.fn(async () => ({ Flag: true }));
+    const GetFieldCompanyValues = vi.fn(async () => ({ comp_main: true }));
+
+    const boolWrapper = mountDialog({
+      modelValue: true,
+      store: { GetFieldCompanyValues, UpdateFieldCompanyValues, Browse } as any,
+      recordId: 'r1',
+      fieldName: 'Flag',
+      fieldLabel: 'Flag',
+      fieldType: 'boolean',
+    });
+    await flushOpen();
+    const euIdx = inputIndexByLabel(boolWrapper, 'EU');
+    await boolWrapper.findAll('.input')[euIdx]!.setValue('yes');
+    const usIdx = inputIndexByLabel(boolWrapper, 'US');
+    await boolWrapper.findAll('.input')[usIdx]!.setValue(''); // new empty → skip
+    let buttons = boolWrapper.findAll('.btn');
+    await buttons[buttons.length - 1]!.trigger('click');
+    await flushOpen();
+    expect(UpdateFieldCompanyValues).toHaveBeenCalledWith('r1', 'Flag', { comp_eu: true });
+    boolWrapper.unmount();
+
+    UpdateFieldCompanyValues.mockClear();
+    const GetFieldCompanyValuesInt = vi.fn(async () => ({ comp_main: 1 }));
+    const intWrapper = mountDialog({
+      modelValue: true,
+      store: {
+        GetFieldCompanyValues: GetFieldCompanyValuesInt,
+        UpdateFieldCompanyValues,
+        Browse: vi.fn(async () => ({ Qty: 2 })),
+      } as any,
+      recordId: 'r1',
+      fieldName: 'Qty',
+      fieldLabel: 'Qty',
+      fieldType: 'int',
+    });
+    await flushOpen();
+    await intWrapper.findAll('.input')[inputIndexByLabel(intWrapper, 'EU')]!.setValue('42');
+    await intWrapper.findAll('.input')[inputIndexByLabel(intWrapper, 'US')]!.setValue('NaN-ish');
+    buttons = intWrapper.findAll('.btn');
+    await buttons[buttons.length - 1]!.trigger('click');
+    await flushOpen();
+    expect(UpdateFieldCompanyValues).toHaveBeenCalledWith('r1', 'Qty', { comp_eu: 42, comp_us: 'NaN-ish' });
+    intWrapper.unmount();
+
+    UpdateFieldCompanyValues.mockClear();
+    const GetFieldCompanyValuesMoney = vi.fn(async () => ({ comp_main: '1.0' }));
+    const moneyWrapper = mountDialog({
+      modelValue: true,
+      store: {
+        GetFieldCompanyValues: GetFieldCompanyValuesMoney,
+        UpdateFieldCompanyValues,
+        Browse: vi.fn(async () => ({ Amount: 1 })),
+      } as any,
+      recordId: 'r1',
+      fieldName: 'Amount',
+      fieldLabel: '',
+      fieldType: 'monetary',
+    });
+    await flushOpen();
+    expect(moneyWrapper.text().toLowerCase()).toMatch(/company values/);
+    await moneyWrapper.findAll('.input')[inputIndexByLabel(moneyWrapper, 'EU')]!.setValue('3.5');
+    buttons = moneyWrapper.findAll('.btn');
+    await buttons[buttons.length - 1]!.trigger('click');
+    await flushOpen();
+    expect(UpdateFieldCompanyValues).toHaveBeenCalledWith('r1', 'Amount', { comp_eu: 3.5 });
+  });
+
+  it('coerces boolean falsey tokens and empty boolean text', async () => {
+    authStoreState.metadata = {
+      allowedCompanyIds: ['comp_main', 'comp_eu'],
+      enabledCompanyIds: ['comp_main', 'comp_eu'],
+      activeCompanyId: 'comp_main',
+    };
+    companyResponses.rows = [
+      { Id: 'comp_main', DisplayName: 'Main' },
+      { Id: 'comp_eu', DisplayName: 'EU' },
+    ];
+    const UpdateFieldCompanyValues = vi.fn(async () => true);
+    const wrapper = mountDialog({
+      modelValue: true,
+      store: {
+        GetFieldCompanyValues: vi.fn(async () => ({ comp_main: true })),
+        UpdateFieldCompanyValues,
+        Browse: vi.fn(async () => ({ Flag: false })),
+      } as any,
+      recordId: 'r1',
+      fieldName: 'Flag',
+      fieldLabel: 'Flag',
+      fieldType: 'boolean',
+    });
+    await flushOpen();
+    await wrapper.findAll('.input')[inputIndexByLabel(wrapper, 'EU')]!.setValue('0');
+    await wrapper.findAll('.input')[inputIndexByLabel(wrapper, 'Main')]!.setValue('no');
+    const buttons = wrapper.findAll('.btn');
+    await buttons[buttons.length - 1]!.trigger('click');
+    await flushOpen();
+    expect(UpdateFieldCompanyValues).toHaveBeenCalledWith('r1', 'Flag', { comp_eu: false, comp_main: false });
+  });
 });

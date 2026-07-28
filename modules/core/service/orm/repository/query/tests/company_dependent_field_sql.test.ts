@@ -49,3 +49,22 @@ test('buildCompanyDependentFieldUnwrapExpr quotes JSON path keys', () => {
   expect(raw.includes('$.\\"comp-eu\\"')).toBe(true);
   expect(raw.includes('$.comp-eu')).toBe(false);
 });
+
+test('buildCompanyDependentFieldUnwrapExpr covers all dialect aliases', () => {
+  const eb = createExpressionBuilder();
+  for (const dialect of ['postgres', 'postgresql', 'mysql', 'mariadb', 'sqlite', 'mssql', 'sqlserver', 'unknown'] as const) {
+    const expr = buildCompanyDependentFieldUnwrapExpr(dialect, eb, 't.Cost', 'comp_main') as any;
+    expect(typeof expr.toOperationNode).toBe('function');
+    const raw = JSON.stringify(expr.toOperationNode());
+    if (dialect === 'postgres' || dialect === 'postgresql' || dialect === 'unknown') {
+      expect(raw.includes('->>')).toBe(true);
+    } else if (dialect === 'mysql' || dialect === 'mariadb') {
+      expect(raw.includes('JSON_EXTRACT')).toBe(true);
+    } else if (dialect === 'sqlite') {
+      expect(raw.includes('json_extract')).toBe(true);
+    } else {
+      expect(raw.includes('JSON_VALUE')).toBe(true);
+    }
+  }
+  expect(quoteJsonObjectPath('a\\b"c')).toBe('$."a\\\\b\\"c"');
+});

@@ -451,7 +451,7 @@ describe('OFieldBase company values action', () => {
   it('opens company values dialog and applies saved value to the field binding', async () => {
     const binding = makeBinding({ string: 'Cost', companyDependent: true });
     binding.prop = 'ProductId.Cost';
-    binding.meta = { string: 'Cost', companyDependent: true, size: 80 } as any;
+    binding.meta = { string: 'Cost', type: 'number', companyDependent: true, size: 80 } as any;
     const value = binding.fieldRef() as { value: string };
     value.value = 'old';
 
@@ -468,10 +468,10 @@ describe('OFieldBase company values action', () => {
           ...fieldBaseStubs,
           OFieldCompanyValuesDialog: {
             name: 'OFieldCompanyValuesDialog',
-            props: ['modelValue', 'fieldName', 'maxLength', 'draftValue'],
+            props: ['modelValue', 'fieldName', 'maxLength', 'draftValue', 'fieldType'],
             emits: ['update:modelValue', 'saved'],
             template:
-              '<div class="company-dialog-stub" :data-open="modelValue" :data-field="fieldName" :data-max="maxLength" :data-draft="draftValue"><button class="emit-saved" @click="$emit(\'saved\', \'11.5\')" /></div>',
+              '<div class="company-dialog-stub" :data-open="modelValue" :data-field="fieldName" :data-max="maxLength" :data-draft="draftValue" :data-type="fieldType"><button class="emit-saved" @click="$emit(\'saved\', \'11.5\')" /></div>',
           },
         },
       },
@@ -485,6 +485,7 @@ describe('OFieldBase company values action', () => {
     expect(dialog.attributes('data-field')).toBe('Cost');
     expect(dialog.attributes('data-max')).toBe('80');
     expect(dialog.attributes('data-draft')).toBe('old');
+    expect(dialog.attributes('data-type')).toBe('number');
     await dialog.find('.emit-saved').trigger('click');
     expect(value.value).toBe('11.5');
   });

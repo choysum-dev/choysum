@@ -561,3 +561,100 @@ test('repository select context optimizes id-tail dotted paths to avoid terminal
     }
   );
 });
+
+test('repository select context unwraps companyDependent scalar fields for $sql.field', () => {
+  class DemoModel {}
+
+  const demoMeta = {
+    type: DemoModel,
+    tableName: () => 'demo_table',
+    fields: new Map([
+      ['Cost', { type: 'number', companyDependent: true, column: { name: 'Cost' } }],
+      ['Code', { type: 'varchar', column: { name: 'Code' } }],
+    ]),
+  } as any;
+
+  const builder = {
+    ref(value: string) {
+      return `ref:${value}`;
+    },
+    fn: {},
+  };
+
+  const db = {
+    selectFrom(table: string) {
+      return { table };
+    },
+  };
+
+  withFakeMetadata(new Map([[DemoModel, demoMeta]]), () => {
+    const ctx = makeSelectCtx(db as any, () => 'postgres', builder as any, 'demo_table', demoMeta);
+    expect(ctx.field(DemoModel as any, 'Code') as any).toBe('ref:demo_table.Code');
+    const costExpr = ctx.field(DemoModel as any, 'Cost') as any;
+    expect(costExpr).not.toBe('ref:demo_table.Cost');
+    expect(typeof costExpr.toOperationNode).toBe('function');
+  });
+});
+
+test('repository select context unwraps companyDependent leaf on ManyToOne path', () => {
+  class DemoModel {}
+  class OwnerModel {}
+
+  const ownerMeta = {
+    type: OwnerModel,
+    tableName: () => 'owner_table',
+    fields: new Map([['Cost', { type: 'number', companyDependent: true, column: { name: 'Cost' } }]]),
+  } as any;
+
+  const demoMeta = {
+    type: DemoModel,
+    tableName: () => 'demo_table',
+    fields: new Map([['Owner', { type: 'ManyToOne', column: { name: 'Owner' }, relation: { targetModel: () => OwnerModel } }]]),
+  } as any;
+
+  const builder = {
+    ref(value: string) {
+      return `ref:${value}`;
+    },
+    fn: {},
+  };
+
+  const db = {
+    selectFrom(table: string) {
+      const ops: any[] = [{ type: 'selectFrom', table }];
+      return {
+        ops,
+        innerJoin(left: string, opLeft: string, opRight: string) {
+          ops.push({ type: 'innerJoin', left, opLeft, opRight });
+          return this;
+        },
+        select(selection: any) {
+          ops.push({ type: 'select', selection });
+          return this;
+        },
+        whereRef(left: string, op: string, right: string) {
+          ops.push({ type: 'whereRef', left, op, right });
+          return this;
+        },
+      };
+    },
+  };
+
+  withFakeMetadata(
+    new Map([
+      [DemoModel, demoMeta],
+      [OwnerModel, ownerMeta],
+    ]),
+    () => {
+      const ctx = makeSelectCtx(db as any, () => 'postgres', builder as any, 'demo_table', demoMeta);
+      const subquery = ctx.field(DemoModel as any, 'Owner.Cost') as any;
+      expect(subquery.ops[0]).toEqual({ type: 'selectFrom', table: 'owner_table' });
+      expect(typeof subquery.ops.find((o: any) => o.type === 'select')?.selection).toBe('function');
+      const sel = subquery.ops.find((o: any) => o.type === 'select').selection;
+      const eb: any = (lhs: any, op: any, rhs: any) => ({ lhs, op, rhs });
+      eb.ref = (path: string) => ({ kind: 'ref', path });
+      const expr = sel(eb);
+      expect(typeof expr.toOperationNode).toBe('function');
+    }
+  );
+});
