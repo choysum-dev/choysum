@@ -4,11 +4,8 @@
 import { sql } from 'kysely';
 import type { DialectName } from '../repository_dialect';
 import { resolveCompanyDependentCompanyId } from '../projection/company_dependent_field_codec';
+import { quoteJsonObjectPath, quoteSqlStringLiteral } from './json_path';
 import { repositoryPredicateRef, type RepositoryPredicateBuilder } from './predicate_builder_adapter';
-
-function quoteSqlString(value: string): string {
-  return `'${String(value).replace(/'/g, "''")}'`;
-}
 
 /**
  * Build a SQL expression that unwraps a companyDependent JSON/JSONB map
@@ -28,7 +25,7 @@ export function buildCompanyDependentFieldUnwrapExpr(
     return sql`NULL`;
   }
   const d = String(dialect || 'postgres').toLowerCase() as DialectName | string;
-  const keyLit = sql.raw(quoteSqlString(resolved));
+  const keyLit = sql.raw(quoteSqlStringLiteral(resolved));
 
   switch (d) {
     case 'postgres':
@@ -36,16 +33,16 @@ export function buildCompanyDependentFieldUnwrapExpr(
       return sql`(${col}->>${keyLit})`;
     case 'mysql':
     case 'mariadb': {
-      const path = sql.raw(quoteSqlString(`$.${resolved}`));
+      const path = sql.raw(quoteSqlStringLiteral(quoteJsonObjectPath(resolved)));
       return sql`JSON_UNQUOTE(JSON_EXTRACT(${col}, ${path}))`;
     }
     case 'sqlite': {
-      const path = sql.raw(quoteSqlString(`$.${resolved}`));
+      const path = sql.raw(quoteSqlStringLiteral(quoteJsonObjectPath(resolved)));
       return sql`json_extract(${col}, ${path})`;
     }
     case 'mssql':
     case 'sqlserver': {
-      const path = sql.raw(quoteSqlString(`$.${resolved}`));
+      const path = sql.raw(quoteSqlStringLiteral(quoteJsonObjectPath(resolved)));
       return sql`JSON_VALUE(${col}, ${path})`;
     }
     default:

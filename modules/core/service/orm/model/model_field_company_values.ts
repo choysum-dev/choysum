@@ -9,9 +9,10 @@ import {
   parseCompanyDependentStoredMap,
   type CompanyValueMap,
 } from '../repository/projection/company_dependent_field_codec';
+import { LockUtils } from '../utils/lock';
 import type BaseModel from './model';
 import { browseModel } from './model_read_facade';
-import { updateModelById } from './model_update_service_facade';
+import { updateModels } from './model_update_service_facade';
 import type { RuntimeModelCtor } from './types';
 
 export type FieldCompanyValuesMap = CompanyValueMap;
@@ -53,6 +54,15 @@ function filterCompanyIds(map: FieldCompanyValuesMap, companyIds?: string[]): Fi
   return out;
 }
 
+function asUpdatedAt(value: unknown): Date | undefined {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+  if (typeof value === 'string' || typeof value === 'number') {
+    const d = new Date(value);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  return undefined;
+}
+
 /**
  * Returns the stored company map for a companyDependent field (optionally filtered).
  */
@@ -77,6 +87,9 @@ export async function getModelFieldCompanyValues<T extends BaseModel>(
 
 /**
  * Patch company-dependent field keys: value writes; `false` deletes.
+ *
+ * Uses UpdatedAt optimistic locking so concurrent full-map replaces cannot
+ * silently drop each other's keys (read stamp → patch → conditional write).
  */
 export async function updateModelFieldCompanyValues<T extends BaseModel>(
   ModelCtor: FieldCompanyValuesCtor<T>,
@@ -90,7 +103,11 @@ export async function updateModelFieldCompanyValues<T extends BaseModel>(
     throw new Error('UpdateFieldCompanyValues requires a non-empty id');
   }
 
-  const current = await getModelFieldCompanyValues(ModelCtor, recordId, name);
+  const row = await withContext({ prefetch_companies: true }, () =>
+    browseModel(ModelCtor, recordId, [name, 'UpdatedAt'] as never)
+  );
+  const rowRecord = row as unknown as Record<string, unknown>;
+  const current = asCompanyValuesMap(rowRecord[name]);
   const next = applyFieldCompanyValuesPatch({
     fieldName: name,
     currentMap: Object.keys(current).length ? current : null,
@@ -98,8 +115,10 @@ export async function updateModelFieldCompanyValues<T extends BaseModel>(
     fieldMeta: field,
   });
 
-  await withContext({ company_write_replace: true }, () =>
-    updateModelById(ModelCtor, recordId, { [name]: next } as never)
+  const condition = LockUtils.buildOptimisticLockCondition(recordId, asUpdatedAt(rowRecord.UpdatedAt));
+  const results = await withContext({ company_write_replace: true }, () =>
+    updateModels(ModelCtor, condition as never, { [name]: next } as never, ['Id'] as never)
   );
+  LockUtils.validateUpdateResult(results);
   return true;
 }

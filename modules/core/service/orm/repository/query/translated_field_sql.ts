@@ -4,11 +4,8 @@
 import { sql } from 'kysely';
 import type { DialectName } from '../repository_dialect';
 import { TRANSLATED_BASE_LANG, resolveTranslatedFieldLang } from '../projection/translated_field_codec';
+import { quoteJsonObjectPath, quoteSqlStringLiteral } from './json_path';
 import { repositoryPredicateRef, type RepositoryPredicateBuilder } from './predicate_builder_adapter';
-
-function quoteSqlString(value: string): string {
-  return `'${String(value).replace(/'/g, "''")}'`;
-}
 
 /**
  * Build a SQL expression that unwraps a translated JSON/JSONB lang map
@@ -26,8 +23,8 @@ export function buildTranslatedFieldUnwrapExpr(
   const resolvedLang = (lang || resolveTranslatedFieldLang()).trim() || TRANSLATED_BASE_LANG;
   const col = repositoryPredicateRef(eb, tableQualifiedColumn);
   const d = String(dialect || 'postgres').toLowerCase() as DialectName | string;
-  const langLit = sql.raw(quoteSqlString(resolvedLang));
-  const baseLit = sql.raw(quoteSqlString(TRANSLATED_BASE_LANG));
+  const langLit = sql.raw(quoteSqlStringLiteral(resolvedLang));
+  const baseLit = sql.raw(quoteSqlStringLiteral(TRANSLATED_BASE_LANG));
 
   switch (d) {
     case 'postgres':
@@ -38,7 +35,7 @@ export function buildTranslatedFieldUnwrapExpr(
       return sql`COALESCE((${col}->>${langLit}), (${col}->>${baseLit}))`;
     case 'mysql':
     case 'mariadb': {
-      const path = (key: string) => sql.raw(quoteSqlString(`$.${key}`));
+      const path = (key: string) => sql.raw(quoteSqlStringLiteral(quoteJsonObjectPath(key)));
       const extract = (key: string) => sql`JSON_UNQUOTE(JSON_EXTRACT(${col}, ${path(key)}))`;
       if (resolvedLang === TRANSLATED_BASE_LANG) {
         return extract(TRANSLATED_BASE_LANG);
@@ -46,7 +43,7 @@ export function buildTranslatedFieldUnwrapExpr(
       return sql`COALESCE(${extract(resolvedLang)}, ${extract(TRANSLATED_BASE_LANG)})`;
     }
     case 'sqlite': {
-      const path = (key: string) => sql.raw(quoteSqlString(`$.${key}`));
+      const path = (key: string) => sql.raw(quoteSqlStringLiteral(quoteJsonObjectPath(key)));
       const extract = (key: string) => sql`json_extract(${col}, ${path(key)})`;
       if (resolvedLang === TRANSLATED_BASE_LANG) {
         return extract(TRANSLATED_BASE_LANG);
@@ -55,7 +52,7 @@ export function buildTranslatedFieldUnwrapExpr(
     }
     case 'mssql':
     case 'sqlserver': {
-      const path = (key: string) => sql.raw(quoteSqlString(`$.${key}`));
+      const path = (key: string) => sql.raw(quoteSqlStringLiteral(quoteJsonObjectPath(key)));
       const extract = (key: string) => sql`JSON_VALUE(${col}, ${path(key)})`;
       if (resolvedLang === TRANSLATED_BASE_LANG) {
         return extract(TRANSLATED_BASE_LANG);

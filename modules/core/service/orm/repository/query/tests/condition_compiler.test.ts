@@ -1810,6 +1810,78 @@ test('repository condition compiler child_of on relation field builds mysql targ
   );
 });
 
+test('repository condition compiler child_of unwraps companyDependent ManyToOne fk', () => {
+  class DemoModel {}
+  class OwnerModel {}
+
+  const ownerMeta = {
+    type: OwnerModel,
+    modelName: 'OwnerModel',
+    parentField: 'ParentId',
+    tableName: () => 'owner_table',
+    fields: new Map([
+      ['Id', { column: { name: 'Id' } }],
+      ['ParentPath', { column: { name: 'ParentPath' } }],
+    ]),
+  } as any;
+
+  const demoMeta = {
+    type: DemoModel,
+    modelName: 'DemoModel',
+    tableName: () => 'demo_table',
+    fields: new Map([
+      [
+        'Owner',
+        {
+          type: 'ManyToOne',
+          companyDependent: true,
+          column: { name: 'OwnerId' },
+          relation: { targetModel: () => OwnerModel },
+        },
+      ],
+    ]),
+  } as any;
+
+  const eb = createExpressionBuilder();
+  const db = {
+    selectFrom(table: string) {
+      const ops: any[] = [{ type: 'selectFrom', table }];
+      return {
+        ops,
+        select(selection: any) {
+          ops.push({ type: 'select', selection });
+          return this;
+        },
+        where(lhs: any, op: any, rhs: any) {
+          ops.push({ type: 'where', lhs, op, rhs });
+          return this;
+        },
+        limit(n: number) {
+          ops.push({ type: 'limit', n });
+          return this;
+        },
+      };
+    },
+  };
+
+  withFakeMetadata(
+    new Map([
+      [DemoModel, demoMeta],
+      [OwnerModel, ownerMeta],
+    ]),
+    () => {
+      const result = withContext({ activeCompanyId: 'comp_main' }, () =>
+        convertCondition(db as any, () => 'postgres', demoMeta, eb, ['Owner', 'child_of', 'row_1'] as any, 'demo_table')
+      ) as any;
+      expect(result.op).toBe('in');
+      // Must unwrap the company map, not compare the raw JSON column.
+      expect(result.lhs).not.toBe('ref:demo_table.OwnerId');
+      expect(typeof result.lhs?.toOperationNode).toBe('function');
+      expect(result.rhs.ops[0]).toEqual({ type: 'selectFrom', table: 'owner_table as t' });
+    }
+  );
+});
+
 test('repository condition compiler contains without selfTable falls back to raw ref path', () => {
   class DemoModel {}
 

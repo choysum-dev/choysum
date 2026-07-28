@@ -9,9 +9,10 @@ import {
   isTranslatedLangMap,
   parseTranslatedStoredMap,
 } from '../repository/projection/translated_field_codec';
+import { LockUtils } from '../utils/lock';
 import type BaseModel from './model';
 import { browseModel } from './model_read_facade';
-import { updateModelById } from './model_update_service_facade';
+import { updateModels } from './model_update_service_facade';
 import type { RuntimeModelCtor } from './types';
 
 export type FieldTranslationsMap = Record<string, string>;
@@ -61,6 +62,15 @@ function filterLangs(map: FieldTranslationsMap, langs?: string[]): FieldTranslat
   return out;
 }
 
+function asUpdatedAt(value: unknown): Date | undefined {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+  if (typeof value === 'string' || typeof value === 'number') {
+    const d = new Date(value);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  return undefined;
+}
+
 /**
  * Returns the stored lang map for a translated field (optionally filtered).
  */
@@ -85,6 +95,9 @@ export async function getModelFieldTranslations<T extends BaseModel>(
 
 /**
  * Patch translated field keys: string writes; `false` deletes (except en_US).
+ *
+ * Uses UpdatedAt optimistic locking so concurrent full-map replaces cannot
+ * silently drop each other's keys (same pattern as UpdateFieldCompanyValues).
  */
 export async function updateModelFieldTranslations<T extends BaseModel>(
   ModelCtor: FieldTranslationsCtor<T>,
@@ -98,7 +111,11 @@ export async function updateModelFieldTranslations<T extends BaseModel>(
     throw new Error('UpdateFieldTranslations requires a non-empty id');
   }
 
-  const current = await getModelFieldTranslations(ModelCtor, recordId, name);
+  const row = await withContext({ prefetch_langs: true }, () =>
+    browseModel(ModelCtor, recordId, [name, 'UpdatedAt'] as never)
+  );
+  const rowRecord = row as unknown as Record<string, unknown>;
+  const current = asTranslationsMap(rowRecord[name]);
   const next = applyFieldTranslationsPatch({
     fieldName: name,
     currentMap: current,
@@ -106,8 +123,10 @@ export async function updateModelFieldTranslations<T extends BaseModel>(
     size: fieldTranslateSize(field),
   });
 
-  await withContext({ translated_write_replace: true }, () =>
-    updateModelById(ModelCtor, recordId, { [name]: next } as never, ['Id'] as never)
+  const condition = LockUtils.buildOptimisticLockCondition(recordId, asUpdatedAt(rowRecord.UpdatedAt));
+  const results = await withContext({ translated_write_replace: true }, () =>
+    updateModels(ModelCtor, condition as never, { [name]: next } as never, ['Id'] as never)
   );
+  LockUtils.validateUpdateResult(results);
   return true;
 }

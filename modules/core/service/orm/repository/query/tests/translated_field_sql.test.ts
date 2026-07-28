@@ -62,6 +62,10 @@ test('buildTranslatedFieldUnwrapExpr builds dialect-specific unwrap expressions'
 
   const escaped = buildTranslatedFieldUnwrapExpr('postgres', eb, 't.Name', "O'Brien") as any;
   expect(typeof escaped.toOperationNode).toBe('function');
+
+  const mysqlSpecial = buildTranslatedFieldUnwrapExpr('mysql', eb, 't.Name', 'zh-CN') as any;
+  const mysqlSpecialNode = JSON.stringify(mysqlSpecial.toOperationNode());
+  expect(mysqlSpecialNode.includes('$."zh-CN"') || mysqlSpecialNode.includes('zh-CN')).toBe(true);
 });
 
 test('buildTranslatedFieldUnwrapExpr resolves lang from request context', () => {

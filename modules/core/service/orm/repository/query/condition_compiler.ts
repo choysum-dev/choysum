@@ -367,7 +367,10 @@ export function convertCondition(
             .where(`t.deleted_at`, 'is', null);
         }
 
-        return repositoryPredicateCall(eb, repositoryPredicateRef(eb, `${selfTable}.${fkCol}`), 'in', subquery);
+        const fkLhs = fieldMeta.companyDependent
+          ? buildCompanyDependentFieldUnwrapExpr(dialect as DialectName, eb, `${selfTable}.${fkCol}`)
+          : repositoryPredicateRef(eb, `${selfTable}.${fkCol}`);
+        return repositoryPredicateCall(eb, fkLhs, 'in', subquery);
       }
 
       if (typeof fieldName === 'string' && selfTable) {

@@ -136,26 +136,26 @@ SPDX-License-Identifier: Apache-2.0
       </template>
     </template>
     <OFieldTranslationsDialog
-      v-if="showTranslateAction && translationRecordId"
+      v-if="showTranslateAction && panelRecordId"
       v-model="translationsOpen"
       :store="binding.store as any"
-      :record-id="translationRecordId"
+      :record-id="panelRecordId"
       :field-name="leafFieldName"
       :field-label="resolvedLabel"
-      :max-length="translationMaxLength"
-      :draft-value="translationDraftValue"
+      :max-length="panelMaxLength"
+      :draft-value="panelDraftValue"
       @saved="onTranslationsSaved"
     />
     <OFieldCompanyValuesDialog
-      v-if="showCompanyValuesAction && translationRecordId"
+      v-if="showCompanyValuesAction && panelRecordId"
       v-model="companyValuesOpen"
       :store="binding.store as any"
-      :record-id="translationRecordId"
+      :record-id="panelRecordId"
       :field-name="leafFieldName"
       :field-label="resolvedLabel"
       :field-type="companyValuesFieldType"
-      :max-length="translationMaxLength"
-      :draft-value="translationDraftValue"
+      :max-length="panelMaxLength"
+      :draft-value="panelDraftValue"
       @saved="onCompanyValuesSaved"
     />
   </el-form-item>
@@ -403,7 +403,8 @@ onMounted(() => {
 const translationsOpen = ref(false);
 const companyValuesOpen = ref(false);
 
-const translationRecordId = computed(() => {
+/** Record id shared by translate / company-values panels. */
+const panelRecordId = computed(() => {
   try {
     const record = binding.recordRef?.()?.value as { Id?: unknown } | undefined;
     const id = String(record?.Id ?? '').trim();
@@ -416,7 +417,7 @@ const translationRecordId = computed(() => {
 const showTranslateAction = computed(() => {
   if (effectiveRenderMode.value !== 'form') return false;
   if (!binding.env.isEditMode) return false;
-  if (!translationRecordId.value) return false;
+  if (!panelRecordId.value) return false;
   const meta = effectiveFieldMeta.value as { translate?: boolean } | undefined;
   return meta?.translate === true;
 });
@@ -424,7 +425,7 @@ const showTranslateAction = computed(() => {
 const showCompanyValuesAction = computed(() => {
   if (effectiveRenderMode.value !== 'form') return false;
   if (!binding.env.isEditMode) return false;
-  if (!translationRecordId.value) return false;
+  if (!panelRecordId.value) return false;
   const meta = effectiveFieldMeta.value as { companyDependent?: boolean } | undefined;
   return meta?.companyDependent === true;
 });
@@ -434,7 +435,7 @@ const companyValuesFieldType = computed(() => {
   return String(meta?.type || '').trim() || undefined;
 });
 
-const translationMaxLength = computed(() => {
+const panelMaxLength = computed(() => {
   const meta = effectiveFieldMeta.value as { size?: number } | undefined;
   const size = meta?.size;
   return typeof size === 'number' && Number.isInteger(size) && size > 0 ? size : undefined;
@@ -451,7 +452,7 @@ const companyValuesAriaLabel = computed(() => {
 });
 
 /** Current form draft (current UI lang / active company unwrap); seeded into dialogs on open. */
-const translationDraftValue = computed(() => {
+const panelDraftValue = computed(() => {
   try {
     const fieldRef = valueForm() as WritableComputedRef<View> | undefined;
     const v = fieldRef?.value;

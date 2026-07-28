@@ -77,22 +77,27 @@ test('field translations helpers reject non-translate fields and en_US:false', a
 
 test('updateModelFieldTranslations writes patched map and rejects empty ids', async () => {
   const originalRepo = RepositoryFactory.getRepository;
-  const originalUpdate = UpdateOperations.UpdateById;
-  let written: { id: string; values: any } | undefined;
+  const originalUpdate = UpdateOperations.Update;
+  let written: { condition: any; values: any } | undefined;
   try {
     RepositoryFactory.getRepository = (() => ({
       async search() {
-        return [{ Id: 'w1', Name: { en_US: 'Hello', zh_CN: '你好' } }];
+        return [{ Id: 'w1', UpdatedAt: new Date('2024-01-01T00:00:00.000Z'), Name: { en_US: 'Hello', zh_CN: '你好' } }];
       },
     })) as any;
-    UpdateOperations.UpdateById = (async (_ctor: any, id: string, values: any) => {
-      written = { id, values };
-      return values;
+    UpdateOperations.Update = (async (_ctor: any, condition: any, values: any) => {
+      written = { condition, values };
+      return [{ Id: 'w1' }];
     }) as any;
 
     const ok = await updateModelFieldTranslations(FieldTranslationsWidget as any, 'w1', 'Name', { zh_CN: '新' });
     expect(ok).toBe(true);
-    expect(written?.id).toBe('w1');
+    expect(written?.condition).toEqual({
+      And: [
+        ['Id', '=', 'w1'],
+        ['UpdatedAt', '=', new Date('2024-01-01T00:00:00.000Z')],
+      ],
+    });
     expect(written?.values?.Name).toEqual({ en_US: 'Hello', zh_CN: '新' });
 
     let emptyIdErr: unknown;
@@ -112,7 +117,7 @@ test('updateModelFieldTranslations writes patched map and rejects empty ids', as
     expect(String((emptyFieldErr as Error)?.message || emptyFieldErr)).toMatch(/non-empty fieldName/);
   } finally {
     RepositoryFactory.getRepository = originalRepo;
-    UpdateOperations.UpdateById = originalUpdate;
+    UpdateOperations.Update = originalUpdate;
   }
 });
 
@@ -164,14 +169,14 @@ test('getModelFieldTranslations returns empty map for null stored values', async
 
 test('FieldTranslationsWidget static APIs and update empty-id validation', async () => {
   const originalRepo = RepositoryFactory.getRepository;
-  const originalUpdate = UpdateOperations.UpdateById;
+  const originalUpdate = UpdateOperations.Update;
   try {
     RepositoryFactory.getRepository = (() => ({
       async search() {
-        return [{ Id: 'w1', Name: { en_US: 'Hello', zh_CN: '你好' } }];
+        return [{ Id: 'w1', UpdatedAt: new Date('2024-01-01T00:00:00.000Z'), Name: { en_US: 'Hello', zh_CN: '你好' } }];
       },
     })) as any;
-    UpdateOperations.UpdateById = (async () => ({ Id: 'w1' })) as any;
+    UpdateOperations.Update = (async () => [{ Id: 'w1' }]) as any;
 
     const got = await (FieldTranslationsWidget as any).GetFieldTranslations('w1', 'Name', ['zh_CN']);
     expect(got).toEqual({ zh_CN: '你好' });
@@ -194,6 +199,6 @@ test('FieldTranslationsWidget static APIs and update empty-id validation', async
     expect(String((emptyUpdateFieldErr as Error)?.message || emptyUpdateFieldErr)).toMatch(/non-empty fieldName/);
   } finally {
     RepositoryFactory.getRepository = originalRepo;
-    UpdateOperations.UpdateById = originalUpdate;
+    UpdateOperations.Update = originalUpdate;
   }
 });
