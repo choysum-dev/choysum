@@ -285,8 +285,8 @@ test('P3-1: authz context is request-scoped memoized', async () => {
     { merge: false }
   );
 
-  expect(out.a1).toBe(true);
-  expect(out.a2).toBe(true);
+  expect(out.a1?.allowed).toBe(true);
+  expect(out.a2?.allowed).toBe(true);
   expect(out.injected).toBe(true);
 
   // Within a single request, authz role graph should be computed once.
@@ -450,8 +450,8 @@ test('P3-1: same request RoleInheritance write invalidates authz context', async
     { merge: false }
   );
 
-  expect(out.a1).toBe(false);
-  expect(out.a2).toBe(true);
+  expect(out.a1?.allowed).toBe(false);
+  expect(out.a2?.allowed).toBe(true);
 });
 
 test('P3-1: same request UserRole.CreateMany invalidates authz context', async () => {
@@ -507,8 +507,8 @@ test('P3-1: same request UserRole.CreateMany invalidates authz context', async (
     { merge: false }
   );
 
-  expect(out.before).toBe(false);
-  expect(out.after).toBe(true);
+  expect(out.before?.allowed).toBe(false);
+  expect(out.after?.allowed).toBe(true);
 });
 
 test('P3-2: memoizeInReqState caches undefined values to avoid repeated factory calls', async () => {

@@ -214,7 +214,7 @@ func (g serviceGuard) runMethodAccess(ctx context.Context, runtimeScope scope.Sc
 		}
 	}
 
-	allowed, routing, aclErr := g.checkMethodAccess(ctx, runtimeScope, jsCtx, fullMethod, companyID)
+	allowed, routing, diagnostics, aclErr := g.checkMethodAccess(ctx, runtimeScope, jsCtx, fullMethod, companyID)
 	if aclErr != nil {
 		emit("deny", "acl_check_failed", map[string]any{"error": aclErr.Error()})
 		if g.hasGrpcMethod == nil || !g.hasGrpcMethod("/auth.User/CheckMethodAccess") {
@@ -223,11 +223,11 @@ func (g serviceGuard) runMethodAccess(ctx context.Context, runtimeScope scope.Sc
 		return nil, status.Error(codes.Unavailable, fmt.Sprintf("permission check failed: %v", aclErr))
 	}
 	if !allowed {
-		emit("deny", "acl_denied", map[string]any{})
+		emit("deny", "acl_denied", methodAccessDiagnosticsExtra(diagnostics))
 		return nil, status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	emit("allow", "acl_allowed", map[string]any{})
+	emit("allow", "acl_allowed", methodAccessDiagnosticsExtra(diagnostics))
 	return routing, nil
 }
 
@@ -250,7 +250,80 @@ func logAuthzDecisionSummary(runtimeScope scope.Scope, payload map[string]any, a
 	runtimeScope.Logger().Info("authz decision", attrs...)
 }
 
-func (g serviceGuard) checkMethodAccess(ctx context.Context, runtimeScope scope.Scope, jsCtx map[string]interface{}, fullMethod string, companyID string) (bool, *jsengine.JsExecutionRouting, error) {
+type methodAccessDiagnostics struct {
+	reason     string
+	hitRuleIds []string
+}
+
+func methodAccessDiagnosticsExtra(diag methodAccessDiagnostics) map[string]any {
+	extra := map[string]any{}
+	if reason := strings.TrimSpace(diag.reason); reason != "" {
+		extra["reason"] = reason
+	}
+	if len(diag.hitRuleIds) > 0 {
+		extra["hitRuleIds"] = append([]string{}, diag.hitRuleIds...)
+	}
+	return extra
+}
+
+func normalizeHitRuleIdsFromAny(raw any) []string {
+	seen := map[string]struct{}{}
+	out := make([]string, 0)
+	appendID := func(value string) {
+		id := strings.TrimSpace(value)
+		if id == "" {
+			return
+		}
+		if _, ok := seen[id]; ok {
+			return
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+
+	switch typed := raw.(type) {
+	case nil:
+		return nil
+	case []string:
+		for _, item := range typed {
+			appendID(item)
+		}
+	case []any:
+		for _, item := range typed {
+			appendID(fmt.Sprintf("%v", item))
+		}
+	case string:
+		for _, part := range strings.Split(typed, ",") {
+			appendID(part)
+		}
+	default:
+		return nil
+	}
+	sort.Strings(out)
+	return out
+}
+
+// parseCheckMethodAccessResult accepts legacy bool results and PR-E-5 decision envelopes.
+func parseCheckMethodAccessResult(result any) (allowed bool, diag methodAccessDiagnostics, err error) {
+	switch typed := result.(type) {
+	case bool:
+		return typed, methodAccessDiagnostics{}, nil
+	case map[string]any:
+		allowedVal, ok := typed["allowed"].(bool)
+		if !ok {
+			return false, methodAccessDiagnostics{}, fmt.Errorf("invalid or missing 'allowed' field in CheckMethodAccess result map")
+		}
+		reason, _ := typed["reason"].(string)
+		return allowedVal, methodAccessDiagnostics{
+			reason:     strings.TrimSpace(reason),
+			hitRuleIds: normalizeHitRuleIdsFromAny(typed["hitRuleIds"]),
+		}, nil
+	default:
+		return false, methodAccessDiagnostics{}, fmt.Errorf("invalid CheckMethodAccess result type: %T", result)
+	}
+}
+
+func (g serviceGuard) checkMethodAccess(ctx context.Context, runtimeScope scope.Scope, jsCtx map[string]interface{}, fullMethod string, companyID string) (bool, *jsengine.JsExecutionRouting, methodAccessDiagnostics, error) {
 	if g.hasGrpcMethod != nil && g.hasGrpcMethod("/auth.User/CheckMethodAccess") {
 		execCtx := scope.ContextWithScope(ctx, runtimeScope)
 		aclReq := &jsengine.JsRequest{
@@ -261,22 +334,22 @@ func (g serviceGuard) checkMethodAccess(ctx context.Context, runtimeScope scope.
 		}
 		aclResp, err := g.jsExecutor.Execute(execCtx, aclReq)
 		if err != nil {
-			return false, nil, err
+			return false, nil, methodAccessDiagnostics{}, err
 		}
 
-		allowed, ok := aclResp.Result.(bool)
-		if !ok {
-			return false, nil, fmt.Errorf("invalid CheckMethodAccess result type: %T", aclResp.Result)
+		allowed, diag, parseErr := parseCheckMethodAccessResult(aclResp.Result)
+		if parseErr != nil {
+			return false, nil, methodAccessDiagnostics{}, parseErr
 		}
 		if aclResp.Routing != nil {
 			routing := *aclResp.Routing
-			return allowed, &routing, nil
+			return allowed, &routing, diag, nil
 		}
-		return allowed, nil, nil
+		return allowed, nil, diag, nil
 	}
 
 	allowed, err := authgrpcclient.CheckMethodAccess(ctx, companyID, fullMethod)
-	return allowed, nil, err
+	return allowed, nil, methodAccessDiagnostics{}, err
 }
 
 func (g serviceGuard) injectMethodMetaAndEntryPolicy(jsCtx map[string]interface{}, fullMethod string) {

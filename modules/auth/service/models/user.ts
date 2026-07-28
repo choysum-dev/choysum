@@ -22,6 +22,7 @@ import { createServiceByModel } from '@/core/service/rpc';
 import { buildAuthzContextCacheKey, buildMethodAccessCacheKey } from './_request_cache_invalidation';
 import { withPermissionGraphBypass, sortStrings, getCompanyScopeFromRequestContext } from './_user_authz_shared';
 import { evaluateRoleMethodAccess, evaluateUiDerivedMethodDecision, resolveMethodAccessMeta } from './_user_method_access';
+import type { MethodAccessDecision } from './_user_method_access';
 import {
   buildScopePreferences,
   computeTokenCompanyScope,
@@ -721,24 +722,40 @@ export default class User extends BaseModel {
    *
    * Keep ACL evaluation centralized in auth so other modules do not query auth tables directly.
    * This path is deny-by-default, deny-wins, and admin-aware.
+   *
+   * PR-E-5: returns `{ allowed, reason, hitRuleIds }` so the Go guard / audit log can record
+   * the same diagnostics vocabulary as RR/FR. Callers that only need a boolean should read `.allowed`.
    */
-  static async CheckMethodAccess(companyId: string, serviceFullName: string): Promise<boolean> {
+  static async CheckMethodAccess(companyId: string, serviceFullName: string): Promise<MethodAccessDecision> {
+    const deny = (reason: string, hitRuleIds: string[]): MethodAccessDecision => ({
+      allowed: false,
+      reason,
+      hitRuleIds,
+    });
+    const allow = (reason: string, hitRuleIds: string[]): MethodAccessDecision => ({
+      allowed: true,
+      reason,
+      hitRuleIds,
+    });
+
     try {
       const userId = this.userId;
-      if (!userId || !serviceFullName) return false;
+      if (!userId || !serviceFullName) return deny('missing_identity_or_method', []);
 
       const parsed = parseServiceFullName(serviceFullName);
-      if (!parsed) return false;
+      if (!parsed) return deny('invalid_service_full_name', []);
       const { appName, modelName, methodName } = parsed;
       const normalizedFullMethod = `/${appName}.${modelName}/${methodName}`;
 
       const normalizedCompanyId = String(companyId || '').trim();
       const hasCompany = normalizedCompanyId.length > 0;
-      if (!hasCompany) return false;
+      if (!hasCompany) return deny('missing_company_id', []);
 
       // Company view must be within enabledCompanyIds (fail-closed).
       const { enabledCompanyIds } = getCompanyScopeFromRequestContext();
-      if (enabledCompanyIds.length > 0 && !enabledCompanyIds.includes(normalizedCompanyId)) return false;
+      if (enabledCompanyIds.length > 0 && !enabledCompanyIds.includes(normalizedCompanyId)) {
+        return deny('company_not_in_enabled_scope', []);
+      }
 
       // Permission graph reads must bypass RecordRule/FieldRule.
       // Otherwise a request with activeCompanyId=c1 can never evaluate roles scoped to c2,
@@ -746,43 +763,53 @@ export default class User extends BaseModel {
       return await withPermissionGraphBypass(async () => {
         const authz = await this._getAuthzContext();
         const roleIds = authz.rolesByCompany?.[normalizedCompanyId] || [];
-        if (roleIds.length === 0) return false;
+        if (roleIds.length === 0) return deny('no_roles_for_company', []);
 
         const req = getCurrentReq();
         const state = getOrInitReqServiceState(req);
         const cacheKey = buildMethodAccessCacheKey(String(authz.userId || '').trim(), normalizedCompanyId, normalizedFullMethod);
         const cached = state?.[cacheKey];
-        if (typeof cached === 'boolean') return cached;
+        if (cached && typeof cached === 'object' && typeof (cached as MethodAccessDecision).allowed === 'boolean') {
+          return cached as MethodAccessDecision;
+        }
+        // Legacy boolean cache entries (pre-E-5) — recompute with diagnostics.
+        if (typeof cached === 'boolean') {
+          delete state[cacheKey];
+        }
 
         const accessMeta = await resolveMethodAccessMeta(appName, modelName, methodName);
-        if (!accessMeta) return false;
+        if (!accessMeta) return deny('method_meta_not_found', []);
 
         const accessResult = await evaluateRoleMethodAccess(roleIds, accessMeta.scopeOr);
 
         if (accessResult.denied) {
-          if (state) state[cacheKey] = false;
-          return false;
+          const decision = deny(accessResult.reason, accessResult.hitRuleIds);
+          if (state) state[cacheKey] = decision;
+          return decision;
         }
 
         if (accessResult.allowed) {
-          if (state) state[cacheKey] = true;
-          return true;
+          const decision = allow(accessResult.reason, accessResult.hitRuleIds);
+          if (state) state[cacheKey] = decision;
+          return decision;
         }
 
         const uiDecision = await evaluateUiDerivedMethodDecision(roleIds, accessMeta.modelKey, accessMeta.methodLower);
         if (uiDecision.denied) {
-          if (state) state[cacheKey] = false;
-          return false;
+          const decision = deny(uiDecision.reason, uiDecision.hitRuleIds);
+          if (state) state[cacheKey] = decision;
+          return decision;
         }
 
-        const result = Boolean(uiDecision.allowed);
-        if (state) state[cacheKey] = result;
-
-        return result;
+        const decision = uiDecision.allowed
+          ? allow(uiDecision.reason, uiDecision.hitRuleIds)
+          : deny(uiDecision.reason, uiDecision.hitRuleIds);
+        if (state) state[cacheKey] = decision;
+        return decision;
       });
     } catch {
       // fail-closed
-      return false;
+      return deny('internal_error', []);
     }
   }
 

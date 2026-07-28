@@ -89,3 +89,48 @@ test('evaluateRoleMethodAccess returns deny allow and empty diagnostics with hit
     (RoleMethodAccess as any).Search = orig;
   }
 });
+
+test('evaluateUiDerivedMethodDecision returns reason and hitRuleIds', async () => {
+  const { evaluateUiDerivedMethodDecision } = await import('@/auth/service/models/_user_method_access');
+  const RoleUiResource = (await import('@/auth/service/models/role_ui_resource')).default;
+  const IrUiResource = (await import('@/meta/service/models/ir_ui_resource')).default;
+
+  // Isolate from sibling tests that may have warmed UI-grant request caches.
+  const root: any = (globalThis as any).$choysum ?? {};
+  if (!root.request) root.request = {};
+  root.request.context = { ctx: {}, req: { depth: 0 }, identity: {} };
+  (globalThis as any).$choysum = root;
+
+  const originalRoleUiSearch = (RoleUiResource as any).Search;
+  const originalIrUiSearch = (IrUiResource as any).Search;
+
+  (RoleUiResource as any).Search = async () => [
+    { IrApplicationId: null, IrUiResourceId: null, Mode: 'allow' },
+    { IrApplicationId: null, IrUiResourceId: 'RES-E5-ALLOW', Mode: 'allow' },
+  ];
+  (IrUiResource as any).Search = async () => [
+    {
+      Id: 'RES-E5-ALLOW',
+      Name: 'res-e5-allow',
+      IrApplicationId: 'APP-E5',
+      Requires: ['rpc:/auth.User/browse'],
+    },
+  ];
+
+  try {
+    const allowed = await evaluateUiDerivedMethodDecision(['ROLE-E5-ALLOW'], 'auth.User', 'browse');
+    expect(allowed).toEqual({
+      allowed: true,
+      denied: false,
+      hitRuleIds: ['RES-E5-ALLOW'],
+      reason: 'method_access_ui_allow',
+    });
+
+    const empty = await evaluateUiDerivedMethodDecision(['ROLE-E5-ALLOW'], 'auth.User', 'missing');
+    expect(empty.reason).toBe('method_access_ui_no_match');
+    expect(empty.hitRuleIds).toEqual([]);
+  } finally {
+    (RoleUiResource as any).Search = originalRoleUiSearch;
+    (IrUiResource as any).Search = originalIrUiSearch;
+  }
+});

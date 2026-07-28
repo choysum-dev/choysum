@@ -175,6 +175,25 @@ func (e *aclTestEngine) Execute(ctx context.Context, req *jsengine.JsRequest) (*
 
 func (e *aclTestEngine) Close() error { return nil }
 
+// stubJsExecutor is a minimal JsExecutor that returns Execute results verbatim
+// (unlike RuntimeExecutor, which always materializes a Routing object).
+type stubJsExecutor struct {
+	execute func(ctx context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error)
+}
+
+func (e *stubJsExecutor) Execute(ctx context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+	if e.execute != nil {
+		return e.execute(ctx, req)
+	}
+	return &jsengine.JsResponse{Id: req.Id, Result: true}, nil
+}
+func (e *stubJsExecutor) GetJsScripts() []*jsengine.JsScript      { return nil }
+func (e *stubJsExecutor) SetJsScripts(_ []*jsengine.JsScript)     {}
+func (e *stubJsExecutor) Reload(_ ...*jsengine.JsScript) error    { return nil }
+func (e *stubJsExecutor) AppendJsScripts(_ ...*jsengine.JsScript) {}
+func (e *stubJsExecutor) Start() error                            { return nil }
+func (e *stubJsExecutor) Stop() error                             { return nil }
+
 func newHelperScope(distPath string) *helperScope {
 	return &helperScope{
 		ctx: context.Background(),
@@ -1180,6 +1199,38 @@ func TestEnforceMethodAccessExecutorPaths(t *testing.T) {
 		}
 	})
 
+	t.Run("allowed ACL without routing still succeeds", func(t *testing.T) {
+		// Bypass defaultjsexecutor (which always fills Routing) so checkMethodAccess's
+		// nil-Routing return path is reachable.
+		runtimeScope := newHelperScope(t.TempDir())
+		runtimeScope.cfg.Auth.Enabled = true
+		runtimeScope.cfg.Auth.GrpcMethodAccess = true
+		runtimeScope.cfg.Auth.GrpcEntryPolicy = nil
+
+		svc := &ApplicationService{
+			runtimeScope: runtimeScope,
+			jsExecutor: &stubJsExecutor{execute: func(ctx context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+				return &jsengine.JsResponse{
+					Id: req.Id,
+					Result: map[string]any{
+						"allowed":    true,
+						"reason":     "method_access_allow",
+						"hitRuleIds": []string{"ma_no_routing"},
+					},
+				}, nil
+			}},
+			hasGrpcMethod: func(fullMethod string) bool { return fullMethod == "/auth.User/CheckMethodAccess" },
+		}
+		ctx := auth.ContextWithIdentity(context.Background(), &testIdentity{userID: "u1", tokenID: "t1"})
+		routing, err := svc.guard().authorizeUnary(ctx, runtimeScope, map[string]interface{}{"req": map[string]any{"depth": 0}}, "/sales.Order/Browse")
+		if err != nil {
+			t.Fatalf("authorizeUnary() error = %v", err)
+		}
+		if routing != nil {
+			t.Fatalf("expected nil routing when ACL response omits Routing, got %#v", routing)
+		}
+	})
+
 	t.Run("invalid ACL result type becomes unavailable", func(t *testing.T) {
 		runtimeScope := newHelperScope(t.TempDir())
 		runtimeScope.cfg.Auth.Enabled = true
@@ -1200,6 +1251,29 @@ func TestEnforceMethodAccessExecutorPaths(t *testing.T) {
 		err := svc.enforceMethodAccess(ctx, runtimeScope, map[string]interface{}{"req": map[string]any{"depth": 0}}, "/sales.Order/Delete")
 		if status.Code(err) != codes.Unavailable || !strings.Contains(status.Convert(err).Message(), "invalid CheckMethodAccess result type") {
 			t.Fatalf("expected invalid ACL result type to map to unavailable, got %v", err)
+		}
+	})
+
+	t.Run("ACL decision map missing allowed becomes unavailable", func(t *testing.T) {
+		runtimeScope := newHelperScope(t.TempDir())
+		runtimeScope.cfg.Auth.Enabled = true
+		runtimeScope.cfg.Auth.GrpcMethodAccess = true
+		runtimeScope.cfg.Auth.GrpcEntryPolicy = nil
+
+		executor := newACLTestExecutor(t, runtimeScope, func(ctx context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+			return &jsengine.JsResponse{Id: req.Id, Result: map[string]any{"reason": "method_access_deny"}}, nil
+		})
+
+		svc := &ApplicationService{
+			runtimeScope:  runtimeScope,
+			jsExecutor:    executor,
+			hasGrpcMethod: func(fullMethod string) bool { return fullMethod == "/auth.User/CheckMethodAccess" },
+		}
+		ctx := auth.ContextWithIdentity(context.Background(), &testIdentity{userID: "u1", tokenID: "t1"})
+
+		err := svc.enforceMethodAccess(ctx, runtimeScope, map[string]interface{}{"req": map[string]any{"depth": 0}}, "/sales.Order/Delete")
+		if status.Code(err) != codes.Unavailable || !strings.Contains(status.Convert(err).Message(), "invalid or missing 'allowed' field") {
+			t.Fatalf("expected missing allowed field to map to unavailable, got %v", err)
 		}
 	})
 
@@ -1284,6 +1358,115 @@ func TestEnforceMethodAccessExecutorPaths(t *testing.T) {
 }
 
 func TestEnforceMethodAccessDecisionObservabilityLogging(t *testing.T) {
+	t.Run("decision envelope normalizes hitRuleIds from string slice and csv", func(t *testing.T) {
+		runtimeScope := newHelperScope(t.TempDir())
+		runtimeScope.cfg.Auth.Enabled = true
+		runtimeScope.cfg.Auth.GrpcMethodAccess = true
+		runtimeScope.cfg.Auth.GrpcEntryPolicy = nil
+		runtimeScope.cfg.Auth.AuthzDecisionLog = "all"
+
+		cases := []struct {
+			name string
+			ids  any
+			want string
+		}{
+			{name: "stringSlice", ids: []string{" b ", "", "a", "a"}, want: "hitRuleIds=\"[a b]\""},
+			{name: "csv", ids: "b, a, a, ", want: "hitRuleIds=\"[a b]\""},
+			{name: "nilIds", ids: nil, want: ""},
+			{name: "unsupported", ids: 42, want: ""},
+		}
+
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				var logBuf bytes.Buffer
+				runtimeScope.logger = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+				executor := newACLTestExecutor(t, runtimeScope, func(ctx context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+					return &jsengine.JsResponse{
+						Id: req.Id,
+						Result: map[string]any{
+							"allowed":    true,
+							"reason":     "method_access_allow",
+							"hitRuleIds": tc.ids,
+						},
+					}, nil
+				})
+				svc := &ApplicationService{
+					runtimeScope:  runtimeScope,
+					jsExecutor:    executor,
+					hasGrpcMethod: func(fullMethod string) bool { return fullMethod == "/auth.User/CheckMethodAccess" },
+				}
+				ctx := auth.ContextWithIdentity(context.Background(), &testIdentity{userID: "u-hit", tokenID: "t1"})
+				err := svc.enforceMethodAccess(ctx, runtimeScope, map[string]interface{}{"req": map[string]any{"depth": 0}}, "/sales.Order/Allow")
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				logs := logBuf.String()
+				if tc.want == "" {
+					if strings.Contains(logs, "hitRuleIds=") {
+						t.Fatalf("did not expect hitRuleIds in logs, got:\n%s", logs)
+					}
+					return
+				}
+				if !strings.Contains(logs, tc.want) {
+					t.Fatalf("expected log to contain %q, got:\n%s", tc.want, logs)
+				}
+			})
+		}
+	})
+
+	t.Run("decision envelope forwards reason and hitRuleIds into decision_summary", func(t *testing.T) {
+		runtimeScope := newHelperScope(t.TempDir())
+		runtimeScope.cfg.Auth.Enabled = true
+		runtimeScope.cfg.Auth.GrpcMethodAccess = true
+		runtimeScope.cfg.Auth.GrpcEntryPolicy = nil
+		runtimeScope.cfg.Auth.AuthzDecisionLog = "all"
+		runtimeScope.cfg.Auth.AuthzDecisionAudit = true
+
+		var logBuf bytes.Buffer
+		runtimeScope.logger = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+
+		executor := newACLTestExecutor(t, runtimeScope, func(ctx context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+			return &jsengine.JsResponse{
+				Id: req.Id,
+				Result: map[string]any{
+					"allowed":    false,
+					"reason":     "method_access_deny",
+					"hitRuleIds": []any{" ma_2 ", "", "ma_1", "ma_1"},
+				},
+			}, nil
+		})
+
+		svc := &ApplicationService{
+			runtimeScope:  runtimeScope,
+			jsExecutor:    executor,
+			hasGrpcMethod: func(fullMethod string) bool { return fullMethod == "/auth.User/CheckMethodAccess" },
+		}
+		ctx := auth.ContextWithIdentity(context.Background(), &testIdentity{userID: "u-e5", tokenID: "t1"})
+		jsCtx := map[string]interface{}{
+			"req": map[string]any{"depth": 0},
+			"ctx": map[string]any{"activeCompanyId": "company-a"},
+		}
+
+		err := svc.enforceMethodAccess(ctx, runtimeScope, jsCtx, "/sales.Order/Deny")
+		if status.Code(err) != codes.PermissionDenied {
+			t.Fatalf("expected permission denied, got %v", err)
+		}
+		logs := logBuf.String()
+		for _, want := range []string{
+			"event=authz.decision_summary",
+			"layer=method_access",
+			"decision=deny",
+			"basis=acl_denied",
+			"reason=method_access_deny",
+			"hitRuleIds=\"[ma_1 ma_2]\"",
+			"audit=true",
+		} {
+			if !strings.Contains(logs, want) {
+				t.Fatalf("expected log to contain %q, got:\n%s", want, logs)
+			}
+		}
+	})
+
 	t.Run("allow and deny emit camelCase decision_summary with audit", func(t *testing.T) {
 		runtimeScope := newHelperScope(t.TempDir())
 		runtimeScope.cfg.Auth.Enabled = true
