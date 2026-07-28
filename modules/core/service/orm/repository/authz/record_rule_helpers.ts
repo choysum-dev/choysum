@@ -129,7 +129,8 @@ export async function fetchRepositoryRecordRuleEnvelope(params: RepositoryRecord
     result = await params.withRecordRuleBypass(async () => AuthUserService.GetRecordRuleCondition(model, op));
   } catch (error) {
     if (isAuthServiceUnavailable(error)) {
-      const env: ConditionEnvelope = { kind: 'true', reason: 'auth_service_unavailable' };
+      // Fail-closed: auth unreachable must not open the domain (PR-F-1 / §5.9).
+      const env: ConditionEnvelope = { kind: 'false', reason: 'auth_service_unavailable' };
       cache.set(key, env);
       return env;
     }

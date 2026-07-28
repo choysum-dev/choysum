@@ -69,7 +69,7 @@ test('record rule helper enforce top-level allowlist and deny missing model/op e
   );
 });
 
-test('record rule helper degrades to allow when auth service unavailable and uses cache', async () => {
+test('record rule helper fails closed when auth service unavailable and uses cache', async () => {
   await withPatchedChoysum(
     {
       request: {
@@ -94,8 +94,8 @@ test('record rule helper degrades to allow when auth service unavailable and use
         const { deps } = createDeps();
         const first = await fetchRepositoryRecordRuleEnvelope(deps, 'read');
         const second = await fetchRepositoryRecordRuleEnvelope(deps, 'read');
-        expect(first).toEqual({ kind: 'true', reason: 'auth_service_unavailable' });
-        expect(second).toEqual({ kind: 'true', reason: 'auth_service_unavailable' });
+        expect(first).toEqual({ kind: 'false', reason: 'auth_service_unavailable' });
+        expect(second).toEqual({ kind: 'false', reason: 'auth_service_unavailable' });
         expect(calls === 1 || calls === 2).toBe(true);
       } finally {
         (AuthUserService as any).GetRecordRuleCondition = original;

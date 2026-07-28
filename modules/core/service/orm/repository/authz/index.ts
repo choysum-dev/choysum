@@ -60,6 +60,7 @@ export { fetchRepositoryRecordRuleEnvelope, replaceRepositoryRecordRuleCondition
 export type { RepositoryFieldRuleDeps, RepositoryFieldRuleSelectionDeps, RepositoryFieldRuleSpec } from './field_rule';
 export {
   assertRepositoryFieldRuleWriteAllowed,
+  buildFailClosedFieldRuleSpec,
   getRepositoryFieldRuleSpec,
   getRepositoryTopLevelFieldRuleMode,
   pruneRepositorySelectionTreeForFieldRule,

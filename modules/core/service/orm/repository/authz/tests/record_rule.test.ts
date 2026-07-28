@@ -6,6 +6,7 @@ import {
   assertRepositoryRecordRuleAllCreatedAllowed,
   assertRepositoryRecordRuleAllTargetsAllowed,
   assertRepositoryRecordRuleCreateAllowed,
+  AuthUserService,
   getRepositoryRecordRuleEnvelope,
   replaceRepositoryRecordRuleTokens,
 } from '..';
@@ -214,6 +215,7 @@ test('record rule wrapper functions delegate to helper deps', async () => {
     }),
     meta: { fullModelName: 'demo.Model', modelName: 'Model', name: 'Model' },
     userId: 'user_1',
+    requestContext: {},
     normalizeCompanyIds: () => ['company_a'],
     normalizeCompanyIdForWrite: () => 'company_a',
     isControlPlaneMetaModel: () => false,
@@ -223,8 +225,15 @@ test('record rule wrapper functions delegate to helper deps', async () => {
     permissionDenied: (code: string, message: string) => new Error(`${code}:${message}`),
   } as any;
 
-  const envelope = await getRepositoryRecordRuleEnvelope(deps, 'read');
-  expect(envelope.kind).toBe('true');
+  const original = AuthUserService.GetRecordRuleCondition;
+  (AuthUserService as any).GetRecordRuleCondition = async () => ({ kind: 'true', reason: 'service_allow' });
+  try {
+    const envelope = await getRepositoryRecordRuleEnvelope(deps, 'read');
+    expect(envelope.kind).toBe('true');
+    expect(envelope.reason).toBe('service_allow');
+  } finally {
+    (AuthUserService as any).GetRecordRuleCondition = original;
+  }
 
   const replaced = replaceRepositoryRecordRuleTokens(deps, ['OwnerId', '=', '$userId'] as any);
   expect(replaced).toEqual(['OwnerId', '=', 'user_1']);
