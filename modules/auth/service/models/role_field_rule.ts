@@ -117,20 +117,29 @@ export default class RoleFieldRule extends BaseModel {
   }
 
   /**
-   * Normalize PermRead/PermWrite and require at least one on create (or when either is touched).
+   * Normalize PermRead/PermWrite.
+   *
+   * On update, only rewrite keys present in `values` so a partial patch does not
+   * null out the untouched permission column. Create still requires at least one.
    */
   private static _validatePerms(values: Record<string, any>, mode: 'create' | 'update'): void {
-    const touchesPerm = Object.prototype.hasOwnProperty.call(values, 'PermRead') || Object.prototype.hasOwnProperty.call(values, 'PermWrite');
-    if (!touchesPerm && mode !== 'create') return;
+    const hasRead = Object.prototype.hasOwnProperty.call(values, 'PermRead');
+    const hasWrite = Object.prototype.hasOwnProperty.call(values, 'PermWrite');
+    if (!hasRead && !hasWrite && mode !== 'create') return;
 
-    const permRead = this._normalizePerm((values as any).PermRead);
-    const permWrite = this._normalizePerm((values as any).PermWrite);
+    if (hasRead || mode === 'create') {
+      (values as any).PermRead = this._normalizePerm((values as any).PermRead);
+    }
+    if (hasWrite || mode === 'create') {
+      (values as any).PermWrite = this._normalizePerm((values as any).PermWrite);
+    }
 
-    (values as any).PermRead = permRead;
-    (values as any).PermWrite = permWrite;
-
-    if (permRead == null && permWrite == null) {
-      throw new Error('invalid RoleFieldRule: must provide at least one of PermRead/PermWrite');
+    // Create always materializes both keys; reject empty. Update only rejects when
+    // the caller explicitly clears both in the same payload.
+    if (mode === 'create' || (hasRead && hasWrite)) {
+      if ((values as any).PermRead == null && (values as any).PermWrite == null) {
+        throw new Error('invalid RoleFieldRule: must provide at least one of PermRead/PermWrite');
+      }
     }
   }
 

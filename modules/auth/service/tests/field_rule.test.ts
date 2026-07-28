@@ -1240,7 +1240,22 @@ test('RoleFieldRule: permission-only update must not rewrite scoped fields to gl
       expect(String((rows[0] as any)?.IrModelId || '').trim()).toBe(modelId);
       expect(String((rows[0] as any)?.IrApplicationId || '').trim()).toBe('');
       expect(String((rows[0] as any)?.PermRead || '').trim()).toBe('deny');
-      expect(String((rows[0] as any)?.PermWrite || '').trim()).toBe('');
+      // Untouched PermWrite must survive a partial permission update.
+      expect(String((rows[0] as any)?.PermWrite || '').trim()).toBe('deny');
+
+      await RoleFieldRule.Update(
+        ['Id', '=', id] as any,
+        { PermWrite: 'allow' } as any,
+        ['Id'] as any
+      );
+
+      const afterWriteOnly = await RoleFieldRule.Search(
+        ['Id', '=', id] as any,
+        { fields: ['Id', 'PermRead', 'PermWrite'], limit: 1 } as any
+      );
+      expect(afterWriteOnly.length).toBe(1);
+      expect(String((afterWriteOnly[0] as any)?.PermRead || '').trim()).toBe('deny');
+      expect(String((afterWriteOnly[0] as any)?.PermWrite || '').trim()).toBe('allow');
     },
     { merge: false }
   );
