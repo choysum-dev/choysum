@@ -712,6 +712,18 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 				Message:  "companyDependent cannot be combined with unique/uniqueIndex",
 			})
 		}
+		indexKind := ""
+		if hints.Index != nil {
+			indexKind = strings.TrimSpace(*hints.Index)
+		}
+		btreeIndexed := hints.Indexed != nil && *hints.Indexed
+		if btreeIndexed || indexKind != "" {
+			spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+				Code:     "CONFLICT_COMPANY_DEPENDENT_INDEX",
+				Severity: "error",
+				Message:  "companyDependent does not support indexed/index",
+			})
+		}
 	}
 
 	return spec, nil

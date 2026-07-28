@@ -194,6 +194,12 @@ func TestModelMigratorFieldParsingAndStructTags(t *testing.T) {
 	if companyDepM2OMeta["type"] != "jsonobject" {
 		t.Fatalf("expected companyDependent ManyToOne → jsonobject, got %#v", companyDepM2OMeta)
 	}
+	if _, hasSize := companyDepM2OMeta["size"]; hasSize {
+		t.Fatalf("expected companyDependent ManyToOne to drop size, got %#v", companyDepM2OMeta)
+	}
+	if _, hasIndex := companyDepM2OMeta["index"]; hasIndex {
+		t.Fatalf("expected companyDependent ManyToOne to drop index, got %#v", companyDepM2OMeta)
+	}
 
 	refField := newFieldWithOptions(t, "RemoteId", `{"type":"ManyToOneRef"}`)
 	refMeta, err := migrator.getResolvedFieldColumnMeta(refField)

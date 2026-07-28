@@ -100,6 +100,15 @@ test('updateModelFieldTranslations writes patched map and rejects empty ids', as
     });
     expect(written?.values?.Name).toEqual({ en_US: 'Hello', zh_CN: '新' });
 
+    UpdateOperations.Update = (async () => []) as any;
+    let staleErr: unknown;
+    try {
+      await updateModelFieldTranslations(FieldTranslationsWidget as any, 'w1', 'Name', { zh_CN: '冲突' });
+    } catch (err) {
+      staleErr = err;
+    }
+    expect(String((staleErr as Error)?.message || staleErr)).toMatch(/has been modified/);
+
     let emptyIdErr: unknown;
     try {
       await getModelFieldTranslations(FieldTranslationsWidget as any, '', 'Name');

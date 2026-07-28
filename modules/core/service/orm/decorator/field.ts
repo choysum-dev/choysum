@@ -198,6 +198,15 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
       if (optionBag.unique === true || uniqueIndexOn) {
         throw new Error(`@Field(${name}) companyDependent cannot be combined with unique/uniqueIndex`);
       }
+      // Migration strips physical indexes for company-dependent JSON maps; reject so FieldsGet
+      // cannot advertise an index the database does not have.
+      const hasPhysicalIndex =
+        optionBag.indexed === true ||
+        optionBag.index === true ||
+        (typeof optionBag.index === 'string' && optionBag.index.trim().length > 0);
+      if (hasPhysicalIndex) {
+        throw new Error(`@Field(${name}) companyDependent does not support indexed/index`);
+      }
     }
 
     const hasFlatStorageHints =

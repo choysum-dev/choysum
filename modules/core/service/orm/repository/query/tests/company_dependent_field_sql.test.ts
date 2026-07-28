@@ -42,8 +42,10 @@ test('buildCompanyDependentFieldUnwrapExpr quotes JSON path keys', () => {
   expect(typeof fromCtx.toOperationNode).toBe('function');
 
   // Spot-check that MySQL path embeds the quoted-member form for hyphenated ids.
+  // JSON.stringify escapes quotes, so look for $.\"comp-eu\" rather than $."comp-eu".
   const mysql = buildCompanyDependentFieldUnwrapExpr('mysql', eb, 't.Cost', 'comp-eu') as any;
   const raw = JSON.stringify(mysql.toOperationNode());
   expect(raw.includes('JSON_EXTRACT')).toBe(true);
-  expect(raw.includes('comp-eu')).toBe(true);
+  expect(raw.includes('$.\\"comp-eu\\"')).toBe(true);
+  expect(raw.includes('$.comp-eu')).toBe(false);
 });

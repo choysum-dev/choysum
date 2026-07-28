@@ -1877,9 +1877,41 @@ test('repository condition compiler child_of unwraps companyDependent ManyToOne 
       // Must unwrap the company map, not compare the raw JSON column.
       expect(result.lhs).not.toBe('ref:demo_table.OwnerId');
       expect(typeof result.lhs?.toOperationNode).toBe('function');
+      expect(JSON.stringify(result.lhs.toOperationNode()).includes('OwnerId')).toBe(true);
       expect(result.rhs.ops[0]).toEqual({ type: 'selectFrom', table: 'owner_table as t' });
     }
   );
+});
+
+test('repository condition compiler companyDependent comparison uses physical column name', () => {
+  class DemoModel {}
+  const meta = {
+    type: DemoModel,
+    tableName: () => 'demo_table',
+    fields: new Map([
+      [
+        'Owner',
+        {
+          type: 'ManyToOne',
+          companyDependent: true,
+          column: { name: 'OwnerId' },
+        },
+      ],
+    ]),
+  } as any;
+  const eb = createExpressionBuilder();
+  const db = { selectFrom() { throw new Error('not used'); } };
+
+  const result = withContext({ activeCompanyId: 'comp_main' }, () =>
+    convertCondition(db as any, () => 'postgres', meta, eb, ['Owner', '=', 'p1'] as any, 'demo_table')
+  ) as any;
+  expect(result.op).toBe('=');
+  expect(result.rhs).toBe('p1');
+  expect(typeof result.lhs?.toOperationNode).toBe('function');
+  const node = JSON.stringify(result.lhs.toOperationNode());
+  expect(node.includes('OwnerId')).toBe(true);
+  // Must not target the logical field name as a physical column.
+  expect(node.includes('"demo_table"."Owner"') || node.includes('demo_table.Owner,')).toBe(false);
 });
 
 test('repository condition compiler contains without selfTable falls back to raw ref path', () => {

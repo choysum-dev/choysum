@@ -769,6 +769,14 @@ test('Field decorator rejects companyDependent with translate / unique / bad typ
   }).toThrow('companyDependent cannot be combined with unique/uniqueIndex');
 
   expect(() => {
+    class BadIndexed extends BaseModel {
+      @Field({ type: 'number', companyDependent: true, indexed: true })
+      Cost!: number;
+    }
+    return BadIndexed;
+  }).toThrow('companyDependent does not support indexed/index');
+
+  expect(() => {
     class BadFloatAlias extends BaseModel {
       @Field({ type: 'float', companyDependent: true } as any)
       Cost!: number;
