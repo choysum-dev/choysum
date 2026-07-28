@@ -19,7 +19,7 @@ SPDX-License-Identifier: Apache-2.0
         <el-form-item v-for="row in rows" :key="row.companyId" :label="row.label">
           <el-input
             v-model="row.value"
-            :maxlength="maxLength ?? undefined"
+            :maxlength="maxLength"
             :show-word-limit="maxLength != null"
             clearable
           />
@@ -84,7 +84,7 @@ const visible = computed({
 });
 
 const dialogTitle = computed(() => {
-  const label = String(props.fieldLabel || props.fieldName || '').trim();
+  const label = asTrimmedText(props.fieldLabel) || asTrimmedText(props.fieldName);
   return label ? _t('Company values: %s', label) : _t('Company values');
 });
 
@@ -92,12 +92,18 @@ const loading = ref(false);
 const saving = ref(false);
 const rows = ref<CompanyValueRow[]>([]);
 
+function asTrimmedText(value: unknown): string {
+  if (value == null) return '';
+  return String(value).trim();
+}
+
 function uniqIds(ids: string[]): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
   for (const raw of ids) {
-    const id = String(raw || '').trim();
-    if (!id || seen.has(id)) continue;
+    const id = asTrimmedText(raw);
+    if (!id) continue;
+    if (seen.has(id)) continue;
     seen.add(id);
     out.push(id);
   }
@@ -111,14 +117,16 @@ function readAuthCompanyMeta(): {
 } {
   try {
     const authStore = useAuthStore();
-    const meta = ((authStore.identity as any)?.metadata ?? {}) as any;
+    const identity = (authStore as { identity?: { metadata?: unknown } | null }).identity;
+    const metaRaw = identity == null ? undefined : identity.metadata;
+    const meta = metaRaw != null && typeof metaRaw === 'object' ? (metaRaw as Record<string, unknown>) : {};
     const allowedCompanyIds = Array.isArray(meta.allowedCompanyIds)
-      ? meta.allowedCompanyIds.map((x: any) => String(x ?? '').trim()).filter(Boolean)
+      ? meta.allowedCompanyIds.map((x: unknown) => asTrimmedText(x))
       : [];
     const enabledCompanyIds = Array.isArray(meta.enabledCompanyIds)
-      ? meta.enabledCompanyIds.map((x: any) => String(x ?? '').trim()).filter(Boolean)
+      ? meta.enabledCompanyIds.map((x: unknown) => asTrimmedText(x))
       : [];
-    const activeCompanyId = String(meta.activeCompanyId ?? '').trim();
+    const activeCompanyId = asTrimmedText(meta.activeCompanyId);
     return { allowedCompanyIds, enabledCompanyIds, activeCompanyId };
   } catch {
     return { allowedCompanyIds: [], enabledCompanyIds: [], activeCompanyId: '' };
@@ -127,12 +135,12 @@ function readAuthCompanyMeta(): {
 
 /** Prefer company display name; fall back to id. */
 function formatCompanyLabel(name: unknown, companyId: string): string {
-  const display = String(name ?? '').trim();
-  return display || companyId;
+  const display = asTrimmedText(name);
+  return display ? display : companyId;
 }
 
 function resolveDraftCompanyId(): string {
-  const fromProp = String(props.draftCompanyId || '').trim();
+  const fromProp = asTrimmedText(props.draftCompanyId);
   if (fromProp) return fromProp;
   return readAuthCompanyMeta().activeCompanyId;
 }
@@ -154,8 +162,8 @@ function applyDraftValue(byId: Map<string, CompanyValueRow>) {
  * Row set = allowedCompanyIds, or enabled ∪ map keys when allowlist is empty (D8).
  */
 function resolveRowCompanyIds(map: Record<string, unknown>, auth: ReturnType<typeof readAuthCompanyMeta>): string[] {
-  const mapKeys = Object.keys(map || {}).map(k => String(k || '').trim()).filter(Boolean);
-  if (auth.allowedCompanyIds.length) {
+  const mapKeys = Object.keys(map).map(k => asTrimmedText(k)).filter(Boolean);
+  if (auth.allowedCompanyIds.length > 0) {
     return uniqIds(auth.allowedCompanyIds);
   }
   return uniqIds([...auth.enabledCompanyIds, ...mapKeys]);
@@ -183,9 +191,9 @@ async function loadRows() {
 
     const nameById = new Map<string, string>();
     for (const c of companies) {
-      const id = String(c?.Id || '').trim();
+      const id = asTrimmedText(c?.Id);
       if (!id) continue;
-      nameById.set(id, String(c?.DisplayName ?? '').trim());
+      nameById.set(id, asTrimmedText(c?.DisplayName));
     }
 
     const byId = new Map<string, CompanyValueRow>();
@@ -207,8 +215,8 @@ async function loadRows() {
     const ordered = Array.from(byId.values());
     ordered.sort((a, b) => a.label.localeCompare(b.label));
     rows.value = ordered;
-  } catch (err: any) {
-    ElMessage.error(String(err?.message || err || _t('Failed to load company values')));
+  } catch (err: unknown) {
+    ElMessage.error(formatCaughtError(err, _t('Failed to load company values')));
     rows.value = [];
   } finally {
     loading.value = false;
@@ -220,8 +228,8 @@ function onOpened() {
 }
 
 function coercePatchValue(raw: string): unknown {
-  const type = String(props.fieldType || '').trim().toLowerCase();
-  const text = String(raw ?? '');
+  const type = asTrimmedText(props.fieldType).toLowerCase();
+  const text = String(raw);
   if (type === 'boolean') {
     const lower = text.trim().toLowerCase();
     if (lower === 'true' || lower === '1' || lower === 'yes') return true;
@@ -237,6 +245,19 @@ function coercePatchValue(raw: string): unknown {
     return Number.isFinite(n) ? n : text;
   }
   return text;
+}
+
+function formatCaughtError(err: unknown, fallback: string): string {
+  if (err == null) return fallback;
+  if (typeof err === 'string') {
+    const text = err.trim();
+    return text ? text : fallback;
+  }
+  if (typeof err === 'object' && 'message' in err) {
+    const text = asTrimmedText((err as { message?: unknown }).message);
+    if (text) return text;
+  }
+  return fallback;
 }
 
 async function handleSave() {
@@ -260,12 +281,12 @@ async function handleSave() {
     }
 
     const refreshed = (await props.store.Browse(props.recordId, [props.fieldName])) as Record<string, unknown>;
-    const nextValue = refreshed?.[props.fieldName];
+    const nextValue = refreshed == null ? undefined : refreshed[props.fieldName];
     emit('saved', nextValue == null ? null : nextValue);
     ElMessage.success(_t('Company values saved'));
     visible.value = false;
-  } catch (err: any) {
-    ElMessage.error(String(err?.message || err || _t('Failed to save company values')));
+  } catch (err: unknown) {
+    ElMessage.error(formatCaughtError(err, _t('Failed to save company values')));
   } finally {
     saving.value = false;
   }

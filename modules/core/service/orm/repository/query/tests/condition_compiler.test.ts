@@ -1912,6 +1912,12 @@ test('repository condition compiler companyDependent comparison uses physical co
   expect(node.includes('OwnerId')).toBe(true);
   // Must not target the logical field name as a physical column.
   expect(node.includes('"demo_table"."Owner"') || node.includes('demo_table.Owner,')).toBe(false);
+
+  // Empty dialect falls back to postgres for companyDependent unwrap.
+  const emptyDialect = withContext({ activeCompanyId: 'comp_main' }, () =>
+    convertCondition(db as any, () => '', meta, eb, ['Owner', '=', 'p1'] as any, 'demo_table')
+  ) as any;
+  expect(typeof emptyDialect.lhs?.toOperationNode).toBe('function');
 });
 
 test('repository condition compiler contains without selfTable falls back to raw ref path', () => {
@@ -3262,4 +3268,39 @@ test('repository condition compiler companyDependent not-ilike and empty column 
   ) as any;
   expect(typeof eq.lhs?.toOperationNode).toBe('function');
   expect(JSON.stringify(eq.lhs.toOperationNode()).includes('Note')).toBe(true);
+});
+
+test('repository condition compiler resolveStoredColumnName covers non-string and missing name', () => {
+  class DemoModel {}
+  const meta = {
+    type: DemoModel,
+    tableName: () => 'demo_table',
+    fields: new Map([
+      ['A', { type: 'number', companyDependent: true, column: { name: 42 } }],
+      ['B', { type: 'number', companyDependent: true, column: {} }],
+      ['C', { type: 'number', companyDependent: true }],
+      ['D', { type: 'number', companyDependent: true, column: null }],
+      ['E', { type: 'number', companyDependent: true, column: 'CostCol' }],
+      ['F', { type: 'number', companyDependent: true, column: { name: 'PhysCost' } }],
+      ['G', { type: 'number', companyDependent: true, column: { name: '   ' } }],
+    ]),
+  } as any;
+  const eb = createExpressionBuilder();
+  const db = { selectFrom() { throw new Error('unused'); } };
+
+  const expectCol = (field: string, needle: string) => {
+    const result = withContext({ activeCompanyId: 'comp_main' }, () =>
+      convertCondition(db as any, () => 'postgres', meta, eb, [field, '=', 1] as any, 'demo_table')
+    ) as any;
+    expect(typeof result.lhs?.toOperationNode).toBe('function');
+    expect(JSON.stringify(result.lhs.toOperationNode()).includes(needle)).toBe(true);
+  };
+
+  expectCol('A', 'A');
+  expectCol('B', 'B');
+  expectCol('C', 'C');
+  expectCol('D', 'D');
+  expectCol('E', 'E');
+  expectCol('F', 'PhysCost');
+  expectCol('G', 'G');
 });

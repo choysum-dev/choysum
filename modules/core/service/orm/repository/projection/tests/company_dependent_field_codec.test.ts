@@ -407,3 +407,25 @@ test('companyDependent normalize hits invalid-decimal fallbacks and empty merge 
 
   expect(withContext({ activeCompanyId: '' }, () => resolveCompanyDependentCompanyId())).toBeUndefined();
 });
+
+test('companyDependent null delete uses empty map when currentMap is null', () => {
+  expect(
+    mergeCompanyDependentWrite({
+      fieldName: 'Cost',
+      value: null,
+      companyId: 'C1',
+      currentMap: null,
+      mode: 'update',
+      replace: false,
+    })
+  ).toBeNull();
+
+  // applyFieldCompanyValuesPatch: falsy currentMap takes `|| {}` (line 198 branch).
+  expect(
+    applyFieldCompanyValuesPatch({
+      fieldName: 'Cost',
+      currentMap: null,
+      values: { C1: 3 },
+    })
+  ).toEqual({ C1: 3 });
+});

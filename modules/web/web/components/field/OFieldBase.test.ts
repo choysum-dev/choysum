@@ -48,7 +48,7 @@ const fieldBaseStubs = {
     template: '<div class="form-item" :data-label="label"><slot /></div>',
   },
   // Inline error icon; Element Plus is not registered in this unit suite.
-  'el-icon': true,
+  'el-icon': { template: '<i class="el-icon-stub"><slot /></i>' },
   'el-tooltip': { template: '<div class="tooltip-stub"><slot /></div>' },
   'el-button': {
     template: '<button class="btn-stub" v-bind="$attrs"><slot /></button>',
@@ -561,6 +561,20 @@ describe('OFieldBase company values action', () => {
     expect(btn.attributes('aria-label')).toMatch(/Company values/);
   });
 
+  it('uses bare Company values aria when label and leaf are blank', async () => {
+    const binding = makeBinding({ string: '' });
+    binding.prop = '';
+    binding.meta = { string: '', companyDependent: true } as any;
+
+    const wrapper = mount(OFieldBase, {
+      props: { binding, renderMode: 'form' },
+      slots: { edit: () => h(EditStub) },
+      global: { stubs: { ...fieldBaseStubs, OFieldCompanyValuesDialog: true } },
+    });
+
+    expect(wrapper.find('.o-field-base__company-values-btn').attributes('aria-label')).toBe('Company values');
+  });
+
   it('swallows company-values draft write failures when fieldRef assignment throws', async () => {
     const binding = makeBinding({ string: 'Cost', companyDependent: true });
     binding.meta = { string: 'Cost', companyDependent: true } as any;
@@ -667,6 +681,60 @@ describe('OFieldBase company values action', () => {
     await wrapper.find('.o-field-base__company-values-btn').trigger('click');
     await nextTick();
     expect(wrapper.find('.company-dialog-stub').attributes('data-type')).toBe('undefined');
+    wrapper.unmount();
+
+    // meta present but type missing → undefined fieldType
+    const noType = makeBinding({ string: 'Cost', companyDependent: true });
+    noType.meta = { string: 'Cost', companyDependent: true } as any;
+    const w2 = mount(OFieldBase, {
+      props: { binding: noType, renderMode: 'form' },
+      slots: { edit: () => h(EditStub) },
+      global: {
+        stubs: {
+          ...fieldBaseStubs,
+          OFieldCompanyValuesDialog: {
+            name: 'OFieldCompanyValuesDialog',
+            props: ['modelValue', 'fieldType'],
+            template: '<div class="company-dialog-stub" :data-type="String(fieldType)" />',
+          },
+        },
+      },
+    });
+    await w2.find('.o-field-base__company-values-btn').trigger('click');
+    await nextTick();
+    expect(w2.find('.company-dialog-stub').attributes('data-type')).toBe('undefined');
   });
 
+  it('falsy fieldRef skips assignment on company-values save', async () => {
+    const nullValue = ref(null as string | null);
+    const binding = makeBinding({ string: 'Cost', companyDependent: true });
+    binding.meta = { string: 'Cost', companyDependent: true } as any;
+    binding.fieldRef = () => nullValue as any;
+
+    const wrapper = mount(OFieldBase, {
+      props: { binding, renderMode: 'form' },
+      slots: { edit: () => h(EditStub) },
+      global: {
+        stubs: {
+          ...fieldBaseStubs,
+          OFieldCompanyValuesDialog: {
+            name: 'OFieldCompanyValuesDialog',
+            props: ['modelValue', 'draftValue'],
+            emits: ['saved'],
+            template:
+              '<div class="company-dialog-stub" :data-open="modelValue" :data-draft="draftValue"><button class="emit-saved" @click="$emit(\'saved\', \'11\')" /></div>',
+          },
+        },
+      },
+    });
+    await wrapper.find('.o-field-base__company-values-btn').trigger('click');
+    await nextTick();
+    // panelDraftValue: v == null → ''
+    expect(wrapper.find('.company-dialog-stub').attributes('data-draft')).toBe('');
+    expect(wrapper.find('.el-icon-stub').exists()).toBe(true);
+
+    // onCompanyValuesSaved: falsy fieldRef skips assignment
+    binding.fieldRef = () => null as any;
+    await expect(wrapper.find('.emit-saved').trigger('click')).resolves.toBeUndefined();
+  });
 });

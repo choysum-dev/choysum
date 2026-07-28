@@ -36,12 +36,13 @@ function supportsContainsFieldType(fieldMeta: FieldMetadata | undefined): boolea
 
 /** Prefer explicit column.name when present (ManyToOne FK remap); else logical field name. */
 function resolveStoredColumnName(fieldMeta: FieldMetadata | undefined, fieldName: string): string {
-  const column = fieldMeta?.column as unknown;
-  if (typeof column === 'object' && column !== null && 'name' in column) {
-    const name = (column as { name?: unknown }).name;
-    if (typeof name === 'string' && name.trim()) return name.trim();
-  }
-  return fieldName;
+  const column = fieldMeta == null ? undefined : (fieldMeta as { column?: unknown }).column;
+  if (column == null || typeof column !== 'object') return fieldName;
+  if (!('name' in (column as object))) return fieldName;
+  const name = (column as { name?: unknown }).name;
+  if (typeof name !== 'string') return fieldName;
+  const trimmed = name.trim();
+  return trimmed ? trimmed : fieldName;
 }
 
 function isPostgresDialect(dialect: string): boolean {

@@ -136,7 +136,7 @@ SPDX-License-Identifier: Apache-2.0
       </template>
     </template>
     <OFieldTranslationsDialog
-      v-if="showTranslateAction && panelRecordId"
+      v-if="showTranslateAction"
       v-model="translationsOpen"
       :store="binding.store as any"
       :record-id="panelRecordId"
@@ -147,7 +147,7 @@ SPDX-License-Identifier: Apache-2.0
       @saved="onTranslationsSaved"
     />
     <OFieldCompanyValuesDialog
-      v-if="showCompanyValuesAction && panelRecordId"
+      v-if="showCompanyValuesAction"
       v-model="companyValuesOpen"
       :store="binding.store as any"
       :record-id="panelRecordId"
@@ -427,12 +427,14 @@ const showCompanyValuesAction = computed(() => {
   if (!binding.env.isEditMode) return false;
   if (!panelRecordId.value) return false;
   const meta = effectiveFieldMeta.value as { companyDependent?: boolean } | undefined;
-  return meta?.companyDependent === true;
+  return meta != null && meta.companyDependent === true;
 });
 
 const companyValuesFieldType = computed(() => {
-  const meta = effectiveFieldMeta.value as { type?: string } | undefined;
-  return String(meta?.type || '').trim() || undefined;
+  const type = (effectiveFieldMeta.value as { type?: string } | undefined)?.type;
+  if (type == null) return undefined;
+  const trimmed = String(type).trim();
+  return trimmed ? trimmed : undefined;
 });
 
 const panelMaxLength = computed(() => {
@@ -447,19 +449,17 @@ const translateAriaLabel = computed(() => {
 });
 
 const companyValuesAriaLabel = computed(() => {
-  const label = String(resolvedLabel.value || leafFieldName.value || '').trim();
+  const fromLabel = String(resolvedLabel.value || '').trim();
+  const fromLeaf = String(leafFieldName.value || '').trim();
+  const label = fromLabel || fromLeaf;
   return label ? _t('Company values: %s', label) : _t('Company values');
 });
 
 /** Current form draft (current UI lang / active company unwrap); seeded into dialogs on open. */
 const panelDraftValue = computed(() => {
-  try {
-    const fieldRef = valueForm() as WritableComputedRef<View> | undefined;
-    const v = fieldRef?.value;
-    return v == null ? '' : String(v);
-  } catch {
-    return '';
-  }
+  const fieldRef = valueForm() as WritableComputedRef<View>;
+  const v = fieldRef.value;
+  return v == null ? '' : String(v);
 });
 
 function onTranslationsSaved(nextValue: string | null) {
@@ -475,10 +475,9 @@ function onTranslationsSaved(nextValue: string | null) {
 
 function onCompanyValuesSaved(nextValue: unknown) {
   try {
-    const fieldRef = valueForm() as WritableComputedRef<View>;
-    if (fieldRef) {
-      fieldRef.value = nextValue as View;
-    }
+    const fieldRef = valueForm() as WritableComputedRef<View> | null | undefined;
+    if (fieldRef == null) return;
+    fieldRef.value = nextValue as View;
   } catch {
     // Ignore draft write failures; Browse already refreshed server state.
   }
@@ -719,7 +718,13 @@ const effectiveEditForRow = (row: T) => binding.env.isEditMode && cellVisibleFor
 
 /* Clear server errors when the field value changes, after all variable definitions */
 watch(
-  () => rawValueForm().value,
+  () => {
+    try {
+      return rawValueForm()?.value;
+    } catch {
+      return undefined;
+    }
+  },
   () => {
     if (serverError.value && fieldErrors?.value) {
       fieldErrors.value.delete(String(binding.prop));
