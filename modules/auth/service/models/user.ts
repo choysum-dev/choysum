@@ -727,12 +727,12 @@ export default class User extends BaseModel {
    * the same diagnostics vocabulary as RR/FR. Callers that only need a boolean should read `.allowed`.
    */
   static async CheckMethodAccess(companyId: string, serviceFullName: string): Promise<MethodAccessDecision> {
-    const deny = (reason: string, hitRuleIds: string[] = []): MethodAccessDecision => ({
+    const deny = (reason: string, hitRuleIds: string[]): MethodAccessDecision => ({
       allowed: false,
       reason,
       hitRuleIds,
     });
-    const allow = (reason: string, hitRuleIds: string[] = []): MethodAccessDecision => ({
+    const allow = (reason: string, hitRuleIds: string[]): MethodAccessDecision => ({
       allowed: true,
       reason,
       hitRuleIds,
@@ -740,21 +740,21 @@ export default class User extends BaseModel {
 
     try {
       const userId = this.userId;
-      if (!userId || !serviceFullName) return deny('missing_identity_or_method');
+      if (!userId || !serviceFullName) return deny('missing_identity_or_method', []);
 
       const parsed = parseServiceFullName(serviceFullName);
-      if (!parsed) return deny('invalid_service_full_name');
+      if (!parsed) return deny('invalid_service_full_name', []);
       const { appName, modelName, methodName } = parsed;
       const normalizedFullMethod = `/${appName}.${modelName}/${methodName}`;
 
       const normalizedCompanyId = String(companyId || '').trim();
       const hasCompany = normalizedCompanyId.length > 0;
-      if (!hasCompany) return deny('missing_company_id');
+      if (!hasCompany) return deny('missing_company_id', []);
 
       // Company view must be within enabledCompanyIds (fail-closed).
       const { enabledCompanyIds } = getCompanyScopeFromRequestContext();
       if (enabledCompanyIds.length > 0 && !enabledCompanyIds.includes(normalizedCompanyId)) {
-        return deny('company_not_in_enabled_scope');
+        return deny('company_not_in_enabled_scope', []);
       }
 
       // Permission graph reads must bypass RecordRule/FieldRule.
@@ -763,7 +763,7 @@ export default class User extends BaseModel {
       return await withPermissionGraphBypass(async () => {
         const authz = await this._getAuthzContext();
         const roleIds = authz.rolesByCompany?.[normalizedCompanyId] || [];
-        if (roleIds.length === 0) return deny('no_roles_for_company');
+        if (roleIds.length === 0) return deny('no_roles_for_company', []);
 
         const req = getCurrentReq();
         const state = getOrInitReqServiceState(req);
@@ -778,38 +778,38 @@ export default class User extends BaseModel {
         }
 
         const accessMeta = await resolveMethodAccessMeta(appName, modelName, methodName);
-        if (!accessMeta) return deny('method_meta_not_found');
+        if (!accessMeta) return deny('method_meta_not_found', []);
 
         const accessResult = await evaluateRoleMethodAccess(roleIds, accessMeta.scopeOr);
 
         if (accessResult.denied) {
-          const decision = deny(accessResult.reason, accessResult.hitRuleIds || []);
+          const decision = deny(accessResult.reason, accessResult.hitRuleIds);
           if (state) state[cacheKey] = decision;
           return decision;
         }
 
         if (accessResult.allowed) {
-          const decision = allow(accessResult.reason, accessResult.hitRuleIds || []);
+          const decision = allow(accessResult.reason, accessResult.hitRuleIds);
           if (state) state[cacheKey] = decision;
           return decision;
         }
 
         const uiDecision = await evaluateUiDerivedMethodDecision(roleIds, accessMeta.modelKey, accessMeta.methodLower);
         if (uiDecision.denied) {
-          const decision = deny(uiDecision.reason, uiDecision.hitRuleIds || []);
+          const decision = deny(uiDecision.reason, uiDecision.hitRuleIds);
           if (state) state[cacheKey] = decision;
           return decision;
         }
 
         const decision = uiDecision.allowed
-          ? allow(uiDecision.reason, uiDecision.hitRuleIds || [])
-          : deny(uiDecision.reason || 'method_access_ui_no_match', uiDecision.hitRuleIds || []);
+          ? allow(uiDecision.reason, uiDecision.hitRuleIds)
+          : deny(uiDecision.reason, uiDecision.hitRuleIds);
         if (state) state[cacheKey] = decision;
         return decision;
       });
     } catch {
       // fail-closed
-      return deny('internal_error');
+      return deny('internal_error', []);
     }
   }
 

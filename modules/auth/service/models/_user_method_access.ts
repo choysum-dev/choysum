@@ -372,7 +372,8 @@ export async function evaluateUiDerivedMethodDecision(
       for (const mode of expansion.resourceModesByKey?.[key] || []) matchedModes.add(mode);
     }
 
-    const resourceId = String((row as any)?.Id ?? (row as any)?.id ?? '').trim();
+    // Rows without Id/id are dropped by loadUiGrantExpansionForRoles; Id or id is enough here.
+    const resourceId = normalizeUiResourceId((row as any)?.Id ?? (row as any)?.id);
     if (matchedModes.has('deny')) {
       denied = true;
       if (resourceId) denyHitRuleIds.push(resourceId);
