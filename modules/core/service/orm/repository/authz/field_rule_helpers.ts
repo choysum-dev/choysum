@@ -130,7 +130,7 @@ function normalizeRepositoryFieldRuleSpec(input: unknown): RepositoryFieldRuleSp
     denyReadFields: toStringArray(value.denyReadFields),
     denyWriteFields: toStringArray(value.denyWriteFields),
     reason: typeof value.reason === 'string' ? value.reason : undefined,
-    hitRuleIds: hitRuleIds.length ? hitRuleIds : undefined,
+    ...(hitRuleIds.length ? { hitRuleIds } : {}),
   };
 }
 
