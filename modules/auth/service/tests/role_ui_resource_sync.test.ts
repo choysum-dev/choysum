@@ -464,16 +464,24 @@ test('RoleUiResource coverage: condition Update hits assertExclusiveScope', asyn
       requires: [],
     });
 
-    const created = await RoleUiResource.Create(
-      {
-        RoleId: { Id: role.id } as any,
-        IrApplicationId: null,
-        IrUiResourceId: resourceId,
-        Mode: 'allow',
-      } as any,
-      ['Id'] as any
+    // Cover CreateMany `values || []` falsy branch.
+    const none = await RoleUiResource.CreateMany(null as any, ['Id'] as any);
+    expect(Array.isArray(none)).toBe(true);
+    expect(none.length).toBe(0);
+
+    const many = await RoleUiResource.CreateMany(
+      [
+        {
+          RoleId: { Id: role.id } as any,
+          IrApplicationId: null,
+          IrUiResourceId: resourceId,
+          Mode: 'allow',
+        } as any,
+      ],
+      ['Id', 'Mode'] as any
     );
-    const id = String((created as any)?.Id || '').trim();
+    expect(many.length).toBe(1);
+    const id = String((many[0] as any)?.Id || '').trim();
     expect(id.length > 0).toBe(true);
 
     await RoleUiResource.Update(['Id', '=', id] as any, { Mode: 'deny' } as any, ['Id'] as any);
