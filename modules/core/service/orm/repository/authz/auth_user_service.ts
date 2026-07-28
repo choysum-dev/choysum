@@ -63,3 +63,24 @@ export function isAuthServiceUnavailable(err: unknown): boolean {
 
   return false;
 }
+
+/**
+ * Auth is not part of this deployment (independent apps / unit shards without auth).
+ * Distinct from transient Unavailable — missing auth must not fail-closed the whole ORM.
+ */
+export function isAuthServiceNotPresent(err: unknown): boolean {
+  const errRecord = asObjectRecord(err);
+  const code = errRecord?.grpcCode ?? errRecord?.code;
+  if (code === GrpcCode.Unimplemented || code === GrpcCode.NotFound) return true;
+  if (err instanceof ChoysumError) {
+    return err.grpcCode === GrpcCode.Unimplemented || err.grpcCode === GrpcCode.NotFound;
+  }
+
+  const msg = String(errRecord?.message ?? (err instanceof Error ? err.message : '') ?? '');
+  if (/no registered proto files for app\s+auth/i.test(msg)) return true;
+  if (/failed to load method descriptor/i.test(msg)) return true;
+  if (/unknown service/i.test(msg)) return true;
+  if (/unknown method/i.test(msg)) return true;
+  if (/(target method does not exist|\u76ee\u6807\u65b9\u6cd5\u4e0d\u5b58\u5728)/i.test(msg)) return true;
+  return false;
+}

@@ -6,7 +6,7 @@ import type BaseModel from '../../model/model';
 import type { ModelCtor } from '../../metadata/field';
 import type { Entity } from '../types';
 import { RepositoryFactory } from '../repository_factory';
-import { AuthUserService, isAuthServiceUnavailable } from './auth_user_service';
+import { AuthUserService, isAuthServiceNotPresent, isAuthServiceUnavailable } from './auth_user_service';
 import { getRepositoryCurrentReq, getRepositoryFieldRuleBypassDepth } from './authz_runtime';
 import type { SelectionNode } from '../projection';
 import type { RepositoryPermissionDeniedFn } from './types';
@@ -158,8 +158,14 @@ export async function getRepositoryFieldRuleSpec(params: RepositoryFieldRuleDeps
   try {
     result = await params.withRecordRuleBypass(async () => params.withFieldRuleBypass(async () => AuthUserService.GetFieldRuleSpec(model)));
   } catch (error) {
+    // Auth not deployed with this app: no FR to enforce.
+    if (isAuthServiceNotPresent(error)) {
+      const spec = { denyReadFields: [], denyWriteFields: [], reason: 'auth_service_not_present' };
+      cache.set(key, spec);
+      return spec;
+    }
+    // Auth expected but temporarily unreachable: fail-closed deny-all (PR-F-1 / §5.9).
     if (isAuthServiceUnavailable(error)) {
-      // Fail-closed: deny all non-system fields (PR-F-1 / §5.9). Empty deny lists would fail-open.
       const spec = buildFailClosedFieldRuleSpec(params.meta, 'auth_service_unavailable');
       cache.set(key, spec);
       return spec;

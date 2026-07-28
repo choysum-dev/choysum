@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { GrpcCode, ChoysumError } from '@/core/service/error';
-import { AuthUserService, isAuthServiceUnavailable } from '..';
+import { AuthUserService, isAuthServiceNotPresent, isAuthServiceUnavailable } from '..';
 
 test('auth user service methods delegate via AuthUserService object', async () => {
   const originalGetRecord = AuthUserService.GetRecordRuleCondition;
@@ -60,6 +60,16 @@ test('auth user service unavailable checker matches type and message fallbacks',
   expect(isAuthServiceUnavailable(new Error('rpc error: code = Unimplemented desc = target method does not exist'))).toBe(true);
   expect(isAuthServiceUnavailable(new Error('rpc error: code = Unimplemented desc = \u76ee\u6807\u65b9\u6cd5\u4e0d\u5b58\u5728'))).toBe(true);
   expect(isAuthServiceUnavailable(new Error('other runtime error'))).toBe(false);
+});
+
+test('auth user service not-present checker distinguishes missing auth from transient unavailable', () => {
+  expect(isAuthServiceNotPresent({ code: GrpcCode.Unimplemented })).toBe(true);
+  expect(isAuthServiceNotPresent({ grpcCode: GrpcCode.NotFound })).toBe(true);
+  expect(isAuthServiceNotPresent({ code: GrpcCode.Unavailable })).toBe(false);
+  expect(isAuthServiceNotPresent(new TypeError('grpc unary unavailable'))).toBe(false);
+  expect(isAuthServiceNotPresent(new Error('no registered proto files for app auth'))).toBe(true);
+  expect(isAuthServiceNotPresent(new Error('failed to load method descriptor: auth.User/GetRecordRuleCondition'))).toBe(true);
+  expect(isAuthServiceNotPresent(new Error('rpc error: code = Unimplemented desc = unknown service auth.User'))).toBe(true);
 });
 
 test('auth user service methods build grpc request payloads via server bridge', async () => {

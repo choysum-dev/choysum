@@ -104,6 +104,38 @@ test('record rule helper fails closed when auth service unavailable and uses cac
   );
 });
 
+test('record rule helper allows when auth service is not present in deployment', async () => {
+  await withPatchedChoysum(
+    {
+      request: {
+        context: {
+          req: {
+            depth: 0,
+            method: 'Search',
+            recordRuleMode: 'default',
+          },
+        },
+      },
+    },
+    async () => {
+      const original = AuthUserService.GetRecordRuleCondition;
+      (AuthUserService as any).GetRecordRuleCondition = async () => {
+        throw new Error('no registered proto files for app auth');
+      };
+
+      try {
+        const { deps } = createDeps();
+        expect(await fetchRepositoryRecordRuleEnvelope(deps, 'read')).toEqual({
+          kind: 'true',
+          reason: 'auth_service_not_present',
+        });
+      } finally {
+        (AuthUserService as any).GetRecordRuleCondition = original;
+      }
+    }
+  );
+});
+
 test('record rule helper replaces known tokens in nested conditions', () => {
   const { deps } = createDeps();
   const output = replaceRepositoryRecordRuleConditionTokens(deps, {

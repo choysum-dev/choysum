@@ -117,6 +117,39 @@ test('field rule helper fails closed when auth service unavailable and caches re
   );
 });
 
+test('field rule helper allows when auth service is not present in deployment', async () => {
+  await withPatchedChoysum(
+    {
+      request: {
+        context: {
+          req: {
+            depth: 0,
+            method: 'Search',
+            fieldRuleMode: 'default',
+          },
+        },
+      },
+    },
+    async () => {
+      const original = AuthUserService.GetFieldRuleSpec;
+      (AuthUserService as any).GetFieldRuleSpec = async () => {
+        throw new Error('no registered proto files for app auth');
+      };
+
+      try {
+        const { deps } = createDeps();
+        expect(await getRepositoryFieldRuleSpec(deps)).toEqual({
+          denyReadFields: [],
+          denyWriteFields: [],
+          reason: 'auth_service_not_present',
+        });
+      } finally {
+        (AuthUserService as any).GetFieldRuleSpec = original;
+      }
+    }
+  );
+});
+
 test('buildFailClosedFieldRuleSpec skips system fields and tolerates missing fields map', () => {
   expect(buildFailClosedFieldRuleSpec(undefined, 'auth_service_unavailable')).toEqual({
     denyReadFields: [],

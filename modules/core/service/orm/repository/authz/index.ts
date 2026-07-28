@@ -16,7 +16,7 @@ export {
   createRepositoryCompanyScopePolicyDeps,
   createRepositoryCompanyScopeQueryDeps,
 } from './deps';
-export { AuthUserService, isAuthServiceUnavailable } from './auth_user_service';
+export { AuthUserService, isAuthServiceNotPresent, isAuthServiceUnavailable } from './auth_user_service';
 export type { RepositoryAuthzDecisionLogMode, RepositoryReqMethodMeta, RepositoryCompanyScopeFacts } from './authz_runtime';
 export {
   getRepositoryAuthzDecisionLogMode,
