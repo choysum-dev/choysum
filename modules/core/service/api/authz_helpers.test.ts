@@ -254,7 +254,7 @@ test('authz helpers normalize field rule spec and reason from loose payloads', (
 });
 
 test('authz helpers normalizeHitRuleIds covers array string and non-list inputs', () => {
-  expect(normalizeHitRuleIds([' b ', '', 'a', 'a', null, undefined])).toEqual(['a', 'b']);
+  expect(normalizeHitRuleIds([' b ', '', 'a', 'a', null, undefined, 0])).toEqual(['0', 'a', 'b']);
   expect(normalizeHitRuleIds([])).toBe(undefined);
   expect(normalizeHitRuleIds(['', '  '])).toBe(undefined);
   expect(normalizeHitRuleIds(' z ,y, y ,')).toEqual(['y', 'z']);

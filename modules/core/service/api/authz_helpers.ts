@@ -15,12 +15,15 @@ function asPlainRecord(value: unknown): Record<string, unknown> | null {
  * Normalize hit rule Ids from array or comma-separated string payloads.
  */
 export function normalizeHitRuleIds(value: unknown): string[] | undefined {
+  const toIds = (items: unknown[]): string[] =>
+    Array.from(new Set(items.map(item => String(item ?? '').trim()).filter(Boolean))).sort();
+
   if (Array.isArray(value)) {
-    const ids = normalizeStringArray(value).sort();
+    const ids = toIds(value);
     return ids.length ? ids : undefined;
   }
   if (typeof value === 'string') {
-    const ids = normalizeStringArray(value.split(',')).sort();
+    const ids = toIds(value.split(','));
     return ids.length ? ids : undefined;
   }
   return undefined;
@@ -36,28 +39,14 @@ export function normalizeConditionEnvelope(value: unknown): ConditionEnvelope {
   const kind = normalizeOptionalString(record.kind);
   const reason = normalizeOptionalString(record.reason);
   const hitRuleIds = normalizeHitRuleIds(record.hitRuleIds);
-  if (kind === 'true') {
-    return hitRuleIds ? { kind: 'true', reason, hitRuleIds } : { kind: 'true', reason };
-  }
-  if (kind === 'false') {
-    return hitRuleIds ? { kind: 'false', reason, hitRuleIds } : { kind: 'false', reason };
-  }
+  const diagnostics = { reason, ...(hitRuleIds ? { hitRuleIds } : {}) };
+  if (kind === 'true') return { kind: 'true', ...diagnostics };
+  if (kind === 'false') return { kind: 'false', ...diagnostics };
   if (kind === 'expr') {
     const exprIsArray = Array.isArray(record.expr);
     const exprRecord = asPlainRecord(record.expr);
     if (exprIsArray || exprRecord) {
-      return hitRuleIds
-        ? {
-            kind: 'expr',
-            expr: record.expr as ConditionExpr,
-            reason,
-            hitRuleIds,
-          }
-        : {
-            kind: 'expr',
-            expr: record.expr as ConditionExpr,
-            reason,
-          };
+      return { kind: 'expr', expr: record.expr as ConditionExpr, ...diagnostics };
     }
   }
 

@@ -6,6 +6,7 @@ import { AuthUserService, isAuthServiceNotPresent, isAuthServiceUnavailable } fr
 import { getRepositoryCurrentReq } from './authz_runtime';
 import type { RepositoryPermissionDeniedFn } from './types';
 import type { BaseQueryCondition, ConditionEnvelope, RecordRuleOp } from '../types';
+import { normalizeHitRuleIds } from '@/core/service/api/authz_helpers';
 import { asObjectRecord, isObjectRecord } from '../../../../utils/object';
 import type { UnknownRecord } from '../../../../utils/types';
 import { _t } from '@/core/service/i18n_binder';
@@ -87,22 +88,10 @@ function normalizeRepositoryRecordRuleEnvelope(input: unknown): ConditionEnvelop
   const value = asObjectRecord(input) ?? {};
   const kind = String(value.kind || '').trim();
   const reason = typeof value.reason === 'string' ? value.reason : undefined;
-  const hitRuleIdsRaw = value.hitRuleIds;
-  const hitRuleIds = Array.isArray(hitRuleIdsRaw)
-    ? Array.from(new Set(hitRuleIdsRaw.map((id: unknown) => String(id ?? '').trim()).filter(Boolean))).sort()
-    : typeof hitRuleIdsRaw === 'string'
-      ? Array.from(
-          new Set(
-            hitRuleIdsRaw
-              .split(',')
-              .map((id: string) => id.trim())
-              .filter(Boolean)
-          )
-        ).sort()
-      : [];
+  const hitRuleIds = normalizeHitRuleIds(value.hitRuleIds);
   const diagnostics = {
     reason,
-    ...(hitRuleIds.length ? { hitRuleIds } : {}),
+    ...(hitRuleIds ? { hitRuleIds } : {}),
   };
   if (kind === 'true') return { kind: 'true', ...diagnostics };
   if (kind === 'false') return { kind: 'false', ...diagnostics };

@@ -16,6 +16,19 @@ test('evaluateRoleMethodAccess returns deny allow and empty diagnostics with hit
       reason: 'method_access_deny',
     });
 
+    // Allow rows before deny must not leak into deny diagnostics.
+    (RoleMethodAccess as any).Search = async () => [
+      { Id: 'ma_allow_first', Mode: 'allow' },
+      { Id: 'ma_deny_wins', Mode: 'deny' },
+      { Id: 'ma_allow_after', Mode: 'allow' },
+    ];
+    expect(await evaluateRoleMethodAccess(['role_1'], [[['IrModelId', '=', 'm1']] as any])).toEqual({
+      denied: true,
+      allowed: false,
+      hitRuleIds: ['ma_deny_wins'],
+      reason: 'method_access_deny',
+    });
+
     (RoleMethodAccess as any).Search = async () => [
       { Id: 'ma_2', Mode: 'allow' },
       { Id: '', Mode: 'allow' },

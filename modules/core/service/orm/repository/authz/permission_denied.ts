@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { GrpcCode, ChoysumError } from '@/core/service/error';
+import { normalizeHitRuleIds } from '@/core/service/api/authz_helpers';
 import type { RepositoryAuthzContextDepsParams } from './deps';
 
 export function resolveRepositoryPermissionDeniedLayer(code: string): string {
@@ -34,10 +35,7 @@ export function createRepositoryPermissionDeniedError(
     recordRuleMode: req.recordRuleMode,
     fieldRuleMode: req.fieldRuleMode,
     reason: String(metadata?.reason || code).trim(),
-    hitRuleIds: String(metadata?.hitRuleIds || '')
-      .split(',')
-      .map(id => id.trim())
-      .filter(Boolean),
+    hitRuleIds: normalizeHitRuleIds(metadata?.hitRuleIds) ?? [],
     message,
     metadata: metadata || {},
   });

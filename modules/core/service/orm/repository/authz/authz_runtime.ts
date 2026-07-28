@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getRuntimeEnvBoolean, getRuntimeEnvValue } from '@/core/utils/env';
+import { normalizeHitRuleIds } from '@/core/service/api/authz_helpers';
 import type { RepositoryAuthzDecisionSummary } from './types';
 import { asObjectRecord } from '../../../../utils/object';
 import type { ObjectRecord } from '../../../../utils/types';
@@ -72,19 +73,7 @@ export function emitRepositoryAuthzDecisionSummary(summary: RepositoryAuthzDecis
       : typeof metadata?.reason === 'string'
         ? metadata.reason.trim()
         : '';
-  const hitRuleIdsRaw = summary?.hitRuleIds ?? metadata?.hitRuleIds;
-  const hitRuleIds = Array.isArray(hitRuleIdsRaw)
-    ? Array.from(new Set(hitRuleIdsRaw.map(id => String(id ?? '').trim()).filter(Boolean))).sort()
-    : typeof hitRuleIdsRaw === 'string'
-      ? Array.from(
-          new Set(
-            hitRuleIdsRaw
-              .split(',')
-              .map(id => id.trim())
-              .filter(Boolean)
-          )
-        ).sort()
-      : [];
+  const hitRuleIds = normalizeHitRuleIds(summary?.hitRuleIds ?? metadata?.hitRuleIds) ?? [];
 
   const payload: ObjectRecord = {
     event: 'authz.decision_summary',
