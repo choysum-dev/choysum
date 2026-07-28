@@ -181,14 +181,6 @@ func (m *modelMigrator) getResolvedFieldColumnMeta(field *meta.IrField, modelCtx
 	if typeStr == "ManyToManyRef" {
 		metaMap["type"] = "jsonobject"
 	}
-	// Company-dependent maps must win over ManyToOne→char defaults (company-dependent-design.md).
-	if resolved.Structural.CompanyDependent != nil && *resolved.Structural.CompanyDependent {
-		metaMap["type"] = "jsonobject"
-		delete(metaMap, "size")
-		delete(metaMap, "unique")
-		delete(metaMap, "uniqueIndex")
-		delete(metaMap, "index")
-	}
 	if typeStr == "selection" {
 		metaMap["type"] = "varchar"
 		if _, ok := metaMap["size"]; !ok {
@@ -197,6 +189,14 @@ func (m *modelMigrator) getResolvedFieldColumnMeta(field *meta.IrField, modelCtx
 	}
 	if typeStr == "binary" || typeStr == "image" {
 		metaMap["type"] = "blob"
+	}
+	// Company-dependent maps must win over type-specific defaults (ManyToOne→char, selection→varchar).
+	if resolved.Structural.CompanyDependent != nil && *resolved.Structural.CompanyDependent {
+		metaMap["type"] = "jsonobject"
+		delete(metaMap, "size")
+		delete(metaMap, "unique")
+		delete(metaMap, "uniqueIndex")
+		delete(metaMap, "index")
 	}
 
 	if cc := strings.TrimSpace(resolved.Structural.CheckConstraint); cc != "" {

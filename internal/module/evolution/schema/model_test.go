@@ -174,6 +174,27 @@ func TestModelMigratorFieldParsingAndStructTags(t *testing.T) {
 		t.Fatalf("unexpected selection meta: %#v", selectionMeta)
 	}
 
+	companyDepSelectionField := newFieldWithOptions(t, "CompanyStatus", `{"type":"selection","companyDependent":true}`)
+	companyDepSelectionMeta, err := migrator.getResolvedFieldColumnMeta(companyDepSelectionField)
+	if err != nil {
+		t.Fatalf("getResolvedFieldColumnMeta(selection+companyDependent) error = %v", err)
+	}
+	if companyDepSelectionMeta["type"] != "jsonobject" {
+		t.Fatalf("expected companyDependent selection → jsonobject, got %#v", companyDepSelectionMeta)
+	}
+	if _, hasSize := companyDepSelectionMeta["size"]; hasSize {
+		t.Fatalf("expected companyDependent selection to drop size, got %#v", companyDepSelectionMeta)
+	}
+
+	companyDepM2OField := newFieldWithOptions(t, "CompanyPartnerId", `{"type":"ManyToOne","companyDependent":true,"relation":{"onDelete":"SET NULL"}}`)
+	companyDepM2OMeta, err := migrator.getResolvedFieldColumnMeta(companyDepM2OField)
+	if err != nil {
+		t.Fatalf("getResolvedFieldColumnMeta(ManyToOne+companyDependent) error = %v", err)
+	}
+	if companyDepM2OMeta["type"] != "jsonobject" {
+		t.Fatalf("expected companyDependent ManyToOne → jsonobject, got %#v", companyDepM2OMeta)
+	}
+
 	refField := newFieldWithOptions(t, "RemoteId", `{"type":"ManyToOneRef"}`)
 	refMeta, err := migrator.getResolvedFieldColumnMeta(refField)
 	if err != nil {

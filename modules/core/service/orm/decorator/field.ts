@@ -171,13 +171,14 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
       }
     }
     if (companyDependent) {
+      // Canonical FieldTypes only (int/number — not float/integer aliases).
       const allowed = new Set([
         'char',
         'varchar',
         'text',
         'boolean',
-        'integer',
-        'float',
+        'int',
+        'number',
         'decimal',
         'monetary',
         'date',

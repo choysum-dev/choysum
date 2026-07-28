@@ -222,7 +222,7 @@ export function convertCondition(
 
         if (typeof fieldName === 'string') {
           const fieldMeta = meta.fields.get(fieldName);
-          if (fieldMeta && !supportsContainsFieldType(fieldMeta)) {
+          if (fieldMeta && !supportsContainsFieldType(fieldMeta) && !fieldMeta.companyDependent) {
             console.warn(
               `[Query] contains is recommended only for JSON container fields (currently jsonobject, ManyToManyRef, or expressions selectable as JSON), but field "${fieldName}" has type "${fieldMeta.type}"`
             );
@@ -241,6 +241,9 @@ export function convertCondition(
                 throw new Error(`field sql compute handler is missing: ${modelLabel}.${fieldName}`);
               }
               lhsExpr = resolved;
+            } else if (meta.fields.get(fieldName)?.companyDependent) {
+              // Unwrap active-company scalar so contains does not match the whole company map blob.
+              lhsExpr = buildCompanyDependentFieldUnwrapExpr(dialect, eb, `${selfTable}.${fieldName}`);
             } else {
               lhsExpr = repositoryPredicateRef(eb, `${selfTable}.${fieldName}`);
             }

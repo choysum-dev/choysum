@@ -125,6 +125,7 @@ describe('OFieldCompanyValuesDialog', () => {
       recordId: 'prod-1',
       fieldName: 'Cost',
       fieldLabel: 'Cost',
+      fieldType: 'number',
     });
 
     await flushOpen();
@@ -140,7 +141,7 @@ describe('OFieldCompanyValuesDialog', () => {
     await buttons[buttons.length - 1]!.trigger('click');
     await flushOpen();
 
-    expect(UpdateFieldCompanyValues).toHaveBeenCalledWith('prod-1', 'Cost', { comp_eu: '11.5' });
+    expect(UpdateFieldCompanyValues).toHaveBeenCalledWith('prod-1', 'Cost', { comp_eu: 11.5 });
     expect(Browse).toHaveBeenCalled();
     expect(wrapper.emitted('saved')?.[0]?.[0]).toBe('11.5');
   });

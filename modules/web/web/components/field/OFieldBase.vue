@@ -153,6 +153,7 @@ SPDX-License-Identifier: Apache-2.0
       :record-id="translationRecordId"
       :field-name="leafFieldName"
       :field-label="resolvedLabel"
+      :field-type="companyValuesFieldType"
       :max-length="translationMaxLength"
       :draft-value="translationDraftValue"
       @saved="onCompanyValuesSaved"
@@ -426,6 +427,11 @@ const showCompanyValuesAction = computed(() => {
   if (!translationRecordId.value) return false;
   const meta = effectiveFieldMeta.value as { companyDependent?: boolean } | undefined;
   return meta?.companyDependent === true;
+});
+
+const companyValuesFieldType = computed(() => {
+  const meta = effectiveFieldMeta.value as { type?: string } | undefined;
+  return String(meta?.type || '').trim() || undefined;
 });
 
 const translationMaxLength = computed(() => {

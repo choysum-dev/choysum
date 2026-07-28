@@ -84,7 +84,7 @@ export async function updateModelFieldCompanyValues<T extends BaseModel>(
   fieldName: string,
   values: Record<string, unknown | false>
 ): Promise<boolean> {
-  const { name } = resolveCompanyDependentFieldMeta(ModelCtor, fieldName);
+  const { name, field } = resolveCompanyDependentFieldMeta(ModelCtor, fieldName);
   const recordId = String(id || '').trim();
   if (!recordId) {
     throw new Error('UpdateFieldCompanyValues requires a non-empty id');
@@ -95,6 +95,7 @@ export async function updateModelFieldCompanyValues<T extends BaseModel>(
     fieldName: name,
     currentMap: Object.keys(current).length ? current : null,
     values,
+    fieldMeta: field,
   });
 
   await withContext({ company_write_replace: true }, () =>

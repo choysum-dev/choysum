@@ -60,6 +60,8 @@ const props = defineProps<{
   recordId: string;
   fieldName: string;
   fieldLabel?: string;
+  /** Logical field type from FieldsGet / binding meta (e.g. number, boolean, int). */
+  fieldType?: string;
   maxLength?: number;
   /** Unsaved form value for the current company; applied on open. */
   draftValue?: string | null;
@@ -217,10 +219,30 @@ function onOpened() {
   void loadRows();
 }
 
+function coercePatchValue(raw: string): unknown {
+  const type = String(props.fieldType || '').trim().toLowerCase();
+  const text = String(raw ?? '');
+  if (type === 'boolean') {
+    const lower = text.trim().toLowerCase();
+    if (lower === 'true' || lower === '1' || lower === 'yes') return true;
+    if (lower === 'false' || lower === '0' || lower === 'no') return false;
+    return text.trim() === '';
+  }
+  if (type === 'int' || type === 'integer' || type === 'bigint') {
+    const n = Number.parseInt(text.trim(), 10);
+    return Number.isFinite(n) ? n : text;
+  }
+  if (type === 'number' || type === 'float' || type === 'decimal' || type === 'monetary') {
+    const n = Number(text.trim());
+    return Number.isFinite(n) ? n : text;
+  }
+  return text;
+}
+
 async function handleSave() {
   saving.value = true;
   try {
-    const patch: Record<string, string | false> = {};
+    const patch: Record<string, unknown | false> = {};
     for (const row of rows.value) {
       const next = row.value;
       if (row.existed && next === row.initial) continue;
@@ -230,7 +252,7 @@ async function handleSave() {
         patch[row.companyId] = false;
         continue;
       }
-      patch[row.companyId] = next;
+      patch[row.companyId] = coercePatchValue(next);
     }
 
     if (Object.keys(patch).length) {

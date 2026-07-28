@@ -732,17 +732,23 @@ test('Field decorator rejects translate on non-text field types', () => {
 
 test('Field decorator accepts companyDependent and defaults copy false', () => {
   class CompanyDependentModel extends BaseModel {
-    @Field({ type: 'float', companyDependent: true } as any)
+    @Field({ type: 'number', companyDependent: true })
     Cost!: number;
 
-    @Field({ type: 'float', companyDependent: true, copy: true } as any)
+    @Field({ type: 'number', companyDependent: true, copy: true })
     CostCopy!: number;
+
+    @Field({ type: 'int', companyDependent: true })
+    Qty!: number;
   }
   const fields = MetadataStorage.instance.getModelMetadata(CompanyDependentModel as any).fields;
   expect(fields.get('Cost')?.companyDependent).toBe(true);
   expect(fields.get('Cost')?.copy).toBe(false);
+  expect(fields.get('Cost')?.column).toEqual({});
   expect(fields.get('CostCopy')?.companyDependent).toBe(true);
   expect(fields.get('CostCopy')?.copy).toBe(true);
+  expect(fields.get('Qty')?.companyDependent).toBe(true);
+  expect(fields.get('Qty')?.column).toEqual({});
 });
 
 test('Field decorator rejects companyDependent with translate / unique / bad type', () => {
@@ -756,11 +762,19 @@ test('Field decorator rejects companyDependent with translate / unique / bad typ
 
   expect(() => {
     class BadUnique extends BaseModel {
-      @Field({ type: 'float', companyDependent: true, unique: true } as any)
+      @Field({ type: 'number', companyDependent: true, unique: true })
       Cost!: number;
     }
     return BadUnique;
   }).toThrow('companyDependent cannot be combined with unique/uniqueIndex');
+
+  expect(() => {
+    class BadFloatAlias extends BaseModel {
+      @Field({ type: 'float', companyDependent: true } as any)
+      Cost!: number;
+    }
+    return BadFloatAlias;
+  }).toThrow('companyDependent is not supported on type');
 
   expect(() => {
     class BadType extends BaseModel {

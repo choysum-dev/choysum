@@ -133,7 +133,7 @@ test('companyDependent decode respects prefetch_companies', async () => {
 
 test('companyDependent apply write rewrites payload field to map', () => {
   const meta = {
-    fields: new Map([['Cost', { name: 'Cost', type: 'float', companyDependent: true, column: {} }]]),
+    fields: new Map([['Cost', { name: 'Cost', type: 'number', companyDependent: true, column: {} }]]),
   } as any;
 
   const created = applyCompanyDependentFieldsForWrite(meta, { Cost: 4 } as any, {
@@ -152,4 +152,47 @@ test('companyDependent apply write rewrites payload field to map', () => {
   expect(encodeCompanyDependentMapForDb({ C1: 1 })).toBe(JSON.stringify({ C1: 1 }));
   expect(encodeCompanyDependentMapForDb(null)).toBeNull();
   expect(parseCompanyDependentStoredMap('{"C1":1}')).toEqual({ C1: 1 });
+});
+
+test('companyDependent merge treats ManyToOne Id / Date envelopes as scalars', () => {
+  expect(
+    mergeCompanyDependentWrite({
+      fieldName: 'PartnerId',
+      value: { Id: 'p1' },
+      companyId: 'C1',
+      currentMap: { C2: 'p2' },
+      mode: 'update',
+    })
+  ).toEqual({ C2: 'p2', C1: 'p1' });
+
+  const when = new Date('2024-01-02T00:00:00.000Z');
+  expect(
+    mergeCompanyDependentWrite({
+      fieldName: 'DueDate',
+      value: when,
+      companyId: 'C1',
+      currentMap: null,
+      mode: 'create',
+    })
+  ).toEqual({ C1: '2024-01-02T00:00:00.000Z' });
+});
+
+test('companyDependent encodeForDb prefers company map over ManyToOne Id strip', async () => {
+  const { encodeForDb } = await import('../row_codec');
+  const meta = {
+    fields: new Map([
+      [
+        'PartnerId',
+        {
+          name: 'PartnerId',
+          type: 'ManyToOne',
+          companyDependent: true,
+          column: {},
+          relation: { model: 'base.Partner' },
+        },
+      ],
+    ]),
+  } as any;
+  const encoded = encodeForDb(meta, { PartnerId: { C1: 'p1', C2: 'p2' } } as any);
+  expect(encoded).toEqual({ PartnerId: JSON.stringify({ C1: 'p1', C2: 'p2' }) });
 });
