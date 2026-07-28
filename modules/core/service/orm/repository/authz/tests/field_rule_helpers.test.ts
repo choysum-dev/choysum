@@ -4,6 +4,7 @@
 import {
   AuthUserService,
   assertRepositoryFieldRuleWriteAllowed,
+  buildFailClosedFieldRuleSpec,
   getRepositoryFieldRuleSpec,
   getRepositoryTopLevelFieldRuleMode,
   pruneRepositorySelectionTreeForFieldRule,
@@ -31,7 +32,20 @@ async function withPatchedChoysum<T>(value: unknown, fn: () => Promise<T>): Prom
 function createDeps(overrides: DepOverrides = {}) {
   return {
     deps: {
-      meta: { fullModelName: 'demo.Model', modelName: 'Model', name: 'Model' },
+      meta: {
+        fullModelName: 'demo.Model',
+        modelName: 'Model',
+        name: 'Model',
+        fields: new Map([
+          ['Id', {}],
+          ['Name', {}],
+          ['Amount', {}],
+          ['CreatedAt', {}],
+          ['UpdatedAt', {}],
+          ['DeletedAt', {}],
+          ['DisplayName', {}],
+        ]),
+      },
       userId: 'user_1',
       requestContext: { activeCompanyId: 'company_a' },
       normalizeCompanyIds: () => ['company_a'],
@@ -64,7 +78,7 @@ test('field rule helper exposes top-level mode and skip behavior from req metada
   );
 });
 
-test('field rule helper degrades to allow when auth service unavailable and caches result', async () => {
+test('field rule helper fails closed when auth service unavailable and caches result', async () => {
   await withPatchedChoysum(
     {
       request: {
@@ -87,16 +101,104 @@ test('field rule helper degrades to allow when auth service unavailable and cach
 
       try {
         const { deps } = createDeps();
+        const expected = buildFailClosedFieldRuleSpec(deps.meta, 'auth_service_unavailable');
+        expect(expected.denyReadFields).toEqual(['Amount', 'Name']);
+        expect(expected.denyWriteFields).toEqual(['Amount', 'Name']);
+
         const first = await getRepositoryFieldRuleSpec(deps);
         const second = await getRepositoryFieldRuleSpec(deps);
-        expect(first).toEqual({ denyReadFields: [], denyWriteFields: [], reason: 'auth_service_unavailable' });
-        expect(second).toEqual({ denyReadFields: [], denyWriteFields: [], reason: 'auth_service_unavailable' });
+        expect(first).toEqual(expected);
+        expect(second).toEqual(expected);
         expect(calls === 1 || calls === 2).toBe(true);
       } finally {
         (AuthUserService as any).GetFieldRuleSpec = original;
       }
     }
   );
+});
+
+test('field rule helper allows when auth service is not present in deployment', async () => {
+  await withPatchedChoysum(
+    {
+      request: {
+        context: {
+          req: {
+            depth: 0,
+            method: 'Search',
+            fieldRuleMode: 'default',
+          },
+        },
+      },
+    },
+    async () => {
+      const original = AuthUserService.GetFieldRuleSpec;
+      (AuthUserService as any).GetFieldRuleSpec = async () => {
+        throw new Error('no registered proto files for app auth');
+      };
+
+      try {
+        const { deps } = createDeps();
+        expect(await getRepositoryFieldRuleSpec(deps)).toEqual({
+          denyReadFields: [],
+          denyWriteFields: [],
+          reason: 'auth_service_not_present',
+        });
+      } finally {
+        (AuthUserService as any).GetFieldRuleSpec = original;
+      }
+    }
+  );
+});
+
+test('buildFailClosedFieldRuleSpec skips system fields and tolerates missing fields map', () => {
+  expect(buildFailClosedFieldRuleSpec(undefined, 'auth_service_unavailable')).toEqual({
+    denyReadFields: [],
+    denyWriteFields: [],
+    reason: 'auth_service_unavailable',
+  });
+  expect(buildFailClosedFieldRuleSpec({ fields: undefined } as any, 'auth_service_unavailable')).toEqual({
+    denyReadFields: [],
+    denyWriteFields: [],
+    reason: 'auth_service_unavailable',
+  });
+  expect(
+    buildFailClosedFieldRuleSpec(
+      {
+        fields: new Map([
+          ['Id', {}],
+          ['Secret', {}],
+        ]),
+      } as any,
+      'auth_service_unavailable'
+    )
+  ).toEqual({
+    denyReadFields: ['Secret'],
+    denyWriteFields: ['Secret'],
+    reason: 'auth_service_unavailable',
+  });
+  // Skip blank / whitespace-only keys and remaining system fields.
+  expect(
+    buildFailClosedFieldRuleSpec(
+      {
+        fields: new Map<any, any>([
+          ['', {}],
+          ['   ', {}],
+          [null, {}],
+          [undefined, {}],
+          ['CreatedAt', {}],
+          ['UpdatedAt', {}],
+          ['DeletedAt', {}],
+          ['DisplayName', {}],
+          ['Body', {}],
+        ]),
+      } as any,
+      'auth_service_unavailable'
+    )
+  ).toEqual({
+    denyReadFields: ['Body'],
+    denyWriteFields: ['Body'],
+    reason: 'auth_service_unavailable',
+  });
 });
 
 test('field rule helper denies write payload when denied fields are present', async () => {

@@ -6,7 +6,7 @@ import type BaseModel from '../../model/model';
 import type { ModelCtor } from '../../metadata/field';
 import type { Entity } from '../types';
 import { RepositoryFactory } from '../repository_factory';
-import { AuthUserService, isAuthServiceUnavailable } from './auth_user_service';
+import { AuthUserService, isAuthServiceNotPresent, isAuthServiceUnavailable } from './auth_user_service';
 import { getRepositoryCurrentReq, getRepositoryFieldRuleBypassDepth } from './authz_runtime';
 import type { SelectionNode } from '../projection';
 import type { RepositoryPermissionDeniedFn } from './types';
@@ -32,6 +32,30 @@ export type RepositoryFieldRuleDeps = {
   withFieldRuleBypass: <T>(fn: () => Promise<T>) => Promise<T>;
   permissionDenied: RepositoryPermissionDeniedFn;
 };
+
+/** System fields kept readable/writable when fail-closed deny-all is applied (align auth deny-default). */
+const FIELD_RULE_SYSTEM_FIELDS = new Set(['Id', 'CreatedAt', 'UpdatedAt', 'DeletedAt', 'DisplayName']);
+
+/**
+ * Build a deny-all (non-system) field-rule spec for fail-closed fallbacks.
+ */
+export function buildFailClosedFieldRuleSpec(meta: Pick<ModelMetadata, 'fields'> | null | undefined, reason: string): RepositoryFieldRuleSpec {
+  const fields = meta?.fields;
+  const names: string[] = [];
+  if (fields instanceof Map) {
+    for (const key of fields.keys()) {
+      const name = String(key ?? '').trim();
+      if (!name || FIELD_RULE_SYSTEM_FIELDS.has(name)) continue;
+      names.push(name);
+    }
+  }
+  names.sort();
+  return {
+    denyReadFields: names.slice(),
+    denyWriteFields: names.slice(),
+    reason,
+  };
+}
 
 export function repositoryFieldRuleEnabled(): boolean {
   return getRuntimeEnvFlag('CHOYSUM_GRPC_FIELD_RULE_ENABLED', true);
@@ -134,8 +158,15 @@ export async function getRepositoryFieldRuleSpec(params: RepositoryFieldRuleDeps
   try {
     result = await params.withRecordRuleBypass(async () => params.withFieldRuleBypass(async () => AuthUserService.GetFieldRuleSpec(model)));
   } catch (error) {
+    // Auth not deployed with this app: no FR to enforce.
+    if (isAuthServiceNotPresent(error)) {
+      const spec = { denyReadFields: [], denyWriteFields: [], reason: 'auth_service_not_present' };
+      cache.set(key, spec);
+      return spec;
+    }
+    // Auth expected but temporarily unreachable: fail-closed deny-all (PR-F-1 / §5.9).
     if (isAuthServiceUnavailable(error)) {
-      const spec = { denyReadFields: [], denyWriteFields: [], reason: 'auth_service_unavailable' };
+      const spec = buildFailClosedFieldRuleSpec(params.meta, 'auth_service_unavailable');
       cache.set(key, spec);
       return spec;
     }

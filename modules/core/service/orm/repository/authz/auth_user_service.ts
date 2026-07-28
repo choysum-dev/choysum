@@ -41,6 +41,20 @@ export const AuthUserService = {
   GetFieldRuleSpec(model: string): Promise<unknown>;
 };
 
+// Shared by not-present (allow) and unavailable (fail-closed) checkers so the
+// message subset cannot drift — not-present must stay a strict subset of unavailable.
+const MISSING_AUTH_MESSAGE_PATTERNS = [
+  /no registered proto files for app\s+auth/i,
+  /failed to load method descriptor/i,
+  /unknown service/i,
+  /unknown method/i,
+  /(target method does not exist|\u76ee\u6807\u65b9\u6cd5\u4e0d\u5b58\u5728)/i,
+];
+
+function matchesMissingAuthMessage(msg: string): boolean {
+  return MISSING_AUTH_MESSAGE_PATTERNS.some((re) => re.test(msg));
+}
+
 export function isAuthServiceUnavailable(err: unknown): boolean {
   const errRecord = asObjectRecord(err);
   const code = errRecord?.grpcCode ?? errRecord?.code;
@@ -54,12 +68,19 @@ export function isAuthServiceUnavailable(err: unknown): boolean {
     if (/\$choysum|grpc|unary/i.test(msg)) return true;
   }
 
-  const msg = String(errRecord?.message ?? '');
-  if (/no registered proto files for app\s+auth/i.test(msg)) return true;
-  if (/failed to load method descriptor/i.test(msg)) return true;
-  if (/unknown service/i.test(msg)) return true;
-  if (/unknown method/i.test(msg)) return true;
-  if (/(target method does not exist|\u76ee\u6807\u65b9\u6cd5\u4e0d\u5b58\u5728)/i.test(msg)) return true;
+  return matchesMissingAuthMessage(String(errRecord?.message ?? ''));
+}
 
-  return false;
+/**
+ * Auth is not part of this deployment (independent apps / unit shards without auth).
+ * Distinct from transient Unavailable — missing auth must not fail-closed the whole ORM.
+ */
+export function isAuthServiceNotPresent(err: unknown): boolean {
+  const errRecord = asObjectRecord(err);
+  // ChoysumError exposes grpcCode as an own property, so the object-code check covers it.
+  const code = errRecord?.grpcCode ?? errRecord?.code;
+  if (code === GrpcCode.Unimplemented || code === GrpcCode.NotFound) return true;
+
+  const msg = String(errRecord?.message ?? (err instanceof Error ? err.message : '') ?? '');
+  return matchesMissingAuthMessage(msg);
 }

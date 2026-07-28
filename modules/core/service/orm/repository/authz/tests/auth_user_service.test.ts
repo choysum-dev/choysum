@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { GrpcCode, ChoysumError } from '@/core/service/error';
-import { AuthUserService, isAuthServiceUnavailable } from '..';
+import { AuthUserService, isAuthServiceNotPresent, isAuthServiceUnavailable } from '..';
 
 test('auth user service methods delegate via AuthUserService object', async () => {
   const originalGetRecord = AuthUserService.GetRecordRuleCondition;
@@ -60,6 +60,39 @@ test('auth user service unavailable checker matches type and message fallbacks',
   expect(isAuthServiceUnavailable(new Error('rpc error: code = Unimplemented desc = target method does not exist'))).toBe(true);
   expect(isAuthServiceUnavailable(new Error('rpc error: code = Unimplemented desc = \u76ee\u6807\u65b9\u6cd5\u4e0d\u5b58\u5728'))).toBe(true);
   expect(isAuthServiceUnavailable(new Error('other runtime error'))).toBe(false);
+});
+
+test('auth user service not-present checker distinguishes missing auth from transient unavailable', () => {
+  expect(isAuthServiceNotPresent({ code: GrpcCode.Unimplemented })).toBe(true);
+  expect(isAuthServiceNotPresent({ grpcCode: GrpcCode.NotFound })).toBe(true);
+  expect(isAuthServiceNotPresent({ code: GrpcCode.Unavailable })).toBe(false);
+  expect(isAuthServiceNotPresent(new TypeError('grpc unary unavailable'))).toBe(false);
+
+  // ChoysumError carries grpcCode as an own property — same object-code path as plain objects.
+  const unimplemented = new ChoysumError({ domain: 'core.auth', code: 'x', message: 'ni' }).withGrpcCode(GrpcCode.Unimplemented);
+  expect(isAuthServiceNotPresent(unimplemented)).toBe(true);
+  const notFound = new ChoysumError({ domain: 'core.auth', code: 'x', message: 'nf' }).withGrpcCode(GrpcCode.NotFound);
+  expect(isAuthServiceNotPresent(notFound)).toBe(true);
+  const unavailable = new ChoysumError({ domain: 'core.auth', code: 'x', message: 'na' }).withGrpcCode(GrpcCode.Unavailable);
+  expect(isAuthServiceNotPresent(unavailable)).toBe(false);
+
+  expect(isAuthServiceNotPresent(new Error('no registered proto files for app auth'))).toBe(true);
+  expect(isAuthServiceNotPresent(new Error('failed to load method descriptor: auth.User/GetRecordRuleCondition'))).toBe(true);
+  expect(isAuthServiceNotPresent(new Error('rpc error: code = Unimplemented desc = unknown service auth.User'))).toBe(true);
+  expect(isAuthServiceNotPresent(new Error('rpc error: code = Unimplemented desc = unknown method auth.User/GetFieldRuleSpec'))).toBe(true);
+  expect(isAuthServiceNotPresent(new Error('rpc error: code = Unimplemented desc = target method does not exist'))).toBe(true);
+  expect(isAuthServiceNotPresent(new Error('rpc error: code = Unimplemented desc = \u76ee\u6807\u65b9\u6cd5\u4e0d\u5b58\u5728'))).toBe(true);
+  expect(isAuthServiceNotPresent(new Error('other runtime error'))).toBe(false);
+  expect(isAuthServiceNotPresent('plain-string-error')).toBe(false);
+  expect(isAuthServiceNotPresent(null)).toBe(false);
+  expect(isAuthServiceNotPresent(undefined)).toBe(false);
+  expect(isAuthServiceNotPresent({})).toBe(false);
+
+  // Prefer errRecord.message; fall back to Error.message / empty string when message is missing.
+  expect(isAuthServiceNotPresent({ message: 'unknown method auth.User/GetFieldRuleSpec' })).toBe(true);
+  const errWithUndefinedMessage = new Error('placeholder');
+  Object.defineProperty(errWithUndefinedMessage, 'message', { value: undefined, configurable: true });
+  expect(isAuthServiceNotPresent(errWithUndefinedMessage)).toBe(false);
 });
 
 test('auth user service methods build grpc request payloads via server bridge', async () => {

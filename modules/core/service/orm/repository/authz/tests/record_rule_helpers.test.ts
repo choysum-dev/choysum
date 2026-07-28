@@ -69,7 +69,7 @@ test('record rule helper enforce top-level allowlist and deny missing model/op e
   );
 });
 
-test('record rule helper degrades to allow when auth service unavailable and uses cache', async () => {
+test('record rule helper fails closed when auth service unavailable and uses cache', async () => {
   await withPatchedChoysum(
     {
       request: {
@@ -94,9 +94,41 @@ test('record rule helper degrades to allow when auth service unavailable and use
         const { deps } = createDeps();
         const first = await fetchRepositoryRecordRuleEnvelope(deps, 'read');
         const second = await fetchRepositoryRecordRuleEnvelope(deps, 'read');
-        expect(first).toEqual({ kind: 'true', reason: 'auth_service_unavailable' });
-        expect(second).toEqual({ kind: 'true', reason: 'auth_service_unavailable' });
+        expect(first).toEqual({ kind: 'false', reason: 'auth_service_unavailable' });
+        expect(second).toEqual({ kind: 'false', reason: 'auth_service_unavailable' });
         expect(calls === 1 || calls === 2).toBe(true);
+      } finally {
+        (AuthUserService as any).GetRecordRuleCondition = original;
+      }
+    }
+  );
+});
+
+test('record rule helper allows when auth service is not present in deployment', async () => {
+  await withPatchedChoysum(
+    {
+      request: {
+        context: {
+          req: {
+            depth: 0,
+            method: 'Search',
+            recordRuleMode: 'default',
+          },
+        },
+      },
+    },
+    async () => {
+      const original = AuthUserService.GetRecordRuleCondition;
+      (AuthUserService as any).GetRecordRuleCondition = async () => {
+        throw new Error('no registered proto files for app auth');
+      };
+
+      try {
+        const { deps } = createDeps();
+        expect(await fetchRepositoryRecordRuleEnvelope(deps, 'read')).toEqual({
+          kind: 'true',
+          reason: 'auth_service_not_present',
+        });
       } finally {
         (AuthUserService as any).GetRecordRuleCondition = original;
       }

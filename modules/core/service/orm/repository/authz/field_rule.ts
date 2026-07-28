@@ -4,6 +4,7 @@
 export type { RepositoryFieldRuleDeps, RepositoryFieldRuleSelectionDeps, RepositoryFieldRuleSpec } from './field_rule_helpers';
 export {
   assertRepositoryFieldRuleWriteAllowed,
+  buildFailClosedFieldRuleSpec,
   getRepositoryFieldRuleSpec,
   getRepositoryTopLevelFieldRuleMode,
   pruneRepositorySelectionTreeForFieldRule,

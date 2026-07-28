@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { ModelMetadata } from '../../metadata';
-import { AuthUserService, isAuthServiceUnavailable } from './auth_user_service';
+import { AuthUserService, isAuthServiceNotPresent, isAuthServiceUnavailable } from './auth_user_service';
 import { getRepositoryCurrentReq } from './authz_runtime';
 import type { RepositoryPermissionDeniedFn } from './types';
 import type { BaseQueryCondition, ConditionEnvelope, RecordRuleOp } from '../types';
@@ -128,8 +128,15 @@ export async function fetchRepositoryRecordRuleEnvelope(params: RepositoryRecord
   try {
     result = await params.withRecordRuleBypass(async () => AuthUserService.GetRecordRuleCondition(model, op));
   } catch (error) {
+    // Auth not deployed with this app (independent modules / unit shards): no RR to enforce.
+    if (isAuthServiceNotPresent(error)) {
+      const env: ConditionEnvelope = { kind: 'true', reason: 'auth_service_not_present' };
+      cache.set(key, env);
+      return env;
+    }
+    // Auth expected but temporarily unreachable: fail-closed (PR-F-1 / §5.9).
     if (isAuthServiceUnavailable(error)) {
-      const env: ConditionEnvelope = { kind: 'true', reason: 'auth_service_unavailable' };
+      const env: ConditionEnvelope = { kind: 'false', reason: 'auth_service_unavailable' };
       cache.set(key, env);
       return env;
     }
