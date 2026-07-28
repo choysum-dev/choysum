@@ -100,7 +100,7 @@ SPDX-License-Identifier: Apache-2.0
               <button
                 type="button"
                 class="rfv-ui-resource-node"
-                :class="{ 'is-inspected': inspectedUiResourceId === String(row?.Id ?? '') }"
+                :class="{ 'is-inspected': isInspectedUiResourceRow(inspectedUiResourceId, row) }"
                 @click.stop="inspectUiResource(row)"
               >
                 <el-icon class="rfv-ui-resource-node__icon">
@@ -240,7 +240,7 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { useI18n } from 'vue-i18n';
 import { createTranslate, translateTerm } from '@/web/web/i18n';
 import type { TermReference } from '@/core/service/i18n';
-import { selectInspectedUiResource, getInspectedUiResourceId, getInspectedUiResourceRequires } from '@/auth/web/views/role_ui_requires_explain';
+import { selectInspectedUiResource, getInspectedUiResourceId, getInspectedUiResourceRequires, isInspectedUiResourceRow } from '@/auth/web/views/role_ui_requires_explain';
 
 defineOptions({ name: 'RoleFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('auth', { scope: 'web/views/RoleFormView' });
@@ -323,6 +323,7 @@ defineExpose({
   activeTab,
   advancedPanels,
   resolveUiResourceTypeIcon,
+  resolveUiResourceLabel,
 });
 </script>
 

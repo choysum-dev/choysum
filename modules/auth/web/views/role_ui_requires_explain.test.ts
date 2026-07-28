@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getInspectedUiResourceId,
   getInspectedUiResourceRequires,
+  isInspectedUiResourceRow,
   normalizeUiResourceRequires,
   selectInspectedUiResource,
 } from './role_ui_requires_explain';
@@ -44,9 +45,31 @@ describe('selectInspectedUiResource', () => {
 describe('inspected row helpers', () => {
   it('reads id and Requires/requires', () => {
     expect(getInspectedUiResourceId(null)).toBe('');
+    expect(getInspectedUiResourceId(undefined)).toBe('');
+    expect(getInspectedUiResourceId({})).toBe('');
+    expect(getInspectedUiResourceId({ Id: null })).toBe('');
+    expect(getInspectedUiResourceId({ Id: undefined })).toBe('');
     expect(getInspectedUiResourceId({ Id: '  abc  ' })).toBe('abc');
     expect(getInspectedUiResourceRequires(null)).toEqual([]);
+    expect(getInspectedUiResourceRequires({})).toEqual([]);
+    expect(getInspectedUiResourceRequires({ Requires: null, requires: ['rpc:/a/b'] })).toEqual(['rpc:/a/b']);
     expect(getInspectedUiResourceRequires({ Requires: ['rpc:/a/b'] })).toEqual(['rpc:/a/b']);
     expect(getInspectedUiResourceRequires({ requires: '["rpc:/c/d"]' })).toEqual(['rpc:/c/d']);
+  });
+});
+
+describe('isInspectedUiResourceRow', () => {
+  it('matches only when both sides have the same non-empty id', () => {
+    expect(isInspectedUiResourceRow('', { Id: 'a' })).toBe(false);
+    expect(isInspectedUiResourceRow(null as any, { Id: 'a' })).toBe(false);
+    expect(isInspectedUiResourceRow(undefined as any, { Id: 'a' })).toBe(false);
+    expect(isInspectedUiResourceRow('a', null)).toBe(false);
+    expect(isInspectedUiResourceRow('a', 'x')).toBe(false);
+    expect(isInspectedUiResourceRow('a', { Id: null })).toBe(false);
+    expect(isInspectedUiResourceRow('a', { Id: undefined })).toBe(false);
+    expect(isInspectedUiResourceRow('a', { Id: '  ' })).toBe(false);
+    expect(isInspectedUiResourceRow('a', { Id: 'b' })).toBe(false);
+    expect(isInspectedUiResourceRow('a', { Id: 'a' })).toBe(true);
+    expect(isInspectedUiResourceRow('  a  ', { Id: ' a ' })).toBe(true);
   });
 });

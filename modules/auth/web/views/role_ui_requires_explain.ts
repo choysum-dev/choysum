@@ -49,3 +49,14 @@ export function getInspectedUiResourceId(row: Record<string, any> | null | undef
 export function getInspectedUiResourceRequires(row: Record<string, any> | null | undefined): string[] {
   return normalizeUiResourceRequires(row?.Requires ?? row?.requires);
 }
+
+/**
+ * Whether the tree node matches the currently inspected UI resource id.
+ */
+export function isInspectedUiResourceRow(inspectedId: string, row: unknown): boolean {
+  const selected = String(inspectedId ?? '').trim();
+  if (!selected) return false;
+  if (!row || typeof row !== 'object') return false;
+  const id = String((row as Record<string, any>).Id ?? '').trim();
+  return id !== '' && id === selected;
+}

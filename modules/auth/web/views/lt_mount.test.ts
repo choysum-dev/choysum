@@ -111,6 +111,24 @@ describe('RoleFormView UI Requires inspector coverage', () => {
     expect(vm.resolveUiResourceTypeIcon('OTHER')).toBeTruthy();
     expect(vm.resolveUiResourceTypeIcon()).toBeTruthy();
 
+    // Cover resolveUiResourceLabel branches (explicit label + Title/Name/Id/empty).
+    expect(vm.resolveUiResourceLabel({ Title: 'T' }, 'LabelWins')).toContain('LabelWins');
+    expect(vm.resolveUiResourceLabel({ Title: 'Only Title' })).toContain('Only Title');
+    expect(vm.resolveUiResourceLabel({ Name: 'Only Name' })).toContain('Only Name');
+    expect(vm.resolveUiResourceLabel({ Id: 'only-id' })).toContain('only-id');
+    expect(vm.resolveUiResourceLabel({})).toBe('');
+    expect(vm.resolveUiResourceLabel(undefined)).toBe('');
+    expect(vm.resolveUiResourceLabel({ TitleText: null, Title: '' })).toBe('');
+
+    vm.inspectUiResource({ Id: 'only-id' });
+    expect(String(vm.inspectedUiResourceLabel)).toContain('only-id');
+    vm.inspectUiResource({ Title: 'Only Title', Requires: ['rpc:/x/y'] });
+    expect(String(vm.inspectedUiResourceLabel)).toContain('Only Title');
+    vm.inspectUiResource({});
+    expect(String(vm.inspectedUiResourceLabel)).toBe('');
+    vm.inspectUiResource(null);
+    expect(String(vm.inspectedUiResourceLabel)).toBe('');
+
     vm.activeTab = 'ui_permissions';
     await nextTick();
 
