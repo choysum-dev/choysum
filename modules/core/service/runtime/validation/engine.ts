@@ -157,7 +157,18 @@ export class ValidationEngine {
       ];
     }
 
-    const fields = Array.from(new Set<string>([...Array.from(ctx.changedFields || []), ...Object.keys(ctx.values || {})]));
+    const fields = new Set<string>([...Array.from(ctx.changedFields || []), ...Object.keys(ctx.values || {})]);
+    // Odoo-style: changing parent CompanyId must re-check existing checkCompany relations.
+    if (
+      (ctx.mode === 'create' || ctx.mode === 'update') &&
+      (ctx.changedFields?.has('CompanyId') || Object.prototype.hasOwnProperty.call(ctx.values || {}, 'CompanyId'))
+    ) {
+      for (const [name, fieldMeta] of ctx.metadata.fields) {
+        if (!fieldMeta?.checkCompany) continue;
+        if (fieldMeta.type !== 'ManyToOne' && fieldMeta.type !== 'ManyToOneRef') continue;
+        fields.add(name);
+      }
+    }
     const createWriteWhitelist = new Set((options?.createWriteWhitelist || []).map(field => String(field || '').trim()).filter(Boolean));
     const whitelistedHits: string[] = [];
 
@@ -236,7 +247,14 @@ export class ValidationEngine {
         continue;
       }
 
-      const refId = this.resolveReferenceId(ctx.values?.[field]);
+      // Prefer the write payload; for checkCompany revalidation after CompanyId-only
+      // updates, fall back to the current related id when the relation key is omitted.
+      let refId: string | undefined;
+      if (Object.prototype.hasOwnProperty.call(ctx.values || {}, field)) {
+        refId = this.resolveReferenceId(ctx.values?.[field]);
+      } else if (meta.checkCompany) {
+        refId = this.resolveReferenceId((ctx.current as ObjectRecord | undefined)?.[field]);
+      }
       if (!refId) {
         continue;
       }
@@ -284,8 +302,10 @@ export class ValidationEngine {
         continue;
       }
 
-      const targetIsCompanyScoped = Boolean(targetMeta.companyScoped && targetMeta.fields?.has('CompanyId'));
-      if (!targetIsCompanyScoped) {
+      const targetHasCompanyId = Boolean(targetMeta.fields?.has('CompanyId'));
+      const targetIsCompanyScoped = Boolean(targetMeta.companyScoped && targetHasCompanyId);
+      // Load related CompanyId for company-scoped visibility checks and/or Odoo-style check_company.
+      if (!targetIsCompanyScoped && !(meta.checkCompany && targetHasCompanyId)) {
         continue;
       }
 
@@ -315,7 +335,12 @@ export class ValidationEngine {
       const firstRow = (rows[0] ?? {}) as ObjectRecord;
       const targetCompanyId = String(firstRow.CompanyId ?? '').trim();
 
-      if (targetCompanyId && enabledCompanyIds.length > 0 && !enabledCompanyIds.includes(targetCompanyId)) {
+      if (
+        targetIsCompanyScoped &&
+        targetCompanyId &&
+        enabledCompanyIds.length > 0 &&
+        !enabledCompanyIds.includes(targetCompanyId)
+      ) {
         issues.push({
           scope: 'platform',
           field,
@@ -328,6 +353,27 @@ export class ValidationEngine {
           ),
           severity: 'error',
         });
+        continue;
+      }
+
+      // PR-D-1 / Odoo check_company: related company must match parent company (shared/NULL related always ok).
+      if (meta.checkCompany) {
+        const parentCompanyId = this.resolveParentCompanyId(ctx);
+        if (parentCompanyId && targetCompanyId && parentCompanyId !== targetCompanyId) {
+          issues.push({
+            scope: 'platform',
+            field,
+            code: 'platform_check_company_violation',
+            message: _t(
+              'reference "%s" belongs to company "%s", which is incompatible with parent company "%s"',
+              { scope: 'service/runtime/validation/engine' },
+              field,
+              targetCompanyId,
+              parentCompanyId
+            ),
+            severity: 'error',
+          });
+        }
       }
     }
 
@@ -426,6 +472,27 @@ export class ValidationEngine {
     const raw = ctx.enabledCompanyIds ?? ctx.EnabledCompanyIds ?? ctx.activeCompanyId ?? ctx.ActiveCompanyId;
     const values = Array.isArray(raw) ? raw : raw == null ? [] : [raw];
     return Array.from(new Set(values.map(v => String(v ?? '').trim()).filter(Boolean)));
+  }
+
+  /**
+   * Resolve the parent row's CompanyId for check_company comparisons.
+   *
+   * Prefers an explicit `CompanyId` in the write payload, then on the existing
+   * row (`current`). Only when neither source declares the key do we fall back
+   * to the request active company (Create before repository defaulting fills
+   * CompanyId). Explicit null/empty means shared parent and must not fall through.
+   */
+  private static resolveParentCompanyId(ctx: ConstraintContext): string {
+    const values = ctx.values as ObjectRecord | undefined;
+    if (values && Object.prototype.hasOwnProperty.call(values, 'CompanyId')) {
+      return this.resolveReferenceId(values.CompanyId) ?? '';
+    }
+    const current = ctx.current as ObjectRecord | undefined;
+    if (current && Object.prototype.hasOwnProperty.call(current, 'CompanyId')) {
+      return this.resolveReferenceId(current.CompanyId) ?? '';
+    }
+    const req = (ctx.requestContext && typeof ctx.requestContext === 'object' ? ctx.requestContext : {}) as ObjectRecord;
+    return String(req.activeCompanyId ?? req.ActiveCompanyId ?? '').trim();
   }
 
   /**

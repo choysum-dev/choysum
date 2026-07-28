@@ -106,6 +106,12 @@ type FlatCommonOptions = {
    * Omit / true = include; false = skip. Default is true when omitted.
    */
   copy?: boolean;
+  /**
+   * Odoo-style check_company: when true on ManyToOne / ManyToOneRef, the related
+   * row's CompanyId must be compatible with the parent row's CompanyId
+   * (related shared/NULL is always compatible).
+   */
+  checkCompany?: boolean;
 };
 
 type FlatNoRelationOption = { relation?: never };
@@ -505,6 +511,11 @@ export interface FieldMetadata {
    * Omit / true = include; false = skip.
    */
   copy?: boolean;
+  /**
+   * When true on ManyToOne / ManyToOneRef, enforce parent↔related CompanyId
+   * compatibility (PR-D-1 / Odoo check_company). Related shared rows (NULL) pass.
+   */
+  checkCompany?: boolean;
 }
 
 // Decrement tuple (limits max recursion depth to avoid excessive type expansion)
