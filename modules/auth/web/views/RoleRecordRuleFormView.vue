@@ -95,6 +95,7 @@ import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
+import { roleIdFromValueClick } from '@/auth/web/views/role_value_click';
 
 defineOptions({ name: 'RoleRecordRuleFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('auth', { scope: 'web/views/RoleRecordRuleFormView' });
@@ -122,7 +123,7 @@ const router = useRouter();
  * Open the referenced role from the record-rule form.
  */
 function onRoleValueClick(payload: ManyToOneValueClickPayload<Role>) {
-  const id = String(payload?.id || '').trim();
+  const id = roleIdFromValueClick(payload);
   if (!id) return;
   void router.push(`/auth/roles/${id}`);
 }

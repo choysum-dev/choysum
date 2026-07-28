@@ -218,6 +218,11 @@ describe('Access Rules admin coverage (PR-C-5)', () => {
 
       const m2o = wrapper.findComponent({ name: 'OManyToOneField' });
       expect(m2o.exists()).toBe(true);
+      // Cover payload?.id branches: missing payload, empty id, whitespace, real id.
+      await m2o.vm.$emit('value-click', undefined);
+      await m2o.vm.$emit('value-click', null);
+      await m2o.vm.$emit('value-click', {});
+      await m2o.vm.$emit('value-click', { id: null });
       await m2o.vm.$emit('value-click', { id: '  ' });
       expect(push).not.toHaveBeenCalled();
       await m2o.vm.$emit('value-click', { id: 'role-9' });
