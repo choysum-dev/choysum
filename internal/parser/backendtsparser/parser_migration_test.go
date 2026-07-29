@@ -1603,6 +1603,9 @@ export default class CompanyDepPilot extends BaseModel {
 	if noteSpec.Migration.ResolvedColumnType != "jsonobject" {
 		t.Fatalf("expected html companyDependent → jsonobject, got %q", noteSpec.Migration.ResolvedColumnType)
 	}
+	if noteSpec.Migration.ReasonCode != "COMPANY_DEPENDENT_MAP" {
+		t.Fatalf("expected html companyDependent reason code, got %q", noteSpec.Migration.ReasonCode)
+	}
 	for _, d := range noteSpec.Diagnostics {
 		if d.Code == "CONFLICT_COMPANY_DEPENDENT_FIELD_TYPE" {
 			t.Fatalf("html companyDependent should be allowed, got %+v", noteSpec.Diagnostics)

@@ -10,6 +10,35 @@ import (
 	"golang.org/x/net/html"
 )
 
+func firstAnchorRel(fragment string) (rel string, ok bool) {
+	doc, err := html.Parse(strings.NewReader(fragment))
+	if err != nil {
+		return "", false
+	}
+	var walk func(*html.Node) bool
+	walk = func(n *html.Node) bool {
+		if n.Type == html.ElementNode && n.Data == "a" {
+			for _, attr := range n.Attr {
+				if strings.EqualFold(attr.Key, "rel") {
+					rel = attr.Val
+					ok = true
+					return true
+				}
+			}
+			ok = true
+			return true
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			if walk(c) {
+				return true
+			}
+		}
+		return false
+	}
+	walk(doc)
+	return rel, ok
+}
+
 func TestSanitizeHTMLStripsDangerousMarkup(t *testing.T) {
 	got := SanitizeHTML(`<script>alert(1)</script><p onclick="x">Hello</p><a href="javascript:alert(1)">x</a>`)
 	if strings.Contains(got, "<script") || strings.Contains(got, "onclick") || strings.Contains(got, "javascript:") {
@@ -35,8 +64,12 @@ func TestSanitizeHTMLForcesNoopenerOnBlankTargets(t *testing.T) {
 	if !strings.Contains(got, `target="_blank"`) {
 		t.Fatalf("expected target preserved, got %q", got)
 	}
-	if !strings.Contains(got, "noopener") || !strings.Contains(got, "noreferrer") {
-		t.Fatalf("expected rel noopener noreferrer, got %q", got)
+	rel, ok := firstAnchorRel(got)
+	if !ok {
+		t.Fatalf("expected an anchor in sanitized output %q", got)
+	}
+	if !hasRelToken(rel, "noopener") || !hasRelToken(rel, "noreferrer") {
+		t.Fatalf("expected anchor rel noopener noreferrer, got %q (fragment %q)", rel, got)
 	}
 }
 
@@ -57,36 +90,43 @@ func TestForceBlankTargetRelBranches(t *testing.T) {
 	if got := forceBlankTargetRel(`<p>no-target</p>`); got != `<p>no-target</p>` {
 		t.Fatalf("no target early return: %q", got)
 	}
-	if got := forceBlankTargetRel(`<a href="https://example.com" target="_self">x</a>`); !strings.Contains(got, `target="_self"`) {
-		t.Fatalf("non-blank target should stay untouched: %q", got)
+
+	self := forceBlankTargetRel(`<a href="https://example.com" target="_self">x</a>`)
+	if !strings.Contains(self, `target="_self"`) {
+		t.Fatalf("non-blank target should stay untouched: %q", self)
 	}
-	if strings.Contains(strings.ToLower(forceBlankTargetRel(`<a href="https://example.com" target="_self">x</a>`)), "noopener") {
-		t.Fatal("non-blank target should not force noopener")
+	if rel, ok := firstAnchorRel(self); ok && (hasRelToken(rel, "noopener") || hasRelToken(rel, "noreferrer")) {
+		t.Fatalf("non-blank target should not force noopener/noreferrer, got rel=%q fragment=%q", rel, self)
 	}
 
-	noRel := forceBlankTargetRel(`<a href="https://example.com" target="_blank">x</a>`)
-	if !strings.Contains(noRel, "noopener") || !strings.Contains(noRel, "noreferrer") {
-		t.Fatalf("missing rel should be added: %q", noRel)
+	noRelFrag := forceBlankTargetRel(`<a href="https://example.com" target="_blank">x</a>`)
+	noRel, ok := firstAnchorRel(noRelFrag)
+	if !ok || !hasRelToken(noRel, "noopener") || !hasRelToken(noRel, "noreferrer") {
+		t.Fatalf("missing rel should be added: rel=%q fragment=%q", noRel, noRelFrag)
 	}
 
-	onlyNoopener := forceBlankTargetRel(`<a href="https://example.com" target="_blank" rel="noopener">x</a>`)
-	if !strings.Contains(onlyNoopener, "noreferrer") || !hasRelToken("noopener noreferrer", "noopener") {
-		t.Fatalf("should append noreferrer: %q", onlyNoopener)
+	onlyNoopenerFrag := forceBlankTargetRel(`<a href="https://example.com" target="_blank" rel="noopener">x</a>`)
+	onlyNoopener, ok := firstAnchorRel(onlyNoopenerFrag)
+	if !ok || !hasRelToken(onlyNoopener, "noopener") || !hasRelToken(onlyNoopener, "noreferrer") {
+		t.Fatalf("should append noreferrer: rel=%q fragment=%q", onlyNoopener, onlyNoopenerFrag)
 	}
 
-	onlyNoreferrer := forceBlankTargetRel(`<a href="https://example.com" target="_blank" rel="noreferrer">x</a>`)
-	if !strings.Contains(onlyNoreferrer, "noopener") || !strings.Contains(onlyNoreferrer, "noreferrer") {
-		t.Fatalf("should append noopener: %q", onlyNoreferrer)
+	onlyNoreferrerFrag := forceBlankTargetRel(`<a href="https://example.com" target="_blank" rel="noreferrer">x</a>`)
+	onlyNoreferrer, ok := firstAnchorRel(onlyNoreferrerFrag)
+	if !ok || !hasRelToken(onlyNoreferrer, "noopener") || !hasRelToken(onlyNoreferrer, "noreferrer") {
+		t.Fatalf("should append noopener: rel=%q fragment=%q", onlyNoreferrer, onlyNoreferrerFrag)
 	}
 
-	both := forceBlankTargetRel(`<a href="https://example.com" target="_blank" rel="noopener noreferrer">x</a>`)
-	if strings.Count(strings.ToLower(both), "noopener") != 1 {
-		t.Fatalf("should not duplicate noopener: %q", both)
+	bothFrag := forceBlankTargetRel(`<a href="https://example.com" target="_blank" rel="noopener noreferrer">x</a>`)
+	both, ok := firstAnchorRel(bothFrag)
+	if !ok || strings.Count(strings.ToLower(both), "noopener") != 1 {
+		t.Fatalf("should not duplicate noopener: rel=%q fragment=%q", both, bothFrag)
 	}
 
-	upper := forceBlankTargetRel(`<a href="https://example.com" TARGET="_Blank" REL="nofollow">x</a>`)
-	if !strings.Contains(upper, "noopener") || !strings.Contains(upper, "noreferrer") {
-		t.Fatalf("case-insensitive target/rel attrs: %q", upper)
+	upperFrag := forceBlankTargetRel(`<a href="https://example.com" TARGET="_Blank" REL="nofollow">x</a>`)
+	upper, ok := firstAnchorRel(upperFrag)
+	if !ok || !hasRelToken(upper, "noopener") || !hasRelToken(upper, "noreferrer") {
+		t.Fatalf("case-insensitive target/rel attrs: rel=%q fragment=%q", upper, upperFrag)
 	}
 
 	if !hasRelToken("NOFOLLOW NoOpener", "noopener") {

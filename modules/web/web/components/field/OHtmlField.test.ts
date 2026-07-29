@@ -294,8 +294,11 @@ describe('OHtmlField', () => {
     await flushPromises();
 
     // Same HTML as editor → setEditorHtml no-op path.
+    const setContentSpy = vi.spyOn(editorState.editor.commands, 'setContent');
     binding.__value.value = '<p>Hi</p>';
     await nextTick();
+    expect(setContentSpy).not.toHaveBeenCalled();
+    setContentSpy.mockRestore();
 
     // Null / empty store values clear the editor.
     binding.__value.value = null;
