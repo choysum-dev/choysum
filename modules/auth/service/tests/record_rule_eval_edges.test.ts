@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import RoleRecordRule from '@/auth/service/models/role_record_rule';
-import { evaluateRecordRuleCondition } from '@/auth/service/models/_user_record_rule_eval';
+import { buildCompanyGateExpr, evaluateRecordRuleCondition } from '@/auth/service/models/_user_record_rule_eval';
 import { createServiceByModel } from '@/core/service/rpc';
 import type IrApplicationModel from '@/meta/service/models/ir_application';
 import type IrFieldModel from '@/meta/service/models/ir_field';
@@ -546,4 +546,95 @@ test('P2-2 eval edges: defensive fallbacks for empty/null inputs', async () => {
       (globalThis as any).$choysum.request = origGetReq;
     }
   }
+});
+
+test('P2-2 eval edges: companyField gate skips when model not isolated or ownership field missing', async () => {
+  resetRequestContext();
+  const modelId = await resolveModelId('auth', 'CompanyScopedResource');
+  const roleId = uid('role');
+  const origSearch = (RoleRecordRule as any).Search;
+  const origModelSearch = (IrModel as any).Search;
+  const origCount = (IrField as any).Count;
+
+  try {
+    (RoleRecordRule as any).Search = async () => [
+      {
+        RoleId: { Id: roleId },
+        Kind: 'grant',
+        Condition: { And: [['Name', '=', 'gated']] },
+        IrModelId: modelId,
+        IrApplicationId: null,
+      },
+    ];
+
+    // Empty CompanyField ⇒ model_not_company_isolated (no ownership gate clause).
+    resetRequestContext();
+    (IrModel as any).Search = async () => [{ Id: modelId, CompanyField: null }];
+    (IrField as any).Count = async () => 1;
+    const notIsolated = await evaluateRecordRuleCondition({
+      appName: 'auth',
+      modelName: 'CompanyScopedResource',
+      hasCompany: true,
+      opValue: 'read',
+      roleIds: [roleId],
+      roleScopesById: { [roleId]: { global: false, companies: ['company_a'] } },
+    });
+    expect(notIsolated.kind).toBe('expr');
+    expect(JSON.stringify((notIsolated as any).expr || {})).not.toContain('CompanyId');
+
+    // CompanyField set but IrField missing ⇒ company_isolated_missing_ownership_field.
+    resetRequestContext();
+    (IrModel as any).Search = async () => [{ Id: modelId, CompanyField: 'CompanyId' }];
+    (IrField as any).Count = async () => 0;
+    const missingField = await evaluateRecordRuleCondition({
+      appName: 'auth',
+      modelName: 'CompanyScopedResource',
+      hasCompany: true,
+      opValue: 'read',
+      roleIds: [roleId],
+      roleScopesById: { [roleId]: { global: false, companies: ['company_a'] } },
+    });
+    expect(missingField.kind).toBe('expr');
+    expect(JSON.stringify((missingField as any).expr || {})).not.toContain('CompanyId');
+
+    // IrField.Count throws ⇒ meta_company_gate_error.
+    resetRequestContext();
+    (IrModel as any).Search = async () => [{ Id: modelId, CompanyField: 'CompanyId' }];
+    (IrField as any).Count = async () => {
+      throw new Error('meta boom');
+    };
+    const gateError = await evaluateRecordRuleCondition({
+      appName: 'auth',
+      modelName: 'CompanyScopedResource',
+      hasCompany: true,
+      opValue: 'read',
+      roleIds: [roleId],
+      roleScopesById: { [roleId]: { global: false, companies: ['company_a'] } },
+    });
+    expect(gateError.kind).toBe('expr');
+    expect(JSON.stringify((gateError as any).expr || {})).not.toContain('CompanyId');
+  } finally {
+    (RoleRecordRule as any).Search = origSearch;
+    (IrModel as any).Search = origModelSearch;
+    (IrField as any).Count = origCount;
+  }
+});
+
+test('buildCompanyGateExpr covers disabled, empty ownership, and global scope', () => {
+  expect(buildCompanyGateExpr({ global: false, companies: ['c1'] }, { enabled: false })).toBeNull();
+  expect(buildCompanyGateExpr({ global: false, companies: ['c1'] }, { enabled: true, ownershipField: '  ' })).toBeNull();
+  expect(buildCompanyGateExpr({ global: false, companies: ['c1'] }, { enabled: true })).toBeNull();
+  expect(buildCompanyGateExpr({ global: true, companies: ['c1'] }, { enabled: true, ownershipField: 'CompanyId' })).toBeNull();
+  expect(buildCompanyGateExpr({ global: false, companies: ['c1'] }, { enabled: true, ownershipField: 'CompanyId' })).toEqual({
+    Or: [
+      ['CompanyId', 'in', ['c1']],
+      ['CompanyId', 'is', null],
+    ],
+  });
+  expect(buildCompanyGateExpr({ global: false } as any, { enabled: true, ownershipField: 'OwningCompanyId' })).toEqual({
+    Or: [
+      ['OwningCompanyId', 'in', []],
+      ['OwningCompanyId', 'is', null],
+    ],
+  });
 });

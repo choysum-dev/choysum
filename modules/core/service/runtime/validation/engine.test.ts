@@ -734,6 +734,15 @@ test('validation engine skips check_company when parent CompanyId is explicitly 
 });
 
 test('validation engine rechecks checkCompany relations when only CompanyId changes', async () => {
+  const targetMetadata = MetadataStorage.instance.getModelMetadata(PlatformCompanyTargetModel as any);
+  MetadataStorage.instance.setModelMetadata(
+    PlatformCompanyTargetModel as any,
+    {
+      ...targetMetadata,
+      companyField: 'CompanyId',
+    } as any
+  );
+
   RepositoryFactory.setRepository(
     PlatformCompanyTargetModel as any,
     {

@@ -6,10 +6,13 @@ import {
   applyRepositoryDefaultCompanyIdOnCreate,
   applyRepositoryDefaultCompanyIdOnUpdate,
   assertRepositoryCompanyWriteAccessForCondition,
+  isRepositoryOwnershipFieldNotNull,
   normalizeRepositoryCompanyIdForWrite,
   normalizeRepositoryCompanyIds,
   repositoryCompanyFieldEnabled,
+  requireRepositoryOwnershipField,
   validateRepositoryCompanyIdInScope,
+  validateRepositoryOwnershipNullability,
 } from '..';
 
 type DeniedCall = { code: string; message: string; metadata?: Record<string, string> };
@@ -710,4 +713,79 @@ test('company scope tail branches: normalize blank paths, metadata fallback chai
 
   const updateWithNullVals = createCompanyDeps();
   expect(applyRepositoryDefaultCompanyIdOnUpdate(updateWithNullVals.deps, null as any) as any).toBeNull();
+});
+
+test('company scope ownership helpers cover not-isolated nullability and name fallbacks', () => {
+  const denied: DeniedCall[] = [];
+  const permissionDenied = (code: string, message: string, metadata?: Record<string, string>) => {
+    denied.push({ code, message, metadata });
+    return new Error(`${code}:${message}`);
+  };
+
+  expect(() =>
+    requireRepositoryOwnershipField(
+      {
+        name: 'OnlyName',
+        companyField: undefined,
+        fields: new Map([['CompanyId', {}]]),
+      } as any,
+      permissionDenied
+    )
+  ).toThrow('company_field_not_isolated');
+  expect(denied[0]?.metadata).toEqual({ model: 'OnlyName' });
+
+  expect(
+    isRepositoryOwnershipFieldNotNull(
+      { fields: { CompanyId: { column: { notNull: true } } } } as any,
+      'CompanyId'
+    )
+  ).toBe(false);
+  expect(
+    isRepositoryOwnershipFieldNotNull(
+      { fields: new Map([['CompanyId', { column: { notNull: true } }]]) } as any,
+      'CompanyId'
+    )
+  ).toBe(true);
+  expect(
+    isRepositoryOwnershipFieldNotNull({ fields: new Map([['CompanyId', {}]]) } as any, 'CompanyId')
+  ).toBe(false);
+
+  const { deps } = createCompanyDeps({
+    meta: {
+      name: 'PrivateOnlyName',
+      companyField: 'CompanyId',
+      fields: new Map([['CompanyId', { type: 'char', column: { notNull: true } }]]),
+    },
+  });
+  expect(() => validateRepositoryOwnershipNullability(deps, 'CompanyId', undefined)).toThrow(
+    'company_field_null_forbidden'
+  );
+  expect(() => validateRepositoryOwnershipNullability(deps, 'CompanyId', '   ')).toThrow(
+    'company_field_null_forbidden'
+  );
+  expect(() => validateRepositoryOwnershipNullability(deps, 'CompanyId', 'company_a')).not.toThrow();
+
+  const shareable = createCompanyDeps();
+  expect(() => validateRepositoryOwnershipNullability(shareable.deps, 'CompanyId', null)).not.toThrow();
+
+  // Update with explicit undefined ownership on private model.
+  let updateUndef = '';
+  try {
+    applyRepositoryDefaultCompanyIdOnUpdate(deps, { CompanyId: undefined } as any);
+  } catch (error) {
+    updateUndef = String((error as Error)?.message || error);
+  }
+  expect(updateUndef.includes('company_field_null_forbidden')).toBe(true);
+
+  // Non-Map fields on requireRepositoryOwnershipField missing path.
+  expect(() =>
+    requireRepositoryOwnershipField(
+      {
+        modelName: 'M',
+        companyField: 'CompanyId',
+        fields: { CompanyId: {} } as any,
+      } as any,
+      permissionDenied
+    )
+  ).toThrow('company_field_missing');
 });

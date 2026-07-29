@@ -100,7 +100,8 @@ async function computeCompanyGateMode(
   });
 }
 
-function buildCompanyGateExpr(
+/** @internal Exported for unit tests covering defensive empty-ownership gate. */
+export function buildCompanyGateExpr(
   scope: RoleScope,
   companyGate: { enabled: boolean; ownershipField?: string }
 ): any {
