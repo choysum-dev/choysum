@@ -65,6 +65,23 @@ test('model decorator requires companyField to exist on the model', () => {
   ).not.toThrow();
 });
 
+test('model companyField does not reject companyDependent fields (D12 orthogonal)', () => {
+  class IsolatedWithDependent extends BaseModel {
+    @Field({ type: 'char', size: 20 } as any)
+    CompanyId!: string;
+
+    @Field({ type: 'number', companyDependent: true } as any)
+    Cost!: number;
+  }
+  expect(() =>
+    (Model('IsolatedWithDependent', { application: 'scope', companyField: 'CompanyId' }) as any)(IsolatedWithDependent as any)
+  ).not.toThrow();
+
+  const meta = MetadataStorage.instance.getModelMetadata(IsolatedWithDependent as any);
+  expect(meta.companyField).toBe('CompanyId');
+  expect(meta.fields.get('Cost')?.companyDependent).toBe(true);
+});
+
 test('model decorator validates monetary currencyField targets base.Currency', () => {
   class MonetaryRefOk extends BaseModel {
     @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Currency' }, size: 20 } as any)

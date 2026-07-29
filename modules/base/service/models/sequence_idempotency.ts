@@ -23,6 +23,7 @@ export default class SequenceIdempotency extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => Sequence },
+    checkCompany: true,
     notNull: true,
     uniqueIndex: 'uidx_base_sequence_idem_seq_key',
     index: true,

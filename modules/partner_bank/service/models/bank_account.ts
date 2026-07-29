@@ -19,6 +19,7 @@ export default class BankAccount extends BaseModel {
     type: 'ManyToOneRef',
     relation: { targetModel: 'partner.Partner' },
     size: 20,
+    checkCompany: true,
     notNull: true,
     index: true,
     string: _lt('Partner', { scope: 'partner_bank.model.BankAccount.fields' }),

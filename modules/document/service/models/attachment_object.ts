@@ -37,6 +37,7 @@ export default class AttachmentContent extends BaseModel {
     type: 'ManyToOneRef',
     relation: { targetModel: 'document.StoredContent' },
     size: 20,
+    checkCompany: true,
     notNull: true,
     index: true,
     string: _lt('Stored Content', { scope: 'document.model.AttachmentContent.fields' }),

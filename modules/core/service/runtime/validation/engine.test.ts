@@ -779,6 +779,94 @@ test('validation engine rechecks checkCompany relations when only CompanyId chan
   ]);
 });
 
+test('validation engine checkCompany uses aliased companyField on parent and target', async () => {
+  class AliasCheckTarget extends BaseModel {
+    @Field({ type: 'varchar', size: 20 })
+    OwningCompanyId?: string;
+  }
+  class AliasCheckSource extends BaseModel {
+    @Field({ type: 'varchar', size: 36 })
+    OwningCompanyId?: string;
+
+    @Field({
+      type: 'ManyToOne',
+      checkCompany: true,
+      relation: { targetModel: () => AliasCheckTarget },
+    })
+    TargetId?: AliasCheckTarget;
+  }
+
+  (Model('AliasCheckTarget', { application: 'test', companyField: 'OwningCompanyId' }) as any)(AliasCheckTarget as any);
+  (Model('AliasCheckSource', { application: 'test', companyField: 'OwningCompanyId' }) as any)(AliasCheckSource as any);
+
+  RepositoryFactory.setRepository(
+    AliasCheckTarget as any,
+    {
+      withDeleted() {
+        return this;
+      },
+      async search(_condition: unknown, options: { fields?: string[] }) {
+        expect(options.fields).toEqual(['Id', 'OwningCompanyId']);
+        return [{ Id: 'alias_target_1', OwningCompanyId: 'company_b' }];
+      },
+    } as any
+  );
+
+  const metadata = MetadataStorage.instance.getModelMetadata(AliasCheckSource as any);
+  const issues = await ValidationEngine.validate(
+    {
+      mode: 'update',
+      model: AliasCheckSource as any,
+      metadata,
+      current: { OwningCompanyId: 'company_a', TargetId: 'alias_target_1' },
+      values: { OwningCompanyId: 'company_a', TargetId: 'alias_target_1' },
+      changedFields: new Set(['TargetId']),
+      repository: {} as any,
+      requestContext: {
+        enabledCompanyIds: ['company_a', 'company_b'],
+        activeCompanyId: 'company_a',
+      },
+    } as any,
+    {
+      includeKernel: false,
+      includeConstraints: false,
+    }
+  );
+
+  expect(issues).toEqual([
+    {
+      scope: 'platform',
+      field: 'TargetId',
+      code: 'platform_check_company_violation',
+      message:
+        'reference "TargetId" belongs to company "company_b", which is incompatible with parent company "company_a"',
+      severity: 'error',
+    },
+  ]);
+
+  // Changing only the aliased ownership field re-enqueues checkCompany relations.
+  const ownershipOnly = await ValidationEngine.validate(
+    {
+      mode: 'update',
+      model: AliasCheckSource as any,
+      metadata,
+      current: { OwningCompanyId: 'company_b', TargetId: 'alias_target_1' },
+      values: { OwningCompanyId: 'company_a' },
+      changedFields: new Set(['OwningCompanyId']),
+      repository: {} as any,
+      requestContext: {
+        enabledCompanyIds: ['company_a', 'company_b'],
+        activeCompanyId: 'company_a',
+      },
+    } as any,
+    {
+      includeKernel: false,
+      includeConstraints: false,
+    }
+  );
+  expect(ownershipOnly.some(issue => issue.code === 'platform_check_company_violation')).toBe(true);
+});
+
 test('validation engine covers checkCompany enqueue and ref-id edge branches', async () => {
   RepositoryFactory.setRepository(
     PlatformCompanyTargetModel as any,

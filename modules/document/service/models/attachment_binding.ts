@@ -76,6 +76,7 @@ export default class AttachmentBinding extends BaseModel {
     type: 'ManyToOneRef',
     relation: { targetModel: 'document.AttachmentContent' },
     size: 20,
+    checkCompany: true,
     notNull: true,
     index: true,
     string: _lt('Attachment Content', { scope: 'document.model.AttachmentBinding.fields' }),

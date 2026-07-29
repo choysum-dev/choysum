@@ -55,6 +55,9 @@ export interface ModelOptions {
    * Non-empty string enables Repository company filtering on that column.
    * Omitted values inherit the parent model's companyField; clearing/renaming a
    * parent value is rejected.
+   *
+   * Orthogonal to field-level `companyDependent` / `checkCompany` / `withCompany`
+   * (company-field-design D12): isolation does **not** forbid companyDependent fields.
    */
   companyField?: string;
 }

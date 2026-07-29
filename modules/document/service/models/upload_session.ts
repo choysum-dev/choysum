@@ -243,6 +243,7 @@ export default class AttachmentUploadSession extends BaseModel {
     type: 'ManyToOneRef',
     relation: { targetModel: 'document.AttachmentContent' },
     size: 20,
+    checkCompany: true,
     index: true,
     string: _lt('Attachment Content', { scope: 'document.model.AttachmentUploadSession.fields' }),
   })
