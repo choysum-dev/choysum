@@ -43,7 +43,6 @@ let domPurifyHooksInstalled = false;
 
 function ensureDomPurifyHooks(): void {
   if (domPurifyHooksInstalled) return;
-  if (typeof (DOMPurify as { addHook?: unknown }).addHook !== 'function') return;
   domPurifyHooksInstalled = true;
   DOMPurify.addHook('afterSanitizeAttributes', node => {
     if (node.nodeName === 'A' && node.getAttribute('target') === '_blank') {

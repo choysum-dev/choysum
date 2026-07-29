@@ -210,6 +210,7 @@ describe('OSearchFilterCondition', () => {
       ['Ref', 'manytooneref', 'f-m2oref'],
       ['Bin', 'binary', 'f-bin'],
       ['Img', 'image', 'f-img'],
+      ['Html', 'html', 'f-char'],
       ['Unk', 'weird', 'f-varchar'],
     ];
     const fieldsMetadata: Record<string, any> = Object.fromEntries(

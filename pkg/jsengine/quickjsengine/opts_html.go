@@ -56,79 +56,69 @@ func hasRelToken(rel string, token string) bool {
 	return false
 }
 
+func findHTMLBody(n *html.Node) *html.Node {
+	if n == nil {
+		return nil
+	}
+	if n.Type == html.ElementNode && n.Data == "body" {
+		return n
+	}
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		if body := findHTMLBody(c); body != nil {
+			return body
+		}
+	}
+	return nil
+}
+
+func walkForceBlankTargetRel(n *html.Node) {
+	if n.Type == html.ElementNode && n.Data == "a" {
+		target := ""
+		relIdx := -1
+		for i := range n.Attr {
+			switch strings.ToLower(n.Attr[i].Key) {
+			case "target":
+				target = strings.TrimSpace(n.Attr[i].Val)
+			case "rel":
+				relIdx = i
+			}
+		}
+		if strings.EqualFold(target, "_blank") {
+			rel := ""
+			if relIdx >= 0 {
+				rel = n.Attr[relIdx].Val
+			}
+			if !hasRelToken(rel, "noopener") {
+				rel = strings.TrimSpace(rel + " noopener")
+			}
+			if !hasRelToken(rel, "noreferrer") {
+				rel = strings.TrimSpace(rel + " noreferrer")
+			}
+			if relIdx >= 0 {
+				n.Attr[relIdx].Val = rel
+			} else {
+				n.Attr = append(n.Attr, html.Attribute{Key: "rel", Val: rel})
+			}
+		}
+	}
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		walkForceBlankTargetRel(c)
+	}
+}
+
 // forceBlankTargetRel ensures target=_blank links cannot keep window.opener control.
 func forceBlankTargetRel(fragment string) string {
 	if fragment == "" || !strings.Contains(strings.ToLower(fragment), "target") {
 		return fragment
 	}
-	doc, err := html.Parse(strings.NewReader("<div id=\"choysum-html-root\">" + fragment + "</div>"))
-	if err != nil {
-		return fragment
-	}
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.Data == "a" {
-			target := ""
-			relIdx := -1
-			for i := range n.Attr {
-				switch strings.ToLower(n.Attr[i].Key) {
-				case "target":
-					target = strings.TrimSpace(n.Attr[i].Val)
-				case "rel":
-					relIdx = i
-				}
-			}
-			if strings.EqualFold(target, "_blank") {
-				rel := ""
-				if relIdx >= 0 {
-					rel = n.Attr[relIdx].Val
-				}
-				if !hasRelToken(rel, "noopener") {
-					rel = strings.TrimSpace(rel + " noopener")
-				}
-				if !hasRelToken(rel, "noreferrer") {
-					rel = strings.TrimSpace(rel + " noreferrer")
-				}
-				if relIdx >= 0 {
-					n.Attr[relIdx].Val = rel
-				} else {
-					n.Attr = append(n.Attr, html.Attribute{Key: "rel", Val: rel})
-				}
-			}
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c)
-		}
-	}
-	walk(doc)
-
-	var root *html.Node
-	var findRoot func(*html.Node)
-	findRoot = func(n *html.Node) {
-		if root != nil {
-			return
-		}
-		if n.Type == html.ElementNode && n.Data == "div" {
-			for _, attr := range n.Attr {
-				if attr.Key == "id" && attr.Val == "choysum-html-root" {
-					root = n
-					return
-				}
-			}
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			findRoot(c)
-		}
-	}
-	findRoot(doc)
-	if root == nil {
-		return fragment
-	}
+	// html.Parse from a string reader does not fail with I/O errors and always
+	// yields an html/head/body tree, so findHTMLBody is non-nil.
+	doc, _ := html.Parse(strings.NewReader(fragment))
+	walkForceBlankTargetRel(doc)
+	body := findHTMLBody(doc)
 	var buf bytes.Buffer
-	for c := root.FirstChild; c != nil; c = c.NextSibling {
-		if err := html.Render(&buf, c); err != nil {
-			return fragment
-		}
+	for c := body.FirstChild; c != nil; c = c.NextSibling {
+		_ = html.Render(&buf, c)
 	}
 	return buf.String()
 }

@@ -8,6 +8,7 @@ test('isBlankHtml treats empty tags and nbsp as blank', () => {
   expect(isBlankHtml('<p></p>')).toBe(true);
   expect(isBlankHtml('<p><br></p>')).toBe(true);
   expect(isBlankHtml('<p>&nbsp;</p>')).toBe(true);
+  expect(isBlankHtml('<p>&#160;</p>')).toBe(true);
   expect(isBlankHtml('<p>hi</p>')).toBe(false);
 });
 
@@ -32,6 +33,16 @@ test('sanitizeHtmlForWrite fails closed without bridge and rejects non-strings',
   try {
     delete (globalThis as any).$choysum;
     expect(() => sanitizeHtmlForWrite('<p>x</p>')).toThrow('html sanitize bridge unavailable');
+
+    (globalThis as any).$choysum = {};
+    expect(() => sanitizeHtmlForWrite('<p>x</p>')).toThrow('html sanitize bridge unavailable');
+
+    (globalThis as any).$choysum = { html: {} };
+    expect(() => sanitizeHtmlForWrite('<p>x</p>')).toThrow('html sanitize bridge unavailable');
+
+    (globalThis as any).$choysum = { html: { sanitize: 'nope' } };
+    expect(() => sanitizeHtmlForWrite('<p>x</p>')).toThrow('html sanitize bridge unavailable');
+
     (globalThis as any).$choysum = { html: { sanitize: (s: string) => s } };
     expect(() => sanitizeHtmlForWrite(1 as any)).toThrow('html field value must be a string or null');
   } finally {
@@ -39,19 +50,24 @@ test('sanitizeHtmlForWrite fails closed without bridge and rejects non-strings',
   }
 });
 
-test('sanitizeHtmlForWrite uses bridge output', () => {
+test('sanitizeHtmlForWrite uses bridge output and nulls cleaned empties', () => {
   const original = (globalThis as any).$choysum;
   try {
     (globalThis as any).$choysum = {
       html: {
-        // Fixture map only — not a general HTML sanitizer (avoids CodeQL fake-sanitizer alerts).
         sanitize: (s: string) => {
           if (s === '<script>bad</script><p>safe</p>') return '<p>safe</p>';
+          if (s === 'NULL_OUT') return null;
+          if (s === 'EMPTY_OUT') return '';
+          if (s === 'BLANK_OUT') return '<p></p>';
           return s;
         },
       },
     };
     expect(sanitizeHtmlForWrite('<script>bad</script><p>safe</p>')).toBe('<p>safe</p>');
+    expect(sanitizeHtmlForWrite('NULL_OUT')).toBeNull();
+    expect(sanitizeHtmlForWrite('EMPTY_OUT')).toBeNull();
+    expect(sanitizeHtmlForWrite('BLANK_OUT')).toBeNull();
   } finally {
     (globalThis as any).$choysum = original;
   }

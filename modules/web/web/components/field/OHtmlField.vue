@@ -143,7 +143,7 @@ const editor = useEditor({
 });
 
 function getEditorHtml(): string {
-  return editor.value?.getHTML() ?? '';
+  return editor.value!.getHTML();
 }
 
 function setEditorHtml(html: string | null) {
@@ -155,20 +155,21 @@ function setEditorHtml(html: string | null) {
 }
 
 function toggleLink() {
-  if (!editor.value) return;
-  if (editor.value.isActive('link')) {
-    editor.value.chain().focus().unsetLink().run();
+  // Toolbar is rendered only when editor exists.
+  const ed = editor.value!;
+  if (ed.isActive('link')) {
+    ed.chain().focus().unsetLink().run();
     return;
   }
-  const prev = editor.value.getAttributes('link').href as string | undefined;
+  const prev = ed.getAttributes('link').href as string | undefined;
   const href = window.prompt(_t('URL'), prev || 'https://');
   if (href == null) return;
   const trimmed = href.trim();
   if (!trimmed) {
-    editor.value.chain().focus().unsetLink().run();
+    ed.chain().focus().unsetLink().run();
     return;
   }
-  editor.value.chain().focus().extendMarkRange('link').setLink({ href: trimmed }).run();
+  ed.chain().focus().extendMarkRange('link').setLink({ href: trimmed }).run();
 }
 
 /** Sync TipTap HTML ↔ fieldValue without nesting watchers in the parent setup. */
@@ -232,7 +233,7 @@ const internalRule = {
     cb();
   },
 } as RuleItem;
-const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internalRule]);
+const mergedRules = computed<RuleItem[]>(() => [...props.rules, internalRule]);
 </script>
 
 <style lang="scss" scoped>
