@@ -15,7 +15,7 @@ test('repository update payload target resolver returns undefined when no target
   const calls: Array<Record<string, any>> = [];
   const targetIds = await resolveRepositoryUpdatePayloadTargets(
     {
-      meta: { companyScoped: false } as any,
+      meta: { companyField: undefined } as any,
       async locateIdsForCondition(condition) {
         calls.push({ method: 'locate', condition });
         return [];
@@ -366,7 +366,7 @@ test('repository update payload prepare resolves targets validates current rows 
 
   const prepared = await prepareRepositoryUpdatePayload(
     {
-      meta: { companyScoped: false, fields: new Map() } as any,
+      meta: { companyField: undefined, fields: new Map() } as any,
       async locateIdsForCondition(condition) {
         calls.push({ method: 'locate', condition });
         return ['row_1'];
@@ -481,7 +481,7 @@ test('repository update payload prepare resolves targets validates current rows 
     { method: 'recordRule', op: 'write', targetIds: ['row_1'] },
     { method: 'fieldRule', payload: { Name: 'demo' } },
     { method: 'defaultCompany', vals: { Name: 'demo' } },
-    { method: 'scalarFields', meta: { companyScoped: false, fields: new Map() } },
+    { method: 'scalarFields', meta: { companyField: undefined, fields: new Map() } },
     { method: 'selectFrom', table: 'demo_table' },
     { method: 'select', selections: [{ ref: 'demo_table.Id', alias: 'Id' }] },
     { method: 'softLayer', condition: ['Id', 'in', ['row_1']] },

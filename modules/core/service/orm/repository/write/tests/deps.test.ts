@@ -300,7 +300,7 @@ test('repository write deps delegate update write deps unchanged', async () => {
 test('repository write deps delegate mutation target deps unchanged', async () => {
   const calls: Array<Record<string, any>> = [];
   const deps = createRepositoryMutationWriteTargetDeps({
-    meta: { fullModelName: 'auth.Role', companyScoped: true } as any,
+    meta: { fullModelName: 'auth.Role', companyField: 'CompanyId', fields: new Map([['CompanyId', {}]]) } as any,
     async locateIdsForCondition(condition) {
       calls.push({ method: 'locate', condition });
       return ['row_1'];
@@ -314,7 +314,7 @@ test('repository write deps delegate mutation target deps unchanged', async () =
     },
   });
 
-  expect(deps.meta).toEqual({ fullModelName: 'auth.Role', companyScoped: true });
+  expect(deps.meta).toEqual({ fullModelName: 'auth.Role', companyField: 'CompanyId' });
   expect(await deps.locateIdsForCondition(['Id', '=', '1'] as any)).toEqual(['row_1']);
   expect(await deps.assertCompanyWriteAccessForCondition(['Id', '=', '2'] as any)).toEqual(['row_2']);
   await deps.assertRecordRuleAllTargetsAllowed('write', ['row_1']);
@@ -377,7 +377,7 @@ test('repository write deps delegate mutation condition deps unchanged', async (
 test('repository write deps facade merges mutation target and condition deps unchanged', async () => {
   const calls: Array<Record<string, any>> = [];
   const deps = createRepositoryMutationWriteFacadeDeps({
-    meta: { fullModelName: 'auth.Role', companyScoped: true } as any,
+    meta: { fullModelName: 'auth.Role', companyField: 'CompanyId', fields: new Map([['CompanyId', {}]]) } as any,
     table: 'demo_table',
     async locateIdsForCondition(condition) {
       calls.push({ method: 'locate', condition });
@@ -408,7 +408,7 @@ test('repository write deps facade merges mutation target and condition deps unc
     },
   });
 
-  expect(deps.meta).toEqual({ fullModelName: 'auth.Role', companyScoped: true });
+  expect(deps.meta).toEqual({ fullModelName: 'auth.Role', companyField: 'CompanyId' });
   expect(deps.table).toBe('demo_table');
   expect(await deps.locateIdsForCondition(['Id', '=', '1'] as any)).toEqual(['row_1']);
   expect(await deps.assertCompanyWriteAccessForCondition(['Id', '=', '2'] as any)).toEqual(['row_2']);

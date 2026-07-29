@@ -14,7 +14,7 @@ import { _lt } from '../i18n';
  * Non-goals:
  * - Do NOT use this model for real product/business features.
  */
-@Model('CompanyScopedResource', { companyScoped: true })
+@Model('CompanyScopedResource', { companyField: 'CompanyId' })
 export default class CompanyScopedResource extends BaseModel {
   /**
    * Company scope for the row. Null means the row is shared across companies.

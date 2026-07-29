@@ -14,7 +14,7 @@ const DEFAULT_MUTATION_LEDGER_RETENTION_DAYS = 30;
 /**
  * AttachmentMutationLedger records idempotent bind and unbind mutations per company.
  */
-@Model('AttachmentMutationLedger', { application: 'document', companyScoped: true })
+@Model('AttachmentMutationLedger', { application: 'document', companyField: 'CompanyId' })
 export default class AttachmentMutationLedger extends BaseModel {
   /**
    * Mutation kind recorded by the ledger row.

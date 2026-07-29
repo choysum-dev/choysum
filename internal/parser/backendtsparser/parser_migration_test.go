@@ -123,7 +123,7 @@ func TestTsParser_ParseModelAddsParentPathAndServices(t *testing.T) {
 	content := `import { Model, Field } from '../../core/service';
 import BaseModel from './base';
 
-@Model('Department', { companyScoped: true, parentField: 'ParentId' })
+@Model('Department', { companyField: 'CompanyId', parentField: 'ParentId' })
 export default class Department extends BaseModel {
   @Field({ type: 'varchar' })
   public Name: string
@@ -152,8 +152,8 @@ export default class Department extends BaseModel {
 	if r.Model.Name != "Department" || r.Model.ClassName != "Department" {
 		t.Fatalf("unexpected model identity: %+v", r.Model)
 	}
-	if r.Model.CompanyScoped == nil || !*r.Model.CompanyScoped {
-		t.Fatalf("expected companyScoped=true, got %+v", r.Model.CompanyScoped)
+	if r.Model.CompanyField == nil || *r.Model.CompanyField != "CompanyId" {
+		t.Fatalf("expected companyField=CompanyId, got %+v", r.Model.CompanyField)
 	}
 	if r.Model.RawExtends != "/virtual/modules/test/service/base.ts" {
 		t.Fatalf("unexpected raw extends: %s", r.Model.RawExtends)

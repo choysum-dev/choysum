@@ -18,7 +18,7 @@ import { normalizeRefId } from '@/core/service/utils/normalization';
 /**
  * UserRole assigns a role to a user, optionally within one company scope.
  */
-@Model('UserRole', { companyScoped: true })
+@Model('UserRole', { companyField: 'CompanyId' })
 export default class UserRole extends BaseModel {
   /**
    * User that receives the role assignment.

@@ -28,7 +28,7 @@ import {
 /**
  * AttachmentContent stores finalized payload metadata and drives the upload workflow.
  */
-@Model('AttachmentContent', { application: 'document', companyScoped: true })
+@Model('AttachmentContent', { application: 'document', companyField: 'CompanyId' })
 export default class AttachmentContent extends BaseModel {
   /**
    * Stored payload row that backs the attachment content.

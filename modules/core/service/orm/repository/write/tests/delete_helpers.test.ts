@@ -7,7 +7,7 @@ test('repository delete write helpers resolve target ids via company access for 
   const calls: Array<Record<string, any>> = [];
   const ids = await resolveRepositoryDeleteTargetIds(
     {
-      meta: { companyScoped: true } as any,
+      meta: { companyField: 'CompanyId', fields: new Map([['CompanyId', {}]]) } as any,
       async locateIdsForCondition(condition) {
         calls.push({ method: 'locate', condition });
         return ['locate_1'];
@@ -34,7 +34,7 @@ test('repository delete write helpers resolve target ids via locate for non-comp
   const calls: Array<Record<string, any>> = [];
   const ids = await resolveRepositoryDeleteTargetIds(
     {
-      meta: { companyScoped: false } as any,
+      meta: { companyField: undefined } as any,
       async locateIdsForCondition(condition) {
         calls.push({ method: 'locate', condition });
         return ['locate_1'];
@@ -61,7 +61,7 @@ test('repository delete write helpers skip record rule assertion when no targets
   const calls: Array<Record<string, any>> = [];
   const ids = await resolveRepositoryDeleteTargetIds(
     {
-      meta: { companyScoped: false } as any,
+      meta: { companyField: undefined } as any,
       async locateIdsForCondition(condition) {
         calls.push({ method: 'locate', condition });
         return [];

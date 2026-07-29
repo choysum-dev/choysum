@@ -13,7 +13,7 @@ import { DEFAULT_UPLOAD_SESSION_TTL_SECONDS } from './_upload';
 /**
  * AttachmentUploadSession tracks staged uploads before payloads become active content.
  */
-@Model('AttachmentUploadSession', { application: 'document', companyScoped: true })
+@Model('AttachmentUploadSession', { application: 'document', companyField: 'CompanyId' })
 export default class AttachmentUploadSession extends BaseModel {
   /**
    * Owner model that will receive the uploaded attachment.

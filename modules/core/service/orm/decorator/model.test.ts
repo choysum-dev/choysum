@@ -15,20 +15,33 @@ test('model decorator table name generation handles leading and inner uppercase 
   expect(meta.tableName()).toBe('core_app_upper_camel_name');
 });
 
-test('model decorator companyScoped explicit option overrides inherited default', () => {
-  class ModelDecoratorInheritedScoped extends BaseModel {}
-  (ModelDecoratorInheritedScoped as any).__choysum_companyScopedDefault = true;
-  (Model('InheritedScoped', { application: 'scope' }) as any)(ModelDecoratorInheritedScoped as any);
+test('model decorator companyField inherits from parent and rejects rename/clear', () => {
+  class ModelDecoratorParentIsolated extends BaseModel {}
+  (Model('ParentIsolated', { application: 'scope', companyField: 'CompanyId' }) as any)(ModelDecoratorParentIsolated as any);
 
-  class ModelDecoratorExplicitScoped extends BaseModel {}
-  (ModelDecoratorExplicitScoped as any).__choysum_companyScopedDefault = true;
-  (Model('ExplicitScoped', { application: 'scope', companyScoped: false }) as any)(ModelDecoratorExplicitScoped as any);
+  class ModelDecoratorChildInherit extends ModelDecoratorParentIsolated {}
+  (Model('ChildInherit', { application: 'scope' }) as any)(ModelDecoratorChildInherit as any);
 
-  const inheritedMeta = MetadataStorage.instance.getModelMetadata(ModelDecoratorInheritedScoped as any);
-  const explicitMeta = MetadataStorage.instance.getModelMetadata(ModelDecoratorExplicitScoped as any);
+  class ModelDecoratorChildSame extends ModelDecoratorParentIsolated {}
+  (Model('ChildSame', { application: 'scope', companyField: 'CompanyId' }) as any)(ModelDecoratorChildSame as any);
 
-  expect(inheritedMeta.companyScoped).toBe(true);
-  expect(explicitMeta.companyScoped).toBe(false);
+  class ModelDecoratorChildRename extends ModelDecoratorParentIsolated {}
+  expect(() =>
+    (Model('ChildRename', { application: 'scope', companyField: 'OwningCompanyId' }) as any)(ModelDecoratorChildRename as any)
+  ).toThrow(/cannot rename inherited/);
+
+  class ModelDecoratorChildEmpty extends ModelDecoratorParentIsolated {}
+  expect(() => (Model('ChildEmpty', { application: 'scope', companyField: '' }) as any)(ModelDecoratorChildEmpty as any)).toThrow(
+    /cannot be empty/
+  );
+
+  const parentMeta = MetadataStorage.instance.getModelMetadata(ModelDecoratorParentIsolated as any);
+  const childMeta = MetadataStorage.instance.getModelMetadata(ModelDecoratorChildInherit as any);
+  const sameMeta = MetadataStorage.instance.getModelMetadata(ModelDecoratorChildSame as any);
+
+  expect(parentMeta.companyField).toBe('CompanyId');
+  expect(childMeta.companyField).toBe('CompanyId');
+  expect(sameMeta.companyField).toBe('CompanyId');
 });
 
 test('model decorator validates monetary currencyField targets base.Currency', () => {

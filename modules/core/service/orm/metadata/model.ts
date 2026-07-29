@@ -191,11 +191,10 @@ export interface ModelMetadata {
   softDelete?: boolean;
 
   /**
-   * Enables default company filtering (P2-1).
-   * - true: inject the company filter by default in the repository layer.
-   * - false: do not inject it, for example in global or security-context flows.
+   * Company row isolation (P2-1): non-empty ownership field name.
+   * When set, Repository injects company read filters / write checks on that column.
    */
-  companyScoped?: boolean;
+  companyField?: string;
 
   // Added migration and read-only controls.
   autoMigrate?: boolean;

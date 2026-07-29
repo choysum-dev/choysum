@@ -23,7 +23,7 @@ type IrModel struct {
 	RawExtends string `gorm:"type:varchar(255);" json:"raw_extends"`
 	Extends    string `gorm:"type:varchar(255);" json:"extends"`
 
-	CompanyScoped *bool `gorm:"type:boolean;" json:"company_scoped"`
+	CompanyField *string `gorm:"type:varchar(255);" json:"company_field"`
 
 	Decorators []*IrDecorator `gorm:"foreignKey:ModelId;constraint:OnDelete:CASCADE;" json:"decorators"`
 	Services   []*IrService   `gorm:"foreignKey:ModelId;constraint:OnDelete:CASCADE;" json:"services"`

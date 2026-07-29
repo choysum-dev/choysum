@@ -10,7 +10,7 @@ import BankAccount from './bank_account';
 /**
  * Partner extension that derives default inbound and outbound bank accounts.
  */
-@Model('Partner')
+@Model('Partner', { companyField: 'CompanyId' })
 export default class Partner extends PartnerBase {
   /** Related bank account rows. */
   @Field({

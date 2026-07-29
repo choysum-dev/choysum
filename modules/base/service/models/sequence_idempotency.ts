@@ -10,7 +10,7 @@ import Company from './company';
 import Sequence from './sequence';
 import { mapNormalizationToBase } from './_normalizers';
 
-@Model('SequenceIdempotency', { companyScoped: true })
+@Model('SequenceIdempotency', { companyField: 'CompanyId' })
 export default class SequenceIdempotency extends BaseModel {
   @Field({
     type: 'ManyToOne',

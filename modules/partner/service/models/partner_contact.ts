@@ -16,7 +16,7 @@ const ADDRESS_TYPES = new Set(['billing', 'shipping', 'office', 'registered', 'o
 /**
  * Company-scoped partner contact and address row.
  */
-@Model('PartnerContact', { companyScoped: true })
+@Model('PartnerContact', { companyField: 'CompanyId' })
 export default class PartnerContact extends BaseModel {
   /** Owning partner relation. */
   @Field({

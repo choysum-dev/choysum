@@ -52,13 +52,13 @@ export default class IrModel extends BaseModel {
   @Field({ type: 'varchar', size: 255, string: _lt('Table Name', { scope: 'meta.model.IrModel.fields' }) })
   ModelTable?: string;
 
-  @Field({ type: 'boolean', default: () => false, string: _lt('Abstract', { scope: 'meta.model.IrModel.fields' }) })
+  @Field({ type: 'varchar', size: 255, default: () => false, string: _lt('Abstract', { scope: 'meta.model.IrModel.fields' }) })
   Abstract?: boolean;
 
-  @Field({ type: 'boolean', default: () => true, string: _lt('Auto Migrate', { scope: 'meta.model.IrModel.fields' }) })
+  @Field({ type: 'varchar', size: 255, default: () => true, string: _lt('Auto Migrate', { scope: 'meta.model.IrModel.fields' }) })
   AutoMigrate?: boolean;
 
-  @Field({ type: 'boolean', default: () => false, string: _lt('Readonly', { scope: 'meta.model.IrModel.fields' }) })
+  @Field({ type: 'varchar', size: 255, default: () => false, string: _lt('Readonly', { scope: 'meta.model.IrModel.fields' }) })
   Readonly?: boolean;
 
   @Field({ type: 'varchar', size: 255, string: _lt('Raw Extends', { scope: 'meta.model.IrModel.fields' }) })
@@ -67,8 +67,8 @@ export default class IrModel extends BaseModel {
   @Field({ type: 'varchar', size: 255, string: _lt('Extends', { scope: 'meta.model.IrModel.fields' }) })
   Extends?: string;
 
-  @Field({ type: 'boolean', string: _lt('Company Scoped', { scope: 'meta.model.IrModel.fields' }) })
-  CompanyScoped?: boolean;
+  @Field({ type: 'varchar', size: 255, string: _lt('Company Field', { scope: 'meta.model.IrModel.fields' }) })
+  CompanyField?: string;
 
   @Field({ type: 'ManyToOne', relation: { targetModel: () => IrModule }, string: _lt('Module', { scope: 'meta.model.IrModel.fields' }) })
   ModuleId?: IrModule;

@@ -55,7 +55,7 @@ async function resolveRecordRuleMetaCached(appName: string, modelName: string): 
             ['Application', '=', appName],
           ],
         } as any,
-        { fields: ['Id', 'CompanyScoped'], limit: 1 }
+        { fields: ['Id', 'CompanyField'], limit: 1 }
       ),
     ]);
 
@@ -66,41 +66,51 @@ async function resolveRecordRuleMetaCached(appName: string, modelName: string): 
   });
 }
 
-async function computeCompanyGateMode(modelId: string, companyScoped: boolean, hasCompany: boolean): Promise<{ enabled: boolean; reason?: string }> {
+async function computeCompanyGateMode(
+  modelId: string,
+  companyField: string | undefined,
+  hasCompany: boolean
+): Promise<{ enabled: boolean; reason?: string; ownershipField?: string }> {
   if (!hasCompany) return { enabled: false, reason: 'no_company_context' };
-  if (!companyScoped) return { enabled: false, reason: 'model_not_company_scoped' };
+  const ownershipField = String(companyField ?? '').trim();
+  if (!ownershipField) return { enabled: false, reason: 'model_not_company_isolated' };
 
   const req = getCurrentReq();
   const state = req ? getOrInitReqServiceState(req) : undefined;
-  const key = `companyGateMode::${modelId}`;
-  return await memoizeInReqState(state, key, async (): Promise<{ enabled: boolean; reason?: string }> => {
+  const key = `companyGateMode::${modelId}::${ownershipField}`;
+  return await memoizeInReqState(state, key, async (): Promise<{ enabled: boolean; reason?: string; ownershipField?: string }> => {
     try {
-      const hasCompanyIdField =
+      const hasOwnershipField =
         Number(
           await IrField.Count({
             And: [
               ['ModelId', '=', modelId],
-              ['Name', '=', 'CompanyId'],
+              ['Name', '=', ownershipField],
             ],
           } as any)
         ) > 0;
-      if (!hasCompanyIdField) {
-        return { enabled: false, reason: 'company_scoped_missing_company_id_field' } as const;
+      if (!hasOwnershipField) {
+        return { enabled: false, reason: 'company_isolated_missing_ownership_field' };
       }
 
-      return { enabled: true } as const;
+      return { enabled: true, ownershipField };
     } catch {
       return { enabled: false, reason: 'meta_company_gate_error' };
     }
   });
 }
 
-function buildCompanyGateExpr(scope: RoleScope, companyGateEnabled: boolean): any {
-  if (!companyGateEnabled) return null;
+function buildCompanyGateExpr(
+  scope: RoleScope,
+  companyGate: { enabled: boolean; ownershipField?: string }
+): any {
+  if (!companyGate.enabled) return null;
+  const ownershipField = String(companyGate.ownershipField ?? '').trim();
+  if (!ownershipField) return null;
   if (scope.global) return null;
   const ids = scope.companies || [];
-  const companyIn: any = ['CompanyId', 'in', ids] as any;
-  const shared: any = ['CompanyId', 'is', null] as any;
+  const companyIn: any = [ownershipField, 'in', ids] as any;
+  const shared: any = [ownershipField, 'is', null] as any;
   return { Or: [companyIn, shared] } as any;
 }
 
@@ -138,10 +148,14 @@ function ruleAudienceScope(roleId: string, roleScopesById: Record<string, RoleSc
   return { global: false, companies: [] };
 }
 
-function buildRuleExpr(rule: any, companyGateEnabled: boolean, roleScopesById: Record<string, RoleScope>): any {
+function buildRuleExpr(
+  rule: any,
+  companyGate: { enabled: boolean; ownershipField?: string },
+  roleScopesById: Record<string, RoleScope>
+): any {
   const roleId = maybeId(rule?.RoleId) || '';
   const scope = ruleAudienceScope(roleId, roleScopesById);
-  const gate = buildCompanyGateExpr(scope, companyGateEnabled);
+  const gate = buildCompanyGateExpr(scope, companyGate);
   const cond = rule?.Condition;
   if (isTrueCondition(cond)) {
     return gate; // null ⇒ unconstrained TRUE for this rule
@@ -170,7 +184,7 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
     const { irApplicationId, modelHit, modelId } = await resolveRecordRuleMetaCached(input.appName, input.modelName);
     if (!modelId) return { kind: 'false', reason: 'model_not_found' };
 
-    const companyGate = await computeCompanyGateMode(modelId, Boolean(modelHit?.CompanyScoped), input.hasCompany);
+    const companyGate = await computeCompanyGateMode(modelId, modelHit?.CompanyField, input.hasCompany);
     const permField = PERM_FIELD_BY_OP[input.opValue];
     const roleIds = (input.roleIds || []).map(id => String(id || '').trim()).filter(Boolean);
 
@@ -235,7 +249,7 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
       if (!modelScoped && !appScoped && !globalScoped) continue;
 
       const kind = normalizeKind((r as any).Kind);
-      const expr = buildRuleExpr(r, companyGate.enabled, input.roleScopesById || {});
+      const expr = buildRuleExpr(r, companyGate, input.roleScopesById || {});
       const ruleId = String((r as any)?.Id || '').trim();
       if (kind === 'restrict') {
         if (expr != null) {

@@ -18,10 +18,6 @@ type GlobalPoolLike = {
   get(name: string): RegisteredModelCtor<BaseModel> | undefined;
 };
 
-type CompanyScopedDefaultCarrier = {
-  __choysum_companyScopedDefault?: unknown;
-};
-
 function asGlobalPoolLike(value: unknown): GlobalPoolLike | undefined {
   const record = asRuntimeCarrier(value) ?? asObjectRecord(value);
   if (!record) return undefined;
@@ -54,10 +50,12 @@ export interface ModelOptions {
   autoMigrate?: boolean;
   readonly?: boolean;
   /**
-   * Enables default company filtering (P2-1).
-   * - Prefer explicit configuration to avoid relying on implicit inheritance defaults.
+   * Company row isolation (P2-1): ownership field name.
+   * Non-empty string enables Repository company filtering on that column.
+   * Omitted values inherit the parent model's companyField; clearing/renaming a
+   * parent value is rejected.
    */
-  companyScoped?: boolean;
+  companyField?: string;
 }
 
 /** @deprecated Prefer ModelOptions. Kept for compatibility. */
@@ -73,6 +71,43 @@ function toSnakeCase(str: string): string {
       // Lowercase the remaining characters.
       .toLowerCase()
   );
+}
+
+function resolveParentCompanyField(target: Function): string | undefined {
+  let current: unknown = Object.getPrototypeOf(target);
+  while (current && current !== Object.prototype && typeof current === 'function') {
+    try {
+      const parentMeta = MetadataStorage.instance.getModelMetadata(current as InstantiableModelCtor<BaseModel>);
+      const field = String(parentMeta?.companyField ?? '').trim();
+      if (field) return field;
+    } catch {
+      // Parent may not be registered yet; keep walking.
+    }
+    current = Object.getPrototypeOf(current);
+  }
+  return undefined;
+}
+
+/**
+ * Resolve companyField with monotonic inheritance (design D4).
+ */
+export function resolveModelCompanyField(target: Function, optionsCompanyField: string | undefined): string | undefined {
+  const parentField = resolveParentCompanyField(target);
+
+  if (optionsCompanyField !== undefined) {
+    const field = String(optionsCompanyField).trim();
+    if (!field) {
+      throw new Error(`@Model companyField cannot be empty on ${target.name || 'model'}`);
+    }
+    if (parentField && parentField !== field) {
+      throw new Error(
+        `@Model companyField cannot rename inherited value '${parentField}' to '${field}' on ${target.name || 'model'}`
+      );
+    }
+    return field;
+  }
+
+  return parentField;
 }
 
 /**
@@ -93,8 +128,7 @@ export function Model(name: string, options?: ModelOptions) {
     const appName = options?.application || 'application';
     const fullModelName = appName + '.' + name;
 
-    const inheritCompanyScoped = Boolean((target as unknown as CompanyScopedDefaultCarrier).__choysum_companyScopedDefault);
-    const companyScoped = typeof options?.companyScoped === 'boolean' ? options.companyScoped : inheritCompanyScoped;
+    const companyField = resolveModelCompanyField(target, options?.companyField);
 
     MetadataStorage.instance.setModelMetadata(target, {
       name: target.name,
@@ -106,7 +140,7 @@ export function Model(name: string, options?: ModelOptions) {
       type: target,
       orderBy: options?.orderBy,
       softDelete: options?.softDelete ?? true,
-      companyScoped,
+      companyField,
       autoMigrate: options?.autoMigrate,
       readonly: options?.readonly,
       parentField: options?.parentField,

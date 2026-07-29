@@ -591,7 +591,7 @@ test('validation engine reports check_company violation when related company dif
     PlatformCompanyTargetModel as any,
     {
       ...targetMetadata,
-      companyScoped: true,
+      companyField: 'CompanyId',
     } as any
   );
 
@@ -1022,7 +1022,7 @@ test('validation engine reports platform issue for cross-company many2one refere
     PlatformCompanyTargetModel as any,
     {
       ...targetMetadata,
-      companyScoped: true,
+      companyField: 'CompanyId',
     } as any
   );
 
@@ -1831,7 +1831,7 @@ test('validation engine platform skips company check for non-company-scoped targ
     {
       ...targetMeta,
       fullModelName: 'base.Company',
-      companyScoped: false,
+      companyField: undefined,
     } as any
   );
 
@@ -2009,7 +2009,7 @@ test('validation engine platform skips unresolved target ctor and empty target c
       fullModelName: 'test.PlatformCompanyTargetModel',
       application: 'test',
       modelName: 'PlatformCompanyTargetModel',
-      companyScoped: true,
+      companyField: 'CompanyId',
     } as any
   );
 

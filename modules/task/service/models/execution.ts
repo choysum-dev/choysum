@@ -7,7 +7,7 @@ import { _lt } from '../i18n';
 /**
  * Runtime execution snapshot for a background job.
  */
-@Model('JobExecution', { application: 'task', companyScoped: false, tableName: 'task_job_execution', autoMigrate: false })
+@Model('JobExecution', { application: 'task', tableName: 'task_job_execution', autoMigrate: false })
 export default class JobExecution extends BaseModel {
   /** Related job identifier. */
   @Field({

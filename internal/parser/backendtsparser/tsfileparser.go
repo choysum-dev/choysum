@@ -201,7 +201,7 @@ func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.Prope
 
 	// Parse-stage support for @Model('Name', { ...options }) object-literal arguments.
 	parentFieldName := ""
-	var companyScopedOpt *bool
+	var companyFieldOpt *string
 	for _, d := range class.Decorators {
 		if d.Name != "Model" || len(d.Arguments) == 0 {
 			continue
@@ -215,23 +215,26 @@ func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.Prope
 			if err := json.Unmarshal([]byte(arg.Value), &opts); err != nil {
 				continue
 			}
-			if companyScopedOpt == nil {
-				if cs, ok := opts["companyScoped"].(bool); ok {
-					v := cs
-					companyScopedOpt = &v
+			if companyFieldOpt == nil {
+				if cf, ok := opts["companyField"].(string); ok {
+					trimmed := strings.TrimSpace(cf)
+					if trimmed != "" {
+						v := trimmed
+						companyFieldOpt = &v
+					}
 				}
 			}
 			if pf, ok := opts["parentField"].(string); ok && pf != "" {
 				parentFieldName = pf
-				// don't break here; continue scanning to also capture companyScoped if present
+				// don't break here; continue scanning to also capture companyField if present
 			}
 		}
-		if parentFieldName != "" && companyScopedOpt != nil {
+		if parentFieldName != "" && companyFieldOpt != nil {
 			break
 		}
 	}
-	if companyScopedOpt != nil {
-		model.CompanyScoped = companyScopedOpt
+	if companyFieldOpt != nil {
+		model.CompanyField = companyFieldOpt
 	}
 
 	// Synthesize ParentPath when parentField is declared and ParentPath is absent.

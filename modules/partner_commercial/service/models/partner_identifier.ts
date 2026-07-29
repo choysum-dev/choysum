@@ -9,7 +9,7 @@ import { fail, normalizeOptionalRefId, normalizeOptionalText, normalizeOptionalT
 /**
  * Company-scoped commercial identifier row attached to a partner.
  */
-@Model('PartnerIdentifier', { application: 'partner', companyScoped: true })
+@Model('PartnerIdentifier', { application: 'partner', companyField: 'CompanyId' })
 export default class PartnerIdentifier extends BaseModel {
   /** Owning partner reference. */
   @Field({

@@ -12,7 +12,7 @@ import Bank from '@/base/service/models/bank';
 /**
  * Company-scoped partner bank account record.
  */
-@Model('BankAccount', { application: 'partner', companyScoped: true })
+@Model('BankAccount', { application: 'partner', companyField: 'CompanyId' })
 export default class BankAccount extends BaseModel {
   /** Owning partner reference. */
   @Field({

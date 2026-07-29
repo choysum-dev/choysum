@@ -53,7 +53,7 @@ test('repository relation projection applies company filter from runtime context
   withContext({ enabledCompanyIds: ['company_a', 'company_b'] }, () => {
     applyRepositoryRelationCompanyFilter(
       {
-        companyScoped: true,
+        companyField: 'CompanyId',
         fields: new Map([['CompanyId', { column: { name: 'CompanyId' } }]]),
       } as any,
       'child_table',
@@ -158,7 +158,7 @@ test('repository relation projection skips company filter for non-scoped/empty i
 
   const noScope = applyRepositoryRelationCompanyFilter(
     {
-      companyScoped: false,
+      companyField: undefined,
       fields: new Map([['CompanyId', { column: { name: 'CompanyId' } }]]),
     } as any,
     'child_table',
@@ -167,15 +167,16 @@ test('repository relation projection skips company filter for non-scoped/empty i
   expect(noScope).toBe(query);
 
   withContext({ enabledCompanyIds: [] }, () => {
-    const emptyIds = applyRepositoryRelationCompanyFilter(
-      {
-        companyScoped: true,
-        fields: new Map([['CompanyId', { column: { name: 'CompanyId' } }]]),
-      } as any,
-      'child_table',
-      query as any
-    );
-    expect(emptyIds).toBe(query);
+    expect(() =>
+      applyRepositoryRelationCompanyFilter(
+        {
+          companyField: 'CompanyId',
+          fields: new Map([['CompanyId', { column: { name: 'CompanyId' } }]]),
+        } as any,
+        'child_table',
+        query as any
+      )
+    ).toThrow(/missing ctx\.enabledCompanyIds\/activeCompanyId/);
   });
 
   const soft = applyRepositoryRelationSoftDeleteFilter(
@@ -201,7 +202,7 @@ test('repository relation projection supports scalar ActiveCompanyId fallback an
   withContext({ ActiveCompanyId: 'company_one' }, () => {
     applyRepositoryRelationCompanyFilter(
       {
-        companyScoped: true,
+        companyField: 'CompanyId',
         fields: new Map([['CompanyId', { column: { name: 'CompanyId' } }]]),
       } as any,
       'child_table',
@@ -260,7 +261,7 @@ test('repository relation projection respects global filter switches', () => {
     const soft = applyRepositoryRelationSoftDeleteFilter({ softDelete: true } as any, 'demo_table', query as any);
     const company = applyRepositoryRelationCompanyFilter(
       {
-        companyScoped: true,
+        companyField: 'CompanyId',
         fields: new Map([['CompanyId', { column: { name: 'CompanyId' } }]]),
       } as any,
       'demo_table',
@@ -459,19 +460,20 @@ test('repository relation projection company filter requires CompanyId field and
   };
 
   withContext({ EnabledCompanyIds: ['  company_a  ', 'company_a', null, '', 'company_b'] }, () => {
-    const noCompanyField = applyRepositoryRelationCompanyFilter(
-      {
-        companyScoped: true,
-        fields: new Map([['Name', { column: { name: 'Name' } }]]),
-      } as any,
-      'child_table',
-      query as any
-    );
-    expect(noCompanyField).toBe(query);
+    expect(() =>
+      applyRepositoryRelationCompanyFilter(
+        {
+          companyField: 'CompanyId',
+          fields: new Map([['Name', { column: { name: 'Name' } }]]),
+        } as any,
+        'child_table',
+        query as any
+      )
+    ).toThrow(/missing ownership field/);
 
     applyRepositoryRelationCompanyFilter(
       {
-        companyScoped: true,
+        companyField: 'CompanyId',
         fields: new Map([['CompanyId', { column: { name: 'CompanyId' } }]]),
       } as any,
       'child_table',
@@ -553,7 +555,7 @@ test('repository relation projection uses lowercase activeCompanyId and defaults
   withContext({ activeCompanyId: 'company_lowercase' }, () => {
     applyRepositoryRelationCompanyFilter(
       {
-        companyScoped: true,
+        companyField: 'CompanyId',
         fields: new Map([['CompanyId', { column: { name: 'CompanyId' } }]]),
       } as any,
       'child_table',

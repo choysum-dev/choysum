@@ -7,7 +7,7 @@ test('repository mutation write helpers resolve target ids via company access fo
   const calls: Array<Record<string, any>> = [];
   const ids = await resolveRepositoryMutationWriteTargetIds(
     {
-      meta: { companyScoped: true } as any,
+      meta: { companyField: 'CompanyId', fields: new Map([['CompanyId', {}]]) } as any,
       async locateIdsForCondition(condition) {
         calls.push({ method: 'locate', condition });
         return ['locate_1'];
@@ -35,7 +35,7 @@ test('repository mutation write helpers resolve target ids via locate for non-co
   const calls: Array<Record<string, any>> = [];
   const ids = await resolveRepositoryMutationWriteTargetIds(
     {
-      meta: { companyScoped: false } as any,
+      meta: { companyField: undefined } as any,
       async locateIdsForCondition(condition) {
         calls.push({ method: 'locate', condition });
         return ['locate_1'];
@@ -63,7 +63,7 @@ test('repository mutation write helpers skip record rule assertion when no targe
   const calls: Array<Record<string, any>> = [];
   const ids = await resolveRepositoryMutationWriteTargetIds(
     {
-      meta: { companyScoped: false } as any,
+      meta: { companyField: undefined } as any,
       async locateIdsForCondition(condition) {
         calls.push({ method: 'locate', condition });
         return [];
