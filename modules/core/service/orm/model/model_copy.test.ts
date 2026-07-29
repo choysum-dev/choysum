@@ -738,7 +738,9 @@ test('buildCopyValues keeps ownership by default and rewrites for active / out-o
   });
 
   // Non-isolated models skip ownership rewrite.
-  applyCopyCompanyOwnership({ fields: new Map() } as any, { CompanyId: 'c1' }, undefined, { copyCompany: 'active' });
+  const nonIsolatedOut: Record<string, unknown> = { CompanyId: 'c1' };
+  applyCopyCompanyOwnership({ fields: new Map() } as any, nonIsolatedOut, undefined, { copyCompany: 'active' });
+  expect(nonIsolatedOut).toEqual({ CompanyId: 'c1' });
 
   // Null / object-without-Id ownership values normalize to empty (keep leaves them unset).
   const metaNull = getModelRuntimeMetadata(CopyIsolatedWidget as any);
