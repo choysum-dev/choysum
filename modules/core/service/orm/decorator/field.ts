@@ -3,7 +3,14 @@
 
 import BaseModel from '../model/model';
 import { MetadataStorage } from '../metadata';
-import { FieldOptions, FieldMetadata, FieldType, type SelectionItem, type SelectionDeclaration } from '../metadata/field';
+import {
+  FieldOptions,
+  FieldMetadata,
+  FieldType,
+  RELATIONAL_CONDITION_TYPES,
+  type SelectionItem,
+  type SelectionDeclaration,
+} from '../metadata/field';
 import type { ModelCtor } from '../metadata/field';
 import { asObjectRecord } from '../../../utils/object';
 import type { ObjectRecord } from '../../../utils/types';
@@ -31,14 +38,6 @@ const scalarTypes = new Set<FieldType>([
   'ManyToManyRef',
 ]);
 const relationTypes = new Set<FieldType>(['ManyToOne', 'OneToMany', 'ManyToMany']);
-/** Field types that may declare `@Field({ condition })` (PR-P1-F4). */
-const relationalConditionTypes = new Set<FieldType>([
-  'ManyToOne',
-  'ManyToOneRef',
-  'OneToMany',
-  'ManyToMany',
-  'ManyToManyRef',
-]);
 
 type FieldDecoratorOptionBag = {
   type?: FieldType;
@@ -439,7 +438,7 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
 
     // Relational condition (static QueryCondition | callable; no method-name string)
     if (optionBag.condition !== undefined) {
-      if (!relationalConditionTypes.has(type)) {
+      if (!RELATIONAL_CONDITION_TYPES.has(type)) {
         throw new Error(
           `@Field(${name}) condition is only supported on ManyToOne / ManyToOneRef / OneToMany / ManyToMany / ManyToManyRef`
         );

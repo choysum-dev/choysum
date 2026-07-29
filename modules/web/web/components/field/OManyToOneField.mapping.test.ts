@@ -44,7 +44,7 @@ describe('OManyToOneField mapping/contract', () => {
 
     expect(s).toContain('relationStore?.NameSearch(');
     expect(s).toContain("fields: ['Id', 'DisplayName']");
-    expect(s).toContain('buildRelationalForField');
+    expect(s).toContain('...buildRelationalForField(');
     expect(s).not.toContain('buildKeywordCondition');
     expect(s).not.toContain('relationStore?.Search(final');
   });

@@ -372,6 +372,23 @@ export type RelationFieldType = Extract<FieldType, 'ManyToOne' | 'OneToMany' | '
  */
 export type ToManyRelationFieldType = Extract<RelationFieldType, 'OneToMany' | 'ManyToMany'>;
 
+/**
+ * Field types that may declare / enforce `@Field({ condition })` (PR-P1-F4).
+ */
+export type RelationalConditionFieldType = Extract<
+  FieldType,
+  'ManyToOne' | 'ManyToOneRef' | 'OneToMany' | 'ManyToMany' | 'ManyToManyRef'
+>;
+
+/** Shared allowlist for decorator validation and Search/forField / relation-load enforcement. */
+export const RELATIONAL_CONDITION_TYPES = new Set<FieldType>([
+  'ManyToOne',
+  'ManyToOneRef',
+  'OneToMany',
+  'ManyToMany',
+  'ManyToManyRef',
+]);
+
 type KeysOfType<T, V> = Extract<{ [K in keyof T]-?: T[K] extends V ? K : never }[keyof T], string>;
 
 /**

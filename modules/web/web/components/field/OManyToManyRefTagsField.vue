@@ -440,7 +440,7 @@ async function handleRemoteSearch(keyword: string) {
       {
         fields: pickHydrationFields() as any,
         limit: props.suggestLimit,
-        ...buildRelationalForField(props.store as any, String(binding.prop)),
+        ...buildRelationalForField(props.store as any, binding.prop),
       } as any
     );
     const rows = Array.isArray(records) ? records : [];

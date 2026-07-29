@@ -41,6 +41,17 @@ class ForFieldOrder extends BaseModel {
   } as any)
   DynamicBankId!: ForFieldBank | null;
 
+  @Field({
+    type: 'ManyToOne',
+    relation: {
+      targetModel: () => {
+        throw new Error('lazy target boom');
+      },
+    },
+    condition: ['Active', '=', true],
+  } as any)
+  BrokenTargetId!: ForFieldBank | null;
+
   @Field({ type: 'varchar', size: 32 })
   Name!: string;
 }
@@ -92,6 +103,12 @@ test('resolveForFieldCondition rejects target mismatch', () => {
   expect(() =>
     resolveForFieldCondition(ForFieldOrder as any, { model: 'demo.ForFieldOrder', field: 'BankAccountId' })
   ).toThrow('does not match the searched model');
+});
+
+test('resolveForFieldCondition rejects unresolvable relation target', () => {
+  expect(() =>
+    resolveForFieldCondition(ForFieldBank as any, { model: 'demo.ForFieldOrder', field: 'BrokenTargetId' })
+  ).toThrow('unresolvable relation target');
 });
 
 test('mergeCallerConditionWithForField Ands meta and caller', () => {

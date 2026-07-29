@@ -20,6 +20,7 @@ export type {
   FieldType,
   RelationFieldType,
   ToManyRelationFieldType,
+  RelationalConditionFieldType,
   M2OScalarPath,
   SelectExpressionAtom,
   SelectExpressionValue,
@@ -74,3 +75,4 @@ export type {
   ComputeSearchHandler,
 } from './compute';
 export { MetadataStorage, getEffectiveConstraints, getEffectiveOnchange } from './storage';
+export { RELATIONAL_CONDITION_TYPES } from './field';

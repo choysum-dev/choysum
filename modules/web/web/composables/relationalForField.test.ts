@@ -24,5 +24,7 @@ describe('buildRelationalForField', () => {
   it('returns empty when model or field missing', () => {
     expect(buildRelationalForField({}, 'PartnerId')).toEqual({});
     expect(buildRelationalForField({ modelName: 'SaleOrder' }, '')).toEqual({});
+    expect(buildRelationalForField({ modelName: 'SaleOrder' }, undefined)).toEqual({});
+    expect(buildRelationalForField({ modelName: 'SaleOrder' }, null)).toEqual({});
   });
 });

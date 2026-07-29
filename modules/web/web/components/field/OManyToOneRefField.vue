@@ -504,7 +504,7 @@ async function handleRemoteSearch(query: string, recordRef?: any) {
     const result = (await relationStore.value?.NameSearch(String(query ?? '').trim(), final as any, {
       fields: ['Id', 'DisplayName'],
       limit: props.pageSize ?? 20,
-      ...buildRelationalForField(props.store as any, String(binding.prop)),
+      ...buildRelationalForField(props.store as any, binding.prop),
     })) as V[] | undefined;
 
     options.value = (result ?? []).map(toOption);

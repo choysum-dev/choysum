@@ -7,18 +7,11 @@
 
 import BaseModel from './model';
 import { MetadataStorage } from '../metadata';
-import type { FieldMetadata, FieldType, ModelCtor } from '../metadata/field';
+import type { FieldMetadata, ModelCtor } from '../metadata/field';
+import { RELATIONAL_CONDITION_TYPES } from '../metadata/field';
 import type { ModelMetadata } from '../metadata/model';
 import type { BaseQueryCondition, ForField } from '../repository/types/query';
 import { andRepositoryConditions, isEmptyRepositoryCondition } from '../repository/query/condition_layer';
-
-const RELATIONAL_CONDITION_TYPES = new Set<FieldType>([
-  'ManyToOne',
-  'ManyToOneRef',
-  'OneToMany',
-  'ManyToMany',
-  'ManyToManyRef',
-]);
 
 function trimRequired(label: string, value: unknown): string {
   const trimmed = typeof value === 'string' ? value.trim() : String(value ?? '').trim();
@@ -140,38 +133,41 @@ export function resolveForFieldCondition(
   }
 
   const targetFullName = resolveRelationTargetFullName(fieldMeta);
+  if (!targetFullName) {
+    throw new Error(
+      `forField { model: "${model}", field: "${field}" } has an unresolvable relation target; cannot verify it matches the searched model`
+    );
+  }
   const receiverKeys = receiverModelKeys(ReceiverCtor);
-  if (targetFullName) {
-    const targetKeys = new Set<string>([targetFullName]);
-    // Also allow short name match against receiver
-    const short = targetFullName.includes('.') ? targetFullName.split('.').pop()! : targetFullName;
-    if (short) targetKeys.add(short);
-    let overlap = false;
-    for (const key of targetKeys) {
-      if (receiverKeys.has(key)) {
+  const targetKeys = new Set<string>([targetFullName]);
+  // Also allow short name match against receiver
+  const short = targetFullName.includes('.') ? targetFullName.split('.').pop()! : targetFullName;
+  if (short) targetKeys.add(short);
+  let overlap = false;
+  for (const key of targetKeys) {
+    if (receiverKeys.has(key)) {
+      overlap = true;
+      break;
+    }
+  }
+  // Compare full names via receiver meta when available
+  if (!overlap) {
+    try {
+      const recvMeta = MetadataStorage.instance.getModelMetadata(ReceiverCtor as never);
+      const recvFull = String(recvMeta.fullModelName || '').trim();
+      const recvShort = String(recvMeta.modelName || recvMeta.name || '').trim();
+      if (recvFull && (targetFullName === recvFull || short === recvFull)) overlap = true;
+      if (recvShort && (targetFullName === recvShort || short === recvShort || targetFullName.endsWith(`.${recvShort}`))) {
         overlap = true;
-        break;
       }
+    } catch {
+      /* ignore */
     }
-    // Compare full names via receiver meta when available
-    if (!overlap) {
-      try {
-        const recvMeta = MetadataStorage.instance.getModelMetadata(ReceiverCtor as never);
-        const recvFull = String(recvMeta.fullModelName || '').trim();
-        const recvShort = String(recvMeta.modelName || recvMeta.name || '').trim();
-        if (recvFull && (targetFullName === recvFull || short === recvFull)) overlap = true;
-        if (recvShort && (targetFullName === recvShort || short === recvShort || targetFullName.endsWith(`.${recvShort}`))) {
-          overlap = true;
-        }
-      } catch {
-        /* ignore */
-      }
-    }
-    if (!overlap) {
-      throw new Error(
-        `forField { model: "${model}", field: "${field}" } targets "${targetFullName}", which does not match the searched model`
-      );
-    }
+  }
+  if (!overlap) {
+    throw new Error(
+      `forField { model: "${model}", field: "${field}" } targets "${targetFullName}", which does not match the searched model`
+    );
   }
 
   return evaluateFieldRelationalCondition(SourceCtor, fieldMeta);
