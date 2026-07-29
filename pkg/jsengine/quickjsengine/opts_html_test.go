@@ -170,6 +170,18 @@ func TestFindHTMLBodyHelpers(t *testing.T) {
 	}
 }
 
+func TestRenderHTMLBodyChildrenNilFallback(t *testing.T) {
+	if got := renderHTMLBodyChildren(nil, "fallback"); got != "fallback" {
+		t.Fatalf("nil body should return fallback, got %q", got)
+	}
+	body := &html.Node{Type: html.ElementNode, Data: "body"}
+	child := &html.Node{Type: html.TextNode, Data: "x"}
+	body.FirstChild = child
+	if got := renderHTMLBodyChildren(body, "fallback"); got != "x" {
+		t.Fatalf("expected rendered child text, got %q", got)
+	}
+}
+
 func TestWithHtmlExposesSanitize(t *testing.T) {
 	engine := newTestQuickjsEngine(t, WithHtml())
 

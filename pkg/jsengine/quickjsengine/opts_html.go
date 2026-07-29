@@ -112,10 +112,16 @@ func forceBlankTargetRel(fragment string) string {
 		return fragment
 	}
 	// html.Parse from a string reader does not fail with I/O errors and always
-	// yields an html/head/body tree, so findHTMLBody is non-nil.
+	// yields an html/head/body tree in practice; still guard body for safety.
 	doc, _ := html.Parse(strings.NewReader(fragment))
 	walkForceBlankTargetRel(doc)
-	body := findHTMLBody(doc)
+	return renderHTMLBodyChildren(findHTMLBody(doc), fragment)
+}
+
+func renderHTMLBodyChildren(body *html.Node, fallback string) string {
+	if body == nil {
+		return fallback
+	}
 	var buf bytes.Buffer
 	for c := body.FirstChild; c != nil; c = c.NextSibling {
 		_ = html.Render(&buf, c)
