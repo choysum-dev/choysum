@@ -3,6 +3,7 @@
 
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
+import { loginAsE2EAdmin } from './utils/login.ts';
 
 /**
  * Smoke test for auth module:
@@ -32,21 +33,7 @@ test('auth smoke: login with fixture user and navigate to /web/auth/users', asyn
   const runtime = readRuntimeInfo();
   const baseURL = runtime.baseURL;
 
-  // Navigate to a protected route; auth guard should redirect to login
-  await page.goto(`${baseURL}/web/auth/users`, { waitUntil: 'domcontentloaded' });
-
-  // Wait for login form to appear
-  await page.waitForSelector('input[placeholder*="username"]', { timeout: 10000 });
-
-  // Fill login credentials (from fixture: e2e-admin / e2e-admin)
-  await page.getByPlaceholder(/username/i).fill('e2e-admin');
-  await page.getByPlaceholder(/password/i).fill('e2e-admin');
-
-  // Submit login form
-  await page.locator('button[type="submit"]').click();
-
-  // After login, should land on /web/auth/users
-  await expect(page).toHaveURL(/\/web\/auth\/users/, { timeout: 15000 });
+  await loginAsE2EAdmin(page, baseURL);
 
   // Verify we're no longer on the login page
   await expect(page.getByText('User Login')).toHaveCount(0);

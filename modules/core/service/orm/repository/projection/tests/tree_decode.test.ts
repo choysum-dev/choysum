@@ -267,3 +267,17 @@ test('repository tree decode covers many2manyref null and decimal select/no-spec
     }
   );
 });
+
+test('repository tree decode unwraps companyDependent columns', async () => {
+  const { withContext } = await import('../../../../runtime/context');
+  class DemoModel {}
+  const meta = {
+    type: DemoModel,
+    fields: new Map([['Cost', { type: 'number', companyDependent: true, column: { name: 'Cost' } }]]),
+  } as any;
+  const row = { Cost: JSON.stringify({ C1: 12.5, C2: 11 }) };
+  await withContext({ activeCompanyId: 'C1' }, async () => {
+    const decoded = decodeRowWithTree(meta, { columns: new Set(['Cost']), relations: new Map() } as any, row) as any;
+    expect(decoded.Cost).toBe(12.5);
+  });
+});

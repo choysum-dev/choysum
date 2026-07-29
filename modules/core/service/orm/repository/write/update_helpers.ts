@@ -95,8 +95,10 @@ export async function loadRepositoryUpdateValidationCurrentRows(
   const rows = (await params.execute<Entity>(query as unknown as RepositoryQueryLike<Entity>)) || [];
   const result = new Map<string, ObjectRecord>();
   for (const row of rows) {
-    // Prefetch lang maps so translate-field updates can merge without wiping sibling languages.
-    const decoded = withContext({ prefetch_langs: true }, () => params.decodeFromDb(row)) as ObjectRecord;
+    // Prefetch lang / company maps so field updates can merge without wiping sibling keys.
+    const decoded = withContext({ prefetch_langs: true, prefetch_companies: true }, () =>
+      params.decodeFromDb(row)
+    ) as ObjectRecord;
     const id = String(decoded.Id || '').trim();
     if (id) {
       result.set(id, decoded);

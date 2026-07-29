@@ -730,6 +730,120 @@ test('Field decorator rejects translate on non-text field types', () => {
   }).toThrow('translate is only supported on char/varchar/text fields');
 });
 
+test('Field decorator accepts companyDependent and defaults copy false', () => {
+  class CompanyDependentModel extends BaseModel {
+    @Field({ type: 'number', companyDependent: true })
+    Cost!: number;
+
+    @Field({ type: 'number', companyDependent: true, copy: true })
+    CostCopy!: number;
+
+    @Field({ type: 'int', companyDependent: true })
+    Qty!: number;
+  }
+  const fields = MetadataStorage.instance.getModelMetadata(CompanyDependentModel as any).fields;
+  expect(fields.get('Cost')?.companyDependent).toBe(true);
+  expect(fields.get('Cost')?.copy).toBe(false);
+  expect(fields.get('Cost')?.column).toEqual({});
+  expect(fields.get('CostCopy')?.companyDependent).toBe(true);
+  expect(fields.get('CostCopy')?.copy).toBe(true);
+  expect(fields.get('Qty')?.companyDependent).toBe(true);
+  expect(fields.get('Qty')?.column).toEqual({});
+});
+
+test('Field decorator rejects companyDependent with translate / unique / bad type', () => {
+  expect(() => {
+    class Both extends BaseModel {
+      @Field({ type: 'char', translate: true, companyDependent: true } as any)
+      Name!: string;
+    }
+    return Both;
+  }).toThrow('cannot combine translate and companyDependent');
+
+  expect(() => {
+    class BadUnique extends BaseModel {
+      @Field({ type: 'number', companyDependent: true, unique: true })
+      Cost!: number;
+    }
+    return BadUnique;
+  }).toThrow('companyDependent cannot be combined with unique/uniqueIndex');
+
+  expect(() => {
+    class BadIndexed extends BaseModel {
+      @Field({ type: 'number', companyDependent: true, indexed: true })
+      Cost!: number;
+    }
+    return BadIndexed;
+  }).toThrow('companyDependent does not support indexed/index');
+
+  expect(() => {
+    class BadFloatAlias extends BaseModel {
+      @Field({ type: 'float', companyDependent: true } as any)
+      Cost!: number;
+    }
+    return BadFloatAlias;
+  }).toThrow('companyDependent is not supported on type');
+
+  expect(() => {
+    class BadType extends BaseModel {
+      @Field({ type: 'OneToMany', companyDependent: true } as any)
+      Lines!: any;
+    }
+    return BadType;
+  }).toThrow('companyDependent is not supported on type');
+
+  expect(() => {
+    class BadBool extends BaseModel {
+      @Field({ type: 'number', companyDependent: 'yes' as any })
+      Cost!: number;
+    }
+    return BadBool;
+  }).toThrow('companyDependent must be a boolean');
+
+  expect(() => {
+    class BadUniqueIndex extends BaseModel {
+      @Field({ type: 'number', companyDependent: true, uniqueIndex: 'uq_cost' } as any)
+      Cost!: number;
+    }
+    return BadUniqueIndex;
+  }).toThrow('companyDependent cannot be combined with unique/uniqueIndex');
+
+  expect(() => {
+    class BadIndexTrue extends BaseModel {
+      @Field({ type: 'number', companyDependent: true, index: true } as any)
+      Cost!: number;
+    }
+    return BadIndexTrue;
+  }).toThrow('companyDependent does not support indexed/index');
+
+  expect(() => {
+    class BadIndexName extends BaseModel {
+      @Field({ type: 'number', companyDependent: true, index: 'idx_cost' } as any)
+      Cost!: number;
+    }
+    return BadIndexName;
+  }).toThrow('companyDependent does not support indexed/index');
+});
+
+test('Field decorator accepts companyDependent on selection/ManyToOne without physical size', () => {
+  class Partner extends BaseModel {}
+  class M extends BaseModel {
+    @Field({ type: 'selection', selection: [{ value: 'a', label: 'A' }], companyDependent: true } as any)
+    Mode!: string;
+
+    @Field({ type: 'ManyToOne', companyDependent: true, relation: { targetModel: () => Partner } } as any)
+    Owner!: any;
+
+    @Field({ type: 'boolean', companyDependent: true })
+    Active!: boolean;
+  }
+  const fields = MetadataStorage.instance.getModelMetadata(M as any).fields;
+  expect(fields.get('Mode')?.companyDependent).toBe(true);
+  expect(fields.get('Owner')?.companyDependent).toBe(true);
+  expect(fields.get('Active')?.companyDependent).toBe(true);
+  expect((fields.get('Mode')?.column as any)?.size).toBeUndefined();
+});
+
 test('Field decorator accepts copy:false and rejects non-boolean copy', () => {
   class CopyFlagModel extends BaseModel {
     @Field({ type: 'varchar', size: 32, copy: false } as any)

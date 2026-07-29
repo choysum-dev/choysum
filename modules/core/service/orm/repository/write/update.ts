@@ -33,6 +33,10 @@ import {
 } from './update_helpers';
 import type { ObjectRecord } from '../../../../utils/types';
 import { applyTranslatedFieldsForWrite, payloadHasTranslatedFieldWrite } from '../projection/translated_field_codec';
+import {
+  applyCompanyDependentFieldsForWrite,
+  payloadHasCompanyDependentFieldWrite,
+} from '../projection/company_dependent_field_codec';
 
 type RepositoryUpdateDbLike = RepositoryUpdateTableDbLike<unknown, ObjectRecord, string>;
 
@@ -135,6 +139,11 @@ export async function prepareRepositoryUpdateSanitizedPayload(
       'Updating translated fields on multiple rows in one call is not supported yet; update one record at a time'
     );
   }
+  if (payloadHasCompanyDependentFieldWrite(params.meta, preparedVals) && targetIds.length > 1) {
+    throw new Error(
+      'Updating company-dependent fields on multiple rows in one call is not supported yet; update one record at a time'
+    );
+  }
 
   // Encode uses a single payload; require identical stamped monetary scales across targets.
   const encodeSource = stampedByTarget.get(targetIds[0]) as Entity;
@@ -150,7 +159,11 @@ export async function prepareRepositoryUpdateSanitizedPayload(
   }
 
   const current = targetIds.length === 1 ? currentRows.get(targetIds[0]) : undefined;
-  const valsForEncode = applyTranslatedFieldsForWrite(params.meta, encodeSource, {
+  const withTranslate = applyTranslatedFieldsForWrite(params.meta, encodeSource, {
+    mode: 'update',
+    current: current ?? null,
+  });
+  const valsForEncode = applyCompanyDependentFieldsForWrite(params.meta, withTranslate, {
     mode: 'update',
     current: current ?? null,
   });

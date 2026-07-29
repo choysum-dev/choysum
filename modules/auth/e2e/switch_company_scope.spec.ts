@@ -4,6 +4,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import { waitForGrpcWebUnary, waitForGrpcWebUnaryOk } from './utils/grpcweb.ts';
+import { loginAsE2EAdmin } from './utils/login.ts';
 
 type RuntimeInfo = {
   baseURL: string;
@@ -55,15 +56,7 @@ test('auth: switch company → new TokenPair → refresh PermissionState → hea
   const runtime = readRuntimeInfo();
   const baseURL = runtime.baseURL;
 
-  // Navigate to a protected route; auth guard should redirect to login
-  await page.goto(`${baseURL}/web/auth/users`, { waitUntil: 'domcontentloaded' });
-
-  // Login
-  await page.waitForSelector('input[placeholder*="username"]', { timeout: 10000 });
-  await page.getByPlaceholder(/username/i).fill('e2e-admin');
-  await page.getByPlaceholder(/password/i).fill('e2e-admin');
-  await page.locator('button[type="submit"]').click();
-  await expect(page).toHaveURL(/\/web\/auth\/users/, { timeout: 15000 });
+  await loginAsE2EAdmin(page, baseURL);
 
   // Baseline token
   const beforeToken = await readAuthAccessToken(page);

@@ -11,7 +11,7 @@ import type { UseField } from '@/web/web/composables/useField';
 import OFieldBase from './OFieldBase.vue';
 
 function makeBinding(
-  meta?: { string?: string; stringText?: ReturnType<typeof createTermReference>; translate?: boolean },
+  meta?: { string?: string; stringText?: ReturnType<typeof createTermReference>; translate?: boolean; companyDependent?: boolean },
   opts?: { recordId?: string | null; isEditMode?: boolean },
 ): UseField {
   const value = ref('x');
@@ -48,12 +48,13 @@ const fieldBaseStubs = {
     template: '<div class="form-item" :data-label="label"><slot /></div>',
   },
   // Inline error icon; Element Plus is not registered in this unit suite.
-  'el-icon': true,
+  'el-icon': { template: '<i class="el-icon-stub"><slot /></i>' },
   'el-tooltip': { template: '<div class="tooltip-stub"><slot /></div>' },
   'el-button': {
     template: '<button class="btn-stub" v-bind="$attrs"><slot /></button>',
   },
   OFieldTranslationsDialog: true,
+  OFieldCompanyValuesDialog: true,
 };
 
 describe('OFieldBase label resolution', () => {
@@ -384,5 +385,368 @@ describe('OFieldBase translate action', () => {
       },
     });
     expect(wrapper.find('.o-field-base__translate-btn').exists()).toBe(false);
+  });
+});
+
+describe('OFieldBase company values action', () => {
+  it('shows company-values icon in form edit when meta.companyDependent and record Id exist', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Cost', companyDependent: true }),
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: { stubs: fieldBaseStubs },
+    });
+    const btn = wrapper.find('.o-field-base__company-values-btn');
+    expect(btn.exists()).toBe(true);
+    expect(btn.attributes('aria-label')).toContain('Company values');
+  });
+
+  it('hides company-values icon when meta.companyDependent is missing', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Cost' }),
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: { stubs: fieldBaseStubs },
+    });
+    expect(wrapper.find('.o-field-base__company-values-btn').exists()).toBe(false);
+  });
+
+  it('hides company-values icon when record has no Id', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Cost', companyDependent: true }, { recordId: null }),
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: { stubs: fieldBaseStubs },
+    });
+    expect(wrapper.find('.o-field-base__company-values-btn').exists()).toBe(false);
+  });
+
+  it('hides company-values icon when not in edit mode', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Cost', companyDependent: true }, { isEditMode: false }),
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+        display: () => h('div', { class: 'display-slot' }, 'display'),
+      },
+      global: { stubs: fieldBaseStubs },
+    });
+    expect(wrapper.find('.o-field-base__company-values-btn').exists()).toBe(false);
+  });
+
+  it('opens company values dialog and applies saved value to the field binding', async () => {
+    const binding = makeBinding({ string: 'Cost', companyDependent: true });
+    binding.prop = 'ProductId.Cost';
+    binding.meta = { string: 'Cost', type: 'number', companyDependent: true, size: 80 } as any;
+    const value = binding.fieldRef() as { value: string };
+    value.value = 'old';
+
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding,
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: {
+        stubs: {
+          ...fieldBaseStubs,
+          OFieldCompanyValuesDialog: {
+            name: 'OFieldCompanyValuesDialog',
+            props: ['modelValue', 'fieldName', 'maxLength', 'draftValue', 'fieldType'],
+            emits: ['update:modelValue', 'saved'],
+            template:
+              '<div class="company-dialog-stub" :data-open="modelValue" :data-field="fieldName" :data-max="maxLength" :data-draft="draftValue" :data-type="fieldType"><button class="emit-close" @click="$emit(\'update:modelValue\', false)" /><button class="emit-saved" @click="$emit(\'saved\', \'11.5\')" /></div>',
+          },
+        },
+      },
+    });
+
+    expect(wrapper.find('.company-dialog-stub').attributes('data-open')).toBe('false');
+    await wrapper.find('.o-field-base__company-values-btn').trigger('click');
+    await nextTick();
+    const dialog = wrapper.find('.company-dialog-stub');
+    expect(dialog.attributes('data-open')).toBe('true');
+    expect(dialog.attributes('data-field')).toBe('Cost');
+    expect(dialog.attributes('data-max')).toBe('80');
+    expect(dialog.attributes('data-draft')).toBe('old');
+    expect(dialog.attributes('data-type')).toBe('number');
+    await dialog.find('.emit-close').trigger('click');
+    await nextTick();
+    expect(wrapper.find('.company-dialog-stub').attributes('data-open')).toBe('false');
+    await wrapper.find('.o-field-base__company-values-btn').trigger('click');
+    await nextTick();
+    await dialog.find('.emit-saved').trigger('click');
+    expect(value.value).toBe('11.5');
+  });
+
+  it('shows company values in preserveModeSlot edit wrap and applies null saved value', async () => {
+    const binding = makeBinding({ string: 'Cost', companyDependent: true });
+    binding.meta = { string: 'Cost', companyDependent: true, size: 0 } as any;
+    const value = binding.fieldRef() as { value: string | null };
+    value.value = 'draft';
+
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding,
+        renderMode: 'form',
+        preserveModeSlot: true,
+      },
+      slots: {
+        edit: () => h(EditStub),
+        display: () => h('div', { class: 'display-slot' }, 'display'),
+      },
+      global: {
+        stubs: {
+          ...fieldBaseStubs,
+          OFieldCompanyValuesDialog: {
+            name: 'OFieldCompanyValuesDialog',
+            props: ['modelValue', 'maxLength', 'draftValue'],
+            emits: ['update:modelValue', 'saved'],
+            template:
+              '<div class="company-dialog-stub" :data-open="modelValue" :data-max="String(maxLength)" :data-draft="draftValue"><button class="emit-saved" @click="$emit(\'saved\', null)" /></div>',
+          },
+        },
+      },
+    });
+
+    expect(wrapper.find('.o-field-base__company-values-btn').exists()).toBe(true);
+    expect(wrapper.find('.company-dialog-stub').attributes('data-max')).toBe('undefined');
+    await wrapper.find('.o-field-base__company-values-btn').trigger('click');
+    await nextTick();
+    await wrapper.find('.emit-saved').trigger('click');
+    expect(value.value).toBeNull();
+  });
+
+  it('honors FieldsGet companyDependent overlay and falls back to Company values aria', async () => {
+    const binding = makeBinding({ string: '' });
+    binding.prop = 'Cost';
+    binding.meta = { string: '', companyDependent: false } as any;
+    binding.store = {
+      getFieldMeta: (name: string) =>
+        name === 'Cost'
+          ? ({ type: 'float', typeAnnotation: 'number', id: '1', string: '', companyDependent: true, size: 12.5 } as any)
+          : undefined,
+      getFieldsGetTranslatedString: () => undefined,
+    } as any;
+
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding,
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: {
+        stubs: {
+          ...fieldBaseStubs,
+          OFieldCompanyValuesDialog: true,
+        },
+      },
+    });
+
+    const btn = wrapper.find('.o-field-base__company-values-btn');
+    expect(btn.exists()).toBe(true);
+    expect(btn.attributes('aria-label')).toMatch(/Company values/);
+  });
+
+  it('uses bare Company values aria when label and leaf are blank', async () => {
+    const binding = makeBinding({ string: '' });
+    binding.prop = '';
+    binding.meta = { string: '', companyDependent: true } as any;
+
+    const wrapper = mount(OFieldBase, {
+      props: { binding, renderMode: 'form' },
+      slots: { edit: () => h(EditStub) },
+      global: { stubs: { ...fieldBaseStubs, OFieldCompanyValuesDialog: true } },
+    });
+
+    expect(wrapper.find('.o-field-base__company-values-btn').attributes('aria-label')).toBe('Company values');
+  });
+
+  it('swallows company-values draft write failures when fieldRef assignment throws', async () => {
+    const binding = makeBinding({ string: 'Cost', companyDependent: true });
+    binding.meta = { string: 'Cost', companyDependent: true } as any;
+    const boom = {
+      get value() {
+        return 'old';
+      },
+      set value(_v: unknown) {
+        throw new Error('assign fail');
+      },
+    };
+    binding.fieldRef = () => boom as any;
+
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding,
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: {
+        stubs: {
+          ...fieldBaseStubs,
+          OFieldCompanyValuesDialog: {
+            name: 'OFieldCompanyValuesDialog',
+            props: ['modelValue'],
+            emits: ['saved'],
+            template:
+              '<div class="company-dialog-stub" :data-open="modelValue"><button class="emit-saved" @click="$emit(\'saved\', \'x\')" /></div>',
+          },
+        },
+      },
+    });
+
+    await wrapper.find('.o-field-base__company-values-btn').trigger('click');
+    await nextTick();
+    await expect(wrapper.find('.emit-saved').trigger('click')).resolves.toBeUndefined();
+  });
+
+  it('hides company-values action outside form mode', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Cost', companyDependent: true }),
+        renderMode: 'table',
+      },
+      slots: {
+        edit: () => h(EditStub),
+        display: () => h('div', { class: 'display-slot' }, 'display'),
+      },
+      global: {
+        stubs: {
+          ...fieldBaseStubs,
+          OVColumn: {
+            template: '<div class="ov-column"><slot :row="{ Id: 1 }" :$index="0" /></div>',
+          },
+        },
+      },
+    });
+    expect(wrapper.find('.o-field-base__company-values-btn').exists()).toBe(false);
+    // Force-evaluate the computed (form branch is not rendered in table mode).
+    expect((wrapper.vm as any).$.setupState.showCompanyValuesAction).toBe(false);
+  });
+
+  it('panelRecordId catch hides company-values action', async () => {
+    // recordRef() is also read at setup for recordFormRef (outside the panelRecordId
+    // try/catch), so the first call must succeed; later reads exercise the catch.
+    const boomRecord = makeBinding({ string: 'Cost', companyDependent: true });
+    boomRecord.meta = { string: 'Cost', companyDependent: true } as any;
+    let recordRefCalls = 0;
+    const okRecord = computed(() => ({ Id: '1' }));
+    boomRecord.recordRef = () => {
+      recordRefCalls += 1;
+      if (recordRefCalls === 1) return okRecord as any;
+      return {
+        get value() {
+          throw new Error('record boom');
+        },
+      } as any;
+    };
+
+    const hidden = mount(OFieldBase, {
+      props: { binding: boomRecord, renderMode: 'form' },
+      slots: { edit: () => h(EditStub) },
+      global: { stubs: { ...fieldBaseStubs, OFieldCompanyValuesDialog: true } },
+    });
+    expect(recordRefCalls).toBeGreaterThanOrEqual(2);
+    expect(hidden.find('.o-field-base__company-values-btn').exists()).toBe(false);
+  });
+
+  it('blank field type yields undefined companyValues fieldType', async () => {
+    const binding = makeBinding({ string: 'Cost', companyDependent: true });
+    binding.meta = { string: 'Cost', companyDependent: true, type: '   ' } as any;
+
+    const wrapper = mount(OFieldBase, {
+      props: { binding, renderMode: 'form' },
+      slots: { edit: () => h(EditStub) },
+      global: {
+        stubs: {
+          ...fieldBaseStubs,
+          OFieldCompanyValuesDialog: {
+            name: 'OFieldCompanyValuesDialog',
+            props: ['modelValue', 'fieldType'],
+            template: '<div class="company-dialog-stub" :data-open="modelValue" :data-type="String(fieldType)" />',
+          },
+        },
+      },
+    });
+    await wrapper.find('.o-field-base__company-values-btn').trigger('click');
+    await nextTick();
+    expect(wrapper.find('.company-dialog-stub').attributes('data-type')).toBe('undefined');
+    wrapper.unmount();
+
+    // meta present but type missing → undefined fieldType
+    const noType = makeBinding({ string: 'Cost', companyDependent: true });
+    noType.meta = { string: 'Cost', companyDependent: true } as any;
+    const w2 = mount(OFieldBase, {
+      props: { binding: noType, renderMode: 'form' },
+      slots: { edit: () => h(EditStub) },
+      global: {
+        stubs: {
+          ...fieldBaseStubs,
+          OFieldCompanyValuesDialog: {
+            name: 'OFieldCompanyValuesDialog',
+            props: ['modelValue', 'fieldType'],
+            template: '<div class="company-dialog-stub" :data-type="String(fieldType)" />',
+          },
+        },
+      },
+    });
+    await w2.find('.o-field-base__company-values-btn').trigger('click');
+    await nextTick();
+    expect(w2.find('.company-dialog-stub').attributes('data-type')).toBe('undefined');
+  });
+
+  it('falsy fieldRef skips assignment on company-values save', async () => {
+    const nullValue = ref(null as string | null);
+    const binding = makeBinding({ string: 'Cost', companyDependent: true });
+    binding.meta = { string: 'Cost', companyDependent: true } as any;
+    binding.fieldRef = () => nullValue as any;
+
+    const wrapper = mount(OFieldBase, {
+      props: { binding, renderMode: 'form' },
+      slots: { edit: () => h(EditStub) },
+      global: {
+        stubs: {
+          ...fieldBaseStubs,
+          OFieldCompanyValuesDialog: {
+            name: 'OFieldCompanyValuesDialog',
+            props: ['modelValue', 'draftValue'],
+            emits: ['saved'],
+            template:
+              '<div class="company-dialog-stub" :data-open="modelValue" :data-draft="draftValue"><button class="emit-saved" @click="$emit(\'saved\', \'11\')" /></div>',
+          },
+        },
+      },
+    });
+    await wrapper.find('.o-field-base__company-values-btn').trigger('click');
+    await nextTick();
+    // panelDraftValue: v == null → ''
+    expect(wrapper.find('.company-dialog-stub').attributes('data-draft')).toBe('');
+    expect(wrapper.find('.el-icon-stub').exists()).toBe(true);
+
+    // onCompanyValuesSaved: falsy fieldRef skips assignment — capture stays untouched
+    binding.fieldRef = () => null as any;
+    nullValue.value = null;
+    await wrapper.find('.emit-saved').trigger('click');
+    expect(nullValue.value).toBeNull();
   });
 });

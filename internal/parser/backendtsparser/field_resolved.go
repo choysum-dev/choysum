@@ -496,7 +496,16 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		translate = true
 		spec.Structural.Translate = toBoolPtr(true)
 	}
-	if v, ok := options["copy"].(bool); ok && !v {
+	companyDependent := false
+	if v, ok := options["companyDependent"].(bool); ok && v {
+		companyDependent = true
+		spec.Structural.CompanyDependent = toBoolPtr(true)
+	}
+	if v, ok := options["copy"].(bool); ok {
+		// Retain explicit copy:true/false (matches TS decorator).
+		spec.Structural.Copy = toBoolPtr(v)
+	} else if companyDependent {
+		// Default copy:false for companyDependent when omitted (matches TS decorator).
 		spec.Structural.Copy = toBoolPtr(false)
 	}
 	switch raw := options["default"].(type) {
@@ -545,8 +554,8 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 	}
 
 	columnType := resolveColumnType(fieldType)
-	if translate {
-		// Logical type stays char/varchar/text; physical storage is JSON/JSONB lang map.
+	if translate || companyDependent {
+		// Logical type stays; physical storage is JSON/JSONB map.
 		columnType = "jsonobject"
 	}
 	spec.Structural.ColumnType = columnType
@@ -559,6 +568,9 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 	}
 	if translate {
 		spec.Migration.ReasonCode = "TRANSLATE_LANG_MAP"
+	}
+	if companyDependent {
+		spec.Migration.ReasonCode = "COMPANY_DEPENDENT_MAP"
 	}
 
 	switch {
@@ -666,6 +678,49 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 				Code:     "CONFLICT_TRANSLATE_INDEX",
 				Severity: "error",
 				Message:  "translate only supports index: 'trigram' (or omit index)",
+			})
+		}
+	}
+	if translate && companyDependent {
+		spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+			Code:     "CONFLICT_TRANSLATE_COMPANY_DEPENDENT",
+			Severity: "error",
+			Message:  "cannot combine translate and companyDependent",
+		})
+	}
+	if companyDependent {
+		allowed := map[string]struct{}{
+			"char": {}, "varchar": {}, "text": {}, "boolean": {}, "int": {}, "number": {},
+			"decimal": {}, "monetary": {}, "date": {}, "datetime": {}, "selection": {},
+			"ManyToOne": {}, "ManyToOneRef": {},
+		}
+		if _, ok := allowed[fieldType]; !ok {
+			spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+				Code:     "CONFLICT_COMPANY_DEPENDENT_FIELD_TYPE",
+				Severity: "error",
+				Message:  "companyDependent is not supported on this field type",
+			})
+		}
+		uniqueOn := hints.Unique != nil && *hints.Unique
+		uniqueIndexOn := (hints.UniqueIndexEnabled != nil && *hints.UniqueIndexEnabled) ||
+			(hints.UniqueIndex != nil && strings.TrimSpace(*hints.UniqueIndex) != "")
+		if uniqueOn || uniqueIndexOn {
+			spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+				Code:     "CONFLICT_COMPANY_DEPENDENT_UNIQUE",
+				Severity: "error",
+				Message:  "companyDependent cannot be combined with unique/uniqueIndex",
+			})
+		}
+		indexKind := ""
+		if hints.Index != nil {
+			indexKind = strings.TrimSpace(*hints.Index)
+		}
+		btreeIndexed := hints.Indexed != nil && *hints.Indexed
+		if btreeIndexed || indexKind != "" {
+			spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+				Code:     "CONFLICT_COMPANY_DEPENDENT_INDEX",
+				Severity: "error",
+				Message:  "companyDependent does not support indexed/index",
 			})
 		}
 	}

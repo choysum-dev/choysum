@@ -1810,6 +1810,121 @@ test('repository condition compiler child_of on relation field builds mysql targ
   );
 });
 
+test('repository condition compiler child_of unwraps companyDependent ManyToOne fk', () => {
+  class DemoModel {}
+  class OwnerModel {}
+
+  const ownerMeta = {
+    type: OwnerModel,
+    modelName: 'OwnerModel',
+    parentField: 'ParentId',
+    tableName: () => 'owner_table',
+    fields: new Map([
+      ['Id', { column: { name: 'Id' } }],
+      ['ParentPath', { column: { name: 'ParentPath' } }],
+    ]),
+  } as any;
+
+  const demoMeta = {
+    type: DemoModel,
+    modelName: 'DemoModel',
+    tableName: () => 'demo_table',
+    fields: new Map([
+      [
+        'Owner',
+        {
+          type: 'ManyToOne',
+          companyDependent: true,
+          column: { name: 'OwnerId' },
+          relation: { targetModel: () => OwnerModel },
+        },
+      ],
+    ]),
+  } as any;
+
+  const eb = createExpressionBuilder();
+  const db = {
+    selectFrom(table: string) {
+      const ops: any[] = [{ type: 'selectFrom', table }];
+      return {
+        ops,
+        select(selection: any) {
+          ops.push({ type: 'select', selection });
+          return this;
+        },
+        where(lhs: any, op: any, rhs: any) {
+          ops.push({ type: 'where', lhs, op, rhs });
+          return this;
+        },
+        limit(n: number) {
+          ops.push({ type: 'limit', n });
+          return this;
+        },
+      };
+    },
+  };
+
+  withFakeMetadata(
+    new Map([
+      [DemoModel, demoMeta],
+      [OwnerModel, ownerMeta],
+    ]),
+    () => {
+      const result = withContext({ activeCompanyId: 'comp_main' }, () =>
+        convertCondition(db as any, () => 'postgres', demoMeta, eb, ['Owner', 'child_of', 'row_1'] as any, 'demo_table')
+      ) as any;
+      expect(result.op).toBe('in');
+      // Must unwrap the company map, not compare the raw JSON column.
+      expect(result.lhs).not.toBe('ref:demo_table.OwnerId');
+      expect(typeof result.lhs?.toOperationNode).toBe('function');
+      expect(JSON.stringify(result.lhs.toOperationNode()).includes('OwnerId')).toBe(true);
+      expect(result.rhs.ops[0]).toEqual({ type: 'selectFrom', table: 'owner_table as t' });
+    }
+  );
+});
+
+test('repository condition compiler companyDependent comparison uses physical column name', () => {
+  class DemoModel {}
+  const meta = {
+    type: DemoModel,
+    tableName: () => 'demo_table',
+    fields: new Map([
+      [
+        'Owner',
+        {
+          type: 'ManyToOne',
+          companyDependent: true,
+          column: { name: 'OwnerId' },
+        },
+      ],
+    ]),
+  } as any;
+  const eb = createExpressionBuilder();
+  const db = { selectFrom() { throw new Error('not used'); } };
+
+  const result = withContext({ activeCompanyId: 'comp_main' }, () =>
+    convertCondition(db as any, () => 'postgres', meta, eb, ['Owner', '=', 'p1'] as any, 'demo_table')
+  ) as any;
+  expect(result.op).toBe('=');
+  expect(result.rhs).toBe('p1');
+  expect(typeof result.lhs?.toOperationNode).toBe('function');
+  const node = JSON.stringify(result.lhs.toOperationNode());
+  expect(node.includes('OwnerId')).toBe(true);
+  // Must not target the logical field name as a physical column.
+  expect(node.includes('"demo_table"."Owner"') || node.includes('demo_table.Owner,')).toBe(false);
+
+  // Empty dialect falls back to postgres for companyDependent unwrap.
+  const emptyDialect = withContext({ activeCompanyId: 'comp_main' }, () =>
+    convertCondition(db as any, () => '', meta, eb, ['Owner', '=', 'p1'] as any, 'demo_table')
+  ) as any;
+  expect(typeof emptyDialect.lhs?.toOperationNode).toBe('function');
+
+  const nullDialect = withContext({ activeCompanyId: 'comp_main' }, () =>
+    convertCondition(db as any, () => null as any, meta, eb, ['Owner', '=', 'p1'] as any, 'demo_table')
+  ) as any;
+  expect(typeof nullDialect.lhs?.toOperationNode).toBe('function');
+});
+
 test('repository condition compiler contains without selfTable falls back to raw ref path', () => {
   class DemoModel {}
 
@@ -2098,10 +2213,8 @@ test('repository condition compiler parent_of on Id falls back to default id and
     modelName: 'DemoModel',
     parentField: 'ParentId',
     tableName: () => 'demo_table',
-    fields: new Map([
-      ['Id', {}],
-      ['ParentPath', {}],
-    ]),
+    // Omit Id/ParentPath field metadata so resolveStoredColumnName falls back to logical names.
+    fields: new Map(),
   } as any;
 
   const eb = createExpressionBuilder();
@@ -2141,10 +2254,8 @@ test('repository condition compiler parent_of on relation field falls back to de
     modelName: 'OwnerModel',
     parentField: 'ParentId',
     tableName: () => 'owner_table',
-    fields: new Map([
-      ['Id', {}],
-      ['ParentPath', {}],
-    ]),
+    // Omit Id/ParentPath so target column resolution uses logical-name fallbacks.
+    fields: new Map(),
   } as any;
 
   const demoMeta = {
@@ -3041,4 +3152,156 @@ test('repository condition compiler dotted path guards fail before leaf-meta fal
   expect(collectMessage('Missing.Name')).toContain('intermediate segment Missing is not ManyToOne');
   expect(collectMessage('Name.Inner')).toContain('intermediate segment Name is not ManyToOne');
   expect(collectMessage('Owner.Name')).toContain('intermediate segment Owner is not ManyToOne');
+});
+
+test('repository condition compiler unwraps companyDependent for ilike/contains/parent_of', () => {
+  class DemoModel {}
+  class OwnerModel {}
+
+  const ownerMeta = {
+    type: OwnerModel,
+    modelName: 'OwnerModel',
+    parentField: 'ParentId',
+    tableName: () => 'owner_table',
+    fields: new Map([
+      ['Id', { column: { name: 'Id' } }],
+      ['ParentPath', { column: { name: 'ParentPath' } }],
+    ]),
+  } as any;
+
+  const meta = {
+    type: DemoModel,
+    modelName: 'DemoModel',
+    tableName: () => 'demo_table',
+    fields: new Map([
+      ['Cost', { type: 'number', companyDependent: true, column: { name: 'Cost' } }],
+      [
+        'Owner',
+        {
+          type: 'ManyToOne',
+          companyDependent: true,
+          column: { name: 'OwnerId' },
+          relation: { targetModel: () => OwnerModel },
+        },
+      ],
+    ]),
+  } as any;
+
+  const eb = createExpressionBuilder();
+  const db = {
+    selectFrom(table: string) {
+      const ops: any[] = [{ type: 'selectFrom', table }];
+      return {
+        ops,
+        select(selection: any) {
+          ops.push({ type: 'select', selection });
+          return this;
+        },
+        where(lhs: any, op: any, rhs: any) {
+          ops.push({ type: 'where', lhs, op, rhs });
+          return this;
+        },
+        limit(n: number) {
+          ops.push({ type: 'limit', n });
+          return this;
+        },
+      };
+    },
+  };
+
+  withFakeMetadata(
+    new Map([
+      [DemoModel, meta],
+      [OwnerModel, ownerMeta],
+    ]),
+    () => {
+      const ilike = withContext({ activeCompanyId: 'comp_main' }, () =>
+        convertCondition(db as any, () => 'postgres', meta, eb, ['Cost', 'ilike', '%1%'] as any, 'demo_table')
+      ) as any;
+      expect(ilike.op).toBe('ilike');
+      expect(typeof ilike.lhs?.toOperationNode).toBe('function');
+
+      const warns: string[] = [];
+      const originalWarn = console.warn;
+      console.warn = (msg: any) => {
+        warns.push(String(msg));
+      };
+      try {
+        const contains = withContext({ activeCompanyId: 'comp_main' }, () =>
+          convertCondition(db as any, () => 'postgres', meta, eb, ['Cost', 'contains', { k: 1 }] as any, 'demo_table')
+        ) as any;
+        expect(typeof contains.lhs?.toOperationNode).toBe('function');
+        expect(warns.some(w => w.includes('contains is recommended only for JSON'))).toBe(false);
+      } finally {
+        console.warn = originalWarn;
+      }
+
+      const parentOf = withContext({ activeCompanyId: 'comp_main' }, () =>
+        convertCondition(db as any, () => 'postgres', meta, eb, ['Owner', 'parent_of', 'row_1'] as any, 'demo_table')
+      ) as any;
+      expect(parentOf.op).toBe('in');
+      expect(typeof parentOf.lhs?.toOperationNode).toBe('function');
+      expect(JSON.stringify(parentOf.lhs.toOperationNode()).includes('OwnerId')).toBe(true);
+    }
+  );
+});
+
+test('repository condition compiler companyDependent not-ilike and empty column name fallback', () => {
+  class DemoModel {}
+  const meta = {
+    type: DemoModel,
+    tableName: () => 'demo_table',
+    fields: new Map([
+      ['Cost', { type: 'number', companyDependent: true, column: { name: '   ' } }],
+      ['Note', { type: 'char', companyDependent: true, column: {} }],
+    ]),
+  } as any;
+  const eb = createExpressionBuilder();
+  const db = { selectFrom() { throw new Error('not used'); } };
+
+  const notIlike = withContext({ activeCompanyId: 'comp_main' }, () =>
+    convertCondition(db as any, () => 'mysql', meta, eb, ['Cost', 'not ilike', '%x%'] as any, 'demo_table')
+  ) as any;
+  expect(notIlike.op).toBe('not like');
+
+  const eq = withContext({ activeCompanyId: 'comp_main' }, () =>
+    convertCondition(db as any, () => 'postgresql', meta, eb, ['Note', '=', 'hi'] as any, 'demo_table')
+  ) as any;
+  expect(typeof eq.lhs?.toOperationNode).toBe('function');
+  expect(JSON.stringify(eq.lhs.toOperationNode()).includes('Note')).toBe(true);
+});
+
+test('repository condition compiler resolveStoredColumnName covers non-string and missing name', () => {
+  class DemoModel {}
+  const meta = {
+    type: DemoModel,
+    tableName: () => 'demo_table',
+    fields: new Map([
+      ['A', { type: 'number', companyDependent: true, column: { name: 42 } }],
+      ['B', { type: 'number', companyDependent: true, column: {} }],
+      ['C', { type: 'number', companyDependent: true }],
+      ['D', { type: 'number', companyDependent: true, column: null }],
+      ['E', { type: 'number', companyDependent: true, column: 'CostCol' }],
+      ['F', { type: 'number', companyDependent: true, column: { name: 'PhysCost' } }],
+      ['G', { type: 'number', companyDependent: true, column: { name: '   ' } }],
+    ]),
+  } as any;
+  const eb = createExpressionBuilder();
+  const db = { selectFrom() { throw new Error('unused'); } };
+
+  const expectCol = (field: string, needle: string) => {
+    const result = withContext({ activeCompanyId: 'comp_main' }, () =>
+      convertCondition(db as any, () => 'postgres', meta, eb, [field, '=', 1] as any, 'demo_table')
+    ) as any;
+    expect(typeof result.lhs?.toOperationNode).toBe('function');
+    expect(JSON.stringify(result.lhs.toOperationNode()).includes(needle)).toBe(true);
+  };
+
+  expectCol('A', 'A');
+  expectCol('B', 'B');
+  expectCol('C', 'C');
+  expectCol('D', 'D');
+  expectCol('E', 'E');
+  expectCol('F', 'PhysCost');
+  expectCol('G', 'G');
 });

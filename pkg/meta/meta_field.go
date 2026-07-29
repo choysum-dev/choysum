@@ -87,6 +87,8 @@ type IrFieldStructuralSpec struct {
 	CheckConstraint string                         `json:"checkConstraint,omitempty"`
 	// Translate marks data-i18n fields stored as JSON/JSONB lang maps (see data-i18n-design.md).
 	Translate *bool `json:"translate,omitempty"`
+	// CompanyDependent marks per-company JSON/JSONB maps (see company-dependent-design.md).
+	CompanyDependent *bool `json:"companyDependent,omitempty"`
 	// Copy is false when @Field({ copy: false }); omit/true means the field participates in Model.Copy.
 	Copy *bool `json:"copy,omitempty"`
 }

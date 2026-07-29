@@ -5,6 +5,7 @@ import type { ModelMetadata } from '../../metadata';
 import { hasRepositorySqlComputeExpression } from './sql_compute_expression';
 import type { ObjectRecord } from '../../../../utils/types';
 import { buildTranslatedFieldUnwrapExpr } from './translated_field_sql';
+import { buildCompanyDependentFieldUnwrapExpr } from './company_dependent_field_sql';
 import type { DialectName } from '../repository_dialect';
 import type { RepositoryPredicateBuilder } from './predicate_builder_adapter';
 
@@ -106,6 +107,16 @@ export function applyOrderByToQuery<T>(
       qb = orderable.orderBy(
         (inner: unknown) =>
           buildTranslatedFieldUnwrapExpr(dialect, inner as RepositoryPredicateBuilder, `${targetTable}.${field}`),
+        order
+      );
+      continue;
+    }
+
+    if ((fieldMeta as { companyDependent?: boolean }).companyDependent) {
+      const dialect = String(deps.getDialect?.() || 'postgres') as DialectName;
+      qb = orderable.orderBy(
+        (inner: unknown) =>
+          buildCompanyDependentFieldUnwrapExpr(dialect, inner as RepositoryPredicateBuilder, `${targetTable}.${field}`),
         order
       );
       continue;

@@ -190,6 +190,14 @@ func (m *modelMigrator) getResolvedFieldColumnMeta(field *meta.IrField, modelCtx
 	if typeStr == "binary" || typeStr == "image" {
 		metaMap["type"] = "blob"
 	}
+	// Company-dependent maps must win over type-specific defaults (ManyToOne→char, selection→varchar).
+	if resolved.Structural.CompanyDependent != nil && *resolved.Structural.CompanyDependent {
+		metaMap["type"] = "jsonobject"
+		delete(metaMap, "size")
+		delete(metaMap, "unique")
+		delete(metaMap, "uniqueIndex")
+		delete(metaMap, "index")
+	}
 
 	if cc := strings.TrimSpace(resolved.Structural.CheckConstraint); cc != "" {
 		metaMap["checkConstraint"] = cc

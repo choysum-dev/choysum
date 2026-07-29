@@ -46,6 +46,18 @@ SPDX-License-Identifier: Apache-2.0
             </el-icon>
           </el-button>
         </el-tooltip>
+        <el-tooltip v-if="showCompanyValuesAction" :content="companyValuesAriaLabel" placement="top" :show-after="200">
+          <el-button
+            class="o-field-base__company-values-btn"
+            text
+            :aria-label="companyValuesAriaLabel"
+            @click="companyValuesOpen = true"
+          >
+            <el-icon :size="16">
+              <component :is="BusinessOutlined" />
+            </el-icon>
+          </el-button>
+        </el-tooltip>
       </div>
       <div v-show="!effectiveEditForm">
         <slot
@@ -93,6 +105,18 @@ SPDX-License-Identifier: Apache-2.0
               </el-icon>
             </el-button>
           </el-tooltip>
+          <el-tooltip v-if="showCompanyValuesAction" :content="companyValuesAriaLabel" placement="top" :show-after="200">
+            <el-button
+              class="o-field-base__company-values-btn"
+              text
+              :aria-label="companyValuesAriaLabel"
+              @click="companyValuesOpen = true"
+            >
+              <el-icon :size="16">
+                <component :is="BusinessOutlined" />
+              </el-icon>
+            </el-button>
+          </el-tooltip>
         </div>
       </template>
       <template v-else>
@@ -112,15 +136,27 @@ SPDX-License-Identifier: Apache-2.0
       </template>
     </template>
     <OFieldTranslationsDialog
-      v-if="showTranslateAction && translationRecordId"
+      v-if="showTranslateAction"
       v-model="translationsOpen"
       :store="binding.store as any"
-      :record-id="translationRecordId"
+      :record-id="panelRecordId"
       :field-name="leafFieldName"
       :field-label="resolvedLabel"
-      :max-length="translationMaxLength"
-      :draft-value="translationDraftValue"
+      :max-length="panelMaxLength"
+      :draft-value="panelDraftValue"
       @saved="onTranslationsSaved"
+    />
+    <OFieldCompanyValuesDialog
+      v-if="showCompanyValuesAction"
+      v-model="companyValuesOpen"
+      :store="binding.store as any"
+      :record-id="panelRecordId"
+      :field-name="leafFieldName"
+      :field-label="resolvedLabel"
+      :field-type="companyValuesFieldType"
+      :max-length="panelMaxLength"
+      :draft-value="panelDraftValue"
+      @saved="onCompanyValuesSaved"
     />
   </el-form-item>
 
@@ -275,11 +311,12 @@ import type { ComputedRef, WritableComputedRef, Ref } from 'vue';
 import { computed, inject, onMounted, ref, watch } from 'vue';
 import { useProvidedOnchange, getOnchangeController } from '@/web/web/composables/useOnchange';
 import { WarningFilled } from '@element-plus/icons-vue';
-import { TranslateOutlined } from '@vicons/material';
+import { TranslateOutlined, BusinessOutlined } from '@vicons/material';
 import { createTranslate, getGlobalComposer } from '@/web/web/i18n/translate';
 import { resolveFieldLabel } from '@/web/web/composables/resolveFieldLabel';
 import { FIELD_PRESENTATION_FIELDS_GET_ATTRS } from '@/web/web/stores/fieldsGet';
 import OFieldTranslationsDialog from './OFieldTranslationsDialog.vue';
+import OFieldCompanyValuesDialog from './OFieldCompanyValuesDialog.vue';
 
 export type FieldStatePredicate<T, V> = (args: { record: T; value: V | null; env: FieldEnv }) => boolean;
 export type FieldStateExpr<T, V> = boolean | FieldStatePredicate<T, V>;
@@ -364,8 +401,10 @@ onMounted(() => {
 });
 
 const translationsOpen = ref(false);
+const companyValuesOpen = ref(false);
 
-const translationRecordId = computed(() => {
+/** Record id shared by translate / company-values panels. */
+const panelRecordId = computed(() => {
   try {
     const record = binding.recordRef?.()?.value as { Id?: unknown } | undefined;
     const id = String(record?.Id ?? '').trim();
@@ -378,12 +417,27 @@ const translationRecordId = computed(() => {
 const showTranslateAction = computed(() => {
   if (effectiveRenderMode.value !== 'form') return false;
   if (!binding.env.isEditMode) return false;
-  if (!translationRecordId.value) return false;
+  if (!panelRecordId.value) return false;
   const meta = effectiveFieldMeta.value as { translate?: boolean } | undefined;
   return meta?.translate === true;
 });
 
-const translationMaxLength = computed(() => {
+const showCompanyValuesAction = computed(() => {
+  if (effectiveRenderMode.value !== 'form') return false;
+  if (!binding.env.isEditMode) return false;
+  if (!panelRecordId.value) return false;
+  const meta = effectiveFieldMeta.value as { companyDependent?: boolean } | undefined;
+  return Boolean(meta && meta.companyDependent === true);
+});
+
+const companyValuesFieldType = computed(() => {
+  const type = (effectiveFieldMeta.value as { type?: string } | undefined)?.type;
+  if (type == null) return undefined;
+  const trimmed = String(type).trim();
+  return trimmed ? trimmed : undefined;
+});
+
+const panelMaxLength = computed(() => {
   const meta = effectiveFieldMeta.value as { size?: number } | undefined;
   const size = meta?.size;
   return typeof size === 'number' && Number.isInteger(size) && size > 0 ? size : undefined;
@@ -394,15 +448,18 @@ const translateAriaLabel = computed(() => {
   return label ? _t('Translate: %s', label) : _t('Translate field');
 });
 
-/** Current form draft (current UI lang unwrap); seeded into the translations dialog on open. */
-const translationDraftValue = computed(() => {
-  try {
-    const fieldRef = valueForm() as WritableComputedRef<View> | undefined;
-    const v = fieldRef?.value;
-    return v == null ? '' : String(v);
-  } catch {
-    return '';
-  }
+const companyValuesAriaLabel = computed(() => {
+  const fromLabel = String(resolvedLabel.value || '').trim();
+  const fromLeaf = String(leafFieldName.value || '').trim();
+  const label = fromLabel || fromLeaf;
+  return label ? _t('Company values: %s', label) : _t('Company values');
+});
+
+/** Current form draft (current UI lang / active company unwrap); seeded into dialogs on open. */
+const panelDraftValue = computed(() => {
+  const fieldRef = valueForm() as WritableComputedRef<View>;
+  const v = fieldRef.value;
+  return v == null ? '' : String(v);
 });
 
 function onTranslationsSaved(nextValue: string | null) {
@@ -412,6 +469,16 @@ function onTranslationsSaved(nextValue: string | null) {
       fieldRef.value = nextValue as View;
     }
   } catch {
+    // Ignore draft write failures; Browse already refreshed server state.
+  }
+}
+
+function onCompanyValuesSaved(nextValue: unknown) {
+  try {
+    const fieldRef = valueForm() as WritableComputedRef<View> | null | undefined;
+    if (fieldRef == null) return;
+    fieldRef.value = nextValue as View;
+  } catch (_err) {
     // Ignore draft write failures; Browse already refreshed server state.
   }
 }
@@ -735,6 +802,17 @@ defineSlots<{
 }
 .o-field-base__translate-btn:hover,
 .o-field-base__translate-btn:focus {
+  color: var(--el-color-primary);
+}
+.o-field-base__company-values-btn {
+  flex: 0 0 auto;
+  height: 24px;
+  width: 24px;
+  padding: 0;
+  color: var(--el-text-color-secondary);
+}
+.o-field-base__company-values-btn:hover,
+.o-field-base__company-values-btn:focus {
   color: var(--el-color-primary);
 }
 </style>

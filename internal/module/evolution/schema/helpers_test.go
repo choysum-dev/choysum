@@ -306,6 +306,14 @@ func attachResolvedSpecForTestField(field *meta.IrField, options string) {
 		spec.Migration.ResolvedColumnType = "blob"
 	}
 
+	if v, ok := opts["companyDependent"].(bool); ok && v {
+		trueVal := true
+		spec.Structural.CompanyDependent = &trueVal
+		spec.Structural.ColumnType = "jsonobject"
+		spec.Migration.ResolvedColumnType = "jsonobject"
+		spec.Migration.ReasonCode = "COMPANY_DEPENDENT_MAP"
+	}
+
 	_ = field.SetResolvedSpec(spec)
 }
 

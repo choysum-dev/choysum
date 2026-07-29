@@ -27,10 +27,25 @@ import {
   fieldHasTranslatedTrigramIndex,
   resolveTranslatedTrigramPrefilterPattern,
 } from './translated_field_sql';
+import { buildCompanyDependentFieldUnwrapExpr } from './company_dependent_field_sql';
 
 function supportsContainsFieldType(fieldMeta: FieldMetadata | undefined): boolean {
   const fieldType = fieldMeta?.type;
   return fieldType === 'jsonobject' || fieldType === 'ManyToManyRef';
+}
+
+/** Prefer explicit column.name when present (ManyToOne FK remap); else logical field name. */
+function resolveStoredColumnName(fieldMeta: FieldMetadata | undefined, fieldName: string): string {
+  if (fieldMeta == null) return fieldName;
+  const column = (fieldMeta as { column?: unknown }).column;
+  if (column == null) return fieldName;
+  if (typeof column !== 'object') return fieldName;
+  if (!('name' in column)) return fieldName;
+  const name = (column as { name?: unknown }).name;
+  if (typeof name !== 'string') return fieldName;
+  const trimmed = name.trim();
+  if (!trimmed) return fieldName;
+  return trimmed;
 }
 
 function isPostgresDialect(dialect: string): boolean {
@@ -177,7 +192,13 @@ export function convertCondition(
             } else if (meta.fields.get(fieldName)?.translate) {
               lhsExpr = buildTranslatedFieldUnwrapExpr(dialect, eb, `${selfTable}.${fieldName}`);
             } else {
-              lhsExpr = repositoryPredicateRef(eb, `${selfTable}.${fieldName}`);
+              const leafMeta = meta.fields.get(fieldName);
+              if (leafMeta?.companyDependent) {
+                const col = resolveStoredColumnName(leafMeta, fieldName);
+                lhsExpr = buildCompanyDependentFieldUnwrapExpr(dialect, eb, `${selfTable}.${col}`);
+              } else {
+                lhsExpr = repositoryPredicateRef(eb, `${selfTable}.${fieldName}`);
+              }
             }
           }
         } else {
@@ -219,7 +240,7 @@ export function convertCondition(
 
         if (typeof fieldName === 'string') {
           const fieldMeta = meta.fields.get(fieldName);
-          if (fieldMeta && !supportsContainsFieldType(fieldMeta)) {
+          if (fieldMeta && !supportsContainsFieldType(fieldMeta) && !fieldMeta.companyDependent) {
             console.warn(
               `[Query] contains is recommended only for JSON container fields (currently jsonobject, ManyToManyRef, or expressions selectable as JSON), but field "${fieldName}" has type "${fieldMeta.type}"`
             );
@@ -239,7 +260,14 @@ export function convertCondition(
               }
               lhsExpr = resolved;
             } else {
-              lhsExpr = repositoryPredicateRef(eb, `${selfTable}.${fieldName}`);
+              const leafMeta = meta.fields.get(fieldName);
+              if (leafMeta?.companyDependent) {
+                // Unwrap active-company scalar so contains does not match the whole company map blob.
+                const col = resolveStoredColumnName(leafMeta, fieldName);
+                lhsExpr = buildCompanyDependentFieldUnwrapExpr(dialect, eb, `${selfTable}.${col}`);
+              } else {
+                lhsExpr = repositoryPredicateRef(eb, `${selfTable}.${fieldName}`);
+              }
             }
           }
         } else {
@@ -254,19 +282,8 @@ export function convertCondition(
         if (!meta.parentField) throw new Error(`Model ${meta.modelName || meta.className} does not configure parentField and cannot use ${lowerOp}`);
 
         const table = meta.tableName();
-        const idColumn = meta.fields.get('Id')?.column as unknown;
-        const idColSelf =
-          typeof idColumn === 'object' && idColumn !== null && 'name' in idColumn && typeof (idColumn as { name?: unknown }).name === 'string'
-            ? (idColumn as { name: string }).name
-            : 'Id';
-        const parentPathColumn = meta.fields.get('ParentPath')?.column as unknown;
-        const parentPathCol =
-          typeof parentPathColumn === 'object' &&
-          parentPathColumn !== null &&
-          'name' in parentPathColumn &&
-          typeof (parentPathColumn as { name?: unknown }).name === 'string'
-            ? (parentPathColumn as { name: string }).name
-            : 'ParentPath';
+        const idColSelf = resolveStoredColumnName(meta.fields.get('Id'), 'Id');
+        const parentPathCol = resolveStoredColumnName(meta.fields.get('ParentPath'), 'ParentPath');
         const dialect = String(getDialect() || 'postgres').toLowerCase();
 
         const sourcePathSubquery = db
@@ -313,24 +330,9 @@ export function convertCondition(
           throw new Error(`Target model ${targetMeta.modelName || targetMeta.className} does not configure parentField and cannot use ${lowerOp}`);
         }
 
-        const fkColumn = fieldMeta?.column as unknown;
-        const fkCol =
-          typeof fkColumn === 'object' && fkColumn !== null && 'name' in fkColumn && typeof (fkColumn as { name?: unknown }).name === 'string'
-            ? (fkColumn as { name: string }).name
-            : fieldName;
-        const idColumn = targetMeta.fields.get('Id')?.column as unknown;
-        const idCol =
-          typeof idColumn === 'object' && idColumn !== null && 'name' in idColumn && typeof (idColumn as { name?: unknown }).name === 'string'
-            ? (idColumn as { name: string }).name
-            : 'Id';
-        const parentPathColumn = targetMeta.fields.get('ParentPath')?.column as unknown;
-        const parentPathCol =
-          typeof parentPathColumn === 'object' &&
-          parentPathColumn !== null &&
-          'name' in parentPathColumn &&
-          typeof (parentPathColumn as { name?: unknown }).name === 'string'
-            ? (parentPathColumn as { name: string }).name
-            : 'ParentPath';
+        const fkCol = resolveStoredColumnName(fieldMeta, fieldName);
+        const idCol = resolveStoredColumnName(targetMeta.fields.get('Id'), 'Id');
+        const parentPathCol = resolveStoredColumnName(targetMeta.fields.get('ParentPath'), 'ParentPath');
         const dialect = String(getDialect() || 'postgres').toLowerCase();
 
         const sourcePathSubquery = db
@@ -361,7 +363,13 @@ export function convertCondition(
             .where(`t.deleted_at`, 'is', null);
         }
 
-        return repositoryPredicateCall(eb, repositoryPredicateRef(eb, `${selfTable}.${fkCol}`), 'in', subquery);
+        let fkLhs: unknown;
+        if (fieldMeta.companyDependent) {
+          fkLhs = buildCompanyDependentFieldUnwrapExpr(dialect as DialectName, eb, `${selfTable}.${fkCol}`);
+        } else {
+          fkLhs = repositoryPredicateRef(eb, `${selfTable}.${fkCol}`);
+        }
+        return repositoryPredicateCall(eb, fkLhs, 'in', subquery);
       }
 
       if (typeof fieldName === 'string' && selfTable) {
@@ -398,6 +406,14 @@ export function convertCondition(
             effectiveRhs,
             exact
           );
+        }
+
+        if (fieldMeta && fieldMeta.companyDependent) {
+          const dialect = String(getDialect() || 'postgres') as DialectName;
+          const col = resolveStoredColumnName(fieldMeta, fieldName);
+          const unwrap = buildCompanyDependentFieldUnwrapExpr(dialect, eb, `${selfTable}.${col}`);
+          const right = wrapIfDecimal(fieldName, effectiveOp, effectiveRhs);
+          return repositoryPredicateCall(eb, unwrap, effectiveOp, right);
         }
 
         const right = wrapIfDecimal(fieldName, effectiveOp, effectiveRhs);

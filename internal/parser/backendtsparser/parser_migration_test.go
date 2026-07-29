@@ -1527,6 +1527,103 @@ export default class TranslatePilot extends BaseModel {
 	}
 }
 
+func TestTsParser_CompanyDependentFieldResolvesToJsonobject(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/company_dependent_field.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('CompanyDepPilot')
+export default class CompanyDepPilot extends BaseModel {
+  @Field({ type: 'number', companyDependent: true })
+  public Cost: number
+
+  @Field({ type: 'ManyToOne', companyDependent: true, copy: true })
+  public PartnerId: any
+
+  @Field({ type: 'char', translate: true, companyDependent: true })
+  public Both: string
+
+  @Field({ type: 'float', companyDependent: true })
+  public BadType: number
+
+  @Field({ type: 'number', companyDependent: true, unique: true })
+  public BadUnique: number
+
+  @Field({ type: 'number', companyDependent: true, uniqueIndex: 'uq_cost' })
+  public BadUniqueIndex: number
+
+  @Field({ type: 'number', companyDependent: true, indexed: true })
+  public BadIndexed: number
+
+  @Field({ type: 'number', companyDependent: true, index: 'idx_cost' })
+  public BadNamedIndex: number
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	fieldByName := map[string]*meta.IrField{}
+	for _, f := range r.Model.Fields {
+		fieldByName[f.Name] = f
+	}
+
+	costSpec, err := fieldByName["Cost"].GetResolvedSpec()
+	if err != nil || costSpec == nil {
+		t.Fatalf("Cost resolved spec: err=%v", err)
+	}
+	if costSpec.Structural.CompanyDependent == nil || !*costSpec.Structural.CompanyDependent {
+		t.Fatal("expected CompanyDependent=true on Cost")
+	}
+	if costSpec.Structural.Copy == nil || *costSpec.Structural.Copy {
+		t.Fatalf("expected default Copy=false for companyDependent, got %#v", costSpec.Structural.Copy)
+	}
+	if costSpec.Migration.ResolvedColumnType != "jsonobject" {
+		t.Fatalf("expected ResolvedColumnType=jsonobject, got %q", costSpec.Migration.ResolvedColumnType)
+	}
+	if costSpec.Migration.ReasonCode != "COMPANY_DEPENDENT_MAP" {
+		t.Fatalf("expected ReasonCode=COMPANY_DEPENDENT_MAP, got %q", costSpec.Migration.ReasonCode)
+	}
+
+	partnerSpec, err := fieldByName["PartnerId"].GetResolvedSpec()
+	if err != nil || partnerSpec == nil {
+		t.Fatalf("PartnerId resolved spec: err=%v", err)
+	}
+	if partnerSpec.Migration.ResolvedColumnType != "jsonobject" {
+		t.Fatalf("expected ManyToOne companyDependent → jsonobject, got %q", partnerSpec.Migration.ResolvedColumnType)
+	}
+	// Explicit copy:true must not force the companyDependent default Copy=false.
+	if partnerSpec.Structural.Copy == nil || !*partnerSpec.Structural.Copy {
+		t.Fatalf("expected explicit copy:true to be retained, got %#v", partnerSpec.Structural.Copy)
+	}
+
+	assertDiag := func(fieldName, code string) {
+		t.Helper()
+		spec, err := fieldByName[fieldName].GetResolvedSpec()
+		if err != nil || spec == nil {
+			t.Fatalf("%s resolved spec: err=%v", fieldName, err)
+		}
+		for _, d := range spec.Diagnostics {
+			if d.Code == code {
+				return
+			}
+		}
+		t.Fatalf("expected %s on %s, got %+v", code, fieldName, spec.Diagnostics)
+	}
+
+	assertDiag("Both", "CONFLICT_TRANSLATE_COMPANY_DEPENDENT")
+	assertDiag("BadType", "CONFLICT_COMPANY_DEPENDENT_FIELD_TYPE")
+	assertDiag("BadUnique", "CONFLICT_COMPANY_DEPENDENT_UNIQUE")
+	assertDiag("BadUniqueIndex", "CONFLICT_COMPANY_DEPENDENT_UNIQUE")
+	assertDiag("BadIndexed", "CONFLICT_COMPANY_DEPENDENT_INDEX")
+	assertDiag("BadNamedIndex", "CONFLICT_COMPANY_DEPENDENT_INDEX")
+}
+
 func TestTsParser_ParseModelResolvedSpecCoversCollectBehaviorBindingsBranches(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}

@@ -9,6 +9,12 @@ import { asBigdecimal, isBigdecimalEnvelope, isDecimal, normalizeDecimalByMeta }
 import { asObjectRecord, hasOwnKey } from '../../../../utils/object';
 import type { UnknownRecord } from '../../../../utils/types';
 import { decodeTranslatedFieldValue, encodeTranslatedMapForDb, isTranslatedLangMap } from './translated_field_codec';
+import {
+  decodeCompanyDependentFieldValue,
+  encodeCompanyDependentMapForDb,
+  isCompanyDependentScalarEnvelope,
+  isCompanyValueMap,
+} from './company_dependent_field_codec';
 import { resolveMonetaryScaleForWrite, resolveMonetaryScaleFromRow } from './monetary_scale';
 
 type DecimalMetaLike = {
@@ -159,6 +165,48 @@ export function encodeForDb(meta: ModelMetadata, input: Entity): Entity {
 
     const fm = meta.fields.get(k);
 
+    // JSON map fields must run before ManyToOne / scalar remaps (company maps are objects).
+    if (fm?.translate && fm.column) {
+      if (v == null) {
+        out[k] = null;
+      } else if (isTranslatedLangMap(v)) {
+        out[k] = encodeTranslatedMapForDb(v as Record<string, string>);
+      } else if (typeof v === 'string') {
+        // Already JSON from a prior encode, or raw JSON string — persist as-is if object-shaped.
+        const trimmed = v.trim();
+        if (trimmed.startsWith('{')) {
+          out[k] = v;
+        } else {
+          throw new Error(
+            `Translated field "${k}" must be prepared as a lang map before encodeForDb; got a bare string`
+          );
+        }
+      } else {
+        throw new Error(`Translated field "${k}" expects a lang map object or null for DB encode`);
+      }
+      continue;
+    }
+
+    if (fm?.companyDependent && fm.column) {
+      if (v == null) {
+        out[k] = null;
+      } else if (isCompanyValueMap(v)) {
+        out[k] = encodeCompanyDependentMapForDb(v, fm);
+      } else if (typeof v === 'string') {
+        const trimmed = v.trim();
+        if (trimmed.startsWith('{')) {
+          out[k] = v;
+        } else {
+          throw new Error(
+            `Company-dependent field "${k}" must be prepared as a company map before encodeForDb; got a bare string`
+          );
+        }
+      } else {
+        throw new Error(`Company-dependent field "${k}" expects a company map object or null for DB encode`);
+      }
+      continue;
+    }
+
     if (fm?.type === 'ManyToOne' && fm.column) {
       const vRecord = asObjectRecord(v);
       out[k] = vRecord && hasOwnKey(vRecord, 'Id') ? (vRecord.Id ?? null) : v;
@@ -188,27 +236,6 @@ export function encodeForDb(meta: ModelMetadata, input: Entity): Entity {
         out[k] = v;
       } else {
         out[k] = [v];
-      }
-      continue;
-    }
-
-    if (fm?.translate && fm.column) {
-      if (v == null) {
-        out[k] = null;
-      } else if (isTranslatedLangMap(v)) {
-        out[k] = encodeTranslatedMapForDb(v as Record<string, string>);
-      } else if (typeof v === 'string') {
-        // Already JSON from a prior encode, or raw JSON string — persist as-is if object-shaped.
-        const trimmed = v.trim();
-        if (trimmed.startsWith('{')) {
-          out[k] = v;
-        } else {
-          throw new Error(
-            `Translated field "${k}" must be prepared as a lang map before encodeForDb; got a bare string`
-          );
-        }
-      } else {
-        throw new Error(`Translated field "${k}" expects a lang map object or null for DB encode`);
       }
       continue;
     }
@@ -255,6 +282,51 @@ export function decodeFromDb(meta: ModelMetadata, row: Entity): Entity {
 
     if (f.translate) {
       out[k] = decodeTranslatedFieldValue(cur);
+      return;
+    }
+
+    if (f.companyDependent) {
+      const decoded = decodeCompanyDependentFieldValue(cur);
+      if (decoded == null) {
+        out[k] = null;
+        return;
+      }
+      if (isDecimalLikeField(f)) {
+        const fmForScale: FieldMetadata = { ...f, name: k, type: f.type };
+        const effScale = resolveDecimalScaleFromRow(meta, fmForScale, k, out);
+        const overrideFm = toDecimalMetaWithScale(f, effScale);
+        // Prefetch returns the full company map — normalize each entry.
+        // Scalar envelopes ($bigdecimal / Decimal / Date) must not be treated as maps.
+        const isPrefetchMap =
+          decoded &&
+          typeof decoded === 'object' &&
+          !Array.isArray(decoded) &&
+          !(decoded instanceof Date) &&
+          !isDecimal(decoded) &&
+          !isBigdecimalEnvelope(decoded) &&
+          !isCompanyDependentScalarEnvelope(decoded);
+        if (isPrefetchMap) {
+          const mapOut: UnknownRecord = {};
+          for (const [ck, cv] of Object.entries(decoded as UnknownRecord)) {
+            if (cv == null) {
+              mapOut[ck] = null;
+              continue;
+            }
+            const source = isBigdecimalEnvelope(cv) ? cv.$bigdecimal : cv;
+            const d = normalizeDecimalByMeta(overrideFm, source);
+            mapOut[ck] = d ?? cv;
+          }
+          out[k] = mapOut;
+          return;
+        }
+        {
+          const source = isBigdecimalEnvelope(decoded) ? decoded.$bigdecimal : decoded;
+          const d = normalizeDecimalByMeta(overrideFm, source);
+          out[k] = d ?? decoded;
+        }
+        return;
+      }
+      out[k] = decoded;
       return;
     }
 
