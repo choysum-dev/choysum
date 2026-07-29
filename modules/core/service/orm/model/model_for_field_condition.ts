@@ -7,7 +7,8 @@
 
 import BaseModel from './model';
 import { MetadataStorage } from '../metadata';
-import type { FieldMetadata, FieldType, ModelCtor, ModelMetadata } from '../metadata/field';
+import type { FieldMetadata, FieldType, ModelCtor } from '../metadata/field';
+import type { ModelMetadata } from '../metadata/model';
 import type { BaseQueryCondition, ForField } from '../repository/types/query';
 import { andRepositoryConditions, isEmptyRepositoryCondition } from '../repository/query/condition_layer';
 

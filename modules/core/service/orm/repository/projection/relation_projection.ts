@@ -73,7 +73,7 @@ export function applyRepositoryRelationSoftDeleteFilter<T extends { where: (left
  */
 export function applyRepositoryRelationFieldConditionFilter<
   T extends {
-    where: ((left: string, op: string, right: unknown) => T) & ((predicate: (eb: unknown) => unknown) => T);
+    where: ((left: string, op: string, right: unknown) => T) & ((predicate: (ctx: { eb: unknown }) => unknown) => T);
   },
 >(
   db: DbLike,
