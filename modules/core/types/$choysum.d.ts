@@ -123,6 +123,9 @@ declare var $choysum: {
     verifyPassword: (password: string, hashedPassword: string) => boolean;
     generateToken: () => string;
   };
+  html: {
+    sanitize: (dirty: string) => string;
+  };
   xid: {
     New: () => string;
   };

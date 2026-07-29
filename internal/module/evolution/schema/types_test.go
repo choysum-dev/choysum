@@ -43,6 +43,9 @@ func TestTypeHelpers(t *testing.T) {
 	if tag := buildColumnTypeTag("postgres", "monetary", map[string]interface{}{"precision": 10, "scale": 2}); tag != "type:decimal(38,18)" {
 		t.Fatalf("unexpected monetary tag: %s", tag)
 	}
+	if tag := buildColumnTypeTag("postgres", "html", map[string]interface{}{}); tag != "type:text" {
+		t.Fatalf("unexpected html tag: %s", tag)
+	}
 	if tag := buildColumnTypeTag("sqlite", "char", map[string]interface{}{"size": "20"}); tag != "type:char(20)" {
 		t.Fatalf("unexpected char tag: %s", tag)
 	}

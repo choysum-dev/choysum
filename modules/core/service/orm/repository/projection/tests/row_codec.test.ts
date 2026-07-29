@@ -270,6 +270,43 @@ test('repository row codec encodeForDb translate field null, JSON passthrough, a
   expect(() => encodeForDb(meta, { Name: 123 } as any)).toThrow(/expects a lang map object or null/);
 });
 
+test('repository row codec encodeForDb sanitize html and null blank markup', () => {
+  const original = (globalThis as any).$choysum;
+  try {
+    (globalThis as any).$choysum = {
+      html: {
+        // Fixture map only — production sanitization lives in Go bluemonday.
+        sanitize: (s: string) => {
+          if (s === '<script>x</script><p>safe</p>') return '<p>safe</p>';
+          return s;
+        },
+      },
+    };
+    const meta = {
+      fields: new Map<string, any>([['Terms', { type: 'html', column: { name: 'Terms' } }]]),
+    } as any;
+
+    expect(encodeForDb(meta, { Terms: '<script>x</script><p>safe</p>' } as any)).toEqual({
+      Terms: '<p>safe</p>',
+    });
+    expect(encodeForDb(meta, { Terms: null } as any)).toEqual({ Terms: null });
+    expect(encodeForDb(meta, { Terms: '<p></p>' } as any)).toEqual({ Terms: null });
+    expect(() => encodeForDb(meta, { Terms: 1 } as any)).toThrow(/html field value must be a string/);
+
+    const cdMeta = {
+      fields: new Map<string, any>([
+        ['Terms', { type: 'html', companyDependent: true, column: { name: 'Terms' } }],
+      ]),
+    } as any;
+    const encodedCd = encodeForDb(cdMeta, {
+      Terms: JSON.stringify({ C1: '<script>x</script><p>safe</p>' }),
+    } as any);
+    expect(JSON.parse(String(encodedCd.Terms))).toEqual({ C1: '<p>safe</p>' });
+  } finally {
+    (globalThis as any).$choysum = original;
+  }
+});
+
 test('repository row codec monetary quantize uses currency digits and E1 without currency', () => {
   const meta = {
     fields: new Map<string, any>([

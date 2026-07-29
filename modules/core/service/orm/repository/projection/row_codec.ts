@@ -14,8 +14,10 @@ import {
   encodeCompanyDependentMapForDb,
   isCompanyDependentScalarEnvelope,
   isCompanyValueMap,
+  parseCompanyDependentStoredMap,
 } from './company_dependent_field_codec';
 import { resolveMonetaryScaleForWrite, resolveMonetaryScaleFromRow } from './monetary_scale';
+import { sanitizeHtmlForWrite } from '../../utils/html_sanitize';
 
 type DecimalMetaLike = {
   column?: UnknownRecord;
@@ -195,7 +197,12 @@ export function encodeForDb(meta: ModelMetadata, input: Entity): Entity {
       } else if (typeof v === 'string') {
         const trimmed = v.trim();
         if (trimmed.startsWith('{')) {
-          out[k] = v;
+          // html must re-parse + sanitize; never persist a pre-baked JSON string as-is.
+          if (fm.type === 'html') {
+            out[k] = encodeCompanyDependentMapForDb(parseCompanyDependentStoredMap(v), fm);
+          } else {
+            out[k] = v;
+          }
         } else {
           throw new Error(
             `Company-dependent field "${k}" must be prepared as a company map before encodeForDb; got a bare string`
@@ -246,6 +253,11 @@ export function encodeForDb(meta: ModelMetadata, input: Entity): Entity {
       } else {
         out[k] = JSON.stringify(v);
       }
+      continue;
+    }
+
+    if (fm?.type === 'html' && fm.column) {
+      out[k] = sanitizeHtmlForWrite(v);
       continue;
     }
 

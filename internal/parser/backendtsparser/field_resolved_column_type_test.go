@@ -14,3 +14,12 @@ func TestResolveColumnType_MonetaryMapsToDecimal(t *testing.T) {
 		t.Fatalf("resolveColumnType(decimal)=%q, want decimal", got)
 	}
 }
+
+func TestResolveColumnType_HtmlMapsToText(t *testing.T) {
+	if got := resolveColumnType("html"); got != "text" {
+		t.Fatalf("resolveColumnType(html)=%q, want text", got)
+	}
+	if got := resolveColumnType("text"); got != "text" {
+		t.Fatalf("resolveColumnType(text)=%q, want text", got)
+	}
+}

@@ -119,6 +119,9 @@ const fieldComponent = computed(() => {
       return OVarCharField;
     case 'text':
       return OTextField;
+    case 'html':
+      // Search filter uses plaintext entry (char); Form uses OHtmlField.
+      return OCharField;
     case 'int':
       return OIntField;
     case 'bigint':

@@ -246,6 +246,23 @@ test('companyDependent parse/normalize/helpers cover remaining branches', () => 
   expect(normalizeCompanyDependentScalarValue('1.5', { type: 'decimal', column: { scale: 1 } } as any)).toBe('1.5');
   expect(normalizeCompanyDependentScalarValue(2, { type: 'monetary', column: { scale: 0 } } as any)).toBe('2');
 
+  const originalChoysum = (globalThis as any).$choysum;
+  try {
+    (globalThis as any).$choysum = {
+      html: {
+        sanitize: (s: string) => (s === '<script>x</script><p>ok</p>' ? '<p>ok</p>' : s),
+      },
+    };
+    expect(
+      normalizeCompanyDependentScalarValue('<script>x</script><p>ok</p>', { type: 'html' } as any)
+    ).toBe('<p>ok</p>');
+    expect(encodeCompanyDependentMapForDb({ C1: '<script>x</script><p>ok</p>' }, { type: 'html' } as any)).toBe(
+      JSON.stringify({ C1: '<p>ok</p>' })
+    );
+  } finally {
+    (globalThis as any).$choysum = originalChoysum;
+  }
+
   const dec = new Decimal('3.1415');
   expect(normalizeCompanyDependentScalarValue(dec)).toBe('3.1415');
   expect(normalizeCompanyDependentScalarValue(dec, { type: 'decimal', column: { scale: 2 } } as any)).toBe('3.14');

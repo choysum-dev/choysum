@@ -28,6 +28,11 @@ describe('OSearchFilterCondition field resolver mapping', () => {
     expect(s).toContain('return OSelectionField;');
   });
 
+  test('maps html metadata type to OCharField for plaintext search values', () => {
+    const s = source();
+    expect(s).toMatch(/case\s+'html':\s*(?:\/\/[^\n]*\n\s*)*return\s+OCharField\s*;/);
+  });
+
   test('maps manytooneref metadata type to OManyToOneRefField', () => {
     const s = source();
     expect(s).toContain("import OManyToOneRefField from '@/web/web/components/field/OManyToOneRefField.vue';");
