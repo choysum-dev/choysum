@@ -66,11 +66,19 @@ async function resolveRecordRuleMetaCached(appName: string, modelName: string): 
   });
 }
 
+type CompanyGateMode = {
+  enabled: boolean;
+  reason?: string;
+  ownershipField?: string;
+  /** Isolated model with broken ownership metadata → deny-all (fail-closed). */
+  denyAll?: boolean;
+};
+
 async function computeCompanyGateMode(
   modelId: string,
   companyField: string | undefined,
   hasCompany: boolean
-): Promise<{ enabled: boolean; reason?: string; ownershipField?: string }> {
+): Promise<CompanyGateMode> {
   if (!hasCompany) return { enabled: false, reason: 'no_company_context' };
   const ownershipField = String(companyField ?? '').trim();
   if (!ownershipField) return { enabled: false, reason: 'model_not_company_isolated' };
@@ -78,7 +86,7 @@ async function computeCompanyGateMode(
   const req = getCurrentReq();
   const state = req ? getOrInitReqServiceState(req) : undefined;
   const key = `companyGateMode::${modelId}::${ownershipField}`;
-  return await memoizeInReqState(state, key, async (): Promise<{ enabled: boolean; reason?: string; ownershipField?: string }> => {
+  return await memoizeInReqState(state, key, async (): Promise<CompanyGateMode> => {
     try {
       const hasOwnershipField =
         Number(
@@ -90,12 +98,13 @@ async function computeCompanyGateMode(
           } as any)
         ) > 0;
       if (!hasOwnershipField) {
-        return { enabled: false, reason: 'company_isolated_missing_ownership_field' };
+        // Isolated model missing its ownership column: do not drop the company boundary.
+        return { enabled: false, denyAll: true, reason: 'company_isolated_missing_ownership_field' };
       }
 
       return { enabled: true, ownershipField };
     } catch {
-      return { enabled: false, reason: 'meta_company_gate_error' };
+      return { enabled: false, denyAll: true, reason: 'meta_company_gate_error' };
     }
   });
 }
@@ -186,6 +195,9 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
     if (!modelId) return { kind: 'false', reason: 'model_not_found' };
 
     const companyGate = await computeCompanyGateMode(modelId, modelHit?.CompanyField, input.hasCompany);
+    if (companyGate.denyAll) {
+      return { kind: 'false', reason: companyGate.reason || 'company_gate_deny' };
+    }
     const permField = PERM_FIELD_BY_OP[input.opValue];
     const roleIds = (input.roleIds || []).map(id => String(id || '').trim()).filter(Boolean);
 

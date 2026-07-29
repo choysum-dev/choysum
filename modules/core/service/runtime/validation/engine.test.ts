@@ -788,6 +788,73 @@ test('validation engine rechecks checkCompany relations when only CompanyId chan
   ]);
 });
 
+test('validation engine treats undefined ownership as absent for checkCompany parent/recheck', async () => {
+  let searchCalls = 0;
+  RepositoryFactory.setRepository(
+    PlatformCompanyTargetModel as any,
+    {
+      withDeleted() {
+        return this;
+      },
+      async search() {
+        searchCalls += 1;
+        return [{ Id: 'target_prev_company', CompanyId: 'company_a' }];
+      },
+    } as any
+  );
+
+  const metadata = MetadataStorage.instance.getModelMetadata(PlatformCheckCompanySourceModel as any);
+
+  // Partial update with CompanyId: undefined must fall back to current ownership (company_a),
+  // and must not treat the key as an ownership change that rechecks TargetId.
+  const issues = await ValidationEngine.validate(
+    {
+      mode: 'update',
+      model: PlatformCheckCompanySourceModel as any,
+      metadata,
+      current: { CompanyId: 'company_a', TargetId: 'target_prev_company' },
+      values: { CompanyId: undefined, Name: 'n' },
+      changedFields: new Set(['Name']),
+      repository: {} as any,
+      requestContext: {
+        enabledCompanyIds: ['company_a', 'company_b'],
+        activeCompanyId: 'company_b',
+      },
+    } as any,
+    {
+      includeKernel: false,
+      includeConstraints: false,
+    }
+  );
+
+  expect(issues).toEqual([]);
+  expect(searchCalls).toBe(0);
+
+  // When only ownership is undefined in values but TargetId changes, parent resolves from current.
+  searchCalls = 0;
+  const withTargetChange = await ValidationEngine.validate(
+    {
+      mode: 'update',
+      model: PlatformCheckCompanySourceModel as any,
+      metadata,
+      current: { CompanyId: 'company_a', TargetId: 'target_prev_company' },
+      values: { CompanyId: undefined, TargetId: 'target_prev_company' },
+      changedFields: new Set(['TargetId']),
+      repository: {} as any,
+      requestContext: {
+        enabledCompanyIds: ['company_a', 'company_b'],
+        activeCompanyId: 'company_b',
+      },
+    } as any,
+    {
+      includeKernel: false,
+      includeConstraints: false,
+    }
+  );
+  expect(withTargetChange).toEqual([]);
+  expect(searchCalls).toBe(1);
+});
+
 test('validation engine checkCompany uses aliased companyField on parent and target', async () => {
   class AliasCheckTarget extends BaseModel {
     @Field({ type: 'varchar', size: 20 })

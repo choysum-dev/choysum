@@ -160,10 +160,13 @@ export class ValidationEngine {
     const fields = new Set<string>([...Array.from(ctx.changedFields || []), ...Object.keys(ctx.values || {})]);
     const parentOwnershipField = String(ctx.metadata.companyField ?? '').trim() || 'CompanyId';
     // Odoo-style: changing parent ownership field must re-check existing checkCompany relations.
+    // Present-but-undefined ownership in a partial payload is not a real change.
+    const valuesRecord = (ctx.values || {}) as ObjectRecord;
     if (
       (ctx.mode === 'create' || ctx.mode === 'update') &&
       (ctx.changedFields?.has(parentOwnershipField) ||
-        Object.prototype.hasOwnProperty.call(ctx.values || {}, parentOwnershipField))
+        (Object.prototype.hasOwnProperty.call(valuesRecord, parentOwnershipField) &&
+          valuesRecord[parentOwnershipField] !== undefined))
     ) {
       for (const [name, fieldMeta] of ctx.metadata.fields) {
         if (!fieldMeta?.checkCompany) continue;
@@ -489,11 +492,13 @@ export class ValidationEngine {
   private static resolveParentCompanyId(ctx: ConstraintContext): string {
     const ownershipField = String(ctx.metadata.companyField ?? '').trim() || 'CompanyId';
     const values = ctx.values as ObjectRecord | undefined;
-    if (values && Object.prototype.hasOwnProperty.call(values, ownershipField)) {
+    // Present-but-undefined (partial updates) must fall through; only null/empty is an
+    // explicit shared-parent declaration that must not use current/request fallbacks.
+    if (values && Object.prototype.hasOwnProperty.call(values, ownershipField) && values[ownershipField] !== undefined) {
       return this.resolveReferenceId(values[ownershipField]) ?? '';
     }
     const current = ctx.current as ObjectRecord | undefined;
-    if (current && Object.prototype.hasOwnProperty.call(current, ownershipField)) {
+    if (current && Object.prototype.hasOwnProperty.call(current, ownershipField) && current[ownershipField] !== undefined) {
       return this.resolveReferenceId(current[ownershipField]) ?? '';
     }
     const req = (ctx.requestContext && typeof ctx.requestContext === 'object' ? ctx.requestContext : {}) as ObjectRecord;

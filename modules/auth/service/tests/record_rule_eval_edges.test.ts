@@ -235,7 +235,7 @@ test('P2-2 eval edges: true-condition variants and multi grant+restrict compose'
   }
 });
 
-test('P2-2 eval edges: mismatched rule scopes skipped; company-gate meta error disables gate', async () => {
+test('P2-2 eval edges: mismatched rule scopes skipped; company-gate meta error fail-closes', async () => {
   resetRequestContext();
   const modelId = await resolveModelId('auth', 'CompanyScopedResource');
   const roleId = uid('role');
@@ -279,16 +279,16 @@ test('P2-2 eval edges: mismatched rule scopes skipped; company-gate meta error d
       roleIds: [roleId],
       roleScopesById: { [roleId]: { global: false, companies: [companyId] } },
     });
-    // Company gate disabled due to IrField.Count error; grant expr remains.
-    expect(env.kind).toBe('expr');
-    expect(String((env as any).reason || '')).toBe('grant_domain');
+    // Company gate fail-closed on IrField.Count error.
+    expect(env.kind).toBe('false');
+    expect(String((env as any).reason || '')).toBe('meta_company_gate_error');
   } finally {
     (RoleRecordRule as any).Search = origSearch;
     (IrField as any).Count = origCount;
   }
 });
 
-test('P2-2 eval edges: company-scoped model without CompanyId field disables gate', async () => {
+test('P2-2 eval edges: company-isolated model without ownership field fail-closes gate', async () => {
   resetRequestContext();
   const modelId = await resolveModelId('auth', 'CompanyScopedResource');
   const roleId = uid('role');
@@ -314,9 +314,8 @@ test('P2-2 eval edges: company-scoped model without CompanyId field disables gat
       roleIds: [roleId],
       roleScopesById: { [roleId]: { global: false, companies: [companyId] } },
     });
-    expect(env.kind).toBe('expr');
-    // Gate disabled → condition alone, no CompanyId clause.
-    expect(JSON.stringify((env as any).expr || {})).not.toContain('CompanyId');
+    expect(env.kind).toBe('false');
+    expect(String((env as any).reason || '')).toBe('company_isolated_missing_ownership_field');
   } finally {
     (RoleRecordRule as any).Search = origSearch;
     (IrField as any).Count = origCount;
@@ -548,7 +547,7 @@ test('P2-2 eval edges: defensive fallbacks for empty/null inputs', async () => {
   }
 });
 
-test('P2-2 eval edges: companyField gate skips when model not isolated or ownership field missing', async () => {
+test('P2-2 eval edges: companyField gate fail-closes when ownership field missing or meta errors', async () => {
   resetRequestContext();
   const modelId = await resolveModelId('auth', 'CompanyScopedResource');
   const roleId = uid('role');
@@ -567,7 +566,7 @@ test('P2-2 eval edges: companyField gate skips when model not isolated or owners
       },
     ];
 
-    // Empty CompanyField ⇒ model_not_company_isolated (no ownership gate clause).
+    // Empty CompanyField ⇒ model_not_company_isolated (gate off, grant still applies).
     resetRequestContext();
     (IrModel as any).Search = async () => [{ Id: modelId, CompanyField: null }];
     (IrField as any).Count = async () => 1;
@@ -582,7 +581,7 @@ test('P2-2 eval edges: companyField gate skips when model not isolated or owners
     expect(notIsolated.kind).toBe('expr');
     expect(JSON.stringify((notIsolated as any).expr || {})).not.toContain('CompanyId');
 
-    // CompanyField set but IrField missing ⇒ company_isolated_missing_ownership_field.
+    // CompanyField set but IrField missing ⇒ fail-closed deny.
     resetRequestContext();
     (IrModel as any).Search = async () => [{ Id: modelId, CompanyField: 'CompanyId' }];
     (IrField as any).Count = async () => 0;
@@ -594,10 +593,10 @@ test('P2-2 eval edges: companyField gate skips when model not isolated or owners
       roleIds: [roleId],
       roleScopesById: { [roleId]: { global: false, companies: ['company_a'] } },
     });
-    expect(missingField.kind).toBe('expr');
-    expect(JSON.stringify((missingField as any).expr || {})).not.toContain('CompanyId');
+    expect(missingField.kind).toBe('false');
+    expect(String((missingField as any).reason || '')).toBe('company_isolated_missing_ownership_field');
 
-    // IrField.Count throws ⇒ meta_company_gate_error.
+    // IrField.Count throws ⇒ fail-closed deny.
     resetRequestContext();
     (IrModel as any).Search = async () => [{ Id: modelId, CompanyField: 'CompanyId' }];
     (IrField as any).Count = async () => {
@@ -611,8 +610,8 @@ test('P2-2 eval edges: companyField gate skips when model not isolated or owners
       roleIds: [roleId],
       roleScopesById: { [roleId]: { global: false, companies: ['company_a'] } },
     });
-    expect(gateError.kind).toBe('expr');
-    expect(JSON.stringify((gateError as any).expr || {})).not.toContain('CompanyId');
+    expect(gateError.kind).toBe('false');
+    expect(String((gateError as any).reason || '')).toBe('meta_company_gate_error');
   } finally {
     (RoleRecordRule as any).Search = origSearch;
     (IrModel as any).Search = origModelSearch;
