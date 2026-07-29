@@ -24,7 +24,7 @@ type PartnerContactLike = {
 /**
  * Company-scoped business partner master record with derived default contacts and addresses.
  */
-@Model('Partner', { companyScoped: true })
+@Model('Partner', { companyField: 'CompanyId' })
 export default class Partner extends BaseModel {
   /** Partner display name. */
   @Field({

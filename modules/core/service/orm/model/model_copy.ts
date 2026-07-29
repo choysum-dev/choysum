@@ -7,6 +7,7 @@ import { resolveOneToManyRelationConfig } from '../relation/types';
 import type { FieldSelection, Insertable } from '../repository/types';
 import { asObjectRecord } from '../../../utils/object';
 import type { ObjectRecord, UnknownRecord } from '../../../utils/types';
+import { getActiveCompanyId, getEnabledCompanyIds } from '../../runtime/context/scope';
 import { createModel } from './model_create_service_facade';
 import { getModelRuntimeMetadata } from './model_runtime_service_facade';
 import { ReadOperations } from './model_read';
@@ -15,6 +16,19 @@ import type { RuntimeModelCtor } from './types';
 
 /** Max nested OneToMany depth for Copy (design §6.1). */
 export const COPY_MAX_RELATION_DEPTH = 8;
+
+/** Company ownership rewrite mode for Copy (company-field-design D10). */
+export type CopyCompanyMode = 'keep' | 'active';
+
+/** Optional Copy behavior beyond defaults overrides. */
+export type CopyOptions = {
+  /**
+   * How to set the isolated model's ownership field (`companyField`).
+   * - `keep` (default): preserve source ownership unless it is out of enabled scope.
+   * - `active`: rewrite ownership to the request `activeCompanyId`.
+   */
+  copyCompany?: CopyCompanyMode;
+};
 
 type CopyWalkState = {
   ancestorIds: Set<string>;
@@ -43,6 +57,46 @@ function extractRelationId(value: unknown): string | null {
   if (typeof id === 'string' && id.trim()) return id.trim();
   if (typeof id === 'number' || typeof id === 'bigint') return String(id);
   return null;
+}
+
+function normalizeOwnershipValue(value: unknown): string {
+  if (value == null) return '';
+  if (typeof value === 'object') {
+    return extractRelationId(value) || '';
+  }
+  return String(value).trim();
+}
+
+/**
+ * Apply D10 ownership rewrite using the model's `companyField`.
+ * Defaults that already set the ownership key win over keep/active.
+ */
+export function applyCopyCompanyOwnership(
+  meta: ModelMetadata,
+  out: UnknownRecord,
+  defaults?: Partial<Record<string, unknown>>,
+  options?: CopyOptions
+): void {
+  const ownershipField = String(meta.companyField ?? '').trim();
+  if (!ownershipField) return;
+
+  if (defaults && Object.prototype.hasOwnProperty.call(defaults, ownershipField) && defaults[ownershipField] !== undefined) {
+    out[ownershipField] = defaults[ownershipField];
+    return;
+  }
+
+  const mode: CopyCompanyMode = options?.copyCompany === 'active' ? 'active' : 'keep';
+  const enabled = getEnabledCompanyIds();
+  const active = getActiveCompanyId() ?? (enabled.length === 1 ? enabled[0] : undefined);
+  const sourceNormalized = normalizeOwnershipValue(out[ownershipField]);
+  const outOfEnabled = Boolean(sourceNormalized && enabled.length > 0 && !enabled.includes(sourceNormalized));
+
+  if (mode === 'active' || outOfEnabled) {
+    if (!active) {
+      throw new Error('[Copy] missing ctx.activeCompanyId for copyCompany rewrite');
+    }
+    out[ownershipField] = active;
+  }
 }
 
 /**
@@ -143,7 +197,8 @@ export function buildCopyValues(
   ModelCtor: RuntimeModelCtor,
   row: ObjectRecord,
   defaults?: Partial<Record<string, unknown>>,
-  state?: CopyWalkState
+  state?: CopyWalkState,
+  options?: CopyOptions
 ): UnknownRecord {
   const sourceRecord = asObjectRecord(row);
   if (!sourceRecord) {
@@ -187,10 +242,16 @@ export function buildCopyValues(
           throw new Error(`[Copy] cyclic OneToMany detected at ${fieldName} (source Id ${childId})`);
         }
 
-        const childCopied = buildCopyValues(childCtor, childRow, undefined, {
-          ancestorIds: new Set(walk.ancestorIds),
-          depth: walk.depth + 1,
-        });
+        const childCopied = buildCopyValues(
+          childCtor,
+          childRow,
+          undefined,
+          {
+            ancestorIds: new Set(walk.ancestorIds),
+            depth: walk.depth + 1,
+          },
+          options
+        );
         // Parent Create binds the new parent Id; drop inverse FK from the child payload.
         delete childCopied[o2m.inverseField];
         childValues.push(childCopied);
@@ -217,6 +278,8 @@ export function buildCopyValues(
     out[fieldName] = raw;
   }
 
+  applyCopyCompanyOwnership(meta, out, defaults, options);
+
   if (defaults && typeof defaults === 'object') {
     for (const [key, value] of Object.entries(defaults)) {
       if (value === undefined) continue;
@@ -233,7 +296,8 @@ export function buildCopyValues(
 export async function copyModel<T extends BaseModel>(
   ModelCtor: RuntimeModelCtor<T>,
   id: string,
-  defaults?: Partial<Record<string, unknown>>
+  defaults?: Partial<Record<string, unknown>>,
+  options?: CopyOptions
 ): Promise<T> {
   const trimmedId = String(id || '').trim();
   if (!trimmedId) {
@@ -243,10 +307,16 @@ export async function copyModel<T extends BaseModel>(
   const meta = getModelRuntimeMetadata(ModelCtor);
   const fields = buildCopyBrowseSelection(meta);
   const row = (await ReadOperations.Browse(ModelCtor, trimmedId, fields as FieldSelection<T>)) as ObjectRecord;
-  const values = buildCopyValues(ModelCtor as RuntimeModelCtor, row, defaults, {
-    ancestorIds: new Set([trimmedId]),
-    depth: 0,
-  });
+  const values = buildCopyValues(
+    ModelCtor as RuntimeModelCtor,
+    row,
+    defaults,
+    {
+      ancestorIds: new Set([trimmedId]),
+      depth: 0,
+    },
+    options
+  );
 
   return (await createModel(ModelCtor, values as Partial<Insertable<T & BaseModel>>)) as T;
 }

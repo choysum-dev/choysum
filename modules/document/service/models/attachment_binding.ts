@@ -28,7 +28,7 @@ import {
 /**
  * AttachmentBinding links finalized content to owner records and fields.
  */
-@Model('AttachmentBinding', { application: 'document', companyScoped: true })
+@Model('AttachmentBinding', { application: 'document', companyField: 'CompanyId' })
 export default class AttachmentBinding extends BaseModel {
   /**
    * Owner model that holds the attachment binding.
@@ -76,6 +76,7 @@ export default class AttachmentBinding extends BaseModel {
     type: 'ManyToOneRef',
     relation: { targetModel: 'document.AttachmentContent' },
     size: 20,
+    checkCompany: true,
     notNull: true,
     index: true,
     string: _lt('Attachment Content', { scope: 'document.model.AttachmentBinding.fields' }),

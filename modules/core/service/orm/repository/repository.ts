@@ -101,7 +101,7 @@ import {
   applyRepositoryRecordRuleToCondition,
   pruneRepositorySelectionTreeForFieldRule,
   replaceRepositoryRecordRuleTokens,
-  repositoryCompanyScopedEnabled,
+  repositoryCompanyFieldEnabled,
   repositoryFieldRuleEnabled,
   validateRepositoryCompanyIdInScope,
   withRepositoryFieldRuleBypass,
@@ -323,8 +323,8 @@ export class Repository {
 
   /* ----------------------------- Company scope (P2-1) ----------------------------- */
 
-  private companyScopedEnabled(): boolean {
-    return repositoryCompanyScopedEnabled(this.createCompanyScopeDeps());
+  private companyFieldEnabled(): boolean {
+    return repositoryCompanyFieldEnabled(this.createCompanyScopeDeps());
   }
 
   private permissionDenied(code: string, message: string, metadata?: Record<string, string>): ChoysumError {
@@ -650,7 +650,7 @@ export class Repository {
   }
 
   // Build the company filter layer shared by search, count, update, delete, and readGroup.
-  // Semantics: CompanyId != NULL means company-scoped rows, while CompanyId == NULL means shared rows.
+  // Semantics: ownership field != NULL means company-owned rows; NULL means shared rows.
   private applyCompanyLayer(condition: BaseQueryCondition): BaseQueryCondition {
     return applyRepositoryCompanyLayer(this.createCompanyScopeDeps(), condition);
   }
@@ -668,7 +668,7 @@ export class Repository {
     );
   }
 
-  // Apply the default CompanyId on write paths only for companyScoped models that expose a CompanyId field.
+  // Apply the default ownership company on write paths only for company-isolated models.
   private normalizeCompanyIdForWrite(): string | undefined {
     return normalizeRepositoryCompanyIdForWrite(this.ctx);
   }

@@ -54,7 +54,7 @@ function buildScheduleCondition(params: ListSchedulesParams): QueryCondition<Sch
 /**
  * Persistent schedule definition for creating task jobs on a cron cadence.
  */
-@Model('Schedule', { application: 'task', companyScoped: false })
+@Model('Schedule', { application: 'task' })
 export default class Schedule extends BaseModel {
   /** Whether the schedule is active. */
   @Field({

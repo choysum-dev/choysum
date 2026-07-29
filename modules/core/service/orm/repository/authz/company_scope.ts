@@ -40,6 +40,80 @@ type RepositoryCompanyScopeSelectFromBuilderLike = RepositorySelectColumnsCapabl
 
 type RepositoryCompanyScopeDbLike = RepositorySelectFromDbLike<RepositoryCompanyScopeSelectFromBuilderLike, string>;
 
+/** Non-empty ownership field name when the model is company-isolated. */
+export function resolveRepositoryCompanyField(meta: ModelMetadata | undefined | null): string | undefined {
+  const field = String(meta?.companyField ?? '').trim();
+  return field || undefined;
+}
+
+/** True when meta declares a company ownership field (L1 isolated). */
+export function repositoryHasCompanyField(meta: ModelMetadata | undefined | null): boolean {
+  return Boolean(resolveRepositoryCompanyField(meta));
+}
+
+/**
+ * Ownership column for an isolated model. Throws PermissionDenied-style via
+ * the provided callback when the field is missing from metadata.
+ */
+export function requireRepositoryOwnershipField(
+  meta: ModelMetadata,
+  permissionDenied: RepositoryPermissionDeniedFn
+): string {
+  const field = resolveRepositoryCompanyField(meta);
+  if (!field) {
+    throw permissionDenied(
+      'company_field_not_isolated',
+      _t('model is not company-isolated', { scope: 'service/orm/repository/authz/company_scope' }),
+      {
+        model: meta.fullModelName || meta.modelName || meta.name,
+      }
+    );
+  }
+  if (!(meta.fields instanceof Map) || !meta.fields.has(field)) {
+    throw permissionDenied(
+      'company_field_missing',
+      _t('companyField model is missing ownership field', { scope: 'service/orm/repository/authz/company_scope' }),
+      {
+        model: meta.fullModelName || meta.modelName || meta.name,
+        companyField: field,
+      }
+    );
+  }
+  return field;
+}
+
+/** True when the ownership field is schema-not-null (private isolated model). */
+export function isRepositoryOwnershipFieldNotNull(meta: ModelMetadata, field: string): boolean {
+  const fieldMeta = meta.fields instanceof Map ? meta.fields.get(field) : undefined;
+  const column = asObjectRecord(fieldMeta?.column);
+  return column?.notNull === true;
+}
+
+function isOwnershipNullValue(value: unknown): boolean {
+  if (value === null || value === undefined) return true;
+  if (typeof value === 'string' && !value.trim()) return true;
+  return false;
+}
+
+export function validateRepositoryOwnershipNullability(
+  params: RepositoryCompanyScopeDeps,
+  ownershipField: string,
+  value: unknown
+): void {
+  if (!isRepositoryOwnershipFieldNotNull(params.meta, ownershipField)) return;
+  if (!isOwnershipNullValue(value)) return;
+  throw params.permissionDenied(
+    'company_field_null_forbidden',
+    _t('ownership field cannot be null on private company-isolated model', {
+      scope: 'service/orm/repository/authz/company_scope',
+    }),
+    {
+      model: params.meta.fullModelName || params.meta.modelName || params.meta.name,
+      companyField: ownershipField,
+    }
+  );
+}
+
 export function normalizeRepositoryCompanyIds(ctx: unknown): string[] {
   const requestContext = asObjectRecord(ctx);
   const raw = requestContext?.enabledCompanyIds ?? requestContext?.EnabledCompanyIds ?? requestContext?.activeCompanyId ?? requestContext?.ActiveCompanyId;
@@ -91,22 +165,13 @@ export function validateRepositoryCompanyIdInScope(params: RepositoryCompanyScop
   }
 }
 
-export function repositoryCompanyScopedEnabled(params: RepositoryCompanyScopeDeps): boolean {
+export function repositoryCompanyFieldEnabled(params: RepositoryCompanyScopeDeps): boolean {
   const grpcEnabled = getRuntimeEnvFlag('CHOYSUM_GRPC_COMPANY_FILTER_ENABLED', true);
   if (!grpcEnabled) return false;
   if (params.companyLayerSkipped()) return false;
-  if (!params.meta.companyScoped) return false;
+  if (!repositoryHasCompanyField(params.meta)) return false;
 
-  const hasCompanyIdField = params.meta.fields instanceof Map && params.meta.fields.has('CompanyId');
-  if (!hasCompanyIdField) {
-    throw params.permissionDenied(
-      'company_scope_missing_company_id_field',
-      _t('companyScoped model is missing CompanyId field', { scope: 'service/orm/repository/authz/company_scope' }),
-      {
-        model: params.meta.fullModelName || params.meta.modelName || params.meta.name,
-      }
-    );
-  }
+  requireRepositoryOwnershipField(params.meta, params.permissionDenied);
 
   const ids = normalizeRepositoryCompanyIds(params.ctx);
   if (!ids.length) {
@@ -127,13 +192,14 @@ export function repositoryCompanyScopedEnabled(params: RepositoryCompanyScopeDep
 
 export function applyRepositoryCompanyLayer(params: RepositoryCompanyScopeDeps, condition: BaseQueryCondition): BaseQueryCondition {
   if (params.companyLayerSkipped()) return condition;
-  if (!repositoryCompanyScopedEnabled(params)) return condition;
+  if (!repositoryCompanyFieldEnabled(params)) return condition;
 
+  const ownershipField = requireRepositoryOwnershipField(params.meta, params.permissionDenied);
   const companyIds = normalizeRepositoryCompanyIds(params.ctx);
   const companyCondition: BaseQueryCondition = {
     Or: [
-      ['CompanyId', 'in', companyIds],
-      ['CompanyId', 'is', null],
+      [ownershipField, 'in', companyIds],
+      [ownershipField, 'is', null],
     ],
   };
 
@@ -157,14 +223,16 @@ export function applyRepositoryCompanyLayer(params: RepositoryCompanyScopeDeps, 
 }
 
 export function applyRepositoryDefaultCompanyIdOnCreate(params: RepositoryCompanyScopeDeps, entity: Entity): Entity {
-  if (!params.meta.companyScoped) return entity;
+  if (!repositoryHasCompanyField(params.meta)) return entity;
 
-  repositoryCompanyScopedEnabled(params);
+  repositoryCompanyFieldEnabled(params);
+  const ownershipField = requireRepositoryOwnershipField(params.meta, params.permissionDenied);
   const companyIds = normalizeRepositoryCompanyIds(params.ctx);
   const entityRecord = asObjectRecord(entity);
 
-  if (Object.prototype.hasOwnProperty.call(entity || {}, 'CompanyId')) {
-    validateRepositoryCompanyIdInScope(params, entityRecord?.CompanyId, companyIds);
+  if (Object.prototype.hasOwnProperty.call(entity || {}, ownershipField)) {
+    validateRepositoryOwnershipNullability(params, ownershipField, entityRecord?.[ownershipField]);
+    validateRepositoryCompanyIdInScope(params, entityRecord?.[ownershipField], companyIds);
     return entity;
   }
 
@@ -179,16 +247,19 @@ export function applyRepositoryDefaultCompanyIdOnCreate(params: RepositoryCompan
     );
   }
 
-  return { ...entity, CompanyId: companyId };
+  return { ...entity, [ownershipField]: companyId };
 }
 
 export function applyRepositoryDefaultCompanyIdOnUpdate(params: RepositoryCompanyScopeDeps, vals: Entity): Entity {
-  if (!params.meta.companyScoped) return vals;
+  if (!repositoryHasCompanyField(params.meta)) return vals;
 
-  repositoryCompanyScopedEnabled(params);
-  if (!Object.prototype.hasOwnProperty.call(vals || {}, 'CompanyId')) return vals;
+  repositoryCompanyFieldEnabled(params);
+  const ownershipField = requireRepositoryOwnershipField(params.meta, params.permissionDenied);
+  if (!Object.prototype.hasOwnProperty.call(vals || {}, ownershipField)) return vals;
 
-  validateRepositoryCompanyIdInScope(params, asObjectRecord(vals)?.CompanyId, normalizeRepositoryCompanyIds(params.ctx));
+  const nextValue = asObjectRecord(vals)?.[ownershipField];
+  validateRepositoryOwnershipNullability(params, ownershipField, nextValue);
+  validateRepositoryCompanyIdInScope(params, nextValue, normalizeRepositoryCompanyIds(params.ctx));
   return vals;
 }
 
@@ -196,20 +267,21 @@ export async function assertRepositoryCompanyWriteAccessForCondition(
   params: RepositoryCompanyScopeQueryDeps,
   condition: BaseQueryCondition
 ): Promise<string[]> {
-  if (!params.meta.companyScoped) return [];
+  if (!repositoryHasCompanyField(params.meta)) return [];
 
-  repositoryCompanyScopedEnabled(params);
+  repositoryCompanyFieldEnabled(params);
+  const ownershipField = requireRepositoryOwnershipField(params.meta, params.permissionDenied);
 
-  let selectQuery = (params.db as RepositoryCompanyScopeDbLike).selectFrom(params.table).select(['Id', 'CompanyId']);
+  let selectQuery = (params.db as RepositoryCompanyScopeDbLike).selectFrom(params.table).select(['Id', ownershipField]);
   const filtered = params.applySoftLayer(condition);
   if (!params.isEmptyCondition(filtered)) {
     selectQuery = selectQuery.where(({ eb }) => params.convertCondition(eb, filtered, params.table));
   }
 
-  const rows = ((await params.execute(selectQuery as never)) || []) as Array<{ Id?: string; CompanyId?: unknown }>;
+  const rows = ((await params.execute(selectQuery as never)) || []) as Array<Record<string, unknown>>;
   const companyIds = normalizeRepositoryCompanyIds(params.ctx);
   for (const row of rows) {
-    validateRepositoryCompanyIdInScope(params, row?.CompanyId, companyIds);
+    validateRepositoryCompanyIdInScope(params, row?.[ownershipField], companyIds);
   }
 
   return rows.map(row => String(row?.Id || '')).filter(Boolean);

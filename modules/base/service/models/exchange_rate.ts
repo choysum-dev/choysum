@@ -10,7 +10,7 @@ import Company from './company';
 import Currency from './currency';
 import { fail, mapNormalizationToBase, requireRefId } from './_normalizers';
 
-@Model('ExchangeRate', { companyScoped: true })
+@Model('ExchangeRate', { companyField: 'CompanyId' })
 export default class ExchangeRate extends BaseModel {
   @Field({
     type: 'ManyToOne',

@@ -64,9 +64,15 @@ export function applyRepositoryRelationSoftDeleteFilter<T extends { where: (left
   return subQuery;
 }
 
-function repositoryRelationCompanyScopedEnabled(targetMeta: ModelMetadata): boolean {
-  if (!targetMeta.companyScoped) return false;
-  return targetMeta.fields instanceof Map && targetMeta.fields.has('CompanyId');
+function resolveRelationOwnershipField(targetMeta: ModelMetadata): string | undefined {
+  const field = String(targetMeta.companyField ?? '').trim();
+  if (!field) return undefined;
+  if (!(targetMeta.fields instanceof Map) || !targetMeta.fields.has(field)) {
+    throw new Error(
+      `companyField model is missing ownership field (${targetMeta.fullModelName || targetMeta.modelName || targetMeta.name}: ${field})`
+    );
+  }
+  return field;
 }
 
 function normalizeRepositoryRelationCompanyIds(): string[] {
@@ -94,14 +100,21 @@ export function applyRepositoryRelationCompanyFilter<T extends { where: (...args
 ): T {
   const globalEnabled = getRuntimeEnvFlag('CHOYSUM_GRPC_COMPANY_FILTER_ENABLED', true);
   if (!globalEnabled) return subQuery;
-  if (!repositoryRelationCompanyScopedEnabled(targetMeta)) return subQuery;
+
+  const ownershipField = resolveRelationOwnershipField(targetMeta);
+  if (!ownershipField) return subQuery;
 
   const companyIds = normalizeRepositoryRelationCompanyIds();
-  if (!companyIds.length) return subQuery;
+  if (!companyIds.length) {
+    throw new Error('missing ctx.enabledCompanyIds/activeCompanyId for company scoped operation');
+  }
 
   const whereCapable = subQuery as RelationPredicateWhereCapable<T>;
   return whereCapable.where((eb: RelationWhereBuilder) =>
-    eb.or([eb(`${targetTable}.CompanyId`, 'in', companyIds), eb(`${targetTable}.CompanyId`, 'is', null)])
+    eb.or([
+      eb(`${targetTable}.${ownershipField}`, 'in', companyIds),
+      eb(`${targetTable}.${ownershipField}`, 'is', null),
+    ])
   );
 }
 

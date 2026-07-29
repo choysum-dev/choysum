@@ -765,31 +765,59 @@ test('metadata storage clearStaticMetadataCache handles non-object input', () =>
   expect(() => storage.clearStaticMetadataCache('str')).not.toThrow();
 });
 
-test('metadata storage getModelMetadata skips non-registered parent in prototype chain', () => {
+test('metadata storage getModelMetadata inherits companyField from registered parent', () => {
   const storage = MetadataStorage.instance as any;
 
-  class StorageUnregisteredParent extends BaseModel {}
-  class StorageRegisteredChild extends StorageUnregisteredParent {}
+  class StorageCompanyParent extends BaseModel {}
+  class StorageCompanyChild extends StorageCompanyParent {}
 
-  resetModelMetadata(StorageUnregisteredParent as any);
-  resetModelMetadata(StorageRegisteredChild as any);
+  resetModelMetadata(StorageCompanyParent as any);
+  resetModelMetadata(StorageCompanyChild as any);
 
-  // Only register the child, not the parent
   storage.setModelMetadata(
-    StorageRegisteredChild as any,
+    StorageCompanyParent as any,
     {
-      modelName: 'core.childOnly',
+      modelName: 'core.companyParent',
+      companyField: 'CompanyId',
+      fields: new Map([['CompanyId', { type: 'char', column: {} }]]),
+    } as any
+  );
+  storage.setModelMetadata(
+    StorageCompanyChild as any,
+    {
+      modelName: 'core.companyChild',
       fields: new Map([['Name', { type: 'varchar', column: {} }]]),
     } as any
   );
 
-  // Delete parent from models map if it was auto-created
-  storage.models.delete(StorageUnregisteredParent as any);
-
-  const meta = storage.getModelMetadata(StorageRegisteredChild as any);
-  expect(meta.modelName).toBe('core.childOnly');
+  const meta = storage.getModelMetadata(StorageCompanyChild as any);
+  expect(meta.companyField).toBe('CompanyId');
+  expect(meta.fields.has('CompanyId')).toBe(true);
   expect(meta.fields.has('Name')).toBe(true);
+
+  // Parent with blank companyField does not override an already-empty inherit walk.
+  class StorageBlankParent extends BaseModel {}
+  class StorageBlankChild extends StorageBlankParent {}
+  resetModelMetadata(StorageBlankParent as any);
+  resetModelMetadata(StorageBlankChild as any);
+  storage.setModelMetadata(
+    StorageBlankParent as any,
+    {
+      modelName: 'core.blankParent',
+      companyField: '  ',
+      fields: new Map(),
+    } as any
+  );
+  storage.setModelMetadata(
+    StorageBlankChild as any,
+    {
+      modelName: 'core.blankChild',
+      fields: new Map([['Name', { type: 'varchar', column: {} }]]),
+    } as any
+  );
+  expect(storage.getModelMetadata(StorageBlankChild as any).companyField).toBeUndefined();
 });
+
 
 test('metadata storage getModelMetadata handles parent with non-Map handler types', () => {
   const storage = MetadataStorage.instance as any;

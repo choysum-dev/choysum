@@ -6,6 +6,18 @@ import { ValidationPipelineError } from '../metadata';
 import { ComputeEngine } from '../../runtime/compute/engine';
 
 function createRepositoryHarness(metaOverrides: Record<string, any> = {}) {
+  const fields = new Map<string, any>([
+    ['Id', { type: 'char', column: { name: 'Id' } }],
+    ['Name', { type: 'varchar', column: { name: 'Name' } }],
+    ['Amount', { type: 'decimal', column: { name: 'Amount', scale: 2 } }],
+  ]);
+  if (metaOverrides.companyField && !(metaOverrides.fields instanceof Map)) {
+    fields.set(String(metaOverrides.companyField), { type: 'many2one', column: { name: String(metaOverrides.companyField) } });
+  }
+  if (metaOverrides.fields instanceof Map) {
+    for (const [k, v] of metaOverrides.fields) fields.set(k, v);
+  }
+  const { fields: _ignored, ...rest } = metaOverrides;
   return new Repository({
     fullModelName: 'demo.Model',
     application: 'demo',
@@ -14,12 +26,8 @@ function createRepositoryHarness(metaOverrides: Record<string, any> = {}) {
     tableName: () => 'demo_table',
     softDelete: true,
     orderBy: undefined,
-    fields: new Map<string, any>([
-      ['Id', { type: 'char', column: { name: 'Id' } }],
-      ['Name', { type: 'varchar', column: { name: 'Name' } }],
-      ['Amount', { type: 'decimal', column: { name: 'Amount', scale: 2 } }],
-    ]),
-    ...metaOverrides,
+    fields,
+    ...rest,
   } as any) as any;
 }
 
@@ -885,7 +893,7 @@ test('repository root createCompanyScopeQueryDeps assembles query bridge and del
 
 test('repository root company layer skip only applies for top-level request with companyMode=skip', async () => {
   const repository = createRepositoryHarness({
-    companyScoped: true,
+    companyField: 'CompanyId',
     fields: new Map<string, any>([
       ['Id', { type: 'char', column: { name: 'Id' } }],
       ['Name', { type: 'varchar', column: { name: 'Name' } }],
@@ -934,7 +942,7 @@ test('repository root top-level company mode helper trims mode and ignores neste
 
 test('repository root create orchestrates record-rule/company/write-guards and post-write assertion', async () => {
   const repository = createRepositoryHarness({
-    companyScoped: true,
+    companyField: 'CompanyId',
     fields: new Map<string, any>([
       ['Id', { type: 'char', column: { name: 'Id' } }],
       ['Name', { type: 'varchar', column: { name: 'Name' } }],
@@ -1533,7 +1541,7 @@ test('repository root applyPersistComputeFollowUps wraps execute sql errors via 
 
 test('repository root update combines company-scope target resolve, record-rule condition, projection/runtime bridge', async () => {
   const repository = createRepositoryHarness({
-    companyScoped: true,
+    companyField: 'CompanyId',
     fields: new Map<string, any>([
       ['Id', { type: 'char', column: { name: 'Id' } }],
       ['Name', { type: 'varchar', column: { name: 'Name' } }],
@@ -1549,7 +1557,7 @@ test('repository root update combines company-scope target resolve, record-rule 
     return ['id_1'];
   };
   repository.locateIdsForCondition = async () => {
-    throw new Error('locateIdsForCondition should not be called for companyScoped update');
+    throw new Error('locateIdsForCondition should not be called for company-isolated update');
   };
   repository.assertRecordRuleAllTargetsAllowed = async (op: string, ids: string[]) => {
     calls.rrTargets = { op, ids };
@@ -1607,7 +1615,7 @@ test('repository root update combines company-scope target resolve, record-rule 
 
 test('repository root delete combines company-scope target resolve, record-rule guard and default-layer delete condition', async () => {
   const repository = createRepositoryHarness({
-    companyScoped: true,
+    companyField: 'CompanyId',
     softDelete: false,
     fields: new Map<string, any>([
       ['Id', { type: 'char', column: { name: 'Id' } }],
@@ -1621,7 +1629,7 @@ test('repository root delete combines company-scope target resolve, record-rule 
   repository.db = db;
   repository.assertCompanyWriteAccessForCondition = async () => ['id_1', 'id_2'];
   repository.locateIdsForCondition = async () => {
-    throw new Error('locateIdsForCondition should not be called for companyScoped delete');
+    throw new Error('locateIdsForCondition should not be called for company-isolated delete');
   };
   repository.assertRecordRuleAllTargetsAllowed = async (op: string, ids: string[]) => {
     calls.rrTargets = { op, ids };
@@ -1653,7 +1661,7 @@ test('repository root delete combines company-scope target resolve, record-rule 
 
 test('repository root hard-delete path wraps sql errors and skips cache invalidation on failure', async () => {
   const repository = createRepositoryHarness({
-    companyScoped: false,
+    companyField: undefined,
     softDelete: false,
     fields: new Map<string, any>([
       ['Id', { type: 'char', column: { name: 'Id' } }],
@@ -1666,7 +1674,7 @@ test('repository root hard-delete path wraps sql errors and skips cache invalida
   repository.db = db;
   repository.locateIdsForCondition = async () => ['id_1'];
   repository.assertCompanyWriteAccessForCondition = async () => {
-    throw new Error('assertCompanyWriteAccessForCondition should not be called for non-companyScoped delete');
+    throw new Error('assertCompanyWriteAccessForCondition should not be called for non-company-isolated delete');
   };
   repository.assertRecordRuleAllTargetsAllowed = async () => {};
   repository.applyRecordRuleToCondition = async (condition: any) => condition;
@@ -1696,7 +1704,7 @@ test('repository root hard-delete path wraps sql errors and skips cache invalida
 
 test('repository root update short-circuits when target id set is empty', async () => {
   const repository = createRepositoryHarness({
-    companyScoped: true,
+    companyField: 'CompanyId',
     fields: new Map<string, any>([
       ['Id', { type: 'char', column: { name: 'Id' } }],
       ['Name', { type: 'varchar', column: { name: 'Name' } }],
@@ -1709,7 +1717,7 @@ test('repository root update short-circuits when target id set is empty', async 
   repository.db = db;
   repository.assertCompanyWriteAccessForCondition = async () => [];
   repository.locateIdsForCondition = async () => {
-    throw new Error('locateIdsForCondition should not be called for companyScoped update');
+    throw new Error('locateIdsForCondition should not be called for company-isolated update');
   };
   repository.assertRecordRuleAllTargetsAllowed = async () => {
     throw new Error('assertRecordRuleAllTargetsAllowed should not be called when no targets');
@@ -1726,7 +1734,7 @@ test('repository root update short-circuits when target id set is empty', async 
 
 test('repository root update resolves targets via locateIdsForCondition when model is not company scoped', async () => {
   const repository = createRepositoryHarness({
-    companyScoped: false,
+    companyField: undefined,
     fields: new Map<string, any>([
       ['Id', { type: 'char', column: { name: 'Id' } }],
       ['Name', { type: 'varchar', column: { name: 'Name' } }],
@@ -1741,7 +1749,7 @@ test('repository root update resolves targets via locateIdsForCondition when mod
     return ['id_2'];
   };
   repository.assertCompanyWriteAccessForCondition = async () => {
-    throw new Error('assertCompanyWriteAccessForCondition should not be called for non-companyScoped update');
+    throw new Error('assertCompanyWriteAccessForCondition should not be called for non-company-isolated update');
   };
   repository.assertRecordRuleAllTargetsAllowed = async (op: string, ids: string[]) => {
     calls.rrTargets = { op, ids };
@@ -1786,7 +1794,7 @@ test('repository root update resolves targets via locateIdsForCondition when mod
 
 test('repository root update keeps empty runtime rows unchanged and skips cache invalidation', async () => {
   const repository = createRepositoryHarness({
-    companyScoped: false,
+    companyField: undefined,
     fields: new Map<string, any>([
       ['Id', { type: 'char', column: { name: 'Id' } }],
       ['Name', { type: 'varchar', column: { name: 'Name' } }],
@@ -1800,7 +1808,7 @@ test('repository root update keeps empty runtime rows unchanged and skips cache 
   repository.db = db;
   repository.locateIdsForCondition = async () => ['id_1'];
   repository.assertCompanyWriteAccessForCondition = async () => {
-    throw new Error('assertCompanyWriteAccessForCondition should not be called for non-companyScoped update');
+    throw new Error('assertCompanyWriteAccessForCondition should not be called for non-company-isolated update');
   };
   repository.assertRecordRuleAllTargetsAllowed = async () => {};
   repository.applyRecordRuleToCondition = async (condition: any) => condition;
@@ -1838,7 +1846,7 @@ test('repository root update keeps empty runtime rows unchanged and skips cache 
 
 test('repository root update propagates runtime execution errors and skips cache invalidation', async () => {
   const repository = createRepositoryHarness({
-    companyScoped: false,
+    companyField: undefined,
     fields: new Map<string, any>([
       ['Id', { type: 'char', column: { name: 'Id' } }],
       ['Name', { type: 'varchar', column: { name: 'Name' } }],
@@ -1852,7 +1860,7 @@ test('repository root update propagates runtime execution errors and skips cache
   repository.db = db;
   repository.locateIdsForCondition = async () => ['id_1'];
   repository.assertCompanyWriteAccessForCondition = async () => {
-    throw new Error('assertCompanyWriteAccessForCondition should not be called for non-companyScoped update');
+    throw new Error('assertCompanyWriteAccessForCondition should not be called for non-company-isolated update');
   };
   repository.assertRecordRuleAllTargetsAllowed = async () => {};
   repository.applyRecordRuleToCondition = async (condition: any) => condition;
@@ -1898,7 +1906,7 @@ test('repository root update propagates runtime execution errors and skips cache
 
 test('repository root update executes unconditional query when record-rule and default layers reduce to empty condition', async () => {
   const repository = createRepositoryHarness({
-    companyScoped: false,
+    companyField: undefined,
     fields: new Map<string, any>([
       ['Id', { type: 'char', column: { name: 'Id' } }],
       ['Name', { type: 'varchar', column: { name: 'Name' } }],
@@ -1912,7 +1920,7 @@ test('repository root update executes unconditional query when record-rule and d
   repository.db = db;
   repository.locateIdsForCondition = async () => ['id_1'];
   repository.assertCompanyWriteAccessForCondition = async () => {
-    throw new Error('assertCompanyWriteAccessForCondition should not be called for non-companyScoped update');
+    throw new Error('assertCompanyWriteAccessForCondition should not be called for non-company-isolated update');
   };
   repository.assertRecordRuleAllTargetsAllowed = async () => {};
   repository.applyRecordRuleToCondition = async () => [] as any;
@@ -1952,7 +1960,7 @@ test('repository root update executes unconditional query when record-rule and d
 
 test('repository root delete short-circuits when resolved target ids are empty', async () => {
   const repository = createRepositoryHarness({
-    companyScoped: false,
+    companyField: undefined,
     softDelete: false,
     fields: new Map<string, any>([
       ['Id', { type: 'char', column: { name: 'Id' } }],
@@ -1965,7 +1973,7 @@ test('repository root delete short-circuits when resolved target ids are empty',
   repository.db = db;
   repository.locateIdsForCondition = async () => [];
   repository.assertCompanyWriteAccessForCondition = async () => {
-    throw new Error('assertCompanyWriteAccessForCondition should not be called for non-companyScoped delete');
+    throw new Error('assertCompanyWriteAccessForCondition should not be called for non-company-isolated delete');
   };
   repository.assertRecordRuleAllTargetsAllowed = async () => {
     throw new Error('assertRecordRuleAllTargetsAllowed should not be called when no delete targets');
@@ -1983,7 +1991,7 @@ test('repository root delete short-circuits when resolved target ids are empty',
 
 test('repository root delete executes unconditional hard-delete query when record-rule and default layers reduce to empty condition', async () => {
   const repository = createRepositoryHarness({
-    companyScoped: false,
+    companyField: undefined,
     softDelete: false,
     fields: new Map<string, any>([
       ['Id', { type: 'char', column: { name: 'Id' } }],
@@ -1998,7 +2006,7 @@ test('repository root delete executes unconditional hard-delete query when recor
   repository.db = db;
   repository.locateIdsForCondition = async () => ['id_1'];
   repository.assertCompanyWriteAccessForCondition = async () => {
-    throw new Error('assertCompanyWriteAccessForCondition should not be called for non-companyScoped delete');
+    throw new Error('assertCompanyWriteAccessForCondition should not be called for non-company-isolated delete');
   };
   repository.assertRecordRuleAllTargetsAllowed = async () => {};
   repository.applyRecordRuleToCondition = async () => [] as any;
@@ -2023,7 +2031,7 @@ test('repository root delete executes unconditional hard-delete query when recor
 
 test('repository root delete uses soft-delete update path when model softDelete is enabled', async () => {
   const repository = createRepositoryHarness({
-    companyScoped: false,
+    companyField: undefined,
     softDelete: true,
     fields: new Map<string, any>([
       ['Id', { type: 'char', column: { name: 'Id' } }],
@@ -2040,7 +2048,7 @@ test('repository root delete uses soft-delete update path when model softDelete 
     return ['id_1'];
   };
   repository.assertCompanyWriteAccessForCondition = async () => {
-    throw new Error('assertCompanyWriteAccessForCondition should not be called for non-companyScoped model');
+    throw new Error('assertCompanyWriteAccessForCondition should not be called for non-company-isolated model');
   };
   repository.assertRecordRuleAllTargetsAllowed = async (op: string, ids: string[]) => {
     calls.rrTargets = { op, ids };
@@ -2074,7 +2082,7 @@ test('repository root delete uses soft-delete update path when model softDelete 
 
 test('repository root soft-delete path propagates runtime errors and does not invalidate cache', async () => {
   const repository = createRepositoryHarness({
-    companyScoped: false,
+    companyField: undefined,
     softDelete: true,
     fields: new Map<string, any>([
       ['Id', { type: 'char', column: { name: 'Id' } }],
@@ -2090,7 +2098,7 @@ test('repository root soft-delete path propagates runtime errors and does not in
   repository.db = db;
   repository.locateIdsForCondition = async () => ['id_1'];
   repository.assertCompanyWriteAccessForCondition = async () => {
-    throw new Error('assertCompanyWriteAccessForCondition should not be called for non-companyScoped model');
+    throw new Error('assertCompanyWriteAccessForCondition should not be called for non-company-isolated model');
   };
   repository.assertRecordRuleAllTargetsAllowed = async () => {};
   repository.applySoftLayer = (condition: any) => ({ And: [condition, ['DeletedAt', 'is', null]] });
@@ -2258,7 +2266,7 @@ test('repository root withSavepoint delegates to database savepoint API', async 
 
 test('repository root hardDelete private path executes delete flow and invalidates cache on success', async () => {
   const repository = createRepositoryHarness({
-    companyScoped: false,
+    companyField: undefined,
     softDelete: false,
     fields: new Map<string, any>([
       ['Id', { type: 'char', column: { name: 'Id' } }],
@@ -2271,7 +2279,7 @@ test('repository root hardDelete private path executes delete flow and invalidat
   repository.db = db;
   repository.locateIdsForCondition = async () => ['id_1'];
   repository.assertCompanyWriteAccessForCondition = async () => {
-    throw new Error('assertCompanyWriteAccessForCondition should not be called for non-companyScoped hardDelete');
+    throw new Error('assertCompanyWriteAccessForCondition should not be called for non-company-isolated hardDelete');
   };
   repository.assertRecordRuleAllTargetsAllowed = async () => {};
   repository.applyRecordRuleToCondition = async (condition: any) => condition;
@@ -2323,7 +2331,7 @@ test('repository root record-rule deny behavior differs between read and write/d
   expect(JSON.stringify(readCalls.compiled.condition).includes('__choysum_never__')).toBe(true);
 
   const writeRepo = createRepositoryHarness({
-    companyScoped: false,
+    companyField: undefined,
     fields: new Map<string, any>([
       ['Id', { type: 'char', column: { name: 'Id' } }],
       ['Name', { type: 'varchar', column: { name: 'Name' } }],
@@ -2352,7 +2360,7 @@ test('repository root record-rule deny behavior differs between read and write/d
   expect(writeExecuteCalled).toBe(0);
 
   const deleteRepo = createRepositoryHarness({
-    companyScoped: false,
+    companyField: undefined,
     softDelete: false,
     fields: new Map<string, any>([
       ['Id', { type: 'char', column: { name: 'Id' } }],
@@ -2522,7 +2530,7 @@ test('repository root record-rule expr branch is applied for read and propagated
   expect(readCalls.compiled.table).toBe('demo_table');
 
   const updateRepo = createRepositoryHarness({
-    companyScoped: false,
+    companyField: undefined,
     fields: new Map<string, any>([
       ['Id', { type: 'char', column: { name: 'Id' } }],
       ['Name', { type: 'varchar', column: { name: 'Name' } }],
@@ -2574,7 +2582,7 @@ test('repository root record-rule expr branch is applied for read and propagated
   });
 
   const deleteRepo = createRepositoryHarness({
-    companyScoped: false,
+    companyField: undefined,
     softDelete: false,
     fields: new Map<string, any>([
       ['Id', { type: 'char', column: { name: 'Id' } }],
@@ -2680,7 +2688,7 @@ test('repository root nested request with companyMode=skip still enforces compan
     ['CompanyId', { type: 'char', column: { name: 'CompanyId' } }],
   ]);
 
-  const searchRepo = createRepositoryHarness({ companyScoped: true, fields });
+  const searchRepo = createRepositoryHarness({ companyField: 'CompanyId', fields });
   const { db: searchDb } = createFakeDb();
   searchRepo.db = searchDb;
   searchRepo.getCurrentReq = () => ({ depth: 1, companyMode: 'skip' });
@@ -2708,7 +2716,7 @@ test('repository root nested request with companyMode=skip still enforces compan
   }
   expect(searchMessage.includes('company_scope_missing_ctx_company')).toBe(true);
 
-  const readGroupRepo = createRepositoryHarness({ companyScoped: true, fields });
+  const readGroupRepo = createRepositoryHarness({ companyField: 'CompanyId', fields });
   const { db: readGroupDb } = createFakeDb();
   readGroupRepo.db = readGroupDb;
   readGroupRepo.getCurrentReq = () => ({ depth: 1, companyMode: 'skip' });
@@ -2729,7 +2737,7 @@ test('repository root nested request with companyMode=skip still enforces compan
   }
   expect(readGroupMessage.includes('company_scope_missing_ctx_company')).toBe(true);
 
-  const updateRepo = createRepositoryHarness({ companyScoped: true, fields });
+  const updateRepo = createRepositoryHarness({ companyField: 'CompanyId', fields });
   const { db: updateDb } = createMutationDbHarness();
   updateRepo.db = updateDb;
   updateRepo.getCurrentReq = () => ({ depth: 1, companyMode: 'skip' });
@@ -2744,7 +2752,7 @@ test('repository root nested request with companyMode=skip still enforces compan
   }
   expect(updateMessage.includes('company_scope_missing_ctx_company')).toBe(true);
 
-  const deleteRepo = createRepositoryHarness({ companyScoped: true, softDelete: false, fields });
+  const deleteRepo = createRepositoryHarness({ companyField: 'CompanyId', softDelete: false, fields });
   const { db: deleteDb } = createMutationDbHarness();
   deleteRepo.db = deleteDb;
   deleteRepo.getCurrentReq = () => ({ depth: 1, companyMode: 'skip' });
@@ -3408,7 +3416,7 @@ test('repository root low-level wrapper methods delegate to query and projection
 function createRepositoryRound29Harness(metaOverrides: Record<string, any> = {}) {
   return createRepositoryHarness({
     name: 'Model',
-    companyScoped: false,
+    companyField: undefined,
     fields: new Map<string, any>([
       ['Id', { type: 'char', column: { name: 'Id' } }],
       ['CompanyId', { type: 'char', column: { name: 'CompanyId' } }],
@@ -3457,7 +3465,7 @@ test('repository wrappers delegate auth/company helpers through facade methods',
       fullModelName: 'demo.Model',
       modelName: 'Model',
       name: 'Model',
-      companyScoped: false,
+      companyField: undefined,
       fields: new Map<string, any>(),
     },
     ctx: {},
@@ -3474,7 +3482,7 @@ test('repository wrappers delegate auth/company helpers through facade methods',
     value: { activeCompanyId: 'company_a', enabledCompanyIds: ['company_a'] },
   });
 
-  expect((repository as any).companyScopedEnabled()).toBe(false);
+  expect((repository as any).companyFieldEnabled()).toBe(false);
   expect((repository as any).normalizeCompanyIdForWrite()).toBe('company_a');
   expect((repository as any).applyDefaultCompanyIdOnCreate({ Name: 'n1' })).toEqual({ Name: 'n1' });
   expect((repository as any).applyDefaultCompanyIdOnUpdate({ Name: 'n2' })).toEqual({ Name: 'n2' });

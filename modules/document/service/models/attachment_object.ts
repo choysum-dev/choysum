@@ -28,7 +28,7 @@ import {
 /**
  * AttachmentContent stores finalized payload metadata and drives the upload workflow.
  */
-@Model('AttachmentContent', { application: 'document', companyScoped: true })
+@Model('AttachmentContent', { application: 'document', companyField: 'CompanyId' })
 export default class AttachmentContent extends BaseModel {
   /**
    * Stored payload row that backs the attachment content.
@@ -37,6 +37,7 @@ export default class AttachmentContent extends BaseModel {
     type: 'ManyToOneRef',
     relation: { targetModel: 'document.StoredContent' },
     size: 20,
+    checkCompany: true,
     notNull: true,
     index: true,
     string: _lt('Stored Content', { scope: 'document.model.AttachmentContent.fields' }),

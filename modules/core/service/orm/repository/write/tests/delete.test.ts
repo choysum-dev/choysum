@@ -425,7 +425,7 @@ test('repository hard delete short-circuits when resolved target ids are empty',
 
   const rows = await executeRepositoryHardDelete(
     {
-      meta: { companyScoped: false } as any,
+      meta: { companyField: undefined } as any,
       locateIdsForCondition: async () => [],
       assertCompanyWriteAccessForCondition: async () => {
         throw new Error('should not run company guard');

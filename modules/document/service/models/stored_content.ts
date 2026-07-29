@@ -14,7 +14,7 @@ export type StoredContentStatus = 'active' | 'deleted';
 /**
  * StoredContent persists the backing payload location or inline blob for document attachments.
  */
-@Model('StoredContent', { application: 'document', companyScoped: true })
+@Model('StoredContent', { application: 'document', companyField: 'CompanyId' })
 export default class StoredContent extends BaseModel {
   /**
    * Storage backend that owns the payload bytes.

@@ -6,10 +6,13 @@ import {
   applyRepositoryDefaultCompanyIdOnCreate,
   applyRepositoryDefaultCompanyIdOnUpdate,
   assertRepositoryCompanyWriteAccessForCondition,
+  isRepositoryOwnershipFieldNotNull,
   normalizeRepositoryCompanyIdForWrite,
   normalizeRepositoryCompanyIds,
-  repositoryCompanyScopedEnabled,
+  repositoryCompanyFieldEnabled,
+  requireRepositoryOwnershipField,
   validateRepositoryCompanyIdInScope,
+  validateRepositoryOwnershipNullability,
 } from '..';
 
 type DeniedCall = { code: string; message: string; metadata?: Record<string, string> };
@@ -22,7 +25,7 @@ function createCompanyDeps(overrides: Partial<Record<string, unknown>> = {}) {
       fullModelName: 'demo.Model',
       modelName: 'Model',
       name: 'Model',
-      companyScoped: true,
+      companyField: 'CompanyId',
       fields: new Map<string, unknown>([['CompanyId', { type: 'char' }]]),
     },
     ctx: { activeCompanyId: 'company_a', enabledCompanyIds: ['company_a', 'company_b'] },
@@ -61,30 +64,30 @@ test('company scope enabled check enforces CompanyId field and context company i
   const missingField = createCompanyDeps({
     meta: {
       fullModelName: 'demo.Model',
-      companyScoped: true,
+      companyField: 'CompanyId',
       fields: new Map<string, unknown>(),
     },
   });
 
   let missingFieldMessage = '';
   try {
-    repositoryCompanyScopedEnabled(missingField.deps);
+    repositoryCompanyFieldEnabled(missingField.deps);
   } catch (error) {
     missingFieldMessage = String((error as Error)?.message || error);
   }
-  expect(missingFieldMessage.includes('company_scope_missing_company_id_field')).toBe(true);
+  expect(missingFieldMessage.includes('company_field_missing')).toBe(true);
 
   const missingCtx = createCompanyDeps({ ctx: {} });
   let missingCtxMessage = '';
   try {
-    repositoryCompanyScopedEnabled(missingCtx.deps);
+    repositoryCompanyFieldEnabled(missingCtx.deps);
   } catch (error) {
     missingCtxMessage = String((error as Error)?.message || error);
   }
   expect(missingCtxMessage.includes('company_scope_missing_ctx_company')).toBe(true);
 
   const enabled = createCompanyDeps();
-  expect(repositoryCompanyScopedEnabled(enabled.deps)).toBe(true);
+  expect(repositoryCompanyFieldEnabled(enabled.deps)).toBe(true);
 });
 
 test('company scope layer appends company condition and emits allow summary', () => {
@@ -105,6 +108,99 @@ test('company scope layer appends company condition and emits allow summary', ()
   expect(summaries.length).toBe(1);
   expect(summaries[0]?.layer).toBe('company_filter');
   expect(summaries[0]?.decision).toBe('allow');
+});
+
+test('company scope uses aliased companyField for filter create and write access', async () => {
+  const { deps } = createCompanyDeps({
+    meta: {
+      fullModelName: 'demo.AliasModel',
+      modelName: 'AliasModel',
+      name: 'AliasModel',
+      companyField: 'OwningCompanyId',
+      fields: new Map<string, unknown>([['OwningCompanyId', { type: 'char' }]]),
+    },
+  });
+
+  expect(applyRepositoryCompanyLayer(deps, [] as any)).toEqual({
+    Or: [
+      ['OwningCompanyId', 'in', ['company_a', 'company_b']],
+      ['OwningCompanyId', 'is', null],
+    ],
+  });
+  expect(applyRepositoryDefaultCompanyIdOnCreate(deps, { Name: 'n1' } as any)).toEqual({
+    Name: 'n1',
+    OwningCompanyId: 'company_a',
+  });
+
+  const selected: string[][] = [];
+  const query = {
+    select(cols: string[]) {
+      selected.push(cols);
+      return this;
+    },
+    where() {
+      return this;
+    },
+  };
+  const writeDeps = {
+    ...deps,
+    db: {
+      selectFrom() {
+        return query;
+      },
+    },
+    table: 'demo_alias',
+    applySoftLayer: (condition: unknown) => condition,
+    isEmptyCondition: () => true,
+    convertCondition: () => ({}),
+    execute: async () => [{ Id: 'row_1', OwningCompanyId: 'company_a' }],
+  };
+  await assertRepositoryCompanyWriteAccessForCondition(writeDeps as any, [] as any);
+  expect(selected[0]).toEqual(['Id', 'OwningCompanyId']);
+});
+
+test('company scope rejects null ownership on private (notNull) models', () => {
+  const { deps } = createCompanyDeps({
+    meta: {
+      fullModelName: 'demo.PrivateModel',
+      modelName: 'PrivateModel',
+      name: 'PrivateModel',
+      companyField: 'CompanyId',
+      fields: new Map<string, unknown>([['CompanyId', { type: 'char', column: { notNull: true } }]]),
+    },
+  });
+
+  let createNull = '';
+  try {
+    applyRepositoryDefaultCompanyIdOnCreate(deps, { Name: 'n1', CompanyId: null } as any);
+  } catch (error) {
+    createNull = String((error as Error)?.message || error);
+  }
+  expect(createNull.includes('company_field_null_forbidden')).toBe(true);
+
+  let createEmpty = '';
+  try {
+    applyRepositoryDefaultCompanyIdOnCreate(deps, { Name: 'n1', CompanyId: '  ' } as any);
+  } catch (error) {
+    createEmpty = String((error as Error)?.message || error);
+  }
+  expect(createEmpty.includes('company_field_null_forbidden')).toBe(true);
+
+  let updateNull = '';
+  try {
+    applyRepositoryDefaultCompanyIdOnUpdate(deps, { CompanyId: null } as any);
+  } catch (error) {
+    updateNull = String((error as Error)?.message || error);
+  }
+  expect(updateNull.includes('company_field_null_forbidden')).toBe(true);
+
+  // Shareable models (no column.notNull) still allow explicit null.
+  const shareable = createCompanyDeps();
+  expect(applyRepositoryDefaultCompanyIdOnCreate(shareable.deps, { Name: 'shared', CompanyId: null } as any)).toEqual({
+    Name: 'shared',
+    CompanyId: null,
+  });
+  expect(applyRepositoryDefaultCompanyIdOnUpdate(shareable.deps, { CompanyId: null } as any)).toEqual({ CompanyId: null });
 });
 
 test('company scope default company on create and write access guard enforce in-scope company ids', async () => {
@@ -207,21 +303,21 @@ test('company scope permissionDenied metadata includes model and company key det
     meta: {
       fullModelName: 'demo.Model',
       modelName: 'Model',
-      companyScoped: true,
+      companyField: 'CompanyId',
       fields: new Map<string, unknown>(),
     },
   });
 
   try {
-    repositoryCompanyScopedEnabled(missingField.deps);
+    repositoryCompanyFieldEnabled(missingField.deps);
   } catch {
     // expected
   }
   expect(missingField.denied.length).toBe(1);
   expect(missingField.denied[0]).toEqual({
-    code: 'company_scope_missing_company_id_field',
-    message: 'companyScoped model is missing CompanyId field',
-    metadata: { model: 'demo.Model' },
+    code: 'company_field_missing',
+    message: 'companyField model is missing ownership field',
+    metadata: { model: 'demo.Model', companyField: 'CompanyId' },
   });
 
   const missingDefault = createCompanyDeps({
@@ -256,7 +352,7 @@ test('company scope create/update keep in-scope CompanyId and bypass update chec
       fullModelName: 'demo.Model',
       modelName: 'Model',
       name: 'Model',
-      companyScoped: false,
+      companyField: undefined,
       fields: new Map<string, unknown>(),
     },
   });
@@ -282,27 +378,27 @@ test('company scope validate helper returns early for null or blank company id',
   expect(() => validateRepositoryCompanyIdInScope(deps, 'company_x', ['company_a'])).toThrow('company_scope_violation');
 });
 
-test('company scope enabled gate handles grpc/env and companyScoped short-circuit branches', () => {
+test('company scope enabled gate handles grpc/env and companyField short-circuit branches', () => {
   const originalEnv = (globalThis as any).__CHOYSUM_RUNTIME_ENV__;
   try {
     (globalThis as any).__CHOYSUM_RUNTIME_ENV__ = { CHOYSUM_GRPC_COMPANY_FILTER_ENABLED: false };
-    expect(repositoryCompanyScopedEnabled(createCompanyDeps().deps)).toBe(false);
+    expect(repositoryCompanyFieldEnabled(createCompanyDeps().deps)).toBe(false);
 
     (globalThis as any).__CHOYSUM_RUNTIME_ENV__ = { CHOYSUM_GRPC_COMPANY_FILTER_ENABLED: 'FALSE' };
-    expect(repositoryCompanyScopedEnabled(createCompanyDeps().deps)).toBe(false);
+    expect(repositoryCompanyFieldEnabled(createCompanyDeps().deps)).toBe(false);
 
     (globalThis as any).__CHOYSUM_RUNTIME_ENV__ = { CHOYSUM_GRPC_COMPANY_FILTER_ENABLED: 'true' };
-    expect(repositoryCompanyScopedEnabled(createCompanyDeps({ companyLayerSkipped: () => true }).deps)).toBe(false);
+    expect(repositoryCompanyFieldEnabled(createCompanyDeps({ companyLayerSkipped: () => true }).deps)).toBe(false);
 
     (globalThis as any).__CHOYSUM_RUNTIME_ENV__ = { CHOYSUM_GRPC_COMPANY_FILTER_ENABLED: true };
     expect(
-      repositoryCompanyScopedEnabled(
+      repositoryCompanyFieldEnabled(
         createCompanyDeps({
           meta: {
             fullModelName: 'demo.Model',
             modelName: 'Model',
             name: 'Model',
-            companyScoped: false,
+            companyField: undefined,
             fields: new Map<string, unknown>([['CompanyId', { type: 'char' }]]),
           },
         }).deps
@@ -319,7 +415,7 @@ test('company scope emits summary with fallback model and trimmed empty user id'
       fullModelName: '',
       modelName: 'ModelOnly',
       name: '',
-      companyScoped: true,
+      companyField: 'CompanyId',
       fields: new Map<string, unknown>([['CompanyId', { type: 'char' }]]),
     },
     userId: '   ',
@@ -393,7 +489,7 @@ test('company scope create/write-access fallback paths cover model-name chain an
       fullModelName: '',
       modelName: '',
       name: 'NameOnly',
-      companyScoped: true,
+      companyField: 'CompanyId',
       fields: new Map<string, unknown>([['CompanyId', { type: 'char' }]]),
     },
     ctx: { enabledCompanyIds: ['company_a', 'company_b'] },
@@ -452,23 +548,23 @@ test('company scope layer and enabled checks cover env default path and fallback
         fullModelName: '',
         modelName: 'ModelOnly',
         name: '',
-        companyScoped: true,
+        companyField: 'CompanyId',
         fields: new Map<string, unknown>(),
       },
     });
-    expect(() => repositoryCompanyScopedEnabled(missingFieldModelName.deps)).toThrow('company_scope_missing_company_id_field');
+    expect(() => repositoryCompanyFieldEnabled(missingFieldModelName.deps)).toThrow('company_field_missing');
 
     const missingCtxNameOnly = createCompanyDeps({
       meta: {
         fullModelName: '',
         modelName: '',
         name: 'NameOnly',
-        companyScoped: true,
+        companyField: 'CompanyId',
         fields: new Map<string, unknown>([['CompanyId', { type: 'char' }]]),
       },
       ctx: {},
     });
-    expect(() => repositoryCompanyScopedEnabled(missingCtxNameOnly.deps)).toThrow('company_scope_missing_ctx_company');
+    expect(() => repositoryCompanyFieldEnabled(missingCtxNameOnly.deps)).toThrow('company_scope_missing_ctx_company');
 
     const layerDisabled = createCompanyDeps();
     (globalThis as any).__CHOYSUM_RUNTIME_ENV__ = { CHOYSUM_GRPC_COMPANY_FILTER_ENABLED: false };
@@ -480,7 +576,7 @@ test('company scope layer and enabled checks cover env default path and fallback
         fullModelName: '',
         modelName: '',
         name: 'NameOnly',
-        companyScoped: true,
+        companyField: 'CompanyId',
         fields: new Map<string, unknown>([['CompanyId', { type: 'char' }]]),
       },
       userId: undefined,
@@ -493,13 +589,13 @@ test('company scope layer and enabled checks cover env default path and fallback
   }
 });
 
-test('company scope create/update cover non-companyScoped create and in-scope branch with modelName fallback', () => {
+test('company scope create/update cover non-isolated create and in-scope branch with modelName fallback', () => {
   const nonScoped = createCompanyDeps({
     meta: {
       fullModelName: 'demo.Model',
       modelName: 'Model',
       name: 'Model',
-      companyScoped: false,
+      companyField: undefined,
       fields: new Map<string, unknown>(),
     },
   });
@@ -511,7 +607,7 @@ test('company scope create/update cover non-companyScoped create and in-scope br
       fullModelName: '',
       modelName: 'ModelOnly',
       name: '',
-      companyScoped: true,
+      companyField: 'CompanyId',
       fields: new Map<string, unknown>([['CompanyId', { type: 'char' }]]),
     },
   });
@@ -519,13 +615,13 @@ test('company scope create/update cover non-companyScoped create and in-scope br
   expect(applyRepositoryDefaultCompanyIdOnCreate(modelNameFallback.deps, withCompany)).toBe(withCompany);
 });
 
-test('company scope write-access covers companyScoped short-circuit and execute undefined fallback', async () => {
+test('company scope write-access covers companyField short-circuit and execute undefined fallback', async () => {
   const nonScoped = createCompanyDeps({
     meta: {
       fullModelName: 'demo.Model',
       modelName: 'Model',
       name: 'Model',
-      companyScoped: false,
+      companyField: undefined,
       fields: new Map<string, unknown>(),
     },
   });
@@ -535,7 +631,7 @@ test('company scope write-access covers companyScoped short-circuit and execute 
       ...nonScoped.deps,
       db: {
         selectFrom() {
-          throw new Error('should not query when not companyScoped');
+          throw new Error('should not query when not company-isolated');
         },
       },
       table: 'demo_table',
@@ -584,7 +680,7 @@ test('company scope tail branches: normalize blank paths, metadata fallback chai
       fullModelName: '',
       modelName: 'ModelOnly',
       name: '',
-      companyScoped: true,
+      companyField: 'CompanyId',
       fields: new Map<string, unknown>([['CompanyId', { type: 'char' }]]),
     },
   });
@@ -595,7 +691,7 @@ test('company scope tail branches: normalize blank paths, metadata fallback chai
       fullModelName: '',
       modelName: '',
       name: 'NameOnly',
-      companyScoped: true,
+      companyField: 'CompanyId',
       fields: new Map<string, unknown>([['CompanyId', { type: 'char' }]]),
     },
   });
@@ -606,15 +702,90 @@ test('company scope tail branches: normalize blank paths, metadata fallback chai
       fullModelName: '',
       modelName: '',
       name: 'NameOnly',
-      companyScoped: true,
+      companyField: 'CompanyId',
       fields: new Map<string, unknown>(),
     },
   });
-  expect(() => repositoryCompanyScopedEnabled(missingFieldNameOnly.deps)).toThrow('company_scope_missing_company_id_field');
+  expect(() => repositoryCompanyFieldEnabled(missingFieldNameOnly.deps)).toThrow('company_field_missing');
 
   const createWithNullEntity = createCompanyDeps();
   expect(applyRepositoryDefaultCompanyIdOnCreate(createWithNullEntity.deps, null as any)).toEqual({ CompanyId: 'company_a' });
 
   const updateWithNullVals = createCompanyDeps();
   expect(applyRepositoryDefaultCompanyIdOnUpdate(updateWithNullVals.deps, null as any) as any).toBeNull();
+});
+
+test('company scope ownership helpers cover not-isolated nullability and name fallbacks', () => {
+  const denied: DeniedCall[] = [];
+  const permissionDenied = (code: string, message: string, metadata?: Record<string, string>) => {
+    denied.push({ code, message, metadata });
+    return new Error(`${code}:${message}`);
+  };
+
+  expect(() =>
+    requireRepositoryOwnershipField(
+      {
+        name: 'OnlyName',
+        companyField: undefined,
+        fields: new Map([['CompanyId', {}]]),
+      } as any,
+      permissionDenied
+    )
+  ).toThrow('company_field_not_isolated');
+  expect(denied[0]?.metadata).toEqual({ model: 'OnlyName' });
+
+  expect(
+    isRepositoryOwnershipFieldNotNull(
+      { fields: { CompanyId: { column: { notNull: true } } } } as any,
+      'CompanyId'
+    )
+  ).toBe(false);
+  expect(
+    isRepositoryOwnershipFieldNotNull(
+      { fields: new Map([['CompanyId', { column: { notNull: true } }]]) } as any,
+      'CompanyId'
+    )
+  ).toBe(true);
+  expect(
+    isRepositoryOwnershipFieldNotNull({ fields: new Map([['CompanyId', {}]]) } as any, 'CompanyId')
+  ).toBe(false);
+
+  const { deps } = createCompanyDeps({
+    meta: {
+      name: 'PrivateOnlyName',
+      companyField: 'CompanyId',
+      fields: new Map([['CompanyId', { type: 'char', column: { notNull: true } }]]),
+    },
+  });
+  expect(() => validateRepositoryOwnershipNullability(deps, 'CompanyId', undefined)).toThrow(
+    'company_field_null_forbidden'
+  );
+  expect(() => validateRepositoryOwnershipNullability(deps, 'CompanyId', '   ')).toThrow(
+    'company_field_null_forbidden'
+  );
+  expect(() => validateRepositoryOwnershipNullability(deps, 'CompanyId', 'company_a')).not.toThrow();
+
+  const shareable = createCompanyDeps();
+  expect(() => validateRepositoryOwnershipNullability(shareable.deps, 'CompanyId', null)).not.toThrow();
+
+  // Update with explicit undefined ownership on private model.
+  let updateUndef = '';
+  try {
+    applyRepositoryDefaultCompanyIdOnUpdate(deps, { CompanyId: undefined } as any);
+  } catch (error) {
+    updateUndef = String((error as Error)?.message || error);
+  }
+  expect(updateUndef.includes('company_field_null_forbidden')).toBe(true);
+
+  // Non-Map fields on requireRepositoryOwnershipField missing path.
+  expect(() =>
+    requireRepositoryOwnershipField(
+      {
+        modelName: 'M',
+        companyField: 'CompanyId',
+        fields: { CompanyId: {} } as any,
+      } as any,
+      permissionDenied
+    )
+  ).toThrow('company_field_missing');
 });

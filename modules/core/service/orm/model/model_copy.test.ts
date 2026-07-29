@@ -10,6 +10,7 @@ import { RepositoryFactory } from '../repository/repository_factory';
 import BaseModel from './model';
 import {
   COPY_MAX_RELATION_DEPTH,
+  applyCopyCompanyOwnership,
   buildCopyBrowseSelection,
   buildCopyValues,
   copyModel,
@@ -18,6 +19,7 @@ import {
 import { CreateOperations } from './model_create';
 import { ReadOperations } from './model_read';
 import { getModelRuntimeMetadata } from './model_runtime_service_facade';
+import { withContext } from '../../runtime/context/scope';
 
 @Model('CopyScalarWidget', { application: 'demo' })
 class CopyScalarWidget extends BaseModel {
@@ -29,6 +31,24 @@ class CopyScalarWidget extends BaseModel {
 
   @Field({ type: 'varchar', size: 64, copy: false })
   Secret!: string;
+}
+
+@Model('CopyIsolatedWidget', { application: 'demo', companyField: 'CompanyId' })
+class CopyIsolatedWidget extends BaseModel {
+  @Field({ type: 'varchar', size: 64 })
+  Name!: string;
+
+  @Field({ type: 'varchar', size: 20 })
+  CompanyId!: string;
+}
+
+@Model('CopyAliasIsolatedWidget', { application: 'demo', companyField: 'OwningCompanyId' })
+class CopyAliasIsolatedWidget extends BaseModel {
+  @Field({ type: 'varchar', size: 64 })
+  Name!: string;
+
+  @Field({ type: 'varchar', size: 20 })
+  OwningCompanyId!: string;
 }
 
 @Model('CopyLineWidget', { application: 'demo' })
@@ -622,5 +642,181 @@ test('buildCopyValues rejects null or non-object source rows', () => {
     badMsg = String((error as Error).message || error);
   }
   expect(badMsg).toContain('source row must be a non-null object');
+});
+
+test('buildCopyValues keeps ownership by default and rewrites for active / out-of-enabled', () => {
+  withContext({ activeCompanyId: 'company_a', enabledCompanyIds: ['company_a', 'company_b'] }, () => {
+    expect(
+      buildCopyValues(CopyIsolatedWidget as any, { Id: 'src-1', Name: 'N', CompanyId: 'company_b' })
+    ).toEqual({
+      Name: 'N',
+      CompanyId: 'company_b',
+    });
+
+    expect(
+      buildCopyValues(CopyIsolatedWidget as any, { Id: 'src-2', Name: 'N', CompanyId: 'company_b' }, undefined, undefined, {
+        copyCompany: 'active',
+      })
+    ).toEqual({
+      Name: 'N',
+      CompanyId: 'company_a',
+    });
+
+    expect(
+      buildCopyValues(CopyIsolatedWidget as any, { Id: 'src-3', Name: 'N', CompanyId: 'company_x' })
+    ).toEqual({
+      Name: 'N',
+      CompanyId: 'company_a',
+    });
+
+    expect(
+      buildCopyValues(
+        CopyIsolatedWidget as any,
+        { Id: 'src-4', Name: 'N', CompanyId: 'company_b' },
+        { CompanyId: 'company_b' },
+        undefined,
+        { copyCompany: 'active' }
+      )
+    ).toEqual({
+      Name: 'N',
+      CompanyId: 'company_b',
+    });
+
+    expect(
+      buildCopyValues(CopyAliasIsolatedWidget as any, { Id: 'src-5', Name: 'N', OwningCompanyId: 'company_b' }, undefined, undefined, {
+        copyCompany: 'active',
+      })
+    ).toEqual({
+      Name: 'N',
+      OwningCompanyId: 'company_a',
+    });
+  });
+
+  withContext({ enabledCompanyIds: ['company_a', 'company_b'] }, () => {
+    let missing = '';
+    try {
+      buildCopyValues(CopyIsolatedWidget as any, { Id: 'src-6', Name: 'N', CompanyId: 'company_x' });
+    } catch (error) {
+      missing = String((error as Error).message || error);
+    }
+    expect(missing).toContain('missing ctx.activeCompanyId');
+  });
+
+  const meta = getModelRuntimeMetadata(CopyIsolatedWidget as any);
+  const out: Record<string, unknown> = { CompanyId: 'company_b' };
+  applyCopyCompanyOwnership(meta, out, undefined, { copyCompany: 'keep' });
+  expect(out.CompanyId).toBe('company_b');
+
+  // Object-shaped ownership values normalize via extractRelationId.
+  withContext({ activeCompanyId: 'company_a', enabledCompanyIds: ['company_a'] }, () => {
+    expect(
+      buildCopyValues(CopyIsolatedWidget as any, {
+        Id: 'src-obj',
+        Name: 'N',
+        CompanyId: { Id: 'company_x' },
+      })
+    ).toEqual({
+      Name: 'N',
+      CompanyId: 'company_a',
+    });
+  });
+
+  // Single enabled company supplies active when activeCompanyId is absent.
+  withContext({ enabledCompanyIds: ['company_only'] }, () => {
+    expect(
+      buildCopyValues(
+        CopyIsolatedWidget as any,
+        { Id: 'src-one', Name: 'N', CompanyId: 'company_x' },
+        undefined,
+        undefined,
+        { copyCompany: 'active' }
+      )
+    ).toEqual({
+      Name: 'N',
+      CompanyId: 'company_only',
+    });
+  });
+
+  // Non-isolated models skip ownership rewrite.
+  const nonIsolatedOut: Record<string, unknown> = { CompanyId: 'c1' };
+  applyCopyCompanyOwnership({ fields: new Map() } as any, nonIsolatedOut, undefined, { copyCompany: 'active' });
+  expect(nonIsolatedOut).toEqual({ CompanyId: 'c1' });
+
+  // Null / object-without-Id ownership values normalize to empty (keep leaves them unset).
+  const metaNull = getModelRuntimeMetadata(CopyIsolatedWidget as any);
+  const outNull: Record<string, unknown> = { CompanyId: null };
+  applyCopyCompanyOwnership(metaNull, outNull, undefined, { copyCompany: 'keep' });
+  expect(outNull.CompanyId).toBeNull();
+
+  withContext({ activeCompanyId: 'company_a', enabledCompanyIds: ['company_a'] }, () => {
+    expect(
+      buildCopyValues(
+        CopyIsolatedWidget as any,
+        {
+          Id: 'src-empty-obj',
+          Name: 'N',
+          CompanyId: { Name: 'no-id' },
+        },
+        undefined,
+        undefined,
+        { copyCompany: 'active' }
+      )
+    ).toEqual({
+      Name: 'N',
+      CompanyId: 'company_a',
+    });
+  });
+});
+
+test('copyModel forwards copyCompany options into ownership rewrite', async () => {
+  const originalBrowse = ReadOperations.Browse;
+  const originalCreate = CreateOperations.Create;
+  let createdValue: unknown;
+
+  ReadOperations.Browse = (async () => ({
+    Id: 'src-co',
+    Name: 'Source',
+    CompanyId: 'company_b',
+  })) as any;
+  CreateOperations.Create = (async (_ModelCtor: any, value: any) => {
+    createdValue = value;
+    return { Id: 'new-co', ...value } as any;
+  }) as any;
+
+  try {
+    await withContext({ activeCompanyId: 'company_a', enabledCompanyIds: ['company_a', 'company_b'] }, async () => {
+      await copyModel(CopyIsolatedWidget as any, 'src-co', undefined, { copyCompany: 'active' });
+    });
+    expect(createdValue).toEqual({ Name: 'Source', CompanyId: 'company_a' });
+  } finally {
+    ReadOperations.Browse = originalBrowse;
+    CreateOperations.Create = originalCreate;
+  }
+});
+
+test('buildCopyBrowseSelection tolerates getModelMetadata failures on OneToMany targets', () => {
+  @Model('CopyBrokenChild', { application: 'demo' })
+  class CopyBrokenChild extends BaseModel {
+    @Field({ type: 'varchar', size: 64 })
+    Name!: string;
+  }
+
+  @Model('CopyBrokenParent', { application: 'demo' })
+  class CopyBrokenParent extends BaseModel {
+    @Field({
+      type: 'OneToMany',
+      relation: {
+        targetModel: () => {
+          throw new Error('boom');
+        },
+        inverseField: 'ParentId',
+      },
+    } as any)
+    Lines!: unknown[];
+  }
+
+  const sel = buildCopyBrowseSelection(getModelRuntimeMetadata(CopyBrokenParent as any)) as unknown[];
+  expect(sel).toEqual(['*']);
+  void CopyBrokenChild;
 });
 

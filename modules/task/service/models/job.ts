@@ -61,7 +61,7 @@ function buildJobCondition(params: ListJobsParams): QueryCondition<Job> | [] {
 /**
  * Persistent queued background job definition.
  */
-@Model('Job', { application: 'task', companyScoped: false })
+@Model('Job', { application: 'task' })
 export default class Job extends BaseModel {
   /** Target application that owns the job. */
   @Field({

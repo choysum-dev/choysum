@@ -9,7 +9,7 @@ import PartnerIdentifier from './partner_identifier';
 /**
  * Partner extension that adds commercial identifier rows.
  */
-@Model('Partner')
+@Model('Partner', { companyField: 'CompanyId' })
 export default class Partner extends PartnerBase {
   /** Related commercial identifier rows. */
   @Field({

@@ -16,12 +16,13 @@ const ADDRESS_TYPES = new Set(['billing', 'shipping', 'office', 'registered', 'o
 /**
  * Company-scoped partner contact and address row.
  */
-@Model('PartnerContact', { companyScoped: true })
+@Model('PartnerContact', { companyField: 'CompanyId' })
 export default class PartnerContact extends BaseModel {
   /** Owning partner relation. */
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => Partner, onDelete: 'CASCADE' },
+    checkCompany: true,
     notNull: true,
     index: true,
     string: _lt('Partner', { scope: 'partner.model.PartnerContact.fields' }),

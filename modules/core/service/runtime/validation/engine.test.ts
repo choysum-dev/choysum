@@ -591,7 +591,7 @@ test('validation engine reports check_company violation when related company dif
     PlatformCompanyTargetModel as any,
     {
       ...targetMetadata,
-      companyScoped: true,
+      companyField: 'CompanyId',
     } as any
   );
 
@@ -734,6 +734,15 @@ test('validation engine skips check_company when parent CompanyId is explicitly 
 });
 
 test('validation engine rechecks checkCompany relations when only CompanyId changes', async () => {
+  const targetMetadata = MetadataStorage.instance.getModelMetadata(PlatformCompanyTargetModel as any);
+  MetadataStorage.instance.setModelMetadata(
+    PlatformCompanyTargetModel as any,
+    {
+      ...targetMetadata,
+      companyField: 'CompanyId',
+    } as any
+  );
+
   RepositoryFactory.setRepository(
     PlatformCompanyTargetModel as any,
     {
@@ -777,6 +786,161 @@ test('validation engine rechecks checkCompany relations when only CompanyId chan
       severity: 'error',
     },
   ]);
+});
+
+test('validation engine treats undefined ownership as absent for checkCompany parent/recheck', async () => {
+  let searchCalls = 0;
+  RepositoryFactory.setRepository(
+    PlatformCompanyTargetModel as any,
+    {
+      withDeleted() {
+        return this;
+      },
+      async search() {
+        searchCalls += 1;
+        return [{ Id: 'target_prev_company', CompanyId: 'company_a' }];
+      },
+    } as any
+  );
+
+  const metadata = MetadataStorage.instance.getModelMetadata(PlatformCheckCompanySourceModel as any);
+
+  // Partial update with CompanyId: undefined must fall back to current ownership (company_a),
+  // and must not treat the key as an ownership change that rechecks TargetId.
+  const issues = await ValidationEngine.validate(
+    {
+      mode: 'update',
+      model: PlatformCheckCompanySourceModel as any,
+      metadata,
+      current: { CompanyId: 'company_a', TargetId: 'target_prev_company' },
+      values: { CompanyId: undefined, Name: 'n' },
+      changedFields: new Set(['Name']),
+      repository: {} as any,
+      requestContext: {
+        enabledCompanyIds: ['company_a', 'company_b'],
+        activeCompanyId: 'company_b',
+      },
+    } as any,
+    {
+      includeKernel: false,
+      includeConstraints: false,
+    }
+  );
+
+  expect(issues).toEqual([]);
+  expect(searchCalls).toBe(0);
+
+  // When only ownership is undefined in values but TargetId changes, parent resolves from current.
+  searchCalls = 0;
+  const withTargetChange = await ValidationEngine.validate(
+    {
+      mode: 'update',
+      model: PlatformCheckCompanySourceModel as any,
+      metadata,
+      current: { CompanyId: 'company_a', TargetId: 'target_prev_company' },
+      values: { CompanyId: undefined, TargetId: 'target_prev_company' },
+      changedFields: new Set(['TargetId']),
+      repository: {} as any,
+      requestContext: {
+        enabledCompanyIds: ['company_a', 'company_b'],
+        activeCompanyId: 'company_b',
+      },
+    } as any,
+    {
+      includeKernel: false,
+      includeConstraints: false,
+    }
+  );
+  expect(withTargetChange).toEqual([]);
+  expect(searchCalls).toBe(1);
+});
+
+test('validation engine checkCompany uses aliased companyField on parent and target', async () => {
+  class AliasCheckTarget extends BaseModel {
+    @Field({ type: 'varchar', size: 20 })
+    OwningCompanyId?: string;
+  }
+  class AliasCheckSource extends BaseModel {
+    @Field({ type: 'varchar', size: 36 })
+    OwningCompanyId?: string;
+
+    @Field({
+      type: 'ManyToOne',
+      checkCompany: true,
+      relation: { targetModel: () => AliasCheckTarget },
+    })
+    TargetId?: AliasCheckTarget;
+  }
+
+  (Model('AliasCheckTarget', { application: 'test', companyField: 'OwningCompanyId' }) as any)(AliasCheckTarget as any);
+  (Model('AliasCheckSource', { application: 'test', companyField: 'OwningCompanyId' }) as any)(AliasCheckSource as any);
+
+  RepositoryFactory.setRepository(
+    AliasCheckTarget as any,
+    {
+      withDeleted() {
+        return this;
+      },
+      async search(_condition: unknown, options: { fields?: string[] }) {
+        expect(options.fields).toEqual(['Id', 'OwningCompanyId']);
+        return [{ Id: 'alias_target_1', OwningCompanyId: 'company_b' }];
+      },
+    } as any
+  );
+
+  const metadata = MetadataStorage.instance.getModelMetadata(AliasCheckSource as any);
+  const issues = await ValidationEngine.validate(
+    {
+      mode: 'update',
+      model: AliasCheckSource as any,
+      metadata,
+      current: { OwningCompanyId: 'company_a', TargetId: 'alias_target_1' },
+      values: { OwningCompanyId: 'company_a', TargetId: 'alias_target_1' },
+      changedFields: new Set(['TargetId']),
+      repository: {} as any,
+      requestContext: {
+        enabledCompanyIds: ['company_a', 'company_b'],
+        activeCompanyId: 'company_a',
+      },
+    } as any,
+    {
+      includeKernel: false,
+      includeConstraints: false,
+    }
+  );
+
+  expect(issues).toEqual([
+    {
+      scope: 'platform',
+      field: 'TargetId',
+      code: 'platform_check_company_violation',
+      message:
+        'reference "TargetId" belongs to company "company_b", which is incompatible with parent company "company_a"',
+      severity: 'error',
+    },
+  ]);
+
+  // Changing only the aliased ownership field re-enqueues checkCompany relations.
+  const ownershipOnly = await ValidationEngine.validate(
+    {
+      mode: 'update',
+      model: AliasCheckSource as any,
+      metadata,
+      current: { OwningCompanyId: 'company_b', TargetId: 'alias_target_1' },
+      values: { OwningCompanyId: 'company_a' },
+      changedFields: new Set(['OwningCompanyId']),
+      repository: {} as any,
+      requestContext: {
+        enabledCompanyIds: ['company_a', 'company_b'],
+        activeCompanyId: 'company_a',
+      },
+    } as any,
+    {
+      includeKernel: false,
+      includeConstraints: false,
+    }
+  );
+  expect(ownershipOnly.some(issue => issue.code === 'platform_check_company_violation')).toBe(true);
 });
 
 test('validation engine covers checkCompany enqueue and ref-id edge branches', async () => {
@@ -1022,7 +1186,7 @@ test('validation engine reports platform issue for cross-company many2one refere
     PlatformCompanyTargetModel as any,
     {
       ...targetMetadata,
-      companyScoped: true,
+      companyField: 'CompanyId',
     } as any
   );
 
@@ -1831,7 +1995,7 @@ test('validation engine platform skips company check for non-company-scoped targ
     {
       ...targetMeta,
       fullModelName: 'base.Company',
-      companyScoped: false,
+      companyField: undefined,
     } as any
   );
 
@@ -2009,7 +2173,7 @@ test('validation engine platform skips unresolved target ctor and empty target c
       fullModelName: 'test.PlatformCompanyTargetModel',
       application: 'test',
       modelName: 'PlatformCompanyTargetModel',
-      companyScoped: true,
+      companyField: 'CompanyId',
     } as any
   );
 

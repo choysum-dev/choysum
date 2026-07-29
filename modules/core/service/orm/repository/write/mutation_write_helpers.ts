@@ -3,6 +3,7 @@
 
 import type { ModelMetadata } from '../../metadata';
 import type { BaseQueryCondition, RepositoryRecordRuleConditionPipelineDepsLike } from '../types';
+import { repositoryHasCompanyField } from '../authz/company_scope';
 
 export type RepositoryMutationWriteOp = 'delete' | 'write';
 
@@ -26,7 +27,9 @@ export async function resolveRepositoryMutationWriteTargetIds<TOp extends Reposi
   op: TOp,
   condition: BaseQueryCondition
 ): Promise<string[]> {
-  const targetIds = params.meta.companyScoped ? await params.assertCompanyWriteAccessForCondition(condition) : await params.locateIdsForCondition(condition);
+  const targetIds = repositoryHasCompanyField(params.meta)
+    ? await params.assertCompanyWriteAccessForCondition(condition)
+    : await params.locateIdsForCondition(condition);
 
   if (!targetIds.length) {
     return [];

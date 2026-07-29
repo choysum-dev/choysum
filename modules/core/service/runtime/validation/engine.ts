@@ -158,10 +158,15 @@ export class ValidationEngine {
     }
 
     const fields = new Set<string>([...Array.from(ctx.changedFields || []), ...Object.keys(ctx.values || {})]);
-    // Odoo-style: changing parent CompanyId must re-check existing checkCompany relations.
+    const parentOwnershipField = String(ctx.metadata.companyField ?? '').trim() || 'CompanyId';
+    // Odoo-style: changing parent ownership field must re-check existing checkCompany relations.
+    // Present-but-undefined ownership in a partial payload is not a real change.
+    const valuesRecord = (ctx.values || {}) as ObjectRecord;
     if (
       (ctx.mode === 'create' || ctx.mode === 'update') &&
-      (ctx.changedFields?.has('CompanyId') || Object.prototype.hasOwnProperty.call(ctx.values || {}, 'CompanyId'))
+      (ctx.changedFields?.has(parentOwnershipField) ||
+        (Object.prototype.hasOwnProperty.call(valuesRecord, parentOwnershipField) &&
+          valuesRecord[parentOwnershipField] !== undefined))
     ) {
       for (const [name, fieldMeta] of ctx.metadata.fields) {
         if (!fieldMeta?.checkCompany) continue;
@@ -302,17 +307,18 @@ export class ValidationEngine {
         continue;
       }
 
-      const targetHasCompanyId = Boolean(targetMeta.fields?.has('CompanyId'));
-      const targetIsCompanyScoped = Boolean(targetMeta.companyScoped && targetHasCompanyId);
-      // Load related CompanyId for company-scoped visibility checks and/or Odoo-style check_company.
-      if (!targetIsCompanyScoped && !(meta.checkCompany && targetHasCompanyId)) {
+      const targetOwnershipField = String(targetMeta.companyField ?? '').trim();
+      const targetHasOwnershipField = Boolean(targetOwnershipField && targetMeta.fields?.has(targetOwnershipField));
+      const targetIsCompanyIsolated = Boolean(targetOwnershipField && targetHasOwnershipField);
+      // Load related ownership for company-isolated visibility checks and/or Odoo-style check_company.
+      if (!targetIsCompanyIsolated && !(meta.checkCompany && targetHasOwnershipField)) {
         continue;
       }
 
       const targetRepo = getRuntimeRepository(targetCtor);
       const condition: BaseQueryCondition = ['Id', '=', refId];
       const searchOptions: SearchOptions<ObjectRecord> = {
-        fields: ['Id', 'CompanyId'],
+        fields: ['Id', targetOwnershipField],
       };
       const rows = await targetRepo.withDeleted().search(condition, searchOptions);
 
@@ -333,10 +339,10 @@ export class ValidationEngine {
       }
 
       const firstRow = (rows[0] ?? {}) as ObjectRecord;
-      const targetCompanyId = String(firstRow.CompanyId ?? '').trim();
+      const targetCompanyId = String(firstRow[targetOwnershipField] ?? '').trim();
 
       if (
-        targetIsCompanyScoped &&
+        targetIsCompanyIsolated &&
         targetCompanyId &&
         enabledCompanyIds.length > 0 &&
         !enabledCompanyIds.includes(targetCompanyId)
@@ -475,21 +481,25 @@ export class ValidationEngine {
   }
 
   /**
-   * Resolve the parent row's CompanyId for check_company comparisons.
+   * Resolve the parent row's ownership company for check_company comparisons.
    *
-   * Prefers an explicit `CompanyId` in the write payload, then on the existing
+   * Prefers an explicit ownership field in the write payload, then on the existing
    * row (`current`). Only when neither source declares the key do we fall back
-   * to the request active company (Create before repository defaulting fills
-   * CompanyId). Explicit null/empty means shared parent and must not fall through.
+   * to the request active company. Uses model `companyField` when isolated
+   * (falls back to `CompanyId` for non-isolated preference fields).
+   * Explicit null/empty means shared parent and must not fall through.
    */
   private static resolveParentCompanyId(ctx: ConstraintContext): string {
+    const ownershipField = String(ctx.metadata.companyField ?? '').trim() || 'CompanyId';
     const values = ctx.values as ObjectRecord | undefined;
-    if (values && Object.prototype.hasOwnProperty.call(values, 'CompanyId')) {
-      return this.resolveReferenceId(values.CompanyId) ?? '';
+    // Present-but-undefined (partial updates) must fall through; only null/empty is an
+    // explicit shared-parent declaration that must not use current/request fallbacks.
+    if (values && Object.prototype.hasOwnProperty.call(values, ownershipField) && values[ownershipField] !== undefined) {
+      return this.resolveReferenceId(values[ownershipField]) ?? '';
     }
     const current = ctx.current as ObjectRecord | undefined;
-    if (current && Object.prototype.hasOwnProperty.call(current, 'CompanyId')) {
-      return this.resolveReferenceId(current.CompanyId) ?? '';
+    if (current && Object.prototype.hasOwnProperty.call(current, ownershipField) && current[ownershipField] !== undefined) {
+      return this.resolveReferenceId(current[ownershipField]) ?? '';
     }
     const req = (ctx.requestContext && typeof ctx.requestContext === 'object' ? ctx.requestContext : {}) as ObjectRecord;
     return String(req.activeCompanyId ?? req.ActiveCompanyId ?? '').trim();

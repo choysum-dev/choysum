@@ -30,7 +30,7 @@ export type SequenceCleanupIdempotencyParams = { OlderThan?: string };
 
 export type SequenceCleanupIdempotencyResult = { Deleted: number };
 
-@Model('Sequence', { companyScoped: true })
+@Model('Sequence', { companyField: 'CompanyId' })
 export default class Sequence extends BaseModel {
   @Field({
     type: 'varchar',

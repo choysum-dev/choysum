@@ -330,7 +330,7 @@ export class MetadataStorage {
     if (patch.type !== undefined) target.type = patch.type;
     if (patch.orderBy !== undefined) target.orderBy = patch.orderBy;
     if (patch.softDelete !== undefined) target.softDelete = patch.softDelete;
-    if (patch.companyScoped !== undefined) target.companyScoped = patch.companyScoped;
+    if (patch.companyField !== undefined) target.companyField = patch.companyField;
     if (patch.autoMigrate !== undefined) target.autoMigrate = patch.autoMigrate;
     if (patch.readonly !== undefined) target.readonly = patch.readonly;
     if (patch.parentField !== undefined) target.parentField = patch.parentField;
@@ -480,6 +480,7 @@ export class MetadataStorage {
 
     // Walk the prototype chain.
     let currentPrototype = Object.getPrototypeOf(target);
+    let inheritedCompanyField = String(metadata.companyField ?? '').trim() || undefined;
 
     // Keep prototype traversal simple to avoid stopping too early.
     while (currentPrototype && currentPrototype !== Object.prototype) {
@@ -488,6 +489,11 @@ export class MetadataStorage {
       // Only process prototypes with constructors and registered metadata.
       if (parentCtor && this.models.has(parentCtor)) {
         const parentMetadata = this.models.get(parentCtor)!;
+
+        if (!inheritedCompanyField) {
+          const parentField = String(parentMetadata.companyField ?? '').trim();
+          if (parentField) inheritedCompanyField = parentField;
+        }
 
         // Merge fields without overriding fields already defined by the subclass.
         if (parentMetadata.fields instanceof Map) {
@@ -553,6 +559,7 @@ export class MetadataStorage {
     // Cache the merged result.
     const result: ModelMetadata = {
       ...metadata,
+      companyField: inheritedCompanyField,
       fields: mergedFields,
       onchangeHandlers: mergedOnchangeHandlers,
       constraintHandlers: mergedConstraintHandlers,

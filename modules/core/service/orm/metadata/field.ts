@@ -105,6 +105,8 @@ type FlatCommonOptions = {
   /**
    * Company-dependent: store per-company values as a JSON/JSONB `{ companyId: value }` map.
    * Mutually exclusive with `translate`. Default `copy: false` when omitted.
+   * Orthogonal to model `companyField` row isolation — allowed on isolated models
+   * (company-field-design D12 / company-dependent-design D9); no decorator hard-reject.
    * See `.dev/docs/core/service/orm/company-dependent-design.md`.
    */
   companyDependent?: boolean;
@@ -115,9 +117,9 @@ type FlatCommonOptions = {
    */
   copy?: boolean;
   /**
-   * Odoo-style check_company: when true on ManyToOne / ManyToOneRef, the related
-   * row's CompanyId must be compatible with the parent row's CompanyId
-   * (related shared/NULL is always compatible).
+   * Odoo-style check_company: when true on ManyToOne / ManyToOneRef, related-row
+   * ownership must match the parent row. Each side uses its model `companyField`
+   * (falls back to `CompanyId` only for non-isolated parents). Related shared/NULL passes.
    */
   checkCompany?: boolean;
 };
@@ -518,6 +520,7 @@ export interface FieldMetadata {
   /**
    * Company-dependent: physical column is JSON/JSONB company map
    * (see company-dependent-design.md). Mutually exclusive with `translate`.
+   * Orthogonal to model `companyField` — not rejected on isolated models.
    */
   companyDependent?: boolean;
   /**
@@ -526,8 +529,9 @@ export interface FieldMetadata {
    */
   copy?: boolean;
   /**
-   * When true on ManyToOne / ManyToOneRef, enforce parent↔related CompanyId
-   * compatibility (PR-D-1 / Odoo check_company). Related shared rows (NULL) pass.
+   * When true on ManyToOne / ManyToOneRef, enforce parent↔related ownership
+   * compatibility via each side's `companyField` (PR-D-1 / Odoo check_company).
+   * Related shared rows (NULL) pass.
    */
   checkCompany?: boolean;
 }

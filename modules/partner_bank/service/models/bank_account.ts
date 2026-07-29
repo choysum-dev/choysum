@@ -12,13 +12,14 @@ import Bank from '@/base/service/models/bank';
 /**
  * Company-scoped partner bank account record.
  */
-@Model('BankAccount', { application: 'partner', companyScoped: true })
+@Model('BankAccount', { application: 'partner', companyField: 'CompanyId' })
 export default class BankAccount extends BaseModel {
   /** Owning partner reference. */
   @Field({
     type: 'ManyToOneRef',
     relation: { targetModel: 'partner.Partner' },
     size: 20,
+    checkCompany: true,
     notNull: true,
     index: true,
     string: _lt('Partner', { scope: 'partner_bank.model.BankAccount.fields' }),

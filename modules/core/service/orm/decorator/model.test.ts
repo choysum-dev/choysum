@@ -4,7 +4,7 @@
 import BaseModel from '../model/model';
 import { MetadataStorage } from '../metadata/storage';
 import { Field } from './field';
-import { Model } from './model';
+import { Model, resolveModelCompanyField } from './model';
 
 test('model decorator table name generation handles leading and inner uppercase characters', () => {
   class ModelDecoratorSnakeCaseTarget extends BaseModel {}
@@ -15,20 +15,109 @@ test('model decorator table name generation handles leading and inner uppercase 
   expect(meta.tableName()).toBe('core_app_upper_camel_name');
 });
 
-test('model decorator companyScoped explicit option overrides inherited default', () => {
-  class ModelDecoratorInheritedScoped extends BaseModel {}
-  (ModelDecoratorInheritedScoped as any).__choysum_companyScopedDefault = true;
-  (Model('InheritedScoped', { application: 'scope' }) as any)(ModelDecoratorInheritedScoped as any);
+test('model decorator companyField inherits from parent and rejects rename/clear', () => {
+  class ModelDecoratorParentIsolated extends BaseModel {
+    @Field({ type: 'char', size: 20 } as any)
+    CompanyId!: string;
+  }
+  (Model('ParentIsolated', { application: 'scope', companyField: 'CompanyId' }) as any)(ModelDecoratorParentIsolated as any);
 
-  class ModelDecoratorExplicitScoped extends BaseModel {}
-  (ModelDecoratorExplicitScoped as any).__choysum_companyScopedDefault = true;
-  (Model('ExplicitScoped', { application: 'scope', companyScoped: false }) as any)(ModelDecoratorExplicitScoped as any);
+  class ModelDecoratorChildInherit extends ModelDecoratorParentIsolated {}
+  (Model('ChildInherit', { application: 'scope' }) as any)(ModelDecoratorChildInherit as any);
 
-  const inheritedMeta = MetadataStorage.instance.getModelMetadata(ModelDecoratorInheritedScoped as any);
-  const explicitMeta = MetadataStorage.instance.getModelMetadata(ModelDecoratorExplicitScoped as any);
+  class ModelDecoratorChildSame extends ModelDecoratorParentIsolated {}
+  (Model('ChildSame', { application: 'scope', companyField: 'CompanyId' }) as any)(ModelDecoratorChildSame as any);
 
-  expect(inheritedMeta.companyScoped).toBe(true);
-  expect(explicitMeta.companyScoped).toBe(false);
+  class ModelDecoratorChildRename extends ModelDecoratorParentIsolated {}
+  expect(() =>
+    (Model('ChildRename', { application: 'scope', companyField: 'OwningCompanyId' }) as any)(ModelDecoratorChildRename as any)
+  ).toThrow(/cannot rename inherited/);
+
+  class ModelDecoratorChildEmpty extends ModelDecoratorParentIsolated {}
+  expect(() => (Model('ChildEmpty', { application: 'scope', companyField: '' }) as any)(ModelDecoratorChildEmpty as any)).toThrow(
+    /cannot be empty/
+  );
+
+  // Anonymous targets hit the `target.name || 'model'` fallback in error messages.
+  expect(() =>
+    (Model('AnonEmpty', { application: 'scope', companyField: '  ' }) as any)(class extends ModelDecoratorParentIsolated {} as any)
+  ).toThrow(/cannot be empty on model/);
+  expect(() =>
+    (Model('AnonRename', { application: 'scope', companyField: 'OwningCompanyId' }) as any)(
+      class extends ModelDecoratorParentIsolated {} as any
+    )
+  ).toThrow(/cannot rename inherited value 'CompanyId' to 'OwningCompanyId' on model/);
+
+  const parentMeta = MetadataStorage.instance.getModelMetadata(ModelDecoratorParentIsolated as any);
+  const childMeta = MetadataStorage.instance.getModelMetadata(ModelDecoratorChildInherit as any);
+  const sameMeta = MetadataStorage.instance.getModelMetadata(ModelDecoratorChildSame as any);
+
+  expect(parentMeta.companyField).toBe('CompanyId');
+  expect(childMeta.companyField).toBe('CompanyId');
+  expect(sameMeta.companyField).toBe('CompanyId');
+});
+
+test('model decorator requires companyField to exist on the model', () => {
+  class CompanyFieldMissing extends BaseModel {
+    @Field({ type: 'char', size: 40 } as any)
+    Name!: string;
+  }
+  expect(() =>
+    (Model('CompanyFieldMissing', { application: 'scope', companyField: 'CompanyId' }) as any)(CompanyFieldMissing as any)
+  ).toThrow(/companyField "CompanyId" does not exist/);
+
+  class CompanyFieldPresent extends BaseModel {
+    @Field({ type: 'char', size: 20 } as any)
+    OwningCompanyId!: string;
+  }
+  expect(() =>
+    (Model('CompanyFieldPresent', { application: 'scope', companyField: 'OwningCompanyId' }) as any)(CompanyFieldPresent as any)
+  ).not.toThrow();
+});
+
+test('model companyField does not reject companyDependent fields (D12 orthogonal)', () => {
+  class IsolatedWithDependent extends BaseModel {
+    @Field({ type: 'char', size: 20 } as any)
+    CompanyId!: string;
+
+    @Field({ type: 'number', companyDependent: true } as any)
+    Cost!: number;
+  }
+  expect(() =>
+    (Model('IsolatedWithDependent', { application: 'scope', companyField: 'CompanyId' }) as any)(IsolatedWithDependent as any)
+  ).not.toThrow();
+
+  const meta = MetadataStorage.instance.getModelMetadata(IsolatedWithDependent as any);
+  expect(meta.companyField).toBe('CompanyId');
+  expect(meta.fields.get('Cost')?.companyDependent).toBe(true);
+});
+
+test('resolveModelCompanyField covers unregistered parent catch and undefined inherit', () => {
+  class UnregisteredParent extends BaseModel {}
+  class ChildNoIsolation extends UnregisteredParent {}
+
+  // Parent is not registered ⇒ resolveParentCompanyField walk yields undefined.
+  expect(resolveModelCompanyField(ChildNoIsolation, undefined)).toBeUndefined();
+
+  class RegisteredParent extends BaseModel {
+    @Field({ type: 'char', size: 20 } as any)
+    CompanyId!: string;
+  }
+  (Model('ResolveParent', { application: 'scope', companyField: 'CompanyId' }) as any)(RegisteredParent as any);
+
+  class ChildInheritOnly extends RegisteredParent {}
+  expect(resolveModelCompanyField(ChildInheritOnly, undefined)).toBe('CompanyId');
+
+  const storage = MetadataStorage.instance;
+  const original = storage.getModelMetadata.bind(storage);
+  (storage as any).getModelMetadata = () => {
+    throw new Error('parent metadata unavailable');
+  };
+  try {
+    expect(resolveModelCompanyField(ChildInheritOnly, undefined)).toBeUndefined();
+  } finally {
+    (storage as any).getModelMetadata = original;
+  }
 });
 
 test('model decorator validates monetary currencyField targets base.Currency', () => {
