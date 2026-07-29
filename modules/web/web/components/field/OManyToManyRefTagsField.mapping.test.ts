@@ -52,6 +52,7 @@ describe('OManyToManyRefTagsField mapping/contract', () => {
     const s = source();
 
     expect(s).toContain('store.NameSearch(');
+    expect(s).toContain('buildRelationalForField');
     expect(s).not.toContain('const searchableFields = computed<string[]>(() => {');
     expect(s).not.toContain('buildKeywordCondition(keyword, searchableFields.value, {');
     expect(s).not.toContain("operator: 'ilike'");

@@ -108,6 +108,17 @@ export interface SoftDeleteOptions {
 }
 
 /**
+ * Source relational field pointer for candidate Search / NameSearch (PR-P1-F4).
+ * BE resolves `@Field({ condition })` on that field and Ands it into the query.
+ */
+export type ForField = {
+  /** Source model technical name (`@Model` / MetadataStorage key). */
+  model: string;
+  /** Source relation field property name on that model. */
+  field: string;
+};
+
+/**
  * Search options accepted by repository reads.
  */
 export interface SearchOptions<T> extends SoftDeleteOptions {
@@ -116,6 +127,11 @@ export interface SearchOptions<T> extends SoftDeleteOptions {
   offset?: number;
   orderBy?: OrderBy<T> | OrderBy<T>[];
   forUpdate?: boolean;
+  /**
+   * When set, BE Ands the source field's meta `condition` (static or callable)
+   * into this search. Used by relational typeahead / Search-more.
+   */
+  forField?: ForField;
 }
 
 /**

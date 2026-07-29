@@ -104,6 +104,7 @@ import OFieldBase, { type FieldStateExpr } from './OFieldBase.vue';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
+import { buildRelationalForField } from '@/web/web/composables/relationalForField';
 import OViewScope from '@/web/web/components/view/OViewScope.vue';
 import type { SelectionExpose } from '@/web/web/components/view/listViewTypes';
 import { useProvidedOnchange } from '@/web/web/composables/useOnchange';
@@ -503,6 +504,7 @@ async function handleRemoteSearch(query: string, recordRef?: any) {
     const result = (await relationStore.value?.NameSearch(String(query ?? '').trim(), final as any, {
       fields: ['Id', 'DisplayName'],
       limit: props.pageSize ?? 20,
+      ...buildRelationalForField(props.store as any, String(binding.prop)),
     })) as V[] | undefined;
 
     options.value = (result ?? []).map(toOption);

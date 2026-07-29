@@ -125,6 +125,7 @@ import { ElButton, ElDialog, ElMessage, ElTag, ElSelectV2 } from 'element-plus';
 import OFieldBase, { type FieldStateExpr } from './OFieldBase.vue';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
+import { buildRelationalForField } from '@/web/web/composables/relationalForField';
 import OViewScope from '@/web/web/components/view/OViewScope.vue';
 import type { SelectionExpose } from '@/web/web/components/view/listViewTypes';
 import { createStoreByModel } from '@/web/web/stores/registry';
@@ -461,6 +462,7 @@ async function handleRemoteSearch(keyword: string) {
       {
         fields: Array.from(new Set(['Id', ...labelFields.value])) as any,
         limit: props.suggestLimit,
+        ...buildRelationalForField(props.store as any, String(binding.prop)),
       } as any
     );
     const rows = Array.isArray(records) ? records : [];

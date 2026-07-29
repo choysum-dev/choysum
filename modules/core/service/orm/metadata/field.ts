@@ -5,6 +5,7 @@ import BaseModel from '../model/model';
 import type { ExpressionWrapper, ExpressionBuilder, Expression } from 'kysely';
 import Decimal, { DecimalRound } from '@/core/utils/decimal';
 import type { TermReference } from '../../i18n';
+import type { BaseQueryCondition, QueryCondition } from '../repository/types/query';
 
 type ObjectRecord = Record<string, unknown>;
 
@@ -233,13 +234,29 @@ type FlatSelectionFieldOptions<T extends BaseModel> = {
   FlatNoRelationOption &
   FlatNoDecimalOptions;
 
+/** Authoring forms for relational `@Field({ condition })` (PR-P1-F4). No method-name string. */
+export type RelationalConditionDeclaration<TTarget extends BaseModel = BaseModel> =
+  | QueryCondition<TTarget>
+  | ((this: unknown) => QueryCondition<TTarget>);
+
+export type RelationalConditionKind = 'static' | 'dynamic';
+
+type FlatRelationalConditionOption<TTarget extends BaseModel> = {
+  /**
+   * Default filter on the relation target (candidate search + O2M/M2M load).
+   * Static `QueryCondition` or RequestContext-only callable (no draft).
+   */
+  condition?: RelationalConditionDeclaration<TTarget>;
+};
+
 type FlatManyToOneRefFieldOptions<T extends BaseModel, TTarget extends BaseModel> = {
   type: 'ManyToOneRef';
   relation: FlatRefRelationOption<TTarget>;
   size?: number;
 } & FlatCommonOptions &
   FlatNoSelectionOption &
-  FlatNoDecimalOptions;
+  FlatNoDecimalOptions &
+  FlatRelationalConditionOption<TTarget>;
 
 type FlatManyToManyRefFieldOptions<T extends BaseModel, TTarget extends BaseModel> = {
   type: 'ManyToManyRef';
@@ -247,7 +264,8 @@ type FlatManyToManyRefFieldOptions<T extends BaseModel, TTarget extends BaseMode
 } & FlatCommonOptions &
   FlatNoSelectionOption &
   FlatNoSizeOption &
-  FlatNoDecimalOptions;
+  FlatNoDecimalOptions &
+  FlatRelationalConditionOption<TTarget>;
 
 type FlatManyToOneFieldOptions<T extends BaseModel, TTarget extends BaseModel> = {
   type: 'ManyToOne';
@@ -255,7 +273,8 @@ type FlatManyToOneFieldOptions<T extends BaseModel, TTarget extends BaseModel> =
 } & FlatCommonOptions &
   FlatNoSelectionOption &
   FlatNoSizeOption &
-  FlatNoDecimalOptions;
+  FlatNoDecimalOptions &
+  FlatRelationalConditionOption<TTarget>;
 
 type FlatOneToManyFieldOptions<T extends BaseModel, TTarget extends BaseModel> = {
   type: 'OneToMany';
@@ -263,7 +282,8 @@ type FlatOneToManyFieldOptions<T extends BaseModel, TTarget extends BaseModel> =
 } & FlatCommonOptions &
   FlatNoSelectionOption &
   FlatNoSizeOption &
-  FlatNoDecimalOptions;
+  FlatNoDecimalOptions &
+  FlatRelationalConditionOption<TTarget>;
 
 type FlatManyToManyFieldOptions<T extends BaseModel, TJoin extends BaseModel, TTarget extends BaseModel> = {
   type: 'ManyToMany';
@@ -271,7 +291,8 @@ type FlatManyToManyFieldOptions<T extends BaseModel, TJoin extends BaseModel, TT
 } & FlatCommonOptions &
   FlatNoSelectionOption &
   FlatNoSizeOption &
-  FlatNoDecimalOptions;
+  FlatNoDecimalOptions &
+  FlatRelationalConditionOption<TTarget>;
 
 export type FlatFieldOptions<T extends BaseModel = BaseModel, TJoin extends BaseModel = BaseModel, TTarget extends BaseModel = BaseModel> =
   | FlatCharOrVarcharFieldOptions<T>
@@ -510,6 +531,18 @@ export interface FieldMetadata {
    * Invoked by FieldsGet with RequestContext only (no draft).
    */
   selectionCallable?: (this: unknown) => SelectionItem[];
+  /**
+   * Static relational default condition tree (PR-P1-F4).
+   * Not emitted on FieldsGet wire — applied via `forField` / relation load.
+   */
+  condition?: BaseQueryCondition;
+  /** `dynamic` when condition is a callable; omitted/static for literal trees. */
+  conditionKind?: RelationalConditionKind;
+  /**
+   * Runtime-only callable for dynamic relational condition.
+   * Invoked with `this = ModelCtor` (no draft) on Search/`forField` and relation load.
+   */
+  conditionCallable?: (this: unknown) => BaseQueryCondition;
   related?: FieldRelatedOption;
   storageHints?: FieldStorageHints;
   /**

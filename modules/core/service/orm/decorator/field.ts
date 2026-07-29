@@ -31,6 +31,14 @@ const scalarTypes = new Set<FieldType>([
   'ManyToManyRef',
 ]);
 const relationTypes = new Set<FieldType>(['ManyToOne', 'OneToMany', 'ManyToMany']);
+/** Field types that may declare `@Field({ condition })` (PR-P1-F4). */
+const relationalConditionTypes = new Set<FieldType>([
+  'ManyToOne',
+  'ManyToOneRef',
+  'OneToMany',
+  'ManyToMany',
+  'ManyToManyRef',
+]);
 
 type FieldDecoratorOptionBag = {
   type?: FieldType;
@@ -67,6 +75,8 @@ type FieldDecoratorOptionBag = {
    * Odoo-style check_company for ManyToOne / ManyToOneRef (parent↔related CompanyId).
    */
   checkCompany?: unknown;
+  /** Relational default condition (static tree or callable); relation field types only. */
+  condition?: unknown;
 };
 
 function normalizeFieldString(name: string, value: unknown): { string?: string; stringText?: TermReference } {
@@ -120,6 +130,9 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
     let selectionKind: FieldMetadata['selectionKind'];
     let selectionMethod: FieldMetadata['selectionMethod'];
     let selectionCallable: FieldMetadata['selectionCallable'];
+    let conditionKind: FieldMetadata['conditionKind'];
+    let conditionStatic: FieldMetadata['condition'];
+    let conditionCallable: FieldMetadata['conditionCallable'];
     let normalizedColumn: ObjectRecord | undefined;
 
     const isRelation = relationTypes.has(type);
@@ -424,6 +437,29 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
       }
     }
 
+    // Relational condition (static QueryCondition | callable; no method-name string)
+    if (optionBag.condition !== undefined) {
+      if (!relationalConditionTypes.has(type)) {
+        throw new Error(
+          `@Field(${name}) condition is only supported on ManyToOne / ManyToOneRef / OneToMany / ManyToMany / ManyToManyRef`
+        );
+      }
+      const conditionRaw = optionBag.condition;
+      if (typeof conditionRaw === 'function') {
+        conditionKind = 'dynamic';
+        conditionCallable = conditionRaw as FieldMetadata['conditionCallable'];
+      } else if (typeof conditionRaw === 'string') {
+        throw new Error(
+          `@Field(${name}) condition must not be a method name string; use a QueryCondition tree or () => QueryCondition callable`
+        );
+      } else if (conditionRaw && typeof conditionRaw === 'object') {
+        conditionKind = 'static';
+        conditionStatic = conditionRaw as FieldMetadata['condition'];
+      } else {
+        throw new Error(`@Field(${name}) condition must be a QueryCondition tree or () => QueryCondition callable`);
+      }
+    }
+
     // ManyToOneRef default physical column: char(20) + index when no explicit storage hints are provided.
     if (type === 'ManyToOneRef' && !hasColumn) {
       normalizedColumn = {
@@ -543,6 +579,10 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
       if (selectionMethod) meta.selectionMethod = selectionMethod;
       if (selectionCallable) meta.selectionCallable = selectionCallable;
     }
+
+    if (conditionKind) meta.conditionKind = conditionKind;
+    if (conditionStatic) meta.condition = conditionStatic;
+    if (conditionCallable) meta.conditionCallable = conditionCallable;
 
     if (optionBag.relation) meta.relation = optionBag.relation as FieldMetadata['relation'];
     if (normalizedColumn) meta.column = normalizedColumn as FieldMetadata['column'];

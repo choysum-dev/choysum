@@ -1017,3 +1017,79 @@ test('Field decorator accepts html and rejects translate on html', () => {
   }).toThrow('translate is only supported on char/varchar/text fields');
 });
 
+
+test('Field decorator accepts static and callable relational condition (PR-P1-F4)', () => {
+  class ConditionTarget extends BaseModel {}
+
+  class StaticConditionModel extends BaseModel {
+    @Field({
+      type: 'ManyToOne',
+      relation: { targetModel: () => ConditionTarget },
+      condition: ['Active', '=', true],
+    } as any)
+    PartnerId!: ConditionTarget | null;
+  }
+
+  const staticMeta = MetadataStorage.instance.getModelMetadata(StaticConditionModel as any).fields.get('PartnerId') as any;
+  expect(staticMeta?.conditionKind).toBe('static');
+  expect(staticMeta?.condition).toEqual(['Active', '=', true]);
+  expect(staticMeta?.conditionCallable).toBeUndefined();
+
+  class CallableConditionModel extends BaseModel {
+    @Field({
+      type: 'ManyToOne',
+      relation: { targetModel: () => ConditionTarget },
+      condition: function (this: typeof CallableConditionModel) {
+        return ['Id', '=', 'U1'];
+      },
+    } as any)
+    UserId!: ConditionTarget | null;
+  }
+
+  const callableMeta = MetadataStorage.instance.getModelMetadata(CallableConditionModel as any).fields.get('UserId') as any;
+  expect(callableMeta?.conditionKind).toBe('dynamic');
+  expect(typeof callableMeta?.conditionCallable).toBe('function');
+  expect(callableMeta?.condition).toBeUndefined();
+  expect(callableMeta.conditionCallable.call(CallableConditionModel)).toEqual(['Id', '=', 'U1']);
+});
+
+test('Field decorator rejects condition method-name string and non-relation types (PR-P1-F4)', () => {
+  class ConditionTarget extends BaseModel {}
+
+  expect(() => {
+    class MethodNameConditionModel extends BaseModel {
+      @Field({
+        type: 'ManyToOne',
+        relation: { targetModel: () => ConditionTarget },
+        condition: 'partnerCondition',
+      } as any)
+      PartnerId!: ConditionTarget | null;
+    }
+    return MethodNameConditionModel;
+  }).toThrow('condition must not be a method name string');
+
+  expect(() => {
+    class VarcharConditionModel extends BaseModel {
+      @Field({ type: 'varchar', size: 32, condition: ['Active', '=', true] } as any)
+      Name!: string;
+    }
+    return VarcharConditionModel;
+  }).toThrow('condition is only supported on');
+});
+
+test('Field decorator accepts OneToMany condition (PR-P1-F4)', () => {
+  class LineModel extends BaseModel {}
+
+  class OrderModel extends BaseModel {
+    @Field({
+      type: 'OneToMany',
+      relation: { targetModel: () => LineModel, inverseField: 'OrderId' },
+      condition: ['State', '!=', 'cancel'],
+    } as any)
+    LineIds!: LineModel[];
+  }
+
+  const meta = MetadataStorage.instance.getModelMetadata(OrderModel as any).fields.get('LineIds') as any;
+  expect(meta?.conditionKind).toBe('static');
+  expect(meta?.condition).toEqual(['State', '!=', 'cancel']);
+});
