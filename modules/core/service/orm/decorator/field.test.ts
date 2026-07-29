@@ -991,3 +991,29 @@ test('Field decorator stores monetary currencyField and rejects scale options', 
   }).toThrow('monetary requires a non-empty currencyField');
 });
 
+test('Field decorator accepts html and rejects translate on html', () => {
+  class HtmlOkModel extends BaseModel {
+    @Field({ type: 'html' } as any)
+    Terms!: string | null;
+  }
+  const terms = MetadataStorage.instance.getModelMetadata(HtmlOkModel as any).fields.get('Terms');
+  expect(terms?.type).toBe('html');
+  expect(terms?.column).toBeTruthy();
+
+  class HtmlCompanyDependentModel extends BaseModel {
+    @Field({ type: 'html', companyDependent: true } as any)
+    Note!: string | null;
+  }
+  const note = MetadataStorage.instance.getModelMetadata(HtmlCompanyDependentModel as any).fields.get('Note');
+  expect(note?.type).toBe('html');
+  expect(note?.companyDependent).toBe(true);
+
+  expect(() => {
+    class HtmlTranslateModel extends BaseModel {
+      @Field({ type: 'html', translate: true } as any)
+      Terms!: string | null;
+    }
+    return HtmlTranslateModel;
+  }).toThrow('translate is only supported on char/varchar/text fields');
+});
+

@@ -270,6 +270,29 @@ test('repository row codec encodeForDb translate field null, JSON passthrough, a
   expect(() => encodeForDb(meta, { Name: 123 } as any)).toThrow(/expects a lang map object or null/);
 });
 
+test('repository row codec encodeForDb sanitize html and null blank markup', () => {
+  const original = (globalThis as any).$choysum;
+  try {
+    (globalThis as any).$choysum = {
+      html: {
+        sanitize: (s: string) => String(s).replace(/<script[\s\S]*?<\/script>/gi, ''),
+      },
+    };
+    const meta = {
+      fields: new Map<string, any>([['Terms', { type: 'html', column: { name: 'Terms' } }]]),
+    } as any;
+
+    expect(encodeForDb(meta, { Terms: '<script>x</script><p>safe</p>' } as any)).toEqual({
+      Terms: '<p>safe</p>',
+    });
+    expect(encodeForDb(meta, { Terms: null } as any)).toEqual({ Terms: null });
+    expect(encodeForDb(meta, { Terms: '<p></p>' } as any)).toEqual({ Terms: null });
+    expect(() => encodeForDb(meta, { Terms: 1 } as any)).toThrow(/html field value must be a string/);
+  } finally {
+    (globalThis as any).$choysum = original;
+  }
+});
+
 test('repository row codec monetary quantize uses currency digits and E1 without currency', () => {
   const meta = {
     fields: new Map<string, any>([

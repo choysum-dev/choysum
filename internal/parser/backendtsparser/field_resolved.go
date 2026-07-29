@@ -215,6 +215,9 @@ func resolveColumnType(fieldType string) string {
 	case "monetary":
 		// Physical storage matches decimal (DECIMAL(38,18)); logical FieldType stays monetary.
 		return "decimal"
+	case "html":
+		// Physical storage matches text; logical FieldType stays html.
+		return "text"
 	default:
 		return fieldType
 	}

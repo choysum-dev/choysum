@@ -321,6 +321,7 @@ export type FieldType =
   | 'char'
   | 'varchar'
   | 'text'
+  | 'html'
   | 'binary'
   | 'image'
   | 'int'

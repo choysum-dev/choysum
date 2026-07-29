@@ -16,6 +16,7 @@ import {
   isCompanyValueMap,
 } from './company_dependent_field_codec';
 import { resolveMonetaryScaleForWrite, resolveMonetaryScaleFromRow } from './monetary_scale';
+import { sanitizeHtmlForWrite } from '../../utils/html_sanitize';
 
 type DecimalMetaLike = {
   column?: UnknownRecord;
@@ -246,6 +247,11 @@ export function encodeForDb(meta: ModelMetadata, input: Entity): Entity {
       } else {
         out[k] = JSON.stringify(v);
       }
+      continue;
+    }
+
+    if (fm?.type === 'html' && fm.column) {
+      out[k] = sanitizeHtmlForWrite(v);
       continue;
     }
 

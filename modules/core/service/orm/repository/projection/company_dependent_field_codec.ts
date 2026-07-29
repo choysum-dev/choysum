@@ -8,6 +8,7 @@ import { isBigdecimalEnvelope, isDecimal, normalizeDecimalByMeta } from '@/core/
 import { asObjectRecord, hasOwnKey } from '../../../../utils/object';
 import type { Entity } from '../types';
 import type { ObjectRecord, UnknownRecord } from '../../../../utils/types';
+import { sanitizeHtmlForWrite } from '../../utils/html_sanitize';
 
 export type CompanyDependentWriteMode = 'create' | 'update';
 
@@ -76,6 +77,9 @@ export function normalizeCompanyDependentScalarValue(value: unknown, fm?: FieldM
   if (fm && isDecimalLikeField(fm) && (typeof value === 'string' || typeof value === 'number')) {
     const d = normalizeDecimalByMeta(fm, value);
     return d ? d.toString() : value;
+  }
+  if (fm?.type === 'html') {
+    return sanitizeHtmlForWrite(value);
   }
   return value;
 }
@@ -272,6 +276,13 @@ export function mergeCompanyDependentWrite(args: {
 
 export function encodeCompanyDependentMapForDb(map: CompanyValueMap | null, fm?: FieldMetadata): string | null {
   if (map == null) return null;
+  if (fm?.type === 'html') {
+    const normalized: CompanyValueMap = {};
+    for (const [k, v] of Object.entries(map)) {
+      normalized[k] = sanitizeHtmlForWrite(v);
+    }
+    return JSON.stringify(normalized);
+  }
   if (!fm || !isDecimalLikeField(fm)) {
     return JSON.stringify(map);
   }

@@ -21,7 +21,11 @@
     "vue-echarts": "^8.0.1",
     "vue-i18n": "^11.4.5",
     "vue-router": "^5.1.0",
-    "vuedraggable": "^4.1.0"
+    "vuedraggable": "^4.1.0",
+    "@tiptap/vue-3": "^2.11.5",
+    "@tiptap/starter-kit": "^2.11.5",
+    "@tiptap/extension-link": "^2.11.5",
+    "dompurify": "^3.2.4"
   },
   "choysum": {
     "moduleName": "web",

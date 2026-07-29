@@ -33,6 +33,9 @@ func defaultQuickjsReplaceableRuntimePlugins() []jsengine.RuntimePlugin {
 		jsengine.NewRuntimePlugin(quickjsengine.RuntimePluginCrypto, func(runtimeScope scope.Scope, authenticator auth.Authenticator) []jsengine.JsEngineOption {
 			return []jsengine.JsEngineOption{quickjsengine.WithCrypto()}
 		}),
+		jsengine.NewRuntimePlugin(quickjsengine.RuntimePluginHtml, func(runtimeScope scope.Scope, authenticator auth.Authenticator) []jsengine.JsEngineOption {
+			return []jsengine.JsEngineOption{quickjsengine.WithHtml()}
+		}),
 		jsengine.NewRuntimePlugin(quickjsengine.RuntimePluginFS, func(runtimeScope scope.Scope, authenticator auth.Authenticator) []jsengine.JsEngineOption {
 			return []jsengine.JsEngineOption{quickjsruntime.WithCompilerFs()}
 		}),
