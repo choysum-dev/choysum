@@ -43,11 +43,8 @@ class ForFieldOrder extends BaseModel {
 
   @Field({
     type: 'ManyToOne',
-    relation: {
-      targetModel: () => {
-        throw new Error('lazy target boom');
-      },
-    },
+    // Must not throw: MetadataStorage is global and triggerDownstream invokes every ManyToOne targetModel().
+    relation: { targetModel: () => undefined as unknown as typeof ForFieldBank },
     condition: ['Active', '=', true],
   } as any)
   BrokenTargetId!: ForFieldBank | null;
