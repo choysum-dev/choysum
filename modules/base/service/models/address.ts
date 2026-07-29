@@ -45,6 +45,7 @@ export default class Address extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => Country },
+    condition: ['IsActive', '=', true],
     notNull: true,
     index: true,
     string: _lt('Country', { scope: 'base.model.Address.fields' }),

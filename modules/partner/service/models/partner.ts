@@ -52,6 +52,7 @@ export default class Partner extends BaseModel {
   @Field({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Company' },
+    condition: ['IsActive', '=', true],
     size: 20,
     notNull: true,
     index: true,
@@ -104,6 +105,7 @@ export default class Partner extends BaseModel {
   @Field({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Language' },
+    condition: ['IsActive', '=', true],
     size: 20,
     index: true,
     string: _lt('Default Language', { scope: 'partner.model.Partner.fields' }),
@@ -114,6 +116,7 @@ export default class Partner extends BaseModel {
   @Field({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Currency' },
+    condition: ['IsActive', '=', true],
     size: 20,
     index: true,
     string: _lt('Default Currency', { scope: 'partner.model.Partner.fields' }),
@@ -124,6 +127,7 @@ export default class Partner extends BaseModel {
   @Field({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Country' },
+    condition: ['IsActive', '=', true],
     size: 20,
     index: true,
     string: _lt('Country', { scope: 'partner.model.Partner.fields' }),

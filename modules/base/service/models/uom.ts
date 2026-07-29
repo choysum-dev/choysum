@@ -30,6 +30,7 @@ export default class UoM extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => UoMCategory },
+    condition: ['IsActive', '=', true],
     notNull: true,
     index: true,
     string: _lt('Category', { scope: 'base.model.UoM.fields' }),

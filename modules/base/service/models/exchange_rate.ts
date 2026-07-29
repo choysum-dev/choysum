@@ -15,6 +15,7 @@ export default class ExchangeRate extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => Currency },
+    condition: ['IsActive', '=', true],
     notNull: true,
     index: true,
     uniqueIndex: 'uidx_base_exchange_rate_scope_currency_date',

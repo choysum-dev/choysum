@@ -41,6 +41,7 @@ export default class BankAccount extends BaseModel {
   @Field({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Bank' },
+    condition: ['IsActive', '=', true],
     size: 20,
     notNull: true,
     index: true,
@@ -114,6 +115,7 @@ export default class BankAccount extends BaseModel {
   @Field({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Currency' },
+    condition: ['IsActive', '=', true],
     size: 20,
     index: true,
     string: _lt('Currency', { scope: 'partner_bank.model.BankAccount.fields' }),
@@ -124,6 +126,7 @@ export default class BankAccount extends BaseModel {
   @Field({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Country' },
+    condition: ['IsActive', '=', true],
     size: 20,
     index: true,
     string: _lt('Country', { scope: 'partner_bank.model.BankAccount.fields' }),

@@ -122,6 +122,7 @@ export default class Role extends BaseModel {
       joinField: 'RoleId',
       inverseJoinField: 'UserId',
     },
+    condition: ['IsActive', '=', true],
     string: _lt('Users', { scope: 'auth.model.Role.fields' }),
   })
   Users: User[];
@@ -137,6 +138,7 @@ export default class Role extends BaseModel {
       joinField: 'ParentRoleId',
       inverseJoinField: 'ChildRoleId',
     },
+    condition: ['IsActive', '=', true],
     string: _lt('Included Roles', { scope: 'auth.model.Role.fields' }),
   })
   ImpliedRoles: Role[];

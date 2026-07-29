@@ -26,6 +26,7 @@ export default class UserRole extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => User },
+    condition: ['IsActive', '=', true],
     string: _lt('User', { scope: 'auth.model.UserRole.fields' }),
   })
   UserId: User;
@@ -36,6 +37,7 @@ export default class UserRole extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => Role },
+    condition: ['IsActive', '=', true],
     string: _lt('Role', { scope: 'auth.model.UserRole.fields' }),
   })
   RoleId: Role;

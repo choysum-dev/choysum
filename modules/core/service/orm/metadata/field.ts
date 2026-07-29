@@ -236,8 +236,11 @@ type FlatSelectionFieldOptions<T extends BaseModel> = {
 
 /** Authoring forms for relational `@Field({ condition })` (PR-P1-F4). No method-name string. */
 export type RelationalConditionDeclaration<TTarget extends BaseModel = BaseModel> =
+  // Prefer target-typed QueryCondition when TTarget is explicit; BaseQueryCondition covers the
+  // common `@Field({...})` case where Field's TTarget defaults to BaseModel and is not inferred.
   | QueryCondition<TTarget>
-  | ((this: unknown) => QueryCondition<TTarget>);
+  | BaseQueryCondition
+  | ((this: unknown) => QueryCondition<TTarget> | BaseQueryCondition);
 
 export type RelationalConditionKind = 'static' | 'dynamic';
 
