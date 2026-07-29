@@ -1075,6 +1075,30 @@ test('Field decorator rejects condition method-name string and non-relation type
     }
     return VarcharConditionModel;
   }).toThrow('condition is only supported on');
+
+  expect(() => {
+    class InvalidConditionModel extends BaseModel {
+      @Field({
+        type: 'ManyToOne',
+        relation: { targetModel: () => ConditionTarget },
+        condition: 123,
+      } as any)
+      PartnerId!: ConditionTarget | null;
+    }
+    return InvalidConditionModel;
+  }).toThrow('condition must be a QueryCondition tree or () => QueryCondition callable');
+
+  expect(() => {
+    class NullConditionModel extends BaseModel {
+      @Field({
+        type: 'ManyToOne',
+        relation: { targetModel: () => ConditionTarget },
+        condition: null,
+      } as any)
+      PartnerId!: ConditionTarget | null;
+    }
+    return NullConditionModel;
+  }).toThrow('condition must be a QueryCondition tree or () => QueryCondition callable');
 });
 
 test('Field decorator accepts OneToMany condition (PR-P1-F4)', () => {
