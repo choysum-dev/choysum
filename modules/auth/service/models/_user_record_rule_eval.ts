@@ -196,7 +196,7 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
 
     const companyGate = await computeCompanyGateMode(modelId, modelHit?.CompanyField, input.hasCompany);
     if (companyGate.denyAll) {
-      return { kind: 'false', reason: companyGate.reason || 'company_gate_deny' };
+      return { kind: 'false', reason: companyGate.reason };
     }
     const permField = PERM_FIELD_BY_OP[input.opValue];
     const roleIds = (input.roleIds || []).map(id => String(id || '').trim()).filter(Boolean);

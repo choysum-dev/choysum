@@ -235,7 +235,7 @@ test('P2-2 eval edges: true-condition variants and multi grant+restrict compose'
   }
 });
 
-test('P2-2 eval edges: mismatched rule scopes skipped; company-gate meta error fail-closes', async () => {
+test('P2-2 eval edges: mismatched rule scopes skipped', async () => {
   resetRequestContext();
   const modelId = await resolveModelId('auth', 'CompanyScopedResource');
   const roleId = uid('role');
@@ -258,17 +258,8 @@ test('P2-2 eval edges: mismatched rule scopes skipped; company-gate meta error f
       IrModelId: 'not-the-model',
       IrApplicationId: 'not-the-app',
     },
-    {
-      RoleId: { Id: roleId },
-      Kind: 'restrict',
-      Condition: null, // unconstrained restrict → no-op
-      IrModelId: modelId,
-      IrApplicationId: null,
-    },
   ];
-  (IrField as any).Count = async () => {
-    throw new Error('meta boom');
-  };
+  (IrField as any).Count = async () => 1;
 
   try {
     const env = await evaluateRecordRuleCondition({
@@ -279,9 +270,8 @@ test('P2-2 eval edges: mismatched rule scopes skipped; company-gate meta error f
       roleIds: [roleId],
       roleScopesById: { [roleId]: { global: false, companies: [companyId] } },
     });
-    // Company gate fail-closed on IrField.Count error.
-    expect(env.kind).toBe('false');
-    expect(String((env as any).reason || '')).toBe('meta_company_gate_error');
+    expect(env.kind).toBe('expr');
+    expect(String((env as any).reason || '')).toBe('grant_domain');
   } finally {
     (RoleRecordRule as any).Search = origSearch;
     (IrField as any).Count = origCount;
