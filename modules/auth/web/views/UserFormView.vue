@@ -54,7 +54,7 @@ SPDX-License-Identifier: Apache-2.0
           <OManyToOneRefField :store="store" prop="CompanyId" @value-click="onCompanyValueClick" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OJsonobjectField :store="store" prop="Preferences" :pretty="true" />
+          <OJsonobjectField :store="store" prop="Preferences" />
         </el-col>
       </el-row>
 

@@ -33,7 +33,17 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display="{ fieldValue }">
-      <pre class="o-json-display">{{ displayString(fieldValue().value) }}</pre>
+      <pre v-if="isTableLike" class="o-json-display">{{ displayString(fieldValue().value) }}</pre>
+      <div v-else-if="normalizeIncoming(fieldValue().value) == null" class="o-json-display o-json-display--empty" />
+      <VueJsonPretty
+        v-else
+        class="o-json-pretty"
+        :data="normalizeIncoming(fieldValue().value)!"
+        :deep="prettyDeep"
+        :show-length="true"
+        :show-line="true"
+        :collapsed-on-click-brackets="true"
+      />
     </template>
   </OFieldBase>
 </template>
@@ -44,6 +54,8 @@ import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { RuleItem } from 'async-validator';
 import { ElInput, type FormItemProps } from 'element-plus';
 import { ref, watch, computed, defineComponent, h } from 'vue';
+import VueJsonPretty from 'vue-json-pretty';
+import 'vue-json-pretty/lib/styles.css';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import OFieldBase, { type FieldStateExpr } from './OFieldBase.vue';
@@ -71,6 +83,8 @@ const props = withDefaults(
     allowArray?: boolean;
     placeholder?: string;
     autosize?: boolean | { minRows?: number; maxRows?: number };
+    /** Collapse depth for form readonly vue-json-pretty tree. */
+    prettyDeep?: number;
 
     required?: FieldStateExpr<T, V>;
     readonly?: FieldStateExpr<T, V>;
@@ -98,6 +112,7 @@ const props = withDefaults(
     allowArray: false,
     placeholder: '',
     autosize: () => ({ minRows: 3, maxRows: 14 }),
+    prettyDeep: 3,
     required: false,
     readonly: false,
     visible: true,
@@ -115,6 +130,13 @@ const props = withDefaults(
 const effectivePlaceholder = computed(() => props.placeholder || _t('Enter a JSON object'));
 
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
+
+const isTableLike = computed(() => {
+  const mode = props.renderMode;
+  if (mode === 'table' || mode === 'inline') return true;
+  if (mode === 'form') return false;
+  return binding.env?.isForm === false;
+});
 
 const toView = (raw: any): JsonVal => {
   if (raw == null) return null;
@@ -317,6 +339,16 @@ const OJsonCell = defineComponent({
   word-break: break-word;
   font-family: monospace;
   line-height: 1.4;
+}
+.o-json-display--empty {
+  min-height: 1.4em;
+}
+.o-json-pretty {
+  width: 100%;
+  padding: 4px 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  word-break: break-word;
 }
 .o-json-err {
   margin-top: 4px;
