@@ -44,7 +44,11 @@ test('sanitizeHtmlForWrite uses bridge output', () => {
   try {
     (globalThis as any).$choysum = {
       html: {
-        sanitize: (s: string) => s.replace(/<script[\s\S]*?<\/script>/gi, ''),
+        // Fixture map only — not a general HTML sanitizer (avoids CodeQL fake-sanitizer alerts).
+        sanitize: (s: string) => {
+          if (s === '<script>bad</script><p>safe</p>') return '<p>safe</p>';
+          return s;
+        },
       },
     };
     expect(sanitizeHtmlForWrite('<script>bad</script><p>safe</p>')).toBe('<p>safe</p>');

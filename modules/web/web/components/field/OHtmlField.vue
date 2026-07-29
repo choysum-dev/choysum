@@ -181,27 +181,37 @@ const OHtmlCommitBridge = defineComponent({
   },
   setup(p) {
     let applyingFromStore = false;
+    const pushStoreToEditor = () => {
+      applyingFromStore = true;
+      try {
+        const next = (p.fieldValue as any)().value;
+        (p.setHtml as (v: string | null) => void)(next == null ? null : String(next));
+      } finally {
+        applyingFromStore = false;
+      }
+    };
     watch(
       () => (p.fieldValue as any)().value,
-      (next: unknown) => {
-        applyingFromStore = true;
-        try {
-          (p.setHtml as (v: string | null) => void)(next == null ? null : String(next));
-        } finally {
-          applyingFromStore = false;
-        }
+      () => {
+        pushStoreToEditor();
       },
       { immediate: true }
     );
     watch(
       () => editor.value,
-      ed => {
+      (ed, _old, onCleanup) => {
         if (!ed) return;
-        ed.on('update', () => {
+        // TipTap creates the editor in onMounted; re-apply store HTML once it exists.
+        pushStoreToEditor();
+        const handleUpdate = () => {
           if (applyingFromStore) return;
           const cleaned = normalizeHtmlForStore((p.getHtml as () => string)());
           const model = (p.fieldValue as any)();
           if (model.value !== cleaned) model.value = cleaned;
+        };
+        ed.on('update', handleUpdate);
+        onCleanup(() => {
+          ed.off('update', handleUpdate);
         });
       },
       { immediate: true }

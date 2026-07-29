@@ -20,7 +20,8 @@ vi.mock('@/web/web/i18n', async () => {
 
 vi.mock('dompurify', () => ({
   default: {
-    sanitize: (html: string) => String(html).replace(/<script[\s\S]*?<\/script>/gi, ''),
+    // Identity stub for component mount tests (production uses real DOMPurify).
+    sanitize: (html: string) => String(html),
   },
 }));
 
@@ -51,6 +52,9 @@ const editorState = vi.hoisted(() => {
     on: (event: string, cb: () => void) => {
       listeners[event] = listeners[event] || [];
       listeners[event].push(cb);
+    },
+    off: (event: string, cb: () => void) => {
+      listeners[event] = (listeners[event] || []).filter(fn => fn !== cb);
     },
     destroy: () => undefined,
     __setHtml(next: string) {

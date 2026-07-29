@@ -47,17 +47,21 @@ export function sanitizeHtmlForClient(html: string | null | undefined): string {
   return DOMPurify.sanitize(raw, purifyConfig);
 }
 
-/** Strip tags for List / Search plaintext projection (D9). */
+/** Strip tags for List / Search plaintext projection (D9). Prefer DOM textContent. */
 export function htmlToPlaintext(html: string | null | undefined): string {
   if (html == null) return '';
-  return String(html)
+  const raw = String(html);
+  if (!raw) return '';
+  if (typeof document !== 'undefined') {
+    const el = document.createElement('div');
+    el.innerHTML = sanitizeHtmlForClient(raw);
+    return String(el.textContent || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+  // Non-DOM fallback: drop tags only (no entity decode chain).
+  return raw
     .replace(/<[^>]*>/g, ' ')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&#160;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&quot;/gi, '"')
     .replace(/\s+/g, ' ')
     .trim();
 }

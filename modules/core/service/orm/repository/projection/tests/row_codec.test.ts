@@ -275,7 +275,11 @@ test('repository row codec encodeForDb sanitize html and null blank markup', () 
   try {
     (globalThis as any).$choysum = {
       html: {
-        sanitize: (s: string) => String(s).replace(/<script[\s\S]*?<\/script>/gi, ''),
+        // Fixture map only — production sanitization lives in Go bluemonday.
+        sanitize: (s: string) => {
+          if (s === '<script>x</script><p>safe</p>') return '<p>safe</p>';
+          return s;
+        },
       },
     };
     const meta = {
