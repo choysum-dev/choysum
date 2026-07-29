@@ -8,7 +8,10 @@
 
 /** Strip tags / entities and decide whether the HTML has meaningful text (D10). */
 export function isBlankHtml(html: string): boolean {
-  const text = String(html)
+  const str = String(html);
+  // Allowlisted void/structural markup (e.g. <hr>) is content even without text.
+  if (/<hr\b/i.test(str)) return false;
+  const text = str
     .replace(/<[^>]*>/g, ' ')
     .replace(/&nbsp;/gi, ' ')
     .replace(/&#160;/gi, ' ')

@@ -83,6 +83,9 @@ export function htmlToPlaintext(html: string | null | undefined): string {
 export function normalizeHtmlForStore(html: string | null | undefined): string | null {
   if (html == null) return null;
   const cleaned = sanitizeHtmlForClient(html);
-  if (!cleaned || htmlToPlaintext(cleaned) === '') return null;
+  if (!cleaned) return null;
+  // Allowlisted void/structural markup (e.g. <hr>) is content even without text.
+  if (/<hr\b/i.test(cleaned)) return cleaned;
+  if (htmlToPlaintext(cleaned) === '') return null;
   return cleaned;
 }

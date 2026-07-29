@@ -92,5 +92,6 @@ describe('ohtml_helpers', () => {
     expect(normalizeHtmlForStore(null)).toBeNull();
     expect(normalizeHtmlForStore('<p></p>')).toBeNull();
     expect(normalizeHtmlForStore('<p>ok</p>')).toBe('<p>ok</p>');
+    expect(normalizeHtmlForStore('<hr>')).toBe('<hr>');
   });
 });

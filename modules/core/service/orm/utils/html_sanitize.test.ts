@@ -10,6 +10,8 @@ test('isBlankHtml treats empty tags and nbsp as blank', () => {
   expect(isBlankHtml('<p>&nbsp;</p>')).toBe(true);
   expect(isBlankHtml('<p>&#160;</p>')).toBe(true);
   expect(isBlankHtml('<p>hi</p>')).toBe(false);
+  expect(isBlankHtml('<hr>')).toBe(false);
+  expect(isBlankHtml('<p><hr></p>')).toBe(false);
 });
 
 test('sanitizeHtmlForWrite nulls empty and blank values', () => {
@@ -23,6 +25,7 @@ test('sanitizeHtmlForWrite nulls empty and blank values', () => {
     expect(sanitizeHtmlForWrite('')).toBeNull();
     expect(sanitizeHtmlForWrite('<p></p>')).toBeNull();
     expect(sanitizeHtmlForWrite('<p>ok</p>')).toBe('<p>ok</p>');
+    expect(sanitizeHtmlForWrite('<hr>')).toBe('<hr>');
   } finally {
     (globalThis as any).$choysum = original;
   }
