@@ -1541,6 +1541,9 @@ export default class CompanyDepPilot extends BaseModel {
   @Field({ type: 'number', companyDependent: true })
   public Cost: number
 
+  @Field({ type: 'html', companyDependent: true })
+  public Note: string
+
   @Field({ type: 'ManyToOne', companyDependent: true, copy: true })
   public PartnerId: any
 
@@ -1588,6 +1591,22 @@ export default class CompanyDepPilot extends BaseModel {
 	}
 	if costSpec.Migration.ReasonCode != "COMPANY_DEPENDENT_MAP" {
 		t.Fatalf("expected ReasonCode=COMPANY_DEPENDENT_MAP, got %q", costSpec.Migration.ReasonCode)
+	}
+
+	noteSpec, err := fieldByName["Note"].GetResolvedSpec()
+	if err != nil || noteSpec == nil {
+		t.Fatalf("Note resolved spec: err=%v", err)
+	}
+	if noteSpec.Structural.CompanyDependent == nil || !*noteSpec.Structural.CompanyDependent {
+		t.Fatal("expected CompanyDependent=true on html Note")
+	}
+	if noteSpec.Migration.ResolvedColumnType != "jsonobject" {
+		t.Fatalf("expected html companyDependent → jsonobject, got %q", noteSpec.Migration.ResolvedColumnType)
+	}
+	for _, d := range noteSpec.Diagnostics {
+		if d.Code == "CONFLICT_COMPANY_DEPENDENT_FIELD_TYPE" {
+			t.Fatalf("html companyDependent should be allowed, got %+v", noteSpec.Diagnostics)
+		}
 	}
 
 	partnerSpec, err := fieldByName["PartnerId"].GetResolvedSpec()

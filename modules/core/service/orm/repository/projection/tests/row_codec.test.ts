@@ -292,6 +292,16 @@ test('repository row codec encodeForDb sanitize html and null blank markup', () 
     expect(encodeForDb(meta, { Terms: null } as any)).toEqual({ Terms: null });
     expect(encodeForDb(meta, { Terms: '<p></p>' } as any)).toEqual({ Terms: null });
     expect(() => encodeForDb(meta, { Terms: 1 } as any)).toThrow(/html field value must be a string/);
+
+    const cdMeta = {
+      fields: new Map<string, any>([
+        ['Terms', { type: 'html', companyDependent: true, column: { name: 'Terms' } }],
+      ]),
+    } as any;
+    const encodedCd = encodeForDb(cdMeta, {
+      Terms: JSON.stringify({ C1: '<script>x</script><p>safe</p>' }),
+    } as any);
+    expect(JSON.parse(String(encodedCd.Terms))).toEqual({ C1: '<p>safe</p>' });
   } finally {
     (globalThis as any).$choysum = original;
   }

@@ -7,6 +7,7 @@ import { htmlToPlaintext, normalizeHtmlForStore, sanitizeHtmlForClient } from '.
 
 vi.mock('dompurify', () => ({
   default: {
+    addHook: () => undefined,
     // Fixture map only — production path uses real DOMPurify.
     sanitize: (html: string) => {
       const fixtures: Record<string, string> = {
@@ -14,6 +15,8 @@ vi.mock('dompurify', () => ({
         '<p></p>': '<p></p>',
         '<p>ok</p>': '<p>ok</p>',
         '<p>Hello <strong>world</strong></p>': '<p>Hello <strong>world</strong></p>',
+        '<a href="https://example.com" target="_blank">x</a>':
+          '<a href="https://example.com" target="_blank" rel="noopener noreferrer">x</a>',
       };
       return fixtures[String(html)] ?? String(html);
     },

@@ -30,8 +30,7 @@ describe('OSearchFilterCondition field resolver mapping', () => {
 
   test('maps html metadata type to OCharField for plaintext search values', () => {
     const s = source();
-    expect(s).toContain("case 'html':");
-    expect(s).toContain('return OCharField;');
+    expect(s).toMatch(/case\s+'html':\s*(?:\/\/[^\n]*\n\s*)*return\s+OCharField\s*;/);
   });
 
   test('maps manytooneref metadata type to OManyToOneRefField', () => {

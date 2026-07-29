@@ -28,6 +28,16 @@ func TestSanitizeHTMLKeepsTipTapBasics(t *testing.T) {
 	}
 }
 
+func TestSanitizeHTMLForcesNoopenerOnBlankTargets(t *testing.T) {
+	got := SanitizeHTML(`<a href="https://example.com" target="_blank">x</a>`)
+	if !strings.Contains(got, `target="_blank"`) {
+		t.Fatalf("expected target preserved, got %q", got)
+	}
+	if !strings.Contains(got, "noopener") || !strings.Contains(got, "noreferrer") {
+		t.Fatalf("expected rel noopener noreferrer, got %q", got)
+	}
+}
+
 func TestSanitizeHTMLDropsTableAndImage(t *testing.T) {
 	got := SanitizeHTML(`<p>x</p><table><tr><td>cell</td></tr></table><img src="x.png" alt="a">`)
 	if strings.Contains(got, "<table") || strings.Contains(got, "<img") {

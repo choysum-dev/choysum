@@ -39,11 +39,25 @@ const purifyConfig = {
   ALLOW_DATA_ATTR: false,
 };
 
+let domPurifyHooksInstalled = false;
+
+function ensureDomPurifyHooks(): void {
+  if (domPurifyHooksInstalled) return;
+  if (typeof (DOMPurify as { addHook?: unknown }).addHook !== 'function') return;
+  domPurifyHooksInstalled = true;
+  DOMPurify.addHook('afterSanitizeAttributes', node => {
+    if (node.nodeName === 'A' && node.getAttribute('target') === '_blank') {
+      node.setAttribute('rel', 'noopener noreferrer');
+    }
+  });
+}
+
 /** FE display / outbound sanitize (defense in depth; server remains authoritative). */
 export function sanitizeHtmlForClient(html: string | null | undefined): string {
   if (html == null) return '';
   const raw = String(html);
   if (!raw) return '';
+  ensureDomPurifyHooks();
   return DOMPurify.sanitize(raw, purifyConfig);
 }
 

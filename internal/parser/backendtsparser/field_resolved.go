@@ -693,7 +693,7 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 	}
 	if companyDependent {
 		allowed := map[string]struct{}{
-			"char": {}, "varchar": {}, "text": {}, "boolean": {}, "int": {}, "number": {},
+			"char": {}, "varchar": {}, "text": {}, "html": {}, "boolean": {}, "int": {}, "number": {},
 			"decimal": {}, "monetary": {}, "date": {}, "datetime": {}, "selection": {},
 			"ManyToOne": {}, "ManyToOneRef": {},
 		}
