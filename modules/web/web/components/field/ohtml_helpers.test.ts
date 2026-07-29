@@ -90,6 +90,7 @@ describe('ohtml_helpers', () => {
 
   it('normalizeHtmlForStore nulls blank markup', () => {
     expect(normalizeHtmlForStore(null)).toBeNull();
+    expect(normalizeHtmlForStore('')).toBeNull();
     expect(normalizeHtmlForStore('<p></p>')).toBeNull();
     expect(normalizeHtmlForStore('<p>ok</p>')).toBe('<p>ok</p>');
     expect(normalizeHtmlForStore('<hr>')).toBe('<hr>');
