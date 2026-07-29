@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { MetadataStorage } from '../metadata';
+import { validateModelCompanyField } from '../metadata/company_field';
 import { validateModelMonetaryCurrencyFields } from '../metadata/monetary_currency';
 import BaseModel from '../model/model';
 import type { InstantiableModelCtor } from '../model/types';
@@ -146,8 +147,10 @@ export function Model(name: string, options?: ModelOptions) {
       parentField: options?.parentField,
     });
 
-    // Monetary currencyField targets must resolve after all @Field decorators ran.
-    validateModelMonetaryCurrencyFields(MetadataStorage.instance.getModelMetadata(target));
+    // companyField / monetary targets resolve after @Field decorators ran.
+    const registered = MetadataStorage.instance.getModelMetadata(target);
+    validateModelCompanyField(registered);
+    validateModelMonetaryCurrencyFields(registered);
 
     registerLoadedModelForGeneratedServiceMetadata(fullModelName, target);
     installConventionalServiceRuntimeWrappers(target);

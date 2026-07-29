@@ -314,7 +314,11 @@ test('repository write deps delegate mutation target deps unchanged', async () =
     },
   });
 
-  expect(deps.meta).toEqual({ fullModelName: 'auth.Role', companyField: 'CompanyId' });
+  expect(deps.meta).toEqual({
+    fullModelName: 'auth.Role',
+    companyField: 'CompanyId',
+    fields: new Map([['CompanyId', {}]]),
+  });
   expect(await deps.locateIdsForCondition(['Id', '=', '1'] as any)).toEqual(['row_1']);
   expect(await deps.assertCompanyWriteAccessForCondition(['Id', '=', '2'] as any)).toEqual(['row_2']);
   await deps.assertRecordRuleAllTargetsAllowed('write', ['row_1']);
@@ -408,7 +412,11 @@ test('repository write deps facade merges mutation target and condition deps unc
     },
   });
 
-  expect(deps.meta).toEqual({ fullModelName: 'auth.Role', companyField: 'CompanyId' });
+  expect(deps.meta).toEqual({
+    fullModelName: 'auth.Role',
+    companyField: 'CompanyId',
+    fields: new Map([['CompanyId', {}]]),
+  });
   expect(deps.table).toBe('demo_table');
   expect(await deps.locateIdsForCondition(['Id', '=', '1'] as any)).toEqual(['row_1']);
   expect(await deps.assertCompanyWriteAccessForCondition(['Id', '=', '2'] as any)).toEqual(['row_2']);

@@ -16,7 +16,10 @@ test('model decorator table name generation handles leading and inner uppercase 
 });
 
 test('model decorator companyField inherits from parent and rejects rename/clear', () => {
-  class ModelDecoratorParentIsolated extends BaseModel {}
+  class ModelDecoratorParentIsolated extends BaseModel {
+    @Field({ type: 'char', size: 20 } as any)
+    CompanyId!: string;
+  }
   (Model('ParentIsolated', { application: 'scope', companyField: 'CompanyId' }) as any)(ModelDecoratorParentIsolated as any);
 
   class ModelDecoratorChildInherit extends ModelDecoratorParentIsolated {}
@@ -42,6 +45,24 @@ test('model decorator companyField inherits from parent and rejects rename/clear
   expect(parentMeta.companyField).toBe('CompanyId');
   expect(childMeta.companyField).toBe('CompanyId');
   expect(sameMeta.companyField).toBe('CompanyId');
+});
+
+test('model decorator requires companyField to exist on the model', () => {
+  class CompanyFieldMissing extends BaseModel {
+    @Field({ type: 'char', size: 40 } as any)
+    Name!: string;
+  }
+  expect(() =>
+    (Model('CompanyFieldMissing', { application: 'scope', companyField: 'CompanyId' }) as any)(CompanyFieldMissing as any)
+  ).toThrow(/companyField "CompanyId" does not exist/);
+
+  class CompanyFieldPresent extends BaseModel {
+    @Field({ type: 'char', size: 20 } as any)
+    OwningCompanyId!: string;
+  }
+  expect(() =>
+    (Model('CompanyFieldPresent', { application: 'scope', companyField: 'OwningCompanyId' }) as any)(CompanyFieldPresent as any)
+  ).not.toThrow();
 });
 
 test('model decorator validates monetary currencyField targets base.Currency', () => {

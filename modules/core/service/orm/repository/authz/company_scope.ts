@@ -82,6 +82,38 @@ export function requireRepositoryOwnershipField(
   return field;
 }
 
+/** True when the ownership field is schema-not-null (private isolated model). */
+export function isRepositoryOwnershipFieldNotNull(meta: ModelMetadata, field: string): boolean {
+  const fieldMeta = meta.fields instanceof Map ? meta.fields.get(field) : undefined;
+  const column = asObjectRecord(fieldMeta?.column);
+  return column?.notNull === true;
+}
+
+function isOwnershipNullValue(value: unknown): boolean {
+  if (value === null || value === undefined) return true;
+  if (typeof value === 'string' && !value.trim()) return true;
+  return false;
+}
+
+export function validateRepositoryOwnershipNullability(
+  params: RepositoryCompanyScopeDeps,
+  ownershipField: string,
+  value: unknown
+): void {
+  if (!isRepositoryOwnershipFieldNotNull(params.meta, ownershipField)) return;
+  if (!isOwnershipNullValue(value)) return;
+  throw params.permissionDenied(
+    'company_field_null_forbidden',
+    _t('ownership field cannot be null on private company-isolated model', {
+      scope: 'service/orm/repository/authz/company_scope',
+    }),
+    {
+      model: params.meta.fullModelName || params.meta.modelName || params.meta.name,
+      companyField: ownershipField,
+    }
+  );
+}
+
 export function normalizeRepositoryCompanyIds(ctx: unknown): string[] {
   const requestContext = asObjectRecord(ctx);
   const raw = requestContext?.enabledCompanyIds ?? requestContext?.EnabledCompanyIds ?? requestContext?.activeCompanyId ?? requestContext?.ActiveCompanyId;
@@ -199,6 +231,7 @@ export function applyRepositoryDefaultCompanyIdOnCreate(params: RepositoryCompan
   const entityRecord = asObjectRecord(entity);
 
   if (Object.prototype.hasOwnProperty.call(entity || {}, ownershipField)) {
+    validateRepositoryOwnershipNullability(params, ownershipField, entityRecord?.[ownershipField]);
     validateRepositoryCompanyIdInScope(params, entityRecord?.[ownershipField], companyIds);
     return entity;
   }
@@ -224,7 +257,9 @@ export function applyRepositoryDefaultCompanyIdOnUpdate(params: RepositoryCompan
   const ownershipField = requireRepositoryOwnershipField(params.meta, params.permissionDenied);
   if (!Object.prototype.hasOwnProperty.call(vals || {}, ownershipField)) return vals;
 
-  validateRepositoryCompanyIdInScope(params, asObjectRecord(vals)?.[ownershipField], normalizeRepositoryCompanyIds(params.ctx));
+  const nextValue = asObjectRecord(vals)?.[ownershipField];
+  validateRepositoryOwnershipNullability(params, ownershipField, nextValue);
+  validateRepositoryCompanyIdInScope(params, nextValue, normalizeRepositoryCompanyIds(params.ctx));
   return vals;
 }
 

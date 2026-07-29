@@ -156,6 +156,50 @@ test('company scope uses aliased companyField for filter create and write access
   expect(selected[0]).toEqual(['Id', 'OwningCompanyId']);
 });
 
+test('company scope rejects null ownership on private (notNull) models', () => {
+  const { deps } = createCompanyDeps({
+    meta: {
+      fullModelName: 'demo.PrivateModel',
+      modelName: 'PrivateModel',
+      name: 'PrivateModel',
+      companyField: 'CompanyId',
+      fields: new Map<string, unknown>([['CompanyId', { type: 'char', column: { notNull: true } }]]),
+    },
+  });
+
+  let createNull = '';
+  try {
+    applyRepositoryDefaultCompanyIdOnCreate(deps, { Name: 'n1', CompanyId: null } as any);
+  } catch (error) {
+    createNull = String((error as Error)?.message || error);
+  }
+  expect(createNull.includes('company_field_null_forbidden')).toBe(true);
+
+  let createEmpty = '';
+  try {
+    applyRepositoryDefaultCompanyIdOnCreate(deps, { Name: 'n1', CompanyId: '  ' } as any);
+  } catch (error) {
+    createEmpty = String((error as Error)?.message || error);
+  }
+  expect(createEmpty.includes('company_field_null_forbidden')).toBe(true);
+
+  let updateNull = '';
+  try {
+    applyRepositoryDefaultCompanyIdOnUpdate(deps, { CompanyId: null } as any);
+  } catch (error) {
+    updateNull = String((error as Error)?.message || error);
+  }
+  expect(updateNull.includes('company_field_null_forbidden')).toBe(true);
+
+  // Shareable models (no column.notNull) still allow explicit null.
+  const shareable = createCompanyDeps();
+  expect(applyRepositoryDefaultCompanyIdOnCreate(shareable.deps, { Name: 'shared', CompanyId: null } as any)).toEqual({
+    Name: 'shared',
+    CompanyId: null,
+  });
+  expect(applyRepositoryDefaultCompanyIdOnUpdate(shareable.deps, { CompanyId: null } as any)).toEqual({ CompanyId: null });
+});
+
 test('company scope default company on create and write access guard enforce in-scope company ids', async () => {
   const { deps } = createCompanyDeps();
   expect(applyRepositoryDefaultCompanyIdOnCreate(deps, { Name: 'n1' } as any)).toEqual({

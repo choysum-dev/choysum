@@ -44,6 +44,8 @@ export {
   resolveRepositoryCompanyField,
   repositoryHasCompanyField,
   requireRepositoryOwnershipField,
+  isRepositoryOwnershipFieldNotNull,
+  validateRepositoryOwnershipNullability,
   repositoryCompanyFieldEnabled,
   applyRepositoryCompanyLayer,
   applyRepositoryDefaultCompanyIdOnCreate,
