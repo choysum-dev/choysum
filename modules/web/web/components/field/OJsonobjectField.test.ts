@@ -143,6 +143,38 @@ describe('OJsonobjectField', () => {
     }
   });
 
+  it('auto renderMode follows isForm for compact vs pretty', async () => {
+    const listBinding = makeBinding({ Payload: { k: 1 } }, { isForm: false });
+    const listWrapper = mount(OJsonobjectField as any, {
+      props: { binding: listBinding, renderMode: 'auto' },
+      global: { stubs: { OFieldBase: fieldBaseStub } },
+    });
+    await nextTick();
+    expect(listWrapper.find('.vue-json-pretty-stub').exists()).toBe(false);
+    expect(listWrapper.find('.o-json-display').text()).toContain('"k"');
+    listWrapper.unmount();
+
+    const formBinding = makeBinding({ Payload: { k: 1 } }, { isForm: true });
+    const formWrapper = mount(OJsonobjectField as any, {
+      props: { binding: formBinding, renderMode: 'auto' },
+      global: { stubs: { OFieldBase: fieldBaseStub } },
+    });
+    await nextTick();
+    expect(formWrapper.find('.vue-json-pretty-stub').exists()).toBe(true);
+    formWrapper.unmount();
+
+    const noEnvBinding = makeBinding({ Payload: { k: 1 } });
+    (noEnvBinding as any).env = undefined;
+    const noEnvWrapper = mount(OJsonobjectField as any, {
+      props: { binding: noEnvBinding, renderMode: 'auto' },
+      global: { stubs: { OFieldBase: fieldBaseStub } },
+    });
+    await nextTick();
+    // env missing → not table-like → pretty path when value present
+    expect(noEnvWrapper.find('.vue-json-pretty-stub').exists()).toBe(true);
+    noEnvWrapper.unmount();
+  });
+
   it('null form display stays empty without pretty tree', async () => {
     const binding = makeBinding({ Payload: null });
     const wrapper = mount(OJsonobjectField as any, {
