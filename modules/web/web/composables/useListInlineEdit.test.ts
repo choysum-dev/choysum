@@ -221,6 +221,35 @@ describe('useListInlineEdit', () => {
     await expect(api.enterEdit({ kind: 'record', payload: { Id: '2', Name: 'C' } })).rejects.toThrow('fail');
   });
 
+  it('dirty switch aborts when save returns false', async () => {
+    const { api } = mountInline();
+    await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
+    api.editingDraft.value!.Name = 'B';
+    (ElMessageBox.confirm as any).mockImplementationOnce(async () => {
+      // Clear draft so save() returns false without throwing.
+      api.editingDraft.value = null;
+      return true;
+    });
+    expect(await api.enterEdit({ kind: 'record', payload: { Id: '2', Name: 'C' } })).toBe(false);
+    expect(api.editingRowId.value).toBe('1');
+  });
+
+  it('mapItemsWithDraft returns the same array when not editing', () => {
+    const { api } = mountInline();
+    const rows = [{ kind: 'record', payload: { Id: '1', Name: 'A' } }];
+    expect(api.mapItemsWithDraft(rows)).toBe(rows);
+  });
+
+  it('exitEdit tolerates a missing onchange controller', async () => {
+    const { useProvidedOnchange } = await import('@/web/web/composables/useOnchange');
+    (useProvidedOnchange as any).mockReturnValueOnce(null);
+    const { api } = mountInline();
+    await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
+    (useProvidedOnchange as any).mockReturnValueOnce(null);
+    await expect(api.discard()).resolves.toBeUndefined();
+    expect(api.isEditing.value).toBe(false);
+  });
+
   it('exits cleanly when switching undirty rows', async () => {
     const { api } = mountInline();
     await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
@@ -280,6 +309,10 @@ describe('useListInlineEdit form-root / onchange wiring', () => {
     await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
     expect(opts.getRoot()).toEqual(expect.objectContaining({ Id: '1' }));
     opts.onPatch({ Name: 'Z' });
+    expect(api.editingDraft.value?.Name).toBe('Z');
+    // Truthy non-object must hit the typeof!=='object' branch while a draft exists.
+    opts.onPatch('x');
+    opts.onPatch(42);
     expect(api.editingDraft.value?.Name).toBe('Z');
 
     api.editingDraft.value = null;

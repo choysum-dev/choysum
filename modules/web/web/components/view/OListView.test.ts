@@ -4,7 +4,7 @@
 
 import { defineComponent, h, inject, nextTick, reactive, ref } from 'vue';
 import { mount, flushPromises } from '@vue/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import OListView from '@/web/web/components/view/OListView.vue';
 import { LIST_HANDLE_API_KEY } from '@/web/web/composables/useListHandleReorder';
 
@@ -14,6 +14,9 @@ const visibleNodes = ref<any[]>([
 ]);
 const resultKind = ref<'search' | 'group'>('search');
 const applyMock = vi.fn(async () => {});
+const expandGroupMock = vi.fn();
+const loadMoreGroupChildrenMock = vi.fn(async () => {});
+const loadMoreGroupRecordsMock = vi.fn(async () => {});
 let lastRowClickPayload: any = null;
 
 vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }));
@@ -32,7 +35,9 @@ vi.mock('@/web/web/controllers/listController', () => ({
     apply: applyMock,
     paginate: vi.fn(async () => {}),
     sort: vi.fn(async () => {}),
-    expandGroup: vi.fn(),
+    expandGroup: expandGroupMock,
+    loadMoreGroupChildren: loadMoreGroupChildrenMock,
+    loadMoreGroupRecords: loadMoreGroupRecordsMock,
   })),
 }));
 
@@ -138,15 +143,32 @@ const OVTableStub = defineComponent({
           'reorder'
         ),
         slots.default?.(),
+        h('div', { class: 'empty-slot' }, slots.empty?.()),
       ]);
   },
 });
 
 const OVColumnStub = defineComponent({
   name: 'OVColumnStub',
-  props: { type: String },
-  setup(props) {
-    return () => h('div', { class: 'ov-column-stub', 'data-type': props.type });
+  props: { type: String, colKey: String },
+  setup(props, { slots }) {
+    return () => {
+      const kids =
+        props.colKey === '__group_label'
+          ? [
+              slots.default?.({ row: { kind: 'group', key: 'g1', depth: 1, label: 'Group', count: 3 } }),
+              slots.default?.({ row: { kind: 'group', key: 'g2', depth: 0, label: 'NoCount' } }),
+              slots.default?.({
+                row: { kind: 'more', key: 'more:g1', groupKey: 'g1', remain: 2, target: 'records' },
+              }),
+              slots.default?.({
+                row: { kind: 'more', key: 'more:g2', groupKey: 'g2', target: 'groups' },
+              }),
+              slots.default?.({ row: { kind: 'record', key: '1', payload: { Id: '1' } } }),
+            ]
+          : [];
+      return h('div', { class: 'ov-column-stub', 'data-type': props.type, 'data-key': props.colKey }, kids);
+    };
   },
 });
 
@@ -169,10 +191,14 @@ async function mountList(opts?: {
   offset?: number | null;
   clickToSelect?: boolean;
   searchView?: any;
+  orderBy?: any;
 }) {
   const store = makeStore();
   if (opts && 'offset' in (opts as object)) {
     (store.state.queryState.pagination as any).offset = opts.offset;
+  }
+  if (opts && 'orderBy' in (opts as object)) {
+    (store.state.queryState as any).orderBy = opts.orderBy;
   }
   const wrapper = mount(OListView, {
     props: {
@@ -199,8 +225,11 @@ async function mountList(opts?: {
   });
   await flushPromises();
   await nextTick();
+  mountedWrappers.push(wrapper);
   return { wrapper, store };
 }
+
+const mountedWrappers: ReturnType<typeof mount>[] = [];
 
 describe('OListView editable / handle', () => {
   beforeEach(() => {
@@ -213,6 +242,58 @@ describe('OListView editable / handle', () => {
       { kind: 'record', key: '1', payload: { Id: '1', Name: 'A', Sequence: 1 } },
       { kind: 'record', key: '2', payload: { Id: '2', Name: 'B', Sequence: 2 } },
     ];
+  });
+
+  afterEach(() => {
+    while (mountedWrappers.length) {
+      mountedWrappers.pop()!.unmount();
+    }
+  });
+
+  it('hides handle when showHandle is false or Sequence metadata is missing', async () => {
+    const hidden = await mountList({ showHandle: false });
+    expect(hidden.wrapper.find('.ov-column-stub[data-type="handle"]').exists()).toBe(false);
+
+    const store = makeStore();
+    delete (store.fieldsMetadata as any).Sequence;
+    const remount = mount(OListView, {
+      props: {
+        store: store as any,
+        editable: true,
+        showHandle: true,
+        showPaginate: false,
+        refreshAction: false,
+        deleteAction: false,
+      },
+      global: {
+        stubs: {
+          OViewContainer: { template: '<div><slot name="header" /><slot /></div>' },
+          OVTable: OVTableStub,
+          OVColumn: OVColumnStub,
+          OPagination: true,
+          ElButton: { template: '<button v-bind="$attrs" @click="$attrs.onClick"><slot /></button>' },
+          ElIcon: true,
+        },
+      },
+    });
+    await flushPromises();
+    expect(remount.find('.ov-column-stub[data-type="handle"]').exists()).toBe(false);
+    remount.unmount();
+  });
+
+  it('hides handle column in group mode and renders group/more cells', async () => {
+    resultKind.value = 'group';
+    visibleNodes.value = [
+      { kind: 'group', key: 'g1', depth: 0, label: 'G', count: 1 },
+      { kind: 'record', key: '1', payload: { Id: '1', Name: 'A', Sequence: 1 } },
+    ];
+    const { wrapper } = await mountList();
+    expect(wrapper.find('.ov-column-stub[data-type="handle"]').exists()).toBe(false);
+    expect(wrapper.find('.o-group-cell').exists()).toBe(true);
+    expect(wrapper.find('.o-more-cell').exists()).toBe(true);
+    expect(wrapper.find('.ovtable__empty').exists()).toBe(true);
+    await wrapper.find('.o-group-cell__caret').trigger('click');
+    expect(expandGroupMock).toHaveBeenCalledWith('g1', true);
   });
 
   it('enters inline edit on row click and shows save/discard actions', async () => {
@@ -425,5 +506,176 @@ describe('OListView editable / handle', () => {
     expect(headerViewMode?.value ?? headerViewMode).toBe('display');
     expect((globalThis as any).__listTableViewMode?.value ?? (globalThis as any).__listTableViewMode).toBe('edit');
     expect((globalThis as any).__listTableFormRoot?.draft?.Id).toBe('1');
+  });
+
+  it('discards undirty edit silently when the row leaves visible items', async () => {
+    const { ElMessage } = await import('element-plus');
+    (ElMessage.warning as any).mockClear();
+    const { wrapper } = await mountList();
+    await wrapper.find('.row-click-1').trigger('click');
+    await flushPromises();
+    expect((wrapper.vm as any).inlineEdit.isDirty()).toBe(false);
+
+    visibleNodes.value = [{ kind: 'record', key: '2', payload: { Id: '2', Name: 'B', Sequence: 2 } }];
+    await nextTick();
+    await flushPromises();
+
+    expect(ElMessage.warning).not.toHaveBeenCalled();
+    expect((wrapper.vm as any).inlineEdit.isEditing.value).toBe(false);
+  });
+
+  it('keeps editing when the visible set still contains the row', async () => {
+    const { wrapper } = await mountList();
+    await wrapper.find('.row-click-1').trigger('click');
+    await flushPromises();
+    visibleNodes.value = [
+      { kind: 'record', key: '1', payload: { Id: '1', Name: 'A', Sequence: 1 } },
+      { kind: 'record', key: '2', payload: { Id: '2', Name: 'B', Sequence: 2 } },
+      { kind: 'record', key: '3', payload: { Id: '3', Name: 'C', Sequence: 3 } },
+    ];
+    await nextTick();
+    await flushPromises();
+    expect((wrapper.vm as any).inlineEdit.isEditing.value).toBe(true);
+    expect((wrapper.vm as any).inlineEdit.editingRowId.value).toBe('1');
+  });
+
+  it('disables handle reorder while editing', async () => {
+    const { wrapper, store } = await mountList();
+    await wrapper.find('.row-click-1').trigger('click');
+    await flushPromises();
+    store.UpdateById.mockClear();
+    await wrapper.find('.reorder-handle').trigger('click');
+    await flushPromises();
+    expect(store.UpdateById).not.toHaveBeenCalled();
+  });
+
+  it('disables handle reorder when sorted by a non-handle or non-asc field', async () => {
+    const byName = await mountList({ orderBy: [{ field: 'Name', direction: 'asc' }] });
+    byName.store.UpdateById.mockClear();
+    await byName.wrapper.find('.reorder-handle').trigger('click');
+    await flushPromises();
+    expect(byName.store.UpdateById).not.toHaveBeenCalled();
+
+    const byDesc = await mountList({ orderBy: [{ field: 'Sequence', direction: 'desc' }] });
+    byDesc.store.UpdateById.mockClear();
+    await byDesc.wrapper.find('.reorder-handle').trigger('click');
+    await flushPromises();
+    expect(byDesc.store.UpdateById).not.toHaveBeenCalled();
+
+    const byAsc = await mountList({ orderBy: { field: 'Sequence', direction: 'ASC' } });
+    byAsc.store.UpdateById.mockClear();
+    await byAsc.wrapper.find('.reorder-handle').trigger('click');
+    await flushPromises();
+    expect(byAsc.store.UpdateById).toHaveBeenCalled();
+
+    // Missing direction is treated as non-asc and must disable reorder.
+    const noDir = await mountList({ orderBy: [{ field: 'Sequence' }] });
+    noDir.store.UpdateById.mockClear();
+    await noDir.wrapper.find('.reorder-handle').trigger('click');
+    await flushPromises();
+    expect(noDir.store.UpdateById).not.toHaveBeenCalled();
+  });
+
+  it('reports error when handle refresh fails after successful writes', async () => {
+    const { ElMessage } = await import('element-plus');
+    const { wrapper, store } = await mountList();
+    applyMock.mockRejectedValueOnce(new Error('refresh fail'));
+    await wrapper.find('.reorder-handle').trigger('click');
+    await flushPromises();
+    expect(store.UpdateById).toHaveBeenCalled();
+    expect(ElMessage.error).toHaveBeenCalledWith('Failed to reorder rows');
+  });
+
+  it('calls apply after successful inline save', async () => {
+    const { wrapper } = await mountList();
+    await wrapper.find('.row-click-1').trigger('click');
+    await flushPromises();
+    await wrapper.find('.mutate-draft').trigger('click');
+    applyMock.mockClear();
+    await wrapper.find('button[type="success"]').trigger('click');
+    await flushPromises();
+    expect(applyMock).toHaveBeenCalled();
+  });
+
+  it('falls back to clickToSelect when enterEdit fails in flat mode', async () => {
+    const { wrapper } = await mountList({ clickToSelect: true });
+    lastRowClickPayload = {
+      rowData: { kind: 'record', key: 'x', payload: { Name: 'no-id' } },
+      rowIndex: 0,
+      rowKey: 'x',
+      event: new MouseEvent('click'),
+    };
+    await wrapper.find('.row-click-custom').trigger('click');
+    await flushPromises();
+    expect((wrapper.vm as any).inlineEdit.isEditing.value).toBe(false);
+  });
+
+  it('falls back to clickToSelect when enterEdit fails in group mode', async () => {
+    resultKind.value = 'group';
+    const { wrapper } = await mountList({ clickToSelect: true });
+    lastRowClickPayload = {
+      rowData: { kind: 'record', key: 'x', payload: { Name: 'no-id' } },
+      rowIndex: 0,
+      rowKey: 'x',
+      event: new MouseEvent('click'),
+    };
+    await wrapper.find('.row-click-custom').trigger('click');
+    await flushPromises();
+    expect((wrapper.vm as any).inlineEdit.isEditing.value).toBe(false);
+  });
+
+  it('emits row-click for group and flat records when not editable', async () => {
+    resultKind.value = 'group';
+    const grouped = await mountList({ editable: false });
+    lastRowClickPayload = {
+      rowData: { kind: 'record', key: '1', payload: { Id: '1', Name: 'A' } },
+      rowIndex: 1,
+      rowKey: '1',
+      event: new MouseEvent('click'),
+    };
+    await grouped.wrapper.find('.row-click-custom').trigger('click');
+    await flushPromises();
+    expect(grouped.wrapper.emitted('row-click')?.length).toBeGreaterThan(0);
+
+    resultKind.value = 'search';
+    const flat = await mountList({ editable: false });
+    await flat.wrapper.find('.row-click-1').trigger('click');
+    await flushPromises();
+    expect(flat.wrapper.emitted('row-click')?.length).toBeGreaterThan(0);
+  });
+
+  it('expands groups and loads more rows from group row clicks', async () => {
+    resultKind.value = 'group';
+    const { wrapper } = await mountList({ editable: false });
+
+    lastRowClickPayload = {
+      rowData: { kind: 'group', key: 'g1' },
+      rowIndex: 0,
+      rowKey: 'g1',
+      event: new MouseEvent('click'),
+    };
+    await wrapper.find('.row-click-custom').trigger('click');
+    await flushPromises();
+    expect(expandGroupMock).toHaveBeenCalledWith('g1', true);
+
+    lastRowClickPayload = {
+      rowData: { kind: 'more', key: 'more:g1', groupKey: 'g1', target: 'records' },
+      rowIndex: 1,
+      rowKey: 'more:g1',
+      event: new MouseEvent('click'),
+    };
+    await wrapper.find('.row-click-custom').trigger('click');
+    await flushPromises();
+    expect(loadMoreGroupRecordsMock).toHaveBeenCalledWith('g1');
+
+    lastRowClickPayload = {
+      rowData: { kind: 'more', key: 'more-g:g1', groupKey: 'g1', target: 'groups' },
+      rowIndex: 2,
+      rowKey: 'more-g:g1',
+      event: new MouseEvent('click'),
+    };
+    await wrapper.find('.row-click-custom').trigger('click');
+    await flushPromises();
+    expect(loadMoreGroupChildrenMock).toHaveBeenCalledWith('g1');
   });
 });
