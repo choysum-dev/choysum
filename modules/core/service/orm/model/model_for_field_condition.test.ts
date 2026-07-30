@@ -360,6 +360,39 @@ test('resolveForFieldCondition treats throwing targetModel resolver as unresolva
   }
 });
 
+test('resolveForFieldCondition accepts bare class targetModel (not only thunk)', () => {
+  const fieldMeta = MetadataStorage.instance.getModelMetadata(ForFieldOrder as any).fields.get('BankAccountId')!;
+  const originalRelation = fieldMeta.relation;
+  try {
+    (fieldMeta as any).relation = { targetModel: ForFieldBank };
+    expect(
+      resolveForFieldCondition(ForFieldBank as any, { model: 'demo.ForFieldOrder', field: 'BankAccountId' })
+    ).toEqual(['Active', '=', true]);
+  } finally {
+    fieldMeta.relation = originalRelation;
+  }
+});
+
+test('resolveForFieldCondition resolves via meta.name / className when fullModelName empty', () => {
+  const fieldMeta = MetadataStorage.instance.getModelMetadata(ForFieldOrder as any).fields.get('BankAccountId')!;
+  const originalRelation = fieldMeta.relation;
+  try {
+    (fieldMeta as any).relation = { targetModel: () => ForFieldBank };
+    withPatchedGetModelMetadata((original, model) => {
+      if (model === ForFieldBank) {
+        return { fullModelName: '', modelName: '', name: 'ForFieldBank', className: 'ForFieldBank', fields: new Map() };
+      }
+      return original(model);
+    }, () => {
+      expect(
+        resolveForFieldCondition(ForFieldBank as any, { model: 'demo.ForFieldOrder', field: 'BankAccountId' })
+      ).toEqual(['Active', '=', true]);
+    });
+  } finally {
+    fieldMeta.relation = originalRelation;
+  }
+});
+
 test('resolveForFieldCondition treats empty resolved target meta name as unresolvable', () => {
   class NamelessTarget {}
   const fieldMeta = MetadataStorage.instance.getModelMetadata(ForFieldOrder as any).fields.get('BankAccountId')!;

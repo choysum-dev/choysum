@@ -30,10 +30,25 @@ function resolveRelationTargetFullName(fieldMeta: FieldMetadata): string | undef
   }
   if (typeof targetModel === 'function') {
     try {
-      const ctor = (targetModel as () => ModelCtor)();
-      if (!ctor) return undefined;
+      let ctor: ModelCtor | undefined;
+      try {
+        // Field authoring uses `() => ModelCtor` thunks.
+        const resolved = (targetModel as () => ModelCtor | null | undefined)();
+        if (!resolved) return undefined;
+        if (typeof resolved !== 'function') return undefined;
+        ctor = resolved;
+      } catch (err) {
+        // A bare class constructor throws when called without `new`.
+        const message = err instanceof Error ? err.message : String(err);
+        if (err instanceof TypeError && /cannot be invoked without ['"]?new['"]?|Class constructor/i.test(message)) {
+          ctor = targetModel as ModelCtor;
+        } else {
+          return undefined;
+        }
+      }
       const meta = MetadataStorage.instance.getModelMetadata(ctor as never);
-      const full = String(meta?.fullModelName || meta?.modelName || '').trim();
+      // Align with receiverModelKeys meta labels; omit ctor.name so intentionally blank meta stays unresolvable.
+      const full = String(meta?.fullModelName || meta?.modelName || meta?.name || meta?.className || '').trim();
       return full || undefined;
     } catch {
       return undefined;
