@@ -277,6 +277,7 @@ describe('OListView editable / handle', () => {
   });
 
   it('swallows save errors in handleInlineSave', async () => {
+    const { ElMessage } = await import('element-plus');
     const { wrapper, store } = await mountList();
     await wrapper.find('.row-click-1').trigger('click');
     await flushPromises();
@@ -284,8 +285,10 @@ describe('OListView editable / handle', () => {
     store.UpdateById = vi.fn(async () => {
       throw new Error('save fail');
     });
-    await expect(wrapper.find('button[type="success"]').trigger('click')).resolves.toBeUndefined();
+    await wrapper.find('button[type="success"]').trigger('click');
     await flushPromises();
+    expect((wrapper.vm as any).inlineEdit.isEditing.value).toBe(true);
+    expect(ElMessage.error).toHaveBeenCalledWith('Failed to save row');
   });
 
   it('hides handle column when not editable', async () => {

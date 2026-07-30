@@ -154,10 +154,9 @@ binding.registerFields(`${binding.prop}.DisplayName`);
 
 const { getItems, insertItem, removeItemAt } = binding.asMutableArray<any>();
 const store = props.store;
-const relationStore = binding.relationStore;
 
 const showHandleColumn = computed(
-  () => props.showHandle !== false && hasHandleField(relationStore, props.handleField)
+  () => props.showHandle !== false && hasHandleField(binding.relationStore, props.handleField)
 );
 
 const o2mHandleEnabled = computed(() => showHandleColumn.value && binding.env.isEditMode);
@@ -172,6 +171,8 @@ const o2mHandleReorder = useListHandleReorder({
   },
 });
 
+// Clear ambient list-editing-row-id so parent S2 list ids cannot gate nested line cells.
+provide('list-editing-row-id', ref(null));
 provide(LIST_HANDLE_API_KEY, o2mHandleReorder);
 
 // Row height for edit and display modes.

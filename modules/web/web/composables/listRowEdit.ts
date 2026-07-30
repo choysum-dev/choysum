@@ -85,6 +85,13 @@ export function renumberSequence<T extends Record<string, any>>(
   return changed;
 }
 
+/** Dangerous object keys that must not be used as path segments (prototype pollution). */
+const FORBIDDEN_PATH_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+function isSafePathKey(key: string): boolean {
+  return !!key && !FORBIDDEN_PATH_KEYS.has(key);
+}
+
 /** Build a top-level Update payload from original vs draft, skipping readonly metadata fields. */
 export function collectRowDirtyPayload(
   original: Record<string, any>,
@@ -101,6 +108,7 @@ export function collectRowDirtyPayload(
   const payload: Record<string, any> = {};
   for (const path of paths) {
     if (!path || path.includes('.')) continue;
+    if (!isSafePathKey(path)) continue;
     const meta = fieldsMetadata?.[path];
     if (meta?.isReadonly === true) continue;
     payload[path] = draft[path];
@@ -137,6 +145,7 @@ export function getDraftField(draft: any, path: string): any {
 export function setDraftField(draft: any, path: string, value: any): void {
   if (!draft || typeof draft !== 'object') return;
   const segs = String(path).split('.').filter(Boolean);
+  if (!segs.length || segs.some(k => !isSafePathKey(k))) return;
   let cur = draft;
   for (let i = 0; i < segs.length - 1; i++) {
     const k = segs[i]!;

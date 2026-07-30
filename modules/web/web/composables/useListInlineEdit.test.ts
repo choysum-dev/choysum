@@ -312,6 +312,28 @@ describe('useListInlineEdit form-root / onchange wiring', () => {
     expect(pauseMock.mock.invocationCallOrder[0]).toBeGreaterThan(resetMock.mock.invocationCallOrder[0]!);
   });
 
+  it('save rejects re-entrant calls while a save is in flight', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    const { api, UpdateById } = mountInline({
+      updateImpl: async () => {
+        await gate;
+        return {};
+      },
+    });
+    await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
+    api.editingDraft.value!.Name = 'B';
+    const first = api.save();
+    await Promise.resolve();
+    expect(api.saving.value).toBe(true);
+    expect(await api.save()).toBe(false);
+    release();
+    await expect(first).resolves.toBe(true);
+    expect(UpdateById).toHaveBeenCalledTimes(1);
+  });
+
   it('exits edit when flush clears draft during save', async () => {
     const { api } = mountInline();
     await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });

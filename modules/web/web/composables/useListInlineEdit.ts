@@ -121,6 +121,7 @@ export function useListInlineEdit<T extends BaseModel>(opts: {
   }
 
   async function save(): Promise<boolean> {
+    if (saving.value) return false;
     if (!editingDraft.value || !editingOriginal.value || !editingRowId.value) return false;
     saving.value = true;
     try {

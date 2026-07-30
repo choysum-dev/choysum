@@ -156,4 +156,19 @@ describe('listRowEdit helpers', () => {
     setDraftField(draft, 'a.b', 1);
     expect(draft.a.b).toBe(1);
   });
+
+  it('setDraftField and collectRowDirtyPayload reject prototype-pollution keys', () => {
+    const draft: any = { Name: 'A' };
+    setDraftField(draft, '__proto__.polluted', true);
+    setDraftField(draft, 'constructor.prototype.x', 1);
+    expect(({} as any).polluted).toBeUndefined();
+    expect(draft.Name).toBe('A');
+    expect(Object.prototype.hasOwnProperty.call(draft, '__proto__')).toBe(false);
+
+    const spy = vi.spyOn(diff, 'collectChangedPaths').mockReturnValue(new Set(['__proto__', 'Name']));
+    const payload = collectRowDirtyPayload({ Name: 'A' }, { Name: 'B', __proto__: { x: 1 } } as any);
+    expect(payload).toEqual({ Name: 'B' });
+    expect(Object.getPrototypeOf(payload)).toBe(Object.prototype);
+    spy.mockRestore();
+  });
 });

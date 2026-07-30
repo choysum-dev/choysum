@@ -15,7 +15,7 @@ export type ListHandleReorderApi = {
   draggingIndex: Ref<number | null>;
   onDragStart: (index: number, event: DragEvent) => void;
   onDragOver: (index: number, event: DragEvent) => void;
-  onDrop: (index: number, event: DragEvent) => void;
+  onDrop: (index: number, event: DragEvent) => void | Promise<void>;
   onDragEnd: () => void;
 };
 
@@ -77,7 +77,11 @@ export function useListHandleReorder<T extends Record<string, any>>(opts: {
       const idx = payloads.indexOf(rec);
       return { row: rows[idx]!, previous, next };
     });
-    await opts.onReorder(rows, changed);
+    try {
+      await opts.onReorder(rows, changed);
+    } catch {
+      /* Caller/UI surfaces errors; avoid unhandled rejection from void onDrop. */
+    }
   }
 
   function onDragEnd() {

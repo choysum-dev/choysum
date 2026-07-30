@@ -23,7 +23,7 @@ export function buildHandleReorderWrites(
     .filter(Boolean) as HandleReorderWrite[];
 }
 
-/** Persist sequence writes with rollback + refresh on failure. */
+/** Persist sequence writes with rollback on write failure; refresh failures do not undo writes. */
 export async function persistHandleReorder(opts: {
   writes: HandleReorderWrite[];
   handleField: string;
@@ -34,11 +34,11 @@ export async function persistHandleReorder(opts: {
 }): Promise<void> {
   const { writes, handleField, updateById, refresh, rollbackFlat, onError } = opts;
   if (!writes.length) return;
+
   try {
     for (const w of writes) {
       await updateById(w.id, { [handleField]: w.next });
     }
-    await refresh();
   } catch {
     for (const w of writes) {
       if (w.previous === undefined) continue;
@@ -55,6 +55,14 @@ export async function persistHandleReorder(opts: {
     } catch {
       /* ignore */
     }
+    return;
+  }
+
+  try {
+    await refresh();
+  } catch {
+    // Writes already persisted; do not roll sequences back on a read/refresh failure.
+    onError();
   }
 }
 

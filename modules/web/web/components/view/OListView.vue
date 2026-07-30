@@ -9,22 +9,30 @@ SPDX-License-Identifier: Apache-2.0
       <div class="o-list__action-bar">
         <div class="o-list__actions">
           <div class="o-list__system-actions" v-if="showActions">
-            <slot name="system-actions" :selected-items="selectedItems">
-              <el-button
-                v-if="editable && isEditing"
-                size="small"
-                plain
-                type="success"
-                :loading="inlineSaving"
-                @click="handleInlineSave"
-              >
-                {{ _t('Save') }}
-              </el-button>
+            <!-- Keep Save/Discard outside the overridable slot so custom toolbars cannot hide them. -->
+            <el-button
+              v-if="editable && isEditing"
+              size="small"
+              plain
+              type="success"
+              :loading="inlineSaving"
+              @click="handleInlineSave"
+            >
+              {{ _t('Save') }}
+            </el-button>
 
-              <el-button v-if="editable && isEditing" size="small" plain @click="handleInlineDiscard">
-                {{ _t('Discard') }}
-              </el-button>
+            <el-button v-if="editable && isEditing" size="small" plain @click="handleInlineDiscard">
+              {{ _t('Discard') }}
+            </el-button>
 
+            <slot
+              name="system-actions"
+              :selected-items="selectedItems"
+              :is-editing="isEditing"
+              :inline-saving="inlineSaving"
+              :save="handleInlineSave"
+              :discard="handleInlineDiscard"
+            >
               <el-button v-if="createAction && canCreate" size="small" plain type="primary" @click="handleCreate">
                 <el-icon><Plus /></el-icon>
                 {{ _t('New') }}
@@ -328,7 +336,17 @@ const showHandleColumn = computed(
     hasHandleField(store, props.handleField)
 );
 
-const handleEnabled = computed(() => showHandleColumn.value && !inlineEdit.isEditing.value);
+const handleEnabled = computed(() => {
+  if (!showHandleColumn.value || inlineEdit.isEditing.value) return false;
+  // Reorder only when unsorted, or sorted by handleField ascending (matches renumber semantics).
+  const raw = (store.state as any)?.queryState?.orderBy ?? (store.state as any)?.orderBy;
+  const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  if (!list.length) return true;
+  const primary = list[0] as { field?: string; direction?: string } | undefined;
+  const field = primary?.field;
+  const dir = String(primary?.direction || '').toLowerCase();
+  return field === props.handleField && dir === 'asc';
+});
 
 const handleReorder = useListHandleReorder({
   rows: () => flatRows.value,

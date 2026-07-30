@@ -924,6 +924,11 @@ function createAutoOnchangeController(store: WebModelStore<any>, opts?: CreateOn
     reset,
     rebindOptions(next) {
       options = next;
+      // Drop prior-root diff state so remounts / draft swaps do not flush stale pending.
+      baseline = null;
+      pending.value.clear();
+      fullPathsRef.value.clear();
+      initialized = false;
     },
     registerAfterFlush(cb) {
       afterFlushCallbacks.add(cb);

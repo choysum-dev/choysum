@@ -77,7 +77,11 @@ describe('useListHandleReorder', () => {
     const [nextRows, changed] = onReorder.mock.calls[0];
     expect(nextRows.map((r: any) => r.payload.Id)).toEqual(['b', 'c', 'a']);
     expect(nextRows.map((r: any) => r.payload.Sequence)).toEqual([21, 22, 23]);
-    expect(changed.length).toBeGreaterThanOrEqual(0);
+    expect(changed.map((c: any) => [c.row.payload.Id, c.previous, c.next])).toEqual([
+      ['b', 22, 21],
+      ['c', 23, 22],
+      ['a', 21, 23],
+    ]);
 
     api.onDragEnd();
     expect(api.draggingIndex.value).toBeNull();

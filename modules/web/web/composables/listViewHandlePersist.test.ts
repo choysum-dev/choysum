@@ -88,6 +88,32 @@ describe('listViewHandlePersist', () => {
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 
+  it('persistHandleReorder does not roll back writes when only refresh fails', async () => {
+    const updateById = vi.fn(async () => {});
+    const refresh = vi.fn(async () => {
+      throw new Error('reload failed');
+    });
+    const rollbackFlat = vi.fn();
+    const onError = vi.fn();
+    await persistHandleReorder({
+      writes: [
+        { id: 'a', previous: 1, next: 2 },
+        { id: 'b', previous: 2, next: 1 },
+      ],
+      handleField: 'Sequence',
+      updateById,
+      refresh,
+      rollbackFlat,
+      onError,
+    });
+    expect(updateById).toHaveBeenCalledTimes(2);
+    expect(updateById).toHaveBeenCalledWith('a', { Sequence: 2 });
+    expect(updateById).toHaveBeenCalledWith('b', { Sequence: 1 });
+    expect(rollbackFlat).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalled();
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
   it('persistHandleReorder ignores rollback UpdateById errors', async () => {
     const updateById = vi
       .fn()

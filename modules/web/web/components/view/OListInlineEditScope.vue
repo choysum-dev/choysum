@@ -13,7 +13,7 @@ SPDX-License-Identifier: Apache-2.0
  * Keeps header search / action-bar fields from entering edit mode or
  * reading/writing the active row draft via list-wide provides.
  */
-import { provide, ref, watch } from 'vue';
+import { computed, provide } from 'vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 
 defineOptions({ name: 'OListInlineEditScope' });
@@ -27,15 +27,10 @@ const props = defineProps<{
   viewMode: ViewMode;
 }>();
 
-const modeRef = ref<ViewMode>(props.viewMode);
-watch(
-  () => props.viewMode,
-  v => {
-    modeRef.value = v;
-  }
+provide(
+  'view-mode',
+  computed(() => props.viewMode)
 );
-
-provide('view-mode', modeRef);
 // Stable object identity; getters read live draft state from the composable.
 provide('form-root', props.formRoot);
 </script>
