@@ -23,6 +23,8 @@ export function useListHandleReorder<T extends Record<string, any>>(opts: {
   rows: () => T[];
   enabled: Ref<boolean>;
   handleField?: string;
+  /** First sequence number for the first visible row (default 1). Use offset+1 when paginated. */
+  sequenceStart?: () => number;
   /** Map a table row to the object that receives Sequence writes (defaults to identity). */
   getRecord?: (row: T) => Record<string, any>;
   onReorder: (rows: T[], changed: ReturnType<typeof renumberSequence<Record<string, any>>>) => void | Promise<void>;
@@ -68,8 +70,9 @@ export function useListHandleReorder<T extends Record<string, any>>(opts: {
     rows.splice(index, 0, item!);
 
     const handleField = opts.handleField ?? 'Sequence';
+    const start = opts.sequenceStart?.() ?? 1;
     const payloads = rows.map(r => recordOf(r));
-    const seqChanges = renumberSequence(payloads, handleField);
+    const seqChanges = renumberSequence(payloads, handleField, start);
     const changed = seqChanges.map(({ row: rec, previous, next }) => {
       const idx = payloads.indexOf(rec);
       return { row: rows[idx]!, previous, next };

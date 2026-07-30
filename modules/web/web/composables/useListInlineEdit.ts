@@ -116,12 +116,21 @@ export function useListInlineEdit<T extends BaseModel>(opts: {
       const payload = collectRowDirtyPayload(editingOriginal.value, editingDraft.value, opts.store.fieldsMetadata as any);
       if (Object.keys(payload).length === 0) {
         exitEdit();
+        try {
+          await opts.onSaved?.();
+        } catch {
+          /* persist skipped; refresh failure is non-fatal */
+        }
         return true;
       }
       await opts.store.UpdateById(editingRowId.value, payload as any);
       ElMessage.success(_t('Row saved'));
       exitEdit();
-      await opts.onSaved?.();
+      try {
+        await opts.onSaved?.();
+      } catch {
+        /* Update already succeeded; do not surface as save failure */
+      }
       return true;
     } catch (e: any) {
       ElMessage.error(_t('Failed to save row'));

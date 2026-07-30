@@ -42,6 +42,12 @@ describe('listRowEdit helpers', () => {
     expect(changed).toHaveLength(3);
   });
 
+  it('renumberSequence respects pagination start offset', () => {
+    const rows = [{ Sequence: 1 }, { Sequence: 2 }];
+    renumberSequence(rows, 'Sequence', 21);
+    expect(rows.map(r => r.Sequence)).toEqual([21, 22]);
+  });
+
   it('hasHandleField requires numeric writable metadata field', () => {
     const store = {
       fieldsMetadata: {

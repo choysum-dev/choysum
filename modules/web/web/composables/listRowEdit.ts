@@ -62,16 +62,20 @@ export function hasHandleField(store: WebModelStore<any> | undefined, handleFiel
 }
 
 /**
- * Assign handleField = index + 1 (1..n) for each row in order.
+ * Assign handleField = start + index (default start=1 → 1..n) for each row in order.
+ * Pass `start = pagination.offset + 1` on paginated lists so page-local reorder
+ * does not collide with sequences on other pages.
  * Returns rows whose sequence value changed.
  */
 export function renumberSequence<T extends Record<string, any>>(
   rows: T[],
-  handleField = 'Sequence'
+  handleField = 'Sequence',
+  start = 1
 ): { row: T; previous: number | undefined; next: number }[] {
+  const base = Number.isFinite(start) && start >= 1 ? Math.floor(start) : 1;
   const changed: { row: T; previous: number | undefined; next: number }[] = [];
   rows.forEach((row, index) => {
-    const next = index + 1;
+    const next = base + index;
     const previous = row[handleField] as number | undefined;
     if (previous !== next) {
       (row as Record<string, any>)[handleField] = next;

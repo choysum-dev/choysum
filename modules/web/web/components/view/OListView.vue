@@ -291,8 +291,22 @@ const items = computed<any[]>(() => controller.vm.visibleNodes || []);
 
 watch(
   items,
-  () => {
-    if (!inlineEdit.isEditing.value) syncFlatRowsFromItems();
+  async () => {
+    if (inlineEdit.isEditing.value) {
+      const editingId = inlineEdit.editingRowId.value;
+      const stillVisible =
+        !!editingId &&
+        (items.value || []).some(row => isListRecordRow(row) && listRecordId(row) === editingId);
+      if (!stillVisible) {
+        if (inlineEdit.isDirty()) {
+          ElMessage.warning(_t('Editing was discarded because the row is no longer visible.'));
+        }
+        await inlineEdit.discard();
+      }
+    }
+    // Always resync flatRows so pagination/sort/refresh do not leave a stale table.
+    // mapItemsWithDraft still overlays the active draft onto the matching row id.
+    syncFlatRowsFromItems();
   },
   { immediate: true }
 );
@@ -311,29 +325,51 @@ const handleReorder = useListHandleReorder({
   rows: () => flatRows.value,
   enabled: handleEnabled,
   handleField: props.handleField ?? 'Sequence',
+  sequenceStart: () => (effectivePagination.value.offset ?? 0) + 1,
   getRecord: row => unwrapListRecord(row),
   onReorder: async (rows, changed) => {
+    const previousFlat = flatRows.value;
     flatRows.value = rows.map(row => ({
       ...row,
       payload: { ...unwrapListRecord(row) },
     }));
     if (!changed.length) return;
+
+    const field = props.handleField ?? 'Sequence';
+    const writes = changed
+      .map(({ row, previous, next }) => {
+        const rec = unwrapListRecord(row);
+        const id = listRecordId(rec);
+        if (!id) return null;
+        return { id, previous, next };
+      })
+      .filter(Boolean) as { id: string; previous: number | undefined; next: number }[];
+
     try {
-      const field = props.handleField ?? 'Sequence';
-      await Promise.all(
-        changed.map(({ row }) => {
-          const rec = unwrapListRecord(row);
-          const id = listRecordId(rec);
-          if (!id) return Promise.resolve();
-          return store.UpdateById(id, { [field]: rec[field] } as any);
-        })
-      );
+      // Sequential writes so a mid-flight failure has a clear applied prefix for rollback.
+      for (const w of writes) {
+        await store.UpdateById(w.id, { [field]: w.next } as any);
+      }
       await controller.apply();
       syncFlatRowsFromItems();
     } catch {
+      // Best-effort rollback of sequences we already wrote, then reload from server.
+      for (const w of writes) {
+        if (w.previous === undefined) continue;
+        try {
+          await store.UpdateById(w.id, { [field]: w.previous } as any);
+        } catch {
+          /* ignore rollback errors; apply() will reconcile */
+        }
+      }
+      flatRows.value = previousFlat;
       ElMessage.error(_t('Failed to reorder rows'));
-      await controller.apply();
-      syncFlatRowsFromItems();
+      try {
+        await controller.apply();
+        syncFlatRowsFromItems();
+      } catch {
+        /* ignore */
+      }
     }
   },
 });
