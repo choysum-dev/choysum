@@ -318,7 +318,7 @@ const showHandleColumn = computed(
     props.showHandle !== false &&
     props.editable === true &&
     !isGroupMode.value &&
-    hasHandleField(store, props.handleField ?? 'Sequence')
+    hasHandleField(store, props.handleField)
 );
 
 const handleEnabled = computed(() => showHandleColumn.value && !inlineEdit.isEditing.value);
@@ -326,7 +326,7 @@ const handleEnabled = computed(() => showHandleColumn.value && !inlineEdit.isEdi
 const handleReorder = useListHandleReorder({
   rows: () => flatRows.value,
   enabled: handleEnabled,
-  handleField: props.handleField ?? 'Sequence',
+  handleField: props.handleField,
   sequenceStart: () => (effectivePagination.value.offset ?? 0) + 1,
   getRecord: row => unwrapListRecord(row),
   onReorder: async (rows, changed) => {
@@ -338,7 +338,7 @@ const handleReorder = useListHandleReorder({
     const writes = buildHandleReorderWrites(changed);
     if (!writes.length) return;
 
-    const field = props.handleField ?? 'Sequence';
+    const field = props.handleField;
     await persistHandleReorder({
       writes,
       handleField: field,

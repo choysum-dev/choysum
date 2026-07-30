@@ -157,7 +157,7 @@ const store = props.store;
 const relationStore = binding.relationStore;
 
 const showHandleColumn = computed(
-  () => props.showHandle !== false && hasHandleField(relationStore, props.handleField ?? 'Sequence')
+  () => props.showHandle !== false && hasHandleField(relationStore, props.handleField)
 );
 
 const o2mHandleEnabled = computed(() => showHandleColumn.value && binding.env.isEditMode);
@@ -165,7 +165,7 @@ const o2mHandleEnabled = computed(() => showHandleColumn.value && binding.env.is
 const o2mHandleReorder = useListHandleReorder({
   rows: () => getItems(),
   enabled: o2mHandleEnabled,
-  handleField: props.handleField ?? 'Sequence',
+  handleField: props.handleField,
   onReorder: rows => {
     // Replace array order in one write; Sequence values were already renumbered 1..n.
     (binding.fieldRef() as { value: any }).value = rows.slice();

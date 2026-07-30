@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   cloneRowDraft,
   collectRowDirtyPayload,
@@ -17,6 +17,7 @@ import {
   withEditingPayload,
 } from '@/web/web/composables/listRowEdit';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
+import * as diff from '@/core/utils/diff';
 
 describe('listRowEdit helpers', () => {
   it('unwrapListRecord covers wrappers and passthrough', () => {
@@ -114,6 +115,15 @@ describe('listRowEdit helpers', () => {
     expect(isRowDraftDirty(original, draft)).toBe(true);
     expect(isRowDraftDirty(null, draft)).toBe(false);
     expect(isRowDraftDirty(original, null)).toBe(false);
+  });
+
+  it('collectRowDirtyPayload skips empty paths from collectChangedPaths', () => {
+    const spy = vi.spyOn(diff, 'collectChangedPaths').mockReturnValue(new Set(['', 'Name']));
+    const payload = collectRowDirtyPayload({ Name: 'A' }, { Name: 'B' }, {
+      Name: { id: '1', type: 'string', typeAnnotation: '' },
+    });
+    expect(payload).toEqual({ Name: 'B' });
+    spy.mockRestore();
   });
 
   it('withEditingPayload swaps kind/type/plain rows', () => {

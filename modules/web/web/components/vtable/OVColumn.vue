@@ -232,7 +232,7 @@ function buildColumn(): Column {
     const width = colProps.width ?? 36;
     col = {
       key: dataKey,
-      dataKey: dataKey || '__handle__',
+      dataKey,
       title: title || '',
       width,
       align: 'center',

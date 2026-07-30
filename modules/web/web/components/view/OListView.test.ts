@@ -153,13 +153,22 @@ function makeStore() {
   };
 }
 
-async function mountList(opts?: { editable?: boolean; showHandle?: boolean }) {
+async function mountList(opts?: {
+  editable?: boolean;
+  showHandle?: boolean;
+  handleField?: string;
+  offset?: number | null;
+}) {
   const store = makeStore();
+  if (opts && 'offset' in (opts as object)) {
+    (store.state.queryState.pagination as any).offset = opts.offset;
+  }
   const wrapper = mount(OListView, {
     props: {
       store: store as any,
       editable: opts?.editable ?? true,
       showHandle: opts?.showHandle ?? true,
+      ...(opts?.handleField != null ? { handleField: opts.handleField } : {}),
       showPaginate: false,
       refreshAction: false,
       deleteAction: false,
@@ -300,5 +309,56 @@ describe('OListView editable / handle', () => {
     await wrapper.find('.row-click-custom').trigger('click');
     await flushPromises();
     expect((wrapper.vm as any).inlineEdit.isEditing.value).toBe(false);
+  });
+
+  it('does not enter edit on group record click when not editable', async () => {
+    resultKind.value = 'group';
+    const { wrapper } = await mountList({ editable: false });
+    lastRowClickPayload = {
+      rowData: { kind: 'record', key: '1', payload: { Id: '1', Name: 'A' } },
+      rowIndex: 0,
+      rowKey: '1',
+      event: new MouseEvent('click'),
+    };
+    await wrapper.find('.row-click-custom').trigger('click');
+    await flushPromises();
+    expect((wrapper.vm as any).inlineEdit.isEditing.value).toBe(false);
+  });
+
+  it('does not enter edit on plain row click when not editable', async () => {
+    const { wrapper } = await mountList({ editable: false });
+    await wrapper.find('.row-click-1').trigger('click');
+    await flushPromises();
+    expect((wrapper.vm as any).inlineEdit.isEditing.value).toBe(false);
+  });
+
+  it('does not enter edit when record row has no id in flat mode', async () => {
+    const { wrapper } = await mountList();
+    lastRowClickPayload = {
+      rowData: { kind: 'record', key: 'x', payload: { Name: 'no-id' } },
+      rowIndex: 0,
+      rowKey: 'x',
+      event: new MouseEvent('click'),
+    };
+    await wrapper.find('.row-click-custom').trigger('click');
+    await flushPromises();
+    expect((wrapper.vm as any).inlineEdit.isEditing.value).toBe(false);
+  });
+
+  it('skips persist when handle reorder yields no writes', async () => {
+    const persist = await import('@/web/web/composables/listViewHandlePersist');
+    const spy = vi.spyOn(persist, 'buildHandleReorderWrites').mockReturnValue([]);
+    const { wrapper, store } = await mountList();
+    await wrapper.find('.reorder-handle').trigger('click');
+    await flushPromises();
+    expect(store.UpdateById).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('uses pagination offset fallback when offset is null', async () => {
+    const { wrapper, store } = await mountList({ offset: null });
+    await wrapper.find('.reorder-handle').trigger('click');
+    await flushPromises();
+    expect(store.UpdateById).toHaveBeenCalled();
   });
 });

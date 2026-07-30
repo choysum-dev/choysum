@@ -470,6 +470,26 @@ describe('OFieldBase list-editing-row-id gate', () => {
     });
     expect(wrapper.findAll('.edit-slot')).toHaveLength(2);
   });
+
+  it('keeps display when list-editing-row-id is set but env is not edit mode', () => {
+    const editingId = ref<string | null>('1');
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Name' }, { isEditMode: false }),
+        renderMode: 'table',
+      },
+      slots: {
+        edit: () => h('div', { class: 'edit-slot' }, 'edit'),
+        display: () => h('div', { class: 'display-slot' }, 'display'),
+      },
+      global: {
+        stubs: { ...fieldBaseStubs, OVColumn: tableRowsStub },
+        provide: { 'list-editing-row-id': editingId },
+      },
+    });
+    expect(wrapper.findAll('.edit-slot')).toHaveLength(0);
+    expect(wrapper.findAll('.display-slot').length).toBeGreaterThan(0);
+  });
 });
 
 describe('OFieldBase company values action', () => {

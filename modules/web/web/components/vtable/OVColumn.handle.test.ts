@@ -19,7 +19,7 @@ vi.mock('@/web/web/composables/useVTable', async () => {
   };
 });
 
-function mountHandleColumn(opts?: { enabled?: boolean }) {
+function mountHandleColumn(opts?: { enabled?: boolean; width?: number; colKey?: string; type?: string }) {
   columnsRef.value = [];
   const enabled = ref(opts?.enabled ?? true);
   const rows = [
@@ -36,7 +36,17 @@ function mountHandleColumn(opts?: { enabled?: boolean }) {
   const Host = defineComponent({
     setup() {
       provide(LIST_HANDLE_API_KEY, handleApi);
-      return () => h(OVColumn, { type: 'handle', colKey: '__handle__', vColumnProps: { width: 36, align: 'center' } });
+      const columnProps: Record<string, any> = {
+        type: opts?.type ?? 'handle',
+        colKey: opts?.colKey ?? '__handle__',
+      };
+      if (opts?.width !== undefined) {
+        columnProps.vColumnProps = { width: opts.width, align: 'center' };
+      } else if (opts?.type == null || opts?.type === 'handle') {
+        // omit width to hit colProps.width ?? 36 fallback
+        columnProps.vColumnProps = { align: 'center' };
+      }
+      return () => h(OVColumn, columnProps);
     },
   });
 
@@ -46,7 +56,7 @@ function mountHandleColumn(opts?: { enabled?: boolean }) {
 
 describe('OVColumn handle type', () => {
   it('registers handle column with drag handlers', async () => {
-    const { handleApi } = mountHandleColumn();
+    const { handleApi } = mountHandleColumn({ width: 36 });
     await nextTick();
     expect(columnsRef.value).toHaveLength(1);
     const col = columnsRef.value[0];
@@ -75,8 +85,21 @@ describe('OVColumn handle type', () => {
     expect(stopPropagation).toHaveBeenCalled();
   });
 
+  it('uses default handle width when vColumnProps.width is omitted', async () => {
+    mountHandleColumn();
+    await nextTick();
+    expect(columnsRef.value[0].width).toBe(36);
+  });
+
+  it('falls through handle branch when type is not handle', async () => {
+    mountHandleColumn({ type: 'default', colKey: 'Name' });
+    await nextTick();
+    // default column still registers; ensures `type === 'handle'` false arm is hit
+    expect(columnsRef.value.length).toBeGreaterThanOrEqual(1);
+  });
+
   it('disables handle when reorder api is disabled', async () => {
-    const { handleApi } = mountHandleColumn({ enabled: false });
+    const { handleApi } = mountHandleColumn({ enabled: false, width: 36 });
     await nextTick();
     const col = columnsRef.value[0];
     const cell = col.cellRenderer({ rowData: { Id: '1' }, rowIndex: 0 });

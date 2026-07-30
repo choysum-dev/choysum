@@ -142,4 +142,14 @@ describe('OOneToManyField handle column', () => {
     expect(fieldValue.value.map((r: any) => r.Id)).toEqual(['2', '1']);
     expect(fieldValue.value.map((r: any) => r.Sequence)).toEqual([1, 2]);
   });
+
+  it('shows handle column with explicit handleField prop', async () => {
+    const { binding } = makeBinding({});
+    const wrapper = mount(OOneToManyField, {
+      props: { binding, showHandle: true, handleField: 'Sequence' },
+      global: { stubs: globalStubs },
+    });
+    await nextTick();
+    expect(wrapper.find('.ov-column-stub[data-type="handle"]').exists()).toBe(true);
+  });
 });
