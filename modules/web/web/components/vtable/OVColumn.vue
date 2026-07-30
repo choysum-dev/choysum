@@ -8,11 +8,12 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { h, onMounted, onBeforeUnmount, useSlots, watch } from 'vue';
+import { h, onMounted, onBeforeUnmount, useSlots, watch, inject } from 'vue';
 import { ElCheckbox } from 'element-plus';
 import type { Column } from 'element-plus';
 import { useVTableUseColumnRegistry, useVTableUseBuildContext, setOVColumnMeta } from '@/web/web/composables/useVTable';
 import type { OVColumnMeta } from '@/web/web/composables/useVTable';
+import { LIST_HANDLE_API_KEY, type ListHandleReorderApi } from '@/web/web/composables/useListHandleReorder';
 
 defineOptions({ name: 'OVColumn' });
 
@@ -21,7 +22,7 @@ const genKey = () => `__ovcol_${++uid}`;
 
 const props = withDefaults(
   defineProps<{
-    type?: 'default' | 'selection' | 'index';
+    type?: 'default' | 'selection' | 'index' | 'handle';
     prop?: string;
     dataKey?: string;
     colKey?: string;
@@ -49,6 +50,7 @@ const props = withDefaults(
 const slots = useSlots();
 const reg = useVTableUseColumnRegistry();
 const ctx = useVTableUseBuildContext();
+const handleApi = inject<ListHandleReorderApi | null>(LIST_HANDLE_API_KEY, null);
 
 let currentCol: Column | null = null;
 let stableKey = props.colKey || props.dataKey || props.prop || genKey();
@@ -226,6 +228,48 @@ function buildColumn(): Column {
         return h('span', null, String(base + rowIndex));
       },
     };
+  } else if (type === 'handle') {
+    const width = colProps.width ?? 36;
+    col = {
+      key: dataKey,
+      dataKey: dataKey || '__handle__',
+      title: title || '',
+      width,
+      align: 'center',
+      sortable: false,
+      ...colProps,
+      headerCellRenderer: headerVNode,
+      cellRenderer: ({ rowData, rowIndex }: any) => {
+        const api = handleApi;
+        const disabled = !api?.enabled?.value;
+        return h(
+          'span',
+          {
+            class: ['o-list-handle', disabled ? 'o-list-handle--disabled' : ''],
+            draggable: disabled ? 'false' : 'true',
+            title: disabled ? '' : 'Drag to reorder',
+            onDragstart: (e: DragEvent) => {
+              e.stopPropagation();
+              api?.onDragStart(rowIndex, e);
+            },
+            onDragover: (e: DragEvent) => {
+              e.stopPropagation();
+              api?.onDragOver(rowIndex, e);
+            },
+            onDrop: (e: DragEvent) => {
+              e.stopPropagation();
+              void api?.onDrop(rowIndex, e);
+            },
+            onDragend: (e: DragEvent) => {
+              e.stopPropagation();
+              api?.onDragEnd();
+            },
+            onClick: (e: Event) => e.stopPropagation(),
+          },
+          [h('span', { class: 'o-list-handle__grip', 'aria-hidden': 'true' }, '⠿')]
+        );
+      },
+    };
   } else {
     const cellSlot = typeof slots.default === 'function' ? slots.default : null;
     col = {
@@ -290,4 +334,23 @@ function buildColumn(): Column {
 }
 </script>
 
-<style lang="scss" scoped></style>
+<style lang="scss" scoped>
+:deep(.o-list-handle) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--el-text-color-secondary);
+  user-select: none;
+  cursor: grab;
+}
+:deep(.o-list-handle__grip) {
+  font-size: 14px;
+  line-height: 1;
+  letter-spacing: -1px;
+}
+:deep(.o-list-handle--disabled) {
+  opacity: 0.35;
+  pointer-events: none;
+  cursor: default;
+}
+</style>

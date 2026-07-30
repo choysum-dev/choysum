@@ -10,6 +10,21 @@ SPDX-License-Identifier: Apache-2.0
         <div class="o-list__actions">
           <div class="o-list__system-actions" v-if="showActions">
             <slot name="system-actions" :selected-items="selectedItems">
+              <el-button
+                v-if="editable && isEditing"
+                size="small"
+                plain
+                type="success"
+                :loading="inlineSaving"
+                @click="handleInlineSave"
+              >
+                {{ _t('Save') }}
+              </el-button>
+
+              <el-button v-if="editable && isEditing" size="small" plain @click="handleInlineDiscard">
+                {{ _t('Discard') }}
+              </el-button>
+
               <el-button v-if="createAction && canCreate" size="small" plain type="primary" @click="handleCreate">
                 <el-icon><Plus /></el-icon>
                 {{ _t('New') }}
@@ -62,7 +77,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <div class="o-list__table" ref="tableWrapRef" :style="{ height: tablePxHeight }">
       <OVTable
-        :data="items"
+        :data="tableItems"
         :row-key="computedRowKey"
         :row-height="effectiveRowHeight"
         :header-height="headerHeight"
@@ -74,6 +89,7 @@ SPDX-License-Identifier: Apache-2.0
         @row-click="onRowClick"
         @sort-change="onTableSortChange"
       >
+        <OVColumn v-if="showHandleColumn" type="handle" col-key="__handle__" :vColumnProps="{ width: 36, align: 'center' }" />
         <!-- Automatically inject the leading group column in grouped mode -->
         <OVColumn v-if="isGroupMode" col-key="__group_label" :sortable="false">
           <template #default="{ row }">
@@ -101,7 +117,6 @@ SPDX-License-Identifier: Apache-2.0
 import type { ConditionGroup, QueryUpdatePayload } from '@/web/web/query/types';
 import type { RowEventHandlerParams } from 'element-plus';
 import { computed, onMounted, onBeforeUnmount, provide, ref, nextTick, watch, DefineComponent } from 'vue';
-import type { Ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
 import type { ClientModel, BaseModel, QueryCondition, OrderBy } from '@/core/rpc';
@@ -115,8 +130,11 @@ import { useVTableSelection } from '@/web/web/composables/useVTable';
 // Search view type: must accept store and emit query-update
 import type { Component } from 'vue';
 import type { SearchViewComponent } from '@/web/web/query/types';
-import { provideOnchange } from '@/web/web/composables/useOnchange';
+import type { Ref } from 'vue';
 import type { ViewMode, ViewContainer } from '@/web/web/components/view/OViewScope.vue';
+import { useListInlineEdit } from '@/web/web/composables/useListInlineEdit';
+import { hasHandleField, isListRecordRow, listRecordId, unwrapListRecord } from '@/web/web/composables/listRowEdit';
+import { LIST_HANDLE_API_KEY, useListHandleReorder } from '@/web/web/composables/useListHandleReorder';
 // Controller: unified loading with grouping-first handling
 import { createListController } from '@/web/web/controllers/listController';
 import type { OrderByState, PaginationState } from '@/web/web/query/state';
@@ -164,6 +182,13 @@ const props = withDefaults(
 
     /* Controlled forced condition: always AND with user search conditions, or act as the only condition; dynamic changes trigger re-apply */
     forcedCondition?: QueryCondition<T> | QueryCondition<T>[];
+
+    /** Opt-in S2 row inline edit (click record row → draft → Save/Discard). */
+    editable?: boolean;
+    /** Sequence / order field for handle drag reorder; default Sequence. */
+    handleField?: string;
+    /** Show handle column when editable and metadata has handleField. */
+    showHandle?: boolean;
   }>(),
   {
     showHeader: true,
@@ -185,6 +210,9 @@ const props = withDefaults(
     showPaginate: true,
 
     forcedCondition: undefined,
+    editable: false,
+    handleField: 'Sequence',
+    showHandle: true,
   }
 );
 
@@ -213,7 +241,7 @@ const { emitCancelable } = useCancelableEmit(emit as any);
 const viewContainer = ref<ViewContainer>('List');
 provide('view-container', viewContainer);
 
-// Future inline editing can use this as a switchable view mode; keep display for now
+// Future inline editing uses listViewMode; S2 sets edit while a row draft is active.
 const listViewMode = ref<ViewMode>('display');
 provide('view-mode', listViewMode);
 
@@ -225,28 +253,110 @@ const canDelete = computed(() => canShowAction(props.actionIds?.delete, props.ha
 // List controller
 const controller = createListController(store as any);
 
-// Provide a list-level onchange controller for future inline editing
-provideOnchange(store, 'ListView');
-
-// Default filters and groups are injected by the outer layer when present; this view only forwards searchView
-
-// =============================
-// Section 6: Row key strategy & mode detection
-// =============================
-// Note: row keys always use the wrapped key field; props.rowKey no longer participates directly
-
 // Whether grouped mode is active, based on the controller result
 const isGroupMode = computed(() => controller.vm.result?.kind === 'group');
 
+const flatRows = ref<any[]>([]);
+
+// items must be declared before syncFlatRowsFromItems (hoisted via function body at call time).
+function syncFlatRowsFromItems() {
+  if (isGroupMode.value) return;
+  flatRows.value = (items.value || [])
+    .filter(isListRecordRow)
+    .map(row => ({
+      ...row,
+      payload: { ...unwrapListRecord(row) },
+    }));
+}
+
+const editableEnabled = computed(() => props.editable === true);
+const inlineEdit = useListInlineEdit<T>({
+  store,
+  enabled: editableEnabled,
+  listViewMode,
+  translateScope: 'web/components/view/OListView',
+  onSaved: async () => {
+    await controller.apply();
+    syncFlatRowsFromItems();
+  },
+});
+const isEditing = inlineEdit.isEditing;
+const inlineSaving = inlineEdit.saving;
+
 // Always use the unified key field from DataSetSnapshot RecordRow/GroupRow, aligned with controller output
-// If a legacy recordList fallback exists in non-grouped mode, supplement it with a key field
 const computedRowKey = computed(() => 'key');
 
-// =============================
-// Section 7: Data source selection (visible nodes)
-// =============================
 // The view no longer handles legacy wrappers and relies on controller visible nodes
 const items = computed<any[]>(() => controller.vm.visibleNodes || []);
+
+watch(
+  items,
+  () => {
+    if (!inlineEdit.isEditing.value) syncFlatRowsFromItems();
+  },
+  { immediate: true }
+);
+
+const showHandleColumn = computed(
+  () =>
+    props.showHandle !== false &&
+    props.editable === true &&
+    !isGroupMode.value &&
+    hasHandleField(store, props.handleField ?? 'Sequence')
+);
+
+const handleEnabled = computed(() => showHandleColumn.value && !inlineEdit.isEditing.value);
+
+const handleReorder = useListHandleReorder({
+  rows: () => flatRows.value,
+  enabled: handleEnabled,
+  handleField: props.handleField ?? 'Sequence',
+  getRecord: row => unwrapListRecord(row),
+  onReorder: async (rows, changed) => {
+    flatRows.value = rows.map(row => ({
+      ...row,
+      payload: { ...unwrapListRecord(row) },
+    }));
+    if (!changed.length) return;
+    try {
+      const field = props.handleField ?? 'Sequence';
+      await Promise.all(
+        changed.map(({ row }) => {
+          const rec = unwrapListRecord(row);
+          const id = listRecordId(rec);
+          if (!id) return Promise.resolve();
+          return store.UpdateById(id, { [field]: rec[field] } as any);
+        })
+      );
+      await controller.apply();
+      syncFlatRowsFromItems();
+    } catch {
+      ElMessage.error(_t('Failed to reorder rows'));
+      await controller.apply();
+      syncFlatRowsFromItems();
+    }
+  },
+});
+
+provide(LIST_HANDLE_API_KEY, handleReorder);
+
+const tableItems = computed(() => {
+  if (isGroupMode.value) return inlineEdit.mapItemsWithDraft(items.value);
+  return inlineEdit.mapItemsWithDraft(flatRows.value);
+});
+
+async function handleInlineSave() {
+  try {
+    await inlineEdit.save();
+  } catch {
+    /* error surfaced in composable */
+  }
+}
+
+async function handleInlineDiscard() {
+  await inlineEdit.discard();
+  syncFlatRowsFromItems();
+}
 
 // =============================
 // Section 8: Selection management
@@ -580,8 +690,12 @@ async function onRowClick(p: RowEventHandlerParams) {
       }
       return;
     }
-    // Detail-row click inside a group: emit payload as the record
+    // Detail-row click inside a group
     if (row?.kind === 'record') {
+      if (props.editable) {
+        const entered = await inlineEdit.enterEdit(row);
+        if (entered) return;
+      }
       emit('row-click', {
         row: row.payload as ClientModel<T>,
         rowIndex: p.rowIndex,
@@ -594,6 +708,11 @@ async function onRowClick(p: RowEventHandlerParams) {
   }
 
   // In non-grouped mode, unwrap wrapped RecordRow objects to the actual record
+  if (props.editable && isListRecordRow(row)) {
+    const entered = await inlineEdit.enterEdit(row);
+    if (entered) return;
+  }
+
   const record = row?.type === 'record' ? row?.record : row?.kind === 'record' ? row?.payload : row;
   emit('row-click', {
     row: record as ClientModel<T>,
