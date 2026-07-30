@@ -9,6 +9,7 @@ import type {
   FlatManyToOneFieldOptions,
   FlatManyToManyFieldOptions,
   FlatManyToOneRefFieldOptions,
+  FlatOneToManyFieldOptions,
 } from '../metadata/field';
 import { createTranslate } from '../../i18n';
 
@@ -1184,7 +1185,10 @@ test('Field condition typing: ctor target infers QueryCondition; string Ref stay
   expect(invalidTypedRef).toBeDefined();
 
   // ManyToMany overload: infer / bind target from targetModel factory.
-  class JoinProbe extends BaseModel {}
+  class JoinProbe extends BaseModel {
+    LeftId!: TypedConditionTarget;
+    RightId!: TypedConditionTarget;
+  }
   const validManyToMany = {
     type: 'ManyToMany' as const,
     relation: {
@@ -1196,6 +1200,19 @@ test('Field condition typing: ctor target infers QueryCondition; string Ref stay
     condition: ['Code', '=', 'X'] as const,
   } satisfies FlatManyToManyFieldOptions<JoinProbe, TypedConditionTarget>;
   expect(validManyToMany).toBeDefined();
+
+  // ManyToMany joinField / inverseJoinField must be relation FKs on the join model.
+  const invalidManyToManyJoinField = {
+    type: 'ManyToMany' as const,
+    relation: {
+      targetModel: () => TypedConditionTarget,
+      joinModel: () => JoinProbe,
+      // @ts-expect-error ManyToMany joinField must be a BaseModel-typed key on TJoin.
+      joinField: 'NotAJoinFk',
+      inverseJoinField: 'RightId',
+    },
+  } satisfies FlatManyToManyFieldOptions<JoinProbe, TypedConditionTarget>;
+  expect(invalidManyToManyJoinField).toBeDefined();
 
   // ManyToMany condition field names must exist on the inferred target.
   const invalidManyToManyField = {
@@ -1210,6 +1227,26 @@ test('Field condition typing: ctor target infers QueryCondition; string Ref stay
     condition: ['MissingOnTarget', '=', 1] as const,
   } satisfies FlatManyToManyFieldOptions<JoinProbe, TypedConditionTarget>;
   expect(invalidManyToManyField).toBeDefined();
+
+  // OneToMany inverseField must be a relation FK on the target.
+  class O2MChild extends BaseModel {
+    ParentId!: TypedConditionTarget;
+  }
+  const validOneToMany = {
+    type: 'OneToMany' as const,
+    relation: { targetModel: () => O2MChild, inverseField: 'ParentId' },
+  } satisfies FlatOneToManyFieldOptions<O2MChild>;
+  expect(validOneToMany).toBeDefined();
+
+  const invalidOneToManyInverse = {
+    type: 'OneToMany' as const,
+    relation: {
+      targetModel: () => O2MChild,
+      // @ts-expect-error OneToMany inverseField must be a BaseModel-typed key on TTarget.
+      inverseField: 'MissingFk',
+    },
+  } satisfies FlatOneToManyFieldOptions<O2MChild>;
+  expect(invalidOneToManyInverse).toBeDefined();
 
   // Decorator call sites: overload should accept typed M2O condition without `as any`.
   class HostWithTypedCondition extends BaseModel {
