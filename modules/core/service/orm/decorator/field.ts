@@ -112,8 +112,8 @@ function toFieldDecoratorOptionBag(value: unknown): FieldDecoratorOptionBag {
 /**
  * Declares model field metadata for persistence, relations, selections, and compute behavior.
  *
- * Overloads infer `condition` as QueryCondition of the relation target from ctor `targetModel`
- * for object relations; string Ref keeps untyped BaseQueryCondition.
+ * Overloads infer condition target fields from ctor `targetModel` for object relations.
+ * For string Ref, pass Field<TTarget> (import type) to tighten condition; omit to keep BaseQueryCondition.
  *
  * @param options Field metadata to register on the decorated property.
  * @returns A property decorator that records the field definition in metadata storage.
@@ -123,10 +123,15 @@ export function Field<TTarget extends BaseModel>(options: FlatOneToManyFieldOpti
 export function Field<TJoin extends BaseModel, TTarget extends BaseModel>(
   options: FlatManyToManyFieldOptions<TJoin, TTarget>
 ): PropertyDecorator;
+export function Field<TTarget extends BaseModel>(options: FlatManyToOneRefFieldOptions<TTarget>): PropertyDecorator;
+export function Field<TTarget extends BaseModel>(options: FlatManyToManyRefFieldOptions<TTarget>): PropertyDecorator;
 export function Field(options: FlatManyToOneRefFieldOptions): PropertyDecorator;
 export function Field(options: FlatManyToManyRefFieldOptions): PropertyDecorator;
 export function Field(options: FieldOptions): PropertyDecorator;
-export function Field(options: FieldOptions): PropertyDecorator {
+// Implementation: accept typed Ref options (TTarget) that are not assignable into default FieldOptions.
+export function Field(
+  options: FieldOptions | FlatManyToOneRefFieldOptions<BaseModel> | FlatManyToManyRefFieldOptions<BaseModel>
+): PropertyDecorator {
   return function (target: Object, propertyKey: string | symbol) {
     const name = propertyKey as string;
     const optionBag = toFieldDecoratorOptionBag(options);

@@ -208,7 +208,7 @@ export default class User extends BaseModel {
   /**
    * Primary company assigned by the base company module.
    */
-  @Field({
+  @Field<Company>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Company' },
     condition: ['IsActive', '=', true],
@@ -219,7 +219,7 @@ export default class User extends BaseModel {
   /**
    * Additional company ids available to the user in multi-company mode.
    */
-  @Field({
+  @Field<Company>({
     type: 'ManyToManyRef',
     relation: { targetModel: 'base.Company' },
     condition: ['IsActive', '=', true],

@@ -6,6 +6,10 @@ import { Constraint } from '@/core/service/api/constraint';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { _t, _lt } from '../i18n';
 import { fail, normalizeOptionalText, normalizeRequiredText, normalizeRequiredTranslatedText, normalizeNonNegativeInt } from './_normalization_bridge';
+import type Company from '@/base/service/models/company';
+import type Country from '@/base/service/models/country';
+import type Currency from '@/base/service/models/currency';
+import type Language from '@/base/service/models/language';
 import PartnerContact from './partner_contact';
 
 /**
@@ -49,7 +53,7 @@ export default class Partner extends BaseModel {
   Code: string;
 
   /** Owning company reference. */
-  @Field({
+  @Field<Company>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Company' },
     condition: ['IsActive', '=', true],
@@ -102,7 +106,7 @@ export default class Partner extends BaseModel {
   SupplierRank: number;
 
   /** Default language reference. */
-  @Field({
+  @Field<Language>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Language' },
     condition: ['IsActive', '=', true],
@@ -113,7 +117,7 @@ export default class Partner extends BaseModel {
   LanguageId?: string;
 
   /** Default currency reference. */
-  @Field({
+  @Field<Currency>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Currency' },
     condition: ['IsActive', '=', true],
@@ -124,7 +128,7 @@ export default class Partner extends BaseModel {
   CurrencyId?: string;
 
   /** Default country reference. */
-  @Field({
+  @Field<Country>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Country' },
     condition: ['IsActive', '=', true],

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
+import type Company from '@/base/service/models/company';
 import { _lt } from '../i18n';
 
 /**
@@ -19,7 +20,7 @@ export default class CompanyScopedResource extends BaseModel {
   /**
    * Company scope for the row. Null means the row is shared across companies.
    */
-  @Field({
+  @Field<Company>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Company' },
     notNull: false,

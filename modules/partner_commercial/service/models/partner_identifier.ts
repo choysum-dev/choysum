@@ -5,6 +5,9 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { _t, _lt } from '../i18n';
 import { fail, normalizeOptionalRefId, normalizeOptionalText, normalizeOptionalTranslatedText, normalizeRequiredText, toDateOrUndefined } from './_normalization_bridge';
+import type Company from '@/base/service/models/company';
+import type Country from '@/base/service/models/country';
+import type Partner from '@/partner/service/models/partner';
 
 /**
  * Company-scoped commercial identifier row attached to a partner.
@@ -12,7 +15,7 @@ import { fail, normalizeOptionalRefId, normalizeOptionalText, normalizeOptionalT
 @Model('PartnerIdentifier', { application: 'partner', companyField: 'CompanyId' })
 export default class PartnerIdentifier extends BaseModel {
   /** Owning partner reference. */
-  @Field({
+  @Field<Partner>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'partner.Partner' },
     size: 20,
@@ -24,7 +27,7 @@ export default class PartnerIdentifier extends BaseModel {
   PartnerId: string;
 
   /** Owning company reference. */
-  @Field({
+  @Field<Company>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Company' },
     size: 20,
@@ -57,7 +60,7 @@ export default class PartnerIdentifier extends BaseModel {
   Value: string;
 
   /** Optional country reference associated with the identifier. */
-  @Field({
+  @Field<Country>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Country' },
     condition: ['IsActive', '=', true],

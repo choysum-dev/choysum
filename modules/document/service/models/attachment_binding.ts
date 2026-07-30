@@ -24,6 +24,8 @@ import {
   buildDescriptorForBinding,
   type BindingModelOps,
 } from './_attachment_binding_ops';
+import type Company from '@/base/service/models/company';
+import type AttachmentContent from './attachment_object';
 
 /**
  * AttachmentBinding links finalized content to owner records and fields.
@@ -72,7 +74,7 @@ export default class AttachmentBinding extends BaseModel {
   /**
    * Attachment content row currently bound to the owner field.
    */
-  @Field({
+  @Field<AttachmentContent>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'document.AttachmentContent' },
     size: 20,
@@ -140,7 +142,7 @@ export default class AttachmentBinding extends BaseModel {
   /**
    * Company that owns the attachment binding.
    */
-  @Field({
+  @Field<Company>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Company' },
     size: 20,

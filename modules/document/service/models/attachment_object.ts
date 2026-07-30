@@ -24,6 +24,8 @@ import {
   finalizeUploadInternal,
   type UploadModelOps,
 } from './_attachment_upload_ops';
+import type Company from '@/base/service/models/company';
+import type StoredContent from './stored_content';
 
 /**
  * AttachmentContent stores finalized payload metadata and drives the upload workflow.
@@ -33,7 +35,7 @@ export default class AttachmentContent extends BaseModel {
   /**
    * Stored payload row that backs the attachment content.
    */
-  @Field({
+  @Field<StoredContent>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'document.StoredContent' },
     size: 20,
@@ -140,7 +142,7 @@ export default class AttachmentContent extends BaseModel {
   /**
    * Company that owns the attachment content.
    */
-  @Field({
+  @Field<Company>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Company' },
     size: 20,

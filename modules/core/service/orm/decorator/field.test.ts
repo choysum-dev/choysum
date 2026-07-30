@@ -1147,7 +1147,7 @@ test('Field condition typing: ctor target infers QueryCondition; string Ref stay
   } satisfies FlatManyToOneFieldOptions<TypedConditionTarget>;
   expect(invalidManyToOneField).toBeDefined();
 
-  // ManyToOneRef: string targetModel keeps untyped BaseQueryCondition (no target import required).
+  // ManyToOneRef: string targetModel keeps untyped BaseQueryCondition without a type argument.
   const validManyToOneRef = {
     type: 'ManyToOneRef' as const,
     relation: { targetModel: 'base.Currency' },
@@ -1164,6 +1164,24 @@ test('Field condition typing: ctor target infers QueryCondition; string Ref stay
 
   expect(validManyToOneRef).toBeDefined();
   expect(validManyToOneRefUnknownField).toBeDefined();
+
+  // Field<TTarget> on Ref tightens condition via import type (no value import).
+  const validTypedRef = {
+    type: 'ManyToOneRef' as const,
+    relation: { targetModel: 'demo.TypedConditionTarget' },
+    condition: ['IsActive', '=', true] as const,
+    size: 20,
+  } satisfies FlatManyToOneRefFieldOptions<TypedConditionTarget>;
+
+  const invalidTypedRef = {
+    type: 'ManyToOneRef' as const,
+    relation: { targetModel: 'demo.TypedConditionTarget' },
+    // @ts-expect-error Field<TTarget> Ref condition must use a field from TTarget.
+    condition: ['NotARealField', '=', true] as const,
+    size: 20,
+  } satisfies FlatManyToOneRefFieldOptions<TypedConditionTarget>;
+  expect(validTypedRef).toBeDefined();
+  expect(invalidTypedRef).toBeDefined();
 
   // ManyToMany overload: infer / bind target from targetModel factory.
   class JoinProbe extends BaseModel {}
@@ -1209,6 +1227,14 @@ test('Field condition typing: ctor target infers QueryCondition; string Ref stay
       size: 20,
     })
     CurrencyId!: string;
+
+    @Field<TypedConditionTarget>({
+      type: 'ManyToOneRef',
+      relation: { targetModel: 'demo.TypedConditionTarget' },
+      condition: ['IsActive', '=', true],
+      size: 20,
+    })
+    TypedCurrencyId!: string;
   }
   expect(HostWithTypedCondition).toBeDefined();
 

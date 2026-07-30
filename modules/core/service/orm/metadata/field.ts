@@ -274,29 +274,35 @@ export type RelationalConditionKind = 'static' | 'dynamic';
  * which then shows `condition?: unknown` even when Field<TTarget> resolved correctly.
  */
 
-/** ManyToOneRef flat options (string targetModel; loose condition). */
-export type FlatManyToOneRefFieldOptions = {
+/** ManyToOneRef flat options (string targetModel). Optional TTarget tightens `condition`. */
+export type FlatManyToOneRefFieldOptions<TTarget extends BaseModel | undefined = undefined> = {
   type: 'ManyToOneRef';
   relation: FlatRefRelationOption;
   size?: number;
   /**
    * Default filter on the Ref target (candidate search + M2MRef load).
-   * Untyped `BaseQueryCondition` — string `targetModel` cannot infer target fields.
+   * Pass Field<TTarget>({...}) with import type to type-check against the target;
+   * omit the type argument to keep untyped BaseQueryCondition.
    */
-  condition?: RefRelationalConditionDeclaration;
+  condition?: [TTarget] extends [BaseModel]
+    ? RelationalConditionDeclaration<TTarget>
+    : RefRelationalConditionDeclaration;
 } & FlatCommonOptions &
   FlatNoSelectionOption &
   FlatNoDecimalOptions;
 
-/** ManyToManyRef flat options (string targetModel; loose condition). */
-export type FlatManyToManyRefFieldOptions = {
+/** ManyToManyRef flat options (string targetModel). Optional TTarget tightens `condition`. */
+export type FlatManyToManyRefFieldOptions<TTarget extends BaseModel | undefined = undefined> = {
   type: 'ManyToManyRef';
   relation: FlatRefRelationOption;
   /**
    * Default filter on the Ref target (candidate search + M2MRef load).
-   * Untyped `BaseQueryCondition` — string `targetModel` cannot infer target fields.
+   * Pass Field<TTarget>({...}) with import type to type-check against the target;
+   * omit the type argument to keep untyped BaseQueryCondition.
    */
-  condition?: RefRelationalConditionDeclaration;
+  condition?: [TTarget] extends [BaseModel]
+    ? RelationalConditionDeclaration<TTarget>
+    : RefRelationalConditionDeclaration;
 } & FlatCommonOptions &
   FlatNoSelectionOption &
   FlatNoSizeOption &

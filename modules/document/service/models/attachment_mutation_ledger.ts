@@ -8,6 +8,7 @@ import { MutationAction, MutationLedgerStatus } from '../contracts';
 import { _lt } from '../i18n';
 import { resolveGcBatchSize } from './_gc_config';
 import { paginateBatch } from '@/core/service/utils/pagination';
+import type Company from '@/base/service/models/company';
 
 const DEFAULT_MUTATION_LEDGER_RETENTION_DAYS = 30;
 
@@ -95,7 +96,7 @@ export default class AttachmentMutationLedger extends BaseModel {
   /**
    * Company that owns the mutation ledger row.
    */
-  @Field({
+  @Field<Company>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Company' },
     size: 20,

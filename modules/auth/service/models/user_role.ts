@@ -14,6 +14,7 @@ import {
   userIdsFromUserRolePayloads,
 } from './_authz_mutation_helpers';
 import { normalizeRefId } from '@/core/service/utils/normalization';
+import type Company from '@/base/service/models/company';
 
 /**
  * UserRole assigns a role to a user, optionally within one company scope.
@@ -45,7 +46,7 @@ export default class UserRole extends BaseModel {
   /**
    * Company scope for the assignment when the grant is company-specific.
    */
-  @Field({
+  @Field<Company>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Company' },
     notNull: false,

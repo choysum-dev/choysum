@@ -8,6 +8,10 @@ import { fail, normalizeOptionalText, normalizeRequiredText } from './_normaliza
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { maskAccountNo, normalizeAccountType } from './_helpers';
 import Bank from '@/base/service/models/bank';
+import type Company from '@/base/service/models/company';
+import type Country from '@/base/service/models/country';
+import type Currency from '@/base/service/models/currency';
+import type Partner from '@/partner/service/models/partner';
 
 /**
  * Company-scoped partner bank account record.
@@ -15,7 +19,7 @@ import Bank from '@/base/service/models/bank';
 @Model('BankAccount', { application: 'partner', companyField: 'CompanyId' })
 export default class BankAccount extends BaseModel {
   /** Owning partner reference. */
-  @Field({
+  @Field<Partner>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'partner.Partner' },
     size: 20,
@@ -27,7 +31,7 @@ export default class BankAccount extends BaseModel {
   PartnerId: string;
 
   /** Owning company reference. */
-  @Field({
+  @Field<Company>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Company' },
     size: 20,
@@ -38,7 +42,7 @@ export default class BankAccount extends BaseModel {
   CompanyId: string;
 
   /** Linked bank reference. */
-  @Field({
+  @Field<Bank>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Bank' },
     condition: ['IsActive', '=', true],
@@ -112,7 +116,7 @@ export default class BankAccount extends BaseModel {
   BranchName?: string;
 
   /** Account currency reference. */
-  @Field({
+  @Field<Currency>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Currency' },
     condition: ['IsActive', '=', true],
@@ -123,7 +127,7 @@ export default class BankAccount extends BaseModel {
   CurrencyId?: string;
 
   /** Account country reference. */
-  @Field({
+  @Field<Country>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Country' },
     condition: ['IsActive', '=', true],

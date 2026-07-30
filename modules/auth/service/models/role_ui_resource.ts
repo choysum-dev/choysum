@@ -7,6 +7,8 @@ import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
 import { _lt } from '../i18n';
 import Role from './role';
+import type IrApplication from '@/meta/service/models/ir_application';
+import type IrUiResource from '@/meta/service/models/ir_ui_resource';
 import { mutateThenInvalidateAllAuthzCaches } from './_authz_mutation_helpers';
 import { assertExclusiveScope } from './_rule_scope_helpers';
 
@@ -50,7 +52,7 @@ export default class RoleUiResource extends BaseModel {
   /**
    * Application-level scope. Mutually exclusive with IrUiResourceId.
    */
-  @Field({
+  @Field<IrApplication>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'meta.IrApplication' },
     notNull: false,
@@ -63,7 +65,7 @@ export default class RoleUiResource extends BaseModel {
   /**
    * Concrete UI resource scope. Mutually exclusive with IrApplicationId.
    */
-  @Field({
+  @Field<IrUiResource>({
     type: 'ManyToOneRef', relation: { targetModel: 'meta.IrUiResource' },
     notNull: false,
     size: 20,
