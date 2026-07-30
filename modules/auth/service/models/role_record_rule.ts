@@ -7,6 +7,8 @@ import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
 import { _lt } from '../i18n';
 import Role from './role';
+import type IrApplication from '@/meta/service/models/ir_application';
+import type IrModel from '@/meta/service/models/ir_model';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { mutateThenInvalidateAllAuthzCaches } from './_authz_mutation_helpers';
 import { assertExclusiveScope } from './_rule_scope_helpers';
@@ -63,7 +65,7 @@ export default class RoleRecordRule extends BaseModel {
   /**
    * Application-level scope when the rule targets an entire application.
    */
-  @Field({
+  @Field<IrApplication>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'meta.IrApplication' },
     notNull: false,
@@ -76,7 +78,7 @@ export default class RoleRecordRule extends BaseModel {
   /**
    * Model-level scope when the rule targets one concrete model.
    */
-  @Field({
+  @Field<IrModel>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'meta.IrModel' },
     notNull: false,

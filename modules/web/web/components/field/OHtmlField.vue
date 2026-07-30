@@ -23,16 +23,16 @@ SPDX-License-Identifier: Apache-2.0
     <template #edit="{ fieldValue }">
       <div class="o-htmlfield-edit">
         <div v-if="editor" class="o-htmlfield-toolbar">
-          <button type="button" class="o-htmlfield-btn" :class="{ active: editor.isActive('bold') }" @click.prevent="editor.chain().focus().toggleBold().run()">
+          <button type="button" class="o-htmlfield-btn" :class="{ active: editor.isActive('bold') }" @click.prevent="htmlEditorChain(editor).focus().toggleBold().run()">
             B
           </button>
-          <button type="button" class="o-htmlfield-btn" :class="{ active: editor.isActive('italic') }" @click.prevent="editor.chain().focus().toggleItalic().run()">
+          <button type="button" class="o-htmlfield-btn" :class="{ active: editor.isActive('italic') }" @click.prevent="htmlEditorChain(editor).focus().toggleItalic().run()">
             I
           </button>
-          <button type="button" class="o-htmlfield-btn" :class="{ active: editor.isActive('bulletList') }" @click.prevent="editor.chain().focus().toggleBulletList().run()">
+          <button type="button" class="o-htmlfield-btn" :class="{ active: editor.isActive('bulletList') }" @click.prevent="htmlEditorChain(editor).focus().toggleBulletList().run()">
             •
           </button>
-          <button type="button" class="o-htmlfield-btn" :class="{ active: editor.isActive('orderedList') }" @click.prevent="editor.chain().focus().toggleOrderedList().run()">
+          <button type="button" class="o-htmlfield-btn" :class="{ active: editor.isActive('orderedList') }" @click.prevent="htmlEditorChain(editor).focus().toggleOrderedList().run()">
             1.
           </button>
           <button type="button" class="o-htmlfield-btn" :class="{ active: editor.isActive('link') }" @click.prevent="toggleLink">
@@ -60,6 +60,7 @@ import { computed, defineComponent, onBeforeUnmount, watch } from 'vue';
 import { EditorContent, useEditor } from '@tiptap/vue-3';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
+import { htmlEditorChain, htmlEditorSetContent } from './tiptap_html_commands';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
@@ -151,14 +152,14 @@ function setEditorHtml(html: string | null) {
   const next = html == null || html === '' ? '' : sanitizeHtmlForClient(html);
   const current = editor.value.getHTML();
   if (current === next) return;
-  editor.value.commands.setContent(next || '', false);
+  htmlEditorSetContent(editor.value, next || '', false);
 }
 
 function toggleLink() {
   // Toolbar is rendered only when editor exists.
   const ed = editor.value!;
   if (ed.isActive('link')) {
-    ed.chain().focus().unsetLink().run();
+    htmlEditorChain(ed).focus().unsetLink().run();
     return;
   }
   const prev = ed.getAttributes('link').href as string | undefined;
@@ -166,10 +167,10 @@ function toggleLink() {
   if (href == null) return;
   const trimmed = href.trim();
   if (!trimmed) {
-    ed.chain().focus().unsetLink().run();
+    htmlEditorChain(ed).focus().unsetLink().run();
     return;
   }
-  ed.chain().focus().extendMarkRange('link').setLink({ href: trimmed }).run();
+  htmlEditorChain(ed).focus().extendMarkRange('link').setLink({ href: trimmed }).run();
 }
 
 /** Sync TipTap HTML ↔ fieldValue without nesting watchers in the parent setup. */

@@ -6,6 +6,8 @@ import { Constraint } from '@/core/service/api/constraint';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { _t, _lt } from '../i18n';
 import { fail, normalizeOptionalText, normalizeOptionalTranslatedText, normalizeSequenceInt, translatedTextHasValue } from './_normalization_bridge';
+import type Address from '@/base/service/models/address';
+import type Company from '@/base/service/models/company';
 import Partner from './partner';
 
 /**
@@ -30,7 +32,7 @@ export default class PartnerContact extends BaseModel {
   PartnerId: Partner;
 
   /** Owning company reference. */
-  @Field({
+  @Field<Company>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Company' },
     size: 20,
@@ -106,7 +108,7 @@ export default class PartnerContact extends BaseModel {
   ContactRole?: string;
 
   /** Linked address reference. */
-  @Field({
+  @Field<Address>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Address' },
     size: 20,

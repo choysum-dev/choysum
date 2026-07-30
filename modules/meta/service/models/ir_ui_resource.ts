@@ -139,7 +139,7 @@ export default class IrUiResource extends BaseModel {
 
   @Field({
     type: 'OneToMany',
-    relation: { targetModel: () => IrUiResource },
+    relation: { targetModel: () => IrUiResource, inverseField: 'ParentId' },
     string: _lt('Children', { scope: 'meta.model.IrUiResource.fields' }),
   })
   readonly Childs?: IrUiResource[];

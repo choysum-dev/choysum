@@ -5,6 +5,7 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { AttachmentBackend } from '../contracts';
 import { _t, _lt } from '../i18n';
 import { mustLoadOne } from './_query_loaders';
+import type Company from '@/base/service/models/company';
 
 /**
  * Lifecycle states for stored payload content.
@@ -72,7 +73,7 @@ export default class StoredContent extends BaseModel {
   /**
    * Company that owns the stored payload.
    */
-  @Field({
+  @Field<Company>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Company' },
     size: 20,

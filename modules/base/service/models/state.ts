@@ -31,6 +31,7 @@ export default class State extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => Country },
+    condition: ['IsActive', '=', true],
     notNull: true,
     index: true,
     uniqueIndex: 'uidx_base_state_country_code',

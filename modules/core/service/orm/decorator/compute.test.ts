@@ -167,3 +167,111 @@ test('@Compute with store=false handles missing field entry gracefully', () => {
 
   resetModelMetadata(ComputeStoreFalseNoFieldModel as any);
 });
+
+test('@Compute rejects store:true (default) on OneToMany / ManyToMany targets', () => {
+  expect(() => {
+    class Child extends BaseModel {}
+    class HostO2M extends BaseModel {
+      @Field({
+        type: 'OneToMany',
+        relation: { targetModel: () => Child, inverseField: 'ParentId' },
+      } as any)
+      Lines!: Child[];
+
+      @Compute<HostO2M>('Lines', { deps: ['Id'] })
+      computeLines() {
+        return [];
+      }
+    }
+    return HostO2M;
+  }).toThrow('OneToMany targets require store: false');
+
+  expect(() => {
+    class Tag extends BaseModel {}
+    class Join extends BaseModel {}
+    class HostM2M extends BaseModel {
+      @Field({
+        type: 'ManyToMany',
+        relation: {
+          targetModel: () => Tag,
+          joinModel: () => Join,
+          joinField: 'LeftId',
+          inverseJoinField: 'RightId',
+        },
+      } as any)
+      Tags!: Tag[];
+
+      @Compute<HostM2M>('Tags', { deps: ['Id'], store: true })
+      computeTags() {
+        return [];
+      }
+    }
+    return HostM2M;
+  }).toThrow('ManyToMany targets require store: false');
+});
+
+test('@Compute allows store:false on OneToMany / ManyToMany targets', () => {
+  class Child extends BaseModel {
+    ParentId!: HostVirtualO2M;
+  }
+  class HostVirtualO2M extends BaseModel {
+    @Field({
+      type: 'OneToMany',
+      relation: { targetModel: () => Child, inverseField: 'ParentId' },
+    } as any)
+    Lines!: Child[];
+
+    @Compute<HostVirtualO2M>('Lines', { deps: ['Id'], store: false })
+    computeLines() {
+      return [];
+    }
+  }
+
+  const meta = MetadataStorage.instance.getModelMetadata(HostVirtualO2M as any);
+  expect(meta.computeHandlers?.get('Lines')).toMatchObject({
+    field: 'Lines',
+    store: false,
+    deps: ['Id'],
+  });
+  resetModelMetadata(HostVirtualO2M as any);
+});
+
+test('@Compute typing: collection targets require store:false; scalars keep optional store', () => {
+  class Child extends BaseModel {
+    ParentId!: TypingHost;
+  }
+  class TypingHost extends BaseModel {
+    Name!: string;
+    Lines!: Child[];
+  }
+
+  const validScalar = {
+    deps: ['Id'] as const,
+  } satisfies import('./compute').ComputeOptions<TypingHost>;
+
+  const validCollection = {
+    deps: ['Id'] as const,
+    store: false as const,
+  } satisfies import('./compute').VirtualCollectionComputeOptions<TypingHost>;
+
+  const invalidCollectionStore = {
+    deps: ['Id'] as const,
+    // @ts-expect-error collection Compute options must set store: false
+    store: true as const,
+  } satisfies import('./compute').VirtualCollectionComputeOptions<TypingHost>;
+
+  expect(validScalar).toBeDefined();
+  expect(validCollection).toBeDefined();
+  expect(invalidCollectionStore).toBeDefined();
+
+  // Overload: collection key rejects options without store:false.
+  type CollectionField = import('./compute').CollectionRelationKeys<TypingHost>;
+  type _LinesIsCollection = CollectionField extends 'Lines' ? true : false;
+  const linesIsCollection: _LinesIsCollection = true;
+  expect(linesIsCollection).toBe(true);
+
+  type NonCollectionField = import('./compute').NonCollectionRelationKeys<TypingHost>;
+  type _NameIsNonCollection = 'Name' extends NonCollectionField ? true : false;
+  const nameIsNonCollection: _NameIsNonCollection = true;
+  expect(nameIsNonCollection).toBe(true);
+});

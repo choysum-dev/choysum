@@ -208,9 +208,10 @@ export default class User extends BaseModel {
   /**
    * Primary company assigned by the base company module.
    */
-  @Field({
+  @Field<Company>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Company' },
+    condition: ['IsActive', '=', true],
     string: _lt('Company', { scope: 'auth.model.User.fields' }),
   })
   CompanyId: string;
@@ -218,9 +219,10 @@ export default class User extends BaseModel {
   /**
    * Additional company ids available to the user in multi-company mode.
    */
-  @Field({
+  @Field<Company>({
     type: 'ManyToManyRef',
     relation: { targetModel: 'base.Company' },
+    condition: ['IsActive', '=', true],
     string: _lt('Accessible Companies', { scope: 'auth.model.User.fields' }),
   })
   CompanyIds: string[];
@@ -279,6 +281,7 @@ export default class User extends BaseModel {
       joinField: 'UserId',
       inverseJoinField: 'RoleId',
     },
+    condition: ['IsActive', '=', true],
     string: _lt('Roles', { scope: 'auth.model.User.fields' }),
   })
   Roles: Role[];

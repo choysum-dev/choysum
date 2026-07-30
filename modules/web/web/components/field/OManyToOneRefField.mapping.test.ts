@@ -41,6 +41,7 @@ describe('OManyToOneRefField mapping/contract', () => {
     const s = source();
 
     expect(s).toContain('relationStore.value?.NameSearch(');
+    expect(s).toContain('...buildRelationalForField(');
     expect(s).toContain("fields: ['Id', 'DisplayName']");
     expect(s).not.toContain('buildKeywordCondition');
     expect(s).not.toContain('relationStore.value?.Search(final');

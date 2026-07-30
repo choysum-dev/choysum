@@ -39,6 +39,7 @@ export default class Country extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => Currency },
+    condition: ['IsActive', '=', true],
     index: true,
     string: _lt('Default Currency', { scope: 'base.model.Country.fields' }),
   })

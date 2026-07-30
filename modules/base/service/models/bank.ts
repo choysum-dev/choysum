@@ -31,6 +31,7 @@ export default class Bank extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => Country },
+    condition: ['IsActive', '=', true],
     index: true,
     string: _lt('Country', { scope: 'base.model.Bank.fields' }),
   })

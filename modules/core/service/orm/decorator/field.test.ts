@@ -4,7 +4,13 @@
 import BaseModel from '../model/model';
 import { MetadataStorage } from '../metadata/storage';
 import { Field } from './field';
-import type { FieldOptions } from '../metadata/field';
+import type {
+  FieldOptions,
+  FlatManyToOneFieldOptions,
+  FlatManyToManyFieldOptions,
+  FlatManyToOneRefFieldOptions,
+  FlatOneToManyFieldOptions,
+} from '../metadata/field';
 import { createTranslate } from '../../i18n';
 
 class FieldTargetModel extends BaseModel {}
@@ -1017,3 +1023,293 @@ test('Field decorator accepts html and rejects translate on html', () => {
   }).toThrow('translate is only supported on char/varchar/text fields');
 });
 
+
+test('Field decorator accepts static and callable relational condition (PR-P1-F4)', () => {
+  class ConditionTarget extends BaseModel {}
+
+  class StaticConditionModel extends BaseModel {
+    @Field({
+      type: 'ManyToOne',
+      relation: { targetModel: () => ConditionTarget },
+      condition: ['Active', '=', true],
+    } as any)
+    PartnerId!: ConditionTarget | null;
+  }
+
+  const staticMeta = MetadataStorage.instance.getModelMetadata(StaticConditionModel as any).fields.get('PartnerId') as any;
+  expect(staticMeta?.conditionKind).toBe('static');
+  expect(staticMeta?.condition).toEqual(['Active', '=', true]);
+  expect(staticMeta?.conditionCallable).toBeUndefined();
+
+  class CallableConditionModel extends BaseModel {
+    @Field({
+      type: 'ManyToOne',
+      relation: { targetModel: () => ConditionTarget },
+      condition: function (this: typeof CallableConditionModel) {
+        return ['Id', '=', 'U1'];
+      },
+    } as any)
+    UserId!: ConditionTarget | null;
+  }
+
+  const callableMeta = MetadataStorage.instance.getModelMetadata(CallableConditionModel as any).fields.get('UserId') as any;
+  expect(callableMeta?.conditionKind).toBe('dynamic');
+  expect(typeof callableMeta?.conditionCallable).toBe('function');
+  expect(callableMeta?.condition).toBeUndefined();
+  expect(callableMeta.conditionCallable.call(CallableConditionModel)).toEqual(['Id', '=', 'U1']);
+});
+
+test('Field decorator rejects condition method-name string and non-relation types (PR-P1-F4)', () => {
+  class ConditionTarget extends BaseModel {}
+
+  expect(() => {
+    class MethodNameConditionModel extends BaseModel {
+      @Field({
+        type: 'ManyToOne',
+        relation: { targetModel: () => ConditionTarget },
+        condition: 'partnerCondition',
+      } as any)
+      PartnerId!: ConditionTarget | null;
+    }
+    return MethodNameConditionModel;
+  }).toThrow('condition must not be a method name string');
+
+  expect(() => {
+    class VarcharConditionModel extends BaseModel {
+      @Field({ type: 'varchar', size: 32, condition: ['Active', '=', true] } as any)
+      Name!: string;
+    }
+    return VarcharConditionModel;
+  }).toThrow('condition is only supported on');
+
+  expect(() => {
+    class InvalidConditionModel extends BaseModel {
+      @Field({
+        type: 'ManyToOne',
+        relation: { targetModel: () => ConditionTarget },
+        condition: 123,
+      } as any)
+      PartnerId!: ConditionTarget | null;
+    }
+    return InvalidConditionModel;
+  }).toThrow('condition must be a QueryCondition tree or () => QueryCondition callable');
+
+  expect(() => {
+    class NullConditionModel extends BaseModel {
+      @Field({
+        type: 'ManyToOne',
+        relation: { targetModel: () => ConditionTarget },
+        condition: null,
+      } as any)
+      PartnerId!: ConditionTarget | null;
+    }
+    return NullConditionModel;
+  }).toThrow('condition must be a QueryCondition tree or () => QueryCondition callable');
+});
+
+test('Field decorator accepts OneToMany condition (PR-P1-F4)', () => {
+  class LineModel extends BaseModel {}
+
+  class OrderModel extends BaseModel {
+    @Field({
+      type: 'OneToMany',
+      relation: { targetModel: () => LineModel, inverseField: 'OrderId' },
+      condition: ['State', '!=', 'cancel'],
+    } as any)
+    LineIds!: LineModel[];
+  }
+
+  const meta = MetadataStorage.instance.getModelMetadata(OrderModel as any).fields.get('LineIds') as any;
+  expect(meta?.conditionKind).toBe('static');
+  expect(meta?.condition).toEqual(['State', '!=', 'cancel']);
+});
+
+test('Field condition typing: ctor target infers QueryCondition; string Ref stays BaseQueryCondition', () => {
+  class TypedConditionTarget extends BaseModel {
+    IsActive!: boolean;
+    Code!: string;
+  }
+
+  // ManyToOne overload: condition field names must exist on the inferred target.
+  const validManyToOne = {
+    type: 'ManyToOne' as const,
+    relation: { targetModel: () => TypedConditionTarget },
+    condition: ['IsActive', '=', true] as const,
+  } satisfies FlatManyToOneFieldOptions<TypedConditionTarget>;
+
+  expect(validManyToOne).toBeDefined();
+
+  // ManyToOne condition field names must exist on the inferred target.
+  const invalidManyToOneField = {
+    type: 'ManyToOne' as const,
+    relation: { targetModel: () => TypedConditionTarget },
+    // @ts-expect-error ManyToOne condition must use a field from the relation target.
+    condition: ['NotARealField', '=', true] as const,
+  } satisfies FlatManyToOneFieldOptions<TypedConditionTarget>;
+  expect(invalidManyToOneField).toBeDefined();
+
+  // ManyToOneRef: string targetModel keeps untyped BaseQueryCondition without a type argument.
+  const validManyToOneRef = {
+    type: 'ManyToOneRef' as const,
+    relation: { targetModel: 'base.Currency' },
+    condition: ['IsActive', '=', true] as const,
+    size: 20,
+  } satisfies FlatManyToOneRefFieldOptions;
+
+  const validManyToOneRefUnknownField = {
+    type: 'ManyToOneRef' as const,
+    relation: { targetModel: 'base.Currency' },
+    condition: ['AnyStringFieldName', '=', true] as const,
+    size: 20,
+  } satisfies FlatManyToOneRefFieldOptions;
+
+  expect(validManyToOneRef).toBeDefined();
+  expect(validManyToOneRefUnknownField).toBeDefined();
+
+  // Field<TTarget> on Ref tightens condition via import type (no value import).
+  const validTypedRef = {
+    type: 'ManyToOneRef' as const,
+    relation: { targetModel: 'demo.TypedConditionTarget' },
+    condition: ['IsActive', '=', true] as const,
+    size: 20,
+  } satisfies FlatManyToOneRefFieldOptions<TypedConditionTarget>;
+
+  const invalidTypedRef = {
+    type: 'ManyToOneRef' as const,
+    relation: { targetModel: 'demo.TypedConditionTarget' },
+    // @ts-expect-error Field<TTarget> Ref condition must use a field from TTarget.
+    condition: ['NotARealField', '=', true] as const,
+    size: 20,
+  } satisfies FlatManyToOneRefFieldOptions<TypedConditionTarget>;
+  expect(validTypedRef).toBeDefined();
+  expect(invalidTypedRef).toBeDefined();
+
+  // ManyToMany overload: infer / bind target from targetModel factory.
+  class JoinProbe extends BaseModel {
+    LeftId!: TypedConditionTarget;
+    RightId!: TypedConditionTarget;
+  }
+  const validManyToMany = {
+    type: 'ManyToMany' as const,
+    relation: {
+      targetModel: () => TypedConditionTarget,
+      joinModel: () => JoinProbe,
+      joinField: 'LeftId',
+      inverseJoinField: 'RightId',
+    },
+    condition: ['Code', '=', 'X'] as const,
+  } satisfies FlatManyToManyFieldOptions<JoinProbe, TypedConditionTarget>;
+  expect(validManyToMany).toBeDefined();
+
+  // ManyToMany joinField / inverseJoinField must be relation FKs on the join model.
+  const invalidManyToManyJoinField = {
+    type: 'ManyToMany' as const,
+    relation: {
+      targetModel: () => TypedConditionTarget,
+      joinModel: () => JoinProbe,
+      // @ts-expect-error ManyToMany joinField must be a BaseModel-typed key on TJoin.
+      joinField: 'NotAJoinFk',
+      inverseJoinField: 'RightId',
+    },
+  } satisfies FlatManyToManyFieldOptions<JoinProbe, TypedConditionTarget>;
+  expect(invalidManyToManyJoinField).toBeDefined();
+
+  // ManyToMany condition field names must exist on the inferred target.
+  const invalidManyToManyField = {
+    type: 'ManyToMany' as const,
+    relation: {
+      targetModel: () => TypedConditionTarget,
+      joinModel: () => JoinProbe,
+      joinField: 'LeftId',
+      inverseJoinField: 'RightId',
+    },
+    // @ts-expect-error ManyToMany condition must use a field from the relation target.
+    condition: ['MissingOnTarget', '=', 1] as const,
+  } satisfies FlatManyToManyFieldOptions<JoinProbe, TypedConditionTarget>;
+  expect(invalidManyToManyField).toBeDefined();
+
+  // OneToMany inverseField must be a relation FK on the target.
+  class O2MChild extends BaseModel {
+    ParentId!: TypedConditionTarget;
+  }
+  const validOneToMany = {
+    type: 'OneToMany' as const,
+    relation: { targetModel: () => O2MChild, inverseField: 'ParentId' },
+  } satisfies FlatOneToManyFieldOptions<O2MChild>;
+  expect(validOneToMany).toBeDefined();
+
+  const invalidOneToManyInverse = {
+    type: 'OneToMany' as const,
+    relation: {
+      targetModel: () => O2MChild,
+      // @ts-expect-error OneToMany inverseField must be a BaseModel-typed key on TTarget.
+      inverseField: 'MissingFk',
+    },
+  } satisfies FlatOneToManyFieldOptions<O2MChild>;
+  expect(invalidOneToManyInverse).toBeDefined();
+
+  const invalidOneToManyMissingInverse = {
+    type: 'OneToMany' as const,
+    // @ts-expect-error OneToMany relation requires inverseField.
+    relation: { targetModel: () => O2MChild },
+  } satisfies FlatOneToManyFieldOptions<O2MChild>;
+  expect(invalidOneToManyMissingInverse).toBeDefined();
+
+  // ManyToOneRef-style string FK on the target is a valid inverseField (any string key, not only *Id).
+  class O2MChildWithRefFk extends BaseModel {
+    ParentRef!: string;
+    IsActive!: boolean;
+  }
+  const validOneToManyRefInverse = {
+    type: 'OneToMany' as const,
+    relation: { targetModel: () => O2MChildWithRefFk, inverseField: 'ParentRef' },
+  } satisfies FlatOneToManyFieldOptions<O2MChildWithRefFk>;
+  expect(validOneToManyRefInverse).toBeDefined();
+
+  const invalidOneToManyNonStringInverse = {
+    type: 'OneToMany' as const,
+    relation: {
+      targetModel: () => O2MChildWithRefFk,
+      // @ts-expect-error inverseField must be a ManyToOne or string Ref key.
+      inverseField: 'IsActive',
+    },
+  } satisfies FlatOneToManyFieldOptions<O2MChildWithRefFk>;
+  expect(invalidOneToManyNonStringInverse).toBeDefined();
+
+  // Decorator call sites: overload should accept typed M2O condition without `as any`.
+  class HostWithTypedCondition extends BaseModel {
+    @Field({
+      type: 'ManyToOne',
+      relation: { targetModel: () => TypedConditionTarget },
+      condition: ['IsActive', '=', true],
+    })
+    TargetId!: TypedConditionTarget | null;
+
+    @Field({
+      type: 'ManyToOneRef',
+      relation: { targetModel: 'base.Currency' },
+      condition: ['IsActive', '=', true],
+      size: 20,
+    })
+    CurrencyId!: string;
+
+    @Field<TypedConditionTarget>({
+      type: 'ManyToOneRef',
+      relation: { targetModel: 'demo.TypedConditionTarget' },
+      condition: ['IsActive', '=', true],
+      size: 20,
+    })
+    TypedCurrencyId!: string;
+  }
+  expect(HostWithTypedCondition).toBeDefined();
+
+  // Non-relational FieldOptions arms must declare `condition?: never`, otherwise
+  // `Parameters<typeof Field>[0]` / IDE contextual typing collapses condition to unknown.
+  type FieldParam0 = Parameters<typeof Field>[0];
+  type FieldParamCondition = FieldParam0 extends { condition?: infer C } ? C : 'NO_CONDITION';
+  type IsAny<T> = 0 extends 1 & T ? true : false;
+  type IsUnknown<T> = unknown extends T ? (IsAny<T> extends true ? false : true) : false;
+  type _ConditionNotUnknown = IsUnknown<FieldParamCondition> extends false ? true : false;
+  const conditionNotUnknown: _ConditionNotUnknown = true;
+  expect(conditionNotUnknown).toBe(true);
+});

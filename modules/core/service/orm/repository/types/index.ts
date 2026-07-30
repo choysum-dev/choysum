@@ -17,6 +17,7 @@ export type {
   OrderBy,
   SoftDeleteMode,
   SoftDeleteOptions,
+  ForField,
   SearchOptions,
   CountOptions,
   UpdateOptions,

@@ -4,7 +4,7 @@
 import type BaseModel from '../../model/model';
 import { FieldMetadata, ManyToManyMetadata, ManyToOneMetadata, ModelMetadata, OneToManyMetadata, type RelationFieldType } from '../../metadata';
 import { MetadataStorage } from '../../metadata';
-import { isRepositorySelectableScalarField } from '../query/sql_compute_expression';
+import { hasRepositorySqlComputeExpression, isRepositorySelectableScalarField } from '../query/sql_compute_expression';
 import { getRuntimeEnvValue, parseRuntimeEnvBoolean } from '@/core/utils/env';
 import { asObjectRecord } from '../../../../utils/object';
 
@@ -190,6 +190,20 @@ export function buildSelectionTree(meta: ModelMetadata, fields: unknown[], optio
         fail(`Selection relation field does not exist: ${toPathLabel(pathPrefix, relationKey)} (model=${modelLabel(currentMeta)})`);
         continue;
       }
+
+      // @SqlCompute on a relation-typed field (e.g. IrUiResource.Childs) is a SQL projection,
+      // not an ORM relation load. Prefer the compute expression over inverseField joins.
+      if (hasRepositorySqlComputeExpression(currentMeta, relationKey)) {
+        if (subFields.length > 0) {
+          fail(
+            `Selection SqlCompute field does not support nested relation selection: ${toPathLabel(pathPrefix, relationKey)} (model=${modelLabel(currentMeta)})`
+          );
+          continue;
+        }
+        node.columns.add(relationKey);
+        continue;
+      }
+
       if (fieldMeta.type !== 'ManyToOne' && fieldMeta.type !== 'OneToMany' && fieldMeta.type !== 'ManyToMany') {
         fail(`Selection field is not a relation field: ${toPathLabel(pathPrefix, relationKey)} (model=${modelLabel(currentMeta)})`);
         continue;

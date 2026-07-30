@@ -22,6 +22,10 @@ import type { SelectionNode, SelectionRelationEntry } from './selection_tree';
 import { getRuntimeEnvFlag } from '@/core/utils/env';
 import { asObjectRecord } from '../../../../utils/object';
 import type { UnknownRecord } from '../../../../utils/types';
+import { convertCondition } from '../query/condition_compiler';
+import { isEmptyRepositoryCondition } from '../query/condition_layer';
+import { resolveParentFieldRelationalCondition } from '../../model/model_for_field_condition';
+import type { BaseQueryCondition } from '../types';
 
 type RelationWhereBuilder = {
   (left: string, op: string, right: unknown): unknown;
@@ -62,6 +66,31 @@ export function applyRepositoryRelationSoftDeleteFilter<T extends { where: (left
   }
 
   return subQuery;
+}
+
+/**
+ * Apply parent field `@Field({ condition })` onto an O2M/M2M child subquery (PR-P1-F4 §5.5).
+ */
+export function applyRepositoryRelationFieldConditionFilter<
+  T extends {
+    where: ((left: string, op: string, right: unknown) => T) & ((predicate: (ctx: { eb: unknown }) => unknown) => T);
+  },
+>(
+  db: DbLike,
+  getDialect: () => string,
+  parentMeta: ModelMetadata,
+  relKey: string,
+  targetMeta: ModelMetadata,
+  targetTable: string,
+  subQuery: T
+): T {
+  const condition = resolveParentFieldRelationalCondition(parentMeta, relKey);
+  if (isEmptyRepositoryCondition(condition)) {
+    return subQuery;
+  }
+  return subQuery.where(({ eb }: { eb: unknown }) =>
+    convertCondition(db, getDialect, targetMeta, eb as never, condition as BaseQueryCondition, targetTable)
+  );
 }
 
 function resolveRelationOwnershipField(targetMeta: ModelMetadata): string | undefined {
@@ -220,6 +249,7 @@ export function buildRelationJsonSelect(
 
     sub = applyRepositoryRelationCompanyFilter(targetMeta, targetRef, sub);
     sub = applyRepositoryRelationSoftDeleteFilter(targetMeta, targetRef, sub);
+    sub = applyRepositoryRelationFieldConditionFilter(db, getDialect, parentMeta, relKey, targetMeta, targetRef, sub as never);
 
     const relationOrder = normalizeOrderBy(getRelationOrderBy(relation));
     const metaOrder = normalizeOrderBy(targetMeta.orderBy);
@@ -260,6 +290,7 @@ export function buildRelationJsonSelect(
     sub = applyRepositoryRelationCompanyFilter(targetMeta, targetRef, sub);
     sub = applyRepositoryRelationSoftDeleteFilter(joinMeta, joinTable, sub);
     sub = applyRepositoryRelationSoftDeleteFilter(targetMeta, targetRef, sub);
+    sub = applyRepositoryRelationFieldConditionFilter(db, getDialect, parentMeta, relKey, targetMeta, targetRef, sub as never);
 
     const relationOrder = normalizeOrderBy(getRelationOrderBy(relation));
     const metaOrder = normalizeOrderBy(targetMeta.orderBy);

@@ -38,6 +38,7 @@ export default class Company extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => Company },
+    condition: ['IsActive', '=', true],
     index: true,
     string: _lt('Parent Company', { scope: 'base.model.Company.fields' }),
   })
@@ -55,6 +56,7 @@ export default class Company extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => Currency },
+    condition: ['IsActive', '=', true],
     notNull: true,
     index: true,
     string: _lt('Base Currency', { scope: 'base.model.Company.fields' }),
@@ -73,6 +75,7 @@ export default class Company extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => Language },
+    condition: ['IsActive', '=', true],
     index: true,
     string: _lt('Language', { scope: 'base.model.Company.fields' }),
   })
@@ -81,6 +84,7 @@ export default class Company extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => Country },
+    condition: ['IsActive', '=', true],
     index: true,
     string: _lt('Country', { scope: 'base.model.Company.fields' }),
   })

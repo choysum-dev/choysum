@@ -14,6 +14,7 @@ import RoleMethodAccess from './role_method_access';
 import RoleFieldRule from './role_field_rule';
 import RoleUiResource from './role_ui_resource';
 import { normalizeRefId } from '@/core/service/utils/normalization';
+import type IrUiResource from '@/meta/service/models/ir_ui_resource';
 import {
   applyAccessWriteTransformOnCreate,
   applyAccessWriteTransformOnUpdate,
@@ -104,7 +105,7 @@ export default class Role extends BaseModel {
   /**
    * UI-tree editor projection that only carries allow/resource-level UI resource Ids.
    */
-  @Field({
+  @Field<IrUiResource>({
     type: 'ManyToManyRef',
     relation: { targetModel: 'meta.IrUiResource' },
     string: _lt('Accessible UI Resources', { scope: 'auth.model.Role.fields' }),
@@ -122,6 +123,7 @@ export default class Role extends BaseModel {
       joinField: 'RoleId',
       inverseJoinField: 'UserId',
     },
+    condition: ['IsActive', '=', true],
     string: _lt('Users', { scope: 'auth.model.Role.fields' }),
   })
   Users: User[];
@@ -137,6 +139,7 @@ export default class Role extends BaseModel {
       joinField: 'ParentRoleId',
       inverseJoinField: 'ChildRoleId',
     },
+    condition: ['IsActive', '=', true],
     string: _lt('Included Roles', { scope: 'auth.model.Role.fields' }),
   })
   ImpliedRoles: Role[];
@@ -152,6 +155,7 @@ export default class Role extends BaseModel {
       joinField: 'ChildRoleId',
       inverseJoinField: 'ParentRoleId',
     },
+    condition: ['IsActive', '=', true],
     string: _lt('Implied By Roles', { scope: 'auth.model.Role.fields' }),
   })
   ImpliedByRoles: Role[];

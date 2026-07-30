@@ -3,7 +3,19 @@
 
 import BaseModel from '../model/model';
 import { MetadataStorage } from '../metadata';
-import { FieldOptions, FieldMetadata, FieldType, type SelectionItem, type SelectionDeclaration } from '../metadata/field';
+import {
+  FieldOptions,
+  FieldMetadata,
+  FieldType,
+  RELATIONAL_CONDITION_TYPES,
+  type SelectionItem,
+  type SelectionDeclaration,
+  type FlatManyToOneFieldOptions,
+  type FlatOneToManyFieldOptions,
+  type FlatManyToManyFieldOptions,
+  type FlatManyToOneRefFieldOptions,
+  type FlatManyToManyRefFieldOptions,
+} from '../metadata/field';
 import type { ModelCtor } from '../metadata/field';
 import { asObjectRecord } from '../../../utils/object';
 import type { ObjectRecord } from '../../../utils/types';
@@ -67,6 +79,8 @@ type FieldDecoratorOptionBag = {
    * Odoo-style check_company for ManyToOne / ManyToOneRef (parent↔related CompanyId).
    */
   checkCompany?: unknown;
+  /** Relational default condition (static tree or callable); relation field types only. */
+  condition?: unknown;
 };
 
 function normalizeFieldString(name: string, value: unknown): { string?: string; stringText?: TermReference } {
@@ -98,11 +112,25 @@ function toFieldDecoratorOptionBag(value: unknown): FieldDecoratorOptionBag {
 /**
  * Declares model field metadata for persistence, relations, selections, and compute behavior.
  *
+ * Overloads infer condition target fields from ctor `targetModel` for object relations.
+ * For string Ref, pass Field<TTarget> (import type) to tighten condition; omit to keep BaseQueryCondition.
+ *
  * @param options Field metadata to register on the decorated property.
  * @returns A property decorator that records the field definition in metadata storage.
  */
-export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin extends BaseModel = BaseModel, TTarget extends BaseModel = BaseModel>(
-  options: FieldOptions<T, R, TJoin, TTarget>
+export function Field<TTarget extends BaseModel>(options: FlatManyToOneFieldOptions<TTarget>): PropertyDecorator;
+export function Field<TTarget extends BaseModel>(options: FlatOneToManyFieldOptions<TTarget>): PropertyDecorator;
+export function Field<TJoin extends BaseModel, TTarget extends BaseModel>(
+  options: FlatManyToManyFieldOptions<TJoin, TTarget>
+): PropertyDecorator;
+export function Field<TTarget extends BaseModel>(options: FlatManyToOneRefFieldOptions<TTarget>): PropertyDecorator;
+export function Field<TTarget extends BaseModel>(options: FlatManyToManyRefFieldOptions<TTarget>): PropertyDecorator;
+export function Field(options: FlatManyToOneRefFieldOptions): PropertyDecorator;
+export function Field(options: FlatManyToManyRefFieldOptions): PropertyDecorator;
+export function Field(options: FieldOptions): PropertyDecorator;
+// Implementation: accept typed Ref options (TTarget) that are not assignable into default FieldOptions.
+export function Field(
+  options: FieldOptions | FlatManyToOneRefFieldOptions<BaseModel> | FlatManyToManyRefFieldOptions<BaseModel>
 ): PropertyDecorator {
   return function (target: Object, propertyKey: string | symbol) {
     const name = propertyKey as string;
@@ -120,6 +148,9 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
     let selectionKind: FieldMetadata['selectionKind'];
     let selectionMethod: FieldMetadata['selectionMethod'];
     let selectionCallable: FieldMetadata['selectionCallable'];
+    let conditionKind: FieldMetadata['conditionKind'];
+    let conditionStatic: FieldMetadata['condition'];
+    let conditionCallable: FieldMetadata['conditionCallable'];
     let normalizedColumn: ObjectRecord | undefined;
 
     const isRelation = relationTypes.has(type);
@@ -424,6 +455,29 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
       }
     }
 
+    // Relational condition (static QueryCondition | callable; no method-name string)
+    if (optionBag.condition !== undefined) {
+      if (!RELATIONAL_CONDITION_TYPES.has(type)) {
+        throw new Error(
+          `@Field(${name}) condition is only supported on ManyToOne / ManyToOneRef / OneToMany / ManyToMany / ManyToManyRef`
+        );
+      }
+      const conditionRaw = optionBag.condition;
+      if (typeof conditionRaw === 'function') {
+        conditionKind = 'dynamic';
+        conditionCallable = conditionRaw as FieldMetadata['conditionCallable'];
+      } else if (typeof conditionRaw === 'string') {
+        throw new Error(
+          `@Field(${name}) condition must not be a method name string; use a QueryCondition tree or () => QueryCondition callable`
+        );
+      } else if (conditionRaw && typeof conditionRaw === 'object') {
+        conditionKind = 'static';
+        conditionStatic = conditionRaw as FieldMetadata['condition'];
+      } else {
+        throw new Error(`@Field(${name}) condition must be a QueryCondition tree or () => QueryCondition callable`);
+      }
+    }
+
     // ManyToOneRef default physical column: char(20) + index when no explicit storage hints are provided.
     if (type === 'ManyToOneRef' && !hasColumn) {
       normalizedColumn = {
@@ -543,6 +597,10 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
       if (selectionMethod) meta.selectionMethod = selectionMethod;
       if (selectionCallable) meta.selectionCallable = selectionCallable;
     }
+
+    if (conditionKind) meta.conditionKind = conditionKind;
+    if (conditionStatic) meta.condition = conditionStatic;
+    if (conditionCallable) meta.conditionCallable = conditionCallable;
 
     if (optionBag.relation) meta.relation = optionBag.relation as FieldMetadata['relation'];
     if (normalizedColumn) meta.column = normalizedColumn as FieldMetadata['column'];

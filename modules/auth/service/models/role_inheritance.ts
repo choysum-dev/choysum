@@ -21,6 +21,7 @@ export default class RoleInheritance extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => Role },
+    condition: ['IsActive', '=', true],
     string: _lt('Parent Role', { scope: 'auth.model.RoleInheritance.fields' }),
   })
   ParentRoleId: Role;
@@ -31,6 +32,7 @@ export default class RoleInheritance extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => Role },
+    condition: ['IsActive', '=', true],
     string: _lt('Child Role', { scope: 'auth.model.RoleInheritance.fields' }),
   })
   ChildRoleId: Role;

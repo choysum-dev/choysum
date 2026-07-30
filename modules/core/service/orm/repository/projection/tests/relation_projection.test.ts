@@ -4,7 +4,13 @@
 import { withContext } from '../../../../runtime/context';
 import { MetadataStorage } from '../../../metadata/storage';
 import type { SelectionNode } from '../selection_tree';
-import { applyRepositoryRelationCompanyFilter, applyRepositoryRelationSoftDeleteFilter, buildRelationJsonSelect, buildRepositoryRelationChildSelect } from '..';
+import {
+  applyRepositoryRelationCompanyFilter,
+  applyRepositoryRelationSoftDeleteFilter,
+  buildRelationJsonSelect,
+  buildRepositoryRelationChildSelect,
+} from '..';
+import { applyRepositoryRelationFieldConditionFilter } from '../relation_projection';
 
 function withFakeMetadata<T>(metas: Map<Function, any>, fn: () => T): T {
   const storage = MetadataStorage.instance as any;
@@ -39,6 +45,85 @@ test('repository relation projection applies soft-delete filter only when enable
   );
 
   expect(calls).toEqual([{ left: 'demo_table.DeletedAt', op: 'is', right: null }]);
+});
+
+test('repository relation projection applies parent field condition onto child subquery', () => {
+  class ParentModel {}
+  class ChildModel {}
+
+  const parentMeta = {
+    type: ParentModel,
+    fields: new Map([
+      [
+        'LineIds',
+        {
+          name: 'LineIds',
+          type: 'OneToMany',
+          condition: ['Active', '=', true],
+          conditionKind: 'static',
+        },
+      ],
+      [
+        'EmptyLines',
+        {
+          name: 'EmptyLines',
+          type: 'OneToMany',
+        },
+      ],
+    ]),
+  } as any;
+
+  const targetMeta = {
+    type: ChildModel,
+    tableName: () => 'child_table',
+    fields: new Map([['Active', { type: 'boolean', column: { name: 'Active' } }]]),
+  } as any;
+
+  const db: any = { fn: { any: (v: any) => ({ any: v }) } };
+  const eb: any = (lhs: any, op: any, rhs: any) => ({ lhs, op, rhs });
+  eb.and = (parts: any[]) => ({ kind: 'and', parts });
+  eb.or = (parts: any[]) => ({ kind: 'or', parts });
+  eb.ref = (value: string) => `ref:${value}`;
+  eb.fn = (name: string, args: any[]) => ({ fn: name, args });
+
+  const emptyCalls: any[] = [];
+  const emptyQuery = {
+    where(predicate: any) {
+      emptyCalls.push(predicate);
+      return this;
+    },
+  };
+  const unchanged = applyRepositoryRelationFieldConditionFilter(
+    db,
+    () => 'postgres',
+    parentMeta,
+    'EmptyLines',
+    targetMeta,
+    'child_table',
+    emptyQuery as any
+  );
+  expect(unchanged).toBe(emptyQuery);
+  expect(emptyCalls).toEqual([]);
+
+  const whereResults: any[] = [];
+  const query = {
+    where(predicate: any) {
+      whereResults.push(predicate({ eb }));
+      return this;
+    },
+  };
+
+  applyRepositoryRelationFieldConditionFilter(
+    db,
+    () => 'postgres',
+    parentMeta,
+    'LineIds',
+    targetMeta,
+    'child_table',
+    query as any
+  );
+
+  expect(whereResults).toEqual([{ lhs: 'Active', op: '=', rhs: true }]);
 });
 
 test('repository relation projection applies company filter from runtime context when model is company scoped', () => {

@@ -38,6 +38,7 @@ import type { ObjectRecord } from '../../../utils/types';
 import type { RuntimeModelCtor } from './types';
 import { createServiceByModel } from '../../rpc';
 import { _t } from '@/core/service/i18n_binder';
+import { mergeCallerConditionWithForField } from './model_for_field_condition';
 import { isIanaTimezone, wallClockRangeToUtc } from '@/core/service/utils/datetime';
 
 /**
@@ -329,8 +330,13 @@ export class ReadOperations {
     options?: SearchOptions<T>
   ): Promise<ObjectRecord[]> {
     const cond: QueryCondition<T> | [] = condition === undefined || condition === null ? [] : condition;
+    const merged = mergeCallerConditionWithForField(
+      ModelCtor as never,
+      cond as never,
+      options?.forField
+    ) as QueryCondition<T> | [];
     const repository = ReadOperations.resolveRepository(ModelCtor, options);
-    const rows = (await repository.search(cond as QueryCondition<T>, options)) as ObjectRecord[];
+    const rows = (await repository.search(merged as QueryCondition<T>, options)) as ObjectRecord[];
     await ReadOperations.injectAttachmentBindingsForRead(ModelCtor, rows, options?.fields as FieldSelection<BaseModel> | undefined);
     ReadOperations.injectVirtualComputeForRead(ModelCtor, rows, options?.fields as FieldSelection<BaseModel> | undefined);
     return rows;
