@@ -6,6 +6,7 @@ export { Model, defineModelOptions } from './model';
 export { Constraint } from './constraint';
 export { Field } from './field';
 export { Compute } from './compute';
+export type { ComputeOptions, VirtualCollectionComputeOptions, CollectionRelationKeys, NonCollectionRelationKeys } from './compute';
 export { SqlCompute } from './sqlcompute';
 export { Search } from './search';
 export { Inverse } from './inverse';
