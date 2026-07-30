@@ -5,7 +5,8 @@ import BaseModel from '../model/model';
 import type { ExpressionWrapper, ExpressionBuilder, Expression } from 'kysely';
 import Decimal, { DecimalRound } from '@/core/utils/decimal';
 import type { TermReference } from '../../i18n';
-import type { BaseQueryCondition, QueryCondition } from '../repository/types/query';
+import type { BaseQueryCondition, Operator } from '../repository/types/query';
+import type { Selectable } from '../repository/types/common';
 
 type ObjectRecord = Record<string, unknown>;
 
@@ -130,8 +131,10 @@ type FlatNoSelectionOption = { selection?: never };
 type FlatNoSizeOption = { size?: never };
 type FlatNoDecimalOptions = { precision?: never; scale?: never; round?: never; scaleField?: never };
 type FlatNoMonetaryOptions = { currencyField?: never };
+/** Prevents `condition` from inferring as `unknown` on non-relational FieldOptions union arms. */
+type FlatNoConditionOption = { condition?: never };
 
-type FlatRefRelationOption<TTarget extends BaseModel> = {
+type FlatRefRelationOption = {
   targetModel: string;
   onDelete?: never;
   onUpdate?: never;
@@ -178,7 +181,8 @@ type FlatCharOrVarcharFieldOptions<T extends BaseModel> = {
   FlatNoRelationOption &
   FlatNoSelectionOption &
   FlatNoDecimalOptions &
-  FlatNoMonetaryOptions;
+  FlatNoMonetaryOptions &
+  FlatNoConditionOption;
 
 type FlatScalarFieldOptions<T extends BaseModel> = {
   type: Exclude<
@@ -190,7 +194,8 @@ type FlatScalarFieldOptions<T extends BaseModel> = {
   FlatNoSelectionOption &
   FlatNoSizeOption &
   FlatNoDecimalOptions &
-  FlatNoMonetaryOptions;
+  FlatNoMonetaryOptions &
+  FlatNoConditionOption;
 
 type FlatDecimalFieldOptions<T extends BaseModel> = {
   type: 'decimal';
@@ -202,7 +207,8 @@ type FlatDecimalFieldOptions<T extends BaseModel> = {
   FlatNoRelationOption &
   FlatNoSelectionOption &
   FlatNoSizeOption &
-  FlatNoMonetaryOptions;
+  FlatNoMonetaryOptions &
+  FlatNoConditionOption;
 
 /** Keys that may reference a currency relation (C3 when typed as Currency; else keyof T for Ref-as-string). */
 export type MonetaryCurrencyFieldKey<T extends BaseModel> = Extract<
@@ -220,7 +226,8 @@ type FlatMonetaryFieldOptions<T extends BaseModel> = {
   FlatNoRelationOption &
   FlatNoSelectionOption &
   FlatNoSizeOption &
-  FlatNoDecimalOptions;
+  FlatNoDecimalOptions &
+  FlatNoConditionOption;
 
 type FlatSelectionFieldOptions<T extends BaseModel> = {
   type: 'selection';
@@ -232,70 +239,110 @@ type FlatSelectionFieldOptions<T extends BaseModel> = {
   size?: number;
 } & FlatCommonOptions &
   FlatNoRelationOption &
-  FlatNoDecimalOptions;
+  FlatNoDecimalOptions &
+  FlatNoConditionOption;
 
-/** Authoring forms for relational `@Field({ condition })` (PR-P1-F4). No method-name string. */
+/**
+ * Authoring forms for relational `@Field({ condition })` when `targetModel` is a ctor factory
+ * (ManyToOne / OneToMany / ManyToMany).
+ *
+ * Intentionally lighter than full QueryCondition of TTarget: only target field *names* are
+ * checked (values are `unknown`). Full QueryCondition is a deep mapped union and often collapses
+ * to `unknown` under object-literal contextual typing in the language service (while `relation`
+ * still displays correctly).
+ */
 export type RelationalConditionDeclaration<TTarget extends BaseModel = BaseModel> =
-  // Prefer target-typed QueryCondition when TTarget is explicit; BaseQueryCondition covers the
-  // common `@Field({...})` case where Field's TTarget defaults to BaseModel and is not inferred.
-  | QueryCondition<TTarget>
+  | readonly [Extract<keyof Selectable<TTarget>, string>, Operator, unknown]
+  | { And: Array<RelationalConditionDeclaration<TTarget>> }
+  | { Or: Array<RelationalConditionDeclaration<TTarget>> }
+  | ((this: unknown) => RelationalConditionDeclaration<TTarget>);
+
+/**
+ * Authoring forms for Ref `@Field({ condition })` when `targetModel` is a cross-app string id.
+ * Untyped: cannot infer target fields without value-importing the target model into the host app bundle.
+ */
+export type RefRelationalConditionDeclaration =
   | BaseQueryCondition
-  | ((this: unknown) => QueryCondition<TTarget> | BaseQueryCondition);
+  | ((this: unknown) => BaseQueryCondition);
 
 export type RelationalConditionKind = 'static' | 'dynamic';
 
-type FlatRelationalConditionOption<TTarget extends BaseModel> = {
-  /**
-   * Default filter on the relation target (candidate search + O2M/M2M load).
-   * Static `QueryCondition` or RequestContext-only callable (no draft).
-   */
-  condition?: RelationalConditionDeclaration<TTarget>;
-};
+/**
+ * Note: `condition` must live on the *primary* object type of each Flat*FieldOptions
+ * (not only via `& { condition?: ... }`). Optional props introduced solely through
+ * intersections often lose object-literal contextual typing in the language service,
+ * which then shows `condition?: unknown` even when Field<TTarget> resolved correctly.
+ */
 
-type FlatManyToOneRefFieldOptions<T extends BaseModel, TTarget extends BaseModel> = {
+/** ManyToOneRef flat options (string targetModel; loose condition). */
+export type FlatManyToOneRefFieldOptions = {
   type: 'ManyToOneRef';
-  relation: FlatRefRelationOption<TTarget>;
+  relation: FlatRefRelationOption;
   size?: number;
+  /**
+   * Default filter on the Ref target (candidate search + M2MRef load).
+   * Untyped `BaseQueryCondition` — string `targetModel` cannot infer target fields.
+   */
+  condition?: RefRelationalConditionDeclaration;
 } & FlatCommonOptions &
   FlatNoSelectionOption &
-  FlatNoDecimalOptions &
-  FlatRelationalConditionOption<TTarget>;
+  FlatNoDecimalOptions;
 
-type FlatManyToManyRefFieldOptions<T extends BaseModel, TTarget extends BaseModel> = {
+/** ManyToManyRef flat options (string targetModel; loose condition). */
+export type FlatManyToManyRefFieldOptions = {
   type: 'ManyToManyRef';
-  relation: FlatRefRelationOption<TTarget>;
+  relation: FlatRefRelationOption;
+  /**
+   * Default filter on the Ref target (candidate search + M2MRef load).
+   * Untyped `BaseQueryCondition` — string `targetModel` cannot infer target fields.
+   */
+  condition?: RefRelationalConditionDeclaration;
 } & FlatCommonOptions &
   FlatNoSelectionOption &
   FlatNoSizeOption &
-  FlatNoDecimalOptions &
-  FlatRelationalConditionOption<TTarget>;
+  FlatNoDecimalOptions;
 
-type FlatManyToOneFieldOptions<T extends BaseModel, TTarget extends BaseModel> = {
+/** ManyToOne flat options (ctor targetModel; condition typed against target field names). */
+export type FlatManyToOneFieldOptions<TTarget extends BaseModel = BaseModel> = {
   type: 'ManyToOne';
   relation: FlatManyToOneRelationOption<TTarget>;
+  /**
+   * Default filter on the relation target (candidate search + O2M/M2M load).
+   * Static condition tree or RequestContext-only callable (no draft).
+   */
+  condition?: RelationalConditionDeclaration<TTarget>;
 } & FlatCommonOptions &
   FlatNoSelectionOption &
   FlatNoSizeOption &
-  FlatNoDecimalOptions &
-  FlatRelationalConditionOption<TTarget>;
+  FlatNoDecimalOptions;
 
-type FlatOneToManyFieldOptions<T extends BaseModel, TTarget extends BaseModel> = {
+/** OneToMany flat options (ctor targetModel; condition typed against target field names). */
+export type FlatOneToManyFieldOptions<TTarget extends BaseModel = BaseModel> = {
   type: 'OneToMany';
   relation: FlatOneToManyRelationOption<TTarget>;
+  /**
+   * Default filter on the relation target (candidate search + O2M/M2M load).
+   * Static condition tree or RequestContext-only callable (no draft).
+   */
+  condition?: RelationalConditionDeclaration<TTarget>;
 } & FlatCommonOptions &
   FlatNoSelectionOption &
   FlatNoSizeOption &
-  FlatNoDecimalOptions &
-  FlatRelationalConditionOption<TTarget>;
+  FlatNoDecimalOptions;
 
-type FlatManyToManyFieldOptions<T extends BaseModel, TJoin extends BaseModel, TTarget extends BaseModel> = {
+/** ManyToMany flat options (ctor targetModel; condition typed against target field names). */
+export type FlatManyToManyFieldOptions<TJoin extends BaseModel = BaseModel, TTarget extends BaseModel = BaseModel> = {
   type: 'ManyToMany';
   relation: FlatManyToManyRelationOption<TJoin, TTarget>;
+  /**
+   * Default filter on the relation target (candidate search + O2M/M2M load).
+   * Static condition tree or RequestContext-only callable (no draft).
+   */
+  condition?: RelationalConditionDeclaration<TTarget>;
 } & FlatCommonOptions &
   FlatNoSelectionOption &
   FlatNoSizeOption &
-  FlatNoDecimalOptions &
-  FlatRelationalConditionOption<TTarget>;
+  FlatNoDecimalOptions;
 
 export type FlatFieldOptions<T extends BaseModel = BaseModel, TJoin extends BaseModel = BaseModel, TTarget extends BaseModel = BaseModel> =
   | FlatCharOrVarcharFieldOptions<T>
@@ -303,11 +350,11 @@ export type FlatFieldOptions<T extends BaseModel = BaseModel, TJoin extends Base
   | FlatDecimalFieldOptions<T>
   | FlatMonetaryFieldOptions<T>
   | FlatSelectionFieldOptions<T>
-  | FlatManyToOneRefFieldOptions<T, TTarget>
-  | FlatManyToManyRefFieldOptions<T, TTarget>
-  | FlatManyToOneFieldOptions<T, TTarget>
-  | FlatOneToManyFieldOptions<T, TTarget>
-  | FlatManyToManyFieldOptions<T, TJoin, TTarget>;
+  | FlatManyToOneRefFieldOptions
+  | FlatManyToManyRefFieldOptions
+  | FlatManyToOneFieldOptions<TTarget>
+  | FlatOneToManyFieldOptions<TTarget>
+  | FlatManyToManyFieldOptions<TJoin, TTarget>;
 
 /**
  * One selectable option for a selection field (ORM / runtime).

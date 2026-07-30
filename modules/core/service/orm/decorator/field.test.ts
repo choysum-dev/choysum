@@ -4,7 +4,12 @@
 import BaseModel from '../model/model';
 import { MetadataStorage } from '../metadata/storage';
 import { Field } from './field';
-import type { FieldOptions } from '../metadata/field';
+import type {
+  FieldOptions,
+  FlatManyToOneFieldOptions,
+  FlatManyToManyFieldOptions,
+  FlatManyToOneRefFieldOptions,
+} from '../metadata/field';
 import { createTranslate } from '../../i18n';
 
 class FieldTargetModel extends BaseModel {}
@@ -1116,4 +1121,102 @@ test('Field decorator accepts OneToMany condition (PR-P1-F4)', () => {
   const meta = MetadataStorage.instance.getModelMetadata(OrderModel as any).fields.get('LineIds') as any;
   expect(meta?.conditionKind).toBe('static');
   expect(meta?.condition).toEqual(['State', '!=', 'cancel']);
+});
+
+test('Field condition typing: ctor target infers QueryCondition; string Ref stays BaseQueryCondition', () => {
+  class TypedConditionTarget extends BaseModel {
+    IsActive!: boolean;
+    Code!: string;
+  }
+
+  // ManyToOne overload: condition field names must exist on the inferred target.
+  const validManyToOne = {
+    type: 'ManyToOne' as const,
+    relation: { targetModel: () => TypedConditionTarget },
+    condition: ['IsActive', '=', true] as const,
+  } satisfies FlatManyToOneFieldOptions<TypedConditionTarget>;
+
+  expect(validManyToOne).toBeDefined();
+
+  // @ts-expect-error ManyToOne condition must use a field from the relation target.
+  const invalidManyToOneField = {
+    type: 'ManyToOne' as const,
+    relation: { targetModel: () => TypedConditionTarget },
+    condition: ['NotARealField', '=', true] as const,
+  } satisfies FlatManyToOneFieldOptions<TypedConditionTarget>;
+  expect(invalidManyToOneField).toBeDefined();
+
+  // ManyToOneRef: string targetModel keeps untyped BaseQueryCondition (no target import required).
+  const validManyToOneRef = {
+    type: 'ManyToOneRef' as const,
+    relation: { targetModel: 'base.Currency' },
+    condition: ['IsActive', '=', true] as const,
+    size: 20,
+  } satisfies FlatManyToOneRefFieldOptions;
+
+  const validManyToOneRefUnknownField = {
+    type: 'ManyToOneRef' as const,
+    relation: { targetModel: 'base.Currency' },
+    condition: ['AnyStringFieldName', '=', true] as const,
+    size: 20,
+  } satisfies FlatManyToOneRefFieldOptions;
+
+  expect(validManyToOneRef).toBeDefined();
+  expect(validManyToOneRefUnknownField).toBeDefined();
+
+  // ManyToMany overload: infer / bind target from targetModel factory.
+  class JoinProbe extends BaseModel {}
+  const validManyToMany = {
+    type: 'ManyToMany' as const,
+    relation: {
+      targetModel: () => TypedConditionTarget,
+      joinModel: () => JoinProbe,
+      joinField: 'LeftId',
+      inverseJoinField: 'RightId',
+    },
+    condition: ['Code', '=', 'X'] as const,
+  } satisfies FlatManyToManyFieldOptions<JoinProbe, TypedConditionTarget>;
+  expect(validManyToMany).toBeDefined();
+
+  // @ts-expect-error ManyToMany condition must use a field from the relation target.
+  const invalidManyToManyField = {
+    type: 'ManyToMany' as const,
+    relation: {
+      targetModel: () => TypedConditionTarget,
+      joinModel: () => JoinProbe,
+      joinField: 'LeftId',
+      inverseJoinField: 'RightId',
+    },
+    condition: ['MissingOnTarget', '=', 1] as const,
+  } satisfies FlatManyToManyFieldOptions<JoinProbe, TypedConditionTarget>;
+  expect(invalidManyToManyField).toBeDefined();
+
+  // Decorator call sites: overload should accept typed M2O condition without `as any`.
+  class HostWithTypedCondition extends BaseModel {
+    @Field({
+      type: 'ManyToOne',
+      relation: { targetModel: () => TypedConditionTarget },
+      condition: ['IsActive', '=', true],
+    })
+    TargetId!: TypedConditionTarget | null;
+
+    @Field({
+      type: 'ManyToOneRef',
+      relation: { targetModel: 'base.Currency' },
+      condition: ['IsActive', '=', true],
+      size: 20,
+    })
+    CurrencyId!: string;
+  }
+  expect(HostWithTypedCondition).toBeDefined();
+
+  // Non-relational FieldOptions arms must declare `condition?: never`, otherwise
+  // `Parameters<typeof Field>[0]` / IDE contextual typing collapses condition to unknown.
+  type FieldParam0 = Parameters<typeof Field>[0];
+  type FieldParamCondition = FieldParam0 extends { condition?: infer C } ? C : 'NO_CONDITION';
+  type IsAny<T> = 0 extends 1 & T ? true : false;
+  type IsUnknown<T> = unknown extends T ? (IsAny<T> extends true ? false : true) : false;
+  type _ConditionNotUnknown = IsUnknown<FieldParamCondition> extends false ? true : false;
+  const conditionNotUnknown: _ConditionNotUnknown = true;
+  expect(conditionNotUnknown).toBe(true);
 });

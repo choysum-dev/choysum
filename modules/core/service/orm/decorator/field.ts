@@ -10,6 +10,11 @@ import {
   RELATIONAL_CONDITION_TYPES,
   type SelectionItem,
   type SelectionDeclaration,
+  type FlatManyToOneFieldOptions,
+  type FlatOneToManyFieldOptions,
+  type FlatManyToManyFieldOptions,
+  type FlatManyToOneRefFieldOptions,
+  type FlatManyToManyRefFieldOptions,
 } from '../metadata/field';
 import type { ModelCtor } from '../metadata/field';
 import { asObjectRecord } from '../../../utils/object';
@@ -107,12 +112,21 @@ function toFieldDecoratorOptionBag(value: unknown): FieldDecoratorOptionBag {
 /**
  * Declares model field metadata for persistence, relations, selections, and compute behavior.
  *
+ * Overloads infer `condition` as QueryCondition of the relation target from ctor `targetModel`
+ * for object relations; string Ref keeps untyped BaseQueryCondition.
+ *
  * @param options Field metadata to register on the decorated property.
  * @returns A property decorator that records the field definition in metadata storage.
  */
-export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin extends BaseModel = BaseModel, TTarget extends BaseModel = BaseModel>(
-  options: FieldOptions<T, R, TJoin, TTarget>
-): PropertyDecorator {
+export function Field<TTarget extends BaseModel>(options: FlatManyToOneFieldOptions<TTarget>): PropertyDecorator;
+export function Field<TTarget extends BaseModel>(options: FlatOneToManyFieldOptions<TTarget>): PropertyDecorator;
+export function Field<TJoin extends BaseModel, TTarget extends BaseModel>(
+  options: FlatManyToManyFieldOptions<TJoin, TTarget>
+): PropertyDecorator;
+export function Field(options: FlatManyToOneRefFieldOptions): PropertyDecorator;
+export function Field(options: FlatManyToManyRefFieldOptions): PropertyDecorator;
+export function Field(options: FieldOptions): PropertyDecorator;
+export function Field(options: FieldOptions): PropertyDecorator {
   return function (target: Object, propertyKey: string | symbol) {
     const name = propertyKey as string;
     const optionBag = toFieldDecoratorOptionBag(options);

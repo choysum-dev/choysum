@@ -13,26 +13,31 @@ export type SelectResult = ObjectRecord;
 /** @deprecated Prefer SelectResult. Kept for compatibility. */
 export type Entity = SelectResult;
 
-type IsQuerySupportedValue<V> = [V] extends [Function]
+type IsExactlyAny<T> = 0 extends 1 & T ? true : false;
+
+type IsQuerySupportedValue<V> = IsExactlyAny<V> extends true
   ? false
-  : [V] extends [readonly unknown[]]
+  : [V] extends [Function]
     ? false
-    : [NonNil<V>] extends [StandardFields]
-      ? true
-      : [NonNil<V>] extends [BaseModel]
+    : [V] extends [readonly unknown[]]
+      ? false
+      : [NonNil<V>] extends [StandardFields]
         ? true
-        : [NonNil<V>] extends [object]
+        : [NonNil<V>] extends [BaseModel]
           ? true
-          : false;
+          : [NonNil<V>] extends [object]
+            ? true
+            : false;
 
 type ValidQueryPropertyType<T, K extends keyof T> = IsQuerySupportedValue<T[K]> extends true ? K : never;
 type InputSupportedTypes = StandardFields | BaseModel | ObjectRecord | ReadonlyArray<BaseModel> | undefined;
-type ExcludeUnderscoreProps<K extends string> = K extends `_${string}` ? never : K;
+/** Drop private `_` / ambient `$` props (`$sql`, `$search`, …). `$` counts as "uppercase" for `Uppercase<>`. */
+type ExcludePrivateOrAmbientProps<K extends string> = K extends `_${string}` | `$${string}` ? never : K;
 type OnlyUppercaseProps<K extends string> = K extends `${infer F}${infer R}` ? (F extends Uppercase<F> ? `${F}${R}` : never) : never;
 type ValidInputPropertyType<T, K extends keyof T> = T[K] extends Function ? never : T[K] extends InputSupportedTypes ? K : never;
 
 export type FilteredQueryProperties<T> = {
-  [K in keyof T as ExcludeUnderscoreProps<string & K> extends never
+  [K in keyof T as ExcludePrivateOrAmbientProps<string & K> extends never
     ? never
     : OnlyUppercaseProps<string & K> extends never
       ? never
@@ -40,7 +45,7 @@ export type FilteredQueryProperties<T> = {
 };
 
 export type FilteredInputProperties<T> = {
-  [K in keyof T as ExcludeUnderscoreProps<string & K> extends never
+  [K in keyof T as ExcludePrivateOrAmbientProps<string & K> extends never
     ? never
     : OnlyUppercaseProps<string & K> extends never
       ? never
