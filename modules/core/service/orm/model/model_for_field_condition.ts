@@ -66,7 +66,7 @@ export function evaluateFieldRelationalCondition(
 ): BaseQueryCondition | [] {
   if (typeof fieldMeta.conditionCallable === 'function') {
     try {
-      const evaluated = fieldMeta.conditionCallable.call(SourceCtor);
+      const evaluated = fieldMeta.conditionCallable.call(SourceCtor as typeof BaseModel);
       if (!evaluated || typeof evaluated !== 'object') {
         throw new Error('condition callable must return a QueryCondition');
       }

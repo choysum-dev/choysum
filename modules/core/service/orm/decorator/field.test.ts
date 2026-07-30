@@ -1138,10 +1138,11 @@ test('Field condition typing: ctor target infers QueryCondition; string Ref stay
 
   expect(validManyToOne).toBeDefined();
 
-  // @ts-expect-error ManyToOne condition must use a field from the relation target.
+  // ManyToOne condition field names must exist on the inferred target.
   const invalidManyToOneField = {
     type: 'ManyToOne' as const,
     relation: { targetModel: () => TypedConditionTarget },
+    // @ts-expect-error ManyToOne condition must use a field from the relation target.
     condition: ['NotARealField', '=', true] as const,
   } satisfies FlatManyToOneFieldOptions<TypedConditionTarget>;
   expect(invalidManyToOneField).toBeDefined();
@@ -1178,7 +1179,7 @@ test('Field condition typing: ctor target infers QueryCondition; string Ref stay
   } satisfies FlatManyToManyFieldOptions<JoinProbe, TypedConditionTarget>;
   expect(validManyToMany).toBeDefined();
 
-  // @ts-expect-error ManyToMany condition must use a field from the relation target.
+  // ManyToMany condition field names must exist on the inferred target.
   const invalidManyToManyField = {
     type: 'ManyToMany' as const,
     relation: {
@@ -1187,6 +1188,7 @@ test('Field condition typing: ctor target infers QueryCondition; string Ref stay
       joinField: 'LeftId',
       inverseJoinField: 'RightId',
     },
+    // @ts-expect-error ManyToMany condition must use a field from the relation target.
     condition: ['MissingOnTarget', '=', 1] as const,
   } satisfies FlatManyToManyFieldOptions<JoinProbe, TypedConditionTarget>;
   expect(invalidManyToManyField).toBeDefined();

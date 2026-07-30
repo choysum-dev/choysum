@@ -255,7 +255,7 @@ export type RelationalConditionDeclaration<TTarget extends BaseModel = BaseModel
   | readonly [Extract<keyof Selectable<TTarget>, string>, Operator, unknown]
   | { And: Array<RelationalConditionDeclaration<TTarget>> }
   | { Or: Array<RelationalConditionDeclaration<TTarget>> }
-  | ((this: unknown) => RelationalConditionDeclaration<TTarget>);
+  | ((this: typeof BaseModel) => RelationalConditionDeclaration<TTarget>);
 
 /**
  * Authoring forms for Ref `@Field({ condition })` when `targetModel` is a cross-app string id.
@@ -263,7 +263,7 @@ export type RelationalConditionDeclaration<TTarget extends BaseModel = BaseModel
  */
 export type RefRelationalConditionDeclaration =
   | BaseQueryCondition
-  | ((this: unknown) => BaseQueryCondition);
+  | ((this: typeof BaseModel) => BaseQueryCondition);
 
 export type RelationalConditionKind = 'static' | 'dynamic';
 
@@ -609,7 +609,7 @@ export interface FieldMetadata {
    * Runtime-only callable for dynamic relational condition.
    * Invoked with `this = ModelCtor` (no draft) on Search/`forField` and relation load.
    */
-  conditionCallable?: (this: unknown) => BaseQueryCondition;
+  conditionCallable?: (this: typeof BaseModel) => BaseQueryCondition;
   related?: FieldRelatedOption;
   storageHints?: FieldStorageHints;
   /**
