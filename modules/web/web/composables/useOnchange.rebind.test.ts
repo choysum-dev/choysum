@@ -48,16 +48,16 @@ describe('getOnchangeController rebindOptions', () => {
     const draft1 = ref<Record<string, any>>({ Id: '1', Name: 'A' });
     const ctrl = getOnchangeController(store, 'ListView', {
       getRoot: () => draft1.value,
-      debounceMs: 0,
     });
 
+    // Pause so markChanged keeps pending; debounceMs: 0 would flush synchronously and clear it.
+    ctrl.pause();
     await ctrl.markChanged('Name');
     expect(ctrl.hasPending()).toBe(true);
 
     const draft2 = ref<Record<string, any>>({ Id: '2', Name: 'B' });
     getOnchangeController(store, 'ListView', {
       getRoot: () => draft2.value,
-      debounceMs: 0,
     });
     expect(ctrl.hasPending()).toBe(false);
 
