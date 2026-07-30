@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { defineComponent, h, inject, ref } from 'vue';
+import { defineComponent, h, inject, provide, ref } from 'vue';
 import { mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -26,14 +26,12 @@ vi.mock('element-plus', async () => {
 
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useListInlineEdit } from '@/web/web/composables/useListInlineEdit';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 
 function mountInline(opts?: {
   enabled?: boolean;
   onSaved?: () => void | Promise<void>;
   updateImpl?: (id: string, payload: any) => Promise<any>;
 }) {
-  const listViewMode = ref<ViewMode>('display');
   const enabled = ref(opts?.enabled ?? true);
   const UpdateById = vi.fn(opts?.updateImpl ?? (async () => ({})));
   const store = {
@@ -45,28 +43,55 @@ function mountInline(opts?: {
   } as any;
 
   let api: ReturnType<typeof useListInlineEdit> | null = null;
-  let formRoot: any = null;
+  let headerFormRoot: any = 'unset';
+  let tableFormRoot: any = 'unset';
 
   const Host = defineComponent({
     setup() {
       api = useListInlineEdit({
         store,
         enabled,
-        listViewMode,
         onSaved: opts?.onSaved,
       });
-      const Probe = defineComponent({
+
+      // Sibling of the table scope — must not see form-root from the composable.
+      const HeaderProbe = defineComponent({
         setup() {
-          formRoot = inject('form-root');
-          return () => h('span');
+          headerFormRoot = inject('form-root', null);
+          return () => h('span', { class: 'header-probe' });
         },
       });
-      return () => h('div', h(Probe));
+
+      // Simulates OListInlineEditScope providing form-root under the table only.
+      const TableScope = defineComponent({
+        setup(_, { slots }) {
+          provide('form-root', api!.formRoot);
+          provide('view-mode', api!.tableViewMode);
+          return () => h('div', { class: 'table-scope' }, slots.default?.());
+        },
+      });
+
+      const TableProbe = defineComponent({
+        setup() {
+          tableFormRoot = inject('form-root', null);
+          return () => h('span', { class: 'table-probe' });
+        },
+      });
+
+      return () => h('div', [h(HeaderProbe), h(TableScope, null, { default: () => h(TableProbe) })]);
     },
   });
 
   mount(Host);
-  return { api: api!, listViewMode, enabled, store, UpdateById, formRoot: () => formRoot };
+  return {
+    api: api!,
+    enabled,
+    store,
+    UpdateById,
+    formRoot: () => api!.formRoot,
+    headerFormRoot: () => headerFormRoot,
+    tableFormRoot: () => tableFormRoot,
+  };
 }
 
 describe('useListInlineEdit', () => {
@@ -85,11 +110,11 @@ describe('useListInlineEdit', () => {
   });
 
   it('enters edit and maps draft onto matching rows', async () => {
-    const { api, listViewMode } = mountInline();
+    const { api } = mountInline();
     const row = { kind: 'record', key: '1', payload: { Id: '1', Name: 'A' } };
     expect(await api.enterEdit(row)).toBe(true);
     expect(api.isEditing.value).toBe(true);
-    expect(listViewMode.value).toBe('edit');
+    expect(api.tableViewMode.value).toBe('edit');
     expect(api.editingDraft.value?.Name).toBe('A');
     expect(await api.enterEdit(row)).toBe(true);
 
@@ -99,12 +124,12 @@ describe('useListInlineEdit', () => {
     expect(mapped[1].payload.Name).toBe('X');
   });
 
-  it('discards draft and resets view mode', async () => {
-    const { api, listViewMode } = mountInline();
+  it('discards draft and resets table view mode', async () => {
+    const { api } = mountInline();
     await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
     await api.discard();
     expect(api.isEditing.value).toBe(false);
-    expect(listViewMode.value).toBe('display');
+    expect(api.tableViewMode.value).toBe('display');
     expect(api.mapItemsWithDraft([{ kind: 'record', payload: { Id: '1' } }])[0].payload.Id).toBe('1');
   });
 
@@ -198,6 +223,12 @@ describe('useListInlineEdit form-root / onchange wiring', () => {
     vi.clearAllMocks();
   });
 
+  it('does not leak form-root to header siblings outside the table scope', async () => {
+    const { headerFormRoot, tableFormRoot, formRoot } = mountInline();
+    expect(headerFormRoot()).toBeNull();
+    expect(tableFormRoot()).toBe(formRoot());
+  });
+
   it('form-root getField/setField respect enabled and draft state', async () => {
     const { api, enabled, formRoot } = mountInline();
     await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A', nested: { x: 1 } } });
@@ -250,16 +281,27 @@ describe('useListInlineEdit form-root / onchange wiring', () => {
     opts.onPatch({ Name: 'ignored' });
   });
 
-  it('dirty switch save that returns false blocks enter', async () => {
+  it('exits edit when flush clears draft during save', async () => {
     const { api } = mountInline();
     await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
     api.editingDraft.value!.Name = 'B';
     flushMock.mockImplementationOnce(async () => {
-      // Simulate a flush path that clears draft so save() returns false.
+      api.editingDraft.value = null;
+    });
+    await expect(api.save()).resolves.toBe(true);
+    expect(api.isEditing.value).toBe(false);
+    expect(api.editingRowId.value).toBeNull();
+  });
+
+  it('dirty switch continues after flush-cleared draft save exits edit', async () => {
+    const { api } = mountInline();
+    await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
+    api.editingDraft.value!.Name = 'B';
+    flushMock.mockImplementationOnce(async () => {
       api.editingDraft.value = null;
     });
     (ElMessageBox.confirm as any).mockResolvedValueOnce(true);
-    expect(await api.enterEdit({ kind: 'record', payload: { Id: '2', Name: 'C' } })).toBe(false);
-    expect(api.editingRowId.value).toBe('1');
+    expect(await api.enterEdit({ kind: 'record', payload: { Id: '2', Name: 'C' } })).toBe(true);
+    expect(api.editingRowId.value).toBe('2');
   });
 });

@@ -48,6 +48,9 @@ export interface OnchangeController {
   resume: () => void;
   reset: () => void;
 
+  /** Refresh getRoot/onPatch (and other opts) when a remounted view reuses the cached controller. */
+  rebindOptions: (next?: CreateOnchangeOptions) => void;
+
   registerAfterFlush: (cb: (p: OnchangeFlushPayload) => void) => void;
   unregisterAfterFlush: (cb: (p: OnchangeFlushPayload) => void) => void;
 }
@@ -471,7 +474,9 @@ export function detectStructuralChangedRelations(collapsed: Set<string>, baselin
 /* ====================== Core controller ====================== */
 
 function createAutoOnchangeController(store: WebModelStore<any>, opts?: CreateOnchangeOptions): OnchangeController {
-  const debounceMs = opts?.debounceMs ?? 120;
+  // Mutable so remounted providers can rebind getRoot/onPatch without orphaning closures.
+  let options = opts;
+  const debounceMs = options?.debounceMs ?? 120;
 
   const running = ref(false);
   const pending = ref<Set<string>>(new Set());
@@ -485,7 +490,8 @@ function createAutoOnchangeController(store: WebModelStore<any>, opts?: CreateOn
   const afterFlushCallbacks = new Set<(p: OnchangeFlushPayload) => void>();
 
   // Prefer the injected root accessor while keeping the legacy fallback path.
-  const root = () => (opts?.getRoot ? opts.getRoot() : (store as any).state?._draftRecord || (store as any).state?.record);
+  const root = () =>
+    options?.getRoot ? options.getRoot() : (store as any).state?._draftRecord || (store as any).state?.record;
 
   function ensureBaseline() {
     if (baseline == null && root()) baseline = deepClone(root());
@@ -559,7 +565,7 @@ function createAutoOnchangeController(store: WebModelStore<any>, opts?: CreateOn
 
       if (!changedRaw.length) return;
 
-      const minimized = relationAwareMinimize(changedRaw, store, opts?.collapseRelationChildren !== false);
+      const minimized = relationAwareMinimize(changedRaw, store, options?.collapseRelationChildren !== false);
 
       const selectorPaths = new Set<string>();
       for (const leaf of fullSnapshot) {
@@ -600,8 +606,8 @@ function createAutoOnchangeController(store: WebModelStore<any>, opts?: CreateOn
         draft: draftForSend,
         changed: Array.from(new Set(changed)),
         opts: {
-          withCompute: opts?.withCompute !== false,
-          maxIterations: opts?.maxIterations,
+          withCompute: options?.withCompute !== false,
+          maxIterations: options?.maxIterations,
         },
       };
 
@@ -621,7 +627,7 @@ function createAutoOnchangeController(store: WebModelStore<any>, opts?: CreateOn
         const draft = root();
         // Allow external patch handling when no root object is available.
         if (!draft) {
-          opts?.onPatch?.(res.value as any, res as any);
+          options?.onPatch?.(res.value as any, res as any);
           await nextTick();
           baseline = deepClone(root());
           payload.result = res as any;
@@ -890,7 +896,7 @@ function createAutoOnchangeController(store: WebModelStore<any>, opts?: CreateOn
 
         if (!pending.value.size) return;
 
-        if (opts?.immediateFirst && !initialized) {
+        if (options?.immediateFirst && !initialized) {
           initialized = true;
           schedule(true);
         } else {
@@ -916,6 +922,9 @@ function createAutoOnchangeController(store: WebModelStore<any>, opts?: CreateOn
     pause,
     resume,
     reset,
+    rebindOptions(next) {
+      options = next;
+    },
     registerAfterFlush(cb) {
       afterFlushCallbacks.add(cb);
     },
@@ -936,6 +945,8 @@ export function getOnchangeController(store: WebModelStore<any>, sessionId?: str
     if (!c) {
       c = createAutoOnchangeController(store, opts);
       SINGLETON.set(store, c);
+    } else if (opts) {
+      c.rebindOptions(opts);
     }
     return c;
   }
@@ -948,6 +959,8 @@ export function getOnchangeController(store: WebModelStore<any>, sessionId?: str
   if (!c) {
     c = createAutoOnchangeController(store, opts);
     map.set(sessionId, c);
+  } else if (opts) {
+    c.rebindOptions(opts);
   }
   return c;
 }

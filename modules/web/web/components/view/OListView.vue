@@ -76,39 +76,42 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <div class="o-list__table" ref="tableWrapRef" :style="{ height: tablePxHeight }">
-      <OVTable
-        :data="tableItems"
-        :row-key="computedRowKey"
-        :row-height="effectiveRowHeight"
-        :header-height="headerHeight"
-        :table-height="tableHeight"
-        :selection-api="selection"
-        :base-index="baseIndex"
-        :store="store"
-        @selection-change="onSelectionChange"
-        @row-click="onRowClick"
-        @sort-change="onTableSortChange"
-      >
-        <OVColumn v-if="showHandleColumn" type="handle" col-key="__handle__" :vColumnProps="{ width: 36, align: 'center' }" />
-        <!-- Automatically inject the leading group column in grouped mode -->
-        <OVColumn v-if="isGroupMode" col-key="__group_label" :sortable="false">
-          <template #default="{ row }">
-            <div v-if="row?.kind === 'group'" class="o-group-cell" :style="{ paddingLeft: `${row.depth * 16}px` }">
-              <span class="o-group-cell__caret" :class="{ expanded: isExpanded(row.key) }" @click.stop="onToggleGroup(row.key)" />
-              <span class="o-group-cell__label">{{ row.label }}</span>
-              <span class="o-group-cell__count">({{ row.count ?? 0 }})</span>
-            </div>
-            <div v-else-if="row?.kind === 'more'" class="o-more-cell">{{ _t('Click to load more (%s remaining)', Math.max(0, Number(row.remain ?? 0))) }}</div>
-            <span v-else></span>
+      <!-- form-root + edit view-mode only under the table so header search cannot touch the row draft -->
+      <OListInlineEditScope :form-root="inlineFormRoot" :view-mode="inlineTableViewMode">
+        <OVTable
+          :data="tableItems"
+          :row-key="computedRowKey"
+          :row-height="effectiveRowHeight"
+          :header-height="headerHeight"
+          :table-height="tableHeight"
+          :selection-api="selection"
+          :base-index="baseIndex"
+          :store="store"
+          @selection-change="onSelectionChange"
+          @row-click="onRowClick"
+          @sort-change="onTableSortChange"
+        >
+          <OVColumn v-if="showHandleColumn" type="handle" col-key="__handle__" :vColumnProps="{ width: 36, align: 'center' }" />
+          <!-- Automatically inject the leading group column in grouped mode -->
+          <OVColumn v-if="isGroupMode" col-key="__group_label" :sortable="false">
+            <template #default="{ row }">
+              <div v-if="row?.kind === 'group'" class="o-group-cell" :style="{ paddingLeft: `${row.depth * 16}px` }">
+                <span class="o-group-cell__caret" :class="{ expanded: isExpanded(row.key) }" @click.stop="onToggleGroup(row.key)" />
+                <span class="o-group-cell__label">{{ row.label }}</span>
+                <span class="o-group-cell__count">({{ row.count ?? 0 }})</span>
+              </div>
+              <div v-else-if="row?.kind === 'more'" class="o-more-cell">{{ _t('Click to load more (%s remaining)', Math.max(0, Number(row.remain ?? 0))) }}</div>
+              <span v-else></span>
+            </template>
+          </OVColumn>
+          <slot />
+          <template #empty>
+            <slot name="empty">
+              <div class="ovtable__empty">{{ _t('No data') }}</div>
+            </slot>
           </template>
-        </OVColumn>
-        <slot />
-        <template #empty>
-          <slot name="empty">
-            <div class="ovtable__empty">{{ _t('No data') }}</div>
-          </slot>
-        </template>
-      </OVTable>
+        </OVTable>
+      </OListInlineEditScope>
     </div>
   </OViewContainer>
 </template>
@@ -141,6 +144,7 @@ import {
   shouldDiscardInvisibleEdit,
   syncFlatRowsFromVisibleItems,
 } from '@/web/web/composables/listViewHandlePersist';
+import OListInlineEditScope from '@/web/web/components/view/OListInlineEditScope.vue';
 // Controller: unified loading with grouping-first handling
 import { createListController } from '@/web/web/controllers/listController';
 import type { OrderByState, PaginationState } from '@/web/web/query/state';
@@ -247,7 +251,8 @@ const { emitCancelable } = useCancelableEmit(emit as any);
 const viewContainer = ref<ViewContainer>('List');
 provide('view-container', viewContainer);
 
-// Future inline editing uses listViewMode; S2 sets edit while a row draft is active.
+// List root stays display so header/search fields never inherit S2 edit mode.
+// Table-scoped edit mode is provided by OListInlineEditScope.
 const listViewMode = ref<ViewMode>('display');
 provide('view-mode', listViewMode);
 
@@ -273,7 +278,6 @@ const editableEnabled = computed(() => props.editable === true);
 const inlineEdit = useListInlineEdit<T>({
   store,
   enabled: editableEnabled,
-  listViewMode,
   translateScope: 'web/components/view/OListView',
   onSaved: async () => {
     await controller.apply();
@@ -282,6 +286,9 @@ const inlineEdit = useListInlineEdit<T>({
 });
 const isEditing = inlineEdit.isEditing;
 const inlineSaving = inlineEdit.saving;
+// Top-level bindings so the template auto-unwraps refs (inlineEdit itself is a plain object).
+const inlineFormRoot = inlineEdit.formRoot;
+const inlineTableViewMode = inlineEdit.tableViewMode;
 
 // Always use the unified key field from DataSetSnapshot RecordRow/GroupRow, aligned with controller output
 const computedRowKey = computed(() => 'key');
@@ -330,13 +337,16 @@ const handleReorder = useListHandleReorder({
   sequenceStart: () => (effectivePagination.value.offset ?? 0) + 1,
   getRecord: row => unwrapListRecord(row),
   onReorder: async (rows, changed) => {
+    const writes = buildHandleReorderWrites(changed);
+    // Do not apply an optimistic order when there is nothing to persist; otherwise the
+    // table stays reordered until the next items sync snaps it back.
+    if (!writes.length) return;
+
     const previousFlat = flatRows.value;
     flatRows.value = rows.map(row => ({
       ...row,
       payload: { ...unwrapListRecord(row) },
     }));
-    const writes = buildHandleReorderWrites(changed);
-    if (!writes.length) return;
 
     const field = props.handleField;
     await persistHandleReorder({
@@ -686,12 +696,6 @@ async function handleDelete() {
 async function onRowClick(p: RowEventHandlerParams) {
   const row = p.rowData as any;
 
-  if (props.clickToSelect) {
-    const nextChecked = !selection.isSelected?.(row);
-    selection.toggleRow?.(row, nextChecked);
-    return;
-  }
-
   if (isGroupMode.value) {
     if (row?.kind === 'group') {
       const key = row?.key as string;
@@ -717,6 +721,11 @@ async function onRowClick(p: RowEventHandlerParams) {
         const entered = await inlineEdit.enterEdit(row);
         if (entered) return;
       }
+      if (props.clickToSelect) {
+        const nextChecked = !selection.isSelected?.(row);
+        selection.toggleRow?.(row, nextChecked);
+        return;
+      }
       emit('row-click', {
         row: row.payload as ClientModel<T>,
         rowIndex: p.rowIndex,
@@ -728,12 +737,19 @@ async function onRowClick(p: RowEventHandlerParams) {
     return;
   }
 
-  // In non-grouped mode, unwrap wrapped RecordRow objects to the actual record
+  // S2 inline edit takes precedence over click-to-select for record rows.
   if (props.editable && isListRecordRow(row)) {
     const entered = await inlineEdit.enterEdit(row);
     if (entered) return;
   }
 
+  if (props.clickToSelect) {
+    const nextChecked = !selection.isSelected?.(row);
+    selection.toggleRow?.(row, nextChecked);
+    return;
+  }
+
+  // In non-grouped mode, unwrap wrapped RecordRow objects to the actual record
   const record = row?.type === 'record' ? row?.record : row?.kind === 'record' ? row?.payload : row;
   emit('row-click', {
     row: record as ClientModel<T>,
@@ -755,10 +771,18 @@ const onToggleGroup = async (key: string) => {
 // =============================
 // Section 24: Exposed public API (selection & load)
 // =============================
-defineExpose<SelectionExpose<ClientModel<T>> & { load: () => Promise<void> }>({
+defineExpose<
+  SelectionExpose<ClientModel<T>> & {
+    load: () => Promise<void>;
+    inlineEdit: typeof inlineEdit;
+    flatRows: typeof flatRows;
+  }
+>({
   selectedItems: selectedItems as any,
   selectedItem: selectedItem as any,
   load: loadData,
+  inlineEdit,
+  flatRows,
 });
 
 // =============================

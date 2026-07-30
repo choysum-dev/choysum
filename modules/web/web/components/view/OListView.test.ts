@@ -78,7 +78,10 @@ const OVTableStub = defineComponent({
   emits: ['row-click', 'selection-change', 'sort-change'],
   setup(_, { slots, emit }) {
     const formRoot = inject<any>('form-root', null);
+    const viewMode = inject<any>('view-mode', null);
     const handleApi = inject<any>(LIST_HANDLE_API_KEY, null);
+    (globalThis as any).__listTableFormRoot = formRoot;
+    (globalThis as any).__listTableViewMode = viewMode;
     return () =>
       h('div', { class: 'ov-table-stub' }, [
         h(
@@ -158,6 +161,8 @@ async function mountList(opts?: {
   showHandle?: boolean;
   handleField?: string;
   offset?: number | null;
+  clickToSelect?: boolean;
+  searchView?: any;
 }) {
   const store = makeStore();
   if (opts && 'offset' in (opts as object)) {
@@ -169,9 +174,11 @@ async function mountList(opts?: {
       editable: opts?.editable ?? true,
       showHandle: opts?.showHandle ?? true,
       ...(opts?.handleField != null ? { handleField: opts.handleField } : {}),
+      clickToSelect: opts?.clickToSelect ?? false,
       showPaginate: false,
       refreshAction: false,
       deleteAction: false,
+      ...(opts?.searchView != null ? { searchView: opts.searchView } : {}),
     },
     global: {
       stubs: {
@@ -194,6 +201,8 @@ describe('OListView editable / handle', () => {
     vi.clearAllMocks();
     resultKind.value = 'search';
     lastRowClickPayload = null;
+    (globalThis as any).__listTableFormRoot = undefined;
+    (globalThis as any).__listTableViewMode = undefined;
     visibleNodes.value = [
       { kind: 'record', key: '1', payload: { Id: '1', Name: 'A', Sequence: 1 } },
       { kind: 'record', key: '2', payload: { Id: '2', Name: 'B', Sequence: 2 } },
@@ -348,11 +357,21 @@ describe('OListView editable / handle', () => {
   it('skips persist when handle reorder yields no writes', async () => {
     const persist = await import('@/web/web/composables/listViewHandlePersist');
     const spy = vi.spyOn(persist, 'buildHandleReorderWrites').mockReturnValue([]);
-    const { wrapper, store } = await mountList();
-    await wrapper.find('.reorder-handle').trigger('click');
-    await flushPromises();
-    expect(store.UpdateById).not.toHaveBeenCalled();
-    spy.mockRestore();
+    try {
+      const { wrapper, store } = await mountList();
+      // Exposed refs are auto-unwrapped on the public instance.
+      const flat = () => (wrapper.vm as any).flatRows as any[];
+      const before = flat().map((r: any) => r.payload.Id);
+      store.UpdateById.mockClear();
+      applyMock.mockClear();
+      await wrapper.find('.reorder-handle').trigger('click');
+      await flushPromises();
+      expect(store.UpdateById).not.toHaveBeenCalled();
+      expect(applyMock).not.toHaveBeenCalled();
+      expect(flat().map((r: any) => r.payload.Id)).toEqual(before);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it('uses pagination offset fallback when offset is null', async () => {
@@ -360,5 +379,42 @@ describe('OListView editable / handle', () => {
     await wrapper.find('.reorder-handle').trigger('click');
     await flushPromises();
     expect(store.UpdateById).toHaveBeenCalled();
+  });
+
+  it('enters inline edit even when clickToSelect is enabled', async () => {
+    const { wrapper } = await mountList({ clickToSelect: true });
+    await wrapper.find('.row-click-1').trigger('click');
+    await flushPromises();
+    expect((wrapper.vm as any).inlineEdit.isEditing.value).toBe(true);
+    expect((wrapper.vm as any).inlineEdit.editingRowId.value).toBe('1');
+  });
+
+  it('scopes form-root and edit view-mode to the table, not the header search', async () => {
+    let headerFormRoot: any = 'unset';
+    let headerViewMode: any = 'unset';
+    const HeaderSearchProbe = defineComponent({
+      setup() {
+        headerFormRoot = inject('form-root', null);
+        headerViewMode = inject('view-mode', null);
+        return () => h('span', { class: 'header-search-probe' });
+      },
+    });
+
+    const { wrapper } = await mountList({ searchView: HeaderSearchProbe });
+    expect(wrapper.find('.header-search-probe').exists()).toBe(true);
+    expect(headerFormRoot).toBeNull();
+    expect(headerViewMode?.value ?? headerViewMode).toBe('display');
+
+    expect((globalThis as any).__listTableFormRoot).toBeTruthy();
+    expect((globalThis as any).__listTableViewMode?.value ?? (globalThis as any).__listTableViewMode).toBe('display');
+
+    await wrapper.find('.row-click-1').trigger('click');
+    await flushPromises();
+
+    // Header remains isolated while the table enters edit with a live draft.
+    expect(headerFormRoot).toBeNull();
+    expect(headerViewMode?.value ?? headerViewMode).toBe('display');
+    expect((globalThis as any).__listTableViewMode?.value ?? (globalThis as any).__listTableViewMode).toBe('edit');
+    expect((globalThis as any).__listTableFormRoot?.draft?.Id).toBe('1');
   });
 });

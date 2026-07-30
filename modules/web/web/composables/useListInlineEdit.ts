@@ -3,6 +3,9 @@
 
 /**
  * S2 list inline edit state: one row draft, explicit Save / Discard, no blur RPC.
+ *
+ * form-root / table view-mode are NOT provided here — callers must inject them
+ * under the table only (see OListInlineEditScope) so header/search fields stay isolated.
  */
 
 import { computed, provide, ref, type Ref } from 'vue';
@@ -27,7 +30,6 @@ import { createTranslate } from '@/web/web/i18n';
 export function useListInlineEdit<T extends BaseModel>(opts: {
   store: WebModelStore<T>;
   enabled: Ref<boolean>;
-  listViewMode: Ref<ViewMode>;
   translateScope?: string;
   onSaved?: () => void | Promise<void>;
 }) {
@@ -37,13 +39,15 @@ export function useListInlineEdit<T extends BaseModel>(opts: {
   const editingDraft = ref<Record<string, any> | null>(null);
   const editingOriginal = ref<Record<string, any> | null>(null);
   const saving = ref(false);
+  /** Table-scoped view mode; provide via OListInlineEditScope, not list root. */
+  const tableViewMode = ref<ViewMode>('display');
 
   const isEditing = computed(() => editingRowId.value != null);
 
+  // Row id gate for OFieldBase; safe list-wide (edit UI still requires table form-root).
   provide('list-editing-row-id', editingRowId);
 
-  // Always provide form-root so inject is stable; draft is null until a row is being edited (D4).
-  provide('form-root', {
+  const formRoot = {
     get draft() {
       return opts.enabled.value ? editingDraft.value : null;
     },
@@ -56,7 +60,7 @@ export function useListInlineEdit<T extends BaseModel>(opts: {
       if (!editingDraft.value) editingDraft.value = {};
       setDraftField(editingDraft.value, path, value);
     },
-  });
+  };
 
   provideOnchange(opts.store, 'ListView', {
     getRoot: () => (opts.enabled.value ? editingDraft.value ?? undefined : undefined),
@@ -100,7 +104,7 @@ export function useListInlineEdit<T extends BaseModel>(opts: {
     editingRowId.value = null;
     editingDraft.value = null;
     editingOriginal.value = null;
-    opts.listViewMode.value = 'display';
+    tableViewMode.value = 'display';
     useProvidedOnchange()?.reset();
   }
 
@@ -113,8 +117,16 @@ export function useListInlineEdit<T extends BaseModel>(opts: {
     saving.value = true;
     try {
       await useProvidedOnchange()?.flush();
-      // Onchange flush may clear the draft; treat that as a no-op save.
-      if (!editingDraft.value || !editingOriginal.value || !editingRowId.value) return false;
+      // Onchange flush may clear the draft; exit edit so list-editing-row-id / Save UI do not linger.
+      if (!editingDraft.value || !editingOriginal.value || !editingRowId.value) {
+        exitEdit();
+        try {
+          await opts.onSaved?.();
+        } catch {
+          /* refresh failure is non-fatal */
+        }
+        return true;
+      }
       const payload = collectRowDirtyPayload(editingOriginal.value, editingDraft.value, opts.store.fieldsMetadata as any);
       if (Object.keys(payload).length === 0) {
         exitEdit();
@@ -168,7 +180,7 @@ export function useListInlineEdit<T extends BaseModel>(opts: {
     editingOriginal.value = cloneRowDraft(record);
     editingDraft.value = cloneRowDraft(record);
     editingRowId.value = id;
-    opts.listViewMode.value = 'edit';
+    tableViewMode.value = 'edit';
     useProvidedOnchange()?.reset();
     return true;
   }
@@ -178,6 +190,8 @@ export function useListInlineEdit<T extends BaseModel>(opts: {
     editingDraft,
     isEditing,
     saving,
+    formRoot,
+    tableViewMode,
     isDirty,
     enterEdit,
     save,
