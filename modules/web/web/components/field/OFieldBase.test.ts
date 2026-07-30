@@ -388,6 +388,90 @@ describe('OFieldBase translate action', () => {
   });
 });
 
+describe('OFieldBase list-editing-row-id gate', () => {
+  const tableRowsStub = defineComponent({
+    name: 'OVColumnRowsStub',
+    setup(_, { slots }) {
+      const rows = [
+        { kind: 'record', payload: { Id: '1', Name: 'A' } },
+        { kind: 'record', payload: { Id: '2', Name: 'B' } },
+      ];
+      return () =>
+        h(
+          'div',
+          { class: 'ov-column' },
+          rows.map((row, i) => h('div', { class: `row-${i}` }, slots.default?.({ row, $index: i })))
+        );
+    },
+  });
+
+  it('shows edit slot only for the row matching list-editing-row-id', () => {
+    const editingId = ref<string | null>('1');
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Name' }, { isEditMode: true }),
+        renderMode: 'table',
+      },
+      slots: {
+        edit: ({ record }) => h('div', { class: 'edit-slot' }, `edit-${record().value.Id}`),
+        display: () => h('div', { class: 'display-slot' }, 'display'),
+      },
+      global: {
+        stubs: { ...fieldBaseStubs, OVColumn: tableRowsStub },
+        provide: { 'list-editing-row-id': editingId },
+      },
+    });
+    expect(wrapper.findAll('.edit-slot')).toHaveLength(1);
+    expect(wrapper.find('.edit-slot').text()).toBe('edit-1');
+    expect(wrapper.findAll('.display-slot')).toHaveLength(1);
+  });
+
+  it('shows display when row id is null under active list-editing-row-id', () => {
+    const editingId = ref<string | null>('1');
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Name' }, { isEditMode: true }),
+        renderMode: 'table',
+      },
+      slots: {
+        edit: () => h('div', { class: 'edit-slot' }, 'edit'),
+        display: () => h('div', { class: 'display-slot' }, 'display'),
+      },
+      global: {
+        stubs: {
+          ...fieldBaseStubs,
+          OVColumn: defineComponent({
+            setup(_, { slots }) {
+              return () =>
+                h('div', slots.default?.({ row: { kind: 'record', payload: { Name: 'no-id' } }, $index: 0 }));
+            },
+          }),
+        },
+        provide: { 'list-editing-row-id': editingId },
+      },
+    });
+    expect(wrapper.find('.edit-slot').exists()).toBe(false);
+    expect(wrapper.find('.display-slot').exists()).toBe(true);
+  });
+
+  it('allows all rows in edit mode when list-editing-row-id is not injected', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Name' }, { isEditMode: true }),
+        renderMode: 'table',
+      },
+      slots: {
+        edit: () => h('div', { class: 'edit-slot' }, 'edit'),
+        display: () => h('div', { class: 'display-slot' }, 'display'),
+      },
+      global: {
+        stubs: { ...fieldBaseStubs, OVColumn: tableRowsStub },
+      },
+    });
+    expect(wrapper.findAll('.edit-slot')).toHaveLength(2);
+  });
+});
+
 describe('OFieldBase company values action', () => {
   it('shows company-values icon in form edit when meta.companyDependent and record Id exist', () => {
     const wrapper = mount(OFieldBase, {

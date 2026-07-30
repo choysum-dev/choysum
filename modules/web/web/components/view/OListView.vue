@@ -135,6 +135,12 @@ import type { ViewMode, ViewContainer } from '@/web/web/components/view/OViewSco
 import { useListInlineEdit } from '@/web/web/composables/useListInlineEdit';
 import { hasHandleField, isListRecordRow, listRecordId, unwrapListRecord } from '@/web/web/composables/listRowEdit';
 import { LIST_HANDLE_API_KEY, useListHandleReorder } from '@/web/web/composables/useListHandleReorder';
+import {
+  buildHandleReorderWrites,
+  persistHandleReorder,
+  shouldDiscardInvisibleEdit,
+  syncFlatRowsFromVisibleItems,
+} from '@/web/web/composables/listViewHandlePersist';
 // Controller: unified loading with grouping-first handling
 import { createListController } from '@/web/web/controllers/listController';
 import type { OrderByState, PaginationState } from '@/web/web/query/state';
@@ -260,13 +266,7 @@ const flatRows = ref<any[]>([]);
 
 // items must be declared before syncFlatRowsFromItems (hoisted via function body at call time).
 function syncFlatRowsFromItems() {
-  if (isGroupMode.value) return;
-  flatRows.value = (items.value || [])
-    .filter(isListRecordRow)
-    .map(row => ({
-      ...row,
-      payload: { ...unwrapListRecord(row) },
-    }));
+  flatRows.value = syncFlatRowsFromVisibleItems(items.value, isGroupMode.value);
 }
 
 const editableEnabled = computed(() => props.editable === true);
@@ -293,12 +293,14 @@ watch(
   items,
   async () => {
     if (inlineEdit.isEditing.value) {
-      const editingId = inlineEdit.editingRowId.value;
-      const stillVisible =
-        !!editingId &&
-        (items.value || []).some(row => isListRecordRow(row) && listRecordId(row) === editingId);
-      if (!stillVisible) {
-        if (inlineEdit.isDirty()) {
+      const { discard, warn } = shouldDiscardInvisibleEdit(
+        inlineEdit.isEditing.value,
+        inlineEdit.editingRowId.value,
+        items.value,
+        inlineEdit.isDirty()
+      );
+      if (discard) {
+        if (warn) {
           ElMessage.warning(_t('Editing was discarded because the row is no longer visible.'));
         }
         await inlineEdit.discard();
@@ -333,44 +335,27 @@ const handleReorder = useListHandleReorder({
       ...row,
       payload: { ...unwrapListRecord(row) },
     }));
-    if (!changed.length) return;
+    const writes = buildHandleReorderWrites(changed);
+    if (!writes.length) return;
 
     const field = props.handleField ?? 'Sequence';
-    const writes = changed
-      .map(({ row, previous, next }) => {
-        const rec = unwrapListRecord(row);
-        const id = listRecordId(rec);
-        if (!id) return null;
-        return { id, previous, next };
-      })
-      .filter(Boolean) as { id: string; previous: number | undefined; next: number }[];
-
-    try {
-      // Sequential writes so a mid-flight failure has a clear applied prefix for rollback.
-      for (const w of writes) {
-        await store.UpdateById(w.id, { [field]: w.next } as any);
-      }
-      await controller.apply();
-      syncFlatRowsFromItems();
-    } catch {
-      // Best-effort rollback of sequences we already wrote, then reload from server.
-      for (const w of writes) {
-        if (w.previous === undefined) continue;
-        try {
-          await store.UpdateById(w.id, { [field]: w.previous } as any);
-        } catch {
-          /* ignore rollback errors; apply() will reconcile */
-        }
-      }
-      flatRows.value = previousFlat;
-      ElMessage.error(_t('Failed to reorder rows'));
-      try {
+    await persistHandleReorder({
+      writes,
+      handleField: field,
+      updateById: async (id, payload) => {
+        await store.UpdateById(id, payload as any);
+      },
+      refresh: async () => {
         await controller.apply();
         syncFlatRowsFromItems();
-      } catch {
-        /* ignore */
-      }
-    }
+      },
+      rollbackFlat: () => {
+        flatRows.value = previousFlat;
+      },
+      onError: () => {
+        ElMessage.error(_t('Failed to reorder rows'));
+      },
+    });
   },
 });
 

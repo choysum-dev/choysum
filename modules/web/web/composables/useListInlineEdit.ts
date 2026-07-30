@@ -113,6 +113,8 @@ export function useListInlineEdit<T extends BaseModel>(opts: {
     saving.value = true;
     try {
       await useProvidedOnchange()?.flush();
+      // Onchange flush may clear the draft; treat that as a no-op save.
+      if (!editingDraft.value || !editingOriginal.value || !editingRowId.value) return false;
       const payload = collectRowDirtyPayload(editingOriginal.value, editingDraft.value, opts.store.fieldsMetadata as any);
       if (Object.keys(payload).length === 0) {
         exitEdit();
