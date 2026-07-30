@@ -476,7 +476,8 @@ export function detectStructuralChangedRelations(collapsed: Set<string>, baselin
 function createAutoOnchangeController(store: WebModelStore<any>, opts?: CreateOnchangeOptions): OnchangeController {
   // Mutable so remounted providers can rebind getRoot/onPatch without orphaning closures.
   let options = opts;
-  const debounceMs = options?.debounceMs ?? 120;
+  // Getter so rebindOptions can update debounce without rebuilding useDebounceFn.
+  let debounceMs = options?.debounceMs ?? 120;
 
   const running = ref(false);
   const pending = ref<Set<string>>(new Set());
@@ -501,7 +502,7 @@ function createAutoOnchangeController(store: WebModelStore<any>, opts?: CreateOn
   const debouncedFlush = useDebounceFn(() => {
     if (paused.value || !pending.value.size) return;
     void internalFlush();
-  }, debounceMs);
+  }, () => debounceMs);
 
   // Shared debounce cancellation helper.
   function cancelDebounced() {
@@ -924,6 +925,10 @@ function createAutoOnchangeController(store: WebModelStore<any>, opts?: CreateOn
     reset,
     rebindOptions(next) {
       options = next;
+      cancelDebounced();
+      // Remounts should not inherit a prior pause; callers that need pause re-apply it.
+      paused.value = false;
+      debounceMs = next?.debounceMs ?? 120;
       // Drop prior-root diff state so remounts / draft swaps do not flush stale pending.
       baseline = null;
       pending.value.clear();

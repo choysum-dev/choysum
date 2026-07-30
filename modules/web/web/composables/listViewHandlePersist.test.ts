@@ -65,7 +65,7 @@ describe('listViewHandlePersist', () => {
     expect(updateById).toHaveBeenCalledWith('b', { Sequence: 1 });
     expect(updateById).toHaveBeenCalledWith('a', { Sequence: 1 });
     expect(rollbackFlat).toHaveBeenCalled();
-    expect(onError).toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith('write');
     // Failure path refreshes once after rollback (success path also refreshes once).
     expect(refresh).toHaveBeenCalledTimes(1);
   });
@@ -110,7 +110,7 @@ describe('listViewHandlePersist', () => {
     expect(updateById).toHaveBeenCalledWith('a', { Sequence: 2 });
     expect(updateById).toHaveBeenCalledWith('b', { Sequence: 1 });
     expect(rollbackFlat).not.toHaveBeenCalled();
-    expect(onError).toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith('refresh');
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 
@@ -128,7 +128,7 @@ describe('listViewHandlePersist', () => {
       rollbackFlat: vi.fn(),
       onError,
     });
-    expect(onError).toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith('write');
     expect(updateById).toHaveBeenCalledTimes(2);
   });
 

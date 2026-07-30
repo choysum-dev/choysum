@@ -30,7 +30,8 @@ export async function persistHandleReorder(opts: {
   updateById: (id: string, payload: Record<string, any>) => Promise<void>;
   refresh: () => Promise<void>;
   rollbackFlat: () => void;
-  onError: () => void;
+  /** `write` = rolled back; `refresh` = writes kept, only reload failed. */
+  onError: (reason: 'write' | 'refresh') => void;
 }): Promise<void> {
   const { writes, handleField, updateById, refresh, rollbackFlat, onError } = opts;
   if (!writes.length) return;
@@ -49,7 +50,7 @@ export async function persistHandleReorder(opts: {
       }
     }
     rollbackFlat();
-    onError();
+    onError('write');
     try {
       await refresh();
     } catch {
@@ -62,7 +63,7 @@ export async function persistHandleReorder(opts: {
     await refresh();
   } catch {
     // Writes already persisted; do not roll sequences back on a read/refresh failure.
-    onError();
+    onError('refresh');
   }
 }
 

@@ -583,7 +583,7 @@ describe('OListView editable / handle', () => {
     await wrapper.find('.reorder-handle').trigger('click');
     await flushPromises();
     expect(store.UpdateById).toHaveBeenCalled();
-    expect(ElMessage.error).toHaveBeenCalledWith('Failed to reorder rows');
+    expect(ElMessage.error).toHaveBeenCalledWith('Failed to refresh after reorder');
   });
 
   it('calls apply after successful inline save', async () => {

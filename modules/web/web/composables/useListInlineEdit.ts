@@ -125,7 +125,23 @@ export function useListInlineEdit<T extends BaseModel>(opts: {
     if (!editingDraft.value || !editingOriginal.value || !editingRowId.value) return false;
     saving.value = true;
     try {
-      await useProvidedOnchange()?.flush();
+      const oc = useProvidedOnchange();
+      let flushHadError = false;
+      const onAfterFlush = (p: { result?: { messages?: Array<{ level?: string } | null> | null } }) => {
+        const msgs = p.result?.messages;
+        flushHadError = Array.isArray(msgs) && msgs.some(m => m?.level === 'error');
+      };
+      oc?.registerAfterFlush?.(onAfterFlush as any);
+      try {
+        await oc?.flush();
+      } finally {
+        oc?.unregisterAfterFlush?.(onAfterFlush as any);
+      }
+      // Do not persist when onchange reported validation / compute errors.
+      if (flushHadError) {
+        ElMessage.error(_t('Failed to save row'));
+        return false;
+      }
       // Onchange flush may clear the draft; exit edit so list-editing-row-id / Save UI do not linger.
       if (!editingDraft.value || !editingOriginal.value || !editingRowId.value) {
         exitEdit();

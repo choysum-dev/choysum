@@ -9,12 +9,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const flushMock = vi.fn(async () => {});
 const resetMock = vi.fn();
 const pauseMock = vi.fn();
+const afterFlushHandlers = new Set<(p: any) => void>();
 const onchangeCtrl = {
   flush: flushMock,
   reset: resetMock,
   pause: pauseMock,
   force: vi.fn(),
   running: ref(false),
+  registerAfterFlush: (cb: (p: any) => void) => {
+    afterFlushHandlers.add(cb);
+  },
+  unregisterAfterFlush: (cb: (p: any) => void) => {
+    afterFlushHandlers.delete(cb);
+  },
 };
 
 vi.mock('@/web/web/composables/useOnchange', () => ({
@@ -108,6 +115,7 @@ function mountInline(opts?: {
 describe('useListInlineEdit', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    afterFlushHandlers.clear();
     flushMock.mockResolvedValue(undefined);
   });
 
@@ -261,6 +269,8 @@ describe('useListInlineEdit', () => {
 describe('useListInlineEdit form-root / onchange wiring', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    afterFlushHandlers.clear();
+    flushMock.mockResolvedValue(undefined);
   });
 
   it('does not leak form-root to header siblings outside the table scope', async () => {
@@ -377,6 +387,21 @@ describe('useListInlineEdit form-root / onchange wiring', () => {
     await expect(api.save()).resolves.toBe(true);
     expect(api.isEditing.value).toBe(false);
     expect(api.editingRowId.value).toBeNull();
+  });
+
+  it('blocks UpdateById when onchange flush reports error messages', async () => {
+    flushMock.mockImplementationOnce(async () => {
+      for (const cb of afterFlushHandlers) {
+        cb({ result: { messages: [{ level: 'error', message: 'bad' }] } });
+      }
+    });
+    const { api, UpdateById } = mountInline();
+    await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
+    api.editingDraft.value!.Name = 'B';
+    await expect(api.save()).resolves.toBe(false);
+    expect(UpdateById).not.toHaveBeenCalled();
+    expect(api.isEditing.value).toBe(true);
+    expect(ElMessage.error).toHaveBeenCalledWith('Failed to save row');
   });
 
   it('dirty switch continues after flush-cleared draft save exits edit', async () => {

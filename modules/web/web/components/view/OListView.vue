@@ -336,8 +336,9 @@ const showHandleColumn = computed(
     hasHandleField(store, props.handleField)
 );
 
+const isReordering = ref(false);
 const handleEnabled = computed(() => {
-  if (!showHandleColumn.value || inlineEdit.isEditing.value) return false;
+  if (!showHandleColumn.value || inlineEdit.isEditing.value || isReordering.value) return false;
   // Reorder only when unsorted, or sorted by handleField ascending (matches renumber semantics).
   const raw = (store.state as any)?.queryState?.orderBy ?? (store.state as any)?.orderBy;
   const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
@@ -367,23 +368,30 @@ const handleReorder = useListHandleReorder({
     }));
 
     const field = props.handleField;
-    await persistHandleReorder({
-      writes,
-      handleField: field,
-      updateById: async (id, payload) => {
-        await store.UpdateById(id, payload as any);
-      },
-      refresh: async () => {
-        await controller.apply();
-        syncFlatRowsFromItems();
-      },
-      rollbackFlat: () => {
-        flatRows.value = previousFlat;
-      },
-      onError: () => {
-        ElMessage.error(_t('Failed to reorder rows'));
-      },
-    });
+    isReordering.value = true;
+    try {
+      await persistHandleReorder({
+        writes,
+        handleField: field,
+        updateById: async (id, payload) => {
+          await store.UpdateById(id, payload as any);
+        },
+        refresh: async () => {
+          await controller.apply();
+          syncFlatRowsFromItems();
+        },
+        rollbackFlat: () => {
+          flatRows.value = previousFlat;
+        },
+        onError: reason => {
+          ElMessage.error(
+            reason === 'refresh' ? _t('Failed to refresh after reorder') : _t('Failed to reorder rows')
+          );
+        },
+      });
+    } finally {
+      isReordering.value = false;
+    }
   },
 });
 

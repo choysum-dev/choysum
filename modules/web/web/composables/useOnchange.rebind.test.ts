@@ -183,4 +183,33 @@ describe('getOnchangeController rebindOptions', () => {
       vi.useRealTimers();
     }
   });
+
+  it('rebindOptions clears pause and applies a new debounceMs', async () => {
+    vi.useFakeTimers();
+    try {
+      const onchange = vi.fn(async () => ({ value: {}, messages: [] }));
+      const store = makeStore(onchange);
+      const draft = ref<Record<string, any> | null>(null);
+      const ctrl = getOnchangeController(store, 'ListViewRebindDebounce', {
+        getRoot: () => draft.value ?? undefined,
+        debounceMs: 200,
+      });
+      ctrl.pause();
+      ctrl.rebindOptions({
+        getRoot: () => draft.value ?? undefined,
+        debounceMs: 20,
+      });
+
+      draft.value = { Id: '1', Name: 'A' };
+      await nextTick();
+      draft.value = { Id: '1', Name: 'B' };
+      await nextTick();
+      expect(onchange).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(25);
+      await vi.waitFor(() => expect(onchange).toHaveBeenCalled());
+      disposeOnchange(store);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
