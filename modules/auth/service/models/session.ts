@@ -93,6 +93,7 @@ export default class Session extends BaseModel {
    */
   @Field({
     type: 'jsonobject',
+    copy: false,
     string: _lt('Metadata', { scope: 'auth.model.Session.fields' }),
   })
   Metadata: Record<string, any>;

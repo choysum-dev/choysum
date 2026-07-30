@@ -32,6 +32,7 @@ export default class JobExecution extends BaseModel {
   @Field({
     type: 'varchar',
     size: 128,
+    copy: false,
     string: _lt('Lease Owner', { scope: 'task.model.JobExecution.fields' }),
   })
   LeaseOwner: string;
@@ -40,6 +41,7 @@ export default class JobExecution extends BaseModel {
   @Field({
     type: 'datetime',
     index: true,
+    copy: false,
     string: _lt('Lease Until', { scope: 'task.model.JobExecution.fields' }),
   })
   LeaseUntil: Date;
