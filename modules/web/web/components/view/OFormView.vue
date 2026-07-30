@@ -68,6 +68,7 @@ SPDX-License-Identifier: Apache-2.0
         </div>
         <div class="form-view__header-right">
           <slot name="statusbar" />
+          <slot name="button-box" />
           <slot name="header-right"> </slot>
         </div>
       </div>
@@ -181,6 +182,7 @@ defineSlots<{
   'system-actions'(): any;
   'user-actions'(): any;
   statusbar(): any;
+  'button-box'(): any;
   'header-right'(): any;
   default(props: { formData: Partial<ClientModel<T>>; viewMode: ViewMode; loading: boolean }): any;
 }>();

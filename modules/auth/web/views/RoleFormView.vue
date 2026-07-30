@@ -10,6 +10,20 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     v-on="$attrs"
   >
+    <template #button-box>
+      <OButtonBox>
+        <OStatInfo :store="store" prop="Users" :label="_t('Users')" :icon="User" @click="activeTab = 'users'" />
+        <OStatInfo
+          :store="store"
+          prop="ImpliedRoles"
+          :label="_t('Included Roles')"
+          :icon="Connection"
+          @click="activeTab = 'implied_roles'"
+        />
+        <OStatInfo :store="store" prop="RecordRules" :label="_t('Record Rules')" :icon="Operation" @click="openRecordRules" />
+      </OButtonBox>
+    </template>
+
     <el-card shadow="never" class="rfv-card">
       <template #header
         ><div class="rfv-card__header"><span>{{ _t('Basic Information') }}</span></div></template
@@ -219,9 +233,11 @@ import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type Role from '@/auth/service/models/role';
 
 import { ElCard, ElRow, ElCol, ElTabs, ElTabPane, ElCollapse, ElCollapseItem, ElIcon, ElAlert } from 'element-plus';
-import { Menu as MenuIcon, Connection, Operation, QuestionFilled } from '@element-plus/icons-vue';
+import { Menu as MenuIcon, Connection, Operation, QuestionFilled, User } from '@element-plus/icons-vue';
 
 import OFormView from '@/web/web/components/view/OFormView.vue';
+import OButtonBox from '@/web/web/components/view/OButtonBox.vue';
+import OStatInfo from '@/web/web/components/view/OStatInfo.vue';
 import OCharField from '@/web/web/components/field/OCharField.vue';
 import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
 import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
@@ -313,6 +329,11 @@ const defaultMethodAccess: Record<string, any> = { Mode: 'allow' };
 
 const activeTab = ref('users');
 const advancedPanels = ref('');
+
+function openRecordRules() {
+  activeTab.value = 'advanced';
+  advancedPanels.value = 'record_rules';
+}
 
 defineExpose({
   inspectUiResource,
