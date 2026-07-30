@@ -29,7 +29,7 @@ export type ManyToOneMetadata<T extends BaseModel> = {
  */
 export type OneToManyMetadata<T extends BaseModel> = {
   targetModel: () => ModelCtor<T> & typeof BaseModel;
-  inverseField: KeysOfType<T, BaseModel | undefined>;
+  inverseField: OneToManyInverseFieldKey<T>;
 };
 
 /**
@@ -156,8 +156,8 @@ type FlatManyToOneRelationOption<TTarget extends BaseModel> = {
 
 type FlatOneToManyRelationOption<TTarget extends BaseModel> = {
   targetModel: () => ModelCtor<TTarget> & typeof BaseModel;
-  /** FK on the target that points back to the host (same KeysOfType as OneToManyMetadata). */
-  inverseField: KeysOfType<TTarget, BaseModel | undefined>;
+  /** FK on the target that points back to the host (ManyToOne or ManyToOneRef). */
+  inverseField: OneToManyInverseFieldKey<TTarget>;
   onDelete?: never;
   onUpdate?: never;
   joinModel?: never;
@@ -449,6 +449,20 @@ export const RELATIONAL_CONDITION_TYPES = new Set<FieldType>([
 ]);
 
 type KeysOfType<T, V> = Extract<{ [K in keyof T]-?: T[K] extends V ? K : never }[keyof T], string>;
+
+/**
+ * OneToMany inverse FK on the target: ManyToOne (model-typed) or ManyToOneRef (string-typed).
+ * Ref property names are not assumed to end with `Id` — any string field may be the inverse.
+ */
+export type OneToManyInverseFieldKey<T extends BaseModel> = Extract<
+  | KeysOfType<T, BaseModel>
+  | KeysOfType<T, BaseModel | undefined>
+  | KeysOfType<T, BaseModel | null | undefined>
+  | KeysOfType<T, string>
+  | KeysOfType<T, string | undefined>
+  | KeysOfType<T, string | null | undefined>,
+  string
+>;
 
 /**
  * Constructor type for runtime model classes.

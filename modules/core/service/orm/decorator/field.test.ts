@@ -1255,6 +1255,27 @@ test('Field condition typing: ctor target infers QueryCondition; string Ref stay
   } satisfies FlatOneToManyFieldOptions<O2MChild>;
   expect(invalidOneToManyMissingInverse).toBeDefined();
 
+  // ManyToOneRef-style string FK on the target is a valid inverseField (any string key, not only *Id).
+  class O2MChildWithRefFk extends BaseModel {
+    ParentRef!: string;
+    IsActive!: boolean;
+  }
+  const validOneToManyRefInverse = {
+    type: 'OneToMany' as const,
+    relation: { targetModel: () => O2MChildWithRefFk, inverseField: 'ParentRef' },
+  } satisfies FlatOneToManyFieldOptions<O2MChildWithRefFk>;
+  expect(validOneToManyRefInverse).toBeDefined();
+
+  const invalidOneToManyNonStringInverse = {
+    type: 'OneToMany' as const,
+    relation: {
+      targetModel: () => O2MChildWithRefFk,
+      // @ts-expect-error inverseField must be a ManyToOne or string Ref key.
+      inverseField: 'IsActive',
+    },
+  } satisfies FlatOneToManyFieldOptions<O2MChildWithRefFk>;
+  expect(invalidOneToManyNonStringInverse).toBeDefined();
+
   // Decorator call sites: overload should accept typed M2O condition without `as any`.
   class HostWithTypedCondition extends BaseModel {
     @Field({

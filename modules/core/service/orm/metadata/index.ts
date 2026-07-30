@@ -6,6 +6,7 @@ export type {
   StandardFields,
   ManyToOneMetadata,
   OneToManyMetadata,
+  OneToManyInverseFieldKey,
   ManyToManyMetadata,
   BaseFieldOptions,
   FieldStorageHints,
