@@ -140,6 +140,50 @@ test('repository selection tree uses explicit nested fields and adds Id when chi
   );
 });
 
+test('repository selection tree prefers SqlCompute over OneToMany relation load', () => {
+  class DemoModel {}
+  class ChildModel {}
+
+  const childMeta = {
+    type: ChildModel,
+    fields: new Map([['Name', { column: { name: 'Name' } }]]),
+  } as any;
+
+  const demoMeta = {
+    type: DemoModel,
+    fields: new Map([
+      [
+        'Childs',
+        {
+          type: 'OneToMany',
+          relation: { targetModel: () => ChildModel, inverseField: 'ParentId' },
+        },
+      ],
+    ]),
+    sqlComputeHandlers: new Map([['Childs', { field: 'Childs', method: 'sqlChilds' }]]),
+  } as any;
+
+  withFakeMetadata(
+    new Map([
+      [DemoModel, demoMeta],
+      [ChildModel, childMeta],
+    ]),
+    () => {
+      const tree = buildSelectionTree(demoMeta, ['Childs']);
+      expect(tree.columns.has('Childs')).toBe(true);
+      expect(tree.relations.has('Childs')).toBe(false);
+
+      expect(() => buildSelectionTree(demoMeta, [{ Childs: ['Name'] }], { strict: true })).toThrow(
+        /SqlCompute field does not support nested relation selection/
+      );
+
+      const nestedLoose = buildSelectionTree(demoMeta, [{ Childs: ['Name'] }], { strict: false });
+      expect(nestedLoose.relations.has('Childs')).toBe(false);
+      expect(nestedLoose.columns.has('Childs')).toBe(false);
+    }
+  );
+});
+
 test('repository selection tree aliasSelection handles function/as/plain branches', () => {
   const fnAliased = aliasSelection(
     () => ({
