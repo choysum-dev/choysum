@@ -8,7 +8,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const flushMock = vi.fn(async () => {});
 const resetMock = vi.fn();
-const onchangeCtrl = { flush: flushMock, reset: resetMock, force: vi.fn(), running: ref(false) };
+const pauseMock = vi.fn();
+const onchangeCtrl = {
+  flush: flushMock,
+  reset: resetMock,
+  pause: pauseMock,
+  force: vi.fn(),
+  running: ref(false),
+};
 
 vi.mock('@/web/web/composables/useOnchange', () => ({
   provideOnchange: vi.fn(() => onchangeCtrl),
@@ -40,6 +47,10 @@ function mountInline(opts?: {
       Sequence: { id: '2', type: 'int', typeAnnotation: '', isReadonly: true },
     },
     UpdateById,
+    state: {
+      record: { Id: 'store-rec', Name: 'Store' },
+      _draftRecord: null as any,
+    },
   } as any;
 
   let api: ReturnType<typeof useListInlineEdit> | null = null;
@@ -259,26 +270,46 @@ describe('useListInlineEdit form-root / onchange wiring', () => {
     expect(api.editingDraft.value).toEqual({ Name: 'bootstrapped' });
   });
 
-  it('provideOnchange patches draft only when enabled', async () => {
+  it('provideOnchange uses draft root while editing and store fallback when idle', async () => {
     const { provideOnchange } = await import('@/web/web/composables/useOnchange');
-    const { api, enabled } = mountInline();
-    await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
-
+    const { api, enabled, store } = mountInline();
     const opts = (provideOnchange as any).mock.calls.at(-1)[2];
+
+    expect(opts.getRoot()).toEqual(expect.objectContaining({ Id: 'store-rec' }));
+
+    await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
     expect(opts.getRoot()).toEqual(expect.objectContaining({ Id: '1' }));
     opts.onPatch({ Name: 'Z' });
     expect(api.editingDraft.value?.Name).toBe('Z');
 
     api.editingDraft.value = null;
-    expect(opts.getRoot()).toBeUndefined();
+    expect(opts.getRoot()).toEqual(expect.objectContaining({ Id: 'store-rec' }));
     opts.onPatch({ Name: 'ignored' });
     opts.onPatch(null);
     opts.onPatch('x');
     expect(api.editingDraft.value).toBeNull();
 
     enabled.value = false;
-    expect(opts.getRoot()).toBeUndefined();
-    opts.onPatch({ Name: 'ignored' });
+    expect(opts.getRoot()).toEqual(expect.objectContaining({ Id: 'store-rec' }));
+    store.state._draftRecord = { Id: 'draft', Name: 'D' };
+    expect(opts.getRoot()).toEqual(expect.objectContaining({ Id: 'draft' }));
+  });
+
+  it('re-pauses onchange after reset on enter and exit edit', async () => {
+    const { api } = mountInline();
+    resetMock.mockClear();
+    pauseMock.mockClear();
+    await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
+    expect(resetMock).toHaveBeenCalled();
+    expect(pauseMock).toHaveBeenCalled();
+    expect(pauseMock.mock.invocationCallOrder[0]).toBeGreaterThan(resetMock.mock.invocationCallOrder[0]!);
+
+    resetMock.mockClear();
+    pauseMock.mockClear();
+    await api.discard();
+    expect(resetMock).toHaveBeenCalled();
+    expect(pauseMock).toHaveBeenCalled();
+    expect(pauseMock.mock.invocationCallOrder[0]).toBeGreaterThan(resetMock.mock.invocationCallOrder[0]!);
   });
 
   it('exits edit when flush clears draft during save', async () => {

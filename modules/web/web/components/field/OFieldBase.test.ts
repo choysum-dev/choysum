@@ -12,7 +12,7 @@ import OFieldBase from './OFieldBase.vue';
 
 function makeBinding(
   meta?: { string?: string; stringText?: ReturnType<typeof createTermReference>; translate?: boolean; companyDependent?: boolean },
-  opts?: { recordId?: string | null; isEditMode?: boolean },
+  opts?: { recordId?: string | null; isEditMode?: boolean; fieldPrefix?: string | null },
 ): UseField {
   const value = ref('x');
   const recordId = opts && 'recordId' in opts ? opts.recordId : '1';
@@ -22,7 +22,7 @@ function makeBinding(
       isForm: true,
       isEditMode: opts?.isEditMode ?? true,
       viewMode: opts?.isEditMode === false ? 'readonly' : 'edit',
-      fieldPrefix: null,
+      fieldPrefix: opts?.fieldPrefix ?? null,
     },
     prop: 'AccessTokenId',
     meta: meta as any,
@@ -489,6 +489,41 @@ describe('OFieldBase list-editing-row-id gate', () => {
     });
     expect(wrapper.findAll('.edit-slot')).toHaveLength(0);
     expect(wrapper.findAll('.display-slot').length).toBeGreaterThan(0);
+  });
+
+  it('skips list-editing-row-id gate for nested relation tables with fieldPrefix', () => {
+    const editingId = ref<string | null>('1');
+    const lineRowsStub = defineComponent({
+      name: 'OVColumnLineRowsStub',
+      setup(_, { slots }) {
+        const rows = [
+          { kind: 'record', payload: { Id: '10', Name: 'L1' } },
+          { kind: 'record', payload: { Id: '11', Name: 'L2' } },
+        ];
+        return () =>
+          h(
+            'div',
+            { class: 'ov-column' },
+            rows.map((row, i) => h('div', { class: `row-${i}` }, slots.default?.({ row, $index: i })))
+          );
+      },
+    });
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Name' }, { isEditMode: true, fieldPrefix: 'Lines' }),
+        renderMode: 'table',
+      },
+      slots: {
+        edit: ({ record }) => h('div', { class: 'edit-slot' }, `edit-${record().value.Id}`),
+        display: () => h('div', { class: 'display-slot' }, 'display'),
+      },
+      global: {
+        stubs: { ...fieldBaseStubs, OVColumn: lineRowsStub },
+        provide: { 'list-editing-row-id': editingId },
+      },
+    });
+    expect(wrapper.findAll('.edit-slot')).toHaveLength(2);
+    expect(wrapper.findAll('.display-slot')).toHaveLength(0);
   });
 });
 

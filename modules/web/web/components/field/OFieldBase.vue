@@ -719,7 +719,8 @@ const requiredForRow = (row: T) => {
 };
 const effectiveEditForRow = (row: T) => {
   if (!binding.env.isEditMode || !cellVisibleForRow(row) || readonlyForRow(row)) return false;
-  if (listEditingRowId.value != null) {
+  // Top-level list S2 only: nested relation tables (field-prefix / O2M lines) keep their own row ids.
+  if (listEditingRowId.value != null && !binding.env.fieldPrefix) {
     const rec = unwrapRecord(row);
     const id = rec?.Id ?? rec?.id;
     if (id == null || String(id) !== String(listEditingRowId.value)) return false;

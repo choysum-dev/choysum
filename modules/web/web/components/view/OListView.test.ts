@@ -66,7 +66,13 @@ vi.mock('element-plus', async () => {
 });
 
 vi.mock('@/web/web/composables/useOnchange', () => {
-  const ctrl = { flush: vi.fn(async () => {}), reset: vi.fn(), force: vi.fn(), running: ref(false) };
+  const ctrl = {
+    flush: vi.fn(async () => {}),
+    reset: vi.fn(),
+    pause: vi.fn(),
+    force: vi.fn(),
+    running: ref(false),
+  };
   return {
     provideOnchange: vi.fn(() => ctrl),
     useProvidedOnchange: vi.fn(() => ctrl),

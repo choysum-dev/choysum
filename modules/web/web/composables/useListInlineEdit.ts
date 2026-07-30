@@ -63,10 +63,15 @@ export function useListInlineEdit<T extends BaseModel>(opts: {
   };
 
   provideOnchange(opts.store, 'ListView', {
-    getRoot: () => (opts.enabled.value ? editingDraft.value ?? undefined : undefined),
+    getRoot: () => {
+      // Prefer the active S2 row draft; otherwise keep the legacy store record fallback
+      // so non-editable / idle ListView sessions still have an onchange root.
+      if (opts.enabled.value && editingDraft.value != null) return editingDraft.value;
+      return (opts.store as any).state?._draftRecord || (opts.store as any).state?.record;
+    },
     onPatch: value => {
-      if (!opts.enabled.value) return;
-      if (editingDraft.value && value && typeof value === 'object') {
+      if (!opts.enabled.value || !editingDraft.value) return;
+      if (value && typeof value === 'object') {
         Object.assign(editingDraft.value, value);
       }
     },
@@ -105,7 +110,10 @@ export function useListInlineEdit<T extends BaseModel>(opts: {
     editingDraft.value = null;
     editingOriginal.value = null;
     tableViewMode.value = 'display';
-    useProvidedOnchange()?.reset();
+    const oc = useProvidedOnchange();
+    oc?.reset();
+    // reset() unpauses; keep paused so list display mode does not auto-RPC.
+    oc?.pause();
   }
 
   async function discard() {
@@ -181,7 +189,10 @@ export function useListInlineEdit<T extends BaseModel>(opts: {
     editingDraft.value = cloneRowDraft(record);
     editingRowId.value = id;
     tableViewMode.value = 'edit';
-    useProvidedOnchange()?.reset();
+    const oc = useProvidedOnchange();
+    oc?.reset();
+    // S2: explicit Save/Discard only — do not leave onchange unpaused after reset().
+    oc?.pause();
     return true;
   }
 
