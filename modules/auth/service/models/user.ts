@@ -244,6 +244,7 @@ export default class User extends BaseModel {
   @Field({
     type: 'datetime',
     index: true,
+    copy: false,
     string: _lt('Last Login', { scope: 'auth.model.User.fields' }),
   })
   LastLogin: Date;

@@ -173,6 +173,7 @@ export default class AttachmentUploadSession extends BaseModel {
   @Field({
     type: 'jsonobject',
     notNull: false,
+    copy: false,
     string: _lt('Uploaded Payload Ref', { scope: 'document.model.AttachmentUploadSession.fields' }),
   })
   UploadedPayloadRef?: UploadedPayloadRef;
@@ -216,6 +217,7 @@ export default class AttachmentUploadSession extends BaseModel {
     type: 'datetime',
     notNull: true,
     index: true,
+    copy: false,
     string: _lt('Expires At', { scope: 'document.model.AttachmentUploadSession.fields' }),
   })
   ExpiresAt: Date;
@@ -248,6 +250,7 @@ export default class AttachmentUploadSession extends BaseModel {
     size: 20,
     checkCompany: true,
     index: true,
+    copy: false,
     string: _lt('Attachment Content', { scope: 'document.model.AttachmentUploadSession.fields' }),
   })
   AttachmentContentId?: string;

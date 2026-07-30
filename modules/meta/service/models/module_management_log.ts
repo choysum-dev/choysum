@@ -10,7 +10,7 @@ import { _lt } from '../i18n';
   autoMigrate: false,
 })
 export default class ModuleManagementLog extends BaseModel {
-  @Field({ type: 'varchar', size: 64, unique: true, notNull: true, string: _lt('Job', { scope: 'meta.model.ModuleManagementLog.fields' }) })
+  @Field({ type: 'varchar', size: 64, unique: true, notNull: true, copy: false, string: _lt('Job', { scope: 'meta.model.ModuleManagementLog.fields' }) })
   JobId: string;
 
   @Field({ type: 'varchar', size: 255, index: true, notNull: true, string: _lt('Module Name', { scope: 'meta.model.ModuleManagementLog.fields' }) })

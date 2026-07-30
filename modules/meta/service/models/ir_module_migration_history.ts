@@ -37,9 +37,9 @@ export default class IrModuleMigrationHistory extends BaseModel {
   @Field({ type: 'text', string: _lt('Error', { scope: 'meta.model.IrModuleMigrationHistory.fields' }) })
   Error: string;
 
-  @Field({ type: 'varchar', size: 64, index: true, string: _lt('Trace ID', { scope: 'meta.model.IrModuleMigrationHistory.fields' }) })
+  @Field({ type: 'varchar', size: 64, index: true, copy: false, string: _lt('Trace ID', { scope: 'meta.model.IrModuleMigrationHistory.fields' }) })
   TraceId: string;
 
-  @Field({ type: 'varchar', size: 64, index: true, string: _lt('Job', { scope: 'meta.model.IrModuleMigrationHistory.fields' }) })
+  @Field({ type: 'varchar', size: 64, index: true, copy: false, string: _lt('Job', { scope: 'meta.model.IrModuleMigrationHistory.fields' }) })
   JobId: string;
 }
