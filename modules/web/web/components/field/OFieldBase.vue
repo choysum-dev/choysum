@@ -515,6 +515,9 @@ function unwrapRecord(row: any): any {
 // Inject the field error map from OFormView
 const fieldErrors = inject<Ref<Map<string, string>> | null>('field-errors', null);
 
+// Standalone List S2: only the active editing row may enter table edit mode.
+const listEditingRowId = inject<Ref<string | null>>('list-editing-row-id', ref(null));
+
 // Compute the server error for the current field in the form container
 const serverError = computed(() => {
   if (!fieldErrors?.value) return undefined;
@@ -714,7 +717,16 @@ const requiredForRow = (row: T) => {
   const rec = unwrapRecord(row) as T;
   return evalFlag(props.required, rec, rawValueForRow(row)().value, false);
 };
-const effectiveEditForRow = (row: T) => binding.env.isEditMode && cellVisibleForRow(row) && !readonlyForRow(row);
+const effectiveEditForRow = (row: T) => {
+  if (!binding.env.isEditMode || !cellVisibleForRow(row) || readonlyForRow(row)) return false;
+  // Top-level list S2 only: nested relation tables (field-prefix / O2M lines) keep their own row ids.
+  if (listEditingRowId.value != null && !binding.env.fieldPrefix) {
+    const rec = unwrapRecord(row);
+    const id = rec?.Id ?? rec?.id;
+    if (id == null || String(id) !== String(listEditingRowId.value)) return false;
+  }
+  return true;
+};
 
 /* Clear server errors when the field value changes, after all variable definitions */
 watch(

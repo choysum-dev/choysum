@@ -30,6 +30,7 @@ SPDX-License-Identifier: Apache-2.0
             :store="store"
             :base-index="1"
           >
+            <OVColumn v-if="showHandleColumn" type="handle" col-key="__handle__" :vColumnProps="{ width: 36, align: 'center' }" />
             <OVColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'right', width: 50 }" />
             <slot />
             <OVColumn :label="_t('Actions')" :width="60">
@@ -66,7 +67,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, ClientModel<BaseModel>[]>, V = FieldPathType<T, P>">
-import { computed, nextTick, ref, watch, onMounted } from 'vue';
+import { computed, nextTick, ref, watch, onMounted, provide } from 'vue';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType, ClientModel } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
@@ -79,6 +80,8 @@ import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import OViewScope from '@/web/web/components/view/OViewScope.vue';
 import { createTranslate } from '@/web/web/i18n';
+import { hasHandleField } from '@/web/web/composables/listRowEdit';
+import { LIST_HANDLE_API_KEY, useListHandleReorder } from '@/web/web/composables/useListHandleReorder';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/OOneToManyField' });
 
@@ -112,7 +115,10 @@ const props = withDefaults(
     strategy?: 'live' | 'idle' | 'blur';
     idleDelay?: number;
     commitOnBlur?: boolean;
-    allowRowEdit?: boolean;
+    /** Sequence field for drag handle; default Sequence. */
+    handleField?: string;
+    /** Show handle when relation metadata includes handleField. */
+    showHandle?: boolean;
     // Added render mode and inline error support.
     renderMode?: 'auto' | 'form' | 'table' | 'inline';
     showInlineError?: boolean;
@@ -135,7 +141,8 @@ const props = withDefaults(
     strategy: 'live',
     idleDelay: 200,
     commitOnBlur: true,
-    allowRowEdit: false,
+    handleField: 'Sequence',
+    showHandle: true,
     renderMode: 'auto',
     showInlineError: false,
   }
@@ -147,6 +154,26 @@ binding.registerFields(`${binding.prop}.DisplayName`);
 
 const { getItems, insertItem, removeItemAt } = binding.asMutableArray<any>();
 const store = props.store;
+
+const showHandleColumn = computed(
+  () => props.showHandle !== false && hasHandleField(binding.relationStore, props.handleField)
+);
+
+const o2mHandleEnabled = computed(() => showHandleColumn.value && binding.env.isEditMode);
+
+const o2mHandleReorder = useListHandleReorder({
+  rows: () => getItems(),
+  enabled: o2mHandleEnabled,
+  handleField: props.handleField,
+  onReorder: rows => {
+    // Replace array order in one write; Sequence values were already renumbered 1..n.
+    (binding.fieldRef() as { value: any }).value = rows.slice();
+  },
+});
+
+// Clear ambient list-editing-row-id so parent S2 list ids cannot gate nested line cells.
+provide('list-editing-row-id', ref(null));
+provide(LIST_HANDLE_API_KEY, o2mHandleReorder);
 
 // Row height for edit and display modes.
 const rowHeightEditRes = computed(() => props.rowHeightEdit!);

@@ -12,7 +12,7 @@ import OFieldBase from './OFieldBase.vue';
 
 function makeBinding(
   meta?: { string?: string; stringText?: ReturnType<typeof createTermReference>; translate?: boolean; companyDependent?: boolean },
-  opts?: { recordId?: string | null; isEditMode?: boolean },
+  opts?: { recordId?: string | null; isEditMode?: boolean; fieldPrefix?: string | null },
 ): UseField {
   const value = ref('x');
   const recordId = opts && 'recordId' in opts ? opts.recordId : '1';
@@ -22,7 +22,7 @@ function makeBinding(
       isForm: true,
       isEditMode: opts?.isEditMode ?? true,
       viewMode: opts?.isEditMode === false ? 'readonly' : 'edit',
-      fieldPrefix: null,
+      fieldPrefix: opts?.fieldPrefix ?? null,
     },
     prop: 'AccessTokenId',
     meta: meta as any,
@@ -385,6 +385,145 @@ describe('OFieldBase translate action', () => {
       },
     });
     expect(wrapper.find('.o-field-base__translate-btn').exists()).toBe(false);
+  });
+});
+
+describe('OFieldBase list-editing-row-id gate', () => {
+  const tableRowsStub = defineComponent({
+    name: 'OVColumnRowsStub',
+    setup(_, { slots }) {
+      const rows = [
+        { kind: 'record', payload: { Id: '1', Name: 'A' } },
+        { kind: 'record', payload: { Id: '2', Name: 'B' } },
+      ];
+      return () =>
+        h(
+          'div',
+          { class: 'ov-column' },
+          rows.map((row, i) => h('div', { class: `row-${i}` }, slots.default?.({ row, $index: i })))
+        );
+    },
+  });
+
+  it('shows edit slot only for the row matching list-editing-row-id', () => {
+    const editingId = ref<string | null>('1');
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Name' }, { isEditMode: true }),
+        renderMode: 'table',
+      },
+      slots: {
+        edit: ({ record }) => h('div', { class: 'edit-slot' }, `edit-${record().value.Id}`),
+        display: () => h('div', { class: 'display-slot' }, 'display'),
+      },
+      global: {
+        stubs: { ...fieldBaseStubs, OVColumn: tableRowsStub },
+        provide: { 'list-editing-row-id': editingId },
+      },
+    });
+    expect(wrapper.findAll('.edit-slot')).toHaveLength(1);
+    expect(wrapper.find('.edit-slot').text()).toBe('edit-1');
+    expect(wrapper.findAll('.display-slot')).toHaveLength(1);
+  });
+
+  it('shows display when row id is null under active list-editing-row-id', () => {
+    const editingId = ref<string | null>('1');
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Name' }, { isEditMode: true }),
+        renderMode: 'table',
+      },
+      slots: {
+        edit: () => h('div', { class: 'edit-slot' }, 'edit'),
+        display: () => h('div', { class: 'display-slot' }, 'display'),
+      },
+      global: {
+        stubs: {
+          ...fieldBaseStubs,
+          OVColumn: defineComponent({
+            setup(_, { slots }) {
+              return () =>
+                h('div', slots.default?.({ row: { kind: 'record', payload: { Name: 'no-id' } }, $index: 0 }));
+            },
+          }),
+        },
+        provide: { 'list-editing-row-id': editingId },
+      },
+    });
+    expect(wrapper.find('.edit-slot').exists()).toBe(false);
+    expect(wrapper.find('.display-slot').exists()).toBe(true);
+  });
+
+  it('allows all rows in edit mode when list-editing-row-id is not injected', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Name' }, { isEditMode: true }),
+        renderMode: 'table',
+      },
+      slots: {
+        edit: () => h('div', { class: 'edit-slot' }, 'edit'),
+        display: () => h('div', { class: 'display-slot' }, 'display'),
+      },
+      global: {
+        stubs: { ...fieldBaseStubs, OVColumn: tableRowsStub },
+      },
+    });
+    expect(wrapper.findAll('.edit-slot')).toHaveLength(2);
+  });
+
+  it('keeps display when list-editing-row-id is set but env is not edit mode', () => {
+    const editingId = ref<string | null>('1');
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Name' }, { isEditMode: false }),
+        renderMode: 'table',
+      },
+      slots: {
+        edit: () => h('div', { class: 'edit-slot' }, 'edit'),
+        display: () => h('div', { class: 'display-slot' }, 'display'),
+      },
+      global: {
+        stubs: { ...fieldBaseStubs, OVColumn: tableRowsStub },
+        provide: { 'list-editing-row-id': editingId },
+      },
+    });
+    expect(wrapper.findAll('.edit-slot')).toHaveLength(0);
+    expect(wrapper.findAll('.display-slot').length).toBeGreaterThan(0);
+  });
+
+  it('skips list-editing-row-id gate for nested relation tables with fieldPrefix', () => {
+    const editingId = ref<string | null>('1');
+    const lineRowsStub = defineComponent({
+      name: 'OVColumnLineRowsStub',
+      setup(_, { slots }) {
+        const rows = [
+          { kind: 'record', payload: { Id: '10', Name: 'L1' } },
+          { kind: 'record', payload: { Id: '11', Name: 'L2' } },
+        ];
+        return () =>
+          h(
+            'div',
+            { class: 'ov-column' },
+            rows.map((row, i) => h('div', { class: `row-${i}` }, slots.default?.({ row, $index: i })))
+          );
+      },
+    });
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Name' }, { isEditMode: true, fieldPrefix: 'Lines' }),
+        renderMode: 'table',
+      },
+      slots: {
+        edit: ({ record }) => h('div', { class: 'edit-slot' }, `edit-${record().value.Id}`),
+        display: () => h('div', { class: 'display-slot' }, 'display'),
+      },
+      global: {
+        stubs: { ...fieldBaseStubs, OVColumn: lineRowsStub },
+        provide: { 'list-editing-row-id': editingId },
+      },
+    });
+    expect(wrapper.findAll('.edit-slot')).toHaveLength(2);
+    expect(wrapper.findAll('.display-slot')).toHaveLength(0);
   });
 });
 

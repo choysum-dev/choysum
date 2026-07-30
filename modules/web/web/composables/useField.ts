@@ -163,9 +163,12 @@ export function useField<T = any, P extends string = string, V = any>(opts: {
       return viewContainer.value === 'Form';
     },
     get isEditMode() {
-      // Nested list editors remain editable while the surrounding form is active.
-      const inFormContext = !!formRoot || viewContainer.value === 'Form';
-      return inFormContext && (viewModeRef.value === 'edit' || viewModeRef.value === 'create');
+      // D4: Form container is writable in edit/create; List/Kanban need an injected form-root
+      // with a non-null draft (standalone List row S2, Kanban card, O2M under parent Form draft).
+      const modeOk = viewModeRef.value === 'edit' || viewModeRef.value === 'create';
+      if (!modeOk) return false;
+      if (viewContainer.value === 'Form') return true;
+      return formRoot?.draft != null;
     },
     get viewMode() {
       return viewModeRef.value;
