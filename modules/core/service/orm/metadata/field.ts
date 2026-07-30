@@ -157,7 +157,7 @@ type FlatManyToOneRelationOption<TTarget extends BaseModel> = {
 type FlatOneToManyRelationOption<TTarget extends BaseModel> = {
   targetModel: () => ModelCtor<TTarget> & typeof BaseModel;
   /** FK on the target that points back to the host (same KeysOfType as OneToManyMetadata). */
-  inverseField?: KeysOfType<TTarget, BaseModel | undefined>;
+  inverseField: KeysOfType<TTarget, BaseModel | undefined>;
   onDelete?: never;
   onUpdate?: never;
   joinModel?: never;
