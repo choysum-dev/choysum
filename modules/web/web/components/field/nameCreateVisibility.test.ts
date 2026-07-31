@@ -14,6 +14,9 @@ describe('nameCreateVisibility', () => {
     expect(deriveModelCreateActionId('auth.UserRole')).toBe('auth.action.user_role_create');
     expect(deriveModelCreateActionId('')).toBeUndefined();
     expect(deriveModelCreateActionId('invalid')).toBeUndefined();
+    expect(deriveModelCreateActionId('partner.Bank.Account')).toBeUndefined();
+    expect(deriveModelCreateActionId('.Partner')).toBeUndefined();
+    expect(deriveModelCreateActionId('partner.')).toBeUndefined();
   });
 
   it('resolves create action id from model or explicit prop', () => {

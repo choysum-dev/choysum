@@ -11,9 +11,11 @@ import { canShowAction, type ActionPredicate } from '@/web/web/components/view/a
 export function deriveModelCreateActionId(relationQualifiedName: string | undefined | null): string | undefined {
   const qn = String(relationQualifiedName ?? '').trim();
   if (!qn) return undefined;
-  const [appRaw, modelRaw] = qn.split('.');
-  const app = String(appRaw || '').trim();
-  const modelName = String(modelRaw || '').trim();
+  const parts = qn.split('.');
+  // Canonical model id is exactly [application].[ModelName] (same as UI_DECL model-id format).
+  if (parts.length !== 2) return undefined;
+  const app = String(parts[0] || '').trim();
+  const modelName = String(parts[1] || '').trim();
   if (!app || !modelName) return undefined;
   return `${app}.action.${toSnake(modelName)}_create`;
 }
