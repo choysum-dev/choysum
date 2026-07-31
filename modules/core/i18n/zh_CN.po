@@ -196,6 +196,11 @@ msgctxt "service/runtime/validation/engine"
 msgid "field \"%s\" is computed and cannot be written directly"
 msgstr "字段 \"%s\" 为计算字段，不能直接写入"
 
+#: service/runtime/validation/engine.ts:250
+msgctxt "service/runtime/validation/engine"
+msgid "field \"%s\" is readonly and cannot be written"
+msgstr "字段 \"%s\" 为只读，不能写入"
+
 #: service/runtime/validation/engine.ts:196 service/runtime/validation/engine.ts:231
 msgctxt "service/runtime/validation/engine"
 msgid "field \"%s\" is select-only and cannot be written"

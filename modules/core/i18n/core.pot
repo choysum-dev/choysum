@@ -206,6 +206,11 @@ msgctxt "service/runtime/validation/engine"
 msgid "field \"%s\" is computed and cannot be written directly"
 msgstr ""
 
+#: service/runtime/validation/engine.ts:250
+msgctxt "service/runtime/validation/engine"
+msgid "field \"%s\" is readonly and cannot be written"
+msgstr ""
+
 #: service/runtime/validation/engine.ts:196
 #: service/runtime/validation/engine.ts:231
 msgctxt "service/runtime/validation/engine"

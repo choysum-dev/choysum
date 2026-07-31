@@ -2397,3 +2397,58 @@ export default class CopyPilot extends BaseModel {
 		t.Fatalf("omitted copy must leave Structural.Copy nil, got %#v", nameSpec.Structural.Copy)
 	}
 }
+
+func TestTsParser_ReadonlyTrueField(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/readonly_field.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('ReadonlyPilot')
+export default class ReadonlyPilot extends BaseModel {
+  @Field({ type: 'varchar', size: 64, readonly: true })
+  public ExternalId: string
+
+  @Field({ type: 'varchar', size: 64, readonly: false })
+  public Code: string
+
+  @Field({ type: 'varchar', size: 64 })
+  public Name: string
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	fieldByName := map[string]*meta.IrField{}
+	for _, f := range r.Model.Fields {
+		fieldByName[f.Name] = f
+	}
+
+	ext := fieldByName["ExternalId"]
+	if ext == nil || !ext.IsReadonly {
+		t.Fatalf("expected ExternalId IsReadonly=true, got %#v", ext)
+	}
+	extSpec, err := ext.GetResolvedSpec()
+	if err != nil || extSpec == nil || extSpec.Structural.Readonly == nil || !*extSpec.Structural.Readonly {
+		t.Fatalf("expected Structural.Readonly=true: err=%v %#v", err, extSpec)
+	}
+
+	code := fieldByName["Code"]
+	if code == nil || code.IsReadonly {
+		t.Fatalf("readonly:false must not set IsReadonly, got %#v", code)
+	}
+	codeSpec, err := code.GetResolvedSpec()
+	if err != nil || codeSpec == nil || codeSpec.Structural.Readonly != nil {
+		t.Fatalf("readonly:false must leave Structural.Readonly nil: err=%v %#v", err, codeSpec)
+	}
+
+	name := fieldByName["Name"]
+	if name == nil || name.IsReadonly {
+		t.Fatalf("omitted readonly must leave IsReadonly false, got %#v", name)
+	}
+}

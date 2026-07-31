@@ -242,6 +242,15 @@ export class ValidationEngine {
           message: _t('field "%s" is computed and cannot be written directly', { scope: 'service/runtime/validation/engine' }, field),
           severity: 'error',
         });
+      } else if (shouldCheckWriteScope && meta.readonly === true) {
+        issues.push({
+          scope: 'platform',
+          field,
+          code: 'platform_write_to_readonly_field',
+          message: _t('field "%s" is readonly and cannot be written', { scope: 'service/runtime/validation/engine' }, field),
+          severity: 'error',
+        });
+        continue;
       }
 
       if (ctx.mode === 'preview') {

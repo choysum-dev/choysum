@@ -76,6 +76,8 @@ type FieldDecoratorOptionBag = {
   companyDependent?: unknown;
   /** Whether the field participates in Model.Copy (default true when omitted). */
   copy?: unknown;
+  /** Declarative field readonly (PR-P2-F2); wire still uses isReadonly. */
+  readonly?: unknown;
   /**
    * Odoo-style check_company for ManyToOne / ManyToOneRef (parent↔related CompanyId).
    */
@@ -199,6 +201,10 @@ export function Field(
           : companyDependent
             ? false
             : undefined;
+    if (optionBag.readonly !== undefined && typeof optionBag.readonly !== 'boolean') {
+      throw new Error(`@Field(${name}) readonly must be a boolean`);
+    }
+    const readonlyFlag = optionBag.readonly === true;
     if (optionBag.checkCompany !== undefined && typeof optionBag.checkCompany !== 'boolean') {
       throw new Error(`@Field(${name}) checkCompany must be a boolean`);
     }
@@ -638,6 +644,7 @@ export function Field(
     if (companyDependent) meta.companyDependent = true;
     if (copyFlag === false) meta.copy = false;
     else if (copyFlag === true) meta.copy = true;
+    if (readonlyFlag) meta.readonly = true;
     if (checkCompany) meta.checkCompany = true;
 
     // Write metadata

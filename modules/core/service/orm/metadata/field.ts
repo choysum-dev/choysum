@@ -121,6 +121,12 @@ type FlatCommonOptions = {
    */
   copy?: boolean;
   /**
+   * Declarative field readonly (PR-P2-F2). When true, FieldsGet/codegen expose
+   * `isReadonly` and Create/Update reject writes (OR with compute/ACL).
+   * Omit / false = writable.
+   */
+  readonly?: boolean;
+  /**
    * Odoo-style check_company: when true on ManyToOne / ManyToOneRef, related-row
    * ownership must match the parent row. Each side uses its model `companyField`
    * (falls back to `CompanyId` only for non-isolated parents). Related shared/NULL passes.
@@ -658,6 +664,11 @@ export interface FieldMetadata {
    * Omit / true = include; false = skip.
    */
   copy?: boolean;
+  /**
+   * Declarative field readonly from `@Field({ readonly: true })` (PR-P2-F2).
+   * Wire still exposes `isReadonly` only (merged with compute / ACL deny-write).
+   */
+  readonly?: boolean;
   /**
    * When true on ManyToOne / ManyToOneRef, enforce parent↔related ownership
    * compatibility via each side's `companyField` (PR-D-1 / Odoo check_company).

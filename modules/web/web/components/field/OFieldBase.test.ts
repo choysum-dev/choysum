@@ -341,6 +341,40 @@ describe('OFieldBase FieldsGet readonly', () => {
     expect(wrapper.find('.edit-slot').exists()).toBe(false);
     expect(wrapper.find('.display-slot').exists()).toBe(true);
   });
+
+  it('honors static binding.meta.isReadonly without FieldsGet overlay (PR-P2-F2)', () => {
+    const binding = makeBinding({ string: 'External Id' });
+    binding.meta = {
+      type: 'varchar',
+      typeAnnotation: 'string',
+      id: '1',
+      string: 'External Id',
+      isReadonly: true,
+    } as any;
+
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding,
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h('div', { class: 'edit-slot' }, 'edit'),
+        display: () => h('div', { class: 'display-slot' }, 'display'),
+      },
+      global: {
+        stubs: {
+          ...fieldBaseStubs,
+          'el-form-item': {
+            props: ['label'],
+            template: '<div class="form-item"><slot /></div>',
+          },
+        },
+      },
+    });
+
+    expect(wrapper.find('.edit-slot').exists()).toBe(false);
+    expect(wrapper.find('.display-slot').exists()).toBe(true);
+  });
 });
 
 describe('OFieldBase translate action', () => {
