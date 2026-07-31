@@ -6,17 +6,32 @@ import {
   deriveModelCreateActionId,
   resolveNameCreateActionId,
   shouldShowNameCreateEntry,
+  toModelActionSnake,
 } from './nameCreateVisibility';
 
 describe('nameCreateVisibility', () => {
+  it('toModelActionSnake handles empty and separators', () => {
+    expect(toModelActionSnake('')).toBe('');
+    expect(toModelActionSnake('   ')).toBe('');
+    expect(toModelActionSnake(null as any)).toBe('');
+    expect(toModelActionSnake('UserRole')).toBe('user_role');
+    expect(toModelActionSnake('foo-bar baz')).toBe('foo_bar_baz');
+  });
+
   it('derives conventional create action ids', () => {
     expect(deriveModelCreateActionId('partner.Partner')).toBe('partner.action.partner_create');
     expect(deriveModelCreateActionId('auth.UserRole')).toBe('auth.action.user_role_create');
+    expect(deriveModelCreateActionId('demo.Foo-Bar Baz')).toBe('demo.action.foo_bar_baz_create');
+    expect(deriveModelCreateActionId(null)).toBeUndefined();
+    expect(deriveModelCreateActionId(undefined)).toBeUndefined();
     expect(deriveModelCreateActionId('')).toBeUndefined();
+    expect(deriveModelCreateActionId('   ')).toBeUndefined();
     expect(deriveModelCreateActionId('invalid')).toBeUndefined();
     expect(deriveModelCreateActionId('partner.Bank.Account')).toBeUndefined();
     expect(deriveModelCreateActionId('.Partner')).toBeUndefined();
     expect(deriveModelCreateActionId('partner.')).toBeUndefined();
+    expect(deriveModelCreateActionId(' .Partner')).toBeUndefined();
+    expect(deriveModelCreateActionId('partner. ')).toBeUndefined();
   });
 
   it('resolves create action id from model or explicit prop', () => {
@@ -62,6 +77,14 @@ describe('nameCreateVisibility', () => {
         hasAction: () => false,
       })
     ).toBe(false);
+    // Missing hasAction predicate → canShowAction allows non-empty action ids.
+    expect(
+      shouldShowNameCreateEntry({
+        allowCreate: true,
+        hasKeyword: true,
+        relationQualifiedName: 'partner.Partner',
+      })
+    ).toBe(true);
   });
 
   it('createActionId empty string skips ACL', () => {

@@ -59,7 +59,7 @@ describe('OManyToManyTagsField mapping/contract', () => {
 
   it('wires NameCreate quick-create entry and props', () => {
     const s = source();
-    expect(s).toContain('store.NameCreate(');
+    expect(s).toContain('runNameCreateQuickCreate');
     expect(s).toContain('shouldShowNameCreateEntry');
     expect(s).toContain('allowCreate');
     expect(s).toContain('o-m2m-name-create');

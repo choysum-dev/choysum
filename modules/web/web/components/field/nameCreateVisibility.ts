@@ -17,11 +17,12 @@ export function deriveModelCreateActionId(relationQualifiedName: string | undefi
   const app = String(parts[0] || '').trim();
   const modelName = String(parts[1] || '').trim();
   if (!app || !modelName) return undefined;
-  return `${app}.action.${toSnake(modelName)}_create`;
+  return `${app}.action.${toModelActionSnake(modelName)}_create`;
 }
 
-function toSnake(input: string): string {
-  const value = String(input || '').trim();
+/** Exported for unit coverage of snake-case edge cases. */
+export function toModelActionSnake(input: string): string {
+  const value = String(input ?? '').trim();
   if (!value) return '';
   return value
     .replace(/([a-z0-9])([A-Z])/g, '$1_$2')

@@ -145,6 +145,7 @@ import { registerFieldPath, unregisterFieldPath, pathsToFieldSelection, ensureRo
 import { createTranslate } from '@/web/web/i18n';
 import type { TagClickPayload } from '@/web/web/components/field/manyToManyTagsTypes';
 import { shouldShowNameCreateEntry } from '@/web/web/components/field/nameCreateVisibility';
+import { runNameCreateQuickCreate, trimSearchKeyword } from '@/web/web/components/field/nameCreateQuickCreate';
 import { usePermission } from '@/auth/web/composables/usePermission';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/OManyToManyRefTagsField' });
@@ -260,7 +261,7 @@ const searchKeyword = ref('');
 const dropdownVisible = ref(false);
 const vm = getCurrentInstance();
 
-const hasKeyword = computed(() => String(searchKeyword.value ?? '').trim().length > 0);
+const hasKeyword = computed(() => trimSearchKeyword(searchKeyword.value).length > 0);
 const { hasAction } = usePermission();
 const showNameCreateEntry = computed(() =>
   shouldShowNameCreateEntry({
@@ -271,44 +272,25 @@ const showNameCreateEntry = computed(() =>
     hasAction,
   })
 );
-const nameCreateLabel = computed(() => {
-  const q = String(searchKeyword.value ?? '').trim();
-  return _t('Create "%s"', q);
-});
+const nameCreateLabel = computed(() => _t('Create "%s"', trimSearchKeyword(searchKeyword.value)));
 const creatingName = ref(false);
 
 async function onNameCreate() {
-  if (creatingName.value) return;
-  const store = relationStore.value;
-  if (!store) {
-    ElMessage.error(_t('Create failed'));
-    return;
-  }
-  const trimmed = String(searchKeyword.value ?? '').trim();
-  if (!trimmed) return;
-  creatingName.value = true;
-  try {
-    const row = await store.NameCreate(
-      trimmed,
-      undefined,
-      props.nameField ? { nameField: props.nameField } : undefined
-    );
-    const id = extractId(row);
-    if (!id) {
-      ElMessage.error(_t('Create failed'));
-      return;
-    }
-    upsertHydrated(row);
-    const idStr = String(id);
-    if (!selectedIds.value.includes(idStr)) {
-      onSelectedIdsChange([...selectedIds.value, idStr]);
-    }
-    searchKeyword.value = '';
-  } catch (e: any) {
-    ElMessage.error(String(e?.message || e || _t('Create failed')));
-  } finally {
-    creatingName.value = false;
-  }
+  await runNameCreateQuickCreate({
+    busy: creatingName,
+    store: relationStore.value,
+    keyword: searchKeyword.value,
+    nameField: props.nameField,
+    failedMessage: _t('Create failed'),
+    onError: message => ElMessage.error(message),
+    onSuccess: (row, id) => {
+      upsertHydrated(row);
+      if (!selectedIds.value.includes(id)) {
+        onSelectedIdsChange([...selectedIds.value, id]);
+      }
+      searchKeyword.value = '';
+    },
+  });
 }
 
 const hasTagClickListener = computed<boolean>(() => {

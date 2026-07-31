@@ -51,7 +51,7 @@ describe('OManyToOneField mapping/contract', () => {
 
   it('wires NameCreate quick-create entry and props', () => {
     const s = source();
-    expect(s).toContain('relationStore.NameCreate(');
+    expect(s).toContain('runNameCreateQuickCreate');
     expect(s).toContain('shouldShowNameCreateEntry');
     expect(s).toContain('allowCreate');
     expect(s).toContain('nameField');

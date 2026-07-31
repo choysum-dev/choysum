@@ -123,6 +123,7 @@ import { useProvidedOnchange } from '@/web/web/composables/useOnchange';
 import { createTranslate } from '@/web/web/i18n';
 import type { ValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 import { shouldShowNameCreateEntry } from '@/web/web/components/field/nameCreateVisibility';
+import { runNameCreateQuickCreate, trimSearchKeyword } from '@/web/web/components/field/nameCreateQuickCreate';
 import { usePermission } from '@/auth/web/composables/usePermission';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/OManyToOneField' });
@@ -225,7 +226,7 @@ const fromView = (v: V | null) => (v ?? null) as any;
 const options = shallowRef<OptionType[]>([]);
 const loading = ref(false);
 const searchQuery = ref('');
-const isSearching = computed(() => (searchQuery.value?.trim()?.length ?? 0) > 0);
+const isSearching = computed(() => trimSearchKeyword(searchQuery.value).length > 0);
 const vm = getCurrentInstance();
 
 const { hasAction } = usePermission();
@@ -238,39 +239,22 @@ const showNameCreateEntry = computed(() =>
     hasAction,
   })
 );
-const nameCreateLabel = computed(() => {
-  const q = String(searchQuery.value ?? '').trim();
-  return _t('Create "%s"', q);
-});
+const nameCreateLabel = computed(() => _t('Create "%s"', trimSearchKeyword(searchQuery.value)));
 const creatingName = ref(false);
 
 async function onNameCreate(getter: () => WritableComputedRef<V | null>) {
-  if (creatingName.value) return;
-  if (!relationStore) {
-    ElMessage.error(_t('Create failed'));
-    return;
-  }
-  const trimmed = String(searchQuery.value ?? '').trim();
-  if (!trimmed) return;
-  creatingName.value = true;
-  try {
-    const row = (await relationStore.NameCreate(
-      trimmed,
-      undefined,
-      props.nameField ? { nameField: props.nameField } : undefined
-    )) as V;
-    const id = (row as any)?.Id ?? (row as any)?.id;
-    if (id == null || String(id).trim() === '') {
-      ElMessage.error(_t('Create failed'));
-      return;
-    }
-    onUpdate(getter, row);
-    searchQuery.value = '';
-  } catch (e: any) {
-    ElMessage.error(String(e?.message || e || _t('Create failed')));
-  } finally {
-    creatingName.value = false;
-  }
+  await runNameCreateQuickCreate({
+    busy: creatingName,
+    store: relationStore,
+    keyword: searchQuery.value,
+    nameField: props.nameField,
+    failedMessage: _t('Create failed'),
+    onError: message => ElMessage.error(message),
+    onSuccess: row => {
+      onUpdate(getter, row as V);
+      searchQuery.value = '';
+    },
+  });
 }
 
 const hasValueClickListener = computed<boolean>(() => {

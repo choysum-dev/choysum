@@ -52,6 +52,82 @@ test('isWritableStoredField: Name yes, DisplayName no, missing no', () => {
   expect(isWritableStoredField(meta, 'DisplayName')).toBe(false);
   expect(isWritableStoredField(meta, 'Missing')).toBe(false);
   expect(isWritableStoredField(meta, '')).toBe(false);
+  expect(isWritableStoredField(meta, '   ')).toBe(false);
+  expect(isWritableStoredField(meta, null as any)).toBe(false);
+  expect(isWritableStoredField(meta, 'Id')).toBe(false);
+});
+
+test('isWritableStoredField rejects sqlCompute, virtual compute, non-stored related', () => {
+  const base = getModelRuntimeMetadata(NameCreateWidget as any);
+  const code = base.fields.get('Code') as any;
+
+  expect(
+    isWritableStoredField(
+      {
+        ...base,
+        fields: new Map([['Code', { ...code, column: { ...code.column, primaryKey: true } }]]),
+      } as any,
+      'Code'
+    )
+  ).toBe(false);
+
+  expect(
+    isWritableStoredField(
+      { ...base, sqlComputeHandlers: new Map([['Code', { field: 'Code', method: 'sqlCode' }]]) } as any,
+      'Code'
+    )
+  ).toBe(false);
+
+  expect(
+    isWritableStoredField(
+      { ...base, computeHandlers: new Map([['Code', { store: false }]]) } as any,
+      'Code'
+    )
+  ).toBe(false);
+
+  expect(
+    isWritableStoredField(
+      { ...base, computeHandlers: new Map([['Code', { store: true }]]) } as any,
+      'Code'
+    )
+  ).toBe(true);
+
+  expect(
+    isWritableStoredField(
+      { ...base, computeGraph: { virtualComputeFields: new Set(['Code']) } } as any,
+      'Code'
+    )
+  ).toBe(false);
+
+  expect(
+    isWritableStoredField(
+      {
+        ...base,
+        fields: new Map([['Code', { ...code, related: { path: 'PartnerId.Name', store: false } }]]),
+      } as any,
+      'Code'
+    )
+  ).toBe(false);
+
+  expect(
+    isWritableStoredField(
+      {
+        ...base,
+        fields: new Map([['Code', { ...code, related: { path: 'PartnerId.Name', store: true } }]]),
+      } as any,
+      'Code'
+    )
+  ).toBe(true);
+
+  expect(
+    isWritableStoredField(
+      {
+        ...base,
+        fields: new Map([['Ghost', { type: 'varchar' }]]),
+      } as any,
+      'Ghost'
+    )
+  ).toBe(false);
 });
 
 test('resolveNameCreateField defaults to Name and honors nameField', () => {
@@ -84,6 +160,22 @@ test('NameCreate rejects empty name', async () => {
     blankErr = e;
   }
   expect(String(blankErr)).toMatch(/name is empty/);
+
+  let nullErr: unknown;
+  try {
+    await nameCreateModels(NameCreateWidget as any, null as any);
+  } catch (e) {
+    nullErr = e;
+  }
+  expect(String(nullErr)).toMatch(/name is empty/);
+
+  let undefErr: unknown;
+  try {
+    await nameCreateModels(NameCreateWidget as any, undefined as any);
+  } catch (e) {
+    undefErr = e;
+  }
+  expect(String(undefErr)).toMatch(/name is empty/);
 });
 
 test('NameCreate writes Name and lets name override values', async () => {
@@ -119,6 +211,11 @@ test('NameCreate with explicit nameField writes that field', async () => {
   try {
     await NameCreateWidget.NameCreate('bob', {}, { nameField: 'Code' });
     expect(seen).toEqual([{ Code: 'bob' }]);
+    // values null/undefined still spreads to an empty base payload.
+    await nameCreateModels(NameCreateWidget as any, 'cara', null as any);
+    expect(seen[1]).toEqual({ Name: 'cara' });
+    await nameCreateModels(NameCreateWidget as any, 'dana', undefined);
+    expect(seen[2]).toEqual({ Name: 'dana' });
   } finally {
     NameCreateWidget.Create = original;
   }
