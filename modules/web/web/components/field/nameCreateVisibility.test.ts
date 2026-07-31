@@ -1,17 +1,21 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it, vi } from 'vitest';
-import { resolveNameCreateActionId, shouldShowNameCreateEntry } from './nameCreateVisibility';
-
-vi.mock('@/core/web/resource', () => ({
-  defineModelActions: (model: string) => {
-    if (model === 'partner.Partner') return { create: 'partner.action.partner_create' };
-    return {};
-  },
-}));
+import { describe, expect, it } from 'vitest';
+import {
+  deriveModelCreateActionId,
+  resolveNameCreateActionId,
+  shouldShowNameCreateEntry,
+} from './nameCreateVisibility';
 
 describe('nameCreateVisibility', () => {
+  it('derives conventional create action ids', () => {
+    expect(deriveModelCreateActionId('partner.Partner')).toBe('partner.action.partner_create');
+    expect(deriveModelCreateActionId('auth.UserRole')).toBe('auth.action.user_role_create');
+    expect(deriveModelCreateActionId('')).toBeUndefined();
+    expect(deriveModelCreateActionId('invalid')).toBeUndefined();
+  });
+
   it('resolves create action id from model or explicit prop', () => {
     expect(resolveNameCreateActionId('partner.Partner')).toBe('partner.action.partner_create');
     expect(resolveNameCreateActionId('partner.Partner', 'custom.action.x_create')).toBe('custom.action.x_create');
@@ -81,7 +85,7 @@ describe('nameCreateVisibility', () => {
       shouldShowNameCreateEntry({
         allowCreate: true,
         hasKeyword: true,
-        relationQualifiedName: 'unknown.Model',
+        relationQualifiedName: 'invalid',
         hasAction: () => true,
       })
     ).toBe(false);

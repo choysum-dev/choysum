@@ -69,5 +69,5 @@ export async function nameCreateModels<T extends BaseModel>(
     ...(values || {}),
     [field]: kw,
   } as Partial<Insertable<T & BaseModel>>;
-  return await ModelCtor.Create(payload, options?.returnFields);
+  return (await ModelCtor.Create(payload, options?.returnFields)) as T;
 }
