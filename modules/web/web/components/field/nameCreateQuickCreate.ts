@@ -2,11 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 export type NameCreateStoreLike = {
-  NameCreate: (
-    name: string,
-    values?: unknown,
-    options?: { nameField?: string }
-  ) => Promise<unknown>;
+  // Params stay loose so WebModelStore.NameCreate (ClientModelService) remains assignable.
+  NameCreate: (name: string, values?: any, options?: { nameField?: string }) => Promise<any>;
 };
 
 /** Normalize typeahead keyword for labels / NameCreate (nullish-safe). */
