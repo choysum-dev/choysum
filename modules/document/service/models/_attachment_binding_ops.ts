@@ -6,7 +6,6 @@ import { createTranslate } from '@/core/service/i18n';
 import BaseModel from '@/core/service/orm/model/model';
 import { MetadataStorage } from '@/core/service/orm/metadata/storage';
 import type { FieldMetadata } from '@/core/service/orm/metadata/field';
-import { DEFAULT_GLOBAL_MAX_UPLOAD_BYTES } from '@/core/service/orm/upload_limits';
 import { toDate } from '@/core/service/utils/datetime';
 import {
   DownloadDisposition,
