@@ -30,6 +30,9 @@ export default class Session extends BaseModel {
     index: true,
     copy: false,
     string: _lt('Access Token ID', { scope: 'auth.model.Session.fields' }),
+    help: _lt('Token JTI identifier, not the bearer secret.', {
+      scope: 'auth.model.Session.fields',
+    }),
   })
   AccessTokenId: string;
 

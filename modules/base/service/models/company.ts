@@ -42,6 +42,9 @@ export default class Company extends BaseModel {
     condition: ['IsActive', '=', true],
     index: true,
     string: _lt('Parent Company', { scope: 'base.model.Company.fields' }),
+    help: _lt('Parent in the company tree; cannot be self or a descendant.', {
+      scope: 'base.model.Company.fields',
+    }),
   })
   ParentId?: Company;
 

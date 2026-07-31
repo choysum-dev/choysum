@@ -65,6 +65,9 @@ export default class Role extends BaseModel {
     unique: true,
     notNull: true,
     string: _lt('Code', { scope: 'auth.model.Role.fields' }),
+    help: _lt('Stable programmatic id; also used as the display name.', {
+      scope: 'auth.model.Role.fields',
+    }),
   })
   Code: string;
 
@@ -99,6 +102,9 @@ export default class Role extends BaseModel {
     default: () => false,
     index: true,
     string: _lt('Built-in', { scope: 'auth.model.Role.fields' }),
+    help: _lt('System roles are seeded and should not be deleted casually.', {
+      scope: 'auth.model.Role.fields',
+    }),
   })
   IsSystem: boolean;
 
@@ -109,6 +115,9 @@ export default class Role extends BaseModel {
     type: 'ManyToManyRef',
     relation: { targetModel: 'meta.IrUiResource' },
     string: _lt('Accessible UI Resources', { scope: 'auth.model.Role.fields' }),
+    help: _lt('UI tree selection; drives menu and action visibility for this role.', {
+      scope: 'auth.model.Role.fields',
+    }),
   })
   AccessUiResourceIds: string[];
 
@@ -141,6 +150,9 @@ export default class Role extends BaseModel {
     },
     condition: ['IsActive', '=', true],
     string: _lt('Included Roles', { scope: 'auth.model.Role.fields' }),
+    help: _lt('Permissions from included roles are merged into this role.', {
+      scope: 'auth.model.Role.fields',
+    }),
   })
   ImpliedRoles: Role[];
 

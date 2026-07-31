@@ -80,6 +80,9 @@ export default class Sequence extends BaseModel {
     type: 'varchar',
     size: 64,
     string: _lt('Prefix', { scope: 'base.model.Sequence.fields' }),
+    help: _lt('Literal text prepended to the generated number.', {
+      scope: 'base.model.Sequence.fields',
+    }),
   })
   Prefix?: string;
 
@@ -87,6 +90,9 @@ export default class Sequence extends BaseModel {
     type: 'varchar',
     size: 64,
     string: _lt('Suffix', { scope: 'base.model.Sequence.fields' }),
+    help: _lt('Literal text appended to the generated number.', {
+      scope: 'base.model.Sequence.fields',
+    }),
   })
   Suffix?: string;
 

@@ -1,112 +1,127 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
-#: service/models/bank_account.ts:56
+#: service/models/bank_account.ts:62
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Account Name"
 msgstr "账户名称"
 
-#: service/models/bank_account.ts:196 service/models/bank_account.ts:66
+#: service/models/bank_account.ts:216 service/models/bank_account.ts:72
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Account Number"
 msgstr "账号"
 
-#: service/models/bank_account.ts:205
+#: service/models/bank_account.ts:225
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Account Number Last 4"
 msgstr "账号后四位"
 
-#: service/models/bank_account.ts:81
+#: service/models/bank_account.ts:87
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Account Type"
 msgstr "账户类型"
 
-#: service/models/bank_account.ts:178
+#: service/models/bank_account.ts:198
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/bank_account.ts:138
+#: service/models/bank_account.ts:146
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Allow Inbound"
 msgstr "允许入账"
 
-#: service/models/bank_account.ts:148
+#: service/models/bank_account.ts:159
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Allow Outbound"
 msgstr "允许出账"
 
-#: service/models/bank_account.ts:46
+#: service/models/bank_account.ts:147 service/models/bank_account.ts:160
+msgctxt "partner_bank.model.BankAccount.fields"
+msgid "At least one of inbound or outbound must stay enabled."
+msgstr "进账与出账至少保留一项启用。"
+
+#: service/models/bank_account.ts:52
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Bank"
 msgstr "银行"
 
-#: service/models/bank_account.ts:187
+#: service/models/bank_account.ts:207
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Bank Name"
 msgstr "银行名称"
 
-#: service/models/bank_account.ts:108
+#: service/models/bank_account.ts:114
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Branch Name"
 msgstr "支行名称"
 
-#: service/models/bank_account.ts:74
+#: service/models/bank_account.ts:80
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Checking"
 msgstr "支票账户"
 
-#: service/models/bank_account.ts:35
+#: service/models/bank_account.ts:40
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Company"
 msgstr "公司"
 
-#: service/models/bank_account.ts:76
+#: service/models/bank_account.ts:82
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Corporate"
 msgstr "对公账户"
 
-#: service/models/bank_account.ts:128
+#: service/models/bank_account.ts:136
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Country"
 msgstr "国家/地区"
 
-#: service/models/bank_account.ts:118
+#: service/models/bank_account.ts:125
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Currency"
 msgstr "币种"
 
-#: service/models/bank_account.ts:158
+#: service/models/bank_account.ts:172
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Default Inbound"
 msgstr "默认入账"
 
-#: service/models/bank_account.ts:168
+#: service/models/bank_account.ts:185
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Default Outbound"
 msgstr "默认出账"
 
-#: service/models/bank_account.ts:90
+#: service/models/bank_account.ts:96
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "IBAN"
 msgstr "IBAN"
 
-#: service/models/bank_account.ts:77
+#: service/models/bank_account.ts:173
+msgctxt "partner_bank.model.BankAccount.fields"
+msgid "One default per direction; requires matching Allow Inbound."
+msgstr "每个方向仅一个默认账户；须同时允许进账。"
+
+#: service/models/bank_account.ts:186
+msgctxt "partner_bank.model.BankAccount.fields"
+msgid "One default per direction; requires matching Allow Outbound."
+msgstr "每个方向仅一个默认账户；须同时允许出账。"
+
+#: service/models/bank_account.ts:83
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Other"
 msgstr "其他"
 
-#: service/models/bank_account.ts:24
+#: service/models/bank_account.ts:29
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Partner"
 msgstr "业务伙伴"
 
-#: service/models/bank_account.ts:99
+#: service/models/bank_account.ts:105
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Routing Code"
 msgstr "路由码"
 
-#: service/models/bank_account.ts:75
+#: service/models/bank_account.ts:81
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Savings"
 msgstr "储蓄账户"
@@ -131,42 +146,42 @@ msgctxt "service/models/_helpers"
 msgid "AccountType must be one of checking, savings, corporate, other"
 msgstr "AccountType 必须是 checking、savings、corporate 或 other"
 
-#: service/models/bank_account.ts:268
+#: service/models/bank_account.ts:288
 msgctxt "service/models/bank_account"
 msgid "AllowInbound and AllowOutbound cannot both be false"
 msgstr "AllowInbound 与 AllowOutbound 不能同时为 false"
 
-#: service/models/bank_account.ts:266
+#: service/models/bank_account.ts:286
 msgctxt "service/models/bank_account"
 msgid "BankId is required"
 msgstr "BankId 为必填项"
 
-#: service/models/bank_account.ts:265
+#: service/models/bank_account.ts:285
 msgctxt "service/models/bank_account"
 msgid "CompanyId is required"
 msgstr "CompanyId 为必填项"
 
-#: service/models/bank_account.ts:271
+#: service/models/bank_account.ts:291
 msgctxt "service/models/bank_account"
 msgid "Default inbound account must allow inbound usage"
 msgstr "默认入账账户必须允许入账"
 
-#: service/models/bank_account.ts:274
+#: service/models/bank_account.ts:294
 msgctxt "service/models/bank_account"
 msgid "Default outbound account must allow outbound usage"
 msgstr "默认出账账户必须允许出账"
 
-#: service/models/bank_account.ts:244
+#: service/models/bank_account.ts:264
 msgctxt "service/models/bank_account"
 msgid "Only one default inbound bank account is allowed for the same partner"
 msgstr "同一伙伴下只能有一个默认入账银行账户"
 
-#: service/models/bank_account.ts:245
+#: service/models/bank_account.ts:265
 msgctxt "service/models/bank_account"
 msgid "Only one default outbound bank account is allowed for the same partner"
 msgstr "同一伙伴下只能有一个默认出账银行账户"
 
-#: service/models/bank_account.ts:229 service/models/bank_account.ts:264
+#: service/models/bank_account.ts:249 service/models/bank_account.ts:284
 msgctxt "service/models/bank_account"
 msgid "PartnerId is required"
 msgstr "PartnerId 为必填项"
@@ -300,4 +315,3 @@ msgstr "查看银行账户"
 msgctxt "web/views/PartnerFormView"
 msgid "Yes"
 msgstr "是"
-

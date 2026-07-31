@@ -136,6 +136,9 @@ export default class PartnerContact extends BaseModel {
     default: () => false,
     index: true,
     string: _lt('Default', { scope: 'partner.model.PartnerContact.fields' }),
+    help: _lt('One default per address type; used for partner default pickers.', {
+      scope: 'partner.model.PartnerContact.fields',
+    }),
   })
   IsDefault: boolean;
 

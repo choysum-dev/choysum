@@ -40,6 +40,9 @@ export default class RoleFieldRule extends BaseModel {
     size: 20,
     index: true,
     string: _lt('Application', { scope: 'auth.model.RoleFieldRule.fields' }),
+    help: _lt('Pick one scope level; field scope also requires a model.', {
+      scope: 'auth.model.RoleFieldRule.fields',
+    }),
   })
   IrApplicationId?: string;
 
@@ -53,6 +56,9 @@ export default class RoleFieldRule extends BaseModel {
     size: 20,
     index: true,
     string: _lt('Model', { scope: 'auth.model.RoleFieldRule.fields' }),
+    help: _lt('Pick one scope level; field scope also requires a model.', {
+      scope: 'auth.model.RoleFieldRule.fields',
+    }),
   })
   IrModelId?: string;
 
@@ -75,6 +81,9 @@ export default class RoleFieldRule extends BaseModel {
         AND (perm_read IS NOT NULL OR perm_write IS NOT NULL)
       )`,
     string: _lt('Field', { scope: 'auth.model.RoleFieldRule.fields' }),
+    help: _lt('Pick one scope level; field scope also requires a model.', {
+      scope: 'auth.model.RoleFieldRule.fields',
+    }),
   })
   IrFieldId?: string;
 
@@ -89,6 +98,9 @@ export default class RoleFieldRule extends BaseModel {
     ],
     notNull: false,
     string: _lt('Read', { scope: 'auth.model.RoleFieldRule.fields' }),
+    help: _lt('Override field visibility or editability; at least one of Read/Write must be set.', {
+      scope: 'auth.model.RoleFieldRule.fields',
+    }),
   })
   PermRead?: 'allow' | 'deny';
 
@@ -103,6 +115,9 @@ export default class RoleFieldRule extends BaseModel {
     ],
     notNull: false,
     string: _lt('Write', { scope: 'auth.model.RoleFieldRule.fields' }),
+    help: _lt('Override field visibility or editability; at least one of Read/Write must be set.', {
+      scope: 'auth.model.RoleFieldRule.fields',
+    }),
   })
   PermWrite?: 'allow' | 'deny';
 

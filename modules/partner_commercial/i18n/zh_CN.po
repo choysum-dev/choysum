@@ -6,82 +6,97 @@ msgctxt "partner_commercial.model.Partner.fields"
 msgid "Identifiers"
 msgstr "标识"
 
-#: service/models/partner_identifier.ts:84
+#: service/models/partner_identifier.ts:98
 msgctxt "partner_commercial.model.PartnerIdentifier.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/partner_identifier.ts:32
+#: service/models/partner_identifier.ts:36
 msgctxt "partner_commercial.model.PartnerIdentifier.fields"
 msgid "Company"
 msgstr "公司"
 
-#: service/models/partner_identifier.ts:64
+#: service/models/partner_identifier.ts:75
 msgctxt "partner_commercial.model.PartnerIdentifier.fields"
 msgid "Country"
 msgstr "国家"
 
-#: service/models/partner_identifier.ts:94
+#: service/models/partner_identifier.ts:108
 msgctxt "partner_commercial.model.PartnerIdentifier.fields"
 msgid "Issued By"
 msgstr "签发机构"
 
-#: service/models/partner_identifier.ts:119
+#: service/models/partner_identifier.ts:48
+msgctxt "partner_commercial.model.PartnerIdentifier.fields"
+msgid "Lowercase category (e.g. tax_id, vat); unique per partner and value."
+msgstr "小写类别（如 tax_id、vat）；按伙伴与值唯一。"
+
+#: service/models/partner_identifier.ts:133
 msgctxt "partner_commercial.model.PartnerIdentifier.fields"
 msgid "Notes"
 msgstr "备注"
 
-#: service/models/partner_identifier.ts:21
+#: service/models/partner_identifier.ts:86
+msgctxt "partner_commercial.model.PartnerIdentifier.fields"
+msgid "One primary row allowed per partner and identifier type."
+msgstr "每个伙伴与标识类型仅允许一条主记录。"
+
+#: service/models/partner_identifier.ts:25
 msgctxt "partner_commercial.model.PartnerIdentifier.fields"
 msgid "Partner"
 msgstr "业务伙伴"
 
-#: service/models/partner_identifier.ts:74
+#: service/models/partner_identifier.ts:85
 msgctxt "partner_commercial.model.PartnerIdentifier.fields"
 msgid "Primary"
 msgstr "主标识"
 
-#: service/models/partner_identifier.ts:43
+#: service/models/partner_identifier.ts:62
+msgctxt "partner_commercial.model.PartnerIdentifier.fields"
+msgid "Stored in uppercase; duplicate type+value pairs are rejected."
+msgstr "以大写存储；重复的类型+值组合会被拒绝。"
+
+#: service/models/partner_identifier.ts:47
 msgctxt "partner_commercial.model.PartnerIdentifier.fields"
 msgid "Type"
 msgstr "类型"
 
-#: service/models/partner_identifier.ts:102
+#: service/models/partner_identifier.ts:116
 msgctxt "partner_commercial.model.PartnerIdentifier.fields"
 msgid "Valid From"
 msgstr "生效时间"
 
-#: service/models/partner_identifier.ts:110
+#: service/models/partner_identifier.ts:124
 msgctxt "partner_commercial.model.PartnerIdentifier.fields"
 msgid "Valid To"
 msgstr "失效时间"
 
-#: service/models/partner_identifier.ts:54
+#: service/models/partner_identifier.ts:61
 msgctxt "partner_commercial.model.PartnerIdentifier.fields"
 msgid "Value"
 msgstr "标识值"
 
-#: service/models/partner_identifier.ts:219
+#: service/models/partner_identifier.ts:233
 msgctxt "service/models/partner_identifier"
 msgid "CompanyId is required"
 msgstr "CompanyId 为必填项"
 
-#: service/models/partner_identifier.ts:168
+#: service/models/partner_identifier.ts:182
 msgctxt "service/models/partner_identifier"
 msgid "Only one primary identifier is allowed per PartnerId + IdentifierType"
 msgstr "同一 PartnerId + IdentifierType 下只能有一个主标识"
 
-#: service/models/partner_identifier.ts:142
+#: service/models/partner_identifier.ts:156
 msgctxt "service/models/partner_identifier"
 msgid "PartnerId + IdentifierType + Value must be unique"
 msgstr "PartnerId + IdentifierType + Value 必须唯一"
 
-#: service/models/partner_identifier.ts:129 service/models/partner_identifier.ts:155 service/models/partner_identifier.ts:218
+#: service/models/partner_identifier.ts:143 service/models/partner_identifier.ts:169 service/models/partner_identifier.ts:232
 msgctxt "service/models/partner_identifier"
 msgid "PartnerId is required"
 msgstr "PartnerId 为必填项"
 
-#: service/models/partner_identifier.ts:225
+#: service/models/partner_identifier.ts:239
 msgctxt "service/models/partner_identifier"
 msgid "ValidFrom must be less than or equal to ValidTo"
 msgstr "ValidFrom 必须早于或等于 ValidTo"
@@ -180,4 +195,3 @@ msgstr "查看标识码"
 msgctxt "web/views/PartnerIdentifierFormView"
 msgid "Select Country"
 msgstr "选择国家"
-

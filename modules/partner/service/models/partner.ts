@@ -85,6 +85,9 @@ export default class Partner extends BaseModel {
     default: () => true,
     index: true,
     string: _lt('Organization', { scope: 'partner.model.Partner.fields' }),
+    help: _lt('Uncheck for an individual person rather than an organization.', {
+      scope: 'partner.model.Partner.fields',
+    }),
   })
   IsCompany: boolean;
 
@@ -95,6 +98,9 @@ export default class Partner extends BaseModel {
     default: () => 0,
     index: true,
     string: _lt('Customer Rank', { scope: 'partner.model.Partner.fields' }),
+    help: _lt('Non-zero marks the partner as a customer; higher ranks sort first.', {
+      scope: 'partner.model.Partner.fields',
+    }),
   })
   CustomerRank: number;
 
@@ -105,6 +111,9 @@ export default class Partner extends BaseModel {
     default: () => 0,
     index: true,
     string: _lt('Supplier Rank', { scope: 'partner.model.Partner.fields' }),
+    help: _lt('Non-zero marks the partner as a supplier; higher ranks sort first.', {
+      scope: 'partner.model.Partner.fields',
+    }),
   })
   SupplierRank: number;
 
@@ -191,6 +200,9 @@ export default class Partner extends BaseModel {
     relation: { targetModel: () => PartnerContact },
     indexed: true,
     string: _lt('Default Contact', { scope: 'partner.model.Partner.fields' }),
+    help: _lt('Computed from contacts; edit contacts to change defaults.', {
+      scope: 'partner.model.Partner.fields',
+    }),
   })
   readonly DefaultContactId?: PartnerContact;
 
@@ -207,6 +219,9 @@ export default class Partner extends BaseModel {
     relation: { targetModel: () => PartnerContact },
     indexed: true,
     string: _lt('Default Billing Address', { scope: 'partner.model.Partner.fields' }),
+    help: _lt('Computed from contacts; edit contacts to change defaults.', {
+      scope: 'partner.model.Partner.fields',
+    }),
   })
   readonly DefaultBillingAddressId?: PartnerContact;
 
@@ -223,6 +238,9 @@ export default class Partner extends BaseModel {
     relation: { targetModel: () => PartnerContact },
     indexed: true,
     string: _lt('Default Shipping Address', { scope: 'partner.model.Partner.fields' }),
+    help: _lt('Computed from contacts; edit contacts to change defaults.', {
+      scope: 'partner.model.Partner.fields',
+    }),
   })
   readonly DefaultShippingAddressId?: PartnerContact;
 

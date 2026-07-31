@@ -42,6 +42,9 @@ export default class UoM extends BaseModel {
     notNull: true,
     default: () => false,
     string: _lt('Reference Unit', { scope: 'base.model.UoM.fields' }),
+    help: _lt('One reference unit per category; its factor must be 1.', {
+      scope: 'base.model.UoM.fields',
+    }),
   })
   IsReference: boolean;
 
@@ -49,6 +52,9 @@ export default class UoM extends BaseModel {
     type: 'decimal',
     notNull: true,
     string: _lt('Conversion Factor', { scope: 'base.model.UoM.fields' }),
+    help: _lt('Multiplier to convert this unit to the category reference unit.', {
+      scope: 'base.model.UoM.fields',
+    }),
   })
   Factor: any;
 
