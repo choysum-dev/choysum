@@ -1225,6 +1225,47 @@ func TestProviderPathAndTarballHelpers(t *testing.T) {
 	}
 }
 
+func TestExtractTarballFromReader_RelativeTargetDir(t *testing.T) {
+	// Not parallel: uses Chdir to exercise relative targetDir Abs normalization.
+	var goodBuf bytes.Buffer
+	gzw := gzip.NewWriter(&goodBuf)
+	gtw := tar.NewWriter(gzw)
+	payload := []byte("ok")
+	goodHdr := &tar.Header{Name: "package/hello.txt", Mode: 0o644, Size: int64(len(payload)), Typeflag: tar.TypeReg}
+	if err := gtw.WriteHeader(goodHdr); err != nil {
+		t.Fatalf("WriteHeader: %v", err)
+	}
+	if _, err := gtw.Write(payload); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	if err := gtw.Close(); err != nil {
+		t.Fatalf("tar close: %v", err)
+	}
+	if err := gzw.Close(); err != nil {
+		t.Fatalf("gzip close: %v", err)
+	}
+
+	relRoot := t.TempDir()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(cwd) })
+	if err := os.Chdir(relRoot); err != nil {
+		t.Fatalf("Chdir: %v", err)
+	}
+	if err := extractTarballFromReader(bytes.NewReader(goodBuf.Bytes()), "."); err != nil {
+		t.Fatalf("extractTarballFromReader(relative .) error = %v", err)
+	}
+	got, err := os.ReadFile(filepath.Join(relRoot, "package", "hello.txt"))
+	if err != nil {
+		t.Fatalf("ReadFile after relative extract: %v", err)
+	}
+	if string(got) != "ok" {
+		t.Fatalf("extracted content = %q, want ok", got)
+	}
+}
+
 func TestProviderFetchPackageMetadataErrors(t *testing.T) {
 	t.Parallel()
 

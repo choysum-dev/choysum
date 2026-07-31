@@ -665,6 +665,12 @@ func verifyTarballIntegrity(data []byte, integrity string) error {
 
 // extractTarballFromReader extracts a tar.gz stream from r into targetDir.
 func extractTarballFromReader(r io.Reader, targetDir string) error {
+	absTargetDir, err := filepath.Abs(targetDir)
+	if err != nil {
+		return xfmt.Errorf("absolute target dir: %w", err)
+	}
+	absTargetDir = filepath.Clean(absTargetDir)
+
 	gr, err := gzip.NewReader(r)
 	if err != nil {
 		return xfmt.Errorf("gzip reader: %w", err)
@@ -687,13 +693,13 @@ func extractTarballFromReader(r io.Reader, targetDir string) error {
 		if strings.Contains(h.Name, "..") || isUnsafeTarPath(h.Name) {
 			return xfmt.Errorf("read tar: unsafe path %q", h.Name)
 		}
-		outPath, err := safeJoin(targetDir, h.Name)
+		outPath, err := safeJoin(absTargetDir, h.Name)
 		if err != nil {
 			return xfmt.Errorf("read tar: %w", err)
 		}
 		// Containment check in the same function as FS ops (CodeQL-visible).
-		cleanTarget := filepath.Clean(targetDir)
-		if outPath != cleanTarget && !strings.HasPrefix(outPath, cleanTarget+string(os.PathSeparator)) {
+		// Compare absolute cleaned paths so relative targetDir (e.g. ".") does not false-reject.
+		if outPath != absTargetDir && !strings.HasPrefix(outPath, absTargetDir+string(os.PathSeparator)) {
 			return xfmt.Errorf("read tar: path escapes target dir: %q", h.Name)
 		}
 
