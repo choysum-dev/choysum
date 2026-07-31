@@ -10,6 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     class="o-stat-info"
     :class="{ 'is-disabled': disabled }"
     :disabled="disabled"
+    v-bind="$attrs"
     @click="onClick"
   >
     <el-icon v-if="icon" class="o-stat-info__icon">
@@ -83,7 +84,7 @@ function onClick(event: MouseEvent) {
   if (props.disabled) return;
   emit('click', event);
   if (props.to != null) {
-    void router.push(props.to);
+    void router?.push(props.to);
   }
 }
 </script>

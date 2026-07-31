@@ -343,6 +343,7 @@ defineExpose({
   inspectedRequires,
   activeTab,
   advancedPanels,
+  openRecordRules,
   resolveUiResourceTypeIcon,
   resolveUiResourceLabel,
 });

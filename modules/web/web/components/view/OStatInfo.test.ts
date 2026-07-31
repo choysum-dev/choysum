@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { mount, flushPromises } from '@vue/test-utils';
-import { computed, h, ref } from 'vue';
+import { computed, defineComponent, h, nextTick, ref } from 'vue';
 import { Comment, Fragment, Text } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -145,6 +145,27 @@ describe('OButtonBox', () => {
     });
     expect(withChild.find('.o-button-box').exists()).toBe(true);
     expect(withChild.find('.o-stat-info__value').text()).toBe('1');
+  });
+
+  it('remounts shell when slot children appear later', async () => {
+    const show = ref(false);
+    const Host = defineComponent({
+      components: { OButtonBox, OStatInfo },
+      setup() {
+        return { show };
+      },
+      template: `
+        <OButtonBox>
+          <OStatInfo v-if="show" :value="1" label="A" />
+        </OButtonBox>
+      `,
+    });
+    const wrapper = mount(Host);
+    expect(wrapper.find('.o-button-box').exists()).toBe(false);
+    show.value = true;
+    await nextTick();
+    expect(wrapper.find('.o-button-box').exists()).toBe(true);
+    expect(wrapper.find('.o-stat-info__value').text()).toBe('1');
   });
 });
 

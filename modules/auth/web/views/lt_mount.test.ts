@@ -187,3 +187,60 @@ describe('RoleFormView UI Requires inspector coverage', () => {
     wrapper.unmount();
   });
 });
+
+describe('RoleFormView smart-button stats', () => {
+  it('OStatInfo clicks switch notebook tabs and open record rules', async () => {
+    const mod = viewModules['./RoleFormView.vue'];
+    expect(mod?.default).toBeTruthy();
+    const wrapper = shallowMount(mod.default as any, {
+      props: { store: fakeStore as any },
+      global: {
+        plugins: [i18n],
+        stubs: {
+          OFormView: {
+            name: 'OFormView',
+            template: '<div class="form-stub"><slot name="button-box" /><slot /></div>',
+          },
+          OButtonBox: {
+            name: 'OButtonBox',
+            template: '<div class="o-button-box"><slot /></div>',
+          },
+          OStatInfo: {
+            name: 'OStatInfo',
+            props: ['label', 'prop', 'store', 'icon'],
+            emits: ['click'],
+            template: '<button type="button" class="o-stat-info" @click="$emit(\'click\', $event)">{{ label }}</button>',
+          },
+        },
+        directives: {
+          action: {
+            mounted() {},
+            updated() {},
+          },
+        },
+      },
+    });
+    const vm = wrapper.vm as any;
+    vm.activeTab = 'ui_permissions';
+    vm.advancedPanels = '';
+    await nextTick();
+
+    const stats = wrapper.findAll('button.o-stat-info');
+    expect(stats.length).toBe(3);
+
+    await stats[0]!.trigger('click');
+    await nextTick();
+    expect(vm.activeTab).toBe('users');
+
+    await stats[1]!.trigger('click');
+    await nextTick();
+    expect(vm.activeTab).toBe('implied_roles');
+
+    await stats[2]!.trigger('click');
+    await nextTick();
+    expect(vm.activeTab).toBe('advanced');
+    expect(vm.advancedPanels).toBe('record_rules');
+
+    wrapper.unmount();
+  });
+});
