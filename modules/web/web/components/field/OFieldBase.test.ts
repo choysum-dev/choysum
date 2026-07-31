@@ -218,6 +218,88 @@ describe('OFieldBase field help tip', () => {
     });
     const tip = wrapper.get('.o-field-base__help-icon').element.closest('.tooltip-stub') as HTMLElement | null;
     expect(tip?.getAttribute('data-content')).toBe('用于引用的短唯一编码');
+    expect(wrapper.get('.o-field-base__help-btn').attributes('aria-label')).toBe(
+      'Code: 用于引用的短唯一编码'
+    );
+  });
+
+  it('renders inline help tip beside the control', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({
+          string: 'Code',
+          help: 'Short unique code used in references',
+        }),
+        renderMode: 'inline',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: { stubs: fieldBaseStubs },
+    });
+    expect(wrapper.find('.o-field-base__inline-wrap--has-help').exists()).toBe(true);
+    const tip = wrapper.get('.o-field-base__help-icon').element.closest('.tooltip-stub') as HTMLElement | null;
+    expect(tip?.getAttribute('data-content')).toBe('Short unique code used in references');
+    expect(wrapper.get('.o-field-base__help-btn').attributes('aria-label')).toContain(
+      'Short unique code used in references'
+    );
+  });
+
+  it('renders inline help tip in readonly display slot', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding(
+          {
+            string: 'Code',
+            help: 'Units per base currency',
+          },
+          { isEditMode: false }
+        ),
+        renderMode: 'inline',
+      },
+      slots: {
+        display: () => h('span', { class: 'display-stub' }, 'x'),
+      },
+      global: { stubs: fieldBaseStubs },
+    });
+    expect(wrapper.find('.display-stub').exists()).toBe(true);
+    expect(wrapper.find('.o-field-base__help-btn').exists()).toBe(true);
+    expect(wrapper.get('.o-field-base__help-btn').attributes('aria-label')).toBe(
+      'Code: Units per base currency'
+    );
+  });
+
+  it('uses help-only accessible label when field label is blank', () => {
+    const binding = makeBinding({ help: 'Standalone help text' });
+    binding.prop = '';
+    binding.meta = { help: 'Standalone help text' } as any;
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding,
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: { stubs: fieldBaseStubs },
+    });
+    expect(wrapper.get('.o-field-base__help-btn').attributes('aria-label')).toBe('Standalone help text');
+  });
+
+  it('renders inline wrap without help tip when help is absent', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Code' }),
+        renderMode: 'inline',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: { stubs: fieldBaseStubs },
+    });
+    expect(wrapper.find('.o-field-base__inline-wrap').exists()).toBe(true);
+    expect(wrapper.find('.o-field-base__inline-wrap--has-help').exists()).toBe(false);
+    expect(wrapper.find('.o-field-base__help-btn').exists()).toBe(false);
   });
 });
 

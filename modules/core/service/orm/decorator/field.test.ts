@@ -148,6 +148,33 @@ test('Field decorator normalizes help and helpText from term references', () => 
     }
     return BadHelpModel;
   }).toThrow('help must be a string or term reference');
+
+  expect(() => {
+    class EmptyHelpSrcModel extends BaseModel {
+      @Field({
+        type: 'varchar',
+        help: createTranslate('demo', { scope: 'demo.model.Widget.fields' })._lt('   '),
+      } as any)
+      Name!: string;
+    }
+    return EmptyHelpSrcModel;
+  }).toThrow('help term reference requires a non-empty src');
+
+  class NullHelpModel extends BaseModel {
+    @Field({ type: 'varchar', string: 'Name', help: null } as any)
+    Name!: string;
+  }
+  const nullHelpMeta = MetadataStorage.instance.getModelMetadata(NullHelpModel as any).fields.get('Name') as any;
+  expect(nullHelpMeta?.help).toBeUndefined();
+  expect(nullHelpMeta?.helpText).toBeUndefined();
+
+  class UndefinedHelpModel extends BaseModel {
+    @Field({ type: 'varchar', string: 'Name', help: undefined } as any)
+    Name!: string;
+  }
+  const undefinedHelpMeta = MetadataStorage.instance.getModelMetadata(UndefinedHelpModel as any).fields.get('Name') as any;
+  expect(undefinedHelpMeta?.help).toBeUndefined();
+  expect(undefinedHelpMeta?.helpText).toBeUndefined();
 });
 
 test('Field decorator auto-fills selection and ref columns metadata', () => {

@@ -116,7 +116,8 @@ function normalizeFieldHelp(name: string, value: unknown): { help?: string; help
     return { help: trimmed };
   }
   if (isTermReference(value)) {
-    const src = typeof value.src === 'string' ? value.src.trim() : '';
+    // isTermReference already requires src: string; blank/whitespace still omits via throw.
+    const src = value.src.trim();
     if (!src) {
       throw new Error(`@Field(${name}) help term reference requires a non-empty src`);
     }

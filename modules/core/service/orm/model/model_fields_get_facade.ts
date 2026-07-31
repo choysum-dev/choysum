@@ -198,8 +198,6 @@ function buildFieldMeta(
   const translatedHelp = translateFieldHelp(field, fallbackModule, fallbackScope);
   if (translatedHelp !== undefined) {
     meta.help = translatedHelp;
-  } else if (typeof field.help === 'string' && field.help.trim()) {
-    meta.help = field.help.trim();
   }
   if (field.helpText && isTermReference(field.helpText)) {
     meta.helpText = { ...field.helpText };

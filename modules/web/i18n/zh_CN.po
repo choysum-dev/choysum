@@ -121,16 +121,6 @@ msgctxt "web/components/field/OFieldBase"
 msgid "Company values: %s"
 msgstr "公司值：%s"
 
-#: web/components/field/OFieldBase.vue:108
-msgctxt "web/components/field/OFieldBase"
-msgid "Field help"
-msgstr "字段说明"
-
-#: web/components/field/OFieldBase.vue:108
-msgctxt "web/components/field/OFieldBase"
-msgid "Help: %s"
-msgstr "说明：%s"
-
 #: web/components/field/OFieldBase.vue:165
 msgctxt "web/components/field/OFieldBase"
 msgid "Translate field"

@@ -9,6 +9,7 @@ import {
 } from '../../../rpc/context';
 import { Field } from '../decorator/field';
 import { Model } from '../decorator/model';
+import { MetadataStorage } from '../metadata/storage';
 import { RepositoryFactory } from '../repository/repository_factory';
 import BaseModel from './model';
 
@@ -136,6 +137,77 @@ test('FieldsGet attributes projection includes help when requested', async () =>
     expect(out.Hinted?.helpText?.src).toBe('Short unique code used in references');
     expect((out.Hinted as any).string).toBeUndefined();
   } finally {
+    resetTestState();
+  }
+});
+
+test('FieldsGet omits help when helpText is not a term reference and msgid is blank', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'en_US' });
+  setTestI18nBridge({ t: (_m, _l, _s, src) => src });
+  RepositoryFactory.setRepository(FieldsGetWidget as any, {
+    getDenyReadFields: async () => ({ denyReadFields: [] }),
+  } as any);
+
+  const fieldMeta = MetadataStorage.instance.getModelMetadata(FieldsGetWidget as any).fields.get('PlainHelp') as any;
+  const prevHelp = fieldMeta.help;
+  const prevHelpText = fieldMeta.helpText;
+  fieldMeta.help = '   ';
+  fieldMeta.helpText = { not: 'a-term-reference' };
+
+  try {
+    const out = await FieldsGetWidget.FieldsGet(['PlainHelp'], ['help', 'helpText', 'type']);
+    expect(out.PlainHelp?.help).toBeUndefined();
+    expect(out.PlainHelp?.helpText).toBeUndefined();
+  } finally {
+    fieldMeta.help = prevHelp;
+    fieldMeta.helpText = prevHelpText;
+    resetTestState();
+  }
+});
+
+test('FieldsGet translates plain help msgid via fallback scope', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'zh_CN' });
+  setTestI18nBridge({
+    t: (_module, lang, _scope, src) => {
+      if (lang === 'zh_CN' && src === 'Units per base currency') return '每单位本位币数量';
+      return src;
+    },
+  });
+  RepositoryFactory.setRepository(FieldsGetWidget as any, {
+    getDenyReadFields: async () => ({ denyReadFields: [] }),
+  } as any);
+
+  try {
+    const out = await FieldsGetWidget.FieldsGet(['PlainHelp'], ['help', 'type']);
+    expect(out.PlainHelp?.help).toBe('每单位本位币数量');
+  } finally {
+    resetTestState();
+  }
+});
+
+test('FieldsGet translates helpText when help msgid is non-string', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'zh_CN' });
+  setTestI18nBridge({
+    t: (_m, lang, _s, src) =>
+      lang === 'zh_CN' && src === 'Short unique code used in references' ? '用于引用的短唯一编码' : src,
+  });
+  RepositoryFactory.setRepository(FieldsGetWidget as any, {
+    getDenyReadFields: async () => ({ denyReadFields: [] }),
+  } as any);
+
+  const fieldMeta = MetadataStorage.instance.getModelMetadata(FieldsGetWidget as any).fields.get('Hinted') as any;
+  const prevHelp = fieldMeta.help;
+  fieldMeta.help = 42;
+
+  try {
+    const out = await FieldsGetWidget.FieldsGet(['Hinted'], ['help', 'helpText', 'type']);
+    expect(out.Hinted?.help).toBe('用于引用的短唯一编码');
+    expect(out.Hinted?.helpText?.src).toBe('Short unique code used in references');
+  } finally {
+    fieldMeta.help = prevHelp;
     resetTestState();
   }
 });

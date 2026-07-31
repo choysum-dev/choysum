@@ -436,11 +436,10 @@ const effectiveHelp = computed(() => {
 });
 
 const helpAccessibleLabel = computed(() => {
-  const help = String(effectiveHelp.value || '').trim();
+  const help = effectiveHelp.value;
   const label = String(resolvedLabel.value || leafFieldName.value || '').trim();
-  if (help && label) return `${label}: ${help}`;
-  if (help) return help;
-  return label ? _t('Help: %s', label) : _t('Field help');
+  // Tip only mounts when help is non-empty; keep label context when available.
+  return label ? `${label}: ${help}` : help;
 });
 
 onMounted(() => {

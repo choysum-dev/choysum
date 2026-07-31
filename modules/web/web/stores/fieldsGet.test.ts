@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it, vi } from 'vitest';
-import { createFieldsGetHelpers, type FieldsGetHost } from './fieldsGet';
+import { createFieldsGetHelpers, FIELD_PRESENTATION_FIELDS_GET_ATTRS, type FieldsGetHost } from './fieldsGet';
 import type { WebFieldMetadata } from './modelStore';
 
 function makeHost(
@@ -107,5 +107,57 @@ describe('createFieldsGetHelpers', () => {
     expect(meta?.size).toBe(20);
     expect(meta?.type).toBe('selection');
     expect(meta?.selection).toEqual([{ value: 'a', label: '启用' }]);
+  });
+
+  it('exposes presentation attrs and FieldsGet translated help overlay', async () => {
+    expect(FIELD_PRESENTATION_FIELDS_GET_ATTRS).toEqual(
+      expect.arrayContaining(['help', 'helpText', 'string', 'stringText'])
+    );
+
+    const FieldsGet = vi.fn(async () => ({
+      Code: {
+        id: '1',
+        type: 'varchar',
+        typeAnnotation: 'string',
+        help: '用于引用的短唯一编码',
+      },
+    }));
+    const helpers = createFieldsGetHelpers(
+      makeHost(
+        {
+          Code: {
+            id: '1',
+            type: 'varchar',
+            typeAnnotation: 'string',
+            help: 'Short unique code used in references',
+          },
+        },
+        FieldsGet
+      ),
+      { getLang: () => 'zh_CN' }
+    );
+
+    expect(helpers.getFieldsGetTranslatedHelp('Code')).toBeUndefined();
+    expect(helpers.getFieldsGetTranslatedHelp('')).toBeUndefined();
+    expect(helpers.getFieldsGetTranslatedHelp('Missing')).toBeUndefined();
+
+    await helpers.ensureFieldsGet(['Code'], [...FIELD_PRESENTATION_FIELDS_GET_ATTRS]);
+    expect(helpers.getFieldsGetTranslatedHelp('Code')).toBe('用于引用的短唯一编码');
+    expect(helpers.getFieldsGetTranslatedHelp('  Code  ')).toBe('用于引用的短唯一编码');
+
+    FieldsGet.mockImplementation(async () => ({
+      Code: { id: '1', type: 'varchar', typeAnnotation: 'string', help: '   ' },
+    }));
+    helpers.clearFieldsGetCache();
+    await helpers.ensureFieldsGet(['Code']);
+    expect(helpers.getFieldsGetTranslatedHelp('Code')).toBeUndefined();
+
+    FieldsGet.mockImplementation(async () => ({
+      Code: { id: '1', type: 'varchar', typeAnnotation: 'string', help: 42 as any },
+    }));
+    helpers.clearFieldsGetCache();
+    await helpers.ensureFieldsGet(['Code']);
+    expect(helpers.getFieldsGetTranslatedHelp('Code')).toBeUndefined();
+    expect(helpers.getFieldsGetTranslatedHelp('   ')).toBeUndefined();
   });
 });
