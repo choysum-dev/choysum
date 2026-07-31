@@ -32,6 +32,12 @@ import (
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
+// Test seams for path helpers (overridden in unit tests to force error branches).
+var (
+	filepathAbs   = filepath.Abs
+	tarPathJoiner = safeJoin
+)
+
 type Provider interface {
 	PeekManifest(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error)
 	Fetch(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error)
@@ -665,7 +671,7 @@ func verifyTarballIntegrity(data []byte, integrity string) error {
 
 // extractTarballFromReader extracts a tar.gz stream from r into targetDir.
 func extractTarballFromReader(r io.Reader, targetDir string) error {
-	absTargetDir, err := filepath.Abs(targetDir)
+	absTargetDir, err := filepathAbs(targetDir)
 	if err != nil {
 		return xfmt.Errorf("absolute target dir: %w", err)
 	}
@@ -693,7 +699,7 @@ func extractTarballFromReader(r io.Reader, targetDir string) error {
 		if strings.Contains(h.Name, "..") || isUnsafeTarPath(h.Name) {
 			return xfmt.Errorf("read tar: unsafe path %q", h.Name)
 		}
-		outPath, err := safeJoin(absTargetDir, h.Name)
+		outPath, err := tarPathJoiner(absTargetDir, h.Name)
 		if err != nil {
 			return xfmt.Errorf("read tar: %w", err)
 		}

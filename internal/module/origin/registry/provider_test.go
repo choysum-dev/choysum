@@ -1266,6 +1266,67 @@ func TestExtractTarballFromReader_RelativeTargetDir(t *testing.T) {
 	}
 }
 
+func TestExtractTarballFromReader_AbsAndContainmentErrorBranches(t *testing.T) {
+	payload := []byte("ok")
+	var goodBuf bytes.Buffer
+	gzw := gzip.NewWriter(&goodBuf)
+	gtw := tar.NewWriter(gzw)
+	if err := gtw.WriteHeader(&tar.Header{Name: "package/hello.txt", Mode: 0o644, Size: int64(len(payload)), Typeflag: tar.TypeReg}); err != nil {
+		t.Fatalf("WriteHeader: %v", err)
+	}
+	if _, err := gtw.Write(payload); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	_ = gtw.Close()
+	_ = gzw.Close()
+	raw := goodBuf.Bytes()
+
+	t.Run("abs failure", func(t *testing.T) {
+		oldAbs := filepathAbs
+		t.Cleanup(func() { filepathAbs = oldAbs })
+		filepathAbs = func(string) (string, error) { return "", errors.New("abs failed") }
+		if err := extractTarballFromReader(bytes.NewReader(raw), t.TempDir()); err == nil || !strings.Contains(err.Error(), "absolute target dir") {
+			t.Fatalf("expected absolute target dir error, got %v", err)
+		}
+	})
+
+	t.Run("join failure", func(t *testing.T) {
+		oldJoin := tarPathJoiner
+		t.Cleanup(func() { tarPathJoiner = oldJoin })
+		tarPathJoiner = func(string, string) (string, error) { return "", errors.New("join failed") }
+		if err := extractTarballFromReader(bytes.NewReader(raw), t.TempDir()); err == nil || !strings.Contains(err.Error(), "join failed") {
+			t.Fatalf("expected join failure, got %v", err)
+		}
+	})
+
+	t.Run("containment failure", func(t *testing.T) {
+		oldJoin := tarPathJoiner
+		t.Cleanup(func() { tarPathJoiner = oldJoin })
+		tarPathJoiner = func(string, string) (string, error) { return "/evil/outside.txt", nil }
+		if err := extractTarballFromReader(bytes.NewReader(raw), t.TempDir()); err == nil || !strings.Contains(err.Error(), "path escapes target dir") {
+			t.Fatalf("expected containment failure, got %v", err)
+		}
+	})
+
+	t.Run("absolute entry name rejected", func(t *testing.T) {
+		var buf bytes.Buffer
+		zw := gzip.NewWriter(&buf)
+		tw := tar.NewWriter(zw)
+		name := "/etc/passwd"
+		if err := tw.WriteHeader(&tar.Header{Name: name, Mode: 0o644, Size: 4, Typeflag: tar.TypeReg}); err != nil {
+			t.Fatalf("WriteHeader: %v", err)
+		}
+		if _, err := tw.Write([]byte("evil")); err != nil {
+			t.Fatalf("Write: %v", err)
+		}
+		_ = tw.Close()
+		_ = zw.Close()
+		if err := extractTarballFromReader(bytes.NewReader(buf.Bytes()), t.TempDir()); err == nil || !strings.Contains(err.Error(), "unsafe path") {
+			t.Fatalf("expected unsafe absolute path error, got %v", err)
+		}
+	})
+}
+
 func TestProviderFetchPackageMetadataErrors(t *testing.T) {
 	t.Parallel()
 

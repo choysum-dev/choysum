@@ -27,6 +27,9 @@ import (
 	logutil "github.com/choysum-dev/choysum/internal/logger"
 )
 
+// Test seam for filepath.Abs (overridden in unit tests to force error branches).
+var filepathAbs = filepath.Abs
+
 // TypeFetchResult holds the outcome of a type fetch operation.
 type TypeFetchResult struct {
 	Package    string
@@ -453,20 +456,21 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 
 	// Derive a cache key from the URL.
 	cacheFile := typeCachePathForURL(typesDir, normalized)
-	validatedCacheFile, err := resolveAndValidateTypeCachePath(typesDir, cacheFile)
-	if err != nil {
-		return nil, nil, err
-	}
-	absTypesDir, err := filepath.Abs(filepath.Clean(strings.TrimSpace(typesDir)))
+	absTypesDir, err := filepathAbs(filepath.Clean(strings.TrimSpace(typesDir)))
 	if err != nil {
 		return nil, nil, fmt.Errorf("absolute types dir: %w", err)
 	}
 	absTypesDir = filepath.Clean(absTypesDir)
-	// Inline HasPrefix barrier in the same function as ReadFile (CodeQL go/path-injection).
-	if validatedCacheFile != absTypesDir && !strings.HasPrefix(validatedCacheFile, absTypesDir+string(os.PathSeparator)) {
-		return nil, nil, fmt.Errorf("type cache path escapes types dir: %s", validatedCacheFile)
+	absCache, err := filepathAbs(filepath.Clean(cacheFile))
+	if err != nil {
+		return nil, nil, fmt.Errorf("absolute target path: %w", err)
 	}
-	cacheFile = validatedCacheFile
+	absCache = filepath.Clean(absCache)
+	// Inline HasPrefix barrier in the same function as ReadFile (CodeQL go/path-injection).
+	if absCache != absTypesDir && !strings.HasPrefix(absCache, absTypesDir+string(os.PathSeparator)) {
+		return nil, nil, fmt.Errorf("type cache path escapes types dir: %s", absCache)
+	}
+	cacheFile = absCache
 
 	// Check cache.
 	var content []byte
@@ -1517,20 +1521,23 @@ func typesCachePath(typesDir, pkg, version string) string {
 }
 
 func writeTypeCacheFile(typesDir string, cacheFile string, content []byte) error {
-	validatedCacheFile, err := resolveAndValidateTypeCachePath(typesDir, cacheFile)
-	if err != nil {
-		return err
-	}
-	absTypesDir, err := filepath.Abs(filepath.Clean(strings.TrimSpace(typesDir)))
+	absTypesDir, err := filepathAbs(filepath.Clean(strings.TrimSpace(typesDir)))
 	if err != nil {
 		return fmt.Errorf("absolute types dir: %w", err)
 	}
 	absTypesDir = filepath.Clean(absTypesDir)
-	// Inline HasPrefix barrier in the same function as FS sinks (CodeQL go/path-injection).
-	if validatedCacheFile != absTypesDir && !strings.HasPrefix(validatedCacheFile, absTypesDir+string(os.PathSeparator)) {
-		return fmt.Errorf("type cache path escapes types dir: %s", validatedCacheFile)
+
+	absCache, err := filepathAbs(filepath.Clean(strings.TrimSpace(cacheFile)))
+	if err != nil {
+		return fmt.Errorf("absolute target path: %w", err)
 	}
-	cacheFile = validatedCacheFile
+	absCache = filepath.Clean(absCache)
+
+	// Inline HasPrefix barrier in the same function as FS sinks (CodeQL go/path-injection).
+	if absCache != absTypesDir && !strings.HasPrefix(absCache, absTypesDir+string(os.PathSeparator)) {
+		return fmt.Errorf("type cache path escapes types dir: %s", absCache)
+	}
+	cacheFile = absCache
 
 	if err := os.MkdirAll(filepath.Dir(cacheFile), 0755); err != nil {
 		return fmt.Errorf("create types cache dir: %w", err)
@@ -1554,7 +1561,7 @@ func resolveAndValidateTypeCachePath(typesDir string, targetPath string) (string
 		return "", fmt.Errorf("types dir is empty")
 	}
 	var err error
-	absTypesDir, err = filepath.Abs(absTypesDir)
+	absTypesDir, err = filepathAbs(absTypesDir)
 	if err != nil {
 		return "", fmt.Errorf("absolute types dir: %w", err)
 	}
@@ -1564,20 +1571,15 @@ func resolveAndValidateTypeCachePath(typesDir string, targetPath string) (string
 	if absTarget == "" {
 		return "", fmt.Errorf("target path is empty")
 	}
-	absTarget, err = filepath.Abs(absTarget)
+	absTarget, err = filepathAbs(absTarget)
 	if err != nil {
 		return "", fmt.Errorf("absolute target path: %w", err)
 	}
 	absTarget = filepath.Clean(absTarget)
 
-	// Prefer HasPrefix containment (CodeQL-documented sanitizer pattern) plus Rel.
+	// CodeQL-documented containment sanitizer (HasPrefix under cleaned absolute root).
 	sep := string(os.PathSeparator)
 	if absTarget != absTypesDir && !strings.HasPrefix(absTarget, absTypesDir+sep) {
-		return "", fmt.Errorf("type cache path escapes types dir: %s", absTarget)
-	}
-
-	rel, err := filepath.Rel(absTypesDir, absTarget)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+sep) || filepath.IsAbs(rel) {
 		return "", fmt.Errorf("type cache path escapes types dir: %s", absTarget)
 	}
 
@@ -1684,20 +1686,21 @@ func hasMissingLocalCachedImports(typesDir string, cacheFile string, imports []s
 		if candidate != baseDir && !strings.HasPrefix(candidate, baseDir+string(os.PathSeparator)) {
 			continue
 		}
-		validatedCandidate, err := resolveAndValidateTypeCachePath(typesDir, candidate)
-		if err != nil {
-			continue
-		}
-		absTypesDir, absErr := filepath.Abs(filepath.Clean(strings.TrimSpace(typesDir)))
+		absTypesDir, absErr := filepathAbs(filepath.Clean(strings.TrimSpace(typesDir)))
 		if absErr != nil {
 			continue
 		}
 		absTypesDir = filepath.Clean(absTypesDir)
-		// Inline HasPrefix barrier in the same function as Stat (CodeQL go/path-injection).
-		if validatedCandidate != absTypesDir && !strings.HasPrefix(validatedCandidate, absTypesDir+string(os.PathSeparator)) {
+		absCandidate, absErr := filepathAbs(candidate)
+		if absErr != nil {
 			continue
 		}
-		if _, err := os.Stat(validatedCandidate); err != nil {
+		absCandidate = filepath.Clean(absCandidate)
+		// Inline HasPrefix barrier in the same function as Stat (CodeQL go/path-injection).
+		if absCandidate != absTypesDir && !strings.HasPrefix(absCandidate, absTypesDir+string(os.PathSeparator)) {
+			continue
+		}
+		if _, err := os.Stat(absCandidate); err != nil {
 			return true
 		}
 	}
@@ -1835,7 +1838,7 @@ func EnsureTsconfigCompilerTypeRoots(tsconfigPath string, typesDir string, links
 	if absTypesDir == "" {
 		return fmt.Errorf("types dir is empty")
 	}
-	absTypesDir, err = filepath.Abs(absTypesDir)
+	absTypesDir, err = filepathAbs(absTypesDir)
 	if err != nil {
 		return fmt.Errorf("absolute types dir: %w", err)
 	}
@@ -1853,7 +1856,7 @@ func EnsureTsconfigCompilerTypeRoots(tsconfigPath string, typesDir string, links
 		}
 		if !filepath.IsAbs(cachedPath) {
 			var absErr error
-			cachedPath, absErr = filepath.Abs(cachedPath)
+			cachedPath, absErr = filepathAbs(cachedPath)
 			if absErr != nil {
 				continue
 			}
