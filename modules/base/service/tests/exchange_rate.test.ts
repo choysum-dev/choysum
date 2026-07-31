@@ -194,3 +194,74 @@ test('base.exchange_rate: Date defaults to businessToday(companyTz) independent 
     { merge: false }
   );
 });
+
+test('base.exchange_rate: Date objects are rejected (no UTC calendar-day coercion)', async () => {
+  const companyCurrency = await Currency.Create(
+    {
+      Name: uid('DateObjCurrency'),
+      Code: currencyCode3(),
+      DecimalDigits: 2,
+      Rounding: '0.01',
+      IsActive: true,
+    } as any,
+    ['Id'] as any
+  );
+
+  const rateCurrency = await Currency.Create(
+    {
+      Name: uid('DateObjRateCurrency'),
+      Code: currencyCode3(),
+      DecimalDigits: 2,
+      Rounding: '0.01',
+      IsActive: true,
+    } as any,
+    ['Id'] as any
+  );
+
+  const company = await Company.Create(
+    {
+      Name: uid('DateObjCompany'),
+      Code: companyCode8(),
+      Timezone: 'Asia/Shanghai',
+      CurrencyId: (companyCurrency as any).Id,
+      IsActive: true,
+    } as any,
+    ['Id'] as any
+  );
+
+  // Shanghai local midnight 2024-07-01 is still 2024-06-30 in UTC; Date→toISOString would shift the day.
+  const shanghaiMidnightAsUtcDate = new Date('2024-06-30T16:00:00.000Z');
+
+  await withModelContext(
+    {
+      activeCompanyId: String((company as any).Id),
+      enabledCompanyIds: [String((company as any).Id)],
+      companyTz: 'Asia/Shanghai',
+    } as any,
+    async () => {
+      await expectRepoValidationFailed('create', async () => {
+        await ExchangeRate.Create(
+          {
+            CompanyId: (company as any).Id,
+            CurrencyId: (rateCurrency as any).Id,
+            Date: shanghaiMidnightAsUtcDate,
+            Rate: '1.23',
+          } as any,
+          ['Id'] as any
+        );
+      });
+
+      const created = await ExchangeRate.Create(
+        {
+          CompanyId: (company as any).Id,
+          CurrencyId: (rateCurrency as any).Id,
+          Date: '2024-07-01',
+          Rate: '1.23',
+        } as any,
+        ['Id', 'Date'] as any
+      );
+      expect(String((created as any).Date).slice(0, 10)).toBe('2024-07-01');
+    },
+    { merge: false }
+  );
+});

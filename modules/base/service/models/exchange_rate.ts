@@ -72,12 +72,8 @@ export default class ExchangeRate extends BaseModel {
   Rate: any;
 
   private static coerceDateKey(value: any): string {
-    if (value instanceof Date) {
-      if (Number.isNaN(value.getTime())) {
-        fail(_t('Date is invalid', { scope: 'service/models/exchange_rate' }));
-      }
-      return value.toISOString().slice(0, 10);
-    }
+    // Date-only business keys must be YYYY-MM-DD strings. Reject Date objects:
+    // toISOString().slice(0, 10) reinterprets local midnights as UTC calendar days.
     return mapNormalizationToBase(
       () => normalizeDateString(value),
       err => {

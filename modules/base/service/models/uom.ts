@@ -33,6 +33,7 @@ export default class UoM extends BaseModel {
     condition: ['IsActive', '=', true],
     notNull: true,
     index: true,
+    uniqueIndex: 'uidx_base_uom_category_reference_slot',
     string: _lt('Category', { scope: 'base.model.UoM.fields' }),
   })
   CategoryId: UoMCategory;
@@ -47,6 +48,17 @@ export default class UoM extends BaseModel {
     }),
   })
   IsReference: boolean;
+
+  /**
+   * Atomic "one reference per category" slot.
+   * `__REF__` when IsReference; null otherwise (NULL values do not collide under UNIQUE).
+   */
+  @Field({
+    type: 'varchar',
+    size: 16,
+    uniqueIndex: 'uidx_base_uom_category_reference_slot',
+  })
+  ReferenceSlotKey?: string | null;
 
   @Field({
     type: 'decimal',
@@ -130,11 +142,13 @@ export default class UoM extends BaseModel {
     values.Name = name;
     values.IsReference = isRef;
     values.Factor = factor.toString();
+    // DB unique (CategoryId, ReferenceSlotKey) makes concurrent reference creates fail atomically.
+    values.ReferenceSlotKey = isRef ? '__REF__' : null;
 
     await this.ensureCategoryReferenceInvariant(categoryId, isRef, currentId);
   }
 
-  @Constraint<UoM>(['Name', 'CategoryId', 'IsReference', 'Factor', 'Rounding'])
+  @Constraint<UoM>(['Name', 'CategoryId', 'IsReference', 'Factor', 'Rounding', 'ReferenceSlotKey'])
   async validateUoMConstraint(): Promise<void> {
     const currentId = String((this as any).Id || '').trim() || undefined;
     await UoM.validateEntity(this as any, currentId);

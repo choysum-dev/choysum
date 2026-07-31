@@ -303,3 +303,79 @@ test('base.uom: Batch update cannot change Name or CategoryId', async () => {
     );
   });
 });
+
+test('base.uom: ReferenceSlotKey backs one-reference-per-category uniqueness', async () => {
+  const categoryId = await createCategory();
+
+  const ref = await UoM.Create(
+    {
+      Name: uid('UomRefSlot'),
+      CategoryId: categoryId,
+      IsReference: true,
+      Factor: '1',
+      IsActive: true,
+    } as any,
+    ['Id', 'ReferenceSlotKey', 'IsReference'] as any
+  );
+  expect((ref as any).ReferenceSlotKey).toBe('__REF__');
+
+  const secondary = await UoM.Create(
+    {
+      Name: uid('UomNonRefSlot'),
+      CategoryId: categoryId,
+      IsReference: false,
+      Factor: '2',
+      IsActive: true,
+    } as any,
+    ['Id', 'ReferenceSlotKey'] as any
+  );
+  expect((secondary as any).ReferenceSlotKey == null || (secondary as any).ReferenceSlotKey === '').toBe(true);
+
+  const slotField = MetadataStorage.instance.getModelMetadata(UoM).fields.get('ReferenceSlotKey');
+  expect(slotField?.column?.uniqueIndex).toBe('uidx_base_uom_category_reference_slot');
+  const categoryField = MetadataStorage.instance.getModelMetadata(UoM).fields.get('CategoryId');
+  expect(categoryField?.column?.uniqueIndex).toBe('uidx_base_uom_category_reference_slot');
+});
+
+test('base.uom: concurrent reference creates leave at most one reference', async () => {
+  const categoryId = await createCategory();
+
+  const results = await Promise.allSettled([
+    UoM.Create(
+      {
+        Name: uid('UomRaceRefA'),
+        CategoryId: categoryId,
+        IsReference: true,
+        Factor: '1',
+        IsActive: true,
+      } as any,
+      ['Id'] as any
+    ),
+    UoM.Create(
+      {
+        Name: uid('UomRaceRefB'),
+        CategoryId: categoryId,
+        IsReference: true,
+        Factor: '1',
+        IsActive: true,
+      } as any,
+      ['Id'] as any
+    ),
+  ]);
+
+  const fulfilled = results.filter(item => item.status === 'fulfilled');
+  const rejected = results.filter(item => item.status === 'rejected');
+  expect(fulfilled.length).toBe(1);
+  expect(rejected.length).toBe(1);
+
+  const refs = await UoM.Search(
+    {
+      And: [
+        ['CategoryId', '=', categoryId],
+        ['IsReference', '=', true],
+      ],
+    } as any,
+    { fields: ['Id'] as any, limit: 5 } as any
+  );
+  expect((refs || []).length).toBe(1);
+});
