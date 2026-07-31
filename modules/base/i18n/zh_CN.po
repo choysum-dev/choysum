@@ -11,12 +11,12 @@ msgctxt "base.model.Address.fields"
 msgid "Address Line 2"
 msgstr "地址行 2"
 
-#: service/models/address.ts:66
+#: service/models/address.ts:67
 msgctxt "base.model.Address.fields"
 msgid "City"
 msgstr "城市"
 
-#: service/models/address.ts:50
+#: service/models/address.ts:51
 msgctxt "base.model.Address.fields"
 msgid "Country"
 msgstr "国家/地区"
@@ -26,7 +26,7 @@ msgctxt "base.model.Address.fields"
 msgid "Label"
 msgstr "标签"
 
-#: service/models/address.ts:58
+#: service/models/address.ts:59
 msgctxt "base.model.Address.fields"
 msgid "State/Province"
 msgstr "州/省"
@@ -36,17 +36,17 @@ msgctxt "base.model.Address.fields"
 msgid "ZIP"
 msgstr "邮政编码"
 
-#: service/models/bank.ts:52
+#: service/models/bank.ts:53
 msgctxt "base.model.Bank.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/bank.ts:60
+#: service/models/bank.ts:61
 msgctxt "base.model.Bank.fields"
 msgid "Address"
 msgstr "地址"
 
-#: service/models/bank.ts:43
+#: service/models/bank.ts:44
 msgctxt "base.model.Bank.fields"
 msgid "BIC"
 msgstr "银行识别码（BIC）"
@@ -56,7 +56,7 @@ msgctxt "base.model.Bank.fields"
 msgid "Code"
 msgstr "编码"
 
-#: service/models/bank.ts:35
+#: service/models/bank.ts:36
 msgctxt "base.model.Bank.fields"
 msgid "Country"
 msgstr "国家/地区"
@@ -66,7 +66,7 @@ msgctxt "base.model.Bank.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/city.ts:57
+#: service/models/city.ts:58
 msgctxt "base.model.City.fields"
 msgid "Active"
 msgstr "启用"
@@ -76,7 +76,7 @@ msgctxt "base.model.City.fields"
 msgid "Code"
 msgstr "编码"
 
-#: service/models/city.ts:39
+#: service/models/city.ts:40
 msgctxt "base.model.City.fields"
 msgid "Country"
 msgstr "国家/地区"
@@ -86,22 +86,22 @@ msgctxt "base.model.City.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/city.ts:48
+#: service/models/city.ts:49
 msgctxt "base.model.City.fields"
 msgid "State/Province"
 msgstr "州/省"
 
-#: service/models/company.ts:69
+#: service/models/company.ts:78
 msgctxt "base.model.Company.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/company.ts:93
+#: service/models/company.ts:104
 msgctxt "base.model.Company.fields"
 msgid "Address"
 msgstr "地址"
 
-#: service/models/company.ts:60
+#: service/models/company.ts:66
 msgctxt "base.model.Company.fields"
 msgid "Base Currency"
 msgstr "本位币"
@@ -111,12 +111,17 @@ msgctxt "base.model.Company.fields"
 msgid "Code"
 msgstr "编码"
 
-#: service/models/company.ts:85
+#: service/models/company.ts:96
 msgctxt "base.model.Company.fields"
 msgid "Country"
 msgstr "国家/地区"
 
-#: service/models/company.ts:77
+#: service/models/company.ts:54
+msgctxt "base.model.Company.fields"
+msgid "IANA timezone for business dates and scheduled jobs in this company."
+msgstr "该公司业务日期与计划任务使用的 IANA 时区。"
+
+#: service/models/company.ts:87
 msgctxt "base.model.Company.fields"
 msgid "Language"
 msgstr "语言"
@@ -126,22 +131,32 @@ msgctxt "base.model.Company.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/company.ts:42
+#: service/models/company.ts:44
 msgctxt "base.model.Company.fields"
 msgid "Parent Company"
 msgstr "上级公司"
 
-#: service/models/company.ts:51
+#: service/models/company.ts:67
+msgctxt "base.model.Company.fields"
+msgid "Reporting currency; foreign amounts convert to this currency."
+msgstr "报表货币；外币金额会换算到此货币。"
+
+#: service/models/company.ts:35
+msgctxt "base.model.Company.fields"
+msgid "Short unique code used in references and integrations."
+msgstr "用于引用与集成的短唯一编码。"
+
+#: service/models/company.ts:53
 msgctxt "base.model.Company.fields"
 msgid "Time Zone"
 msgstr "时区"
 
-#: service/models/country.ts:74
+#: service/models/country.ts:75
 msgctxt "base.model.Country.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/country.ts:49
+#: service/models/country.ts:50
 msgctxt "base.model.Country.fields"
 msgid "Address Format"
 msgstr "地址格式"
@@ -151,7 +166,7 @@ msgctxt "base.model.Country.fields"
 msgid "Code"
 msgstr "编码"
 
-#: service/models/country.ts:43
+#: service/models/country.ts:44
 msgctxt "base.model.Country.fields"
 msgid "Default Currency"
 msgstr "默认币种"
@@ -166,17 +181,17 @@ msgctxt "base.model.Country.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/country.ts:65
+#: service/models/country.ts:66
 msgctxt "base.model.Country.fields"
 msgid "State/Province Required"
 msgstr "州/省必填"
 
-#: service/models/country.ts:57
+#: service/models/country.ts:58
 msgctxt "base.model.Country.fields"
 msgid "ZIP Required"
 msgstr "邮政编码必填"
 
-#: service/models/currency.ts:84
+#: service/models/currency.ts:82
 msgctxt "base.model.Currency.fields"
 msgid "Active"
 msgstr "启用"
@@ -196,7 +211,7 @@ msgctxt "base.model.Currency.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/currency.ts:75
+#: service/models/currency.ts:73
 msgctxt "base.model.Currency.fields"
 msgid "Rounding Precision"
 msgstr "舍入精度"
@@ -206,25 +221,40 @@ msgctxt "base.model.Currency.fields"
 msgid "Symbol"
 msgstr "符号"
 
-#: service/models/exchange_rate.ts:29
+#: service/models/exchange_rate.ts:58
+msgctxt "base.model.ExchangeRate.fields"
+msgid "Business calendar date in the company timezone, not a UTC instant."
+msgstr "公司时区下的业务日历日，不是 UTC 时刻。"
+
+#: service/models/exchange_rate.ts:30
 msgctxt "base.model.ExchangeRate.fields"
 msgid "Company"
 msgstr "公司"
 
-#: service/models/exchange_rate.ts:21
+#: service/models/exchange_rate.ts:22
 msgctxt "base.model.ExchangeRate.fields"
 msgid "Currency"
 msgstr "币种"
 
-#: service/models/exchange_rate.ts:53
+#: service/models/exchange_rate.ts:57
 msgctxt "base.model.ExchangeRate.fields"
 msgid "Date"
 msgstr "日期"
 
-#: service/models/exchange_rate.ts:62
+#: service/models/exchange_rate.ts:67
 msgctxt "base.model.ExchangeRate.fields"
 msgid "Exchange Rate"
 msgstr "汇率"
+
+#: service/models/exchange_rate.ts:31
+msgctxt "base.model.ExchangeRate.fields"
+msgid "Leave empty to use a global rate when no company rate exists."
+msgstr "留空表示在无公司汇率时使用全局汇率。"
+
+#: service/models/exchange_rate.ts:68
+msgctxt "base.model.ExchangeRate.fields"
+msgid "Units of this currency per one unit of the company base currency."
+msgstr "每单位公司本位币对应的本币数量。"
 
 #: service/models/language.ts:69
 msgctxt "base.model.Language.fields"
@@ -306,7 +336,7 @@ msgctxt "base.model.Language.fields"
 msgid "Time Format"
 msgstr "时间格式"
 
-#: service/models/sequence.ts:108
+#: service/models/sequence.ts:121
 msgctxt "base.model.Sequence.fields"
 msgid "Active"
 msgstr "启用"
@@ -316,37 +346,57 @@ msgctxt "base.model.Sequence.fields"
 msgid "Code"
 msgstr "编码"
 
-#: service/models/sequence.ts:59
+#: service/models/sequence.ts:62
 msgctxt "base.model.Sequence.fields"
 msgid "Company"
 msgstr "公司"
+
+#: service/models/sequence.ts:63
+msgctxt "base.model.Sequence.fields"
+msgid "Leave empty for a global sequence shared by all companies."
+msgstr "留空表示所有公司共享的全局序列。"
 
 #: service/models/sequence.ts:41
 msgctxt "base.model.Sequence.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/sequence.ts:99
+#: service/models/sequence.ts:109
 msgctxt "base.model.Sequence.fields"
 msgid "Next Number"
 msgstr "下一个编号"
 
-#: service/models/sequence.ts:91
+#: service/models/sequence.ts:110
+msgctxt "base.model.Sequence.fields"
+msgid "Next issued number; lowering it may reuse already-assigned values."
+msgstr "下一个将发出的号码；调低可能导致已分配号码被重用。"
+
+#: service/models/sequence.ts:97
 msgctxt "base.model.Sequence.fields"
 msgid "Padding Length"
 msgstr "补零长度"
 
-#: service/models/sequence.ts:76
+#: service/models/sequence.ts:82
 msgctxt "base.model.Sequence.fields"
 msgid "Prefix"
 msgstr "前缀"
 
-#: service/models/sequence.ts:83
+#: service/models/sequence.ts:52
+msgctxt "base.model.Sequence.fields"
+msgid "Stable id passed to Sequence.Next; unique per company or globally."
+msgstr "传给 Sequence.Next 的稳定标识；按公司或全局唯一。"
+
+#: service/models/sequence.ts:89
 msgctxt "base.model.Sequence.fields"
 msgid "Suffix"
 msgstr "后缀"
 
-#: service/models/sequence_idempotency.ts:37
+#: service/models/sequence.ts:98
+msgctxt "base.model.Sequence.fields"
+msgid "Zero-padded numeric width between prefix and suffix."
+msgstr "前缀与后缀之间数字部分的零填充宽度。"
+
+#: service/models/sequence_idempotency.ts:38
 msgctxt "base.model.SequenceIdempotency.fields"
 msgid "Code Snapshot"
 msgstr "编码快照"
@@ -356,52 +406,52 @@ msgctxt "base.model.SequenceIdempotency.fields"
 msgid "Company"
 msgstr "公司"
 
-#: service/models/sequence_idempotency.ts:61
+#: service/models/sequence_idempotency.ts:63
 msgctxt "base.model.SequenceIdempotency.fields"
 msgid "Count"
 msgstr "数量"
 
-#: service/models/sequence_idempotency.ts:69
+#: service/models/sequence_idempotency.ts:71
 msgctxt "base.model.SequenceIdempotency.fields"
 msgid "Dry Run"
 msgstr "试运行"
 
-#: service/models/sequence_idempotency.ts:83
+#: service/models/sequence_idempotency.ts:87
 msgctxt "base.model.SequenceIdempotency.fields"
 msgid "End"
 msgstr "结束值"
 
-#: service/models/sequence_idempotency.ts:98
+#: service/models/sequence_idempotency.ts:104
 msgctxt "base.model.SequenceIdempotency.fields"
 msgid "Expires At"
 msgstr "过期时间"
 
-#: service/models/sequence_idempotency.ts:44
+#: service/models/sequence_idempotency.ts:45
 msgctxt "base.model.SequenceIdempotency.fields"
 msgid "Format Snapshot"
 msgstr "格式快照"
 
-#: service/models/sequence_idempotency.ts:54
+#: service/models/sequence_idempotency.ts:56
 msgctxt "base.model.SequenceIdempotency.fields"
 msgid "Idempotency Key"
 msgstr "幂等键"
 
-#: service/models/sequence_idempotency.ts:90
+#: service/models/sequence_idempotency.ts:95
 msgctxt "base.model.SequenceIdempotency.fields"
 msgid "Request Hash"
 msgstr "请求哈希"
 
-#: service/models/sequence_idempotency.ts:29
+#: service/models/sequence_idempotency.ts:30
 msgctxt "base.model.SequenceIdempotency.fields"
 msgid "Sequence"
 msgstr "序列"
 
-#: service/models/sequence_idempotency.ts:76
+#: service/models/sequence_idempotency.ts:79
 msgctxt "base.model.SequenceIdempotency.fields"
 msgid "Start"
 msgstr "起始值"
 
-#: service/models/state.ts:46
+#: service/models/state.ts:47
 msgctxt "base.model.State.fields"
 msgid "Active"
 msgstr "启用"
@@ -411,7 +461,7 @@ msgctxt "base.model.State.fields"
 msgid "Code"
 msgstr "编码"
 
-#: service/models/state.ts:37
+#: service/models/state.ts:38
 msgctxt "base.model.State.fields"
 msgid "Country"
 msgstr "国家/地区"
@@ -421,17 +471,17 @@ msgctxt "base.model.State.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/uom.ts:69
+#: service/models/uom.ts:66
 msgctxt "base.model.UoM.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/uom.ts:35
+#: service/models/uom.ts:36
 msgctxt "base.model.UoM.fields"
 msgid "Category"
 msgstr "类别"
 
-#: service/models/uom.ts:52
+#: service/models/uom.ts:51
 msgctxt "base.model.UoM.fields"
 msgid "Conversion Factor"
 msgstr "换算系数"
@@ -441,12 +491,12 @@ msgctxt "base.model.UoM.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/uom.ts:43
+#: service/models/uom.ts:44
 msgctxt "base.model.UoM.fields"
 msgid "Reference Unit"
 msgstr "基准单位"
 
-#: service/models/uom.ts:60
+#: service/models/uom.ts:57
 msgctxt "base.model.UoM.fields"
 msgid "Rounding"
 msgstr "舍入精度"
@@ -616,147 +666,147 @@ msgctxt "service/models/_sequence_next"
 msgid "Sequence not found for Code=%s"
 msgstr "未找到 Code=%s 的序列"
 
-#: service/models/address.ts:114
+#: service/models/address.ts:115
 msgctxt "service/models/address"
 msgid "City not found"
 msgstr "未找到城市"
 
-#: service/models/address.ts:116
+#: service/models/address.ts:117
 msgctxt "service/models/address"
 msgid "City.CountryId must equal Address.CountryId"
 msgstr "City.CountryId 必须与 Address.CountryId 相同"
 
-#: service/models/address.ts:119
+#: service/models/address.ts:120
 msgctxt "service/models/address"
 msgid "City.StateId must equal Address.StateId"
 msgstr "City.StateId 必须与 Address.StateId 相同"
 
-#: service/models/address.ts:91
+#: service/models/address.ts:92
 msgctxt "service/models/address"
 msgid "Country not found"
 msgstr "未找到国家/地区"
 
-#: service/models/address.ts:104
+#: service/models/address.ts:105
 msgctxt "service/models/address"
 msgid "State not found"
 msgstr "未找到州/省"
 
-#: service/models/address.ts:106
+#: service/models/address.ts:107
 msgctxt "service/models/address"
 msgid "State.CountryId must equal Address.CountryId"
 msgstr "State.CountryId 必须与 Address.CountryId 相同"
 
-#: service/models/address.ts:94
+#: service/models/address.ts:95
 msgctxt "service/models/address"
 msgid "StateId is required for this country"
 msgstr "此国家/地区要求填写 StateId"
 
-#: service/models/address.ts:98
+#: service/models/address.ts:99
 msgctxt "service/models/address"
 msgid "Zip is required for this country"
 msgstr "此国家/地区要求填写邮政编码"
 
-#: service/models/city.ts:86
+#: service/models/city.ts:87
 msgctxt "service/models/city"
 msgid "City Code must be unique within Country + State"
 msgstr "城市编码在同一国家/地区与州/省下必须唯一"
 
-#: service/models/city.ts:66
+#: service/models/city.ts:67
 msgctxt "service/models/city"
 msgid "State not found"
 msgstr "未找到州/省"
 
-#: service/models/city.ts:67
+#: service/models/city.ts:68
 msgctxt "service/models/city"
 msgid "State.CountryId must equal City.CountryId"
 msgstr "State.CountryId 必须与 City.CountryId 相同"
 
-#: service/models/company.ts:100
+#: service/models/company.ts:111
 msgctxt "service/models/company"
 msgid "%s is required"
 msgstr "%s 为必填项"
 
-#: service/models/company.ts:115
+#: service/models/company.ts:126
 msgctxt "service/models/company"
 msgid "Company Code must be unique"
 msgstr "公司编码必须唯一"
 
-#: service/models/company.ts:124
+#: service/models/company.ts:135
 msgctxt "service/models/company"
 msgid "CurrencyId is required"
 msgstr "CurrencyId 为必填项"
 
-#: service/models/company.ts:135
+#: service/models/company.ts:146
 msgctxt "service/models/company"
 msgid "Invalid IANA timezone: %s"
 msgstr "无效的 IANA 时区：%s"
 
-#: service/models/company.ts:158
+#: service/models/company.ts:169
 msgctxt "service/models/company"
 msgid "ParentId cannot be a descendant of the company"
 msgstr "ParentId 不能是该公司的下级公司"
 
-#: service/models/company.ts:145
+#: service/models/company.ts:156
 msgctxt "service/models/company"
 msgid "ParentId cannot be self"
 msgstr "ParentId 不能指向自身"
 
-#: service/models/company.ts:132
+#: service/models/company.ts:143
 msgctxt "service/models/company"
 msgid "Timezone is required"
 msgstr "时区为必填项"
 
-#: service/models/country.ts:89
+#: service/models/country.ts:90
 msgctxt "service/models/country"
 msgid "AddressFormat contains unsupported token: %s"
 msgstr "AddressFormat 包含不支持的标记：%s"
 
-#: service/models/currency.ts:95
+#: service/models/currency.ts:93
 msgctxt "service/models/currency"
 msgid "DecimalDigits is required"
 msgstr "DecimalDigits 为必填项"
 
-#: service/models/currency.ts:96
+#: service/models/currency.ts:94
 msgctxt "service/models/currency"
 msgid "DecimalDigits must be a non-negative integer"
 msgstr "DecimalDigits 必须为非负整数"
 
-#: service/models/currency.ts:103
+#: service/models/currency.ts:101
 msgctxt "service/models/currency"
 msgid "Rounding must be a valid decimal"
 msgstr "Rounding 必须为有效的小数"
 
-#: service/models/currency.ts:102
+#: service/models/currency.ts:100
 msgctxt "service/models/currency"
 msgid "Rounding must be greater than 0"
 msgstr "Rounding 必须大于 0"
 
-#: service/models/exchange_rate.ts:69 service/models/exchange_rate.ts:77
+#: service/models/exchange_rate.ts:77 service/models/exchange_rate.ts:85
 msgctxt "service/models/exchange_rate"
 msgid "Date is invalid"
 msgstr "日期无效"
 
-#: service/models/exchange_rate.ts:76
+#: service/models/exchange_rate.ts:84
 msgctxt "service/models/exchange_rate"
 msgid "Date is required"
 msgstr "日期为必填项"
 
-#: service/models/exchange_rate.ts:78
+#: service/models/exchange_rate.ts:86
 msgctxt "service/models/exchange_rate"
 msgid "Date must be YYYY-MM-DD"
 msgstr "日期格式必须为 YYYY-MM-DD"
 
-#: service/models/exchange_rate.ts:105
+#: service/models/exchange_rate.ts:113
 msgctxt "service/models/exchange_rate"
 msgid "ExchangeRate must be unique for CompanyId + CurrencyId + Date"
 msgstr "ExchangeRate 在相同 CompanyId、CurrencyId 和 Date 下必须唯一"
 
-#: service/models/exchange_rate.ts:115
+#: service/models/exchange_rate.ts:123
 msgctxt "service/models/exchange_rate"
 msgid "Rate must be a valid decimal"
 msgstr "Rate 必须为有效的小数"
 
-#: service/models/exchange_rate.ts:114
+#: service/models/exchange_rate.ts:122
 msgctxt "service/models/exchange_rate"
 msgid "Rate must be greater than 0"
 msgstr "Rate 必须大于 0"
@@ -786,72 +836,72 @@ msgctxt "service/models/language"
 msgid "The root language en_US cannot be deactivated"
 msgstr "根语言 en_US 不可停用"
 
-#: service/models/sequence_idempotency.ts:129
+#: service/models/sequence_idempotency.ts:135
 msgctxt "service/models/sequence_idempotency"
 msgid "CompanyId must match Sequence.CompanyId"
 msgstr "CompanyId 必须与 Sequence.CompanyId 相同"
 
-#: service/models/sequence_idempotency.ts:110
+#: service/models/sequence_idempotency.ts:116
 msgctxt "service/models/sequence_idempotency"
 msgid "Count must be an integer >= 1"
 msgstr "Count 必须为大于或等于 1 的整数"
 
-#: service/models/sequence_idempotency.ts:118
+#: service/models/sequence_idempotency.ts:124
 msgctxt "service/models/sequence_idempotency"
 msgid "RangeEnd must be a valid integer"
 msgstr "RangeEnd 必须为有效的整数"
 
-#: service/models/sequence_idempotency.ts:122
+#: service/models/sequence_idempotency.ts:128
 msgctxt "service/models/sequence_idempotency"
 msgid "RangeEnd must equal RangeStart + Count - 1"
 msgstr "RangeEnd 必须等于 RangeStart + Count - 1"
 
-#: service/models/sequence_idempotency.ts:114
+#: service/models/sequence_idempotency.ts:120
 msgctxt "service/models/sequence_idempotency"
 msgid "RangeStart must be a valid integer"
 msgstr "RangeStart 必须为有效的整数"
 
-#: service/models/sequence_idempotency.ts:105
+#: service/models/sequence_idempotency.ts:111
 msgctxt "service/models/sequence_idempotency"
 msgid "SequenceId is required"
 msgstr "SequenceId 为必填项"
 
-#: service/models/state.ts:66
+#: service/models/state.ts:67
 msgctxt "service/models/state"
 msgid "State Code must be unique within Country"
 msgstr "州/省编码在同一国家/地区内必须唯一"
 
-#: service/models/uom.ts:87
+#: service/models/uom.ts:84
 msgctxt "service/models/uom"
 msgid "Each UoM category can only have one reference unit"
 msgstr "每个计量单位类别只能有一个基准单位"
 
-#: service/models/uom.ts:93
+#: service/models/uom.ts:90
 msgctxt "service/models/uom"
 msgid "Each UoM category must have one reference unit"
 msgstr "每个计量单位类别必须有一个基准单位"
 
-#: service/models/uom.ts:107
+#: service/models/uom.ts:104
 msgctxt "service/models/uom"
 msgid "Factor must be a valid decimal"
 msgstr "Factor 必须为有效的小数"
 
-#: service/models/uom.ts:106
+#: service/models/uom.ts:103
 msgctxt "service/models/uom"
 msgid "Factor must be greater than 0"
 msgstr "Factor 必须大于 0"
 
-#: service/models/uom.ts:110
+#: service/models/uom.ts:107
 msgctxt "service/models/uom"
 msgid "Reference UoM must have Factor = 1"
 msgstr "基准计量单位的 Factor 必须等于 1"
 
-#: service/models/uom.ts:119
+#: service/models/uom.ts:116
 msgctxt "service/models/uom"
 msgid "Rounding must be a valid decimal"
 msgstr "Rounding 必须为有效的小数"
 
-#: service/models/uom.ts:118
+#: service/models/uom.ts:115
 msgctxt "service/models/uom"
 msgid "Rounding must be greater than 0"
 msgstr "Rounding 必须大于 0"
@@ -1995,4 +2045,3 @@ msgstr "编辑计量单位"
 msgctxt "web/views/UoMListView"
 msgid "Unit of Measure"
 msgstr "计量单位"
-

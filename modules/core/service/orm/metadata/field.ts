@@ -86,6 +86,8 @@ export type FieldRelationOption<TJoin extends BaseModel = BaseModel, TTarget ext
 type FlatCommonOptions = {
   /** Field title msgid (English) or TermReference from reference `_t(...)`. */
   string?: string | TermReference;
+  /** Field help msgid (English) or TermReference from reference `_t(...)`. */
+  help?: string | TermReference;
   related?: FieldRelatedOption;
   required?: boolean;
   indexed?: boolean;
@@ -608,6 +610,10 @@ export interface FieldMetadata {
   string?: string;
   /** Field title TermReference when authored with reference `_t(...)`. */
   stringText?: TermReference;
+  /** Field help msgid (English fallback). */
+  help?: string;
+  /** Field help TermReference when authored with reference `_t(...)`. */
+  helpText?: TermReference;
   column?: ColumnOptions<BaseModel, unknown>;
   relation?: RuntimeRelationMetadata;
   /** Static options (English msgid labels). Omitted for dynamic selection. */

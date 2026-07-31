@@ -77,6 +77,8 @@ type IrFieldStructuralSpec struct {
 	FieldType       string                         `json:"fieldType"`
 	String          string                         `json:"string,omitempty"`
 	StringText      *TermReference                 `json:"stringText,omitempty"`
+	Help            string                         `json:"help,omitempty"`
+	HelpText        *TermReference                 `json:"helpText,omitempty"`
 	Relation        map[string]any                 `json:"relation,omitempty"`
 	Selection       []IrFieldSelectionItem         `json:"selection,omitempty"`
 	SelectionKind   string                         `json:"selectionKind,omitempty"`
@@ -176,6 +178,10 @@ type IrField struct {
 	FieldString string `gorm:"type:varchar(512)" json:"string,omitempty"`
 	// StringText stores the field title TermReference as JSON when authored with reference `_t(...)`.
 	StringText string `gorm:"type:text" json:"string_text,omitempty"`
+	// FieldHelp is the field help msgid (English fallback). JSON wire name remains "help".
+	FieldHelp string `gorm:"type:varchar(1024)" json:"help,omitempty"`
+	// HelpText stores the field help TermReference as JSON when authored with reference `_t(...)`.
+	HelpText string `gorm:"type:text" json:"help_text,omitempty"`
 
 	ReferenceIdent string `gorm:"type:varchar" json:"reference_ident"`
 	ModuleSpecPath string `gorm:"type:varchar" json:"module_spec_path"`

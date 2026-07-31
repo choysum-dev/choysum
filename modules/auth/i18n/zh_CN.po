@@ -181,47 +181,57 @@ msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "UI (legacy)"
 msgstr "界面（遗留）"
 
-#: service/models/role_record_rule.ts:74
+#: service/models/role_record_rule.ts:80
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Application"
 msgstr "应用"
 
-#: service/models/role_record_rule.ts:133
+#: service/models/role_record_rule.ts:139
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Create"
 msgstr "创建"
 
-#: service/models/role_record_rule.ts:143
+#: service/models/role_record_rule.ts:149
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Delete"
 msgstr "删除"
 
-#: service/models/role_record_rule.ts:103
+#: service/models/role_record_rule.ts:109
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Filter Condition"
 msgstr "过滤条件"
 
-#: service/models/role_record_rule.ts:55
+#: service/models/role_record_rule.ts:58
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Grant"
 msgstr "授权"
 
-#: service/models/role_record_rule.ts:61
+#: service/models/role_record_rule.ts:65
+msgctxt "auth.model.RoleRecordRule.fields"
+msgid "Grant rules widen access; restrict rules narrow it."
+msgstr "授权规则扩大访问范围；限制规则收窄访问范围。"
+
+#: service/models/role_record_rule.ts:64
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Kind"
 msgstr "种类"
 
-#: service/models/role_record_rule.ts:93
+#: service/models/role_record_rule.ts:45
+msgctxt "auth.model.RoleRecordRule.fields"
+msgid "Leave empty to apply this rule to every user."
+msgstr "留空表示该规则适用于所有用户。"
+
+#: service/models/role_record_rule.ts:99
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Model"
 msgstr "模型"
 
-#: service/models/role_record_rule.ts:113
+#: service/models/role_record_rule.ts:119
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Read"
 msgstr "读"
 
-#: service/models/role_record_rule.ts:56
+#: service/models/role_record_rule.ts:59
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Restrict"
 msgstr "限制"
@@ -231,7 +241,7 @@ msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Role"
 msgstr "角色"
 
-#: service/models/role_record_rule.ts:123
+#: service/models/role_record_rule.ts:129
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Write"
 msgstr "写"
@@ -356,7 +366,7 @@ msgctxt "auth.model.User.fields"
 msgid "Accessible Companies"
 msgstr "可访问公司"
 
-#: service/models/user.ts:237
+#: service/models/user.ts:240
 msgctxt "auth.model.User.fields"
 msgid "Active"
 msgstr "启用"
@@ -365,6 +375,11 @@ msgstr "启用"
 msgctxt "auth.model.User.fields"
 msgid "Avatar"
 msgstr "头像"
+
+#: service/models/user.ts:227
+msgctxt "auth.model.User.fields"
+msgid "Companies the user may switch to; must stay within role assignments."
+msgstr "用户可切换到的公司；须落在角色授权范围内。"
 
 #: service/models/user.ts:215
 msgctxt "auth.model.User.fields"
@@ -391,7 +406,7 @@ msgctxt "auth.model.User.fields"
 msgid "Language"
 msgstr "语言"
 
-#: service/models/user.ts:248
+#: service/models/user.ts:251
 msgctxt "auth.model.User.fields"
 msgid "Last Login"
 msgstr "最近登录"
@@ -416,12 +431,12 @@ msgctxt "auth.model.User.fields"
 msgid "Preferences"
 msgstr "偏好设置"
 
-#: service/models/user.ts:286
+#: service/models/user.ts:289
 msgctxt "auth.model.User.fields"
 msgid "Roles"
 msgstr "角色"
 
-#: service/models/user.ts:259
+#: service/models/user.ts:262
 msgctxt "auth.model.User.fields"
 msgid "Sessions"
 msgstr "会话"
@@ -431,7 +446,7 @@ msgctxt "auth.model.User.fields"
 msgid "Time Zone"
 msgstr "时区"
 
-#: service/models/user.ts:270
+#: service/models/user.ts:273
 msgctxt "auth.model.User.fields"
 msgid "Tokens"
 msgstr "令牌"
@@ -445,6 +460,11 @@ msgstr "用户名"
 msgctxt "auth.model.UserRole.fields"
 msgid "Company"
 msgstr "公司"
+
+#: service/models/user_role.ts:56
+msgctxt "auth.model.UserRole.fields"
+msgid "Leave empty to grant the role in every company the user can access."
+msgstr "留空表示在用户可访问的每个公司中授予该角色。"
 
 #: service/models/user_role.ts:42
 msgctxt "auth.model.UserRole.fields"
@@ -566,92 +586,92 @@ msgctxt "service/models/token"
 msgid "userId is required"
 msgstr "userId 不能为空"
 
-#: service/models/user.ts:921
+#: service/models/user.ts:924
 msgctxt "service/models/user"
 msgid "Failed to compute field rule spec"
 msgstr "计算字段规则规格失败"
 
-#: service/models/user.ts:304
+#: service/models/user.ts:307
 msgctxt "service/models/user"
 msgid "Invalid IANA timezone: %s"
 msgstr "无效的 IANA 时区：%s"
 
-#: service/models/user.ts:902
+#: service/models/user.ts:905
 msgctxt "service/models/user"
 msgid "Invalid model full name; expected \"<app>.<Model>\""
 msgstr "无效的模型全名；期望 \"<app>.<Model>\""
 
-#: service/models/user.ts:333
+#: service/models/user.ts:336
 msgctxt "service/models/user"
 msgid "Invalid or inactive language: %s"
 msgstr "无效或未启用的语言：%s"
 
-#: service/models/user.ts:647
+#: service/models/user.ts:650
 msgctxt "service/models/user"
 msgid "Logout failed"
 msgstr "退出失败"
 
-#: service/models/user.ts:886
+#: service/models/user.ts:889
 msgctxt "service/models/user"
 msgid "Missing identity information (userId)"
 msgstr "缺少身份信息（userId）"
 
-#: service/models/user.ts:894
+#: service/models/user.ts:897
 msgctxt "service/models/user"
 msgid "Missing model name (model)"
 msgstr "缺少模型名称（model）"
 
-#: service/models/user.ts:619
+#: service/models/user.ts:622
 msgctxt "service/models/user"
 msgid "Switch company scope failed"
 msgstr "切换公司范围失败"
 
-#: service/models/user.ts:636
+#: service/models/user.ts:639
 msgctxt "service/models/user"
 msgid "Token is required"
 msgstr "令牌不能为空"
 
-#: service/models/user.ts:467
+#: service/models/user.ts:470
 msgctxt "service/models/user"
 msgid "Token refresh failed"
 msgstr "令牌刷新失败"
 
-#: service/models/user.ts:486
+#: service/models/user.ts:489
 msgctxt "service/models/user"
 msgid "User is not logged in"
 msgstr "用户未登录"
 
-#: service/models/user.ts:503
+#: service/models/user.ts:506
 msgctxt "service/models/user"
 msgid "activeCompanyId cannot be empty"
 msgstr "activeCompanyId 不能为空"
 
-#: service/models/user.ts:554
+#: service/models/user.ts:557
 msgctxt "service/models/user"
 msgid "activeCompanyId is outside the allowed company scope"
 msgstr "activeCompanyId 不在允许的公司范围内"
 
-#: service/models/user.ts:569
+#: service/models/user.ts:572
 msgctxt "service/models/user"
 msgid "activeCompanyId must be included in enabledCompanyIds"
 msgstr "activeCompanyId 必须包含在 enabledCompanyIds 中"
 
-#: service/models/user.ts:538
+#: service/models/user.ts:541
 msgctxt "service/models/user"
 msgid "enabledCompanyIds contains an unauthorized company"
 msgstr "enabledCompanyIds 包含未授权的公司"
 
-#: service/models/user.ts:522
+#: service/models/user.ts:525
 msgctxt "service/models/user"
 msgid "enabledCompanyIds must be a string[] or omitted"
 msgstr "enabledCompanyIds 必须是 string[] 或省略"
 
-#: service/models/user.ts:416
+#: service/models/user.ts:419
 msgctxt "service/models/user@Login"
 msgid "Login failed: unable to create token pair"
 msgstr "登录失败：无法创建令牌对"
 
-#: service/models/user.ts:377
+#: service/models/user.ts:380
 msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr "用户注册失败"
@@ -2045,4 +2065,3 @@ msgstr "用户"
 msgctxt "web/views/UserSearchView"
 msgid "Active"
 msgstr "启用"
-

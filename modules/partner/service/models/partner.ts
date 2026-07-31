@@ -49,6 +49,9 @@ export default class Partner extends BaseModel {
     index: true,
     uniqueIndex: 'uidx_partner_company_code',
     string: _lt('Code', { scope: 'partner.model.Partner.fields' }),
+    help: _lt('Unique within the company; stored in uppercase.', {
+      scope: 'partner.model.Partner.fields',
+    }),
   })
   Code: string;
 

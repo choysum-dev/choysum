@@ -73,6 +73,10 @@ type FieldMetadata struct {
 	String *string `json:"string,omitempty"`
 	// StringText is a JSON object literal for the field title TermReference.
 	StringText *string `json:"stringText,omitempty"`
+	// Help is a JS string literal expression (already quoted) for the field help msgid.
+	Help *string `json:"help,omitempty"`
+	// HelpText is a JSON object literal for the field help TermReference.
+	HelpText *string `json:"helpText,omitempty"`
 
 	// ScaleField points to the dynamic decimal scale source.
 	ScaleField *string `json:"scaleField,omitempty"`
@@ -269,6 +273,13 @@ func convertFieldToMetadata(field *meta.IrField) FieldMetadata {
 	}
 	if strings.TrimSpace(field.StringText) != "" {
 		metadata.StringText = &field.StringText
+	}
+	if s := strings.TrimSpace(field.FieldHelp); s != "" {
+		quoted := strconv.Quote(s)
+		metadata.Help = &quoted
+	}
+	if strings.TrimSpace(field.HelpText) != "" {
+		metadata.HelpText = &field.HelpText
 	}
 
 	// Pass through Round only when it is set.

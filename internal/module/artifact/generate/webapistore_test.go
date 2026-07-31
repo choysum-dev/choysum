@@ -23,6 +23,7 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	seedAbstractBaseModel(t, runtimeScope, nil)
 	referenceKey := meta.TermReferenceKey("demo", "demo.status.allow", "Allow", "literal")
 	stringKey := meta.TermReferenceKey("demo", "demo.model.Partner.fields", "Amount", "literal")
+	helpKey := meta.TermReferenceKey("demo", "demo.model.Partner.fields", "Monetary amount in company currency", "literal")
 	selectionJSON := `[{"value":"allow","label":"Allow","labelText":{"key":"` + referenceKey + `","module":"demo","scope":"demo.status.allow","src":"Allow","kind":"literal"}}]`
 	round := "HALF_UP"
 	searchable := true
@@ -49,6 +50,8 @@ func TestWebApiStoreGenerate(t *testing.T) {
 		SelectionKind:            "static",
 		FieldString:              "Amount",
 		StringText:               `{"key":"` + stringKey + `","module":"demo","scope":"demo.model.Partner.fields","src":"Amount","kind":"literal"}`,
+		FieldHelp:                "Monetary amount in company currency",
+		HelpText:                 `{"key":"` + helpKey + `","module":"demo","scope":"demo.model.Partner.fields","src":"Monetary amount in company currency","kind":"literal"}`,
 		Round:                    &round,
 	}
 	resolvedSpec := &meta.IrFieldResolvedSpec{
@@ -74,6 +77,12 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	}
 	if metadata.StringText == nil || !strings.Contains(*metadata.StringText, stringKey) {
 		t.Fatalf("expected stringText JSON with key, got %#v", metadata.StringText)
+	}
+	if metadata.Help == nil || *metadata.Help != `"Monetary amount in company currency"` {
+		t.Fatalf("expected quoted help msgid, got %#v", metadata.Help)
+	}
+	if metadata.HelpText == nil || !strings.Contains(*metadata.HelpText, helpKey) {
+		t.Fatalf("expected helpText JSON with key, got %#v", metadata.HelpText)
 	}
 	if metadata.StorageKind == nil || *metadata.StorageKind != "column" || metadata.ComputedKind == nil || *metadata.ComputedKind != "runtime" {
 		t.Fatalf("expected resolved contract fields, got %#v", metadata)

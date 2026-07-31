@@ -353,6 +353,26 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		}
 	}
 
+	if helpRaw, hasHelp := options["help"]; hasHelp && helpRaw != nil {
+		raw := strings.TrimSpace(fmt.Sprintf("%v", helpRaw))
+		if raw != "" {
+			if reference, ok := parseTermReferenceCall(raw, ownerModule, referenceScope, translateBindings); ok {
+				spec.Structural.Help = reference.Src
+				spec.Structural.HelpText = reference
+			} else if match := termReferenceCallPattern.FindStringSubmatch(raw); len(match) == 4 {
+				if _, known := translateBindings[strings.TrimSpace(match[1])]; known {
+					if fallback, ok := parseTextCallLiteral(match[2]); ok {
+						spec.Structural.Help = fallback
+					}
+				}
+			} else if literal, err := parser.ParseJSStringLiteral(raw); err == nil && strings.TrimSpace(literal) != "" {
+				spec.Structural.Help = strings.TrimSpace(literal)
+			} else if !strings.ContainsAny(raw, "(){}[]") {
+				spec.Structural.Help = raw
+			}
+		}
+	}
+
 	if selectionRaw, hasSelection := options["selection"]; hasSelection && selectionRaw != nil {
 		switch selection := selectionRaw.(type) {
 		case []any:
@@ -777,6 +797,14 @@ func applyResolvedSpecToLegacyField(field *meta.IrField, spec *meta.IrFieldResol
 	if spec.Structural.StringText != nil {
 		if b, err := json.Marshal(spec.Structural.StringText); err == nil {
 			field.StringText = string(b)
+		}
+	}
+	if strings.TrimSpace(spec.Structural.Help) != "" {
+		field.FieldHelp = strings.TrimSpace(spec.Structural.Help)
+	}
+	if spec.Structural.HelpText != nil {
+		if b, err := json.Marshal(spec.Structural.HelpText); err == nil {
+			field.HelpText = string(b)
 		}
 	}
 

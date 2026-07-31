@@ -67,6 +67,17 @@ class FieldsGetWidget extends BaseModel {
 
   @Field({ type: 'varchar', size: 64, string: 'Secret Note' })
   SecretNote!: string;
+
+  @Field({
+    type: 'varchar',
+    size: 40,
+    string: 'Hinted',
+    help: createTranslate('demo', { scope: 'demo.model.Widget.fields' })._lt('Short unique code used in references'),
+  })
+  Hinted!: string;
+
+  @Field({ type: 'varchar', size: 40, string: 'Plain', help: 'Units per base currency' })
+  PlainHelp!: string;
 }
 
 test('FieldsGet returns readable fields with translated string (T1.1)', async () => {
@@ -79,6 +90,9 @@ test('FieldsGet returns readable fields with translated string (T1.1)', async ()
       }
       if (lang === 'zh_CN' && src === 'Code') {
         return '编码';
+      }
+      if (lang === 'zh_CN' && src === 'Short unique code used in references' && scope === 'demo.model.Widget.fields') {
+        return '用于引用的短唯一编码';
       }
       return '';
     },
@@ -95,6 +109,32 @@ test('FieldsGet returns readable fields with translated string (T1.1)', async ()
     expect(out.Code?.string).toBe('编码');
     expect(out.Status?.type).toBe('selection');
     expect(out.SecretNote).toBeDefined();
+    expect(out.Hinted?.help).toBe('用于引用的短唯一编码');
+    expect(out.Hinted?.helpText?.src).toBe('Short unique code used in references');
+    expect(out.PlainHelp?.help).toBe('Units per base currency');
+    expect(out.PlainHelp?.helpText).toBeUndefined();
+  } finally {
+    resetTestState();
+  }
+});
+
+test('FieldsGet attributes projection includes help when requested', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'zh_CN' });
+  setTestI18nBridge({
+    t: (_m, lang, _s, src) =>
+      lang === 'zh_CN' && src === 'Short unique code used in references' ? '用于引用的短唯一编码' : '',
+  });
+  RepositoryFactory.setRepository(FieldsGetWidget as any, {
+    getDenyReadFields: async () => ({ denyReadFields: [] }),
+  } as any);
+
+  try {
+    const out = await FieldsGetWidget.FieldsGet(['Hinted'], ['help', 'helpText']);
+    expect(out.Hinted?.type).toBe('varchar');
+    expect(out.Hinted?.help).toBe('用于引用的短唯一编码');
+    expect(out.Hinted?.helpText?.src).toBe('Short unique code used in references');
+    expect((out.Hinted as any).string).toBeUndefined();
   } finally {
     resetTestState();
   }

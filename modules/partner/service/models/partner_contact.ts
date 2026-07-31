@@ -123,6 +123,9 @@ export default class PartnerContact extends BaseModel {
     size: 20,
     index: true,
     string: _lt('Address Type', { scope: 'partner.model.PartnerContact.fields' }),
+    help: _lt('billing/shipping/office/registered/other; drives partner default addresses.', {
+      scope: 'partner.model.PartnerContact.fields',
+    }),
   })
   AddressType?: string;
 

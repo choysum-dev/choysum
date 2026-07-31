@@ -41,6 +41,10 @@ export type WebFieldMetadata = {
   string?: string;
   /** Field title TermReference for Gateway / translateTerm. */
   stringText?: TermReference;
+  /** Field help msgid (English) or FieldsGet-translated help. */
+  help?: string;
+  /** Field help TermReference for Gateway / translateTerm. */
+  helpText?: TermReference;
   selection?: readonly SelectionItem[];
   /** Present for dynamic selection fields (P3); static may omit or be 'static'. */
   selectionKind?: 'static' | 'dynamic';

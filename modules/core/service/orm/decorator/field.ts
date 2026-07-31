@@ -47,6 +47,7 @@ const relationTypes = new Set<FieldType>(['ManyToOne', 'OneToMany', 'ManyToMany'
 type FieldDecoratorOptionBag = {
   type?: FieldType;
   string?: unknown;
+  help?: unknown;
   select?: unknown;
   column?: unknown;
   /** Static array | method name | callable (see SelectionDeclaration). */
@@ -102,6 +103,26 @@ function normalizeFieldString(name: string, value: unknown): { string?: string; 
     return { string: src, stringText: { ...value } };
   }
   throw new Error(`@Field(${name}) string must be a string or term reference`);
+}
+
+/** Normalize help like string, but blank/whitespace omits (D6) instead of throwing. */
+function normalizeFieldHelp(name: string, value: unknown): { help?: string; helpText?: TermReference } {
+  if (value === undefined || value === null) {
+    return {};
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return {};
+    return { help: trimmed };
+  }
+  if (isTermReference(value)) {
+    const src = typeof value.src === 'string' ? value.src.trim() : '';
+    if (!src) {
+      throw new Error(`@Field(${name}) help term reference requires a non-empty src`);
+    }
+    return { help: src, helpText: { ...value } };
+  }
+  throw new Error(`@Field(${name}) help must be a string or term reference`);
 }
 
 function toFieldDecoratorOptionBag(value: unknown): FieldDecoratorOptionBag {
@@ -589,6 +610,10 @@ export function Field(
     const fieldString = normalizeFieldString(name, optionBag.string);
     if (fieldString.string !== undefined) meta.string = fieldString.string;
     if (fieldString.stringText !== undefined) meta.stringText = fieldString.stringText;
+
+    const fieldHelp = normalizeFieldHelp(name, optionBag.help);
+    if (fieldHelp.help !== undefined) meta.help = fieldHelp.help;
+    if (fieldHelp.helpText !== undefined) meta.helpText = fieldHelp.helpText;
 
     // Persist selection metadata before final storage/relation defaults.
     if (type === 'selection') {

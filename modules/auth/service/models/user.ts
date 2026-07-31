@@ -224,6 +224,9 @@ export default class User extends BaseModel {
     relation: { targetModel: 'base.Company' },
     condition: ['IsActive', '=', true],
     string: _lt('Accessible Companies', { scope: 'auth.model.User.fields' }),
+    help: _lt('Companies the user may switch to; must stay within role assignments.', {
+      scope: 'auth.model.User.fields',
+    }),
   })
   CompanyIds: string[];
 

@@ -13,6 +13,8 @@ export type FieldsGetFieldMeta = {
   type: string;
   string?: string;
   stringText?: TermReference;
+  help?: string;
+  helpText?: TermReference;
   selectionKind?: 'static' | 'dynamic';
   selection?: Array<{ value: string; label: string }>;
   notNull?: boolean;
@@ -56,6 +58,20 @@ function translateFieldString(
   if (!msgid && !field.stringText) return undefined;
   if (field.stringText && isTermReference(field.stringText)) {
     return translateTermReference(field.stringText);
+  }
+  if (!msgid) return undefined;
+  return translateSrc(fallbackModule, msgid, fallbackScope);
+}
+
+function translateFieldHelp(
+  field: FieldMetadata,
+  fallbackModule: string,
+  fallbackScope: string
+): string | undefined {
+  const msgid = typeof field.help === 'string' ? field.help.trim() : '';
+  if (!msgid && !field.helpText) return undefined;
+  if (field.helpText && isTermReference(field.helpText)) {
+    return translateTermReference(field.helpText);
   }
   if (!msgid) return undefined;
   return translateSrc(fallbackModule, msgid, fallbackScope);
@@ -177,6 +193,16 @@ function buildFieldMeta(
   }
   if (field.stringText && isTermReference(field.stringText)) {
     meta.stringText = { ...field.stringText };
+  }
+
+  const translatedHelp = translateFieldHelp(field, fallbackModule, fallbackScope);
+  if (translatedHelp !== undefined) {
+    meta.help = translatedHelp;
+  } else if (typeof field.help === 'string' && field.help.trim()) {
+    meta.help = field.help.trim();
+  }
+  if (field.helpText && isTermReference(field.helpText)) {
+    meta.helpText = { ...field.helpText };
   }
 
   if (field.selectionKind === 'dynamic' || field.selectionCallable || field.selectionMethod) {

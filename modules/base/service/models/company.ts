@@ -32,6 +32,7 @@ export default class Company extends BaseModel {
     notNull: true,
     index: true,
     string: _lt('Code', { scope: 'base.model.Company.fields' }),
+    help: _lt('Short unique code used in references and integrations.', { scope: 'base.model.Company.fields' }),
   })
   Code: string;
 
@@ -50,6 +51,9 @@ export default class Company extends BaseModel {
     size: 64,
     notNull: true,
     string: _lt('Time Zone', { scope: 'base.model.Company.fields' }),
+    help: _lt('IANA timezone for business dates and scheduled jobs in this company.', {
+      scope: 'base.model.Company.fields',
+    }),
   })
   Timezone: string;
 
@@ -60,6 +64,9 @@ export default class Company extends BaseModel {
     notNull: true,
     index: true,
     string: _lt('Base Currency', { scope: 'base.model.Company.fields' }),
+    help: _lt('Reporting currency; foreign amounts convert to this currency.', {
+      scope: 'base.model.Company.fields',
+    }),
   })
   CurrencyId: Currency;
 

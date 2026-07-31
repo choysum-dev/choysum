@@ -571,6 +571,67 @@ export default class FieldStringModel extends BaseModel {
 	}
 }
 
+func TestTsParser_PreservesFieldHelpTermReference(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+const { _lt } = createTranslate('demo', {
+  scope: 'demo.model.Widget.fields',
+});
+
+@Model('FieldHelpModel')
+export default class FieldHelpModel extends BaseModel {
+  @Field({
+    type: 'varchar',
+    size: 100,
+    string: _lt('Code'),
+    help: _lt('Short unique code used in references')
+  })
+  public Code: string
+
+  @Field({
+    type: 'varchar',
+    size: 40,
+    string: 'Name',
+    help: 'Plain help text'
+  })
+  public Name: string
+}
+`
+	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	byName := map[string]*meta.IrField{}
+	for _, field := range r.Model.Fields {
+		byName[field.Name] = field
+	}
+	codeField := byName["Code"]
+	if codeField == nil {
+		t.Fatal("expected Code field")
+	}
+	spec, err := codeField.GetResolvedSpec()
+	if err != nil || spec == nil {
+		t.Fatalf("get resolved spec: %v, %#v", err, spec)
+	}
+	if spec.Structural.Help != "Short unique code used in references" || spec.Structural.HelpText == nil {
+		t.Fatalf("unexpected help metadata: %+v", spec.Structural)
+	}
+	if spec.Structural.HelpText.Module != "demo" || spec.Structural.HelpText.Scope != "demo.model.Widget.fields" || spec.Structural.HelpText.Src != "Short unique code used in references" {
+		t.Fatalf("unexpected helpText: %+v", spec.Structural.HelpText)
+	}
+	if codeField.FieldHelp != "Short unique code used in references" || !strings.Contains(codeField.HelpText, `"src":"Short unique code used in references"`) {
+		t.Fatalf("IrField did not persist help/helpText: help=%q helpText=%s", codeField.FieldHelp, codeField.HelpText)
+	}
+	nameField := byName["Name"]
+	if nameField == nil || nameField.FieldHelp != "Plain help text" || strings.TrimSpace(nameField.HelpText) != "" {
+		t.Fatalf("unexpected Name field help metadata: %#v", nameField)
+	}
+}
+
 func TestTsParser_RejectsSelectionTextTranslateLabels(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}

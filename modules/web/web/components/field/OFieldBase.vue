@@ -11,12 +11,21 @@ SPDX-License-Identifier: Apache-2.0
     v-show="visibleForm"
     class="o-field-base"
     v-bind="formItemProps"
-    :label="resolvedLabel"
     :prop="String(binding.prop)"
     :rules="effectiveRules"
     :required="requiredForm"
     :error="serverError"
   >
+    <template #label>
+      <span class="o-field-base__label">
+        <span class="o-field-base__label-text">{{ resolvedLabel }}</span>
+        <el-tooltip v-if="effectiveHelp" :content="effectiveHelp" placement="top" :show-after="200">
+          <el-icon class="o-field-base__help-icon" :size="14" :aria-label="helpAriaLabel">
+            <component :is="InfoOutlined" />
+          </el-icon>
+        </el-tooltip>
+      </span>
+    </template>
     <template v-if="preserveModeSlotForm">
       <div v-show="effectiveEditForm" class="o-field-base__edit-wrap">
         <div class="o-field-base__edit-control">
@@ -265,38 +274,45 @@ SPDX-License-Identifier: Apache-2.0
       </div>
     </el-tooltip>
 
-    <!-- Without an error, render as-is -->
+    <!-- Without an error, render as-is (optional help tip beside control) -->
     <template v-else>
-      <template v-if="effectiveEditInline">
-        <slot
-          name="edit"
-          :fieldValue="valueForm"
-          :record="recordForm"
-          :readonly="false"
-          :required="requiredInline"
-          :visible="visibleInline"
-          :inputName="inputName"
-          :inputId="inputIdForm"
-          :onFieldChange="onchangeHandlers.onChange"
-          :triggerOnchange="onchangeHandlers.trigger"
-          :onchangeRunning="onchangeHandlers.running?.value"
-        />
-      </template>
-      <template v-else>
-        <slot
-          name="display"
-          :fieldValue="valueForm"
-          :record="recordForm"
-          renderMode="inline"
-          :readonly="true"
-          :required="false"
-          :visible="visibleInline"
-          :inputName="inputName"
-          :inputId="inputIdForm"
-          :triggerOnchange="onchangeHandlers.trigger"
-          :onchangeRunning="onchangeHandlers.running?.value"
-        />
-      </template>
+      <div class="o-field-base__inline-wrap" :class="{ 'o-field-base__inline-wrap--has-help': !!effectiveHelp }">
+        <template v-if="effectiveEditInline">
+          <slot
+            name="edit"
+            :fieldValue="valueForm"
+            :record="recordForm"
+            :readonly="false"
+            :required="requiredInline"
+            :visible="visibleInline"
+            :inputName="inputName"
+            :inputId="inputIdForm"
+            :onFieldChange="onchangeHandlers.onChange"
+            :triggerOnchange="onchangeHandlers.trigger"
+            :onchangeRunning="onchangeHandlers.running?.value"
+          />
+        </template>
+        <template v-else>
+          <slot
+            name="display"
+            :fieldValue="valueForm"
+            :record="recordForm"
+            renderMode="inline"
+            :readonly="true"
+            :required="false"
+            :visible="visibleInline"
+            :inputName="inputName"
+            :inputId="inputIdForm"
+            :triggerOnchange="onchangeHandlers.trigger"
+            :onchangeRunning="onchangeHandlers.running?.value"
+          />
+        </template>
+        <el-tooltip v-if="effectiveHelp" :content="effectiveHelp" placement="top" :show-after="200">
+          <el-icon class="o-field-base__help-icon" :size="14" :aria-label="helpAriaLabel">
+            <component :is="InfoOutlined" />
+          </el-icon>
+        </el-tooltip>
+      </div>
     </template>
   </div>
 </template>
@@ -304,6 +320,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts" generic="T extends BaseModel, V = unknown, View = V">
 import type { RuleItem } from 'async-validator';
 import type { BaseModel } from '@/core/rpc';
+import type { TermReference } from '@/core/service/i18n';
 import { ElButton, ElFormItem, ElIcon, ElTooltip, type FormItemProps } from 'element-plus';
 import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
 import type { UseField, FieldEnv } from '@/web/web/composables/useField';
@@ -311,9 +328,10 @@ import type { ComputedRef, WritableComputedRef, Ref } from 'vue';
 import { computed, inject, onMounted, ref, watch } from 'vue';
 import { useProvidedOnchange, getOnchangeController } from '@/web/web/composables/useOnchange';
 import { WarningFilled } from '@element-plus/icons-vue';
-import { TranslateOutlined, BusinessOutlined } from '@vicons/material';
+import { TranslateOutlined, BusinessOutlined, InfoOutlined } from '@vicons/material';
 import { createTranslate, getGlobalComposer } from '@/web/web/i18n/translate';
 import { resolveFieldLabel } from '@/web/web/composables/resolveFieldLabel';
+import { resolveFieldHelp } from '@/web/web/composables/resolveFieldHelp';
 import { FIELD_PRESENTATION_FIELDS_GET_ATTRS } from '@/web/web/stores/fieldsGet';
 import OFieldTranslationsDialog from './OFieldTranslationsDialog.vue';
 import OFieldCompanyValuesDialog from './OFieldCompanyValuesDialog.vue';
@@ -368,6 +386,7 @@ const modelStore = computed(() => {
     | {
         getFieldMeta?: (name: string) => typeof binding.meta;
         getFieldsGetTranslatedString?: (name: string) => string | undefined;
+        getFieldsGetTranslatedHelp?: (name: string) => string | undefined;
         ensureFieldsGet?: (fields?: string[], attributes?: string[]) => Promise<unknown>;
       }
     | undefined;
@@ -389,6 +408,20 @@ const resolvedLabel = computed(() => {
     fieldsGetTranslatedString: modelStore.value?.getFieldsGetTranslatedString?.(leaf),
     composer: getGlobalComposer(),
   });
+});
+
+const effectiveHelp = computed(() => {
+  const leaf = leafFieldName.value;
+  return resolveFieldHelp({
+    meta: effectiveFieldMeta.value as { help?: string; helpText?: TermReference } | undefined,
+    fieldsGetTranslatedHelp: modelStore.value?.getFieldsGetTranslatedHelp?.(leaf),
+    composer: getGlobalComposer(),
+  });
+});
+
+const helpAriaLabel = computed(() => {
+  const label = String(resolvedLabel.value || leafFieldName.value || '').trim();
+  return label ? _t('Help: %s', label) : _t('Field help');
 });
 
 onMounted(() => {
@@ -770,6 +803,21 @@ defineSlots<{
 <style scoped>
 .o-field-base {
   padding: 0; /* keep wrapper neutral; satisfy linter */
+}
+.o-field-base__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+}
+.o-field-base__label-text {
+  min-width: 0;
+}
+.o-field-base__help-icon {
+  flex-shrink: 0;
+  color: var(--el-text-color-secondary);
+  cursor: help;
+  vertical-align: middle;
 }
 .o-field-base__cell {
   display: block;

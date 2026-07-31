@@ -189,47 +189,57 @@ msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "UI (legacy)"
 msgstr ""
 
-#: service/models/role_record_rule.ts:74
+#: service/models/role_record_rule.ts:80
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Application"
 msgstr ""
 
-#: service/models/role_record_rule.ts:133
+#: service/models/role_record_rule.ts:139
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Create"
 msgstr ""
 
-#: service/models/role_record_rule.ts:143
+#: service/models/role_record_rule.ts:149
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Delete"
 msgstr ""
 
-#: service/models/role_record_rule.ts:103
+#: service/models/role_record_rule.ts:109
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Filter Condition"
 msgstr ""
 
-#: service/models/role_record_rule.ts:55
+#: service/models/role_record_rule.ts:58
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Grant"
 msgstr ""
 
-#: service/models/role_record_rule.ts:61
+#: service/models/role_record_rule.ts:65
+msgctxt "auth.model.RoleRecordRule.fields"
+msgid "Grant rules widen access; restrict rules narrow it."
+msgstr ""
+
+#: service/models/role_record_rule.ts:64
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Kind"
 msgstr ""
 
-#: service/models/role_record_rule.ts:93
+#: service/models/role_record_rule.ts:45
+msgctxt "auth.model.RoleRecordRule.fields"
+msgid "Leave empty to apply this rule to every user."
+msgstr ""
+
+#: service/models/role_record_rule.ts:99
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Model"
 msgstr ""
 
-#: service/models/role_record_rule.ts:113
+#: service/models/role_record_rule.ts:119
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Read"
 msgstr ""
 
-#: service/models/role_record_rule.ts:56
+#: service/models/role_record_rule.ts:59
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Restrict"
 msgstr ""
@@ -239,7 +249,7 @@ msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Role"
 msgstr ""
 
-#: service/models/role_record_rule.ts:123
+#: service/models/role_record_rule.ts:129
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Write"
 msgstr ""
@@ -364,7 +374,7 @@ msgctxt "auth.model.User.fields"
 msgid "Accessible Companies"
 msgstr ""
 
-#: service/models/user.ts:237
+#: service/models/user.ts:240
 msgctxt "auth.model.User.fields"
 msgid "Active"
 msgstr ""
@@ -372,6 +382,11 @@ msgstr ""
 #: service/models/user.ts:148
 msgctxt "auth.model.User.fields"
 msgid "Avatar"
+msgstr ""
+
+#: service/models/user.ts:227
+msgctxt "auth.model.User.fields"
+msgid "Companies the user may switch to; must stay within role assignments."
 msgstr ""
 
 #: service/models/user.ts:215
@@ -399,7 +414,7 @@ msgctxt "auth.model.User.fields"
 msgid "Language"
 msgstr ""
 
-#: service/models/user.ts:248
+#: service/models/user.ts:251
 msgctxt "auth.model.User.fields"
 msgid "Last Login"
 msgstr ""
@@ -424,12 +439,12 @@ msgctxt "auth.model.User.fields"
 msgid "Preferences"
 msgstr ""
 
-#: service/models/user.ts:286
+#: service/models/user.ts:289
 msgctxt "auth.model.User.fields"
 msgid "Roles"
 msgstr ""
 
-#: service/models/user.ts:259
+#: service/models/user.ts:262
 msgctxt "auth.model.User.fields"
 msgid "Sessions"
 msgstr ""
@@ -439,7 +454,7 @@ msgctxt "auth.model.User.fields"
 msgid "Time Zone"
 msgstr ""
 
-#: service/models/user.ts:270
+#: service/models/user.ts:273
 msgctxt "auth.model.User.fields"
 msgid "Tokens"
 msgstr ""
@@ -452,6 +467,11 @@ msgstr ""
 #: service/models/user_role.ts:55
 msgctxt "auth.model.UserRole.fields"
 msgid "Company"
+msgstr ""
+
+#: service/models/user_role.ts:56
+msgctxt "auth.model.UserRole.fields"
+msgid "Leave empty to grant the role in every company the user can access."
 msgstr ""
 
 #: service/models/user_role.ts:42
@@ -582,92 +602,92 @@ msgctxt "service/models/token"
 msgid "userId is required"
 msgstr ""
 
-#: service/models/user.ts:921
+#: service/models/user.ts:924
 msgctxt "service/models/user"
 msgid "Failed to compute field rule spec"
 msgstr ""
 
-#: service/models/user.ts:304
+#: service/models/user.ts:307
 msgctxt "service/models/user"
 msgid "Invalid IANA timezone: %s"
 msgstr ""
 
-#: service/models/user.ts:902
+#: service/models/user.ts:905
 msgctxt "service/models/user"
 msgid "Invalid model full name; expected \"<app>.<Model>\""
 msgstr ""
 
-#: service/models/user.ts:333
+#: service/models/user.ts:336
 msgctxt "service/models/user"
 msgid "Invalid or inactive language: %s"
 msgstr ""
 
-#: service/models/user.ts:647
+#: service/models/user.ts:650
 msgctxt "service/models/user"
 msgid "Logout failed"
 msgstr ""
 
-#: service/models/user.ts:886
+#: service/models/user.ts:889
 msgctxt "service/models/user"
 msgid "Missing identity information (userId)"
 msgstr ""
 
-#: service/models/user.ts:894
+#: service/models/user.ts:897
 msgctxt "service/models/user"
 msgid "Missing model name (model)"
 msgstr ""
 
-#: service/models/user.ts:619
+#: service/models/user.ts:622
 msgctxt "service/models/user"
 msgid "Switch company scope failed"
 msgstr ""
 
-#: service/models/user.ts:636
+#: service/models/user.ts:639
 msgctxt "service/models/user"
 msgid "Token is required"
 msgstr ""
 
-#: service/models/user.ts:467
+#: service/models/user.ts:470
 msgctxt "service/models/user"
 msgid "Token refresh failed"
 msgstr ""
 
-#: service/models/user.ts:486
+#: service/models/user.ts:489
 msgctxt "service/models/user"
 msgid "User is not logged in"
 msgstr ""
 
-#: service/models/user.ts:503
+#: service/models/user.ts:506
 msgctxt "service/models/user"
 msgid "activeCompanyId cannot be empty"
 msgstr ""
 
-#: service/models/user.ts:554
+#: service/models/user.ts:557
 msgctxt "service/models/user"
 msgid "activeCompanyId is outside the allowed company scope"
 msgstr ""
 
-#: service/models/user.ts:569
+#: service/models/user.ts:572
 msgctxt "service/models/user"
 msgid "activeCompanyId must be included in enabledCompanyIds"
 msgstr ""
 
-#: service/models/user.ts:538
+#: service/models/user.ts:541
 msgctxt "service/models/user"
 msgid "enabledCompanyIds contains an unauthorized company"
 msgstr ""
 
-#: service/models/user.ts:522
+#: service/models/user.ts:525
 msgctxt "service/models/user"
 msgid "enabledCompanyIds must be a string[] or omitted"
 msgstr ""
 
-#: service/models/user.ts:416
+#: service/models/user.ts:419
 msgctxt "service/models/user@Login"
 msgid "Login failed: unable to create token pair"
 msgstr ""
 
-#: service/models/user.ts:377
+#: service/models/user.ts:380
 msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr ""

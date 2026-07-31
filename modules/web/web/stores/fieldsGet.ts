@@ -18,6 +18,8 @@ export const FIELD_PRESENTATION_FIELDS_GET_ATTRS = [
   'type',
   'string',
   'stringText',
+  'help',
+  'helpText',
   'selection',
   'selectionKind',
   'isReadonly',
@@ -49,6 +51,7 @@ export type FieldsGetHelpers = {
   ) => Promise<Record<string, WebFieldMetadata>>;
   getFieldMeta: (name: string) => WebFieldMetadata | undefined;
   getFieldsGetTranslatedString: (name: string) => string | undefined;
+  getFieldsGetTranslatedHelp: (name: string) => string | undefined;
   clearFieldsGetCache: () => void;
 };
 
@@ -154,10 +157,21 @@ export function createFieldsGetHelpers(
     return translated || undefined;
   };
 
+  const getFieldsGetTranslatedHelp = (name: string): string | undefined => {
+    void overlayVersion.value;
+    const fieldName = String(name || '').trim();
+    if (!fieldName) return undefined;
+    const lang = resolveLang(options?.getLang);
+    const overlay = overlayByLang.get(lang)?.[fieldName];
+    const translated = typeof overlay?.help === 'string' ? overlay.help.trim() : '';
+    return translated || undefined;
+  };
+
   return {
     ensureFieldsGet,
     getFieldMeta,
     getFieldsGetTranslatedString,
+    getFieldsGetTranslatedHelp,
     clearFieldsGetCache,
   };
 }

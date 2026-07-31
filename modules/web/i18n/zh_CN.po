@@ -111,22 +111,32 @@ msgctxt "web/components/field/ODecimalField"
 msgid "Total digits must not exceed %s"
 msgstr "总位数不得超过 %s"
 
-#: web/components/field/OFieldBase.vue:152
+#: web/components/field/OFieldBase.vue:169
 msgctxt "web/components/field/OFieldBase"
 msgid "Company values"
 msgstr "公司值"
 
-#: web/components/field/OFieldBase.vue:152
+#: web/components/field/OFieldBase.vue:169
 msgctxt "web/components/field/OFieldBase"
 msgid "Company values: %s"
 msgstr "公司值：%s"
 
-#: web/components/field/OFieldBase.vue:145
+#: web/components/field/OFieldBase.vue:105
+msgctxt "web/components/field/OFieldBase"
+msgid "Field help"
+msgstr "字段说明"
+
+#: web/components/field/OFieldBase.vue:105
+msgctxt "web/components/field/OFieldBase"
+msgid "Help: %s"
+msgstr "说明：%s"
+
+#: web/components/field/OFieldBase.vue:162
 msgctxt "web/components/field/OFieldBase"
 msgid "Translate field"
 msgstr "翻译字段"
 
-#: web/components/field/OFieldBase.vue:145
+#: web/components/field/OFieldBase.vue:162
 msgctxt "web/components/field/OFieldBase"
 msgid "Translate: %s"
 msgstr "翻译：%s"
