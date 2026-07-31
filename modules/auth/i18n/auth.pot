@@ -7,269 +7,269 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: service/models/company_scoped_resource.ts:28
+#: service/models/company_scoped_resource.ts:29
 msgctxt "auth.model.CompanyScopedResource.fields"
 msgid "Company"
 msgstr ""
 
-#: service/models/company_scoped_resource.ts:40
+#: service/models/company_scoped_resource.ts:41
 msgctxt "auth.model.CompanyScopedResource.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/role.ts:110
+#: service/models/role.ts:111
 msgctxt "auth.model.Role.fields"
 msgid "Accessible UI Resources"
 msgstr ""
 
-#: service/models/role.ts:89
+#: service/models/role.ts:90
 msgctxt "auth.model.Role.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/role.ts:100
+#: service/models/role.ts:101
 msgctxt "auth.model.Role.fields"
 msgid "Built-in"
 msgstr ""
 
-#: service/models/role.ts:66
+#: service/models/role.ts:67
 msgctxt "auth.model.Role.fields"
 msgid "Code"
 msgstr ""
 
-#: service/models/role.ts:78
+#: service/models/role.ts:79
 msgctxt "auth.model.Role.fields"
 msgid "Description"
 msgstr ""
 
-#: service/models/role.ts:36
+#: service/models/role.ts:37
 msgctxt "auth.model.Role.fields"
 msgid "Display Name"
 msgstr ""
 
-#: service/models/role.ts:185
+#: service/models/role.ts:189
 msgctxt "auth.model.Role.fields"
 msgid "Field Rules"
 msgstr ""
 
-#: service/models/role.ts:155
+#: service/models/role.ts:159
 msgctxt "auth.model.Role.fields"
 msgid "Implied By Roles"
 msgstr ""
 
-#: service/models/role.ts:140
+#: service/models/role.ts:143
 msgctxt "auth.model.Role.fields"
 msgid "Included Roles"
 msgstr ""
 
-#: service/models/role.ts:175
+#: service/models/role.ts:179
 msgctxt "auth.model.Role.fields"
 msgid "Method Accesses"
 msgstr ""
 
-#: service/models/role.ts:54
+#: service/models/role.ts:55
 msgctxt "auth.model.Role.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/role.ts:165
+#: service/models/role.ts:169
 msgctxt "auth.model.Role.fields"
 msgid "Record Rules"
 msgstr ""
 
-#: service/models/role.ts:195
+#: service/models/role.ts:199
 msgctxt "auth.model.Role.fields"
 msgid "UI Resources"
 msgstr ""
 
-#: service/models/role.ts:125
+#: service/models/role.ts:127
 msgctxt "auth.model.Role.fields"
 msgid "Users"
 msgstr ""
 
-#: service/models/role_field_rule.ts:84
-#: service/models/role_field_rule.ts:98
+#: service/models/role_field_rule.ts:101
+#: service/models/role_field_rule.ts:87
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Allow"
 msgstr ""
 
-#: service/models/role_field_rule.ts:39
+#: service/models/role_field_rule.ts:42
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Application"
 msgstr ""
 
-#: service/models/role_field_rule.ts:85
-#: service/models/role_field_rule.ts:99
+#: service/models/role_field_rule.ts:102
+#: service/models/role_field_rule.ts:88
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Deny"
 msgstr ""
 
-#: service/models/role_field_rule.ts:74
+#: service/models/role_field_rule.ts:77
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Field"
 msgstr ""
 
-#: service/models/role_field_rule.ts:52
+#: service/models/role_field_rule.ts:55
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Model"
 msgstr ""
 
-#: service/models/role_field_rule.ts:88
+#: service/models/role_field_rule.ts:91
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Read"
 msgstr ""
 
-#: service/models/role_field_rule.ts:26
+#: service/models/role_field_rule.ts:29
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Role"
 msgstr ""
 
-#: service/models/role_field_rule.ts:102
+#: service/models/role_field_rule.ts:105
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Write"
 msgstr ""
 
-#: service/models/role_inheritance.ts:34
+#: service/models/role_inheritance.ts:36
 msgctxt "auth.model.RoleInheritance.fields"
 msgid "Child Role"
 msgstr ""
 
-#: service/models/role_inheritance.ts:24
+#: service/models/role_inheritance.ts:25
 msgctxt "auth.model.RoleInheritance.fields"
 msgid "Parent Role"
 msgstr ""
 
-#: service/models/role_method_access.ts:80
+#: service/models/role_method_access.ts:83
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Allow"
 msgstr ""
 
-#: service/models/role_method_access.ts:38
+#: service/models/role_method_access.ts:41
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Application"
-msgstr ""
-
-#: service/models/role_method_access.ts:81
-msgctxt "auth.model.RoleMethodAccess.fields"
-msgid "Deny"
-msgstr ""
-
-#: service/models/role_method_access.ts:98
-msgctxt "auth.model.RoleMethodAccess.fields"
-msgid "Manual"
 msgstr ""
 
 #: service/models/role_method_access.ts:84
 msgctxt "auth.model.RoleMethodAccess.fields"
+msgid "Deny"
+msgstr ""
+
+#: service/models/role_method_access.ts:101
+msgctxt "auth.model.RoleMethodAccess.fields"
+msgid "Manual"
+msgstr ""
+
+#: service/models/role_method_access.ts:87
+msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Mode"
 msgstr ""
 
-#: service/models/role_method_access.ts:51
+#: service/models/role_method_access.ts:54
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Model"
 msgstr ""
 
-#: service/models/role_method_access.ts:25
+#: service/models/role_method_access.ts:28
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Role"
 msgstr ""
 
-#: service/models/role_method_access.ts:70
+#: service/models/role_method_access.ts:73
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Service"
 msgstr ""
 
-#: service/models/role_method_access.ts:104
+#: service/models/role_method_access.ts:107
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Source"
 msgstr ""
 
-#: service/models/role_method_access.ts:99
+#: service/models/role_method_access.ts:102
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "UI (legacy)"
 msgstr ""
 
-#: service/models/role_record_rule.ts:72
+#: service/models/role_record_rule.ts:74
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Application"
 msgstr ""
 
-#: service/models/role_record_rule.ts:131
+#: service/models/role_record_rule.ts:133
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Create"
 msgstr ""
 
-#: service/models/role_record_rule.ts:141
+#: service/models/role_record_rule.ts:143
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Delete"
 msgstr ""
 
-#: service/models/role_record_rule.ts:101
+#: service/models/role_record_rule.ts:103
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Filter Condition"
 msgstr ""
 
-#: service/models/role_record_rule.ts:53
+#: service/models/role_record_rule.ts:55
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Grant"
 msgstr ""
 
-#: service/models/role_record_rule.ts:59
+#: service/models/role_record_rule.ts:61
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Kind"
 msgstr ""
 
-#: service/models/role_record_rule.ts:91
+#: service/models/role_record_rule.ts:93
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Model"
 msgstr ""
 
-#: service/models/role_record_rule.ts:111
+#: service/models/role_record_rule.ts:113
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Read"
 msgstr ""
 
-#: service/models/role_record_rule.ts:54
+#: service/models/role_record_rule.ts:56
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Restrict"
 msgstr ""
 
-#: service/models/role_record_rule.ts:42
+#: service/models/role_record_rule.ts:44
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Role"
 msgstr ""
 
-#: service/models/role_record_rule.ts:121
+#: service/models/role_record_rule.ts:123
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Write"
 msgstr ""
 
-#: service/models/role_ui_resource.ts:40
+#: service/models/role_ui_resource.ts:42
 msgctxt "auth.model.RoleUiResource.fields"
 msgid "Allow"
 msgstr ""
 
-#: service/models/role_ui_resource.ts:59
+#: service/models/role_ui_resource.ts:61
 msgctxt "auth.model.RoleUiResource.fields"
 msgid "Application Scope"
 msgstr ""
 
-#: service/models/role_ui_resource.ts:41
+#: service/models/role_ui_resource.ts:43
 msgctxt "auth.model.RoleUiResource.fields"
 msgid "Deny"
 msgstr ""
 
-#: service/models/role_ui_resource.ts:46
+#: service/models/role_ui_resource.ts:48
 msgctxt "auth.model.RoleUiResource.fields"
 msgid "Mode"
 msgstr ""
 
-#: service/models/role_ui_resource.ts:30
+#: service/models/role_ui_resource.ts:32
 msgctxt "auth.model.RoleUiResource.fields"
 msgid "Role"
 msgstr ""
 
-#: service/models/role_ui_resource.ts:77
+#: service/models/role_ui_resource.ts:79
 msgctxt "auth.model.RoleUiResource.fields"
 msgid "UI Resource"
 msgstr ""
@@ -299,7 +299,7 @@ msgctxt "auth.model.Session.fields"
 msgid "Last Activity"
 msgstr ""
 
-#: service/models/session.ts:96
+#: service/models/session.ts:97
 msgctxt "auth.model.Session.fields"
 msgid "Metadata"
 msgstr ""
@@ -359,107 +359,107 @@ msgctxt "auth.model.Token.fields"
 msgid "User"
 msgstr ""
 
-#: service/models/user.ts:223
+#: service/models/user.ts:226
 msgctxt "auth.model.User.fields"
 msgid "Accessible Companies"
 msgstr ""
 
-#: service/models/user.ts:234
+#: service/models/user.ts:237
 msgctxt "auth.model.User.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/user.ts:147
+#: service/models/user.ts:148
 msgctxt "auth.model.User.fields"
 msgid "Avatar"
 msgstr ""
 
-#: service/models/user.ts:213
+#: service/models/user.ts:215
 msgctxt "auth.model.User.fields"
 msgid "Company"
 msgstr ""
 
-#: service/models/user.ts:75
+#: service/models/user.ts:76
 msgctxt "auth.model.User.fields"
 msgid "Email"
 msgstr ""
 
-#: service/models/user.ts:109
+#: service/models/user.ts:110
 msgctxt "auth.model.User.fields"
 msgid "First Name"
 msgstr ""
 
-#: service/models/user.ts:130
+#: service/models/user.ts:131
 msgctxt "auth.model.User.fields"
 msgid "Full Name"
 msgstr ""
 
-#: service/models/user.ts:157
+#: service/models/user.ts:158
 msgctxt "auth.model.User.fields"
 msgid "Language"
 msgstr ""
 
-#: service/models/user.ts:244
+#: service/models/user.ts:248
 msgctxt "auth.model.User.fields"
 msgid "Last Login"
 msgstr ""
 
-#: service/models/user.ts:120
+#: service/models/user.ts:121
 msgctxt "auth.model.User.fields"
 msgid "Last Name"
 msgstr ""
 
-#: service/models/user.ts:98
+#: service/models/user.ts:99
 msgctxt "auth.model.User.fields"
 msgid "Password Hash"
 msgstr ""
 
-#: service/models/user.ts:86
+#: service/models/user.ts:87
 msgctxt "auth.model.User.fields"
 msgid "Phone"
 msgstr ""
 
-#: service/models/user.ts:178
+#: service/models/user.ts:179
 msgctxt "auth.model.User.fields"
 msgid "Preferences"
 msgstr ""
 
-#: service/models/user.ts:281
+#: service/models/user.ts:286
 msgctxt "auth.model.User.fields"
 msgid "Roles"
 msgstr ""
 
-#: service/models/user.ts:255
+#: service/models/user.ts:259
 msgctxt "auth.model.User.fields"
 msgid "Sessions"
 msgstr ""
 
-#: service/models/user.ts:168
+#: service/models/user.ts:169
 msgctxt "auth.model.User.fields"
 msgid "Time Zone"
 msgstr ""
 
-#: service/models/user.ts:266
+#: service/models/user.ts:270
 msgctxt "auth.model.User.fields"
 msgid "Tokens"
 msgstr ""
 
-#: service/models/user.ts:64
+#: service/models/user.ts:65
 msgctxt "auth.model.User.fields"
 msgid "Username"
 msgstr ""
 
-#: service/models/user_role.ts:52
+#: service/models/user_role.ts:55
 msgctxt "auth.model.UserRole.fields"
 msgid "Company"
 msgstr ""
 
-#: service/models/user_role.ts:39
+#: service/models/user_role.ts:42
 msgctxt "auth.model.UserRole.fields"
 msgid "Role"
 msgstr ""
 
-#: service/models/user_role.ts:29
+#: service/models/user_role.ts:31
 msgctxt "auth.model.UserRole.fields"
 msgid "User"
 msgstr ""
@@ -527,12 +527,12 @@ msgctxt "service/models/_user_lifecycle_auth"
 msgid "Username is required"
 msgstr ""
 
-#: service/models/session.ts:113
+#: service/models/session.ts:114
 msgctxt "service/models/session"
 msgid "Failed to revoke session"
 msgstr ""
 
-#: service/models/session.ts:142
+#: service/models/session.ts:143
 msgctxt "service/models/session"
 msgid "Failed to revoke user sessions"
 msgstr ""
@@ -582,92 +582,92 @@ msgctxt "service/models/token"
 msgid "userId is required"
 msgstr ""
 
-#: service/models/user.ts:890
+#: service/models/user.ts:921
 msgctxt "service/models/user"
 msgid "Failed to compute field rule spec"
 msgstr ""
 
-#: service/models/user.ts:299
+#: service/models/user.ts:304
 msgctxt "service/models/user"
 msgid "Invalid IANA timezone: %s"
 msgstr ""
 
-#: service/models/user.ts:871
+#: service/models/user.ts:902
 msgctxt "service/models/user"
 msgid "Invalid model full name; expected \"<app>.<Model>\""
 msgstr ""
 
-#: service/models/user.ts:328
+#: service/models/user.ts:333
 msgctxt "service/models/user"
 msgid "Invalid or inactive language: %s"
 msgstr ""
 
-#: service/models/user.ts:642
+#: service/models/user.ts:647
 msgctxt "service/models/user"
 msgid "Logout failed"
 msgstr ""
 
-#: service/models/user.ts:855
+#: service/models/user.ts:886
 msgctxt "service/models/user"
 msgid "Missing identity information (userId)"
 msgstr ""
 
-#: service/models/user.ts:863
+#: service/models/user.ts:894
 msgctxt "service/models/user"
 msgid "Missing model name (model)"
 msgstr ""
 
-#: service/models/user.ts:614
+#: service/models/user.ts:619
 msgctxt "service/models/user"
 msgid "Switch company scope failed"
 msgstr ""
 
-#: service/models/user.ts:631
+#: service/models/user.ts:636
 msgctxt "service/models/user"
 msgid "Token is required"
 msgstr ""
 
-#: service/models/user.ts:462
+#: service/models/user.ts:467
 msgctxt "service/models/user"
 msgid "Token refresh failed"
 msgstr ""
 
-#: service/models/user.ts:481
+#: service/models/user.ts:486
 msgctxt "service/models/user"
 msgid "User is not logged in"
 msgstr ""
 
-#: service/models/user.ts:498
+#: service/models/user.ts:503
 msgctxt "service/models/user"
 msgid "activeCompanyId cannot be empty"
 msgstr ""
 
-#: service/models/user.ts:549
+#: service/models/user.ts:554
 msgctxt "service/models/user"
 msgid "activeCompanyId is outside the allowed company scope"
 msgstr ""
 
-#: service/models/user.ts:564
+#: service/models/user.ts:569
 msgctxt "service/models/user"
 msgid "activeCompanyId must be included in enabledCompanyIds"
 msgstr ""
 
-#: service/models/user.ts:533
+#: service/models/user.ts:538
 msgctxt "service/models/user"
 msgid "enabledCompanyIds contains an unauthorized company"
 msgstr ""
 
-#: service/models/user.ts:517
+#: service/models/user.ts:522
 msgctxt "service/models/user"
 msgid "enabledCompanyIds must be a string[] or omitted"
 msgstr ""
 
-#: service/models/user.ts:411
+#: service/models/user.ts:416
 msgctxt "service/models/user@Login"
 msgid "Login failed: unable to create token pair"
 msgstr ""
 
-#: service/models/user.ts:372
+#: service/models/user.ts:377
 msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr ""
@@ -1383,162 +1383,165 @@ msgctxt "web/views/RoleFieldRuleListView"
 msgid "Field Rule"
 msgstr ""
 
-#: web/views/RoleFormView.vue:66
+#: web/views/RoleFormView.vue:74
 msgctxt "web/views/RoleFormView"
 msgid "Accessible UI Resources"
 msgstr ""
 
-#: web/views/RoleFormView.vue:104
+#: web/views/RoleFormView.vue:112
 msgctxt "web/views/RoleFormView"
 msgid "Advanced Mode"
 msgstr ""
 
-#: web/views/RoleFormView.vue:4
+#: web/views/RoleFormView.vue:12
 msgctxt "web/views/RoleFormView"
 msgid "Basic Information"
 msgstr ""
 
-#: web/views/RoleFormView.vue:64
+#: web/views/RoleFormView.vue:72
 msgctxt "web/views/RoleFormView"
 msgid "Click a node label to inspect Requires → derived RPCs (checkbox still controls the grant)."
 msgstr ""
 
-#: web/views/RoleFormView.vue:107
+#: web/views/RoleFormView.vue:115
 msgctxt "web/views/RoleFormView"
 msgid "Configure record/field/RPC grants under deny-default. The UI resource tree does not derive Record or Field rules; Advanced is the main place for data and method access."
 msgstr ""
 
-#: web/views/RoleFormView.vue:50
+#: web/views/RoleFormView.vue:52
 msgctxt "web/views/RoleFormView"
 msgid "Copy Role"
 msgstr ""
 
-#: web/views/RoleFormView.vue:50
+#: web/views/RoleFormView.vue:52
 msgctxt "web/views/RoleFormView"
 msgid "Create Role"
 msgstr ""
 
-#: web/views/RoleFormView.vue:50
+#: web/views/RoleFormView.vue:52
 msgctxt "web/views/RoleFormView"
 msgid "Delete Role"
 msgstr ""
 
-#: web/views/RoleFormView.vue:50
+#: web/views/RoleFormView.vue:52
 msgctxt "web/views/RoleFormView"
 msgid "Edit Role"
 msgstr ""
 
-#: web/views/RoleFormView.vue:134
+#: web/views/RoleFormView.vue:142
 msgctxt "web/views/RoleFormView"
 msgid "Field Rules"
 msgstr ""
 
-#: web/views/RoleFormView.vue:136
+#: web/views/RoleFormView.vue:144
 msgctxt "web/views/RoleFormView"
 msgid "Field visibility under deny-default. Leave Application/Model/Field empty for wider scopes."
 msgstr ""
 
-#: web/views/RoleFormView.vue:49
+#: web/views/RoleFormView.vue:57
+#: web/views/RoleFormView.vue:6
 msgctxt "web/views/RoleFormView"
 msgid "Included Roles"
 msgstr ""
 
-#: web/views/RoleFormView.vue:147
+#: web/views/RoleFormView.vue:155
 msgctxt "web/views/RoleFormView"
 msgid "Method Access"
 msgstr ""
 
-#: web/views/RoleFormView.vue:99
+#: web/views/RoleFormView.vue:107
 msgctxt "web/views/RoleFormView"
 msgid "No Requires on this resource — granting it does not derive Method access."
 msgstr ""
 
-#: web/views/RoleFormView.vue:115
+#: web/views/RoleFormView.vue:123
 msgctxt "web/views/RoleFormView"
 msgid "OneToMany rows are always bound to the current role. All-users or cross-role Record/Field/Method/UI rules belong under Access Control → Access Rules, not here. Model/Application empty means scope-global (all models), which is not the same as all-users audience."
 msgstr ""
 
-#: web/views/RoleFormView.vue:58
+#: web/views/RoleFormView.vue:66
 msgctxt "web/views/RoleFormView"
 msgid "Primary path: check resources in this tree. Checking a resource uniformly derives Method allow for its Requires (UI-Option-A; no read/write split). Advanced → UI Resource Details is a manual bypass only."
 msgstr ""
 
-#: web/views/RoleFormView.vue:149
+#: web/views/RoleFormView.vue:157
 msgctxt "web/views/RoleFormView"
 msgid "RPC allow/deny under deny-default. New rows default to allow; use deny as an explicit brake."
 msgstr ""
 
-#: web/views/RoleFormView.vue:113
+#: web/views/RoleFormView.vue:121
+#: web/views/RoleFormView.vue:7
 msgctxt "web/views/RoleFormView"
 msgid "Record Rules"
 msgstr ""
 
-#: web/views/RoleFormView.vue:40
+#: web/views/RoleFormView.vue:48
 msgctxt "web/views/RoleFormView"
 msgid "Related Data"
 msgstr ""
 
-#: web/views/RoleFormView.vue:33
+#: web/views/RoleFormView.vue:35
 msgctxt "web/views/RoleFormView"
 msgid "Required"
 msgstr ""
 
-#: web/views/RoleFormView.vue:83
+#: web/views/RoleFormView.vue:91
 msgctxt "web/views/RoleFormView"
 msgid "Requires → derived Method RPCs"
 msgstr ""
 
-#: web/views/RoleFormView.vue:50
+#: web/views/RoleFormView.vue:52
 msgctxt "web/views/RoleFormView"
 msgid "Role"
 msgstr ""
 
-#: web/views/RoleFormView.vue:161
+#: web/views/RoleFormView.vue:169
 msgctxt "web/views/RoleFormView"
 msgid "Secondary to the UI Resource Access tree above. Prefer the tree for day-to-day grants."
 msgstr ""
 
-#: web/views/RoleFormView.vue:50
+#: web/views/RoleFormView.vue:58
 msgctxt "web/views/RoleFormView"
 msgid "Select Role"
 msgstr ""
 
-#: web/views/RoleFormView.vue:43
+#: web/views/RoleFormView.vue:51
 msgctxt "web/views/RoleFormView"
 msgid "Select User"
 msgstr ""
 
-#: web/views/RoleFormView.vue:28
+#: web/views/RoleFormView.vue:36
 msgctxt "web/views/RoleFormView"
 msgid "System Information"
 msgstr ""
 
-#: web/views/RoleFormView.vue:114
+#: web/views/RoleFormView.vue:122
 msgctxt "web/views/RoleFormView"
 msgid "This form only edits rules for this role"
 msgstr ""
 
-#: web/views/RoleFormView.vue:55
+#: web/views/RoleFormView.vue:63
 msgctxt "web/views/RoleFormView"
 msgid "UI Resource Access"
 msgstr ""
 
-#: web/views/RoleFormView.vue:159
+#: web/views/RoleFormView.vue:167
 msgctxt "web/views/RoleFormView"
 msgid "UI Resource Details (manual bypass)"
 msgstr ""
 
-#: web/views/RoleFormView.vue:88
+#: web/views/RoleFormView.vue:96
 msgctxt "web/views/RoleFormView"
 msgid "Under UI-Option-A, these RPCs are uniformly Method-allow when this resource is granted (unless a manual Method deny brakes them). Record/Field rules are not derived from UI."
 msgstr ""
 
-#: web/views/RoleFormView.vue:42
+#: web/views/RoleFormView.vue:5
+#: web/views/RoleFormView.vue:50
 msgctxt "web/views/RoleFormView"
 msgid "Users"
 msgstr ""
 
-#: web/views/RoleFormView.vue:120
+#: web/views/RoleFormView.vue:128
 msgctxt "web/views/RoleFormView"
 msgid "Without a matching grant, records are invisible or not writable (deny-default)."
 msgstr ""

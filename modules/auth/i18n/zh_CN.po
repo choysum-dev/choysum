@@ -1,267 +1,267 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
-#: service/models/company_scoped_resource.ts:28
+#: service/models/company_scoped_resource.ts:29
 msgctxt "auth.model.CompanyScopedResource.fields"
 msgid "Company"
 msgstr "公司"
 
-#: service/models/company_scoped_resource.ts:40
+#: service/models/company_scoped_resource.ts:41
 msgctxt "auth.model.CompanyScopedResource.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/role.ts:110
+#: service/models/role.ts:111
 msgctxt "auth.model.Role.fields"
 msgid "Accessible UI Resources"
 msgstr "可访问的界面资源"
 
-#: service/models/role.ts:89
+#: service/models/role.ts:90
 msgctxt "auth.model.Role.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/role.ts:100
+#: service/models/role.ts:101
 msgctxt "auth.model.Role.fields"
 msgid "Built-in"
 msgstr "内置"
 
-#: service/models/role.ts:66
+#: service/models/role.ts:67
 msgctxt "auth.model.Role.fields"
 msgid "Code"
 msgstr "编码"
 
-#: service/models/role.ts:78
+#: service/models/role.ts:79
 msgctxt "auth.model.Role.fields"
 msgid "Description"
 msgstr "描述"
 
-#: service/models/role.ts:36
+#: service/models/role.ts:37
 msgctxt "auth.model.Role.fields"
 msgid "Display Name"
 msgstr "显示名称"
 
-#: service/models/role.ts:185
+#: service/models/role.ts:189
 msgctxt "auth.model.Role.fields"
 msgid "Field Rules"
 msgstr "字段规则"
 
-#: service/models/role.ts:155
+#: service/models/role.ts:159
 msgctxt "auth.model.Role.fields"
 msgid "Implied By Roles"
 msgstr "被以下角色隐含"
 
-#: service/models/role.ts:140
+#: service/models/role.ts:143
 msgctxt "auth.model.Role.fields"
 msgid "Included Roles"
 msgstr "包含的角色"
 
-#: service/models/role.ts:175
+#: service/models/role.ts:179
 msgctxt "auth.model.Role.fields"
 msgid "Method Accesses"
 msgstr "方法访问"
 
-#: service/models/role.ts:54
+#: service/models/role.ts:55
 msgctxt "auth.model.Role.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/role.ts:165
+#: service/models/role.ts:169
 msgctxt "auth.model.Role.fields"
 msgid "Record Rules"
 msgstr "记录规则"
 
-#: service/models/role.ts:195
+#: service/models/role.ts:199
 msgctxt "auth.model.Role.fields"
 msgid "UI Resources"
 msgstr "界面资源"
 
-#: service/models/role.ts:125
+#: service/models/role.ts:127
 msgctxt "auth.model.Role.fields"
 msgid "Users"
 msgstr "用户"
 
-#: service/models/role_field_rule.ts:84 service/models/role_field_rule.ts:98
+#: service/models/role_field_rule.ts:101 service/models/role_field_rule.ts:87
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Allow"
 msgstr "允许"
 
-#: service/models/role_field_rule.ts:39
+#: service/models/role_field_rule.ts:42
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Application"
 msgstr "应用"
 
-#: service/models/role_field_rule.ts:85 service/models/role_field_rule.ts:99
+#: service/models/role_field_rule.ts:102 service/models/role_field_rule.ts:88
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Deny"
 msgstr "拒绝"
 
-#: service/models/role_field_rule.ts:74
+#: service/models/role_field_rule.ts:77
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Field"
 msgstr "字段"
 
-#: service/models/role_field_rule.ts:52
+#: service/models/role_field_rule.ts:55
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Model"
 msgstr "模型"
 
-#: service/models/role_field_rule.ts:88
+#: service/models/role_field_rule.ts:91
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Read"
 msgstr "读"
 
-#: service/models/role_field_rule.ts:26
+#: service/models/role_field_rule.ts:29
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Role"
 msgstr "角色"
 
-#: service/models/role_field_rule.ts:102
+#: service/models/role_field_rule.ts:105
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Write"
 msgstr "写"
 
-#: service/models/role_inheritance.ts:34
+#: service/models/role_inheritance.ts:36
 msgctxt "auth.model.RoleInheritance.fields"
 msgid "Child Role"
 msgstr "子角色"
 
-#: service/models/role_inheritance.ts:24
+#: service/models/role_inheritance.ts:25
 msgctxt "auth.model.RoleInheritance.fields"
 msgid "Parent Role"
 msgstr "父角色"
 
-#: service/models/role_method_access.ts:80
+#: service/models/role_method_access.ts:83
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Allow"
 msgstr "允许"
 
-#: service/models/role_method_access.ts:38
+#: service/models/role_method_access.ts:41
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Application"
 msgstr "应用"
 
-#: service/models/role_method_access.ts:81
+#: service/models/role_method_access.ts:84
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Deny"
 msgstr "拒绝"
 
-#: service/models/role_method_access.ts:98
+#: service/models/role_method_access.ts:101
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Manual"
 msgstr "手动"
 
-#: service/models/role_method_access.ts:84
+#: service/models/role_method_access.ts:87
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Mode"
 msgstr "模式"
 
-#: service/models/role_method_access.ts:51
+#: service/models/role_method_access.ts:54
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Model"
 msgstr "模型"
 
-#: service/models/role_method_access.ts:25
+#: service/models/role_method_access.ts:28
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Role"
 msgstr "角色"
 
-#: service/models/role_method_access.ts:70
+#: service/models/role_method_access.ts:73
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Service"
 msgstr "服务"
 
-#: service/models/role_method_access.ts:104
+#: service/models/role_method_access.ts:107
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Source"
 msgstr "来源"
 
-#: service/models/role_method_access.ts:99
+#: service/models/role_method_access.ts:102
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "UI (legacy)"
 msgstr "界面（遗留）"
 
-#: service/models/role_record_rule.ts:72
+#: service/models/role_record_rule.ts:74
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Application"
 msgstr "应用"
 
-#: service/models/role_record_rule.ts:131
+#: service/models/role_record_rule.ts:133
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Create"
 msgstr "创建"
 
-#: service/models/role_record_rule.ts:141
+#: service/models/role_record_rule.ts:143
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Delete"
 msgstr "删除"
 
-#: service/models/role_record_rule.ts:101
+#: service/models/role_record_rule.ts:103
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Filter Condition"
 msgstr "过滤条件"
 
-#: service/models/role_record_rule.ts:53
+#: service/models/role_record_rule.ts:55
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Grant"
 msgstr "授权"
 
-#: service/models/role_record_rule.ts:59
+#: service/models/role_record_rule.ts:61
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Kind"
 msgstr "种类"
 
-#: service/models/role_record_rule.ts:91
+#: service/models/role_record_rule.ts:93
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Model"
 msgstr "模型"
 
-#: service/models/role_record_rule.ts:111
+#: service/models/role_record_rule.ts:113
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Read"
 msgstr "读"
 
-#: service/models/role_record_rule.ts:54
+#: service/models/role_record_rule.ts:56
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Restrict"
 msgstr "限制"
 
-#: service/models/role_record_rule.ts:42
+#: service/models/role_record_rule.ts:44
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Role"
 msgstr "角色"
 
-#: service/models/role_record_rule.ts:121
+#: service/models/role_record_rule.ts:123
 msgctxt "auth.model.RoleRecordRule.fields"
 msgid "Write"
 msgstr "写"
 
-#: service/models/role_ui_resource.ts:40
+#: service/models/role_ui_resource.ts:42
 msgctxt "auth.model.RoleUiResource.fields"
 msgid "Allow"
 msgstr "允许"
 
-#: service/models/role_ui_resource.ts:59
+#: service/models/role_ui_resource.ts:61
 msgctxt "auth.model.RoleUiResource.fields"
 msgid "Application Scope"
 msgstr "应用范围"
 
-#: service/models/role_ui_resource.ts:41
+#: service/models/role_ui_resource.ts:43
 msgctxt "auth.model.RoleUiResource.fields"
 msgid "Deny"
 msgstr "拒绝"
 
-#: service/models/role_ui_resource.ts:46
+#: service/models/role_ui_resource.ts:48
 msgctxt "auth.model.RoleUiResource.fields"
 msgid "Mode"
 msgstr "模式"
 
-#: service/models/role_ui_resource.ts:30
+#: service/models/role_ui_resource.ts:32
 msgctxt "auth.model.RoleUiResource.fields"
 msgid "Role"
 msgstr "角色"
 
-#: service/models/role_ui_resource.ts:77
+#: service/models/role_ui_resource.ts:79
 msgctxt "auth.model.RoleUiResource.fields"
 msgid "UI Resource"
 msgstr "界面资源"
@@ -291,7 +291,7 @@ msgctxt "auth.model.Session.fields"
 msgid "Last Activity"
 msgstr "最近活动"
 
-#: service/models/session.ts:96
+#: service/models/session.ts:97
 msgctxt "auth.model.Session.fields"
 msgid "Metadata"
 msgstr "元数据"
@@ -351,107 +351,107 @@ msgctxt "auth.model.Token.fields"
 msgid "User"
 msgstr "用户"
 
-#: service/models/user.ts:223
+#: service/models/user.ts:226
 msgctxt "auth.model.User.fields"
 msgid "Accessible Companies"
 msgstr "可访问公司"
 
-#: service/models/user.ts:234
+#: service/models/user.ts:237
 msgctxt "auth.model.User.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/user.ts:147
+#: service/models/user.ts:148
 msgctxt "auth.model.User.fields"
 msgid "Avatar"
 msgstr "头像"
 
-#: service/models/user.ts:213
+#: service/models/user.ts:215
 msgctxt "auth.model.User.fields"
 msgid "Company"
 msgstr "公司"
 
-#: service/models/user.ts:75
+#: service/models/user.ts:76
 msgctxt "auth.model.User.fields"
 msgid "Email"
 msgstr "邮箱"
 
-#: service/models/user.ts:109
+#: service/models/user.ts:110
 msgctxt "auth.model.User.fields"
 msgid "First Name"
 msgstr "名"
 
-#: service/models/user.ts:130
+#: service/models/user.ts:131
 msgctxt "auth.model.User.fields"
 msgid "Full Name"
 msgstr "全名"
 
-#: service/models/user.ts:157
+#: service/models/user.ts:158
 msgctxt "auth.model.User.fields"
 msgid "Language"
 msgstr "语言"
 
-#: service/models/user.ts:244
+#: service/models/user.ts:248
 msgctxt "auth.model.User.fields"
 msgid "Last Login"
 msgstr "最近登录"
 
-#: service/models/user.ts:120
+#: service/models/user.ts:121
 msgctxt "auth.model.User.fields"
 msgid "Last Name"
 msgstr "姓"
 
-#: service/models/user.ts:98
+#: service/models/user.ts:99
 msgctxt "auth.model.User.fields"
 msgid "Password Hash"
 msgstr "密码哈希"
 
-#: service/models/user.ts:86
+#: service/models/user.ts:87
 msgctxt "auth.model.User.fields"
 msgid "Phone"
 msgstr "电话"
 
-#: service/models/user.ts:178
+#: service/models/user.ts:179
 msgctxt "auth.model.User.fields"
 msgid "Preferences"
 msgstr "偏好设置"
 
-#: service/models/user.ts:281
+#: service/models/user.ts:286
 msgctxt "auth.model.User.fields"
 msgid "Roles"
 msgstr "角色"
 
-#: service/models/user.ts:255
+#: service/models/user.ts:259
 msgctxt "auth.model.User.fields"
 msgid "Sessions"
 msgstr "会话"
 
-#: service/models/user.ts:168
+#: service/models/user.ts:169
 msgctxt "auth.model.User.fields"
 msgid "Time Zone"
 msgstr "时区"
 
-#: service/models/user.ts:266
+#: service/models/user.ts:270
 msgctxt "auth.model.User.fields"
 msgid "Tokens"
 msgstr "令牌"
 
-#: service/models/user.ts:64
+#: service/models/user.ts:65
 msgctxt "auth.model.User.fields"
 msgid "Username"
 msgstr "用户名"
 
-#: service/models/user_role.ts:52
+#: service/models/user_role.ts:55
 msgctxt "auth.model.UserRole.fields"
 msgid "Company"
 msgstr "公司"
 
-#: service/models/user_role.ts:39
+#: service/models/user_role.ts:42
 msgctxt "auth.model.UserRole.fields"
 msgid "Role"
 msgstr "角色"
 
-#: service/models/user_role.ts:29
+#: service/models/user_role.ts:31
 msgctxt "auth.model.UserRole.fields"
 msgid "User"
 msgstr "用户"
@@ -516,12 +516,12 @@ msgctxt "service/models/_user_lifecycle_auth"
 msgid "Username is required"
 msgstr "用户名不能为空"
 
-#: service/models/session.ts:113
+#: service/models/session.ts:114
 msgctxt "service/models/session"
 msgid "Failed to revoke session"
 msgstr "撤销会话失败"
 
-#: service/models/session.ts:142
+#: service/models/session.ts:143
 msgctxt "service/models/session"
 msgid "Failed to revoke user sessions"
 msgstr "撤销用户会话失败"
@@ -566,92 +566,92 @@ msgctxt "service/models/token"
 msgid "userId is required"
 msgstr "userId 不能为空"
 
-#: service/models/user.ts:890
+#: service/models/user.ts:921
 msgctxt "service/models/user"
 msgid "Failed to compute field rule spec"
 msgstr "计算字段规则规格失败"
 
-#: service/models/user.ts:299
+#: service/models/user.ts:304
 msgctxt "service/models/user"
 msgid "Invalid IANA timezone: %s"
 msgstr "无效的 IANA 时区：%s"
 
-#: service/models/user.ts:871
+#: service/models/user.ts:902
 msgctxt "service/models/user"
 msgid "Invalid model full name; expected \"<app>.<Model>\""
 msgstr "无效的模型全名；期望 \"<app>.<Model>\""
 
-#: service/models/user.ts:328
+#: service/models/user.ts:333
 msgctxt "service/models/user"
 msgid "Invalid or inactive language: %s"
 msgstr "无效或未启用的语言：%s"
 
-#: service/models/user.ts:642
+#: service/models/user.ts:647
 msgctxt "service/models/user"
 msgid "Logout failed"
 msgstr "退出失败"
 
-#: service/models/user.ts:855
+#: service/models/user.ts:886
 msgctxt "service/models/user"
 msgid "Missing identity information (userId)"
 msgstr "缺少身份信息（userId）"
 
-#: service/models/user.ts:863
+#: service/models/user.ts:894
 msgctxt "service/models/user"
 msgid "Missing model name (model)"
 msgstr "缺少模型名称（model）"
 
-#: service/models/user.ts:614
+#: service/models/user.ts:619
 msgctxt "service/models/user"
 msgid "Switch company scope failed"
 msgstr "切换公司范围失败"
 
-#: service/models/user.ts:631
+#: service/models/user.ts:636
 msgctxt "service/models/user"
 msgid "Token is required"
 msgstr "令牌不能为空"
 
-#: service/models/user.ts:462
+#: service/models/user.ts:467
 msgctxt "service/models/user"
 msgid "Token refresh failed"
 msgstr "令牌刷新失败"
 
-#: service/models/user.ts:481
+#: service/models/user.ts:486
 msgctxt "service/models/user"
 msgid "User is not logged in"
 msgstr "用户未登录"
 
-#: service/models/user.ts:498
+#: service/models/user.ts:503
 msgctxt "service/models/user"
 msgid "activeCompanyId cannot be empty"
 msgstr "activeCompanyId 不能为空"
 
-#: service/models/user.ts:549
+#: service/models/user.ts:554
 msgctxt "service/models/user"
 msgid "activeCompanyId is outside the allowed company scope"
 msgstr "activeCompanyId 不在允许的公司范围内"
 
-#: service/models/user.ts:564
+#: service/models/user.ts:569
 msgctxt "service/models/user"
 msgid "activeCompanyId must be included in enabledCompanyIds"
 msgstr "activeCompanyId 必须包含在 enabledCompanyIds 中"
 
-#: service/models/user.ts:533
+#: service/models/user.ts:538
 msgctxt "service/models/user"
 msgid "enabledCompanyIds contains an unauthorized company"
 msgstr "enabledCompanyIds 包含未授权的公司"
 
-#: service/models/user.ts:517
+#: service/models/user.ts:522
 msgctxt "service/models/user"
 msgid "enabledCompanyIds must be a string[] or omitted"
 msgstr "enabledCompanyIds 必须是 string[] 或省略"
 
-#: service/models/user.ts:411
+#: service/models/user.ts:416
 msgctxt "service/models/user@Login"
 msgid "Login failed: unable to create token pair"
 msgstr "登录失败：无法创建令牌对"
 
-#: service/models/user.ts:372
+#: service/models/user.ts:377
 msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr "用户注册失败"
@@ -1356,162 +1356,162 @@ msgctxt "web/views/RoleFieldRuleListView"
 msgid "Field Rule"
 msgstr "字段规则"
 
-#: web/views/RoleFormView.vue:66
+#: web/views/RoleFormView.vue:74
 msgctxt "web/views/RoleFormView"
 msgid "Accessible UI Resources"
 msgstr "可访问的界面资源"
 
-#: web/views/RoleFormView.vue:104
+#: web/views/RoleFormView.vue:112
 msgctxt "web/views/RoleFormView"
 msgid "Advanced Mode"
 msgstr "高级模式"
 
-#: web/views/RoleFormView.vue:4
+#: web/views/RoleFormView.vue:12
 msgctxt "web/views/RoleFormView"
 msgid "Basic Information"
 msgstr "基本信息"
 
-#: web/views/RoleFormView.vue:64
+#: web/views/RoleFormView.vue:72
 msgctxt "web/views/RoleFormView"
 msgid "Click a node label to inspect Requires → derived RPCs (checkbox still controls the grant)."
 msgstr "点击节点标签可查看 Requires → 派生 RPC（勾选框仍控制授权）。"
 
-#: web/views/RoleFormView.vue:107
+#: web/views/RoleFormView.vue:115
 msgctxt "web/views/RoleFormView"
 msgid "Configure record/field/RPC grants under deny-default. The UI resource tree does not derive Record or Field rules; Advanced is the main place for data and method access."
 msgstr "在 deny-default 下配置记录/字段/RPC 授权。UI 资源树不会派生 Record/Field 规则；高级模式是数据权与方法权的主配置面。"
 
-#: web/views/RoleFormView.vue:50
+#: web/views/RoleFormView.vue:52
 msgctxt "web/views/RoleFormView"
 msgid "Copy Role"
 msgstr "复制角色"
 
-#: web/views/RoleFormView.vue:50
+#: web/views/RoleFormView.vue:52
 msgctxt "web/views/RoleFormView"
 msgid "Create Role"
 msgstr "新建角色"
 
-#: web/views/RoleFormView.vue:50
+#: web/views/RoleFormView.vue:52
 msgctxt "web/views/RoleFormView"
 msgid "Delete Role"
 msgstr "删除角色"
 
-#: web/views/RoleFormView.vue:50
+#: web/views/RoleFormView.vue:52
 msgctxt "web/views/RoleFormView"
 msgid "Edit Role"
 msgstr "编辑角色"
 
-#: web/views/RoleFormView.vue:134
+#: web/views/RoleFormView.vue:142
 msgctxt "web/views/RoleFormView"
 msgid "Field Rules"
 msgstr "字段规则"
 
-#: web/views/RoleFormView.vue:136
+#: web/views/RoleFormView.vue:144
 msgctxt "web/views/RoleFormView"
 msgid "Field visibility under deny-default. Leave Application/Model/Field empty for wider scopes."
 msgstr "deny-default 下的字段可见性。应用/模型/字段留空表示更宽 scope。"
 
-#: web/views/RoleFormView.vue:49
+#: web/views/RoleFormView.vue:57 web/views/RoleFormView.vue:6
 msgctxt "web/views/RoleFormView"
 msgid "Included Roles"
 msgstr "包含的角色"
 
-#: web/views/RoleFormView.vue:147
+#: web/views/RoleFormView.vue:155
 msgctxt "web/views/RoleFormView"
 msgid "Method Access"
 msgstr "方法访问"
 
-#: web/views/RoleFormView.vue:99
+#: web/views/RoleFormView.vue:107
 msgctxt "web/views/RoleFormView"
 msgid "No Requires on this resource — granting it does not derive Method access."
 msgstr "该资源没有 Requires — 授予它不会派生 Method 访问。"
 
-#: web/views/RoleFormView.vue:115
+#: web/views/RoleFormView.vue:123
 msgctxt "web/views/RoleFormView"
 msgid "OneToMany rows are always bound to the current role. All-users or cross-role Record/Field/Method/UI rules belong under Access Control → Access Rules, not here. Model/Application empty means scope-global (all models), which is not the same as all-users audience."
 msgstr "一对多行始终绑定到当前角色。面向全体用户或跨角色的记录/字段/方法/UI 规则请到「访问控制 → 授权规则」管理，不要在此编辑。模型/应用为空表示作用域全局（全部模型），与「全体用户」适用轴不是同一概念。"
 
-#: web/views/RoleFormView.vue:58
+#: web/views/RoleFormView.vue:66
 msgctxt "web/views/RoleFormView"
 msgid "Primary path: check resources in this tree. Checking a resource uniformly derives Method allow for its Requires (UI-Option-A; no read/write split). Advanced → UI Resource Details is a manual bypass only."
 msgstr "主路径：在此树中勾选资源。勾选资源会对其 Requires 一律派生 Method allow（UI-Option-A；不分读写）。高级模式 → UI 资源明细仅为手动旁路。"
 
-#: web/views/RoleFormView.vue:149
+#: web/views/RoleFormView.vue:157
 msgctxt "web/views/RoleFormView"
 msgid "RPC allow/deny under deny-default. New rows default to allow; use deny as an explicit brake."
 msgstr "deny-default 下的 RPC 允许/拒绝。新建默认 allow；用 deny 作显式刹车。"
 
-#: web/views/RoleFormView.vue:113
+#: web/views/RoleFormView.vue:121 web/views/RoleFormView.vue:7
 msgctxt "web/views/RoleFormView"
 msgid "Record Rules"
 msgstr "记录规则"
 
-#: web/views/RoleFormView.vue:40
+#: web/views/RoleFormView.vue:48
 msgctxt "web/views/RoleFormView"
 msgid "Related Data"
 msgstr "关联数据"
 
-#: web/views/RoleFormView.vue:33
+#: web/views/RoleFormView.vue:35
 msgctxt "web/views/RoleFormView"
 msgid "Required"
 msgstr "必填"
 
-#: web/views/RoleFormView.vue:83
+#: web/views/RoleFormView.vue:91
 msgctxt "web/views/RoleFormView"
 msgid "Requires → derived Method RPCs"
 msgstr "Requires → 派生 Method RPC"
 
-#: web/views/RoleFormView.vue:50
+#: web/views/RoleFormView.vue:52
 msgctxt "web/views/RoleFormView"
 msgid "Role"
 msgstr "角色"
 
-#: web/views/RoleFormView.vue:161
+#: web/views/RoleFormView.vue:169
 msgctxt "web/views/RoleFormView"
 msgid "Secondary to the UI Resource Access tree above. Prefer the tree for day-to-day grants."
 msgstr "相对上方「UI 资源访问」树为旁路；日常授权请优先用树。"
 
-#: web/views/RoleFormView.vue:50
+#: web/views/RoleFormView.vue:58
 msgctxt "web/views/RoleFormView"
 msgid "Select Role"
 msgstr "选择角色"
 
-#: web/views/RoleFormView.vue:43
+#: web/views/RoleFormView.vue:51
 msgctxt "web/views/RoleFormView"
 msgid "Select User"
 msgstr "选择用户"
 
-#: web/views/RoleFormView.vue:28
+#: web/views/RoleFormView.vue:36
 msgctxt "web/views/RoleFormView"
 msgid "System Information"
 msgstr "系统信息"
 
-#: web/views/RoleFormView.vue:114
+#: web/views/RoleFormView.vue:122
 msgctxt "web/views/RoleFormView"
 msgid "This form only edits rules for this role"
 msgstr "本表单只编辑当前角色的规则"
 
-#: web/views/RoleFormView.vue:55
+#: web/views/RoleFormView.vue:63
 msgctxt "web/views/RoleFormView"
 msgid "UI Resource Access"
 msgstr "界面资源访问"
 
-#: web/views/RoleFormView.vue:159
+#: web/views/RoleFormView.vue:167
 msgctxt "web/views/RoleFormView"
 msgid "UI Resource Details (manual bypass)"
 msgstr "界面资源明细（手动旁路）"
 
-#: web/views/RoleFormView.vue:88
+#: web/views/RoleFormView.vue:96
 msgctxt "web/views/RoleFormView"
 msgid "Under UI-Option-A, these RPCs are uniformly Method-allow when this resource is granted (unless a manual Method deny brakes them). Record/Field rules are not derived from UI."
 msgstr "在 UI-Option-A 下，授予该资源后这些 RPC 一律 Method-allow（除非手动 Method deny 刹车）。Record/Field 规则不会从 UI 派生。"
 
-#: web/views/RoleFormView.vue:42
+#: web/views/RoleFormView.vue:5 web/views/RoleFormView.vue:50
 msgctxt "web/views/RoleFormView"
 msgid "Users"
 msgstr "用户"
 
-#: web/views/RoleFormView.vue:120
+#: web/views/RoleFormView.vue:128
 msgctxt "web/views/RoleFormView"
 msgid "Without a matching grant, records are invisible or not writable (deny-default)."
 msgstr "没有 matching grant 时，记录不可见或不可写（deny-default）。"
@@ -2046,10 +2046,3 @@ msgctxt "web/views/UserSearchView"
 msgid "Active"
 msgstr "启用"
 
-#~ msgctxt "auth.model.RoleMethodAccess.fields"
-#~ msgid "UI"
-#~ msgstr "界面"
-
-#~ msgctxt "web/views/RoleMethodAccessFormView"
-#~ msgid "Role is required. New rows default to Mode=deny on the model; prefer allow for grants and deny as an explicit brake."
-#~ msgstr "角色为必填。模型默认 Mode=deny；授权请用 allow，deny 用作显式刹车。"

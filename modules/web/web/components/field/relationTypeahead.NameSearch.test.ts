@@ -356,6 +356,7 @@ describe('relation typeahead NameCreate wiring', () => {
       props: {
         binding,
         renderMode: 'form',
+        allowCreate: true,
         createActionId: '',
         nameField: 'Code',
       },
@@ -386,29 +387,31 @@ describe('relation typeahead NameCreate wiring', () => {
     expect(ElMessage.error).toHaveBeenCalledWith('denied2');
   });
 
-  it('hides Create entry when allowCreate is false', async () => {
+  it('hides Create entry by default and when allowCreate is false', async () => {
     for (const [Comp, testId, makeBinding] of [
       [OManyToOneField, 'o-m2o-name-create', makeM2OBinding],
       [OManyToOneRefField, 'o-m2o-name-create', makeM2OBinding],
       [OManyToManyTagsField, 'o-m2m-name-create', makeM2MBinding],
       [OManyToManyRefTagsField, 'o-m2m-name-create', makeM2MBinding],
     ] as const) {
-      const wrapper = mount(Comp as any, {
-        props: {
-          binding: makeBinding({
-            NameSearch: vi.fn(async () => []),
-            NameCreate: vi.fn(),
-            Search: vi.fn(async () => []),
-            fullModelName: 'partner.Partner',
-          }),
-          renderMode: 'form',
-          allowCreate: false,
-          createActionId: '',
-        },
-        global: { stubs: fieldStubs },
-      });
-      await clickRemote(wrapper);
-      expect(wrapper.find(`[data-testid="${testId}"]`).exists()).toBe(false);
+      for (const allowCreate of [undefined, false] as const) {
+        const wrapper = mount(Comp as any, {
+          props: {
+            binding: makeBinding({
+              NameSearch: vi.fn(async () => []),
+              NameCreate: vi.fn(),
+              Search: vi.fn(async () => []),
+              fullModelName: 'partner.Partner',
+            }),
+            renderMode: 'form',
+            ...(allowCreate === false ? { allowCreate: false } : {}),
+            createActionId: '',
+          },
+          global: { stubs: fieldStubs },
+        });
+        await clickRemote(wrapper);
+        expect(wrapper.find(`[data-testid="${testId}"]`).exists()).toBe(false);
+      }
     }
   });
 
@@ -421,7 +424,7 @@ describe('relation typeahead NameCreate wiring', () => {
       fullModelName: 'partner.Partner',
     });
     const wrapper = mount(OManyToOneRefField as any, {
-      props: { binding, renderMode: 'form', createActionId: '' },
+      props: { binding, renderMode: 'form', allowCreate: true, createActionId: '' },
       global: { stubs: fieldStubs },
     });
     const btn = await openCreate(wrapper, 'o-m2o-name-create');
@@ -452,7 +455,7 @@ describe('relation typeahead NameCreate wiring', () => {
       fullModelName: 'partner.Partner',
     });
     const wrapper = mount(OManyToManyTagsField as any, {
-      props: { binding, renderMode: 'form', createActionId: '' },
+      props: { binding, renderMode: 'form', allowCreate: true, createActionId: '' },
       global: { stubs: fieldStubs },
     });
     const btn = await openCreate(wrapper, 'o-m2m-name-create');
@@ -485,7 +488,7 @@ describe('relation typeahead NameCreate wiring', () => {
       fullModelName: 'partner.Partner',
     });
     const wrapper = mount(OManyToManyRefTagsField as any, {
-      props: { binding, renderMode: 'form', createActionId: '', nameField: 'Title' },
+      props: { binding, renderMode: 'form', allowCreate: true, createActionId: '', nameField: 'Title' },
       global: { stubs: fieldStubs },
     });
     const btn = await openCreate(wrapper, 'o-m2m-name-create');

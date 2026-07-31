@@ -7,32 +7,32 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: service/orm/model/model.ts:403
+#: service/orm/model/model.ts:431
 msgctxt "core.model.BaseModel.fields"
 msgid "Created At"
 msgstr ""
 
-#: service/orm/model/model.ts:425
+#: service/orm/model/model.ts:453
 msgctxt "core.model.BaseModel.fields"
 msgid "Deleted At"
 msgstr ""
 
-#: service/orm/model/model.ts:381
+#: service/orm/model/model.ts:409
 msgctxt "core.model.BaseModel.fields"
 msgid "Display Name"
 msgstr ""
 
-#: service/orm/metadata/storage.ts:568
+#: service/orm/metadata/storage.ts:575
 msgctxt "core.model.BaseModel.fields"
 msgid "Parent Path"
 msgstr ""
 
-#: service/orm/model/model.ts:414
+#: service/orm/model/model.ts:442
 msgctxt "core.model.BaseModel.fields"
 msgid "Updated At"
 msgstr ""
 
-#: service/orm/model/model.ts:266
+#: service/orm/model/model.ts:275
 msgctxt "service/orm/model/model"
 msgid "current user is required"
 msgstr ""
@@ -48,7 +48,7 @@ msgctxt "service/orm/model/model_instance"
 msgid "Record with Id %s no longer exists"
 msgstr ""
 
-#: service/orm/model/model_read.ts:317
+#: service/orm/model/model_read.ts:318
 msgctxt "service/orm/model/model_read"
 msgid "%s not found"
 msgstr ""
@@ -63,24 +63,34 @@ msgctxt "service/orm/model/model_update"
 msgid "Update failed: Record %s not found."
 msgstr ""
 
-#: service/orm/repository/authz/company_scope.ts:84
+#: service/orm/repository/authz/company_scope.ts:158
 msgctxt "service/orm/repository/authz/company_scope"
 msgid "company is not in ctx.enabledCompanyIds"
 msgstr ""
 
-#: service/orm/repository/authz/company_scope.ts:103
+#: service/orm/repository/authz/company_scope.ts:74
 msgctxt "service/orm/repository/authz/company_scope"
-msgid "companyScoped model is missing CompanyId field"
+msgid "companyField model is missing ownership field"
 msgstr ""
 
-#: service/orm/repository/authz/company_scope.ts:174
+#: service/orm/repository/authz/company_scope.ts:242
 msgctxt "service/orm/repository/authz/company_scope"
 msgid "missing ctx.activeCompanyId for company scoped create"
 msgstr ""
 
-#: service/orm/repository/authz/company_scope.ts:114
+#: service/orm/repository/authz/company_scope.ts:179
 msgctxt "service/orm/repository/authz/company_scope"
 msgid "missing ctx.enabledCompanyIds/activeCompanyId for company scoped operation"
+msgstr ""
+
+#: service/orm/repository/authz/company_scope.ts:65
+msgctxt "service/orm/repository/authz/company_scope"
+msgid "model is not company-isolated"
+msgstr ""
+
+#: service/orm/repository/authz/company_scope.ts:106
+msgctxt "service/orm/repository/authz/company_scope"
+msgid "ownership field cannot be null on private company-isolated model"
 msgstr ""
 
 #: service/orm/repository/authz/field_rule_helpers.ts:177
@@ -181,23 +191,23 @@ msgctxt "service/orm/repository/validation/kernel"
 msgid "Field \"%s\" must be a valid decimal that satisfies the precision and scale limits"
 msgstr ""
 
-#: service/orm/repository/write/create_helpers.ts:45
+#: service/orm/repository/write/create_helpers.ts:46
 msgctxt "service/orm/repository/write/create_helpers"
 msgid "record rule denied"
 msgstr ""
 
-#: service/runtime/validation/engine.ts:193
+#: service/runtime/validation/engine.ts:209
 msgctxt "service/runtime/validation/engine"
 msgid "field \"%s\" does not exist on model metadata and cannot be written"
 msgstr ""
 
-#: service/runtime/validation/engine.ts:226
+#: service/runtime/validation/engine.ts:242
 msgctxt "service/runtime/validation/engine"
 msgid "field \"%s\" is computed and cannot be written directly"
 msgstr ""
 
-#: service/runtime/validation/engine.ts:180
-#: service/runtime/validation/engine.ts:215
+#: service/runtime/validation/engine.ts:196
+#: service/runtime/validation/engine.ts:231
 msgctxt "service/runtime/validation/engine"
 msgid "field \"%s\" is select-only and cannot be written"
 msgstr ""
@@ -207,19 +217,19 @@ msgctxt "service/runtime/validation/engine"
 msgid "model \"%s\" is readonly and cannot be written"
 msgstr ""
 
-#: service/runtime/validation/engine.ts:349
+#: service/runtime/validation/engine.ts:373
 msgctxt "service/runtime/validation/engine"
 msgid "reference \"%s\" belongs to company \"%s\", which is incompatible with parent company \"%s\""
 msgstr ""
 
-#: service/runtime/validation/engine.ts:251
-#: service/runtime/validation/engine.ts:275
-#: service/runtime/validation/engine.ts:330
+#: service/runtime/validation/engine.ts:274
+#: service/runtime/validation/engine.ts:298
+#: service/runtime/validation/engine.ts:354
 msgctxt "service/runtime/validation/engine"
 msgid "reference \"%s\" points to company \"%s\", which is outside ctx.enabledCompanyIds"
 msgstr ""
 
-#: service/runtime/validation/engine.ts:306
+#: service/runtime/validation/engine.ts:330
 msgctxt "service/runtime/validation/engine"
 msgid "reference \"%s\" with id \"%s\" is not visible in current company scope"
 msgstr ""

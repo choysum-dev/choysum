@@ -156,7 +156,7 @@ const props = withDefaults(
     searchViewTitle?: string;
     searchViewWidth?: string | number;
 
-    /** Quick-create via NameCreate (PR-P2-M1). Default true; gated by create UI action. */
+    /** Quick-create via NameCreate (PR-P2-M1). Default false (opt-in); gated by create UI action. */
     allowCreate?: boolean;
     /** Target model write field for NameCreate; omit → BE uses Name. */
     nameField?: string;
@@ -192,7 +192,7 @@ const props = withDefaults(
     width: '100%',
     searchViewTitle: '',
     searchViewWidth: '70%',
-    allowCreate: true,
+    allowCreate: false,
     required: false,
     readonly: false,
     visible: true,
@@ -244,7 +244,7 @@ const vm = getCurrentInstance();
 const { hasAction } = usePermission();
 const showNameCreateEntry = computed(() =>
   shouldShowNameCreateEntry({
-    allowCreate: props.allowCreate !== false,
+    allowCreate: props.allowCreate === true,
     hasKeyword: isSearching.value,
     relationQualifiedName: relationStore.value?.fullModelName,
     createActionId: props.createActionId,
