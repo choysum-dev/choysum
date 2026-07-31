@@ -1460,12 +1460,24 @@ func TestTypeCachePathForURL_Various(t *testing.T) {
 			"https://cdn.jsdelivr.net/npm/pkg@1.0.0/index.d.ts",
 			"cdn.jsdelivr.net_npm_pkg@1.0.0_index.d.ts.d.ts",
 		},
+		{
+			// ".." remains literal after flattening separators; must not collide with "__".
+			"https://esm.sh/foo/../bar.d.ts",
+			"esm.sh_foo_.._bar.d.ts.d.ts",
+		},
 	}
 	for _, tt := range tests {
 		got := typeCachePathForURL(dir, tt.url)
 		if filepath.Base(got) != tt.want {
 			t.Fatalf("typeCachePathForURL(%q) base = %q, want %q", tt.url, filepath.Base(got), tt.want)
 		}
+	}
+
+	// Distinct URLs that only differ by ".." vs "__" must not share a cache file.
+	dotdot := typeCachePathForURL(dir, "https://esm.sh/foo/../bar.d.ts")
+	dunder := typeCachePathForURL(dir, "https://esm.sh/foo/__/bar.d.ts")
+	if filepath.Base(dotdot) == filepath.Base(dunder) {
+		t.Fatalf("cache collision: %q and %q map to the same file", "foo/../bar", "foo/__/bar")
 	}
 }
 
@@ -2005,5 +2017,269 @@ func TestEnsureTsconfigCompilerTypeRoots_MissingTsconfig(t *testing.T) {
 	}
 	if !strings.Contains(string(data), `"typeRoots"`) {
 		t.Fatalf("generated tsconfig missing typeRoots: %s", string(data))
+	}
+}
+
+func TestWriteTypeCacheFile_PathGuardBranches(t *testing.T) {
+	dir := t.TempDir()
+	typesDir := filepath.Join(dir, "types")
+	if err := os.MkdirAll(typesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("empty types dir", func(t *testing.T) {
+		err := writeTypeCacheFile("", filepath.Join(typesDir, "x.d.ts"), []byte("export {};"))
+		if err == nil || !strings.Contains(err.Error(), "types dir is empty") {
+			t.Fatalf("expected empty types dir error, got %v", err)
+		}
+	})
+
+	t.Run("types dir abs error", func(t *testing.T) {
+		old := filepathAbs
+		t.Cleanup(func() { filepathAbs = old })
+		filepathAbs = func(string) (string, error) { return "", errors.New("abs types boom") }
+		err := writeTypeCacheFile(typesDir, filepath.Join(typesDir, "x.d.ts"), []byte("export {};"))
+		if err == nil || !strings.Contains(err.Error(), "absolute types dir") {
+			t.Fatalf("expected absolute types dir error, got %v", err)
+		}
+	})
+
+	t.Run("cache abs error", func(t *testing.T) {
+		old := filepathAbs
+		t.Cleanup(func() { filepathAbs = old })
+		filepathAbs = func(p string) (string, error) {
+			if strings.Contains(p, ".d.ts") {
+				return "", errors.New("abs cache boom")
+			}
+			return filepath.Abs(p)
+		}
+		err := writeTypeCacheFile(typesDir, filepath.Join(typesDir, "x.d.ts"), []byte("export {};"))
+		if err == nil || !strings.Contains(err.Error(), "absolute target path") {
+			t.Fatalf("expected absolute target path error, got %v", err)
+		}
+	})
+}
+
+func TestResolveAndValidateTypeCachePath_GuardBranches(t *testing.T) {
+	dir := t.TempDir()
+	typesDir := filepath.Join(dir, "types")
+	if err := os.MkdirAll(typesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := resolveAndValidateTypeCachePath("", filepath.Join(typesDir, "a.d.ts")); err == nil {
+		t.Fatal("expected empty types dir error")
+	}
+	if _, err := resolveAndValidateTypeCachePath(typesDir, "  "); err == nil {
+		t.Fatal("expected empty target path error")
+	}
+
+	t.Run("types abs error", func(t *testing.T) {
+		old := filepathAbs
+		t.Cleanup(func() { filepathAbs = old })
+		filepathAbs = func(string) (string, error) { return "", errors.New("abs types boom") }
+		if _, err := resolveAndValidateTypeCachePath(typesDir, filepath.Join(typesDir, "a.d.ts")); err == nil || !strings.Contains(err.Error(), "absolute types dir") {
+			t.Fatalf("expected absolute types dir error, got %v", err)
+		}
+	})
+
+	t.Run("target abs error", func(t *testing.T) {
+		old := filepathAbs
+		t.Cleanup(func() { filepathAbs = old })
+		filepathAbs = func(p string) (string, error) {
+			if strings.Contains(p, "a.d.ts") {
+				return "", errors.New("abs target boom")
+			}
+			return filepath.Abs(p)
+		}
+		if _, err := resolveAndValidateTypeCachePath(typesDir, filepath.Join(typesDir, "a.d.ts")); err == nil || !strings.Contains(err.Error(), "absolute target path") {
+			t.Fatalf("expected absolute target path error, got %v", err)
+		}
+	})
+
+	got, err := resolveAndValidateTypeCachePath(typesDir, filepath.Join(typesDir, "ok.d.ts"))
+	if err != nil {
+		t.Fatalf("expected valid path, got %v", err)
+	}
+	if filepath.Base(got) != "ok.d.ts" {
+		t.Fatalf("unexpected validated path %q", got)
+	}
+}
+
+func TestFetchTypeRecursive_PathGuardBranches(t *testing.T) {
+	typesDir := t.TempDir()
+	state := newTypeFetchState(defaultTypeFetchParallelism)
+
+	t.Run("empty types dir", func(t *testing.T) {
+		_, _, err := fetchTypeRecursive(context.Background(), http.DefaultClient, "", "https://example.com/pkg.d.ts", "pkg", "1.0.0", state, nil)
+		if err == nil || !strings.Contains(err.Error(), "types dir is empty") {
+			t.Fatalf("expected empty types dir error, got %v", err)
+		}
+	})
+
+	t.Run("types abs error", func(t *testing.T) {
+		old := filepathAbs
+		t.Cleanup(func() { filepathAbs = old })
+		filepathAbs = func(string) (string, error) { return "", errors.New("abs types boom") }
+		_, _, err := fetchTypeRecursive(context.Background(), http.DefaultClient, typesDir, "https://example.com/pkg.d.ts", "pkg", "1.0.0", state, nil)
+		if err == nil || !strings.Contains(err.Error(), "absolute types dir") {
+			t.Fatalf("expected absolute types dir error, got %v", err)
+		}
+	})
+
+	t.Run("cache abs error", func(t *testing.T) {
+		old := filepathAbs
+		t.Cleanup(func() { filepathAbs = old })
+		filepathAbs = func(p string) (string, error) {
+			if strings.Contains(p, ".d.ts") {
+				return "", errors.New("abs cache boom")
+			}
+			return filepath.Abs(p)
+		}
+		_, _, err := fetchTypeRecursive(context.Background(), http.DefaultClient, typesDir, "https://example.com/pkg.d.ts", "pkg", "1.0.0", state, nil)
+		if err == nil || !strings.Contains(err.Error(), "absolute target path") {
+			t.Fatalf("expected absolute target path error, got %v", err)
+		}
+	})
+
+	t.Run("hasprefix escape", func(t *testing.T) {
+		old := filepathAbs
+		t.Cleanup(func() { filepathAbs = old })
+		filepathAbs = func(p string) (string, error) {
+			if strings.Contains(p, ".d.ts") {
+				return filepath.Join(t.TempDir(), "outside.d.ts"), nil
+			}
+			return filepath.Abs(p)
+		}
+		_, _, err := fetchTypeRecursive(context.Background(), http.DefaultClient, typesDir, "https://example.com/pkg.d.ts", "pkg", "1.0.0", state, nil)
+		if err == nil || !strings.Contains(err.Error(), "escapes types dir") {
+			t.Fatalf("expected escapes types dir error, got %v", err)
+		}
+	})
+}
+
+func TestHasMissingLocalCachedImports_AbsAndEscapeBranches(t *testing.T) {
+	dir := t.TempDir()
+	cacheFile := filepath.Join(dir, "root.d.ts")
+	if err := os.WriteFile(cacheFile, []byte("export {};"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("types abs error continues", func(t *testing.T) {
+		old := filepathAbs
+		t.Cleanup(func() { filepathAbs = old })
+		filepathAbs = func(string) (string, error) { return "", errors.New("abs boom") }
+		if hasMissingLocalCachedImports(dir, cacheFile, []string{"./missing.d.ts"}) {
+			t.Fatal("expected abs error to skip candidate without reporting missing")
+		}
+	})
+
+	t.Run("candidate abs error continues", func(t *testing.T) {
+		old := filepathAbs
+		t.Cleanup(func() { filepathAbs = old })
+		filepathAbs = func(p string) (string, error) {
+			if strings.Contains(p, "missing.d.ts") {
+				return "", errors.New("abs candidate boom")
+			}
+			return filepath.Abs(p)
+		}
+		if hasMissingLocalCachedImports(dir, cacheFile, []string{"./missing.d.ts"}) {
+			t.Fatal("expected candidate abs error to skip without reporting missing")
+		}
+	})
+
+	t.Run("escape continues", func(t *testing.T) {
+		old := filepathAbs
+		t.Cleanup(func() { filepathAbs = old })
+		filepathAbs = func(p string) (string, error) {
+			if strings.Contains(p, "missing.d.ts") {
+				return filepath.Join(t.TempDir(), "outside.d.ts"), nil
+			}
+			return filepath.Abs(p)
+		}
+		if hasMissingLocalCachedImports(dir, cacheFile, []string{"./missing.d.ts"}) {
+			t.Fatal("expected escaped candidate to be skipped")
+		}
+	})
+}
+
+func TestEnsureTsconfigCompilerTypeRoots_SkipsOutsideCachedPath(t *testing.T) {
+	dir := t.TempDir()
+	modulesDir := filepath.Join(dir, "modules")
+	tsconfigPath := filepath.Join(modulesDir, "tsconfig.json")
+	if err := os.MkdirAll(modulesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(tsconfigPath, []byte(`{"compilerOptions":{"types":["node"]}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	typesDir := filepath.Join(dir, "types")
+	if err := os.MkdirAll(typesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(dir, "outside.d.ts")
+	if err := os.WriteFile(outside, []byte("declare const x: 1;"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	links := []CompilerTypeRootLink{{TypeName: "node", CachedPath: outside}}
+	if err := EnsureTsconfigCompilerTypeRoots(tsconfigPath, typesDir, links); err != nil {
+		t.Fatalf("EnsureTsconfigCompilerTypeRoots failed: %v", err)
+	}
+	bridgePath := filepath.Join(typesDir, "typeRoots", "node", "index.d.ts")
+	if _, err := os.Stat(bridgePath); !os.IsNotExist(err) {
+		t.Fatalf("expected outside cached path to be skipped, bridge err=%v", err)
+	}
+}
+
+func TestEnsureTsconfigCompilerTypeRoots_RelativeCachedPathAbsError(t *testing.T) {
+	dir := t.TempDir()
+	modulesDir := filepath.Join(dir, "modules")
+	tsconfigPath := filepath.Join(modulesDir, "tsconfig.json")
+	if err := os.MkdirAll(modulesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(tsconfigPath, []byte(`{"compilerOptions":{"types":["node"]}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	typesDir := filepath.Join(dir, "types")
+	if err := os.MkdirAll(typesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	old := filepathAbs
+	t.Cleanup(func() { filepathAbs = old })
+	filepathAbs = func(p string) (string, error) {
+		// Absolute typesDir Abs succeeds; relative CachedPath Abs fails.
+		if filepath.IsAbs(p) {
+			return filepath.Abs(p)
+		}
+		return "", errors.New("abs relative boom")
+	}
+	links := []CompilerTypeRootLink{{TypeName: "node", CachedPath: "relative-node.d.ts"}}
+	if err := EnsureTsconfigCompilerTypeRoots(tsconfigPath, typesDir, links); err != nil {
+		t.Fatalf("expected relative abs failure to skip link, got %v", err)
+	}
+	bridgePath := filepath.Join(typesDir, "typeRoots", "node", "index.d.ts")
+	if _, err := os.Stat(bridgePath); !os.IsNotExist(err) {
+		t.Fatalf("expected relative abs failure to skip bridge, err=%v", err)
+	}
+}
+
+func TestEnsureTsconfigCompilerTypeRoots_AbsError(t *testing.T) {
+	dir := t.TempDir()
+	tsconfigPath := filepath.Join(dir, "modules", "tsconfig.json")
+	if err := os.MkdirAll(filepath.Dir(tsconfigPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(tsconfigPath, []byte(`{"compilerOptions":{}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	old := filepathAbs
+	t.Cleanup(func() { filepathAbs = old })
+	filepathAbs = func(string) (string, error) { return "", errors.New("abs boom") }
+	links := []CompilerTypeRootLink{{TypeName: "node", CachedPath: filepath.Join(dir, "types", "x.d.ts")}}
+	if err := EnsureTsconfigCompilerTypeRoots(tsconfigPath, filepath.Join(dir, "types"), links); err == nil || !strings.Contains(err.Error(), "absolute types dir") {
+		t.Fatalf("expected absolute types dir error, got %v", err)
 	}
 }
