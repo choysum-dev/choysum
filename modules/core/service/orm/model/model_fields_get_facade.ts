@@ -240,6 +240,9 @@ function buildFieldMeta(
   if (field.copy === false) {
     meta.copy = false;
   }
+  if (field.readonly === true) {
+    meta.isReadonly = true;
+  }
   const hintSize = field.storageHints?.size;
   if (typeof hintSize === 'number' && Number.isInteger(hintSize) && hintSize > 0 && meta.size == null) {
     meta.size = hintSize;
@@ -268,8 +271,9 @@ function projectAttributes(meta: FieldsGetFieldMeta, attributes: string[] | unde
  *
  * - Filters deny-read fields (D11).
  * - Deny-write fields remain visible with `isReadonly: true` (P5).
+ * - Declarative `@Field({ readonly: true })` also forces `isReadonly` (PR-P2-F2).
  * - Unknown `fields` names are omitted.
- * - `attributes` narrows keys but always keeps `type`; deny-write always forces `isReadonly`.
+ * - `attributes` narrows keys but always keeps `type`; deny-write / declarative readonly always force `isReadonly`.
  */
 export async function fieldsGetModels(
   ModelCtor: ModelFieldsGetCtor,
@@ -311,7 +315,7 @@ export async function fieldsGetModels(
     const field = allFields.get(name);
     if (!field) continue;
     const meta = projectAttributes(buildFieldMeta(ModelCtor, field, application, fallbackScope), attrList);
-    if (denyWrite.has(name)) {
+    if (denyWrite.has(name) || field.readonly === true) {
       meta.isReadonly = true;
     }
     result[name] = meta;

@@ -933,6 +933,31 @@ test('Field decorator accepts copy:false and rejects non-boolean copy', () => {
   }).toThrow('copy must be a boolean');
 });
 
+test('Field decorator accepts readonly:true and rejects non-boolean readonly', () => {
+  class ReadonlyFlagModel extends BaseModel {
+    @Field({ type: 'varchar', size: 32, readonly: true } as any)
+    ExternalId!: string;
+
+    @Field({ type: 'varchar', size: 32, readonly: false } as any)
+    Name!: string;
+
+    @Field({ type: 'varchar', size: 32 } as any)
+    Note!: string;
+  }
+  const fields = MetadataStorage.instance.getModelMetadata(ReadonlyFlagModel as any).fields;
+  expect(fields.get('ExternalId')?.readonly).toBe(true);
+  expect(fields.get('Name')?.readonly).toBeUndefined();
+  expect(fields.get('Note')?.readonly).toBeUndefined();
+
+  expect(() => {
+    class BadReadonly extends BaseModel {
+      @Field({ type: 'varchar', readonly: 'yes' as any } as any)
+      Name!: string;
+    }
+    return BadReadonly;
+  }).toThrow('readonly must be a boolean');
+});
+
 test('Field decorator accepts checkCompany on ManyToOne and rejects elsewhere', () => {
   class CheckCompanyOkModel extends BaseModel {
     @Field({

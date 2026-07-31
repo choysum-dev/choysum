@@ -531,6 +531,9 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		// Default copy:false for companyDependent when omitted (matches TS decorator).
 		spec.Structural.Copy = toBoolPtr(false)
 	}
+	if v, ok := options["readonly"].(bool); ok && v {
+		spec.Structural.Readonly = toBoolPtr(true)
+	}
 	switch raw := options["default"].(type) {
 	case string:
 		trimmed := strings.TrimSpace(raw)
@@ -759,6 +762,9 @@ func applyResolvedSpecToLegacyField(field *meta.IrField, spec *meta.IrFieldResol
 	field.Relation = spec.Structural.FieldType
 
 	if spec.Behavior.Compute != nil || spec.Behavior.SqlCompute != nil {
+		field.IsReadonly = true
+	}
+	if spec.Structural.Readonly != nil && *spec.Structural.Readonly {
 		field.IsReadonly = true
 	}
 

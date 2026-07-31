@@ -376,6 +376,87 @@ test('validation engine reports platform issues for create writes to select-only
   ]);
 });
 
+class PlatformDeclarativeReadonlyModel extends BaseModel {
+  @Field({ type: 'varchar', size: 64, readonly: true } as any)
+  ExternalId?: string;
+
+  @Field({ type: 'varchar', size: 64 })
+  Name?: string;
+}
+
+test('validation engine rejects create/update writes to declarative readonly fields (PR-P2-F2)', async () => {
+  const metadata = MetadataStorage.instance.getModelMetadata(PlatformDeclarativeReadonlyModel as any);
+
+  const updateIssues = await ValidationEngine.validate(
+    {
+      mode: 'update',
+      model: PlatformDeclarativeReadonlyModel as any,
+      metadata,
+      current: { Id: '1', ExternalId: 'old', Name: 'Old' },
+      values: { ExternalId: 'new', Name: 'New' },
+      changedFields: new Set(['ExternalId', 'Name']),
+      repository: {} as any,
+      requestContext: {},
+    },
+    {
+      includeKernel: false,
+      includeConstraints: false,
+    }
+  );
+  expect(updateIssues).toEqual([
+    {
+      scope: 'platform',
+      field: 'ExternalId',
+      code: 'platform_write_to_readonly_field',
+      message: 'field "ExternalId" is readonly and cannot be written',
+      severity: 'error',
+    },
+  ]);
+
+  const createIssues = await ValidationEngine.validate(
+    {
+      mode: 'create',
+      model: PlatformDeclarativeReadonlyModel as any,
+      metadata,
+      values: { ExternalId: 'ext-1', Name: 'N' },
+      changedFields: new Set(['ExternalId', 'Name']),
+      repository: {} as any,
+      requestContext: {},
+    },
+    {
+      includeKernel: false,
+      includeConstraints: false,
+    }
+  );
+  expect(createIssues).toEqual([
+    {
+      scope: 'platform',
+      field: 'ExternalId',
+      code: 'platform_write_to_readonly_field',
+      message: 'field "ExternalId" is readonly and cannot be written',
+      severity: 'error',
+    },
+  ]);
+
+  const okIssues = await ValidationEngine.validate(
+    {
+      mode: 'update',
+      model: PlatformDeclarativeReadonlyModel as any,
+      metadata,
+      current: { Id: '1', ExternalId: 'old', Name: 'Old' },
+      values: { Name: 'New' },
+      changedFields: new Set(['Name']),
+      repository: {} as any,
+      requestContext: {},
+    },
+    {
+      includeKernel: false,
+      includeConstraints: false,
+    }
+  );
+  expect(okIssues).toEqual([]);
+});
+
 test('validation engine reports computed write issue when only legacy column.compute metadata is present', async () => {
   const baseMeta = MetadataStorage.instance.getModelMetadata(PlatformReadonlyModel as any);
   const fields = new Map(baseMeta.fields);

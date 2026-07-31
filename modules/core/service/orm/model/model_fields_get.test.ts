@@ -79,6 +79,9 @@ class FieldsGetWidget extends BaseModel {
 
   @Field({ type: 'varchar', size: 40, string: 'Plain', help: 'Units per base currency' })
   PlainHelp!: string;
+
+  @Field({ type: 'varchar', size: 64, string: 'External Id', readonly: true })
+  ExternalId!: string;
 }
 
 test('FieldsGet returns readable fields with translated string (T1.1)', async () => {
@@ -299,6 +302,45 @@ test('FieldsGet marks deny-write fields as isReadonly (T5.2)', async () => {
     // Deny-write still forces isReadonly even when attributes omit it.
     const projected = await FieldsGetWidget.FieldsGet(['Code'], ['type']);
     expect(projected.Code).toEqual({ type: 'varchar', isReadonly: true });
+  } finally {
+    resetTestState();
+  }
+});
+
+test('FieldsGet marks declarative readonly fields as isReadonly (PR-P2-F2)', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'en_US' });
+  setTestI18nBridge({ t: () => '' });
+  RepositoryFactory.setRepository(FieldsGetWidget as any, {
+    getDenyReadFields: async () => ({ denyReadFields: [] }),
+    getDenyWriteFields: async () => ({ denyWriteFields: [] }),
+  } as any);
+
+  try {
+    const out = await FieldsGetWidget.FieldsGet(['ExternalId', 'Name'], ['type', 'string', 'isReadonly']);
+    expect(out.ExternalId).toEqual({ type: 'varchar', string: 'External Id', isReadonly: true });
+    expect(out.Name?.isReadonly).toBeUndefined();
+
+    // Declarative readonly still forces isReadonly even when attributes omit it.
+    const projected = await FieldsGetWidget.FieldsGet(['ExternalId'], ['type']);
+    expect(projected.ExternalId).toEqual({ type: 'varchar', isReadonly: true });
+  } finally {
+    resetTestState();
+  }
+});
+
+test('FieldsGet declarative readonly remains isReadonly under deny-write (PR-P2-F2)', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'en_US' });
+  setTestI18nBridge({ t: () => '' });
+  RepositoryFactory.setRepository(FieldsGetWidget as any, {
+    getDenyReadFields: async () => ({ denyReadFields: [] }),
+    getDenyWriteFields: async () => ({ denyWriteFields: ['ExternalId'] }),
+  } as any);
+
+  try {
+    const out = await FieldsGetWidget.FieldsGet(['ExternalId'], ['type', 'isReadonly']);
+    expect(out.ExternalId).toEqual({ type: 'varchar', isReadonly: true });
   } finally {
     resetTestState();
   }

@@ -93,6 +93,8 @@ type IrFieldStructuralSpec struct {
 	CompanyDependent *bool `json:"companyDependent,omitempty"`
 	// Copy is false when @Field({ copy: false }); omit/true means the field participates in Model.Copy.
 	Copy *bool `json:"copy,omitempty"`
+	// Readonly is true when @Field({ readonly: true }); omit/false means writable (PR-P2-F2).
+	Readonly *bool `json:"readonly,omitempty"`
 }
 
 type IrFieldBehaviorComputeSpec struct {
