@@ -117,14 +117,59 @@ msgctxt "web/components/field/ODecimalField"
 msgid "Total digits must not exceed %s"
 msgstr ""
 
-#: web/components/field/OFieldBase.vue:127
+#: web/components/field/OFieldBase.vue:152
+msgctxt "web/components/field/OFieldBase"
+msgid "Company values"
+msgstr ""
+
+#: web/components/field/OFieldBase.vue:152
+msgctxt "web/components/field/OFieldBase"
+msgid "Company values: %s"
+msgstr ""
+
+#: web/components/field/OFieldBase.vue:145
 msgctxt "web/components/field/OFieldBase"
 msgid "Translate field"
 msgstr ""
 
-#: web/components/field/OFieldBase.vue:127
+#: web/components/field/OFieldBase.vue:145
 msgctxt "web/components/field/OFieldBase"
 msgid "Translate: %s"
+msgstr ""
+
+#: web/components/field/OFieldCompanyValuesDialog.vue:12
+msgctxt "web/components/field/OFieldCompanyValuesDialog"
+msgid "Cancel"
+msgstr ""
+
+#: web/components/field/OFieldCompanyValuesDialog.vue:50
+msgctxt "web/components/field/OFieldCompanyValuesDialog"
+msgid "Company values"
+msgstr ""
+
+#: web/components/field/OFieldCompanyValuesDialog.vue:248
+msgctxt "web/components/field/OFieldCompanyValuesDialog"
+msgid "Company values saved"
+msgstr ""
+
+#: web/components/field/OFieldCompanyValuesDialog.vue:50
+msgctxt "web/components/field/OFieldCompanyValuesDialog"
+msgid "Company values: %s"
+msgstr ""
+
+#: web/components/field/OFieldCompanyValuesDialog.vue:181
+msgctxt "web/components/field/OFieldCompanyValuesDialog"
+msgid "Failed to load company values"
+msgstr ""
+
+#: web/components/field/OFieldCompanyValuesDialog.vue:251
+msgctxt "web/components/field/OFieldCompanyValuesDialog"
+msgid "Failed to save company values"
+msgstr ""
+
+#: web/components/field/OFieldCompanyValuesDialog.vue:14
+msgctxt "web/components/field/OFieldCompanyValuesDialog"
+msgid "Save company values"
 msgstr ""
 
 #: web/components/field/OFieldTranslationsDialog.vue:8
@@ -167,6 +212,16 @@ msgctxt "web/components/field/OFieldTranslationsDialog"
 msgid "Translations saved"
 msgstr ""
 
+#: web/components/field/OHtmlField.vue:180
+msgctxt "web/components/field/OHtmlField"
+msgid "Must be a string"
+msgstr ""
+
+#: web/components/field/OHtmlField.vue:113
+msgctxt "web/components/field/OHtmlField"
+msgid "URL"
+msgstr ""
+
 #: web/components/field/OImageField.vue:71
 msgctxt "web/components/field/OImageField"
 msgid "Drop image here or click to upload"
@@ -202,35 +257,35 @@ msgctxt "web/components/field/OIntField"
 msgid "Range %s ~ %s"
 msgstr ""
 
-#: web/components/field/OJsonobjectField.vue:131
-#: web/components/field/OJsonobjectField.vue:162
+#: web/components/field/OJsonobjectField.vue:143
+#: web/components/field/OJsonobjectField.vue:174
 msgctxt "web/components/field/OJsonobjectField"
 msgid "Arrays are not allowed"
 msgstr ""
 
-#: web/components/field/OJsonobjectField.vue:159
-#: web/components/field/OJsonobjectField.vue:232
+#: web/components/field/OJsonobjectField.vue:171
+#: web/components/field/OJsonobjectField.vue:244
 msgctxt "web/components/field/OJsonobjectField"
 msgid "Cannot be empty"
 msgstr ""
 
-#: web/components/field/OJsonobjectField.vue:75
+#: web/components/field/OJsonobjectField.vue:80
 msgctxt "web/components/field/OJsonobjectField"
 msgid "Enter a JSON object"
 msgstr ""
 
-#: web/components/field/OJsonobjectField.vue:135
+#: web/components/field/OJsonobjectField.vue:147
 msgctxt "web/components/field/OJsonobjectField"
 msgid "JSON parse failed"
 msgstr ""
 
-#: web/components/field/OJsonobjectField.vue:132
-#: web/components/field/OJsonobjectField.vue:161
+#: web/components/field/OJsonobjectField.vue:144
+#: web/components/field/OJsonobjectField.vue:173
 msgctxt "web/components/field/OJsonobjectField"
 msgid "Must be an object"
 msgstr ""
 
-#: web/components/field/OJsonobjectField.vue:239
+#: web/components/field/OJsonobjectField.vue:251
 msgctxt "web/components/field/OJsonobjectField"
 msgid "Parse failed"
 msgstr ""
@@ -311,42 +366,52 @@ msgctxt "web/components/field/OManyToManyRefField"
 msgid "relationStore is unresolved; cannot open picker"
 msgstr ""
 
-#: web/components/field/OManyToManyRefTagsField.vue:49
+#: web/components/field/OManyToManyRefTagsField.vue:52
 msgctxt "web/components/field/OManyToManyRefTagsField"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/field/OManyToManyRefTagsField.vue:37
+#: web/components/field/OManyToManyRefTagsField.vue:146
+msgctxt "web/components/field/OManyToManyRefTagsField"
+msgid "Create \"%s\""
+msgstr ""
+
+#: web/components/field/OManyToManyRefTagsField.vue:155
+msgctxt "web/components/field/OManyToManyRefTagsField"
+msgid "Create failed"
+msgstr ""
+
+#: web/components/field/OManyToManyRefTagsField.vue:40
 msgctxt "web/components/field/OManyToManyRefTagsField"
 msgid "None"
 msgstr ""
 
-#: web/components/field/OManyToManyRefTagsField.vue:50
+#: web/components/field/OManyToManyRefTagsField.vue:53
 msgctxt "web/components/field/OManyToManyRefTagsField"
 msgid "OK"
 msgstr ""
 
-#: web/components/field/OManyToManyRefTagsField.vue:95
+#: web/components/field/OManyToManyRefTagsField.vue:107
 msgctxt "web/components/field/OManyToManyRefTagsField"
 msgid "Please select..."
 msgstr ""
 
-#: web/components/field/OManyToManyRefTagsField.vue:16
+#: web/components/field/OManyToManyRefTagsField.vue:19
 msgctxt "web/components/field/OManyToManyRefTagsField"
 msgid "Search more"
 msgstr ""
 
-#: web/components/field/OManyToManyRefTagsField.vue:96
+#: web/components/field/OManyToManyRefTagsField.vue:108
 msgctxt "web/components/field/OManyToManyRefTagsField"
 msgid "Select related items"
 msgstr ""
 
-#: web/components/field/OManyToManyRefTagsField.vue:449
+#: web/components/field/OManyToManyRefTagsField.vue:494
 msgctxt "web/components/field/OManyToManyRefTagsField"
 msgid "relationStore is unresolved; cannot open picker"
 msgstr ""
 
-#: web/components/field/OManyToManyRefTagsField.vue:445
+#: web/components/field/OManyToManyRefTagsField.vue:490
 msgctxt "web/components/field/OManyToManyRefTagsField"
 msgid "searchList is not configured; cannot open picker"
 msgstr ""
@@ -356,42 +421,52 @@ msgctxt "web/components/field/OManyToManyRefTreeField"
 msgid "No data"
 msgstr ""
 
-#: web/components/field/OManyToManyTagsField.vue:49
+#: web/components/field/OManyToManyTagsField.vue:52
 msgctxt "web/components/field/OManyToManyTagsField"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/field/OManyToManyTagsField.vue:37
+#: web/components/field/OManyToManyTagsField.vue:145
+msgctxt "web/components/field/OManyToManyTagsField"
+msgid "Create \"%s\""
+msgstr ""
+
+#: web/components/field/OManyToManyTagsField.vue:154
+msgctxt "web/components/field/OManyToManyTagsField"
+msgid "Create failed"
+msgstr ""
+
+#: web/components/field/OManyToManyTagsField.vue:40
 msgctxt "web/components/field/OManyToManyTagsField"
 msgid "None"
 msgstr ""
 
-#: web/components/field/OManyToManyTagsField.vue:50
+#: web/components/field/OManyToManyTagsField.vue:53
 msgctxt "web/components/field/OManyToManyTagsField"
 msgid "OK"
 msgstr ""
 
-#: web/components/field/OManyToManyTagsField.vue:94
+#: web/components/field/OManyToManyTagsField.vue:106
 msgctxt "web/components/field/OManyToManyTagsField"
 msgid "Please select..."
 msgstr ""
 
-#: web/components/field/OManyToManyTagsField.vue:16
+#: web/components/field/OManyToManyTagsField.vue:19
 msgctxt "web/components/field/OManyToManyTagsField"
 msgid "Search more"
 msgstr ""
 
-#: web/components/field/OManyToManyTagsField.vue:95
+#: web/components/field/OManyToManyTagsField.vue:107
 msgctxt "web/components/field/OManyToManyTagsField"
 msgid "Select related items"
 msgstr ""
 
-#: web/components/field/OManyToManyTagsField.vue:448
+#: web/components/field/OManyToManyTagsField.vue:493
 msgctxt "web/components/field/OManyToManyTagsField"
 msgid "relationStore is unresolved; cannot open picker"
 msgstr ""
 
-#: web/components/field/OManyToManyTagsField.vue:444
+#: web/components/field/OManyToManyTagsField.vue:489
 msgctxt "web/components/field/OManyToManyTagsField"
 msgid "searchList is not configured; cannot open picker"
 msgstr ""
@@ -401,52 +476,72 @@ msgctxt "web/components/field/OManyToManyTreeField"
 msgid "No data"
 msgstr ""
 
-#: web/components/field/OManyToOneField.vue:25
+#: web/components/field/OManyToOneField.vue:28
 msgctxt "web/components/field/OManyToOneField"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/field/OManyToOneField.vue:26
+#: web/components/field/OManyToOneField.vue:136
+msgctxt "web/components/field/OManyToOneField"
+msgid "Create \"%s\""
+msgstr ""
+
+#: web/components/field/OManyToOneField.vue:145
+msgctxt "web/components/field/OManyToOneField"
+msgid "Create failed"
+msgstr ""
+
+#: web/components/field/OManyToOneField.vue:29
 msgctxt "web/components/field/OManyToOneField"
 msgid "OK"
 msgstr ""
 
-#: web/components/field/OManyToOneField.vue:92
+#: web/components/field/OManyToOneField.vue:104
 msgctxt "web/components/field/OManyToOneField"
 msgid "Please select..."
 msgstr ""
 
-#: web/components/field/OManyToOneField.vue:7
+#: web/components/field/OManyToOneField.vue:10
 msgctxt "web/components/field/OManyToOneField"
 msgid "Search more"
 msgstr ""
 
-#: web/components/field/OManyToOneField.vue:93
+#: web/components/field/OManyToOneField.vue:105
 msgctxt "web/components/field/OManyToOneField"
 msgid "Select record"
 msgstr ""
 
-#: web/components/field/OManyToOneRefField.vue:25
+#: web/components/field/OManyToOneRefField.vue:28
 msgctxt "web/components/field/OManyToOneRefField"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/field/OManyToOneRefField.vue:26
+#: web/components/field/OManyToOneRefField.vue:148
+msgctxt "web/components/field/OManyToOneRefField"
+msgid "Create \"%s\""
+msgstr ""
+
+#: web/components/field/OManyToOneRefField.vue:157
+msgctxt "web/components/field/OManyToOneRefField"
+msgid "Create failed"
+msgstr ""
+
+#: web/components/field/OManyToOneRefField.vue:29
 msgctxt "web/components/field/OManyToOneRefField"
 msgid "OK"
 msgstr ""
 
-#: web/components/field/OManyToOneRefField.vue:92
+#: web/components/field/OManyToOneRefField.vue:104
 msgctxt "web/components/field/OManyToOneRefField"
 msgid "Please select..."
 msgstr ""
 
-#: web/components/field/OManyToOneRefField.vue:7
+#: web/components/field/OManyToOneRefField.vue:10
 msgctxt "web/components/field/OManyToOneRefField"
 msgid "Search more"
 msgstr ""
 
-#: web/components/field/OManyToOneRefField.vue:93
+#: web/components/field/OManyToOneRefField.vue:105
 msgctxt "web/components/field/OManyToOneRefField"
 msgid "Select record"
 msgstr ""
@@ -471,17 +566,17 @@ msgctxt "web/components/field/ONumberField"
 msgid "Value must be at most %s"
 msgstr ""
 
-#: web/components/field/OOneToManyField.vue:9
+#: web/components/field/OOneToManyField.vue:10
 msgctxt "web/components/field/OOneToManyField"
 msgid "Actions"
 msgstr ""
 
-#: web/components/field/OOneToManyField.vue:17
+#: web/components/field/OOneToManyField.vue:18
 msgctxt "web/components/field/OOneToManyField"
 msgid "Add row"
 msgstr ""
 
-#: web/components/field/OOneToManyField.vue:11
+#: web/components/field/OOneToManyField.vue:12
 msgctxt "web/components/field/OOneToManyField"
 msgid "Delete"
 msgstr ""
@@ -758,19 +853,19 @@ msgctxt "web/components/view/OChartView"
 msgid "Stack"
 msgstr ""
 
-#: web/components/view/OFormView.vue:540
+#: web/components/view/OFormView.vue:541
 msgctxt "web/components/view/OFormView"
 msgid "Are you sure you want to delete the current record? This action cannot be undone."
 msgstr ""
 
 #: web/components/view/OFormView.vue:37
 #: web/components/view/OFormView.vue:51
-#: web/components/view/OFormView.vue:542
+#: web/components/view/OFormView.vue:543
 msgctxt "web/components/view/OFormView"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/view/OFormView.vue:540
+#: web/components/view/OFormView.vue:541
 msgctxt "web/components/view/OFormView"
 msgid "Confirm delete"
 msgstr ""
@@ -780,19 +875,19 @@ msgctxt "web/components/view/OFormView"
 msgid "Copy"
 msgstr ""
 
-#: web/components/view/OFormView.vue:408
-#: web/components/view/OFormView.vue:457
+#: web/components/view/OFormView.vue:409
+#: web/components/view/OFormView.vue:458
 msgctxt "web/components/view/OFormView"
 msgid "Created successfully"
 msgstr ""
 
 #: web/components/view/OFormView.vue:27
-#: web/components/view/OFormView.vue:541
+#: web/components/view/OFormView.vue:542
 msgctxt "web/components/view/OFormView"
 msgid "Delete"
 msgstr ""
 
-#: web/components/view/OFormView.vue:586
+#: web/components/view/OFormView.vue:587
 msgctxt "web/components/view/OFormView"
 msgid "Delete failed"
 msgstr ""
@@ -812,18 +907,18 @@ msgctxt "web/components/view/OFormView"
 msgid "New"
 msgstr ""
 
-#: web/components/view/OFormView.vue:478
+#: web/components/view/OFormView.vue:479
 msgctxt "web/components/view/OFormView"
 msgid "Operation failed"
 msgstr ""
 
-#: web/components/view/OFormView.vue:280
-#: web/components/view/OFormView.vue:289
+#: web/components/view/OFormView.vue:281
+#: web/components/view/OFormView.vue:290
 msgctxt "web/components/view/OFormView"
 msgid "Please fix the errors in the form first"
 msgstr ""
 
-#: web/components/view/OFormView.vue:553
+#: web/components/view/OFormView.vue:554
 msgctxt "web/components/view/OFormView"
 msgid "Record deleted"
 msgstr ""
@@ -833,12 +928,12 @@ msgctxt "web/components/view/OFormView"
 msgid "Refresh"
 msgstr ""
 
-#: web/components/view/OFormView.vue:520
+#: web/components/view/OFormView.vue:521
 msgctxt "web/components/view/OFormView"
 msgid "Refresh failed"
 msgstr ""
 
-#: web/components/view/OFormView.vue:517
+#: web/components/view/OFormView.vue:518
 msgctxt "web/components/view/OFormView"
 msgid "Refreshed"
 msgstr ""
@@ -849,18 +944,18 @@ msgctxt "web/components/view/OFormView"
 msgid "Reset"
 msgstr ""
 
-#: web/components/view/OFormView.vue:145
+#: web/components/view/OFormView.vue:146
 msgctxt "web/components/view/OFormView"
 msgid "Save"
 msgstr ""
 
-#: web/components/view/OFormView.vue:408
-#: web/components/view/OFormView.vue:457
+#: web/components/view/OFormView.vue:409
+#: web/components/view/OFormView.vue:458
 msgctxt "web/components/view/OFormView"
 msgid "Saved successfully"
 msgstr ""
 
-#: web/components/view/OFormView.vue:145
+#: web/components/view/OFormView.vue:146
 msgctxt "web/components/view/OFormView"
 msgid "Saving..."
 msgstr ""
@@ -905,77 +1000,102 @@ msgctxt "web/components/view/OKanbanView"
 msgid "Refresh"
 msgstr ""
 
-#: web/components/view/OListView.vue:410
+#: web/components/view/OListView.vue:550
 msgctxt "web/components/view/OListView"
 msgid "Are you sure you want to delete the selected %s record(s)? This action cannot be undone."
 msgstr ""
 
-#: web/components/view/OListView.vue:412
+#: web/components/view/OListView.vue:552
 msgctxt "web/components/view/OListView"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/view/OListView.vue:54
+#: web/components/view/OListView.vue:66
 msgctxt "web/components/view/OListView"
 msgid "Click to load more (%s remaining)"
 msgstr ""
 
-#: web/components/view/OListView.vue:410
+#: web/components/view/OListView.vue:550
 msgctxt "web/components/view/OListView"
 msgid "Confirm delete"
 msgstr ""
 
-#: web/components/view/OListView.vue:411
+#: web/components/view/OListView.vue:551
 msgctxt "web/components/view/OListView"
 msgid "Delete"
 msgstr ""
 
-#: web/components/view/OListView.vue:20
+#: web/components/view/OListView.vue:29
 msgctxt "web/components/view/OListView"
 msgid "Delete (%s)"
 msgstr ""
 
-#: web/components/view/OListView.vue:445
+#: web/components/view/OListView.vue:585
 msgctxt "web/components/view/OListView"
 msgid "Delete failed"
 msgstr ""
 
-#: web/components/view/OListView.vue:308
+#: web/components/view/OListView.vue:13
+msgctxt "web/components/view/OListView"
+msgid "Discard"
+msgstr ""
+
+#: web/components/view/OListView.vue:193
+msgctxt "web/components/view/OListView"
+msgid "Editing was discarded because the row is no longer visible."
+msgstr ""
+
+#: web/components/view/OListView.vue:448
 msgctxt "web/components/view/OListView"
 msgid "Failed to load list"
 msgstr ""
 
-#: web/components/view/OListView.vue:391
+#: web/components/view/OListView.vue:262
+msgctxt "web/components/view/OListView"
+msgid "Failed to refresh after reorder"
+msgstr ""
+
+#: web/components/view/OListView.vue:531
 msgctxt "web/components/view/OListView"
 msgid "Failed to refresh list"
 msgstr ""
 
-#: web/components/view/OListView.vue:383
+#: web/components/view/OListView.vue:262
+msgctxt "web/components/view/OListView"
+msgid "Failed to reorder rows"
+msgstr ""
+
+#: web/components/view/OListView.vue:523
 msgctxt "web/components/view/OListView"
 msgid "List data refreshed"
 msgstr ""
 
-#: web/components/view/OListView.vue:10
+#: web/components/view/OListView.vue:19
 msgctxt "web/components/view/OListView"
 msgid "New"
 msgstr ""
 
-#: web/components/view/OListView.vue:61
+#: web/components/view/OListView.vue:73
 msgctxt "web/components/view/OListView"
 msgid "No data"
 msgstr ""
 
-#: web/components/view/OListView.vue:15
+#: web/components/view/OListView.vue:24
 msgctxt "web/components/view/OListView"
 msgid "Refresh"
 msgstr ""
 
-#: web/components/view/OListView.vue:431
+#: web/components/view/OListView.vue:9
+msgctxt "web/components/view/OListView"
+msgid "Save"
+msgstr ""
+
+#: web/components/view/OListView.vue:571
 msgctxt "web/components/view/OListView"
 msgid "Selected records are missing valid IDs"
 msgstr ""
 
-#: web/components/view/OListView.vue:436
+#: web/components/view/OListView.vue:576
 msgctxt "web/components/view/OListView"
 msgid "Successfully deleted %s record(s)"
 msgstr ""
@@ -1120,7 +1240,7 @@ msgctxt "web/components/view/search/OSearchFilterCondition"
 msgid "Add values"
 msgstr ""
 
-#: web/components/view/search/OSearchFilterCondition.vue:107
+#: web/components/view/search/OSearchFilterCondition.vue:110
 msgctxt "web/components/view/search/OSearchFilterCondition"
 msgid "Enter JSON"
 msgstr ""
@@ -1135,7 +1255,7 @@ msgctxt "web/components/view/search/OSearchFilterCondition"
 msgid "Operator"
 msgstr ""
 
-#: web/components/view/search/OSearchFilterCondition.vue:109
+#: web/components/view/search/OSearchFilterCondition.vue:112
 msgctxt "web/components/view/search/OSearchFilterCondition"
 msgid "Please select..."
 msgstr ""
@@ -1150,27 +1270,27 @@ msgctxt "web/components/view/search/OSearchFilterCondition"
 msgid "Select a field"
 msgstr ""
 
-#: web/components/view/search/OSearchFilterCondition.vue:99
+#: web/components/view/search/OSearchFilterCondition.vue:102
 msgctxt "web/components/view/search/OSearchFilterCondition"
 msgid "Select a record"
 msgstr ""
 
-#: web/components/view/search/OSearchFilterCondition.vue:101
+#: web/components/view/search/OSearchFilterCondition.vue:104
 msgctxt "web/components/view/search/OSearchFilterCondition"
 msgid "Select date"
 msgstr ""
 
-#: web/components/view/search/OSearchFilterCondition.vue:103
+#: web/components/view/search/OSearchFilterCondition.vue:106
 msgctxt "web/components/view/search/OSearchFilterCondition"
 msgid "Select date and time"
 msgstr ""
 
-#: web/components/view/search/OSearchFilterCondition.vue:105
+#: web/components/view/search/OSearchFilterCondition.vue:108
 msgctxt "web/components/view/search/OSearchFilterCondition"
 msgid "Select time"
 msgstr ""
 
-#: web/components/view/search/OSearchFilterCondition.vue:111
+#: web/components/view/search/OSearchFilterCondition.vue:114
 msgctxt "web/components/view/search/OSearchFilterCondition"
 msgid "Value"
 msgstr ""
@@ -1240,6 +1360,37 @@ msgstr ""
 #: web/composables/search/useSearch.ts:81
 msgctxt "web/composables/search/useSearch"
 msgid "Not configured"
+msgstr ""
+
+#: web/composables/useListInlineEdit.ts:97
+msgctxt "web/composables/useListInlineEdit@promptDirtySwitch"
+msgid "Discard"
+msgstr ""
+
+#: web/composables/useListInlineEdit.ts:96
+msgctxt "web/composables/useListInlineEdit@promptDirtySwitch"
+msgid "Save"
+msgstr ""
+
+#: web/composables/useListInlineEdit.ts:92
+msgctxt "web/composables/useListInlineEdit@promptDirtySwitch"
+msgid "Unsaved changes"
+msgstr ""
+
+#: web/composables/useListInlineEdit.ts:91
+msgctxt "web/composables/useListInlineEdit@promptDirtySwitch"
+msgid "You have unsaved changes on the current row. Save before switching?"
+msgstr ""
+
+#: web/composables/useListInlineEdit.ts:142
+#: web/composables/useListInlineEdit.ts:175
+msgctxt "web/composables/useListInlineEdit@save"
+msgid "Failed to save row"
+msgstr ""
+
+#: web/composables/useListInlineEdit.ts:166
+msgctxt "web/composables/useListInlineEdit@save"
+msgid "Row saved"
 msgstr ""
 
 #: web/composables/useMenu.ts:211
