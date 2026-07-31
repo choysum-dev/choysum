@@ -1,32 +1,32 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
-#: service/orm/model/model.ts:403
+#: service/orm/model/model.ts:431
 msgctxt "core.model.BaseModel.fields"
 msgid "Created At"
 msgstr "创建时间"
 
-#: service/orm/model/model.ts:425
+#: service/orm/model/model.ts:453
 msgctxt "core.model.BaseModel.fields"
 msgid "Deleted At"
 msgstr "删除时间"
 
-#: service/orm/model/model.ts:381
+#: service/orm/model/model.ts:409
 msgctxt "core.model.BaseModel.fields"
 msgid "Display Name"
 msgstr "显示名称"
 
-#: service/orm/metadata/storage.ts:568
+#: service/orm/metadata/storage.ts:575
 msgctxt "core.model.BaseModel.fields"
 msgid "Parent Path"
 msgstr "父级路径"
 
-#: service/orm/model/model.ts:414
+#: service/orm/model/model.ts:442
 msgctxt "core.model.BaseModel.fields"
 msgid "Updated At"
 msgstr "更新时间"
 
-#: service/orm/model/model.ts:266
+#: service/orm/model/model.ts:275
 msgctxt "service/orm/model/model"
 msgid "current user is required"
 msgstr "需要当前用户"
@@ -41,7 +41,7 @@ msgctxt "service/orm/model/model_instance"
 msgid "Record with Id %s no longer exists"
 msgstr "Id 为 %s 的记录已不存在"
 
-#: service/orm/model/model_read.ts:317
+#: service/orm/model/model_read.ts:318
 msgctxt "service/orm/model/model_read"
 msgid "%s not found"
 msgstr "未找到 %s"
@@ -56,25 +56,35 @@ msgctxt "service/orm/model/model_update"
 msgid "Update failed: Record %s not found."
 msgstr "更新失败：未找到记录 %s。"
 
-#: service/orm/repository/authz/company_scope.ts:84
+#: service/orm/repository/authz/company_scope.ts:158
 msgctxt "service/orm/repository/authz/company_scope"
 msgid "company is not in ctx.enabledCompanyIds"
 msgstr "公司不在 ctx.enabledCompanyIds 中"
 
-#: service/orm/repository/authz/company_scope.ts:103
+#: service/orm/repository/authz/company_scope.ts:74
 msgctxt "service/orm/repository/authz/company_scope"
-msgid "companyScoped model is missing CompanyId field"
-msgstr "companyScoped 模型缺少 CompanyId 字段"
+msgid "companyField model is missing ownership field"
+msgstr "companyField 模型缺少 ownership 字段"
 
-#: service/orm/repository/authz/company_scope.ts:174
+#: service/orm/repository/authz/company_scope.ts:242
 msgctxt "service/orm/repository/authz/company_scope"
 msgid "missing ctx.activeCompanyId for company scoped create"
 msgstr "公司范围创建缺少 ctx.activeCompanyId"
 
-#: service/orm/repository/authz/company_scope.ts:114
+#: service/orm/repository/authz/company_scope.ts:179
 msgctxt "service/orm/repository/authz/company_scope"
 msgid "missing ctx.enabledCompanyIds/activeCompanyId for company scoped operation"
 msgstr "公司范围操作缺少 ctx.enabledCompanyIds/activeCompanyId"
+
+#: service/orm/repository/authz/company_scope.ts:65
+msgctxt "service/orm/repository/authz/company_scope"
+msgid "model is not company-isolated"
+msgstr "模型未启用公司隔离"
+
+#: service/orm/repository/authz/company_scope.ts:106
+msgctxt "service/orm/repository/authz/company_scope"
+msgid "ownership field cannot be null on private company-isolated model"
+msgstr "私有公司隔离模型上 ownership 字段不能为空"
 
 #: service/orm/repository/authz/field_rule_helpers.ts:177
 msgctxt "service/orm/repository/authz/field_rule_helpers"
@@ -171,22 +181,22 @@ msgctxt "service/orm/repository/validation/kernel"
 msgid "Field \"%s\" must be a valid decimal that satisfies the precision and scale limits"
 msgstr "字段 \"%s\" 必须是满足精度与小数位限制的有效小数"
 
-#: service/orm/repository/write/create_helpers.ts:45
+#: service/orm/repository/write/create_helpers.ts:46
 msgctxt "service/orm/repository/write/create_helpers"
 msgid "record rule denied"
 msgstr "记录规则拒绝"
 
-#: service/runtime/validation/engine.ts:193
+#: service/runtime/validation/engine.ts:209
 msgctxt "service/runtime/validation/engine"
 msgid "field \"%s\" does not exist on model metadata and cannot be written"
 msgstr "字段 \"%s\" 在模型元数据中不存在，无法写入"
 
-#: service/runtime/validation/engine.ts:226
+#: service/runtime/validation/engine.ts:242
 msgctxt "service/runtime/validation/engine"
 msgid "field \"%s\" is computed and cannot be written directly"
 msgstr "字段 \"%s\" 为计算字段，不能直接写入"
 
-#: service/runtime/validation/engine.ts:180 service/runtime/validation/engine.ts:215
+#: service/runtime/validation/engine.ts:196 service/runtime/validation/engine.ts:231
 msgctxt "service/runtime/validation/engine"
 msgid "field \"%s\" is select-only and cannot be written"
 msgstr "字段 \"%s\" 为只读选择字段，不能写入"
@@ -196,17 +206,17 @@ msgctxt "service/runtime/validation/engine"
 msgid "model \"%s\" is readonly and cannot be written"
 msgstr "模型 \"%s\" 为只读，不能写入"
 
-#: service/runtime/validation/engine.ts:349
+#: service/runtime/validation/engine.ts:373
 msgctxt "service/runtime/validation/engine"
 msgid "reference \"%s\" belongs to company \"%s\", which is incompatible with parent company \"%s\""
 msgstr "引用 \"%s\" 属于公司 \"%s\"，与父记录公司 \"%s\" 不兼容"
 
-#: service/runtime/validation/engine.ts:251 service/runtime/validation/engine.ts:275 service/runtime/validation/engine.ts:330
+#: service/runtime/validation/engine.ts:274 service/runtime/validation/engine.ts:298 service/runtime/validation/engine.ts:354
 msgctxt "service/runtime/validation/engine"
 msgid "reference \"%s\" points to company \"%s\", which is outside ctx.enabledCompanyIds"
 msgstr "引用 \"%s\" 指向公司 \"%s\"，不在 ctx.enabledCompanyIds 中"
 
-#: service/runtime/validation/engine.ts:306
+#: service/runtime/validation/engine.ts:330
 msgctxt "service/runtime/validation/engine"
 msgid "reference \"%s\" with id \"%s\" is not visible in current company scope"
 msgstr "引用 \"%s\"（id \"%s\"）在当前公司范围内不可见"
@@ -250,3 +260,4 @@ msgstr "意外错误"
 msgctxt "web/rpc/errors"
 msgid "Unknown API error"
 msgstr "未知 API 错误"
+

@@ -299,7 +299,7 @@ msgstr ""
 
 #: service/models/ir_model.ts:70
 msgctxt "meta.model.IrModel.fields"
-msgid "Company Scoped"
+msgid "Company Field"
 msgstr ""
 
 #: service/models/ir_model.ts:79

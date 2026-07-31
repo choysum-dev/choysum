@@ -293,8 +293,8 @@ msgstr "类名"
 
 #: service/models/ir_model.ts:70
 msgctxt "meta.model.IrModel.fields"
-msgid "Company Scoped"
-msgstr "公司范围"
+msgid "Company Field"
+msgstr "公司字段"
 
 #: service/models/ir_model.ts:79
 msgctxt "meta.model.IrModel.fields"
@@ -1405,3 +1405,4 @@ msgstr "结果"
 msgctxt "web/views/ModuleLogListView"
 msgid "Started At"
 msgstr "开始时间"
+
