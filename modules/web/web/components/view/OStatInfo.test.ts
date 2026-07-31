@@ -68,12 +68,19 @@ describe('ostatinfo_helpers', () => {
   });
 
   it('detects empty vs meaningful slot trees', () => {
+    expect(slotHasContent(null)).toBe(false);
+    expect(slotHasContent(undefined)).toBe(false);
     expect(slotHasContent([])).toBe(false);
     expect(slotHasContent([h(Comment, 'x')])).toBe(false);
     expect(slotHasContent([h(Text, '   ')])).toBe(false);
+    expect(slotHasContent([h(Text)])).toBe(false); // children null/undefined → ?? ''
     expect(slotHasContent([h(Text, 'hi')])).toBe(true);
     expect(slotHasContent([h('div')])).toBe(true);
     expect(slotHasContent([h(Fragment, [h(Comment), h('span')])])).toBe(true);
+    // Non-VNode entries must not count as content (isMeaningfulVNode false branches).
+    expect(slotHasContent([null, undefined, 42, 'plain'])).toBe(false);
+    // Fragment with non-array children is empty.
+    expect(slotHasContent([{ type: Fragment, children: 'x' }])).toBe(false);
   });
 });
 
@@ -89,9 +96,27 @@ describe('OStatInfo', () => {
     });
     expect(wrapper.find('.o-stat-info__value').text()).toBe('5');
     expect(wrapper.find('.o-stat-info__label').text()).toBe('Users');
+    expect(wrapper.find('.o-stat-info__icon').exists()).toBe(false);
     await wrapper.trigger('click');
     expect(wrapper.emitted('click')?.length).toBe(1);
     expect(push).not.toHaveBeenCalled();
+  });
+
+  it('renders icon when icon prop is set', () => {
+    const IconStub = defineComponent({
+      name: 'IconStub',
+      template: '<span class="icon-stub" />',
+    });
+    const wrapper = mount(OStatInfo as any, {
+      props: { value: 1, label: 'Users', icon: IconStub },
+      global: {
+        stubs: {
+          ElIcon: { template: '<i class="el-icon-stub"><slot /></i>' },
+        },
+      },
+    });
+    expect(wrapper.find('.o-stat-info__icon').exists()).toBe(true);
+    expect(wrapper.find('.icon-stub').exists()).toBe(true);
   });
 
   it('uses relation length via store+prop when value omitted', async () => {
@@ -101,6 +126,16 @@ describe('OStatInfo', () => {
     });
     await flushPromises();
     expect(wrapper.find('.o-stat-info__value').text()).toBe('2');
+  });
+
+  it('skips useField when only store or only prop is set', () => {
+    mount(OStatInfo as any, {
+      props: { store: { storeId: 's' }, label: 'Users', value: 1 },
+    });
+    mount(OStatInfo as any, {
+      props: { prop: 'Users', label: 'Users', value: 1 },
+    });
+    expect(vi.mocked(useField)).not.toHaveBeenCalled();
   });
 
   it('shows em dash when relation is not an array', async () => {
@@ -127,9 +162,12 @@ describe('OStatInfo', () => {
     expect(hidden.find('.o-stat-info').exists()).toBe(false);
 
     const disabled = mount(OStatInfo as any, {
-      props: { value: 1, label: 'X', disabled: true },
+      props: { value: 1, label: 'X', disabled: true, to: { name: 'users' } },
     });
-    await disabled.trigger('click');
+    // Native disabled suppresses click; clear it so onClick's props.disabled guard runs.
+    const btn = disabled.find('button');
+    (btn.element as HTMLButtonElement).disabled = false;
+    await btn.trigger('click');
     expect(disabled.emitted('click')).toBeUndefined();
     expect(push).not.toHaveBeenCalled();
   });
