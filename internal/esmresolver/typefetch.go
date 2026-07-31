@@ -456,7 +456,11 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 
 	// Derive a cache key from the URL.
 	cacheFile := typeCachePathForURL(typesDir, normalized)
-	absTypesDir, err := filepathAbs(filepath.Clean(strings.TrimSpace(typesDir)))
+	absTypesDir := strings.TrimSpace(typesDir)
+	if absTypesDir == "" {
+		return nil, nil, fmt.Errorf("types dir is empty")
+	}
+	absTypesDir, err := filepathAbs(filepath.Clean(absTypesDir))
 	if err != nil {
 		return nil, nil, fmt.Errorf("absolute types dir: %w", err)
 	}
@@ -1354,12 +1358,13 @@ func resolveTypeImport(baseURL, importPath string) (string, error) {
 
 // typeCachePathForURL derives a cache file path from a type URL.
 func typeCachePathForURL(typesDir, rawURL string) string {
-	// Use a simple hash-like approach: replace special chars and truncate.
+	// Flatten URL characters into a single path segment. Do not map ".." → "__":
+	// that collapses distinct URLs (e.g. foo/../bar vs foo/__/bar) onto one file.
+	// After "/" and "\\" are replaced, residual ".." cannot traverse directories.
 	safe := strings.NewReplacer(
 		"https://", "", "http://", "",
 		"/", "_", "\\", "_",
 		"?", "_", "&", "_", "=", "_",
-		"..", "__",
 	).Replace(rawURL)
 	if len(safe) > 200 {
 		safe = safe[:200]
@@ -1521,7 +1526,11 @@ func typesCachePath(typesDir, pkg, version string) string {
 }
 
 func writeTypeCacheFile(typesDir string, cacheFile string, content []byte) error {
-	absTypesDir, err := filepathAbs(filepath.Clean(strings.TrimSpace(typesDir)))
+	absTypesDir := strings.TrimSpace(typesDir)
+	if absTypesDir == "" {
+		return fmt.Errorf("types dir is empty")
+	}
+	absTypesDir, err := filepathAbs(filepath.Clean(absTypesDir))
 	if err != nil {
 		return fmt.Errorf("absolute types dir: %w", err)
 	}

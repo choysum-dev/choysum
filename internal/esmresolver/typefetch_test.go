@@ -1461,8 +1461,9 @@ func TestTypeCachePathForURL_Various(t *testing.T) {
 			"cdn.jsdelivr.net_npm_pkg@1.0.0_index.d.ts.d.ts",
 		},
 		{
+			// ".." remains literal after flattening separators; must not collide with "__".
 			"https://esm.sh/foo/../bar.d.ts",
-			"esm.sh_foo____bar.d.ts.d.ts",
+			"esm.sh_foo_.._bar.d.ts.d.ts",
 		},
 	}
 	for _, tt := range tests {
@@ -1470,6 +1471,13 @@ func TestTypeCachePathForURL_Various(t *testing.T) {
 		if filepath.Base(got) != tt.want {
 			t.Fatalf("typeCachePathForURL(%q) base = %q, want %q", tt.url, filepath.Base(got), tt.want)
 		}
+	}
+
+	// Distinct URLs that only differ by ".." vs "__" must not share a cache file.
+	dotdot := typeCachePathForURL(dir, "https://esm.sh/foo/../bar.d.ts")
+	dunder := typeCachePathForURL(dir, "https://esm.sh/foo/__/bar.d.ts")
+	if filepath.Base(dotdot) == filepath.Base(dunder) {
+		t.Fatalf("cache collision: %q and %q map to the same file", "foo/../bar", "foo/__/bar")
 	}
 }
 
@@ -2019,6 +2027,13 @@ func TestWriteTypeCacheFile_PathGuardBranches(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	t.Run("empty types dir", func(t *testing.T) {
+		err := writeTypeCacheFile("", filepath.Join(typesDir, "x.d.ts"), []byte("export {};"))
+		if err == nil || !strings.Contains(err.Error(), "types dir is empty") {
+			t.Fatalf("expected empty types dir error, got %v", err)
+		}
+	})
+
 	t.Run("types dir abs error", func(t *testing.T) {
 		old := filepathAbs
 		t.Cleanup(func() { filepathAbs = old })
@@ -2094,6 +2109,13 @@ func TestResolveAndValidateTypeCachePath_GuardBranches(t *testing.T) {
 func TestFetchTypeRecursive_PathGuardBranches(t *testing.T) {
 	typesDir := t.TempDir()
 	state := newTypeFetchState(defaultTypeFetchParallelism)
+
+	t.Run("empty types dir", func(t *testing.T) {
+		_, _, err := fetchTypeRecursive(context.Background(), http.DefaultClient, "", "https://example.com/pkg.d.ts", "pkg", "1.0.0", state, nil)
+		if err == nil || !strings.Contains(err.Error(), "types dir is empty") {
+			t.Fatalf("expected empty types dir error, got %v", err)
+		}
+	})
 
 	t.Run("types abs error", func(t *testing.T) {
 		old := filepathAbs
