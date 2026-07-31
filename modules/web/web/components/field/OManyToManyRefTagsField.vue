@@ -278,8 +278,12 @@ const nameCreateLabel = computed(() => {
 const creatingName = ref(false);
 
 async function onNameCreate() {
+  if (creatingName.value) return;
   const store = relationStore.value;
-  if (!store || creatingName.value) return;
+  if (!store) {
+    ElMessage.error(_t('Create failed'));
+    return;
+  }
   const trimmed = String(searchKeyword.value ?? '').trim();
   if (!trimmed) return;
   creatingName.value = true;
@@ -290,12 +294,16 @@ async function onNameCreate() {
       props.nameField ? { nameField: props.nameField } : undefined
     );
     const id = extractId(row);
-    if (!id) return;
+    if (!id) {
+      ElMessage.error(_t('Create failed'));
+      return;
+    }
     upsertHydrated(row);
     const idStr = String(id);
     if (!selectedIds.value.includes(idStr)) {
       onSelectedIdsChange([...selectedIds.value, idStr]);
     }
+    searchKeyword.value = '';
   } catch (e: any) {
     ElMessage.error(String(e?.message || e || _t('Create failed')));
   } finally {

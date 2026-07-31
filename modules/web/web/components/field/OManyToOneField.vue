@@ -245,7 +245,11 @@ const nameCreateLabel = computed(() => {
 const creatingName = ref(false);
 
 async function onNameCreate(getter: () => WritableComputedRef<V | null>) {
-  if (!relationStore || creatingName.value) return;
+  if (creatingName.value) return;
+  if (!relationStore) {
+    ElMessage.error(_t('Create failed'));
+    return;
+  }
   const trimmed = String(searchQuery.value ?? '').trim();
   if (!trimmed) return;
   creatingName.value = true;
@@ -255,7 +259,13 @@ async function onNameCreate(getter: () => WritableComputedRef<V | null>) {
       undefined,
       props.nameField ? { nameField: props.nameField } : undefined
     )) as V;
+    const id = (row as any)?.Id ?? (row as any)?.id;
+    if (id == null || String(id).trim() === '') {
+      ElMessage.error(_t('Create failed'));
+      return;
+    }
     onUpdate(getter, row);
+    searchQuery.value = '';
   } catch (e: any) {
     ElMessage.error(String(e?.message || e || _t('Create failed')));
   } finally {

@@ -67,4 +67,23 @@ describe('nameCreateVisibility', () => {
       })
     ).toBe(true);
   });
+
+  it('hides when create action id cannot be resolved', () => {
+    expect(
+      shouldShowNameCreateEntry({
+        allowCreate: true,
+        hasKeyword: true,
+        relationQualifiedName: '',
+        hasAction: () => true,
+      })
+    ).toBe(false);
+    expect(
+      shouldShowNameCreateEntry({
+        allowCreate: true,
+        hasKeyword: true,
+        relationQualifiedName: 'unknown.Model',
+        hasAction: () => true,
+      })
+    ).toBe(false);
+  });
 });

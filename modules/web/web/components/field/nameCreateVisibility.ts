@@ -31,5 +31,7 @@ export function shouldShowNameCreateEntry(opts: {
   if (!opts.allowCreate) return false;
   if (!opts.hasKeyword) return false;
   const actionId = resolveNameCreateActionId(opts.relationQualifiedName, opts.createActionId);
+  // Unresolved id (no target / no derived create) → hide. Explicit '' still skips ACL via canShowAction.
+  if (actionId === undefined) return false;
   return canShowAction(actionId, opts.hasAction);
 }

@@ -4,7 +4,7 @@
 
 import { mount, flushPromises } from '@vue/test-utils';
 import { computed, defineComponent, h, nextTick, ref } from 'vue';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { UseField } from '@/web/web/composables/useField';
 import OManyToOneField from './OManyToOneField.vue';
