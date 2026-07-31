@@ -71,6 +71,7 @@ import { deleteModels, deleteModelById } from './model_delete_service_facade';
 import { createModel, createManyModels } from './model_create_service_facade';
 import { copyModel, type CopyOptions } from './model_copy';
 import { nameSearchModels } from './model_namesearch';
+import { nameCreateModels, type NameCreateOptions } from './model_namecreate';
 import { updateModels, updateModelById } from './model_update_service_facade';
 import { fieldsGetModels, type FieldsGetFieldMeta } from './model_fields_get_facade';
 import {
@@ -618,6 +619,19 @@ class BaseModel {
     options?: SearchOptions<T>
   ): Promise<T[]> {
     return await nameSearchModels<T>(this as unknown as RuntimeModelCtor<T> & typeof BaseModel, name, condition, options);
+  }
+
+  /**
+   * Quick-create by name for relation typeahead (overridable).
+   * Default: write trim(name) into nameField or stored Name → Create.
+   */
+  static async NameCreate<T extends BaseModel>(
+    this: BaseModelCtor<T>,
+    name: string,
+    values?: Partial<Insertable<T & BaseModel>>,
+    options?: NameCreateOptions<T>
+  ): Promise<T> {
+    return await nameCreateModels<T>(this as unknown as RuntimeModelCtor<T> & typeof BaseModel, name, values, options);
   }
 
   /**

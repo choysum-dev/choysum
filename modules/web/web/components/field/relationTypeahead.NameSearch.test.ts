@@ -4,13 +4,27 @@
 
 import { mount, flushPromises } from '@vue/test-utils';
 import { computed, defineComponent, h, nextTick, ref } from 'vue';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import type { UseField } from '@/web/web/composables/useField';
 import OManyToOneField from './OManyToOneField.vue';
 import OManyToOneRefField from './OManyToOneRefField.vue';
 import OManyToManyTagsField from './OManyToManyTagsField.vue';
 import OManyToManyRefTagsField from './OManyToManyRefTagsField.vue';
+
+vi.mock('@/auth/web/composables/usePermission', () => ({
+  usePermission: () => ({
+    hasAction: () => true,
+  }),
+}));
+
+vi.mock('element-plus', async importOriginal => {
+  const mod = await importOriginal<typeof import('element-plus')>();
+  return {
+    ...mod,
+    ElMessage: { error: vi.fn(), warning: vi.fn(), success: vi.fn() },
+  };
+});
 
 function makeM2OBinding(relationStore: any): UseField {
   const value = ref<any>(null);
@@ -71,7 +85,7 @@ const SelectV2Stub = defineComponent({
   props: {
     remoteMethod: { type: Function, default: undefined },
   },
-  setup(props) {
+  setup(props, { slots }) {
     return () =>
       h('div', { class: 'select-stub' }, [
         h('button', {
@@ -89,6 +103,7 @@ const SelectV2Stub = defineComponent({
           type: 'button',
           onClick: () => props.remoteMethod?.(''),
         }),
+        slots.footer?.(),
       ]);
   },
 });
@@ -312,5 +327,49 @@ describe('relation typeahead NameSearch wiring', () => {
     await clickRemote(wrapper, '.trigger-remote-null');
     expect(NameSearch).toHaveBeenCalledWith('', [], expect.objectContaining({ limit: 20 }));
     expect(Search).not.toHaveBeenCalled();
+  });
+});
+
+describe('relation typeahead NameCreate wiring', () => {
+  it('OManyToOneField Create entry calls NameCreate and sets value', async () => {
+    const NameSearch = vi.fn(async () => []);
+    const NameCreate = vi.fn(async (name: string) => ({ Id: 'new1', DisplayName: name, Name: name }));
+    const wrapper = mount(OManyToOneField as any, {
+      props: {
+        binding: makeM2OBinding({
+          NameSearch,
+          NameCreate,
+          fullModelName: 'partner.Partner',
+        }),
+        renderMode: 'form',
+        createActionId: '',
+      },
+      global: { stubs: fieldStubs },
+    });
+
+    await clickRemote(wrapper);
+    const createBtn = wrapper.get('[data-testid="o-m2o-name-create"]');
+    expect(createBtn.text()).toContain('alice');
+    await createBtn.trigger('click');
+    await flushPromises();
+    expect(NameCreate).toHaveBeenCalledWith('alice', undefined, undefined);
+  });
+
+  it('hides Create entry when allowCreate is false', async () => {
+    const wrapper = mount(OManyToOneField as any, {
+      props: {
+        binding: makeM2OBinding({
+          NameSearch: vi.fn(async () => []),
+          NameCreate: vi.fn(),
+          fullModelName: 'partner.Partner',
+        }),
+        renderMode: 'form',
+        allowCreate: false,
+        createActionId: '',
+      },
+      global: { stubs: fieldStubs },
+    });
+    await clickRemote(wrapper);
+    expect(wrapper.find('[data-testid="o-m2o-name-create"]').exists()).toBe(false);
   });
 });

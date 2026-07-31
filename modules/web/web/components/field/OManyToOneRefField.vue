@@ -40,6 +40,18 @@ SPDX-License-Identifier: Apache-2.0
       >
         <template #footer>
           <div
+            v-if="showNameCreateEntry"
+            class="o-m2o__more o-m2o__more--clickable"
+            role="button"
+            tabindex="0"
+            data-testid="o-m2o-name-create"
+            @click.stop="onNameCreate(fieldValue)"
+            @keydown.enter.stop="onNameCreate(fieldValue)"
+            @keydown.space.prevent.stop="onNameCreate(fieldValue)"
+          >
+            {{ nameCreateLabel }}
+          </div>
+          <div
             v-if="searchView"
             class="o-m2o__more o-m2o__more--clickable"
             role="button"
@@ -98,7 +110,7 @@ import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType, ClientModel, QueryCondition } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { createStoreByModel } from '@/web/web/stores/registry';
-import { ElSelectV2, ElDialog, ElButton, type FormItemProps } from 'element-plus';
+import { ElSelectV2, ElDialog, ElButton, ElMessage, type FormItemProps } from 'element-plus';
 import type { WritableComputedRef, Component } from 'vue';
 import OFieldBase, { type FieldStateExpr } from './OFieldBase.vue';
 import { useField } from '@/web/web/composables/useField';
@@ -110,6 +122,8 @@ import type { SelectionExpose } from '@/web/web/components/view/listViewTypes';
 import { useProvidedOnchange } from '@/web/web/composables/useOnchange';
 import { createTranslate } from '@/web/web/i18n';
 import type { ValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
+import { shouldShowNameCreateEntry } from '@/web/web/components/field/nameCreateVisibility';
+import { usePermission } from '@/auth/web/composables/usePermission';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/OManyToOneRefField' });
 
@@ -141,6 +155,13 @@ const props = withDefaults(
     searchViewTitle?: string;
     searchViewWidth?: string | number;
 
+    /** Quick-create via NameCreate (PR-P2-M1). Default true; gated by create UI action. */
+    allowCreate?: boolean;
+    /** Target model write field for NameCreate; omit → BE uses Name. */
+    nameField?: string;
+    /** Override create UI action id; '' skips ACL (see namecreate-design D6). */
+    createActionId?: string;
+
     required?: FieldStateExpr<T, V>;
     readonly?: FieldStateExpr<T, V>;
     visible?: FieldStateExpr<T, V>;
@@ -170,6 +191,7 @@ const props = withDefaults(
     width: '100%',
     searchViewTitle: '',
     searchViewWidth: '70%',
+    allowCreate: true,
     required: false,
     readonly: false,
     visible: true,
@@ -217,6 +239,42 @@ const loading = ref(false);
 const searchQuery = ref('');
 const isSearching = computed(() => (searchQuery.value?.trim()?.length ?? 0) > 0);
 const vm = getCurrentInstance();
+
+const { hasAction } = usePermission();
+const showNameCreateEntry = computed(() =>
+  shouldShowNameCreateEntry({
+    allowCreate: props.allowCreate !== false,
+    hasKeyword: isSearching.value,
+    relationQualifiedName: relationStore.value?.fullModelName,
+    createActionId: props.createActionId,
+    hasAction,
+  })
+);
+const nameCreateLabel = computed(() => {
+  const q = String(searchQuery.value ?? '').trim();
+  return _t('Create "%s"', q);
+});
+const creatingName = ref(false);
+
+async function onNameCreate(getter: () => WritableComputedRef<V | null>) {
+  const store = relationStore.value;
+  if (!store || creatingName.value) return;
+  const trimmed = String(searchQuery.value ?? '').trim();
+  if (!trimmed) return;
+  creatingName.value = true;
+  try {
+    const row = (await store.NameCreate(
+      trimmed,
+      undefined,
+      props.nameField ? { nameField: props.nameField } : undefined
+    )) as V;
+    onUpdate(getter, row);
+  } catch (e: any) {
+    ElMessage.error(String(e?.message || e || _t('Create failed')));
+  } finally {
+    creatingName.value = false;
+  }
+}
 
 const hasValueClickListener = computed<boolean>(() => {
   const p = (vm?.vnode.props || {}) as Record<string, any>;

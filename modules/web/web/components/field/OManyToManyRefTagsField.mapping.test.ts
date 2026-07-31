@@ -59,6 +59,14 @@ describe('OManyToManyRefTagsField mapping/contract', () => {
     expect(s).not.toContain('const condition = mergeCondition(effectiveConditions.value, keyword);');
   });
 
+  it('wires NameCreate quick-create entry and props', () => {
+    const s = source();
+    expect(s).toContain('store.NameCreate(');
+    expect(s).toContain('shouldShowNameCreateEntry');
+    expect(s).toContain('allowCreate');
+    expect(s).toContain('o-m2m-name-create');
+  });
+
   it('keeps selected options in the options list for el-select-v2 tag rendering', () => {
     const s = source();
 
