@@ -109,13 +109,19 @@ const SelectV2Stub = defineComponent({
 });
 
 const fieldStubs = {
-  OFieldBase: {
-    props: ['binding'],
-    template: `<div class="ob">
-      <slot name="edit" :fieldValue="() => ({ value: null })" :record="{ Id: '1' }" />
-      <slot name="display" :fieldValue="() => ({ value: null })" :record="{ Id: '1' }" />
-    </div>`,
-  },
+  OFieldBase: defineComponent({
+    props: {
+      binding: { type: Object, required: true },
+    },
+    setup(props, { slots }) {
+      const fieldValue = () => (props.binding as UseField).fieldRef();
+      return () =>
+        h('div', { class: 'ob' }, [
+          slots.edit?.({ fieldValue, record: { Id: '1' } }),
+          slots.display?.({ fieldValue, record: { Id: '1' } }),
+        ]);
+    },
+  }),
   'el-select-v2': SelectV2Stub,
   ElSelectV2: SelectV2Stub,
   'el-dialog': true,
@@ -333,14 +339,16 @@ describe('relation typeahead NameSearch wiring', () => {
 describe('relation typeahead NameCreate wiring', () => {
   it('OManyToOneField Create entry calls NameCreate and sets value', async () => {
     const NameSearch = vi.fn(async () => []);
+    const created = { Id: 'new1', DisplayName: 'alice', Name: 'alice' };
     const NameCreate = vi.fn(async (name: string) => ({ Id: 'new1', DisplayName: name, Name: name }));
+    const binding = makeM2OBinding({
+      NameSearch,
+      NameCreate,
+      fullModelName: 'partner.Partner',
+    });
     const wrapper = mount(OManyToOneField as any, {
       props: {
-        binding: makeM2OBinding({
-          NameSearch,
-          NameCreate,
-          fullModelName: 'partner.Partner',
-        }),
+        binding,
         renderMode: 'form',
         createActionId: '',
       },
@@ -353,6 +361,7 @@ describe('relation typeahead NameCreate wiring', () => {
     await createBtn.trigger('click');
     await flushPromises();
     expect(NameCreate).toHaveBeenCalledWith('alice', undefined, undefined);
+    expect(binding.fieldRef().value).toEqual(created);
   });
 
   it('hides Create entry when allowCreate is false', async () => {
