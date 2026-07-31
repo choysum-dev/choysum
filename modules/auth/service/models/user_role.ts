@@ -53,6 +53,9 @@ export default class UserRole extends BaseModel {
     size: 20,
     index: true,
     string: _lt('Company', { scope: 'auth.model.UserRole.fields' }),
+    help: _lt('Leave empty to grant the role in every company the user can access.', {
+      scope: 'auth.model.UserRole.fields',
+    }),
   })
   CompanyId?: string;
 

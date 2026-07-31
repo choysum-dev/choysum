@@ -46,6 +46,9 @@ export default class RoleUiResource extends BaseModel {
     size: 16,
     index: true,
     string: _lt('Mode', { scope: 'auth.model.RoleUiResource.fields' }),
+    help: _lt('Allow shows UI resources; deny hides them even if inherited.', {
+      scope: 'auth.model.RoleUiResource.fields',
+    }),
   })
   Mode: RoleUiResourceMode;
 

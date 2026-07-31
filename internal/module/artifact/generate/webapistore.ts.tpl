@@ -57,6 +57,8 @@ export const {{.Model.Name}}FieldsMetadata = {
     {{- if $field.RelationInverseJoinField}}relationInverseJoinField: '{{$field.RelationInverseJoinField}}',{{- end}}
     {{- if $field.String}}string: {{$field.String}},{{- end}}
     {{- if $field.StringText}}stringText: {{$field.StringText}},{{- end}}
+    {{- if $field.Help}}help: {{$field.Help}},{{- end}}
+    {{- if $field.HelpText}}helpText: {{$field.HelpText}},{{- end}}
     {{- if $field.SelectionKind}}selectionKind: '{{$field.SelectionKind}}',{{- end}}
     {{- if $field.Selection}}selection: {{$field.Selection}},{{- end}}
   },
@@ -145,6 +147,7 @@ export function create{{.Model.Name}}Store(options?: Create{{.Model.Name}}StoreO
       ensureFieldsGet: fieldsGetHelpers.ensureFieldsGet,
       getFieldMeta: fieldsGetHelpers.getFieldMeta,
       getFieldsGetTranslatedString: fieldsGetHelpers.getFieldsGetTranslatedString,
+      getFieldsGetTranslatedHelp: fieldsGetHelpers.getFieldsGetTranslatedHelp,
       clearFieldsGetCache: fieldsGetHelpers.clearFieldsGetCache,
       setContext: {{.Model.Name}}Api.setContext,
       getContext: {{.Model.Name}}Api.getContext,

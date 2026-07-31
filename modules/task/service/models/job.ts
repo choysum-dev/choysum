@@ -80,6 +80,9 @@ export default class Job extends BaseModel {
     index: true,
     notNull: true,
     string: _lt('Full Method', { scope: 'task.model.Job.fields' }),
+    help: _lt('gRPC method executed by this queued job.', {
+      scope: 'task.model.Job.fields',
+    }),
   })
   FullMethod: string;
 
@@ -134,6 +137,9 @@ export default class Job extends BaseModel {
     index: true,
     notNull: true,
     string: _lt('Run After', { scope: 'task.model.Job.fields' }),
+    help: _lt('Job will not run before this time.', {
+      scope: 'task.model.Job.fields',
+    }),
   })
   RunAfter: Date;
 
@@ -150,6 +156,9 @@ export default class Job extends BaseModel {
     type: 'int',
     default: () => 1,
     string: _lt('Max Attempts', { scope: 'task.model.Job.fields' }),
+    help: _lt('Maximum total attempts including the first run.', {
+      scope: 'task.model.Job.fields',
+    }),
   })
   MaxAttempts: number;
 

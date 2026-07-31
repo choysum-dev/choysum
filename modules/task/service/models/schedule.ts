@@ -93,6 +93,9 @@ export default class Schedule extends BaseModel {
     index: true,
     notNull: true,
     string: _lt('Full Method', { scope: 'task.model.Schedule.fields' }),
+    help: _lt('gRPC full method path invoked when the schedule fires.', {
+      scope: 'task.model.Schedule.fields',
+    }),
   })
   FullMethod: string;
 
@@ -130,6 +133,9 @@ export default class Schedule extends BaseModel {
     index: true,
     notNull: true,
     string: _lt('Cron Expression', { scope: 'task.model.Schedule.fields' }),
+    help: _lt('Five-field cron (minute hour dom month dow).', {
+      scope: 'task.model.Schedule.fields',
+    }),
   })
   CronExpr: string;
 
@@ -140,6 +146,9 @@ export default class Schedule extends BaseModel {
     size: 100,
     notNull: true,
     string: _lt('Timezone', { scope: 'task.model.Schedule.fields' }),
+    help: _lt('IANA zone used to evaluate the cron expression.', {
+      scope: 'task.model.Schedule.fields',
+    }),
   })
   Timezone: string;
 
@@ -148,6 +157,9 @@ export default class Schedule extends BaseModel {
     type: 'int',
     default: () => 0,
     string: _lt('Timeout Ms', { scope: 'task.model.Schedule.fields' }),
+    help: _lt('0 uses the platform default (no timeout unless configured).', {
+      scope: 'task.model.Schedule.fields',
+    }),
   })
   TimeoutMs: number;
 

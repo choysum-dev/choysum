@@ -48,6 +48,9 @@ export default class Country extends BaseModel {
   @Field({
     type: 'text',
     string: _lt('Address Format', { scope: 'base.model.Country.fields' }),
+    help: _lt('Template with tokens like %(street1)s, %(cityname)s, %(zip)s.', {
+      scope: 'base.model.Country.fields',
+    }),
   })
   AddressFormat?: string;
 
@@ -56,6 +59,9 @@ export default class Country extends BaseModel {
     notNull: true,
     default: () => true,
     string: _lt('ZIP Required', { scope: 'base.model.Country.fields' }),
+    help: _lt('When enabled, addresses in this country require a ZIP code.', {
+      scope: 'base.model.Country.fields',
+    }),
   })
   ZipRequired: boolean;
 
@@ -64,6 +70,9 @@ export default class Country extends BaseModel {
     notNull: true,
     default: () => false,
     string: _lt('State/Province Required', { scope: 'base.model.Country.fields' }),
+    help: _lt('When enabled, addresses in this country require a state.', {
+      scope: 'base.model.Country.fields',
+    }),
   })
   StateRequired: boolean;
 

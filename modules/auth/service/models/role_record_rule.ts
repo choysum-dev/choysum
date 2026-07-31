@@ -42,6 +42,9 @@ export default class RoleRecordRule extends BaseModel {
     relation: { targetModel: () => Role },
     notNull: false,
     string: _lt('Role', { scope: 'auth.model.RoleRecordRule.fields' }),
+    help: _lt('Leave empty to apply this rule to every user.', {
+      scope: 'auth.model.RoleRecordRule.fields',
+    }),
   })
   RoleId?: Role; // notNull:false; null/omitted = everyone (avoid `Role | null` — metadata FK parser rejects unions)
 
@@ -59,6 +62,9 @@ export default class RoleRecordRule extends BaseModel {
     size: 16,
     index: true,
     string: _lt('Kind', { scope: 'auth.model.RoleRecordRule.fields' }),
+    help: _lt('Grant rules widen access; restrict rules narrow it.', {
+      scope: 'auth.model.RoleRecordRule.fields',
+    }),
   })
   Kind: RoleRecordRuleKind;
 

@@ -49,6 +49,9 @@ export default class Sequence extends BaseModel {
     index: true,
     uniqueIndex: 'uidx_base_sequence_scope_code',
     string: _lt('Code', { scope: 'base.model.Sequence.fields' }),
+    help: _lt('Stable id passed to Sequence.Next; unique per company or globally.', {
+      scope: 'base.model.Sequence.fields',
+    }),
   })
   Code: string;
 
@@ -57,6 +60,9 @@ export default class Sequence extends BaseModel {
     relation: { targetModel: () => Company },
     index: true,
     string: _lt('Company', { scope: 'base.model.Sequence.fields' }),
+    help: _lt('Leave empty for a global sequence shared by all companies.', {
+      scope: 'base.model.Sequence.fields',
+    }),
   })
   CompanyId?: Company;
 
@@ -74,6 +80,9 @@ export default class Sequence extends BaseModel {
     type: 'varchar',
     size: 64,
     string: _lt('Prefix', { scope: 'base.model.Sequence.fields' }),
+    help: _lt('Literal text prepended to the generated number.', {
+      scope: 'base.model.Sequence.fields',
+    }),
   })
   Prefix?: string;
 
@@ -81,6 +90,9 @@ export default class Sequence extends BaseModel {
     type: 'varchar',
     size: 64,
     string: _lt('Suffix', { scope: 'base.model.Sequence.fields' }),
+    help: _lt('Literal text appended to the generated number.', {
+      scope: 'base.model.Sequence.fields',
+    }),
   })
   Suffix?: string;
 
@@ -89,6 +101,9 @@ export default class Sequence extends BaseModel {
     notNull: true,
     default: () => 5,
     string: _lt('Padding Length', { scope: 'base.model.Sequence.fields' }),
+    help: _lt('Zero-padded numeric width between prefix and suffix.', {
+      scope: 'base.model.Sequence.fields',
+    }),
   })
   Padding: number;
 
@@ -98,6 +113,9 @@ export default class Sequence extends BaseModel {
     default: () => 1,
     copy: false,
     string: _lt('Next Number', { scope: 'base.model.Sequence.fields' }),
+    help: _lt('Next issued number; lowering it may reuse already-assigned values.', {
+      scope: 'base.model.Sequence.fields',
+    }),
   })
   NextNumber: bigint;
 

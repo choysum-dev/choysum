@@ -117,22 +117,22 @@ msgctxt "web/components/field/ODecimalField"
 msgid "Total digits must not exceed %s"
 msgstr ""
 
-#: web/components/field/OFieldBase.vue:152
+#: web/components/field/OFieldBase.vue:172
 msgctxt "web/components/field/OFieldBase"
 msgid "Company values"
 msgstr ""
 
-#: web/components/field/OFieldBase.vue:152
+#: web/components/field/OFieldBase.vue:172
 msgctxt "web/components/field/OFieldBase"
 msgid "Company values: %s"
 msgstr ""
 
-#: web/components/field/OFieldBase.vue:145
+#: web/components/field/OFieldBase.vue:165
 msgctxt "web/components/field/OFieldBase"
 msgid "Translate field"
 msgstr ""
 
-#: web/components/field/OFieldBase.vue:145
+#: web/components/field/OFieldBase.vue:165
 msgctxt "web/components/field/OFieldBase"
 msgid "Translate: %s"
 msgstr ""

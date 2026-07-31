@@ -156,6 +156,9 @@ export default class User extends BaseModel {
     type: 'varchar',
     size: 20,
     string: _lt('Language', { scope: 'auth.model.User.fields' }),
+    help: _lt('When set, must match an active base.Language POSIX terminology code.', {
+      scope: 'auth.model.User.fields',
+    }),
   })
   Language: string;
 
@@ -167,6 +170,9 @@ export default class User extends BaseModel {
     selection: () => listIanaTimezoneSelection(),
     size: 64,
     string: _lt('Time Zone', { scope: 'auth.model.User.fields' }),
+    help: _lt('Display timezone; empty uses browser timezone on first login.', {
+      scope: 'auth.model.User.fields',
+    }),
   })
   Timezone: string | null;
 
@@ -224,6 +230,9 @@ export default class User extends BaseModel {
     relation: { targetModel: 'base.Company' },
     condition: ['IsActive', '=', true],
     string: _lt('Accessible Companies', { scope: 'auth.model.User.fields' }),
+    help: _lt('Companies the user may switch to; must stay within role assignments.', {
+      scope: 'auth.model.User.fields',
+    }),
   })
   CompanyIds: string[];
 

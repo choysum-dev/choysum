@@ -41,6 +41,10 @@ export type WebFieldMetadata = {
   string?: string;
   /** Field title TermReference for Gateway / translateTerm. */
   stringText?: TermReference;
+  /** Field help msgid (English) or FieldsGet-translated help. */
+  help?: string;
+  /** Field help TermReference for Gateway / translateTerm. */
+  helpText?: TermReference;
   selection?: readonly SelectionItem[];
   /** Present for dynamic selection fields (P3); static may omit or be 'static'. */
   selectionKind?: 'static' | 'dynamic';
@@ -161,5 +165,7 @@ export interface WebModelStore<TModel extends BaseModel> extends ScopedStore {
   getFieldMeta: (name: string) => WebFieldMetadata | undefined;
   /** FieldsGet-translated title when overlay is present for the active lang. */
   getFieldsGetTranslatedString: (name: string) => string | undefined;
+  /** FieldsGet-translated help when overlay is present for the active lang. */
+  getFieldsGetTranslatedHelp: (name: string) => string | undefined;
   clearFieldsGetCache: () => void;
 }

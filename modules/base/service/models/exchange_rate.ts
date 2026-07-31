@@ -28,6 +28,9 @@ export default class ExchangeRate extends BaseModel {
     relation: { targetModel: () => Company },
     index: true,
     string: _lt('Company', { scope: 'base.model.ExchangeRate.fields' }),
+    help: _lt('Leave empty to use a global rate when no company rate exists.', {
+      scope: 'base.model.ExchangeRate.fields',
+    }),
   })
   CompanyId?: Company;
 
@@ -52,6 +55,9 @@ export default class ExchangeRate extends BaseModel {
     uniqueIndex: 'uidx_base_exchange_rate_scope_currency_date',
     default: () => businessToday(),
     string: _lt('Date', { scope: 'base.model.ExchangeRate.fields' }),
+    help: _lt('Business calendar date in the company timezone, not a UTC instant.', {
+      scope: 'base.model.ExchangeRate.fields',
+    }),
   })
   Date: any;
 
@@ -59,16 +65,15 @@ export default class ExchangeRate extends BaseModel {
     type: 'decimal',
     notNull: true,
     string: _lt('Exchange Rate', { scope: 'base.model.ExchangeRate.fields' }),
+    help: _lt('Units of this currency per one unit of the company base currency.', {
+      scope: 'base.model.ExchangeRate.fields',
+    }),
   })
   Rate: any;
 
   private static coerceDateKey(value: any): string {
-    if (value instanceof Date) {
-      if (Number.isNaN(value.getTime())) {
-        fail(_t('Date is invalid', { scope: 'service/models/exchange_rate' }));
-      }
-      return value.toISOString().slice(0, 10);
-    }
+    // Date-only business keys must be YYYY-MM-DD strings. Reject Date objects:
+    // toISOString().slice(0, 10) reinterprets local midnights as UTC calendar days.
     return mapNormalizationToBase(
       () => normalizeDateString(value),
       err => {

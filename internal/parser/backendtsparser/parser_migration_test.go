@@ -571,6 +571,67 @@ export default class FieldStringModel extends BaseModel {
 	}
 }
 
+func TestTsParser_PreservesFieldHelpTermReference(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+const { _lt } = createTranslate('demo', {
+  scope: 'demo.model.Widget.fields',
+});
+
+@Model('FieldHelpModel')
+export default class FieldHelpModel extends BaseModel {
+  @Field({
+    type: 'varchar',
+    size: 100,
+    string: _lt('Code'),
+    help: _lt('Short unique code used in references')
+  })
+  public Code: string
+
+  @Field({
+    type: 'varchar',
+    size: 40,
+    string: 'Name',
+    help: 'Plain help text'
+  })
+  public Name: string
+}
+`
+	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	byName := map[string]*meta.IrField{}
+	for _, field := range r.Model.Fields {
+		byName[field.Name] = field
+	}
+	codeField := byName["Code"]
+	if codeField == nil {
+		t.Fatal("expected Code field")
+	}
+	spec, err := codeField.GetResolvedSpec()
+	if err != nil || spec == nil {
+		t.Fatalf("get resolved spec: %v, %#v", err, spec)
+	}
+	if spec.Structural.Help != "Short unique code used in references" || spec.Structural.HelpText == nil {
+		t.Fatalf("unexpected help metadata: %+v", spec.Structural)
+	}
+	if spec.Structural.HelpText.Module != "demo" || spec.Structural.HelpText.Scope != "demo.model.Widget.fields" || spec.Structural.HelpText.Src != "Short unique code used in references" {
+		t.Fatalf("unexpected helpText: %+v", spec.Structural.HelpText)
+	}
+	if codeField.FieldHelp != "Short unique code used in references" || !strings.Contains(codeField.HelpText, `"src":"Short unique code used in references"`) {
+		t.Fatalf("IrField did not persist help/helpText: help=%q helpText=%s", codeField.FieldHelp, codeField.HelpText)
+	}
+	nameField := byName["Name"]
+	if nameField == nil || nameField.FieldHelp != "Plain help text" || strings.TrimSpace(nameField.HelpText) != "" {
+		t.Fatalf("unexpected Name field help metadata: %#v", nameField)
+	}
+}
+
 func TestTsParser_RejectsSelectionTextTranslateLabels(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
@@ -999,6 +1060,163 @@ export default class TextStringFallbackModel extends BaseModel {
 	}
 	if byName["Title"].FieldString != "Quoted Title" {
 		t.Fatalf("quoted string literal: %#v", byName["Title"])
+	}
+}
+
+func TestTsParser_HelpTextTranslateFallsBackToMsgid(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+const { _t } = createTranslate('demo', { scope: 'demo.model.Widget.fields' });
+
+@Model('TextHelpFallbackModel')
+export default class TextHelpFallbackModel extends BaseModel {
+  @Field({ type: 'varchar', string: 'Code', help: _t('Short unique code used in references') })
+  public Code: string
+
+  @Field({ type: 'varchar', string: 'Name', help: '' })
+  public Name: string
+}
+`
+	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	byName := map[string]*meta.IrField{}
+	for _, f := range r.Model.Fields {
+		byName[f.Name] = f
+	}
+	if byName["Code"].FieldHelp != "Short unique code used in references" || strings.TrimSpace(byName["Code"].HelpText) != "" {
+		t.Fatalf("text _t help should fallback to msgid without HelpText: %#v", byName["Code"])
+	}
+	if strings.TrimSpace(byName["Name"].FieldHelp) != "" || strings.TrimSpace(byName["Name"].HelpText) != "" {
+		t.Fatalf("blank help should clear FieldHelp/HelpText: %#v", byName["Name"])
+	}
+}
+
+func TestBuildFieldResolvedSpec_HelpEdgeCases(t *testing.T) {
+	bindings := map[string]parser.TranslateBinding{
+		"_t":  {Module: "demo", DefaultScope: "demo.fields", ReferenceOutput: false},
+		"_lt": {Module: "demo", DefaultScope: "demo.fields", ReferenceOutput: true},
+	}
+	field := &meta.IrField{
+		Name: "Code",
+		Decorators: []*meta.IrDecorator{{
+			Name: "Field",
+			Arguments: []*meta.IrArgument{{
+				Type: "ObjectLiteral",
+				Value: `{
+					"type":"varchar",
+					"help":"_t('Units per base currency')"
+				}`,
+			}},
+		}},
+	}
+	spec, err := buildFieldResolvedSpec(field, nil, nil, "demo", "demo.fields", bindings)
+	if err != nil || spec == nil {
+		t.Fatalf("buildFieldResolvedSpec _t help: %v %#v", err, spec)
+	}
+	if spec.Structural.Help != "Units per base currency" || spec.Structural.HelpText != nil {
+		t.Fatalf("expected _t help msgid fallback: %+v", spec.Structural)
+	}
+
+	unquoted := &meta.IrField{
+		Name: "Note",
+		Decorators: []*meta.IrDecorator{{
+			Name: "Field",
+			Arguments: []*meta.IrArgument{{
+				Type: "ObjectLiteral",
+				Value: `{"type":"varchar","help":"AlreadyDecodedHelp"}`,
+			}},
+		}},
+	}
+	spec, err = buildFieldResolvedSpec(unquoted, nil, nil, "demo", "demo.fields", nil)
+	if err != nil || spec == nil || spec.Structural.Help != "AlreadyDecodedHelp" {
+		t.Fatalf("expected unquoted help: err=%v %#v", err, spec)
+	}
+
+	quoted := &meta.IrField{
+		Name: "Quoted",
+		Decorators: []*meta.IrDecorator{{
+			Name: "Field",
+			Arguments: []*meta.IrArgument{{
+				Type: "ObjectLiteral",
+				Value: `{"type":"varchar","help":"\"Quoted help text\""}`,
+			}},
+		}},
+	}
+	spec, err = buildFieldResolvedSpec(quoted, nil, nil, "demo", "demo.fields", nil)
+	if err != nil || spec == nil || spec.Structural.Help != "Quoted help text" {
+		t.Fatalf("expected quoted JS string help: err=%v %#v", err, spec)
+	}
+
+	ignored := &meta.IrField{
+		Name: "Skip",
+		Decorators: []*meta.IrDecorator{{
+			Name: "Field",
+			Arguments: []*meta.IrArgument{{
+				Type: "ObjectLiteral",
+				Value: `{"type":"varchar","help":"unknownFn('Nope')"}`,
+			}},
+		}},
+	}
+	spec, err = buildFieldResolvedSpec(ignored, nil, nil, "demo", "demo.fields", bindings)
+	if err != nil || spec == nil || strings.TrimSpace(spec.Structural.Help) != "" {
+		t.Fatalf("unknown call help should be ignored: err=%v %#v", err, spec)
+	}
+
+	badLiteral := &meta.IrField{
+		Name: "BadLit",
+		Decorators: []*meta.IrDecorator{{
+			Name: "Field",
+			Arguments: []*meta.IrArgument{{
+				Type: "ObjectLiteral",
+				Value: `{"type":"varchar","help":"_t(notAString)"}`,
+			}},
+		}},
+	}
+	spec, err = buildFieldResolvedSpec(badLiteral, nil, nil, "demo", "demo.fields", bindings)
+	if err != nil || spec == nil || strings.TrimSpace(spec.Structural.Help) != "" {
+		t.Fatalf("non-literal _t help should be ignored: err=%v %#v", err, spec)
+	}
+
+	nullHelp := &meta.IrField{
+		Name: "NullHelp",
+		Decorators: []*meta.IrDecorator{{
+			Name: "Field",
+			Arguments: []*meta.IrArgument{{
+				Type: "ObjectLiteral",
+				Value: `{"type":"varchar","help":null}`,
+			}},
+		}},
+	}
+	spec, err = buildFieldResolvedSpec(nullHelp, nil, nil, "demo", "demo.fields", nil)
+	if err != nil || spec == nil || strings.TrimSpace(spec.Structural.Help) != "" {
+		t.Fatalf("null help should be ignored: err=%v %#v", err, spec)
+	}
+
+	cleared := &meta.IrField{
+		Name:      "Legacy",
+		FieldHelp: "stale",
+		HelpText:  `{"src":"stale"}`,
+		Decorators: []*meta.IrDecorator{{
+			Name: "Field",
+			Arguments: []*meta.IrArgument{{
+				Type:  "ObjectLiteral",
+				Value: `{"type":"varchar"}`,
+			}},
+		}},
+	}
+	spec, err = buildFieldResolvedSpec(cleared, nil, nil, "demo", "demo.fields", nil)
+	if err != nil || spec == nil {
+		t.Fatalf("build cleared help field: %v", err)
+	}
+	applyResolvedSpecToLegacyField(cleared, spec)
+	if strings.TrimSpace(cleared.FieldHelp) != "" || strings.TrimSpace(cleared.HelpText) != "" {
+		t.Fatalf("expected stale help cleared: %#v", cleared)
 	}
 }
 

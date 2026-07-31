@@ -42,6 +42,9 @@ export default class Bank extends BaseModel {
     size: 20,
     index: true,
     string: _lt('BIC', { scope: 'base.model.Bank.fields' }),
+    help: _lt('Bank Identifier Code (SWIFT), typically 8 or 11 characters.', {
+      scope: 'base.model.Bank.fields',
+    }),
   })
   BIC?: string;
 

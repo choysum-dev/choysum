@@ -17,22 +17,22 @@ msgctxt "service/models/_cron"
 msgid "timezone is required"
 msgstr ""
 
-#: service/models/job.ts:144
+#: service/models/job.ts:150
 msgctxt "task.model.Job.fields"
 msgid "Attempt"
 msgstr ""
 
-#: service/models/job.ts:168
+#: service/models/job.ts:177
 msgctxt "task.model.Job.fields"
 msgid "Cancel Requested At"
 msgstr ""
 
-#: service/models/job.ts:176
+#: service/models/job.ts:185
 msgctxt "task.model.Job.fields"
 msgid "Cancelled At"
 msgstr ""
 
-#: service/models/job.ts:184
+#: service/models/job.ts:193
 msgctxt "task.model.Job.fields"
 msgid "Finished At"
 msgstr ""
@@ -42,57 +42,67 @@ msgctxt "task.model.Job.fields"
 msgid "Full Method"
 msgstr ""
 
-#: service/models/job.ts:191
+#: service/models/job.ts:140
+msgctxt "task.model.Job.fields"
+msgid "Job will not run before this time."
+msgstr ""
+
+#: service/models/job.ts:200
 msgctxt "task.model.Job.fields"
 msgid "Last Error"
 msgstr ""
 
-#: service/models/job.ts:199
+#: service/models/job.ts:208
 msgctxt "task.model.Job.fields"
 msgid "Last Error Hash"
 msgstr ""
 
-#: service/models/job.ts:207
+#: service/models/job.ts:216
 msgctxt "task.model.Job.fields"
 msgid "Last Error Truncated"
 msgstr ""
 
-#: service/models/job.ts:152
+#: service/models/job.ts:158
 msgctxt "task.model.Job.fields"
 msgid "Max Attempts"
 msgstr ""
 
-#: service/models/job.ts:89
+#: service/models/job.ts:159
+msgctxt "task.model.Job.fields"
+msgid "Maximum total attempts including the first run."
+msgstr ""
+
+#: service/models/job.ts:92
 msgctxt "task.model.Job.fields"
 msgid "Payload"
 msgstr ""
 
-#: service/models/job.ts:214
+#: service/models/job.ts:223
 msgctxt "task.model.Job.fields"
 msgid "Result"
 msgstr ""
 
-#: service/models/job.ts:222
+#: service/models/job.ts:231
 msgctxt "task.model.Job.fields"
 msgid "Result Hash"
 msgstr ""
 
-#: service/models/job.ts:230
+#: service/models/job.ts:239
 msgctxt "task.model.Job.fields"
 msgid "Result Truncated"
 msgstr ""
 
-#: service/models/job.ts:136
+#: service/models/job.ts:139
 msgctxt "task.model.Job.fields"
 msgid "Run After"
 msgstr ""
 
-#: service/models/job.ts:99
+#: service/models/job.ts:102
 msgctxt "task.model.Job.fields"
 msgid "Scheduler User"
 msgstr ""
 
-#: service/models/job.ts:127
+#: service/models/job.ts:130
 msgctxt "task.model.Job.fields"
 msgid "Status"
 msgstr ""
@@ -102,37 +112,42 @@ msgctxt "task.model.Job.fields"
 msgid "Target App"
 msgstr ""
 
-#: service/models/job.ts:160
+#: service/models/job.ts:169
 msgctxt "task.model.Job.fields"
 msgid "Timeout Ms"
 msgstr ""
 
-#: service/models/job.ts:109
+#: service/models/job.ts:112
 msgctxt "task.model.Job.fields"
 msgid "Triggered By User"
 msgstr ""
 
-#: service/models/execution.ts:51
+#: service/models/job.ts:83
+msgctxt "task.model.Job.fields"
+msgid "gRPC method executed by this queued job."
+msgstr ""
+
+#: service/models/execution.ts:53
 msgctxt "task.model.JobExecution.fields"
 msgid "Attempt"
 msgstr ""
 
-#: service/models/execution.ts:107
+#: service/models/execution.ts:109
 msgctxt "task.model.JobExecution.fields"
 msgid "Cancelled At"
 msgstr ""
 
-#: service/models/execution.ts:99
+#: service/models/execution.ts:101
 msgctxt "task.model.JobExecution.fields"
 msgid "Error"
 msgstr ""
 
-#: service/models/execution.ts:123
+#: service/models/execution.ts:125
 msgctxt "task.model.JobExecution.fields"
 msgid "Finished At"
 msgstr ""
 
-#: service/models/execution.ts:78
+#: service/models/execution.ts:80
 msgctxt "task.model.JobExecution.fields"
 msgid "Full Method"
 msgstr ""
@@ -142,32 +157,32 @@ msgctxt "task.model.JobExecution.fields"
 msgid "Job"
 msgstr ""
 
-#: service/models/execution.ts:35
+#: service/models/execution.ts:36
 msgctxt "task.model.JobExecution.fields"
 msgid "Lease Owner"
 msgstr ""
 
-#: service/models/execution.ts:43
+#: service/models/execution.ts:45
 msgctxt "task.model.JobExecution.fields"
 msgid "Lease Until"
 msgstr ""
 
-#: service/models/execution.ts:85
+#: service/models/execution.ts:87
 msgctxt "task.model.JobExecution.fields"
 msgid "Payload"
 msgstr ""
 
-#: service/models/execution.ts:92
+#: service/models/execution.ts:94
 msgctxt "task.model.JobExecution.fields"
 msgid "Result"
 msgstr ""
 
-#: service/models/execution.ts:60
+#: service/models/execution.ts:62
 msgctxt "task.model.JobExecution.fields"
 msgid "Scheduler User"
 msgstr ""
 
-#: service/models/execution.ts:115
+#: service/models/execution.ts:117
 msgctxt "task.model.JobExecution.fields"
 msgid "Started At"
 msgstr ""
@@ -177,9 +192,14 @@ msgctxt "task.model.JobExecution.fields"
 msgid "Status"
 msgstr ""
 
-#: service/models/execution.ts:69
+#: service/models/execution.ts:71
 msgctxt "task.model.JobExecution.fields"
 msgid "Triggered By User"
+msgstr ""
+
+#: service/models/schedule.ts:160
+msgctxt "task.model.Schedule.fields"
+msgid "0 uses the platform default (no timeout unless configured)."
 msgstr ""
 
 #: service/models/schedule.ts:64
@@ -187,9 +207,14 @@ msgctxt "task.model.Schedule.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/schedule.ts:132
+#: service/models/schedule.ts:135
 msgctxt "task.model.Schedule.fields"
 msgid "Cron Expression"
+msgstr ""
+
+#: service/models/schedule.ts:136
+msgctxt "task.model.Schedule.fields"
+msgid "Five-field cron (minute hour dom month dow)."
 msgstr ""
 
 #: service/models/schedule.ts:95
@@ -197,12 +222,17 @@ msgctxt "task.model.Schedule.fields"
 msgid "Full Method"
 msgstr ""
 
-#: service/models/schedule.ts:166
+#: service/models/schedule.ts:149
+msgctxt "task.model.Schedule.fields"
+msgid "IANA zone used to evaluate the cron expression."
+msgstr ""
+
+#: service/models/schedule.ts:178
 msgctxt "task.model.Schedule.fields"
 msgid "Last Run At"
 msgstr ""
 
-#: service/models/schedule.ts:174
+#: service/models/schedule.ts:186
 msgctxt "task.model.Schedule.fields"
 msgid "Last Triggered At"
 msgstr ""
@@ -212,17 +242,17 @@ msgctxt "task.model.Schedule.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/schedule.ts:158
+#: service/models/schedule.ts:170
 msgctxt "task.model.Schedule.fields"
 msgid "Next Run At"
 msgstr ""
 
-#: service/models/schedule.ts:102
+#: service/models/schedule.ts:105
 msgctxt "task.model.Schedule.fields"
 msgid "Payload Template"
 msgstr ""
 
-#: service/models/schedule.ts:112
+#: service/models/schedule.ts:115
 msgctxt "task.model.Schedule.fields"
 msgid "Scheduler User"
 msgstr ""
@@ -232,18 +262,23 @@ msgctxt "task.model.Schedule.fields"
 msgid "Target App"
 msgstr ""
 
-#: service/models/schedule.ts:150
+#: service/models/schedule.ts:159
 msgctxt "task.model.Schedule.fields"
 msgid "Timeout Ms"
 msgstr ""
 
-#: service/models/schedule.ts:142
+#: service/models/schedule.ts:148
 msgctxt "task.model.Schedule.fields"
 msgid "Timezone"
 msgstr ""
 
-#: service/models/schedule.ts:122
+#: service/models/schedule.ts:125
 msgctxt "task.model.Schedule.fields"
 msgid "Triggered By User"
+msgstr ""
+
+#: service/models/schedule.ts:96
+msgctxt "task.model.Schedule.fields"
+msgid "gRPC full method path invoked when the schedule fires."
 msgstr ""
 

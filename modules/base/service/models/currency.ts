@@ -49,6 +49,7 @@ export default class Currency extends BaseModel {
     unique: true,
     index: true,
     string: _lt('Code', { scope: 'base.model.Currency.fields' }),
+    help: _lt('ISO 4217 code (e.g. USD, EUR).', { scope: 'base.model.Currency.fields' }),
   })
   Code: string;
 
@@ -64,6 +65,9 @@ export default class Currency extends BaseModel {
     notNull: true,
     default: () => 2,
     string: _lt('Decimal Digits', { scope: 'base.model.Currency.fields' }),
+    help: _lt('Decimal places used when rounding amounts in this currency.', {
+      scope: 'base.model.Currency.fields',
+    }),
   })
   DecimalDigits: number;
 
@@ -71,6 +75,9 @@ export default class Currency extends BaseModel {
     type: 'decimal',
     notNull: true,
     string: _lt('Rounding Precision', { scope: 'base.model.Currency.fields' }),
+    help: _lt('Smallest rounding increment; must be greater than zero.', {
+      scope: 'base.model.Currency.fields',
+    }),
   })
   Rounding: any;
 

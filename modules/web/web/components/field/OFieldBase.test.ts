@@ -11,7 +11,14 @@ import type { UseField } from '@/web/web/composables/useField';
 import OFieldBase from './OFieldBase.vue';
 
 function makeBinding(
-  meta?: { string?: string; stringText?: ReturnType<typeof createTermReference>; translate?: boolean; companyDependent?: boolean },
+  meta?: {
+    string?: string;
+    stringText?: ReturnType<typeof createTermReference>;
+    help?: string;
+    helpText?: ReturnType<typeof createTermReference>;
+    translate?: boolean;
+    companyDependent?: boolean;
+  },
   opts?: { recordId?: string | null; isEditMode?: boolean; fieldPrefix?: string | null },
 ): UseField {
   const value = ref('x');
@@ -45,11 +52,15 @@ const EditStub = defineComponent({
 const fieldBaseStubs = {
   'el-form-item': {
     props: ['label'],
-    template: '<div class="form-item" :data-label="label"><slot /></div>',
+    template:
+      '<div class="form-item" :data-label="label"><span class="form-item-label"><slot name="label" /></span><slot /></div>',
   },
   // Inline error icon; Element Plus is not registered in this unit suite.
   'el-icon': { template: '<i class="el-icon-stub"><slot /></i>' },
-  'el-tooltip': { template: '<div class="tooltip-stub"><slot /></div>' },
+  'el-tooltip': {
+    props: ['content'],
+    template: '<div class="tooltip-stub" :data-content="content"><slot /></div>',
+  },
   'el-button': {
     template: '<button class="btn-stub" v-bind="$attrs"><slot /></button>',
   },
@@ -73,7 +84,7 @@ describe('OFieldBase label resolution', () => {
       },
       global: { stubs: fieldBaseStubs },
     });
-    expect(wrapper.get('.form-item').attributes('data-label')).toBe('Access Token ID');
+    expect(wrapper.get('.form-item-label').text()).toContain('Access Token ID');
   });
 
   it('lets explicit label override metadata', () => {
@@ -88,7 +99,7 @@ describe('OFieldBase label resolution', () => {
       },
       global: { stubs: fieldBaseStubs },
     });
-    expect(wrapper.get('.form-item').attributes('data-label')).toBe('Custom Name');
+    expect(wrapper.get('.form-item-label').text()).toContain('Custom Name');
   });
 
   it('prefers FieldsGet overlay translated string via store helpers', () => {
@@ -111,9 +122,188 @@ describe('OFieldBase label resolution', () => {
       },
       global: { stubs: fieldBaseStubs },
     });
-    expect(wrapper.get('.form-item').attributes('data-label')).toBe('访问令牌 ID');
+    expect(wrapper.get('.form-item-label').text()).toContain('访问令牌 ID');
+  });
+});
+
+describe('OFieldBase field help tip', () => {
+  it('renders form label help tip when meta.help is present', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({
+          string: 'Code',
+          help: 'Short unique code used in references',
+        }),
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: { stubs: fieldBaseStubs },
+    });
+    const tip = wrapper.get('.o-field-base__help-icon').element.closest('.tooltip-stub') as HTMLElement | null;
+    expect(tip?.getAttribute('data-content')).toBe('Short unique code used in references');
   });
 
+  it('omits help tip when help is blank', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Code', help: '   ' }),
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: { stubs: fieldBaseStubs },
+    });
+    expect(wrapper.find('.o-field-base__help-icon').exists()).toBe(false);
+  });
+
+  it('does not render help tip in table mode', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({
+          string: 'Code',
+          help: 'Short unique code used in references',
+        }),
+        renderMode: 'table',
+      },
+      slots: {
+        display: () => h('span', 'x'),
+      },
+      global: {
+        stubs: {
+          ...fieldBaseStubs,
+          OVColumn: {
+            template: '<div class="ov-column"><slot :row="{ Id: 1 }" :$index="0" /></div>',
+          },
+        },
+      },
+    });
+    expect(wrapper.find('.o-field-base__help-icon').exists()).toBe(false);
+  });
+
+  it('prefers FieldsGet translated help via store helpers', () => {
+    const binding = makeBinding({
+      string: 'Code',
+      help: 'Short unique code used in references',
+      helpText: createTermReference('base', 'Short unique code used in references', {
+        scope: 'base.model.Company.fields',
+      }),
+    });
+    binding.store = {
+      getFieldMeta: (name: string) =>
+        name === 'AccessTokenId'
+          ? ({
+              type: 'varchar',
+              typeAnnotation: 'string',
+              id: '1',
+              string: 'Code',
+              help: '用于引用的短唯一编码',
+            } as any)
+          : undefined,
+      getFieldsGetTranslatedHelp: (name: string) =>
+        name === 'AccessTokenId' ? '用于引用的短唯一编码' : undefined,
+    } as any;
+
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding,
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: { stubs: fieldBaseStubs },
+    });
+    const tip = wrapper.get('.o-field-base__help-icon').element.closest('.tooltip-stub') as HTMLElement | null;
+    expect(tip?.getAttribute('data-content')).toBe('用于引用的短唯一编码');
+    expect(wrapper.get('.o-field-base__help-btn').attributes('aria-label')).toBe(
+      'Code: 用于引用的短唯一编码'
+    );
+  });
+
+  it('renders inline help tip beside the control', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({
+          string: 'Code',
+          help: 'Short unique code used in references',
+        }),
+        renderMode: 'inline',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: { stubs: fieldBaseStubs },
+    });
+    expect(wrapper.find('.o-field-base__inline-wrap--has-help').exists()).toBe(true);
+    const tip = wrapper.get('.o-field-base__help-icon').element.closest('.tooltip-stub') as HTMLElement | null;
+    expect(tip?.getAttribute('data-content')).toBe('Short unique code used in references');
+    expect(wrapper.get('.o-field-base__help-btn').attributes('aria-label')).toContain(
+      'Short unique code used in references'
+    );
+  });
+
+  it('renders inline help tip in readonly display slot', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding(
+          {
+            string: 'Code',
+            help: 'Units per base currency',
+          },
+          { isEditMode: false }
+        ),
+        renderMode: 'inline',
+      },
+      slots: {
+        display: () => h('span', { class: 'display-stub' }, 'x'),
+      },
+      global: { stubs: fieldBaseStubs },
+    });
+    expect(wrapper.find('.display-stub').exists()).toBe(true);
+    expect(wrapper.find('.o-field-base__help-btn').exists()).toBe(true);
+    expect(wrapper.get('.o-field-base__help-btn').attributes('aria-label')).toBe(
+      'Code: Units per base currency'
+    );
+  });
+
+  it('uses help-only accessible label when field label is blank', () => {
+    const binding = makeBinding({ help: 'Standalone help text' });
+    binding.prop = '';
+    binding.meta = { help: 'Standalone help text' } as any;
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding,
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: { stubs: fieldBaseStubs },
+    });
+    expect(wrapper.get('.o-field-base__help-btn').attributes('aria-label')).toBe('Standalone help text');
+  });
+
+  it('renders inline wrap without help tip when help is absent', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Code' }),
+        renderMode: 'inline',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: { stubs: fieldBaseStubs },
+    });
+    expect(wrapper.find('.o-field-base__inline-wrap').exists()).toBe(true);
+    expect(wrapper.find('.o-field-base__inline-wrap--has-help').exists()).toBe(false);
+    expect(wrapper.find('.o-field-base__help-btn').exists()).toBe(false);
+  });
+});
+
+describe('OFieldBase FieldsGet readonly', () => {
   it('honors FieldsGet isReadonly overlay and shows display slot (T5.3)', async () => {
     const ensureFieldsGet = vi.fn(async () => ({}));
     const binding = makeBinding({ string: 'Code' });

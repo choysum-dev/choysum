@@ -58,6 +58,9 @@ export default class Language extends BaseModel {
     unique: true,
     index: true,
     string: _lt('Code', { scope: 'base.model.Language.fields' }),
+    help: _lt('POSIX locale code (e.g. en_US); cannot be changed after create.', {
+      scope: 'base.model.Language.fields',
+    }),
   })
   Code: string;
 
@@ -100,6 +103,9 @@ export default class Language extends BaseModel {
     size: 32,
     default: () => '[3,0]',
     string: _lt('Grouping', { scope: 'base.model.Language.fields' }),
+    help: _lt('Digit grouping pattern, default [3,0] (thousands then none).', {
+      scope: 'base.model.Language.fields',
+    }),
   })
   Grouping?: string;
 
@@ -107,6 +113,9 @@ export default class Language extends BaseModel {
     type: 'varchar',
     size: 32,
     string: _lt('Date Format', { scope: 'base.model.Language.fields' }),
+    help: _lt('strftime-style pattern for dates in this language.', {
+      scope: 'base.model.Language.fields',
+    }),
   })
   DateFormat?: string;
 

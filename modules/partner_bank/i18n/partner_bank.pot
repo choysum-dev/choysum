@@ -7,113 +7,129 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: service/models/bank_account.ts:56
+#: service/models/bank_account.ts:62
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Account Name"
 msgstr ""
 
-#: service/models/bank_account.ts:196
-#: service/models/bank_account.ts:66
+#: service/models/bank_account.ts:216
+#: service/models/bank_account.ts:72
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Account Number"
 msgstr ""
 
-#: service/models/bank_account.ts:205
+#: service/models/bank_account.ts:225
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Account Number Last 4"
 msgstr ""
 
-#: service/models/bank_account.ts:81
+#: service/models/bank_account.ts:87
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Account Type"
 msgstr ""
 
-#: service/models/bank_account.ts:178
+#: service/models/bank_account.ts:198
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/bank_account.ts:138
+#: service/models/bank_account.ts:146
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Allow Inbound"
 msgstr ""
 
-#: service/models/bank_account.ts:148
+#: service/models/bank_account.ts:159
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Allow Outbound"
 msgstr ""
 
-#: service/models/bank_account.ts:46
+#: service/models/bank_account.ts:147
+#: service/models/bank_account.ts:160
+msgctxt "partner_bank.model.BankAccount.fields"
+msgid "At least one of inbound or outbound must stay enabled."
+msgstr ""
+
+#: service/models/bank_account.ts:52
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Bank"
 msgstr ""
 
-#: service/models/bank_account.ts:187
+#: service/models/bank_account.ts:207
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Bank Name"
 msgstr ""
 
-#: service/models/bank_account.ts:108
+#: service/models/bank_account.ts:114
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Branch Name"
 msgstr ""
 
-#: service/models/bank_account.ts:74
+#: service/models/bank_account.ts:80
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Checking"
 msgstr ""
 
-#: service/models/bank_account.ts:35
+#: service/models/bank_account.ts:40
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Company"
 msgstr ""
 
-#: service/models/bank_account.ts:76
+#: service/models/bank_account.ts:82
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Corporate"
 msgstr ""
 
-#: service/models/bank_account.ts:128
+#: service/models/bank_account.ts:136
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Country"
 msgstr ""
 
-#: service/models/bank_account.ts:118
+#: service/models/bank_account.ts:125
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Currency"
 msgstr ""
 
-#: service/models/bank_account.ts:158
+#: service/models/bank_account.ts:172
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Default Inbound"
 msgstr ""
 
-#: service/models/bank_account.ts:168
+#: service/models/bank_account.ts:185
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Default Outbound"
 msgstr ""
 
-#: service/models/bank_account.ts:90
+#: service/models/bank_account.ts:96
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "IBAN"
 msgstr ""
 
-#: service/models/bank_account.ts:77
+#: service/models/bank_account.ts:173
+msgctxt "partner_bank.model.BankAccount.fields"
+msgid "One default inbound account per partner; requires Allow Inbound."
+msgstr ""
+
+#: service/models/bank_account.ts:186
+msgctxt "partner_bank.model.BankAccount.fields"
+msgid "One default outbound account per partner; requires Allow Outbound."
+msgstr ""
+
+#: service/models/bank_account.ts:83
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Other"
 msgstr ""
 
-#: service/models/bank_account.ts:24
+#: service/models/bank_account.ts:29
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Partner"
 msgstr ""
 
-#: service/models/bank_account.ts:99
+#: service/models/bank_account.ts:105
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Routing Code"
 msgstr ""
 
-#: service/models/bank_account.ts:75
+#: service/models/bank_account.ts:81
 msgctxt "partner_bank.model.BankAccount.fields"
 msgid "Savings"
 msgstr ""
@@ -138,43 +154,43 @@ msgctxt "service/models/_helpers"
 msgid "AccountType must be one of checking, savings, corporate, other"
 msgstr ""
 
-#: service/models/bank_account.ts:268
+#: service/models/bank_account.ts:288
 msgctxt "service/models/bank_account"
 msgid "AllowInbound and AllowOutbound cannot both be false"
 msgstr ""
 
-#: service/models/bank_account.ts:266
+#: service/models/bank_account.ts:286
 msgctxt "service/models/bank_account"
 msgid "BankId is required"
 msgstr ""
 
-#: service/models/bank_account.ts:265
+#: service/models/bank_account.ts:285
 msgctxt "service/models/bank_account"
 msgid "CompanyId is required"
 msgstr ""
 
-#: service/models/bank_account.ts:271
+#: service/models/bank_account.ts:291
 msgctxt "service/models/bank_account"
 msgid "Default inbound account must allow inbound usage"
 msgstr ""
 
-#: service/models/bank_account.ts:274
+#: service/models/bank_account.ts:294
 msgctxt "service/models/bank_account"
 msgid "Default outbound account must allow outbound usage"
 msgstr ""
 
-#: service/models/bank_account.ts:244
+#: service/models/bank_account.ts:264
 msgctxt "service/models/bank_account"
 msgid "Only one default inbound bank account is allowed for the same partner"
 msgstr ""
 
-#: service/models/bank_account.ts:245
+#: service/models/bank_account.ts:265
 msgctxt "service/models/bank_account"
 msgid "Only one default outbound bank account is allowed for the same partner"
 msgstr ""
 
-#: service/models/bank_account.ts:229
-#: service/models/bank_account.ts:264
+#: service/models/bank_account.ts:249
+#: service/models/bank_account.ts:284
 msgctxt "service/models/bank_account"
 msgid "PartnerId is required"
 msgstr ""

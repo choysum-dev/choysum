@@ -115,6 +115,68 @@ test('Field decorator normalizes string and stringText from term references', ()
   }).toThrow('string must be a non-empty string or term reference');
 });
 
+test('Field decorator normalizes help and helpText from term references', () => {
+  const { _lt } = createTranslate('demo', { scope: 'demo.model.Widget.fields' });
+  const helpReference = _lt('Short unique code used in references');
+
+  class HelpFieldModel extends BaseModel {
+    @Field({ type: 'varchar', size: 100, string: 'Code', help: helpReference } as any)
+    Code!: string;
+
+    @Field({ type: 'varchar', size: 100, string: 'Name', help: 'Plain help text' } as any)
+    Name!: string;
+
+    @Field({ type: 'varchar', size: 100, string: 'Note', help: '   ' } as any)
+    Note!: string;
+  }
+
+  const codeMeta = MetadataStorage.instance.getModelMetadata(HelpFieldModel as any).fields.get('Code') as any;
+  const nameMeta = MetadataStorage.instance.getModelMetadata(HelpFieldModel as any).fields.get('Name') as any;
+  const noteMeta = MetadataStorage.instance.getModelMetadata(HelpFieldModel as any).fields.get('Note') as any;
+
+  expect(codeMeta?.help).toBe('Short unique code used in references');
+  expect(codeMeta?.helpText).toEqual(helpReference);
+  expect(nameMeta?.help).toBe('Plain help text');
+  expect(nameMeta?.helpText).toBeUndefined();
+  expect(noteMeta?.help).toBeUndefined();
+  expect(noteMeta?.helpText).toBeUndefined();
+
+  expect(() => {
+    class BadHelpModel extends BaseModel {
+      @Field({ type: 'varchar', help: 42 } as any)
+      Name!: string;
+    }
+    return BadHelpModel;
+  }).toThrow('help must be a string or term reference');
+
+  expect(() => {
+    class EmptyHelpSrcModel extends BaseModel {
+      @Field({
+        type: 'varchar',
+        help: createTranslate('demo', { scope: 'demo.model.Widget.fields' })._lt('   '),
+      } as any)
+      Name!: string;
+    }
+    return EmptyHelpSrcModel;
+  }).toThrow('help term reference requires a non-empty src');
+
+  class NullHelpModel extends BaseModel {
+    @Field({ type: 'varchar', string: 'Name', help: null } as any)
+    Name!: string;
+  }
+  const nullHelpMeta = MetadataStorage.instance.getModelMetadata(NullHelpModel as any).fields.get('Name') as any;
+  expect(nullHelpMeta?.help).toBeUndefined();
+  expect(nullHelpMeta?.helpText).toBeUndefined();
+
+  class UndefinedHelpModel extends BaseModel {
+    @Field({ type: 'varchar', string: 'Name', help: undefined } as any)
+    Name!: string;
+  }
+  const undefinedHelpMeta = MetadataStorage.instance.getModelMetadata(UndefinedHelpModel as any).fields.get('Name') as any;
+  expect(undefinedHelpMeta?.help).toBeUndefined();
+  expect(undefinedHelpMeta?.helpText).toBeUndefined();
+});
+
 test('Field decorator auto-fills selection and ref columns metadata', () => {
   class AutoSelectionModel extends BaseModel {
     @Field({

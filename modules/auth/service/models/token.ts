@@ -46,6 +46,9 @@ export default class Token extends BaseModel {
     unique: true,
     copy: false,
     string: _lt('Token ID', { scope: 'auth.model.Token.fields' }),
+    help: _lt('Stable id embedded in the signed token payload.', {
+      scope: 'auth.model.Token.fields',
+    }),
   })
   TokenId: string;
 
