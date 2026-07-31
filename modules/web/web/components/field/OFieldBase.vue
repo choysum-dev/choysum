@@ -24,7 +24,7 @@ SPDX-License-Identifier: Apache-2.0
           :content="effectiveHelp"
           placement="top"
           :show-after="200"
-          trigger="hover focus"
+          :trigger="['hover', 'focus']"
         >
           <button type="button" class="o-field-base__help-btn" :aria-label="helpAccessibleLabel">
             <el-icon class="o-field-base__help-icon" :size="14">
@@ -320,7 +320,7 @@ SPDX-License-Identifier: Apache-2.0
           :content="effectiveHelp"
           placement="top"
           :show-after="200"
-          trigger="hover focus"
+          :trigger="['hover', 'focus']"
         >
           <button type="button" class="o-field-base__help-btn" :aria-label="helpAccessibleLabel">
             <el-icon class="o-field-base__help-icon" :size="14">
