@@ -470,8 +470,10 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 		return nil, nil, fmt.Errorf("absolute target path: %w", err)
 	}
 	absCache = filepath.Clean(absCache)
-	// Inline HasPrefix barrier in the same function as ReadFile (CodeQL go/path-injection).
-	if absCache != absTypesDir && !strings.HasPrefix(absCache, absTypesDir+string(os.PathSeparator)) {
+	// Require a descendant of typesDir (not the dir itself). Put the sink in the
+	// HasPrefix-true branch so CodeQL go/path-injection recognizes the barrier
+	// (equality short-circuit bypasses PrefixCheck sanitizer modeling).
+	if !strings.HasPrefix(absCache, absTypesDir+string(os.PathSeparator)) {
 		return nil, nil, fmt.Errorf("type cache path escapes types dir: %s", absCache)
 	}
 	cacheFile = absCache
@@ -1542,8 +1544,9 @@ func writeTypeCacheFile(typesDir string, cacheFile string, content []byte) error
 	}
 	absCache = filepath.Clean(absCache)
 
-	// Inline HasPrefix barrier in the same function as FS sinks (CodeQL go/path-injection).
-	if absCache != absTypesDir && !strings.HasPrefix(absCache, absTypesDir+string(os.PathSeparator)) {
+	// Require a descendant of typesDir (not the dir itself). Sink stays after a
+	// positive HasPrefix so CodeQL go/path-injection recognizes the barrier.
+	if !strings.HasPrefix(absCache, absTypesDir+string(os.PathSeparator)) {
 		return fmt.Errorf("type cache path escapes types dir: %s", absCache)
 	}
 	cacheFile = absCache
@@ -1586,9 +1589,9 @@ func resolveAndValidateTypeCachePath(typesDir string, targetPath string) (string
 	}
 	absTarget = filepath.Clean(absTarget)
 
-	// CodeQL-documented containment sanitizer (HasPrefix under cleaned absolute root).
-	sep := string(os.PathSeparator)
-	if absTarget != absTypesDir && !strings.HasPrefix(absTarget, absTypesDir+sep) {
+	// Require a descendant of typesDir (not the dir itself). Positive HasPrefix
+	// is the CodeQL-documented go/path-injection sanitizer guard.
+	if !strings.HasPrefix(absTarget, absTypesDir+string(os.PathSeparator)) {
 		return "", fmt.Errorf("type cache path escapes types dir: %s", absTarget)
 	}
 
@@ -1705,8 +1708,10 @@ func hasMissingLocalCachedImports(typesDir string, cacheFile string, imports []s
 			continue
 		}
 		absCandidate = filepath.Clean(absCandidate)
-		// Inline HasPrefix barrier in the same function as Stat (CodeQL go/path-injection).
-		if absCandidate != absTypesDir && !strings.HasPrefix(absCandidate, absTypesDir+string(os.PathSeparator)) {
+		// Stat only in the HasPrefix-true branch (CodeQL go/path-injection PrefixCheck).
+		// Do not allow absCandidate == absTypesDir: that bypasses HasPrefix(root+sep)
+		// and is not a meaningful import file path anyway.
+		if !strings.HasPrefix(absCandidate, absTypesDir+string(os.PathSeparator)) {
 			continue
 		}
 		if _, err := os.Stat(absCandidate); err != nil {
@@ -1871,8 +1876,8 @@ func EnsureTsconfigCompilerTypeRoots(tsconfigPath string, typesDir string, links
 			}
 		}
 		cachedPath = filepath.Clean(cachedPath)
-		// Inline HasPrefix barrier in the same function as Stat (CodeQL go/path-injection).
-		if cachedPath != absTypesDir && !strings.HasPrefix(cachedPath, absTypesDir+string(os.PathSeparator)) {
+		// Stat only in the HasPrefix-true branch (CodeQL go/path-injection PrefixCheck).
+		if !strings.HasPrefix(cachedPath, absTypesDir+string(os.PathSeparator)) {
 			continue
 		}
 		relToTypesDir, err := filepath.Rel(absTypesDir, cachedPath)
