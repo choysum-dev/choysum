@@ -53,13 +53,8 @@ function resolveOwnerFieldMetadata(ownerModel: string, fieldName: string): Field
   return MetadataStorage.instance.getModelMetadata(ModelCtor)?.fields.get(fieldName);
 }
 
-function resolveEffectiveMaxUploadBytes(fieldMeta: FieldMetadata | undefined): number | undefined {
-  const fieldCap =
-    typeof fieldMeta?.maxUploadBytes === 'number' && fieldMeta.maxUploadBytes > 0 ? fieldMeta.maxUploadBytes : undefined;
-  if (fieldCap === undefined) {
-    return undefined;
-  }
-  return Math.min(fieldCap, DEFAULT_GLOBAL_MAX_UPLOAD_BYTES);
+function resolveEffectiveMaxUploadBytes(maxUploadBytes: number): number {
+  return Math.min(maxUploadBytes, DEFAULT_GLOBAL_MAX_UPLOAD_BYTES);
 }
 
 /**
@@ -84,9 +79,9 @@ export function validateAttachmentContentFieldLimits(
   }
 
   if (hasByteLimit) {
-    const effectiveMaxBytes = resolveEffectiveMaxUploadBytes(fieldMeta);
+    const effectiveMaxBytes = resolveEffectiveMaxUploadBytes(fieldMeta.maxUploadBytes as number);
     const sizeBytes = Number((attachmentContent as any).SizeBytes ?? 0);
-    if (Number.isFinite(sizeBytes) && effectiveMaxBytes !== undefined && sizeBytes > effectiveMaxBytes) {
+    if (Number.isFinite(sizeBytes) && sizeBytes > effectiveMaxBytes) {
       throwDocumentError(
         DocumentErrCode.INVALID_ARGUMENT,
         _t('upload exceeds field maxUploadBytes', { scope: 'service/models/_attachment_binding_ops' }),

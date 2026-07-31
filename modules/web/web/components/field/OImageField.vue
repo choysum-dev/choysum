@@ -135,7 +135,7 @@ import { Picture, UploadFilled } from '@element-plus/icons-vue';
 import { computed } from 'vue';
 import OFieldBase, { type FieldStateExpr } from './OFieldBase.vue';
 import { createTranslate } from '@/web/web/i18n';
-import { resolveImageFieldLimits, validateImageFieldFile } from './imageFieldLimits';
+import { resolveImageFieldLimits, reportImageFieldValidation } from './imageFieldLimits';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/OImageField' });
 
@@ -199,26 +199,7 @@ function resolveFieldLimits() {
 }
 
 async function validateSelectedImageFile(file: UploadRawFile): Promise<boolean> {
-  const result = await validateImageFieldFile(file, resolveFieldLimits());
-  if (result.ok) {
-    return true;
-  }
-  if (result.reason === 'fileTooLarge') {
-    ElMessage.error(
-      _t('Image exceeds maximum size (%s)', { scope: 'web/components/field/OImageField' }, result.detail)
-    );
-    return false;
-  }
-  if (result.reason === 'widthTooLarge') {
-    ElMessage.error(
-      _t('Image width exceeds maximum (%s px)', { scope: 'web/components/field/OImageField' }, result.detail)
-    );
-    return false;
-  }
-  ElMessage.error(
-    _t('Image height exceeds maximum (%s px)', { scope: 'web/components/field/OImageField' }, result.detail)
-  );
-  return false;
+  return reportImageFieldValidation(file, resolveFieldLimits(), message => ElMessage.error(message), _t);
 }
 
 const toView = (raw: any): ViewType => raw;

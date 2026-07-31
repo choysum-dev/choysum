@@ -9,11 +9,11 @@ export type ImageFieldLimits = {
   maxHeight?: number;
 };
 
-export type ImageFieldLimitMessages = {
-  fileTooLarge: (formattedLimit: string) => string;
-  widthTooLarge: (maxWidth: number) => string;
-  heightTooLarge: (maxHeight: number) => string;
-};
+export type ImageFieldLimitTranslate = (
+  msgid: string,
+  opts: { scope: string },
+  detail: string
+) => string;
 
 export function resolveImageFieldLimits(meta: ImageFieldLimits | null | undefined): ImageFieldLimits {
   const out: ImageFieldLimits = {};
@@ -106,4 +106,38 @@ export async function validateImageFieldFile(
   }
 
   return { ok: true };
+}
+
+const IMAGE_FIELD_LIMIT_SCOPE = 'web/components/field/OImageField';
+
+export function imageFieldLimitErrorMessage(
+  result: Extract<ImageFieldValidationResult, { ok: false }>,
+  t: ImageFieldLimitTranslate
+): string {
+  if (result.reason === 'fileTooLarge') {
+    return t('Image exceeds maximum size (%s)', { scope: IMAGE_FIELD_LIMIT_SCOPE }, result.detail);
+  }
+  if (result.reason === 'widthTooLarge') {
+    return t('Image width exceeds maximum (%s px)', { scope: IMAGE_FIELD_LIMIT_SCOPE }, result.detail);
+  }
+  return t('Image height exceeds maximum (%s px)', { scope: IMAGE_FIELD_LIMIT_SCOPE }, result.detail);
+}
+
+/**
+ * Client-side gate used by OImageField before applying a selected file.
+ * Returns false after invoking onError when validation fails.
+ */
+export async function reportImageFieldValidation(
+  file: Blob,
+  limits: ImageFieldLimits | null | undefined,
+  onError: (message: string) => void,
+  t: ImageFieldLimitTranslate,
+  readDimensions: (file: Blob) => Promise<{ width: number; height: number } | undefined> = readImageNaturalDimensions
+): Promise<boolean> {
+  const result = await validateImageFieldFile(file, limits, readDimensions);
+  if (result.ok) {
+    return true;
+  }
+  onError(imageFieldLimitErrorMessage(result, t));
+  return false;
 }
