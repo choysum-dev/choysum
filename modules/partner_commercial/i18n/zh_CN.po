@@ -53,8 +53,8 @@ msgstr "主标识"
 
 #: service/models/partner_identifier.ts:62
 msgctxt "partner_commercial.model.PartnerIdentifier.fields"
-msgid "Stored in uppercase; duplicate type+value pairs are rejected."
-msgstr "以大写存储；重复的类型+值组合会被拒绝。"
+msgid "Stored in uppercase; duplicate type+value pairs for the same partner are rejected."
+msgstr "以大写存储；同一伙伴下重复的类型+值组合会被拒绝。"
 
 #: service/models/partner_identifier.ts:47
 msgctxt "partner_commercial.model.PartnerIdentifier.fields"
@@ -195,3 +195,4 @@ msgstr "查看标识码"
 msgctxt "web/views/PartnerIdentifierFormView"
 msgid "Select Country"
 msgstr "选择国家"
+

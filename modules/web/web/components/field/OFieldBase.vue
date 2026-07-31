@@ -19,10 +19,18 @@ SPDX-License-Identifier: Apache-2.0
     <template #label>
       <span class="o-field-base__label">
         <span class="o-field-base__label-text">{{ resolvedLabel }}</span>
-        <el-tooltip v-if="effectiveHelp" :content="effectiveHelp" placement="top" :show-after="200">
-          <el-icon class="o-field-base__help-icon" :size="14" :aria-label="helpAriaLabel">
-            <component :is="InfoOutlined" />
-          </el-icon>
+        <el-tooltip
+          v-if="effectiveHelp"
+          :content="effectiveHelp"
+          placement="top"
+          :show-after="200"
+          trigger="hover focus"
+        >
+          <button type="button" class="o-field-base__help-btn" :aria-label="helpAccessibleLabel">
+            <el-icon class="o-field-base__help-icon" :size="14">
+              <component :is="InfoOutlined" />
+            </el-icon>
+          </button>
         </el-tooltip>
       </span>
     </template>
@@ -307,10 +315,18 @@ SPDX-License-Identifier: Apache-2.0
             :onchangeRunning="onchangeHandlers.running?.value"
           />
         </template>
-        <el-tooltip v-if="effectiveHelp" :content="effectiveHelp" placement="top" :show-after="200">
-          <el-icon class="o-field-base__help-icon" :size="14" :aria-label="helpAriaLabel">
-            <component :is="InfoOutlined" />
-          </el-icon>
+        <el-tooltip
+          v-if="effectiveHelp"
+          :content="effectiveHelp"
+          placement="top"
+          :show-after="200"
+          trigger="hover focus"
+        >
+          <button type="button" class="o-field-base__help-btn" :aria-label="helpAccessibleLabel">
+            <el-icon class="o-field-base__help-icon" :size="14">
+              <component :is="InfoOutlined" />
+            </el-icon>
+          </button>
         </el-tooltip>
       </div>
     </template>
@@ -419,8 +435,11 @@ const effectiveHelp = computed(() => {
   });
 });
 
-const helpAriaLabel = computed(() => {
+const helpAccessibleLabel = computed(() => {
+  const help = String(effectiveHelp.value || '').trim();
   const label = String(resolvedLabel.value || leafFieldName.value || '').trim();
+  if (help && label) return `${label}: ${help}`;
+  if (help) return help;
   return label ? _t('Help: %s', label) : _t('Field help');
 });
 
@@ -813,10 +832,26 @@ defineSlots<{
 .o-field-base__label-text {
   min-width: 0;
 }
+.o-field-base__help-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: help;
+  line-height: 0;
+}
+.o-field-base__help-btn:focus-visible {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
 .o-field-base__help-icon {
   flex-shrink: 0;
   color: var(--el-text-color-secondary);
-  cursor: help;
   vertical-align: middle;
 }
 .o-field-base__cell {

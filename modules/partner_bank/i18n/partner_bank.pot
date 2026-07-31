@@ -106,12 +106,12 @@ msgstr ""
 
 #: service/models/bank_account.ts:173
 msgctxt "partner_bank.model.BankAccount.fields"
-msgid "One default per direction; requires matching Allow Inbound."
+msgid "One default inbound account per partner; requires Allow Inbound."
 msgstr ""
 
 #: service/models/bank_account.ts:186
 msgctxt "partner_bank.model.BankAccount.fields"
-msgid "One default per direction; requires matching Allow Outbound."
+msgid "One default outbound account per partner; requires Allow Outbound."
 msgstr ""
 
 #: service/models/bank_account.ts:83

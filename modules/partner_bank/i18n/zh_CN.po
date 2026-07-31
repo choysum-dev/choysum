@@ -98,13 +98,13 @@ msgstr "IBAN"
 
 #: service/models/bank_account.ts:173
 msgctxt "partner_bank.model.BankAccount.fields"
-msgid "One default per direction; requires matching Allow Inbound."
-msgstr "每个方向仅一个默认账户；须同时允许进账。"
+msgid "One default inbound account per partner; requires Allow Inbound."
+msgstr "同一伙伴仅一个默认进账账户；须同时允许进账。"
 
 #: service/models/bank_account.ts:186
 msgctxt "partner_bank.model.BankAccount.fields"
-msgid "One default per direction; requires matching Allow Outbound."
-msgstr "每个方向仅一个默认账户；须同时允许出账。"
+msgid "One default outbound account per partner; requires Allow Outbound."
+msgstr "同一伙伴仅一个默认出账账户；须同时允许出账。"
 
 #: service/models/bank_account.ts:83
 msgctxt "partner_bank.model.BankAccount.fields"
@@ -315,3 +315,4 @@ msgstr "查看银行账户"
 msgctxt "web/views/PartnerFormView"
 msgid "Yes"
 msgstr "是"
+

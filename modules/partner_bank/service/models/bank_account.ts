@@ -170,7 +170,7 @@ export default class BankAccount extends BaseModel {
     default: () => false,
     index: true,
     string: _lt('Default Inbound', { scope: 'partner_bank.model.BankAccount.fields' }),
-    help: _lt('One default per direction; requires matching Allow Inbound.', {
+    help: _lt('One default inbound account per partner; requires Allow Inbound.', {
       scope: 'partner_bank.model.BankAccount.fields',
     }),
   })
@@ -183,7 +183,7 @@ export default class BankAccount extends BaseModel {
     default: () => false,
     index: true,
     string: _lt('Default Outbound', { scope: 'partner_bank.model.BankAccount.fields' }),
-    help: _lt('One default per direction; requires matching Allow Outbound.', {
+    help: _lt('One default outbound account per partner; requires Allow Outbound.', {
       scope: 'partner_bank.model.BankAccount.fields',
     }),
   })

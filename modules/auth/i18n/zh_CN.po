@@ -121,6 +121,11 @@ msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Field"
 msgstr "字段"
 
+#: service/models/role_field_rule.ts:43 service/models/role_field_rule.ts:59 service/models/role_field_rule.ts:84
+msgctxt "auth.model.RoleFieldRule.fields"
+msgid "Leave all scopes empty for global; otherwise pick one level (field scope also needs a model)."
+msgstr "全部留空表示全局作用域；否则只选一级（字段级还需指定模型）。"
+
 #: service/models/role_field_rule.ts:58
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Model"
@@ -130,11 +135,6 @@ msgstr "模型"
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Override field visibility or editability; at least one of Read/Write must be set."
 msgstr "覆盖字段可见性或可编辑性；读/写至少设置一项。"
-
-#: service/models/role_field_rule.ts:43 service/models/role_field_rule.ts:59 service/models/role_field_rule.ts:84
-msgctxt "auth.model.RoleFieldRule.fields"
-msgid "Pick one scope level; field scope also requires a model."
-msgstr "选择一个作用域级别；字段级作用域还需指定模型。"
 
 #: service/models/role_field_rule.ts:100
 msgctxt "auth.model.RoleFieldRule.fields"
@@ -166,6 +166,11 @@ msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Allow"
 msgstr "允许"
 
+#: service/models/role_method_access.ts:91
+msgctxt "auth.model.RoleMethodAccess.fields"
+msgid "Any matching deny overrides allow across scopes; default is deny."
+msgstr "任一匹配的拒绝都会覆盖允许（跨作用域）；未设置时默认为拒绝。"
+
 #: service/models/role_method_access.ts:41
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Application"
@@ -176,10 +181,10 @@ msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Deny"
 msgstr "拒绝"
 
-#: service/models/role_method_access.ts:91
+#: service/models/role_method_access.ts:74
 msgctxt "auth.model.RoleMethodAccess.fields"
-msgid "Deny wins over allow; default is deny when unset."
-msgstr "拒绝优先于允许；未设置时默认为拒绝。"
+msgid "Leave all scopes empty for a global rule; matching scopes are OR-ed and any deny wins."
+msgstr "全部留空为全局规则；匹配的作用域按或运算，任一拒绝优先。"
 
 #: service/models/role_method_access.ts:107
 msgctxt "auth.model.RoleMethodAccess.fields"
@@ -195,11 +200,6 @@ msgstr "模式"
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Model"
 msgstr "模型"
-
-#: service/models/role_method_access.ts:74
-msgctxt "auth.model.RoleMethodAccess.fields"
-msgid "Most specific scope wins: service, then model, then application."
-msgstr "最具体的作用域优先：服务 > 模型 > 应用。"
 
 #: service/models/role_method_access.ts:28
 msgctxt "auth.model.RoleMethodAccess.fields"
@@ -294,7 +294,7 @@ msgstr "允许"
 #: service/models/role_ui_resource.ts:49
 msgctxt "auth.model.RoleUiResource.fields"
 msgid "Allow shows UI resources; deny hides them even if inherited."
-msgstr "允许显示 UI 资源；拒绝即使继承也会隐藏。"
+msgstr "允许显示 UI 资源；即使资源来自继承，拒绝也会将其隐藏。"
 
 #: service/models/role_ui_resource.ts:64
 msgctxt "auth.model.RoleUiResource.fields"
@@ -476,11 +476,6 @@ msgctxt "auth.model.User.fields"
 msgid "Last Name"
 msgstr "姓"
 
-#: service/models/user.ts:159
-msgctxt "auth.model.User.fields"
-msgid "POSIX terminology code; must match an active base.Language row."
-msgstr "术语语言的 POSIX 代码；须匹配已启用的 base.Language。"
-
 #: service/models/user.ts:99
 msgctxt "auth.model.User.fields"
 msgid "Password Hash"
@@ -520,6 +515,11 @@ msgstr "令牌"
 msgctxt "auth.model.User.fields"
 msgid "Username"
 msgstr "用户名"
+
+#: service/models/user.ts:159
+msgctxt "auth.model.User.fields"
+msgid "When set, must match an active base.Language POSIX terminology code."
+msgstr "若填写，须匹配已启用的 base.Language POSIX 术语代码。"
 
 #: service/models/user_role.ts:55
 msgctxt "auth.model.UserRole.fields"
@@ -2130,3 +2130,4 @@ msgstr "用户"
 msgctxt "web/views/UserSearchView"
 msgid "Active"
 msgstr "启用"
+

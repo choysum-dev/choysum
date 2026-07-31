@@ -129,6 +129,13 @@ msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Field"
 msgstr ""
 
+#: service/models/role_field_rule.ts:43
+#: service/models/role_field_rule.ts:59
+#: service/models/role_field_rule.ts:84
+msgctxt "auth.model.RoleFieldRule.fields"
+msgid "Leave all scopes empty for global; otherwise pick one level (field scope also needs a model)."
+msgstr ""
+
 #: service/models/role_field_rule.ts:58
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Model"
@@ -138,13 +145,6 @@ msgstr ""
 #: service/models/role_field_rule.ts:118
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Override field visibility or editability; at least one of Read/Write must be set."
-msgstr ""
-
-#: service/models/role_field_rule.ts:43
-#: service/models/role_field_rule.ts:59
-#: service/models/role_field_rule.ts:84
-msgctxt "auth.model.RoleFieldRule.fields"
-msgid "Pick one scope level; field scope also requires a model."
 msgstr ""
 
 #: service/models/role_field_rule.ts:100
@@ -177,6 +177,11 @@ msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Allow"
 msgstr ""
 
+#: service/models/role_method_access.ts:91
+msgctxt "auth.model.RoleMethodAccess.fields"
+msgid "Any matching deny overrides allow across scopes; default is deny."
+msgstr ""
+
 #: service/models/role_method_access.ts:41
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Application"
@@ -187,9 +192,9 @@ msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Deny"
 msgstr ""
 
-#: service/models/role_method_access.ts:91
+#: service/models/role_method_access.ts:74
 msgctxt "auth.model.RoleMethodAccess.fields"
-msgid "Deny wins over allow; default is deny when unset."
+msgid "Leave all scopes empty for a global rule; matching scopes are OR-ed and any deny wins."
 msgstr ""
 
 #: service/models/role_method_access.ts:107
@@ -205,11 +210,6 @@ msgstr ""
 #: service/models/role_method_access.ts:54
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Model"
-msgstr ""
-
-#: service/models/role_method_access.ts:74
-msgctxt "auth.model.RoleMethodAccess.fields"
-msgid "Most specific scope wins: service, then model, then application."
 msgstr ""
 
 #: service/models/role_method_access.ts:28
@@ -487,11 +487,6 @@ msgctxt "auth.model.User.fields"
 msgid "Last Name"
 msgstr ""
 
-#: service/models/user.ts:159
-msgctxt "auth.model.User.fields"
-msgid "POSIX terminology code; must match an active base.Language row."
-msgstr ""
-
 #: service/models/user.ts:99
 msgctxt "auth.model.User.fields"
 msgid "Password Hash"
@@ -530,6 +525,11 @@ msgstr ""
 #: service/models/user.ts:65
 msgctxt "auth.model.User.fields"
 msgid "Username"
+msgstr ""
+
+#: service/models/user.ts:159
+msgctxt "auth.model.User.fields"
+msgid "When set, must match an active base.Language POSIX terminology code."
 msgstr ""
 
 #: service/models/user_role.ts:55

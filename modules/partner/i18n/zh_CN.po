@@ -183,8 +183,8 @@ msgstr "备注"
 
 #: service/models/partner_contact.ts:139
 msgctxt "partner.model.PartnerContact.fields"
-msgid "One default per address type; used for partner default pickers."
-msgstr "每种地址类型仅一个默认项；用于伙伴默认地址选择。"
+msgid "One default contact per partner and address type; used by partner default pickers."
+msgstr "同一伙伴下每种地址类型仅一个默认联系人；用于伙伴默认联系人与地址选择。"
 
 #: service/models/partner_contact.ts:30
 msgctxt "partner.model.PartnerContact.fields"
@@ -515,3 +515,4 @@ msgstr "打开伙伴详情"
 msgctxt "web/views/PartnerListView"
 msgid "Partner"
 msgstr "伙伴"
+

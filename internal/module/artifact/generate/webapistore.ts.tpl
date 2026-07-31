@@ -147,6 +147,7 @@ export function create{{.Model.Name}}Store(options?: Create{{.Model.Name}}StoreO
       ensureFieldsGet: fieldsGetHelpers.ensureFieldsGet,
       getFieldMeta: fieldsGetHelpers.getFieldMeta,
       getFieldsGetTranslatedString: fieldsGetHelpers.getFieldsGetTranslatedString,
+      getFieldsGetTranslatedHelp: fieldsGetHelpers.getFieldsGetTranslatedHelp,
       clearFieldsGetCache: fieldsGetHelpers.clearFieldsGetCache,
       setContext: {{.Model.Name}}Api.setContext,
       getContext: {{.Model.Name}}Api.getContext,

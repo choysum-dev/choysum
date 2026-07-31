@@ -40,7 +40,7 @@ export default class RoleFieldRule extends BaseModel {
     size: 20,
     index: true,
     string: _lt('Application', { scope: 'auth.model.RoleFieldRule.fields' }),
-    help: _lt('Pick one scope level; field scope also requires a model.', {
+    help: _lt('Leave all scopes empty for global; otherwise pick one level (field scope also needs a model).', {
       scope: 'auth.model.RoleFieldRule.fields',
     }),
   })
@@ -56,7 +56,7 @@ export default class RoleFieldRule extends BaseModel {
     size: 20,
     index: true,
     string: _lt('Model', { scope: 'auth.model.RoleFieldRule.fields' }),
-    help: _lt('Pick one scope level; field scope also requires a model.', {
+    help: _lt('Leave all scopes empty for global; otherwise pick one level (field scope also needs a model).', {
       scope: 'auth.model.RoleFieldRule.fields',
     }),
   })
@@ -81,7 +81,7 @@ export default class RoleFieldRule extends BaseModel {
         AND (perm_read IS NOT NULL OR perm_write IS NOT NULL)
       )`,
     string: _lt('Field', { scope: 'auth.model.RoleFieldRule.fields' }),
-    help: _lt('Pick one scope level; field scope also requires a model.', {
+    help: _lt('Leave all scopes empty for global; otherwise pick one level (field scope also needs a model).', {
       scope: 'auth.model.RoleFieldRule.fields',
     }),
   })

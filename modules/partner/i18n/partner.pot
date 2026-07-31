@@ -191,7 +191,7 @@ msgstr ""
 
 #: service/models/partner_contact.ts:139
 msgctxt "partner.model.PartnerContact.fields"
-msgid "One default per address type; used for partner default pickers."
+msgid "One default contact per partner and address type; used by partner default pickers."
 msgstr ""
 
 #: service/models/partner_contact.ts:30

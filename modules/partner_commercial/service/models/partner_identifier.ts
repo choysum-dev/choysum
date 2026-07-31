@@ -59,7 +59,7 @@ export default class PartnerIdentifier extends BaseModel {
     index: true,
     uniqueIndex: 'uidx_partner_identifier_partner_type_value',
     string: _lt('Value', { scope: 'partner_commercial.model.PartnerIdentifier.fields' }),
-    help: _lt('Stored in uppercase; duplicate type+value pairs are rejected.', {
+    help: _lt('Stored in uppercase; duplicate type+value pairs for the same partner are rejected.', {
       scope: 'partner_commercial.model.PartnerIdentifier.fields',
     }),
   })

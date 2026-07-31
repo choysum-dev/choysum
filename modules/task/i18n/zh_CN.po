@@ -61,6 +61,11 @@ msgctxt "task.model.Job.fields"
 msgid "Max Attempts"
 msgstr "最大尝试次数"
 
+#: service/models/job.ts:159
+msgctxt "task.model.Job.fields"
+msgid "Maximum total attempts including the first run."
+msgstr "含首次执行在内的最大尝试次数。"
+
 #: service/models/job.ts:92
 msgctxt "task.model.Job.fields"
 msgid "Payload"
@@ -80,11 +85,6 @@ msgstr "结果哈希"
 msgctxt "task.model.Job.fields"
 msgid "Result Truncated"
 msgstr "结果(截断)"
-
-#: service/models/job.ts:159
-msgctxt "task.model.Job.fields"
-msgid "Retries after failure; 0 falls back to the platform default."
-msgstr "失败后的重试次数；0 回退到平台默认值。"
 
 #: service/models/job.ts:139
 msgctxt "task.model.Job.fields"
@@ -193,8 +193,8 @@ msgstr "触发用户"
 
 #: service/models/schedule.ts:160
 msgctxt "task.model.Schedule.fields"
-msgid "0 uses the platform default timeout."
-msgstr "0 表示使用平台默认超时。"
+msgid "0 uses the platform default (no timeout unless configured)."
+msgstr "0 表示使用平台默认值（未配置时无超时）。"
 
 #: service/models/schedule.ts:64
 msgctxt "task.model.Schedule.fields"
@@ -275,3 +275,4 @@ msgstr "触发用户"
 msgctxt "task.model.Schedule.fields"
 msgid "gRPC full method path invoked when the schedule fires."
 msgstr "计划触发时调用的 gRPC 完整方法路径。"
+

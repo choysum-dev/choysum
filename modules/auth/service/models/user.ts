@@ -156,7 +156,7 @@ export default class User extends BaseModel {
     type: 'varchar',
     size: 20,
     string: _lt('Language', { scope: 'auth.model.User.fields' }),
-    help: _lt('POSIX terminology code; must match an active base.Language row.', {
+    help: _lt('When set, must match an active base.Language POSIX terminology code.', {
       scope: 'auth.model.User.fields',
     }),
   })

@@ -59,7 +59,7 @@ msgstr ""
 
 #: service/models/partner_identifier.ts:62
 msgctxt "partner_commercial.model.PartnerIdentifier.fields"
-msgid "Stored in uppercase; duplicate type+value pairs are rejected."
+msgid "Stored in uppercase; duplicate type+value pairs for the same partner are rejected."
 msgstr ""
 
 #: service/models/partner_identifier.ts:47

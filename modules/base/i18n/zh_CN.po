@@ -54,7 +54,7 @@ msgstr "银行识别码（BIC）"
 #: service/models/bank.ts:45
 msgctxt "base.model.Bank.fields"
 msgid "Bank Identifier Code (SWIFT), typically 8 or 11 characters."
-msgstr "银行识别码（SWIFT），通常为 8 或 11 位。"
+msgstr "银行识别码（SWIFT），通常为 8 或 11 个字符。"
 
 #: service/models/bank.ts:27
 msgctxt "base.model.Bank.fields"
@@ -294,7 +294,7 @@ msgstr "留空表示在无公司汇率时使用全局汇率。"
 #: service/models/exchange_rate.ts:68
 msgctxt "base.model.ExchangeRate.fields"
 msgid "Units of this currency per one unit of the company base currency."
-msgstr "每单位公司本位币对应的本币数量。"
+msgstr "每 1 单位公司本位币对应的该币种数量。"
 
 #: service/models/language.ts:72
 msgctxt "base.model.Language.fields"
@@ -554,7 +554,7 @@ msgstr "换算系数"
 #: service/models/uom.ts:55
 msgctxt "base.model.UoM.fields"
 msgid "Multiplier to convert this unit to the category reference unit."
-msgstr "换算到该类别参考单位的乘数。"
+msgstr "换算到该类别基准单位的乘数。"
 
 #: service/models/uom.ts:19
 msgctxt "base.model.UoM.fields"
@@ -564,7 +564,7 @@ msgstr "名称"
 #: service/models/uom.ts:45
 msgctxt "base.model.UoM.fields"
 msgid "One reference unit per category; its factor must be 1."
-msgstr "每个类别仅一个参考单位；其换算因子必须为 1。"
+msgstr "每个类别仅一个基准单位；其换算因子必须为 1。"
 
 #: service/models/uom.ts:44
 msgctxt "base.model.UoM.fields"

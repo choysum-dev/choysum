@@ -71,7 +71,7 @@ export default class RoleMethodAccess extends BaseModel {
         OR (ir_service_id IS NULL AND ir_model_id IS NULL AND ir_application_id IS NULL)
       )`,
     string: _lt('Service', { scope: 'auth.model.RoleMethodAccess.fields' }),
-    help: _lt('Most specific scope wins: service, then model, then application.', {
+    help: _lt('Leave all scopes empty for a global rule; matching scopes are OR-ed and any deny wins.', {
       scope: 'auth.model.RoleMethodAccess.fields',
     }),
   })
@@ -88,7 +88,7 @@ export default class RoleMethodAccess extends BaseModel {
     ],
     default: () => 'deny',
     string: _lt('Mode', { scope: 'auth.model.RoleMethodAccess.fields' }),
-    help: _lt('Deny wins over allow; default is deny when unset.', {
+    help: _lt('Any matching deny overrides allow across scopes; default is deny.', {
       scope: 'auth.model.RoleMethodAccess.fields',
     }),
   })

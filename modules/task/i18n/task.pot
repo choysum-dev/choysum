@@ -67,6 +67,11 @@ msgctxt "task.model.Job.fields"
 msgid "Max Attempts"
 msgstr ""
 
+#: service/models/job.ts:159
+msgctxt "task.model.Job.fields"
+msgid "Maximum total attempts including the first run."
+msgstr ""
+
 #: service/models/job.ts:92
 msgctxt "task.model.Job.fields"
 msgid "Payload"
@@ -85,11 +90,6 @@ msgstr ""
 #: service/models/job.ts:239
 msgctxt "task.model.Job.fields"
 msgid "Result Truncated"
-msgstr ""
-
-#: service/models/job.ts:159
-msgctxt "task.model.Job.fields"
-msgid "Retries after failure; 0 falls back to the platform default."
 msgstr ""
 
 #: service/models/job.ts:139
@@ -199,7 +199,7 @@ msgstr ""
 
 #: service/models/schedule.ts:160
 msgctxt "task.model.Schedule.fields"
-msgid "0 uses the platform default timeout."
+msgid "0 uses the platform default (no timeout unless configured)."
 msgstr ""
 
 #: service/models/schedule.ts:64

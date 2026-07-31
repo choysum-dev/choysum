@@ -157,7 +157,7 @@ export default class Schedule extends BaseModel {
     type: 'int',
     default: () => 0,
     string: _lt('Timeout Ms', { scope: 'task.model.Schedule.fields' }),
-    help: _lt('0 uses the platform default timeout.', {
+    help: _lt('0 uses the platform default (no timeout unless configured).', {
       scope: 'task.model.Schedule.fields',
     }),
   })

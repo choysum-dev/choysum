@@ -165,5 +165,7 @@ export interface WebModelStore<TModel extends BaseModel> extends ScopedStore {
   getFieldMeta: (name: string) => WebFieldMetadata | undefined;
   /** FieldsGet-translated title when overlay is present for the active lang. */
   getFieldsGetTranslatedString: (name: string) => string | undefined;
+  /** FieldsGet-translated help when overlay is present for the active lang. */
+  getFieldsGetTranslatedHelp: (name: string) => string | undefined;
   clearFieldsGetCache: () => void;
 }

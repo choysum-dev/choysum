@@ -799,6 +799,9 @@ func applyResolvedSpecToLegacyField(field *meta.IrField, spec *meta.IrFieldResol
 			field.StringText = string(b)
 		}
 	}
+	// Always clear before reapply so removed/blank help does not leave stale HelpText.
+	field.FieldHelp = ""
+	field.HelpText = ""
 	if strings.TrimSpace(spec.Structural.Help) != "" {
 		field.FieldHelp = strings.TrimSpace(spec.Structural.Help)
 	}

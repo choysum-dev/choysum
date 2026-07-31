@@ -156,7 +156,7 @@ export default class Job extends BaseModel {
     type: 'int',
     default: () => 1,
     string: _lt('Max Attempts', { scope: 'task.model.Job.fields' }),
-    help: _lt('Retries after failure; 0 falls back to the platform default.', {
+    help: _lt('Maximum total attempts including the first run.', {
       scope: 'task.model.Job.fields',
     }),
   })
