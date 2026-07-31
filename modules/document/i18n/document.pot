@@ -7,262 +7,262 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: service/models/attachment_binding.ts:81
+#: service/models/attachment_binding.ts:84
 msgctxt "document.model.AttachmentBinding.fields"
 msgid "Attachment Content"
 msgstr ""
 
-#: service/models/attachment_binding.ts:148
+#: service/models/attachment_binding.ts:151
 msgctxt "document.model.AttachmentBinding.fields"
 msgid "Company"
 msgstr ""
 
-#: service/models/attachment_binding.ts:91
+#: service/models/attachment_binding.ts:94
 msgctxt "document.model.AttachmentBinding.fields"
 msgid "Display File Name"
 msgstr ""
 
-#: service/models/attachment_binding.ts:107
+#: service/models/attachment_binding.ts:110
 msgctxt "document.model.AttachmentBinding.fields"
 msgid "Download Disposition"
 msgstr ""
 
-#: service/models/attachment_binding.ts:68
+#: service/models/attachment_binding.ts:70
 msgctxt "document.model.AttachmentBinding.fields"
 msgid "Field Name"
 msgstr ""
 
-#: service/models/attachment_binding.ts:42
+#: service/models/attachment_binding.ts:44
 msgctxt "document.model.AttachmentBinding.fields"
 msgid "Owner Model"
 msgstr ""
 
-#: service/models/attachment_binding.ts:55
+#: service/models/attachment_binding.ts:57
 msgctxt "document.model.AttachmentBinding.fields"
 msgid "Owner Record"
 msgstr ""
 
-#: service/models/attachment_binding.ts:125
+#: service/models/attachment_binding.ts:128
 msgctxt "document.model.AttachmentBinding.fields"
 msgid "Status"
 msgstr ""
 
-#: service/models/attachment_binding.ts:135
+#: service/models/attachment_binding.ts:138
 msgctxt "document.model.AttachmentBinding.fields"
 msgid "Unbound At"
 msgstr ""
 
-#: service/models/attachment_object.ts:77
+#: service/models/attachment_object.ts:80
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Checksum SHA-256"
 msgstr ""
 
-#: service/models/attachment_object.ts:148
+#: service/models/attachment_object.ts:151
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Company"
 msgstr ""
 
-#: service/models/attachment_object.ts:108
+#: service/models/attachment_object.ts:111
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Image Format"
 msgstr ""
 
-#: service/models/attachment_object.ts:97
+#: service/models/attachment_object.ts:100
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Image Height"
 msgstr ""
 
-#: service/models/attachment_object.ts:87
+#: service/models/attachment_object.ts:90
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Image Width"
 msgstr ""
 
-#: service/models/attachment_object.ts:65
+#: service/models/attachment_object.ts:68
 msgctxt "document.model.AttachmentContent.fields"
 msgid "MIME Type"
 msgstr ""
 
-#: service/models/attachment_object.ts:117
+#: service/models/attachment_object.ts:120
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Metadata"
 msgstr ""
 
-#: service/models/attachment_object.ts:53
+#: service/models/attachment_object.ts:56
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Size Bytes"
 msgstr ""
 
-#: service/models/attachment_object.ts:135
+#: service/models/attachment_object.ts:138
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Status"
 msgstr ""
 
-#: service/models/attachment_object.ts:42
+#: service/models/attachment_object.ts:45
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Stored Content"
 msgstr ""
 
-#: service/models/attachment_mutation_ledger.ts:32
+#: service/models/attachment_mutation_ledger.ts:33
 msgctxt "document.model.AttachmentMutationLedger.fields"
 msgid "Action"
 msgstr ""
 
-#: service/models/attachment_mutation_ledger.ts:103
+#: service/models/attachment_mutation_ledger.ts:105
 msgctxt "document.model.AttachmentMutationLedger.fields"
 msgid "Company"
 msgstr ""
 
-#: service/models/attachment_mutation_ledger.ts:90
+#: service/models/attachment_mutation_ledger.ts:92
 msgctxt "document.model.AttachmentMutationLedger.fields"
 msgid "Error Code"
 msgstr ""
 
-#: service/models/attachment_mutation_ledger.ts:44
+#: service/models/attachment_mutation_ledger.ts:46
 msgctxt "document.model.AttachmentMutationLedger.fields"
 msgid "Mutation"
 msgstr ""
 
-#: service/models/attachment_mutation_ledger.ts:53
+#: service/models/attachment_mutation_ledger.ts:55
 msgctxt "document.model.AttachmentMutationLedger.fields"
 msgid "Request"
 msgstr ""
 
-#: service/models/attachment_mutation_ledger.ts:62
+#: service/models/attachment_mutation_ledger.ts:64
 msgctxt "document.model.AttachmentMutationLedger.fields"
 msgid "Response"
 msgstr ""
 
-#: service/models/attachment_mutation_ledger.ts:79
+#: service/models/attachment_mutation_ledger.ts:81
 msgctxt "document.model.AttachmentMutationLedger.fields"
 msgid "Status"
 msgstr ""
 
-#: service/models/upload_session.ts:204
+#: service/models/upload_session.ts:209
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Allowed MIME Types"
 msgstr ""
 
-#: service/models/upload_session.ts:246
+#: service/models/upload_session.ts:254
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Attachment Content"
 msgstr ""
 
-#: service/models/upload_session.ts:92
+#: service/models/upload_session.ts:96
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Business Request"
 msgstr ""
 
-#: service/models/upload_session.ts:132
+#: service/models/upload_session.ts:136
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Checksum SHA-256"
 msgstr ""
 
-#: service/models/upload_session.ts:260
+#: service/models/upload_session.ts:268
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Company"
 msgstr ""
 
-#: service/models/upload_session.ts:215
+#: service/models/upload_session.ts:221
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Expires At"
 msgstr ""
 
-#: service/models/upload_session.ts:49
+#: service/models/upload_session.ts:52
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Field Name"
 msgstr ""
 
-#: service/models/upload_session.ts:79
+#: service/models/upload_session.ts:82
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Issuer User"
 msgstr ""
 
-#: service/models/upload_session.ts:182
+#: service/models/upload_session.ts:187
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Max Upload Bytes"
 msgstr ""
 
-#: service/models/upload_session.ts:65
+#: service/models/upload_session.ts:68
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Operation"
 msgstr ""
 
-#: service/models/upload_session.ts:26
+#: service/models/upload_session.ts:29
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Owner Model"
 msgstr ""
 
-#: service/models/upload_session.ts:37
+#: service/models/upload_session.ts:40
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Owner Record"
 msgstr ""
 
-#: service/models/upload_session.ts:112
+#: service/models/upload_session.ts:116
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Proposed Content Type"
 msgstr ""
 
-#: service/models/upload_session.ts:102
+#: service/models/upload_session.ts:106
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Proposed File Name"
 msgstr ""
 
-#: service/models/upload_session.ts:121
+#: service/models/upload_session.ts:125
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Proposed Size Bytes"
 msgstr ""
 
-#: service/models/upload_session.ts:195
+#: service/models/upload_session.ts:200
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Required Checksum Algorithm"
 msgstr ""
 
-#: service/models/upload_session.ts:234
+#: service/models/upload_session.ts:240
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Status"
 msgstr ""
 
-#: service/models/upload_session.ts:152
+#: service/models/upload_session.ts:156
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Uploaded Checksum SHA-256"
 msgstr ""
 
-#: service/models/upload_session.ts:162
+#: service/models/upload_session.ts:166
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Uploaded Content Type"
 msgstr ""
 
-#: service/models/upload_session.ts:172
+#: service/models/upload_session.ts:177
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Uploaded Payload Ref"
 msgstr ""
 
-#: service/models/upload_session.ts:141
+#: service/models/upload_session.ts:145
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Uploaded Size Bytes"
 msgstr ""
 
-#: service/models/stored_content.ts:51
+#: service/models/stored_content.ts:52
 msgctxt "document.model.StoredContent.fields"
 msgid "Blob Data"
 msgstr ""
 
-#: service/models/stored_content.ts:81
+#: service/models/stored_content.ts:82
 msgctxt "document.model.StoredContent.fields"
 msgid "Company"
 msgstr ""
 
-#: service/models/stored_content.ts:41
+#: service/models/stored_content.ts:42
 msgctxt "document.model.StoredContent.fields"
 msgid "Locator JSON"
 msgstr ""
 
-#: service/models/stored_content.ts:31
+#: service/models/stored_content.ts:32
 msgctxt "document.model.StoredContent.fields"
 msgid "Provider"
 msgstr ""
 
-#: service/models/stored_content.ts:68
+#: service/models/stored_content.ts:69
 msgctxt "document.model.StoredContent.fields"
 msgid "Status"
 msgstr ""
@@ -287,64 +287,79 @@ msgctxt "service/models/_attachment_binding_codec"
 msgid "downloadDisposition must be inline or attachment"
 msgstr ""
 
-#: service/models/_attachment_binding_ops.ts:292
+#: service/models/_attachment_binding_ops.ts:390
 msgctxt "service/models/_attachment_binding_ops"
 msgid "Active attachment binding not found"
 msgstr ""
 
-#: service/models/_attachment_binding_ops.ts:152
+#: service/models/_attachment_binding_ops.ts:250
 msgctxt "service/models/_attachment_binding_ops"
 msgid "Active attachment content not found"
 msgstr ""
 
-#: service/models/_attachment_binding_ops.ts:124
+#: service/models/_attachment_binding_ops.ts:222
 msgctxt "service/models/_attachment_binding_ops"
 msgid "Active attachment content not found in company scope"
 msgstr ""
 
-#: service/models/_attachment_binding_ops.ts:176
+#: service/models/_attachment_binding_ops.ts:274
 msgctxt "service/models/_attachment_binding_ops"
 msgid "Active stored content not found"
 msgstr ""
 
-#: service/models/_attachment_binding_ops.ts:268
+#: service/models/_attachment_binding_ops.ts:366
 msgctxt "service/models/_attachment_binding_ops"
 msgid "Attachment binding not found"
 msgstr ""
 
-#: service/models/_attachment_binding_ops.ts:352
+#: service/models/_attachment_binding_ops.ts:450
 msgctxt "service/models/_attachment_binding_ops"
 msgid "bind mutationId exists but previous attempt did not succeed"
 msgstr ""
 
-#: service/models/_attachment_binding_ops.ts:366
+#: service/models/_attachment_binding_ops.ts:464
 msgctxt "service/models/_attachment_binding_ops"
 msgid "bind replay snapshot is invalid"
 msgstr ""
 
-#: service/models/_attachment_binding_ops.ts:212
+#: service/models/_attachment_binding_ops.ts:310
 msgctxt "service/models/_attachment_binding_ops"
 msgid "database execute bridge is unavailable"
 msgstr ""
 
-#: service/models/_attachment_binding_ops.ts:97
+#: service/models/_attachment_binding_ops.ts:195
 msgctxt "service/models/_attachment_binding_ops"
 msgid "principal activeCompanyId does not match runtime context"
 msgstr ""
 
-#: service/models/_attachment_binding_ops.ts:84
+#: service/models/_attachment_binding_ops.ts:182
 msgctxt "service/models/_attachment_binding_ops"
 msgid "principal userId does not match runtime identity"
 msgstr ""
 
-#: service/models/_attachment_binding_ops.ts:381
+#: service/models/_attachment_binding_ops.ts:479
 msgctxt "service/models/_attachment_binding_ops"
 msgid "unbind mutationId exists but previous attempt did not succeed"
 msgstr ""
 
-#: service/models/_attachment_binding_ops.ts:395
+#: service/models/_attachment_binding_ops.ts:493
 msgctxt "service/models/_attachment_binding_ops"
 msgid "unbind replay snapshot is invalid"
+msgstr ""
+
+#: service/models/_attachment_binding_ops.ts:128
+msgctxt "service/models/_attachment_binding_ops"
+msgid "upload exceeds field maxHeight"
+msgstr ""
+
+#: service/models/_attachment_binding_ops.ts:91
+msgctxt "service/models/_attachment_binding_ops"
+msgid "upload exceeds field maxUploadBytes"
+msgstr ""
+
+#: service/models/_attachment_binding_ops.ts:115
+msgctxt "service/models/_attachment_binding_ops"
+msgid "upload exceeds field maxWidth"
 msgstr ""
 
 #: service/models/_attachment_upload_codec.ts:38
@@ -500,48 +515,48 @@ msgctxt "service/models/_owner_authorization"
 msgid "ownerRecordId is required for owner write check"
 msgstr ""
 
-#: service/models/_upload.ts:72
-#: service/models/_upload.ts:81
+#: service/models/_upload.ts:75
+#: service/models/_upload.ts:84
 msgctxt "service/models/_upload"
 msgid "%s is required"
 msgstr ""
 
-#: service/models/_upload.ts:91
+#: service/models/_upload.ts:94
 msgctxt "service/models/_upload"
 msgid "%s must be a non-negative integer"
 msgstr ""
 
-#: service/models/_upload.ts:208
+#: service/models/_upload.ts:211
 msgctxt "service/models/_upload"
 msgid "activeCompanyId does not match upload session owner"
 msgstr ""
 
-#: service/models/_upload.ts:263
+#: service/models/_upload.ts:266
 msgctxt "service/models/_upload"
 msgid "businessRequestId was already used with a different upload context"
 msgstr ""
 
-#: service/models/_upload.ts:132
+#: service/models/_upload.ts:135
 msgctxt "service/models/_upload"
 msgid "operation must be create or update"
 msgstr ""
 
-#: service/models/_upload.ts:142
+#: service/models/_upload.ts:145
 msgctxt "service/models/_upload"
 msgid "ownerRecordId is required when operation=update"
 msgstr ""
 
-#: service/models/_upload.ts:109
+#: service/models/_upload.ts:112
 msgctxt "service/models/_upload"
 msgid "payloadReceipt.payloadId must be an opaque handle, inline byte payload is forbidden"
 msgstr ""
 
-#: service/models/_upload.ts:220
+#: service/models/_upload.ts:223
 msgctxt "service/models/_upload"
 msgid "userId does not match upload session issuer"
 msgstr ""
 
-#: service/models/stored_content.ts:91
+#: service/models/stored_content.ts:92
 msgctxt "service/models/stored_content"
 msgid "Stored content not found"
 msgstr ""
