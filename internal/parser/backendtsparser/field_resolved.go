@@ -776,6 +776,10 @@ func applyResolvedSpecToLegacyField(field *meta.IrField, spec *meta.IrFieldResol
 	if spec.Structural.Readonly != nil && *spec.Structural.Readonly {
 		field.IsReadonly = true
 	}
+	// Always clear before reapply so a removed upload-limit option does not leave stale values.
+	field.MaxUploadBytes = 0
+	field.MaxWidth = 0
+	field.MaxHeight = 0
 	if spec.Structural.MaxUploadBytes != nil && *spec.Structural.MaxUploadBytes > 0 {
 		field.MaxUploadBytes = *spec.Structural.MaxUploadBytes
 	}

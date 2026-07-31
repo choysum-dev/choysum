@@ -82,9 +82,9 @@ export function validateAttachmentContentFieldLimits(
     return;
   }
 
-  if (hasByteLimit) {
+	if (hasByteLimit) {
     const effectiveMaxBytes = resolveEffectiveMaxUploadBytes(fieldMeta.maxUploadBytes as number);
-    const sizeBytes = Number((attachmentContent as any).SizeBytes ?? 0);
+    const sizeBytes = Number(attachmentContent.SizeBytes ?? 0);
     if (Number.isFinite(sizeBytes) && sizeBytes > effectiveMaxBytes) {
       throwDocumentError(
         DocumentErrCode.INVALID_ARGUMENT,
@@ -101,8 +101,8 @@ export function validateAttachmentContentFieldLimits(
   }
 
   if (fieldMeta.type === 'image' && (hasWidthLimit || hasHeightLimit)) {
-    const imageWidth = (attachmentContent as any).ImageWidth;
-    const imageHeight = (attachmentContent as any).ImageHeight;
+    const imageWidth = attachmentContent.ImageWidth;
+    const imageHeight = attachmentContent.ImageHeight;
     const width = typeof imageWidth === 'number' && Number.isFinite(imageWidth) ? Math.trunc(imageWidth) : undefined;
     const height = typeof imageHeight === 'number' && Number.isFinite(imageHeight) ? Math.trunc(imageHeight) : undefined;
     // Skip dimension check when probe data is missing; byte validation still applies above.

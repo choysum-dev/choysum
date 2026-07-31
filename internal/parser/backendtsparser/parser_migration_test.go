@@ -2511,3 +2511,34 @@ export default class ImageLimitPilot extends BaseModel {
 		t.Fatalf("Structural.MaxHeight = %#v", spec.Structural.MaxHeight)
 	}
 }
+
+func TestApplyResolvedSpecToLegacyField_ClearsStaleImageUploadLimits(t *testing.T) {
+	field := &meta.IrField{
+		Name:           "Avatar",
+		FieldType:      "image",
+		MaxUploadBytes: 2097152,
+		MaxWidth:       1024,
+		MaxHeight:      768,
+	}
+	spec := &meta.IrFieldResolvedSpec{
+		FieldName: "Avatar",
+		Structural: meta.IrFieldStructuralSpec{
+			FieldType: "image",
+		},
+	}
+	applyResolvedSpecToLegacyField(field, spec)
+	if field.MaxUploadBytes != 0 || field.MaxWidth != 0 || field.MaxHeight != 0 {
+		t.Fatalf("removed upload limits must clear to 0, got bytes=%d width=%d height=%d", field.MaxUploadBytes, field.MaxWidth, field.MaxHeight)
+	}
+
+	twoMiB := 2 * 1024 * 1024
+	width := 800
+	height := 600
+	spec.Structural.MaxUploadBytes = &twoMiB
+	spec.Structural.MaxWidth = &width
+	spec.Structural.MaxHeight = &height
+	applyResolvedSpecToLegacyField(field, spec)
+	if field.MaxUploadBytes != twoMiB || field.MaxWidth != width || field.MaxHeight != height {
+		t.Fatalf("reapplied limits: bytes=%d width=%d height=%d", field.MaxUploadBytes, field.MaxWidth, field.MaxHeight)
+	}
+}

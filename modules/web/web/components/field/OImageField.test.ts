@@ -5,6 +5,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { computed, defineComponent, h, ref } from 'vue';
+import { DEFAULT_GLOBAL_MAX_UPLOAD_BYTES } from '@/core/service/orm/upload_limits';
 import type { UseField } from '@/web/web/composables/useField';
 import {
   formatImageByteLimit,
@@ -16,8 +17,6 @@ import {
   validateImageFieldFile,
 } from './imageFieldLimits';
 import OImageField from './OImageField.vue';
-
-const DEFAULT_GLOBAL_MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
 vi.mock('element-plus', async () => {
   const actual = await vi.importActual<any>('element-plus');
@@ -174,6 +173,17 @@ describe('imageFieldLimits (PR-P2-F3)', () => {
         bindingMeta: { maxWidth: 7 },
       })
     ).toEqual({ maxWidth: 7 });
+
+    expect(
+      resolveImageFieldLimitsFromSources({
+        bindingProp: '   ',
+        propsProp: null,
+        bindingStore: {
+          getFieldMeta: () => ({ maxUploadBytes: 999 }),
+        },
+        bindingMeta: { maxHeight: 4 },
+      })
+    ).toEqual({ maxHeight: 4 });
   });
 
   it('imageFieldLimitErrorMessage covers all reasons', () => {
@@ -260,6 +270,9 @@ describe('imageFieldLimits (PR-P2-F3)', () => {
       (globalThis as any).Image = FakeImage;
       (globalThis as any).URL = { createObjectURL: vi.fn(() => 'blob:norevoke') };
       await expect(readImageNaturalDimensions(makeFile(8))).resolves.toEqual({ width: 33, height: 44 });
+
+      delete (globalThis as any).URL;
+      await expect(readImageNaturalDimensions(makeFile(8))).resolves.toBeUndefined();
 
       delete (globalThis as any).Image;
       await expect(readImageNaturalDimensions(makeFile(8))).resolves.toBeUndefined();
