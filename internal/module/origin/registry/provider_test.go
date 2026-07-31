@@ -1164,6 +1164,28 @@ func TestProviderPathAndTarballHelpers(t *testing.T) {
 		t.Fatal("expected safeJoin traversal error")
 	}
 
+	// Zip Slip: extractTarballFromReader must reject archive entry names containing "..".
+	var buf bytes.Buffer
+	zw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(zw)
+	hdr := &tar.Header{Name: "pkg/../../etc/passwd", Mode: 0o644, Size: 4, Typeflag: tar.TypeReg}
+	if err := tw.WriteHeader(hdr); err != nil {
+		t.Fatalf("WriteHeader: %v", err)
+	}
+	if _, err := tw.Write([]byte("evil")); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatalf("tar close: %v", err)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatalf("gzip close: %v", err)
+	}
+	target := t.TempDir()
+	if err := extractTarballFromReader(bytes.NewReader(buf.Bytes()), target); err == nil || !strings.Contains(err.Error(), "unsafe path") {
+		t.Fatalf("expected extractTarballFromReader unsafe path error, got %v", err)
+	}
+
 	if err := validateTarballURL("https://registry.npmjs.org/pkg/-/pkg-1.0.0.tgz"); err != nil {
 		t.Fatalf("validateTarballURL(valid) error = %v", err)
 	}

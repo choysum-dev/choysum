@@ -1460,6 +1460,10 @@ func TestTypeCachePathForURL_Various(t *testing.T) {
 			"https://cdn.jsdelivr.net/npm/pkg@1.0.0/index.d.ts",
 			"cdn.jsdelivr.net_npm_pkg@1.0.0_index.d.ts.d.ts",
 		},
+		{
+			"https://esm.sh/foo/../bar.d.ts",
+			"esm.sh_foo____bar.d.ts.d.ts",
+		},
 	}
 	for _, tt := range tests {
 		got := typeCachePathForURL(dir, tt.url)

@@ -683,12 +683,18 @@ func extractTarballFromReader(r io.Reader, targetDir string) error {
 		if h == nil {
 			continue
 		}
-		if isUnsafeTarPath(h.Name) {
+		// CodeQL go/zipslip recognizes strings.Contains(..., "..") as a barrier on archive entry names.
+		if strings.Contains(h.Name, "..") || isUnsafeTarPath(h.Name) {
 			return xfmt.Errorf("read tar: unsafe path %q", h.Name)
 		}
 		outPath, err := safeJoin(targetDir, h.Name)
 		if err != nil {
 			return xfmt.Errorf("read tar: %w", err)
+		}
+		// Containment check in the same function as FS ops (CodeQL-visible).
+		cleanTarget := filepath.Clean(targetDir)
+		if outPath != cleanTarget && !strings.HasPrefix(outPath, cleanTarget+string(os.PathSeparator)) {
+			return xfmt.Errorf("read tar: path escapes target dir: %q", h.Name)
 		}
 
 		switch h.Typeflag {
