@@ -135,7 +135,7 @@ import { Picture, UploadFilled } from '@element-plus/icons-vue';
 import { computed } from 'vue';
 import OFieldBase, { type FieldStateExpr } from './OFieldBase.vue';
 import { createTranslate } from '@/web/web/i18n';
-import { resolveImageFieldLimits, reportImageFieldValidation } from './imageFieldLimits';
+import { resolveImageFieldLimitsFromSources, reportImageFieldValidation } from './imageFieldLimits';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/OImageField' });
 
@@ -192,14 +192,17 @@ const props = withDefaults(
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
 
 function resolveFieldLimits() {
-  const leaf = String(binding.prop || props.prop || '').trim();
-  const store = binding.store ?? props.store;
-  const meta = (leaf && store?.getFieldMeta?.(leaf)) || binding.meta;
-  return resolveImageFieldLimits(meta);
+  return resolveImageFieldLimitsFromSources({
+    bindingProp: binding.prop,
+    propsProp: props.prop,
+    bindingStore: binding.store,
+    propsStore: props.store,
+    bindingMeta: binding.meta,
+  });
 }
 
 async function validateSelectedImageFile(file: UploadRawFile): Promise<boolean> {
-  return reportImageFieldValidation(file, resolveFieldLimits(), message => ElMessage.error(message), _t);
+  return reportImageFieldValidation(file, resolveFieldLimits(), message => ElMessage.error(message));
 }
 
 const toView = (raw: any): ViewType => raw;

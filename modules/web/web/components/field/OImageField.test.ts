@@ -12,6 +12,7 @@ import {
   readImageNaturalDimensions,
   reportImageFieldValidation,
   resolveImageFieldLimits,
+  resolveImageFieldLimitsFromSources,
   validateImageFieldFile,
 } from './imageFieldLimits';
 import OImageField from './OImageField.vue';
@@ -146,25 +147,48 @@ describe('imageFieldLimits (PR-P2-F3)', () => {
     expect(await validateImageFieldFile(makeFile(10), { maxWidth: 10 }, async () => undefined)).toEqual({ ok: true });
   });
 
+  it('resolveImageFieldLimitsFromSources prefers store meta then binding meta', () => {
+    expect(
+      resolveImageFieldLimitsFromSources({
+        bindingProp: '',
+        propsProp: 'Photo',
+        propsStore: {
+          getFieldMeta: name => (name === 'Photo' ? { maxUploadBytes: 128, maxWidth: 9 } : undefined),
+        },
+        bindingMeta: { maxHeight: 3 },
+      })
+    ).toEqual({ maxUploadBytes: 128, maxWidth: 9 });
+
+    expect(
+      resolveImageFieldLimitsFromSources({
+        bindingProp: 'Photo',
+        bindingStore: { getFieldMeta: () => undefined },
+        bindingMeta: { maxHeight: 12 },
+      })
+    ).toEqual({ maxHeight: 12 });
+
+    expect(
+      resolveImageFieldLimitsFromSources({
+        bindingProp: 'Photo',
+        propsStore: {},
+        bindingMeta: { maxWidth: 7 },
+      })
+    ).toEqual({ maxWidth: 7 });
+  });
+
   it('imageFieldLimitErrorMessage covers all reasons', () => {
-    const t = (msgid: string, _opts: { scope: string }, detail: string) => `${msgid}:${detail}`;
-    expect(imageFieldLimitErrorMessage({ ok: false, reason: 'fileTooLarge', detail: '1 KB' }, t)).toContain('maximum size');
-    expect(imageFieldLimitErrorMessage({ ok: false, reason: 'widthTooLarge', detail: '10' }, t)).toContain('width');
-    expect(imageFieldLimitErrorMessage({ ok: false, reason: 'heightTooLarge', detail: '20' }, t)).toContain('height');
+    expect(imageFieldLimitErrorMessage({ ok: false, reason: 'fileTooLarge', detail: '1 KB' })).toMatch(/1 KB|上限/);
+    expect(imageFieldLimitErrorMessage({ ok: false, reason: 'widthTooLarge', detail: '10' })).toMatch(/10/);
+    expect(imageFieldLimitErrorMessage({ ok: false, reason: 'heightTooLarge', detail: '20' })).toMatch(/20/);
   });
 
   it('reportImageFieldValidation invokes onError on failure and returns true on success', async () => {
     const onError = vi.fn();
-    const t = (msgid: string) => msgid;
-    expect(
-      await reportImageFieldValidation(makeFile(2048), limits, onError, t as any, async () => ({ width: 1, height: 1 }))
-    ).toBe(false);
+    expect(await reportImageFieldValidation(makeFile(2048), limits, onError, async () => ({ width: 1, height: 1 }))).toBe(false);
     expect(onError).toHaveBeenCalled();
 
     onError.mockClear();
-    expect(
-      await reportImageFieldValidation(makeFile(10), limits, onError, t as any, async () => ({ width: 1, height: 1 }))
-    ).toBe(true);
+    expect(await reportImageFieldValidation(makeFile(10), limits, onError, async () => ({ width: 1, height: 1 }))).toBe(true);
     expect(onError).not.toHaveBeenCalled();
   });
 

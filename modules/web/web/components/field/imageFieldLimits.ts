@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { DEFAULT_GLOBAL_MAX_UPLOAD_BYTES } from '@/core/service/orm/upload_limits';
+import { createTranslate } from '@/web/web/i18n';
 
 export type ImageFieldLimits = {
   maxUploadBytes?: number;
@@ -9,11 +10,7 @@ export type ImageFieldLimits = {
   maxHeight?: number;
 };
 
-export type ImageFieldLimitTranslate = (
-  msgid: string,
-  opts: { scope: string },
-  detail: string
-) => string;
+const { _t } = createTranslate('web', { scope: 'web/components/field/OImageField' });
 
 export function resolveImageFieldLimits(meta: ImageFieldLimits | null | undefined): ImageFieldLimits {
   const out: ImageFieldLimits = {};
@@ -27,6 +24,32 @@ export function resolveImageFieldLimits(meta: ImageFieldLimits | null | undefine
     out.maxHeight = meta.maxHeight;
   }
   return out;
+}
+
+type FieldMetaStore = {
+  getFieldMeta?: (name: string) => ImageFieldLimits | null | undefined;
+};
+
+/**
+ * Resolves upload limits from binding/store the same way OImageField does.
+ */
+export function resolveImageFieldLimitsFromSources(input: {
+  bindingProp?: unknown;
+  propsProp?: unknown;
+  bindingStore?: FieldMetaStore | null;
+  propsStore?: FieldMetaStore | null;
+  bindingMeta?: ImageFieldLimits | null;
+}): ImageFieldLimits {
+  const leaf = String(input.bindingProp || input.propsProp || '').trim();
+  const store = input.bindingStore || input.propsStore;
+  let meta: ImageFieldLimits | null | undefined = input.bindingMeta;
+  if (leaf && store && typeof store.getFieldMeta === 'function') {
+    const fromStore = store.getFieldMeta(leaf);
+    if (fromStore) {
+      meta = fromStore;
+    }
+  }
+  return resolveImageFieldLimits(meta);
 }
 
 export function formatImageByteLimit(bytes: number): string {
@@ -108,19 +131,14 @@ export async function validateImageFieldFile(
   return { ok: true };
 }
 
-const IMAGE_FIELD_LIMIT_SCOPE = 'web/components/field/OImageField';
-
-export function imageFieldLimitErrorMessage(
-  result: Extract<ImageFieldValidationResult, { ok: false }>,
-  t: ImageFieldLimitTranslate
-): string {
+export function imageFieldLimitErrorMessage(result: Extract<ImageFieldValidationResult, { ok: false }>): string {
   if (result.reason === 'fileTooLarge') {
-    return t('Image exceeds maximum size (%s)', { scope: IMAGE_FIELD_LIMIT_SCOPE }, result.detail);
+    return _t('Image exceeds maximum size (%s)', { scope: 'web/components/field/OImageField' }, result.detail);
   }
   if (result.reason === 'widthTooLarge') {
-    return t('Image width exceeds maximum (%s px)', { scope: IMAGE_FIELD_LIMIT_SCOPE }, result.detail);
+    return _t('Image width exceeds maximum (%s px)', { scope: 'web/components/field/OImageField' }, result.detail);
   }
-  return t('Image height exceeds maximum (%s px)', { scope: IMAGE_FIELD_LIMIT_SCOPE }, result.detail);
+  return _t('Image height exceeds maximum (%s px)', { scope: 'web/components/field/OImageField' }, result.detail);
 }
 
 /**
@@ -131,13 +149,12 @@ export async function reportImageFieldValidation(
   file: Blob,
   limits: ImageFieldLimits | null | undefined,
   onError: (message: string) => void,
-  t: ImageFieldLimitTranslate,
   readDimensions: (file: Blob) => Promise<{ width: number; height: number } | undefined> = readImageNaturalDimensions
 ): Promise<boolean> {
   const result = await validateImageFieldFile(file, limits, readDimensions);
   if (result.ok) {
     return true;
   }
-  onError(imageFieldLimitErrorMessage(result, t));
+  onError(imageFieldLimitErrorMessage(result));
   return false;
 }

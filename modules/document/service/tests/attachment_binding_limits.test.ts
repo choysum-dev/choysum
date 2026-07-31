@@ -176,6 +176,38 @@ test('validateAttachmentContentFieldLimits supports width-only and height-only l
   ).not.toThrow();
 });
 
+test('validateAttachmentContentFieldLimits no-op when model metadata is missing', () => {
+  const original = MetadataStorage.instance.getModelMetadata.bind(MetadataStorage.instance);
+  (MetadataStorage.instance as any).getModelMetadata = () => undefined;
+  try {
+    expect(() =>
+      validateAttachmentContentFieldLimits('demo.BindLimitPilot', 'Photo', {
+        SizeBytes: 200,
+      } as any)
+    ).not.toThrow();
+  } finally {
+    (MetadataStorage.instance as any).getModelMetadata = original;
+  }
+});
+
+test('validateAttachmentContentFieldLimits ignores non-numeric dimension probes', () => {
+  expect(() =>
+    validateAttachmentContentFieldLimits('demo.BindLimitPilot', 'Photo', {
+      SizeBytes: 50,
+      ImageWidth: '900',
+      ImageHeight: Number.POSITIVE_INFINITY,
+    } as any)
+  ).not.toThrow();
+
+  expect(() =>
+    validateAttachmentContentFieldLimits('demo.BindLimitPilot', 'Photo', {
+      SizeBytes: undefined,
+      ImageWidth: 50,
+      ImageHeight: 'x',
+    } as any)
+  ).not.toThrow();
+});
+
 test('validateAttachmentContentFieldLimits accepts in-range image with probe', () => {
   expect(() =>
     validateAttachmentContentFieldLimits('demo.BindLimitPilot', 'Photo', {

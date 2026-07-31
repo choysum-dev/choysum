@@ -50,7 +50,11 @@ function resolveOwnerFieldMetadata(ownerModel: string, fieldName: string): Field
   if (!ModelCtor) {
     return undefined;
   }
-  return MetadataStorage.instance.getModelMetadata(ModelCtor)?.fields.get(fieldName);
+  const modelMeta = MetadataStorage.instance.getModelMetadata(ModelCtor);
+  if (!modelMeta) {
+    return undefined;
+  }
+  return modelMeta.fields.get(fieldName);
 }
 
 function resolveEffectiveMaxUploadBytes(maxUploadBytes: number): number {
