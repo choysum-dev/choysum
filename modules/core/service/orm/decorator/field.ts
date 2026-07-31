@@ -20,6 +20,7 @@ import type { ModelCtor } from '../metadata/field';
 import { asObjectRecord } from '../../../utils/object';
 import type { ObjectRecord } from '../../../utils/types';
 import { isTermReference, type TermReference } from '../../i18n';
+import { DEFAULT_GLOBAL_MAX_UPLOAD_BYTES } from '../upload_limits';
 
 const scalarTypes = new Set<FieldType>([
   'char',
@@ -84,6 +85,9 @@ type FieldDecoratorOptionBag = {
   checkCompany?: unknown;
   /** Relational default condition (static tree or callable); relation field types only. */
   condition?: unknown;
+  maxUploadBytes?: unknown;
+  maxWidth?: unknown;
+  maxHeight?: unknown;
 };
 
 function normalizeFieldString(name: string, value: unknown): { string?: string; stringText?: TermReference } {
@@ -131,6 +135,50 @@ function normalizeFieldHelp(name: string, value: unknown): { help?: string; help
 function toFieldDecoratorOptionBag(value: unknown): FieldDecoratorOptionBag {
   const record = asObjectRecord(value);
   return (record || {}) as FieldDecoratorOptionBag;
+}
+
+function parsePositiveIntFieldOption(fieldName: string, optionName: string, value: unknown): number | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
+    throw new Error(`@Field(${fieldName}) ${optionName} must be a positive integer`);
+  }
+  return value;
+}
+
+function validateUploadLimitOptions(
+  fieldName: string,
+  type: FieldType,
+  optionBag: FieldDecoratorOptionBag
+): Pick<FieldMetadata, 'maxUploadBytes' | 'maxWidth' | 'maxHeight'> {
+  const hasAny =
+    optionBag.maxUploadBytes !== undefined || optionBag.maxWidth !== undefined || optionBag.maxHeight !== undefined;
+  if (!hasAny) {
+    return {};
+  }
+  if (type !== 'image' && type !== 'binary') {
+    throw new Error(`@Field(${fieldName}) maxUploadBytes/maxWidth/maxHeight are only allowed on image/binary fields`);
+  }
+
+  const maxUploadBytes = parsePositiveIntFieldOption(fieldName, 'maxUploadBytes', optionBag.maxUploadBytes);
+  const maxWidth = parsePositiveIntFieldOption(fieldName, 'maxWidth', optionBag.maxWidth);
+  const maxHeight = parsePositiveIntFieldOption(fieldName, 'maxHeight', optionBag.maxHeight);
+
+  if (type === 'binary' && (maxWidth !== undefined || maxHeight !== undefined)) {
+    throw new Error(`@Field(${fieldName}) maxWidth/maxHeight are only allowed on image fields`);
+  }
+  if (maxUploadBytes !== undefined && maxUploadBytes > DEFAULT_GLOBAL_MAX_UPLOAD_BYTES) {
+    throw new Error(
+      `@Field(${fieldName}) maxUploadBytes cannot exceed global upload cap (${DEFAULT_GLOBAL_MAX_UPLOAD_BYTES} bytes)`
+    );
+  }
+
+  const out: Pick<FieldMetadata, 'maxUploadBytes' | 'maxWidth' | 'maxHeight'> = {};
+  if (maxUploadBytes !== undefined) out.maxUploadBytes = maxUploadBytes;
+  if (maxWidth !== undefined) out.maxWidth = maxWidth;
+  if (maxHeight !== undefined) out.maxHeight = maxHeight;
+  return out;
 }
 
 /**
@@ -212,6 +260,7 @@ export function Field(
       throw new Error(`@Field(${name}) checkCompany is only supported on ManyToOne / ManyToOneRef fields`);
     }
     const checkCompany = optionBag.checkCompany === true;
+    const uploadLimits = validateUploadLimitOptions(name, type, optionBag);
     if (translate) {
       if (type !== 'char' && type !== 'varchar' && type !== 'text') {
         throw new Error(`@Field(${name}) translate is only supported on char/varchar/text fields`);
@@ -646,6 +695,9 @@ export function Field(
     else if (copyFlag === true) meta.copy = true;
     if (readonlyFlag) meta.readonly = true;
     if (checkCompany) meta.checkCompany = true;
+    if (uploadLimits.maxUploadBytes !== undefined) meta.maxUploadBytes = uploadLimits.maxUploadBytes;
+    if (uploadLimits.maxWidth !== undefined) meta.maxWidth = uploadLimits.maxWidth;
+    if (uploadLimits.maxHeight !== undefined) meta.maxHeight = uploadLimits.maxHeight;
 
     // Write metadata
     const ctor = target.constructor as ModelCtor<BaseModel> & typeof BaseModel;

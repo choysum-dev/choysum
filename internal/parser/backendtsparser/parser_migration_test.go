@@ -2452,3 +2452,62 @@ export default class ReadonlyPilot extends BaseModel {
 		t.Fatalf("omitted readonly must leave IsReadonly false, got %#v", name)
 	}
 }
+
+func TestTsParser_ImageFieldUploadLimits(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/image_limit_field.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('ImageLimitPilot')
+export default class ImageLimitPilot extends BaseModel {
+  @Field({
+    type: 'image',
+    maxUploadBytes: 2097152,
+    maxWidth: 1024,
+    maxHeight: 768,
+  })
+  public Avatar: string
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	fieldByName := map[string]*meta.IrField{}
+	for _, f := range r.Model.Fields {
+		fieldByName[f.Name] = f
+	}
+
+	avatar := fieldByName["Avatar"]
+	if avatar == nil {
+		t.Fatalf("expected Avatar field")
+	}
+	if avatar.MaxUploadBytes != 2097152 {
+		t.Fatalf("MaxUploadBytes = %d, want 2097152", avatar.MaxUploadBytes)
+	}
+	if avatar.MaxWidth != 1024 {
+		t.Fatalf("MaxWidth = %d, want 1024", avatar.MaxWidth)
+	}
+	if avatar.MaxHeight != 768 {
+		t.Fatalf("MaxHeight = %d, want 768", avatar.MaxHeight)
+	}
+
+	spec, err := avatar.GetResolvedSpec()
+	if err != nil || spec == nil {
+		t.Fatalf("Avatar resolved spec: err=%v", err)
+	}
+	if spec.Structural.MaxUploadBytes == nil || *spec.Structural.MaxUploadBytes != 2097152 {
+		t.Fatalf("Structural.MaxUploadBytes = %#v", spec.Structural.MaxUploadBytes)
+	}
+	if spec.Structural.MaxWidth == nil || *spec.Structural.MaxWidth != 1024 {
+		t.Fatalf("Structural.MaxWidth = %#v", spec.Structural.MaxWidth)
+	}
+	if spec.Structural.MaxHeight == nil || *spec.Structural.MaxHeight != 768 {
+		t.Fatalf("Structural.MaxHeight = %#v", spec.Structural.MaxHeight)
+	}
+}

@@ -1400,3 +1400,64 @@ test('Field condition typing: ctor target infers QueryCondition; string Ref stay
   const conditionNotUnknown: _ConditionNotUnknown = true;
   expect(conditionNotUnknown).toBe(true);
 });
+
+test('Field decorator accepts image/binary upload limits and rejects invalid options (PR-P2-F3)', () => {
+  const twoMiB = 2 * 1024 * 1024;
+
+  class ImageLimitPilot extends BaseModel {
+    @Field({
+      type: 'image',
+      maxUploadBytes: twoMiB,
+      maxWidth: 1024,
+      maxHeight: 768,
+    } as any)
+    Avatar!: string | null;
+
+    @Field({ type: 'binary', maxUploadBytes: 4096 } as any)
+    Payload!: string | null;
+  }
+
+  const fields = MetadataStorage.instance.getModelMetadata(ImageLimitPilot as any).fields;
+  expect(fields.get('Avatar')).toMatchObject({
+    type: 'image',
+    maxUploadBytes: twoMiB,
+    maxWidth: 1024,
+    maxHeight: 768,
+  });
+  expect(fields.get('Payload')).toMatchObject({
+    type: 'binary',
+    maxUploadBytes: 4096,
+  });
+
+  expect(() => {
+    class BadTypeModel extends BaseModel {
+      @Field({ type: 'varchar', maxUploadBytes: 100 } as any)
+      Code!: string;
+    }
+    return BadTypeModel;
+  }).toThrow('maxUploadBytes/maxWidth/maxHeight are only allowed on image/binary fields');
+
+  expect(() => {
+    class BadBinaryDimsModel extends BaseModel {
+      @Field({ type: 'binary', maxWidth: 100 } as any)
+      Payload!: string | null;
+    }
+    return BadBinaryDimsModel;
+  }).toThrow('maxWidth/maxHeight are only allowed on image fields');
+
+  expect(() => {
+    class BadBytesModel extends BaseModel {
+      @Field({ type: 'image', maxUploadBytes: 0 } as any)
+      Avatar!: string | null;
+    }
+    return BadBytesModel;
+  }).toThrow('maxUploadBytes must be a positive integer');
+
+  expect(() => {
+    class OverGlobalCapModel extends BaseModel {
+      @Field({ type: 'image', maxUploadBytes: 21 * 1024 * 1024 } as any)
+      Avatar!: string | null;
+    }
+    return OverGlobalCapModel;
+  }).toThrow('maxUploadBytes cannot exceed global upload cap');
+});

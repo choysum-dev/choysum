@@ -346,6 +346,46 @@ test('FieldsGet declarative readonly remains isReadonly under deny-write (PR-P2-
   }
 });
 
+@Model('FieldsGetImageLimitWidget', { application: 'demo' })
+class FieldsGetImageLimitWidget extends BaseModel {
+  @Field({
+    type: 'image',
+    maxUploadBytes: 2 * 1024 * 1024,
+    maxWidth: 800,
+    maxHeight: 600,
+  } as any)
+  Photo!: string | null;
+}
+
+test('FieldsGet exposes image upload and dimension limits (PR-P2-F3)', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'en_US' });
+  RepositoryFactory.setRepository(FieldsGetImageLimitWidget as any, {
+    getDenyReadFields: async () => ({ denyReadFields: [] }),
+    getDenyWriteFields: async () => ({ denyWriteFields: [] }),
+  } as any);
+
+  try {
+    const out = await FieldsGetImageLimitWidget.FieldsGet(['Photo'], [
+      'type',
+      'maxUploadBytes',
+      'maxWidth',
+      'maxHeight',
+    ]);
+    expect(out.Photo).toEqual({
+      type: 'image',
+      maxUploadBytes: 2 * 1024 * 1024,
+      maxWidth: 800,
+      maxHeight: 600,
+    });
+
+    const projected = await FieldsGetImageLimitWidget.FieldsGet(['Photo'], ['type']);
+    expect(projected.Photo).toEqual({ type: 'image' });
+  } finally {
+    resetTestState();
+  }
+});
+
 @Model('FieldsGetTranslateWidget', { application: 'demo' })
 class FieldsGetTranslateWidget extends BaseModel {
   @Field({ type: 'varchar', size: 100, translate: true, string: 'Name' } as any)

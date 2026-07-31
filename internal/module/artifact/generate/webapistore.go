@@ -58,6 +58,9 @@ type FieldMetadata struct {
 	Translate                *bool   `json:"translate,omitempty"`
 	CompanyDependent         *bool   `json:"companyDependent,omitempty"`
 	Copy                     *bool   `json:"copy,omitempty"`
+	MaxUploadBytes           *int    `json:"maxUploadBytes,omitempty"`
+	MaxWidth                 *int    `json:"maxWidth,omitempty"`
+	MaxHeight                *int    `json:"maxHeight,omitempty"`
 
 	RelationInverseField     *string `json:"relationInverseField,omitempty"`
 	RelationJoinModel        *string `json:"relationJoinModel,omitempty"`
@@ -213,6 +216,18 @@ func convertFieldToMetadata(field *meta.IrField) FieldMetadata {
 	}
 	if field.IsReadonly {
 		metadata.IsReadonly = &field.IsReadonly
+	}
+	if field.MaxUploadBytes > 0 {
+		maxUploadBytes := field.MaxUploadBytes
+		metadata.MaxUploadBytes = &maxUploadBytes
+	}
+	if field.MaxWidth > 0 {
+		maxWidth := field.MaxWidth
+		metadata.MaxWidth = &maxWidth
+	}
+	if field.MaxHeight > 0 {
+		maxHeight := field.MaxHeight
+		metadata.MaxHeight = &maxHeight
 	}
 	if field.Indexed {
 		metadata.Indexed = &field.Indexed

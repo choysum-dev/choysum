@@ -242,6 +242,21 @@ msgctxt "web/components/field/OImageField"
 msgid "Upload image"
 msgstr ""
 
+#: web/components/field/OImageField.vue
+msgctxt "web/components/field/OImageField"
+msgid "Image exceeds maximum size (%s)"
+msgstr ""
+
+#: web/components/field/OImageField.vue
+msgctxt "web/components/field/OImageField"
+msgid "Image width exceeds maximum (%s px)"
+msgstr ""
+
+#: web/components/field/OImageField.vue
+msgctxt "web/components/field/OImageField"
+msgid "Image height exceeds maximum (%s px)"
+msgstr ""
+
 #: web/components/field/OIntField.vue:186
 msgctxt "web/components/field/OIntField"
 msgid "Cannot be empty"

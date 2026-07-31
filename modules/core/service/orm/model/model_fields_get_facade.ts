@@ -23,6 +23,9 @@ export type FieldsGetFieldMeta = {
   scale?: number;
   isReadonly?: boolean;
   indexed?: boolean;
+  maxUploadBytes?: number;
+  maxWidth?: number;
+  maxHeight?: number;
   /** false when @Field({ copy: false }); omitted means default true. */
   copy?: boolean;
   [key: string]: unknown;
@@ -242,6 +245,15 @@ function buildFieldMeta(
   }
   if (field.readonly === true) {
     meta.isReadonly = true;
+  }
+  if (typeof field.maxUploadBytes === 'number' && field.maxUploadBytes > 0) {
+    meta.maxUploadBytes = field.maxUploadBytes;
+  }
+  if (typeof field.maxWidth === 'number' && field.maxWidth > 0) {
+    meta.maxWidth = field.maxWidth;
+  }
+  if (typeof field.maxHeight === 'number' && field.maxHeight > 0) {
+    meta.maxHeight = field.maxHeight;
   }
   const hintSize = field.storageHints?.size;
   if (typeof hintSize === 'number' && Number.isInteger(hintSize) && hintSize > 0 && meta.size == null) {

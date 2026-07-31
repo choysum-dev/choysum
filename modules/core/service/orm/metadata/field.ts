@@ -195,10 +195,41 @@ type FlatCharOrVarcharFieldOptions<T extends BaseModel> = {
   FlatNoMonetaryOptions &
   FlatNoConditionOption;
 
+type FlatBinaryOrImageUploadLimitOptions = {
+  /** Per-field upload byte cap (must be ≤ global default at decorator time). */
+  maxUploadBytes?: number;
+  /** Pixel width cap (image fields only). */
+  maxWidth?: number;
+  /** Pixel height cap (image fields only). */
+  maxHeight?: number;
+};
+
+type FlatBinaryOrImageFieldOptions<T extends BaseModel> = {
+  type: 'binary' | 'image';
+} & FlatBinaryOrImageUploadLimitOptions &
+  FlatCommonOptions &
+  FlatNoRelationOption &
+  FlatNoSelectionOption &
+  FlatNoSizeOption &
+  FlatNoDecimalOptions &
+  FlatNoMonetaryOptions &
+  FlatNoConditionOption;
+
 type FlatScalarFieldOptions<T extends BaseModel> = {
   type: Exclude<
     FieldType,
-    'char' | 'varchar' | 'decimal' | 'monetary' | 'selection' | 'ManyToOneRef' | 'ManyToManyRef' | 'ManyToOne' | 'OneToMany' | 'ManyToMany'
+    | 'char'
+    | 'varchar'
+    | 'decimal'
+    | 'monetary'
+    | 'selection'
+    | 'ManyToOneRef'
+    | 'ManyToManyRef'
+    | 'ManyToOne'
+    | 'OneToMany'
+    | 'ManyToMany'
+    | 'binary'
+    | 'image'
   >;
 } & FlatCommonOptions &
   FlatNoRelationOption &
@@ -363,6 +394,7 @@ export type FlatManyToManyFieldOptions<TJoin extends BaseModel = BaseModel, TTar
 
 export type FlatFieldOptions<T extends BaseModel = BaseModel, TJoin extends BaseModel = BaseModel, TTarget extends BaseModel = BaseModel> =
   | FlatCharOrVarcharFieldOptions<T>
+  | FlatBinaryOrImageFieldOptions<T>
   | FlatScalarFieldOptions<T>
   | FlatDecimalFieldOptions<T>
   | FlatMonetaryFieldOptions<T>
@@ -675,6 +707,12 @@ export interface FieldMetadata {
    * Related shared rows (NULL) pass.
    */
   checkCompany?: boolean;
+  /** Per-field upload byte cap (image/binary). */
+  maxUploadBytes?: number;
+  /** Pixel width cap (image only). */
+  maxWidth?: number;
+  /** Pixel height cap (image only). */
+  maxHeight?: number;
 }
 
 // Decrement tuple (limits max recursion depth to avoid excessive type expansion)

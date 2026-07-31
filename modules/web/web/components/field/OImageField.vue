@@ -130,10 +130,12 @@ import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField, NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
 import type { UploadFile, UploadRawFile, UploadProps } from 'element-plus';
+import { ElMessage } from 'element-plus';
 import { Picture, UploadFilled } from '@element-plus/icons-vue';
 import { computed } from 'vue';
 import OFieldBase, { type FieldStateExpr } from './OFieldBase.vue';
 import { createTranslate } from '@/web/web/i18n';
+import { resolveImageFieldLimits, validateImageFieldFile } from './imageFieldLimits';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/OImageField' });
 
@@ -188,6 +190,36 @@ const props = withDefaults(
 );
 
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
+
+function resolveFieldLimits() {
+  const leaf = String(binding.prop || props.prop || '').trim();
+  const store = binding.store ?? props.store;
+  const meta = (leaf && store?.getFieldMeta?.(leaf)) || binding.meta;
+  return resolveImageFieldLimits(meta);
+}
+
+async function validateSelectedImageFile(file: UploadRawFile): Promise<boolean> {
+  const result = await validateImageFieldFile(file, resolveFieldLimits());
+  if (result.ok) {
+    return true;
+  }
+  if (result.reason === 'fileTooLarge') {
+    ElMessage.error(
+      _t('Image exceeds maximum size (%s)', { scope: 'web/components/field/OImageField' }, result.detail)
+    );
+    return false;
+  }
+  if (result.reason === 'widthTooLarge') {
+    ElMessage.error(
+      _t('Image width exceeds maximum (%s px)', { scope: 'web/components/field/OImageField' }, result.detail)
+    );
+    return false;
+  }
+  ElMessage.error(
+    _t('Image height exceeds maximum (%s px)', { scope: 'web/components/field/OImageField' }, result.detail)
+  );
+  return false;
+}
 
 const toView = (raw: any): ViewType => raw;
 const fromView = (v: ViewType) => v as unknown as V;
@@ -340,6 +372,9 @@ function toMetaText(raw: unknown): string | undefined {
 }
 
 async function applySelectedImage(file: UploadRawFile, fieldValue: ValueRefGetter, onFieldChange?: OnFieldChange): Promise<void> {
+  if (!(await validateSelectedImageFile(file))) {
+    return;
+  }
   const valueRef = fieldValue();
   revokeBlobPreview(valueRef.value);
   const previewUrl = await createLocalPreview(file);

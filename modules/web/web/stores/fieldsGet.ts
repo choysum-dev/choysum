@@ -27,6 +27,9 @@ export const FIELD_PRESENTATION_FIELDS_GET_ATTRS = [
   'translate',
   'companyDependent',
   'size',
+  'maxUploadBytes',
+  'maxWidth',
+  'maxHeight',
 ] as const;
 
 export type FieldsGetRpc = (
