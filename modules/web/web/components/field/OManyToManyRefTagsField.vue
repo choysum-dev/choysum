@@ -50,6 +50,18 @@ SPDX-License-Identifier: Apache-2.0
             <div class="o-m2m-tags__footer">
               <slot name="suffix" />
               <div
+                v-if="showNameCreateEntry"
+                class="o-m2m-tags__more o-m2m-tags__more--clickable"
+                role="button"
+                tabindex="0"
+                data-testid="o-m2m-name-create"
+                @click.stop="onNameCreate"
+                @keydown.enter.stop="onNameCreate"
+                @keydown.space.prevent.stop="onNameCreate"
+              >
+                {{ nameCreateLabel }}
+              </div>
+              <div
                 v-if="searchList"
                 class="o-m2m-tags__more o-m2m-tags__more--clickable"
                 role="button"
@@ -132,6 +144,9 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import { registerFieldPath, unregisterFieldPath, pathsToFieldSelection, ensureRootId } from '@/web/web/query/utils/registry/field';
 import { createTranslate } from '@/web/web/i18n';
 import type { TagClickPayload } from '@/web/web/components/field/manyToManyTagsTypes';
+import { shouldShowNameCreateEntry } from '@/web/web/components/field/nameCreateVisibility';
+import { runNameCreateQuickCreate, trimSearchKeyword } from '@/web/web/components/field/nameCreateQuickCreate';
+import { usePermission } from '@/auth/web/composables/usePermission';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/OManyToManyRefTagsField' });
 
@@ -178,6 +193,13 @@ const props = withDefaults(
     searchViewWidth?: string | number;
     targetModel?: string;
 
+    /** Quick-create via NameCreate (PR-P2-M1). Default true; gated by create UI action. */
+    allowCreate?: boolean;
+    /** Target model write field for NameCreate; omit → BE uses Name. */
+    nameField?: string;
+    /** Override create UI action id; '' skips ACL (see namecreate-design D6). */
+    createActionId?: string;
+
     tagLabelField?: string | string[];
     tagClickable?: boolean | 'auto';
     placeholder?: string;
@@ -199,6 +221,7 @@ const props = withDefaults(
     showInlineError: false,
     searchViewTitle: '',
     searchViewWidth: '75%',
+    allowCreate: true,
     tagLabelField: () => ['DisplayName', 'Name', 'Title', 'Code', 'Id'],
     tagClickable: 'auto',
     placeholder: '',
@@ -237,6 +260,38 @@ const searchRows = shallowRef<any[]>([]);
 const searchKeyword = ref('');
 const dropdownVisible = ref(false);
 const vm = getCurrentInstance();
+
+const hasKeyword = computed(() => trimSearchKeyword(searchKeyword.value).length > 0);
+const { hasAction } = usePermission();
+const showNameCreateEntry = computed(() =>
+  shouldShowNameCreateEntry({
+    allowCreate: props.allowCreate !== false,
+    hasKeyword: hasKeyword.value,
+    relationQualifiedName: relationStore.value?.fullModelName,
+    createActionId: props.createActionId,
+    hasAction,
+  })
+);
+const nameCreateLabel = computed(() => _t('Create "%s"', trimSearchKeyword(searchKeyword.value)));
+const creatingName = ref(false);
+
+async function onNameCreate() {
+  await runNameCreateQuickCreate({
+    busy: creatingName,
+    store: relationStore.value,
+    keyword: searchKeyword.value,
+    nameField: props.nameField,
+    failedMessage: _t('Create failed'),
+    onError: message => ElMessage.error(message),
+    onSuccess: (row, id) => {
+      upsertHydrated(row);
+      if (!selectedIds.value.includes(id)) {
+        onSelectedIdsChange([...selectedIds.value, id]);
+      }
+      searchKeyword.value = '';
+    },
+  });
+}
 
 const hasTagClickListener = computed<boolean>(() => {
   const p = (vm?.vnode.props || {}) as Record<string, any>;

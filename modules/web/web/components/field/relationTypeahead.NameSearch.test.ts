@@ -12,6 +12,20 @@ import OManyToOneRefField from './OManyToOneRefField.vue';
 import OManyToManyTagsField from './OManyToManyTagsField.vue';
 import OManyToManyRefTagsField from './OManyToManyRefTagsField.vue';
 
+vi.mock('@/auth/web/composables/usePermission', () => ({
+  usePermission: () => ({
+    hasAction: () => true,
+  }),
+}));
+
+vi.mock('element-plus', async importOriginal => {
+  const mod = await importOriginal<typeof import('element-plus')>();
+  return {
+    ...mod,
+    ElMessage: { error: vi.fn(), warning: vi.fn(), success: vi.fn() },
+  };
+});
+
 function makeM2OBinding(relationStore: any): UseField {
   const value = ref<any>(null);
   const record = ref({ Id: '1' });
@@ -71,7 +85,7 @@ const SelectV2Stub = defineComponent({
   props: {
     remoteMethod: { type: Function, default: undefined },
   },
-  setup(props) {
+  setup(props, { slots }) {
     return () =>
       h('div', { class: 'select-stub' }, [
         h('button', {
@@ -89,18 +103,25 @@ const SelectV2Stub = defineComponent({
           type: 'button',
           onClick: () => props.remoteMethod?.(''),
         }),
+        slots.footer?.(),
       ]);
   },
 });
 
 const fieldStubs = {
-  OFieldBase: {
-    props: ['binding'],
-    template: `<div class="ob">
-      <slot name="edit" :fieldValue="() => ({ value: null })" :record="{ Id: '1' }" />
-      <slot name="display" :fieldValue="() => ({ value: null })" :record="{ Id: '1' }" />
-    </div>`,
-  },
+  OFieldBase: defineComponent({
+    props: {
+      binding: { type: Object, required: true },
+    },
+    setup(props, { slots }) {
+      const fieldValue = () => (props.binding as UseField).fieldRef();
+      return () =>
+        h('div', { class: 'ob' }, [
+          slots.edit?.({ fieldValue, record: { Id: '1' } }),
+          slots.display?.({ fieldValue, record: { Id: '1' } }),
+        ]);
+    },
+  }),
   'el-select-v2': SelectV2Stub,
   ElSelectV2: SelectV2Stub,
   'el-dialog': true,
@@ -312,5 +333,184 @@ describe('relation typeahead NameSearch wiring', () => {
     await clickRemote(wrapper, '.trigger-remote-null');
     expect(NameSearch).toHaveBeenCalledWith('', [], expect.objectContaining({ limit: 20 }));
     expect(Search).not.toHaveBeenCalled();
+  });
+});
+
+describe('relation typeahead NameCreate wiring', () => {
+  async function openCreate(wrapper: ReturnType<typeof mount>, testId: string) {
+    await clickRemote(wrapper);
+    return wrapper.get(`[data-testid="${testId}"]`);
+  }
+
+  it('OManyToOneField Create entry calls NameCreate and sets value', async () => {
+    const { ElMessage } = await import('element-plus');
+    const NameSearch = vi.fn(async () => []);
+    const created = { Id: 'new1', DisplayName: 'alice', Name: 'alice' };
+    const NameCreate = vi.fn(async (name: string) => ({ Id: 'new1', DisplayName: name, Name: name }));
+    const binding = makeM2OBinding({
+      NameSearch,
+      NameCreate,
+      fullModelName: 'partner.Partner',
+    });
+    const wrapper = mount(OManyToOneField as any, {
+      props: {
+        binding,
+        renderMode: 'form',
+        createActionId: '',
+        nameField: 'Code',
+      },
+      global: { stubs: fieldStubs },
+    });
+
+    const createBtn = await openCreate(wrapper, 'o-m2o-name-create');
+    expect(createBtn.text()).toContain('alice');
+    await createBtn.trigger('click');
+    await flushPromises();
+    expect(NameCreate).toHaveBeenCalledWith('alice', undefined, { nameField: 'Code' });
+    expect(binding.fieldRef().value).toEqual(created);
+
+    NameCreate.mockImplementationOnce(async () => {
+      throw new Error('denied');
+    });
+    await clickRemote(wrapper);
+    const again = wrapper.get('[data-testid="o-m2o-name-create"]');
+    await again.trigger('keydown.enter');
+    await flushPromises();
+    expect(ElMessage.error).toHaveBeenCalledWith('denied');
+    NameCreate.mockImplementationOnce(async () => {
+      throw new Error('denied2');
+    });
+    await clickRemote(wrapper);
+    await wrapper.get('[data-testid="o-m2o-name-create"]').trigger('keydown.space');
+    await flushPromises();
+    expect(ElMessage.error).toHaveBeenCalledWith('denied2');
+  });
+
+  it('hides Create entry when allowCreate is false', async () => {
+    for (const [Comp, testId, makeBinding] of [
+      [OManyToOneField, 'o-m2o-name-create', makeM2OBinding],
+      [OManyToOneRefField, 'o-m2o-name-create', makeM2OBinding],
+      [OManyToManyTagsField, 'o-m2m-name-create', makeM2MBinding],
+      [OManyToManyRefTagsField, 'o-m2m-name-create', makeM2MBinding],
+    ] as const) {
+      const wrapper = mount(Comp as any, {
+        props: {
+          binding: makeBinding({
+            NameSearch: vi.fn(async () => []),
+            NameCreate: vi.fn(),
+            Search: vi.fn(async () => []),
+            fullModelName: 'partner.Partner',
+          }),
+          renderMode: 'form',
+          allowCreate: false,
+          createActionId: '',
+        },
+        global: { stubs: fieldStubs },
+      });
+      await clickRemote(wrapper);
+      expect(wrapper.find(`[data-testid="${testId}"]`).exists()).toBe(false);
+    }
+  });
+
+  it('OManyToOneRefField Create entry selects created row', async () => {
+    const { ElMessage } = await import('element-plus');
+    const NameCreate = vi.fn(async (name: string) => ({ Id: 'r1', DisplayName: name, Name: name }));
+    const binding = makeM2OBinding({
+      NameSearch: vi.fn(async () => []),
+      NameCreate,
+      fullModelName: 'partner.Partner',
+    });
+    const wrapper = mount(OManyToOneRefField as any, {
+      props: { binding, renderMode: 'form', createActionId: '' },
+      global: { stubs: fieldStubs },
+    });
+    const btn = await openCreate(wrapper, 'o-m2o-name-create');
+    await btn.trigger('click');
+    await flushPromises();
+    expect(NameCreate).toHaveBeenCalledWith('alice', undefined, undefined);
+    expect(binding.fieldRef().value).toEqual({ Id: 'r1', DisplayName: 'alice', Name: 'alice' });
+
+    NameCreate.mockRejectedValueOnce(new Error('ref-denied'));
+    await clickRemote(wrapper);
+    const again = wrapper.get('[data-testid="o-m2o-name-create"]');
+    await again.trigger('keydown.enter');
+    await flushPromises();
+    expect(ElMessage.error).toHaveBeenCalledWith('ref-denied');
+    NameCreate.mockRejectedValueOnce(new Error('ref-denied2'));
+    await clickRemote(wrapper);
+    await wrapper.get('[data-testid="o-m2o-name-create"]').trigger('keydown.space');
+    await flushPromises();
+    expect(ElMessage.error).toHaveBeenCalledWith('ref-denied2');
+  });
+
+  it('OManyToManyTagsField Create entry appends tag id', async () => {
+    const { ElMessage } = await import('element-plus');
+    const NameCreate = vi.fn(async (name: string) => ({ Id: 't9', DisplayName: name, Name: name }));
+    const binding = makeM2MBinding({
+      NameSearch: vi.fn(async () => []),
+      NameCreate,
+      fullModelName: 'partner.Partner',
+    });
+    const wrapper = mount(OManyToManyTagsField as any, {
+      props: { binding, renderMode: 'form', createActionId: '' },
+      global: { stubs: fieldStubs },
+    });
+    const btn = await openCreate(wrapper, 'o-m2m-name-create');
+    await btn.trigger('click');
+    await flushPromises();
+    expect(NameCreate).toHaveBeenCalledWith('alice', undefined, undefined);
+    expect(binding.fieldRef().value.map((r: any) => r.Id ?? r)).toEqual(['t9']);
+
+    // Already-selected id path: create again with same id should not duplicate.
+    NameCreate.mockResolvedValueOnce({ Id: 't9', DisplayName: 'alice', Name: 'alice' });
+    await clickRemote(wrapper);
+    await wrapper.get('[data-testid="o-m2m-name-create"]').trigger('keydown.enter');
+    await flushPromises();
+    expect(binding.fieldRef().value.map((r: any) => r.Id ?? r)).toEqual(['t9']);
+
+    NameCreate.mockRejectedValueOnce(new Error('m2m-denied'));
+    await clickRemote(wrapper);
+    await wrapper.get('[data-testid="o-m2m-name-create"]').trigger('keydown.space');
+    await flushPromises();
+    expect(ElMessage.error).toHaveBeenCalledWith('m2m-denied');
+  });
+
+  it('OManyToManyRefTagsField Create entry appends tag id', async () => {
+    const { ElMessage } = await import('element-plus');
+    const NameCreate = vi.fn(async (name: string) => ({ Id: 'rt1', DisplayName: name, Name: name }));
+    const binding = makeM2MBinding({
+      NameSearch: vi.fn(async () => []),
+      NameCreate,
+      Search: vi.fn(async () => []),
+      fullModelName: 'partner.Partner',
+    });
+    const wrapper = mount(OManyToManyRefTagsField as any, {
+      props: { binding, renderMode: 'form', createActionId: '', nameField: 'Title' },
+      global: { stubs: fieldStubs },
+    });
+    const btn = await openCreate(wrapper, 'o-m2m-name-create');
+    await btn.trigger('click');
+    await flushPromises();
+    expect(NameCreate).toHaveBeenCalledWith('alice', undefined, { nameField: 'Title' });
+    expect(binding.fieldRef().value.map((r: any) => r.Id ?? r)).toEqual(['rt1']);
+
+    // Already-selected id path.
+    NameCreate.mockResolvedValueOnce({ Id: 'rt1', DisplayName: 'alice', Name: 'alice' });
+    await clickRemote(wrapper);
+    await wrapper.get('[data-testid="o-m2m-name-create"]').trigger('click');
+    await flushPromises();
+    expect(binding.fieldRef().value.map((r: any) => r.Id ?? r)).toEqual(['rt1']);
+
+    NameCreate.mockRejectedValueOnce(new Error('m2m-ref-denied'));
+    await clickRemote(wrapper);
+    const again = wrapper.get('[data-testid="o-m2m-name-create"]');
+    await again.trigger('keydown.enter');
+    await flushPromises();
+    expect(ElMessage.error).toHaveBeenCalledWith('m2m-ref-denied');
+    NameCreate.mockRejectedValueOnce(new Error('m2m-ref-denied2'));
+    await clickRemote(wrapper);
+    await wrapper.get('[data-testid="o-m2m-name-create"]').trigger('keydown.space');
+    await flushPromises();
+    expect(ElMessage.error).toHaveBeenCalledWith('m2m-ref-denied2');
   });
 });

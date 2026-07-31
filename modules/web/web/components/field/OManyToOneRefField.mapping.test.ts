@@ -46,4 +46,12 @@ describe('OManyToOneRefField mapping/contract', () => {
     expect(s).not.toContain('buildKeywordCondition');
     expect(s).not.toContain('relationStore.value?.Search(final');
   });
+
+  it('wires NameCreate quick-create entry and props', () => {
+    const s = source();
+    expect(s).toContain('runNameCreateQuickCreate');
+    expect(s).toContain('shouldShowNameCreateEntry');
+    expect(s).toContain('allowCreate');
+    expect(s).toContain('o-m2o-name-create');
+  });
 });
