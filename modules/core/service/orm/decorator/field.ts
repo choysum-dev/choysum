@@ -21,6 +21,7 @@ import { asObjectRecord } from '../../../utils/object';
 import type { ObjectRecord } from '../../../utils/types';
 import { isTermReference, type TermReference } from '../../i18n';
 import { DEFAULT_GLOBAL_MAX_UPLOAD_BYTES } from '../upload_limits';
+import { mergeSelectionByValue } from '../metadata/selection_merge';
 
 const scalarTypes = new Set<FieldType>([
   'char',
@@ -53,6 +54,8 @@ type FieldDecoratorOptionBag = {
   column?: unknown;
   /** Static array | method name | callable (see SelectionDeclaration). */
   selection?: SelectionDeclaration;
+  /** Append static options onto an inherited selection field (PR-P2-F4). */
+  selectionAdd?: unknown;
   targetModel?: unknown;
   relation?: unknown;
   related?: unknown;
@@ -220,6 +223,7 @@ export function Field(
     let selectionKind: FieldMetadata['selectionKind'];
     let selectionMethod: FieldMetadata['selectionMethod'];
     let selectionCallable: FieldMetadata['selectionCallable'];
+    let selectionAddItems: SelectionItem[] | undefined;
     let conditionKind: FieldMetadata['conditionKind'];
     let conditionStatic: FieldMetadata['condition'];
     let conditionCallable: FieldMetadata['conditionCallable'];
@@ -463,9 +467,27 @@ export function Field(
 
     const hasColumn = normalizedColumn !== undefined;
 
-    // Selection-specific validation (static array | method name | callable)
+    if (optionBag.selectionAdd !== undefined && type !== 'selection') {
+      throw new Error(`@Field(${name}) selectionAdd is only supported on selection fields`);
+    }
+
+    // Selection-specific validation (static array | method name | callable | selectionAdd)
     if (type === 'selection') {
       const selectionRaw = optionBag.selection;
+      const hasSelection = selectionRaw !== undefined;
+      const hasSelectionAdd = optionBag.selectionAdd !== undefined;
+
+      if (hasSelection && hasSelectionAdd) {
+        throw new Error(
+          `@Field(${name}) cannot combine selection and selectionAdd; use selectionAdd alone to append, or selection alone to replace`
+        );
+      }
+
+      if (hasSelectionAdd) {
+        selectionAddItems = normalizeSelectionItems(name, optionBag.selectionAdd, 'selectionAdd', {
+          allowEmpty: true,
+        });
+      }
 
       if (typeof selectionRaw === 'function') {
         selectionKind = 'dynamic';
@@ -478,57 +500,17 @@ export function Field(
         selectionKind = 'dynamic';
         selectionMethod = method;
       } else if (Array.isArray(selectionRaw)) {
-        if (selectionRaw.length === 0) {
-          throw new Error(`@Field(${name}) selection type requires a non-empty selection array`);
-        }
-
-        const values = new Set<string>();
-        const normalizedSelection: SelectionItem[] = [];
-        for (const item of selectionRaw) {
-          if (!item || typeof item !== 'object') {
-            throw new Error(`@Field(${name}) each selection item must be an object`);
-          }
-          if (!item.value || typeof item.value !== 'string') {
-            throw new Error(`@Field(${name}) each selection item must include a string value field`);
-          }
-          if ((item as { labelText?: unknown }).labelText != null) {
-            throw new Error(
-              `@Field(${name}) selection labelText is forbidden; use label: _lt('…') when the option should translate`
-            );
-          }
-
-          const value = item.value;
-          if (values.has(value)) {
-            throw new Error(`@Field(${name}) duplicate selection value: ${value}`);
-          }
-          values.add(value);
-
-          const labelRaw = (item as { label?: unknown }).label;
-          if (isTermReference(labelRaw)) {
-            const src = String(labelRaw.src || '').trim();
-            if (!src) {
-              throw new Error(`@Field(${name}) each selection item _lt label must include a non-empty src`);
-            }
-            normalizedSelection.push({ value, label: src, labelText: labelRaw });
-            continue;
-          }
-          if (!labelRaw || typeof labelRaw !== 'string') {
-            throw new Error(
-              `@Field(${name}) each selection item label must be a string or TermReference from _lt(...)`
-            );
-          }
-          const label = labelRaw.trim();
-          if (!label) {
-            throw new Error(`@Field(${name}) each selection item must include a non-empty string label`);
-          }
-          normalizedSelection.push({ value, label });
-        }
-        validatedSelection = normalizedSelection;
+        validatedSelection = normalizeSelectionItems(name, selectionRaw, 'selection', { allowEmpty: false });
         selectionKind = 'static';
-      } else {
+      } else if (hasSelectionAdd) {
+        // Pure append (PR-P2-F4): resolve base static selection from inherited metadata at write time.
+        selectionKind = 'static';
+      } else if (hasSelection) {
         throw new Error(
           `@Field(${name}) selection must be a non-empty array, method name string, or () => SelectionItem[] callable`
         );
+      } else {
+        throw new Error(`@Field(${name}) selection type requires selection or selectionAdd`);
       }
     }
 
@@ -709,8 +691,28 @@ export function Field(
       delete meta.column;
     }
 
-    const fields = new Map(prev?.fields ?? []);
-    fields.set(name, { ...(fields.get(name) || {}), ...meta });
+    // PR-P2-F4: selectionAdd-only merges onto the inherited static selection before write.
+    if (type === 'selection' && selectionAddItems !== undefined && !validatedSelection) {
+      const baseField = prev?.fields?.get(name);
+      if (!baseField || baseField.type !== 'selection') {
+        throw new Error(`@Field(${name}) selectionAdd requires an inherited selection field`);
+      }
+      if (baseField.selectionKind === 'dynamic' || !Array.isArray(baseField.selection)) {
+        throw new Error(`@Field(${name}) selectionAdd requires an inherited static selection`);
+      }
+      meta.selectionKind = 'static';
+      meta.selection = mergeSelectionByValue(baseField.selection, selectionAddItems);
+    }
+
+    const fields = new Map(prev.fields);
+    const nextField: FieldMetadata = { ...(fields.get(name) || {}), ...meta };
+    if (type === 'selection' && selectionAddItems !== undefined && !validatedSelection) {
+      nextField.selectionKind = 'static';
+      nextField.selection = meta.selection;
+      delete nextField.selectionMethod;
+      delete nextField.selectionCallable;
+    }
+    fields.set(name, nextField);
 
     MetadataStorage.instance.setModelMetadata(ctor, {
       ...prev,
@@ -718,4 +720,65 @@ export function Field(
       fields,
     });
   };
+}
+
+function normalizeSelectionItems(
+  name: string,
+  raw: unknown,
+  optionName: 'selection' | 'selectionAdd',
+  opts: { allowEmpty: boolean }
+): SelectionItem[] {
+  if (!Array.isArray(raw)) {
+    throw new Error(`@Field(${name}) ${optionName} must be an array`);
+  }
+  if (!opts.allowEmpty && raw.length === 0) {
+    throw new Error(`@Field(${name}) selection type requires a non-empty selection array`);
+  }
+
+  const values = new Set<string>();
+  const normalized: SelectionItem[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') {
+      throw new Error(`@Field(${name}) each ${optionName} item must be an object`);
+    }
+    const entry = item as { value?: unknown; label?: unknown; labelText?: unknown };
+    if (!entry.value || typeof entry.value !== 'string') {
+      throw new Error(`@Field(${name}) each ${optionName} item must include a string value field`);
+    }
+    if (entry.labelText != null) {
+      throw new Error(
+        `@Field(${name}) ${optionName} labelText is forbidden; use label: _lt('…') when the option should translate`
+      );
+    }
+
+    const value = entry.value.trim();
+    if (!value) {
+      throw new Error(`@Field(${name}) each ${optionName} item must include a non-empty string value`);
+    }
+    if (values.has(value)) {
+      throw new Error(`@Field(${name}) duplicate ${optionName} value: ${value}`);
+    }
+    values.add(value);
+
+    const labelRaw = entry.label;
+    if (isTermReference(labelRaw)) {
+      const src = String(labelRaw.src || '').trim();
+      if (!src) {
+        throw new Error(`@Field(${name}) each ${optionName} item _lt label must include a non-empty src`);
+      }
+      normalized.push({ value, label: src, labelText: labelRaw });
+      continue;
+    }
+    if (!labelRaw || typeof labelRaw !== 'string') {
+      throw new Error(
+        `@Field(${name}) each ${optionName} item label must be a string or TermReference from _lt(...)`
+      );
+    }
+    const label = labelRaw.trim();
+    if (!label) {
+      throw new Error(`@Field(${name}) each ${optionName} item must include a non-empty string label`);
+    }
+    normalized.push({ value, label });
+  }
+  return normalized;
 }

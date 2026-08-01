@@ -5,6 +5,7 @@ package generator
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -111,7 +112,10 @@ func (g *grpcGenerator) getApplication() (*meta.IrApplication, error) {
 	modelMap := make(map[string]*meta.IrModel, len(nameGroups))
 	for name, group := range nameGroups {
 		candidates := selectSameNameModelsInPrimaryExtensionChain(group)
-		merged := mergeSameNameModelsByExtensionChain(candidates)
+		merged, err := mergeSameNameModelsByExtensionChain(candidates)
+		if err != nil {
+			return nil, err
+		}
 		if merged == nil {
 			continue
 		}
@@ -212,12 +216,12 @@ func selectSameNameModelsInPrimaryExtensionChain(models []*meta.IrModel) []*meta
 	return out
 }
 
-func mergeSameNameModelsByExtensionChain(models []*meta.IrModel) *meta.IrModel {
+func mergeSameNameModelsByExtensionChain(models []*meta.IrModel) (*meta.IrModel, error) {
 	if len(models) == 0 {
-		return nil
+		return nil, nil
 	}
 	if len(models) == 1 {
-		return models[0]
+		return models[0], nil
 	}
 
 	byPath := make(map[string]*meta.IrModel, len(models))
@@ -268,7 +272,7 @@ func mergeSameNameModelsByExtensionChain(models []*meta.IrModel) *meta.IrModel {
 		ranked = append(ranked, rankedModel{model: m, depth: depthOf(m)})
 	}
 	if len(ranked) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	sort.SliceStable(ranked, func(i, j int) bool {
@@ -295,8 +299,15 @@ func mergeSameNameModelsByExtensionChain(models []*meta.IrModel) *meta.IrModel {
 				continue
 			}
 			if idx, ok := fieldIndex[f.Name]; ok {
-				mergedFields[idx] = f
+				resolved, err := meta.ResolveSelectionFieldConflict(mergedFields[idx], f)
+				if err != nil {
+					return nil, err
+				}
+				mergedFields[idx] = resolved
 			} else {
+				if meta.FieldHasSelectionAdd(f) {
+					return nil, fmt.Errorf("field %s selectionAdd requires an inherited static selection", f.Name)
+				}
 				fieldIndex[f.Name] = len(mergedFields)
 				mergedFields = append(mergedFields, f)
 			}
@@ -319,7 +330,7 @@ func mergeSameNameModelsByExtensionChain(models []*meta.IrModel) *meta.IrModel {
 	merged := *canonical
 	merged.Fields = mergedFields
 	merged.Services = mergedServices
-	return &merged
+	return &merged, nil
 }
 
 func (g *grpcGenerator) Generate() ([]*module.GeneratorResult, error) {

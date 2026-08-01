@@ -444,9 +444,42 @@ func TestMergeCloneAndMaterializedHelpers(t *testing.T) {
 		{Name: "Shared", Decorators: []*meta.IrDecorator{{Name: "Field", Arguments: []*meta.IrArgument{{Value: "'child-shared'", Type: "Literal"}}}}},
 		{Name: "Extra"},
 	}
-	mergedFields := mergeOrderedFields(parentFields, childFields, "/models/base", "/models/child")
+	mergedFields, err := mergeOrderedFields(parentFields, childFields, "/models/base", "/models/child")
+	if err != nil {
+		t.Fatalf("mergeOrderedFields: %v", err)
+	}
 	if len(mergedFields) != 3 || mergedFields[0].Name != "Code" || mergedFields[1].Name != "Shared" || mergedFields[2].Name != "Extra" {
 		t.Fatalf("unexpected merged fields order: %#v", mergedFields)
+	}
+
+	addOnly := &meta.IrField{Name: "Kind", FieldType: "selection"}
+	if err := addOnly.SetResolvedSpec(&meta.IrFieldResolvedSpec{
+		FieldName: "Kind",
+		Structural: meta.IrFieldStructuralSpec{
+			Name:            "Kind",
+			FieldType:       "selection",
+			HasSelectionAdd: true,
+			SelectionAdd:    []meta.IrFieldSelectionItem{{Value: "vip", Label: "VIP"}},
+		},
+	}); err != nil {
+		t.Fatalf("SetResolvedSpec: %v", err)
+	}
+	if _, err := mergeOrderedFields(nil, []*meta.IrField{addOnly}, "", "/models/child"); err == nil || !strings.Contains(err.Error(), "selectionAdd requires an inherited static selection") {
+		t.Fatalf("expected selectionAdd-without-parent rejection, got %v", err)
+	}
+
+	parentKind := &meta.IrField{Name: "Kind", FieldType: "selection", SelectionKind: "dynamic", SelectionMethod: "Opts"}
+	_ = parentKind.SetResolvedSpec(&meta.IrFieldResolvedSpec{
+		FieldName: "Kind",
+		Structural: meta.IrFieldStructuralSpec{
+			Name:            "Kind",
+			FieldType:       "selection",
+			SelectionKind:   "dynamic",
+			SelectionMethod: "Opts",
+		},
+	})
+	if _, err := mergeOrderedFields([]*meta.IrField{parentKind}, []*meta.IrField{addOnly}, "/models/base", "/models/child"); err == nil || !strings.Contains(err.Error(), "inherited static selection") {
+		t.Fatalf("expected selectionAdd conflict error, got %v", err)
 	}
 	if mergedFields[0].OriginModelPath != "/models/base" || mergedFields[1].OriginModelPath != "/models/child" || mergedFields[2].OriginModelPath != "/models/child" {
 		t.Fatalf("unexpected field origin paths: %#v", mergedFields)
@@ -516,7 +549,7 @@ func TestMergeCloneAndMaterializedHelpers(t *testing.T) {
 		t.Fatalf("unexpected materialized child services: %#v", childModel.Services)
 	}
 
-	_, err := builder.computeEffectiveMeta(
+	_, err = builder.computeEffectiveMeta(
 		&meta.IrModel{Name: "Partner", Path: "/models/cycle-a", Extends: "/models/cycle-b"},
 		map[string]*meta.IrModel{
 			"/models/cycle-a": {Name: "Partner", Path: "/models/cycle-a", Extends: "/models/cycle-b"},
@@ -527,6 +560,26 @@ func TestMergeCloneAndMaterializedHelpers(t *testing.T) {
 	)
 	if err == nil || !strings.Contains(err.Error(), "circular dependency detected while materializing") {
 		t.Fatalf("expected materialize cycle error, got %v", err)
+	}
+
+	orphanAdd := &meta.IrField{Name: "Kind", FieldType: "selection"}
+	_ = orphanAdd.SetResolvedSpec(&meta.IrFieldResolvedSpec{
+		FieldName: "Kind",
+		Structural: meta.IrFieldStructuralSpec{
+			Name:            "Kind",
+			FieldType:       "selection",
+			HasSelectionAdd: true,
+			SelectionAdd:    []meta.IrFieldSelectionItem{{Value: "vip", Label: "VIP"}},
+		},
+	})
+	_, err = builder.computeEffectiveMeta(
+		&meta.IrModel{Name: "Partner", Path: "/models/child-add", Fields: []*meta.IrField{orphanAdd}},
+		map[string]*meta.IrModel{},
+		map[string]*effectiveMeta{},
+		map[string]bool{},
+	)
+	if err == nil || !strings.Contains(err.Error(), "selectionAdd requires an inherited static selection") {
+		t.Fatalf("expected computeEffectiveMeta selectionAdd error, got %v", err)
 	}
 }
 

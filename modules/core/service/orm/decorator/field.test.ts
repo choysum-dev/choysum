@@ -11,7 +11,7 @@ import type {
   FlatManyToOneRefFieldOptions,
   FlatOneToManyFieldOptions,
 } from '../metadata/field';
-import { createTranslate } from '../../i18n';
+import { createTermReference, createTranslate } from '../../i18n';
 
 class FieldTargetModel extends BaseModel {}
 
@@ -1460,4 +1460,293 @@ test('Field decorator accepts image/binary upload limits and rejects invalid opt
     }
     return OverGlobalCapModel;
   }).toThrow('maxUploadBytes cannot exceed global upload cap');
+});
+
+test('Field decorator merges selectionAdd onto inherited static selection (PR-P2-F4)', () => {
+  class SelectionAddParent extends BaseModel {
+    @Field({
+      type: 'selection',
+      selection: [
+        { value: 'a', label: 'A' },
+        { value: 'b', label: 'B' },
+      ],
+    } as any)
+    Status!: string;
+  }
+
+  class SelectionAddChild extends SelectionAddParent {
+    @Field({
+      type: 'selection',
+      selectionAdd: [
+        { value: 'c', label: 'C' },
+        { value: 'b', label: 'B2' },
+      ],
+    } as any)
+    Status!: string;
+  }
+
+  const meta = MetadataStorage.instance.getModelMetadata(SelectionAddChild as any).fields.get('Status') as any;
+  expect(meta?.selectionKind).toBe('static');
+  expect(meta?.selection).toEqual([
+    { value: 'a', label: 'A' },
+    { value: 'b', label: 'B2' },
+    { value: 'c', label: 'C' },
+  ]);
+});
+
+test('Field decorator allows empty selectionAdd as no-op append (PR-P2-F4)', () => {
+  class EmptyAddParent extends BaseModel {
+    @Field({
+      type: 'selection',
+      selection: [{ value: 'a', label: 'A' }],
+    } as any)
+    Status!: string;
+  }
+
+  class EmptyAddChild extends EmptyAddParent {
+    @Field({ type: 'selection', selectionAdd: [] } as any)
+    Status!: string;
+  }
+
+  const meta = MetadataStorage.instance.getModelMetadata(EmptyAddChild as any).fields.get('Status') as any;
+  expect(meta?.selection).toEqual([{ value: 'a', label: 'A' }]);
+});
+
+test('Field decorator rejects selectionAdd conflicts (PR-P2-F4)', () => {
+  expect(() => {
+    class BothModel extends BaseModel {
+      @Field({
+        type: 'selection',
+        selection: [{ value: 'a', label: 'A' }],
+        selectionAdd: [{ value: 'b', label: 'B' }],
+      } as any)
+      Status!: string;
+    }
+    return BothModel;
+  }).toThrow('cannot combine selection and selectionAdd');
+
+  expect(() => {
+    class NoParentAddModel extends BaseModel {
+      @Field({ type: 'selection', selectionAdd: [{ value: 'a', label: 'A' }] } as any)
+      Status!: string;
+    }
+    return NoParentAddModel;
+  }).toThrow('selectionAdd requires an inherited selection field');
+
+  class DynamicParent extends BaseModel {
+    @Field({ type: 'selection', selection: 'StatusOptions' } as any)
+    Status!: string;
+  }
+  expect(() => {
+    class DynamicChild extends DynamicParent {
+      @Field({ type: 'selection', selectionAdd: [{ value: 'a', label: 'A' }] } as any)
+      Status!: string;
+    }
+    return DynamicChild;
+  }).toThrow('selectionAdd requires an inherited static selection');
+
+  expect(() => {
+    class DynamicWithAdd extends BaseModel {
+      @Field({
+        type: 'selection',
+        selection: 'StatusOptions',
+        selectionAdd: [{ value: 'a', label: 'A' }],
+      } as any)
+      Status!: string;
+    }
+    return DynamicWithAdd;
+  }).toThrow('cannot combine selection and selectionAdd');
+
+  expect(() => {
+    class NonSelectionAddModel extends BaseModel {
+      @Field({ type: 'varchar', selectionAdd: [{ value: 'a', label: 'A' }] } as any)
+      Status!: string;
+    }
+    return NonSelectionAddModel;
+  }).toThrow('selectionAdd is only supported on selection fields');
+
+  expect(() => {
+    class BadAddShapeModel extends BaseModel {
+      @Field({ type: 'selection', selectionAdd: 'vip' } as any)
+      Status!: string;
+    }
+    return BadAddShapeModel;
+  }).toThrow('selectionAdd must be an array');
+
+  expect(() => {
+    class MissingSelectionModel extends BaseModel {
+      @Field({ type: 'selection' } as any)
+      Status!: string;
+    }
+    return MissingSelectionModel;
+  }).toThrow('selection type requires selection or selectionAdd');
+
+  expect(() => {
+    class DupAddModel extends BaseModel {
+      @Field({
+        type: 'selection',
+        selectionAdd: [
+          { value: 'a', label: 'A' },
+          { value: 'a', label: 'A2' },
+        ],
+      } as any)
+      Status!: string;
+    }
+    return DupAddModel;
+  }).toThrow('duplicate selectionAdd value');
+
+  class CharParent extends BaseModel {
+    @Field({ type: 'varchar' } as any)
+    Status!: string;
+  }
+  expect(() => {
+    class AddOnCharChild extends CharParent {
+      @Field({ type: 'selection', selectionAdd: [{ value: 'a', label: 'A' }] } as any)
+      Status!: string;
+    }
+    return AddOnCharChild;
+  }).toThrow('selectionAdd requires an inherited selection field');
+});
+
+test('Field decorator selectionAdd preserves _lt labels (PR-P2-F4)', () => {
+  const label = createTranslate('demo', { scope: 'demo.status' })._lt('VIP');
+  class LtAddParent extends BaseModel {
+    @Field({
+      type: 'selection',
+      selection: [{ value: 'a', label: 'A' }],
+    } as any)
+    Status!: string;
+  }
+  class LtAddChild extends LtAddParent {
+    @Field({
+      type: 'selection',
+      selectionAdd: [{ value: 'vip', label: label }],
+    } as any)
+    Status!: string;
+  }
+  const meta = MetadataStorage.instance.getModelMetadata(LtAddChild as any).fields.get('Status') as any;
+  expect(meta?.selection).toEqual([
+    { value: 'a', label: 'A' },
+    { value: 'vip', label: 'VIP', labelText: label },
+  ]);
+});
+
+test('Field decorator validates selectionAdd item shapes (PR-P2-F4)', () => {
+  const emptySrc = createTranslate('demo', { scope: 'demo.status' })._lt('   ');
+
+  expect(() => {
+    class BadItemModel extends BaseModel {
+      @Field({ type: 'selection', selectionAdd: [null] } as any)
+      Status!: string;
+    }
+    return BadItemModel;
+  }).toThrow('each selectionAdd item must be an object');
+
+  expect(() => {
+    class BadValueModel extends BaseModel {
+      @Field({ type: 'selection', selectionAdd: [{ value: 1, label: 'A' }] } as any)
+      Status!: string;
+    }
+    return BadValueModel;
+  }).toThrow('each selectionAdd item must include a string value field');
+
+  expect(() => {
+    class ExplicitLabelTextModel extends BaseModel {
+      @Field({
+        type: 'selection',
+        selectionAdd: [{ value: 'a', label: 'A', labelText: emptySrc }],
+      } as any)
+      Status!: string;
+    }
+    return ExplicitLabelTextModel;
+  }).toThrow('selectionAdd labelText is forbidden');
+
+  expect(() => {
+    class EmptyLtModel extends BaseModel {
+      @Field({ type: 'selection', selectionAdd: [{ value: 'a', label: emptySrc }] } as any)
+      Status!: string;
+    }
+    return EmptyLtModel;
+  }).toThrow('each selectionAdd item _lt label must include a non-empty src');
+
+  const missingSrc = createTermReference('demo', '', { scope: 'demo.status' });
+  expect(() => {
+    class MissingSrcModel extends BaseModel {
+      @Field({ type: 'selection', selectionAdd: [{ value: 'a', label: missingSrc }] } as any)
+      Status!: string;
+    }
+    return MissingSrcModel;
+  }).toThrow('each selectionAdd item _lt label must include a non-empty src');
+
+  expect(() => {
+    class BadLabelModel extends BaseModel {
+      @Field({ type: 'selection', selectionAdd: [{ value: 'a', label: 1 }] } as any)
+      Status!: string;
+    }
+    return BadLabelModel;
+  }).toThrow('each selectionAdd item label must be a string or TermReference');
+
+  expect(() => {
+    class BlankLabelModel extends BaseModel {
+      @Field({ type: 'selection', selectionAdd: [{ value: 'a', label: '   ' }] } as any)
+      Status!: string;
+    }
+    return BlankLabelModel;
+  }).toThrow('each selectionAdd item must include a non-empty string label');
+
+  expect(() => {
+    class BlankValueModel extends BaseModel {
+      @Field({ type: 'selection', selectionAdd: [{ value: '   ', label: 'A' }] } as any)
+      Status!: string;
+    }
+    return BlankValueModel;
+  }).toThrow('each selectionAdd item must include a non-empty string value');
+
+  expect(() => {
+    class WhitespaceDupModel extends BaseModel {
+      @Field({
+        type: 'selection',
+        selectionAdd: [
+          { value: 'a', label: 'A' },
+          { value: ' a ', label: 'A2' },
+        ],
+      } as any)
+      Status!: string;
+    }
+    return WhitespaceDupModel;
+  }).toThrow('duplicate selectionAdd value');
+
+  class TrimValueParent extends BaseModel {
+    @Field({
+      type: 'selection',
+      selection: [{ value: 'a', label: 'A' }],
+    } as any)
+    Status!: string;
+  }
+  class TrimValueChild extends TrimValueParent {
+    @Field({
+      type: 'selection',
+      selectionAdd: [{ value: ' vip ', label: 'VIP' }],
+    } as any)
+    Status!: string;
+  }
+  const trimmed = MetadataStorage.instance.getModelMetadata(TrimValueChild as any).fields.get('Status') as any;
+  expect(trimmed?.selection).toEqual([
+    { value: 'a', label: 'A' },
+    { value: 'vip', label: 'VIP' },
+  ]);
+
+  class NonArraySelectionParent extends BaseModel {}
+  MetadataStorage.instance.setModelMetadata(NonArraySelectionParent as any, {
+    fields: new Map([
+      ['Status', { name: 'Status', type: 'selection', selectionKind: 'static', selection: 'StatusOptions' } as any],
+    ]),
+  } as any);
+  expect(() => {
+    class Child extends NonArraySelectionParent {
+      @Field({ type: 'selection', selectionAdd: [{ value: 'a', label: 'A' }] } as any)
+      Status!: string;
+    }
+    return Child;
+  }).toThrow('selectionAdd requires an inherited static selection');
 });

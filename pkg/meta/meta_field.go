@@ -83,6 +83,10 @@ type IrFieldStructuralSpec struct {
 	Selection       []IrFieldSelectionItem         `json:"selection,omitempty"`
 	SelectionKind   string                         `json:"selectionKind,omitempty"`
 	SelectionMethod string                         `json:"selectionMethod,omitempty"`
+	// SelectionAdd appends static options onto an inherited selection (PR-P2-F4).
+	SelectionAdd []IrFieldSelectionItem `json:"selectionAdd,omitempty"`
+	// HasSelectionAdd is true when the author wrote selectionAdd (including []).
+	HasSelectionAdd bool `json:"hasSelectionAdd,omitempty"`
 	Related         *IrFieldRelatedSpec            `json:"related,omitempty"`
 	StorageHints    *IrFieldStructuralStorageHints `json:"storageHints,omitempty"`
 	ColumnType      string                         `json:"columnType,omitempty"`

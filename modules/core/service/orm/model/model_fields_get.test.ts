@@ -267,6 +267,47 @@ test('FieldsGet translates _lt selection labels and passes bare strings through 
   }
 });
 
+test('FieldsGet exposes selectionAdd-merged options (PR-P2-F4)', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'en_US' });
+  setTestI18nBridge({ t: () => '' });
+
+  class FieldsGetSelectionBase extends BaseModel {
+    @Field({
+      type: 'selection',
+      selection: [
+        { value: 'a', label: 'A' },
+        { value: 'b', label: 'B' },
+      ],
+    })
+    Kind!: string;
+  }
+
+  @Model('FieldsGetSelectionAdd', { application: 'demo' })
+  class FieldsGetSelectionAdd extends FieldsGetSelectionBase {
+    @Field({
+      type: 'selection',
+      selectionAdd: [{ value: 'c', label: 'C' }],
+    })
+    Kind!: string;
+  }
+
+  RepositoryFactory.setRepository(FieldsGetSelectionAdd as any, {
+    getDenyReadFields: async () => ({ denyReadFields: [] }),
+  } as any);
+
+  try {
+    const out = await FieldsGetSelectionAdd.FieldsGet(['Kind']);
+    expect(out.Kind?.selection).toEqual([
+      { value: 'a', label: 'A' },
+      { value: 'b', label: 'B' },
+      { value: 'c', label: 'C' },
+    ]);
+  } finally {
+    resetTestState();
+  }
+});
+
 test('FieldsGet omits deny-read fields (T1.4)', async () => {
   resetTestState();
   setGlobalRequestContextProvider({ lang: 'en_US' });
