@@ -5,7 +5,7 @@ import { BaseModel, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { Onchange } from '@/core/service/api/onchange';
 import { MetadataStorage } from '@/core/service/api/metadata';
-import IrModel from '@/meta/service/models/ir_model';
+import MetaModel from '@/meta/service/models/model';
 
 class ConstraintDiagParent extends BaseModel {
   Name?: string;
@@ -37,11 +37,11 @@ Object.defineProperty(ConstraintDiagChild.prototype, 'childConstraint', {
 Constraint<ConstraintDiagChild>('Name', { priority: 5 })(ConstraintDiagChild.prototype, 'baseConstraint', undefined as any);
 Constraint<ConstraintDiagChild>('Code', { priority: 20, preview: true })(ConstraintDiagChild.prototype, 'childConstraint', undefined as any);
 
-test('meta.IrModel GetEffectiveConstraints returns deduplicated effective constraints', async () => {
+test('meta.MetaModel GetEffectiveConstraints returns deduplicated effective constraints', async () => {
   const meta = MetadataStorage.instance.getModelMetadata(ConstraintDiagChild as any);
   const modelIdentifier = String(meta.fullModelName || meta.modelName || meta.name || '').trim() || 'ConstraintDiagChild';
 
-  const result = await IrModel.GetEffectiveConstraints(modelIdentifier);
+  const result = await MetaModel.GetEffectiveConstraints(modelIdentifier);
 
   expect(String(result.model || '').length > 0).toBe(true);
   expect(Array.isArray(result.constraints)).toBe(true);
@@ -57,11 +57,11 @@ test('meta.IrModel GetEffectiveConstraints returns deduplicated effective constr
   expect(String(result.constraints[0]?.source || '').length > 0).toBe(true);
 });
 
-test('meta.IrModel GetEffectiveConstraints supports query filters and limit', async () => {
+test('meta.MetaModel GetEffectiveConstraints supports query filters and limit', async () => {
   const meta = MetadataStorage.instance.getModelMetadata(ConstraintDiagChild as any);
   const modelIdentifier = String(meta.fullModelName || meta.modelName || meta.name || '').trim() || 'ConstraintDiagChild';
 
-  const result = await IrModel.GetEffectiveConstraints(modelIdentifier, {
+  const result = await MetaModel.GetEffectiveConstraints(modelIdentifier, {
     preview: true,
     methodPrefix: 'child',
     limit: 1,
@@ -77,11 +77,11 @@ test('meta.IrModel GetEffectiveConstraints supports query filters and limit', as
   expect(result.constraints[0]?.preview).toBe(true);
 });
 
-test('meta.IrModel GetEffectiveConstraints supports offset with priority-range filters', async () => {
+test('meta.MetaModel GetEffectiveConstraints supports offset with priority-range filters', async () => {
   const meta = MetadataStorage.instance.getModelMetadata(ConstraintDiagChild as any);
   const modelIdentifier = String(meta.fullModelName || meta.modelName || meta.name || '').trim() || 'ConstraintDiagChild';
 
-  const result = await IrModel.GetEffectiveConstraints(modelIdentifier, {
+  const result = await MetaModel.GetEffectiveConstraints(modelIdentifier, {
     minPriority: 5,
     maxPriority: 40,
     offset: 1,
@@ -98,10 +98,10 @@ test('meta.IrModel GetEffectiveConstraints supports offset with priority-range f
   expect(result.constraints[0]?.priority).toBe(20);
 });
 
-test('meta.IrModel GetEffectiveConstraints throws on unknown model', async () => {
+test('meta.MetaModel GetEffectiveConstraints throws on unknown model', async () => {
   let error: unknown;
   try {
-    await IrModel.GetEffectiveConstraints('meta.__UnknownModel__');
+    await MetaModel.GetEffectiveConstraints('meta.__UnknownModel__');
   } catch (err) {
     error = err;
   }
@@ -142,11 +142,11 @@ Object.defineProperty(OnchangeDiagChild.prototype, 'onCodeChange', {
 Onchange<OnchangeDiagChild>(['Name'], { priority: 5 })(OnchangeDiagChild.prototype, 'onNameChange', undefined as any);
 Onchange<OnchangeDiagChild>(['Code'], { priority: 20, reads: ['Currency'] })(OnchangeDiagChild.prototype, 'onCodeChange', undefined as any);
 
-test('meta.IrModel GetEffectiveOnchange returns deduplicated effective onchange handlers', async () => {
+test('meta.MetaModel GetEffectiveOnchange returns deduplicated effective onchange handlers', async () => {
   const meta = MetadataStorage.instance.getModelMetadata(OnchangeDiagChild as any);
   const modelIdentifier = String(meta.fullModelName || meta.modelName || meta.name || '').trim() || 'OnchangeDiagChild';
 
-  const result = await IrModel.GetEffectiveOnchange(modelIdentifier);
+  const result = await MetaModel.GetEffectiveOnchange(modelIdentifier);
 
   expect(String(result.model || '').length > 0).toBe(true);
   expect(Array.isArray(result.onchanges)).toBe(true);
@@ -162,11 +162,11 @@ test('meta.IrModel GetEffectiveOnchange returns deduplicated effective onchange 
   expect(String(result.onchanges[0]?.source || '').length > 0).toBe(true);
 });
 
-test('meta.IrModel GetEffectiveOnchange supports triggerField and methodPrefix filters', async () => {
+test('meta.MetaModel GetEffectiveOnchange supports triggerField and methodPrefix filters', async () => {
   const meta = MetadataStorage.instance.getModelMetadata(OnchangeDiagChild as any);
   const modelIdentifier = String(meta.fullModelName || meta.modelName || meta.name || '').trim() || 'OnchangeDiagChild';
 
-  const result = await IrModel.GetEffectiveOnchange(modelIdentifier, {
+  const result = await MetaModel.GetEffectiveOnchange(modelIdentifier, {
     methodPrefix: 'onCode',
     triggerField: 'Code',
     limit: 1,
@@ -179,11 +179,11 @@ test('meta.IrModel GetEffectiveOnchange supports triggerField and methodPrefix f
   expect(result.onchanges[0]?.method).toBe('onCodeChange');
 });
 
-test('meta.IrModel GetEffectiveOnchange supports priority-range and offset', async () => {
+test('meta.MetaModel GetEffectiveOnchange supports priority-range and offset', async () => {
   const meta = MetadataStorage.instance.getModelMetadata(OnchangeDiagChild as any);
   const modelIdentifier = String(meta.fullModelName || meta.modelName || meta.name || '').trim() || 'OnchangeDiagChild';
 
-  const result = await IrModel.GetEffectiveOnchange(modelIdentifier, {
+  const result = await MetaModel.GetEffectiveOnchange(modelIdentifier, {
     minPriority: 5,
     maxPriority: 30,
     offset: 1,
@@ -198,10 +198,10 @@ test('meta.IrModel GetEffectiveOnchange supports priority-range and offset', asy
   expect(result.onchanges[0]?.priority).toBe(20);
 });
 
-test('meta.IrModel GetEffectiveOnchange throws on unknown model', async () => {
+test('meta.MetaModel GetEffectiveOnchange throws on unknown model', async () => {
   let error: unknown;
   try {
-    await IrModel.GetEffectiveOnchange('meta.__UnknownModel__');
+    await MetaModel.GetEffectiveOnchange('meta.__UnknownModel__');
   } catch (err) {
     error = err;
   }

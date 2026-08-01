@@ -191,7 +191,7 @@ export function buildSelectionTree(meta: ModelMetadata, fields: unknown[], optio
         continue;
       }
 
-      // @SqlCompute on a relation-typed field (e.g. IrUiResource.Childs) is a SQL projection,
+      // @SqlCompute on a relation-typed field (e.g. MetaUiResource.Childs) is a SQL projection,
       // not an ORM relation load. Prefer the compute expression over inverseField joins.
       if (hasRepositorySqlComputeExpression(currentMeta, relationKey)) {
         if (subFields.length > 0) {

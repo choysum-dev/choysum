@@ -8,13 +8,13 @@ import UserRole from '@/auth/service/models/user_role';
 import RoleRecordRule from '@/auth/service/models/role_record_rule';
 import RoleFieldRule from '@/auth/service/models/role_field_rule';
 import { createServiceByModel } from '@/core/service/rpc';
-import type IrApplicationModel from '@/meta/service/models/ir_application';
-import type IrModelModel from '@/meta/service/models/ir_model';
-import type IrFieldModel from '@/meta/service/models/ir_field';
+import type MetaApplicationModel from '@/meta/service/models/application';
+import type MetaModelModel from '@/meta/service/models/model';
+import type MetaFieldModel from '@/meta/service/models/field';
 
-const IrApplication = createServiceByModel<typeof IrApplicationModel>('meta.IrApplication');
-const IrModel = createServiceByModel<typeof IrModelModel>('meta.IrModel');
-const IrField = createServiceByModel<typeof IrFieldModel>('meta.IrField');
+const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
+const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
+const MetaField = createServiceByModel<typeof MetaFieldModel>('meta.MetaField');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -104,10 +104,10 @@ function setupAllowlistForFixtures(): void {
       'RoleFieldRule:write',
       'RoleFieldRule:create',
 
-      'meta.IrApplication:read',
-      'IrApplication:read',
-      'meta.IrModel:read',
-      'IrModel:read',
+      'meta.MetaApplication:read',
+      'MetaApplication:read',
+      'meta.MetaModel:read',
+      'MetaModel:read',
     ],
   });
 }
@@ -139,9 +139,9 @@ async function resolveUserByUsername(username: string): Promise<{ id: string; co
 }
 
 async function resolveApplicationId(name: string): Promise<string> {
-  const rows = await IrApplication.Search({ And: [['Name', '=', name]] } as any, { fields: ['Id'], limit: 1 } as any);
+  const rows = await MetaApplication.Search({ And: [['Name', '=', name]] } as any, { fields: ['Id'], limit: 1 } as any);
   const id = String((rows as any)?.[0]?.Id || '').trim();
-  if (!id) throw new Error(`IrApplication not found: ${name}`);
+  if (!id) throw new Error(`MetaApplication not found: ${name}`);
   return id;
 }
 
@@ -180,8 +180,8 @@ test('PR-C-2 gift pack: bootstrap seeds sys.admin global RR+FR and base.user app
           And: [
             ['RoleId', '=', sysAdminRoleId],
             ['Kind', '=', 'grant'],
-            ['IrModelId', 'is', null],
-            ['IrApplicationId', 'is', null],
+            ['MetaModelId', 'is', null],
+            ['MetaApplicationId', 'is', null],
             ['PermRead', '=', true],
             ['PermWrite', '=', true],
             ['PermCreate', '=', true],
@@ -196,9 +196,9 @@ test('PR-C-2 gift pack: bootstrap seeds sys.admin global RR+FR and base.user app
         {
           And: [
             ['RoleId', '=', sysAdminRoleId],
-            ['IrModelId', 'is', null],
-            ['IrApplicationId', 'is', null],
-            ['IrFieldId', 'is', null],
+            ['MetaModelId', 'is', null],
+            ['MetaApplicationId', 'is', null],
+            ['MetaFieldId', 'is', null],
             ['PermRead', '=', 'allow'],
             ['PermWrite', '=', 'allow'],
           ],
@@ -207,7 +207,7 @@ test('PR-C-2 gift pack: bootstrap seeds sys.admin global RR+FR and base.user app
       );
       expect((sysAdminFr || []).length > 0).toBe(true);
 
-      const userModelRows = await IrModel.Search(
+      const userModelRows = await MetaModel.Search(
         {
           And: [
             ['Name', '=', 'User'],
@@ -218,7 +218,7 @@ test('PR-C-2 gift pack: bootstrap seeds sys.admin global RR+FR and base.user app
       );
       const userModelId = String((userModelRows as any)?.[0]?.Id || '').trim();
       expect(Boolean(userModelId)).toBe(true);
-      const passwordFieldRows = await IrField.Search(
+      const passwordFieldRows = await MetaField.Search(
         {
           And: [
             ['Name', '=', 'PasswordHash'],
@@ -235,8 +235,8 @@ test('PR-C-2 gift pack: bootstrap seeds sys.admin global RR+FR and base.user app
           {
             And: [
               ['RoleId', '=', roleId],
-              ['IrModelId', '=', userModelId],
-              ['IrFieldId', '=', passwordFieldId],
+              ['MetaModelId', '=', userModelId],
+              ['MetaFieldId', '=', passwordFieldId],
               ['PermRead', '=', 'deny'],
               ['PermWrite', '=', 'deny'],
             ],
@@ -252,8 +252,8 @@ test('PR-C-2 gift pack: bootstrap seeds sys.admin global RR+FR and base.user app
             And: [
               ['RoleId', '=', baseUserRoleId],
               ['Kind', '=', 'grant'],
-              ['IrApplicationId', '=', appId],
-              ['IrModelId', 'is', null],
+              ['MetaApplicationId', '=', appId],
+              ['MetaModelId', 'is', null],
               ['PermRead', '=', true],
             ],
           } as any,
@@ -265,9 +265,9 @@ test('PR-C-2 gift pack: bootstrap seeds sys.admin global RR+FR and base.user app
           {
             And: [
               ['RoleId', '=', baseUserRoleId],
-              ['IrApplicationId', '=', appId],
-              ['IrModelId', 'is', null],
-              ['IrFieldId', 'is', null],
+              ['MetaApplicationId', '=', appId],
+              ['MetaModelId', 'is', null],
+              ['MetaFieldId', 'is', null],
               ['PermRead', '=', 'allow'],
             ],
           } as any,
@@ -278,7 +278,7 @@ test('PR-C-2 gift pack: bootstrap seeds sys.admin global RR+FR and base.user app
 
       // Token/Session self-service grants must be owner-scoped (not TRUE).
       for (const modelName of ['Token', 'Session']) {
-        const modelRows = await IrModel.Search(
+        const modelRows = await MetaModel.Search(
           {
             And: [
               ['Name', '=', modelName],
@@ -294,7 +294,7 @@ test('PR-C-2 gift pack: bootstrap seeds sys.admin global RR+FR and base.user app
             And: [
               ['RoleId', '=', baseUserRoleId],
               ['Kind', '=', 'grant'],
-              ['IrModelId', '=', modelId],
+              ['MetaModelId', '=', modelId],
               ['PermCreate', '=', true],
               ['PermWrite', '=', true],
             ],

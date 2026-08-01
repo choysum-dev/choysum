@@ -17,7 +17,7 @@ import (
 // - Only dependencies among targets are considered (deps outside targets do not constrain order).
 // - Within the same level, order is alphabetical.
 // - If a cycle exists, it returns alphabetical order and cyclic=true.
-func StableTopoSortApplicationsForTargets(installedModules []meta.IrModule, targets []string) (order []string, cyclic bool) {
+func StableTopoSortApplicationsForTargets(installedModules []meta.Module, targets []string) (order []string, cyclic bool) {
 	set := map[string]bool{}
 	for _, t := range targets {
 		t = strings.TrimSpace(t)
@@ -36,7 +36,7 @@ func StableTopoSortApplicationsForTargets(installedModules []meta.IrModule, targ
 	}
 
 	// Build module lookup by name.
-	byName := map[string]meta.IrModule{}
+	byName := map[string]meta.Module{}
 	for _, m := range installedModules {
 		if strings.TrimSpace(m.Name) == "" {
 			continue

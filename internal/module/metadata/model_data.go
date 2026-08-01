@@ -5,7 +5,7 @@ package metadata
 
 import "github.com/choysum-dev/choysum/pkg/meta"
 
-type IrModelData struct {
+type ModelData struct {
 	meta.BaseModel `gorm:"embedded"`
 
 	Module     string `gorm:"type:varchar(255);not null;index:idx_model_data_module_external_id,unique"`
@@ -15,6 +15,6 @@ type IrModelData struct {
 	NoUpdate   bool   `gorm:"not null;default:false"`
 }
 
-func (md *IrModelData) TableName() string {
-	return "meta_ir_model_data"
+func (md *ModelData) TableName() string {
+	return "meta_model_data"
 }

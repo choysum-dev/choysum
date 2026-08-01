@@ -7,8 +7,8 @@ import Role from '@/auth/service/models/role';
 import RoleFieldRule from '@/auth/service/models/role_field_rule';
 import User from '@/auth/service/models/user';
 import UserRole from '@/auth/service/models/user_role';
-import IrField from '@/meta/service/models/ir_field';
-import IrModel from '@/meta/service/models/ir_model';
+import MetaField from '@/meta/service/models/field';
+import MetaModel from '@/meta/service/models/model';
 import AttachmentBinding from '../models/attachment_binding';
 import AttachmentObject from '../models/attachment_object';
 import UploadSession from '../models/upload_session';
@@ -230,7 +230,7 @@ async function mustFindAdminUserId(): Promise<string> {
 }
 
 async function mustFindAuthUserFieldScope(fieldName: string): Promise<{ modelId: string; fieldId: string }> {
-  const modelRows = await IrModel.Search(
+  const modelRows = await MetaModel.Search(
     {
       And: [
         ['Application', '=', 'auth'],
@@ -244,7 +244,7 @@ async function mustFindAuthUserFieldScope(fieldName: string): Promise<{ modelId:
     throw new Error('meta model auth.User not found for descriptor field-rule deny fixture');
   }
 
-  const fieldRows = await IrField.Search(
+  const fieldRows = await MetaField.Search(
     {
       And: [
         ['ModelId', '=', modelId],
@@ -723,9 +723,9 @@ test('document.attachment_binding: descriptor read interface denies owner field 
     const createdRule = await RoleFieldRule.Create(
       {
         RoleId: { Id: roleId } as any,
-        IrApplicationId: null,
-        IrModelId: deniedFieldScope.modelId,
-        IrFieldId: deniedFieldScope.fieldId,
+        MetaApplicationId: null,
+        MetaModelId: deniedFieldScope.modelId,
+        MetaFieldId: deniedFieldScope.fieldId,
         PermRead: 'deny',
       } as any,
       ['Id'] as any

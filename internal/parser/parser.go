@@ -75,13 +75,13 @@ type ParserResult struct {
 
 	Exports              map[string]*Export
 	Imports              map[string]*Import
-	Model                *meta.IrModel // backend ts models
+	Model                *meta.Model   // backend ts models
 	ModelClassNode       *Class        // model class node
 	ModelExtendsProperty *PropertyNode // extends property in model class
 
 	// vue components
 	VueAppImportTree       []string // vue app import tree,would be used to esbuild onResolve
-	VueComponent           *meta.IrComponent
+	VueComponent           *meta.Component
 	VueComponentsPropertys []*PropertyNode // components property in defineComponent
 	VueExtendsProperty     *PropertyNode   // extends property in defineComponent
 

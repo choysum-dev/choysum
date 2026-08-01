@@ -7,10 +7,10 @@ import { MetadataStorage, type EffectiveOnchangeMeta } from '@/core/service/api/
 import { normalizePagination, paginateAndWrap } from '@/core/service/utils/pagination';
 import { resolveEffectiveModel, normalizePriorityRange, priorityInRange, matchesMethodPrefix } from '@/core/service/orm/metadata/effective_query_helper';
 import { _lt } from '../i18n';
-import IrDecorator from './ir_decorator';
-import IrField from './ir_field';
-import IrModule from './ir_module';
-import IrService from './ir_service';
+import MetaDecorator from './decorator';
+import MetaField from './field';
+import MetaModule from './module';
+import MetaService from './service';
 
 type EffectiveConstraintsQueryOptions = {
   preview?: boolean;
@@ -31,68 +31,68 @@ type EffectiveOnchangeQueryOptions = {
   maxPriority?: number;
 };
 
-@Model('IrModel', {
-  tableName: 'meta_ir_model',
+@Model('MetaModel', {
+  tableName: 'meta_model',
   autoMigrate: false,
   orderBy: { field: 'Id', order: 'asc' },
 })
-export default class IrModel extends BaseModel {
-  @Field({ type: 'varchar', size: 255, notNull: true, string: _lt('Name', { scope: 'meta.model.IrModel.fields' }) })
+export default class MetaModel extends BaseModel {
+  @Field({ type: 'varchar', size: 255, notNull: true, string: _lt('Name', { scope: 'meta.model.MetaModel.fields' }) })
   Name!: string;
 
-  @Field({ type: 'varchar', size: 512, notNull: true, string: _lt('Path', { scope: 'meta.model.IrModel.fields' }) })
+  @Field({ type: 'varchar', size: 512, notNull: true, string: _lt('Path', { scope: 'meta.model.MetaModel.fields' }) })
   Path!: string;
 
-  @Field({ type: 'varchar', size: 255, string: _lt('Application', { scope: 'meta.model.IrModel.fields' }) })
+  @Field({ type: 'varchar', size: 255, string: _lt('Application', { scope: 'meta.model.MetaModel.fields' }) })
   Application?: string;
 
-  @Field({ type: 'varchar', size: 255, string: _lt('Class Name', { scope: 'meta.model.IrModel.fields' }) })
+  @Field({ type: 'varchar', size: 255, string: _lt('Class Name', { scope: 'meta.model.MetaModel.fields' }) })
   ClassName?: string;
 
-  @Field({ type: 'varchar', size: 255, string: _lt('Table Name', { scope: 'meta.model.IrModel.fields' }) })
+  @Field({ type: 'varchar', size: 255, string: _lt('Table Name', { scope: 'meta.model.MetaModel.fields' }) })
   ModelTable?: string;
 
-  @Field({ type: 'boolean', default: () => false, string: _lt('Abstract', { scope: 'meta.model.IrModel.fields' }) })
+  @Field({ type: 'boolean', default: () => false, string: _lt('Abstract', { scope: 'meta.model.MetaModel.fields' }) })
   Abstract?: boolean;
 
-  @Field({ type: 'boolean', default: () => true, string: _lt('Auto Migrate', { scope: 'meta.model.IrModel.fields' }) })
+  @Field({ type: 'boolean', default: () => true, string: _lt('Auto Migrate', { scope: 'meta.model.MetaModel.fields' }) })
   AutoMigrate?: boolean;
 
-  @Field({ type: 'boolean', default: () => false, string: _lt('Readonly', { scope: 'meta.model.IrModel.fields' }) })
+  @Field({ type: 'boolean', default: () => false, string: _lt('Readonly', { scope: 'meta.model.MetaModel.fields' }) })
   Readonly?: boolean;
 
-  @Field({ type: 'varchar', size: 255, string: _lt('Raw Extends', { scope: 'meta.model.IrModel.fields' }) })
+  @Field({ type: 'varchar', size: 255, string: _lt('Raw Extends', { scope: 'meta.model.MetaModel.fields' }) })
   RawExtends?: string;
 
-  @Field({ type: 'varchar', size: 255, string: _lt('Extends', { scope: 'meta.model.IrModel.fields' }) })
+  @Field({ type: 'varchar', size: 255, string: _lt('Extends', { scope: 'meta.model.MetaModel.fields' }) })
   Extends?: string;
 
-  @Field({ type: 'varchar', size: 255, string: _lt('Company Field', { scope: 'meta.model.IrModel.fields' }) })
+  @Field({ type: 'varchar', size: 255, string: _lt('Company Field', { scope: 'meta.model.MetaModel.fields' }) })
   CompanyField?: string;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => IrModule }, string: _lt('Module', { scope: 'meta.model.IrModel.fields' }) })
-  ModuleId?: IrModule;
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => MetaModule }, string: _lt('Module', { scope: 'meta.model.MetaModel.fields' }) })
+  ModuleId?: MetaModule;
 
   @Field({
     type: 'OneToMany',
-    relation: { targetModel: () => IrDecorator, inverseField: 'ModelId' },
-    string: _lt('Decorators', { scope: 'meta.model.IrModel.fields' }),
+    relation: { targetModel: () => MetaDecorator, inverseField: 'ModelId' },
+    string: _lt('Decorators', { scope: 'meta.model.MetaModel.fields' }),
   })
-  Decorators?: IrDecorator[];
+  Decorators?: MetaDecorator[];
 
   @Field({
     type: 'OneToMany',
-    relation: { targetModel: () => IrService, inverseField: 'ModelId' },
-    string: _lt('Services', { scope: 'meta.model.IrModel.fields' }),
+    relation: { targetModel: () => MetaService, inverseField: 'ModelId' },
+    string: _lt('Services', { scope: 'meta.model.MetaModel.fields' }),
   })
-  Services?: IrService[];
+  Services?: MetaService[];
 
   @Field({
     type: 'OneToMany',
-    relation: { targetModel: () => IrField, inverseField: 'ModelId' },
-    string: _lt('Fields', { scope: 'meta.model.IrModel.fields' }),
+    relation: { targetModel: () => MetaField, inverseField: 'ModelId' },
+    string: _lt('Fields', { scope: 'meta.model.MetaModel.fields' }),
   })
-  Fields?: IrField[];
+  Fields?: MetaField[];
 
   static async GetEffectiveConstraints(
     modelIdentifier: string,

@@ -48,7 +48,7 @@ func newBackendParserTestScope() scope.Scope {
 
 func TestTsParser_ParseModelExtendsProperty_IgnoresNonDefaultExportClass(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/core", ApplicationStr: "core"}
+	module := &meta.Module{Path: "/virtual/modules/core", ApplicationStr: "core"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/core/service/database/driver/compiler.ts"
@@ -68,7 +68,7 @@ export class ChoysumPostgresQueryCompiler extends PostgresQueryCompiler {}
 
 func TestTsParser_ParseModelExtendsProperty_DefaultExportAssignmentUsesDefaultReference(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/user.ts"
@@ -116,7 +116,7 @@ func TestGetProtoTypeFromTsType(t *testing.T) {
 
 func TestTsParser_ParseModelAddsParentPathAndServices(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/department.ts"
@@ -162,7 +162,7 @@ export default class Department extends BaseModel {
 		t.Fatalf("unexpected model extends property: %+v", r.ModelExtendsProperty)
 	}
 
-	fieldByName := map[string]*meta.IrField{}
+	fieldByName := map[string]*meta.Field{}
 	for _, field := range r.Model.Fields {
 		fieldByName[field.Name] = field
 	}
@@ -202,7 +202,7 @@ export default class Department extends BaseModel {
 
 func TestTsParser_ParseSkipsCompatibilityPath(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/core", ApplicationStr: "core"}
+	module := &meta.Module{Path: "/virtual/modules/core", ApplicationStr: "core"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := filepath.Join(runtimeOptionsFromScope(runtimeScope).modulesPath, "core", "service", "orm", "metadata", "field.ts")
@@ -220,7 +220,7 @@ func TestTsParser_ParseSkipsCompatibilityPath(t *testing.T) {
 
 func TestTsParser_ParseModelBuildsResolvedFieldSpecFromNewDecorators(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/demo.ts"
@@ -255,7 +255,7 @@ export default class Demo extends BaseModel {
 		t.Fatal("expected parsed model")
 	}
 
-	fieldByName := map[string]*meta.IrField{}
+	fieldByName := map[string]*meta.Field{}
 	for _, field := range r.Model.Fields {
 		fieldByName[field.Name] = field
 	}
@@ -294,7 +294,7 @@ export default class Demo extends BaseModel {
 
 func TestTsParser_ParseModelOmitsLegacyComputeRunAs(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/demo_runas.ts"
@@ -321,7 +321,7 @@ export default class DemoRunAs extends BaseModel {
 		t.Fatal("expected parsed model")
 	}
 
-	var nameField *meta.IrField
+	var nameField *meta.Field
 	for _, field := range r.Model.Fields {
 		if field.Name == "Name" {
 			nameField = field
@@ -346,7 +346,7 @@ export default class DemoRunAs extends BaseModel {
 
 func TestTsParser_ParseModelRejectsLegacyFieldSyntax(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/legacy.ts"
@@ -371,7 +371,7 @@ export default class Legacy extends BaseModel {
 
 func TestTsParser_ParseModelRejectsBehaviorBindingsWithoutFieldDecorator(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/missing_field_decorator.ts"
@@ -400,7 +400,7 @@ export default class MissingFieldDecorator extends BaseModel {
 
 func TestTsParser_ParseModelEmitsConflictDiagnosticsInResolvedSpec(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/conflict.ts"
@@ -428,7 +428,7 @@ export default class ConflictModel extends BaseModel {
 	if err != nil {
 		t.Fatalf("parse failed: %v", err)
 	}
-	fieldByName := map[string]*meta.IrField{}
+	fieldByName := map[string]*meta.Field{}
 	for _, field := range r.Model.Fields {
 		fieldByName[field.Name] = field
 	}
@@ -456,7 +456,7 @@ export default class ConflictModel extends BaseModel {
 
 func TestTsParser_ParseModelResolvedSpecSkipsNilSelectionAndRelatedPath(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/nil_fields.ts"
@@ -484,7 +484,7 @@ export default class NilFieldsModel extends BaseModel {
 	if err != nil {
 		t.Fatalf("parse failed: %v", err)
 	}
-	fieldByName := map[string]*meta.IrField{}
+	fieldByName := map[string]*meta.Field{}
 	for _, field := range r.Model.Fields {
 		fieldByName[field.Name] = field
 	}
@@ -514,7 +514,7 @@ export default class NilFieldsModel extends BaseModel {
 
 func TestTsParser_PreservesFieldStringTermReference(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	module := &meta.Module{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
 	p := NewTsParser(runtimeScope, module)
 	content := `
 import { Model, Field } from '../../core/service';
@@ -544,7 +544,7 @@ export default class FieldStringModel extends BaseModel {
 	if err != nil {
 		t.Fatalf("parse failed: %v", err)
 	}
-	byName := map[string]*meta.IrField{}
+	byName := map[string]*meta.Field{}
 	for _, field := range r.Model.Fields {
 		byName[field.Name] = field
 	}
@@ -563,7 +563,7 @@ export default class FieldStringModel extends BaseModel {
 		t.Fatalf("unexpected stringText: %+v", spec.Structural.StringText)
 	}
 	if nameField.FieldString != "Name" || !strings.Contains(nameField.StringText, `"src":"Name"`) {
-		t.Fatalf("IrField did not persist string/stringText: string=%q stringText=%s", nameField.FieldString, nameField.StringText)
+		t.Fatalf("Field did not persist string/stringText: string=%q stringText=%s", nameField.FieldString, nameField.StringText)
 	}
 	codeField := byName["Code"]
 	if codeField == nil || codeField.FieldString != "Code" || strings.TrimSpace(codeField.StringText) != "" {
@@ -573,7 +573,7 @@ export default class FieldStringModel extends BaseModel {
 
 func TestTsParser_PreservesFieldHelpTermReference(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	module := &meta.Module{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
 	p := NewTsParser(runtimeScope, module)
 	content := `
 import { Model, Field } from '../../core/service';
@@ -605,7 +605,7 @@ export default class FieldHelpModel extends BaseModel {
 	if err != nil {
 		t.Fatalf("parse failed: %v", err)
 	}
-	byName := map[string]*meta.IrField{}
+	byName := map[string]*meta.Field{}
 	for _, field := range r.Model.Fields {
 		byName[field.Name] = field
 	}
@@ -624,7 +624,7 @@ export default class FieldHelpModel extends BaseModel {
 		t.Fatalf("unexpected helpText: %+v", spec.Structural.HelpText)
 	}
 	if codeField.FieldHelp != "Short unique code used in references" || !strings.Contains(codeField.HelpText, `"src":"Short unique code used in references"`) {
-		t.Fatalf("IrField did not persist help/helpText: help=%q helpText=%s", codeField.FieldHelp, codeField.HelpText)
+		t.Fatalf("Field did not persist help/helpText: help=%q helpText=%s", codeField.FieldHelp, codeField.HelpText)
 	}
 	nameField := byName["Name"]
 	if nameField == nil || nameField.FieldHelp != "Plain help text" || strings.TrimSpace(nameField.HelpText) != "" {
@@ -634,7 +634,7 @@ export default class FieldHelpModel extends BaseModel {
 
 func TestTsParser_RejectsSelectionTextTranslateLabels(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	module := &meta.Module{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
 	p := NewTsParser(runtimeScope, module)
 	content := `
 import { Model, Field } from '../../core/service';
@@ -661,7 +661,7 @@ export default class SelectionReferenceModel extends BaseModel {
 
 func TestTsParser_AcceptsAliasedSelectionReferenceLabel(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	module := &meta.Module{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
 	p := NewTsParser(runtimeScope, module)
 	content := `
 import { Model, Field } from '../../core/service';
@@ -687,7 +687,7 @@ export default class AliasedReferenceModel extends BaseModel {
 	if len(r.Model.Fields) != 1 {
 		t.Fatalf("expected 1 field, got %d", len(r.Model.Fields))
 	}
-	var items []meta.IrFieldSelectionItem
+	var items []meta.FieldSelectionItem
 	if err := json.Unmarshal([]byte(r.Model.Fields[0].Selection), &items); err != nil {
 		t.Fatalf("unmarshal selection: %v", err)
 	}
@@ -698,7 +698,7 @@ export default class AliasedReferenceModel extends BaseModel {
 
 func TestTsParser_AcceptsSelectionLtCallLabels(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Name: "base", Path: "/virtual/modules/base", ApplicationStr: "base"}
+	module := &meta.Module{Name: "base", Path: "/virtual/modules/base", ApplicationStr: "base"}
 	p := NewTsParser(runtimeScope, module)
 	content := `
 import { Model, Field } from '../../core/service';
@@ -725,7 +725,7 @@ export default class Language extends BaseModel {
 	if err != nil {
 		t.Fatalf("Parse() error = %v", err)
 	}
-	var items []meta.IrFieldSelectionItem
+	var items []meta.FieldSelectionItem
 	if err := json.Unmarshal([]byte(r.Model.Fields[0].Selection), &items); err != nil {
 		t.Fatalf("unmarshal selection: %v", err)
 	}
@@ -742,7 +742,7 @@ export default class Language extends BaseModel {
 
 func TestTsParser_ParsesSelectionAdd(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	module := &meta.Module{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
 	p := NewTsParser(runtimeScope, module)
 	content := `
 import { Model, Field } from '../../core/service';
@@ -781,7 +781,7 @@ export default class SelectionAddModel extends BaseModel {
 
 func TestTsParser_RejectsSelectionAddOnNonSelectionField(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	module := &meta.Module{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
 	p := NewTsParser(runtimeScope, module)
 	content := `
 import { Model, Field } from '../../core/service';
@@ -804,7 +804,7 @@ export default class BadSelectionAddType extends BaseModel {
 
 func TestTsParser_RejectsNonArraySelectionAdd(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	module := &meta.Module{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
 	p := NewTsParser(runtimeScope, module)
 	content := `
 import { Model, Field } from '../../core/service';
@@ -827,7 +827,7 @@ export default class BadSelectionAddShape extends BaseModel {
 
 func TestTsParser_AcceptsNullSelectionAdd(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	module := &meta.Module{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
 	p := NewTsParser(runtimeScope, module)
 	content := `
 import { Model, Field } from '../../core/service';
@@ -854,7 +854,7 @@ export default class NullSelectionAddModel extends BaseModel {
 
 func TestTsParser_RejectsDuplicateSelectionAddLtLabels(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	module := &meta.Module{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
 	p := NewTsParser(runtimeScope, module)
 	content := `
 import { Model, Field, createTranslate } from '../../core/service';
@@ -882,7 +882,7 @@ export default class DupLtSelectionAddModel extends BaseModel {
 
 func TestTsParser_RejectsDuplicateSelectionAddValues(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	module := &meta.Module{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
 	p := NewTsParser(runtimeScope, module)
 	content := `
 import { Model, Field } from '../../core/service';
@@ -908,7 +908,7 @@ export default class DupSelectionAddModel extends BaseModel {
 
 func TestTsParser_RejectsSelectionCombinedWithSelectionAdd(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	module := &meta.Module{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
 	p := NewTsParser(runtimeScope, module)
 	content := `
 import { Model, Field } from '../../core/service';
@@ -932,7 +932,7 @@ export default class BothSelectionModel extends BaseModel {
 
 func TestTsParser_AcceptsPlainStringSelectionLabels(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	module := &meta.Module{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
 	p := NewTsParser(runtimeScope, module)
 	content := `
 import { Model, Field } from '../../core/service';
@@ -971,7 +971,7 @@ export default class PlainSelectionModel extends BaseModel {
 
 func TestTsParser_DynamicSelectionMethodNameAndCallable(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	module := &meta.Module{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
 	p := NewTsParser(runtimeScope, module)
 	content := `
 import { Model, Field } from '../../core/service';
@@ -996,7 +996,7 @@ export default class DynamicSelectionModel extends BaseModel {
 	if err != nil {
 		t.Fatalf("parse failed: %v", err)
 	}
-	byName := map[string]*meta.IrField{}
+	byName := map[string]*meta.Field{}
 	for _, field := range r.Model.Fields {
 		byName[field.Name] = field
 	}
@@ -1036,7 +1036,7 @@ export default class DynamicSelectionModel extends BaseModel {
 
 func TestTsParser_FactoryModeIsNotRecognized(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	module := &meta.Module{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
 	p := NewTsParser(runtimeScope, module)
 	content := `
 import { Model, Field } from '../../core/service';
@@ -1085,7 +1085,7 @@ func TestParseTermReferenceCall_BindingDefaultScopeWhenParserScopeEmpty(t *testi
 
 func TestTsParser_BareLtAndPathLocationSelectionLabels(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	module := &meta.Module{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
 	p := NewTsParser(runtimeScope, module)
 	content := `
 import { Model, Field } from '../../core/service';
@@ -1108,7 +1108,7 @@ export default class BareLtSelectionModel extends BaseModel {
 	if err != nil {
 		t.Fatalf("Parse() error = %v", err)
 	}
-	var items []meta.IrFieldSelectionItem
+	var items []meta.FieldSelectionItem
 	if err := json.Unmarshal([]byte(r.Model.Fields[0].Selection), &items); err != nil {
 		t.Fatalf("unmarshal selection: %v", err)
 	}
@@ -1128,7 +1128,7 @@ export default class BareLtSelectionModel extends BaseModel {
 
 func TestTsParser_SkipsSelectionLtLabelWithEmptySrc(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	module := &meta.Module{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
 	p := NewTsParser(runtimeScope, module)
 	content := `
 import { Model, Field } from '../../core/service';
@@ -1162,7 +1162,7 @@ export default class EmptyLtSrcModel extends BaseModel {
 
 func TestTsParser_RejectsEmptySelectionMethodName(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	module := &meta.Module{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
 	p := NewTsParser(runtimeScope, module)
 	content := `
 import { Model, Field } from '../../core/service';
@@ -1181,11 +1181,11 @@ export default class EmptyMethodModel extends BaseModel {
 }
 
 func TestBuildFieldResolvedSpec_RejectsInvalidSelectionType(t *testing.T) {
-	field := &meta.IrField{
+	field := &meta.Field{
 		Name: "Status",
-		Decorators: []*meta.IrDecorator{{
+		Decorators: []*meta.Decorator{{
 			Name: "Field",
-			Arguments: []*meta.IrArgument{{
+			Arguments: []*meta.Argument{{
 				Type:  "ObjectLiteral",
 				Value: `{"type":"selection","selection":123}`,
 			}},
@@ -1221,7 +1221,7 @@ func TestParseTermReferenceCall_InlineScopeOverridesDefault(t *testing.T) {
 
 func TestTsParser_StringTextTranslateFallsBackToMsgid(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	module := &meta.Module{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
 	p := NewTsParser(runtimeScope, module)
 	content := `
 import { Model, Field } from '../../core/service';
@@ -1241,7 +1241,7 @@ export default class TextStringFallbackModel extends BaseModel {
 	if err != nil {
 		t.Fatalf("Parse() error = %v", err)
 	}
-	byName := map[string]*meta.IrField{}
+	byName := map[string]*meta.Field{}
 	for _, f := range r.Model.Fields {
 		byName[f.Name] = f
 	}
@@ -1255,7 +1255,7 @@ export default class TextStringFallbackModel extends BaseModel {
 
 func TestTsParser_HelpTextTranslateFallsBackToMsgid(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	module := &meta.Module{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
 	p := NewTsParser(runtimeScope, module)
 	content := `
 import { Model, Field } from '../../core/service';
@@ -1275,7 +1275,7 @@ export default class TextHelpFallbackModel extends BaseModel {
 	if err != nil {
 		t.Fatalf("Parse() error = %v", err)
 	}
-	byName := map[string]*meta.IrField{}
+	byName := map[string]*meta.Field{}
 	for _, f := range r.Model.Fields {
 		byName[f.Name] = f
 	}
@@ -1292,11 +1292,11 @@ func TestBuildFieldResolvedSpec_HelpEdgeCases(t *testing.T) {
 		"_t":  {Module: "demo", DefaultScope: "demo.fields", ReferenceOutput: false},
 		"_lt": {Module: "demo", DefaultScope: "demo.fields", ReferenceOutput: true},
 	}
-	field := &meta.IrField{
+	field := &meta.Field{
 		Name: "Code",
-		Decorators: []*meta.IrDecorator{{
+		Decorators: []*meta.Decorator{{
 			Name: "Field",
-			Arguments: []*meta.IrArgument{{
+			Arguments: []*meta.Argument{{
 				Type: "ObjectLiteral",
 				Value: `{
 					"type":"varchar",
@@ -1313,12 +1313,12 @@ func TestBuildFieldResolvedSpec_HelpEdgeCases(t *testing.T) {
 		t.Fatalf("expected _t help msgid fallback: %+v", spec.Structural)
 	}
 
-	unquoted := &meta.IrField{
+	unquoted := &meta.Field{
 		Name: "Note",
-		Decorators: []*meta.IrDecorator{{
+		Decorators: []*meta.Decorator{{
 			Name: "Field",
-			Arguments: []*meta.IrArgument{{
-				Type: "ObjectLiteral",
+			Arguments: []*meta.Argument{{
+				Type:  "ObjectLiteral",
 				Value: `{"type":"varchar","help":"AlreadyDecodedHelp"}`,
 			}},
 		}},
@@ -1328,12 +1328,12 @@ func TestBuildFieldResolvedSpec_HelpEdgeCases(t *testing.T) {
 		t.Fatalf("expected unquoted help: err=%v %#v", err, spec)
 	}
 
-	quoted := &meta.IrField{
+	quoted := &meta.Field{
 		Name: "Quoted",
-		Decorators: []*meta.IrDecorator{{
+		Decorators: []*meta.Decorator{{
 			Name: "Field",
-			Arguments: []*meta.IrArgument{{
-				Type: "ObjectLiteral",
+			Arguments: []*meta.Argument{{
+				Type:  "ObjectLiteral",
 				Value: `{"type":"varchar","help":"\"Quoted help text\""}`,
 			}},
 		}},
@@ -1343,12 +1343,12 @@ func TestBuildFieldResolvedSpec_HelpEdgeCases(t *testing.T) {
 		t.Fatalf("expected quoted JS string help: err=%v %#v", err, spec)
 	}
 
-	ignored := &meta.IrField{
+	ignored := &meta.Field{
 		Name: "Skip",
-		Decorators: []*meta.IrDecorator{{
+		Decorators: []*meta.Decorator{{
 			Name: "Field",
-			Arguments: []*meta.IrArgument{{
-				Type: "ObjectLiteral",
+			Arguments: []*meta.Argument{{
+				Type:  "ObjectLiteral",
 				Value: `{"type":"varchar","help":"unknownFn('Nope')"}`,
 			}},
 		}},
@@ -1358,12 +1358,12 @@ func TestBuildFieldResolvedSpec_HelpEdgeCases(t *testing.T) {
 		t.Fatalf("unknown call help should be ignored: err=%v %#v", err, spec)
 	}
 
-	badLiteral := &meta.IrField{
+	badLiteral := &meta.Field{
 		Name: "BadLit",
-		Decorators: []*meta.IrDecorator{{
+		Decorators: []*meta.Decorator{{
 			Name: "Field",
-			Arguments: []*meta.IrArgument{{
-				Type: "ObjectLiteral",
+			Arguments: []*meta.Argument{{
+				Type:  "ObjectLiteral",
 				Value: `{"type":"varchar","help":"_t(notAString)"}`,
 			}},
 		}},
@@ -1373,12 +1373,12 @@ func TestBuildFieldResolvedSpec_HelpEdgeCases(t *testing.T) {
 		t.Fatalf("non-literal _t help should be ignored: err=%v %#v", err, spec)
 	}
 
-	nullHelp := &meta.IrField{
+	nullHelp := &meta.Field{
 		Name: "NullHelp",
-		Decorators: []*meta.IrDecorator{{
+		Decorators: []*meta.Decorator{{
 			Name: "Field",
-			Arguments: []*meta.IrArgument{{
-				Type: "ObjectLiteral",
+			Arguments: []*meta.Argument{{
+				Type:  "ObjectLiteral",
 				Value: `{"type":"varchar","help":null}`,
 			}},
 		}},
@@ -1388,13 +1388,13 @@ func TestBuildFieldResolvedSpec_HelpEdgeCases(t *testing.T) {
 		t.Fatalf("null help should be ignored: err=%v %#v", err, spec)
 	}
 
-	cleared := &meta.IrField{
+	cleared := &meta.Field{
 		Name:      "Legacy",
 		FieldHelp: "stale",
 		HelpText:  `{"src":"stale"}`,
-		Decorators: []*meta.IrDecorator{{
+		Decorators: []*meta.Decorator{{
 			Name: "Field",
-			Arguments: []*meta.IrArgument{{
+			Arguments: []*meta.Argument{{
 				Type:  "ObjectLiteral",
 				Value: `{"type":"varchar"}`,
 			}},
@@ -1411,11 +1411,11 @@ func TestBuildFieldResolvedSpec_HelpEdgeCases(t *testing.T) {
 }
 
 func TestBuildFieldResolvedSpec_SelectionEdgeCases(t *testing.T) {
-	field := &meta.IrField{
+	field := &meta.Field{
 		Name: "Status",
-		Decorators: []*meta.IrDecorator{{
+		Decorators: []*meta.Decorator{{
 			Name: "Field",
-			Arguments: []*meta.IrArgument{{
+			Arguments: []*meta.Argument{{
 				Type: "ObjectLiteral",
 				Value: `{
 					"type":"selection",
@@ -1449,11 +1449,11 @@ func TestBuildFieldResolvedSpec_SelectionEdgeCases(t *testing.T) {
 }
 
 func TestBuildFieldResolvedSpec_QuotedSelectionMethodAndEmptyLiteral(t *testing.T) {
-	okField := &meta.IrField{
+	okField := &meta.Field{
 		Name: "Status",
-		Decorators: []*meta.IrDecorator{{
+		Decorators: []*meta.Decorator{{
 			Name: "Field",
-			Arguments: []*meta.IrArgument{{
+			Arguments: []*meta.Argument{{
 				Type:  "ObjectLiteral",
 				Value: `{"type":"selection","selection":"\"StatusOptions\""}`,
 			}},
@@ -1467,11 +1467,11 @@ func TestBuildFieldResolvedSpec_QuotedSelectionMethodAndEmptyLiteral(t *testing.
 		t.Fatalf("unexpected method meta: %+v", spec.Structural)
 	}
 
-	emptyField := &meta.IrField{
+	emptyField := &meta.Field{
 		Name: "Status",
-		Decorators: []*meta.IrDecorator{{
+		Decorators: []*meta.Decorator{{
 			Name: "Field",
-			Arguments: []*meta.IrArgument{{
+			Arguments: []*meta.Argument{{
 				Type:  "ObjectLiteral",
 				Value: `{"type":"selection","selection":"\"\""}`,
 			}},
@@ -1485,7 +1485,7 @@ func TestBuildFieldResolvedSpec_QuotedSelectionMethodAndEmptyLiteral(t *testing.
 
 func TestTsParser_ParseModelResolvedSpecCoversRelationTypesAndMigrationDecisions(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/migration.ts"
@@ -1512,7 +1512,7 @@ export default class MigrationModel extends BaseModel {
 	if err != nil {
 		t.Fatalf("parse failed: %v", err)
 	}
-	fieldByName := map[string]*meta.IrField{}
+	fieldByName := map[string]*meta.Field{}
 	for _, f := range r.Model.Fields {
 		fieldByName[f.Name] = f
 	}
@@ -1552,7 +1552,7 @@ export default class MigrationModel extends BaseModel {
 
 func TestTsParser_ParseModelResolvedSpecCoversDiagnosticBranches(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/diag.ts"
@@ -1631,7 +1631,7 @@ export default class DiagModel extends BaseModel {
 	if err != nil {
 		t.Fatalf("parse failed: %v", err)
 	}
-	fieldByName := map[string]*meta.IrField{}
+	fieldByName := map[string]*meta.Field{}
 	for _, f := range r.Model.Fields {
 		fieldByName[f.Name] = f
 	}
@@ -1729,7 +1729,7 @@ export default class DiagModel extends BaseModel {
 
 func TestTsParser_ParseModelResolvedSpecCoversStorageHintVariants(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/hints.ts"
@@ -1768,7 +1768,7 @@ export default class HintsModel extends BaseModel {
 	if err != nil {
 		t.Fatalf("parse failed: %v", err)
 	}
-	fieldByName := map[string]*meta.IrField{}
+	fieldByName := map[string]*meta.Field{}
 	for _, f := range r.Model.Fields {
 		fieldByName[f.Name] = f
 	}
@@ -1844,7 +1844,7 @@ export default class HintsModel extends BaseModel {
 
 func TestTsParser_TranslateFieldResolvesToJsonobject(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/translate_field.ts"
@@ -1871,7 +1871,7 @@ export default class TranslatePilot extends BaseModel {
 	if err != nil {
 		t.Fatalf("parse failed: %v", err)
 	}
-	fieldByName := map[string]*meta.IrField{}
+	fieldByName := map[string]*meta.Field{}
 	for _, f := range r.Model.Fields {
 		fieldByName[f.Name] = f
 	}
@@ -1937,7 +1937,7 @@ export default class TranslatePilot extends BaseModel {
 
 func TestTsParser_CompanyDependentFieldResolvesToJsonobject(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/company_dependent_field.ts"
@@ -1979,7 +1979,7 @@ export default class CompanyDepPilot extends BaseModel {
 	if err != nil {
 		t.Fatalf("parse failed: %v", err)
 	}
-	fieldByName := map[string]*meta.IrField{}
+	fieldByName := map[string]*meta.Field{}
 	for _, f := range r.Model.Fields {
 		fieldByName[f.Name] = f
 	}
@@ -2056,7 +2056,7 @@ export default class CompanyDepPilot extends BaseModel {
 
 func TestTsParser_ParseModelResolvedSpecCoversCollectBehaviorBindingsBranches(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/behaviors.ts"
@@ -2084,7 +2084,7 @@ export default class BehaviorsModel extends BaseModel {
 	if err != nil {
 		t.Fatalf("parse failed: %v", err)
 	}
-	fieldByName := map[string]*meta.IrField{}
+	fieldByName := map[string]*meta.Field{}
 	for _, f := range r.Model.Fields {
 		fieldByName[f.Name] = f
 	}
@@ -2117,7 +2117,7 @@ func TestGetProtoTypeFromTsType_EdgeCases(t *testing.T) {
 
 func TestTsParser_ParseSkipsOnchangeTypesCompatibilityPath(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/core", ApplicationStr: "core"}
+	module := &meta.Module{Path: "/virtual/modules/core", ApplicationStr: "core"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := filepath.Join(runtimeOptionsFromScope(runtimeScope).modulesPath, "core", "service", "runtime", "onchange", "types.ts")
@@ -2135,7 +2135,7 @@ func TestTsParser_ParseSkipsOnchangeTypesCompatibilityPath(t *testing.T) {
 
 func TestTsParser_ParseModelRejectsOrphanBehaviorBinding(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/orphan.ts"
@@ -2159,7 +2159,7 @@ export default class OrphanModel extends BaseModel {
 
 func TestTsParser_ParseModelRejectsOrphanBehaviorBindingWithPrivateStaticMember(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/private_static_orphan.ts"
@@ -2185,7 +2185,7 @@ export default class PrivateStaticOrphan extends BaseModel {
 
 func TestTsParser_ParseAllowsProtectedStaticMemberToPassFilter(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/protected_static.ts"
@@ -2215,7 +2215,7 @@ export default class ProtectedStaticModel extends BaseModel {
 
 func TestTsParser_ParseAllowsPrivateInstanceMember(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/private_instance.ts"
@@ -2246,7 +2246,7 @@ export default class PrivateInstanceModel extends BaseModel {
 
 func TestTsParser_ParseModelRejectsBehaviorDecoratorWithParameters(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/behavior_params.ts"
@@ -2273,7 +2273,7 @@ export default class BehaviorParamsModel extends BaseModel {
 
 func TestTsParser_ParseModelRejectsBehaviorDecoratorWithEmptyFieldName(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/empty_field_name.ts"
@@ -2297,7 +2297,7 @@ export default class EmptyFieldNameModel extends BaseModel {
 
 func TestTsParser_ParseModelNoExtendsClass(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/no_extends.ts"
@@ -2328,7 +2328,7 @@ export default class NoExtendsModel {
 
 func TestTsParser_ParseModelServiceWithDecorators(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/decorated_svc.ts"
@@ -2361,7 +2361,7 @@ export default class DecoratedSvcModel extends BaseModel {
 
 func TestTsParser_ParseModelServiceWithTypeParameters(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/generic_svc.ts"
@@ -2394,7 +2394,7 @@ export default class GenericSvcModel extends BaseModel {
 
 func TestTsParser_ParseModelWithExistingParentPathField(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/existing_parent.ts"
@@ -2429,7 +2429,7 @@ export default class ExistingParentModel extends BaseModel {
 
 func TestTsParser_ParseSkipsModelWithPublicStaticField(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/public_static.ts"
@@ -2545,7 +2545,7 @@ func TestParseDecoratorStringArg_EdgeCases(t *testing.T) {
 
 func TestTsParser_CopyFalseField(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/copy_field.ts"
@@ -2566,7 +2566,7 @@ export default class CopyPilot extends BaseModel {
 	if err != nil {
 		t.Fatalf("parse failed: %v", err)
 	}
-	fieldByName := map[string]*meta.IrField{}
+	fieldByName := map[string]*meta.Field{}
 	for _, f := range r.Model.Fields {
 		fieldByName[f.Name] = f
 	}
@@ -2590,7 +2590,7 @@ export default class CopyPilot extends BaseModel {
 
 func TestTsParser_ReadonlyTrueField(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/readonly_field.ts"
@@ -2614,7 +2614,7 @@ export default class ReadonlyPilot extends BaseModel {
 	if err != nil {
 		t.Fatalf("parse failed: %v", err)
 	}
-	fieldByName := map[string]*meta.IrField{}
+	fieldByName := map[string]*meta.Field{}
 	for _, f := range r.Model.Fields {
 		fieldByName[f.Name] = f
 	}
@@ -2645,7 +2645,7 @@ export default class ReadonlyPilot extends BaseModel {
 
 func TestTsParser_ImageFieldUploadLimits(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
 	path := "/virtual/modules/test/service/image_limit_field.ts"
@@ -2668,7 +2668,7 @@ export default class ImageLimitPilot extends BaseModel {
 	if err != nil {
 		t.Fatalf("parse failed: %v", err)
 	}
-	fieldByName := map[string]*meta.IrField{}
+	fieldByName := map[string]*meta.Field{}
 	for _, f := range r.Model.Fields {
 		fieldByName[f.Name] = f
 	}
@@ -2703,16 +2703,16 @@ export default class ImageLimitPilot extends BaseModel {
 }
 
 func TestApplyResolvedSpecToLegacyField_ClearsStaleImageUploadLimits(t *testing.T) {
-	field := &meta.IrField{
+	field := &meta.Field{
 		Name:           "Avatar",
 		FieldType:      "image",
 		MaxUploadBytes: 2097152,
 		MaxWidth:       1024,
 		MaxHeight:      768,
 	}
-	spec := &meta.IrFieldResolvedSpec{
+	spec := &meta.FieldResolvedSpec{
 		FieldName: "Avatar",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			FieldType: "image",
 		},
 	}

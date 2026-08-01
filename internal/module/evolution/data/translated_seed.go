@@ -17,7 +17,7 @@ const translatedBaseLang = "en_US"
 const LoadErrorCodeTranslatedLangUnknown = "translated_lang_unknown"
 const LoadErrorCodeTranslatedSeedInvalid = "translated_seed_invalid"
 
-func (l *Loader) lookupIrField(tx *gorm.DB, model *meta.IrModel, fieldName string) (*meta.IrField, error) {
+func (l *Loader) lookupField(tx *gorm.DB, model *meta.Model, fieldName string) (*meta.Field, error) {
 	if model == nil || strings.TrimSpace(model.Id.String) == "" {
 		return nil, nil
 	}
@@ -25,7 +25,7 @@ func (l *Loader) lookupIrField(tx *gorm.DB, model *meta.IrModel, fieldName strin
 	if name == "" {
 		return nil, nil
 	}
-	field := &meta.IrField{}
+	field := &meta.Field{}
 	err := tx.Where("model_id = ? AND name = ?", model.Id.String, name).First(field).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -36,7 +36,7 @@ func (l *Loader) lookupIrField(tx *gorm.DB, model *meta.IrModel, fieldName strin
 	return field, nil
 }
 
-func isTranslateField(field *meta.IrField) bool {
+func isTranslateField(field *meta.Field) bool {
 	if field == nil {
 		return false
 	}
@@ -66,7 +66,7 @@ func (l *Loader) languageCodeExists(tx *gorm.DB, code string) (bool, error) {
 	if code == "" {
 		return false, nil
 	}
-	model := &meta.IrModel{}
+	model := &meta.Model{}
 	if err := tx.Where("application = ? AND name = ?", "base", "Language").First(model).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return false, nil
@@ -162,14 +162,14 @@ func (l *Loader) normalizeTranslatedSeedValue(
 	filePath string,
 	recordIndex int,
 	rec record,
-	model *meta.IrModel,
+	model *meta.Model,
 	fieldName string,
 	value any,
 	rawValues map[string]any,
 ) (any, error) {
-	field, err := l.lookupIrField(tx, model, fieldName)
+	field, err := l.lookupField(tx, model, fieldName)
 	if err != nil {
-		return nil, wrapLoadErrorWithCode(err, filePath, recordIndex, rec, LoadErrorKindDB, LoadErrorCodeDBError, "lookup IrField")
+		return nil, wrapLoadErrorWithCode(err, filePath, recordIndex, rec, LoadErrorKindDB, LoadErrorCodeDBError, "lookup Field")
 	}
 	if !isTranslateField(field) {
 		return value, nil

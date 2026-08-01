@@ -95,7 +95,7 @@ func toStringPtr(value string) *string {
 	return &value
 }
 
-func applyResolvedFieldContract(metadata *FieldMetadata, field *meta.IrField) {
+func applyResolvedFieldContract(metadata *FieldMetadata, field *meta.Field) {
 	if metadata == nil || field == nil {
 		return
 	}
@@ -160,14 +160,14 @@ func applyResolvedFieldContract(metadata *FieldMetadata, field *meta.IrField) {
 
 type webApiStoreGenerator struct {
 	runtimeScope scope.Scope
-	module       *meta.IrModule
+	module       *meta.Module
 
 	// Optional override for pipeline-managed staging.
 	modulesWebDir string
 }
 
-// convertFieldToMetadata converts ChoysumMetaField into FieldMetadata.
-func convertFieldToMetadata(field *meta.IrField) FieldMetadata {
+// convertFieldToMetadata converts ChoysumField into FieldMetadata.
+func convertFieldToMetadata(field *meta.Field) FieldMetadata {
 	metadata := FieldMetadata{
 		Name:           field.Name,
 		FieldType:      field.FieldType,
@@ -345,7 +345,7 @@ type RelationFieldInfo struct {
 }
 
 // analyzeRelationFields collects and deduplicates relationship fields.
-func analyzeRelationFields(model *meta.IrModel) ([]RelationFieldInfo, []string) {
+func analyzeRelationFields(model *meta.Model) ([]RelationFieldInfo, []string) {
 	var relationFields []RelationFieldInfo
 	uniqueModels := make(map[string]bool)
 	var importModels []string
@@ -370,7 +370,7 @@ func analyzeRelationFields(model *meta.IrModel) ([]RelationFieldInfo, []string) 
 }
 
 // resolveBaseServiceNames loads conventional service names from the abstract BaseModel
-// IrModel (by BaseModelModuleSpec path). These names are filtered out of generated
+// Model (by BaseModelModuleSpec path). These names are filtered out of generated
 // XxxStore interfaces because they are already declared on the hand-written WebModelStore.
 // Do not maintain a parallel hardcoded name list here.
 func resolveBaseServiceNames(runtimeScope scope.Scope) (map[string]bool, error) {
@@ -387,7 +387,7 @@ func resolveBaseServiceNamesAtPath(runtimeScope scope.Scope, path string) (map[s
 	pathNoExt := strings.TrimSuffix(path, ".ts")
 	pathWithExt := pathNoExt + ".ts"
 
-	var model meta.IrModel
+	var model meta.Model
 	result := runtimeScope.Session().
 		Preload("Services", func(db *gorm.DB) *gorm.DB {
 			return db.Order("id ASC")
@@ -409,7 +409,7 @@ func resolveBaseServiceNamesAtPath(runtimeScope scope.Scope, path string) (map[s
 	return names, nil
 }
 
-func conventionalBaseServiceNames(services []*meta.IrService) map[string]bool {
+func conventionalBaseServiceNames(services []*meta.Service) map[string]bool {
 	names := make(map[string]bool)
 	for _, svc := range services {
 		if svc == nil {
@@ -423,7 +423,7 @@ func conventionalBaseServiceNames(services []*meta.IrService) map[string]bool {
 	return names
 }
 
-func (g *webApiStoreGenerator) generate(ctx context.Context, app *meta.IrApplication) ([]*module.GeneratorResult, error) {
+func (g *webApiStoreGenerator) generate(ctx context.Context, app *meta.Application) ([]*module.GeneratorResult, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -489,7 +489,7 @@ func (g *webApiStoreGenerator) generate(ctx context.Context, app *meta.IrApplica
 			// Build the template data.
 			data := struct {
 				App            string
-				Model          *meta.IrModel
+				Model          *meta.Model
 				FieldsMetadata []FieldMetadata
 				RelationFields []RelationFieldInfo
 				ImportModels   []string
@@ -553,7 +553,7 @@ func (g *webApiStoreGenerator) generate(ctx context.Context, app *meta.IrApplica
 		}}, nil
 }
 
-func NewWebApiStoreGenerator(runtimeScope scope.Scope, module *meta.IrModule) *webApiStoreGenerator {
+func NewWebApiStoreGenerator(runtimeScope scope.Scope, module *meta.Module) *webApiStoreGenerator {
 	return &webApiStoreGenerator{
 		runtimeScope: runtimeScope,
 		module:       module,

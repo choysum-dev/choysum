@@ -68,7 +68,7 @@ func NewCoordinator(runtimeScope scope.Scope, opts ...Option) *Coordinator {
 	return c
 }
 
-func applyEntryPoints(module *meta.IrModule) error {
+func applyEntryPoints(module *meta.Module) error {
 	if module == nil {
 		return nil
 	}
@@ -87,7 +87,7 @@ func applyEntryPoints(module *meta.IrModule) error {
 	return nil
 }
 
-func validateAndNormalizeModuleSemVer(mod *meta.IrModule, sourceHint string) error {
+func validateAndNormalizeModuleSemVer(mod *meta.Module, sourceHint string) error {
 	if mod == nil {
 		return nil
 	}
@@ -103,7 +103,7 @@ func validateAndNormalizeModuleSemVer(mod *meta.IrModule, sourceHint string) err
 	return nil
 }
 
-func (c *Coordinator) peekLocalModule(moduleName string) (*meta.IrModule, error) {
+func (c *Coordinator) peekLocalModule(moduleName string) (*meta.Module, error) {
 	moduleName = strings.TrimSpace(moduleName)
 	if moduleName == "" {
 		return nil, xfmt.Errorf("module name is empty")
@@ -122,7 +122,7 @@ func (c *Coordinator) peekLocalModule(moduleName string) (*meta.IrModule, error)
 		return nil, xfmt.Errorf("read package.json: %w", err)
 	}
 
-	result, err := contract.ParsePackageJSONToIrModule(raw, moduleDir, nil)
+	result, err := contract.ParsePackageJSONToModule(raw, moduleDir, nil)
 	if err != nil {
 		return nil, xfmt.Errorf("parse package.json: %w", err)
 	}
@@ -166,7 +166,7 @@ func canonicalRegistryOriginRef(parsed ParsedInput, resolvedVersion string) stri
 	return moduleName + "@" + version
 }
 
-func resolveBindingIntegrity(catalogIntegrity string, mod *meta.IrModule) string {
+func resolveBindingIntegrity(catalogIntegrity string, mod *meta.Module) string {
 	if mod != nil {
 		if integrity := strings.TrimSpace(mod.Integrity); integrity != "" {
 			return integrity
@@ -188,7 +188,7 @@ func resolveRegistryRequestedVersion(requestedVersion, preferredVersion string) 
 	return strings.TrimSpace(preferredVersion)
 }
 
-func (c *Coordinator) peekRegistryModule(ctx context.Context, parsed ParsedInput) (*meta.IrModule, error) {
+func (c *Coordinator) peekRegistryModule(ctx context.Context, parsed ParsedInput) (*meta.Module, error) {
 	if c.registryProvider == nil {
 		return nil, xfmt.Errorf("registry provider is nil")
 	}
@@ -270,7 +270,7 @@ func (c *Coordinator) cacheRegistrySourceResolution(cacheKey string, resolved re
 	c.resolutionCache[cacheKey] = resolved
 }
 
-func (c *Coordinator) Peek(ctx context.Context, input string) (*meta.IrModule, error) {
+func (c *Coordinator) Peek(ctx context.Context, input string) (*meta.Module, error) {
 	if c == nil || c.runtimeScope == nil {
 		return nil, xfmt.Errorf("origin coordinator env is nil")
 	}
@@ -305,11 +305,11 @@ func (c *Coordinator) Peek(ctx context.Context, input string) (*meta.IrModule, e
 	}
 }
 
-func (c *Coordinator) ResolveInstallModule(ctx context.Context, input string) (*meta.IrModule, error) {
+func (c *Coordinator) ResolveInstallModule(ctx context.Context, input string) (*meta.Module, error) {
 	return c.Fetch(ctx, input)
 }
 
-func (c *Coordinator) Fetch(ctx context.Context, input string) (*meta.IrModule, error) {
+func (c *Coordinator) Fetch(ctx context.Context, input string) (*meta.Module, error) {
 	if c == nil || c.runtimeScope == nil {
 		return nil, xfmt.Errorf("origin coordinator env is nil")
 	}
@@ -372,7 +372,7 @@ func (c *Coordinator) Purge(ctx context.Context, moduleName string) error {
 	return nil
 }
 
-func (c *Coordinator) resolveLocal(ctx context.Context, parsed ParsedInput) (*meta.IrModule, error) {
+func (c *Coordinator) resolveLocal(ctx context.Context, parsed ParsedInput) (*meta.Module, error) {
 	moduleName := strings.TrimSpace(parsed.LocalName)
 	if mod, err := c.peekLocalModule(moduleName); err == nil {
 		if err := c.lockStore.UpsertBinding(WorkspaceRoot(c.runtimeScope), Binding{
@@ -391,7 +391,7 @@ func (c *Coordinator) resolveLocal(ctx context.Context, parsed ParsedInput) (*me
 	return nil, xfmt.Errorf("module %s not found in modules path", moduleName)
 }
 
-func (c *Coordinator) resolveRegistry(ctx context.Context, parsed ParsedInput) (*meta.IrModule, error) {
+func (c *Coordinator) resolveRegistry(ctx context.Context, parsed ParsedInput) (*meta.Module, error) {
 	if c.registryProvider == nil {
 		return nil, xfmt.Errorf("registry provider is nil")
 	}

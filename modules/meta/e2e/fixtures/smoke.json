@@ -3,7 +3,7 @@
     {
       "module": "meta",
       "external_id": "e2e_partner_module",
-      "model": "meta.IrModule",
+      "model": "meta.MetaModule",
       "values": {
         "Name": "partner",
         "Status": "uninstalled",

@@ -56,7 +56,7 @@ func (m *ModuleManager) generateAppToDirs(ctx context.Context, appName string, m
 		return err
 	}
 
-	var mod meta.IrModule
+	var mod meta.Module
 	result := m.runtimeScope.Session().
 		Where("application_str = ? AND status = ?", appName, meta.Installed).
 		Order("name ASC").
@@ -90,7 +90,7 @@ func (m *ModuleManager) buildBackendAppToDir(ctx context.Context, appName string
 		return err
 	}
 
-	var mods []meta.IrModule
+	var mods []meta.Module
 	if err := m.runtimeScope.Session().
 		Where("application_str = ? AND status = ? AND service_entry_point <> ''", appName, meta.Installed).
 		Order("id ASC").
@@ -208,7 +208,7 @@ func (m *ModuleManager) ensureMetaTables() error {
 func (m *ModuleManager) bootstrapMetaTables(txScope scope.Scope) error {
 	migrator := txScope.Session().Migrator()
 
-	if migrator.HasTable(&meta.IrModule{}) && migrator.HasTable(&leasemodel.IrLockLease{}) {
+	if migrator.HasTable(&meta.Module{}) && migrator.HasTable(&leasemodel.LockLease{}) {
 		return nil
 	}
 
@@ -356,7 +356,7 @@ func (m *ModuleManager) migrateBaseModule() error {
 	return nil
 }
 
-func (m *ModuleManager) resolveInstallModuleFromOrigin(ctx context.Context, name string) (*meta.IrModule, error) {
+func (m *ModuleManager) resolveInstallModuleFromOrigin(ctx context.Context, name string) (*meta.Module, error) {
 	if err := m.ensureMetaTables(); err != nil {
 		return nil, err
 	}
@@ -383,7 +383,7 @@ func (m *ModuleManager) resolveInstallModuleFromOrigin(ctx context.Context, name
 	return m.fetchInstallModuleFromOrigin(ctx, name)
 }
 
-func (m *ModuleManager) Peek(ctx context.Context, name string) (*meta.IrModule, error) {
+func (m *ModuleManager) Peek(ctx context.Context, name string) (*meta.Module, error) {
 	if err := m.ensureMetaTables(); err != nil {
 		return nil, err
 	}
@@ -398,7 +398,7 @@ func (m *ModuleManager) Peek(ctx context.Context, name string) (*meta.IrModule, 
 	return module, nil
 }
 
-func (m *ModuleManager) Load(name string) (*meta.IrModule, error) {
+func (m *ModuleManager) Load(name string) (*meta.Module, error) {
 	if err := m.ensureMetaTables(); err != nil {
 		return nil, err
 	}
@@ -409,7 +409,7 @@ func (m *ModuleManager) Load(name string) (*meta.IrModule, error) {
 		}
 	}
 
-	var module meta.IrModule
+	var module meta.Module
 	if result := m.runtimeScope.Session().
 		Preload("Dependencies", func(db *gorm.DB) *gorm.DB { return db.Where("status = ?", meta.Installed).Order("id ASC") }).
 		Preload("Dependents", func(db *gorm.DB) *gorm.DB { return db.Where("status = ?", meta.Installed).Order("id ASC") }).
@@ -602,7 +602,7 @@ func (m *ModuleManager) refreshModuleIndexForLocalModules(ctx context.Context, m
 		packageJSONPath := filepath.Join(modulesPath, name, "package.json")
 		packageJSONData, readErr := os.ReadFile(packageJSONPath)
 
-		entry := metadata.IrModuleIndex{
+		entry := metadata.ModuleIndex{
 			ModuleName:       name,
 			OriginType:       "local",
 			OriginRef:        "local",
@@ -1002,13 +1002,13 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			},
 			ResolveInstallModuleFromOrigin: m.resolveInstallModuleFromOrigin,
 			ResolveInstalledModule:         m.Load,
-			Install: func(mod *meta.IrModule) error {
+			Install: func(mod *meta.Module) error {
 				return m.installWithCtx(mod, opCtx)
 			},
-			Uninstall: func(mod *meta.IrModule) error {
+			Uninstall: func(mod *meta.Module) error {
 				return m.uninstallWithCtx(mod, opCtx)
 			},
-			Upgrade: func(mod *meta.IrModule) error {
+			Upgrade: func(mod *meta.Module) error {
 				return m.upgradeWithCtx(mod, opCtx)
 			},
 			AppTargets: func(appName string) (string, pipeline.ModulesAppTargets, error) {
@@ -1242,14 +1242,14 @@ func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
 				}
 			},
 			ResolveInstalledModule: m.Load,
-			Install: func(mod *meta.IrModule) error {
+			Install: func(mod *meta.Module) error {
 				return m.installWithCtx(mod, opCtx)
 			},
-			Uninstall: func(mod *meta.IrModule) error {
+			Uninstall: func(mod *meta.Module) error {
 				// Avoid cascading dependency upgrades during uninstall; it can cause cycles and storms.
 				return m.uninstallWithCtx(mod, opCtx)
 			},
-			Upgrade: func(mod *meta.IrModule) error {
+			Upgrade: func(mod *meta.Module) error {
 				return m.upgradeWithCtx(mod, opCtx)
 			},
 			AppTargets: func(appName string) (string, pipeline.ModulesAppTargets, error) {
@@ -1459,7 +1459,7 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 				}
 			},
 			ResolveInstalledModule: m.Load,
-			Upgrade: func(mod *meta.IrModule) error {
+			Upgrade: func(mod *meta.Module) error {
 				return m.upgradeWithCtx(mod, opCtx)
 			},
 			AppTargets: func(appName string) (string, pipeline.ModulesAppTargets, error) {
@@ -1550,7 +1550,7 @@ func (m *ModuleManager) listInstalledNonWebApps(ctx context.Context) ([]string, 
 
 	var names []string
 	if err := m.runtimeScope.Session().WithContext(ctx).
-		Model(&meta.IrModule{}).
+		Model(&meta.Module{}).
 		Where("status = ?", meta.Installed).
 		Where("application_str <> ''").
 		Distinct("application_str").
@@ -1571,7 +1571,7 @@ func (m *ModuleManager) listInstalledNonWebApps(ctx context.Context) ([]string, 
 	return apps, nil
 }
 
-func (m *ModuleManager) installWithCtx(module *meta.IrModule, ctx *opContext) error {
+func (m *ModuleManager) installWithCtx(module *meta.Module, ctx *opContext) error {
 	if err := m.ensureMetaTables(); err != nil {
 		return err
 	}
@@ -1591,7 +1591,7 @@ func (m *ModuleManager) installWithCtx(module *meta.IrModule, ctx *opContext) er
 	return nil
 }
 
-func (m *ModuleManager) uninstallWithCtx(module *meta.IrModule, ctx *opContext) error {
+func (m *ModuleManager) uninstallWithCtx(module *meta.Module, ctx *opContext) error {
 	if err := m.ensureMetaTables(); err != nil {
 		return err
 	}
@@ -1611,7 +1611,7 @@ func (m *ModuleManager) uninstallWithCtx(module *meta.IrModule, ctx *opContext) 
 	return nil
 }
 
-func (m *ModuleManager) upgradeWithCtx(module *meta.IrModule, ctx *opContext) error {
+func (m *ModuleManager) upgradeWithCtx(module *meta.Module, ctx *opContext) error {
 	if err := m.ensureMetaTables(); err != nil {
 		return err
 	}

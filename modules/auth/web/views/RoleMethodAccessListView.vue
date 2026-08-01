@@ -17,9 +17,9 @@ SPDX-License-Identifier: Apache-2.0
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
     <OVarCharField prop="RoleId.Name" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <OManyToOneRefField prop="IrApplicationId" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <OManyToOneRefField prop="IrModelId" :store="store" :vColumnProps="{ minWidth: 160 }" />
-    <OManyToOneRefField prop="IrServiceId" :store="store" :vColumnProps="{ minWidth: 180 }" />
+    <OManyToOneRefField prop="MetaApplicationId" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <OManyToOneRefField prop="MetaModelId" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <OManyToOneRefField prop="MetaServiceId" :store="store" :vColumnProps="{ minWidth: 180 }" />
     <OSelectionField prop="Mode" :store="store" :vColumnProps="{ minWidth: 100 }" />
     <OSelectionField prop="Source" :store="store" :vColumnProps="{ minWidth: 100 }" />
     <ODateTimeField prop="CreatedAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />

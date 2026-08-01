@@ -10,16 +10,16 @@ function isAllowResourceScope(row: any): boolean {
   const mode = String((row as any)?.Mode ?? 'allow')
     .trim()
     .toLowerCase();
-  const uiResourceId = normalizeRefId((row as any)?.IrUiResourceId);
-  const appId = normalizeRefId((row as any)?.IrApplicationId);
+  const uiResourceId = normalizeRefId((row as any)?.MetaUiResourceId);
+  const appId = normalizeRefId((row as any)?.MetaApplicationId);
   return mode === 'allow' && !!uiResourceId && appId == null;
 }
 
 function makeAllowResourceEntries(ids: string[]): Array<Record<string, any>> {
   return ids.map(id => ({
     Mode: 'allow',
-    IrApplicationId: null,
-    IrUiResourceId: id,
+    MetaApplicationId: null,
+    MetaUiResourceId: id,
   }));
 }
 
@@ -34,7 +34,7 @@ async function loadUiResourcesForRole(roleId: string): Promise<Array<Record<stri
     {
       And: [['RoleId', '=', roleId]],
     } as any,
-    { fields: ['Id', 'Mode', 'IrApplicationId', 'IrUiResourceId'] as any } as any
+    { fields: ['Id', 'Mode', 'MetaApplicationId', 'MetaUiResourceId'] as any } as any
   );
 
   return (rows || []).map((row: any) => ({
@@ -43,8 +43,8 @@ async function loadUiResourcesForRole(roleId: string): Promise<Array<Record<stri
     Mode: String((row as any)?.Mode ?? 'allow')
       .trim()
       .toLowerCase(),
-    IrApplicationId: normalizeRefId((row as any)?.IrApplicationId),
-    IrUiResourceId: normalizeRefId((row as any)?.IrUiResourceId),
+    MetaApplicationId: normalizeRefId((row as any)?.MetaApplicationId),
+    MetaUiResourceId: normalizeRefId((row as any)?.MetaUiResourceId),
   }));
 }
 
@@ -97,7 +97,7 @@ export async function syncAllowResourceGrants(roleId: string, accessIds: string[
   const existingByResource = new Map<string, string>();
   for (const row of allowRows) {
     const id = normalizeRefId((row as any).Id);
-    const resourceId = normalizeRefId((row as any).IrUiResourceId);
+    const resourceId = normalizeRefId((row as any).MetaUiResourceId);
     if (!id || !resourceId) continue;
     existingByResource.set(resourceId, id);
   }
@@ -117,8 +117,8 @@ export async function syncAllowResourceGrants(roleId: string, accessIds: string[
     .map(resourceId => ({
       RoleId: { Id: roleId } as any,
       Mode: 'allow',
-      IrApplicationId: null,
-      IrUiResourceId: resourceId,
+      MetaApplicationId: null,
+      MetaUiResourceId: resourceId,
     }));
 
   if (createRows.length) {
@@ -134,7 +134,7 @@ async function buildAccessMap(roleIds: string[]): Promise<Map<string, string[]>>
     {
       And: [['RoleId', 'in', roleIds]],
     } as any,
-    { fields: ['RoleId', 'Mode', 'IrApplicationId', 'IrUiResourceId'] as any, limit: Math.max(1000, roleIds.length * 200) } as any
+    { fields: ['RoleId', 'Mode', 'MetaApplicationId', 'MetaUiResourceId'] as any, limit: Math.max(1000, roleIds.length * 200) } as any
   );
 
   const map = new Map<string, Set<string>>();
@@ -142,7 +142,7 @@ async function buildAccessMap(roleIds: string[]): Promise<Map<string, string[]>>
     const roleId = normalizeRefId((row as any)?.RoleId);
     if (!roleId) continue;
     if (!isAllowResourceScope(row)) continue;
-    const resourceId = normalizeRefId((row as any)?.IrUiResourceId);
+    const resourceId = normalizeRefId((row as any)?.MetaUiResourceId);
     if (!resourceId) continue;
     if (!map.has(roleId)) map.set(roleId, new Set<string>());
     map.get(roleId)!.add(resourceId);

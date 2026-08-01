@@ -51,10 +51,10 @@ describe('auth view action wiring', () => {
     expect(form).toContain(':label="_t(\'Advanced Mode\')"');
     expect(form).toContain('prop="UiResources"');
     expect(form).toContain('UiResources.Mode');
-    expect(form).toContain('UiResources.IrApplicationId');
-    expect(form).toContain('UiResources.IrUiResourceId');
+    expect(form).toContain('UiResources.MetaApplicationId');
+    expect(form).toContain('UiResources.MetaUiResourceId');
     expect(form).toContain('RecordRules.Kind');
-    expect(form).toContain('MethodAccesses.IrApplicationId');
+    expect(form).toContain('MethodAccesses.MetaApplicationId');
     expect(form).not.toContain('Manual Maintenance');
     expect(form).toContain('usePermission');
   });
@@ -129,7 +129,7 @@ describe('auth view action wiring', () => {
 
     expect(form).toContain("defineModelActions('auth.RoleFieldRule', {");
     expect(form).toContain('prop="RoleId"');
-    expect(form).toContain('prop="IrFieldId"');
+    expect(form).toContain('prop="MetaFieldId"');
     expect(form).toContain('usePermission');
   });
 
@@ -144,7 +144,7 @@ describe('auth view action wiring', () => {
 
     expect(form).toContain("defineModelActions('auth.RoleMethodAccess', {");
     expect(form).toContain('prop="RoleId"');
-    expect(form).toContain('prop="IrServiceId"');
+    expect(form).toContain('prop="MetaServiceId"');
     expect(form).toContain('prop="Mode"');
     expect(form).toContain('usePermission');
   });
@@ -160,7 +160,7 @@ describe('auth view action wiring', () => {
 
     expect(form).toContain("defineModelActions('auth.RoleUiResource', {");
     expect(form).toContain('prop="RoleId"');
-    expect(form).toContain('prop="IrUiResourceId"');
+    expect(form).toContain('prop="MetaUiResourceId"');
     expect(form).toContain('usePermission');
   });
 });

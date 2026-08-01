@@ -6,14 +6,14 @@ import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/co
 import { newAuthError, AuthErrCode, GrpcCode } from '../error';
 import { _t } from '../i18n';
 import RoleFieldRule from './role_field_rule';
-import type IrApplicationModel from '@/meta/service/models/ir_application';
-import type IrFieldModel from '@/meta/service/models/ir_field';
-import type IrModelModel from '@/meta/service/models/ir_model';
+import type MetaApplicationModel from '@/meta/service/models/application';
+import type MetaFieldModel from '@/meta/service/models/field';
+import type MetaModelModel from '@/meta/service/models/model';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 
-const IrApplication = createServiceByModel<typeof IrApplicationModel>('meta.IrApplication');
-const IrModel = createServiceByModel<typeof IrModelModel>('meta.IrModel');
-const IrField = createServiceByModel<typeof IrFieldModel>('meta.IrField');
+const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
+const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
+const MetaField = createServiceByModel<typeof MetaFieldModel>('meta.MetaField');
 
 function normalizeFieldPerm(v: any): 'allow' | 'deny' | null {
   if (v == null) return null;
@@ -80,7 +80,7 @@ async function resolveApplicationIds(appName: string): Promise<string[]> {
   const state = getFieldRuleReqState();
   const key = buildFieldRuleMetaCacheKey('app', appName);
   return await memoizeInReqState(state, key, async () => {
-    const apps = await IrApplication.Search(
+    const apps = await MetaApplication.Search(
       ['Name', '=', appName] as any,
       { fields: ['Id', 'UpdatedAt'], orderBy: { field: 'UpdatedAt', order: 'desc' }, limit: 5000 } as any
     );
@@ -104,7 +104,7 @@ async function resolveModelIds(appName: string, modelName: string): Promise<stri
   const state = getFieldRuleReqState();
   const key = buildFieldRuleMetaCacheKey('model', appName, modelName);
   return await memoizeInReqState(state, key, async () => {
-    const models = await IrModel.Search(
+    const models = await MetaModel.Search(
       {
         And: [
           ['Name', '=', modelName],
@@ -149,7 +149,7 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
   }
 
   // Load meta fields (needed for deny-all early exits and per-field decisions).
-  const fields = await IrField.Search(['ModelId', 'in', modelIds] as any, { fields: ['Id', 'Name'], limit: 5000 } as any);
+  const fields = await MetaField.Search(['ModelId', 'in', modelIds] as any, { fields: ['Id', 'Name'], limit: 5000 } as any);
   const fieldNameById = new Map<string, string>();
   const fieldIdsByName = new Map<string, string[]>();
   const fieldIdSet = new Set<string>();
@@ -188,34 +188,34 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
           Or: [
             {
               And: [
-                ['IrModelId', 'in', modelIds],
-                ['IrFieldId', 'in', Array.from(fieldIdSet)],
-                ['IrApplicationId', 'is', null],
+                ['MetaModelId', 'in', modelIds],
+                ['MetaFieldId', 'in', Array.from(fieldIdSet)],
+                ['MetaApplicationId', 'is', null],
               ],
             },
             {
               And: [
-                ['IrModelId', 'in', modelIds],
-                ['IrFieldId', 'is', null],
-                ['IrApplicationId', 'is', null],
+                ['MetaModelId', 'in', modelIds],
+                ['MetaFieldId', 'is', null],
+                ['MetaApplicationId', 'is', null],
               ],
             },
             ...(applicationIds.length > 0
               ? [
                   {
                     And: [
-                      ['IrApplicationId', 'in', applicationIds],
-                      ['IrModelId', 'is', null],
-                      ['IrFieldId', 'is', null],
+                      ['MetaApplicationId', 'in', applicationIds],
+                      ['MetaModelId', 'is', null],
+                      ['MetaFieldId', 'is', null],
                     ],
                   },
                 ]
               : []),
             {
               And: [
-                ['IrApplicationId', 'is', null],
-                ['IrModelId', 'is', null],
-                ['IrFieldId', 'is', null],
+                ['MetaApplicationId', 'is', null],
+                ['MetaModelId', 'is', null],
+                ['MetaFieldId', 'is', null],
               ],
             },
           ],
@@ -223,7 +223,7 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
       ],
     } as any,
     {
-      fields: ['Id', 'IrApplicationId', 'IrModelId', 'IrFieldId', 'PermRead', 'PermWrite'],
+      fields: ['Id', 'MetaApplicationId', 'MetaModelId', 'MetaFieldId', 'PermRead', 'PermWrite'],
       limit: 5000,
     } as any
   );
@@ -240,9 +240,9 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
 
   for (const r of rules || []) {
     const rid = String((r as any)?.Id ?? '').trim();
-    const irApp = normalizeRefId(pickField(r, ['IrApplicationId', 'ir_application_id', 'irApplicationId']));
-    const irModel = normalizeRefId(pickField(r, ['IrModelId', 'ir_model_id', 'irModelId']));
-    const irField = normalizeRefId(pickField(r, ['IrFieldId', 'ir_field_id', 'irFieldId']));
+    const irApp = normalizeRefId(pickField(r, ['MetaApplicationId', 'meta_application_id', 'irApplicationId']));
+    const irModel = normalizeRefId(pickField(r, ['MetaModelId', 'meta_model_id', 'irModelId']));
+    const irField = normalizeRefId(pickField(r, ['MetaFieldId', 'meta_field_id', 'irFieldId']));
     const permRead = normalizeFieldPerm(pickField(r, ['PermRead', 'perm_read', 'permRead']));
     const permWrite = normalizeFieldPerm(pickField(r, ['PermWrite', 'perm_write', 'permWrite']));
 

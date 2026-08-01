@@ -14,7 +14,7 @@ import (
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
-func CheckExternalDependencies(module *meta.IrModule) error {
+func CheckExternalDependencies(module *meta.Module) error {
 	isBinaryDependencyInstalled := func(cmd, version string) error {
 		cmd = regexp.MustCompile(`[^a-zA-Z0-9._-]`).ReplaceAllString(cmd, "")
 		if cmd == "" {

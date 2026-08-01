@@ -7,7 +7,7 @@ import Job from '@/task/service/models/job';
 import { getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
 import { normalizeFields, normalizeLimit, normalizeOffset } from '@/core/service/utils/normalization';
 import { _t, _lt } from '../i18n';
-import IrModule from './ir_module';
+import MetaModule from './module';
 
 type ModuleOriginType = 'local' | 'registry';
 type ModuleSyncOriginType = ModuleOriginType | 'all';
@@ -352,52 +352,52 @@ async function findRunningJobId(fullMethod: string, requestedOrigin: ModuleSyncO
   return '';
 }
 
-@Model('IrModuleIndex', {
-  tableName: 'meta_ir_module_index',
+@Model('MetaModuleIndex', {
+  tableName: 'meta_module_index',
   autoMigrate: false,
 })
-export default class IrModuleIndex extends BaseModel {
-  @Field({ type: 'varchar', size: 255, notNull: true, string: _lt('Module Name', { scope: 'meta.model.IrModuleIndex.fields' }) })
+export default class MetaModuleIndex extends BaseModel {
+  @Field({ type: 'varchar', size: 255, notNull: true, string: _lt('Module Name', { scope: 'meta.model.MetaModuleIndex.fields' }) })
   ModuleName!: string;
 
-  @Field({ type: 'varchar', size: 32, notNull: true, string: _lt('Origin Type', { scope: 'meta.model.IrModuleIndex.fields' }) })
+  @Field({ type: 'varchar', size: 32, notNull: true, string: _lt('Origin Type', { scope: 'meta.model.MetaModuleIndex.fields' }) })
   OriginType!: ModuleOriginType;
 
-  @Field({ type: 'varchar', size: 255, notNull: true, string: _lt('Origin Ref', { scope: 'meta.model.IrModuleIndex.fields' }) })
+  @Field({ type: 'varchar', size: 255, notNull: true, string: _lt('Origin Ref', { scope: 'meta.model.MetaModuleIndex.fields' }) })
   OriginRef!: string;
 
-  @Field({ type: 'boolean', notNull: true, string: _lt('Available', { scope: 'meta.model.IrModuleIndex.fields' }) })
+  @Field({ type: 'boolean', notNull: true, string: _lt('Available', { scope: 'meta.model.MetaModuleIndex.fields' }) })
   Available!: boolean;
 
-  @Field({ type: 'varchar', size: 255, string: _lt('Version', { scope: 'meta.model.IrModuleIndex.fields' }) })
+  @Field({ type: 'varchar', size: 255, string: _lt('Version', { scope: 'meta.model.MetaModuleIndex.fields' }) })
   Version?: string;
 
-  @Field({ type: 'jsonobject', string: _lt('Manifest JSON', { scope: 'meta.model.IrModuleIndex.fields' }) })
+  @Field({ type: 'jsonobject', string: _lt('Manifest JSON', { scope: 'meta.model.MetaModuleIndex.fields' }) })
   ManifestJson?: Record<string, unknown> | null;
 
-  @Field({ type: 'varchar', size: 512, string: _lt('Local Path', { scope: 'meta.model.IrModuleIndex.fields' }) })
+  @Field({ type: 'varchar', size: 512, string: _lt('Local Path', { scope: 'meta.model.MetaModuleIndex.fields' }) })
   LocalPath?: string;
 
-  @Field({ type: 'datetime', string: _lt('Last Synced At', { scope: 'meta.model.IrModuleIndex.fields' }) })
+  @Field({ type: 'datetime', string: _lt('Last Synced At', { scope: 'meta.model.MetaModuleIndex.fields' }) })
   LastSyncAt!: Date;
 
-  @Field({ type: 'datetime', string: _lt('Batch Synced At', { scope: 'meta.model.IrModuleIndex.fields' }) })
+  @Field({ type: 'datetime', string: _lt('Batch Synced At', { scope: 'meta.model.MetaModuleIndex.fields' }) })
   LastBatchSyncAt!: Date;
 
-  @Field({ type: 'varchar', size: 255, string: _lt('Sync Revision', { scope: 'meta.model.IrModuleIndex.fields' }) })
+  @Field({ type: 'varchar', size: 255, string: _lt('Sync Revision', { scope: 'meta.model.MetaModuleIndex.fields' }) })
   SyncRevision?: string;
 
-  @Field({ type: 'text', string: _lt('Error Message', { scope: 'meta.model.IrModuleIndex.fields' }) })
+  @Field({ type: 'text', string: _lt('Error Message', { scope: 'meta.model.MetaModuleIndex.fields' }) })
   LastErrorMessage?: string;
 
   @Field({
     type: 'varchar',
     size: 64,
-    string: _lt('Origin Types', { scope: 'meta.model.IrModuleIndex.fields' }),
+    string: _lt('Origin Types', { scope: 'meta.model.MetaModuleIndex.fields' }),
   })
   OriginTypes?: string;
 
-  @SqlCompute<IrModuleIndex>('OriginTypes')
+  @SqlCompute<MetaModuleIndex>('OriginTypes')
   sqlOriginTypes() {
     return this.$sql.field('OriginType');
   }
@@ -405,11 +405,11 @@ export default class IrModuleIndex extends BaseModel {
   @Field({
     type: 'varchar',
     size: 255,
-    string: _lt('Local Version', { scope: 'meta.model.IrModuleIndex.fields' }),
+    string: _lt('Local Version', { scope: 'meta.model.MetaModuleIndex.fields' }),
   })
   LocalVersion?: string;
 
-  @SqlCompute<IrModuleIndex>('LocalVersion')
+  @SqlCompute<MetaModuleIndex>('LocalVersion')
   sqlLocalVersion() {
     return this.$sql.field('Version');
   }
@@ -417,11 +417,11 @@ export default class IrModuleIndex extends BaseModel {
   @Field({
     type: 'varchar',
     size: 255,
-    string: _lt('Registry Version', { scope: 'meta.model.IrModuleIndex.fields' }),
+    string: _lt('Registry Version', { scope: 'meta.model.MetaModuleIndex.fields' }),
   })
   RegistryVersion?: string;
 
-  @SqlCompute<IrModuleIndex>('RegistryVersion')
+  @SqlCompute<MetaModuleIndex>('RegistryVersion')
   sqlRegistryVersion() {
     return this.$sql.field('Version');
   }
@@ -429,16 +429,16 @@ export default class IrModuleIndex extends BaseModel {
   @Field({
     type: 'varchar',
     size: 64,
-    string: _lt('Install Status', { scope: 'meta.model.IrModuleIndex.fields' }),
+    string: _lt('Install Status', { scope: 'meta.model.MetaModuleIndex.fields' }),
   })
   InstalledStatus?: string;
 
-  @SqlCompute<IrModuleIndex>('InstalledStatus')
+  @SqlCompute<MetaModuleIndex>('InstalledStatus')
   sqlInstalledStatus() {
     const moduleStatus = this.$sql
-      .selectFrom('meta_ir_module as m')
+      .selectFrom('meta_module as m')
       .select('m.status')
-      .whereRef('m.name', '=', this.$sql.col('meta_ir_module_index', 'module_name'))
+      .whereRef('m.name', '=', this.$sql.col('meta_module_index', 'module_name'))
       .limit(1);
     return sql<string>`coalesce((${moduleStatus}), 'uninstalled')`;
   }
@@ -446,16 +446,16 @@ export default class IrModuleIndex extends BaseModel {
   @Field({
     type: 'varchar',
     size: 255,
-    string: _lt('Installed Version', { scope: 'meta.model.IrModuleIndex.fields' }),
+    string: _lt('Installed Version', { scope: 'meta.model.MetaModuleIndex.fields' }),
   })
   InstalledVersion?: string;
 
-  @SqlCompute<IrModuleIndex>('InstalledVersion')
+  @SqlCompute<MetaModuleIndex>('InstalledVersion')
   sqlInstalledVersion() {
     return this.$sql
-      .selectFrom('meta_ir_module as m')
+      .selectFrom('meta_module as m')
       .select('m.version')
-      .whereRef('m.name', '=', this.$sql.col('meta_ir_module_index', 'module_name'))
+      .whereRef('m.name', '=', this.$sql.col('meta_module_index', 'module_name'))
       .limit(1);
   }
 
@@ -519,7 +519,7 @@ export default class IrModuleIndex extends BaseModel {
 
     const installedByName = new Map<string, { status?: string; version?: string }>();
     if (groupedModuleNames.length > 0) {
-      const installedRows = await IrModule.Search(
+      const installedRows = await MetaModule.Search(
         ['Name', 'in', groupedModuleNames] as any,
         {
           fields: ['Name', 'Status', 'Version'] as any,
@@ -588,14 +588,14 @@ export default class IrModuleIndex extends BaseModel {
     if (!force && !ifStale) return '';
     const originType = normalizeOriginType(params.originType);
     if (!originType) {
-      throw new Error(_t('originType must be one of: local, registry, all', { scope: 'service/models/ir_module_index' }));
+      throw new Error(_t('originType must be one of: local, registry, all', { scope: 'service/models/module_index' }));
     }
 
     if (ifStale && !force && isTruthyFlag(getBackendEnvText('CHOYSUM_E2E_SKIP_INDEX_STALE_SYNC', 'choysum_e2e_skip_index_stale_sync'))) {
       return '';
     }
 
-    const fullMethod = 'meta.IrModuleIndex/Sync';
+    const fullMethod = 'meta.MetaModuleIndex/Sync';
 
     // Reuse in-flight jobs for non-force requests to reduce contention.
     if (!force) {
@@ -608,9 +608,9 @@ export default class IrModuleIndex extends BaseModel {
         let query = repo
           .selectQueryBuilder()
           .select((eb: any) => eb.fn.max('last_batch_sync_at').as('last_batch_sync_at'))
-          .where('meta_ir_module_index.origin_type' as any, '=', target as any);
+          .where('meta_module_index.origin_type' as any, '=', target as any);
         if (target === 'local') {
-          query = query.where('meta_ir_module_index.origin_ref' as any, '=', 'local');
+          query = query.where('meta_module_index.origin_ref' as any, '=', 'local');
         }
         const rows = await repo.execute(query);
         const row = rows?.[0] as any;
@@ -662,7 +662,7 @@ export default class IrModuleIndex extends BaseModel {
     }
     const normalizedOriginType = normalizeOriginType(originType);
     if (!normalizedOriginType) {
-      throw new Error(_t('originType must be one of: local, registry, all', { scope: 'service/models/ir_module_index' }));
+      throw new Error(_t('originType must be one of: local, registry, all', { scope: 'service/models/module_index' }));
     }
     return await syncIndex({ originType: normalizedOriginType, force: !!force });
   }

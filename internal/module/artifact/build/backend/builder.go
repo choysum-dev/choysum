@@ -36,7 +36,7 @@ type ModuleBuilder struct {
 	runtimeScope   scope.Scope
 	runtimeOptions runtimeOptions
 	jsExecutor     jsexecutor.ScriptExecutor
-	module         *meta.IrModule
+	module         *meta.Module
 	entryPoint     string
 	buildPlugin    esbplugins.EsbPlugin
 	prebuildPlugin esbplugins.EsbPlugin
@@ -53,7 +53,7 @@ type ModuleBuilder struct {
 
 	// Cached parser and path alias for refresh reparsing.
 	tsParser        parser.Parser
-	tsParserFactory func(scope.Scope, *meta.IrModule) parser.Parser
+	tsParserFactory func(scope.Scope, *meta.Module) parser.Parser
 	tsPathAlias     map[string]string
 
 	// Cached entry-point imports reused across prebuild/build in one builder run.
@@ -241,7 +241,7 @@ func (b *ModuleBuilder) entryPointImports() []string {
 	imports := make([]string, 0)
 	runtimeOptions := b.resolvedRuntimeOptions()
 
-	var installModules []*meta.IrModule
+	var installModules []*meta.Module
 	modulePath := ""
 	if b.module != nil {
 		modulePath = b.module.Path
@@ -296,14 +296,14 @@ func (b *ModuleBuilder) entryPointImports() []string {
 	return imports
 }
 
-func (b *ModuleBuilder) getNewExtends(model *meta.IrModel) (*meta.IrModel, error) {
+func (b *ModuleBuilder) getNewExtends(model *meta.Model) (*meta.Model, error) {
 	if model.Extends == "" {
 		return nil, nil
 	}
 
-	var extendsModels []*meta.IrModel
+	var extendsModels []*meta.Model
 	if result := b.runtimeScope.Session().
-		Where(&meta.IrModel{Name: model.Name}).
+		Where(&meta.Model{Name: model.Name}).
 		Order("id DESC").
 		Find(&extendsModels); result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -479,7 +479,7 @@ func insertImportIntoImportRegion(content string, imports map[string]*parser.Imp
 	return before + sepBefore + importStmt + sepAfter + after
 }
 
-func (b *ModuleBuilder) updateModelExtends(parseResult *parser.ParserResult, extendedModel *meta.IrModel) error {
+func (b *ModuleBuilder) updateModelExtends(parseResult *parser.ParserResult, extendedModel *meta.Model) error {
 	// Skip if model extends is the same as raw extends
 	if parseResult.Model.RawExtends == parseResult.Model.Extends {
 		return nil
@@ -642,12 +642,12 @@ func (b *ModuleBuilder) build(prebuildResult *module.BuildResult) (*module.Build
 }
 
 // Check inheritance relationship for models with the same name
-func (b *ModuleBuilder) checkInheritanceChain(models []*meta.IrModel, pathModelMap map[string]*meta.IrModel) error {
+func (b *ModuleBuilder) checkInheritanceChain(models []*meta.Model, pathModelMap map[string]*meta.Model) error {
 	if len(models) <= 1 {
 		return nil
 	}
 
-	byPath := make(map[string]*meta.IrModel, len(models))
+	byPath := make(map[string]*meta.Model, len(models))
 	adj := make(map[string][]string, len(models))
 	for _, m := range models {
 		byPath[m.Path] = m
@@ -716,8 +716,8 @@ func (b *ModuleBuilder) checkInheritanceChain(models []*meta.IrModel, pathModelM
 }
 
 func (b *ModuleBuilder) checkCircularDependency(
-	model *meta.IrModel,
-	pathModelMap map[string]*meta.IrModel,
+	model *meta.Model,
+	pathModelMap map[string]*meta.Model,
 	visited map[string]bool,
 ) error {
 	// If the model is nil or has no inheritance relationship, return nil
@@ -749,9 +749,9 @@ func (b *ModuleBuilder) checkCircularDependency(
 
 func (b *ModuleBuilder) validate(buildResult *module.BuildResult) error {
 	// 1. Group models by name
-	modelMap := make(map[string][]*meta.IrModel)
+	modelMap := make(map[string][]*meta.Model)
 	// 2. Create a mapping from path to model for quick parent model lookup
-	pathModelMap := make(map[string]*meta.IrModel)
+	pathModelMap := make(map[string]*meta.Model)
 
 	for _, result := range module.ParserResults(buildResult) {
 		if result.Model != nil {
@@ -786,7 +786,7 @@ func (b *ModuleBuilder) persist(buildResult *module.BuildResult) error {
 
 	// update module application id
 	if mod.ApplicationStr != "" {
-		var app *meta.IrApplication
+		var app *meta.Application
 		if result := b.runtimeScope.Session().Where("name = ?", mod.ApplicationStr).Take(&app); result.Error != nil {
 			if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				return xfmt.Errorf("error getting application by name: %w", result.Error)
@@ -797,7 +797,7 @@ func (b *ModuleBuilder) persist(buildResult *module.BuildResult) error {
 			mod.ApplicationId = app.Id
 			mod.Application = app
 		} else {
-			mod.Application = &meta.IrApplication{Name: mod.ApplicationStr}
+			mod.Application = &meta.Application{Name: mod.ApplicationStr}
 		}
 	}
 
@@ -831,14 +831,14 @@ func (b *ModuleBuilder) persist(buildResult *module.BuildResult) error {
 	return nil
 }
 
-func (b *ModuleBuilder) persistModuleModels(moduleID string, models []*meta.IrModel) error {
+func (b *ModuleBuilder) persistModuleModels(moduleID string, models []*meta.Model) error {
 	moduleID = strings.TrimSpace(moduleID)
 	if moduleID == "" {
 		return nil
 	}
 
 	orderedPaths := make([]string, 0, len(models))
-	modelByPath := make(map[string]*meta.IrModel, len(models))
+	modelByPath := make(map[string]*meta.Model, len(models))
 	for _, m := range models {
 		if m == nil {
 			continue
@@ -853,7 +853,7 @@ func (b *ModuleBuilder) persistModuleModels(moduleID string, models []*meta.IrMo
 		modelByPath[path] = m
 	}
 
-	rows := make([]*meta.IrModel, 0, len(orderedPaths))
+	rows := make([]*meta.Model, 0, len(orderedPaths))
 	for _, path := range orderedPaths {
 		m := modelByPath[path]
 		if m == nil {
@@ -863,7 +863,7 @@ func (b *ModuleBuilder) persistModuleModels(moduleID string, models []*meta.IrMo
 		rows = append(rows, m)
 	}
 
-	if result := b.runtimeScope.Session().Unscoped().Where("module_id = ?", moduleID).Delete(&meta.IrModel{}); result.Error != nil {
+	if result := b.runtimeScope.Session().Unscoped().Where("module_id = ?", moduleID).Delete(&meta.Model{}); result.Error != nil {
 		return result.Error
 	}
 	if len(rows) == 0 {
@@ -876,12 +876,12 @@ func (b *ModuleBuilder) persistModuleModels(moduleID string, models []*meta.IrMo
 }
 
 type effectiveMeta struct {
-	fields   []*meta.IrField
-	services []*meta.IrService
+	fields   []*meta.Field
+	services []*meta.Service
 }
 
-func mergeOrderedFields(parentFields []*meta.IrField, childFields []*meta.IrField, parentPath string, childPath string) ([]*meta.IrField, error) {
-	result := make([]*meta.IrField, 0, len(parentFields)+len(childFields))
+func mergeOrderedFields(parentFields []*meta.Field, childFields []*meta.Field, parentPath string, childPath string) ([]*meta.Field, error) {
+	result := make([]*meta.Field, 0, len(parentFields)+len(childFields))
 	indexByName := make(map[string]int)
 
 	for _, pf := range parentFields {
@@ -928,8 +928,8 @@ func mergeOrderedFields(parentFields []*meta.IrField, childFields []*meta.IrFiel
 	return result, nil
 }
 
-func mergeOrderedServices(parentServices []*meta.IrService, childServices []*meta.IrService, parentPath string, childPath string) []*meta.IrService {
-	result := make([]*meta.IrService, 0, len(parentServices)+len(childServices))
+func mergeOrderedServices(parentServices []*meta.Service, childServices []*meta.Service, parentPath string, childPath string) []*meta.Service {
+	result := make([]*meta.Service, 0, len(parentServices)+len(childServices))
 	indexByName := make(map[string]int)
 
 	for _, ps := range parentServices {
@@ -966,8 +966,8 @@ func mergeOrderedServices(parentServices []*meta.IrService, childServices []*met
 	return result
 }
 
-func (b *ModuleBuilder) materializeEffectiveModels(module *meta.IrModule) error {
-	localByPath := make(map[string]*meta.IrModel)
+func (b *ModuleBuilder) materializeEffectiveModels(module *meta.Module) error {
+	localByPath := make(map[string]*meta.Model)
 	for _, m := range module.Models {
 		if m == nil {
 			continue
@@ -992,8 +992,8 @@ func (b *ModuleBuilder) materializeEffectiveModels(module *meta.IrModule) error 
 }
 
 func (b *ModuleBuilder) computeEffectiveMeta(
-	model *meta.IrModel,
-	localByPath map[string]*meta.IrModel,
+	model *meta.Model,
+	localByPath map[string]*meta.Model,
 	cache map[string]*effectiveMeta,
 	visiting map[string]bool,
 ) (*effectiveMeta, error) {
@@ -1009,7 +1009,7 @@ func (b *ModuleBuilder) computeEffectiveMeta(
 	visiting[model.Path] = true
 	defer func() { visiting[model.Path] = false }()
 
-	var parent *meta.IrModel
+	var parent *meta.Model
 	var parentEff *effectiveMeta
 	if model.Extends != "" {
 		if localParent, ok := localByPath[model.Extends]; ok {
@@ -1043,8 +1043,8 @@ func (b *ModuleBuilder) computeEffectiveMeta(
 	if parent != nil {
 		parentPath = parent.Path
 	}
-	var parentFields []*meta.IrField
-	var parentServices []*meta.IrService
+	var parentFields []*meta.Field
+	var parentServices []*meta.Service
 	if parentEff != nil {
 		parentFields = parentEff.fields
 		parentServices = parentEff.services
@@ -1061,11 +1061,11 @@ func (b *ModuleBuilder) computeEffectiveMeta(
 	return eff, nil
 }
 
-func (b *ModuleBuilder) loadLatestModelByPath(path string) (*meta.IrModel, error) {
+func (b *ModuleBuilder) loadLatestModelByPath(path string) (*meta.Model, error) {
 	if path == "" {
 		return nil, nil
 	}
-	var m meta.IrModel
+	var m meta.Model
 	if result := b.runtimeScope.Session().
 		Preload("Fields", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
 		Preload("Fields.Decorators", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
@@ -1086,7 +1086,7 @@ func (b *ModuleBuilder) loadLatestModelByPath(path string) (*meta.IrModel, error
 	return &m, nil
 }
 
-func (b *ModuleBuilder) isAlreadyMaterialized(model *meta.IrModel) bool {
+func (b *ModuleBuilder) isAlreadyMaterialized(model *meta.Model) bool {
 	for _, f := range model.Fields {
 		if f != nil && f.OriginModelPath != "" {
 			return true
@@ -1100,7 +1100,7 @@ func (b *ModuleBuilder) isAlreadyMaterialized(model *meta.IrModel) bool {
 	return false
 }
 
-func cloneField(src *meta.IrField) *meta.IrField {
+func cloneField(src *meta.Field) *meta.Field {
 	if src == nil {
 		return nil
 	}
@@ -1111,7 +1111,7 @@ func cloneField(src *meta.IrField) *meta.IrField {
 
 	dst.Decorators = nil
 	if len(src.Decorators) > 0 {
-		dst.Decorators = make([]*meta.IrDecorator, 0, len(src.Decorators))
+		dst.Decorators = make([]*meta.Decorator, 0, len(src.Decorators))
 		for _, d := range src.Decorators {
 			if d == nil {
 				continue
@@ -1122,7 +1122,7 @@ func cloneField(src *meta.IrField) *meta.IrField {
 	return &dst
 }
 
-func cloneService(src *meta.IrService) *meta.IrService {
+func cloneService(src *meta.Service) *meta.Service {
 	if src == nil {
 		return nil
 	}
@@ -1133,7 +1133,7 @@ func cloneService(src *meta.IrService) *meta.IrService {
 
 	dst.TypeParameters = nil
 	if len(src.TypeParameters) > 0 {
-		dst.TypeParameters = make([]*meta.IrTypeParameter, 0, len(src.TypeParameters))
+		dst.TypeParameters = make([]*meta.TypeParameter, 0, len(src.TypeParameters))
 		for _, tp := range src.TypeParameters {
 			if tp == nil {
 				continue
@@ -1148,7 +1148,7 @@ func cloneService(src *meta.IrService) *meta.IrService {
 
 	dst.Parameters = nil
 	if len(src.Parameters) > 0 {
-		dst.Parameters = make([]*meta.IrParameter, 0, len(src.Parameters))
+		dst.Parameters = make([]*meta.Parameter, 0, len(src.Parameters))
 		for _, p := range src.Parameters {
 			if p == nil {
 				continue
@@ -1163,7 +1163,7 @@ func cloneService(src *meta.IrService) *meta.IrService {
 
 	dst.Decorators = nil
 	if len(src.Decorators) > 0 {
-		dst.Decorators = make([]*meta.IrDecorator, 0, len(src.Decorators))
+		dst.Decorators = make([]*meta.Decorator, 0, len(src.Decorators))
 		for _, d := range src.Decorators {
 			if d == nil {
 				continue
@@ -1175,7 +1175,7 @@ func cloneService(src *meta.IrService) *meta.IrService {
 	return &dst
 }
 
-func cloneDecorator(src *meta.IrDecorator) *meta.IrDecorator {
+func cloneDecorator(src *meta.Decorator) *meta.Decorator {
 	if src == nil {
 		return nil
 	}
@@ -1192,7 +1192,7 @@ func cloneDecorator(src *meta.IrDecorator) *meta.IrDecorator {
 
 	dst.Arguments = nil
 	if len(src.Arguments) > 0 {
-		dst.Arguments = make([]*meta.IrArgument, 0, len(src.Arguments))
+		dst.Arguments = make([]*meta.Argument, 0, len(src.Arguments))
 		for _, a := range src.Arguments {
 			if a == nil {
 				continue
@@ -1219,8 +1219,8 @@ func (b *ModuleBuilder) Build() (*module.BuildResult, error) {
 	return buildResult, nil
 }
 
-// BuildWithoutPersist compiles and validates the module without writing IrModule /
-// IrModel rows. Call Persist inside a short commit transaction afterward.
+// BuildWithoutPersist compiles and validates the module without writing Module /
+// Model rows. Call Persist inside a short commit transaction afterward.
 func (b *ModuleBuilder) BuildWithoutPersist() (*module.BuildResult, error) {
 	// 1. prebuild for parse original model extends
 	prebuildResult, err := b.prebuild()
@@ -1247,7 +1247,7 @@ func (b *ModuleBuilder) BuildWithoutPersist() (*module.BuildResult, error) {
 	return buildResult, nil
 }
 
-// Persist writes the compiled build result (IrModule / IrModel) using the
+// Persist writes the compiled build result (Module / Model) using the
 // builder's ambient session. Intended for a short Required commit window.
 func (b *ModuleBuilder) Persist(buildResult *module.BuildResult) error {
 	if err := b.persist(buildResult); err != nil {
@@ -1296,7 +1296,7 @@ func (b *ModuleBuilder) BundleToDirCtx(ctx context.Context, distAppDir string) (
 	return b.Bundle()
 }
 
-func NewModuleBuilder(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.IrModule, entryPoint string, opts ...func(*ModuleBuilder)) module.Builder {
+func NewModuleBuilder(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.Module, entryPoint string, opts ...func(*ModuleBuilder)) module.Builder {
 	b := &ModuleBuilder{
 		runtimeScope:    runtimeScope,
 		runtimeOptions:  newRuntimeOptions(scope.PathsRuntimeOptions{}, false, scope.AuthRuntimeOptions{}, false, scope.TaskRuntimeOptions{}, false, scope.CompileRuntimeOptions{}, false, scope.RuntimeEnvironmentOptions{}, false),

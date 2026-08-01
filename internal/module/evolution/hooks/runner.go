@@ -47,10 +47,10 @@ type RunOptions struct {
 type Runner struct {
 	runtimeScope scope.Scope
 	jsExecutor   jsexecutor.ScriptExecutor
-	module       *meta.IrModule
+	module       *meta.Module
 }
 
-func NewRunner(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.IrModule) (*Runner, error) {
+func NewRunner(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.Module) (*Runner, error) {
 	if runtimeScope == nil || module == nil {
 		return nil, nil
 	}
@@ -446,7 +446,7 @@ func parseHookError(err error) (string, string) {
 	return code, detail
 }
 
-func LoadDistScripts(runtimeScope scope.Scope, module *meta.IrModule) ([]*jsengine.JsScript, error) {
+func LoadDistScripts(runtimeScope scope.Scope, module *meta.Module) ([]*jsengine.JsScript, error) {
 	if runtimeScope == nil || module == nil {
 		return nil, fmt.Errorf("missing env or module")
 	}

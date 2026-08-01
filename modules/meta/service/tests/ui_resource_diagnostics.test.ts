@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import IrUiResource from '@/meta/service/models/ir_ui_resource';
-import IrUiResourceRouteAction from '@/meta/service/models/ir_ui_resource_route_action';
+import MetaUiResource from '@/meta/service/models/ui_resource';
+import MetaUiResourceRouteAction from '@/meta/service/models/ui_resource_route_action';
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -49,11 +49,11 @@ function uid(prefix: string): string {
   return `${prefix}_${value}`;
 }
 
-test('meta.IrUiResource GetEffectiveDeclarations returns normalized declaration views', async () => {
+test('meta.MetaUiResource GetEffectiveDeclarations returns normalized declaration views', async () => {
   resetRequestContext();
 
   const moduleName = uid('mod');
-  const rootMenu = await IrUiResource.Create(
+  const rootMenu = await MetaUiResource.Create(
     {
       Name: uid('root_menu'),
       Type: 'MENU',
@@ -65,7 +65,7 @@ test('meta.IrUiResource GetEffectiveDeclarations returns normalized declaration 
     ['Id', 'Name'] as any
   );
 
-  const childMenu = await IrUiResource.Create(
+  const childMenu = await MetaUiResource.Create(
     {
       Name: uid('child_menu'),
       Type: 'MENU',
@@ -78,7 +78,7 @@ test('meta.IrUiResource GetEffectiveDeclarations returns normalized declaration 
     ['Id', 'Name'] as any
   );
 
-  const route = await IrUiResource.Create(
+  const route = await MetaUiResource.Create(
     {
       Name: uid('route'),
       Type: 'ROUTE',
@@ -92,7 +92,7 @@ test('meta.IrUiResource GetEffectiveDeclarations returns normalized declaration 
     ['Id', 'Name'] as any
   );
 
-  const action = await IrUiResource.Create(
+  const action = await MetaUiResource.Create(
     {
       Name: uid('action'),
       Type: 'ACTION',
@@ -103,7 +103,7 @@ test('meta.IrUiResource GetEffectiveDeclarations returns normalized declaration 
     ['Id', 'Name'] as any
   );
 
-  await IrUiResourceRouteAction.Create(
+  await MetaUiResourceRouteAction.Create(
     {
       RouteUiResourceId: { Id: route.Id } as any,
       ActionUiResourceId: { Id: action.Id } as any,
@@ -111,7 +111,7 @@ test('meta.IrUiResource GetEffectiveDeclarations returns normalized declaration 
     ['Id'] as any
   );
 
-  const result = await IrUiResource.GetEffectiveDeclarations({ module: moduleName });
+  const result = await MetaUiResource.GetEffectiveDeclarations({ module: moduleName });
 
   expect(result.total).toBe(4);
   expect(result.filtered).toBe(4);

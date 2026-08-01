@@ -107,7 +107,7 @@ func TestNormalizeVersion_AddsPrefix(t *testing.T) {
 
 func TestRunnerHelpers(t *testing.T) {
 	testRuntimeScope := newScriptsTestScope(t)
-	mod := &meta.IrModule{Name: "base", ApplicationStr: "core", Version: "1.0.0", ServiceEntryPoint: "service/index.ts"}
+	mod := &meta.Module{Name: "base", ApplicationStr: "core", Version: "1.0.0", ServiceEntryPoint: "service/index.ts"}
 
 	runner := NewRunner(testRuntimeScope, nil, mod)
 	if runner == nil || runner.store == nil {
@@ -144,7 +144,7 @@ func TestResolveScripts_PrefersBuildErrorWhenRuntimeScriptsMissing(t *testing.T)
 		t.Fatalf("write tsconfig: %v", err)
 	}
 
-	runner := NewRunner(testRuntimeScope, nil, &meta.IrModule{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/missing.ts"})
+	runner := NewRunner(testRuntimeScope, nil, &meta.Module{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/missing.ts"})
 	resolved, err := runner.resolveScripts(context.Background(), false)
 	if err == nil {
 		t.Fatalf("expected resolveScripts error when fallback build fails, got scripts=%#v", resolved)
@@ -160,7 +160,7 @@ func TestResolveScripts_SourceFirstUnlessPhaseEnd(t *testing.T) {
 	prepareRunnerModuleSource(t, testRuntimeScope, "base", "service/index.ts", "export const migration = {}\n")
 	bundlePath := writeScriptsRuntimeBundle(t, testRuntimeScope, "console.log('bundle')")
 
-	runner := NewRunner(testRuntimeScope, nil, &meta.IrModule{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"})
+	runner := NewRunner(testRuntimeScope, nil, &meta.Module{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"})
 	sourceFirstScripts, err := runner.resolveScripts(context.Background(), false)
 	if err != nil {
 		t.Fatalf("resolveScripts(source-first) error = %v", err)
@@ -202,7 +202,7 @@ func TestBuildModuleEntryScript_PrefersContextSessionForBuilderRuntimeState(t *t
 	if err != nil {
 		t.Fatalf("open runtime sqlite: %v", err)
 	}
-	if err := runtimeDB.AutoMigrate(&meta.IrModule{}); err != nil {
+	if err := runtimeDB.AutoMigrate(&meta.Module{}); err != nil {
 		t.Fatalf("migrate runtime modules: %v", err)
 	}
 	_, _, serviceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(testRuntimeScope.cfg.ModulesPath, "crm", testRuntimeScope.cfg.DefaultChoysumPath)
@@ -216,11 +216,11 @@ func TestBuildModuleEntryScript_PrefersContextSessionForBuilderRuntimeState(t *t
 	if err := os.WriteFile(serviceIndex, []byte("globalThis.__migrationInjected = (globalThis.__migrationInjected || 0) + 1;\nexport {};\n"), 0o644); err != nil {
 		t.Fatalf("write service index: %v", err)
 	}
-	if err := runtimeDB.Create(&meta.IrModule{Name: "crm_mod", ApplicationStr: "crm", Status: meta.Installed, ServiceEntryPoint: "./service/index.ts"}).Error; err != nil {
+	if err := runtimeDB.Create(&meta.Module{Name: "crm_mod", ApplicationStr: "crm", Status: meta.Installed, ServiceEntryPoint: "./service/index.ts"}).Error; err != nil {
 		t.Fatalf("seed runtime installed module: %v", err)
 	}
 
-	runner := NewRunner(testRuntimeScope, nil, &meta.IrModule{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"})
+	runner := NewRunner(testRuntimeScope, nil, &meta.Module{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"})
 	baseScript, err := runner.buildModuleEntryScript(context.Background())
 	if err != nil {
 		t.Fatalf("buildModuleEntryScript(base) error = %v", err)
@@ -248,7 +248,7 @@ func TestRunnerValidationAndParsingHelpers(t *testing.T) {
 	}
 
 	testRuntimeScope := newScriptsTestScope(t)
-	runner := &Runner{runtimeScope: testRuntimeScope, module: &meta.IrModule{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"}, store: NewHistoryStore(testRuntimeScope)}
+	runner := &Runner{runtimeScope: testRuntimeScope, module: &meta.Module{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"}, store: NewHistoryStore(testRuntimeScope)}
 	runner.jsExecutor = jsexecutortest.NewUninitializedExecutor()
 	if err := runner.RunPhase(context.Background(), RunOptions{}); err != nil {
 		t.Fatalf("expected empty phase RunPhase to be no-op, got %v", err)
@@ -288,7 +288,7 @@ func TestRunnerRunPhaseExecutesMigrationsAndRestoresScripts(t *testing.T) {
 	testRuntimeScope := newScriptsTestScope(t)
 	bundlePath := writeScriptsRuntimeBundle(t, testRuntimeScope, "console.log('bundle')")
 	prepareRunnerModuleSource(t, testRuntimeScope, "base", "service/index.ts", "export const migration = {}\n")
-	moduleRef := &meta.IrModule{Name: "base", ApplicationStr: "core", Version: "1.2.0", ServiceEntryPoint: "service/index.ts"}
+	moduleRef := &meta.Module{Name: "base", ApplicationStr: "core", Version: "1.2.0", ServiceEntryPoint: "service/index.ts"}
 
 	var services []string
 	var migrationArgs [][]interface{}
@@ -334,7 +334,7 @@ func TestRunnerRunPhaseExecutesMigrationsAndRestoresScripts(t *testing.T) {
 		t.Fatalf("unexpected migration args: %#v", migrationArgs)
 	}
 
-	var history []metadata.IrModuleMigrationHistory
+	var history []metadata.ModuleMigrationHistory
 	if err := testRuntimeScope.session.WithContext(context.Background()).Order("version asc, script asc").Find(&history).Error; err != nil {
 		t.Fatalf("load migration history: %v", err)
 	}
@@ -364,12 +364,12 @@ func TestRunnerRunPhaseReuseExecutorScriptsAvoidsRedundantReload(t *testing.T) {
 	baseExecutor := newScriptsTestExecutorWithEngine(t, testRuntimeScope, engine)
 	countingExecutor := &reloadCountingExecutor{inner: baseExecutor}
 
-	runnerBase := NewRunner(testRuntimeScope, countingExecutor, &meta.IrModule{Name: "base", ApplicationStr: "core", Version: "1.2.0", ServiceEntryPoint: "service/index.ts"})
+	runnerBase := NewRunner(testRuntimeScope, countingExecutor, &meta.Module{Name: "base", ApplicationStr: "core", Version: "1.2.0", ServiceEntryPoint: "service/index.ts"})
 	if err := runnerBase.RunPhase(context.Background(), RunOptions{FromVersion: "1.0.0", ToVersion: "1.2.0", Phase: PhaseEnd, ReuseExecutorScripts: true}); err != nil {
 		t.Fatalf("runnerBase RunPhase() error = %v", err)
 	}
 
-	runnerTask := NewRunner(testRuntimeScope, countingExecutor, &meta.IrModule{Name: "task", ApplicationStr: "core", Version: "1.2.0", ServiceEntryPoint: "service/index.ts"})
+	runnerTask := NewRunner(testRuntimeScope, countingExecutor, &meta.Module{Name: "task", ApplicationStr: "core", Version: "1.2.0", ServiceEntryPoint: "service/index.ts"})
 	if err := runnerTask.RunPhase(context.Background(), RunOptions{FromVersion: "1.0.0", ToVersion: "1.2.0", Phase: PhaseEnd, ReuseExecutorScripts: true}); err != nil {
 		t.Fatalf("runnerTask RunPhase() error = %v", err)
 	}
@@ -383,7 +383,7 @@ func TestRunnerValidateAndRunPhaseFailurePaths(t *testing.T) {
 	testRuntimeScope := newScriptsTestScope(t)
 	writeScriptsRuntimeBundle(t, testRuntimeScope, "console.log('bundle')")
 	prepareRunnerModuleSource(t, testRuntimeScope, "base", "service/index.ts", "export const migration = {}\n")
-	moduleRef := &meta.IrModule{Name: "base", ApplicationStr: "core", Version: "1.2.0", ServiceEntryPoint: "service/index.ts"}
+	moduleRef := &meta.Module{Name: "base", ApplicationStr: "core", Version: "1.2.0", ServiceEntryPoint: "service/index.ts"}
 
 	t.Run("Validate restores previous scripts on registry error", func(t *testing.T) {
 		engine := &scriptsSelectiveEngine{execute: func(req *jsengine.JsRequest, _ []*jsengine.JsScript) (*jsengine.JsResponse, error) {
@@ -425,7 +425,7 @@ func TestRunnerValidateAndRunPhaseFailurePaths(t *testing.T) {
 			t.Fatalf("expected migration failure, got %v", err)
 		}
 
-		var row metadata.IrModuleMigrationHistory
+		var row metadata.ModuleMigrationHistory
 		if err := testRuntimeScope.session.WithContext(context.Background()).Where("script = ?", "broken").Take(&row).Error; err != nil {
 			t.Fatalf("load failed history row: %v", err)
 		}
@@ -531,7 +531,7 @@ func TestExecuteWithScriptsReloadFailureRollback(t *testing.T) {
 	runner := &Runner{
 		runtimeScope: testRuntimeScope,
 		jsExecutor:   executor,
-		module:       &meta.IrModule{Name: "base", ApplicationStr: "core"},
+		module:       &meta.Module{Name: "base", ApplicationStr: "core"},
 	}
 
 	newScript := &jsengine.JsScript{FileName: "new.js", Content: "new"}

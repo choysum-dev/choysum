@@ -35,7 +35,7 @@ func (p fakeGrpcPlugin) Generate(req *pluginpb.CodeGeneratorRequest) (*pluginpb.
 
 func TestWebGrpcGenerate(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
-	webGrpc := NewWebGrpcGenerator(runtimeScope, &meta.IrModule{Name: "base"})
+	webGrpc := NewWebGrpcGenerator(runtimeScope, &meta.Module{Name: "base"})
 	if webGrpc == nil || webGrpc.buildParameters() != "target=ts" || len(webGrpc.plugins) == 0 {
 		t.Fatalf("unexpected web grpc generator constructor state: %#v", webGrpc)
 	}
@@ -48,7 +48,7 @@ func TestWebGrpcGenerate(t *testing.T) {
 		t.Fatalf("write proto file: %v", err)
 	}
 
-	gen := &webGrpcGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, plugins: []GrpcPlugin{fakeGrpcPlugin{name: "fake-grpc"}}, modulesProtoDir: protoDir, modulesWebDir: outDir}
+	gen := &webGrpcGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "crm"}, plugins: []GrpcPlugin{fakeGrpcPlugin{name: "fake-grpc"}}, modulesProtoDir: protoDir, modulesWebDir: outDir}
 	request, err := gen.buildCodeGeneratorRequest([]string{protoPath})
 	if err != nil {
 		t.Fatalf("buildCodeGeneratorRequest() error = %v", err)
@@ -76,7 +76,7 @@ func TestWebGrpcGenerate(t *testing.T) {
 
 func TestWebGrpcGenerateWithoutProtoResultsReturnsInput(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
-	gen := &webGrpcGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, plugins: []GrpcPlugin{fakeGrpcPlugin{name: "fake-grpc"}}, modulesWebDir: t.TempDir()}
+	gen := &webGrpcGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "crm"}, plugins: []GrpcPlugin{fakeGrpcPlugin{name: "fake-grpc"}}, modulesWebDir: t.TempDir()}
 	input := []*module.GeneratorResult{{Name: "webservice", OutPaths: []string{"service.ts"}}}
 
 	results, err := gen.generate(context.Background(), input)
@@ -103,7 +103,7 @@ func TestWebGrpcGenerate_UsesWorkspaceGeneratedTargets(t *testing.T) {
 		t.Fatalf("write proto file: %v", err)
 	}
 
-	gen := &webGrpcGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, plugins: []GrpcPlugin{fakeGrpcPlugin{name: "fake-grpc"}}}
+	gen := &webGrpcGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "crm"}, plugins: []GrpcPlugin{fakeGrpcPlugin{name: "fake-grpc"}}}
 	ctx := staging.WithTmpRoot(context.Background(), t.TempDir())
 	results, err := gen.generate(ctx, []*module.GeneratorResult{{Name: "protobuf", OutPaths: []string{protoPath}}})
 	if err != nil {
@@ -121,7 +121,7 @@ func TestWebGrpcGenerate_WorkspaceTargetsRequireDefaultChoysumPath(t *testing.T)
 	runtimeScope := newGeneratorScope(t)
 	runtimeScope.cfg.DefaultChoysumPath = ""
 
-	gen := &webGrpcGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, plugins: []GrpcPlugin{fakeGrpcPlugin{name: "fake-grpc"}}}
+	gen := &webGrpcGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "crm"}, plugins: []GrpcPlugin{fakeGrpcPlugin{name: "fake-grpc"}}}
 	_, err := gen.generate(context.Background(), []*module.GeneratorResult{{Name: "protobuf", OutPaths: []string{"crm.proto"}}})
 	if err == nil || !strings.Contains(err.Error(), "resolve workspace generated api targets") {
 		t.Fatalf("expected workspace target resolution error, got %v", err)

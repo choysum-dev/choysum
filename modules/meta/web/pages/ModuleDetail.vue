@@ -16,7 +16,7 @@ import OPage from '@/web/web/components/page/OPage.vue';
 import ModuleDetailView from '../views/ModuleDetailView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
-import type IrModuleIndex from '@/meta/service/models/ir_module_index';
+import type MetaModuleIndex from '@/meta/service/models/module_index';
 
 withDefaults(
   defineProps<{
@@ -27,8 +27,8 @@ withDefaults(
 );
 
 const route = useRoute();
-const moduleStore = createStoreByModel<typeof IrModuleIndex>('meta.IrModuleIndex', {
-  storeId: `IrModuleIndex_${route.fullPath}`,
+const moduleStore = createStoreByModel<typeof MetaModuleIndex>('meta.MetaModuleIndex', {
+  storeId: `MetaModuleIndex_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });
 </script>

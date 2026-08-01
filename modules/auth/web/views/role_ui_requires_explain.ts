@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Normalize IrUiResource.Requires for RoleForm explain panel (UI-Option-A).
+ * Normalize MetaUiResource.Requires for RoleForm explain panel (UI-Option-A).
  */
 export function normalizeUiResourceRequires(raw: unknown): string[] {
   if (raw == null) return [];

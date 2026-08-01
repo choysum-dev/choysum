@@ -3,7 +3,7 @@
 
 package meta
 
-type IrApplication struct {
+type Application struct {
 	BaseModel `gorm:"embedded"`
 
 	Name     string `gorm:"type:varchar(255);uniqueIndex;not null"`
@@ -12,10 +12,10 @@ type IrApplication struct {
 	ProtoDir  string `gorm:"type:varchar(512);"`
 	ProtoFile string `gorm:"type:varchar(512);"`
 
-	Modules []*IrModule `gorm:"foreignKey:ApplicationId;constraint:OnDelete:CASCADE;"`
-	Models  []*IrModel  `gorm:"-"`
+	Modules []*Module `gorm:"foreignKey:ApplicationId;constraint:OnDelete:CASCADE;"`
+	Models  []*Model  `gorm:"-"`
 }
 
-func (app *IrApplication) TableName() string {
-	return "meta_ir_application"
+func (app *Application) TableName() string {
+	return "meta_application"
 }

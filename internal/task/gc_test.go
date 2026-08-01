@@ -209,7 +209,7 @@ func TestGarbageCollectorRetentionOverrides(t *testing.T) {
 
 	jobs := []Job{
 		{Id: "job-default", Status: "succeeded", FullMethod: "auth.User/Login", FinishedAt: &old},
-		{Id: "job-short", Status: "succeeded", FullMethod: "meta.Module/Install", FinishedAt: &old},
+		{Id: "job-short", Status: "succeeded", FullMethod: "meta.MetaModule/Install", FinishedAt: &old},
 	}
 	for i := range jobs {
 		jobs[i].RunAfter = now
@@ -225,7 +225,7 @@ func TestGarbageCollectorRetentionOverrides(t *testing.T) {
 
 	execs := []Execution{
 		{JobId: "exec-default", Status: "succeeded", FullMethod: "auth.User/Login", FinishedAt: &old},
-		{JobId: "exec-short", Status: "succeeded", FullMethod: "meta.Module/Install", FinishedAt: &old},
+		{JobId: "exec-short", Status: "succeeded", FullMethod: "meta.MetaModule/Install", FinishedAt: &old},
 	}
 	for i := range execs {
 		execs[i].CreatedAt = now
@@ -242,13 +242,13 @@ func TestGarbageCollectorRetentionOverrides(t *testing.T) {
 				TaskJob: &config.TaskRetentionEntry{
 					TaskRetentionPolicy: config.TaskRetentionPolicy{SucceededDays: 10, FailedDays: 10, CancelledDays: 10},
 					Overrides: map[string]*config.TaskRetentionPolicy{
-						"meta.Module/Install": {SucceededDays: 1, FailedDays: 1, CancelledDays: 1},
+						"meta.MetaModule/Install": {SucceededDays: 1, FailedDays: 1, CancelledDays: 1},
 					},
 				},
 				TaskExecution: &config.TaskRetentionEntry{
 					TaskRetentionPolicy: config.TaskRetentionPolicy{SucceededDays: 10, FailedDays: 10, CancelledDays: 10},
 					Overrides: map[string]*config.TaskRetentionPolicy{
-						"meta.Module/Install": {SucceededDays: 1, FailedDays: 1, CancelledDays: 1},
+						"meta.MetaModule/Install": {SucceededDays: 1, FailedDays: 1, CancelledDays: 1},
 					},
 				},
 			},

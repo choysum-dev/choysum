@@ -29,9 +29,9 @@ func (c *coordinator) defaultCheckWorkspaceFreshness(ctx context.Context) error 
 			return newBootstrapError(bootstrapErrCodeGateError, "database session is not available", nil)
 		}
 
-		if session.Migrator().HasTable((&meta.IrModule{}).TableName()) {
+		if session.Migrator().HasTable((&meta.Module{}).TableName()) {
 			var moduleCount int64
-			if err := session.Model(&meta.IrModule{}).Limit(1).Count(&moduleCount).Error; err != nil {
+			if err := session.Model(&meta.Module{}).Limit(1).Count(&moduleCount).Error; err != nil {
 				return newBootstrapError(bootstrapErrCodeGateError, "failed to inspect existing setup data", err)
 			}
 			if moduleCount > 0 {
@@ -39,8 +39,8 @@ func (c *coordinator) defaultCheckWorkspaceFreshness(ctx context.Context) error 
 			}
 		}
 
-		if session.Migrator().HasTable((&meta.IrModel{}).TableName()) {
-			var model meta.IrModel
+		if session.Migrator().HasTable((&meta.Model{}).TableName()) {
+			var model meta.Model
 			err := session.Select("id").Where("application = ? AND name = ?", "auth", "User").Take(&model).Error
 			if err == nil {
 				return newBootstrapError(bootstrapErrCodeWorkspaceNotFresh, "initial setup has already been completed: administrator model metadata already exists", nil)
@@ -50,8 +50,8 @@ func (c *coordinator) defaultCheckWorkspaceFreshness(ctx context.Context) error 
 			}
 		}
 
-		if session.Migrator().HasTable((&metadata.IrModelData{}).TableName()) {
-			var modelData metadata.IrModelData
+		if session.Migrator().HasTable((&metadata.ModelData{}).TableName()) {
+			var modelData metadata.ModelData
 			err := session.Select("id").Where("module = ? AND external_id = ?", "auth", "user_admin").Take(&modelData).Error
 			if err == nil {
 				return newBootstrapError(bootstrapErrCodeWorkspaceNotFresh, "initial setup has already been completed: administrator setup data already exists", nil)

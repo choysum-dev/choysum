@@ -7,8 +7,8 @@ import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
 import { _lt } from '../i18n';
 import Role from './role';
-import type IrApplication from '@/meta/service/models/ir_application';
-import type IrModel from '@/meta/service/models/ir_model';
+import type MetaApplication from '@/meta/service/models/application';
+import type MetaModel from '@/meta/service/models/model';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { mutateThenInvalidateAllAuthzCaches } from './_authz_mutation_helpers';
 import { assertExclusiveScope } from './_rule_scope_helpers';
@@ -71,34 +71,34 @@ export default class RoleRecordRule extends BaseModel {
   /**
    * Application-level scope when the rule targets an entire application.
    */
-  @Field<IrApplication>({
+  @Field<MetaApplication>({
     type: 'ManyToOneRef',
-    relation: { targetModel: 'meta.IrApplication' },
+    relation: { targetModel: 'meta.MetaApplication' },
     notNull: false,
     size: 20,
     index: true,
     string: _lt('Application', { scope: 'auth.model.RoleRecordRule.fields' }),
   })
-  IrApplicationId: string | null;
+  MetaApplicationId: string | null;
 
   /**
    * Model-level scope when the rule targets one concrete model.
    */
-  @Field<IrModel>({
+  @Field<MetaModel>({
     type: 'ManyToOneRef',
-    relation: { targetModel: 'meta.IrModel' },
+    relation: { targetModel: 'meta.MetaModel' },
     notNull: false,
     size: 20,
     index: true,
     checkConstraint: `(
         (deleted_at IS NOT NULL)
-        OR (ir_model_id IS NOT NULL AND ir_application_id IS NULL)
-        OR (ir_model_id IS NULL AND ir_application_id IS NOT NULL)
-        OR (ir_model_id IS NULL AND ir_application_id IS NULL)
+        OR (meta_model_id IS NOT NULL AND meta_application_id IS NULL)
+        OR (meta_model_id IS NULL AND meta_application_id IS NOT NULL)
+        OR (meta_model_id IS NULL AND meta_application_id IS NULL)
       )`,
     string: _lt('Model', { scope: 'auth.model.RoleRecordRule.fields' }),
   })
-  IrModelId: string | null;
+  MetaModelId: string | null;
 
   /**
    * Condition envelope applied to matching records.

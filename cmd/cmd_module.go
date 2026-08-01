@@ -493,16 +493,16 @@ func queryModuleIndexViews(runtimeScope scope.Scope, moduleName string) ([]modul
 			return nil
 		}
 		db := txScope.Session().DB
-		if !db.Migrator().HasTable(&metadata.IrModuleIndex{}) {
+		if !db.Migrator().HasTable(&metadata.ModuleIndex{}) {
 			return nil
 		}
 		hasIndex = true
 
-		q := db.Table((metadata.IrModuleIndex{}).TableName() + " AS idx")
-		if db.Migrator().HasTable(&meta.IrModule{}) {
+		q := db.Table((metadata.ModuleIndex{}).TableName() + " AS idx")
+		if db.Migrator().HasTable(&meta.Module{}) {
 			q = q.
 				Select("idx.module_name, idx.origin_type, idx.origin_ref, idx.available, idx.version, idx.local_path, mod.status AS install_status").
-				Joins("LEFT JOIN " + (&meta.IrModule{}).TableName() + " AS mod ON mod.name = idx.module_name")
+				Joins("LEFT JOIN " + (&meta.Module{}).TableName() + " AS mod ON mod.name = idx.module_name")
 		} else {
 			q = q.Select("idx.module_name, idx.origin_type, idx.origin_ref, idx.available, idx.version, idx.local_path, '' AS install_status")
 		}
@@ -609,13 +609,13 @@ func ensurePurgeModuleNotInstalled(runtimeScope scope.Scope, moduleName string) 
 		if txScope == nil || txScope.Session() == nil || txScope.Session().DB == nil {
 			return nil
 		}
-		if !txScope.Session().DB.Migrator().HasTable(&meta.IrModule{}) {
+		if !txScope.Session().DB.Migrator().HasTable(&meta.Module{}) {
 			return nil
 		}
 
 		var count int64
 		queryErr := txScope.Session().
-			Model(&meta.IrModule{}).
+			Model(&meta.Module{}).
 			Where("name = ? AND status IN ?", moduleName, []meta.Status{meta.Installed, meta.ToUpgrade}).
 			Count(&count).Error
 		if queryErr != nil {

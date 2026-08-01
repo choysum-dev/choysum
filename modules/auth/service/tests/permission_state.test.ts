@@ -9,16 +9,16 @@ import UserRole from '@/auth/service/models/user_role';
 import RoleInheritance from '@/auth/service/models/role_inheritance';
 import RoleMethodAccess from '@/auth/service/models/role_method_access';
 import RoleUiResource from '@/auth/service/models/role_ui_resource';
-import IrUiResource from '@/meta/service/models/ir_ui_resource';
-import IrUiResourceMenuRoute from '@/meta/service/models/ir_ui_resource_menu_route';
-import IrUiResourceRouteAction from '@/meta/service/models/ir_ui_resource_route_action';
+import MetaUiResource from '@/meta/service/models/ui_resource';
+import MetaUiResourceMenuRoute from '@/meta/service/models/ui_resource_menu_route';
+import MetaUiResourceRouteAction from '@/meta/service/models/ui_resource_route_action';
 import { createServiceByModel } from '@/core/service/rpc';
-import type IrApplicationModel from '@/meta/service/models/ir_application';
-import type IrModelModel from '@/meta/service/models/ir_model';
-import type IrServiceModel from '@/meta/service/models/ir_service';
-const IrApplication = createServiceByModel<typeof IrApplicationModel>('meta.IrApplication');
-const IrModel = createServiceByModel<typeof IrModelModel>('meta.IrModel');
-const IrService = createServiceByModel<typeof IrServiceModel>('meta.IrService');
+import type MetaApplicationModel from '@/meta/service/models/application';
+import type MetaModelModel from '@/meta/service/models/model';
+import type MetaServiceModel from '@/meta/service/models/service';
+const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
+const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
+const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -129,12 +129,12 @@ function setupAllowlistForFixtures(): void {
       'RoleUiResource:delete',
 
       // meta
-      'meta.IrApplication:read',
-      'IrApplication:read',
-      'meta.IrModel:read',
-      'meta.IrService:read',
-      'IrModel:read',
-      'IrService:read',
+      'meta.MetaApplication:read',
+      'MetaApplication:read',
+      'meta.MetaModel:read',
+      'meta.MetaService:read',
+      'MetaModel:read',
+      'MetaService:read',
     ],
   });
 }
@@ -151,7 +151,7 @@ function busyWait(ms: number): void {
 }
 
 async function resolveModelId(appName: string, modelName: string): Promise<string> {
-  const rows = await IrModel.Search(
+  const rows = await MetaModel.Search(
     {
       And: [
         ['Name', '=', modelName],
@@ -166,7 +166,7 @@ async function resolveModelId(appName: string, modelName: string): Promise<strin
 }
 
 async function resolveServiceId(modelId: string, serviceName: string): Promise<string> {
-  const rows = await IrService.Search(
+  const rows = await MetaService.Search(
     {
       And: [['ModelId', '=', modelId]],
     } as any,
@@ -189,7 +189,7 @@ async function resolveServiceId(modelId: string, serviceName: string): Promise<s
 }
 
 async function resolveService(modelId: string, serviceName: string): Promise<{ id: string; name: string }> {
-  const rows = await IrService.Search(
+  const rows = await MetaService.Search(
     {
       And: [['ModelId', '=', modelId]],
     } as any,
@@ -212,7 +212,7 @@ async function resolveService(modelId: string, serviceName: string): Promise<{ i
 }
 
 async function resolveApplicationId(appName: string): Promise<string> {
-  const hit = (await IrApplication.Search({ And: [['Name', '=', appName]] } as any, { fields: ['Id'], limit: 1 } as any))?.[0] as any;
+  const hit = (await MetaApplication.Search({ And: [['Name', '=', appName]] } as any, { fields: ['Id'], limit: 1 } as any))?.[0] as any;
   const id = String(hit?.Id || '').trim();
   if (!id) throw new Error(`meta application not found: ${appName}`);
   return id;
@@ -223,16 +223,16 @@ async function createUiResource(input: {
   type: 'ROUTE' | 'MENU' | 'ACTION';
   parentId?: string;
   requires?: string[];
-  IrApplicationId?: string | null;
+  MetaApplicationId?: string | null;
 }): Promise<void> {
   const parentDbId = input.parentId ? await resolveUiResourceDbId(input.parentId) : null;
-  await IrUiResource.Create(
+  await MetaUiResource.Create(
     {
       Name: input.resourceId,
       Type: input.type,
       ParentId: parentDbId ? ({ Id: parentDbId } as any) : null,
       Requires: input.requires ?? [],
-      IrApplicationId: input.IrApplicationId ?? null,
+      MetaApplicationId: input.MetaApplicationId ?? null,
       Module: 'auth',
     } as any,
     ['Id'] as any
@@ -240,20 +240,20 @@ async function createUiResource(input: {
 }
 
 async function createRoleUiResourceGrant(input: { roleId: string; resourceId: string; Mode?: 'allow' | 'deny' }): Promise<void> {
-  const rows = await IrUiResource.Search(
+  const rows = await MetaUiResource.Search(
     {
       And: [['Name', '=', input.resourceId]],
     } as any,
     { fields: ['Id'], limit: 1 } as any
   );
   const uiResourceId = String((rows as any)?.[0]?.Id || '').trim();
-  if (!uiResourceId) throw new Error(`IrUiResource not found: ${input.resourceId}`);
+  if (!uiResourceId) throw new Error(`MetaUiResource not found: ${input.resourceId}`);
 
   await RoleUiResource.Create(
     {
       RoleId: { Id: input.roleId } as any,
-      IrApplicationId: null,
-      IrUiResourceId: uiResourceId,
+      MetaApplicationId: null,
+      MetaUiResourceId: uiResourceId,
       Mode: input.Mode ?? 'allow',
     } as any,
     ['Id'] as any
@@ -263,21 +263,21 @@ async function createRoleUiResourceGrant(input: { roleId: string; resourceId: st
 async function createRoleUiGrant(input: { roleId: string; resourceId?: string; irApplicationId?: string | null; Mode?: 'allow' | 'deny' }): Promise<void> {
   let uiResourceId: string | null = null;
   if (input.resourceId) {
-    const rows = await IrUiResource.Search(
+    const rows = await MetaUiResource.Search(
       {
         And: [['Name', '=', input.resourceId]],
       } as any,
       { fields: ['Id'], limit: 1 } as any
     );
     uiResourceId = String((rows as any)?.[0]?.Id || '').trim() || null;
-    if (!uiResourceId) throw new Error(`IrUiResource not found: ${input.resourceId}`);
+    if (!uiResourceId) throw new Error(`MetaUiResource not found: ${input.resourceId}`);
   }
 
   await RoleUiResource.Create(
     {
       RoleId: { Id: input.roleId } as any,
-      IrApplicationId: input.irApplicationId ?? null,
-      IrUiResourceId: uiResourceId,
+      MetaApplicationId: input.irApplicationId ?? null,
+      MetaUiResourceId: uiResourceId,
       Mode: input.Mode ?? 'allow',
     } as any,
     ['Id'] as any
@@ -285,14 +285,14 @@ async function createRoleUiGrant(input: { roleId: string; resourceId?: string; i
 }
 
 async function resolveUiResourceDbId(resourceId: string): Promise<string> {
-  const rows = await IrUiResource.Search(
+  const rows = await MetaUiResource.Search(
     {
       And: [['Name', '=', resourceId]],
     } as any,
     { fields: ['Id'], limit: 1 } as any
   );
   const id = String((rows as any)?.[0]?.Id || '').trim();
-  if (!id) throw new Error(`IrUiResource not found: ${resourceId}`);
+  if (!id) throw new Error(`MetaUiResource not found: ${resourceId}`);
   return id;
 }
 
@@ -300,7 +300,7 @@ async function createMenuRouteRelation(input: { menuResourceId: string; routeRes
   const menuId = await resolveUiResourceDbId(input.menuResourceId);
   const routeId = await resolveUiResourceDbId(input.routeResourceId);
 
-  await IrUiResourceMenuRoute.Create(
+  await MetaUiResourceMenuRoute.Create(
     {
       MenuUiResourceId: { Id: menuId } as any,
       RouteUiResourceId: { Id: routeId } as any,
@@ -313,7 +313,7 @@ async function createRouteActionRelation(input: { routeResourceId: string; actio
   const routeId = await resolveUiResourceDbId(input.routeResourceId);
   const actionId = await resolveUiResourceDbId(input.actionResourceId);
 
-  await IrUiResourceRouteAction.Create(
+  await MetaUiResourceRouteAction.Create(
     {
       RouteUiResourceId: { Id: routeId } as any,
       ActionUiResourceId: { Id: actionId } as any,
@@ -467,11 +467,11 @@ test('PermissionState: rpc allow/deny emits method keys only on mixed service', 
 
       // allow browse, deny logout (same service => mixed)
       await RoleMethodAccess.Create(
-        { RoleId: { Id: r.id } as any, IrServiceId: browse.id, IrModelId: null, IrApplicationId: null, Mode: 'allow' } as any,
+        { RoleId: { Id: r.id } as any, MetaServiceId: browse.id, MetaModelId: null, MetaApplicationId: null, Mode: 'allow' } as any,
         ['Id'] as any
       );
       await RoleMethodAccess.Create(
-        { RoleId: { Id: r.id } as any, IrServiceId: logout.id, IrModelId: null, IrApplicationId: null, Mode: 'deny' } as any,
+        { RoleId: { Id: r.id } as any, MetaServiceId: logout.id, MetaModelId: null, MetaApplicationId: null, Mode: 'deny' } as any,
         ['Id'] as any
       );
 
@@ -512,10 +512,10 @@ test('PermissionState: model wildcard allow emits service wildcard', async () =>
         ['Id'] as any
       );
 
-      const modelId = await resolveModelId('meta', 'IrModel');
+      const modelId = await resolveModelId('meta', 'MetaModel');
 
       await RoleMethodAccess.Create(
-        { RoleId: { Id: r.id } as any, IrServiceId: null, IrModelId: modelId, IrApplicationId: null, Mode: 'allow' } as any,
+        { RoleId: { Id: r.id } as any, MetaServiceId: null, MetaModelId: modelId, MetaApplicationId: null, Mode: 'allow' } as any,
         ['Id'] as any
       );
 
@@ -546,7 +546,7 @@ test('PermissionState: application wildcard allow emits service wildcard', async
 
       const metaAppId = await resolveApplicationId('meta');
       await RoleMethodAccess.Create(
-        { RoleId: { Id: r.id } as any, IrServiceId: null, IrModelId: null, IrApplicationId: metaAppId, Mode: 'allow' } as any,
+        { RoleId: { Id: r.id } as any, MetaServiceId: null, MetaModelId: null, MetaApplicationId: metaAppId, Mode: 'allow' } as any,
         ['Id'] as any
       );
 
@@ -577,14 +577,14 @@ test('PermissionState: global wildcard deny suppresses allow output (deny-wins U
 
       // deny everything
       await RoleMethodAccess.Create(
-        { RoleId: { Id: r.id } as any, IrServiceId: null, IrModelId: null, IrApplicationId: null, Mode: 'deny' } as any,
+        { RoleId: { Id: r.id } as any, MetaServiceId: null, MetaModelId: null, MetaApplicationId: null, Mode: 'deny' } as any,
         ['Id'] as any
       );
 
       // add a narrower allow; should not surface in output for a denied service
       const metaAppId = await resolveApplicationId('meta');
       await RoleMethodAccess.Create(
-        { RoleId: { Id: r.id } as any, IrServiceId: null, IrModelId: null, IrApplicationId: metaAppId, Mode: 'allow' } as any,
+        { RoleId: { Id: r.id } as any, MetaServiceId: null, MetaModelId: null, MetaApplicationId: metaAppId, Mode: 'allow' } as any,
         ['Id'] as any
       );
 
@@ -749,9 +749,9 @@ test('PermissionState: maps UI resources from requires and backfills menu parent
       await RoleMethodAccess.Create(
         {
           RoleId: { Id: r.id } as any,
-          IrServiceId: browse.id,
-          IrModelId: null,
-          IrApplicationId: null,
+          MetaServiceId: browse.id,
+          MetaModelId: null,
+          MetaApplicationId: null,
           Mode: 'allow',
         } as any,
         ['Id'] as any
@@ -796,9 +796,9 @@ test('PermissionState: emits UI wildcard when role has global wildcard allow', a
       await RoleMethodAccess.Create(
         {
           RoleId: { Id: r.id } as any,
-          IrServiceId: null,
-          IrModelId: null,
-          IrApplicationId: null,
+          MetaServiceId: null,
+          MetaModelId: null,
+          MetaApplicationId: null,
           Mode: 'allow',
         } as any,
         ['Id'] as any
@@ -872,11 +872,11 @@ test('PermissionState: explicit RoleUiResource grant materializes UI whitelist w
       await createRoleUiResourceGrant({ roleId: r.id, resourceId: 'auth.route.explicit_page' });
 
       disableAllowlist();
-      const actionRows = await IrUiResource.Search(
+      const actionRows = await MetaUiResource.Search(
         {
           And: [['Name', '=', 'auth.action.explicit_edit']],
         } as any,
-        { fields: ['Id', 'Name', 'Type', 'ParentId', 'IrApplicationId', 'Requires'], limit: 1 } as any
+        { fields: ['Id', 'Name', 'Type', 'ParentId', 'MetaApplicationId', 'Requires'], limit: 1 } as any
       );
       expect(parseJsonStringArray(((actionRows as any)?.[0] as any)?.Requires ?? ((actionRows as any)?.[0] as any)?.requires)).toEqual([
         'rpc:/auth.User/DefinitelyMissingMethod',
@@ -1089,9 +1089,9 @@ test('PermissionState: Method deny brakes explicit ACTION even when UI grants it
       await RoleMethodAccess.Create(
         {
           RoleId: { Id: r.id } as any,
-          IrServiceId: browse.id,
-          IrModelId: null,
-          IrApplicationId: null,
+          MetaServiceId: browse.id,
+          MetaModelId: null,
+          MetaApplicationId: null,
           Mode: 'deny',
         } as any,
         ['Id'] as any
@@ -1148,8 +1148,8 @@ test('PermissionState: Method deny prevents ACTION wildcard under global UI allo
       await RoleUiResource.Create(
         {
           RoleId: { Id: r.id } as any,
-          IrApplicationId: null as any,
-          IrUiResourceId: null as any,
+          MetaApplicationId: null as any,
+          MetaUiResourceId: null as any,
           Mode: 'allow',
         } as any,
         ['Id'] as any
@@ -1157,9 +1157,9 @@ test('PermissionState: Method deny prevents ACTION wildcard under global UI allo
       await RoleMethodAccess.Create(
         {
           RoleId: { Id: r.id } as any,
-          IrServiceId: browse.id,
-          IrModelId: null,
-          IrApplicationId: null,
+          MetaServiceId: browse.id,
+          MetaModelId: null,
+          MetaApplicationId: null,
           Mode: 'deny',
         } as any,
         ['Id'] as any
@@ -1255,7 +1255,7 @@ test('PermissionState: application scope ui grant takes effect after refresh', a
         resourceId: 'auth.route.save_app_visible',
         type: 'ROUTE',
         requires: ['rpc:/auth.User/DefinitelyMissingMethod'],
-        IrApplicationId: authAppId,
+        MetaApplicationId: authAppId,
       });
 
       await createRoleUiGrant({ roleId: r.id, irApplicationId: authAppId });

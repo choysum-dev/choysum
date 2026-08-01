@@ -59,8 +59,8 @@
       "model": "auth.RoleUiResource",
       "values": {
         "RoleId": { "ref": "auth.e2e_role_sys_admin" },
-        "IrApplicationId": null,
-        "IrUiResourceId": null,
+        "MetaApplicationId": null,
+        "MetaUiResourceId": null,
         "Mode": "allow"
       }
     },
@@ -70,9 +70,9 @@
       "model": "auth.RoleMethodAccess",
       "values": {
         "RoleId": { "ref": "auth.e2e_role_sys_admin" },
-        "IrApplicationId": null,
-        "IrModelId": null,
-        "IrServiceId": null,
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": null,
         "Mode": "allow"
       }
     },
@@ -83,8 +83,8 @@
       "values": {
         "RoleId": { "ref": "auth.e2e_role_sys_admin" },
         "Kind": "grant",
-        "IrApplicationId": null,
-        "IrModelId": null,
+        "MetaApplicationId": null,
+        "MetaModelId": null,
         "Condition": { "And": [] },
         "PermRead": true,
         "PermWrite": true,
@@ -98,9 +98,9 @@
       "model": "auth.RoleFieldRule",
       "values": {
         "RoleId": { "ref": "auth.e2e_role_sys_admin" },
-        "IrApplicationId": null,
-        "IrModelId": null,
-        "IrFieldId": null,
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaFieldId": null,
         "PermRead": "allow",
         "PermWrite": "allow"
       }

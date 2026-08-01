@@ -89,7 +89,7 @@ func newPluginForTest(t *testing.T, parserImpl parser.Parser) *WebPrebuildPlugin
 	t.Helper()
 	testRuntimeScope := newTestScope(t)
 	testRuntimeOpts := runtimeOptionsFromScope(testRuntimeScope)
-	plugin := NewWebPrebuildPlugin(testRuntimeScope, &meta.IrModule{Name: "web"}, filepath.Join(testRuntimeOpts.modulesPath, "app", "web", "index.ts"), WithParser(parserImpl))
+	plugin := NewWebPrebuildPlugin(testRuntimeScope, &meta.Module{Name: "web"}, filepath.Join(testRuntimeOpts.modulesPath, "app", "web", "index.ts"), WithParser(parserImpl))
 	if plugin == nil {
 		t.Fatal("expected web prebuild plugin to be created")
 	}
@@ -218,7 +218,7 @@ func TestPrebuildVuePluginOnLoadPropagatesFileAndParserErrors(t *testing.T) {
 
 func TestDefinePluginsAndSetters(t *testing.T) {
 	plugin := newPluginForTest(t, fakeParser{})
-	plugins := plugin.DefinePlugins(plugin.Env, jsexecutortest.NewUninitializedExecutor(), &meta.IrModule{Name: "web"}, esbplugins.WithEntryPointImports([]string{"./boot"}), esbplugins.WithIndexHtmlOutFile("stage/index.html"))
+	plugins := plugin.DefinePlugins(plugin.Env, jsexecutortest.NewUninitializedExecutor(), &meta.Module{Name: "web"}, esbplugins.WithEntryPointImports([]string{"./boot"}), esbplugins.WithIndexHtmlOutFile("stage/index.html"))
 	if len(plugins) != 2 {
 		t.Fatalf("plugins len = %d, want 2", len(plugins))
 	}
@@ -232,7 +232,7 @@ func TestDefinePluginsAndSetters(t *testing.T) {
 		t.Fatalf("entry point imports = %q, want ./boot", got)
 	}
 
-	plugin = NewWebPrebuildPlugin(plugin.Env, &meta.IrModule{Name: "web"}, plugin.EntryPoint)
+	plugin = NewWebPrebuildPlugin(plugin.Env, &meta.Module{Name: "web"}, plugin.EntryPoint)
 	if plugin == nil || plugin.Parser == nil {
 		t.Fatal("expected default parser to be initialized")
 	}
@@ -243,8 +243,8 @@ func TestWebPrebuildPluginDefinePlugins_BindsRuntimeState(t *testing.T) {
 	runtimeScope := newTestScope(t)
 	baseOpts := runtimeOptionsFromScope(baseScope)
 	runtimeOpts := runtimeOptionsFromScope(runtimeScope)
-	baseModule := &meta.IrModule{Name: "base", Path: filepath.Join(baseOpts.modulesPath, "base", "web", "index.ts"), ApplicationStr: "base"}
-	runtimeModule := &meta.IrModule{Name: "runtime", Path: filepath.Join(runtimeOpts.modulesPath, "runtime", "web", "index.ts"), ApplicationStr: "runtime"}
+	baseModule := &meta.Module{Name: "base", Path: filepath.Join(baseOpts.modulesPath, "base", "web", "index.ts"), ApplicationStr: "base"}
+	runtimeModule := &meta.Module{Name: "runtime", Path: filepath.Join(runtimeOpts.modulesPath, "runtime", "web", "index.ts"), ApplicationStr: "runtime"}
 
 	plugin := NewWebPrebuildPlugin(baseScope, baseModule, filepath.Join(baseOpts.modulesPath, "base", "web", "index.ts"), WithParser(fakeParser{}))
 	if plugin == nil {

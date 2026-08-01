@@ -101,7 +101,7 @@ func TestProtoNameToExport(t *testing.T) {
 		{in: "___", want: "_"},
 		{in: "@@@", want: "_"},
 		{in: "_bad_", want: "Bad"},
-		{in: "IrApplication_Browse_Req", want: "IrApplicationBrowseReq"},
+		{in: "Application_Browse_Req", want: "ApplicationBrowseReq"},
 		{in: "null_value", want: "NullValue"},
 		{in: "sessionService", want: "SessionService"},
 	}

@@ -34,7 +34,7 @@ func NormalizeKind(kind string) string {
 
 // TranslationTerm is the per-application terminology storage row.
 // Physical table name is {application}_translation_term (see TranslationTermTableName).
-// MVP: no IrModel / @Model registration.
+// MVP: no Model / @Model registration.
 //
 // Unique key (Module, Lang, Scope, Src, Kind) is created per table in
 // EnsureTranslationTermTable — index names must be table-scoped (SQLite indexes are DB-global).

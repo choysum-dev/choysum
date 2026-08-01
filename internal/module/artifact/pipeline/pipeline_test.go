@@ -22,7 +22,7 @@ import (
 
 func TestExecuteValidationErrors(t *testing.T) {
 	ctx := staging.WithTmpRoot(context.Background(), t.TempDir())
-	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 
 	if err := Execute(ctx, planner.Plan{Op: planner.OpType("unknown")}, root, Callbacks{}); err == nil {
 		t.Fatal("expected unknown op error")
@@ -30,16 +30,16 @@ func TestExecuteValidationErrors(t *testing.T) {
 	if err := Execute(ctx, planner.Plan{Op: planner.OpInstall}, root, Callbacks{}); err == nil || err.Error() != `ResolveInstallModuleFromOrigin callback is required for install` {
 		t.Fatalf("unexpected install validation error: %v", err)
 	}
-	if err := Execute(ctx, planner.Plan{Op: planner.OpInstall}, root, Callbacks{ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) { return root, nil }}); err == nil || err.Error() != `Install callback is required for install` {
+	if err := Execute(ctx, planner.Plan{Op: planner.OpInstall}, root, Callbacks{ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) { return root, nil }}); err == nil || err.Error() != `Install callback is required for install` {
 		t.Fatalf("unexpected install validation error: %v", err)
 	}
 	if err := Execute(ctx, planner.Plan{Op: planner.OpUninstall}, root, Callbacks{}); err == nil || err.Error() != `ResolveInstalledModule callback is required for uninstall` {
 		t.Fatalf("unexpected uninstall validation error: %v", err)
 	}
-	if err := Execute(ctx, planner.Plan{Op: planner.OpUninstall}, root, Callbacks{ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil }}); err == nil || err.Error() != `Uninstall callback is required for uninstall` {
+	if err := Execute(ctx, planner.Plan{Op: planner.OpUninstall}, root, Callbacks{ResolveInstalledModule: func(name string) (*meta.Module, error) { return root, nil }}); err == nil || err.Error() != `Uninstall callback is required for uninstall` {
 		t.Fatalf("unexpected uninstall validation error: %v", err)
 	}
-	if err := Execute(ctx, planner.Plan{Op: planner.OpUpgrade}, root, Callbacks{ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil }}); err == nil || err.Error() != `Upgrade callback is required for upgrade` {
+	if err := Execute(ctx, planner.Plan{Op: planner.OpUpgrade}, root, Callbacks{ResolveInstalledModule: func(name string) (*meta.Module, error) { return root, nil }}); err == nil || err.Error() != `Upgrade callback is required for upgrade` {
 		t.Fatalf("unexpected upgrade validation error: %v", err)
 	}
 	if err := Execute(context.TODO(), planner.Plan{Op: planner.OpType("unknown")}, root, Callbacks{}); err == nil {
@@ -47,7 +47,7 @@ func TestExecuteValidationErrors(t *testing.T) {
 	}
 
 	planWithApps := planner.Plan{Op: planner.OpInstall, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}}
-	cb := Callbacks{ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) { return root, nil }, Install: func(module *meta.IrModule) error { return nil }}
+	cb := Callbacks{ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) { return root, nil }, Install: func(module *meta.Module) error { return nil }}
 	if err := Execute(ctx, planWithApps, root, cb); err == nil || err.Error() != `AppTargets callback is required` {
 		t.Fatalf("unexpected missing AppTargets error: %v", err)
 	}
@@ -77,14 +77,14 @@ func TestExecuteValidationErrors(t *testing.T) {
 
 func TestExecuteInstallGenerateModulesCanceledBeforeCallbacks(t *testing.T) {
 	ctx, cancel := context.WithCancel(staging.WithTmpRoot(context.Background(), t.TempDir()))
-	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 
 	err := Execute(ctx, planner.Plan{Op: planner.OpInstall, ModuleOrder: []string{"base"}}, root, Callbacks{
 		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
-		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) {
+		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) {
 			return nil, errors.New("fetch should not be called for root module")
 		},
-		Install: func(module *meta.IrModule) error {
+		Install: func(module *meta.Module) error {
 			cancel()
 			return nil
 		},
@@ -103,11 +103,11 @@ func TestExecuteInstallGenerateModulesCanceledBeforeCallbacks(t *testing.T) {
 }
 
 func TestExecuteUpgradeRunAppStageValidationErrors(t *testing.T) {
-	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}}
 	baseCallbacks := Callbacks{
-		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
-		Upgrade:                func(module *meta.IrModule) error { return nil },
+		ResolveInstalledModule: func(name string) (*meta.Module, error) { return root, nil },
+		Upgrade:                func(module *meta.Module) error { return nil },
 	}
 
 	if err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, baseCallbacks); err == nil || err.Error() != `AppTargets callback is required` {
@@ -138,7 +138,7 @@ func TestExecuteInstallAppStageSuccess(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
 	modulesRoot := filepath.Join(rootDir, "modules")
-	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{
 		Op:                  planner.OpInstall,
 		ModuleOrder:         []string{"base"},
@@ -160,8 +160,8 @@ func TestExecuteInstallAppStageSuccess(t *testing.T) {
 	}
 
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
-		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) { return root, nil },
-		Install: func(module *meta.IrModule) error {
+		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) { return root, nil },
+		Install: func(module *meta.Module) error {
 			installCalls++
 			return nil
 		},
@@ -223,7 +223,7 @@ func TestExecuteInstallEmitsUnifiedProgressEvents(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
 	modulesRoot := filepath.Join(rootDir, "modules")
-	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 	pl := planner.Plan{
 		Op:                  planner.OpInstall,
 		ModuleOrder:         []string{"base"},
@@ -233,8 +233,8 @@ func TestExecuteInstallEmitsUnifiedProgressEvents(t *testing.T) {
 
 	var events []ProgressEvent
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), pl, root, Callbacks{
-		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) { return root, nil },
-		Install:                        func(module *meta.IrModule) error { return nil },
+		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) { return root, nil },
+		Install:                        func(module *meta.Module) error { return nil },
 		OnProgress: func(event ProgressEvent) {
 			events = append(events, event)
 		},
@@ -298,7 +298,7 @@ func TestExecuteInstallAppStageSuccessWithRuntimeProtoTarget(t *testing.T) {
 	distRoot := filepath.Join(rootDir, "dist")
 	modulesRoot := filepath.Join(rootDir, "modules")
 	runtimeProtoRoot := filepath.Join(rootDir, "runtime", "api")
-	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{
 		Op:           planner.OpInstall,
 		ModuleOrder:  []string{"base"},
@@ -306,8 +306,8 @@ func TestExecuteInstallAppStageSuccessWithRuntimeProtoTarget(t *testing.T) {
 	}
 
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
-		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) { return root, nil },
-		Install:                        func(module *meta.IrModule) error { return nil },
+		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) { return root, nil },
+		Install:                        func(module *meta.Module) error { return nil },
 		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
 				ProtoDir:        filepath.Join(modulesRoot, "api", "proto", appName),
@@ -357,15 +357,15 @@ func TestExecuteUpgradeBasePreservesSiblingRuntimeProtoDirs(t *testing.T) {
 		}
 	}
 
-	root := &meta.IrModule{Name: "base", ApplicationStr: "base"}
+	root := &meta.Module{Name: "base", ApplicationStr: "base"}
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), planner.Plan{
 		Op:                  planner.OpUpgrade,
 		ModuleOrder:         []string{"base"},
 		AffectedApps:        []string{"base"},
 		NeedsGlobalWebBuild: true,
 	}, root, Callbacks{
-		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
-		Upgrade:                func(module *meta.IrModule) error { return nil },
+		ResolveInstalledModule: func(name string) (*meta.Module, error) { return root, nil },
+		Upgrade:                func(module *meta.Module) error { return nil },
 		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 			return "", ModulesAppTargets{
 				ProtoDir:        filepath.Join(modulesRoot, "api", "proto", appName),
@@ -405,7 +405,7 @@ func TestExecuteInfoLogsSummarizeAppStageAndHideManifestCommit(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
 	modulesRoot := filepath.Join(rootDir, "modules")
-	root := &meta.IrModule{Name: "core"}
+	root := &meta.Module{Name: "core"}
 	var logBuf bytes.Buffer
 
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), planner.Plan{
@@ -414,8 +414,8 @@ func TestExecuteInfoLogsSummarizeAppStageAndHideManifestCommit(t *testing.T) {
 		AffectedApps: []string{"task", "", "base", "task"},
 	}, root, Callbacks{
 		Logger:                 slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug})),
-		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
-		Upgrade:                func(module *meta.IrModule) error { return nil },
+		ResolveInstalledModule: func(name string) (*meta.Module, error) { return root, nil },
+		Upgrade:                func(module *meta.Module) error { return nil },
 		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
 				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
@@ -484,7 +484,7 @@ func TestExecuteInfoLogsSummarizeAppStageAndHideManifestCommit(t *testing.T) {
 	}
 }
 func TestExecuteInstallSkipsWebModuleGeneration(t *testing.T) {
-	root := &meta.IrModule{Name: "webmod", ApplicationStr: "web"}
+	root := &meta.Module{Name: "webmod", ApplicationStr: "web"}
 	installCalls := 0
 	generateCalls := 0
 	appTargetsCalls := 0
@@ -493,10 +493,10 @@ func TestExecuteInstallSkipsWebModuleGeneration(t *testing.T) {
 		Op:          planner.OpInstall,
 		ModuleOrder: []string{"webmod"},
 	}, root, Callbacks{
-		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) {
+		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) {
 			return nil, errors.New("fetch should not be used for root module")
 		},
-		Install: func(module *meta.IrModule) error {
+		Install: func(module *meta.Module) error {
 			installCalls++
 			return nil
 		},
@@ -524,7 +524,7 @@ func TestExecuteUpgradeRollsBackCommittedStagesOnManifestFailure(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
 	modulesRoot := filepath.Join(rootDir, "modules")
-	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{
 		Op:           planner.OpUpgrade,
 		ModuleOrder:  []string{"base"},
@@ -535,8 +535,8 @@ func TestExecuteUpgradeRollsBackCommittedStagesOnManifestFailure(t *testing.T) {
 	generateCalls := 0
 
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
-		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
-		Upgrade: func(module *meta.IrModule) error {
+		ResolveInstalledModule: func(name string) (*meta.Module, error) { return root, nil },
+		Upgrade: func(module *meta.Module) error {
 			upgradeCalls++
 			return nil
 		},
@@ -582,7 +582,7 @@ func TestExecuteUpgradeGlobalWebFailureRollsBackCommittedStages(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
 	modulesRoot := filepath.Join(rootDir, "modules")
-	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{
 		Op:                  planner.OpUpgrade,
 		ModuleOrder:         []string{"base"},
@@ -591,8 +591,8 @@ func TestExecuteUpgradeGlobalWebFailureRollsBackCommittedStages(t *testing.T) {
 	}
 
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
-		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
-		Upgrade:                func(module *meta.IrModule) error { return nil },
+		ResolveInstalledModule: func(name string) (*meta.Module, error) { return root, nil },
+		Upgrade:                func(module *meta.Module) error { return nil },
 		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
 				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
@@ -630,11 +630,11 @@ func TestExecuteUpgradeGlobalWebFailureRollsBackCommittedStages(t *testing.T) {
 
 func TestExecuteGlobalWebAndBundlesValidation(t *testing.T) {
 	rootDir := t.TempDir()
-	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{Op: planner.OpInstall, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}, NeedsGlobalWebBuild: true}
 	baseCallbacks := Callbacks{
-		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) { return root, nil },
-		Install:                        func(module *meta.IrModule) error { return nil },
+		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) { return root, nil },
+		Install:                        func(module *meta.Module) error { return nil },
 		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 			return filepath.Join(rootDir, "dist", "apps", appName), ModulesAppTargets{
 				ProtoDir:   filepath.Join(rootDir, "modules", "api", "proto", appName),
@@ -672,17 +672,17 @@ func TestExecuteUpgradeCallsUpgradeOnly(t *testing.T) {
 		AffectedApps:        nil,
 		NeedsGlobalWebBuild: false,
 	}
-	root := &meta.IrModule{Name: "core"}
+	root := &meta.Module{Name: "core"}
 
 	upgradeCalled := 0
 	loadCalled := false
 
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
-		ResolveInstalledModule: func(name string) (*meta.IrModule, error) {
+		ResolveInstalledModule: func(name string) (*meta.Module, error) {
 			loadCalled = true
 			return nil, nil
 		},
-		Upgrade: func(module *meta.IrModule) error {
+		Upgrade: func(module *meta.Module) error {
 			upgradeCalled++
 			return nil
 		},
@@ -699,25 +699,25 @@ func TestExecuteUpgradeCallsUpgradeOnly(t *testing.T) {
 }
 
 func TestExecuteLoadAndFetchErrors(t *testing.T) {
-	root := &meta.IrModule{Name: "root"}
+	root := &meta.Module{Name: "root"}
 
 	if err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), planner.Plan{Op: planner.OpInstall, ModuleOrder: []string{"dep"}}, root, Callbacks{
-		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) { return nil, errors.New("fetch failed") },
-		Install:                        func(module *meta.IrModule) error { return nil },
+		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) { return nil, errors.New("fetch failed") },
+		Install:                        func(module *meta.Module) error { return nil },
 	}); err == nil || err.Error() != "resolve install module from origin dep: fetch failed" {
 		t.Fatalf("unexpected install fetch error: %v", err)
 	}
 
 	if err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), planner.Plan{Op: planner.OpUninstall, ModuleOrder: []string{"dep"}}, root, Callbacks{
-		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return nil, errors.New("load failed") },
-		Uninstall:              func(module *meta.IrModule) error { return nil },
+		ResolveInstalledModule: func(name string) (*meta.Module, error) { return nil, errors.New("load failed") },
+		Uninstall:              func(module *meta.Module) error { return nil },
 	}); err == nil || err.Error() != "resolve installed module dep: load failed" {
 		t.Fatalf("unexpected uninstall load error: %v", err)
 	}
 
 	if err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"dep"}}, root, Callbacks{
-		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return nil, errors.New("load failed") },
-		Upgrade:                func(module *meta.IrModule) error { return nil },
+		ResolveInstalledModule: func(name string) (*meta.Module, error) { return nil, errors.New("load failed") },
+		Upgrade:                func(module *meta.Module) error { return nil },
 	}); err == nil || err.Error() != "resolve installed module dep: load failed" {
 		t.Fatalf("unexpected upgrade load error: %v", err)
 	}
@@ -729,11 +729,11 @@ func TestExecuteCanceledContextStopsBeforeCallbacks(t *testing.T) {
 
 	fetchCalled := false
 	err := Execute(ctx, planner.Plan{Op: planner.OpInstall, ModuleOrder: []string{"dep"}}, nil, Callbacks{
-		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) {
+		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) {
 			fetchCalled = true
-			return &meta.IrModule{Name: name}, nil
+			return &meta.Module{Name: name}, nil
 		},
-		Install: func(module *meta.IrModule) error { return nil },
+		Install: func(module *meta.Module) error { return nil },
 	})
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected context canceled, got %v", err)
@@ -744,12 +744,12 @@ func TestExecuteCanceledContextStopsBeforeCallbacks(t *testing.T) {
 }
 
 func TestExecuteInstallGenerateModulesValidationErrors(t *testing.T) {
-	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), planner.Plan{Op: planner.OpInstall, ModuleOrder: []string{"base"}}, root, Callbacks{
-		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) {
+		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) {
 			return nil, errors.New("fetch should not be called for root module")
 		},
-		Install: func(module *meta.IrModule) error { return nil },
+		Install: func(module *meta.Module) error { return nil },
 		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 			return "", ModulesAppTargets{ProtoDir: "", WebDir: "/tmp/web", ServiceDir: "/tmp/service"}, nil
 		},
@@ -763,7 +763,7 @@ func TestExecuteInstallGenerateModulesValidationErrors(t *testing.T) {
 }
 
 func TestExecuteInstallGenerateModulesCallbackErrors(t *testing.T) {
-	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 	tests := []struct {
 		name string
 		cb   Callbacks
@@ -772,10 +772,10 @@ func TestExecuteInstallGenerateModulesCallbackErrors(t *testing.T) {
 		{
 			name: "app targets error",
 			cb: Callbacks{
-				ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) {
+				ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) {
 					return nil, errors.New("fetch should not be called for root module")
 				},
-				Install: func(module *meta.IrModule) error { return nil },
+				Install: func(module *meta.Module) error { return nil },
 				AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 					return "", ModulesAppTargets{}, errors.New("app targets failed")
 				},
@@ -788,10 +788,10 @@ func TestExecuteInstallGenerateModulesCallbackErrors(t *testing.T) {
 		{
 			name: "generate app error",
 			cb: Callbacks{
-				ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) {
+				ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) {
 					return nil, errors.New("fetch should not be called for root module")
 				},
-				Install: func(module *meta.IrModule) error { return nil },
+				Install: func(module *meta.Module) error { return nil },
 				AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 					rootDir := t.TempDir()
 					return "", ModulesAppTargets{
@@ -829,24 +829,24 @@ func TestExecuteNilModulesAreSkipped(t *testing.T) {
 			name: "install skips nil fetched module",
 			plan: planner.Plan{Op: planner.OpInstall, ModuleOrder: []string{"dep"}},
 			cb: Callbacks{
-				ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) { return nil, nil },
-				Install:                        func(module *meta.IrModule) error { return errors.New("install should not be called") },
+				ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) { return nil, nil },
+				Install:                        func(module *meta.Module) error { return errors.New("install should not be called") },
 			},
 		},
 		{
 			name: "uninstall skips nil loaded module",
 			plan: planner.Plan{Op: planner.OpUninstall, ModuleOrder: []string{"dep"}},
 			cb: Callbacks{
-				ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return nil, nil },
-				Uninstall:              func(module *meta.IrModule) error { return errors.New("uninstall should not be called") },
+				ResolveInstalledModule: func(name string) (*meta.Module, error) { return nil, nil },
+				Uninstall:              func(module *meta.Module) error { return errors.New("uninstall should not be called") },
 			},
 		},
 		{
 			name: "upgrade skips nil loaded module",
 			plan: planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"dep"}},
 			cb: Callbacks{
-				ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return nil, nil },
-				Upgrade:                func(module *meta.IrModule) error { return errors.New("upgrade should not be called") },
+				ResolveInstalledModule: func(name string) (*meta.Module, error) { return nil, nil },
+				Upgrade:                func(module *meta.Module) error { return errors.New("upgrade should not be called") },
 			},
 		},
 	}
@@ -861,7 +861,7 @@ func TestExecuteNilModulesAreSkipped(t *testing.T) {
 }
 
 func TestExecuteOperationCallbackErrors(t *testing.T) {
-	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 	tests := []struct {
 		name string
 		plan planner.Plan
@@ -872,10 +872,10 @@ func TestExecuteOperationCallbackErrors(t *testing.T) {
 			name: "install callback error",
 			plan: planner.Plan{Op: planner.OpInstall, ModuleOrder: []string{"base"}},
 			cb: Callbacks{
-				ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) {
+				ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) {
 					return nil, errors.New("fetch should not be called for root module")
 				},
-				Install: func(module *meta.IrModule) error { return errors.New("install failed") },
+				Install: func(module *meta.Module) error { return errors.New("install failed") },
 			},
 			want: "install failed",
 		},
@@ -883,10 +883,10 @@ func TestExecuteOperationCallbackErrors(t *testing.T) {
 			name: "uninstall callback error",
 			plan: planner.Plan{Op: planner.OpUninstall, ModuleOrder: []string{"base"}},
 			cb: Callbacks{
-				ResolveInstalledModule: func(name string) (*meta.IrModule, error) {
+				ResolveInstalledModule: func(name string) (*meta.Module, error) {
 					return nil, errors.New("load should not be called for root module")
 				},
-				Uninstall: func(module *meta.IrModule) error { return errors.New("uninstall failed") },
+				Uninstall: func(module *meta.Module) error { return errors.New("uninstall failed") },
 			},
 			want: "uninstall failed",
 		},
@@ -894,10 +894,10 @@ func TestExecuteOperationCallbackErrors(t *testing.T) {
 			name: "upgrade callback error",
 			plan: planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}},
 			cb: Callbacks{
-				ResolveInstalledModule: func(name string) (*meta.IrModule, error) {
+				ResolveInstalledModule: func(name string) (*meta.Module, error) {
 					return nil, errors.New("load should not be called for root module")
 				},
-				Upgrade: func(module *meta.IrModule) error { return errors.New("upgrade failed") },
+				Upgrade: func(module *meta.Module) error { return errors.New("upgrade failed") },
 			},
 			want: "upgrade failed",
 		},
@@ -917,15 +917,15 @@ func TestExecuteUpgradeNoGlobalWebManifestSuccess(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
 	modulesRoot := filepath.Join(rootDir, "modules")
-	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 	manifestCalls := 0
 	webTargetCalls := 0
 	webBuildCalls := 0
 
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"", "crm", "crm"}}, root, Callbacks{
 		Logger:                 slog.New(slog.NewTextHandler(io.Discard, nil)),
-		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
-		Upgrade:                func(module *meta.IrModule) error { return nil },
+		ResolveInstalledModule: func(name string) (*meta.Module, error) { return root, nil },
+		Upgrade:                func(module *meta.Module) error { return nil },
 		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
 				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
@@ -987,12 +987,12 @@ func TestExecuteBundlesTargetErrorRollsBackCommittedDist(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
 	modulesRoot := filepath.Join(rootDir, "modules")
-	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}}
 
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
-		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
-		Upgrade:                func(module *meta.IrModule) error { return nil },
+		ResolveInstalledModule: func(name string) (*meta.Module, error) { return root, nil },
+		Upgrade:                func(module *meta.Module) error { return nil },
 		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
 				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
@@ -1031,12 +1031,12 @@ func TestExecuteDistManifestTargetErrorRollsBackCommittedStages(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
 	modulesRoot := filepath.Join(rootDir, "modules")
-	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}}
 
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
-		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
-		Upgrade:                func(module *meta.IrModule) error { return nil },
+		ResolveInstalledModule: func(name string) (*meta.Module, error) { return root, nil },
+		Upgrade:                func(module *meta.Module) error { return nil },
 		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
 				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
@@ -1071,10 +1071,10 @@ func TestExecuteDistManifestTargetErrorRollsBackCommittedStages(t *testing.T) {
 }
 
 func TestExecuteAffectedAppsValidationErrors(t *testing.T) {
-	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}}, root, Callbacks{
-		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
-		Upgrade:                func(module *meta.IrModule) error { return nil },
+		ResolveInstalledModule: func(name string) (*meta.Module, error) { return root, nil },
+		Upgrade:                func(module *meta.Module) error { return nil },
 		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 			return "", ModulesAppTargets{ProtoDir: "/tmp/proto", WebDir: "", ServiceDir: "/tmp/service"}, nil
 		},
@@ -1091,12 +1091,12 @@ func TestExecuteBundlesBuildFailureRollsBackCommittedDist(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
 	modulesRoot := filepath.Join(rootDir, "modules")
-	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}}
 
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
-		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
-		Upgrade:                func(module *meta.IrModule) error { return nil },
+		ResolveInstalledModule: func(name string) (*meta.Module, error) { return root, nil },
+		Upgrade:                func(module *meta.Module) error { return nil },
 		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
 				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
@@ -1136,12 +1136,12 @@ func TestExecuteWebTargetErrorRollsBackCommittedStages(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
 	modulesRoot := filepath.Join(rootDir, "modules")
-	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}, NeedsGlobalWebBuild: true}
 
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
-		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
-		Upgrade:                func(module *meta.IrModule) error { return nil },
+		ResolveInstalledModule: func(name string) (*meta.Module, error) { return root, nil },
+		Upgrade:                func(module *meta.Module) error { return nil },
 		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
 				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
@@ -1179,12 +1179,12 @@ func TestExecuteGenerateAppFailureForLaterAppAbortsAllStages(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
 	modulesRoot := filepath.Join(rootDir, "modules")
-	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm", "erp"}}
 
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
-		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
-		Upgrade:                func(module *meta.IrModule) error { return nil },
+		ResolveInstalledModule: func(name string) (*meta.Module, error) { return root, nil },
+		Upgrade:                func(module *meta.Module) error { return nil },
 		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
 				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
@@ -1224,12 +1224,12 @@ func TestExecuteBuildBackendFailureForLaterAppAbortsAllStages(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
 	modulesRoot := filepath.Join(rootDir, "modules")
-	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm", "erp"}}
 
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
-		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
-		Upgrade:                func(module *meta.IrModule) error { return nil },
+		ResolveInstalledModule: func(name string) (*meta.Module, error) { return root, nil },
+		Upgrade:                func(module *meta.Module) error { return nil },
 		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
 				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
@@ -1267,19 +1267,19 @@ func TestExecuteBuildBackendFailureForLaterAppAbortsAllStages(t *testing.T) {
 
 func TestExecuteInstallGeneratesModulesOncePerApplication(t *testing.T) {
 	rootDir := t.TempDir()
-	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
-	dep := &meta.IrModule{Name: "dep", ApplicationStr: "crm"}
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
+	dep := &meta.Module{Name: "dep", ApplicationStr: "crm"}
 	appTargetsCalls := 0
 	generateCalls := 0
 
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), planner.Plan{Op: planner.OpInstall, ModuleOrder: []string{"base", "dep"}}, root, Callbacks{
-		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) {
+		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) {
 			if name == "dep" {
 				return dep, nil
 			}
 			return nil, errors.New("unexpected fetch")
 		},
-		Install: func(module *meta.IrModule) error { return nil },
+		Install: func(module *meta.Module) error { return nil },
 		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 			appTargetsCalls++
 			return "", ModulesAppTargets{
@@ -1303,7 +1303,7 @@ func TestExecuteInstallGeneratesModulesOncePerApplication(t *testing.T) {
 
 func TestExecuteInstallProgressReportsFailedWhenPostInstallGenerationFails(t *testing.T) {
 	ctx := staging.WithTmpRoot(context.Background(), t.TempDir())
-	root := &meta.IrModule{Name: "core", ApplicationStr: "base"}
+	root := &meta.Module{Name: "core", ApplicationStr: "base"}
 	genErr := errors.New("generate app failed")
 	rootDir := t.TempDir()
 
@@ -1312,10 +1312,10 @@ func TestExecuteInstallProgressReportsFailedWhenPostInstallGenerationFails(t *te
 		Op:          planner.OpInstall,
 		ModuleOrder: []string{"core"},
 	}, root, Callbacks{
-		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) {
+		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) {
 			return root, nil
 		},
-		Install: func(module *meta.IrModule) error {
+		Install: func(module *meta.Module) error {
 			return nil
 		},
 		OnInstallProgress: func(progress ModuleInstallProgress) {
@@ -1365,7 +1365,7 @@ func TestExecuteInstallModuleCommitFailuresRollbackCommittedStages(t *testing.T)
 			const opID = "pipeline-modules-commit-failure"
 			rootDir := t.TempDir()
 			modulesRoot := filepath.Join(rootDir, "modules")
-			root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+			root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 
 			stageDir := func(stage string) string {
 				return filepath.Join(modulesRoot, "api", stage, "crm")
@@ -1397,10 +1397,10 @@ func TestExecuteInstallModuleCommitFailuresRollbackCommittedStages(t *testing.T)
 			}
 
 			err := Execute(staging.WithOpID(staging.WithTmpRoot(context.Background(), t.TempDir()), opID), planner.Plan{Op: planner.OpInstall, ModuleOrder: []string{"base"}}, root, Callbacks{
-				ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) {
+				ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) {
 					return nil, errors.New("fetch should not be called for root module")
 				},
-				Install: func(module *meta.IrModule) error { return nil },
+				Install: func(module *meta.Module) error { return nil },
 				AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 					return "", ModulesAppTargets{
 						ProtoDir:   stageDir("proto"),
@@ -1478,14 +1478,14 @@ func TestExecuteInstallLaterModuleFailureRollsBackEarlierModuleGen(t *testing.T)
 		Op:           planner.OpInstall,
 		ModuleOrder:  []string{"base", "extra"},
 		AffectedApps: []string{"crm"},
-	}, &meta.IrModule{Name: "base", ApplicationStr: "crm"}, Callbacks{
-		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) {
+	}, &meta.Module{Name: "base", ApplicationStr: "crm"}, Callbacks{
+		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) {
 			if name == "extra" {
-				return &meta.IrModule{Name: "extra"}, nil
+				return &meta.Module{Name: "extra"}, nil
 			}
 			return nil, errors.New("unexpected resolve: " + name)
 		},
-		Install: func(module *meta.IrModule) error {
+		Install: func(module *meta.Module) error {
 			installCalls++
 			if module.Name == "extra" {
 				return wantErr
@@ -1549,16 +1549,16 @@ func TestExecuteInstallModulePrepareFailuresAbortPreparedStages(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			rootDir := t.TempDir()
 			modulesRoot := filepath.Join(rootDir, "modules")
-			root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+			root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 
 			blockerPath := filepath.Join(append([]string{rootDir}, tc.blockerPathParts...)...)
 			writeBlockerFile(t, blockerPath)
 
 			err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), planner.Plan{Op: planner.OpInstall, ModuleOrder: []string{"base"}}, root, Callbacks{
-				ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) {
+				ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) {
 					return nil, errors.New("fetch should not be called for root module")
 				},
-				Install: func(module *meta.IrModule) error { return nil },
+				Install: func(module *meta.Module) error { return nil },
 				AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 					return "", ModulesAppTargets{
 						ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
@@ -1599,10 +1599,10 @@ func TestExecuteUpgradePrepareFailuresAbortPreparedStages(t *testing.T) {
 			plan:             planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}},
 			callbacks: func(rootDir string, distRoot string, modulesRoot string) Callbacks {
 				return Callbacks{
-					ResolveInstalledModule: func(name string) (*meta.IrModule, error) {
-						return &meta.IrModule{Name: "base", ApplicationStr: "crm"}, nil
+					ResolveInstalledModule: func(name string) (*meta.Module, error) {
+						return &meta.Module{Name: "base", ApplicationStr: "crm"}, nil
 					},
-					Upgrade: func(module *meta.IrModule) error { return nil },
+					Upgrade: func(module *meta.Module) error { return nil },
 					AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 						return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
 							ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
@@ -1627,10 +1627,10 @@ func TestExecuteUpgradePrepareFailuresAbortPreparedStages(t *testing.T) {
 			plan:             planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}},
 			callbacks: func(rootDir string, distRoot string, modulesRoot string) Callbacks {
 				return Callbacks{
-					ResolveInstalledModule: func(name string) (*meta.IrModule, error) {
-						return &meta.IrModule{Name: "base", ApplicationStr: "crm"}, nil
+					ResolveInstalledModule: func(name string) (*meta.Module, error) {
+						return &meta.Module{Name: "base", ApplicationStr: "crm"}, nil
 					},
-					Upgrade: func(module *meta.IrModule) error { return nil },
+					Upgrade: func(module *meta.Module) error { return nil },
 					AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 						return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
 							ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
@@ -1655,10 +1655,10 @@ func TestExecuteUpgradePrepareFailuresAbortPreparedStages(t *testing.T) {
 			plan:             planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}},
 			callbacks: func(rootDir string, distRoot string, modulesRoot string) Callbacks {
 				return Callbacks{
-					ResolveInstalledModule: func(name string) (*meta.IrModule, error) {
-						return &meta.IrModule{Name: "base", ApplicationStr: "crm"}, nil
+					ResolveInstalledModule: func(name string) (*meta.Module, error) {
+						return &meta.Module{Name: "base", ApplicationStr: "crm"}, nil
 					},
-					Upgrade: func(module *meta.IrModule) error { return nil },
+					Upgrade: func(module *meta.Module) error { return nil },
 					AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 						return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
 							ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
@@ -1683,10 +1683,10 @@ func TestExecuteUpgradePrepareFailuresAbortPreparedStages(t *testing.T) {
 			plan:             planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}},
 			callbacks: func(rootDir string, distRoot string, modulesRoot string) Callbacks {
 				return Callbacks{
-					ResolveInstalledModule: func(name string) (*meta.IrModule, error) {
-						return &meta.IrModule{Name: "base", ApplicationStr: "crm"}, nil
+					ResolveInstalledModule: func(name string) (*meta.Module, error) {
+						return &meta.Module{Name: "base", ApplicationStr: "crm"}, nil
 					},
-					Upgrade: func(module *meta.IrModule) error { return nil },
+					Upgrade: func(module *meta.Module) error { return nil },
 					AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 						return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
 							ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
@@ -1711,10 +1711,10 @@ func TestExecuteUpgradePrepareFailuresAbortPreparedStages(t *testing.T) {
 			plan:             planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}},
 			callbacks: func(rootDir string, distRoot string, modulesRoot string) Callbacks {
 				return Callbacks{
-					ResolveInstalledModule: func(name string) (*meta.IrModule, error) {
-						return &meta.IrModule{Name: "base", ApplicationStr: "crm"}, nil
+					ResolveInstalledModule: func(name string) (*meta.Module, error) {
+						return &meta.Module{Name: "base", ApplicationStr: "crm"}, nil
 					},
-					Upgrade: func(module *meta.IrModule) error { return nil },
+					Upgrade: func(module *meta.Module) error { return nil },
 					AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 						return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
 							ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
@@ -1749,10 +1749,10 @@ func TestExecuteUpgradePrepareFailuresAbortPreparedStages(t *testing.T) {
 			plan:             planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}, NeedsGlobalWebBuild: true},
 			callbacks: func(rootDir string, distRoot string, modulesRoot string) Callbacks {
 				return Callbacks{
-					ResolveInstalledModule: func(name string) (*meta.IrModule, error) {
-						return &meta.IrModule{Name: "base", ApplicationStr: "crm"}, nil
+					ResolveInstalledModule: func(name string) (*meta.Module, error) {
+						return &meta.Module{Name: "base", ApplicationStr: "crm"}, nil
 					},
-					Upgrade: func(module *meta.IrModule) error { return nil },
+					Upgrade: func(module *meta.Module) error { return nil },
 					AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 						return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
 							ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
@@ -1788,10 +1788,10 @@ func TestExecuteUpgradePrepareFailuresAbortPreparedStages(t *testing.T) {
 			callbacks: func(rootDir string, distRoot string, modulesRoot string) Callbacks {
 				manifestPath := filepath.Join(distRoot, "manifest-parent", distmanifest.DistManifestFileName)
 				return Callbacks{
-					ResolveInstalledModule: func(name string) (*meta.IrModule, error) {
-						return &meta.IrModule{Name: "base", ApplicationStr: "crm"}, nil
+					ResolveInstalledModule: func(name string) (*meta.Module, error) {
+						return &meta.Module{Name: "base", ApplicationStr: "crm"}, nil
 					},
-					Upgrade: func(module *meta.IrModule) error { return nil },
+					Upgrade: func(module *meta.Module) error { return nil },
 					AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 						return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
 							ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
@@ -1827,7 +1827,7 @@ func TestExecuteUpgradePrepareFailuresAbortPreparedStages(t *testing.T) {
 			modulesRoot := filepath.Join(rootDir, "modules")
 			writeBlockerFile(t, filepath.Join(append([]string{rootDir}, tc.blockerPathParts...)...))
 
-			root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+			root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 			err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), tc.plan, root, tc.callbacks(rootDir, distRoot, modulesRoot))
 			if err == nil {
 				t.Fatal("expected prepare failure")
@@ -1883,7 +1883,7 @@ func TestExecuteUpgradeCommitFailuresRollbackCommittedStages(t *testing.T) {
 			rootDir := t.TempDir()
 			distRoot := filepath.Join(rootDir, "dist")
 			modulesRoot := filepath.Join(rootDir, "modules")
-			root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+			root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 
 			targetDir := func(stage string) string {
 				switch stage {
@@ -1921,8 +1921,8 @@ func TestExecuteUpgradeCommitFailuresRollbackCommittedStages(t *testing.T) {
 			}
 
 			err := Execute(staging.WithOpID(staging.WithTmpRoot(context.Background(), t.TempDir()), opID), planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}}, root, Callbacks{
-				ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
-				Upgrade:                func(module *meta.IrModule) error { return nil },
+				ResolveInstalledModule: func(name string) (*meta.Module, error) { return root, nil },
+				Upgrade:                func(module *meta.Module) error { return nil },
 				AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 					return targetDir("dist"), ModulesAppTargets{
 						ProtoDir:   targetDir("proto"),
@@ -1981,7 +1981,7 @@ func TestExecuteUpgradeGlobalWebCommitFailureRollsBackCommittedStages(t *testing
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
 	modulesRoot := filepath.Join(rootDir, "modules")
-	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 
 	targets := map[string]string{
 		"dist":       filepath.Join(distRoot, "apps", "crm"),
@@ -2014,8 +2014,8 @@ func TestExecuteUpgradeGlobalWebCommitFailureRollsBackCommittedStages(t *testing
 		AffectedApps:        []string{"crm"},
 		NeedsGlobalWebBuild: true,
 	}, root, Callbacks{
-		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
-		Upgrade:                func(module *meta.IrModule) error { return nil },
+		ResolveInstalledModule: func(name string) (*meta.Module, error) { return root, nil },
+		Upgrade:                func(module *meta.Module) error { return nil },
 		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 			return targets["dist"], ModulesAppTargets{
 				ProtoDir:   targets["proto"],
@@ -2056,12 +2056,12 @@ func TestExecuteGlobalWebManifestWriteFailureRollsBackCommittedStages(t *testing
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
 	modulesRoot := filepath.Join(rootDir, "modules")
-	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}, NeedsGlobalWebBuild: true}
 
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
-		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
-		Upgrade:                func(module *meta.IrModule) error { return nil },
+		ResolveInstalledModule: func(name string) (*meta.Module, error) { return root, nil },
+		Upgrade:                func(module *meta.Module) error { return nil },
 		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
 				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
@@ -2106,13 +2106,13 @@ func TestExecuteCanceledAfterPhase1AbortsPreparedStages(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
 	modulesRoot := filepath.Join(rootDir, "modules")
-	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}}
 	ctx, cancel := context.WithCancel(staging.WithTmpRoot(context.Background(), t.TempDir()))
 
 	err := Execute(ctx, plan, root, Callbacks{
-		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
-		Upgrade:                func(module *meta.IrModule) error { return nil },
+		ResolveInstalledModule: func(name string) (*meta.Module, error) { return root, nil },
+		Upgrade:                func(module *meta.Module) error { return nil },
 		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
 				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
@@ -2148,13 +2148,13 @@ func TestExecuteCanceledAfterBundlesCommitRollsBackCommittedStages(t *testing.T)
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
 	modulesRoot := filepath.Join(rootDir, "modules")
-	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}}
 	ctx, cancel := context.WithCancel(staging.WithTmpRoot(context.Background(), t.TempDir()))
 
 	err := Execute(ctx, plan, root, Callbacks{
-		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
-		Upgrade:                func(module *meta.IrModule) error { return nil },
+		ResolveInstalledModule: func(name string) (*meta.Module, error) { return root, nil },
+		Upgrade:                func(module *meta.Module) error { return nil },
 		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
 				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),

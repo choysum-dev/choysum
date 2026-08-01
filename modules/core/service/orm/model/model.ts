@@ -280,8 +280,8 @@ class BaseModel {
   /**
    * Resolve a model constructor by its identifier.
    *
-   * The identifier can be a full model name (e.g. "meta.IrModule"),
-   * a short model name ("IrModule"), the metadata name, or the
+   * The identifier can be a full model name (e.g. "meta.MetaModule"),
+   * a short model name ("MetaModule"), the metadata name, or the
    * constructor class name.
    */
   static resolveModelConstructor(identifier: string): typeof BaseModel | undefined {

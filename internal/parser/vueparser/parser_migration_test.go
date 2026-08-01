@@ -44,7 +44,7 @@ func newVueParserTestScope() scope.Scope {
 
 func TestVueParser_ParseVueComponentWithTSGo(t *testing.T) {
 	runtimeScope := newVueParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"}
+	module := &meta.Module{Path: "/virtual/modules/auth", ApplicationStr: "auth"}
 	p := NewVueParser(runtimeScope, module)
 
 	path := "/virtual/modules/auth/web/views/ChildView.vue"
@@ -102,7 +102,7 @@ export default defineComponent({
 
 func TestVueParser_ParseImportsExportsWithTSGoAcrossScriptBlocks(t *testing.T) {
 	runtimeScope := newVueParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"}
+	module := &meta.Module{Path: "/virtual/modules/auth", ApplicationStr: "auth"}
 	p := NewVueParser(runtimeScope, module)
 
 	path := "/virtual/modules/auth/web/views/ChildView.vue"

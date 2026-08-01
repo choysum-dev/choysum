@@ -34,7 +34,7 @@ var (
 // runtime MetadataStorage. Plain "Parent Path" in @Field options does not create stringText
 // during resolve (owner module would also be wrong); OSearch reads static web store metadata
 // only, so codegen must emit module=core stringText or the picker shows the raw prop name.
-func ensureSynthesizedParentPathTitle(spec *meta.IrFieldResolvedSpec) {
+func ensureSynthesizedParentPathTitle(spec *meta.FieldResolvedSpec) {
 	if spec == nil || spec.FieldName != "ParentPath" {
 		return
 	}
@@ -99,7 +99,7 @@ func getProtoTypeFromTsType(tsType string) string {
 	}
 }
 
-func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.PropertyNode, error) {
+func (p *tsFileParser) parseModel() (*meta.Model, *parser.Class, *parser.PropertyNode, error) {
 	class, err := p.ParseClassNode(nil, nil)
 	if err != nil {
 		return nil, nil, nil, xfmt.Errorf("failed to parse class: %w", err)
@@ -109,7 +109,7 @@ func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.Prope
 		return nil, nil, nil, nil
 	}
 
-	model := &meta.IrModel{
+	model := &meta.Model{
 		ClassName: class.Name,
 		Name:      class.Name,
 		Abstract:  class.Abstract,
@@ -117,23 +117,23 @@ func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.Prope
 	}
 
 	if len(class.Decorators) > 0 {
-		model.Decorators = make([]*meta.IrDecorator, 0)
+		model.Decorators = make([]*meta.Decorator, 0)
 		for _, d := range class.Decorators {
-			decorator := &meta.IrDecorator{
+			decorator := &meta.Decorator{
 				Name:           d.Name,
 				ModuleSpecPath: d.ModuleSpecPath,
 				ReferenceIdent: d.ReferenceIdent,
 			}
 			if len(d.Arguments) > 0 {
-				decorator.Arguments = make([]*meta.IrArgument, 0)
+				decorator.Arguments = make([]*meta.Argument, 0)
 				for _, arg := range d.Arguments {
-					choysumMetaArgument := &meta.IrArgument{
+					choysumArgument := &meta.Argument{
 						Type:           arg.Type,
 						Value:          arg.Value,
 						ReferenceIdent: arg.ReferenceIdent,
 						ModuleSpecPath: arg.ModuleSpecPath,
 					}
-					decorator.Arguments = append(decorator.Arguments, choysumMetaArgument)
+					decorator.Arguments = append(decorator.Arguments, choysumArgument)
 				}
 			}
 			model.Decorators = append(model.Decorators, decorator)
@@ -157,12 +157,12 @@ func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.Prope
 
 	// fields
 	if len(class.MemberVars) > 0 {
-		model.Fields = make([]*meta.IrField, 0)
+		model.Fields = make([]*meta.Field, 0)
 		for _, memberVar := range class.MemberVars {
 			if memberVar.AccessibilityModifier != "public" && memberVar.IsStatic {
 				continue
 			}
-			field := &meta.IrField{
+			field := &meta.Field{
 				Name:                  memberVar.Name,
 				TsTypeAnnotation:      strings.Replace(memberVar.TypeAnnotation, "'", "\"", -1), // Normalize to double quotes for later JSON parsing.
 				TsTypeReference:       memberVar.TsTypeReference,
@@ -173,23 +173,23 @@ func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.Prope
 				IsReadonly:            memberVar.IsReadonly,
 			}
 			if len(memberVar.Decorators) > 0 {
-				field.Decorators = make([]*meta.IrDecorator, 0)
+				field.Decorators = make([]*meta.Decorator, 0)
 				for _, d := range memberVar.Decorators {
-					decorator := &meta.IrDecorator{
+					decorator := &meta.Decorator{
 						Name:           d.Name,
 						ModuleSpecPath: d.ModuleSpecPath,
 						ReferenceIdent: d.ReferenceIdent,
 					}
 					if len(d.Arguments) > 0 {
-						decorator.Arguments = make([]*meta.IrArgument, 0)
+						decorator.Arguments = make([]*meta.Argument, 0)
 						for _, arg := range d.Arguments {
-							choysumMetaArgument := &meta.IrArgument{
+							choysumArgument := &meta.Argument{
 								Type:           arg.Type,
 								Value:          arg.Value,
 								ReferenceIdent: arg.ReferenceIdent,
 								ModuleSpecPath: arg.ModuleSpecPath,
 							}
-							decorator.Arguments = append(decorator.Arguments, choysumMetaArgument)
+							decorator.Arguments = append(decorator.Arguments, choysumArgument)
 						}
 					}
 					field.Decorators = append(field.Decorators, decorator)
@@ -260,14 +260,14 @@ func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.Prope
 			// Fill decorator module metadata so build plugins do not filter it out.
 			fieldDecoratorModuleSpec, fieldDecoratorIdent := meta.FieldDecoratorModuleSpec(p.runtimeScope)
 
-			field := &meta.IrField{
+			field := &meta.Field{
 				Name: "ParentPath",
-				Decorators: []*meta.IrDecorator{
+				Decorators: []*meta.Decorator{
 					{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec, // Key: module path.
 						ReferenceIdent: fieldDecoratorIdent,      // Key: exported identifier.
-						Arguments: []*meta.IrArgument{
+						Arguments: []*meta.Argument{
 							{
 								Type:  "ObjectLiteral",
 								Value: string(argBytes),
@@ -319,7 +319,7 @@ func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.Prope
 
 	// services
 	if len(class.MemberMethods) > 0 {
-		model.Services = make([]*meta.IrService, 0)
+		model.Services = make([]*meta.Service, 0)
 		for _, memberMethod := range class.MemberMethods {
 			if !memberMethod.IsAsync {
 				continue
@@ -328,7 +328,7 @@ func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.Prope
 				continue
 			}
 
-			service := &meta.IrService{
+			service := &meta.Service{
 				Name:                  memberMethod.Name,
 				TsTypeAnnotation:      memberMethod.TypeAnnotation,
 				ProtobufType:          getProtoTypeFromTsType(memberMethod.TypeAnnotation),
@@ -337,23 +337,23 @@ func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.Prope
 			}
 
 			if len(memberMethod.Decorators) > 0 {
-				service.Decorators = make([]*meta.IrDecorator, 0)
+				service.Decorators = make([]*meta.Decorator, 0)
 				for _, d := range memberMethod.Decorators {
-					decorator := &meta.IrDecorator{
+					decorator := &meta.Decorator{
 						Name:           d.Name,
 						ReferenceIdent: d.ReferenceIdent,
 						ModuleSpecPath: d.ModuleSpecPath,
 					}
 					if len(d.Arguments) > 0 {
-						decorator.Arguments = make([]*meta.IrArgument, 0)
+						decorator.Arguments = make([]*meta.Argument, 0)
 						for _, arg := range d.Arguments {
-							choysumMetaArgument := &meta.IrArgument{
+							choysumArgument := &meta.Argument{
 								Type:           arg.Type,
 								Value:          arg.Value,
 								ReferenceIdent: arg.ReferenceIdent,
 								ModuleSpecPath: arg.ModuleSpecPath,
 							}
-							decorator.Arguments = append(decorator.Arguments, choysumMetaArgument)
+							decorator.Arguments = append(decorator.Arguments, choysumArgument)
 						}
 					}
 					service.Decorators = append(service.Decorators, decorator)
@@ -361,9 +361,9 @@ func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.Prope
 			}
 
 			if len(memberMethod.TypeParameters) > 0 {
-				service.TypeParameters = make([]*meta.IrTypeParameter, 0)
+				service.TypeParameters = make([]*meta.TypeParameter, 0)
 				for _, typeParam := range memberMethod.TypeParameters {
-					typeParameter := &meta.IrTypeParameter{
+					typeParameter := &meta.TypeParameter{
 						Name:           typeParam.Name,
 						ModuleSpecPath: typeParam.ModuleSpecPath,
 						ReferenceIdent: typeParam.ReferenceIdent,
@@ -373,9 +373,9 @@ func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.Prope
 			}
 
 			if len(memberMethod.Parameters) > 0 {
-				service.Parameters = make([]*meta.IrParameter, 0)
+				service.Parameters = make([]*meta.Parameter, 0)
 				for _, param := range memberMethod.Parameters {
-					parameter := &meta.IrParameter{
+					parameter := &meta.Parameter{
 						Name:             param.Name,
 						TsTypeAnnotation: param.TypeAnnotation,
 						ProtobufType:     getProtoTypeFromTsType(param.TypeAnnotation),

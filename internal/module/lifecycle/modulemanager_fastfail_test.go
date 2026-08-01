@@ -16,14 +16,14 @@ import (
 
 type fastFailOriginCoordinator struct {
 	peekErr              error
-	peekModule           *meta.IrModule
+	peekModule           *meta.Module
 	peekInputs           []string
 	resolveInstallErr    error
-	resolveInstallModule *meta.IrModule
+	resolveInstallModule *meta.Module
 	resolveInstallInputs []string
 }
 
-func (f *fastFailOriginCoordinator) Peek(_ context.Context, input string) (*meta.IrModule, error) {
+func (f *fastFailOriginCoordinator) Peek(_ context.Context, input string) (*meta.Module, error) {
 	f.peekInputs = append(f.peekInputs, input)
 	if f.peekErr != nil {
 		return nil, f.peekErr
@@ -31,10 +31,10 @@ func (f *fastFailOriginCoordinator) Peek(_ context.Context, input string) (*meta
 	if f.peekModule != nil {
 		return f.peekModule, nil
 	}
-	return &meta.IrModule{Name: "task"}, nil
+	return &meta.Module{Name: "task"}, nil
 }
 
-func (f *fastFailOriginCoordinator) ResolveInstallModule(_ context.Context, input string) (*meta.IrModule, error) {
+func (f *fastFailOriginCoordinator) ResolveInstallModule(_ context.Context, input string) (*meta.Module, error) {
 	f.resolveInstallInputs = append(f.resolveInstallInputs, input)
 	if f.resolveInstallErr != nil {
 		return nil, f.resolveInstallErr
@@ -45,7 +45,7 @@ func (f *fastFailOriginCoordinator) ResolveInstallModule(_ context.Context, inpu
 	return nil, errors.New("not implemented")
 }
 
-func (f *fastFailOriginCoordinator) Fetch(context.Context, string) (*meta.IrModule, error) {
+func (f *fastFailOriginCoordinator) Fetch(context.Context, string) (*meta.Module, error) {
 	return nil, errors.New("not implemented")
 }
 
@@ -163,7 +163,7 @@ func TestModuleManagerPeekDoesNotFallbackToResolveInstallWhenLocalMissing(t *tes
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 	coordinator := &fastFailOriginCoordinator{
 		peekErr:              errors.New("module core not found in modules path"),
-		resolveInstallModule: &meta.IrModule{Name: "core", Version: "v1.0.0"},
+		resolveInstallModule: &meta.Module{Name: "core", Version: "v1.0.0"},
 	}
 
 	manager := NewModuleManager(

@@ -43,12 +43,12 @@ type WebModuleBuilder struct {
 	runtimeScope   scope.Scope
 	runtimeOptions runtimeOptions
 	jsExecutor     jsexecutor.ScriptExecutor
-	module         *meta.IrModule
+	module         *meta.Module
 	entryPoint     string
 	buildPlugin    esbplugins.EsbPlugin
 	prebuildPlugin esbplugins.EsbPlugin
 	parser         parser.Parser
-	parserFactory  func(scope.Scope, *meta.IrModule) parser.Parser
+	parserFactory  func(scope.Scope, *meta.Module) parser.Parser
 	publishDist    bool
 
 	// Optional override for pipeline-managed staging.
@@ -91,10 +91,10 @@ type roleCodeRow struct {
 
 type roleUiResourceGrantRow struct {
 	meta.BaseModel
-	RoleId          sql.NullString `gorm:"type:char(20);not null;index"`
-	Mode            string         `gorm:"type:varchar(16);not null;default:allow;index"`
-	IrApplicationId sql.NullString `gorm:"type:char(20);index"`
-	IrUiResourceId  sql.NullString `gorm:"type:char(20);index"`
+	RoleId            sql.NullString `gorm:"type:char(20);not null;index"`
+	Mode              string         `gorm:"type:varchar(16);not null;default:allow;index"`
+	MetaApplicationId sql.NullString `gorm:"type:char(20);index"`
+	MetaUiResourceId  sql.NullString `gorm:"type:char(20);index"`
 }
 
 func (roleUiResourceGrantRow) TableName() string {
@@ -195,8 +195,8 @@ func webBuilderPathWithinRoot(path string, root string) bool {
 }
 
 // Check inheritance relationship for components with the same name
-func (b *WebModuleBuilder) checkInheritanceChain(components []*meta.IrComponent, pathComponentMap map[string]*meta.IrComponent) error {
-	getInheritancePath := func(component *meta.IrComponent) []string {
+func (b *WebModuleBuilder) checkInheritanceChain(components []*meta.Component, pathComponentMap map[string]*meta.Component) error {
+	getInheritancePath := func(component *meta.Component) []string {
 		var path []string
 		current := component
 		for current != nil && current.Extends != "" {
@@ -212,7 +212,7 @@ func (b *WebModuleBuilder) checkInheritanceChain(components []*meta.IrComponent,
 	}
 
 	// Check if child component is in parent's inheritance chain
-	isInInheritanceChain := func(child *meta.IrComponent, parent *meta.IrComponent) bool {
+	isInInheritanceChain := func(child *meta.Component, parent *meta.Component) bool {
 		current := child
 		for current != nil && current.Extends != "" {
 			if current.Extends == parent.Path {
@@ -247,8 +247,8 @@ func (b *WebModuleBuilder) checkInheritanceChain(components []*meta.IrComponent,
 
 // Check circular dependencies
 func (b *WebModuleBuilder) checkCircularDependency(
-	component *meta.IrComponent,
-	pathComponentMap map[string]*meta.IrComponent,
+	component *meta.Component,
+	pathComponentMap map[string]*meta.Component,
 	visited map[string]bool,
 ) error {
 	// Return nil if component is nil or has no inheritance
@@ -280,10 +280,10 @@ func (b *WebModuleBuilder) checkCircularDependency(
 
 func (b *WebModuleBuilder) validate(buildResult *module.BuildResult) error {
 	// 1. Group components by name
-	componentMap := make(map[string][]*meta.IrComponent)
+	componentMap := make(map[string][]*meta.Component)
 	// 2. Create path to component mapping for quick parent lookup
-	pathComponentMap := make(map[string]*meta.IrComponent)
-	normalizedPathMap := make(map[string]*meta.IrComponent)
+	pathComponentMap := make(map[string]*meta.Component)
+	normalizedPathMap := make(map[string]*meta.Component)
 
 	for _, result := range module.ParserResults(buildResult) {
 		if result.VueComponent == nil {
@@ -433,7 +433,7 @@ func (b *WebModuleBuilder) updatePrebuildResult(buildResult *module.BuildResult)
 
 	var VueAppImportTree []string
 	if result := b.runtimeScope.Session().
-		Model(&meta.IrModule{}).
+		Model(&meta.Module{}).
 		Where("web_entry_point != ?", "").
 		Where("status = ?", "installed").
 		Order("id DESC").
@@ -1272,10 +1272,10 @@ func (b *WebModuleBuilder) renderComponent(result *parser.ParserResult) (string,
 	return sfcContent, nil
 }
 
-func (b *WebModuleBuilder) getNewExtends(buildResult *module.BuildResult, component *meta.IrComponent) (*meta.IrComponent, error) {
-	var extendsComponents []*meta.IrComponent
+func (b *WebModuleBuilder) getNewExtends(buildResult *module.BuildResult, component *meta.Component) (*meta.Component, error) {
+	var extendsComponents []*meta.Component
 	if result := b.runtimeScope.Session().
-		Where(&meta.IrComponent{Name: component.Name}).
+		Where(&meta.Component{Name: component.Name}).
 		Order("id DESC").
 		Find(&extendsComponents); result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -1307,7 +1307,7 @@ func (b *WebModuleBuilder) getNewExtends(buildResult *module.BuildResult, compon
 			if existingPaths[r.VueComponent.Path] {
 				continue
 			}
-			extendsComponents = append([]*meta.IrComponent{r.VueComponent}, extendsComponents...)
+			extendsComponents = append([]*meta.Component{r.VueComponent}, extendsComponents...)
 			existingPaths[r.VueComponent.Path] = true
 		}
 	}
@@ -1421,14 +1421,14 @@ func (b *WebModuleBuilder) persist(buildResult *module.BuildResult) error {
 	return nil
 }
 
-func (b *WebModuleBuilder) persistModuleComponents(moduleID string, components []*meta.IrComponent) error {
+func (b *WebModuleBuilder) persistModuleComponents(moduleID string, components []*meta.Component) error {
 	moduleID = strings.TrimSpace(moduleID)
 	if moduleID == "" {
 		return nil
 	}
 
 	orderedPaths := make([]string, 0, len(components))
-	componentByPath := make(map[string]*meta.IrComponent, len(components))
+	componentByPath := make(map[string]*meta.Component, len(components))
 	for _, c := range components {
 		if c == nil {
 			continue
@@ -1443,7 +1443,7 @@ func (b *WebModuleBuilder) persistModuleComponents(moduleID string, components [
 		componentByPath[path] = c
 	}
 
-	rows := make([]*meta.IrComponent, 0, len(orderedPaths))
+	rows := make([]*meta.Component, 0, len(orderedPaths))
 	for _, path := range orderedPaths {
 		c := componentByPath[path]
 		if c == nil {
@@ -1453,7 +1453,7 @@ func (b *WebModuleBuilder) persistModuleComponents(moduleID string, components [
 		rows = append(rows, c)
 	}
 
-	if result := b.runtimeScope.Session().Unscoped().Where("module_id = ?", moduleID).Delete(&meta.IrComponent{}); result.Error != nil {
+	if result := b.runtimeScope.Session().Unscoped().Where("module_id = ?", moduleID).Delete(&meta.Component{}); result.Error != nil {
 		return result.Error
 	}
 	if len(rows) == 0 {
@@ -1465,7 +1465,7 @@ func (b *WebModuleBuilder) persistModuleComponents(moduleID string, components [
 	return nil
 }
 
-func (b *WebModuleBuilder) persistModuleUiResources(moduleID string, uiResources []*meta.IrUiResource, menuRoutes []uiResourceMenuRouteRef, routeActions []uiResourceRouteActionRef) error {
+func (b *WebModuleBuilder) persistModuleUiResources(moduleID string, uiResources []*meta.UiResource, menuRoutes []uiResourceMenuRouteRef, routeActions []uiResourceRouteActionRef) error {
 	if strings.TrimSpace(moduleID) == "" {
 		return nil
 	}
@@ -1492,7 +1492,7 @@ func (b *WebModuleBuilder) persistModuleUiResources(moduleID string, uiResources
 					"path",
 					"parent_id",
 					"parent_path",
-					"ir_application_id",
+					"meta_application_id",
 					"ui_path",
 					"default_roles",
 					"module_id",
@@ -1517,9 +1517,9 @@ func (b *WebModuleBuilder) persistModuleUiResources(moduleID string, uiResources
 	}
 
 	if len(names) == 0 {
-		existingRows := make([]*meta.IrUiResource, 0)
+		existingRows := make([]*meta.UiResource, 0)
 		if result := b.runtimeScope.Session().
-			Model(&meta.IrUiResource{}).
+			Model(&meta.UiResource{}).
 			Where("module_id = ?", moduleID).
 			Find(&existingRows); result.Error != nil {
 			return result.Error
@@ -1529,15 +1529,15 @@ func (b *WebModuleBuilder) persistModuleUiResources(moduleID string, uiResources
 		}
 		if result := b.runtimeScope.Session().
 			Where("module_id = ?", moduleID).
-			Delete(&meta.IrUiResource{}); result.Error != nil {
+			Delete(&meta.UiResource{}); result.Error != nil {
 			return result.Error
 		}
 		return nil
 	}
 
-	rows := make([]*meta.IrUiResource, 0)
+	rows := make([]*meta.UiResource, 0)
 	if result := b.runtimeScope.Session().
-		Model(&meta.IrUiResource{}).
+		Model(&meta.UiResource{}).
 		Where("module_id = ?", moduleID).
 		Where("name IN ?", names).
 		Find(&rows); result.Error != nil {
@@ -1631,7 +1631,7 @@ func (b *WebModuleBuilder) persistModuleUiResources(moduleID string, uiResources
 			}
 		}
 		if result := b.runtimeScope.Session().
-			Model(&meta.IrUiResource{}).
+			Model(&meta.UiResource{}).
 			Where("id = ?", id).
 			Updates(updates); result.Error != nil {
 			return result.Error
@@ -1645,9 +1645,9 @@ func (b *WebModuleBuilder) persistModuleUiResources(moduleID string, uiResources
 		r.ParentPath = parentPath
 	}
 
-	moduleRows := make([]*meta.IrUiResource, 0)
+	moduleRows := make([]*meta.UiResource, 0)
 	if result := b.runtimeScope.Session().
-		Model(&meta.IrUiResource{}).
+		Model(&meta.UiResource{}).
 		Where("module_id = ?", moduleID).
 		Find(&moduleRows); result.Error != nil {
 		return result.Error
@@ -1660,7 +1660,7 @@ func (b *WebModuleBuilder) persistModuleUiResources(moduleID string, uiResources
 	if result := b.runtimeScope.Session().
 		Where("module_id = ?", moduleID).
 		Where("name NOT IN ?", names).
-		Delete(&meta.IrUiResource{}); result.Error != nil {
+		Delete(&meta.UiResource{}); result.Error != nil {
 		return result.Error
 	}
 
@@ -1746,7 +1746,7 @@ func parentIDFromPath(parentPath string, selfID string) string {
 	return last
 }
 
-func collectUiResourceIDs(rows []*meta.IrUiResource) []string {
+func collectUiResourceIDs(rows []*meta.UiResource) []string {
 	ids := make([]string, 0, len(rows))
 	seen := make(map[string]bool, len(rows))
 	for _, row := range rows {
@@ -1770,13 +1770,13 @@ func (b *WebModuleBuilder) deleteUiResourceRelationsByIDs(resourceIDs []string) 
 	if result := b.runtimeScope.Session().
 		Unscoped().
 		Where("menu_ui_resource_id IN ? OR route_ui_resource_id IN ?", resourceIDs, resourceIDs).
-		Delete(&meta.IrUiResourceMenuRoute{}); result.Error != nil {
+		Delete(&meta.UiResourceMenuRoute{}); result.Error != nil {
 		return result.Error
 	}
 	if result := b.runtimeScope.Session().
 		Unscoped().
 		Where("route_ui_resource_id IN ? OR action_ui_resource_id IN ?", resourceIDs, resourceIDs).
-		Delete(&meta.IrUiResourceRouteAction{}); result.Error != nil {
+		Delete(&meta.UiResourceRouteAction{}); result.Error != nil {
 		return result.Error
 	}
 	return nil
@@ -1790,9 +1790,9 @@ func (b *WebModuleBuilder) replaceUiResourceRelations(moduleResourceIDs []string
 		return nil
 	}
 
-	rows := make([]*meta.IrUiResource, 0)
+	rows := make([]*meta.UiResource, 0)
 	if result := b.runtimeScope.Session().
-		Model(&meta.IrUiResource{}).
+		Model(&meta.UiResource{}).
 		Where("id IN ?", moduleResourceIDs).
 		Find(&rows); result.Error != nil {
 		return result.Error
@@ -1812,7 +1812,7 @@ func (b *WebModuleBuilder) replaceUiResourceRelations(moduleResourceIDs []string
 		typeByName[name] = row.Type
 	}
 
-	menuRouteRows := make([]*meta.IrUiResourceMenuRoute, 0, len(menuRoutes))
+	menuRouteRows := make([]*meta.UiResourceMenuRoute, 0, len(menuRoutes))
 	seenMenuRoutes := make(map[string]bool, len(menuRoutes))
 	for _, ref := range menuRoutes {
 		menuName := strings.TrimSpace(ref.MenuName)
@@ -1833,13 +1833,13 @@ func (b *WebModuleBuilder) replaceUiResourceRelations(moduleResourceIDs []string
 			continue
 		}
 		seenMenuRoutes[key] = true
-		menuRouteRows = append(menuRouteRows, &meta.IrUiResourceMenuRoute{
+		menuRouteRows = append(menuRouteRows, &meta.UiResourceMenuRoute{
 			MenuUiResourceId:  sql.NullString{String: menuID, Valid: true},
 			RouteUiResourceId: sql.NullString{String: routeID, Valid: true},
 		})
 	}
 
-	routeActionRows := make([]*meta.IrUiResourceRouteAction, 0, len(routeActions))
+	routeActionRows := make([]*meta.UiResourceRouteAction, 0, len(routeActions))
 	seenRouteActions := make(map[string]bool, len(routeActions))
 	for _, ref := range routeActions {
 		routeName := strings.TrimSpace(ref.RouteName)
@@ -1860,7 +1860,7 @@ func (b *WebModuleBuilder) replaceUiResourceRelations(moduleResourceIDs []string
 			continue
 		}
 		seenRouteActions[key] = true
-		routeActionRows = append(routeActionRows, &meta.IrUiResourceRouteAction{
+		routeActionRows = append(routeActionRows, &meta.UiResourceRouteAction{
 			RouteUiResourceId:  sql.NullString{String: routeID, Valid: true},
 			ActionUiResourceId: sql.NullString{String: actionID, Valid: true},
 		})
@@ -1879,7 +1879,7 @@ func (b *WebModuleBuilder) replaceUiResourceRelations(moduleResourceIDs []string
 	return nil
 }
 
-func (b *WebModuleBuilder) validateUiResourceDependencies(uiResources []*meta.IrUiResource) error {
+func (b *WebModuleBuilder) validateUiResourceDependencies(uiResources []*meta.UiResource) error {
 	if len(uiResources) == 0 {
 		return nil
 	}
@@ -1918,9 +1918,9 @@ func (b *WebModuleBuilder) validateUiResourceDependencies(uiResources []*meta.Ir
 		return nil
 	}
 
-	models := make([]*meta.IrModel, 0)
+	models := make([]*meta.Model, 0)
 	if result := b.runtimeScope.Session().
-		Model(&meta.IrModel{}).
+		Model(&meta.Model{}).
 		Select("id", "application", "name").
 		Find(&models); result.Error != nil {
 		return xfmt.Errorf("query meta models failed: %w", result.Error)
@@ -1940,7 +1940,7 @@ func (b *WebModuleBuilder) validateUiResourceDependencies(uiResources []*meta.Ir
 
 	for mk := range modelRefSet {
 		if _, ok := modelIDByKey[mk]; !ok {
-			return xfmt.Errorf("referenced model %q not found in meta.IrModel", mk)
+			return xfmt.Errorf("referenced model %q not found in meta.MetaModel", mk)
 		}
 	}
 
@@ -1949,9 +1949,9 @@ func (b *WebModuleBuilder) validateUiResourceDependencies(uiResources []*meta.Ir
 		modelIDs = append(modelIDs, modelIDByKey[mk])
 	}
 
-	services := make([]*meta.IrService, 0)
+	services := make([]*meta.Service, 0)
 	if result := b.runtimeScope.Session().
-		Model(&meta.IrService{}).
+		Model(&meta.Service{}).
 		Select("model_id", "name").
 		Where("model_id in ?", modelIDs).
 		Find(&services); result.Error != nil {
@@ -2049,7 +2049,7 @@ func parseJSONStrings(raw []byte) []string {
 }
 
 func collectUiResourceDefaultRoleRows(
-	uiResources []*meta.IrUiResource,
+	uiResources []*meta.UiResource,
 	roleIDByCode map[string]string,
 ) ([]roleUiResourceGrantRow, error) {
 	if len(uiResources) == 0 {
@@ -2079,9 +2079,9 @@ func collectUiResourceDefaultRoleRows(
 			seen[grantKey] = true
 
 			rows = append(rows, roleUiResourceGrantRow{
-				RoleId:         sql.NullString{String: roleID, Valid: true},
-				Mode:           "allow",
-				IrUiResourceId: sql.NullString{String: resource.Id.String, Valid: true},
+				RoleId:           sql.NullString{String: roleID, Valid: true},
+				Mode:             "allow",
+				MetaUiResourceId: sql.NullString{String: resource.Id.String, Valid: true},
 			})
 		}
 	}
@@ -2089,7 +2089,7 @@ func collectUiResourceDefaultRoleRows(
 	return rows, nil
 }
 
-func (b *WebModuleBuilder) persistUiResourceDefaultRoles(uiResources []*meta.IrUiResource) error {
+func (b *WebModuleBuilder) persistUiResourceDefaultRoles(uiResources []*meta.UiResource) error {
 	roleCodeSet := make(map[string]bool)
 	for _, resource := range uiResources {
 		if resource == nil {
@@ -2271,7 +2271,7 @@ func (b *WebModuleBuilder) entryPointImports() []string {
 	seen := map[string]struct{}{}
 	runtimeOptions := b.resolvedRuntimeOptions()
 
-	var installModules []*meta.IrModule
+	var installModules []*meta.Module
 	if result := b.runtimeScope.Session().
 		Where("status = ?", "installed").
 		Order("id DESC").
@@ -2317,7 +2317,7 @@ func (b *WebModuleBuilder) entryPointImports() []string {
 		moduleImports = append(moduleImports, importPath)
 	}
 
-	var installApplications []*meta.IrApplication
+	var installApplications []*meta.Application
 	if result := b.runtimeScope.Session().
 		Order("id DESC").
 		Find(&installApplications); result.Error != nil {
@@ -2351,7 +2351,7 @@ func (b *WebModuleBuilder) entryPointImports() []string {
 	return append(storeImports, moduleImports...)
 }
 
-func NewWebBuilder(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.IrModule, entryPoint string, opts ...func(*WebModuleBuilder)) module.Builder {
+func NewWebBuilder(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.Module, entryPoint string, opts ...func(*WebModuleBuilder)) module.Builder {
 	b := &WebModuleBuilder{
 		runtimeScope:   runtimeScope,
 		runtimeOptions: newRuntimeOptions(scope.PathsRuntimeOptions{}, false, scope.ServerRuntimeOptions{}, false, scope.RuntimeEnvironmentOptions{}, false, scope.CompileRuntimeOptions{}, false),

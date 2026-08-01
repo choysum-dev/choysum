@@ -5,7 +5,7 @@ package meta
 
 import "database/sql"
 
-type IrArgument struct {
+type Argument struct {
 	BaseModel `gorm:"embedded"`
 
 	Type  string `gorm:"type:varchar" json:"ts_type"`
@@ -15,9 +15,9 @@ type IrArgument struct {
 	ModuleSpecPath string `gorm:"type:varchar" json:"module_spec_path"`
 
 	DecoratorId sql.NullString `gorm:"type:char(20)" json:"decorator_id"`
-	Decorator   *IrDecorator   `gorm:"foreignKey:DecoratorId" json:"decorator"`
+	Decorator   *Decorator     `gorm:"foreignKey:DecoratorId" json:"decorator"`
 }
 
-func (arg *IrArgument) TableName() string {
-	return "meta_ir_argument"
+func (arg *Argument) TableName() string {
+	return "meta_argument"
 }

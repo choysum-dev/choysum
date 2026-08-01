@@ -27,12 +27,12 @@ type Callbacks struct {
 	// OnProgress receives unified stage progress events across pipeline execution.
 	OnProgress func(event ProgressEvent)
 
-	ResolveInstallModuleFromOrigin func(ctx context.Context, name string) (*meta.IrModule, error)
-	ResolveInstalledModule         func(name string) (*meta.IrModule, error)
+	ResolveInstallModuleFromOrigin func(ctx context.Context, name string) (*meta.Module, error)
+	ResolveInstalledModule         func(name string) (*meta.Module, error)
 
-	Install   func(module *meta.IrModule) error
-	Uninstall func(module *meta.IrModule) error
-	Upgrade   func(module *meta.IrModule) error
+	Install   func(module *meta.Module) error
+	Uninstall func(module *meta.Module) error
+	Upgrade   func(module *meta.Module) error
 
 	// Targets returns root directories for app-stage outputs.
 	// distAppDir is typically: dist/apps/<app> (may be empty to skip per-app dist publishing).
@@ -181,7 +181,7 @@ func mirrorDir(srcDir string, dstDir string) error {
 	})
 }
 
-func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Callbacks) error {
+func Execute(ctx context.Context, plan planner.Plan, root *meta.Module, cb Callbacks) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -934,7 +934,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 				rollbackPendingModuleGen()
 				return err
 			}
-			var mod *meta.IrModule
+			var mod *meta.Module
 			if root != nil && name == root.Name {
 				mod = root
 			} else {
@@ -1028,7 +1028,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			if err := checkCtx(); err != nil {
 				return err
 			}
-			var mod *meta.IrModule
+			var mod *meta.Module
 			if root != nil && name == root.Name {
 				mod = root
 			} else {
@@ -1069,7 +1069,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			if err := checkCtx(); err != nil {
 				return err
 			}
-			var mod *meta.IrModule
+			var mod *meta.Module
 			if root != nil && name == root.Name {
 				mod = root
 			} else {

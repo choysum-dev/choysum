@@ -20,7 +20,7 @@ func TestProtobufGenerateWritesEmbeddedAssetsAndAppProto(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
 	protoDir := t.TempDir()
 	distAppDir := filepath.Join(t.TempDir(), "apps", "crm")
-	gen := &protobufGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, modulesProtoDir: protoDir, distAppDir: distAppDir}
+	gen := &protobufGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "crm"}, modulesProtoDir: protoDir, distAppDir: distAppDir}
 
 	results, err := gen.generate(context.Background(), testApp())
 	if err != nil {
@@ -67,7 +67,7 @@ func TestProtobufGenerateUsesStagingWhenNoExplicitTargets(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
 	runtimeScope.cfg.ModulesPath = t.TempDir()
 	runtimeScope.cfg.DistPath = t.TempDir()
-	gen := &protobufGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}}
+	gen := &protobufGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "crm"}}
 	ctx := staging.WithTmpRoot(context.Background(), t.TempDir())
 
 	results, err := gen.generate(ctx, testApp())
@@ -99,7 +99,7 @@ func TestProtobufGenerateModulesProtoDirBranchErrorPaths(t *testing.T) {
 
 		gen := &protobufGenerator{
 			runtimeScope:    runtimeScope,
-			module:          &meta.IrModule{ApplicationStr: "crm"},
+			module:          &meta.Module{ApplicationStr: "crm"},
 			modulesProtoDir: blockedPath,
 		}
 		if _, err := gen.generate(context.Background(), testApp()); err == nil {
@@ -111,7 +111,7 @@ func TestProtobufGenerateModulesProtoDirBranchErrorPaths(t *testing.T) {
 		runtimeScope := newGeneratorScope(t)
 		gen := &protobufGenerator{
 			runtimeScope:    runtimeScope,
-			module:          &meta.IrModule{ApplicationStr: "crm"},
+			module:          &meta.Module{ApplicationStr: "crm"},
 			modulesProtoDir: t.TempDir(),
 		}
 
@@ -142,7 +142,7 @@ func TestSyncProtoToDist_ApplicationCopies_ToAppsAssets_NoLegacyFallback(t *test
 	runtimeScope.cfg.DistPath = distRoot
 	runtimeScope.cfg.Compile.BundleMode = string(config.BundleModeApplication)
 
-	g := &protobufGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "auth"}}
+	g := &protobufGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "auth"}}
 	if err := g.syncProtoToDist(ctx, src); err != nil {
 		t.Fatalf("syncProtoToDist: %v", err)
 	}
@@ -172,7 +172,7 @@ func TestSyncProtoToDist_BundleMode_NoOp(t *testing.T) {
 	runtimeScope.cfg.DistPath = distRoot
 	runtimeScope.cfg.Compile.BundleMode = string(config.BundleModeBundle)
 
-	g := &protobufGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "auth"}, distAppDir: filepath.Join(distRoot, "apps", "auth")}
+	g := &protobufGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "auth"}, distAppDir: filepath.Join(distRoot, "apps", "auth")}
 	if err := g.syncProtoToDist(ctx, src); err != nil {
 		t.Fatalf("syncProtoToDist: %v", err)
 	}
@@ -202,7 +202,7 @@ func TestSyncProtoToDistDirect_ApplicationCopies_BundleSkips(t *testing.T) {
 		runtimeScope := newGeneratorScope(t)
 		runtimeScope.cfg.DistPath = distRoot
 		runtimeScope.cfg.Compile.BundleMode = string(config.BundleModeApplication)
-		g := &protobufGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "auth"}}
+		g := &protobufGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "auth"}}
 		if err := g.syncProtoToDistDirect(ctx, src); err != nil {
 			t.Fatalf("syncProtoToDistDirect: %v", err)
 		}
@@ -221,7 +221,7 @@ func TestSyncProtoToDistDirect_ApplicationCopies_BundleSkips(t *testing.T) {
 		runtimeScope := newGeneratorScope(t)
 		runtimeScope.cfg.DistPath = distRoot
 		runtimeScope.cfg.Compile.BundleMode = string(config.BundleModeBundle)
-		g := &protobufGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "auth"}, distAppDir: filepath.Join(distRoot, "apps", "auth")}
+		g := &protobufGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "auth"}, distAppDir: filepath.Join(distRoot, "apps", "auth")}
 		if err := g.syncProtoToDistDirect(ctx, src); err != nil {
 			t.Fatalf("syncProtoToDistDirect: %v", err)
 		}

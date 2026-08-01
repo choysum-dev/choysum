@@ -18,7 +18,7 @@ export const metaRoutes: RouteRecordRaw[] = [
     name: 'MetaModuleList',
     component: () => import('../pages/ModuleList.vue'),
     actions: ['meta.action.module_install', 'meta.action.module_upgrade', 'meta.action.module_uninstall', 'meta.action.module_sync_index'],
-    requires: [{ model: 'meta.IrModuleIndex' }, { model: 'meta.IrModule' }],
+    requires: [{ model: 'meta.MetaModuleIndex' }, { model: 'meta.MetaModule' }],
     meta: { requiresAuth: true },
   }),
   defineRoute('meta.route.module_list', {
@@ -27,8 +27,8 @@ export const metaRoutes: RouteRecordRaw[] = [
     path: 'meta/modules/list',
     name: 'MetaModuleListTable',
     component: () => import('../pages/ModuleListTable.vue'),
-    actions: ['meta.action.module_sync_index', 'meta.action.ir_module_index_delete'],
-    requires: [{ model: 'meta.IrModuleIndex' }, { model: 'meta.IrModule' }],
+    actions: ['meta.action.module_sync_index', 'meta.action.module_index_delete'],
+    requires: [{ model: 'meta.MetaModuleIndex' }, { model: 'meta.MetaModule' }],
     meta: { requiresAuth: true },
   }),
   defineRoute('meta.route.module_history', {
@@ -38,7 +38,7 @@ export const metaRoutes: RouteRecordRaw[] = [
     name: 'MetaModuleHistory',
     component: () => import('../pages/ModuleHistory.vue'),
     actions: ['meta.action.module_management_log_delete'],
-    requires: [{ model: 'meta.ModuleManagementLog' }, { model: 'meta.IrModule' }, { model: 'meta.IrModuleIndex' }],
+    requires: [{ model: 'meta.ModuleManagementLog' }, { model: 'meta.MetaModule' }, { model: 'meta.MetaModuleIndex' }],
     meta: { requiresAuth: true },
   }),
   defineRoute('meta.route.module_detail', {
@@ -48,8 +48,8 @@ export const metaRoutes: RouteRecordRaw[] = [
     name: 'MetaModuleDetail',
     component: () => import('../pages/ModuleDetail.vue'),
     props: route => ({ recordId: route.params.id, viewMode: 'display' }),
-    actions: ['meta.action.ir_module_index_edit', 'meta.action.ir_module_index_delete', 'meta.action.ir_module_index_copy'],
-    requires: [{ model: 'meta.IrModuleIndex' }, { model: 'meta.IrModule' }],
+    actions: ['meta.action.module_index_edit', 'meta.action.module_index_delete', 'meta.action.module_index_copy'],
+    requires: [{ model: 'meta.MetaModuleIndex' }, { model: 'meta.MetaModule' }],
     meta: { requiresAuth: true },
   }),
 ];

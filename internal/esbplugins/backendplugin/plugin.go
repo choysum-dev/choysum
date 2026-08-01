@@ -24,11 +24,11 @@ import (
 type BackendPlugin struct {
 	*esbplugins.BasePlugin
 	EntryPointImports []string
-	parserFactory     func(scope.Scope, *meta.IrModule) parser.Parser
+	parserFactory     func(scope.Scope, *meta.Module) parser.Parser
 	runtimeOptions    runtimeOptions
 }
 
-func (p *BackendPlugin) bindRuntimeState(runtimeScope scope.Scope, module *meta.IrModule) {
+func (p *BackendPlugin) bindRuntimeState(runtimeScope scope.Scope, module *meta.Module) {
 	if p == nil || p.BasePlugin == nil {
 		return
 	}
@@ -112,12 +112,12 @@ func newBackendPluginModuleSpecPathComparer() func(a string, b string) bool {
 	}
 }
 
-func isBackendPluginIrModelTableMissingError(err error) bool {
+func isBackendPluginModelTableMissingError(err error) bool {
 	if err == nil {
 		return false
 	}
 	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "no such table: meta_ir_model") || strings.Contains(msg, `relation "meta_ir_model" does not exist`)
+	return strings.Contains(msg, "no such table: meta_model") || strings.Contains(msg, `relation "meta_model" does not exist`)
 }
 
 func (p *BackendPlugin) isEntryPointPath(path string) bool {
@@ -265,7 +265,7 @@ func (p *BackendPlugin) replaceModuleSpecReferenceIdent(parserResults []*parser.
 			}
 		}
 
-		modelServices := make([]*meta.IrService, 0)
+		modelServices := make([]*meta.Service, 0)
 		for _, service := range model.Services {
 
 			for _, decorator := range service.Decorators {
@@ -289,7 +289,7 @@ func (p *BackendPlugin) replaceModuleSpecReferenceIdent(parserResults []*parser.
 		}
 		model.Services = modelServices
 
-		modelFields := make([]*meta.IrField, 0)
+		modelFields := make([]*meta.Field, 0)
 		for _, field := range model.Fields {
 			moduleSpec, referenceIdent := p.FindModuleSpecAndReferenceIdent(field.ModuleSpecPath, field.ReferenceIdent)
 			field.ModuleSpecPath = moduleSpec
@@ -477,7 +477,7 @@ func (p *BackendPlugin) injectModelApplication(parserResults []*parser.ParserRes
 		}
 
 		if session != nil && len(moduleNames) > 0 {
-			var modules []meta.IrModule
+			var modules []meta.Module
 			if err := session.Where("name IN ?", moduleNames).Find(&modules).Error; err == nil {
 				for _, mod := range modules {
 					name := strings.TrimSpace(mod.Name)
@@ -490,12 +490,12 @@ func (p *BackendPlugin) injectModelApplication(parserResults []*parser.ParserRes
 		}
 
 		if session != nil && len(queryPaths) > 0 {
-			var models []meta.IrModel
+			var models []meta.Model
 			if err := session.
 				Preload("Module.Application").
 				Where("path IN ?", queryPaths).
 				Find(&models).Error; err != nil {
-				if !isBackendPluginIrModelTableMissingError(err) {
+				if !isBackendPluginModelTableMissingError(err) {
 					return xfmt.Errorf("failed to batch load external models: %w", err)
 				}
 				models = nil
@@ -715,7 +715,7 @@ func (p *BackendPlugin) setFieldMeta(parserResults []*parser.ParserResult) error
 			}
 		}
 		if moduleName == "" {
-			var model *meta.IrModel
+			var model *meta.Model
 			if result := p.Env.Session().Preload("Module.Application").Where("path = ? OR path = ?", modelPath, modelPath+".ts").Take(&model); result.Error != nil {
 				return ""
 			}
@@ -726,7 +726,7 @@ func (p *BackendPlugin) setFieldMeta(parserResults []*parser.ParserResult) error
 		return moduleName
 	}
 	// Resolve the target model by name from the parsed results.
-	findModelByName := func(name string) *meta.IrModel {
+	findModelByName := func(name string) *meta.Model {
 		for _, pr := range parserResults {
 			if pr.Model != nil && pr.Model.Name == name {
 				return pr.Model
@@ -735,7 +735,7 @@ func (p *BackendPlugin) setFieldMeta(parserResults []*parser.ParserResult) error
 		return nil
 	}
 	// Read the target model's parentField option when it is present.
-	getParentFieldFromModel := func(m *meta.IrModel) string {
+	getParentFieldFromModel := func(m *meta.Model) string {
 		if m == nil {
 			return ""
 		}
@@ -1061,7 +1061,7 @@ func (p *BackendPlugin) setFieldMeta(parserResults []*parser.ParserResult) error
 }
 
 // DefinePlugins returns the backend esbuild plugins for the current runtime state.
-func (p *BackendPlugin) DefinePlugins(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.IrModule, options ...esbplugins.EsbPluginOptions) []api.Plugin {
+func (p *BackendPlugin) DefinePlugins(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.Module, options ...esbplugins.EsbPluginOptions) []api.Plugin {
 	for _, opt := range options {
 		if opt != nil {
 			opt(p)
@@ -1184,7 +1184,7 @@ func (p *BackendPlugin) GetParserResults() ([]*parser.ParserResult, error) {
 }
 
 // NewBackendPlugin creates a backend esbuild plugin for a module entry point.
-func NewBackendPlugin(runtimeScope scope.Scope, module *meta.IrModule, entryPoint string, opts ...func(*BackendPlugin)) esbplugins.EsbPlugin {
+func NewBackendPlugin(runtimeScope scope.Scope, module *meta.Module, entryPoint string, opts ...func(*BackendPlugin)) esbplugins.EsbPlugin {
 	p := &BackendPlugin{
 		BasePlugin:    esbplugins.NewBasePlugin(runtimeScope, module, entryPoint),
 		parserFactory: backendtsparser.NewTsParser,

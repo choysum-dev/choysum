@@ -8,14 +8,14 @@ import UserRole from '@/auth/service/models/user_role';
 import RoleMethodAccess from '@/auth/service/models/role_method_access';
 import RoleUiResource from '@/auth/service/models/role_ui_resource';
 import { evaluateUiDerivedMethodDecision } from '@/auth/service/models/_user_method_access';
-import IrUiResource from '@/meta/service/models/ir_ui_resource';
+import MetaUiResource from '@/meta/service/models/ui_resource';
 import { createServiceByModel } from '@/core/service/rpc';
-import type IrApplicationModel from '@/meta/service/models/ir_application';
-import type IrModelModel from '@/meta/service/models/ir_model';
-import type IrServiceModel from '@/meta/service/models/ir_service';
-const IrApplication = createServiceByModel<typeof IrApplicationModel>('meta.IrApplication');
-const IrModel = createServiceByModel<typeof IrModelModel>('meta.IrModel');
-const IrService = createServiceByModel<typeof IrServiceModel>('meta.IrService');
+import type MetaApplicationModel from '@/meta/service/models/application';
+import type MetaModelModel from '@/meta/service/models/model';
+import type MetaServiceModel from '@/meta/service/models/service';
+const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
+const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
+const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -116,22 +116,22 @@ function setupAllowlistForFixtures(): void {
       'RoleUiResource:create',
       'RoleUiResource:delete',
 
-      'meta.IrUiResource:read',
-      'meta.IrUiResource:write',
-      'meta.IrUiResource:create',
-      'meta.IrUiResource:delete',
-      'IrUiResource:read',
-      'IrUiResource:write',
-      'IrUiResource:create',
-      'IrUiResource:delete',
+      'meta.MetaUiResource:read',
+      'meta.MetaUiResource:write',
+      'meta.MetaUiResource:create',
+      'meta.MetaUiResource:delete',
+      'MetaUiResource:read',
+      'MetaUiResource:write',
+      'MetaUiResource:create',
+      'MetaUiResource:delete',
 
       // meta
-      'meta.IrApplication:read',
-      'IrApplication:read',
-      'meta.IrModel:read',
-      'meta.IrService:read',
-      'IrModel:read',
-      'IrService:read',
+      'meta.MetaApplication:read',
+      'MetaApplication:read',
+      'meta.MetaModel:read',
+      'meta.MetaService:read',
+      'MetaModel:read',
+      'MetaService:read',
     ],
   });
 }
@@ -142,7 +142,7 @@ function disableAllowlist(): void {
 
 async function resolveModelId(app: string, name: string): Promise<string> {
   const hit = (
-    await IrModel.Search(
+    await MetaModel.Search(
       {
         And: [
           ['Application', '=', app],
@@ -160,7 +160,7 @@ async function resolveModelId(app: string, name: string): Promise<string> {
 async function resolveService(modelId: string, serviceName: string): Promise<{ id: string; name: string }> {
   // Meta IR service names are not guaranteed to be case-stable (and can differ across build paths).
   // Follow the established pattern from permission_state.test.ts: fetch by ModelId then match by name.
-  const rows = await IrService.Search(
+  const rows = await MetaService.Search(
     {
       And: [['ModelId', '=', modelId]],
     } as any,
@@ -184,7 +184,7 @@ async function resolveService(modelId: string, serviceName: string): Promise<{ i
 }
 
 async function resolveApplicationId(appName: string): Promise<string> {
-  const hit = (await IrApplication.Search({ And: [['Name', '=', appName]] } as any, { fields: ['Id'], limit: 1 } as any))?.[0] as any;
+  const hit = (await MetaApplication.Search({ And: [['Name', '=', appName]] } as any, { fields: ['Id'], limit: 1 } as any))?.[0] as any;
   const id = String(hit?.Id || '').trim();
   if (!id) throw new Error(`meta application not found: ${appName}`);
   return id;
@@ -194,14 +194,14 @@ async function createUiResource(input: {
   resourceId: string;
   type: 'ROUTE' | 'MENU' | 'ACTION';
   requires?: string[];
-  IrApplicationId?: string | null;
+  MetaApplicationId?: string | null;
 }): Promise<string> {
-  const created = await IrUiResource.Create(
+  const created = await MetaUiResource.Create(
     {
       Name: input.resourceId,
       Type: input.type,
       Requires: input.requires ?? [],
-      IrApplicationId: input.IrApplicationId ?? null,
+      MetaApplicationId: input.MetaApplicationId ?? null,
       Module: 'auth',
     } as any,
     ['Id'] as any
@@ -272,9 +272,9 @@ test('P3-2: CheckMethodAccess respects company-scoped roles', async () => {
       await RoleMethodAccess.Create(
         {
           RoleId: { Id: r.id } as any,
-          IrServiceId: browse.id,
-          IrModelId: null,
-          IrApplicationId: null,
+          MetaServiceId: browse.id,
+          MetaModelId: null,
+          MetaApplicationId: null,
           Mode: 'allow',
         } as any,
         ['Id'] as any
@@ -331,9 +331,9 @@ test('P3-2: CheckMethodAccess global role applies to any company', async () => {
       await RoleMethodAccess.Create(
         {
           RoleId: { Id: r.id } as any,
-          IrServiceId: browse.id,
-          IrModelId: null,
-          IrApplicationId: null,
+          MetaServiceId: browse.id,
+          MetaModelId: null,
+          MetaApplicationId: null,
           Mode: 'allow',
         } as any,
         ['Id'] as any
@@ -379,9 +379,9 @@ test('P3-2: CheckMethodAccess application wildcard allow applies to any method w
       await RoleMethodAccess.Create(
         {
           RoleId: { Id: r.id } as any,
-          IrServiceId: null,
-          IrModelId: null,
-          IrApplicationId: authAppId,
+          MetaServiceId: null,
+          MetaModelId: null,
+          MetaApplicationId: authAppId,
           Mode: 'allow',
         } as any,
         ['Id'] as any
@@ -417,7 +417,7 @@ test('P3-2: CheckMethodAccess deny wins across scopes (app allow + service deny)
 
       const authAppId = await resolveApplicationId('auth');
       await RoleMethodAccess.Create(
-        { RoleId: { Id: r.id } as any, IrServiceId: null, IrModelId: null, IrApplicationId: authAppId, Mode: 'allow' } as any,
+        { RoleId: { Id: r.id } as any, MetaServiceId: null, MetaModelId: null, MetaApplicationId: authAppId, Mode: 'allow' } as any,
         ['Id'] as any
       );
 
@@ -427,7 +427,7 @@ test('P3-2: CheckMethodAccess deny wins across scopes (app allow + service deny)
 
       // more specific deny overrides broader allow
       await RoleMethodAccess.Create(
-        { RoleId: { Id: r.id } as any, IrServiceId: logout.id, IrModelId: null, IrApplicationId: null, Mode: 'deny' } as any,
+        { RoleId: { Id: r.id } as any, MetaServiceId: logout.id, MetaModelId: null, MetaApplicationId: null, Mode: 'deny' } as any,
         ['Id'] as any
       );
 
@@ -458,15 +458,15 @@ test('P3-2: CheckMethodAccess global wildcard allow grants access across apps', 
       await UserRole.Create({ UserId: { Id: userId } as any, RoleId: { Id: r.id } as any, CompanyId: null as any } as any, ['Id'] as any);
 
       await RoleMethodAccess.Create(
-        { RoleId: { Id: r.id } as any, IrServiceId: null, IrModelId: null, IrApplicationId: null, Mode: 'allow' } as any,
+        { RoleId: { Id: r.id } as any, MetaServiceId: null, MetaModelId: null, MetaApplicationId: null, Mode: 'allow' } as any,
         ['Id'] as any
       );
 
-      const modelId = await resolveModelId('meta', 'IrModel');
+      const modelId = await resolveModelId('meta', 'MetaModel');
       const browse = await resolveService(modelId, 'browse');
 
       disableAllowlist();
-      const ok = await User.CheckMethodAccess(c1.Id, `/meta.IrModel/${browse.name}`);
+      const ok = await User.CheckMethodAccess(c1.Id, `/meta.MetaModel/${browse.name}`);
       return { ok };
     },
     { merge: false }
@@ -494,11 +494,11 @@ test('P3-2: CheckMethodAccess ui deny overrides ui allow on same runtime method'
         resourceId: uid('auth.route.ui_deny'),
         type: 'ROUTE',
         requires: ['rpc:/auth.User/Browse'],
-        IrApplicationId: authAppId,
+        MetaApplicationId: authAppId,
       });
 
-      await RoleUiResource.Create({ RoleId: { Id: r.id } as any, IrApplicationId: authAppId, IrUiResourceId: null, Mode: 'allow' } as any, ['Id'] as any);
-      await RoleUiResource.Create({ RoleId: { Id: r.id } as any, IrApplicationId: null, IrUiResourceId: deniedResourceId, Mode: 'deny' } as any, ['Id'] as any);
+      await RoleUiResource.Create({ RoleId: { Id: r.id } as any, MetaApplicationId: authAppId, MetaUiResourceId: null, Mode: 'allow' } as any, ['Id'] as any);
+      await RoleUiResource.Create({ RoleId: { Id: r.id } as any, MetaApplicationId: null, MetaUiResourceId: deniedResourceId, Mode: 'deny' } as any, ['Id'] as any);
 
       const userModelId = await resolveModelId('auth', 'User');
       const browse = await resolveService(userModelId, 'browse');
@@ -516,18 +516,18 @@ test('P3-2: CheckMethodAccess ui deny overrides ui allow on same runtime method'
 test('P3-2: evaluateUiDerivedMethodDecision marks denied when allow and deny both match', async () => {
   resetRequestContext();
   const originalRoleUiSearch = (RoleUiResource as any).Search;
-  const originalIrUiSearch = (IrUiResource as any).Search;
+  const originalIrUiSearch = (MetaUiResource as any).Search;
 
   (RoleUiResource as any).Search = async () => [
-    { IrApplicationId: 'APP-1', IrUiResourceId: null, Mode: 'allow' },
-    { IrApplicationId: null, IrUiResourceId: 'RES-DENY', Mode: 'deny' },
+    { MetaApplicationId: 'APP-1', MetaUiResourceId: null, Mode: 'allow' },
+    { MetaApplicationId: null, MetaUiResourceId: 'RES-DENY', Mode: 'deny' },
   ];
 
-  (IrUiResource as any).Search = async () => [
+  (MetaUiResource as any).Search = async () => [
     {
       Id: 'RES-DENY',
       Name: 'res-deny',
-      IrApplicationId: 'APP-1',
+      MetaApplicationId: 'APP-1',
       Requires: ['rpc:/auth.User/browse'],
     },
   ];
@@ -540,7 +540,7 @@ test('P3-2: evaluateUiDerivedMethodDecision marks denied when allow and deny bot
     expect(out.hitRuleIds).toEqual(['RES-DENY']);
   } finally {
     (RoleUiResource as any).Search = originalRoleUiSearch;
-    (IrUiResource as any).Search = originalIrUiSearch;
+    (MetaUiResource as any).Search = originalIrUiSearch;
   }
 });
 
@@ -565,14 +565,14 @@ test('P3-2: CheckMethodAccess manual allow remains authoritative over ui deny', 
         resourceId: uid('auth.route.ui_deny_manual'),
         type: 'ROUTE',
         requires: ['rpc:/auth.User/*'],
-        IrApplicationId: authAppId,
+        MetaApplicationId: authAppId,
       });
 
       await RoleMethodAccess.Create(
-        { RoleId: { Id: r.id } as any, IrServiceId: browse.id, IrModelId: null, IrApplicationId: null, Mode: 'allow' } as any,
+        { RoleId: { Id: r.id } as any, MetaServiceId: browse.id, MetaModelId: null, MetaApplicationId: null, Mode: 'allow' } as any,
         ['Id'] as any
       );
-      await RoleUiResource.Create({ RoleId: { Id: r.id } as any, IrApplicationId: null, IrUiResourceId: deniedResourceId, Mode: 'deny' } as any, ['Id'] as any);
+      await RoleUiResource.Create({ RoleId: { Id: r.id } as any, MetaApplicationId: null, MetaUiResourceId: deniedResourceId, Mode: 'deny' } as any, ['Id'] as any);
 
       disableAllowlist();
       const ok = await User.CheckMethodAccess(c1.Id, `/auth.User/${browse.name}`);
@@ -596,9 +596,9 @@ test('RoleMethodAccess db check: deleted rows bypass scope xor', async () => {
     const row = await RoleMethodAccess.Create(
       {
         RoleId: { Id: role.id } as any,
-        IrServiceId: browse.id,
-        IrModelId: null,
-        IrApplicationId: null,
+        MetaServiceId: browse.id,
+        MetaModelId: null,
+        MetaApplicationId: null,
         Mode: 'allow',
       } as any,
       ['Id'] as any
@@ -612,9 +612,9 @@ test('RoleMethodAccess db check: deleted rows bypass scope xor', async () => {
     const repo = RoleMethodAccess.getRepository().withDeleted();
     const updated = await repo.update(
       {
-        IrServiceId: browse.id,
-        IrModelId: userModelId,
-        IrApplicationId: null,
+        MetaServiceId: browse.id,
+        MetaModelId: userModelId,
+        MetaApplicationId: null,
       } as any,
       ['Id', '=', id] as any
     );
@@ -624,15 +624,15 @@ test('RoleMethodAccess db check: deleted rows bypass scope xor', async () => {
     const rows = await RoleMethodAccess.Search(
       ['Id', '=', id] as any,
       {
-        fields: ['Id', 'DeletedAt', 'IrServiceId', 'IrModelId', 'IrApplicationId'] as any,
+        fields: ['Id', 'DeletedAt', 'MetaServiceId', 'MetaModelId', 'MetaApplicationId'] as any,
         withDeleted: true,
       } as any
     );
 
     expect(rows.length).toBe(1);
-    expect(String((rows[0] as any)?.IrServiceId || '').trim()).toBe(browse.id);
-    expect(String((rows[0] as any)?.IrModelId || '').trim()).toBe(userModelId);
-    expect(String((rows[0] as any)?.IrApplicationId || '').trim()).toBe('');
+    expect(String((rows[0] as any)?.MetaServiceId || '').trim()).toBe(browse.id);
+    expect(String((rows[0] as any)?.MetaModelId || '').trim()).toBe(userModelId);
+    expect(String((rows[0] as any)?.MetaApplicationId || '').trim()).toBe('');
     expect((rows[0] as any)?.DeletedAt != null).toBe(true);
   });
 });
@@ -649,9 +649,9 @@ test('RoleMethodAccess: permission-only update must not rewrite scoped fields to
     const created = await RoleMethodAccess.Create(
       {
         RoleId: { Id: role.id } as any,
-        IrServiceId: browse.id,
-        IrModelId: null,
-        IrApplicationId: null,
+        MetaServiceId: browse.id,
+        MetaModelId: null,
+        MetaApplicationId: null,
         Mode: 'allow',
       } as any,
       ['Id'] as any
@@ -670,14 +670,14 @@ test('RoleMethodAccess: permission-only update must not rewrite scoped fields to
 
     const rows = await RoleMethodAccess.Search(
       ['Id', '=', id] as any,
-      { fields: ['Id', 'IrServiceId', 'IrModelId', 'IrApplicationId', 'Mode'], limit: 1 } as any
+      { fields: ['Id', 'MetaServiceId', 'MetaModelId', 'MetaApplicationId', 'Mode'], limit: 1 } as any
     );
 
     expect(rows.length).toBe(1);
     // Scope must stay scoped to the service, not become global.
-    expect(String((rows[0] as any)?.IrServiceId || '').trim()).toBe(browse.id);
-    expect(String((rows[0] as any)?.IrModelId || '').trim()).toBe('');
-    expect(String((rows[0] as any)?.IrApplicationId || '').trim()).toBe('');
+    expect(String((rows[0] as any)?.MetaServiceId || '').trim()).toBe(browse.id);
+    expect(String((rows[0] as any)?.MetaModelId || '').trim()).toBe('');
+    expect(String((rows[0] as any)?.MetaApplicationId || '').trim()).toBe('');
     // Mode must reflect the update.
     expect(String((rows[0] as any)?.Mode || '').trim()).toBe('deny');
   });
@@ -700,9 +700,9 @@ test('RoleMethodAccess coverage: CreateMany and condition Update hit assertExclu
       [
         {
           RoleId: { Id: role.id } as any,
-          IrServiceId: browse.id,
-          IrModelId: null,
-          IrApplicationId: null,
+          MetaServiceId: browse.id,
+          MetaModelId: null,
+          MetaApplicationId: null,
           Mode: 'allow',
         } as any,
       ],
@@ -716,10 +716,10 @@ test('RoleMethodAccess coverage: CreateMany and condition Update hit assertExclu
 
     const rows = await RoleMethodAccess.Search(
       ['Id', '=', id] as any,
-      { fields: ['Id', 'IrServiceId', 'IrModelId', 'IrApplicationId', 'Mode'], limit: 1 } as any
+      { fields: ['Id', 'MetaServiceId', 'MetaModelId', 'MetaApplicationId', 'Mode'], limit: 1 } as any
     );
     expect(rows.length).toBe(1);
-    expect(String((rows[0] as any)?.IrServiceId || '').trim()).toBe(browse.id);
+    expect(String((rows[0] as any)?.MetaServiceId || '').trim()).toBe(browse.id);
     expect(String((rows[0] as any)?.Mode || '').trim()).toBe('deny');
   });
 });
@@ -736,9 +736,9 @@ test('RoleMethodAccess: Create/Update coerce Source=ui to manual (UI-Option-A)',
     const created = await RoleMethodAccess.Create(
       {
         RoleId: { Id: role.id } as any,
-        IrServiceId: browse.id,
-        IrModelId: null,
-        IrApplicationId: null,
+        MetaServiceId: browse.id,
+        MetaModelId: null,
+        MetaApplicationId: null,
         Mode: 'allow',
         Source: 'ui',
       } as any,

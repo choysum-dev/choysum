@@ -28,7 +28,7 @@ func TestServiceClientGenerate(t *testing.T) {
 		t.Fatalf("write google proto: %v", err)
 	}
 
-	gen := &serviceClientGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, modulesProtoDir: protoDir, modulesServiceDir: serviceDir}
+	gen := &serviceClientGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "crm"}, modulesProtoDir: protoDir, modulesServiceDir: serviceDir}
 	protoFiles, err := gen.collectProtoFiles("crm")
 	if err != nil {
 		t.Fatalf("collectProtoFiles() error = %v", err)
@@ -42,7 +42,7 @@ func TestServiceClientGenerate(t *testing.T) {
 	if got := resolveProtoRegisterPath("crm", filepath.Join("sub", "partner.proto")); got != "crm/sub/partner.proto" {
 		t.Fatalf("unexpected app register path: %q", got)
 	}
-	if NewServiceClientGenerator(runtimeScope, &meta.IrModule{Name: "base"}) == nil {
+	if NewServiceClientGenerator(runtimeScope, &meta.Module{Name: "base"}) == nil {
 		t.Fatal("expected service client generator constructor to return non-nil")
 	}
 
@@ -68,9 +68,9 @@ func TestServiceClientGenerate(t *testing.T) {
 
 func TestServiceClientGenerateEdgeCases(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
-	gen := &serviceClientGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, modulesProtoDir: t.TempDir(), modulesServiceDir: t.TempDir()}
+	gen := &serviceClientGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "crm"}, modulesProtoDir: t.TempDir(), modulesServiceDir: t.TempDir()}
 
-	results, err := gen.generate(context.Background(), &meta.IrApplication{Name: "crm"})
+	results, err := gen.generate(context.Background(), &meta.Application{Name: "crm"})
 	if err != nil {
 		t.Fatalf("generate(empty app) error = %v", err)
 	}
@@ -100,7 +100,7 @@ func TestServiceClientGenerate_UsesWorkspaceGeneratedTargets(t *testing.T) {
 		t.Fatalf("write google proto: %v", err)
 	}
 
-	gen := &serviceClientGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}}
+	gen := &serviceClientGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "crm"}}
 	ctx := staging.WithTmpRoot(context.Background(), t.TempDir())
 	results, err := gen.generate(ctx, testApp())
 	if err != nil {
@@ -121,7 +121,7 @@ func TestServiceClientGenerate_WorkspaceTargetsRequireDefaultChoysumPath(t *test
 	runtimeScope := newGeneratorScope(t)
 	runtimeScope.cfg.DefaultChoysumPath = ""
 
-	gen := &serviceClientGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}}
+	gen := &serviceClientGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "crm"}}
 	_, err := gen.generate(context.Background(), testApp())
 	if err == nil || !strings.Contains(err.Error(), "resolve workspace generated api targets") {
 		t.Fatalf("expected workspace target resolution error, got %v", err)

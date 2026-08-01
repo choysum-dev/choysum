@@ -45,10 +45,10 @@ SPDX-License-Identifier: Apache-2.0
           <OSelectionField :store="store" prop="Mode" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OManyToOneRefField :store="store" prop="IrApplicationId" />
+          <OManyToOneRefField :store="store" prop="MetaApplicationId" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OManyToOneRefField :store="store" prop="IrUiResourceId" />
+          <OManyToOneRefField :store="store" prop="MetaUiResourceId" />
         </el-col>
       </el-row>
     </el-card>

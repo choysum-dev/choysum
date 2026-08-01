@@ -165,17 +165,16 @@ export class Repository {
   /* ----------------------------- RecordRule (P2-2) ----------------------------- */
 
   /**
-   * Control-plane metadata models (meta.Ir*) must skip RecordRule injection.
+   * Control-plane metadata models (application === 'meta') must skip RecordRule injection.
    * - Avoid recursion when GetRecordRuleCondition or CheckMethodAccess depends on metadata queries.
    * - Keep Smart Routing local and remote behavior aligned.
    */
   private isControlPlaneMetaModel(): boolean {
-    const full = String(this.meta.fullModelName || '').trim();
-    if (full.startsWith('meta.Ir')) return true;
-
     const app = String(this.meta.application || '').trim();
-    const name = String(this.meta.modelName || this.meta.name || '').trim();
-    return app === 'meta' && name.startsWith('Ir');
+    if (app === 'meta') return true;
+
+    const full = String(this.meta.fullModelName || '').trim();
+    return full.startsWith('meta.');
   }
 
   /**

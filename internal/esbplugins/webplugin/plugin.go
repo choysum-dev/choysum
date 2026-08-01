@@ -28,7 +28,7 @@ type WebPlugin struct {
 	*esbplugins.BasePlugin
 	EntryPointImports []string
 	IndexHtmlOutFile  string
-	parserFactory     func(scope.Scope, *meta.IrModule) parser.Parser
+	parserFactory     func(scope.Scope, *meta.Module) parser.Parser
 	runtimeOptions    runtimeOptions
 }
 
@@ -38,7 +38,7 @@ const (
 )
 
 // BindRuntimeState refreshes the plugin's runtime scope, module, and parser state.
-func (p *WebPlugin) BindRuntimeState(runtimeScope scope.Scope, module *meta.IrModule) {
+func (p *WebPlugin) BindRuntimeState(runtimeScope scope.Scope, module *meta.Module) {
 	if p == nil || p.BasePlugin == nil {
 		return
 	}
@@ -595,7 +595,7 @@ func (p *WebPlugin) BuildEndProcessor() vueplugin.OnEndProcessor {
 }
 
 // DefinePlugins returns the web plugin chain for the current runtime state.
-func (p *WebPlugin) DefinePlugins(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.IrModule, options ...esbplugins.EsbPluginOptions) []api.Plugin {
+func (p *WebPlugin) DefinePlugins(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.Module, options ...esbplugins.EsbPluginOptions) []api.Plugin {
 	for _, opt := range options {
 		if opt != nil {
 			opt(p)
@@ -675,7 +675,7 @@ func (p *WebPlugin) GetParserResults() ([]*parser.ParserResult, error) {
 }
 
 // NewWebPlugin creates a web esbuild plugin for a module entry point.
-func NewWebPlugin(runtimeScope scope.Scope, module *meta.IrModule, entryPoint string, opts ...func(*WebPlugin)) esbplugins.EsbPlugin {
+func NewWebPlugin(runtimeScope scope.Scope, module *meta.Module, entryPoint string, opts ...func(*WebPlugin)) esbplugins.EsbPlugin {
 	p := &WebPlugin{
 		BasePlugin:    esbplugins.NewBasePlugin(runtimeScope, module, entryPoint),
 		parserFactory: vueparser.NewVueParser,

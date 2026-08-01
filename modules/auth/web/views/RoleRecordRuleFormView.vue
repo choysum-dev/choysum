@@ -34,10 +34,10 @@ SPDX-License-Identifier: Apache-2.0
           <OSelectionField :store="store" prop="Kind" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OManyToOneRefField :store="store" prop="IrApplicationId" />
+          <OManyToOneRefField :store="store" prop="MetaApplicationId" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OManyToOneRefField :store="store" prop="IrModelId" />
+          <OManyToOneRefField :store="store" prop="MetaModelId" />
         </el-col>
         <el-col :span="24">
           <OJsonobjectField :store="store" prop="Condition" :allow-array="true" />

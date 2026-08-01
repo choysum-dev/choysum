@@ -7,9 +7,9 @@ import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
 import { _lt } from '../i18n';
 import Role from './role';
-import type IrApplication from '@/meta/service/models/ir_application';
-import type IrModel from '@/meta/service/models/ir_model';
-import type IrService from '@/meta/service/models/ir_service';
+import type MetaApplication from '@/meta/service/models/application';
+import type MetaModel from '@/meta/service/models/model';
+import type MetaService from '@/meta/service/models/service';
 import { mutateThenInvalidateAllAuthzCaches } from './_authz_mutation_helpers';
 import { assertExclusiveScope } from './_rule_scope_helpers';
 
@@ -32,50 +32,50 @@ export default class RoleMethodAccess extends BaseModel {
   /**
    * Application-level scope when the entry targets an entire application.
    */
-  @Field<IrApplication>({
+  @Field<MetaApplication>({
     type: 'ManyToOneRef',
-    relation: { targetModel: 'meta.IrApplication' },
+    relation: { targetModel: 'meta.MetaApplication' },
     notNull: false,
     size: 20,
     index: true,
     string: _lt('Application', { scope: 'auth.model.RoleMethodAccess.fields' }),
   })
-  IrApplicationId: string | null;
+  MetaApplicationId: string | null;
 
   /**
    * Model-level scope when the entry targets an entire model.
    */
-  @Field<IrModel>({
+  @Field<MetaModel>({
     type: 'ManyToOneRef',
-    relation: { targetModel: 'meta.IrModel' },
+    relation: { targetModel: 'meta.MetaModel' },
     notNull: false,
     size: 20,
     index: true,
     string: _lt('Model', { scope: 'auth.model.RoleMethodAccess.fields' }),
   })
-  IrModelId: string | null;
+  MetaModelId: string | null;
 
   /**
    * Service-level scope when the entry targets one concrete RPC method surface.
    */
-  @Field<IrService>({
-    type: 'ManyToOneRef', relation: { targetModel: 'meta.IrService' },
+  @Field<MetaService>({
+    type: 'ManyToOneRef', relation: { targetModel: 'meta.MetaService' },
     notNull: false,
       size: 20,
       index: true,
       checkConstraint: `(
         (deleted_at IS NOT NULL)
-        OR (ir_service_id IS NOT NULL AND ir_model_id IS NULL AND ir_application_id IS NULL)
-        OR (ir_service_id IS NULL AND ir_model_id IS NOT NULL AND ir_application_id IS NULL)
-        OR (ir_service_id IS NULL AND ir_model_id IS NULL AND ir_application_id IS NOT NULL)
-        OR (ir_service_id IS NULL AND ir_model_id IS NULL AND ir_application_id IS NULL)
+        OR (meta_service_id IS NOT NULL AND meta_model_id IS NULL AND meta_application_id IS NULL)
+        OR (meta_service_id IS NULL AND meta_model_id IS NOT NULL AND meta_application_id IS NULL)
+        OR (meta_service_id IS NULL AND meta_model_id IS NULL AND meta_application_id IS NOT NULL)
+        OR (meta_service_id IS NULL AND meta_model_id IS NULL AND meta_application_id IS NULL)
       )`,
     string: _lt('Service', { scope: 'auth.model.RoleMethodAccess.fields' }),
     help: _lt('Leave all scopes empty for a global rule; matching scopes are OR-ed and any deny wins.', {
       scope: 'auth.model.RoleMethodAccess.fields',
     }),
   })
-  IrServiceId: string | null;
+  MetaServiceId: string | null;
 
   /**
    * Whether the matched scope is allowed or denied.

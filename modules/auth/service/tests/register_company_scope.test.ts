@@ -73,10 +73,10 @@ function setupAllowlistForRegister(): void {
       'RoleMethodAccess:read',
       'RoleMethodAccess:create',
 
-      'meta.IrModel:read',
-      'meta.IrService:read',
-      'IrModel:read',
-      'IrService:read',
+      'meta.MetaModel:read',
+      'meta.MetaService:read',
+      'MetaModel:read',
+      'MetaService:read',
 
       'base.Company:read',
       'Company:read',

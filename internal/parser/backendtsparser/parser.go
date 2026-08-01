@@ -11,7 +11,7 @@ import (
 
 type backendtsParser struct {
 	runtimeScope scope.Scope
-	module       *meta.IrModule
+	module       *meta.Module
 }
 
 func (p *backendtsParser) Parse(pathAlias map[string]string, path string, content string) (*parser.ParserResult, error) {
@@ -33,7 +33,7 @@ func (p *backendtsParser) Parse(pathAlias map[string]string, path string, conten
 	return modelParser.parse()
 }
 
-func NewTsParser(runtimeScope scope.Scope, module *meta.IrModule) parser.Parser {
+func NewTsParser(runtimeScope scope.Scope, module *meta.Module) parser.Parser {
 	return &backendtsParser{
 		runtimeScope: runtimeScope,
 		module:       module,

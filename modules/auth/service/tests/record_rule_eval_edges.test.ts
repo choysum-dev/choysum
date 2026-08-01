@@ -4,13 +4,13 @@
 import RoleRecordRule from '@/auth/service/models/role_record_rule';
 import { buildCompanyGateExpr, evaluateRecordRuleCondition } from '@/auth/service/models/_user_record_rule_eval';
 import { createServiceByModel } from '@/core/service/rpc';
-import type IrApplicationModel from '@/meta/service/models/ir_application';
-import type IrFieldModel from '@/meta/service/models/ir_field';
-import type IrModelModel from '@/meta/service/models/ir_model';
+import type MetaApplicationModel from '@/meta/service/models/application';
+import type MetaFieldModel from '@/meta/service/models/field';
+import type MetaModelModel from '@/meta/service/models/model';
 
-const IrApplication = createServiceByModel<typeof IrApplicationModel>('meta.IrApplication');
-const IrModel = createServiceByModel<typeof IrModelModel>('meta.IrModel');
-const IrField = createServiceByModel<typeof IrFieldModel>('meta.IrField');
+const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
+const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
+const MetaField = createServiceByModel<typeof MetaFieldModel>('meta.MetaField');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -45,7 +45,7 @@ function uid(prefix: string): string {
 }
 
 async function resolveModelId(appName: string, modelName: string): Promise<string> {
-  const rows = await IrModel.Search(
+  const rows = await MetaModel.Search(
     {
       And: [
         ['Name', '=', modelName],
@@ -80,8 +80,8 @@ test('P2-2 eval edges: Search truncation fail-closed', async () => {
     RoleId: null,
     Kind: 'grant',
     Condition: null,
-    IrModelId: 'x',
-    IrApplicationId: null,
+    MetaModelId: 'x',
+    MetaApplicationId: null,
   }));
   (RoleRecordRule as any).Search = async () => fakeRows;
   const prevError = console.error;
@@ -113,15 +113,15 @@ test('P2-2 eval edges: missing roleScopesById applies deny-lean company gate', a
   const modelId = await resolveModelId('auth', 'CompanyScopedResource');
   const roleId = uid('role');
   const origSearch = (RoleRecordRule as any).Search;
-  const origCount = (IrField as any).Count;
-  (IrField as any).Count = async () => 1; // force company gate enabled
+  const origCount = (MetaField as any).Count;
+  (MetaField as any).Count = async () => 1; // force company gate enabled
   (RoleRecordRule as any).Search = async () => [
     {
       RoleId: { Id: roleId },
       Kind: 'grant',
       Condition: { And: [['Name', '=', 'x']] },
-      IrModelId: modelId,
-      IrApplicationId: null,
+      MetaModelId: modelId,
+      MetaApplicationId: null,
     },
   ];
   try {
@@ -142,7 +142,7 @@ test('P2-2 eval edges: missing roleScopesById applies deny-lean company gate', a
     expect(json.includes('[]')).toBe(true);
   } finally {
     (RoleRecordRule as any).Search = origSearch;
-    (IrField as any).Count = origCount;
+    (MetaField as any).Count = origCount;
   }
 });
 
@@ -157,22 +157,22 @@ test('P2-2 eval edges: true-condition variants and multi grant+restrict compose'
       RoleId: { Id: roleId },
       Kind: 'grant',
       Condition: { And: [['Name', '=', 'a']] },
-      IrModelId: modelId,
-      IrApplicationId: null,
+      MetaModelId: modelId,
+      MetaApplicationId: null,
     },
     {
       RoleId: { Id: roleId },
       Kind: 'grant',
       Condition: { Or: [['Name', '=', 'b']] },
-      IrModelId: modelId,
-      IrApplicationId: null,
+      MetaModelId: modelId,
+      MetaApplicationId: null,
     },
     {
       RoleId: { Id: roleId },
       Kind: 'restrict',
       Condition: { And: [['Name', '!=', 'z']] },
-      IrModelId: modelId,
-      IrApplicationId: null,
+      MetaModelId: modelId,
+      MetaApplicationId: null,
     },
   ];
   const writeRows = [
@@ -180,29 +180,29 @@ test('P2-2 eval edges: true-condition variants and multi grant+restrict compose'
       RoleId: { Id: roleId },
       Kind: 'grant',
       Condition: { Or: [] },
-      IrModelId: modelId,
-      IrApplicationId: null,
+      MetaModelId: modelId,
+      MetaApplicationId: null,
     },
     {
       RoleId: { Id: roleId },
       Kind: 'grant',
       Condition: {},
-      IrModelId: modelId,
-      IrApplicationId: null,
+      MetaModelId: modelId,
+      MetaApplicationId: null,
     },
     {
       RoleId: { Id: roleId },
       Kind: 'grant',
       Condition: '',
-      IrModelId: modelId,
-      IrApplicationId: null,
+      MetaModelId: modelId,
+      MetaApplicationId: null,
     },
     {
       RoleId: { Id: roleId },
       Kind: 'grant',
       Condition: [],
-      IrModelId: modelId,
-      IrApplicationId: null,
+      MetaModelId: modelId,
+      MetaApplicationId: null,
     },
   ];
 
@@ -241,25 +241,25 @@ test('P2-2 eval edges: mismatched rule scopes skipped', async () => {
   const roleId = uid('role');
   const companyId = uid('C1');
   const origSearch = (RoleRecordRule as any).Search;
-  const origCount = (IrField as any).Count;
+  const origCount = (MetaField as any).Count;
   (RoleRecordRule as any).Search = async () => [
     {
       RoleId: { Id: roleId },
       Kind: 'grant',
       Condition: { And: [['Name', '=', 'ok']] },
-      IrModelId: modelId,
-      IrApplicationId: null,
+      MetaModelId: modelId,
+      MetaApplicationId: null,
     },
     {
       // Mismatched scope: model id for a different model with an app id set → skipped.
       RoleId: { Id: roleId },
       Kind: 'grant',
       Condition: null,
-      IrModelId: 'not-the-model',
-      IrApplicationId: 'not-the-app',
+      MetaModelId: 'not-the-model',
+      MetaApplicationId: 'not-the-app',
     },
   ];
-  (IrField as any).Count = async () => 1;
+  (MetaField as any).Count = async () => 1;
 
   try {
     const env = await evaluateRecordRuleCondition({
@@ -274,7 +274,7 @@ test('P2-2 eval edges: mismatched rule scopes skipped', async () => {
     expect(String((env as any).reason || '')).toBe('grant_domain');
   } finally {
     (RoleRecordRule as any).Search = origSearch;
-    (IrField as any).Count = origCount;
+    (MetaField as any).Count = origCount;
   }
 });
 
@@ -284,15 +284,15 @@ test('P2-2 eval edges: company-isolated model without ownership field fail-close
   const roleId = uid('role');
   const companyId = uid('C1');
   const origSearch = (RoleRecordRule as any).Search;
-  const origCount = (IrField as any).Count;
-  (IrField as any).Count = async () => 0;
+  const origCount = (MetaField as any).Count;
+  (MetaField as any).Count = async () => 0;
   (RoleRecordRule as any).Search = async () => [
     {
       RoleId: { Id: roleId },
       Kind: 'grant',
       Condition: { And: [['Name', '=', 'nogate']] },
-      IrModelId: modelId,
-      IrApplicationId: null,
+      MetaModelId: modelId,
+      MetaApplicationId: null,
     },
   ];
   try {
@@ -308,7 +308,7 @@ test('P2-2 eval edges: company-isolated model without ownership field fail-close
     expect(String((env as any).reason || '')).toBe('company_isolated_missing_ownership_field');
   } finally {
     (RoleRecordRule as any).Search = origSearch;
-    (IrField as any).Count = origCount;
+    (MetaField as any).Count = origCount;
   }
 });
 
@@ -326,15 +326,15 @@ test('P2-2 eval edges: unconstrained grant with one restrict uses grant_and_rest
         RoleId: { Id: roleId },
         Kind: 'grant',
         Condition: null,
-        IrModelId: modelId,
-        IrApplicationId: null,
+        MetaModelId: modelId,
+        MetaApplicationId: null,
       },
       {
         RoleId: { Id: roleId },
         Kind: 'restrict',
         Condition: { And: [['Name', '!=', 'nope']] },
-        IrModelId: modelId,
-        IrApplicationId: null,
+        MetaModelId: modelId,
+        MetaApplicationId: null,
       },
     ];
     const andRestrict = await evaluateRecordRuleCondition({
@@ -353,8 +353,8 @@ test('P2-2 eval edges: unconstrained grant with one restrict uses grant_and_rest
         RoleId: { Id: roleId },
         Kind: 'grant',
         Condition: { And: [['Id', '!=', '']] },
-        IrModelId: userModelId,
-        IrApplicationId: null,
+        MetaModelId: userModelId,
+        MetaApplicationId: null,
       },
     ];
     // User is not company-scoped → gate stays off even with hasCompany.
@@ -373,9 +373,9 @@ test('P2-2 eval edges: unconstrained grant with one restrict uses grant_and_rest
   }
 });
 
-test('P2-2 eval edges: app-scoped grant participates when IrApplication resolves', async () => {
+test('P2-2 eval edges: app-scoped grant participates when MetaApplication resolves', async () => {
   resetRequestContext();
-  const apps = await IrApplication.Search({ And: [['Name', '=', 'auth']] } as any, {
+  const apps = await MetaApplication.Search({ And: [['Name', '=', 'auth']] } as any, {
     fields: ['Id'],
     limit: 1,
   } as any);
@@ -388,8 +388,8 @@ test('P2-2 eval edges: app-scoped grant participates when IrApplication resolves
       RoleId: { Id: roleId },
       Kind: 'grant',
       Condition: { And: [['Name', '=', 'from_app']] },
-      IrModelId: null,
-      IrApplicationId: appId,
+      MetaModelId: null,
+      MetaApplicationId: appId,
     },
   ];
   try {
@@ -413,8 +413,8 @@ test('P2-2 eval edges: defensive fallbacks for empty/null inputs', async () => {
   const modelId = await resolveModelId('auth', 'CompanyScopedResource');
   const roleId = uid('role');
   const origSearch = (RoleRecordRule as any).Search;
-  const origAppSearch = (IrApplication as any).Search;
-  const origCount = (IrField as any).Count;
+  const origAppSearch = (MetaApplication as any).Search;
+  const origCount = (MetaField as any).Count;
   const origGetReq = (globalThis as any).$choysum?.request;
 
   try {
@@ -436,8 +436,8 @@ test('P2-2 eval edges: defensive fallbacks for empty/null inputs', async () => {
         RoleId: { Id: roleId },
         Kind: null, // normalizeKind → grant
         Condition: { And: [['Name', '=', 'z']] },
-        IrModelId: modelId,
-        IrApplicationId: null,
+        MetaModelId: modelId,
+        MetaApplicationId: null,
       },
     ];
     const env = await evaluateRecordRuleCondition({
@@ -463,8 +463,8 @@ test('P2-2 eval edges: defensive fallbacks for empty/null inputs', async () => {
     expect(env2.kind).toBe('expr');
     expect(JSON.stringify((env2 as any).expr || {})).toContain('CompanyId');
 
-    // IrApplication empty ⇒ irApplicationId '' ⇒ skip app-scoped arm in scopeOr.
-    (IrApplication as any).Search = async () => [];
+    // MetaApplication empty ⇒ irApplicationId '' ⇒ skip app-scoped arm in scopeOr.
+    (MetaApplication as any).Search = async () => [];
     (RoleRecordRule as any).Search = async () => null; // allRules || []
     const env3 = await evaluateRecordRuleCondition({
       appName: 'auth',
@@ -483,11 +483,11 @@ test('P2-2 eval edges: defensive fallbacks for empty/null inputs', async () => {
         RoleId: null,
         Kind: 'grant',
         Condition: { And: [['Name', '=', 'everyone']] },
-        IrModelId: modelId,
-        IrApplicationId: null,
+        MetaModelId: modelId,
+        MetaApplicationId: null,
       },
     ];
-    (IrField as any).Count = async () => 1;
+    (MetaField as any).Count = async () => 1;
     resetRequestContext();
     const envEveryone = await evaluateRecordRuleCondition({
       appName: 'auth',
@@ -505,14 +505,14 @@ test('P2-2 eval edges: defensive fallbacks for empty/null inputs', async () => {
     const root = (globalThis as any).$choysum;
     const prevRequest = root.request;
     root.request = undefined;
-    (IrField as any).Count = async () => 1;
+    (MetaField as any).Count = async () => 1;
     (RoleRecordRule as any).Search = async () => [
       {
         RoleId: { Id: roleId },
         Kind: 'grant',
         Condition: { And: [['Name', '=', 'gated']] },
-        IrModelId: modelId,
-        IrApplicationId: null,
+        MetaModelId: modelId,
+        MetaApplicationId: null,
       },
     ];
     const env4 = await evaluateRecordRuleCondition({
@@ -529,8 +529,8 @@ test('P2-2 eval edges: defensive fallbacks for empty/null inputs', async () => {
     root.request = prevRequest;
   } finally {
     (RoleRecordRule as any).Search = origSearch;
-    (IrApplication as any).Search = origAppSearch;
-    (IrField as any).Count = origCount;
+    (MetaApplication as any).Search = origAppSearch;
+    (MetaField as any).Count = origCount;
     if (origGetReq !== undefined) {
       (globalThis as any).$choysum.request = origGetReq;
     }
@@ -542,8 +542,8 @@ test('P2-2 eval edges: companyField gate fail-closes when ownership field missin
   const modelId = await resolveModelId('auth', 'CompanyScopedResource');
   const roleId = uid('role');
   const origSearch = (RoleRecordRule as any).Search;
-  const origModelSearch = (IrModel as any).Search;
-  const origCount = (IrField as any).Count;
+  const origModelSearch = (MetaModel as any).Search;
+  const origCount = (MetaField as any).Count;
 
   try {
     (RoleRecordRule as any).Search = async () => [
@@ -551,15 +551,15 @@ test('P2-2 eval edges: companyField gate fail-closes when ownership field missin
         RoleId: { Id: roleId },
         Kind: 'grant',
         Condition: { And: [['Name', '=', 'gated']] },
-        IrModelId: modelId,
-        IrApplicationId: null,
+        MetaModelId: modelId,
+        MetaApplicationId: null,
       },
     ];
 
     // Empty CompanyField ⇒ model_not_company_isolated (gate off, grant still applies).
     resetRequestContext();
-    (IrModel as any).Search = async () => [{ Id: modelId, CompanyField: null }];
-    (IrField as any).Count = async () => 1;
+    (MetaModel as any).Search = async () => [{ Id: modelId, CompanyField: null }];
+    (MetaField as any).Count = async () => 1;
     const notIsolated = await evaluateRecordRuleCondition({
       appName: 'auth',
       modelName: 'CompanyScopedResource',
@@ -571,10 +571,10 @@ test('P2-2 eval edges: companyField gate fail-closes when ownership field missin
     expect(notIsolated.kind).toBe('expr');
     expect(JSON.stringify((notIsolated as any).expr || {})).not.toContain('CompanyId');
 
-    // CompanyField set but IrField missing ⇒ fail-closed deny.
+    // CompanyField set but MetaField missing ⇒ fail-closed deny.
     resetRequestContext();
-    (IrModel as any).Search = async () => [{ Id: modelId, CompanyField: 'CompanyId' }];
-    (IrField as any).Count = async () => 0;
+    (MetaModel as any).Search = async () => [{ Id: modelId, CompanyField: 'CompanyId' }];
+    (MetaField as any).Count = async () => 0;
     const missingField = await evaluateRecordRuleCondition({
       appName: 'auth',
       modelName: 'CompanyScopedResource',
@@ -586,10 +586,10 @@ test('P2-2 eval edges: companyField gate fail-closes when ownership field missin
     expect(missingField.kind).toBe('false');
     expect(String((missingField as any).reason || '')).toBe('company_isolated_missing_ownership_field');
 
-    // IrField.Count throws ⇒ fail-closed deny.
+    // MetaField.Count throws ⇒ fail-closed deny.
     resetRequestContext();
-    (IrModel as any).Search = async () => [{ Id: modelId, CompanyField: 'CompanyId' }];
-    (IrField as any).Count = async () => {
+    (MetaModel as any).Search = async () => [{ Id: modelId, CompanyField: 'CompanyId' }];
+    (MetaField as any).Count = async () => {
       throw new Error('meta boom');
     };
     const gateError = await evaluateRecordRuleCondition({
@@ -604,8 +604,8 @@ test('P2-2 eval edges: companyField gate fail-closes when ownership field missin
     expect(String((gateError as any).reason || '')).toBe('meta_company_gate_error');
   } finally {
     (RoleRecordRule as any).Search = origSearch;
-    (IrModel as any).Search = origModelSearch;
-    (IrField as any).Count = origCount;
+    (MetaModel as any).Search = origModelSearch;
+    (MetaField as any).Count = origCount;
   }
 });
 

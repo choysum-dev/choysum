@@ -19,8 +19,8 @@ import (
 )
 
 type catalogFakeProvider struct {
-	peekFn  func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error)
-	fetchFn func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error)
+	peekFn  func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.Module, error)
+	fetchFn func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.Module, error)
 }
 
 type catalogRoundTripper func(req *http.Request) (*http.Response, error)
@@ -44,7 +44,7 @@ func (catalogErrorReadCloser) Close() error {
 	return nil
 }
 
-func (p *catalogFakeProvider) PeekManifest(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
+func (p *catalogFakeProvider) PeekManifest(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.Module, error) {
 	if p.peekFn != nil {
 		return p.peekFn(ctx, registryURL, moduleName, packageName, version)
 	}
@@ -54,7 +54,7 @@ func (p *catalogFakeProvider) PeekManifest(ctx context.Context, registryURL, mod
 	return nil, nil
 }
 
-func (p *catalogFakeProvider) Fetch(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
+func (p *catalogFakeProvider) Fetch(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.Module, error) {
 	if p.fetchFn != nil {
 		return p.fetchFn(ctx, registryURL, moduleName, packageName, version)
 	}

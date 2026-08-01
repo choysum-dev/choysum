@@ -35,27 +35,27 @@ func TestSeedSelfLanguageCodeAndStringify(t *testing.T) {
 	}
 }
 
-func TestIsTranslateFieldAndLookupIrField(t *testing.T) {
+func TestIsTranslateFieldAndLookupField(t *testing.T) {
 	if isTranslateField(nil) {
 		t.Fatal("nil field")
 	}
 	l, db := newTestLoader(t)
-	field, err := l.lookupIrField(db, nil, "Name")
+	field, err := l.lookupField(db, nil, "Name")
 	if err != nil || field != nil {
 		t.Fatalf("nil model: %#v %v", field, err)
 	}
-	model := &meta.IrModel{}
-	field, err = l.lookupIrField(db, model, "Name")
+	model := &meta.Model{}
+	field, err = l.lookupField(db, model, "Name")
 	if err != nil || field != nil {
 		t.Fatalf("empty model id: %#v %v", field, err)
 	}
 	model.Id.String = xid.New().String()
 	model.Id.Valid = true
-	field, err = l.lookupIrField(db, model, "  ")
+	field, err = l.lookupField(db, model, "  ")
 	if err != nil || field != nil {
 		t.Fatalf("empty field name: %#v %v", field, err)
 	}
-	field, err = l.lookupIrField(db, model, "Missing")
+	field, err = l.lookupField(db, model, "Missing")
 	if err != nil || field != nil {
 		t.Fatalf("missing field: %#v %v", field, err)
 	}
@@ -65,7 +65,7 @@ func TestNormalizeTranslatedSeedValue_AdditionalBranches(t *testing.T) {
 	l, db := newTestLoader(t)
 
 	modelID := xid.New().String()
-	model := &meta.IrModel{}
+	model := &meta.Model{}
 	model.Id.String = modelID
 	model.Id.Valid = true
 	model.Application = "demo"
@@ -76,12 +76,12 @@ func TestNormalizeTranslatedSeedValue_AdditionalBranches(t *testing.T) {
 	}
 
 	falseVal := false
-	nonTranslate := &meta.IrField{Name: "Code", FieldType: "varchar"}
+	nonTranslate := &meta.Field{Name: "Code", FieldType: "varchar"}
 	nonTranslate.ModelId.String = modelID
 	nonTranslate.ModelId.Valid = true
-	nonSpec := &meta.IrFieldResolvedSpec{
+	nonSpec := &meta.FieldResolvedSpec{
 		FieldName: "Code",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Name:      "Code",
 			FieldType: "varchar",
 			Translate: &falseVal,
@@ -95,17 +95,17 @@ func TestNormalizeTranslatedSeedValue_AdditionalBranches(t *testing.T) {
 	}
 
 	trueVal := true
-	field := &meta.IrField{Name: "Name", FieldType: "varchar"}
+	field := &meta.Field{Name: "Name", FieldType: "varchar"}
 	field.ModelId.String = modelID
 	field.ModelId.Valid = true
-	spec := &meta.IrFieldResolvedSpec{
+	spec := &meta.FieldResolvedSpec{
 		FieldName: "Name",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Name:      "Name",
 			FieldType: "varchar",
 			Translate: &trueVal,
 		},
-		Migration: meta.IrFieldMigrationDecision{
+		Migration: meta.FieldMigrationDecision{
 			StorageKind:        "physical",
 			ShouldCreateColumn: true,
 			ResolvedColumnType: "jsonobject",
@@ -178,7 +178,7 @@ func TestNormalizeTranslatedSeedValue_AdditionalBranches(t *testing.T) {
 	}
 
 	langModelID := xid.New().String()
-	langModel := &meta.IrModel{}
+	langModel := &meta.Model{}
 	langModel.Id.String = langModelID
 	langModel.Id.Valid = true
 	langModel.Application = "base"
@@ -230,8 +230,8 @@ func TestNormalizeTranslatedSeedValue_AdditionalBranches(t *testing.T) {
 		t.Fatalf("known language code: %v %v", ok, err)
 	}
 
-	emptyTableModel := &meta.IrModel{Name: "Language", Application: "base", Path: "/tmp", ModelTable: ""}
-	if err := db.Where("application = ? AND name = ?", "base", "Language").Delete(&meta.IrModel{}).Error; err != nil {
+	emptyTableModel := &meta.Model{Name: "Language", Application: "base", Path: "/tmp", ModelTable: ""}
+	if err := db.Where("application = ? AND name = ?", "base", "Language").Delete(&meta.Model{}).Error; err != nil {
 		t.Fatalf("delete language model: %v", err)
 	}
 	if err := db.Create(emptyTableModel).Error; err != nil {
@@ -243,11 +243,11 @@ func TestNormalizeTranslatedSeedValue_AdditionalBranches(t *testing.T) {
 	}
 }
 
-func TestLookupIrFieldAndLanguageCodeExistsDBErrors(t *testing.T) {
+func TestLookupFieldAndLanguageCodeExistsDBErrors(t *testing.T) {
 	l, db := newTestLoader(t)
 
 	modelID := xid.New().String()
-	model := &meta.IrModel{}
+	model := &meta.Model{}
 	model.Id.String = modelID
 	model.Id.Valid = true
 	model.Application = "demo"
@@ -257,7 +257,7 @@ func TestLookupIrFieldAndLanguageCodeExistsDBErrors(t *testing.T) {
 		t.Fatalf("create model: %v", err)
 	}
 
-	langModel := &meta.IrModel{}
+	langModel := &meta.Model{}
 	langModel.Id.String = xid.New().String()
 	langModel.Id.Valid = true
 	langModel.Application = "base"
@@ -278,9 +278,9 @@ func TestLookupIrFieldAndLanguageCodeExistsDBErrors(t *testing.T) {
 		t.Fatalf("close sql DB: %v", err)
 	}
 
-	field, err := l.lookupIrField(db, model, "Name")
+	field, err := l.lookupField(db, model, "Name")
 	if err == nil || field != nil {
-		t.Fatalf("expected lookupIrField DB error, got %#v %v", field, err)
+		t.Fatalf("expected lookupField DB error, got %#v %v", field, err)
 	}
 
 	ok, err := l.languageCodeExists(db, "de_DE")

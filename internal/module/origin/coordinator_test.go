@@ -49,11 +49,11 @@ func (e *sourceTestScope) FactoryInput() scope.FactoryInput {
 }
 
 type fakeRegistryProvider struct {
-	peekFn  func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error)
-	fetchFn func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error)
+	peekFn  func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.Module, error)
+	fetchFn func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.Module, error)
 }
 
-func (p *fakeRegistryProvider) PeekManifest(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
+func (p *fakeRegistryProvider) PeekManifest(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.Module, error) {
 	if p.peekFn != nil {
 		return p.peekFn(ctx, registryURL, moduleName, packageName, version)
 	}
@@ -63,7 +63,7 @@ func (p *fakeRegistryProvider) PeekManifest(ctx context.Context, registryURL, mo
 	return nil, nil
 }
 
-func (p *fakeRegistryProvider) Fetch(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
+func (p *fakeRegistryProvider) Fetch(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.Module, error) {
 	if p.fetchFn != nil {
 		return p.fetchFn(ctx, registryURL, moduleName, packageName, version)
 	}
@@ -109,7 +109,7 @@ func startCoordinatorCatalogServer(t *testing.T, npmPackage, sourceRegistry, sou
 	return httptest.NewServer(mux)
 }
 
-func writeSourceTestPackageJSON(t *testing.T, modulesPath string, name string, mod *meta.IrModule) {
+func writeSourceTestPackageJSON(t *testing.T, modulesPath string, name string, mod *meta.Module) {
 	t.Helper()
 	moduleDir := filepath.Join(modulesPath, name)
 	if err := os.MkdirAll(moduleDir, 0o755); err != nil {
@@ -159,7 +159,7 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 	lockStore := NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
 
 	t.Run("resolve local module and persist local binding", func(t *testing.T) {
-		writeSourceTestPackageJSON(t, modulesPath, "auth", &meta.IrModule{Version: "1.2.3", ApplicationStr: "auth"})
+		writeSourceTestPackageJSON(t, modulesPath, "auth", &meta.Module{Version: "1.2.3", ApplicationStr: "auth"})
 		coordinator := NewCoordinator(
 			runtimeScope,
 			WithLockStore(lockStore),
@@ -187,11 +187,11 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		defer catalog.Close()
 		runtimeScope.cfg.ModuleCatalogIndexURL = catalog.URL + "/v1/index.json"
 
-		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
+		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.Module, error) {
 			if registryURL != "https://registry.npmjs.org" || moduleName != "auth" || packageName != "@acme/choysum-auth" || version != "v2.0.0" {
 				t.Fatalf("unexpected provider input: url=%s module=%s package=%s version=%s", registryURL, moduleName, packageName, version)
 			}
-			return &meta.IrModule{Name: "auth", Version: "v2.0.0", Integrity: "sha512-provider-auth-v2", Path: filepath.Join(modulesPath, "auth")}, nil
+			return &meta.Module{Name: "auth", Version: "v2.0.0", Integrity: "sha512-provider-auth-v2", Path: filepath.Join(modulesPath, "auth")}, nil
 		}}
 		coordinator := NewCoordinator(runtimeScope, WithLockStore(lockStore), WithRegistryProvider(provider))
 
@@ -219,11 +219,11 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		defer catalog.Close()
 		runtimeScope.cfg.ModuleCatalogIndexURL = catalog.URL + "/v1/index.json"
 
-		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
+		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.Module, error) {
 			if version != "v2.0.0" {
 				t.Fatalf("expected provider to receive catalog latest version v2.0.0, got %s", version)
 			}
-			return &meta.IrModule{Name: "auth", Version: "v2.0.0", Integrity: "sha512-provider-auth-v200", Path: filepath.Join(modulesPath, "auth")}, nil
+			return &meta.Module{Name: "auth", Version: "v2.0.0", Integrity: "sha512-provider-auth-v200", Path: filepath.Join(modulesPath, "auth")}, nil
 		}}
 		coordinator := NewCoordinator(runtimeScope, WithLockStore(lockStore), WithRegistryProvider(provider))
 
@@ -255,12 +255,12 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		runtimeScope.cfg.ModuleCatalogIndexURL = catalog.URL + "/v1/index.json"
 
 		fetchCalls := 0
-		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
+		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.Module, error) {
 			fetchCalls++
 			if version != "v2.0.0" {
 				t.Fatalf("expected fallback to request catalog latest version v2.0.0, got %s", version)
 			}
-			return &meta.IrModule{Name: moduleName, Version: "v2.0.0", Path: filepath.Join(modulesPath, moduleName)}, nil
+			return &meta.Module{Name: moduleName, Version: "v2.0.0", Path: filepath.Join(modulesPath, moduleName)}, nil
 		}}
 		coordinator := NewCoordinator(runtimeScope, WithLockStore(lockStore), WithRegistryProvider(provider))
 
@@ -286,9 +286,9 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		runtimeScope.cfg.ModuleCatalogIndexURL = catalog.URL + "/v1/index.json"
 
 		fetchCalls := 0
-		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
+		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.Module, error) {
 			fetchCalls++
-			return &meta.IrModule{Name: moduleName, Version: version}, nil
+			return &meta.Module{Name: moduleName, Version: version}, nil
 		}}
 
 		coordinator := NewCoordinator(runtimeScope, WithLockStore(lockStore), WithRegistryProvider(provider))
@@ -325,7 +325,7 @@ func TestCoordinatorPurgeEndToEnd(t *testing.T) {
 		WithRegistryProvider(&fakeRegistryProvider{}),
 	)
 
-	writeSourceTestPackageJSON(t, modulesPath, "auth", &meta.IrModule{Version: "1.2.3", ApplicationStr: "auth"})
+	writeSourceTestPackageJSON(t, modulesPath, "auth", &meta.Module{Version: "1.2.3", ApplicationStr: "auth"})
 	if _, err := coordinator.ResolveInstallModule(context.Background(), "auth"); err != nil {
 		t.Fatalf("ResolveInstallModule(local) error = %v", err)
 	}
@@ -349,14 +349,14 @@ func TestCoordinatorPurgeEndToEnd(t *testing.T) {
 func TestCoordinatorHelperBranchFunctions(t *testing.T) {
 	t.Parallel()
 
-	if err := validateAndNormalizeModuleSemVer(&meta.IrModule{Name: "auth", Version: "   "}, "source.json"); err == nil || !strings.Contains(err.Error(), "empty module version") {
+	if err := validateAndNormalizeModuleSemVer(&meta.Module{Name: "auth", Version: "   "}, "source.json"); err == nil || !strings.Contains(err.Error(), "empty module version") {
 		t.Fatalf("expected empty module version error, got %v", err)
 	}
-	if err := validateAndNormalizeModuleSemVer(&meta.IrModule{Name: "auth", Version: "not-semver"}, "source.json"); err == nil || !strings.Contains(err.Error(), "invalid module version") {
+	if err := validateAndNormalizeModuleSemVer(&meta.Module{Name: "auth", Version: "not-semver"}, "source.json"); err == nil || !strings.Contains(err.Error(), "invalid module version") {
 		t.Fatalf("expected invalid module version error, got %v", err)
 	}
 
-	mod := &meta.IrModule{Name: "auth", Version: "1.2.3"}
+	mod := &meta.Module{Name: "auth", Version: "1.2.3"}
 	if err := validateAndNormalizeModuleSemVer(mod, "source.json"); err != nil {
 		t.Fatalf("validateAndNormalizeModuleSemVer(valid) error = %v", err)
 	}
@@ -379,7 +379,7 @@ func TestCoordinatorHelperBranchFunctions(t *testing.T) {
 	if got := canonicalRegistryOriginRef(ParsedInput{Kind: InputKindRegistry, ModuleName: "auth", Version: "latest"}, "  v2.0.2  "); got != "auth@v2.0.2" {
 		t.Fatalf("canonicalRegistryOriginRef(registry latest resolved trimmed) = %q, want %q", got, "auth@v2.0.2")
 	}
-	if got := resolveBindingIntegrity("  sha512-catalog  ", &meta.IrModule{Integrity: ""}); got != "sha512-catalog" {
+	if got := resolveBindingIntegrity("  sha512-catalog  ", &meta.Module{Integrity: ""}); got != "sha512-catalog" {
 		t.Fatalf("resolveBindingIntegrity(catalog fallback) = %q, want %q", got, "sha512-catalog")
 	}
 }
@@ -391,12 +391,12 @@ func TestCoordinatorHelperAndGuardCoverage(t *testing.T) {
 		t.Fatalf("applyEntryPoints(nil) error = %v", err)
 	}
 
-	invalidEntryPoints := &meta.IrModule{EntryPoints: datatypes.JSON([]byte(`{"web":`))}
+	invalidEntryPoints := &meta.Module{EntryPoints: datatypes.JSON([]byte(`{"web":`))}
 	if err := applyEntryPoints(invalidEntryPoints); err == nil || !strings.Contains(err.Error(), "error unmarshalling entry points") {
 		t.Fatalf("expected entry points unmarshal error, got %v", err)
 	}
 
-	modWithEntryPoints := &meta.IrModule{EntryPoints: datatypes.JSON([]byte(`{"web":"./web/index.ts","service":"./service/main.ts"}`))}
+	modWithEntryPoints := &meta.Module{EntryPoints: datatypes.JSON([]byte(`{"web":"./web/index.ts","service":"./service/main.ts"}`))}
 	if err := applyEntryPoints(modWithEntryPoints); err != nil {
 		t.Fatalf("applyEntryPoints(valid) error = %v", err)
 	}
@@ -411,7 +411,7 @@ func TestCoordinatorHelperAndGuardCoverage(t *testing.T) {
 	if got := resolveBindingIntegrity("  sha512-catalog  ", nil); got != "sha512-catalog" {
 		t.Fatalf("resolveBindingIntegrity(nil module) = %q, want %q", got, "sha512-catalog")
 	}
-	if got := resolveBindingIntegrity("sha512-catalog", &meta.IrModule{Integrity: "  sha512-provider  "}); got != "sha512-provider" {
+	if got := resolveBindingIntegrity("sha512-catalog", &meta.Module{Integrity: "  sha512-provider  "}); got != "sha512-provider" {
 		t.Fatalf("resolveBindingIntegrity(provider integrity) = %q, want %q", got, "sha512-provider")
 	}
 
@@ -740,12 +740,12 @@ func TestCoordinatorPeekBranches(t *testing.T) {
 
 	t.Run("registry input uses provider PeekManifest", func(t *testing.T) {
 		peekCalls := 0
-		provider := &fakeRegistryProvider{peekFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
+		provider := &fakeRegistryProvider{peekFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.Module, error) {
 			peekCalls++
 			if registryURL != "https://registry.npmjs.org" || moduleName != "auth" || packageName != "auth" || version != "v2.0.0" {
 				t.Fatalf("unexpected provider peek args: registry=%s module=%s package=%s version=%s", registryURL, moduleName, packageName, version)
 			}
-			return &meta.IrModule{Name: "auth", Version: "v2.0.0"}, nil
+			return &meta.Module{Name: "auth", Version: "v2.0.0"}, nil
 		}}
 
 		coordinator := NewCoordinator(runtimeScope, WithRegistryProvider(provider), WithLockStore(NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))))
@@ -778,12 +778,12 @@ func TestCoordinatorPeekBranches(t *testing.T) {
 		}
 
 		peekCalls := 0
-		provider := &fakeRegistryProvider{peekFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
+		provider := &fakeRegistryProvider{peekFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.Module, error) {
 			peekCalls++
 			if registryURL != "https://registry.npmjs.org" || moduleName != "auth" || packageName != "auth" || version != "v2.0.0" {
 				t.Fatalf("unexpected provider peek args: registry=%s module=%s package=%s version=%s", registryURL, moduleName, packageName, version)
 			}
-			return &meta.IrModule{Name: "auth", Version: "v2.0.0"}, nil
+			return &meta.Module{Name: "auth", Version: "v2.0.0"}, nil
 		}}
 
 		coordinator := NewCoordinator(runtimeScope, WithRegistryProvider(provider), WithLockStore(NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))))
@@ -807,7 +807,7 @@ func TestCoordinatorPeekBranches(t *testing.T) {
 	})
 
 	t.Run("local module success", func(t *testing.T) {
-		writeSourceTestPackageJSON(t, modulesPath, "auth", &meta.IrModule{Version: "2.1.0", ApplicationStr: "auth"})
+		writeSourceTestPackageJSON(t, modulesPath, "auth", &meta.Module{Version: "2.1.0", ApplicationStr: "auth"})
 		coordinator := NewCoordinator(runtimeScope, WithRegistryProvider(&fakeRegistryProvider{}), WithLockStore(NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))))
 		mod, err := coordinator.Peek(context.Background(), "auth")
 		if err != nil {

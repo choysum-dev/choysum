@@ -335,8 +335,8 @@ func (c *coordinator) defaultAcquireInitLease(ctx context.Context) (*leaseHandle
 		return nil, newBootstrapError(bootstrapErrCodeGateError, "database session is not available", nil)
 	}
 
-	if !session.Migrator().HasTable((&leasemodel.IrLockLease{}).TableName()) {
-		if err := session.AutoMigrate(&leasemodel.IrLockLease{}); err != nil {
+	if !session.Migrator().HasTable((&leasemodel.LockLease{}).TableName()) {
+		if err := session.AutoMigrate(&leasemodel.LockLease{}); err != nil {
 			return nil, newBootstrapError(bootstrapErrCodeGateError, "failed to initialize the setup lock", err)
 		}
 	}
@@ -612,11 +612,11 @@ func (c *coordinator) rejectAlreadyInstalledAuthModule(ctx context.Context) erro
 			return newBootstrapError(bootstrapErrCodeRuntimePrepare, "database session is not available", nil)
 		}
 
-		if !session.Migrator().HasTable((&meta.IrModule{}).TableName()) {
+		if !session.Migrator().HasTable((&meta.Module{}).TableName()) {
 			return nil
 		}
 
-		var module meta.IrModule
+		var module meta.Module
 		err := session.Select("id").Where("name = ?", "auth").Take(&module).Error
 		if err == nil {
 			return newBootstrapError(bootstrapErrCodeWorkspaceNotFresh, "initial setup has already been completed: auth is already installed", nil)
@@ -641,7 +641,7 @@ func (c *coordinator) defaultUpdateAdminAndMarker(ctx context.Context, input ini
 	now := c.now().UTC()
 	txRoot := c.runtimeScope.WithContext(ctx)
 	err = txRoot.Transactor().Required(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
-		var modelData metadata.IrModelData
+		var modelData metadata.ModelData
 		if err := txScope.Session().Where("module = ? AND external_id = ?", "auth", "user_admin").Take(&modelData).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return errBootstrapAdminExternalIDNotFound
@@ -649,7 +649,7 @@ func (c *coordinator) defaultUpdateAdminAndMarker(ctx context.Context, input ini
 			return err
 		}
 
-		var model meta.IrModel
+		var model meta.Model
 		if err := txScope.Session().Where("application = ? AND name = ?", "auth", "User").Take(&model).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return errBootstrapAdminModelNotFound
@@ -735,11 +735,11 @@ func upsertBootstrapSetting(session *scope.Session, key, value string) error {
 		return errors.New("database session is not available")
 	}
 
-	var setting metadata.IrSetting
+	var setting metadata.Setting
 	err := session.Unscoped().Where("key = ?", key).Take(&setting).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return session.Create(&metadata.IrSetting{Key: key, Value: value}).Error
+			return session.Create(&metadata.Setting{Key: key, Value: value}).Error
 		}
 		return err
 	}

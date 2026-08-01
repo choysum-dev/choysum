@@ -522,7 +522,7 @@ compile:
 			return err
 		}
 	}
-	// Auth E2E needs meta services for permission bootstrap (IrModel/IrService lookups).
+	// Auth E2E needs meta services for permission bootstrap (Model/Service lookups).
 	if opts.Module == "auth" {
 		if err := installForE2EHook(ctx, configPath, "meta", opts.WithDemo); err != nil {
 			return err
@@ -659,7 +659,7 @@ func applyScenarioFixtures(
 		// Apply in its own transaction to reduce lock contention.
 		if err := runtimeScope.Transactor().Required(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
 			loader := dataloader.New(txScope)
-			owner := &meta.IrModule{Name: modName, Path: filepath.Join(runtimeOptions.modulesPath, sm.DirName)}
+			owner := &meta.Module{Name: modName, Path: filepath.Join(runtimeOptions.modulesPath, sm.DirName)}
 			return loader.ApplyFiles(ctx, owner, paths)
 		}); err != nil {
 			return err
@@ -682,8 +682,8 @@ func seedModuleIndexForE2E(ctx context.Context, configPath string, packages map[
 		if sess == nil || sess.DB == nil {
 			return xfmt.Errorf("missing db session")
 		}
-		if err := sess.DB.AutoMigrate(&metadata.IrModuleIndex{}); err != nil {
-			return xfmt.Errorf("auto-migrate metadata.IrModuleIndex: %w", err)
+		if err := sess.DB.AutoMigrate(&metadata.ModuleIndex{}); err != nil {
+			return xfmt.Errorf("auto-migrate metadata.ModuleIndex: %w", err)
 		}
 
 		now := time.Now()
@@ -706,7 +706,7 @@ func seedModuleIndexForE2E(ctx context.Context, configPath string, packages map[
 			revision := fmt.Sprintf("%d:%d", info.ModTime().UnixNano(), info.Size())
 			localPath := filepath.Join(runtimeOptions.modulesPath, sm.DirName)
 
-			rec := metadata.IrModuleIndex{
+			rec := metadata.ModuleIndex{
 				ModuleName:      name,
 				OriginType:      "local",
 				OriginRef:       "local",
@@ -1026,10 +1026,10 @@ func splitNodeOptions(raw string) []string {
 		return nil
 	}
 	var (
-		parts      []string
-		cur        strings.Builder
-		inString   bool
-		hasToken   bool
+		parts    []string
+		cur      strings.Builder
+		inString bool
+		hasToken bool
 	)
 	flush := func() {
 		if !hasToken {

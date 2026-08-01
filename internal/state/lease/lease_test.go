@@ -155,7 +155,7 @@ func newSQLiteLocker(t *testing.T) (*Locker, scope.Scope) {
 		slog.New(slog.NewTextHandler(io.Discard, nil)),
 	)
 
-	if err := runtimeScope.Session().AutoMigrate(&leasemodel.IrLockLease{}); err != nil {
+	if err := runtimeScope.Session().AutoMigrate(&leasemodel.LockLease{}); err != nil {
 		t.Fatalf("AutoMigrate: %v", err)
 	}
 
@@ -166,10 +166,10 @@ func newSQLiteLocker(t *testing.T) (*Locker, scope.Scope) {
 	return New(runtimeScope), runtimeScope
 }
 
-func fetchLease(t *testing.T, runtimeScope scope.Scope, resource string) (*leasemodel.IrLockLease, bool) {
+func fetchLease(t *testing.T, runtimeScope scope.Scope, resource string) (*leasemodel.LockLease, bool) {
 	t.Helper()
 
-	var record leasemodel.IrLockLease
+	var record leasemodel.LockLease
 	err := runtimeScope.Session().Unscoped().Where("resource = ?", resource).Take(&record).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, false
@@ -189,14 +189,14 @@ func registerLeaseInsertConflict(t *testing.T, db *gorm.DB, resource, ownerId st
 		if inserted {
 			return
 		}
-		leaseRow, ok := tx.Statement.Dest.(*leasemodel.IrLockLease)
+		leaseRow, ok := tx.Statement.Dest.(*leasemodel.LockLease)
 		if !ok || leaseRow.Resource != resource {
 			return
 		}
 		inserted = true
 		now := time.Now()
 		if err := tx.Session(&gorm.Session{NewDB: true}).Exec(
-			"INSERT INTO meta_ir_lock_lease (id, created_at, updated_at, resource, owner_id, expires_at) VALUES (?, ?, ?, ?, ?, ?)",
+			"INSERT INTO meta_lock_lease (id, created_at, updated_at, resource, owner_id, expires_at) VALUES (?, ?, ?, ?, ?, ?)",
 			callbackName,
 			now,
 			now,
@@ -241,7 +241,7 @@ func TestSQLiteSessionDBAndErrorHelpers(t *testing.T) {
 	if db, ok := realLocker.sqliteSessionDB(context.TODO()); !ok || db == nil {
 		t.Fatalf("expected sqlite session db, got db=%v ok=%v", db, ok)
 	}
-	if !isUniqueViolation(errors.New("UNIQUE constraint failed: meta_ir_lock_lease.resource")) {
+	if !isUniqueViolation(errors.New("UNIQUE constraint failed: meta_lock_lease.resource")) {
 		t.Fatal("expected sqlite unique violation to be detected")
 	}
 	if isUniqueViolation(nil) || isUniqueViolation(errors.New("other error")) {
@@ -284,7 +284,7 @@ func TestAcquireCreateBusyTakeoverAndRestoreDeletedLease(t *testing.T) {
 		t.Fatalf("Acquire busy error = %v, want %v", err, ErrLeaseBusy)
 	}
 
-	expired := &leasemodel.IrLockLease{Resource: "resource-expired", OwnerId: "owner-old", ExpiresAt: time.Now().Add(-time.Minute)}
+	expired := &leasemodel.LockLease{Resource: "resource-expired", OwnerId: "owner-old", ExpiresAt: time.Now().Add(-time.Minute)}
 	if err := runtimeScope.Session().Create(expired).Error; err != nil {
 		t.Fatalf("create expired lease: %v", err)
 	}
@@ -313,7 +313,7 @@ func TestAcquireWithinRunUsesSQLiteSessionFastPath(t *testing.T) {
 		}
 
 		var count int64
-		if err := executionScope.Session().Model(&leasemodel.IrLockLease{}).Where("resource = ?", "resource-run").Count(&count).Error; err != nil {
+		if err := executionScope.Session().Model(&leasemodel.LockLease{}).Where("resource = ?", "resource-run").Count(&count).Error; err != nil {
 			return err
 		}
 		if count != 1 {

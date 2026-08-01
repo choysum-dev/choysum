@@ -29,12 +29,12 @@ import (
 func TestBuildModuleRulesFromOwner(t *testing.T) {
 	t.Parallel()
 
-	depLeaf := &meta.IrModule{Name: "base", ApplicationStr: "auth"}
-	depMid := &meta.IrModule{Name: "auth_addon", ApplicationStr: "auth", Dependencies: []*meta.IrModule{depLeaf}}
-	rules, err := buildModuleRulesFromOwner(&meta.IrModule{
+	depLeaf := &meta.Module{Name: "base", ApplicationStr: "auth"}
+	depMid := &meta.Module{Name: "auth_addon", ApplicationStr: "auth", Dependencies: []*meta.Module{depLeaf}}
+	rules, err := buildModuleRulesFromOwner(&meta.Module{
 		Name:           "auth",
 		ApplicationStr: "auth",
-		Dependencies:   []*meta.IrModule{depMid, depLeaf, nil},
+		Dependencies:   []*meta.Module{depMid, depLeaf, nil},
 	})
 	if err != nil {
 		t.Fatalf("buildModuleRulesFromOwner() error = %v", err)
@@ -57,13 +57,13 @@ func TestBuildModuleRulesFromOwner_Errors(t *testing.T) {
 
 	for _, tc := range []struct {
 		name  string
-		owner *meta.IrModule
+		owner *meta.Module
 		want  string
 	}{
 		{name: "nil owner", owner: nil, want: "nil owner module"},
-		{name: "missing owner name", owner: &meta.IrModule{ApplicationStr: "auth"}, want: "empty name"},
-		{name: "missing owner app", owner: &meta.IrModule{Name: "auth"}, want: "empty application"},
-		{name: "dependency missing app", owner: &meta.IrModule{Name: "auth", ApplicationStr: "auth", Dependencies: []*meta.IrModule{{Name: "base"}}}, want: "dependency module base has empty application"},
+		{name: "missing owner name", owner: &meta.Module{ApplicationStr: "auth"}, want: "empty name"},
+		{name: "missing owner app", owner: &meta.Module{Name: "auth"}, want: "empty application"},
+		{name: "dependency missing app", owner: &meta.Module{Name: "auth", ApplicationStr: "auth", Dependencies: []*meta.Module{{Name: "base"}}}, want: "dependency module base has empty application"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := buildModuleRulesFromOwner(tc.owner)
@@ -139,7 +139,7 @@ func TestApplyFiles_PublicWrapperAndGuards(t *testing.T) {
 			map[string]any{"module": "auth", "external_id": "group_admin", "model": "auth.group", "values": map[string]any{}},
 		},
 	})
-	mod := &meta.IrModule{Name: "auth", Path: dir, ApplicationStr: "auth"}
+	mod := &meta.Module{Name: "auth", Path: dir, ApplicationStr: "auth"}
 
 	if err := l.ApplyFiles(context.Background(), mod, []string{"data.json"}); err != nil {
 		t.Fatalf("ApplyFiles() error = %v", err)
@@ -155,7 +155,7 @@ func TestApplyFiles_PublicWrapperAndGuards(t *testing.T) {
 	if err := l.ApplyFiles(context.Background(), nil, []string{"data.json"}); err != nil {
 		t.Fatalf("ApplyFiles(nil module) error = %v", err)
 	}
-	if err := l.ApplyFiles(context.Background(), &meta.IrModule{Name: "auth"}, []string{"data.json"}); err == nil || !strings.Contains(err.Error(), "empty Path") {
+	if err := l.ApplyFiles(context.Background(), &meta.Module{Name: "auth"}, []string{"data.json"}); err == nil || !strings.Contains(err.Error(), "empty Path") {
 		t.Fatalf("expected empty Path error, got %v", err)
 	}
 	if err := (*Loader)(nil).ApplyFiles(context.Background(), mod, []string{"data.json"}); err == nil || !strings.Contains(err.Error(), "nil loader") {
@@ -170,24 +170,24 @@ func TestApplyModule_GuardsAndDecodeErrors(t *testing.T) {
 	l, _ := newTestLoader(t)
 	dir := t.TempDir()
 
-	if err := (*Loader)(nil).ApplyModule(context.Background(), &meta.IrModule{Name: "auth", Path: dir}, ApplyOptions{}); err == nil || !strings.Contains(err.Error(), "nil loader") {
+	if err := (*Loader)(nil).ApplyModule(context.Background(), &meta.Module{Name: "auth", Path: dir}, ApplyOptions{}); err == nil || !strings.Contains(err.Error(), "nil loader") {
 		t.Fatalf("expected nil loader error, got %v", err)
 	}
-	if err := (&Loader{}).ApplyModule(context.Background(), &meta.IrModule{Name: "auth", Path: dir}, ApplyOptions{}); err == nil || !strings.Contains(err.Error(), "nil loader") {
+	if err := (&Loader{}).ApplyModule(context.Background(), &meta.Module{Name: "auth", Path: dir}, ApplyOptions{}); err == nil || !strings.Contains(err.Error(), "nil loader") {
 		t.Fatalf("expected nil env error, got %v", err)
 	}
 	if err := l.ApplyModule(context.Background(), nil, ApplyOptions{}); err != nil {
 		t.Fatalf("ApplyModule(nil module) error = %v", err)
 	}
-	if err := l.ApplyModule(context.Background(), &meta.IrModule{Name: "auth"}, ApplyOptions{}); err == nil || !strings.Contains(err.Error(), "empty Path") {
+	if err := l.ApplyModule(context.Background(), &meta.Module{Name: "auth"}, ApplyOptions{}); err == nil || !strings.Contains(err.Error(), "empty Path") {
 		t.Fatalf("expected empty Path error, got %v", err)
 	}
 
-	invalidData := &meta.IrModule{Name: "auth", Path: dir, DataStr: []byte("{"), ApplicationStr: "auth"}
+	invalidData := &meta.Module{Name: "auth", Path: dir, DataStr: []byte("{"), ApplicationStr: "auth"}
 	if err := l.ApplyModule(context.Background(), invalidData, ApplyOptions{}); err == nil || !strings.Contains(err.Error(), "decode manifest data") {
 		t.Fatalf("expected invalid data manifest error, got %v", err)
 	}
-	invalidDemo := &meta.IrModule{Name: "auth", Path: dir, DemoStr: []byte("{"), ApplicationStr: "auth"}
+	invalidDemo := &meta.Module{Name: "auth", Path: dir, DemoStr: []byte("{"), ApplicationStr: "auth"}
 	if err := l.ApplyModule(context.Background(), invalidDemo, ApplyOptions{WithDemo: true}); err == nil || !strings.Contains(err.Error(), "decode manifest demo") {
 		t.Fatalf("expected invalid demo manifest error, got %v", err)
 	}
@@ -214,7 +214,7 @@ func TestApplyModule_WithDemoFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal demo paths: %v", err)
 	}
-	mod := &meta.IrModule{Name: "auth", Path: dir, DataStr: dataPaths, DemoStr: demoPaths, ApplicationStr: "auth"}
+	mod := &meta.Module{Name: "auth", Path: dir, DataStr: dataPaths, DemoStr: demoPaths, ApplicationStr: "auth"}
 
 	if err := l.ApplyModule(context.Background(), mod, ApplyOptions{}); err != nil {
 		t.Fatalf("ApplyModule(no demo) error = %v", err)
@@ -247,7 +247,7 @@ func TestApplyFiles_UsesContextTransactionFromBaseScope(t *testing.T) {
 			map[string]any{"module": "auth", "external_id": "group_outer", "model": "auth.group", "values": map[string]any{}},
 		},
 	})
-	mod := &meta.IrModule{Name: "auth", Path: dir, ApplicationStr: "auth"}
+	mod := &meta.Module{Name: "auth", Path: dir, ApplicationStr: "auth"}
 
 	outerErr := errors.New("rollback outer transaction")
 	err := runtimeScope.Transactor().Required(context.Background(), func(txScope scope.Scope, tx scope.Transaction) error {
@@ -281,7 +281,7 @@ func TestBuildModuleRules_DBBackedPaths(t *testing.T) {
 	l, db := newTestLoader(t)
 	_ = l
 
-	rules, err := buildModuleRules(db, &meta.IrModule{Name: "auth_addon", ApplicationStr: "auth"})
+	rules, err := buildModuleRules(db, &meta.Module{Name: "auth_addon", ApplicationStr: "auth"})
 	if err != nil {
 		t.Fatalf("buildModuleRules(db-backed) error = %v", err)
 	}
@@ -294,13 +294,13 @@ func TestBuildModuleRules_DBBackedPaths(t *testing.T) {
 		}
 	}
 
-	if err := db.Model(&meta.IrModule{}).Where("name = ?", "auth_addon").Update("application_str", "").Error; err != nil {
+	if err := db.Model(&meta.Module{}).Where("name = ?", "auth_addon").Update("application_str", "").Error; err != nil {
 		t.Fatalf("blank auth_addon application_str: %v", err)
 	}
-	if err := db.Model(&meta.IrModule{}).Where("name = ?", "auth_addon").Update("application_str", "").Error; err != nil {
+	if err := db.Model(&meta.Module{}).Where("name = ?", "auth_addon").Update("application_str", "").Error; err != nil {
 		t.Fatalf("confirm blank auth_addon application_str: %v", err)
 	}
-	_, err = buildModuleRules(db, &meta.IrModule{Name: "auth_addon", ApplicationStr: ""})
+	_, err = buildModuleRules(db, &meta.Module{Name: "auth_addon", ApplicationStr: ""})
 	if err == nil || !strings.Contains(err.Error(), "owner module auth_addon has empty application") {
 		t.Fatalf("expected empty application error, got %v", err)
 	}
@@ -336,7 +336,7 @@ type testModuleDependency struct {
 	DependModuleID string `gorm:"column:depend_module_id;primaryKey"`
 }
 
-func (testModuleDependency) TableName() string { return "meta_ir_module_dependencies" }
+func (testModuleDependency) TableName() string { return "meta_module_dependencies" }
 
 type testScope struct {
 	db *gorm.DB
@@ -400,39 +400,39 @@ func newDefaultLoaderScope(t *testing.T) scope.Scope {
 
 func seedLoaderTestSchema(t *testing.T, db *gorm.DB) {
 	t.Helper()
-	if err := db.AutoMigrate(&meta.IrModule{}, &meta.IrModel{}, &meta.IrField{}, &metadata.IrModelData{}, &testAuthGroup{}, &testAuthUser{}, &testModuleDependency{}); err != nil {
+	if err := db.AutoMigrate(&meta.Module{}, &meta.Model{}, &meta.Field{}, &metadata.ModelData{}, &testAuthGroup{}, &testAuthUser{}, &testModuleDependency{}); err != nil {
 		t.Fatalf("migrate test schema: %v", err)
 	}
 	// Seed models so ApplyModule can resolve model -> table.
-	authGroupModel := &meta.IrModel{Name: "group", Application: "auth", Path: "/tmp", ModelTable: "auth_group"}
+	authGroupModel := &meta.Model{Name: "group", Application: "auth", Path: "/tmp", ModelTable: "auth_group"}
 	if err := db.Create(authGroupModel).Error; err != nil {
-		t.Fatalf("seed meta_ir_model auth.group: %v", err)
+		t.Fatalf("seed meta_model auth.group: %v", err)
 	}
-	authUserModel := &meta.IrModel{Name: "User", Application: "auth", Path: "/tmp", ModelTable: "auth_user"}
+	authUserModel := &meta.Model{Name: "User", Application: "auth", Path: "/tmp", ModelTable: "auth_user"}
 	if err := db.Create(authUserModel).Error; err != nil {
-		t.Fatalf("seed meta_ir_model auth.User: %v", err)
+		t.Fatalf("seed meta_model auth.User: %v", err)
 	}
 
 	// Seed field definitions so detectFieldCardinality can resolve ManyToOne/ManyToMany.
-	if err := db.Create(&meta.IrField{
+	if err := db.Create(&meta.Field{
 		Name: "group_id", FieldType: "ManyToOne", ModelId: authUserModel.Id,
 	}).Error; err != nil {
-		t.Fatalf("seed meta_ir_field auth.User.group_id: %v", err)
+		t.Fatalf("seed meta_field auth.User.group_id: %v", err)
 	}
 
-	auth := &meta.IrModule{Name: "auth", ApplicationStr: "auth", Path: "/tmp"}
+	auth := &meta.Module{Name: "auth", ApplicationStr: "auth", Path: "/tmp"}
 	if err := db.Create(auth).Error; err != nil {
 		t.Fatalf("create module auth: %v", err)
 	}
-	authAddon := &meta.IrModule{Name: "auth_addon", ApplicationStr: "auth", Path: "/tmp"}
+	authAddon := &meta.Module{Name: "auth_addon", ApplicationStr: "auth", Path: "/tmp"}
 	if err := db.Create(authAddon).Error; err != nil {
 		t.Fatalf("create module auth_addon: %v", err)
 	}
-	base := &meta.IrModule{Name: "base", ApplicationStr: "base", Path: "/tmp"}
+	base := &meta.Module{Name: "base", ApplicationStr: "base", Path: "/tmp"}
 	if err := db.Create(base).Error; err != nil {
 		t.Fatalf("create module base: %v", err)
 	}
-	if err := db.Exec("INSERT INTO meta_ir_module_dependencies (module_id, depend_module_id) VALUES (?, ?)", authAddon.Id.String, auth.Id.String).Error; err != nil {
+	if err := db.Exec("INSERT INTO meta_module_dependencies (module_id, depend_module_id) VALUES (?, ?)", authAddon.Id.String, auth.Id.String).Error; err != nil {
 		t.Fatalf("insert module dependency auth_addon -> auth: %v", err)
 	}
 }
@@ -461,34 +461,34 @@ func writeNamedDataFile(t *testing.T, dir string, name string, df any) {
 	}
 }
 
-func moduleWithDataFile(t *testing.T, dir string) *meta.IrModule {
+func moduleWithDataFile(t *testing.T, dir string) *meta.Module {
 	return moduleWithDataFileNamed(t, dir, "auth")
 }
 
-func moduleWithDataFiles(t *testing.T, dir string, relPaths []string) *meta.IrModule {
+func moduleWithDataFiles(t *testing.T, dir string, relPaths []string) *meta.Module {
 	return moduleWithDataFilesNamed(t, dir, "auth", relPaths)
 }
 
-func moduleWithDataFileNamed(t *testing.T, dir string, name string) *meta.IrModule {
+func moduleWithDataFileNamed(t *testing.T, dir string, name string) *meta.Module {
 	t.Helper()
 	paths, err := json.Marshal([]string{"data.json"})
 	if err != nil {
 		t.Fatalf("marshal manifest data: %v", err)
 	}
-	return &meta.IrModule{
+	return &meta.Module{
 		Name:    name,
 		Path:    dir,
 		DataStr: paths,
 	}
 }
 
-func moduleWithDataFilesNamed(t *testing.T, dir string, name string, relPaths []string) *meta.IrModule {
+func moduleWithDataFilesNamed(t *testing.T, dir string, name string, relPaths []string) *meta.Module {
 	t.Helper()
 	paths, err := json.Marshal(relPaths)
 	if err != nil {
 		t.Fatalf("marshal manifest data: %v", err)
 	}
-	return &meta.IrModule{
+	return &meta.Module{
 		Name:    name,
 		Path:    dir,
 		DataStr: paths,
@@ -618,17 +618,17 @@ func TestApplyModule_CrossModuleRefNotFoundIncludesHint(t *testing.T) {
 func TestApplyModule_RefByResolvesExistingRow(t *testing.T) {
 	l, db := newTestLoader(t)
 
-	// Add meta.IrApplication table + model mapping so refBy can resolve it.
-	if err := db.AutoMigrate(&meta.IrApplication{}); err != nil {
-		t.Fatalf("migrate meta_ir_application: %v", err)
+	// Add meta.Application table + model mapping so refBy can resolve it.
+	if err := db.AutoMigrate(&meta.Application{}); err != nil {
+		t.Fatalf("migrate meta_application: %v", err)
 	}
-	if err := db.Create(&meta.IrModel{Name: "IrApplication", Application: "meta", Path: "/tmp", ModelTable: "meta_ir_application"}).Error; err != nil {
-		t.Fatalf("seed meta_ir_model meta.IrApplication: %v", err)
+	if err := db.Create(&meta.Model{Name: "Application", Application: "meta", Path: "/tmp", ModelTable: "meta_application"}).Error; err != nil {
+		t.Fatalf("seed meta_model meta.MetaApplication: %v", err)
 	}
 
-	app := &meta.IrApplication{Name: "auth"}
+	app := &meta.Application{Name: "auth"}
 	if err := db.Create(app).Error; err != nil {
-		t.Fatalf("seed meta_ir_application(auth): %v", err)
+		t.Fatalf("seed meta_application(auth): %v", err)
 	}
 	appID := strings.TrimSpace(app.Id.String)
 	if appID == "" {
@@ -644,7 +644,7 @@ func TestApplyModule_RefByResolvesExistingRow(t *testing.T) {
 				"model":       "auth.User",
 				"values": map[string]any{
 					"group_id": map[string]any{
-						"refBy": map[string]any{"model": "meta.IrApplication", "field": "Name", "value": "auth"},
+						"refBy": map[string]any{"model": "meta.MetaApplication", "field": "Name", "value": "auth"},
 					},
 				},
 			},
@@ -667,7 +667,7 @@ func TestApplyModule_RefByResolvesExistingRow(t *testing.T) {
 
 func TestPlanRecordOrder_ForwardRefIsReordered(t *testing.T) {
 	l, db := newTestLoader(t)
-	owner := &meta.IrModule{Name: "auth"}
+	owner := &meta.Module{Name: "auth"}
 	dir := t.TempDir()
 	writeDataFile(t, dir, map[string]any{
 		"records": []any{
@@ -712,7 +712,7 @@ func TestPlanRecordOrder_GuardsAndValidationErrors(t *testing.T) {
 	if _, err := l.planRecordOrder(db, nil, filePath, nil); err == nil || !strings.Contains(err.Error(), "nil owner module") {
 		t.Fatalf("expected nil owner error, got %v", err)
 	}
-	order, err := l.planRecordOrder(db, &meta.IrModule{Name: "auth"}, filePath, nil)
+	order, err := l.planRecordOrder(db, &meta.Module{Name: "auth"}, filePath, nil)
 	if err != nil {
 		t.Fatalf("empty planRecordOrder() error = %v", err)
 	}
@@ -730,7 +730,7 @@ func TestPlanRecordOrder_GuardsAndValidationErrors(t *testing.T) {
 		{name: "missing values", rec: record{Module: "auth", ExternalID: "x", Model: "auth.User"}, code: LoadErrorCodeMissingValues},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := l.planRecordOrder(db, &meta.IrModule{Name: "auth"}, filePath, []record{tc.rec})
+			_, err := l.planRecordOrder(db, &meta.Module{Name: "auth"}, filePath, []record{tc.rec})
 			var le *LoadError
 			if !errors.As(err, &le) || le.Code != tc.code {
 				t.Fatalf("planRecordOrder() error = %v, want code %s", err, tc.code)
@@ -743,7 +743,7 @@ func TestPlanRecordOrder_SelfReferenceIsRejected(t *testing.T) {
 	l, db := newTestLoader(t)
 	filePath := filepath.Join(t.TempDir(), "data.json")
 
-	_, err := l.planRecordOrder(db, &meta.IrModule{Name: "auth"}, filePath, []record{{
+	_, err := l.planRecordOrder(db, &meta.Module{Name: "auth"}, filePath, []record{{
 		Module:     "auth",
 		ExternalID: "self",
 		Model:      "auth.User",
@@ -759,7 +759,7 @@ func TestPlanRecordOrder_SelfReferenceIsRejected(t *testing.T) {
 
 func TestApplyFile_SuccessAndErrors(t *testing.T) {
 	l, db := newTestLoader(t)
-	owner := &meta.IrModule{Name: "auth"}
+	owner := &meta.Module{Name: "auth"}
 	dir := t.TempDir()
 	absPath := filepath.Join(dir, "data.json")
 
@@ -870,18 +870,18 @@ func TestFindCycleAndCollectRefOccurrencesHelpers(t *testing.T) {
 func TestValueResolutionHelpers(t *testing.T) {
 	l, db := newTestLoader(t)
 
-	if err := db.AutoMigrate(&meta.IrApplication{}); err != nil {
-		t.Fatalf("migrate meta_ir_application: %v", err)
+	if err := db.AutoMigrate(&meta.Application{}); err != nil {
+		t.Fatalf("migrate meta_application: %v", err)
 	}
-	if err := db.Create(&meta.IrModel{Name: "IrApplication", Application: "meta", Path: "/tmp", ModelTable: "meta_ir_application"}).Error; err != nil {
-		t.Fatalf("seed meta.IrApplication model: %v", err)
+	if err := db.Create(&meta.Model{Name: "Application", Application: "meta", Path: "/tmp", ModelTable: "meta_application"}).Error; err != nil {
+		t.Fatalf("seed meta.MetaApplication model: %v", err)
 	}
-	app := &meta.IrApplication{Name: "auth"}
+	app := &meta.Application{Name: "auth"}
 	if err := db.Create(app).Error; err != nil {
-		t.Fatalf("seed meta_ir_application(auth): %v", err)
+		t.Fatalf("seed meta_application(auth): %v", err)
 	}
-	if err := db.Create(&metadata.IrModelData{Module: "auth", ExternalID: "group_admin", Model: "auth.group", ResID: "gid-1"}).Error; err != nil {
-		t.Fatalf("seed ir_model_data: %v", err)
+	if err := db.Create(&metadata.ModelData{Module: "auth", ExternalID: "group_admin", Model: "auth.group", ResID: "gid-1"}).Error; err != nil {
+		t.Fatalf("seed model_data: %v", err)
 	}
 
 	t.Run("normalizeSeedDBValue", func(t *testing.T) {
@@ -917,11 +917,11 @@ func TestValueResolutionHelpers(t *testing.T) {
 			t.Fatalf("expected extractRef to reject non-string")
 		}
 
-		modelFull, field, value, ok := extractRefBy(map[string]any{"refBy": map[string]any{"model": " meta.IrApplication ", "field": " Name ", "value": "auth"}})
-		if !ok || modelFull != "meta.IrApplication" || field != "Name" || value != "auth" {
+		modelFull, field, value, ok := extractRefBy(map[string]any{"refBy": map[string]any{"model": " meta.MetaApplication ", "field": " Name ", "value": "auth"}})
+		if !ok || modelFull != "meta.MetaApplication" || field != "Name" || value != "auth" {
 			t.Fatalf("extractRefBy() = (%q, %q, %#v, %v)", modelFull, field, value, ok)
 		}
-		if _, _, _, ok := extractRefBy(map[string]any{"ref_by": map[string]any{"model": "meta.IrApplication", "field": "Name", "value": "auth"}}); !ok {
+		if _, _, _, ok := extractRefBy(map[string]any{"ref_by": map[string]any{"model": "meta.MetaApplication", "field": "Name", "value": "auth"}}); !ok {
 			t.Fatalf("expected extractRefBy to support ref_by alias")
 		}
 		if _, _, _, ok := extractRefBy(map[string]any{"refBy": map[string]any{"model": "", "field": "Name", "value": "auth"}}); ok {
@@ -943,11 +943,11 @@ func TestValueResolutionHelpers(t *testing.T) {
 	})
 
 	t.Run("resolveRef helpers", func(t *testing.T) {
-		resID, err := l.resolveRefBy(db, "meta.IrApplication", "Name", "auth")
+		resID, err := l.resolveRefBy(db, "meta.MetaApplication", "Name", "auth")
 		if err != nil || strings.TrimSpace(resID) != strings.TrimSpace(app.Id.String) {
 			t.Fatalf("resolveRefBy() = %q, %v", resID, err)
 		}
-		if _, err := l.resolveRefBy(db, "meta.IrApplication", "Name", "missing"); err == nil {
+		if _, err := l.resolveRefBy(db, "meta.MetaApplication", "Name", "missing"); err == nil {
 			t.Fatalf("expected resolveRefBy not found error")
 		}
 		if _, err := l.resolveRefBy(db, "", "Name", "auth"); err == nil {
@@ -969,7 +969,7 @@ func TestValueResolutionHelpers(t *testing.T) {
 		if err != nil || got != "gid-1" {
 			t.Fatalf("resolveValue(ref) = %#v, %v", got, err)
 		}
-		got, err = l.resolveValue(db, "/tmp/data.json", 0, rec, "values.group_id", map[string]any{"refBy": map[string]any{"model": "meta.IrApplication", "field": "Name", "value": "auth"}})
+		got, err = l.resolveValue(db, "/tmp/data.json", 0, rec, "values.group_id", map[string]any{"refBy": map[string]any{"model": "meta.MetaApplication", "field": "Name", "value": "auth"}})
 		if err != nil || strings.TrimSpace(got.(string)) != strings.TrimSpace(app.Id.String) {
 			t.Fatalf("resolveValue(refBy) = %#v, %v", got, err)
 		}
@@ -981,7 +981,7 @@ func TestValueResolutionHelpers(t *testing.T) {
 		if _, err := l.resolveValue(db, "/tmp/data.json", 0, rec, "values.group_id", map[string]any{"ref": "auth.missing"}); err == nil {
 			t.Fatalf("expected resolveValue ref error")
 		}
-		if _, err := l.resolveValue(db, "/tmp/data.json", 0, rec, "values.group_id", map[string]any{"refBy": map[string]any{"model": "meta.IrApplication", "field": "Name", "value": "missing"}}); err == nil {
+		if _, err := l.resolveValue(db, "/tmp/data.json", 0, rec, "values.group_id", map[string]any{"refBy": map[string]any{"model": "meta.MetaApplication", "field": "Name", "value": "missing"}}); err == nil {
 			t.Fatalf("expected resolveValue refBy error")
 		}
 		if got, err := l.resolveValue(db, "/tmp/data.json", 0, rec, "values.nil", nil); err != nil || got != nil {
@@ -996,8 +996,8 @@ func TestValueResolutionHelpers(t *testing.T) {
 			t.Fatalf("parseRefQuerySpec(ref) = %#v, %v, %v", spec, ok, err)
 		}
 		// refBy compat
-		spec, ok, err = parseRefQuerySpec(map[string]any{"refBy": map[string]any{"model": "meta.IrApplication", "field": "Name", "value": "auth"}})
-		if err != nil || !ok || spec.Kind != refQuerySpecKindRefBy || spec.RefBy.Model != "meta.IrApplication" {
+		spec, ok, err = parseRefQuerySpec(map[string]any{"refBy": map[string]any{"model": "meta.MetaApplication", "field": "Name", "value": "auth"}})
+		if err != nil || !ok || spec.Kind != refQuerySpecKindRefBy || spec.RefBy.Model != "meta.MetaApplication" {
 			t.Fatalf("parseRefQuerySpec(refBy) = %#v, %v, %v", spec, ok, err)
 		}
 		// ref_by alias
@@ -1019,8 +1019,8 @@ func TestValueResolutionHelpers(t *testing.T) {
 func TestResolveAndMapValues_SkipsSystemFieldsAndNormalizes(t *testing.T) {
 	l, db := newTestLoader(t)
 	rec := record{Module: "auth", ExternalID: "u", Model: "auth.User"}
-	if err := db.Create(&metadata.IrModelData{Module: "auth", ExternalID: "group_admin", Model: "auth.group", ResID: "gid-1"}).Error; err != nil {
-		t.Fatalf("seed ir_model_data: %v", err)
+	if err := db.Create(&metadata.ModelData{Module: "auth", ExternalID: "group_admin", Model: "auth.group", ResID: "gid-1"}).Error; err != nil {
+		t.Fatalf("seed model_data: %v", err)
 	}
 
 	columns, err := l.resolveAndMapValues(db, "/tmp/data.json", 0, rec, nil, map[string]any{
@@ -1078,7 +1078,7 @@ func TestApplyRecord_DirectBranches(t *testing.T) {
 		})
 	}
 
-	if err := db.Create(&meta.IrModel{Name: "Broken", Application: "auth", Path: "/tmp", ModelTable: ""}).Error; err != nil {
+	if err := db.Create(&meta.Model{Name: "Broken", Application: "auth", Path: "/tmp", ModelTable: ""}).Error; err != nil {
 		t.Fatalf("seed broken model: %v", err)
 	}
 	err := l.applyRecord(db, "/tmp/data.json", 0, record{Module: "auth", ExternalID: "x", Model: "auth.Broken", Values: map[string]any{}}, now)
@@ -1099,10 +1099,10 @@ func TestApplyRecord_DirectBranches(t *testing.T) {
 	if err := db.Table("auth_user").Create(&user).Error; err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
-	if err := db.Create(&metadata.IrModelData{Module: "auth", ExternalID: "user_admin", Model: "auth.User", ResID: user.ID, NoUpdate: false}).Error; err != nil {
+	if err := db.Create(&metadata.ModelData{Module: "auth", ExternalID: "user_admin", Model: "auth.User", ResID: user.ID, NoUpdate: false}).Error; err != nil {
 		t.Fatalf("seed user mapping: %v", err)
 	}
-	if err := db.Create(&metadata.IrModelData{Module: "auth", ExternalID: "group_admin", Model: "auth.group", ResID: group2.ID, NoUpdate: false}).Error; err != nil {
+	if err := db.Create(&metadata.ModelData{Module: "auth", ExternalID: "group_admin", Model: "auth.group", ResID: group2.ID, NoUpdate: false}).Error; err != nil {
 		t.Fatalf("seed group mapping: %v", err)
 	}
 	freeze := true
@@ -1122,7 +1122,7 @@ func TestApplyRecord_DirectBranches(t *testing.T) {
 	if updatedUser.GroupID != group2.ID {
 		t.Fatalf("expected updated group id %q, got %#v", group2.ID, updatedUser)
 	}
-	var mapping metadata.IrModelData
+	var mapping metadata.ModelData
 	if err := db.Where("module = ? AND external_id = ?", "auth", "user_admin").First(&mapping).Error; err != nil {
 		t.Fatalf("query updated mapping: %v", err)
 	}
@@ -1434,15 +1434,15 @@ func TestApplyModule_NoUpdateFreezesSubsequentUpdates(t *testing.T) {
 		t.Fatalf("expected no error on first apply, got %T: %v", err, err)
 	}
 
-	var g1 metadata.IrModelData
+	var g1 metadata.ModelData
 	if err := db.Where("module = ? AND external_id = ?", "auth", "g1").First(&g1).Error; err != nil {
 		t.Fatalf("lookup g1 mapping: %v", err)
 	}
-	var g2 metadata.IrModelData
+	var g2 metadata.ModelData
 	if err := db.Where("module = ? AND external_id = ?", "auth", "g2").First(&g2).Error; err != nil {
 		t.Fatalf("lookup g2 mapping: %v", err)
 	}
-	var u metadata.IrModelData
+	var u metadata.ModelData
 	if err := db.Where("module = ? AND external_id = ?", "auth", "u").First(&u).Error; err != nil {
 		t.Fatalf("lookup u mapping: %v", err)
 	}
@@ -1524,8 +1524,8 @@ func TestApplyModule_RefCanResolveExistingDBMappingOutsideBatch(t *testing.T) {
 	}).Error; err != nil {
 		t.Fatalf("seed auth_group: %v", err)
 	}
-	if err := db.Create(&metadata.IrModelData{Module: "auth", ExternalID: "pre_group", Model: "auth.group", ResID: "pre_group", NoUpdate: true}).Error; err != nil {
-		t.Fatalf("seed meta_ir_model_data: %v", err)
+	if err := db.Create(&metadata.ModelData{Module: "auth", ExternalID: "pre_group", Model: "auth.group", ResID: "pre_group", NoUpdate: true}).Error; err != nil {
+		t.Fatalf("seed meta_model_data: %v", err)
 	}
 
 	writeDataFile(t, dir, map[string]any{
@@ -1546,7 +1546,7 @@ func TestApplyModule_RefCanResolveExistingDBMappingOutsideBatch(t *testing.T) {
 		t.Fatalf("expected no error, got %T: %v", err, err)
 	}
 
-	var u metadata.IrModelData
+	var u metadata.ModelData
 	if err := db.Where("module = ? AND external_id = ?", "auth", "u").First(&u).Error; err != nil {
 		t.Fatalf("lookup u mapping: %v", err)
 	}
@@ -1804,7 +1804,7 @@ func TestResolveValue_SearchShapeErrorIncludesFieldPath(t *testing.T) {
 		t.Fatalf("expected empty results, got %#v", ids)
 	}
 
-	// modelRef resolves the meta.IrModel ID (auth.User is seeded in test schema).
+	// modelRef resolves the meta.Model ID (auth.User is seeded in test schema).
 	got2, modelRefErr := l.resolveValue(db, "/tmp/data.json", 0, rec, "values.service_id", map[string]any{
 		"modelRef": "auth.User",
 	})
@@ -1815,7 +1815,7 @@ func TestResolveValue_SearchShapeErrorIncludesFieldPath(t *testing.T) {
 		t.Fatalf("expected non-empty model ID from modelRef, got %#v", got2)
 	}
 
-	// serviceRef attempts model + meta_ir_service lookup; may error if table not seeded,
+	// serviceRef attempts model + meta_service lookup; may error if table not seeded,
 	// but must NOT return the old "unsupported_op" skeleton error.
 	_, serviceRefErr := l.resolveValue(db, "/tmp/data.json", 1, rec, "values.method_id", map[string]any{
 		"serviceRef": "auth.User/Browse",
@@ -1828,8 +1828,8 @@ func TestResolveValue_SearchShapeErrorIncludesFieldPath(t *testing.T) {
 	}
 
 	// ref and refBy still work (backward compat)
-	if err := db.Create(&metadata.IrModelData{Module: "auth", ExternalID: "group_admin", Model: "auth.group", ResID: "gid-1"}).Error; err != nil {
-		t.Fatalf("seed ir_model_data: %v", err)
+	if err := db.Create(&metadata.ModelData{Module: "auth", ExternalID: "group_admin", Model: "auth.group", ResID: "gid-1"}).Error; err != nil {
+		t.Fatalf("seed model_data: %v", err)
 	}
 	got, err = l.resolveValue(db, "/tmp/data.json", 0, rec, "values.group_id", map[string]any{"ref": "auth.group_admin"})
 	if err != nil || got != "gid-1" {
@@ -2154,7 +2154,7 @@ func TestDetectFieldCardinality_FallbackPaths(t *testing.T) {
 		t.Fatalf("expected ManyToOne fallback for missing model, got %d", c)
 	}
 
-	// Model exists but field not in meta_ir_field returns ManyToOne default.
+	// Model exists but field not in meta_field returns ManyToOne default.
 	c = l.detectFieldCardinality(db, "auth.User", "nonexistent_field")
 	if c != refCardinalityManyToOne {
 		t.Fatalf("expected ManyToOne fallback for missing field, got %d", c)
@@ -2291,7 +2291,7 @@ func TestResolveValue_SearchDomainNestedModelRef(t *testing.T) {
 
 	l, db := newTestLoader(t)
 
-	var userModel meta.IrModel
+	var userModel meta.Model
 	if err := db.Where("application = ? AND name = ?", "auth", "User").First(&userModel).Error; err != nil {
 		t.Fatalf("lookup auth.User model: %v", err)
 	}
@@ -2300,18 +2300,18 @@ func TestResolveValue_SearchDomainNestedModelRef(t *testing.T) {
 		t.Fatalf("expected non-empty user model id")
 	}
 
-	// Register meta.IrField so search model resolution works.
-	if err := db.Where("application = ? AND name = ?", "meta", "IrField").First(&meta.IrModel{}).Error; err != nil {
-		if err := db.Create(&meta.IrModel{Name: "IrField", Application: "meta", Path: "/tmp", ModelTable: "meta_ir_field"}).Error; err != nil {
-			t.Fatalf("seed meta_ir_model meta.IrField: %v", err)
+	// Register meta.Field so search model resolution works.
+	if err := db.Where("application = ? AND name = ?", "meta", "Field").First(&meta.Model{}).Error; err != nil {
+		if err := db.Create(&meta.Model{Name: "Field", Application: "meta", Path: "/tmp", ModelTable: "meta_field"}).Error; err != nil {
+			t.Fatalf("seed meta_model meta.MetaField: %v", err)
 		}
 	}
 
-	langField := &meta.IrField{Name: "Language"}
+	langField := &meta.Field{Name: "Language"}
 	langField.ModelId.Valid = true
 	langField.ModelId.String = userModelID
 	if err := db.Create(langField).Error; err != nil {
-		t.Fatalf("seed meta_ir_field: %v", err)
+		t.Fatalf("seed meta_field: %v", err)
 	}
 	langFieldID := strings.TrimSpace(langField.Id.String)
 	if langFieldID == "" {
@@ -2319,9 +2319,9 @@ func TestResolveValue_SearchDomainNestedModelRef(t *testing.T) {
 	}
 
 	rec := record{Module: "auth", ExternalID: "fr", Model: "auth.RoleFieldRule"}
-	got, err := l.resolveValue(db, "/tmp/data.json", 0, rec, "values.IrFieldId", map[string]any{
+	got, err := l.resolveValue(db, "/tmp/data.json", 0, rec, "values.FieldId", map[string]any{
 		"search": map[string]any{
-			"model": "meta.IrField",
+			"model": "meta.MetaField",
 			"domain": []any{
 				[]any{"Name", "=", "Language"},
 				[]any{"ModelId", "=", map[string]any{"modelRef": "auth.User"}},
@@ -2464,7 +2464,7 @@ func TestResolveSearchDomainRefs_AllBranches(t *testing.T) {
 		}
 
 		// resolveValue search path must surface domain-resolution errors.
-		_, err := l.resolveValue(db, "/tmp/d.json", 0, rec, "values.IrFieldId", map[string]any{
+		_, err := l.resolveValue(db, "/tmp/d.json", 0, rec, "values.FieldId", map[string]any{
 			"search": map[string]any{
 				"model":  "auth.User",
 				"domain": []any{badLeaf},
@@ -2756,27 +2756,27 @@ func TestResolveServiceRef_SuccessAndNotFound(t *testing.T) {
 
 	l, db := newTestLoader(t)
 
-	// Seed meta_ir_service so we can resolve a serviceRef.
-	if err := db.AutoMigrate(&meta.IrService{}); err != nil {
-		t.Fatalf("migrate meta_ir_service: %v", err)
+	// Seed meta_service so we can resolve a serviceRef.
+	if err := db.AutoMigrate(&meta.Service{}); err != nil {
+		t.Fatalf("migrate meta_service: %v", err)
 	}
-	// Register meta.IrService model entry so resolveSearchModel can find its table.
-	if err := db.Create(&meta.IrModel{
-		Name: "IrService", Application: "meta", Path: "/tmp", ModelTable: "meta_ir_service",
+	// Register meta.Service model entry so resolveSearchModel can find its table.
+	if err := db.Create(&meta.Model{
+		Name: "Service", Application: "meta", Path: "/tmp", ModelTable: "meta_service",
 	}).Error; err != nil {
-		t.Fatalf("seed meta.IrService model: %v", err)
+		t.Fatalf("seed meta.MetaService model: %v", err)
 	}
-	// Fetch the IrModel ID for auth.User.
-	model := &meta.IrModel{}
+	// Fetch the Model ID for auth.User.
+	model := &meta.Model{}
 	if err := db.Where("application = ? AND name = ?", "auth", "User").First(model).Error; err != nil {
 		t.Fatalf("lookup auth.User model: %v", err)
 	}
-	svc := &meta.IrService{
+	svc := &meta.Service{
 		Name:    "Browse",
 		ModelId: model.Id,
 	}
 	if err := db.Create(svc).Error; err != nil {
-		t.Fatalf("seed meta_ir_service: %v", err)
+		t.Fatalf("seed meta_service: %v", err)
 	}
 
 	// Valid serviceRef resolves.
@@ -2822,25 +2822,25 @@ func TestResolveValue_ModelRefAndServiceRefShortcuts(t *testing.T) {
 
 	l, db := newTestLoader(t)
 
-	// Seed meta_ir_service for the serviceRef test.
-	if err := db.AutoMigrate(&meta.IrService{}); err != nil {
-		t.Fatalf("migrate meta_ir_service: %v", err)
+	// Seed meta_service for the serviceRef test.
+	if err := db.AutoMigrate(&meta.Service{}); err != nil {
+		t.Fatalf("migrate meta_service: %v", err)
 	}
-	if err := db.Create(&meta.IrModel{
-		Name: "IrService", Application: "meta", Path: "/tmp", ModelTable: "meta_ir_service",
+	if err := db.Create(&meta.Model{
+		Name: "Service", Application: "meta", Path: "/tmp", ModelTable: "meta_service",
 	}).Error; err != nil {
-		t.Fatalf("seed meta.IrService model: %v", err)
+		t.Fatalf("seed meta.MetaService model: %v", err)
 	}
-	model := &meta.IrModel{}
+	model := &meta.Model{}
 	if err := db.Where("application = ? AND name = ?", "auth", "User").First(model).Error; err != nil {
 		t.Fatalf("lookup auth.User model: %v", err)
 	}
-	svc := &meta.IrService{
+	svc := &meta.Service{
 		Name:    "Browse",
 		ModelId: model.Id,
 	}
 	if err := db.Create(svc).Error; err != nil {
-		t.Fatalf("seed meta_ir_service: %v", err)
+		t.Fatalf("seed meta_service: %v", err)
 	}
 
 	rec := record{Module: "auth", ExternalID: "u", Model: "auth.User"}
@@ -2873,27 +2873,27 @@ func TestResolveValue_ServiceRefSharesSearchExecutor(t *testing.T) {
 
 	l, db := newTestLoader(t)
 
-	// resolveServiceRef internally uses resolveRefBySearch to query meta_ir_service.
+	// resolveServiceRef internally uses resolveRefBySearch to query meta_service.
 	// Verify that a serviceRef resolves correctly and that the underlying search
 	// executor was exercised (by checking the result matches a direct search).
-	if err := db.AutoMigrate(&meta.IrService{}); err != nil {
-		t.Fatalf("migrate meta_ir_service: %v", err)
+	if err := db.AutoMigrate(&meta.Service{}); err != nil {
+		t.Fatalf("migrate meta_service: %v", err)
 	}
-	if err := db.Create(&meta.IrModel{
-		Name: "IrService", Application: "meta", Path: "/tmp", ModelTable: "meta_ir_service",
+	if err := db.Create(&meta.Model{
+		Name: "Service", Application: "meta", Path: "/tmp", ModelTable: "meta_service",
 	}).Error; err != nil {
-		t.Fatalf("seed meta.IrService model: %v", err)
+		t.Fatalf("seed meta.MetaService model: %v", err)
 	}
-	model := &meta.IrModel{}
+	model := &meta.Model{}
 	if err := db.Where("application = ? AND name = ?", "auth", "User").First(model).Error; err != nil {
 		t.Fatalf("lookup auth.User model: %v", err)
 	}
-	svc := &meta.IrService{
+	svc := &meta.Service{
 		Name:    "GetPermissionState",
 		ModelId: model.Id,
 	}
 	if err := db.Create(svc).Error; err != nil {
-		t.Fatalf("seed meta_ir_service: %v", err)
+		t.Fatalf("seed meta_service: %v", err)
 	}
 
 	// Resolve via shortcut.
@@ -2904,7 +2904,7 @@ func TestResolveValue_ServiceRefSharesSearchExecutor(t *testing.T) {
 
 	// Resolve via equivalent direct search.
 	spec := searchSpec{
-		Model: "meta.IrService",
+		Model: "meta.MetaService",
 		Domain: []any{
 			"&",
 			[]any{"model_id", "=", model.Id.String},
@@ -2922,9 +2922,9 @@ func TestMetadataCache_ModelRefAndFieldCardinality(t *testing.T) {
 
 	l, db := newTestLoader(t)
 
-	// Seed meta_ir_field so detectFieldCardinality has something to look up.
-	if err := db.AutoMigrate(&meta.IrField{}); err != nil {
-		t.Fatalf("migrate meta_ir_field: %v", err)
+	// Seed meta_field so detectFieldCardinality has something to look up.
+	if err := db.AutoMigrate(&meta.Field{}); err != nil {
+		t.Fatalf("migrate meta_field: %v", err)
 	}
 
 	// First modelRef call should populate the model cache.

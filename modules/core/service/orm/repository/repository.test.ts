@@ -519,14 +519,14 @@ test('repository root read aggregate facades delegate through assembled deps and
 
 test('repository root control-plane model guards classify meta models correctly', () => {
   const byFullName = createRepositoryHarness({
-    fullModelName: 'meta.IrModel',
+    fullModelName: 'meta.MetaModel',
     application: 'demo',
     modelName: 'Model',
   });
   const byAppAndName = createRepositoryHarness({
     fullModelName: 'demo.Model',
     application: 'meta',
-    modelName: 'IrConfig',
+    modelName: 'MetaConfig',
   });
   const normalModel = createRepositoryHarness({
     fullModelName: 'demo.Model',
@@ -2152,9 +2152,9 @@ test('repository root count propagates record-rule compilation failures and skip
 
 test('repository root count bypasses record-rule coordinator for control-plane meta model', async () => {
   const repository = createRepositoryHarness({
-    fullModelName: 'meta.IrRuntime',
+    fullModelName: 'meta.MetaRuntime',
     application: 'meta',
-    modelName: 'IrRuntime',
+    modelName: 'MetaRuntime',
   });
   const { db, queries } = createFakeDb();
   const calls: Record<string, any> = {};
@@ -2917,7 +2917,7 @@ test('repository root control-plane guards support fallback model name fields an
     fullModelName: '',
     application: 'meta',
     modelName: '',
-    name: 'IrFallback',
+    name: 'MetaFallback',
   });
   expect((byNameFallback as any).isControlPlaneMetaModel()).toBe(true);
 

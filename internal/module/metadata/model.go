@@ -6,10 +6,10 @@ package metadata
 // Entities returns module admin/ops metadata models.
 func Entities() []any {
 	return []any{
-		&IrModuleIndex{},
-		&IrModelData{},
-		&IrSetting{},
+		&ModuleIndex{},
+		&ModelData{},
+		&Setting{},
 		&ModuleManagementLog{},
-		&IrModuleMigrationHistory{},
+		&ModuleMigrationHistory{},
 	}
 }

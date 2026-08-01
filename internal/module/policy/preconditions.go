@@ -10,7 +10,7 @@ import (
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
-func RequireInstalledForUpgrade(module *meta.IrModule) error {
+func RequireInstalledForUpgrade(module *meta.Module) error {
 	if module == nil {
 		return xfmt.Errorf("module is nil")
 	}

@@ -12,12 +12,12 @@ import { evaluateRecordRuleCondition } from '@/auth/service/models/_user_record_
 import { evaluateFieldRules } from '@/auth/service/models/_user_field_rule_eval';
 import { resolveMethodAccessMeta } from '@/auth/service/models/_user_method_access';
 import { createServiceByModel } from '@/core/service/rpc';
-import type IrApplicationModel from '@/meta/service/models/ir_application';
-import type IrModelModel from '@/meta/service/models/ir_model';
-import type IrServiceModel from '@/meta/service/models/ir_service';
-const IrApplication = createServiceByModel<typeof IrApplicationModel>('meta.IrApplication');
-const IrModel = createServiceByModel<typeof IrModelModel>('meta.IrModel');
-const IrService = createServiceByModel<typeof IrServiceModel>('meta.IrService');
+import type MetaApplicationModel from '@/meta/service/models/application';
+import type MetaModelModel from '@/meta/service/models/model';
+import type MetaServiceModel from '@/meta/service/models/service';
+const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
+const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
+const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -122,10 +122,10 @@ function setupAllowlistForFixtures(): void {
       'RoleInheritance:delete',
 
       // meta
-      'meta.IrModel:read',
-      'meta.IrService:read',
-      'IrModel:read',
-      'IrService:read',
+      'meta.MetaModel:read',
+      'meta.MetaService:read',
+      'MetaModel:read',
+      'MetaService:read',
     ],
   });
 }
@@ -167,7 +167,7 @@ async function createRole(codePrefix: string): Promise<{ id: string; code: strin
 
 async function resolveModelId(app: string, name: string): Promise<string> {
   const hit = (
-    await IrModel.Search(
+    await MetaModel.Search(
       {
         And: [
           ['Application', '=', app],
@@ -183,7 +183,7 @@ async function resolveModelId(app: string, name: string): Promise<string> {
 }
 
 async function resolveService(modelId: string, serviceName: string): Promise<{ id: string; name: string }> {
-  const rows = await IrService.Search(
+  const rows = await MetaService.Search(
     {
       And: [['ModelId', '=', modelId]],
     } as any,
@@ -237,9 +237,9 @@ test('P3-1: authz context is request-scoped memoized', async () => {
       await RoleMethodAccess.Create(
         {
           RoleId: { Id: r.id } as any,
-          IrServiceId: browse.id,
-          IrModelId: null,
-          IrApplicationId: null,
+          MetaServiceId: browse.id,
+          MetaModelId: null,
+          MetaApplicationId: null,
           Mode: 'allow',
         } as any,
         ['Id'] as any
@@ -308,23 +308,23 @@ test('P3-2: meta lookups are request-scoped memoized for record/field/method eva
   let modelSearchCalls = 0;
   let serviceSearchCalls = 0;
 
-  const origIrApplicationSearch = (IrApplication as any).Search;
-  const origIrModelSearch = (IrModel as any).Search;
-  const origIrServiceSearch = (IrService as any).Search;
+  const origMetaApplicationSearch = (MetaApplication as any).Search;
+  const origMetaModelSearch = (MetaModel as any).Search;
+  const origMetaServiceSearch = (MetaService as any).Search;
 
-  (IrApplication as any).Search = async (...args: any[]) => {
+  (MetaApplication as any).Search = async (...args: any[]) => {
     appSearchCalls++;
-    return await origIrApplicationSearch.apply(IrApplication, args);
+    return await origMetaApplicationSearch.apply(MetaApplication, args);
   };
 
-  (IrModel as any).Search = async (...args: any[]) => {
+  (MetaModel as any).Search = async (...args: any[]) => {
     modelSearchCalls++;
-    return await origIrModelSearch.apply(IrModel, args);
+    return await origMetaModelSearch.apply(MetaModel, args);
   };
 
-  (IrService as any).Search = async (...args: any[]) => {
+  (MetaService as any).Search = async (...args: any[]) => {
     serviceSearchCalls++;
-    return await origIrServiceSearch.apply(IrService, args);
+    return await origMetaServiceSearch.apply(MetaService, args);
   };
 
   try {
@@ -379,9 +379,9 @@ test('P3-2: meta lookups are request-scoped memoized for record/field/method eva
     expect(modelSearchCalls).toBe(3);
     expect(serviceSearchCalls).toBe(1);
   } finally {
-    (IrApplication as any).Search = origIrApplicationSearch;
-    (IrModel as any).Search = origIrModelSearch;
-    (IrService as any).Search = origIrServiceSearch;
+    (MetaApplication as any).Search = origMetaApplicationSearch;
+    (MetaModel as any).Search = origMetaModelSearch;
+    (MetaService as any).Search = origMetaServiceSearch;
   }
 });
 
@@ -417,9 +417,9 @@ test('P3-1: same request RoleInheritance write invalidates authz context', async
       await RoleMethodAccess.Create(
         {
           RoleId: { Id: child.id } as any,
-          IrServiceId: browse.id,
-          IrModelId: null,
-          IrApplicationId: null,
+          MetaServiceId: browse.id,
+          MetaModelId: null,
+          MetaApplicationId: null,
           Mode: 'allow',
         } as any,
         ['Id'] as any
@@ -475,9 +475,9 @@ test('P3-1: same request UserRole.CreateMany invalidates authz context', async (
       await RoleMethodAccess.Create(
         {
           RoleId: { Id: r.id } as any,
-          IrServiceId: browse.id,
-          IrModelId: null,
-          IrApplicationId: null,
+          MetaServiceId: browse.id,
+          MetaModelId: null,
+          MetaApplicationId: null,
           Mode: 'allow',
         } as any,
         ['Id'] as any

@@ -29,11 +29,11 @@ var i18nServiceMethods = []string{
 	"UpdateTerm",
 }
 
-// EnsureI18nIrMeta registers meta.IrModel "I18n" + IrService methods for ACL
+// EnsureI18nMeta registers meta.Model "I18n" + Service methods for ACL
 // (serviceRef / CheckMethodAccess). Does not register TranslationTerm.
 // When the Terminology Editor role exists, seeds precise allow rows for
 // SearchTerms and UpdateTerm (idempotent).
-func EnsureI18nIrMeta(runtimeScope scope.Scope, application string, moduleID sql.NullString) error {
+func EnsureI18nMeta(runtimeScope scope.Scope, application string, moduleID sql.NullString) error {
 	application = strings.TrimSpace(application)
 	if application == "" || application == coreApplication {
 		return nil
@@ -42,7 +42,7 @@ func EnsureI18nIrMeta(runtimeScope scope.Scope, application string, moduleID sql
 		return nil
 	}
 	db := runtimeScope.Session().DB
-	if !db.Migrator().HasTable((&meta.IrModel{}).TableName()) || !db.Migrator().HasTable((&meta.IrService{}).TableName()) {
+	if !db.Migrator().HasTable((&meta.Model{}).TableName()) || !db.Migrator().HasTable((&meta.Service{}).TableName()) {
 		return nil
 	}
 
@@ -57,23 +57,23 @@ func EnsureI18nIrMeta(runtimeScope scope.Scope, application string, moduleID sql
 	return ensureTerminologyEditorAllows(db, serviceIDs)
 }
 
-func ensureI18nModel(db *gorm.DB, application string, moduleID sql.NullString) (*meta.IrModel, error) {
-	var model meta.IrModel
+func ensureI18nModel(db *gorm.DB, application string, moduleID sql.NullString) (*meta.Model, error) {
+	var model meta.Model
 	err := db.Where("name = ? AND application = ?", i18nModelName, application).Take(&model).Error
 	if err == nil {
 		if moduleID.Valid && (!model.ModuleId.Valid || model.ModuleId.String == "") {
 			model.ModuleId = moduleID
 			if saveErr := db.Save(&model).Error; saveErr != nil {
-				return nil, fmt.Errorf("update I18n IrModel module: %w", saveErr)
+				return nil, fmt.Errorf("update I18n Model module: %w", saveErr)
 			}
 		}
 		return &model, nil
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, fmt.Errorf("lookup I18n IrModel: %w", err)
+		return nil, fmt.Errorf("lookup I18n Model: %w", err)
 	}
 
-	model = meta.IrModel{
+	model = meta.Model{
 		Name:        i18nModelName,
 		Path:        fmt.Sprintf("go://i18n/%s", application),
 		Application: application,
@@ -85,24 +85,24 @@ func ensureI18nModel(db *gorm.DB, application string, moduleID sql.NullString) (
 	falseVal := false
 	model.AutoMigrate = &falseVal
 	if err := db.Create(&model).Error; err != nil {
-		return nil, fmt.Errorf("create I18n IrModel: %w", err)
+		return nil, fmt.Errorf("create I18n Model: %w", err)
 	}
 	return &model, nil
 }
 
-func ensureI18nServices(db *gorm.DB, model *meta.IrModel) (map[string]string, error) {
+func ensureI18nServices(db *gorm.DB, model *meta.Model) (map[string]string, error) {
 	out := make(map[string]string, len(i18nServiceMethods))
 	for _, methodName := range i18nServiceMethods {
-		var svc meta.IrService
+		var svc meta.Service
 		err := db.Where("model_id = ? AND name = ?", model.Id.String, methodName).Take(&svc).Error
 		if err == nil {
 			out[methodName] = svc.Id.String
 			continue
 		}
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("lookup IrService %s: %w", methodName, err)
+			return nil, fmt.Errorf("lookup Service %s: %w", methodName, err)
 		}
-		svc = meta.IrService{
+		svc = meta.Service{
 			Name:                 methodName,
 			OriginModelPath:      model.Path,
 			AccessibilityModifier: "public",
@@ -110,7 +110,7 @@ func ensureI18nServices(db *gorm.DB, model *meta.IrModel) (map[string]string, er
 			ModelId:              model.Id,
 		}
 		if err := db.Create(&svc).Error; err != nil {
-			return nil, fmt.Errorf("create IrService %s: %w", methodName, err)
+			return nil, fmt.Errorf("create Service %s: %w", methodName, err)
 		}
 		out[methodName] = svc.Id.String
 	}
@@ -141,7 +141,7 @@ func ensureTerminologyEditorAllows(db *gorm.DB, serviceIDs map[string]string) er
 		}
 		var count int64
 		if err := db.Table(authRoleMethodAccessTable).
-			Where("role_id = ? AND ir_service_id = ? AND deleted_at IS NULL", roleID, serviceID).
+			Where("role_id = ? AND meta_service_id = ? AND deleted_at IS NULL", roleID, serviceID).
 			Count(&count).Error; err != nil {
 			return fmt.Errorf("lookup RoleMethodAccess: %w", err)
 		}
@@ -152,9 +152,9 @@ func ensureTerminologyEditorAllows(db *gorm.DB, serviceIDs map[string]string) er
 		row := map[string]any{
 			"id":                xid.New().String(),
 			"role_id":           roleID,
-			"ir_application_id": nil,
-			"ir_model_id":       nil,
-			"ir_service_id":     serviceID,
+			"meta_application_id": nil,
+			"meta_model_id":       nil,
+			"meta_service_id":     serviceID,
 			"mode":              "allow",
 			"source":            "manual",
 			"created_at":        now,

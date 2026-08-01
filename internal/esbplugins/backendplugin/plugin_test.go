@@ -78,7 +78,7 @@ func newPluginSessionTestScope(t *testing.T) (*testScope, *gorm.DB) {
 
 func migrateBackendPluginMetadata(t *testing.T, db *gorm.DB) {
 	t.Helper()
-	if err := db.AutoMigrate(&meta.IrApplication{}, &meta.IrModule{}, &meta.IrModel{}, &meta.IrField{}, &meta.IrDecorator{}, &meta.IrArgument{}); err != nil {
+	if err := db.AutoMigrate(&meta.Application{}, &meta.Module{}, &meta.Model{}, &meta.Field{}, &meta.Decorator{}, &meta.Argument{}); err != nil {
 		t.Fatalf("automigrate metadata: %v", err)
 	}
 }
@@ -183,7 +183,7 @@ func newBackendPluginForInjectTest(t *testing.T, runtimeScope scope.Scope) *Back
 	return &BackendPlugin{
 		BasePlugin: &esbplugins.BasePlugin{
 			Env:    runtimeScope,
-			Module: &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
+			Module: &meta.Module{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 			TsExports: map[string]map[string]*parser.Export{
 				modelDecoratorModuleSpec: {
 					"Model": {
@@ -447,7 +447,7 @@ func TestInjectModelApplication_EmptyModulesPathStillProcessesModelDecorator(t *
 
 func TestInjectModelApplication_DerivesExternalModuleNameFromNormalizedPathWithoutModelTable(t *testing.T) {
 	testRuntimeScope, db := newPluginSessionTestScope(t)
-	if err := db.AutoMigrate(&meta.IrModule{}); err != nil {
+	if err := db.AutoMigrate(&meta.Module{}); err != nil {
 		t.Fatalf("automigrate modules failed: %v", err)
 	}
 
@@ -462,7 +462,7 @@ func TestInjectModelApplication_DerivesExternalModuleNameFromNormalizedPathWitho
 	}
 
 	testRuntimeScope.cfg.ModulesPath = filepath.Join(aliasRoot, "modules")
-	if err := db.Create(&meta.IrModule{Name: "crm", ApplicationStr: "crm"}).Error; err != nil {
+	if err := db.Create(&meta.Module{Name: "crm", ApplicationStr: "crm"}).Error; err != nil {
 		t.Fatalf("seed external module failed: %v", err)
 	}
 
@@ -526,7 +526,7 @@ func captureBackendOnLoad(t *testing.T, plugin api.Plugin, buildOptions *api.Bui
 
 func TestBackendPluginConstructorsAndParserResults(t *testing.T) {
 	testRuntimeScope := newPluginTestScope()
-	moduleRef := &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"}
+	moduleRef := &meta.Module{Path: "/virtual/modules/auth", ApplicationStr: "auth"}
 	customParser := fakeParser{}
 
 	created, ok := NewBackendPlugin(testRuntimeScope, moduleRef, "service/index.ts", WithParser(customParser)).(*BackendPlugin)
@@ -574,7 +574,7 @@ func TestBackendPluginDefinePlugins(t *testing.T) {
 	testRuntimeScope := newPluginTestScope()
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:              testRuntimeScope,
-		Module:           &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
+		Module:           &meta.Module{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 		ParserResultChan: make(chan *parser.ParserResult),
 		TsExports:        make(map[string]map[string]*parser.Export),
 		ParserResults:    make([]*parser.ParserResult, 0),
@@ -607,8 +607,8 @@ func TestBackendPluginDefinePlugins(t *testing.T) {
 func TestBackendPluginDefinePlugins_BindsRuntimeState(t *testing.T) {
 	baseScope := newPluginTestScope()
 	runtimeScope := newPluginTestScope()
-	baseModule := &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"}
-	runtimeModule := &meta.IrModule{Path: "/runtime/modules/crm", ApplicationStr: "crm"}
+	baseModule := &meta.Module{Path: "/virtual/modules/auth", ApplicationStr: "auth"}
+	runtimeModule := &meta.Module{Path: "/runtime/modules/crm", ApplicationStr: "crm"}
 
 	plugin, ok := NewBackendPlugin(baseScope, baseModule, "service/index.ts").(*BackendPlugin)
 	if !ok {
@@ -616,8 +616,8 @@ func TestBackendPluginDefinePlugins_BindsRuntimeState(t *testing.T) {
 	}
 
 	var gotScope scope.Scope
-	var gotModule *meta.IrModule
-	plugin.parserFactory = func(runtimeScope scope.Scope, module *meta.IrModule) parser.Parser {
+	var gotModule *meta.Module
+	plugin.parserFactory = func(runtimeScope scope.Scope, module *meta.Module) parser.Parser {
 		gotScope = runtimeScope
 		gotModule = module
 		return fakeParser{}
@@ -662,7 +662,7 @@ func TestBackendPluginDefinePluginsOnLoad_AppendsEntryPointImports(t *testing.T)
 
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:              testRuntimeScope,
-		Module:           &meta.IrModule{Path: moduleDir, ApplicationStr: "auth"},
+		Module:           &meta.Module{Path: moduleDir, ApplicationStr: "auth"},
 		EntryPoint:       "./service/index.ts",
 		ParserResultChan: make(chan *parser.ParserResult, 1),
 		TsExports:        make(map[string]map[string]*parser.Export),
@@ -720,7 +720,7 @@ func TestBackendPluginDefinePluginsOnLoad_AppendsEntryPointImports_WhenEntryPath
 
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:              testRuntimeScope,
-		Module:           &meta.IrModule{Path: filepath.Join(rootDir, "module"), ApplicationStr: "bundles"},
+		Module:           &meta.Module{Path: filepath.Join(rootDir, "module"), ApplicationStr: "bundles"},
 		EntryPoint:       entryFromEntryPoint,
 		ParserResultChan: make(chan *parser.ParserResult, 1),
 		TsExports:        make(map[string]map[string]*parser.Export),
@@ -761,7 +761,7 @@ func TestBackendPluginDefinePluginsOnLoad_UsesCachedContentAndPublishesResult(t 
 	path := "/virtual/modules/auth/service/user.ts"
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:              testRuntimeScope,
-		Module:           &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
+		Module:           &meta.Module{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 		ParserResultChan: make(chan *parser.ParserResult, 1),
 		TsExports:        make(map[string]map[string]*parser.Export),
 		ParserResults: []*parser.ParserResult{{
@@ -822,7 +822,7 @@ func TestBackendPluginDefinePluginsOnLoad_ReadsFileAndNormalizesCRLF(t *testing.
 
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:              testRuntimeScope,
-		Module:           &meta.IrModule{Path: filepath.Dir(filepath.Dir(path)), ApplicationStr: "auth"},
+		Module:           &meta.Module{Path: filepath.Dir(filepath.Dir(path)), ApplicationStr: "auth"},
 		ParserResultChan: make(chan *parser.ParserResult, 1),
 		TsExports:        make(map[string]map[string]*parser.Export),
 		ParserResults:    make([]*parser.ParserResult, 0),
@@ -856,7 +856,7 @@ func TestBackendPluginDefinePluginsOnLoad_ErrorPaths(t *testing.T) {
 		testRuntimeScope := newPluginTestScope()
 		plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 			Env:              testRuntimeScope,
-			Module:           &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
+			Module:           &meta.Module{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 			ParserResultChan: make(chan *parser.ParserResult, 1),
 			TsExports:        make(map[string]map[string]*parser.Export),
 			ParserResults: []*parser.ParserResult{{
@@ -879,7 +879,7 @@ func TestBackendPluginDefinePluginsOnLoad_ErrorPaths(t *testing.T) {
 		testRuntimeScope := newPluginTestScope()
 		plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 			Env:              testRuntimeScope,
-			Module:           &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
+			Module:           &meta.Module{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 			ParserResultChan: make(chan *parser.ParserResult, 1),
 			TsExports:        make(map[string]map[string]*parser.Export),
 			ParserResults: []*parser.ParserResult{{
@@ -903,7 +903,7 @@ func TestInjectModelApplication_UsesExternalModuleApplication(t *testing.T) {
 	testRuntimeScope, db := newPluginSessionTestScope(t)
 	migrateBackendPluginMetadata(t, db)
 	testRuntimeOpts := runtimeOptionsFromScope(testRuntimeScope)
-	if err := db.Create(&meta.IrModule{Name: "crm", ApplicationStr: "crm-app", Path: filepath.Join(testRuntimeOpts.modulesPath, "crm")}).Error; err != nil {
+	if err := db.Create(&meta.Module{Name: "crm", ApplicationStr: "crm-app", Path: filepath.Join(testRuntimeOpts.modulesPath, "crm")}).Error; err != nil {
 		t.Fatalf("seed external module: %v", err)
 	}
 
@@ -966,15 +966,15 @@ func TestInjectModelApplication_UsesExternalModelApplication(t *testing.T) {
 	migrateBackendPluginMetadata(t, db)
 	testRuntimeOpts := runtimeOptionsFromScope(testRuntimeScope)
 
-	app := &meta.IrApplication{Name: "crm-app"}
+	app := &meta.Application{Name: "crm-app"}
 	if err := db.Create(app).Error; err != nil {
 		t.Fatalf("create application: %v", err)
 	}
-	mod := &meta.IrModule{Name: "crm", ApplicationStr: "crm-app", ApplicationId: app.Id, Path: "/external/modules/crm"}
+	mod := &meta.Module{Name: "crm", ApplicationStr: "crm-app", ApplicationId: app.Id, Path: "/external/modules/crm"}
 	if err := db.Create(mod).Error; err != nil {
 		t.Fatalf("create module: %v", err)
 	}
-	model := &meta.IrModel{Name: "Partner", Path: "/external/models/partner.ts", ModuleId: mod.Id}
+	model := &meta.Model{Name: "Partner", Path: "/external/models/partner.ts", ModuleId: mod.Id}
 	if err := db.Create(model).Error; err != nil {
 		t.Fatalf("create model: %v", err)
 	}
@@ -1011,7 +1011,7 @@ func TestInjectModelApplication_UsesRuntimeScopeFromDefinePlugins(t *testing.T) 
 	runtimeOpts := runtimeOptionsFromScope(runtimeScope)
 
 	plugin := newBackendPluginForInjectTest(t, baseScope)
-	runtimeModule := &meta.IrModule{Path: filepath.Join(runtimeOpts.modulesPath, "auth"), ApplicationStr: "auth"}
+	runtimeModule := &meta.Module{Path: filepath.Join(runtimeOpts.modulesPath, "auth"), ApplicationStr: "auth"}
 	plugin.DefinePlugins(runtimeScope, nil, runtimeModule)
 	runtimeModelDecoratorModuleSpec, _ := meta.ModelDecoratorModuleSpec(runtimeScope)
 	plugin.TsExports = map[string]map[string]*parser.Export{
@@ -1023,7 +1023,7 @@ func TestInjectModelApplication_UsesRuntimeScopeFromDefinePlugins(t *testing.T) 
 		},
 	}
 
-	if err := runtimeDB.Create(&meta.IrModule{Name: "crm", ApplicationStr: "crm-app", Path: filepath.Join(runtimeOpts.modulesPath, "crm")}).Error; err != nil {
+	if err := runtimeDB.Create(&meta.Module{Name: "crm", ApplicationStr: "crm-app", Path: filepath.Join(runtimeOpts.modulesPath, "crm")}).Error; err != nil {
 		t.Fatalf("seed runtime external module: %v", err)
 	}
 
@@ -1120,7 +1120,7 @@ func TestBackendPluginReplaceModuleSpecReferenceIdent(t *testing.T) {
 
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:    testRuntimeScope,
-		Module: &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
+		Module: &meta.Module{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 		TsExports: map[string]map[string]*parser.Export{
 			"@/base": {
 				"BaseModel": {ModuleSpecPath: baseModelModuleSpec, ReferenceIdent: "default"},
@@ -1131,46 +1131,46 @@ func TestBackendPluginReplaceModuleSpecReferenceIdent(t *testing.T) {
 	autoMigrate := true
 	result := &parser.ParserResult{
 		Path: "/virtual/modules/auth/service/models/partner.ts",
-		Model: &meta.IrModel{
-			Decorators: []*meta.IrDecorator{{
+		Model: &meta.Model{
+			Decorators: []*meta.Decorator{{
 				Name:           "Model",
 				ModuleSpecPath: modelDecoratorModuleSpec,
 				ReferenceIdent: modelDecoratorReferenceIdent,
-				Arguments: []*meta.IrArgument{
+				Arguments: []*meta.Argument{
 					{Value: `'Partner'`, Type: "Literal"},
 					{Value: `{"tableName":"crm_partner","application":"crm","autoMigrate":true,"readonly":true}`, Type: "ObjectLiteral"},
 				},
 			}},
-			Services: []*meta.IrService{
+			Services: []*meta.Service{
 				{
 					Name:                  "Create",
 					AccessibilityModifier: "public",
 					IsStatic:              true,
-					Decorators:            []*meta.IrDecorator{{Name: "Service", ModuleSpecPath: serviceDecoratorModuleSpec, ReferenceIdent: serviceDecoratorReferenceIdent}},
+					Decorators:            []*meta.Decorator{{Name: "Service", ModuleSpecPath: serviceDecoratorModuleSpec, ReferenceIdent: serviceDecoratorReferenceIdent}},
 				},
 				{
 					Name:                  "Search",
 					AccessibilityModifier: "public",
 					IsStatic:              true,
-					Decorators:            []*meta.IrDecorator{{Name: "Other", ModuleSpecPath: "@/other", ReferenceIdent: "Other"}},
+					Decorators:            []*meta.Decorator{{Name: "Other", ModuleSpecPath: "@/other", ReferenceIdent: "Other"}},
 				},
 				{
 					Name:                  "helper",
 					AccessibilityModifier: "public",
 					IsStatic:              true,
-					Decorators:            []*meta.IrDecorator{{Name: "Service", ModuleSpecPath: serviceDecoratorModuleSpec, ReferenceIdent: serviceDecoratorReferenceIdent}},
+					Decorators:            []*meta.Decorator{{Name: "Service", ModuleSpecPath: serviceDecoratorModuleSpec, ReferenceIdent: serviceDecoratorReferenceIdent}},
 				},
 			},
-			Fields: []*meta.IrField{
+			Fields: []*meta.Field{
 				{
 					Name:           "Name",
 					ModuleSpecPath: "@/types",
 					ReferenceIdent: "string",
-					Decorators:     []*meta.IrDecorator{{Name: "Field", ModuleSpecPath: fieldDecoratorModuleSpec, ReferenceIdent: fieldDecoratorReferenceIdent}},
+					Decorators:     []*meta.Decorator{{Name: "Field", ModuleSpecPath: fieldDecoratorModuleSpec, ReferenceIdent: fieldDecoratorReferenceIdent}},
 				},
 				{
 					Name:       "Ignored",
-					Decorators: []*meta.IrDecorator{{Name: "Other", ModuleSpecPath: "@/other", ReferenceIdent: "Other"}},
+					Decorators: []*meta.Decorator{{Name: "Other", ModuleSpecPath: "@/other", ReferenceIdent: "Other"}},
 				},
 			},
 			AutoMigrate: &autoMigrate,
@@ -1199,7 +1199,7 @@ func TestBackendPluginReplaceModuleSpecReferenceIdent(t *testing.T) {
 
 	badResult := &parser.ParserResult{
 		Path:                 "/virtual/modules/auth/service/models/bad.ts",
-		Model:                &meta.IrModel{},
+		Model:                &meta.Model{},
 		ModelExtendsProperty: &parser.PropertyNode{ModuleSpecPath: "@/base", ReferenceIdent: "NamedExport"},
 	}
 	if err := plugin.replaceModuleSpecReferenceIdent([]*parser.ParserResult{badResult}); err == nil || !strings.Contains(err.Error(), "model should extend default") {
@@ -1216,7 +1216,7 @@ func TestBackendPluginReplaceModuleSpecReferenceIdent_AdditionalPaths(t *testing
 
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:    testRuntimeScope,
-		Module: &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
+		Module: &meta.Module{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 		TsExports: map[string]map[string]*parser.Export{
 			"@/base": {
 				"default": {ModuleSpecPath: baseModelModuleSpec, ReferenceIdent: "BaseModelClass"},
@@ -1240,40 +1240,40 @@ func TestBackendPluginReplaceModuleSpecReferenceIdent_AdditionalPaths(t *testing
 
 	result := &parser.ParserResult{
 		Path: "/virtual/modules/auth/service/models/order.ts",
-		Model: &meta.IrModel{
-			Decorators: []*meta.IrDecorator{{
+		Model: &meta.Model{
+			Decorators: []*meta.Decorator{{
 				Name:           "Model",
 				ModuleSpecPath: modelDecoratorModuleSpec,
 				ReferenceIdent: modelDecoratorReferenceIdent,
-				Arguments:      []*meta.IrArgument{{Value: `'Order'`, Type: "Literal"}},
+				Arguments:      []*meta.Argument{{Value: `'Order'`, Type: "Literal"}},
 			}},
-			Services: []*meta.IrService{
+			Services: []*meta.Service{
 				{
 					Name:                  "List",
 					AccessibilityModifier: "public",
 					IsStatic:              true,
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Service",
 						ModuleSpecPath: "@/service-namespace",
 						ReferenceIdent: "Service",
 					}},
-					TypeParameters: []*meta.IrTypeParameter{{
+					TypeParameters: []*meta.TypeParameter{{
 						Name:           "TResult",
 						ModuleSpecPath: "@/service-namespace",
 						ReferenceIdent: "ResultType",
 					}},
 				},
 			},
-			Fields: []*meta.IrField{
+			Fields: []*meta.Field{
 				{
 					Name:           "Category",
 					ModuleSpecPath: "@/field-namespace",
 					ReferenceIdent: "RelatedModel",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: "@/field-namespace",
 						ReferenceIdent: "Field",
-						Arguments: []*meta.IrArgument{{
+						Arguments: []*meta.Argument{{
 							Type:           "Identifier",
 							ModuleSpecPath: "@/field-namespace",
 							ReferenceIdent: "RelatedModel",
@@ -1321,12 +1321,12 @@ func TestBackendPluginReplaceModuleSpecReferenceIdent_SkipsExternalPaths(t *test
 	testRuntimeScope := newPluginTestScope()
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:    testRuntimeScope,
-		Module: &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
+		Module: &meta.Module{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 	}}
 
 	result := &parser.ParserResult{
 		Path: "/virtual/modules/external/service/models/partner.ts",
-		Model: &meta.IrModel{
+		Model: &meta.Model{
 			Name:        "External",
 			Application: "legacy",
 		},
@@ -1346,17 +1346,17 @@ func TestBackendPluginSetFieldMeta(t *testing.T) {
 	modelDecoratorModuleSpec, modelDecoratorReferenceIdent := meta.ModelDecoratorModuleSpec(testRuntimeScope)
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:    testRuntimeScope,
-		Module: &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
+		Module: &meta.Module{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 	}}
 
-	targetModel := &meta.IrModel{
+	targetModel := &meta.Model{
 		Name: "Category",
 		Path: "/virtual/modules/auth/service/models/category.ts",
-		Decorators: []*meta.IrDecorator{{
+		Decorators: []*meta.Decorator{{
 			Name:           "Model",
 			ModuleSpecPath: modelDecoratorModuleSpec,
 			ReferenceIdent: modelDecoratorReferenceIdent,
-			Arguments: []*meta.IrArgument{{
+			Arguments: []*meta.Argument{{
 				Value: `{"parentField":"ParentId"}`,
 				Type:  "ObjectLiteral",
 			}},
@@ -1365,73 +1365,73 @@ func TestBackendPluginSetFieldMeta(t *testing.T) {
 
 	goodResult := &parser.ParserResult{
 		Path: "/virtual/modules/auth/service/models/partner.ts",
-		Model: &meta.IrModel{
+		Model: &meta.Model{
 			Name: "Partner",
-			Fields: []*meta.IrField{
+			Fields: []*meta.Field{
 				{
 					Name: "Code",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments:      []*meta.IrArgument{{Value: `{"type":"char","selection":[{"value":"draft","label":"Draft"}],"select":{"size":16}}`, Type: "ObjectLiteral"}},
+						Arguments:      []*meta.Argument{{Value: `{"type":"char","selection":[{"value":"draft","label":"Draft"}],"select":{"size":16}}`, Type: "ObjectLiteral"}},
 					}},
 				},
 				{
 					Name: "Amount",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments:      []*meta.IrArgument{{Value: `{"type":"decimal","column":{"precision":12,"scale":4,"round":"half_up","scaleField":"currencyScale","unique":true}}`, Type: "ObjectLiteral"}},
+						Arguments:      []*meta.Argument{{Value: `{"type":"decimal","column":{"precision":12,"scale":4,"round":"half_up","scaleField":"currencyScale","unique":true}}`, Type: "ObjectLiteral"}},
 					}},
 				},
 				{
 					Name:           "Category",
 					ModuleSpecPath: "/virtual/modules/auth/service/models/category",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments:      []*meta.IrArgument{{Value: `{"type":"ManyToOne"}`, Type: "ObjectLiteral"}},
+						Arguments:      []*meta.Argument{{Value: `{"type":"ManyToOne"}`, Type: "ObjectLiteral"}},
 					}},
 				},
 				{
 					Name:           "Children",
 					ModuleSpecPath: "/virtual/modules/auth/service/models/category",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments:      []*meta.IrArgument{{Value: `{"type":"OneToMany","relation":{"inverseField":"ParentId"}}`, Type: "ObjectLiteral"}},
+						Arguments:      []*meta.Argument{{Value: `{"type":"OneToMany","relation":{"inverseField":"ParentId"}}`, Type: "ObjectLiteral"}},
 					}},
 				},
 				{
 					Name:           "Tags",
 					ModuleSpecPath: "/virtual/modules/auth/service/models/category",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments:      []*meta.IrArgument{{Value: `{"type":"ManyToMany","relation":{"joinField":"PartnerId","inverseJoinField":"CategoryId","joinModel":"auth.PartnerCategory"}}`, Type: "ObjectLiteral"}},
+						Arguments:      []*meta.Argument{{Value: `{"type":"ManyToMany","relation":{"joinField":"PartnerId","inverseJoinField":"CategoryId","joinModel":"auth.PartnerCategory"}}`, Type: "ObjectLiteral"}},
 					}},
 				},
 				{
 					Name: "ExternalCategory",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments:      []*meta.IrArgument{{Value: `{"type":"ManyToOneRef","targetModel":"auth.Category"}`, Type: "ObjectLiteral"}},
+						Arguments:      []*meta.Argument{{Value: `{"type":"ManyToOneRef","targetModel":"auth.Category"}`, Type: "ObjectLiteral"}},
 					}},
 				},
 				{
 					Name: "ExternalTags",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments:      []*meta.IrArgument{{Value: `{"type":"ManyToManyRef","targetModel":"auth.Tag"}`, Type: "ObjectLiteral"}},
+						Arguments:      []*meta.Argument{{Value: `{"type":"ManyToManyRef","targetModel":"auth.Tag"}`, Type: "ObjectLiteral"}},
 					}},
 				},
 			},
@@ -1478,16 +1478,16 @@ func TestBackendPluginSetFieldMeta(t *testing.T) {
 
 	badResult := &parser.ParserResult{
 		Path: "/virtual/modules/auth/service/models/bad.ts",
-		Model: &meta.IrModel{
+		Model: &meta.Model{
 			Name: "BadModel",
-			Fields: []*meta.IrField{
+			Fields: []*meta.Field{
 				{
 					Name: "Code",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments: []*meta.IrArgument{{
+						Arguments: []*meta.Argument{{
 							Value: `{"type":"char"}`,
 							Type:  "ObjectLiteral",
 						}},
@@ -1506,44 +1506,44 @@ func TestBackendPluginSetFieldMeta_AdditionalPaths(t *testing.T) {
 	fieldDecoratorModuleSpec, fieldDecoratorReferenceIdent := meta.FieldDecoratorModuleSpec(testRuntimeScope)
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:    testRuntimeScope,
-		Module: &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
+		Module: &meta.Module{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 	}}
 
 	result := &parser.ParserResult{
 		Path: "/virtual/modules/auth/service/models/advanced.ts",
-		Model: &meta.IrModel{
+		Model: &meta.Model{
 			Name: "Advanced",
-			Fields: []*meta.IrField{
+			Fields: []*meta.Field{
 				{
 					Name: "VirtualCode",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments:      []*meta.IrArgument{{Value: `{"type":"char","select":{"size":8,"round":2,"scaleField":"currencyScale"}}`, Type: "ObjectLiteral"}},
+						Arguments:      []*meta.Argument{{Value: `{"type":"char","select":{"size":8,"round":2,"scaleField":"currencyScale"}}`, Type: "ObjectLiteral"}},
 					}},
 				},
 				{
 					Name: "StoredCode",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments:      []*meta.IrArgument{{Value: `{"type":"char","column":{"size":32,"compute":"concat(code)","primaryKey":true,"uniqueIndex":"uq_advanced_code","notNull":true}}`, Type: "ObjectLiteral"}},
+						Arguments:      []*meta.Argument{{Value: `{"type":"char","column":{"size":32,"compute":"concat(code)","primaryKey":true,"uniqueIndex":"uq_advanced_code","notNull":true}}`, Type: "ObjectLiteral"}},
 					}},
 				},
 				{
 					Name: "Ignored",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Other",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments:      []*meta.IrArgument{{Value: `{"type":"char","column":{"size":16}}`, Type: "ObjectLiteral"}},
+						Arguments:      []*meta.Argument{{Value: `{"type":"char","column":{"size":16}}`, Type: "ObjectLiteral"}},
 					}},
 				},
 				{
 					Name: "NoArgs",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
@@ -1586,111 +1586,111 @@ func TestBackendPluginSetFieldMeta_CurrencyFieldPaths(t *testing.T) {
 	fieldDecoratorModuleSpec, fieldDecoratorReferenceIdent := meta.FieldDecoratorModuleSpec(testRuntimeScope)
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:    testRuntimeScope,
-		Module: &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
+		Module: &meta.Module{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 	}}
 
 	result := &parser.ParserResult{
 		Path: "/virtual/modules/auth/service/models/invoice.ts",
-		Model: &meta.IrModel{
+		Model: &meta.Model{
 			Name: "Invoice",
-			Fields: []*meta.IrField{
+			Fields: []*meta.Field{
 				{
 					Name: "AmountFromColumn",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments:      []*meta.IrArgument{{Value: `{"type":"monetary","column":{"currencyField":"CurrencyId"}}`, Type: "ObjectLiteral"}},
+						Arguments:      []*meta.Argument{{Value: `{"type":"monetary","column":{"currencyField":"CurrencyId"}}`, Type: "ObjectLiteral"}},
 					}},
 				},
 				{
 					Name: "AmountFromSelect",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments:      []*meta.IrArgument{{Value: `{"type":"monetary","select":{"currencyField":"PayCurrencyId"}}`, Type: "ObjectLiteral"}},
+						Arguments:      []*meta.Argument{{Value: `{"type":"monetary","select":{"currencyField":"PayCurrencyId"}}`, Type: "ObjectLiteral"}},
 					}},
 				},
 				{
 					Name: "AmountFromFlat",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments:      []*meta.IrArgument{{Value: `{"type":"monetary","currencyField":" CurrencyId "}`, Type: "ObjectLiteral"}},
+						Arguments:      []*meta.Argument{{Value: `{"type":"monetary","currencyField":" CurrencyId "}`, Type: "ObjectLiteral"}},
 					}},
 				},
 				{
 					Name: "ScaleFromFlat",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments:      []*meta.IrArgument{{Value: `{"type":"decimal","scaleField":" AmountScale "}`, Type: "ObjectLiteral"}},
+						Arguments:      []*meta.Argument{{Value: `{"type":"decimal","scaleField":" AmountScale "}`, Type: "ObjectLiteral"}},
 					}},
 				},
 				{
 					Name: "InvalidCurrency",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments:      []*meta.IrArgument{{Value: `{"type":"monetary","column":{"currencyField":1},"currencyField":""}`, Type: "ObjectLiteral"}},
+						Arguments:      []*meta.Argument{{Value: `{"type":"monetary","column":{"currencyField":1},"currencyField":""}`, Type: "ObjectLiteral"}},
 					}},
 				},
 				{
 					Name: "ColumnWinsOverFlat",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments:      []*meta.IrArgument{{Value: `{"type":"monetary","column":{"currencyField":"ColCur"},"currencyField":"FlatCur"}`, Type: "ObjectLiteral"}},
+						Arguments:      []*meta.Argument{{Value: `{"type":"monetary","column":{"currencyField":"ColCur"},"currencyField":"FlatCur"}`, Type: "ObjectLiteral"}},
 					}},
 				},
 				{
 					Name: "SelectIgnoredWhenColumnPresent",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments:      []*meta.IrArgument{{Value: `{"type":"monetary","column":{},"select":{"currencyField":"SelCur","scaleField":"SelScale"}}`, Type: "ObjectLiteral"}},
+						Arguments:      []*meta.Argument{{Value: `{"type":"monetary","column":{},"select":{"currencyField":"SelCur","scaleField":"SelScale"}}`, Type: "ObjectLiteral"}},
 					}},
 				},
 				{
 					Name: "EmptyColumnFallsBackToFlat",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments:      []*meta.IrArgument{{Value: `{"type":"monetary","column":{"currencyField":""},"currencyField":"FlatCur"}`, Type: "ObjectLiteral"}},
+						Arguments:      []*meta.Argument{{Value: `{"type":"monetary","column":{"currencyField":""},"currencyField":"FlatCur"}`, Type: "ObjectLiteral"}},
 					}},
 				},
 				{
 					Name: "WhitespaceFlatIgnored",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments:      []*meta.IrArgument{{Value: `{"type":"monetary","currencyField":"   ","scaleField":true}`, Type: "ObjectLiteral"}},
+						Arguments:      []*meta.Argument{{Value: `{"type":"monetary","currencyField":"   ","scaleField":true}`, Type: "ObjectLiteral"}},
 					}},
 				},
 				{
 					Name: "SelectScaleWhenNoColumn",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments:      []*meta.IrArgument{{Value: `{"type":"decimal","select":{"scaleField":"PayScale"}}`, Type: "ObjectLiteral"}},
+						Arguments:      []*meta.Argument{{Value: `{"type":"decimal","select":{"scaleField":"PayScale"}}`, Type: "ObjectLiteral"}},
 					}},
 				},
 				{
 					Name: "NonStringColumnScaleIgnored",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments:      []*meta.IrArgument{{Value: `{"type":"decimal","column":{"scaleField":2},"scaleField":" FlatScale "}`, Type: "ObjectLiteral"}},
+						Arguments:      []*meta.Argument{{Value: `{"type":"decimal","column":{"scaleField":2},"scaleField":" FlatScale "}`, Type: "ObjectLiteral"}},
 					}},
 				},
 			},
@@ -1747,21 +1747,21 @@ func TestBackendPluginSetFieldMeta_FlatAndSelectNumericOptions(t *testing.T) {
 	fieldDecoratorModuleSpec, fieldDecoratorReferenceIdent := meta.FieldDecoratorModuleSpec(testRuntimeScope)
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:    testRuntimeScope,
-		Module: &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
+		Module: &meta.Module{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 	}}
 
 	result := &parser.ParserResult{
 		Path: "/virtual/modules/auth/service/models/numeric_opts.ts",
-		Model: &meta.IrModel{
+		Model: &meta.Model{
 			Name: "NumericOpts",
-			Fields: []*meta.IrField{
+			Fields: []*meta.Field{
 				{
 					Name: "FlatNumeric",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments: []*meta.IrArgument{{
+						Arguments: []*meta.Argument{{
 							Value: `{"type":"decimal","size":12,"precision":10,"scale":4,"round":"half_up","notNull":true}`,
 							Type:  "ObjectLiteral",
 						}},
@@ -1769,11 +1769,11 @@ func TestBackendPluginSetFieldMeta_FlatAndSelectNumericOptions(t *testing.T) {
 				},
 				{
 					Name: "SelectNumeric",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments: []*meta.IrArgument{{
+						Arguments: []*meta.Argument{{
 							Value: `{"type":"decimal","select":{"precision":8,"scale":3,"currencyField":1}}`,
 							Type:  "ObjectLiteral",
 						}},
@@ -1781,11 +1781,11 @@ func TestBackendPluginSetFieldMeta_FlatAndSelectNumericOptions(t *testing.T) {
 				},
 				{
 					Name: "RequiredAlias",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments: []*meta.IrArgument{{
+						Arguments: []*meta.Argument{{
 							Value: `{"type":"char","required":true,"size":16}`,
 							Type:  "ObjectLiteral",
 						}},
@@ -1829,38 +1829,38 @@ func TestBackendPluginSetFieldMeta_UsesRuntimeScopeFromDefinePlugins(t *testing.
 	baseOpts := runtimeOptionsFromScope(baseScope)
 	runtimeOpts := runtimeOptionsFromScope(runtimeScope)
 
-	app := &meta.IrApplication{Name: "crm-app"}
+	app := &meta.Application{Name: "crm-app"}
 	if err := runtimeDB.Create(app).Error; err != nil {
 		t.Fatalf("create runtime application: %v", err)
 	}
-	mod := &meta.IrModule{Name: "crm", ApplicationStr: "crm-app", ApplicationId: app.Id, Path: filepath.Join(runtimeOpts.modulesPath, "crm")}
+	mod := &meta.Module{Name: "crm", ApplicationStr: "crm-app", ApplicationId: app.Id, Path: filepath.Join(runtimeOpts.modulesPath, "crm")}
 	if err := runtimeDB.Create(mod).Error; err != nil {
 		t.Fatalf("create runtime module: %v", err)
 	}
-	if err := runtimeDB.Create(&meta.IrModel{Name: "Category", Path: "/external/models/category.ts", ModuleId: mod.Id}).Error; err != nil {
+	if err := runtimeDB.Create(&meta.Model{Name: "Category", Path: "/external/models/category.ts", ModuleId: mod.Id}).Error; err != nil {
 		t.Fatalf("create runtime model: %v", err)
 	}
 
-	runtimeModule := &meta.IrModule{Path: filepath.Join(runtimeOpts.modulesPath, "auth"), ApplicationStr: "auth"}
+	runtimeModule := &meta.Module{Path: filepath.Join(runtimeOpts.modulesPath, "auth"), ApplicationStr: "auth"}
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:    baseScope,
-		Module: &meta.IrModule{Path: filepath.Join(baseOpts.modulesPath, "auth"), ApplicationStr: "auth"},
+		Module: &meta.Module{Path: filepath.Join(baseOpts.modulesPath, "auth"), ApplicationStr: "auth"},
 	}}
 	plugin.DefinePlugins(runtimeScope, nil, runtimeModule)
 
 	fieldDecoratorModuleSpec, fieldDecoratorReferenceIdent := meta.FieldDecoratorModuleSpec(runtimeScope)
 	result := &parser.ParserResult{
 		Path: filepath.Join(runtimeModule.Path, "service", "models", "partner.ts"),
-		Model: &meta.IrModel{
+		Model: &meta.Model{
 			Name: "Partner",
-			Fields: []*meta.IrField{{
+			Fields: []*meta.Field{{
 				Name:           "Category",
 				ModuleSpecPath: "/external/models/category",
-				Decorators: []*meta.IrDecorator{{
+				Decorators: []*meta.Decorator{{
 					Name:           "Field",
 					ModuleSpecPath: fieldDecoratorModuleSpec,
 					ReferenceIdent: fieldDecoratorReferenceIdent,
-					Arguments:      []*meta.IrArgument{{Value: `{"type":"ManyToOne"}`, Type: "ObjectLiteral"}},
+					Arguments:      []*meta.Argument{{Value: `{"type":"ManyToOne"}`, Type: "ObjectLiteral"}},
 				}},
 			}},
 		},
@@ -1880,21 +1880,21 @@ func TestBackendPluginSetFieldMeta_SkipAndErrorPaths(t *testing.T) {
 	fieldDecoratorModuleSpec, fieldDecoratorReferenceIdent := meta.FieldDecoratorModuleSpec(testRuntimeScope)
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:    testRuntimeScope,
-		Module: &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
+		Module: &meta.Module{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 	}}
 
 	t.Run("invalid_field_json", func(t *testing.T) {
 		badResult := &parser.ParserResult{
 			Path: "/virtual/modules/auth/service/models/bad_json.ts",
-			Model: &meta.IrModel{
+			Model: &meta.Model{
 				Name: "BadJSON",
-				Fields: []*meta.IrField{{
+				Fields: []*meta.Field{{
 					Name: "Code",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments:      []*meta.IrArgument{{Value: `{`, Type: "ObjectLiteral"}},
+						Arguments:      []*meta.Argument{{Value: `{`, Type: "ObjectLiteral"}},
 					}},
 				}},
 			},
@@ -1908,16 +1908,16 @@ func TestBackendPluginSetFieldMeta_SkipAndErrorPaths(t *testing.T) {
 		noMigrate := false
 		result := &parser.ParserResult{
 			Path: "/virtual/modules/auth/service/models/no_migrate.ts",
-			Model: &meta.IrModel{
+			Model: &meta.Model{
 				Name:        "NoMigrate",
 				AutoMigrate: &noMigrate,
-				Fields: []*meta.IrField{{
+				Fields: []*meta.Field{{
 					Name: "Code",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments:      []*meta.IrArgument{{Value: `{"type":"char"}`, Type: "ObjectLiteral"}},
+						Arguments:      []*meta.Argument{{Value: `{"type":"char"}`, Type: "ObjectLiteral"}},
 					}},
 				}},
 			},
@@ -1930,15 +1930,15 @@ func TestBackendPluginSetFieldMeta_SkipAndErrorPaths(t *testing.T) {
 	t.Run("skip_external_module_paths", func(t *testing.T) {
 		result := &parser.ParserResult{
 			Path: "/virtual/modules/external/service/models/partner.ts",
-			Model: &meta.IrModel{
+			Model: &meta.Model{
 				Name: "External",
-				Fields: []*meta.IrField{{
+				Fields: []*meta.Field{{
 					Name: "Code",
-					Decorators: []*meta.IrDecorator{{
+					Decorators: []*meta.Decorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
 						ReferenceIdent: fieldDecoratorReferenceIdent,
-						Arguments:      []*meta.IrArgument{{Value: `{"type":"char","column":{"size":16}}`, Type: "ObjectLiteral"}},
+						Arguments:      []*meta.Argument{{Value: `{"type":"char","column":{"size":16}}`, Type: "ObjectLiteral"}},
 					}},
 				}},
 			},
@@ -2007,7 +2007,7 @@ func TestBackendPluginGetParserResults_PublishesAndInjects(t *testing.T) {
 
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:              testRuntimeScope,
-		Module:           &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
+		Module:           &meta.Module{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 		ParserResultChan: make(chan *parser.ParserResult, 2),
 		TsExports:        make(map[string]map[string]*parser.Export),
 		ParserResults:    make([]*parser.ParserResult, 0),
@@ -2021,7 +2021,7 @@ func TestBackendPluginGetParserResults_PublishesAndInjects(t *testing.T) {
 	plugin.ParserResultChan <- &parser.ParserResult{
 		Path:       "/virtual/modules/auth/service/models/partner.ts",
 		RawContent: raw,
-		Model:      &meta.IrModel{Name: "Partner", Path: "/virtual/modules/auth/service/models/partner.ts"},
+		Model:      &meta.Model{Name: "Partner", Path: "/virtual/modules/auth/service/models/partner.ts"},
 		ModelClassNode: &parser.Class{Decorators: []*parser.Decorator{{
 			Name:           "Model",
 			ModuleSpecPath: modelDecoratorModuleSpec,
@@ -2062,22 +2062,22 @@ func TestBackendPluginGetParserResults_PropagatesSetFieldMetaError(t *testing.T)
 	fieldDecoratorModuleSpec, fieldDecoratorReferenceIdent := meta.FieldDecoratorModuleSpec(testRuntimeScope)
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:              testRuntimeScope,
-		Module:           &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
+		Module:           &meta.Module{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 		ParserResultChan: make(chan *parser.ParserResult, 1),
 		TsExports:        make(map[string]map[string]*parser.Export),
 		ParserResults:    make([]*parser.ParserResult, 0),
 	}}
 	plugin.ParserResultChan <- &parser.ParserResult{
 		Path: "/virtual/modules/auth/service/models/bad.ts",
-		Model: &meta.IrModel{
+		Model: &meta.Model{
 			Name: "Bad",
-			Fields: []*meta.IrField{{
+			Fields: []*meta.Field{{
 				Name: "Code",
-				Decorators: []*meta.IrDecorator{{
+				Decorators: []*meta.Decorator{{
 					Name:           "Field",
 					ModuleSpecPath: fieldDecoratorModuleSpec,
 					ReferenceIdent: fieldDecoratorReferenceIdent,
-					Arguments:      []*meta.IrArgument{{Value: `{`, Type: "ObjectLiteral"}},
+					Arguments:      []*meta.Argument{{Value: `{`, Type: "ObjectLiteral"}},
 				}},
 			}},
 		},

@@ -98,7 +98,7 @@ func (p *WebPrebuildPlugin) prebuildVuePlugin() api.Plugin {
 }
 
 // DefinePlugins returns the prebuild and TypeScript plugins for the current runtime state.
-func (p *WebPrebuildPlugin) DefinePlugins(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.IrModule, options ...esbplugins.EsbPluginOptions) []api.Plugin {
+func (p *WebPrebuildPlugin) DefinePlugins(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.Module, options ...esbplugins.EsbPluginOptions) []api.Plugin {
 	for _, opt := range options {
 		if opt != nil {
 			opt(p)
@@ -113,7 +113,7 @@ func (p *WebPrebuildPlugin) DefinePlugins(runtimeScope scope.Scope, jsExecutor j
 }
 
 // NewWebPrebuildPlugin creates a web prebuild plugin for a module entry point.
-func NewWebPrebuildPlugin(runtimeScope scope.Scope, module *meta.IrModule, entryPoint string, opts ...func(*WebPrebuildPlugin)) *WebPrebuildPlugin {
+func NewWebPrebuildPlugin(runtimeScope scope.Scope, module *meta.Module, entryPoint string, opts ...func(*WebPrebuildPlugin)) *WebPrebuildPlugin {
 	esbPlugin := webplugin.NewWebPlugin(runtimeScope, module, entryPoint)
 	wp, ok := esbPlugin.(*webplugin.WebPlugin)
 	if !ok {

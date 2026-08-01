@@ -55,7 +55,7 @@ type fakePlugin struct {
 	indexHtmlOutFile  string
 }
 
-func (p *fakePlugin) DefinePlugins(_ scope.Scope, _ jsexecutor.ScriptExecutor, _ *meta.IrModule, _ ...EsbPluginOptions) []api.Plugin {
+func (p *fakePlugin) DefinePlugins(_ scope.Scope, _ jsexecutor.ScriptExecutor, _ *meta.Module, _ ...EsbPluginOptions) []api.Plugin {
 	return nil
 }
 
@@ -77,7 +77,7 @@ func (p *fakePlugin) SetIndexHtmlOutFile(outFile string) {
 
 type fakePluginWithoutSetters struct{}
 
-func (fakePluginWithoutSetters) DefinePlugins(_ scope.Scope, _ jsexecutor.ScriptExecutor, _ *meta.IrModule, _ ...EsbPluginOptions) []api.Plugin {
+func (fakePluginWithoutSetters) DefinePlugins(_ scope.Scope, _ jsexecutor.ScriptExecutor, _ *meta.Module, _ ...EsbPluginOptions) []api.Plugin {
 	return nil
 }
 

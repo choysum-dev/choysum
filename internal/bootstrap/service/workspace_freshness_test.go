@@ -104,8 +104,8 @@ func TestDefaultCheckWorkspaceFreshnessFreshWhenAnchorsMissing(t *testing.T) {
 func TestDefaultCheckWorkspaceFreshnessNonFreshWhenModuleAnchorExists(t *testing.T) {
 	c, db := newFreshnessTestCoordinator(t)
 
-	mustExec(t, db, "CREATE TABLE meta_ir_module (id TEXT, deleted_at DATETIME)")
-	mustExec(t, db, "INSERT INTO meta_ir_module(id, deleted_at) VALUES(?, NULL)", "mod-1")
+	mustExec(t, db, "CREATE TABLE meta_module (id TEXT, deleted_at DATETIME)")
+	mustExec(t, db, "INSERT INTO meta_module(id, deleted_at) VALUES(?, NULL)", "mod-1")
 
 	err := c.defaultCheckWorkspaceFreshness(context.Background())
 	if err == nil {
@@ -119,8 +119,8 @@ func TestDefaultCheckWorkspaceFreshnessNonFreshWhenModuleAnchorExists(t *testing
 func TestDefaultCheckWorkspaceFreshnessNonFreshWhenAuthModelAnchorExists(t *testing.T) {
 	c, db := newFreshnessTestCoordinator(t)
 
-	mustExec(t, db, "CREATE TABLE meta_ir_model (id TEXT, application TEXT, name TEXT, deleted_at DATETIME)")
-	mustExec(t, db, "INSERT INTO meta_ir_model(id, application, name, deleted_at) VALUES(?, ?, ?, NULL)", "model-1", "auth", "User")
+	mustExec(t, db, "CREATE TABLE meta_model (id TEXT, application TEXT, name TEXT, deleted_at DATETIME)")
+	mustExec(t, db, "INSERT INTO meta_model(id, application, name, deleted_at) VALUES(?, ?, ?, NULL)", "model-1", "auth", "User")
 
 	err := c.defaultCheckWorkspaceFreshness(context.Background())
 	if err == nil {
@@ -134,8 +134,8 @@ func TestDefaultCheckWorkspaceFreshnessNonFreshWhenAuthModelAnchorExists(t *test
 func TestDefaultCheckWorkspaceFreshnessNonFreshWhenAuthAdminAnchorExists(t *testing.T) {
 	c, db := newFreshnessTestCoordinator(t)
 
-	mustExec(t, db, "CREATE TABLE meta_ir_model_data (id TEXT, module TEXT, external_id TEXT, deleted_at DATETIME)")
-	mustExec(t, db, "INSERT INTO meta_ir_model_data(id, module, external_id, deleted_at) VALUES(?, ?, ?, NULL)", "data-1", "auth", "user_admin")
+	mustExec(t, db, "CREATE TABLE meta_model_data (id TEXT, module TEXT, external_id TEXT, deleted_at DATETIME)")
+	mustExec(t, db, "INSERT INTO meta_model_data(id, module, external_id, deleted_at) VALUES(?, ?, ?, NULL)", "data-1", "auth", "user_admin")
 
 	err := c.defaultCheckWorkspaceFreshness(context.Background())
 	if err == nil {
@@ -150,7 +150,7 @@ func TestDefaultCheckWorkspaceFreshnessReturnsGateErrorOnQueryFailure(t *testing
 	c, db := newFreshnessTestCoordinator(t)
 
 	// Intentionally omit deleted_at so GORM soft-delete condition causes a query error.
-	mustExec(t, db, "CREATE TABLE meta_ir_module (id TEXT)")
+	mustExec(t, db, "CREATE TABLE meta_module (id TEXT)")
 
 	err := c.defaultCheckWorkspaceFreshness(context.Background())
 	if err == nil {
@@ -164,8 +164,8 @@ func TestDefaultCheckWorkspaceFreshnessReturnsGateErrorOnQueryFailure(t *testing
 func TestRejectAlreadyInstalledAuthModuleReturnsWorkspaceNotFresh(t *testing.T) {
 	c, db := newFreshnessTestCoordinator(t)
 
-	mustExec(t, db, "CREATE TABLE meta_ir_module (id TEXT, name TEXT, deleted_at DATETIME)")
-	mustExec(t, db, "INSERT INTO meta_ir_module(id, name, deleted_at) VALUES(?, ?, NULL)", "mod-1", "auth")
+	mustExec(t, db, "CREATE TABLE meta_module (id TEXT, name TEXT, deleted_at DATETIME)")
+	mustExec(t, db, "INSERT INTO meta_module(id, name, deleted_at) VALUES(?, ?, NULL)", "mod-1", "auth")
 
 	err := c.rejectAlreadyInstalledAuthModule(context.Background())
 	if err == nil {
@@ -180,7 +180,7 @@ func TestRejectAlreadyInstalledAuthModuleReturnsRuntimePrepareOnQueryFailure(t *
 	c, db := newFreshnessTestCoordinator(t)
 
 	// Intentionally omit deleted_at so GORM soft-delete condition causes a query error.
-	mustExec(t, db, "CREATE TABLE meta_ir_module (id TEXT, name TEXT)")
+	mustExec(t, db, "CREATE TABLE meta_module (id TEXT, name TEXT)")
 
 	err := c.rejectAlreadyInstalledAuthModule(context.Background())
 	if err == nil {

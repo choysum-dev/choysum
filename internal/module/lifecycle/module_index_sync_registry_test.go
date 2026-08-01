@@ -74,13 +74,13 @@ func TestSyncRegistryModuleIndexUpsertsVersionAndReconcilesByOriginRef(t *testin
 	defer testServer.Close()
 	runtimeScope.cfg.ModuleCatalogIndexURL = testServer.URL + "/v1/index.json"
 
-	if err := db.Create(&metadata.IrModuleIndex{ModuleName: "auth", OriginType: "registry", OriginRef: "@legacy/choysum-auth", Available: true, Version: nullString("1.0.0")}).Error; err != nil {
+	if err := db.Create(&metadata.ModuleIndex{ModuleName: "auth", OriginType: "registry", OriginRef: "@legacy/choysum-auth", Available: true, Version: nullString("1.0.0")}).Error; err != nil {
 		t.Fatalf("seed legacy auth row: %v", err)
 	}
-	if err := db.Create(&metadata.IrModuleIndex{ModuleName: "auth", OriginType: "registry", OriginRef: "@choysum-dev/auth", Available: false, Version: nullString("0.9.0")}).Error; err != nil {
+	if err := db.Create(&metadata.ModuleIndex{ModuleName: "auth", OriginType: "registry", OriginRef: "@choysum-dev/auth", Available: false, Version: nullString("0.9.0")}).Error; err != nil {
 		t.Fatalf("seed current auth row: %v", err)
 	}
-	if err := db.Create(&metadata.IrModuleIndex{ModuleName: "orphan", OriginType: "registry", OriginRef: "@legacy/orphan", Available: true, Version: nullString("0.1.0")}).Error; err != nil {
+	if err := db.Create(&metadata.ModuleIndex{ModuleName: "orphan", OriginType: "registry", OriginRef: "@legacy/orphan", Available: true, Version: nullString("0.1.0")}).Error; err != nil {
 		t.Fatalf("seed orphan row: %v", err)
 	}
 
@@ -94,7 +94,7 @@ func TestSyncRegistryModuleIndexUpsertsVersionAndReconcilesByOriginRef(t *testin
 		t.Fatalf("unexpected stats = %#v", stats)
 	}
 
-	var current metadata.IrModuleIndex
+	var current metadata.ModuleIndex
 	if err := db.Where("module_name = ? AND origin_type = ? AND origin_ref = ?", "auth", "registry", "@choysum-dev/auth").Take(&current).Error; err != nil {
 		t.Fatalf("load current auth row: %v", err)
 	}
@@ -105,7 +105,7 @@ func TestSyncRegistryModuleIndexUpsertsVersionAndReconcilesByOriginRef(t *testin
 		t.Fatalf("current version = %#v, want 2.0.0", current.Version)
 	}
 
-	var legacy metadata.IrModuleIndex
+	var legacy metadata.ModuleIndex
 	if err := db.Where("module_name = ? AND origin_type = ? AND origin_ref = ?", "auth", "registry", "@legacy/choysum-auth").Take(&legacy).Error; err != nil {
 		t.Fatalf("load legacy auth row: %v", err)
 	}
@@ -113,7 +113,7 @@ func TestSyncRegistryModuleIndexUpsertsVersionAndReconcilesByOriginRef(t *testin
 		t.Fatal("expected legacy auth row to be marked unavailable")
 	}
 
-	var orphan metadata.IrModuleIndex
+	var orphan metadata.ModuleIndex
 	if err := db.Where("module_name = ? AND origin_type = ? AND origin_ref = ?", "orphan", "registry", "@legacy/orphan").Take(&orphan).Error; err != nil {
 		t.Fatalf("load orphan row: %v", err)
 	}

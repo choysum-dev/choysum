@@ -3,19 +3,19 @@
 
 import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
 import { createServiceByModel } from '@/core/service/rpc';
-import type IrApplicationModel from '@/meta/service/models/ir_application';
-import type IrModelModel from '@/meta/service/models/ir_model';
-import type IrServiceModel from '@/meta/service/models/ir_service';
-import IrUiResource from '@/meta/service/models/ir_ui_resource';
+import type MetaApplicationModel from '@/meta/service/models/application';
+import type MetaModelModel from '@/meta/service/models/model';
+import type MetaServiceModel from '@/meta/service/models/service';
+import MetaUiResource from '@/meta/service/models/ui_resource';
 import { uniqStrings } from '@/core/service/utils/normalization';
 import { buildUiGrantCacheKey } from './_request_cache_invalidation';
 import RoleMethodAccess from './role_method_access';
 import RoleUiResource from './role_ui_resource';
 import { normalizeScopeRefId, normalizeUiResourceId, parseJsonStringArray, requireMatchesMethod, sortStrings } from './_user_authz_shared';
 
-const IrApplication = createServiceByModel<typeof IrApplicationModel>('meta.IrApplication');
-const IrModel = createServiceByModel<typeof IrModelModel>('meta.IrModel');
-const IrService = createServiceByModel<typeof IrServiceModel>('meta.IrService');
+const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
+const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
+const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
 
 export type UiGrantExpansion = {
   resources: any[];
@@ -66,7 +66,7 @@ export async function resolveMethodAccessMeta(
   const state = getMethodAccessReqState();
   const key = buildMethodAccessMetaCacheKey(appName, modelName, methodName);
   return await memoizeInReqState(state, key, async () => {
-    const models = await IrModel.Search(
+    const models = await MetaModel.Search(
       {
         And: [
           ['Name', '=', modelName],
@@ -78,7 +78,7 @@ export async function resolveMethodAccessMeta(
     const modelId = String(models?.[0]?.Id || '').trim();
     if (!modelId) return undefined;
 
-    const serviceRows = await IrService.Search({ And: [['ModelId', '=', modelId]] } as any, { fields: ['Id', 'Name'], limit: 5000 } as any);
+    const serviceRows = await MetaService.Search({ And: [['ModelId', '=', modelId]] } as any, { fields: ['Id', 'Name'], limit: 5000 } as any);
     const methodLower = String(methodName || '')
       .trim()
       .toLowerCase();
@@ -91,29 +91,29 @@ export async function resolveMethodAccessMeta(
     const irServiceId = String(matched?.Id || '').trim();
     if (!irServiceId) return undefined;
 
-    const apps = await IrApplication.Search({ And: [['Name', '=', appName]] } as any, { fields: ['Id'], limit: 1 } as any);
+    const apps = await MetaApplication.Search({ And: [['Name', '=', appName]] } as any, { fields: ['Id'], limit: 1 } as any);
     const irApplicationId = String((apps?.[0] as any)?.Id || '').trim();
 
     const scopeOr: any[] = [
       {
         And: [
-          ['IrServiceId', '=', irServiceId],
-          ['IrModelId', 'is', null],
-          ['IrApplicationId', 'is', null],
+          ['MetaServiceId', '=', irServiceId],
+          ['MetaModelId', 'is', null],
+          ['MetaApplicationId', 'is', null],
         ],
       },
       {
         And: [
-          ['IrServiceId', 'is', null],
-          ['IrModelId', '=', modelId],
-          ['IrApplicationId', 'is', null],
+          ['MetaServiceId', 'is', null],
+          ['MetaModelId', '=', modelId],
+          ['MetaApplicationId', 'is', null],
         ],
       },
       {
         And: [
-          ['IrServiceId', 'is', null],
-          ['IrModelId', 'is', null],
-          ['IrApplicationId', 'is', null],
+          ['MetaServiceId', 'is', null],
+          ['MetaModelId', 'is', null],
+          ['MetaApplicationId', 'is', null],
         ],
       },
     ];
@@ -121,9 +121,9 @@ export async function resolveMethodAccessMeta(
     if (irApplicationId) {
       scopeOr.splice(2, 0, {
         And: [
-          ['IrServiceId', 'is', null],
-          ['IrModelId', 'is', null],
-          ['IrApplicationId', '=', irApplicationId],
+          ['MetaServiceId', 'is', null],
+          ['MetaModelId', 'is', null],
+          ['MetaApplicationId', '=', irApplicationId],
         ],
       });
     }
@@ -198,7 +198,7 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
     {
       And: [['RoleId', 'in', ids]],
     } as any,
-    { fields: ['IrApplicationId', 'IrUiResourceId', 'Mode'], limit: 100000 } as any
+    { fields: ['MetaApplicationId', 'MetaUiResourceId', 'Mode'], limit: 100000 } as any
   );
 
   let hasGlobalAllow = false;
@@ -217,8 +217,8 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
         .toLowerCase() === 'deny'
         ? 'deny'
         : 'allow';
-    const appID = normalizeScopeRefId((g as any).IrApplicationId);
-    const uiID = normalizeUiResourceId((g as any).IrUiResourceId);
+    const appID = normalizeScopeRefId((g as any).MetaApplicationId);
+    const uiID = normalizeUiResourceId((g as any).MetaUiResourceId);
     if (!appID && !uiID) {
       if (mode === 'deny') hasGlobalDeny = true;
       else hasGlobalAllow = true;
@@ -259,7 +259,7 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
   };
 
   if (hasGlobalAllow || hasGlobalDeny) {
-    const allRows = await IrUiResource.Search([] as any, { fields: ['Id', 'Name', 'IrApplicationId', 'Requires'], limit: 100000 } as any);
+    const allRows = await MetaUiResource.Search([] as any, { fields: ['Id', 'Name', 'MetaApplicationId', 'Requires'], limit: 100000 } as any);
     mergeRows(allRows as any[]);
   } else {
     const appIDList = uniqStrings(Array.from(appIDs));
@@ -268,23 +268,23 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
 
     if (appIDList.length > 0) {
       promises.push(
-        IrUiResource.Search(
-          { And: [['IrApplicationId', 'in', appIDList]] } as any,
-          { fields: ['Id', 'Name', 'IrApplicationId', 'Requires'], limit: 100000 } as any
+        MetaUiResource.Search(
+          { And: [['MetaApplicationId', 'in', appIDList]] } as any,
+          { fields: ['Id', 'Name', 'MetaApplicationId', 'Requires'], limit: 100000 } as any
         )
       );
     }
 
     if (resourceIDList.length > 0) {
       promises.push(
-        IrUiResource.Search(
+        MetaUiResource.Search(
           {
             Or: [
               ['Id', 'in', resourceIDList],
               ['Name', 'in', resourceIDList],
             ],
           } as any,
-          { fields: ['Id', 'Name', 'IrApplicationId', 'Requires'], limit: 100000 } as any
+          { fields: ['Id', 'Name', 'MetaApplicationId', 'Requires'], limit: 100000 } as any
         )
       );
     }
@@ -361,7 +361,7 @@ export async function evaluateUiDerivedMethodDecision(
     if (expansion.hasGlobalAllow) matchedModes.add('allow');
     if (expansion.hasGlobalDeny) matchedModes.add('deny');
 
-    const appId = normalizeScopeRefId((row as any)?.IrApplicationId);
+    const appId = normalizeScopeRefId((row as any)?.MetaApplicationId);
     for (const mode of expansion.appModesById?.[appId || ''] || []) matchedModes.add(mode);
 
     const resourceKeys = uniqStrings([

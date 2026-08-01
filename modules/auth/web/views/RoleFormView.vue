@@ -174,8 +174,8 @@ SPDX-License-Identifier: Apache-2.0
               </p>
               <OOneToManyField :store="store" prop="RecordRules" label="" :default-record="defaultRecordRule">
                 <OSelectionField :store="store" prop="RecordRules.Kind" />
-                <OManyToOneRefField :store="store" prop="RecordRules.IrApplicationId" />
-                <OManyToOneRefField :store="store" prop="RecordRules.IrModelId" />
+                <OManyToOneRefField :store="store" prop="RecordRules.MetaApplicationId" />
+                <OManyToOneRefField :store="store" prop="RecordRules.MetaModelId" />
                 <OJsonobjectField :store="store" prop="RecordRules.Condition" :allow-array="true" />
                 <OBooleanField :store="store" prop="RecordRules.PermRead" />
                 <OBooleanField :store="store" prop="RecordRules.PermWrite" />
@@ -189,9 +189,9 @@ SPDX-License-Identifier: Apache-2.0
                 {{ _t('Field visibility under deny-default. Leave Application/Model/Field empty for wider scopes.') }}
               </p>
               <OOneToManyField :store="store" prop="FieldRules" label="">
-                <OManyToOneRefField :store="store" prop="FieldRules.IrApplicationId" />
-                <OManyToOneRefField :store="store" prop="FieldRules.IrModelId" />
-                <OManyToOneRefField :store="store" prop="FieldRules.IrFieldId" />
+                <OManyToOneRefField :store="store" prop="FieldRules.MetaApplicationId" />
+                <OManyToOneRefField :store="store" prop="FieldRules.MetaModelId" />
+                <OManyToOneRefField :store="store" prop="FieldRules.MetaFieldId" />
                 <OSelectionField :store="store" prop="FieldRules.PermRead" />
                 <OSelectionField :store="store" prop="FieldRules.PermWrite" />
               </OOneToManyField>
@@ -202,9 +202,9 @@ SPDX-License-Identifier: Apache-2.0
                 {{ _t('RPC allow/deny under deny-default. New rows default to allow; use deny as an explicit brake.') }}
               </p>
               <OOneToManyField :store="store" prop="MethodAccesses" label="" :default-record="defaultMethodAccess">
-                <OManyToOneRefField :store="store" prop="MethodAccesses.IrApplicationId" />
-                <OManyToOneRefField :store="store" prop="MethodAccesses.IrModelId" />
-                <OManyToOneRefField :store="store" prop="MethodAccesses.IrServiceId" />
+                <OManyToOneRefField :store="store" prop="MethodAccesses.MetaApplicationId" />
+                <OManyToOneRefField :store="store" prop="MethodAccesses.MetaModelId" />
+                <OManyToOneRefField :store="store" prop="MethodAccesses.MetaServiceId" />
                 <OSelectionField :store="store" prop="MethodAccesses.Mode" />
               </OOneToManyField>
             </el-collapse-item>
@@ -215,8 +215,8 @@ SPDX-License-Identifier: Apache-2.0
               </p>
               <OOneToManyField :store="store" prop="UiResources" label="">
                 <OSelectionField :store="store" prop="UiResources.Mode" />
-                <OManyToOneRefField :store="store" prop="UiResources.IrApplicationId" />
-                <OManyToOneRefField :store="store" prop="UiResources.IrUiResourceId" />
+                <OManyToOneRefField :store="store" prop="UiResources.MetaApplicationId" />
+                <OManyToOneRefField :store="store" prop="UiResources.MetaUiResourceId" />
               </OOneToManyField>
             </el-collapse-item>
           </el-collapse>

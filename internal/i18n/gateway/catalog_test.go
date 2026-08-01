@@ -48,7 +48,7 @@ func TestInstalledModulesByAppIncludesFrameworkModule(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.AutoMigrate(&meta.IrModule{}); err != nil {
+	if err := db.AutoMigrate(&meta.Module{}); err != nil {
 		t.Fatal(err)
 	}
 	rs := &catalogTestScope{
@@ -56,7 +56,7 @@ func TestInstalledModulesByAppIncludesFrameworkModule(t *testing.T) {
 		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
 		session: &scope.Session{DB: db},
 	}
-	rows := []meta.IrModule{
+	rows := []meta.Module{
 		{Name: "core", ApplicationStr: "core", Status: meta.Installed},
 		{Name: "auth", ApplicationStr: "auth", Status: meta.Installed},
 		{Name: "web", ApplicationStr: "web", Status: meta.Installed},

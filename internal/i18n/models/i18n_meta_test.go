@@ -11,29 +11,29 @@ import (
 	"github.com/rs/xid"
 )
 
-func TestEnsureI18nIrMetaCreatesModelAndServices(t *testing.T) {
+func TestEnsureI18nMetaCreatesModelAndServices(t *testing.T) {
 	rs := newTestScope(t)
-	if err := rs.Session().AutoMigrate(&meta.IrModel{}, &meta.IrService{}); err != nil {
+	if err := rs.Session().AutoMigrate(&meta.Model{}, &meta.Service{}); err != nil {
 		t.Fatalf("automigrate: %v", err)
 	}
 
 	moduleID := sql.NullString{String: xid.New().String(), Valid: true}
-	if err := EnsureI18nIrMeta(rs, "auth", moduleID); err != nil {
-		t.Fatalf("EnsureI18nIrMeta: %v", err)
+	if err := EnsureI18nMeta(rs, "auth", moduleID); err != nil {
+		t.Fatalf("EnsureI18nMeta: %v", err)
 	}
-	if err := EnsureI18nIrMeta(rs, "auth", moduleID); err != nil {
-		t.Fatalf("EnsureI18nIrMeta idempotent: %v", err)
+	if err := EnsureI18nMeta(rs, "auth", moduleID); err != nil {
+		t.Fatalf("EnsureI18nMeta idempotent: %v", err)
 	}
 
-	var model meta.IrModel
+	var model meta.Model
 	if err := rs.Session().Where("name = ? AND application = ?", "I18n", "auth").Take(&model).Error; err != nil {
-		t.Fatalf("lookup IrModel: %v", err)
+		t.Fatalf("lookup Model: %v", err)
 	}
 	if !model.Abstract || !model.Readonly {
 		t.Fatalf("expected abstract readonly I18n model: %+v", model)
 	}
 
-	var services []meta.IrService
+	var services []meta.Service
 	if err := rs.Session().Where("model_id = ?", model.Id.String).Find(&services).Error; err != nil {
 		t.Fatal(err)
 	}
@@ -51,10 +51,10 @@ func TestEnsureI18nIrMetaCreatesModelAndServices(t *testing.T) {
 	}
 }
 
-func TestEnsureI18nIrMetaSeedsTerminologyEditorAllows(t *testing.T) {
+func TestEnsureI18nMetaSeedsTerminologyEditorAllows(t *testing.T) {
 	rs := newTestScope(t)
 	db := rs.Session().DB
-	if err := db.AutoMigrate(&meta.IrModel{}, &meta.IrService{}); err != nil {
+	if err := db.AutoMigrate(&meta.Model{}, &meta.Service{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Exec(`CREATE TABLE auth_role (
@@ -67,9 +67,9 @@ func TestEnsureI18nIrMetaSeedsTerminologyEditorAllows(t *testing.T) {
 	if err := db.Exec(`CREATE TABLE auth_role_method_access (
 		id TEXT PRIMARY KEY,
 		role_id TEXT,
-		ir_application_id TEXT,
-		ir_model_id TEXT,
-		ir_service_id TEXT,
+		meta_application_id TEXT,
+		meta_model_id TEXT,
+		meta_service_id TEXT,
 		mode TEXT,
 		source TEXT,
 		created_at DATETIME,
@@ -83,8 +83,8 @@ func TestEnsureI18nIrMetaSeedsTerminologyEditorAllows(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := EnsureI18nIrMeta(rs, "web", sql.NullString{}); err != nil {
-		t.Fatalf("EnsureI18nIrMeta: %v", err)
+	if err := EnsureI18nMeta(rs, "web", sql.NullString{}); err != nil {
+		t.Fatalf("EnsureI18nMeta: %v", err)
 	}
 
 	var count int64

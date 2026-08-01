@@ -92,7 +92,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import type { WebModelStore } from '@/web/web/stores/modelStore';
-import type IrModuleIndex from '@/meta/service/models/ir_module_index';
+import type MetaModuleIndex from '@/meta/service/models/module_index';
 import { ElCard, ElRow, ElCol } from 'element-plus';
 import OFormView from '@/web/web/components/view/OFormView.vue';
 import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
@@ -111,7 +111,7 @@ const { _t, _lt } = createTranslate('meta', { scope: 'web/views/ModuleDetailView
 
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<IrModuleIndex>;
+    store: WebModelStore<MetaModuleIndex>;
     recordId?: string;
     viewMode?: ViewMode;
     showHeader?: boolean;
@@ -120,7 +120,7 @@ const props = withDefaults(
 );
 
 const { store, recordId, viewMode, showHeader } = props;
-const moduleIndexActions = defineModelActions('meta.IrModuleIndex', {
+const moduleIndexActions = defineModelActions('meta.MetaModuleIndex', {
   entityTitle: _lt('Module Index'),
 });
 const { hasAction } = usePermission();

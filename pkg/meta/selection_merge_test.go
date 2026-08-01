@@ -10,12 +10,12 @@ import (
 )
 
 func TestMergeSelectionByValue(t *testing.T) {
-	base := []IrFieldSelectionItem{
+	base := []FieldSelectionItem{
 		{Value: "a", Label: "A"},
 		{Value: "b", Label: "B"},
 		{Value: "  ", Label: "skip"},
 	}
-	add := []IrFieldSelectionItem{
+	add := []FieldSelectionItem{
 		{Value: "c", Label: "C"},
 		{Value: "b", Label: "B2"},
 		{Value: "", Label: "empty"},
@@ -37,10 +37,10 @@ func TestMergeSelectionByValue(t *testing.T) {
 
 func TestMergeSelectionByValue_PlainLabelClearsLabelText(t *testing.T) {
 	ref := NewTermReference("demo", "demo.status", "Done", "literal")
-	base := []IrFieldSelectionItem{
+	base := []FieldSelectionItem{
 		{Value: "done", Label: "Done", LabelText: &ref},
 	}
-	got := MergeSelectionByValue(base, []IrFieldSelectionItem{
+	got := MergeSelectionByValue(base, []FieldSelectionItem{
 		{Value: "done", Label: "Finished"},
 	})
 	if len(got) != 1 || got[0].Label != "Finished" || got[0].LabelText != nil {
@@ -52,19 +52,19 @@ func TestSelectionItemsFromFieldHelpers(t *testing.T) {
 	if got := selectionItemsFromField(nil, nil); got != nil {
 		t.Fatalf("expected nil for empty inputs, got %#v", got)
 	}
-	spec := &IrFieldResolvedSpec{Structural: IrFieldStructuralSpec{
-		Selection: []IrFieldSelectionItem{{Value: "a", Label: "A"}},
+	spec := &FieldResolvedSpec{Structural: FieldStructuralSpec{
+		Selection: []FieldSelectionItem{{Value: "a", Label: "A"}},
 	}}
 	if got := selectionItemsFromField(nil, spec); len(got) != 1 || got[0].Value != "a" {
 		t.Fatalf("expected spec selection, got %#v", got)
 	}
-	if got := selectionItemsFromField(&IrField{Selection: ""}, &IrFieldResolvedSpec{}); got != nil {
+	if got := selectionItemsFromField(&Field{Selection: ""}, &FieldResolvedSpec{}); got != nil {
 		t.Fatalf("expected nil for empty selection JSON, got %#v", got)
 	}
-	if got := selectionItemsFromField(&IrField{Selection: "{bad"}, &IrFieldResolvedSpec{}); got != nil {
+	if got := selectionItemsFromField(&Field{Selection: "{bad"}, &FieldResolvedSpec{}); got != nil {
 		t.Fatalf("expected nil for invalid JSON, got %#v", got)
 	}
-	got := selectionItemsFromField(&IrField{Selection: `[{"value":"x","label":"X"}]`}, &IrFieldResolvedSpec{})
+	got := selectionItemsFromField(&Field{Selection: `[{"value":"x","label":"X"}]`}, &FieldResolvedSpec{})
 	if len(got) != 1 || got[0].Value != "x" {
 		t.Fatalf("expected legacy JSON items, got %#v", got)
 	}
@@ -74,33 +74,33 @@ func TestIsDynamicAndChildDeclaresFullSelection(t *testing.T) {
 	if isDynamicSelectionField(nil, nil) {
 		t.Fatal("expected false for empty inputs")
 	}
-	if !isDynamicSelectionField(nil, &IrFieldResolvedSpec{Structural: IrFieldStructuralSpec{SelectionKind: "dynamic"}}) {
+	if !isDynamicSelectionField(nil, &FieldResolvedSpec{Structural: FieldStructuralSpec{SelectionKind: "dynamic"}}) {
 		t.Fatal("expected dynamic from spec kind")
 	}
-	if !isDynamicSelectionField(nil, &IrFieldResolvedSpec{Structural: IrFieldStructuralSpec{SelectionMethod: "Opts"}}) {
+	if !isDynamicSelectionField(nil, &FieldResolvedSpec{Structural: FieldStructuralSpec{SelectionMethod: "Opts"}}) {
 		t.Fatal("expected dynamic from selection method")
 	}
-	if !isDynamicSelectionField(&IrField{SelectionKind: "dynamic"}, nil) {
+	if !isDynamicSelectionField(&Field{SelectionKind: "dynamic"}, nil) {
 		t.Fatal("expected dynamic from field kind")
 	}
-	if !isDynamicSelectionField(&IrField{SelectionMethod: "Opts", Selection: ""}, nil) {
+	if !isDynamicSelectionField(&Field{SelectionMethod: "Opts", Selection: ""}, nil) {
 		t.Fatal("expected dynamic from field method")
 	}
 	if childDeclaresFullSelection(nil) {
 		t.Fatal("expected false for nil spec")
 	}
-	if !childDeclaresFullSelection(&IrFieldResolvedSpec{Structural: IrFieldStructuralSpec{
-		Selection: []IrFieldSelectionItem{{Value: "a", Label: "A"}},
+	if !childDeclaresFullSelection(&FieldResolvedSpec{Structural: FieldStructuralSpec{
+		Selection: []FieldSelectionItem{{Value: "a", Label: "A"}},
 	}}) {
 		t.Fatal("expected true for static selection list")
 	}
-	if !childDeclaresFullSelection(&IrFieldResolvedSpec{Structural: IrFieldStructuralSpec{SelectionKind: "dynamic"}}) {
+	if !childDeclaresFullSelection(&FieldResolvedSpec{Structural: FieldStructuralSpec{SelectionKind: "dynamic"}}) {
 		t.Fatal("expected true for dynamic kind")
 	}
-	if !childDeclaresFullSelection(&IrFieldResolvedSpec{Structural: IrFieldStructuralSpec{SelectionMethod: "Opts"}}) {
+	if !childDeclaresFullSelection(&FieldResolvedSpec{Structural: FieldStructuralSpec{SelectionMethod: "Opts"}}) {
 		t.Fatal("expected true for selection method")
 	}
-	if childDeclaresFullSelection(&IrFieldResolvedSpec{Structural: IrFieldStructuralSpec{HasSelectionAdd: true}}) {
+	if childDeclaresFullSelection(&FieldResolvedSpec{Structural: FieldStructuralSpec{HasSelectionAdd: true}}) {
 		t.Fatal("expected false for selectionAdd-only")
 	}
 }
@@ -109,7 +109,7 @@ func TestFieldHasSelectionAdd(t *testing.T) {
 	if FieldHasSelectionAdd(nil) {
 		t.Fatal("expected false for nil")
 	}
-	field := &IrField{Name: "Status"}
+	field := &Field{Name: "Status"}
 	if FieldHasSelectionAdd(field) {
 		t.Fatal("expected false without resolved spec")
 	}
@@ -117,11 +117,11 @@ func TestFieldHasSelectionAdd(t *testing.T) {
 	if FieldHasSelectionAdd(field) {
 		t.Fatal("expected false for invalid resolved spec")
 	}
-	spec := &IrFieldResolvedSpec{
+	spec := &FieldResolvedSpec{
 		FieldName: "Status",
-		Structural: IrFieldStructuralSpec{
+		Structural: FieldStructuralSpec{
 			HasSelectionAdd: true,
-			SelectionAdd:    []IrFieldSelectionItem{},
+			SelectionAdd:    []FieldSelectionItem{},
 		},
 	}
 	raw, _ := json.Marshal(spec)
@@ -132,15 +132,15 @@ func TestFieldHasSelectionAdd(t *testing.T) {
 }
 
 func TestResolveSelectionFieldConflict_NilAndReplacePaths(t *testing.T) {
-	base := &IrField{Name: "Status"}
-	child := &IrField{Name: "Status"}
+	base := &Field{Name: "Status"}
+	child := &Field{Name: "Status"}
 	if got, err := ResolveSelectionFieldConflict(base, nil); err != nil || got != base {
 		t.Fatalf("nil child should return base, got %#v err=%v", got, err)
 	}
 	if got, err := ResolveSelectionFieldConflict(nil, child); err != nil || got != child {
 		t.Fatalf("nil base should return child, got %#v err=%v", got, err)
 	}
-	_ = child.SetResolvedSpec(&IrFieldResolvedSpec{FieldName: "Status", Structural: IrFieldStructuralSpec{Name: "Status"}})
+	_ = child.SetResolvedSpec(&FieldResolvedSpec{FieldName: "Status", Structural: FieldStructuralSpec{Name: "Status"}})
 	if got, err := ResolveSelectionFieldConflict(base, child); err != nil || got != child {
 		t.Fatalf("child without selectionAdd should replace, got %#v err=%v", got, err)
 	}
@@ -151,20 +151,20 @@ func TestResolveSelectionFieldConflict_NilAndReplacePaths(t *testing.T) {
 }
 
 func TestResolveSelectionFieldConflict_SelectionAddMerge(t *testing.T) {
-	baseSpec := &IrFieldResolvedSpec{
+	baseSpec := &FieldResolvedSpec{
 		FieldName: "Status",
-		Structural: IrFieldStructuralSpec{
+		Structural: FieldStructuralSpec{
 			Name:          "Status",
 			FieldType:     "selection",
 			String:        "Status",
 			SelectionKind: "static",
-			Selection: []IrFieldSelectionItem{
+			Selection: []FieldSelectionItem{
 				{Value: "draft", Label: "Draft"},
 				{Value: "done", Label: "Done"},
 			},
 		},
 	}
-	base := &IrField{Name: "Status", FieldType: "selection", FieldString: "Status"}
+	base := &Field{Name: "Status", FieldType: "selection", FieldString: "Status"}
 	if err := base.SetResolvedSpec(baseSpec); err != nil {
 		t.Fatalf("set base spec: %v", err)
 	}
@@ -184,9 +184,9 @@ func TestResolveSelectionFieldConflict_SelectionAddMerge(t *testing.T) {
 	companyDependent := true
 	copyFlag := false
 	readonly := true
-	childSpec := &IrFieldResolvedSpec{
+	childSpec := &FieldResolvedSpec{
 		FieldName: "Status",
-		Structural: IrFieldStructuralSpec{
+		Structural: FieldStructuralSpec{
 			Name:            "Status",
 			FieldType:       "selection",
 			String:          "Status Label",
@@ -194,12 +194,12 @@ func TestResolveSelectionFieldConflict_SelectionAddMerge(t *testing.T) {
 			Help:            "Help text",
 			HelpText:        &helpText,
 			HasSelectionAdd: true,
-			SelectionAdd: []IrFieldSelectionItem{
+			SelectionAdd: []FieldSelectionItem{
 				{Value: "cancel", Label: "Cancel"},
 				{Value: "done", Label: "Finished"},
 			},
-			Related:          &IrFieldRelatedSpec{Path: "Parent.Status"},
-			StorageHints:     &IrFieldStructuralStorageHints{Required: &required, Indexed: &indexed, Size: &size, Precision: &precision, Scale: &scale},
+			Related:          &FieldRelatedSpec{Path: "Parent.Status"},
+			StorageHints:     &FieldStructuralStorageHints{Required: &required, Indexed: &indexed, Size: &size, Precision: &precision, Scale: &scale},
 			ColumnType:       "varchar",
 			CheckConstraint:  "status <> ''",
 			Translate:        &translate,
@@ -210,14 +210,14 @@ func TestResolveSelectionFieldConflict_SelectionAddMerge(t *testing.T) {
 			MaxWidth:         &width,
 			MaxHeight:        &height,
 		},
-		Behavior: IrFieldBehaviorSpec{
-			Compute:    &IrFieldBehaviorComputeSpec{Method: "ComputeStatus", Deps: []string{"Name"}, Store: true},
-			SqlCompute: &IrFieldBehaviorSqlComputeSpec{Method: "SqlStatus", CtxType: "Ctx", ReturnType: "string"},
-			Inverse:    &IrFieldBehaviorMethodRef{Method: "InverseStatus"},
-			Search:     &IrFieldBehaviorMethodRef{Method: "SearchStatus"},
+		Behavior: FieldBehaviorSpec{
+			Compute:    &FieldBehaviorComputeSpec{Method: "ComputeStatus", Deps: []string{"Name"}, Store: true},
+			SqlCompute: &FieldBehaviorSqlComputeSpec{Method: "SqlStatus", CtxType: "Ctx", ReturnType: "string"},
+			Inverse:    &FieldBehaviorMethodRef{Method: "InverseStatus"},
+			Search:     &FieldBehaviorMethodRef{Method: "SearchStatus"},
 		},
 	}
-	child := &IrField{
+	child := &Field{
 		Name:             "Status",
 		FieldType:        "selection",
 		OriginModelPath:  "/child",
@@ -269,20 +269,20 @@ func TestResolveSelectionFieldConflict_SelectionAddMerge(t *testing.T) {
 }
 
 func TestResolveSelectionFieldConflict_LegacyBaseWithoutResolvedSpec(t *testing.T) {
-	base := &IrField{
+	base := &Field{
 		Name:          "Status",
 		FieldType:     "selection",
 		SelectionKind: "static",
 		Selection:     `[{"value":"a","label":"A"}]`,
 	}
-	child := &IrField{Name: "Status", FieldType: "selection", TsTypeAnnotation: "string"}
-	_ = child.SetResolvedSpec(&IrFieldResolvedSpec{
+	child := &Field{Name: "Status", FieldType: "selection", TsTypeAnnotation: "string"}
+	_ = child.SetResolvedSpec(&FieldResolvedSpec{
 		FieldName: "Status",
-		Structural: IrFieldStructuralSpec{
+		Structural: FieldStructuralSpec{
 			Name:            "Status",
 			FieldType:       "selection",
 			HasSelectionAdd: true,
-			SelectionAdd:    []IrFieldSelectionItem{{Value: "b", Label: "B"}},
+			SelectionAdd:    []FieldSelectionItem{{Value: "b", Label: "B"}},
 		},
 	})
 	merged, err := ResolveSelectionFieldConflict(base, child)
@@ -299,27 +299,27 @@ func TestResolveSelectionFieldConflict_OverlaysChildStorageHints(t *testing.T) {
 	required := true
 	indexed := true
 	size := 64
-	base := &IrField{Name: "Status", FieldType: "selection", SelectionKind: "static", Size: 32, Indexed: true}
-	_ = base.SetResolvedSpec(&IrFieldResolvedSpec{
+	base := &Field{Name: "Status", FieldType: "selection", SelectionKind: "static", Size: 32, Indexed: true}
+	_ = base.SetResolvedSpec(&FieldResolvedSpec{
 		FieldName: "Status",
-		Structural: IrFieldStructuralSpec{
+		Structural: FieldStructuralSpec{
 			Name:          "Status",
 			FieldType:     "selection",
 			SelectionKind: "static",
-			Selection:     []IrFieldSelectionItem{{Value: "a", Label: "A"}},
-			StorageHints:  &IrFieldStructuralStorageHints{Size: intPtr(32), Indexed: &indexed, Precision: intPtr(10)},
+			Selection:     []FieldSelectionItem{{Value: "a", Label: "A"}},
+			StorageHints:  &FieldStructuralStorageHints{Size: intPtr(32), Indexed: &indexed, Precision: intPtr(10)},
 		},
 	})
-	child := &IrField{Name: "Status", FieldType: "selection"}
-	_ = child.SetResolvedSpec(&IrFieldResolvedSpec{
+	child := &Field{Name: "Status", FieldType: "selection"}
+	_ = child.SetResolvedSpec(&FieldResolvedSpec{
 		FieldName: "Status",
-		Structural: IrFieldStructuralSpec{
+		Structural: FieldStructuralSpec{
 			Name:            "Status",
 			FieldType:       "selection",
 			HasSelectionAdd: true,
-			SelectionAdd:    []IrFieldSelectionItem{{Value: "b", Label: "B"}},
+			SelectionAdd:    []FieldSelectionItem{{Value: "b", Label: "B"}},
 			// Partial overlay: only Required + Size; Indexed/Precision must stay from base.
-			StorageHints: &IrFieldStructuralStorageHints{Required: &required, Size: &size},
+			StorageHints: &FieldStructuralStorageHints{Required: &required, Size: &size},
 			Readonly:     boolPtr(true),
 		},
 	})
@@ -348,14 +348,14 @@ func TestMergeStorageHints_PartialOverlayAndNilGuards(t *testing.T) {
 	if got := mergeStorageHints(nil, nil); got != nil {
 		t.Fatalf("expected nil, got %#v", got)
 	}
-	base := &IrFieldStructuralStorageHints{Size: intPtr(16), Indexed: boolPtr(true)}
+	base := &FieldStructuralStorageHints{Size: intPtr(16), Indexed: boolPtr(true)}
 	if got := mergeStorageHints(base, nil); got != base {
 		t.Fatalf("nil child should return base pointer, got %#v", got)
 	}
 	indexName := "idx_status"
 	uniqueIndex := "uniq_status"
 	def := "draft"
-	child := &IrFieldStructuralStorageHints{
+	child := &FieldStructuralStorageHints{
 		Required:           boolPtr(true),
 		Index:              &indexName,
 		PrimaryKey:         boolPtr(false),
@@ -390,24 +390,24 @@ func intPtr(v int) *int    { return &v }
 func boolPtr(v bool) *bool { return &v }
 
 func TestResolveSelectionFieldConflict_FullSelectionReplaces(t *testing.T) {
-	base := &IrField{Name: "Status", FieldType: "selection", SelectionKind: "static"}
-	_ = base.SetResolvedSpec(&IrFieldResolvedSpec{
+	base := &Field{Name: "Status", FieldType: "selection", SelectionKind: "static"}
+	_ = base.SetResolvedSpec(&FieldResolvedSpec{
 		FieldName: "Status",
-		Structural: IrFieldStructuralSpec{
+		Structural: FieldStructuralSpec{
 			Name:          "Status",
 			FieldType:     "selection",
 			SelectionKind: "static",
-			Selection:     []IrFieldSelectionItem{{Value: "a", Label: "A"}},
+			Selection:     []FieldSelectionItem{{Value: "a", Label: "A"}},
 		},
 	})
-	child := &IrField{Name: "Status", FieldType: "selection", SelectionKind: "static", TsTypeAnnotation: "fork"}
-	_ = child.SetResolvedSpec(&IrFieldResolvedSpec{
+	child := &Field{Name: "Status", FieldType: "selection", SelectionKind: "static", TsTypeAnnotation: "fork"}
+	_ = child.SetResolvedSpec(&FieldResolvedSpec{
 		FieldName: "Status",
-		Structural: IrFieldStructuralSpec{
+		Structural: FieldStructuralSpec{
 			Name:          "Status",
 			FieldType:     "selection",
 			SelectionKind: "static",
-			Selection:     []IrFieldSelectionItem{{Value: "x", Label: "X"}},
+			Selection:     []FieldSelectionItem{{Value: "x", Label: "X"}},
 		},
 	})
 
@@ -421,24 +421,24 @@ func TestResolveSelectionFieldConflict_FullSelectionReplaces(t *testing.T) {
 }
 
 func TestResolveSelectionFieldConflict_DynamicBaseRejected(t *testing.T) {
-	base := &IrField{Name: "Status", FieldType: "selection", SelectionKind: "dynamic", SelectionMethod: "Opts"}
-	_ = base.SetResolvedSpec(&IrFieldResolvedSpec{
+	base := &Field{Name: "Status", FieldType: "selection", SelectionKind: "dynamic", SelectionMethod: "Opts"}
+	_ = base.SetResolvedSpec(&FieldResolvedSpec{
 		FieldName: "Status",
-		Structural: IrFieldStructuralSpec{
+		Structural: FieldStructuralSpec{
 			Name:            "Status",
 			FieldType:       "selection",
 			SelectionKind:   "dynamic",
 			SelectionMethod: "Opts",
 		},
 	})
-	child := &IrField{Name: "Status", FieldType: "selection"}
-	_ = child.SetResolvedSpec(&IrFieldResolvedSpec{
+	child := &Field{Name: "Status", FieldType: "selection"}
+	_ = child.SetResolvedSpec(&FieldResolvedSpec{
 		FieldName: "Status",
-		Structural: IrFieldStructuralSpec{
+		Structural: FieldStructuralSpec{
 			Name:            "Status",
 			FieldType:       "selection",
 			HasSelectionAdd: true,
-			SelectionAdd:    []IrFieldSelectionItem{{Value: "a", Label: "A"}},
+			SelectionAdd:    []FieldSelectionItem{{Value: "a", Label: "A"}},
 		},
 	})
 	_, err := ResolveSelectionFieldConflict(base, child)
@@ -448,19 +448,19 @@ func TestResolveSelectionFieldConflict_DynamicBaseRejected(t *testing.T) {
 }
 
 func TestResolveSelectionFieldConflict_MissingStaticBaseRejected(t *testing.T) {
-	base := &IrField{Name: "Status", FieldType: "varchar"}
-	_ = base.SetResolvedSpec(&IrFieldResolvedSpec{
+	base := &Field{Name: "Status", FieldType: "varchar"}
+	_ = base.SetResolvedSpec(&FieldResolvedSpec{
 		FieldName:  "Status",
-		Structural: IrFieldStructuralSpec{Name: "Status", FieldType: "varchar"},
+		Structural: FieldStructuralSpec{Name: "Status", FieldType: "varchar"},
 	})
-	child := &IrField{Name: "Status", FieldType: "selection"}
-	_ = child.SetResolvedSpec(&IrFieldResolvedSpec{
+	child := &Field{Name: "Status", FieldType: "selection"}
+	_ = child.SetResolvedSpec(&FieldResolvedSpec{
 		FieldName: "Status",
-		Structural: IrFieldStructuralSpec{
+		Structural: FieldStructuralSpec{
 			Name:            "Status",
 			FieldType:       "selection",
 			HasSelectionAdd: true,
-			SelectionAdd:    []IrFieldSelectionItem{{Value: "a", Label: "A"}},
+			SelectionAdd:    []FieldSelectionItem{{Value: "a", Label: "A"}},
 		},
 	})
 	_, err := ResolveSelectionFieldConflict(base, child)
@@ -470,25 +470,25 @@ func TestResolveSelectionFieldConflict_MissingStaticBaseRejected(t *testing.T) {
 }
 
 func TestResolveSelectionFieldConflict_BothSelectionAndAddRejected(t *testing.T) {
-	base := &IrField{Name: "Status", FieldType: "selection", SelectionKind: "static"}
-	_ = base.SetResolvedSpec(&IrFieldResolvedSpec{
+	base := &Field{Name: "Status", FieldType: "selection", SelectionKind: "static"}
+	_ = base.SetResolvedSpec(&FieldResolvedSpec{
 		FieldName: "Status",
-		Structural: IrFieldStructuralSpec{
+		Structural: FieldStructuralSpec{
 			Name:          "Status",
 			FieldType:     "selection",
 			SelectionKind: "static",
-			Selection:     []IrFieldSelectionItem{{Value: "a", Label: "A"}},
+			Selection:     []FieldSelectionItem{{Value: "a", Label: "A"}},
 		},
 	})
-	child := &IrField{Name: "Status", FieldType: "selection"}
-	_ = child.SetResolvedSpec(&IrFieldResolvedSpec{
+	child := &Field{Name: "Status", FieldType: "selection"}
+	_ = child.SetResolvedSpec(&FieldResolvedSpec{
 		FieldName: "Status",
-		Structural: IrFieldStructuralSpec{
+		Structural: FieldStructuralSpec{
 			Name:            "Status",
 			FieldType:       "selection",
 			HasSelectionAdd: true,
-			Selection:       []IrFieldSelectionItem{{Value: "x", Label: "X"}},
-			SelectionAdd:    []IrFieldSelectionItem{{Value: "y", Label: "Y"}},
+			Selection:       []FieldSelectionItem{{Value: "x", Label: "X"}},
+			SelectionAdd:    []FieldSelectionItem{{Value: "y", Label: "Y"}},
 		},
 	})
 	_, err := ResolveSelectionFieldConflict(base, child)
@@ -498,14 +498,14 @@ func TestResolveSelectionFieldConflict_BothSelectionAndAddRejected(t *testing.T)
 }
 
 func TestResolveSelectionFieldConflict_BaseResolvedSpecError(t *testing.T) {
-	base := &IrField{Name: "Status", ResolvedSpec: "{bad"}
-	child := &IrField{Name: "Status"}
-	_ = child.SetResolvedSpec(&IrFieldResolvedSpec{
+	base := &Field{Name: "Status", ResolvedSpec: "{bad"}
+	child := &Field{Name: "Status"}
+	_ = child.SetResolvedSpec(&FieldResolvedSpec{
 		FieldName: "Status",
-		Structural: IrFieldStructuralSpec{
+		Structural: FieldStructuralSpec{
 			Name:            "Status",
 			HasSelectionAdd: true,
-			SelectionAdd:    []IrFieldSelectionItem{{Value: "a", Label: "A"}},
+			SelectionAdd:    []FieldSelectionItem{{Value: "a", Label: "A"}},
 		},
 	})
 	if _, err := ResolveSelectionFieldConflict(base, child); err == nil {
@@ -514,32 +514,32 @@ func TestResolveSelectionFieldConflict_BaseResolvedSpecError(t *testing.T) {
 }
 
 func TestOverlayAndApplySelectionLegacyColumnsNilGuards(t *testing.T) {
-	overlayStructuralSelectionAdd(nil, &IrFieldStructuralSpec{})
-	overlayStructuralSelectionAdd(&IrFieldStructuralSpec{}, nil)
-	overlayBehaviorSelectionAdd(nil, &IrFieldBehaviorSpec{})
-	overlayBehaviorSelectionAdd(&IrFieldBehaviorSpec{}, nil)
-	applySelectionLegacyColumns(nil, &IrFieldResolvedSpec{})
-	applySelectionLegacyColumns(&IrField{}, nil)
+	overlayStructuralSelectionAdd(nil, &FieldStructuralSpec{})
+	overlayStructuralSelectionAdd(&FieldStructuralSpec{}, nil)
+	overlayBehaviorSelectionAdd(nil, &FieldBehaviorSpec{})
+	overlayBehaviorSelectionAdd(&FieldBehaviorSpec{}, nil)
+	applySelectionLegacyColumns(nil, &FieldResolvedSpec{})
+	applySelectionLegacyColumns(&Field{}, nil)
 
-	field := &IrField{}
-	applySelectionLegacyColumns(field, &IrFieldResolvedSpec{
-		Structural: IrFieldStructuralSpec{SelectionKind: "static"},
+	field := &Field{}
+	applySelectionLegacyColumns(field, &FieldResolvedSpec{
+		Structural: FieldStructuralSpec{SelectionKind: "static"},
 	})
 	if field.Selection != "" || field.SelectionKind != "static" {
 		t.Fatalf("expected empty selection cleared, got %#v", field)
 	}
 
 	zero := 0
-	applySelectionLegacyColumns(field, &IrFieldResolvedSpec{
-		Structural: IrFieldStructuralSpec{
-			Selection:      []IrFieldSelectionItem{{Value: "a", Label: "A"}},
+	applySelectionLegacyColumns(field, &FieldResolvedSpec{
+		Structural: FieldStructuralSpec{
+			Selection:      []FieldSelectionItem{{Value: "a", Label: "A"}},
 			MaxUploadBytes: &zero,
 			MaxWidth:       &zero,
 			MaxHeight:      &zero,
-			StorageHints:   &IrFieldStructuralStorageHints{},
+			StorageHints:   &FieldStructuralStorageHints{},
 		},
-		Behavior: IrFieldBehaviorSpec{
-			SqlCompute: &IrFieldBehaviorSqlComputeSpec{Method: "SqlOnly"},
+		Behavior: FieldBehaviorSpec{
+			SqlCompute: &FieldBehaviorSqlComputeSpec{Method: "SqlOnly"},
 		},
 	})
 	if !field.IsReadonly {
@@ -551,28 +551,28 @@ func TestOverlayAndApplySelectionLegacyColumnsNilGuards(t *testing.T) {
 }
 
 func TestResolveSelectionFieldConflict_DefensiveErrorSeams(t *testing.T) {
-	base := &IrField{Name: "Status", FieldType: "selection", SelectionKind: "static"}
-	_ = base.SetResolvedSpec(&IrFieldResolvedSpec{
+	base := &Field{Name: "Status", FieldType: "selection", SelectionKind: "static"}
+	_ = base.SetResolvedSpec(&FieldResolvedSpec{
 		FieldName: "Status",
-		Structural: IrFieldStructuralSpec{
+		Structural: FieldStructuralSpec{
 			Name:          "Status",
 			FieldType:     "selection",
 			SelectionKind: "static",
-			Selection:     []IrFieldSelectionItem{{Value: "a", Label: "A"}},
+			Selection:     []FieldSelectionItem{{Value: "a", Label: "A"}},
 		},
 	})
-	child := &IrField{Name: "Status"}
-	_ = child.SetResolvedSpec(&IrFieldResolvedSpec{
+	child := &Field{Name: "Status"}
+	_ = child.SetResolvedSpec(&FieldResolvedSpec{
 		FieldName: "Status",
-		Structural: IrFieldStructuralSpec{
+		Structural: FieldStructuralSpec{
 			Name:            "Status",
 			HasSelectionAdd: true,
-			SelectionAdd:    []IrFieldSelectionItem{{Value: "b", Label: "B"}},
+			SelectionAdd:    []FieldSelectionItem{{Value: "b", Label: "B"}},
 		},
 	})
 
 	origSet := selectionSetResolved
-	selectionSetResolved = func(field *IrField, spec *IrFieldResolvedSpec) error {
+	selectionSetResolved = func(field *Field, spec *FieldResolvedSpec) error {
 		return fmtError("set resolved failed")
 	}
 	defer func() { selectionSetResolved = origSet }()
@@ -594,9 +594,9 @@ func TestResolveSelectionFieldConflict_DefensiveErrorSeams(t *testing.T) {
 		t.Fatal("expected merged field")
 	}
 	ref := NewTermReference("demo", "demo.fields", "Status", "literal")
-	applySelectionLegacyColumns(merged, &IrFieldResolvedSpec{
-		Structural: IrFieldStructuralSpec{
-			Selection:  []IrFieldSelectionItem{{Value: "a", Label: "A"}},
+	applySelectionLegacyColumns(merged, &FieldResolvedSpec{
+		Structural: FieldStructuralSpec{
+			Selection:  []FieldSelectionItem{{Value: "a", Label: "A"}},
 			StringText: &ref,
 			HelpText:   &ref,
 		},
@@ -608,22 +608,22 @@ type fmtError string
 func (e fmtError) Error() string { return string(e) }
 
 func TestResolveSelectionFieldConflict_EmptyStaticBaseAllowsAdd(t *testing.T) {
-	base := &IrField{Name: "Status", FieldType: "selection", SelectionKind: "static"}
-	_ = base.SetResolvedSpec(&IrFieldResolvedSpec{
+	base := &Field{Name: "Status", FieldType: "selection", SelectionKind: "static"}
+	_ = base.SetResolvedSpec(&FieldResolvedSpec{
 		FieldName: "Status",
-		Structural: IrFieldStructuralSpec{
+		Structural: FieldStructuralSpec{
 			Name:          "Status",
 			FieldType:     "selection",
 			SelectionKind: "static",
 		},
 	})
-	child := &IrField{Name: "Status", FieldType: ""}
-	_ = child.SetResolvedSpec(&IrFieldResolvedSpec{
+	child := &Field{Name: "Status", FieldType: ""}
+	_ = child.SetResolvedSpec(&FieldResolvedSpec{
 		FieldName: "Status",
-		Structural: IrFieldStructuralSpec{
+		Structural: FieldStructuralSpec{
 			Name:            "Status",
 			HasSelectionAdd: true,
-			SelectionAdd:    []IrFieldSelectionItem{{Value: "a", Label: "A"}},
+			SelectionAdd:    []FieldSelectionItem{{Value: "a", Label: "A"}},
 		},
 	})
 	merged, err := ResolveSelectionFieldConflict(base, child)

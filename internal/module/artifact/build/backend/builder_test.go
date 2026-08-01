@@ -109,7 +109,7 @@ type fixedParser struct {
 	err    error
 }
 
-func (p *stubEsbPlugin) DefinePlugins(_ scope.Scope, _ jsexecutor.ScriptExecutor, _ *meta.IrModule, options ...esbplugins.EsbPluginOptions) []api.Plugin {
+func (p *stubEsbPlugin) DefinePlugins(_ scope.Scope, _ jsexecutor.ScriptExecutor, _ *meta.Module, options ...esbplugins.EsbPluginOptions) []api.Plugin {
 	for _, opt := range options {
 		if opt != nil {
 			opt(p)
@@ -178,7 +178,7 @@ func TestBuildOptionsSelectsPluginsAndInjectsBackendEnv(t *testing.T) {
 	testRuntimeScope := newBuilderTestScope()
 	builder := &ModuleBuilder{
 		runtimeScope:   testRuntimeScope,
-		module:         &meta.IrModule{ApplicationStr: "auth"},
+		module:         &meta.Module{ApplicationStr: "auth"},
 		entryPoint:     "/virtual/modules/auth/service/index.ts",
 		prebuildPlugin: &stubEsbPlugin{name: "prebuild"},
 		buildPlugin:    &stubEsbPlugin{name: "build"},
@@ -247,7 +247,7 @@ func TestEntryPointImportsCollectsInstalledServiceApplicationAliases(t *testing.
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&meta.IrModule{}); err != nil {
+	if err := db.AutoMigrate(&meta.Module{}); err != nil {
 		t.Fatalf("auto migrate modules: %v", err)
 	}
 
@@ -270,7 +270,7 @@ func TestEntryPointImportsCollectsInstalledServiceApplicationAliases(t *testing.
 		}
 	}
 
-	for _, mod := range []*meta.IrModule{
+	for _, mod := range []*meta.Module{
 		{Name: "crm_mod", ApplicationStr: "crm", Status: meta.Installed, ServiceEntryPoint: "./service/index.ts"},
 		{Name: "hr_mod", ApplicationStr: "hr", Status: meta.Installed, ServiceEntryPoint: "./service/index.ts"},
 		{Name: "missing_entry", ApplicationStr: "missing", Status: meta.Installed},
@@ -283,7 +283,7 @@ func TestEntryPointImportsCollectsInstalledServiceApplicationAliases(t *testing.
 
 	b := &ModuleBuilder{
 		runtimeScope: testRuntimeScope,
-		module:       &meta.IrModule{Name: "auth", Path: filepath.Join(testRuntimeScope.cfg.ModulesPath, "auth")},
+		module:       &meta.Module{Name: "auth", Path: filepath.Join(testRuntimeScope.cfg.ModulesPath, "auth")},
 	}
 
 	imports := b.entryPointImports()
@@ -321,7 +321,7 @@ func TestBuildOptionsPassesEntryPointImportsToPlugins(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&meta.IrModule{}); err != nil {
+	if err := db.AutoMigrate(&meta.Module{}); err != nil {
 		t.Fatalf("auto migrate modules: %v", err)
 	}
 
@@ -341,7 +341,7 @@ func TestBuildOptionsPassesEntryPointImportsToPlugins(t *testing.T) {
 		t.Fatalf("write crm service index: %v", err)
 	}
 
-	if err := db.Create(&meta.IrModule{Name: "crm_mod", ApplicationStr: "crm", Status: meta.Installed, ServiceEntryPoint: "./service/index.ts"}).Error; err != nil {
+	if err := db.Create(&meta.Module{Name: "crm_mod", ApplicationStr: "crm", Status: meta.Installed, ServiceEntryPoint: "./service/index.ts"}).Error; err != nil {
 		t.Fatalf("create module: %v", err)
 	}
 
@@ -349,7 +349,7 @@ func TestBuildOptionsPassesEntryPointImportsToPlugins(t *testing.T) {
 	buildPlugin := &stubEsbPlugin{name: "build"}
 	builder := &ModuleBuilder{
 		runtimeScope:   testRuntimeScope,
-		module:         &meta.IrModule{Name: "auth", ApplicationStr: "auth"},
+		module:         &meta.Module{Name: "auth", ApplicationStr: "auth"},
 		entryPoint:     filepath.Join(testRuntimeScope.cfg.ModulesPath, "auth", "service", "index.ts"),
 		prebuildPlugin: prebuildPlugin,
 		buildPlugin:    buildPlugin,
@@ -396,19 +396,19 @@ func TestNormalizeImportHelpers(t *testing.T) {
 
 func TestValidateInheritanceAndCircularDependencies(t *testing.T) {
 	builder := &ModuleBuilder{}
-	root := &meta.IrModel{Name: "Partner", Path: "/models/root"}
-	child := &meta.IrModel{Name: "Partner", Path: "/models/child", Extends: "/models/root"}
-	orphan := &meta.IrModel{Name: "Partner", Path: "/models/orphan", Extends: "/models/missing"}
-	if err := builder.checkInheritanceChain([]*meta.IrModel{root, child, orphan}, map[string]*meta.IrModel{
+	root := &meta.Model{Name: "Partner", Path: "/models/root"}
+	child := &meta.Model{Name: "Partner", Path: "/models/child", Extends: "/models/root"}
+	orphan := &meta.Model{Name: "Partner", Path: "/models/orphan", Extends: "/models/missing"}
+	if err := builder.checkInheritanceChain([]*meta.Model{root, child, orphan}, map[string]*meta.Model{
 		root.Path:  root,
 		child.Path: child,
 	}); err == nil || !strings.Contains(err.Error(), "not in the same inheritance component") {
 		t.Fatalf("expected disconnected inheritance chain error, got %v", err)
 	}
 
-	cyclicA := &meta.IrModel{Name: "Partner", Path: "/models/a", Extends: "/models/b"}
-	cyclicB := &meta.IrModel{Name: "Partner", Path: "/models/b", Extends: "/models/a"}
-	if err := builder.checkCircularDependency(cyclicA, map[string]*meta.IrModel{
+	cyclicA := &meta.Model{Name: "Partner", Path: "/models/a", Extends: "/models/b"}
+	cyclicB := &meta.Model{Name: "Partner", Path: "/models/b", Extends: "/models/a"}
+	if err := builder.checkCircularDependency(cyclicA, map[string]*meta.Model{
 		cyclicA.Path: cyclicA,
 		cyclicB.Path: cyclicB,
 	}, map[string]bool{}); err == nil || !strings.Contains(err.Error(), "circular dependency") {
@@ -430,18 +430,18 @@ func TestValidateInheritanceAndCircularDependencies(t *testing.T) {
 }
 
 func TestMergeCloneAndMaterializedHelpers(t *testing.T) {
-	parentFields := []*meta.IrField{
+	parentFields := []*meta.Field{
 		{
 			Name: "Code",
-			Decorators: []*meta.IrDecorator{{
+			Decorators: []*meta.Decorator{{
 				Name:      "Field",
-				Arguments: []*meta.IrArgument{{Value: "'parent-code'", Type: "Literal"}},
+				Arguments: []*meta.Argument{{Value: "'parent-code'", Type: "Literal"}},
 			}},
 		},
 		{Name: "Shared"},
 	}
-	childFields := []*meta.IrField{
-		{Name: "Shared", Decorators: []*meta.IrDecorator{{Name: "Field", Arguments: []*meta.IrArgument{{Value: "'child-shared'", Type: "Literal"}}}}},
+	childFields := []*meta.Field{
+		{Name: "Shared", Decorators: []*meta.Decorator{{Name: "Field", Arguments: []*meta.Argument{{Value: "'child-shared'", Type: "Literal"}}}}},
 		{Name: "Extra"},
 	}
 	mergedFields, err := mergeOrderedFields(parentFields, childFields, "/models/base", "/models/child")
@@ -452,33 +452,33 @@ func TestMergeCloneAndMaterializedHelpers(t *testing.T) {
 		t.Fatalf("unexpected merged fields order: %#v", mergedFields)
 	}
 
-	addOnly := &meta.IrField{Name: "Kind", FieldType: "selection"}
-	if err := addOnly.SetResolvedSpec(&meta.IrFieldResolvedSpec{
+	addOnly := &meta.Field{Name: "Kind", FieldType: "selection"}
+	if err := addOnly.SetResolvedSpec(&meta.FieldResolvedSpec{
 		FieldName: "Kind",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Name:            "Kind",
 			FieldType:       "selection",
 			HasSelectionAdd: true,
-			SelectionAdd:    []meta.IrFieldSelectionItem{{Value: "vip", Label: "VIP"}},
+			SelectionAdd:    []meta.FieldSelectionItem{{Value: "vip", Label: "VIP"}},
 		},
 	}); err != nil {
 		t.Fatalf("SetResolvedSpec: %v", err)
 	}
-	if _, err := mergeOrderedFields(nil, []*meta.IrField{addOnly}, "", "/models/child"); err == nil || !strings.Contains(err.Error(), "selectionAdd requires an inherited static selection") {
+	if _, err := mergeOrderedFields(nil, []*meta.Field{addOnly}, "", "/models/child"); err == nil || !strings.Contains(err.Error(), "selectionAdd requires an inherited static selection") {
 		t.Fatalf("expected selectionAdd-without-parent rejection, got %v", err)
 	}
 
-	parentKind := &meta.IrField{Name: "Kind", FieldType: "selection", SelectionKind: "dynamic", SelectionMethod: "Opts"}
-	_ = parentKind.SetResolvedSpec(&meta.IrFieldResolvedSpec{
+	parentKind := &meta.Field{Name: "Kind", FieldType: "selection", SelectionKind: "dynamic", SelectionMethod: "Opts"}
+	_ = parentKind.SetResolvedSpec(&meta.FieldResolvedSpec{
 		FieldName: "Kind",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Name:            "Kind",
 			FieldType:       "selection",
 			SelectionKind:   "dynamic",
 			SelectionMethod: "Opts",
 		},
 	})
-	if _, err := mergeOrderedFields([]*meta.IrField{parentKind}, []*meta.IrField{addOnly}, "/models/base", "/models/child"); err == nil || !strings.Contains(err.Error(), "inherited static selection") {
+	if _, err := mergeOrderedFields([]*meta.Field{parentKind}, []*meta.Field{addOnly}, "/models/base", "/models/child"); err == nil || !strings.Contains(err.Error(), "inherited static selection") {
 		t.Fatalf("expected selectionAdd conflict error, got %v", err)
 	}
 	if mergedFields[0].OriginModelPath != "/models/base" || mergedFields[1].OriginModelPath != "/models/child" || mergedFields[2].OriginModelPath != "/models/child" {
@@ -489,15 +489,15 @@ func TestMergeCloneAndMaterializedHelpers(t *testing.T) {
 		t.Fatalf("expected merged fields to deep clone decorators, got %#v", parentFields[0].Decorators)
 	}
 
-	parentServices := []*meta.IrService{{
+	parentServices := []*meta.Service{{
 		Name:           "List",
-		TypeParameters: []*meta.IrTypeParameter{{Name: "T"}},
-		Parameters:     []*meta.IrParameter{{Name: "query"}},
-		Decorators:     []*meta.IrDecorator{{Name: "Service", Arguments: []*meta.IrArgument{{Value: "'parent-service'", Type: "Literal"}}}},
+		TypeParameters: []*meta.TypeParameter{{Name: "T"}},
+		Parameters:     []*meta.Parameter{{Name: "query"}},
+		Decorators:     []*meta.Decorator{{Name: "Service", Arguments: []*meta.Argument{{Value: "'parent-service'", Type: "Literal"}}}},
 	}, {Name: "Shared"}}
-	childServices := []*meta.IrService{{
+	childServices := []*meta.Service{{
 		Name:       "Shared",
-		Decorators: []*meta.IrDecorator{{Name: "Service", Arguments: []*meta.IrArgument{{Value: "'child-service'", Type: "Literal"}}}},
+		Decorators: []*meta.Decorator{{Name: "Service", Arguments: []*meta.Argument{{Value: "'child-service'", Type: "Literal"}}}},
 	}, {Name: "Create"}}
 	mergedServices := mergeOrderedServices(parentServices, childServices, "/models/base", "/models/child")
 	if len(mergedServices) != 3 || mergedServices[0].Name != "List" || mergedServices[1].Name != "Shared" || mergedServices[2].Name != "Create" {
@@ -512,10 +512,10 @@ func TestMergeCloneAndMaterializedHelpers(t *testing.T) {
 	}
 
 	builder := &ModuleBuilder{}
-	if builder.isAlreadyMaterialized(&meta.IrModel{Fields: []*meta.IrField{{Name: "Code"}}}) {
+	if builder.isAlreadyMaterialized(&meta.Model{Fields: []*meta.Field{{Name: "Code"}}}) {
 		t.Fatal("expected model without origin metadata to be treated as non-materialized")
 	}
-	if !builder.isAlreadyMaterialized(&meta.IrModel{Services: []*meta.IrService{{Name: "List", OriginModelPath: "/models/base"}}}) {
+	if !builder.isAlreadyMaterialized(&meta.Model{Services: []*meta.Service{{Name: "List", OriginModelPath: "/models/base"}}}) {
 		t.Fatal("expected origin metadata to mark model as materialized")
 	}
 
@@ -523,19 +523,19 @@ func TestMergeCloneAndMaterializedHelpers(t *testing.T) {
 		t.Fatal("expected clone helpers to preserve nil inputs")
 	}
 
-	moduleRef := &meta.IrModule{Models: []*meta.IrModel{
+	moduleRef := &meta.Module{Models: []*meta.Model{
 		{
 			Name:     "Partner",
 			Path:     "/models/base",
-			Fields:   []*meta.IrField{{Name: "Code"}},
-			Services: []*meta.IrService{{Name: "List"}},
+			Fields:   []*meta.Field{{Name: "Code"}},
+			Services: []*meta.Service{{Name: "List"}},
 		},
 		{
 			Name:     "Partner",
 			Path:     "/models/child",
 			Extends:  "/models/base",
-			Fields:   []*meta.IrField{{Name: "Extra"}},
-			Services: []*meta.IrService{{Name: "Create"}},
+			Fields:   []*meta.Field{{Name: "Extra"}},
+			Services: []*meta.Service{{Name: "Create"}},
 		},
 	}}
 	if err := builder.materializeEffectiveModels(moduleRef); err != nil {
@@ -550,8 +550,8 @@ func TestMergeCloneAndMaterializedHelpers(t *testing.T) {
 	}
 
 	_, err = builder.computeEffectiveMeta(
-		&meta.IrModel{Name: "Partner", Path: "/models/cycle-a", Extends: "/models/cycle-b"},
-		map[string]*meta.IrModel{
+		&meta.Model{Name: "Partner", Path: "/models/cycle-a", Extends: "/models/cycle-b"},
+		map[string]*meta.Model{
 			"/models/cycle-a": {Name: "Partner", Path: "/models/cycle-a", Extends: "/models/cycle-b"},
 			"/models/cycle-b": {Name: "Partner", Path: "/models/cycle-b", Extends: "/models/cycle-a"},
 		},
@@ -562,19 +562,19 @@ func TestMergeCloneAndMaterializedHelpers(t *testing.T) {
 		t.Fatalf("expected materialize cycle error, got %v", err)
 	}
 
-	orphanAdd := &meta.IrField{Name: "Kind", FieldType: "selection"}
-	_ = orphanAdd.SetResolvedSpec(&meta.IrFieldResolvedSpec{
+	orphanAdd := &meta.Field{Name: "Kind", FieldType: "selection"}
+	_ = orphanAdd.SetResolvedSpec(&meta.FieldResolvedSpec{
 		FieldName: "Kind",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Name:            "Kind",
 			FieldType:       "selection",
 			HasSelectionAdd: true,
-			SelectionAdd:    []meta.IrFieldSelectionItem{{Value: "vip", Label: "VIP"}},
+			SelectionAdd:    []meta.FieldSelectionItem{{Value: "vip", Label: "VIP"}},
 		},
 	})
 	_, err = builder.computeEffectiveMeta(
-		&meta.IrModel{Name: "Partner", Path: "/models/child-add", Fields: []*meta.IrField{orphanAdd}},
-		map[string]*meta.IrModel{},
+		&meta.Model{Name: "Partner", Path: "/models/child-add", Fields: []*meta.Field{orphanAdd}},
+		map[string]*meta.Model{},
 		map[string]*effectiveMeta{},
 		map[string]bool{},
 	)
@@ -588,10 +588,10 @@ func TestGetNewExtendsAndUpdatePrebuildResult(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&meta.IrModel{}); err != nil {
+	if err := db.AutoMigrate(&meta.Model{}); err != nil {
 		t.Fatalf("auto migrate models: %v", err)
 	}
-	rows := []*meta.IrModel{
+	rows := []*meta.Model{
 		{Name: "Partner", Path: "/models/base", BaseModel: meta.BaseModel{Id: sql.NullString{String: "base", Valid: true}}},
 		{Name: "Partner", Path: "/models/latest", BaseModel: meta.BaseModel{Id: sql.NullString{String: "latest", Valid: true}}},
 	}
@@ -603,11 +603,11 @@ func TestGetNewExtendsAndUpdatePrebuildResult(t *testing.T) {
 	testRuntimeScope.session = &scope.Session{DB: db}
 	builder := &ModuleBuilder{
 		runtimeScope: testRuntimeScope,
-		module:       &meta.IrModule{ApplicationStr: "auth"},
+		module:       &meta.Module{ApplicationStr: "auth"},
 		tsPathAlias:  map[string]string{},
 	}
 
-	current := &meta.IrModel{Name: "Partner", Path: "/models/current", Extends: "/models/base"}
+	current := &meta.Model{Name: "Partner", Path: "/models/current", Extends: "/models/base"}
 	latest, err := builder.getNewExtends(current)
 	if err != nil {
 		t.Fatalf("getNewExtends() error = %v", err)
@@ -628,7 +628,7 @@ func TestGetNewExtendsAndUpdatePrebuildResult(t *testing.T) {
 	buildResult := withParserResults(&module.BuildResult{}, &parser.ParserResult{
 		Path:       "/models/current.ts",
 		RawContent: rawContent,
-		Model: &meta.IrModel{
+		Model: &meta.Model{
 			Name:       "Partner",
 			Path:       "/models/current",
 			RawExtends: "/models/base",
@@ -650,10 +650,10 @@ func TestGetNewExtendsAndUpdatePrebuildResult(t *testing.T) {
 func TestRefreshModelExtendsPropertyErrors(t *testing.T) {
 	builder := &ModuleBuilder{
 		runtimeScope: newBuilderTestScope(),
-		module:       &meta.IrModule{ApplicationStr: "auth"},
+		module:       &meta.Module{ApplicationStr: "auth"},
 		tsPathAlias:  map[string]string{},
 	}
-	parseResult := &parser.ParserResult{Path: "/models/partner.ts", Model: &meta.IrModel{Name: "Partner"}, Content: "export default class Partner extends BaseModel {}"}
+	parseResult := &parser.ParserResult{Path: "/models/partner.ts", Model: &meta.Model{Name: "Partner"}, Content: "export default class Partner extends BaseModel {}"}
 
 	builder.tsParser = fixedParser{result: nil}
 	if err := builder.refreshModelExtendsProperty(parseResult); err == nil || !strings.Contains(err.Error(), "returned nil result") {
@@ -671,13 +671,13 @@ func TestPersistHelpersAndBuild(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&meta.IrApplication{}, &meta.IrModule{}, &meta.IrModel{}, &meta.IrField{}, &meta.IrService{}, &meta.IrTypeParameter{}, &meta.IrParameter{}, &meta.IrDecorator{}, &meta.IrArgument{}); err != nil {
+	if err := db.AutoMigrate(&meta.Application{}, &meta.Module{}, &meta.Model{}, &meta.Field{}, &meta.Service{}, &meta.TypeParameter{}, &meta.Parameter{}, &meta.Decorator{}, &meta.Argument{}); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
 
 	testRuntimeScope := newBuilderTestScope()
 	testRuntimeScope.session = &scope.Session{DB: db}
-	builder := &ModuleBuilder{runtimeScope: testRuntimeScope, module: &meta.IrModule{Name: "base", Path: "/virtual/modules/base"}}
+	builder := &ModuleBuilder{runtimeScope: testRuntimeScope, module: &meta.Module{Name: "base", Path: "/virtual/modules/base"}}
 
 	result, err := builder.Build()
 	if err != nil {
@@ -687,11 +687,11 @@ func TestPersistHelpersAndBuild(t *testing.T) {
 		t.Fatalf("expected Build to persist module metadata, got %#v", result)
 	}
 
-	seedModel := &meta.IrModel{BaseModel: meta.BaseModel{Id: sql.NullString{String: "stale", Valid: true}}, Name: "Stale", Path: "/models/stale", ModuleId: sql.NullString{String: "module-1", Valid: true}}
+	seedModel := &meta.Model{BaseModel: meta.BaseModel{Id: sql.NullString{String: "stale", Valid: true}}, Name: "Stale", Path: "/models/stale", ModuleId: sql.NullString{String: "module-1", Valid: true}}
 	if err := db.Create(seedModel).Error; err != nil {
 		t.Fatalf("seed stale model: %v", err)
 	}
-	models := []*meta.IrModel{
+	models := []*meta.Model{
 		{Name: "PartnerOld", Path: "/models/partner"},
 		{Name: "Partner", Path: "/models/partner"},
 		nil,
@@ -700,7 +700,7 @@ func TestPersistHelpersAndBuild(t *testing.T) {
 	if err := builder.persistModuleModels("module-1", models); err != nil {
 		t.Fatalf("persistModuleModels() error = %v", err)
 	}
-	var persisted []*meta.IrModel
+	var persisted []*meta.Model
 	if err := db.Where("module_id = ?", "module-1").Order("path ASC").Find(&persisted).Error; err != nil {
 		t.Fatalf("query persisted models: %v", err)
 	}
@@ -708,43 +708,43 @@ func TestPersistHelpersAndBuild(t *testing.T) {
 		t.Fatalf("unexpected persisted models: %#v", persisted)
 	}
 
-	older := &meta.IrModel{BaseModel: meta.BaseModel{Id: sql.NullString{String: "aaa", Valid: true}}, Name: "Partner", Path: "/models/history"}
-	latest := &meta.IrModel{BaseModel: meta.BaseModel{Id: sql.NullString{String: "zzz", Valid: true}}, Name: "Partner", Path: "/models/history"}
+	older := &meta.Model{BaseModel: meta.BaseModel{Id: sql.NullString{String: "aaa", Valid: true}}, Name: "Partner", Path: "/models/history"}
+	latest := &meta.Model{BaseModel: meta.BaseModel{Id: sql.NullString{String: "zzz", Valid: true}}, Name: "Partner", Path: "/models/history"}
 	if err := db.Create(older).Error; err != nil {
 		t.Fatalf("seed older history model: %v", err)
 	}
 	if err := db.Create(latest).Error; err != nil {
 		t.Fatalf("seed latest history model: %v", err)
 	}
-	field := &meta.IrField{BaseModel: meta.BaseModel{Id: sql.NullString{String: "field1", Valid: true}}, Name: "Name", ModelId: latest.Id}
+	field := &meta.Field{BaseModel: meta.BaseModel{Id: sql.NullString{String: "field1", Valid: true}}, Name: "Name", ModelId: latest.Id}
 	if err := db.Create(field).Error; err != nil {
 		t.Fatalf("seed field: %v", err)
 	}
-	fieldDec := &meta.IrDecorator{BaseModel: meta.BaseModel{Id: sql.NullString{String: "fielddec", Valid: true}}, Name: "Field", FieldId: field.Id}
+	fieldDec := &meta.Decorator{BaseModel: meta.BaseModel{Id: sql.NullString{String: "fielddec", Valid: true}}, Name: "Field", FieldId: field.Id}
 	if err := db.Create(fieldDec).Error; err != nil {
 		t.Fatalf("seed field decorator: %v", err)
 	}
-	if err := db.Create(&meta.IrArgument{BaseModel: meta.BaseModel{Id: sql.NullString{String: "arg1", Valid: true}}, Type: "Literal", Value: "'name'", DecoratorId: fieldDec.Id}).Error; err != nil {
+	if err := db.Create(&meta.Argument{BaseModel: meta.BaseModel{Id: sql.NullString{String: "arg1", Valid: true}}, Type: "Literal", Value: "'name'", DecoratorId: fieldDec.Id}).Error; err != nil {
 		t.Fatalf("seed field argument: %v", err)
 	}
-	service := &meta.IrService{BaseModel: meta.BaseModel{Id: sql.NullString{String: "svc1", Valid: true}}, Name: "List", ModelId: latest.Id}
+	service := &meta.Service{BaseModel: meta.BaseModel{Id: sql.NullString{String: "svc1", Valid: true}}, Name: "List", ModelId: latest.Id}
 	if err := db.Create(service).Error; err != nil {
 		t.Fatalf("seed service: %v", err)
 	}
-	serviceDec := &meta.IrDecorator{BaseModel: meta.BaseModel{Id: sql.NullString{String: "svcdec", Valid: true}}, Name: "Service", ServiceId: service.Id}
+	serviceDec := &meta.Decorator{BaseModel: meta.BaseModel{Id: sql.NullString{String: "svcdec", Valid: true}}, Name: "Service", ServiceId: service.Id}
 	if err := db.Create(serviceDec).Error; err != nil {
 		t.Fatalf("seed service decorator: %v", err)
 	}
-	if err := db.Create(&meta.IrArgument{BaseModel: meta.BaseModel{Id: sql.NullString{String: "arg2", Valid: true}}, Type: "Literal", Value: "'list'", DecoratorId: serviceDec.Id}).Error; err != nil {
+	if err := db.Create(&meta.Argument{BaseModel: meta.BaseModel{Id: sql.NullString{String: "arg2", Valid: true}}, Type: "Literal", Value: "'list'", DecoratorId: serviceDec.Id}).Error; err != nil {
 		t.Fatalf("seed service argument: %v", err)
 	}
-	if err := db.Create(&meta.IrTypeParameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "tp1", Valid: true}}, Name: "T", ServiceId: service.Id}).Error; err != nil {
+	if err := db.Create(&meta.TypeParameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "tp1", Valid: true}}, Name: "T", ServiceId: service.Id}).Error; err != nil {
 		t.Fatalf("seed type parameter: %v", err)
 	}
-	if err := db.Create(&meta.IrParameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "param1", Valid: true}}, Name: "this", ServiceId: service.Id}).Error; err != nil {
+	if err := db.Create(&meta.Parameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "param1", Valid: true}}, Name: "this", ServiceId: service.Id}).Error; err != nil {
 		t.Fatalf("seed this parameter: %v", err)
 	}
-	if err := db.Create(&meta.IrParameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "param2", Valid: true}}, Name: "query", ServiceId: service.Id}).Error; err != nil {
+	if err := db.Create(&meta.Parameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "param2", Valid: true}}, Name: "query", ServiceId: service.Id}).Error; err != nil {
 		t.Fatalf("seed query parameter: %v", err)
 	}
 
@@ -808,7 +808,7 @@ func TestGetTsParserAndPathAliasParsesTsconfig(t *testing.T) {
 			cfg:    &config.Config{ModulesPath: modulesDir},
 			logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 		},
-		module:   &meta.IrModule{ApplicationStr: "auth"},
+		module:   &meta.Module{ApplicationStr: "auth"},
 		tsParser: fixedParser{},
 	}
 
@@ -823,7 +823,7 @@ func TestGetTsParserAndPathAliasParsesTsconfig(t *testing.T) {
 
 func TestNewModuleBuilderOptionsAndBundleToDirCtx(t *testing.T) {
 	testRuntimeScope := newBuilderTestScope()
-	moduleRef := &meta.IrModule{ApplicationStr: "auth"}
+	moduleRef := &meta.Module{ApplicationStr: "auth"}
 	prebuildPlugin := &stubEsbPlugin{name: "prebuild"}
 	buildPlugin := &stubEsbPlugin{name: "build"}
 
@@ -857,7 +857,7 @@ func TestNewModuleBuilderOptionsAndBundleToDirCtx(t *testing.T) {
 		t.Fatalf("unexpected default builder configuration: %#v", defaults)
 	}
 
-	bundleBuilder := &ModuleBuilder{module: &meta.IrModule{ApplicationStr: "auth"}}
+	bundleBuilder := &ModuleBuilder{module: &meta.Module{ApplicationStr: "auth"}}
 	canceled, cancel := context.WithCancel(context.Background())
 	cancel()
 	if _, err := bundleBuilder.BundleToDirCtx(canceled, "/tmp/staged/auth"); err == nil {
@@ -885,10 +885,10 @@ func TestBundleToDirCtx_UsesContextSessionForRuntimeState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open runtime sqlite: %v", err)
 	}
-	if err := baseDB.AutoMigrate(&meta.IrModule{}); err != nil {
+	if err := baseDB.AutoMigrate(&meta.Module{}); err != nil {
 		t.Fatalf("migrate base modules: %v", err)
 	}
-	if err := runtimeDB.AutoMigrate(&meta.IrModule{}); err != nil {
+	if err := runtimeDB.AutoMigrate(&meta.Module{}); err != nil {
 		t.Fatalf("migrate runtime modules: %v", err)
 	}
 
@@ -923,7 +923,7 @@ func TestBundleToDirCtx_UsesContextSessionForRuntimeState(t *testing.T) {
 	if err := os.WriteFile(serviceIndex, []byte("export * from './service';\n"), 0o644); err != nil {
 		t.Fatalf("write service index: %v", err)
 	}
-	if err := runtimeDB.Create(&meta.IrModule{Name: "crm", Status: meta.Installed, ApplicationStr: "crm", ServiceEntryPoint: "service/index.ts"}).Error; err != nil {
+	if err := runtimeDB.Create(&meta.Module{Name: "crm", Status: meta.Installed, ApplicationStr: "crm", ServiceEntryPoint: "service/index.ts"}).Error; err != nil {
 		t.Fatalf("seed runtime installed module: %v", err)
 	}
 
@@ -932,14 +932,14 @@ func TestBundleToDirCtx_UsesContextSessionForRuntimeState(t *testing.T) {
 	var parserRuntimeScope scope.Scope
 	builder := &ModuleBuilder{
 		runtimeScope:   testRuntimeScope,
-		module:         &meta.IrModule{Name: "auth", ApplicationStr: "auth", Path: modulePath},
+		module:         &meta.Module{Name: "auth", ApplicationStr: "auth", Path: modulePath},
 		entryPoint:     entryPoint,
 		prebuildPlugin: prebuildPlugin,
 		buildPlugin:    buildPlugin,
 		publishDist:    false,
 		outFileName:    "index.js",
 		globalName:     "AuthApp",
-		tsParserFactory: func(runtimeScope scope.Scope, module *meta.IrModule) parser.Parser {
+		tsParserFactory: func(runtimeScope scope.Scope, module *meta.Module) parser.Parser {
 			parserRuntimeScope = runtimeScope
 			return fixedParser{}
 		},
@@ -972,10 +972,10 @@ func TestBundleToDirCtx_PreservesRuntimeTransactionWhenCallerContextHasNoTransac
 	if err != nil {
 		t.Fatalf("open runtime sqlite: %v", err)
 	}
-	if err := baseDB.AutoMigrate(&meta.IrModule{}); err != nil {
+	if err := baseDB.AutoMigrate(&meta.Module{}); err != nil {
 		t.Fatalf("migrate base modules: %v", err)
 	}
-	if err := runtimeDB.AutoMigrate(&meta.IrModule{}); err != nil {
+	if err := runtimeDB.AutoMigrate(&meta.Module{}); err != nil {
 		t.Fatalf("migrate runtime modules: %v", err)
 	}
 
@@ -1010,7 +1010,7 @@ func TestBundleToDirCtx_PreservesRuntimeTransactionWhenCallerContextHasNoTransac
 	if err := os.WriteFile(serviceIndex, []byte("export * from './service';\n"), 0o644); err != nil {
 		t.Fatalf("write service index: %v", err)
 	}
-	if err := runtimeDB.Create(&meta.IrModule{Name: "crm", Status: meta.Installed, ApplicationStr: "crm", ServiceEntryPoint: "service/index.ts"}).Error; err != nil {
+	if err := runtimeDB.Create(&meta.Module{Name: "crm", Status: meta.Installed, ApplicationStr: "crm", ServiceEntryPoint: "service/index.ts"}).Error; err != nil {
 		t.Fatalf("seed runtime installed module: %v", err)
 	}
 
@@ -1019,14 +1019,14 @@ func TestBundleToDirCtx_PreservesRuntimeTransactionWhenCallerContextHasNoTransac
 	var parserRuntimeScope scope.Scope
 	builder := &ModuleBuilder{
 		runtimeScope:   testRuntimeScope,
-		module:         &meta.IrModule{Name: "auth", ApplicationStr: "auth", Path: modulePath},
+		module:         &meta.Module{Name: "auth", ApplicationStr: "auth", Path: modulePath},
 		entryPoint:     entryPoint,
 		prebuildPlugin: prebuildPlugin,
 		buildPlugin:    buildPlugin,
 		publishDist:    false,
 		outFileName:    "index.js",
 		globalName:     "AuthApp",
-		tsParserFactory: func(runtimeScope scope.Scope, module *meta.IrModule) parser.Parser {
+		tsParserFactory: func(runtimeScope scope.Scope, module *meta.Module) parser.Parser {
 			parserRuntimeScope = runtimeScope
 			return fixedParser{}
 		},
@@ -1060,7 +1060,7 @@ func TestUpdateModelExtends_UsesStableFieldsWithoutAstNode(t *testing.T) {
 
 	r := &parser.ParserResult{
 		RawContent: raw,
-		Model: &meta.IrModel{
+		Model: &meta.Model{
 			RawExtends: "/virtual/modules/base/models/base_model.ts",
 			Extends:    "/virtual/modules/ext/models/base_model.ts",
 		},
@@ -1072,7 +1072,7 @@ func TestUpdateModelExtends_UsesStableFieldsWithoutAstNode(t *testing.T) {
 		},
 	}
 
-	extendedModel := &meta.IrModel{Path: "/virtual/modules/ext/models/base_model"}
+	extendedModel := &meta.Model{Path: "/virtual/modules/ext/models/base_model"}
 	if err := b.updateModelExtends(r, extendedModel); err != nil {
 		t.Fatalf("updateModelExtends failed: %v", err)
 	}
@@ -1104,7 +1104,7 @@ func TestUpdateModelExtends_ReturnsErrorWhenOffsetsBecomeStale(t *testing.T) {
 		RawContent: raw,
 		Content:    content,
 		Path:       "/virtual/modules/partner_commercial/service/models/partner.ts",
-		Model: &meta.IrModel{
+		Model: &meta.Model{
 			RawExtends: "/virtual/modules/partner_bank/service/models/partner.ts",
 			Extends:    "/virtual/modules/partner_legacy/service/models/partner.ts",
 		},
@@ -1116,7 +1116,7 @@ func TestUpdateModelExtends_ReturnsErrorWhenOffsetsBecomeStale(t *testing.T) {
 		},
 	}
 
-	extendedModel := &meta.IrModel{Path: "/virtual/modules/partner_bank/service/models/partner"}
+	extendedModel := &meta.Model{Path: "/virtual/modules/partner_bank/service/models/partner"}
 	err := b.updateModelExtends(r, extendedModel)
 	if err == nil {
 		t.Fatalf("expected stale offsets to fail without range match")
@@ -1136,7 +1136,7 @@ func TestUpdateModelExtends_ReturnsErrorOnMismatchedExtendsSnippet(t *testing.T)
 	r := &parser.ParserResult{
 		RawContent: raw,
 		Path:       "/virtual/modules/test/service/models/child.ts",
-		Model: &meta.IrModel{
+		Model: &meta.Model{
 			RawExtends: "/virtual/modules/base/service/models/base_model.ts",
 			Extends:    "/virtual/modules/ext/service/models/base_model.ts",
 		},
@@ -1148,7 +1148,7 @@ func TestUpdateModelExtends_ReturnsErrorOnMismatchedExtendsSnippet(t *testing.T)
 		},
 	}
 
-	extendedModel := &meta.IrModel{Path: "/virtual/modules/ext/service/models/base_model"}
+	extendedModel := &meta.Model{Path: "/virtual/modules/ext/service/models/base_model"}
 	err := b.updateModelExtends(r, extendedModel)
 	if err == nil {
 		t.Fatalf("expected mismatched extends snippet to fail rewrite")
@@ -1166,7 +1166,7 @@ func TestUpdateModelExtends_PreservesWhitespaceAroundExtendsSlice(t *testing.T) 
 	r := &parser.ParserResult{
 		RawContent: raw,
 		Path:       "/virtual/modules/test/service/models/child.ts",
-		Model: &meta.IrModel{
+		Model: &meta.Model{
 			RawExtends: "/virtual/modules/base/service/models/base_model.ts",
 			Extends:    "/virtual/modules/ext/service/models/base_model.ts",
 		},
@@ -1178,7 +1178,7 @@ func TestUpdateModelExtends_PreservesWhitespaceAroundExtendsSlice(t *testing.T) 
 		},
 	}
 
-	extendedModel := &meta.IrModel{Path: "/virtual/modules/ext/service/models/base_model"}
+	extendedModel := &meta.Model{Path: "/virtual/modules/ext/service/models/base_model"}
 	if err := b.updateModelExtends(r, extendedModel); err != nil {
 		t.Fatalf("updateModelExtends failed: %v", err)
 	}
@@ -1201,7 +1201,7 @@ func TestUpdateModelExtends_UsesDeterministicAlias(t *testing.T) {
 		return &parser.ParserResult{
 			RawContent: raw,
 			Path:       "/virtual/modules/test/service/models/child.ts",
-			Model: &meta.IrModel{
+			Model: &meta.Model{
 				RawExtends: "/virtual/modules/base/service/models/base_model.ts",
 				Extends:    "/virtual/modules/ext/service/models/base_model.ts",
 			},
@@ -1214,7 +1214,7 @@ func TestUpdateModelExtends_UsesDeterministicAlias(t *testing.T) {
 		}
 	}
 
-	extendedModel := &meta.IrModel{Path: "/virtual/modules/ext/service/models/base_model"}
+	extendedModel := &meta.Model{Path: "/virtual/modules/ext/service/models/base_model"}
 
 	r1 := buildInput()
 	if err := b.updateModelExtends(r1, extendedModel); err != nil {
@@ -1248,7 +1248,7 @@ func TestUpdateModelExtends_ReusesExistingDefaultImportWithoutDuplication(t *tes
 	r := &parser.ParserResult{
 		RawContent: raw,
 		Path:       "/virtual/modules/test/service/models/child.ts",
-		Model: &meta.IrModel{
+		Model: &meta.Model{
 			RawExtends: "/virtual/modules/base/service/models/base_model.ts",
 			Extends:    "/virtual/modules/ext/service/models/base_model.ts",
 		},
@@ -1268,7 +1268,7 @@ func TestUpdateModelExtends_ReusesExistingDefaultImportWithoutDuplication(t *tes
 		},
 	}
 
-	extendedModel := &meta.IrModel{Path: "/virtual/modules/ext/service/models/base_model"}
+	extendedModel := &meta.Model{Path: "/virtual/modules/ext/service/models/base_model"}
 	if err := b.updateModelExtends(r, extendedModel); err != nil {
 		t.Fatalf("updateModelExtends failed: %v", err)
 	}
@@ -1293,7 +1293,7 @@ func TestUpdateModelExtends_InsertsImportIntoImportRegion(t *testing.T) {
 	r := &parser.ParserResult{
 		RawContent: raw,
 		Path:       "/virtual/modules/test/service/models/child.ts",
-		Model: &meta.IrModel{
+		Model: &meta.Model{
 			RawExtends: "/virtual/modules/base/service/models/base_model.ts",
 			Extends:    "/virtual/modules/ext/service/models/base_model.ts",
 		},
@@ -1313,7 +1313,7 @@ func TestUpdateModelExtends_InsertsImportIntoImportRegion(t *testing.T) {
 		},
 	}
 
-	extendedModel := &meta.IrModel{Path: "/virtual/modules/ext/service/models/base_model"}
+	extendedModel := &meta.Model{Path: "/virtual/modules/ext/service/models/base_model"}
 	if err := b.updateModelExtends(r, extendedModel); err != nil {
 		t.Fatalf("updateModelExtends failed: %v", err)
 	}

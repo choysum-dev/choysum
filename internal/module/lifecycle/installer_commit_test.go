@@ -61,7 +61,7 @@ msgstr "你好"
 		t.Fatal(err)
 	}
 
-	mod := &meta.IrModule{
+	mod := &meta.Module{
 		Name:           "demo",
 		Version:        "1.0.0",
 		Status:         meta.ToInstall,
@@ -87,7 +87,7 @@ msgstr "你好"
 		t.Fatalf("commitInstall: %v", err)
 	}
 
-	var got meta.IrModule
+	var got meta.Module
 	if err := runtimeScope.Session().Where("name = ?", "demo").Take(&got).Error; err != nil {
 		t.Fatalf("load module: %v", err)
 	}
@@ -107,7 +107,7 @@ msgstr "你好"
 func TestFinalizeInstallNoopHooks(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
 	installer := &moduleInstaller{
-		module:        &meta.IrModule{Name: "demo", Path: t.TempDir()},
+		module:        &meta.Module{Name: "demo", Path: t.TempDir()},
 		runtimeScope:  runtimeScope,
 		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
 		ctx:           newOpContext(),
@@ -119,7 +119,7 @@ func TestFinalizeInstallNoopHooks(t *testing.T) {
 
 func TestCommitInstallPersistLaterBranches(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
-	mod := &meta.IrModule{
+	mod := &meta.Module{
 		Name:   "demo",
 		Path:   t.TempDir(),
 		Status: meta.ToInstall,
@@ -149,13 +149,13 @@ func TestCommitInstallPersistLaterBranches(t *testing.T) {
 
 func TestCommitInstallMetaAndDocumentSchedules(t *testing.T) {
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(&internaltask.Schedule{}, &meta.IrModule{}); err != nil {
+	if err := db.AutoMigrate(&internaltask.Schedule{}, &meta.Module{}); err != nil {
 		t.Fatal(err)
 	}
 	now := time.Now().UTC()
 	if err := db.Create(&internaltask.Schedule{
 		Id: "sch_legacy", Active: true, Name: "meta.module_index.daily_sync",
-		TargetApp: "meta", FullMethod: "meta.IrModuleIndex/Sync",
+		TargetApp: "meta", FullMethod: "meta.MetaModuleIndex/Sync",
 		SchedulerUserId: "admin", TriggeredByUserId: "admin",
 		CronExpr: "0 0 * * *", Timezone: "UTC", CreatedAt: now, UpdatedAt: now,
 	}).Error; err != nil {
@@ -165,7 +165,7 @@ func TestCommitInstallMetaAndDocumentSchedules(t *testing.T) {
 	modulesPath := t.TempDir()
 	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
 
-	metaMod := &meta.IrModule{Name: "meta", Path: filepath.Join(modulesPath, "meta"), Status: meta.ToInstall}
+	metaMod := &meta.Module{Name: "meta", Path: filepath.Join(modulesPath, "meta"), Status: meta.ToInstall}
 	metaMod.Id = sql.NullString{String: xid.New().String(), Valid: true}
 	installer := &moduleInstaller{
 		module:        metaMod,
@@ -180,7 +180,7 @@ func TestCommitInstallMetaAndDocumentSchedules(t *testing.T) {
 		t.Fatal("expected legacy schedule deleted")
 	}
 
-	docMod := &meta.IrModule{Name: "document", Path: filepath.Join(modulesPath, "document"), Status: meta.ToInstall}
+	docMod := &meta.Module{Name: "document", Path: filepath.Join(modulesPath, "document"), Status: meta.ToInstall}
 	docMod.Id = sql.NullString{String: xid.New().String(), Valid: true}
 	installer.module = docMod
 	if err := installer.commitInstall(nil, false); err != nil {
@@ -227,7 +227,7 @@ func TestEnsureDocumentAttachmentGCScheduleDirect(t *testing.T) {
 
 func TestRestoreModuleIfSoftDeletedStandalone(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
-	mod := &meta.IrModule{Name: "solo", Status: meta.Uninstalled, Path: t.TempDir()}
+	mod := &meta.Module{Name: "solo", Status: meta.Uninstalled, Path: t.TempDir()}
 	mod.Id = sql.NullString{String: xid.New().String(), Valid: true}
 	mod.DeletedAt = gorm.DeletedAt{Time: time.Now().UTC(), Valid: true}
 	if err := runtimeScope.Session().Unscoped().Create(mod).Error; err != nil {
@@ -237,7 +237,7 @@ func TestRestoreModuleIfSoftDeletedStandalone(t *testing.T) {
 	if err := installer.restoreModuleIfSoftDeleted(); err != nil {
 		t.Fatal(err)
 	}
-	var got meta.IrModule
+	var got meta.Module
 	if err := runtimeScope.Session().Where("name = ?", "solo").Take(&got).Error; err != nil {
 		t.Fatal(err)
 	}

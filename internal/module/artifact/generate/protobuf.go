@@ -28,7 +28,7 @@ var protoFS embed.FS
 
 type protobufGenerator struct {
 	runtimeScope scope.Scope
-	module       *meta.IrModule
+	module       *meta.Module
 
 	// Optional overrides for pipeline-managed staging.
 	// When set, generator writes directly into these directories and does not commit.
@@ -36,7 +36,7 @@ type protobufGenerator struct {
 	distAppDir      string
 }
 
-func (g *protobufGenerator) generate(ctx context.Context, app *meta.IrApplication) ([]*module.GeneratorResult, error) {
+func (g *protobufGenerator) generate(ctx context.Context, app *meta.Application) ([]*module.GeneratorResult, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -273,7 +273,7 @@ func (g *protobufGenerator) syncProtoToDistDirect(ctx context.Context, srcDir st
 	})
 }
 
-func newProtobufGenerator(runtimeScope scope.Scope, module *meta.IrModule) *protobufGenerator {
+func newProtobufGenerator(runtimeScope scope.Scope, module *meta.Module) *protobufGenerator {
 	return &protobufGenerator{
 		runtimeScope: runtimeScope,
 		module:       module,

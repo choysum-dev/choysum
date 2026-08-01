@@ -182,7 +182,7 @@ func TestBuildExternalDependencies(t *testing.T) {
 	}
 }
 
-func TestParsePackageJSONToIrModule(t *testing.T) {
+func TestParsePackageJSONToModule(t *testing.T) {
 	t.Parallel()
 
 	t.Run("success", func(t *testing.T) {
@@ -205,9 +205,9 @@ func TestParsePackageJSONToIrModule(t *testing.T) {
 			}
 		}`)
 
-		result, err := ParsePackageJSONToIrModule(raw, "/tmp/modules/sale", map[string]string{"wkhtmltopdf": ">=0.12.0"})
+		result, err := ParsePackageJSONToModule(raw, "/tmp/modules/sale", map[string]string{"wkhtmltopdf": ">=0.12.0"})
 		if err != nil {
-			t.Fatalf("ParsePackageJSONToIrModule() error = %v", err)
+			t.Fatalf("ParsePackageJSONToModule() error = %v", err)
 		}
 		if result == nil || result.Module == nil {
 			t.Fatalf("expected non-nil conversion result")
@@ -248,13 +248,13 @@ func TestParsePackageJSONToIrModule(t *testing.T) {
 				"depends":[1]
 			}
 		}`)
-		if _, err := ParsePackageJSONToIrModule(raw, "", nil); err == nil {
+		if _, err := ParsePackageJSONToModule(raw, "", nil); err == nil {
 			t.Fatalf("expected type error for depends")
 		}
 	})
 }
 
-func TestPackageJSONToIrModuleIdempotent(t *testing.T) {
+func TestPackageJSONToModuleIdempotent(t *testing.T) {
 	t.Parallel()
 
 	pkg := &PackageJSON{
@@ -272,11 +272,11 @@ func TestPackageJSONToIrModuleIdempotent(t *testing.T) {
 		PeerDependencies: map[string]string{"vue": "^3.4.29", "pinia": "^2.1.7"},
 	}
 
-	res1, err := PackageJSONToIrModule(pkg, "/tmp/modules/sale", map[string]string{"wkhtmltopdf": ">=0.12.0"})
+	res1, err := PackageJSONToModule(pkg, "/tmp/modules/sale", map[string]string{"wkhtmltopdf": ">=0.12.0"})
 	if err != nil {
 		t.Fatalf("first conversion error = %v", err)
 	}
-	res2, err := PackageJSONToIrModule(pkg, "/tmp/modules/sale", map[string]string{"wkhtmltopdf": ">=0.12.0"})
+	res2, err := PackageJSONToModule(pkg, "/tmp/modules/sale", map[string]string{"wkhtmltopdf": ">=0.12.0"})
 	if err != nil {
 		t.Fatalf("second conversion error = %v", err)
 	}

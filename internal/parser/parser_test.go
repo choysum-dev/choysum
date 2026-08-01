@@ -143,27 +143,27 @@ func TestFindVueComponentFinalChild(t *testing.T) {
 	results := []*ParserResult{
 		{
 			Path: "/app/base/button.vue",
-			VueComponent: &meta.IrComponent{
+			VueComponent: &meta.Component{
 				Name: "AppButton",
 			},
 		},
 		{
 			Path: "/app/theme/button.vue",
-			VueComponent: &meta.IrComponent{
+			VueComponent: &meta.Component{
 				Name:    "AppButton",
 				Extends: "/app/base/button.vue",
 			},
 		},
 		{
 			Path: "/app/brand/button.vue",
-			VueComponent: &meta.IrComponent{
+			VueComponent: &meta.Component{
 				Name:    "AppButton",
 				Extends: "/app/theme/button.vue",
 			},
 		},
 		{
 			Path: "/app/page.vue",
-			VueComponent: &meta.IrComponent{
+			VueComponent: &meta.Component{
 				Name:    "PageView",
 				Extends: "/app/layout.vue",
 			},

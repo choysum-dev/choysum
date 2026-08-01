@@ -9,12 +9,12 @@ import (
 	"github.com/choysum-dev/choysum/pkg/meta"
 )
 
-type IrModuleMigrationHistory struct {
+type ModuleMigrationHistory struct {
 	meta.BaseModel
-	ModuleName string    `gorm:"column:module_name;size:255;index:idx_ir_module_migration_history,unique"`
-	Version    string    `gorm:"column:version;size:64;index:idx_ir_module_migration_history,unique"`
-	Phase      string    `gorm:"column:phase;size:16;index:idx_ir_module_migration_history,unique"`
-	Script     string    `gorm:"column:script;size:255;index:idx_ir_module_migration_history,unique"`
+	ModuleName string    `gorm:"column:module_name;size:255;index:idx_meta_module_migration_history,unique"`
+	Version    string    `gorm:"column:version;size:64;index:idx_meta_module_migration_history,unique"`
+	Phase      string    `gorm:"column:phase;size:16;index:idx_meta_module_migration_history,unique"`
+	Script     string    `gorm:"column:script;size:255;index:idx_meta_module_migration_history,unique"`
 	Checksum   string    `gorm:"column:checksum;size:128"`
 	Status     string    `gorm:"column:status;size:16;index"`
 	StartedAt  time.Time `gorm:"column:started_at;index"`
@@ -24,6 +24,6 @@ type IrModuleMigrationHistory struct {
 	JobId      string    `gorm:"column:job_id;size:64;index"`
 }
 
-func (IrModuleMigrationHistory) TableName() string {
-	return "meta_ir_module_migration_history"
+func (ModuleMigrationHistory) TableName() string {
+	return "meta_module_migration_history"
 }

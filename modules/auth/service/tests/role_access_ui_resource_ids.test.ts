@@ -4,12 +4,12 @@
 import { withContext as withModelContext } from '@/core/service/api/context';
 import Role from '@/auth/service/models/role';
 import RoleUiResource from '@/auth/service/models/role_ui_resource';
-import IrUiResource from '@/meta/service/models/ir_ui_resource';
-import IrUiResourceMenuRoute from '@/meta/service/models/ir_ui_resource_menu_route';
-import IrUiResourceRouteAction from '@/meta/service/models/ir_ui_resource_route_action';
+import MetaUiResource from '@/meta/service/models/ui_resource';
+import MetaUiResourceMenuRoute from '@/meta/service/models/ui_resource_menu_route';
+import MetaUiResourceRouteAction from '@/meta/service/models/ui_resource_route_action';
 import { createServiceByModel } from '@/core/service/rpc';
-import type IrApplicationModel from '@/meta/service/models/ir_application';
-const IrApplication = createServiceByModel<typeof IrApplicationModel>('meta.IrApplication');
+import type MetaApplicationModel from '@/meta/service/models/application';
+const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -75,35 +75,35 @@ function setupAllowlistForFixtures(): void {
       'RoleUiResource:create',
       'RoleUiResource:delete',
 
-      'meta.IrUiResource:read',
-      'meta.IrUiResource:write',
-      'meta.IrUiResource:create',
-      'meta.IrUiResource:delete',
-      'IrUiResource:read',
-      'IrUiResource:write',
-      'IrUiResource:create',
-      'IrUiResource:delete',
+      'meta.MetaUiResource:read',
+      'meta.MetaUiResource:write',
+      'meta.MetaUiResource:create',
+      'meta.MetaUiResource:delete',
+      'MetaUiResource:read',
+      'MetaUiResource:write',
+      'MetaUiResource:create',
+      'MetaUiResource:delete',
 
-      'meta.IrUiResourceMenuRoute:read',
-      'meta.IrUiResourceMenuRoute:write',
-      'meta.IrUiResourceMenuRoute:create',
-      'meta.IrUiResourceMenuRoute:delete',
-      'IrUiResourceMenuRoute:read',
-      'IrUiResourceMenuRoute:write',
-      'IrUiResourceMenuRoute:create',
-      'IrUiResourceMenuRoute:delete',
+      'meta.MetaUiResourceMenuRoute:read',
+      'meta.MetaUiResourceMenuRoute:write',
+      'meta.MetaUiResourceMenuRoute:create',
+      'meta.MetaUiResourceMenuRoute:delete',
+      'MetaUiResourceMenuRoute:read',
+      'MetaUiResourceMenuRoute:write',
+      'MetaUiResourceMenuRoute:create',
+      'MetaUiResourceMenuRoute:delete',
 
-      'meta.IrUiResourceRouteAction:read',
-      'meta.IrUiResourceRouteAction:write',
-      'meta.IrUiResourceRouteAction:create',
-      'meta.IrUiResourceRouteAction:delete',
-      'IrUiResourceRouteAction:read',
-      'IrUiResourceRouteAction:write',
-      'IrUiResourceRouteAction:create',
-      'IrUiResourceRouteAction:delete',
+      'meta.MetaUiResourceRouteAction:read',
+      'meta.MetaUiResourceRouteAction:write',
+      'meta.MetaUiResourceRouteAction:create',
+      'meta.MetaUiResourceRouteAction:delete',
+      'MetaUiResourceRouteAction:read',
+      'MetaUiResourceRouteAction:write',
+      'MetaUiResourceRouteAction:create',
+      'MetaUiResourceRouteAction:delete',
 
-      'meta.IrApplication:read',
-      'IrApplication:read',
+      'meta.MetaApplication:read',
+      'MetaApplication:read',
     ],
   });
 }
@@ -131,26 +131,26 @@ async function createUiResource(input: {
   parentId?: string | null;
   sequence?: number;
 }): Promise<string> {
-  const row = await IrUiResource.Create(
+  const row = await MetaUiResource.Create(
     {
       Name: input.resourceId,
       Type: input.type,
       ParentId: input.parentId ? ({ Id: input.parentId } as any) : null,
       Sequence: Number.isFinite(input.sequence) ? Number(input.sequence) : undefined,
       Requires: [],
-      IrApplicationId: input.irApplicationId ?? null,
+      MetaApplicationId: input.irApplicationId ?? null,
       Module: 'auth',
     } as any,
     ['Id'] as any
   );
 
   const id = String((row as any)?.Id || '').trim();
-  if (!id) throw new Error(`IrUiResource create failed: ${input.resourceId}`);
+  if (!id) throw new Error(`MetaUiResource create failed: ${input.resourceId}`);
   return id;
 }
 
 async function createMenuRouteRelation(menuUiResourceId: string, routeUiResourceId: string): Promise<void> {
-  await IrUiResourceMenuRoute.Create(
+  await MetaUiResourceMenuRoute.Create(
     {
       MenuUiResourceId: { Id: menuUiResourceId } as any,
       RouteUiResourceId: { Id: routeUiResourceId } as any,
@@ -160,7 +160,7 @@ async function createMenuRouteRelation(menuUiResourceId: string, routeUiResource
 }
 
 async function createRouteActionRelation(routeUiResourceId: string, actionUiResourceId: string): Promise<void> {
-  await IrUiResourceRouteAction.Create(
+  await MetaUiResourceRouteAction.Create(
     {
       RouteUiResourceId: { Id: routeUiResourceId } as any,
       ActionUiResourceId: { Id: actionUiResourceId } as any,
@@ -170,7 +170,7 @@ async function createRouteActionRelation(routeUiResourceId: string, actionUiReso
 }
 
 async function getUiResourceParentPath(id: string): Promise<string> {
-  const rows = await IrUiResource.Search(
+  const rows = await MetaUiResource.Search(
     {
       And: [['Id', '=', id]],
     } as any,
@@ -180,7 +180,7 @@ async function getUiResourceParentPath(id: string): Promise<string> {
 }
 
 async function resolveApplicationId(applicationName: string): Promise<string> {
-  const rows = await IrApplication.Search(
+  const rows = await MetaApplication.Search(
     {
       And: [['Name', '=', applicationName]],
     } as any,
@@ -191,17 +191,17 @@ async function resolveApplicationId(applicationName: string): Promise<string> {
   return id;
 }
 
-async function listRoleUiGrants(roleId: string): Promise<Array<{ IrApplicationId: string; IrUiResourceId: string; Mode: string }>> {
+async function listRoleUiGrants(roleId: string): Promise<Array<{ MetaApplicationId: string; MetaUiResourceId: string; Mode: string }>> {
   const rows = await RoleUiResource.Search(
     {
       And: [['RoleId', '=', roleId]],
     } as any,
-    { fields: ['IrApplicationId', 'IrUiResourceId', 'Mode'], limit: 200 } as any
+    { fields: ['MetaApplicationId', 'MetaUiResourceId', 'Mode'], limit: 200 } as any
   );
 
   return (rows || []).map((row: any) => ({
-    IrApplicationId: String(row?.IrApplicationId || '').trim(),
-    IrUiResourceId: String(row?.IrUiResourceId || '').trim(),
+    MetaApplicationId: String(row?.MetaApplicationId || '').trim(),
+    MetaUiResourceId: String(row?.MetaUiResourceId || '').trim(),
     Mode: String(row?.Mode || '').trim(),
   }));
 }
@@ -234,15 +234,15 @@ test('Role.Create with AccessUiResourceIds writes allow resource-scope grants', 
     const grants = await listRoleUiGrants(roleId);
 
     const allowResourceIds = grants
-      .filter(g => g.Mode === 'allow' && g.IrUiResourceId && !g.IrApplicationId)
-      .map(g => g.IrUiResourceId)
+      .filter(g => g.Mode === 'allow' && g.MetaUiResourceId && !g.MetaApplicationId)
+      .map(g => g.MetaUiResourceId)
       .sort();
 
     expect(allowResourceIds).toEqual([resourceA, resourceB].sort());
   });
 });
 
-test('IrUiResource.Create keeps ParentPath empty for non-MENU resources', async () => {
+test('MetaUiResource.Create keeps ParentPath empty for non-MENU resources', async () => {
   resetRequestContext();
   setupAllowlistForFixtures();
 
@@ -261,7 +261,7 @@ test('IrUiResource.Create keeps ParentPath empty for non-MENU resources', async 
   });
 });
 
-test('IrUiResource.Childs returns one-level sorted projection without recursion', async () => {
+test('MetaUiResource.Childs returns one-level sorted projection without recursion', async () => {
   resetRequestContext();
   setupAllowlistForFixtures();
 
@@ -304,7 +304,7 @@ test('IrUiResource.Childs returns one-level sorted projection without recursion'
     await createRouteActionRelation(routeAId, actionA2Id);
     await createRouteActionRelation(routeAId, actionA1Id);
 
-    const [menuRoot] = await IrUiResource.Search(
+    const [menuRoot] = await MetaUiResource.Search(
       {
         And: [['Id', '=', menuRootId]],
       } as any,
@@ -319,7 +319,7 @@ test('IrUiResource.Childs returns one-level sorted projection without recursion'
       })
     ).toBe(false);
 
-    const [routeA] = await IrUiResource.Search(
+    const [routeA] = await MetaUiResource.Search(
       {
         And: [['Id', '=', routeAId]],
       } as any,
@@ -328,7 +328,7 @@ test('IrUiResource.Childs returns one-level sorted projection without recursion'
     const routeChilds = ((routeA as any)?.Childs || []) as any[];
     expect(routeChilds.map(row => String(row?.Id || ''))).toEqual([actionA1Id, actionA2Id]);
 
-    const [actionA1] = await IrUiResource.Search(
+    const [actionA1] = await MetaUiResource.Search(
       {
         And: [['Id', '=', actionA1Id]],
       } as any,
@@ -365,26 +365,26 @@ test('Role.UpdateById with AccessUiResourceIds replaces allow resource-scope onl
         {
           RoleId: { Id: role.id } as any,
           Mode: 'allow',
-          IrApplicationId: null,
-          IrUiResourceId: allowOld,
+          MetaApplicationId: null,
+          MetaUiResourceId: allowOld,
         },
         {
           RoleId: { Id: role.id } as any,
           Mode: 'deny',
-          IrApplicationId: null,
-          IrUiResourceId: denyKeep,
+          MetaApplicationId: null,
+          MetaUiResourceId: denyKeep,
         },
         {
           RoleId: { Id: role.id } as any,
           Mode: 'allow',
-          IrApplicationId: appId,
-          IrUiResourceId: null,
+          MetaApplicationId: appId,
+          MetaUiResourceId: null,
         },
         {
           RoleId: { Id: role.id } as any,
           Mode: 'deny',
-          IrApplicationId: null,
-          IrUiResourceId: null,
+          MetaApplicationId: null,
+          MetaUiResourceId: null,
         },
       ] as any,
       ['Id'] as any
@@ -400,11 +400,11 @@ test('Role.UpdateById with AccessUiResourceIds replaces allow resource-scope onl
 
     const grants = await listRoleUiGrants(role.id);
 
-    const hasAllowOld = grants.some(g => g.Mode === 'allow' && g.IrUiResourceId === allowOld && !g.IrApplicationId);
-    const hasAllowNew = grants.some(g => g.Mode === 'allow' && g.IrUiResourceId === allowNew && !g.IrApplicationId);
-    const hasDenyKeep = grants.some(g => g.Mode === 'deny' && g.IrUiResourceId === denyKeep && !g.IrApplicationId);
-    const hasAppScope = grants.some(g => g.Mode === 'allow' && !g.IrUiResourceId && g.IrApplicationId === appId);
-    const hasGlobalDeny = grants.some(g => g.Mode === 'deny' && !g.IrUiResourceId && !g.IrApplicationId);
+    const hasAllowOld = grants.some(g => g.Mode === 'allow' && g.MetaUiResourceId === allowOld && !g.MetaApplicationId);
+    const hasAllowNew = grants.some(g => g.Mode === 'allow' && g.MetaUiResourceId === allowNew && !g.MetaApplicationId);
+    const hasDenyKeep = grants.some(g => g.Mode === 'deny' && g.MetaUiResourceId === denyKeep && !g.MetaApplicationId);
+    const hasAppScope = grants.some(g => g.Mode === 'allow' && !g.MetaUiResourceId && g.MetaApplicationId === appId);
+    const hasGlobalDeny = grants.some(g => g.Mode === 'deny' && !g.MetaUiResourceId && !g.MetaApplicationId);
 
     expect(hasAllowOld).toBe(false);
     expect(hasAllowNew).toBe(true);
@@ -435,20 +435,20 @@ test('Role.UpdateById returns refreshed UiResources after clearing AccessUiResou
         {
           RoleId: { Id: role.id } as any,
           Mode: 'allow',
-          IrApplicationId: null,
-          IrUiResourceId: allowA,
+          MetaApplicationId: null,
+          MetaUiResourceId: allowA,
         },
         {
           RoleId: { Id: role.id } as any,
           Mode: 'allow',
-          IrApplicationId: null,
-          IrUiResourceId: allowB,
+          MetaApplicationId: null,
+          MetaUiResourceId: allowB,
         },
         {
           RoleId: { Id: role.id } as any,
           Mode: 'allow',
-          IrApplicationId: null,
-          IrUiResourceId: null,
+          MetaApplicationId: null,
+          MetaUiResourceId: null,
         },
       ] as any,
       ['Id'] as any
@@ -459,7 +459,7 @@ test('Role.UpdateById returns refreshed UiResources after clearing AccessUiResou
       {
         AccessUiResourceIds: [],
       } as any,
-      ['Id', 'AccessUiResourceIds', { UiResources: ['Mode', 'IrApplicationId', 'IrUiResourceId'] }] as any
+      ['Id', 'AccessUiResourceIds', { UiResources: ['Mode', 'MetaApplicationId', 'MetaUiResourceId'] }] as any
     )) as any;
 
     const updatedAccess = Array.isArray(updated?.AccessUiResourceIds) ? updated.AccessUiResourceIds : [];
@@ -473,16 +473,16 @@ test('Role.UpdateById returns refreshed UiResources after clearing AccessUiResou
       const mode = String(row?.Mode || '')
         .trim()
         .toLowerCase();
-      const uiId = String(row?.IrUiResourceId || '').trim();
-      const appId = String(row?.IrApplicationId || '').trim();
+      const uiId = String(row?.MetaUiResourceId || '').trim();
+      const appId = String(row?.MetaApplicationId || '').trim();
       return mode === 'allow' && !!uiId && !appId;
     });
     const hasGlobalAllow = rows.some((row: any) => {
       const mode = String(row?.Mode || '')
         .trim()
         .toLowerCase();
-      const uiId = String(row?.IrUiResourceId || '').trim();
-      const appId = String(row?.IrApplicationId || '').trim();
+      const uiId = String(row?.MetaUiResourceId || '').trim();
+      const appId = String(row?.MetaApplicationId || '').trim();
       return mode === 'allow' && !uiId && !appId;
     });
 

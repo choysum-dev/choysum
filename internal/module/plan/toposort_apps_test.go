@@ -11,7 +11,7 @@ import (
 )
 
 func TestStableTopoSortApplicationsForTargets_DependencyOrder(t *testing.T) {
-	mods := []meta.IrModule{
+	mods := []meta.Module{
 		{Name: "modB", ApplicationStr: "b", DependsStr: datatypes.JSON(`[]`)},
 		{Name: "modA", ApplicationStr: "a", DependsStr: datatypes.JSON(`["modB"]`)},
 	}
@@ -26,7 +26,7 @@ func TestStableTopoSortApplicationsForTargets_DependencyOrder(t *testing.T) {
 }
 
 func TestStableTopoSortApplicationsForTargets_AlphabeticalWithinLevel(t *testing.T) {
-	mods := []meta.IrModule{
+	mods := []meta.Module{
 		{Name: "mA", ApplicationStr: "a", DependsStr: datatypes.JSON(`[]`)},
 		{Name: "mC", ApplicationStr: "c", DependsStr: datatypes.JSON(`[]`)},
 		{Name: "mB", ApplicationStr: "b", DependsStr: datatypes.JSON(`[]`)},
@@ -42,7 +42,7 @@ func TestStableTopoSortApplicationsForTargets_AlphabeticalWithinLevel(t *testing
 }
 
 func TestStableTopoSortApplicationsForTargets_CycleFallsBackAlphabetical(t *testing.T) {
-	mods := []meta.IrModule{
+	mods := []meta.Module{
 		{Name: "modA", ApplicationStr: "a", DependsStr: datatypes.JSON(`["modB"]`)},
 		{Name: "modB", ApplicationStr: "b", DependsStr: datatypes.JSON(`["modA"]`)},
 	}

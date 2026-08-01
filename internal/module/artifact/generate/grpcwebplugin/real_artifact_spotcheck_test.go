@@ -37,7 +37,7 @@ func TestRealArtifactSpotcheck(t *testing.T) {
 
 	rules := []artifactSpotcheckRule{
 		{Label: "WKT type import", File: metaPBFile, Pattern: "import type { Value } from '@bufbuild/protobuf/wkt';"},
-		{Label: "Service export", File: metaPBFile, Pattern: "export const IrApplication = serviceDesc(file_meta, 0);"},
+		{Label: "Service export", File: metaPBFile, Pattern: "export const Application = serviceDesc(file_meta, 0);"},
 		{Label: "Struct map typing", File: structPBFile, Pattern: "fields: Record<string, Value>;"},
 		{Label: "Struct oneof optional", File: structPBFile, Pattern: "nullValue?: NullValue;"},
 		{Label: "Any WKT generated type", File: anyPBFile, Pattern: "export type Any = Message<'google.protobuf.Any'> & {", Optional: true},

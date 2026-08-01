@@ -19,17 +19,17 @@ test('buildAclAggregation ignores Source=ui and tolerates null Search (UI-Option
     (RoleMethodAccess as any).Search = async () => [
       {
         RoleId: 'role_1',
-        IrServiceId: null,
-        IrModelId: null,
-        IrApplicationId: null,
+        MetaServiceId: null,
+        MetaModelId: null,
+        MetaApplicationId: null,
         Mode: 'allow',
         Source: 'ui',
       },
       {
         RoleId: 'role_1',
-        IrServiceId: null,
-        IrModelId: null,
-        IrApplicationId: null,
+        MetaServiceId: null,
+        MetaModelId: null,
+        MetaApplicationId: null,
         Mode: 'deny',
         // Source omitted → treated as manual
       },

@@ -25,7 +25,7 @@ type execCtxPayload struct {
 	payload   map[string]any
 }
 
-func BuildJsContext(ctx context.Context, runtimeScope scope.Scope, module *meta.IrModule, version string, fromVersion string) execCtxPayload {
+func BuildJsContext(ctx context.Context, runtimeScope scope.Scope, module *meta.Module, version string, fromVersion string) execCtxPayload {
 	traceId := ""
 	spanId := ""
 	span := trace.SpanFromContext(ctx)
@@ -112,7 +112,7 @@ func BuildExecContext(ctx context.Context, runtimeScope scope.Scope) context.Con
 	return execCtx
 }
 
-func LoadRuntimeScripts(runtimeScope scope.Scope, module *meta.IrModule) ([]*jsengine.JsScript, error) {
+func LoadRuntimeScripts(runtimeScope scope.Scope, module *meta.Module) ([]*jsengine.JsScript, error) {
 	if runtimeScope == nil || module == nil {
 		return nil, fmt.Errorf("missing env or module")
 	}

@@ -28,7 +28,7 @@ const frameworkModuleName = "core"
 //     modules/core/i18n into that same host table as Module=core.
 //   - Framework module (application == "core"): fan-out core PO into every
 //     installed host application table; never create core_translation_term.
-func importModuleTerminology(runtimeScope scope.Scope, mod *meta.IrModule, modulesPath string) error {
+func importModuleTerminology(runtimeScope scope.Scope, mod *meta.Module, modulesPath string) error {
 	if mod == nil {
 		return nil
 	}
@@ -60,7 +60,7 @@ func importModuleTerminology(runtimeScope scope.Scope, mod *meta.IrModule, modul
 // deleteModuleTerminology removes TranslationTerm rows for the module and invalidates cache.
 // Framework module uninstall does not purge Module=core rows from host app tables
 // (those stay until the host application itself is removed / cleaned).
-func deleteModuleTerminology(runtimeScope scope.Scope, mod *meta.IrModule) error {
+func deleteModuleTerminology(runtimeScope scope.Scope, mod *meta.Module) error {
 	if mod == nil {
 		return nil
 	}
@@ -76,7 +76,7 @@ func deleteModuleTerminology(runtimeScope scope.Scope, mod *meta.IrModule) error
 	return nil
 }
 
-func importFrameworkTerminology(runtimeScope scope.Scope, hostApplication, modulesPath string, hint *meta.IrModule) error {
+func importFrameworkTerminology(runtimeScope scope.Scope, hostApplication, modulesPath string, hint *meta.Module) error {
 	hostApplication = strings.TrimSpace(hostApplication)
 	if hostApplication == "" || hostApplication == frameworkModuleName {
 		return nil
@@ -92,7 +92,7 @@ func importFrameworkTerminology(runtimeScope scope.Scope, hostApplication, modul
 	return nil
 }
 
-func importFrameworkTerminologyIntoAllApps(runtimeScope scope.Scope, modulesPath string, hint *meta.IrModule) error {
+func importFrameworkTerminologyIntoAllApps(runtimeScope scope.Scope, modulesPath string, hint *meta.Module) error {
 	hosts, err := listHostApplications(runtimeScope)
 	if err != nil {
 		return err
@@ -110,10 +110,10 @@ func listHostApplications(runtimeScope scope.Scope) ([]string, error) {
 		return nil, nil
 	}
 	session := runtimeScope.Session()
-	if !session.Migrator().HasTable((&meta.IrModule{}).TableName()) {
+	if !session.Migrator().HasTable((&meta.Module{}).TableName()) {
 		return nil, nil
 	}
-	var modules []meta.IrModule
+	var modules []meta.Module
 	if err := session.Where("status = ?", meta.Installed).Find(&modules).Error; err != nil {
 		return nil, xfmt.Errorf("list host applications for framework i18n: %w", err)
 	}
@@ -133,7 +133,7 @@ func listHostApplications(runtimeScope scope.Scope) ([]string, error) {
 	return out, nil
 }
 
-func resolveModuleRoot(mod *meta.IrModule, modulesPath, moduleName string) string {
+func resolveModuleRoot(mod *meta.Module, modulesPath, moduleName string) string {
 	if mod != nil {
 		if root := strings.TrimSpace(mod.Path); root != "" {
 			return root
@@ -145,7 +145,7 @@ func resolveModuleRoot(mod *meta.IrModule, modulesPath, moduleName string) strin
 	return filepath.Join(modulesPath, moduleName)
 }
 
-func resolveFrameworkModuleRoot(modulesPath string, hint *meta.IrModule) string {
+func resolveFrameworkModuleRoot(modulesPath string, hint *meta.Module) string {
 	if hint != nil && strings.TrimSpace(hint.Name) == frameworkModuleName {
 		if root := strings.TrimSpace(hint.Path); root != "" {
 			return root

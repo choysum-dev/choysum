@@ -14,7 +14,7 @@ import RoleMethodAccess from './role_method_access';
 import RoleFieldRule from './role_field_rule';
 import RoleUiResource from './role_ui_resource';
 import { normalizeRefId } from '@/core/service/utils/normalization';
-import type IrUiResource from '@/meta/service/models/ir_ui_resource';
+import type MetaUiResource from '@/meta/service/models/ui_resource';
 import {
   applyAccessWriteTransformOnCreate,
   applyAccessWriteTransformOnUpdate,
@@ -111,9 +111,9 @@ export default class Role extends BaseModel {
   /**
    * UI-tree editor projection that only carries allow/resource-level UI resource Ids.
    */
-  @Field<IrUiResource>({
+  @Field<MetaUiResource>({
     type: 'ManyToManyRef',
-    relation: { targetModel: 'meta.IrUiResource' },
+    relation: { targetModel: 'meta.MetaUiResource' },
     string: _lt('Accessible UI Resources', { scope: 'auth.model.Role.fields' }),
     help: _lt('UI tree selection; drives menu and action visibility for this role.', {
       scope: 'auth.model.Role.fields',

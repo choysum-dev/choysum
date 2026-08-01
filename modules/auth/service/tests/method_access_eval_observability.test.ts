@@ -9,7 +9,7 @@ test('evaluateRoleMethodAccess returns deny allow and empty diagnostics with hit
 
   try {
     (RoleMethodAccess as any).Search = async () => [{ Id: 'ma_deny', Mode: 'deny' }, { Id: 'ma_allow', Mode: 'allow' }];
-    expect(await evaluateRoleMethodAccess(['role_1'], [[['IrModelId', '=', 'm1']] as any])).toEqual({
+    expect(await evaluateRoleMethodAccess(['role_1'], [[['MetaModelId', '=', 'm1']] as any])).toEqual({
       denied: true,
       allowed: false,
       hitRuleIds: ['ma_deny'],
@@ -22,7 +22,7 @@ test('evaluateRoleMethodAccess returns deny allow and empty diagnostics with hit
       { Id: 'ma_deny_wins', Mode: 'deny' },
       { Id: 'ma_allow_after', Mode: 'allow' },
     ];
-    expect(await evaluateRoleMethodAccess(['role_1'], [[['IrModelId', '=', 'm1']] as any])).toEqual({
+    expect(await evaluateRoleMethodAccess(['role_1'], [[['MetaModelId', '=', 'm1']] as any])).toEqual({
       denied: true,
       allowed: false,
       hitRuleIds: ['ma_deny_wins'],
@@ -35,7 +35,7 @@ test('evaluateRoleMethodAccess returns deny allow and empty diagnostics with hit
       { Id: 'ma_1', Mode: 'allow' },
       { Mode: 'other' },
     ];
-    expect(await evaluateRoleMethodAccess(['role_1'], [[['IrModelId', '=', 'm1']] as any])).toEqual({
+    expect(await evaluateRoleMethodAccess(['role_1'], [[['MetaModelId', '=', 'm1']] as any])).toEqual({
       denied: false,
       allowed: true,
       hitRuleIds: ['ma_1', 'ma_2'],
@@ -43,7 +43,7 @@ test('evaluateRoleMethodAccess returns deny allow and empty diagnostics with hit
     });
 
     (RoleMethodAccess as any).Search = async () => [{ Id: null, Mode: 'allow' }, { Mode: 'deny' }];
-    expect(await evaluateRoleMethodAccess(['role_1'], [[['IrModelId', '=', 'm1']] as any])).toEqual({
+    expect(await evaluateRoleMethodAccess(['role_1'], [[['MetaModelId', '=', 'm1']] as any])).toEqual({
       denied: true,
       allowed: false,
       hitRuleIds: [],
@@ -51,7 +51,7 @@ test('evaluateRoleMethodAccess returns deny allow and empty diagnostics with hit
     });
 
     (RoleMethodAccess as any).Search = async () => [];
-    expect(await evaluateRoleMethodAccess(['role_1'], [[['IrModelId', '=', 'm1']] as any])).toEqual({
+    expect(await evaluateRoleMethodAccess(['role_1'], [[['MetaModelId', '=', 'm1']] as any])).toEqual({
       denied: false,
       allowed: false,
       hitRuleIds: [],
@@ -59,7 +59,7 @@ test('evaluateRoleMethodAccess returns deny allow and empty diagnostics with hit
     });
 
     (RoleMethodAccess as any).Search = async () => null;
-    expect(await evaluateRoleMethodAccess(['role_1'], [[['IrModelId', '=', 'm1']] as any])).toEqual({
+    expect(await evaluateRoleMethodAccess(['role_1'], [[['MetaModelId', '=', 'm1']] as any])).toEqual({
       denied: false,
       allowed: false,
       hitRuleIds: [],
@@ -71,7 +71,7 @@ test('evaluateRoleMethodAccess returns deny allow and empty diagnostics with hit
       { Id: 'ma_ui_only', Mode: 'allow', Source: 'ui' },
       { Id: 'ma_manual', Mode: 'allow', Source: 'manual' },
     ];
-    expect(await evaluateRoleMethodAccess(['role_1'], [[['IrModelId', '=', 'm1']] as any])).toEqual({
+    expect(await evaluateRoleMethodAccess(['role_1'], [[['MetaModelId', '=', 'm1']] as any])).toEqual({
       denied: false,
       allowed: true,
       hitRuleIds: ['ma_manual'],
@@ -79,7 +79,7 @@ test('evaluateRoleMethodAccess returns deny allow and empty diagnostics with hit
     });
 
     (RoleMethodAccess as any).Search = async () => [{ Id: 'ma_ui_deny', Mode: 'deny', Source: 'ui' }];
-    expect(await evaluateRoleMethodAccess(['role_1'], [[['IrModelId', '=', 'm1']] as any])).toEqual({
+    expect(await evaluateRoleMethodAccess(['role_1'], [[['MetaModelId', '=', 'm1']] as any])).toEqual({
       denied: false,
       allowed: false,
       hitRuleIds: [],
@@ -93,7 +93,7 @@ test('evaluateRoleMethodAccess returns deny allow and empty diagnostics with hit
 test('evaluateUiDerivedMethodDecision returns reason and hitRuleIds', async () => {
   const { evaluateUiDerivedMethodDecision } = await import('@/auth/service/models/_user_method_access');
   const RoleUiResource = (await import('@/auth/service/models/role_ui_resource')).default;
-  const IrUiResource = (await import('@/meta/service/models/ir_ui_resource')).default;
+  const MetaUiResource = (await import('@/meta/service/models/ui_resource')).default;
 
   // Isolate from sibling tests that may have warmed UI-grant request caches.
   const root: any = (globalThis as any).$choysum ?? {};
@@ -102,17 +102,17 @@ test('evaluateUiDerivedMethodDecision returns reason and hitRuleIds', async () =
   (globalThis as any).$choysum = root;
 
   const originalRoleUiSearch = (RoleUiResource as any).Search;
-  const originalIrUiSearch = (IrUiResource as any).Search;
+  const originalIrUiSearch = (MetaUiResource as any).Search;
 
   (RoleUiResource as any).Search = async () => [
-    { IrApplicationId: null, IrUiResourceId: null, Mode: 'allow' },
-    { IrApplicationId: null, IrUiResourceId: 'RES-E5-ALLOW', Mode: 'allow' },
+    { MetaApplicationId: null, MetaUiResourceId: null, Mode: 'allow' },
+    { MetaApplicationId: null, MetaUiResourceId: 'RES-E5-ALLOW', Mode: 'allow' },
   ];
-  (IrUiResource as any).Search = async () => [
+  (MetaUiResource as any).Search = async () => [
     {
       Id: 'RES-E5-ALLOW',
       Name: 'res-e5-allow',
-      IrApplicationId: 'APP-E5',
+      MetaApplicationId: 'APP-E5',
       Requires: ['rpc:/auth.User/browse'],
     },
   ];
@@ -131,6 +131,6 @@ test('evaluateUiDerivedMethodDecision returns reason and hitRuleIds', async () =
     expect(empty.hitRuleIds).toEqual([]);
   } finally {
     (RoleUiResource as any).Search = originalRoleUiSearch;
-    (IrUiResource as any).Search = originalIrUiSearch;
+    (MetaUiResource as any).Search = originalIrUiSearch;
   }
 });

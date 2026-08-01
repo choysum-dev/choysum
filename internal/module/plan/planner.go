@@ -15,12 +15,12 @@ import (
 
 type Resolver interface {
 	// Peek returns a module described by its manifest without persisting it to modules/.
-	Peek(ctx context.Context, name string) (*meta.IrModule, error)
+	Peek(ctx context.Context, name string) (*meta.Module, error)
 	// Load returns the module from DB if it exists (typically installed).
-	Load(name string) (*meta.IrModule, error)
+	Load(name string) (*meta.Module, error)
 }
 
-func BuildPlan(ctx context.Context, op OpType, root *meta.IrModule, r Resolver) (Plan, error) {
+func BuildPlan(ctx context.Context, op OpType, root *meta.Module, r Resolver) (Plan, error) {
 	if root == nil {
 		return Plan{}, fmt.Errorf("root module is nil")
 	}
@@ -35,7 +35,7 @@ func BuildPlan(ctx context.Context, op OpType, root *meta.IrModule, r Resolver) 
 
 	apps := map[string]bool{}
 	needsGlobalWebBuild := false
-	addApp := func(mod *meta.IrModule) {
+	addApp := func(mod *meta.Module) {
 		if mod == nil {
 			return
 		}
@@ -99,7 +99,7 @@ func BuildPlan(ctx context.Context, op OpType, root *meta.IrModule, r Resolver) 
 	return plan, nil
 }
 
-func topoByDependsStr(ctx context.Context, root *meta.IrModule, r Resolver, addApp func(*meta.IrModule)) ([]string, error) {
+func topoByDependsStr(ctx context.Context, root *meta.Module, r Resolver, addApp func(*meta.Module)) ([]string, error) {
 	visited := map[string]bool{}
 	stack := []string{}
 	onStack := map[string]bool{}
@@ -107,8 +107,8 @@ func topoByDependsStr(ctx context.Context, root *meta.IrModule, r Resolver, addA
 	resolvedModules := 0
 	resolvedDependencies := 0
 
-	var dfs func(mod *meta.IrModule) error
-	dfs = func(mod *meta.IrModule) error {
+	var dfs func(mod *meta.Module) error
+	dfs = func(mod *meta.Module) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -206,7 +206,7 @@ func topoByDependsStr(ctx context.Context, root *meta.IrModule, r Resolver, addA
 	return order, nil
 }
 
-func reverseTopoByDependents(root *meta.IrModule, r Resolver, addApp func(*meta.IrModule)) ([]string, error) {
+func reverseTopoByDependents(root *meta.Module, r Resolver, addApp func(*meta.Module)) ([]string, error) {
 	visited := map[string]bool{}
 	stack := []string{}
 	onStack := map[string]bool{}

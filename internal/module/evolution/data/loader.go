@@ -57,7 +57,7 @@ type moduleRules struct {
 	Allowed    map[string]struct{}
 }
 
-func buildModuleRules(tx *gorm.DB, owner *meta.IrModule) (*moduleRules, error) {
+func buildModuleRules(tx *gorm.DB, owner *meta.Module) (*moduleRules, error) {
 	if owner == nil {
 		return nil, xfmt.Errorf("nil owner module")
 	}
@@ -91,7 +91,7 @@ func buildModuleRules(tx *gorm.DB, owner *meta.IrModule) (*moduleRules, error) {
 	return &moduleRules{OwnerName: ownerName, OwnerApp: ownerApp, ModuleInfo: modules, Allowed: allowed}, nil
 }
 
-func buildModuleRulesFromOwner(owner *meta.IrModule) (*moduleRules, error) {
+func buildModuleRulesFromOwner(owner *meta.Module) (*moduleRules, error) {
 	if owner == nil {
 		return nil, xfmt.Errorf("nil owner module")
 	}
@@ -107,7 +107,7 @@ func buildModuleRulesFromOwner(owner *meta.IrModule) (*moduleRules, error) {
 		ownerName: {Application: ownerApp},
 	}
 	allowed := map[string]struct{}{ownerName: {}}
-	queue := make([]*meta.IrModule, 0, len(owner.Dependencies))
+	queue := make([]*meta.Module, 0, len(owner.Dependencies))
 	queue = append(queue, owner.Dependencies...)
 	seen := map[string]struct{}{ownerName: {}}
 	for len(queue) > 0 {
@@ -146,7 +146,7 @@ func loadModuleIndex(tx *gorm.DB) (map[string]moduleInfo, map[string]string, err
 		Name        string `gorm:"column:name"`
 		Application string `gorm:"column:application_str"`
 	}
-	if err := tx.Model(&meta.IrModule{}).Select("id", "name", "application_str").Find(&rows).Error; err != nil {
+	if err := tx.Model(&meta.Module{}).Select("id", "name", "application_str").Find(&rows).Error; err != nil {
 		return nil, nil, xfmt.Errorf("load module index: %w", err)
 	}
 	modules := make(map[string]moduleInfo, len(rows))
@@ -171,7 +171,7 @@ func dependencyClosure(tx *gorm.DB, ownerID string, idToName map[string]string) 
 		ModuleID       string `gorm:"column:module_id"`
 		DependModuleID string `gorm:"column:depend_module_id"`
 	}
-	if err := tx.Table("meta_ir_module_dependencies").Select("module_id", "depend_module_id").Find(&rows).Error; err != nil {
+	if err := tx.Table("meta_module_dependencies").Select("module_id", "depend_module_id").Find(&rows).Error; err != nil {
 		return nil, xfmt.Errorf("load module dependencies: %w", err)
 	}
 	adj := map[string][]string{}
@@ -450,7 +450,7 @@ func newRefLoadError(kind LoadErrorKind, code string, filePath string, recordInd
 	}
 }
 
-func (l *Loader) ApplyModule(ctx context.Context, mod *meta.IrModule, opts ApplyOptions) error {
+func (l *Loader) ApplyModule(ctx context.Context, mod *meta.Module, opts ApplyOptions) error {
 	if l == nil || l.runtimeScope == nil {
 		return xfmt.Errorf("nil loader")
 	}
@@ -483,7 +483,7 @@ func (l *Loader) ApplyModule(ctx context.Context, mod *meta.IrModule, opts Apply
 
 // ApplyFiles applies the given relative data files (relative to the module root).
 // It enforces the same ownership and validation rules as ApplyModule.
-func (l *Loader) ApplyFiles(ctx context.Context, mod *meta.IrModule, files []string) error {
+func (l *Loader) ApplyFiles(ctx context.Context, mod *meta.Module, files []string) error {
 	if l == nil || l.runtimeScope == nil {
 		return xfmt.Errorf("nil loader")
 	}
@@ -541,7 +541,7 @@ func loaderTransactionDB(runtimeScope scope.Scope, tx scope.Transaction) (*gorm.
 	return runtimeScope.Session().DB.WithContext(effectiveCtx), nil
 }
 
-func (l *Loader) applyFiles(ctx context.Context, mod *meta.IrModule, relPaths []string) error {
+func (l *Loader) applyFiles(ctx context.Context, mod *meta.Module, relPaths []string) error {
 	if len(relPaths) == 0 {
 		return nil
 	}
@@ -601,7 +601,7 @@ func (l *Loader) applyFiles(ctx context.Context, mod *meta.IrModule, relPaths []
 //
 // Forward refs within the same apply batch are supported by reordering.
 // Cycles (including cross-file) are rejected with a structured error including the cycle chain.
-func (l *Loader) planBatchRecordOrder(tx *gorm.DB, owner *meta.IrModule, records []batchRecord) ([]int, error) {
+func (l *Loader) planBatchRecordOrder(tx *gorm.DB, owner *meta.Module, records []batchRecord) ([]int, error) {
 	if owner == nil {
 		return nil, xfmt.Errorf("nil owner module")
 	}
@@ -694,9 +694,9 @@ func (l *Loader) planBatchRecordOrder(tx *gorm.DB, owner *meta.IrModule, records
 				ids = append(ids, id)
 			}
 			sort.Strings(ids)
-			var rows []metadata.IrModelData
-			if err := tx.Model(&metadata.IrModelData{}).Select("external_id").Where("module = ? AND external_id IN ?", mod, ids).Find(&rows).Error; err != nil {
-				return nil, xfmt.Errorf("lookup ir_model_data for refs: %w", err)
+			var rows []metadata.ModelData
+			if err := tx.Model(&metadata.ModelData{}).Select("external_id").Where("module = ? AND external_id IN ?", mod, ids).Find(&rows).Error; err != nil {
+				return nil, xfmt.Errorf("lookup model_data for refs: %w", err)
 			}
 			m := map[string]struct{}{}
 			for _, r := range rows {
@@ -832,7 +832,7 @@ func topoOrderOrCycleBatch(records []batchRecord, dep [][]int, adj [][]int, inde
 	return nil, le
 }
 
-func (l *Loader) applyFile(ctx context.Context, mod *meta.IrModule, absPath string) error {
+func (l *Loader) applyFile(ctx context.Context, mod *meta.Module, absPath string) error {
 	b, err := os.ReadFile(absPath)
 	if err != nil {
 		return xfmt.Errorf("read data file %s: %w", absPath, err)
@@ -863,7 +863,7 @@ func (l *Loader) applyFile(ctx context.Context, mod *meta.IrModule, absPath stri
 //
 // Forward refs within the same file are supported by reordering.
 // Cycles are rejected with a structured error including the cycle chain.
-func (l *Loader) planRecordOrder(tx *gorm.DB, owner *meta.IrModule, filePath string, records []record) ([]int, error) {
+func (l *Loader) planRecordOrder(tx *gorm.DB, owner *meta.Module, filePath string, records []record) ([]int, error) {
 	if owner == nil {
 		return nil, xfmt.Errorf("nil owner module")
 	}
@@ -962,9 +962,9 @@ func (l *Loader) planRecordOrder(tx *gorm.DB, owner *meta.IrModule, filePath str
 			ids = append(ids, id)
 		}
 		sort.Strings(ids)
-		var rows []metadata.IrModelData
-		if err := tx.Model(&metadata.IrModelData{}).Select("external_id").Where("module = ? AND external_id IN ?", mod, ids).Find(&rows).Error; err != nil {
-			return nil, xfmt.Errorf("lookup ir_model_data for refs: %w", err)
+		var rows []metadata.ModelData
+		if err := tx.Model(&metadata.ModelData{}).Select("external_id").Where("module = ? AND external_id IN ?", mod, ids).Find(&rows).Error; err != nil {
+			return nil, xfmt.Errorf("lookup model_data for refs: %w", err)
 		}
 		m := map[string]struct{}{}
 		for _, r := range rows {
@@ -1165,7 +1165,7 @@ func (l *Loader) applyRecord(tx *gorm.DB, filePath string, recordIndex int, rec 
 	if err != nil {
 		return &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeInvalidModel, FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, ExternalID: externalID, Model: modelFull, Message: "invalid model", Cause: err}
 	}
-	model := &meta.IrModel{}
+	model := &meta.Model{}
 	if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
 		return wrapLoadErrorWithCode(xfmt.Errorf("resolve model %s: %w", modelFull, err), filePath, recordIndex, rec, LoadErrorKindDB, LoadErrorCodeDBResolveModel, "resolve model")
 	}
@@ -1184,11 +1184,11 @@ func (l *Loader) applyRecord(tx *gorm.DB, filePath string, recordIndex int, rec 
 		return err
 	}
 
-	mapping := &metadata.IrModelData{}
+	mapping := &metadata.ModelData{}
 	err = tx.Where("module = ? AND external_id = ?", moduleName, externalID).First(mapping).Error
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return wrapLoadErrorWithCode(xfmt.Errorf("lookup ir_model_data: %w", err), filePath, recordIndex, rec, LoadErrorKindDB, LoadErrorCodeDBLookupModelData, "lookup ir_model_data")
+			return wrapLoadErrorWithCode(xfmt.Errorf("lookup model_data: %w", err), filePath, recordIndex, rec, LoadErrorKindDB, LoadErrorCodeDBLookupModelData, "lookup model_data")
 		}
 
 		resID := xid.New().String()
@@ -1205,7 +1205,7 @@ func (l *Loader) applyRecord(tx *gorm.DB, filePath string, recordIndex int, rec 
 		mapping.ResID = resID
 		mapping.NoUpdate = noUpdate
 		if err := tx.Create(mapping).Error; err != nil {
-			return wrapLoadErrorWithCode(xfmt.Errorf("insert ir_model_data: %w", err), filePath, recordIndex, rec, LoadErrorKindDB, LoadErrorCodeDBInsertModelData, "insert ir_model_data")
+			return wrapLoadErrorWithCode(xfmt.Errorf("insert model_data: %w", err), filePath, recordIndex, rec, LoadErrorKindDB, LoadErrorCodeDBInsertModelData, "insert model_data")
 		}
 		return nil
 	}
@@ -1221,13 +1221,13 @@ func (l *Loader) applyRecord(tx *gorm.DB, filePath string, recordIndex int, rec 
 
 	if noUpdate && !mapping.NoUpdate {
 		if err := tx.Model(mapping).Update("no_update", true).Error; err != nil {
-			return wrapLoadErrorWithCode(xfmt.Errorf("update ir_model_data.noupdate: %w", err), filePath, recordIndex, rec, LoadErrorKindDB, LoadErrorCodeDBUpdateModelDataNoUpdate, "update ir_model_data.noupdate")
+			return wrapLoadErrorWithCode(xfmt.Errorf("update model_data.noupdate: %w", err), filePath, recordIndex, rec, LoadErrorKindDB, LoadErrorCodeDBUpdateModelDataNoUpdate, "update model_data.noupdate")
 		}
 	}
 	return nil
 }
 
-func (l *Loader) resolveAndMapValues(tx *gorm.DB, filePath string, recordIndex int, rec record, model *meta.IrModel, values map[string]any) (map[string]any, error) {
+func (l *Loader) resolveAndMapValues(tx *gorm.DB, filePath string, recordIndex int, rec record, model *meta.Model, values map[string]any) (map[string]any, error) {
 	out := make(map[string]any, len(values))
 	keys := make([]string, 0, len(values))
 	for k := range values {
@@ -1419,7 +1419,7 @@ func (l *Loader) resolveRef(tx *gorm.DB, ref string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	mapping := &metadata.IrModelData{}
+	mapping := &metadata.ModelData{}
 	if err := tx.Where("module = ? AND external_id = ?", mod, externalID).First(mapping).Error; err != nil {
 		return "", xfmt.Errorf("resolve ref %s: %w", ref, err)
 	}
@@ -1770,12 +1770,12 @@ func (l *Loader) resolveRefBySearch(tx *gorm.DB, spec searchSpec) ([]string, err
 }
 
 // resolveSearchModel looks up a model by app.Model name and returns the model and its table name.
-func resolveSearchModel(tx *gorm.DB, modelFull string) (*meta.IrModel, string, error) {
+func resolveSearchModel(tx *gorm.DB, modelFull string) (*meta.Model, string, error) {
 	app, modelName, err := splitModel(modelFull)
 	if err != nil {
 		return nil, "", xfmt.Errorf("resolve search model %s: %w", modelFull, err)
 	}
-	model := &meta.IrModel{}
+	model := &meta.Model{}
 	if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
 		return nil, "", xfmt.Errorf("resolve search model %s: %w", modelFull, err)
 	}
@@ -1987,7 +1987,7 @@ func normalizeSearchField(field string) (string, error) {
 
 // detectSearchCardinality determines the expected cardinality for a search result.
 // Explicit hints from the search spec (limit=1 + orderBy → First) take precedence;
-// otherwise the field type in meta_ir_field is consulted (ManyToMany → ManyToMany,
+// otherwise the field type in meta_field is consulted (ManyToMany → ManyToMany,
 // default → ManyToOne).
 func (l *Loader) detectSearchCardinality(tx *gorm.DB, modelFull string, fieldName string, raw any) refCardinality {
 	spec, ok, _ := parseRefQuerySpec(raw)
@@ -1999,7 +1999,7 @@ func (l *Loader) detectSearchCardinality(tx *gorm.DB, modelFull string, fieldNam
 	return l.detectFieldCardinality(tx, modelFull, fieldName)
 }
 
-// detectFieldCardinality looks up the field type from meta_ir_field and returns the
+// detectFieldCardinality looks up the field type from meta_field and returns the
 // corresponding cardinality. It defaults to ManyToOne when the field or model cannot
 // be resolved. Results are cached per loader instance since model/field metadata is
 // static during a bootstrap apply run.
@@ -2022,7 +2022,7 @@ func (l *Loader) detectFieldCardinality(tx *gorm.DB, modelFull string, fieldName
 		return refCardinalityManyToOne
 	}
 
-	// Reuse modelCache to avoid a duplicate meta_ir_model query.
+	// Reuse modelCache to avoid a duplicate meta_model query.
 	modelCacheKey := strcase.ToSnake(modelFull)
 
 	l.mu.RLock()
@@ -2030,7 +2030,7 @@ func (l *Loader) detectFieldCardinality(tx *gorm.DB, modelFull string, fieldName
 	l.mu.RUnlock()
 
 	if !ok {
-		model := &meta.IrModel{}
+		model := &meta.Model{}
 		if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
 			l.mu.Lock()
 			l.fieldCardinalityCache[cacheKey] = refCardinalityManyToOne
@@ -2043,7 +2043,7 @@ func (l *Loader) detectFieldCardinality(tx *gorm.DB, modelFull string, fieldName
 		l.mu.Unlock()
 	}
 
-	field := &meta.IrField{}
+	field := &meta.Field{}
 	if err := tx.Where("model_id = ? AND name = ?", modelID, snake).First(field).Error; err != nil {
 		l.mu.Lock()
 		l.fieldCardinalityCache[cacheKey] = refCardinalityManyToOne
@@ -2093,7 +2093,7 @@ func enforceReferenceCardinality(ids []string, cardinality refCardinality, fileP
 
 // --- Shortcut reference resolvers -------------------------------------------------
 
-// resolveModelRef resolves a modelRef shortcut ("app.Model") to the IrModel ID.
+// resolveModelRef resolves a modelRef shortcut ("app.Model") to the Model ID.
 func (l *Loader) resolveModelRef(tx *gorm.DB, modelRef string) (string, error) {
 	key := strcase.ToSnake(modelRef)
 	l.mu.RLock()
@@ -2107,7 +2107,7 @@ func (l *Loader) resolveModelRef(tx *gorm.DB, modelRef string) (string, error) {
 	if err != nil {
 		return "", xfmt.Errorf("resolve modelRef %s: %w", modelRef, err)
 	}
-	model := &meta.IrModel{}
+	model := &meta.Model{}
 	if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
 		return "", xfmt.Errorf("resolve modelRef %s: %w", modelRef, err)
 	}
@@ -2118,8 +2118,8 @@ func (l *Loader) resolveModelRef(tx *gorm.DB, modelRef string) (string, error) {
 	return id, nil
 }
 
-// resolveServiceRef resolves a serviceRef shortcut ("app.Model/Method") to the IrService ID.
-// It first resolves the model via resolveModelRef, then searches meta_ir_service by model_id + name.
+// resolveServiceRef resolves a serviceRef shortcut ("app.Model/Method") to the Service ID.
+// It first resolves the model via resolveModelRef, then searches meta_service by model_id + name.
 func (l *Loader) resolveServiceRef(tx *gorm.DB, serviceRef string) (string, error) {
 	modelFull, method, err := splitServiceRef(serviceRef)
 	if err != nil {
@@ -2154,10 +2154,10 @@ func splitServiceRef(s string) (modelFull string, method string, err error) {
 	return modelFull, method, nil
 }
 
-// serviceRefToSearchSpec builds a searchSpec for looking up meta_ir_service by model ID + method name.
+// serviceRefToSearchSpec builds a searchSpec for looking up meta_service by model ID + method name.
 func serviceRefToSearchSpec(modelID string, method string) searchSpec {
 	return searchSpec{
-		Model: "meta.IrService",
+		Model: "meta.MetaService",
 		Domain: []any{
 			"&",
 			[]any{"model_id", "=", modelID},

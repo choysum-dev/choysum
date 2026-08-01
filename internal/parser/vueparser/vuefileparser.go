@@ -44,7 +44,7 @@ func (p *vueFileParser) parseScriptNodes(parserResult *parser.ParserResult) erro
 	parserResult.Imports = make(map[string]*parser.Import)
 	parserResult.Exports = make(map[string]*parser.Export)
 
-	component := &meta.IrComponent{
+	component := &meta.Component{
 		Name: strings.TrimSuffix(filepath.Base(path), filepath.Ext(path)),
 		Path: p.Path,
 	}
