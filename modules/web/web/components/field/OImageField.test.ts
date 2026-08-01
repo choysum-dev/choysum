@@ -174,16 +174,29 @@ describe('imageFieldLimits (PR-P2-F3)', () => {
       })
     ).toEqual({ maxWidth: 7 });
 
+    // Both props falsy so `bindingProp || propsProp || ''` takes the final `''` branch.
     expect(
       resolveImageFieldLimitsFromSources({
-        bindingProp: '   ',
-        propsProp: null,
+        bindingProp: undefined,
+        propsProp: '',
         bindingStore: {
           getFieldMeta: () => ({ maxUploadBytes: 999 }),
         },
         bindingMeta: { maxHeight: 4 },
       })
     ).toEqual({ maxHeight: 4 });
+
+    // Whitespace-only leaf after trim must also skip store lookup.
+    expect(
+      resolveImageFieldLimitsFromSources({
+        bindingProp: '   ',
+        propsProp: null,
+        bindingStore: {
+          getFieldMeta: () => ({ maxWidth: 1 }),
+        },
+        bindingMeta: { maxHeight: 5 },
+      })
+    ).toEqual({ maxHeight: 5 });
   });
 
   it('imageFieldLimitErrorMessage covers all reasons', () => {
