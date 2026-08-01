@@ -278,6 +278,66 @@ func parseTermReferenceCall(raw string, ownerModule string, defaultScope string,
 	return &reference, true
 }
 
+func parseSelectionOptionItems(
+	fieldName string,
+	optionName string,
+	selection []any,
+	ownerModule string,
+	referenceScope string,
+	translateBindings map[string]parser.TranslateBinding,
+) ([]meta.IrFieldSelectionItem, error) {
+	items := make([]meta.IrFieldSelectionItem, 0, len(selection))
+	for _, item := range selection {
+		entry, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		if entry["value"] == nil || entry["label"] == nil {
+			continue
+		}
+		value := strings.TrimSpace(fmt.Sprintf("%v", entry["value"]))
+		labelRaw := strings.TrimSpace(fmt.Sprintf("%v", entry["label"]))
+		if reference, ok := parseTermReferenceCall(labelRaw, ownerModule, referenceScope, translateBindings); ok {
+			src := strings.TrimSpace(reference.Src)
+			if value == "" || src == "" {
+				continue
+			}
+			items = append(items, meta.IrFieldSelectionItem{
+				Value:     value,
+				Label:     src,
+				LabelText: reference,
+			})
+			continue
+		}
+		if match := termReferenceCallPattern.FindStringSubmatch(labelRaw); len(match) == 4 {
+			callee := strings.TrimSpace(match[1])
+			binding, known := translateBindings[callee]
+			isLt := callee == "_lt" || (known && binding.ReferenceOutput)
+			if isLt {
+				// Empty/invalid _lt(...) — skip option rather than treat as text _t.
+				continue
+			}
+			return nil, fmt.Errorf(
+				"FIELD_SELECTION_LABELTEXT_FORBIDDEN: @Field(%s) %s label must not use text _t(...); use _lt(...) or a bare string",
+				fieldName,
+				optionName,
+			)
+		}
+		label := labelRaw
+		if literal, err := parser.ParseJSStringLiteral(labelRaw); err == nil {
+			label = strings.TrimSpace(literal)
+		}
+		if value == "" || label == "" {
+			continue
+		}
+		items = append(items, meta.IrFieldSelectionItem{
+			Value: value,
+			Label: label,
+		})
+	}
+	return items, nil
+}
+
 func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorBinding, inherited []meta.IrFieldDiagnostic, ownerModule string, referenceScope string, translateBindings map[string]parser.TranslateBinding) (*meta.IrFieldResolvedSpec, error) {
 	if field == nil {
 		return nil, nil
@@ -373,53 +433,26 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		}
 	}
 
+	_, hasSelectionOpt := options["selection"]
+	_, hasSelectionAddOpt := options["selectionAdd"]
+	if hasSelectionAddOpt && fieldType != "selection" {
+		return nil, fmt.Errorf("@Field(%s) selectionAdd is only supported on selection fields", field.Name)
+	}
+	if hasSelectionOpt && hasSelectionAddOpt {
+		return nil, fmt.Errorf(
+			"@Field(%s) cannot combine selection and selectionAdd; use selectionAdd alone to append, or selection alone to replace",
+			field.Name,
+		)
+	}
+
 	if selectionRaw, hasSelection := options["selection"]; hasSelection && selectionRaw != nil {
 		switch selection := selectionRaw.(type) {
 		case []any:
-			for _, item := range selection {
-				entry, ok := item.(map[string]any)
-				if !ok {
-					continue
-				}
-				if entry["value"] == nil || entry["label"] == nil {
-					continue
-				}
-				value := strings.TrimSpace(fmt.Sprintf("%v", entry["value"]))
-				labelRaw := strings.TrimSpace(fmt.Sprintf("%v", entry["label"]))
-				if reference, ok := parseTermReferenceCall(labelRaw, ownerModule, referenceScope, translateBindings); ok {
-					src := strings.TrimSpace(reference.Src)
-					if value == "" || src == "" {
-						continue
-					}
-					spec.Structural.Selection = append(spec.Structural.Selection, meta.IrFieldSelectionItem{
-						Value:     value,
-						Label:     src,
-						LabelText: reference,
-					})
-					continue
-				}
-				if match := termReferenceCallPattern.FindStringSubmatch(labelRaw); len(match) == 4 {
-					callee := strings.TrimSpace(match[1])
-					binding, known := translateBindings[callee]
-					isLt := callee == "_lt" || (known && binding.ReferenceOutput)
-					if isLt {
-						// Empty/invalid _lt(...) — skip option rather than treat as text _t.
-						continue
-					}
-					return nil, fmt.Errorf("FIELD_SELECTION_LABELTEXT_FORBIDDEN: @Field(%s) selection label must not use text _t(...); use _lt(...) or a bare string", field.Name)
-				}
-				label := labelRaw
-				if literal, err := parser.ParseJSStringLiteral(labelRaw); err == nil {
-					label = strings.TrimSpace(literal)
-				}
-				if value == "" || label == "" {
-					continue
-				}
-				spec.Structural.Selection = append(spec.Structural.Selection, meta.IrFieldSelectionItem{
-					Value: value,
-					Label: label,
-				})
+			items, err := parseSelectionOptionItems(field.Name, "selection", selection, ownerModule, referenceScope, translateBindings)
+			if err != nil {
+				return nil, err
 			}
+			spec.Structural.Selection = items
 			if len(spec.Structural.Selection) > 0 {
 				spec.Structural.SelectionKind = "static"
 			}
@@ -444,6 +477,23 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 			}
 		default:
 			return nil, fmt.Errorf("@Field(%s) selection must be an array, method name string, or callable", field.Name)
+		}
+	}
+
+	if selectionAddRaw, hasSelectionAdd := options["selectionAdd"]; hasSelectionAdd {
+		spec.Structural.HasSelectionAdd = true
+		if selectionAddRaw == nil {
+			spec.Structural.SelectionAdd = nil
+		} else {
+			addList, ok := selectionAddRaw.([]any)
+			if !ok {
+				return nil, fmt.Errorf("@Field(%s) selectionAdd must be an array", field.Name)
+			}
+			items, err := parseSelectionOptionItems(field.Name, "selectionAdd", addList, ownerModule, referenceScope, translateBindings)
+			if err != nil {
+				return nil, err
+			}
+			spec.Structural.SelectionAdd = items
 		}
 	}
 

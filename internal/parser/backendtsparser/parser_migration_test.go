@@ -740,6 +740,69 @@ export default class Language extends BaseModel {
 	}
 }
 
+func TestTsParser_ParsesSelectionAdd(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('SelectionAddModel')
+export default class SelectionAddModel extends BaseModel {
+  @Field({
+    type: 'selection',
+    selectionAdd: [
+      { value: 'vip', label: 'VIP' },
+      { value: 'gold', label: 'Gold' }
+    ]
+  })
+  public Kind: string
+}
+`
+	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	spec, err := r.Model.Fields[0].GetResolvedSpec()
+	if err != nil || spec == nil {
+		t.Fatalf("get resolved spec: %v", err)
+	}
+	if !spec.Structural.HasSelectionAdd {
+		t.Fatalf("expected HasSelectionAdd, got %#v", spec.Structural)
+	}
+	if len(spec.Structural.SelectionAdd) != 2 || spec.Structural.SelectionAdd[0].Value != "vip" {
+		t.Fatalf("unexpected selectionAdd: %#v", spec.Structural.SelectionAdd)
+	}
+	if len(spec.Structural.Selection) != 0 {
+		t.Fatalf("selectionAdd-only must not set selection: %#v", spec.Structural.Selection)
+	}
+}
+
+func TestTsParser_RejectsSelectionCombinedWithSelectionAdd(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('BothSelectionModel')
+export default class BothSelectionModel extends BaseModel {
+  @Field({
+    type: 'selection',
+    selection: [{ value: 'a', label: 'A' }],
+    selectionAdd: [{ value: 'b', label: 'B' }]
+  })
+  public Kind: string
+}
+`
+	_, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err == nil || !strings.Contains(err.Error(), "cannot combine selection and selectionAdd") {
+		t.Fatalf("expected combine rejection, got %v", err)
+	}
+}
+
 func TestTsParser_AcceptsPlainStringSelectionLabels(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}

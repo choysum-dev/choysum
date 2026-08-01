@@ -880,7 +880,7 @@ type effectiveMeta struct {
 	services []*meta.IrService
 }
 
-func mergeOrderedFields(parentFields []*meta.IrField, childFields []*meta.IrField, parentPath string, childPath string) []*meta.IrField {
+func mergeOrderedFields(parentFields []*meta.IrField, childFields []*meta.IrField, parentPath string, childPath string) ([]*meta.IrField, error) {
 	result := make([]*meta.IrField, 0, len(parentFields)+len(childFields))
 	indexByName := make(map[string]int)
 
@@ -908,14 +908,24 @@ func mergeOrderedFields(parentFields []*meta.IrField, childFields []*meta.IrFiel
 		nf := cloneField(cf)
 		nf.OriginModelPath = childPath
 		if idx, ok := indexByName[nf.Name]; ok {
-			result[idx] = nf
+			merged, err := meta.ResolveSelectionFieldConflict(result[idx], nf)
+			if err != nil {
+				return nil, err
+			}
+			if merged != nil {
+				merged.OriginModelPath = childPath
+			}
+			result[idx] = merged
 			continue
+		}
+		if meta.FieldHasSelectionAdd(nf) {
+			return nil, fmt.Errorf("field %s selectionAdd requires an inherited static selection", nf.Name)
 		}
 		indexByName[nf.Name] = len(result)
 		result = append(result, nf)
 	}
 
-	return result
+	return result, nil
 }
 
 func mergeOrderedServices(parentServices []*meta.IrService, childServices []*meta.IrService, parentPath string, childPath string) []*meta.IrService {
@@ -1040,7 +1050,10 @@ func (b *ModuleBuilder) computeEffectiveMeta(
 		parentServices = parentEff.services
 	}
 
-	fields := mergeOrderedFields(parentFields, model.Fields, parentPath, model.Path)
+	fields, err := mergeOrderedFields(parentFields, model.Fields, parentPath, model.Path)
+	if err != nil {
+		return nil, err
+	}
 	services := mergeOrderedServices(parentServices, model.Services, parentPath, model.Path)
 
 	eff := &effectiveMeta{fields: fields, services: services}

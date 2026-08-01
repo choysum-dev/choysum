@@ -276,8 +276,14 @@ type FlatSelectionFieldOptions<T extends BaseModel> = {
   /**
    * Static option list, static method name, or RequestContext-only callable (P3).
    * Callables must not read draft / row values (D9).
+   * Optional when `selectionAdd` is used alone (PR-P2-F4).
    */
-  selection: SelectionDeclaration;
+  selection?: SelectionDeclaration;
+  /**
+   * Append options onto an inherited static selection (PR-P2-F4).
+   * Forbidden with dynamic `selection` or together with a full `selection` rewrite.
+   */
+  selectionAdd?: SelectionDeclarationItem[];
   size?: number;
 } & FlatCommonOptions &
   FlatNoRelationOption &

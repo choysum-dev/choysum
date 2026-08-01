@@ -29,6 +29,24 @@ test('repository kernel validation enforces int and selection rules with stable 
   expectKernelError(() => validateFields(meta, { State: 'blocked' }, { rules: ['selection'] }), 'kernel_selection_invalid', 'State');
 });
 
+test('repository kernel validation accepts selectionAdd-merged values (PR-P2-F4)', () => {
+  const meta = {
+    fields: new Map<string, any>([
+      [
+        'State',
+        {
+          type: 'selection',
+          selectionKind: 'static',
+          selection: [{ value: 'draft' }, { value: 'done' }, { value: 'vip' }],
+        },
+      ],
+    ]),
+  } as any;
+
+  expect(() => validateFields(meta, { State: 'vip' }, { rules: ['selection'] })).not.toThrow();
+  expectKernelError(() => validateFields(meta, { State: 'unknown' }, { rules: ['selection'] }), 'kernel_selection_invalid', 'State');
+});
+
 test('repository kernel validation enforces create required fields and decimal format', () => {
   const meta = {
     fields: new Map<string, any>([

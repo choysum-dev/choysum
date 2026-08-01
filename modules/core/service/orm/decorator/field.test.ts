@@ -1461,3 +1461,99 @@ test('Field decorator accepts image/binary upload limits and rejects invalid opt
     return OverGlobalCapModel;
   }).toThrow('maxUploadBytes cannot exceed global upload cap');
 });
+
+test('Field decorator merges selectionAdd onto inherited static selection (PR-P2-F4)', () => {
+  class SelectionAddParent extends BaseModel {
+    @Field({
+      type: 'selection',
+      selection: [
+        { value: 'a', label: 'A' },
+        { value: 'b', label: 'B' },
+      ],
+    } as any)
+    Status!: string;
+  }
+
+  class SelectionAddChild extends SelectionAddParent {
+    @Field({
+      type: 'selection',
+      selectionAdd: [
+        { value: 'c', label: 'C' },
+        { value: 'b', label: 'B2' },
+      ],
+    } as any)
+    Status!: string;
+  }
+
+  const meta = MetadataStorage.instance.getModelMetadata(SelectionAddChild as any).fields.get('Status') as any;
+  expect(meta?.selectionKind).toBe('static');
+  expect(meta?.selection).toEqual([
+    { value: 'a', label: 'A' },
+    { value: 'b', label: 'B2' },
+    { value: 'c', label: 'C' },
+  ]);
+});
+
+test('Field decorator allows empty selectionAdd as no-op append (PR-P2-F4)', () => {
+  class EmptyAddParent extends BaseModel {
+    @Field({
+      type: 'selection',
+      selection: [{ value: 'a', label: 'A' }],
+    } as any)
+    Status!: string;
+  }
+
+  class EmptyAddChild extends EmptyAddParent {
+    @Field({ type: 'selection', selectionAdd: [] } as any)
+    Status!: string;
+  }
+
+  const meta = MetadataStorage.instance.getModelMetadata(EmptyAddChild as any).fields.get('Status') as any;
+  expect(meta?.selection).toEqual([{ value: 'a', label: 'A' }]);
+});
+
+test('Field decorator rejects selectionAdd conflicts (PR-P2-F4)', () => {
+  expect(() => {
+    class BothModel extends BaseModel {
+      @Field({
+        type: 'selection',
+        selection: [{ value: 'a', label: 'A' }],
+        selectionAdd: [{ value: 'b', label: 'B' }],
+      } as any)
+      Status!: string;
+    }
+    return BothModel;
+  }).toThrow('cannot combine selection and selectionAdd');
+
+  expect(() => {
+    class NoParentAddModel extends BaseModel {
+      @Field({ type: 'selection', selectionAdd: [{ value: 'a', label: 'A' }] } as any)
+      Status!: string;
+    }
+    return NoParentAddModel;
+  }).toThrow('selectionAdd requires an inherited selection field');
+
+  class DynamicParent extends BaseModel {
+    @Field({ type: 'selection', selection: 'StatusOptions' } as any)
+    Status!: string;
+  }
+  expect(() => {
+    class DynamicChild extends DynamicParent {
+      @Field({ type: 'selection', selectionAdd: [{ value: 'a', label: 'A' }] } as any)
+      Status!: string;
+    }
+    return DynamicChild;
+  }).toThrow('selectionAdd requires an inherited static selection');
+
+  expect(() => {
+    class DynamicWithAdd extends BaseModel {
+      @Field({
+        type: 'selection',
+        selection: 'StatusOptions',
+        selectionAdd: [{ value: 'a', label: 'A' }],
+      } as any)
+      Status!: string;
+    }
+    return DynamicWithAdd;
+  }).toThrow('cannot combine selection and selectionAdd');
+});

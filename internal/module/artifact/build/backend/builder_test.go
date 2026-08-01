@@ -444,7 +444,10 @@ func TestMergeCloneAndMaterializedHelpers(t *testing.T) {
 		{Name: "Shared", Decorators: []*meta.IrDecorator{{Name: "Field", Arguments: []*meta.IrArgument{{Value: "'child-shared'", Type: "Literal"}}}}},
 		{Name: "Extra"},
 	}
-	mergedFields := mergeOrderedFields(parentFields, childFields, "/models/base", "/models/child")
+	mergedFields, err := mergeOrderedFields(parentFields, childFields, "/models/base", "/models/child")
+	if err != nil {
+		t.Fatalf("mergeOrderedFields: %v", err)
+	}
 	if len(mergedFields) != 3 || mergedFields[0].Name != "Code" || mergedFields[1].Name != "Shared" || mergedFields[2].Name != "Extra" {
 		t.Fatalf("unexpected merged fields order: %#v", mergedFields)
 	}
@@ -516,7 +519,7 @@ func TestMergeCloneAndMaterializedHelpers(t *testing.T) {
 		t.Fatalf("unexpected materialized child services: %#v", childModel.Services)
 	}
 
-	_, err := builder.computeEffectiveMeta(
+	_, err = builder.computeEffectiveMeta(
 		&meta.IrModel{Name: "Partner", Path: "/models/cycle-a", Extends: "/models/cycle-b"},
 		map[string]*meta.IrModel{
 			"/models/cycle-a": {Name: "Partner", Path: "/models/cycle-a", Extends: "/models/cycle-b"},
