@@ -95,6 +95,12 @@ type IrFieldStructuralSpec struct {
 	Copy *bool `json:"copy,omitempty"`
 	// Readonly is true when @Field({ readonly: true }); omit/false means writable (PR-P2-F2).
 	Readonly *bool `json:"readonly,omitempty"`
+	// MaxUploadBytes is the per-field upload byte cap (image/binary; PR-P2-F3).
+	MaxUploadBytes *int `json:"maxUploadBytes,omitempty"`
+	// MaxWidth is the pixel width cap (image only; PR-P2-F3).
+	MaxWidth *int `json:"maxWidth,omitempty"`
+	// MaxHeight is the pixel height cap (image only; PR-P2-F3).
+	MaxHeight *int `json:"maxHeight,omitempty"`
 }
 
 type IrFieldBehaviorComputeSpec struct {
@@ -191,6 +197,10 @@ type IrField struct {
 	AccessibilityModifier string `gorm:"type:varchar(255);" json:"accessibility_modifier"`
 	IsStatic              bool   `json:"is_static"`
 	IsReadonly            bool   `json:"is_readonly"`
+
+	MaxUploadBytes int `gorm:"type:int" json:"maxUploadBytes,omitempty"`
+	MaxWidth       int `gorm:"type:int" json:"maxWidth,omitempty"`
+	MaxHeight      int `gorm:"type:int" json:"maxHeight,omitempty"`
 
 	// ColumnOptions
 	Indexed    bool    `json:"indexed"`

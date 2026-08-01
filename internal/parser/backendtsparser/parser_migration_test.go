@@ -2452,3 +2452,93 @@ export default class ReadonlyPilot extends BaseModel {
 		t.Fatalf("omitted readonly must leave IsReadonly false, got %#v", name)
 	}
 }
+
+func TestTsParser_ImageFieldUploadLimits(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/image_limit_field.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('ImageLimitPilot')
+export default class ImageLimitPilot extends BaseModel {
+  @Field({
+    type: 'image',
+    maxUploadBytes: 2097152,
+    maxWidth: 1024,
+    maxHeight: 768,
+  })
+  public Avatar: string
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	fieldByName := map[string]*meta.IrField{}
+	for _, f := range r.Model.Fields {
+		fieldByName[f.Name] = f
+	}
+
+	avatar := fieldByName["Avatar"]
+	if avatar == nil {
+		t.Fatalf("expected Avatar field")
+	}
+	if avatar.MaxUploadBytes != 2097152 {
+		t.Fatalf("MaxUploadBytes = %d, want 2097152", avatar.MaxUploadBytes)
+	}
+	if avatar.MaxWidth != 1024 {
+		t.Fatalf("MaxWidth = %d, want 1024", avatar.MaxWidth)
+	}
+	if avatar.MaxHeight != 768 {
+		t.Fatalf("MaxHeight = %d, want 768", avatar.MaxHeight)
+	}
+
+	spec, err := avatar.GetResolvedSpec()
+	if err != nil || spec == nil {
+		t.Fatalf("Avatar resolved spec: err=%v", err)
+	}
+	if spec.Structural.MaxUploadBytes == nil || *spec.Structural.MaxUploadBytes != 2097152 {
+		t.Fatalf("Structural.MaxUploadBytes = %#v", spec.Structural.MaxUploadBytes)
+	}
+	if spec.Structural.MaxWidth == nil || *spec.Structural.MaxWidth != 1024 {
+		t.Fatalf("Structural.MaxWidth = %#v", spec.Structural.MaxWidth)
+	}
+	if spec.Structural.MaxHeight == nil || *spec.Structural.MaxHeight != 768 {
+		t.Fatalf("Structural.MaxHeight = %#v", spec.Structural.MaxHeight)
+	}
+}
+
+func TestApplyResolvedSpecToLegacyField_ClearsStaleImageUploadLimits(t *testing.T) {
+	field := &meta.IrField{
+		Name:           "Avatar",
+		FieldType:      "image",
+		MaxUploadBytes: 2097152,
+		MaxWidth:       1024,
+		MaxHeight:      768,
+	}
+	spec := &meta.IrFieldResolvedSpec{
+		FieldName: "Avatar",
+		Structural: meta.IrFieldStructuralSpec{
+			FieldType: "image",
+		},
+	}
+	applyResolvedSpecToLegacyField(field, spec)
+	if field.MaxUploadBytes != 0 || field.MaxWidth != 0 || field.MaxHeight != 0 {
+		t.Fatalf("removed upload limits must clear to 0, got bytes=%d width=%d height=%d", field.MaxUploadBytes, field.MaxWidth, field.MaxHeight)
+	}
+
+	twoMiB := 2 * 1024 * 1024
+	width := 800
+	height := 600
+	spec.Structural.MaxUploadBytes = &twoMiB
+	spec.Structural.MaxWidth = &width
+	spec.Structural.MaxHeight = &height
+	applyResolvedSpecToLegacyField(field, spec)
+	if field.MaxUploadBytes != twoMiB || field.MaxWidth != width || field.MaxHeight != height {
+		t.Fatalf("reapplied limits: bytes=%d width=%d height=%d", field.MaxUploadBytes, field.MaxWidth, field.MaxHeight)
+	}
+}

@@ -111,22 +111,22 @@ msgctxt "web/components/field/ODecimalField"
 msgid "Total digits must not exceed %s"
 msgstr "总位数不得超过 %s"
 
-#: web/components/field/OFieldBase.vue:172
+#: web/components/field/OFieldBase.vue:171
 msgctxt "web/components/field/OFieldBase"
 msgid "Company values"
 msgstr "公司值"
 
-#: web/components/field/OFieldBase.vue:172
+#: web/components/field/OFieldBase.vue:171
 msgctxt "web/components/field/OFieldBase"
 msgid "Company values: %s"
 msgstr "公司值：%s"
 
-#: web/components/field/OFieldBase.vue:165
+#: web/components/field/OFieldBase.vue:164
 msgctxt "web/components/field/OFieldBase"
 msgid "Translate field"
 msgstr "翻译字段"
 
-#: web/components/field/OFieldBase.vue:165
+#: web/components/field/OFieldBase.vue:164
 msgctxt "web/components/field/OFieldBase"
 msgid "Translate: %s"
 msgstr "翻译：%s"
@@ -216,22 +216,37 @@ msgctxt "web/components/field/OHtmlField"
 msgid "URL"
 msgstr "URL"
 
-#: web/components/field/OImageField.vue:71
+#: web/components/field/OImageField.vue:87
 msgctxt "web/components/field/OImageField"
 msgid "Drop image here or click to upload"
 msgstr "拖放图片到此处，或点击上传"
+
+#: web/components/field/imageFieldLimits.ts:136
+msgctxt "web/components/field/OImageField"
+msgid "Image exceeds maximum size (%s)"
+msgstr "图片大小超过上限（%s）"
+
+#: web/components/field/imageFieldLimits.ts:141
+msgctxt "web/components/field/OImageField"
+msgid "Image height exceeds maximum (%s px)"
+msgstr "图片高度超过上限（%s 像素）"
+
+#: web/components/field/imageFieldLimits.ts:139
+msgctxt "web/components/field/OImageField"
+msgid "Image width exceeds maximum (%s px)"
+msgstr "图片宽度超过上限（%s 像素）"
 
 #: web/components/field/OImageField.vue:17
 msgctxt "web/components/field/OImageField"
 msgid "Remove"
 msgstr "移除"
 
-#: web/components/field/OImageField.vue:77
+#: web/components/field/OImageField.vue:93
 msgctxt "web/components/field/OImageField"
 msgid "Replace image"
 msgstr "替换图片"
 
-#: web/components/field/OImageField.vue:70
+#: web/components/field/OImageField.vue:86
 msgctxt "web/components/field/OImageField"
 msgid "Upload image"
 msgstr "上传图片"

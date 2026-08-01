@@ -534,6 +534,15 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 	if v, ok := options["readonly"].(bool); ok && v {
 		spec.Structural.Readonly = toBoolPtr(true)
 	}
+	if v, ok := asInt(options["maxUploadBytes"]); ok && v > 0 {
+		spec.Structural.MaxUploadBytes = toIntPtr(v)
+	}
+	if v, ok := asInt(options["maxWidth"]); ok && v > 0 {
+		spec.Structural.MaxWidth = toIntPtr(v)
+	}
+	if v, ok := asInt(options["maxHeight"]); ok && v > 0 {
+		spec.Structural.MaxHeight = toIntPtr(v)
+	}
 	switch raw := options["default"].(type) {
 	case string:
 		trimmed := strings.TrimSpace(raw)
@@ -766,6 +775,19 @@ func applyResolvedSpecToLegacyField(field *meta.IrField, spec *meta.IrFieldResol
 	}
 	if spec.Structural.Readonly != nil && *spec.Structural.Readonly {
 		field.IsReadonly = true
+	}
+	// Always clear before reapply so a removed upload-limit option does not leave stale values.
+	field.MaxUploadBytes = 0
+	field.MaxWidth = 0
+	field.MaxHeight = 0
+	if spec.Structural.MaxUploadBytes != nil && *spec.Structural.MaxUploadBytes > 0 {
+		field.MaxUploadBytes = *spec.Structural.MaxUploadBytes
+	}
+	if spec.Structural.MaxWidth != nil && *spec.Structural.MaxWidth > 0 {
+		field.MaxWidth = *spec.Structural.MaxWidth
+	}
+	if spec.Structural.MaxHeight != nil && *spec.Structural.MaxHeight > 0 {
+		field.MaxHeight = *spec.Structural.MaxHeight
 	}
 
 	if spec.Structural.StorageHints != nil {

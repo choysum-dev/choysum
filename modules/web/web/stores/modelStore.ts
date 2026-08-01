@@ -52,6 +52,12 @@ export type WebFieldMetadata = {
   translate?: boolean;
   /** Company-dependent: field values stored as company maps (see company-dependent-design). */
   companyDependent?: boolean;
+  /** Per-field upload byte cap (image/binary; PR-P2-F3). */
+  maxUploadBytes?: number;
+  /** Pixel width cap (image only; PR-P2-F3). */
+  maxWidth?: number;
+  /** Pixel height cap (image only; PR-P2-F3). */
+  maxHeight?: number;
   relationModel?: string;
   relationFilter?: string;
   relationModelParentField?: string;

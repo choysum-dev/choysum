@@ -117,22 +117,22 @@ msgctxt "web/components/field/ODecimalField"
 msgid "Total digits must not exceed %s"
 msgstr ""
 
-#: web/components/field/OFieldBase.vue:172
+#: web/components/field/OFieldBase.vue:171
 msgctxt "web/components/field/OFieldBase"
 msgid "Company values"
 msgstr ""
 
-#: web/components/field/OFieldBase.vue:172
+#: web/components/field/OFieldBase.vue:171
 msgctxt "web/components/field/OFieldBase"
 msgid "Company values: %s"
 msgstr ""
 
-#: web/components/field/OFieldBase.vue:165
+#: web/components/field/OFieldBase.vue:164
 msgctxt "web/components/field/OFieldBase"
 msgid "Translate field"
 msgstr ""
 
-#: web/components/field/OFieldBase.vue:165
+#: web/components/field/OFieldBase.vue:164
 msgctxt "web/components/field/OFieldBase"
 msgid "Translate: %s"
 msgstr ""
@@ -222,9 +222,24 @@ msgctxt "web/components/field/OHtmlField"
 msgid "URL"
 msgstr ""
 
-#: web/components/field/OImageField.vue:71
+#: web/components/field/OImageField.vue:87
 msgctxt "web/components/field/OImageField"
 msgid "Drop image here or click to upload"
+msgstr ""
+
+#: web/components/field/imageFieldLimits.ts:136
+msgctxt "web/components/field/OImageField"
+msgid "Image exceeds maximum size (%s)"
+msgstr ""
+
+#: web/components/field/imageFieldLimits.ts:141
+msgctxt "web/components/field/OImageField"
+msgid "Image height exceeds maximum (%s px)"
+msgstr ""
+
+#: web/components/field/imageFieldLimits.ts:139
+msgctxt "web/components/field/OImageField"
+msgid "Image width exceeds maximum (%s px)"
 msgstr ""
 
 #: web/components/field/OImageField.vue:17
@@ -232,12 +247,12 @@ msgctxt "web/components/field/OImageField"
 msgid "Remove"
 msgstr ""
 
-#: web/components/field/OImageField.vue:77
+#: web/components/field/OImageField.vue:93
 msgctxt "web/components/field/OImageField"
 msgid "Replace image"
 msgstr ""
 
-#: web/components/field/OImageField.vue:70
+#: web/components/field/OImageField.vue:86
 msgctxt "web/components/field/OImageField"
 msgid "Upload image"
 msgstr ""

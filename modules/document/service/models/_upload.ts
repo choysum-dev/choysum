@@ -13,6 +13,7 @@ import { GrpcCode } from '../error';
 import { DocumentErrCode, throwDocumentError } from '../error';
 import type { PrincipalContext, PrepareUploadReq, AuthorizeUploadPutReq, CommitUploadPutReq } from '../contracts';
 import { requireText, requireUserId, requireCompanyId, normalizePrincipal } from './_normalizers';
+import { DEFAULT_GLOBAL_MAX_UPLOAD_BYTES } from '@/core/service/orm/upload_limits';
 import type AttachmentUploadSession from './upload_session';
 
 const { _t } = createTranslate('document');
@@ -22,7 +23,9 @@ const { _t } = createTranslate('document');
 // ---------------------------------------------------------------------------
 
 export const DEFAULT_UPLOAD_SESSION_TTL_SECONDS = 900;
-export const DEFAULT_MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+/** @deprecated Use DEFAULT_GLOBAL_MAX_UPLOAD_BYTES from core ORM upload_limits. */
+export const DEFAULT_MAX_UPLOAD_BYTES = DEFAULT_GLOBAL_MAX_UPLOAD_BYTES;
+export { DEFAULT_GLOBAL_MAX_UPLOAD_BYTES };
 export const EMPTY_SHA256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
 
 // ---------------------------------------------------------------------------

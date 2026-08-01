@@ -111,7 +111,7 @@ describe('createFieldsGetHelpers', () => {
 
   it('exposes presentation attrs and FieldsGet translated help overlay', async () => {
     expect(FIELD_PRESENTATION_FIELDS_GET_ATTRS).toEqual(
-      expect.arrayContaining(['help', 'helpText', 'string', 'stringText'])
+      expect.arrayContaining(['help', 'helpText', 'string', 'stringText', 'maxUploadBytes', 'maxWidth', 'maxHeight'])
     );
 
     const FieldsGet = vi.fn(async () => ({

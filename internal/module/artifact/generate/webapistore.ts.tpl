@@ -47,6 +47,9 @@ export const {{.Model.Name}}FieldsMetadata = {
     {{- if $field.CurrencyField}}currencyField: {{$field.CurrencyField}},{{- end}}
     {{- if $field.Round}}round: '{{$field.Round}}',{{- end}}
     {{- if $field.IsReadonly}}isReadonly: {{$field.IsReadonly}},{{- end}}
+    {{- if $field.MaxUploadBytes}}maxUploadBytes: {{$field.MaxUploadBytes}},{{- end}}
+    {{- if $field.MaxWidth}}maxWidth: {{$field.MaxWidth}},{{- end}}
+    {{- if $field.MaxHeight}}maxHeight: {{$field.MaxHeight}},{{- end}}
     {{- if $field.Indexed}}indexed: {{$field.Indexed}},{{- end}}
     {{- if $field.Translate}}translate: {{$field.Translate}},{{- end}}
     {{- if $field.CompanyDependent}}companyDependent: {{$field.CompanyDependent}},{{- end}}

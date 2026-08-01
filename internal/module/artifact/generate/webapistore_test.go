@@ -690,6 +690,44 @@ func TestConvertFieldToMetadata_QuotesCurrencyFieldEscapes(t *testing.T) {
 	}
 }
 
+func TestConvertFieldToMetadata_ImageUploadLimits(t *testing.T) {
+	field := &meta.IrField{
+		Name:           "Avatar",
+		FieldType:      "image",
+		MaxUploadBytes: 2097152,
+		MaxWidth:       1024,
+		MaxHeight:      768,
+	}
+	metadata := convertFieldToMetadata(field)
+	if metadata.MaxUploadBytes == nil || *metadata.MaxUploadBytes != 2097152 {
+		t.Fatalf("expected MaxUploadBytes=2097152, got %#v", metadata.MaxUploadBytes)
+	}
+	if metadata.MaxWidth == nil || *metadata.MaxWidth != 1024 {
+		t.Fatalf("expected MaxWidth=1024, got %#v", metadata.MaxWidth)
+	}
+	if metadata.MaxHeight == nil || *metadata.MaxHeight != 768 {
+		t.Fatalf("expected MaxHeight=768, got %#v", metadata.MaxHeight)
+	}
+
+	plain := convertFieldToMetadata(&meta.IrField{Name: "Photo", FieldType: "image"})
+	if plain.MaxUploadBytes != nil || plain.MaxWidth != nil || plain.MaxHeight != nil {
+		t.Fatalf("zero limits must omit metadata pointers, got %#v", plain)
+	}
+
+	tpl := template.Must(template.New("field").Parse(
+		`{{- if .MaxUploadBytes}}maxUploadBytes: {{.MaxUploadBytes}},{{- end}}` +
+			`{{- if .MaxWidth}}maxWidth: {{.MaxWidth}},{{- end}}` +
+			`{{- if .MaxHeight}}maxHeight: {{.MaxHeight}},{{- end}}`,
+	))
+	var buf strings.Builder
+	if err := tpl.Execute(&buf, metadata); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+	if got := buf.String(); got != "maxUploadBytes: 2097152,maxWidth: 1024,maxHeight: 768," {
+		t.Fatalf("expected template emission, got %q", got)
+	}
+}
+
 func TestWebApiStoreTemplate_EmitsCopyFalse(t *testing.T) {
 	falseVal := false
 	tpl := template.Must(template.New("field").Parse(`{{- if ne .Copy nil}}copy: false,{{- end}}`))
