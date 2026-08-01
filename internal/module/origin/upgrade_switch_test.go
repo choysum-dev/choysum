@@ -12,22 +12,22 @@ import (
 )
 
 type upgradeSwitchStubCoordinator struct {
-	fetchFn func(ctx context.Context, input string) (*meta.IrModule, error)
+	fetchFn func(ctx context.Context, input string) (*meta.Module, error)
 }
 
-func (s upgradeSwitchStubCoordinator) Peek(context.Context, string) (*meta.IrModule, error) {
+func (s upgradeSwitchStubCoordinator) Peek(context.Context, string) (*meta.Module, error) {
 	return nil, nil
 }
 
-func (s upgradeSwitchStubCoordinator) ResolveInstallModule(context.Context, string) (*meta.IrModule, error) {
+func (s upgradeSwitchStubCoordinator) ResolveInstallModule(context.Context, string) (*meta.Module, error) {
 	return nil, nil
 }
 
-func (s upgradeSwitchStubCoordinator) Fetch(ctx context.Context, input string) (*meta.IrModule, error) {
+func (s upgradeSwitchStubCoordinator) Fetch(ctx context.Context, input string) (*meta.Module, error) {
 	if s.fetchFn != nil {
 		return s.fetchFn(ctx, input)
 	}
-	return &meta.IrModule{Name: "auth"}, nil
+	return &meta.Module{Name: "auth"}, nil
 }
 
 func (s upgradeSwitchStubCoordinator) Purge(context.Context, string) error {
@@ -139,7 +139,7 @@ func TestPrepareUpgradeSwitchSuccessAndFetchFailureRollback(t *testing.T) {
 
 		snapshot, err := PrepareUpgradeSwitch(
 			context.Background(),
-			upgradeSwitchStubCoordinator{fetchFn: func(context.Context, string) (*meta.IrModule, error) { return &meta.IrModule{Name: "auth"}, nil }},
+			upgradeSwitchStubCoordinator{fetchFn: func(context.Context, string) (*meta.Module, error) { return &meta.Module{Name: "auth"}, nil }},
 			workspaceRoot,
 			modulesPath,
 			tmpPath,
@@ -189,7 +189,7 @@ func TestPrepareUpgradeSwitchSuccessAndFetchFailureRollback(t *testing.T) {
 
 		_, err := PrepareUpgradeSwitch(
 			context.Background(),
-			upgradeSwitchStubCoordinator{fetchFn: func(context.Context, string) (*meta.IrModule, error) { return nil, errors.New("fetch failed") }},
+			upgradeSwitchStubCoordinator{fetchFn: func(context.Context, string) (*meta.Module, error) { return nil, errors.New("fetch failed") }},
 			workspaceRoot,
 			modulesPath,
 			tmpPath,

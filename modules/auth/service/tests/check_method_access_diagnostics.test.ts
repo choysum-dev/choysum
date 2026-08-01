@@ -9,13 +9,13 @@ import RoleMethodAccess from '@/auth/service/models/role_method_access';
 import RoleUiResource from '@/auth/service/models/role_ui_resource';
 import { evaluateUiDerivedMethodDecision } from '@/auth/service/models/_user_method_access';
 import { buildMethodAccessCacheKey } from '@/auth/service/models/_request_cache_invalidation';
-import IrUiResource from '@/meta/service/models/ir_ui_resource';
+import MetaUiResource from '@/meta/service/models/ui_resource';
 import { createServiceByModel } from '@/core/service/rpc';
-import type IrModelModel from '@/meta/service/models/ir_model';
-import type IrServiceModel from '@/meta/service/models/ir_service';
+import type MetaModelModel from '@/meta/service/models/model';
+import type MetaServiceModel from '@/meta/service/models/service';
 
-const IrModel = createServiceByModel<typeof IrModelModel>('meta.IrModel');
-const IrService = createServiceByModel<typeof IrServiceModel>('meta.IrService');
+const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
+const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -100,14 +100,14 @@ function setupAllowlistForFixtures(): void {
       'RoleUiResource:write',
       'RoleUiResource:create',
       'RoleUiResource:delete',
-      'meta.IrUiResource:read',
-      'IrUiResource:read',
-      'meta.IrModel:read',
-      'IrModel:read',
-      'meta.IrService:read',
-      'IrService:read',
-      'meta.IrApplication:read',
-      'IrApplication:read',
+      'meta.MetaUiResource:read',
+      'MetaUiResource:read',
+      'meta.MetaModel:read',
+      'MetaModel:read',
+      'meta.MetaService:read',
+      'MetaService:read',
+      'meta.MetaApplication:read',
+      'MetaApplication:read',
       'auth.RoleInheritance:read',
       'RoleInheritance:read',
     ],
@@ -156,12 +156,12 @@ async function createRole(): Promise<string> {
 }
 
 async function resolveBrowse(): Promise<{ name: string; modelId: string; serviceId: string }> {
-  const models = await IrModel.Search(
+  const models = await MetaModel.Search(
     { And: [['Name', '=', 'User'], ['Application', '=', 'auth']] } as any,
     { fields: ['Id'], limit: 1 } as any
   );
   const modelId = String((models as any)?.[0]?.Id || '').trim();
-  const services = await IrService.Search({ And: [['ModelId', '=', modelId]] } as any, {
+  const services = await MetaService.Search({ And: [['ModelId', '=', modelId]] } as any, {
     fields: ['Id', 'Name'],
     limit: 5000,
   } as any);
@@ -259,7 +259,7 @@ test('PR-E-5 CheckMethodAccess covers cache, meta-miss, ui allow and internal_er
 
       // UI allow / deny paths (no manual ACL).
       const originalRoleUiSearch = (RoleUiResource as any).Search;
-      const originalIrUiSearch = (IrUiResource as any).Search;
+      const originalIrUiSearch = (MetaUiResource as any).Search;
       const clearMethodAndUiCaches = () => {
         delete state[cacheKey];
         for (const key of Object.keys(state)) {
@@ -267,13 +267,13 @@ test('PR-E-5 CheckMethodAccess covers cache, meta-miss, ui allow and internal_er
         }
       };
       (RoleUiResource as any).Search = async () => [
-        { IrApplicationId: null, IrUiResourceId: 'RES-E5-UI', Mode: 'allow' },
+        { MetaApplicationId: null, MetaUiResourceId: 'RES-E5-UI', Mode: 'allow' },
       ];
-      (IrUiResource as any).Search = async () => [
+      (MetaUiResource as any).Search = async () => [
         {
           Id: 'RES-E5-UI',
           Name: 'res-e5-ui',
-          IrApplicationId: 'APP',
+          MetaApplicationId: 'APP',
           Requires: [`rpc:/auth.User/${String(browse.name).toLowerCase()}`],
         },
       ];
@@ -285,13 +285,13 @@ test('PR-E-5 CheckMethodAccess covers cache, meta-miss, ui allow and internal_er
         expect(uiAllow.hitRuleIds).toEqual(['RES-E5-UI']);
 
         (RoleUiResource as any).Search = async () => [
-          { IrApplicationId: null, IrUiResourceId: 'RES-E5-UI-DENY', Mode: 'deny' },
+          { MetaApplicationId: null, MetaUiResourceId: 'RES-E5-UI-DENY', Mode: 'deny' },
         ];
-        (IrUiResource as any).Search = async () => [
+        (MetaUiResource as any).Search = async () => [
           {
             Id: 'RES-E5-UI-DENY',
             Name: 'res-e5-ui-deny',
-            IrApplicationId: 'APP',
+            MetaApplicationId: 'APP',
             Requires: [`rpc:/auth.User/${String(browse.name).toLowerCase()}`],
           },
         ];
@@ -302,7 +302,7 @@ test('PR-E-5 CheckMethodAccess covers cache, meta-miss, ui allow and internal_er
         expect(uiDeny.hitRuleIds).toEqual(['RES-E5-UI-DENY']);
       } finally {
         (RoleUiResource as any).Search = originalRoleUiSearch;
-        (IrUiResource as any).Search = originalIrUiSearch;
+        (MetaUiResource as any).Search = originalIrUiSearch;
       }
 
       // Company in enabled scope but without a role binding.
@@ -351,12 +351,12 @@ test('PR-E-5 evaluateUiDerivedMethodDecision covers empty inputs and empty requi
   });
 
   const originalRoleUiSearch = (RoleUiResource as any).Search;
-  const originalIrUiSearch = (IrUiResource as any).Search;
+  const originalIrUiSearch = (MetaUiResource as any).Search;
 
   (RoleUiResource as any).Search = async () => [
-    { IrApplicationId: null, IrUiResourceId: null, Mode: 'deny' }, // global deny
+    { MetaApplicationId: null, MetaUiResourceId: null, Mode: 'deny' }, // global deny
   ];
-  (IrUiResource as any).Search = async () => [
+  (MetaUiResource as any).Search = async () => [
     { Id: 'RES-EMPTY', Name: 'empty', Requires: [] }, // skipped
     { Id: 'RES-G', Name: 'g', Requires: ['rpc:/auth.User/browse'] },
     { Name: 'no-id', Requires: ['rpc:/auth.User/browse'] }, // missing Id; still can deny via global
@@ -369,13 +369,13 @@ test('PR-E-5 evaluateUiDerivedMethodDecision covers empty inputs and empty requi
     expect(denied.hitRuleIds).toEqual(['RES-G']);
   } finally {
     (RoleUiResource as any).Search = originalRoleUiSearch;
-    (IrUiResource as any).Search = originalIrUiSearch;
+    (MetaUiResource as any).Search = originalIrUiSearch;
   }
 
   // Empty expansion resources.
   resetRequestContext();
   (RoleUiResource as any).Search = async () => [];
-  (IrUiResource as any).Search = async () => [];
+  (MetaUiResource as any).Search = async () => [];
   try {
     const empty = await evaluateUiDerivedMethodDecision(['ROLE-E5-NONE'], 'auth.User', 'browse');
     expect(empty).toEqual({
@@ -386,18 +386,18 @@ test('PR-E-5 evaluateUiDerivedMethodDecision covers empty inputs and empty requi
     });
   } finally {
     (RoleUiResource as any).Search = originalRoleUiSearch;
-    (IrUiResource as any).Search = originalIrUiSearch;
+    (MetaUiResource as any).Search = originalIrUiSearch;
   }
 });
 
 test('PR-E-5 evaluateUiDerivedMethodDecision covers id fallback and no-match resources', async () => {
   resetRequestContext();
   const originalRoleUiSearch = (RoleUiResource as any).Search;
-  const originalIrUiSearch = (IrUiResource as any).Search;
+  const originalIrUiSearch = (MetaUiResource as any).Search;
 
   // Resource keyed only by lowercase `id` (no `Id`) still participates in allow diagnostics.
-  (RoleUiResource as any).Search = async () => [{ IrApplicationId: null, IrUiResourceId: 'res-lower-id', Mode: 'allow' }];
-  (IrUiResource as any).Search = async () => [{ id: 'res-lower-id', Name: 'lower', Requires: ['rpc:/auth.User/browse'] }];
+  (RoleUiResource as any).Search = async () => [{ MetaApplicationId: null, MetaUiResourceId: 'res-lower-id', Mode: 'allow' }];
+  (MetaUiResource as any).Search = async () => [{ id: 'res-lower-id', Name: 'lower', Requires: ['rpc:/auth.User/browse'] }];
   try {
     const allowed = await evaluateUiDerivedMethodDecision(['ROLE-E5-ID'], 'auth.User', 'browse');
     expect(allowed).toEqual({
@@ -408,13 +408,13 @@ test('PR-E-5 evaluateUiDerivedMethodDecision covers id fallback and no-match res
     });
   } finally {
     (RoleUiResource as any).Search = originalRoleUiSearch;
-    (IrUiResource as any).Search = originalIrUiSearch;
+    (MetaUiResource as any).Search = originalIrUiSearch;
   }
 
   // Resources exist but none match the requested method => final ui_no_match.
   resetRequestContext();
-  (RoleUiResource as any).Search = async () => [{ IrApplicationId: null, IrUiResourceId: 'RES-OTHER', Mode: 'allow' }];
-  (IrUiResource as any).Search = async () => [
+  (RoleUiResource as any).Search = async () => [{ MetaApplicationId: null, MetaUiResourceId: 'RES-OTHER', Mode: 'allow' }];
+  (MetaUiResource as any).Search = async () => [
     { Id: 'RES-OTHER', Name: 'other', Requires: ['rpc:/auth.User/create'] },
   ];
   try {
@@ -427,7 +427,7 @@ test('PR-E-5 evaluateUiDerivedMethodDecision covers id fallback and no-match res
     });
   } finally {
     (RoleUiResource as any).Search = originalRoleUiSearch;
-    (IrUiResource as any).Search = originalIrUiSearch;
+    (MetaUiResource as any).Search = originalIrUiSearch;
   }
 });
 
@@ -455,9 +455,9 @@ test('PR-E-5 CheckMethodAccess manual deny and allow expose hitRuleIds', async (
       const denyRow = await RoleMethodAccess.Create(
         {
           RoleId: { Id: roleId } as any,
-          IrServiceId: browse.serviceId,
-          IrModelId: null,
-          IrApplicationId: null,
+          MetaServiceId: browse.serviceId,
+          MetaModelId: null,
+          MetaApplicationId: null,
           Mode: 'deny',
           Source: 'manual',
         } as any,
@@ -474,9 +474,9 @@ test('PR-E-5 CheckMethodAccess manual deny and allow expose hitRuleIds', async (
       const allowRow = await RoleMethodAccess.Create(
         {
           RoleId: { Id: roleId } as any,
-          IrServiceId: browse.serviceId,
-          IrModelId: null,
-          IrApplicationId: null,
+          MetaServiceId: browse.serviceId,
+          MetaModelId: null,
+          MetaApplicationId: null,
           Mode: 'allow',
           Source: 'manual',
         } as any,

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	i18nmodels "github.com/choysum-dev/choysum/internal/i18n/models"
 	"github.com/choysum-dev/choysum/pkg/meta"
 )
 
@@ -48,7 +49,7 @@ func TestMigratorMigrateEnsuresTranslationTermTable(t *testing.T) {
 
 	authMigrator := &migrator{
 		runtimeScope:       runtimeScope,
-		module:             &meta.IrModule{Name: "auth", ApplicationStr: "auth"},
+		module:             &meta.Module{Name: "auth", ApplicationStr: "auth"},
 		modelMigrator:      modelMigratorFunc(func() error { return nil }),
 		foreignKeyMigrator: foreignKeyMigratorFunc(func() error { return nil }),
 	}
@@ -61,7 +62,7 @@ func TestMigratorMigrateEnsuresTranslationTermTable(t *testing.T) {
 
 	coreMigrator := &migrator{
 		runtimeScope:       runtimeScope,
-		module:             &meta.IrModule{Name: "base", ApplicationStr: "core"},
+		module:             &meta.Module{Name: "base", ApplicationStr: "core"},
 		modelMigrator:      modelMigratorFunc(func() error { return nil }),
 		foreignKeyMigrator: foreignKeyMigratorFunc(func() error { return nil }),
 	}
@@ -95,13 +96,13 @@ func TestGetModuleModelsFiltersAndWrapsDBErrors(t *testing.T) {
 	runtimeScope := newSchemaTestScope(t)
 	migrateSchemaMetaTables(t, runtimeScope.Session())
 
-	module := &meta.IrModule{Name: "sales"}
+	module := &meta.Module{Name: "sales"}
 	if err := runtimeScope.Session().Create(module).Error; err != nil {
 		t.Fatalf("create module: %v", err)
 	}
 
 	disabledAutoMigrate := false
-	models := []*meta.IrModel{{Name: "Order", Path: "sales/order.ts", ModelTable: "sales_order", ModuleId: module.Id, Fields: []*meta.IrField{newFieldWithOptions(t, "Status", `{"type":"selection"}`)}}, {Name: "Readonly", Path: "sales/readonly.ts", ModelTable: "sales_readonly", ModuleId: module.Id, Readonly: true}, {Name: "Disabled", Path: "sales/disabled.ts", ModelTable: "sales_disabled", ModuleId: module.Id, AutoMigrate: &disabledAutoMigrate}, {Name: "Abstract", Path: "sales/abstract.ts", ModelTable: "sales_abstract", ModuleId: module.Id, Abstract: true}}
+	models := []*meta.Model{{Name: "Order", Path: "sales/order.ts", ModelTable: "sales_order", ModuleId: module.Id, Fields: []*meta.Field{newFieldWithOptions(t, "Status", `{"type":"selection"}`)}}, {Name: "Readonly", Path: "sales/readonly.ts", ModelTable: "sales_readonly", ModuleId: module.Id, Readonly: true}, {Name: "Disabled", Path: "sales/disabled.ts", ModelTable: "sales_disabled", ModuleId: module.Id, AutoMigrate: &disabledAutoMigrate}, {Name: "Abstract", Path: "sales/abstract.ts", ModelTable: "sales_abstract", ModuleId: module.Id, Abstract: true}}
 	for _, model := range models {
 		if err := runtimeScope.Session().Create(model).Error; err != nil {
 			t.Fatalf("create model %s: %v", model.Name, err)
@@ -136,8 +137,36 @@ func TestGetModuleModelsFiltersAndWrapsDBErrors(t *testing.T) {
 
 func TestNewMigrator(t *testing.T) {
 	runtimeScope := newSchemaTestScope(t)
-	if migrated := NewMigrator(runtimeScope, &meta.IrModule{}); migrated == nil {
+	if migrated := NewMigrator(runtimeScope, &meta.Module{}); migrated == nil {
 		t.Fatal("expected NewMigrator to return migrator instance")
+	}
+}
+
+func TestMigratorMigrateWrapsEnsureI18nMetaError(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	if err := i18nmodels.EnsureTranslationTermTable(runtimeScope, "auth"); err != nil {
+		t.Fatalf("EnsureTranslationTermTable() error = %v", err)
+	}
+	if err := runtimeScope.Session().AutoMigrate(&meta.Model{}, &meta.Service{}); err != nil {
+		t.Fatalf("auto migrate meta tables: %v", err)
+	}
+	if err := runtimeScope.Session().Exec(`CREATE TRIGGER IF NOT EXISTS block_i18n_model_insert
+		BEFORE INSERT ON meta_model
+		WHEN NEW.name = 'I18n'
+		BEGIN
+			SELECT RAISE(ABORT, 'i18n blocked');
+		END`).Error; err != nil {
+		t.Fatalf("create i18n insert trigger: %v", err)
+	}
+
+	m := &migrator{
+		runtimeScope:       runtimeScope,
+		module:             &meta.Module{Name: "auth", ApplicationStr: "auth"},
+		modelMigrator:      modelMigratorFunc(func() error { return nil }),
+		foreignKeyMigrator: foreignKeyMigratorFunc(func() error { return nil }),
+	}
+	if err := m.Migrate(); err == nil || !strings.Contains(err.Error(), "ensure i18n ir meta") {
+		t.Fatalf("Migrate() error = %v, want wrapped ensure i18n meta failure", err)
 	}
 }
 

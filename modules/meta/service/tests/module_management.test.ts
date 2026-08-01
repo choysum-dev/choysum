@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import IrModule from '@/meta/service/models/ir_module';
-import IrModuleIndex from '@/meta/service/models/ir_module_index';
+import MetaModule from '@/meta/service/models/module';
+import MetaModuleIndex from '@/meta/service/models/module_index';
 import ModuleManagementLog from '@/meta/service/models/module_management_log';
 import Job from '@/task/service/models/job';
 
@@ -157,10 +157,10 @@ function ensureModuleManagementBridge() {
 }
 
 /**
- * Replaces the IrModuleIndex repository with a deterministic select builder stub.
+ * Replaces the MetaModuleIndex repository with a deterministic select builder stub.
  */
-function mockIrModuleIndexRepo(rows: Array<Record<string, any>>): () => void {
-  const original = (IrModuleIndex as any).getRepository;
+function mockMetaModuleIndexRepo(rows: Array<Record<string, any>>): () => void {
+  const original = (MetaModuleIndex as any).getRepository;
   const builder: any = {
     select(sel: any) {
       if (typeof sel === 'function') {
@@ -176,26 +176,26 @@ function mockIrModuleIndexRepo(rows: Array<Record<string, any>>): () => void {
       return builder;
     },
   };
-  (IrModuleIndex as any).getRepository = () => ({
+  (MetaModuleIndex as any).getRepository = () => ({
     selectQueryBuilder: () => builder,
     execute: async () => rows,
   });
   return () => {
-    (IrModuleIndex as any).getRepository = original;
+    (MetaModuleIndex as any).getRepository = original;
   };
 }
 
 /**
- * Replaces IrModuleIndex repository grouped-read methods for Search/Count tests.
+ * Replaces MetaModuleIndex repository grouped-read methods for Search/Count tests.
  */
-function mockIrModuleIndexGroupedRepo(groupRows: Array<Record<string, any>>, groupCount?: number): () => void {
-  const original = (IrModuleIndex as any).getRepository;
-  (IrModuleIndex as any).getRepository = () => ({
+function mockMetaModuleIndexGroupedRepo(groupRows: Array<Record<string, any>>, groupCount?: number): () => void {
+  const original = (MetaModuleIndex as any).getRepository;
+  (MetaModuleIndex as any).getRepository = () => ({
     readGroup: async () => groupRows,
     readGroupCount: async () => (typeof groupCount === 'number' ? groupCount : groupRows.length),
   });
   return () => {
-    (IrModuleIndex as any).getRepository = original;
+    (MetaModuleIndex as any).getRepository = original;
   };
 }
 
@@ -211,10 +211,10 @@ function mockJobSearch(result: any[]): () => void {
 }
 
 /**
- * Replaces BaseModel.Search used by IrModuleIndex aggregate Search.
+ * Replaces BaseModel.Search used by MetaModuleIndex aggregate Search.
  */
-function mockIrModuleIndexBaseSearch(result: any[]): () => void {
-  const baseModelCtor: any = Object.getPrototypeOf(IrModuleIndex);
+function mockMetaModuleIndexBaseSearch(result: any[]): () => void {
+  const baseModelCtor: any = Object.getPrototypeOf(MetaModuleIndex);
   const original = baseModelCtor.Search;
   baseModelCtor.Search = async () => result;
   return () => {
@@ -223,13 +223,13 @@ function mockIrModuleIndexBaseSearch(result: any[]): () => void {
 }
 
 /**
- * Replaces IrModule.Search used by IrModuleIndex aggregate Search status merge.
+ * Replaces MetaModule.Search used by MetaModuleIndex aggregate Search status merge.
  */
-function mockIrModuleSearch(result: any[]): () => void {
-  const original = (IrModule as any).Search;
-  (IrModule as any).Search = async () => result;
+function mockMetaModuleSearch(result: any[]): () => void {
+  const original = (MetaModule as any).Search;
+  (MetaModule as any).Search = async () => result;
   return () => {
-    (IrModule as any).Search = original;
+    (MetaModule as any).Search = original;
   };
 }
 
@@ -261,12 +261,12 @@ async function expectAsyncErrorContains(run: () => Promise<any>, fragment: strin
   expect(message.includes(fragment)).toBe(true);
 }
 
-test('meta.IrModule PlanOperation returns blockers for missing module', async () => {
+test('meta.MetaModule PlanOperation returns blockers for missing module', async () => {
   resetRequestContext();
   ensureJobMock();
 
   const moduleName = uid('missing');
-  const resp = await IrModule.PlanOperation({ action: 'uninstall', moduleName, baseRevision: '0' });
+  const resp = await MetaModule.PlanOperation({ action: 'uninstall', moduleName, baseRevision: '0' });
 
   expect(resp).toBeTruthy();
   expect(typeof resp.baseRevision).toBe('string');
@@ -282,23 +282,23 @@ test('meta.IrModule PlanOperation returns blockers for missing module', async ()
   }
 });
 
-test('meta.IrModule PlanOperation adds risk when baseRevision mismatches', async () => {
+test('meta.MetaModule PlanOperation adds risk when baseRevision mismatches', async () => {
   resetRequestContext();
   ensureJobMock();
 
   const moduleName = uid('rev_mismatch');
-  const resp = await IrModule.PlanOperation({ action: 'install', moduleName, baseRevision: '999' });
+  const resp = await MetaModule.PlanOperation({ action: 'install', moduleName, baseRevision: '999' });
 
   const hasRisk = resp.risks.some(item => item.code === 'PLAN_REVISION_MISMATCH');
   expect(hasRisk).toBe(true);
 });
 
-test('meta.IrModule RequestInstall writes operatorUserId into job payload', async () => {
+test('meta.MetaModule RequestInstall writes operatorUserId into job payload', async () => {
   resetRequestContext();
   ensureJobMock();
 
   const moduleName = uid('req_install');
-  const jobId = await IrModule.RequestInstall(moduleName, true);
+  const jobId = await MetaModule.RequestInstall(moduleName, true);
   expect(jobId).toBeTruthy();
 
   const job = await Job.GetJob(jobId, ['Id', 'PayloadJson'] as any);
@@ -308,12 +308,12 @@ test('meta.IrModule RequestInstall writes operatorUserId into job payload', asyn
   expect(job.PayloadJson?.operatorUserId).toBe('admin');
 });
 
-test('meta.IrModule RequestUninstall writes operatorUserId into job payload', async () => {
+test('meta.MetaModule RequestUninstall writes operatorUserId into job payload', async () => {
   resetRequestContext();
   ensureJobMock();
 
   const moduleName = uid('req_uninstall');
-  const jobId = await IrModule.RequestUninstall(moduleName);
+  const jobId = await MetaModule.RequestUninstall(moduleName);
   expect(jobId).toBeTruthy();
 
   const job = await Job.GetJob(jobId, ['Id', 'PayloadJson'] as any);
@@ -322,12 +322,12 @@ test('meta.IrModule RequestUninstall writes operatorUserId into job payload', as
   expect(job.PayloadJson?.operatorUserId).toBe('admin');
 });
 
-test('meta.IrModule RequestUpgrade writes operatorUserId into job payload', async () => {
+test('meta.MetaModule RequestUpgrade writes operatorUserId into job payload', async () => {
   resetRequestContext();
   ensureJobMock();
 
   const moduleName = uid('req_upgrade');
-  const jobId = await IrModule.RequestUpgrade(moduleName);
+  const jobId = await MetaModule.RequestUpgrade(moduleName);
   expect(jobId).toBeTruthy();
 
   const job = await Job.GetJob(jobId, ['Id', 'PayloadJson'] as any);
@@ -336,7 +336,7 @@ test('meta.IrModule RequestUpgrade writes operatorUserId into job payload', asyn
   expect(job.PayloadJson?.operatorUserId).toBe('admin');
 });
 
-test('meta.IrModule ExecuteInstall uses moduleManagement bridge and writes log', async () => {
+test('meta.MetaModule ExecuteInstall uses moduleManagement bridge and writes log', async () => {
   resetRequestContext();
   ensureModuleManagementBridge();
   ensureJobMock();
@@ -354,7 +354,7 @@ test('meta.IrModule ExecuteInstall uses moduleManagement bridge and writes log',
   jsCtx.ctx.jobId = jobId;
   seedJob(jobId, { moduleName: 'base', withDemo: true, operatorUserId: 'operator_1' }, { attempt: 2, maxAttempts: 5 });
 
-  const result = await IrModule.ExecuteInstall('base', true, 'operator_1');
+  const result = await MetaModule.ExecuteInstall('base', true, 'operator_1');
   expect(result.resultStatus).toBe('SUCCEEDED');
   expect(result.reload_web).toBe(true);
   expect(result.moduleName).toBe('base');
@@ -379,7 +379,7 @@ test('meta.IrModule ExecuteInstall uses moduleManagement bridge and writes log',
   expect(logs?.[0]?.MaxAttempts).toBe(5);
 });
 
-test('meta.IrModule ExecuteInstall upserts module management log by jobId', async () => {
+test('meta.MetaModule ExecuteInstall upserts module management log by jobId', async () => {
   resetRequestContext();
   ensureModuleManagementBridge();
   ensureJobMock();
@@ -392,15 +392,15 @@ test('meta.IrModule ExecuteInstall upserts module management log by jobId', asyn
   const jsCtx = ensureRequestContext();
   jsCtx.ctx.jobId = jobId;
 
-  await IrModule.ExecuteInstall('base', false, 'operator_1');
-  await IrModule.ExecuteInstall('base', false, 'operator_1');
+  await MetaModule.ExecuteInstall('base', false, 'operator_1');
+  await MetaModule.ExecuteInstall('base', false, 'operator_1');
 
   const logs = await ModuleManagementLog.Search(['JobId', '=', jobId] as any, { limit: 10 } as any);
   expect(logs?.length).toBe(1);
   expect(logs?.[0]?.JobId).toBe(jobId);
 });
 
-test('meta.IrModule ExecuteUninstall uses moduleManagement bridge and writes log', async () => {
+test('meta.MetaModule ExecuteUninstall uses moduleManagement bridge and writes log', async () => {
   resetRequestContext();
   ensureModuleManagementBridge();
   ensureJobMock();
@@ -418,7 +418,7 @@ test('meta.IrModule ExecuteUninstall uses moduleManagement bridge and writes log
   jsCtx.ctx.jobId = jobId;
   seedJob(jobId, { moduleName: 'base', operatorUserId: 'operator_1' });
 
-  const result = await IrModule.ExecuteUninstall('base', 'operator_1');
+  const result = await MetaModule.ExecuteUninstall('base', 'operator_1');
   expect(result.resultStatus).toBe('SUCCEEDED');
   expect(result.reload_web).toBe(true);
   expect(result.moduleName).toBe('base');
@@ -437,7 +437,7 @@ test('meta.IrModule ExecuteUninstall uses moduleManagement bridge and writes log
   expect(logs?.[0]?.JobFinishedAt).toBeTruthy();
 });
 
-test('meta.IrModule ExecuteUpgrade returns failed result and maps error fields', async () => {
+test('meta.MetaModule ExecuteUpgrade returns failed result and maps error fields', async () => {
   resetRequestContext();
   ensureModuleManagementBridge();
   ensureJobMock();
@@ -451,7 +451,7 @@ test('meta.IrModule ExecuteUpgrade returns failed result and maps error fields',
   jsCtx.ctx.jobId = jobId;
   seedJob(jobId, { moduleName: 'base', operatorUserId: 'operator_1' });
 
-  const result = await IrModule.ExecuteUpgrade('base', 'operator_1');
+  const result = await MetaModule.ExecuteUpgrade('base', 'operator_1');
   expect(result.resultStatus).toBe('FAILED');
   expect(result.reload_web).toBe(false);
   expect(result.errorDomain).toBe('MODULE_MANAGEMENT');
@@ -467,7 +467,7 @@ test('meta.IrModule ExecuteUpgrade returns failed result and maps error fields',
   expect(logs?.[0]?.SummaryJson?.code).toBe('MODULE_OPERATION_FAILED');
 });
 
-test('meta.IrModule ExecuteInstall marks reload_failed when reload fails', async () => {
+test('meta.MetaModule ExecuteInstall marks reload_failed when reload fails', async () => {
   resetRequestContext();
   ensureModuleManagementBridge();
   ensureJobMock();
@@ -480,20 +480,20 @@ test('meta.IrModule ExecuteInstall marks reload_failed when reload fails', async
   const jsCtx = ensureRequestContext();
   jsCtx.ctx.jobId = jobId;
 
-  const result = await IrModule.ExecuteInstall('base', false, 'operator_1');
+  const result = await MetaModule.ExecuteInstall('base', false, 'operator_1');
   expect(result.resultStatus).toBe('SUCCEEDED');
   expect(result.reload_triggered).toBe(true);
   expect(result.reload_failed).toBe(true);
   expect(result.reload_web).toBe(false);
 });
 
-test('meta.IrModule GetOpStatus returns summary and reload flags', async () => {
+test('meta.MetaModule GetOpStatus returns summary and reload flags', async () => {
   resetRequestContext();
   ensureModuleManagementBridge();
   ensureJobMock();
 
   const moduleName = uid('status');
-  const job = await Job.EnqueueJob('meta', 'meta.IrModule/ExecuteInstall', { moduleName, operatorUserId: 'admin' }, 'admin', 'admin');
+  const job = await Job.EnqueueJob('meta', 'meta.MetaModule/ExecuteInstall', { moduleName, operatorUserId: 'admin' }, 'admin', 'admin');
 
   await (Job as any).UpdateById(
     job.Id as any,
@@ -512,7 +512,7 @@ test('meta.IrModule GetOpStatus returns summary and reload flags', async () => {
     } as any
   );
 
-  const status = await IrModule.GetOpStatus(job.Id as any);
+  const status = await MetaModule.GetOpStatus(job.Id as any);
   expect(status.status).toBe('succeeded');
   expect(status.resultStatus).toBe('SUCCEEDED');
   expect(status.reload_web).toBe(true);
@@ -520,13 +520,13 @@ test('meta.IrModule GetOpStatus returns summary and reload flags', async () => {
   expect(status.action).toBe('install');
 });
 
-test('meta.IrModule GetOpStatus supports succeeded status with failed result', async () => {
+test('meta.MetaModule GetOpStatus supports succeeded status with failed result', async () => {
   resetRequestContext();
   ensureModuleManagementBridge();
   ensureJobMock();
 
   const moduleName = uid('upgrade_failed');
-  const job = await Job.EnqueueJob('meta', 'meta.IrModule/ExecuteUpgrade', { moduleName, operatorUserId: 'admin' }, 'admin', 'admin');
+  const job = await Job.EnqueueJob('meta', 'meta.MetaModule/ExecuteUpgrade', { moduleName, operatorUserId: 'admin' }, 'admin', 'admin');
 
   await (Job as any).UpdateById(
     job.Id as any,
@@ -545,7 +545,7 @@ test('meta.IrModule GetOpStatus supports succeeded status with failed result', a
     } as any
   );
 
-  const status = await IrModule.GetOpStatus(job.Id as any);
+  const status = await MetaModule.GetOpStatus(job.Id as any);
   expect(status.status).toBe('succeeded');
   expect(status.resultStatus).toBe('FAILED');
   expect(status.failureKind).toBe('NON_RETRYABLE');
@@ -553,13 +553,13 @@ test('meta.IrModule GetOpStatus supports succeeded status with failed result', a
   expect(status.reload_web).toBe(false);
 });
 
-test('meta.IrModule GetOpStatus maps retryable lock conflicts', async () => {
+test('meta.MetaModule GetOpStatus maps retryable lock conflicts', async () => {
   resetRequestContext();
   ensureModuleManagementBridge();
   ensureJobMock();
 
   const moduleName = uid('lock_conflict');
-  const job = await Job.EnqueueJob('meta', 'meta.IrModule/ExecuteUpgrade', { moduleName, operatorUserId: 'admin' }, 'admin', 'admin');
+  const job = await Job.EnqueueJob('meta', 'meta.MetaModule/ExecuteUpgrade', { moduleName, operatorUserId: 'admin' }, 'admin', 'admin');
 
   await (Job as any).UpdateById(
     job.Id as any,
@@ -575,7 +575,7 @@ test('meta.IrModule GetOpStatus maps retryable lock conflicts', async () => {
     } as any
   );
 
-  const status = await IrModule.GetOpStatus(job.Id as any);
+  const status = await MetaModule.GetOpStatus(job.Id as any);
   expect(status.status).toBe('failed');
   expect(status.failureKind).toBe('RETRYABLE');
   expect(status.retryAfterMs).toBe(2500);
@@ -584,15 +584,15 @@ test('meta.IrModule GetOpStatus maps retryable lock conflicts', async () => {
   expect(status.summary?.code).toBe('MODULE_OPERATION_FAILED');
 });
 
-test('meta.IrModuleIndex RequestSync enqueues when stale and no batch sync', async () => {
+test('meta.MetaModuleIndex RequestSync enqueues when stale and no batch sync', async () => {
   resetRequestContext();
   ensureJobMock();
 
-  const restoreRepo = mockIrModuleIndexRepo([{ last_batch_sync_at: null }]);
+  const restoreRepo = mockMetaModuleIndexRepo([{ last_batch_sync_at: null }]);
   const restoreSearch = mockJobSearch([]);
 
   try {
-    const jobId = await IrModuleIndex.RequestSync({ originType: 'local', ifStale: true, force: false });
+    const jobId = await MetaModuleIndex.RequestSync({ originType: 'local', ifStale: true, force: false });
     expect(jobId).toBeTruthy();
   } finally {
     restoreSearch();
@@ -600,11 +600,11 @@ test('meta.IrModuleIndex RequestSync enqueues when stale and no batch sync', asy
   }
 });
 
-test('meta.IrModuleIndex RequestSync skips enqueue when not stale', async () => {
+test('meta.MetaModuleIndex RequestSync skips enqueue when not stale', async () => {
   resetRequestContext();
   ensureJobMock();
 
-  const restoreRepo = mockIrModuleIndexRepo([{ last_batch_sync_at: new Date() }]);
+  const restoreRepo = mockMetaModuleIndexRepo([{ last_batch_sync_at: new Date() }]);
   const restoreSearch = mockJobSearch([]);
 
   let enqueueCalled = false;
@@ -615,7 +615,7 @@ test('meta.IrModuleIndex RequestSync skips enqueue when not stale', async () => 
   };
 
   try {
-    const jobId = await IrModuleIndex.RequestSync({ originType: 'local', ifStale: true, force: false });
+    const jobId = await MetaModuleIndex.RequestSync({ originType: 'local', ifStale: true, force: false });
     expect(jobId).toBe('');
     expect(enqueueCalled).toBe(false);
   } finally {
@@ -625,11 +625,11 @@ test('meta.IrModuleIndex RequestSync skips enqueue when not stale', async () => 
   }
 });
 
-test('meta.IrModuleIndex RequestSync(all) skips enqueue when both origins are fresh', async () => {
+test('meta.MetaModuleIndex RequestSync(all) skips enqueue when both origins are fresh', async () => {
   resetRequestContext();
   ensureJobMock();
 
-  const restoreRepo = mockIrModuleIndexRepo([{ last_batch_sync_at: new Date() }]);
+  const restoreRepo = mockMetaModuleIndexRepo([{ last_batch_sync_at: new Date() }]);
   const restoreSearch = mockJobSearch([]);
 
   let enqueueCalled = false;
@@ -640,7 +640,7 @@ test('meta.IrModuleIndex RequestSync(all) skips enqueue when both origins are fr
   };
 
   try {
-    const jobId = await IrModuleIndex.RequestSync({ ifStale: true, force: false });
+    const jobId = await MetaModuleIndex.RequestSync({ ifStale: true, force: false });
     expect(jobId).toBe('');
     expect(enqueueCalled).toBe(false);
   } finally {
@@ -650,15 +650,15 @@ test('meta.IrModuleIndex RequestSync(all) skips enqueue when both origins are fr
   }
 });
 
-test('meta.IrModuleIndex RequestSync(all) enqueues when stale', async () => {
+test('meta.MetaModuleIndex RequestSync(all) enqueues when stale', async () => {
   resetRequestContext();
   ensureJobMock();
 
-  const restoreRepo = mockIrModuleIndexRepo([{ last_batch_sync_at: null }]);
+  const restoreRepo = mockMetaModuleIndexRepo([{ last_batch_sync_at: null }]);
   const restoreSearch = mockJobSearch([]);
 
   try {
-    const jobId = await IrModuleIndex.RequestSync({ ifStale: true, force: false });
+    const jobId = await MetaModuleIndex.RequestSync({ ifStale: true, force: false });
     expect(jobId).toBeTruthy();
   } finally {
     restoreSearch();
@@ -666,7 +666,7 @@ test('meta.IrModuleIndex RequestSync(all) enqueues when stale', async () => {
   }
 });
 
-test('meta.IrModuleIndex RequestSync reuses running job for non-force requests', async () => {
+test('meta.MetaModuleIndex RequestSync reuses running job for non-force requests', async () => {
   resetRequestContext();
   ensureJobMock();
 
@@ -679,7 +679,7 @@ test('meta.IrModuleIndex RequestSync reuses running job for non-force requests',
   };
 
   try {
-    const jobId = await IrModuleIndex.RequestSync({ originType: 'local', ifStale: true, force: false });
+    const jobId = await MetaModuleIndex.RequestSync({ originType: 'local', ifStale: true, force: false });
     expect(jobId).toBe('job_running_sync');
     expect(enqueueCalled).toBe(false);
   } finally {
@@ -688,7 +688,7 @@ test('meta.IrModuleIndex RequestSync reuses running job for non-force requests',
   }
 });
 
-test('meta.IrModuleIndex RequestSync ignores incompatible running origin and enqueues', async () => {
+test('meta.MetaModuleIndex RequestSync ignores incompatible running origin and enqueues', async () => {
   resetRequestContext();
   ensureJobMock();
 
@@ -697,7 +697,7 @@ test('meta.IrModuleIndex RequestSync ignores incompatible running origin and enq
   (Job as any).EnqueueJob = async () => ({ Id: 'job_local_sync' });
 
   try {
-    const jobId = await IrModuleIndex.RequestSync({ originType: 'local', ifStale: true, force: false });
+    const jobId = await MetaModuleIndex.RequestSync({ originType: 'local', ifStale: true, force: false });
     expect(jobId).toBe('job_local_sync');
   } finally {
     (Job as any).EnqueueJob = originalEnqueue;
@@ -705,7 +705,7 @@ test('meta.IrModuleIndex RequestSync ignores incompatible running origin and enq
   }
 });
 
-test('meta.IrModuleIndex RequestSync(force) does not reuse running job', async () => {
+test('meta.MetaModuleIndex RequestSync(force) does not reuse running job', async () => {
   resetRequestContext();
   ensureJobMock();
 
@@ -714,7 +714,7 @@ test('meta.IrModuleIndex RequestSync(force) does not reuse running job', async (
   (Job as any).EnqueueJob = async () => ({ Id: 'job_forced_sync' });
 
   try {
-    const jobId = await IrModuleIndex.RequestSync({ originType: 'local', force: true, ifStale: false });
+    const jobId = await MetaModuleIndex.RequestSync({ originType: 'local', force: true, ifStale: false });
     expect(jobId).toBe('job_forced_sync');
   } finally {
     (Job as any).EnqueueJob = originalEnqueue;
@@ -722,17 +722,17 @@ test('meta.IrModuleIndex RequestSync(force) does not reuse running job', async (
   }
 });
 
-test('meta.IrModuleIndex RequestSync rejects invalid originType', async () => {
+test('meta.MetaModuleIndex RequestSync rejects invalid originType', async () => {
   resetRequestContext();
   ensureJobMock();
 
   await expectAsyncErrorContains(
-    () => IrModuleIndex.RequestSync({ originType: 'remote' as any, force: true, ifStale: false }),
+    () => MetaModuleIndex.RequestSync({ originType: 'remote' as any, force: true, ifStale: false }),
     'originType must be one of: local, registry, all'
   );
 });
 
-test('meta.IrModuleIndex Sync rejects invalid originType before bridge call', async () => {
+test('meta.MetaModuleIndex Sync rejects invalid originType before bridge call', async () => {
   resetRequestContext();
   ensureModuleManagementBridge();
 
@@ -743,16 +743,16 @@ test('meta.IrModuleIndex Sync rejects invalid originType before bridge call', as
     return { ok: true };
   };
 
-  await expectAsyncErrorContains(() => IrModuleIndex.Sync('remote' as any, false), 'originType must be one of: local, registry, all');
+  await expectAsyncErrorContains(() => MetaModuleIndex.Sync('remote' as any, false), 'originType must be one of: local, registry, all');
   expect(called).toBe(false);
 });
 
-test('meta.IrModuleIndex Search honors requested fields after aggregation', async () => {
+test('meta.MetaModuleIndex Search honors requested fields after aggregation', async () => {
   resetRequestContext();
 
   const now = new Date();
-  const restoreGroupedRepo = mockIrModuleIndexGroupedRepo([{ ModuleName: 'auth' }]);
-  const restoreBaseSearch = mockIrModuleIndexBaseSearch([
+  const restoreGroupedRepo = mockMetaModuleIndexGroupedRepo([{ ModuleName: 'auth' }]);
+  const restoreBaseSearch = mockMetaModuleIndexBaseSearch([
     {
       Id: 'idx_local',
       ModuleName: 'auth',
@@ -788,7 +788,7 @@ test('meta.IrModuleIndex Search honors requested fields after aggregation', asyn
   ]);
 
   try {
-    const rows = await (IrModuleIndex as any).Search([], { fields: ['ModuleName', 'RegistryVersion'], limit: 10 });
+    const rows = await (MetaModuleIndex as any).Search([], { fields: ['ModuleName', 'RegistryVersion'], limit: 10 });
     expect(Array.isArray(rows)).toBe(true);
     expect(rows.length).toBe(1);
     expect(typeof rows[0].toPlainObject).toBe('function');
@@ -802,12 +802,12 @@ test('meta.IrModuleIndex Search honors requested fields after aggregation', asyn
   }
 });
 
-test('meta.IrModuleIndex Search projection returns model instances and blocks dangerous fields', async () => {
+test('meta.MetaModuleIndex Search projection returns model instances and blocks dangerous fields', async () => {
   resetRequestContext();
 
   const now = new Date();
-  const restoreGroupedRepo = mockIrModuleIndexGroupedRepo([{ ModuleName: 'auth' }]);
-  const restoreBaseSearch = mockIrModuleIndexBaseSearch([
+  const restoreGroupedRepo = mockMetaModuleIndexGroupedRepo([{ ModuleName: 'auth' }]);
+  const restoreBaseSearch = mockMetaModuleIndexBaseSearch([
     {
       Id: 'idx_local',
       ModuleName: 'auth',
@@ -827,7 +827,7 @@ test('meta.IrModuleIndex Search projection returns model instances and blocks da
   ]);
 
   try {
-    const rows = await (IrModuleIndex as any).Search([], { fields: ['ModuleName', '__proto__', 'constructor', 'prototype'], limit: 10 });
+    const rows = await (MetaModuleIndex as any).Search([], { fields: ['ModuleName', '__proto__', 'constructor', 'prototype'], limit: 10 });
     expect(Array.isArray(rows)).toBe(true);
     expect(rows.length).toBe(1);
     expect(rows[0].ModuleName).toBe('auth');
@@ -844,12 +844,12 @@ test('meta.IrModuleIndex Search projection returns model instances and blocks da
   }
 });
 
-test('meta.IrModuleIndex Search prefers IrModule status over aggregate default uninstalled', async () => {
+test('meta.MetaModuleIndex Search prefers MetaModule status over aggregate default uninstalled', async () => {
   resetRequestContext();
 
   const now = new Date();
-  const restoreGroupedRepo = mockIrModuleIndexGroupedRepo([{ ModuleName: 'auth' }]);
-  const restoreBaseSearch = mockIrModuleIndexBaseSearch([
+  const restoreGroupedRepo = mockMetaModuleIndexGroupedRepo([{ ModuleName: 'auth' }]);
+  const restoreBaseSearch = mockMetaModuleIndexBaseSearch([
     {
       Id: 'idx_local',
       ModuleName: 'auth',
@@ -879,7 +879,7 @@ test('meta.IrModuleIndex Search prefers IrModule status over aggregate default u
       LastErrorMessage: '',
     },
   ]);
-  const restoreIrModuleSearch = mockIrModuleSearch([
+  const restoreMetaModuleSearch = mockMetaModuleSearch([
     {
       Name: 'auth',
       Status: 'installed',
@@ -888,7 +888,7 @@ test('meta.IrModuleIndex Search prefers IrModule status over aggregate default u
   ]);
 
   try {
-    const rows = await (IrModuleIndex as any).Search([], { fields: ['ModuleName', 'InstalledStatus', 'InstalledVersion'], limit: 10 });
+    const rows = await (MetaModuleIndex as any).Search([], { fields: ['ModuleName', 'InstalledStatus', 'InstalledVersion'], limit: 10 });
     expect(Array.isArray(rows)).toBe(true);
     expect(rows.length).toBe(1);
     expect(rows[0].ModuleName).toBe('auth');
@@ -897,16 +897,16 @@ test('meta.IrModuleIndex Search prefers IrModule status over aggregate default u
   } finally {
     restoreGroupedRepo();
     restoreBaseSearch();
-    restoreIrModuleSearch();
+    restoreMetaModuleSearch();
   }
 });
 
-test('meta.IrModuleIndex Count uses grouped module count', async () => {
+test('meta.MetaModuleIndex Count uses grouped module count', async () => {
   resetRequestContext();
 
-  const restoreGroupedRepo = mockIrModuleIndexGroupedRepo([], 7);
+  const restoreGroupedRepo = mockMetaModuleIndexGroupedRepo([], 7);
   try {
-    const total = await (IrModuleIndex as any).Count([], {});
+    const total = await (MetaModuleIndex as any).Count([], {});
     expect(total).toBe(7);
   } finally {
     restoreGroupedRepo();

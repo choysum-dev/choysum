@@ -33,19 +33,19 @@ func TestBaseModelBeforeCreate(t *testing.T) {
 func TestEntitiesAndTableNames(t *testing.T) {
 	entities := Entities()
 	expectedTypes := []reflect.Type{
-		reflect.TypeOf(&IrApplication{}),
-		reflect.TypeOf(&IrModule{}),
-		reflect.TypeOf(&IrComponent{}),
-		reflect.TypeOf(&IrModel{}),
-		reflect.TypeOf(&IrField{}),
-		reflect.TypeOf(&IrService{}),
-		reflect.TypeOf(&IrTypeParameter{}),
-		reflect.TypeOf(&IrParameter{}),
-		reflect.TypeOf(&IrDecorator{}),
-		reflect.TypeOf(&IrArgument{}),
-		reflect.TypeOf(&IrUiResource{}),
-		reflect.TypeOf(&IrUiResourceMenuRoute{}),
-		reflect.TypeOf(&IrUiResourceRouteAction{}),
+		reflect.TypeOf(&Application{}),
+		reflect.TypeOf(&Module{}),
+		reflect.TypeOf(&Component{}),
+		reflect.TypeOf(&Model{}),
+		reflect.TypeOf(&Field{}),
+		reflect.TypeOf(&Service{}),
+		reflect.TypeOf(&TypeParameter{}),
+		reflect.TypeOf(&Parameter{}),
+		reflect.TypeOf(&Decorator{}),
+		reflect.TypeOf(&Argument{}),
+		reflect.TypeOf(&UiResource{}),
+		reflect.TypeOf(&UiResourceMenuRoute{}),
+		reflect.TypeOf(&UiResourceRouteAction{}),
 	}
 
 	if len(entities) != len(expectedTypes) {
@@ -62,19 +62,19 @@ func TestEntitiesAndTableNames(t *testing.T) {
 		got  string
 		want string
 	}{
-		{name: "IrApplication", got: (&IrApplication{}).TableName(), want: "meta_ir_application"},
-		{name: "IrModule", got: (&IrModule{}).TableName(), want: "meta_ir_module"},
-		{name: "IrComponent", got: (&IrComponent{}).TableName(), want: "meta_ir_component"},
-		{name: "IrModel", got: (&IrModel{}).TableName(), want: "meta_ir_model"},
-		{name: "IrField", got: (&IrField{}).TableName(), want: "meta_ir_field"},
-		{name: "IrService", got: (&IrService{}).TableName(), want: "meta_ir_service"},
-		{name: "IrTypeParameter", got: (&IrTypeParameter{}).TableName(), want: "meta_ir_type_parameter"},
-		{name: "IrParameter", got: (&IrParameter{}).TableName(), want: "meta_ir_parameter"},
-		{name: "IrDecorator", got: (&IrDecorator{}).TableName(), want: "meta_ir_decorator"},
-		{name: "IrArgument", got: (&IrArgument{}).TableName(), want: "meta_ir_argument"},
-		{name: "IrUiResource", got: (&IrUiResource{}).TableName(), want: "meta_ir_ui_resource"},
-		{name: "IrUiResourceMenuRoute", got: (&IrUiResourceMenuRoute{}).TableName(), want: "meta_ir_ui_resource_menu_route"},
-		{name: "IrUiResourceRouteAction", got: (&IrUiResourceRouteAction{}).TableName(), want: "meta_ir_ui_resource_route_action"},
+		{name: "Application", got: (&Application{}).TableName(), want: "meta_application"},
+		{name: "Module", got: (&Module{}).TableName(), want: "meta_module"},
+		{name: "Component", got: (&Component{}).TableName(), want: "meta_component"},
+		{name: "Model", got: (&Model{}).TableName(), want: "meta_model"},
+		{name: "Field", got: (&Field{}).TableName(), want: "meta_field"},
+		{name: "Service", got: (&Service{}).TableName(), want: "meta_service"},
+		{name: "TypeParameter", got: (&TypeParameter{}).TableName(), want: "meta_type_parameter"},
+		{name: "Parameter", got: (&Parameter{}).TableName(), want: "meta_parameter"},
+		{name: "Decorator", got: (&Decorator{}).TableName(), want: "meta_decorator"},
+		{name: "Argument", got: (&Argument{}).TableName(), want: "meta_argument"},
+		{name: "UiResource", got: (&UiResource{}).TableName(), want: "meta_ui_resource"},
+		{name: "UiResourceMenuRoute", got: (&UiResourceMenuRoute{}).TableName(), want: "meta_ui_resource_menu_route"},
+		{name: "UiResourceRouteAction", got: (&UiResourceRouteAction{}).TableName(), want: "meta_ui_resource_route_action"},
 	}
 
 	for _, check := range tableNames {

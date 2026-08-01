@@ -7,16 +7,16 @@ import (
 	"database/sql"
 )
 
-type IrTypeParameter struct {
+type TypeParameter struct {
 	BaseModel      `gorm:"embedded"`
 	Name           string `gorm:"type:varchar(255);not null" json:"name"`
 	ModuleSpecPath string `gorm:"type:varchar(255);" json:"module_spec_path"`
 	ReferenceIdent string `gorm:"type:varchar(255);" json:"reference_ident"`
 
 	ServiceId sql.NullString `gorm:"type:char(20)" json:"service_id"`
-	Service   *IrService     `gorm:"foreignKey:ServiceId" json:"service"`
+	Service   *Service       `gorm:"foreignKey:ServiceId" json:"service"`
 }
 
-func (tp *IrTypeParameter) TableName() string {
-	return "meta_ir_type_parameter"
+func (tp *TypeParameter) TableName() string {
+	return "meta_type_parameter"
 }

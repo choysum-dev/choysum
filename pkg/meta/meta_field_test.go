@@ -48,7 +48,7 @@ func TestTermReferenceKeyStabilityAndJSONRoundTrip(t *testing.T) {
 		t.Fatalf("JSON round-trip mismatch: got %+v want %+v", roundtrip, reference)
 	}
 
-	itemRaw, err := json.Marshal(IrFieldSelectionItem{
+	itemRaw, err := json.Marshal(FieldSelectionItem{
 		Value: "active", Label: "Active", LabelText: &reference,
 	})
 	if err != nil {
@@ -57,7 +57,7 @@ func TestTermReferenceKeyStabilityAndJSONRoundTrip(t *testing.T) {
 	if !strings.Contains(string(itemRaw), `"labelText":`) || strings.Contains(string(itemRaw), `"termReference":`) {
 		t.Fatalf("labelText wire property changed: %s", itemRaw)
 	}
-	var itemRoundtrip IrFieldSelectionItem
+	var itemRoundtrip FieldSelectionItem
 	if err := json.Unmarshal(itemRaw, &itemRoundtrip); err != nil {
 		t.Fatal(err)
 	}
@@ -66,16 +66,16 @@ func TestTermReferenceKeyStabilityAndJSONRoundTrip(t *testing.T) {
 	}
 }
 
-func TestIrField_SetResolvedSpec(t *testing.T) {
+func TestField_SetResolvedSpec(t *testing.T) {
 	t.Run("nil receiver", func(t *testing.T) {
-		var field *IrField
-		if err := field.SetResolvedSpec(&IrFieldResolvedSpec{FieldName: "x"}); err != nil {
+		var field *Field
+		if err := field.SetResolvedSpec(&FieldResolvedSpec{FieldName: "x"}); err != nil {
 			t.Fatalf("nil receiver: unexpected error: %v", err)
 		}
 	})
 
 	t.Run("nil spec clears ResolvedSpec", func(t *testing.T) {
-		field := &IrField{ResolvedSpec: `{"fieldName":"old"}`}
+		field := &Field{ResolvedSpec: `{"fieldName":"old"}`}
 		if err := field.SetResolvedSpec(nil); err != nil {
 			t.Fatalf("nil spec: unexpected error: %v", err)
 		}
@@ -85,31 +85,31 @@ func TestIrField_SetResolvedSpec(t *testing.T) {
 	})
 
 	t.Run("valid spec serialises to JSON", func(t *testing.T) {
-		field := &IrField{}
-		spec := &IrFieldResolvedSpec{
+		field := &Field{}
+		spec := &FieldResolvedSpec{
 			FieldName: "amount",
-			Structural: IrFieldStructuralSpec{
+			Structural: FieldStructuralSpec{
 				Name:      "amount",
 				FieldType: "float",
-				StorageHints: &IrFieldStructuralStorageHints{
+				StorageHints: &FieldStructuralStorageHints{
 					Required: ptr(true),
 					Indexed:  ptr(true),
 				},
 			},
-			Behavior: IrFieldBehaviorSpec{
-				Compute: &IrFieldBehaviorComputeSpec{
+			Behavior: FieldBehaviorSpec{
+				Compute: &FieldBehaviorComputeSpec{
 					Method: "computeAmount",
 					Deps:   []string{"price", "qty"},
 					Store:  true,
 				},
 			},
-			Migration: IrFieldMigrationDecision{
+			Migration: FieldMigrationDecision{
 				StorageKind:        "column",
 				ShouldCreateColumn: true,
 				ResolvedColumnType: "DOUBLE PRECISION",
 				ReasonCode:         "OK",
 			},
-			Diagnostics: []IrFieldDiagnostic{
+			Diagnostics: []FieldDiagnostic{
 				{Code: "W001", Severity: "warning", Message: "test diagnostic"},
 			},
 		}
@@ -120,7 +120,7 @@ func TestIrField_SetResolvedSpec(t *testing.T) {
 			t.Fatal("expected non-empty ResolvedSpec")
 		}
 
-		var roundtrip IrFieldResolvedSpec
+		var roundtrip FieldResolvedSpec
 		if err := json.Unmarshal([]byte(field.ResolvedSpec), &roundtrip); err != nil {
 			t.Fatalf("unmarshal roundtrip: %v", err)
 		}
@@ -133,32 +133,32 @@ func TestIrField_SetResolvedSpec(t *testing.T) {
 	})
 
 	t.Run("spec with related and resolved values", func(t *testing.T) {
-		field := &IrField{}
+		field := &Field{}
 		searchable := ptr(true)
-		spec := &IrFieldResolvedSpec{
+		spec := &FieldResolvedSpec{
 			FieldName: "total",
-			Structural: IrFieldStructuralSpec{
+			Structural: FieldStructuralSpec{
 				Name:      "total",
 				FieldType: "float",
-				Related: &IrFieldRelatedSpec{
+				Related: &FieldRelatedSpec{
 					Path:  "order_id",
 					Store: false,
 					Deps:  []string{"order"},
 				},
 			},
 			Resolved: struct {
-				Store      IrResolvedValue[bool]  `json:"store"`
-				Searchable IrResolvedValue[*bool] `json:"searchable"`
+				Store      ResolvedValue[bool]  `json:"store"`
+				Searchable ResolvedValue[*bool] `json:"searchable"`
 			}{
-				Store:      IrResolvedValue[bool]{Value: false, Source: "related"},
-				Searchable: IrResolvedValue[*bool]{Value: searchable, Source: "explicit"},
+				Store:      ResolvedValue[bool]{Value: false, Source: "related"},
+				Searchable: ResolvedValue[*bool]{Value: searchable, Source: "explicit"},
 			},
 		}
 		if err := field.SetResolvedSpec(spec); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		var roundtrip IrFieldResolvedSpec
+		var roundtrip FieldResolvedSpec
 		if err := json.Unmarshal([]byte(field.ResolvedSpec), &roundtrip); err != nil {
 			t.Fatalf("unmarshal roundtrip: %v", err)
 		}
@@ -174,9 +174,9 @@ func TestIrField_SetResolvedSpec(t *testing.T) {
 	})
 }
 
-func TestIrField_GetResolvedSpec(t *testing.T) {
+func TestField_GetResolvedSpec(t *testing.T) {
 	t.Run("nil receiver", func(t *testing.T) {
-		var field *IrField
+		var field *Field
 		spec, err := field.GetResolvedSpec()
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -187,7 +187,7 @@ func TestIrField_GetResolvedSpec(t *testing.T) {
 	})
 
 	t.Run("empty ResolvedSpec returns nil", func(t *testing.T) {
-		field := &IrField{ResolvedSpec: ""}
+		field := &Field{ResolvedSpec: ""}
 		spec, err := field.GetResolvedSpec()
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -198,7 +198,7 @@ func TestIrField_GetResolvedSpec(t *testing.T) {
 	})
 
 	t.Run("whitespace-only ResolvedSpec returns nil", func(t *testing.T) {
-		field := &IrField{ResolvedSpec: "   "}
+		field := &Field{ResolvedSpec: "   "}
 		spec, err := field.GetResolvedSpec()
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -209,23 +209,23 @@ func TestIrField_GetResolvedSpec(t *testing.T) {
 	})
 
 	t.Run("valid JSON roundtrip", func(t *testing.T) {
-		original := &IrFieldResolvedSpec{
+		original := &FieldResolvedSpec{
 			FieldName: "active",
-			Behavior: IrFieldBehaviorSpec{
-				Compute: &IrFieldBehaviorComputeSpec{
+			Behavior: FieldBehaviorSpec{
+				Compute: &FieldBehaviorComputeSpec{
 					Method: "computeActive",
 					Deps:   []string{"state"},
 					Store:  true,
 				},
 			},
-			Migration: IrFieldMigrationDecision{
+			Migration: FieldMigrationDecision{
 				StorageKind:        "virtual",
 				ShouldCreateColumn: false,
 				ReasonCode:         "COMPUTE_VIRTUAL",
 			},
 		}
 
-		field := &IrField{}
+		field := &Field{}
 		if err := field.SetResolvedSpec(original); err != nil {
 			t.Fatalf("set: %v", err)
 		}
@@ -246,7 +246,7 @@ func TestIrField_GetResolvedSpec(t *testing.T) {
 	})
 
 	t.Run("invalid JSON returns error", func(t *testing.T) {
-		field := &IrField{ResolvedSpec: "not-valid-json"}
+		field := &Field{ResolvedSpec: "not-valid-json"}
 		_, err := field.GetResolvedSpec()
 		if err == nil {
 			t.Fatal("expected error for invalid JSON")

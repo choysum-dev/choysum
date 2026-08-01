@@ -89,11 +89,11 @@ func installedModulesByApp(runtimeScope scope.Scope) (map[string][]string, error
 		return out, nil
 	}
 	session := runtimeScope.Session()
-	if !session.Migrator().HasTable((&meta.IrModule{}).TableName()) {
+	if !session.Migrator().HasTable((&meta.Module{}).TableName()) {
 		return out, nil
 	}
 
-	var modules []meta.IrModule
+	var modules []meta.Module
 	if err := session.Where("status = ?", meta.Installed).Find(&modules).Error; err != nil {
 		return nil, fmt.Errorf("list installed modules: %w", err)
 	}

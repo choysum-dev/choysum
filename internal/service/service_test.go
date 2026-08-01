@@ -1003,14 +1003,14 @@ message PingReply { string msg = 1; }
 		t.Fatalf("meta ServiceDescs: %v", err)
 	}
 	if len(metaDescs) != 3 {
-		t.Fatalf("expected 3 service desc for meta (MetaService+TaskWorker+I18n); got %d", len(metaDescs))
+		t.Fatalf("expected 3 service desc for meta (Service+TaskWorker+I18n); got %d", len(metaDescs))
 	}
-	var hasMetaService bool
+	var hasService bool
 	var hasMetaTaskWorker bool
 	var hasMetaI18n bool
 	for _, desc := range metaDescs {
 		if desc.ServiceName == "meta.MetaService" {
-			hasMetaService = true
+			hasService = true
 		}
 		if desc.ServiceName == "meta.TaskWorker" {
 			hasMetaTaskWorker = true
@@ -1022,7 +1022,7 @@ message PingReply { string msg = 1; }
 			t.Fatalf("meta desc should not include auth: %q", desc.ServiceName)
 		}
 	}
-	if !hasMetaService {
+	if !hasService {
 		t.Fatalf("missing meta.MetaService descriptor")
 	}
 	if !hasMetaTaskWorker {

@@ -24,7 +24,7 @@ import (
 
 type webGrpcGenerator struct {
 	runtimeScope scope.Scope
-	module       *meta.IrModule
+	module       *meta.Module
 	plugins      []GrpcPlugin
 
 	// Optional override for pipeline-managed staging.
@@ -187,7 +187,7 @@ func (p *webGrpcGenerator) buildParameters() string {
 	return strings.Join(params, ",")
 }
 
-func NewWebGrpcGenerator(runtimeScope scope.Scope, module *meta.IrModule) *webGrpcGenerator {
+func NewWebGrpcGenerator(runtimeScope scope.Scope, module *meta.Module) *webGrpcGenerator {
 	gen := &webGrpcGenerator{
 		runtimeScope: runtimeScope,
 		module:       module,

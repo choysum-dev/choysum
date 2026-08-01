@@ -27,7 +27,7 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	selectionJSON := `[{"value":"allow","label":"Allow","labelText":{"key":"` + referenceKey + `","module":"demo","scope":"demo.status.allow","src":"Allow","kind":"literal"}}]`
 	round := "HALF_UP"
 	searchable := true
-	field := &meta.IrField{
+	field := &meta.Field{
 		BaseModel:                meta.BaseModel{Id: sql.NullString{String: "field-1", Valid: true}},
 		Name:                     "Amount",
 		FieldType:                "Decimal",
@@ -54,17 +54,17 @@ func TestWebApiStoreGenerate(t *testing.T) {
 		HelpText:                 `{"key":"` + helpKey + `","module":"demo","scope":"demo.model.Partner.fields","src":"Monetary amount in company currency","kind":"literal"}`,
 		Round:                    &round,
 	}
-	resolvedSpec := &meta.IrFieldResolvedSpec{
+	resolvedSpec := &meta.FieldResolvedSpec{
 		FieldName: "Amount",
-		Structural: meta.IrFieldStructuralSpec{
-			Related: &meta.IrFieldRelatedSpec{Path: "CurrencyId.Symbol", Store: true},
+		Structural: meta.FieldStructuralSpec{
+			Related: &meta.FieldRelatedSpec{Path: "CurrencyId.Symbol", Store: true},
 		},
-		Behavior: meta.IrFieldBehaviorSpec{
-			Compute: &meta.IrFieldBehaviorComputeSpec{Method: "ComputeAmount", Deps: []string{"CurrencyId"}, Store: true},
+		Behavior: meta.FieldBehaviorSpec{
+			Compute: &meta.FieldBehaviorComputeSpec{Method: "ComputeAmount", Deps: []string{"CurrencyId"}, Store: true},
 		},
-		Migration: meta.IrFieldMigrationDecision{StorageKind: "column", ShouldCreateColumn: true, ResolvedColumnType: "NUMERIC(12,4)", ReasonCode: "LEGACY_COLUMN"},
+		Migration: meta.FieldMigrationDecision{StorageKind: "column", ShouldCreateColumn: true, ResolvedColumnType: "NUMERIC(12,4)", ReasonCode: "LEGACY_COLUMN"},
 	}
-	resolvedSpec.Resolved.Searchable = meta.IrResolvedValue[*bool]{Value: &searchable, Source: "decorator"}
+	resolvedSpec.Resolved.Searchable = meta.ResolvedValue[*bool]{Value: &searchable, Source: "decorator"}
 	if err := field.SetResolvedSpec(resolvedSpec); err != nil {
 		t.Fatalf("set resolved spec: %v", err)
 	}
@@ -114,7 +114,7 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	if len(importModels) != 1 || importModels[0] != "Company" {
 		t.Fatalf("unexpected import models: %#v", importModels)
 	}
-	if NewWebApiStoreGenerator(runtimeScope, &meta.IrModule{Name: "base"}) == nil {
+	if NewWebApiStoreGenerator(runtimeScope, &meta.Module{Name: "base"}) == nil {
 		t.Fatal("expected web api store generator constructor to return non-nil")
 	}
 	app := testApp()
@@ -125,17 +125,17 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	}
 	if len(app.Models) > 1 && len(app.Models[1].Fields) > 1 {
 		companyField := app.Models[1].Fields[1]
-		if err := companyField.SetResolvedSpec(&meta.IrFieldResolvedSpec{
+		if err := companyField.SetResolvedSpec(&meta.FieldResolvedSpec{
 			FieldName: "CompanyId",
-			Behavior:  meta.IrFieldBehaviorSpec{Search: &meta.IrFieldBehaviorMethodRef{Method: "SearchCompany"}},
-			Migration: meta.IrFieldMigrationDecision{StorageKind: "column", ShouldCreateColumn: true, ResolvedColumnType: "INTEGER", ReasonCode: "RELATION_DEFAULT"},
+			Behavior:  meta.FieldBehaviorSpec{Search: &meta.FieldBehaviorMethodRef{Method: "SearchCompany"}},
+			Migration: meta.FieldMigrationDecision{StorageKind: "column", ShouldCreateColumn: true, ResolvedColumnType: "INTEGER", ReasonCode: "RELATION_DEFAULT"},
 		}); err != nil {
 			t.Fatalf("set resolved spec on app fixture: %v", err)
 		}
 	}
 
 	webStoreDir := t.TempDir()
-	storeResults, err := (&webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, modulesWebDir: webStoreDir}).generate(context.Background(), app)
+	storeResults, err := (&webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "crm"}, modulesWebDir: webStoreDir}).generate(context.Background(), app)
 	if err != nil {
 		t.Fatalf("web api store generate() error = %v", err)
 	}
@@ -176,7 +176,7 @@ func TestWebApiStoreGenerate(t *testing.T) {
 }
 
 func TestWebApiStoreGenerate_DynamicSelectionOmitsInlineArray(t *testing.T) {
-	field := &meta.IrField{
+	field := &meta.Field{
 		BaseModel:        meta.BaseModel{Id: sql.NullString{String: "field-dyn", Valid: true}},
 		Name:             "Status",
 		FieldType:        "selection",
@@ -196,7 +196,7 @@ func TestWebApiStoreGenerate_DynamicSelectionOmitsInlineArray(t *testing.T) {
 
 func TestConvertFieldToMetadata_PrefersResolvedSelectionOverBrokenLegacy(t *testing.T) {
 	referenceKey := meta.TermReferenceKey("base", "base.model.Language.fields", "Left to right", "literal")
-	field := &meta.IrField{
+	field := &meta.Field{
 		BaseModel:        meta.BaseModel{Id: sql.NullString{String: "field-dir", Valid: true}},
 		Name:             "Direction",
 		FieldType:        "selection",
@@ -205,11 +205,11 @@ func TestConvertFieldToMetadata_PrefersResolvedSelectionOverBrokenLegacy(t *test
 		// Legacy overwrite from raw decorator ObjectLiteral (source text).
 		Selection: `[{"value":"ltr","label":" _lt('Left to right', { scope: 'base.model.Language.fields' })"}]`,
 	}
-	if err := field.SetResolvedSpec(&meta.IrFieldResolvedSpec{
+	if err := field.SetResolvedSpec(&meta.FieldResolvedSpec{
 		FieldName: "Direction",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			SelectionKind: "static",
-			Selection: []meta.IrFieldSelectionItem{{
+			Selection: []meta.FieldSelectionItem{{
 				Value: "ltr",
 				Label: "Left to right",
 				LabelText: &meta.TermReference{
@@ -238,7 +238,7 @@ func TestConvertFieldToMetadata_PrefersResolvedSelectionOverBrokenLegacy(t *test
 }
 
 func TestConvertFieldToMetadata_InfersStaticKindAndStripsLabelText(t *testing.T) {
-	field := &meta.IrField{
+	field := &meta.Field{
 		BaseModel:        meta.BaseModel{Id: sql.NullString{String: "field-kind", Valid: true}},
 		Name:             "Status",
 		FieldType:        "selection",
@@ -273,7 +273,7 @@ func TestStripSelectionLabelTextJSON_InvalidOrEmpty(t *testing.T) {
 
 func TestWebApiStoreGenerateEmptyApp(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
-	results, err := (&webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, modulesWebDir: t.TempDir()}).generate(context.Background(), &meta.IrApplication{Name: "crm"})
+	results, err := (&webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "crm"}, modulesWebDir: t.TempDir()}).generate(context.Background(), &meta.Application{Name: "crm"})
 	if err != nil {
 		t.Fatalf("generate(empty app) error = %v", err)
 	}
@@ -286,12 +286,12 @@ func TestWebApiStoreGenerate_NilContext(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
 	seedAbstractBaseModel(t, runtimeScope, nil)
 	webStoreDir := t.TempDir()
-	results, err := (&webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, modulesWebDir: webStoreDir}).generate(nil, &meta.IrApplication{
+	results, err := (&webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "crm"}, modulesWebDir: webStoreDir}).generate(nil, &meta.Application{
 		Name: "crm",
-		Models: []*meta.IrModel{{
+		Models: []*meta.Model{{
 			Name: "Partner",
 			Path: "@/crm/service/models/partner.ts",
-			Services: []*meta.IrService{{
+			Services: []*meta.Service{{
 				Name:                  "CreatePartner",
 				AccessibilityModifier: "public",
 				IsStatic:              true,
@@ -314,7 +314,7 @@ func TestWebApiStoreGenerate_UsesWorkspaceGeneratedTargets(t *testing.T) {
 		t.Fatalf("WorkspaceGeneratedAPITargets() error = %v", err)
 	}
 
-	gen := &webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}}
+	gen := &webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "crm"}}
 	ctx := staging.WithTmpRoot(context.Background(), t.TempDir())
 	results, err := gen.generate(ctx, testApp())
 	if err != nil {
@@ -336,7 +336,7 @@ func TestWebApiStoreGenerate_WorkspaceTargetsRequireDefaultChoysumPath(t *testin
 	seedAbstractBaseModel(t, runtimeScope, nil)
 	runtimeScope.cfg.DefaultChoysumPath = ""
 
-	_, err := (&webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}}).generate(context.Background(), testApp())
+	_, err := (&webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "crm"}}).generate(context.Background(), testApp())
 	if err == nil || !strings.Contains(err.Error(), "resolve workspace generated api targets") {
 		t.Fatalf("expected workspace target resolution error, got %v", err)
 	}
@@ -346,21 +346,21 @@ func TestWebApiStoreGenerate_FiltersBaseServicesFromInterface(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
 	seedAbstractBaseModel(t, runtimeScope, nil)
 
-	app := &meta.IrApplication{
+	app := &meta.Application{
 		Name: "crm",
-		Models: []*meta.IrModel{{
+		Models: []*meta.Model{{
 			Name: "Partner",
 			Path: "@/crm/service/models/partner.ts",
-			Services: []*meta.IrService{
+			Services: []*meta.Service{
 				{Name: "Search", AccessibilityModifier: "public", IsStatic: true},
 				{Name: "NameSearch", AccessibilityModifier: "public", IsStatic: true},
 				{Name: "Copy", AccessibilityModifier: "public", IsStatic: true},
-				{Name: "CreatePartner", AccessibilityModifier: "public", IsStatic: true, Parameters: []*meta.IrParameter{{Name: "partner_id", ProtobufType: "string"}}},
+				{Name: "CreatePartner", AccessibilityModifier: "public", IsStatic: true, Parameters: []*meta.Parameter{{Name: "partner_id", ProtobufType: "string"}}},
 			},
 		}},
 	}
 	webStoreDir := t.TempDir()
-	_, err := (&webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, modulesWebDir: webStoreDir}).generate(context.Background(), app)
+	_, err := (&webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "crm"}, modulesWebDir: webStoreDir}).generate(context.Background(), app)
 	if err != nil {
 		t.Fatalf("generate() error = %v", err)
 	}
@@ -385,7 +385,7 @@ func TestWebApiStoreGenerate_MissingBaseModelErrors(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
 	seedGeneratorMetaTables(t, runtimeScope)
 
-	_, err := (&webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, modulesWebDir: t.TempDir()}).generate(context.Background(), testApp())
+	_, err := (&webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "crm"}, modulesWebDir: t.TempDir()}).generate(context.Background(), testApp())
 	if err == nil || !strings.Contains(err.Error(), "BaseModel not found") {
 		t.Fatalf("expected BaseModel not found error, got %v", err)
 	}
@@ -395,7 +395,7 @@ func TestWebApiStoreGenerate_EmptyBaseModelServicesErrors(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
 	seedAbstractBaseModel(t, runtimeScope, []string{})
 
-	_, err := (&webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, modulesWebDir: t.TempDir()}).generate(context.Background(), testApp())
+	_, err := (&webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "crm"}, modulesWebDir: t.TempDir()}).generate(context.Background(), testApp())
 	if err == nil || !strings.Contains(err.Error(), "no conventional services") {
 		t.Fatalf("expected empty conventional services error, got %v", err)
 	}
@@ -410,7 +410,7 @@ func TestResolveBaseServiceNames_RejectsNonConventionalOnly(t *testing.T) {
 	if !strings.HasSuffix(path, ".ts") {
 		path = path + ".ts"
 	}
-	model := &meta.IrModel{
+	model := &meta.Model{
 		BaseModel: meta.BaseModel{Id: sql.NullString{String: "abstract-base-model", Valid: true}},
 		Name:      "BaseModel",
 		Path:      path,
@@ -419,7 +419,7 @@ func TestResolveBaseServiceNames_RejectsNonConventionalOnly(t *testing.T) {
 	if err := runtimeScope.db.Create(model).Error; err != nil {
 		t.Fatalf("create BaseModel: %v", err)
 	}
-	svc := &meta.IrService{
+	svc := &meta.Service{
 		BaseModel:             meta.BaseModel{Id: sql.NullString{String: "svc-helper", Valid: true}},
 		Name:                  "helper",
 		AccessibilityModifier: "public",
@@ -445,7 +445,7 @@ func TestResolveBaseServiceNames_RequiresAbstract(t *testing.T) {
 	if !strings.HasSuffix(path, ".ts") {
 		path = path + ".ts"
 	}
-	model := &meta.IrModel{
+	model := &meta.Model{
 		BaseModel: meta.BaseModel{Id: sql.NullString{String: "concrete-at-base-path", Valid: true}},
 		Name:      "BaseModel",
 		Path:      path,
@@ -454,7 +454,7 @@ func TestResolveBaseServiceNames_RequiresAbstract(t *testing.T) {
 	if err := runtimeScope.db.Create(model).Error; err != nil {
 		t.Fatalf("create non-abstract model: %v", err)
 	}
-	svc := &meta.IrService{
+	svc := &meta.Service{
 		BaseModel:             meta.BaseModel{Id: sql.NullString{String: "svc-search", Valid: true}},
 		Name:                  "Search",
 		AccessibilityModifier: "public",
@@ -497,7 +497,7 @@ func TestResolveBaseServiceNames_LoadError(t *testing.T) {
 }
 
 func TestConventionalBaseServiceNames_SkipsNilAndNonConventional(t *testing.T) {
-	names := conventionalBaseServiceNames([]*meta.IrService{
+	names := conventionalBaseServiceNames([]*meta.Service{
 		nil,
 		{Name: "helper", AccessibilityModifier: "public", IsStatic: true},
 		{Name: "Search", AccessibilityModifier: "public", IsStatic: true},
@@ -514,12 +514,12 @@ func TestConventionalBaseServiceNames_SkipsNilAndNonConventional(t *testing.T) {
 func TestConvertFieldToMetadata_TranslateContract(t *testing.T) {
 	trueVal := true
 	size := 200
-	field := &meta.IrField{Name: "Name", FieldType: "varchar"}
-	spec := &meta.IrFieldResolvedSpec{
+	field := &meta.Field{Name: "Name", FieldType: "varchar"}
+	spec := &meta.FieldResolvedSpec{
 		FieldName: "Name",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Translate: &trueVal,
-			StorageHints: &meta.IrFieldStructuralStorageHints{
+			StorageHints: &meta.FieldStructuralStorageHints{
 				Size: &size,
 			},
 		},
@@ -536,10 +536,10 @@ func TestConvertFieldToMetadata_TranslateContract(t *testing.T) {
 	}
 
 	falseVal := false
-	field2 := &meta.IrField{Name: "Code", FieldType: "varchar", Size: 40}
-	spec2 := &meta.IrFieldResolvedSpec{
+	field2 := &meta.Field{Name: "Code", FieldType: "varchar", Size: 40}
+	spec2 := &meta.FieldResolvedSpec{
 		FieldName: "Code",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Translate: &falseVal,
 		},
 	}
@@ -551,13 +551,13 @@ func TestConvertFieldToMetadata_TranslateContract(t *testing.T) {
 		t.Fatalf("translate:false must omit Translate flag, got %#v", metadata2.Translate)
 	}
 
-	field3 := &meta.IrField{Name: "Title", FieldType: "varchar", Size: 80}
+	field3 := &meta.Field{Name: "Title", FieldType: "varchar", Size: 80}
 	zeroSize := 0
-	spec3 := &meta.IrFieldResolvedSpec{
+	spec3 := &meta.FieldResolvedSpec{
 		FieldName: "Title",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Translate: &trueVal,
-			StorageHints: &meta.IrFieldStructuralStorageHints{
+			StorageHints: &meta.FieldStructuralStorageHints{
 				Size: &zeroSize,
 			},
 		},
@@ -577,12 +577,12 @@ func TestConvertFieldToMetadata_TranslateContract(t *testing.T) {
 func TestConvertFieldToMetadata_CompanyDependentContract(t *testing.T) {
 	trueVal := true
 	size := 120
-	field := &meta.IrField{Name: "Cost", FieldType: "float"}
-	spec := &meta.IrFieldResolvedSpec{
+	field := &meta.Field{Name: "Cost", FieldType: "float"}
+	spec := &meta.FieldResolvedSpec{
 		FieldName: "Cost",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			CompanyDependent: &trueVal,
-			StorageHints: &meta.IrFieldStructuralStorageHints{
+			StorageHints: &meta.FieldStructuralStorageHints{
 				Size: &size,
 			},
 		},
@@ -599,10 +599,10 @@ func TestConvertFieldToMetadata_CompanyDependentContract(t *testing.T) {
 	}
 
 	falseVal := false
-	field2 := &meta.IrField{Name: "Note", FieldType: "varchar", Size: 40}
-	spec2 := &meta.IrFieldResolvedSpec{
+	field2 := &meta.Field{Name: "Note", FieldType: "varchar", Size: 40}
+	spec2 := &meta.FieldResolvedSpec{
 		FieldName: "Note",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			CompanyDependent: &falseVal,
 		},
 	}
@@ -617,10 +617,10 @@ func TestConvertFieldToMetadata_CompanyDependentContract(t *testing.T) {
 
 func TestConvertFieldToMetadata_CopyContract(t *testing.T) {
 	falseVal := false
-	field := &meta.IrField{Name: "Code", FieldType: "varchar"}
-	spec := &meta.IrFieldResolvedSpec{
+	field := &meta.Field{Name: "Code", FieldType: "varchar"}
+	spec := &meta.FieldResolvedSpec{
 		FieldName: "Code",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Copy: &falseVal,
 		},
 	}
@@ -633,10 +633,10 @@ func TestConvertFieldToMetadata_CopyContract(t *testing.T) {
 	}
 
 	trueVal := true
-	field2 := &meta.IrField{Name: "Name", FieldType: "varchar"}
-	spec2 := &meta.IrFieldResolvedSpec{
+	field2 := &meta.Field{Name: "Name", FieldType: "varchar"}
+	spec2 := &meta.FieldResolvedSpec{
 		FieldName: "Name",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Copy: &trueVal,
 		},
 	}
@@ -650,7 +650,7 @@ func TestConvertFieldToMetadata_CopyContract(t *testing.T) {
 }
 
 func TestConvertFieldToMetadata_OmitsEmptyScaleAndCurrencyFields(t *testing.T) {
-	field := &meta.IrField{
+	field := &meta.Field{
 		Name:          "Amount",
 		FieldType:     "Monetary",
 		CurrencyField: "",
@@ -666,7 +666,7 @@ func TestConvertFieldToMetadata_OmitsEmptyScaleAndCurrencyFields(t *testing.T) {
 }
 
 func TestConvertFieldToMetadata_QuotesCurrencyFieldEscapes(t *testing.T) {
-	field := &meta.IrField{
+	field := &meta.Field{
 		Name:          "Amount",
 		FieldType:     "Monetary",
 		CurrencyField: `Cur"Id\Path`,
@@ -691,7 +691,7 @@ func TestConvertFieldToMetadata_QuotesCurrencyFieldEscapes(t *testing.T) {
 }
 
 func TestConvertFieldToMetadata_ImageUploadLimits(t *testing.T) {
-	field := &meta.IrField{
+	field := &meta.Field{
 		Name:           "Avatar",
 		FieldType:      "image",
 		MaxUploadBytes: 2097152,
@@ -709,7 +709,7 @@ func TestConvertFieldToMetadata_ImageUploadLimits(t *testing.T) {
 		t.Fatalf("expected MaxHeight=768, got %#v", metadata.MaxHeight)
 	}
 
-	plain := convertFieldToMetadata(&meta.IrField{Name: "Photo", FieldType: "image"})
+	plain := convertFieldToMetadata(&meta.Field{Name: "Photo", FieldType: "image"})
 	if plain.MaxUploadBytes != nil || plain.MaxWidth != nil || plain.MaxHeight != nil {
 		t.Fatalf("zero limits must omit metadata pointers, got %#v", plain)
 	}

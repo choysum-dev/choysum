@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import IrModel from '@/meta/service/models/ir_model';
+import MetaModel from '@/meta/service/models/model';
 import Role from '@/auth/service/models/role';
 import RoleFieldRule from '@/auth/service/models/role_field_rule';
 import RoleRecordRule from '@/auth/service/models/role_record_rule';
@@ -104,7 +104,7 @@ export async function ensureAuthUserOwnerRecordRuleGrants(): Promise<void> {
   if (authUserOwnerGrantsSeeded) return;
 
   await withPermissionGraphBypass(async () => {
-    const modelRows = await IrModel.Search(
+    const modelRows = await MetaModel.Search(
       {
         And: [
           ['Application', '=', 'auth'],
@@ -124,8 +124,8 @@ export async function ensureAuthUserOwnerRecordRuleGrants(): Promise<void> {
         And: [
           ['RoleId', 'is', null],
           ['Kind', '=', 'grant'],
-          ['IrModelId', '=', modelId],
-          ['IrApplicationId', 'is', null],
+          ['MetaModelId', '=', modelId],
+          ['MetaApplicationId', 'is', null],
           ['PermRead', '=', true],
           ['PermWrite', '=', true],
           ['PermCreate', '=', false],
@@ -144,8 +144,8 @@ export async function ensureAuthUserOwnerRecordRuleGrants(): Promise<void> {
       {
         RoleId: null as any,
         Kind: 'grant',
-        IrModelId: modelId,
-        IrApplicationId: null,
+        MetaModelId: modelId,
+        MetaApplicationId: null,
         Condition: { And: [] } as any,
         PermRead: true,
         PermWrite: true,
@@ -233,9 +233,9 @@ async function ensureFixtureFrRule(roleId: string): Promise<void> {
     {
       And: [
         ['RoleId', '=', roleId],
-        ['IrApplicationId', 'is', null],
-        ['IrModelId', 'is', null],
-        ['IrFieldId', 'is', null],
+        ['MetaApplicationId', 'is', null],
+        ['MetaModelId', 'is', null],
+        ['MetaFieldId', 'is', null],
         ['PermRead', '=', 'allow'],
         ['PermWrite', '=', 'allow'],
       ],
@@ -257,9 +257,9 @@ async function ensureFixtureFrRule(roleId: string): Promise<void> {
   const createdFr = await RoleFieldRule.Create(
     {
       RoleId: { Id: roleId } as any,
-      IrApplicationId: null,
-      IrModelId: null,
-      IrFieldId: null,
+      MetaApplicationId: null,
+      MetaModelId: null,
+      MetaFieldId: null,
       PermRead: 'allow',
       PermWrite: 'allow',
     } as any,

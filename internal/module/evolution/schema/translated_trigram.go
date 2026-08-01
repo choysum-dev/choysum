@@ -38,7 +38,7 @@ func translatedTrigramIndexName(tableName, columnName string) string {
 	return fmt.Sprintf("idx_%s_%s_trgm", table, column)
 }
 
-func isTranslatedTrigramField(field *meta.IrField) bool {
+func isTranslatedTrigramField(field *meta.Field) bool {
 	if field == nil {
 		return false
 	}
@@ -91,7 +91,7 @@ func ensureTranslatedTrigramIndex(db *gorm.DB, tableName, fieldName string) erro
 	return nil
 }
 
-func (m *modelMigrator) applyTableTranslatedTrigramIndexes(tableName string, model *meta.IrModel) error {
+func (m *modelMigrator) applyTableTranslatedTrigramIndexes(tableName string, model *meta.Model) error {
 	if m.getDialect() != "postgres" {
 		return nil
 	}

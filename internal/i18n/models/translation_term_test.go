@@ -207,20 +207,20 @@ func TestTranslationTermUniqueKeyAndApplicationColumn(t *testing.T) {
 	}
 }
 
-func TestEnsureTranslationTermTableDoesNotRegisterIrModel(t *testing.T) {
+func TestEnsureTranslationTermTableDoesNotRegisterModel(t *testing.T) {
 	rs := newTestScope(t)
-	if err := rs.Session().AutoMigrate(&meta.IrModel{}); err != nil {
-		t.Fatalf("migrate IrModel: %v", err)
+	if err := rs.Session().AutoMigrate(&meta.Model{}); err != nil {
+		t.Fatalf("migrate Model: %v", err)
 	}
 	if err := EnsureTranslationTermTable(rs, "auth"); err != nil {
 		t.Fatalf("ensure: %v", err)
 	}
 
 	var count int64
-	if err := rs.Session().Model(&meta.IrModel{}).Where("name = ?", "TranslationTerm").Count(&count).Error; err != nil {
-		t.Fatalf("count IrModel: %v", err)
+	if err := rs.Session().Model(&meta.Model{}).Where("name = ?", "TranslationTerm").Count(&count).Error; err != nil {
+		t.Fatalf("count Model: %v", err)
 	}
 	if count != 0 {
-		t.Fatalf("MVP must not register TranslationTerm IrModel, got count=%d", count)
+		t.Fatalf("MVP must not register TranslationTerm Model, got count=%d", count)
 	}
 }

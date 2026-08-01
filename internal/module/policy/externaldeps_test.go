@@ -23,7 +23,7 @@ func TestCheckExternalDependencies(t *testing.T) {
 
 	t.Run("empty initialized payload", func(t *testing.T) {
 		t.Parallel()
-		m := &meta.IrModule{ExternalDependencies: datatypes.JSON([]byte{})}
+		m := &meta.Module{ExternalDependencies: datatypes.JSON([]byte{})}
 		if err := CheckExternalDependencies(m); err != nil {
 			t.Fatalf("empty payload should be ignored, got error = %v", err)
 		}
@@ -31,7 +31,7 @@ func TestCheckExternalDependencies(t *testing.T) {
 
 	t.Run("node_module ignored", func(t *testing.T) {
 		t.Parallel()
-		m := &meta.IrModule{
+		m := &meta.Module{
 			ExternalDependencies: datatypes.JSON([]byte(`{
 				"node_module": {"vue": "^3.4.29"}
 			}`)),
@@ -43,7 +43,7 @@ func TestCheckExternalDependencies(t *testing.T) {
 
 	t.Run("binary still enforced", func(t *testing.T) {
 		t.Parallel()
-		m := &meta.IrModule{
+		m := &meta.Module{
 			ExternalDependencies: datatypes.JSON([]byte(`{
 				"binary": {"__definitely_missing_binary__": ">=1.0.0"}
 			}`)),
@@ -59,7 +59,7 @@ func TestCheckExternalDependencies(t *testing.T) {
 
 	t.Run("invalid json", func(t *testing.T) {
 		t.Parallel()
-		m := &meta.IrModule{ExternalDependencies: datatypes.JSON([]byte(`{`))}
+		m := &meta.Module{ExternalDependencies: datatypes.JSON([]byte(`{`))}
 		err := CheckExternalDependencies(m)
 		if err == nil || !strings.Contains(err.Error(), "unmarshal") {
 			t.Fatalf("expected unmarshal error, got %v", err)

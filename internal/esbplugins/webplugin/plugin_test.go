@@ -90,7 +90,7 @@ func newPluginForTest(t *testing.T, parserImpl parser.Parser) *WebPlugin {
 	t.Helper()
 	testRuntimeScope := newTestScope(t)
 	testRuntimeOpts := runtimeOptionsFromScope(testRuntimeScope)
-	plugin := NewWebPlugin(testRuntimeScope, &meta.IrModule{Name: "web"}, filepath.Join(testRuntimeOpts.modulesPath, "app", "web", "index.ts"), WithParser(parserImpl)).(*WebPlugin)
+	plugin := NewWebPlugin(testRuntimeScope, &meta.Module{Name: "web"}, filepath.Join(testRuntimeOpts.modulesPath, "app", "web", "index.ts"), WithParser(parserImpl)).(*WebPlugin)
 	plugin.ParserResultChan = make(chan *parser.ParserResult, 8)
 	plugin.ParserResults = make([]*parser.ParserResult, 0)
 	return plugin
@@ -354,7 +354,7 @@ func TestReplaceModuleSpecReferenceIdentAndDefinePlugins(t *testing.T) {
 	}
 	results := []*parser.ParserResult{{
 		Path:                   "view.vue",
-		VueComponent:           &meta.IrComponent{},
+		VueComponent:           &meta.Component{},
 		VueComponentsPropertys: []*parser.PropertyNode{{ModuleSpecPath: "components", ReferenceIdent: "Button"}},
 		VueExtendsProperty:     &parser.PropertyNode{ModuleSpecPath: "base", ReferenceIdent: "BasePage"},
 	}}
@@ -376,7 +376,7 @@ func TestReplaceModuleSpecReferenceIdentAndDefinePlugins(t *testing.T) {
 	}
 	plugin.SetEntryPointImports([]string{"./a", "./b"})
 	plugin.SetIndexHtmlOutFile("custom/index.html")
-	plugins := plugin.DefinePlugins(plugin.Env, jsexecutortest.NewUninitializedExecutor(), &meta.IrModule{Name: "web"}, esbplugins.WithEntryPointImports([]string{"./boot"}), esbplugins.WithIndexHtmlOutFile("stage/index.html"))
+	plugins := plugin.DefinePlugins(plugin.Env, jsexecutortest.NewUninitializedExecutor(), &meta.Module{Name: "web"}, esbplugins.WithEntryPointImports([]string{"./boot"}), esbplugins.WithIndexHtmlOutFile("stage/index.html"))
 	if len(plugins) != 2 || plugins[0].Name != "choysum-web-vue" || plugins[1].Name != "choysum-web-ts" {
 		t.Fatalf("unexpected define plugins result: %#v", plugins)
 	}
@@ -396,8 +396,8 @@ func TestWebPluginDefinePlugins_BindsRuntimeState(t *testing.T) {
 	runtimeScope := newTestScope(t)
 	baseOpts := runtimeOptionsFromScope(baseScope)
 	runtimeOpts := runtimeOptionsFromScope(runtimeScope)
-	baseModule := &meta.IrModule{Name: "base", Path: filepath.Join(baseOpts.modulesPath, "base", "web", "index.ts"), ApplicationStr: "base"}
-	runtimeModule := &meta.IrModule{Name: "runtime", Path: filepath.Join(runtimeOpts.modulesPath, "runtime", "web", "index.ts"), ApplicationStr: "runtime"}
+	baseModule := &meta.Module{Name: "base", Path: filepath.Join(baseOpts.modulesPath, "base", "web", "index.ts"), ApplicationStr: "base"}
+	runtimeModule := &meta.Module{Name: "runtime", Path: filepath.Join(runtimeOpts.modulesPath, "runtime", "web", "index.ts"), ApplicationStr: "runtime"}
 
 	plugin, ok := NewWebPlugin(baseScope, baseModule, filepath.Join(baseOpts.modulesPath, "base", "web", "index.ts")).(*WebPlugin)
 	if !ok {
@@ -405,8 +405,8 @@ func TestWebPluginDefinePlugins_BindsRuntimeState(t *testing.T) {
 	}
 
 	var gotScope scope.Scope
-	var gotModule *meta.IrModule
-	plugin.parserFactory = func(runtimeScope scope.Scope, module *meta.IrModule) parser.Parser {
+	var gotModule *meta.Module
+	plugin.parserFactory = func(runtimeScope scope.Scope, module *meta.Module) parser.Parser {
 		gotScope = runtimeScope
 		gotModule = module
 		return fakeParser{}
@@ -478,7 +478,7 @@ func TestVueLoadProcessorAndResolveProcessor(t *testing.T) {
 func TestWebPluginTsPluginOnResolveUsesModulesPathImporterMapping(t *testing.T) {
 	runtimeScope := newTestScope(t)
 	runtimeOpts := runtimeOptionsFromScope(runtimeScope)
-	plugin := NewWebPlugin(runtimeScope, &meta.IrModule{Name: "web", Path: filepath.Join(runtimeOpts.modulesPath, "web")}, filepath.Join(runtimeOpts.modulesPath, "auth", "web", "index.ts"), WithParser(fakeParser{})).(*WebPlugin)
+	plugin := NewWebPlugin(runtimeScope, &meta.Module{Name: "web", Path: filepath.Join(runtimeOpts.modulesPath, "web")}, filepath.Join(runtimeOpts.modulesPath, "auth", "web", "index.ts"), WithParser(fakeParser{})).(*WebPlugin)
 
 	resolvePath := filepath.Join(t.TempDir(), "child.ts")
 	if err := os.WriteFile(resolvePath, []byte("export default {}\n"), 0o644); err != nil {

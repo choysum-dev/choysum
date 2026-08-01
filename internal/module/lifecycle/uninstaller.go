@@ -20,7 +20,7 @@ import (
 
 type moduleUninstaller struct {
 	runtimeScope  scope.Scope
-	module        *meta.IrModule
+	module        *meta.Module
 	moduleManager *ModuleManager
 	ctx           *opContext
 }
@@ -35,7 +35,7 @@ func (m *moduleUninstaller) validate() error {
 func (m *moduleUninstaller) cleanModels() error {
 	db := m.runtimeScope.Session()
 
-	var module meta.IrModule
+	var module meta.Module
 	if err := db.Unscoped().Where("name = ?", m.module.Name).Take(&module).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil
@@ -48,58 +48,58 @@ func (m *moduleUninstaller) cleanModels() error {
 	moduleID := module.Id.String
 
 	// Mark status for audit before soft delete.
-	if err := db.Model(&meta.IrModule{}).Where("id = ?", moduleID).Update("status", meta.Uninstalled).Error; err != nil {
+	if err := db.Model(&meta.Module{}).Where("id = ?", moduleID).Update("status", meta.Uninstalled).Error; err != nil {
 		return xfmt.Errorf("error updating module status: %w", err)
 	}
 
 	// Soft delete related meta records (soft delete won't trigger DB CASCADE).
-	modelIDs := db.Model(&meta.IrModel{}).Select("id").Where("module_id = ?", moduleID)
-	serviceIDs := db.Model(&meta.IrService{}).Select("id").Where("model_id IN (?)", modelIDs)
-	fieldIDs := db.Model(&meta.IrField{}).Select("id").Where("model_id IN (?)", modelIDs)
-	componentIDs := db.Model(&meta.IrComponent{}).Select("id").Where("module_id = ?", moduleID)
-	uiResourceIDs := db.Model(&meta.IrUiResource{}).Select("id").Where("module_id = ?", moduleID)
-	decoratorIDs := db.Model(&meta.IrDecorator{}).Select("id").Where(
+	modelIDs := db.Model(&meta.Model{}).Select("id").Where("module_id = ?", moduleID)
+	serviceIDs := db.Model(&meta.Service{}).Select("id").Where("model_id IN (?)", modelIDs)
+	fieldIDs := db.Model(&meta.Field{}).Select("id").Where("model_id IN (?)", modelIDs)
+	componentIDs := db.Model(&meta.Component{}).Select("id").Where("module_id = ?", moduleID)
+	uiResourceIDs := db.Model(&meta.UiResource{}).Select("id").Where("module_id = ?", moduleID)
+	decoratorIDs := db.Model(&meta.Decorator{}).Select("id").Where(
 		"model_id IN (?) OR service_id IN (?) OR field_id IN (?) OR component_id IN (?)",
 		modelIDs, serviceIDs, fieldIDs, componentIDs,
 	)
 
-	if err := db.Where("decorator_id IN (?)", decoratorIDs).Delete(&meta.IrArgument{}).Error; err != nil {
+	if err := db.Where("decorator_id IN (?)", decoratorIDs).Delete(&meta.Argument{}).Error; err != nil {
 		return xfmt.Errorf("error deleting decorator arguments: %w", err)
 	}
-	if err := db.Where("id IN (?)", decoratorIDs).Delete(&meta.IrDecorator{}).Error; err != nil {
+	if err := db.Where("id IN (?)", decoratorIDs).Delete(&meta.Decorator{}).Error; err != nil {
 		return xfmt.Errorf("error deleting decorators: %w", err)
 	}
-	if err := db.Where("service_id IN (?)", serviceIDs).Delete(&meta.IrTypeParameter{}).Error; err != nil {
+	if err := db.Where("service_id IN (?)", serviceIDs).Delete(&meta.TypeParameter{}).Error; err != nil {
 		return xfmt.Errorf("error deleting type parameters: %w", err)
 	}
-	if err := db.Where("service_id IN (?)", serviceIDs).Delete(&meta.IrParameter{}).Error; err != nil {
+	if err := db.Where("service_id IN (?)", serviceIDs).Delete(&meta.Parameter{}).Error; err != nil {
 		return xfmt.Errorf("error deleting parameters: %w", err)
 	}
-	if err := db.Where("id IN (?)", serviceIDs).Delete(&meta.IrService{}).Error; err != nil {
+	if err := db.Where("id IN (?)", serviceIDs).Delete(&meta.Service{}).Error; err != nil {
 		return xfmt.Errorf("error deleting services: %w", err)
 	}
-	if err := db.Where("id IN (?)", fieldIDs).Delete(&meta.IrField{}).Error; err != nil {
+	if err := db.Where("id IN (?)", fieldIDs).Delete(&meta.Field{}).Error; err != nil {
 		return xfmt.Errorf("error deleting fields: %w", err)
 	}
-	if err := db.Where("id IN (?)", modelIDs).Delete(&meta.IrModel{}).Error; err != nil {
+	if err := db.Where("id IN (?)", modelIDs).Delete(&meta.Model{}).Error; err != nil {
 		return xfmt.Errorf("error deleting models: %w", err)
 	}
-	if err := db.Where("id IN (?)", componentIDs).Delete(&meta.IrComponent{}).Error; err != nil {
+	if err := db.Where("id IN (?)", componentIDs).Delete(&meta.Component{}).Error; err != nil {
 		return xfmt.Errorf("error deleting components: %w", err)
 	}
-	if err := db.Where("menu_ui_resource_id IN (?) OR route_ui_resource_id IN (?)", uiResourceIDs, uiResourceIDs).Delete(&meta.IrUiResourceMenuRoute{}).Error; err != nil {
+	if err := db.Where("menu_ui_resource_id IN (?) OR route_ui_resource_id IN (?)", uiResourceIDs, uiResourceIDs).Delete(&meta.UiResourceMenuRoute{}).Error; err != nil {
 		return xfmt.Errorf("error deleting UI resource menu-route relations: %w", err)
 	}
-	if err := db.Where("route_ui_resource_id IN (?) OR action_ui_resource_id IN (?)", uiResourceIDs, uiResourceIDs).Delete(&meta.IrUiResourceRouteAction{}).Error; err != nil {
+	if err := db.Where("route_ui_resource_id IN (?) OR action_ui_resource_id IN (?)", uiResourceIDs, uiResourceIDs).Delete(&meta.UiResourceRouteAction{}).Error; err != nil {
 		return xfmt.Errorf("error deleting UI resource route-action relations: %w", err)
 	}
-	if err := db.Where("id IN (?)", uiResourceIDs).Delete(&meta.IrUiResource{}).Error; err != nil {
+	if err := db.Where("id IN (?)", uiResourceIDs).Delete(&meta.UiResource{}).Error; err != nil {
 		return xfmt.Errorf("error deleting UI resources: %w", err)
 	}
 
 	// many2many join rows should be physically removed to avoid stale relations.
 	if err := db.Exec(
-		"DELETE FROM meta_ir_module_dependencies WHERE module_id = ? OR depend_module_id = ?",
+		"DELETE FROM meta_module_dependencies WHERE module_id = ? OR depend_module_id = ?",
 		moduleID, moduleID,
 	).Error; err != nil {
 		return xfmt.Errorf("error deleting module dependency relations: %w", err)
@@ -172,7 +172,7 @@ func (m *moduleUninstaller) finalizeUninstall() error {
 	return nil
 }
 
-func newModuleUninstaller(runtimeScope scope.Scope, module *meta.IrModule, moduleManager *ModuleManager, ctx *opContext) *moduleUninstaller {
+func newModuleUninstaller(runtimeScope scope.Scope, module *meta.Module, moduleManager *ModuleManager, ctx *opContext) *moduleUninstaller {
 	return &moduleUninstaller{
 		runtimeScope:  runtimeScope,
 		module:        module,

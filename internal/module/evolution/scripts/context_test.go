@@ -103,7 +103,7 @@ func newScriptsTestScope(t *testing.T) *scriptsTestScope {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&modulemetadata.IrModuleMigrationHistory{}); err != nil {
+	if err := db.AutoMigrate(&modulemetadata.ModuleMigrationHistory{}); err != nil {
 		t.Fatalf("migrate history table: %v", err)
 	}
 	return &scriptsTestScope{
@@ -156,7 +156,7 @@ func writeScriptsRuntimeBundle(t *testing.T, testRuntimeScope *scriptsTestScope,
 func TestBuildJsContextAndExecContext(t *testing.T) {
 	testRuntimeScope := newScriptsTestScope(t)
 	testRuntimeScope.cfg.Auth.InternalKey = "internal-secret"
-	mod := &meta.IrModule{Name: "base", ApplicationStr: "core", Version: "1.0.0", ServiceEntryPoint: "service/index.ts"}
+	mod := &meta.Module{Name: "base", ApplicationStr: "core", Version: "1.0.0", ServiceEntryPoint: "service/index.ts"}
 
 	ctx := auth.ContextWithIdentity(context.Background(), scriptsFakeIdentity{userID: "u-1"})
 	built := BuildJsContext(ctx, testRuntimeScope, mod, "1.0.0", "0.9.0")
@@ -206,12 +206,12 @@ func TestBuildExecContext_PrefersContextScope(t *testing.T) {
 
 func TestLoadRuntimeScripts(t *testing.T) {
 	testRuntimeScope := newScriptsTestScope(t)
-	mod := &meta.IrModule{Name: "base", ApplicationStr: "core", Version: "1.0.0", ServiceEntryPoint: "service/index.ts"}
+	mod := &meta.Module{Name: "base", ApplicationStr: "core", Version: "1.0.0", ServiceEntryPoint: "service/index.ts"}
 
 	if _, err := LoadRuntimeScripts(nil, mod); err == nil {
 		t.Fatal("expected missing env error")
 	}
-	if scripts, err := LoadRuntimeScripts(testRuntimeScope, &meta.IrModule{Name: "base"}); err != nil || scripts != nil {
+	if scripts, err := LoadRuntimeScripts(testRuntimeScope, &meta.Module{Name: "base"}); err != nil || scripts != nil {
 		t.Fatalf("expected nil scripts for empty entrypoint, got %#v err=%v", scripts, err)
 	}
 

@@ -45,7 +45,7 @@ type ChoysumMeta struct {
 // PeerDependencies are returned as a dedicated map because they are not part of
 // ExternalDependencies.node_module anymore.
 type PackageToModuleResult struct {
-	Module           *meta.IrModule
+	Module           *meta.Module
 	PeerDependencies map[string]string
 }
 
@@ -61,18 +61,18 @@ func DecodePackageJSON(raw []byte) (*PackageJSON, error) {
 	return pkg, nil
 }
 
-// ParsePackageJSONToIrModule decodes, validates, and converts package.json into
-// the internal meta.IrModule representation.
-func ParsePackageJSONToIrModule(raw []byte, modulePath string, binaryDependencies map[string]string) (*PackageToModuleResult, error) {
+// ParsePackageJSONToModule decodes, validates, and converts package.json into
+// the internal meta.Module representation.
+func ParsePackageJSONToModule(raw []byte, modulePath string, binaryDependencies map[string]string) (*PackageToModuleResult, error) {
 	pkg, err := DecodePackageJSON(raw)
 	if err != nil {
 		return nil, err
 	}
-	return PackageJSONToIrModule(pkg, modulePath, binaryDependencies)
+	return PackageJSONToModule(pkg, modulePath, binaryDependencies)
 }
 
-// PackageJSONToIrModule converts a validated PackageJSON into meta.IrModule.
-func PackageJSONToIrModule(pkg *PackageJSON, modulePath string, binaryDependencies map[string]string) (*PackageToModuleResult, error) {
+// PackageJSONToModule converts a validated PackageJSON into meta.Module.
+func PackageJSONToModule(pkg *PackageJSON, modulePath string, binaryDependencies map[string]string) (*PackageToModuleResult, error) {
 	if err := ValidatePackageJSON(pkg); err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func PackageJSONToIrModule(pkg *PackageJSON, modulePath string, binaryDependenci
 		return nil, err
 	}
 
-	mod := &meta.IrModule{
+	mod := &meta.Module{
 		Name:           strings.TrimSpace(pkg.Choysum.ModuleName),
 		Version:        normalizedVersion,
 		Description:    strings.TrimSpace(pkg.Description),

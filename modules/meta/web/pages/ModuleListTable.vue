@@ -14,12 +14,12 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import OPage from '@/web/web/components/page/OPage.vue';
 import ModuleListView from '../views/ModuleListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
-import type IrModuleIndex from '@/meta/service/models/ir_module_index';
+import type MetaModuleIndex from '@/meta/service/models/module_index';
 
 defineOptions({ name: 'MetaModuleListTablePage' });
 
-const moduleStore = createStoreByModel<typeof IrModuleIndex>('meta.IrModuleIndex', {
-  storeId: 'IrModuleIndex_ListTable',
+const moduleStore = createStoreByModel<typeof MetaModuleIndex>('meta.MetaModuleIndex', {
+  storeId: 'MetaModuleIndex_ListTable',
   scopeManager: useScopeManager().menuScopeManager,
 });
 </script>

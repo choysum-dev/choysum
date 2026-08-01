@@ -18,8 +18,8 @@ SPDX-License-Identifier: Apache-2.0
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
     <OVarCharField prop="RoleId.Name" :store="store" :vColumnProps="{ minWidth: 140 }" />
     <OSelectionField prop="Kind" :store="store" :vColumnProps="{ minWidth: 100 }" />
-    <OManyToOneRefField prop="IrApplicationId" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <OManyToOneRefField prop="IrModelId" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <OManyToOneRefField prop="MetaApplicationId" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <OManyToOneRefField prop="MetaModelId" :store="store" :vColumnProps="{ minWidth: 160 }" />
     <OBooleanField prop="PermRead" :store="store" :vColumnProps="{ minWidth: 80 }" />
     <OBooleanField prop="PermWrite" :store="store" :vColumnProps="{ minWidth: 80 }" />
     <OBooleanField prop="PermCreate" :store="store" :vColumnProps="{ minWidth: 80 }" />

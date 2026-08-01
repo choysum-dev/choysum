@@ -20,7 +20,7 @@ type ScheduleRecord = {
 
 const scheduleName = 'meta.module_index.daily_sync';
 const targetApp = 'meta';
-const fullMethod = 'meta.IrModuleIndex/Sync';
+const fullMethod = 'meta.MetaModuleIndex/Sync';
 const cronExpr = '0 0 * * *';
 const timezone = 'UTC';
 const payloadTemplate = { originType: 'local', force: true };

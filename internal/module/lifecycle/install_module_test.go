@@ -25,14 +25,14 @@ func TestPrepareInstallAliasesPrefetchInstallModules(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal depends: %v", err)
 	}
-	mod := &meta.IrModule{
+	mod := &meta.Module{
 		Name:       "solo",
 		Version:    "1.0.0",
 		Path:       filepath.Join(modulesPath, "solo"),
 		DependsStr: dependsRaw,
 	}
 	origin := &countingPrefetchOriginCoordinator{
-		modules: map[string]*meta.IrModule{"solo": mod},
+		modules: map[string]*meta.Module{"solo": mod},
 	}
 
 	runtimeScope := newModuleIndexSyncScope(modulesPath, db)

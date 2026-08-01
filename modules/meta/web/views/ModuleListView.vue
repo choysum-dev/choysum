@@ -49,7 +49,7 @@ SPDX-License-Identifier: Apache-2.0
 import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
-import type IrModuleIndex from '@/meta/service/models/ir_module_index';
+import type MetaModuleIndex from '@/meta/service/models/module_index';
 import OListView from '@/web/web/components/view/OListView.vue';
 import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
 import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
@@ -73,7 +73,7 @@ const router = useRouter();
 
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<IrModuleIndex>;
+    store: WebModelStore<MetaModuleIndex>;
     showHeader?: boolean;
   }>(),
   {
@@ -84,9 +84,9 @@ const props = withDefaults(
 const { store, showHeader } = props;
 const moduleSyncIndexAction = defineAction('meta.action.module_sync_index', {
   title: _lt('Sync Module Index'),
-  requires: [{ model: 'meta.IrModuleIndex', method: 'RequestSync' }],
+  requires: [{ model: 'meta.MetaModuleIndex', method: 'RequestSync' }],
 });
-const moduleIndexActions = defineModelActions('meta.IrModuleIndex', {
+const moduleIndexActions = defineModelActions('meta.MetaModuleIndex', {
   entityTitle: _lt('Module Index'),
 });
 const { canRoute, hasAction } = usePermission();
@@ -118,7 +118,7 @@ watch(
   }
 );
 
-function onRowClick(payload: RowEventPayload<IrModuleIndex>) {
+function onRowClick(payload: RowEventPayload<MetaModuleIndex>) {
   router.push(`/meta/modules/${payload.row.Id}`);
 }
 
@@ -132,6 +132,6 @@ function toHistory() {
   router.push('/meta/modules/history');
 }
 
-const { listRef, expose } = useListViewExpose<IrModuleIndex>();
+const { listRef, expose } = useListViewExpose<MetaModuleIndex>();
 defineExpose(expose);
 </script>

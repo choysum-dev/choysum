@@ -150,7 +150,7 @@ func collectFinalUiResourceDecls(parseResults []*parser.ParserResult) (*collecte
 	}, nil
 }
 
-func extractUiResources(module *meta.IrModule, parseResults []*parser.ParserResult) ([]*meta.IrUiResource, []uiResourceValidationWarning, error) {
+func extractUiResources(module *meta.Module, parseResults []*parser.ParserResult) ([]*meta.UiResource, []uiResourceValidationWarning, error) {
 	if module == nil || len(parseResults) == 0 {
 		return nil, nil, nil
 	}
@@ -162,7 +162,7 @@ func extractUiResources(module *meta.IrModule, parseResults []*parser.ParserResu
 	return buildUiResources(module, decls)
 }
 
-func buildUiResources(module *meta.IrModule, decls *collectedUiDecls) ([]*meta.IrUiResource, []uiResourceValidationWarning, error) {
+func buildUiResources(module *meta.Module, decls *collectedUiDecls) ([]*meta.UiResource, []uiResourceValidationWarning, error) {
 	if module == nil || decls == nil {
 		return nil, nil, nil
 	}
@@ -170,7 +170,7 @@ func buildUiResources(module *meta.IrModule, decls *collectedUiDecls) ([]*meta.I
 		return nil, append([]uiResourceValidationWarning(nil), decls.warnings...), nil
 	}
 
-	resourceByID := make(map[string]*meta.IrUiResource)
+	resourceByID := make(map[string]*meta.UiResource)
 	warnings := append([]uiResourceValidationWarning(nil), decls.warnings...)
 	moduleApp := resolveModuleApplication(module)
 
@@ -189,7 +189,7 @@ func buildUiResources(module *meta.IrModule, decls *collectedUiDecls) ([]*meta.I
 			titleText = mustOptionalJSON(decl.TitleText)
 		}
 
-		v := &meta.IrUiResource{
+		v := &meta.UiResource{
 			Name:               id,
 			Type:               meta.UiResourceType(decl.Type),
 			Title:              strings.TrimSpace(decl.Title),
@@ -199,7 +199,7 @@ func buildUiResources(module *meta.IrModule, decls *collectedUiDecls) ([]*meta.I
 			Module:             strings.TrimSpace(module.Name),
 			Path:               strings.TrimSpace(decl.SourcePath),
 			ParentResourceName: strings.TrimSpace(decl.ParentMenu),
-			IrApplicationId:    moduleApp,
+			MetaApplicationId:  moduleApp,
 			UiPath:             strings.TrimSpace(decl.Path),
 			DefaultRoles:       defaultRoles,
 		}
@@ -297,7 +297,7 @@ func buildUiResources(module *meta.IrModule, decls *collectedUiDecls) ([]*meta.I
 		}
 	}
 
-	out := make([]*meta.IrUiResource, 0, len(decls.orderedIDs))
+	out := make([]*meta.UiResource, 0, len(decls.orderedIDs))
 	for _, id := range decls.orderedIDs {
 		out = append(out, resourceByID[id])
 	}
@@ -312,7 +312,7 @@ func buildUiResources(module *meta.IrModule, decls *collectedUiDecls) ([]*meta.I
 	return out, warnings, nil
 }
 
-func extractUiResourceRelations(uiResources []*meta.IrUiResource, parseResults []*parser.ParserResult) ([]uiResourceMenuRouteRef, []uiResourceRouteActionRef, error) {
+func extractUiResourceRelations(uiResources []*meta.UiResource, parseResults []*parser.ParserResult) ([]uiResourceMenuRouteRef, []uiResourceRouteActionRef, error) {
 	decls, err := collectFinalUiResourceDecls(parseResults)
 	if err != nil {
 		return nil, nil, err
@@ -320,12 +320,12 @@ func extractUiResourceRelations(uiResources []*meta.IrUiResource, parseResults [
 	return buildUiResourceRelations(decls, uiResources)
 }
 
-func buildUiResourceRelations(decls *collectedUiDecls, uiResources []*meta.IrUiResource) ([]uiResourceMenuRouteRef, []uiResourceRouteActionRef, error) {
+func buildUiResourceRelations(decls *collectedUiDecls, uiResources []*meta.UiResource) ([]uiResourceMenuRouteRef, []uiResourceRouteActionRef, error) {
 	if decls == nil || len(decls.orderedIDs) == 0 || len(uiResources) == 0 {
 		return nil, nil, nil
 	}
 
-	resourceByName := make(map[string]*meta.IrUiResource, len(uiResources))
+	resourceByName := make(map[string]*meta.UiResource, len(uiResources))
 	routeNamesByPath := make(map[string][]string)
 	for _, resource := range uiResources {
 		if resource == nil {
@@ -496,7 +496,7 @@ func equalTrimmedStringSlices(a []string, b []string) bool {
 	return true
 }
 
-func resolveModuleApplication(module *meta.IrModule) string {
+func resolveModuleApplication(module *meta.Module) string {
 	if module == nil {
 		return ""
 	}

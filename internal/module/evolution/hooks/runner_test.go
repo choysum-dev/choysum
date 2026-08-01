@@ -246,7 +246,7 @@ func TestNewRunnerAndNormalizeConfig(t *testing.T) {
 	}
 
 	testRuntimeScope := newHooksTestScope(t)
-	mod := &meta.IrModule{Name: "base", ApplicationStr: "core"}
+	mod := &meta.Module{Name: "base", ApplicationStr: "core"}
 	runner, err := NewRunner(testRuntimeScope, nil, mod)
 	if err != nil || runner == nil {
 		t.Fatalf("expected runner, got %#v err=%v", runner, err)
@@ -265,7 +265,7 @@ func TestNewRunnerAndNormalizeConfig(t *testing.T) {
 func TestRunnerBuildScriptsAndContexts(t *testing.T) {
 	testRuntimeScope := newHooksTestScope(t)
 	testRuntimeScope.cfg.Auth.InternalKey = "internal-secret"
-	runner := &Runner{runtimeScope: testRuntimeScope, module: &meta.IrModule{Name: "base", ApplicationStr: "core", Version: "1.0.0"}}
+	runner := &Runner{runtimeScope: testRuntimeScope, module: &meta.Module{Name: "base", ApplicationStr: "core", Version: "1.0.0"}}
 
 	if script := runner.buildHookWrapperScript(); script == nil || !strings.Contains(script.Content, `__choysum_hook__ = async function (app, moduleName, phase)`) || !strings.Contains(script.Content, `HOOK_UNSUPPORTED`) {
 		t.Fatalf("unexpected hook wrapper script: %#v", script)
@@ -316,7 +316,7 @@ func TestRunnerBuildScriptsAndContexts(t *testing.T) {
 
 func TestRunnerBuildExecContext_PrefersContextScope(t *testing.T) {
 	testRuntimeScope := newHooksTestScope(t)
-	runner := &Runner{runtimeScope: testRuntimeScope, module: &meta.IrModule{Name: "base", ApplicationStr: "core", Version: "1.0.0"}}
+	runner := &Runner{runtimeScope: testRuntimeScope, module: &meta.Module{Name: "base", ApplicationStr: "core", Version: "1.0.0"}}
 	runtimeDB, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "hooks_runtime.db")), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open runtime sqlite: %v", err)
@@ -333,7 +333,7 @@ func TestRunnerBuildExecContext_PrefersContextScope(t *testing.T) {
 
 func TestResolveScriptsLoadDistScriptsAndBuildModuleEntryScript(t *testing.T) {
 	testRuntimeScope := newHooksTestScope(t)
-	runner := &Runner{runtimeScope: testRuntimeScope, module: &meta.IrModule{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"}}
+	runner := &Runner{runtimeScope: testRuntimeScope, module: &meta.Module{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"}}
 	provided := []*jsengine.JsScript{{FileName: "provided.js", Content: "console.log(1)"}}
 	scripts, err := runner.resolveScripts(context.Background(), PhasePostInit, RunOptions{Scripts: provided}, false)
 	if err != nil || len(scripts) != 1 || scripts[0].FileName != "provided.js" {
@@ -356,7 +356,7 @@ func TestResolveScriptsLoadDistScriptsAndBuildModuleEntryScript(t *testing.T) {
 	if _, err := LoadDistScripts(nil, runner.module); err == nil {
 		t.Fatal("expected LoadDistScripts to reject missing env")
 	}
-	if scripts, err := LoadDistScripts(testRuntimeScope, &meta.IrModule{Name: "base"}); err != nil || scripts != nil {
+	if scripts, err := LoadDistScripts(testRuntimeScope, &meta.Module{Name: "base"}); err != nil || scripts != nil {
 		t.Fatalf("expected nil scripts when service entry point is empty, got %#v err=%v", scripts, err)
 	}
 
@@ -367,7 +367,7 @@ func TestResolveScriptsLoadDistScriptsAndBuildModuleEntryScript(t *testing.T) {
 	if err := os.WriteFile(bundlePath, []byte("console.log('bundle')"), 0o644); err != nil {
 		t.Fatalf("write bundle file: %v", err)
 	}
-	mod := &meta.IrModule{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"}
+	mod := &meta.Module{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"}
 	scripts, err = LoadDistScripts(testRuntimeScope, mod)
 	if err != nil || len(scripts) != 1 || scripts[0].FileName != bundlePath {
 		t.Fatalf("unexpected bundled scripts: %#v err=%v", scripts, err)
@@ -408,7 +408,7 @@ func TestBuildModuleEntryScript_PrefersContextSessionForBuilderRuntimeState(t *t
 	if err != nil {
 		t.Fatalf("open runtime sqlite: %v", err)
 	}
-	if err := runtimeDB.AutoMigrate(&meta.IrModule{}); err != nil {
+	if err := runtimeDB.AutoMigrate(&meta.Module{}); err != nil {
 		t.Fatalf("migrate runtime modules: %v", err)
 	}
 	_, _, serviceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(testRuntimeScope.cfg.ModulesPath, "crm", testRuntimeScope.cfg.DefaultChoysumPath)
@@ -422,11 +422,11 @@ func TestBuildModuleEntryScript_PrefersContextSessionForBuilderRuntimeState(t *t
 	if err := os.WriteFile(serviceIndex, []byte("globalThis.__hookInjected = (globalThis.__hookInjected || 0) + 1;\nexport {};\n"), 0o644); err != nil {
 		t.Fatalf("write service index: %v", err)
 	}
-	if err := runtimeDB.Create(&meta.IrModule{Name: "crm_mod", ApplicationStr: "crm", Status: meta.Installed, ServiceEntryPoint: "./service/index.ts"}).Error; err != nil {
+	if err := runtimeDB.Create(&meta.Module{Name: "crm_mod", ApplicationStr: "crm", Status: meta.Installed, ServiceEntryPoint: "./service/index.ts"}).Error; err != nil {
 		t.Fatalf("seed runtime installed module: %v", err)
 	}
 
-	runner := &Runner{runtimeScope: testRuntimeScope, module: &meta.IrModule{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"}}
+	runner := &Runner{runtimeScope: testRuntimeScope, module: &meta.Module{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"}}
 	baseScript, err := runner.buildModuleEntryScript(context.Background())
 	if err != nil {
 		t.Fatalf("buildModuleEntryScript(base) error = %v", err)
@@ -467,7 +467,7 @@ func TestRunnerRunPhaseExecutionPaths(t *testing.T) {
 	t.Run("executes hook with runtime scripts and restores executor state", func(t *testing.T) {
 		testRuntimeScope := newHooksTestScope(t)
 		bundlePath := writeHooksRuntimeBundle(t, testRuntimeScope, "console.log('bundle')")
-		module := &meta.IrModule{Name: "base", ApplicationStr: "core", Version: "1.0.0", ServiceEntryPoint: "service/index.ts"}
+		module := &meta.Module{Name: "base", ApplicationStr: "core", Version: "1.0.0", ServiceEntryPoint: "service/index.ts"}
 
 		var loadedByService = map[string][]string{}
 		var requests []*jsengine.JsRequest
@@ -508,7 +508,7 @@ func TestRunnerRunPhaseExecutionPaths(t *testing.T) {
 		testRuntimeScope := newHooksTestScope(t)
 		engine := &hooksSelectiveEngine{}
 		executor := newHooksTestExecutorWithEngine(t, testRuntimeScope, engine)
-		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: executor, module: &meta.IrModule{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"}}
+		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: executor, module: &meta.Module{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"}}
 
 		err := runner.RunPhase(context.Background(), PhasePreInit, RunOptions{})
 		if err == nil || !strings.Contains(err.Error(), "required hook phase pre_init") {
@@ -518,7 +518,7 @@ func TestRunnerRunPhaseExecutionPaths(t *testing.T) {
 
 	t.Run("rejects nil js executor", func(t *testing.T) {
 		testRuntimeScope := newHooksTestScope(t)
-		runner := &Runner{runtimeScope: testRuntimeScope, module: &meta.IrModule{Name: "base", ApplicationStr: "core"}}
+		runner := &Runner{runtimeScope: testRuntimeScope, module: &meta.Module{Name: "base", ApplicationStr: "core"}}
 		if err := runner.RunPhase(context.Background(), PhasePreInit, RunOptions{}); err == nil || !strings.Contains(err.Error(), "js executor is nil") {
 			t.Fatalf("expected js executor error, got %v", err)
 		}
@@ -531,7 +531,7 @@ func TestRunnerRunPhaseExecutionPaths(t *testing.T) {
 			return nil, errors.New("hook boom")
 		}}
 		executor := newHooksTestExecutorWithEngine(t, testRuntimeScope, engine)
-		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: executor, module: &meta.IrModule{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"}}
+		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: executor, module: &meta.Module{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"}}
 
 		if err := runner.RunPhase(context.Background(), PhasePostInit, RunOptions{}); err != nil {
 			t.Fatalf("expected post hook failure to be ignored, got %v", err)
@@ -544,7 +544,7 @@ func TestRunnerRunPhaseExecutionPaths(t *testing.T) {
 			return nil, errors.New("HOOK_UNSUPPORTED: missing pre hook")
 		}}
 		executor := newHooksTestExecutorWithEngine(t, testRuntimeScope, engine)
-		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: executor, module: &meta.IrModule{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"}}
+		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: executor, module: &meta.Module{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"}}
 
 		err := runner.RunPhase(context.Background(), PhasePreInit, RunOptions{Scripts: []*jsengine.JsScript{{FileName: "provided.js", Content: ""}}})
 		if err == nil || !strings.Contains(err.Error(), "HOOK_UNSUPPORTED") {
@@ -562,7 +562,7 @@ func TestExecuteWithScriptsHandlesFailureModes(t *testing.T) {
 		executor := newHooksTestExecutorWithEngine(t, testRuntimeScope, engine)
 		prevScripts := []*jsengine.JsScript{{FileName: "prev.js", Content: "prev"}}
 		executor.SetJsScripts(prevScripts)
-		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: executor, module: &meta.IrModule{Name: "base", ApplicationStr: "core"}}
+		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: executor, module: &meta.Module{Name: "base", ApplicationStr: "core"}}
 		lastErr := error(nil)
 
 		err := runner.executeWithScripts(context.Background(), []*jsengine.JsScript{{FileName: "hook.js", Content: "1"}}, &jsengine.JsRequest{Id: "1", Service: "__choysum_hook__"}, &lastErr, false)
@@ -583,7 +583,7 @@ func TestExecuteWithScriptsHandlesFailureModes(t *testing.T) {
 			return nil, context.Canceled
 		}}
 		executor := newHooksTestExecutorWithEngine(t, testRuntimeScope, engine)
-		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: executor, module: &meta.IrModule{Name: "base", ApplicationStr: "core"}}
+		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: executor, module: &meta.Module{Name: "base", ApplicationStr: "core"}}
 		lastErr := error(nil)
 
 		err := runner.executeWithScripts(context.Background(), nil, &jsengine.JsRequest{Id: "1", Service: "__choysum_hook__"}, &lastErr, false)
@@ -601,7 +601,7 @@ func TestExecuteWithScriptsHandlesFailureModes(t *testing.T) {
 			return nil, errors.New("HOOK_UNSUPPORTED: missing hook")
 		}}
 		executor := newHooksTestExecutorWithEngine(t, testRuntimeScope, engine)
-		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: executor, module: &meta.IrModule{Name: "base", ApplicationStr: "core"}}
+		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: executor, module: &meta.Module{Name: "base", ApplicationStr: "core"}}
 		lastErr := error(nil)
 
 		err := runner.executeWithScripts(context.Background(), nil, &jsengine.JsRequest{Id: "1", Service: "__choysum_hook__"}, &lastErr, false)
@@ -620,7 +620,7 @@ func TestExecuteWithScriptsHandlesFailureModes(t *testing.T) {
 		}}
 		baseExecutor := newHooksTestExecutorWithEngine(t, testRuntimeScope, engine)
 		countingExecutor := &hooksReloadCountingExecutor{inner: baseExecutor}
-		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: countingExecutor, module: &meta.IrModule{Name: "base", ApplicationStr: "core"}}
+		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: countingExecutor, module: &meta.Module{Name: "base", ApplicationStr: "core"}}
 		lastErr := error(nil)
 		scripts := []*jsengine.JsScript{{FileName: "hook.js", Content: "1"}}
 
@@ -674,7 +674,7 @@ func TestRunPhaseNonRequiredHookUnavailable(t *testing.T) {
 		testRuntimeScope.logger = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 		engine := &hooksSelectiveEngine{}
 		executor := newHooksTestExecutorWithEngine(t, testRuntimeScope, engine)
-		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: executor, module: &meta.IrModule{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/missing.ts"}}
+		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: executor, module: &meta.Module{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/missing.ts"}}
 
 		// PostInit is not required by default, and buildModuleEntryScript will fail.
 		err := runner.RunPhase(context.Background(), PhasePostInit, RunOptions{})
@@ -696,7 +696,7 @@ func TestRunPhaseNonRequiredHookUnavailable(t *testing.T) {
 			return nil, errors.New("hook execution boom")
 		}}
 		executor := newHooksTestExecutorWithEngine(t, testRuntimeScope, engine)
-		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: executor, module: &meta.IrModule{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"}}
+		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: executor, module: &meta.Module{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"}}
 
 		err := runner.RunPhase(context.Background(), PhasePostInit, RunOptions{})
 		if err != nil {
@@ -726,7 +726,7 @@ func TestExecuteWithScriptsReloadFailureRollback(t *testing.T) {
 	runner := &Runner{
 		runtimeScope: testRuntimeScope,
 		jsExecutor:   executor,
-		module:       &meta.IrModule{Name: "base", ApplicationStr: "core"},
+		module:       &meta.Module{Name: "base", ApplicationStr: "core"},
 	}
 
 	lastErr := error(nil)

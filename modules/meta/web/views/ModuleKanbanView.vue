@@ -205,8 +205,8 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
-import type IrModule from '@/meta/service/models/ir_module';
-import type IrModuleIndex from '@/meta/service/models/ir_module_index';
+import type MetaModule from '@/meta/service/models/module';
+import type MetaModuleIndex from '@/meta/service/models/module_index';
 import OKanbanView from '@/web/web/components/view/OKanbanView.vue';
 import OVirtualField from '@/web/web/components/field/OVirtualField.vue';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
@@ -226,7 +226,7 @@ const { _t, _lt } = createTranslate('meta', { scope: 'web/views/ModuleKanbanView
 /**
  * Props consumed by the module kanban view and its backing stores.
  */
-const props = withDefaults(defineProps<{ store: WebModelStore<IrModuleIndex>; moduleStore: WebModelStore<IrModule>; showHeader?: boolean }>(), {
+const props = withDefaults(defineProps<{ store: WebModelStore<MetaModuleIndex>; moduleStore: WebModelStore<MetaModule>; showHeader?: boolean }>(), {
   showHeader: true,
 });
 const { store, showHeader } = props;
@@ -239,19 +239,19 @@ const keywordFields = ['ModuleName', 'Version', 'OriginType', 'OriginRef'];
 const router = useRouter();
 const moduleInstallAction = defineAction('meta.action.module_install', {
   title: _lt('Install Module'),
-  requires: [{ model: 'meta.IrModule', method: 'RequestInstall' }],
+  requires: [{ model: 'meta.MetaModule', method: 'RequestInstall' }],
 });
 const moduleUpgradeAction = defineAction('meta.action.module_upgrade', {
   title: _lt('Upgrade Module'),
-  requires: [{ model: 'meta.IrModule', method: 'RequestUpgrade' }],
+  requires: [{ model: 'meta.MetaModule', method: 'RequestUpgrade' }],
 });
 const moduleUninstallAction = defineAction('meta.action.module_uninstall', {
   title: _lt('Uninstall Module'),
-  requires: [{ model: 'meta.IrModule', method: 'RequestUninstall' }],
+  requires: [{ model: 'meta.MetaModule', method: 'RequestUninstall' }],
 });
 const moduleSyncIndexAction = defineAction('meta.action.module_sync_index', {
   title: _lt('Sync Module Index'),
-  requires: [{ model: 'meta.IrModuleIndex', method: 'RequestSync' }],
+  requires: [{ model: 'meta.MetaModuleIndex', method: 'RequestSync' }],
 });
 const { canRoute, hasAction } = usePermission();
 
@@ -314,7 +314,7 @@ const executeLoading = ref(false);
 const plan = ref<PlanOperationResp | null>(null);
 const opStatus = ref<OpStatusResp | null>(null);
 const action = ref<ModuleAction>('install');
-const targetModule = ref<ClientModelProps<IrModuleIndex> | null>(null);
+const targetModule = ref<ClientModelProps<MetaModuleIndex> | null>(null);
 const withDemo = ref(false);
 const pollTimer = ref<number | undefined>(undefined);
 const pollIntervalMs = ref(1000);
@@ -431,14 +431,14 @@ function formatSummary(summary: any) {
 /**
  * Opens the module detail route for the selected kanban card.
  */
-function onCardClick(payload: { row: ClientModelProps<IrModuleIndex> }) {
+function onCardClick(payload: { row: ClientModelProps<MetaModuleIndex> }) {
   router.push(`/meta/modules/${payload.row.Id}`);
 }
 
 /**
  * Opens the operation dialog and loads the execution plan for a module action.
  */
-async function onActionClick(nextAction: ModuleAction, record: ClientModelProps<IrModuleIndex>) {
+async function onActionClick(nextAction: ModuleAction, record: ClientModelProps<MetaModuleIndex>) {
   resetDialog();
   action.value = nextAction;
   targetModule.value = record;

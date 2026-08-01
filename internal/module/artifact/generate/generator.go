@@ -17,7 +17,7 @@ import (
 
 type grpcGenerator struct {
 	runtimeScope           scope.Scope
-	module                 *meta.IrModule
+	module                 *meta.Module
 	protobufGenerator      *protobufGenerator
 	webGrpcGenerator       *webGrpcGenerator
 	webServiceGenerator    *webServiceGenerator
@@ -25,8 +25,8 @@ type grpcGenerator struct {
 	serviceClientGenerator *serviceClientGenerator
 }
 
-func (g *grpcGenerator) filterServices(services []*meta.IrService) []*meta.IrService {
-	filtered := make([]*meta.IrService, 0, len(services))
+func (g *grpcGenerator) filterServices(services []*meta.Service) []*meta.Service {
+	filtered := make([]*meta.Service, 0, len(services))
 	for _, s := range services {
 		if s == nil {
 			continue
@@ -40,13 +40,13 @@ func (g *grpcGenerator) filterServices(services []*meta.IrService) []*meta.IrSer
 	return filtered
 }
 
-func (g *grpcGenerator) getApplication() (*meta.IrApplication, error) {
-	var application *meta.IrApplication
+func (g *grpcGenerator) getApplication() (*meta.Application, error) {
+	var application *meta.Application
 	if result := g.runtimeScope.Session().Take(&application, g.module.ApplicationId); result.Error != nil {
 		return nil, result.Error
 	}
 
-	var appModels []*meta.IrModel
+	var appModels []*meta.Model
 	if result := g.runtimeScope.Session().
 		Preload("Services", func(db *gorm.DB) *gorm.DB {
 			return db.Order("id ASC")
@@ -63,10 +63,10 @@ func (g *grpcGenerator) getApplication() (*meta.IrApplication, error) {
 		Preload("Fields", func(db *gorm.DB) *gorm.DB {
 			return db.Order("id ASC")
 		}).
-		Joins("JOIN meta_ir_module ON meta_ir_model.module_id = meta_ir_module.id ").
-		Where("meta_ir_module.application_id = ?", application.Id).
-		Where("meta_ir_model.abstract = ?", false).
-		Order("meta_ir_model.id ASC").
+		Joins("JOIN meta_module ON meta_model.module_id = meta_module.id ").
+		Where("meta_module.application_id = ?", application.Id).
+		Where("meta_model.abstract = ?", false).
+		Order("meta_model.id ASC").
 		Find(&appModels); result.Error != nil {
 		return nil, result.Error
 	}
@@ -75,8 +75,8 @@ func (g *grpcGenerator) getApplication() (*meta.IrApplication, error) {
 	// First deduplicate by path, keeping the newest version for the same path,
 	// then merge same-name models along the extension chain to avoid losing
 	// extended fields in frontend fieldsMetadata.
-	byPath := make(map[string]*meta.IrModel)
-	var noPath []*meta.IrModel
+	byPath := make(map[string]*meta.Model)
+	var noPath []*meta.Model
 	for _, model := range appModels {
 		if model == nil || model.Name == "" {
 			continue
@@ -95,13 +95,13 @@ func (g *grpcGenerator) getApplication() (*meta.IrApplication, error) {
 		}
 	}
 
-	pathModels := make([]*meta.IrModel, 0, len(byPath))
+	pathModels := make([]*meta.Model, 0, len(byPath))
 	for _, m := range byPath {
 		pathModels = append(pathModels, m)
 	}
 
 	canonicalModels := append(pathModels, noPath...)
-	nameGroups := make(map[string][]*meta.IrModel)
+	nameGroups := make(map[string][]*meta.Model)
 	for _, model := range canonicalModels {
 		if model == nil || model.Name == "" {
 			continue
@@ -109,7 +109,7 @@ func (g *grpcGenerator) getApplication() (*meta.IrApplication, error) {
 		nameGroups[model.Name] = append(nameGroups[model.Name], model)
 	}
 
-	modelMap := make(map[string]*meta.IrModel, len(nameGroups))
+	modelMap := make(map[string]*meta.Model, len(nameGroups))
 	for name, group := range nameGroups {
 		candidates := selectSameNameModelsInPrimaryExtensionChain(group)
 		merged, err := mergeSameNameModelsByExtensionChain(candidates)
@@ -123,7 +123,7 @@ func (g *grpcGenerator) getApplication() (*meta.IrApplication, error) {
 	}
 
 	// Convert the deduplicated models back into a slice.
-	uniqueModels := make([]*meta.IrModel, 0, len(modelMap))
+	uniqueModels := make([]*meta.Model, 0, len(modelMap))
 	for _, model := range modelMap {
 		model.Services = g.filterServices(model.Services)
 
@@ -139,7 +139,7 @@ func (g *grpcGenerator) getApplication() (*meta.IrApplication, error) {
 	return application, nil
 }
 
-func selectSameNameModelsInPrimaryExtensionChain(models []*meta.IrModel) []*meta.IrModel {
+func selectSameNameModelsInPrimaryExtensionChain(models []*meta.Model) []*meta.Model {
 	if len(models) <= 1 {
 		return models
 	}
@@ -155,10 +155,10 @@ func selectSameNameModelsInPrimaryExtensionChain(models []*meta.IrModel) []*meta
 		}
 	}
 	if anchor == nil || anchor.Path == "" {
-		return []*meta.IrModel{anchor}
+		return []*meta.Model{anchor}
 	}
 
-	byPath := make(map[string]*meta.IrModel, len(models))
+	byPath := make(map[string]*meta.Model, len(models))
 	for _, m := range models {
 		if m != nil && m.Path != "" {
 			byPath[m.Path] = m
@@ -194,7 +194,7 @@ func selectSameNameModelsInPrimaryExtensionChain(models []*meta.IrModel) []*meta
 		}
 	}
 
-	out := make([]*meta.IrModel, 0, len(models))
+	out := make([]*meta.Model, 0, len(models))
 	for _, m := range models {
 		if m == nil {
 			continue
@@ -210,13 +210,11 @@ func selectSameNameModelsInPrimaryExtensionChain(models []*meta.IrModel) []*meta
 		}
 	}
 
-	if len(out) == 0 {
-		return []*meta.IrModel{anchor}
-	}
+	// Anchor always has a non-empty Path and is marked connected above, so out is non-empty.
 	return out
 }
 
-func mergeSameNameModelsByExtensionChain(models []*meta.IrModel) (*meta.IrModel, error) {
+func mergeSameNameModelsByExtensionChain(models []*meta.Model) (*meta.Model, error) {
 	if len(models) == 0 {
 		return nil, nil
 	}
@@ -224,7 +222,7 @@ func mergeSameNameModelsByExtensionChain(models []*meta.IrModel) (*meta.IrModel,
 		return models[0], nil
 	}
 
-	byPath := make(map[string]*meta.IrModel, len(models))
+	byPath := make(map[string]*meta.Model, len(models))
 	for _, m := range models {
 		if m != nil && m.Path != "" {
 			byPath[m.Path] = m
@@ -232,14 +230,14 @@ func mergeSameNameModelsByExtensionChain(models []*meta.IrModel) (*meta.IrModel,
 	}
 
 	type rankedModel struct {
-		model *meta.IrModel
+		model *meta.Model
 		depth int
 	}
 
 	depthMemo := make(map[string]int)
 	visiting := make(map[string]bool)
-	var depthOf func(*meta.IrModel) int
-	depthOf = func(m *meta.IrModel) int {
+	var depthOf func(*meta.Model) int
+	depthOf = func(m *meta.Model) int {
 		if m == nil {
 			return 0
 		}
@@ -288,9 +286,9 @@ func mergeSameNameModelsByExtensionChain(models []*meta.IrModel) (*meta.IrModel,
 	})
 
 	fieldIndex := make(map[string]int)
-	mergedFields := make([]*meta.IrField, 0)
+	mergedFields := make([]*meta.Field, 0)
 	serviceIndex := make(map[string]int)
-	mergedServices := make([]*meta.IrService, 0)
+	mergedServices := make([]*meta.Service, 0)
 
 	for _, item := range ranked {
 		m := item.model
@@ -442,7 +440,7 @@ func (g *grpcGenerator) GenerateToTargetsCtx(
 	return g.GenerateCtx(ctx)
 }
 
-func NewGrpcGenerator(runtimeScope scope.Scope, module *meta.IrModule) module.Generator {
+func NewGrpcGenerator(runtimeScope scope.Scope, module *meta.Module) module.Generator {
 	return &grpcGenerator{
 		runtimeScope:           runtimeScope,
 		module:                 module,

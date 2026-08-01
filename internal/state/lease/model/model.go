@@ -6,6 +6,6 @@ package model
 // Entities returns lease metadata models.
 func Entities() []any {
 	return []any{
-		&IrLockLease{},
+		&LockLease{},
 	}
 }

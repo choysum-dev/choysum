@@ -76,31 +76,31 @@ func newSchemaTestScope(t *testing.T) *schemaTestScope {
 
 func migrateSchemaMetaTables(t *testing.T, session *scope.Session) {
 	t.Helper()
-	if err := session.AutoMigrate(&meta.IrModel{}, &meta.IrField{}, &meta.IrDecorator{}, &meta.IrArgument{}, &meta.IrModule{}); err != nil {
+	if err := session.AutoMigrate(&meta.Model{}, &meta.Field{}, &meta.Decorator{}, &meta.Argument{}, &meta.Module{}); err != nil {
 		t.Fatalf("migrate schema meta tables: %v", err)
 	}
 }
 
-func newFieldWithOptions(t *testing.T, name string, options string) *meta.IrField {
+func newFieldWithOptions(t *testing.T, name string, options string) *meta.Field {
 	t.Helper()
-	field := &meta.IrField{
+	field := &meta.Field{
 		Name: name,
-		Decorators: []*meta.IrDecorator{{
+		Decorators: []*meta.Decorator{{
 			Name:      "Field",
-			Arguments: []*meta.IrArgument{{Type: "ObjectLiteral", Value: options}},
+			Arguments: []*meta.Argument{{Type: "ObjectLiteral", Value: options}},
 		}},
 	}
 	attachResolvedSpecForTestField(field, options)
 	return field
 }
 
-func newRelationField(name string, moduleSpecPath string, options string) *meta.IrField {
-	field := &meta.IrField{
+func newRelationField(name string, moduleSpecPath string, options string) *meta.Field {
+	field := &meta.Field{
 		Name:           name,
 		ModuleSpecPath: moduleSpecPath,
-		Decorators: []*meta.IrDecorator{{
+		Decorators: []*meta.Decorator{{
 			Name:      "Field",
-			Arguments: []*meta.IrArgument{{Type: "ObjectLiteral", Value: options}},
+			Arguments: []*meta.Argument{{Type: "ObjectLiteral", Value: options}},
 		}},
 	}
 	field.ModuleSpecPath = moduleSpecPath
@@ -108,7 +108,7 @@ func newRelationField(name string, moduleSpecPath string, options string) *meta.
 	return field
 }
 
-func attachResolvedSpecForTestField(field *meta.IrField, options string) {
+func attachResolvedSpecForTestField(field *meta.Field, options string) {
 	if field == nil {
 		return
 	}
@@ -125,13 +125,13 @@ func attachResolvedSpecForTestField(field *meta.IrField, options string) {
 		return
 	}
 
-	spec := &meta.IrFieldResolvedSpec{
+	spec := &meta.FieldResolvedSpec{
 		FieldName: field.Name,
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Name:      field.Name,
 			FieldType: typeStr,
 		},
-		Migration: meta.IrFieldMigrationDecision{
+		Migration: meta.FieldMigrationDecision{
 			StorageKind:        "physical",
 			ShouldCreateColumn: true,
 			ResolvedColumnType: typeStr,
@@ -141,43 +141,43 @@ func attachResolvedSpecForTestField(field *meta.IrField, options string) {
 
 	if v, ok := opts["required"].(bool); ok {
 		if spec.Structural.StorageHints == nil {
-			spec.Structural.StorageHints = &meta.IrFieldStructuralStorageHints{}
+			spec.Structural.StorageHints = &meta.FieldStructuralStorageHints{}
 		}
 		spec.Structural.StorageHints.Required = boolPtrValue(v)
 	}
 	if v, ok := opts["indexed"].(bool); ok {
 		if spec.Structural.StorageHints == nil {
-			spec.Structural.StorageHints = &meta.IrFieldStructuralStorageHints{}
+			spec.Structural.StorageHints = &meta.FieldStructuralStorageHints{}
 		}
 		spec.Structural.StorageHints.Indexed = boolPtrValue(v)
 	}
 	if v, ok := asIntValue(opts["size"]); ok {
 		if spec.Structural.StorageHints == nil {
-			spec.Structural.StorageHints = &meta.IrFieldStructuralStorageHints{}
+			spec.Structural.StorageHints = &meta.FieldStructuralStorageHints{}
 		}
 		spec.Structural.StorageHints.Size = intPtrValue(v)
 	}
 	if v, ok := asIntValue(opts["precision"]); ok {
 		if spec.Structural.StorageHints == nil {
-			spec.Structural.StorageHints = &meta.IrFieldStructuralStorageHints{}
+			spec.Structural.StorageHints = &meta.FieldStructuralStorageHints{}
 		}
 		spec.Structural.StorageHints.Precision = intPtrValue(v)
 	}
 	if v, ok := asIntValue(opts["scale"]); ok {
 		if spec.Structural.StorageHints == nil {
-			spec.Structural.StorageHints = &meta.IrFieldStructuralStorageHints{}
+			spec.Structural.StorageHints = &meta.FieldStructuralStorageHints{}
 		}
 		spec.Structural.StorageHints.Scale = intPtrValue(v)
 	}
 	if v, ok := opts["unique"].(bool); ok {
 		if spec.Structural.StorageHints == nil {
-			spec.Structural.StorageHints = &meta.IrFieldStructuralStorageHints{}
+			spec.Structural.StorageHints = &meta.FieldStructuralStorageHints{}
 		}
 		spec.Structural.StorageHints.Unique = boolPtrValue(v)
 	}
 	if v, ok := opts["uniqueIndex"]; ok {
 		if spec.Structural.StorageHints == nil {
-			spec.Structural.StorageHints = &meta.IrFieldStructuralStorageHints{}
+			spec.Structural.StorageHints = &meta.FieldStructuralStorageHints{}
 		}
 		switch val := v.(type) {
 		case bool:
@@ -191,7 +191,7 @@ func attachResolvedSpecForTestField(field *meta.IrField, options string) {
 	if col, ok := opts["column"].(map[string]any); ok {
 		hints := spec.Structural.StorageHints
 		if hints == nil {
-			hints = &meta.IrFieldStructuralStorageHints{}
+			hints = &meta.FieldStructuralStorageHints{}
 			spec.Structural.StorageHints = hints
 		}
 		if v, ok := col["notNull"].(bool); ok {
@@ -247,7 +247,7 @@ func attachResolvedSpecForTestField(field *meta.IrField, options string) {
 		spec.Structural.Relation = relation
 	}
 	if related, ok := opts["related"].(map[string]any); ok {
-		relatedSpec := &meta.IrFieldRelatedSpec{Path: strings.TrimSpace(asString(related["path"]))}
+		relatedSpec := &meta.FieldRelatedSpec{Path: strings.TrimSpace(asString(related["path"]))}
 		if v, ok := related["store"].(bool); ok {
 			relatedSpec.Store = v
 		}
@@ -277,7 +277,7 @@ func attachResolvedSpecForTestField(field *meta.IrField, options string) {
 			if value == "" || label == "" {
 				continue
 			}
-			spec.Structural.Selection = append(spec.Structural.Selection, meta.IrFieldSelectionItem{Value: value, Label: label})
+			spec.Structural.Selection = append(spec.Structural.Selection, meta.FieldSelectionItem{Value: value, Label: label})
 		}
 	}
 

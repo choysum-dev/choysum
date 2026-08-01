@@ -62,7 +62,7 @@ func TestGetParserResultsRewritesVueComponentReferences(t *testing.T) {
 	}
 	plugin.ParserResultChan <- &parser.ParserResult{
 		Path: consumerPath,
-		VueComponent: &meta.IrComponent{
+		VueComponent: &meta.Component{
 			Path: consumerPath,
 		},
 		VueComponentsPropertys: []*parser.PropertyNode{

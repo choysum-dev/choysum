@@ -4,12 +4,48 @@
 package esbplugins
 
 import (
+	"context"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/parser"
+	"github.com/choysum-dev/choysum/internal/testing/scopetest"
+	"github.com/choysum-dev/choysum/pkg/meta"
+	"github.com/choysum-dev/choysum/pkg/scope"
 )
+
+type basePluginTestScope struct{}
+
+func (s *basePluginTestScope) Run(fn func(scope.Scope) error) error { return fn(s) }
+func (s *basePluginTestScope) Transactor() scope.Transactor {
+	return scopetest.NewPassthroughTransactor(s)
+}
+func (s *basePluginTestScope) Session() *scope.Session { return nil }
+func (s *basePluginTestScope) WithContext(ctx context.Context) scope.Scope {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return s
+}
+func (s *basePluginTestScope) Context() context.Context { return context.Background() }
+func (s *basePluginTestScope) Logger() *slog.Logger       { return slog.Default() }
+
+func TestNewBasePluginInitializesSharedState(t *testing.T) {
+	runtimeScope := &basePluginTestScope{}
+	module := &meta.Module{Name: "auth", Path: "/virtual/modules/auth"}
+	plugin := NewBasePlugin(runtimeScope, module, "./service/index.ts")
+	if plugin == nil {
+		t.Fatal("expected non-nil plugin")
+	}
+	if plugin.Env != runtimeScope || plugin.Module != module || plugin.EntryPoint != "./service/index.ts" {
+		t.Fatalf("unexpected plugin state: %#v", plugin)
+	}
+	if plugin.ParserResultChan == nil || plugin.TsExports == nil || plugin.normalizedTsExp == nil || plugin.ParserResults == nil {
+		t.Fatalf("expected initialized plugin maps/channels, got %#v", plugin)
+	}
+}
 
 func TestHandleParserResults(t *testing.T) {
 	plugin := &BasePlugin{

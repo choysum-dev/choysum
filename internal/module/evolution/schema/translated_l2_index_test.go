@@ -139,12 +139,12 @@ func TestApplyTableTranslatedL2IndexesRequiresTrigramOptIn(t *testing.T) {
 
 	trueVal := true
 	trigram := "trigram"
-	withOptIn := &meta.IrField{Name: "Name"}
-	spec := &meta.IrFieldResolvedSpec{
+	withOptIn := &meta.Field{Name: "Name"}
+	spec := &meta.FieldResolvedSpec{
 		FieldName: "Name",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Translate: &trueVal,
-			StorageHints: &meta.IrFieldStructuralStorageHints{
+			StorageHints: &meta.FieldStructuralStorageHints{
 				Index: &trigram,
 			},
 		},
@@ -153,10 +153,10 @@ func TestApplyTableTranslatedL2IndexesRequiresTrigramOptIn(t *testing.T) {
 		t.Fatalf("SetResolvedSpec: %v", err)
 	}
 
-	withoutOptIn := &meta.IrField{Name: "Name"}
-	specNoIndex := &meta.IrFieldResolvedSpec{
+	withoutOptIn := &meta.Field{Name: "Name"}
+	specNoIndex := &meta.FieldResolvedSpec{
 		FieldName: "Name",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Translate: &trueVal,
 		},
 	}
@@ -171,7 +171,7 @@ func TestApplyTableTranslatedL2IndexesRequiresTrigramOptIn(t *testing.T) {
 		session: &scope.Session{DB: db},
 	}
 	m := &modelMigrator{runtimeScope: runtime}
-	model := &meta.IrModel{Fields: []*meta.IrField{withoutOptIn}}
+	model := &meta.Model{Fields: []*meta.Field{withoutOptIn}}
 	if err := m.applyTableTranslatedL2Indexes("base_language", model); err != nil {
 		t.Fatalf("apply without opt-in: %v", err)
 	}
@@ -179,7 +179,7 @@ func TestApplyTableTranslatedL2IndexesRequiresTrigramOptIn(t *testing.T) {
 		t.Fatal("translate without index:trigram must not create L2")
 	}
 
-	model.Fields = []*meta.IrField{withOptIn}
+	model.Fields = []*meta.Field{withOptIn}
 	if err := m.applyTableTranslatedL2Indexes("base_language", model); err != nil {
 		t.Fatalf("apply with opt-in: %v", err)
 	}
@@ -236,12 +236,12 @@ func TestApplyTableTranslatedL2IndexesPropagatesEnsureError(t *testing.T) {
 
 	trueVal := true
 	trigram := "trigram"
-	field := &meta.IrField{Name: "Name"}
-	spec := &meta.IrFieldResolvedSpec{
+	field := &meta.Field{Name: "Name"}
+	spec := &meta.FieldResolvedSpec{
 		FieldName: "Name",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Translate: &trueVal,
-			StorageHints: &meta.IrFieldStructuralStorageHints{
+			StorageHints: &meta.FieldStructuralStorageHints{
 				Index: &trigram,
 			},
 		},
@@ -257,7 +257,7 @@ func TestApplyTableTranslatedL2IndexesPropagatesEnsureError(t *testing.T) {
 		session: &scope.Session{DB: db},
 	}
 	m := &modelMigrator{runtimeScope: runtime}
-	if err := m.applyTableTranslatedL2Indexes("base_language", &meta.IrModel{Fields: []*meta.IrField{field}}); err == nil {
+	if err := m.applyTableTranslatedL2Indexes("base_language", &meta.Model{Fields: []*meta.Field{field}}); err == nil {
 		t.Fatal("expected apply to surface mysql ensure error")
 	}
 }
@@ -271,19 +271,19 @@ func TestMigrateTableSchemaWrapsTranslatedL2IndexError(t *testing.T) {
 
 	trueVal := true
 	trigram := "trigram"
-	field := &meta.IrField{Name: "Name"}
-	spec := &meta.IrFieldResolvedSpec{
+	field := &meta.Field{Name: "Name"}
+	spec := &meta.FieldResolvedSpec{
 		FieldName: "Name",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Name:       "Name",
 			FieldType:  "varchar",
 			Translate:  &trueVal,
 			ColumnType: "jsonobject",
-			StorageHints: &meta.IrFieldStructuralStorageHints{
+			StorageHints: &meta.FieldStructuralStorageHints{
 				Index: &trigram,
 			},
 		},
-		Migration: meta.IrFieldMigrationDecision{
+		Migration: meta.FieldMigrationDecision{
 			StorageKind:        "physical",
 			ShouldCreateColumn: true,
 			ResolvedColumnType: "jsonobject",
@@ -293,11 +293,11 @@ func TestMigrateTableSchemaWrapsTranslatedL2IndexError(t *testing.T) {
 	if err := field.SetResolvedSpec(spec); err != nil {
 		t.Fatalf("SetResolvedSpec: %v", err)
 	}
-	model := &meta.IrModel{
+	model := &meta.Model{
 		Name:       "Language",
 		Path:       "base/language.ts",
 		ModelTable: "base_language_l2_wrap",
-		Fields:     []*meta.IrField{field},
+		Fields:     []*meta.Field{field},
 	}
 	runtime := &schemaTestScope{
 		ctx:     context.Background(),
@@ -306,7 +306,7 @@ func TestMigrateTableSchemaWrapsTranslatedL2IndexError(t *testing.T) {
 		session: &scope.Session{DB: db},
 	}
 	m := &modelMigrator{runtimeScope: runtime}
-	err = m.migrateTableSchema([]*meta.IrModel{model})
+	err = m.migrateTableSchema([]*meta.Model{model})
 	if err == nil || !strings.Contains(err.Error(), "translated L2 indexes") {
 		t.Fatalf("expected wrapped L2 migrate error, got %v", err)
 	}

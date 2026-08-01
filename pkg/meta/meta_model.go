@@ -7,7 +7,7 @@ import (
 	"database/sql"
 )
 
-type IrModel struct {
+type Model struct {
 	BaseModel `gorm:"embedded"`
 
 	Name        string `gorm:"type:varchar(255);not null" json:"name"`
@@ -25,13 +25,13 @@ type IrModel struct {
 
 	CompanyField *string `gorm:"type:varchar(255);" json:"company_field"`
 
-	Decorators []*IrDecorator `gorm:"foreignKey:ModelId;constraint:OnDelete:CASCADE;" json:"decorators"`
-	Services   []*IrService   `gorm:"foreignKey:ModelId;constraint:OnDelete:CASCADE;" json:"services"`
-	Fields     []*IrField     `gorm:"foreignKey:ModelId;constraint:OnDelete:CASCADE;" json:"fields"`
+	Decorators []*Decorator   `gorm:"foreignKey:ModelId;constraint:OnDelete:CASCADE;" json:"decorators"`
+	Services   []*Service     `gorm:"foreignKey:ModelId;constraint:OnDelete:CASCADE;" json:"services"`
+	Fields     []*Field       `gorm:"foreignKey:ModelId;constraint:OnDelete:CASCADE;" json:"fields"`
 	ModuleId   sql.NullString `gorm:"type:char(20)" json:"module_id"`
-	Module     *IrModule      `gorm:"foreignKey:ModuleId" json:"module"`
+	Module     *Module        `gorm:"foreignKey:ModuleId" json:"module"`
 }
 
-func (model *IrModel) TableName() string {
-	return "meta_ir_model"
+func (model *Model) TableName() string {
+	return "meta_model"
 }

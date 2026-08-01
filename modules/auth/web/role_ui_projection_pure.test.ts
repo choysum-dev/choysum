@@ -15,16 +15,16 @@ function isAllowResourceScope(row: any): boolean {
   const mode = String((row as any)?.Mode ?? 'allow')
     .trim()
     .toLowerCase();
-  const uiResourceId = normalizeRefId((row as any)?.IrUiResourceId);
-  const appId = normalizeRefId((row as any)?.IrApplicationId);
+  const uiResourceId = normalizeRefId((row as any)?.MetaUiResourceId);
+  const appId = normalizeRefId((row as any)?.MetaApplicationId);
   return mode === 'allow' && !!uiResourceId && appId == null;
 }
 
 function makeAllowResourceEntries(ids: string[]): Array<Record<string, any>> {
   return ids.map(id => ({
     Mode: 'allow',
-    IrApplicationId: null,
-    IrUiResourceId: id,
+    MetaApplicationId: null,
+    MetaUiResourceId: id,
   }));
 }
 
@@ -52,26 +52,26 @@ function wantsAccessField(selection: any): boolean {
 
 describe('isAllowResourceScope', () => {
   test('returns true for allow mode with resource id and no app id', () => {
-    expect(isAllowResourceScope({ Mode: 'allow', IrUiResourceId: 'R1' })).toBe(true);
-    expect(isAllowResourceScope({ Mode: 'ALLOW', IrUiResourceId: 'R1', IrApplicationId: null })).toBe(true);
+    expect(isAllowResourceScope({ Mode: 'allow', MetaUiResourceId: 'R1' })).toBe(true);
+    expect(isAllowResourceScope({ Mode: 'ALLOW', MetaUiResourceId: 'R1', MetaApplicationId: null })).toBe(true);
   });
 
   test('returns false for deny mode', () => {
-    expect(isAllowResourceScope({ Mode: 'deny', IrUiResourceId: 'R1' })).toBe(false);
+    expect(isAllowResourceScope({ Mode: 'deny', MetaUiResourceId: 'R1' })).toBe(false);
   });
 
   test('returns false when app id is present', () => {
-    expect(isAllowResourceScope({ Mode: 'allow', IrUiResourceId: 'R1', IrApplicationId: 'A1' })).toBe(false);
-    expect(isAllowResourceScope({ Mode: 'allow', IrUiResourceId: 'R1', IrApplicationId: { Id: 'A1' } })).toBe(false);
+    expect(isAllowResourceScope({ Mode: 'allow', MetaUiResourceId: 'R1', MetaApplicationId: 'A1' })).toBe(false);
+    expect(isAllowResourceScope({ Mode: 'allow', MetaUiResourceId: 'R1', MetaApplicationId: { Id: 'A1' } })).toBe(false);
   });
 
   test('returns false when resource id is missing', () => {
     expect(isAllowResourceScope({ Mode: 'allow' })).toBe(false);
-    expect(isAllowResourceScope({ Mode: 'allow', IrUiResourceId: null })).toBe(false);
+    expect(isAllowResourceScope({ Mode: 'allow', MetaUiResourceId: null })).toBe(false);
   });
 
   test('defaults mode to allow', () => {
-    expect(isAllowResourceScope({ IrUiResourceId: 'R1' })).toBe(true);
+    expect(isAllowResourceScope({ MetaUiResourceId: 'R1' })).toBe(true);
   });
 });
 
@@ -79,8 +79,8 @@ describe('makeAllowResourceEntries', () => {
   test('returns array of allow entries', () => {
     const result = makeAllowResourceEntries(['R1', 'R2']);
     expect(result).toEqual([
-      { Mode: 'allow', IrApplicationId: null, IrUiResourceId: 'R1' },
-      { Mode: 'allow', IrApplicationId: null, IrUiResourceId: 'R2' },
+      { Mode: 'allow', MetaApplicationId: null, MetaUiResourceId: 'R1' },
+      { Mode: 'allow', MetaApplicationId: null, MetaUiResourceId: 'R2' },
     ]);
   });
 
@@ -112,21 +112,21 @@ describe('extractUiResourcesArray', () => {
 describe('mergeAccessIntoUiResources', () => {
   test('preserves non-allow rows and appends allow entries', () => {
     const base = [
-      { Mode: 'deny', IrUiResourceId: 'R1' },
-      { Mode: 'allow', IrUiResourceId: 'R2' },
+      { Mode: 'deny', MetaUiResourceId: 'R1' },
+      { Mode: 'allow', MetaUiResourceId: 'R2' },
     ];
     const result = mergeAccessIntoUiResources(base, ['R3']);
     // Only the deny row is preserved; allow rows are replaced.
     expect(result).toHaveLength(2);
     expect(result[0].Mode).toBe('deny');
     expect(result[1].Mode).toBe('allow');
-    expect(result[1].IrUiResourceId).toBe('R3');
+    expect(result[1].MetaUiResourceId).toBe('R3');
   });
 
   test('handles empty base and empty access ids', () => {
     expect(mergeAccessIntoUiResources([], [])).toEqual([]);
     expect(mergeAccessIntoUiResources([], ['R1'])).toEqual([
-      { Mode: 'allow', IrApplicationId: null, IrUiResourceId: 'R1' },
+      { Mode: 'allow', MetaApplicationId: null, MetaUiResourceId: 'R1' },
     ]);
   });
 });

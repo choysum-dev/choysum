@@ -39,8 +39,8 @@ var (
 )
 
 type Provider interface {
-	PeekManifest(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error)
-	Fetch(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error)
+	PeekManifest(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.Module, error)
+	Fetch(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.Module, error)
 }
 
 type SourceRegistryProvider struct {
@@ -307,12 +307,12 @@ func normalizePackageAuthor(raw []byte) ([]byte, error) {
 	return normalized, nil
 }
 
-func parseModuleFromPackageJSON(raw []byte, moduleName, modulePath string) (*meta.IrModule, error) {
+func parseModuleFromPackageJSON(raw []byte, moduleName, modulePath string) (*meta.Module, error) {
 	normalizedRaw, err := normalizePackageAuthor(raw)
 	if err != nil {
 		return nil, err
 	}
-	result, err := contract.ParsePackageJSONToIrModule(normalizedRaw, modulePath, nil)
+	result, err := contract.ParsePackageJSONToModule(normalizedRaw, modulePath, nil)
 	if err != nil {
 		return nil, xfmt.Errorf("parse package.json: %w", err)
 	}
@@ -338,7 +338,7 @@ func extractTarballURL(versionRaw json.RawMessage) (string, string, error) {
 }
 
 type packageInspection struct {
-	module      *meta.IrModule
+	module      *meta.Module
 	downloadURL string
 	integrity   string
 }
@@ -737,7 +737,7 @@ func extractTarballFromReader(r io.Reader, targetDir string) error {
 	return nil
 }
 
-func (p *SourceRegistryProvider) PeekManifest(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
+func (p *SourceRegistryProvider) PeekManifest(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.Module, error) {
 	if p == nil || p.runtimeScope == nil {
 		return nil, xfmt.Errorf("registry provider env is nil")
 	}
@@ -759,7 +759,7 @@ func (p *SourceRegistryProvider) PeekManifest(ctx context.Context, registryURL, 
 	return inspection.module, nil
 }
 
-func (p *SourceRegistryProvider) Fetch(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
+func (p *SourceRegistryProvider) Fetch(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.Module, error) {
 	if p == nil || p.runtimeScope == nil {
 		return nil, xfmt.Errorf("registry provider env is nil")
 	}

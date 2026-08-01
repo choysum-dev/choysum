@@ -153,7 +153,7 @@ const props = withDefaults(
   {
     rules: () => [],
     formItemProps: () => ({}),
-    targetModel: 'meta.IrUiResource',
+    targetModel: 'meta.MetaUiResource',
     childrenField: 'Childs',
     nodeKeyField: 'Id',
     labelField: () => ['Title', 'Name', 'DisplayName', 'Id'],

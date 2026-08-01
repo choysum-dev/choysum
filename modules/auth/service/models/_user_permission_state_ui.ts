@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import IrUiResource from '@/meta/service/models/ir_ui_resource';
-import IrUiResourceMenuRoute from '@/meta/service/models/ir_ui_resource_menu_route';
-import IrUiResourceRouteAction from '@/meta/service/models/ir_ui_resource_route_action';
+import MetaUiResource from '@/meta/service/models/ui_resource';
+import MetaUiResourceMenuRoute from '@/meta/service/models/ui_resource_menu_route';
+import MetaUiResourceRouteAction from '@/meta/service/models/ui_resource_route_action';
 import RoleUiResource from './role_ui_resource';
 import { isUiResourceAllowed, maybeId, normalizeScopeRefId, normalizeUiResourceId, parseJsonStringArray, sortStrings } from './_user_authz_shared';
 import { normalizeRpcRequireKey } from '@/core/service/utils/normalization';
@@ -49,7 +49,7 @@ export async function buildUiPermissionProjection(
 
   // 3) Generate ui.routes, ui.menus, and ui.actions from UI grants and RPC requires.
   const uiGrants = await RoleUiResource.Search(['RoleId', 'in', roleIds] as any, {
-    fields: ['RoleId', 'IrApplicationId', 'IrUiResourceId', 'Mode'],
+    fields: ['RoleId', 'MetaApplicationId', 'MetaUiResourceId', 'Mode'],
     limit: 50000,
   });
 
@@ -95,8 +95,8 @@ export async function buildUiPermissionProjection(
 
   for (const g of uiGrants || []) {
     const roleId = maybeId((g as any).RoleId);
-    const appId = normalizeScopeRefId((g as any).IrApplicationId);
-    const resourceId = normalizeUiResourceId((g as any).IrUiResourceId);
+    const appId = normalizeScopeRefId((g as any).MetaApplicationId);
+    const resourceId = normalizeUiResourceId((g as any).MetaUiResourceId);
     const mode = String((g as any).Mode ?? 'allow')
       .trim()
       .toLowerCase();
@@ -128,10 +128,10 @@ export async function buildUiPermissionProjection(
     }
   }
 
-  const resources = await IrUiResource.Search(
+  const resources = await MetaUiResource.Search(
     [] as any,
     {
-      fields: ['Id', 'Name', 'Type', 'ParentId', 'IrApplicationId', 'Requires'],
+      fields: ['Id', 'Name', 'Type', 'ParentId', 'MetaApplicationId', 'Requires'],
       limit: 100000,
     } as any
   );
@@ -155,14 +155,14 @@ export async function buildUiPermissionProjection(
         const pid = normalizeUiResourceId(row?.ParentId ?? row?.parentId);
         return pid ? String(resourceNameById.get(pid) || '').trim() : '';
       })(),
-      appId: normalizeScopeRefId(row?.IrApplicationId),
+      appId: normalizeScopeRefId(row?.MetaApplicationId),
       requires: parseJsonStringArray((row as any)?.Requires ?? (row as any)?.requires),
     }))
     .filter(r => !!r.resourceId && (r.type === 'ROUTE' || r.type === 'MENU' || r.type === 'ACTION'));
 
   const [menuRouteRows, routeActionRows] = await Promise.all([
-    IrUiResourceMenuRoute.Search([] as any, { fields: ['MenuUiResourceId', 'RouteUiResourceId'], limit: 100000 } as any),
-    IrUiResourceRouteAction.Search([] as any, { fields: ['RouteUiResourceId', 'ActionUiResourceId'], limit: 100000 } as any),
+    MetaUiResourceMenuRoute.Search([] as any, { fields: ['MenuUiResourceId', 'RouteUiResourceId'], limit: 100000 } as any),
+    MetaUiResourceRouteAction.Search([] as any, { fields: ['RouteUiResourceId', 'ActionUiResourceId'], limit: 100000 } as any),
   ]);
 
   const resourceMetaById = new Map<string, UiResourceMeta>();

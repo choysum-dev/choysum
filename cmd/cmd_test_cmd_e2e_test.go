@@ -543,10 +543,10 @@ func writeInitializedSqliteDB(t *testing.T) string {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&metadata.IrSetting{}); err != nil {
+	if err := db.AutoMigrate(&metadata.Setting{}); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
-	if err := db.Create(&metadata.IrSetting{Key: "system.init.done", Value: "true"}).Error; err != nil {
+	if err := db.Create(&metadata.Setting{Key: "system.init.done", Value: "true"}).Error; err != nil {
 		t.Fatalf("insert init marker: %v", err)
 	}
 	return path
@@ -1295,7 +1295,7 @@ func TestCLIUpgradeFlowWithGlobalRegistryIndex(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	var upgraded meta.IrModule
+	var upgraded meta.Module
 	if err := db.Where("name = ?", "demo").Take(&upgraded).Error; err != nil {
 		t.Fatalf("query upgraded module failed: %v", err)
 	}
@@ -1435,7 +1435,7 @@ func TestCLIUpgradeLocalRegistryBindingUsesCompatFilter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	var upgraded meta.IrModule
+	var upgraded meta.Module
 	if err := db.Where("name = ?", "demo").Take(&upgraded).Error; err != nil {
 		t.Fatalf("query upgraded module failed: %v", err)
 	}
@@ -1606,7 +1606,7 @@ func TestCLIInstallLatestResolvesCompatibleVersion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	var installed meta.IrModule
+	var installed meta.Module
 	if err := db.Where("name = ?", "demo").Take(&installed).Error; err != nil {
 		t.Fatalf("query installed module failed: %v", err)
 	}
@@ -1755,16 +1755,16 @@ func seedModuleStatusForCLI(t *testing.T, dbPath, moduleName string, status meta
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&meta.IrModule{}); err != nil {
+	if err := db.AutoMigrate(&meta.Module{}); err != nil {
 		t.Fatalf("auto-migrate ir module: %v", err)
 	}
 
 	var count int64
-	if err := db.Model(&meta.IrModule{}).Where("name = ?", moduleName).Count(&count).Error; err != nil {
+	if err := db.Model(&meta.Module{}).Where("name = ?", moduleName).Count(&count).Error; err != nil {
 		t.Fatalf("count module fixture failed: %v", err)
 	}
 	if count == 0 {
-		record := &meta.IrModule{
+		record := &meta.Module{
 			Name:           moduleName,
 			ApplicationStr: moduleName,
 			Status:         status,
@@ -1777,7 +1777,7 @@ func seedModuleStatusForCLI(t *testing.T, dbPath, moduleName string, status meta
 		return
 	}
 
-	var existing meta.IrModule
+	var existing meta.Module
 	err = db.Where("name = ?", moduleName).Take(&existing).Error
 	if err != nil {
 		t.Fatalf("query module fixture failed: %v", err)
@@ -1926,21 +1926,21 @@ func TestCLIRunDoesNotWriteInitArtifacts(t *testing.T) {
 		t.Fatalf("did not expect CLI startup hint, got %s", output)
 	}
 
-	if sqliteTableExists(t, dbPath, "meta_ir_lock_lease") {
+	if sqliteTableExists(t, dbPath, "meta_lock_lease") {
 		t.Fatalf("unexpected init lease table created by run")
 	}
-	if sqliteTableExists(t, dbPath, "meta_ir_model") {
-		t.Fatalf("unexpected meta_ir_model table created by run")
+	if sqliteTableExists(t, dbPath, "meta_model") {
+		t.Fatalf("unexpected meta_model table created by run")
 	}
-	if sqliteTableExists(t, dbPath, "meta_ir_model_data") {
-		t.Fatalf("unexpected meta_ir_model_data table created by run")
+	if sqliteTableExists(t, dbPath, "meta_model_data") {
+		t.Fatalf("unexpected meta_model_data table created by run")
 	}
 
 	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	var settings []metadata.IrSetting
+	var settings []metadata.Setting
 	if err := db.Find(&settings).Error; err != nil {
 		t.Fatalf("query settings: %v", err)
 	}

@@ -408,7 +408,7 @@ func TestRunOneAppBackendTestsWithInjectedHooks(t *testing.T) {
 
 	t.Run("helper constructors are callable", func(t *testing.T) {
 		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), DistPath: t.TempDir(), Server: &config.ServerConfig{JsEngineFactory: "quickjs"}}}
-		mod := &meta.IrModule{Name: "auth", ApplicationStr: "auth", Path: filepath.Join(runtimeOptionsFromScope(runtimeScope).modulesPath, "auth")}
+		mod := &meta.Module{Name: "auth", ApplicationStr: "auth", Path: filepath.Join(runtimeOptionsFromScope(runtimeScope).modulesPath, "auth")}
 		if b := defaultNewBackendBuilder(runtimeScope, nil, mod, filepath.Join(t.TempDir(), "entry.ts"), "index.js", "auth"); b == nil {
 			t.Fatalf("expected non-nil backend builder")
 		}

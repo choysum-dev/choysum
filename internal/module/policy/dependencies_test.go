@@ -12,10 +12,10 @@ import (
 
 func TestResolveInstalledDependencies_EmptyDependsStrReturnsNoDeps(t *testing.T) {
 	called := false
-	deps, err := ResolveInstalledDependencies(func(name string) (*meta.IrModule, error) {
+	deps, err := ResolveInstalledDependencies(func(name string) (*meta.Module, error) {
 		called = true
-		return &meta.IrModule{Name: name, Status: meta.Installed}, nil
-	}, &meta.IrModule{Name: "core"})
+		return &meta.Module{Name: name, Status: meta.Installed}, nil
+	}, &meta.Module{Name: "core"})
 	if err != nil {
 		t.Fatalf("ResolveInstalledDependencies() error = %v", err)
 	}
@@ -29,10 +29,10 @@ func TestResolveInstalledDependencies_EmptyDependsStrReturnsNoDeps(t *testing.T)
 
 func TestResolveInstalledDependencies_WhitespaceDependsStrReturnsNoDeps(t *testing.T) {
 	called := false
-	deps, err := ResolveInstalledDependencies(func(name string) (*meta.IrModule, error) {
+	deps, err := ResolveInstalledDependencies(func(name string) (*meta.Module, error) {
 		called = true
-		return &meta.IrModule{Name: name, Status: meta.Installed}, nil
-	}, &meta.IrModule{Name: "core", DependsStr: []byte("   ")})
+		return &meta.Module{Name: name, Status: meta.Installed}, nil
+	}, &meta.Module{Name: "core", DependsStr: []byte("   ")})
 	if err != nil {
 		t.Fatalf("ResolveInstalledDependencies() error = %v", err)
 	}
@@ -45,10 +45,34 @@ func TestResolveInstalledDependencies_WhitespaceDependsStrReturnsNoDeps(t *testi
 }
 
 func TestResolveInstalledDependencies_InvalidDependsStrReturnsError(t *testing.T) {
-	_, err := ResolveInstalledDependencies(func(name string) (*meta.IrModule, error) {
-		return &meta.IrModule{Name: name, Status: meta.Installed}, nil
-	}, &meta.IrModule{Name: "core", DependsStr: []byte("[")})
+	_, err := ResolveInstalledDependencies(func(name string) (*meta.Module, error) {
+		return &meta.Module{Name: name, Status: meta.Installed}, nil
+	}, &meta.Module{Name: "core", DependsStr: []byte("[")})
 	if err == nil || !strings.Contains(err.Error(), "error unmarshal depends") {
 		t.Fatalf("expected unmarshal error, got %v", err)
+	}
+}
+
+func TestResolveInstalledDependencies_ReturnsInstalledDeps(t *testing.T) {
+	auth := &meta.Module{Name: "auth", Status: meta.Installed}
+	web := &meta.Module{Name: "web", Status: meta.Installed}
+	deps, err := ResolveInstalledDependencies(func(name string) (*meta.Module, error) {
+		switch name {
+		case "auth":
+			return auth, nil
+		case "web":
+			return web, nil
+		default:
+			return nil, nil
+		}
+	}, &meta.Module{
+		Name:       "core",
+		DependsStr: []byte(`["auth", "web", "auth", "  ", ""]`),
+	})
+	if err != nil {
+		t.Fatalf("ResolveInstalledDependencies() error = %v", err)
+	}
+	if len(deps) != 2 || deps[0] != auth || deps[1] != web {
+		t.Fatalf("unexpected dependencies: %#v", deps)
 	}
 }

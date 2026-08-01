@@ -8,9 +8,9 @@ import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
 import { _lt } from '../i18n';
 import Role from './role';
-import type IrApplication from '@/meta/service/models/ir_application';
-import type IrModel from '@/meta/service/models/ir_model';
-import type IrField from '@/meta/service/models/ir_field';
+import type MetaApplication from '@/meta/service/models/application';
+import type MetaModel from '@/meta/service/models/model';
+import type MetaField from '@/meta/service/models/field';
 import { mutateThenInvalidateAllAuthzCaches } from './_authz_mutation_helpers';
 import { assertExclusiveScope } from './_rule_scope_helpers';
 
@@ -33,9 +33,9 @@ export default class RoleFieldRule extends BaseModel {
   /**
    * Application-level scope when the rule applies to an entire application.
    */
-  @Field<IrApplication>({
+  @Field<MetaApplication>({
     type: 'ManyToOneRef',
-    relation: { targetModel: 'meta.IrApplication' },
+    relation: { targetModel: 'meta.MetaApplication' },
     notNull: false,
     size: 20,
     index: true,
@@ -44,14 +44,14 @@ export default class RoleFieldRule extends BaseModel {
       scope: 'auth.model.RoleFieldRule.fields',
     }),
   })
-  IrApplicationId?: string;
+  MetaApplicationId?: string;
 
   /**
    * Model-level scope when the rule applies to an entire model.
    */
-  @Field<IrModel>({
+  @Field<MetaModel>({
     type: 'ManyToOneRef',
-    relation: { targetModel: 'meta.IrModel' },
+    relation: { targetModel: 'meta.MetaModel' },
     notNull: false,
     size: 20,
     index: true,
@@ -60,23 +60,23 @@ export default class RoleFieldRule extends BaseModel {
       scope: 'auth.model.RoleFieldRule.fields',
     }),
   })
-  IrModelId?: string;
+  MetaModelId?: string;
 
   /**
    * Field-level scope when the rule applies to one concrete field.
    */
-  @Field<IrField>({
-    type: 'ManyToOneRef', relation: { targetModel: 'meta.IrField' },
+  @Field<MetaField>({
+    type: 'ManyToOneRef', relation: { targetModel: 'meta.MetaField' },
     notNull: false,
       size: 20,
       index: true,
       checkConstraint: `(
         (
           (deleted_at IS NOT NULL)
-          OR (ir_field_id IS NOT NULL AND ir_model_id IS NOT NULL AND ir_application_id IS NULL)
-          OR (ir_field_id IS NULL AND ir_model_id IS NOT NULL AND ir_application_id IS NULL)
-          OR (ir_field_id IS NULL AND ir_model_id IS NULL AND ir_application_id IS NOT NULL)
-          OR (ir_field_id IS NULL AND ir_model_id IS NULL AND ir_application_id IS NULL)
+          OR (meta_field_id IS NOT NULL AND meta_model_id IS NOT NULL AND meta_application_id IS NULL)
+          OR (meta_field_id IS NULL AND meta_model_id IS NOT NULL AND meta_application_id IS NULL)
+          OR (meta_field_id IS NULL AND meta_model_id IS NULL AND meta_application_id IS NOT NULL)
+          OR (meta_field_id IS NULL AND meta_model_id IS NULL AND meta_application_id IS NULL)
         )
         AND (perm_read IS NOT NULL OR perm_write IS NOT NULL)
       )`,
@@ -85,7 +85,7 @@ export default class RoleFieldRule extends BaseModel {
       scope: 'auth.model.RoleFieldRule.fields',
     }),
   })
-  IrFieldId?: string;
+  MetaFieldId?: string;
 
   /**
    * Read permission override for the selected scope.
@@ -255,21 +255,21 @@ export default class RoleFieldRule extends BaseModel {
   /**
    * Reset the field scope when the model scope changes and narrow the field picker.
    */
-  @Onchange<RoleFieldRule>('IrModelId')
-  OnchangeIrModelId() {
-    this.IrFieldId = null as any;
+  @Onchange<RoleFieldRule>('MetaModelId')
+  OnchangeMetaModelId() {
+    this.MetaFieldId = null as any;
 
-    const modelId = this.IrModelId;
+    const modelId = this.MetaModelId;
 
     if (modelId) {
       // Narrow the field picker to the selected model
       return {
-        condition: [{ field: 'IrFieldId', condition: ['ModelId', '=', modelId] }],
+        condition: [{ field: 'MetaFieldId', condition: ['ModelId', '=', modelId] }],
       };
     } else {
       // Fallback to an always-false condition to block selection
       return {
-        condition: [{ field: 'IrFieldId', condition: ['Id', '=', '0'] }],
+        condition: [{ field: 'MetaFieldId', condition: ['Id', '=', '0'] }],
       };
     }
   }

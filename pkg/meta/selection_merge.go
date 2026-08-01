@@ -12,7 +12,7 @@ import (
 // Test seams for defensive error paths that are otherwise unreachable with valid IR shapes.
 var (
 	selectionJSONMarshal = json.Marshal
-	selectionSetResolved = func(field *IrField, spec *IrFieldResolvedSpec) error {
+	selectionSetResolved = func(field *Field, spec *FieldResolvedSpec) error {
 		return field.SetResolvedSpec(spec)
 	}
 )
@@ -20,11 +20,11 @@ var (
 // MergeSelectionByValue merges static selection options by value (PR-P2-F4 / D4).
 // Same value → later label (and labelText) wins; order = base order then new values.
 // A plain-string override replaces the whole option and clears inherited LabelText.
-func MergeSelectionByValue(base, addends []IrFieldSelectionItem) []IrFieldSelectionItem {
-	byValue := make(map[string]IrFieldSelectionItem)
+func MergeSelectionByValue(base, addends []FieldSelectionItem) []FieldSelectionItem {
+	byValue := make(map[string]FieldSelectionItem)
 	order := make([]string, 0, len(base))
 
-	add := func(item IrFieldSelectionItem) {
+	add := func(item FieldSelectionItem) {
 		value := strings.TrimSpace(item.Value)
 		if value == "" {
 			return
@@ -43,16 +43,16 @@ func MergeSelectionByValue(base, addends []IrFieldSelectionItem) []IrFieldSelect
 		add(item)
 	}
 
-	out := make([]IrFieldSelectionItem, 0, len(order))
+	out := make([]FieldSelectionItem, 0, len(order))
 	for _, value := range order {
 		out = append(out, byValue[value])
 	}
 	return out
 }
 
-func selectionItemsFromField(field *IrField, spec *IrFieldResolvedSpec) []IrFieldSelectionItem {
+func selectionItemsFromField(field *Field, spec *FieldResolvedSpec) []FieldSelectionItem {
 	if spec != nil && len(spec.Structural.Selection) > 0 {
-		return append([]IrFieldSelectionItem(nil), spec.Structural.Selection...)
+		return append([]FieldSelectionItem(nil), spec.Structural.Selection...)
 	}
 	if field == nil {
 		return nil
@@ -61,14 +61,14 @@ func selectionItemsFromField(field *IrField, spec *IrFieldResolvedSpec) []IrFiel
 	if raw == "" {
 		return nil
 	}
-	var items []IrFieldSelectionItem
+	var items []FieldSelectionItem
 	if err := json.Unmarshal([]byte(raw), &items); err != nil {
 		return nil
 	}
 	return items
 }
 
-func isDynamicSelectionField(field *IrField, spec *IrFieldResolvedSpec) bool {
+func isDynamicSelectionField(field *Field, spec *FieldResolvedSpec) bool {
 	if spec != nil {
 		if strings.TrimSpace(spec.Structural.SelectionKind) == "dynamic" {
 			return true
@@ -88,7 +88,7 @@ func isDynamicSelectionField(field *IrField, spec *IrFieldResolvedSpec) bool {
 	return false
 }
 
-func childDeclaresFullSelection(spec *IrFieldResolvedSpec) bool {
+func childDeclaresFullSelection(spec *FieldResolvedSpec) bool {
 	if spec == nil {
 		return false
 	}
@@ -106,7 +106,7 @@ func childDeclaresFullSelection(spec *IrFieldResolvedSpec) bool {
 }
 
 // FieldHasSelectionAdd reports whether the field was authored with selectionAdd.
-func FieldHasSelectionAdd(field *IrField) bool {
+func FieldHasSelectionAdd(field *Field) bool {
 	if field == nil {
 		return false
 	}
@@ -123,7 +123,7 @@ func FieldHasSelectionAdd(field *IrField) bool {
 // - selectionAdd only on a static base → merge into a field derived from base
 // - full selection on child → replace with child (explicit fork)
 // - otherwise → replace with child (legacy behavior)
-func ResolveSelectionFieldConflict(base, child *IrField) (*IrField, error) {
+func ResolveSelectionFieldConflict(base, child *Field) (*Field, error) {
 	if child == nil {
 		return base, nil
 	}
@@ -184,7 +184,7 @@ func ResolveSelectionFieldConflict(base, child *IrField) (*IrField, error) {
 		out.TsTypeReference = child.TsTypeReference
 	}
 
-	outSpec := &IrFieldResolvedSpec{}
+	outSpec := &FieldResolvedSpec{}
 	if baseSpec != nil {
 		*outSpec = *baseSpec
 	} else {
@@ -210,7 +210,7 @@ func ResolveSelectionFieldConflict(base, child *IrField) (*IrField, error) {
 	return &out, nil
 }
 
-func overlayStructuralSelectionAdd(dst, src *IrFieldStructuralSpec) {
+func overlayStructuralSelectionAdd(dst, src *FieldStructuralSpec) {
 	if dst == nil || src == nil {
 		return
 	}
@@ -266,11 +266,11 @@ func overlayStructuralSelectionAdd(dst, src *IrFieldStructuralSpec) {
 
 // mergeStorageHints overlays non-nil child storage options onto a clone of the base hints
 // so a partial child StorageHints object does not drop inherited Size/Indexed/etc.
-func mergeStorageHints(base, child *IrFieldStructuralStorageHints) *IrFieldStructuralStorageHints {
+func mergeStorageHints(base, child *FieldStructuralStorageHints) *FieldStructuralStorageHints {
 	if child == nil {
 		return base
 	}
-	out := &IrFieldStructuralStorageHints{}
+	out := &FieldStructuralStorageHints{}
 	if base != nil {
 		*out = *base
 	}
@@ -310,7 +310,7 @@ func mergeStorageHints(base, child *IrFieldStructuralStorageHints) *IrFieldStruc
 	return out
 }
 
-func overlayBehaviorSelectionAdd(dst, src *IrFieldBehaviorSpec) {
+func overlayBehaviorSelectionAdd(dst, src *FieldBehaviorSpec) {
 	if dst == nil || src == nil {
 		return
 	}
@@ -328,7 +328,7 @@ func overlayBehaviorSelectionAdd(dst, src *IrFieldBehaviorSpec) {
 	}
 }
 
-func applySelectionLegacyColumns(field *IrField, spec *IrFieldResolvedSpec) {
+func applySelectionLegacyColumns(field *Field, spec *FieldResolvedSpec) {
 	if field == nil || spec == nil {
 		return
 	}

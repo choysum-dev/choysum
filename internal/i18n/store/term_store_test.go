@@ -155,7 +155,7 @@ func TestRegistryLookupFrameworkModuleInHostStore(t *testing.T) {
 
 	reg := store.NewRegistry(rs)
 	reg.RememberModuleApplication("auth", "auth")
-	reg.RememberModuleApplication("core", "core") // IrModule sentinel; must not block host lookup
+	reg.RememberModuleApplication("core", "core") // Module sentinel; must not block host lookup
 	if err := reg.StoreFor("auth").WarmLanguage("zh_CN"); err != nil {
 		t.Fatalf("warm: %v", err)
 	}
@@ -220,7 +220,6 @@ func TestTermStoreExplicitKindAndTermsByModulesLiteralOnly(t *testing.T) {
 		t.Fatal("TermsByModules must omit explicit non-literal kinds")
 	}
 }
-
 
 func TestTermStoreSearchTermsAndUpsertOverride(t *testing.T) {
 	rs := newTestScope(t)
@@ -335,15 +334,15 @@ func TestSearchTermsStatusAndWarmCoreNoop(t *testing.T) {
 
 func TestRegistryLoadModuleApplicationFromDB(t *testing.T) {
 	rs := newTestScope(t)
-	if err := rs.Session().AutoMigrate(&meta.IrModule{}); err != nil {
+	if err := rs.Session().AutoMigrate(&meta.Module{}); err != nil {
 		t.Fatal(err)
 	}
-	if err := rs.Session().Create(&meta.IrModule{
+	if err := rs.Session().Create(&meta.Module{
 		Name: "auth", ApplicationStr: "auth", Status: meta.Installed,
 	}).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := rs.Session().Create(&meta.IrModule{
+	if err := rs.Session().Create(&meta.Module{
 		Name: "emptyapp", ApplicationStr: "", Status: meta.Installed,
 	}).Error; err != nil {
 		t.Fatal(err)
@@ -374,12 +373,12 @@ func TestRegistryLoadModuleApplicationFromDB(t *testing.T) {
 	reg.RememberModuleApplication("m", "")
 }
 
-func TestRegistryListHostApplicationsViaIrModule(t *testing.T) {
+func TestRegistryListHostApplicationsViaModule(t *testing.T) {
 	rs := newTestScope(t)
-	if err := rs.Session().AutoMigrate(&meta.IrModule{}); err != nil {
+	if err := rs.Session().AutoMigrate(&meta.Module{}); err != nil {
 		t.Fatal(err)
 	}
-	for _, row := range []meta.IrModule{
+	for _, row := range []meta.Module{
 		{Name: "auth", ApplicationStr: "auth", Status: meta.Installed},
 		{Name: "web", ApplicationStr: "web", Status: meta.Installed},
 		{Name: "core", ApplicationStr: "core", Status: meta.Installed},

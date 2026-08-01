@@ -30,9 +30,9 @@ describe('meta resource wiring', () => {
     expect(routes).toContain(
       "actions: ['meta.action.module_install', 'meta.action.module_upgrade', 'meta.action.module_uninstall', 'meta.action.module_sync_index']"
     );
-    expect(routes).toContain("actions: ['meta.action.module_sync_index', 'meta.action.ir_module_index_delete']");
+    expect(routes).toContain("actions: ['meta.action.module_sync_index', 'meta.action.module_index_delete']");
     expect(routes).toContain("actions: ['meta.action.module_management_log_delete']");
-    expect(routes).toContain("actions: ['meta.action.ir_module_index_edit', 'meta.action.ir_module_index_delete', 'meta.action.ir_module_index_copy']");
+    expect(routes).toContain("actions: ['meta.action.module_index_edit', 'meta.action.module_index_delete', 'meta.action.module_index_copy']");
   });
 
   it('wires meta views to permission-aware action ids', () => {
@@ -41,7 +41,7 @@ describe('meta resource wiring', () => {
     const detail = source('views/ModuleDetailView.vue');
     const kanban = source('views/ModuleKanbanView.vue');
 
-    expect(list).toContain("defineModelActions('meta.IrModuleIndex', {");
+    expect(list).toContain("defineModelActions('meta.MetaModuleIndex', {");
     expect(list).toContain("entityTitle: _lt('Module Index')");
     expect(list).toContain(':action-ids="{ delete: moduleIndexActions.delete }"');
     expect(list).toContain(':has-action="hasAction"');
@@ -54,7 +54,7 @@ describe('meta resource wiring', () => {
     expect(log).toContain(':has-action="hasAction"');
     expect(log).toContain('usePermission');
 
-    expect(detail).toContain("defineModelActions('meta.IrModuleIndex', {");
+    expect(detail).toContain("defineModelActions('meta.MetaModuleIndex', {");
     expect(detail).toContain("entityTitle: _lt('Module Index')");
     expect(detail).toContain('edit: moduleIndexActions.edit');
     expect(detail).toContain('copy: moduleIndexActions.copy');

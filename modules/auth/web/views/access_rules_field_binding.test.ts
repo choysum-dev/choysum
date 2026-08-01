@@ -16,8 +16,8 @@ describe('Access Rules admin field binding (PR-C-5)', () => {
 
     expect(form).toContain('prop="RoleId"');
     expect(form).toContain('prop="Kind"');
-    expect(form).toContain('prop="IrApplicationId"');
-    expect(form).toContain('prop="IrModelId"');
+    expect(form).toContain('prop="MetaApplicationId"');
+    expect(form).toContain('prop="MetaModelId"');
     expect(form).toContain('prop="Condition"');
     expect(form).toContain('RoleRecordRuleAudienceHints');
     expect(hints).toContain('Wide-open grant for all users');

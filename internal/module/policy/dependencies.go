@@ -11,9 +11,9 @@ import (
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
-type InstalledModuleLoader func(name string) (*meta.IrModule, error)
+type InstalledModuleLoader func(name string) (*meta.Module, error)
 
-func ResolveInstalledDependencies(load InstalledModuleLoader, module *meta.IrModule) ([]*meta.IrModule, error) {
+func ResolveInstalledDependencies(load InstalledModuleLoader, module *meta.Module) ([]*meta.Module, error) {
 	if module == nil {
 		return nil, nil
 	}
@@ -29,7 +29,7 @@ func ResolveInstalledDependencies(load InstalledModuleLoader, module *meta.IrMod
 		return nil, xfmt.Errorf("error unmarshal depends: %w", err)
 	}
 	seen := map[string]bool{}
-	deps := make([]*meta.IrModule, 0, len(dependsArr))
+	deps := make([]*meta.Module, 0, len(dependsArr))
 	for _, dep := range dependsArr {
 		dep = strings.TrimSpace(dep)
 		if dep == "" || seen[dep] {

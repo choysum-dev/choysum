@@ -147,11 +147,11 @@ func SyncLocalModuleIndex(ctx context.Context, runtimeScope scope.Scope, lockerF
 	if !hasError {
 		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
 			return txSession.WithContext(ctx).
-				Model(&metadata.IrModuleIndex{}).
+				Model(&metadata.ModuleIndex{}).
 				Where("origin_type = ? AND origin_ref = ?", "local", "local").
 				Updates(map[string]any{"last_batch_sync_at": now}).Error
 		}); err != nil {
-			if !isTableMissingInSession(session, "meta_ir_module_index") {
+			if !isTableMissingInSession(session, "meta_module_index") {
 				runtimeScope.Logger().Warn("module index sync timestamp update failed", "error", err)
 			}
 		}
@@ -172,11 +172,11 @@ func moduleIndexLockTTL(ctx context.Context, runtimeScope scope.Scope) time.Dura
 	if sess == nil || sess.DB == nil {
 		return fallbackTime
 	}
-	if isTableMissingInSession(sess, "meta_ir_setting") {
+	if isTableMissingInSession(sess, "meta_setting") {
 		return fallbackTime
 	}
 
-	var setting metadata.IrSetting
+	var setting metadata.Setting
 	res := sess.WithContext(ctx).Where("key = ?", settingKey).Take(&setting)
 	if res.Error != nil {
 		return fallbackTime
@@ -223,7 +223,7 @@ func readPackageJSON(path string) ([]byte, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	result, err := contract.ParsePackageJSONToIrModule(data, filepath.Dir(path), nil)
+	result, err := contract.ParsePackageJSONToModule(data, filepath.Dir(path), nil)
 	if err != nil {
 		return data, "", err
 	}
@@ -241,7 +241,7 @@ func upsertModuleIndexSuccess(ctx context.Context, runtimeScope scope.Scope, ses
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	entry := metadata.IrModuleIndex{
+	entry := metadata.ModuleIndex{
 		ModuleName: moduleName,
 		OriginType: "local",
 		OriginRef:  "local",
@@ -274,7 +274,7 @@ func upsertModuleIndexFailure(ctx context.Context, runtimeScope scope.Scope, ses
 		ctx = context.Background()
 	}
 	msg := SanitizeModuleIndexError(runtimeScope, cause)
-	entry := metadata.IrModuleIndex{
+	entry := metadata.ModuleIndex{
 		ModuleName:       moduleName,
 		OriginType:       "local",
 		OriginRef:        "local",
@@ -302,7 +302,7 @@ func reconcileMissingModules(ctx context.Context, runtimeScope scope.Scope, sess
 	}
 	return withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
 		query := txSession.WithContext(ctx).
-			Model(&metadata.IrModuleIndex{}).
+			Model(&metadata.ModuleIndex{}).
 			Where("origin_type = ? AND origin_ref = ?", "local", "local")
 		if len(names) > 0 {
 			query = query.Where("module_name NOT IN ?", names)

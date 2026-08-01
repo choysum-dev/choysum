@@ -160,7 +160,7 @@ type harnessService interface {
 	ServiceScripts() []*jsengine.JsScript
 }
 
-func defaultNewBackendBuilder(runtimeScope scope.Scope, jsExec jsexecutor.JsExecutor, mod *meta.IrModule, entryPoint, outFileName, globalName string) any {
+func defaultNewBackendBuilder(runtimeScope scope.Scope, jsExec jsexecutor.JsExecutor, mod *meta.Module, entryPoint, outFileName, globalName string) any {
 	return internalbackendbuilder.NewModuleBuilder(
 		runtimeScope,
 		jsExec,
@@ -585,7 +585,7 @@ func RunOneAppBackendTests(
 			return false, err
 		}
 
-		// Auth backend tests rely on meta gRPC services (IrModel/IrApplication).
+		// Auth backend tests rely on meta gRPC services (Model/Application).
 		// Ensure meta is installed so bundle/app dist assets include meta services.
 		if strings.EqualFold(strings.TrimSpace(app), "auth") {
 			if err := moduleLifecycle.Install(ctx, lifecycle.InstallRequest{Name: "meta"}); err != nil {
@@ -746,7 +746,7 @@ func RunOneAppBackendTests(
 			runtimeOpts := runtimeOptionsFromScope(runtimeScope)
 
 			// Start an in-process gRPC server so JS-side $choysum.grpc calls can resolve
-			// logical service names (e.g. meta.IrModel) without requiring an external server.
+			// logical service names (e.g. meta.Model) without requiring an external server.
 			grpcHarness, err := startInProcessGrpcHarnessHook(execCtx, runtimeScope)
 			if err != nil {
 				return err
@@ -1244,7 +1244,7 @@ func buildAppBundle(ctx context.Context, runtimeScope scope.Scope, jsExec jsexec
 		return xfmt.Errorf("entry point not found: %s", entryPoint)
 	}
 
-	mod := &meta.IrModule{
+	mod := &meta.Module{
 		Name:           app,
 		ApplicationStr: app,
 		Path:           filepath.Join(runtimeOptionsFromScope(runtimeScope).modulesPath, app),

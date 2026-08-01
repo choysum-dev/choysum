@@ -22,8 +22,8 @@ type Binding struct {
 }
 
 type Service interface {
-	Peek(ctx context.Context, input string) (*meta.IrModule, error)
-	ResolveInstallModule(ctx context.Context, input string) (*meta.IrModule, error)
-	Fetch(ctx context.Context, input string) (*meta.IrModule, error)
+	Peek(ctx context.Context, input string) (*meta.Module, error)
+	ResolveInstallModule(ctx context.Context, input string) (*meta.Module, error)
+	Fetch(ctx context.Context, input string) (*meta.Module, error)
 	Purge(ctx context.Context, moduleName string) error
 }

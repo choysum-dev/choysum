@@ -83,7 +83,7 @@ func ensureTranslatedL2Indexes(db *gorm.DB, dialect, tableName, fieldName string
 	return nil
 }
 
-func (m *modelMigrator) applyTableTranslatedL2Indexes(tableName string, model *meta.IrModel) error {
+func (m *modelMigrator) applyTableTranslatedL2Indexes(tableName string, model *meta.Model) error {
 	dialect := m.getDialect()
 	if dialect == "postgres" || dialect == "unknown" {
 		return nil

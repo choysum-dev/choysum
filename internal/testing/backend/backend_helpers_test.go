@@ -964,7 +964,7 @@ func TestBuildAppBundleWithInjectedBuilder(t *testing.T) {
 	t.Run("bundle mode tests.js uses BundleToDirCtx", func(t *testing.T) {
 		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), DistPath: t.TempDir(), Compile: &config.CompileConfig{BundleMode: "bundle"}}}
 		stub := &bundleStub{}
-		newBackendBuilderHook = func(runtimeScope scope.Scope, jsExec jsexecutor.JsExecutor, mod *meta.IrModule, entryPoint, outFileName, globalName string) any {
+		newBackendBuilderHook = func(runtimeScope scope.Scope, jsExec jsexecutor.JsExecutor, mod *meta.Module, entryPoint, outFileName, globalName string) any {
 			return stub
 		}
 		err := buildAppBundle(context.Background(), runtimeScope, nil, "auth", "tests.js", "__tests__", entry)
@@ -979,7 +979,7 @@ func TestBuildAppBundleWithInjectedBuilder(t *testing.T) {
 	t.Run("bundle to dir error is wrapped", func(t *testing.T) {
 		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), DistPath: t.TempDir(), Compile: &config.CompileConfig{BundleMode: "bundle"}}}
 		stub := &bundleStub{bundleToDirErr: errors.New("dir failed")}
-		newBackendBuilderHook = func(runtimeScope scope.Scope, jsExec jsexecutor.JsExecutor, mod *meta.IrModule, entryPoint, outFileName, globalName string) any {
+		newBackendBuilderHook = func(runtimeScope scope.Scope, jsExec jsexecutor.JsExecutor, mod *meta.Module, entryPoint, outFileName, globalName string) any {
 			return stub
 		}
 		err := buildAppBundle(context.Background(), runtimeScope, nil, "auth", "tests.js", "__tests__", entry)
@@ -990,7 +990,7 @@ func TestBuildAppBundleWithInjectedBuilder(t *testing.T) {
 
 	t.Run("bundle mode tests.js without BundleToDirCtx returns explicit error", func(t *testing.T) {
 		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), DistPath: t.TempDir(), Compile: &config.CompileConfig{BundleMode: "bundle"}}}
-		newBackendBuilderHook = func(runtimeScope scope.Scope, jsExec jsexecutor.JsExecutor, mod *meta.IrModule, entryPoint, outFileName, globalName string) any {
+		newBackendBuilderHook = func(runtimeScope scope.Scope, jsExec jsexecutor.JsExecutor, mod *meta.Module, entryPoint, outFileName, globalName string) any {
 			return struct{}{}
 		}
 		err := buildAppBundle(context.Background(), runtimeScope, nil, "auth", "tests.js", "__tests__", entry)
@@ -1002,7 +1002,7 @@ func TestBuildAppBundleWithInjectedBuilder(t *testing.T) {
 	t.Run("non-tests bundle path uses Bundle", func(t *testing.T) {
 		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), DistPath: t.TempDir(), Compile: &config.CompileConfig{BundleMode: "bundle"}}}
 		stub := &bundleStub{bundleErr: errors.New("bundle failed")}
-		newBackendBuilderHook = func(runtimeScope scope.Scope, jsExec jsexecutor.JsExecutor, mod *meta.IrModule, entryPoint, outFileName, globalName string) any {
+		newBackendBuilderHook = func(runtimeScope scope.Scope, jsExec jsexecutor.JsExecutor, mod *meta.Module, entryPoint, outFileName, globalName string) any {
 			return stub
 		}
 		err := buildAppBundle(context.Background(), runtimeScope, nil, "auth", "index.js", "auth", entry)
@@ -1017,7 +1017,7 @@ func TestBuildAppBundleWithInjectedBuilder(t *testing.T) {
 	t.Run("fallback build path uses Build", func(t *testing.T) {
 		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), DistPath: t.TempDir(), Compile: &config.CompileConfig{BundleMode: "application"}}}
 		stub := &buildOnlyStub{err: errors.New("build failed")}
-		newBackendBuilderHook = func(runtimeScope scope.Scope, jsExec jsexecutor.JsExecutor, mod *meta.IrModule, entryPoint, outFileName, globalName string) any {
+		newBackendBuilderHook = func(runtimeScope scope.Scope, jsExec jsexecutor.JsExecutor, mod *meta.Module, entryPoint, outFileName, globalName string) any {
 			return stub
 		}
 		err := buildAppBundle(context.Background(), runtimeScope, nil, "auth", "index.js", "auth", entry)

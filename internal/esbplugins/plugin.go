@@ -16,7 +16,7 @@ type EsbPluginOptions func(plugin EsbPlugin)
 
 // EsbPlugin defines the shared lifecycle for Choysum esbuild plugins.
 type EsbPlugin interface {
-	DefinePlugins(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.IrModule, options ...EsbPluginOptions) []api.Plugin
+	DefinePlugins(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.Module, options ...EsbPluginOptions) []api.Plugin
 	GetParserResults() ([]*parser.ParserResult, error)
 	SetParserResults(parserResults []*parser.ParserResult) error
 }

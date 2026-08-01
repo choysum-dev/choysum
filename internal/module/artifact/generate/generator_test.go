@@ -76,20 +76,20 @@ func newGeneratorScope(t *testing.T) *generatorTestScope {
 func seedGeneratorMetaTables(t *testing.T, runtimeScope *generatorTestScope) {
 	t.Helper()
 	if err := runtimeScope.db.AutoMigrate(
-		&meta.IrApplication{},
-		&meta.IrModule{},
-		&meta.IrModel{},
-		&meta.IrField{},
-		&meta.IrService{},
-		&meta.IrDecorator{},
-		&meta.IrParameter{},
-		&meta.IrTypeParameter{},
+		&meta.Application{},
+		&meta.Module{},
+		&meta.Model{},
+		&meta.Field{},
+		&meta.Service{},
+		&meta.Decorator{},
+		&meta.Parameter{},
+		&meta.TypeParameter{},
 	); err != nil {
 		t.Fatalf("migrate generator meta tables: %v", err)
 	}
 }
 
-// seedAbstractBaseModel inserts an abstract BaseModel IrModel at BaseModelModuleSpec path
+// seedAbstractBaseModel inserts an abstract BaseModel Model at BaseModelModuleSpec path
 // with conventional services. Pass nil for the default name set; pass a non-nil empty
 // slice to seed BaseModel with no services.
 func seedAbstractBaseModel(t *testing.T, runtimeScope *generatorTestScope, names []string) {
@@ -110,7 +110,7 @@ func seedAbstractBaseModel(t *testing.T, runtimeScope *generatorTestScope, names
 		}
 	}
 
-	model := &meta.IrModel{
+	model := &meta.Model{
 		BaseModel: meta.BaseModel{Id: sql.NullString{String: "abstract-base-model", Valid: true}},
 		Name:      "BaseModel",
 		Path:      path,
@@ -120,7 +120,7 @@ func seedAbstractBaseModel(t *testing.T, runtimeScope *generatorTestScope, names
 		t.Fatalf("create abstract BaseModel: %v", err)
 	}
 	for i, name := range names {
-		svc := &meta.IrService{
+		svc := &meta.Service{
 			BaseModel:             meta.BaseModel{Id: sql.NullString{String: "base-svc-" + strconv.Itoa(i), Valid: true}},
 			Name:                  name,
 			AccessibilityModifier: "public",
@@ -133,12 +133,12 @@ func seedAbstractBaseModel(t *testing.T, runtimeScope *generatorTestScope, names
 	}
 }
 
-func seedGeneratorAppFixture(t *testing.T, runtimeScope *generatorTestScope) (*meta.IrApplication, *meta.IrModule) {
+func seedGeneratorAppFixture(t *testing.T, runtimeScope *generatorTestScope) (*meta.Application, *meta.Module) {
 	t.Helper()
 	seedGeneratorMetaTables(t, runtimeScope)
 
-	app := &meta.IrApplication{BaseModel: meta.BaseModel{Id: sql.NullString{String: "app-fixture", Valid: true}}, Name: "crm"}
-	mod := &meta.IrModule{BaseModel: meta.BaseModel{Id: sql.NullString{String: "module-fixture", Valid: true}}, Name: "crm", ApplicationStr: "crm", ApplicationId: app.Id}
+	app := &meta.Application{BaseModel: meta.BaseModel{Id: sql.NullString{String: "app-fixture", Valid: true}}, Name: "crm"}
+	mod := &meta.Module{BaseModel: meta.BaseModel{Id: sql.NullString{String: "module-fixture", Valid: true}}, Name: "crm", ApplicationStr: "crm", ApplicationId: app.Id}
 	if err := runtimeScope.db.Create(app).Error; err != nil {
 		t.Fatalf("create fixture app: %v", err)
 	}
@@ -146,7 +146,7 @@ func seedGeneratorAppFixture(t *testing.T, runtimeScope *generatorTestScope) (*m
 		t.Fatalf("create fixture module: %v", err)
 	}
 
-	model := &meta.IrModel{
+	model := &meta.Model{
 		BaseModel:  meta.BaseModel{Id: sql.NullString{String: "model-fixture", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 12, 0, 0, 0, time.UTC)},
 		Name:       "Partner",
 		Path:       "@/crm/models/partner.ts",
@@ -157,7 +157,7 @@ func seedGeneratorAppFixture(t *testing.T, runtimeScope *generatorTestScope) (*m
 		t.Fatalf("create fixture model: %v", err)
 	}
 
-	fields := []*meta.IrField{
+	fields := []*meta.Field{
 		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "field-id", Valid: true}}, Name: "Id", FieldType: "Char", TsTypeAnnotation: "string", NotNull: true, Indexed: true, ModelId: model.Id},
 		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "field-name", Valid: true}}, Name: "Name", FieldType: "Char", TsTypeAnnotation: "string", ModelId: model.Id},
 	}
@@ -167,7 +167,7 @@ func seedGeneratorAppFixture(t *testing.T, runtimeScope *generatorTestScope) (*m
 		}
 	}
 
-	service := &meta.IrService{
+	service := &meta.Service{
 		BaseModel:             meta.BaseModel{Id: sql.NullString{String: "service-fixture", Valid: true}},
 		Name:                  "CreatePartner",
 		AccessibilityModifier: "public",
@@ -178,7 +178,7 @@ func seedGeneratorAppFixture(t *testing.T, runtimeScope *generatorTestScope) (*m
 	if err := runtimeScope.db.Create(service).Error; err != nil {
 		t.Fatalf("create fixture service: %v", err)
 	}
-	param := &meta.IrParameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "param-fixture", Valid: true}}, Name: "partner_id", ProtobufType: "string", ServiceId: service.Id}
+	param := &meta.Parameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "param-fixture", Valid: true}}, Name: "partner_id", ProtobufType: "string", ServiceId: service.Id}
 	if err := runtimeScope.db.Create(param).Error; err != nil {
 		t.Fatalf("create fixture parameter: %v", err)
 	}
@@ -186,29 +186,29 @@ func seedGeneratorAppFixture(t *testing.T, runtimeScope *generatorTestScope) (*m
 	return app, mod
 }
 
-func testApp() *meta.IrApplication {
-	return &meta.IrApplication{
+func testApp() *meta.Application {
+	return &meta.Application{
 		Name: "crm",
-		Models: []*meta.IrModel{
+		Models: []*meta.Model{
 			{
 				Name:     "BaseModel",
 				Path:     "@/base/service/models/base_model.ts",
-				Services: []*meta.IrService{{Name: "Browse", AccessibilityModifier: "public", IsStatic: true}},
+				Services: []*meta.Service{{Name: "Browse", AccessibilityModifier: "public", IsStatic: true}},
 			},
 			{
 				Name: "Partner",
 				Path: "@/crm/service/models/partner.ts",
-				Fields: []*meta.IrField{
+				Fields: []*meta.Field{
 					{Name: "Id", FieldType: "Char", TsTypeAnnotation: "string", NotNull: true, Indexed: true},
 					{Name: "CompanyId", FieldType: "ManyToOne", TsTypeAnnotation: "Company", RelationModel: "Company", Relation: "company_id"},
 					{Name: "Children", FieldType: "OneToMany", TsTypeAnnotation: "Partner[]", RelationModel: "Partner", Relation: "children_ids"},
 				},
-				Services: []*meta.IrService{{
+				Services: []*meta.Service{{
 					Name:                  "CreatePartner",
 					AccessibilityModifier: "public",
 					IsStatic:              true,
 					ProtobufType:          "crm.CreatePartnerReply",
-					Parameters:            []*meta.IrParameter{{Name: "partner_id", ProtobufType: "string"}},
+					Parameters:            []*meta.Parameter{{Name: "partner_id", ProtobufType: "string"}},
 				}},
 			},
 		},
@@ -218,7 +218,7 @@ func testApp() *meta.IrApplication {
 func TestGeneratorHelpers(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
 	generator := &grpcGenerator{runtimeScope: runtimeScope}
-	services := []*meta.IrService{
+	services := []*meta.Service{
 		nil,
 		{Name: "browse", AccessibilityModifier: "public", IsStatic: true},
 		{Name: "PartnerList", AccessibilityModifier: "public", IsStatic: false},
@@ -229,7 +229,7 @@ func TestGeneratorHelpers(t *testing.T) {
 	if len(filtered) != 2 || filtered[0].Name != "Alpha" || filtered[1].Name != "Zeta" {
 		t.Fatalf("unexpected filtered services: %#v", filtered)
 	}
-	if NewGrpcGenerator(runtimeScope, &meta.IrModule{Name: "base"}) == nil {
+	if NewGrpcGenerator(runtimeScope, &meta.Module{Name: "base"}) == nil {
 		t.Fatal("expected grpc generator constructor to return non-nil")
 	}
 }
@@ -238,7 +238,7 @@ func TestServiceDiscoveryConventionConsistencyAcrossStages(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
 	runtimeOpts := runtimeOptionsFromScope(runtimeScope)
 	modulePath := filepath.Join(runtimeOpts.modulesPath, "crm")
-	mod := &meta.IrModule{Path: modulePath, ApplicationStr: "crm"}
+	mod := &meta.Module{Path: modulePath, ApplicationStr: "crm"}
 	parserImpl := backendtsparser.NewTsParser(runtimeScope, mod)
 
 	path := filepath.Join(modulePath, "service", "models", "partner.ts")
@@ -334,8 +334,8 @@ func TestGetApplicationLoadsCanonicalModelsAndFiltersServices(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
 	seedGeneratorMetaTables(t, runtimeScope)
 
-	app := &meta.IrApplication{BaseModel: meta.BaseModel{Id: sql.NullString{String: "app-1", Valid: true}}, Name: "crm"}
-	mod := &meta.IrModule{BaseModel: meta.BaseModel{Id: sql.NullString{String: "module-1", Valid: true}}, Name: "crm", ApplicationStr: "crm", ApplicationId: app.Id}
+	app := &meta.Application{BaseModel: meta.BaseModel{Id: sql.NullString{String: "app-1", Valid: true}}, Name: "crm"}
+	mod := &meta.Module{BaseModel: meta.BaseModel{Id: sql.NullString{String: "module-1", Valid: true}}, Name: "crm", ApplicationStr: "crm", ApplicationId: app.Id}
 	if err := runtimeScope.db.Create(app).Error; err != nil {
 		t.Fatalf("create app: %v", err)
 	}
@@ -343,21 +343,21 @@ func TestGetApplicationLoadsCanonicalModelsAndFiltersServices(t *testing.T) {
 		t.Fatalf("create module: %v", err)
 	}
 
-	base := &meta.IrModel{
+	base := &meta.Model{
 		BaseModel:  meta.BaseModel{Id: sql.NullString{String: "model-base", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 9, 0, 0, 0, time.UTC)},
 		Name:       "Partner",
 		Path:       "@/crm/models/partner.ts",
 		ModelTable: "crm_partner",
 		ModuleId:   mod.Id,
 	}
-	olderSamePath := &meta.IrModel{
+	olderSamePath := &meta.Model{
 		BaseModel:  meta.BaseModel{Id: sql.NullString{String: "model-old", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 8, 0, 0, 0, time.UTC)},
 		Name:       "Partner",
 		Path:       "@/crm/models/partner.ts",
 		ModelTable: "crm_partner_old",
 		ModuleId:   mod.Id,
 	}
-	extension := &meta.IrModel{
+	extension := &meta.Model{
 		BaseModel:  meta.BaseModel{Id: sql.NullString{String: "model-ext", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 10, 0, 0, 0, time.UTC)},
 		Name:       "Partner",
 		Path:       "@/crm_ext/models/partner.ts",
@@ -365,14 +365,14 @@ func TestGetApplicationLoadsCanonicalModelsAndFiltersServices(t *testing.T) {
 		ModelTable: "crm_partner",
 		ModuleId:   mod.Id,
 	}
-	other := &meta.IrModel{
+	other := &meta.Model{
 		BaseModel:  meta.BaseModel{Id: sql.NullString{String: "model-other", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 11, 0, 0, 0, time.UTC)},
 		Name:       "Company",
 		Path:       "@/crm/models/company.ts",
 		ModelTable: "crm_company",
 		ModuleId:   mod.Id,
 	}
-	synthetic := &meta.IrModel{
+	synthetic := &meta.Model{
 		BaseModel: meta.BaseModel{Id: sql.NullString{String: "model-synthetic", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 12, 0, 0, 0, time.UTC)},
 		Name:      "I18n",
 		Path:      "go://i18n/crm",
@@ -380,13 +380,13 @@ func TestGetApplicationLoadsCanonicalModelsAndFiltersServices(t *testing.T) {
 		Abstract:  true,
 		Readonly:  true,
 	}
-	models := []*meta.IrModel{olderSamePath, base, extension, other, synthetic}
+	models := []*meta.Model{olderSamePath, base, extension, other, synthetic}
 	for _, model := range models {
 		if err := runtimeScope.db.Create(model).Error; err != nil {
 			t.Fatalf("create model %s: %v", model.Name, err)
 		}
 	}
-	fields := []*meta.IrField{
+	fields := []*meta.Field{
 		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "field-1", Valid: true}}, Name: "Name", ModelId: base.Id},
 		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "field-2", Valid: true}}, Name: "Code", ModelId: olderSamePath.Id},
 		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "field-3", Valid: true}}, Name: "ExtField", ModelId: extension.Id},
@@ -397,7 +397,7 @@ func TestGetApplicationLoadsCanonicalModelsAndFiltersServices(t *testing.T) {
 			t.Fatalf("create field %s: %v", field.Name, err)
 		}
 	}
-	services := []*meta.IrService{
+	services := []*meta.Service{
 		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "service-a", Valid: true}}, Name: "zeta", AccessibilityModifier: "public", IsStatic: true, ModelId: extension.Id},
 		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "service-b", Valid: true}}, Name: "Alpha", AccessibilityModifier: "public", IsStatic: true, ModelId: extension.Id},
 		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "service-c", Valid: true}}, Name: "Zeta", AccessibilityModifier: "public", IsStatic: true, ModelId: extension.Id},
@@ -408,7 +408,7 @@ func TestGetApplicationLoadsCanonicalModelsAndFiltersServices(t *testing.T) {
 			t.Fatalf("create service %s: %v", service.Name, err)
 		}
 	}
-	param := &meta.IrParameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "param-1", Valid: true}}, Name: "partner_id", ProtobufType: "string", ServiceId: services[2].Id}
+	param := &meta.Parameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "param-1", Valid: true}}, Name: "partner_id", ProtobufType: "string", ServiceId: services[2].Id}
 	if err := runtimeScope.db.Create(param).Error; err != nil {
 		t.Fatalf("create parameter: %v", err)
 	}
@@ -449,8 +449,8 @@ func TestGetApplication_SelectionAddMergeError(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
 	seedGeneratorMetaTables(t, runtimeScope)
 
-	app := &meta.IrApplication{BaseModel: meta.BaseModel{Id: sql.NullString{String: "app-sel", Valid: true}}, Name: "crm"}
-	mod := &meta.IrModule{BaseModel: meta.BaseModel{Id: sql.NullString{String: "module-sel", Valid: true}}, Name: "crm", ApplicationStr: "crm", ApplicationId: app.Id}
+	app := &meta.Application{BaseModel: meta.BaseModel{Id: sql.NullString{String: "app-sel", Valid: true}}, Name: "crm"}
+	mod := &meta.Module{BaseModel: meta.BaseModel{Id: sql.NullString{String: "module-sel", Valid: true}}, Name: "crm", ApplicationStr: "crm", ApplicationId: app.Id}
 	if err := runtimeScope.db.Create(app).Error; err != nil {
 		t.Fatalf("create app: %v", err)
 	}
@@ -460,13 +460,13 @@ func TestGetApplication_SelectionAddMergeError(t *testing.T) {
 
 	basePath := "@/crm/models/partner.ts"
 	extPath := "@/crm_ext/models/partner.ts"
-	base := &meta.IrModel{
+	base := &meta.Model{
 		BaseModel: meta.BaseModel{Id: sql.NullString{String: "model-sel-base", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 9, 0, 0, 0, time.UTC)},
 		Name:      "Partner",
 		Path:      basePath,
 		ModuleId:  mod.Id,
 	}
-	ext := &meta.IrModel{
+	ext := &meta.Model{
 		BaseModel: meta.BaseModel{Id: sql.NullString{String: "model-sel-ext", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 10, 0, 0, 0, time.UTC)},
 		Name:      "Partner",
 		Path:      extPath,
@@ -480,7 +480,7 @@ func TestGetApplication_SelectionAddMergeError(t *testing.T) {
 		t.Fatalf("create ext: %v", err)
 	}
 
-	baseField := &meta.IrField{
+	baseField := &meta.Field{
 		BaseModel:       meta.BaseModel{Id: sql.NullString{String: "field-sel-base", Valid: true}},
 		Name:            "Kind",
 		FieldType:       "selection",
@@ -488,31 +488,31 @@ func TestGetApplication_SelectionAddMergeError(t *testing.T) {
 		SelectionMethod: "Opts",
 		ModelId:         base.Id,
 	}
-	_ = baseField.SetResolvedSpec(&meta.IrFieldResolvedSpec{
+	_ = baseField.SetResolvedSpec(&meta.FieldResolvedSpec{
 		FieldName: "Kind",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Name:            "Kind",
 			FieldType:       "selection",
 			SelectionKind:   "dynamic",
 			SelectionMethod: "Opts",
 		},
 	})
-	extField := &meta.IrField{
+	extField := &meta.Field{
 		BaseModel: meta.BaseModel{Id: sql.NullString{String: "field-sel-ext", Valid: true}},
 		Name:      "Kind",
 		FieldType: "selection",
 		ModelId:   ext.Id,
 	}
-	_ = extField.SetResolvedSpec(&meta.IrFieldResolvedSpec{
+	_ = extField.SetResolvedSpec(&meta.FieldResolvedSpec{
 		FieldName: "Kind",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Name:            "Kind",
 			FieldType:       "selection",
 			HasSelectionAdd: true,
-			SelectionAdd:    []meta.IrFieldSelectionItem{{Value: "vip", Label: "VIP"}},
+			SelectionAdd:    []meta.FieldSelectionItem{{Value: "vip", Label: "VIP"}},
 		},
 	})
-	for _, field := range []*meta.IrField{baseField, extField} {
+	for _, field := range []*meta.Field{baseField, extField} {
 		if err := runtimeScope.db.Create(field).Error; err != nil {
 			t.Fatalf("create field %s: %v", field.Name, err)
 		}
@@ -526,7 +526,7 @@ func TestGetApplication_SelectionAddMergeError(t *testing.T) {
 
 func TestGeneratorEntryPoints(t *testing.T) {
 	t.Run("Generate and GenerateCtx short-circuit safely", func(t *testing.T) {
-		generator := &grpcGenerator{module: &meta.IrModule{}}
+		generator := &grpcGenerator{module: &meta.Module{}}
 
 		results, err := generator.Generate()
 		if err != nil {
@@ -553,7 +553,7 @@ func TestGeneratorEntryPoints(t *testing.T) {
 		webDir := t.TempDir()
 		serviceDir := t.TempDir()
 		generator := &grpcGenerator{
-			module:                 &meta.IrModule{},
+			module:                 &meta.Module{},
 			protobufGenerator:      &protobufGenerator{},
 			webGrpcGenerator:       &webGrpcGenerator{},
 			webServiceGenerator:    &webServiceGenerator{},
@@ -586,7 +586,7 @@ func TestGeneratorEntryPoints(t *testing.T) {
 		if generator.serviceClientGenerator.modulesProtoDir != protoDir || generator.serviceClientGenerator.modulesServiceDir != serviceDir {
 			t.Fatalf("unexpected service client dirs: %#v", generator.serviceClientGenerator)
 		}
-		if _, ok := any(NewGrpcGenerator(newGeneratorScope(t), &meta.IrModule{Name: "base"})).(module.Generator); !ok {
+		if _, ok := any(NewGrpcGenerator(newGeneratorScope(t), &meta.Module{Name: "base"})).(module.Generator); !ok {
 			t.Fatal("expected NewGrpcGenerator to satisfy module.Generator")
 		}
 	})
@@ -664,37 +664,37 @@ func TestMergeSameNameModelsByExtensionChain_PreservesBranchedExtensionFields(t 
 	bankPath := "@/partner_bank/service/models/partner.ts"
 	commercialPath := "@/partner_commercial/service/models/partner.ts"
 
-	base := &meta.IrModel{
+	base := &meta.Model{
 		BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC), Id: sql.NullString{String: "base", Valid: true}},
 		Name:      "Partner",
 		Path:      basePath,
-		Fields: []*meta.IrField{
+		Fields: []*meta.Field{
 			{Name: "Name"},
 			{Name: "Contacts"},
 		},
 	}
 
-	bank := &meta.IrModel{
+	bank := &meta.Model{
 		BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 11, 0, 0, 0, time.UTC), Id: sql.NullString{String: "bank", Valid: true}},
 		Name:      "Partner",
 		Path:      bankPath,
 		Extends:   basePath,
-		Fields: []*meta.IrField{
+		Fields: []*meta.Field{
 			{Name: "BankAccounts"},
 		},
 	}
 
-	commercial := &meta.IrModel{
+	commercial := &meta.Model{
 		BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 12, 0, 0, 0, time.UTC), Id: sql.NullString{String: "commercial", Valid: true}},
 		Name:      "Partner",
 		Path:      commercialPath,
 		Extends:   basePath,
-		Fields: []*meta.IrField{
+		Fields: []*meta.Field{
 			{Name: "PartnerIdentifiers"},
 		},
 	}
 
-	merged, err := mergeSameNameModelsByExtensionChain([]*meta.IrModel{base, bank, commercial})
+	merged, err := mergeSameNameModelsByExtensionChain([]*meta.Model{base, bank, commercial})
 
 	if err != nil {
 
@@ -725,28 +725,28 @@ func TestMergeSameNameModelsByExtensionChain_FieldConflictUsesExtensionPriority(
 	bankPath := "@/partner_bank/service/models/partner.ts"
 	commercialPath := "@/partner_commercial/service/models/partner.ts"
 
-	base := &meta.IrModel{
+	base := &meta.Model{
 		BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC), Id: sql.NullString{String: "base", Valid: true}},
 		Name:      "Partner",
 		Path:      basePath,
-		Fields:    []*meta.IrField{{Name: "Name", TsTypeAnnotation: "base-name", Size: 100}, {Name: "Code", TsTypeAnnotation: "base-code", Size: 40}},
+		Fields:    []*meta.Field{{Name: "Name", TsTypeAnnotation: "base-name", Size: 100}, {Name: "Code", TsTypeAnnotation: "base-code", Size: 40}},
 	}
-	bank := &meta.IrModel{
+	bank := &meta.Model{
 		BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 11, 0, 0, 0, time.UTC), Id: sql.NullString{String: "bank", Valid: true}},
 		Name:      "Partner",
 		Path:      bankPath,
 		Extends:   basePath,
-		Fields:    []*meta.IrField{{Name: "Name", TsTypeAnnotation: "bank-name", Size: 120}},
+		Fields:    []*meta.Field{{Name: "Name", TsTypeAnnotation: "bank-name", Size: 120}},
 	}
-	commercial := &meta.IrModel{
+	commercial := &meta.Model{
 		BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 12, 0, 0, 0, time.UTC), Id: sql.NullString{String: "commercial", Valid: true}},
 		Name:      "Partner",
 		Path:      commercialPath,
 		Extends:   bankPath,
-		Fields:    []*meta.IrField{{Name: "Name", TsTypeAnnotation: "commercial-name", Size: 140}},
+		Fields:    []*meta.Field{{Name: "Name", TsTypeAnnotation: "commercial-name", Size: 140}},
 	}
 
-	merged, err := mergeSameNameModelsByExtensionChain([]*meta.IrModel{commercial, base, bank})
+	merged, err := mergeSameNameModelsByExtensionChain([]*meta.Model{commercial, base, bank})
 
 	if err != nil {
 
@@ -757,8 +757,8 @@ func TestMergeSameNameModelsByExtensionChain_FieldConflictUsesExtensionPriority(
 		t.Fatalf("expected merged model, got nil")
 	}
 
-	var mergedName *meta.IrField
-	var mergedCode *meta.IrField
+	var mergedName *meta.Field
+	var mergedCode *meta.Field
 	for _, f := range merged.Fields {
 		if f == nil {
 			continue
@@ -784,11 +784,11 @@ func TestMergeSameNameModelsByExtensionChain_SameDepthBranchConflictUsesStableTi
 	branchAPath := "@/partner_bank/service/models/partner.ts"
 	branchBPath := "@/partner_commercial/service/models/partner.ts"
 
-	base := &meta.IrModel{BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC), Id: sql.NullString{String: "base", Valid: true}}, Name: "Partner", Path: basePath, Fields: []*meta.IrField{{Name: "Name", TsTypeAnnotation: "base-name", Size: 100}}}
-	branchA := &meta.IrModel{BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 11, 0, 0, 0, time.UTC), Id: sql.NullString{String: "a-older", Valid: true}}, Name: "Partner", Path: branchAPath, Extends: basePath, Fields: []*meta.IrField{{Name: "Name", TsTypeAnnotation: "branch-a", Size: 120}}}
-	branchBNewer := &meta.IrModel{BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 12, 0, 0, 0, time.UTC), Id: sql.NullString{String: "b-newer", Valid: true}}, Name: "Partner", Path: branchBPath, Extends: basePath, Fields: []*meta.IrField{{Name: "Name", TsTypeAnnotation: "branch-b-newer", Size: 140}}}
+	base := &meta.Model{BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC), Id: sql.NullString{String: "base", Valid: true}}, Name: "Partner", Path: basePath, Fields: []*meta.Field{{Name: "Name", TsTypeAnnotation: "base-name", Size: 100}}}
+	branchA := &meta.Model{BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 11, 0, 0, 0, time.UTC), Id: sql.NullString{String: "a-older", Valid: true}}, Name: "Partner", Path: branchAPath, Extends: basePath, Fields: []*meta.Field{{Name: "Name", TsTypeAnnotation: "branch-a", Size: 120}}}
+	branchBNewer := &meta.Model{BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 12, 0, 0, 0, time.UTC), Id: sql.NullString{String: "b-newer", Valid: true}}, Name: "Partner", Path: branchBPath, Extends: basePath, Fields: []*meta.Field{{Name: "Name", TsTypeAnnotation: "branch-b-newer", Size: 140}}}
 
-	mergedByUpdatedAt, err := mergeSameNameModelsByExtensionChain([]*meta.IrModel{base, branchA, branchBNewer})
+	mergedByUpdatedAt, err := mergeSameNameModelsByExtensionChain([]*meta.Model{base, branchA, branchBNewer})
 
 	if err != nil {
 
@@ -799,7 +799,7 @@ func TestMergeSameNameModelsByExtensionChain_SameDepthBranchConflictUsesStableTi
 		t.Fatalf("expected merged model for UpdatedAt tie-break case, got nil")
 	}
 
-	var nameByUpdatedAt *meta.IrField
+	var nameByUpdatedAt *meta.Field
 	for _, f := range mergedByUpdatedAt.Fields {
 		if f != nil && f.Name == "Name" {
 			nameByUpdatedAt = f
@@ -810,10 +810,10 @@ func TestMergeSameNameModelsByExtensionChain_SameDepthBranchConflictUsesStableTi
 		t.Fatalf("unexpected UpdatedAt tie-break result: %#v", nameByUpdatedAt)
 	}
 
-	branchASameTimeLowID := &meta.IrModel{BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 12, 0, 0, 0, time.UTC), Id: sql.NullString{String: "aaa", Valid: true}}, Name: "Partner", Path: branchAPath, Extends: basePath, Fields: []*meta.IrField{{Name: "Name", TsTypeAnnotation: "branch-a-aaa", Size: 150}}}
-	branchBSameTimeHighID := &meta.IrModel{BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 12, 0, 0, 0, time.UTC), Id: sql.NullString{String: "zzz", Valid: true}}, Name: "Partner", Path: branchBPath, Extends: basePath, Fields: []*meta.IrField{{Name: "Name", TsTypeAnnotation: "branch-b-zzz", Size: 160}}}
+	branchASameTimeLowID := &meta.Model{BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 12, 0, 0, 0, time.UTC), Id: sql.NullString{String: "aaa", Valid: true}}, Name: "Partner", Path: branchAPath, Extends: basePath, Fields: []*meta.Field{{Name: "Name", TsTypeAnnotation: "branch-a-aaa", Size: 150}}}
+	branchBSameTimeHighID := &meta.Model{BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 12, 0, 0, 0, time.UTC), Id: sql.NullString{String: "zzz", Valid: true}}, Name: "Partner", Path: branchBPath, Extends: basePath, Fields: []*meta.Field{{Name: "Name", TsTypeAnnotation: "branch-b-zzz", Size: 160}}}
 
-	mergedByID, err := mergeSameNameModelsByExtensionChain([]*meta.IrModel{branchBSameTimeHighID, base, branchASameTimeLowID})
+	mergedByID, err := mergeSameNameModelsByExtensionChain([]*meta.Model{branchBSameTimeHighID, base, branchASameTimeLowID})
 
 	if err != nil {
 
@@ -824,7 +824,7 @@ func TestMergeSameNameModelsByExtensionChain_SameDepthBranchConflictUsesStableTi
 		t.Fatalf("expected merged model for Id tie-break case, got nil")
 	}
 
-	var nameByID *meta.IrField
+	var nameByID *meta.Field
 	for _, f := range mergedByID.Fields {
 		if f != nil && f.Name == "Name" {
 			nameByID = f
@@ -842,12 +842,12 @@ func TestSelectSameNameModelsInPrimaryExtensionChain_ExcludesDisconnectedChains(
 	baseBPath := "@/chain_b/service/models/partner.ts"
 	childBPath := "@/chain_b_ext/service/models/partner.ts"
 
-	baseA := &meta.IrModel{BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC), Id: sql.NullString{String: "a-base", Valid: true}}, Name: "Partner", Path: baseAPath, Fields: []*meta.IrField{{Name: "Name"}}}
-	childA := &meta.IrModel{BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 11, 0, 0, 0, time.UTC), Id: sql.NullString{String: "a-child", Valid: true}}, Name: "Partner", Path: childAPath, Extends: baseAPath, Fields: []*meta.IrField{{Name: "AField"}}}
-	baseB := &meta.IrModel{BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 12, 0, 0, 0, time.UTC), Id: sql.NullString{String: "b-base", Valid: true}}, Name: "Partner", Path: baseBPath, Fields: []*meta.IrField{{Name: "Name"}}}
-	childB := &meta.IrModel{BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 13, 0, 0, 0, time.UTC), Id: sql.NullString{String: "b-child", Valid: true}}, Name: "Partner", Path: childBPath, Extends: baseBPath, Fields: []*meta.IrField{{Name: "BField"}}}
+	baseA := &meta.Model{BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC), Id: sql.NullString{String: "a-base", Valid: true}}, Name: "Partner", Path: baseAPath, Fields: []*meta.Field{{Name: "Name"}}}
+	childA := &meta.Model{BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 11, 0, 0, 0, time.UTC), Id: sql.NullString{String: "a-child", Valid: true}}, Name: "Partner", Path: childAPath, Extends: baseAPath, Fields: []*meta.Field{{Name: "AField"}}}
+	baseB := &meta.Model{BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 12, 0, 0, 0, time.UTC), Id: sql.NullString{String: "b-base", Valid: true}}, Name: "Partner", Path: baseBPath, Fields: []*meta.Field{{Name: "Name"}}}
+	childB := &meta.Model{BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 13, 0, 0, 0, time.UTC), Id: sql.NullString{String: "b-child", Valid: true}}, Name: "Partner", Path: childBPath, Extends: baseBPath, Fields: []*meta.Field{{Name: "BField"}}}
 
-	selected := selectSameNameModelsInPrimaryExtensionChain([]*meta.IrModel{baseA, childA, baseB, childB})
+	selected := selectSameNameModelsInPrimaryExtensionChain([]*meta.Model{baseA, childA, baseB, childB})
 	merged, err := mergeSameNameModelsByExtensionChain(selected)
 	if err != nil {
 		t.Fatalf("mergeSameNameModelsByExtensionChain: %v", err)
@@ -873,45 +873,45 @@ func TestMergeSameNameModelsByExtensionChain_EmptyAndNilGuards(t *testing.T) {
 	if err != nil || merged != nil {
 		t.Fatalf("expected nil,nil for empty input, got %#v err=%v", merged, err)
 	}
-	merged, err = mergeSameNameModelsByExtensionChain([]*meta.IrModel{nil, nil})
+	merged, err = mergeSameNameModelsByExtensionChain([]*meta.Model{nil, nil})
 	if err != nil || merged != nil {
 		t.Fatalf("expected nil,nil for all-nil models, got %#v err=%v", merged, err)
 	}
-	solo := &meta.IrModel{Name: "Partner", Path: "/solo"}
-	merged, err = mergeSameNameModelsByExtensionChain([]*meta.IrModel{solo})
+	solo := &meta.Model{Name: "Partner", Path: "/solo"}
+	merged, err = mergeSameNameModelsByExtensionChain([]*meta.Model{solo})
 	if err != nil || merged != solo {
 		t.Fatalf("expected solo model passthrough, got %#v err=%v", merged, err)
 	}
 }
 
 func TestMergeSameNameModelsByExtensionChain_SelectionAddWithoutBaseRejected(t *testing.T) {
-	extField := &meta.IrField{Name: "Kind", FieldType: "selection"}
-	if err := extField.SetResolvedSpec(&meta.IrFieldResolvedSpec{
+	extField := &meta.Field{Name: "Kind", FieldType: "selection"}
+	if err := extField.SetResolvedSpec(&meta.FieldResolvedSpec{
 		FieldName: "Kind",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Name:            "Kind",
 			FieldType:       "selection",
 			HasSelectionAdd: true,
-			SelectionAdd:    []meta.IrFieldSelectionItem{{Value: "vip", Label: "VIP"}},
+			SelectionAdd:    []meta.FieldSelectionItem{{Value: "vip", Label: "VIP"}},
 		},
 	}); err != nil {
 		t.Fatalf("SetResolvedSpec: %v", err)
 	}
-	ext := &meta.IrModel{
+	ext := &meta.Model{
 		BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 11, 0, 0, 0, time.UTC), Id: sql.NullString{String: "ext", Valid: true}},
 		Name:      "Partner",
 		Path:      "@/partner_vip/service/models/partner.ts",
-		Fields:    []*meta.IrField{extField},
+		Fields:    []*meta.Field{extField},
 	}
 	// First model has no Kind; extension introduces Kind via selectionAdd only.
-	base := &meta.IrModel{
+	base := &meta.Model{
 		BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC), Id: sql.NullString{String: "base", Valid: true}},
 		Name:      "Partner",
 		Path:      "@/partner/service/models/partner.ts",
-		Fields:    []*meta.IrField{{Name: "Name"}},
+		Fields:    []*meta.Field{{Name: "Name"}},
 	}
 	ext.Extends = base.Path
-	_, err := mergeSameNameModelsByExtensionChain([]*meta.IrModel{base, ext})
+	_, err := mergeSameNameModelsByExtensionChain([]*meta.Model{base, ext})
 	if err == nil || !strings.Contains(err.Error(), "selectionAdd requires an inherited static selection") {
 		t.Fatalf("expected selectionAdd-without-base rejection, got %v", err)
 	}
@@ -920,40 +920,40 @@ func TestMergeSameNameModelsByExtensionChain_SelectionAddWithoutBaseRejected(t *
 func TestMergeSameNameModelsByExtensionChain_SelectionAddConflictError(t *testing.T) {
 	basePath := "@/partner/service/models/partner.ts"
 	extPath := "@/partner_vip/service/models/partner.ts"
-	baseField := &meta.IrField{Name: "Kind", FieldType: "selection", SelectionKind: "dynamic", SelectionMethod: "Opts"}
-	_ = baseField.SetResolvedSpec(&meta.IrFieldResolvedSpec{
+	baseField := &meta.Field{Name: "Kind", FieldType: "selection", SelectionKind: "dynamic", SelectionMethod: "Opts"}
+	_ = baseField.SetResolvedSpec(&meta.FieldResolvedSpec{
 		FieldName: "Kind",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Name:            "Kind",
 			FieldType:       "selection",
 			SelectionKind:   "dynamic",
 			SelectionMethod: "Opts",
 		},
 	})
-	extField := &meta.IrField{Name: "Kind", FieldType: "selection"}
-	_ = extField.SetResolvedSpec(&meta.IrFieldResolvedSpec{
+	extField := &meta.Field{Name: "Kind", FieldType: "selection"}
+	_ = extField.SetResolvedSpec(&meta.FieldResolvedSpec{
 		FieldName: "Kind",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Name:            "Kind",
 			FieldType:       "selection",
 			HasSelectionAdd: true,
-			SelectionAdd:    []meta.IrFieldSelectionItem{{Value: "vip", Label: "VIP"}},
+			SelectionAdd:    []meta.FieldSelectionItem{{Value: "vip", Label: "VIP"}},
 		},
 	})
-	base := &meta.IrModel{
+	base := &meta.Model{
 		BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC), Id: sql.NullString{String: "base", Valid: true}},
 		Name:      "Partner",
 		Path:      basePath,
-		Fields:    []*meta.IrField{baseField},
+		Fields:    []*meta.Field{baseField},
 	}
-	ext := &meta.IrModel{
+	ext := &meta.Model{
 		BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 11, 0, 0, 0, time.UTC), Id: sql.NullString{String: "ext", Valid: true}},
 		Name:      "Partner",
 		Path:      extPath,
 		Extends:   basePath,
-		Fields:    []*meta.IrField{extField},
+		Fields:    []*meta.Field{extField},
 	}
-	_, err := mergeSameNameModelsByExtensionChain([]*meta.IrModel{base, ext})
+	_, err := mergeSameNameModelsByExtensionChain([]*meta.Model{base, ext})
 	if err == nil || !strings.Contains(err.Error(), "inherited static selection") {
 		t.Fatalf("expected dynamic-base merge error, got %v", err)
 	}
@@ -963,15 +963,15 @@ func TestMergeSameNameModelsByExtensionChain_SelectionAddMerges(t *testing.T) {
 	basePath := "@/partner/service/models/partner.ts"
 	extPath := "@/partner_vip/service/models/partner.ts"
 
-	baseField := &meta.IrField{Name: "Kind", FieldType: "selection", FieldString: "Kind"}
-	if err := baseField.SetResolvedSpec(&meta.IrFieldResolvedSpec{
+	baseField := &meta.Field{Name: "Kind", FieldType: "selection", FieldString: "Kind"}
+	if err := baseField.SetResolvedSpec(&meta.FieldResolvedSpec{
 		FieldName: "Kind",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Name:          "Kind",
 			FieldType:     "selection",
 			String:        "Kind",
 			SelectionKind: "static",
-			Selection: []meta.IrFieldSelectionItem{
+			Selection: []meta.FieldSelectionItem{
 				{Value: "company", Label: "Company"},
 				{Value: "person", Label: "Person"},
 			},
@@ -980,20 +980,20 @@ func TestMergeSameNameModelsByExtensionChain_SelectionAddMerges(t *testing.T) {
 		t.Fatalf("base SetResolvedSpec: %v", err)
 	}
 	baseField.SelectionKind = "static"
-	raw, _ := json.Marshal([]meta.IrFieldSelectionItem{
+	raw, _ := json.Marshal([]meta.FieldSelectionItem{
 		{Value: "company", Label: "Company"},
 		{Value: "person", Label: "Person"},
 	})
 	baseField.Selection = string(raw)
 
-	extField := &meta.IrField{Name: "Kind", FieldType: "selection"}
-	if err := extField.SetResolvedSpec(&meta.IrFieldResolvedSpec{
+	extField := &meta.Field{Name: "Kind", FieldType: "selection"}
+	if err := extField.SetResolvedSpec(&meta.FieldResolvedSpec{
 		FieldName: "Kind",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Name:            "Kind",
 			FieldType:       "selection",
 			HasSelectionAdd: true,
-			SelectionAdd: []meta.IrFieldSelectionItem{
+			SelectionAdd: []meta.FieldSelectionItem{
 				{Value: "vip", Label: "VIP"},
 			},
 		},
@@ -1001,21 +1001,21 @@ func TestMergeSameNameModelsByExtensionChain_SelectionAddMerges(t *testing.T) {
 		t.Fatalf("ext SetResolvedSpec: %v", err)
 	}
 
-	base := &meta.IrModel{
+	base := &meta.Model{
 		BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC), Id: sql.NullString{String: "base", Valid: true}},
 		Name:      "Partner",
 		Path:      basePath,
-		Fields:    []*meta.IrField{baseField},
+		Fields:    []*meta.Field{baseField},
 	}
-	ext := &meta.IrModel{
+	ext := &meta.Model{
 		BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 11, 0, 0, 0, time.UTC), Id: sql.NullString{String: "ext", Valid: true}},
 		Name:      "Partner",
 		Path:      extPath,
 		Extends:   basePath,
-		Fields:    []*meta.IrField{extField},
+		Fields:    []*meta.Field{extField},
 	}
 
-	merged, err := mergeSameNameModelsByExtensionChain([]*meta.IrModel{base, ext})
+	merged, err := mergeSameNameModelsByExtensionChain([]*meta.Model{base, ext})
 	if err != nil {
 		t.Fatalf("mergeSameNameModelsByExtensionChain: %v", err)
 	}
@@ -1031,5 +1031,46 @@ func TestMergeSameNameModelsByExtensionChain_SelectionAddMerges(t *testing.T) {
 	}
 	if spec.Structural.HasSelectionAdd {
 		t.Fatal("expected HasSelectionAdd cleared after merge")
+	}
+}
+
+func TestSelectSameNameModelsInPrimaryExtensionChain_AnchorWithoutPath(t *testing.T) {
+	older := &meta.Model{BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}, Name: "Partner", Path: ""}
+	newer := &meta.Model{BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)}, Name: "Partner", Path: ""}
+
+	selected := selectSameNameModelsInPrimaryExtensionChain([]*meta.Model{older, newer})
+	if len(selected) != 1 || selected[0] != newer {
+		t.Fatalf("expected anchor-only selection for empty-path models, got %#v", selected)
+	}
+
+	selected = selectSameNameModelsInPrimaryExtensionChain([]*meta.Model{nil, nil})
+	if len(selected) != 1 || selected[0] != nil {
+		t.Fatalf("expected [nil] for all-nil models, got %#v", selected)
+	}
+}
+
+func TestSelectSameNameModelsInPrimaryExtensionChain_FallsBackToAnchorWhenDisconnected(t *testing.T) {
+	anchorPath := "/chain_a/service/models/partner.ts"
+	otherPath := "/chain_b/service/models/partner.ts"
+	anchor := &meta.Model{
+		BaseModel: meta.BaseModel{
+			UpdatedAt: time.Date(2026, 3, 15, 12, 0, 0, 0, time.UTC),
+			Id:        sql.NullString{String: "anchor-id", Valid: true},
+		},
+		Name: "Partner",
+		Path: anchorPath,
+	}
+	other := &meta.Model{
+		BaseModel: meta.BaseModel{
+			UpdatedAt: time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC),
+			Id:        sql.NullString{String: "other-id", Valid: true},
+		},
+		Name: "Partner",
+		Path: otherPath,
+	}
+
+	selected := selectSameNameModelsInPrimaryExtensionChain([]*meta.Model{other, anchor})
+	if len(selected) != 1 || selected[0] != anchor {
+		t.Fatalf("expected disconnected fallback to anchor, got %#v", selected)
 	}
 }

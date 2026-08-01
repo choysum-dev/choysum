@@ -7,8 +7,8 @@ import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
 import { _lt } from '../i18n';
 import Role from './role';
-import type IrApplication from '@/meta/service/models/ir_application';
-import type IrUiResource from '@/meta/service/models/ir_ui_resource';
+import type MetaApplication from '@/meta/service/models/application';
+import type MetaUiResource from '@/meta/service/models/ui_resource';
 import { mutateThenInvalidateAllAuthzCaches } from './_authz_mutation_helpers';
 import { assertExclusiveScope } from './_rule_scope_helpers';
 
@@ -53,35 +53,35 @@ export default class RoleUiResource extends BaseModel {
   Mode: RoleUiResourceMode;
 
   /**
-   * Application-level scope. Mutually exclusive with IrUiResourceId.
+   * Application-level scope. Mutually exclusive with MetaUiResourceId.
    */
-  @Field<IrApplication>({
+  @Field<MetaApplication>({
     type: 'ManyToOneRef',
-    relation: { targetModel: 'meta.IrApplication' },
+    relation: { targetModel: 'meta.MetaApplication' },
     notNull: false,
     size: 20,
     index: true,
     string: _lt('Application Scope', { scope: 'auth.model.RoleUiResource.fields' }),
   })
-  IrApplicationId: string | null;
+  MetaApplicationId: string | null;
 
   /**
-   * Concrete UI resource scope. Mutually exclusive with IrApplicationId.
+   * Concrete UI resource scope. Mutually exclusive with MetaApplicationId.
    */
-  @Field<IrUiResource>({
-    type: 'ManyToOneRef', relation: { targetModel: 'meta.IrUiResource' },
+  @Field<MetaUiResource>({
+    type: 'ManyToOneRef', relation: { targetModel: 'meta.MetaUiResource' },
     notNull: false,
     size: 20,
     index: true,
     checkConstraint: `(
         (deleted_at IS NOT NULL)
-        OR (ir_ui_resource_id IS NOT NULL AND ir_application_id IS NULL)
-        OR (ir_ui_resource_id IS NULL AND ir_application_id IS NOT NULL)
-        OR (ir_ui_resource_id IS NULL AND ir_application_id IS NULL)
+        OR (meta_ui_resource_id IS NOT NULL AND meta_application_id IS NULL)
+        OR (meta_ui_resource_id IS NULL AND meta_application_id IS NOT NULL)
+        OR (meta_ui_resource_id IS NULL AND meta_application_id IS NULL)
     )`,
     string: _lt('UI Resource', { scope: 'auth.model.RoleUiResource.fields' }),
   })
-  IrUiResourceId: string | null;
+  MetaUiResourceId: string | null;
 
   /**
    * Normalize the permission mode and reject unsupported values.

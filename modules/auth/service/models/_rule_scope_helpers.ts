@@ -15,7 +15,7 @@ export type RuleScopeProfile = 'method' | 'record' | 'field' | 'ui';
  */
 export type AssertExclusiveScopeMode = 'create' | 'update';
 
-type ScopeFieldKey = 'IrServiceId' | 'IrModelId' | 'IrApplicationId' | 'IrFieldId' | 'IrUiResourceId';
+type ScopeFieldKey = 'MetaServiceId' | 'MetaModelId' | 'MetaApplicationId' | 'MetaFieldId' | 'MetaUiResourceId';
 
 type ProfileSpec = {
   modelName: string;
@@ -29,51 +29,51 @@ type ProfileSpec = {
 const PROFILE_SPECS: Record<RuleScopeProfile, ProfileSpec> = {
   method: {
     modelName: 'RoleMethodAccess',
-    fields: ['IrServiceId', 'IrModelId', 'IrApplicationId'],
+    fields: ['MetaServiceId', 'MetaModelId', 'MetaApplicationId'],
     shapesLabel: 'service/model/application/global',
     alwaysValidateOnCreate: false,
     isValidShape: ids => {
-      const isService = ids.IrServiceId != null && ids.IrModelId == null && ids.IrApplicationId == null;
-      const isModel = ids.IrServiceId == null && ids.IrModelId != null && ids.IrApplicationId == null;
-      const isApplication = ids.IrServiceId == null && ids.IrModelId == null && ids.IrApplicationId != null;
-      const isGlobal = ids.IrServiceId == null && ids.IrModelId == null && ids.IrApplicationId == null;
+      const isService = ids.MetaServiceId != null && ids.MetaModelId == null && ids.MetaApplicationId == null;
+      const isModel = ids.MetaServiceId == null && ids.MetaModelId != null && ids.MetaApplicationId == null;
+      const isApplication = ids.MetaServiceId == null && ids.MetaModelId == null && ids.MetaApplicationId != null;
+      const isGlobal = ids.MetaServiceId == null && ids.MetaModelId == null && ids.MetaApplicationId == null;
       return isService || isModel || isApplication || isGlobal;
     },
   },
   record: {
     modelName: 'RoleRecordRule',
-    fields: ['IrModelId', 'IrApplicationId'],
+    fields: ['MetaModelId', 'MetaApplicationId'],
     shapesLabel: 'model/application/global',
     alwaysValidateOnCreate: false,
     isValidShape: ids => {
-      const isModel = ids.IrModelId != null && ids.IrApplicationId == null;
-      const isApplication = ids.IrModelId == null && ids.IrApplicationId != null;
-      const isGlobal = ids.IrModelId == null && ids.IrApplicationId == null;
+      const isModel = ids.MetaModelId != null && ids.MetaApplicationId == null;
+      const isApplication = ids.MetaModelId == null && ids.MetaApplicationId != null;
+      const isGlobal = ids.MetaModelId == null && ids.MetaApplicationId == null;
       return isModel || isApplication || isGlobal;
     },
   },
   field: {
     modelName: 'RoleFieldRule',
-    fields: ['IrFieldId', 'IrModelId', 'IrApplicationId'],
+    fields: ['MetaFieldId', 'MetaModelId', 'MetaApplicationId'],
     shapesLabel: 'field/model/application/global',
     alwaysValidateOnCreate: true,
     isValidShape: ids => {
-      const isField = ids.IrFieldId != null && ids.IrModelId != null && ids.IrApplicationId == null;
-      const isModel = ids.IrFieldId == null && ids.IrModelId != null && ids.IrApplicationId == null;
-      const isApplication = ids.IrFieldId == null && ids.IrModelId == null && ids.IrApplicationId != null;
-      const isGlobal = ids.IrFieldId == null && ids.IrModelId == null && ids.IrApplicationId == null;
+      const isField = ids.MetaFieldId != null && ids.MetaModelId != null && ids.MetaApplicationId == null;
+      const isModel = ids.MetaFieldId == null && ids.MetaModelId != null && ids.MetaApplicationId == null;
+      const isApplication = ids.MetaFieldId == null && ids.MetaModelId == null && ids.MetaApplicationId != null;
+      const isGlobal = ids.MetaFieldId == null && ids.MetaModelId == null && ids.MetaApplicationId == null;
       return isField || isModel || isApplication || isGlobal;
     },
   },
   ui: {
     modelName: 'RoleUiResource',
-    fields: ['IrUiResourceId', 'IrApplicationId'],
+    fields: ['MetaUiResourceId', 'MetaApplicationId'],
     shapesLabel: 'resource/application/global',
     alwaysValidateOnCreate: false,
     isValidShape: ids => {
-      const isResource = ids.IrUiResourceId != null && ids.IrApplicationId == null;
-      const isApplication = ids.IrUiResourceId == null && ids.IrApplicationId != null;
-      const isGlobal = ids.IrUiResourceId == null && ids.IrApplicationId == null;
+      const isResource = ids.MetaUiResourceId != null && ids.MetaApplicationId == null;
+      const isApplication = ids.MetaUiResourceId == null && ids.MetaApplicationId != null;
+      const isGlobal = ids.MetaUiResourceId == null && ids.MetaApplicationId == null;
       return isResource || isApplication || isGlobal;
     },
   },

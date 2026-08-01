@@ -13,17 +13,17 @@ import (
 )
 
 type fakeResolver struct {
-	peek func(ctx context.Context, name string) (*meta.IrModule, error)
-	load func(name string) (*meta.IrModule, error)
+	peek func(ctx context.Context, name string) (*meta.Module, error)
+	load func(name string) (*meta.Module, error)
 }
 
-func (r fakeResolver) Peek(ctx context.Context, name string) (*meta.IrModule, error) {
+func (r fakeResolver) Peek(ctx context.Context, name string) (*meta.Module, error) {
 	if r.peek == nil {
 		return nil, nil
 	}
 	return r.peek(ctx, name)
 }
-func (r fakeResolver) Load(name string) (*meta.IrModule, error) {
+func (r fakeResolver) Load(name string) (*meta.Module, error) {
 	if r.load == nil {
 		return nil, nil
 	}
@@ -31,7 +31,7 @@ func (r fakeResolver) Load(name string) (*meta.IrModule, error) {
 }
 
 func TestBuildPlanValidationAndGuardErrors(t *testing.T) {
-	root := &meta.IrModule{Name: "auth", ApplicationStr: "auth"}
+	root := &meta.Module{Name: "auth", ApplicationStr: "auth"}
 
 	if _, err := BuildPlan(context.Background(), OpInstall, nil, fakeResolver{}); err == nil || err.Error() != "root module is nil" {
 		t.Fatalf("unexpected nil root error: %v", err)
@@ -53,7 +53,7 @@ func TestBuildPlanValidationAndGuardErrors(t *testing.T) {
 }
 
 func TestBuildPlanInstallErrorsAndAppCollection(t *testing.T) {
-	root := &meta.IrModule{
+	root := &meta.Module{
 		Name:           "base",
 		ApplicationStr: "crm",
 		DependsStr:     []byte(` ["dep", "dep", " ", "webmod"] `),
@@ -61,18 +61,18 @@ func TestBuildPlanInstallErrorsAndAppCollection(t *testing.T) {
 	peekCalls := 0
 	loadCalls := 0
 	r := fakeResolver{
-		peek: func(ctx context.Context, name string) (*meta.IrModule, error) {
+		peek: func(ctx context.Context, name string) (*meta.Module, error) {
 			peekCalls++
 			switch name {
 			case "dep":
-				return &meta.IrModule{Name: "dep", ApplicationStr: "crm"}, nil
+				return &meta.Module{Name: "dep", ApplicationStr: "crm"}, nil
 			case "webmod":
-				return &meta.IrModule{Name: "webmod", ApplicationStr: "web", WebEntryPoint: "web/index.ts"}, nil
+				return &meta.Module{Name: "webmod", ApplicationStr: "web", WebEntryPoint: "web/index.ts"}, nil
 			default:
 				return nil, nil
 			}
 		},
-		load: func(name string) (*meta.IrModule, error) {
+		load: func(name string) (*meta.Module, error) {
 			loadCalls++
 			return nil, nil
 		},
@@ -102,15 +102,15 @@ func TestBuildPlanInstallErrorsAndAppCollection(t *testing.T) {
 func TestBuildPlanInstallDependencyErrors(t *testing.T) {
 	tests := []struct {
 		name string
-		root *meta.IrModule
+		root *meta.Module
 		res  fakeResolver
 		want string
 	}{
 		{
 			name: "load web module error",
-			root: &meta.IrModule{Name: "auth", ApplicationStr: "auth"},
+			root: &meta.Module{Name: "auth", ApplicationStr: "auth"},
 			res: fakeResolver{
-				load: func(name string) (*meta.IrModule, error) {
+				load: func(name string) (*meta.Module, error) {
 					if name == "web" {
 						return nil, errors.New("load web failed")
 					}
@@ -121,23 +121,23 @@ func TestBuildPlanInstallDependencyErrors(t *testing.T) {
 		},
 		{
 			name: "depends unmarshal error",
-			root: &meta.IrModule{Name: "auth", DependsStr: []byte(`{broken`)},
+			root: &meta.Module{Name: "auth", DependsStr: []byte(`{broken`)},
 			res:  fakeResolver{},
 			want: "unmarshal depends for auth",
 		},
 		{
 			name: "load dependency error",
-			root: &meta.IrModule{Name: "auth", DependsStr: []byte(` ["dep"] `)},
+			root: &meta.Module{Name: "auth", DependsStr: []byte(` ["dep"] `)},
 			res: fakeResolver{
-				load: func(name string) (*meta.IrModule, error) { return nil, errors.New("load dep failed") },
+				load: func(name string) (*meta.Module, error) { return nil, errors.New("load dep failed") },
 			},
 			want: "load dependency dep: load dep failed",
 		},
 		{
 			name: "peek dependency error",
-			root: &meta.IrModule{Name: "auth", DependsStr: []byte(` ["dep"] `)},
+			root: &meta.Module{Name: "auth", DependsStr: []byte(` ["dep"] `)},
 			res: fakeResolver{
-				peek: func(ctx context.Context, name string) (*meta.IrModule, error) {
+				peek: func(ctx context.Context, name string) (*meta.Module, error) {
 					return nil, errors.New("peek dep failed")
 				},
 			},
@@ -145,14 +145,14 @@ func TestBuildPlanInstallDependencyErrors(t *testing.T) {
 		},
 		{
 			name: "dependency cycle error",
-			root: &meta.IrModule{Name: "auth", DependsStr: []byte(` ["dep"] `)},
+			root: &meta.Module{Name: "auth", DependsStr: []byte(` ["dep"] `)},
 			res: fakeResolver{
-				peek: func(ctx context.Context, name string) (*meta.IrModule, error) {
+				peek: func(ctx context.Context, name string) (*meta.Module, error) {
 					switch name {
 					case "dep":
-						return &meta.IrModule{Name: "dep", DependsStr: []byte(` ["auth"] `)}, nil
+						return &meta.Module{Name: "dep", DependsStr: []byte(` ["auth"] `)}, nil
 					case "auth":
-						return &meta.IrModule{Name: "auth", DependsStr: []byte(` ["dep"] `)}, nil
+						return &meta.Module{Name: "auth", DependsStr: []byte(` ["dep"] `)}, nil
 					}
 					return nil, nil
 				},
@@ -173,10 +173,10 @@ func TestBuildPlanInstallDependencyErrors(t *testing.T) {
 
 func TestBuildPlanInstallContextCanceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	root := &meta.IrModule{Name: "auth", DependsStr: []byte(` ["dep"] `)}
+	root := &meta.Module{Name: "auth", DependsStr: []byte(` ["dep"] `)}
 	resolver := fakeResolver{
-		peek: func(ctx context.Context, name string) (*meta.IrModule, error) {
-			return &meta.IrModule{Name: name}, nil
+		peek: func(ctx context.Context, name string) (*meta.Module, error) {
+			return &meta.Module{Name: name}, nil
 		},
 	}
 	cancel()
@@ -188,9 +188,9 @@ func TestBuildPlanInstallContextCanceled(t *testing.T) {
 }
 
 func TestBuildPlanUninstallLoadError(t *testing.T) {
-	root := &meta.IrModule{Name: "auth", ApplicationStr: "auth"}
+	root := &meta.Module{Name: "auth", ApplicationStr: "auth"}
 	_, err := BuildPlan(context.Background(), OpUninstall, root, fakeResolver{
-		load: func(name string) (*meta.IrModule, error) {
+		load: func(name string) (*meta.Module, error) {
 			return nil, errors.New("load failed")
 		},
 	})
@@ -200,12 +200,12 @@ func TestBuildPlanUninstallLoadError(t *testing.T) {
 }
 
 func TestBuildPlan_NeedsGlobalWebBuildFalseWithoutWebModule(t *testing.T) {
-	root := &meta.IrModule{Name: "auth", ApplicationStr: "auth"}
+	root := &meta.Module{Name: "auth", ApplicationStr: "auth"}
 	r := fakeResolver{
-		peek: func(ctx context.Context, name string) (*meta.IrModule, error) {
-			return &meta.IrModule{Name: name, ApplicationStr: name}, nil
+		peek: func(ctx context.Context, name string) (*meta.Module, error) {
+			return &meta.Module{Name: name, ApplicationStr: name}, nil
 		},
-		load: func(name string) (*meta.IrModule, error) { return nil, nil },
+		load: func(name string) (*meta.Module, error) { return nil, nil },
 	}
 
 	plan, err := BuildPlan(context.Background(), OpInstall, root, r)
@@ -218,12 +218,12 @@ func TestBuildPlan_NeedsGlobalWebBuildFalseWithoutWebModule(t *testing.T) {
 }
 
 func TestBuildPlan_NeedsGlobalWebBuildTrueWhenRootIsWeb(t *testing.T) {
-	root := &meta.IrModule{Name: "web", ApplicationStr: "web", WebEntryPoint: "web/index.ts"}
+	root := &meta.Module{Name: "web", ApplicationStr: "web", WebEntryPoint: "web/index.ts"}
 	r := fakeResolver{
-		peek: func(ctx context.Context, name string) (*meta.IrModule, error) {
-			return &meta.IrModule{Name: name, ApplicationStr: name}, nil
+		peek: func(ctx context.Context, name string) (*meta.Module, error) {
+			return &meta.Module{Name: name, ApplicationStr: name}, nil
 		},
-		load: func(name string) (*meta.IrModule, error) { return nil, nil },
+		load: func(name string) (*meta.Module, error) { return nil, nil },
 	}
 
 	plan, err := BuildPlan(context.Background(), OpInstall, root, r)
@@ -236,14 +236,14 @@ func TestBuildPlan_NeedsGlobalWebBuildTrueWhenRootIsWeb(t *testing.T) {
 }
 
 func TestBuildPlan_NeedsGlobalWebBuildTrueWhenWebInstalled(t *testing.T) {
-	root := &meta.IrModule{Name: "auth", ApplicationStr: "auth"}
+	root := &meta.Module{Name: "auth", ApplicationStr: "auth"}
 	r := fakeResolver{
-		peek: func(ctx context.Context, name string) (*meta.IrModule, error) {
-			return &meta.IrModule{Name: name, ApplicationStr: name}, nil
+		peek: func(ctx context.Context, name string) (*meta.Module, error) {
+			return &meta.Module{Name: name, ApplicationStr: name}, nil
 		},
-		load: func(name string) (*meta.IrModule, error) {
+		load: func(name string) (*meta.Module, error) {
 			if name == "web" {
-				return &meta.IrModule{Name: "web", Status: meta.Installed, WebEntryPoint: "web/index.ts"}, nil
+				return &meta.Module{Name: "web", Status: meta.Installed, WebEntryPoint: "web/index.ts"}, nil
 			}
 			return nil, nil
 		},
@@ -259,12 +259,12 @@ func TestBuildPlan_NeedsGlobalWebBuildTrueWhenWebInstalled(t *testing.T) {
 }
 
 func TestBuildPlan_UpgradeUsesRootOnly(t *testing.T) {
-	root := &meta.IrModule{Name: "auth", ApplicationStr: "auth"}
+	root := &meta.Module{Name: "auth", ApplicationStr: "auth"}
 	r := fakeResolver{
-		peek: func(ctx context.Context, name string) (*meta.IrModule, error) {
-			return &meta.IrModule{Name: name, ApplicationStr: name}, nil
+		peek: func(ctx context.Context, name string) (*meta.Module, error) {
+			return &meta.Module{Name: name, ApplicationStr: name}, nil
 		},
-		load: func(name string) (*meta.IrModule, error) { return nil, nil },
+		load: func(name string) (*meta.Module, error) { return nil, nil },
 	}
 
 	plan, err := BuildPlan(context.Background(), OpUpgrade, root, r)
@@ -280,15 +280,15 @@ func TestBuildPlan_UpgradeUsesRootOnly(t *testing.T) {
 }
 
 func TestBuildPlan_UninstallOrdersDependentsFirst(t *testing.T) {
-	root := &meta.IrModule{Name: "base", ApplicationStr: "base"}
-	modules := map[string]*meta.IrModule{
-		"base":       {Name: "base", ApplicationStr: "base", Dependents: []*meta.IrModule{{Name: "auth"}}},
-		"auth":       {Name: "auth", ApplicationStr: "auth", Dependents: []*meta.IrModule{{Name: "auth_addon"}}},
+	root := &meta.Module{Name: "base", ApplicationStr: "base"}
+	modules := map[string]*meta.Module{
+		"base":       {Name: "base", ApplicationStr: "base", Dependents: []*meta.Module{{Name: "auth"}}},
+		"auth":       {Name: "auth", ApplicationStr: "auth", Dependents: []*meta.Module{{Name: "auth_addon"}}},
 		"auth_addon": {Name: "auth_addon", ApplicationStr: "auth"},
 	}
 	r := fakeResolver{
-		peek: func(ctx context.Context, name string) (*meta.IrModule, error) { return nil, nil },
-		load: func(name string) (*meta.IrModule, error) { return modules[name], nil },
+		peek: func(ctx context.Context, name string) (*meta.Module, error) { return nil, nil },
+		load: func(name string) (*meta.Module, error) { return modules[name], nil },
 	}
 
 	plan, err := BuildPlan(context.Background(), OpUninstall, root, r)
@@ -304,10 +304,10 @@ func TestBuildPlan_UninstallOrdersDependentsFirst(t *testing.T) {
 }
 
 func TestBuildPlan_UninstallTreatsMissingModuleAsNoOp(t *testing.T) {
-	root := &meta.IrModule{Name: "missing", ApplicationStr: "auth"}
+	root := &meta.Module{Name: "missing", ApplicationStr: "auth"}
 	r := fakeResolver{
-		peek: func(ctx context.Context, name string) (*meta.IrModule, error) { return nil, nil },
-		load: func(name string) (*meta.IrModule, error) { return nil, nil },
+		peek: func(ctx context.Context, name string) (*meta.Module, error) { return nil, nil },
+		load: func(name string) (*meta.Module, error) { return nil, nil },
 	}
 
 	plan, err := BuildPlan(context.Background(), OpUninstall, root, r)
@@ -323,14 +323,14 @@ func TestBuildPlan_UninstallTreatsMissingModuleAsNoOp(t *testing.T) {
 }
 
 func TestBuildPlan_UninstallDetectsDependentCycle(t *testing.T) {
-	root := &meta.IrModule{Name: "base", ApplicationStr: "base"}
-	modules := map[string]*meta.IrModule{
-		"base": {Name: "base", ApplicationStr: "base", Dependents: []*meta.IrModule{{Name: "auth"}}},
-		"auth": {Name: "auth", ApplicationStr: "auth", Dependents: []*meta.IrModule{{Name: "base"}}},
+	root := &meta.Module{Name: "base", ApplicationStr: "base"}
+	modules := map[string]*meta.Module{
+		"base": {Name: "base", ApplicationStr: "base", Dependents: []*meta.Module{{Name: "auth"}}},
+		"auth": {Name: "auth", ApplicationStr: "auth", Dependents: []*meta.Module{{Name: "base"}}},
 	}
 	r := fakeResolver{
-		peek: func(ctx context.Context, name string) (*meta.IrModule, error) { return nil, nil },
-		load: func(name string) (*meta.IrModule, error) { return modules[name], nil },
+		peek: func(ctx context.Context, name string) (*meta.Module, error) { return nil, nil },
+		load: func(name string) (*meta.Module, error) { return modules[name], nil },
 	}
 
 	_, err := BuildPlan(context.Background(), OpUninstall, root, r)
@@ -340,25 +340,25 @@ func TestBuildPlan_UninstallDetectsDependentCycle(t *testing.T) {
 }
 
 func TestBuildPlan_AffectedAppsSortedForStableLogs(t *testing.T) {
-	root := &meta.IrModule{
+	root := &meta.Module{
 		Name:           "root",
 		ApplicationStr: "zeta",
 		DependsStr:     []byte(` ["dep_b", "dep_a", "webmod"] `),
 	}
 	r := fakeResolver{
-		peek: func(ctx context.Context, name string) (*meta.IrModule, error) {
+		peek: func(ctx context.Context, name string) (*meta.Module, error) {
 			switch name {
 			case "dep_a":
-				return &meta.IrModule{Name: "dep_a", ApplicationStr: "alpha"}, nil
+				return &meta.Module{Name: "dep_a", ApplicationStr: "alpha"}, nil
 			case "dep_b":
-				return &meta.IrModule{Name: "dep_b", ApplicationStr: "beta"}, nil
+				return &meta.Module{Name: "dep_b", ApplicationStr: "beta"}, nil
 			case "webmod":
-				return &meta.IrModule{Name: "webmod", ApplicationStr: "web", WebEntryPoint: "web/index.ts"}, nil
+				return &meta.Module{Name: "webmod", ApplicationStr: "web", WebEntryPoint: "web/index.ts"}, nil
 			default:
 				return nil, nil
 			}
 		},
-		load: func(name string) (*meta.IrModule, error) { return nil, nil },
+		load: func(name string) (*meta.Module, error) { return nil, nil },
 	}
 
 	plan, err := BuildPlan(context.Background(), OpInstall, root, r)

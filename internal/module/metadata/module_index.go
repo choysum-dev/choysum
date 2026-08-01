@@ -11,13 +11,13 @@ import (
 	"gorm.io/datatypes"
 )
 
-// IrModuleIndex stores module availability and manifest snapshots.
-type IrModuleIndex struct {
+// ModuleIndex stores module availability and manifest snapshots.
+type ModuleIndex struct {
 	meta.BaseModel `gorm:"embedded"`
 
-	ModuleName       string         `gorm:"column:module_name;type:varchar(255);not null;uniqueIndex:idx_ir_module_index_origin,priority:1"`
-	OriginType       string         `gorm:"column:origin_type;type:varchar(32);not null;uniqueIndex:idx_ir_module_index_origin,priority:2"`
-	OriginRef        string         `gorm:"column:origin_ref;type:varchar(255);not null;uniqueIndex:idx_ir_module_index_origin,priority:3"`
+	ModuleName       string         `gorm:"column:module_name;type:varchar(255);not null;uniqueIndex:idx_meta_module_index_origin,priority:1"`
+	OriginType       string         `gorm:"column:origin_type;type:varchar(32);not null;uniqueIndex:idx_meta_module_index_origin,priority:2"`
+	OriginRef        string         `gorm:"column:origin_ref;type:varchar(255);not null;uniqueIndex:idx_meta_module_index_origin,priority:3"`
 	Available        bool           `gorm:"column:available;not null"`
 	Version          sql.NullString `gorm:"column:version;type:varchar(255)"`
 	ManifestJson     datatypes.JSON `gorm:"column:manifest_json"`
@@ -28,6 +28,6 @@ type IrModuleIndex struct {
 	LastErrorMessage sql.NullString `gorm:"column:last_error_message;type:text"`
 }
 
-func (IrModuleIndex) TableName() string {
-	return "meta_ir_module_index"
+func (ModuleIndex) TableName() string {
+	return "meta_module_index"
 }

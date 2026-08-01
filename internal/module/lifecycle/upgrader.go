@@ -25,7 +25,7 @@ import (
 
 type moduleUpgrader struct {
 	runtimeScope  scope.Scope
-	module        *meta.IrModule
+	module        *meta.Module
 	moduleManager *ModuleManager
 	ctx           *opContext
 }
@@ -246,7 +246,7 @@ func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion s
 	return buildResult, nil
 }
 
-func (m *moduleUpgrader) finalizeUpgrade(target *meta.IrModule, fromVersion string, buildResult *module.BuildResult) error {
+func (m *moduleUpgrader) finalizeUpgrade(target *meta.Module, fromVersion string, buildResult *module.BuildResult) error {
 	if target == nil {
 		return xfmt.Errorf("upgrade finalize target is nil")
 	}
@@ -276,7 +276,7 @@ func (m *moduleUpgrader) finalizeUpgrade(target *meta.IrModule, fromVersion stri
 	return nil
 }
 
-func newModuleUpgrader(runtimeScope scope.Scope, module *meta.IrModule, moduleManager *ModuleManager, ctx *opContext) *moduleUpgrader {
+func newModuleUpgrader(runtimeScope scope.Scope, module *meta.Module, moduleManager *ModuleManager, ctx *opContext) *moduleUpgrader {
 	return &moduleUpgrader{
 		runtimeScope:  runtimeScope,
 		module:        module,

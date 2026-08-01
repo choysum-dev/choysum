@@ -166,7 +166,7 @@ func mustExec(t *testing.T, db *gorm.DB, query string, args ...any) {
 
 func parseVueResult(t *testing.T, runtimeScope scope.Scope, path string, content string) *parser.ParserResult {
 	t.Helper()
-	p := defaultparser.NewVueParser(runtimeScope, &meta.IrModule{Path: "/virtual/modules/test"})
+	p := defaultparser.NewVueParser(runtimeScope, &meta.Module{Path: "/virtual/modules/test"})
 	parsed, err := p.Parse(map[string]string{}, path, content)
 	if err != nil {
 		t.Fatalf("parse failed: %v", err)
@@ -199,7 +199,7 @@ type fixedParser struct {
 	err    error
 }
 
-func (p *buildTestPlugin) DefinePlugins(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.IrModule, options ...esbplugins.EsbPluginOptions) []api.Plugin {
+func (p *buildTestPlugin) DefinePlugins(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.Module, options ...esbplugins.EsbPluginOptions) []api.Plugin {
 	p.defineCalls++
 	for _, opt := range options {
 		opt(p)
@@ -254,7 +254,7 @@ func (p fixedParser) Parse(pathAlias map[string]string, path string, content str
 	return p.result, p.err
 }
 
-func setupBuildPipelineTestFiles(t *testing.T, testRuntimeScope *testScope, entryContent string) (*meta.IrModule, string) {
+func setupBuildPipelineTestFiles(t *testing.T, testRuntimeScope *testScope, entryContent string) (*meta.Module, string) {
 	t.Helper()
 
 	root := t.TempDir()
@@ -287,7 +287,7 @@ func setupBuildPipelineTestFiles(t *testing.T, testRuntimeScope *testScope, entr
 	testRuntimeScope.cfg.Server = config.NewDefaultServerConfig()
 	testRuntimeScope.cfg.FrontendEnv = map[string]any{"CHOYSUM_APP_NAME": "build-pipeline-test"}
 
-	return &meta.IrModule{Name: "auth", Path: modulePath}, entryPoint
+	return &meta.Module{Name: "auth", Path: modulePath}, entryPoint
 }
 
 func TestGetScriptNode_RewritesExtendsImport_SingleLineImport(t *testing.T) {
@@ -638,7 +638,7 @@ func TestGetTemplateImportComponents_CollectsScriptSetupTemplateImports(t *testi
 import { QuestionFilled } from '@element-plus/icons-vue';
 </script>`
 
-	parentParsed, err := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/test"}).Parse(map[string]string{"@": "/virtual/modules"}, parentPath, parentSFC)
+	parentParsed, err := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/test"}).Parse(map[string]string{"@": "/virtual/modules"}, parentPath, parentSFC)
 	if err != nil {
 		t.Fatalf("parse parent failed: %v", err)
 	}
@@ -684,7 +684,7 @@ import { QuestionFilled } from '@element-plus/icons-vue';
 </script>`
 
 	childParsed := parseVueResult(t, testRuntimeScope, childPath, childSFC)
-	parentParsed, err := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/web"}).Parse(map[string]string{"@": "/virtual/modules"}, parentPath, parentSFC)
+	parentParsed, err := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/web"}).Parse(map[string]string{"@": "/virtual/modules"}, parentPath, parentSFC)
 	if err != nil {
 		t.Fatalf("parse parent failed: %v", err)
 	}
@@ -724,7 +724,7 @@ func TestGetScriptNode_AppendsQuestionFilledImport_ForRealAuthOHeader(t *testing
 		t.Fatalf("read parent OHeader failed: %v", err)
 	}
 
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/auth"})
 	alias := map[string]string{"@": "/virtual/modules"}
 
 	childParsed, err := p.Parse(alias, childPath, string(childContent))
@@ -787,7 +787,7 @@ func TestGetScriptNode_AppendsQuestionFilledImport_WithRelativeModulesPath(t *te
 		t.Fatalf("read parent OHeader failed: %v", err)
 	}
 
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: filepath.Join(repoRoot, "modules", "auth")})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: filepath.Join(repoRoot, "modules", "auth")})
 	alias := map[string]string{"@": filepath.Join(repoRoot, "modules")}
 
 	childParsed, err := p.Parse(alias, childPath, string(childContent))
@@ -842,7 +842,7 @@ func TestGetScriptNode_AppendsQuestionFilledImport_ResolvesAliasViaTsconfig(t *t
 		t.Fatalf("read parent OHeader failed: %v", err)
 	}
 
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: filepath.Join(repoRoot, "modules", "auth")})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: filepath.Join(repoRoot, "modules", "auth")})
 
 	// Intentionally do not pass runtime path aliases; getScriptNode should resolve
 	// '@/core/web' using ParseTsconfigPathAlias + ApplyPathAlias.
@@ -908,7 +908,7 @@ func TestGetScriptNode_AppendsQuestionFilledImport_WithRuntimeTsconfigAliasMap(t
 		t.Fatalf("parse tsconfig path alias failed: %v", err)
 	}
 
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: filepath.Join(repoRoot, "modules", "auth")})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: filepath.Join(repoRoot, "modules", "auth")})
 	childParsed, err := p.Parse(pathAlias, childPath, string(childContent))
 	if err != nil {
 		t.Fatalf("parse child OHeader failed: %v", err)
@@ -948,10 +948,10 @@ func TestUpdateComponent_InjectsQuestionFilled_ForRealAuthOHeader(t *testing.T) 
 	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
 	testRuntimeScope.cfg.ModulesPath = modulesPath
 	testRuntimeScope.cfg.DefaultChoysumPath = choysumHome
-	if err := testRuntimeScope.db.AutoMigrate(&meta.IrComponent{}); err != nil {
+	if err := testRuntimeScope.db.AutoMigrate(&meta.Component{}); err != nil {
 		t.Fatalf("auto migrate components failed: %v", err)
 	}
-	mod := &meta.IrModule{Path: filepath.Join(modulesPath, "auth")}
+	mod := &meta.Module{Path: filepath.Join(modulesPath, "auth")}
 	b := &WebModuleBuilder{
 		runtimeScope: testRuntimeScope,
 		module:       mod,
@@ -1040,11 +1040,11 @@ func TestPrebuildUpdatePrebuildResult_RealAuthOHeaderContainsInjectedQuestionFil
 	testRuntimeScope.cfg.Server = &config.ServerConfig{WebBaseURL: "/web"}
 	testRuntimeScope.cfg.Compile = config.NewDefaultCompileConfig()
 	testRuntimeScope.cfg.FrontendEnv = map[string]any{}
-	if err := testRuntimeScope.db.AutoMigrate(&meta.IrModule{}, &meta.IrComponent{}); err != nil {
+	if err := testRuntimeScope.db.AutoMigrate(&meta.Module{}, &meta.Component{}); err != nil {
 		t.Fatalf("auto migrate failed: %v", err)
 	}
 
-	moduleRef := &meta.IrModule{Name: "auth", Path: filepath.Join(modulesPath, "auth")}
+	moduleRef := &meta.Module{Name: "auth", Path: filepath.Join(modulesPath, "auth")}
 	entryPoint := filepath.Join(modulesPath, "auth", "web", "index.ts")
 	builder, ok := NewWebBuilder(testRuntimeScope, nil, moduleRef, entryPoint).(*WebModuleBuilder)
 	if !ok {
@@ -1357,7 +1357,7 @@ func TestReplaceXPathComponents_ReturnsErrorWhenNoReplacementOccurs(t *testing.T
 }
 
 func TestReplaceXPathComponents_ReparseFallbackReplacesPropertyAssignment(t *testing.T) {
-	b := &WebModuleBuilder{runtimeScope: newTestScope(), module: &meta.IrModule{Path: "/virtual/modules/test"}}
+	b := &WebModuleBuilder{runtimeScope: newTestScope(), module: &meta.Module{Path: "/virtual/modules/test"}}
 	scriptContent := "import { defineComponent } from 'vue';\n" +
 		"import Xpath from '/virtual/modules/core/web/component/xpath.vue';\n\n" +
 		"export default defineComponent({\n" +
@@ -1419,7 +1419,7 @@ func TestAppendNewImports_DeterministicOrderAndNamedSorting(t *testing.T) {
 
 func TestTsParser_CollectsUiResourceDecls(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/auth"})
 
 	path := "/virtual/modules/auth/web/route/routes.ts"
 	content := `
@@ -1470,7 +1470,7 @@ export const exportAction = defineAction('auth.action.user_export', {
 
 func TestVueParser_CollectsUiResourceDeclsFromScriptSetup(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/auth"})
 
 	path := "/virtual/modules/auth/web/views/UserListView.vue"
 	content := `<template><div /></template>
@@ -1542,7 +1542,7 @@ const userActions = defineModelActions('auth.User', {
 
 func TestVueParser_CollectsUiResourceDeclsFromScript(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/auth"})
 
 	path := "/virtual/modules/auth/web/views/RouteActionView.vue"
 	content := `<template><div /></template>
@@ -1600,7 +1600,7 @@ export const exportAction = defineAction('auth.action.user_export', {
 
 func TestTsParser_InheritsParentMenuFromNestedDefineMenuChildren(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/auth"})
 
 	path := "/virtual/modules/auth/web/menu/menus.ts"
 	content := `
@@ -1668,7 +1668,7 @@ export const menus = [
 
 func TestExtractUiResources_UsesInheritedParentMenuFromNestedMenus(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/auth"})
 
 	path := "/virtual/modules/auth/web/menu/menus.ts"
 	content := `
@@ -1697,7 +1697,7 @@ export const menus = [
 		t.Fatalf("parse failed: %v", err)
 	}
 
-	module := &meta.IrModule{Name: "auth"}
+	module := &meta.Module{Name: "auth"}
 	resources, warnings, err := extractUiResources(module, []*parser.ParserResult{r})
 	if err != nil {
 		t.Fatalf("extract ui resources failed: %v", err)
@@ -1730,7 +1730,7 @@ export const menus = [
 
 func TestTsParser_DefaultsMissingRequireMethodToWildcard(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/auth"})
 
 	path := "/virtual/modules/auth/web/views/actions.ts"
 	content := `
@@ -1756,7 +1756,7 @@ export const actionExport = defineAction('auth.action.user_export', {
 
 func TestTsParser_SkipsPublicRouteRequiresAuthFalse(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/auth"})
 
 	path := "/virtual/modules/auth/web/route/routes.ts"
 	content := `
@@ -1788,7 +1788,7 @@ export const userListRoute = defineRoute('auth.route.user_list', {
 
 func TestTsParser_ReportsFatalForNonLiteralResourceID(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/auth"})
 
 	path := "/virtual/modules/auth/web/route/routes.ts"
 	content := `
@@ -1826,7 +1826,7 @@ export const userListRoute = defineRoute(routeId, {
 		t.Fatalf("expected issue location, got line=%d col=%d", issue.Line, issue.Column)
 	}
 
-	module := &meta.IrModule{Name: "auth"}
+	module := &meta.Module{Name: "auth"}
 	_, _, extractErr := extractUiResources(module, []*parser.ParserResult{r})
 	if extractErr == nil {
 		t.Fatalf("expected extractor to fail on parser fatal issue")
@@ -1841,7 +1841,7 @@ export const userListRoute = defineRoute(routeId, {
 
 func TestTsParser_ReportsFatalForDynamicRequires(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/auth"})
 
 	path := "/virtual/modules/auth/web/views/actions.ts"
 	content := `
@@ -1876,7 +1876,7 @@ export const actionExport = defineAction('auth.action.user_export', {
 
 func TestTsParser_ReportsFatalForLegacyStringRequires(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/auth"})
 
 	path := "/virtual/modules/auth/web/views/actions.ts"
 	content := `
@@ -1909,7 +1909,7 @@ export const actionExport = defineAction('auth.action.user_export', {
 
 func TestTsParser_ReportsFatalForEmptyRequireMethod(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/auth"})
 
 	path := "/virtual/modules/auth/web/views/actions.ts"
 	content := `
@@ -1942,7 +1942,7 @@ export const actionExport = defineAction('auth.action.user_export', {
 
 func TestExtractUiResources_ExpandsModelActions(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/auth"})
 
 	path := "/virtual/modules/auth/web/route/routes.ts"
 	content := `
@@ -1976,7 +1976,7 @@ export const userActions = defineModelActions('auth.User', {
 		t.Fatalf("expected 5 ui resource decls (1 menu + 1 route + 3 actions), got %d", len(r.UiResourceDecls))
 	}
 
-	module := &meta.IrModule{
+	module := &meta.Module{
 		BaseModel: meta.BaseModel{Id: sql.NullString{String: "m1", Valid: true}},
 		Name:      "auth",
 	}
@@ -2020,7 +2020,7 @@ export const userActions = defineModelActions('auth.User', {
 
 func TestTsParser_RejectsInvalidDefineModelActionDisplayOptions(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/auth"})
 
 	path := "/virtual/modules/auth/web/views/UserListView.vue"
 	content := `<template><div /></template>
@@ -2059,12 +2059,12 @@ const userActions = defineModelActions('auth.User', {
 
 func TestTsParser_AcceptsDefineModelActionTitlesWithTrailingComma(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/meta"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/meta"})
 
 	path := "/virtual/modules/meta/web/views/ModuleListView.vue"
 	content := `<template><div /></template>
 <script setup lang="ts">
-const moduleActions = defineModelActions('meta.IrModuleIndex', {
+const moduleActions = defineModelActions('meta.ModuleIndex', {
 	entityTitle: 'Module Index',
 	titles: {
 		edit: 'Edit Module Index',
@@ -2092,20 +2092,20 @@ const moduleActions = defineModelActions('meta.IrModuleIndex', {
 		declByID[decl.ID] = decl
 	}
 
-	if got := strings.TrimSpace(declByID["meta.action.ir_module_index_edit"].Title); got != "Edit Module Index" {
+	if got := strings.TrimSpace(declByID["meta.action.module_index_edit"].Title); got != "Edit Module Index" {
 		t.Fatalf("unexpected edit title: %q", got)
 	}
-	if got := strings.TrimSpace(declByID["meta.action.ir_module_index_copy"].Title); got != "Copy Module Index" {
+	if got := strings.TrimSpace(declByID["meta.action.module_index_copy"].Title); got != "Copy Module Index" {
 		t.Fatalf("unexpected copy title: %q", got)
 	}
-	if got := strings.TrimSpace(declByID["meta.action.ir_module_index_delete"].Title); got != "Delete Module Index" {
+	if got := strings.TrimSpace(declByID["meta.action.module_index_delete"].Title); got != "Delete Module Index" {
 		t.Fatalf("unexpected delete title: %q", got)
 	}
 }
 
 func TestTsParser_RejectsParentMenuOutsideDefineMenu(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/auth"})
 
 	path := "/virtual/modules/auth/web/route/routes.ts"
 	content := `
@@ -2137,7 +2137,7 @@ export const userListRoute = defineRoute('auth.route.user_list', {
 }
 
 func TestExtractUiResourceRelations_InfersMenuRouteAndRouteActions(t *testing.T) {
-	module := &meta.IrModule{Name: "auth"}
+	module := &meta.Module{Name: "auth"}
 	pr := &parser.ParserResult{UiResourceDecls: []*parser.UiResourceDecl{
 		{ID: "auth.menu.user_list", Type: parser.UiResourceTypeMenu, Path: "/auth/users"},
 		{ID: "auth.route.user_list", Type: parser.UiResourceTypeRoute, Path: "/auth/users", Actions: []string{"auth.action.user_create", "auth.action.user_edit"}},
@@ -2180,12 +2180,12 @@ func TestPersistModuleUiResources_PersistsUiResourceRelations(t *testing.T) {
 	if !ok {
 		t.Fatalf("unexpected env type")
 	}
-	if err := tenv.db.AutoMigrate(&meta.IrUiResource{}, &meta.IrUiResourceMenuRoute{}, &meta.IrUiResourceRouteAction{}); err != nil {
+	if err := tenv.db.AutoMigrate(&meta.UiResource{}, &meta.UiResourceMenuRoute{}, &meta.UiResourceRouteAction{}); err != nil {
 		t.Fatalf("automigrate failed: %v", err)
 	}
 
 	b := &WebModuleBuilder{runtimeScope: tenv}
-	module := &meta.IrModule{BaseModel: meta.BaseModel{Id: sql.NullString{String: "m_auth", Valid: true}}, Name: "auth"}
+	module := &meta.Module{BaseModel: meta.BaseModel{Id: sql.NullString{String: "m_auth", Valid: true}}, Name: "auth"}
 	pr := &parser.ParserResult{UiResourceDecls: []*parser.UiResourceDecl{
 		{ID: "auth.menu.user_list", Type: parser.UiResourceTypeMenu, Path: "/auth/users"},
 		{ID: "auth.route.user_list", Type: parser.UiResourceTypeRoute, Path: "/auth/users", Actions: []string{"auth.action.user_create"}},
@@ -2212,7 +2212,7 @@ func TestPersistModuleUiResources_PersistsUiResourceRelations(t *testing.T) {
 	}
 
 	var menuRouteCount int64
-	if err := tenv.db.Model(&meta.IrUiResourceMenuRoute{}).Count(&menuRouteCount).Error; err != nil {
+	if err := tenv.db.Model(&meta.UiResourceMenuRoute{}).Count(&menuRouteCount).Error; err != nil {
 		t.Fatalf("count menu_route failed: %v", err)
 	}
 	if menuRouteCount != 1 {
@@ -2220,14 +2220,14 @@ func TestPersistModuleUiResources_PersistsUiResourceRelations(t *testing.T) {
 	}
 
 	var routeActionCount int64
-	if err := tenv.db.Model(&meta.IrUiResourceRouteAction{}).Count(&routeActionCount).Error; err != nil {
+	if err := tenv.db.Model(&meta.UiResourceRouteAction{}).Count(&routeActionCount).Error; err != nil {
 		t.Fatalf("count route_action failed: %v", err)
 	}
 	if routeActionCount != 1 {
 		t.Fatalf("expected 1 route_action row, got %d", routeActionCount)
 	}
 
-	rows := make([]*meta.IrUiResource, 0)
+	rows := make([]*meta.UiResource, 0)
 	if err := tenv.db.
 		Where("name IN ?", []string{"auth.menu.user_list", "auth.route.user_list", "auth.action.user_create"}).
 		Find(&rows).Error; err != nil {
@@ -2237,7 +2237,7 @@ func TestPersistModuleUiResources_PersistsUiResourceRelations(t *testing.T) {
 		t.Fatalf("expected 3 ui resource rows, got %d", len(rows))
 	}
 
-	rowByName := make(map[string]*meta.IrUiResource, len(rows))
+	rowByName := make(map[string]*meta.UiResource, len(rows))
 	for _, row := range rows {
 		if row == nil {
 			continue
@@ -2272,12 +2272,12 @@ func TestPersistModuleUiResources_PersistsUiResourceRelations(t *testing.T) {
 
 func TestPersistModuleUiResources_CleansModuleRowsWhenNamesEmpty(t *testing.T) {
 	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
-	if err := testRuntimeScope.db.AutoMigrate(&meta.IrUiResource{}, &meta.IrUiResourceMenuRoute{}, &meta.IrUiResourceRouteAction{}); err != nil {
+	if err := testRuntimeScope.db.AutoMigrate(&meta.UiResource{}, &meta.UiResourceMenuRoute{}, &meta.UiResourceRouteAction{}); err != nil {
 		t.Fatalf("automigrate failed: %v", err)
 	}
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	seedRows := []*meta.IrUiResource{
+	seedRows := []*meta.UiResource{
 		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "menu_mod1", Valid: true}}, Name: "auth.menu.root", Type: meta.UiResourceTypeMenu, ModuleId: sql.NullString{String: "mod1", Valid: true}},
 		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "route_mod1", Valid: true}}, Name: "auth.route.root", Type: meta.UiResourceTypeRoute, ModuleId: sql.NullString{String: "mod1", Valid: true}},
 		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "action_mod1", Valid: true}}, Name: "auth.action.root", Type: meta.UiResourceTypeAction, ModuleId: sql.NullString{String: "mod1", Valid: true}},
@@ -2289,19 +2289,19 @@ func TestPersistModuleUiResources_CleansModuleRowsWhenNamesEmpty(t *testing.T) {
 			t.Fatalf("seed ui resource %s: %v", row.Name, err)
 		}
 	}
-	if err := testRuntimeScope.db.Create(&meta.IrUiResourceMenuRoute{
+	if err := testRuntimeScope.db.Create(&meta.UiResourceMenuRoute{
 		MenuUiResourceId:  sql.NullString{String: "menu_mod1", Valid: true},
 		RouteUiResourceId: sql.NullString{String: "route_mod1", Valid: true},
 	}).Error; err != nil {
 		t.Fatalf("seed mod1 menu route: %v", err)
 	}
-	if err := testRuntimeScope.db.Create(&meta.IrUiResourceRouteAction{
+	if err := testRuntimeScope.db.Create(&meta.UiResourceRouteAction{
 		RouteUiResourceId:  sql.NullString{String: "route_mod1", Valid: true},
 		ActionUiResourceId: sql.NullString{String: "action_mod1", Valid: true},
 	}).Error; err != nil {
 		t.Fatalf("seed mod1 route action: %v", err)
 	}
-	if err := testRuntimeScope.db.Create(&meta.IrUiResourceMenuRoute{
+	if err := testRuntimeScope.db.Create(&meta.UiResourceMenuRoute{
 		MenuUiResourceId:  sql.NullString{String: "menu_mod2", Valid: true},
 		RouteUiResourceId: sql.NullString{String: "route_mod2", Valid: true},
 	}).Error; err != nil {
@@ -2313,7 +2313,7 @@ func TestPersistModuleUiResources_CleansModuleRowsWhenNamesEmpty(t *testing.T) {
 	}
 
 	var mod1Count int64
-	if err := testRuntimeScope.db.Model(&meta.IrUiResource{}).Where("module_id = ?", "mod1").Count(&mod1Count).Error; err != nil {
+	if err := testRuntimeScope.db.Model(&meta.UiResource{}).Where("module_id = ?", "mod1").Count(&mod1Count).Error; err != nil {
 		t.Fatalf("count mod1 ui resources failed: %v", err)
 	}
 	if mod1Count != 0 {
@@ -2321,14 +2321,14 @@ func TestPersistModuleUiResources_CleansModuleRowsWhenNamesEmpty(t *testing.T) {
 	}
 
 	var mod2Count int64
-	if err := testRuntimeScope.db.Model(&meta.IrUiResource{}).Where("module_id = ?", "mod2").Count(&mod2Count).Error; err != nil {
+	if err := testRuntimeScope.db.Model(&meta.UiResource{}).Where("module_id = ?", "mod2").Count(&mod2Count).Error; err != nil {
 		t.Fatalf("count mod2 ui resources failed: %v", err)
 	}
 	if mod2Count != 2 {
 		t.Fatalf("expected mod2 resources to remain, got %d", mod2Count)
 	}
 
-	var menuRoutes []meta.IrUiResourceMenuRoute
+	var menuRoutes []meta.UiResourceMenuRoute
 	if err := testRuntimeScope.db.Order("menu_ui_resource_id").Find(&menuRoutes).Error; err != nil {
 		t.Fatalf("query menu routes failed: %v", err)
 	}
@@ -2336,7 +2336,7 @@ func TestPersistModuleUiResources_CleansModuleRowsWhenNamesEmpty(t *testing.T) {
 		t.Fatalf("expected only unrelated menu route to remain, got %#v", menuRoutes)
 	}
 
-	var routeActions []meta.IrUiResourceRouteAction
+	var routeActions []meta.UiResourceRouteAction
 	if err := testRuntimeScope.db.Find(&routeActions).Error; err != nil {
 		t.Fatalf("query route actions failed: %v", err)
 	}
@@ -2344,10 +2344,10 @@ func TestPersistModuleUiResources_CleansModuleRowsWhenNamesEmpty(t *testing.T) {
 		t.Fatalf("expected mod1 route actions to be deleted, got %#v", routeActions)
 	}
 
-	if err := b.persistModuleUiResources("   ", []*meta.IrUiResource{{Name: "ignored"}}, nil, nil); err != nil {
+	if err := b.persistModuleUiResources("   ", []*meta.UiResource{{Name: "ignored"}}, nil, nil); err != nil {
 		t.Fatalf("blank module id fast path failed: %v", err)
 	}
-	if err := b.persistModuleUiResources("mod1", []*meta.IrUiResource{{Name: "   "}}, nil, nil); err != nil {
+	if err := b.persistModuleUiResources("mod1", []*meta.UiResource{{Name: "   "}}, nil, nil); err != nil {
 		t.Fatalf("blank resource name cleanup failed: %v", err)
 	}
 }
@@ -2397,15 +2397,15 @@ func TestPersist_IntegratesUiResourcesComponentsAndWarnings(t *testing.T) {
 	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
 	var logs bytes.Buffer
 	testRuntimeScope.log = slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelWarn}))
-	if err := testRuntimeScope.db.AutoMigrate(&meta.IrComponent{}, &meta.IrUiResource{}, &meta.IrUiResourceMenuRoute{}, &meta.IrUiResourceRouteAction{}, &meta.IrModel{}, &meta.IrService{}); err != nil {
+	if err := testRuntimeScope.db.AutoMigrate(&meta.Component{}, &meta.UiResource{}, &meta.UiResourceMenuRoute{}, &meta.UiResourceRouteAction{}, &meta.Model{}, &meta.Service{}); err != nil {
 		t.Fatalf("automigrate failed: %v", err)
 	}
 	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role (id TEXT PRIMARY KEY, code TEXT)`)
-	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role_ui_resource (id TEXT, role_id TEXT, mode TEXT, ir_application_id TEXT, ir_ui_resource_id TEXT, created_at DATETIME, updated_at DATETIME, deleted_at DATETIME)`)
-	mustExec(t, testRuntimeScope.db, `CREATE UNIQUE INDEX idx_auth_role_ui_resource_pair ON auth_role_ui_resource(role_id, ir_ui_resource_id)`)
+	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role_ui_resource (id TEXT, role_id TEXT, mode TEXT, meta_application_id TEXT, meta_ui_resource_id TEXT, created_at DATETIME, updated_at DATETIME, deleted_at DATETIME)`)
+	mustExec(t, testRuntimeScope.db, `CREATE UNIQUE INDEX idx_auth_role_ui_resource_pair ON auth_role_ui_resource(role_id, meta_ui_resource_id)`)
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	if err := testRuntimeScope.db.Create(&meta.IrModel{
+	if err := testRuntimeScope.db.Create(&meta.Model{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "model_lead", Valid: true}},
 		Application: "crm",
 		Name:        "Lead",
@@ -2413,7 +2413,7 @@ func TestPersist_IntegratesUiResourcesComponentsAndWarnings(t *testing.T) {
 	}).Error; err != nil {
 		t.Fatalf("seed model failed: %v", err)
 	}
-	if err := testRuntimeScope.db.Create(&meta.IrService{
+	if err := testRuntimeScope.db.Create(&meta.Service{
 		BaseModel: meta.BaseModel{Id: sql.NullString{String: "svc_read", Valid: true}},
 		ModelId:   sql.NullString{String: "model_lead", Valid: true},
 		Name:      "Read",
@@ -2424,7 +2424,7 @@ func TestPersist_IntegratesUiResourcesComponentsAndWarnings(t *testing.T) {
 		t.Fatalf("seed auth_role failed: %v", err)
 	}
 
-	mod := &meta.IrModule{
+	mod := &meta.Module{
 		BaseModel: meta.BaseModel{Id: sql.NullString{String: "mod_auth", Valid: true}},
 		Name:      "auth",
 		Path:      "/virtual/modules/auth",
@@ -2435,7 +2435,7 @@ func TestPersist_IntegratesUiResourcesComponentsAndWarnings(t *testing.T) {
 		&module.BuildResult{Module: mod},
 		&parser.ParserResult{
 			Path: insidePath,
-			VueComponent: &meta.IrComponent{
+			VueComponent: &meta.Component{
 				Name: "DashboardView",
 				Path: insidePath,
 			},
@@ -2457,7 +2457,7 @@ func TestPersist_IntegratesUiResourcesComponentsAndWarnings(t *testing.T) {
 		},
 		&parser.ParserResult{
 			Path: outsidePath,
-			VueComponent: &meta.IrComponent{
+			VueComponent: &meta.Component{
 				Name: "ForeignView",
 				Path: outsidePath,
 			},
@@ -2475,7 +2475,7 @@ func TestPersist_IntegratesUiResourcesComponentsAndWarnings(t *testing.T) {
 		t.Fatalf("expected 3 ui resources on module, got %d", len(mod.UiResources))
 	}
 
-	var componentRows []*meta.IrComponent
+	var componentRows []*meta.Component
 	if err := testRuntimeScope.db.Where("module_id = ?", mod.Id.String).Find(&componentRows).Error; err != nil {
 		t.Fatalf("query components failed: %v", err)
 	}
@@ -2483,14 +2483,14 @@ func TestPersist_IntegratesUiResourcesComponentsAndWarnings(t *testing.T) {
 		t.Fatalf("expected one persisted in-module component, got %#v", componentRows)
 	}
 
-	uiRows := make([]*meta.IrUiResource, 0)
+	uiRows := make([]*meta.UiResource, 0)
 	if err := testRuntimeScope.db.Where("module_id = ?", mod.Id.String).Order("name").Find(&uiRows).Error; err != nil {
 		t.Fatalf("query ui resources failed: %v", err)
 	}
 	if len(uiRows) != 3 {
 		t.Fatalf("expected 3 persisted ui resources, got %#v", uiRows)
 	}
-	uiByName := make(map[string]*meta.IrUiResource, len(uiRows))
+	uiByName := make(map[string]*meta.UiResource, len(uiRows))
 	for _, row := range uiRows {
 		uiByName[row.Name] = row
 	}
@@ -2499,7 +2499,7 @@ func TestPersist_IntegratesUiResourcesComponentsAndWarnings(t *testing.T) {
 	}
 
 	var menuRouteCount int64
-	if err := testRuntimeScope.db.Model(&meta.IrUiResourceMenuRoute{}).Count(&menuRouteCount).Error; err != nil {
+	if err := testRuntimeScope.db.Model(&meta.UiResourceMenuRoute{}).Count(&menuRouteCount).Error; err != nil {
 		t.Fatalf("count menu routes failed: %v", err)
 	}
 	if menuRouteCount != 1 {
@@ -2507,7 +2507,7 @@ func TestPersist_IntegratesUiResourcesComponentsAndWarnings(t *testing.T) {
 	}
 
 	var routeActionCount int64
-	if err := testRuntimeScope.db.Model(&meta.IrUiResourceRouteAction{}).Count(&routeActionCount).Error; err != nil {
+	if err := testRuntimeScope.db.Model(&meta.UiResourceRouteAction{}).Count(&routeActionCount).Error; err != nil {
 		t.Fatalf("count route actions failed: %v", err)
 	}
 	if routeActionCount != 1 {
@@ -2530,7 +2530,7 @@ func TestPersist_IntegratesUiResourcesComponentsAndWarnings(t *testing.T) {
 
 func TestPersist_DeduplicatesSymlinkAliasComponents(t *testing.T) {
 	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
-	if err := testRuntimeScope.db.AutoMigrate(&meta.IrComponent{}, &meta.IrUiResource{}, &meta.IrUiResourceMenuRoute{}, &meta.IrUiResourceRouteAction{}); err != nil {
+	if err := testRuntimeScope.db.AutoMigrate(&meta.Component{}, &meta.UiResource{}, &meta.UiResourceMenuRoute{}, &meta.UiResourceRouteAction{}); err != nil {
 		t.Fatalf("automigrate components failed: %v", err)
 	}
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
@@ -2552,15 +2552,15 @@ func TestPersist_DeduplicatesSymlinkAliasComponents(t *testing.T) {
 	moduleAliasRoot := filepath.Join(aliasRoot, "modules", "auth")
 	aliasComponentPath := filepath.Join(moduleAliasRoot, "web", "views", "DashboardView.vue")
 
-	mod := &meta.IrModule{
+	mod := &meta.Module{
 		BaseModel: meta.BaseModel{Id: sql.NullString{String: "mod_auth_symlink", Valid: true}},
 		Name:      "auth",
 		Path:      moduleAliasRoot,
 	}
 	buildResult := withParserResults(
 		&module.BuildResult{Module: mod},
-		&parser.ParserResult{Path: realComponentPath, VueComponent: &meta.IrComponent{Name: "DashboardView", Path: realComponentPath}},
-		&parser.ParserResult{Path: aliasComponentPath, VueComponent: &meta.IrComponent{Name: "DashboardView", Path: aliasComponentPath}},
+		&parser.ParserResult{Path: realComponentPath, VueComponent: &meta.Component{Name: "DashboardView", Path: realComponentPath}},
+		&parser.ParserResult{Path: aliasComponentPath, VueComponent: &meta.Component{Name: "DashboardView", Path: aliasComponentPath}},
 	)
 
 	if err := b.persist(buildResult); err != nil {
@@ -2575,7 +2575,7 @@ func TestPersist_DeduplicatesSymlinkAliasComponents(t *testing.T) {
 		t.Fatalf("expected normalized persisted component path %q, got %q", wantPath, mod.Components[0].Path)
 	}
 
-	var componentRows []*meta.IrComponent
+	var componentRows []*meta.Component
 	if err := testRuntimeScope.db.Where("module_id = ?", mod.Id.String).Find(&componentRows).Error; err != nil {
 		t.Fatalf("query persisted components failed: %v", err)
 	}
@@ -2585,7 +2585,7 @@ func TestPersist_DeduplicatesSymlinkAliasComponents(t *testing.T) {
 }
 
 func TestExtractUiResources_DuplicateWithoutOverrideFails(t *testing.T) {
-	module := &meta.IrModule{Name: "auth"}
+	module := &meta.Module{Name: "auth"}
 
 	pr := &parser.ParserResult{UiResourceDecls: []*parser.UiResourceDecl{
 		{ID: "auth.menu.user_list", Type: parser.UiResourceTypeMenu, Title: "User List"},
@@ -2602,7 +2602,7 @@ func TestExtractUiResources_DuplicateWithoutOverrideFails(t *testing.T) {
 }
 
 func TestExtractUiResources_DuplicateEquivalentDeclsAreDeduped(t *testing.T) {
-	module := &meta.IrModule{Name: "auth"}
+	module := &meta.Module{Name: "auth"}
 
 	pr := &parser.ParserResult{UiResourceDecls: []*parser.UiResourceDecl{
 		{
@@ -2637,7 +2637,7 @@ func TestExtractUiResources_DuplicateEquivalentDeclsAreDeduped(t *testing.T) {
 }
 
 func TestExtractUiResources_DuplicateModelActionsWithDifferentTitleTextScopesAreDeduped(t *testing.T) {
-	module := &meta.IrModule{Name: "base"}
+	module := &meta.Module{Name: "base"}
 
 	listTitleText := &meta.TermReference{
 		Key:    "list-key",
@@ -2773,11 +2773,11 @@ const formActions = defineModelActions('auth.Session', {
 		Task:        config.NewDefaultTaskConfig(),
 	}
 
-	if err := tenv.db.AutoMigrate(&meta.IrModule{}, &meta.IrApplication{}, &meta.IrComponent{}, &meta.IrUiResource{}, &meta.IrUiResourceMenuRoute{}, &meta.IrUiResourceRouteAction{}); err != nil {
+	if err := tenv.db.AutoMigrate(&meta.Module{}, &meta.Application{}, &meta.Component{}, &meta.UiResource{}, &meta.UiResourceMenuRoute{}, &meta.UiResourceRouteAction{}); err != nil {
 		t.Fatalf("automigrate failed: %v", err)
 	}
 
-	module := &meta.IrModule{
+	module := &meta.Module{
 		BaseModel: meta.BaseModel{Id: sql.NullString{String: "m_auth_builder", Valid: true}},
 		Name:      "auth",
 		Path:      modulePath,
@@ -2806,7 +2806,7 @@ const formActions = defineModelActions('auth.Session', {
 
 	var count int64
 	if err := tenv.db.
-		Table("meta_ir_ui_resource").
+		Table("meta_ui_resource").
 		Where("name = ? AND type = ?", "auth.action.session_copy", "ACTION").
 		Count(&count).Error; err != nil {
 		t.Fatalf("count ACTION rows failed: %v", err)
@@ -2898,11 +2898,11 @@ const formRoute = defineRoute('auth.route.session_list', {
 		Task:        config.NewDefaultTaskConfig(),
 	}
 
-	if err := tenv.db.AutoMigrate(&meta.IrModule{}, &meta.IrApplication{}, &meta.IrComponent{}, &meta.IrUiResource{}, &meta.IrUiResourceMenuRoute{}, &meta.IrUiResourceRouteAction{}); err != nil {
+	if err := tenv.db.AutoMigrate(&meta.Module{}, &meta.Application{}, &meta.Component{}, &meta.UiResource{}, &meta.UiResourceMenuRoute{}, &meta.UiResourceRouteAction{}); err != nil {
 		t.Fatalf("automigrate failed: %v", err)
 	}
 
-	module := &meta.IrModule{
+	module := &meta.Module{
 		BaseModel: meta.BaseModel{Id: sql.NullString{String: "m_auth_conflict", Valid: true}},
 		Name:      "auth",
 		Path:      modulePath,
@@ -2934,7 +2934,7 @@ const formRoute = defineRoute('auth.route.session_list', {
 }
 
 func TestExtractUiResources_DiagnosticIncludesLocationAndHintForDuplicate(t *testing.T) {
-	module := &meta.IrModule{Name: "auth"}
+	module := &meta.Module{Name: "auth"}
 
 	pr := &parser.ParserResult{UiResourceDecls: []*parser.UiResourceDecl{
 		{ID: "auth.menu.user_list", Type: parser.UiResourceTypeMenu, Title: "User List", SourcePath: "/modules/auth/web/menu/menus.ts", SourceLine: 12, SourceColumn: 5},
@@ -2959,7 +2959,7 @@ func TestExtractUiResources_DiagnosticIncludesLocationAndHintForDuplicate(t *tes
 
 func TestTsParser_WarnsForNonRecommendedResourceIDNaming(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/auth"})
 
 	path := "/virtual/modules/auth/web/route/routes.ts"
 	content := `
@@ -2992,7 +2992,7 @@ export const userListRoute = defineRoute('UserList', {
 		t.Fatalf("unexpected issue message: %s", issue.Message)
 	}
 
-	resources, warnings, err := extractUiResources(&meta.IrModule{Name: "auth"}, []*parser.ParserResult{r})
+	resources, warnings, err := extractUiResources(&meta.Module{Name: "auth"}, []*parser.ParserResult{r})
 	if err != nil {
 		t.Fatalf("expected extractor to accept non-recommended id naming, got: %v", err)
 	}
@@ -3008,7 +3008,7 @@ export const userListRoute = defineRoute('UserList', {
 }
 
 func TestExtractUiResources_OverrideTypeChangeFails(t *testing.T) {
-	module := &meta.IrModule{Name: "auth"}
+	module := &meta.Module{Name: "auth"}
 
 	pr := &parser.ParserResult{UiResourceDecls: []*parser.UiResourceDecl{
 		{ID: "auth.menu.user_list", Type: parser.UiResourceTypeMenu},
@@ -3022,7 +3022,7 @@ func TestExtractUiResources_OverrideTypeChangeFails(t *testing.T) {
 }
 
 func TestExtractUiResources_OverrideSameIdentityPasses(t *testing.T) {
-	module := &meta.IrModule{Name: "auth"}
+	module := &meta.Module{Name: "auth"}
 
 	pr := &parser.ParserResult{UiResourceDecls: []*parser.UiResourceDecl{
 		{ID: "auth.menu.user_list", Type: parser.UiResourceTypeMenu, Title: "A", Sequence: 10},
@@ -3045,7 +3045,7 @@ func TestExtractUiResources_OverrideSameIdentityPasses(t *testing.T) {
 }
 
 func TestExtractUiResources_DanglingParentWarnsAndFallsBack(t *testing.T) {
-	module := &meta.IrModule{Name: "auth"}
+	module := &meta.Module{Name: "auth"}
 
 	pr := &parser.ParserResult{UiResourceDecls: []*parser.UiResourceDecl{
 		{ID: "auth.route.user_list", Type: parser.UiResourceTypeRoute, Path: "/auth/users"},
@@ -3082,7 +3082,7 @@ func TestExtractUiResources_DanglingParentWarnsAndFallsBack(t *testing.T) {
 }
 
 func TestExtractUiResources_ParserWarningCarriesCodeAndHint(t *testing.T) {
-	module := &meta.IrModule{Name: "auth"}
+	module := &meta.Module{Name: "auth"}
 
 	pr := &parser.ParserResult{
 		UiResourceDecls: []*parser.UiResourceDecl{
@@ -3124,7 +3124,7 @@ func TestExtractUiResources_ParserWarningCarriesCodeAndHint(t *testing.T) {
 }
 
 func TestExtractUiResources_MenuPathMustMatchRoute(t *testing.T) {
-	module := &meta.IrModule{Name: "auth"}
+	module := &meta.Module{Name: "auth"}
 
 	pr := &parser.ParserResult{UiResourceDecls: []*parser.UiResourceDecl{
 		{ID: "auth.route.user_list", Type: parser.UiResourceTypeRoute, Path: "/auth/users"},
@@ -3141,7 +3141,7 @@ func TestExtractUiResources_MenuPathMustMatchRoute(t *testing.T) {
 }
 
 func TestExtractUiResources_ExternalLeafMenuDoesNotRequireRouteMatch(t *testing.T) {
-	module := &meta.IrModule{Name: "auth"}
+	module := &meta.Module{Name: "auth"}
 
 	pr := &parser.ParserResult{UiResourceDecls: []*parser.UiResourceDecl{
 		{ID: "auth.menu.docs", Type: parser.UiResourceTypeMenu, Path: "https://docs.choysum.example"},
@@ -3160,7 +3160,7 @@ func TestExtractUiResources_ExternalLeafMenuDoesNotRequireRouteMatch(t *testing.
 }
 
 func TestExtractUiResources_ActionWithRequiresCannotDeclareDefaultRoles(t *testing.T) {
-	module := &meta.IrModule{Name: "auth"}
+	module := &meta.Module{Name: "auth"}
 
 	pr := &parser.ParserResult{UiResourceDecls: []*parser.UiResourceDecl{
 		{
@@ -3178,7 +3178,7 @@ func TestExtractUiResources_ActionWithRequiresCannotDeclareDefaultRoles(t *testi
 }
 
 func TestExtractUiResources_ActionWithoutRequiresCanDeclareDefaultRoles(t *testing.T) {
-	module := &meta.IrModule{Name: "auth"}
+	module := &meta.Module{Name: "auth"}
 
 	pr := &parser.ParserResult{UiResourceDecls: []*parser.UiResourceDecl{
 		{
@@ -3202,7 +3202,7 @@ func TestExtractUiResources_ActionWithoutRequiresCanDeclareDefaultRoles(t *testi
 }
 
 func TestExtractUiResources_MenuAndRoutePreserveBaselineDefaultRoles(t *testing.T) {
-	module := &meta.IrModule{Name: "web"}
+	module := &meta.Module{Name: "web"}
 
 	pr := &parser.ParserResult{UiResourceDecls: []*parser.UiResourceDecl{
 		{
@@ -3261,7 +3261,7 @@ func TestExtractUiResources_MenuAndRoutePreserveBaselineDefaultRoles(t *testing.
 }
 
 func TestExtractUiResources_InjectsApplicationFromModuleOwnership(t *testing.T) {
-	module := &meta.IrModule{
+	module := &meta.Module{
 		Name:           "sale_marketing",
 		ApplicationId:  sql.NullString{String: "app_sale_001", Valid: true},
 		ApplicationStr: "sale",
@@ -3281,13 +3281,13 @@ func TestExtractUiResources_InjectsApplicationFromModuleOwnership(t *testing.T) 
 	if len(resources) != 1 {
 		t.Fatalf("expected 1 resource, got %d", len(resources))
 	}
-	if resources[0].IrApplicationId != "app_sale_001" {
-		t.Fatalf("expected module application id to be injected, got %q", resources[0].IrApplicationId)
+	if resources[0].MetaApplicationId != "app_sale_001" {
+		t.Fatalf("expected module application id to be injected, got %q", resources[0].MetaApplicationId)
 	}
 }
 
 func TestExtractUiResources_CrossModuleAppendPassesWithoutNamespaceProtocol(t *testing.T) {
-	module := &meta.IrModule{Name: "sale_marketing", ApplicationStr: "sale"}
+	module := &meta.Module{Name: "sale_marketing", ApplicationStr: "sale"}
 
 	pr := &parser.ParserResult{UiResourceDecls: []*parser.UiResourceDecl{
 		{ID: "dashboard-route", Type: parser.UiResourceTypeRoute, Path: "/sale/marketing/dashboard"},
@@ -3313,14 +3313,14 @@ func TestExtractUiResources_CrossModuleAppendPassesWithoutNamespaceProtocol(t *t
 		t.Fatalf("expected UI_VAL_005 warning, got %s", warnings[0].code)
 	}
 	for _, resource := range resources {
-		if resource.IrApplicationId != "sale" {
-			t.Fatalf("expected module application fallback to be injected, got %q", resource.IrApplicationId)
+		if resource.MetaApplicationId != "sale" {
+			t.Fatalf("expected module application fallback to be injected, got %q", resource.MetaApplicationId)
 		}
 	}
 }
 
 func TestCollectUiResourceDefaultRoleRows_BuildsDistinctRows(t *testing.T) {
-	uiResources := []*meta.IrUiResource{
+	uiResources := []*meta.UiResource{
 		{
 			BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_1", Valid: true}},
 			Name:      "auth.menu.root",
@@ -3350,7 +3350,7 @@ func TestCollectUiResourceDefaultRoleRows_BuildsDistinctRows(t *testing.T) {
 
 	pairSet := map[string]bool{}
 	for _, row := range rows {
-		pairSet[row.RoleId.String+"/"+row.IrUiResourceId.String] = true
+		pairSet[row.RoleId.String+"/"+row.MetaUiResourceId.String] = true
 		if strings.TrimSpace(row.Mode) != "allow" {
 			t.Fatalf("expected defaultRoles seed mode allow, got %q", row.Mode)
 		}
@@ -3368,7 +3368,7 @@ func TestCollectUiResourceDefaultRoleRows_BuildsDistinctRows(t *testing.T) {
 }
 
 func TestCollectUiResourceDefaultRoleRows_MissingRoleFails(t *testing.T) {
-	uiResources := []*meta.IrUiResource{
+	uiResources := []*meta.UiResource{
 		{
 			BaseModel:    meta.BaseModel{Id: sql.NullString{String: "ui_1", Valid: true}},
 			Name:         "auth.menu.root",
@@ -3656,31 +3656,31 @@ export default defineComponent({
 
 func TestGetNewExtendsPrefersConnectedInMemoryCandidate(t *testing.T) {
 	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
-	if err := testRuntimeScope.db.AutoMigrate(&meta.IrComponent{}); err != nil {
+	if err := testRuntimeScope.db.AutoMigrate(&meta.Component{}); err != nil {
 		t.Fatalf("auto migrate components failed: %v", err)
 	}
 
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
-	if got, err := b.getNewExtends(nil, &meta.IrComponent{Name: "DemoView", Path: "/child.vue"}); err != nil || got != nil {
+	if got, err := b.getNewExtends(nil, &meta.Component{Name: "DemoView", Path: "/child.vue"}); err != nil || got != nil {
 		t.Fatalf("getNewExtends(no extends) = %#v, %v, want nil, nil", got, err)
 	}
 
-	base := &meta.IrComponent{Name: "DemoView", Path: "/base.vue"}
-	legacy := &meta.IrComponent{Name: "DemoView", Path: "/legacy.vue", Extends: "/elsewhere.vue"}
-	for _, comp := range []*meta.IrComponent{base, legacy} {
+	base := &meta.Component{Name: "DemoView", Path: "/base.vue"}
+	legacy := &meta.Component{Name: "DemoView", Path: "/legacy.vue", Extends: "/elsewhere.vue"}
+	for _, comp := range []*meta.Component{base, legacy} {
 		if err := testRuntimeScope.db.Create(comp).Error; err != nil {
 			t.Fatalf("create component %s: %v", comp.Path, err)
 		}
 	}
 
-	inMemory := &meta.IrComponent{Name: "DemoView", Path: "/mid.vue", Extends: "/base.vue"}
+	inMemory := &meta.Component{Name: "DemoView", Path: "/mid.vue", Extends: "/base.vue"}
 	buildResult := withParserResults(&module.BuildResult{}, &parser.ParserResult{
 		Path:         inMemory.Path,
 		Content:      "rendered",
 		VueComponent: inMemory,
 	})
 
-	next, err := b.getNewExtends(buildResult, &meta.IrComponent{Name: "DemoView", Path: "/child.vue", Extends: "/base.vue"})
+	next, err := b.getNewExtends(buildResult, &meta.Component{Name: "DemoView", Path: "/child.vue", Extends: "/base.vue"})
 	if err != nil {
 		t.Fatalf("getNewExtends returned error: %v", err)
 	}
@@ -3688,7 +3688,7 @@ func TestGetNewExtendsPrefersConnectedInMemoryCandidate(t *testing.T) {
 		t.Fatalf("expected connected in-memory component to be selected, got %#v", next)
 	}
 
-	next, err = b.getNewExtends(nil, &meta.IrComponent{Name: "DemoView", Path: "/child.vue", Extends: "/unknown.vue"})
+	next, err = b.getNewExtends(nil, &meta.Component{Name: "DemoView", Path: "/child.vue", Extends: "/unknown.vue"})
 	if err != nil {
 		t.Fatalf("getNewExtends(disconnected) returned error: %v", err)
 	}
@@ -3699,13 +3699,13 @@ func TestGetNewExtendsPrefersConnectedInMemoryCandidate(t *testing.T) {
 
 func TestValidateUiResourceDependencies(t *testing.T) {
 	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
-	if err := testRuntimeScope.db.AutoMigrate(&meta.IrModel{}, &meta.IrService{}); err != nil {
+	if err := testRuntimeScope.db.AutoMigrate(&meta.Model{}, &meta.Service{}); err != nil {
 		t.Fatalf("auto migrate failed: %v", err)
 	}
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
 	t.Run("invalid requires entry fails fast", func(t *testing.T) {
-		err := b.validateUiResourceDependencies([]*meta.IrUiResource{{
+		err := b.validateUiResourceDependencies([]*meta.UiResource{{
 			Name:     "menu.invalid",
 			Requires: []byte(`["oops"]`),
 		}})
@@ -3715,7 +3715,7 @@ func TestValidateUiResourceDependencies(t *testing.T) {
 	})
 
 	t.Run("missing model fails", func(t *testing.T) {
-		err := b.validateUiResourceDependencies([]*meta.IrUiResource{{
+		err := b.validateUiResourceDependencies([]*meta.UiResource{{
 			Name:     "route.missing-model",
 			Requires: []byte(`["rpc:/crm.Lead/read"]`),
 		}})
@@ -3724,7 +3724,7 @@ func TestValidateUiResourceDependencies(t *testing.T) {
 		}
 	})
 
-	model := &meta.IrModel{
+	model := &meta.Model{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "model_lead", Valid: true}},
 		Application: "crm",
 		Name:        "Lead",
@@ -3733,7 +3733,7 @@ func TestValidateUiResourceDependencies(t *testing.T) {
 	if err := testRuntimeScope.db.Create(model).Error; err != nil {
 		t.Fatalf("create model: %v", err)
 	}
-	if err := testRuntimeScope.db.Create(&meta.IrService{
+	if err := testRuntimeScope.db.Create(&meta.Service{
 		BaseModel: meta.BaseModel{Id: sql.NullString{String: "svc_read", Valid: true}},
 		ModelId:   sql.NullString{String: "model_lead", Valid: true},
 		Name:      "Read",
@@ -3742,7 +3742,7 @@ func TestValidateUiResourceDependencies(t *testing.T) {
 	}
 
 	t.Run("missing method fails", func(t *testing.T) {
-		err := b.validateUiResourceDependencies([]*meta.IrUiResource{{
+		err := b.validateUiResourceDependencies([]*meta.UiResource{{
 			Name:     "action.missing-method",
 			Requires: []byte(`["rpc:/crm.Lead/write"]`),
 		}})
@@ -3752,7 +3752,7 @@ func TestValidateUiResourceDependencies(t *testing.T) {
 	})
 
 	t.Run("known method and wildcard pass", func(t *testing.T) {
-		resources := []*meta.IrUiResource{
+		resources := []*meta.UiResource{
 			{Name: "route.read", Requires: []byte(`["rpc:/crm.Lead/read"]`)},
 			{Name: "route.any", Requires: []byte(`["rpc:/crm.Lead/*"]`)},
 		}
@@ -3764,12 +3764,12 @@ func TestValidateUiResourceDependencies(t *testing.T) {
 
 func TestReplaceUiResourceRelationsReplacesAndDedupesRows(t *testing.T) {
 	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
-	if err := testRuntimeScope.db.AutoMigrate(&meta.IrUiResource{}, &meta.IrUiResourceMenuRoute{}, &meta.IrUiResourceRouteAction{}); err != nil {
+	if err := testRuntimeScope.db.AutoMigrate(&meta.UiResource{}, &meta.UiResourceMenuRoute{}, &meta.UiResourceRouteAction{}); err != nil {
 		t.Fatalf("auto migrate failed: %v", err)
 	}
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	resources := []*meta.IrUiResource{
+	resources := []*meta.UiResource{
 		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "menu_1", Valid: true}}, Name: "menu.root", Type: meta.UiResourceTypeMenu},
 		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "route_1", Valid: true}}, Name: "route.home", Type: meta.UiResourceTypeRoute},
 		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "action_1", Valid: true}}, Name: "action.save", Type: meta.UiResourceTypeAction},
@@ -3780,13 +3780,13 @@ func TestReplaceUiResourceRelationsReplacesAndDedupesRows(t *testing.T) {
 			t.Fatalf("create resource %s: %v", resource.Name, err)
 		}
 	}
-	if err := testRuntimeScope.db.Create(&meta.IrUiResourceMenuRoute{
+	if err := testRuntimeScope.db.Create(&meta.UiResourceMenuRoute{
 		MenuUiResourceId:  sql.NullString{String: "menu_1", Valid: true},
 		RouteUiResourceId: sql.NullString{String: "other_1", Valid: true},
 	}).Error; err != nil {
 		t.Fatalf("seed menu route relation: %v", err)
 	}
-	if err := testRuntimeScope.db.Create(&meta.IrUiResourceRouteAction{
+	if err := testRuntimeScope.db.Create(&meta.UiResourceRouteAction{
 		RouteUiResourceId:  sql.NullString{String: "route_1", Valid: true},
 		ActionUiResourceId: sql.NullString{String: "other_1", Valid: true},
 	}).Error; err != nil {
@@ -3802,7 +3802,7 @@ func TestReplaceUiResourceRelationsReplacesAndDedupesRows(t *testing.T) {
 		t.Fatalf("replaceUiResourceRelations returned error: %v", err)
 	}
 
-	var menuRoutes []meta.IrUiResourceMenuRoute
+	var menuRoutes []meta.UiResourceMenuRoute
 	if err := testRuntimeScope.db.Order("menu_ui_resource_id, route_ui_resource_id").Find(&menuRoutes).Error; err != nil {
 		t.Fatalf("query menu route rows: %v", err)
 	}
@@ -3810,7 +3810,7 @@ func TestReplaceUiResourceRelationsReplacesAndDedupesRows(t *testing.T) {
 		t.Fatalf("unexpected menu route rows: %#v", menuRoutes)
 	}
 
-	var routeActions []meta.IrUiResourceRouteAction
+	var routeActions []meta.UiResourceRouteAction
 	if err := testRuntimeScope.db.Order("route_ui_resource_id, action_ui_resource_id").Find(&routeActions).Error; err != nil {
 		t.Fatalf("query route action rows: %v", err)
 	}
@@ -3826,14 +3826,14 @@ func TestReplaceUiResourceRelationsReplacesAndDedupesRows(t *testing.T) {
 func TestPersistUiResourceDefaultRolesInsertsAndDedupes(t *testing.T) {
 	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
 	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role (id TEXT PRIMARY KEY, code TEXT)`)
-	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role_ui_resource (id TEXT, role_id TEXT, mode TEXT, ir_application_id TEXT, ir_ui_resource_id TEXT, created_at DATETIME, updated_at DATETIME, deleted_at DATETIME)`)
-	mustExec(t, testRuntimeScope.db, `CREATE UNIQUE INDEX idx_auth_role_ui_resource_pair ON auth_role_ui_resource(role_id, ir_ui_resource_id)`)
+	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role_ui_resource (id TEXT, role_id TEXT, mode TEXT, meta_application_id TEXT, meta_ui_resource_id TEXT, created_at DATETIME, updated_at DATETIME, deleted_at DATETIME)`)
+	mustExec(t, testRuntimeScope.db, `CREATE UNIQUE INDEX idx_auth_role_ui_resource_pair ON auth_role_ui_resource(role_id, meta_ui_resource_id)`)
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
 	if err := testRuntimeScope.db.Exec(`INSERT INTO auth_role (id, code) VALUES (?, ?), (?, ?)`, "role_user", "base.user", "role_admin", "sys.admin").Error; err != nil {
 		t.Fatalf("seed auth_role failed: %v", err)
 	}
-	resources := []*meta.IrUiResource{
+	resources := []*meta.UiResource{
 		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_1", Valid: true}}, Name: "menu.root", DefaultRoles: []byte(`["base.user","base.user","sys.admin"]`)},
 		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_2", Valid: true}}, Name: "route.home", DefaultRoles: []byte(`["base.user"]`)},
 	}
@@ -3846,7 +3846,7 @@ func TestPersistUiResourceDefaultRolesInsertsAndDedupes(t *testing.T) {
 	}
 
 	var rows []roleUiResourceGrantRow
-	if err := testRuntimeScope.db.Table("auth_role_ui_resource").Order("role_id, ir_ui_resource_id").Find(&rows).Error; err != nil {
+	if err := testRuntimeScope.db.Table("auth_role_ui_resource").Order("role_id, meta_ui_resource_id").Find(&rows).Error; err != nil {
 		t.Fatalf("query auth_role_ui_resource failed: %v", err)
 	}
 	if len(rows) != 3 {
@@ -3854,7 +3854,7 @@ func TestPersistUiResourceDefaultRolesInsertsAndDedupes(t *testing.T) {
 	}
 	seen := map[string]bool{}
 	for _, row := range rows {
-		seen[row.RoleId.String+"/"+row.IrUiResourceId.String] = true
+		seen[row.RoleId.String+"/"+row.MetaUiResourceId.String] = true
 		if row.Mode != "allow" {
 			t.Fatalf("expected allow mode, got %#v", row)
 		}
@@ -3865,7 +3865,7 @@ func TestPersistUiResourceDefaultRolesInsertsAndDedupes(t *testing.T) {
 		}
 	}
 
-	if err := b.persistUiResourceDefaultRoles([]*meta.IrUiResource{{Name: "menu.empty"}}); err != nil {
+	if err := b.persistUiResourceDefaultRoles([]*meta.UiResource{{Name: "menu.empty"}}); err != nil {
 		t.Fatalf("expected no-defaultRoles fast path to succeed, got %v", err)
 	}
 }
@@ -3873,7 +3873,7 @@ func TestPersistUiResourceDefaultRolesInsertsAndDedupes(t *testing.T) {
 func TestPersistUiResourceDefaultRolesSkipsWhenAuthTablesMissing(t *testing.T) {
 	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
-	resources := []*meta.IrUiResource{
+	resources := []*meta.UiResource{
 		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_1", Valid: true}}, Name: "menu.root", DefaultRoles: []byte(`["base.user"]`)},
 	}
 
@@ -3884,12 +3884,12 @@ func TestPersistUiResourceDefaultRolesSkipsWhenAuthTablesMissing(t *testing.T) {
 
 func TestPersistModuleComponentsReplacesAndDedupesByPath(t *testing.T) {
 	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
-	if err := testRuntimeScope.db.AutoMigrate(&meta.IrComponent{}); err != nil {
+	if err := testRuntimeScope.db.AutoMigrate(&meta.Component{}); err != nil {
 		t.Fatalf("auto migrate components failed: %v", err)
 	}
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	seedRows := []*meta.IrComponent{
+	seedRows := []*meta.Component{
 		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "old_mod1", Valid: true}}, Name: "OldComp", Path: "/old.vue", ModuleId: sql.NullString{String: "mod1", Valid: true}},
 		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "keep_mod2", Valid: true}}, Name: "KeepComp", Path: "/keep.vue", ModuleId: sql.NullString{String: "mod2", Valid: true}},
 	}
@@ -3899,11 +3899,11 @@ func TestPersistModuleComponentsReplacesAndDedupesByPath(t *testing.T) {
 		}
 	}
 
-	if err := b.persistModuleComponents("", []*meta.IrComponent{{Name: "Ignored", Path: "/ignored.vue"}}); err != nil {
+	if err := b.persistModuleComponents("", []*meta.Component{{Name: "Ignored", Path: "/ignored.vue"}}); err != nil {
 		t.Fatalf("persistModuleComponents(blank moduleID) error = %v", err)
 	}
 
-	rows := []*meta.IrComponent{
+	rows := []*meta.Component{
 		{Name: "First", Path: "/dup.vue"},
 		{Name: "LastWins", Path: "/dup.vue", Extends: "/base.vue"},
 		nil,
@@ -3914,7 +3914,7 @@ func TestPersistModuleComponentsReplacesAndDedupesByPath(t *testing.T) {
 		t.Fatalf("persistModuleComponents(mod1) error = %v", err)
 	}
 
-	var mod1Rows []*meta.IrComponent
+	var mod1Rows []*meta.Component
 	if err := testRuntimeScope.db.Where("module_id = ?", "mod1").Order("path").Find(&mod1Rows).Error; err != nil {
 		t.Fatalf("query mod1 components failed: %v", err)
 	}
@@ -3930,7 +3930,7 @@ func TestPersistModuleComponentsReplacesAndDedupesByPath(t *testing.T) {
 		}
 	}
 
-	var mod2Rows []*meta.IrComponent
+	var mod2Rows []*meta.Component
 	if err := testRuntimeScope.db.Where("module_id = ?", "mod2").Find(&mod2Rows).Error; err != nil {
 		t.Fatalf("query mod2 components failed: %v", err)
 	}
@@ -3941,7 +3941,7 @@ func TestPersistModuleComponentsReplacesAndDedupesByPath(t *testing.T) {
 	if err := b.persistModuleComponents("mod1", nil); err != nil {
 		t.Fatalf("persistModuleComponents(delete only) error = %v", err)
 	}
-	var afterDelete []*meta.IrComponent
+	var afterDelete []*meta.Component
 	if err := testRuntimeScope.db.Where("module_id = ?", "mod1").Find(&afterDelete).Error; err != nil {
 		t.Fatalf("query mod1 after delete failed: %v", err)
 	}
@@ -3954,13 +3954,13 @@ func TestUpdateComponentBranches(t *testing.T) {
 	root := t.TempDir()
 	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
 	testRuntimeScope.cfg.ModulesPath = root
-	if err := testRuntimeScope.db.AutoMigrate(&meta.IrComponent{}); err != nil {
+	if err := testRuntimeScope.db.AutoMigrate(&meta.Component{}); err != nil {
 		t.Fatalf("auto migrate components failed: %v", err)
 	}
 	b := &WebModuleBuilder{
 		runtimeScope: testRuntimeScope,
-		module:       &meta.IrModule{Name: "test", Path: root},
-		parser:       defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Name: "test", Path: root}),
+		module:       &meta.Module{Name: "test", Path: root},
+		parser:       defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Name: "test", Path: root}),
 	}
 
 	t.Run("missing file returns read error", func(t *testing.T) {
@@ -3975,7 +3975,7 @@ func TestUpdateComponentBranches(t *testing.T) {
 		buildResult := withParserResults(&module.BuildResult{}, &parser.ParserResult{
 			Path:       filepath.Join(root, "plain.vue"),
 			RawContent: "<template><div>plain</div></template>",
-			VueComponent: &meta.IrComponent{
+			VueComponent: &meta.Component{
 				Name: "PlainView",
 				Path: filepath.Join(root, "plain.vue"),
 			},
@@ -3993,7 +3993,7 @@ func TestUpdateComponentBranches(t *testing.T) {
 		buildResult := withParserResults(&module.BuildResult{}, &parser.ParserResult{
 			Path:    filepath.Join(root, "done.vue"),
 			Content: "ready",
-			VueComponent: &meta.IrComponent{
+			VueComponent: &meta.Component{
 				Name: "DoneView",
 				Path: filepath.Join(root, "done.vue"),
 			},
@@ -4114,7 +4114,7 @@ func TestWebBuilderHelperFunctions(t *testing.T) {
 func TestBuildCtxAndBuildToDirCtxRespectCanceledContext(t *testing.T) {
 	b := &WebModuleBuilder{
 		runtimeScope:       newTestScope(),
-		module:             &meta.IrModule{Name: "web", Path: "/virtual/modules/web"},
+		module:             &meta.Module{Name: "web", Path: "/virtual/modules/web"},
 		publishDist:        false,
 		distWebDirOverride: "previous",
 	}
@@ -4140,11 +4140,11 @@ func TestBuildCtxAndBuildToDirCtxRespectCanceledContext(t *testing.T) {
 func TestBuildPipelineHelpers(t *testing.T) {
 	t.Run("prebuild update build and BuildCtx succeed with fake plugins", func(t *testing.T) {
 		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
-		if err := testRuntimeScope.db.AutoMigrate(&meta.IrModule{}, &meta.IrApplication{}); err != nil {
+		if err := testRuntimeScope.db.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
 			t.Fatalf("auto migrate failed: %v", err)
 		}
 		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, testRuntimeScope, "export const answer = 42\n")
-		if err := testRuntimeScope.db.Create(&meta.IrModule{
+		if err := testRuntimeScope.db.Create(&meta.Module{
 			BaseModel:     meta.BaseModel{Id: sql.NullString{String: "installed_auth", Valid: true}},
 			Name:          "auth",
 			Status:        meta.Installed,
@@ -4227,7 +4227,7 @@ func TestBuildPipelineHelpers(t *testing.T) {
 
 	t.Run("BuildCtx uses context session for runtime state", func(t *testing.T) {
 		baseScope := newTestScopeWithDB(t).(*testScope)
-		if err := baseScope.db.AutoMigrate(&meta.IrModule{}, &meta.IrApplication{}); err != nil {
+		if err := baseScope.db.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
 			t.Fatalf("migrate base db: %v", err)
 		}
 
@@ -4235,12 +4235,12 @@ func TestBuildPipelineHelpers(t *testing.T) {
 		if err != nil {
 			t.Fatalf("open runtime sqlite: %v", err)
 		}
-		if err := runtimeDB.AutoMigrate(&meta.IrModule{}, &meta.IrApplication{}); err != nil {
+		if err := runtimeDB.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
 			t.Fatalf("migrate runtime db: %v", err)
 		}
 
 		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, baseScope, "export const answer = 42\n")
-		if err := runtimeDB.Create(&meta.IrModule{
+		if err := runtimeDB.Create(&meta.Module{
 			BaseModel:     meta.BaseModel{Id: sql.NullString{String: "installed_base", Valid: true}},
 			Name:          "base",
 			Status:        meta.Installed,
@@ -4259,7 +4259,7 @@ func TestBuildPipelineHelpers(t *testing.T) {
 			prebuildPlugin: prebuildPlugin,
 			buildPlugin:    buildPlugin,
 			publishDist:    false,
-			parserFactory: func(runtimeScope scope.Scope, module *meta.IrModule) parser.Parser {
+			parserFactory: func(runtimeScope scope.Scope, module *meta.Module) parser.Parser {
 				parserRuntimeScope = runtimeScope
 				return fixedParser{}
 			},
@@ -4283,7 +4283,7 @@ func TestBuildPipelineHelpers(t *testing.T) {
 
 	t.Run("BuildToDirCtx preserves runtime transaction when caller context has no transaction", func(t *testing.T) {
 		baseScope := newTestScopeWithDB(t).(*testScope)
-		if err := baseScope.db.AutoMigrate(&meta.IrModule{}, &meta.IrApplication{}); err != nil {
+		if err := baseScope.db.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
 			t.Fatalf("migrate base db: %v", err)
 		}
 
@@ -4291,12 +4291,12 @@ func TestBuildPipelineHelpers(t *testing.T) {
 		if err != nil {
 			t.Fatalf("open runtime sqlite: %v", err)
 		}
-		if err := runtimeDB.AutoMigrate(&meta.IrModule{}, &meta.IrApplication{}); err != nil {
+		if err := runtimeDB.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
 			t.Fatalf("migrate runtime db: %v", err)
 		}
 
 		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, baseScope, "export const answer = 42\n")
-		if err := runtimeDB.Create(&meta.IrModule{
+		if err := runtimeDB.Create(&meta.Module{
 			BaseModel:     meta.BaseModel{Id: sql.NullString{String: "installed_base_tx", Valid: true}},
 			Name:          "base",
 			Status:        meta.Installed,
@@ -4315,7 +4315,7 @@ func TestBuildPipelineHelpers(t *testing.T) {
 			prebuildPlugin: prebuildPlugin,
 			buildPlugin:    buildPlugin,
 			publishDist:    false,
-			parserFactory: func(runtimeScope scope.Scope, module *meta.IrModule) parser.Parser {
+			parserFactory: func(runtimeScope scope.Scope, module *meta.Module) parser.Parser {
 				parserRuntimeScope = runtimeScope
 				return fixedParser{}
 			},
@@ -4343,7 +4343,7 @@ func TestBuildPipelineHelpers(t *testing.T) {
 
 	t.Run("prebuild wraps esbuild errors", func(t *testing.T) {
 		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
-		if err := testRuntimeScope.db.AutoMigrate(&meta.IrModule{}, &meta.IrApplication{}); err != nil {
+		if err := testRuntimeScope.db.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
 			t.Fatalf("auto migrate failed: %v", err)
 		}
 		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, testRuntimeScope, "export const = 42\n")
@@ -4363,7 +4363,7 @@ func TestBuildPipelineHelpers(t *testing.T) {
 
 	t.Run("prebuild aggregates plugin errors without locations", func(t *testing.T) {
 		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
-		if err := testRuntimeScope.db.AutoMigrate(&meta.IrModule{}, &meta.IrApplication{}); err != nil {
+		if err := testRuntimeScope.db.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
 			t.Fatalf("auto migrate failed: %v", err)
 		}
 		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, testRuntimeScope, "export const answer = 42\n")
@@ -4389,7 +4389,7 @@ func TestBuildPipelineHelpers(t *testing.T) {
 
 	t.Run("prebuild wraps parser result fetch errors", func(t *testing.T) {
 		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
-		if err := testRuntimeScope.db.AutoMigrate(&meta.IrModule{}, &meta.IrApplication{}); err != nil {
+		if err := testRuntimeScope.db.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
 			t.Fatalf("auto migrate failed: %v", err)
 		}
 		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, testRuntimeScope, "export const answer = 42\n")
@@ -4409,7 +4409,7 @@ func TestBuildPipelineHelpers(t *testing.T) {
 
 	t.Run("build wraps esbuild errors and parser result fetch errors", func(t *testing.T) {
 		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
-		if err := testRuntimeScope.db.AutoMigrate(&meta.IrModule{}, &meta.IrApplication{}); err != nil {
+		if err := testRuntimeScope.db.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
 			t.Fatalf("auto migrate failed: %v", err)
 		}
 		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, testRuntimeScope, "export const = 42\n")
@@ -4441,7 +4441,7 @@ func TestBuildPipelineHelpers(t *testing.T) {
 
 	t.Run("build aggregates plugin errors without locations", func(t *testing.T) {
 		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
-		if err := testRuntimeScope.db.AutoMigrate(&meta.IrModule{}, &meta.IrApplication{}); err != nil {
+		if err := testRuntimeScope.db.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
 			t.Fatalf("auto migrate failed: %v", err)
 		}
 		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, testRuntimeScope, "export const answer = 42\n")
@@ -4467,7 +4467,7 @@ func TestBuildPipelineHelpers(t *testing.T) {
 
 	t.Run("build publish mode requires generated index html", func(t *testing.T) {
 		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
-		if err := testRuntimeScope.db.AutoMigrate(&meta.IrModule{}, &meta.IrApplication{}); err != nil {
+		if err := testRuntimeScope.db.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
 			t.Fatalf("auto migrate failed: %v", err)
 		}
 		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, testRuntimeScope, "export const answer = 42\n")
@@ -4500,7 +4500,7 @@ func TestBuildPipelineHelpers(t *testing.T) {
 
 	t.Run("build publish mode stages into dist web when override is empty", func(t *testing.T) {
 		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
-		if err := testRuntimeScope.db.AutoMigrate(&meta.IrModule{}, &meta.IrApplication{}); err != nil {
+		if err := testRuntimeScope.db.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
 			t.Fatalf("auto migrate failed: %v", err)
 		}
 		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, testRuntimeScope, "export const answer = 42\n")
@@ -4578,7 +4578,7 @@ func TestBuildCtx_WrapsStageErrors(t *testing.T) {
 
 	t.Run("wraps validate errors", func(t *testing.T) {
 		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
-		if err := testRuntimeScope.db.AutoMigrate(&meta.IrModule{}, &meta.IrApplication{}); err != nil {
+		if err := testRuntimeScope.db.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
 			t.Fatalf("auto migrate failed: %v", err)
 		}
 		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, testRuntimeScope, "export const answer = 42\n")
@@ -4590,7 +4590,7 @@ func TestBuildCtx_WrapsStageErrors(t *testing.T) {
 			prebuildPlugin: &buildTestPlugin{parserResults: []*parser.ParserResult{{Path: entryPoint, RawContent: "export const answer = 42", Content: "export const answer = 42"}}},
 			buildPlugin: &buildTestPlugin{parserResults: []*parser.ParserResult{{
 				Path:         entryPoint,
-				VueComponent: &meta.IrComponent{Name: "CycleView", Path: "/a.vue", Extends: "/a.vue"},
+				VueComponent: &meta.Component{Name: "CycleView", Path: "/a.vue", Extends: "/a.vue"},
 			}}},
 		}
 
@@ -4601,7 +4601,7 @@ func TestBuildCtx_WrapsStageErrors(t *testing.T) {
 
 	t.Run("wraps persist errors", func(t *testing.T) {
 		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
-		if err := testRuntimeScope.db.AutoMigrate(&meta.IrModule{}, &meta.IrApplication{}); err != nil {
+		if err := testRuntimeScope.db.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
 			t.Fatalf("auto migrate failed: %v", err)
 		}
 		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, testRuntimeScope, "export const answer = 42\n")
@@ -4630,8 +4630,8 @@ func TestValidateWrapsBuildResultErrors(t *testing.T) {
 
 	t.Run("wraps invalid inheritance chain", func(t *testing.T) {
 		buildResult := withParserResults(&module.BuildResult{},
-			&parser.ParserResult{VueComponent: &meta.IrComponent{Name: "DemoView", Path: "/child.vue", Extends: "/base.vue"}},
-			&parser.ParserResult{VueComponent: &meta.IrComponent{Name: "DemoView", Path: "/sibling.vue", Extends: "/other.vue"}},
+			&parser.ParserResult{VueComponent: &meta.Component{Name: "DemoView", Path: "/child.vue", Extends: "/base.vue"}},
+			&parser.ParserResult{VueComponent: &meta.Component{Name: "DemoView", Path: "/sibling.vue", Extends: "/other.vue"}},
 		)
 		err := b.validate(buildResult)
 		if err == nil || !strings.Contains(err.Error(), "invalid inheritance chain") {
@@ -4641,7 +4641,7 @@ func TestValidateWrapsBuildResultErrors(t *testing.T) {
 
 	t.Run("wraps circular dependency", func(t *testing.T) {
 		buildResult := withParserResults(&module.BuildResult{},
-			&parser.ParserResult{VueComponent: &meta.IrComponent{Name: "CycleView", Path: "/a.vue", Extends: "/a.vue"}},
+			&parser.ParserResult{VueComponent: &meta.Component{Name: "CycleView", Path: "/a.vue", Extends: "/a.vue"}},
 		)
 		err := b.validate(buildResult)
 		if err == nil || !strings.Contains(err.Error(), "circular dependency detected") {
@@ -4652,8 +4652,8 @@ func TestValidateWrapsBuildResultErrors(t *testing.T) {
 	t.Run("ignores nil parser results and unrelated names", func(t *testing.T) {
 		buildResult := withParserResults(&module.BuildResult{},
 			&parser.ParserResult{},
-			&parser.ParserResult{VueComponent: &meta.IrComponent{Name: "FirstView", Path: "/first.vue"}},
-			&parser.ParserResult{VueComponent: &meta.IrComponent{Name: "SecondView", Path: "/second.vue", Extends: "/missing.vue"}},
+			&parser.ParserResult{VueComponent: &meta.Component{Name: "FirstView", Path: "/first.vue"}},
+			&parser.ParserResult{VueComponent: &meta.Component{Name: "SecondView", Path: "/second.vue", Extends: "/missing.vue"}},
 		)
 		if err := b.validate(buildResult); err != nil {
 			t.Fatalf("expected validate to ignore unrelated components, got %v", err)
@@ -4676,8 +4676,8 @@ func TestValidateWrapsBuildResultErrors(t *testing.T) {
 		}
 		aliasComponentPath := filepath.Join(aliasRoot, "views", "CompanyListView.vue")
 
-		realResult := &parser.ParserResult{VueComponent: &meta.IrComponent{Name: "CompanyListView", Path: realComponentPath}}
-		aliasResult := &parser.ParserResult{VueComponent: &meta.IrComponent{Name: "CompanyListView", Path: aliasComponentPath}}
+		realResult := &parser.ParserResult{VueComponent: &meta.Component{Name: "CompanyListView", Path: realComponentPath}}
+		aliasResult := &parser.ParserResult{VueComponent: &meta.Component{Name: "CompanyListView", Path: aliasComponentPath}}
 		buildResult := withParserResults(&module.BuildResult{}, realResult, aliasResult)
 		if err := b.validate(buildResult); err != nil {
 			t.Fatalf("expected validate to deduplicate symlink alias paths, got %v", err)
@@ -4733,7 +4733,7 @@ func TestReparseXPathComponentsPropertyNode(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(root, "tsconfig.json"), []byte(`{"compilerOptions":{}}`), 0o644); err != nil {
 			t.Fatalf("write tsconfig failed: %v", err)
 		}
-		builder := &WebModuleBuilder{runtimeScope: testRuntimeScope, module: &meta.IrModule{Name: "test", Path: root}}
+		builder := &WebModuleBuilder{runtimeScope: testRuntimeScope, module: &meta.Module{Name: "test", Path: root}}
 		vueParser := defaultparser.NewVueParser(testRuntimeScope, builder.module)
 		parsed, err := vueParser.Parse(map[string]string{}, filepath.Join(root, "ChildView.vue"), `<template><div/></template>
 <script lang="ts" _name="ChildView">
@@ -4779,7 +4779,7 @@ export default defineComponent({
 		if err := os.WriteFile(filepath.Join(root, "tsconfig.json"), []byte(`{"compilerOptions":{}}`), 0o644); err != nil {
 			t.Fatalf("write tsconfig failed: %v", err)
 		}
-		builder := &WebModuleBuilder{runtimeScope: testRuntimeScope, module: &meta.IrModule{Name: "test", Path: root}}
+		builder := &WebModuleBuilder{runtimeScope: testRuntimeScope, module: &meta.Module{Name: "test", Path: root}}
 		vueParser := defaultparser.NewVueParser(testRuntimeScope, builder.module)
 		parsed, err := vueParser.Parse(map[string]string{}, filepath.Join(root, "ChildView.vue"), `<template><div/></template>
 <script lang="ts" _name="ChildView">
@@ -4806,21 +4806,21 @@ export default defineComponent({
 
 func TestInheritanceValidationHelpers(t *testing.T) {
 	b := &WebModuleBuilder{}
-	base := &meta.IrComponent{Name: "DemoView", Path: "/base.vue"}
-	child := &meta.IrComponent{Name: "DemoView", Path: "/child.vue", Extends: "/base.vue"}
-	grandchild := &meta.IrComponent{Name: "DemoView", Path: "/grandchild.vue", Extends: "/child.vue"}
-	pathMap := map[string]*meta.IrComponent{
+	base := &meta.Component{Name: "DemoView", Path: "/base.vue"}
+	child := &meta.Component{Name: "DemoView", Path: "/child.vue", Extends: "/base.vue"}
+	grandchild := &meta.Component{Name: "DemoView", Path: "/grandchild.vue", Extends: "/child.vue"}
+	pathMap := map[string]*meta.Component{
 		base.Path:       base,
 		child.Path:      child,
 		grandchild.Path: grandchild,
 	}
 
-	if err := b.checkInheritanceChain([]*meta.IrComponent{base, child, grandchild}, pathMap); err != nil {
+	if err := b.checkInheritanceChain([]*meta.Component{base, child, grandchild}, pathMap); err != nil {
 		t.Fatalf("checkInheritanceChain(valid) error = %v", err)
 	}
 
-	sibling := &meta.IrComponent{Name: "DemoView", Path: "/sibling.vue", Extends: "/other.vue"}
-	if err := b.checkInheritanceChain([]*meta.IrComponent{child, sibling}, map[string]*meta.IrComponent{
+	sibling := &meta.Component{Name: "DemoView", Path: "/sibling.vue", Extends: "/other.vue"}
+	if err := b.checkInheritanceChain([]*meta.Component{child, sibling}, map[string]*meta.Component{
 		child.Path:   child,
 		sibling.Path: sibling,
 	}); err == nil || !strings.Contains(err.Error(), "same name but not in inheritance chain") {
@@ -4834,9 +4834,9 @@ func TestInheritanceValidationHelpers(t *testing.T) {
 		t.Fatalf("checkCircularDependency(no extends) error = %v", err)
 	}
 
-	cycleA := &meta.IrComponent{Name: "CycleView", Path: "/cycle-a.vue", Extends: "/cycle-b.vue"}
-	cycleB := &meta.IrComponent{Name: "CycleView", Path: "/cycle-b.vue", Extends: "/cycle-a.vue"}
-	cycleMap := map[string]*meta.IrComponent{
+	cycleA := &meta.Component{Name: "CycleView", Path: "/cycle-a.vue", Extends: "/cycle-b.vue"}
+	cycleB := &meta.Component{Name: "CycleView", Path: "/cycle-b.vue", Extends: "/cycle-a.vue"}
+	cycleMap := map[string]*meta.Component{
 		cycleA.Path: cycleA,
 		cycleB.Path: cycleB,
 	}
@@ -4851,7 +4851,7 @@ func TestEntryPointImportsCollectsModulesAndAppStores(t *testing.T) {
 	testRuntimeScope.cfg.ModulesPath = modulesDir
 	db := testRuntimeScope.db
 
-	if err := db.AutoMigrate(&meta.IrApplication{}, &meta.IrModule{}); err != nil {
+	if err := db.AutoMigrate(&meta.Application{}, &meta.Module{}); err != nil {
 		t.Fatalf("auto migrate failed: %v", err)
 	}
 
@@ -4880,7 +4880,7 @@ func TestEntryPointImportsCollectsModulesAndAppStores(t *testing.T) {
 	}
 	hrStoreImportPath := normalizeAbsImportPath(filepath.Join(hrWebDir, "stores", "index.ts"))
 
-	modules := []*meta.IrModule{
+	modules := []*meta.Module{
 		{Name: "auth", Status: meta.Installed, WebEntryPoint: "./web/index.ts"},
 		{Name: "base", Status: meta.Installed, WebEntryPoint: "./web/entry.ts"},
 		{Name: "partner", Status: meta.Installed, WebEntryPoint: absEntry},
@@ -4891,7 +4891,7 @@ func TestEntryPointImportsCollectsModulesAndAppStores(t *testing.T) {
 			t.Fatalf("create module %s: %v", m.Name, err)
 		}
 	}
-	for _, app := range []*meta.IrApplication{{Name: "crm"}, {Name: "hr"}} {
+	for _, app := range []*meta.Application{{Name: "crm"}, {Name: "hr"}} {
 		if err := db.Create(app).Error; err != nil {
 			t.Fatalf("create app %s: %v", app.Name, err)
 		}
@@ -4899,7 +4899,7 @@ func TestEntryPointImportsCollectsModulesAndAppStores(t *testing.T) {
 
 	b := &WebModuleBuilder{
 		runtimeScope: testRuntimeScope,
-		module:       &meta.IrModule{Name: "auth", Path: filepath.Join(modulesDir, "auth")},
+		module:       &meta.Module{Name: "auth", Path: filepath.Join(modulesDir, "auth")},
 	}
 
 	imports := b.entryPointImports()
@@ -4926,4 +4926,101 @@ func TestEntryPointImportsCollectsModulesAndAppStores(t *testing.T) {
 	if importSet[hrStoreImportPath] {
 		t.Fatalf("expected missing application store file to be skipped, got %#v", imports)
 	}
+}
+
+func TestPersistModuleUiResourcesDeleteErrors(t *testing.T) {
+	t.Run("empty names delete ui resources", func(t *testing.T) {
+		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+		if err := testRuntimeScope.db.AutoMigrate(&meta.UiResource{}, &meta.UiResourceMenuRoute{}, &meta.UiResourceRouteAction{}); err != nil {
+			t.Fatalf("automigrate failed: %v", err)
+		}
+		b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+		if err := testRuntimeScope.db.Create(&meta.UiResource{
+			BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_del", Valid: true}},
+			Name:      "auth.menu.delete",
+			ModuleId:  sql.NullString{String: "mod_del", Valid: true},
+		}).Error; err != nil {
+			t.Fatalf("seed ui resource: %v", err)
+		}
+		if err := testRuntimeScope.db.Exec(`CREATE TRIGGER IF NOT EXISTS block_ui_resource_soft_delete
+			BEFORE UPDATE OF deleted_at ON meta_ui_resource
+			WHEN NEW.deleted_at IS NOT NULL
+			BEGIN
+				SELECT RAISE(ABORT, 'blocked ui resource soft delete');
+			END`).Error; err != nil {
+			t.Fatalf("create ui resource soft delete trigger: %v", err)
+		}
+		t.Cleanup(func() {
+			_ = testRuntimeScope.db.Exec(`DROP TRIGGER IF EXISTS block_ui_resource_soft_delete`)
+		})
+		if err := b.persistModuleUiResources("mod_del", nil, nil, nil); err == nil {
+			t.Fatal("expected delete ui resources error")
+		}
+	})
+
+	t.Run("not in names delete ui resources", func(t *testing.T) {
+		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+		if err := testRuntimeScope.db.AutoMigrate(&meta.UiResource{}, &meta.UiResourceMenuRoute{}, &meta.UiResourceRouteAction{}); err != nil {
+			t.Fatalf("automigrate failed: %v", err)
+		}
+		b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+		moduleID := "mod_prune"
+		for _, row := range []*meta.UiResource{
+			{BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_keep", Valid: true}}, Name: "auth.menu.keep", ModuleId: sql.NullString{String: moduleID, Valid: true}},
+			{BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_drop", Valid: true}}, Name: "auth.menu.drop", ModuleId: sql.NullString{String: moduleID, Valid: true}},
+		} {
+			if err := testRuntimeScope.db.Create(row).Error; err != nil {
+				t.Fatalf("seed ui resource: %v", err)
+			}
+		}
+		resources := []*meta.UiResource{
+			{Name: "auth.menu.keep", Type: meta.UiResourceTypeMenu},
+			{Name: "auth.menu.drop", Type: meta.UiResourceTypeMenu},
+		}
+		if err := b.persistModuleUiResources(moduleID, resources, nil, nil); err != nil {
+			t.Fatalf("initial persist failed: %v", err)
+		}
+		if err := testRuntimeScope.db.Exec(`CREATE TRIGGER IF NOT EXISTS block_ui_resource_soft_delete
+			BEFORE UPDATE OF deleted_at ON meta_ui_resource
+			WHEN NEW.deleted_at IS NOT NULL
+			BEGIN
+				SELECT RAISE(ABORT, 'blocked ui resource soft delete');
+			END`).Error; err != nil {
+			t.Fatalf("create ui resource soft delete trigger: %v", err)
+		}
+		t.Cleanup(func() {
+			_ = testRuntimeScope.db.Exec(`DROP TRIGGER IF EXISTS block_ui_resource_soft_delete`)
+		})
+		if err := b.persistModuleUiResources(moduleID, []*meta.UiResource{{Name: "auth.menu.keep", Type: meta.UiResourceTypeMenu}}, nil, nil); err == nil {
+			t.Fatal("expected NOT IN delete ui resources error")
+		}
+	})
+
+	t.Run("delete menu route relations", func(t *testing.T) {
+		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+		if err := testRuntimeScope.db.AutoMigrate(&meta.UiResourceMenuRoute{}); err != nil {
+			t.Fatalf("automigrate menu routes failed: %v", err)
+		}
+		b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+		if err := testRuntimeScope.db.Migrator().DropTable(&meta.UiResourceMenuRoute{}); err != nil {
+			t.Fatalf("drop menu route table: %v", err)
+		}
+		if err := b.deleteUiResourceRelationsByIDs([]string{"menu_1"}); err == nil {
+			t.Fatal("expected delete menu route relations error")
+		}
+	})
+
+	t.Run("delete route action relations", func(t *testing.T) {
+		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+		if err := testRuntimeScope.db.AutoMigrate(&meta.UiResourceMenuRoute{}, &meta.UiResourceRouteAction{}); err != nil {
+			t.Fatalf("automigrate relation tables failed: %v", err)
+		}
+		b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+		if err := testRuntimeScope.db.Migrator().DropTable(&meta.UiResourceRouteAction{}); err != nil {
+			t.Fatalf("drop route action table: %v", err)
+		}
+		if err := b.deleteUiResourceRelationsByIDs([]string{"menu_1"}); err == nil {
+			t.Fatal("expected delete route action relations error")
+		}
+	})
 }

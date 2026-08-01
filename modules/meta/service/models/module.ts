@@ -6,11 +6,11 @@ import { getCtxValue, getUserId } from '@/core/service/api/context';
 import Job from '@/task/service/models/job';
 import { getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
 import { _t, _lt } from '../i18n';
-import IrApplication from './ir_application';
-import IrComponent from './ir_component';
-import IrModel from './ir_model';
-import IrModuleDependency from './ir_module_dependency';
-import IrUiResource from './ir_ui_resource';
+import MetaApplication from './application';
+import MetaComponent from './component';
+import MetaModel from './model';
+import MetaModuleDependency from './module_dependency';
+import MetaUiResource from './ui_resource';
 import ModuleManagementLog from './module_management_log';
 
 type ModuleAction = 'install' | 'uninstall' | 'upgrade';
@@ -111,115 +111,115 @@ async function upsertModuleLog(values: Partial<ModuleManagementLog>): Promise<vo
   }
 }
 
-@Model('IrModule', {
-  tableName: 'meta_ir_module',
+@Model('MetaModule', {
+  tableName: 'meta_module',
   autoMigrate: false,
 })
-export default class IrModule extends BaseModel {
-  @Field({ type: 'varchar', size: 255, unique: true, notNull: true, string: _lt('Name', { scope: 'meta.model.IrModule.fields' }) })
+export default class MetaModule extends BaseModel {
+  @Field({ type: 'varchar', size: 255, unique: true, notNull: true, string: _lt('Name', { scope: 'meta.model.MetaModule.fields' }) })
   Name!: string;
 
-  @Field({ type: 'varchar', size: 1024, string: _lt('Short Description', { scope: 'meta.model.IrModule.fields' }) })
+  @Field({ type: 'varchar', size: 1024, string: _lt('Short Description', { scope: 'meta.model.MetaModule.fields' }) })
   ShortDesc?: string;
 
-  @Field({ type: 'varchar', size: 255, string: _lt('Version', { scope: 'meta.model.IrModule.fields' }) })
+  @Field({ type: 'varchar', size: 255, string: _lt('Version', { scope: 'meta.model.MetaModule.fields' }) })
   Version?: string;
 
-  @Field({ type: 'varchar', size: 255, string: _lt('Tarball', { scope: 'meta.model.IrModule.fields' }) })
+  @Field({ type: 'varchar', size: 255, string: _lt('Tarball', { scope: 'meta.model.MetaModule.fields' }) })
   Tarball?: string;
 
-  @Field({ type: 'text', string: _lt('Summary', { scope: 'meta.model.IrModule.fields' }) })
+  @Field({ type: 'text', string: _lt('Summary', { scope: 'meta.model.MetaModule.fields' }) })
   Summary?: string;
 
-  @Field({ type: 'text', string: _lt('Description', { scope: 'meta.model.IrModule.fields' }) })
+  @Field({ type: 'text', string: _lt('Description', { scope: 'meta.model.MetaModule.fields' }) })
   Description?: string;
 
-  @Field({ type: 'varchar', size: 255, string: _lt('Application', { scope: 'meta.model.IrModule.fields' }) })
+  @Field({ type: 'varchar', size: 255, string: _lt('Application', { scope: 'meta.model.MetaModule.fields' }) })
   ApplicationStr?: string;
 
-  @Field({ type: 'jsonobject', string: _lt('Entry Points', { scope: 'meta.model.IrModule.fields' }) })
+  @Field({ type: 'jsonobject', string: _lt('Entry Points', { scope: 'meta.model.MetaModule.fields' }) })
   EntryPoints?: Record<string, unknown> | null;
 
-  @Field({ type: 'varchar', size: 512, string: _lt('Web Entry Point', { scope: 'meta.model.IrModule.fields' }) })
+  @Field({ type: 'varchar', size: 512, string: _lt('Web Entry Point', { scope: 'meta.model.MetaModule.fields' }) })
   WebEntryPoint?: string;
 
-  @Field({ type: 'varchar', size: 512, string: _lt('Service Entry Point', { scope: 'meta.model.IrModule.fields' }) })
+  @Field({ type: 'varchar', size: 512, string: _lt('Service Entry Point', { scope: 'meta.model.MetaModule.fields' }) })
   ServiceEntryPoint?: string;
 
-  @Field({ type: 'jsonobject', string: _lt('Dependencies', { scope: 'meta.model.IrModule.fields' }) })
+  @Field({ type: 'jsonobject', string: _lt('Dependencies', { scope: 'meta.model.MetaModule.fields' }) })
   DependsStr?: Record<string, unknown> | unknown[] | null;
 
-  @Field({ type: 'jsonobject', string: _lt('External Dependencies', { scope: 'meta.model.IrModule.fields' }) })
+  @Field({ type: 'jsonobject', string: _lt('External Dependencies', { scope: 'meta.model.MetaModule.fields' }) })
   ExternalDependencies?: Record<string, unknown> | unknown[] | null;
 
-  @Field({ type: 'varchar', size: 255, string: _lt('Author', { scope: 'meta.model.IrModule.fields' }) })
+  @Field({ type: 'varchar', size: 255, string: _lt('Author', { scope: 'meta.model.MetaModule.fields' }) })
   Author?: string;
 
-  @Field({ type: 'varchar', size: 255, string: _lt('License', { scope: 'meta.model.IrModule.fields' }) })
+  @Field({ type: 'varchar', size: 255, string: _lt('License', { scope: 'meta.model.MetaModule.fields' }) })
   License?: string;
 
-  @Field({ type: 'text', string: _lt('Homepage', { scope: 'meta.model.IrModule.fields' }) })
+  @Field({ type: 'text', string: _lt('Homepage', { scope: 'meta.model.MetaModule.fields' }) })
   Homepage?: string;
 
-  @Field({ type: 'text', string: _lt('Repository', { scope: 'meta.model.IrModule.fields' }) })
+  @Field({ type: 'text', string: _lt('Repository', { scope: 'meta.model.MetaModule.fields' }) })
   Repository?: string;
 
-  @Field({ type: 'varchar', size: 512, string: _lt('Path', { scope: 'meta.model.IrModule.fields' }) })
+  @Field({ type: 'varchar', size: 512, string: _lt('Path', { scope: 'meta.model.MetaModule.fields' }) })
   Path?: string;
 
-  @Field({ type: 'varchar', size: 64, string: _lt('Status', { scope: 'meta.model.IrModule.fields' }) })
+  @Field({ type: 'varchar', size: 64, string: _lt('Status', { scope: 'meta.model.MetaModule.fields' }) })
   Status?: string;
 
-  @Field({ type: 'varchar', size: 255, index: true, string: _lt('Category', { scope: 'meta.model.IrModule.fields' }) })
+  @Field({ type: 'varchar', size: 255, index: true, string: _lt('Category', { scope: 'meta.model.MetaModule.fields' }) })
   Category?: string;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => IrApplication }, string: _lt('Application', { scope: 'meta.model.IrModule.fields' }) })
-  ApplicationId?: IrApplication;
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => MetaApplication }, string: _lt('Application', { scope: 'meta.model.MetaModule.fields' }) })
+  ApplicationId?: MetaApplication;
 
   @Field({
     type: 'OneToMany',
-    relation: { targetModel: () => IrModel, inverseField: 'ModuleId' },
-    string: _lt('Models', { scope: 'meta.model.IrModule.fields' }),
+    relation: { targetModel: () => MetaModel, inverseField: 'ModuleId' },
+    string: _lt('Models', { scope: 'meta.model.MetaModule.fields' }),
   })
-  Models?: IrModel[];
+  Models?: MetaModel[];
 
   @Field({
     type: 'OneToMany',
-    relation: { targetModel: () => IrComponent, inverseField: 'ModuleId' },
-    string: _lt('Components', { scope: 'meta.model.IrModule.fields' }),
+    relation: { targetModel: () => MetaComponent, inverseField: 'ModuleId' },
+    string: _lt('Components', { scope: 'meta.model.MetaModule.fields' }),
   })
-  Components?: IrComponent[];
+  Components?: MetaComponent[];
 
   @Field({
     type: 'OneToMany',
-    relation: { targetModel: () => IrUiResource, inverseField: 'ModuleId' },
-    string: _lt('UI Resources', { scope: 'meta.model.IrModule.fields' }),
+    relation: { targetModel: () => MetaUiResource, inverseField: 'ModuleId' },
+    string: _lt('UI Resources', { scope: 'meta.model.MetaModule.fields' }),
   })
-  UiResources?: IrUiResource[];
+  UiResources?: MetaUiResource[];
 
   @Field({
     type: 'ManyToMany',
     relation: {
-      joinModel: () => IrModuleDependency,
-      targetModel: () => IrModule,
+      joinModel: () => MetaModuleDependency,
+      targetModel: () => MetaModule,
       joinField: 'ModuleId',
       inverseJoinField: 'DependModuleId',
     },
-    string: _lt('Dependencies', { scope: 'meta.model.IrModule.fields' }),
+    string: _lt('Dependencies', { scope: 'meta.model.MetaModule.fields' }),
   })
-  Dependencies?: IrModule[];
+  Dependencies?: MetaModule[];
 
   @Field({
     type: 'ManyToMany',
     relation: {
-      joinModel: () => IrModuleDependency,
-      targetModel: () => IrModule,
+      joinModel: () => MetaModuleDependency,
+      targetModel: () => MetaModule,
       joinField: 'DependModuleId',
       inverseJoinField: 'ModuleId',
     },
-    string: _lt('Dependents', { scope: 'meta.model.IrModule.fields' }),
+    string: _lt('Dependents', { scope: 'meta.model.MetaModule.fields' }),
   })
-  Dependents?: IrModule[];
+  Dependents?: MetaModule[];
 
   static async PlanOperation(req: PlanOperationReq): Promise<PlanOperationResp> {
     const action = (req?.action || 'install') as ModuleAction;
@@ -239,7 +239,7 @@ export default class IrModule extends BaseModel {
       risks.push({
         code: 'PLAN_REVISION_MISMATCH',
         level: 'WARN',
-        message: _t('plan was regenerated from the latest module state', { scope: 'service/models/ir_module' }),
+        message: _t('plan was regenerated from the latest module state', { scope: 'service/models/module' }),
         params: { baseRevision },
       });
     }
@@ -251,7 +251,7 @@ export default class IrModule extends BaseModel {
       blockers.push({
         code: 'MODULE_NOT_FOUND',
         level: 'BLOCKER',
-        message: _t('module not found', { scope: 'service/models/ir_module' }),
+        message: _t('module not found', { scope: 'service/models/module' }),
         params: { moduleName },
       });
     }
@@ -279,14 +279,14 @@ export default class IrModule extends BaseModel {
 
   private static ensureModuleName(name?: string): string {
     const trimmed = String(name || '').trim();
-    if (!trimmed) throw new Error(_t('moduleName cannot be empty', { scope: 'service/models/ir_module' }));
+    if (!trimmed) throw new Error(_t('moduleName cannot be empty', { scope: 'service/models/module' }));
     return trimmed;
   }
 
   private static async enqueueModuleOp(action: ModuleAction, moduleName: string, extraPayload?: Record<string, unknown>): Promise<string> {
     const name = this.ensureModuleName(moduleName);
     const userId = BaseModel.ensureUserId();
-    const method = `meta.IrModule/Execute${action.charAt(0).toUpperCase() + action.slice(1)}`;
+    const method = `meta.MetaModule/Execute${action.charAt(0).toUpperCase() + action.slice(1)}`;
     const forceLockConflict = isTruthyFlag(getBackendEnvText('CHOYSUM_E2E_FORCE_LOCK_CONFLICT', 'choysum_e2e_force_lock_conflict'));
 
     const payload: Record<string, unknown> = { moduleName: name, operatorUserId: userId, ...(extraPayload || {}) };
@@ -300,7 +300,7 @@ export default class IrModule extends BaseModel {
         LastErrorJson: {
           domain: 'meta.lock',
           code: 'LEASE_CONFLICT',
-          message: _t('lease conflict', { scope: 'service/models/ir_module' }),
+          message: _t('lease conflict', { scope: 'service/models/module' }),
           details: { retry_after_ms: retryAfterMs },
         },
       });
@@ -311,7 +311,7 @@ export default class IrModule extends BaseModel {
 
   static async GetOpStatus(jobId: string): Promise<OpStatusResp> {
     const id = String(jobId || '').trim();
-    if (!id) throw new Error(_t('jobId cannot be empty', { scope: 'service/models/ir_module' }));
+    if (!id) throw new Error(_t('jobId cannot be empty', { scope: 'service/models/module' }));
 
     const job = await Job.GetJob(id, [
       'Id',

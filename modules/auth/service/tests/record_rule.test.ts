@@ -9,10 +9,10 @@ import Role from '@/auth/service/models/role';
 import UserRole from '@/auth/service/models/user_role';
 import RoleRecordRule from '@/auth/service/models/role_record_rule';
 import { createServiceByModel } from '@/core/service/rpc';
-import type IrApplicationModel from '@/meta/service/models/ir_application';
-import type IrModelModel from '@/meta/service/models/ir_model';
-const IrApplication = createServiceByModel<typeof IrApplicationModel>('meta.IrApplication');
-const IrModel = createServiceByModel<typeof IrModelModel>('meta.IrModel');
+import type MetaApplicationModel from '@/meta/service/models/application';
+import type MetaModelModel from '@/meta/service/models/model';
+const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
+const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -139,7 +139,7 @@ function toChoysumErrorLike(err: any): { domain?: string; code?: string; message
 }
 
 async function resolveModelId(appName: string, modelName: string): Promise<string> {
-  const rows = await IrModel.Search(
+  const rows = await MetaModel.Search(
     {
       And: [
         ['Name', '=', modelName],
@@ -154,7 +154,7 @@ async function resolveModelId(appName: string, modelName: string): Promise<strin
 }
 
 async function resolveApplicationId(appName: string): Promise<string> {
-  const rows = await IrApplication.Search({ And: [['Name', '=', appName]] } as any, { fields: ['Id'], limit: 1 } as any);
+  const rows = await MetaApplication.Search({ And: [['Name', '=', appName]] } as any, { fields: ['Id'], limit: 1 } as any);
   const id = String((rows as any)?.[0]?.Id || '').trim();
   if (!id) throw new Error(`meta application not found: ${appName}`);
   return id;
@@ -310,7 +310,7 @@ test('P2-2 record rule: missing identity.userId => read returns empty set (no th
       await RoleRecordRule.Create(
         {
           RoleId: { Id: roleId } as any,
-          IrModelId: locationModelId,
+          MetaModelId: locationModelId,
           Condition: null as any,
           PermCreate: true,
           PermRead: false,
@@ -369,7 +369,7 @@ test('P2-2 record rule: no write grant => write denied (deny-default)', async ()
         {
           RoleId: { Id: roleId } as any,
           Kind: 'grant',
-          IrModelId: locationModelId,
+          MetaModelId: locationModelId,
           Condition: null as any,
           PermCreate: true,
           PermRead: true,
@@ -433,8 +433,8 @@ test('P2-2 record rule: app grant OR model grant (no pick-one)', async () => {
         {
           RoleId: { Id: roleId } as any,
           Kind: 'grant',
-          IrModelId: null,
-          IrApplicationId: appId,
+          MetaModelId: null,
+          MetaApplicationId: appId,
           Condition: { And: [['Name', '=', appName]] } as any,
           PermRead: true,
           PermWrite: false,
@@ -449,8 +449,8 @@ test('P2-2 record rule: app grant OR model grant (no pick-one)', async () => {
         {
           RoleId: { Id: roleId } as any,
           Kind: 'grant',
-          IrModelId: modelId,
-          IrApplicationId: null,
+          MetaModelId: modelId,
+          MetaApplicationId: null,
           Condition: { And: [['Name', '=', modelName]] } as any,
           PermRead: true,
           PermWrite: false,
@@ -512,8 +512,8 @@ test('P2-2 record rule: grant + cross-scope restrict AND (replaces pick-one)', a
         {
           RoleId: { Id: roleId } as any,
           Kind: 'grant',
-          IrModelId: null,
-          IrApplicationId: null,
+          MetaModelId: null,
+          MetaApplicationId: null,
           Condition: null as any,
           PermRead: true,
           PermWrite: false,
@@ -528,8 +528,8 @@ test('P2-2 record rule: grant + cross-scope restrict AND (replaces pick-one)', a
         {
           RoleId: { Id: roleId } as any,
           Kind: 'restrict',
-          IrModelId: modelId,
-          IrApplicationId: null,
+          MetaModelId: modelId,
+          MetaApplicationId: null,
           Condition: { And: [['Name', '=', allowName]] } as any,
           PermRead: true,
           PermWrite: false,
@@ -587,8 +587,8 @@ test('P2-2 record rule wildcard: scope-local OR merge (model scope)', async () =
       await RoleRecordRule.Create(
         {
           RoleId: { Id: roleId } as any,
-          IrModelId: modelId,
-          IrApplicationId: null,
+          MetaModelId: modelId,
+          MetaApplicationId: null,
           Condition: { And: [['Name', '=', a]] } as any,
           PermRead: true,
           PermWrite: false,
@@ -600,8 +600,8 @@ test('P2-2 record rule wildcard: scope-local OR merge (model scope)', async () =
       await RoleRecordRule.Create(
         {
           RoleId: { Id: roleId } as any,
-          IrModelId: modelId,
-          IrApplicationId: null,
+          MetaModelId: modelId,
+          MetaApplicationId: null,
           Condition: { And: [['Name', '=', b]] } as any,
           PermRead: true,
           PermWrite: false,
@@ -659,7 +659,7 @@ test('P2-2 record rule: unknown token in condition throws PermissionDenied', asy
       await RoleRecordRule.Create(
         {
           RoleId: { Id: roleId } as any,
-          IrModelId: locationModelId,
+          MetaModelId: locationModelId,
           Condition: { And: [['Id', '=', '$notARealToken']] } as any,
           PermRead: true,
           PermWrite: false,
@@ -730,7 +730,7 @@ test('P3-2 company-scoped roles: record rule gated by role company scope (no cro
         {
           RoleId: { Id: roleId } as any,
           Kind: 'grant',
-          IrModelId: locationModelId,
+          MetaModelId: locationModelId,
           Condition: { And: [['CompanyId', '=', c2.Id]] } as any,
           PermRead: true,
           PermWrite: false,
@@ -801,7 +801,7 @@ test('P2-2 record rule: restrict-only (no grant) => deny', async () => {
         {
           RoleId: { Id: roleId } as any,
           Kind: 'restrict',
-          IrModelId: modelId,
+          MetaModelId: modelId,
           Condition: { And: [['Name', 'like', 'anything_%']] } as any,
           PermRead: true,
           PermWrite: false,
@@ -854,7 +854,7 @@ test('P2-2 record rule: everyone RoleId=null grant opens door without roles', as
           {
             RoleId: null as any,
             Kind: 'grant',
-            IrModelId: modelId,
+            MetaModelId: modelId,
             Condition: { And: [['Name', '=', allowName]] } as any,
             PermRead: true,
             PermWrite: false,
@@ -921,7 +921,7 @@ test('P2-2 record rule: everyone restrict ANDed with role grant', async () => {
           {
             RoleId: { Id: roleId } as any,
             Kind: 'grant',
-            IrModelId: modelId,
+            MetaModelId: modelId,
             Condition: null as any,
             PermRead: true,
             PermWrite: false,
@@ -936,7 +936,7 @@ test('P2-2 record rule: everyone restrict ANDed with role grant', async () => {
           {
             RoleId: null as any,
             Kind: 'restrict',
-            IrModelId: modelId,
+            MetaModelId: modelId,
             Condition: { And: [['Name', '!=', drop]] } as any,
             PermRead: true,
             PermWrite: false,
@@ -998,7 +998,7 @@ test('P2-2 record rule: userId token scopes User write to self', async () => {
         {
           RoleId: { Id: roleId } as any,
           Kind: 'grant',
-          IrModelId: modelId,
+          MetaModelId: modelId,
           Condition: { And: [['Id', '=', '$userId']] } as any,
           PermRead: true,
           PermWrite: true,
@@ -1094,7 +1094,7 @@ test('P2-2 record rule: role-scoped restrict only ANDs for that role', async () 
           {
             RoleId: { Id: roleId } as any,
             Kind: 'grant',
-            IrModelId: modelId,
+            MetaModelId: modelId,
             Condition: null as any,
             PermRead: true,
             PermWrite: false,
@@ -1110,7 +1110,7 @@ test('P2-2 record rule: role-scoped restrict only ANDs for that role', async () 
         {
           RoleId: { Id: salesRole } as any,
           Kind: 'restrict',
-          IrModelId: modelId,
+          MetaModelId: modelId,
           Condition: { And: [['Name', '=', salesAllow]] } as any,
           PermRead: true,
           PermWrite: false,
@@ -1166,8 +1166,8 @@ test('RoleRecordRule db check: deleted rows bypass scope xor', async () => {
     const row = await RoleRecordRule.Create(
       {
         RoleId: { Id: roleId } as any,
-        IrModelId: modelId,
-        IrApplicationId: null,
+        MetaModelId: modelId,
+        MetaApplicationId: null,
         Condition: { And: [['CompanyId', '=', uid('C')]] } as any,
         PermRead: true,
         PermWrite: false,
@@ -1185,8 +1185,8 @@ test('RoleRecordRule db check: deleted rows bypass scope xor', async () => {
     const repo = RoleRecordRule.getRepository().withDeleted();
     const updated = await repo.update(
       {
-        IrModelId: modelId,
-        IrApplicationId: appId,
+        MetaModelId: modelId,
+        MetaApplicationId: appId,
       } as any,
       ['Id', '=', id] as any
     );
@@ -1196,14 +1196,14 @@ test('RoleRecordRule db check: deleted rows bypass scope xor', async () => {
     const rows = await RoleRecordRule.Search(
       ['Id', '=', id] as any,
       {
-        fields: ['Id', 'DeletedAt', 'IrModelId', 'IrApplicationId'] as any,
+        fields: ['Id', 'DeletedAt', 'MetaModelId', 'MetaApplicationId'] as any,
         withDeleted: true,
       } as any
     );
 
     expect(rows.length).toBe(1);
-    expect(String((rows[0] as any)?.IrModelId || '').trim()).toBe(modelId);
-    expect(String((rows[0] as any)?.IrApplicationId || '').trim()).toBe(appId);
+    expect(String((rows[0] as any)?.MetaModelId || '').trim()).toBe(modelId);
+    expect(String((rows[0] as any)?.MetaApplicationId || '').trim()).toBe(appId);
     expect((rows[0] as any)?.DeletedAt != null).toBe(true);
   });
 });
@@ -1219,8 +1219,8 @@ test('RoleRecordRule: permission-only update must not rewrite scoped fields to g
     const created = await RoleRecordRule.Create(
       {
         RoleId: { Id: roleId } as any,
-        IrModelId: modelId,
-        IrApplicationId: null,
+        MetaModelId: modelId,
+        MetaApplicationId: null,
         Condition: { And: [['CompanyId', '=', uid('C')]] } as any,
         PermRead: true,
         PermWrite: false,
@@ -1244,13 +1244,13 @@ test('RoleRecordRule: permission-only update must not rewrite scoped fields to g
 
     const rows = await RoleRecordRule.Search(
       ['Id', '=', id] as any,
-      { fields: ['Id', 'IrModelId', 'IrApplicationId', 'PermRead', 'PermWrite'], limit: 1 } as any
+      { fields: ['Id', 'MetaModelId', 'MetaApplicationId', 'PermRead', 'PermWrite'], limit: 1 } as any
     );
 
     expect(rows.length).toBe(1);
     // Scope must stay scoped to the model, not become global.
-    expect(String((rows[0] as any)?.IrModelId || '').trim()).toBe(modelId);
-    expect(String((rows[0] as any)?.IrApplicationId || '').trim()).toBe('');
+    expect(String((rows[0] as any)?.MetaModelId || '').trim()).toBe(modelId);
+    expect(String((rows[0] as any)?.MetaApplicationId || '').trim()).toBe('');
     // Permissions must reflect the update.
     expect((rows[0] as any)?.PermRead).toBe(false);
     expect((rows[0] as any)?.PermWrite).toBe(true);
@@ -1268,8 +1268,8 @@ test('RoleRecordRule Kind: create defaults to grant and accepts restrict', async
     const granted = await RoleRecordRule.Create(
       {
         RoleId: { Id: roleId } as any,
-        IrModelId: modelId,
-        IrApplicationId: null,
+        MetaModelId: modelId,
+        MetaApplicationId: null,
         Condition: null,
         PermRead: true,
       } as any,
@@ -1283,8 +1283,8 @@ test('RoleRecordRule Kind: create defaults to grant and accepts restrict', async
       {
         RoleId: { Id: roleId } as any,
         Kind: 'restrict',
-        IrModelId: modelId,
-        IrApplicationId: null,
+        MetaModelId: modelId,
+        MetaApplicationId: null,
         Condition: { And: [['Name', '!=', 'done']] } as any,
         PermWrite: true,
       } as any,
@@ -1317,8 +1317,8 @@ test('RoleRecordRule Kind: rejects invalid values', async () => {
         {
           RoleId: { Id: roleId } as any,
           Kind: 'open',
-          IrModelId: modelId,
-          IrApplicationId: null,
+          MetaModelId: modelId,
+          MetaApplicationId: null,
           PermRead: true,
         } as any,
         ['Id'] as any
@@ -1343,8 +1343,8 @@ test('RoleRecordRule RoleId: null means everyone and warns on grant', async () =
         {
           RoleId: null,
           Kind: 'grant',
-          IrModelId: modelId,
-          IrApplicationId: null,
+          MetaModelId: modelId,
+          MetaApplicationId: null,
           Condition: null,
           PermRead: true,
         } as any,
@@ -1358,12 +1358,12 @@ test('RoleRecordRule RoleId: null means everyone and warns on grant', async () =
 
       const rows = await RoleRecordRule.Search(
         ['Id', '=', id] as any,
-        { fields: ['Id', 'Kind', 'RoleId', 'IrModelId'], limit: 1 } as any
+        { fields: ['Id', 'Kind', 'RoleId', 'MetaModelId'], limit: 1 } as any
       );
       expect(rows.length).toBe(1);
       expect(String((rows[0] as any)?.Kind || '')).toBe('grant');
       expect((rows[0] as any)?.RoleId == null || (rows[0] as any)?.RoleId === '').toBe(true);
-      expect(String((rows[0] as any)?.IrModelId || '').trim()).toBe(modelId);
+      expect(String((rows[0] as any)?.MetaModelId || '').trim()).toBe(modelId);
 
       expect(warnings.some(w => w.includes('Kind=grant') && w.includes('RoleId=null'))).toBe(true);
     });
@@ -1381,8 +1381,8 @@ test('RoleRecordRule RoleId: whitespace string normalizes to null (everyone)', a
       {
         RoleId: '   ' as any,
         Kind: 'restrict',
-        IrModelId: modelId,
-        IrApplicationId: null,
+        MetaModelId: modelId,
+        MetaApplicationId: null,
         Condition: null,
         PermRead: true,
       } as any,
@@ -1412,8 +1412,8 @@ test('RoleRecordRule RoleId: restrict with null RoleId does not emit grant warn'
         {
           RoleId: null,
           Kind: 'restrict',
-          IrModelId: modelId,
-          IrApplicationId: null,
+          MetaModelId: modelId,
+          MetaApplicationId: null,
           Condition: { And: [['Name', '!=', 'x']] } as any,
           PermWrite: true,
         } as any,
@@ -1439,8 +1439,8 @@ test('RoleRecordRule coverage: empty RoleId string, CreateMany null, Field Kind 
       {
         RoleId: '' as any,
         Kind: 'restrict',
-        IrModelId: modelId,
-        IrApplicationId: null,
+        MetaModelId: modelId,
+        MetaApplicationId: null,
         PermRead: true,
       } as any,
       ['Id', 'RoleId', 'Kind'] as any
@@ -1457,8 +1457,8 @@ test('RoleRecordRule coverage: empty RoleId string, CreateMany null, Field Kind 
     const withDefault = await RoleRecordRule.Create(
       {
         RoleId: { Id: roleId } as any,
-        IrModelId: modelId,
-        IrApplicationId: null,
+        MetaModelId: modelId,
+        MetaApplicationId: null,
         PermRead: true,
       } as any,
       ['Id', 'Kind'] as any
@@ -1470,8 +1470,8 @@ test('RoleRecordRule coverage: empty RoleId string, CreateMany null, Field Kind 
       {
         RoleId: { Id: roleId } as any,
         Kind: null as any,
-        IrModelId: modelId,
-        IrApplicationId: null,
+        MetaModelId: modelId,
+        MetaApplicationId: null,
         PermRead: true,
       } as any,
       ['Id', 'Kind'] as any
@@ -1495,8 +1495,8 @@ test('RoleRecordRule coverage: CreateMany, blank object RoleId, Update Kind/Role
           {
             RoleId: { Id: roleId } as any,
             Kind: 'grant',
-            IrModelId: modelId,
-            IrApplicationId: null,
+            MetaModelId: modelId,
+            MetaApplicationId: null,
             PermRead: true,
           } as any,
         ],
@@ -1512,8 +1512,8 @@ test('RoleRecordRule coverage: CreateMany, blank object RoleId, Update Kind/Role
         {
           RoleId: { Id: '   ' } as any,
           Kind: 'grant',
-          IrModelId: modelId,
-          IrApplicationId: null,
+          MetaModelId: modelId,
+          MetaApplicationId: null,
           PermRead: true,
         } as any,
         ['Id', 'RoleId'] as any
@@ -1526,8 +1526,8 @@ test('RoleRecordRule coverage: CreateMany, blank object RoleId, Update Kind/Role
       const omittedRole = await RoleRecordRule.Create(
         {
           Kind: 'grant',
-          IrModelId: modelId,
-          IrApplicationId: null,
+          MetaModelId: modelId,
+          MetaApplicationId: null,
           PermRead: true,
         } as any,
         ['Id', 'RoleId'] as any
@@ -1549,8 +1549,8 @@ test('RoleRecordRule coverage: CreateMany, blank object RoleId, Update Kind/Role
         {
           RoleId: null,
           Kind: 'restrict',
-          IrModelId: modelId,
-          IrApplicationId: null,
+          MetaModelId: modelId,
+          MetaApplicationId: null,
           PermWrite: true,
         } as any,
         ['Id', 'Kind', 'RoleId'] as any

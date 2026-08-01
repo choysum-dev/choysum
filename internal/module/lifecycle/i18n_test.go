@@ -78,7 +78,7 @@ msgstr "你好"
 		t.Fatal(err)
 	}
 
-	mod := &meta.IrModule{
+	mod := &meta.Module{
 		Name:           "demo",
 		ApplicationStr: "auth",
 		Path:           moduleRoot,
@@ -133,10 +133,10 @@ msgstr "新包"
 
 func TestImportModuleTerminologySkipsCoreAndMissingDir(t *testing.T) {
 	rs := newI18nTestScope(t)
-	if err := importModuleTerminology(rs, &meta.IrModule{Name: "core", ApplicationStr: "core"}, ""); err != nil {
+	if err := importModuleTerminology(rs, &meta.Module{Name: "core", ApplicationStr: "core"}, ""); err != nil {
 		t.Fatal(err)
 	}
-	if err := importModuleTerminology(rs, &meta.IrModule{Name: "demo", ApplicationStr: "auth", Path: filepath.Join(t.TempDir(), "nope")}, ""); err != nil {
+	if err := importModuleTerminology(rs, &meta.Module{Name: "demo", ApplicationStr: "auth", Path: filepath.Join(t.TempDir(), "nope")}, ""); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -170,7 +170,7 @@ msgstr "你好"
 		t.Fatal(err)
 	}
 
-	mod := &meta.IrModule{
+	mod := &meta.Module{
 		Name:           "demo",
 		ApplicationStr: "auth",
 		Path:           demoRoot,
@@ -199,13 +199,13 @@ msgstr "你好"
 
 func TestImportFrameworkModuleFansOutToHostApps(t *testing.T) {
 	rs := newI18nTestScope(t)
-	if err := rs.Session().Migrator().AutoMigrate(&meta.IrModule{}); err != nil {
+	if err := rs.Session().Migrator().AutoMigrate(&meta.Module{}); err != nil {
 		t.Fatal(err)
 	}
-	if err := rs.Session().Create(&meta.IrModule{Name: "auth", ApplicationStr: "auth", Status: meta.Installed}).Error; err != nil {
+	if err := rs.Session().Create(&meta.Module{Name: "auth", ApplicationStr: "auth", Status: meta.Installed}).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := rs.Session().Create(&meta.IrModule{Name: "web", ApplicationStr: "web", Status: meta.Installed}).Error; err != nil {
+	if err := rs.Session().Create(&meta.Module{Name: "web", ApplicationStr: "web", Status: meta.Installed}).Error; err != nil {
 		t.Fatal(err)
 	}
 
@@ -222,7 +222,7 @@ msgstr "拒绝"
 		t.Fatal(err)
 	}
 
-	coreMod := &meta.IrModule{Name: "core", ApplicationStr: "core", Path: coreRoot, Status: meta.Installed}
+	coreMod := &meta.Module{Name: "core", ApplicationStr: "core", Path: coreRoot, Status: meta.Installed}
 	if err := importModuleTerminology(rs, coreMod, modulesPath); err != nil {
 		t.Fatalf("import core: %v", err)
 	}

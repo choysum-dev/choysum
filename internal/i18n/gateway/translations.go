@@ -19,7 +19,7 @@ type handler struct {
 	runtimeScope scope.Scope
 	// fetch is injectable for tests; nil uses real gRPC dial.
 	fetch func(ctx context.Context, app, lang string, moduleNames []string) (*appTranslations, error)
-	// listModules is injectable for tests; nil queries IrModule.
+	// listModules is injectable for tests; nil queries Module.
 	listModules func() (map[string][]string, error)
 	// search / update are injectable for terms routes (user-identity dial).
 	search func(ctx context.Context, accessToken, app, lang string, modules []string, q string, limit, offset int) (*searchTermsResult, error)

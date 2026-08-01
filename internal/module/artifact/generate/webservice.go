@@ -25,13 +25,13 @@ var serviceTplStr string
 
 type webServiceGenerator struct {
 	runtimeScope scope.Scope
-	module       *meta.IrModule
+	module       *meta.Module
 
 	// Optional override for pipeline-managed staging.
 	modulesWebDir string
 }
 
-func (g *webServiceGenerator) generate(app *meta.IrApplication) ([]*module.GeneratorResult, error) {
+func (g *webServiceGenerator) generate(app *meta.Application) ([]*module.GeneratorResult, error) {
 	runtimeOpts := runtimeOptionsFromScope(g.runtimeScope)
 	var OutPaths []string
 	if len(app.Models) == 0 {
@@ -44,7 +44,7 @@ func (g *webServiceGenerator) generate(app *meta.IrApplication) ([]*module.Gener
 			p := strings.ReplaceAll(path, runtimeOpts.modulesPath, "@")
 			return strings.TrimSuffix(p, ".ts")
 		},
-		"ConvertTypeParam": func(model *meta.IrModel, service *meta.IrService) string {
+		"ConvertTypeParam": func(model *meta.Model, service *meta.Service) string {
 			if len(service.TypeParameters) > 0 {
 				typeParams := make([]string, 0, len(service.TypeParameters))
 				for _, tp := range service.TypeParameters {
@@ -61,14 +61,14 @@ func (g *webServiceGenerator) generate(app *meta.IrApplication) ([]*module.Gener
 		"ToCamel": func(s string) string {
 			return strcase.ToCamel(s)
 		},
-		"ConvertArgs": func(service *meta.IrService) string {
+		"ConvertArgs": func(service *meta.Service) string {
 			args := make([]string, 0, len(service.Parameters))
 			for i, param := range service.Parameters {
 				args = append(args, fmt.Sprintf("{ name: '%s', type: '%s', value: args[%d]}", strcase.ToCamel(param.Name), param.ProtobufType, i))
 			}
 			return "[" + strings.Join(args, ", ") + "]"
 		},
-		"ConvertReturnType": func(service *meta.IrService) string {
+		"ConvertReturnType": func(service *meta.Service) string {
 			if service.ProtobufType == "google.protobuf.Empty" {
 				return "undefined"
 			} else {
@@ -122,7 +122,7 @@ func (g *webServiceGenerator) generate(app *meta.IrApplication) ([]*module.Gener
 		}}, nil
 }
 
-func NewWebServiceGenerator(runtimeScope scope.Scope, module *meta.IrModule) *webServiceGenerator {
+func NewWebServiceGenerator(runtimeScope scope.Scope, module *meta.Module) *webServiceGenerator {
 	return &webServiceGenerator{
 		runtimeScope: runtimeScope,
 		module:       module,

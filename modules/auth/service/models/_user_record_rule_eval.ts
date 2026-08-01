@@ -4,16 +4,16 @@
 import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
 import { createServiceByModel } from '@/core/service/rpc';
 import type { ConditionEnvelope, RecordRuleOp } from '@/core/service/api/authz';
-import type IrApplicationModel from '@/meta/service/models/ir_application';
-import type IrFieldModel from '@/meta/service/models/ir_field';
-import type IrModelModel from '@/meta/service/models/ir_model';
+import type MetaApplicationModel from '@/meta/service/models/application';
+import type MetaFieldModel from '@/meta/service/models/field';
+import type MetaModelModel from '@/meta/service/models/model';
 import RoleRecordRule from './role_record_rule';
 import type { RoleRecordRuleKind } from './role_record_rule';
 import { maybeId, withPermissionGraphBypass } from './_user_authz_shared';
 
-const IrApplication = createServiceByModel<typeof IrApplicationModel>('meta.IrApplication');
-const IrModel = createServiceByModel<typeof IrModelModel>('meta.IrModel');
-const IrField = createServiceByModel<typeof IrFieldModel>('meta.IrField');
+const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
+const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
+const MetaField = createServiceByModel<typeof MetaFieldModel>('meta.MetaField');
 
 type RoleScope = { global: boolean; companies: string[] };
 
@@ -47,8 +47,8 @@ async function resolveRecordRuleMetaCached(appName: string, modelName: string): 
   const key = buildRecordRuleMetaCacheKey(appName, modelName);
   return await memoizeInReqState(state, key, async () => {
     const [apps, models] = await Promise.all([
-      IrApplication.Search({ And: [['Name', '=', appName]] } as any, { fields: ['Id'], limit: 1 } as any),
-      IrModel.Search(
+      MetaApplication.Search({ And: [['Name', '=', appName]] } as any, { fields: ['Id'], limit: 1 } as any),
+      MetaModel.Search(
         {
           And: [
             ['Name', '=', modelName],
@@ -90,7 +90,7 @@ async function computeCompanyGateMode(
     try {
       const hasOwnershipField =
         Number(
-          await IrField.Count({
+          await MetaField.Count({
             And: [
               ['ModelId', '=', modelId],
               ['Name', '=', ownershipField],
@@ -204,24 +204,24 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
     const scopeOr: any[] = [
       {
         And: [
-          ['IrModelId', '=', modelId],
-          ['IrApplicationId', 'is', null],
+          ['MetaModelId', '=', modelId],
+          ['MetaApplicationId', 'is', null],
         ],
       },
       ...(irApplicationId
         ? [
             {
               And: [
-                ['IrModelId', 'is', null],
-                ['IrApplicationId', '=', irApplicationId],
+                ['MetaModelId', 'is', null],
+                ['MetaApplicationId', '=', irApplicationId],
               ],
             } as any,
           ]
         : []),
       {
         And: [
-          ['IrModelId', 'is', null],
-          ['IrApplicationId', 'is', null],
+          ['MetaModelId', 'is', null],
+          ['MetaApplicationId', 'is', null],
         ],
       },
     ];
@@ -237,7 +237,7 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
       {
         And: [{ Or: audienceOr }, [permField as any, '=', true], { Or: scopeOr }],
       } as any,
-      { fields: ['Id', 'RoleId', 'Kind', 'Condition', 'IrModelId', 'IrApplicationId'], limit: RULE_FETCH_LIMIT + 1 }
+      { fields: ['Id', 'RoleId', 'Kind', 'Condition', 'MetaModelId', 'MetaApplicationId'], limit: RULE_FETCH_LIMIT + 1 }
     );
 
     if ((allRules || []).length > RULE_FETCH_LIMIT) {
@@ -254,8 +254,8 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
     let hasUnconstrainedGrant = false;
 
     for (const r of allRules || []) {
-      const rModelId = maybeId((r as any).IrModelId);
-      const rAppId = maybeId((r as any).IrApplicationId);
+      const rModelId = maybeId((r as any).MetaModelId);
+      const rAppId = maybeId((r as any).MetaApplicationId);
       const modelScoped = rModelId === modelId && !rAppId;
       const appScoped = !rModelId && !!irApplicationId && rAppId === irApplicationId;
       const globalScoped = !rModelId && !rAppId;

@@ -43,7 +43,7 @@ func newLifecycleCommitTestScope(t *testing.T) scope.Scope {
 func TestModuleUpgraderCommitRollsBackOnFailure(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
 	modulePath := t.TempDir()
-	mod := &meta.IrModule{
+	mod := &meta.Module{
 		Name:    "demo",
 		Version: "1.0.0",
 		Status:  meta.Installed,
@@ -54,7 +54,7 @@ func TestModuleUpgraderCommitRollsBackOnFailure(t *testing.T) {
 		t.Fatalf("create module: %v", err)
 	}
 
-	target := &meta.IrModule{
+	target := &meta.Module{
 		Name:    "demo",
 		Version: "2.0.0",
 		Status:  meta.Installed,
@@ -87,7 +87,7 @@ func TestModuleUpgraderCommitRollsBackOnFailure(t *testing.T) {
 		t.Fatalf("Required() error = %v, want %v", err, wantErr)
 	}
 
-	var got meta.IrModule
+	var got meta.Module
 	if err := runtimeScope.Session().Where("name = ?", "demo").Take(&got).Error; err != nil {
 		t.Fatalf("load module: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestModuleUpgraderCommitRollsBackOnFailure(t *testing.T) {
 
 func TestModuleUninstallerCommitRollsBackOnFailure(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
-	mod := &meta.IrModule{
+	mod := &meta.Module{
 		Name:    "demo",
 		Version: "1.0.0",
 		Status:  meta.Installed,
@@ -127,7 +127,7 @@ func TestModuleUninstallerCommitRollsBackOnFailure(t *testing.T) {
 		t.Fatalf("Required() error = %v, want %v", err, wantErr)
 	}
 
-	var got meta.IrModule
+	var got meta.Module
 	if err := runtimeScope.Session().Where("name = ?", "demo").Take(&got).Error; err != nil {
 		t.Fatalf("load module: %v", err)
 	}

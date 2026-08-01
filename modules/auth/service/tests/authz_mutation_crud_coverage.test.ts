@@ -10,14 +10,14 @@ import RoleMethodAccess from '@/auth/service/models/role_method_access';
 import RoleRecordRule from '@/auth/service/models/role_record_rule';
 import RoleFieldRule from '@/auth/service/models/role_field_rule';
 import { createServiceByModel } from '@/core/service/rpc';
-import type IrModelModel from '@/meta/service/models/ir_model';
-import type IrServiceModel from '@/meta/service/models/ir_service';
-import type IrFieldModel from '@/meta/service/models/ir_field';
+import type MetaModelModel from '@/meta/service/models/model';
+import type MetaServiceModel from '@/meta/service/models/service';
+import type MetaFieldModel from '@/meta/service/models/field';
 import { ensureRequestContext, resetRequestContext, uid } from '@/auth/service/tests/_request_context_fixtures';
 
-const IrModel = createServiceByModel<typeof IrModelModel>('meta.IrModel');
-const IrService = createServiceByModel<typeof IrServiceModel>('meta.IrService');
-const IrField = createServiceByModel<typeof IrFieldModel>('meta.IrField');
+const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
+const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
+const MetaField = createServiceByModel<typeof MetaFieldModel>('meta.MetaField');
 
 function setIdentity(userId?: string): void {
   const jsCtx = ensureRequestContext();
@@ -93,12 +93,12 @@ function setupAllowlistForFixtures(): void {
       'RoleFieldRule:write',
       'RoleFieldRule:create',
       'RoleFieldRule:delete',
-      'meta.IrModel:read',
-      'meta.IrService:read',
-      'meta.IrField:read',
-      'IrModel:read',
-      'IrService:read',
-      'IrField:read',
+      'meta.MetaModel:read',
+      'meta.MetaService:read',
+      'meta.MetaField:read',
+      'MetaModel:read',
+      'MetaService:read',
+      'MetaField:read',
     ],
   });
 }
@@ -135,7 +135,7 @@ async function createRole(codePrefix: string): Promise<{ id: string }> {
 
 async function resolveModelId(app: string, name: string): Promise<string> {
   const hit = (
-    await IrModel.Search(
+    await MetaModel.Search(
       {
         And: [
           ['Application', '=', app],
@@ -151,7 +151,7 @@ async function resolveModelId(app: string, name: string): Promise<string> {
 }
 
 async function resolveService(modelId: string, serviceName: string): Promise<{ id: string }> {
-  const rows = await IrService.Search({ And: [['ModelId', '=', modelId]] } as any, { fields: ['Id', 'Name'], limit: 5000 } as any);
+  const rows = await MetaService.Search({ And: [['ModelId', '=', modelId]] } as any, { fields: ['Id', 'Name'], limit: 5000 } as any);
   const target = String(serviceName || '')
     .trim()
     .toLowerCase();
@@ -168,7 +168,7 @@ async function resolveService(modelId: string, serviceName: string): Promise<{ i
 
 async function resolveFieldId(modelId: string, fieldName: string): Promise<string> {
   const hit = (
-    await IrField.Search(
+    await MetaField.Search(
       {
         And: [
           ['ModelId', '=', modelId],
@@ -280,9 +280,9 @@ test('authz mutation CRUD coverage: rule models condition Delete paths', async (
     const method = await RoleMethodAccess.Create(
       {
         RoleId: { Id: role.id } as any,
-        IrServiceId: browse.id,
-        IrModelId: null,
-        IrApplicationId: null,
+        MetaServiceId: browse.id,
+        MetaModelId: null,
+        MetaApplicationId: null,
         Mode: 'allow',
       } as any,
       ['Id'] as any
@@ -293,8 +293,8 @@ test('authz mutation CRUD coverage: rule models condition Delete paths', async (
     const record = await RoleRecordRule.Create(
       {
         RoleId: { Id: role.id } as any,
-        IrModelId: userModelId,
-        IrApplicationId: null,
+        MetaModelId: userModelId,
+        MetaApplicationId: null,
         Kind: 'grant',
         PermRead: true,
       } as any,
@@ -306,9 +306,9 @@ test('authz mutation CRUD coverage: rule models condition Delete paths', async (
     const field = await RoleFieldRule.Create(
       {
         RoleId: { Id: role.id } as any,
-        IrModelId: userModelId,
-        IrFieldId: fieldId,
-        IrApplicationId: null,
+        MetaModelId: userModelId,
+        MetaFieldId: fieldId,
+        MetaApplicationId: null,
         PermRead: 'allow',
         PermWrite: 'deny',
       } as any,

@@ -43,12 +43,9 @@ func (s *catalogTestScope) Context() context.Context {
 }
 func (s *catalogTestScope) Logger() *slog.Logger { return s.logger }
 
-func TestInstalledModulesByAppIncludesFrameworkModule(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "catalog.db")), &gorm.Config{})
+func TestInstalledModulesByAppSkipsWhenMetaModuleTableMissing(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "catalog-no-meta.db")), &gorm.Config{})
 	if err != nil {
-		t.Fatal(err)
-	}
-	if err := db.AutoMigrate(&meta.IrModule{}); err != nil {
 		t.Fatal(err)
 	}
 	rs := &catalogTestScope{
@@ -56,7 +53,30 @@ func TestInstalledModulesByAppIncludesFrameworkModule(t *testing.T) {
 		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
 		session: &scope.Session{DB: db},
 	}
-	rows := []meta.IrModule{
+
+	byApp, err := installedModulesByApp(rs)
+	if err != nil {
+		t.Fatalf("installedModulesByApp() error = %v", err)
+	}
+	if len(byApp) != 0 {
+		t.Fatalf("expected empty map without meta_module table, got %#v", byApp)
+	}
+}
+
+func TestInstalledModulesByAppIncludesFrameworkModule(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "catalog.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&meta.Module{}); err != nil {
+		t.Fatal(err)
+	}
+	rs := &catalogTestScope{
+		ctx:     context.Background(),
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		session: &scope.Session{DB: db},
+	}
+	rows := []meta.Module{
 		{Name: "core", ApplicationStr: "core", Status: meta.Installed},
 		{Name: "auth", ApplicationStr: "auth", Status: meta.Installed},
 		{Name: "web", ApplicationStr: "web", Status: meta.Installed},

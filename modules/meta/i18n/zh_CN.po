@@ -1,788 +1,788 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
-#: service/models/ir_application.ts:28
-msgctxt "meta.model.IrApplication.fields"
+#: service/models/application.ts:28
+msgctxt "meta.model.MetaApplication.fields"
 msgid "Modules"
 msgstr "模块"
 
-#: service/models/ir_application.ts:13
-msgctxt "meta.model.IrApplication.fields"
+#: service/models/application.ts:13
+msgctxt "meta.model.MetaApplication.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/ir_application.ts:19
-msgctxt "meta.model.IrApplication.fields"
+#: service/models/application.ts:19
+msgctxt "meta.model.MetaApplication.fields"
 msgid "Proto Directory"
 msgstr "Proto 目录"
 
-#: service/models/ir_application.ts:22
-msgctxt "meta.model.IrApplication.fields"
+#: service/models/application.ts:22
+msgctxt "meta.model.MetaApplication.fields"
 msgid "Proto File"
 msgstr "Proto 文件"
 
-#: service/models/ir_application.ts:16
-msgctxt "meta.model.IrApplication.fields"
+#: service/models/application.ts:16
+msgctxt "meta.model.MetaApplication.fields"
 msgid "Revision"
 msgstr "修订"
 
-#: service/models/ir_argument.ts:25
-msgctxt "meta.model.IrArgument.fields"
+#: service/models/argument.ts:25
+msgctxt "meta.model.MetaArgument.fields"
 msgid "Decorator"
 msgstr "装饰器"
 
-#: service/models/ir_argument.ts:22
-msgctxt "meta.model.IrArgument.fields"
+#: service/models/argument.ts:22
+msgctxt "meta.model.MetaArgument.fields"
 msgid "Module Spec Path"
 msgstr "模块规格路径"
 
-#: service/models/ir_argument.ts:19
-msgctxt "meta.model.IrArgument.fields"
+#: service/models/argument.ts:19
+msgctxt "meta.model.MetaArgument.fields"
 msgid "Reference Ident"
 msgstr "引用标识"
 
-#: service/models/ir_argument.ts:13
-msgctxt "meta.model.IrArgument.fields"
+#: service/models/argument.ts:13
+msgctxt "meta.model.MetaArgument.fields"
 msgid "Type"
 msgstr "类型"
 
-#: service/models/ir_argument.ts:16
-msgctxt "meta.model.IrArgument.fields"
+#: service/models/argument.ts:16
+msgctxt "meta.model.MetaArgument.fields"
 msgid "Value"
 msgstr "值"
 
-#: service/models/ir_component.ts:22
-msgctxt "meta.model.IrComponent.fields"
+#: service/models/component.ts:22
+msgctxt "meta.model.MetaComponent.fields"
 msgid "Extends"
 msgstr "扩展"
 
-#: service/models/ir_component.ts:25
-msgctxt "meta.model.IrComponent.fields"
+#: service/models/component.ts:25
+msgctxt "meta.model.MetaComponent.fields"
 msgid "Module"
 msgstr "模块"
 
-#: service/models/ir_component.ts:13
-msgctxt "meta.model.IrComponent.fields"
+#: service/models/component.ts:13
+msgctxt "meta.model.MetaComponent.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/ir_component.ts:16
-msgctxt "meta.model.IrComponent.fields"
+#: service/models/component.ts:16
+msgctxt "meta.model.MetaComponent.fields"
 msgid "Path"
 msgstr "路径"
 
-#: service/models/ir_component.ts:19
-msgctxt "meta.model.IrComponent.fields"
+#: service/models/component.ts:19
+msgctxt "meta.model.MetaComponent.fields"
 msgid "Raw Extends"
 msgstr "原始扩展"
 
-#: service/models/ir_decorator.ts:41
-msgctxt "meta.model.IrDecorator.fields"
+#: service/models/decorator.ts:41
+msgctxt "meta.model.MetaDecorator.fields"
 msgid "Arguments"
 msgstr "参数"
 
-#: service/models/ir_decorator.ts:35
-msgctxt "meta.model.IrDecorator.fields"
+#: service/models/decorator.ts:35
+msgctxt "meta.model.MetaDecorator.fields"
 msgid "Component"
 msgstr "组件"
 
-#: service/models/ir_decorator.ts:32
-msgctxt "meta.model.IrDecorator.fields"
+#: service/models/decorator.ts:32
+msgctxt "meta.model.MetaDecorator.fields"
 msgid "Field"
 msgstr "字段"
 
-#: service/models/ir_decorator.ts:26
-msgctxt "meta.model.IrDecorator.fields"
+#: service/models/decorator.ts:26
+msgctxt "meta.model.MetaDecorator.fields"
 msgid "Model"
 msgstr "模型"
 
-#: service/models/ir_decorator.ts:20
-msgctxt "meta.model.IrDecorator.fields"
+#: service/models/decorator.ts:20
+msgctxt "meta.model.MetaDecorator.fields"
 msgid "Module Spec Path"
 msgstr "模块规格路径"
 
-#: service/models/ir_decorator.ts:17
-msgctxt "meta.model.IrDecorator.fields"
+#: service/models/decorator.ts:17
+msgctxt "meta.model.MetaDecorator.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/ir_decorator.ts:23
-msgctxt "meta.model.IrDecorator.fields"
+#: service/models/decorator.ts:23
+msgctxt "meta.model.MetaDecorator.fields"
 msgid "Reference Ident"
 msgstr "引用标识"
 
-#: service/models/ir_decorator.ts:29
-msgctxt "meta.model.IrDecorator.fields"
+#: service/models/decorator.ts:29
+msgctxt "meta.model.MetaDecorator.fields"
 msgid "Service"
 msgstr "服务"
 
-#: service/models/ir_field.ts:69
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:69
+msgctxt "meta.model.MetaField.fields"
 msgid "Accessibility Modifier"
 msgstr "可访问性修饰符"
 
-#: service/models/ir_field.ts:96
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:96
+msgctxt "meta.model.MetaField.fields"
 msgid "Currency Field"
 msgstr "货币字段"
 
-#: service/models/ir_field.ts:108
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:108
+msgctxt "meta.model.MetaField.fields"
 msgid "Decorators"
 msgstr "装饰器"
 
-#: service/models/ir_field.ts:27
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:27
+msgctxt "meta.model.MetaField.fields"
 msgid "Field Type"
 msgstr "字段类型"
 
-#: service/models/ir_field.ts:78
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:78
+msgctxt "meta.model.MetaField.fields"
 msgid "Indexed"
 msgstr "已索引"
 
-#: service/models/ir_field.ts:102
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:102
+msgctxt "meta.model.MetaField.fields"
 msgid "Model"
 msgstr "模型"
 
-#: service/models/ir_field.ts:66
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:66
+msgctxt "meta.model.MetaField.fields"
 msgid "Module Spec Path"
 msgstr "模块规格路径"
 
-#: service/models/ir_field.ts:15
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:15
+msgctxt "meta.model.MetaField.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/ir_field.ts:24
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:24
+msgctxt "meta.model.MetaField.fields"
 msgid "Origin Model Path"
 msgstr "来源模型路径"
 
-#: service/models/ir_field.ts:87
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:87
+msgctxt "meta.model.MetaField.fields"
 msgid "Precision"
 msgstr "精度"
 
-#: service/models/ir_field.ts:75
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:75
+msgctxt "meta.model.MetaField.fields"
 msgid "Readonly"
 msgstr "只读"
 
-#: service/models/ir_field.ts:63
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:63
+msgctxt "meta.model.MetaField.fields"
 msgid "Reference Ident"
 msgstr "引用标识"
 
-#: service/models/ir_field.ts:30
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:30
+msgctxt "meta.model.MetaField.fields"
 msgid "Relation"
 msgstr "关联"
 
-#: service/models/ir_field.ts:36
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:36
+msgctxt "meta.model.MetaField.fields"
 msgid "Relation Filter"
 msgstr "关联过滤"
 
-#: service/models/ir_field.ts:39
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:39
+msgctxt "meta.model.MetaField.fields"
 msgid "Relation Inverse Field"
 msgstr "反向关联字段"
 
-#: service/models/ir_field.ts:48
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:48
+msgctxt "meta.model.MetaField.fields"
 msgid "Relation Inverse Join Field"
 msgstr "反向关联连接字段"
 
-#: service/models/ir_field.ts:45
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:45
+msgctxt "meta.model.MetaField.fields"
 msgid "Relation Join Field"
 msgstr "关联连接字段"
 
-#: service/models/ir_field.ts:42
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:42
+msgctxt "meta.model.MetaField.fields"
 msgid "Relation Join Model"
 msgstr "关联连接模型"
 
-#: service/models/ir_field.ts:33
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:33
+msgctxt "meta.model.MetaField.fields"
 msgid "Relation Model"
 msgstr "关联模型"
 
-#: service/models/ir_field.ts:51
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:51
+msgctxt "meta.model.MetaField.fields"
 msgid "Relation Model Parent Field"
 msgstr "关联模型父字段"
 
-#: service/models/ir_field.ts:81
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:81
+msgctxt "meta.model.MetaField.fields"
 msgid "Required"
 msgstr "必填"
 
-#: service/models/ir_field.ts:99
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:99
+msgctxt "meta.model.MetaField.fields"
 msgid "Round"
 msgstr "舍入"
 
-#: service/models/ir_field.ts:90
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:90
+msgctxt "meta.model.MetaField.fields"
 msgid "Scale"
 msgstr "小数位"
 
-#: service/models/ir_field.ts:93
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:93
+msgctxt "meta.model.MetaField.fields"
 msgid "Scale Field"
 msgstr "小数位字段"
 
-#: service/models/ir_field.ts:54
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:54
+msgctxt "meta.model.MetaField.fields"
 msgid "Selection"
 msgstr "选择项"
 
-#: service/models/ir_field.ts:84
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:84
+msgctxt "meta.model.MetaField.fields"
 msgid "Size"
 msgstr "大小"
 
-#: service/models/ir_field.ts:72
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:72
+msgctxt "meta.model.MetaField.fields"
 msgid "Static"
 msgstr "静态"
 
-#: service/models/ir_field.ts:18
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:18
+msgctxt "meta.model.MetaField.fields"
 msgid "TS Type Annotation"
 msgstr "TS 类型注解"
 
-#: service/models/ir_field.ts:21
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:21
+msgctxt "meta.model.MetaField.fields"
 msgid "TS Type Reference"
 msgstr "TS 类型引用"
 
-#: service/models/ir_field.ts:57
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:57
+msgctxt "meta.model.MetaField.fields"
 msgid "Title"
 msgstr "称谓"
 
-#: service/models/ir_field.ts:60
-msgctxt "meta.model.IrField.fields"
+#: service/models/field.ts:60
+msgctxt "meta.model.MetaField.fields"
 msgid "Title Text"
 msgstr "标题文本"
 
-#: service/models/ir_model.ts:55
-msgctxt "meta.model.IrModel.fields"
+#: service/models/model.ts:55
+msgctxt "meta.model.MetaModel.fields"
 msgid "Abstract"
 msgstr "抽象"
 
-#: service/models/ir_model.ts:46
-msgctxt "meta.model.IrModel.fields"
+#: service/models/model.ts:46
+msgctxt "meta.model.MetaModel.fields"
 msgid "Application"
 msgstr "应用"
 
-#: service/models/ir_model.ts:58
-msgctxt "meta.model.IrModel.fields"
+#: service/models/model.ts:58
+msgctxt "meta.model.MetaModel.fields"
 msgid "Auto Migrate"
 msgstr "自动迁移"
 
-#: service/models/ir_model.ts:49
-msgctxt "meta.model.IrModel.fields"
+#: service/models/model.ts:49
+msgctxt "meta.model.MetaModel.fields"
 msgid "Class Name"
 msgstr "类名"
 
-#: service/models/ir_model.ts:70
-msgctxt "meta.model.IrModel.fields"
+#: service/models/model.ts:70
+msgctxt "meta.model.MetaModel.fields"
 msgid "Company Field"
 msgstr "公司字段"
 
-#: service/models/ir_model.ts:79
-msgctxt "meta.model.IrModel.fields"
+#: service/models/model.ts:79
+msgctxt "meta.model.MetaModel.fields"
 msgid "Decorators"
 msgstr "装饰器"
 
-#: service/models/ir_model.ts:67
-msgctxt "meta.model.IrModel.fields"
+#: service/models/model.ts:67
+msgctxt "meta.model.MetaModel.fields"
 msgid "Extends"
 msgstr "扩展"
 
-#: service/models/ir_model.ts:93
-msgctxt "meta.model.IrModel.fields"
+#: service/models/model.ts:93
+msgctxt "meta.model.MetaModel.fields"
 msgid "Fields"
 msgstr "字段"
 
-#: service/models/ir_model.ts:73
-msgctxt "meta.model.IrModel.fields"
+#: service/models/model.ts:73
+msgctxt "meta.model.MetaModel.fields"
 msgid "Module"
 msgstr "模块"
 
-#: service/models/ir_model.ts:40
-msgctxt "meta.model.IrModel.fields"
+#: service/models/model.ts:40
+msgctxt "meta.model.MetaModel.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/ir_model.ts:43
-msgctxt "meta.model.IrModel.fields"
+#: service/models/model.ts:43
+msgctxt "meta.model.MetaModel.fields"
 msgid "Path"
 msgstr "路径"
 
-#: service/models/ir_model.ts:64
-msgctxt "meta.model.IrModel.fields"
+#: service/models/model.ts:64
+msgctxt "meta.model.MetaModel.fields"
 msgid "Raw Extends"
 msgstr "原始扩展"
 
-#: service/models/ir_model.ts:61
-msgctxt "meta.model.IrModel.fields"
+#: service/models/model.ts:61
+msgctxt "meta.model.MetaModel.fields"
 msgid "Readonly"
 msgstr "只读"
 
-#: service/models/ir_model.ts:86
-msgctxt "meta.model.IrModel.fields"
+#: service/models/model.ts:86
+msgctxt "meta.model.MetaModel.fields"
 msgid "Services"
 msgstr "服务"
 
-#: service/models/ir_model.ts:52
-msgctxt "meta.model.IrModel.fields"
+#: service/models/model.ts:52
+msgctxt "meta.model.MetaModel.fields"
 msgid "Table Name"
 msgstr "表名"
 
-#: service/models/ir_module.ts:137 service/models/ir_module.ts:176
-msgctxt "meta.model.IrModule.fields"
+#: service/models/module.ts:137 service/models/module.ts:176
+msgctxt "meta.model.MetaModule.fields"
 msgid "Application"
 msgstr "应用"
 
-#: service/models/ir_module.ts:155
-msgctxt "meta.model.IrModule.fields"
+#: service/models/module.ts:155
+msgctxt "meta.model.MetaModule.fields"
 msgid "Author"
 msgstr "作者"
 
-#: service/models/ir_module.ts:173
-msgctxt "meta.model.IrModule.fields"
+#: service/models/module.ts:173
+msgctxt "meta.model.MetaModule.fields"
 msgid "Category"
 msgstr "类别"
 
-#: service/models/ir_module.ts:189
-msgctxt "meta.model.IrModule.fields"
+#: service/models/module.ts:189
+msgctxt "meta.model.MetaModule.fields"
 msgid "Components"
 msgstr "组件"
 
-#: service/models/ir_module.ts:149 service/models/ir_module.ts:208
-msgctxt "meta.model.IrModule.fields"
+#: service/models/module.ts:149 service/models/module.ts:208
+msgctxt "meta.model.MetaModule.fields"
 msgid "Dependencies"
 msgstr "依赖"
 
-#: service/models/ir_module.ts:220
-msgctxt "meta.model.IrModule.fields"
+#: service/models/module.ts:220
+msgctxt "meta.model.MetaModule.fields"
 msgid "Dependents"
 msgstr "被依赖方"
 
-#: service/models/ir_module.ts:134
-msgctxt "meta.model.IrModule.fields"
+#: service/models/module.ts:134
+msgctxt "meta.model.MetaModule.fields"
 msgid "Description"
 msgstr "描述"
 
-#: service/models/ir_module.ts:140
-msgctxt "meta.model.IrModule.fields"
+#: service/models/module.ts:140
+msgctxt "meta.model.MetaModule.fields"
 msgid "Entry Points"
 msgstr "入口点"
 
-#: service/models/ir_module.ts:152
-msgctxt "meta.model.IrModule.fields"
+#: service/models/module.ts:152
+msgctxt "meta.model.MetaModule.fields"
 msgid "External Dependencies"
 msgstr "外部依赖"
 
-#: service/models/ir_module.ts:161
-msgctxt "meta.model.IrModule.fields"
+#: service/models/module.ts:161
+msgctxt "meta.model.MetaModule.fields"
 msgid "Homepage"
 msgstr "主页"
 
-#: service/models/ir_module.ts:158
-msgctxt "meta.model.IrModule.fields"
+#: service/models/module.ts:158
+msgctxt "meta.model.MetaModule.fields"
 msgid "License"
 msgstr "许可证"
 
-#: service/models/ir_module.ts:182
-msgctxt "meta.model.IrModule.fields"
+#: service/models/module.ts:182
+msgctxt "meta.model.MetaModule.fields"
 msgid "Models"
 msgstr "模型"
 
-#: service/models/ir_module.ts:119
-msgctxt "meta.model.IrModule.fields"
+#: service/models/module.ts:119
+msgctxt "meta.model.MetaModule.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/ir_module.ts:167
-msgctxt "meta.model.IrModule.fields"
+#: service/models/module.ts:167
+msgctxt "meta.model.MetaModule.fields"
 msgid "Path"
 msgstr "路径"
 
-#: service/models/ir_module.ts:164
-msgctxt "meta.model.IrModule.fields"
+#: service/models/module.ts:164
+msgctxt "meta.model.MetaModule.fields"
 msgid "Repository"
 msgstr "仓库"
 
-#: service/models/ir_module.ts:146
-msgctxt "meta.model.IrModule.fields"
+#: service/models/module.ts:146
+msgctxt "meta.model.MetaModule.fields"
 msgid "Service Entry Point"
 msgstr "服务入口"
 
-#: service/models/ir_module.ts:122
-msgctxt "meta.model.IrModule.fields"
+#: service/models/module.ts:122
+msgctxt "meta.model.MetaModule.fields"
 msgid "Short Description"
 msgstr "简短描述"
 
-#: service/models/ir_module.ts:170
-msgctxt "meta.model.IrModule.fields"
+#: service/models/module.ts:170
+msgctxt "meta.model.MetaModule.fields"
 msgid "Status"
 msgstr "状态"
 
-#: service/models/ir_module.ts:131
-msgctxt "meta.model.IrModule.fields"
+#: service/models/module.ts:131
+msgctxt "meta.model.MetaModule.fields"
 msgid "Summary"
 msgstr "摘要"
 
-#: service/models/ir_module.ts:128
-msgctxt "meta.model.IrModule.fields"
+#: service/models/module.ts:128
+msgctxt "meta.model.MetaModule.fields"
 msgid "Tarball"
 msgstr "安装包"
 
-#: service/models/ir_module.ts:196
-msgctxt "meta.model.IrModule.fields"
+#: service/models/module.ts:196
+msgctxt "meta.model.MetaModule.fields"
 msgid "UI Resources"
 msgstr "界面资源"
 
-#: service/models/ir_module.ts:125
-msgctxt "meta.model.IrModule.fields"
+#: service/models/module.ts:125
+msgctxt "meta.model.MetaModule.fields"
 msgid "Version"
 msgstr "版本"
 
-#: service/models/ir_module.ts:143
-msgctxt "meta.model.IrModule.fields"
+#: service/models/module.ts:143
+msgctxt "meta.model.MetaModule.fields"
 msgid "Web Entry Point"
 msgstr "Web 入口"
 
-#: service/models/ir_module_dependency.ts:19
-msgctxt "meta.model.IrModuleDependency.fields"
+#: service/models/module_dependency.ts:19
+msgctxt "meta.model.MetaModuleDependency.fields"
 msgid "Dependent Module"
 msgstr "依赖模块"
 
-#: service/models/ir_module_dependency.ts:13
-msgctxt "meta.model.IrModuleDependency.fields"
+#: service/models/module_dependency.ts:13
+msgctxt "meta.model.MetaModuleDependency.fields"
 msgid "Module"
 msgstr "模块"
 
-#: service/models/ir_module_index.ts:369
-msgctxt "meta.model.IrModuleIndex.fields"
+#: service/models/module_index.ts:369
+msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Available"
 msgstr "可用"
 
-#: service/models/ir_module_index.ts:384
-msgctxt "meta.model.IrModuleIndex.fields"
+#: service/models/module_index.ts:384
+msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Batch Synced At"
 msgstr "批次同步"
 
-#: service/models/ir_module_index.ts:390
-msgctxt "meta.model.IrModuleIndex.fields"
+#: service/models/module_index.ts:390
+msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Error Message"
 msgstr "错误信息"
 
-#: service/models/ir_module_index.ts:432
-msgctxt "meta.model.IrModuleIndex.fields"
+#: service/models/module_index.ts:432
+msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Install Status"
 msgstr "安装状态"
 
-#: service/models/ir_module_index.ts:449
-msgctxt "meta.model.IrModuleIndex.fields"
+#: service/models/module_index.ts:449
+msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Installed Version"
 msgstr "已装版本"
 
-#: service/models/ir_module_index.ts:381
-msgctxt "meta.model.IrModuleIndex.fields"
+#: service/models/module_index.ts:381
+msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Last Synced At"
 msgstr "最近同步"
 
-#: service/models/ir_module_index.ts:378
-msgctxt "meta.model.IrModuleIndex.fields"
+#: service/models/module_index.ts:378
+msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Local Path"
 msgstr "本地路径"
 
-#: service/models/ir_module_index.ts:408
-msgctxt "meta.model.IrModuleIndex.fields"
+#: service/models/module_index.ts:408
+msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Local Version"
 msgstr "本地版本"
 
-#: service/models/ir_module_index.ts:375
-msgctxt "meta.model.IrModuleIndex.fields"
+#: service/models/module_index.ts:375
+msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Manifest JSON"
 msgstr "清单 JSON"
 
-#: service/models/ir_module_index.ts:360
-msgctxt "meta.model.IrModuleIndex.fields"
+#: service/models/module_index.ts:360
+msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Module Name"
 msgstr "模块名"
 
-#: service/models/ir_module_index.ts:366
-msgctxt "meta.model.IrModuleIndex.fields"
+#: service/models/module_index.ts:366
+msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Origin Ref"
 msgstr "来源标识"
 
-#: service/models/ir_module_index.ts:363
-msgctxt "meta.model.IrModuleIndex.fields"
+#: service/models/module_index.ts:363
+msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Origin Type"
 msgstr "来源类型"
 
-#: service/models/ir_module_index.ts:396
-msgctxt "meta.model.IrModuleIndex.fields"
+#: service/models/module_index.ts:396
+msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Origin Types"
 msgstr "来源类型"
 
-#: service/models/ir_module_index.ts:420
-msgctxt "meta.model.IrModuleIndex.fields"
+#: service/models/module_index.ts:420
+msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Registry Version"
 msgstr "仓库版本"
 
-#: service/models/ir_module_index.ts:387
-msgctxt "meta.model.IrModuleIndex.fields"
+#: service/models/module_index.ts:387
+msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Sync Revision"
 msgstr "同步版本"
 
-#: service/models/ir_module_index.ts:372
-msgctxt "meta.model.IrModuleIndex.fields"
+#: service/models/module_index.ts:372
+msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Version"
 msgstr "版本"
 
-#: service/models/ir_module_migration_history.ts:25
-msgctxt "meta.model.IrModuleMigrationHistory.fields"
+#: service/models/module_migration_history.ts:25
+msgctxt "meta.model.MetaModuleMigrationHistory.fields"
 msgid "Checksum"
 msgstr "校验和"
 
-#: service/models/ir_module_migration_history.ts:37
-msgctxt "meta.model.IrModuleMigrationHistory.fields"
+#: service/models/module_migration_history.ts:37
+msgctxt "meta.model.MetaModuleMigrationHistory.fields"
 msgid "Error"
 msgstr "错误"
 
-#: service/models/ir_module_migration_history.ts:34
-msgctxt "meta.model.IrModuleMigrationHistory.fields"
+#: service/models/module_migration_history.ts:34
+msgctxt "meta.model.MetaModuleMigrationHistory.fields"
 msgid "Finished At"
 msgstr "结束时间"
 
-#: service/models/ir_module_migration_history.ts:43
-msgctxt "meta.model.IrModuleMigrationHistory.fields"
+#: service/models/module_migration_history.ts:43
+msgctxt "meta.model.MetaModuleMigrationHistory.fields"
 msgid "Job"
 msgstr "任务"
 
-#: service/models/ir_module_migration_history.ts:13
-msgctxt "meta.model.IrModuleMigrationHistory.fields"
+#: service/models/module_migration_history.ts:13
+msgctxt "meta.model.MetaModuleMigrationHistory.fields"
 msgid "Module Name"
 msgstr "模块名"
 
-#: service/models/ir_module_migration_history.ts:19
-msgctxt "meta.model.IrModuleMigrationHistory.fields"
+#: service/models/module_migration_history.ts:19
+msgctxt "meta.model.MetaModuleMigrationHistory.fields"
 msgid "Phase"
 msgstr "阶段"
 
-#: service/models/ir_module_migration_history.ts:22
-msgctxt "meta.model.IrModuleMigrationHistory.fields"
+#: service/models/module_migration_history.ts:22
+msgctxt "meta.model.MetaModuleMigrationHistory.fields"
 msgid "Script"
 msgstr "脚本"
 
-#: service/models/ir_module_migration_history.ts:31
-msgctxt "meta.model.IrModuleMigrationHistory.fields"
+#: service/models/module_migration_history.ts:31
+msgctxt "meta.model.MetaModuleMigrationHistory.fields"
 msgid "Started At"
 msgstr "开始时间"
 
-#: service/models/ir_module_migration_history.ts:28
-msgctxt "meta.model.IrModuleMigrationHistory.fields"
+#: service/models/module_migration_history.ts:28
+msgctxt "meta.model.MetaModuleMigrationHistory.fields"
 msgid "Status"
 msgstr "状态"
 
-#: service/models/ir_module_migration_history.ts:40
-msgctxt "meta.model.IrModuleMigrationHistory.fields"
+#: service/models/module_migration_history.ts:40
+msgctxt "meta.model.MetaModuleMigrationHistory.fields"
 msgid "Trace ID"
 msgstr "追踪 ID"
 
-#: service/models/ir_module_migration_history.ts:16
-msgctxt "meta.model.IrModuleMigrationHistory.fields"
+#: service/models/module_migration_history.ts:16
+msgctxt "meta.model.MetaModuleMigrationHistory.fields"
 msgid "Version"
 msgstr "版本"
 
-#: service/models/ir_parameter.ts:13
-msgctxt "meta.model.IrParameter.fields"
+#: service/models/parameter.ts:13
+msgctxt "meta.model.MetaParameter.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/ir_parameter.ts:19
-msgctxt "meta.model.IrParameter.fields"
+#: service/models/parameter.ts:19
+msgctxt "meta.model.MetaParameter.fields"
 msgid "Protobuf Type"
 msgstr "Protobuf 类型"
 
-#: service/models/ir_parameter.ts:22
-msgctxt "meta.model.IrParameter.fields"
+#: service/models/parameter.ts:22
+msgctxt "meta.model.MetaParameter.fields"
 msgid "Service"
 msgstr "服务"
 
-#: service/models/ir_parameter.ts:16
-msgctxt "meta.model.IrParameter.fields"
+#: service/models/parameter.ts:16
+msgctxt "meta.model.MetaParameter.fields"
 msgid "TS Type Annotation"
 msgstr "TS 类型注解"
 
-#: service/models/ir_service.ts:23
-msgctxt "meta.model.IrService.fields"
+#: service/models/service.ts:23
+msgctxt "meta.model.MetaService.fields"
 msgid "Accessibility Modifier"
 msgstr "可访问性修饰符"
 
-#: service/models/ir_service.ts:55
-msgctxt "meta.model.IrService.fields"
+#: service/models/service.ts:55
+msgctxt "meta.model.MetaService.fields"
 msgid "Decorators"
 msgstr "装饰器"
 
-#: service/models/ir_service.ts:35
-msgctxt "meta.model.IrService.fields"
+#: service/models/service.ts:35
+msgctxt "meta.model.MetaService.fields"
 msgid "Model"
 msgstr "模型"
 
-#: service/models/ir_service.ts:17
-msgctxt "meta.model.IrService.fields"
+#: service/models/service.ts:17
+msgctxt "meta.model.MetaService.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/ir_service.ts:20
-msgctxt "meta.model.IrService.fields"
+#: service/models/service.ts:20
+msgctxt "meta.model.MetaService.fields"
 msgid "Origin Model Path"
 msgstr "来源模型路径"
 
-#: service/models/ir_service.ts:48
-msgctxt "meta.model.IrService.fields"
+#: service/models/service.ts:48
+msgctxt "meta.model.MetaService.fields"
 msgid "Parameters"
 msgstr "参数"
 
-#: service/models/ir_service.ts:29
-msgctxt "meta.model.IrService.fields"
+#: service/models/service.ts:29
+msgctxt "meta.model.MetaService.fields"
 msgid "Protobuf Type"
 msgstr "Protobuf 类型"
 
-#: service/models/ir_service.ts:32
-msgctxt "meta.model.IrService.fields"
+#: service/models/service.ts:32
+msgctxt "meta.model.MetaService.fields"
 msgid "Static"
 msgstr "静态"
 
-#: service/models/ir_service.ts:26
-msgctxt "meta.model.IrService.fields"
+#: service/models/service.ts:26
+msgctxt "meta.model.MetaService.fields"
 msgid "TS Type Annotation"
 msgstr "TS 类型注解"
 
-#: service/models/ir_service.ts:41
-msgctxt "meta.model.IrService.fields"
+#: service/models/service.ts:41
+msgctxt "meta.model.MetaService.fields"
 msgid "Type Parameters"
 msgstr "类型参数"
 
-#: service/models/ir_type_parameter.ts:16
-msgctxt "meta.model.IrTypeParameter.fields"
+#: service/models/type_parameter.ts:16
+msgctxt "meta.model.MetaTypeParameter.fields"
 msgid "Module Spec Path"
 msgstr "模块规格路径"
 
-#: service/models/ir_type_parameter.ts:13
-msgctxt "meta.model.IrTypeParameter.fields"
+#: service/models/type_parameter.ts:13
+msgctxt "meta.model.MetaTypeParameter.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/ir_type_parameter.ts:19
-msgctxt "meta.model.IrTypeParameter.fields"
+#: service/models/type_parameter.ts:19
+msgctxt "meta.model.MetaTypeParameter.fields"
 msgid "Reference Ident"
 msgstr "引用标识"
 
-#: service/models/ir_type_parameter.ts:22
-msgctxt "meta.model.IrTypeParameter.fields"
+#: service/models/type_parameter.ts:22
+msgctxt "meta.model.MetaTypeParameter.fields"
 msgid "Service"
 msgstr "服务"
 
-#: service/models/ir_ui_resource.ts:127
-msgctxt "meta.model.IrUiResource.fields"
+#: service/models/ui_resource.ts:127
+msgctxt "meta.model.MetaUiResource.fields"
 msgid "Application"
 msgstr "应用"
 
-#: service/models/ir_ui_resource.ts:143
-msgctxt "meta.model.IrUiResource.fields"
+#: service/models/ui_resource.ts:143
+msgctxt "meta.model.MetaUiResource.fields"
 msgid "Children"
 msgstr "下级"
 
-#: service/models/ir_ui_resource.ts:119
-msgctxt "meta.model.IrUiResource.fields"
+#: service/models/ui_resource.ts:119
+msgctxt "meta.model.MetaUiResource.fields"
 msgid "Default Roles"
 msgstr "默认角色"
 
-#: service/models/ir_ui_resource.ts:136 service/models/ir_ui_resource.ts:74
-msgctxt "meta.model.IrUiResource.fields"
+#: service/models/ui_resource.ts:136 service/models/ui_resource.ts:74
+msgctxt "meta.model.MetaUiResource.fields"
 msgid "Module"
 msgstr "模块"
 
-#: service/models/ir_ui_resource.ts:56
-msgctxt "meta.model.IrUiResource.fields"
+#: service/models/ui_resource.ts:56
+msgctxt "meta.model.MetaUiResource.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/ir_ui_resource.ts:85
-msgctxt "meta.model.IrUiResource.fields"
+#: service/models/ui_resource.ts:85
+msgctxt "meta.model.MetaUiResource.fields"
 msgid "Parent"
 msgstr "上级"
 
-#: service/models/ir_ui_resource.ts:93
-msgctxt "meta.model.IrUiResource.fields"
+#: service/models/ui_resource.ts:93
+msgctxt "meta.model.MetaUiResource.fields"
 msgid "Parent Path"
 msgstr "父路径"
 
-#: service/models/ir_ui_resource.ts:77
-msgctxt "meta.model.IrUiResource.fields"
+#: service/models/ui_resource.ts:77
+msgctxt "meta.model.MetaUiResource.fields"
 msgid "Path"
 msgstr "路径"
 
-#: service/models/ir_ui_resource.ts:71
-msgctxt "meta.model.IrUiResource.fields"
+#: service/models/ui_resource.ts:71
+msgctxt "meta.model.MetaUiResource.fields"
 msgid "Requires"
 msgstr "依赖要求"
 
-#: service/models/ir_ui_resource.ts:68
-msgctxt "meta.model.IrUiResource.fields"
+#: service/models/ui_resource.ts:68
+msgctxt "meta.model.MetaUiResource.fields"
 msgid "Sequence"
 msgstr "序列"
 
-#: service/models/ir_ui_resource.ts:62
-msgctxt "meta.model.IrUiResource.fields"
+#: service/models/ui_resource.ts:62
+msgctxt "meta.model.MetaUiResource.fields"
 msgid "Title"
 msgstr "称谓"
 
-#: service/models/ir_ui_resource.ts:65
-msgctxt "meta.model.IrUiResource.fields"
+#: service/models/ui_resource.ts:65
+msgctxt "meta.model.MetaUiResource.fields"
 msgid "Title Text"
 msgstr "标题文本"
 
-#: service/models/ir_ui_resource.ts:59
-msgctxt "meta.model.IrUiResource.fields"
+#: service/models/ui_resource.ts:59
+msgctxt "meta.model.MetaUiResource.fields"
 msgid "Type"
 msgstr "类型"
 
-#: service/models/ir_ui_resource.ts:116
-msgctxt "meta.model.IrUiResource.fields"
+#: service/models/ui_resource.ts:116
+msgctxt "meta.model.MetaUiResource.fields"
 msgid "UI Path"
 msgstr "界面路径"
 
-#: service/models/ir_ui_resource_menu_route.ts:18
-msgctxt "meta.model.IrUiResourceMenuRoute.fields"
+#: service/models/ui_resource_menu_route.ts:18
+msgctxt "meta.model.MetaUiResourceMenuRoute.fields"
 msgid "Menu"
 msgstr "菜单"
 
-#: service/models/ir_ui_resource_menu_route.ts:28
-msgctxt "meta.model.IrUiResourceMenuRoute.fields"
+#: service/models/ui_resource_menu_route.ts:28
+msgctxt "meta.model.MetaUiResourceMenuRoute.fields"
 msgid "Route"
 msgstr "路由"
 
-#: service/models/ir_ui_resource_route_action.ts:27
-msgctxt "meta.model.IrUiResourceRouteAction.fields"
+#: service/models/ui_resource_route_action.ts:27
+msgctxt "meta.model.MetaUiResourceRouteAction.fields"
 msgid "Action"
 msgstr "动作"
 
-#: service/models/ir_ui_resource_route_action.ts:18
-msgctxt "meta.model.IrUiResourceRouteAction.fields"
+#: service/models/ui_resource_route_action.ts:18
+msgctxt "meta.model.MetaUiResourceRouteAction.fields"
 msgid "Route"
 msgstr "路由"
 
@@ -856,38 +856,38 @@ msgctxt "meta.model.ModuleManagementLog.fields"
 msgid "Summary"
 msgstr "摘要"
 
-#: service/models/ir_module.ts:314
-msgctxt "service/models/ir_module"
+#: service/models/module.ts:314
+msgctxt "service/models/module"
 msgid "jobId cannot be empty"
 msgstr "jobId 不能为空"
 
-#: service/models/ir_module.ts:303
-msgctxt "service/models/ir_module"
+#: service/models/module.ts:303
+msgctxt "service/models/module"
 msgid "lease conflict"
 msgstr "租约冲突"
 
-#: service/models/ir_module.ts:254
-msgctxt "service/models/ir_module"
+#: service/models/module.ts:254
+msgctxt "service/models/module"
 msgid "module not found"
 msgstr "未找到模块"
 
-#: service/models/ir_module.ts:282
-msgctxt "service/models/ir_module"
+#: service/models/module.ts:282
+msgctxt "service/models/module"
 msgid "moduleName cannot be empty"
 msgstr "moduleName 不能为空"
 
-#: service/models/ir_module.ts:242
-msgctxt "service/models/ir_module"
+#: service/models/module.ts:242
+msgctxt "service/models/module"
 msgid "plan was regenerated from the latest module state"
 msgstr "计划已根据最新模块状态重新生成"
 
-#: service/models/ir_module_index.ts:591 service/models/ir_module_index.ts:665
-msgctxt "service/models/ir_module_index"
+#: service/models/module_index.ts:591 service/models/module_index.ts:665
+msgctxt "service/models/module_index"
 msgid "originType must be one of: local, registry, all"
 msgstr "originType 必须是 local、registry 或 all"
 
-#: service/models/ir_ui_resource.ts:108
-msgctxt "service/models/ir_ui_resource"
+#: service/models/ui_resource.ts:108
+msgctxt "service/models/ui_resource"
 msgid "Cycle detected: %s cannot be assigned under one of its descendants"
 msgstr "检测到循环：%s 不能挂到其子孙节点下"
 

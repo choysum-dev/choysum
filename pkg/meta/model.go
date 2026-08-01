@@ -31,18 +31,18 @@ func (m *BaseModel) BeforeCreate(tx *gorm.DB) error {
 // Entities returns the core model set for external use.
 func Entities() []any {
 	return []any{
-		&IrApplication{},
-		&IrModule{},
-		&IrComponent{},
-		&IrModel{},
-		&IrField{},
-		&IrService{},
-		&IrTypeParameter{},
-		&IrParameter{},
-		&IrDecorator{},
-		&IrArgument{},
-		&IrUiResource{},
-		&IrUiResourceMenuRoute{},
-		&IrUiResourceRouteAction{},
+		&Application{},
+		&Module{},
+		&Component{},
+		&Model{},
+		&Field{},
+		&Service{},
+		&TypeParameter{},
+		&Parameter{},
+		&Decorator{},
+		&Argument{},
+		&UiResource{},
+		&UiResourceMenuRoute{},
+		&UiResourceRouteAction{},
 	}
 }

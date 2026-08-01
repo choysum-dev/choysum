@@ -32,7 +32,7 @@ import (
 )
 
 type moduleInstaller struct {
-	module        *meta.IrModule
+	module        *meta.Module
 	runtimeScope  scope.Scope
 	moduleManager *ModuleManager
 	ctx           *opContext
@@ -41,7 +41,7 @@ type moduleInstaller struct {
 }
 
 func (m *moduleInstaller) restoreModuleIfSoftDeleted() error {
-	var existing meta.IrModule
+	var existing meta.Module
 	err := m.runtimeScope.Session().Unscoped().Where("name = ?", m.module.Name).Take(&existing).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -54,7 +54,7 @@ func (m *moduleInstaller) restoreModuleIfSoftDeleted() error {
 	m.module.Id = existing.Id
 
 	if existing.DeletedAt.Valid {
-		if err := m.runtimeScope.Session().Unscoped().Model(&meta.IrModule{}).
+		if err := m.runtimeScope.Session().Unscoped().Model(&meta.Module{}).
 			Where("id = ?", existing.Id.String).
 			Update("deleted_at", nil).Error; err != nil {
 			return xfmt.Errorf("error restoring soft-deleted module %s: %w", m.module.Name, err)
@@ -69,7 +69,7 @@ func (m *moduleInstaller) checkExtDepInstalled() error {
 }
 
 func (m *moduleInstaller) checkModuleInstalled() bool {
-	if m.runtimeScope.Session().Migrator().HasTable(&meta.IrModule{}) {
+	if m.runtimeScope.Session().Migrator().HasTable(&meta.Module{}) {
 		if result := m.runtimeScope.Session().
 			Preload("Dependencies", func(db *gorm.DB) *gorm.DB { return db.Where("status = ?", meta.Installed).Order("id ASC") }).
 			Preload("Dependents", func(db *gorm.DB) *gorm.DB { return db.Where("status = ?", meta.Installed).Order("id ASC") }).
@@ -363,7 +363,7 @@ func mustJSON(value any) []byte {
 	return data
 }
 
-func newModuleInstaller(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.IrModule, moduleManager *ModuleManager, ctx *opContext) *moduleInstaller {
+func newModuleInstaller(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.Module, moduleManager *ModuleManager, ctx *opContext) *moduleInstaller {
 	installer := &moduleInstaller{
 		module:        module,
 		runtimeScope:  runtimeScope,

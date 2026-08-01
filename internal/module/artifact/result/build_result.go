@@ -8,7 +8,7 @@ import (
 )
 
 type BuildResult struct {
-	Module        *meta.IrModule
+	Module        *meta.Module
 	EsbuildResult *api.BuildResult
 }
 

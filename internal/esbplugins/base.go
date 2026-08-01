@@ -17,7 +17,7 @@ import (
 // BasePlugin carries shared parser and runtime state for esbuild plugins.
 type BasePlugin struct {
 	Env              scope.Scope
-	Module           *meta.IrModule
+	Module           *meta.Module
 	EntryPoint       string
 	Parser           parser.Parser
 	Wg               sync.WaitGroup
@@ -83,7 +83,7 @@ func PathWithinRoot(path string, root string) bool {
 }
 
 // NewBasePlugin creates shared plugin state for a module entry point.
-func NewBasePlugin(runtimeScope scope.Scope, module *meta.IrModule, entryPoint string) *BasePlugin {
+func NewBasePlugin(runtimeScope scope.Scope, module *meta.Module, entryPoint string) *BasePlugin {
 	return &BasePlugin{
 		Env:              runtimeScope,
 		Module:           module,

@@ -29,7 +29,7 @@ func (m *ModuleManager) buildBackendBundlesToDir(ctx context.Context, distBundle
 	runtimeOpts := m.resolvedRuntimeOptions()
 
 	// Load all installed modules (needed for dependency graph + proto source selection).
-	var installedMods []meta.IrModule
+	var installedMods []meta.Module
 	if err := m.runtimeScope.Session().
 		Where("status = ?", meta.Installed).
 		Order("id ASC").
@@ -38,7 +38,7 @@ func (m *ModuleManager) buildBackendBundlesToDir(ctx context.Context, distBundle
 	}
 
 	// Load backend entry modules for each app in install order.
-	var backendMods []meta.IrModule
+	var backendMods []meta.Module
 	if err := m.runtimeScope.Session().
 		Where("status = ? AND application_str <> '' AND service_entry_point <> ''", meta.Installed).
 		Order("id ASC").
@@ -46,7 +46,7 @@ func (m *ModuleManager) buildBackendBundlesToDir(ctx context.Context, distBundle
 		return xfmt.Errorf("error loading backend modules: %w", err)
 	}
 
-	modsByApp := map[string][]*meta.IrModule{}
+	modsByApp := map[string][]*meta.Module{}
 	for i := range backendMods {
 		app := strings.TrimSpace(backendMods[i].ApplicationStr)
 		if app == "" {

@@ -38,14 +38,14 @@ func TestForeignKeySQLBuilders(t *testing.T) {
 func TestForeignKeyDiscoveryAndConstructors(t *testing.T) {
 	runtimeScope := newSchemaTestScope(t)
 	migrateSchemaMetaTables(t, runtimeScope.Session())
-	module := &meta.IrModule{}
-	targetModel := &meta.IrModel{Path: "app/user.ts", ModelTable: "app_user"}
+	module := &meta.Module{}
+	targetModel := &meta.Model{Path: "app/user.ts", ModelTable: "app_user"}
 	disabledAutoMigrate := false
-	userModel := &meta.IrModel{Path: "app/order.ts", ModelTable: "app_order", Fields: []*meta.IrField{newRelationField("OwnerId", "app/user", `{"type":"ManyToOne","relation":{"onDelete":"CASCADE","onUpdate":"RESTRICT"}}`), newRelationField("ComputedOwner", "app/user", `{"type":"ManyToOne","select":"expr"}`)}}
-	readonlyModel := &meta.IrModel{Path: "app/readonly.ts", ModelTable: "readonly", Readonly: true, Fields: []*meta.IrField{newRelationField("Ignored", "app/user", `{"type":"ManyToOne"}`)}}
-	disabledModel := &meta.IrModel{Path: "app/disabled.ts", ModelTable: "disabled", AutoMigrate: &disabledAutoMigrate, Fields: []*meta.IrField{newRelationField("Ignored", "app/user", `{"type":"ManyToOne"}`)}}
+	userModel := &meta.Model{Path: "app/order.ts", ModelTable: "app_order", Fields: []*meta.Field{newRelationField("OwnerId", "app/user", `{"type":"ManyToOne","relation":{"onDelete":"CASCADE","onUpdate":"RESTRICT"}}`), newRelationField("ComputedOwner", "app/user", `{"type":"ManyToOne","select":"expr"}`)}}
+	readonlyModel := &meta.Model{Path: "app/readonly.ts", ModelTable: "readonly", Readonly: true, Fields: []*meta.Field{newRelationField("Ignored", "app/user", `{"type":"ManyToOne"}`)}}
+	disabledModel := &meta.Model{Path: "app/disabled.ts", ModelTable: "disabled", AutoMigrate: &disabledAutoMigrate, Fields: []*meta.Field{newRelationField("Ignored", "app/user", `{"type":"ManyToOne"}`)}}
 
-	fkMigrator := newForeignKeyMigrator(runtimeScope, module, []*meta.IrModel{userModel, targetModel, readonlyModel, disabledModel}).(*foreignKeyMigrator)
+	fkMigrator := newForeignKeyMigrator(runtimeScope, module, []*meta.Model{userModel, targetModel, readonlyModel, disabledModel}).(*foreignKeyMigrator)
 	fks, err := fkMigrator.getForeignKeys()
 	if err != nil {
 		t.Fatalf("getForeignKeys() error = %v", err)
@@ -76,17 +76,17 @@ func TestForeignKeyMigratorRuntimePaths(t *testing.T) {
 	t.Run("resolves target model from database and migrates sqlite no-op", func(t *testing.T) {
 		runtimeScope := newSchemaTestScope(t)
 		migrateSchemaMetaTables(t, runtimeScope.Session())
-		module := &meta.IrModule{Name: "sales"}
+		module := &meta.Module{Name: "sales"}
 		if err := runtimeScope.Session().Create(module).Error; err != nil {
 			t.Fatalf("create module: %v", err)
 		}
-		target := &meta.IrModel{Name: "User", Path: "sales/user.ts", ModelTable: "sales_user", ModuleId: module.Id}
+		target := &meta.Model{Name: "User", Path: "sales/user.ts", ModelTable: "sales_user", ModuleId: module.Id}
 		if err := runtimeScope.Session().Create(target).Error; err != nil {
 			t.Fatalf("create target model: %v", err)
 		}
-		source := &meta.IrModel{Name: "Order", Path: "sales/order.ts", ModelTable: "sales_order", ModuleId: module.Id, Fields: []*meta.IrField{newRelationField("OwnerId", "sales/user", `{"type":"ManyToOne","relation":{"onDelete":"CASCADE"}}`)}}
+		source := &meta.Model{Name: "Order", Path: "sales/order.ts", ModelTable: "sales_order", ModuleId: module.Id, Fields: []*meta.Field{newRelationField("OwnerId", "sales/user", `{"type":"ManyToOne","relation":{"onDelete":"CASCADE"}}`)}}
 
-		fkMigrator := newForeignKeyMigrator(runtimeScope, module, []*meta.IrModel{source}).(*foreignKeyMigrator)
+		fkMigrator := newForeignKeyMigrator(runtimeScope, module, []*meta.Model{source}).(*foreignKeyMigrator)
 		resolved, err := fkMigrator.resolveTargetModelByPath("sales/user.ts")
 		if err != nil {
 			t.Fatalf("resolveTargetModelByPath() error = %v", err)
@@ -112,8 +112,8 @@ func TestForeignKeyMigratorRuntimePaths(t *testing.T) {
 
 	t.Run("reports missing target model", func(t *testing.T) {
 		runtimeScope := newSchemaTestScope(t)
-		module := &meta.IrModule{Name: "sales"}
-		fkMigrator := newForeignKeyMigrator(runtimeScope, module, []*meta.IrModel{{Name: "Order", Path: "sales/order.ts", ModelTable: "sales_order", Fields: []*meta.IrField{newRelationField("OwnerId", "sales/missing", `{"type":"ManyToOne"}`)}}}).(*foreignKeyMigrator)
+		module := &meta.Module{Name: "sales"}
+		fkMigrator := newForeignKeyMigrator(runtimeScope, module, []*meta.Model{{Name: "Order", Path: "sales/order.ts", ModelTable: "sales_order", Fields: []*meta.Field{newRelationField("OwnerId", "sales/missing", `{"type":"ManyToOne"}`)}}}).(*foreignKeyMigrator)
 
 		if _, err := fkMigrator.getManyToOneKeys(); err == nil || !strings.Contains(err.Error(), "target model sales/missing.ts not found") {
 			t.Fatalf("expected missing target error, got %v", err)
@@ -122,18 +122,18 @@ func TestForeignKeyMigratorRuntimePaths(t *testing.T) {
 
 	t.Run("uses default relation actions and ignores non many-to-one fields", func(t *testing.T) {
 		runtimeScope := newSchemaTestScope(t)
-		target := &meta.IrModel{Name: "User", Path: "sales/user.ts", ModelTable: "sales_user"}
-		source := &meta.IrModel{
+		target := &meta.Model{Name: "User", Path: "sales/user.ts", ModelTable: "sales_user"}
+		source := &meta.Model{
 			Name:       "Order",
 			Path:       "sales/order.ts",
 			ModelTable: "sales_order",
-			Fields: []*meta.IrField{
+			Fields: []*meta.Field{
 				newRelationField("OwnerId", "sales/user", `{"type":"ManyToOne"}`),
 				newRelationField("Notes", "sales/user", `{"type":"OneToMany"}`),
 			},
 		}
 
-		keys, err := newForeignKeyMigrator(runtimeScope, nil, []*meta.IrModel{source, target}).(*foreignKeyMigrator).getManyToOneKeys()
+		keys, err := newForeignKeyMigrator(runtimeScope, nil, []*meta.Model{source, target}).(*foreignKeyMigrator).getManyToOneKeys()
 		if err != nil {
 			t.Fatalf("getManyToOneKeys() error = %v", err)
 		}
@@ -147,10 +147,10 @@ func TestForeignKeyMigratorRuntimePaths(t *testing.T) {
 
 	t.Run("reports invalid field options json", func(t *testing.T) {
 		runtimeScope := newSchemaTestScope(t)
-		target := &meta.IrModel{Name: "User", Path: "sales/user.ts", ModelTable: "sales_user"}
-		source := &meta.IrModel{Name: "Order", Path: "sales/order.ts", ModelTable: "sales_order", Fields: []*meta.IrField{newRelationField("OwnerId", "sales/user", `{bad json}`)}}
+		target := &meta.Model{Name: "User", Path: "sales/user.ts", ModelTable: "sales_user"}
+		source := &meta.Model{Name: "Order", Path: "sales/order.ts", ModelTable: "sales_order", Fields: []*meta.Field{newRelationField("OwnerId", "sales/user", `{bad json}`)}}
 
-		_, err := newForeignKeyMigrator(runtimeScope, nil, []*meta.IrModel{source, target}).(*foreignKeyMigrator).getManyToOneKeys()
+		_, err := newForeignKeyMigrator(runtimeScope, nil, []*meta.Model{source, target}).(*foreignKeyMigrator).getManyToOneKeys()
 		if err == nil || !strings.Contains(err.Error(), "parse @Field options failed") {
 			t.Fatalf("expected invalid json error, got %v", err)
 		}

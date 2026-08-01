@@ -30,7 +30,7 @@ func WriteDistManifest(ctx context.Context, runtimeScope scope.Scope, compileBun
 		ctx = context.Background()
 	}
 
-	var installed []meta.IrModule
+	var installed []meta.Module
 	sess := runtimeScope.Session()
 	if sess == nil {
 		return xfmt.Errorf("scope session is nil")
@@ -39,7 +39,7 @@ func WriteDistManifest(ctx context.Context, runtimeScope scope.Scope, compileBun
 		return xfmt.Errorf("list installed modules: %w", err)
 	}
 
-	byName := map[string]meta.IrModule{}
+	byName := map[string]meta.Module{}
 	for _, mod := range installed {
 		name := strings.TrimSpace(mod.Name)
 		if name == "" {

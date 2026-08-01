@@ -25,7 +25,7 @@ func (m *ModuleManager) newOriginCoordinator() OriginCoordinator {
 	return internalorigin.NewCoordinator(m.runtimeScope)
 }
 
-func (m *ModuleManager) resolveUpgradeModuleFromOrigin(ctx context.Context, name string) (*meta.IrModule, error) {
+func (m *ModuleManager) resolveUpgradeModuleFromOrigin(ctx context.Context, name string) (*meta.Module, error) {
 	if err := m.ensureMetaTables(); err != nil {
 		return nil, err
 	}

@@ -19,19 +19,19 @@ type prefetchedInstallModulesKey struct{}
 // database transaction is opened (Phase 1 Prepare–Commit split).
 type PrefetchedInstall struct {
 	RootName string
-	Modules  map[string]*meta.IrModule
+	Modules  map[string]*meta.Module
 }
 
 // WithPrefetchedInstallModules attaches a PrefetchInstallModules result so
 // Install / pipeline resolution consumes it instead of fetching again.
-func WithPrefetchedInstallModules(ctx context.Context, modules map[string]*meta.IrModule) context.Context {
+func WithPrefetchedInstallModules(ctx context.Context, modules map[string]*meta.Module) context.Context {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	if len(modules) == 0 {
 		return ctx
 	}
-	copied := make(map[string]*meta.IrModule, len(modules))
+	copied := make(map[string]*meta.Module, len(modules))
 	for name, mod := range modules {
 		name = strings.TrimSpace(name)
 		if name == "" || mod == nil {
@@ -47,11 +47,11 @@ func WithPrefetchedInstallModules(ctx context.Context, modules map[string]*meta.
 
 // PrefetchedInstallModulesFromContext returns modules attached by
 // WithPrefetchedInstallModules, or nil when absent.
-func PrefetchedInstallModulesFromContext(ctx context.Context) map[string]*meta.IrModule {
+func PrefetchedInstallModulesFromContext(ctx context.Context) map[string]*meta.Module {
 	if ctx == nil {
 		return nil
 	}
-	modules, _ := ctx.Value(prefetchedInstallModulesKey{}).(map[string]*meta.IrModule)
+	modules, _ := ctx.Value(prefetchedInstallModulesKey{}).(map[string]*meta.Module)
 	return modules
 }
 
@@ -105,7 +105,7 @@ func (m *ModuleManager) PrefetchInstallModules(ctx context.Context, input string
 		return nil, xfmt.Errorf("build install plan for prefetch: %w", err)
 	}
 
-	modules := map[string]*meta.IrModule{}
+	modules := map[string]*meta.Module{}
 	storePrefetchedModule(modules, input, root)
 	storePrefetchedModule(modules, rootName, root)
 
@@ -138,7 +138,7 @@ func (m *ModuleManager) PrefetchInstallModules(ctx context.Context, input string
 	return &PrefetchedInstall{RootName: rootName, Modules: modules}, nil
 }
 
-func storePrefetchedModule(dst map[string]*meta.IrModule, key string, mod *meta.IrModule) {
+func storePrefetchedModule(dst map[string]*meta.Module, key string, mod *meta.Module) {
 	key = strings.TrimSpace(key)
 	if dst == nil || key == "" || mod == nil {
 		return
@@ -146,7 +146,7 @@ func storePrefetchedModule(dst map[string]*meta.IrModule, key string, mod *meta.
 	dst[key] = mod
 }
 
-func lookupPrefetchedModule(modules map[string]*meta.IrModule, name string) *meta.IrModule {
+func lookupPrefetchedModule(modules map[string]*meta.Module, name string) *meta.Module {
 	name = strings.TrimSpace(name)
 	if name == "" || len(modules) == 0 {
 		return nil
@@ -158,7 +158,7 @@ func lookupPrefetchedModule(modules map[string]*meta.IrModule, name string) *met
 }
 
 // fetchInstallModuleFromOrigin always resolves from origin (no prefetch cache).
-func (m *ModuleManager) fetchInstallModuleFromOrigin(ctx context.Context, name string) (*meta.IrModule, error) {
+func (m *ModuleManager) fetchInstallModuleFromOrigin(ctx context.Context, name string) (*meta.Module, error) {
 	if err := m.ensureMetaTables(); err != nil {
 		return nil, err
 	}

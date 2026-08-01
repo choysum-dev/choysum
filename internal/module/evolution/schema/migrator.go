@@ -18,11 +18,11 @@ type Migrator interface {
 	Migrate() error
 }
 
-func NewMigrator(runtimeScope scope.Scope, module *meta.IrModule) Migrator {
+func NewMigrator(runtimeScope scope.Scope, module *meta.Module) Migrator {
 	return newMigrator(runtimeScope, module)
 }
 
-func newMigrator(runtimeScope scope.Scope, module *meta.IrModule) *migrator {
+func newMigrator(runtimeScope scope.Scope, module *meta.Module) *migrator {
 	models, _ := getModuleModels(runtimeScope, module)
 	return &migrator{
 		runtimeScope:       runtimeScope,
@@ -32,8 +32,8 @@ func newMigrator(runtimeScope scope.Scope, module *meta.IrModule) *migrator {
 	}
 }
 
-func getModuleModels(runtimeScope scope.Scope, module *meta.IrModule) ([]*meta.IrModel, error) {
-	var moduleModels []*meta.IrModel
+func getModuleModels(runtimeScope scope.Scope, module *meta.Module) ([]*meta.Model, error) {
+	var moduleModels []*meta.Model
 
 	if result := runtimeScope.Session().
 		Preload("Fields", func(db *gorm.DB) *gorm.DB {
@@ -43,13 +43,13 @@ func getModuleModels(runtimeScope scope.Scope, module *meta.IrModule) ([]*meta.I
 			return db.Order("id ASC")
 		}).
 		Preload("Fields.Decorators.Arguments", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
-		Where(&meta.IrModel{ModuleId: module.Id}).
+		Where(&meta.Model{ModuleId: module.Id}).
 		Where("abstract = ?", false).
 		Find(&moduleModels); result.Error != nil {
 		return nil, xfmt.Errorf("error getting models by module id: %w", result.Error)
 	}
 
-	filteredModels := make([]*meta.IrModel, 0, len(moduleModels))
+	filteredModels := make([]*meta.Model, 0, len(moduleModels))
 	for _, model := range moduleModels {
 		if model.Readonly {
 			continue
@@ -65,7 +65,7 @@ func getModuleModels(runtimeScope scope.Scope, module *meta.IrModule) ([]*meta.I
 
 type migrator struct {
 	runtimeScope       scope.Scope
-	module             *meta.IrModule
+	module             *meta.Module
 	modelMigrator      ModelMigrator
 	foreignKeyMigrator ForeignKeyMigrator
 }
@@ -86,7 +86,7 @@ func (m *migrator) Migrate() error {
 	if err := i18nmodels.EnsureTranslationTermTable(m.runtimeScope, application); err != nil {
 		return fmt.Errorf("ensure translation term table: %w", err)
 	}
-	if err := i18nmodels.EnsureI18nIrMeta(m.runtimeScope, application, moduleID); err != nil {
+	if err := i18nmodels.EnsureI18nMeta(m.runtimeScope, application, moduleID); err != nil {
 		return fmt.Errorf("ensure i18n ir meta: %w", err)
 	}
 

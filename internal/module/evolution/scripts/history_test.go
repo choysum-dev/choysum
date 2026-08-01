@@ -44,7 +44,7 @@ func newTestScope(t *testing.T) scope.Scope {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&metadata.IrModuleMigrationHistory{}); err != nil {
+	if err := db.AutoMigrate(&metadata.ModuleMigrationHistory{}); err != nil {
 		t.Fatalf("migrate test schema: %v", err)
 	}
 	return &testScope{db: db}
@@ -146,7 +146,7 @@ func TestHistoryStore_MarkFailedPersistsError(t *testing.T) {
 		t.Fatalf("mark failed: %v", err)
 	}
 
-	var stored metadata.IrModuleMigrationHistory
+	var stored metadata.ModuleMigrationHistory
 	if err := runtimeScope.Session().WithContext(ctx).Where("module_name = ? AND version = ? AND script = ?", "meta", "0.1.0", "init").Take(&stored).Error; err != nil {
 		t.Fatalf("reload stored history: %v", err)
 	}
@@ -169,7 +169,7 @@ func TestHistoryStore_PrefersContextScope(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open runtime sqlite: %v", err)
 	}
-	if err := runtimeDB.AutoMigrate(&metadata.IrModuleMigrationHistory{}); err != nil {
+	if err := runtimeDB.AutoMigrate(&metadata.ModuleMigrationHistory{}); err != nil {
 		t.Fatalf("migrate runtime schema: %v", err)
 	}
 	runtimeSession := &scope.Session{DB: runtimeDB}
@@ -191,14 +191,14 @@ func TestHistoryStore_PrefersContextScope(t *testing.T) {
 	}
 
 	var baseCount int64
-	if err := runtimeScope.Session().WithContext(context.Background()).Model(&metadata.IrModuleMigrationHistory{}).Count(&baseCount).Error; err != nil {
+	if err := runtimeScope.Session().WithContext(context.Background()).Model(&metadata.ModuleMigrationHistory{}).Count(&baseCount).Error; err != nil {
 		t.Fatalf("count base history rows: %v", err)
 	}
 	if baseCount != 0 {
 		t.Fatalf("base history row count = %d, want 0", baseCount)
 	}
 
-	var runtimeRow metadata.IrModuleMigrationHistory
+	var runtimeRow metadata.ModuleMigrationHistory
 	if err := runtimeSession.WithContext(context.Background()).Where("module_name = ? AND version = ? AND script = ?", "meta", "0.1.0", "init").Take(&runtimeRow).Error; err != nil {
 		t.Fatalf("load runtime history row: %v", err)
 	}

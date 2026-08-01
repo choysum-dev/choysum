@@ -11,12 +11,12 @@ import (
 	"strings"
 )
 
-type IrResolvedValue[T any] struct {
+type ResolvedValue[T any] struct {
 	Value  T      `json:"value"`
 	Source string `json:"source,omitempty"`
 }
 
-type IrFieldStructuralStorageHints struct {
+type FieldStructuralStorageHints struct {
 	Required           *bool   `json:"required,omitempty"`
 	Indexed            *bool   `json:"indexed,omitempty"`
 	Index              *string `json:"index,omitempty"`
@@ -30,7 +30,7 @@ type IrFieldStructuralStorageHints struct {
 	Default            *string `json:"default,omitempty"`
 }
 
-type IrFieldRelatedSpec struct {
+type FieldRelatedSpec struct {
 	Path  string   `json:"path"`
 	Store bool     `json:"store"`
 	Deps  []string `json:"deps,omitempty"`
@@ -66,31 +66,31 @@ func NewTermReference(module, scope, src, kind string) TermReference {
 	}
 }
 
-type IrFieldSelectionItem struct {
+type FieldSelectionItem struct {
 	Value     string         `json:"value"`
 	Label     string         `json:"label"`
 	LabelText *TermReference `json:"labelText,omitempty"`
 }
 
-type IrFieldStructuralSpec struct {
-	Name            string                         `json:"name"`
-	FieldType       string                         `json:"fieldType"`
-	String          string                         `json:"string,omitempty"`
-	StringText      *TermReference                 `json:"stringText,omitempty"`
-	Help            string                         `json:"help,omitempty"`
-	HelpText        *TermReference                 `json:"helpText,omitempty"`
-	Relation        map[string]any                 `json:"relation,omitempty"`
-	Selection       []IrFieldSelectionItem         `json:"selection,omitempty"`
-	SelectionKind   string                         `json:"selectionKind,omitempty"`
-	SelectionMethod string                         `json:"selectionMethod,omitempty"`
+type FieldStructuralSpec struct {
+	Name            string               `json:"name"`
+	FieldType       string               `json:"fieldType"`
+	String          string               `json:"string,omitempty"`
+	StringText      *TermReference       `json:"stringText,omitempty"`
+	Help            string               `json:"help,omitempty"`
+	HelpText        *TermReference       `json:"helpText,omitempty"`
+	Relation        map[string]any       `json:"relation,omitempty"`
+	Selection       []FieldSelectionItem `json:"selection,omitempty"`
+	SelectionKind   string               `json:"selectionKind,omitempty"`
+	SelectionMethod string               `json:"selectionMethod,omitempty"`
 	// SelectionAdd appends static options onto an inherited selection (PR-P2-F4).
-	SelectionAdd []IrFieldSelectionItem `json:"selectionAdd,omitempty"`
+	SelectionAdd []FieldSelectionItem `json:"selectionAdd,omitempty"`
 	// HasSelectionAdd is true when the author wrote selectionAdd (including []).
-	HasSelectionAdd bool `json:"hasSelectionAdd,omitempty"`
-	Related         *IrFieldRelatedSpec            `json:"related,omitempty"`
-	StorageHints    *IrFieldStructuralStorageHints `json:"storageHints,omitempty"`
-	ColumnType      string                         `json:"columnType,omitempty"`
-	CheckConstraint string                         `json:"checkConstraint,omitempty"`
+	HasSelectionAdd bool                         `json:"hasSelectionAdd,omitempty"`
+	Related         *FieldRelatedSpec            `json:"related,omitempty"`
+	StorageHints    *FieldStructuralStorageHints `json:"storageHints,omitempty"`
+	ColumnType      string                       `json:"columnType,omitempty"`
+	CheckConstraint string                       `json:"checkConstraint,omitempty"`
 	// Translate marks data-i18n fields stored as JSON/JSONB lang maps (see data-i18n-design.md).
 	Translate *bool `json:"translate,omitempty"`
 	// CompanyDependent marks per-company JSON/JSONB maps (see company-dependent-design.md).
@@ -107,56 +107,56 @@ type IrFieldStructuralSpec struct {
 	MaxHeight *int `json:"maxHeight,omitempty"`
 }
 
-type IrFieldBehaviorComputeSpec struct {
+type FieldBehaviorComputeSpec struct {
 	Method     string   `json:"method"`
 	Deps       []string `json:"deps"`
 	Store      bool     `json:"store"`
 	Searchable *bool    `json:"searchable,omitempty"`
 }
 
-type IrFieldBehaviorSqlComputeSpec struct {
+type FieldBehaviorSqlComputeSpec struct {
 	Method     string `json:"method"`
 	CtxType    string `json:"ctxType"`
 	ReturnType string `json:"returnType"`
 }
 
-type IrFieldBehaviorMethodRef struct {
+type FieldBehaviorMethodRef struct {
 	Method string `json:"method"`
 }
 
-type IrFieldBehaviorSpec struct {
-	Compute    *IrFieldBehaviorComputeSpec    `json:"compute,omitempty"`
-	SqlCompute *IrFieldBehaviorSqlComputeSpec `json:"sqlCompute,omitempty"`
-	Inverse    *IrFieldBehaviorMethodRef      `json:"inverse,omitempty"`
-	Search     *IrFieldBehaviorMethodRef      `json:"search,omitempty"`
+type FieldBehaviorSpec struct {
+	Compute    *FieldBehaviorComputeSpec    `json:"compute,omitempty"`
+	SqlCompute *FieldBehaviorSqlComputeSpec `json:"sqlCompute,omitempty"`
+	Inverse    *FieldBehaviorMethodRef      `json:"inverse,omitempty"`
+	Search     *FieldBehaviorMethodRef      `json:"search,omitempty"`
 }
 
-type IrFieldMigrationDecision struct {
+type FieldMigrationDecision struct {
 	StorageKind        string `json:"storageKind"`
 	ShouldCreateColumn bool   `json:"shouldCreateColumn"`
 	ResolvedColumnType string `json:"resolvedColumnType,omitempty"`
 	ReasonCode         string `json:"reasonCode"`
 }
 
-type IrFieldDiagnostic struct {
+type FieldDiagnostic struct {
 	Code     string `json:"code"`
 	Severity string `json:"severity"`
 	Message  string `json:"message"`
 }
 
-type IrFieldResolvedSpec struct {
-	FieldName  string                `json:"fieldName"`
-	Structural IrFieldStructuralSpec `json:"structural"`
-	Behavior   IrFieldBehaviorSpec   `json:"behavior"`
+type FieldResolvedSpec struct {
+	FieldName  string              `json:"fieldName"`
+	Structural FieldStructuralSpec `json:"structural"`
+	Behavior   FieldBehaviorSpec   `json:"behavior"`
 	Resolved   struct {
-		Store      IrResolvedValue[bool]  `json:"store"`
-		Searchable IrResolvedValue[*bool] `json:"searchable"`
+		Store      ResolvedValue[bool]  `json:"store"`
+		Searchable ResolvedValue[*bool] `json:"searchable"`
 	} `json:"resolved"`
-	Migration   IrFieldMigrationDecision `json:"migration"`
-	Diagnostics []IrFieldDiagnostic      `json:"diagnostics,omitempty"`
+	Migration   FieldMigrationDecision `json:"migration"`
+	Diagnostics []FieldDiagnostic      `json:"diagnostics,omitempty"`
 }
 
-type IrField struct {
+type Field struct {
 	BaseModel `gorm:"embedded"`
 
 	Name             string `gorm:"type:varchar(255);not null;index:idx_model_field_name,unique" json:"name"`
@@ -207,11 +207,11 @@ type IrField struct {
 	MaxHeight      int `gorm:"type:int" json:"maxHeight,omitempty"`
 
 	// ColumnOptions
-	Indexed    bool    `json:"indexed"`
-	NotNull    bool    `json:"not_null"`
-	Size       int     `gorm:"type:int" json:"size"`
-	Precision  int     `json:"precision,omitempty"`
-	Scale      int     `json:"scale,omitempty"`
+	Indexed       bool    `json:"indexed"`
+	NotNull       bool    `json:"not_null"`
+	Size          int     `gorm:"type:int" json:"size"`
+	Precision     int     `json:"precision,omitempty"`
+	Scale         int     `json:"scale,omitempty"`
 	ScaleField    string  `gorm:"type:varchar(255);" json:"scale_field,omitempty"`
 	CurrencyField string  `gorm:"type:varchar(255);" json:"currency_field,omitempty"`
 	Round         *string `json:"round,omitempty"`
@@ -219,16 +219,16 @@ type IrField struct {
 	ResolvedSpec string `gorm:"type:text" json:"resolved_spec,omitempty"`
 
 	ModelId sql.NullString `gorm:"type:char(20);index:idx_model_field_name,unique" json:"model_id"`
-	Model   *IrModel       `gorm:"foreignKey:ModelId" json:"model"`
+	Model   *Model         `gorm:"foreignKey:ModelId" json:"model"`
 
-	Decorators []*IrDecorator `gorm:"foreignKey:FieldId;constraint:OnDelete:CASCADE;" json:"decorators"`
+	Decorators []*Decorator `gorm:"foreignKey:FieldId;constraint:OnDelete:CASCADE;" json:"decorators"`
 }
 
-func (field *IrField) TableName() string {
-	return "meta_ir_field"
+func (field *Field) TableName() string {
+	return "meta_field"
 }
 
-func (field *IrField) SetResolvedSpec(spec *IrFieldResolvedSpec) error {
+func (field *Field) SetResolvedSpec(spec *FieldResolvedSpec) error {
 	if field == nil {
 		return nil
 	}
@@ -244,7 +244,7 @@ func (field *IrField) SetResolvedSpec(spec *IrFieldResolvedSpec) error {
 	return nil
 }
 
-func (field *IrField) GetResolvedSpec() (*IrFieldResolvedSpec, error) {
+func (field *Field) GetResolvedSpec() (*FieldResolvedSpec, error) {
 	if field == nil {
 		return nil, nil
 	}
@@ -252,7 +252,7 @@ func (field *IrField) GetResolvedSpec() (*IrFieldResolvedSpec, error) {
 	if strings.TrimSpace(raw) == "" {
 		return nil, nil
 	}
-	var spec IrFieldResolvedSpec
+	var spec FieldResolvedSpec
 	if err := json.Unmarshal([]byte(raw), &spec); err != nil {
 		return nil, err
 	}

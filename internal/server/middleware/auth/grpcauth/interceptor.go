@@ -53,10 +53,10 @@ var internalAuthPreferredMethods = []string{
 	"task.Job/GetJob",
 	"*.TaskWorker/*",
 	"*.I18n/GetTranslations",
-	"meta.IrApplication/*",
-	"meta.IrField/*",
-	"meta.IrModel/*",
-	"meta.IrService/*",
+	"meta.MetaApplication/*",
+	"meta.MetaField/*",
+	"meta.MetaModel/*",
+	"meta.MetaService/*",
 }
 
 const internalKeyHeader = "x-choysum-internal-key"

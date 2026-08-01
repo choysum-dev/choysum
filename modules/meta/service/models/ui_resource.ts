@@ -3,9 +3,9 @@
 
 import { BaseModel, Compute, Field, Model, SqlCompute } from '@/core/service';
 import { sql } from 'kysely';
-import IrApplication from './ir_application';
-import IrModule from './ir_module';
-import IrUiResourceRouteAction from './ir_ui_resource_route_action';
+import MetaApplication from './application';
+import MetaModule from './module';
+import MetaUiResourceRouteAction from './ui_resource_route_action';
 import { normalizeOptionalString, normalizeStringArray, readRefId } from '@/core/service/utils/normalization';
 import { normalizePagination, paginateAndWrap } from '@/core/service/utils/pagination';
 import { type TermReference } from '@/core/service/i18n';
@@ -45,56 +45,56 @@ type EffectiveUiResourceDeclarationOptions = {
   offset?: number;
 };
 
-type IrUiResourceComputeDeps = IrUiResource & Record<'ParentId.ParentPath', unknown>;
+type MetaUiResourceComputeDeps = MetaUiResource & Record<'ParentId.ParentPath', unknown>;
 
-@Model('IrUiResource', {
-  tableName: 'meta_ir_ui_resource',
+@Model('MetaUiResource', {
+  tableName: 'meta_ui_resource',
   parentField: 'ParentId',
   autoMigrate: false,
 })
-export default class IrUiResource extends BaseModel {
-  @Field({ type: 'varchar', size: 255, notNull: true, unique: true, index: true, string: _lt('Name', { scope: 'meta.model.IrUiResource.fields' }) })
+export default class MetaUiResource extends BaseModel {
+  @Field({ type: 'varchar', size: 255, notNull: true, unique: true, index: true, string: _lt('Name', { scope: 'meta.model.MetaUiResource.fields' }) })
   Name!: string;
 
-  @Field({ type: 'varchar', size: 16, notNull: true, string: _lt('Type', { scope: 'meta.model.IrUiResource.fields' }) })
+  @Field({ type: 'varchar', size: 16, notNull: true, string: _lt('Type', { scope: 'meta.model.MetaUiResource.fields' }) })
   Type!: UiResourceType;
 
-  @Field({ type: 'varchar', size: 255, string: _lt('Title', { scope: 'meta.model.IrUiResource.fields' }) })
+  @Field({ type: 'varchar', size: 255, string: _lt('Title', { scope: 'meta.model.MetaUiResource.fields' }) })
   Title?: string;
 
-  @Field({ type: 'jsonobject', string: _lt('Title Text', { scope: 'meta.model.IrUiResource.fields' }) })
+  @Field({ type: 'jsonobject', string: _lt('Title Text', { scope: 'meta.model.MetaUiResource.fields' }) })
   TitleText?: TermReference | null;
 
-  @Field({ type: 'int', default: 0, string: _lt('Sequence', { scope: 'meta.model.IrUiResource.fields' }) })
+  @Field({ type: 'int', default: 0, string: _lt('Sequence', { scope: 'meta.model.MetaUiResource.fields' }) })
   Sequence?: number;
 
-  @Field({ type: 'jsonobject', string: _lt('Requires', { scope: 'meta.model.IrUiResource.fields' }) })
+  @Field({ type: 'jsonobject', string: _lt('Requires', { scope: 'meta.model.MetaUiResource.fields' }) })
   Requires?: string[] | null;
 
-  @Field({ type: 'varchar', size: 255, index: true, string: _lt('Module', { scope: 'meta.model.IrUiResource.fields' }) })
+  @Field({ type: 'varchar', size: 255, index: true, string: _lt('Module', { scope: 'meta.model.MetaUiResource.fields' }) })
   Module?: string;
 
-  @Field({ type: 'varchar', size: 1024, index: true, string: _lt('Path', { scope: 'meta.model.IrUiResource.fields' }) })
+  @Field({ type: 'varchar', size: 1024, index: true, string: _lt('Path', { scope: 'meta.model.MetaUiResource.fields' }) })
   Path?: string;
 
   @Field({
     type: 'ManyToOne',
-    relation: { targetModel: () => IrUiResource },
+    relation: { targetModel: () => MetaUiResource },
     notNull: false,
     index: true,
-    string: _lt('Parent', { scope: 'meta.model.IrUiResource.fields' }),
+    string: _lt('Parent', { scope: 'meta.model.MetaUiResource.fields' }),
   })
-  ParentId?: IrUiResource;
+  ParentId?: MetaUiResource;
 
   @Field({
     type: 'varchar',
     size: 1000,
     indexed: true,
-    string: _lt('Parent Path', { scope: 'meta.model.IrUiResource.fields' }),
+    string: _lt('Parent Path', { scope: 'meta.model.MetaUiResource.fields' }),
   })
   readonly ParentPath?: string | null;
 
-  @Compute<IrUiResourceComputeDeps>('ParentPath', {
+  @Compute<MetaUiResourceComputeDeps>('ParentPath', {
     deps: ['Id', 'Type', 'ParentId', 'ParentId.ParentPath'],
   })
   computeParentPath() {
@@ -106,48 +106,48 @@ export default class IrUiResource extends BaseModel {
     const parentPath = parentRef ? String(parentRef.ParentPath || '') : '';
     if (parentPath && parentPath.includes(`${id}/`)) {
       throw new Error(
-        _t('Cycle detected: %s cannot be assigned under one of its descendants', { scope: 'service/models/ir_ui_resource' }, id)
+        _t('Cycle detected: %s cannot be assigned under one of its descendants', { scope: 'service/models/ui_resource' }, id)
       );
     }
 
     return `${parentPath}${id}/`;
   }
 
-  @Field({ type: 'varchar', size: 512, string: _lt('UI Path', { scope: 'meta.model.IrUiResource.fields' }) })
+  @Field({ type: 'varchar', size: 512, string: _lt('UI Path', { scope: 'meta.model.MetaUiResource.fields' }) })
   UiPath?: string;
 
-  @Field({ type: 'jsonobject', string: _lt('Default Roles', { scope: 'meta.model.IrUiResource.fields' }) })
+  @Field({ type: 'jsonobject', string: _lt('Default Roles', { scope: 'meta.model.MetaUiResource.fields' }) })
   DefaultRoles?: string[] | null;
 
   @Field({
     type: 'ManyToOne',
-    relation: { targetModel: () => IrApplication },
+    relation: { targetModel: () => MetaApplication },
     notNull: false,
     index: true,
-    string: _lt('Application', { scope: 'meta.model.IrUiResource.fields' }),
+    string: _lt('Application', { scope: 'meta.model.MetaUiResource.fields' }),
   })
-  IrApplicationId?: IrApplication;
+  MetaApplicationId?: MetaApplication;
 
   @Field({
     type: 'ManyToOne',
-    relation: { targetModel: () => IrModule },
+    relation: { targetModel: () => MetaModule },
     notNull: false,
     index: true,
-    string: _lt('Module', { scope: 'meta.model.IrUiResource.fields' }),
+    string: _lt('Module', { scope: 'meta.model.MetaUiResource.fields' }),
   })
-  ModuleId?: IrModule;
+  ModuleId?: MetaModule;
 
   @Field({
     type: 'OneToMany',
-    relation: { targetModel: () => IrUiResource, inverseField: 'ParentId' },
-    string: _lt('Children', { scope: 'meta.model.IrUiResource.fields' }),
+    relation: { targetModel: () => MetaUiResource, inverseField: 'ParentId' },
+    string: _lt('Children', { scope: 'meta.model.MetaUiResource.fields' }),
   })
-  readonly Childs?: IrUiResource[];
+  readonly Childs?: MetaUiResource[];
 
-  @SqlCompute<IrUiResource>('Childs')
+  @SqlCompute<MetaUiResource>('Childs')
   sqlChilds() {
-    const selfTypeRef = this.$sql.col('meta_ir_ui_resource', 'Type');
-    const selfIdRef = this.$sql.col('meta_ir_ui_resource', 'Id');
+    const selfTypeRef = this.$sql.col('meta_ui_resource', 'Type');
+    const selfIdRef = this.$sql.col('meta_ui_resource', 'Id');
 
     const dialect = String((globalThis as any)?.$choysum?.db?.dialectName || 'postgres').toLowerCase();
 
@@ -176,7 +176,7 @@ export default class IrUiResource extends BaseModel {
                 'UiPath', c.ui_path,
                 'DefaultRoles', json(c.default_roles)
               ) as payload
-            from meta_ir_ui_resource c
+            from meta_ui_resource c
             where ${selfTypeRef} = 'MENU'
               and c.parent_id = ${selfIdRef}
 
@@ -199,8 +199,8 @@ export default class IrUiResource extends BaseModel {
                 'UiPath', r.ui_path,
                 'DefaultRoles', json(r.default_roles)
               ) as payload
-            from meta_ir_ui_resource_menu_route mr
-            join meta_ir_ui_resource r on r.id = mr.route_ui_resource_id
+            from meta_ui_resource_menu_route mr
+            join meta_ui_resource r on r.id = mr.route_ui_resource_id
             where ${selfTypeRef} = 'MENU'
               and mr.menu_ui_resource_id = ${selfIdRef}
 
@@ -223,8 +223,8 @@ export default class IrUiResource extends BaseModel {
                 'UiPath', a.ui_path,
                 'DefaultRoles', json(a.default_roles)
               ) as payload
-            from meta_ir_ui_resource_route_action ra
-            join meta_ir_ui_resource a on a.id = ra.action_ui_resource_id
+            from meta_ui_resource_route_action ra
+            join meta_ui_resource a on a.id = ra.action_ui_resource_id
             where ${selfTypeRef} = 'ROUTE'
               and ra.route_ui_resource_id = ${selfIdRef}
 
@@ -258,7 +258,7 @@ export default class IrUiResource extends BaseModel {
               'UiPath', c.ui_path,
               'DefaultRoles', c.default_roles
             ) as payload
-          from meta_ir_ui_resource c
+          from meta_ui_resource c
           where ${selfTypeRef} = 'MENU'
             and c.parent_id = ${selfIdRef}
 
@@ -281,8 +281,8 @@ export default class IrUiResource extends BaseModel {
               'UiPath', r.ui_path,
               'DefaultRoles', r.default_roles
             ) as payload
-          from meta_ir_ui_resource_menu_route mr
-          join meta_ir_ui_resource r on r.id = mr.route_ui_resource_id
+          from meta_ui_resource_menu_route mr
+          join meta_ui_resource r on r.id = mr.route_ui_resource_id
           where ${selfTypeRef} = 'MENU'
             and mr.menu_ui_resource_id = ${selfIdRef}
 
@@ -305,8 +305,8 @@ export default class IrUiResource extends BaseModel {
               'UiPath', a.ui_path,
               'DefaultRoles', a.default_roles
             ) as payload
-          from meta_ir_ui_resource_route_action ra
-          join meta_ir_ui_resource a on a.id = ra.action_ui_resource_id
+          from meta_ui_resource_route_action ra
+          join meta_ui_resource a on a.id = ra.action_ui_resource_id
           where ${selfTypeRef} = 'ROUTE'
             and ra.route_ui_resource_id = ${selfIdRef}
         ) as child_row
@@ -399,7 +399,7 @@ export default class IrUiResource extends BaseModel {
 
     const conditionParts: any[] = [];
     if (moduleFilter) conditionParts.push(['Module', '=', moduleFilter]);
-    if (applicationFilter) conditionParts.push(['IrApplicationId', '=', applicationFilter]);
+    if (applicationFilter) conditionParts.push(['MetaApplicationId', '=', applicationFilter]);
     if (kindFilter) conditionParts.push(['Type', '=', kindFilter]);
     if (idsFilter.length > 0) conditionParts.push(['Name', 'in', idsFilter]);
     const condition: any = conditionParts.length <= 1 ? (conditionParts[0] ?? []) : { And: conditionParts };
@@ -407,7 +407,7 @@ export default class IrUiResource extends BaseModel {
     const rows = await this.Search(
       condition as any,
       {
-        fields: ['Id', 'Name', 'Type', 'Title', 'Sequence', 'Requires', 'Module', 'UiPath', 'DefaultRoles', 'IrApplicationId', 'ParentId'] as any,
+        fields: ['Id', 'Name', 'Type', 'Title', 'Sequence', 'Requires', 'Module', 'UiPath', 'DefaultRoles', 'MetaApplicationId', 'ParentId'] as any,
         limit: 50000,
       } as any
     );
@@ -445,7 +445,7 @@ export default class IrUiResource extends BaseModel {
     const routeIds = routeRows.map((row: any) => normalizeOptionalString((row as any)?.Id)).filter((value): value is string => Boolean(value));
     const routeActionsByRouteId = new Map<string, string[]>();
     if (routeIds.length > 0) {
-      const relationRows = await IrUiResourceRouteAction.Search(
+      const relationRows = await MetaUiResourceRouteAction.Search(
         ['RouteUiResourceId', 'in', routeIds] as any,
         { fields: ['RouteUiResourceId', 'ActionUiResourceId'] as any, limit: 50000 } as any
       );
@@ -489,7 +489,7 @@ export default class IrUiResource extends BaseModel {
         defaultRoles: normalizeStringArray((row as any)?.DefaultRoles),
         override: false,
         module: normalizeOptionalString((row as any)?.Module),
-        application: readRefId((row as any)?.IrApplicationId),
+        application: readRefId((row as any)?.MetaApplicationId),
       };
       if (kind === 'menu') {
         const parentId = readRefId((row as any)?.ParentId);

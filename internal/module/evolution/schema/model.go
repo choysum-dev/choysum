@@ -15,11 +15,11 @@ import (
 
 type modelMigrator struct {
 	runtimeScope scope.Scope
-	module       *meta.IrModule
-	models       []*meta.IrModel
+	module       *meta.Module
+	models       []*meta.Model
 }
 
-func newModelMigrator(runtimeScope scope.Scope, module *meta.IrModule, models []*meta.IrModel) *modelMigrator {
+func newModelMigrator(runtimeScope scope.Scope, module *meta.Module, models []*meta.Model) *modelMigrator {
 	return &modelMigrator{
 		runtimeScope: runtimeScope,
 		module:       module,
@@ -31,7 +31,7 @@ func normalizeModelIdentitySegment(value string) string {
 	return strings.ToLower(strings.TrimSpace(value))
 }
 
-func isStorageBlobCarrierModel(model *meta.IrModel) bool {
+func isStorageBlobCarrierModel(model *meta.Model) bool {
 	if model == nil {
 		return false
 	}
@@ -61,8 +61,8 @@ func isStorageBlobCarrierModel(model *meta.IrModel) bool {
 }
 
 // getResolvedFieldColumnMeta builds migration column metadata from parser-resolved field specs.
-func (m *modelMigrator) getResolvedFieldColumnMeta(field *meta.IrField, modelCtx ...*meta.IrModel) (map[string]interface{}, error) {
-	var model *meta.IrModel
+func (m *modelMigrator) getResolvedFieldColumnMeta(field *meta.Field, modelCtx ...*meta.Model) (map[string]interface{}, error) {
+	var model *meta.Model
 	if len(modelCtx) > 0 {
 		model = modelCtx[0]
 	}
@@ -223,7 +223,7 @@ func (m *modelMigrator) getDialect() string {
 }
 
 // addFieldToStruct adds a field to the dynamic struct.
-func (m *modelMigrator) addFieldToStruct(builder *dynamicstruct.Builder, field *meta.IrField, meta map[string]interface{}) error {
+func (m *modelMigrator) addFieldToStruct(builder *dynamicstruct.Builder, field *meta.Field, meta map[string]interface{}) error {
 	if meta == nil {
 		// Skipped relation fields (e.g., OneToMany / ManyToMany).
 		return nil
@@ -260,7 +260,7 @@ func (m *modelMigrator) addFieldToStruct(builder *dynamicstruct.Builder, field *
 	return nil
 }
 
-func (m *modelMigrator) migrateTableSchema(models []*meta.IrModel) error {
+func (m *modelMigrator) migrateTableSchema(models []*meta.Model) error {
 	for _, model := range models {
 		if model.Readonly {
 			continue
@@ -306,7 +306,7 @@ func (m *modelMigrator) migrateTableSchema(models []*meta.IrModel) error {
 	return nil
 }
 
-func (m *modelMigrator) applyTableCheckConstraints(tableName string, model *meta.IrModel) error {
+func (m *modelMigrator) applyTableCheckConstraints(tableName string, model *meta.Model) error {
 	dialect := m.getDialect()
 	if dialect == "unknown" {
 		return nil

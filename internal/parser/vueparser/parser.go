@@ -14,7 +14,7 @@ import (
 
 type vueParser struct {
 	runtimeScope scope.Scope
-	module       *meta.IrModule
+	module       *meta.Module
 }
 
 func (p *vueParser) Parse(pathAlias map[string]string, path string, content string) (*parser.ParserResult, error) {
@@ -72,7 +72,7 @@ func (p *vueParser) Parse(pathAlias map[string]string, path string, content stri
 	}
 }
 
-func NewVueParser(runtimeScope scope.Scope, module *meta.IrModule) parser.Parser {
+func NewVueParser(runtimeScope scope.Scope, module *meta.Module) parser.Parser {
 	return &vueParser{
 		runtimeScope: runtimeScope,
 		module:       module,

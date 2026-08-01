@@ -7,7 +7,7 @@ import (
 	"database/sql"
 )
 
-type IrComponent struct {
+type Component struct {
 	BaseModel  `gorm:"embedded"`
 	Name       string         `gorm:"type:varchar(255);not null" json:"name"`
 	Path       string         `gorm:"type:varchar(512);not null" json:"path"`
@@ -16,6 +16,6 @@ type IrComponent struct {
 	ModuleId   sql.NullString `gorm:"type:char(20)" json:"module_id"`
 }
 
-func (comp *IrComponent) TableName() string {
-	return "meta_ir_component"
+func (comp *Component) TableName() string {
+	return "meta_component"
 }

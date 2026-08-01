@@ -11,12 +11,12 @@ import UserRole from '@/auth/service/models/user_role';
 import RoleFieldRule from '@/auth/service/models/role_field_rule';
 import { evaluateFieldRules } from '@/auth/service/models/_user_field_rule_eval';
 import { createServiceByModel } from '@/core/service/rpc';
-import type IrApplicationModel from '@/meta/service/models/ir_application';
-import type IrModelModel from '@/meta/service/models/ir_model';
-import type IrFieldModel from '@/meta/service/models/ir_field';
-const IrApplication = createServiceByModel<typeof IrApplicationModel>('meta.IrApplication');
-const IrModel = createServiceByModel<typeof IrModelModel>('meta.IrModel');
-const IrField = createServiceByModel<typeof IrFieldModel>('meta.IrField');
+import type MetaApplicationModel from '@/meta/service/models/application';
+import type MetaModelModel from '@/meta/service/models/model';
+import type MetaFieldModel from '@/meta/service/models/field';
+const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
+const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
+const MetaField = createServiceByModel<typeof MetaFieldModel>('meta.MetaField');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -208,7 +208,7 @@ function toChoysumErrorLike(err: any): { domain?: string; code?: string; message
 }
 
 async function resolveModelId(appName: string, modelName: string): Promise<string> {
-  const rows = await IrModel.Search(
+  const rows = await MetaModel.Search(
     {
       And: [
         ['Name', '=', modelName],
@@ -223,7 +223,7 @@ async function resolveModelId(appName: string, modelName: string): Promise<strin
 }
 
 async function resolveApplicationId(appName: string): Promise<string> {
-  const rows = await IrApplication.Search(
+  const rows = await MetaApplication.Search(
     ['Name', '=', appName] as any,
     { fields: ['Id', 'UpdatedAt'], orderBy: { field: 'UpdatedAt', order: 'desc' }, limit: 1 } as any
   );
@@ -233,7 +233,7 @@ async function resolveApplicationId(appName: string): Promise<string> {
 }
 
 async function resolveFieldId(modelId: string, fieldName: string): Promise<string> {
-  const rows = await IrField.Search(
+  const rows = await MetaField.Search(
     {
       And: [
         ['ModelId', '=', modelId],
@@ -333,8 +333,8 @@ test('P4 field rule: denyWriteFields blocks update when payload includes denied 
       await RoleFieldRule.Create(
         {
           RoleId: { Id: roleId } as any,
-          IrModelId: locationModelId,
-          IrFieldId: nameFieldId,
+          MetaModelId: locationModelId,
+          MetaFieldId: nameFieldId,
           PermRead: 'allow',
           PermWrite: 'deny',
         } as any,
@@ -411,8 +411,8 @@ test('P4 field rule: same request RoleFieldRule write invalidates request cache'
       await RoleFieldRule.Create(
         {
           RoleId: { Id: roleId } as any,
-          IrModelId: locationModelId,
-          IrFieldId: nameFieldId,
+          MetaModelId: locationModelId,
+          MetaFieldId: nameFieldId,
           PermRead: 'allow',
           PermWrite: 'allow',
         } as any,
@@ -426,8 +426,8 @@ test('P4 field rule: same request RoleFieldRule write invalidates request cache'
       await RoleFieldRule.Create(
         {
           RoleId: { Id: roleId } as any,
-          IrModelId: locationModelId,
-          IrFieldId: nameFieldId,
+          MetaModelId: locationModelId,
+          MetaFieldId: nameFieldId,
           PermRead: 'allow',
           PermWrite: 'deny',
         } as any,
@@ -468,8 +468,8 @@ test('P4 field rule: top-level fieldRuleMode=skip bypasses denyWriteFields', asy
       await RoleFieldRule.Create(
         {
           RoleId: { Id: roleId } as any,
-          IrModelId: locationModelId,
-          IrFieldId: nameFieldId,
+          MetaModelId: locationModelId,
+          MetaFieldId: nameFieldId,
           PermRead: 'allow',
           PermWrite: 'deny',
         } as any,
@@ -551,8 +551,8 @@ test('P4 field rule: top-level facade return strips denyReadFields for BaseModel
       await RoleFieldRule.Create(
         {
           RoleId: { Id: roleId } as any,
-          IrModelId: locationModelId,
-          IrFieldId: nameFieldId,
+          MetaModelId: locationModelId,
+          MetaFieldId: nameFieldId,
           PermRead: 'deny',
           PermWrite: 'deny',
         } as any,
@@ -608,8 +608,8 @@ test('P4 field rule: top-level Browse strips denyReadFields (via service runtime
       await RoleFieldRule.Create(
         {
           RoleId: { Id: roleId } as any,
-          IrModelId: locationModelId,
-          IrFieldId: nameFieldId,
+          MetaModelId: locationModelId,
+          MetaFieldId: nameFieldId,
           PermRead: 'deny',
           PermWrite: 'deny',
         } as any,
@@ -666,8 +666,8 @@ test('P4 field rule: top-level response recursively strips denyReadFields for re
       await RoleFieldRule.Create(
         {
           RoleId: { Id: rid } as any,
-          IrModelId: urModelId,
-          IrFieldId: userIdFieldId,
+          MetaModelId: urModelId,
+          MetaFieldId: userIdFieldId,
           PermRead: 'allow',
           PermWrite: 'allow',
         } as any,
@@ -676,8 +676,8 @@ test('P4 field rule: top-level response recursively strips denyReadFields for re
       await RoleFieldRule.Create(
         {
           RoleId: { Id: rid } as any,
-          IrModelId: userModelId,
-          IrFieldId: null,
+          MetaModelId: userModelId,
+          MetaFieldId: null,
           PermRead: 'allow',
           PermWrite: 'allow',
         } as any,
@@ -686,8 +686,8 @@ test('P4 field rule: top-level response recursively strips denyReadFields for re
       await RoleFieldRule.Create(
         {
           RoleId: { Id: rid } as any,
-          IrModelId: userModelId,
-          IrFieldId: usernameFieldId,
+          MetaModelId: userModelId,
+          MetaFieldId: usernameFieldId,
           PermRead: 'deny',
           PermWrite: 'allow',
         } as any,
@@ -804,8 +804,8 @@ test('P4 field rule: denyReadFields can deny relation field key (drops both User
       await RoleFieldRule.Create(
         {
           RoleId: { Id: rid } as any,
-          IrModelId: urModelId,
-          IrFieldId: userIdFieldId,
+          MetaModelId: urModelId,
+          MetaFieldId: userIdFieldId,
           PermRead: 'deny',
           PermWrite: 'allow',
         } as any,
@@ -876,9 +876,9 @@ test('P4 field rule wildcard: model deny-write + field allow-write overrides for
       await RoleFieldRule.Create(
         {
           RoleId: { Id: roleId } as any,
-          IrApplicationId: null,
-          IrModelId: locationModelId,
-          IrFieldId: null,
+          MetaApplicationId: null,
+          MetaModelId: locationModelId,
+          MetaFieldId: null,
           PermRead: 'allow',
           PermWrite: 'deny',
         } as any,
@@ -889,9 +889,9 @@ test('P4 field rule wildcard: model deny-write + field allow-write overrides for
       await RoleFieldRule.Create(
         {
           RoleId: { Id: roleId } as any,
-          IrApplicationId: null,
-          IrModelId: locationModelId,
-          IrFieldId: nameFieldId,
+          MetaApplicationId: null,
+          MetaModelId: locationModelId,
+          MetaFieldId: nameFieldId,
           PermRead: 'allow',
           PermWrite: 'allow',
         } as any,
@@ -961,9 +961,9 @@ test('P4 field rule wildcard: app deny-read can be overridden by model allow-rea
       await RoleFieldRule.Create(
         {
           RoleId: { Id: roleId } as any,
-          IrApplicationId: authAppId,
-          IrModelId: null,
-          IrFieldId: null,
+          MetaApplicationId: authAppId,
+          MetaModelId: null,
+          MetaFieldId: null,
           PermRead: 'deny',
         } as any,
         ['Id'] as any
@@ -973,9 +973,9 @@ test('P4 field rule wildcard: app deny-read can be overridden by model allow-rea
       await RoleFieldRule.Create(
         {
           RoleId: { Id: roleId } as any,
-          IrApplicationId: null,
-          IrModelId: locationModelId,
-          IrFieldId: null,
+          MetaApplicationId: null,
+          MetaModelId: locationModelId,
+          MetaFieldId: null,
           PermRead: 'allow',
         } as any,
         ['Id'] as any
@@ -1026,8 +1026,8 @@ test('P4 field rule wildcard: same-scope deny wins over allow (field exact)', as
       await RoleFieldRule.Create(
         {
           RoleId: { Id: roleId } as any,
-          IrModelId: locationModelId,
-          IrFieldId: nameFieldId,
+          MetaModelId: locationModelId,
+          MetaFieldId: nameFieldId,
           PermRead: 'allow',
         } as any,
         ['Id'] as any
@@ -1035,8 +1035,8 @@ test('P4 field rule wildcard: same-scope deny wins over allow (field exact)', as
       await RoleFieldRule.Create(
         {
           RoleId: { Id: roleId } as any,
-          IrModelId: locationModelId,
-          IrFieldId: nameFieldId,
+          MetaModelId: locationModelId,
+          MetaFieldId: nameFieldId,
           PermRead: 'deny',
         } as any,
         ['Id'] as any
@@ -1086,8 +1086,8 @@ test('P4 field rule wildcard: write implies read (read=deny forces write=deny)',
       await RoleFieldRule.Create(
         {
           RoleId: { Id: roleId } as any,
-          IrModelId: locationModelId,
-          IrFieldId: nameFieldId,
+          MetaModelId: locationModelId,
+          MetaFieldId: nameFieldId,
           PermRead: 'deny',
           PermWrite: 'allow',
         } as any,
@@ -1144,9 +1144,9 @@ test('RoleFieldRule db check: deleted rows bypass scope xor', async () => {
       const row = await RoleFieldRule.Create(
         {
           RoleId: { Id: roleId } as any,
-          IrModelId: modelId,
-          IrFieldId: fieldId,
-          IrApplicationId: null,
+          MetaModelId: modelId,
+          MetaFieldId: fieldId,
+          MetaApplicationId: null,
           PermRead: 'allow',
           PermWrite: null,
         } as any,
@@ -1161,9 +1161,9 @@ test('RoleFieldRule db check: deleted rows bypass scope xor', async () => {
       const repo = RoleFieldRule.getRepository().withDeleted();
       const updated = await repo.update(
         {
-          IrFieldId: fieldId,
-          IrModelId: modelId,
-          IrApplicationId: appId,
+          MetaFieldId: fieldId,
+          MetaModelId: modelId,
+          MetaApplicationId: appId,
         } as any,
         ['Id', '=', id] as any
       );
@@ -1173,15 +1173,15 @@ test('RoleFieldRule db check: deleted rows bypass scope xor', async () => {
       const rows = await RoleFieldRule.Search(
         ['Id', '=', id] as any,
         {
-          fields: ['Id', 'DeletedAt', 'IrFieldId', 'IrModelId', 'IrApplicationId', 'PermRead', 'PermWrite'] as any,
+          fields: ['Id', 'DeletedAt', 'MetaFieldId', 'MetaModelId', 'MetaApplicationId', 'PermRead', 'PermWrite'] as any,
           withDeleted: true,
         } as any
       );
 
       expect(rows.length).toBe(1);
-      expect(String((rows[0] as any)?.IrFieldId || '').trim()).toBe(fieldId);
-      expect(String((rows[0] as any)?.IrModelId || '').trim()).toBe(modelId);
-      expect(String((rows[0] as any)?.IrApplicationId || '').trim()).toBe(appId);
+      expect(String((rows[0] as any)?.MetaFieldId || '').trim()).toBe(fieldId);
+      expect(String((rows[0] as any)?.MetaModelId || '').trim()).toBe(modelId);
+      expect(String((rows[0] as any)?.MetaApplicationId || '').trim()).toBe(appId);
       expect(String((rows[0] as any)?.PermRead || '').trim()).toBe('allow');
       expect(String((rows[0] as any)?.PermWrite || '').trim()).toBe('');
       expect((rows[0] as any)?.DeletedAt != null).toBe(true);
@@ -1210,13 +1210,13 @@ test('RoleFieldRule: permission-only update must not rewrite scoped fields to gl
       const created = await RoleFieldRule.Create(
         {
           RoleId: { Id: roleId } as any,
-          IrModelId: modelId,
-          IrFieldId: fieldId,
-          IrApplicationId: null,
+          MetaModelId: modelId,
+          MetaFieldId: fieldId,
+          MetaApplicationId: null,
           PermRead: 'allow',
           PermWrite: 'deny',
         } as any,
-        ['Id', 'IrFieldId', 'IrModelId', 'IrApplicationId', 'PermRead', 'PermWrite'] as any
+        ['Id', 'MetaFieldId', 'MetaModelId', 'MetaApplicationId', 'PermRead', 'PermWrite'] as any
       );
 
       const id = String((created as any)?.Id || '').trim();
@@ -1232,13 +1232,13 @@ test('RoleFieldRule: permission-only update must not rewrite scoped fields to gl
 
       const rows = await RoleFieldRule.Search(
         ['Id', '=', id] as any,
-        { fields: ['Id', 'IrFieldId', 'IrModelId', 'IrApplicationId', 'PermRead', 'PermWrite'], limit: 1 } as any
+        { fields: ['Id', 'MetaFieldId', 'MetaModelId', 'MetaApplicationId', 'PermRead', 'PermWrite'], limit: 1 } as any
       );
 
       expect(rows.length).toBe(1);
-      expect(String((rows[0] as any)?.IrFieldId || '').trim()).toBe(fieldId);
-      expect(String((rows[0] as any)?.IrModelId || '').trim()).toBe(modelId);
-      expect(String((rows[0] as any)?.IrApplicationId || '').trim()).toBe('');
+      expect(String((rows[0] as any)?.MetaFieldId || '').trim()).toBe(fieldId);
+      expect(String((rows[0] as any)?.MetaModelId || '').trim()).toBe(modelId);
+      expect(String((rows[0] as any)?.MetaApplicationId || '').trim()).toBe('');
       expect(String((rows[0] as any)?.PermRead || '').trim()).toBe('deny');
       // Untouched PermWrite must survive a partial permission update.
       expect(String((rows[0] as any)?.PermWrite || '').trim()).toBe('deny');
@@ -1289,8 +1289,8 @@ test('P4 field rule deny-default: only system fields yields no_fields_deny_by_de
   resetRequestContext();
   setReq({ depth: 0, fieldRuleMode: '' });
 
-  const origIrFieldSearch = (IrField as any).Search;
-  (IrField as any).Search = async () => [
+  const origMetaFieldSearch = (MetaField as any).Search;
+  (MetaField as any).Search = async () => [
     { Id: 'sys_id', Name: 'Id' },
     { Id: 'sys_dn', Name: 'DisplayName' },
     { Id: 'sys_ca', Name: 'CreatedAt' },
@@ -1310,7 +1310,7 @@ test('P4 field rule deny-default: only system fields yields no_fields_deny_by_de
     expect(out.denyReadFields).toEqual([]);
     expect(out.denyWriteFields).toEqual([]);
   } finally {
-    (IrField as any).Search = origIrFieldSearch;
+    (MetaField as any).Search = origMetaFieldSearch;
   }
 });
 
@@ -1371,8 +1371,8 @@ test('P4 field rule deny-default: uncovered field is denied when other FR rows e
       await RoleFieldRule.Create(
         {
           RoleId: { Id: rid } as any,
-          IrModelId: locationModelId,
-          IrFieldId: nameFieldId,
+          MetaModelId: locationModelId,
+          MetaFieldId: nameFieldId,
           PermRead: 'allow',
           PermWrite: 'allow',
         } as any,
@@ -1440,8 +1440,8 @@ test('PR-D-2: wide model allow + field-scope deny clamps sensitive column', asyn
       await RoleFieldRule.Create(
         {
           RoleId: { Id: rid } as any,
-          IrModelId: locationModelId,
-          IrFieldId: null,
+          MetaModelId: locationModelId,
+          MetaFieldId: null,
           PermRead: 'allow',
           PermWrite: 'allow',
         } as any,
@@ -1450,8 +1450,8 @@ test('PR-D-2: wide model allow + field-scope deny clamps sensitive column', asyn
       await RoleFieldRule.Create(
         {
           RoleId: { Id: rid } as any,
-          IrModelId: locationModelId,
-          IrFieldId: nameFieldId,
+          MetaModelId: locationModelId,
+          MetaFieldId: nameFieldId,
           PermRead: 'deny',
           PermWrite: 'deny',
         } as any,
@@ -1558,17 +1558,17 @@ test('P4 field rule observability: hitRuleIds collect present Ids and tolerate m
   (RoleFieldRule as any).Search = async () => [
     {
       Id: 'fr_hit_1',
-      IrApplicationId: null,
-      IrModelId: modelId,
-      IrFieldId: nameFieldId,
+      MetaApplicationId: null,
+      MetaModelId: modelId,
+      MetaFieldId: nameFieldId,
       PermRead: 'allow',
       PermWrite: 'allow',
     },
     {
       Id: '',
-      IrApplicationId: null,
-      IrModelId: modelId,
-      IrFieldId: null,
+      MetaApplicationId: null,
+      MetaModelId: modelId,
+      MetaFieldId: null,
       PermRead: 'allow',
       PermWrite: 'allow',
     },
@@ -1597,35 +1597,35 @@ test('P4 field rule observability: hitRuleIds collect present Ids and tolerate m
 });
 
 // ---------------------------------------------------------------------------
-// OnchangeIrModelId coverage
+// OnchangeMetaModelId coverage
 // ---------------------------------------------------------------------------
 
-test('RoleFieldRule OnchangeIrModelId clears IrFieldId and narrows picker when model is selected', async () => {
+test('RoleFieldRule OnchangeMetaModelId clears MetaFieldId and narrows picker when model is selected', async () => {
   const result = await RoleFieldRule.Onchange(
     {
       Id: 'onchange-rule-1',
-      IrModelId: 'model-123',
-      IrFieldId: 'field-456',
+      MetaModelId: 'model-123',
+      MetaFieldId: 'field-456',
     },
-    ['IrModelId']
+    ['MetaModelId']
   );
 
-  expect(result.condition).toEqual([{ field: 'IrFieldId', condition: ['ModelId', '=', 'model-123'] }]);
-  expect(result.value).toEqual({ IrFieldId: null });
+  expect(result.condition).toEqual([{ field: 'MetaFieldId', condition: ['ModelId', '=', 'model-123'] }]);
+  expect(result.value).toEqual({ MetaFieldId: null });
 });
 
-test('RoleFieldRule OnchangeIrModelId clears IrFieldId and blocks picker when model is cleared', async () => {
+test('RoleFieldRule OnchangeMetaModelId clears MetaFieldId and blocks picker when model is cleared', async () => {
   const result = await RoleFieldRule.Onchange(
     {
       Id: 'onchange-rule-2',
-      IrModelId: undefined,
-      IrFieldId: 'field-456',
+      MetaModelId: undefined,
+      MetaFieldId: 'field-456',
     },
-    ['IrModelId']
+    ['MetaModelId']
   );
 
-  expect(result.condition).toEqual([{ field: 'IrFieldId', condition: ['Id', '=', '0'] }]);
-  expect(result.value).toEqual({ IrFieldId: null });
+  expect(result.condition).toEqual([{ field: 'MetaFieldId', condition: ['Id', '=', '0'] }]);
+  expect(result.value).toEqual({ MetaFieldId: null });
 });
 
 test('RoleFieldRule coverage: CreateMany, perm validation branches, and Update paths', async () => {
@@ -1653,9 +1653,9 @@ test('RoleFieldRule coverage: CreateMany, perm validation branches, and Update p
         [
           {
             RoleId: { Id: roleId } as any,
-            IrModelId: modelId,
-            IrFieldId: fieldId,
-            IrApplicationId: null,
+            MetaModelId: modelId,
+            MetaFieldId: fieldId,
+            MetaApplicationId: null,
             PermRead: 'allow',
             PermWrite: 'deny',
           } as any,
@@ -1681,9 +1681,9 @@ test('RoleFieldRule coverage: CreateMany, perm validation branches, and Update p
         await RoleFieldRule.Create(
           {
             RoleId: { Id: roleId } as any,
-            IrModelId: modelId,
-            IrFieldId: fieldId,
-            IrApplicationId: null,
+            MetaModelId: modelId,
+            MetaFieldId: fieldId,
+            MetaApplicationId: null,
           } as any,
           ['Id'] as any
         );
@@ -1707,9 +1707,9 @@ test('RoleFieldRule coverage: CreateMany, perm validation branches, and Update p
         await RoleFieldRule.Create(
           {
             RoleId: { Id: roleId } as any,
-            IrModelId: modelId,
-            IrFieldId: fieldId,
-            IrApplicationId: null,
+            MetaModelId: modelId,
+            MetaFieldId: fieldId,
+            MetaApplicationId: null,
             PermRead: 'maybe',
           } as any,
           ['Id'] as any
@@ -1723,9 +1723,9 @@ test('RoleFieldRule coverage: CreateMany, perm validation branches, and Update p
       const writeOnly = await RoleFieldRule.Create(
         {
           RoleId: { Id: roleId } as any,
-          IrModelId: modelId,
-          IrFieldId: null,
-          IrApplicationId: null,
+          MetaModelId: modelId,
+          MetaFieldId: null,
+          MetaApplicationId: null,
           PermWrite: 'allow',
         } as any,
         ['Id', 'PermRead', 'PermWrite'] as any

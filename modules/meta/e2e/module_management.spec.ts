@@ -129,7 +129,7 @@ async function waitForModuleList(page: Page) {
   await page.locator('.okanban').waitFor({ state: 'visible', timeout: 30000 });
   // The board can already be stable from cache without a fresh RPC on each poll.
   // Keep a short best-effort response wait to avoid 30s stalls in hot loops.
-  await page.waitForResponse(resp => resp.url().includes('meta.IrModule') && resp.status() === 200, { timeout: 2000 }).catch(() => null);
+  await page.waitForResponse(resp => resp.url().includes('meta.MetaModule') && resp.status() === 200, { timeout: 2000 }).catch(() => null);
 }
 
 /**
@@ -970,7 +970,7 @@ test('meta module management: kanban usable when registry sync fails', async ({ 
   let requestSyncCalls = 0;
   const routeHandler = async (route: any) => {
     const req = route.request();
-    if (req.method() === 'POST' && req.url().includes('/meta.IrModuleIndex/RequestSync')) {
+    if (req.method() === 'POST' && req.url().includes('/meta.MetaModuleIndex/RequestSync')) {
       requestSyncCalls += 1;
       if (forcedRegistrySyncFailures === 0) {
         forcedRegistrySyncFailures += 1;

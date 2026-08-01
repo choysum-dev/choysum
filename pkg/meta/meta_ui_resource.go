@@ -17,7 +17,7 @@ const (
 	UiResourceTypeAction UiResourceType = "ACTION"
 )
 
-type IrUiResource struct {
+type UiResource struct {
 	BaseModel          `gorm:"embedded"`
 	Name               string         `gorm:"type:varchar(255);not null;uniqueIndex" json:"name"`
 	Type               UiResourceType `gorm:"type:varchar(16);not null" json:"type"`
@@ -30,12 +30,12 @@ type IrUiResource struct {
 	ParentResourceName string         `gorm:"-" json:"-"`
 	ParentId           sql.NullString `gorm:"type:char(20);index" json:"parentId"`
 	ParentPath         string         `gorm:"type:varchar(1000);index" json:"parentPath"`
-	IrApplicationId    string         `gorm:"type:varchar(255);index" json:"irApplicationId"`
+	MetaApplicationId  string         `gorm:"type:varchar(255);index" json:"metaApplicationId"`
 	UiPath             string         `gorm:"type:varchar(512)" json:"uiPath"`
 	DefaultRoles       datatypes.JSON `gorm:"column:default_roles" json:"defaultRoles"`
 	ModuleId           sql.NullString `gorm:"type:char(20);index" json:"module_id"`
 }
 
-func (r *IrUiResource) TableName() string {
-	return "meta_ir_ui_resource"
+func (r *UiResource) TableName() string {
+	return "meta_ui_resource"
 }

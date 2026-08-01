@@ -14,18 +14,18 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import OPage from '@/web/web/components/page/OPage.vue';
 import ModuleKanbanView from '../views/ModuleKanbanView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
-import type IrModuleIndex from '@/meta/service/models/ir_module_index';
-import type IrModule from '@/meta/service/models/ir_module';
+import type MetaModuleIndex from '@/meta/service/models/module_index';
+import type MetaModule from '@/meta/service/models/module';
 
 defineOptions({ name: 'MetaModuleListPage' });
 
-const indexStore = createStoreByModel<typeof IrModuleIndex>('meta.IrModuleIndex', {
-  storeId: 'IrModuleIndex_ListKanban',
+const indexStore = createStoreByModel<typeof MetaModuleIndex>('meta.MetaModuleIndex', {
+  storeId: 'MetaModuleIndex_ListKanban',
   scopeManager: useScopeManager().menuScopeManager,
 });
 
-const moduleStore = createStoreByModel<typeof IrModule>('meta.IrModule', {
-  storeId: 'IrModule_ListKanban_Action',
+const moduleStore = createStoreByModel<typeof MetaModule>('meta.MetaModule', {
+  storeId: 'MetaModule_ListKanban_Action',
   scopeManager: useScopeManager().menuScopeManager,
 });
 </script>

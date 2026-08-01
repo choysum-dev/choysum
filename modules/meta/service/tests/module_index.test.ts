@@ -17,7 +17,7 @@ import {
   aggregateRows,
   normalizeOriginType,
   canReuseRunningSync,
-} from '../models/ir_module_index';
+} from '../models/module_index';
 
 type ModuleIndexRecord = {
   Id?: string;

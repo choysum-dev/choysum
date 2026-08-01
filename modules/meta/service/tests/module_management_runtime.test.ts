@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getBackendEnv, getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
-import IrModule from '@/meta/service/models/ir_module';
-import IrModuleIndex from '@/meta/service/models/ir_module_index';
+import MetaModule from '@/meta/service/models/module';
+import MetaModuleIndex from '@/meta/service/models/module_index';
 
 declare var globalThis: any;
 
@@ -32,47 +32,47 @@ test('isTruthyFlag recognizes truthy and falsy values', () => {
   expect(isTruthyFlag('  random  ')).toBe(false);
 });
 
-test('IrModule.getModuleManagementBridge returns bridge when available', () => {
+test('MetaModule.getModuleManagementBridge returns bridge when available', () => {
   const root: any = globalThis.$choysum;
   const saved = root?.moduleManagement;
   root.moduleManagement = { install: () => ({ ok: true }) };
   try {
-    const bridge = (IrModule as any).getModuleManagementBridge();
+    const bridge = (MetaModule as any).getModuleManagementBridge();
     expect(typeof bridge.install).toBe('function');
   } finally {
     root.moduleManagement = saved;
   }
 });
 
-test('IrModule.getModuleManagementBridge throws when bridge is missing', () => {
+test('MetaModule.getModuleManagementBridge throws when bridge is missing', () => {
   const root: any = globalThis.$choysum;
   const saved = root?.moduleManagement;
   delete root.moduleManagement;
   try {
-    expect(() => (IrModule as any).getModuleManagementBridge()).toThrow('moduleManagement bridge is not injected');
+    expect(() => (MetaModule as any).getModuleManagementBridge()).toThrow('moduleManagement bridge is not injected');
   } finally {
     root.moduleManagement = saved;
   }
 });
 
-test('IrModuleIndex.getModuleManagementBridge returns bridge when available', () => {
+test('MetaModuleIndex.getModuleManagementBridge returns bridge when available', () => {
   const root: any = globalThis.$choysum;
   const saved = root?.moduleManagement;
   root.moduleManagement = { syncIndex: () => ({ ok: true }) };
   try {
-    const bridge = (IrModuleIndex as any).getModuleManagementBridge();
+    const bridge = (MetaModuleIndex as any).getModuleManagementBridge();
     expect(typeof bridge.syncIndex).toBe('function');
   } finally {
     root.moduleManagement = saved;
   }
 });
 
-test('IrModuleIndex.getModuleManagementBridge throws when bridge is missing', () => {
+test('MetaModuleIndex.getModuleManagementBridge throws when bridge is missing', () => {
   const root: any = globalThis.$choysum;
   const saved = root?.moduleManagement;
   delete root.moduleManagement;
   try {
-    expect(() => (IrModuleIndex as any).getModuleManagementBridge()).toThrow('moduleManagement bridge is not injected');
+    expect(() => (MetaModuleIndex as any).getModuleManagementBridge()).toThrow('moduleManagement bridge is not injected');
   } finally {
     root.moduleManagement = saved;
   }

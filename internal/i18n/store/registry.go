@@ -101,12 +101,12 @@ func (r *Registry) listHostApplications() []string {
 		seen[app] = struct{}{}
 	}
 
-	// Prefer in-memory hosts for hot Lookup paths. Fall back to IrModule only
+	// Prefer in-memory hosts for hot Lookup paths. Fall back to Module only
 	// when the registry has not observed any host application yet.
 	if len(seen) == 0 && r.runtimeScope != nil && r.runtimeScope.Session() != nil {
 		session := r.runtimeScope.Session()
-		if session.Migrator().HasTable((&meta.IrModule{}).TableName()) {
-			var modules []meta.IrModule
+		if session.Migrator().HasTable((&meta.Module{}).TableName()) {
+			var modules []meta.Module
 			if err := session.Where("status = ?", meta.Installed).Find(&modules).Error; err == nil {
 				for _, mod := range modules {
 					app := strings.TrimSpace(mod.ApplicationStr)
@@ -171,10 +171,10 @@ func (r *Registry) loadModuleApplication(module string) (string, bool) {
 		return "", false
 	}
 	session := r.runtimeScope.Session()
-	if !session.Migrator().HasTable((&meta.IrModule{}).TableName()) {
+	if !session.Migrator().HasTable((&meta.Module{}).TableName()) {
 		return "", false
 	}
-	var mod meta.IrModule
+	var mod meta.Module
 	if err := session.Where("name = ?", module).Take(&mod).Error; err != nil {
 		return "", false
 	}

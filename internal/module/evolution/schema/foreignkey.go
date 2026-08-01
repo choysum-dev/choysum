@@ -31,11 +31,11 @@ const (
 
 type foreignKeyMigrator struct {
 	runtimeScope scope.Scope
-	module       *meta.IrModule
-	models       []*meta.IrModel
+	module       *meta.Module
+	models       []*meta.Model
 }
 
-func newForeignKeyMigrator(runtimeScope scope.Scope, module *meta.IrModule, models []*meta.IrModel) ForeignKeyMigrator {
+func newForeignKeyMigrator(runtimeScope scope.Scope, module *meta.Module, models []*meta.Model) ForeignKeyMigrator {
 	return &foreignKeyMigrator{
 		runtimeScope: runtimeScope,
 		module:       module,
@@ -138,14 +138,14 @@ func (m *foreignKeyMigrator) getManyToOneKeys() ([]ForeignKeyInfo, error) {
 	return foreignKeys, nil
 }
 
-func (m *foreignKeyMigrator) resolveTargetModelByPath(targetModelPath string) (*meta.IrModel, error) {
+func (m *foreignKeyMigrator) resolveTargetModelByPath(targetModelPath string) (*meta.Model, error) {
 	for _, model := range m.models {
 		if model != nil && model.Path == targetModelPath {
 			return model, nil
 		}
 	}
 
-	var target meta.IrModel
+	var target meta.Model
 	result := m.runtimeScope.Session().
 		Where("path = ?", targetModelPath).
 		Order("id DESC").

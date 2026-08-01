@@ -32,19 +32,19 @@ func (d fakeDialector) Explain(sql string, vars ...interface{}) string        { 
 func TestModelMigratorRuntimePaths(t *testing.T) {
 	runtimeScope := newSchemaTestScope(t)
 	disabledAutoMigrate := false
-	active := &meta.IrModel{
+	active := &meta.Model{
 		Name:       "Order",
 		Path:       "sales/order.ts",
 		ModelTable: "sales_order",
-		Fields: []*meta.IrField{
+		Fields: []*meta.Field{
 			newFieldWithOptions(t, "Status", `{"type":"selection","column":{"checkConstraint":" status in ('draft','done') "}}`),
 		},
 	}
-	readonly := &meta.IrModel{Name: "Readonly", Path: "sales/readonly.ts", ModelTable: "sales_readonly", Readonly: true, Fields: []*meta.IrField{newFieldWithOptions(t, "Ignored", `{"type":"selection"}`)}}
-	disabled := &meta.IrModel{Name: "Disabled", Path: "sales/disabled.ts", ModelTable: "sales_disabled", AutoMigrate: &disabledAutoMigrate, Fields: []*meta.IrField{newFieldWithOptions(t, "Ignored", `{"type":"selection"}`)}}
+	readonly := &meta.Model{Name: "Readonly", Path: "sales/readonly.ts", ModelTable: "sales_readonly", Readonly: true, Fields: []*meta.Field{newFieldWithOptions(t, "Ignored", `{"type":"selection"}`)}}
+	disabled := &meta.Model{Name: "Disabled", Path: "sales/disabled.ts", ModelTable: "sales_disabled", AutoMigrate: &disabledAutoMigrate, Fields: []*meta.Field{newFieldWithOptions(t, "Ignored", `{"type":"selection"}`)}}
 
-	migrator := newModelMigrator(runtimeScope, nil, []*meta.IrModel{active, readonly, disabled})
-	if err := migrator.migrateTableSchema([]*meta.IrModel{active, readonly, disabled}); err != nil {
+	migrator := newModelMigrator(runtimeScope, nil, []*meta.Model{active, readonly, disabled})
+	if err := migrator.migrateTableSchema([]*meta.Model{active, readonly, disabled}); err != nil {
 		t.Fatalf("migrateTableSchema() error = %v", err)
 	}
 	if !runtimeScope.Session().Migrator().HasTable("sales_order") {
@@ -68,17 +68,17 @@ func TestModelMigratorRuntimePaths(t *testing.T) {
 func TestModelMigratorErrorPaths(t *testing.T) {
 	t.Run("field metadata errors bubble up", func(t *testing.T) {
 		runtimeScope := newSchemaTestScope(t)
-		broken := &meta.IrModel{
+		broken := &meta.Model{
 			Name:       "Broken",
 			Path:       "sales/broken.ts",
 			ModelTable: "sales_broken",
-			Fields: []*meta.IrField{
+			Fields: []*meta.Field{
 				newFieldWithOptions(t, "Broken", `{invalid}`),
 			},
 		}
 
-		migrator := newModelMigrator(runtimeScope, nil, []*meta.IrModel{broken})
-		if err := migrator.migrateTableSchema([]*meta.IrModel{broken}); err == nil || !strings.Contains(err.Error(), "error unmarshal field resolved spec") {
+		migrator := newModelMigrator(runtimeScope, nil, []*meta.Model{broken})
+		if err := migrator.migrateTableSchema([]*meta.Model{broken}); err == nil || !strings.Contains(err.Error(), "error unmarshal field resolved spec") {
 			t.Fatalf("migrateTableSchema() error = %v", err)
 		}
 		if err := migrator.applyTableCheckConstraints("sales_broken", broken); err == nil || !strings.Contains(err.Error(), "error unmarshal field resolved spec") {
@@ -87,11 +87,11 @@ func TestModelMigratorErrorPaths(t *testing.T) {
 	})
 
 	t.Run("unknown dialect skips check constraints", func(t *testing.T) {
-		model := &meta.IrModel{
+		model := &meta.Model{
 			Name:       "Order",
 			Path:       "sales/order.ts",
 			ModelTable: "sales_order",
-			Fields: []*meta.IrField{
+			Fields: []*meta.Field{
 				newFieldWithOptions(t, "Status", `{"type":"selection","column":{"checkConstraint":"status <> ''"}}`),
 			},
 		}
@@ -112,17 +112,17 @@ func TestModelMigratorErrorPaths(t *testing.T) {
 			t.Fatalf("Close() error = %v", err)
 		}
 
-		active := &meta.IrModel{
+		active := &meta.Model{
 			Name:       "Order",
 			Path:       "sales/order.ts",
 			ModelTable: "sales_order",
-			Fields: []*meta.IrField{
+			Fields: []*meta.Field{
 				newFieldWithOptions(t, "Status", `{"type":"selection"}`),
 			},
 		}
 
-		migrator := newModelMigrator(runtimeScope, nil, []*meta.IrModel{active})
-		if err := migrator.migrateTableSchema([]*meta.IrModel{active}); err == nil || !strings.Contains(err.Error(), "migrate table sales_order") {
+		migrator := newModelMigrator(runtimeScope, nil, []*meta.Model{active})
+		if err := migrator.migrateTableSchema([]*meta.Model{active}); err == nil || !strings.Contains(err.Error(), "migrate table sales_order") {
 			t.Fatalf("migrateTableSchema(closed DB) error = %v", err)
 		}
 		if err := newModelMigrator(runtimeScope, nil, nil).MigrateSchema(); err == nil {
@@ -228,7 +228,7 @@ func TestModelMigratorFieldParsingAndStructTags(t *testing.T) {
 		t.Fatalf("unexpected binary meta: %#v", binaryMeta)
 	}
 
-	ownerModel := &meta.IrModel{Name: "User", Application: "auth", ModelTable: "auth_user"}
+	ownerModel := &meta.Model{Name: "User", Application: "auth", ModelTable: "auth_user"}
 	ownerBinaryMeta, err := migrator.getResolvedFieldColumnMeta(binaryField, ownerModel)
 	if err != nil {
 		t.Fatalf("getResolvedFieldColumnMeta(binary, owner model) error = %v", err)
@@ -246,7 +246,7 @@ func TestModelMigratorFieldParsingAndStructTags(t *testing.T) {
 		t.Fatalf("unexpected image meta: %#v", imageMeta)
 	}
 
-	documentModel := &meta.IrModel{Name: "AttachmentObject", Application: "document", ModelTable: "document_attachment_object"}
+	documentModel := &meta.Model{Name: "AttachmentObject", Application: "document", ModelTable: "document_attachment_object"}
 	documentImageMeta, err := migrator.getResolvedFieldColumnMeta(imageField, documentModel)
 	if err != nil {
 		t.Fatalf("getResolvedFieldColumnMeta(image, document model) error = %v", err)
@@ -297,7 +297,7 @@ func TestModelMigratorFieldParsingEdgeCasesAndDialectHelpers(t *testing.T) {
 	migrator := newModelMigrator(runtimeScope, nil, nil)
 
 	t.Run("field metadata parsing edge cases", func(t *testing.T) {
-		fieldWithoutDecorators := &meta.IrField{Name: "Plain"}
+		fieldWithoutDecorators := &meta.Field{Name: "Plain"}
 		metaMap, err := migrator.getResolvedFieldColumnMeta(fieldWithoutDecorators)
 		if err != nil {
 			t.Fatalf("getResolvedFieldColumnMeta(no decorators) error = %v", err)
@@ -306,7 +306,7 @@ func TestModelMigratorFieldParsingEdgeCasesAndDialectHelpers(t *testing.T) {
 			t.Fatalf("expected nil meta for no decorators, got %#v", metaMap)
 		}
 
-		nonObject := &meta.IrField{Name: "Plain", Decorators: []*meta.IrDecorator{{Name: "Field", Arguments: []*meta.IrArgument{{Type: "StringLiteral", Value: `"ignored"`}}}}}
+		nonObject := &meta.Field{Name: "Plain", Decorators: []*meta.Decorator{{Name: "Field", Arguments: []*meta.Argument{{Type: "StringLiteral", Value: `"ignored"`}}}}}
 		metaMap, err = migrator.getResolvedFieldColumnMeta(nonObject)
 		if err != nil {
 			t.Fatalf("getResolvedFieldColumnMeta(non object) error = %v", err)
@@ -341,7 +341,7 @@ func TestModelMigratorFieldParsingEdgeCasesAndDialectHelpers(t *testing.T) {
 
 	t.Run("nil metadata and unsupported dialect helpers", func(t *testing.T) {
 		builder := dynamicStructBuilder()
-		if err := migrator.addFieldToStruct(&builder, &meta.IrField{Name: "Skipped"}, nil); err != nil {
+		if err := migrator.addFieldToStruct(&builder, &meta.Field{Name: "Skipped"}, nil); err != nil {
 			t.Fatalf("addFieldToStruct(nil meta) error = %v", err)
 		}
 
@@ -373,14 +373,14 @@ func TestModelMigratorResolvedSpecMigrationDecisions(t *testing.T) {
 	migrator := newModelMigrator(runtimeScope, nil, nil)
 
 	t.Run("sql compute fields do not create columns", func(t *testing.T) {
-		field := &meta.IrField{Name: "DisplayName"}
-		spec := &meta.IrFieldResolvedSpec{
+		field := &meta.Field{Name: "DisplayName"}
+		spec := &meta.FieldResolvedSpec{
 			FieldName: "DisplayName",
-			Structural: meta.IrFieldStructuralSpec{
+			Structural: meta.FieldStructuralSpec{
 				Name:      "DisplayName",
 				FieldType: "varchar",
 			},
-			Migration: meta.IrFieldMigrationDecision{
+			Migration: meta.FieldMigrationDecision{
 				StorageKind:        "virtualSql",
 				ShouldCreateColumn: false,
 				ReasonCode:         "SQL_COMPUTE",
@@ -400,18 +400,18 @@ func TestModelMigratorResolvedSpecMigrationDecisions(t *testing.T) {
 	})
 
 	t.Run("compute store false does not create columns while store true does", func(t *testing.T) {
-		virtualField := &meta.IrField{Name: "VirtualTotal"}
-		virtualSpec := &meta.IrFieldResolvedSpec{
+		virtualField := &meta.Field{Name: "VirtualTotal"}
+		virtualSpec := &meta.FieldResolvedSpec{
 			FieldName: "VirtualTotal",
-			Structural: meta.IrFieldStructuralSpec{
+			Structural: meta.FieldStructuralSpec{
 				Name:      "VirtualTotal",
 				FieldType: "decimal",
-				StorageHints: &meta.IrFieldStructuralStorageHints{
+				StorageHints: &meta.FieldStructuralStorageHints{
 					Precision: intPtr(16),
 					Scale:     intPtr(2),
 				},
 			},
-			Migration: meta.IrFieldMigrationDecision{
+			Migration: meta.FieldMigrationDecision{
 				StorageKind:        "virtualRuntime",
 				ShouldCreateColumn: false,
 				ReasonCode:         "COMPUTE_STORE_FALSE",
@@ -421,18 +421,18 @@ func TestModelMigratorResolvedSpecMigrationDecisions(t *testing.T) {
 			t.Fatalf("SetResolvedSpec(virtual) error = %v", err)
 		}
 
-		persistedField := &meta.IrField{Name: "PersistedTotal"}
-		persistedSpec := &meta.IrFieldResolvedSpec{
+		persistedField := &meta.Field{Name: "PersistedTotal"}
+		persistedSpec := &meta.FieldResolvedSpec{
 			FieldName: "PersistedTotal",
-			Structural: meta.IrFieldStructuralSpec{
+			Structural: meta.FieldStructuralSpec{
 				Name:      "PersistedTotal",
 				FieldType: "decimal",
-				StorageHints: &meta.IrFieldStructuralStorageHints{
+				StorageHints: &meta.FieldStructuralStorageHints{
 					Precision: intPtr(18),
 					Scale:     intPtr(4),
 				},
 			},
-			Migration: meta.IrFieldMigrationDecision{
+			Migration: meta.FieldMigrationDecision{
 				StorageKind:        "physical",
 				ShouldCreateColumn: true,
 				ResolvedColumnType: "decimal",
@@ -508,17 +508,17 @@ func TestModelMigratorResolvedSpecMigrationDecisions(t *testing.T) {
 	})
 
 	t.Run("empty resolved column type falls back to struct field type", func(t *testing.T) {
-		field := &meta.IrField{Name: "FallbackType"}
-		spec := &meta.IrFieldResolvedSpec{
+		field := &meta.Field{Name: "FallbackType"}
+		spec := &meta.FieldResolvedSpec{
 			FieldName: "FallbackType",
-			Structural: meta.IrFieldStructuralSpec{
+			Structural: meta.FieldStructuralSpec{
 				Name:      "FallbackType",
 				FieldType: "varchar",
-				StorageHints: &meta.IrFieldStructuralStorageHints{
+				StorageHints: &meta.FieldStructuralStorageHints{
 					Size: intPtr(64),
 				},
 			},
-			Migration: meta.IrFieldMigrationDecision{
+			Migration: meta.FieldMigrationDecision{
 				StorageKind:        "physical",
 				ShouldCreateColumn: true,
 				ResolvedColumnType: "",
@@ -538,19 +538,19 @@ func TestModelMigratorResolvedSpecMigrationDecisions(t *testing.T) {
 	})
 
 	t.Run("primaryKey and uniqueIndex as string propagate to column meta", func(t *testing.T) {
-		field := &meta.IrField{Name: "Code"}
-		spec := &meta.IrFieldResolvedSpec{
+		field := &meta.Field{Name: "Code"}
+		spec := &meta.FieldResolvedSpec{
 			FieldName: "Code",
-			Structural: meta.IrFieldStructuralSpec{
+			Structural: meta.FieldStructuralSpec{
 				Name:      "Code",
 				FieldType: "varchar",
-				StorageHints: &meta.IrFieldStructuralStorageHints{
+				StorageHints: &meta.FieldStructuralStorageHints{
 					PrimaryKey:  boolPtr(true),
 					UniqueIndex: strPtr("idx_code"),
 					Size:        intPtr(32),
 				},
 			},
-			Migration: meta.IrFieldMigrationDecision{
+			Migration: meta.FieldMigrationDecision{
 				StorageKind:        "physical",
 				ShouldCreateColumn: true,
 				ResolvedColumnType: "varchar",
@@ -573,18 +573,18 @@ func TestModelMigratorResolvedSpecMigrationDecisions(t *testing.T) {
 	})
 
 	t.Run("precision and scale hints propagate to column meta", func(t *testing.T) {
-		field := &meta.IrField{Name: "Amount"}
-		spec := &meta.IrFieldResolvedSpec{
+		field := &meta.Field{Name: "Amount"}
+		spec := &meta.FieldResolvedSpec{
 			FieldName: "Amount",
-			Structural: meta.IrFieldStructuralSpec{
+			Structural: meta.FieldStructuralSpec{
 				Name:      "Amount",
 				FieldType: "decimal",
-				StorageHints: &meta.IrFieldStructuralStorageHints{
+				StorageHints: &meta.FieldStructuralStorageHints{
 					Precision: intPtr(16),
 					Scale:     intPtr(2),
 				},
 			},
-			Migration: meta.IrFieldMigrationDecision{
+			Migration: meta.FieldMigrationDecision{
 				StorageKind:        "physical",
 				ShouldCreateColumn: true,
 				ResolvedColumnType: "decimal",
@@ -604,23 +604,23 @@ func TestModelMigratorResolvedSpecMigrationDecisions(t *testing.T) {
 	})
 
 	t.Run("translate field uses jsonobject without size or unique", func(t *testing.T) {
-		field := &meta.IrField{Name: "Name"}
+		field := &meta.Field{Name: "Name"}
 		trueVal := true
 		size := 100
-		spec := &meta.IrFieldResolvedSpec{
+		spec := &meta.FieldResolvedSpec{
 			FieldName: "Name",
-			Structural: meta.IrFieldStructuralSpec{
+			Structural: meta.FieldStructuralSpec{
 				Name:      "Name",
 				FieldType: "varchar",
 				Translate: &trueVal,
-				StorageHints: &meta.IrFieldStructuralStorageHints{
+				StorageHints: &meta.FieldStructuralStorageHints{
 					Size:   &size,
 					Unique: &trueVal,
 					Index:  strPtr("trigram"),
 				},
 				ColumnType: "jsonobject",
 			},
-			Migration: meta.IrFieldMigrationDecision{
+			Migration: meta.FieldMigrationDecision{
 				StorageKind:        "physical",
 				ShouldCreateColumn: true,
 				ResolvedColumnType: "jsonobject",
@@ -657,20 +657,20 @@ func TestModelMigratorResolvedSpecMigrationDecisions(t *testing.T) {
 		}
 
 		btree := "btree"
-		nonTrigram := &meta.IrField{Name: "Title"}
-		nonTrigramSpec := &meta.IrFieldResolvedSpec{
+		nonTrigram := &meta.Field{Name: "Title"}
+		nonTrigramSpec := &meta.FieldResolvedSpec{
 			FieldName: "Title",
-			Structural: meta.IrFieldStructuralSpec{
+			Structural: meta.FieldStructuralSpec{
 				Name:      "Title",
 				FieldType: "varchar",
 				Translate: &trueVal,
-				StorageHints: &meta.IrFieldStructuralStorageHints{
+				StorageHints: &meta.FieldStructuralStorageHints{
 					Size:  &size,
 					Index: &btree,
 				},
 				ColumnType: "jsonobject",
 			},
-			Migration: meta.IrFieldMigrationDecision{
+			Migration: meta.FieldMigrationDecision{
 				StorageKind:        "physical",
 				ShouldCreateColumn: true,
 				ResolvedColumnType: "jsonobject",
@@ -713,12 +713,12 @@ func TestModelMigratorResolvedSpecMigrationDecisions(t *testing.T) {
 			{app: "other", name: "User", table: "document_stored_content"},
 		}
 		for _, c := range carriers {
-			model := &meta.IrModel{Application: c.app, Name: c.name, ModelTable: c.table}
+			model := &meta.Model{Application: c.app, Name: c.name, ModelTable: c.table}
 			if !isStorageBlobCarrierModel(model) {
 				t.Fatalf("expected isStorageBlobCarrierModel=true for app=%q name=%q table=%q", c.app, c.name, c.table)
 			}
 		}
-		notCarrier := &meta.IrModel{Application: "auth", Name: "User", ModelTable: "auth_user"}
+		notCarrier := &meta.Model{Application: "auth", Name: "User", ModelTable: "auth_user"}
 		if isStorageBlobCarrierModel(notCarrier) {
 			t.Fatal("expected auth.User not to be a blob carrier")
 		}

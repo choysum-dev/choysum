@@ -15,7 +15,7 @@ func TestNormalizeTranslatedSeedValue_ScalarAndMap(t *testing.T) {
 	l, db := newTestLoader(t)
 
 	modelID := xid.New().String()
-	model := &meta.IrModel{}
+	model := &meta.Model{}
 	model.Id.String = modelID
 	model.Id.Valid = true
 	model.Application = "demo"
@@ -26,17 +26,17 @@ func TestNormalizeTranslatedSeedValue_ScalarAndMap(t *testing.T) {
 	}
 
 	trueVal := true
-	field := &meta.IrField{Name: "Name", FieldType: "varchar"}
+	field := &meta.Field{Name: "Name", FieldType: "varchar"}
 	field.ModelId.String = modelID
 	field.ModelId.Valid = true
-	spec := &meta.IrFieldResolvedSpec{
+	spec := &meta.FieldResolvedSpec{
 		FieldName: "Name",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Name:      "Name",
 			FieldType: "varchar",
 			Translate: &trueVal,
 		},
-		Migration: meta.IrFieldMigrationDecision{
+		Migration: meta.FieldMigrationDecision{
 			StorageKind:        "physical",
 			ShouldCreateColumn: true,
 			ResolvedColumnType: "jsonobject",
@@ -74,7 +74,7 @@ func TestNormalizeTranslatedSeedValue_ScalarAndMap(t *testing.T) {
 	}
 
 	langModelID := xid.New().String()
-	langModel := &meta.IrModel{}
+	langModel := &meta.Model{}
 	langModel.Id.String = langModelID
 	langModel.Id.Valid = true
 	langModel.Application = "base"
@@ -109,17 +109,17 @@ func TestNormalizeTranslatedSeedValue_ScalarAndMap(t *testing.T) {
 		t.Fatalf("expected reject _t seed, got %#v", err)
 	}
 
-	langNameField := &meta.IrField{Name: "Name", FieldType: "varchar"}
+	langNameField := &meta.Field{Name: "Name", FieldType: "varchar"}
 	langNameField.ModelId.String = langModelID
 	langNameField.ModelId.Valid = true
-	langSpec := &meta.IrFieldResolvedSpec{
+	langSpec := &meta.FieldResolvedSpec{
 		FieldName: "Name",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Name:      "Name",
 			FieldType: "varchar",
 			Translate: &trueVal,
 		},
-		Migration: meta.IrFieldMigrationDecision{
+		Migration: meta.FieldMigrationDecision{
 			StorageKind:        "physical",
 			ShouldCreateColumn: true,
 			ResolvedColumnType: "jsonobject",

@@ -15,20 +15,20 @@ import (
 )
 
 type countingPrefetchOriginCoordinator struct {
-	modules map[string]*meta.IrModule
+	modules map[string]*meta.Module
 	fetches []string
 }
 
-func (c *countingPrefetchOriginCoordinator) Peek(_ context.Context, input string) (*meta.IrModule, error) {
+func (c *countingPrefetchOriginCoordinator) Peek(_ context.Context, input string) (*meta.Module, error) {
 	return c.lookup(input), nil
 }
 
-func (c *countingPrefetchOriginCoordinator) ResolveInstallModule(_ context.Context, input string) (*meta.IrModule, error) {
+func (c *countingPrefetchOriginCoordinator) ResolveInstallModule(_ context.Context, input string) (*meta.Module, error) {
 	c.fetches = append(c.fetches, input)
 	return c.lookup(input), nil
 }
 
-func (c *countingPrefetchOriginCoordinator) Fetch(ctx context.Context, input string) (*meta.IrModule, error) {
+func (c *countingPrefetchOriginCoordinator) Fetch(ctx context.Context, input string) (*meta.Module, error) {
 	return c.ResolveInstallModule(ctx, input)
 }
 
@@ -36,7 +36,7 @@ func (c *countingPrefetchOriginCoordinator) Purge(context.Context, string) error
 	return nil
 }
 
-func (c *countingPrefetchOriginCoordinator) lookup(input string) *meta.IrModule {
+func (c *countingPrefetchOriginCoordinator) lookup(input string) *meta.Module {
 	if c == nil || c.modules == nil {
 		return nil
 	}
@@ -58,15 +58,15 @@ func TestPrefetchInstallModulesThenResolveUsesCache(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal depends: %v", err)
 	}
-	core := &meta.IrModule{Name: "core", Version: "1.0.0", Path: filepath.Join(modulesPath, "core")}
-	doc := &meta.IrModule{
+	core := &meta.Module{Name: "core", Version: "1.0.0", Path: filepath.Join(modulesPath, "core")}
+	doc := &meta.Module{
 		Name:       "document",
 		Version:    "1.0.0",
 		Path:       filepath.Join(modulesPath, "document"),
 		DependsStr: dependsRaw,
 	}
 	origin := &countingPrefetchOriginCoordinator{
-		modules: map[string]*meta.IrModule{
+		modules: map[string]*meta.Module{
 			"core":     core,
 			"document": doc,
 		},
@@ -133,7 +133,7 @@ func TestPrefetchInstallContextHelpers(t *testing.T) {
 	if PrefetchedInstallModulesFromContext(ctx) != nil {
 		t.Fatal("empty modules")
 	}
-	ctx = WithPrefetchedInstallModules(context.Background(), map[string]*meta.IrModule{
+	ctx = WithPrefetchedInstallModules(context.Background(), map[string]*meta.Module{
 		"":     {Name: "skip"},
 		"auth": nil,
 		"web":  {Name: "web"},

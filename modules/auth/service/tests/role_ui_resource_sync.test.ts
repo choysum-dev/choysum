@@ -5,14 +5,14 @@ import { withContext as withModelContext } from '@/core/service/api/context';
 import Role from '@/auth/service/models/role';
 import RoleMethodAccess from '@/auth/service/models/role_method_access';
 import RoleUiResource from '@/auth/service/models/role_ui_resource';
-import IrUiResource from '@/meta/service/models/ir_ui_resource';
+import MetaUiResource from '@/meta/service/models/ui_resource';
 import { createServiceByModel } from '@/core/service/rpc';
-import type IrApplicationModel from '@/meta/service/models/ir_application';
-import type IrModelModel from '@/meta/service/models/ir_model';
-import type IrServiceModel from '@/meta/service/models/ir_service';
-const IrApplication = createServiceByModel<typeof IrApplicationModel>('meta.IrApplication');
-const IrModel = createServiceByModel<typeof IrModelModel>('meta.IrModel');
-const IrService = createServiceByModel<typeof IrServiceModel>('meta.IrService');
+import type MetaApplicationModel from '@/meta/service/models/application';
+import type MetaModelModel from '@/meta/service/models/model';
+import type MetaServiceModel from '@/meta/service/models/service';
+const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
+const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
+const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -87,27 +87,27 @@ function setupAllowlistForFixtures(): void {
       'RoleUiResource:create',
       'RoleUiResource:delete',
 
-      'meta.IrUiResource:read',
-      'meta.IrUiResource:write',
-      'meta.IrUiResource:create',
-      'meta.IrUiResource:delete',
-      'IrUiResource:read',
-      'IrUiResource:write',
-      'IrUiResource:create',
-      'IrUiResource:delete',
+      'meta.MetaUiResource:read',
+      'meta.MetaUiResource:write',
+      'meta.MetaUiResource:create',
+      'meta.MetaUiResource:delete',
+      'MetaUiResource:read',
+      'MetaUiResource:write',
+      'MetaUiResource:create',
+      'MetaUiResource:delete',
 
-      'meta.IrModel:read',
-      'meta.IrService:read',
-      'meta.IrApplication:read',
-      'IrModel:read',
-      'IrService:read',
-      'IrApplication:read',
+      'meta.MetaModel:read',
+      'meta.MetaService:read',
+      'meta.MetaApplication:read',
+      'MetaModel:read',
+      'MetaService:read',
+      'MetaApplication:read',
     ],
   });
 }
 
 async function resolveApplicationId(applicationName: string): Promise<string> {
-  const rows = await IrApplication.Search(
+  const rows = await MetaApplication.Search(
     {
       And: [['Name', '=', applicationName]],
     } as any,
@@ -119,7 +119,7 @@ async function resolveApplicationId(applicationName: string): Promise<string> {
 }
 
 async function resolveModelId(appName: string, modelName: string): Promise<string> {
-  const rows = await IrModel.Search(
+  const rows = await MetaModel.Search(
     {
       And: [
         ['Name', '=', modelName],
@@ -134,7 +134,7 @@ async function resolveModelId(appName: string, modelName: string): Promise<strin
 }
 
 async function resolveService(modelId: string, serviceName: string): Promise<{ id: string; name: string }> {
-  const rows = await IrService.Search(
+  const rows = await MetaService.Search(
     {
       And: [['ModelId', '=', modelId]],
     } as any,
@@ -173,17 +173,17 @@ async function createRole(code: string): Promise<{ id: string }> {
   return { id };
 }
 
-async function listRoleUiGrants(roleId: string): Promise<Array<{ IrApplicationId: string; IrUiResourceId: string; Mode: string }>> {
+async function listRoleUiGrants(roleId: string): Promise<Array<{ MetaApplicationId: string; MetaUiResourceId: string; Mode: string }>> {
   const rows = await RoleUiResource.Search(
     {
       And: [['RoleId', '=', roleId]],
     } as any,
-    { fields: ['IrApplicationId', 'IrUiResourceId', 'Mode'], limit: 100 } as any
+    { fields: ['MetaApplicationId', 'MetaUiResourceId', 'Mode'], limit: 100 } as any
   );
 
   return (rows || []).map((row: any) => ({
-    IrApplicationId: String(row?.IrApplicationId || '').trim(),
-    IrUiResourceId: String(row?.IrUiResourceId || '').trim(),
+    MetaApplicationId: String(row?.MetaApplicationId || '').trim(),
+    MetaUiResourceId: String(row?.MetaUiResourceId || '').trim(),
     Mode: String(row?.Mode || '').trim(),
   }));
 }
@@ -194,19 +194,19 @@ async function createUiResource(input: {
   requires?: string[];
   irApplicationId?: string | null;
 }): Promise<string> {
-  const row = await IrUiResource.Create(
+  const row = await MetaUiResource.Create(
     {
       Name: input.resourceId,
       Type: input.type,
       Requires: input.requires ?? [],
-      IrApplicationId: input.irApplicationId ?? null,
+      MetaApplicationId: input.irApplicationId ?? null,
       Module: 'auth',
     } as any,
     ['Id'] as any
   );
 
   const id = String((row as any)?.Id || '').trim();
-  if (!id) throw new Error(`IrUiResource create failed: ${input.resourceId}`);
+  if (!id) throw new Error(`MetaUiResource create failed: ${input.resourceId}`);
   return id;
 }
 
@@ -229,8 +229,8 @@ test('RoleUiResource delete grant: keeps manual ACL untouched', async () => {
     const grant = await RoleUiResource.Create(
       {
         RoleId: { Id: role.id } as any,
-        IrApplicationId: null,
-        IrUiResourceId: uiResourceId,
+        MetaApplicationId: null,
+        MetaUiResourceId: uiResourceId,
       } as any,
       ['Id'] as any
     );
@@ -238,9 +238,9 @@ test('RoleUiResource delete grant: keeps manual ACL untouched', async () => {
     await RoleMethodAccess.Create(
       {
         RoleId: { Id: role.id } as any,
-        IrServiceId: browseService.id,
-        IrModelId: null,
-        IrApplicationId: null,
+        MetaServiceId: browseService.id,
+        MetaModelId: null,
+        MetaApplicationId: null,
         Mode: 'allow',
         Source: 'manual',
       } as any,
@@ -256,11 +256,11 @@ test('RoleUiResource delete grant: keeps manual ACL untouched', async () => {
           ['Source', '=', 'manual'],
         ],
       } as any,
-      { fields: ['IrServiceId'], limit: 100 } as any
+      { fields: ['MetaServiceId'], limit: 100 } as any
     );
 
     expect((manualRows || []).length > 0).toBe(true);
-    expect(String((manualRows as any)[0]?.IrServiceId || '').trim()).toBe(browseService.id);
+    expect(String((manualRows as any)[0]?.MetaServiceId || '').trim()).toBe(browseService.id);
   });
 });
 
@@ -279,8 +279,8 @@ test('RoleUiResource create: resource scope grant persists with mode', async () 
     await RoleUiResource.Create(
       {
         RoleId: { Id: role.id } as any,
-        IrApplicationId: null,
-        IrUiResourceId: resourceId,
+        MetaApplicationId: null,
+        MetaUiResourceId: resourceId,
         Mode: 'deny',
       } as any,
       ['Id'] as any
@@ -289,8 +289,8 @@ test('RoleUiResource create: resource scope grant persists with mode', async () 
     const grants = await listRoleUiGrants(role.id);
     expect(grants.length).toBe(1);
     expect(grants[0]).toEqual({
-      IrApplicationId: '',
-      IrUiResourceId: resourceId,
+      MetaApplicationId: '',
+      MetaUiResourceId: resourceId,
       Mode: 'deny',
     });
   });
@@ -307,8 +307,8 @@ test('RoleUiResource create: application scope grant persists', async () => {
     await RoleUiResource.Create(
       {
         RoleId: { Id: role.id } as any,
-        IrApplicationId: appId,
-        IrUiResourceId: null,
+        MetaApplicationId: appId,
+        MetaUiResourceId: null,
         Mode: 'allow',
       } as any,
       ['Id'] as any
@@ -317,8 +317,8 @@ test('RoleUiResource create: application scope grant persists', async () => {
     const grants = await listRoleUiGrants(role.id);
     expect(grants.length).toBe(1);
     expect(grants[0]).toEqual({
-      IrApplicationId: appId,
-      IrUiResourceId: '',
+      MetaApplicationId: appId,
+      MetaUiResourceId: '',
       Mode: 'allow',
     });
   });
@@ -334,8 +334,8 @@ test('RoleUiResource create: global scope grant persists', async () => {
     await RoleUiResource.Create(
       {
         RoleId: { Id: role.id } as any,
-        IrApplicationId: null,
-        IrUiResourceId: null,
+        MetaApplicationId: null,
+        MetaUiResourceId: null,
         Mode: 'allow',
       } as any,
       ['Id'] as any
@@ -344,8 +344,8 @@ test('RoleUiResource create: global scope grant persists', async () => {
     const grants = await listRoleUiGrants(role.id);
     expect(grants.length).toBe(1);
     expect(grants[0]).toEqual({
-      IrApplicationId: '',
-      IrUiResourceId: '',
+      MetaApplicationId: '',
+      MetaUiResourceId: '',
       Mode: 'allow',
     });
   });
@@ -367,8 +367,8 @@ test('RoleUiResource db check: deleted rows bypass scope xor', async () => {
     const grant = await RoleUiResource.Create(
       {
         RoleId: { Id: role.id } as any,
-        IrApplicationId: null,
-        IrUiResourceId: resourceId,
+        MetaApplicationId: null,
+        MetaUiResourceId: resourceId,
         Mode: 'allow',
       } as any,
       ['Id'] as any
@@ -382,8 +382,8 @@ test('RoleUiResource db check: deleted rows bypass scope xor', async () => {
     const repo = RoleUiResource.getRepository().withDeleted();
     const updated = await repo.update(
       {
-        IrApplicationId: appId,
-        IrUiResourceId: resourceId,
+        MetaApplicationId: appId,
+        MetaUiResourceId: resourceId,
       } as any,
       ['Id', '=', grantId] as any
     );
@@ -393,14 +393,14 @@ test('RoleUiResource db check: deleted rows bypass scope xor', async () => {
     const rows = await RoleUiResource.Search(
       ['Id', '=', grantId] as any,
       {
-        fields: ['Id', 'DeletedAt', 'IrApplicationId', 'IrUiResourceId'] as any,
+        fields: ['Id', 'DeletedAt', 'MetaApplicationId', 'MetaUiResourceId'] as any,
         withDeleted: true,
       } as any
     );
 
     expect(rows.length).toBe(1);
-    expect(String((rows[0] as any)?.IrApplicationId || '').trim()).toBe(appId);
-    expect(String((rows[0] as any)?.IrUiResourceId || '').trim()).toBe(resourceId);
+    expect(String((rows[0] as any)?.MetaApplicationId || '').trim()).toBe(appId);
+    expect(String((rows[0] as any)?.MetaUiResourceId || '').trim()).toBe(resourceId);
     expect((rows[0] as any)?.DeletedAt != null).toBe(true);
   });
 });
@@ -420,8 +420,8 @@ test('RoleUiResource: permission-only update must not rewrite scoped fields to g
     const created = await RoleUiResource.Create(
       {
         RoleId: { Id: role.id } as any,
-        IrApplicationId: null,
-        IrUiResourceId: resourceId,
+        MetaApplicationId: null,
+        MetaUiResourceId: resourceId,
         Mode: 'allow',
       } as any,
       ['Id'] as any
@@ -440,13 +440,13 @@ test('RoleUiResource: permission-only update must not rewrite scoped fields to g
 
     const rows = await RoleUiResource.Search(
       ['Id', '=', id] as any,
-      { fields: ['Id', 'IrApplicationId', 'IrUiResourceId', 'Mode'], limit: 1 } as any
+      { fields: ['Id', 'MetaApplicationId', 'MetaUiResourceId', 'Mode'], limit: 1 } as any
     );
 
     expect(rows.length).toBe(1);
     // Scope must stay scoped to the UI resource, not become global.
-    expect(String((rows[0] as any)?.IrUiResourceId || '').trim()).toBe(resourceId);
-    expect(String((rows[0] as any)?.IrApplicationId || '').trim()).toBe('');
+    expect(String((rows[0] as any)?.MetaUiResourceId || '').trim()).toBe(resourceId);
+    expect(String((rows[0] as any)?.MetaApplicationId || '').trim()).toBe('');
     // Mode must reflect the update.
     expect(String((rows[0] as any)?.Mode || '').trim()).toBe('deny');
   });
@@ -473,8 +473,8 @@ test('RoleUiResource coverage: condition Update hits assertExclusiveScope', asyn
       [
         {
           RoleId: { Id: role.id } as any,
-          IrApplicationId: null,
-          IrUiResourceId: resourceId,
+          MetaApplicationId: null,
+          MetaUiResourceId: resourceId,
           Mode: 'allow',
         } as any,
       ],
@@ -488,10 +488,10 @@ test('RoleUiResource coverage: condition Update hits assertExclusiveScope', asyn
 
     const rows = await RoleUiResource.Search(
       ['Id', '=', id] as any,
-      { fields: ['Id', 'IrApplicationId', 'IrUiResourceId', 'Mode'], limit: 1 } as any
+      { fields: ['Id', 'MetaApplicationId', 'MetaUiResourceId', 'Mode'], limit: 1 } as any
     );
     expect(rows.length).toBe(1);
-    expect(String((rows[0] as any)?.IrUiResourceId || '').trim()).toBe(resourceId);
+    expect(String((rows[0] as any)?.MetaUiResourceId || '').trim()).toBe(resourceId);
     expect(String((rows[0] as any)?.Mode || '').trim()).toBe('deny');
   });
 });

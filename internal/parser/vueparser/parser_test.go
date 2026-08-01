@@ -13,7 +13,7 @@ import (
 
 func TestVueParserParseRejectsUnsupportedExtension(t *testing.T) {
 	runtimeScope := newVueParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"}
+	module := &meta.Module{Path: "/virtual/modules/auth", ApplicationStr: "auth"}
 	p := NewVueParser(runtimeScope, module)
 
 	_, err := p.Parse(nil, filepath.Join(t.TempDir(), "notes.md"), "# hello")
@@ -25,7 +25,7 @@ func TestVueParserParseRejectsUnsupportedExtension(t *testing.T) {
 func TestVueParserParseTSFileCollectsImportsExportsAndUiResources(t *testing.T) {
 	runtimeScope := newVueParserTestScope()
 	runtimeOpts := runtimeOptionsFromScope(runtimeScope)
-	module := &meta.IrModule{Path: filepath.Join(runtimeOpts.modulesPath, "auth"), ApplicationStr: "auth"}
+	module := &meta.Module{Path: filepath.Join(runtimeOpts.modulesPath, "auth"), ApplicationStr: "auth"}
 	p := NewVueParser(runtimeScope, module)
 
 	path := filepath.Join(runtimeOpts.modulesPath, "auth", "web", "views", "users.ts")
@@ -81,7 +81,7 @@ defineRoute('auth.route.user_list', {
 func TestVueParserParseTSSkipsCompatibilityCorePaths(t *testing.T) {
 	runtimeScope := newVueParserTestScope()
 	runtimeOpts := runtimeOptionsFromScope(runtimeScope)
-	module := &meta.IrModule{Path: filepath.Join(runtimeOpts.modulesPath, "core"), ApplicationStr: "core"}
+	module := &meta.Module{Path: filepath.Join(runtimeOpts.modulesPath, "core"), ApplicationStr: "core"}
 	p := NewVueParser(runtimeScope, module)
 
 	path := filepath.Join(runtimeOpts.modulesPath, "core", "service", "runtime", "onchange", "types.ts")

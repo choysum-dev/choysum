@@ -14,10 +14,10 @@ import (
 )
 
 type resolvedFieldBehaviorBinding struct {
-	compute    *meta.IrFieldBehaviorComputeSpec
-	sqlCompute *meta.IrFieldBehaviorSqlComputeSpec
-	search     *meta.IrFieldBehaviorMethodRef
-	inverse    *meta.IrFieldBehaviorMethodRef
+	compute    *meta.FieldBehaviorComputeSpec
+	sqlCompute *meta.FieldBehaviorSqlComputeSpec
+	search     *meta.FieldBehaviorMethodRef
+	inverse    *meta.FieldBehaviorMethodRef
 }
 
 func parseDecoratorObjectArg(args []*parser.Argument, index int) (map[string]any, error) {
@@ -102,12 +102,12 @@ func asInt(value any) (int, bool) {
 	}
 }
 
-func collectFieldBehaviorBindings(methods []*parser.MemberMethod) (map[string]*resolvedFieldBehaviorBinding, map[string][]meta.IrFieldDiagnostic, error) {
+func collectFieldBehaviorBindings(methods []*parser.MemberMethod) (map[string]*resolvedFieldBehaviorBinding, map[string][]meta.FieldDiagnostic, error) {
 	bindings := make(map[string]*resolvedFieldBehaviorBinding)
-	diagnostics := make(map[string][]meta.IrFieldDiagnostic)
+	diagnostics := make(map[string][]meta.FieldDiagnostic)
 
 	addDiag := func(field string, code string, message string) {
-		diagnostics[field] = append(diagnostics[field], meta.IrFieldDiagnostic{
+		diagnostics[field] = append(diagnostics[field], meta.FieldDiagnostic{
 			Code:     code,
 			Severity: "error",
 			Message:  message,
@@ -167,7 +167,7 @@ func collectFieldBehaviorBindings(methods []*parser.MemberMethod) (map[string]*r
 				if v, ok := opts["searchable"].(bool); ok {
 					searchable = toBoolPtr(v)
 				}
-				binding.compute = &meta.IrFieldBehaviorComputeSpec{
+				binding.compute = &meta.FieldBehaviorComputeSpec{
 					Method:     method.Name,
 					Deps:       deps,
 					Store:      store,
@@ -178,7 +178,7 @@ func collectFieldBehaviorBindings(methods []*parser.MemberMethod) (map[string]*r
 					addDiag(fieldName, "DUPLICATE_SQL_COMPUTE", "same field declares multiple @SqlCompute handlers")
 					continue
 				}
-				binding.sqlCompute = &meta.IrFieldBehaviorSqlComputeSpec{
+				binding.sqlCompute = &meta.FieldBehaviorSqlComputeSpec{
 					Method:     method.Name,
 					CtxType:    "SqlComputeCtx",
 					ReturnType: "SelectExpressionValue",
@@ -188,13 +188,13 @@ func collectFieldBehaviorBindings(methods []*parser.MemberMethod) (map[string]*r
 					addDiag(fieldName, "DUPLICATE_SEARCH", "same field declares multiple @Search handlers")
 					continue
 				}
-				binding.search = &meta.IrFieldBehaviorMethodRef{Method: method.Name}
+				binding.search = &meta.FieldBehaviorMethodRef{Method: method.Name}
 			case "Inverse":
 				if binding.inverse != nil {
 					addDiag(fieldName, "DUPLICATE_INVERSE", "same field declares multiple @Inverse handlers")
 					continue
 				}
-				binding.inverse = &meta.IrFieldBehaviorMethodRef{Method: method.Name}
+				binding.inverse = &meta.FieldBehaviorMethodRef{Method: method.Name}
 			}
 		}
 	}
@@ -285,8 +285,8 @@ func parseSelectionOptionItems(
 	ownerModule string,
 	referenceScope string,
 	translateBindings map[string]parser.TranslateBinding,
-) ([]meta.IrFieldSelectionItem, error) {
-	items := make([]meta.IrFieldSelectionItem, 0, len(selection))
+) ([]meta.FieldSelectionItem, error) {
+	items := make([]meta.FieldSelectionItem, 0, len(selection))
 	seen := make(map[string]struct{}, len(selection))
 	for _, item := range selection {
 		entry, ok := item.(map[string]any)
@@ -307,7 +307,7 @@ func parseSelectionOptionItems(
 				return nil, fmt.Errorf("@Field(%s) duplicate %s value: %s", fieldName, optionName, value)
 			}
 			seen[value] = struct{}{}
-			items = append(items, meta.IrFieldSelectionItem{
+			items = append(items, meta.FieldSelectionItem{
 				Value:     value,
 				Label:     src,
 				LabelText: reference,
@@ -339,7 +339,7 @@ func parseSelectionOptionItems(
 			return nil, fmt.Errorf("@Field(%s) duplicate %s value: %s", fieldName, optionName, value)
 		}
 		seen[value] = struct{}{}
-		items = append(items, meta.IrFieldSelectionItem{
+		items = append(items, meta.FieldSelectionItem{
 			Value: value,
 			Label: label,
 		})
@@ -347,7 +347,7 @@ func parseSelectionOptionItems(
 	return items, nil
 }
 
-func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorBinding, inherited []meta.IrFieldDiagnostic, ownerModule string, referenceScope string, translateBindings map[string]parser.TranslateBinding) (*meta.IrFieldResolvedSpec, error) {
+func buildFieldResolvedSpec(field *meta.Field, binding *resolvedFieldBehaviorBinding, inherited []meta.FieldDiagnostic, ownerModule string, referenceScope string, translateBindings map[string]parser.TranslateBinding) (*meta.FieldResolvedSpec, error) {
 	if field == nil {
 		return nil, nil
 	}
@@ -388,13 +388,13 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		return nil, fmt.Errorf("@Field(%s) missing required type", field.Name)
 	}
 
-	spec := &meta.IrFieldResolvedSpec{
+	spec := &meta.FieldResolvedSpec{
 		FieldName: field.Name,
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Name:      field.Name,
 			FieldType: fieldType,
 		},
-		Diagnostics: append([]meta.IrFieldDiagnostic{}, inherited...),
+		Diagnostics: append([]meta.FieldDiagnostic{}, inherited...),
 	}
 
 	if relation, ok := options["relation"].(map[string]any); ok {
@@ -511,7 +511,7 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		if related["path"] != nil {
 			path = strings.TrimSpace(fmt.Sprintf("%v", related["path"]))
 		}
-		relatedSpec := &meta.IrFieldRelatedSpec{
+		relatedSpec := &meta.FieldRelatedSpec{
 			Path: path,
 		}
 		if v, ok := related["store"].(bool); ok {
@@ -523,7 +523,7 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		}
 	}
 
-	hints := &meta.IrFieldStructuralStorageHints{}
+	hints := &meta.FieldStructuralStorageHints{}
 	if v, ok := options["required"].(bool); ok {
 		hints.Required = toBoolPtr(v)
 	}
@@ -638,13 +638,13 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		storeValue = spec.Structural.Related.Store
 		storeSource = "@Field.related.store"
 	}
-	spec.Resolved.Store = meta.IrResolvedValue[bool]{Value: storeValue, Source: storeSource}
+	spec.Resolved.Store = meta.ResolvedValue[bool]{Value: storeValue, Source: storeSource}
 
 	if spec.Behavior.Search != nil {
 		v := true
-		spec.Resolved.Searchable = meta.IrResolvedValue[*bool]{Value: &v, Source: "@Search"}
+		spec.Resolved.Searchable = meta.ResolvedValue[*bool]{Value: &v, Source: "@Search"}
 	} else if spec.Behavior.Compute != nil && spec.Behavior.Compute.Searchable != nil {
-		spec.Resolved.Searchable = meta.IrResolvedValue[*bool]{Value: spec.Behavior.Compute.Searchable, Source: "@Compute.searchable"}
+		spec.Resolved.Searchable = meta.ResolvedValue[*bool]{Value: spec.Behavior.Compute.Searchable, Source: "@Compute.searchable"}
 	}
 
 	columnType := resolveColumnType(fieldType)
@@ -654,7 +654,7 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 	}
 	spec.Structural.ColumnType = columnType
 
-	spec.Migration = meta.IrFieldMigrationDecision{
+	spec.Migration = meta.FieldMigrationDecision{
 		StorageKind:        "physical",
 		ShouldCreateColumn: true,
 		ResolvedColumnType: columnType,
@@ -695,49 +695,43 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 	}
 
 	if spec.Behavior.Compute != nil && spec.Behavior.SqlCompute != nil {
-		spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+		spec.Diagnostics = append(spec.Diagnostics, meta.FieldDiagnostic{
 			Code:     "CONFLICT_COMPUTE_SQLCOMPUTE",
 			Severity: "error",
 			Message:  "same field cannot declare both @Compute and @SqlCompute",
 		})
 	}
 	if spec.Behavior.SqlCompute != nil && spec.Structural.Related != nil && spec.Structural.Related.Store {
-		spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+		spec.Diagnostics = append(spec.Diagnostics, meta.FieldDiagnostic{
 			Code:     "CONFLICT_SQLCOMPUTE_RELATED_STORE",
 			Severity: "error",
 			Message:  "@SqlCompute cannot be combined with related.store=true",
 		})
 	}
 	if spec.Behavior.Inverse != nil && spec.Behavior.Compute == nil && spec.Structural.Related == nil {
-		spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+		spec.Diagnostics = append(spec.Diagnostics, meta.FieldDiagnostic{
 			Code:     "CONFLICT_INVERSE_WITHOUT_SOURCE",
 			Severity: "error",
 			Message:  "inverse handler requires compute or related field source",
 		})
 	}
 	if spec.Behavior.Search != nil && spec.Migration.StorageKind == "physical" {
-		spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+		spec.Diagnostics = append(spec.Diagnostics, meta.FieldDiagnostic{
 			Code:     "WARN_SEARCH_ON_PHYSICAL_FIELD",
 			Severity: "warning",
 			Message:  "search handler is usually unnecessary on physical fields unless rewrite is required",
 		})
 	}
-	if (fieldType == "OneToMany" || fieldType == "ManyToMany") && spec.Migration.ShouldCreateColumn {
-		spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
-			Code:     "CONFLICT_RELATION_TO_MANY_COLUMN",
-			Severity: "error",
-			Message:  "OneToMany/ManyToMany fields cannot create physical columns",
-		})
-	}
+	appendRelationToManyColumnConflict(spec, fieldType)
 	if spec.Behavior.Compute != nil && !spec.Behavior.Compute.Store && spec.Structural.StorageHints != nil && spec.Structural.StorageHints.Required != nil && *spec.Structural.StorageHints.Required {
-		spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+		spec.Diagnostics = append(spec.Diagnostics, meta.FieldDiagnostic{
 			Code:     "CONFLICT_REQUIRED_VIRTUAL_COMPUTE",
 			Severity: "error",
 			Message:  "compute.store=false field cannot be required",
 		})
 	}
 	if spec.Structural.Related != nil && !spec.Structural.Related.Store && spec.Behavior.Inverse != nil {
-		spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+		spec.Diagnostics = append(spec.Diagnostics, meta.FieldDiagnostic{
 			Code:     "CONFLICT_INVERSE_ON_NON_STORED_RELATED",
 			Severity: "error",
 			Message:  "related.store=false field cannot declare inverse handler",
@@ -745,7 +739,7 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 	}
 	if translate {
 		if fieldType != "char" && fieldType != "varchar" && fieldType != "text" {
-			spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+			spec.Diagnostics = append(spec.Diagnostics, meta.FieldDiagnostic{
 				Code:     "CONFLICT_TRANSLATE_FIELD_TYPE",
 				Severity: "error",
 				Message:  "translate is only supported on char/varchar/text fields",
@@ -755,7 +749,7 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		uniqueIndexOn := (hints.UniqueIndexEnabled != nil && *hints.UniqueIndexEnabled) ||
 			(hints.UniqueIndex != nil && strings.TrimSpace(*hints.UniqueIndex) != "")
 		if uniqueOn || uniqueIndexOn {
-			spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+			spec.Diagnostics = append(spec.Diagnostics, meta.FieldDiagnostic{
 				Code:     "CONFLICT_TRANSLATE_UNIQUE",
 				Severity: "error",
 				Message:  "translate cannot be combined with unique/uniqueIndex",
@@ -768,7 +762,7 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		btreeIndexed := hints.Indexed != nil && *hints.Indexed && !strings.EqualFold(indexKind, "trigram")
 		namedNonTrigram := indexKind != "" && !strings.EqualFold(indexKind, "trigram")
 		if btreeIndexed || namedNonTrigram {
-			spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+			spec.Diagnostics = append(spec.Diagnostics, meta.FieldDiagnostic{
 				Code:     "CONFLICT_TRANSLATE_INDEX",
 				Severity: "error",
 				Message:  "translate only supports index: 'trigram' (or omit index)",
@@ -776,7 +770,7 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		}
 	}
 	if translate && companyDependent {
-		spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+		spec.Diagnostics = append(spec.Diagnostics, meta.FieldDiagnostic{
 			Code:     "CONFLICT_TRANSLATE_COMPANY_DEPENDENT",
 			Severity: "error",
 			Message:  "cannot combine translate and companyDependent",
@@ -789,7 +783,7 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 			"ManyToOne": {}, "ManyToOneRef": {},
 		}
 		if _, ok := allowed[fieldType]; !ok {
-			spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+			spec.Diagnostics = append(spec.Diagnostics, meta.FieldDiagnostic{
 				Code:     "CONFLICT_COMPANY_DEPENDENT_FIELD_TYPE",
 				Severity: "error",
 				Message:  "companyDependent is not supported on this field type",
@@ -799,7 +793,7 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		uniqueIndexOn := (hints.UniqueIndexEnabled != nil && *hints.UniqueIndexEnabled) ||
 			(hints.UniqueIndex != nil && strings.TrimSpace(*hints.UniqueIndex) != "")
 		if uniqueOn || uniqueIndexOn {
-			spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+			spec.Diagnostics = append(spec.Diagnostics, meta.FieldDiagnostic{
 				Code:     "CONFLICT_COMPANY_DEPENDENT_UNIQUE",
 				Severity: "error",
 				Message:  "companyDependent cannot be combined with unique/uniqueIndex",
@@ -811,7 +805,7 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		}
 		btreeIndexed := hints.Indexed != nil && *hints.Indexed
 		if btreeIndexed || indexKind != "" {
-			spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+			spec.Diagnostics = append(spec.Diagnostics, meta.FieldDiagnostic{
 				Code:     "CONFLICT_COMPANY_DEPENDENT_INDEX",
 				Severity: "error",
 				Message:  "companyDependent does not support indexed/index",
@@ -822,7 +816,20 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 	return spec, nil
 }
 
-func applyResolvedSpecToLegacyField(field *meta.IrField, spec *meta.IrFieldResolvedSpec) {
+func appendRelationToManyColumnConflict(spec *meta.FieldResolvedSpec, fieldType string) {
+	if spec == nil {
+		return
+	}
+	if (fieldType == "OneToMany" || fieldType == "ManyToMany") && spec.Migration.ShouldCreateColumn {
+		spec.Diagnostics = append(spec.Diagnostics, meta.FieldDiagnostic{
+			Code:     "CONFLICT_RELATION_TO_MANY_COLUMN",
+			Severity: "error",
+			Message:  "OneToMany/ManyToMany fields cannot create physical columns",
+		})
+	}
+}
+
+func applyResolvedSpecToLegacyField(field *meta.Field, spec *meta.FieldResolvedSpec) {
 	if field == nil || spec == nil {
 		return
 	}

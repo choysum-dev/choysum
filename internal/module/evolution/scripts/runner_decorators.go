@@ -66,11 +66,11 @@ type RegistryEntry struct {
 type Runner struct {
 	runtimeScope scope.Scope
 	jsExecutor   jsexecutor.ScriptExecutor
-	module       *meta.IrModule
+	module       *meta.Module
 	store        *HistoryStore
 }
 
-func NewRunner(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.IrModule) *Runner {
+func NewRunner(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.Module) *Runner {
 	if runtimeScope == nil || module == nil {
 		return nil
 	}

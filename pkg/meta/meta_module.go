@@ -20,17 +20,17 @@ const (
 	ToInstall     Status = "to install"
 )
 
-type IrModule struct {
+type Module struct {
 	BaseModel     `gorm:"embedded"`
-	ApplicationId sql.NullString  `gorm:"type:char(20)"`
-	Application   *IrApplication  `gorm:"foreignKey:ApplicationId;"`
-	Models        []*IrModel      `gorm:"foreignKey:ModuleId;constraint:OnDelete:CASCADE;" json:"models"`
-	Components    []*IrComponent  `gorm:"foreignKey:ModuleId;constraint:OnDelete:CASCADE;" json:"components"`
-	UiResources   []*IrUiResource `gorm:"foreignKey:ModuleId;constraint:OnDelete:CASCADE;" json:"uiResources"`
-	Category      string          `gorm:"type:varchar(255);index" json:"category"`
+	ApplicationId sql.NullString `gorm:"type:char(20)"`
+	Application   *Application   `gorm:"foreignKey:ApplicationId;"`
+	Models        []*Model       `gorm:"foreignKey:ModuleId;constraint:OnDelete:CASCADE;" json:"models"`
+	Components    []*Component   `gorm:"foreignKey:ModuleId;constraint:OnDelete:CASCADE;" json:"components"`
+	UiResources   []*UiResource  `gorm:"foreignKey:ModuleId;constraint:OnDelete:CASCADE;" json:"uiResources"`
+	Category      string         `gorm:"type:varchar(255);index" json:"category"`
 
-	Dependencies []*IrModule `gorm:"many2many:meta_ir_module_dependencies;joinForeignKey:ModuleId;joinReferences:DependModuleId;constraint:OnDelete:CASCADE;"`
-	Dependents   []*IrModule `gorm:"many2many:meta_ir_module_dependencies;joinForeignKey:DependModuleId;joinReferences:ModuleId;constraint:OnDelete:CASCADE;"`
+	Dependencies []*Module `gorm:"many2many:meta_module_dependencies;joinForeignKey:ModuleId;joinReferences:DependModuleId;constraint:OnDelete:CASCADE;"`
+	Dependents   []*Module `gorm:"many2many:meta_module_dependencies;joinForeignKey:DependModuleId;joinReferences:ModuleId;constraint:OnDelete:CASCADE;"`
 
 	// module fields
 	Name                 string         `gorm:"type:varchar(255);uniqueIndex;not null" json:"module_name"`
@@ -56,6 +56,6 @@ type IrModule struct {
 	Status               Status         `json:"-"`
 }
 
-func (mod *IrModule) TableName() string {
-	return "meta_ir_module"
+func (mod *Module) TableName() string {
+	return "meta_module"
 }

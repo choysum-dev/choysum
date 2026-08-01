@@ -68,12 +68,12 @@ func TestIsTranslatedTrigramField(t *testing.T) {
 	trigram := "trigram"
 	btree := "idx_name"
 
-	field := &meta.IrField{Name: "Name"}
-	spec := &meta.IrFieldResolvedSpec{
+	field := &meta.Field{Name: "Name"}
+	spec := &meta.FieldResolvedSpec{
 		FieldName: "Name",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Translate: &trueVal,
-			StorageHints: &meta.IrFieldStructuralStorageHints{
+			StorageHints: &meta.FieldStructuralStorageHints{
 				Index: &trigram,
 			},
 		},
@@ -96,10 +96,10 @@ func TestIsTranslatedTrigramField(t *testing.T) {
 	if isTranslatedTrigramField(nil) {
 		t.Fatal("nil field")
 	}
-	noHints := &meta.IrField{Name: "Name"}
-	noHintSpec := &meta.IrFieldResolvedSpec{
+	noHints := &meta.Field{Name: "Name"}
+	noHintSpec := &meta.FieldResolvedSpec{
 		FieldName:  "Name",
-		Structural: meta.IrFieldStructuralSpec{Translate: &trueVal},
+		Structural: meta.FieldStructuralSpec{Translate: &trueVal},
 	}
 	if err := noHints.SetResolvedSpec(noHintSpec); err != nil {
 		t.Fatalf("SetResolvedSpec no hints: %v", err)
@@ -138,12 +138,12 @@ func TestApplyTableTranslatedTrigramIndexesSkipsNonPostgres(t *testing.T) {
 	}
 	trueVal := true
 	trigram := "trigram"
-	field := &meta.IrField{Name: "Name"}
-	spec := &meta.IrFieldResolvedSpec{
+	field := &meta.Field{Name: "Name"}
+	spec := &meta.FieldResolvedSpec{
 		FieldName: "Name",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Translate: &trueVal,
-			StorageHints: &meta.IrFieldStructuralStorageHints{
+			StorageHints: &meta.FieldStructuralStorageHints{
 				Index: &trigram,
 			},
 		},
@@ -158,7 +158,7 @@ func TestApplyTableTranslatedTrigramIndexesSkipsNonPostgres(t *testing.T) {
 		session: &scope.Session{DB: db},
 	}
 	m := &modelMigrator{runtimeScope: runtime}
-	if err := m.applyTableTranslatedTrigramIndexes("base_language", &meta.IrModel{Fields: []*meta.IrField{field}}); err != nil {
+	if err := m.applyTableTranslatedTrigramIndexes("base_language", &meta.Model{Fields: []*meta.Field{field}}); err != nil {
 		t.Fatalf("sqlite apply must no-op: %v", err)
 	}
 	if db.Migrator().HasIndex("base_language", "idx_base_language_name_trgm") {
@@ -276,12 +276,12 @@ func TestApplyTableTranslatedTrigramIndexesPostgresPath(t *testing.T) {
 
 	trueVal := true
 	trigram := "trigram"
-	field := &meta.IrField{Name: "Name"}
-	spec := &meta.IrFieldResolvedSpec{
+	field := &meta.Field{Name: "Name"}
+	spec := &meta.FieldResolvedSpec{
 		FieldName: "Name",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Translate: &trueVal,
-			StorageHints: &meta.IrFieldStructuralStorageHints{
+			StorageHints: &meta.FieldStructuralStorageHints{
 				Index: &trigram,
 			},
 		},
@@ -289,10 +289,10 @@ func TestApplyTableTranslatedTrigramIndexesPostgresPath(t *testing.T) {
 	if err := field.SetResolvedSpec(spec); err != nil {
 		t.Fatalf("SetResolvedSpec: %v", err)
 	}
-	skipField := &meta.IrField{Name: "Code"}
-	skipSpec := &meta.IrFieldResolvedSpec{
+	skipField := &meta.Field{Name: "Code"}
+	skipSpec := &meta.FieldResolvedSpec{
 		FieldName:  "Code",
-		Structural: meta.IrFieldStructuralSpec{Translate: &trueVal},
+		Structural: meta.FieldStructuralSpec{Translate: &trueVal},
 	}
 	if err := skipField.SetResolvedSpec(skipSpec); err != nil {
 		t.Fatalf("SetResolvedSpec skip: %v", err)
@@ -305,7 +305,7 @@ func TestApplyTableTranslatedTrigramIndexesPostgresPath(t *testing.T) {
 		session: &scope.Session{DB: db},
 	}
 	m := &modelMigrator{runtimeScope: runtime}
-	if err := m.applyTableTranslatedTrigramIndexes("base_language", &meta.IrModel{Fields: []*meta.IrField{skipField, field}}); err != nil {
+	if err := m.applyTableTranslatedTrigramIndexes("base_language", &meta.Model{Fields: []*meta.Field{skipField, field}}); err != nil {
 		t.Fatalf("postgres apply with existing index: %v", err)
 	}
 
@@ -320,13 +320,13 @@ func TestApplyTableTranslatedTrigramIndexesPostgresPath(t *testing.T) {
 		t.Fatalf("insert pg_trgm err db: %v", err)
 	}
 	runtime.session = &scope.Session{DB: dbErr}
-	if err := m.applyTableTranslatedTrigramIndexes("base_language", &meta.IrModel{Fields: []*meta.IrField{field}}); err == nil {
+	if err := m.applyTableTranslatedTrigramIndexes("base_language", &meta.Model{Fields: []*meta.Field{field}}); err == nil {
 		t.Fatal("expected apply to surface ensure DDL error")
 	}
 }
 
 func TestIsTranslatedTrigramFieldCorruptSpec(t *testing.T) {
-	field := &meta.IrField{Name: "Name", ResolvedSpec: "not-json"}
+	field := &meta.Field{Name: "Name", ResolvedSpec: "not-json"}
 	if isTranslatedTrigramField(field) {
 		t.Fatal("corrupt ResolvedSpec must not be treated as trigram field")
 	}
@@ -339,12 +339,12 @@ func TestApplyTableTranslatedTrigramIndexesSkipsWithoutPgTrgm(t *testing.T) {
 	}
 	trueVal := true
 	trigram := "trigram"
-	field := &meta.IrField{Name: "Name"}
-	spec := &meta.IrFieldResolvedSpec{
+	field := &meta.Field{Name: "Name"}
+	spec := &meta.FieldResolvedSpec{
 		FieldName: "Name",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Translate: &trueVal,
-			StorageHints: &meta.IrFieldStructuralStorageHints{
+			StorageHints: &meta.FieldStructuralStorageHints{
 				Index: &trigram,
 			},
 		},
@@ -359,7 +359,7 @@ func TestApplyTableTranslatedTrigramIndexesSkipsWithoutPgTrgm(t *testing.T) {
 		session: &scope.Session{DB: db},
 	}
 	m := &modelMigrator{runtimeScope: runtime}
-	if err := m.applyTableTranslatedTrigramIndexes("base_language", &meta.IrModel{Fields: []*meta.IrField{field}}); err != nil {
+	if err := m.applyTableTranslatedTrigramIndexes("base_language", &meta.Model{Fields: []*meta.Field{field}}); err != nil {
 		t.Fatalf("missing pg_trgm must be non-fatal: %v", err)
 	}
 }
@@ -375,19 +375,19 @@ func TestMigrateTableSchemaWrapsTranslatedTrigramIndexError(t *testing.T) {
 
 	trueVal := true
 	trigram := "trigram"
-	field := &meta.IrField{Name: "Name"}
-	spec := &meta.IrFieldResolvedSpec{
+	field := &meta.Field{Name: "Name"}
+	spec := &meta.FieldResolvedSpec{
 		FieldName: "Name",
-		Structural: meta.IrFieldStructuralSpec{
+		Structural: meta.FieldStructuralSpec{
 			Name:       "Name",
 			FieldType:  "varchar",
 			Translate:  &trueVal,
 			ColumnType: "jsonobject",
-			StorageHints: &meta.IrFieldStructuralStorageHints{
+			StorageHints: &meta.FieldStructuralStorageHints{
 				Index: &trigram,
 			},
 		},
-		Migration: meta.IrFieldMigrationDecision{
+		Migration: meta.FieldMigrationDecision{
 			StorageKind:        "physical",
 			ShouldCreateColumn: true,
 			ResolvedColumnType: "jsonobject",
@@ -397,11 +397,11 @@ func TestMigrateTableSchemaWrapsTranslatedTrigramIndexError(t *testing.T) {
 	if err := field.SetResolvedSpec(spec); err != nil {
 		t.Fatalf("SetResolvedSpec: %v", err)
 	}
-	model := &meta.IrModel{
+	model := &meta.Model{
 		Name:       "Language",
 		Path:       "base/language.ts",
 		ModelTable: "base_language_trgm_wrap",
-		Fields:     []*meta.IrField{field},
+		Fields:     []*meta.Field{field},
 	}
 	runtime := &schemaTestScope{
 		ctx:     context.Background(),
@@ -410,7 +410,7 @@ func TestMigrateTableSchemaWrapsTranslatedTrigramIndexError(t *testing.T) {
 		session: &scope.Session{DB: db},
 	}
 	m := &modelMigrator{runtimeScope: runtime}
-	err := m.migrateTableSchema([]*meta.IrModel{model})
+	err := m.migrateTableSchema([]*meta.Model{model})
 	if err == nil || !strings.Contains(err.Error(), "translated trigram indexes") {
 		t.Fatalf("expected wrapped trigram migrate error, got %v", err)
 	}

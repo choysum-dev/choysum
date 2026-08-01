@@ -29,7 +29,7 @@ var serviceClientTplStr string
 
 type serviceClientGenerator struct {
 	runtimeScope scope.Scope
-	module       *meta.IrModule
+	module       *meta.Module
 
 	// Optional override for pipeline-managed staging.
 	modulesProtoDir   string
@@ -37,7 +37,7 @@ type serviceClientGenerator struct {
 }
 
 type serviceClientTemplateData struct {
-	App        *meta.IrApplication
+	App        *meta.Application
 	ProtoFiles []*protoFilePayload
 }
 
@@ -46,7 +46,7 @@ type protoFilePayload struct {
 	EncodedContent string
 }
 
-func (g *serviceClientGenerator) generate(ctx context.Context, app *meta.IrApplication) ([]*module.GeneratorResult, error) {
+func (g *serviceClientGenerator) generate(ctx context.Context, app *meta.Application) ([]*module.GeneratorResult, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -70,7 +70,7 @@ func (g *serviceClientGenerator) generate(ctx context.Context, app *meta.IrAppli
 			p := strings.ReplaceAll(path, runtimeOpts.modulesPath, "@")
 			return strings.TrimSuffix(p, ".ts")
 		},
-		"ConvertTypeParam": func(model *meta.IrModel, service *meta.IrService) string {
+		"ConvertTypeParam": func(model *meta.Model, service *meta.Service) string {
 			if len(service.TypeParameters) > 0 {
 				typeParams := make([]string, 0, len(service.TypeParameters))
 				for _, tp := range service.TypeParameters {
@@ -87,14 +87,14 @@ func (g *serviceClientGenerator) generate(ctx context.Context, app *meta.IrAppli
 		"ToCamel": func(s string) string {
 			return strcase.ToCamel(s)
 		},
-		"ConvertArgs": func(service *meta.IrService) string {
+		"ConvertArgs": func(service *meta.Service) string {
 			args := make([]string, 0, len(service.Parameters))
 			for i, param := range service.Parameters {
 				args = append(args, fmt.Sprintf("{ name: '%s', type: '%s', value: args[%d]}", strcase.ToCamel(param.Name), param.ProtobufType, i))
 			}
 			return "[" + strings.Join(args, ", ") + "]"
 		},
-		"ConvertReturnType": func(service *meta.IrService) string {
+		"ConvertReturnType": func(service *meta.Service) string {
 			if service.ProtobufType == "google.protobuf.Empty" {
 				return "undefined"
 			} else {
@@ -224,7 +224,7 @@ func resolveProtoRegisterPath(appName, relPath string) string {
 	return filepath.ToSlash(filepath.Join(appName, rel))
 }
 
-func NewServiceClientGenerator(runtimeScope scope.Scope, module *meta.IrModule) *serviceClientGenerator {
+func NewServiceClientGenerator(runtimeScope scope.Scope, module *meta.Module) *serviceClientGenerator {
 	return &serviceClientGenerator{
 		runtimeScope: runtimeScope,
 		module:       module,
