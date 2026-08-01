@@ -279,7 +279,7 @@ test('FieldsGet exposes selectionAdd-merged options (PR-P2-F4)', async () => {
         { value: 'a', label: 'A' },
         { value: 'b', label: 'B' },
       ],
-    } as any)
+    })
     Kind!: string;
   }
 
@@ -288,7 +288,7 @@ test('FieldsGet exposes selectionAdd-merged options (PR-P2-F4)', async () => {
     @Field({
       type: 'selection',
       selectionAdd: [{ value: 'c', label: 'C' }],
-    } as any)
+    })
     Kind!: string;
   }
 

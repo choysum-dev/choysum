@@ -751,7 +751,10 @@ function normalizeSelectionItems(
       );
     }
 
-    const value = entry.value;
+    const value = entry.value.trim();
+    if (!value) {
+      throw new Error(`@Field(${name}) each ${optionName} item must include a non-empty string value`);
+    }
     if (values.has(value)) {
       throw new Error(`@Field(${name}) duplicate ${optionName} value: ${value}`);
     }

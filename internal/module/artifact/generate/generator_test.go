@@ -992,7 +992,7 @@ func TestMergeSameNameModelsByExtensionChain_SelectionAddMerges(t *testing.T) {
 		Structural: meta.IrFieldStructuralSpec{
 			Name:            "Kind",
 			FieldType:       "selection",
-			HasSelectionAdd:  true,
+			HasSelectionAdd: true,
 			SelectionAdd: []meta.IrFieldSelectionItem{
 				{Value: "vip", Label: "VIP"},
 			},

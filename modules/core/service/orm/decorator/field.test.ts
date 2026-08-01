@@ -1694,6 +1694,48 @@ test('Field decorator validates selectionAdd item shapes (PR-P2-F4)', () => {
     return BlankLabelModel;
   }).toThrow('each selectionAdd item must include a non-empty string label');
 
+  expect(() => {
+    class BlankValueModel extends BaseModel {
+      @Field({ type: 'selection', selectionAdd: [{ value: '   ', label: 'A' }] } as any)
+      Status!: string;
+    }
+    return BlankValueModel;
+  }).toThrow('each selectionAdd item must include a non-empty string value');
+
+  expect(() => {
+    class WhitespaceDupModel extends BaseModel {
+      @Field({
+        type: 'selection',
+        selectionAdd: [
+          { value: 'a', label: 'A' },
+          { value: ' a ', label: 'A2' },
+        ],
+      } as any)
+      Status!: string;
+    }
+    return WhitespaceDupModel;
+  }).toThrow('duplicate selectionAdd value');
+
+  class TrimValueParent extends BaseModel {
+    @Field({
+      type: 'selection',
+      selection: [{ value: 'a', label: 'A' }],
+    } as any)
+    Status!: string;
+  }
+  class TrimValueChild extends TrimValueParent {
+    @Field({
+      type: 'selection',
+      selectionAdd: [{ value: ' vip ', label: 'VIP' }],
+    } as any)
+    Status!: string;
+  }
+  const trimmed = MetadataStorage.instance.getModelMetadata(TrimValueChild as any).fields.get('Status') as any;
+  expect(trimmed?.selection).toEqual([
+    { value: 'a', label: 'A' },
+    { value: 'vip', label: 'VIP' },
+  ]);
+
   class NonArraySelectionParent extends BaseModel {}
   MetadataStorage.instance.setModelMetadata(NonArraySelectionParent as any, {
     fields: new Map([

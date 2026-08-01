@@ -919,7 +919,7 @@ func mergeOrderedFields(parentFields []*meta.IrField, childFields []*meta.IrFiel
 			continue
 		}
 		if meta.FieldHasSelectionAdd(nf) {
-			return nil, fmt.Errorf("field %s selectionAdd requires an inherited static selection", nf.Name)
+			return nil, xfmt.Errorf("field %s selectionAdd requires an inherited static selection", nf.Name)
 		}
 		indexByName[nf.Name] = len(result)
 		result = append(result, nf)
