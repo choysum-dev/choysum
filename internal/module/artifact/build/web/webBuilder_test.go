@@ -3350,7 +3350,7 @@ func TestCollectUiResourceDefaultRoleRows_BuildsDistinctRows(t *testing.T) {
 
 	pairSet := map[string]bool{}
 	for _, row := range rows {
-		pairSet[row.RoleId.String+"/"+row.UiResourceId.String] = true
+		pairSet[row.RoleId.String+"/"+row.MetaUiResourceId.String] = true
 		if strings.TrimSpace(row.Mode) != "allow" {
 			t.Fatalf("expected defaultRoles seed mode allow, got %q", row.Mode)
 		}
@@ -3854,7 +3854,7 @@ func TestPersistUiResourceDefaultRolesInsertsAndDedupes(t *testing.T) {
 	}
 	seen := map[string]bool{}
 	for _, row := range rows {
-		seen[row.RoleId.String+"/"+row.UiResourceId.String] = true
+		seen[row.RoleId.String+"/"+row.MetaUiResourceId.String] = true
 		if row.Mode != "allow" {
 			t.Fatalf("expected allow mode, got %#v", row)
 		}
