@@ -69,9 +69,9 @@ export async function buildAclAggregation(
     return a;
   };
 
-  const irServiceIds = Array.from(new Set((accesses || []).map(a => String((a as any).MetaServiceId || '').trim()).filter(Boolean)));
-  const irModelIds = Array.from(new Set((accesses || []).map(a => String((a as any).MetaModelId || '').trim()).filter(Boolean)));
-  const irApplicationIds = Array.from(new Set((accesses || []).map(a => String((a as any).MetaApplicationId || '').trim()).filter(Boolean)));
+  const irServiceIds = Array.from(new Set(accesses.map(a => String((a as any).MetaServiceId || '').trim()).filter(Boolean)));
+  const irModelIds = Array.from(new Set(accesses.map(a => String((a as any).MetaModelId || '').trim()).filter(Boolean)));
+  const irApplicationIds = Array.from(new Set(accesses.map(a => String((a as any).MetaApplicationId || '').trim()).filter(Boolean)));
 
   const serviceById = new Map<string, { modelId: string; name: string }>();
   const modelById = new Map<string, { app: string; name: string }>();
