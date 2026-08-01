@@ -233,7 +233,7 @@ func overlayStructuralSelectionAdd(dst, src *IrFieldStructuralSpec) {
 		dst.Related = src.Related
 	}
 	if src.StorageHints != nil {
-		dst.StorageHints = src.StorageHints
+		dst.StorageHints = mergeStorageHints(dst.StorageHints, src.StorageHints)
 	}
 	if strings.TrimSpace(src.ColumnType) != "" {
 		dst.ColumnType = src.ColumnType
@@ -262,6 +262,52 @@ func overlayStructuralSelectionAdd(dst, src *IrFieldStructuralSpec) {
 	if src.MaxHeight != nil {
 		dst.MaxHeight = src.MaxHeight
 	}
+}
+
+// mergeStorageHints overlays non-nil child storage options onto a clone of the base hints
+// so a partial child StorageHints object does not drop inherited Size/Indexed/etc.
+func mergeStorageHints(base, child *IrFieldStructuralStorageHints) *IrFieldStructuralStorageHints {
+	if child == nil {
+		return base
+	}
+	out := &IrFieldStructuralStorageHints{}
+	if base != nil {
+		*out = *base
+	}
+	if child.Required != nil {
+		out.Required = child.Required
+	}
+	if child.Indexed != nil {
+		out.Indexed = child.Indexed
+	}
+	if child.Index != nil {
+		out.Index = child.Index
+	}
+	if child.Size != nil {
+		out.Size = child.Size
+	}
+	if child.Precision != nil {
+		out.Precision = child.Precision
+	}
+	if child.Scale != nil {
+		out.Scale = child.Scale
+	}
+	if child.PrimaryKey != nil {
+		out.PrimaryKey = child.PrimaryKey
+	}
+	if child.Unique != nil {
+		out.Unique = child.Unique
+	}
+	if child.UniqueIndex != nil {
+		out.UniqueIndex = child.UniqueIndex
+	}
+	if child.UniqueIndexEnabled != nil {
+		out.UniqueIndexEnabled = child.UniqueIndexEnabled
+	}
+	if child.Default != nil {
+		out.Default = child.Default
+	}
+	return out
 }
 
 func overlayBehaviorSelectionAdd(dst, src *IrFieldBehaviorSpec) {

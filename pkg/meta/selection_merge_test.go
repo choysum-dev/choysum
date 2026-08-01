@@ -297,8 +297,9 @@ func TestResolveSelectionFieldConflict_LegacyBaseWithoutResolvedSpec(t *testing.
 
 func TestResolveSelectionFieldConflict_OverlaysChildStorageHints(t *testing.T) {
 	required := true
+	indexed := true
 	size := 64
-	base := &IrField{Name: "Status", FieldType: "selection", SelectionKind: "static", Size: 32}
+	base := &IrField{Name: "Status", FieldType: "selection", SelectionKind: "static", Size: 32, Indexed: true}
 	_ = base.SetResolvedSpec(&IrFieldResolvedSpec{
 		FieldName: "Status",
 		Structural: IrFieldStructuralSpec{
@@ -306,7 +307,7 @@ func TestResolveSelectionFieldConflict_OverlaysChildStorageHints(t *testing.T) {
 			FieldType:     "selection",
 			SelectionKind: "static",
 			Selection:     []IrFieldSelectionItem{{Value: "a", Label: "A"}},
-			StorageHints:  &IrFieldStructuralStorageHints{Size: intPtr(32)},
+			StorageHints:  &IrFieldStructuralStorageHints{Size: intPtr(32), Indexed: &indexed, Precision: intPtr(10)},
 		},
 	})
 	child := &IrField{Name: "Status", FieldType: "selection"}
@@ -317,8 +318,9 @@ func TestResolveSelectionFieldConflict_OverlaysChildStorageHints(t *testing.T) {
 			FieldType:       "selection",
 			HasSelectionAdd: true,
 			SelectionAdd:    []IrFieldSelectionItem{{Value: "b", Label: "B"}},
-			StorageHints:    &IrFieldStructuralStorageHints{Required: &required, Size: &size},
-			Readonly:        boolPtr(true),
+			// Partial overlay: only Required + Size; Indexed/Precision must stay from base.
+			StorageHints: &IrFieldStructuralStorageHints{Required: &required, Size: &size},
+			Readonly:     boolPtr(true),
 		},
 	})
 
@@ -326,8 +328,61 @@ func TestResolveSelectionFieldConflict_OverlaysChildStorageHints(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveSelectionFieldConflict: %v", err)
 	}
-	if !merged.NotNull || merged.Size != 64 || !merged.IsReadonly {
-		t.Fatalf("expected legacy columns from child hints/readonly, got notNull=%v size=%d readonly=%v", merged.NotNull, merged.Size, merged.IsReadonly)
+	spec, err := merged.GetResolvedSpec()
+	if err != nil || spec == nil || spec.Structural.StorageHints == nil {
+		t.Fatalf("expected merged storage hints, got %#v err=%v", spec, err)
+	}
+	hints := spec.Structural.StorageHints
+	if hints.Required == nil || !*hints.Required || hints.Size == nil || *hints.Size != 64 {
+		t.Fatalf("expected child Required/Size overlay, got %#v", hints)
+	}
+	if hints.Indexed == nil || !*hints.Indexed || hints.Precision == nil || *hints.Precision != 10 {
+		t.Fatalf("expected inherited Indexed/Precision preserved, got %#v", hints)
+	}
+	if !merged.NotNull || merged.Size != 64 || !merged.Indexed || !merged.IsReadonly {
+		t.Fatalf("expected legacy columns from merged hints/readonly, got notNull=%v size=%d indexed=%v readonly=%v", merged.NotNull, merged.Size, merged.Indexed, merged.IsReadonly)
+	}
+}
+
+func TestMergeStorageHints_PartialOverlayAndNilGuards(t *testing.T) {
+	if got := mergeStorageHints(nil, nil); got != nil {
+		t.Fatalf("expected nil, got %#v", got)
+	}
+	base := &IrFieldStructuralStorageHints{Size: intPtr(16), Indexed: boolPtr(true)}
+	if got := mergeStorageHints(base, nil); got != base {
+		t.Fatalf("nil child should return base pointer, got %#v", got)
+	}
+	indexName := "idx_status"
+	uniqueIndex := "uniq_status"
+	def := "draft"
+	child := &IrFieldStructuralStorageHints{
+		Required:           boolPtr(true),
+		Index:              &indexName,
+		PrimaryKey:         boolPtr(false),
+		Unique:             boolPtr(true),
+		UniqueIndex:        &uniqueIndex,
+		UniqueIndexEnabled: boolPtr(true),
+		Default:            &def,
+		Scale:              intPtr(2),
+	}
+	got := mergeStorageHints(base, child)
+	if got == nil || got == base || got == child {
+		t.Fatalf("expected cloned merged hints, got %#v", got)
+	}
+	if got.Size == nil || *got.Size != 16 || got.Indexed == nil || !*got.Indexed {
+		t.Fatalf("expected base Size/Indexed preserved, got %#v", got)
+	}
+	if got.Required == nil || !*got.Required || got.Scale == nil || *got.Scale != 2 {
+		t.Fatalf("expected child Required/Scale overlay, got %#v", got)
+	}
+	if got.Index == nil || *got.Index != indexName || got.UniqueIndex == nil || *got.UniqueIndex != uniqueIndex {
+		t.Fatalf("expected index overlays, got %#v", got)
+	}
+	if got.PrimaryKey == nil || *got.PrimaryKey || got.Unique == nil || !*got.Unique || got.UniqueIndexEnabled == nil || !*got.UniqueIndexEnabled {
+		t.Fatalf("expected boolean overlays, got %#v", got)
+	}
+	if got.Default == nil || *got.Default != def {
+		t.Fatalf("expected default overlay, got %#v", got)
 	}
 }
 
