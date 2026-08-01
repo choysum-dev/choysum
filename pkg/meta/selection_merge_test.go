@@ -33,6 +33,19 @@ func TestMergeSelectionByValue(t *testing.T) {
 	}
 }
 
+func TestMergeSelectionByValue_PlainLabelClearsLabelText(t *testing.T) {
+	ref := NewTermReference("demo", "demo.status", "Done", "literal")
+	base := []IrFieldSelectionItem{
+		{Value: "done", Label: "Done", LabelText: &ref},
+	}
+	got := MergeSelectionByValue(base, []IrFieldSelectionItem{
+		{Value: "done", Label: "Finished"},
+	})
+	if len(got) != 1 || got[0].Label != "Finished" || got[0].LabelText != nil {
+		t.Fatalf("expected plain override to clear LabelText, got %#v", got)
+	}
+}
+
 func TestResolveSelectionFieldConflict_SelectionAddMerge(t *testing.T) {
 	baseSpec := &IrFieldResolvedSpec{
 		FieldName: "Status",
@@ -101,6 +114,52 @@ func TestResolveSelectionFieldConflict_SelectionAddMerge(t *testing.T) {
 	}
 }
 
+func TestResolveSelectionFieldConflict_OverlaysChildStorageHints(t *testing.T) {
+	required := true
+	size := 64
+	base := &IrField{Name: "Status", FieldType: "selection", SelectionKind: "static", Size: 32}
+	_ = base.SetResolvedSpec(&IrFieldResolvedSpec{
+		FieldName: "Status",
+		Structural: IrFieldStructuralSpec{
+			Name:          "Status",
+			FieldType:     "selection",
+			SelectionKind: "static",
+			Selection:     []IrFieldSelectionItem{{Value: "a", Label: "A"}},
+			StorageHints:  &IrFieldStructuralStorageHints{Size: intPtr(32)},
+		},
+	})
+	child := &IrField{Name: "Status", FieldType: "selection"}
+	_ = child.SetResolvedSpec(&IrFieldResolvedSpec{
+		FieldName: "Status",
+		Structural: IrFieldStructuralSpec{
+			Name:            "Status",
+			FieldType:       "selection",
+			HasSelectionAdd: true,
+			SelectionAdd:    []IrFieldSelectionItem{{Value: "b", Label: "B"}},
+			StorageHints:    &IrFieldStructuralStorageHints{Required: &required, Size: &size},
+			Readonly:        boolPtr(true),
+		},
+	})
+
+	merged, err := ResolveSelectionFieldConflict(base, child)
+	if err != nil {
+		t.Fatalf("ResolveSelectionFieldConflict: %v", err)
+	}
+	spec, err := merged.GetResolvedSpec()
+	if err != nil || spec == nil || spec.Structural.StorageHints == nil {
+		t.Fatalf("expected child storage hints, got %#v err=%v", spec, err)
+	}
+	if spec.Structural.StorageHints.Required == nil || !*spec.Structural.StorageHints.Required {
+		t.Fatalf("expected required overlay, got %#v", spec.Structural.StorageHints)
+	}
+	if !merged.NotNull || merged.Size != 64 || !merged.IsReadonly {
+		t.Fatalf("expected legacy columns from child hints/readonly, got notNull=%v size=%d readonly=%v", merged.NotNull, merged.Size, merged.IsReadonly)
+	}
+}
+
+func intPtr(v int) *int    { return &v }
+func boolPtr(v bool) *bool { return &v }
+
 func TestResolveSelectionFieldConflict_FullSelectionReplaces(t *testing.T) {
 	base := &IrField{Name: "Status", FieldType: "selection", SelectionKind: "static"}
 	_ = base.SetResolvedSpec(&IrFieldResolvedSpec{
@@ -149,7 +208,7 @@ func TestResolveSelectionFieldConflict_DynamicBaseRejected(t *testing.T) {
 		Structural: IrFieldStructuralSpec{
 			Name:            "Status",
 			FieldType:       "selection",
-			HasSelectionAdd:  true,
+			HasSelectionAdd: true,
 			SelectionAdd:    []IrFieldSelectionItem{{Value: "a", Label: "A"}},
 		},
 	})
@@ -176,7 +235,7 @@ func TestResolveSelectionFieldConflict_BothSelectionAndAddRejected(t *testing.T)
 		Structural: IrFieldStructuralSpec{
 			Name:            "Status",
 			FieldType:       "selection",
-			HasSelectionAdd:  true,
+			HasSelectionAdd: true,
 			Selection:       []IrFieldSelectionItem{{Value: "x", Label: "X"}},
 			SelectionAdd:    []IrFieldSelectionItem{{Value: "y", Label: "Y"}},
 		},

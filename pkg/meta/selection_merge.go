@@ -11,9 +11,10 @@ import (
 
 // MergeSelectionByValue merges static selection options by value (PR-P2-F4 / D4).
 // Same value → later label (and labelText) wins; order = base order then new values.
+// A plain-string override replaces the whole option and clears inherited LabelText.
 func MergeSelectionByValue(base, addends []IrFieldSelectionItem) []IrFieldSelectionItem {
 	byValue := make(map[string]IrFieldSelectionItem)
-	order := make([]string, 0, len(base)+len(addends))
+	order := make([]string, 0, len(base))
 
 	add := func(item IrFieldSelectionItem, overwrite bool) {
 		value := strings.TrimSpace(item.Value)
@@ -28,10 +29,6 @@ func MergeSelectionByValue(base, addends []IrFieldSelectionItem) []IrFieldSelect
 		}
 		if !overwrite {
 			return
-		}
-		prev := byValue[value]
-		if item.LabelText == nil && prev.LabelText != nil {
-			item.LabelText = prev.LabelText
 		}
 		byValue[value] = item
 	}
@@ -192,8 +189,9 @@ func ResolveSelectionFieldConflict(base, child *IrField) (*IrField, error) {
 		outSpec.Structural.Name = child.Name
 		outSpec.Structural.FieldType = "selection"
 	}
-	// Overlay authored child structural bits (string/help/etc.) when present.
+	// Overlay authored child structural/behavior bits when present.
 	overlayStructuralSelectionAdd(&outSpec.Structural, &childSpec.Structural)
+	overlayBehaviorSelectionAdd(&outSpec.Behavior, &childSpec.Behavior)
 	outSpec.Structural.Selection = mergedItems
 	outSpec.Structural.SelectionKind = "static"
 	outSpec.Structural.SelectionMethod = ""
@@ -228,6 +226,18 @@ func overlayStructuralSelectionAdd(dst, src *IrFieldStructuralSpec) {
 	if src.HelpText != nil {
 		dst.HelpText = src.HelpText
 	}
+	if src.Related != nil {
+		dst.Related = src.Related
+	}
+	if src.StorageHints != nil {
+		dst.StorageHints = src.StorageHints
+	}
+	if strings.TrimSpace(src.ColumnType) != "" {
+		dst.ColumnType = src.ColumnType
+	}
+	if strings.TrimSpace(src.CheckConstraint) != "" {
+		dst.CheckConstraint = src.CheckConstraint
+	}
 	if src.Translate != nil {
 		dst.Translate = src.Translate
 	}
@@ -239,6 +249,33 @@ func overlayStructuralSelectionAdd(dst, src *IrFieldStructuralSpec) {
 	}
 	if src.Readonly != nil {
 		dst.Readonly = src.Readonly
+	}
+	if src.MaxUploadBytes != nil {
+		dst.MaxUploadBytes = src.MaxUploadBytes
+	}
+	if src.MaxWidth != nil {
+		dst.MaxWidth = src.MaxWidth
+	}
+	if src.MaxHeight != nil {
+		dst.MaxHeight = src.MaxHeight
+	}
+}
+
+func overlayBehaviorSelectionAdd(dst, src *IrFieldBehaviorSpec) {
+	if dst == nil || src == nil {
+		return
+	}
+	if src.Compute != nil {
+		dst.Compute = src.Compute
+	}
+	if src.SqlCompute != nil {
+		dst.SqlCompute = src.SqlCompute
+	}
+	if src.Inverse != nil {
+		dst.Inverse = src.Inverse
+	}
+	if src.Search != nil {
+		dst.Search = src.Search
 	}
 }
 
@@ -263,12 +300,50 @@ func applySelectionLegacyColumns(field *IrField, spec *IrFieldResolvedSpec) {
 			field.StringText = string(b)
 		}
 	}
+	field.FieldHelp = ""
+	field.HelpText = ""
 	if strings.TrimSpace(spec.Structural.Help) != "" {
 		field.FieldHelp = strings.TrimSpace(spec.Structural.Help)
 	}
 	if spec.Structural.HelpText != nil {
 		if b, err := json.Marshal(spec.Structural.HelpText); err == nil {
 			field.HelpText = string(b)
+		}
+	}
+	if spec.Behavior.Compute != nil || spec.Behavior.SqlCompute != nil {
+		field.IsReadonly = true
+	}
+	if spec.Structural.Readonly != nil && *spec.Structural.Readonly {
+		field.IsReadonly = true
+	}
+	field.MaxUploadBytes = 0
+	field.MaxWidth = 0
+	field.MaxHeight = 0
+	if spec.Structural.MaxUploadBytes != nil && *spec.Structural.MaxUploadBytes > 0 {
+		field.MaxUploadBytes = *spec.Structural.MaxUploadBytes
+	}
+	if spec.Structural.MaxWidth != nil && *spec.Structural.MaxWidth > 0 {
+		field.MaxWidth = *spec.Structural.MaxWidth
+	}
+	if spec.Structural.MaxHeight != nil && *spec.Structural.MaxHeight > 0 {
+		field.MaxHeight = *spec.Structural.MaxHeight
+	}
+	if spec.Structural.StorageHints != nil {
+		hints := spec.Structural.StorageHints
+		if hints.Required != nil {
+			field.NotNull = *hints.Required
+		}
+		if hints.Indexed != nil {
+			field.Indexed = *hints.Indexed
+		}
+		if hints.Size != nil {
+			field.Size = *hints.Size
+		}
+		if hints.Precision != nil {
+			field.Precision = *hints.Precision
+		}
+		if hints.Scale != nil {
+			field.Scale = *hints.Scale
 		}
 	}
 }

@@ -779,6 +779,32 @@ export default class SelectionAddModel extends BaseModel {
 	}
 }
 
+func TestTsParser_RejectsDuplicateSelectionAddValues(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('DupSelectionAddModel')
+export default class DupSelectionAddModel extends BaseModel {
+  @Field({
+    type: 'selection',
+    selectionAdd: [
+      { value: 'vip', label: 'VIP' },
+      { value: 'vip', label: 'VIP2' }
+    ]
+  })
+  public Kind: string
+}
+`
+	_, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err == nil || !strings.Contains(err.Error(), "duplicate selectionAdd value") {
+		t.Fatalf("expected duplicate selectionAdd rejection, got %v", err)
+	}
+}
+
 func TestTsParser_RejectsSelectionCombinedWithSelectionAdd(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}

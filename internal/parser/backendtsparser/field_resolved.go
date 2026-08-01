@@ -287,6 +287,7 @@ func parseSelectionOptionItems(
 	translateBindings map[string]parser.TranslateBinding,
 ) ([]meta.IrFieldSelectionItem, error) {
 	items := make([]meta.IrFieldSelectionItem, 0, len(selection))
+	seen := make(map[string]struct{}, len(selection))
 	for _, item := range selection {
 		entry, ok := item.(map[string]any)
 		if !ok {
@@ -302,6 +303,10 @@ func parseSelectionOptionItems(
 			if value == "" || src == "" {
 				continue
 			}
+			if _, dup := seen[value]; dup {
+				return nil, fmt.Errorf("@Field(%s) duplicate %s value: %s", fieldName, optionName, value)
+			}
+			seen[value] = struct{}{}
 			items = append(items, meta.IrFieldSelectionItem{
 				Value:     value,
 				Label:     src,
@@ -330,6 +335,10 @@ func parseSelectionOptionItems(
 		if value == "" || label == "" {
 			continue
 		}
+		if _, dup := seen[value]; dup {
+			return nil, fmt.Errorf("@Field(%s) duplicate %s value: %s", fieldName, optionName, value)
+		}
+		seen[value] = struct{}{}
 		items = append(items, meta.IrFieldSelectionItem{
 			Value: value,
 			Label: label,

@@ -23,15 +23,12 @@ export function mergeSelectionByValue(base: SelectionItem[] | undefined, addends
     const value = String(item?.value ?? '').trim();
     if (!value) continue;
     if (!byValue.has(value)) order.push(value);
-    const prev = byValue.get(value);
+    // Replace the whole option: a plain-string label must clear parent labelText
+    // so FieldsGet does not keep translating the inherited term.
     byValue.set(value, {
       value,
       label: item.label,
-      ...(item.labelText !== undefined
-        ? { labelText: item.labelText }
-        : prev?.labelText !== undefined
-          ? { labelText: prev.labelText }
-          : {}),
+      ...(item.labelText !== undefined ? { labelText: item.labelText } : {}),
     });
   }
 
