@@ -108,6 +108,7 @@ var (
 	installForE2EHook         = installForE2E
 	applyScenarioFixturesHook = applyScenarioFixtures
 	seedModuleIndexHook       = seedModuleIndexForE2E
+	newE2ERuntimeScopeHook    = newE2ERuntimeScope
 	startServerHook           = startServer
 	stopServerHook            = stopServer
 	waitForHTTP200Hook        = waitForHTTP200
@@ -672,7 +673,7 @@ func applyScenarioFixtures(
 }
 
 func seedModuleIndexForE2E(ctx context.Context, configPath string, packages map[string]*sourceModulePackage) error {
-	runtimeScope, runtimeOptions, err := newE2ERuntimeScope(ctx, configPath)
+	runtimeScope, runtimeOptions, err := newE2ERuntimeScopeHook(ctx, configPath)
 	if err != nil {
 		return xfmt.Errorf("load temp config: %w", err)
 	}

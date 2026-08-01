@@ -966,6 +966,7 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 				return m.buildBackendBundlesToDir(stageCtx, distBundlesStagingDir, affectedProtoStaging)
 			}
 		}
+		moduleOps := moduleOpCtxBinder{m: m, opCtx: opCtx}
 		err = pipeline.Execute(stageCtx, opPlan, rootModule, pipeline.Callbacks{
 			Logger: logger,
 			OnProgress: func(event pipeline.ProgressEvent) {
@@ -1002,15 +1003,9 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			},
 			ResolveInstallModuleFromOrigin: m.resolveInstallModuleFromOrigin,
 			ResolveInstalledModule:         m.Load,
-			Install: func(mod *meta.Module) error {
-				return m.installWithCtx(mod, opCtx)
-			},
-			Uninstall: func(mod *meta.Module) error {
-				return m.uninstallWithCtx(mod, opCtx)
-			},
-			Upgrade: func(mod *meta.Module) error {
-				return m.upgradeWithCtx(mod, opCtx)
-			},
+			Install:                        moduleOps.install,
+			Uninstall:                      moduleOps.uninstall,
+			Upgrade:                        moduleOps.upgrade,
 			AppTargets: func(appName string) (string, pipeline.ModulesAppTargets, error) {
 				distAppDir := ""
 				if !isBundleMode {
@@ -1216,6 +1211,7 @@ func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
 				return m.buildBackendBundlesToDir(stageCtx, distBundlesStagingDir, affectedProtoStaging)
 			}
 		}
+		moduleOps := moduleOpCtxBinder{m: m, opCtx: opCtx}
 		started := time.Now()
 		err = pipeline.Execute(stageCtx, plan, mod, pipeline.Callbacks{
 			Logger: logger,
@@ -1242,16 +1238,9 @@ func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
 				}
 			},
 			ResolveInstalledModule: m.Load,
-			Install: func(mod *meta.Module) error {
-				return m.installWithCtx(mod, opCtx)
-			},
-			Uninstall: func(mod *meta.Module) error {
-				// Avoid cascading dependency upgrades during uninstall; it can cause cycles and storms.
-				return m.uninstallWithCtx(mod, opCtx)
-			},
-			Upgrade: func(mod *meta.Module) error {
-				return m.upgradeWithCtx(mod, opCtx)
-			},
+			Install:                moduleOps.install,
+			Uninstall:              moduleOps.uninstall,
+			Upgrade:                moduleOps.upgrade,
 			AppTargets: func(appName string) (string, pipeline.ModulesAppTargets, error) {
 				distAppDir := ""
 				if !isBundleMode {
@@ -1459,9 +1448,7 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 				}
 			},
 			ResolveInstalledModule: m.Load,
-			Upgrade: func(mod *meta.Module) error {
-				return m.upgradeWithCtx(mod, opCtx)
-			},
+			Upgrade:                moduleOpCtxBinder{m: m, opCtx: opCtx}.upgrade,
 			AppTargets: func(appName string) (string, pipeline.ModulesAppTargets, error) {
 				distAppDir := ""
 				if !isBundleMode {
@@ -1541,6 +1528,23 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 		logger.Info("module operation completed", moduleOperationCompletedInfoAttrs(plan, time.Since(started))...)
 		return nil
 	})
+}
+
+type moduleOpCtxBinder struct {
+	m     *ModuleManager
+	opCtx *opContext
+}
+
+func (b moduleOpCtxBinder) install(mod *meta.Module) error {
+	return b.m.installWithCtx(mod, b.opCtx)
+}
+
+func (b moduleOpCtxBinder) uninstall(mod *meta.Module) error {
+	return b.m.uninstallWithCtx(mod, b.opCtx)
+}
+
+func (b moduleOpCtxBinder) upgrade(mod *meta.Module) error {
+	return b.m.upgradeWithCtx(mod, b.opCtx)
 }
 
 func (m *ModuleManager) listInstalledNonWebApps(ctx context.Context) ([]string, error) {

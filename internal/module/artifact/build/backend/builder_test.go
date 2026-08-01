@@ -1328,3 +1328,65 @@ func TestUpdateModelExtends_InsertsImportIntoImportRegion(t *testing.T) {
 		t.Fatalf("expected new import inserted into import region before class declaration, got: %s", r.Content)
 	}
 }
+
+func TestPersistApplicationLookupAndModelDeleteErrors(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:backendbuilder-persist-errors?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&meta.Application{}, &meta.Module{}, &meta.Model{}); err != nil {
+		t.Fatalf("auto migrate: %v", err)
+	}
+
+	testRuntimeScope := newBuilderTestScope()
+	testRuntimeScope.session = &scope.Session{DB: db}
+	builder := &ModuleBuilder{
+		runtimeScope: testRuntimeScope,
+		module:       &meta.Module{Name: "auth", Path: "/virtual/modules/auth", ApplicationStr: "auth"},
+	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("db.DB() error = %v", err)
+	}
+	if err := sqlDB.Close(); err != nil {
+		t.Fatalf("sqlDB.Close() error = %v", err)
+	}
+	buildResult := &module.BuildResult{Module: builder.module}
+	if err := builder.persist(buildResult); err == nil || !strings.Contains(err.Error(), "error getting application by name") {
+		t.Fatalf("persist() with closed DB error = %v, want application lookup failure", err)
+	}
+
+	db, err = gorm.Open(sqlite.Open("file:backendbuilder-persist-models?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("reopen sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&meta.Model{}); err != nil {
+		t.Fatalf("auto migrate models: %v", err)
+	}
+	testRuntimeScope.session = &scope.Session{DB: db}
+	if err := db.Migrator().DropTable(&meta.Model{}); err != nil {
+		t.Fatalf("drop meta_model: %v", err)
+	}
+	err = builder.persistModuleModels("module-1", []*meta.Model{{Name: "Partner", Path: "/models/partner"}})
+	if err == nil {
+		t.Fatal("expected persistModuleModels delete error")
+	}
+
+	db, err = gorm.Open(sqlite.Open("file:backendbuilder-persist-app-fallback?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite for fallback: %v", err)
+	}
+	if err := db.AutoMigrate(&meta.Application{}, &meta.Module{}, &meta.Model{}); err != nil {
+		t.Fatalf("auto migrate fallback db: %v", err)
+	}
+	testRuntimeScope.session = &scope.Session{DB: db}
+	builder.module = &meta.Module{Name: "crm", Path: "/virtual/modules/crm", ApplicationStr: "crm"}
+	buildResult = &module.BuildResult{Module: builder.module}
+	if err := builder.persist(buildResult); err != nil {
+		t.Fatalf("persist() without existing application error = %v", err)
+	}
+	if builder.module.Application == nil || builder.module.Application.Name != "crm" {
+		t.Fatalf("expected fallback application object, got %#v", builder.module.Application)
+	}
+}

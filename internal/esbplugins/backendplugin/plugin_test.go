@@ -1340,6 +1340,27 @@ func TestBackendPluginReplaceModuleSpecReferenceIdent_SkipsExternalPaths(t *test
 	}
 }
 
+func TestFindParsedModelByName(t *testing.T) {
+	category := &meta.Model{Name: "Category"}
+	results := []*parser.ParserResult{
+		nil,
+		{Path: "/empty"},
+		{Model: category},
+	}
+	if got := findParsedModelByName(results, ""); got != nil {
+		t.Fatalf("empty name = %#v", got)
+	}
+	if got := findParsedModelByName(results, "auth.Category"); got != category {
+		t.Fatalf("full name = %#v", got)
+	}
+	if got := findParsedModelByName(results, "Category"); got != category {
+		t.Fatalf("short name = %#v", got)
+	}
+	if got := findParsedModelByName(results, "Missing"); got != nil {
+		t.Fatalf("missing = %#v", got)
+	}
+}
+
 func TestBackendPluginSetFieldMeta(t *testing.T) {
 	testRuntimeScope := newPluginTestScope()
 	fieldDecoratorModuleSpec, fieldDecoratorReferenceIdent := meta.FieldDecoratorModuleSpec(testRuntimeScope)
@@ -1456,15 +1477,15 @@ func TestBackendPluginSetFieldMeta(t *testing.T) {
 		t.Fatalf("unexpected round metadata: %#v", amountField.Round)
 	}
 	categoryField := goodResult.Model.Fields[2]
-	if categoryField.Relation != "ManyToOne" || categoryField.RelationModel != "auth.Category" || categoryField.RelationModelParentField != "" {
+	if categoryField.Relation != "ManyToOne" || categoryField.RelationModel != "auth.Category" || categoryField.RelationModelParentField != "ParentId" {
 		t.Fatalf("unexpected many-to-one metadata: %#v", categoryField)
 	}
 	childrenField := goodResult.Model.Fields[3]
-	if childrenField.Relation != "OneToMany" || childrenField.RelationModel != "auth.Category" || childrenField.RelationInverseField != "ParentId" || childrenField.RelationModelParentField != "" {
+	if childrenField.Relation != "OneToMany" || childrenField.RelationModel != "auth.Category" || childrenField.RelationInverseField != "ParentId" || childrenField.RelationModelParentField != "ParentId" {
 		t.Fatalf("unexpected one-to-many metadata: %#v", childrenField)
 	}
 	tagsField := goodResult.Model.Fields[4]
-	if tagsField.Relation != "ManyToMany" || tagsField.RelationModel != "auth.Category" || tagsField.RelationJoinField != "PartnerId" || tagsField.RelationInverseJoinField != "CategoryId" || tagsField.RelationJoinModel != "auth.PartnerCategory" || tagsField.RelationModelParentField != "" {
+	if tagsField.Relation != "ManyToMany" || tagsField.RelationModel != "auth.Category" || tagsField.RelationJoinField != "PartnerId" || tagsField.RelationInverseJoinField != "CategoryId" || tagsField.RelationJoinModel != "auth.PartnerCategory" || tagsField.RelationModelParentField != "ParentId" {
 		t.Fatalf("unexpected many-to-many metadata: %#v", tagsField)
 	}
 	externalCategoryField := goodResult.Model.Fields[5]
@@ -2085,5 +2106,36 @@ func TestBackendPluginGetParserResults_PropagatesSetFieldMetaError(t *testing.T)
 
 	if _, err := plugin.GetParserResults(); err == nil || !strings.Contains(err.Error(), "parse Field options failed") {
 		t.Fatalf("expected GetParserResults to propagate setFieldMeta error, got %v", err)
+	}
+}
+
+func TestInjectModelApplication_BatchLoadExternalModelsError(t *testing.T) {
+	testRuntimeScope, db := newPluginSessionTestScope(t)
+	migrateBackendPluginMetadata(t, db)
+	plugin := newBackendPluginForInjectTest(t, testRuntimeScope)
+	modelDecoratorModuleSpec, _ := meta.ModelDecoratorModuleSpec(testRuntimeScope)
+
+	raw := "@Model('User')\nexport default class User {}\n"
+	argEnd := mustIndex(t, raw, "'User'") + len("'User'")
+	result := &parser.ParserResult{
+		Path:       filepath.Join(testRuntimeScope.cfg.ModulesPath, "auth", "service", "user.ts"),
+		RawContent: raw,
+		ModelClassNode: &parser.Class{Decorators: []*parser.Decorator{{
+			ModuleSpecPath: modelDecoratorModuleSpec,
+			ReferenceIdent: "Model",
+			Arguments:      []*parser.Argument{{Type: "Literal", End: argEnd}},
+		}}},
+	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("db.DB() error = %v", err)
+	}
+	if err := sqlDB.Close(); err != nil {
+		t.Fatalf("sqlDB.Close() error = %v", err)
+	}
+	err = plugin.injectModelApplication([]*parser.ParserResult{result})
+	if err == nil || !strings.Contains(err.Error(), "failed to batch load external models") {
+		t.Fatalf("injectModelApplication() error = %v, want batch load failure", err)
 	}
 }

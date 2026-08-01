@@ -722,13 +722,7 @@ func buildFieldResolvedSpec(field *meta.Field, binding *resolvedFieldBehaviorBin
 			Message:  "search handler is usually unnecessary on physical fields unless rewrite is required",
 		})
 	}
-	if (fieldType == "OneToMany" || fieldType == "ManyToMany") && spec.Migration.ShouldCreateColumn {
-		spec.Diagnostics = append(spec.Diagnostics, meta.FieldDiagnostic{
-			Code:     "CONFLICT_RELATION_TO_MANY_COLUMN",
-			Severity: "error",
-			Message:  "OneToMany/ManyToMany fields cannot create physical columns",
-		})
-	}
+	appendRelationToManyColumnConflict(spec, fieldType)
 	if spec.Behavior.Compute != nil && !spec.Behavior.Compute.Store && spec.Structural.StorageHints != nil && spec.Structural.StorageHints.Required != nil && *spec.Structural.StorageHints.Required {
 		spec.Diagnostics = append(spec.Diagnostics, meta.FieldDiagnostic{
 			Code:     "CONFLICT_REQUIRED_VIRTUAL_COMPUTE",
@@ -820,6 +814,19 @@ func buildFieldResolvedSpec(field *meta.Field, binding *resolvedFieldBehaviorBin
 	}
 
 	return spec, nil
+}
+
+func appendRelationToManyColumnConflict(spec *meta.FieldResolvedSpec, fieldType string) {
+	if spec == nil {
+		return
+	}
+	if (fieldType == "OneToMany" || fieldType == "ManyToMany") && spec.Migration.ShouldCreateColumn {
+		spec.Diagnostics = append(spec.Diagnostics, meta.FieldDiagnostic{
+			Code:     "CONFLICT_RELATION_TO_MANY_COLUMN",
+			Severity: "error",
+			Message:  "OneToMany/ManyToMany fields cannot create physical columns",
+		})
+	}
 }
 
 func applyResolvedSpecToLegacyField(field *meta.Field, spec *meta.FieldResolvedSpec) {

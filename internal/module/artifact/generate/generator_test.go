@@ -1033,3 +1033,44 @@ func TestMergeSameNameModelsByExtensionChain_SelectionAddMerges(t *testing.T) {
 		t.Fatal("expected HasSelectionAdd cleared after merge")
 	}
 }
+
+func TestSelectSameNameModelsInPrimaryExtensionChain_AnchorWithoutPath(t *testing.T) {
+	older := &meta.Model{BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}, Name: "Partner", Path: ""}
+	newer := &meta.Model{BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)}, Name: "Partner", Path: ""}
+
+	selected := selectSameNameModelsInPrimaryExtensionChain([]*meta.Model{older, newer})
+	if len(selected) != 1 || selected[0] != newer {
+		t.Fatalf("expected anchor-only selection for empty-path models, got %#v", selected)
+	}
+
+	selected = selectSameNameModelsInPrimaryExtensionChain([]*meta.Model{nil, nil})
+	if len(selected) != 1 || selected[0] != nil {
+		t.Fatalf("expected [nil] for all-nil models, got %#v", selected)
+	}
+}
+
+func TestSelectSameNameModelsInPrimaryExtensionChain_FallsBackToAnchorWhenDisconnected(t *testing.T) {
+	anchorPath := "/chain_a/service/models/partner.ts"
+	otherPath := "/chain_b/service/models/partner.ts"
+	anchor := &meta.Model{
+		BaseModel: meta.BaseModel{
+			UpdatedAt: time.Date(2026, 3, 15, 12, 0, 0, 0, time.UTC),
+			Id:        sql.NullString{String: "anchor-id", Valid: true},
+		},
+		Name: "Partner",
+		Path: anchorPath,
+	}
+	other := &meta.Model{
+		BaseModel: meta.BaseModel{
+			UpdatedAt: time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC),
+			Id:        sql.NullString{String: "other-id", Valid: true},
+		},
+		Name: "Partner",
+		Path: otherPath,
+	}
+
+	selected := selectSameNameModelsInPrimaryExtensionChain([]*meta.Model{other, anchor})
+	if len(selected) != 1 || selected[0] != anchor {
+		t.Fatalf("expected disconnected fallback to anchor, got %#v", selected)
+	}
+}

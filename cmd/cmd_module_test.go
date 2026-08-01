@@ -8,6 +8,8 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -18,11 +20,16 @@ import (
 	clicompat "github.com/choysum-dev/choysum/internal/cli/compat"
 	cliruntime "github.com/choysum-dev/choysum/internal/cli/runtime"
 	"github.com/choysum-dev/choysum/internal/config/snapshot"
+	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
 	sourceregistry "github.com/choysum-dev/choysum/internal/module/origin/registry"
+	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/config"
+	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/spf13/cobra"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 func executeCommandForTest(t *testing.T, cmd *cobra.Command, args ...string) (string, error) {
@@ -511,4 +518,130 @@ func TestModuleRemoteCompatibilityEdgeBranches(t *testing.T) {
 			t.Fatalf("unexpected info payload: %q", out.String())
 		}
 	})
+}
+
+func newModuleQueryTestScope(t *testing.T) (*moduleQueryTestScope, *gorm.DB) {
+	t.Helper()
+	dbPath := filepath.Join(t.TempDir(), "module-query.db")
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite db: %v", err)
+	}
+	return &moduleQueryTestScope{ctx: context.Background(), db: db}, db
+}
+
+type moduleQueryTestScope struct {
+	ctx context.Context
+	db  *gorm.DB
+}
+
+func (e *moduleQueryTestScope) Run(fn func(runtimeScope scope.Scope) error) error { return fn(e) }
+func (e *moduleQueryTestScope) Transactor() scope.Transactor {
+	return scopetest.NewPassthroughTransactor(e)
+}
+func (e *moduleQueryTestScope) Session() *scope.Session { return &scope.Session{DB: e.db} }
+func (e *moduleQueryTestScope) WithContext(ctx context.Context) scope.Scope {
+	return &moduleQueryTestScope{ctx: ctx, db: e.db}
+}
+func (e *moduleQueryTestScope) Context() context.Context {
+	if e.ctx != nil {
+		return e.ctx
+	}
+	return context.Background()
+}
+func (e *moduleQueryTestScope) Logger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
+func (e *moduleQueryTestScope) Config() *config.Config { return &config.Config{} }
+func (e *moduleQueryTestScope) FactoryInput() scope.FactoryInput {
+	return scopetest.FactoryInputFromConfig(e.Config())
+}
+
+func TestQueryModuleIndexViewsBranches(t *testing.T) {
+	t.Run("returns empty when module index table is missing", func(t *testing.T) {
+		runtimeScope, _ := newModuleQueryTestScope(t)
+
+		views, hasIndex, err := queryModuleIndexViews(runtimeScope, "")
+		if err != nil {
+			t.Fatalf("queryModuleIndexViews() error = %v", err)
+		}
+		if hasIndex {
+			t.Fatal("expected hasIndex=false when module index table is missing")
+		}
+		if len(views) != 0 {
+			t.Fatalf("expected empty views, got %#v", views)
+		}
+	})
+
+	t.Run("queries index without module table join", func(t *testing.T) {
+		runtimeScope, db := newModuleQueryTestScope(t)
+		if err := db.AutoMigrate(&metadata.ModuleIndex{}); err != nil {
+			t.Fatalf("auto migrate module index: %v", err)
+		}
+		if err := db.Create(&metadata.ModuleIndex{
+			ModuleName: "auth",
+			OriginType: "local",
+			OriginRef:  "modules/auth",
+			Available:  true,
+		}).Error; err != nil {
+			t.Fatalf("seed module index row: %v", err)
+		}
+
+		views, hasIndex, err := queryModuleIndexViews(runtimeScope, "")
+		if err != nil {
+			t.Fatalf("queryModuleIndexViews() error = %v", err)
+		}
+		if !hasIndex {
+			t.Fatal("expected hasIndex=true")
+		}
+		if len(views) != 1 || views[0].ModuleName != "auth" {
+			t.Fatalf("unexpected views without module join: %#v", views)
+		}
+		if views[0].InstallStatus.String != "" {
+			t.Fatalf("expected empty install status without module join, got %#v", views[0].InstallStatus)
+		}
+	})
+
+	t.Run("joins module install status when module table exists", func(t *testing.T) {
+		runtimeScope, db := newModuleQueryTestScope(t)
+		if err := db.AutoMigrate(&metadata.ModuleIndex{}, &meta.Module{}); err != nil {
+			t.Fatalf("auto migrate module tables: %v", err)
+		}
+		if err := db.Create(&metadata.ModuleIndex{
+			ModuleName: "auth",
+			OriginType: "local",
+			OriginRef:  "modules/auth",
+			Available:  true,
+		}).Error; err != nil {
+			t.Fatalf("seed module index row: %v", err)
+		}
+		if err := db.Create(&meta.Module{
+			Name:           "auth",
+			ApplicationStr: "auth",
+			Status:         meta.Installed,
+			Version:        "v1.0.0",
+			Path:           "auth",
+		}).Error; err != nil {
+			t.Fatalf("seed installed module: %v", err)
+		}
+
+		views, hasIndex, err := queryModuleIndexViews(runtimeScope, "auth")
+		if err != nil {
+			t.Fatalf("queryModuleIndexViews(auth) error = %v", err)
+		}
+		if !hasIndex || len(views) != 1 {
+			t.Fatalf("expected one indexed view, got hasIndex=%v views=%#v", hasIndex, views)
+		}
+		if !views[0].InstallStatus.Valid || views[0].InstallStatus.String != string(meta.Installed) {
+			t.Fatalf("unexpected install status: %#v", views[0].InstallStatus)
+		}
+	})
+}
+
+func TestEnsurePurgeModuleNotInstalledSkipsWhenModuleTableMissing(t *testing.T) {
+	runtimeScope, _ := newModuleQueryTestScope(t)
+
+	if err := ensurePurgeModuleNotInstalled(runtimeScope, "auth"); err != nil {
+		t.Fatalf("ensurePurgeModuleNotInstalled() error = %v, want nil when module table is missing", err)
+	}
 }

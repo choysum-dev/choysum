@@ -4927,3 +4927,100 @@ func TestEntryPointImportsCollectsModulesAndAppStores(t *testing.T) {
 		t.Fatalf("expected missing application store file to be skipped, got %#v", imports)
 	}
 }
+
+func TestPersistModuleUiResourcesDeleteErrors(t *testing.T) {
+	t.Run("empty names delete ui resources", func(t *testing.T) {
+		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+		if err := testRuntimeScope.db.AutoMigrate(&meta.UiResource{}, &meta.UiResourceMenuRoute{}, &meta.UiResourceRouteAction{}); err != nil {
+			t.Fatalf("automigrate failed: %v", err)
+		}
+		b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+		if err := testRuntimeScope.db.Create(&meta.UiResource{
+			BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_del", Valid: true}},
+			Name:      "auth.menu.delete",
+			ModuleId:  sql.NullString{String: "mod_del", Valid: true},
+		}).Error; err != nil {
+			t.Fatalf("seed ui resource: %v", err)
+		}
+		if err := testRuntimeScope.db.Exec(`CREATE TRIGGER IF NOT EXISTS block_ui_resource_soft_delete
+			BEFORE UPDATE OF deleted_at ON meta_ui_resource
+			WHEN NEW.deleted_at IS NOT NULL
+			BEGIN
+				SELECT RAISE(ABORT, 'blocked ui resource soft delete');
+			END`).Error; err != nil {
+			t.Fatalf("create ui resource soft delete trigger: %v", err)
+		}
+		t.Cleanup(func() {
+			_ = testRuntimeScope.db.Exec(`DROP TRIGGER IF EXISTS block_ui_resource_soft_delete`)
+		})
+		if err := b.persistModuleUiResources("mod_del", nil, nil, nil); err == nil {
+			t.Fatal("expected delete ui resources error")
+		}
+	})
+
+	t.Run("not in names delete ui resources", func(t *testing.T) {
+		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+		if err := testRuntimeScope.db.AutoMigrate(&meta.UiResource{}, &meta.UiResourceMenuRoute{}, &meta.UiResourceRouteAction{}); err != nil {
+			t.Fatalf("automigrate failed: %v", err)
+		}
+		b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+		moduleID := "mod_prune"
+		for _, row := range []*meta.UiResource{
+			{BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_keep", Valid: true}}, Name: "auth.menu.keep", ModuleId: sql.NullString{String: moduleID, Valid: true}},
+			{BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_drop", Valid: true}}, Name: "auth.menu.drop", ModuleId: sql.NullString{String: moduleID, Valid: true}},
+		} {
+			if err := testRuntimeScope.db.Create(row).Error; err != nil {
+				t.Fatalf("seed ui resource: %v", err)
+			}
+		}
+		resources := []*meta.UiResource{
+			{Name: "auth.menu.keep", Type: meta.UiResourceTypeMenu},
+			{Name: "auth.menu.drop", Type: meta.UiResourceTypeMenu},
+		}
+		if err := b.persistModuleUiResources(moduleID, resources, nil, nil); err != nil {
+			t.Fatalf("initial persist failed: %v", err)
+		}
+		if err := testRuntimeScope.db.Exec(`CREATE TRIGGER IF NOT EXISTS block_ui_resource_soft_delete
+			BEFORE UPDATE OF deleted_at ON meta_ui_resource
+			WHEN NEW.deleted_at IS NOT NULL
+			BEGIN
+				SELECT RAISE(ABORT, 'blocked ui resource soft delete');
+			END`).Error; err != nil {
+			t.Fatalf("create ui resource soft delete trigger: %v", err)
+		}
+		t.Cleanup(func() {
+			_ = testRuntimeScope.db.Exec(`DROP TRIGGER IF EXISTS block_ui_resource_soft_delete`)
+		})
+		if err := b.persistModuleUiResources(moduleID, []*meta.UiResource{{Name: "auth.menu.keep", Type: meta.UiResourceTypeMenu}}, nil, nil); err == nil {
+			t.Fatal("expected NOT IN delete ui resources error")
+		}
+	})
+
+	t.Run("delete menu route relations", func(t *testing.T) {
+		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+		if err := testRuntimeScope.db.AutoMigrate(&meta.UiResourceMenuRoute{}); err != nil {
+			t.Fatalf("automigrate menu routes failed: %v", err)
+		}
+		b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+		if err := testRuntimeScope.db.Migrator().DropTable(&meta.UiResourceMenuRoute{}); err != nil {
+			t.Fatalf("drop menu route table: %v", err)
+		}
+		if err := b.deleteUiResourceRelationsByIDs([]string{"menu_1"}); err == nil {
+			t.Fatal("expected delete menu route relations error")
+		}
+	})
+
+	t.Run("delete route action relations", func(t *testing.T) {
+		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+		if err := testRuntimeScope.db.AutoMigrate(&meta.UiResourceMenuRoute{}, &meta.UiResourceRouteAction{}); err != nil {
+			t.Fatalf("automigrate relation tables failed: %v", err)
+		}
+		b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+		if err := testRuntimeScope.db.Migrator().DropTable(&meta.UiResourceRouteAction{}); err != nil {
+			t.Fatalf("drop route action table: %v", err)
+		}
+		if err := b.deleteUiResourceRelationsByIDs([]string{"menu_1"}); err == nil {
+			t.Fatal("expected delete route action relations error")
+		}
+	})
+}

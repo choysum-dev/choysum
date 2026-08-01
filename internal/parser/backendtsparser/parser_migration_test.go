@@ -2359,6 +2359,90 @@ export default class DecoratedSvcModel extends BaseModel {
 	}
 }
 
+func TestTsParser_ParseModelServiceDecoratorsWithArguments(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/decorated_args_svc.ts"
+	content := `import { Model, Field, Api } from '../../core/service';
+import BaseModel from './base';
+
+@Model('DecoratedArgsSvcModel')
+export default class DecoratedArgsSvcModel extends BaseModel {
+  @Field({ type: 'varchar', size: 64 })
+  public Name: string
+
+  @Api({ route: '/find', method: 'GET' })
+  public static async FindByName(name: string): Promise<void> {}
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	if len(r.Model.Services) != 1 {
+		t.Fatalf("expected one service, got %+v", r.Model.Services)
+	}
+	svc := r.Model.Services[0]
+	if len(svc.Decorators) != 1 {
+		t.Fatalf("expected one service decorator, got %d", len(svc.Decorators))
+	}
+	dec := svc.Decorators[0]
+	if dec.Name != "Api" || len(dec.Arguments) != 1 {
+		t.Fatalf("unexpected service decorator: %#v", dec)
+	}
+	if dec.Arguments[0].Type != "ObjectLiteral" || dec.Arguments[0].Value == "" {
+		t.Fatalf("unexpected service decorator argument: %#v", dec.Arguments[0])
+	}
+}
+
+func TestBuildFieldResolvedSpec_UsesComputeSearchableWhenSearchMissing(t *testing.T) {
+	searchable := true
+	field := &meta.Field{
+		Name: "DisplayName",
+		Decorators: []*meta.Decorator{{
+			Name: "Field",
+			Arguments: []*meta.Argument{{
+				Type:  "ObjectLiteral",
+				Value: `{"type":"varchar","size":64}`,
+			}},
+		}},
+	}
+	spec, err := buildFieldResolvedSpec(field, &resolvedFieldBehaviorBinding{
+		compute: &meta.FieldBehaviorComputeSpec{Store: false, Searchable: &searchable},
+	}, nil, "auth", "model", nil)
+	if err != nil {
+		t.Fatalf("buildFieldResolvedSpec() error = %v", err)
+	}
+	if spec.Resolved.Searchable.Source != "@Compute.searchable" || spec.Resolved.Searchable.Value == nil || !*spec.Resolved.Searchable.Value {
+		t.Fatalf("unexpected searchable resolution: %#v", spec.Resolved.Searchable)
+	}
+}
+
+func TestAppendRelationToManyColumnConflict(t *testing.T) {
+	appendRelationToManyColumnConflict(nil, "OneToMany")
+
+	spec := &meta.FieldResolvedSpec{Migration: meta.FieldMigrationDecision{ShouldCreateColumn: true}}
+	appendRelationToManyColumnConflict(spec, "OneToMany")
+	if len(spec.Diagnostics) != 1 || spec.Diagnostics[0].Code != "CONFLICT_RELATION_TO_MANY_COLUMN" {
+		t.Fatalf("expected conflict diagnostic, got %#v", spec.Diagnostics)
+	}
+
+	spec = &meta.FieldResolvedSpec{Migration: meta.FieldMigrationDecision{ShouldCreateColumn: true}}
+	appendRelationToManyColumnConflict(spec, "ManyToMany")
+	if len(spec.Diagnostics) != 1 {
+		t.Fatalf("expected ManyToMany conflict, got %#v", spec.Diagnostics)
+	}
+
+	spec = &meta.FieldResolvedSpec{Migration: meta.FieldMigrationDecision{ShouldCreateColumn: false}}
+	appendRelationToManyColumnConflict(spec, "OneToMany")
+	if len(spec.Diagnostics) != 0 {
+		t.Fatalf("did not expect diagnostic when ShouldCreateColumn=false: %#v", spec.Diagnostics)
+	}
+}
+
 func TestTsParser_ParseModelServiceWithTypeParameters(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}

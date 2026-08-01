@@ -121,3 +121,107 @@ func TestSyncRegistryModuleIndexUpsertsVersionAndReconcilesByOriginRef(t *testin
 		t.Fatal("expected orphan row to be marked unavailable")
 	}
 }
+
+func TestSyncRegistryModuleIndexFallsBackToRowUpsertsAfterBatchFailure(t *testing.T) {
+	db := newModuleIndexSyncDB(t)
+	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{
+  "modules": {
+    "auth": {"name":"auth","package":"@choysum-dev/auth","latestVersion":"1.0.0"},
+    "task": {"name":"task","package":"@choysum-dev/task","latestVersion":"1.0.0"}
+  }
+}`)
+	}))
+	defer testServer.Close()
+	runtimeScope.cfg.ModuleCatalogIndexURL = testServer.URL + "/v1/index.json"
+
+	if err := db.Exec(`
+CREATE TRIGGER block_registry_batch_insert
+BEFORE INSERT ON meta_module_index
+WHEN (SELECT COUNT(*) FROM meta_module_index WHERE origin_type = 'registry') >= 1
+BEGIN
+  SELECT RAISE(ABORT, 'batch blocked');
+END`).Error; err != nil {
+		t.Fatalf("create batch insert trigger: %v", err)
+	}
+
+	stats, err := SyncRegistryModuleIndex(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
+		return &moduleIndexSyncTestLocker{}
+	})
+	if err != nil {
+		t.Fatalf("SyncRegistryModuleIndex() error = %v", err)
+	}
+	if stats.Total != 2 || stats.Success < 1 || stats.Failed < 1 {
+		t.Fatalf("unexpected stats = %#v", stats)
+	}
+}
+
+func TestSyncRegistryModuleIndexReconcilesOrphanWithoutID(t *testing.T) {
+	db := newModuleIndexSyncDB(t)
+	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"modules":{"auth":{"name":"auth","package":"@choysum-dev/auth","latestVersion":"1.0.0"}}}`)
+	}))
+	defer testServer.Close()
+	runtimeScope.cfg.ModuleCatalogIndexURL = testServer.URL + "/v1/index.json"
+
+	if err := db.Exec(`
+INSERT INTO meta_module_index (module_name, origin_type, origin_ref, available, created_at, updated_at)
+VALUES ('orphan', 'registry', '@legacy/orphan', 1, datetime('now'), datetime('now'))`).Error; err != nil {
+		t.Fatalf("seed orphan without id: %v", err)
+	}
+
+	stats, err := SyncRegistryModuleIndex(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
+		return &moduleIndexSyncTestLocker{}
+	})
+	if err != nil {
+		t.Fatalf("SyncRegistryModuleIndex() error = %v", err)
+	}
+	if stats.Total != 1 || stats.Success != 1 {
+		t.Fatalf("unexpected stats = %#v", stats)
+	}
+
+	var orphan metadata.ModuleIndex
+	if err := db.Where("module_name = ? AND origin_type = ? AND origin_ref = ?", "orphan", "registry", "@legacy/orphan").Take(&orphan).Error; err != nil {
+		t.Fatalf("load orphan row: %v", err)
+	}
+	if orphan.Available {
+		t.Fatal("expected orphan without id to be marked unavailable")
+	}
+}
+
+func TestSyncRegistryModuleIndexWarnsWhenBatchSyncTimestampUpdateFails(t *testing.T) {
+	db := newModuleIndexSyncDB(t)
+	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"modules":{"auth":{"name":"auth","package":"@choysum-dev/auth","latestVersion":"1.0.0"}}}`)
+	}))
+	defer testServer.Close()
+	runtimeScope.cfg.ModuleCatalogIndexURL = testServer.URL + "/v1/index.json"
+
+	if err := db.Exec(`
+CREATE TRIGGER block_registry_batch_sync_ts
+BEFORE UPDATE OF last_batch_sync_at ON meta_module_index
+BEGIN
+  SELECT RAISE(ABORT, 'batch sync timestamp blocked');
+END`).Error; err != nil {
+		t.Fatalf("create batch sync timestamp trigger: %v", err)
+	}
+
+	stats, err := SyncRegistryModuleIndex(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
+		return &moduleIndexSyncTestLocker{}
+	})
+	if err != nil {
+		t.Fatalf("SyncRegistryModuleIndex() error = %v", err)
+	}
+	if stats.Total != 1 || stats.Success != 1 || stats.Failed != 0 {
+		t.Fatalf("unexpected stats = %#v", stats)
+	}
+}

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -22,6 +23,8 @@ import (
 	"time"
 
 	"github.com/choysum-dev/choysum/pkg/scope"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 func writeTempE2EConfig(t *testing.T, modulesPath string) string {
@@ -1299,6 +1302,100 @@ func TestInstallForE2EAndSeedModuleIndexRuntimeBranches(t *testing.T) {
 	if err != nil {
 		t.Fatalf("seedModuleIndexForE2E error: %v", err)
 	}
+}
+
+func TestSeedModuleIndexForE2EMissingDBSession(t *testing.T) {
+	oldHook := newE2ERuntimeScopeHook
+	defer func() { newE2ERuntimeScopeHook = oldHook }()
+
+	newE2ERuntimeScopeHook = func(ctx context.Context, configPath string) (scope.Scope, e2eRuntimeOptions, error) {
+		return &nilDBE2EScope{}, e2eRuntimeOptions{modulesPath: filepath.Join(t.TempDir(), "modules")}, nil
+	}
+
+	err := seedModuleIndexForE2E(context.Background(), writeTempE2EConfig(t, t.TempDir()), map[string]*sourceModulePackage{})
+	if err == nil || !strings.Contains(err.Error(), "missing db session") {
+		t.Fatalf("seedModuleIndexForE2E() error = %v, want missing db session", err)
+	}
+}
+
+func TestSeedModuleIndexForE2EAutoMigrateError(t *testing.T) {
+	oldHook := newE2ERuntimeScopeHook
+	defer func() { newE2ERuntimeScopeHook = oldHook }()
+
+	newE2ERuntimeScopeHook = func(ctx context.Context, configPath string) (scope.Scope, e2eRuntimeOptions, error) {
+		return &brokenAutoMigrateE2EScope{}, e2eRuntimeOptions{modulesPath: filepath.Join(t.TempDir(), "modules")}, nil
+	}
+
+	err := seedModuleIndexForE2E(context.Background(), writeTempE2EConfig(t, t.TempDir()), map[string]*sourceModulePackage{})
+	if err == nil || !strings.Contains(err.Error(), "auto-migrate metadata.ModuleIndex") {
+		t.Fatalf("seedModuleIndexForE2E() error = %v, want auto-migrate failure", err)
+	}
+}
+
+type brokenAutoMigrateE2EScope struct{}
+
+func (s *brokenAutoMigrateE2EScope) Run(fn func(scope.Scope) error) error { return fn(s) }
+func (s *brokenAutoMigrateE2EScope) Transactor() scope.Transactor { return brokenAutoMigrateE2ETransactor{} }
+func (s *brokenAutoMigrateE2EScope) WithContext(ctx context.Context) scope.Scope { return s }
+func (s *brokenAutoMigrateE2EScope) Context() context.Context      { return context.Background() }
+func (s *brokenAutoMigrateE2EScope) Logger() *slog.Logger            { return slog.Default() }
+func (s *brokenAutoMigrateE2EScope) Session() *scope.Session {
+	db, err := gorm.Open(sqlite.Open(filepath.Join(os.TempDir(), "broken-e2e-automigrate.db")), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		panic(err)
+	}
+	if err := sqlDB.Close(); err != nil {
+		panic(err)
+	}
+	return &scope.Session{DB: db}
+}
+
+type brokenAutoMigrateE2ETransactor struct{}
+
+func (brokenAutoMigrateE2ETransactor) Do(ctx context.Context, opts scope.TransactionOptions, fn scope.TxFunc) error {
+	return fn(&brokenAutoMigrateE2EScope{}, nil)
+}
+func (brokenAutoMigrateE2ETransactor) Required(ctx context.Context, fn scope.TxFunc) error {
+	return fn(&brokenAutoMigrateE2EScope{}, nil)
+}
+func (brokenAutoMigrateE2ETransactor) RequiresNew(ctx context.Context, fn scope.TxFunc) error {
+	return scope.ErrRequiresNewUnsupported
+}
+func (brokenAutoMigrateE2ETransactor) Nested(ctx context.Context, fn scope.TxFunc) error {
+	return scope.ErrNestedUnsupported
+}
+
+type nilDBE2EScope struct{}
+
+func (s *nilDBE2EScope) Run(fn func(scope.Scope) error) error { return fn(s) }
+func (s *nilDBE2EScope) Transactor() scope.Transactor          { return nilDBE2ETransactor{} }
+func (s *nilDBE2EScope) Session() *scope.Session               { return &scope.Session{} }
+func (s *nilDBE2EScope) WithContext(ctx context.Context) scope.Scope {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return s
+}
+func (s *nilDBE2EScope) Context() context.Context { return context.Background() }
+func (s *nilDBE2EScope) Logger() *slog.Logger     { return slog.Default() }
+
+type nilDBE2ETransactor struct{}
+
+func (nilDBE2ETransactor) Do(ctx context.Context, opts scope.TransactionOptions, fn scope.TxFunc) error {
+	return fn(&nilDBE2EScope{}, nil)
+}
+func (nilDBE2ETransactor) Required(ctx context.Context, fn scope.TxFunc) error {
+	return fn(&nilDBE2EScope{}, nil)
+}
+func (nilDBE2ETransactor) RequiresNew(ctx context.Context, fn scope.TxFunc) error {
+	return scope.ErrRequiresNewUnsupported
+}
+func (nilDBE2ETransactor) Nested(ctx context.Context, fn scope.TxFunc) error {
+	return scope.ErrNestedUnsupported
 }
 
 func TestMergeRequiredE2ERuntimeModulesUsesDirNameMapping(t *testing.T) {

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	i18nmodels "github.com/choysum-dev/choysum/internal/i18n/models"
 	"github.com/choysum-dev/choysum/pkg/meta"
 )
 
@@ -138,6 +139,34 @@ func TestNewMigrator(t *testing.T) {
 	runtimeScope := newSchemaTestScope(t)
 	if migrated := NewMigrator(runtimeScope, &meta.Module{}); migrated == nil {
 		t.Fatal("expected NewMigrator to return migrator instance")
+	}
+}
+
+func TestMigratorMigrateWrapsEnsureI18nMetaError(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	if err := i18nmodels.EnsureTranslationTermTable(runtimeScope, "auth"); err != nil {
+		t.Fatalf("EnsureTranslationTermTable() error = %v", err)
+	}
+	if err := runtimeScope.Session().AutoMigrate(&meta.Model{}, &meta.Service{}); err != nil {
+		t.Fatalf("auto migrate meta tables: %v", err)
+	}
+	if err := runtimeScope.Session().Exec(`CREATE TRIGGER IF NOT EXISTS block_i18n_model_insert
+		BEFORE INSERT ON meta_model
+		WHEN NEW.name = 'I18n'
+		BEGIN
+			SELECT RAISE(ABORT, 'i18n blocked');
+		END`).Error; err != nil {
+		t.Fatalf("create i18n insert trigger: %v", err)
+	}
+
+	m := &migrator{
+		runtimeScope:       runtimeScope,
+		module:             &meta.Module{Name: "auth", ApplicationStr: "auth"},
+		modelMigrator:      modelMigratorFunc(func() error { return nil }),
+		foreignKeyMigrator: foreignKeyMigratorFunc(func() error { return nil }),
+	}
+	if err := m.Migrate(); err == nil || !strings.Contains(err.Error(), "ensure i18n ir meta") {
+		t.Fatalf("Migrate() error = %v, want wrapped ensure i18n meta failure", err)
 	}
 }
 

@@ -210,9 +210,7 @@ func selectSameNameModelsInPrimaryExtensionChain(models []*meta.Model) []*meta.M
 		}
 	}
 
-	if len(out) == 0 {
-		return []*meta.Model{anchor}
-	}
+	// Anchor always has a non-empty Path and is marked connected above, so out is non-empty.
 	return out
 }
 

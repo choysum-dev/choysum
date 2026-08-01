@@ -486,6 +486,32 @@ func TestSyncLocalModuleIndex_AllSuccessUpdatesBatchSyncAt(t *testing.T) {
 	}
 }
 
+func TestSyncLocalModuleIndexWarnsWhenBatchSyncTimestampUpdateFails(t *testing.T) {
+	modulesPath := t.TempDir()
+	writePackageJSON(t, modulesPath, "partner", `{"name":"@acme/choysum-partner","version":"0.2.0","choysum":{"moduleName":"partner","application":"partner"}}`)
+
+	db := newModuleIndexSyncDB(t)
+	if err := db.Exec(`
+CREATE TRIGGER block_local_batch_sync_ts
+BEFORE UPDATE OF last_batch_sync_at ON meta_module_index
+BEGIN
+  SELECT RAISE(ABORT, 'batch sync timestamp blocked');
+END`).Error; err != nil {
+		t.Fatalf("create batch sync timestamp trigger: %v", err)
+	}
+	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+
+	stats, err := SyncLocalModuleIndex(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
+		return &moduleIndexSyncTestLocker{}
+	})
+	if err != nil {
+		t.Fatalf("SyncLocalModuleIndex() error = %v", err)
+	}
+	if stats.Total != 1 || stats.Success != 1 || stats.Failed != 0 {
+		t.Fatalf("unexpected stats = %+v", stats)
+	}
+}
+
 func TestModuleIndexLockTTL_UsesSettingAndClampsRange(t *testing.T) {
 	db := newModuleIndexSyncDB(t)
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)

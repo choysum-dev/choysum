@@ -2965,3 +2965,138 @@ func TestMetadataCache_ModelRefAndFieldCardinality(t *testing.T) {
 		t.Fatalf("cardinality cache corruption: first=%d retry=%d", c1, c4)
 	}
 }
+
+func execLoaderTestSQL(t *testing.T, db *gorm.DB, sql string, args ...any) {
+	t.Helper()
+	if err := db.Exec(sql, args...).Error; err != nil {
+		t.Fatalf("exec sql %q: %v", sql, err)
+	}
+}
+
+func TestLoadModuleIndexAndDependencyClosureDBFailures(t *testing.T) {
+	t.Parallel()
+
+	t.Run("load module index query failure", func(t *testing.T) {
+		_, db := newTestLoader(t)
+		execLoaderTestSQL(t, db, "DROP TABLE meta_module")
+		execLoaderTestSQL(t, db, "CREATE TABLE meta_module (id TEXT)")
+		if _, _, err := loadModuleIndex(db); err == nil || !strings.Contains(err.Error(), "load module index") {
+			t.Fatalf("loadModuleIndex() error = %v, want load module index failure", err)
+		}
+	})
+
+	t.Run("dependency closure query failure", func(t *testing.T) {
+		_, db := newTestLoader(t)
+		var auth meta.Module
+		if err := db.Where("name = ?", "auth").First(&auth).Error; err != nil {
+			t.Fatalf("lookup auth module: %v", err)
+		}
+		execLoaderTestSQL(t, db, "DROP TABLE meta_module_dependencies")
+		execLoaderTestSQL(t, db, "CREATE TABLE meta_module_dependencies (module_id TEXT)")
+		if _, err := dependencyClosure(db, auth.Id.String, nil); err == nil || !strings.Contains(err.Error(), "load module dependencies") {
+			t.Fatalf("dependencyClosure() error = %v, want dependency lookup failure", err)
+		}
+	})
+}
+
+func TestPlanRecordOrderLookupModelDataFailure(t *testing.T) {
+	l, db := newTestLoader(t)
+	owner := &meta.Module{Name: "auth"}
+	records := []record{{
+		Module:     "auth",
+		ExternalID: "u",
+		Model:      "auth.User",
+		Values: map[string]any{
+			"group_id": map[string]any{"ref": "auth.pre_group"},
+		},
+	}}
+
+	execLoaderTestSQL(t, db, "DROP TABLE meta_model_data")
+	_, err := l.planRecordOrder(db, owner, filepath.Join(t.TempDir(), "data.json"), records)
+	if err == nil || !strings.Contains(err.Error(), "lookup model_data for refs") {
+		t.Fatalf("planRecordOrder() error = %v, want model_data lookup failure", err)
+	}
+}
+
+func TestPlanBatchRecordOrderLookupModelDataFailure(t *testing.T) {
+	l, db := newTestLoader(t)
+	owner := &meta.Module{Name: "auth"}
+	batch := []batchRecord{{
+		FilePath:    filepath.Join(t.TempDir(), "data.json"),
+		RecordIndex: 0,
+		Rec: record{
+			Module:     "auth",
+			ExternalID: "u",
+			Model:      "auth.User",
+			Values: map[string]any{
+				"group_id": map[string]any{"ref": "auth.pre_group"},
+			},
+		},
+	}}
+
+	execLoaderTestSQL(t, db, "DROP TABLE meta_model_data")
+	_, err := l.planBatchRecordOrder(db, owner, batch)
+	if err == nil || !strings.Contains(err.Error(), "lookup model_data for refs") {
+		t.Fatalf("planBatchRecordOrder() error = %v, want model_data lookup failure", err)
+	}
+}
+
+func TestApplyRecordModelDataDBFailures(t *testing.T) {
+	now := time.Now()
+
+	t.Run("lookup model_data db error", func(t *testing.T) {
+		l, db := newTestLoader(t)
+		execLoaderTestSQL(t, db, "DROP TABLE meta_model_data")
+		execLoaderTestSQL(t, db, "CREATE TABLE meta_model_data (id TEXT, module TEXT, external_id TEXT, model TEXT, res_id TEXT, no_update INTEGER)")
+		err := l.applyRecord(db, "/tmp/data.json", 0, record{
+			Module: "auth", ExternalID: "new_user", Model: "auth.User", Values: map[string]any{},
+		}, now)
+		var le *LoadError
+		if !errors.As(err, &le) || le.Code != LoadErrorCodeDBLookupModelData {
+			t.Fatalf("applyRecord() lookup error = %#v, want code %s", err, LoadErrorCodeDBLookupModelData)
+		}
+	})
+
+	t.Run("insert model_data db error", func(t *testing.T) {
+		l, db := newTestLoader(t)
+		execLoaderTestSQL(t, db, "DROP TABLE meta_model_data")
+		if err := db.AutoMigrate(&metadata.ModelData{}); err != nil {
+			t.Fatalf("remigrate meta_model_data: %v", err)
+		}
+		execLoaderTestSQL(t, db, `CREATE TRIGGER block_model_data_insert BEFORE INSERT ON meta_model_data BEGIN SELECT RAISE(ABORT, 'blocked'); END`)
+		err := l.applyRecord(db, "/tmp/data.json", 0, record{
+			Module: "auth", ExternalID: "insert_blocked", Model: "auth.User", Values: map[string]any{},
+		}, now)
+		var le *LoadError
+		if !errors.As(err, &le) || le.Code != LoadErrorCodeDBInsertModelData {
+			t.Fatalf("applyRecord() insert model_data error = %#v, want code %s", err, LoadErrorCodeDBInsertModelData)
+		}
+	})
+
+	t.Run("update model_data noupdate db error", func(t *testing.T) {
+		l, db := newTestLoader(t)
+		group := testAuthGroup{ID: "group-no-update"}
+		user := testAuthUser{ID: "user-no-update", GroupID: group.ID}
+		if err := db.Table("auth_group").Create(&group).Error; err != nil {
+			t.Fatalf("seed group: %v", err)
+		}
+		if err := db.Table("auth_user").Create(&user).Error; err != nil {
+			t.Fatalf("seed user: %v", err)
+		}
+		if err := db.Create(&metadata.ModelData{
+			Module: "auth", ExternalID: "user_no_update", Model: "auth.User", ResID: user.ID, NoUpdate: false,
+		}).Error; err != nil {
+			t.Fatalf("seed mapping: %v", err)
+		}
+		execLoaderTestSQL(t, db, `CREATE TRIGGER block_model_data_update BEFORE UPDATE ON meta_model_data BEGIN SELECT RAISE(ABORT, 'blocked'); END`)
+		freeze := true
+		err := l.applyRecord(db, "/tmp/data.json", 1, record{
+			Module: "auth", ExternalID: "user_no_update", Model: "auth.User", NoUpdate: &freeze,
+			Values: map[string]any{"group_id": group.ID},
+		}, now)
+		var le *LoadError
+		if !errors.As(err, &le) || le.Code != LoadErrorCodeDBUpdateModelDataNoUpdate {
+			t.Fatalf("applyRecord() update noupdate error = %#v, want code %s", err, LoadErrorCodeDBUpdateModelDataNoUpdate)
+		}
+	})
+}

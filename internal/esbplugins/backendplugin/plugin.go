@@ -725,14 +725,8 @@ func (p *BackendPlugin) setFieldMeta(parserResults []*parser.ParserResult) error
 		}
 		return moduleName
 	}
-	// Resolve the target model by name from the parsed results.
 	findModelByName := func(name string) *meta.Model {
-		for _, pr := range parserResults {
-			if pr.Model != nil && pr.Model.Name == name {
-				return pr.Model
-			}
-		}
-		return nil
+		return findParsedModelByName(parserResults, name)
 	}
 	// Read the target model's parentField option when it is present.
 	getParentFieldFromModel := func(m *meta.Model) string {
@@ -1007,12 +1001,8 @@ func (p *BackendPlugin) setFieldMeta(parserResults []*parser.ParserResult) error
 					field.Relation = "ManyToOne"
 					field.RelationModel = findModelName(field.ModuleSpecPath)
 					// Propagate the target model's parentField when it is present.
-					if field.RelationModel != "" {
-						if mm := findModelByName(field.RelationModel); mm != nil {
-							if pf := getParentFieldFromModel(mm); pf != "" {
-								field.RelationModelParentField = pf
-							}
-						}
+					if pf := getParentFieldFromModel(findModelByName(field.RelationModel)); pf != "" {
+						field.RelationModelParentField = pf
 					}
 				case "OneToMany":
 					field.Relation = "OneToMany"
@@ -1023,12 +1013,8 @@ func (p *BackendPlugin) setFieldMeta(parserResults []*parser.ParserResult) error
 						}
 					}
 					// Collection relations also propagate parentField for tree-style selectors in the UI.
-					if field.RelationModel != "" {
-						if mm := findModelByName(field.RelationModel); mm != nil {
-							if pf := getParentFieldFromModel(mm); pf != "" {
-								field.RelationModelParentField = pf
-							}
-						}
+					if pf := getParentFieldFromModel(findModelByName(field.RelationModel)); pf != "" {
+						field.RelationModelParentField = pf
 					}
 				case "ManyToMany":
 					field.Relation = "ManyToMany"
@@ -1045,12 +1031,8 @@ func (p *BackendPlugin) setFieldMeta(parserResults []*parser.ParserResult) error
 						}
 					}
 					// Propagate the target model's parentField here as well.
-					if field.RelationModel != "" {
-						if mm := findModelByName(field.RelationModel); mm != nil {
-							if pf := getParentFieldFromModel(mm); pf != "" {
-								field.RelationModelParentField = pf
-							}
-						}
+					if pf := getParentFieldFromModel(findModelByName(field.RelationModel)); pf != "" {
+						field.RelationModelParentField = pf
 					}
 				}
 			}
@@ -1181,6 +1163,27 @@ func (p *BackendPlugin) GetParserResults() ([]*parser.ParserResult, error) {
 		return nil, err
 	}
 	return results, nil
+}
+
+// findParsedModelByName resolves a model from parser results by short name or app.Model.
+func findParsedModelByName(parserResults []*parser.ParserResult, name string) *meta.Model {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil
+	}
+	shortName := name
+	if i := strings.LastIndex(name, "."); i >= 0 {
+		shortName = name[i+1:]
+	}
+	for _, pr := range parserResults {
+		if pr == nil || pr.Model == nil {
+			continue
+		}
+		if pr.Model.Name == name || pr.Model.Name == shortName {
+			return pr.Model
+		}
+	}
+	return nil
 }
 
 // NewBackendPlugin creates a backend esbuild plugin for a module entry point.
