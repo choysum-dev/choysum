@@ -622,7 +622,7 @@ func TestApplyModule_RefByResolvesExistingRow(t *testing.T) {
 	if err := db.AutoMigrate(&meta.Application{}); err != nil {
 		t.Fatalf("migrate meta_application: %v", err)
 	}
-	if err := db.Create(&meta.Model{Name: "Application", Application: "meta", Path: "/tmp", ModelTable: "meta_application"}).Error; err != nil {
+	if err := db.Create(&meta.Model{Name: "MetaApplication", Application: "meta", Path: "/tmp", ModelTable: "meta_application"}).Error; err != nil {
 		t.Fatalf("seed meta_model meta.MetaApplication: %v", err)
 	}
 
@@ -873,7 +873,7 @@ func TestValueResolutionHelpers(t *testing.T) {
 	if err := db.AutoMigrate(&meta.Application{}); err != nil {
 		t.Fatalf("migrate meta_application: %v", err)
 	}
-	if err := db.Create(&meta.Model{Name: "Application", Application: "meta", Path: "/tmp", ModelTable: "meta_application"}).Error; err != nil {
+	if err := db.Create(&meta.Model{Name: "MetaApplication", Application: "meta", Path: "/tmp", ModelTable: "meta_application"}).Error; err != nil {
 		t.Fatalf("seed meta.MetaApplication model: %v", err)
 	}
 	app := &meta.Application{Name: "auth"}
@@ -2300,9 +2300,9 @@ func TestResolveValue_SearchDomainNestedModelRef(t *testing.T) {
 		t.Fatalf("expected non-empty user model id")
 	}
 
-	// Register meta.Field so search model resolution works.
-	if err := db.Where("application = ? AND name = ?", "meta", "Field").First(&meta.Model{}).Error; err != nil {
-		if err := db.Create(&meta.Model{Name: "Field", Application: "meta", Path: "/tmp", ModelTable: "meta_field"}).Error; err != nil {
+	// Register meta.MetaField so search model resolution works.
+	if err := db.Where("application = ? AND name = ?", "meta", "MetaField").First(&meta.Model{}).Error; err != nil {
+		if err := db.Create(&meta.Model{Name: "MetaField", Application: "meta", Path: "/tmp", ModelTable: "meta_field"}).Error; err != nil {
 			t.Fatalf("seed meta_model meta.MetaField: %v", err)
 		}
 	}
@@ -2760,9 +2760,9 @@ func TestResolveServiceRef_SuccessAndNotFound(t *testing.T) {
 	if err := db.AutoMigrate(&meta.Service{}); err != nil {
 		t.Fatalf("migrate meta_service: %v", err)
 	}
-	// Register meta.Service model entry so resolveSearchModel can find its table.
+	// Register meta.MetaService model entry so resolveSearchModel can find its table.
 	if err := db.Create(&meta.Model{
-		Name: "Service", Application: "meta", Path: "/tmp", ModelTable: "meta_service",
+		Name: "MetaService", Application: "meta", Path: "/tmp", ModelTable: "meta_service",
 	}).Error; err != nil {
 		t.Fatalf("seed meta.MetaService model: %v", err)
 	}
@@ -2827,7 +2827,7 @@ func TestResolveValue_ModelRefAndServiceRefShortcuts(t *testing.T) {
 		t.Fatalf("migrate meta_service: %v", err)
 	}
 	if err := db.Create(&meta.Model{
-		Name: "Service", Application: "meta", Path: "/tmp", ModelTable: "meta_service",
+		Name: "MetaService", Application: "meta", Path: "/tmp", ModelTable: "meta_service",
 	}).Error; err != nil {
 		t.Fatalf("seed meta.MetaService model: %v", err)
 	}
@@ -2880,7 +2880,7 @@ func TestResolveValue_ServiceRefSharesSearchExecutor(t *testing.T) {
 		t.Fatalf("migrate meta_service: %v", err)
 	}
 	if err := db.Create(&meta.Model{
-		Name: "Service", Application: "meta", Path: "/tmp", ModelTable: "meta_service",
+		Name: "MetaService", Application: "meta", Path: "/tmp", ModelTable: "meta_service",
 	}).Error; err != nil {
 		t.Fatalf("seed meta.MetaService model: %v", err)
 	}

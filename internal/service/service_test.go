@@ -939,7 +939,7 @@ message PingReply { string msg = 1; }
 	metaProto := `syntax = "proto3";
 package meta;
 
-service Service {
+service MetaService {
   rpc Ping(PingRequest) returns (PingReply);
 }
 
