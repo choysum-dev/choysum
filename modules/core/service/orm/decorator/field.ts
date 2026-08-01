@@ -512,10 +512,6 @@ export function Field(
       } else {
         throw new Error(`@Field(${name}) selection type requires selection or selectionAdd`);
       }
-
-      if (hasSelectionAdd && selectionKind === 'dynamic') {
-        throw new Error(`@Field(${name}) selectionAdd is not supported on dynamic selection fields`);
-      }
     }
 
     // Relational condition (static QueryCondition | callable; no method-name string)
@@ -708,7 +704,7 @@ export function Field(
       meta.selection = mergeSelectionByValue(baseField.selection, selectionAddItems);
     }
 
-    const fields = new Map(prev?.fields ?? []);
+    const fields = new Map(prev.fields);
     const nextField: FieldMetadata = { ...(fields.get(name) || {}), ...meta };
     if (type === 'selection' && selectionAddItems !== undefined && !validatedSelection) {
       nextField.selectionKind = 'static';

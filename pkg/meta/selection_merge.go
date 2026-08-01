@@ -9,6 +9,14 @@ import (
 	"strings"
 )
 
+// Test seams for defensive error paths that are otherwise unreachable with valid IR shapes.
+var (
+	selectionJSONMarshal = json.Marshal
+	selectionSetResolved = func(field *IrField, spec *IrFieldResolvedSpec) error {
+		return field.SetResolvedSpec(spec)
+	}
+)
+
 // MergeSelectionByValue merges static selection options by value (PR-P2-F4 / D4).
 // Same value → later label (and labelText) wins; order = base order then new values.
 // A plain-string override replaces the whole option and clears inherited LabelText.
@@ -16,7 +24,7 @@ func MergeSelectionByValue(base, addends []IrFieldSelectionItem) []IrFieldSelect
 	byValue := make(map[string]IrFieldSelectionItem)
 	order := make([]string, 0, len(base))
 
-	add := func(item IrFieldSelectionItem, overwrite bool) {
+	add := func(item IrFieldSelectionItem) {
 		value := strings.TrimSpace(item.Value)
 		if value == "" {
 			return
@@ -24,20 +32,15 @@ func MergeSelectionByValue(base, addends []IrFieldSelectionItem) []IrFieldSelect
 		item.Value = value
 		if _, exists := byValue[value]; !exists {
 			order = append(order, value)
-			byValue[value] = item
-			return
-		}
-		if !overwrite {
-			return
 		}
 		byValue[value] = item
 	}
 
 	for _, item := range base {
-		add(item, true)
+		add(item)
 	}
 	for _, item := range addends {
-		add(item, true)
+		add(item)
 	}
 
 	out := make([]IrFieldSelectionItem, 0, len(order))
@@ -200,7 +203,7 @@ func ResolveSelectionFieldConflict(base, child *IrField) (*IrField, error) {
 	outSpec.FieldName = child.Name
 	outSpec.Structural.Name = child.Name
 
-	if err := out.SetResolvedSpec(outSpec); err != nil {
+	if err := selectionSetResolved(&out, outSpec); err != nil {
 		return nil, err
 	}
 	applySelectionLegacyColumns(&out, outSpec)
@@ -284,7 +287,7 @@ func applySelectionLegacyColumns(field *IrField, spec *IrFieldResolvedSpec) {
 		return
 	}
 	if len(spec.Structural.Selection) > 0 {
-		if b, err := json.Marshal(spec.Structural.Selection); err == nil {
+		if b, err := selectionJSONMarshal(spec.Structural.Selection); err == nil {
 			field.Selection = string(b)
 		}
 	} else {
@@ -296,7 +299,7 @@ func applySelectionLegacyColumns(field *IrField, spec *IrFieldResolvedSpec) {
 		field.FieldString = strings.TrimSpace(spec.Structural.String)
 	}
 	if spec.Structural.StringText != nil {
-		if b, err := json.Marshal(spec.Structural.StringText); err == nil {
+		if b, err := selectionJSONMarshal(spec.Structural.StringText); err == nil {
 			field.StringText = string(b)
 		}
 	}
@@ -306,7 +309,7 @@ func applySelectionLegacyColumns(field *IrField, spec *IrFieldResolvedSpec) {
 		field.FieldHelp = strings.TrimSpace(spec.Structural.Help)
 	}
 	if spec.Structural.HelpText != nil {
-		if b, err := json.Marshal(spec.Structural.HelpText); err == nil {
+		if b, err := selectionJSONMarshal(spec.Structural.HelpText); err == nil {
 			field.HelpText = string(b)
 		}
 	}

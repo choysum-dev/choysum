@@ -445,6 +445,85 @@ func TestGetApplicationLoadsCanonicalModelsAndFiltersServices(t *testing.T) {
 	}
 }
 
+func TestGetApplication_SelectionAddMergeError(t *testing.T) {
+	runtimeScope := newGeneratorScope(t)
+	seedGeneratorMetaTables(t, runtimeScope)
+
+	app := &meta.IrApplication{BaseModel: meta.BaseModel{Id: sql.NullString{String: "app-sel", Valid: true}}, Name: "crm"}
+	mod := &meta.IrModule{BaseModel: meta.BaseModel{Id: sql.NullString{String: "module-sel", Valid: true}}, Name: "crm", ApplicationStr: "crm", ApplicationId: app.Id}
+	if err := runtimeScope.db.Create(app).Error; err != nil {
+		t.Fatalf("create app: %v", err)
+	}
+	if err := runtimeScope.db.Create(mod).Error; err != nil {
+		t.Fatalf("create module: %v", err)
+	}
+
+	basePath := "@/crm/models/partner.ts"
+	extPath := "@/crm_ext/models/partner.ts"
+	base := &meta.IrModel{
+		BaseModel: meta.BaseModel{Id: sql.NullString{String: "model-sel-base", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 9, 0, 0, 0, time.UTC)},
+		Name:      "Partner",
+		Path:      basePath,
+		ModuleId:  mod.Id,
+	}
+	ext := &meta.IrModel{
+		BaseModel: meta.BaseModel{Id: sql.NullString{String: "model-sel-ext", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 10, 0, 0, 0, time.UTC)},
+		Name:      "Partner",
+		Path:      extPath,
+		Extends:   basePath,
+		ModuleId:  mod.Id,
+	}
+	if err := runtimeScope.db.Create(base).Error; err != nil {
+		t.Fatalf("create base: %v", err)
+	}
+	if err := runtimeScope.db.Create(ext).Error; err != nil {
+		t.Fatalf("create ext: %v", err)
+	}
+
+	baseField := &meta.IrField{
+		BaseModel:       meta.BaseModel{Id: sql.NullString{String: "field-sel-base", Valid: true}},
+		Name:            "Kind",
+		FieldType:       "selection",
+		SelectionKind:   "dynamic",
+		SelectionMethod: "Opts",
+		ModelId:         base.Id,
+	}
+	_ = baseField.SetResolvedSpec(&meta.IrFieldResolvedSpec{
+		FieldName: "Kind",
+		Structural: meta.IrFieldStructuralSpec{
+			Name:            "Kind",
+			FieldType:       "selection",
+			SelectionKind:   "dynamic",
+			SelectionMethod: "Opts",
+		},
+	})
+	extField := &meta.IrField{
+		BaseModel: meta.BaseModel{Id: sql.NullString{String: "field-sel-ext", Valid: true}},
+		Name:      "Kind",
+		FieldType: "selection",
+		ModelId:   ext.Id,
+	}
+	_ = extField.SetResolvedSpec(&meta.IrFieldResolvedSpec{
+		FieldName: "Kind",
+		Structural: meta.IrFieldStructuralSpec{
+			Name:            "Kind",
+			FieldType:       "selection",
+			HasSelectionAdd: true,
+			SelectionAdd:    []meta.IrFieldSelectionItem{{Value: "vip", Label: "VIP"}},
+		},
+	})
+	for _, field := range []*meta.IrField{baseField, extField} {
+		if err := runtimeScope.db.Create(field).Error; err != nil {
+			t.Fatalf("create field %s: %v", field.Name, err)
+		}
+	}
+
+	g := &grpcGenerator{runtimeScope: runtimeScope, module: mod}
+	if _, err := g.getApplication(); err == nil || !strings.Contains(err.Error(), "inherited static selection") {
+		t.Fatalf("expected getApplication selectionAdd merge error, got %v", err)
+	}
+}
+
 func TestGeneratorEntryPoints(t *testing.T) {
 	t.Run("Generate and GenerateCtx short-circuit safely", func(t *testing.T) {
 		generator := &grpcGenerator{module: &meta.IrModule{}}
@@ -786,6 +865,97 @@ func TestSelectSameNameModelsInPrimaryExtensionChain_ExcludesDisconnectedChains(
 	}
 	if !fieldNames["BField"] || fieldNames["AField"] {
 		t.Fatalf("unexpected primary-chain field selection: %#v", fieldNames)
+	}
+}
+
+func TestMergeSameNameModelsByExtensionChain_EmptyAndNilGuards(t *testing.T) {
+	merged, err := mergeSameNameModelsByExtensionChain(nil)
+	if err != nil || merged != nil {
+		t.Fatalf("expected nil,nil for empty input, got %#v err=%v", merged, err)
+	}
+	merged, err = mergeSameNameModelsByExtensionChain([]*meta.IrModel{nil, nil})
+	if err != nil || merged != nil {
+		t.Fatalf("expected nil,nil for all-nil models, got %#v err=%v", merged, err)
+	}
+	solo := &meta.IrModel{Name: "Partner", Path: "/solo"}
+	merged, err = mergeSameNameModelsByExtensionChain([]*meta.IrModel{solo})
+	if err != nil || merged != solo {
+		t.Fatalf("expected solo model passthrough, got %#v err=%v", merged, err)
+	}
+}
+
+func TestMergeSameNameModelsByExtensionChain_SelectionAddWithoutBaseRejected(t *testing.T) {
+	extField := &meta.IrField{Name: "Kind", FieldType: "selection"}
+	if err := extField.SetResolvedSpec(&meta.IrFieldResolvedSpec{
+		FieldName: "Kind",
+		Structural: meta.IrFieldStructuralSpec{
+			Name:            "Kind",
+			FieldType:       "selection",
+			HasSelectionAdd: true,
+			SelectionAdd:    []meta.IrFieldSelectionItem{{Value: "vip", Label: "VIP"}},
+		},
+	}); err != nil {
+		t.Fatalf("SetResolvedSpec: %v", err)
+	}
+	ext := &meta.IrModel{
+		BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 11, 0, 0, 0, time.UTC), Id: sql.NullString{String: "ext", Valid: true}},
+		Name:      "Partner",
+		Path:      "@/partner_vip/service/models/partner.ts",
+		Fields:    []*meta.IrField{extField},
+	}
+	// First model has no Kind; extension introduces Kind via selectionAdd only.
+	base := &meta.IrModel{
+		BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC), Id: sql.NullString{String: "base", Valid: true}},
+		Name:      "Partner",
+		Path:      "@/partner/service/models/partner.ts",
+		Fields:    []*meta.IrField{{Name: "Name"}},
+	}
+	ext.Extends = base.Path
+	_, err := mergeSameNameModelsByExtensionChain([]*meta.IrModel{base, ext})
+	if err == nil || !strings.Contains(err.Error(), "selectionAdd requires an inherited static selection") {
+		t.Fatalf("expected selectionAdd-without-base rejection, got %v", err)
+	}
+}
+
+func TestMergeSameNameModelsByExtensionChain_SelectionAddConflictError(t *testing.T) {
+	basePath := "@/partner/service/models/partner.ts"
+	extPath := "@/partner_vip/service/models/partner.ts"
+	baseField := &meta.IrField{Name: "Kind", FieldType: "selection", SelectionKind: "dynamic", SelectionMethod: "Opts"}
+	_ = baseField.SetResolvedSpec(&meta.IrFieldResolvedSpec{
+		FieldName: "Kind",
+		Structural: meta.IrFieldStructuralSpec{
+			Name:            "Kind",
+			FieldType:       "selection",
+			SelectionKind:   "dynamic",
+			SelectionMethod: "Opts",
+		},
+	})
+	extField := &meta.IrField{Name: "Kind", FieldType: "selection"}
+	_ = extField.SetResolvedSpec(&meta.IrFieldResolvedSpec{
+		FieldName: "Kind",
+		Structural: meta.IrFieldStructuralSpec{
+			Name:            "Kind",
+			FieldType:       "selection",
+			HasSelectionAdd: true,
+			SelectionAdd:    []meta.IrFieldSelectionItem{{Value: "vip", Label: "VIP"}},
+		},
+	})
+	base := &meta.IrModel{
+		BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC), Id: sql.NullString{String: "base", Valid: true}},
+		Name:      "Partner",
+		Path:      basePath,
+		Fields:    []*meta.IrField{baseField},
+	}
+	ext := &meta.IrModel{
+		BaseModel: meta.BaseModel{UpdatedAt: time.Date(2026, 3, 15, 11, 0, 0, 0, time.UTC), Id: sql.NullString{String: "ext", Valid: true}},
+		Name:      "Partner",
+		Path:      extPath,
+		Extends:   basePath,
+		Fields:    []*meta.IrField{extField},
+	}
+	_, err := mergeSameNameModelsByExtensionChain([]*meta.IrModel{base, ext})
+	if err == nil || !strings.Contains(err.Error(), "inherited static selection") {
+		t.Fatalf("expected dynamic-base merge error, got %v", err)
 	}
 }
 
