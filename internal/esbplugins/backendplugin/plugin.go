@@ -26,6 +26,87 @@ type BackendPlugin struct {
 	EntryPointImports []string
 	parserFactory     func(scope.Scope, *meta.Module) parser.Parser
 	runtimeOptions    runtimeOptions
+	virtualSources    map[string]string
+}
+
+// RegisterVirtualSource registers in-memory TS contents served by OnLoad before disk reads.
+// Paths are normalized the same way as other backend plugin path lookups.
+func (p *BackendPlugin) RegisterVirtualSource(path string, contents string) {
+	if p == nil {
+		return
+	}
+	normalized := normalizeBackendPluginPath(path)
+	if normalized == "" {
+		return
+	}
+	p.Mu.Lock()
+	defer p.Mu.Unlock()
+	if p.virtualSources == nil {
+		p.virtualSources = make(map[string]string)
+	}
+	p.virtualSources[normalized] = contents
+	// Also key by slash-cleaned form so Join-produced paths resolve without symlink eval.
+	slashKey := filepath.ToSlash(filepath.Clean(strings.TrimSpace(path)))
+	if slashKey != "" && slashKey != normalized {
+		p.virtualSources[slashKey] = contents
+	}
+}
+
+// lookupVirtualSource must be called with p.Mu already held for read or write.
+// Callers: OnLoad (write lock) and resolveVirtualSourcePath (read lock).
+func (p *BackendPlugin) lookupVirtualSource(path string) (string, bool) {
+	if p == nil || len(p.virtualSources) == 0 {
+		return "", false
+	}
+	candidates := []string{
+		normalizeBackendPluginPath(path),
+		filepath.ToSlash(filepath.Clean(strings.TrimSpace(path))),
+		strings.TrimSpace(path),
+	}
+	for _, key := range candidates {
+		if key == "" {
+			continue
+		}
+		if content, ok := p.virtualSources[key]; ok {
+			return content, true
+		}
+	}
+	return "", false
+}
+
+// resolveVirtualSourcePath returns a stable absolute path for a registered virtual
+// source so esbuild OnResolve can accept imports that do not exist on disk.
+func (p *BackendPlugin) resolveVirtualSourcePath(path string, resolveDir string) (string, bool) {
+	if p == nil {
+		return "", false
+	}
+	trimmed := strings.TrimSpace(path)
+	if trimmed == "" {
+		return "", false
+	}
+	candidates := []string{trimmed}
+	if !filepath.IsAbs(trimmed) && strings.TrimSpace(resolveDir) != "" {
+		candidates = append(candidates, filepath.Join(resolveDir, trimmed))
+	}
+
+	p.Mu.RLock()
+	defer p.Mu.RUnlock()
+	for _, candidate := range candidates {
+		if _, ok := p.lookupVirtualSource(candidate); !ok {
+			continue
+		}
+		return firstNonEmptyPath(normalizeBackendPluginPath(candidate), filepath.Clean(candidate)), true
+	}
+	return "", false
+}
+
+func firstNonEmptyPath(values ...string) string {
+	for _, v := range values {
+		if strings.TrimSpace(v) != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 func (p *BackendPlugin) bindRuntimeState(runtimeScope scope.Scope, module *meta.Module) {
@@ -1054,59 +1135,21 @@ func (p *BackendPlugin) DefinePlugins(runtimeScope scope.Scope, jsExecutor jsexe
 	return []api.Plugin{{
 		Name: "choysum-backend-inherit",
 		Setup: func(build api.PluginBuild) {
-			// modulesPath := "<modules-path>"
-			// build.OnResolve(api.OnResolveOptions{Filter: `.*`}, func(args api.OnResolveArgs) (api.OnResolveResult, error) {
-			// 	p.Mu.Lock()
-			// 	defer p.Mu.Unlock()
-
-			// 	pathAlias, err := parser.ParseTsconfigPathAlias(build.InitialOptions)
-			// 	if err != nil {
-			// 		return api.OnResolveResult{}, err
-			// 	}
-			// 	resolvePath := parser.ApplyPathAlias(pathAlias, args.Path)
-
-			// 	if !filepath.IsAbs(resolvePath) {
-			// 		resolvePath = filepath.Join(args.ResolveDir, resolvePath)
-			// 	}
-
-			// 	if strings.HasPrefix(resolvePath, modulesPath) {
-			// 		fullPath := ""
-			// 		possiablePaths := []string{
-			// 			resolvePath,
-			// 			resolvePath + ".ts",
-			// 			filepath.Join(resolvePath, "index.ts"),
-			// 			resolvePath + ".tsx",
-			// 			filepath.Join(resolvePath, "index.tsx"),
-			// 			resolvePath + ".d.ts",
-			// 			filepath.Join(resolvePath, "index.d.ts"),
-			// 		}
-			// 		for _, possiablePath := range possiablePaths {
-			// 			if info, err := os.Stat(possiablePath); err == nil && !info.IsDir() {
-			// 				fullPath = possiablePath
-			// 				break
-			// 			}
-			// 		}
-
-			// 		if fullPath != "" {
-			// 			finalChildPath := parser.FindModelFinalChild(p.ParserResults, fullPath, args.Importer)
-			// 			if finalChildPath != "" {
-			// 				fullPath = finalChildPath
-			// 			}
-			// 			if args.Importer == "/Users/wangbuke/choysum/modules/sale2/service/models/order.ts" {
-			// 				fmt.Printf("fullPath: %s args: %+s\n", fullPath, args.Importer)
-			// 			}
-			// 			return api.OnResolveResult{Path: fullPath}, nil
-			// 		}
-			// 	}
-
-			// 	return api.OnResolveResult{}, nil
-			// })
+			// Virtual TS sources (e.g. C2 FieldDefault) are not on disk; claim them in
+			// OnResolve so esbuild reaches OnLoad instead of failing path resolution.
+			build.OnResolve(api.OnResolveOptions{Filter: `field_default\.ts$`}, func(args api.OnResolveArgs) (api.OnResolveResult, error) {
+				if resolved, ok := p.resolveVirtualSourcePath(args.Path, args.ResolveDir); ok {
+					return api.OnResolveResult{Path: resolved}, nil
+				}
+				return api.OnResolveResult{}, nil
+			})
 			build.OnLoad(api.OnLoadOptions{Filter: `\.ts$`}, func(args api.OnLoadArgs) (api.OnLoadResult, error) {
 				p.Mu.Lock()
 				defer p.Mu.Unlock()
 
 				var content string
 				var err error
+				virtualLoad := false
 				// Check if the file is already parsed
 				parserResult := p.FindParserResultByPath(args.Path)
 				if parserResult != nil {
@@ -1116,6 +1159,9 @@ func (p *BackendPlugin) DefinePlugins(runtimeScope scope.Scope, jsExecutor jsexe
 					} else {
 						content = parserResult.RawContent
 					}
+				} else if virtual, ok := p.lookupVirtualSource(args.Path); ok {
+					content = virtual
+					virtualLoad = true
 				} else {
 					content, err = p.ReadNormalizedTextFile(args.Path)
 					if err != nil {
@@ -1139,10 +1185,22 @@ func (p *BackendPlugin) DefinePlugins(runtimeScope scope.Scope, jsExecutor jsexe
 
 				p.PublishParserResult(parserResult)
 
-				return api.OnLoadResult{
+				result := api.OnLoadResult{
 					Contents: &content,
 					Loader:   api.LoaderTS,
-				}, nil
+				}
+				if virtualLoad {
+					// Pseudo paths are not on disk; point ResolveDir at modules/ so
+					// relative resolution has a real root (absolute imports preferred).
+					resolveDir := filepath.Dir(args.Path)
+					if p.Module != nil && strings.TrimSpace(p.Module.Path) != "" {
+						if parent := filepath.Dir(p.Module.Path); parent != "" && parent != "." {
+							resolveDir = parent
+						}
+					}
+					result.ResolveDir = resolveDir
+				}
+				return result, nil
 			})
 		},
 	}}

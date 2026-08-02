@@ -59,6 +59,10 @@ type ModuleBuilder struct {
 	// Cached entry-point imports reused across prebuild/build in one builder run.
 	entryPointImportsCacheValid bool
 	entryPointImportsCache      []string
+
+	// FieldDefault C2 plan from Decide; Inject path is applied on the build pass only.
+	fieldDefaultPlan       FieldDefaultPlan
+	fieldDefaultInjectPath string
 }
 
 func pathWithinModuleRoot(path string, root string) bool {
@@ -181,8 +185,12 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 		buildOptions.TreeShaking = api.TreeShakingFalse
 	}
 
+	imports := b.entryPointImports()
+	if !prebuild && strings.TrimSpace(b.fieldDefaultInjectPath) != "" {
+		imports = append(append([]string(nil), imports...), b.fieldDefaultInjectPath)
+	}
 	esbOpts := []esbplugins.EsbPluginOptions{
-		esbplugins.WithEntryPointImports(b.entryPointImports()),
+		esbplugins.WithEntryPointImports(imports),
 	}
 
 	if prebuild {
@@ -549,10 +557,16 @@ func (b *ModuleBuilder) updateModelExtends(parseResult *parser.ParserResult, ext
 
 func (b *ModuleBuilder) prebuild() (*module.BuildResult, error) {
 	if b.entryPoint == "" {
+		parserResults := []*parser.ParserResult{}
+		if b.prebuildPlugin != nil {
+			if results, err := b.prebuildPlugin.GetParserResults(); err == nil && len(results) > 0 {
+				parserResults = results
+			}
+		}
 		return module.WithParserResults(&module.BuildResult{
 			Module:        b.module,
 			EsbuildResult: &api.BuildResult{},
-		}, []*parser.ParserResult{}), nil
+		}, parserResults), nil
 	}
 
 	result := api.Build(*b.buildOptions(true))
@@ -778,11 +792,19 @@ func (b *ModuleBuilder) validate(buildResult *module.BuildResult) error {
 		}
 	}
 
+	if err := b.validateFieldDefault(buildResult); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (b *ModuleBuilder) persist(buildResult *module.BuildResult) error {
 	mod := buildResult.Module
+
+	if err := b.supersedeVirtualFieldDefaults(); err != nil {
+		return err
+	}
 
 	// update module application id
 	if mod.ApplicationStr != "" {
@@ -1228,19 +1250,27 @@ func (b *ModuleBuilder) BuildWithoutPersist() (*module.BuildResult, error) {
 		return nil, xfmt.Errorf("error prebuilding: %w", err)
 	}
 
+	// 1b. FieldDefault C2 Decide / Inject (before extends rewrite + build)
+	if err := b.planAndInjectFieldDefault(prebuildResult); err != nil {
+		return nil, err
+	}
+
 	// 2. recompute and modify file content for model extends
 	if err := b.updatePrebuildResult(prebuildResult); err != nil {
+		b.releaseFieldDefaultSchedule()
 		return nil, xfmt.Errorf("error generating content: %w", err)
 	}
 
 	// 3. build for output
 	buildResult, err := b.build(prebuildResult)
 	if err != nil {
+		b.releaseFieldDefaultSchedule()
 		return nil, xfmt.Errorf("error building: %w", err)
 	}
 
 	// 4. validate models
 	if err := b.validate(buildResult); err != nil {
+		b.releaseFieldDefaultSchedule()
 		return nil, xfmt.Errorf("error validating: %w", err)
 	}
 
@@ -1251,17 +1281,27 @@ func (b *ModuleBuilder) BuildWithoutPersist() (*module.BuildResult, error) {
 // builder's ambient session. Intended for a short Required commit window.
 func (b *ModuleBuilder) Persist(buildResult *module.BuildResult) error {
 	if err := b.persist(buildResult); err != nil {
+		b.releaseFieldDefaultSchedule()
 		return xfmt.Errorf("error persisting build result: %w", err)
 	}
+	// DB now holds FieldDefault (or none was claimed); drop process-local claim.
+	b.releaseFieldDefaultSchedule()
 	return nil
 }
 
 // Bundle runs the build pipeline but does NOT validate/persist meta models.
 // This is intended for application-stage bundling where DB/IR is already correct.
 func (b *ModuleBuilder) Bundle() (*module.BuildResult, error) {
+	// Bundle never persists meta; always release any NeedInject process claim.
+	defer b.releaseFieldDefaultSchedule()
+
 	prebuildResult, err := b.prebuild()
 	if err != nil {
 		return nil, xfmt.Errorf("error prebuilding: %w", err)
+	}
+
+	if err := b.planAndInjectFieldDefault(prebuildResult); err != nil {
+		return nil, err
 	}
 
 	if err := b.updatePrebuildResult(prebuildResult); err != nil {

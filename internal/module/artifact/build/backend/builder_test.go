@@ -99,9 +99,11 @@ func (tx *builderTestTransaction) RollbackToSavepoint(string) error { return nil
 func (tx *builderTestTransaction) ReleaseSavepoint(string) error    { return nil }
 
 type stubEsbPlugin struct {
-	name          string
-	parserResults []*parser.ParserResult
-	entryImports  []string
+	name                 string
+	parserResults        []*parser.ParserResult
+	entryImports         []string
+	virtualSources       map[string]string
+	getParserResultsErr  error
 }
 
 type fixedParser struct {
@@ -119,6 +121,9 @@ func (p *stubEsbPlugin) DefinePlugins(_ scope.Scope, _ jsexecutor.ScriptExecutor
 }
 
 func (p *stubEsbPlugin) GetParserResults() ([]*parser.ParserResult, error) {
+	if p.getParserResultsErr != nil {
+		return nil, p.getParserResultsErr
+	}
 	return p.parserResults, nil
 }
 
@@ -129,6 +134,13 @@ func (p *stubEsbPlugin) SetParserResults(parserResults []*parser.ParserResult) e
 
 func (p *stubEsbPlugin) SetEntryPointImports(imports []string) {
 	p.entryImports = append([]string(nil), imports...)
+}
+
+func (p *stubEsbPlugin) RegisterVirtualSource(path string, contents string) {
+	if p.virtualSources == nil {
+		p.virtualSources = make(map[string]string)
+	}
+	p.virtualSources[path] = contents
 }
 
 func (p fixedParser) Parse(pathAlias map[string]string, path string, content string) (*parser.ParserResult, error) {
