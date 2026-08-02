@@ -228,7 +228,7 @@ export interface IKanbanController {
 export interface IFormViewController {
   vm: FormViewModel;
   beginDisplay(recordId: string): Promise<any>;
-  beginCreate(initial?: any): void;
+  beginCreate(initial?: any): Promise<void>;
   beginEdit(): void;
   reset(): void;
   validate(): Promise<{ valid: boolean; errors: any[] }>;

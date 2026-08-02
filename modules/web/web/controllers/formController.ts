@@ -661,11 +661,37 @@ export function createFormController(store: WebModelStore<any>): IFormViewContro
     vm.draft = clone(vm.original);
   }
 
-  function beginCreate(initial?: any) {
+  /**
+   * Enter create mode and prefetch server DefaultGet into the draft (PR-FD-4 / D11).
+   * Opens immediately with seed; merges server defaults with seed priority; failures keep seed.
+   */
+  async function beginCreate(initial?: any): Promise<void> {
+    const seq = ++loadSeq;
+    const seed = clone(initial || {});
     vm.mode = 'create';
     vm.original = null;
-    vm.draft = clone(initial || {});
+    vm.draft = seed;
     vm.result = null;
+    vm.error = null;
+    // Bumping loadSeq supersedes beginDisplay, which then skips its finally reset.
+    vm.loading = false;
+
+    try {
+      if (typeof (store as any).DefaultGet !== 'function') return;
+      const defaults = await (store as any).DefaultGet(seed);
+      if (seq !== loadSeq) return;
+
+      const server =
+        defaults && typeof defaults === 'object' && !Array.isArray(defaults)
+          ? ({ ...(defaults as object) } as Record<string, unknown>)
+          : {};
+      // Seed wins (D2). `clone` drops undefined keys, so explicit null / values are preserved.
+      vm.draft = { ...server, ...(seed as Record<string, unknown>) };
+    } catch (e) {
+      if (seq !== loadSeq) return;
+      console.warn('[FormController] DefaultGet prefetch failed', e);
+      vm.draft = seed;
+    }
   }
 
   function reset() {

@@ -755,8 +755,25 @@ func TestBackendPluginDefinePluginsOnLoad_ServesVirtualSource(t *testing.T) {
 	if result.Contents == nil || *result.Contents != template {
 		t.Fatalf("expected virtual template contents, got %#v", result.Contents)
 	}
-	if wantDir := filepath.Dir(moduleDir); result.ResolveDir != wantDir {
+	wantDir := filepath.Dir(moduleDir)
+	if result.ResolveDir != wantDir {
 		t.Fatalf("ResolveDir = %q, want %q", result.ResolveDir, wantDir)
+	}
+
+	// Build pass may reuse prebuild parser results; ResolveDir must still be set so
+	// absolute imports inside the virtual FieldDefault source can resolve.
+	plugin.ParserResults = []*parser.ParserResult{{
+		Path:       resolved.Path,
+		RawContent: template,
+		Content:    template,
+	}}
+	onLoadCached := captureBackendOnLoad(t, defined, &api.BuildOptions{})
+	cached, err := onLoadCached(api.OnLoadArgs{Path: resolved.Path})
+	if err != nil {
+		t.Fatalf("onLoad cached: %v", err)
+	}
+	if cached.ResolveDir != wantDir {
+		t.Fatalf("cached ResolveDir = %q, want %q", cached.ResolveDir, wantDir)
 	}
 
 	unregistered := filepath.Join(moduleDir, "service", "models", "field_default.ts")
