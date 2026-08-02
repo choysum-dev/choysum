@@ -71,6 +71,117 @@ function scopeCondition(field: string, value: string | null): any {
   return value == null ? [field, 'is', null] : [field, '=', value];
 }
 
+function storeMeta(ctor: InstantiableModelCtor<FieldDefaultBaseModel>) {
+  return MetadataStorage.instance.getModelMetadata(ctor as any);
+}
+
+function resolveTargetModel(
+  ctor: InstantiableModelCtor<FieldDefaultBaseModel>,
+  modelShortName: string
+): { ctor: typeof BaseModel; fieldMeta: FieldMetadata } {
+  const short = String(modelShortName || '').trim();
+  if (!short) {
+    fail('FIELD_DEFAULT_UNKNOWN_FIELD', 'model is required');
+  }
+
+  const meta = storeMeta(ctor);
+  const application = String(meta.application || '').trim();
+  if (!application || application === 'core') {
+    fail('FIELD_DEFAULT_CROSS_APP_MODEL', 'FieldDefault store application is invalid');
+  }
+
+  const fullName = `${application}.${short}`;
+  const Target = BaseModel.resolveModelConstructor(fullName) || BaseModel.resolveModelConstructor(short);
+  if (!Target) {
+    fail('FIELD_DEFAULT_CROSS_APP_MODEL', `Model ${short} is not registered`);
+  }
+
+  const targetMeta = MetadataStorage.instance.getModelMetadata(Target as any);
+  const targetApp = String(targetMeta.application || '').trim();
+  if (targetApp !== application) {
+    fail('FIELD_DEFAULT_CROSS_APP_MODEL', `Model ${short} does not belong to application ${application}`);
+  }
+
+  return { ctor: Target as typeof BaseModel, fieldMeta: targetMeta as any };
+}
+
+function resolveTargetField(targetMeta: any, fieldName: string): FieldMetadata {
+  const name = String(fieldName || '').trim();
+  if (!name) {
+    fail('FIELD_DEFAULT_UNKNOWN_FIELD', 'field is required');
+  }
+  const field = targetMeta?.fields?.get?.(name) as FieldMetadata | undefined;
+  if (!field) {
+    fail('FIELD_DEFAULT_UNKNOWN_FIELD', `Field ${name} is unknown on target model`);
+  }
+  const type = field.type as FieldType;
+  if (UNSUPPORTED_DEFAULT_TYPES.has(type) || !SUPPORTED_DEFAULT_TYPES.has(type)) {
+    fail('FIELD_DEFAULT_INVALID_VALUE', `Field type ${type} is not supported as a FieldDefault value`);
+  }
+  return field;
+}
+
+function normalizeStoredValue(field: FieldMetadata, value: unknown): unknown {
+  if (value === undefined) {
+    fail('FIELD_DEFAULT_INVALID_VALUE', 'Value is required');
+  }
+  const type = field.type as FieldType;
+  if (type === 'ManyToOne' || type === 'ManyToOneRef') {
+    if (value == null) return null;
+    if (typeof value === 'object' && value && 'Id' in (value as object)) {
+      const id = String((value as { Id?: unknown }).Id ?? '').trim();
+      if (!id) fail('FIELD_DEFAULT_INVALID_VALUE', 'ManyToOne default requires an Id');
+      return id;
+    }
+    const id = String(value).trim();
+    if (!id) fail('FIELD_DEFAULT_INVALID_VALUE', 'ManyToOne default requires an Id string');
+    return id;
+  }
+  return value;
+}
+
+async function ensureScopeUniqueIndex(ctor: InstantiableModelCtor<FieldDefaultBaseModel>): Promise<void> {
+  const meta = storeMeta(ctor);
+  const table = typeof meta.tableName === 'function' ? String(meta.tableName()) : String(meta.tableName || '');
+  if (!table || ensuredUniqueIndexTables.has(table)) return;
+
+  const dialect = String(($choysum as any)?.db?.dialectName || 'sqlite').toLowerCase();
+  const indexName = `uidx_${table}_scope`;
+  let ddl = '';
+  if (dialect === 'postgres' || dialect === 'postgresql') {
+    ddl = `CREATE UNIQUE INDEX IF NOT EXISTS ${indexName} ON ${table} (model, field, user_id, company_id) NULLS NOT DISTINCT`;
+  } else {
+    // SQLite / others: coalesce NULL to '' so NULL scopes collide.
+    ddl = `CREATE UNIQUE INDEX IF NOT EXISTS ${indexName} ON ${table} (model, field, coalesce(user_id, ''), coalesce(company_id, ''))`;
+  }
+
+  try {
+    const exec = ($choysum as any)?.db?.execute;
+    if (typeof exec === 'function') {
+      await exec.call(($choysum as any).db, ddl, '[]');
+    }
+  } catch {
+    // Best-effort: upsert path still enforces uniqueness in application logic.
+  }
+  ensuredUniqueIndexTables.add(table);
+}
+
+async function findExactRow(
+  ctor: InstantiableModelCtor<FieldDefaultBaseModel>,
+  model: string,
+  field: string,
+  userId: string | null,
+  companyId: string | null
+): Promise<FieldDefaultBaseModel | undefined> {
+  const rows = await (ctor as any).Search(
+    {
+      And: [['Model', '=', model], ['Field', '=', field], scopeCondition('UserId', userId), scopeCondition('CompanyId', companyId)],
+    } as any,
+    { fields: ['Id', 'Model', 'Field', 'UserId', 'CompanyId', 'Value'] as any, limit: 2 } as any
+  );
+  return (rows && rows[0]) || undefined;
+}
+
 /**
  * Per-application FieldDefault store base (no `@Model`, no table).
  * Thin app classes: `@Model('FieldDefault') export default class FieldDefault extends FieldDefaultBaseModel {}`
@@ -91,117 +202,6 @@ export default class FieldDefaultBaseModel extends BaseModel {
   @Field({ type: 'jsonobject', notNull: true })
   Value!: unknown;
 
-  private static storeMeta(this: InstantiableModelCtor<FieldDefaultBaseModel>) {
-    return MetadataStorage.instance.getModelMetadata(this as any);
-  }
-
-  private static resolveTargetModel(
-    this: InstantiableModelCtor<FieldDefaultBaseModel>,
-    modelShortName: string
-  ): { ctor: typeof BaseModel; fieldMeta: FieldMetadata } {
-    const short = String(modelShortName || '').trim();
-    if (!short) {
-      fail('FIELD_DEFAULT_UNKNOWN_FIELD', 'model is required');
-    }
-
-    const storeMeta = this.storeMeta();
-    const application = String(storeMeta.application || '').trim();
-    if (!application || application === 'core') {
-      fail('FIELD_DEFAULT_CROSS_APP_MODEL', 'FieldDefault store application is invalid');
-    }
-
-    const fullName = `${application}.${short}`;
-    const Target = BaseModel.resolveModelConstructor(fullName) || BaseModel.resolveModelConstructor(short);
-    if (!Target) {
-      fail('FIELD_DEFAULT_CROSS_APP_MODEL', `Model ${short} is not registered`);
-    }
-
-    const targetMeta = MetadataStorage.instance.getModelMetadata(Target as any);
-    const targetApp = String(targetMeta.application || '').trim();
-    if (targetApp !== application) {
-      fail('FIELD_DEFAULT_CROSS_APP_MODEL', `Model ${short} does not belong to application ${application}`);
-    }
-
-    return { ctor: Target as typeof BaseModel, fieldMeta: targetMeta as any };
-  }
-
-  private static resolveTargetField(targetMeta: any, fieldName: string): FieldMetadata {
-    const name = String(fieldName || '').trim();
-    if (!name) {
-      fail('FIELD_DEFAULT_UNKNOWN_FIELD', 'field is required');
-    }
-    const field = targetMeta?.fields?.get?.(name) as FieldMetadata | undefined;
-    if (!field) {
-      fail('FIELD_DEFAULT_UNKNOWN_FIELD', `Field ${name} is unknown on target model`);
-    }
-    const type = field.type as FieldType;
-    if (UNSUPPORTED_DEFAULT_TYPES.has(type) || !SUPPORTED_DEFAULT_TYPES.has(type)) {
-      fail('FIELD_DEFAULT_INVALID_VALUE', `Field type ${type} is not supported as a FieldDefault value`);
-    }
-    return field;
-  }
-
-  private static normalizeStoredValue(field: FieldMetadata, value: unknown): unknown {
-    if (value === undefined) {
-      fail('FIELD_DEFAULT_INVALID_VALUE', 'Value is required');
-    }
-    const type = field.type as FieldType;
-    if (type === 'ManyToOne' || type === 'ManyToOneRef') {
-      if (value == null) return null;
-      if (typeof value === 'object' && value && 'Id' in (value as object)) {
-        const id = String((value as { Id?: unknown }).Id ?? '').trim();
-        if (!id) fail('FIELD_DEFAULT_INVALID_VALUE', 'ManyToOne default requires an Id');
-        return id;
-      }
-      const id = String(value).trim();
-      if (!id) fail('FIELD_DEFAULT_INVALID_VALUE', 'ManyToOne default requires an Id string');
-      return id;
-    }
-    return value;
-  }
-
-  private static async ensureScopeUniqueIndex(this: InstantiableModelCtor<FieldDefaultBaseModel>): Promise<void> {
-    const meta = this.storeMeta();
-    const table = typeof meta.tableName === 'function' ? String(meta.tableName()) : String(meta.tableName || '');
-    if (!table || ensuredUniqueIndexTables.has(table)) return;
-
-    const dialect = String(($choysum as any)?.db?.dialectName || 'sqlite').toLowerCase();
-    const indexName = `uidx_${table}_scope`;
-    let ddl = '';
-    if (dialect === 'postgres' || dialect === 'postgresql') {
-      ddl = `CREATE UNIQUE INDEX IF NOT EXISTS ${indexName} ON ${table} (model, field, user_id, company_id) NULLS NOT DISTINCT`;
-    } else {
-      // SQLite / others: coalesce NULL to '' so NULL scopes collide.
-      ddl = `CREATE UNIQUE INDEX IF NOT EXISTS ${indexName} ON ${table} (model, field, coalesce(user_id, ''), coalesce(company_id, ''))`;
-    }
-
-    try {
-      const exec = ($choysum as any)?.db?.execute;
-      if (typeof exec === 'function') {
-        await exec.call(($choysum as any).db, ddl, '[]');
-      }
-    } catch {
-      // Best-effort: upsert path still enforces uniqueness in application logic.
-    }
-    ensuredUniqueIndexTables.add(table);
-  }
-
-  private static async findExactRow(
-    this: InstantiableModelCtor<FieldDefaultBaseModel>,
-    model: string,
-    field: string,
-    userId: string | null,
-    companyId: string | null
-  ): Promise<FieldDefaultBaseModel | undefined> {
-    const rows = await (this as any).Search(
-      {
-        And: [['Model', '=', model], ['Field', '=', field], scopeCondition('UserId', userId), scopeCondition('CompanyId', companyId)],
-      } as any,
-      { fields: ['Id', 'Model', 'Field', 'UserId', 'CompanyId', 'Value'] as any, limit: 2 } as any
-    );
-    return (rows && rows[0]) || undefined;
-  }
-
   /**
    * Upsert a default for an exact user/company scope (Odoo `ir.default.set`).
    */
@@ -212,19 +212,19 @@ export default class FieldDefaultBaseModel extends BaseModel {
     value: unknown,
     opts?: FieldDefaultScopeOpts
   ): Promise<void> {
-    const { fieldMeta } = this.resolveTargetModel(model);
-    const fieldDef = this.resolveTargetField(fieldMeta, field);
-    const stored = this.normalizeStoredValue(fieldDef, value);
+    const { fieldMeta } = resolveTargetModel(this, model);
+    const fieldDef = resolveTargetField(fieldMeta, field);
+    const stored = normalizeStoredValue(fieldDef, value);
     const userId = resolveScopeDim(opts?.userId, (this as any).userId, 'userId');
     const companyId = resolveScopeDim(opts?.companyId, (this as any).companyId, 'companyId');
     const modelShort = String(model).trim();
     const fieldName = String(field).trim();
 
-    await this.ensureScopeUniqueIndex();
+    await ensureScopeUniqueIndex(this);
 
     try {
       await (this as any).withSavepoint(async () => {
-        const existing = await this.findExactRow(modelShort, fieldName, userId, companyId);
+        const existing = await findExactRow(this, modelShort, fieldName, userId, companyId);
         if (existing?.Id) {
           await (this as any).UpdateById(existing.Id, { Value: stored } as any);
           return;
@@ -255,11 +255,11 @@ export default class FieldDefaultBaseModel extends BaseModel {
     field: string,
     opts?: FieldDefaultScopeOpts
   ): Promise<unknown | undefined> {
-    const { fieldMeta } = this.resolveTargetModel(model);
-    this.resolveTargetField(fieldMeta, field);
+    const { fieldMeta } = resolveTargetModel(this, model);
+    resolveTargetField(fieldMeta, field);
     const userId = resolveScopeDim(opts?.userId, (this as any).userId, 'userId');
     const companyId = resolveScopeDim(opts?.companyId, (this as any).companyId, 'companyId');
-    const row = await this.findExactRow(String(model).trim(), String(field).trim(), userId, companyId);
+    const row = await findExactRow(this, String(model).trim(), String(field).trim(), userId, companyId);
     return row ? (row as any).Value : undefined;
   }
 
@@ -271,7 +271,7 @@ export default class FieldDefaultBaseModel extends BaseModel {
     model: string,
     fields?: string[]
   ): Promise<Record<string, unknown>> {
-    const { fieldMeta } = this.resolveTargetModel(model);
+    const { fieldMeta } = resolveTargetModel(this, model);
     const modelShort = String(model).trim();
     const uid = String((this as any).userId || '').trim() || null;
     const companyId = String((this as any).companyId || '').trim() || null;
@@ -311,11 +311,11 @@ export default class FieldDefaultBaseModel extends BaseModel {
     field: string,
     opts?: FieldDefaultScopeOpts
   ): Promise<void> {
-    const { fieldMeta } = this.resolveTargetModel(model);
-    this.resolveTargetField(fieldMeta, field);
+    const { fieldMeta } = resolveTargetModel(this, model);
+    resolveTargetField(fieldMeta, field);
     const userId = resolveScopeDim(opts?.userId, (this as any).userId, 'userId');
     const companyId = resolveScopeDim(opts?.companyId, (this as any).companyId, 'companyId');
-    const row = await this.findExactRow(String(model).trim(), String(field).trim(), userId, companyId);
+    const row = await findExactRow(this, String(model).trim(), String(field).trim(), userId, companyId);
     if (row?.Id) {
       await (this as any).DeleteById(row.Id);
     }

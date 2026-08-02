@@ -514,6 +514,7 @@ func captureBackendOnLoad(t *testing.T, plugin api.Plugin, buildOptions *api.Bui
 	var onLoad func(api.OnLoadArgs) (api.OnLoadResult, error)
 	plugin.Setup(api.PluginBuild{
 		InitialOptions: buildOptions,
+		OnResolve:      func(api.OnResolveOptions, func(api.OnResolveArgs) (api.OnResolveResult, error)) {},
 		OnLoad: func(options api.OnLoadOptions, callback func(api.OnLoadArgs) (api.OnLoadResult, error)) {
 			onLoad = callback
 		},
@@ -698,6 +699,22 @@ func TestBackendPluginDefinePluginsOnLoad_AppendsEntryPointImports(t *testing.T)
 	}
 }
 
+func captureBackendOnResolve(t *testing.T, plugin api.Plugin, buildOptions *api.BuildOptions) func(api.OnResolveArgs) (api.OnResolveResult, error) {
+	t.Helper()
+	var onResolve func(api.OnResolveArgs) (api.OnResolveResult, error)
+	plugin.Setup(api.PluginBuild{
+		InitialOptions: buildOptions,
+		OnResolve: func(options api.OnResolveOptions, callback func(api.OnResolveArgs) (api.OnResolveResult, error)) {
+			onResolve = callback
+		},
+		OnLoad: func(api.OnLoadOptions, func(api.OnLoadArgs) (api.OnLoadResult, error)) {},
+	})
+	if onResolve == nil {
+		t.Fatal("expected backend plugin to register an OnResolve callback")
+	}
+	return onResolve
+}
+
 func TestBackendPluginDefinePluginsOnLoad_ServesVirtualSource(t *testing.T) {
 	testRuntimeScope := newPluginTestScope()
 	moduleDir := filepath.Join(t.TempDir(), "partner")
@@ -714,17 +731,24 @@ func TestBackendPluginDefinePluginsOnLoad_ServesVirtualSource(t *testing.T) {
 	}}
 	plugin.RegisterVirtualSource(virtualPath, template)
 	plugin.Parser = fakeParser{parseFn: func(_ map[string]string, gotPath string, content string) (*parser.ParserResult, error) {
-		if gotPath != virtualPath {
-			t.Fatalf("unexpected parse path %q", gotPath)
-		}
 		if content != template {
 			t.Fatalf("unexpected virtual content %q", content)
 		}
 		return &parser.ParserResult{Path: gotPath, RawContent: content}, nil
 	}}
 
-	onLoad := captureBackendOnLoad(t, plugin.DefinePlugins(testRuntimeScope, nil, plugin.Module)[0], &api.BuildOptions{})
-	result, err := onLoad(api.OnLoadArgs{Path: virtualPath})
+	defined := plugin.DefinePlugins(testRuntimeScope, nil, plugin.Module)[0]
+	onResolve := captureBackendOnResolve(t, defined, &api.BuildOptions{})
+	resolved, err := onResolve(api.OnResolveArgs{Path: virtualPath})
+	if err != nil {
+		t.Fatalf("onResolve returned error: %v", err)
+	}
+	if resolved.Path == "" {
+		t.Fatal("expected onResolve to claim virtual path")
+	}
+
+	onLoad := captureBackendOnLoad(t, defined, &api.BuildOptions{})
+	result, err := onLoad(api.OnLoadArgs{Path: resolved.Path})
 	if err != nil {
 		t.Fatalf("onLoad returned error: %v", err)
 	}

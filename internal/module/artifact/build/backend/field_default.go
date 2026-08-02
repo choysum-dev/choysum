@@ -4,6 +4,7 @@
 package backendbuilder
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -32,15 +33,23 @@ const (
 // within a single process (install / upgrade).
 var fieldDefaultScheduledApps sync.Map
 
-const virtualFieldDefaultSource = `import { Model } from '@/core/service'
-import FieldDefaultBaseModel from '@/core/service/orm/model/field_default_base_model'
+type virtualSourceRegistrar interface {
+	RegisterVirtualSource(path string, contents string)
+}
+
+// virtualFieldDefaultSource builds C2 thin-class source with absolute imports so
+// esbuild can resolve them even when the pseudo __generated__ directory is not on disk
+// (path aliases like @/core/service fail for virtual OnLoad paths).
+func virtualFieldDefaultSource(modulesPath string) string {
+	modulesPath = filepath.ToSlash(filepath.Clean(strings.TrimSpace(modulesPath)))
+	coreService := filepath.ToSlash(filepath.Join(modulesPath, "core/service/index.ts"))
+	baseModel := filepath.ToSlash(filepath.Join(modulesPath, "core/service/orm/model/field_default_base_model.ts"))
+	return fmt.Sprintf(`import { Model } from '%s'
+import FieldDefaultBaseModel from '%s'
 
 @Model('FieldDefault')
 export default class FieldDefault extends FieldDefaultBaseModel {}
-`
-
-type virtualSourceRegistrar interface {
-	RegisterVirtualSource(path string, contents string)
+`, coreService, baseModel)
 }
 
 func isGeneratedFieldDefaultPath(path string) bool {
@@ -191,10 +200,15 @@ func (b *ModuleBuilder) applyFieldDefaultInject(plan FieldDefaultPlan) error {
 	if setter, ok := b.buildPlugin.(interface{ SetEntryPointImports([]string) }); ok {
 		setter.SetEntryPointImports(imports)
 	}
+	modulesPath := strings.TrimSpace(b.resolvedRuntimeOptions().modulesPath)
+	if modulesPath == "" && strings.TrimSpace(b.module.Path) != "" {
+		modulesPath = filepath.Dir(b.module.Path)
+	}
+	source := virtualFieldDefaultSource(modulesPath)
 	if registrar, ok := b.buildPlugin.(virtualSourceRegistrar); ok {
-		registrar.RegisterVirtualSource(path, virtualFieldDefaultSource)
+		registrar.RegisterVirtualSource(path, source)
 	} else if bp, ok := b.buildPlugin.(*internalbackendplugin.BackendPlugin); ok && bp != nil {
-		bp.RegisterVirtualSource(path, virtualFieldDefaultSource)
+		bp.RegisterVirtualSource(path, source)
 	}
 	return nil
 }

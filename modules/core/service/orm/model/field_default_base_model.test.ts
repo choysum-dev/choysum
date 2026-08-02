@@ -44,9 +44,7 @@ test('FieldDefault Set upserts and Get reads exact scope; userId true uses conte
   const originalCreate = Fd2FieldDefault.Create;
   const originalUpdateById = Fd2FieldDefault.UpdateById;
   const originalWithSavepoint = Fd2FieldDefault.withSavepoint;
-  const originalEnsure = (Fd2FieldDefault as any).ensureScopeUniqueIndex;
 
-  (Fd2FieldDefault as any).ensureScopeUniqueIndex = async () => {};
   Fd2FieldDefault.withSavepoint = (async (fn: any) => await fn()) as any;
   Fd2FieldDefault.Search = (async (condition: any) => {
     const and = condition?.And || [];
@@ -88,7 +86,6 @@ test('FieldDefault Set upserts and Get reads exact scope; userId true uses conte
     Fd2FieldDefault.Create = originalCreate;
     Fd2FieldDefault.UpdateById = originalUpdateById;
     Fd2FieldDefault.withSavepoint = originalWithSavepoint;
-    (Fd2FieldDefault as any).ensureScopeUniqueIndex = originalEnsure;
   }
 });
 
@@ -179,9 +176,7 @@ test('FieldDefault Set normalizes ManyToOne values to id strings', async () => {
   const originalSearch = Fd2FieldDefault.Search;
   const originalCreate = Fd2FieldDefault.Create;
   const originalWithSavepoint = Fd2FieldDefault.withSavepoint;
-  const originalEnsure = (Fd2FieldDefault as any).ensureScopeUniqueIndex;
 
-  (Fd2FieldDefault as any).ensureScopeUniqueIndex = async () => {};
   Fd2FieldDefault.withSavepoint = (async (fn: any) => await fn()) as any;
   Fd2FieldDefault.Search = (async () => []) as any;
   Fd2FieldDefault.Create = (async (value: any) => {
@@ -196,6 +191,5 @@ test('FieldDefault Set normalizes ManyToOne values to id strings', async () => {
     Fd2FieldDefault.Search = originalSearch;
     Fd2FieldDefault.Create = originalCreate;
     Fd2FieldDefault.withSavepoint = originalWithSavepoint;
-    (Fd2FieldDefault as any).ensureScopeUniqueIndex = originalEnsure;
   }
 });

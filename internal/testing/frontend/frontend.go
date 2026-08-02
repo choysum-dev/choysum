@@ -176,6 +176,10 @@ func RunOneAppFrontendTests(
 	b.WriteString("    include: ['" + includeGlob + "'],\n")
 	b.WriteString("    environment: 'node',\n")
 	b.WriteString("    passWithNoTests: true,\n")
+	// Node --localstorage-file is a single SQLite DB shared via NODE_OPTIONS; parallel
+	// vitest workers contend on it ("database is locked"). Keep FE runs single-worker.
+	b.WriteString("    maxWorkers: 1,\n")
+	b.WriteString("    fileParallelism: false,\n")
 	if junitPath != "" {
 		b.WriteString("    reporters: ['default', 'junit'],\n")
 		b.WriteString("    outputFile: {\n")
