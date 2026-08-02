@@ -3,10 +3,11 @@
 
 import { Field, Model } from '../decorator';
 import BaseModel from './model';
-import FieldDefaultBaseModel from './field_default_base_model';
+import FieldDefaultBaseModel, { __invalidateFieldDefaultMemoForTest } from './field_default_base_model';
 import { runDefaultGetPipeline } from './model_default_get_pipeline';
 import { __setLookupFieldDefaultModelForTest } from './field_default_lookup';
 import { withContext } from '../../runtime/context/scope';
+import { MetadataStorage } from '../metadata/storage';
 import {
   getOrInitRepositoryReqServiceState,
   getRepositoryCurrentReq,
@@ -261,6 +262,93 @@ test('FD-3 DefaultGet override with super keeps FieldDefault then applies patch'
       expect(search.searchCalls).toBe(1);
     });
   } finally {
+    search.restore();
+  }
+});
+
+test('FD-3 memo helpers guard empty keys and tolerate corrupt cache values', async () => {
+  clearLookupOverride();
+  __invalidateFieldDefaultMemoForTest('', 'Widget');
+  __invalidateFieldDefaultMemoForTest('fd3wire', '');
+  __invalidateFieldDefaultMemoForTest('fd3wire', undefined as any);
+  __invalidateFieldDefaultMemoForTest('fd3wire', 'Widget');
+
+  const search = installSearchStore([
+    { Id: 'g', Model: 'Widget', Field: 'Name', UserId: null, CompanyId: null, Value: 'from-store' },
+  ]);
+  try {
+    await withReq(async () => {
+      const state = getOrInitRepositoryReqServiceState(getRepositoryCurrentReq()) as Record<string, unknown>;
+      // Non-object cache entry forces GetEffective to ignore it and return {}.
+      state['fieldDefault:fd3wire:Widget::'] = 42;
+      const out = await Fd3FieldDefault.GetEffective('Widget');
+      expect(out).toEqual({});
+      expect(search.searchCalls).toBe(0);
+    });
+  } finally {
+    search.restore();
+  }
+});
+
+test('FD-3 GetEffective falls back to target application and empty field allow-list', async () => {
+  clearLookupOverride();
+  const search = installSearchStore([
+    { Id: 'g', Model: 'Widget', Field: 'Name', UserId: null, CompanyId: null, Value: 'from-store' },
+  ]);
+  const widgetMeta = MetadataStorage.instance.getModelMetadata(Fd3Widget as any) as any;
+  const prevFields = widgetMeta.fields;
+  const originalGet = MetadataStorage.instance.getModelMetadata;
+  const originalDeleteById = Fd3FieldDefault.DeleteById;
+  const storeMeta = MetadataStorage.instance.getModelMetadata(Fd3FieldDefault as any) as any;
+  const prevApp = storeMeta.application;
+
+  let storeReads = 0;
+  MetadataStorage.instance.getModelMetadata = function (ctor: any) {
+    const meta = originalGet.call(MetadataStorage.instance, ctor);
+    if (ctor === Fd3FieldDefault) {
+      storeReads += 1;
+      // First read (resolveTargetModel) keeps app; second (memo key) simulates missing store application.
+      if (storeReads === 2) return { ...meta, application: '' };
+    }
+    return meta;
+  };
+
+  try {
+    await withReq(async () => {
+      const out = await Fd3FieldDefault.GetEffective('Widget', ['Name']);
+      expect(out.Name).toBe('from-store');
+
+      storeReads = 0;
+      widgetMeta.fields = new Map();
+      const empty = await Fd3FieldDefault.GetEffective('Widget');
+      expect(empty).toEqual({});
+      widgetMeta.fields = prevFields;
+
+      // Unset invalidate falls back to targetMeta.application when store app is cleared mid-flight.
+      storeMeta.application = prevApp;
+      const prevWidgetApp = widgetMeta.application;
+      Fd3FieldDefault.Search = (async () => [{ Id: 'del', Model: 'Widget', Field: 'Name', Value: 'x' }]) as any;
+      Fd3FieldDefault.DeleteById = (async () => {
+        storeMeta.application = '';
+      }) as any;
+      await Fd3FieldDefault.Unset('Widget', 'Name');
+
+      // Also cover targetMeta.application falsy fallback (`|| ''`) during invalidate.
+      storeMeta.application = prevApp;
+      Fd3FieldDefault.Search = (async () => [{ Id: 'del2', Model: 'Widget', Field: 'Name', Value: 'y' }]) as any;
+      Fd3FieldDefault.DeleteById = (async () => {
+        storeMeta.application = '';
+        widgetMeta.application = '';
+      }) as any;
+      await Fd3FieldDefault.Unset('Widget', 'Name');
+      storeMeta.application = prevApp;
+      widgetMeta.application = prevWidgetApp;
+    });
+  } finally {
+    MetadataStorage.instance.getModelMetadata = originalGet;
+    Fd3FieldDefault.DeleteById = originalDeleteById;
+    storeMeta.application = prevApp;
+    widgetMeta.fields = prevFields;
     search.restore();
   }
 });

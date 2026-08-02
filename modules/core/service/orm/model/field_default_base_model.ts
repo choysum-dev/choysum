@@ -68,6 +68,16 @@ function fieldDefaultReqState(): Record<string, unknown> | undefined {
   return getOrInitRepositoryReqServiceState(getRepositoryCurrentReq()) as Record<string, unknown> | undefined;
 }
 
+/** Prefer the FieldDefault store application; fall back to the target model application. */
+function resolveFieldDefaultApplication(
+  ctor: InstantiableModelCtor<FieldDefaultBaseModel>,
+  targetMeta?: ModelMetadata
+): string {
+  const fromStore = String(storeMeta(ctor).application || '').trim();
+  if (fromStore) return fromStore;
+  return String(targetMeta?.application || '').trim();
+}
+
 function invalidateFieldDefaultMemo(application: string, modelShort: string): void {
   const app = String(application || '').trim();
   const model = String(modelShort || '').trim();
@@ -269,7 +279,7 @@ export default class FieldDefaultBaseModel extends BaseModel {
       }
       throw err;
     }
-    invalidateFieldDefaultMemo(String(storeMeta(this).application || ''), modelShort);
+    invalidateFieldDefaultMemo(resolveFieldDefaultApplication(this, targetMeta), modelShort);
   }
 
   /**
@@ -300,12 +310,12 @@ export default class FieldDefaultBaseModel extends BaseModel {
   ): Promise<Record<string, unknown>> {
     const { targetMeta } = resolveTargetModel(this, model);
     const modelShort = String(model).trim();
-    const application = String(storeMeta(this).application || '').trim();
+    const application = resolveFieldDefaultApplication(this, targetMeta);
     const uid = String((this as any).userId || '').trim() || null;
     const companyId = String((this as any).companyId || '').trim() || null;
     const memoKey = fieldDefaultMemoKey(application, modelShort, uid, companyId);
 
-    const full = await memoizeInReqState(fieldDefaultReqState(), memoKey, async () => {
+    const fullRaw = await memoizeInReqState(fieldDefaultReqState(), memoKey, async () => {
       // Load all candidate rows for this model+identity (field filter applied after memo).
       const and: any[] = [['Model', '=', modelShort]];
       and.push({ Or: [scopeCondition('UserId', null), ...(uid ? [['UserId', '=', uid]] : [])] });
@@ -324,14 +334,15 @@ export default class FieldDefaultBaseModel extends BaseModel {
       );
       return resolveEffectiveFieldDefaults(rows || []);
     });
+    const full = fullRaw && typeof fullRaw === 'object' ? fullRaw : {};
 
     const allowNames =
       fields && fields.length ? fields.map(String) : [...(targetMeta.fields?.keys?.() || [])].map(String);
-    if (!allowNames.length) return { ...(full || {}) };
+    if (!allowNames.length) return {};
 
     const allow = new Set(allowNames);
     const out: Record<string, unknown> = {};
-    for (const [name, value] of Object.entries(full || {})) {
+    for (const [name, value] of Object.entries(full)) {
       if (allow.has(name) && value !== undefined) out[name] = value;
     }
     return out;
@@ -354,7 +365,7 @@ export default class FieldDefaultBaseModel extends BaseModel {
     const row = await findExactRow(this, modelShort, String(field).trim(), userId, companyId);
     if (row?.Id) {
       await (this as any).DeleteById(row.Id);
-      invalidateFieldDefaultMemo(String(storeMeta(this).application || ''), modelShort);
+      invalidateFieldDefaultMemo(resolveFieldDefaultApplication(this, targetMeta), modelShort);
     }
   }
 }
@@ -362,4 +373,9 @@ export default class FieldDefaultBaseModel extends BaseModel {
 /** Test-only: clear process-local unique-index DDL cache. */
 export function __resetFieldDefaultUniqueIndexTablesForTest(): void {
   ensuredUniqueIndexTables.clear();
+}
+
+/** Test-only: exercise memo invalidation guards. */
+export function __invalidateFieldDefaultMemoForTest(application: string, modelShort: string): void {
+  invalidateFieldDefaultMemo(application, modelShort);
 }
