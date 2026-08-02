@@ -40,12 +40,8 @@ export async function applyFieldColumnDefaults<T>(ModelCtor: unknown, value: Par
   });
 
   const processField = (fieldName: string) => {
+    // Already filled via dependency resolution while another field was processed.
     if (processedFields.has(fieldName)) return;
-
-    if (processingStack.has(fieldName)) {
-      const processingPath = Array.from(processingStack).join(' → ') + ' → ' + fieldName;
-      throw new Error(`Circular dependency detected: ${processingPath}`);
-    }
 
     const field = meta.fields.get(fieldName);
     const defaultValue = field?.column?.default;
@@ -65,15 +61,15 @@ export async function applyFieldColumnDefaults<T>(ModelCtor: unknown, value: Par
         get(target, prop) {
           const propName = String(prop);
 
-          // If the dependency also has a default and is still pending, resolve it first to avoid reading undefined.
-          if (pendingFields.has(propName) && !processedFields.has(propName) && propName !== fieldName) {
-            processField(propName);
-          }
-
-          // Detect mutual references to fields that are already in progress and treat them as a cycle.
+          // Detect mutual references before recursing so in-progress fields fail fast.
           if (processingStack.has(propName) && propName !== fieldName) {
             const circularPath = Array.from(processingStack).join(' → ') + ' → ' + propName + ' → ' + fieldName;
             throw new Error(`Circular dependency detected: ${fieldName} depends on in-progress field ${propName}; cycle path ${circularPath}`);
+          }
+
+          // If the dependency also has a default and is still pending, resolve it first to avoid reading undefined.
+          if (pendingFields.has(propName) && !processedFields.has(propName) && propName !== fieldName) {
+            processField(propName);
           }
 
           // Accessing an unknown dependency throws MissingDependencyError so the caller can skip the field default.
@@ -102,11 +98,9 @@ export async function applyFieldColumnDefaults<T>(ModelCtor: unknown, value: Par
     }
   };
 
-  // Resolve pending fields one by one.
+  // Resolve pending fields; processField no-ops when a dependency pass already filled the field.
   pendingFields.forEach(fieldName => {
-    if (!processedFields.has(fieldName)) {
-      processField(fieldName);
-    }
+    processField(fieldName);
   });
 
   return result as Partial<T>;

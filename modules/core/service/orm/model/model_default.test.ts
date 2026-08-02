@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import BaseModel from './model';
-import { DefaultOperations } from './model_default';
+import { applyFieldColumnDefaults, DefaultOperations } from './model_default';
 import { MetadataStorage } from '../metadata/storage';
 
 function createModelWithDefaults(defs: Record<string, any>) {
@@ -75,6 +75,7 @@ test('DefaultOperations detects circular dependencies between default functions'
 
   expect(Boolean(err)).toBe(true);
   expect(String(err?.message || '')).toContain('Circular dependency detected');
+  expect(String(err?.message || '')).toContain('depends on in-progress field');
 });
 
 test('DefaultOperations propagates non-missing dependency errors from default function', async () => {
@@ -93,4 +94,39 @@ test('DefaultOperations propagates non-missing dependency errors from default fu
 
   expect(Boolean(err)).toBe(true);
   expect(String(err?.message || '')).toContain('custom-default-error');
+});
+
+test('applyFieldColumnDefaults no-ops when dependency pass already processed a later field', async () => {
+  // Name is visited first and pulls Code; the later forEach entry for Code hits the processedFields guard.
+  const ModelCtor = createModelWithDefaults({
+    Name: (self: any) => `N-${self.Code}`,
+    Code: 'C-1',
+  });
+
+  const out = await applyFieldColumnDefaults(ModelCtor as any, {} as any);
+  expect(out).toEqual({
+    Name: 'N-C-1',
+    Code: 'C-1',
+  });
+});
+
+test('applyFieldColumnDefaults skips field when default becomes undefined before process', async () => {
+  class DefaultDisappearsModel extends BaseModel {}
+  let reads = 0;
+  const column: Record<string, unknown> = {};
+  Object.defineProperty(column, 'default', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      reads += 1;
+      // Pending collection sees a default; processField sees undefined and returns early.
+      return reads === 1 ? 'seed' : undefined;
+    },
+  });
+  const fields = new Map<string, any>([['Name', { name: 'Name', type: 'varchar', column }]]);
+  MetadataStorage.instance.setModelMetadata(DefaultDisappearsModel as any, { fields } as any);
+
+  const out = await applyFieldColumnDefaults(DefaultDisappearsModel as any, {} as any);
+  expect((out as any).Name).toBeUndefined();
+  expect(reads).toBeGreaterThanOrEqual(2);
 });
