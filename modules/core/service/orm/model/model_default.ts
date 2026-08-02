@@ -12,6 +12,13 @@ function ensureMetadata(ModelCtor: unknown): ModelMetadata {
   return meta;
 }
 
+class MissingDependencyError extends Error {
+  constructor(fieldName: string, dependencyName: string) {
+    super(`Field ${fieldName} references missing value ${dependencyName}`);
+    this.name = 'MissingDependencyError';
+  }
+}
+
 /**
  * Apply `@Field({ default })` column defaults (literal + dependency-aware functions).
  * Used by `BaseModel.DefaultGet` / the DefaultGet pipeline; Create must go through `ModelCtor.DefaultGet`.
@@ -19,13 +26,6 @@ function ensureMetadata(ModelCtor: unknown): ModelMetadata {
 export async function applyFieldColumnDefaults<T>(ModelCtor: unknown, value: Partial<T>): Promise<Partial<T>> {
   const result: ObjectRecord = { ...(value as ObjectRecord) };
   const meta = ensureMetadata(ModelCtor);
-
-  class MissingDependencyError extends Error {
-    constructor(fieldName: string, dependencyName: string) {
-      super(`Field ${fieldName} references missing value ${dependencyName}`);
-      this.name = 'MissingDependencyError';
-    }
-  }
 
   // Fields with pending defaults.
   const pendingFields = new Set<string>();
