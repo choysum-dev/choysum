@@ -81,7 +81,8 @@ function resolveFieldDefaultApplication(
 function invalidateFieldDefaultMemo(application: string, modelShort: string): void {
   const app = String(application || '').trim();
   const model = String(modelShort || '').trim();
-  if (!app || !model) return;
+  // Allow empty application: GetEffective may still key as `fieldDefault::model:...`.
+  if (!model) return;
   deleteReqStateKeysByPrefix(fieldDefaultReqState(), `fieldDefault:${app}:${model}:`);
 }
 

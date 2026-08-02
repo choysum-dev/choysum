@@ -70,8 +70,10 @@ function installSearchStore(rows: any[]) {
   const originalSearch = Fd3FieldDefault.Search;
   let searchCalls = 0;
   let sawSudo = false;
+  let lastCondition: any;
   Fd3FieldDefault.Search = (async (condition: any) => {
     searchCalls += 1;
+    lastCondition = condition;
     // GetEffective uses withRepositoryAuthzRuleBypass (sudo-equivalent, no audit).
     if (getRepositoryRecordRuleBypassDepth() > 0 && getRepositoryFieldRuleBypassDepth() > 0) {
       sawSudo = true;
@@ -102,6 +104,9 @@ function installSearchStore(rows: any[]) {
   return {
     get searchCalls() {
       return searchCalls;
+    },
+    get lastCondition() {
+      return lastCondition;
     },
     get sawSudo() {
       return sawSudo;
@@ -146,6 +151,10 @@ test('FD-3 scope priority user+company beats weaker FieldDefault rows', async ()
         Fd3FieldDefault.withCompany('C1', async () => Fd3Widget.DefaultGet({} as any))
       );
       expect((out as any).Name).toBe('user-co');
+      // GetEffective Search predicate must scope candidate rows to current identity.
+      const ors = (search.lastCondition?.And || []).filter((x: any) => x?.Or);
+      expect(JSON.stringify(ors)).toContain('U1');
+      expect(JSON.stringify(ors)).toContain('C1');
     });
   } finally {
     search.restore();
@@ -268,10 +277,9 @@ test('FD-3 DefaultGet override with super keeps FieldDefault then applies patch'
 
 test('FD-3 memo helpers guard empty keys and tolerate corrupt cache values', async () => {
   clearLookupOverride();
-  __invalidateFieldDefaultMemoForTest('', 'Widget');
+  // Empty model is a hard no-op; empty application still invalidates `fieldDefault::model:...`.
   __invalidateFieldDefaultMemoForTest('fd3wire', '');
   __invalidateFieldDefaultMemoForTest('fd3wire', undefined as any);
-  __invalidateFieldDefaultMemoForTest('fd3wire', 'Widget');
 
   const search = installSearchStore([
     { Id: 'g', Model: 'Widget', Field: 'Name', UserId: null, CompanyId: null, Value: 'from-store' },
@@ -279,6 +287,10 @@ test('FD-3 memo helpers guard empty keys and tolerate corrupt cache values', asy
   try {
     await withReq(async () => {
       const state = getOrInitRepositoryReqServiceState(getRepositoryCurrentReq()) as Record<string, unknown>;
+      state['fieldDefault::Widget::'] = { Name: 'stale-empty-app' };
+      __invalidateFieldDefaultMemoForTest('', 'Widget');
+      expect(state['fieldDefault::Widget::']).toBeUndefined();
+
       // Non-object cache entry forces GetEffective to ignore it and return {}.
       state['fieldDefault:fd3wire:Widget::'] = 42;
       const out = await Fd3FieldDefault.GetEffective('Widget');
@@ -297,36 +309,47 @@ test('FD-3 GetEffective falls back to target application and empty field allow-l
   ]);
   const widgetMeta = MetadataStorage.instance.getModelMetadata(Fd3Widget as any) as any;
   const prevFields = widgetMeta.fields;
+  const prevWidgetApp = widgetMeta.application;
   const originalGet = MetadataStorage.instance.getModelMetadata;
   const originalDeleteById = Fd3FieldDefault.DeleteById;
   const storeMeta = MetadataStorage.instance.getModelMetadata(Fd3FieldDefault as any) as any;
   const prevApp = storeMeta.application;
 
-  let storeReads = 0;
+  // Intent flag: after a single pass-through for resolveTargetModel, blank the store application.
+  let blankStoreApp = false;
+  let passThroughNextStoreMeta = false;
   MetadataStorage.instance.getModelMetadata = function (ctor: any) {
     const meta = originalGet.call(MetadataStorage.instance, ctor);
-    if (ctor === Fd3FieldDefault) {
-      storeReads += 1;
-      // First read (resolveTargetModel) keeps app; second (memo key) simulates missing store application.
-      if (storeReads === 2) return { ...meta, application: '' };
+    if (ctor === Fd3FieldDefault && blankStoreApp) {
+      if (passThroughNextStoreMeta) {
+        passThroughNextStoreMeta = false;
+        return meta;
+      }
+      return { ...meta, application: '' };
     }
     return meta;
   };
 
   try {
     await withReq(async () => {
+      blankStoreApp = true;
+      passThroughNextStoreMeta = true;
       const out = await Fd3FieldDefault.GetEffective('Widget', ['Name']);
       expect(out.Name).toBe('from-store');
+      const state = getOrInitRepositoryReqServiceState(getRepositoryCurrentReq()) as Record<string, unknown>;
+      // Fallback must key under targetMeta.application, not an empty store app.
+      expect(Object.keys(state).some(k => k.startsWith('fieldDefault:fd3wire:Widget:'))).toBe(true);
 
-      storeReads = 0;
+      blankStoreApp = true;
+      passThroughNextStoreMeta = true;
       widgetMeta.fields = new Map();
       const empty = await Fd3FieldDefault.GetEffective('Widget');
       expect(empty).toEqual({});
       widgetMeta.fields = prevFields;
+      blankStoreApp = false;
 
       // Unset invalidate falls back to targetMeta.application when store app is cleared mid-flight.
       storeMeta.application = prevApp;
-      const prevWidgetApp = widgetMeta.application;
       Fd3FieldDefault.Search = (async () => [{ Id: 'del', Model: 'Widget', Field: 'Name', Value: 'x' }]) as any;
       Fd3FieldDefault.DeleteById = (async () => {
         storeMeta.application = '';
@@ -335,19 +358,19 @@ test('FD-3 GetEffective falls back to target application and empty field allow-l
 
       // Also cover targetMeta.application falsy fallback (`|| ''`) during invalidate.
       storeMeta.application = prevApp;
+      widgetMeta.application = prevWidgetApp;
       Fd3FieldDefault.Search = (async () => [{ Id: 'del2', Model: 'Widget', Field: 'Name', Value: 'y' }]) as any;
       Fd3FieldDefault.DeleteById = (async () => {
         storeMeta.application = '';
         widgetMeta.application = '';
       }) as any;
       await Fd3FieldDefault.Unset('Widget', 'Name');
-      storeMeta.application = prevApp;
-      widgetMeta.application = prevWidgetApp;
     });
   } finally {
     MetadataStorage.instance.getModelMetadata = originalGet;
     Fd3FieldDefault.DeleteById = originalDeleteById;
     storeMeta.application = prevApp;
+    widgetMeta.application = prevWidgetApp;
     widgetMeta.fields = prevFields;
     search.restore();
   }
