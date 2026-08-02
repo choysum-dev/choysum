@@ -6,7 +6,6 @@ import { MetadataStorage } from '../metadata/storage';
 import { RepositoryFactory } from '../repository/repository_factory';
 import BaseModel from './model';
 import { CreateOperations } from './model_create';
-import { DefaultOperations } from './model_default';
 import { DeleteOperations } from './model_delete';
 import { OnchangeOperations } from './model_onchange';
 import { ReadOperations } from './model_read';
@@ -266,7 +265,7 @@ test('model DisplayName sql compute skips missing fields and falls back to Id', 
 });
 
 test('model static service methods delegate to operation layers', async () => {
-  const originalDefaultGet = DefaultOperations.DefaultGet;
+  const originalDefaultGet = ModelSurfaceHarness.DefaultGet;
   const originalCreate = CreateOperations.Create;
   const originalCreateMany = CreateOperations.CreateMany;
   const originalBrowse = ReadOperations.Browse;
@@ -281,7 +280,7 @@ test('model static service methods delegate to operation layers', async () => {
   const originalOnchange = OnchangeOperations.Onchange;
 
   try {
-    DefaultOperations.DefaultGet = (async (_ModelCtor: any, value: any) => ({ ...value, Name: value?.Name ?? 'defaulted' })) as any;
+    ModelSurfaceHarness.DefaultGet = (async (value: any) => ({ ...value, Name: value?.Name ?? 'defaulted' })) as any;
     CreateOperations.Create = (async (_ModelCtor: any, value: any) => ({ Id: value?.Id || 'C-1', Name: value?.Name || 'created' })) as any;
     CreateOperations.CreateMany = (async (_ModelCtor: any, values: any[]) =>
       values.map((v, i) => ({ Id: v?.Id || `CM-${i + 1}`, Name: v?.Name || 'created' }))) as any;
@@ -350,7 +349,7 @@ test('model static service methods delegate to operation layers', async () => {
     const onchange = await ModelSurfaceHarness.Onchange({ Name: 'a' }, ['Name'] as any, { withCompute: true });
     expect((onchange as any).values?.Name).toBe('new-name');
   } finally {
-    DefaultOperations.DefaultGet = originalDefaultGet;
+    ModelSurfaceHarness.DefaultGet = originalDefaultGet;
     CreateOperations.Create = originalCreate;
     CreateOperations.CreateMany = originalCreateMany;
     ReadOperations.Browse = originalBrowse;
