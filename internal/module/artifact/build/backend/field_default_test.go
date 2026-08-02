@@ -5,8 +5,10 @@ package backendbuilder
 
 import (
 	"database/sql"
+	"fmt"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
@@ -17,10 +19,19 @@ import (
 	"gorm.io/gorm"
 )
 
+// fieldDefaultTestDBSeq keeps shared-cache in-memory DSNs unique across -count=N reruns.
+var fieldDefaultTestDBSeq atomic.Uint64
+
+func fieldDefaultMemoryDSN(t *testing.T, prefix string) string {
+	t.Helper()
+	name := strings.ReplaceAll(t.Name(), "/", "_")
+	return fmt.Sprintf("file:%s-%s-%d?mode=memory&cache=shared", prefix, name, fieldDefaultTestDBSeq.Add(1))
+}
+
 func newFieldDefaultTestBuilder(t *testing.T, mod *meta.Module) (*ModuleBuilder, *gorm.DB) {
 	t.Helper()
 	resetFieldDefaultScheduledAppsForTest()
-	db, err := gorm.Open(sqlite.Open("file:field-default-"+strings.ReplaceAll(t.Name(), "/", "_")+"?mode=memory&cache=shared"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(fieldDefaultMemoryDSN(t, "field-default")), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
