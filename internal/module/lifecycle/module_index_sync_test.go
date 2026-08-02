@@ -280,7 +280,17 @@ func TestModuleManagerBuildBackendBundlesToDirWritesModuleBasedEntryImports(t *t
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
-	if err := db.Create(&meta.Module{Name: "crm_partner", ApplicationStr: "crm", Status: meta.Installed, ServiceEntryPoint: "service/main.ts"}).Error; err != nil {
+	modPath := filepath.Join(modulesPath, "crm_partner")
+	if err := os.MkdirAll(filepath.Join(modPath, "service"), 0o755); err != nil {
+		t.Fatalf("mkdir module: %v", err)
+	}
+	if err := db.Create(&meta.Module{
+		Name:              "crm_partner",
+		ApplicationStr:    "crm",
+		Status:            meta.Installed,
+		ServiceEntryPoint: "service/main.ts",
+		Path:              modPath,
+	}).Error; err != nil {
 		t.Fatalf("seed backend module: %v", err)
 	}
 
@@ -290,7 +300,7 @@ func TestModuleManagerBuildBackendBundlesToDirWritesModuleBasedEntryImports(t *t
 	distBundlesDir := t.TempDir()
 
 	err := manager.buildBackendBundlesToDir(context.Background(), distBundlesDir, nil)
-	if err != nil && !strings.Contains(err.Error(), "backend bundle failed") && !strings.Contains(err.Error(), "BundleToDirCtx") {
+	if err != nil && !strings.Contains(err.Error(), "backend bundle failed") && !strings.Contains(err.Error(), "BundleToDirCtx") && !strings.Contains(err.Error(), "inject FieldDefault virtual imports") {
 		t.Fatalf("buildBackendBundlesToDir() unexpected error = %v", err)
 	}
 

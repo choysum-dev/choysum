@@ -335,6 +335,139 @@ func TestEnsureFieldDefaultVirtualImports_PrefersMetaVirtualPath(t *testing.T) {
 	}
 }
 
+func TestFieldDefaultPatchCoverage_Branches(t *testing.T) {
+	if src := virtualFieldDefaultSource("/virtual/modules", "  "); !strings.Contains(src, `application: "application"`) {
+		t.Fatalf("empty application should default, got:\n%s", src)
+	}
+
+	(*ModuleBuilder)(nil).rememberFieldDefaultInjectPath("/x")
+	builder, _ := newFieldDefaultTestBuilder(t, &meta.Module{
+		Name: "partner", Path: "/virtual/modules/partner",
+		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
+	})
+	builder.rememberFieldDefaultInjectPath("   ")
+	if builder.fieldDefaultInjectPath != "" || len(builder.fieldDefaultInjectPaths) != 0 {
+		t.Fatalf("empty path must not remember, got path=%q paths=%#v", builder.fieldDefaultInjectPath, builder.fieldDefaultInjectPaths)
+	}
+	builder.rememberFieldDefaultInjectPath("/a")
+	builder.rememberFieldDefaultInjectPath("/a")
+	if len(builder.fieldDefaultInjectPaths) != 1 {
+		t.Fatalf("dedupe remember: %#v", builder.fieldDefaultInjectPaths)
+	}
+
+	// Only fieldDefaultInjectPath (no slice) must still merge into buildOptions.
+	builder.fieldDefaultInjectPaths = nil
+	builder.fieldDefaultInjectPath = "/only-single"
+	stub := builder.buildPlugin.(*stubEsbPlugin)
+	stub.SetEntryPointImports(nil)
+	_ = builder.buildOptions(false)
+	found := false
+	for _, imp := range stub.entryImports {
+		if imp == "/only-single" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected single inject path in entry imports, got %#v", stub.entryImports)
+	}
+
+	if err := (*ModuleBuilder)(nil).EnsureFieldDefaultVirtualImports(nil); err != nil {
+		t.Fatalf("nil ensure: %v", err)
+	}
+	if err := builder.EnsureFieldDefaultVirtualImports([]*meta.Module{
+		nil,
+		{Name: "core", Path: "/virtual/modules/core", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"},
+		{Name: "noentry", Path: "/virtual/modules/x", ApplicationStr: "x", ServiceEntryPoint: ""},
+		{Name: "nopath", Path: "", ApplicationStr: "y", ServiceEntryPoint: "service/index.ts"},
+		{Name: "emptyapp", Path: "/virtual/modules/z", ApplicationStr: "  ", ServiceEntryPoint: "service/index.ts"},
+	}); err != nil {
+		t.Fatalf("skip-only ensure: %v", err)
+	}
+	// Clear paths then ensure only skipped apps → early return at empty inject paths.
+	builder.fieldDefaultInjectPaths = nil
+	builder.fieldDefaultInjectPath = ""
+	if err := builder.EnsureFieldDefaultVirtualImports([]*meta.Module{
+		{Name: "core", Path: "/m/core", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"},
+	}); err != nil {
+		t.Fatalf("empty ensure: %v", err)
+	}
+	if len(builder.fieldDefaultInjectPaths) != 0 {
+		t.Fatalf("expected no inject paths, got %#v", builder.fieldDefaultInjectPaths)
+	}
+
+	// Handwritten-only ensure also returns with empty inject paths.
+	builder, db := newFieldDefaultTestBuilder(t, &meta.Module{
+		Name: "partner", Path: "/virtual/modules/partner",
+		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
+	})
+	if err := db.Create(&meta.Model{
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "hand2", Valid: true}},
+		Name:        "FieldDefault",
+		Path:        "/virtual/modules/partner/service/models/field_default.ts",
+		Application: "partner",
+	}).Error; err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if err := builder.EnsureFieldDefaultVirtualImports([]*meta.Module{builder.module}); err != nil {
+		t.Fatalf("handwritten-only ensure: %v", err)
+	}
+	if len(builder.fieldDefaultInjectPaths) != 0 {
+		t.Fatalf("handwritten-only should skip C2, got %#v", builder.fieldDefaultInjectPaths)
+	}
+
+	// dbLoad error from Ensure.
+	builder, db = newFieldDefaultTestBuilder(t, &meta.Module{
+		Name: "base", Path: "/virtual/modules/base",
+		ApplicationStr: "base", ServiceEntryPoint: "service/index.ts",
+	})
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = sqlDB.Close()
+	if err := builder.EnsureFieldDefaultVirtualImports([]*meta.Module{builder.module}); err == nil || !strings.Contains(err.Error(), "load FieldDefault") {
+		t.Fatalf("expected ensure load error, got %v", err)
+	}
+
+	// Empty modulesPath + prebuild plugin registration / entry imports.
+	builder, _ = newFieldDefaultTestBuilder(t, &meta.Module{
+		Name: "base", Path: "/virtual/modules/base",
+		ApplicationStr: "base", ServiceEntryPoint: "service/index.ts",
+	})
+	pre := &stubEsbPlugin{name: "prebuild"}
+	builder.prebuildPlugin = pre
+	builder.runtimeScope.(*builderTestScope).cfg.ModulesPath = ""
+	if err := builder.EnsureFieldDefaultVirtualImports([]*meta.Module{builder.module}); err != nil {
+		t.Fatalf("ensure empty modulesPath: %v", err)
+	}
+	want := fieldDefaultGeneratedPath(builder.module.Path)
+	if _, ok := pre.virtualSources[want]; !ok {
+		t.Fatalf("expected prebuild virtual source, got %#v", pre.virtualSources)
+	}
+	if len(pre.entryImports) == 0 {
+		t.Fatal("expected prebuild entry imports")
+	}
+
+	// applyFieldDefaultInject also wires prebuild plugin.
+	builder, _ = newFieldDefaultTestBuilder(t, &meta.Module{
+		Name: "meta", Path: "/virtual/modules/meta",
+		ApplicationStr: "meta", ServiceEntryPoint: "service/index.ts",
+	})
+	pre = &stubEsbPlugin{name: "prebuild"}
+	builder.prebuildPlugin = pre
+	if err := builder.applyFieldDefaultInject(FieldDefaultPlan{NeedInject: true}); err != nil {
+		t.Fatalf("apply with prebuild: %v", err)
+	}
+	wantMeta := fieldDefaultGeneratedPath(builder.module.Path)
+	if _, ok := pre.virtualSources[wantMeta]; !ok {
+		t.Fatalf("apply should register on prebuild plugin: %#v", pre.virtualSources)
+	}
+	if len(pre.entryImports) == 0 {
+		t.Fatal("apply should set prebuild entry imports")
+	}
+}
+
 func TestEnsureFieldDefaultVirtualImports_SurvivesBuildOptionsReplace(t *testing.T) {
 	// Multi-app bundles Decide/Inject against a core representative; Ensure must
 	// still get every app's FieldDefault into WithEntryPointImports.
