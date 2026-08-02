@@ -56,10 +56,11 @@ export default class FieldDefault extends FieldDefaultBaseModel {}
 }
 
 func isGeneratedFieldDefaultPath(path string) bool {
-	normalized := filepath.ToSlash(filepath.Clean(strings.TrimSpace(path)))
-	if normalized == "" {
+	trimmed := strings.TrimSpace(path)
+	if trimmed == "" {
 		return false
 	}
+	normalized := filepath.ToSlash(filepath.Clean(trimmed))
 	return strings.HasSuffix(normalized, "/"+fieldDefaultGeneratedRelPath) ||
 		normalized == fieldDefaultGeneratedRelPath
 }
@@ -213,6 +214,9 @@ func (b *ModuleBuilder) applyFieldDefaultInject(plan FieldDefaultPlan) error {
 	if b == nil || !plan.NeedInject || b.module == nil {
 		return nil
 	}
+	if strings.TrimSpace(b.module.Path) == "" {
+		return xfmt.Errorf("FieldDefault inject requires a non-empty module path")
+	}
 	path := fieldDefaultGeneratedPath(b.module.Path)
 	b.fieldDefaultInjectPath = path
 
@@ -221,7 +225,7 @@ func (b *ModuleBuilder) applyFieldDefaultInject(plan FieldDefaultPlan) error {
 		setter.SetEntryPointImports(imports)
 	}
 	modulesPath := strings.TrimSpace(b.resolvedRuntimeOptions().modulesPath)
-	if modulesPath == "" && strings.TrimSpace(b.module.Path) != "" {
+	if modulesPath == "" {
 		modulesPath = filepath.Dir(b.module.Path)
 	}
 	source := virtualFieldDefaultSource(modulesPath)
@@ -264,7 +268,7 @@ func (b *ModuleBuilder) supersedeVirtualFieldDefaults() error {
 	if b == nil || !b.fieldDefaultPlan.SupersedeVirtual || b.module == nil {
 		return nil
 	}
-	if b.runtimeScope == nil || b.runtimeScope.Session() == nil {
+	if b.runtimeScope == nil || b.runtimeScope.Session() == nil || b.runtimeScope.Session().DB == nil {
 		return nil
 	}
 	app := strings.TrimSpace(b.module.ApplicationStr)
@@ -294,9 +298,6 @@ func (b *ModuleBuilder) supersedeVirtualFieldDefaults() error {
 	}
 
 	root := b.runtimeScope.Session().DB
-	if root == nil {
-		return nil
-	}
 	// Fresh Unscoped handle per statement — avoid GORM clause/table pollution.
 	db := func() *gorm.DB { return root.Session(&gorm.Session{NewDB: true}).Unscoped() }
 

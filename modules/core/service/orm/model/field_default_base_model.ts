@@ -323,3 +323,8 @@ export default class FieldDefaultBaseModel extends BaseModel {
     }
   }
 }
+
+/** Test-only: clear process-local unique-index DDL cache. */
+export function __resetFieldDefaultUniqueIndexTablesForTest(): void {
+  ensuredUniqueIndexTables.clear();
+}

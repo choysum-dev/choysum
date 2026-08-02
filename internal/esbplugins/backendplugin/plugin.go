@@ -95,13 +95,18 @@ func (p *BackendPlugin) resolveVirtualSourcePath(path string, resolveDir string)
 		if _, ok := p.lookupVirtualSource(candidate); !ok {
 			continue
 		}
-		resolved := normalizeBackendPluginPath(candidate)
-		if resolved == "" {
-			resolved = filepath.Clean(candidate)
-		}
-		return resolved, true
+		return firstNonEmptyPath(normalizeBackendPluginPath(candidate), filepath.Clean(candidate)), true
 	}
 	return "", false
+}
+
+func firstNonEmptyPath(values ...string) string {
+	for _, v := range values {
+		if strings.TrimSpace(v) != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 func (p *BackendPlugin) bindRuntimeState(runtimeScope scope.Scope, module *meta.Module) {

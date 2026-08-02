@@ -13,6 +13,29 @@ test('resolveEffectiveFieldDefaults prefers user+company over weaker scopes', ()
   expect(out.Name).toBe('user-co');
 });
 
+test('resolveEffectiveFieldDefaults covers empty rows, blank fields, and undefined values', () => {
+  expect(resolveEffectiveFieldDefaults(null as any)).toEqual({});
+  expect(resolveEffectiveFieldDefaults([{ Id: '1', Field: '  ', Value: 'x' }])).toEqual({});
+  expect(resolveEffectiveFieldDefaults([{ Id: '1', Field: 'Name', UserId: '  ', CompanyId: '  ', Value: undefined }])).toEqual(
+    {}
+  );
+  // company-only rank
+  expect(
+    resolveEffectiveFieldDefaults([{ Id: '1', Field: 'Name', UserId: null, CompanyId: 'C1', Value: 'co' }]).Name
+  ).toBe('co');
+  // nullish row / missing Field/Id optional chains
+  expect(
+    resolveEffectiveFieldDefaults([null as any, { Field: 'Name', Value: 'ok' } as any] as any).Name
+  ).toBe('ok');
+  // empty-id winner then same-rank replacement with a real Id (covers !prev.id take path)
+  expect(
+    resolveEffectiveFieldDefaults([
+      { Field: 'Code', UserId: null, CompanyId: null, Value: 'first' } as any,
+      { Id: 'z', Field: 'Code', UserId: null, CompanyId: null, Value: 'second' },
+    ]).Code
+  ).toBe('second');
+});
+
 test('resolveEffectiveFieldDefaults filters by fieldNames and ties break on smallest Id', () => {
   const originalWarn = console.warn;
   const warnings: string[] = [];

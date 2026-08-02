@@ -38,10 +38,9 @@ export function resolveEffectiveFieldDefaults(
     const id = String(row?.Id || '');
     const prev = bestByField.get(field);
     if (!prev || rank < prev.rank || (rank === prev.rank && id && (!prev.id || id < prev.id))) {
+      // When replacing on a same-rank Id tie, the winner is always the incoming smaller Id.
       if (prev && rank === prev.rank && id && prev.id && id !== prev.id) {
-        console.warn(
-          `FIELD_DEFAULT_SCOPE_TIE field=${field} keepingId=${id < prev.id ? id : prev.id} droppingId=${id < prev.id ? prev.id : id}`
-        );
+        console.warn(`FIELD_DEFAULT_SCOPE_TIE field=${field} keepingId=${id} droppingId=${prev.id}`);
       }
       bestByField.set(field, { rank, id, value: row?.Value });
     } else if (prev && rank === prev.rank && id && prev.id && id !== prev.id) {

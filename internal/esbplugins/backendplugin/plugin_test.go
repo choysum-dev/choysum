@@ -731,7 +731,7 @@ func TestBackendPluginDefinePluginsOnLoad_ServesVirtualSource(t *testing.T) {
 	}}
 	plugin.RegisterVirtualSource(virtualPath, template)
 	plugin.Parser = fakeParser{parseFn: func(_ map[string]string, gotPath string, content string) (*parser.ParserResult, error) {
-		if content != template {
+		if !strings.Contains(content, "export default class FieldDefault") {
 			t.Fatalf("unexpected virtual content %q", content)
 		}
 		return &parser.ParserResult{Path: gotPath, RawContent: content}, nil
@@ -766,6 +766,33 @@ func TestBackendPluginDefinePluginsOnLoad_ServesVirtualSource(t *testing.T) {
 	}
 	if fallThrough.Path != "" {
 		t.Fatalf("expected unregistered path to fall through, got %q", fallThrough.Path)
+	}
+
+	// ResolveDir falls back to filepath.Dir(args.Path) when Module path is empty/relative.
+	plugin.Module = &meta.Module{Path: "partner"}
+	onLoad2 := captureBackendOnLoad(t, defined, &api.BuildOptions{})
+	result2, err := onLoad2(api.OnLoadArgs{Path: resolved.Path})
+	if err != nil {
+		t.Fatalf("onLoad2: %v", err)
+	}
+	if result2.ResolveDir != filepath.Dir(resolved.Path) {
+		t.Fatalf("ResolveDir fallback = %q, want %q", result2.ResolveDir, filepath.Dir(resolved.Path))
+	}
+
+	// Virtual entry-point path still appends EntryPointImports.
+	plugin.Module = nil
+	plugin.EntryPoint = resolved.Path
+	plugin.EntryPointImports = []string{"/virtual/extra.ts"}
+	onLoad3 := captureBackendOnLoad(t, defined, &api.BuildOptions{})
+	result3, err := onLoad3(api.OnLoadArgs{Path: resolved.Path})
+	if err != nil {
+		t.Fatalf("onLoad3: %v", err)
+	}
+	if result3.Contents == nil || !strings.Contains(*result3.Contents, "/virtual/extra.ts") {
+		t.Fatalf("expected entry imports appended to virtual source, got %#v", result3.Contents)
+	}
+	if result3.ResolveDir != filepath.Dir(resolved.Path) {
+		t.Fatalf("ResolveDir with nil Module = %q, want %q", result3.ResolveDir, filepath.Dir(resolved.Path))
 	}
 }
 
@@ -966,6 +993,26 @@ func TestBackendPluginDefinePluginsOnLoad_ErrorPaths(t *testing.T) {
 		onLoad := captureBackendOnLoad(t, plugin.DefinePlugins(testRuntimeScope, nil, plugin.Module)[0], &api.BuildOptions{})
 		if _, err := onLoad(api.OnLoadArgs{Path: "/virtual/modules/auth/service/user.ts"}); !errors.Is(err, wantErr) {
 			t.Fatalf("expected parser error %v, got %v", wantErr, err)
+		}
+	})
+
+	t.Run("missing_disk_file", func(t *testing.T) {
+		testRuntimeScope := newPluginTestScope()
+		plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
+			Env:              testRuntimeScope,
+			Module:           &meta.Module{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
+			ParserResultChan: make(chan *parser.ParserResult, 1),
+			TsExports:        make(map[string]map[string]*parser.Export),
+			ParserResults:    make([]*parser.ParserResult, 0),
+		}}
+		plugin.Parser = fakeParser{parseFn: func(map[string]string, string, string) (*parser.ParserResult, error) {
+			t.Fatal("parser should not run when disk read fails")
+			return nil, nil
+		}}
+		onLoad := captureBackendOnLoad(t, plugin.DefinePlugins(testRuntimeScope, nil, plugin.Module)[0], &api.BuildOptions{})
+		missing := filepath.Join(t.TempDir(), "does-not-exist.ts")
+		if _, err := onLoad(api.OnLoadArgs{Path: missing}); err == nil {
+			t.Fatal("expected missing file OnLoad error")
 		}
 	})
 }

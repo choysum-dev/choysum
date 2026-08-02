@@ -557,10 +557,16 @@ func (b *ModuleBuilder) updateModelExtends(parseResult *parser.ParserResult, ext
 
 func (b *ModuleBuilder) prebuild() (*module.BuildResult, error) {
 	if b.entryPoint == "" {
+		parserResults := []*parser.ParserResult{}
+		if b.prebuildPlugin != nil {
+			if results, err := b.prebuildPlugin.GetParserResults(); err == nil && len(results) > 0 {
+				parserResults = results
+			}
+		}
 		return module.WithParserResults(&module.BuildResult{
 			Module:        b.module,
 			EsbuildResult: &api.BuildResult{},
-		}, []*parser.ParserResult{}), nil
+		}, parserResults), nil
 	}
 
 	result := api.Build(*b.buildOptions(true))
