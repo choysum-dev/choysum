@@ -31,6 +31,18 @@ test('resolveEffectiveFieldDefaults filters by fieldNames and ties break on smal
     );
     expect(out).toEqual({ Name: 'A' });
     expect(warnings.some(msg => msg.includes('FIELD_DEFAULT_SCOPE_TIE'))).toBe(true);
+
+    // Opposite row order must keep the same winner (smallest Id) and still warn.
+    warnings.length = 0;
+    const outReversed = resolveEffectiveFieldDefaults(
+      [
+        { Id: 'a', Field: 'Name', UserId: null, CompanyId: null, Value: 'A' },
+        { Id: 'b', Field: 'Name', UserId: null, CompanyId: null, Value: 'B' },
+      ],
+      ['Name']
+    );
+    expect(outReversed).toEqual({ Name: 'A' });
+    expect(warnings.some(msg => msg.includes('FIELD_DEFAULT_SCOPE_TIE'))).toBe(true);
   } finally {
     console.warn = originalWarn;
   }

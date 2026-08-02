@@ -755,6 +755,18 @@ func TestBackendPluginDefinePluginsOnLoad_ServesVirtualSource(t *testing.T) {
 	if result.Contents == nil || *result.Contents != template {
 		t.Fatalf("expected virtual template contents, got %#v", result.Contents)
 	}
+	if wantDir := filepath.Dir(moduleDir); result.ResolveDir != wantDir {
+		t.Fatalf("ResolveDir = %q, want %q", result.ResolveDir, wantDir)
+	}
+
+	unregistered := filepath.Join(moduleDir, "service", "models", "field_default.ts")
+	fallThrough, err := onResolve(api.OnResolveArgs{Path: unregistered})
+	if err != nil {
+		t.Fatalf("onResolve returned error: %v", err)
+	}
+	if fallThrough.Path != "" {
+		t.Fatalf("expected unregistered path to fall through, got %q", fallThrough.Path)
+	}
 }
 
 func TestBackendPluginDefinePluginsOnLoad_AppendsEntryPointImports_WhenEntryPathResolvesSymlink(t *testing.T) {

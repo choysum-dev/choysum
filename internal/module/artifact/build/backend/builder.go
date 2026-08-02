@@ -1245,28 +1245,26 @@ func (b *ModuleBuilder) BuildWithoutPersist() (*module.BuildResult, error) {
 	}
 
 	// 1b. FieldDefault C2 Decide / Inject (before extends rewrite + build)
-	plan, err := b.decideFieldDefaultPlan(module.ParserResults(prebuildResult))
-	if err != nil {
+	if err := b.planAndInjectFieldDefault(prebuildResult); err != nil {
 		return nil, err
-	}
-	b.fieldDefaultPlan = plan
-	if err := b.applyFieldDefaultInject(plan); err != nil {
-		return nil, xfmt.Errorf("error injecting FieldDefault: %w", err)
 	}
 
 	// 2. recompute and modify file content for model extends
 	if err := b.updatePrebuildResult(prebuildResult); err != nil {
+		b.releaseFieldDefaultSchedule()
 		return nil, xfmt.Errorf("error generating content: %w", err)
 	}
 
 	// 3. build for output
 	buildResult, err := b.build(prebuildResult)
 	if err != nil {
+		b.releaseFieldDefaultSchedule()
 		return nil, xfmt.Errorf("error building: %w", err)
 	}
 
 	// 4. validate models
 	if err := b.validate(buildResult); err != nil {
+		b.releaseFieldDefaultSchedule()
 		return nil, xfmt.Errorf("error validating: %w", err)
 	}
 
@@ -1277,26 +1275,27 @@ func (b *ModuleBuilder) BuildWithoutPersist() (*module.BuildResult, error) {
 // builder's ambient session. Intended for a short Required commit window.
 func (b *ModuleBuilder) Persist(buildResult *module.BuildResult) error {
 	if err := b.persist(buildResult); err != nil {
+		b.releaseFieldDefaultSchedule()
 		return xfmt.Errorf("error persisting build result: %w", err)
 	}
+	// DB now holds FieldDefault (or none was claimed); drop process-local claim.
+	b.releaseFieldDefaultSchedule()
 	return nil
 }
 
 // Bundle runs the build pipeline but does NOT validate/persist meta models.
 // This is intended for application-stage bundling where DB/IR is already correct.
 func (b *ModuleBuilder) Bundle() (*module.BuildResult, error) {
+	// Bundle never persists meta; always release any NeedInject process claim.
+	defer b.releaseFieldDefaultSchedule()
+
 	prebuildResult, err := b.prebuild()
 	if err != nil {
 		return nil, xfmt.Errorf("error prebuilding: %w", err)
 	}
 
-	plan, err := b.decideFieldDefaultPlan(module.ParserResults(prebuildResult))
-	if err != nil {
+	if err := b.planAndInjectFieldDefault(prebuildResult); err != nil {
 		return nil, err
-	}
-	b.fieldDefaultPlan = plan
-	if err := b.applyFieldDefaultInject(plan); err != nil {
-		return nil, xfmt.Errorf("error injecting FieldDefault: %w", err)
 	}
 
 	if err := b.updatePrebuildResult(prebuildResult); err != nil {

@@ -52,7 +52,8 @@ func (p *BackendPlugin) RegisterVirtualSource(path string, contents string) {
 	}
 }
 
-// lookupVirtualSource must be called with p.Mu held (OnLoad already locks it).
+// lookupVirtualSource must be called with p.Mu already held for read or write.
+// Callers: OnLoad (write lock) and resolveVirtualSourcePath (read lock).
 func (p *BackendPlugin) lookupVirtualSource(path string) (string, bool) {
 	if p == nil || len(p.virtualSources) == 0 {
 		return "", false

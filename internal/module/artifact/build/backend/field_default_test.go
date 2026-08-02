@@ -24,7 +24,11 @@ func newFieldDefaultTestBuilder(t *testing.T, mod *meta.Module) (*ModuleBuilder,
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&meta.Application{}, &meta.Module{}, &meta.Model{}); err != nil {
+	if err := db.AutoMigrate(
+		&meta.Application{}, &meta.Module{}, &meta.Model{},
+		&meta.Field{}, &meta.Service{}, &meta.Decorator{}, &meta.Argument{},
+		&meta.Parameter{}, &meta.TypeParameter{},
+	); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
 	testScope := newBuilderTestScope()
@@ -207,6 +211,32 @@ func TestApplyFieldDefaultInject_SetsEntryImportAndPath(t *testing.T) {
 	if !found {
 		t.Fatalf("expected entry import %q in %#v", want, stub.entryImports)
 	}
+	src, ok := stub.virtualSources[want]
+	if !ok || src == "" {
+		t.Fatalf("expected virtual source registered for %q, got %#v", want, stub.virtualSources)
+	}
+	if !strings.Contains(src, "@Model('FieldDefault')") {
+		t.Fatalf("unexpected virtual source: %s", src)
+	}
+}
+
+func TestReleaseFieldDefaultSchedule_AllowsRetryAfterFailure(t *testing.T) {
+	mod := &meta.Module{
+		Name: "partner", Path: "/virtual/modules/partner",
+		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
+	}
+	builder, _ := newFieldDefaultTestBuilder(t, mod)
+	plan, err := builder.decideFieldDefaultPlan(nil)
+	if err != nil || !plan.NeedInject || plan.scheduledApp != "partner" {
+		t.Fatalf("expected NeedInject claim, got %+v err=%v", plan, err)
+	}
+	builder.fieldDefaultPlan = plan
+	builder.releaseFieldDefaultSchedule()
+
+	plan2, err := builder.decideFieldDefaultPlan(nil)
+	if err != nil || !plan2.NeedInject {
+		t.Fatalf("expected retry inject after release, got %+v err=%v", plan2, err)
+	}
 }
 
 func TestValidateFieldDefault_DuplicateHandAndVirtual(t *testing.T) {
@@ -240,6 +270,14 @@ func TestSupersedeVirtualFieldDefaults_DeletesGeneratedRows(t *testing.T) {
 		t.Fatalf("seed virt: %v", err)
 	}
 	if err := db.Create(&meta.Model{
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "hand", Valid: true}},
+		Name:        "FieldDefault",
+		Path:        "/virtual/modules/partner_bank/service/models/field_default.ts",
+		Application: "partner",
+	}).Error; err != nil {
+		t.Fatalf("seed hand: %v", err)
+	}
+	if err := db.Create(&meta.Model{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "other", Valid: true}},
 		Name:        "Partner",
 		Path:        "/virtual/modules/partner/service/models/partner.ts",
@@ -254,8 +292,15 @@ func TestSupersedeVirtualFieldDefaults_DeletesGeneratedRows(t *testing.T) {
 	if err := db.Model(&meta.Model{}).Where("name = ?", "FieldDefault").Count(&count).Error; err != nil {
 		t.Fatalf("count: %v", err)
 	}
-	if count != 0 {
-		t.Fatalf("expected virtual FieldDefault deleted, count=%d", count)
+	if count != 1 {
+		t.Fatalf("expected handwritten FieldDefault kept, count=%d", count)
+	}
+	var virtLeft int64
+	if err := db.Model(&meta.Model{}).Where("id = ?", "virt").Count(&virtLeft).Error; err != nil {
+		t.Fatalf("count virt: %v", err)
+	}
+	if virtLeft != 0 {
+		t.Fatalf("expected virtual FieldDefault deleted, count=%d", virtLeft)
 	}
 	if err := db.Model(&meta.Model{}).Where("name = ?", "Partner").Count(&count).Error; err != nil {
 		t.Fatalf("count partner: %v", err)

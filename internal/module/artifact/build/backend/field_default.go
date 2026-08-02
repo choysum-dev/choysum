@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	internalbackendplugin "github.com/choysum-dev/choysum/internal/esbplugins/backendplugin"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	"github.com/choysum-dev/choysum/internal/parser"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -21,6 +20,9 @@ import (
 type FieldDefaultPlan struct {
 	NeedInject       bool
 	SupersedeVirtual bool
+	// scheduledApp is set when this builder claimed the process-wide NeedInject slot.
+	// Cleared via releaseFieldDefaultSchedule on failure or after Persist/Bundle.
+	scheduledApp string
 }
 
 const (
@@ -30,7 +32,8 @@ const (
 )
 
 // fieldDefaultScheduledApps dedupes NeedInject across modules sharing one Application
-// within a single process (install / upgrade).
+// within a single process (install / upgrade). Entries must be released when the
+// claiming build/persist does not complete successfully.
 var fieldDefaultScheduledApps sync.Map
 
 type virtualSourceRegistrar interface {
@@ -143,6 +146,18 @@ func (b *ModuleBuilder) dbLoadFieldDefaults(app string) ([]*meta.Model, error) {
 	return models, nil
 }
 
+func (b *ModuleBuilder) releaseFieldDefaultSchedule() {
+	if b == nil {
+		return
+	}
+	app := strings.TrimSpace(b.fieldDefaultPlan.scheduledApp)
+	if app == "" {
+		return
+	}
+	fieldDefaultScheduledApps.Delete(app)
+	b.fieldDefaultPlan.scheduledApp = ""
+}
+
 func (b *ModuleBuilder) decideFieldDefaultPlan(prebuildResults []*parser.ParserResult) (FieldDefaultPlan, error) {
 	plan := FieldDefaultPlan{}
 	if b == nil || b.module == nil {
@@ -183,10 +198,15 @@ func (b *ModuleBuilder) decideFieldDefaultPlan(prebuildResults []*parser.ParserR
 	if len(existing) > 0 || len(local) > 0 {
 		return plan, nil
 	}
-	if _, loaded := fieldDefaultScheduledApps.LoadOrStore(app, mod.Name); loaded {
+	owner, loaded := fieldDefaultScheduledApps.LoadOrStore(app, mod.Name)
+	if loaded {
+		// Same module reclaim (rebuild/hot-reload): allow re-inject.
+		if ownerName, ok := owner.(string); ok && ownerName == mod.Name {
+			return FieldDefaultPlan{NeedInject: true, scheduledApp: app}, nil
+		}
 		return plan, nil
 	}
-	return FieldDefaultPlan{NeedInject: true}, nil
+	return FieldDefaultPlan{NeedInject: true, scheduledApp: app}, nil
 }
 
 func (b *ModuleBuilder) applyFieldDefaultInject(plan FieldDefaultPlan) error {
@@ -207,8 +227,19 @@ func (b *ModuleBuilder) applyFieldDefaultInject(plan FieldDefaultPlan) error {
 	source := virtualFieldDefaultSource(modulesPath)
 	if registrar, ok := b.buildPlugin.(virtualSourceRegistrar); ok {
 		registrar.RegisterVirtualSource(path, source)
-	} else if bp, ok := b.buildPlugin.(*internalbackendplugin.BackendPlugin); ok && bp != nil {
-		bp.RegisterVirtualSource(path, source)
+	}
+	return nil
+}
+
+func (b *ModuleBuilder) planAndInjectFieldDefault(prebuildResult *module.BuildResult) error {
+	plan, err := b.decideFieldDefaultPlan(module.ParserResults(prebuildResult))
+	if err != nil {
+		return err
+	}
+	b.fieldDefaultPlan = plan
+	if err := b.applyFieldDefaultInject(plan); err != nil {
+		b.releaseFieldDefaultSchedule()
+		return xfmt.Errorf("error injecting FieldDefault: %w", err)
 	}
 	return nil
 }
@@ -226,12 +257,7 @@ func (b *ModuleBuilder) validateFieldDefault(buildResult *module.BuildResult) er
 	if len(models) <= 1 {
 		return nil
 	}
-	hand := handwrittenFieldDefaults(models)
-	virt := generatedFieldDefaults(models)
-	if len(hand) > 1 || (len(hand) > 0 && len(virt) > 0) {
-		return xfmt.Errorf("%s: application %q build produced multiple FieldDefault models", fieldDefaultDuplicateCode, app)
-	}
-	return nil
+	return xfmt.Errorf("%s: application %q build produced multiple FieldDefault models", fieldDefaultDuplicateCode, app)
 }
 
 func (b *ModuleBuilder) supersedeVirtualFieldDefaults() error {
@@ -266,10 +292,61 @@ func (b *ModuleBuilder) supersedeVirtualFieldDefaults() error {
 	if len(ids) == 0 {
 		return nil
 	}
-	if result := b.runtimeScope.Session().Unscoped().Where("id IN ?", ids).Delete(&meta.Model{}); result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
-			return nil
+
+	root := b.runtimeScope.Session().DB
+	if root == nil {
+		return nil
+	}
+	// Fresh Unscoped handle per statement — avoid GORM clause/table pollution.
+	db := func() *gorm.DB { return root.Session(&gorm.Session{NewDB: true}).Unscoped() }
+
+	// SQLite migrations disable FK constraints; delete dependents explicitly
+	// (same order as module uninstaller). Pluck IDs first for stable IN lists.
+	var serviceIDs []string
+	if err := db().Model(&meta.Service{}).Where("model_id IN ?", ids).Pluck("id", &serviceIDs).Error; err != nil {
+		return xfmt.Errorf("load superseded FieldDefault services: %w", err)
+	}
+	var fieldIDs []string
+	if err := db().Model(&meta.Field{}).Where("model_id IN ?", ids).Pluck("id", &fieldIDs).Error; err != nil {
+		return xfmt.Errorf("load superseded FieldDefault fields: %w", err)
+	}
+	decoratorQ := db().Model(&meta.Decorator{}).Where("model_id IN ?", ids)
+	if len(serviceIDs) > 0 {
+		decoratorQ = decoratorQ.Or("service_id IN ?", serviceIDs)
+	}
+	if len(fieldIDs) > 0 {
+		decoratorQ = decoratorQ.Or("field_id IN ?", fieldIDs)
+	}
+	var decoratorIDs []string
+	if err := decoratorQ.Pluck("id", &decoratorIDs).Error; err != nil {
+		return xfmt.Errorf("load superseded FieldDefault decorators: %w", err)
+	}
+
+	if len(decoratorIDs) > 0 {
+		if result := db().Where("decorator_id IN ?", decoratorIDs).Delete(&meta.Argument{}); result.Error != nil {
+			return xfmt.Errorf("delete superseded FieldDefault decorator arguments: %w", result.Error)
 		}
+		if result := db().Where("id IN ?", decoratorIDs).Delete(&meta.Decorator{}); result.Error != nil {
+			return xfmt.Errorf("delete superseded FieldDefault decorators: %w", result.Error)
+		}
+	}
+	if len(serviceIDs) > 0 {
+		if result := db().Where("service_id IN ?", serviceIDs).Delete(&meta.TypeParameter{}); result.Error != nil {
+			return xfmt.Errorf("delete superseded FieldDefault type parameters: %w", result.Error)
+		}
+		if result := db().Where("service_id IN ?", serviceIDs).Delete(&meta.Parameter{}); result.Error != nil {
+			return xfmt.Errorf("delete superseded FieldDefault parameters: %w", result.Error)
+		}
+		if result := db().Where("id IN ?", serviceIDs).Delete(&meta.Service{}); result.Error != nil {
+			return xfmt.Errorf("delete superseded FieldDefault services: %w", result.Error)
+		}
+	}
+	if len(fieldIDs) > 0 {
+		if result := db().Where("id IN ?", fieldIDs).Delete(&meta.Field{}); result.Error != nil {
+			return xfmt.Errorf("delete superseded FieldDefault fields: %w", result.Error)
+		}
+	}
+	if result := db().Where("id IN ?", ids).Delete(&meta.Model{}); result.Error != nil {
 		return xfmt.Errorf("delete superseded virtual FieldDefault rows: %w", result.Error)
 	}
 	return nil

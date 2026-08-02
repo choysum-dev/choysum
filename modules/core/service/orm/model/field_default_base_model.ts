@@ -4,6 +4,7 @@
 import { Field } from '../decorator/field';
 import { MetadataStorage } from '../metadata/storage';
 import type { FieldMetadata, FieldType } from '../metadata/field';
+import type { ModelMetadata } from '../metadata/model';
 import { raiseDomainError } from '@/core/service/error';
 import BaseModel from './model';
 import { resolveEffectiveFieldDefaults } from './field_default_resolve';
@@ -78,7 +79,7 @@ function storeMeta(ctor: InstantiableModelCtor<FieldDefaultBaseModel>) {
 function resolveTargetModel(
   ctor: InstantiableModelCtor<FieldDefaultBaseModel>,
   modelShortName: string
-): { ctor: typeof BaseModel; fieldMeta: FieldMetadata } {
+): { ctor: typeof BaseModel; targetMeta: ModelMetadata } {
   const short = String(modelShortName || '').trim();
   if (!short) {
     fail('FIELD_DEFAULT_UNKNOWN_FIELD', 'model is required');
@@ -96,21 +97,21 @@ function resolveTargetModel(
     fail('FIELD_DEFAULT_CROSS_APP_MODEL', `Model ${short} is not registered`);
   }
 
-  const targetMeta = MetadataStorage.instance.getModelMetadata(Target as any);
+  const targetMeta = MetadataStorage.instance.getModelMetadata(Target as any) as ModelMetadata;
   const targetApp = String(targetMeta.application || '').trim();
   if (targetApp !== application) {
     fail('FIELD_DEFAULT_CROSS_APP_MODEL', `Model ${short} does not belong to application ${application}`);
   }
 
-  return { ctor: Target as typeof BaseModel, fieldMeta: targetMeta as any };
+  return { ctor: Target as typeof BaseModel, targetMeta };
 }
 
-function resolveTargetField(targetMeta: any, fieldName: string): FieldMetadata {
+function resolveTargetField(targetMeta: ModelMetadata, fieldName: string): FieldMetadata {
   const name = String(fieldName || '').trim();
   if (!name) {
     fail('FIELD_DEFAULT_UNKNOWN_FIELD', 'field is required');
   }
-  const field = targetMeta?.fields?.get?.(name) as FieldMetadata | undefined;
+  const field = targetMeta.fields?.get?.(name);
   if (!field) {
     fail('FIELD_DEFAULT_UNKNOWN_FIELD', `Field ${name} is unknown on target model`);
   }
@@ -128,7 +129,7 @@ function normalizeStoredValue(field: FieldMetadata, value: unknown): unknown {
   const type = field.type as FieldType;
   if (type === 'ManyToOne' || type === 'ManyToOneRef') {
     if (value == null) return null;
-    if (typeof value === 'object' && value && 'Id' in (value as object)) {
+    if (typeof value === 'object' && 'Id' in value) {
       const id = String((value as { Id?: unknown }).Id ?? '').trim();
       if (!id) fail('FIELD_DEFAULT_INVALID_VALUE', 'ManyToOne default requires an Id');
       return id;
@@ -159,11 +160,11 @@ async function ensureScopeUniqueIndex(ctor: InstantiableModelCtor<FieldDefaultBa
     const exec = ($choysum as any)?.db?.execute;
     if (typeof exec === 'function') {
       await exec.call(($choysum as any).db, ddl, '[]');
+      ensuredUniqueIndexTables.add(table);
     }
   } catch {
     // Best-effort: upsert path still enforces uniqueness in application logic.
   }
-  ensuredUniqueIndexTables.add(table);
 }
 
 async function findExactRow(
@@ -212,8 +213,8 @@ export default class FieldDefaultBaseModel extends BaseModel {
     value: unknown,
     opts?: FieldDefaultScopeOpts
   ): Promise<void> {
-    const { fieldMeta } = resolveTargetModel(this, model);
-    const fieldDef = resolveTargetField(fieldMeta, field);
+    const { targetMeta } = resolveTargetModel(this, model);
+    const fieldDef = resolveTargetField(targetMeta, field);
     const stored = normalizeStoredValue(fieldDef, value);
     const userId = resolveScopeDim(opts?.userId, (this as any).userId, 'userId');
     const companyId = resolveScopeDim(opts?.companyId, (this as any).companyId, 'companyId');
@@ -239,7 +240,8 @@ export default class FieldDefaultBaseModel extends BaseModel {
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (/unique|UNIQUE|constraint/i.test(msg)) {
+      // Map only uniqueness violations — not every "constraint" failure (FK, NOT NULL, …).
+      if (/unique constraint|unique index|duplicate key|UNIQUE constraint failed/i.test(msg)) {
         fail('FIELD_DEFAULT_SCOPE_CONFLICT', `FieldDefault scope conflict for ${modelShort}.${fieldName}`);
       }
       throw err;
@@ -255,8 +257,8 @@ export default class FieldDefaultBaseModel extends BaseModel {
     field: string,
     opts?: FieldDefaultScopeOpts
   ): Promise<unknown | undefined> {
-    const { fieldMeta } = resolveTargetModel(this, model);
-    resolveTargetField(fieldMeta, field);
+    const { targetMeta } = resolveTargetModel(this, model);
+    resolveTargetField(targetMeta, field);
     const userId = resolveScopeDim(opts?.userId, (this as any).userId, 'userId');
     const companyId = resolveScopeDim(opts?.companyId, (this as any).companyId, 'companyId');
     const row = await findExactRow(this, String(model).trim(), String(field).trim(), userId, companyId);
@@ -271,7 +273,7 @@ export default class FieldDefaultBaseModel extends BaseModel {
     model: string,
     fields?: string[]
   ): Promise<Record<string, unknown>> {
-    const { fieldMeta } = resolveTargetModel(this, model);
+    const { targetMeta } = resolveTargetModel(this, model);
     const modelShort = String(model).trim();
     const uid = String((this as any).userId || '').trim() || null;
     const companyId = String((this as any).companyId || '').trim() || null;
@@ -297,7 +299,7 @@ export default class FieldDefaultBaseModel extends BaseModel {
     const fieldNames =
       fields && fields.length
         ? fields.map(String)
-        : [...((fieldMeta as any).fields?.keys?.() || [])].map(String);
+        : [...(targetMeta.fields?.keys?.() || [])].map(String);
 
     return resolveEffectiveFieldDefaults(rows || [], fieldNames);
   }
@@ -311,8 +313,8 @@ export default class FieldDefaultBaseModel extends BaseModel {
     field: string,
     opts?: FieldDefaultScopeOpts
   ): Promise<void> {
-    const { fieldMeta } = resolveTargetModel(this, model);
-    resolveTargetField(fieldMeta, field);
+    const { targetMeta } = resolveTargetModel(this, model);
+    resolveTargetField(targetMeta, field);
     const userId = resolveScopeDim(opts?.userId, (this as any).userId, 'userId');
     const companyId = resolveScopeDim(opts?.companyId, (this as any).companyId, 'companyId');
     const row = await findExactRow(this, String(model).trim(), String(field).trim(), userId, companyId);
