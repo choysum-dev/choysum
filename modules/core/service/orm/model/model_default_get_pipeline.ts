@@ -37,8 +37,15 @@ export async function runDefaultGetPipeline<T extends BaseModel>(
     if (!FieldDefaultCtor) {
       console.warn(`FIELD_DEFAULT_MODEL_MISSING app=${application || String(meta.application || '')}`);
     } else {
-      const effRaw = await FieldDefaultCtor.GetEffective(String(meta.modelName || ''), fieldNames);
-      const eff = effRaw && typeof effRaw === 'object' ? (effRaw as ObjectRecord) : {};
+      let eff: ObjectRecord = {};
+      try {
+        const effRaw = await FieldDefaultCtor.GetEffective(String(meta.modelName || ''), fieldNames);
+        eff = effRaw && typeof effRaw === 'object' ? (effRaw as ObjectRecord) : {};
+      } catch (err) {
+        // Do not block Create/DefaultGet when FieldDefault resolution fails (same posture as missing ctor).
+        const message = err instanceof Error ? err.message : String(err);
+        console.warn(`FIELD_DEFAULT_GET_EFFECTIVE_FAILED app=${application} error=${message}`);
+      }
       for (const name of fieldNames) {
         if (result[name] !== undefined) continue;
         if (eff[name] !== undefined) {

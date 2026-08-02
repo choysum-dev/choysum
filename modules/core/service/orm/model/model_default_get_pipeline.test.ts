@@ -140,6 +140,33 @@ test('runDefaultGetPipeline warns when non-core FieldDefault ctor is missing', a
   }
 });
 
+test('runDefaultGetPipeline warns and continues when GetEffective throws', async () => {
+  __setLookupFieldDefaultModelForTest('partner', {
+    async GetEffective() {
+      throw new Error('effective-query-failed');
+    },
+  });
+
+  const originalWarn = console.warn;
+  const warnings: string[] = [];
+  console.warn = (...args: any[]) => {
+    warnings.push(args.map(x => String(x)).join(' '));
+  };
+
+  try {
+    const out = await runDefaultGetPipeline(PipelinePartnerDemo as any, {} as any);
+
+    expect(
+      warnings.some(msg => msg.includes('FIELD_DEFAULT_GET_EFFECTIVE_FAILED') && msg.includes('effective-query-failed'))
+    ).toBe(true);
+    expect((out as any).Name).toBe('from-column');
+    expect((out as any).Code).toBeUndefined();
+  } finally {
+    console.warn = originalWarn;
+    restoreLookup('partner');
+  }
+});
+
 test('BaseModel.DefaultGet delegates to runDefaultGetPipeline', async () => {
   __setLookupFieldDefaultModelForTest('partner', {
     async GetEffective() {
