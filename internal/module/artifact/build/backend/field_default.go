@@ -43,16 +43,26 @@ type virtualSourceRegistrar interface {
 // virtualFieldDefaultSource builds C2 thin-class source with absolute imports so
 // esbuild can resolve them even when the pseudo __generated__ directory is not on disk
 // (path aliases like @/core/service fail for virtual OnLoad paths).
-func virtualFieldDefaultSource(modulesPath string) string {
+//
+// application must be baked into @Model options: FieldDefault is often first loaded on
+// the build pass (after prebuild), so injectModelApplication runs too late to rewrite
+// the JS that actually lands in dist/bundles/index.js. Without application, the
+// runtime pool key becomes "application.FieldDefault" and lookup `{app}.FieldDefault` misses.
+func virtualFieldDefaultSource(modulesPath string, application string) string {
 	modulesPath = filepath.ToSlash(filepath.Clean(strings.TrimSpace(modulesPath)))
+	application = strings.TrimSpace(application)
+	if application == "" {
+		application = "application"
+	}
+	application = strings.ReplaceAll(application, `'`, `\'`)
 	coreService := filepath.ToSlash(filepath.Join(modulesPath, "core/service/index.ts"))
 	baseModel := filepath.ToSlash(filepath.Join(modulesPath, "core/service/orm/model/field_default_base_model.ts"))
 	return fmt.Sprintf(`import { Model } from '%s'
 import FieldDefaultBaseModel from '%s'
 
-@Model('FieldDefault')
+@Model('FieldDefault', { application: '%s' })
 export default class FieldDefault extends FieldDefaultBaseModel {}
-`, coreService, baseModel)
+`, coreService, baseModel, application)
 }
 
 func isGeneratedFieldDefaultPath(path string) bool {
@@ -196,7 +206,21 @@ func (b *ModuleBuilder) decideFieldDefaultPlan(prebuildResults []*parser.ParserR
 	}
 
 	// No local handwritten FieldDefault — consider C2 inject.
-	if len(existing) > 0 || len(local) > 0 {
+	if len(existingHand) > 0 {
+		// Handwritten store already owns this application.
+		return plan, nil
+	}
+	if len(local) > 0 {
+		// Already present in this prebuild graph (handwritten or virtual).
+		return plan, nil
+	}
+	if len(existingVirt) > 0 {
+		// Virtual rows in DB are metadata only — sources are not on disk (D12).
+		// Re-inject when this module owns the virtual path (rebuild / hot-reload / bundle).
+		// Other modules sharing the application must not inject a second store path.
+		if fieldDefaultSameModule(existingVirt, mod) {
+			return FieldDefaultPlan{NeedInject: true, scheduledApp: app}, nil
+		}
 		return plan, nil
 	}
 	owner, loaded := fieldDefaultScheduledApps.LoadOrStore(app, mod.Name)
@@ -210,6 +234,20 @@ func (b *ModuleBuilder) decideFieldDefaultPlan(prebuildResults []*parser.ParserR
 	return FieldDefaultPlan{NeedInject: true, scheduledApp: app}, nil
 }
 
+func (b *ModuleBuilder) rememberFieldDefaultInjectPath(path string) {
+	path = strings.TrimSpace(path)
+	if b == nil || path == "" {
+		return
+	}
+	b.fieldDefaultInjectPath = path
+	for _, existing := range b.fieldDefaultInjectPaths {
+		if existing == path {
+			return
+		}
+	}
+	b.fieldDefaultInjectPaths = append(b.fieldDefaultInjectPaths, path)
+}
+
 func (b *ModuleBuilder) applyFieldDefaultInject(plan FieldDefaultPlan) error {
 	if b == nil || !plan.NeedInject || b.module == nil {
 		return nil
@@ -218,19 +256,77 @@ func (b *ModuleBuilder) applyFieldDefaultInject(plan FieldDefaultPlan) error {
 		return xfmt.Errorf("FieldDefault inject requires a non-empty module path")
 	}
 	path := fieldDefaultGeneratedPath(b.module.Path)
-	b.fieldDefaultInjectPath = path
+	b.rememberFieldDefaultInjectPath(path)
 
-	imports := append(b.entryPointImports(), path)
+	imports := append(b.entryPointImports(), b.fieldDefaultInjectPaths...)
 	if setter, ok := b.buildPlugin.(interface{ SetEntryPointImports([]string) }); ok {
+		setter.SetEntryPointImports(imports)
+	}
+	if setter, ok := b.prebuildPlugin.(interface{ SetEntryPointImports([]string) }); ok {
 		setter.SetEntryPointImports(imports)
 	}
 	modulesPath := strings.TrimSpace(b.resolvedRuntimeOptions().modulesPath)
 	if modulesPath == "" {
 		modulesPath = filepath.Dir(b.module.Path)
 	}
-	source := virtualFieldDefaultSource(modulesPath)
+	source := virtualFieldDefaultSource(modulesPath, b.module.ApplicationStr)
 	if registrar, ok := b.buildPlugin.(virtualSourceRegistrar); ok {
 		registrar.RegisterVirtualSource(path, source)
+	}
+	if registrar, ok := b.prebuildPlugin.(virtualSourceRegistrar); ok {
+		registrar.RegisterVirtualSource(path, source)
+	}
+	return nil
+}
+
+// EnsureFieldDefaultVirtualImports registers C2 FieldDefault virtual sources for each
+// distinct non-core application represented by modules and records those paths so
+// buildOptions merges them into WithEntryPointImports (which replaces any prior
+// plugin SetEntryPointImports). Used by the multi-app dist/bundles builder, which
+// otherwise only Decide/Injects against a single representative module (often core).
+func (b *ModuleBuilder) EnsureFieldDefaultVirtualImports(modules []*meta.Module) error {
+	if b == nil {
+		return nil
+	}
+	modulesPath := strings.TrimSpace(b.resolvedRuntimeOptions().modulesPath)
+	seenApp := make(map[string]struct{})
+	for _, mod := range modules {
+		if mod == nil {
+			continue
+		}
+		app := strings.TrimSpace(mod.ApplicationStr)
+		if app == "" || app == "core" || strings.TrimSpace(mod.ServiceEntryPoint) == "" {
+			continue
+		}
+		if _, ok := seenApp[app]; ok {
+			continue
+		}
+		if strings.TrimSpace(mod.Path) == "" {
+			continue
+		}
+		seenApp[app] = struct{}{}
+		path := fieldDefaultGeneratedPath(mod.Path)
+		b.rememberFieldDefaultInjectPath(path)
+		if modulesPath == "" {
+			modulesPath = filepath.Dir(mod.Path)
+		}
+		source := virtualFieldDefaultSource(modulesPath, app)
+		if registrar, ok := b.buildPlugin.(virtualSourceRegistrar); ok {
+			registrar.RegisterVirtualSource(path, source)
+		}
+		if registrar, ok := b.prebuildPlugin.(virtualSourceRegistrar); ok {
+			registrar.RegisterVirtualSource(path, source)
+		}
+	}
+	if len(b.fieldDefaultInjectPaths) == 0 {
+		return nil
+	}
+	imports := append(b.entryPointImports(), b.fieldDefaultInjectPaths...)
+	if setter, ok := b.buildPlugin.(interface{ SetEntryPointImports([]string) }); ok {
+		setter.SetEntryPointImports(imports)
+	}
+	if setter, ok := b.prebuildPlugin.(interface{ SetEntryPointImports([]string) }); ok {
+		setter.SetEntryPointImports(imports)
 	}
 	return nil
 }

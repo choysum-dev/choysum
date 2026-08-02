@@ -95,12 +95,12 @@ func TestDecideFieldDefaultPlan_SkipsCoreAndEmptyService(t *testing.T) {
 	}
 }
 
-func TestDecideFieldDefaultPlan_DBExistsSkip(t *testing.T) {
-	mod := &meta.Module{
-		Name: "partner_bank", Path: "/virtual/modules/partner_bank",
+func TestDecideFieldDefaultPlan_DBVirtualReinjectsForOwner(t *testing.T) {
+	owner := &meta.Module{
+		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	builder, db := newFieldDefaultTestBuilder(t, mod)
+	builder, db := newFieldDefaultTestBuilder(t, owner)
 	if err := db.Create(&meta.Model{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "fd1", Valid: true}},
 		Name:        "FieldDefault",
@@ -113,8 +113,44 @@ func TestDecideFieldDefaultPlan_DBExistsSkip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decide: %v", err)
 	}
+	if !plan.NeedInject || plan.SupersedeVirtual {
+		t.Fatalf("expected NeedInject re-inject for owning module, got %+v", plan)
+	}
+
+	// Sibling module sharing the application must not inject a second store path.
+	builder.module = &meta.Module{
+		Name: "partner_bank", Path: "/virtual/modules/partner_bank",
+		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
+	}
+	plan, err = builder.decideFieldDefaultPlan(nil)
+	if err != nil {
+		t.Fatalf("decide sibling: %v", err)
+	}
 	if plan.NeedInject || plan.SupersedeVirtual {
-		t.Fatalf("expected skip when DB has FieldDefault, got %+v", plan)
+		t.Fatalf("expected sibling skip when owner virtual exists, got %+v", plan)
+	}
+}
+
+func TestDecideFieldDefaultPlan_DBHandwrittenSkipsInject(t *testing.T) {
+	mod := &meta.Module{
+		Name: "partner_bank", Path: "/virtual/modules/partner_bank",
+		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
+	}
+	builder, db := newFieldDefaultTestBuilder(t, mod)
+	if err := db.Create(&meta.Model{
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "hand", Valid: true}},
+		Name:        "FieldDefault",
+		Path:        "/virtual/modules/partner/service/models/field_default.ts",
+		Application: "partner",
+	}).Error; err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	plan, err := builder.decideFieldDefaultPlan(nil)
+	if err != nil {
+		t.Fatalf("decide: %v", err)
+	}
+	if plan.NeedInject || plan.SupersedeVirtual {
+		t.Fatalf("expected skip when DB has handwritten FieldDefault, got %+v", plan)
 	}
 }
 
@@ -226,8 +262,55 @@ func TestApplyFieldDefaultInject_SetsEntryImportAndPath(t *testing.T) {
 	if !ok || src == "" {
 		t.Fatalf("expected virtual source registered for %q, got %#v", want, stub.virtualSources)
 	}
-	if !strings.Contains(src, "@Model('FieldDefault')") {
+	if !strings.Contains(src, "@Model('FieldDefault', { application: 'partner' })") {
 		t.Fatalf("unexpected virtual source: %s", src)
+	}
+}
+
+func TestEnsureFieldDefaultVirtualImports_SurvivesBuildOptionsReplace(t *testing.T) {
+	// Multi-app bundles Decide/Inject against a core representative; Ensure must
+	// still get every app's FieldDefault into WithEntryPointImports.
+	core := &meta.Module{
+		Name: "core", Path: "/virtual/modules/core",
+		ApplicationStr: "core", ServiceEntryPoint: "service/index.ts",
+	}
+	builder, _ := newFieldDefaultTestBuilder(t, core)
+	owners := []*meta.Module{
+		{Name: "base", Path: "/virtual/modules/base", ApplicationStr: "base", ServiceEntryPoint: "service/index.ts"},
+		{Name: "task", Path: "/virtual/modules/task", ApplicationStr: "task", ServiceEntryPoint: "service/index.ts"},
+		{Name: "base_dup", Path: "/virtual/modules/base2", ApplicationStr: "base", ServiceEntryPoint: "service/index.ts"},
+	}
+	if err := builder.EnsureFieldDefaultVirtualImports(owners); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	wantBase := fieldDefaultGeneratedPath(owners[0].Path)
+	wantTask := fieldDefaultGeneratedPath(owners[1].Path)
+	if len(builder.fieldDefaultInjectPaths) != 2 {
+		t.Fatalf("expected 2 inject paths (dedupe app), got %#v", builder.fieldDefaultInjectPaths)
+	}
+
+	stub := builder.buildPlugin.(*stubEsbPlugin)
+	// Simulate a wipe of whatever Ensure put on the plugin; buildOptions must restore.
+	stub.SetEntryPointImports([]string{"/wiped"})
+	_ = builder.buildOptions(false)
+
+	foundBase, foundTask := false, false
+	for _, imp := range stub.entryImports {
+		if imp == wantBase {
+			foundBase = true
+		}
+		if imp == wantTask {
+			foundTask = true
+		}
+	}
+	if !foundBase || !foundTask {
+		t.Fatalf("expected inject paths in entry imports after buildOptions, got %#v", stub.entryImports)
+	}
+	if _, ok := stub.virtualSources[wantBase]; !ok {
+		t.Fatalf("missing virtual source for base: %#v", stub.virtualSources)
+	}
+	if _, ok := stub.virtualSources[wantTask]; !ok {
+		t.Fatalf("missing virtual source for task: %#v", stub.virtualSources)
 	}
 }
 

@@ -1189,9 +1189,13 @@ func (p *BackendPlugin) DefinePlugins(runtimeScope scope.Scope, jsExecutor jsexe
 					Contents: &content,
 					Loader:   api.LoaderTS,
 				}
+				// Pseudo paths are not on disk. Absolute imports from Contents only
+				// resolve when ResolveDir is set — including the build pass that
+				// reuses prebuild parser results for a previously virtual-loaded file.
+				if !virtualLoad {
+					_, virtualLoad = p.lookupVirtualSource(args.Path)
+				}
 				if virtualLoad {
-					// Pseudo paths are not on disk; point ResolveDir at modules/ so
-					// relative resolution has a real root (absolute imports preferred).
 					resolveDir := filepath.Dir(args.Path)
 					if p.Module != nil && strings.TrimSpace(p.Module.Path) != "" {
 						if parent := filepath.Dir(p.Module.Path); parent != "" && parent != "." {

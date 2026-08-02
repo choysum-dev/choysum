@@ -60,9 +60,11 @@ type ModuleBuilder struct {
 	entryPointImportsCacheValid bool
 	entryPointImportsCache      []string
 
-	// FieldDefault C2 plan from Decide; Inject path is applied on the build pass only.
-	fieldDefaultPlan       FieldDefaultPlan
-	fieldDefaultInjectPath string
+	// FieldDefault C2 plan from Decide; Inject path(s) are applied on the build pass only.
+	// Multi-app bundles may inject one virtual store per application.
+	fieldDefaultPlan        FieldDefaultPlan
+	fieldDefaultInjectPath  string   // last injected path (single-module / tests)
+	fieldDefaultInjectPaths []string // all inject paths merged into build entry imports
 }
 
 func pathWithinModuleRoot(path string, root string) bool {
@@ -186,8 +188,15 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 	}
 
 	imports := b.entryPointImports()
-	if !prebuild && strings.TrimSpace(b.fieldDefaultInjectPath) != "" {
-		imports = append(append([]string(nil), imports...), b.fieldDefaultInjectPath)
+	// WithEntryPointImports replaces plugin EntryPointImports — always pass the
+	// full set here. Include FieldDefault on prebuild too so injectModelApplication
+	// can rewrite Content before the build pass that emits dist JS.
+	extra := b.fieldDefaultInjectPaths
+	if len(extra) == 0 && strings.TrimSpace(b.fieldDefaultInjectPath) != "" {
+		extra = []string{b.fieldDefaultInjectPath}
+	}
+	if len(extra) > 0 {
+		imports = append(append([]string(nil), imports...), extra...)
 	}
 	esbOpts := []esbplugins.EsbPluginOptions{
 		esbplugins.WithEntryPointImports(imports),
