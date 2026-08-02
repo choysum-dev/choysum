@@ -59,6 +59,10 @@ type ModuleBuilder struct {
 	// Cached entry-point imports reused across prebuild/build in one builder run.
 	entryPointImportsCacheValid bool
 	entryPointImportsCache      []string
+
+	// FieldDefault C2 plan from Decide; Inject path is applied on the build pass only.
+	fieldDefaultPlan       FieldDefaultPlan
+	fieldDefaultInjectPath string
 }
 
 func pathWithinModuleRoot(path string, root string) bool {
@@ -181,8 +185,12 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 		buildOptions.TreeShaking = api.TreeShakingFalse
 	}
 
+	imports := b.entryPointImports()
+	if !prebuild && strings.TrimSpace(b.fieldDefaultInjectPath) != "" {
+		imports = append(append([]string(nil), imports...), b.fieldDefaultInjectPath)
+	}
 	esbOpts := []esbplugins.EsbPluginOptions{
-		esbplugins.WithEntryPointImports(b.entryPointImports()),
+		esbplugins.WithEntryPointImports(imports),
 	}
 
 	if prebuild {
@@ -778,11 +786,19 @@ func (b *ModuleBuilder) validate(buildResult *module.BuildResult) error {
 		}
 	}
 
+	if err := b.validateFieldDefault(buildResult); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (b *ModuleBuilder) persist(buildResult *module.BuildResult) error {
 	mod := buildResult.Module
+
+	if err := b.supersedeVirtualFieldDefaults(); err != nil {
+		return err
+	}
 
 	// update module application id
 	if mod.ApplicationStr != "" {
@@ -1228,6 +1244,16 @@ func (b *ModuleBuilder) BuildWithoutPersist() (*module.BuildResult, error) {
 		return nil, xfmt.Errorf("error prebuilding: %w", err)
 	}
 
+	// 1b. FieldDefault C2 Decide / Inject (before extends rewrite + build)
+	plan, err := b.decideFieldDefaultPlan(module.ParserResults(prebuildResult))
+	if err != nil {
+		return nil, err
+	}
+	b.fieldDefaultPlan = plan
+	if err := b.applyFieldDefaultInject(plan); err != nil {
+		return nil, xfmt.Errorf("error injecting FieldDefault: %w", err)
+	}
+
 	// 2. recompute and modify file content for model extends
 	if err := b.updatePrebuildResult(prebuildResult); err != nil {
 		return nil, xfmt.Errorf("error generating content: %w", err)
@@ -1262,6 +1288,15 @@ func (b *ModuleBuilder) Bundle() (*module.BuildResult, error) {
 	prebuildResult, err := b.prebuild()
 	if err != nil {
 		return nil, xfmt.Errorf("error prebuilding: %w", err)
+	}
+
+	plan, err := b.decideFieldDefaultPlan(module.ParserResults(prebuildResult))
+	if err != nil {
+		return nil, err
+	}
+	b.fieldDefaultPlan = plan
+	if err := b.applyFieldDefaultInject(plan); err != nil {
+		return nil, xfmt.Errorf("error injecting FieldDefault: %w", err)
 	}
 
 	if err := b.updatePrebuildResult(prebuildResult); err != nil {

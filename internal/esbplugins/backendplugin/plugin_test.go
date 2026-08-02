@@ -698,6 +698,41 @@ func TestBackendPluginDefinePluginsOnLoad_AppendsEntryPointImports(t *testing.T)
 	}
 }
 
+func TestBackendPluginDefinePluginsOnLoad_ServesVirtualSource(t *testing.T) {
+	testRuntimeScope := newPluginTestScope()
+	moduleDir := filepath.Join(t.TempDir(), "partner")
+	virtualPath := filepath.Join(moduleDir, "service", "models", "__generated__", "field_default.ts")
+	template := "export default class FieldDefault {}\n"
+
+	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
+		Env:              testRuntimeScope,
+		Module:           &meta.Module{Path: moduleDir, ApplicationStr: "partner"},
+		EntryPoint:       "./service/index.ts",
+		ParserResultChan: make(chan *parser.ParserResult, 1),
+		TsExports:        make(map[string]map[string]*parser.Export),
+		ParserResults:    make([]*parser.ParserResult, 0),
+	}}
+	plugin.RegisterVirtualSource(virtualPath, template)
+	plugin.Parser = fakeParser{parseFn: func(_ map[string]string, gotPath string, content string) (*parser.ParserResult, error) {
+		if gotPath != virtualPath {
+			t.Fatalf("unexpected parse path %q", gotPath)
+		}
+		if content != template {
+			t.Fatalf("unexpected virtual content %q", content)
+		}
+		return &parser.ParserResult{Path: gotPath, RawContent: content}, nil
+	}}
+
+	onLoad := captureBackendOnLoad(t, plugin.DefinePlugins(testRuntimeScope, nil, plugin.Module)[0], &api.BuildOptions{})
+	result, err := onLoad(api.OnLoadArgs{Path: virtualPath})
+	if err != nil {
+		t.Fatalf("onLoad returned error: %v", err)
+	}
+	if result.Contents == nil || *result.Contents != template {
+		t.Fatalf("expected virtual template contents, got %#v", result.Contents)
+	}
+}
+
 func TestBackendPluginDefinePluginsOnLoad_AppendsEntryPointImports_WhenEntryPathResolvesSymlink(t *testing.T) {
 	testRuntimeScope := newPluginTestScope()
 	rootDir := t.TempDir()

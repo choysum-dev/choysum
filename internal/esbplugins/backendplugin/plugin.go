@@ -26,6 +26,51 @@ type BackendPlugin struct {
 	EntryPointImports []string
 	parserFactory     func(scope.Scope, *meta.Module) parser.Parser
 	runtimeOptions    runtimeOptions
+	virtualSources    map[string]string
+}
+
+// RegisterVirtualSource registers in-memory TS contents served by OnLoad before disk reads.
+// Paths are normalized the same way as other backend plugin path lookups.
+func (p *BackendPlugin) RegisterVirtualSource(path string, contents string) {
+	if p == nil {
+		return
+	}
+	normalized := normalizeBackendPluginPath(path)
+	if normalized == "" {
+		return
+	}
+	p.Mu.Lock()
+	defer p.Mu.Unlock()
+	if p.virtualSources == nil {
+		p.virtualSources = make(map[string]string)
+	}
+	p.virtualSources[normalized] = contents
+	// Also key by slash-cleaned form so Join-produced paths resolve without symlink eval.
+	slashKey := filepath.ToSlash(filepath.Clean(strings.TrimSpace(path)))
+	if slashKey != "" && slashKey != normalized {
+		p.virtualSources[slashKey] = contents
+	}
+}
+
+// lookupVirtualSource must be called with p.Mu held (OnLoad already locks it).
+func (p *BackendPlugin) lookupVirtualSource(path string) (string, bool) {
+	if p == nil || len(p.virtualSources) == 0 {
+		return "", false
+	}
+	candidates := []string{
+		normalizeBackendPluginPath(path),
+		filepath.ToSlash(filepath.Clean(strings.TrimSpace(path))),
+		strings.TrimSpace(path),
+	}
+	for _, key := range candidates {
+		if key == "" {
+			continue
+		}
+		if content, ok := p.virtualSources[key]; ok {
+			return content, true
+		}
+	}
+	return "", false
 }
 
 func (p *BackendPlugin) bindRuntimeState(runtimeScope scope.Scope, module *meta.Module) {
@@ -1116,6 +1161,8 @@ func (p *BackendPlugin) DefinePlugins(runtimeScope scope.Scope, jsExecutor jsexe
 					} else {
 						content = parserResult.RawContent
 					}
+				} else if virtual, ok := p.lookupVirtualSource(args.Path); ok {
+					content = virtual
 				} else {
 					content, err = p.ReadNormalizedTextFile(args.Path)
 					if err != nil {
