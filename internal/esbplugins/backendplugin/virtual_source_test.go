@@ -28,8 +28,15 @@ func TestRegisterVirtualSource_DualKeys(t *testing.T) {
 	p.RegisterVirtualSource(raw, "export default class FieldDefault {}")
 	p.Mu.RLock()
 	defer p.Mu.RUnlock()
-	if len(p.virtualSources) == 0 {
-		t.Fatal("expected registered keys")
+	normalized := normalizeBackendPluginPath(raw)
+	slashKey := filepath.ToSlash(filepath.Clean(raw))
+	if _, ok := p.virtualSources[normalized]; !ok {
+		t.Fatalf("expected normalized key %q in %#v", normalized, p.virtualSources)
+	}
+	if slashKey != normalized {
+		if _, ok := p.virtualSources[slashKey]; !ok {
+			t.Fatalf("expected slash key %q in %#v", slashKey, p.virtualSources)
+		}
 	}
 }
 

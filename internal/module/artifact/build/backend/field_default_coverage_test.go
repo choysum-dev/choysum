@@ -218,7 +218,6 @@ func TestApplyAndPlanInject_ErrorPaths(t *testing.T) {
 		t.Fatalf("planAndInject decide error: %v", err)
 	}
 
-	builder.module.Path = ""
 	builder.fieldDefaultPlan = FieldDefaultPlan{}
 	resetFieldDefaultScheduledAppsForTest()
 	builder.module.Path = ""
@@ -557,7 +556,7 @@ func TestBuildWithoutPersist_ReleasesOnFailures(t *testing.T) {
 
 	// updatePrebuildResult failure → release (NeedInject claims, then extends refresh fails).
 	resetFieldDefaultScheduledAppsForTest()
-	dbUpd, err := gorm.Open(sqlite.Open("file:fd-upd-fail?mode=memory&cache=shared"), &gorm.Config{})
+	dbUpd, err := gorm.Open(sqlite.Open("file:fd-upd-fail-"+strings.ReplaceAll(t.Name(), "/", "_")+"?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -603,7 +602,7 @@ func TestBuildWithoutPersist_ReleasesOnFailures(t *testing.T) {
 
 	// Persist failure releases.
 	resetFieldDefaultScheduledAppsForTest()
-	db2, err := gorm.Open(sqlite.Open("file:fd-persist-fail?mode=memory&cache=shared"), &gorm.Config{})
+	db2, err := gorm.Open(sqlite.Open("file:fd-persist-fail-"+strings.ReplaceAll(t.Name(), "/", "_")+"?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -626,7 +625,7 @@ func TestBuildWithoutPersist_ReleasesOnFailures(t *testing.T) {
 
 	// Persist fails inside supersedeVirtualFieldDefaults (closed DB) and still releases.
 	resetFieldDefaultScheduledAppsForTest()
-	dbSupersede, err := gorm.Open(sqlite.Open("file:fd-persist-supersede-fail?mode=memory&cache=shared"), &gorm.Config{})
+	dbSupersede, err := gorm.Open(sqlite.Open("file:fd-persist-supersede-fail-"+strings.ReplaceAll(t.Name(), "/", "_")+"?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -658,7 +657,7 @@ func TestBuildWithoutPersist_ReleasesOnFailures(t *testing.T) {
 	// validate failure → release: claim NeedInject, then swap parser results to duplicates before validate
 	// by using a build plugin that returns two FieldDefaults while prebuild stayed empty.
 	resetFieldDefaultScheduledAppsForTest()
-	db3, err := gorm.Open(sqlite.Open("file:fd-validate-fail?mode=memory&cache=shared"), &gorm.Config{})
+	db3, err := gorm.Open(sqlite.Open("file:fd-validate-fail-"+strings.ReplaceAll(t.Name(), "/", "_")+"?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -706,7 +705,7 @@ func TestBuildWithoutPersist_ReleasesOnFailures(t *testing.T) {
 
 	// build failure → release (non-empty entry that esbuild rejects after inject).
 	resetFieldDefaultScheduledAppsForTest()
-	db4, err := gorm.Open(sqlite.Open("file:fd-build-fail?mode=memory&cache=shared"), &gorm.Config{})
+	db4, err := gorm.Open(sqlite.Open("file:fd-build-fail-"+strings.ReplaceAll(t.Name(), "/", "_")+"?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -772,7 +771,7 @@ func TestBundle_FailurePaths(t *testing.T) {
 		t.Fatal("expected inject failure")
 	}
 
-	db, err := gorm.Open(sqlite.Open("file:fd-bundle-upd?mode=memory&cache=shared"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("file:fd-bundle-upd-"+strings.ReplaceAll(t.Name(), "/", "_")+"?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -806,7 +805,7 @@ func TestBundle_FailurePaths(t *testing.T) {
 
 	// build failure in Bundle
 	resetFieldDefaultScheduledAppsForTest()
-	db2, err := gorm.Open(sqlite.Open("file:fd-bundle-build?mode=memory&cache=shared"), &gorm.Config{})
+	db2, err := gorm.Open(sqlite.Open("file:fd-bundle-build-"+strings.ReplaceAll(t.Name(), "/", "_")+"?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
