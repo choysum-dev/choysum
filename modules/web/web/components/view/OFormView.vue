@@ -609,11 +609,11 @@ async function handleRefresh() {
   }
 }
 
-function handleCopy() {
+async function handleCopy() {
   if (!(controller.vm.original as any)) return;
   const cp = reactive(deepClonePreserve(controller.vm.original as any));
   delete (cp as any).Id;
-  controller.beginCreate(cp);
+  await controller.beginCreate(cp);
   resetOnchangeAgg();
   emit('mode-change', { mode: 'create' });
   onchangeCtrl.reset();
