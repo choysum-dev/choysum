@@ -4,8 +4,8 @@
 import BaseModel from './model';
 
 /**
- * Minimal FieldDefault model surface used by the DefaultGet pipeline (FD-1 stub).
- * Full Set/Get/GetEffective lands with FieldDefaultBaseModel (FD-2/FD-3).
+ * Minimal FieldDefault model surface used by the DefaultGet pipeline.
+ * Resolved from the application model pool as `{app}.FieldDefault`.
  */
 export type FieldDefaultModelCtor = {
   GetEffective(modelName: string, fieldNames: string[]): Promise<Record<string, unknown>> | Record<string, unknown>;
@@ -29,7 +29,7 @@ export function __setLookupFieldDefaultModelForTest(application: string, ctor: F
 
 /**
  * Resolve `{app}.FieldDefault` from the runtime model pool.
- * Returns undefined when the application has no FieldDefault ctor yet (FD-2 injects it).
+ * Returns undefined when the application has no FieldDefault ctor (warn in pipeline).
  */
 export function lookupFieldDefaultModel(application: string | undefined): FieldDefaultModelCtor | undefined {
   const app = String(application || '').trim();
