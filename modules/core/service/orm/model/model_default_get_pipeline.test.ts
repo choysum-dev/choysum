@@ -211,3 +211,101 @@ test('pipeline demo models expose application metadata', () => {
   expect(MetadataStorage.instance.getModelMetadata(PipelineCoreDemo as any).application).toBe('core');
   expect(MetadataStorage.instance.getModelMetadata(PipelinePartnerDemo as any).application).toBe('partner');
 });
+
+test('runDefaultGetPipeline treats whitespace application as non-core missing ctor', async () => {
+  const meta = MetadataStorage.instance.getModelMetadata(PipelinePartnerDemo as any);
+  const prevApp = meta.application;
+  (meta as any).application = '   ';
+
+  const originalWarn = console.warn;
+  const warnings: string[] = [];
+  console.warn = (...args: any[]) => {
+    warnings.push(args.map(x => String(x)).join(' '));
+  };
+
+  try {
+    const out = await runDefaultGetPipeline(PipelinePartnerDemo as any, {} as any);
+    expect(warnings.some(msg => msg.includes('FIELD_DEFAULT_MODEL_MISSING'))).toBe(true);
+    expect((out as any).Name).toBe('from-column');
+  } finally {
+    (meta as any).application = prevApp;
+    console.warn = originalWarn;
+  }
+});
+
+test('runDefaultGetPipeline handles undefined application and empty modelName', async () => {
+  const meta = MetadataStorage.instance.getModelMetadata(PipelinePartnerDemo as any);
+  const prevApp = meta.application;
+  const prevModel = meta.modelName;
+  (meta as any).application = undefined;
+  (meta as any).modelName = '';
+
+  __setLookupFieldDefaultModelForTest('partner', undefined);
+
+  const originalWarn = console.warn;
+  const warnings: string[] = [];
+  console.warn = (...args: any[]) => {
+    warnings.push(args.map(x => String(x)).join(' '));
+  };
+
+  try {
+    // lookup uses meta.application (undefined) → miss; warn uses trimmed empty application fallback.
+    const out = await runDefaultGetPipeline(PipelinePartnerDemo as any, {} as any);
+    expect(warnings.some(msg => msg.includes('FIELD_DEFAULT_MODEL_MISSING'))).toBe(true);
+    expect((out as any).Name).toBe('from-column');
+  } finally {
+    (meta as any).application = prevApp;
+    (meta as any).modelName = prevModel;
+    console.warn = originalWarn;
+  }
+});
+
+test('runDefaultGetPipeline ignores non-object GetEffective results', async () => {
+  const meta = MetadataStorage.instance.getModelMetadata(PipelinePartnerDemo as any);
+  const prevModel = meta.modelName;
+  (meta as any).modelName = undefined;
+
+  const calls: any[] = [];
+  __setLookupFieldDefaultModelForTest('partner', {
+    async GetEffective(modelName, fieldNames) {
+      calls.push({ modelName, fieldNames });
+      // Truthy non-object so `typeof effRaw === 'object'` is false.
+      return 42 as any;
+    },
+  });
+
+  try {
+    const out = await runDefaultGetPipeline(PipelinePartnerDemo as any, {} as any);
+    expect(calls[0]?.modelName).toBe('');
+    expect((out as any).Name).toBe('from-column');
+    expect((out as any).Code).toBeUndefined();
+  } finally {
+    (meta as any).modelName = prevModel;
+    restoreLookup('partner');
+  }
+});
+
+test('runDefaultGetPipeline stringifies non-Error GetEffective failures', async () => {
+  __setLookupFieldDefaultModelForTest('partner', {
+    async GetEffective() {
+      throw 'bare-string-failure';
+    },
+  });
+
+  const originalWarn = console.warn;
+  const warnings: string[] = [];
+  console.warn = (...args: any[]) => {
+    warnings.push(args.map(x => String(x)).join(' '));
+  };
+
+  try {
+    const out = await runDefaultGetPipeline(PipelinePartnerDemo as any, {} as any);
+    expect(warnings.some(msg => msg.includes('FIELD_DEFAULT_GET_EFFECTIVE_FAILED') && msg.includes('bare-string-failure'))).toBe(
+      true
+    );
+    expect((out as any).Name).toBe('from-column');
+  } finally {
+    console.warn = originalWarn;
+    restoreLookup('partner');
+  }
+});
