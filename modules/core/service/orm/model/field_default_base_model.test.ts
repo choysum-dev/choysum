@@ -4,6 +4,7 @@
 import { Field, Model } from '../decorator';
 import BaseModel from './model';
 import FieldDefaultBaseModel from './field_default_base_model';
+import { ChoysumError } from '@/core/service/error';
 
 @Model('Widget', { application: 'fd2test' })
 class Fd2Widget extends BaseModel {
@@ -30,6 +31,16 @@ class Fd2FieldDefault extends FieldDefaultBaseModel {}
 class OtherAppModel extends BaseModel {
   @Field({ type: 'varchar', size: 32 })
   Name!: string;
+}
+
+async function expectRejects(promise: Promise<unknown>, code: string) {
+  try {
+    await promise;
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof ChoysumError).toBe(true);
+    expect((err as ChoysumError).code).toBe(code);
+  }
 }
 
 test('FieldDefault Set upserts and Get reads exact scope; userId true uses context', async () => {
@@ -133,18 +144,11 @@ test('FieldDefault Unset deletes exact scope row', async () => {
 });
 
 test('FieldDefault Set rejects unsupported types and cross-app models', async () => {
-  await expect(Fd2FieldDefault.Set('Widget', 'Lines', [])).rejects.toMatchObject({
-    code: 'FIELD_DEFAULT_INVALID_VALUE',
-  });
-  await expect(Fd2FieldDefault.Set('Widget', 'Blob', 'x')).rejects.toMatchObject({
-    code: 'FIELD_DEFAULT_INVALID_VALUE',
-  });
-  await expect(Fd2FieldDefault.Set('Widget', 'Missing', 'x')).rejects.toMatchObject({
-    code: 'FIELD_DEFAULT_UNKNOWN_FIELD',
-  });
-  await expect(Fd2FieldDefault.Set('Other', 'Name', 'x')).rejects.toMatchObject({
-    code: 'FIELD_DEFAULT_CROSS_APP_MODEL',
-  });
+  // choysumtest expect has no .rejects; use await + catch helper.
+  await expectRejects(Fd2FieldDefault.Set('Widget', 'Lines', []), 'FIELD_DEFAULT_INVALID_VALUE');
+  await expectRejects(Fd2FieldDefault.Set('Widget', 'Blob', 'x'), 'FIELD_DEFAULT_INVALID_VALUE');
+  await expectRejects(Fd2FieldDefault.Set('Widget', 'Missing', 'x'), 'FIELD_DEFAULT_UNKNOWN_FIELD');
+  await expectRejects(Fd2FieldDefault.Set('Other', 'Name', 'x'), 'FIELD_DEFAULT_CROSS_APP_MODEL');
 
   expect(OtherAppModel).toBeTruthy();
   expect(Fd2Widget).toBeTruthy();
