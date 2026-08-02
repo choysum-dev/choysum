@@ -769,14 +769,16 @@ func TestBackendPluginDefinePluginsOnLoad_ServesVirtualSource(t *testing.T) {
 	}
 
 	// ResolveDir falls back to filepath.Dir(args.Path) when Module path is empty/relative.
-	plugin.Module = &meta.Module{Path: "partner"}
-	onLoad2 := captureBackendOnLoad(t, defined, &api.BuildOptions{})
-	result2, err := onLoad2(api.OnLoadArgs{Path: resolved.Path})
-	if err != nil {
-		t.Fatalf("onLoad2: %v", err)
-	}
-	if result2.ResolveDir != filepath.Dir(resolved.Path) {
-		t.Fatalf("ResolveDir fallback = %q, want %q", result2.ResolveDir, filepath.Dir(resolved.Path))
+	for _, modPath := range []string{"partner", "   ", ""} {
+		plugin.Module = &meta.Module{Path: modPath}
+		onLoad2 := captureBackendOnLoad(t, defined, &api.BuildOptions{})
+		result2, err := onLoad2(api.OnLoadArgs{Path: resolved.Path})
+		if err != nil {
+			t.Fatalf("onLoad2 path=%q: %v", modPath, err)
+		}
+		if result2.ResolveDir != filepath.Dir(resolved.Path) {
+			t.Fatalf("ResolveDir fallback path=%q got %q, want %q", modPath, result2.ResolveDir, filepath.Dir(resolved.Path))
+		}
 	}
 
 	// Virtual entry-point path still appends EntryPointImports.

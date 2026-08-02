@@ -24,19 +24,25 @@ func TestRegisterVirtualSource_NilAndEmpty(t *testing.T) {
 
 func TestRegisterVirtualSource_DualKeys(t *testing.T) {
 	p := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{}}
-	raw := filepath.Join(t.TempDir(), "partner", "service", "models", "__generated__", "field_default.ts")
+	// Relative path: Abs/EvalSymlinks normalization differs from ToSlash(Clean) on all platforms,
+	// so both map keys are registered (Linux CI often collapses abs+symlink TempDir paths).
+	raw := "partner/service/models/__generated__/field_default.ts"
 	p.RegisterVirtualSource(raw, "export default class FieldDefault {}")
 	p.Mu.RLock()
 	defer p.Mu.RUnlock()
 	normalized := normalizeBackendPluginPath(raw)
 	slashKey := filepath.ToSlash(filepath.Clean(raw))
+	if normalized == "" || slashKey == "" {
+		t.Fatalf("expected non-empty keys, normalized=%q slash=%q", normalized, slashKey)
+	}
+	if normalized == slashKey {
+		t.Fatalf("expected dual keys to differ, both %q", normalized)
+	}
 	if _, ok := p.virtualSources[normalized]; !ok {
 		t.Fatalf("expected normalized key %q in %#v", normalized, p.virtualSources)
 	}
-	if slashKey != normalized {
-		if _, ok := p.virtualSources[slashKey]; !ok {
-			t.Fatalf("expected slash key %q in %#v", slashKey, p.virtualSources)
-		}
+	if _, ok := p.virtualSources[slashKey]; !ok {
+		t.Fatalf("expected slash key %q in %#v", slashKey, p.virtualSources)
 	}
 }
 
