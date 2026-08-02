@@ -6,6 +6,12 @@ import { MetadataStorage } from '../metadata/storage';
 import type { FieldMetadata, FieldType } from '../metadata/field';
 import type { ModelMetadata } from '../metadata/model';
 import { raiseDomainError } from '@/core/service/error';
+import { deleteReqStateKeysByPrefix, memoizeInReqState } from '../../runtime/context';
+import {
+  getOrInitRepositoryReqServiceState,
+  getRepositoryCurrentReq,
+  withRepositoryAuthzRuleBypass,
+} from '../repository/authz';
 import BaseModel from './model';
 import { resolveEffectiveFieldDefaults } from './field_default_resolve';
 import type { InstantiableModelCtor } from './types';
@@ -50,6 +56,23 @@ const ensuredUniqueIndexTables = new Set<string>();
 
 function fail(code: string, message: string): never {
   raiseDomainError('core', code, message);
+}
+
+/** Request-memo key for GetEffective (§5.3). Fields filter is applied after cache hit. */
+function fieldDefaultMemoKey(application: string, modelShort: string, userId: string | null, companyId: string | null): string {
+  return `fieldDefault:${application}:${modelShort}:${userId ?? ''}:${companyId ?? ''}`;
+}
+
+function fieldDefaultReqState(): Record<string, unknown> | undefined {
+  // Use repository req resolution so memo shares the same carrier as Model.sudo / authz bypass.
+  return getOrInitRepositoryReqServiceState(getRepositoryCurrentReq()) as Record<string, unknown> | undefined;
+}
+
+function invalidateFieldDefaultMemo(application: string, modelShort: string): void {
+  const app = String(application || '').trim();
+  const model = String(modelShort || '').trim();
+  if (!app || !model) return;
+  deleteReqStateKeysByPrefix(fieldDefaultReqState(), `fieldDefault:${app}:${model}:`);
 }
 
 function resolveScopeDim(dim: FieldDefaultScopeDim, current: string | undefined, label: string): string | null {
@@ -246,6 +269,7 @@ export default class FieldDefaultBaseModel extends BaseModel {
       }
       throw err;
     }
+    invalidateFieldDefaultMemo(String(storeMeta(this).application || ''), modelShort);
   }
 
   /**
@@ -267,6 +291,7 @@ export default class FieldDefaultBaseModel extends BaseModel {
 
   /**
    * Effective defaults for the current request identity (Odoo `_get_model_defaults`).
+   * Memoized per request (§5.3); candidate Search runs under sudo (§7.3).
    */
   static async GetEffective(
     this: InstantiableModelCtor<FieldDefaultBaseModel>,
@@ -275,33 +300,41 @@ export default class FieldDefaultBaseModel extends BaseModel {
   ): Promise<Record<string, unknown>> {
     const { targetMeta } = resolveTargetModel(this, model);
     const modelShort = String(model).trim();
+    const application = String(storeMeta(this).application || '').trim();
     const uid = String((this as any).userId || '').trim() || null;
     const companyId = String((this as any).companyId || '').trim() || null;
+    const memoKey = fieldDefaultMemoKey(application, modelShort, uid, companyId);
 
-    const and: any[] = [['Model', '=', modelShort]];
-    if (fields && fields.length) {
-      and.push(['Field', 'in', fields.map(String)]);
+    const full = await memoizeInReqState(fieldDefaultReqState(), memoKey, async () => {
+      // Load all candidate rows for this model+identity (field filter applied after memo).
+      const and: any[] = [['Model', '=', modelShort]];
+      and.push({ Or: [scopeCondition('UserId', null), ...(uid ? [['UserId', '=', uid]] : [])] });
+      if (companyId) {
+        and.push({ Or: [scopeCondition('CompanyId', null), ['CompanyId', '=', companyId]] });
+      } else {
+        and.push(scopeCondition('CompanyId', null));
+      }
+
+      // Authz bypass without Model.sudo audit noise (pipeline/internal read channel, §7.3).
+      const rows = await withRepositoryAuthzRuleBypass(async () =>
+        (this as any).Search(
+          { And: and } as any,
+          { fields: ['Id', 'Field', 'UserId', 'CompanyId', 'Value'] as any } as any
+        )
+      );
+      return resolveEffectiveFieldDefaults(rows || []);
+    });
+
+    const allowNames =
+      fields && fields.length ? fields.map(String) : [...(targetMeta.fields?.keys?.() || [])].map(String);
+    if (!allowNames.length) return { ...(full || {}) };
+
+    const allow = new Set(allowNames);
+    const out: Record<string, unknown> = {};
+    for (const [name, value] of Object.entries(full || {})) {
+      if (allow.has(name) && value !== undefined) out[name] = value;
     }
-    // UserId IS NULL OR UserId = :uid
-    and.push({ Or: [scopeCondition('UserId', null), ...(uid ? [['UserId', '=', uid]] : [])] });
-    // CompanyId IS NULL OR CompanyId = :companyId (no active company → only NULL)
-    if (companyId) {
-      and.push({ Or: [scopeCondition('CompanyId', null), ['CompanyId', '=', companyId]] });
-    } else {
-      and.push(scopeCondition('CompanyId', null));
-    }
-
-    const rows = await (this as any).Search(
-      { And: and } as any,
-      { fields: ['Id', 'Field', 'UserId', 'CompanyId', 'Value'] as any } as any
-    );
-
-    const fieldNames =
-      fields && fields.length
-        ? fields.map(String)
-        : [...(targetMeta.fields?.keys?.() || [])].map(String);
-
-    return resolveEffectiveFieldDefaults(rows || [], fieldNames);
+    return out;
   }
 
   /**
@@ -317,9 +350,11 @@ export default class FieldDefaultBaseModel extends BaseModel {
     resolveTargetField(targetMeta, field);
     const userId = resolveScopeDim(opts?.userId, (this as any).userId, 'userId');
     const companyId = resolveScopeDim(opts?.companyId, (this as any).companyId, 'companyId');
-    const row = await findExactRow(this, String(model).trim(), String(field).trim(), userId, companyId);
+    const modelShort = String(model).trim();
+    const row = await findExactRow(this, modelShort, String(field).trim(), userId, companyId);
     if (row?.Id) {
       await (this as any).DeleteById(row.Id);
+      invalidateFieldDefaultMemo(String(storeMeta(this).application || ''), modelShort);
     }
   }
 }
