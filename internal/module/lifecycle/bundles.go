@@ -139,16 +139,21 @@ func (m *ModuleManager) buildBackendBundlesToDir(ctx context.Context, distBundle
 
 // pickFieldDefaultOwnerModule chooses which module path hosts the C2 FieldDefault
 // virtual file for an application (one store per app).
+//
+// Prefer the last eligible backend module so the owner matches how the multi-app
+// Bundle picks its representative (`mods[len-1]`). EnsureFieldDefaultVirtualImports
+// still rewrites the path to any existing virtual meta row when present.
 func pickFieldDefaultOwnerModule(app string, mods []*meta.Module) *meta.Module {
 	app = strings.TrimSpace(app)
 	if app == "" || app == "core" || len(mods) == 0 {
 		return nil
 	}
+	var owner *meta.Module
 	for _, mod := range mods {
 		if mod == nil || strings.TrimSpace(mod.ServiceEntryPoint) == "" || strings.TrimSpace(mod.Path) == "" {
 			continue
 		}
-		return mod
+		owner = mod
 	}
-	return nil
+	return owner
 }

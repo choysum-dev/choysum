@@ -196,6 +196,27 @@ describe('formController beginCreate DefaultGet prefetch (FD-4)', () => {
     });
   });
 
+  test('beginCreate clears loading when it supersedes beginDisplay', async () => {
+    let resolveDefaults: ((value: unknown) => void) | undefined;
+    const DefaultGet = vi.fn(
+      () =>
+        new Promise(resolve => {
+          resolveDefaults = resolve;
+        })
+    );
+    const controller = createFormController(newStore(DefaultGet));
+    controller.vm.loading = true;
+
+    const pending = controller.beginCreate({ Name: 'seed' });
+    await Promise.resolve();
+
+    expect(controller.vm.loading).toBe(false);
+
+    resolveDefaults!({});
+    await pending;
+    expect(controller.vm.loading).toBe(false);
+  });
+
   test('superseded DefaultGet failure does not reset newer create draft', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const rejecters: Array<(reason?: unknown) => void> = [];

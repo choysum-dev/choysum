@@ -673,6 +673,8 @@ export function createFormController(store: WebModelStore<any>): IFormViewContro
     vm.draft = seed;
     vm.result = null;
     vm.error = null;
+    // Bumping loadSeq supersedes beginDisplay, which then skips its finally reset.
+    vm.loading = false;
 
     try {
       if (typeof (store as any).DefaultGet !== 'function') return;

@@ -262,8 +262,76 @@ func TestApplyFieldDefaultInject_SetsEntryImportAndPath(t *testing.T) {
 	if !ok || src == "" {
 		t.Fatalf("expected virtual source registered for %q, got %#v", want, stub.virtualSources)
 	}
-	if !strings.Contains(src, "@Model('FieldDefault', { application: 'partner' })") {
+	if !strings.Contains(src, `@Model('FieldDefault', { application: "partner" })`) {
 		t.Fatalf("unexpected virtual source: %s", src)
+	}
+}
+
+func TestVirtualFieldDefaultSource_QuotesLiterals(t *testing.T) {
+	src := virtualFieldDefaultSource(`/tmp/mod"quote`, "app'name\\x")
+	if !strings.Contains(src, `from "/tmp/mod\"quote/core/service/index.ts"`) {
+		t.Fatalf("expected quoted core import, got:\n%s", src)
+	}
+	if !strings.Contains(src, `application: "app'name\\x"`) {
+		t.Fatalf("expected quoted application literal, got:\n%s", src)
+	}
+}
+
+func TestEnsureFieldDefaultVirtualImports_SkipsHandwritten(t *testing.T) {
+	owner := &meta.Module{
+		Name: "partner", Path: "/virtual/modules/partner",
+		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
+	}
+	builder, db := newFieldDefaultTestBuilder(t, owner)
+	if err := db.Create(&meta.Model{
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "hand", Valid: true}},
+		Name:        "FieldDefault",
+		Path:        "/virtual/modules/partner/service/models/field_default.ts",
+		Application: "partner",
+	}).Error; err != nil {
+		t.Fatalf("seed handwritten: %v", err)
+	}
+	base := &meta.Module{
+		Name: "base", Path: "/virtual/modules/base",
+		ApplicationStr: "base", ServiceEntryPoint: "service/index.ts",
+	}
+	if err := builder.EnsureFieldDefaultVirtualImports([]*meta.Module{owner, base}); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	wantBase := fieldDefaultGeneratedPath(base.Path)
+	if len(builder.fieldDefaultInjectPaths) != 1 || builder.fieldDefaultInjectPaths[0] != wantBase {
+		t.Fatalf("expected only base C2 path, got %#v", builder.fieldDefaultInjectPaths)
+	}
+	stub := builder.buildPlugin.(*stubEsbPlugin)
+	if _, ok := stub.virtualSources[fieldDefaultGeneratedPath(owner.Path)]; ok {
+		t.Fatal("handwritten app must not register C2 virtual source")
+	}
+	if _, ok := stub.virtualSources[wantBase]; !ok {
+		t.Fatalf("expected base virtual source, got %#v", stub.virtualSources)
+	}
+}
+
+func TestEnsureFieldDefaultVirtualImports_PrefersMetaVirtualPath(t *testing.T) {
+	// Owner candidate is a sibling path; meta already points at the primary module.
+	sibling := &meta.Module{
+		Name: "partner_bank", Path: "/virtual/modules/partner_bank",
+		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
+	}
+	builder, db := newFieldDefaultTestBuilder(t, sibling)
+	metaPath := "/virtual/modules/partner/service/models/__generated__/field_default.ts"
+	if err := db.Create(&meta.Model{
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "virt", Valid: true}},
+		Name:        "FieldDefault",
+		Path:        metaPath,
+		Application: "partner",
+	}).Error; err != nil {
+		t.Fatalf("seed virt: %v", err)
+	}
+	if err := builder.EnsureFieldDefaultVirtualImports([]*meta.Module{sibling}); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	if len(builder.fieldDefaultInjectPaths) != 1 || builder.fieldDefaultInjectPaths[0] != metaPath {
+		t.Fatalf("expected meta virt path, got %#v", builder.fieldDefaultInjectPaths)
 	}
 }
 

@@ -87,7 +87,7 @@ SPDX-License-Identifier: Apache-2.0
 // =============================
 // Section 1: Imports
 // =============================
-import { ref, computed, provide, inject, watch, toRaw, reactive, nextTick, onMounted, onBeforeUnmount, getCurrentInstance } from 'vue';
+import { ref, computed, provide, inject, watch, toRaw, nextTick, onMounted, onBeforeUnmount, getCurrentInstance } from 'vue';
 import { ElForm, ElMessageBox, ElMessage } from 'element-plus';
 import type { ClientModel, BaseModel, Updateable, Insertable } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
@@ -611,7 +611,7 @@ async function handleRefresh() {
 
 async function handleCopy() {
   if (!(controller.vm.original as any)) return;
-  const cp = reactive(deepClonePreserve(controller.vm.original as any));
+  const cp = deepClonePreserve(controller.vm.original as any);
   delete (cp as any).Id;
   await controller.beginCreate(cp);
   resetOnchangeAgg();

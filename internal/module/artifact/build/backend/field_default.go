@@ -6,6 +6,7 @@ package backendbuilder
 import (
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -54,15 +55,15 @@ func virtualFieldDefaultSource(modulesPath string, application string) string {
 	if application == "" {
 		application = "application"
 	}
-	application = strings.ReplaceAll(application, `'`, `\'`)
 	coreService := filepath.ToSlash(filepath.Join(modulesPath, "core/service/index.ts"))
 	baseModel := filepath.ToSlash(filepath.Join(modulesPath, "core/service/orm/model/field_default_base_model.ts"))
-	return fmt.Sprintf(`import { Model } from '%s'
-import FieldDefaultBaseModel from '%s'
+	// strconv.Quote produces valid TS/JS string literals (backslash, quotes, newlines).
+	return fmt.Sprintf(`import { Model } from %s
+import FieldDefaultBaseModel from %s
 
-@Model('FieldDefault', { application: '%s' })
+@Model('FieldDefault', { application: %s })
 export default class FieldDefault extends FieldDefaultBaseModel {}
-`, coreService, baseModel, application)
+`, strconv.Quote(coreService), strconv.Quote(baseModel), strconv.Quote(application))
 }
 
 func isGeneratedFieldDefaultPath(path string) bool {
@@ -284,6 +285,9 @@ func (b *ModuleBuilder) applyFieldDefaultInject(plan FieldDefaultPlan) error {
 // buildOptions merges them into WithEntryPointImports (which replaces any prior
 // plugin SetEntryPointImports). Used by the multi-app dist/bundles builder, which
 // otherwise only Decide/Injects against a single representative module (often core).
+//
+// Handwritten FieldDefault ownership (same precedence as decideFieldDefaultPlan) skips
+// C2 registration so the bundle does not load two stores for one application.
 func (b *ModuleBuilder) EnsureFieldDefaultVirtualImports(modules []*meta.Module) error {
 	if b == nil {
 		return nil
@@ -305,7 +309,23 @@ func (b *ModuleBuilder) EnsureFieldDefaultVirtualImports(modules []*meta.Module)
 			continue
 		}
 		seenApp[app] = struct{}{}
+
+		existing, err := b.dbLoadFieldDefaults(app)
+		if err != nil {
+			return xfmt.Errorf("load FieldDefault models for application %q: %w", app, err)
+		}
+		if len(handwrittenFieldDefaults(existing)) > 0 {
+			// Handwritten store already owns this application — do not inject C2.
+			continue
+		}
+
 		path := fieldDefaultGeneratedPath(mod.Path)
+		if virt := generatedFieldDefaults(existing); len(virt) > 0 {
+			// Prefer the canonical meta path so rebuilds match Persist / sameModule checks.
+			if p := strings.TrimSpace(virt[0].Path); p != "" {
+				path = filepath.ToSlash(filepath.Clean(p))
+			}
+		}
 		b.rememberFieldDefaultInjectPath(path)
 		if modulesPath == "" {
 			modulesPath = filepath.Dir(mod.Path)
