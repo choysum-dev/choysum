@@ -700,6 +700,7 @@ defineExpose({
   submit: handleSubmit,
   refresh: handleRefresh,
   reset: handleReset,
+  copy: handleCopy,
   getFormData: () => toRaw(exposedFormData.value) as any,
   getViewMode: () => viewMode.value,
   isLoading: () => loading.value,

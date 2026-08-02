@@ -128,4 +128,99 @@ describe('formController beginCreate DefaultGet prefetch (FD-4)', () => {
     expect(controller.vm.mode).toBe('create');
     expect(controller.vm.draft).toEqual({ Name: 'local' });
   });
+
+  test('undefined initial uses empty seed object', async () => {
+    const DefaultGet = vi.fn(async () => ({ Name: 'server-only' }));
+    const controller = createFormController(newStore(DefaultGet));
+
+    await controller.beginCreate();
+
+    expect(DefaultGet.mock.calls[0]?.[0]).toEqual({});
+    expect(controller.vm.draft).toEqual({ Name: 'server-only' });
+  });
+
+  test('non-object DefaultGet results collapse to empty server map', async () => {
+    for (const bad of [null, 42, 'x', ['Name']]) {
+      const DefaultGet = vi.fn(async () => bad as any);
+      const controller = createFormController(newStore(DefaultGet));
+      await controller.beginCreate({ Name: 'seed' });
+      expect(controller.vm.draft).toEqual({ Name: 'seed' });
+    }
+  });
+
+  test('undefined seed keys are dropped by clone so server defaults remain', async () => {
+    const DefaultGet = vi.fn(async () => ({ Name: 'server-name', Code: 'server-code' }));
+    const controller = createFormController(newStore(DefaultGet));
+
+    await controller.beginCreate({ Name: undefined, Code: 'seed-code' });
+
+    // JSON clone strips undefined keys from the seed before merge.
+    expect(controller.vm.draft).toEqual({
+      Name: 'server-name',
+      Code: 'seed-code',
+    });
+  });
+
+  test('null initial uses empty seed object', async () => {
+    const DefaultGet = vi.fn(async () => ({ Name: 'server-only' }));
+    const controller = createFormController(newStore(DefaultGet));
+    await controller.beginCreate(null);
+    expect(controller.vm.draft).toEqual({ Name: 'server-only' });
+  });
+
+  test('superseded DefaultGet success does not clobber newer create draft', async () => {
+    const resolvers: Array<(value: unknown) => void> = [];
+    const DefaultGet = vi.fn(
+      () =>
+        new Promise(resolve => {
+          resolvers.push(resolve);
+        })
+    );
+    const controller = createFormController(newStore(DefaultGet));
+
+    const first = controller.beginCreate({ Name: 'first' });
+    await Promise.resolve();
+    const second = controller.beginCreate({ Name: 'second' });
+    await Promise.resolve();
+
+    expect(resolvers.length).toBe(2);
+    resolvers[0]!({ Name: 'late-first', Code: 'from-first' });
+    await first;
+    expect(controller.vm.draft).toEqual({ Name: 'second' });
+
+    resolvers[1]!({ Name: 'from-second', Code: 'server-code' });
+    await second;
+    expect(controller.vm.draft).toEqual({
+      Name: 'second',
+      Code: 'server-code',
+    });
+  });
+
+  test('superseded DefaultGet failure does not reset newer create draft', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const rejecters: Array<(reason?: unknown) => void> = [];
+    const DefaultGet = vi.fn(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejecters.push(reject);
+        })
+    );
+    const controller = createFormController(newStore(DefaultGet));
+
+    const first = controller.beginCreate({ Name: 'first' });
+    await Promise.resolve();
+    const second = controller.beginCreate({ Name: 'second' });
+    await Promise.resolve();
+
+    rejecters[0]!(new Error('stale'));
+    await first;
+    expect(controller.vm.draft).toEqual({ Name: 'second' });
+    expect(warn).not.toHaveBeenCalled();
+
+    rejecters[1]!(new Error('current'));
+    await second;
+    expect(controller.vm.draft).toEqual({ Name: 'second' });
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
 });

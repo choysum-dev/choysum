@@ -683,12 +683,8 @@ export function createFormController(store: WebModelStore<any>): IFormViewContro
         defaults && typeof defaults === 'object' && !Array.isArray(defaults)
           ? ({ ...(defaults as object) } as Record<string, unknown>)
           : {};
-      // Seed wins for defined keys (D2); server fills remaining undefined slots.
-      const merged: Record<string, unknown> = { ...server };
-      for (const [k, v] of Object.entries(seed as Record<string, unknown>)) {
-        if (v !== undefined) merged[k] = v;
-      }
-      vm.draft = merged;
+      // Seed wins (D2). `clone` drops undefined keys, so explicit null / values are preserved.
+      vm.draft = { ...server, ...(seed as Record<string, unknown>) };
     } catch (e) {
       if (seq !== loadSeq) return;
       console.warn('[FormController] DefaultGet prefetch failed', e);
