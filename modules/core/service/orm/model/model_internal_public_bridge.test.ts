@@ -33,10 +33,9 @@ function emptyToManyRelations() {
   };
 }
 
-test('CreateOperations.Create uses internal facade helpers instead of public DefaultGet/Browse', async () => {
+test('CreateOperations.Create uses ModelCtor.DefaultGet and internal Browse helper', async () => {
   const originalDefaultGetMethod = ModelInternalPublicBridge.DefaultGet;
   const originalBrowseMethod = ModelInternalPublicBridge.Browse;
-  const originalDefaultGet = DefaultOperations.DefaultGet;
   const originalPrepareForCreate = RelationFactory.prepareForCreate;
   const originalGetRepository = RepositoryFactory.getRepository;
   const originalBrowse = ReadOperations.Browse;
@@ -47,13 +46,11 @@ test('CreateOperations.Create uses internal facade helpers instead of public Def
   const createdRows: any[] = [];
 
   try {
-    ModelInternalPublicBridge.DefaultGet = unexpectedPublicCall('DefaultGet');
-    ModelInternalPublicBridge.Browse = unexpectedPublicCall('Browse');
-
-    DefaultOperations.DefaultGet = (async (ModelCtor: any, value: any) => {
-      defaultCalls.push({ ModelCtor, value });
-      return { ...value, Name: value.Name ?? 'defaulted' };
+    ModelInternalPublicBridge.DefaultGet = (async function (this: any, value: any) {
+      defaultCalls.push({ ModelCtor: this, value });
+      return { ...value, Name: value?.Name ?? 'defaulted' };
     }) as any;
+    ModelInternalPublicBridge.Browse = unexpectedPublicCall('Browse');
 
     RelationFactory.prepareForCreate = (async (_ModelCtor: any, value: any) => ({
       processedValue: { ...value },
@@ -87,10 +84,10 @@ test('CreateOperations.Create uses internal facade helpers instead of public Def
     expect(browseCalls[0]?.fields).toEqual(['Id', 'Name']);
     expect(createdRows.length).toBe(1);
     expect(createdRows[0]?.Id).toBe('NEW-1');
+    expect(createdRows[0]?.Name).toBe('defaulted');
   } finally {
     ModelInternalPublicBridge.DefaultGet = originalDefaultGetMethod;
     ModelInternalPublicBridge.Browse = originalBrowseMethod;
-    DefaultOperations.DefaultGet = originalDefaultGet;
     RelationFactory.prepareForCreate = originalPrepareForCreate;
     RepositoryFactory.getRepository = originalGetRepository;
     ReadOperations.Browse = originalBrowse;
@@ -98,11 +95,10 @@ test('CreateOperations.Create uses internal facade helpers instead of public Def
   }
 });
 
-test('CreateOperations.CreateMany uses internal facade helpers instead of public DefaultGet/Search/BrowseMany', async () => {
+test('CreateOperations.CreateMany uses ModelCtor.DefaultGet and internal Search helper', async () => {
   const originalDefaultGetMethod = ModelInternalPublicBridge.DefaultGet;
   const originalSearchMethod = ModelInternalPublicBridge.Search;
   const originalBrowseManyMethod = ModelInternalPublicBridge.BrowseMany;
-  const originalDefaultGet = DefaultOperations.DefaultGet;
   const originalPrepareForCreate = RelationFactory.prepareForCreate;
   const originalGetRepository = RepositoryFactory.getRepository;
   const originalSearch = ReadOperations.Search;
@@ -112,14 +108,12 @@ test('CreateOperations.CreateMany uses internal facade helpers instead of public
   const searchCalls: any[] = [];
 
   try {
-    ModelInternalPublicBridge.DefaultGet = unexpectedPublicCall('DefaultGet');
-    ModelInternalPublicBridge.Search = unexpectedPublicCall('Search');
-    ModelInternalPublicBridge.BrowseMany = unexpectedPublicCall('BrowseMany');
-
-    DefaultOperations.DefaultGet = (async (ModelCtor: any, value: any) => {
-      defaultCalls.push({ ModelCtor, value });
+    ModelInternalPublicBridge.DefaultGet = (async function (this: any, value: any) {
+      defaultCalls.push({ ModelCtor: this, value });
       return { ...value };
     }) as any;
+    ModelInternalPublicBridge.Search = unexpectedPublicCall('Search');
+    ModelInternalPublicBridge.BrowseMany = unexpectedPublicCall('BrowseMany');
 
     RelationFactory.prepareForCreate = (async (_ModelCtor: any, value: any) => ({
       processedValue: { ...value },
@@ -174,11 +168,58 @@ test('CreateOperations.CreateMany uses internal facade helpers instead of public
     ModelInternalPublicBridge.DefaultGet = originalDefaultGetMethod;
     ModelInternalPublicBridge.Search = originalSearchMethod;
     ModelInternalPublicBridge.BrowseMany = originalBrowseManyMethod;
-    DefaultOperations.DefaultGet = originalDefaultGet;
     RelationFactory.prepareForCreate = originalPrepareForCreate;
     RepositoryFactory.getRepository = originalGetRepository;
     ReadOperations.Search = originalSearch;
     ComputeCascadeEngine.triggerUpstreamCreateBatch = originalTriggerUpstreamCreateBatch;
+  }
+});
+
+test('CreateOperations.Create honors subclass DefaultGet override without column defaults', async () => {
+  @Model('test.DefaultGetOverrideCreate')
+  class DefaultGetOverrideCreate extends BaseModel {
+    @Field({ type: 'varchar', size: 64, default: 'from-column' })
+    Name!: string;
+
+    static async DefaultGet(this: any, value: any) {
+      // Intentionally skip super.DefaultGet so @Field({ default }) does not run.
+      return { ...value, Name: value?.Name ?? 'from-override' };
+    }
+  }
+
+  const originalPrepareForCreate = RelationFactory.prepareForCreate;
+  const originalGetRepository = RepositoryFactory.getRepository;
+  const originalBrowse = ReadOperations.Browse;
+  const originalTriggerUpstream = ComputeCascadeEngine.triggerUpstream;
+  const createdRows: any[] = [];
+
+  try {
+    RelationFactory.prepareForCreate = (async (_ModelCtor: any, value: any) => ({
+      processedValue: { ...value },
+      relations: emptyToManyRelations(),
+    })) as any;
+
+    RepositoryFactory.getRepository = (() => ({
+      withValidationBypass: async (fn: () => Promise<any>) => await fn(),
+      create: async (rows: any[]) => {
+        createdRows.push(...rows);
+        return rows.map(row => row.Id);
+      },
+    })) as any;
+
+    ReadOperations.Browse = (async (_ModelCtor: any, id: string) => ({ Id: id, Name: 'created' })) as any;
+    ComputeCascadeEngine.triggerUpstream = (async () => {}) as any;
+
+    await CreateOperations.Create(DefaultGetOverrideCreate as any, { Id: 'OV-1' } as any);
+
+    expect(createdRows.length).toBe(1);
+    expect(createdRows[0]?.Id).toBe('OV-1');
+    expect(createdRows[0]?.Name).toBe('from-override');
+  } finally {
+    RelationFactory.prepareForCreate = originalPrepareForCreate;
+    RepositoryFactory.getRepository = originalGetRepository;
+    ReadOperations.Browse = originalBrowse;
+    ComputeCascadeEngine.triggerUpstream = originalTriggerUpstream;
   }
 });
 
@@ -515,7 +556,6 @@ test('CreateOperations.CreateMany aggregates relation errors and throws', async 
 test('CreateOperations.Create swallows upstream error and still returns created model', async () => {
   const originalDefaultGetMethod = ModelInternalPublicBridge.DefaultGet;
   const originalBrowseMethod = ModelInternalPublicBridge.Browse;
-  const originalDefaultGet = DefaultOperations.DefaultGet;
   const originalPrepareForCreate = RelationFactory.prepareForCreate;
   const originalGetRepository = RepositoryFactory.getRepository;
   const originalBrowse = ReadOperations.Browse;
@@ -524,10 +564,9 @@ test('CreateOperations.Create swallows upstream error and still returns created 
   const warnings: string[] = [];
 
   try {
-    ModelInternalPublicBridge.DefaultGet = unexpectedPublicCall('DefaultGet');
+    ModelInternalPublicBridge.DefaultGet = (async (_value: any) => ({ ..._value })) as any;
     ModelInternalPublicBridge.Browse = unexpectedPublicCall('Browse');
 
-    DefaultOperations.DefaultGet = (async (_ModelCtor: any, value: any) => ({ ...value })) as any;
     RelationFactory.prepareForCreate = (async (_ModelCtor: any, value: any) => ({
       processedValue: { ...value },
       relations: emptyToManyRelations(),
@@ -552,7 +591,6 @@ test('CreateOperations.Create swallows upstream error and still returns created 
   } finally {
     ModelInternalPublicBridge.DefaultGet = originalDefaultGetMethod;
     ModelInternalPublicBridge.Browse = originalBrowseMethod;
-    DefaultOperations.DefaultGet = originalDefaultGet;
     RelationFactory.prepareForCreate = originalPrepareForCreate;
     RepositoryFactory.getRepository = originalGetRepository;
     ReadOperations.Browse = originalBrowse;

@@ -29,6 +29,13 @@ type ModelOnchangeOptions = {
 
 type RuntimeEntityInput = UnknownRecord | BaseModel;
 
+/**
+ * Apply `@Field({ default })` column defaults via {@link DefaultOperations.DefaultGet}
+ * (alias of {@link applyFieldColumnDefaults}). Used by `BaseModel.DefaultGet`.
+ *
+ * Create/CreateMany must call `ModelCtor.DefaultGet` (polymorphic hook), not this helper.
+ * Do not call `ModelCtor.DefaultGet` from here — that would recurse through the base hook.
+ */
 export async function defaultModelValues<T extends BaseModel>(
   ModelCtor: ModelRuntimeServiceFacadeCtor<T>,
   value: Partial<Insertable<T & BaseModel>>

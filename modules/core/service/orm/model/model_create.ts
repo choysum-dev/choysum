@@ -10,7 +10,6 @@ import { getModelRepository } from './model_internal_facade';
 import { browseManyModels, browseModel, searchModels } from './model_read_facade';
 import type { RuntimeModelCtor } from './types';
 import {
-  defaultModelValues,
   getModelRuntimeMetadata,
   recomputeModelMetadata,
   triggerModelUpstream,
@@ -232,8 +231,8 @@ export class CreateOperations {
     // 1) Strip compute fields.
     value = this.stripComputedFields<T>(ModelCtor, value);
 
-    // 2) DefaultGet
-    value = (await defaultModelValues(ModelCtor, value as Partial<Insertable<T & BaseModel>>)) as Partial<Insertable<T>>;
+    // 2) DefaultGet — polymorphic hook (must not bypass ModelCtor.DefaultGet)
+    value = (await ModelCtor.DefaultGet(value as Partial<Insertable<T & BaseModel>>)) as Partial<Insertable<T>>;
 
     // 2.1) Defensively strip again so DefaultGet or callers cannot reintroduce compute fields into the create payload.
     value = this.stripComputedFields<T>(ModelCtor, value as Partial<Insertable<T>>);
@@ -448,14 +447,13 @@ export class CreateOperations {
     // 1) Strip computed fields.
     const strippedInput = values.map(v => this.stripComputedFields<T>(ModelCtor, v));
 
-    // 2) DefaultGet.
-    const preProcessed = await Promise.all(
-      strippedInput.map(v =>
-        defaultModelValues(ModelCtor, v as Partial<Insertable<T & BaseModel>>).then(next =>
-          this.stripComputedFields<T>(ModelCtor, next as Partial<Insertable<T>>)
-        )
-      )
-    );
+    // 2) DefaultGet — polymorphic hook (must not bypass ModelCtor.DefaultGet).
+    // Sequential: overrides may do I/O; avoid unbounded concurrency and orphaned rejections.
+    const preProcessed: Array<Partial<Insertable<T>>> = [];
+    for (const v of strippedInput) {
+      const next = await ModelCtor.DefaultGet(v as Partial<Insertable<T & BaseModel>>);
+      preProcessed.push(this.stripComputedFields<T>(ModelCtor, next as Partial<Insertable<T>>));
+    }
 
     const repository = getModelRepository(ModelCtor);
 
