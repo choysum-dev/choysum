@@ -66,7 +66,8 @@ import {
 import { browseModel, browseManyModels, searchModels, countModels, readGroupedModels, countGroupedModels } from './model_read_facade';
 import { withModelSavepoint, hydrateModelFacade, toPlainObject as toPlainObjectExternal, toEntity as toEntityExternal } from './model_edge_facade';
 import { getModelRepository } from './model_internal_facade';
-import { defaultModelValues, runModelOnchange } from './model_runtime_service_facade';
+import { runModelOnchange } from './model_runtime_service_facade';
+import { runDefaultGetPipeline } from './model_default_get_pipeline';
 import { deleteModels, deleteModelById } from './model_delete_service_facade';
 import { createModel, createManyModels } from './model_create_service_facade';
 import { copyModel, type CopyOptions } from './model_copy';
@@ -523,10 +524,11 @@ class BaseModel {
   }
 
   /**
-   * Resolves default values for a pending create payload.
+   * Resolves default values for a pending create payload via {@link runDefaultGetPipeline}.
+   * Overrides should call `super.DefaultGet` to keep platform merge layers.
    */
   static async DefaultGet<T extends BaseModel>(this: BaseModelCtor<T>, value: Partial<Insertable<T & BaseModel>>): Promise<Partial<Insertable<T & BaseModel>>> {
-    return await defaultModelValues<T>(this as unknown as RuntimeModelCtor<T>, value);
+    return await runDefaultGetPipeline<T>(this as unknown as RuntimeModelCtor<T>, value);
   }
 
   /**
