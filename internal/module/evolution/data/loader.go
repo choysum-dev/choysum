@@ -882,7 +882,7 @@ func topoOrderOrCycleBatch(records []batchRecord, dep [][]int, adj [][]int, inde
 	msg := "circular ref detected: " + strings.Join(chain, " -> ")
 
 	first := records[cycle[0]]
-	le := &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefCycle, FilePath: first.FilePath, RecordIndex: first.RecordIndex, Module: strings.TrimSpace(first.Rec.Module), Name: strings.TrimSpace(first.Rec.Name), Model: strings.TrimSpace(first.Rec.Model), Message: msg}
+	le := &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefCycle, FilePath: first.FilePath, RecordIndex: first.RecordIndex, Module: strings.TrimSpace(first.Rec.Module), Name: strings.TrimSpace(first.Rec.Name), Application: strings.TrimSpace(first.Rec.Application), Model: strings.TrimSpace(first.Rec.Model), Message: msg}
 	for i := 0; i+1 < len(cycle); i++ {
 		ek := [2]int{cycle[i], cycle[i+1]}
 		if info, ok := edgeInfo[ek]; ok {
@@ -1104,7 +1104,7 @@ func topoOrderOrCycle(records []record, dep [][]int, adj [][]int, indeg []int, e
 	}
 	msg := "circular ref detected: " + strings.Join(chain, " -> ")
 
-	le := &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefCycle, FilePath: filePath, RecordIndex: cycle[0], Module: strings.TrimSpace(records[cycle[0]].Module), Name: strings.TrimSpace(records[cycle[0]].Name), Model: strings.TrimSpace(records[cycle[0]].Model), Message: msg}
+	le := &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefCycle, FilePath: filePath, RecordIndex: cycle[0], Module: strings.TrimSpace(records[cycle[0]].Module), Name: strings.TrimSpace(records[cycle[0]].Name), Application: strings.TrimSpace(records[cycle[0]].Application), Model: strings.TrimSpace(records[cycle[0]].Model), Message: msg}
 	// Attach a concrete edge (field/ref) from within the cycle when available.
 	// This makes the error more actionable and more stable across internal changes.
 	for i := 0; i+1 < len(cycle); i++ {
@@ -1287,9 +1287,20 @@ func (l *Loader) applyRecord(tx *gorm.DB, filePath string, recordIndex int, rec 
 		return wrapLoadErrorWithCode(xfmt.Errorf("update %s id=%s: %w", tableName, mapping.ResID, err), filePath, recordIndex, rec, LoadErrorKindDB, LoadErrorCodeDBUpdateRecord, "update record")
 	}
 
+	mappingUpdates := map[string]any{}
+	if mapping.Application != app {
+		mappingUpdates["application"] = app
+	}
+	modelID := model.Id.String
+	if mapping.ModelId != modelID {
+		mappingUpdates["model_id"] = modelID
+	}
 	if noUpdate && !mapping.NoUpdate {
-		if err := tx.Model(mapping).Update("no_update", true).Error; err != nil {
-			return wrapLoadErrorWithCode(xfmt.Errorf("update model_data.noupdate: %w", err), filePath, recordIndex, rec, LoadErrorKindDB, LoadErrorCodeDBUpdateModelDataNoUpdate, "update model_data.noupdate")
+		mappingUpdates["no_update"] = true
+	}
+	if len(mappingUpdates) > 0 {
+		if err := tx.Model(mapping).Updates(mappingUpdates).Error; err != nil {
+			return wrapLoadErrorWithCode(xfmt.Errorf("update model_data mapping: %w", err), filePath, recordIndex, rec, LoadErrorKindDB, LoadErrorCodeDBUpdateModelDataNoUpdate, "update model_data mapping")
 		}
 	}
 	return nil
@@ -1319,7 +1330,7 @@ func (l *Loader) resolveAndMapValues(tx *gorm.DB, filePath string, recordIndex i
 
 		// Enforce reference cardinality on search results.
 		if ids, ok := resolved.([]string); ok {
-			cardinality := l.detectSearchCardinality(tx, rec.Model, fieldName, raw)
+			cardinality := l.detectSearchCardinality(tx, recordModelFull(rec, model), fieldName, raw)
 			resolved, err = enforceReferenceCardinality(ids, cardinality, filePath, recordIndex, rec, "values."+fieldName, "search")
 			if err != nil {
 				return nil, err
@@ -1534,6 +1545,24 @@ func splitModel(s string) (string, string, error) {
 		return "", "", xfmt.Errorf("invalid model %q (empty app or name)", s)
 	}
 	return app, name, nil
+}
+
+// recordModelFull builds application.Model for host lookups (cardinality, etc.).
+// Seed top-level model is a short name; prefer the resolved meta.Model when present.
+func recordModelFull(rec record, model *meta.Model) string {
+	if model != nil {
+		app := strings.TrimSpace(model.Application)
+		name := strings.TrimSpace(model.Name)
+		if app != "" && name != "" {
+			return app + "." + name
+		}
+	}
+	app := strings.TrimSpace(rec.Application)
+	name := strings.TrimSpace(rec.Model)
+	if app != "" && name != "" {
+		return app + "." + name
+	}
+	return name
 }
 
 // parseRefQuerySpec detects and parses a reference query from a data file value.

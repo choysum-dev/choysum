@@ -221,6 +221,7 @@ func (l *Loader) normalizeTranslatedSeedValue(
 					RecordIndex: recordIndex,
 					Module:      strings.TrimSpace(rec.Module),
 					Name:        strings.TrimSpace(rec.Name),
+					Application: strings.TrimSpace(rec.Application),
 					Model:       strings.TrimSpace(rec.Model),
 					FieldPath:   fieldPath,
 					Message:     "translated lang map values must be strings",

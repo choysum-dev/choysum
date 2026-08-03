@@ -2255,6 +2255,70 @@ func TestDetectFieldCardinality_FallbackPaths(t *testing.T) {
 	}
 }
 
+func TestRecordModelFullAndSearchCardinality_ShortSeedModel(t *testing.T) {
+	t.Parallel()
+
+	l, db := newTestLoader(t)
+	var userModel meta.Model
+	if err := db.Where("application = ? AND name = ?", "auth", "User").First(&userModel).Error; err != nil {
+		t.Fatalf("lookup User model: %v", err)
+	}
+	if err := db.Create(&meta.Field{
+		Name: "tag_ids", FieldType: "ManyToMany", ModelId: userModel.Id,
+	}).Error; err != nil {
+		t.Fatalf("seed ManyToMany field: %v", err)
+	}
+
+	if got := recordModelFull(record{Application: "auth", Model: "User"}, nil); got != "auth.User" {
+		t.Fatalf("recordModelFull from seed = %q, want auth.User", got)
+	}
+	resolved := &meta.Model{Application: "base", Name: "Company"}
+	if got := recordModelFull(record{Application: "auth", Model: "User"}, resolved); got != "base.Company" {
+		t.Fatalf("recordModelFull from meta.Model = %q, want base.Company", got)
+	}
+
+	// Short name alone cannot splitModel → wrong ManyToOne fallback.
+	if c := l.detectSearchCardinality(db, "User", "tag_ids", nil); c != refCardinalityManyToOne {
+		t.Fatalf("short model alone = %d, want ManyToOne fallback", c)
+	}
+	full := recordModelFull(record{Module: "auth", Name: "u", Application: "auth", Model: "User"}, nil)
+	if c := l.detectSearchCardinality(db, full, "tag_ids", nil); c != refCardinalityManyToMany {
+		t.Fatalf("qualified short seed model = %d, want ManyToMany", c)
+	}
+
+	for _, id := range []string{"g1", "g2"} {
+		if err := db.Table("auth_group").Create(map[string]any{
+			"id": id, "created_at": time.Now(), "updated_at": time.Now(),
+		}).Error; err != nil {
+			t.Fatalf("seed group: %v", err)
+		}
+	}
+	rec := record{Module: "auth", Name: "u", Application: "auth", Model: "User"}
+	columns, err := l.resolveAndMapValues(db, "/tmp/data.json", 0, rec, &userModel, map[string]any{
+		"TagIds": map[string]any{
+			"search": map[string]any{
+				"model": "auth.group",
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("resolveAndMapValues ManyToMany search: %v", err)
+	}
+	// Cardinality must accept multiple hits; insert path may JSON-encode the slice.
+	switch got := columns["tag_ids"].(type) {
+	case []string:
+		if len(got) != 2 {
+			t.Fatalf("expected 2 tag ids, got %#v", got)
+		}
+	case string:
+		if !strings.Contains(got, "g1") || !strings.Contains(got, "g2") {
+			t.Fatalf("expected JSON/list with g1 and g2, got %#v", got)
+		}
+	default:
+		t.Fatalf("unexpected tag_ids type: %#v", columns["tag_ids"])
+	}
+}
+
 func TestEnforceReferenceCardinality_EdgeCases(t *testing.T) {
 	rec := record{Module: "auth", Name: "u", Application: "auth", Model: "User"}
 
