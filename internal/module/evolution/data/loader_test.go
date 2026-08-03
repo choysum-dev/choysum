@@ -928,7 +928,7 @@ func TestValueResolutionHelpers(t *testing.T) {
 	if err := db.Create(app).Error; err != nil {
 		t.Fatalf("seed meta_application(auth): %v", err)
 	}
-	if err := db.Create(&metadata.ModelData{Module: "auth", Name: "group_admin", Application: "auth", ModelId: loaderTestModelID(t, db, "auth", "group"), ResID: "gid-1"}).Error; err != nil {
+	if err := db.Create(&metadata.ModelData{Module: "auth", Name: "group_admin", Application: "auth", ModelName: "group", ModelId: loaderTestModelID(t, db, "auth", "group"), ResID: "gid-1"}).Error; err != nil {
 		t.Fatalf("seed model_data: %v", err)
 	}
 
@@ -1072,7 +1072,7 @@ func TestValueResolutionHelpers(t *testing.T) {
 func TestResolveAndMapValues_SkipsSystemFieldsAndNormalizes(t *testing.T) {
 	l, db := newTestLoader(t)
 	rec := record{Module: "auth", Name: "u", Application: "auth", Model: "User"}
-	if err := db.Create(&metadata.ModelData{Module: "auth", Name: "group_admin", Application: "auth", ModelId: loaderTestModelID(t, db, "auth", "group"), ResID: "gid-1"}).Error; err != nil {
+	if err := db.Create(&metadata.ModelData{Module: "auth", Name: "group_admin", Application: "auth", ModelName: "group", ModelId: loaderTestModelID(t, db, "auth", "group"), ResID: "gid-1"}).Error; err != nil {
 		t.Fatalf("seed model_data: %v", err)
 	}
 
@@ -1153,10 +1153,10 @@ func TestApplyRecord_DirectBranches(t *testing.T) {
 	if err := db.Table("auth_user").Create(&user).Error; err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
-	if err := db.Create(&metadata.ModelData{Module: "auth", Name: "user_admin", Application: "auth", ModelId: loaderTestModelID(t, db, "auth", "User"), ResID: user.ID, NoUpdate: false}).Error; err != nil {
+	if err := db.Create(&metadata.ModelData{Module: "auth", Name: "user_admin", Application: "auth", ModelName: "User", ModelId: loaderTestModelID(t, db, "auth", "User"), ResID: user.ID, NoUpdate: false}).Error; err != nil {
 		t.Fatalf("seed user mapping: %v", err)
 	}
-	if err := db.Create(&metadata.ModelData{Module: "auth", Name: "group_admin", Application: "auth", ModelId: loaderTestModelID(t, db, "auth", "group"), ResID: group2.ID, NoUpdate: false}).Error; err != nil {
+	if err := db.Create(&metadata.ModelData{Module: "auth", Name: "group_admin", Application: "auth", ModelName: "group", ModelId: loaderTestModelID(t, db, "auth", "group"), ResID: group2.ID, NoUpdate: false}).Error; err != nil {
 		t.Fatalf("seed group mapping: %v", err)
 	}
 	freeze := true
@@ -1475,7 +1475,7 @@ func TestApplyModule_OmitsModuleAndApplicationDefaultsToOwner(t *testing.T) {
 		t.Fatalf("lookup mapping: %v", err)
 	}
 	wantModelID := loaderTestModelID(t, db, "auth", "User")
-	if mapping.Application != "auth" || mapping.ModelId != wantModelID {
+	if mapping.Application != "auth" || mapping.ModelId != wantModelID || mapping.ModelName != "User" {
 		t.Fatalf("unexpected mapping target: %#v", mapping)
 	}
 }
@@ -1617,7 +1617,7 @@ func TestApplyModule_RefCanResolveExistingDBMappingOutsideBatch(t *testing.T) {
 	}).Error; err != nil {
 		t.Fatalf("seed auth_group: %v", err)
 	}
-	if err := db.Create(&metadata.ModelData{Module: "auth", Name: "pre_group", Application: "auth", ModelId: loaderTestModelID(t, db, "auth", "group"), ResID: "pre_group", NoUpdate: true}).Error; err != nil {
+	if err := db.Create(&metadata.ModelData{Module: "auth", Name: "pre_group", Application: "auth", ModelName: "group", ModelId: loaderTestModelID(t, db, "auth", "group"), ResID: "pre_group", NoUpdate: true}).Error; err != nil {
 		t.Fatalf("seed meta_model_data: %v", err)
 	}
 
@@ -1922,7 +1922,7 @@ func TestResolveValue_SearchShapeErrorIncludesFieldPath(t *testing.T) {
 	}
 
 	// ref and refBy still work (backward compat)
-	if err := db.Create(&metadata.ModelData{Module: "auth", Name: "group_admin", Application: "auth", ModelId: loaderTestModelID(t, db, "auth", "group"), ResID: "gid-1"}).Error; err != nil {
+	if err := db.Create(&metadata.ModelData{Module: "auth", Name: "group_admin", Application: "auth", ModelName: "group", ModelId: loaderTestModelID(t, db, "auth", "group"), ResID: "gid-1"}).Error; err != nil {
 		t.Fatalf("seed model_data: %v", err)
 	}
 	got, err = l.resolveValue(db, "/tmp/data.json", 0, rec, "values.group_id", map[string]any{"ref": "auth.group_admin"})
@@ -3242,7 +3242,7 @@ func TestApplyRecordModelDataDBFailures(t *testing.T) {
 			t.Fatalf("seed user: %v", err)
 		}
 		if err := db.Create(&metadata.ModelData{
-			Module: "auth", Name: "user_no_update", Application: "auth", ModelId: loaderTestModelID(t, db, "auth", "User"), ResID: user.ID, NoUpdate: false,
+			Module: "auth", Name: "user_no_update", Application: "auth", ModelName: "User", ModelId: loaderTestModelID(t, db, "auth", "User"), ResID: user.ID, NoUpdate: false,
 		}).Error; err != nil {
 			t.Fatalf("seed mapping: %v", err)
 		}
@@ -3340,7 +3340,7 @@ func TestApplyRecord_SyncsStaleMappingTarget(t *testing.T) {
 	}
 	wantModelID := loaderTestModelID(t, db, "auth", "User")
 	if err := db.Create(&metadata.ModelData{
-		Module: "auth", Name: "user_sync_target", Application: "stale_app", ModelId: "stale_model_id", ResID: user.ID, NoUpdate: false,
+		Module: "auth", Name: "user_sync_target", Application: "stale_app", ModelName: "stale_name", ModelId: "stale_model_id", ResID: user.ID, NoUpdate: false,
 	}).Error; err != nil {
 		t.Fatalf("seed stale mapping: %v", err)
 	}
@@ -3354,7 +3354,7 @@ func TestApplyRecord_SyncsStaleMappingTarget(t *testing.T) {
 	if err := db.Where("module = ? AND name = ?", "auth", "user_sync_target").First(&mapping).Error; err != nil {
 		t.Fatalf("lookup mapping: %v", err)
 	}
-	if mapping.Application != "auth" || mapping.ModelId != wantModelID {
+	if mapping.Application != "auth" || mapping.ModelId != wantModelID || mapping.ModelName != "User" {
 		t.Fatalf("mapping not synced: %#v", mapping)
 	}
 }
@@ -3367,7 +3367,7 @@ func TestApplyRecord_SyncMappingTargetDBFailure(t *testing.T) {
 		t.Fatalf("seed user: %v", err)
 	}
 	if err := db.Create(&metadata.ModelData{
-		Module: "auth", Name: "user_sync_fail", Application: "stale_app", ModelId: "stale_model_id", ResID: user.ID, NoUpdate: false,
+		Module: "auth", Name: "user_sync_fail", Application: "stale_app", ModelName: "stale_name", ModelId: "stale_model_id", ResID: user.ID, NoUpdate: false,
 	}).Error; err != nil {
 		t.Fatalf("seed mapping: %v", err)
 	}
@@ -3456,7 +3456,7 @@ func TestPlanRecordOrder_DuplicateInvalidAndExternalRef(t *testing.T) {
 
 	t.Run("external ref exists", func(t *testing.T) {
 		if err := db.Create(&metadata.ModelData{
-			Module: "auth", Name: "pre_group", Application: "auth", ModelId: loaderTestModelID(t, db, "auth", "group"), ResID: "gid-pre",
+			Module: "auth", Name: "pre_group", Application: "auth", ModelName: "group", ModelId: loaderTestModelID(t, db, "auth", "group"), ResID: "gid-pre",
 		}).Error; err != nil {
 			t.Fatalf("seed model_data: %v", err)
 		}

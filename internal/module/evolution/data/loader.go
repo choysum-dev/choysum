@@ -1270,6 +1270,7 @@ func (l *Loader) applyRecord(tx *gorm.DB, filePath string, recordIndex int, rec 
 		mapping.Name = localName
 		mapping.Application = app
 		mapping.ModelId = model.Id.String
+		mapping.ModelName = model.Name
 		mapping.ResID = resID
 		mapping.NoUpdate = noUpdate
 		if err := tx.Create(mapping).Error; err != nil {
@@ -1294,6 +1295,9 @@ func (l *Loader) applyRecord(tx *gorm.DB, filePath string, recordIndex int, rec 
 	modelID := model.Id.String
 	if mapping.ModelId != modelID {
 		mappingUpdates["model_id"] = modelID
+	}
+	if mapping.ModelName != model.Name {
+		mappingUpdates["model_name"] = model.Name
 	}
 	if noUpdate && !mapping.NoUpdate {
 		mappingUpdates["no_update"] = true
