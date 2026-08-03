@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/choysum-dev/choysum/internal/module/evolution/hooks"
+	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
 	"github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -103,6 +104,16 @@ func (m *moduleUninstaller) cleanModels() error {
 		moduleID, moduleID,
 	).Error; err != nil {
 		return xfmt.Errorf("error deleting module dependency relations: %w", err)
+	}
+
+	// Physically delete MetaModelData registry rows for this module name (xml_id mappings).
+	// Soft-delete would leave (module, name) unique-index collisions that block reinstall
+	// (loader scoped First misses soft-deleted rows, then Create fails). Do not cascade-
+	// delete the business seed rows those mappings point at (V1).
+	if db.Migrator().HasTable((&metadata.ModelData{}).TableName()) {
+		if err := db.Unscoped().Where("module = ?", m.module.Name).Delete(&metadata.ModelData{}).Error; err != nil {
+			return xfmt.Errorf("error deleting meta model data mappings: %w", err)
+		}
 	}
 
 	return nil
