@@ -8,11 +8,11 @@ import "github.com/choysum-dev/choysum/pkg/meta"
 type ModelData struct {
 	meta.BaseModel `gorm:"embedded"`
 
-	Module     string `gorm:"type:varchar(255);not null;index:idx_model_data_module_external_id,unique"`
-	ExternalID string `gorm:"type:varchar(255);not null;index:idx_model_data_module_external_id,unique"`
-	Model      string `gorm:"type:varchar(255);not null;index"`
-	ResID      string `gorm:"type:char(20);not null;index"`
-	NoUpdate   bool   `gorm:"not null;default:false"`
+	Module   string `gorm:"type:varchar(255);not null;index:idx_model_data_module_name,unique"`
+	Name     string `gorm:"type:varchar(255);not null;index:idx_model_data_module_name,unique"`
+	Model    string `gorm:"type:varchar(255);not null;index"`
+	ResID    string `gorm:"type:char(20);not null;index"`
+	NoUpdate bool   `gorm:"not null;default:false"`
 }
 
 func (md *ModelData) TableName() string {

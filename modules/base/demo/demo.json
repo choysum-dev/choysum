@@ -2,7 +2,7 @@
   "records": [
     {
       "module": "base",
-      "external_id": "company_demo",
+      "name": "company_demo",
       "model": "base.Company",
       "noupdate": true,
       "values": {

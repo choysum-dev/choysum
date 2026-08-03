@@ -134,8 +134,8 @@ func TestDefaultCheckWorkspaceFreshnessNonFreshWhenAuthModelAnchorExists(t *test
 func TestDefaultCheckWorkspaceFreshnessNonFreshWhenAuthAdminAnchorExists(t *testing.T) {
 	c, db := newFreshnessTestCoordinator(t)
 
-	mustExec(t, db, "CREATE TABLE meta_model_data (id TEXT, module TEXT, external_id TEXT, deleted_at DATETIME)")
-	mustExec(t, db, "INSERT INTO meta_model_data(id, module, external_id, deleted_at) VALUES(?, ?, ?, NULL)", "data-1", "auth", "user_admin")
+	mustExec(t, db, "CREATE TABLE meta_model_data (id TEXT, module TEXT, name TEXT, deleted_at DATETIME)")
+	mustExec(t, db, "INSERT INTO meta_model_data(id, module, name, deleted_at) VALUES(?, ?, ?, NULL)", "data-1", "auth", "user_admin")
 
 	err := c.defaultCheckWorkspaceFreshness(context.Background())
 	if err == nil {

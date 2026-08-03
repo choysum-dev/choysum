@@ -79,7 +79,7 @@ func TestDefaultUpdateAdminAndMarkerDBLookupFailures(t *testing.T) {
 	t.Run("model_data lookup failure", func(t *testing.T) {
 		c, db := newFreshnessTestCoordinator(t)
 		c.now = func() time.Time { return fixedNow }
-		mustExec(t, db, "CREATE TABLE meta_model_data (id TEXT, module TEXT, external_id TEXT, model TEXT, res_id TEXT, no_update INTEGER)")
+		mustExec(t, db, "CREATE TABLE meta_model_data (id TEXT, module TEXT, name TEXT, model TEXT, res_id TEXT, no_update INTEGER)")
 
 		err := c.defaultUpdateAdminAndMarker(context.Background(), initializeInput{
 			AdminUsername: "admin",
@@ -96,11 +96,33 @@ func TestDefaultUpdateAdminAndMarkerDBLookupFailures(t *testing.T) {
 		}
 	})
 
+	t.Run("model_data name not found", func(t *testing.T) {
+		c, db := newFreshnessTestCoordinator(t)
+		c.now = func() time.Time { return fixedNow }
+		if err := db.AutoMigrate(&metadata.ModelData{}); err != nil {
+			t.Fatalf("auto migrate model_data: %v", err)
+		}
+
+		err := c.defaultUpdateAdminAndMarker(context.Background(), initializeInput{
+			AdminUsername: "admin",
+			Password:      wirePassword,
+		})
+		if err == nil {
+			t.Fatal("expected admin update failure")
+		}
+		if got := bootstrapErrorCode(err); got != bootstrapErrCodeAdminUpdateFailed {
+			t.Fatalf("bootstrapErrorCode(err) = %q, want %q", got, bootstrapErrCodeAdminUpdateFailed)
+		}
+		if !strings.Contains(err.Error(), "administrator account reference was not found") {
+			t.Fatalf("error = %q, want admin name-not-found message", err.Error())
+		}
+	})
+
 	t.Run("model lookup failure", func(t *testing.T) {
 		c, db := newFreshnessTestCoordinator(t)
 		c.now = func() time.Time { return fixedNow }
-		mustExec(t, db, "CREATE TABLE meta_model_data (id TEXT, module TEXT, external_id TEXT, model TEXT, res_id TEXT, no_update INTEGER, deleted_at DATETIME)")
-		mustExec(t, db, "INSERT INTO meta_model_data(id, module, external_id, model, res_id, no_update, deleted_at) VALUES(?, ?, ?, ?, ?, ?, NULL)",
+		mustExec(t, db, "CREATE TABLE meta_model_data (id TEXT, module TEXT, name TEXT, model TEXT, res_id TEXT, no_update INTEGER, deleted_at DATETIME)")
+		mustExec(t, db, "INSERT INTO meta_model_data(id, module, name, model, res_id, no_update, deleted_at) VALUES(?, ?, ?, ?, ?, ?, NULL)",
 			"data-1", "auth", "user_admin", "auth.User", "user-1", 0)
 		mustExec(t, db, "CREATE TABLE meta_model (id TEXT, application TEXT, name TEXT, model_table TEXT)")
 
@@ -139,7 +161,7 @@ func TestDefaultUpdateAdminAndMarkerSuccessUpsertsBootstrapSettings(t *testing.T
 	mustExec(t, db, "INSERT INTO auth_user(id, username, password_hash, updated_at) VALUES(?, ?, ?, ?)",
 		resID, "old-admin", "old-hash", fixedNow)
 	if err := db.Create(&metadata.ModelData{
-		Module: "auth", ExternalID: "user_admin", Model: "auth.User", ResID: resID,
+		Module: "auth", Name: "user_admin", Model: "auth.User", ResID: resID,
 	}).Error; err != nil {
 		t.Fatalf("seed model_data: %v", err)
 	}

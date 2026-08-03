@@ -12,11 +12,11 @@ function read(rel: string): string {
 describe('base language merge seeds and wiring (P0)', () => {
   it('bootstrap.json has POSIX languages and no Locale entity', () => {
     const raw = read('../../data/bootstrap.json');
-    const data = JSON.parse(raw) as { records: Array<{ external_id: string; model: string; values: Record<string, unknown> }> };
+    const data = JSON.parse(raw) as { records: Array<{ name: string; model: string; values: Record<string, unknown> }> };
 
     expect(raw).not.toMatch(/base\.Locale|locale_default|DefaultLocaleId|LocaleId|language_zh[^_]|Code":\s*"zh"/);
 
-    const byId = Object.fromEntries(data.records.map(r => [r.external_id, r]));
+    const byId = Object.fromEntries(data.records.map(r => [r.name, r]));
     expect(byId.language_en_us?.model).toBe('base.Language');
     expect(byId.language_en_us?.values.Code).toBe('en_US');
     expect(byId.language_en_us?.values.Grouping).toBe('[3,0]');
@@ -36,7 +36,7 @@ describe('base language merge seeds and wiring (P0)', () => {
 
     // zh_CN is seeded before en_US so Name lang-map keys can reference Language.Code.
     // Languages precede Currency so bilingual Currency.Name can use zh_CN.
-    const order = data.records.map(r => r.external_id);
+    const order = data.records.map(r => r.name);
     expect(order.indexOf('language_zh_cn')).toBeLessThan(order.indexOf('language_en_us'));
     expect(order.indexOf('language_en_us')).toBeLessThan(order.indexOf('currency_cny'));
 

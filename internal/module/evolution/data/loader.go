@@ -216,13 +216,13 @@ func validateRecordModule(rules *moduleRules, filePath string, recordIndex int, 
 	}
 	info, ok := rules.ModuleInfo[moduleName]
 	if !ok {
-		return &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeModuleNotFound, FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, ExternalID: strings.TrimSpace(rec.ExternalID), Model: strings.TrimSpace(rec.Model), Message: "record.module not found in registry"}
+		return &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeModuleNotFound, FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, Name: strings.TrimSpace(rec.Name), Model: strings.TrimSpace(rec.Model), Message: "record.module not found in registry"}
 	}
 	if strings.TrimSpace(info.Application) != rules.OwnerApp {
-		return &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeModuleCrossApplication, FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, ExternalID: strings.TrimSpace(rec.ExternalID), Model: strings.TrimSpace(rec.Model), Message: "record.module belongs to a different application"}
+		return &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeModuleCrossApplication, FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, Name: strings.TrimSpace(rec.Name), Model: strings.TrimSpace(rec.Model), Message: "record.module belongs to a different application"}
 	}
 	if _, ok := rules.Allowed[moduleName]; !ok {
-		return &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeModuleNotInDependencyChain, FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, ExternalID: strings.TrimSpace(rec.ExternalID), Model: strings.TrimSpace(rec.Model), Message: "record.module is outside owner dependency closure"}
+		return &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeModuleNotInDependencyChain, FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, Name: strings.TrimSpace(rec.Name), Model: strings.TrimSpace(rec.Model), Message: "record.module is outside owner dependency closure"}
 	}
 	return nil
 }
@@ -239,11 +239,11 @@ type batchRecord struct {
 }
 
 type record struct {
-	Module     string         `json:"module"`
-	ExternalID string         `json:"external_id"`
-	Model      string         `json:"model"`
-	NoUpdate   *bool          `json:"noupdate,omitempty"`
-	Values     map[string]any `json:"values"`
+	Module   string         `json:"module"`
+	Name     string         `json:"name"`
+	Model    string         `json:"model"`
+	NoUpdate *bool          `json:"noupdate,omitempty"`
+	Values   map[string]any `json:"values"`
 }
 
 // refQuerySpecKind identifies the type of reference query in data file values.
@@ -260,7 +260,7 @@ const (
 // refQuerySpec is the unified representation of a reference query.
 type refQuerySpec struct {
 	Kind       refQuerySpecKind
-	Ref        string     // for ref kind: "module.external_id"
+	Ref        string     // for ref kind: "module.name"
 	RefBy      refBySpec  // for refBy kind
 	Search     searchSpec // for search kind
 	ModelRef   string     // for modelRef kind: "app.Model"
@@ -305,11 +305,11 @@ const (
 	LoadErrorCodeModuleNotFound             = "module_not_found"
 	LoadErrorCodeModuleCrossApplication     = "module_cross_application"
 	LoadErrorCodeModuleNotInDependencyChain = "module_not_in_dependency_chain"
-	LoadErrorCodeMissingExternalID          = "missing_external_id"
+	LoadErrorCodeMissingName                = "missing_name"
 	LoadErrorCodeMissingModel               = "missing_model"
 	LoadErrorCodeInvalidModel               = "invalid_model"
 	LoadErrorCodeMissingValues              = "missing_values"
-	LoadErrorCodeDuplicateExternalIDInInput = "duplicate_external_id_in_input"
+	LoadErrorCodeDuplicateNameInInput       = "duplicate_name_in_input"
 	LoadErrorCodeInvalidRef                 = "invalid_ref"
 	LoadErrorCodeRefSelfCycle               = "ref_self_cycle"
 	LoadErrorCodeRefNotFound                = "ref_not_found"
@@ -337,7 +337,7 @@ type LoadError struct {
 	FilePath    string
 	RecordIndex int
 	Module      string
-	ExternalID  string
+	Name        string
 	Model       string
 	FieldPath   string
 	Ref         string
@@ -362,8 +362,8 @@ func (e *LoadError) Error() string {
 	if e.RecordIndex >= 0 {
 		parts = append(parts, "recordIndex="+strconv.Itoa(e.RecordIndex))
 	}
-	if strings.TrimSpace(e.Module) != "" || strings.TrimSpace(e.ExternalID) != "" {
-		parts = append(parts, "external_id="+strings.TrimSpace(e.Module)+"."+strings.TrimSpace(e.ExternalID))
+	if strings.TrimSpace(e.Module) != "" || strings.TrimSpace(e.Name) != "" {
+		parts = append(parts, "name="+strings.TrimSpace(e.Module)+"."+strings.TrimSpace(e.Name))
 	}
 	if strings.TrimSpace(e.Model) != "" {
 		parts = append(parts, "model="+strings.TrimSpace(e.Model))
@@ -405,7 +405,7 @@ func wrapLoadError(err error, filePath string, recordIndex int, rec record, mess
 		FilePath:    filePath,
 		RecordIndex: recordIndex,
 		Module:      strings.TrimSpace(rec.Module),
-		ExternalID:  strings.TrimSpace(rec.ExternalID),
+		Name:        strings.TrimSpace(rec.Name),
 		Model:       strings.TrimSpace(rec.Model),
 		Message:     message,
 		Cause:       err,
@@ -426,7 +426,7 @@ func wrapLoadErrorWithCode(err error, filePath string, recordIndex int, rec reco
 		FilePath:    filePath,
 		RecordIndex: recordIndex,
 		Module:      strings.TrimSpace(rec.Module),
-		ExternalID:  strings.TrimSpace(rec.ExternalID),
+		Name:        strings.TrimSpace(rec.Name),
 		Model:       strings.TrimSpace(rec.Model),
 		Message:     message,
 		Cause:       err,
@@ -441,7 +441,7 @@ func newRefLoadError(kind LoadErrorKind, code string, filePath string, recordInd
 		FilePath:    filePath,
 		RecordIndex: recordIndex,
 		Module:      strings.TrimSpace(rec.Module),
-		ExternalID:  strings.TrimSpace(rec.ExternalID),
+		Name:        strings.TrimSpace(rec.Name),
 		Model:       strings.TrimSpace(rec.Model),
 		FieldPath:   fieldPath,
 		Ref:         ref,
@@ -620,26 +620,26 @@ func (l *Loader) planBatchRecordOrder(tx *gorm.DB, owner *meta.Module, records [
 			return nil, err
 		}
 		moduleName := strings.TrimSpace(rec.Module)
-		externalID := strings.TrimSpace(rec.ExternalID)
-		if externalID == "" {
-			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingExternalID, FilePath: br.FilePath, RecordIndex: br.RecordIndex, Module: moduleName, Message: "missing external_id"}
+		localName := strings.TrimSpace(rec.Name)
+		if localName == "" {
+			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingName, FilePath: br.FilePath, RecordIndex: br.RecordIndex, Module: moduleName, Message: "missing name"}
 		}
 		modelFull := strings.TrimSpace(rec.Model)
 		if modelFull == "" {
-			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingModel, FilePath: br.FilePath, RecordIndex: br.RecordIndex, Module: moduleName, ExternalID: externalID, Message: "missing model"}
+			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingModel, FilePath: br.FilePath, RecordIndex: br.RecordIndex, Module: moduleName, Name: localName, Message: "missing model"}
 		}
 		if rec.Values == nil {
-			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingValues, FilePath: br.FilePath, RecordIndex: br.RecordIndex, Module: moduleName, ExternalID: externalID, Model: modelFull, Message: "missing values"}
+			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingValues, FilePath: br.FilePath, RecordIndex: br.RecordIndex, Module: moduleName, Name: localName, Model: modelFull, Message: "missing values"}
 		}
 
-		key := moduleName + "." + externalID
+		key := moduleName + "." + localName
 		if prevIdx, ok := indexByKey[key]; ok {
 			prev := records[prevIdx]
 			prevFile := prev.FileRel
 			if strings.TrimSpace(prevFile) == "" {
 				prevFile = filepath.Base(prev.FilePath)
 			}
-			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeDuplicateExternalIDInInput, FilePath: br.FilePath, RecordIndex: br.RecordIndex, Module: moduleName, ExternalID: externalID, Model: modelFull, Message: "duplicate external_id in input (first at file=" + prevFile + ", recordIndex=" + strconv.Itoa(prev.RecordIndex) + ")"}
+			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeDuplicateNameInInput, FilePath: br.FilePath, RecordIndex: br.RecordIndex, Module: moduleName, Name: localName, Model: modelFull, Message: "duplicate name in input (first at file=" + prevFile + ", recordIndex=" + strconv.Itoa(prev.RecordIndex) + ")"}
 		}
 		indexByKey[key] = idx
 	}
@@ -654,14 +654,14 @@ func (l *Loader) planBatchRecordOrder(tx *gorm.DB, owner *meta.Module, records [
 		rec := br.Rec
 		occ := collectRefOccurrences(rec.Values)
 		for _, o := range occ {
-			mod, externalID, err := splitRef(o.Ref)
+			mod, localName, err := splitRef(o.Ref)
 			if err != nil {
-				return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeInvalidRef, FilePath: br.FilePath, RecordIndex: br.RecordIndex, Module: strings.TrimSpace(rec.Module), ExternalID: strings.TrimSpace(rec.ExternalID), Model: strings.TrimSpace(rec.Model), FieldPath: o.FieldPath, Ref: o.Ref, Message: "invalid ref", Cause: err}
+				return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeInvalidRef, FilePath: br.FilePath, RecordIndex: br.RecordIndex, Module: strings.TrimSpace(rec.Module), Name: strings.TrimSpace(rec.Name), Model: strings.TrimSpace(rec.Model), FieldPath: o.FieldPath, Ref: o.Ref, Message: "invalid ref", Cause: err}
 			}
-			key := mod + "." + externalID
+			key := mod + "." + localName
 			if targetIdx, ok := indexByKey[key]; ok {
 				if targetIdx == idx {
-					return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefSelfCycle, FilePath: br.FilePath, RecordIndex: br.RecordIndex, Module: strings.TrimSpace(rec.Module), ExternalID: strings.TrimSpace(rec.ExternalID), Model: strings.TrimSpace(rec.Model), FieldPath: o.FieldPath, Ref: o.Ref, Message: "ref points to itself (cycle)"}
+					return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefSelfCycle, FilePath: br.FilePath, RecordIndex: br.RecordIndex, Module: strings.TrimSpace(rec.Module), Name: strings.TrimSpace(rec.Name), Model: strings.TrimSpace(rec.Model), FieldPath: o.FieldPath, Ref: o.Ref, Message: "ref points to itself (cycle)"}
 				}
 				dep[idx] = append(dep[idx], targetIdx)
 				adj[targetIdx] = append(adj[targetIdx], idx)
@@ -677,7 +677,7 @@ func (l *Loader) planBatchRecordOrder(tx *gorm.DB, owner *meta.Module, records [
 				m = map[string]struct{}{}
 				neededByModule[mod] = m
 			}
-			m[externalID] = struct{}{}
+			m[localName] = struct{}{}
 		}
 	}
 
@@ -695,12 +695,12 @@ func (l *Loader) planBatchRecordOrder(tx *gorm.DB, owner *meta.Module, records [
 			}
 			sort.Strings(ids)
 			var rows []metadata.ModelData
-			if err := tx.Model(&metadata.ModelData{}).Select("external_id").Where("module = ? AND external_id IN ?", mod, ids).Find(&rows).Error; err != nil {
+			if err := tx.Model(&metadata.ModelData{}).Select("name").Where("module = ? AND name IN ?", mod, ids).Find(&rows).Error; err != nil {
 				return nil, xfmt.Errorf("lookup model_data for refs: %w", err)
 			}
 			m := map[string]struct{}{}
 			for _, r := range rows {
-				m[r.ExternalID] = struct{}{}
+				m[r.Name] = struct{}{}
 			}
 			existing[mod] = m
 		}
@@ -709,16 +709,16 @@ func (l *Loader) planBatchRecordOrder(tx *gorm.DB, owner *meta.Module, records [
 			rec := br.Rec
 			occ := collectRefOccurrences(rec.Values)
 			for _, o := range occ {
-				mod, externalID, err := splitRef(o.Ref)
+				mod, localName, err := splitRef(o.Ref)
 				if err != nil {
 					continue
 				}
-				key := mod + "." + externalID
+				key := mod + "." + localName
 				if _, ok := indexByKey[key]; ok {
 					continue
 				}
-				if _, ok := existing[mod][externalID]; !ok {
-					return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefNotFound, FilePath: br.FilePath, RecordIndex: br.RecordIndex, Module: strings.TrimSpace(rec.Module), ExternalID: strings.TrimSpace(rec.ExternalID), Model: strings.TrimSpace(rec.Model), FieldPath: o.FieldPath, Ref: o.Ref, Message: refNotFoundMessage(rules.OwnerName, o.Ref)}
+				if _, ok := existing[mod][localName]; !ok {
+					return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefNotFound, FilePath: br.FilePath, RecordIndex: br.RecordIndex, Module: strings.TrimSpace(rec.Module), Name: strings.TrimSpace(rec.Name), Model: strings.TrimSpace(rec.Model), FieldPath: o.FieldPath, Ref: o.Ref, Message: refNotFoundMessage(rules.OwnerName, o.Ref)}
 				}
 			}
 		}
@@ -740,7 +740,7 @@ func topoOrderOrCycleBatch(records []batchRecord, dep [][]int, adj [][]int, inde
 		if fileID == "" {
 			fileID = filepath.Base(br.FilePath)
 		}
-		return fileID + "/" + strconv.Itoa(br.RecordIndex) + "/" + strings.TrimSpace(rec.Module) + "." + strings.TrimSpace(rec.ExternalID)
+		return fileID + "/" + strconv.Itoa(br.RecordIndex) + "/" + strings.TrimSpace(rec.Module) + "." + strings.TrimSpace(rec.Name)
 	}
 	less := func(i, j int) bool { return keyOf(i) < keyOf(j) }
 
@@ -809,12 +809,12 @@ func topoOrderOrCycleBatch(records []batchRecord, dep [][]int, adj [][]int, inde
 		if fileID == "" {
 			fileID = filepath.Base(br.FilePath)
 		}
-		chain = append(chain, strings.TrimSpace(rec.Module)+"."+strings.TrimSpace(rec.ExternalID)+"(file="+fileID+",recordIndex="+strconv.Itoa(br.RecordIndex)+")")
+		chain = append(chain, strings.TrimSpace(rec.Module)+"."+strings.TrimSpace(rec.Name)+"(file="+fileID+",recordIndex="+strconv.Itoa(br.RecordIndex)+")")
 	}
 	msg := "circular ref detected: " + strings.Join(chain, " -> ")
 
 	first := records[cycle[0]]
-	le := &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefCycle, FilePath: first.FilePath, RecordIndex: first.RecordIndex, Module: strings.TrimSpace(first.Rec.Module), ExternalID: strings.TrimSpace(first.Rec.ExternalID), Model: strings.TrimSpace(first.Rec.Model), Message: msg}
+	le := &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefCycle, FilePath: first.FilePath, RecordIndex: first.RecordIndex, Module: strings.TrimSpace(first.Rec.Module), Name: strings.TrimSpace(first.Rec.Name), Model: strings.TrimSpace(first.Rec.Model), Message: msg}
 	for i := 0; i+1 < len(cycle); i++ {
 		ek := [2]int{cycle[i], cycle[i+1]}
 		if info, ok := edgeInfo[ek]; ok {
@@ -822,7 +822,7 @@ func topoOrderOrCycleBatch(records []batchRecord, dep [][]int, adj [][]int, inde
 			le.FilePath = br.FilePath
 			le.RecordIndex = br.RecordIndex
 			le.Module = strings.TrimSpace(br.Rec.Module)
-			le.ExternalID = strings.TrimSpace(br.Rec.ExternalID)
+			le.Name = strings.TrimSpace(br.Rec.Name)
 			le.Model = strings.TrimSpace(br.Rec.Model)
 			le.FieldPath = info.FieldPath
 			le.Ref = info.Ref
@@ -881,21 +881,21 @@ func (l *Loader) planRecordOrder(tx *gorm.DB, owner *meta.Module, filePath strin
 			return nil, err
 		}
 		moduleName := strings.TrimSpace(rec.Module)
-		externalID := strings.TrimSpace(rec.ExternalID)
-		if externalID == "" {
-			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingExternalID, FilePath: filePath, RecordIndex: idx, Module: moduleName, Message: "missing external_id"}
+		localName := strings.TrimSpace(rec.Name)
+		if localName == "" {
+			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingName, FilePath: filePath, RecordIndex: idx, Module: moduleName, Message: "missing name"}
 		}
 		modelFull := strings.TrimSpace(rec.Model)
 		if modelFull == "" {
-			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingModel, FilePath: filePath, RecordIndex: idx, Module: moduleName, ExternalID: externalID, Message: "missing model"}
+			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingModel, FilePath: filePath, RecordIndex: idx, Module: moduleName, Name: localName, Message: "missing model"}
 		}
 		if rec.Values == nil {
-			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingValues, FilePath: filePath, RecordIndex: idx, Module: moduleName, ExternalID: externalID, Model: modelFull, Message: "missing values"}
+			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingValues, FilePath: filePath, RecordIndex: idx, Module: moduleName, Name: localName, Model: modelFull, Message: "missing values"}
 		}
 
-		key := moduleName + "." + externalID
+		key := moduleName + "." + localName
 		if prevIdx, ok := indexByKey[key]; ok {
-			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeDuplicateExternalIDInInput, FilePath: filePath, RecordIndex: idx, Module: moduleName, ExternalID: externalID, Model: modelFull, Message: "duplicate external_id in input (first at recordIndex=" + strconv.Itoa(prevIdx) + ")"}
+			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeDuplicateNameInInput, FilePath: filePath, RecordIndex: idx, Module: moduleName, Name: localName, Model: modelFull, Message: "duplicate name in input (first at recordIndex=" + strconv.Itoa(prevIdx) + ")"}
 		}
 		indexByKey[key] = idx
 	}
@@ -913,14 +913,14 @@ func (l *Loader) planRecordOrder(tx *gorm.DB, owner *meta.Module, filePath strin
 	for idx, rec := range records {
 		occ := collectRefOccurrences(rec.Values)
 		for _, o := range occ {
-			mod, externalID, err := splitRef(o.Ref)
+			mod, localName, err := splitRef(o.Ref)
 			if err != nil {
-				return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeInvalidRef, FilePath: filePath, RecordIndex: idx, Module: strings.TrimSpace(rec.Module), ExternalID: strings.TrimSpace(rec.ExternalID), Model: strings.TrimSpace(rec.Model), FieldPath: o.FieldPath, Ref: o.Ref, Message: "invalid ref", Cause: err}
+				return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeInvalidRef, FilePath: filePath, RecordIndex: idx, Module: strings.TrimSpace(rec.Module), Name: strings.TrimSpace(rec.Name), Model: strings.TrimSpace(rec.Model), FieldPath: o.FieldPath, Ref: o.Ref, Message: "invalid ref", Cause: err}
 			}
-			key := mod + "." + externalID
+			key := mod + "." + localName
 			if targetIdx, ok := indexByKey[key]; ok {
 				if targetIdx == idx {
-					return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefSelfCycle, FilePath: filePath, RecordIndex: idx, Module: strings.TrimSpace(rec.Module), ExternalID: strings.TrimSpace(rec.ExternalID), Model: strings.TrimSpace(rec.Model), FieldPath: o.FieldPath, Ref: o.Ref, Message: "ref points to itself (cycle)"}
+					return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefSelfCycle, FilePath: filePath, RecordIndex: idx, Module: strings.TrimSpace(rec.Module), Name: strings.TrimSpace(rec.Name), Model: strings.TrimSpace(rec.Model), FieldPath: o.FieldPath, Ref: o.Ref, Message: "ref points to itself (cycle)"}
 				}
 				// Internal ref within the same file: record idx depends on targetIdx.
 				dep[idx] = append(dep[idx], targetIdx)
@@ -937,7 +937,7 @@ func (l *Loader) planRecordOrder(tx *gorm.DB, owner *meta.Module, filePath strin
 				m = map[string]struct{}{}
 				neededByModule[mod] = m
 			}
-			m[externalID] = struct{}{}
+			m[localName] = struct{}{}
 		}
 	}
 
@@ -963,12 +963,12 @@ func (l *Loader) planRecordOrder(tx *gorm.DB, owner *meta.Module, filePath strin
 		}
 		sort.Strings(ids)
 		var rows []metadata.ModelData
-		if err := tx.Model(&metadata.ModelData{}).Select("external_id").Where("module = ? AND external_id IN ?", mod, ids).Find(&rows).Error; err != nil {
+		if err := tx.Model(&metadata.ModelData{}).Select("name").Where("module = ? AND name IN ?", mod, ids).Find(&rows).Error; err != nil {
 			return nil, xfmt.Errorf("lookup model_data for refs: %w", err)
 		}
 		m := map[string]struct{}{}
 		for _, r := range rows {
-			m[r.ExternalID] = struct{}{}
+			m[r.Name] = struct{}{}
 		}
 		existing[mod] = m
 	}
@@ -977,16 +977,16 @@ func (l *Loader) planRecordOrder(tx *gorm.DB, owner *meta.Module, filePath strin
 	for idx, rec := range records {
 		occ := collectRefOccurrences(rec.Values)
 		for _, o := range occ {
-			mod, externalID, err := splitRef(o.Ref)
+			mod, localName, err := splitRef(o.Ref)
 			if err != nil {
 				continue
 			}
-			key := mod + "." + externalID
+			key := mod + "." + localName
 			if _, ok := indexByKey[key]; ok {
 				continue
 			}
-			if _, ok := existing[mod][externalID]; !ok {
-				return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefNotFound, FilePath: filePath, RecordIndex: idx, Module: strings.TrimSpace(rec.Module), ExternalID: strings.TrimSpace(rec.ExternalID), Model: strings.TrimSpace(rec.Model), FieldPath: o.FieldPath, Ref: o.Ref, Message: refNotFoundMessage(rules.OwnerName, o.Ref)}
+			if _, ok := existing[mod][localName]; !ok {
+				return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefNotFound, FilePath: filePath, RecordIndex: idx, Module: strings.TrimSpace(rec.Module), Name: strings.TrimSpace(rec.Name), Model: strings.TrimSpace(rec.Model), FieldPath: o.FieldPath, Ref: o.Ref, Message: refNotFoundMessage(rules.OwnerName, o.Ref)}
 			}
 		}
 	}
@@ -1030,11 +1030,11 @@ func topoOrderOrCycle(records []record, dep [][]int, adj [][]int, indeg []int, e
 	chain := make([]string, 0, len(cycle))
 	for _, idx := range cycle {
 		rec := records[idx]
-		chain = append(chain, strings.TrimSpace(rec.Module)+"."+strings.TrimSpace(rec.ExternalID)+"(recordIndex="+strconv.Itoa(idx)+")")
+		chain = append(chain, strings.TrimSpace(rec.Module)+"."+strings.TrimSpace(rec.Name)+"(recordIndex="+strconv.Itoa(idx)+")")
 	}
 	msg := "circular ref detected: " + strings.Join(chain, " -> ")
 
-	le := &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefCycle, FilePath: filePath, RecordIndex: cycle[0], Module: strings.TrimSpace(records[cycle[0]].Module), ExternalID: strings.TrimSpace(records[cycle[0]].ExternalID), Model: strings.TrimSpace(records[cycle[0]].Model), Message: msg}
+	le := &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefCycle, FilePath: filePath, RecordIndex: cycle[0], Module: strings.TrimSpace(records[cycle[0]].Module), Name: strings.TrimSpace(records[cycle[0]].Name), Model: strings.TrimSpace(records[cycle[0]].Model), Message: msg}
 	// Attach a concrete edge (field/ref) from within the cycle when available.
 	// This makes the error more actionable and more stable across internal changes.
 	for i := 0; i+1 < len(cycle); i++ {
@@ -1042,7 +1042,7 @@ func topoOrderOrCycle(records []record, dep [][]int, adj [][]int, indeg []int, e
 		if info, ok := edgeInfo[ek]; ok {
 			le.RecordIndex = cycle[i]
 			le.Module = strings.TrimSpace(records[cycle[i]].Module)
-			le.ExternalID = strings.TrimSpace(records[cycle[i]].ExternalID)
+			le.Name = strings.TrimSpace(records[cycle[i]].Name)
 			le.Model = strings.TrimSpace(records[cycle[i]].Model)
 			le.FieldPath = info.FieldPath
 			le.Ref = info.Ref
@@ -1152,25 +1152,25 @@ func (l *Loader) applyRecord(tx *gorm.DB, filePath string, recordIndex int, rec 
 	if moduleName == "" {
 		return &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingModule, FilePath: filePath, RecordIndex: recordIndex, Message: "missing module"}
 	}
-	externalID := strings.TrimSpace(rec.ExternalID)
-	if externalID == "" {
-		return &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingExternalID, FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, Message: "missing external_id"}
+	localName := strings.TrimSpace(rec.Name)
+	if localName == "" {
+		return &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingName, FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, Message: "missing name"}
 	}
 	modelFull := strings.TrimSpace(rec.Model)
 	if modelFull == "" {
-		return &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingModel, FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, ExternalID: externalID, Message: "missing model"}
+		return &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingModel, FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, Name: localName, Message: "missing model"}
 	}
 
 	app, modelName, err := splitModel(modelFull)
 	if err != nil {
-		return &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeInvalidModel, FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, ExternalID: externalID, Model: modelFull, Message: "invalid model", Cause: err}
+		return &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeInvalidModel, FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, Name: localName, Model: modelFull, Message: "invalid model", Cause: err}
 	}
 	model := &meta.Model{}
 	if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
 		return wrapLoadErrorWithCode(xfmt.Errorf("resolve model %s: %w", modelFull, err), filePath, recordIndex, rec, LoadErrorKindDB, LoadErrorCodeDBResolveModel, "resolve model")
 	}
 	if strings.TrimSpace(model.ModelTable) == "" {
-		return &LoadError{Kind: LoadErrorKindDB, Code: LoadErrorCodeDBModelTableEmpty, FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, ExternalID: externalID, Model: modelFull, Message: "model has empty model_table"}
+		return &LoadError{Kind: LoadErrorKindDB, Code: LoadErrorCodeDBModelTableEmpty, FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, Name: localName, Model: modelFull, Message: "model has empty model_table"}
 	}
 	tableName := model.ModelTable
 
@@ -1185,7 +1185,7 @@ func (l *Loader) applyRecord(tx *gorm.DB, filePath string, recordIndex int, rec 
 	}
 
 	mapping := &metadata.ModelData{}
-	err = tx.Where("module = ? AND external_id = ?", moduleName, externalID).First(mapping).Error
+	err = tx.Where("module = ? AND name = ?", moduleName, localName).First(mapping).Error
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return wrapLoadErrorWithCode(xfmt.Errorf("lookup model_data: %w", err), filePath, recordIndex, rec, LoadErrorKindDB, LoadErrorCodeDBLookupModelData, "lookup model_data")
@@ -1200,7 +1200,7 @@ func (l *Loader) applyRecord(tx *gorm.DB, filePath string, recordIndex int, rec 
 			return wrapLoadErrorWithCode(xfmt.Errorf("insert into %s: %w", tableName, err), filePath, recordIndex, rec, LoadErrorKindDB, LoadErrorCodeDBInsertRecord, "insert record")
 		}
 		mapping.Module = moduleName
-		mapping.ExternalID = externalID
+		mapping.Name = localName
 		mapping.Model = modelFull
 		mapping.ResID = resID
 		mapping.NoUpdate = noUpdate
@@ -1275,7 +1275,7 @@ func (l *Loader) resolveAndMapValues(tx *gorm.DB, filePath string, recordIndex i
 				FilePath:    filePath,
 				RecordIndex: recordIndex,
 				Module:      strings.TrimSpace(rec.Module),
-				ExternalID:  strings.TrimSpace(rec.ExternalID),
+				Name:        strings.TrimSpace(rec.Name),
 				Model:       strings.TrimSpace(rec.Model),
 				FieldPath:   "values." + fieldName,
 				Message:     "failed to normalize seed value",
@@ -1415,12 +1415,12 @@ func (l *Loader) resolveRefBy(tx *gorm.DB, modelFull string, field string, value
 }
 
 func (l *Loader) resolveRef(tx *gorm.DB, ref string) (string, error) {
-	mod, externalID, err := splitRef(ref)
+	mod, localName, err := splitRef(ref)
 	if err != nil {
 		return "", err
 	}
 	mapping := &metadata.ModelData{}
-	if err := tx.Where("module = ? AND external_id = ?", mod, externalID).First(mapping).Error; err != nil {
+	if err := tx.Where("module = ? AND name = ?", mod, localName).First(mapping).Error; err != nil {
 		return "", xfmt.Errorf("resolve ref %s: %w", ref, err)
 	}
 	return mapping.ResID, nil
@@ -1429,14 +1429,14 @@ func (l *Loader) resolveRef(tx *gorm.DB, ref string) (string, error) {
 func splitRef(s string) (string, string, error) {
 	parts := strings.SplitN(s, ".", 2)
 	if len(parts) != 2 {
-		return "", "", xfmt.Errorf("invalid ref %q (expected module.external_id)", s)
+		return "", "", xfmt.Errorf("invalid ref %q (expected module.name)", s)
 	}
 	mod := strings.TrimSpace(parts[0])
-	externalID := strings.TrimSpace(parts[1])
-	if mod == "" || externalID == "" {
-		return "", "", xfmt.Errorf("invalid ref %q (empty module or external_id)", s)
+	localName := strings.TrimSpace(parts[1])
+	if mod == "" || localName == "" {
+		return "", "", xfmt.Errorf("invalid ref %q (empty module or name)", s)
 	}
-	return mod, externalID, nil
+	return mod, localName, nil
 }
 
 func refNotFoundMessage(ownerModule string, ref string) string {
@@ -1478,7 +1478,7 @@ func parseRefQuerySpec(v any) (refQuerySpec, bool, error) {
 		return refQuerySpec{}, false, nil
 	}
 
-	// ref: "module.external_id"
+	// ref: "module.name"
 	if raw, ok := m["ref"]; ok {
 		s, ok := raw.(string)
 		if !ok {

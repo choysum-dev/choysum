@@ -2,7 +2,7 @@
   "records": [
     {
       "module": "auth",
-      "external_id": "e2e_company_child",
+      "name": "e2e_company_child",
       "model": "base.Company",
       "values": {
         "Name": "Child Company",
@@ -16,7 +16,7 @@
     },
     {
       "module": "auth",
-      "external_id": "e2e_admin_user",
+      "name": "e2e_admin_user",
       "model": "auth.User",
       "values": {
         "Username": "e2e-admin",
@@ -31,7 +31,7 @@
     },
     {
       "module": "auth",
-      "external_id": "e2e_role_base_user",
+      "name": "e2e_role_base_user",
       "model": "auth.Role",
       "values": {
         "Name": "E2E Base User",
@@ -43,7 +43,7 @@
     },
     {
       "module": "auth",
-      "external_id": "e2e_role_sys_admin",
+      "name": "e2e_role_sys_admin",
       "model": "auth.Role",
       "values": {
         "Name": "E2E System Admin",
@@ -55,7 +55,7 @@
     },
     {
       "module": "auth",
-      "external_id": "e2e_rui_sys_admin_global_allow",
+      "name": "e2e_rui_sys_admin_global_allow",
       "model": "auth.RoleUiResource",
       "values": {
         "RoleId": { "ref": "auth.e2e_role_sys_admin" },
@@ -66,7 +66,7 @@
     },
     {
       "module": "auth",
-      "external_id": "e2e_rma_sys_admin_global_allow",
+      "name": "e2e_rma_sys_admin_global_allow",
       "model": "auth.RoleMethodAccess",
       "values": {
         "RoleId": { "ref": "auth.e2e_role_sys_admin" },
@@ -78,7 +78,7 @@
     },
     {
       "module": "auth",
-      "external_id": "e2e_rrr_sys_admin_global_grant_all",
+      "name": "e2e_rrr_sys_admin_global_grant_all",
       "model": "auth.RoleRecordRule",
       "values": {
         "RoleId": { "ref": "auth.e2e_role_sys_admin" },
@@ -94,7 +94,7 @@
     },
     {
       "module": "auth",
-      "external_id": "e2e_rfr_sys_admin_global_allow_rw",
+      "name": "e2e_rfr_sys_admin_global_allow_rw",
       "model": "auth.RoleFieldRule",
       "values": {
         "RoleId": { "ref": "auth.e2e_role_sys_admin" },
@@ -107,7 +107,7 @@
     },
     {
       "module": "auth",
-      "external_id": "e2e_admin_userrole_base_user_main",
+      "name": "e2e_admin_userrole_base_user_main",
       "model": "auth.UserRole",
       "values": {
         "UserId": { "ref": "auth.e2e_admin_user" },
@@ -117,7 +117,7 @@
     },
     {
       "module": "auth",
-      "external_id": "e2e_admin_userrole_sys_admin",
+      "name": "e2e_admin_userrole_sys_admin",
       "model": "auth.UserRole",
       "values": {
         "UserId": { "ref": "auth.e2e_admin_user" },

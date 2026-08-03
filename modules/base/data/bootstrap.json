@@ -2,7 +2,7 @@
   "records": [
     {
       "module": "base",
-      "external_id": "language_zh_cn",
+      "name": "language_zh_cn",
       "model": "base.Language",
       "values": {
         "Name": {
@@ -24,7 +24,7 @@
     },
     {
       "module": "base",
-      "external_id": "language_en_us",
+      "name": "language_en_us",
       "model": "base.Language",
       "values": {
         "Name": {
@@ -46,7 +46,7 @@
     },
     {
       "module": "base",
-      "external_id": "currency_cny",
+      "name": "currency_cny",
       "model": "base.Currency",
       "values": {
         "Name": {
@@ -62,7 +62,7 @@
     },
     {
       "module": "base",
-      "external_id": "company_main",
+      "name": "company_main",
       "model": "base.Company",
       "values": {
         "Name": {
