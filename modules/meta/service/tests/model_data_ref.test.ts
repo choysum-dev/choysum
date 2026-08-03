@@ -67,7 +67,9 @@ test('MetaModelData.Ref returns ResId; RefOrNull returns null; missing Ref raise
 });
 
 test('createServiceByModel(meta.MetaModelData) dials Ref after factory registration', async () => {
-  // Mirrors generated service-client shape: factory returns an object exposing model services.
+  // Production registers meta.MetaModelData via generated service clients
+  // (internal/module/artifact/generate/serviceclient.ts.tpl → home/generated/service/meta/service.ts).
+  // Unit tests stub a thin factory so Ref can run against a mocked Search without gRPC.
   registerServiceFactory('meta.MetaModelData', () => ({
     Ref: (xmlId: string) => MetaModelData.Ref(xmlId),
     RefOrNull: (xmlId: string) => MetaModelData.RefOrNull(xmlId),
