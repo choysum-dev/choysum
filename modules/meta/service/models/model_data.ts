@@ -7,7 +7,7 @@ import { _lt, _t } from '../i18n';
 
 const ERROR_DOMAIN = 'meta.MetaModelData';
 
-/** Parse a full xml_id / external id key `module.name` (exactly one `.`). */
+/** Parse a full xml_id / external id key `module.name` (first `.` splits module vs name; aligns with host splitRef). */
 export function parseMetaModelDataKey(xmlId: string): { module: string; name: string } {
   const raw = String(xmlId ?? '').trim();
   if (!raw) {
@@ -17,16 +17,16 @@ export function parseMetaModelDataKey(xmlId: string): { module: string; name: st
       message: _t('external id key must not be empty', { scope: 'service/models/model_data' }),
     }).withGrpcCode(GrpcCode.InvalidArgument);
   }
-  const parts = raw.split('.');
-  if (parts.length !== 2) {
+  const dot = raw.indexOf('.');
+  if (dot < 0) {
     throw new ChoysumError({
       domain: ERROR_DOMAIN,
       code: 'EXTERNAL_ID_INVALID_KEY',
-      message: _t('external id key must be module.name (exactly one dot)', { scope: 'service/models/model_data' }),
+      message: _t('external id key must be module.name', { scope: 'service/models/model_data' }),
     }).withGrpcCode(GrpcCode.InvalidArgument);
   }
-  const module = parts[0].trim();
-  const name = parts[1].trim();
+  const module = raw.slice(0, dot).trim();
+  const name = raw.slice(dot + 1).trim();
   if (!module || !name) {
     throw new ChoysumError({
       domain: ERROR_DOMAIN,

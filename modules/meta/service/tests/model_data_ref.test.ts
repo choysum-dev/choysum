@@ -17,8 +17,10 @@ async function expectRejects(promise: Promise<unknown>, code: string) {
 
 test('parseMetaModelDataKey accepts module.name and rejects invalid keys', () => {
   expect(parseMetaModelDataKey(' base.company_main ')).toEqual({ module: 'base', name: 'company_main' });
+  // Align with host splitRef (SplitN('.', 2)): dots after the first belong to name.
+  expect(parseMetaModelDataKey('foo.bar.baz')).toEqual({ module: 'foo', name: 'bar.baz' });
 
-  for (const bad of ['', '   ', 'a', 'a.b.c', '.', 'a.', '.b', ' . ', 'mod. ']) {
+  for (const bad of ['', '   ', 'a', '.', 'a.', '.b', ' . ', 'mod. ']) {
     try {
       parseMetaModelDataKey(bad);
       expect(false).toBe(true);
@@ -30,7 +32,10 @@ test('parseMetaModelDataKey accepts module.name and rejects invalid keys', () =>
 });
 
 test('MetaModelData.Ref returns ResId; RefOrNull returns null; missing Ref raises', async () => {
-  const store = [{ Module: 'base', Name: 'company_main', Model: 'base.Company', ResId: 'res-company-1' }];
+  const store = [
+    { Module: 'base', Name: 'company_main', Model: 'base.Company', ResId: 'res-company-1' },
+    { Module: 'foo', Name: 'bar.baz', Model: 'foo.Thing', ResId: 'res-foo-1' },
+  ];
   const originalSearch = MetaModelData.Search;
   MetaModelData.Search = (async (condition: any) => {
     const and = condition?.And || [];
@@ -41,12 +46,14 @@ test('MetaModelData.Ref returns ResId; RefOrNull returns null; missing Ref raise
 
   try {
     expect(await MetaModelData.Ref('base.company_main')).toBe('res-company-1');
+    expect(await MetaModelData.Ref('foo.bar.baz')).toBe('res-foo-1');
     expect(await MetaModelData.RefOrNull('base.company_main')).toBe('res-company-1');
     expect(await MetaModelData.RefOrNull('base.missing')).toBeNull();
     await expectRejects(MetaModelData.Ref('base.missing'), 'EXTERNAL_ID_NOT_FOUND');
     await expectRejects(MetaModelData.Ref(''), 'EXTERNAL_ID_INVALID_KEY');
-    await expectRejects(MetaModelData.Ref('a.b.c'), 'EXTERNAL_ID_INVALID_KEY');
+    await expectRejects(MetaModelData.Ref('solo'), 'EXTERNAL_ID_INVALID_KEY');
     await expectRejects(MetaModelData.RefOrNull('solo'), 'EXTERNAL_ID_INVALID_KEY');
+    expect(await MetaModelData.RefOrNull('base.missing.extra')).toBeNull();
   } finally {
     MetaModelData.Search = originalSearch;
   }
