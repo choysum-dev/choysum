@@ -106,10 +106,12 @@ func (m *moduleUninstaller) cleanModels() error {
 		return xfmt.Errorf("error deleting module dependency relations: %w", err)
 	}
 
-	// Soft-delete MetaModelData registry rows for this module name (xml_id mappings).
-	// Do not cascade-delete the business seed rows those mappings point at (V1).
+	// Physically delete MetaModelData registry rows for this module name (xml_id mappings).
+	// Soft-delete would leave (module, name) unique-index collisions that block reinstall
+	// (loader scoped First misses soft-deleted rows, then Create fails). Do not cascade-
+	// delete the business seed rows those mappings point at (V1).
 	if db.Migrator().HasTable((&metadata.ModelData{}).TableName()) {
-		if err := db.Where("module = ?", m.module.Name).Delete(&metadata.ModelData{}).Error; err != nil {
+		if err := db.Unscoped().Where("module = ?", m.module.Name).Delete(&metadata.ModelData{}).Error; err != nil {
 			return xfmt.Errorf("error deleting meta model data mappings: %w", err)
 		}
 	}

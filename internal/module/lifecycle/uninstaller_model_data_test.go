@@ -77,12 +77,12 @@ func TestModuleUninstallerCleanModelsClearsMetaModelDataOnly(t *testing.T) {
 		t.Fatalf("other mapping ResID = %q, want %q", other.ResID, otherResID)
 	}
 
-	var softDeleted metadata.ModelData
-	if err := db.Unscoped().Where("module = ? AND name = ?", seed.module.Name, "seed_row").First(&softDeleted).Error; err != nil {
-		t.Fatalf("soft-deleted mapping lookup: %v", err)
+	var hardDeleted int64
+	if err := db.Unscoped().Model(&metadata.ModelData{}).Where("module = ? AND name = ?", seed.module.Name, "seed_row").Count(&hardDeleted).Error; err != nil {
+		t.Fatalf("count hard-deleted mapping: %v", err)
 	}
-	if !softDeleted.DeletedAt.Valid {
-		t.Fatalf("expected demo mapping soft-deleted, got DeletedAt=%v", softDeleted.DeletedAt)
+	if hardDeleted != 0 {
+		t.Fatalf("demo mapping remaining (incl. soft-deleted) = %d, want 0 (hard delete)", hardDeleted)
 	}
 
 	var businessName string
@@ -91,6 +91,13 @@ func TestModuleUninstallerCleanModelsClearsMetaModelDataOnly(t *testing.T) {
 	}
 	if businessName != "kept" {
 		t.Fatalf("business row name = %q, want kept (must not cascade-delete seed rows)", businessName)
+	}
+
+	// Reinstall must be able to recreate the same (module, name) key after cleanup.
+	if err := db.Create(&metadata.ModelData{
+		Module: seed.module.Name, Name: "seed_row", Model: "demo.Thing", ResID: xid.New().String(),
+	}).Error; err != nil {
+		t.Fatalf("recreate mapping after uninstall cleanup: %v", err)
 	}
 }
 
@@ -106,7 +113,15 @@ func TestModuleUninstallerCleanModelsMetaModelDataError(t *testing.T) {
 	}).Error; err != nil {
 		t.Fatalf("create mapping: %v", err)
 	}
-	blockMetaSoftDeletes(t, db, "meta_model_data")
+	stmt := `
+CREATE TRIGGER block_meta_model_data_delete
+BEFORE DELETE ON meta_model_data
+BEGIN
+  SELECT RAISE(ABORT, 'hard delete blocked');
+END`
+	if err := db.Exec(stmt).Error; err != nil {
+		t.Fatalf("create hard delete trigger: %v", err)
+	}
 
 	uninstaller := &moduleUninstaller{
 		runtimeScope:  runtimeScope,
