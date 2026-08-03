@@ -59,7 +59,7 @@ export default class MetaModelData extends BaseModel {
   @Field({ type: 'varchar', size: 20, notNull: true, index: true, string: _lt('Resource Id', { scope: 'meta.model.MetaModelData.fields' }) })
   ResId!: string;
 
-  @Field({ type: 'boolean', notNull: true, default: () => false, string: _lt('No Update', { scope: 'meta.model.MetaModelData.fields' }) })
+  @Field({ type: 'boolean', notNull: true, default: false, string: _lt('No Update', { scope: 'meta.model.MetaModelData.fields' }) })
   NoUpdate!: boolean;
 
   /** Resolve `module.name` → business row id. Missing mapping raises. */
