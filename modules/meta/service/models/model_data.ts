@@ -53,6 +53,9 @@ export default class MetaModelData extends BaseModel {
   @Field({ type: 'varchar', size: 255, notNull: true, index: true, string: _lt('Name', { scope: 'meta.model.MetaModelData.fields' }) })
   Name!: string;
 
+  @Field({ type: 'varchar', size: 255, notNull: true, index: true, string: _lt('Application', { scope: 'meta.model.MetaModelData.fields' }) })
+  Application!: string;
+
   @Field({ type: 'varchar', size: 255, notNull: true, index: true, string: _lt('Model', { scope: 'meta.model.MetaModelData.fields' }) })
   Model!: string;
 

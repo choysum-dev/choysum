@@ -50,7 +50,7 @@ func TestNormalizeTranslatedSeedValue_ScalarAndMap(t *testing.T) {
 		t.Fatalf("create field: %v", err)
 	}
 
-	rec := record{Module: "demo", Name: "item_1", Model: "demo.Item"}
+	rec := record{Module: "demo", Name: "item_1", Application: "demo", Model: "Item"}
 
 	got, err := l.normalizeTranslatedSeedValue(db, "/tmp/data.json", 0, rec, model, "Name", "Hello", nil)
 	if err != nil {
@@ -133,7 +133,7 @@ func TestNormalizeTranslatedSeedValue_ScalarAndMap(t *testing.T) {
 		t.Fatalf("create Language.Name field: %v", err)
 	}
 
-	langRec := record{Module: "base", Name: "language_fr", Model: "base.Language"}
+	langRec := record{Module: "base", Name: "language_fr", Application: "base", Model: "Language"}
 	got, err = l.normalizeTranslatedSeedValue(db, "/tmp/data.json", 0, langRec, langModel, "Name", map[string]any{
 		"fr_FR": "Français",
 	}, map[string]any{"Code": "fr_FR", "Name": map[string]any{"fr_FR": "Français"}})

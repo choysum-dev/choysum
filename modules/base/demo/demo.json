@@ -3,7 +3,8 @@
     {
       "module": "base",
       "name": "company_demo",
-      "model": "base.Company",
+      "application": "base",
+      "model": "Company",
       "noupdate": true,
       "values": {
         "Name": {

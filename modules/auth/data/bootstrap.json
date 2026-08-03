@@ -3,7 +3,8 @@
     {
       "module": "auth",
       "name": "role_base_user",
-      "model": "auth.Role",
+      "application": "auth",
+      "model": "Role",
       "values": {
         "Name": "Base User",
         "Code": "base.user",
@@ -18,7 +19,8 @@
     {
       "module": "auth",
       "name": "role_sys_admin",
-      "model": "auth.Role",
+      "application": "auth",
+      "model": "Role",
       "values": {
         "Name": "System Admin",
         "Code": "sys.admin",
@@ -33,7 +35,8 @@
     {
       "module": "auth",
       "name": "role_terminology_editor",
-      "model": "auth.Role",
+      "application": "auth",
+      "model": "Role",
       "values": {
         "Name": "Terminology Editor",
         "Code": "terminology.editor",
@@ -48,31 +51,46 @@
     {
       "module": "auth",
       "name": "user_admin",
-      "model": "auth.User",
+      "application": "auth",
+      "model": "User",
       "values": {
         "Username": "admin",
         "Email": "admin@local",
         "PasswordHash": "$2a$10$1W2W5vpmtQA42QRS/Pq62.vYW/suwcx7t9ZtKuQ7c1iNcGYsGocCm",
         "IsActive": true,
-        "CompanyId": { "ref": "base.company_main" },
-        "CompanyIds": [{ "ref": "base.company_main" }]
+        "CompanyId": {
+          "ref": "base.company_main"
+        },
+        "CompanyIds": [
+          {
+            "ref": "base.company_main"
+          }
+        ]
       }
     },
     {
       "module": "auth",
       "name": "userrole_admin_sys_admin",
-      "model": "auth.UserRole",
+      "application": "auth",
+      "model": "UserRole",
       "values": {
-        "UserId": { "ref": "auth.user_admin" },
-        "RoleId": { "ref": "auth.role_sys_admin" }
+        "UserId": {
+          "ref": "auth.user_admin"
+        },
+        "RoleId": {
+          "ref": "auth.role_sys_admin"
+        }
       }
     },
     {
       "module": "auth",
       "name": "rma_sys_admin_global_allow",
-      "model": "auth.RoleMethodAccess",
+      "application": "auth",
+      "model": "RoleMethodAccess",
       "values": {
-        "RoleId": { "ref": "auth.role_sys_admin" },
+        "RoleId": {
+          "ref": "auth.role_sys_admin"
+        },
         "MetaApplicationId": null,
         "MetaModelId": null,
         "MetaServiceId": null,
@@ -82,97 +100,134 @@
     {
       "module": "auth",
       "name": "rma_terminology_editor_auth_search_terms",
-      "model": "auth.RoleMethodAccess",
+      "application": "auth",
+      "model": "RoleMethodAccess",
       "values": {
-        "RoleId": { "ref": "auth.role_terminology_editor" },
+        "RoleId": {
+          "ref": "auth.role_terminology_editor"
+        },
         "MetaApplicationId": null,
         "MetaModelId": null,
-        "MetaServiceId": { "serviceRef": "auth.I18n/SearchTerms" },
+        "MetaServiceId": {
+          "serviceRef": "auth.I18n/SearchTerms"
+        },
         "Mode": "allow"
       }
     },
     {
       "module": "auth",
       "name": "rma_terminology_editor_auth_update_term",
-      "model": "auth.RoleMethodAccess",
+      "application": "auth",
+      "model": "RoleMethodAccess",
       "values": {
-        "RoleId": { "ref": "auth.role_terminology_editor" },
+        "RoleId": {
+          "ref": "auth.role_terminology_editor"
+        },
         "MetaApplicationId": null,
         "MetaModelId": null,
-        "MetaServiceId": { "serviceRef": "auth.I18n/UpdateTerm" },
+        "MetaServiceId": {
+          "serviceRef": "auth.I18n/UpdateTerm"
+        },
         "Mode": "allow"
       }
     },
     {
       "module": "auth",
       "name": "rma_base_user_browse",
-      "model": "auth.RoleMethodAccess",
+      "application": "auth",
+      "model": "RoleMethodAccess",
       "values": {
-        "RoleId": { "ref": "auth.role_base_user" },
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
         "MetaApplicationId": null,
         "MetaModelId": null,
-        "MetaServiceId": { "serviceRef": "auth.User/Browse" },
+        "MetaServiceId": {
+          "serviceRef": "auth.User/Browse"
+        },
         "Mode": "allow"
       }
     },
     {
       "module": "auth",
       "name": "rma_base_user_get_permission_state",
-      "model": "auth.RoleMethodAccess",
+      "application": "auth",
+      "model": "RoleMethodAccess",
       "values": {
-        "RoleId": { "ref": "auth.role_base_user" },
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
         "MetaApplicationId": null,
         "MetaModelId": null,
-        "MetaServiceId": { "serviceRef": "auth.User/GetPermissionState" },
+        "MetaServiceId": {
+          "serviceRef": "auth.User/GetPermissionState"
+        },
         "Mode": "allow"
       }
     },
     {
       "module": "auth",
       "name": "rma_base_user_switch_company_scope",
-      "model": "auth.RoleMethodAccess",
+      "application": "auth",
+      "model": "RoleMethodAccess",
       "values": {
-        "RoleId": { "ref": "auth.role_base_user" },
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
         "MetaApplicationId": null,
         "MetaModelId": null,
-        "MetaServiceId": { "serviceRef": "auth.User/SwitchCompanyScope" },
+        "MetaServiceId": {
+          "serviceRef": "auth.User/SwitchCompanyScope"
+        },
         "Mode": "allow"
       }
     },
     {
       "module": "auth",
       "name": "rma_base_user_company_search",
-      "model": "auth.RoleMethodAccess",
+      "application": "auth",
+      "model": "RoleMethodAccess",
       "values": {
-        "RoleId": { "ref": "auth.role_base_user" },
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
         "MetaApplicationId": null,
         "MetaModelId": null,
-        "MetaServiceId": { "serviceRef": "base.Company/Search" },
+        "MetaServiceId": {
+          "serviceRef": "base.Company/Search"
+        },
         "Mode": "allow"
       }
     },
     {
       "module": "auth",
       "name": "rui_sys_admin_global_allow",
-      "model": "auth.RoleUiResource",
+      "application": "auth",
+      "model": "RoleUiResource",
       "values": {
-        "RoleId": { "ref": "auth.role_sys_admin" },
+        "RoleId": {
+          "ref": "auth.role_sys_admin"
+        },
         "MetaApplicationId": null,
         "MetaUiResourceId": null,
         "Mode": "allow"
       }
     },
-
     {
       "module": "auth",
       "name": "rrr_sys_admin_global_grant_all",
-      "model": "auth.RoleRecordRule",
+      "application": "auth",
+      "model": "RoleRecordRule",
       "values": {
-        "RoleId": { "ref": "auth.role_sys_admin" },
+        "RoleId": {
+          "ref": "auth.role_sys_admin"
+        },
         "Kind": "grant",
         "MetaApplicationId": null,
         "MetaModelId": null,
-        "Condition": { "And": [] },
+        "Condition": {
+          "And": []
+        },
         "PermRead": true,
         "PermWrite": true,
         "PermCreate": true,
@@ -182,9 +237,12 @@
     {
       "module": "auth",
       "name": "rfr_sys_admin_global_allow_rw",
-      "model": "auth.RoleFieldRule",
+      "application": "auth",
+      "model": "RoleFieldRule",
       "values": {
-        "RoleId": { "ref": "auth.role_sys_admin" },
+        "RoleId": {
+          "ref": "auth.role_sys_admin"
+        },
         "MetaApplicationId": null,
         "MetaModelId": null,
         "MetaFieldId": null,
@@ -195,17 +253,32 @@
     {
       "module": "auth",
       "name": "rfr_sys_admin_auth_user_password_hash_deny",
-      "model": "auth.RoleFieldRule",
+      "application": "auth",
+      "model": "RoleFieldRule",
       "values": {
-        "RoleId": { "ref": "auth.role_sys_admin" },
+        "RoleId": {
+          "ref": "auth.role_sys_admin"
+        },
         "MetaApplicationId": null,
-        "MetaModelId": { "modelRef": "auth.User" },
+        "MetaModelId": {
+          "modelRef": "auth.User"
+        },
         "MetaFieldId": {
           "search": {
             "model": "meta.MetaField",
             "domain": [
-              ["Name", "=", "PasswordHash"],
-              ["ModelId", "=", { "modelRef": "auth.User" }]
+              [
+                "Name",
+                "=",
+                "PasswordHash"
+              ],
+              [
+                "ModelId",
+                "=",
+                {
+                  "modelRef": "auth.User"
+                }
+              ]
             ],
             "limit": 1
           }
@@ -214,17 +287,27 @@
         "PermWrite": "deny"
       }
     },
-
     {
       "module": "auth",
       "name": "rrr_base_user_auth_app_read",
-      "model": "auth.RoleRecordRule",
+      "application": "auth",
+      "model": "RoleRecordRule",
       "values": {
-        "RoleId": { "ref": "auth.role_base_user" },
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
         "Kind": "grant",
-        "MetaApplicationId": { "refBy": { "model": "meta.MetaApplication", "field": "Name", "value": "auth" } },
+        "MetaApplicationId": {
+          "refBy": {
+            "model": "meta.MetaApplication",
+            "field": "Name",
+            "value": "auth"
+          }
+        },
         "MetaModelId": null,
-        "Condition": { "And": [] },
+        "Condition": {
+          "And": []
+        },
         "PermRead": true,
         "PermWrite": false,
         "PermCreate": false,
@@ -234,13 +317,24 @@
     {
       "module": "auth",
       "name": "rrr_base_user_base_app_read",
-      "model": "auth.RoleRecordRule",
+      "application": "auth",
+      "model": "RoleRecordRule",
       "values": {
-        "RoleId": { "ref": "auth.role_base_user" },
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
         "Kind": "grant",
-        "MetaApplicationId": { "refBy": { "model": "meta.MetaApplication", "field": "Name", "value": "base" } },
+        "MetaApplicationId": {
+          "refBy": {
+            "model": "meta.MetaApplication",
+            "field": "Name",
+            "value": "base"
+          }
+        },
         "MetaModelId": null,
-        "Condition": { "And": [] },
+        "Condition": {
+          "And": []
+        },
         "PermRead": true,
         "PermWrite": false,
         "PermCreate": false,
@@ -250,13 +344,24 @@
     {
       "module": "auth",
       "name": "rrr_base_user_meta_app_read",
-      "model": "auth.RoleRecordRule",
+      "application": "auth",
+      "model": "RoleRecordRule",
       "values": {
-        "RoleId": { "ref": "auth.role_base_user" },
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
         "Kind": "grant",
-        "MetaApplicationId": { "refBy": { "model": "meta.MetaApplication", "field": "Name", "value": "meta" } },
+        "MetaApplicationId": {
+          "refBy": {
+            "model": "meta.MetaApplication",
+            "field": "Name",
+            "value": "meta"
+          }
+        },
         "MetaModelId": null,
-        "Condition": { "And": [] },
+        "Condition": {
+          "And": []
+        },
         "PermRead": true,
         "PermWrite": false,
         "PermCreate": false,
@@ -266,13 +371,26 @@
     {
       "module": "auth",
       "name": "rrr_base_user_auth_user_rw",
-      "model": "auth.RoleRecordRule",
+      "application": "auth",
+      "model": "RoleRecordRule",
       "values": {
-        "RoleId": { "ref": "auth.role_base_user" },
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
         "Kind": "grant",
         "MetaApplicationId": null,
-        "MetaModelId": { "modelRef": "auth.User" },
-        "Condition": { "And": [["Id", "=", "$userId"]] },
+        "MetaModelId": {
+          "modelRef": "auth.User"
+        },
+        "Condition": {
+          "And": [
+            [
+              "Id",
+              "=",
+              "$userId"
+            ]
+          ]
+        },
         "PermRead": true,
         "PermWrite": true,
         "PermCreate": false,
@@ -282,13 +400,26 @@
     {
       "module": "auth",
       "name": "rrr_base_user_auth_token_rwc",
-      "model": "auth.RoleRecordRule",
+      "application": "auth",
+      "model": "RoleRecordRule",
       "values": {
-        "RoleId": { "ref": "auth.role_base_user" },
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
         "Kind": "grant",
         "MetaApplicationId": null,
-        "MetaModelId": { "modelRef": "auth.Token" },
-        "Condition": { "And": [["UserId", "=", "$userId"]] },
+        "MetaModelId": {
+          "modelRef": "auth.Token"
+        },
+        "Condition": {
+          "And": [
+            [
+              "UserId",
+              "=",
+              "$userId"
+            ]
+          ]
+        },
         "PermRead": true,
         "PermWrite": true,
         "PermCreate": true,
@@ -298,27 +429,48 @@
     {
       "module": "auth",
       "name": "rrr_base_user_auth_session_rwc",
-      "model": "auth.RoleRecordRule",
+      "application": "auth",
+      "model": "RoleRecordRule",
       "values": {
-        "RoleId": { "ref": "auth.role_base_user" },
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
         "Kind": "grant",
         "MetaApplicationId": null,
-        "MetaModelId": { "modelRef": "auth.Session" },
-        "Condition": { "And": [["UserId", "=", "$userId"]] },
+        "MetaModelId": {
+          "modelRef": "auth.Session"
+        },
+        "Condition": {
+          "And": [
+            [
+              "UserId",
+              "=",
+              "$userId"
+            ]
+          ]
+        },
         "PermRead": true,
         "PermWrite": true,
         "PermCreate": true,
         "PermDelete": false
       }
     },
-
     {
       "module": "auth",
       "name": "rfr_base_user_auth_app_read",
-      "model": "auth.RoleFieldRule",
+      "application": "auth",
+      "model": "RoleFieldRule",
       "values": {
-        "RoleId": { "ref": "auth.role_base_user" },
-        "MetaApplicationId": { "refBy": { "model": "meta.MetaApplication", "field": "Name", "value": "auth" } },
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "MetaApplicationId": {
+          "refBy": {
+            "model": "meta.MetaApplication",
+            "field": "Name",
+            "value": "auth"
+          }
+        },
         "MetaModelId": null,
         "MetaFieldId": null,
         "PermRead": "allow",
@@ -328,10 +480,19 @@
     {
       "module": "auth",
       "name": "rfr_base_user_base_app_read",
-      "model": "auth.RoleFieldRule",
+      "application": "auth",
+      "model": "RoleFieldRule",
       "values": {
-        "RoleId": { "ref": "auth.role_base_user" },
-        "MetaApplicationId": { "refBy": { "model": "meta.MetaApplication", "field": "Name", "value": "base" } },
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "MetaApplicationId": {
+          "refBy": {
+            "model": "meta.MetaApplication",
+            "field": "Name",
+            "value": "base"
+          }
+        },
         "MetaModelId": null,
         "MetaFieldId": null,
         "PermRead": "allow",
@@ -341,10 +502,19 @@
     {
       "module": "auth",
       "name": "rfr_base_user_meta_app_read",
-      "model": "auth.RoleFieldRule",
+      "application": "auth",
+      "model": "RoleFieldRule",
       "values": {
-        "RoleId": { "ref": "auth.role_base_user" },
-        "MetaApplicationId": { "refBy": { "model": "meta.MetaApplication", "field": "Name", "value": "meta" } },
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "MetaApplicationId": {
+          "refBy": {
+            "model": "meta.MetaApplication",
+            "field": "Name",
+            "value": "meta"
+          }
+        },
         "MetaModelId": null,
         "MetaFieldId": null,
         "PermRead": "allow",
@@ -354,11 +524,16 @@
     {
       "module": "auth",
       "name": "rfr_base_user_auth_user_rw",
-      "model": "auth.RoleFieldRule",
+      "application": "auth",
+      "model": "RoleFieldRule",
       "values": {
-        "RoleId": { "ref": "auth.role_base_user" },
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
         "MetaApplicationId": null,
-        "MetaModelId": { "modelRef": "auth.User" },
+        "MetaModelId": {
+          "modelRef": "auth.User"
+        },
         "MetaFieldId": null,
         "PermRead": "allow",
         "PermWrite": null
@@ -367,17 +542,32 @@
     {
       "module": "auth",
       "name": "rfr_base_user_auth_user_password_hash_deny",
-      "model": "auth.RoleFieldRule",
+      "application": "auth",
+      "model": "RoleFieldRule",
       "values": {
-        "RoleId": { "ref": "auth.role_base_user" },
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
         "MetaApplicationId": null,
-        "MetaModelId": { "modelRef": "auth.User" },
+        "MetaModelId": {
+          "modelRef": "auth.User"
+        },
         "MetaFieldId": {
           "search": {
             "model": "meta.MetaField",
             "domain": [
-              ["Name", "=", "PasswordHash"],
-              ["ModelId", "=", { "modelRef": "auth.User" }]
+              [
+                "Name",
+                "=",
+                "PasswordHash"
+              ],
+              [
+                "ModelId",
+                "=",
+                {
+                  "modelRef": "auth.User"
+                }
+              ]
             ],
             "limit": 1
           }
@@ -389,17 +579,32 @@
     {
       "module": "auth",
       "name": "rfr_base_user_auth_user_first_name_w",
-      "model": "auth.RoleFieldRule",
+      "application": "auth",
+      "model": "RoleFieldRule",
       "values": {
-        "RoleId": { "ref": "auth.role_base_user" },
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
         "MetaApplicationId": null,
-        "MetaModelId": { "modelRef": "auth.User" },
+        "MetaModelId": {
+          "modelRef": "auth.User"
+        },
         "MetaFieldId": {
           "search": {
             "model": "meta.MetaField",
             "domain": [
-              ["Name", "=", "FirstName"],
-              ["ModelId", "=", { "modelRef": "auth.User" }]
+              [
+                "Name",
+                "=",
+                "FirstName"
+              ],
+              [
+                "ModelId",
+                "=",
+                {
+                  "modelRef": "auth.User"
+                }
+              ]
             ],
             "limit": 1
           }
@@ -411,17 +616,32 @@
     {
       "module": "auth",
       "name": "rfr_base_user_auth_user_last_name_w",
-      "model": "auth.RoleFieldRule",
+      "application": "auth",
+      "model": "RoleFieldRule",
       "values": {
-        "RoleId": { "ref": "auth.role_base_user" },
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
         "MetaApplicationId": null,
-        "MetaModelId": { "modelRef": "auth.User" },
+        "MetaModelId": {
+          "modelRef": "auth.User"
+        },
         "MetaFieldId": {
           "search": {
             "model": "meta.MetaField",
             "domain": [
-              ["Name", "=", "LastName"],
-              ["ModelId", "=", { "modelRef": "auth.User" }]
+              [
+                "Name",
+                "=",
+                "LastName"
+              ],
+              [
+                "ModelId",
+                "=",
+                {
+                  "modelRef": "auth.User"
+                }
+              ]
             ],
             "limit": 1
           }
@@ -433,17 +653,32 @@
     {
       "module": "auth",
       "name": "rfr_base_user_auth_user_email_w",
-      "model": "auth.RoleFieldRule",
+      "application": "auth",
+      "model": "RoleFieldRule",
       "values": {
-        "RoleId": { "ref": "auth.role_base_user" },
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
         "MetaApplicationId": null,
-        "MetaModelId": { "modelRef": "auth.User" },
+        "MetaModelId": {
+          "modelRef": "auth.User"
+        },
         "MetaFieldId": {
           "search": {
             "model": "meta.MetaField",
             "domain": [
-              ["Name", "=", "Email"],
-              ["ModelId", "=", { "modelRef": "auth.User" }]
+              [
+                "Name",
+                "=",
+                "Email"
+              ],
+              [
+                "ModelId",
+                "=",
+                {
+                  "modelRef": "auth.User"
+                }
+              ]
             ],
             "limit": 1
           }
@@ -455,17 +690,32 @@
     {
       "module": "auth",
       "name": "rfr_base_user_auth_user_phone_w",
-      "model": "auth.RoleFieldRule",
+      "application": "auth",
+      "model": "RoleFieldRule",
       "values": {
-        "RoleId": { "ref": "auth.role_base_user" },
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
         "MetaApplicationId": null,
-        "MetaModelId": { "modelRef": "auth.User" },
+        "MetaModelId": {
+          "modelRef": "auth.User"
+        },
         "MetaFieldId": {
           "search": {
             "model": "meta.MetaField",
             "domain": [
-              ["Name", "=", "Phone"],
-              ["ModelId", "=", { "modelRef": "auth.User" }]
+              [
+                "Name",
+                "=",
+                "Phone"
+              ],
+              [
+                "ModelId",
+                "=",
+                {
+                  "modelRef": "auth.User"
+                }
+              ]
             ],
             "limit": 1
           }
@@ -477,17 +727,32 @@
     {
       "module": "auth",
       "name": "rfr_base_user_auth_user_avatar_w",
-      "model": "auth.RoleFieldRule",
+      "application": "auth",
+      "model": "RoleFieldRule",
       "values": {
-        "RoleId": { "ref": "auth.role_base_user" },
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
         "MetaApplicationId": null,
-        "MetaModelId": { "modelRef": "auth.User" },
+        "MetaModelId": {
+          "modelRef": "auth.User"
+        },
         "MetaFieldId": {
           "search": {
             "model": "meta.MetaField",
             "domain": [
-              ["Name", "=", "Avatar"],
-              ["ModelId", "=", { "modelRef": "auth.User" }]
+              [
+                "Name",
+                "=",
+                "Avatar"
+              ],
+              [
+                "ModelId",
+                "=",
+                {
+                  "modelRef": "auth.User"
+                }
+              ]
             ],
             "limit": 1
           }
@@ -499,17 +764,32 @@
     {
       "module": "auth",
       "name": "rfr_base_user_auth_user_language_w",
-      "model": "auth.RoleFieldRule",
+      "application": "auth",
+      "model": "RoleFieldRule",
       "values": {
-        "RoleId": { "ref": "auth.role_base_user" },
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
         "MetaApplicationId": null,
-        "MetaModelId": { "modelRef": "auth.User" },
+        "MetaModelId": {
+          "modelRef": "auth.User"
+        },
         "MetaFieldId": {
           "search": {
             "model": "meta.MetaField",
             "domain": [
-              ["Name", "=", "Language"],
-              ["ModelId", "=", { "modelRef": "auth.User" }]
+              [
+                "Name",
+                "=",
+                "Language"
+              ],
+              [
+                "ModelId",
+                "=",
+                {
+                  "modelRef": "auth.User"
+                }
+              ]
             ],
             "limit": 1
           }
@@ -521,17 +801,32 @@
     {
       "module": "auth",
       "name": "rfr_base_user_auth_user_timezone_w",
-      "model": "auth.RoleFieldRule",
+      "application": "auth",
+      "model": "RoleFieldRule",
       "values": {
-        "RoleId": { "ref": "auth.role_base_user" },
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
         "MetaApplicationId": null,
-        "MetaModelId": { "modelRef": "auth.User" },
+        "MetaModelId": {
+          "modelRef": "auth.User"
+        },
         "MetaFieldId": {
           "search": {
             "model": "meta.MetaField",
             "domain": [
-              ["Name", "=", "Timezone"],
-              ["ModelId", "=", { "modelRef": "auth.User" }]
+              [
+                "Name",
+                "=",
+                "Timezone"
+              ],
+              [
+                "ModelId",
+                "=",
+                {
+                  "modelRef": "auth.User"
+                }
+              ]
             ],
             "limit": 1
           }
@@ -543,17 +838,32 @@
     {
       "module": "auth",
       "name": "rfr_base_user_auth_user_preferences_w",
-      "model": "auth.RoleFieldRule",
+      "application": "auth",
+      "model": "RoleFieldRule",
       "values": {
-        "RoleId": { "ref": "auth.role_base_user" },
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
         "MetaApplicationId": null,
-        "MetaModelId": { "modelRef": "auth.User" },
+        "MetaModelId": {
+          "modelRef": "auth.User"
+        },
         "MetaFieldId": {
           "search": {
             "model": "meta.MetaField",
             "domain": [
-              ["Name", "=", "Preferences"],
-              ["ModelId", "=", { "modelRef": "auth.User" }]
+              [
+                "Name",
+                "=",
+                "Preferences"
+              ],
+              [
+                "ModelId",
+                "=",
+                {
+                  "modelRef": "auth.User"
+                }
+              ]
             ],
             "limit": 1
           }
@@ -565,11 +875,16 @@
     {
       "module": "auth",
       "name": "rfr_base_user_auth_token_rw",
-      "model": "auth.RoleFieldRule",
+      "application": "auth",
+      "model": "RoleFieldRule",
       "values": {
-        "RoleId": { "ref": "auth.role_base_user" },
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
         "MetaApplicationId": null,
-        "MetaModelId": { "modelRef": "auth.Token" },
+        "MetaModelId": {
+          "modelRef": "auth.Token"
+        },
         "MetaFieldId": null,
         "PermRead": "allow",
         "PermWrite": "allow"
@@ -578,11 +893,16 @@
     {
       "module": "auth",
       "name": "rfr_base_user_auth_session_rw",
-      "model": "auth.RoleFieldRule",
+      "application": "auth",
+      "model": "RoleFieldRule",
       "values": {
-        "RoleId": { "ref": "auth.role_base_user" },
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
         "MetaApplicationId": null,
-        "MetaModelId": { "modelRef": "auth.Session" },
+        "MetaModelId": {
+          "modelRef": "auth.Session"
+        },
         "MetaFieldId": null,
         "PermRead": "allow",
         "PermWrite": "allow"

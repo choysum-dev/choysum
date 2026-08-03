@@ -3,7 +3,8 @@
     {
       "module": "meta",
       "name": "e2e_partner_module",
-      "model": "meta.MetaModule",
+      "application": "meta",
+      "model": "MetaModule",
       "values": {
         "Name": "partner",
         "Status": "uninstalled",
