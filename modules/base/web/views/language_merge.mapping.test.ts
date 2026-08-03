@@ -17,7 +17,7 @@ describe('base language merge seeds and wiring (P0)', () => {
     expect(raw).not.toMatch(/base\.Locale|locale_default|DefaultLocaleId|LocaleId|language_zh[^_]|Code":\s*"zh"/);
 
     const byId = Object.fromEntries(data.records.map(r => [r.name, r]));
-    expect(byId.language_en_us?.model).toBe('base.Language');
+    expect(byId.language_en_us?.model).toBe('Language');
     expect(byId.language_en_us?.values.Code).toBe('en_US');
     expect(byId.language_en_us?.values.Grouping).toBe('[3,0]');
     expect(byId.language_en_us?.values.Name).toEqual({
@@ -25,7 +25,7 @@ describe('base language merge seeds and wiring (P0)', () => {
       zh_CN: '英语（美国）',
     });
 
-    expect(byId.language_zh_cn?.model).toBe('base.Language');
+    expect(byId.language_zh_cn?.model).toBe('Language');
     expect(byId.language_zh_cn?.values.Code).toBe('zh_CN');
     expect(byId.language_zh_cn?.values.Grouping).toBe('[3,0]');
     expect(byId.language_zh_cn?.values.DecimalSeparator).toBe('.');
@@ -49,10 +49,14 @@ describe('base language merge seeds and wiring (P0)', () => {
     expect(byId.company_main?.values).not.toHaveProperty('LocaleId');
   });
 
-  it('auth smoke fixture drops LocaleId and points at language_zh_cn', () => {
-    const raw = read('../../../auth/e2e/fixtures/smoke.json');
-    expect(raw).not.toMatch(/LocaleId|language_zh[^_]|locale_default/);
-    expect(raw).toMatch(/base\.language_zh_cn/);
+  it('auth smoke fixture drops LocaleId and uses Language code; company child keeps language_zh_cn ref', () => {
+    const smoke = read('../../../auth/e2e/fixtures/smoke.json');
+    expect(smoke).not.toMatch(/LocaleId|language_zh[^_]|locale_default/);
+    expect(smoke).toMatch(/"Language":\s*"zh_CN"/);
+
+    const companyChild = read('../../e2e/fixtures/company_child.json');
+    expect(companyChild).not.toMatch(/LocaleId|locale_default/);
+    expect(companyChild).toMatch(/base\.language_zh_cn/);
   });
 
   it('routes and menus have no Locale management surface', () => {

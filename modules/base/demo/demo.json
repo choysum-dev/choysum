@@ -1,9 +1,8 @@
 {
   "records": [
     {
-      "module": "base",
       "name": "company_demo",
-      "model": "base.Company",
+      "model": "Company",
       "noupdate": true,
       "values": {
         "Name": {

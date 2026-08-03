@@ -1,38 +1,31 @@
 {
   "records": [
     {
-      "module": "auth",
-      "name": "e2e_company_child",
-      "model": "base.Company",
-      "values": {
-        "Name": "Child Company",
-        "Code": "CHILD",
-        "Timezone": "Asia/Shanghai",
-        "CurrencyId": { "ref": "base.currency_cny" },
-        "IsActive": true,
-        "LanguageId": { "ref": "base.language_zh_cn" },
-        "ParentId": { "ref": "base.company_main" }
-      }
-    },
-    {
-      "module": "auth",
       "name": "e2e_admin_user",
-      "model": "auth.User",
+      "model": "User",
       "values": {
         "Username": "e2e-admin",
         "Email": "e2e-admin@local",
         "PasswordHash": "$2a$10$h2z0MfS.MK9MA1txpgdqT.IkvUyOXGrDeL4pMI65g7w6tQ/m0DQlS",
         "IsActive": true,
-        "CompanyId": { "ref": "base.company_main" },
-        "CompanyIds": [{ "ref": "base.company_main" }, { "ref": "auth.e2e_company_child" }],
+        "CompanyId": {
+          "ref": "base.company_main"
+        },
+        "CompanyIds": [
+          {
+            "ref": "base.company_main"
+          },
+          {
+            "ref": "base.e2e_company_child"
+          }
+        ],
         "Language": "zh_CN",
         "Timezone": "UTC"
       }
     },
     {
-      "module": "auth",
       "name": "e2e_role_base_user",
-      "model": "auth.Role",
+      "model": "Role",
       "values": {
         "Name": "E2E Base User",
         "Code": "e2e.base.user",
@@ -42,9 +35,8 @@
       }
     },
     {
-      "module": "auth",
       "name": "e2e_role_sys_admin",
-      "model": "auth.Role",
+      "model": "Role",
       "values": {
         "Name": "E2E System Admin",
         "Code": "e2e.sys.admin",
@@ -54,22 +46,24 @@
       }
     },
     {
-      "module": "auth",
       "name": "e2e_rui_sys_admin_global_allow",
-      "model": "auth.RoleUiResource",
+      "model": "RoleUiResource",
       "values": {
-        "RoleId": { "ref": "auth.e2e_role_sys_admin" },
+        "RoleId": {
+          "ref": "auth.e2e_role_sys_admin"
+        },
         "MetaApplicationId": null,
         "MetaUiResourceId": null,
         "Mode": "allow"
       }
     },
     {
-      "module": "auth",
       "name": "e2e_rma_sys_admin_global_allow",
-      "model": "auth.RoleMethodAccess",
+      "model": "RoleMethodAccess",
       "values": {
-        "RoleId": { "ref": "auth.e2e_role_sys_admin" },
+        "RoleId": {
+          "ref": "auth.e2e_role_sys_admin"
+        },
         "MetaApplicationId": null,
         "MetaModelId": null,
         "MetaServiceId": null,
@@ -77,15 +71,18 @@
       }
     },
     {
-      "module": "auth",
       "name": "e2e_rrr_sys_admin_global_grant_all",
-      "model": "auth.RoleRecordRule",
+      "model": "RoleRecordRule",
       "values": {
-        "RoleId": { "ref": "auth.e2e_role_sys_admin" },
+        "RoleId": {
+          "ref": "auth.e2e_role_sys_admin"
+        },
         "Kind": "grant",
         "MetaApplicationId": null,
         "MetaModelId": null,
-        "Condition": { "And": [] },
+        "Condition": {
+          "And": []
+        },
         "PermRead": true,
         "PermWrite": true,
         "PermCreate": true,
@@ -93,11 +90,12 @@
       }
     },
     {
-      "module": "auth",
       "name": "e2e_rfr_sys_admin_global_allow_rw",
-      "model": "auth.RoleFieldRule",
+      "model": "RoleFieldRule",
       "values": {
-        "RoleId": { "ref": "auth.e2e_role_sys_admin" },
+        "RoleId": {
+          "ref": "auth.e2e_role_sys_admin"
+        },
         "MetaApplicationId": null,
         "MetaModelId": null,
         "MetaFieldId": null,
@@ -106,22 +104,30 @@
       }
     },
     {
-      "module": "auth",
       "name": "e2e_admin_userrole_base_user_main",
-      "model": "auth.UserRole",
+      "model": "UserRole",
       "values": {
-        "UserId": { "ref": "auth.e2e_admin_user" },
-        "RoleId": { "ref": "auth.e2e_role_base_user" },
-        "CompanyId": { "ref": "base.company_main" }
+        "UserId": {
+          "ref": "auth.e2e_admin_user"
+        },
+        "RoleId": {
+          "ref": "auth.e2e_role_base_user"
+        },
+        "CompanyId": {
+          "ref": "base.company_main"
+        }
       }
     },
     {
-      "module": "auth",
       "name": "e2e_admin_userrole_sys_admin",
-      "model": "auth.UserRole",
+      "model": "UserRole",
       "values": {
-        "UserId": { "ref": "auth.e2e_admin_user" },
-        "RoleId": { "ref": "auth.e2e_role_sys_admin" }
+        "UserId": {
+          "ref": "auth.e2e_admin_user"
+        },
+        "RoleId": {
+          "ref": "auth.e2e_role_sys_admin"
+        }
       }
     }
   ]

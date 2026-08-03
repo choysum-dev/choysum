@@ -1,0 +1,23 @@
+{
+  "records": [
+    {
+      "name": "e2e_company_child",
+      "model": "Company",
+      "values": {
+        "Name": "Child Company",
+        "Code": "CHILD",
+        "Timezone": "Asia/Shanghai",
+        "CurrencyId": {
+          "ref": "base.currency_cny"
+        },
+        "IsActive": true,
+        "LanguageId": {
+          "ref": "base.language_zh_cn"
+        },
+        "ParentId": {
+          "ref": "base.company_main"
+        }
+      }
+    }
+  ]
+}

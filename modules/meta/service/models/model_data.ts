@@ -4,6 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { ChoysumError, GrpcCode } from '@/core/service/error';
 import { _lt, _t } from '../i18n';
+import MetaModel from './model';
 
 const ERROR_DOMAIN = 'meta.MetaModelData';
 
@@ -47,14 +48,17 @@ export function parseMetaModelDataKey(xmlId: string): { module: string; name: st
   orderBy: { field: 'Id', order: 'asc' },
 })
 export default class MetaModelData extends BaseModel {
+  @Field({ type: 'varchar', size: 255, notNull: true, index: true, string: _lt('Application', { scope: 'meta.model.MetaModelData.fields' }) })
+  Application!: string;
+
   @Field({ type: 'varchar', size: 255, notNull: true, index: true, string: _lt('Module', { scope: 'meta.model.MetaModelData.fields' }) })
   Module!: string;
 
   @Field({ type: 'varchar', size: 255, notNull: true, index: true, string: _lt('Name', { scope: 'meta.model.MetaModelData.fields' }) })
   Name!: string;
 
-  @Field({ type: 'varchar', size: 255, notNull: true, index: true, string: _lt('Model', { scope: 'meta.model.MetaModelData.fields' }) })
-  Model!: string;
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => MetaModel }, string: _lt('Model', { scope: 'meta.model.MetaModelData.fields' }) })
+  ModelId?: MetaModel;
 
   @Field({ type: 'varchar', size: 20, notNull: true, index: true, string: _lt('Resource Id', { scope: 'meta.model.MetaModelData.fields' }) })
   ResId!: string;

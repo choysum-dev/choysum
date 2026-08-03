@@ -209,20 +209,35 @@ func dependencyClosure(tx *gorm.DB, ownerID string, idToName map[string]string) 
 	return out, nil
 }
 
-func validateRecordModule(rules *moduleRules, filePath string, recordIndex int, rec record) error {
-	moduleName := strings.TrimSpace(rec.Module)
-	if moduleName == "" {
-		return &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingModule, FilePath: filePath, RecordIndex: recordIndex, Message: "missing module"}
+// normalizeRecordOwnership applies E12 defaults and ownership rules in place.
+// - Empty module → applying owner module; non-empty must equal owner (no foreign xml_id namespace).
+// - Empty application → owner's application; non-empty must equal owner app (no cross-app seeding).
+func normalizeRecordOwnership(rules *moduleRules, filePath string, recordIndex int, rec *record) error {
+	if rules == nil || rec == nil {
+		return xfmt.Errorf("nil module rules or record")
 	}
-	info, ok := rules.ModuleInfo[moduleName]
-	if !ok {
-		return &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeModuleNotFound, FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, Name: strings.TrimSpace(rec.Name), Model: strings.TrimSpace(rec.Model), Message: "record.module not found in registry"}
+	localName := strings.TrimSpace(rec.Name)
+	mod := strings.TrimSpace(rec.Module)
+	if mod == "" {
+		rec.Module = rules.OwnerName
+	} else if mod != rules.OwnerName {
+		return &LoadError{
+			Kind: LoadErrorKindValidation, Code: LoadErrorCodeModuleNotOwner,
+			FilePath: filePath, RecordIndex: recordIndex, Module: mod, Name: localName,
+			Application: strings.TrimSpace(rec.Application), Model: strings.TrimSpace(rec.Model),
+			Message: "record.module must equal applying module (or be omitted)",
+		}
 	}
-	if strings.TrimSpace(info.Application) != rules.OwnerApp {
-		return &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeModuleCrossApplication, FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, Name: strings.TrimSpace(rec.Name), Model: strings.TrimSpace(rec.Model), Message: "record.module belongs to a different application"}
-	}
-	if _, ok := rules.Allowed[moduleName]; !ok {
-		return &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeModuleNotInDependencyChain, FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, Name: strings.TrimSpace(rec.Name), Model: strings.TrimSpace(rec.Model), Message: "record.module is outside owner dependency closure"}
+	app := strings.TrimSpace(rec.Application)
+	if app == "" {
+		rec.Application = rules.OwnerApp
+	} else if app != rules.OwnerApp {
+		return &LoadError{
+			Kind: LoadErrorKindValidation, Code: LoadErrorCodeApplicationMismatch,
+			FilePath: filePath, RecordIndex: recordIndex, Module: strings.TrimSpace(rec.Module), Name: localName,
+			Application: app, Model: strings.TrimSpace(rec.Model),
+			Message: "record.application must equal applying module application (or be omitted); cross-app seeding is forbidden",
+		}
 	}
 	return nil
 }
@@ -239,11 +254,12 @@ type batchRecord struct {
 }
 
 type record struct {
-	Module   string         `json:"module"`
-	Name     string         `json:"name"`
-	Model    string         `json:"model"`
-	NoUpdate *bool          `json:"noupdate,omitempty"`
-	Values   map[string]any `json:"values"`
+	Module      string         `json:"module,omitempty"`
+	Name        string         `json:"name"`
+	Application string         `json:"application,omitempty"`
+	Model       string         `json:"model"` // short name (meta_model.name); not app.Model
+	NoUpdate    *bool          `json:"noupdate,omitempty"`
+	Values      map[string]any `json:"values"`
 }
 
 // refQuerySpecKind identifies the type of reference query in data file values.
@@ -306,8 +322,11 @@ const (
 	LoadErrorCodeModuleCrossApplication     = "module_cross_application"
 	LoadErrorCodeModuleNotInDependencyChain = "module_not_in_dependency_chain"
 	LoadErrorCodeMissingName                = "missing_name"
+	LoadErrorCodeMissingApplication         = "missing_application"
 	LoadErrorCodeMissingModel               = "missing_model"
 	LoadErrorCodeInvalidModel               = "invalid_model"
+	LoadErrorCodeModuleNotOwner             = "module_not_owner"
+	LoadErrorCodeApplicationMismatch        = "application_mismatch"
 	LoadErrorCodeMissingValues              = "missing_values"
 	LoadErrorCodeDuplicateNameInInput       = "duplicate_name_in_input"
 	LoadErrorCodeInvalidRef                 = "invalid_ref"
@@ -338,11 +357,57 @@ type LoadError struct {
 	RecordIndex int
 	Module      string
 	Name        string
-	Model       string
+	Application string
+	Model       string // short model name; Error() may render as application.model
 	FieldPath   string
 	Ref         string
 	Message     string
 	Cause       error
+}
+
+func loadErrorModelDisplay(application, model string) string {
+	app := strings.TrimSpace(application)
+	short := strings.TrimSpace(model)
+	switch {
+	case app != "" && short != "":
+		return app + "." + short
+	case short != "":
+		return short
+	default:
+		return app
+	}
+}
+
+// validateRecordTargetModel checks top-level application + short model (E11).
+// Rejects missing application, missing/empty model, and full-name forms in model (containing '.').
+func validateRecordTargetModel(filePath string, recordIndex int, rec record) (app string, modelName string, err error) {
+	moduleName := strings.TrimSpace(rec.Module)
+	localName := strings.TrimSpace(rec.Name)
+	app = strings.TrimSpace(rec.Application)
+	modelName = strings.TrimSpace(rec.Model)
+	if app == "" {
+		return "", "", &LoadError{
+			Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingApplication,
+			FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, Name: localName,
+			Model: modelName, Message: "missing application",
+		}
+	}
+	if modelName == "" {
+		return "", "", &LoadError{
+			Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingModel,
+			FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, Name: localName,
+			Application: app, Message: "missing model",
+		}
+	}
+	if strings.Contains(modelName, ".") {
+		return "", "", &LoadError{
+			Kind: LoadErrorKindValidation, Code: LoadErrorCodeInvalidModel,
+			FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, Name: localName,
+			Application: app, Model: modelName,
+			Message: "invalid model (expected short name, not app.Model)",
+		}
+	}
+	return app, modelName, nil
 }
 
 func (e *LoadError) Error() string {
@@ -365,8 +430,8 @@ func (e *LoadError) Error() string {
 	if strings.TrimSpace(e.Module) != "" || strings.TrimSpace(e.Name) != "" {
 		parts = append(parts, "name="+strings.TrimSpace(e.Module)+"."+strings.TrimSpace(e.Name))
 	}
-	if strings.TrimSpace(e.Model) != "" {
-		parts = append(parts, "model="+strings.TrimSpace(e.Model))
+	if disp := loadErrorModelDisplay(e.Application, e.Model); disp != "" {
+		parts = append(parts, "model="+disp)
 	}
 	if strings.TrimSpace(e.FieldPath) != "" {
 		parts = append(parts, "field="+strings.TrimSpace(e.FieldPath))
@@ -406,6 +471,7 @@ func wrapLoadError(err error, filePath string, recordIndex int, rec record, mess
 		RecordIndex: recordIndex,
 		Module:      strings.TrimSpace(rec.Module),
 		Name:        strings.TrimSpace(rec.Name),
+		Application: strings.TrimSpace(rec.Application),
 		Model:       strings.TrimSpace(rec.Model),
 		Message:     message,
 		Cause:       err,
@@ -427,6 +493,7 @@ func wrapLoadErrorWithCode(err error, filePath string, recordIndex int, rec reco
 		RecordIndex: recordIndex,
 		Module:      strings.TrimSpace(rec.Module),
 		Name:        strings.TrimSpace(rec.Name),
+		Application: strings.TrimSpace(rec.Application),
 		Model:       strings.TrimSpace(rec.Model),
 		Message:     message,
 		Cause:       err,
@@ -442,6 +509,7 @@ func newRefLoadError(kind LoadErrorKind, code string, filePath string, recordInd
 		RecordIndex: recordIndex,
 		Module:      strings.TrimSpace(rec.Module),
 		Name:        strings.TrimSpace(rec.Name),
+		Application: strings.TrimSpace(rec.Application),
 		Model:       strings.TrimSpace(rec.Model),
 		FieldPath:   fieldPath,
 		Ref:         ref,
@@ -614,22 +682,22 @@ func (l *Loader) planBatchRecordOrder(tx *gorm.DB, owner *meta.Module, records [
 	}
 
 	indexByKey := make(map[string]int, len(records))
-	for idx, br := range records {
-		rec := br.Rec
-		if err := validateRecordModule(rules, br.FilePath, br.RecordIndex, rec); err != nil {
+	for idx := range records {
+		if err := normalizeRecordOwnership(rules, records[idx].FilePath, records[idx].RecordIndex, &records[idx].Rec); err != nil {
 			return nil, err
 		}
+		rec := records[idx].Rec
 		moduleName := strings.TrimSpace(rec.Module)
 		localName := strings.TrimSpace(rec.Name)
 		if localName == "" {
-			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingName, FilePath: br.FilePath, RecordIndex: br.RecordIndex, Module: moduleName, Message: "missing name"}
+			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingName, FilePath: records[idx].FilePath, RecordIndex: records[idx].RecordIndex, Module: moduleName, Message: "missing name"}
 		}
-		modelFull := strings.TrimSpace(rec.Model)
-		if modelFull == "" {
-			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingModel, FilePath: br.FilePath, RecordIndex: br.RecordIndex, Module: moduleName, Name: localName, Message: "missing model"}
+		app, modelName, err := validateRecordTargetModel(records[idx].FilePath, records[idx].RecordIndex, rec)
+		if err != nil {
+			return nil, err
 		}
 		if rec.Values == nil {
-			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingValues, FilePath: br.FilePath, RecordIndex: br.RecordIndex, Module: moduleName, Name: localName, Model: modelFull, Message: "missing values"}
+			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingValues, FilePath: records[idx].FilePath, RecordIndex: records[idx].RecordIndex, Module: moduleName, Name: localName, Application: app, Model: modelName, Message: "missing values"}
 		}
 
 		key := moduleName + "." + localName
@@ -639,7 +707,7 @@ func (l *Loader) planBatchRecordOrder(tx *gorm.DB, owner *meta.Module, records [
 			if strings.TrimSpace(prevFile) == "" {
 				prevFile = filepath.Base(prev.FilePath)
 			}
-			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeDuplicateNameInInput, FilePath: br.FilePath, RecordIndex: br.RecordIndex, Module: moduleName, Name: localName, Model: modelFull, Message: "duplicate name in input (first at file=" + prevFile + ", recordIndex=" + strconv.Itoa(prev.RecordIndex) + ")"}
+			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeDuplicateNameInInput, FilePath: records[idx].FilePath, RecordIndex: records[idx].RecordIndex, Module: moduleName, Name: localName, Application: app, Model: modelName, Message: "duplicate name in input (first at file=" + prevFile + ", recordIndex=" + strconv.Itoa(prev.RecordIndex) + ")"}
 		}
 		indexByKey[key] = idx
 	}
@@ -656,12 +724,12 @@ func (l *Loader) planBatchRecordOrder(tx *gorm.DB, owner *meta.Module, records [
 		for _, o := range occ {
 			mod, localName, err := splitRef(o.Ref)
 			if err != nil {
-				return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeInvalidRef, FilePath: br.FilePath, RecordIndex: br.RecordIndex, Module: strings.TrimSpace(rec.Module), Name: strings.TrimSpace(rec.Name), Model: strings.TrimSpace(rec.Model), FieldPath: o.FieldPath, Ref: o.Ref, Message: "invalid ref", Cause: err}
+				return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeInvalidRef, FilePath: br.FilePath, RecordIndex: br.RecordIndex, Module: strings.TrimSpace(rec.Module), Name: strings.TrimSpace(rec.Name), Application: strings.TrimSpace(rec.Application), Model: strings.TrimSpace(rec.Model), FieldPath: o.FieldPath, Ref: o.Ref, Message: "invalid ref", Cause: err}
 			}
 			key := mod + "." + localName
 			if targetIdx, ok := indexByKey[key]; ok {
 				if targetIdx == idx {
-					return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefSelfCycle, FilePath: br.FilePath, RecordIndex: br.RecordIndex, Module: strings.TrimSpace(rec.Module), Name: strings.TrimSpace(rec.Name), Model: strings.TrimSpace(rec.Model), FieldPath: o.FieldPath, Ref: o.Ref, Message: "ref points to itself (cycle)"}
+					return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefSelfCycle, FilePath: br.FilePath, RecordIndex: br.RecordIndex, Module: strings.TrimSpace(rec.Module), Name: strings.TrimSpace(rec.Name), Application: strings.TrimSpace(rec.Application), Model: strings.TrimSpace(rec.Model), FieldPath: o.FieldPath, Ref: o.Ref, Message: "ref points to itself (cycle)"}
 				}
 				dep[idx] = append(dep[idx], targetIdx)
 				adj[targetIdx] = append(adj[targetIdx], idx)
@@ -718,7 +786,7 @@ func (l *Loader) planBatchRecordOrder(tx *gorm.DB, owner *meta.Module, records [
 					continue
 				}
 				if _, ok := existing[mod][localName]; !ok {
-					return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefNotFound, FilePath: br.FilePath, RecordIndex: br.RecordIndex, Module: strings.TrimSpace(rec.Module), Name: strings.TrimSpace(rec.Name), Model: strings.TrimSpace(rec.Model), FieldPath: o.FieldPath, Ref: o.Ref, Message: refNotFoundMessage(rules.OwnerName, o.Ref)}
+					return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefNotFound, FilePath: br.FilePath, RecordIndex: br.RecordIndex, Module: strings.TrimSpace(rec.Module), Name: strings.TrimSpace(rec.Name), Application: strings.TrimSpace(rec.Application), Model: strings.TrimSpace(rec.Model), FieldPath: o.FieldPath, Ref: o.Ref, Message: refNotFoundMessage(rules.OwnerName, o.Ref)}
 				}
 			}
 		}
@@ -814,7 +882,7 @@ func topoOrderOrCycleBatch(records []batchRecord, dep [][]int, adj [][]int, inde
 	msg := "circular ref detected: " + strings.Join(chain, " -> ")
 
 	first := records[cycle[0]]
-	le := &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefCycle, FilePath: first.FilePath, RecordIndex: first.RecordIndex, Module: strings.TrimSpace(first.Rec.Module), Name: strings.TrimSpace(first.Rec.Name), Model: strings.TrimSpace(first.Rec.Model), Message: msg}
+	le := &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefCycle, FilePath: first.FilePath, RecordIndex: first.RecordIndex, Module: strings.TrimSpace(first.Rec.Module), Name: strings.TrimSpace(first.Rec.Name), Application: strings.TrimSpace(first.Rec.Application), Model: strings.TrimSpace(first.Rec.Model), Message: msg}
 	for i := 0; i+1 < len(cycle); i++ {
 		ek := [2]int{cycle[i], cycle[i+1]}
 		if info, ok := edgeInfo[ek]; ok {
@@ -823,6 +891,7 @@ func topoOrderOrCycleBatch(records []batchRecord, dep [][]int, adj [][]int, inde
 			le.RecordIndex = br.RecordIndex
 			le.Module = strings.TrimSpace(br.Rec.Module)
 			le.Name = strings.TrimSpace(br.Rec.Name)
+			le.Application = strings.TrimSpace(br.Rec.Application)
 			le.Model = strings.TrimSpace(br.Rec.Model)
 			le.FieldPath = info.FieldPath
 			le.Ref = info.Ref
@@ -876,26 +945,27 @@ func (l *Loader) planRecordOrder(tx *gorm.DB, owner *meta.Module, filePath strin
 	}
 
 	indexByKey := make(map[string]int, len(records))
-	for idx, rec := range records {
-		if err := validateRecordModule(rules, filePath, idx, rec); err != nil {
+	for idx := range records {
+		if err := normalizeRecordOwnership(rules, filePath, idx, &records[idx]); err != nil {
 			return nil, err
 		}
+		rec := records[idx]
 		moduleName := strings.TrimSpace(rec.Module)
 		localName := strings.TrimSpace(rec.Name)
 		if localName == "" {
 			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingName, FilePath: filePath, RecordIndex: idx, Module: moduleName, Message: "missing name"}
 		}
-		modelFull := strings.TrimSpace(rec.Model)
-		if modelFull == "" {
-			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingModel, FilePath: filePath, RecordIndex: idx, Module: moduleName, Name: localName, Message: "missing model"}
+		app, modelName, err := validateRecordTargetModel(filePath, idx, rec)
+		if err != nil {
+			return nil, err
 		}
 		if rec.Values == nil {
-			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingValues, FilePath: filePath, RecordIndex: idx, Module: moduleName, Name: localName, Model: modelFull, Message: "missing values"}
+			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingValues, FilePath: filePath, RecordIndex: idx, Module: moduleName, Name: localName, Application: app, Model: modelName, Message: "missing values"}
 		}
 
 		key := moduleName + "." + localName
 		if prevIdx, ok := indexByKey[key]; ok {
-			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeDuplicateNameInInput, FilePath: filePath, RecordIndex: idx, Module: moduleName, Name: localName, Model: modelFull, Message: "duplicate name in input (first at recordIndex=" + strconv.Itoa(prevIdx) + ")"}
+			return nil, &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeDuplicateNameInInput, FilePath: filePath, RecordIndex: idx, Module: moduleName, Name: localName, Application: app, Model: modelName, Message: "duplicate name in input (first at recordIndex=" + strconv.Itoa(prevIdx) + ")"}
 		}
 		indexByKey[key] = idx
 	}
@@ -915,12 +985,12 @@ func (l *Loader) planRecordOrder(tx *gorm.DB, owner *meta.Module, filePath strin
 		for _, o := range occ {
 			mod, localName, err := splitRef(o.Ref)
 			if err != nil {
-				return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeInvalidRef, FilePath: filePath, RecordIndex: idx, Module: strings.TrimSpace(rec.Module), Name: strings.TrimSpace(rec.Name), Model: strings.TrimSpace(rec.Model), FieldPath: o.FieldPath, Ref: o.Ref, Message: "invalid ref", Cause: err}
+				return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeInvalidRef, FilePath: filePath, RecordIndex: idx, Module: strings.TrimSpace(rec.Module), Name: strings.TrimSpace(rec.Name), Application: strings.TrimSpace(rec.Application), Model: strings.TrimSpace(rec.Model), FieldPath: o.FieldPath, Ref: o.Ref, Message: "invalid ref", Cause: err}
 			}
 			key := mod + "." + localName
 			if targetIdx, ok := indexByKey[key]; ok {
 				if targetIdx == idx {
-					return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefSelfCycle, FilePath: filePath, RecordIndex: idx, Module: strings.TrimSpace(rec.Module), Name: strings.TrimSpace(rec.Name), Model: strings.TrimSpace(rec.Model), FieldPath: o.FieldPath, Ref: o.Ref, Message: "ref points to itself (cycle)"}
+					return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefSelfCycle, FilePath: filePath, RecordIndex: idx, Module: strings.TrimSpace(rec.Module), Name: strings.TrimSpace(rec.Name), Application: strings.TrimSpace(rec.Application), Model: strings.TrimSpace(rec.Model), FieldPath: o.FieldPath, Ref: o.Ref, Message: "ref points to itself (cycle)"}
 				}
 				// Internal ref within the same file: record idx depends on targetIdx.
 				dep[idx] = append(dep[idx], targetIdx)
@@ -986,7 +1056,7 @@ func (l *Loader) planRecordOrder(tx *gorm.DB, owner *meta.Module, filePath strin
 				continue
 			}
 			if _, ok := existing[mod][localName]; !ok {
-				return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefNotFound, FilePath: filePath, RecordIndex: idx, Module: strings.TrimSpace(rec.Module), Name: strings.TrimSpace(rec.Name), Model: strings.TrimSpace(rec.Model), FieldPath: o.FieldPath, Ref: o.Ref, Message: refNotFoundMessage(rules.OwnerName, o.Ref)}
+				return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefNotFound, FilePath: filePath, RecordIndex: idx, Module: strings.TrimSpace(rec.Module), Name: strings.TrimSpace(rec.Name), Application: strings.TrimSpace(rec.Application), Model: strings.TrimSpace(rec.Model), FieldPath: o.FieldPath, Ref: o.Ref, Message: refNotFoundMessage(rules.OwnerName, o.Ref)}
 			}
 		}
 	}
@@ -1034,7 +1104,7 @@ func topoOrderOrCycle(records []record, dep [][]int, adj [][]int, indeg []int, e
 	}
 	msg := "circular ref detected: " + strings.Join(chain, " -> ")
 
-	le := &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefCycle, FilePath: filePath, RecordIndex: cycle[0], Module: strings.TrimSpace(records[cycle[0]].Module), Name: strings.TrimSpace(records[cycle[0]].Name), Model: strings.TrimSpace(records[cycle[0]].Model), Message: msg}
+	le := &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeRefCycle, FilePath: filePath, RecordIndex: cycle[0], Module: strings.TrimSpace(records[cycle[0]].Module), Name: strings.TrimSpace(records[cycle[0]].Name), Application: strings.TrimSpace(records[cycle[0]].Application), Model: strings.TrimSpace(records[cycle[0]].Model), Message: msg}
 	// Attach a concrete edge (field/ref) from within the cycle when available.
 	// This makes the error more actionable and more stable across internal changes.
 	for i := 0; i+1 < len(cycle); i++ {
@@ -1043,6 +1113,7 @@ func topoOrderOrCycle(records []record, dep [][]int, adj [][]int, indeg []int, e
 			le.RecordIndex = cycle[i]
 			le.Module = strings.TrimSpace(records[cycle[i]].Module)
 			le.Name = strings.TrimSpace(records[cycle[i]].Name)
+			le.Application = strings.TrimSpace(records[cycle[i]].Application)
 			le.Model = strings.TrimSpace(records[cycle[i]].Model)
 			le.FieldPath = info.FieldPath
 			le.Ref = info.Ref
@@ -1156,21 +1227,17 @@ func (l *Loader) applyRecord(tx *gorm.DB, filePath string, recordIndex int, rec 
 	if localName == "" {
 		return &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingName, FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, Message: "missing name"}
 	}
-	modelFull := strings.TrimSpace(rec.Model)
-	if modelFull == "" {
-		return &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingModel, FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, Name: localName, Message: "missing model"}
-	}
-
-	app, modelName, err := splitModel(modelFull)
+	app, modelName, err := validateRecordTargetModel(filePath, recordIndex, rec)
 	if err != nil {
-		return &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeInvalidModel, FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, Name: localName, Model: modelFull, Message: "invalid model", Cause: err}
+		return err
 	}
+	modelFull := app + "." + modelName
 	model := &meta.Model{}
 	if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
 		return wrapLoadErrorWithCode(xfmt.Errorf("resolve model %s: %w", modelFull, err), filePath, recordIndex, rec, LoadErrorKindDB, LoadErrorCodeDBResolveModel, "resolve model")
 	}
 	if strings.TrimSpace(model.ModelTable) == "" {
-		return &LoadError{Kind: LoadErrorKindDB, Code: LoadErrorCodeDBModelTableEmpty, FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, Name: localName, Model: modelFull, Message: "model has empty model_table"}
+		return &LoadError{Kind: LoadErrorKindDB, Code: LoadErrorCodeDBModelTableEmpty, FilePath: filePath, RecordIndex: recordIndex, Module: moduleName, Name: localName, Application: app, Model: modelName, Message: "model has empty model_table"}
 	}
 	tableName := model.ModelTable
 
@@ -1201,7 +1268,8 @@ func (l *Loader) applyRecord(tx *gorm.DB, filePath string, recordIndex int, rec 
 		}
 		mapping.Module = moduleName
 		mapping.Name = localName
-		mapping.Model = modelFull
+		mapping.Application = app
+		mapping.ModelId = model.Id.String
 		mapping.ResID = resID
 		mapping.NoUpdate = noUpdate
 		if err := tx.Create(mapping).Error; err != nil {
@@ -1219,9 +1287,20 @@ func (l *Loader) applyRecord(tx *gorm.DB, filePath string, recordIndex int, rec 
 		return wrapLoadErrorWithCode(xfmt.Errorf("update %s id=%s: %w", tableName, mapping.ResID, err), filePath, recordIndex, rec, LoadErrorKindDB, LoadErrorCodeDBUpdateRecord, "update record")
 	}
 
+	mappingUpdates := map[string]any{}
+	if mapping.Application != app {
+		mappingUpdates["application"] = app
+	}
+	modelID := model.Id.String
+	if mapping.ModelId != modelID {
+		mappingUpdates["model_id"] = modelID
+	}
 	if noUpdate && !mapping.NoUpdate {
-		if err := tx.Model(mapping).Update("no_update", true).Error; err != nil {
-			return wrapLoadErrorWithCode(xfmt.Errorf("update model_data.noupdate: %w", err), filePath, recordIndex, rec, LoadErrorKindDB, LoadErrorCodeDBUpdateModelDataNoUpdate, "update model_data.noupdate")
+		mappingUpdates["no_update"] = true
+	}
+	if len(mappingUpdates) > 0 {
+		if err := tx.Model(mapping).Updates(mappingUpdates).Error; err != nil {
+			return wrapLoadErrorWithCode(xfmt.Errorf("update model_data mapping: %w", err), filePath, recordIndex, rec, LoadErrorKindDB, LoadErrorCodeDBUpdateModelDataNoUpdate, "update model_data mapping")
 		}
 	}
 	return nil
@@ -1251,7 +1330,7 @@ func (l *Loader) resolveAndMapValues(tx *gorm.DB, filePath string, recordIndex i
 
 		// Enforce reference cardinality on search results.
 		if ids, ok := resolved.([]string); ok {
-			cardinality := l.detectSearchCardinality(tx, rec.Model, fieldName, raw)
+			cardinality := l.detectSearchCardinality(tx, recordModelFull(rec, model), fieldName, raw)
 			resolved, err = enforceReferenceCardinality(ids, cardinality, filePath, recordIndex, rec, "values."+fieldName, "search")
 			if err != nil {
 				return nil, err
@@ -1466,6 +1545,24 @@ func splitModel(s string) (string, string, error) {
 		return "", "", xfmt.Errorf("invalid model %q (empty app or name)", s)
 	}
 	return app, name, nil
+}
+
+// recordModelFull builds application.Model for host lookups (cardinality, etc.).
+// Seed top-level model is a short name; prefer the resolved meta.Model when present.
+func recordModelFull(rec record, model *meta.Model) string {
+	if model != nil {
+		app := strings.TrimSpace(model.Application)
+		name := strings.TrimSpace(model.Name)
+		if app != "" && name != "" {
+			return app + "." + name
+		}
+	}
+	app := strings.TrimSpace(rec.Application)
+	name := strings.TrimSpace(rec.Model)
+	if app != "" && name != "" {
+		return app + "." + name
+	}
+	return name
 }
 
 // parseRefQuerySpec detects and parses a reference query from a data file value.

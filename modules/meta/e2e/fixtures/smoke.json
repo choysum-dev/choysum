@@ -1,9 +1,8 @@
 {
   "records": [
     {
-      "module": "meta",
       "name": "e2e_partner_module",
-      "model": "meta.MetaModule",
+      "model": "MetaModule",
       "values": {
         "Name": "partner",
         "Status": "uninstalled",

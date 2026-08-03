@@ -119,7 +119,7 @@ func TestNormalizeTranslatedSeedValue_AdditionalBranches(t *testing.T) {
 		t.Fatalf("create Name field: %v", err)
 	}
 
-	rec := record{Module: "demo", Name: "item_1", Model: "demo.Item"}
+	rec := record{Module: "demo", Name: "item_1", Application: "demo", Model: "Item"}
 
 	got, err := l.normalizeTranslatedSeedValue(db, "/tmp/data.json", 0, rec, model, "Code", "KEEP", nil)
 	if err != nil || got != "KEEP" {
@@ -211,6 +211,9 @@ func TestNormalizeTranslatedSeedValue_AdditionalBranches(t *testing.T) {
 	}, nil)
 	if !errors.As(err, &le) || le.Code != LoadErrorCodeTranslatedSeedInvalid {
 		t.Fatalf("nil map value: %#v", err)
+	}
+	if le.Application != "demo" {
+		t.Fatalf("nil map value Application = %q, want demo", le.Application)
 	}
 
 	_, err = l.normalizeTranslatedSeedValue(db, "/tmp/data.json", 0, rec, model, "Name", map[string]any{

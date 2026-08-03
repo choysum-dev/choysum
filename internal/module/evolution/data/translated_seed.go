@@ -102,6 +102,7 @@ func (l *Loader) assertSeedLanguageCode(
 			RecordIndex: recordIndex,
 			Module:      strings.TrimSpace(rec.Module),
 			Name:        strings.TrimSpace(rec.Name),
+			Application: strings.TrimSpace(rec.Application),
 			Model:       strings.TrimSpace(rec.Model),
 			FieldPath:   fieldPath,
 			Message:     "translated lang map key must be a non-empty terminology code",
@@ -115,6 +116,7 @@ func (l *Loader) assertSeedLanguageCode(
 			RecordIndex: recordIndex,
 			Module:      strings.TrimSpace(rec.Module),
 			Name:        strings.TrimSpace(rec.Name),
+			Application: strings.TrimSpace(rec.Application),
 			Model:       strings.TrimSpace(rec.Model),
 			FieldPath:   fieldPath,
 			Message:     "translated lang map key looks like a UI locale; use a terminology code such as zh_CN",
@@ -138,6 +140,7 @@ func (l *Loader) assertSeedLanguageCode(
 			RecordIndex: recordIndex,
 			Module:      strings.TrimSpace(rec.Module),
 			Name:        strings.TrimSpace(rec.Name),
+			Application: strings.TrimSpace(rec.Application),
 			Model:       strings.TrimSpace(rec.Model),
 			FieldPath:   fieldPath,
 			Message:     "unknown Language.Code in translated seed map: " + lang,
@@ -177,7 +180,7 @@ func (l *Loader) normalizeTranslatedSeedValue(
 
 	fieldPath := "values." + fieldName
 	selfCode := ""
-	if strings.EqualFold(strings.TrimSpace(rec.Model), "base.Language") {
+	if strings.EqualFold(strings.TrimSpace(rec.Application), "base") && strings.EqualFold(strings.TrimSpace(rec.Model), "Language") {
 		selfCode = seedSelfLanguageCode(rawValues)
 	}
 
@@ -195,6 +198,7 @@ func (l *Loader) normalizeTranslatedSeedValue(
 				RecordIndex: recordIndex,
 				Module:      strings.TrimSpace(rec.Module),
 				Name:        strings.TrimSpace(rec.Name),
+				Application: strings.TrimSpace(rec.Application),
 				Model:       strings.TrimSpace(rec.Model),
 				FieldPath:   fieldPath,
 				Message:     `translated seed must not use { "_t": ... }; use a lang map or English scalar`,
@@ -217,6 +221,7 @@ func (l *Loader) normalizeTranslatedSeedValue(
 					RecordIndex: recordIndex,
 					Module:      strings.TrimSpace(rec.Module),
 					Name:        strings.TrimSpace(rec.Name),
+					Application: strings.TrimSpace(rec.Application),
 					Model:       strings.TrimSpace(rec.Model),
 					FieldPath:   fieldPath,
 					Message:     "translated lang map values must be strings",
@@ -249,6 +254,7 @@ func (l *Loader) normalizeTranslatedSeedValue(
 				RecordIndex: recordIndex,
 				Module:      strings.TrimSpace(rec.Module),
 				Name:        strings.TrimSpace(rec.Name),
+				Application: strings.TrimSpace(rec.Application),
 				Model:       strings.TrimSpace(rec.Model),
 				FieldPath:   fieldPath,
 				Message:     "translated lang map must not be empty",
@@ -267,6 +273,7 @@ func (l *Loader) normalizeTranslatedSeedValue(
 			RecordIndex: recordIndex,
 			Module:      strings.TrimSpace(rec.Module),
 			Name:        strings.TrimSpace(rec.Name),
+			Application: strings.TrimSpace(rec.Application),
 			Model:       strings.TrimSpace(rec.Model),
 			FieldPath:   fieldPath,
 			Message:     "translated seed expects a string or lang map object",

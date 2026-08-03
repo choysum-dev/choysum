@@ -39,10 +39,10 @@ func TestModuleUninstallerCleanModelsClearsMetaModelDataOnly(t *testing.T) {
 	}
 
 	demoMapping := &metadata.ModelData{
-		Module: seed.module.Name, Name: "seed_row", Model: "demo.Thing", ResID: resID,
+		Module: seed.module.Name, Name: "seed_row", Application: "demo", ModelId: xid.New().String(), ResID: resID,
 	}
 	otherMapping := &metadata.ModelData{
-		Module: otherModule.Name, Name: "other_row", Model: "other.Thing", ResID: otherResID,
+		Module: otherModule.Name, Name: "other_row", Application: "other", ModelId: xid.New().String(), ResID: otherResID,
 	}
 	if err := db.Create(demoMapping).Error; err != nil {
 		t.Fatalf("create demo mapping: %v", err)
@@ -95,7 +95,7 @@ func TestModuleUninstallerCleanModelsClearsMetaModelDataOnly(t *testing.T) {
 
 	// Reinstall must be able to recreate the same (module, name) key after cleanup.
 	if err := db.Create(&metadata.ModelData{
-		Module: seed.module.Name, Name: "seed_row", Model: "demo.Thing", ResID: xid.New().String(),
+		Module: seed.module.Name, Name: "seed_row", Application: "demo", ModelId: xid.New().String(), ResID: xid.New().String(),
 	}).Error; err != nil {
 		t.Fatalf("recreate mapping after uninstall cleanup: %v", err)
 	}
@@ -109,7 +109,7 @@ func TestModuleUninstallerCleanModelsMetaModelDataError(t *testing.T) {
 	}
 	seed := seedCleanModelsFixture(t, db)
 	if err := db.Create(&metadata.ModelData{
-		Module: seed.module.Name, Name: "seed_row", Model: "demo.Thing", ResID: xid.New().String(),
+		Module: seed.module.Name, Name: "seed_row", Application: "demo", ModelId: xid.New().String(), ResID: xid.New().String(),
 	}).Error; err != nil {
 		t.Fatalf("create mapping: %v", err)
 	}

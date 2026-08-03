@@ -1,9 +1,8 @@
 {
   "records": [
     {
-      "module": "base",
       "name": "language_zh_cn",
-      "model": "base.Language",
+      "model": "Language",
       "values": {
         "Name": {
           "en_US": "Chinese (Simplified)",
@@ -23,9 +22,8 @@
       }
     },
     {
-      "module": "base",
       "name": "language_en_us",
-      "model": "base.Language",
+      "model": "Language",
       "values": {
         "Name": {
           "en_US": "English (US)",
@@ -45,9 +43,8 @@
       }
     },
     {
-      "module": "base",
       "name": "currency_cny",
-      "model": "base.Currency",
+      "model": "Currency",
       "values": {
         "Name": {
           "en_US": "Chinese Yuan",
@@ -61,9 +58,8 @@
       }
     },
     {
-      "module": "base",
       "name": "company_main",
-      "model": "base.Company",
+      "model": "Company",
       "values": {
         "Name": {
           "en_US": "Main Company",
@@ -71,9 +67,13 @@
         },
         "Code": "MAIN",
         "Timezone": "Asia/Shanghai",
-        "CurrencyId": { "ref": "base.currency_cny" },
+        "CurrencyId": {
+          "ref": "base.currency_cny"
+        },
         "IsActive": true,
-        "LanguageId": { "ref": "base.language_zh_cn" }
+        "LanguageId": {
+          "ref": "base.language_zh_cn"
+        }
       }
     }
   ]

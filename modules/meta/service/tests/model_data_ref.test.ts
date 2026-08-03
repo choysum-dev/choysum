@@ -32,11 +32,11 @@ test('parseMetaModelDataKey accepts module.name and rejects invalid keys', () =>
 });
 
 test('MetaModelData.Ref returns ResId; RefOrNull returns null; missing Ref raises', async () => {
-  const store: Array<{ Module: string; Name: string; Model: string; ResId?: string | null }> = [
-    { Module: 'base', Name: 'company_main', Model: 'base.Company', ResId: 'res-company-1' },
-    { Module: 'foo', Name: 'bar.baz', Model: 'foo.Thing', ResId: 'res-foo-1' },
-    { Module: 'empty', Name: 'res', Model: 'empty.Thing', ResId: '   ' },
-    { Module: 'blank', Name: 'res', Model: 'blank.Thing' },
+  const store: Array<{ Module: string; Name: string; Application: string; Model: string; ResId?: string | null }> = [
+    { Module: 'base', Name: 'company_main', Application: 'base', Model: 'Company', ResId: 'res-company-1' },
+    { Module: 'foo', Name: 'bar.baz', Application: 'foo', Model: 'Thing', ResId: 'res-foo-1' },
+    { Module: 'empty', Name: 'res', Application: 'empty', Model: 'Thing', ResId: '   ' },
+    { Module: 'blank', Name: 'res', Application: 'blank', Model: 'Thing' },
   ];
   const originalSearch = MetaModelData.Search;
   MetaModelData.Search = (async (condition: any) => {

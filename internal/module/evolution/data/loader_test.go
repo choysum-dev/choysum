@@ -78,7 +78,7 @@ func TestLoadErrorFormattingAndWrappingHelpers(t *testing.T) {
 	t.Parallel()
 
 	leaf := errors.New("db failed")
-	rec := record{Module: " auth ", Name: " ext ", Model: " auth.User "}
+	rec := record{Module: " auth ", Name: " ext ", Application: "auth", Model: "User"}
 	wrapped := wrapLoadError(leaf, "/tmp/data.json", 2, rec, "insert failed")
 	var le *LoadError
 	if !errors.As(wrapped, &le) {
@@ -136,7 +136,7 @@ func TestApplyFiles_PublicWrapperAndGuards(t *testing.T) {
 	dir := t.TempDir()
 	writeDataFile(t, dir, map[string]any{
 		"records": []any{
-			map[string]any{"module": "auth", "name": "group_admin", "model": "auth.group", "values": map[string]any{}},
+			map[string]any{"module": "auth", "name": "group_admin", "application": "auth", "model": "group", "values": map[string]any{}},
 		},
 	})
 	mod := &meta.Module{Name: "auth", Path: dir, ApplicationStr: "auth"}
@@ -198,12 +198,12 @@ func TestApplyModule_WithDemoFiles(t *testing.T) {
 	dir := t.TempDir()
 	writeNamedDataFile(t, dir, "data.json", map[string]any{
 		"records": []any{
-			map[string]any{"module": "auth", "name": "group_data", "model": "auth.group", "values": map[string]any{}},
+			map[string]any{"module": "auth", "name": "group_data", "application": "auth", "model": "group", "values": map[string]any{}},
 		},
 	})
 	writeNamedDataFile(t, dir, "demo.json", map[string]any{
 		"records": []any{
-			map[string]any{"module": "auth", "name": "group_demo", "model": "auth.group", "values": map[string]any{}},
+			map[string]any{"module": "auth", "name": "group_demo", "application": "auth", "model": "group", "values": map[string]any{}},
 		},
 	})
 	dataPaths, err := json.Marshal([]string{"data.json"})
@@ -244,7 +244,7 @@ func TestApplyFiles_UsesContextTransactionFromBaseScope(t *testing.T) {
 	dir := t.TempDir()
 	writeDataFile(t, dir, map[string]any{
 		"records": []any{
-			map[string]any{"module": "auth", "name": "group_outer", "model": "auth.group", "values": map[string]any{}},
+			map[string]any{"module": "auth", "name": "group_outer", "application": "auth", "model": "group", "values": map[string]any{}},
 		},
 	})
 	mod := &meta.Module{Name: "auth", Path: dir, ApplicationStr: "auth"}
@@ -437,6 +437,18 @@ func seedLoaderTestSchema(t *testing.T, db *gorm.DB) {
 	}
 }
 
+func loaderTestModelID(t *testing.T, db *gorm.DB, app, name string) string {
+	t.Helper()
+	var m meta.Model
+	if err := db.Where("application = ? AND name = ?", app, name).First(&m).Error; err != nil {
+		t.Fatalf("lookup meta_model %s.%s: %v", app, name, err)
+	}
+	if !m.Id.Valid || m.Id.String == "" {
+		t.Fatalf("meta_model %s.%s has empty id", app, name)
+	}
+	return m.Id.String
+}
+
 func writeDataFile(t *testing.T, dir string, df any) {
 	t.Helper()
 	b, err := json.Marshal(df)
@@ -500,8 +512,8 @@ func TestApplyModule_DuplicateNameIsRejected(t *testing.T) {
 	dir := t.TempDir()
 	writeDataFile(t, dir, map[string]any{
 		"records": []any{
-			map[string]any{"module": "auth", "name": "x", "model": "auth.User", "values": map[string]any{}},
-			map[string]any{"module": "auth", "name": "x", "model": "auth.User", "values": map[string]any{}},
+			map[string]any{"module": "auth", "name": "x", "application": "auth", "model": "User", "values": map[string]any{}},
+			map[string]any{"module": "auth", "name": "x", "application": "auth", "model": "User", "values": map[string]any{}},
 		},
 	})
 	mod := moduleWithDataFile(t, dir)
@@ -540,9 +552,10 @@ func TestApplyModule_RefNotFoundIsRejectedWithFieldPath(t *testing.T) {
 	writeDataFile(t, dir, map[string]any{
 		"records": []any{
 			map[string]any{
-				"module": "auth",
-				"name":   "a",
-				"model":  "auth.User",
+				"module":      "auth",
+				"name":        "a",
+				"application": "auth",
+				"model":       "User",
 				"values": map[string]any{
 					"group_id": map[string]any{"ref": "auth.missing"},
 				},
@@ -582,9 +595,10 @@ func TestApplyModule_CrossModuleRefNotFoundIncludesHint(t *testing.T) {
 	writeDataFile(t, dir, map[string]any{
 		"records": []any{
 			map[string]any{
-				"module": "auth",
-				"name":   "a",
-				"model":  "auth.User",
+				"module":      "auth",
+				"name":        "a",
+				"application": "auth",
+				"model":       "User",
 				"values": map[string]any{
 					"group_id": map[string]any{"ref": "base.missing"},
 				},
@@ -639,9 +653,10 @@ func TestApplyModule_RefByResolvesExistingRow(t *testing.T) {
 	writeDataFile(t, dir, map[string]any{
 		"records": []any{
 			map[string]any{
-				"module": "auth",
-				"name":   "u",
-				"model":  "auth.User",
+				"module":      "auth",
+				"name":        "u",
+				"application": "auth",
+				"model":       "User",
 				"values": map[string]any{
 					"group_id": map[string]any{
 						"refBy": map[string]any{"model": "meta.MetaApplication", "field": "Name", "value": "auth"},
@@ -672,14 +687,15 @@ func TestPlanRecordOrder_ForwardRefIsReordered(t *testing.T) {
 	writeDataFile(t, dir, map[string]any{
 		"records": []any{
 			map[string]any{
-				"module": "auth",
-				"name":   "a",
-				"model":  "auth.User",
+				"module":      "auth",
+				"name":        "a",
+				"application": "auth",
+				"model":       "User",
 				"values": map[string]any{
 					"group_id": map[string]any{"ref": "auth.b"},
 				},
 			},
-			map[string]any{"module": "auth", "name": "b", "model": "auth.group", "values": map[string]any{}},
+			map[string]any{"module": "auth", "name": "b", "application": "auth", "model": "group", "values": map[string]any{}},
 		},
 	})
 	// Parse the file into dataFile records to test only the planner.
@@ -725,9 +741,12 @@ func TestPlanRecordOrder_GuardsAndValidationErrors(t *testing.T) {
 		rec  record
 		code string
 	}{
-		{name: "missing name", rec: record{Module: "auth", Model: "auth.User", Values: map[string]any{}}, code: LoadErrorCodeMissingName},
-		{name: "missing model", rec: record{Module: "auth", Name: "x", Values: map[string]any{}}, code: LoadErrorCodeMissingModel},
-		{name: "missing values", rec: record{Module: "auth", Name: "x", Model: "auth.User"}, code: LoadErrorCodeMissingValues},
+		{name: "missing name", rec: record{Module: "auth", Application: "auth", Model: "User", Values: map[string]any{}}, code: LoadErrorCodeMissingName},
+		{name: "module not owner", rec: record{Module: "base", Name: "x", Model: "User", Values: map[string]any{}}, code: LoadErrorCodeModuleNotOwner},
+		{name: "application mismatch", rec: record{Name: "x", Application: "base", Model: "User", Values: map[string]any{}}, code: LoadErrorCodeApplicationMismatch},
+		{name: "missing model", rec: record{Module: "auth", Name: "x", Application: "auth", Values: map[string]any{}}, code: LoadErrorCodeMissingModel},
+		{name: "missing values", rec: record{Module: "auth", Name: "x", Application: "auth", Model: "User"}, code: LoadErrorCodeMissingValues},
+		{name: "invalid model full name", rec: record{Module: "auth", Name: "x", Application: "auth", Model: "auth.User", Values: map[string]any{}}, code: LoadErrorCodeInvalidModel},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := l.planRecordOrder(db, &meta.Module{Name: "auth"}, filePath, []record{tc.rec})
@@ -744,9 +763,9 @@ func TestPlanRecordOrder_SelfReferenceIsRejected(t *testing.T) {
 	filePath := filepath.Join(t.TempDir(), "data.json")
 
 	_, err := l.planRecordOrder(db, &meta.Module{Name: "auth"}, filePath, []record{{
-		Module: "auth",
-		Name:   "self",
-		Model:  "auth.User",
+		Module:      "auth",
+		Name:        "self",
+		Application: "auth", Model: "User",
 		Values: map[string]any{
 			"group_id": map[string]any{"ref": "auth.self"},
 		},
@@ -766,14 +785,15 @@ func TestApplyFile_SuccessAndErrors(t *testing.T) {
 	writeDataFile(t, dir, map[string]any{
 		"records": []any{
 			map[string]any{
-				"module": "auth",
-				"name":   "user_admin",
-				"model":  "auth.User",
+				"module":      "auth",
+				"name":        "user_admin",
+				"application": "auth",
+				"model":       "User",
 				"values": map[string]any{
 					"group_id": map[string]any{"ref": "auth.group_admin"},
 				},
 			},
-			map[string]any{"module": "auth", "name": "group_admin", "model": "auth.group", "values": map[string]any{}},
+			map[string]any{"module": "auth", "name": "group_admin", "application": "auth", "model": "group", "values": map[string]any{}},
 		},
 	})
 
@@ -818,8 +838,8 @@ func TestTopoOrderOrCycle_AcyclicAndCycleFallback(t *testing.T) {
 
 	t.Run("cycle without edge info still returns structured error", func(t *testing.T) {
 		records := []record{
-			{Module: "auth", Name: "a", Model: "auth.User"},
-			{Module: "auth", Name: "b", Model: "auth.group"},
+			{Module: "auth", Name: "a", Application: "auth", Model: "User"},
+			{Module: "auth", Name: "b", Application: "auth", Model: "group"},
 		}
 		dep := [][]int{{1}, {0}}
 		adj := [][]int{{1}, {0}}
@@ -840,8 +860,8 @@ func TestTopoOrderOrCycle_AcyclicAndCycleFallback(t *testing.T) {
 
 	t.Run("cycle with edge info sets name field path and ref", func(t *testing.T) {
 		records := []record{
-			{Module: "auth", Name: "a", Model: "auth.User"},
-			{Module: "auth", Name: "b", Model: "auth.group"},
+			{Module: "auth", Name: "a", Application: "auth", Model: "User"},
+			{Module: "auth", Name: "b", Application: "auth", Model: "group"},
 		}
 		dep := [][]int{{1}, {0}}
 		adj := [][]int{{1}, {0}}
@@ -908,7 +928,7 @@ func TestValueResolutionHelpers(t *testing.T) {
 	if err := db.Create(app).Error; err != nil {
 		t.Fatalf("seed meta_application(auth): %v", err)
 	}
-	if err := db.Create(&metadata.ModelData{Module: "auth", Name: "group_admin", Model: "auth.group", ResID: "gid-1"}).Error; err != nil {
+	if err := db.Create(&metadata.ModelData{Module: "auth", Name: "group_admin", Application: "auth", ModelId: loaderTestModelID(t, db, "auth", "group"), ResID: "gid-1"}).Error; err != nil {
 		t.Fatalf("seed model_data: %v", err)
 	}
 
@@ -997,7 +1017,7 @@ func TestValueResolutionHelpers(t *testing.T) {
 	})
 
 	t.Run("resolveValue", func(t *testing.T) {
-		rec := record{Module: "auth", Name: "u", Model: "auth.User"}
+		rec := record{Module: "auth", Name: "u", Application: "auth", Model: "User"}
 		got, err := l.resolveValue(db, "/tmp/data.json", 0, rec, "values.group_id", map[string]any{"ref": "auth.group_admin"})
 		if err != nil || got != "gid-1" {
 			t.Fatalf("resolveValue(ref) = %#v, %v", got, err)
@@ -1051,8 +1071,8 @@ func TestValueResolutionHelpers(t *testing.T) {
 
 func TestResolveAndMapValues_SkipsSystemFieldsAndNormalizes(t *testing.T) {
 	l, db := newTestLoader(t)
-	rec := record{Module: "auth", Name: "u", Model: "auth.User"}
-	if err := db.Create(&metadata.ModelData{Module: "auth", Name: "group_admin", Model: "auth.group", ResID: "gid-1"}).Error; err != nil {
+	rec := record{Module: "auth", Name: "u", Application: "auth", Model: "User"}
+	if err := db.Create(&metadata.ModelData{Module: "auth", Name: "group_admin", Application: "auth", ModelId: loaderTestModelID(t, db, "auth", "group"), ResID: "gid-1"}).Error; err != nil {
 		t.Fatalf("seed model_data: %v", err)
 	}
 
@@ -1097,10 +1117,11 @@ func TestApplyRecord_DirectBranches(t *testing.T) {
 		rec  record
 		code string
 	}{
-		{name: "missing module", rec: record{Name: "x", Model: "auth.User", Values: map[string]any{}}, code: LoadErrorCodeMissingModule},
-		{name: "missing name", rec: record{Module: "auth", Model: "auth.User", Values: map[string]any{}}, code: LoadErrorCodeMissingName},
-		{name: "missing model", rec: record{Module: "auth", Name: "x", Values: map[string]any{}}, code: LoadErrorCodeMissingModel},
-		{name: "invalid model", rec: record{Module: "auth", Name: "x", Model: "broken", Values: map[string]any{}}, code: LoadErrorCodeInvalidModel},
+		{name: "missing module", rec: record{Name: "x", Application: "auth", Model: "User", Values: map[string]any{}}, code: LoadErrorCodeMissingModule},
+		{name: "missing name", rec: record{Module: "auth", Application: "auth", Model: "User", Values: map[string]any{}}, code: LoadErrorCodeMissingName},
+		{name: "missing application", rec: record{Module: "auth", Name: "x", Model: "User", Values: map[string]any{}}, code: LoadErrorCodeMissingApplication},
+		{name: "missing model", rec: record{Module: "auth", Name: "x", Application: "auth", Values: map[string]any{}}, code: LoadErrorCodeMissingModel},
+		{name: "invalid model full name", rec: record{Module: "auth", Name: "x", Application: "auth", Model: "auth.User", Values: map[string]any{}}, code: LoadErrorCodeInvalidModel},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			err := l.applyRecord(db, "/tmp/data.json", 0, tc.rec, now)
@@ -1114,7 +1135,7 @@ func TestApplyRecord_DirectBranches(t *testing.T) {
 	if err := db.Create(&meta.Model{Name: "Broken", Application: "auth", Path: "/tmp", ModelTable: ""}).Error; err != nil {
 		t.Fatalf("seed broken model: %v", err)
 	}
-	err := l.applyRecord(db, "/tmp/data.json", 0, record{Module: "auth", Name: "x", Model: "auth.Broken", Values: map[string]any{}}, now)
+	err := l.applyRecord(db, "/tmp/data.json", 0, record{Module: "auth", Name: "x", Application: "auth", Model: "Broken", Values: map[string]any{}}, now)
 	var le *LoadError
 	if !errors.As(err, &le) || le.Code != LoadErrorCodeDBModelTableEmpty {
 		t.Fatalf("expected model table empty error, got %#v", err)
@@ -1132,17 +1153,17 @@ func TestApplyRecord_DirectBranches(t *testing.T) {
 	if err := db.Table("auth_user").Create(&user).Error; err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
-	if err := db.Create(&metadata.ModelData{Module: "auth", Name: "user_admin", Model: "auth.User", ResID: user.ID, NoUpdate: false}).Error; err != nil {
+	if err := db.Create(&metadata.ModelData{Module: "auth", Name: "user_admin", Application: "auth", ModelId: loaderTestModelID(t, db, "auth", "User"), ResID: user.ID, NoUpdate: false}).Error; err != nil {
 		t.Fatalf("seed user mapping: %v", err)
 	}
-	if err := db.Create(&metadata.ModelData{Module: "auth", Name: "group_admin", Model: "auth.group", ResID: group2.ID, NoUpdate: false}).Error; err != nil {
+	if err := db.Create(&metadata.ModelData{Module: "auth", Name: "group_admin", Application: "auth", ModelId: loaderTestModelID(t, db, "auth", "group"), ResID: group2.ID, NoUpdate: false}).Error; err != nil {
 		t.Fatalf("seed group mapping: %v", err)
 	}
 	freeze := true
 	if err := l.applyRecord(db, "/tmp/data.json", 1, record{
-		Module:   "auth",
-		Name:     "user_admin",
-		Model:    "auth.User",
+		Module:      "auth",
+		Name:        "user_admin",
+		Application: "auth", Model: "User",
 		NoUpdate: &freeze,
 		Values:   map[string]any{"group_id": map[string]any{"ref": "auth.group_admin"}},
 	}, now); err != nil {
@@ -1170,17 +1191,19 @@ func TestApplyModule_CycleRefIsRejectedWithChain(t *testing.T) {
 	writeDataFile(t, dir, map[string]any{
 		"records": []any{
 			map[string]any{
-				"module": "auth",
-				"name":   "a",
-				"model":  "auth.User",
+				"module":      "auth",
+				"name":        "a",
+				"application": "auth",
+				"model":       "User",
 				"values": map[string]any{
 					"x": map[string]any{"ref": "auth.b"},
 				},
 			},
 			map[string]any{
-				"module": "auth",
-				"name":   "b",
-				"model":  "auth.group",
+				"module":      "auth",
+				"name":        "b",
+				"application": "auth",
+				"model":       "group",
 				"values": map[string]any{
 					"y": map[string]any{"ref": "auth.a"},
 				},
@@ -1226,25 +1249,28 @@ func TestApplyModule_CycleRef3NodesIsRejectedWithChain(t *testing.T) {
 	writeDataFile(t, dir, map[string]any{
 		"records": []any{
 			map[string]any{
-				"module": "auth",
-				"name":   "a",
-				"model":  "auth.User",
+				"module":      "auth",
+				"name":        "a",
+				"application": "auth",
+				"model":       "User",
 				"values": map[string]any{
 					"x": map[string]any{"ref": "auth.b"},
 				},
 			},
 			map[string]any{
-				"module": "auth",
-				"name":   "b",
-				"model":  "auth.group",
+				"module":      "auth",
+				"name":        "b",
+				"application": "auth",
+				"model":       "group",
 				"values": map[string]any{
 					"y": map[string]any{"ref": "auth.c"},
 				},
 			},
 			map[string]any{
-				"module": "auth",
-				"name":   "c",
-				"model":  "auth.group",
+				"module":      "auth",
+				"name":        "c",
+				"application": "auth",
+				"model":       "group",
 				"values": map[string]any{
 					"z": map[string]any{"ref": "auth.a"},
 				},
@@ -1282,9 +1308,10 @@ func TestApplyModule_CrossFileForwardRefIsReordered(t *testing.T) {
 	writeNamedDataFile(t, dir, "a.json", map[string]any{
 		"records": []any{
 			map[string]any{
-				"module": "auth",
-				"name":   "a",
-				"model":  "auth.User",
+				"module":      "auth",
+				"name":        "a",
+				"application": "auth",
+				"model":       "User",
 				"values": map[string]any{
 					"group_id": map[string]any{"ref": "auth.b"},
 				},
@@ -1293,7 +1320,7 @@ func TestApplyModule_CrossFileForwardRefIsReordered(t *testing.T) {
 	})
 	writeNamedDataFile(t, dir, "b.json", map[string]any{
 		"records": []any{
-			map[string]any{"module": "auth", "name": "b", "model": "auth.group", "values": map[string]any{}},
+			map[string]any{"module": "auth", "name": "b", "application": "auth", "model": "group", "values": map[string]any{}},
 		},
 	})
 	mod := moduleWithDataFiles(t, dir, []string{"a.json", "b.json"})
@@ -1310,9 +1337,10 @@ func TestApplyModule_CrossFileCycleIsRejectedWithFileInfo(t *testing.T) {
 	writeNamedDataFile(t, dir, "a.json", map[string]any{
 		"records": []any{
 			map[string]any{
-				"module": "auth",
-				"name":   "a",
-				"model":  "auth.User",
+				"module":      "auth",
+				"name":        "a",
+				"application": "auth",
+				"model":       "User",
 				"values": map[string]any{
 					"x": map[string]any{"ref": "auth.b"},
 				},
@@ -1322,9 +1350,10 @@ func TestApplyModule_CrossFileCycleIsRejectedWithFileInfo(t *testing.T) {
 	writeNamedDataFile(t, dir, "b.json", map[string]any{
 		"records": []any{
 			map[string]any{
-				"module": "auth",
-				"name":   "b",
-				"model":  "auth.group",
+				"module":      "auth",
+				"name":        "b",
+				"application": "auth",
+				"model":       "group",
 				"values": map[string]any{
 					"y": map[string]any{"ref": "auth.a"},
 				},
@@ -1370,12 +1399,12 @@ func TestApplyModule_CrossFileCycleIsRejectedWithFileInfo(t *testing.T) {
 	}
 }
 
-func TestApplyModule_ModuleCrossApplicationIsRejected(t *testing.T) {
+func TestApplyModule_ForeignModuleNamespaceIsRejected(t *testing.T) {
 	l, _ := newTestLoader(t)
 	dir := t.TempDir()
 	writeDataFile(t, dir, map[string]any{
 		"records": []any{
-			map[string]any{"module": "base", "name": "x", "model": "auth.User", "values": map[string]any{}},
+			map[string]any{"module": "base", "name": "x", "model": "User", "values": map[string]any{}},
 		},
 	})
 	mod := moduleWithDataFile(t, dir)
@@ -1391,20 +1420,20 @@ func TestApplyModule_ModuleCrossApplicationIsRejected(t *testing.T) {
 	if le.Kind != LoadErrorKindValidation {
 		t.Fatalf("expected Kind=%q, got %q", LoadErrorKindValidation, le.Kind)
 	}
-	if le.Code != LoadErrorCodeModuleCrossApplication {
-		t.Fatalf("expected Code=%q, got %q", LoadErrorCodeModuleCrossApplication, le.Code)
+	if le.Code != LoadErrorCodeModuleNotOwner {
+		t.Fatalf("expected Code=%q, got %q", LoadErrorCodeModuleNotOwner, le.Code)
 	}
 	if le.RecordIndex != 0 {
 		t.Fatalf("expected RecordIndex=0, got %d", le.RecordIndex)
 	}
 }
 
-func TestApplyModule_ModuleNotInDependencyChainIsRejected(t *testing.T) {
+func TestApplyModule_CrossAppApplicationIsRejected(t *testing.T) {
 	l, _ := newTestLoader(t)
 	dir := t.TempDir()
 	writeDataFile(t, dir, map[string]any{
 		"records": []any{
-			map[string]any{"module": "auth_addon", "name": "x", "model": "auth.User", "values": map[string]any{}},
+			map[string]any{"name": "x", "application": "base", "model": "User", "values": map[string]any{}},
 		},
 	})
 	mod := moduleWithDataFile(t, dir)
@@ -1420,26 +1449,54 @@ func TestApplyModule_ModuleNotInDependencyChainIsRejected(t *testing.T) {
 	if le.Kind != LoadErrorKindValidation {
 		t.Fatalf("expected Kind=%q, got %q", LoadErrorKindValidation, le.Kind)
 	}
-	if le.Code != LoadErrorCodeModuleNotInDependencyChain {
-		t.Fatalf("expected Code=%q, got %q", LoadErrorCodeModuleNotInDependencyChain, le.Code)
+	if le.Code != LoadErrorCodeApplicationMismatch {
+		t.Fatalf("expected Code=%q, got %q", LoadErrorCodeApplicationMismatch, le.Code)
 	}
 	if le.RecordIndex != 0 {
 		t.Fatalf("expected RecordIndex=0, got %d", le.RecordIndex)
 	}
 }
 
-func TestApplyModule_CrossModuleSameApplicationAllowedWithDependency(t *testing.T) {
+func TestApplyModule_OmitsModuleAndApplicationDefaultsToOwner(t *testing.T) {
+	l, db := newTestLoader(t)
+	dir := t.TempDir()
+	writeDataFile(t, dir, map[string]any{
+		"records": []any{
+			map[string]any{"name": "x", "model": "User", "values": map[string]any{}},
+		},
+	})
+	mod := moduleWithDataFile(t, dir)
+
+	if err := l.ApplyModule(context.Background(), mod, ApplyOptions{}); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	var mapping metadata.ModelData
+	if err := db.Where("module = ? AND name = ?", "auth", "x").First(&mapping).Error; err != nil {
+		t.Fatalf("lookup mapping: %v", err)
+	}
+	wantModelID := loaderTestModelID(t, db, "auth", "User")
+	if mapping.Application != "auth" || mapping.ModelId != wantModelID {
+		t.Fatalf("unexpected mapping target: %#v", mapping)
+	}
+}
+
+func TestApplyModule_CrossModuleSameApplicationIsRejected(t *testing.T) {
 	l, _ := newTestLoader(t)
 	dir := t.TempDir()
 	writeDataFile(t, dir, map[string]any{
 		"records": []any{
-			map[string]any{"module": "auth", "name": "x", "model": "auth.User", "values": map[string]any{}},
+			map[string]any{"module": "auth", "name": "x", "model": "User", "values": map[string]any{}},
 		},
 	})
 	mod := moduleWithDataFileNamed(t, dir, "auth_addon")
 
-	if err := l.ApplyModule(context.Background(), mod, ApplyOptions{}); err != nil {
-		t.Fatalf("expected no error, got %v", err)
+	err := l.ApplyModule(context.Background(), mod, ApplyOptions{})
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	var le *LoadError
+	if !errors.As(err, &le) || le.Code != LoadErrorCodeModuleNotOwner {
+		t.Fatalf("ApplyModule() error = %#v, want module_not_owner", err)
 	}
 }
 
@@ -1449,12 +1506,13 @@ func TestApplyModule_NoUpdateFreezesSubsequentUpdates(t *testing.T) {
 
 	writeDataFile(t, dir, map[string]any{
 		"records": []any{
-			map[string]any{"module": "auth", "name": "g1", "model": "auth.group", "values": map[string]any{}},
-			map[string]any{"module": "auth", "name": "g2", "model": "auth.group", "values": map[string]any{}},
+			map[string]any{"module": "auth", "name": "g1", "application": "auth", "model": "group", "values": map[string]any{}},
+			map[string]any{"module": "auth", "name": "g2", "application": "auth", "model": "group", "values": map[string]any{}},
 			map[string]any{
-				"module": "auth",
-				"name":   "u",
-				"model":  "auth.User",
+				"module":      "auth",
+				"name":        "u",
+				"application": "auth",
+				"model":       "User",
 				"values": map[string]any{
 					"group_id": map[string]any{"ref": "auth.g1"},
 				},
@@ -1495,10 +1553,11 @@ func TestApplyModule_NoUpdateFreezesSubsequentUpdates(t *testing.T) {
 	writeDataFile(t, dir, map[string]any{
 		"records": []any{
 			map[string]any{
-				"module":   "auth",
-				"name":     "u",
-				"model":    "auth.User",
-				"noupdate": true,
+				"module":      "auth",
+				"name":        "u",
+				"application": "auth",
+				"model":       "User",
+				"noupdate":    true,
 				"values": map[string]any{
 					"group_id": map[string]any{"ref": "auth.g2"},
 				},
@@ -1525,9 +1584,10 @@ func TestApplyModule_NoUpdateFreezesSubsequentUpdates(t *testing.T) {
 	writeDataFile(t, dir, map[string]any{
 		"records": []any{
 			map[string]any{
-				"module": "auth",
-				"name":   "u",
-				"model":  "auth.User",
+				"module":      "auth",
+				"name":        "u",
+				"application": "auth",
+				"model":       "User",
 				"values": map[string]any{
 					"group_id": map[string]any{"ref": "auth.g1"},
 				},
@@ -1557,16 +1617,17 @@ func TestApplyModule_RefCanResolveExistingDBMappingOutsideBatch(t *testing.T) {
 	}).Error; err != nil {
 		t.Fatalf("seed auth_group: %v", err)
 	}
-	if err := db.Create(&metadata.ModelData{Module: "auth", Name: "pre_group", Model: "auth.group", ResID: "pre_group", NoUpdate: true}).Error; err != nil {
+	if err := db.Create(&metadata.ModelData{Module: "auth", Name: "pre_group", Application: "auth", ModelId: loaderTestModelID(t, db, "auth", "group"), ResID: "pre_group", NoUpdate: true}).Error; err != nil {
 		t.Fatalf("seed meta_model_data: %v", err)
 	}
 
 	writeDataFile(t, dir, map[string]any{
 		"records": []any{
 			map[string]any{
-				"module": "auth",
-				"name":   "u",
-				"model":  "auth.User",
+				"module":      "auth",
+				"name":        "u",
+				"application": "auth",
+				"model":       "User",
 				"values": map[string]any{
 					"group_id": map[string]any{"ref": "auth.pre_group"},
 				},
@@ -1820,7 +1881,7 @@ func TestResolveValue_SearchShapeErrorIncludesFieldPath(t *testing.T) {
 	t.Parallel()
 
 	l, db := newTestLoader(t)
-	rec := record{Module: "auth", Name: "u", Model: "auth.User"}
+	rec := record{Module: "auth", Name: "u", Application: "auth", Model: "User"}
 
 	// search with a valid model now resolves successfully; resolveValue returns raw []string.
 	got, err := l.resolveValue(db, "/tmp/data.json", 3, rec, "values.role_id", map[string]any{
@@ -1861,7 +1922,7 @@ func TestResolveValue_SearchShapeErrorIncludesFieldPath(t *testing.T) {
 	}
 
 	// ref and refBy still work (backward compat)
-	if err := db.Create(&metadata.ModelData{Module: "auth", Name: "group_admin", Model: "auth.group", ResID: "gid-1"}).Error; err != nil {
+	if err := db.Create(&metadata.ModelData{Module: "auth", Name: "group_admin", Application: "auth", ModelId: loaderTestModelID(t, db, "auth", "group"), ResID: "gid-1"}).Error; err != nil {
 		t.Fatalf("seed model_data: %v", err)
 	}
 	got, err = l.resolveValue(db, "/tmp/data.json", 0, rec, "values.group_id", map[string]any{"ref": "auth.group_admin"})
@@ -1975,7 +2036,7 @@ func TestResolveRefBySearch_UnsupportedOperator(t *testing.T) {
 	}
 
 	// Also test via resolveValue path
-	rec := record{Module: "auth", Name: "u", Model: "auth.User"}
+	rec := record{Module: "auth", Name: "u", Application: "auth", Model: "User"}
 	_, err = l.resolveValue(db, "/tmp/data.json", 0, rec, "values.x", map[string]any{
 		"search": map[string]any{
 			"model":  "auth.User",
@@ -2194,8 +2255,72 @@ func TestDetectFieldCardinality_FallbackPaths(t *testing.T) {
 	}
 }
 
+func TestRecordModelFullAndSearchCardinality_ShortSeedModel(t *testing.T) {
+	t.Parallel()
+
+	l, db := newTestLoader(t)
+	var userModel meta.Model
+	if err := db.Where("application = ? AND name = ?", "auth", "User").First(&userModel).Error; err != nil {
+		t.Fatalf("lookup User model: %v", err)
+	}
+	if err := db.Create(&meta.Field{
+		Name: "tag_ids", FieldType: "ManyToMany", ModelId: userModel.Id,
+	}).Error; err != nil {
+		t.Fatalf("seed ManyToMany field: %v", err)
+	}
+
+	if got := recordModelFull(record{Application: "auth", Model: "User"}, nil); got != "auth.User" {
+		t.Fatalf("recordModelFull from seed = %q, want auth.User", got)
+	}
+	resolved := &meta.Model{Application: "base", Name: "Company"}
+	if got := recordModelFull(record{Application: "auth", Model: "User"}, resolved); got != "base.Company" {
+		t.Fatalf("recordModelFull from meta.Model = %q, want base.Company", got)
+	}
+
+	// Short name alone cannot splitModel → wrong ManyToOne fallback.
+	if c := l.detectSearchCardinality(db, "User", "tag_ids", nil); c != refCardinalityManyToOne {
+		t.Fatalf("short model alone = %d, want ManyToOne fallback", c)
+	}
+	full := recordModelFull(record{Module: "auth", Name: "u", Application: "auth", Model: "User"}, nil)
+	if c := l.detectSearchCardinality(db, full, "tag_ids", nil); c != refCardinalityManyToMany {
+		t.Fatalf("qualified short seed model = %d, want ManyToMany", c)
+	}
+
+	for _, id := range []string{"g1", "g2"} {
+		if err := db.Table("auth_group").Create(map[string]any{
+			"id": id, "created_at": time.Now(), "updated_at": time.Now(),
+		}).Error; err != nil {
+			t.Fatalf("seed group: %v", err)
+		}
+	}
+	rec := record{Module: "auth", Name: "u", Application: "auth", Model: "User"}
+	columns, err := l.resolveAndMapValues(db, "/tmp/data.json", 0, rec, &userModel, map[string]any{
+		"TagIds": map[string]any{
+			"search": map[string]any{
+				"model": "auth.group",
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("resolveAndMapValues ManyToMany search: %v", err)
+	}
+	// Cardinality must accept multiple hits; insert path may JSON-encode the slice.
+	switch got := columns["tag_ids"].(type) {
+	case []string:
+		if len(got) != 2 {
+			t.Fatalf("expected 2 tag ids, got %#v", got)
+		}
+	case string:
+		if !strings.Contains(got, "g1") || !strings.Contains(got, "g2") {
+			t.Fatalf("expected JSON/list with g1 and g2, got %#v", got)
+		}
+	default:
+		t.Fatalf("unexpected tag_ids type: %#v", columns["tag_ids"])
+	}
+}
+
 func TestEnforceReferenceCardinality_EdgeCases(t *testing.T) {
-	rec := record{Module: "auth", Name: "u", Model: "auth.User"}
+	rec := record{Module: "auth", Name: "u", Application: "auth", Model: "User"}
 
 	// 0 results on ManyToOne
 	_, err := enforceReferenceCardinality([]string{}, refCardinalityManyToOne, "/tmp/d.json", 0, rec, "values.x", "search")
@@ -2351,7 +2476,7 @@ func TestResolveValue_SearchDomainNestedModelRef(t *testing.T) {
 		t.Fatalf("expected non-empty language field id")
 	}
 
-	rec := record{Module: "auth", Name: "fr", Model: "auth.RoleFieldRule"}
+	rec := record{Module: "auth", Name: "fr", Application: "auth", Model: "RoleFieldRule"}
 	got, err := l.resolveValue(db, "/tmp/data.json", 0, rec, "values.FieldId", map[string]any{
 		"search": map[string]any{
 			"model": "meta.MetaField",
@@ -2375,7 +2500,7 @@ func TestResolveSearchDomainRefs_AllBranches(t *testing.T) {
 	t.Parallel()
 
 	l, db := newTestLoader(t)
-	rec := record{Module: "auth", Name: "fr", Model: "auth.RoleFieldRule"}
+	rec := record{Module: "auth", Name: "fr", Application: "auth", Model: "RoleFieldRule"}
 
 	if err := db.Table("auth_user").Create(map[string]any{
 		"id": "user-collapse-1", "created_at": time.Now(), "updated_at": time.Now(),
@@ -2531,7 +2656,7 @@ func TestResolveValue_SearchDomainResolution(t *testing.T) {
 		t.Fatalf("seed user: %v", err)
 	}
 
-	rec := record{Module: "auth", Name: "u", Model: "auth.User"}
+	rec := record{Module: "auth", Name: "u", Application: "auth", Model: "User"}
 
 	// search via resolveValue returns raw []string; cardinality enforced by resolveAndMapValues.
 	got, err := l.resolveValue(db, "/tmp/data.json", 0, rec, "values.user_ids", map[string]any{
@@ -2584,7 +2709,7 @@ func TestResolveValue_ManyToOneSearchRequiresUnique(t *testing.T) {
 		}
 	}
 
-	rec := record{Module: "auth", Name: "u", Model: "auth.User"}
+	rec := record{Module: "auth", Name: "u", Application: "auth", Model: "User"}
 
 	// ManyToOne (default) with >1 results → error.
 	_, err := l.resolveAndMapValues(db, "/tmp/data.json", 0, rec, nil, map[string]any{
@@ -2627,7 +2752,7 @@ func TestResolveValue_ManyToOneSearchNotFound(t *testing.T) {
 	t.Parallel()
 
 	l, db := newTestLoader(t)
-	rec := record{Module: "auth", Name: "u", Model: "auth.User"}
+	rec := record{Module: "auth", Name: "u", Application: "auth", Model: "User"}
 
 	// ManyToOne (default) with 0 results → error.
 	_, err := l.resolveAndMapValues(db, "/tmp/data.json", 5, rec, nil, map[string]any{
@@ -2654,7 +2779,7 @@ func TestResolveValue_ManyToManySearchReturnsSlice(t *testing.T) {
 	t.Parallel()
 
 	// enforceReferenceCardinality in ManyToMany mode returns the raw []string slice.
-	rec := record{Module: "auth", Name: "u", Model: "auth.User"}
+	rec := record{Module: "auth", Name: "u", Application: "auth", Model: "User"}
 	ids := []string{"a", "b", "c"}
 	got, err := enforceReferenceCardinality(ids, refCardinalityManyToMany, "/tmp/data.json", 0, rec, "values.tags", "search")
 	if err != nil {
@@ -2670,7 +2795,7 @@ func TestResolveValue_SearchLimitOneRequiresStableOrder(t *testing.T) {
 	t.Parallel()
 
 	l, db := newTestLoader(t)
-	rec := record{Module: "auth", Name: "u", Model: "auth.User"}
+	rec := record{Module: "auth", Name: "u", Application: "auth", Model: "User"}
 
 	// Seed users with ascending ids.
 	for _, id := range []string{"u-a", "u-b"} {
@@ -2722,7 +2847,7 @@ func TestResolveValue_SearchCardinalityErrorIncludesLocation(t *testing.T) {
 	t.Parallel()
 
 	l, db := newTestLoader(t)
-	rec := record{Module: "auth", Name: "u", Model: "auth.User"}
+	rec := record{Module: "auth", Name: "u", Application: "auth", Model: "User"}
 
 	// Seed users to trigger not_unique.
 	for _, id := range []string{"ux-1", "ux-2"} {
@@ -2876,7 +3001,7 @@ func TestResolveValue_ModelRefAndServiceRefShortcuts(t *testing.T) {
 		t.Fatalf("seed meta_service: %v", err)
 	}
 
-	rec := record{Module: "auth", Name: "u", Model: "auth.User"}
+	rec := record{Module: "auth", Name: "u", Application: "auth", Model: "User"}
 
 	// modelRef via resolveValue returns the model ID as string.
 	got, err := l.resolveValue(db, "/tmp/data.json", 0, rec, "values.model_id", map[string]any{
@@ -3036,9 +3161,9 @@ func TestPlanRecordOrderLookupModelDataFailure(t *testing.T) {
 	l, db := newTestLoader(t)
 	owner := &meta.Module{Name: "auth"}
 	records := []record{{
-		Module: "auth",
-		Name:   "u",
-		Model:  "auth.User",
+		Module:      "auth",
+		Name:        "u",
+		Application: "auth", Model: "User",
 		Values: map[string]any{
 			"group_id": map[string]any{"ref": "auth.pre_group"},
 		},
@@ -3058,9 +3183,9 @@ func TestPlanBatchRecordOrderLookupModelDataFailure(t *testing.T) {
 		FilePath:    filepath.Join(t.TempDir(), "data.json"),
 		RecordIndex: 0,
 		Rec: record{
-			Module: "auth",
-			Name:   "u",
-			Model:  "auth.User",
+			Module:      "auth",
+			Name:        "u",
+			Application: "auth", Model: "User",
 			Values: map[string]any{
 				"group_id": map[string]any{"ref": "auth.pre_group"},
 			},
@@ -3082,7 +3207,7 @@ func TestApplyRecordModelDataDBFailures(t *testing.T) {
 		execLoaderTestSQL(t, db, "DROP TABLE meta_model_data")
 		execLoaderTestSQL(t, db, "CREATE TABLE meta_model_data (id TEXT, module TEXT, name TEXT, model TEXT, res_id TEXT, no_update INTEGER)")
 		err := l.applyRecord(db, "/tmp/data.json", 0, record{
-			Module: "auth", Name: "new_user", Model: "auth.User", Values: map[string]any{},
+			Module: "auth", Name: "new_user", Application: "auth", Model: "User", Values: map[string]any{},
 		}, now)
 		var le *LoadError
 		if !errors.As(err, &le) || le.Code != LoadErrorCodeDBLookupModelData {
@@ -3098,7 +3223,7 @@ func TestApplyRecordModelDataDBFailures(t *testing.T) {
 		}
 		execLoaderTestSQL(t, db, `CREATE TRIGGER block_model_data_insert BEFORE INSERT ON meta_model_data BEGIN SELECT RAISE(ABORT, 'blocked'); END`)
 		err := l.applyRecord(db, "/tmp/data.json", 0, record{
-			Module: "auth", Name: "insert_blocked", Model: "auth.User", Values: map[string]any{},
+			Module: "auth", Name: "insert_blocked", Application: "auth", Model: "User", Values: map[string]any{},
 		}, now)
 		var le *LoadError
 		if !errors.As(err, &le) || le.Code != LoadErrorCodeDBInsertModelData {
@@ -3117,14 +3242,14 @@ func TestApplyRecordModelDataDBFailures(t *testing.T) {
 			t.Fatalf("seed user: %v", err)
 		}
 		if err := db.Create(&metadata.ModelData{
-			Module: "auth", Name: "user_no_update", Model: "auth.User", ResID: user.ID, NoUpdate: false,
+			Module: "auth", Name: "user_no_update", Application: "auth", ModelId: loaderTestModelID(t, db, "auth", "User"), ResID: user.ID, NoUpdate: false,
 		}).Error; err != nil {
 			t.Fatalf("seed mapping: %v", err)
 		}
 		execLoaderTestSQL(t, db, `CREATE TRIGGER block_model_data_update BEFORE UPDATE ON meta_model_data BEGIN SELECT RAISE(ABORT, 'blocked'); END`)
 		freeze := true
 		err := l.applyRecord(db, "/tmp/data.json", 1, record{
-			Module: "auth", Name: "user_no_update", Model: "auth.User", NoUpdate: &freeze,
+			Module: "auth", Name: "user_no_update", Application: "auth", Model: "User", NoUpdate: &freeze,
 			Values: map[string]any{"group_id": group.ID},
 		}, now)
 		var le *LoadError
@@ -3134,7 +3259,7 @@ func TestApplyRecordModelDataDBFailures(t *testing.T) {
 	})
 }
 
-func TestValidateRecordModule_ModuleNotFound(t *testing.T) {
+func TestNormalizeRecordOwnership_ModuleNotOwner(t *testing.T) {
 	t.Parallel()
 	rules := &moduleRules{
 		OwnerName:  "auth",
@@ -3142,12 +3267,118 @@ func TestValidateRecordModule_ModuleNotFound(t *testing.T) {
 		ModuleInfo: map[string]moduleInfo{"auth": {Application: "auth"}},
 		Allowed:    map[string]struct{}{"auth": {}},
 	}
-	err := validateRecordModule(rules, "/tmp/data.json", 0, record{
-		Module: "does_not_exist", Name: "x", Model: "auth.User", Values: map[string]any{},
-	})
+	rec := record{Module: "does_not_exist", Name: "x", Model: "User", Values: map[string]any{}}
+	err := normalizeRecordOwnership(rules, "/tmp/data.json", 0, &rec)
 	var le *LoadError
-	if !errors.As(err, &le) || le.Code != LoadErrorCodeModuleNotFound || le.Name != "x" {
-		t.Fatalf("validateRecordModule() error = %#v, want ModuleNotFound with Name=x", err)
+	if !errors.As(err, &le) || le.Code != LoadErrorCodeModuleNotOwner || le.Name != "x" {
+		t.Fatalf("normalizeRecordOwnership() error = %#v, want module_not_owner with Name=x", err)
+	}
+}
+
+func TestNormalizeRecordOwnership_NilGuardsAndDefaults(t *testing.T) {
+	t.Parallel()
+	if err := normalizeRecordOwnership(nil, "/tmp/data.json", 0, &record{Name: "x"}); err == nil || !strings.Contains(err.Error(), "nil module rules or record") {
+		t.Fatalf("nil rules error = %v", err)
+	}
+	rules := &moduleRules{OwnerName: "auth", OwnerApp: "auth"}
+	if err := normalizeRecordOwnership(rules, "/tmp/data.json", 0, nil); err == nil || !strings.Contains(err.Error(), "nil module rules or record") {
+		t.Fatalf("nil record error = %v", err)
+	}
+	rec := record{Name: "x", Model: "User"}
+	if err := normalizeRecordOwnership(rules, "/tmp/data.json", 0, &rec); err != nil {
+		t.Fatalf("defaults: %v", err)
+	}
+	if rec.Module != "auth" || rec.Application != "auth" {
+		t.Fatalf("expected owner defaults, got module=%q application=%q", rec.Module, rec.Application)
+	}
+}
+
+func TestLoadErrorModelDisplayAndErrorFormatting(t *testing.T) {
+	t.Parallel()
+	if got := loadErrorModelDisplay("auth", "User"); got != "auth.User" {
+		t.Fatalf("both = %q", got)
+	}
+	if got := loadErrorModelDisplay("", "User"); got != "User" {
+		t.Fatalf("short only = %q", got)
+	}
+	if got := loadErrorModelDisplay("auth", ""); got != "auth" {
+		t.Fatalf("app only = %q", got)
+	}
+	if got := loadErrorModelDisplay("  ", "  "); got != "" {
+		t.Fatalf("blank = %q", got)
+	}
+
+	shortOnly := (&LoadError{Kind: LoadErrorKindValidation, Code: "c", Model: "User", Message: "m"}).Error()
+	if !strings.Contains(shortOnly, "model=User") || strings.Contains(shortOnly, "model=auth.User") {
+		t.Fatalf("short-only Error() = %q", shortOnly)
+	}
+	appOnly := (&LoadError{Kind: LoadErrorKindValidation, Code: "c", Application: "auth", Message: "m"}).Error()
+	if !strings.Contains(appOnly, "model=auth") {
+		t.Fatalf("app-only Error() = %q", appOnly)
+	}
+}
+
+func TestRecordModelFull_Fallbacks(t *testing.T) {
+	t.Parallel()
+	if got := recordModelFull(record{}, &meta.Model{Application: "auth", Name: ""}); got != "" {
+		t.Fatalf("incomplete meta model = %q", got)
+	}
+	if got := recordModelFull(record{Model: "User"}, &meta.Model{Application: "", Name: "User"}); got != "User" {
+		t.Fatalf("seed short without app = %q", got)
+	}
+	if got := recordModelFull(record{}, nil); got != "" {
+		t.Fatalf("empty = %q", got)
+	}
+}
+
+func TestApplyRecord_SyncsStaleMappingTarget(t *testing.T) {
+	l, db := newTestLoader(t)
+	now := time.Now()
+	user := testAuthUser{ID: "user-sync-target", GroupID: "g"}
+	if err := db.Table("auth_user").Create(&user).Error; err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+	wantModelID := loaderTestModelID(t, db, "auth", "User")
+	if err := db.Create(&metadata.ModelData{
+		Module: "auth", Name: "user_sync_target", Application: "stale_app", ModelId: "stale_model_id", ResID: user.ID, NoUpdate: false,
+	}).Error; err != nil {
+		t.Fatalf("seed stale mapping: %v", err)
+	}
+	if err := l.applyRecord(db, "/tmp/data.json", 0, record{
+		Module: "auth", Name: "user_sync_target", Application: "auth", Model: "User",
+		Values: map[string]any{},
+	}, now); err != nil {
+		t.Fatalf("applyRecord sync: %v", err)
+	}
+	var mapping metadata.ModelData
+	if err := db.Where("module = ? AND name = ?", "auth", "user_sync_target").First(&mapping).Error; err != nil {
+		t.Fatalf("lookup mapping: %v", err)
+	}
+	if mapping.Application != "auth" || mapping.ModelId != wantModelID {
+		t.Fatalf("mapping not synced: %#v", mapping)
+	}
+}
+
+func TestApplyRecord_SyncMappingTargetDBFailure(t *testing.T) {
+	l, db := newTestLoader(t)
+	now := time.Now()
+	user := testAuthUser{ID: "user-sync-fail", GroupID: "g"}
+	if err := db.Table("auth_user").Create(&user).Error; err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+	if err := db.Create(&metadata.ModelData{
+		Module: "auth", Name: "user_sync_fail", Application: "stale_app", ModelId: "stale_model_id", ResID: user.ID, NoUpdate: false,
+	}).Error; err != nil {
+		t.Fatalf("seed mapping: %v", err)
+	}
+	execLoaderTestSQL(t, db, `CREATE TRIGGER block_model_data_sync BEFORE UPDATE ON meta_model_data BEGIN SELECT RAISE(ABORT, 'blocked'); END`)
+	err := l.applyRecord(db, "/tmp/data.json", 0, record{
+		Module: "auth", Name: "user_sync_fail", Application: "auth", Model: "User",
+		Values: map[string]any{},
+	}, now)
+	var le *LoadError
+	if !errors.As(err, &le) || le.Code != LoadErrorCodeDBUpdateModelDataNoUpdate {
+		t.Fatalf("applyRecord sync failure = %#v, want %s", err, LoadErrorCodeDBUpdateModelDataNoUpdate)
 	}
 }
 
@@ -3161,13 +3392,16 @@ func TestPlanBatchRecordOrder_ValidationAndRefErrors(t *testing.T) {
 		rec  record
 		code string
 	}{
-		{name: "missing name", rec: record{Module: "auth", Model: "auth.User", Values: map[string]any{}}, code: LoadErrorCodeMissingName},
-		{name: "missing model", rec: record{Module: "auth", Name: "x", Values: map[string]any{}}, code: LoadErrorCodeMissingModel},
-		{name: "missing values", rec: record{Module: "auth", Name: "x", Model: "auth.User"}, code: LoadErrorCodeMissingValues},
+		{name: "missing name", rec: record{Module: "auth", Application: "auth", Model: "User", Values: map[string]any{}}, code: LoadErrorCodeMissingName},
+		{name: "module not owner", rec: record{Module: "base", Name: "x", Model: "User", Values: map[string]any{}}, code: LoadErrorCodeModuleNotOwner},
+		{name: "application mismatch", rec: record{Name: "x", Application: "base", Model: "User", Values: map[string]any{}}, code: LoadErrorCodeApplicationMismatch},
+		{name: "missing model", rec: record{Module: "auth", Name: "x", Application: "auth", Values: map[string]any{}}, code: LoadErrorCodeMissingModel},
+		{name: "missing values", rec: record{Module: "auth", Name: "x", Application: "auth", Model: "User"}, code: LoadErrorCodeMissingValues},
+		{name: "invalid model full name", rec: record{Module: "auth", Name: "x", Application: "auth", Model: "auth.User", Values: map[string]any{}}, code: LoadErrorCodeInvalidModel},
 		{
 			name: "invalid ref",
 			rec: record{
-				Module: "auth", Name: "x", Model: "auth.User",
+				Module: "auth", Name: "x", Application: "auth", Model: "User",
 				Values: map[string]any{"group_id": map[string]any{"ref": "not-a-ref"}},
 			},
 			code: LoadErrorCodeInvalidRef,
@@ -3175,7 +3409,7 @@ func TestPlanBatchRecordOrder_ValidationAndRefErrors(t *testing.T) {
 		{
 			name: "self cycle",
 			rec: record{
-				Module: "auth", Name: "self", Model: "auth.User",
+				Module: "auth", Name: "self", Application: "auth", Model: "User",
 				Values: map[string]any{"group_id": map[string]any{"ref": "auth.self"}},
 			},
 			code: LoadErrorCodeRefSelfCycle,
@@ -3200,8 +3434,8 @@ func TestPlanRecordOrder_DuplicateInvalidAndExternalRef(t *testing.T) {
 
 	t.Run("duplicate name", func(t *testing.T) {
 		_, err := l.planRecordOrder(db, owner, filePath, []record{
-			{Module: "auth", Name: "x", Model: "auth.User", Values: map[string]any{}},
-			{Module: "auth", Name: "x", Model: "auth.User", Values: map[string]any{}},
+			{Module: "auth", Name: "x", Application: "auth", Model: "User", Values: map[string]any{}},
+			{Module: "auth", Name: "x", Application: "auth", Model: "User", Values: map[string]any{}},
 		})
 		var le *LoadError
 		if !errors.As(err, &le) || le.Code != LoadErrorCodeDuplicateNameInInput || le.Name != "x" {
@@ -3211,7 +3445,7 @@ func TestPlanRecordOrder_DuplicateInvalidAndExternalRef(t *testing.T) {
 
 	t.Run("invalid ref", func(t *testing.T) {
 		_, err := l.planRecordOrder(db, owner, filePath, []record{{
-			Module: "auth", Name: "x", Model: "auth.User",
+			Module: "auth", Name: "x", Application: "auth", Model: "User",
 			Values: map[string]any{"group_id": map[string]any{"ref": "not-a-ref"}},
 		}})
 		var le *LoadError
@@ -3222,12 +3456,12 @@ func TestPlanRecordOrder_DuplicateInvalidAndExternalRef(t *testing.T) {
 
 	t.Run("external ref exists", func(t *testing.T) {
 		if err := db.Create(&metadata.ModelData{
-			Module: "auth", Name: "pre_group", Model: "auth.group", ResID: "gid-pre",
+			Module: "auth", Name: "pre_group", Application: "auth", ModelId: loaderTestModelID(t, db, "auth", "group"), ResID: "gid-pre",
 		}).Error; err != nil {
 			t.Fatalf("seed model_data: %v", err)
 		}
 		order, err := l.planRecordOrder(db, owner, filePath, []record{{
-			Module: "auth", Name: "u", Model: "auth.User",
+			Module: "auth", Name: "u", Application: "auth", Model: "User",
 			Values: map[string]any{"group_id": map[string]any{"ref": "auth.pre_group"}},
 		}})
 		if err != nil {
@@ -3240,7 +3474,7 @@ func TestPlanRecordOrder_DuplicateInvalidAndExternalRef(t *testing.T) {
 
 	t.Run("external ref missing", func(t *testing.T) {
 		_, err := l.planRecordOrder(db, owner, filePath, []record{{
-			Module: "auth", Name: "u2", Model: "auth.User",
+			Module: "auth", Name: "u2", Application: "auth", Model: "User",
 			Values: map[string]any{"group_id": map[string]any{"ref": "auth.still_missing"}},
 		}})
 		var le *LoadError
