@@ -1269,7 +1269,7 @@ func (l *Loader) applyRecord(tx *gorm.DB, filePath string, recordIndex int, rec 
 		mapping.Module = moduleName
 		mapping.Name = localName
 		mapping.Application = app
-		mapping.Model = modelName
+		mapping.ModelId = model.Id.String
 		mapping.ResID = resID
 		mapping.NoUpdate = noUpdate
 		if err := tx.Create(mapping).Error; err != nil {

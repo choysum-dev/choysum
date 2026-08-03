@@ -160,18 +160,19 @@ func TestDefaultUpdateAdminAndMarkerSuccessUpsertsBootstrapSettings(t *testing.T
 	resID := "admin-user-id"
 	mustExec(t, db, "INSERT INTO auth_user(id, username, password_hash, updated_at) VALUES(?, ?, ?, ?)",
 		resID, "old-admin", "old-hash", fixedNow)
-	if err := db.Create(&metadata.ModelData{
-		Module: "auth", Name: "user_admin", Application: "auth", Model: "User", ResID: resID,
-	}).Error; err != nil {
-		t.Fatalf("seed model_data: %v", err)
-	}
-	if err := db.Create(&meta.Model{
+	authUserModel := &meta.Model{
 		Application: "auth",
 		Name:        "User",
 		ModelTable:  "auth_user",
 		Path:        "/tmp",
-	}).Error; err != nil {
+	}
+	if err := db.Create(authUserModel).Error; err != nil {
 		t.Fatalf("seed auth.User model: %v", err)
+	}
+	if err := db.Create(&metadata.ModelData{
+		Module: "auth", Name: "user_admin", Application: "auth", ModelId: authUserModel.Id.String, ResID: resID,
+	}).Error; err != nil {
+		t.Fatalf("seed model_data: %v", err)
 	}
 	if err := db.Create(&metadata.Setting{Key: "system.init.done", Value: "false"}).Error; err != nil {
 		t.Fatalf("seed existing bootstrap setting: %v", err)
