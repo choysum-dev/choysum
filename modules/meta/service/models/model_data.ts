@@ -60,6 +60,9 @@ export default class MetaModelData extends BaseModel {
   @Field({ type: 'ManyToOne', relation: { targetModel: () => MetaModel }, string: _lt('Model', { scope: 'meta.model.MetaModelData.fields' }) })
   ModelId?: MetaModel;
 
+  @Field({ type: 'varchar', size: 255, notNull: true, index: true, string: _lt('Model Name', { scope: 'meta.model.MetaModelData.fields' }) })
+  ModelName!: string;
+
   @Field({ type: 'varchar', size: 20, notNull: true, index: true, string: _lt('Resource Id', { scope: 'meta.model.MetaModelData.fields' }) })
   ResId!: string;
 
