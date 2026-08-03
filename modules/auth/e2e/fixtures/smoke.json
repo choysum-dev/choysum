@@ -1,30 +1,7 @@
 {
   "records": [
     {
-      "module": "auth",
-      "name": "e2e_company_child",
-      "application": "base",
-      "model": "Company",
-      "values": {
-        "Name": "Child Company",
-        "Code": "CHILD",
-        "Timezone": "Asia/Shanghai",
-        "CurrencyId": {
-          "ref": "base.currency_cny"
-        },
-        "IsActive": true,
-        "LanguageId": {
-          "ref": "base.language_zh_cn"
-        },
-        "ParentId": {
-          "ref": "base.company_main"
-        }
-      }
-    },
-    {
-      "module": "auth",
       "name": "e2e_admin_user",
-      "application": "auth",
       "model": "User",
       "values": {
         "Username": "e2e-admin",
@@ -39,7 +16,7 @@
             "ref": "base.company_main"
           },
           {
-            "ref": "auth.e2e_company_child"
+            "ref": "base.e2e_company_child"
           }
         ],
         "Language": "zh_CN",
@@ -47,9 +24,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "e2e_role_base_user",
-      "application": "auth",
       "model": "Role",
       "values": {
         "Name": "E2E Base User",
@@ -60,9 +35,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "e2e_role_sys_admin",
-      "application": "auth",
       "model": "Role",
       "values": {
         "Name": "E2E System Admin",
@@ -73,9 +46,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "e2e_rui_sys_admin_global_allow",
-      "application": "auth",
       "model": "RoleUiResource",
       "values": {
         "RoleId": {
@@ -87,9 +58,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "e2e_rma_sys_admin_global_allow",
-      "application": "auth",
       "model": "RoleMethodAccess",
       "values": {
         "RoleId": {
@@ -102,9 +71,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "e2e_rrr_sys_admin_global_grant_all",
-      "application": "auth",
       "model": "RoleRecordRule",
       "values": {
         "RoleId": {
@@ -123,9 +90,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "e2e_rfr_sys_admin_global_allow_rw",
-      "application": "auth",
       "model": "RoleFieldRule",
       "values": {
         "RoleId": {
@@ -139,9 +104,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "e2e_admin_userrole_base_user_main",
-      "application": "auth",
       "model": "UserRole",
       "values": {
         "UserId": {
@@ -156,9 +119,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "e2e_admin_userrole_sys_admin",
-      "application": "auth",
       "model": "UserRole",
       "values": {
         "UserId": {

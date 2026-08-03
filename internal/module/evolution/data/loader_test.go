@@ -730,7 +730,8 @@ func TestPlanRecordOrder_GuardsAndValidationErrors(t *testing.T) {
 		code string
 	}{
 		{name: "missing name", rec: record{Module: "auth", Application: "auth", Model: "User", Values: map[string]any{}}, code: LoadErrorCodeMissingName},
-		{name: "missing application", rec: record{Module: "auth", Name: "x", Model: "User", Values: map[string]any{}}, code: LoadErrorCodeMissingApplication},
+		{name: "module not owner", rec: record{Module: "base", Name: "x", Model: "User", Values: map[string]any{}}, code: LoadErrorCodeModuleNotOwner},
+		{name: "application mismatch", rec: record{Name: "x", Application: "base", Model: "User", Values: map[string]any{}}, code: LoadErrorCodeApplicationMismatch},
 		{name: "missing model", rec: record{Module: "auth", Name: "x", Application: "auth", Values: map[string]any{}}, code: LoadErrorCodeMissingModel},
 		{name: "missing values", rec: record{Module: "auth", Name: "x", Application: "auth", Model: "User"}, code: LoadErrorCodeMissingValues},
 		{name: "invalid model full name", rec: record{Module: "auth", Name: "x", Application: "auth", Model: "auth.User", Values: map[string]any{}}, code: LoadErrorCodeInvalidModel},
@@ -1386,12 +1387,12 @@ func TestApplyModule_CrossFileCycleIsRejectedWithFileInfo(t *testing.T) {
 	}
 }
 
-func TestApplyModule_ModuleCrossApplicationIsRejected(t *testing.T) {
+func TestApplyModule_ForeignModuleNamespaceIsRejected(t *testing.T) {
 	l, _ := newTestLoader(t)
 	dir := t.TempDir()
 	writeDataFile(t, dir, map[string]any{
 		"records": []any{
-			map[string]any{"module": "base", "name": "x", "application": "auth", "model": "User", "values": map[string]any{}},
+			map[string]any{"module": "base", "name": "x", "model": "User", "values": map[string]any{}},
 		},
 	})
 	mod := moduleWithDataFile(t, dir)
@@ -1407,20 +1408,20 @@ func TestApplyModule_ModuleCrossApplicationIsRejected(t *testing.T) {
 	if le.Kind != LoadErrorKindValidation {
 		t.Fatalf("expected Kind=%q, got %q", LoadErrorKindValidation, le.Kind)
 	}
-	if le.Code != LoadErrorCodeModuleCrossApplication {
-		t.Fatalf("expected Code=%q, got %q", LoadErrorCodeModuleCrossApplication, le.Code)
+	if le.Code != LoadErrorCodeModuleNotOwner {
+		t.Fatalf("expected Code=%q, got %q", LoadErrorCodeModuleNotOwner, le.Code)
 	}
 	if le.RecordIndex != 0 {
 		t.Fatalf("expected RecordIndex=0, got %d", le.RecordIndex)
 	}
 }
 
-func TestApplyModule_ModuleNotInDependencyChainIsRejected(t *testing.T) {
+func TestApplyModule_CrossAppApplicationIsRejected(t *testing.T) {
 	l, _ := newTestLoader(t)
 	dir := t.TempDir()
 	writeDataFile(t, dir, map[string]any{
 		"records": []any{
-			map[string]any{"module": "auth_addon", "name": "x", "application": "auth", "model": "User", "values": map[string]any{}},
+			map[string]any{"name": "x", "application": "base", "model": "User", "values": map[string]any{}},
 		},
 	})
 	mod := moduleWithDataFile(t, dir)
@@ -1436,26 +1437,53 @@ func TestApplyModule_ModuleNotInDependencyChainIsRejected(t *testing.T) {
 	if le.Kind != LoadErrorKindValidation {
 		t.Fatalf("expected Kind=%q, got %q", LoadErrorKindValidation, le.Kind)
 	}
-	if le.Code != LoadErrorCodeModuleNotInDependencyChain {
-		t.Fatalf("expected Code=%q, got %q", LoadErrorCodeModuleNotInDependencyChain, le.Code)
+	if le.Code != LoadErrorCodeApplicationMismatch {
+		t.Fatalf("expected Code=%q, got %q", LoadErrorCodeApplicationMismatch, le.Code)
 	}
 	if le.RecordIndex != 0 {
 		t.Fatalf("expected RecordIndex=0, got %d", le.RecordIndex)
 	}
 }
 
-func TestApplyModule_CrossModuleSameApplicationAllowedWithDependency(t *testing.T) {
+func TestApplyModule_OmitsModuleAndApplicationDefaultsToOwner(t *testing.T) {
+	l, db := newTestLoader(t)
+	dir := t.TempDir()
+	writeDataFile(t, dir, map[string]any{
+		"records": []any{
+			map[string]any{"name": "x", "model": "User", "values": map[string]any{}},
+		},
+	})
+	mod := moduleWithDataFile(t, dir)
+
+	if err := l.ApplyModule(context.Background(), mod, ApplyOptions{}); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	var mapping metadata.ModelData
+	if err := db.Where("module = ? AND name = ?", "auth", "x").First(&mapping).Error; err != nil {
+		t.Fatalf("lookup mapping: %v", err)
+	}
+	if mapping.Application != "auth" || mapping.Model != "User" {
+		t.Fatalf("unexpected mapping target: %#v", mapping)
+	}
+}
+
+func TestApplyModule_CrossModuleSameApplicationIsRejected(t *testing.T) {
 	l, _ := newTestLoader(t)
 	dir := t.TempDir()
 	writeDataFile(t, dir, map[string]any{
 		"records": []any{
-			map[string]any{"module": "auth", "name": "x", "application": "auth", "model": "User", "values": map[string]any{}},
+			map[string]any{"module": "auth", "name": "x", "model": "User", "values": map[string]any{}},
 		},
 	})
 	mod := moduleWithDataFileNamed(t, dir, "auth_addon")
 
-	if err := l.ApplyModule(context.Background(), mod, ApplyOptions{}); err != nil {
-		t.Fatalf("expected no error, got %v", err)
+	err := l.ApplyModule(context.Background(), mod, ApplyOptions{})
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	var le *LoadError
+	if !errors.As(err, &le) || le.Code != LoadErrorCodeModuleNotOwner {
+		t.Fatalf("ApplyModule() error = %#v, want module_not_owner", err)
 	}
 }
 
@@ -3154,7 +3182,7 @@ func TestApplyRecordModelDataDBFailures(t *testing.T) {
 	})
 }
 
-func TestValidateRecordModule_ModuleNotFound(t *testing.T) {
+func TestNormalizeRecordOwnership_ModuleNotOwner(t *testing.T) {
 	t.Parallel()
 	rules := &moduleRules{
 		OwnerName:  "auth",
@@ -3162,12 +3190,11 @@ func TestValidateRecordModule_ModuleNotFound(t *testing.T) {
 		ModuleInfo: map[string]moduleInfo{"auth": {Application: "auth"}},
 		Allowed:    map[string]struct{}{"auth": {}},
 	}
-	err := validateRecordModule(rules, "/tmp/data.json", 0, record{
-		Module: "does_not_exist", Name: "x", Application: "auth", Model: "User", Values: map[string]any{},
-	})
+	rec := record{Module: "does_not_exist", Name: "x", Model: "User", Values: map[string]any{}}
+	err := normalizeRecordOwnership(rules, "/tmp/data.json", 0, &rec)
 	var le *LoadError
-	if !errors.As(err, &le) || le.Code != LoadErrorCodeModuleNotFound || le.Name != "x" {
-		t.Fatalf("validateRecordModule() error = %#v, want ModuleNotFound with Name=x", err)
+	if !errors.As(err, &le) || le.Code != LoadErrorCodeModuleNotOwner || le.Name != "x" {
+		t.Fatalf("normalizeRecordOwnership() error = %#v, want module_not_owner with Name=x", err)
 	}
 }
 
@@ -3182,7 +3209,8 @@ func TestPlanBatchRecordOrder_ValidationAndRefErrors(t *testing.T) {
 		code string
 	}{
 		{name: "missing name", rec: record{Module: "auth", Application: "auth", Model: "User", Values: map[string]any{}}, code: LoadErrorCodeMissingName},
-		{name: "missing application", rec: record{Module: "auth", Name: "x", Model: "User", Values: map[string]any{}}, code: LoadErrorCodeMissingApplication},
+		{name: "module not owner", rec: record{Module: "base", Name: "x", Model: "User", Values: map[string]any{}}, code: LoadErrorCodeModuleNotOwner},
+		{name: "application mismatch", rec: record{Name: "x", Application: "base", Model: "User", Values: map[string]any{}}, code: LoadErrorCodeApplicationMismatch},
 		{name: "missing model", rec: record{Module: "auth", Name: "x", Application: "auth", Values: map[string]any{}}, code: LoadErrorCodeMissingModel},
 		{name: "missing values", rec: record{Module: "auth", Name: "x", Application: "auth", Model: "User"}, code: LoadErrorCodeMissingValues},
 		{name: "invalid model full name", rec: record{Module: "auth", Name: "x", Application: "auth", Model: "auth.User", Values: map[string]any{}}, code: LoadErrorCodeInvalidModel},

@@ -1,9 +1,7 @@
 {
   "records": [
     {
-      "module": "auth",
       "name": "role_base_user",
-      "application": "auth",
       "model": "Role",
       "values": {
         "Name": "Base User",
@@ -17,9 +15,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "role_sys_admin",
-      "application": "auth",
       "model": "Role",
       "values": {
         "Name": "System Admin",
@@ -33,9 +29,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "role_terminology_editor",
-      "application": "auth",
       "model": "Role",
       "values": {
         "Name": "Terminology Editor",
@@ -49,9 +43,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "user_admin",
-      "application": "auth",
       "model": "User",
       "values": {
         "Username": "admin",
@@ -69,9 +61,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "userrole_admin_sys_admin",
-      "application": "auth",
       "model": "UserRole",
       "values": {
         "UserId": {
@@ -83,9 +73,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rma_sys_admin_global_allow",
-      "application": "auth",
       "model": "RoleMethodAccess",
       "values": {
         "RoleId": {
@@ -98,9 +86,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rma_terminology_editor_auth_search_terms",
-      "application": "auth",
       "model": "RoleMethodAccess",
       "values": {
         "RoleId": {
@@ -115,9 +101,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rma_terminology_editor_auth_update_term",
-      "application": "auth",
       "model": "RoleMethodAccess",
       "values": {
         "RoleId": {
@@ -132,9 +116,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rma_base_user_browse",
-      "application": "auth",
       "model": "RoleMethodAccess",
       "values": {
         "RoleId": {
@@ -149,9 +131,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rma_base_user_get_permission_state",
-      "application": "auth",
       "model": "RoleMethodAccess",
       "values": {
         "RoleId": {
@@ -166,9 +146,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rma_base_user_switch_company_scope",
-      "application": "auth",
       "model": "RoleMethodAccess",
       "values": {
         "RoleId": {
@@ -183,9 +161,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rma_base_user_company_search",
-      "application": "auth",
       "model": "RoleMethodAccess",
       "values": {
         "RoleId": {
@@ -200,9 +176,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rui_sys_admin_global_allow",
-      "application": "auth",
       "model": "RoleUiResource",
       "values": {
         "RoleId": {
@@ -214,9 +188,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rrr_sys_admin_global_grant_all",
-      "application": "auth",
       "model": "RoleRecordRule",
       "values": {
         "RoleId": {
@@ -235,9 +207,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rfr_sys_admin_global_allow_rw",
-      "application": "auth",
       "model": "RoleFieldRule",
       "values": {
         "RoleId": {
@@ -251,9 +221,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rfr_sys_admin_auth_user_password_hash_deny",
-      "application": "auth",
       "model": "RoleFieldRule",
       "values": {
         "RoleId": {
@@ -288,9 +256,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rrr_base_user_auth_app_read",
-      "application": "auth",
       "model": "RoleRecordRule",
       "values": {
         "RoleId": {
@@ -315,9 +281,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rrr_base_user_base_app_read",
-      "application": "auth",
       "model": "RoleRecordRule",
       "values": {
         "RoleId": {
@@ -342,9 +306,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rrr_base_user_meta_app_read",
-      "application": "auth",
       "model": "RoleRecordRule",
       "values": {
         "RoleId": {
@@ -369,9 +331,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rrr_base_user_auth_user_rw",
-      "application": "auth",
       "model": "RoleRecordRule",
       "values": {
         "RoleId": {
@@ -398,9 +358,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rrr_base_user_auth_token_rwc",
-      "application": "auth",
       "model": "RoleRecordRule",
       "values": {
         "RoleId": {
@@ -427,9 +385,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rrr_base_user_auth_session_rwc",
-      "application": "auth",
       "model": "RoleRecordRule",
       "values": {
         "RoleId": {
@@ -456,9 +412,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rfr_base_user_auth_app_read",
-      "application": "auth",
       "model": "RoleFieldRule",
       "values": {
         "RoleId": {
@@ -478,9 +432,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rfr_base_user_base_app_read",
-      "application": "auth",
       "model": "RoleFieldRule",
       "values": {
         "RoleId": {
@@ -500,9 +452,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rfr_base_user_meta_app_read",
-      "application": "auth",
       "model": "RoleFieldRule",
       "values": {
         "RoleId": {
@@ -522,9 +472,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rfr_base_user_auth_user_rw",
-      "application": "auth",
       "model": "RoleFieldRule",
       "values": {
         "RoleId": {
@@ -540,9 +488,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rfr_base_user_auth_user_password_hash_deny",
-      "application": "auth",
       "model": "RoleFieldRule",
       "values": {
         "RoleId": {
@@ -577,9 +523,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rfr_base_user_auth_user_first_name_w",
-      "application": "auth",
       "model": "RoleFieldRule",
       "values": {
         "RoleId": {
@@ -614,9 +558,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rfr_base_user_auth_user_last_name_w",
-      "application": "auth",
       "model": "RoleFieldRule",
       "values": {
         "RoleId": {
@@ -651,9 +593,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rfr_base_user_auth_user_email_w",
-      "application": "auth",
       "model": "RoleFieldRule",
       "values": {
         "RoleId": {
@@ -688,9 +628,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rfr_base_user_auth_user_phone_w",
-      "application": "auth",
       "model": "RoleFieldRule",
       "values": {
         "RoleId": {
@@ -725,9 +663,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rfr_base_user_auth_user_avatar_w",
-      "application": "auth",
       "model": "RoleFieldRule",
       "values": {
         "RoleId": {
@@ -762,9 +698,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rfr_base_user_auth_user_language_w",
-      "application": "auth",
       "model": "RoleFieldRule",
       "values": {
         "RoleId": {
@@ -799,9 +733,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rfr_base_user_auth_user_timezone_w",
-      "application": "auth",
       "model": "RoleFieldRule",
       "values": {
         "RoleId": {
@@ -836,9 +768,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rfr_base_user_auth_user_preferences_w",
-      "application": "auth",
       "model": "RoleFieldRule",
       "values": {
         "RoleId": {
@@ -873,9 +803,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rfr_base_user_auth_token_rw",
-      "application": "auth",
       "model": "RoleFieldRule",
       "values": {
         "RoleId": {
@@ -891,9 +819,7 @@
       }
     },
     {
-      "module": "auth",
       "name": "rfr_base_user_auth_session_rw",
-      "application": "auth",
       "model": "RoleFieldRule",
       "values": {
         "RoleId": {

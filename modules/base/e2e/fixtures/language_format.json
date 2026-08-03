@@ -1,9 +1,7 @@
 {
   "records": [
     {
-      "module": "base",
       "name": "e2e_exchange_rate_format",
-      "application": "base",
       "model": "ExchangeRate",
       "values": {
         "CurrencyId": {

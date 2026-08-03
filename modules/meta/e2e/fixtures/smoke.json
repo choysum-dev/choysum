@@ -1,9 +1,7 @@
 {
   "records": [
     {
-      "module": "meta",
       "name": "e2e_partner_module",
-      "application": "meta",
       "model": "MetaModule",
       "values": {
         "Name": "partner",

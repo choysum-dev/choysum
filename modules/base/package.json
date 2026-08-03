@@ -36,7 +36,8 @@
       "scenarios": {
         "default": {
           "fixtures": [
-            "e2e/fixtures/language_format.json"
+            "e2e/fixtures/language_format.json",
+            "e2e/fixtures/company_child.json"
           ]
         }
       }

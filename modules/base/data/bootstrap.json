@@ -1,9 +1,7 @@
 {
   "records": [
     {
-      "module": "base",
       "name": "language_zh_cn",
-      "application": "base",
       "model": "Language",
       "values": {
         "Name": {
@@ -24,9 +22,7 @@
       }
     },
     {
-      "module": "base",
       "name": "language_en_us",
-      "application": "base",
       "model": "Language",
       "values": {
         "Name": {
@@ -47,9 +43,7 @@
       }
     },
     {
-      "module": "base",
       "name": "currency_cny",
-      "application": "base",
       "model": "Currency",
       "values": {
         "Name": {
@@ -64,9 +58,7 @@
       }
     },
     {
-      "module": "base",
       "name": "company_main",
-      "application": "base",
       "model": "Company",
       "values": {
         "Name": {
