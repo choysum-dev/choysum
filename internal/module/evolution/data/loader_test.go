@@ -3275,6 +3275,113 @@ func TestNormalizeRecordOwnership_ModuleNotOwner(t *testing.T) {
 	}
 }
 
+func TestNormalizeRecordOwnership_NilGuardsAndDefaults(t *testing.T) {
+	t.Parallel()
+	if err := normalizeRecordOwnership(nil, "/tmp/data.json", 0, &record{Name: "x"}); err == nil || !strings.Contains(err.Error(), "nil module rules or record") {
+		t.Fatalf("nil rules error = %v", err)
+	}
+	rules := &moduleRules{OwnerName: "auth", OwnerApp: "auth"}
+	if err := normalizeRecordOwnership(rules, "/tmp/data.json", 0, nil); err == nil || !strings.Contains(err.Error(), "nil module rules or record") {
+		t.Fatalf("nil record error = %v", err)
+	}
+	rec := record{Name: "x", Model: "User"}
+	if err := normalizeRecordOwnership(rules, "/tmp/data.json", 0, &rec); err != nil {
+		t.Fatalf("defaults: %v", err)
+	}
+	if rec.Module != "auth" || rec.Application != "auth" {
+		t.Fatalf("expected owner defaults, got module=%q application=%q", rec.Module, rec.Application)
+	}
+}
+
+func TestLoadErrorModelDisplayAndErrorFormatting(t *testing.T) {
+	t.Parallel()
+	if got := loadErrorModelDisplay("auth", "User"); got != "auth.User" {
+		t.Fatalf("both = %q", got)
+	}
+	if got := loadErrorModelDisplay("", "User"); got != "User" {
+		t.Fatalf("short only = %q", got)
+	}
+	if got := loadErrorModelDisplay("auth", ""); got != "auth" {
+		t.Fatalf("app only = %q", got)
+	}
+	if got := loadErrorModelDisplay("  ", "  "); got != "" {
+		t.Fatalf("blank = %q", got)
+	}
+
+	shortOnly := (&LoadError{Kind: LoadErrorKindValidation, Code: "c", Model: "User", Message: "m"}).Error()
+	if !strings.Contains(shortOnly, "model=User") || strings.Contains(shortOnly, "model=auth.User") {
+		t.Fatalf("short-only Error() = %q", shortOnly)
+	}
+	appOnly := (&LoadError{Kind: LoadErrorKindValidation, Code: "c", Application: "auth", Message: "m"}).Error()
+	if !strings.Contains(appOnly, "model=auth") {
+		t.Fatalf("app-only Error() = %q", appOnly)
+	}
+}
+
+func TestRecordModelFull_Fallbacks(t *testing.T) {
+	t.Parallel()
+	if got := recordModelFull(record{}, &meta.Model{Application: "auth", Name: ""}); got != "" {
+		t.Fatalf("incomplete meta model = %q", got)
+	}
+	if got := recordModelFull(record{Model: "User"}, &meta.Model{Application: "", Name: "User"}); got != "User" {
+		t.Fatalf("seed short without app = %q", got)
+	}
+	if got := recordModelFull(record{}, nil); got != "" {
+		t.Fatalf("empty = %q", got)
+	}
+}
+
+func TestApplyRecord_SyncsStaleMappingTarget(t *testing.T) {
+	l, db := newTestLoader(t)
+	now := time.Now()
+	user := testAuthUser{ID: "user-sync-target", GroupID: "g"}
+	if err := db.Table("auth_user").Create(&user).Error; err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+	wantModelID := loaderTestModelID(t, db, "auth", "User")
+	if err := db.Create(&metadata.ModelData{
+		Module: "auth", Name: "user_sync_target", Application: "stale_app", ModelId: "stale_model_id", ResID: user.ID, NoUpdate: false,
+	}).Error; err != nil {
+		t.Fatalf("seed stale mapping: %v", err)
+	}
+	if err := l.applyRecord(db, "/tmp/data.json", 0, record{
+		Module: "auth", Name: "user_sync_target", Application: "auth", Model: "User",
+		Values: map[string]any{},
+	}, now); err != nil {
+		t.Fatalf("applyRecord sync: %v", err)
+	}
+	var mapping metadata.ModelData
+	if err := db.Where("module = ? AND name = ?", "auth", "user_sync_target").First(&mapping).Error; err != nil {
+		t.Fatalf("lookup mapping: %v", err)
+	}
+	if mapping.Application != "auth" || mapping.ModelId != wantModelID {
+		t.Fatalf("mapping not synced: %#v", mapping)
+	}
+}
+
+func TestApplyRecord_SyncMappingTargetDBFailure(t *testing.T) {
+	l, db := newTestLoader(t)
+	now := time.Now()
+	user := testAuthUser{ID: "user-sync-fail", GroupID: "g"}
+	if err := db.Table("auth_user").Create(&user).Error; err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+	if err := db.Create(&metadata.ModelData{
+		Module: "auth", Name: "user_sync_fail", Application: "stale_app", ModelId: "stale_model_id", ResID: user.ID, NoUpdate: false,
+	}).Error; err != nil {
+		t.Fatalf("seed mapping: %v", err)
+	}
+	execLoaderTestSQL(t, db, `CREATE TRIGGER block_model_data_sync BEFORE UPDATE ON meta_model_data BEGIN SELECT RAISE(ABORT, 'blocked'); END`)
+	err := l.applyRecord(db, "/tmp/data.json", 0, record{
+		Module: "auth", Name: "user_sync_fail", Application: "auth", Model: "User",
+		Values: map[string]any{},
+	}, now)
+	var le *LoadError
+	if !errors.As(err, &le) || le.Code != LoadErrorCodeDBUpdateModelDataNoUpdate {
+		t.Fatalf("applyRecord sync failure = %#v, want %s", err, LoadErrorCodeDBUpdateModelDataNoUpdate)
+	}
+}
+
 func TestPlanBatchRecordOrder_ValidationAndRefErrors(t *testing.T) {
 	l, db := newTestLoader(t)
 	owner := &meta.Module{Name: "auth"}
