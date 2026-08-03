@@ -96,6 +96,28 @@ func TestDefaultUpdateAdminAndMarkerDBLookupFailures(t *testing.T) {
 		}
 	})
 
+	t.Run("model_data name not found", func(t *testing.T) {
+		c, db := newFreshnessTestCoordinator(t)
+		c.now = func() time.Time { return fixedNow }
+		if err := db.AutoMigrate(&metadata.ModelData{}); err != nil {
+			t.Fatalf("auto migrate model_data: %v", err)
+		}
+
+		err := c.defaultUpdateAdminAndMarker(context.Background(), initializeInput{
+			AdminUsername: "admin",
+			Password:      wirePassword,
+		})
+		if err == nil {
+			t.Fatal("expected admin update failure")
+		}
+		if got := bootstrapErrorCode(err); got != bootstrapErrCodeAdminUpdateFailed {
+			t.Fatalf("bootstrapErrorCode(err) = %q, want %q", got, bootstrapErrCodeAdminUpdateFailed)
+		}
+		if !strings.Contains(err.Error(), "administrator account reference was not found") {
+			t.Fatalf("error = %q, want admin name-not-found message", err.Error())
+		}
+	})
+
 	t.Run("model lookup failure", func(t *testing.T) {
 		c, db := newFreshnessTestCoordinator(t)
 		c.now = func() time.Time { return fixedNow }

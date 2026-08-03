@@ -837,6 +837,34 @@ func TestTopoOrderOrCycle_AcyclicAndCycleFallback(t *testing.T) {
 			t.Fatalf("expected empty field/ref without edge info, got %#v", le)
 		}
 	})
+
+	t.Run("cycle with edge info sets name field path and ref", func(t *testing.T) {
+		records := []record{
+			{Module: "auth", Name: "a", Model: "auth.User"},
+			{Module: "auth", Name: "b", Model: "auth.group"},
+		}
+		dep := [][]int{{1}, {0}}
+		adj := [][]int{{1}, {0}}
+		indeg := []int{1, 1}
+		edgeInfo := map[[2]int]refOccurrence{
+			{0, 1}: {FieldPath: "values.group_id", Ref: "auth.b"},
+		}
+
+		_, err := topoOrderOrCycle(records, dep, adj, indeg, edgeInfo, "/tmp/data.json")
+		var le *LoadError
+		if !errors.As(err, &le) {
+			t.Fatalf("expected LoadError, got %T: %v", err, err)
+		}
+		if le.Code != LoadErrorCodeRefCycle {
+			t.Fatalf("unexpected cycle code: %#v", le)
+		}
+		if le.Name != "a" {
+			t.Fatalf("expected Name=a from edge info path, got %#v", le)
+		}
+		if le.FieldPath != "values.group_id" || le.Ref != "auth.b" {
+			t.Fatalf("expected field/ref from edge info, got %#v", le)
+		}
+	})
 }
 
 func TestFindCycleAndCollectRefOccurrencesHelpers(t *testing.T) {
@@ -933,6 +961,11 @@ func TestValueResolutionHelpers(t *testing.T) {
 		}
 		if _, _, err := splitRef("auth"); err == nil {
 			t.Fatalf("expected splitRef to reject invalid form")
+		}
+		for _, bad := range []string{".", "auth.", ".name", " . ", "auth. "} {
+			if _, _, err := splitRef(bad); err == nil || !strings.Contains(err.Error(), "empty module or name") {
+				t.Fatalf("splitRef(%q) error = %v, want empty module or name", bad, err)
+			}
 		}
 		if app, model, err := splitModel(" auth.User "); err != nil || app != "auth" || model != "User" {
 			t.Fatalf("splitModel() = (%q, %q, %v)", app, model, err)
@@ -3097,6 +3130,122 @@ func TestApplyRecordModelDataDBFailures(t *testing.T) {
 		var le *LoadError
 		if !errors.As(err, &le) || le.Code != LoadErrorCodeDBUpdateModelDataNoUpdate {
 			t.Fatalf("applyRecord() update noupdate error = %#v, want code %s", err, LoadErrorCodeDBUpdateModelDataNoUpdate)
+		}
+	})
+}
+
+func TestValidateRecordModule_ModuleNotFound(t *testing.T) {
+	t.Parallel()
+	rules := &moduleRules{
+		OwnerName:  "auth",
+		OwnerApp:   "auth",
+		ModuleInfo: map[string]moduleInfo{"auth": {Application: "auth"}},
+		Allowed:    map[string]struct{}{"auth": {}},
+	}
+	err := validateRecordModule(rules, "/tmp/data.json", 0, record{
+		Module: "does_not_exist", Name: "x", Model: "auth.User", Values: map[string]any{},
+	})
+	var le *LoadError
+	if !errors.As(err, &le) || le.Code != LoadErrorCodeModuleNotFound || le.Name != "x" {
+		t.Fatalf("validateRecordModule() error = %#v, want ModuleNotFound with Name=x", err)
+	}
+}
+
+func TestPlanBatchRecordOrder_ValidationAndRefErrors(t *testing.T) {
+	l, db := newTestLoader(t)
+	owner := &meta.Module{Name: "auth"}
+	filePath := filepath.Join(t.TempDir(), "data.json")
+
+	for _, tc := range []struct {
+		name string
+		rec  record
+		code string
+	}{
+		{name: "missing name", rec: record{Module: "auth", Model: "auth.User", Values: map[string]any{}}, code: LoadErrorCodeMissingName},
+		{name: "missing model", rec: record{Module: "auth", Name: "x", Values: map[string]any{}}, code: LoadErrorCodeMissingModel},
+		{name: "missing values", rec: record{Module: "auth", Name: "x", Model: "auth.User"}, code: LoadErrorCodeMissingValues},
+		{
+			name: "invalid ref",
+			rec: record{
+				Module: "auth", Name: "x", Model: "auth.User",
+				Values: map[string]any{"group_id": map[string]any{"ref": "not-a-ref"}},
+			},
+			code: LoadErrorCodeInvalidRef,
+		},
+		{
+			name: "self cycle",
+			rec: record{
+				Module: "auth", Name: "self", Model: "auth.User",
+				Values: map[string]any{"group_id": map[string]any{"ref": "auth.self"}},
+			},
+			code: LoadErrorCodeRefSelfCycle,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := l.planBatchRecordOrder(db, owner, []batchRecord{{
+				FilePath: filePath, RecordIndex: 0, Rec: tc.rec,
+			}})
+			var le *LoadError
+			if !errors.As(err, &le) || le.Code != tc.code {
+				t.Fatalf("planBatchRecordOrder() error = %#v, want code %s", err, tc.code)
+			}
+		})
+	}
+}
+
+func TestPlanRecordOrder_DuplicateInvalidAndExternalRef(t *testing.T) {
+	l, db := newTestLoader(t)
+	owner := &meta.Module{Name: "auth"}
+	filePath := filepath.Join(t.TempDir(), "data.json")
+
+	t.Run("duplicate name", func(t *testing.T) {
+		_, err := l.planRecordOrder(db, owner, filePath, []record{
+			{Module: "auth", Name: "x", Model: "auth.User", Values: map[string]any{}},
+			{Module: "auth", Name: "x", Model: "auth.User", Values: map[string]any{}},
+		})
+		var le *LoadError
+		if !errors.As(err, &le) || le.Code != LoadErrorCodeDuplicateNameInInput || le.Name != "x" {
+			t.Fatalf("planRecordOrder() error = %#v, want DuplicateNameInInput", err)
+		}
+	})
+
+	t.Run("invalid ref", func(t *testing.T) {
+		_, err := l.planRecordOrder(db, owner, filePath, []record{{
+			Module: "auth", Name: "x", Model: "auth.User",
+			Values: map[string]any{"group_id": map[string]any{"ref": "not-a-ref"}},
+		}})
+		var le *LoadError
+		if !errors.As(err, &le) || le.Code != LoadErrorCodeInvalidRef {
+			t.Fatalf("planRecordOrder() error = %#v, want InvalidRef", err)
+		}
+	})
+
+	t.Run("external ref exists", func(t *testing.T) {
+		if err := db.Create(&metadata.ModelData{
+			Module: "auth", Name: "pre_group", Model: "auth.group", ResID: "gid-pre",
+		}).Error; err != nil {
+			t.Fatalf("seed model_data: %v", err)
+		}
+		order, err := l.planRecordOrder(db, owner, filePath, []record{{
+			Module: "auth", Name: "u", Model: "auth.User",
+			Values: map[string]any{"group_id": map[string]any{"ref": "auth.pre_group"}},
+		}})
+		if err != nil {
+			t.Fatalf("planRecordOrder() error = %v", err)
+		}
+		if len(order) != 1 || order[0] != 0 {
+			t.Fatalf("unexpected order: %v", order)
+		}
+	})
+
+	t.Run("external ref missing", func(t *testing.T) {
+		_, err := l.planRecordOrder(db, owner, filePath, []record{{
+			Module: "auth", Name: "u2", Model: "auth.User",
+			Values: map[string]any{"group_id": map[string]any{"ref": "auth.still_missing"}},
+		}})
+		var le *LoadError
+		if !errors.As(err, &le) || le.Code != LoadErrorCodeRefNotFound || le.Ref != "auth.still_missing" {
+			t.Fatalf("planRecordOrder() error = %#v, want RefNotFound", err)
 		}
 	})
 }
