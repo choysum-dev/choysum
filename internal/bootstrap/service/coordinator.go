@@ -46,10 +46,10 @@ const (
 )
 
 var (
-	errBootstrapAdminExternalIDNotFound = errors.New("bootstrap admin external id not found")
-	errBootstrapAdminModelNotFound      = errors.New("bootstrap admin model not found")
-	errBootstrapAdminModelTableMissing  = errors.New("bootstrap admin model table missing")
-	errBootstrapAdminRecordNotFound     = errors.New("bootstrap admin record not found")
+	errBootstrapAdminNameNotFound      = errors.New("bootstrap admin name not found")
+	errBootstrapAdminModelNotFound     = errors.New("bootstrap admin model not found")
+	errBootstrapAdminModelTableMissing = errors.New("bootstrap admin model table missing")
+	errBootstrapAdminRecordNotFound    = errors.New("bootstrap admin record not found")
 )
 
 type initializeInput struct {
@@ -642,9 +642,9 @@ func (c *coordinator) defaultUpdateAdminAndMarker(ctx context.Context, input ini
 	txRoot := c.runtimeScope.WithContext(ctx)
 	err = txRoot.Transactor().Required(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
 		var modelData metadata.ModelData
-		if err := txScope.Session().Where("module = ? AND external_id = ?", "auth", "user_admin").Take(&modelData).Error; err != nil {
+		if err := txScope.Session().Where("module = ? AND name = ?", "auth", "user_admin").Take(&modelData).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return errBootstrapAdminExternalIDNotFound
+				return errBootstrapAdminNameNotFound
 			}
 			return err
 		}
@@ -687,7 +687,7 @@ func (c *coordinator) defaultUpdateAdminAndMarker(ctx context.Context, input ini
 	}
 
 	switch {
-	case errors.Is(err, errBootstrapAdminExternalIDNotFound):
+	case errors.Is(err, errBootstrapAdminNameNotFound):
 		return newBootstrapError(bootstrapErrCodeAdminUpdateFailed, "administrator account reference was not found", err)
 	case errors.Is(err, errBootstrapAdminModelNotFound), errors.Is(err, errBootstrapAdminModelTableMissing):
 		return newBootstrapError(bootstrapErrCodeAdminUpdateFailed, "administrator account schema is not available", err)

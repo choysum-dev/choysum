@@ -2,7 +2,7 @@
   "records": [
     {
       "module": "base",
-      "external_id": "e2e_exchange_rate_format",
+      "name": "e2e_exchange_rate_format",
       "model": "base.ExchangeRate",
       "values": {
         "CurrencyId": { "ref": "base.currency_cny" },

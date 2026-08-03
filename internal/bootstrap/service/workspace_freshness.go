@@ -52,7 +52,7 @@ func (c *coordinator) defaultCheckWorkspaceFreshness(ctx context.Context) error 
 
 		if session.Migrator().HasTable((&metadata.ModelData{}).TableName()) {
 			var modelData metadata.ModelData
-			err := session.Select("id").Where("module = ? AND external_id = ?", "auth", "user_admin").Take(&modelData).Error
+			err := session.Select("id").Where("module = ? AND name = ?", "auth", "user_admin").Take(&modelData).Error
 			if err == nil {
 				return newBootstrapError(bootstrapErrCodeWorkspaceNotFresh, "initial setup has already been completed: administrator setup data already exists", nil)
 			}

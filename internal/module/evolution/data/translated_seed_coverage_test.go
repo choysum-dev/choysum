@@ -119,7 +119,7 @@ func TestNormalizeTranslatedSeedValue_AdditionalBranches(t *testing.T) {
 		t.Fatalf("create Name field: %v", err)
 	}
 
-	rec := record{Module: "demo", ExternalID: "item_1", Model: "demo.Item"}
+	rec := record{Module: "demo", Name: "item_1", Model: "demo.Item"}
 
 	got, err := l.normalizeTranslatedSeedValue(db, "/tmp/data.json", 0, rec, model, "Code", "KEEP", nil)
 	if err != nil || got != "KEEP" {
@@ -288,7 +288,7 @@ func TestLookupFieldAndLanguageCodeExistsDBErrors(t *testing.T) {
 		t.Fatalf("expected languageCodeExists DB error, got %v %v", ok, err)
 	}
 
-	rec := record{Module: "demo", ExternalID: "item_1", Model: "demo.Item"}
+	rec := record{Module: "demo", Name: "item_1", Model: "demo.Item"}
 	err = l.assertSeedLanguageCode(db, "/tmp/data.json", 0, rec, "values.Name", "de_DE", "")
 	var le *LoadError
 	if !errors.As(err, &le) || le.Kind != LoadErrorKindDB {
