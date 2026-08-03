@@ -1,0 +1,85 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+import { ChoysumError } from '@/core/service/error';
+import { createServiceByModel, registerServiceFactory } from '@/core/service/rpc';
+import MetaModelData, { parseMetaModelDataKey } from '../models/model_data';
+
+async function expectRejects(promise: Promise<unknown>, code: string) {
+  try {
+    await promise;
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof ChoysumError).toBe(true);
+    expect((err as ChoysumError).code).toBe(code);
+  }
+}
+
+test('parseMetaModelDataKey accepts module.name and rejects invalid keys', () => {
+  expect(parseMetaModelDataKey(' base.company_main ')).toEqual({ module: 'base', name: 'company_main' });
+
+  for (const bad of ['', '   ', 'a', 'a.b.c', '.', 'a.', '.b', ' . ', 'mod. ']) {
+    try {
+      parseMetaModelDataKey(bad);
+      expect(false).toBe(true);
+    } catch (err) {
+      expect(err instanceof ChoysumError).toBe(true);
+      expect((err as ChoysumError).code).toBe('EXTERNAL_ID_INVALID_KEY');
+    }
+  }
+});
+
+test('MetaModelData.Ref returns ResId; RefOrNull returns null; missing Ref raises', async () => {
+  const store = [{ Module: 'base', Name: 'company_main', Model: 'base.Company', ResId: 'res-company-1' }];
+  const originalSearch = MetaModelData.Search;
+  MetaModelData.Search = (async (condition: any) => {
+    const and = condition?.And || [];
+    const module = and.find((x: any) => x[0] === 'Module')?.[2];
+    const name = and.find((x: any) => x[0] === 'Name')?.[2];
+    return store.filter(row => row.Module === module && row.Name === name);
+  }) as any;
+
+  try {
+    expect(await MetaModelData.Ref('base.company_main')).toBe('res-company-1');
+    expect(await MetaModelData.RefOrNull('base.company_main')).toBe('res-company-1');
+    expect(await MetaModelData.RefOrNull('base.missing')).toBeNull();
+    await expectRejects(MetaModelData.Ref('base.missing'), 'EXTERNAL_ID_NOT_FOUND');
+    await expectRejects(MetaModelData.Ref(''), 'EXTERNAL_ID_INVALID_KEY');
+    await expectRejects(MetaModelData.Ref('a.b.c'), 'EXTERNAL_ID_INVALID_KEY');
+    await expectRejects(MetaModelData.RefOrNull('solo'), 'EXTERNAL_ID_INVALID_KEY');
+  } finally {
+    MetaModelData.Search = originalSearch;
+  }
+});
+
+test('createServiceByModel(meta.MetaModelData) dials Ref after factory registration', async () => {
+  // Mirrors generated service-client shape: factory returns an object exposing model services.
+  registerServiceFactory('meta.MetaModelData', () => ({
+    Ref: (xmlId: string) => MetaModelData.Ref(xmlId),
+    RefOrNull: (xmlId: string) => MetaModelData.RefOrNull(xmlId),
+  }));
+  const dialed = createServiceByModel('meta.MetaModelData') as {
+    Ref: (xmlId: string) => Promise<string>;
+    RefOrNull: (xmlId: string) => Promise<string | null>;
+  };
+  expect(typeof dialed.Ref).toBe('function');
+  expect(typeof dialed.RefOrNull).toBe('function');
+
+  const originalSearch = MetaModelData.Search;
+  MetaModelData.Search = (async (condition: any) => {
+    const and = condition?.And || [];
+    const module = and.find((x: any) => x[0] === 'Module')?.[2];
+    const name = and.find((x: any) => x[0] === 'Name')?.[2];
+    if (module === 'auth' && name === 'user_admin') {
+      return [{ ResId: 'user-admin-id' }];
+    }
+    return [];
+  }) as any;
+
+  try {
+    expect(await dialed.Ref('auth.user_admin')).toBe('user-admin-id');
+    expect(await dialed.RefOrNull('auth.missing')).toBeNull();
+  } finally {
+    MetaModelData.Search = originalSearch;
+  }
+});

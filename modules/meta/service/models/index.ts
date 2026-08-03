@@ -7,6 +7,7 @@ export { default as MetaModuleIndex } from './module_index';
 export { default as MetaModuleDependency } from './module_dependency';
 export { default as MetaModuleMigrationHistory } from './module_migration_history';
 export { default as MetaModel } from './model';
+export { default as MetaModelData } from './model_data';
 export { default as MetaField } from './field';
 export { default as MetaService } from './service';
 export { default as MetaDecorator } from './decorator';
