@@ -200,6 +200,47 @@ func TestEnsureI18nMetaPrefersCanonicalPath(t *testing.T) {
 	}
 }
 
+func TestPromoteI18nCanonicalTip_CreatedAtWins(t *testing.T) {
+	rs := newTestScope(t)
+	db := rs.Session().DB
+	migrateI18nDualStoreTables(t, db)
+
+	// Sibling with older UpdatedAt but future CreatedAt must still advance tip.
+	ext := meta.RawModel{
+		BaseModel: meta.BaseModel{
+			Id: sql.NullString{String: xid.New().String(), Valid: true},
+		},
+		Name:        "I18n",
+		Path:        "modules/ext/created_at_tip.ts",
+		Application: "auth",
+		ClassName:   "I18n",
+		Abstract:    true,
+		Readonly:    true,
+	}
+	if err := db.Create(&ext).Error; err != nil {
+		t.Fatalf("seed extension: %v", err)
+	}
+	past := db.NowFunc().Add(-time.Hour)
+	future := db.NowFunc().Add(2 * time.Hour)
+	if err := db.Model(&ext).UpdateColumns(map[string]any{
+		"created_at": future,
+		"updated_at": past,
+	}).Error; err != nil {
+		t.Fatalf("bump timestamps: %v", err)
+	}
+
+	canonical, err := ensureI18nRawModel(db, "auth", sql.NullString{})
+	if err != nil {
+		t.Fatalf("ensure canonical: %v", err)
+	}
+	if err := promoteI18nCanonicalTip(db, "auth", canonical); err != nil {
+		t.Fatalf("promote: %v", err)
+	}
+	if !canonical.CreatedAt.After(future) {
+		t.Fatalf("canonical tip CreatedAt=%v, want after sibling CreatedAt=%v", canonical.CreatedAt, future)
+	}
+}
+
 func TestPromoteI18nCanonicalTip(t *testing.T) {
 	if err := promoteI18nCanonicalTip(nil, "auth", nil); err == nil || !strings.Contains(err.Error(), "canonical raw is nil") {
 		t.Fatalf("nil canonical: %v", err)

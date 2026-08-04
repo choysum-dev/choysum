@@ -5,6 +5,7 @@ package meta
 
 import (
 	"database/sql"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -192,6 +193,77 @@ func TestExpandModelsAlongExtends_PrefersSameApplicationParent(t *testing.T) {
 	}
 	if !names["HomeOnly"] || names["ForeignOnly"] || !names["ChildField"] {
 		t.Fatalf("expected home parent fields, got %#v", names)
+	}
+}
+
+func TestExpandModelsAlongExtends_CrossAppParentFallback(t *testing.T) {
+	db := openDualStoreTestDB(t)
+	if err := EnsureDualStoreTables(db); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	parentPath := "/shared/only-other.ts"
+	foreign := &RawModel{
+		BaseModel:   BaseModel{Id: sql.NullString{String: "only-other", Valid: true}},
+		Name:        "Base",
+		Path:        parentPath,
+		Application: "other",
+		ModuleId:    sql.NullString{String: "mod-other", Valid: true},
+	}
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(foreign).Error; err != nil {
+		t.Fatalf("create foreign parent: %v", err)
+	}
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawField{
+		BaseModel: BaseModel{Id: sql.NullString{String: "of", Valid: true}},
+		Name:      "OtherField",
+		ModelId:   foreign.Id,
+	}).Error; err != nil {
+		t.Fatalf("create field: %v", err)
+	}
+	child := &Model{
+		Name:        "Child",
+		Path:        "/home/child2.ts",
+		Application: "home",
+		Extends:     parentPath,
+		Fields:      []*Field{{Name: "ChildField"}},
+	}
+	if err := ExpandModelsAlongExtends(db, []*Model{child}); err != nil {
+		t.Fatalf("expand: %v", err)
+	}
+	names := map[string]bool{}
+	for _, f := range child.Fields {
+		if f != nil {
+			names[f.Name] = true
+		}
+	}
+	if !names["OtherField"] || !names["ChildField"] {
+		t.Fatalf("expected cross-app fallback parent, got %#v", names)
+	}
+}
+
+func TestResolveExtendsModel_CrossAppFallbackLoadError(t *testing.T) {
+	db := openDualStoreTestDB(t)
+	if err := EnsureDualStoreTables(db); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	calls := 0
+	const cbTag = "fail-path-only-parent-load"
+	if err := db.Callback().Query().Before("gorm:query").Register(cbTag, func(tx *gorm.DB) {
+		if tx.Statement == nil || tx.Statement.Table != "meta_raw_model" {
+			return
+		}
+		calls++
+		// First Find is same-app (empty), second is path-only fallback.
+		if calls >= 2 {
+			_ = tx.AddError(fmt.Errorf("forced path-only load fail"))
+		}
+	}); err != nil {
+		t.Fatalf("register callback: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Callback().Query().Remove(cbTag) })
+
+	_, err := resolveExtendsModel(db, "/missing/cross.ts", nil, "home")
+	if err == nil || !strings.Contains(err.Error(), "load raw parent") {
+		t.Fatalf("expected fallback load error, got %v", err)
 	}
 }
 

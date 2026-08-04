@@ -3775,11 +3775,12 @@ func TestValidateUiResourceDependencies(t *testing.T) {
 			Name:        "Model",
 			Path:        "/effective/model",
 		}
-		if err := testRuntimeScope.db.Create(shell).Error; err != nil {
-			t.Fatalf("create shell model: %v", err)
-		}
+		// Insert effective first so the later shell hits the skip-continue branch.
 		if err := testRuntimeScope.db.Create(effective).Error; err != nil {
 			t.Fatalf("create effective model: %v", err)
+		}
+		if err := testRuntimeScope.db.Create(shell).Error; err != nil {
+			t.Fatalf("create shell model: %v", err)
 		}
 		if err := testRuntimeScope.db.Create(&meta.Service{
 			BaseModel: meta.BaseModel{Id: sql.NullString{String: "svc_create", Valid: true}},
