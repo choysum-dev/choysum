@@ -46,6 +46,13 @@ func TestEntitiesAndTableNames(t *testing.T) {
 		reflect.TypeOf(&UiResource{}),
 		reflect.TypeOf(&UiResourceMenuRoute{}),
 		reflect.TypeOf(&UiResourceRouteAction{}),
+		reflect.TypeOf(&RawModel{}),
+		reflect.TypeOf(&RawField{}),
+		reflect.TypeOf(&RawService{}),
+		reflect.TypeOf(&RawTypeParameter{}),
+		reflect.TypeOf(&RawParameter{}),
+		reflect.TypeOf(&RawDecorator{}),
+		reflect.TypeOf(&RawArgument{}),
 	}
 
 	if len(entities) != len(expectedTypes) {
@@ -75,6 +82,13 @@ func TestEntitiesAndTableNames(t *testing.T) {
 		{name: "UiResource", got: (&UiResource{}).TableName(), want: "meta_ui_resource"},
 		{name: "UiResourceMenuRoute", got: (&UiResourceMenuRoute{}).TableName(), want: "meta_ui_resource_menu_route"},
 		{name: "UiResourceRouteAction", got: (&UiResourceRouteAction{}).TableName(), want: "meta_ui_resource_route_action"},
+		{name: "RawModel", got: (&RawModel{}).TableName(), want: "meta_raw_model"},
+		{name: "RawField", got: (&RawField{}).TableName(), want: "meta_raw_field"},
+		{name: "RawService", got: (&RawService{}).TableName(), want: "meta_raw_service"},
+		{name: "RawTypeParameter", got: (&RawTypeParameter{}).TableName(), want: "meta_raw_type_parameter"},
+		{name: "RawParameter", got: (&RawParameter{}).TableName(), want: "meta_raw_parameter"},
+		{name: "RawDecorator", got: (&RawDecorator{}).TableName(), want: "meta_raw_decorator"},
+		{name: "RawArgument", got: (&RawArgument{}).TableName(), want: "meta_raw_argument"},
 	}
 
 	for _, check := range tableNames {
