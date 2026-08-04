@@ -122,19 +122,8 @@ func (m *ModuleManager) buildBackendBundlesToDir(ctx context.Context, distBundle
 		// Multi-app entry only Decide/Injects against `rep` (often core). Explicitly
 		// re-register C2 FieldDefault / AppSetting virtual sources for every non-core
 		// app so the final bundles/index.js actually contains the store classes.
-		if injector, ok := builder.(interface {
-			EnsureFieldDefaultVirtualImports([]*meta.Module) error
-		}); ok {
-			if err := injector.EnsureFieldDefaultVirtualImports(fieldDefaultOwners); err != nil {
-				return xfmt.Errorf("inject FieldDefault virtual imports for bundles: %w", err)
-			}
-		}
-		if injector, ok := builder.(interface {
-			EnsureAppSettingVirtualImports([]*meta.Module) error
-		}); ok {
-			if err := injector.EnsureAppSettingVirtualImports(appSettingOwners); err != nil {
-				return xfmt.Errorf("inject AppSetting virtual imports for bundles: %w", err)
-			}
+		if err := ensureBundleC2VirtualImports(builder, fieldDefaultOwners, appSettingOwners); err != nil {
+			return err
 		}
 		bundlerToDir, ok := builder.(module.BundlerToDir)
 		if !ok {
@@ -145,6 +134,26 @@ func (m *ModuleManager) buildBackendBundlesToDir(ctx context.Context, distBundle
 		}
 	}
 
+	return nil
+}
+
+// ensureBundleC2VirtualImports registers FieldDefault then AppSetting C2 virtual
+// sources on a multi-app bundle builder. Extracted for unit tests of error wrapping.
+func ensureBundleC2VirtualImports(builder any, fieldDefaultOwners, appSettingOwners []*meta.Module) error {
+	if injector, ok := builder.(interface {
+		EnsureFieldDefaultVirtualImports([]*meta.Module) error
+	}); ok {
+		if err := injector.EnsureFieldDefaultVirtualImports(fieldDefaultOwners); err != nil {
+			return xfmt.Errorf("inject FieldDefault virtual imports for bundles: %w", err)
+		}
+	}
+	if injector, ok := builder.(interface {
+		EnsureAppSettingVirtualImports([]*meta.Module) error
+	}); ok {
+		if err := injector.EnsureAppSettingVirtualImports(appSettingOwners); err != nil {
+			return xfmt.Errorf("inject AppSetting virtual imports for bundles: %w", err)
+		}
+	}
 	return nil
 }
 

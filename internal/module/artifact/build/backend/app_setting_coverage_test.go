@@ -540,15 +540,24 @@ func TestBuildWithoutPersist_ReleasesAppSettingOnFailures(t *testing.T) {
 		t.Fatal("expected prebuild failure")
 	}
 
-	// planAndInject failure (empty module path after NeedInject claim path uses empty Path).
+	// planAndInjectAppSetting failure after FieldDefault skips (handwritten FD owns app).
+	// Empty Path makes AppSetting NeedInject fail in apply; FieldDefault Decide skips.
 	mod := &meta.Module{Name: "partner", ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts"}
+	if err := db.Create(&meta.Model{
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "fd-hand", Valid: true}},
+		Name:        "FieldDefault",
+		Path:        "/virtual/modules/partner/service/models/field_default.ts",
+		Application: "partner",
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
 	builder = &ModuleBuilder{
 		runtimeScope: testScope, module: mod,
 		buildPlugin: &stubEsbPlugin{name: "build"}, prebuildPlugin: &stubEsbPlugin{name: "prebuild"},
 		entryPoint: "",
 	}
 	if _, err := builder.BuildWithoutPersist(); err == nil {
-		t.Fatal("expected inject path error")
+		t.Fatal("expected AppSetting inject path error")
 	}
 	if _, loaded := appSettingScheduledApps.Load("partner"); loaded {
 		t.Fatal("claim should be released")
@@ -761,14 +770,36 @@ func TestBundle_AppSettingFailurePaths(t *testing.T) {
 	}
 
 	resetAppSettingScheduledAppsForTest()
+	dbFD, err := gorm.Open(sqlite.Open(appSettingMemoryDSN(t, "fd-bundle-as-inject")), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := dbFD.AutoMigrate(&meta.Model{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := dbFD.Create(&meta.Model{
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "fd-hand", Valid: true}},
+		Name:        "FieldDefault",
+		Path:        "/virtual/modules/partner/service/models/field_default.ts",
+		Application: "partner",
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	scopeFD := newBuilderTestScope()
+	scopeFD.session = &scope.Session{DB: dbFD}
 	builder = &ModuleBuilder{
-		runtimeScope: testScope,
+		runtimeScope: scopeFD,
 		module:       &meta.Module{Name: "partner", ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts"},
 		buildPlugin:  &stubEsbPlugin{name: "build"}, prebuildPlugin: &stubEsbPlugin{name: "prebuild"},
 		entryPoint: "",
 	}
-	if _, err := builder.Bundle(); err == nil {
-		t.Fatal("expected inject failure")
+	bundleErr, err := builder.Bundle()
+	_ = bundleErr
+	if err == nil {
+		t.Fatal("expected AppSetting inject failure after FieldDefault skip")
+	}
+	if !strings.Contains(err.Error(), "AppSetting") {
+		t.Fatalf("expected AppSetting inject error, got %v", err)
 	}
 
 	db, err := gorm.Open(sqlite.Open(appSettingMemoryDSN(t, "fd-bundle-upd")), &gorm.Config{})
