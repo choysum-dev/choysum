@@ -206,7 +206,18 @@ func (b *ModuleBuilder) decideAppSettingPlan(prebuildResults []*parser.ParserRes
 		return plan, nil
 	}
 	if len(existingVirt) > 0 {
+		// Virtual rows in DB are metadata only — sources are not on disk (D12).
+		// Re-inject when this module owns the virtual path (rebuild / hot-reload / bundle).
+		// Other modules sharing the application must not inject a second store path.
 		if appSettingSameModule(existingVirt, mod) {
+			owner, loaded := appSettingScheduledApps.LoadOrStore(app, mod.Name)
+			if loaded {
+				if ownerName, ok := owner.(string); ok && ownerName != mod.Name {
+					// Another in-process builder still holds the claim; re-inject
+					// without adopting release ownership (avoid deleting their key).
+					return AppSettingPlan{NeedInject: true}, nil
+				}
+			}
 			return AppSettingPlan{NeedInject: true, scheduledApp: app}, nil
 		}
 		return plan, nil
@@ -274,7 +285,7 @@ func (b *ModuleBuilder) EnsureAppSettingVirtualImports(modules []*meta.Module) e
 	if b == nil {
 		return nil
 	}
-	modulesPath := strings.TrimSpace(b.resolvedRuntimeOptions().modulesPath)
+	modulesPathCfg := strings.TrimSpace(b.resolvedRuntimeOptions().modulesPath)
 	seenApp := make(map[string]struct{})
 	for _, mod := range modules {
 		if mod == nil {
@@ -307,6 +318,7 @@ func (b *ModuleBuilder) EnsureAppSettingVirtualImports(modules []*meta.Module) e
 			}
 		}
 		b.rememberAppSettingInjectPath(path)
+		modulesPath := modulesPathCfg
 		if modulesPath == "" {
 			modulesPath = filepath.Dir(mod.Path)
 		}

@@ -113,11 +113,29 @@ func TestDecideAppSettingPlan_DBVirtualReinjectsForOwner(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decide: %v", err)
 	}
-	if !plan.NeedInject || plan.SupersedeVirtual {
-		t.Fatalf("expected NeedInject re-inject for owning module, got %+v", plan)
+	if !plan.NeedInject || plan.SupersedeVirtual || plan.scheduledApp != "partner" {
+		t.Fatalf("expected NeedInject reclaim with scheduledApp, got %+v", plan)
+	}
+	if owner, ok := appSettingScheduledApps.Load("partner"); !ok || owner != "partner" {
+		t.Fatalf("expected process claim for owning module, got %#v ok=%v", owner, ok)
+	}
+
+	// Another in-process builder still holding the claim must not be released by reclaim.
+	resetAppSettingScheduledAppsForTest()
+	appSettingScheduledApps.Store("partner", "other_builder")
+	plan, err = builder.decideAppSettingPlan(nil)
+	if err != nil {
+		t.Fatalf("decide with foreign claim: %v", err)
+	}
+	if !plan.NeedInject || plan.scheduledApp != "" {
+		t.Fatalf("expected NeedInject without adopting foreign claim, got %+v", plan)
+	}
+	if owner, ok := appSettingScheduledApps.Load("partner"); !ok || owner != "other_builder" {
+		t.Fatalf("foreign claim must remain, got %#v ok=%v", owner, ok)
 	}
 
 	// Sibling module sharing the application must not inject a second store path.
+	resetAppSettingScheduledAppsForTest()
 	builder.module = &meta.Module{
 		Name: "partner_bank", Path: "/virtual/modules/partner_bank",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
@@ -444,12 +462,27 @@ func TestAppSettingPatchCoverage_Branches(t *testing.T) {
 	pre := &stubEsbPlugin{name: "prebuild"}
 	builder.prebuildPlugin = pre
 	builder.runtimeScope.(*builderTestScope).cfg.ModulesPath = ""
-	if err := builder.EnsureAppSettingVirtualImports([]*meta.Module{builder.module}); err != nil {
+	if err := builder.EnsureAppSettingVirtualImports([]*meta.Module{
+		builder.module,
+		{Name: "auth", Path: "/other-root/auth", ApplicationStr: "auth", ServiceEntryPoint: "service/index.ts"},
+	}); err != nil {
 		t.Fatalf("ensure empty modulesPath: %v", err)
 	}
 	want := appSettingGeneratedPath(builder.module.Path)
-	if _, ok := pre.virtualSources[want]; !ok {
+	srcBase, ok := pre.virtualSources[want]
+	if !ok {
 		t.Fatalf("expected prebuild virtual source, got %#v", pre.virtualSources)
+	}
+	if !strings.Contains(srcBase, `from "/virtual/modules/core/service/index.ts"`) {
+		t.Fatalf("base AppSetting should resolve modulesPath from its own parent, got:\n%s", srcBase)
+	}
+	wantAuth := appSettingGeneratedPath("/other-root/auth")
+	srcAuth, ok := pre.virtualSources[wantAuth]
+	if !ok {
+		t.Fatalf("expected auth virtual source, got %#v", pre.virtualSources)
+	}
+	if !strings.Contains(srcAuth, `from "/other-root/core/service/index.ts"`) {
+		t.Fatalf("auth AppSetting must not reuse base modulesPath fallback, got:\n%s", srcAuth)
 	}
 	if len(pre.entryImports) == 0 {
 		t.Fatal("expected prebuild entry imports")

@@ -456,7 +456,7 @@ func TestSupersedeVirtualAppSettings_ErrorBranches(t *testing.T) {
 
 func TestBuildLifecycle_AppSettingInjectAndRelease(t *testing.T) {
 	resetAppSettingScheduledAppsForTest()
-	db, err := gorm.Open(sqlite.Open(appSettingMemoryDSN(t, "fd-lifecycle")), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(appSettingMemoryDSN(t, "as-lifecycle")), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -519,7 +519,7 @@ func TestBuildLifecycle_AppSettingInjectAndRelease(t *testing.T) {
 
 func TestBuildWithoutPersist_ReleasesAppSettingOnFailures(t *testing.T) {
 	resetAppSettingScheduledAppsForTest()
-	db, err := gorm.Open(sqlite.Open(appSettingMemoryDSN(t, "fd-fail")), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(appSettingMemoryDSN(t, "as-fail")), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -544,7 +544,7 @@ func TestBuildWithoutPersist_ReleasesAppSettingOnFailures(t *testing.T) {
 	// Empty Path makes AppSetting NeedInject fail in apply; FieldDefault Decide skips.
 	mod := &meta.Module{Name: "partner", ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts"}
 	if err := db.Create(&meta.Model{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "fd-hand", Valid: true}},
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "as-hand", Valid: true}},
 		Name:        "FieldDefault",
 		Path:        "/virtual/modules/partner/service/models/field_default.ts",
 		Application: "partner",
@@ -565,7 +565,7 @@ func TestBuildWithoutPersist_ReleasesAppSettingOnFailures(t *testing.T) {
 
 	// updatePrebuildResult failure → release (NeedInject claims, then extends refresh fails).
 	resetAppSettingScheduledAppsForTest()
-	dbUpd, err := gorm.Open(sqlite.Open(appSettingMemoryDSN(t, "fd-upd-fail")), &gorm.Config{})
+	dbUpd, err := gorm.Open(sqlite.Open(appSettingMemoryDSN(t, "as-upd-fail")), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -611,7 +611,7 @@ func TestBuildWithoutPersist_ReleasesAppSettingOnFailures(t *testing.T) {
 
 	// Persist failure releases.
 	resetAppSettingScheduledAppsForTest()
-	db2, err := gorm.Open(sqlite.Open(appSettingMemoryDSN(t, "fd-persist-fail")), &gorm.Config{})
+	db2, err := gorm.Open(sqlite.Open(appSettingMemoryDSN(t, "as-persist-fail")), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -634,7 +634,7 @@ func TestBuildWithoutPersist_ReleasesAppSettingOnFailures(t *testing.T) {
 
 	// Persist fails inside supersedeVirtualAppSettings (closed DB) and still releases.
 	resetAppSettingScheduledAppsForTest()
-	dbSupersede, err := gorm.Open(sqlite.Open(appSettingMemoryDSN(t, "fd-persist-supersede-fail")), &gorm.Config{})
+	dbSupersede, err := gorm.Open(sqlite.Open(appSettingMemoryDSN(t, "as-persist-supersede-fail")), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -666,7 +666,7 @@ func TestBuildWithoutPersist_ReleasesAppSettingOnFailures(t *testing.T) {
 	// validate failure → release: claim NeedInject, then swap parser results to duplicates before validate
 	// by using a build plugin that returns two AppSettings while prebuild stayed empty.
 	resetAppSettingScheduledAppsForTest()
-	db3, err := gorm.Open(sqlite.Open(appSettingMemoryDSN(t, "fd-validate-fail")), &gorm.Config{})
+	db3, err := gorm.Open(sqlite.Open(appSettingMemoryDSN(t, "as-validate-fail")), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -714,7 +714,7 @@ func TestBuildWithoutPersist_ReleasesAppSettingOnFailures(t *testing.T) {
 
 	// build failure → release (non-empty entry that esbuild rejects after inject).
 	resetAppSettingScheduledAppsForTest()
-	db4, err := gorm.Open(sqlite.Open(appSettingMemoryDSN(t, "fd-build-fail")), &gorm.Config{})
+	db4, err := gorm.Open(sqlite.Open(appSettingMemoryDSN(t, "as-build-fail")), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -770,7 +770,7 @@ func TestBundle_AppSettingFailurePaths(t *testing.T) {
 	}
 
 	resetAppSettingScheduledAppsForTest()
-	dbFD, err := gorm.Open(sqlite.Open(appSettingMemoryDSN(t, "fd-bundle-as-inject")), &gorm.Config{})
+	dbFD, err := gorm.Open(sqlite.Open(appSettingMemoryDSN(t, "as-bundle-inject")), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -778,7 +778,7 @@ func TestBundle_AppSettingFailurePaths(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := dbFD.Create(&meta.Model{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "fd-hand", Valid: true}},
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "as-hand", Valid: true}},
 		Name:        "FieldDefault",
 		Path:        "/virtual/modules/partner/service/models/field_default.ts",
 		Application: "partner",
@@ -793,8 +793,7 @@ func TestBundle_AppSettingFailurePaths(t *testing.T) {
 		buildPlugin:  &stubEsbPlugin{name: "build"}, prebuildPlugin: &stubEsbPlugin{name: "prebuild"},
 		entryPoint: "",
 	}
-	bundleErr, err := builder.Bundle()
-	_ = bundleErr
+	_, err = builder.Bundle()
 	if err == nil {
 		t.Fatal("expected AppSetting inject failure after FieldDefault skip")
 	}
@@ -802,7 +801,7 @@ func TestBundle_AppSettingFailurePaths(t *testing.T) {
 		t.Fatalf("expected AppSetting inject error, got %v", err)
 	}
 
-	db, err := gorm.Open(sqlite.Open(appSettingMemoryDSN(t, "fd-bundle-upd")), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(appSettingMemoryDSN(t, "as-bundle-upd")), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -836,7 +835,7 @@ func TestBundle_AppSettingFailurePaths(t *testing.T) {
 
 	// build failure in Bundle
 	resetAppSettingScheduledAppsForTest()
-	db2, err := gorm.Open(sqlite.Open(appSettingMemoryDSN(t, "fd-bundle-build")), &gorm.Config{})
+	db2, err := gorm.Open(sqlite.Open(appSettingMemoryDSN(t, "as-bundle-build")), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
