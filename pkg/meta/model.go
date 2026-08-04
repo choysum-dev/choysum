@@ -44,5 +44,39 @@ func Entities() []any {
 		&UiResource{},
 		&UiResourceMenuRoute{},
 		&UiResourceRouteAction{},
+		// Declaration layer (EDS raw dual-store). Empty until Persist is rewired (EDS-2).
+		&RawModel{},
+		&RawField{},
+		&RawService{},
+		&RawTypeParameter{},
+		&RawParameter{},
+		&RawDecorator{},
+		&RawArgument{},
+	}
+}
+
+// DualStoreRawEntities returns declaration-layer tables only.
+func DualStoreRawEntities() []any {
+	return []any{
+		&RawModel{},
+		&RawField{},
+		&RawService{},
+		&RawTypeParameter{},
+		&RawParameter{},
+		&RawDecorator{},
+		&RawArgument{},
+	}
+}
+
+// DualStoreEffectiveEntities returns effective projection tables (current meta_* names).
+func DualStoreEffectiveEntities() []any {
+	return []any{
+		&Model{},
+		&Field{},
+		&Service{},
+		&TypeParameter{},
+		&Parameter{},
+		&Decorator{},
+		&Argument{},
 	}
 }

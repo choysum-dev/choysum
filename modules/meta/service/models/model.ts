@@ -36,6 +36,11 @@ type EffectiveOnchangeQueryOptions = {
   autoMigrate: false,
   orderBy: { field: 'Id', order: 'asc' },
 })
+/**
+ * Effective logical-model projection (E2 dual-store).
+ * After EDS, at most one live row per (Application, Name); declarations live in meta_raw_*.
+ * ModuleId is legacy for IMD declaration rows and should be empty on effective projections.
+ */
 export default class MetaModel extends BaseModel {
   @Field({ type: 'varchar', size: 255, notNull: true, string: _lt('Name', { scope: 'meta.model.MetaModel.fields' }) })
   Name!: string;
@@ -71,6 +76,7 @@ export default class MetaModel extends BaseModel {
   CompanyField?: string;
 
   @Field({ type: 'ManyToOne', relation: { targetModel: () => MetaModule }, string: _lt('Module', { scope: 'meta.model.MetaModel.fields' }) })
+  /** Legacy IMD owner; empty on effective E2 projections after dual-store recompute. */
   ModuleId?: MetaModule;
 
   @Field({

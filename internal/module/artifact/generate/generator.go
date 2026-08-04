@@ -5,7 +5,6 @@ package generator
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"strings"
 
@@ -215,120 +214,7 @@ func selectSameNameModelsInPrimaryExtensionChain(models []*meta.Model) []*meta.M
 }
 
 func mergeSameNameModelsByExtensionChain(models []*meta.Model) (*meta.Model, error) {
-	if len(models) == 0 {
-		return nil, nil
-	}
-	if len(models) == 1 {
-		return models[0], nil
-	}
-
-	byPath := make(map[string]*meta.Model, len(models))
-	for _, m := range models {
-		if m != nil && m.Path != "" {
-			byPath[m.Path] = m
-		}
-	}
-
-	type rankedModel struct {
-		model *meta.Model
-		depth int
-	}
-
-	depthMemo := make(map[string]int)
-	visiting := make(map[string]bool)
-	var depthOf func(*meta.Model) int
-	depthOf = func(m *meta.Model) int {
-		if m == nil {
-			return 0
-		}
-		if m.Path == "" {
-			return 0
-		}
-		if d, ok := depthMemo[m.Path]; ok {
-			return d
-		}
-		if visiting[m.Path] {
-			return 0
-		}
-		visiting[m.Path] = true
-		defer delete(visiting, m.Path)
-
-		parent := byPath[m.Extends]
-		depth := 0
-		if parent != nil {
-			depth = depthOf(parent) + 1
-		}
-		depthMemo[m.Path] = depth
-		return depth
-	}
-
-	ranked := make([]rankedModel, 0, len(models))
-	for _, m := range models {
-		if m == nil {
-			continue
-		}
-		ranked = append(ranked, rankedModel{model: m, depth: depthOf(m)})
-	}
-	if len(ranked) == 0 {
-		return nil, nil
-	}
-
-	sort.SliceStable(ranked, func(i, j int) bool {
-		li := ranked[i]
-		lj := ranked[j]
-		if li.depth != lj.depth {
-			return li.depth < lj.depth
-		}
-		if !li.model.UpdatedAt.Equal(lj.model.UpdatedAt) {
-			return li.model.UpdatedAt.Before(lj.model.UpdatedAt)
-		}
-		return li.model.Id.String < lj.model.Id.String
-	})
-
-	fieldIndex := make(map[string]int)
-	mergedFields := make([]*meta.Field, 0)
-	serviceIndex := make(map[string]int)
-	mergedServices := make([]*meta.Service, 0)
-
-	for _, item := range ranked {
-		m := item.model
-		for _, f := range m.Fields {
-			if f == nil || f.Name == "" {
-				continue
-			}
-			if idx, ok := fieldIndex[f.Name]; ok {
-				resolved, err := meta.ResolveSelectionFieldConflict(mergedFields[idx], f)
-				if err != nil {
-					return nil, err
-				}
-				mergedFields[idx] = resolved
-			} else {
-				if meta.FieldHasSelectionAdd(f) {
-					return nil, fmt.Errorf("field %s selectionAdd requires an inherited static selection", f.Name)
-				}
-				fieldIndex[f.Name] = len(mergedFields)
-				mergedFields = append(mergedFields, f)
-			}
-		}
-
-		for _, s := range m.Services {
-			if s == nil || s.Name == "" {
-				continue
-			}
-			if idx, ok := serviceIndex[s.Name]; ok {
-				mergedServices[idx] = s
-			} else {
-				serviceIndex[s.Name] = len(mergedServices)
-				mergedServices = append(mergedServices, s)
-			}
-		}
-	}
-
-	canonical := ranked[len(ranked)-1].model
-	merged := *canonical
-	merged.Fields = mergedFields
-	merged.Services = mergedServices
-	return &merged, nil
+	return meta.MergeSameNameModelsByExtensionChain(models)
 }
 
 func (g *grpcGenerator) Generate() ([]*module.GeneratorResult, error) {
