@@ -177,6 +177,8 @@ test('AppSetting memo helpers and unique matcher cover edge inputs', () => {
 
   expect(__isUniqueConstraintErrorForTest(new Error('UNIQUE constraint failed'))).toBe(true);
   expect(__isUniqueConstraintErrorForTest('duplicate key elsewhere')).toBe(true);
+  expect(__isUniqueConstraintErrorForTest({ message: 'unique index violation on key' })).toBe(true);
+  expect(__isUniqueConstraintErrorForTest({ code: '23505' })).toBe(false);
   expect(__isUniqueConstraintErrorForTest(new Error('boom'))).toBe(false);
 });
 

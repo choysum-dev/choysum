@@ -72,7 +72,12 @@ function invalidateAppSettingMemo(application: string, key: string): void {
 }
 
 function isUniqueConstraintError(err: unknown): boolean {
-  const msg = err instanceof Error ? err.message : String(err);
+  const msg =
+    err instanceof Error
+      ? err.message
+      : typeof err === 'object' && err !== null && 'message' in err
+        ? String((err as { message: unknown }).message)
+        : String(err);
   return /unique constraint|unique index|duplicate key|UNIQUE constraint failed/i.test(msg);
 }
 
