@@ -287,6 +287,18 @@ func TestEnsureI18nMetaErrorPaths(t *testing.T) {
 		t.Fatalf("expected create raw Service error, got %v", err)
 	}
 	_ = db.Exec("PRAGMA query_only = OFF")
+
+	// Seed another app, then fail promoteI18nCanonicalTip via query_only (SELECTs still work).
+	if err := EnsureI18nMeta(rs, "erp", sql.NullString{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec("PRAGMA query_only = ON").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := EnsureI18nMeta(rs, "erp", sql.NullString{}); err == nil || !strings.Contains(err.Error(), "promote I18n canonical tip") {
+		t.Fatalf("expected promote tip error from EnsureI18nMeta, got %v", err)
+	}
+	_ = db.Exec("PRAGMA query_only = OFF")
 }
 
 func TestEnsureI18nMetaLookupErrors(t *testing.T) {
