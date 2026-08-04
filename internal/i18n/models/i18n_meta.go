@@ -55,8 +55,9 @@ func EnsureI18nMeta(runtimeScope scope.Scope, application string, moduleID sql.N
 	if err := ensureI18nRawServices(db, raw); err != nil {
 		return err
 	}
-	// E2 tip scalars (Path, Abstract, …) come from the last-ranked same-name raw.
-	// Promote the canonical go://i18n/<application> row so extensions cannot steal Path.
+	// E2 tip scalars (Path, Abstract, …) come from the last-ranked same-name raw, and the
+	// first effective id is minted from pickTipRaw (created_at). Promote both timestamps on
+	// go://i18n/<application> so Path and id stay on the canonical declaration.
 	if err := promoteI18nCanonicalTip(db, application, raw); err != nil {
 		return err
 	}
@@ -70,14 +71,14 @@ func EnsureI18nMeta(runtimeScope scope.Scope, application string, moduleID sql.N
 	return ensureTerminologyEditorAllows(db, serviceIDs)
 }
 
-// promoteI18nCanonicalTip bumps the canonical raw UpdatedAt past any same-name sibling so
-// MergeSameNameModelsByExtensionChain picks go://i18n/<application> for tip scalars.
+// promoteI18nCanonicalTip bumps the canonical raw created_at/updated_at past any same-name
+// sibling so both pickTipRaw (first effective id) and E2 tip scalars use go://i18n/<application>.
 func promoteI18nCanonicalTip(db *gorm.DB, application string, canonical *meta.RawModel) error {
 	if canonical == nil || !canonical.Id.Valid {
 		return fmt.Errorf("I18n canonical raw is nil")
 	}
 	var siblings []meta.RawModel
-	if err := db.Select("id", "updated_at").
+	if err := db.Select("id", "created_at", "updated_at").
 		Where("application = ? AND name = ? AND id <> ?", application, i18nModelName, canonical.Id.String).
 		Find(&siblings).Error; err != nil {
 		return fmt.Errorf("load I18n sibling tips: %w", err)
@@ -87,10 +88,17 @@ func promoteI18nCanonicalTip(db *gorm.DB, application string, canonical *meta.Ra
 		if !tip.After(s.UpdatedAt) {
 			tip = s.UpdatedAt.Add(time.Millisecond)
 		}
+		if !tip.After(s.CreatedAt) {
+			tip = s.CreatedAt.Add(time.Millisecond)
+		}
 	}
-	if err := db.Model(canonical).UpdateColumn("updated_at", tip).Error; err != nil {
+	if err := db.Model(canonical).UpdateColumns(map[string]any{
+		"created_at": tip,
+		"updated_at": tip,
+	}).Error; err != nil {
 		return fmt.Errorf("promote I18n canonical tip: %w", err)
 	}
+	canonical.CreatedAt = tip
 	canonical.UpdatedAt = tip
 	return nil
 }

@@ -192,6 +192,9 @@ func TestEnsureI18nMetaPrefersCanonicalPath(t *testing.T) {
 	if effective.Path != "go://i18n/auth" {
 		t.Fatalf("effective Path = %q, want go://i18n/auth", effective.Path)
 	}
+	if effective.Id.String != canonical.Id.String {
+		t.Fatalf("effective id = %q, want canonical raw id %q (not extension %q)", effective.Id.String, canonical.Id.String, ext.Id.String)
+	}
 	if len(effective.Services) != 3 {
 		t.Fatalf("want 3 effective services, got %d", len(effective.Services))
 	}
