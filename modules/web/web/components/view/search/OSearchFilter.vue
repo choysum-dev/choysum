@@ -26,7 +26,7 @@ SPDX-License-Identifier: Apache-2.0
       </div>
       <div class="o-search-filter__actions">
         <el-button @click="$emit('cancel')">{{ _t('Cancel') }}</el-button>
-        <el-button type="primary" @click="$emit('save')">{{ _t('Save') }}</el-button>
+        <el-button type="primary" @click="$emit('confirm')">{{ _t('Confirm') }}</el-button>
       </div>
     </div>
   </div>
@@ -71,7 +71,8 @@ const emit = defineEmits<{
   (e: 'remove-condition', id: string): void;
   (e: 'update-condition', id: string, patch: Partial<Condition>): void;
   (e: 'cancel'): void;
-  (e: 'save'): void;
+  /** Apply draft into search tags (not persist SavedFilter). */
+  (e: 'confirm'): void;
 }>();
 
 // One bindings instance for the whole editor tree (relation-store cache shared by nested groups).

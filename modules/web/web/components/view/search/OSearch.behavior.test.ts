@@ -71,9 +71,9 @@ const elementStubs = {
   },
   OSearchFilter: {
     props: ['store', 'draft', 'fields'],
-    emits: ['cancel', 'save'],
+    emits: ['cancel', 'confirm'],
     template: `<div class="filter-editor">
-      <button type="button" class="save" @click="$emit('save')" />
+      <button type="button" class="confirm" @click="$emit('confirm')" />
       <button type="button" class="cancel" @click="$emit('cancel')" />
     </div>`,
   },
@@ -127,7 +127,7 @@ describe('OSearch behavior', () => {
     await nextTick();
     expect(wrapper.find('.filter-editor').exists()).toBe(true);
 
-    await wrapper.find('.filter-editor .save').trigger('click');
+    await wrapper.find('.filter-editor .confirm').trigger('click');
     expect(ElMessage.warning).toHaveBeenCalled();
 
     await wrapper.find('.filter-editor .cancel').trigger('click');
@@ -211,7 +211,7 @@ describe('OSearch behavior', () => {
     await nextTick();
     expect(wrapper.find('.filter-editor').exists()).toBe(true);
     const before = wrapper.emitted('query-update')?.length ?? 0;
-    await wrapper.find('.filter-editor .save').trigger('click');
+    await wrapper.find('.filter-editor .confirm').trigger('click');
     await flushPromises();
     expect(wrapper.find('.filter-editor').exists()).toBe(false);
     expect((wrapper.emitted('query-update')?.length ?? 0)).toBeGreaterThan(before);
@@ -237,7 +237,7 @@ describe('OSearch behavior', () => {
     // Parent clears tags while the editor is still open.
     await wrapper.setProps({ currentAppliedFilters: [] });
     await flushPromises();
-    await wrapper.find('.filter-editor .save').trigger('click');
+    await wrapper.find('.filter-editor .confirm').trigger('click');
     await flushPromises();
     expect(wrapper.find('.filter-editor').exists()).toBe(false);
     expect(ElMessage.warning).not.toHaveBeenCalled();

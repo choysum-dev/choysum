@@ -150,7 +150,7 @@ SPDX-License-Identifier: Apache-2.0
         @update-condition="updateDraftCondition"
         @remove-condition="removeDraftCondition"
         @cancel="onEditorCancel"
-        @save="onSaveDraft"
+        @confirm="onConfirmDraft"
       />
     </el-dialog>
   </div>
@@ -389,7 +389,7 @@ function onEditorCancel() {
   closeEditor(true);
 }
 
-async function onSaveDraft() {
+async function onConfirmDraft() {
   const draft = draftFilter.value;
   if (!draft) return;
   const editingId = draft.baseId;
@@ -400,7 +400,7 @@ async function onSaveDraft() {
       closeEditor(true);
       return;
     }
-    ElMessage.warning(_t('Add at least one complete condition before saving'));
+    ElMessage.warning(_t('Add at least one complete condition before confirming'));
     return;
   }
   emitQueryUpdate();

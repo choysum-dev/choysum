@@ -162,6 +162,6 @@ describe('OSearchFilter preview labels', () => {
     expect(wrapper.emitted('update-condition')?.[0]).toEqual(['c1', { value: 1 }]);
     expect(wrapper.emitted('remove-condition')?.[0]).toEqual(['c1']);
     expect(wrapper.emitted('cancel')).toBeTruthy();
-    expect(wrapper.emitted('save')).toBeTruthy();
+    expect(wrapper.emitted('confirm')).toBeTruthy();
   });
 });
