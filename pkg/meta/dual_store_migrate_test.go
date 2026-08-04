@@ -164,6 +164,10 @@ func TestMigrateIMDCatalogToDualStore_CollapsesSameNameToEffective(t *testing.T)
 	if len(nameField.Decorators[0].Arguments) != 1 {
 		t.Fatalf("expected decorator argument preserved, got %#v", nameField.Decorators[0].Arguments)
 	}
+	arg := nameField.Decorators[0].Arguments[0]
+	if arg == nil || arg.Type != "object" || arg.Value != `{"type":"varchar"}` {
+		t.Fatalf("expected decorator argument payload preserved, got %#v", arg)
+	}
 
 	// Soft-deleted effective tip must not block a new live row (partial unique index).
 	if err := db.Delete(eff[0]).Error; err != nil {

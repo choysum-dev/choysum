@@ -37,8 +37,9 @@ func EnsureDualStoreTables(db *gorm.DB) error {
 // copies on source rows are preserved as-is (EDS-2 will stop writing them). Effective
 // ids reuse the tip id (newest created_at, then id) when possible.
 //
-// DDL (EnsureDualStoreTables) runs outside the transaction; copy + recompute run inside
-// one transaction so failures roll back partial raw/effective writes.
+// DDL (EnsureDualStoreTables + effective unique index) runs outside the transaction;
+// copy + recompute run inside one transaction so failures roll back partial raw/effective
+// writes. MySQL DDL would implicitly commit if run inside the transaction.
 func MigrateIMDCatalogToDualStore(db *gorm.DB) error {
 	if db == nil {
 		return fmt.Errorf("db is nil")
@@ -56,7 +57,7 @@ func MigrateIMDCatalogToDualStore(db *gorm.DB) error {
 		return fmt.Errorf("meta_raw_model already has %d rows (incl. soft-deleted); refuse migrate (wipe raw first)", rawCount)
 	}
 
-	return db.Transaction(func(tx *gorm.DB) error {
+	if err := db.Transaction(func(tx *gorm.DB) error {
 		var sources []*Model
 		if err := tx.
 			Preload("Fields").
@@ -98,19 +99,26 @@ func MigrateIMDCatalogToDualStore(db *gorm.DB) error {
 		}
 
 		return recomputeAllEffectiveFromRawTx(tx)
-	})
+	}); err != nil {
+		return err
+	}
+	return ensureEffectiveAppNameUniqueIndex(db)
 }
 
 // RecomputeAllEffectiveFromRaw hard-deletes all effective meta_model* shape rows, then
-// rebuilds them from live meta_raw_* via E2. Runs in a transaction. Callers with only a
-// partial raw catalog will lose effective rows that have no raw counterpart.
+// rebuilds them from live meta_raw_* via E2. DML runs in a transaction; the effective
+// unique-index DDL runs after commit. Callers with only a partial raw catalog will lose
+// effective rows that have no raw counterpart.
 func RecomputeAllEffectiveFromRaw(db *gorm.DB) error {
 	if db == nil {
 		return fmt.Errorf("db is nil")
 	}
-	return db.Transaction(func(tx *gorm.DB) error {
+	if err := db.Transaction(func(tx *gorm.DB) error {
 		return recomputeAllEffectiveFromRawTx(tx)
-	})
+	}); err != nil {
+		return err
+	}
+	return ensureEffectiveAppNameUniqueIndex(db)
 }
 
 func recomputeAllEffectiveFromRawTx(tx *gorm.DB) error {
@@ -164,10 +172,6 @@ func recomputeAllEffectiveFromRawTx(tx *gorm.DB) error {
 		if err := persistEffectiveProjection(tx, merged, effID); err != nil {
 			return fmt.Errorf("persist effective %s: %w", key, err)
 		}
-	}
-
-	if err := ensureEffectiveAppNameUniqueIndex(tx); err != nil {
-		return err
 	}
 	return nil
 }
@@ -554,26 +558,33 @@ func persistDecoratorTree(db *gorm.DB, d *Decorator, modelID, fieldID, serviceID
 }
 
 func ensureEffectiveAppNameUniqueIndex(db *gorm.DB) error {
-	// Drop any prior non-partial index with the same name so we can recreate it.
-	_ = db.Exec(fmt.Sprintf("DROP INDEX IF EXISTS %s", effectiveAppNameUniqueIndex)).Error
-
-	var stmt string
 	switch db.Dialector.Name() {
 	case "sqlite", "postgres":
+		// Drop any prior non-partial index with the same name so we can recreate it.
+		_ = db.Exec(fmt.Sprintf("DROP INDEX IF EXISTS %s", effectiveAppNameUniqueIndex)).Error
 		// Live rows only — soft-deleted tip may be reused after uninstall/reinstall.
-		stmt = fmt.Sprintf(
+		stmt := fmt.Sprintf(
 			"CREATE UNIQUE INDEX IF NOT EXISTS %s ON meta_model (application, name) WHERE deleted_at IS NULL",
 			effectiveAppNameUniqueIndex,
 		)
+		if err := db.Exec(stmt).Error; err != nil {
+			return fmt.Errorf("create unique index %s: %w", effectiveAppNameUniqueIndex, err)
+		}
 	default:
-		// MySQL has no partial indexes; soft-deleted keys still collide until wipe.
-		stmt = fmt.Sprintf(
+		// MySQL: DROP INDEX requires ON <table>; CREATE UNIQUE INDEX has no IF NOT EXISTS.
+		// Soft-deleted keys still collide until wipe (no partial indexes).
+		if db.Migrator().HasIndex("meta_model", effectiveAppNameUniqueIndex) {
+			if err := db.Migrator().DropIndex("meta_model", effectiveAppNameUniqueIndex); err != nil {
+				return fmt.Errorf("drop unique index %s: %w", effectiveAppNameUniqueIndex, err)
+			}
+		}
+		stmt := fmt.Sprintf(
 			"CREATE UNIQUE INDEX %s ON meta_model (application, name)",
 			effectiveAppNameUniqueIndex,
 		)
-	}
-	if err := db.Exec(stmt).Error; err != nil {
-		return fmt.Errorf("create unique index %s: %w", effectiveAppNameUniqueIndex, err)
+		if err := db.Exec(stmt).Error; err != nil {
+			return fmt.Errorf("create unique index %s: %w", effectiveAppNameUniqueIndex, err)
+		}
 	}
 	return nil
 }
