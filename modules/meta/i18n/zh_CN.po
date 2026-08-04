@@ -346,6 +346,41 @@ msgctxt "meta.model.MetaModel.fields"
 msgid "Table Name"
 msgstr "表名"
 
+#: service/models/model_data.ts:51
+msgctxt "meta.model.MetaModelData.fields"
+msgid "Application"
+msgstr "应用"
+
+#: service/models/model_data.ts:60
+msgctxt "meta.model.MetaModelData.fields"
+msgid "Model"
+msgstr "模型"
+
+#: service/models/model_data.ts:63
+msgctxt "meta.model.MetaModelData.fields"
+msgid "Model Name"
+msgstr "模型名"
+
+#: service/models/model_data.ts:54
+msgctxt "meta.model.MetaModelData.fields"
+msgid "Module"
+msgstr "模块"
+
+#: service/models/model_data.ts:57
+msgctxt "meta.model.MetaModelData.fields"
+msgid "Name"
+msgstr "名称"
+
+#: service/models/model_data.ts:69
+msgctxt "meta.model.MetaModelData.fields"
+msgid "No Update"
+msgstr "禁止更新"
+
+#: service/models/model_data.ts:66
+msgctxt "meta.model.MetaModelData.fields"
+msgid "Resource Id"
+msgstr "资源 ID"
+
 #: service/models/module.ts:137 service/models/module.ts:176
 msgctxt "meta.model.MetaModule.fields"
 msgid "Application"
@@ -855,6 +890,26 @@ msgstr "服务实例"
 msgctxt "meta.model.ModuleManagementLog.fields"
 msgid "Summary"
 msgstr "摘要"
+
+#: service/models/model_data.ts:80
+msgctxt "service/models/model_data"
+msgid "external id %s not found"
+msgstr "未找到外部 ID %s"
+
+#: service/models/model_data.ts:26
+msgctxt "service/models/model_data"
+msgid "external id key must be module.name"
+msgstr "外部 ID 键必须为 module.name"
+
+#: service/models/model_data.ts:18
+msgctxt "service/models/model_data"
+msgid "external id key must not be empty"
+msgstr "外部 ID 键不能为空"
+
+#: service/models/model_data.ts:35
+msgctxt "service/models/model_data"
+msgid "external id key must not have empty module or name"
+msgstr "外部 ID 键的 module 与 name 均不能为空"
 
 #: service/models/module.ts:314
 msgctxt "service/models/module"
@@ -1405,4 +1460,3 @@ msgstr "结果"
 msgctxt "web/views/ModuleLogListView"
 msgid "Started At"
 msgstr "开始时间"
-
