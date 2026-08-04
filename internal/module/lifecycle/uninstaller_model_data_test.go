@@ -337,6 +337,9 @@ BEGIN
 END`).Error; err != nil {
 			t.Fatalf("create rebind trigger: %v", err)
 		}
+		t.Cleanup(func() {
+			_ = db.Exec(`DROP TRIGGER IF EXISTS block_meta_model_data_rebind`)
+		})
 		err := rebindMetaModelDataTips(db, []modelVictim{{
 			Id: victimID, Application: "partner", Name: "UpdateFail",
 		}})
@@ -401,6 +404,9 @@ BEGIN
 END`).Error; err != nil {
 		t.Fatalf("create rebind trigger: %v", err)
 	}
+	t.Cleanup(func() {
+		_ = db.Exec(`DROP TRIGGER IF EXISTS block_meta_model_data_rebind_clean`)
+	})
 
 	uninstaller := &moduleUninstaller{
 		runtimeScope:  runtimeScope,

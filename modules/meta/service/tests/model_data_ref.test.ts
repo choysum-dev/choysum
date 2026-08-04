@@ -99,7 +99,10 @@ test('MetaModelData.sqlModelId projects live MetaModel tip by Application and Mo
     ['meta_model_data', 'application'],
     ['meta_model_data', 'model_name'],
   ]);
-  expect(out).toBeTruthy();
+  const sqlText = String((out as any).toOperationNode().sqlFragments.join('')).toLowerCase();
+  expect(sqlText).toContain('m.deleted_at is null');
+  expect(sqlText).toContain('order by m.created_at desc, m.id desc');
+  expect(sqlText).toContain('limit 1');
 });
 
 test('createServiceByModel(meta.MetaModelData) dials Ref after factory registration', async () => {
