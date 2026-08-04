@@ -67,6 +67,7 @@ import { browseModel, browseManyModels, searchModels, countModels, readGroupedMo
 import { withModelSavepoint, hydrateModelFacade, toPlainObject as toPlainObjectExternal, toEntity as toEntityExternal } from './model_edge_facade';
 import { getModelRepository } from './model_internal_facade';
 import { runModelOnchange } from './model_runtime_service_facade';
+import { pool as poolModel, dial as dialService } from './model_pool';
 import { runDefaultGetPipeline } from './model_default_get_pipeline';
 import { deleteModels, deleteModelById } from './model_delete_service_facade';
 import { createModel, createManyModels } from './model_create_service_facade';
@@ -284,6 +285,10 @@ class BaseModel {
    * The identifier can be a full model name (e.g. "meta.MetaModule"),
    * a short model name ("MetaModule"), the metadata name, or the
    * constructor class name.
+   *
+   * Prefer {@link BaseModel.pool} for same-app short names (typed, no global
+   * short-name scan) and {@link BaseModel.dial} for cross-app **services**.
+   * This helper remains for framework / dynamic full-name ctor lookup.
    */
   static resolveModelConstructor(identifier: string): typeof BaseModel | undefined {
     const key = String(identifier || '').trim();
@@ -312,6 +317,25 @@ class BaseModel {
     }
 
     return undefined;
+  }
+
+  /**
+   * Same-app typed resolve: `${this.application}.${shortName}` → Model ctor.
+   *
+   * Not `globalThis.pool`. Does not cross applications. See {@link pool}.
+   */
+  static pool<T = typeof BaseModel>(this: typeof BaseModel, shortName: string): T {
+    const app = String(MetadataStorage.instance.getModelMetadata(this as any)?.application || '').trim();
+    return poolModel<T>(app, shortName);
+  }
+
+  /**
+   * Cross-app service dial (alias of createServiceByModel). Returns a service
+   * instance — not a Model ctor. Full name `app.Model` required. Does not read
+   * `this.application` and does not imply network RPC.
+   */
+  static dial<T = Record<string, (...args: unknown[]) => unknown>>(fullModelName: string): T {
+    return dialService<T>(fullModelName);
   }
 
   /**
