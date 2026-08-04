@@ -5,6 +5,7 @@ package meta
 
 import (
 	"database/sql"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -232,5 +233,85 @@ func TestMigrateIMDCatalogToDualStore_RefusesNonEmptyRaw(t *testing.T) {
 	}
 	if err := MigrateIMDCatalogToDualStore(db); err == nil {
 		t.Fatal("expected refuse when raw non-empty")
+	}
+}
+
+func TestMigrateIMDCatalogToDualStore_EmptySourcesIsNoOp(t *testing.T) {
+	db := openDualStoreTestDB(t)
+	if err := EnsureDualStoreTables(db); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
+	kept := &Model{
+		BaseModel:   BaseModel{Id: sql.NullString{String: "id-soft", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+		Name:        "Kept",
+		Application: "a",
+		Path:        "/kept.ts",
+	}
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(kept).Error; err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if err := db.Delete(kept).Error; err != nil {
+		t.Fatalf("soft-delete: %v", err)
+	}
+	if err := MigrateIMDCatalogToDualStore(db); err != nil {
+		t.Fatalf("MigrateIMDCatalogToDualStore: %v", err)
+	}
+	var count int64
+	if err := db.Unscoped().Model(&Model{}).Count(&count).Error; err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("empty migrate wiped effective catalog, Unscoped count=%d", count)
+	}
+}
+
+func TestRecomputeAllEffectiveFromRaw_OmitsThisParameter(t *testing.T) {
+	db := openDualStoreTestDB(t)
+	if err := EnsureDualStoreTables(db); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
+	raw := &RawModel{
+		BaseModel:   BaseModel{Id: sql.NullString{String: "r-svc", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+		Name:        "Partner",
+		Application: "partner",
+		Path:        "/partner.ts",
+		ModuleId:    sql.NullString{String: "mod", Valid: true},
+	}
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(raw).Error; err != nil {
+		t.Fatalf("create raw: %v", err)
+	}
+	svc := &RawService{
+		BaseModel: BaseModel{Id: sql.NullString{String: "s1", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+		Name:      "Create",
+		ModelId:   raw.Id,
+	}
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(svc).Error; err != nil {
+		t.Fatalf("create service: %v", err)
+	}
+	for i, name := range []string{"this", "vals"} {
+		p := &RawParameter{
+			BaseModel: BaseModel{Id: sql.NullString{String: fmt.Sprintf("p%d", i), Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+			Name:      name,
+			ServiceId: svc.Id,
+		}
+		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(p).Error; err != nil {
+			t.Fatalf("create param %s: %v", name, err)
+		}
+	}
+	if err := RecomputeAllEffectiveFromRaw(db); err != nil {
+		t.Fatalf("RecomputeAllEffectiveFromRaw: %v", err)
+	}
+	var eff []*Model
+	if err := db.Preload("Services.Parameters").Find(&eff).Error; err != nil {
+		t.Fatalf("load effective: %v", err)
+	}
+	if len(eff) != 1 || len(eff[0].Services) != 1 {
+		t.Fatalf("expected one effective model/service, got %#v", eff)
+	}
+	params := eff[0].Services[0].Parameters
+	if len(params) != 1 || params[0].Name != "vals" {
+		t.Fatalf("expected only vals on effective service, got %#v", params)
 	}
 }

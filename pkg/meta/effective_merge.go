@@ -11,7 +11,8 @@ import (
 // MergeSameNameModelsByExtensionChain merges same logical-name model rows (E2).
 // Ranking: extends-depth ascending, then UpdatedAt ascending, then Id ascending.
 // Fields merge by name via ResolveSelectionFieldConflict; Services last-write wins.
-// Canonical model scalars come from the last ranked row. Cycles in Extends → error.
+// Canonical model scalars and model-level Decorators come from the last ranked row
+// (hangers follow the winning Field/Service/Model — EDS E2 §4.6). Cycles in Extends → error.
 //
 // Callers typically pass all live rows for one (application, name) — including sibling
 // IMD branches (EDS2). Codegen may additionally pre-filter to a primary extension chain
@@ -251,7 +252,9 @@ func rawServiceAsService(s *RawService) *Service {
 		IsStatic:              s.IsStatic,
 	}
 	for _, p := range s.Parameters {
-		if p == nil {
+		if p == nil || p.Name == "this" {
+			// Keep "this" on raw declaration rows; omit from effective / merge input
+			// (matches codegen getApplication and ModuleBuilder.loadLatestModelByPath).
 			continue
 		}
 		svc.Parameters = append(svc.Parameters, &Parameter{

@@ -90,6 +90,33 @@ func TestMergeEffectiveModel_FromRaw(t *testing.T) {
 	}
 }
 
+func TestMergeEffectiveModel_OmitsThisParameter(t *testing.T) {
+	raws := []*RawModel{{
+		BaseModel:   BaseModel{UpdatedAt: time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC), Id: sql.NullString{String: "base", Valid: true}},
+		Name:        "Partner",
+		Application: "partner",
+		Path:        "@/partner/service/models/partner.ts",
+		Services: []*RawService{{
+			Name: "Create",
+			Parameters: []*RawParameter{
+				{Name: "this"},
+				{Name: "vals"},
+			},
+		}},
+	}}
+	merged, err := MergeEffectiveModel(raws)
+	if err != nil {
+		t.Fatalf("MergeEffectiveModel: %v", err)
+	}
+	if merged == nil || len(merged.Services) != 1 {
+		t.Fatalf("expected one service, got %#v", merged)
+	}
+	params := merged.Services[0].Parameters
+	if len(params) != 1 || params[0] == nil || params[0].Name != "vals" {
+		t.Fatalf("expected only vals parameter (this omitted), got %#v", params)
+	}
+}
+
 func TestMergeSameNameModelsByExtensionChain_CycleError(t *testing.T) {
 	aPath := "@/a/partner.ts"
 	bPath := "@/b/partner.ts"

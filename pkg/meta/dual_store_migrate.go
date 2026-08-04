@@ -35,7 +35,8 @@ func EnsureDualStoreTables(db *gorm.DB) error {
 //
 // Soft-deleted meta_model rows are skipped (default GORM scope). Materialized parent
 // copies on source rows are preserved as-is (EDS-2 will stop writing them). Effective
-// ids reuse the tip id (newest created_at, then id) when possible.
+// ids reuse the tip id (newest created_at, then id) when possible. An empty live
+// catalog is a no-op (does not hard-delete existing effective rows).
 //
 // DDL (EnsureDualStoreTables + effective unique index) runs outside the transaction;
 // copy + recompute run inside one transaction so failures roll back partial raw/effective
@@ -72,6 +73,17 @@ func MigrateIMDCatalogToDualStore(db *gorm.DB) error {
 			Preload("Decorators.Arguments").
 			Find(&sources).Error; err != nil {
 			return fmt.Errorf("load meta_model for dual-store migrate: %w", err)
+		}
+
+		live := 0
+		for _, src := range sources {
+			if src != nil {
+				live++
+			}
+		}
+		// Empty live catalog: do not call recompute (it hard-deletes effective trees).
+		if live == 0 {
+			return nil
 		}
 
 		seenModulePath := map[string]string{}
@@ -490,7 +502,8 @@ func persistEffectiveProjection(db *gorm.DB, merged *Model, effectiveID string) 
 			return err
 		}
 		for _, p := range params {
-			if p == nil {
+			if p == nil || p.Name == "this" {
+				// Synthetic receiver; codegen / Auth omit it from effective service shape.
 				continue
 			}
 			np := *p
