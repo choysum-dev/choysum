@@ -1132,7 +1132,7 @@ msgstr ""
 
 #: web/components/view/search/OSearch.vue:245
 msgctxt "web/components/view/search/OSearch"
-msgid "Add at least one complete condition before saving"
+msgid "Add at least one complete condition before confirming"
 msgstr ""
 
 #: web/components/view/search/OSearch.vue:40
@@ -1247,7 +1247,7 @@ msgstr ""
 
 #: web/components/view/search/OSearchFilter.vue:13
 msgctxt "web/components/view/search/OSearchFilter"
-msgid "Save"
+msgid "Confirm"
 msgstr ""
 
 #: web/components/view/search/OSearchFilterCondition.vue:11

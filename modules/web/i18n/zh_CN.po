@@ -1108,8 +1108,8 @@ msgstr "搜索…"
 
 #: web/components/view/search/OSearch.vue:245
 msgctxt "web/components/view/search/OSearch"
-msgid "Add at least one complete condition before saving"
-msgstr "保存前请至少添加一条完整条件"
+msgid "Add at least one complete condition before confirming"
+msgstr "确认前请至少添加一条完整条件"
 
 #: web/components/view/search/OSearch.vue:40
 msgctxt "web/components/view/search/OSearch"
@@ -1223,8 +1223,8 @@ msgstr "预览（%s）："
 
 #: web/components/view/search/OSearchFilter.vue:13
 msgctxt "web/components/view/search/OSearchFilter"
-msgid "Save"
-msgstr "保存"
+msgid "Confirm"
+msgstr "确认"
 
 #: web/components/view/search/OSearchFilterCondition.vue:11
 msgctxt "web/components/view/search/OSearchFilterCondition"

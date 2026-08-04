@@ -352,6 +352,41 @@ msgctxt "meta.model.MetaModel.fields"
 msgid "Table Name"
 msgstr ""
 
+#: service/models/model_data.ts:51
+msgctxt "meta.model.MetaModelData.fields"
+msgid "Application"
+msgstr ""
+
+#: service/models/model_data.ts:60
+msgctxt "meta.model.MetaModelData.fields"
+msgid "Model"
+msgstr ""
+
+#: service/models/model_data.ts:63
+msgctxt "meta.model.MetaModelData.fields"
+msgid "Model Name"
+msgstr ""
+
+#: service/models/model_data.ts:54
+msgctxt "meta.model.MetaModelData.fields"
+msgid "Module"
+msgstr ""
+
+#: service/models/model_data.ts:57
+msgctxt "meta.model.MetaModelData.fields"
+msgid "Name"
+msgstr ""
+
+#: service/models/model_data.ts:69
+msgctxt "meta.model.MetaModelData.fields"
+msgid "No Update"
+msgstr ""
+
+#: service/models/model_data.ts:66
+msgctxt "meta.model.MetaModelData.fields"
+msgid "Resource Id"
+msgstr ""
+
 #: service/models/module.ts:137
 #: service/models/module.ts:176
 msgctxt "meta.model.MetaModule.fields"
@@ -863,6 +898,26 @@ msgstr ""
 #: service/models/module_management_log.ts:40
 msgctxt "meta.model.ModuleManagementLog.fields"
 msgid "Summary"
+msgstr ""
+
+#: service/models/model_data.ts:80
+msgctxt "service/models/model_data"
+msgid "external id %s not found"
+msgstr ""
+
+#: service/models/model_data.ts:26
+msgctxt "service/models/model_data"
+msgid "external id key must be module.name"
+msgstr ""
+
+#: service/models/model_data.ts:18
+msgctxt "service/models/model_data"
+msgid "external id key must not be empty"
+msgstr ""
+
+#: service/models/model_data.ts:35
+msgctxt "service/models/model_data"
+msgid "external id key must not have empty module or name"
 msgstr ""
 
 #: service/models/module.ts:314
