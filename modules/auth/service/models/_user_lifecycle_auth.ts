@@ -16,6 +16,24 @@ import { buildScopePreferences } from './_user_lifecycle_scope';
 
 const CompanyService = createServiceByModel<typeof Company>('base.Company');
 
+/** Auth AppSetting key: gate anonymous `User.Register` (table-local; no `auth.` prefix). */
+export const ALLOW_SELF_REGISTRATION_KEY = 'allow_self_registration';
+
+/**
+ * Enforce `allow_self_registration` before provisioning a new local user.
+ * Missing row defaults to open (`'1'`) via the caller’s `Get(..., '1')`.
+ * Runs under permission-graph bypass because Register is a public entry path.
+ */
+export async function assertSelfRegistrationAllowed(getFlag: () => Promise<string | null>): Promise<void> {
+  const flag = await withPermissionGraphBypass(async () => await getFlag());
+  if (String(flag ?? '') !== '1') {
+    throw newAuthError({
+      code: AuthErrCode.REGISTRATION_DISABLED,
+      message: _t('Self-registration is disabled', { scope: 'service/models/_user_lifecycle_auth' }),
+    }).withGrpcCode(GrpcCode.FailedPrecondition);
+  }
+}
+
 export type LoginUserLike = {
   Id: string;
   Username: string;

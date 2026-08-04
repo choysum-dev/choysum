@@ -55,6 +55,7 @@ export namespace AuthErrCode {
 
   // Service errors.
   export const AUTH_SERVICE_DISABLED = 'AUTH_SERVICE_DISABLED';
+  export const REGISTRATION_DISABLED = 'REGISTRATION_DISABLED';
   export const VALIDATION_FAILED = 'VALIDATION_FAILED';
 }
 

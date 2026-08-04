@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Model, Field, Compute } from '@/core/service';
+import { BaseModel, Model, Field, Compute, type AppSettingModelCtor } from '@/core/service';
 import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
 import type { Insertable } from '@/core/service/api/input';
 import type { ConditionEnvelope, RecordRuleOp } from '@/core/service/api/authz';
@@ -32,6 +32,8 @@ import {
   validateSwitchCompanyScopeInput,
 } from './_user_lifecycle_scope';
 import {
+  ALLOW_SELF_REGISTRATION_KEY,
+  assertSelfRegistrationAllowed,
   ensureCreatedUserIdOrThrow,
   ensureRegistrationIdentityUnique,
   issueLoginTokensAndSession,
@@ -349,6 +351,9 @@ export default class User extends BaseModel {
    * Register a new local user and provision the default auth baseline.
    */
   static async Register(userData: Partial<Insertable<User>>, password: string): Promise<string> {
+    await assertSelfRegistrationAllowed(() =>
+      this.pool<AppSettingModelCtor>('AppSetting').Get(ALLOW_SELF_REGISTRATION_KEY, '1')
+    );
     const passwordHash = validateAndHashRegistrationInput(userData as any, password);
     await ensureRegistrationIdentityUnique(userData as any, {
       searchByUsername: async (username: string) => await this.Search(['Username', '=', username] as any),

@@ -80,6 +80,9 @@ function setupAllowlistForRegister(): void {
 
       'base.Company:read',
       'Company:read',
+
+      'auth.AppSetting:read',
+      'AppSetting:read',
     ],
   });
 }
