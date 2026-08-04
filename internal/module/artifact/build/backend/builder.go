@@ -65,6 +65,11 @@ type ModuleBuilder struct {
 	fieldDefaultPlan        FieldDefaultPlan
 	fieldDefaultInjectPath  string   // last injected path (single-module / tests)
 	fieldDefaultInjectPaths []string // all inject paths merged into build entry imports
+
+	// AppSetting C2 plan / inject paths (parallel to FieldDefault).
+	appSettingPlan        AppSettingPlan
+	appSettingInjectPath  string
+	appSettingInjectPaths []string
 }
 
 func pathWithinModuleRoot(path string, root string) bool {
@@ -189,11 +194,15 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 
 	imports := b.entryPointImports()
 	// WithEntryPointImports replaces plugin EntryPointImports — always pass the
-	// full set here. Include FieldDefault on prebuild too so injectModelApplication
-	// can rewrite Content before the build pass that emits dist JS.
-	extra := b.fieldDefaultInjectPaths
-	if len(extra) == 0 && strings.TrimSpace(b.fieldDefaultInjectPath) != "" {
-		extra = []string{b.fieldDefaultInjectPath}
+	// full set here. Include FieldDefault / AppSetting on prebuild too so
+	// injectModelApplication can rewrite Content before the build pass that emits dist JS.
+	extra := append([]string(nil), b.fieldDefaultInjectPaths...)
+	if len(b.fieldDefaultInjectPaths) == 0 && strings.TrimSpace(b.fieldDefaultInjectPath) != "" {
+		extra = append(extra, b.fieldDefaultInjectPath)
+	}
+	extra = append(extra, b.appSettingInjectPaths...)
+	if len(b.appSettingInjectPaths) == 0 && strings.TrimSpace(b.appSettingInjectPath) != "" {
+		extra = append(extra, b.appSettingInjectPath)
 	}
 	if len(extra) > 0 {
 		imports = append(append([]string(nil), imports...), extra...)
@@ -804,6 +813,9 @@ func (b *ModuleBuilder) validate(buildResult *module.BuildResult) error {
 	if err := b.validateFieldDefault(buildResult); err != nil {
 		return err
 	}
+	if err := b.validateAppSetting(buildResult); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -812,6 +824,9 @@ func (b *ModuleBuilder) persist(buildResult *module.BuildResult) error {
 	mod := buildResult.Module
 
 	if err := b.supersedeVirtualFieldDefaults(); err != nil {
+		return err
+	}
+	if err := b.supersedeVirtualAppSettings(); err != nil {
 		return err
 	}
 
@@ -1259,14 +1274,19 @@ func (b *ModuleBuilder) BuildWithoutPersist() (*module.BuildResult, error) {
 		return nil, xfmt.Errorf("error prebuilding: %w", err)
 	}
 
-	// 1b. FieldDefault C2 Decide / Inject (before extends rewrite + build)
+	// 1b. FieldDefault / AppSetting C2 Decide / Inject (before extends rewrite + build)
 	if err := b.planAndInjectFieldDefault(prebuildResult); err != nil {
+		return nil, err
+	}
+	if err := b.planAndInjectAppSetting(prebuildResult); err != nil {
+		b.releaseFieldDefaultSchedule()
 		return nil, err
 	}
 
 	// 2. recompute and modify file content for model extends
 	if err := b.updatePrebuildResult(prebuildResult); err != nil {
 		b.releaseFieldDefaultSchedule()
+		b.releaseAppSettingSchedule()
 		return nil, xfmt.Errorf("error generating content: %w", err)
 	}
 
@@ -1274,12 +1294,14 @@ func (b *ModuleBuilder) BuildWithoutPersist() (*module.BuildResult, error) {
 	buildResult, err := b.build(prebuildResult)
 	if err != nil {
 		b.releaseFieldDefaultSchedule()
+		b.releaseAppSettingSchedule()
 		return nil, xfmt.Errorf("error building: %w", err)
 	}
 
 	// 4. validate models
 	if err := b.validate(buildResult); err != nil {
 		b.releaseFieldDefaultSchedule()
+		b.releaseAppSettingSchedule()
 		return nil, xfmt.Errorf("error validating: %w", err)
 	}
 
@@ -1291,10 +1313,12 @@ func (b *ModuleBuilder) BuildWithoutPersist() (*module.BuildResult, error) {
 func (b *ModuleBuilder) Persist(buildResult *module.BuildResult) error {
 	if err := b.persist(buildResult); err != nil {
 		b.releaseFieldDefaultSchedule()
+		b.releaseAppSettingSchedule()
 		return xfmt.Errorf("error persisting build result: %w", err)
 	}
-	// DB now holds FieldDefault (or none was claimed); drop process-local claim.
+	// DB now holds FieldDefault / AppSetting (or none was claimed); drop process-local claims.
 	b.releaseFieldDefaultSchedule()
+	b.releaseAppSettingSchedule()
 	return nil
 }
 
@@ -1303,6 +1327,7 @@ func (b *ModuleBuilder) Persist(buildResult *module.BuildResult) error {
 func (b *ModuleBuilder) Bundle() (*module.BuildResult, error) {
 	// Bundle never persists meta; always release any NeedInject process claim.
 	defer b.releaseFieldDefaultSchedule()
+	defer b.releaseAppSettingSchedule()
 
 	prebuildResult, err := b.prebuild()
 	if err != nil {
@@ -1310,6 +1335,9 @@ func (b *ModuleBuilder) Bundle() (*module.BuildResult, error) {
 	}
 
 	if err := b.planAndInjectFieldDefault(prebuildResult); err != nil {
+		return nil, err
+	}
+	if err := b.planAndInjectAppSetting(prebuildResult); err != nil {
 		return nil, err
 	}
 

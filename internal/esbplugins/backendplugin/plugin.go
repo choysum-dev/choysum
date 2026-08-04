@@ -1135,9 +1135,15 @@ func (p *BackendPlugin) DefinePlugins(runtimeScope scope.Scope, jsExecutor jsexe
 	return []api.Plugin{{
 		Name: "choysum-backend-inherit",
 		Setup: func(build api.PluginBuild) {
-			// Virtual TS sources (e.g. C2 FieldDefault) are not on disk; claim them in
-			// OnResolve so esbuild reaches OnLoad instead of failing path resolution.
+			// Virtual TS sources (e.g. C2 FieldDefault / AppSetting) are not on disk; claim
+			// them in OnResolve so esbuild reaches OnLoad instead of failing path resolution.
 			build.OnResolve(api.OnResolveOptions{Filter: `field_default\.ts$`}, func(args api.OnResolveArgs) (api.OnResolveResult, error) {
+				if resolved, ok := p.resolveVirtualSourcePath(args.Path, args.ResolveDir); ok {
+					return api.OnResolveResult{Path: resolved}, nil
+				}
+				return api.OnResolveResult{}, nil
+			})
+			build.OnResolve(api.OnResolveOptions{Filter: `app_setting\.ts$`}, func(args api.OnResolveArgs) (api.OnResolveResult, error) {
 				if resolved, ok := p.resolveVirtualSourcePath(args.Path, args.ResolveDir); ok {
 					return api.OnResolveResult{Path: resolved}, nil
 				}
