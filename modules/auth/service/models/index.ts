@@ -11,6 +11,7 @@ export { default as RoleMethodAccess } from './role_method_access';
 export { default as RoleUiResource } from './role_ui_resource';
 export { default as RoleRecordRule } from './role_record_rule';
 export { default as RoleFieldRule } from './role_field_rule';
+export { default as AppSetting } from './app_setting';
 
 // Test-only probe model (used by auth permission chain tests; not a business-domain model)
 export { default as CompanyScopedResource } from './company_scoped_resource';

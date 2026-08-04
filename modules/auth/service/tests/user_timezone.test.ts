@@ -80,6 +80,7 @@ test('persistBrowserTimezoneIfEmpty updates empty user from clientTz context', a
 
   await withContext({ clientTz: 'Asia/Tokyo' } as any, async () => {
     const next = await persistBrowserTimezoneIfEmpty(user, {
+      isPersistEnabled: async () => true,
       updateTimezone: async (userId, timezone) => {
         updates.push({ userId, timezone });
       },
@@ -127,10 +128,26 @@ test('persistBrowserTimezoneIfEmpty mutates user when reloadUser omitted', async
   const user = { Id: 'U4', Timezone: null as string | null };
   const next = await persistBrowserTimezoneIfEmpty(user, {
     clientTimezone: 'Europe/Berlin',
+    isPersistEnabled: async () => true,
     updateTimezone: async () => {},
   });
   expect(next.Timezone).toBe('Europe/Berlin');
   expect(user.Timezone).toBe('Europe/Berlin');
+});
+
+test('persistBrowserTimezoneIfEmpty skips write when AppSetting gate is off', async () => {
+  const updates: Array<{ userId: string; timezone: string }> = [];
+  const user = { Id: 'U5', Timezone: null as string | null };
+  const next = await persistBrowserTimezoneIfEmpty(user, {
+    clientTimezone: 'UTC',
+    isPersistEnabled: async () => false,
+    updateTimezone: async (userId, timezone) => {
+      updates.push({ userId, timezone });
+    },
+  });
+  expect(updates).toEqual([]);
+  expect(next.Timezone).toBe(null);
+  expect(user.Timezone).toBe(null);
 });
 
 test('persistBrowserTimezoneIfEmpty no-ops when user id missing', async () => {
