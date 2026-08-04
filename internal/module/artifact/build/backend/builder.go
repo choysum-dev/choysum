@@ -922,7 +922,9 @@ func (b *ModuleBuilder) persistModuleModels(moduleID string, models []*meta.Mode
 		appendKey(row.Application, row.Name)
 	}
 
-	// Legacy IMD leftovers still carrying module_id on effective rows.
+	// Legacy IMD leftovers still carrying module_id on effective rows: include their
+	// logical names in recompute so EDS5 can keep the tip id. Do not delete here —
+	// RecomputeEffective deletes all existing trees after capturing the tip.
 	var prevEff []meta.Model
 	if err := db.Model(&meta.Model{}).
 		Select("id, application, name").
@@ -932,11 +934,6 @@ func (b *ModuleBuilder) persistModuleModels(moduleID string, models []*meta.Mode
 	}
 	for _, row := range prevEff {
 		appendKey(row.Application, row.Name)
-		if row.Id.Valid {
-			if err := meta.DeleteEffectiveModelTree(db.DB, row.Id.String); err != nil {
-				return xfmt.Errorf("clear legacy effective model %s: %w", row.Id.String, err)
-			}
-		}
 	}
 
 	if err := meta.DeleteRawModelsForModule(db.DB, moduleID); err != nil {

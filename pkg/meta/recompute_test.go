@@ -135,6 +135,70 @@ func TestRecomputeEffective_CreatesPreservesAndDeletes(t *testing.T) {
 	}
 }
 
+func TestRecomputeEffective_PreservesServiceIDsByName(t *testing.T) {
+	db := openRecomputeTestDB(t)
+	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
+
+	raw := &RawModel{
+		BaseModel:   BaseModel{Id: sql.NullString{String: "raw-i18n", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+		Name:        "I18n",
+		Application: "base",
+		Path:        "go://i18n/base",
+		Abstract:    true,
+		ModuleId:    sql.NullString{String: "mod-base", Valid: true},
+	}
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(raw).Error; err != nil {
+		t.Fatalf("create raw: %v", err)
+	}
+	for _, name := range []string{"SearchTerms", "UpdateTerm"} {
+		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawService{
+			BaseModel:             BaseModel{Id: sql.NullString{String: "rs-" + name, Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+			Name:                  name,
+			AccessibilityModifier: "public",
+			IsStatic:              true,
+			ModelId:               raw.Id,
+		}).Error; err != nil {
+			t.Fatalf("create raw service %s: %v", name, err)
+		}
+	}
+
+	if err := RecomputeEffective(db, "base", "I18n"); err != nil {
+		t.Fatalf("first recompute: %v", err)
+	}
+	var first Model
+	if err := db.Preload("Services").Where("application = ? AND name = ?", "base", "I18n").Take(&first).Error; err != nil {
+		t.Fatalf("load first: %v", err)
+	}
+	firstByName := map[string]string{}
+	for _, s := range first.Services {
+		if s != nil {
+			firstByName[s.Name] = s.Id.String
+		}
+	}
+	if firstByName["SearchTerms"] == "" || firstByName["UpdateTerm"] == "" {
+		t.Fatalf("missing services: %#v", firstByName)
+	}
+
+	if err := RecomputeEffective(db, "base", "I18n"); err != nil {
+		t.Fatalf("second recompute: %v", err)
+	}
+	var second Model
+	if err := db.Preload("Services").Where("application = ? AND name = ?", "base", "I18n").Take(&second).Error; err != nil {
+		t.Fatalf("load second: %v", err)
+	}
+	if second.Id.String != first.Id.String {
+		t.Fatalf("model id changed: %q → %q", first.Id.String, second.Id.String)
+	}
+	for _, s := range second.Services {
+		if s == nil {
+			continue
+		}
+		if got, want := s.Id.String, firstByName[s.Name]; got != want {
+			t.Fatalf("service %s id rotated: %q → %q", s.Name, want, got)
+		}
+	}
+}
+
 func TestRecomputeKeys_Dedupes(t *testing.T) {
 	db := openRecomputeTestDB(t)
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)

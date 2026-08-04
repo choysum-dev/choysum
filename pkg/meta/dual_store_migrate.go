@@ -62,7 +62,9 @@ var (
 		return raws, err
 	}
 	clearEffectiveShapeTreesFn = clearEffectiveShapeTrees
-	persistEffectiveProjectionFn = persistEffectiveProjection
+	persistEffectiveProjectionFn = func(db *gorm.DB, merged *Model, effectiveID string) error {
+		return persistEffectiveProjection(db, merged, effectiveID, nil)
+	}
 )
 
 // EnsureDualStoreTables creates raw + effective catalog tables (idempotent).
@@ -479,7 +481,7 @@ func clearEffectiveShapeTrees(db *gorm.DB) error {
 	return nil
 }
 
-func persistEffectiveProjection(db *gorm.DB, merged *Model, effectiveID string) error {
+func persistEffectiveProjection(db *gorm.DB, merged *Model, effectiveID string, reuseServiceIDs map[string]string) error {
 	eff := &Model{
 		BaseModel: BaseModel{
 			Id:        sql.NullString{String: effectiveID, Valid: true},
@@ -531,13 +533,21 @@ func persistEffectiveProjection(db *gorm.DB, merged *Model, effectiveID string) 
 			}
 		}
 	}
+	usedServiceIDs := map[string]bool{}
 	for _, s := range merged.Services {
 		if s == nil {
 			continue
 		}
 		decs := s.Decorators
 		ns := *s
-		ns.Id = sql.NullString{String: xid.New().String(), Valid: true}
+		svcID := xid.New().String()
+		if reuseServiceIDs != nil {
+			if prev := strings.TrimSpace(reuseServiceIDs[strings.TrimSpace(s.Name)]); prev != "" && !usedServiceIDs[prev] {
+				svcID = prev
+			}
+		}
+		usedServiceIDs[svcID] = true
+		ns.Id = sql.NullString{String: svcID, Valid: true}
 		ns.ModelId = eff.Id
 		ns.Model = nil
 		ns.Decorators = nil

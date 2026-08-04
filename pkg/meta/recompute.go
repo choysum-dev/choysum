@@ -118,9 +118,10 @@ func RecomputeEffective(tx *gorm.DB, application, name string) error {
 	}
 
 	effID := ""
+	var tip Model
 	if len(existing) > 0 {
 		// Prefer tip-like id: newest UpdatedAt then Id (stable across sibling IMD leftovers).
-		tip := existing[0]
+		tip = existing[0]
 		for i := 1; i < len(existing); i++ {
 			row := existing[i]
 			if row.UpdatedAt.After(tip.UpdatedAt) ||
@@ -141,6 +142,12 @@ func RecomputeEffective(tx *gorm.DB, application, name string) error {
 		}
 	}
 
+	// Capture tip service ids before subtree delete so Auth ACL (meta_service_id) stays valid.
+	reuseServiceIDs, err := loadEffectiveServiceIDsByName(tx, tip.Id.String)
+	if err != nil {
+		return err
+	}
+
 	for _, row := range existing {
 		if row.Id.Valid {
 			if err := DeleteEffectiveModelTree(tx, row.Id.String); err != nil {
@@ -149,10 +156,30 @@ func RecomputeEffective(tx *gorm.DB, application, name string) error {
 		}
 	}
 
-	if err := PersistEffectiveProjection(tx, merged, effID); err != nil {
+	if err := persistEffectiveProjection(tx, merged, effID, reuseServiceIDs); err != nil {
 		return fmt.Errorf("persist effective %s/%s: %w", key.Application, key.Name, err)
 	}
 	return nil
+}
+
+func loadEffectiveServiceIDsByName(tx *gorm.DB, modelID string) (map[string]string, error) {
+	modelID = strings.TrimSpace(modelID)
+	if modelID == "" {
+		return nil, nil
+	}
+	var services []Service
+	if err := tx.Select("id", "name").Where("model_id = ?", modelID).Find(&services).Error; err != nil {
+		return nil, fmt.Errorf("load prior effective services: %w", err)
+	}
+	out := make(map[string]string, len(services))
+	for _, s := range services {
+		name := strings.TrimSpace(s.Name)
+		if name == "" || !s.Id.Valid || strings.TrimSpace(s.Id.String) == "" {
+			continue
+		}
+		out[name] = s.Id.String
+	}
+	return out, nil
 }
 
 func pickTipRaw(raws []*RawModel) *RawModel {
@@ -245,9 +272,10 @@ func DeleteEffectiveModelTree(db *gorm.DB, modelID string) error {
 }
 
 // PersistEffectiveProjection writes one E2-merged model as the effective tree.
-// Exported for migrate helpers and metaeff.
+// Exported for migrate helpers and metaeff. Service ids are minted fresh unless
+// callers use persistEffectiveProjection with a reuse map (RecomputeEffective).
 func PersistEffectiveProjection(db *gorm.DB, merged *Model, effectiveID string) error {
-	return persistEffectiveProjection(db, merged, effectiveID)
+	return persistEffectiveProjection(db, merged, effectiveID, nil)
 }
 
 // PersistModelTreeAsRaw copies a declaration Model tree into meta_raw_*.
