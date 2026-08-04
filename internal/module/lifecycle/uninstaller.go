@@ -170,8 +170,10 @@ func rebindMetaModelDataTips(db *gorm.DB, victims []modelVictim) error {
 	}
 
 	for key, victimIDs := range grouped {
-		tip, err := meta.ResolveMetaModelTip(db, key.Application, key.Name)
-		if err != nil {
+		tip := &meta.Model{}
+		if err := db.Where("application = ? AND name = ?", key.Application, key.Name).
+			Order("created_at DESC, id DESC").
+			First(tip).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				continue
 			}

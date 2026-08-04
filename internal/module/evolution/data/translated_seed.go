@@ -66,8 +66,10 @@ func (l *Loader) languageCodeExists(tx *gorm.DB, code string) (bool, error) {
 	if code == "" {
 		return false, nil
 	}
-	model, err := meta.ResolveMetaModelTip(tx, "base", "Language")
-	if err != nil {
+	model := &meta.Model{}
+	if err := tx.Where("application = ? AND name = ?", "base", "Language").
+		Order("created_at DESC, id DESC").
+		First(model).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return false, nil
 		}
