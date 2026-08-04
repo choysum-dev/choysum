@@ -4,8 +4,10 @@
 package lifecycle
 
 import (
+	"database/sql"
 	"strings"
 	"testing"
+	"time"
 
 	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -98,6 +100,96 @@ func TestModuleUninstallerCleanModelsClearsMetaModelDataOnly(t *testing.T) {
 		Module: seed.module.Name, Name: "seed_row", Application: "demo", ModelName: "Item", ModelId: xid.New().String(), ResID: xid.New().String(),
 	}).Error; err != nil {
 		t.Fatalf("recreate mapping after uninstall cleanup: %v", err)
+	}
+}
+
+func TestModuleUninstallerCleanModelsRebindsMetaModelDataTip(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.AutoMigrate(&metadata.ModelData{}, &meta.Model{}, &meta.Module{}); err != nil {
+		t.Fatalf("AutoMigrate: %v", err)
+	}
+
+	baseMod := &meta.Module{Name: "partner", Status: meta.Installed, Version: "1.0.0"}
+	baseMod.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := db.Create(baseMod).Error; err != nil {
+		t.Fatalf("create base module: %v", err)
+	}
+	extMod := &meta.Module{Name: "partner_commercial", Status: meta.Installed, Version: "1.0.0"}
+	extMod.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := db.Create(extMod).Error; err != nil {
+		t.Fatalf("create ext module: %v", err)
+	}
+
+	baseModel := &meta.Model{
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: xid.New().String(), Valid: true}},
+		Name:        "Partner",
+		Path:        "@/partner/service/models/partner.ts",
+		Application: "partner",
+		ModelTable:  "partner_partner",
+		ModuleId:    baseMod.Id,
+	}
+	if err := db.Create(baseModel).Error; err != nil {
+		t.Fatalf("create base model: %v", err)
+	}
+	extModel := &meta.Model{
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: xid.New().String(), Valid: true}},
+		Name:        "Partner",
+		Path:        "@/partner_commercial/service/models/partner.ts",
+		Application: "partner",
+		ModelTable:  "partner_partner",
+		ModuleId:    extMod.Id,
+		Extends:     baseModel.Path,
+	}
+	// Ensure ext is newer tip for CreatedAt ordering.
+	if err := db.Create(extModel).Error; err != nil {
+		t.Fatalf("create ext model: %v", err)
+	}
+	if err := db.Model(extModel).Update("created_at", baseModel.CreatedAt.Add(time.Hour)).Error; err != nil {
+		t.Fatalf("bump ext created_at: %v", err)
+	}
+
+	ownerMod := &meta.Module{Name: "seed_owner", Status: meta.Installed, Version: "1.0.0"}
+	ownerMod.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := db.Create(ownerMod).Error; err != nil {
+		t.Fatalf("create owner module: %v", err)
+	}
+	mapping := &metadata.ModelData{
+		Module:      ownerMod.Name,
+		Name:        "partner_main",
+		Application: "partner",
+		ModelName:   "Partner",
+		ModelId:     extModel.Id.String,
+		ResID:       xid.New().String(),
+	}
+	if err := db.Create(mapping).Error; err != nil {
+		t.Fatalf("create mapping: %v", err)
+	}
+
+	uninstaller := &moduleUninstaller{
+		runtimeScope:  runtimeScope,
+		module:        extMod,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope},
+		ctx:           newOpContext(),
+	}
+	if err := uninstaller.cleanModels(); err != nil {
+		t.Fatalf("cleanModels() error = %v", err)
+	}
+
+	var updated metadata.ModelData
+	if err := db.Where("module = ? AND name = ?", ownerMod.Name, "partner_main").First(&updated).Error; err != nil {
+		t.Fatalf("mapping should remain: %v", err)
+	}
+	if updated.ModelId != baseModel.Id.String {
+		t.Fatalf("ModelId = %q, want rebound tip %q", updated.ModelId, baseModel.Id.String)
+	}
+
+	var softDeleted meta.Model
+	if err := db.Unscoped().Where("id = ?", extModel.Id.String).First(&softDeleted).Error; err != nil {
+		t.Fatalf("ext model should still exist soft-deleted: %v", err)
+	}
+	if !softDeleted.DeletedAt.Valid {
+		t.Fatalf("expected ext model soft-deleted")
 	}
 }
 

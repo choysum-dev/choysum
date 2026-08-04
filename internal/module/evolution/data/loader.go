@@ -1232,8 +1232,8 @@ func (l *Loader) applyRecord(tx *gorm.DB, filePath string, recordIndex int, rec 
 		return err
 	}
 	modelFull := app + "." + modelName
-	model := &meta.Model{}
-	if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
+	model, err := meta.ResolveMetaModelTip(tx, app, modelName)
+	if err != nil {
 		return wrapLoadErrorWithCode(xfmt.Errorf("resolve model %s: %w", modelFull, err), filePath, recordIndex, rec, LoadErrorKindDB, LoadErrorCodeDBResolveModel, "resolve model")
 	}
 	if strings.TrimSpace(model.ModelTable) == "" {
@@ -1876,8 +1876,8 @@ func resolveSearchModel(tx *gorm.DB, modelFull string) (*meta.Model, string, err
 	if err != nil {
 		return nil, "", xfmt.Errorf("resolve search model %s: %w", modelFull, err)
 	}
-	model := &meta.Model{}
-	if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
+	model, err := meta.ResolveMetaModelTip(tx, app, modelName)
+	if err != nil {
 		return nil, "", xfmt.Errorf("resolve search model %s: %w", modelFull, err)
 	}
 	tableName := strings.TrimSpace(model.ModelTable)
@@ -2131,8 +2131,8 @@ func (l *Loader) detectFieldCardinality(tx *gorm.DB, modelFull string, fieldName
 	l.mu.RUnlock()
 
 	if !ok {
-		model := &meta.Model{}
-		if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
+		model, err := meta.ResolveMetaModelTip(tx, app, modelName)
+		if err != nil {
 			l.mu.Lock()
 			l.fieldCardinalityCache[cacheKey] = refCardinalityManyToOne
 			l.mu.Unlock()
@@ -2208,8 +2208,8 @@ func (l *Loader) resolveModelRef(tx *gorm.DB, modelRef string) (string, error) {
 	if err != nil {
 		return "", xfmt.Errorf("resolve modelRef %s: %w", modelRef, err)
 	}
-	model := &meta.Model{}
-	if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
+	model, err := meta.ResolveMetaModelTip(tx, app, modelName)
+	if err != nil {
 		return "", xfmt.Errorf("resolve modelRef %s: %w", modelRef, err)
 	}
 	id := strings.TrimSpace(model.Id.String)
