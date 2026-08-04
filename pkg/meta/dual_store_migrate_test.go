@@ -314,4 +314,17 @@ func TestRecomputeAllEffectiveFromRaw_OmitsThisParameter(t *testing.T) {
 	if len(params) != 1 || params[0].Name != "vals" {
 		t.Fatalf("expected only vals on effective service, got %#v", params)
 	}
+	var rawParams []*RawParameter
+	if err := db.Where("service_id = ?", svc.Id).Find(&rawParams).Error; err != nil {
+		t.Fatalf("load raw params: %v", err)
+	}
+	names := map[string]bool{}
+	for _, p := range rawParams {
+		if p != nil {
+			names[p.Name] = true
+		}
+	}
+	if len(rawParams) != 2 || !names["this"] || !names["vals"] {
+		t.Fatalf("expected raw service to retain this and vals, got %#v", rawParams)
+	}
 }

@@ -209,6 +209,12 @@ func TestMigrateIMDCatalogToDualStore_FullTreeCopy(t *testing.T) {
 	if len(eff[0].Decorators) != 1 || len(eff[0].Decorators[0].Arguments) != 1 {
 		t.Fatalf("model decorators %#v", eff[0].Decorators)
 	}
+	if len(eff[0].Fields) != 1 || eff[0].Fields[0].Name != "Name" {
+		t.Fatalf("fields %#v", eff[0].Fields)
+	}
+	if len(eff[0].Fields[0].Decorators) != 1 || eff[0].Fields[0].Decorators[0].Name != "Field" {
+		t.Fatalf("field decorators %#v", eff[0].Fields[0].Decorators)
+	}
 	if len(eff[0].Services) != 1 {
 		t.Fatalf("services %#v", eff[0].Services)
 	}
@@ -427,147 +433,127 @@ func TestCopyModelTreeToRaw_CreateFailures(t *testing.T) {
 	}
 }
 
-func TestCopyModelTreeToRaw_FieldServiceDecoratorFailures(t *testing.T) {
+func TestCopyModelTreeToRaw_ChildTableFailures(t *testing.T) {
+	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
+	cases := []struct {
+		name string
+		drop any
+		src  *Model
+	}{
+		{
+			name: "raw field",
+			drop: &RawField{},
+			src: &Model{
+				BaseModel:   BaseModel{Id: sql.NullString{String: "m", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+				Name:        "X",
+				Application: "a",
+				Path:        "/x.ts",
+				ModuleId:    sql.NullString{String: "mod", Valid: true},
+				Fields: []*Field{{
+					BaseModel: BaseModel{Id: sql.NullString{String: "f", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+					Name:      "Name",
+				}},
+			},
+		},
+		{
+			name: "raw service",
+			drop: &RawService{},
+			src: &Model{
+				BaseModel:   BaseModel{Id: sql.NullString{String: "m2", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+				Name:        "Y",
+				Application: "a",
+				Path:        "/y.ts",
+				ModuleId:    sql.NullString{String: "mod2", Valid: true},
+				Services: []*Service{{
+					BaseModel: BaseModel{Id: sql.NullString{String: "s", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+					Name:      "Create",
+				}},
+			},
+		},
+		{
+			name: "raw parameter",
+			drop: &RawParameter{},
+			src: &Model{
+				BaseModel:   BaseModel{Id: sql.NullString{String: "m3", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+				Name:        "Z",
+				Application: "a",
+				Path:        "/z.ts",
+				ModuleId:    sql.NullString{String: "mod3", Valid: true},
+				Services: []*Service{{
+					BaseModel:  BaseModel{Id: sql.NullString{String: "s3", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+					Name:       "Create",
+					Parameters: []*Parameter{{BaseModel: BaseModel{Id: sql.NullString{String: "p", Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Name: "vals"}},
+				}},
+			},
+		},
+		{
+			name: "raw type parameter",
+			drop: &RawTypeParameter{},
+			src: &Model{
+				BaseModel:   BaseModel{Id: sql.NullString{String: "m4", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+				Name:        "W",
+				Application: "a",
+				Path:        "/w.ts",
+				ModuleId:    sql.NullString{String: "mod4", Valid: true},
+				Services: []*Service{{
+					BaseModel:      BaseModel{Id: sql.NullString{String: "s4", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+					Name:           "Create",
+					TypeParameters: []*TypeParameter{{BaseModel: BaseModel{Id: sql.NullString{String: "tp", Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Name: "T"}},
+				}},
+			},
+		},
+		{
+			name: "raw decorator",
+			drop: &RawDecorator{},
+			src: &Model{
+				BaseModel:   BaseModel{Id: sql.NullString{String: "m5", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+				Name:        "V",
+				Application: "a",
+				Path:        "/v.ts",
+				ModuleId:    sql.NullString{String: "mod5", Valid: true},
+				Decorators: []*Decorator{{
+					BaseModel: BaseModel{Id: sql.NullString{String: "d5", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+					Name:      "Model",
+				}},
+			},
+		},
+		{
+			name: "raw argument",
+			drop: &RawArgument{},
+			src: &Model{
+				BaseModel:   BaseModel{Id: sql.NullString{String: "m6", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+				Name:        "U",
+				Application: "a",
+				Path:        "/u.ts",
+				ModuleId:    sql.NullString{String: "mod6", Valid: true},
+				Decorators: []*Decorator{{
+					BaseModel: BaseModel{Id: sql.NullString{String: "d6", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+					Name:      "Model",
+					Arguments: []*Argument{{BaseModel: BaseModel{Id: sql.NullString{String: "a6", Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Type: "string", Value: `"U"`}},
+				}},
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := openDualStoreTestDB(t)
+			if err := EnsureDualStoreTables(db); err != nil {
+				t.Fatalf("ensure: %v", err)
+			}
+			if err := db.Migrator().DropTable(tc.drop); err != nil {
+				t.Fatalf("drop %s: %v", tc.name, err)
+			}
+			if err := copyModelTreeToRaw(db, tc.src); err == nil {
+				t.Fatalf("expected %s create failure", tc.name)
+			}
+		})
+	}
+
 	db := openDualStoreTestDB(t)
 	if err := EnsureDualStoreTables(db); err != nil {
-		t.Fatalf("ensure: %v", err)
+		t.Fatalf("ensure nil-decorator db: %v", err)
 	}
-	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-
-	// Field create failure: drop raw field table after model create via hook — simpler: create raw model then call pieces.
-	src := &Model{
-		BaseModel:   BaseModel{Id: sql.NullString{String: "m", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
-		Name:        "X",
-		Application: "a",
-		Path:        "/x.ts",
-		ModuleId:    sql.NullString{String: "mod", Valid: true},
-		Fields: []*Field{{
-			BaseModel: BaseModel{Id: sql.NullString{String: "f", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
-			Name:      "Name",
-		}},
-	}
-	if err := db.Migrator().DropTable(&RawField{}); err != nil {
-		t.Fatalf("drop raw field: %v", err)
-	}
-	if err := copyModelTreeToRaw(db, src); err == nil {
-		t.Fatal("expected field create failure")
-	}
-
-	db2 := openDualStoreTestDB(t)
-	if err := EnsureDualStoreTables(db2); err != nil {
-		t.Fatalf("ensure2: %v", err)
-	}
-	src2 := &Model{
-		BaseModel:   BaseModel{Id: sql.NullString{String: "m2", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
-		Name:        "Y",
-		Application: "a",
-		Path:        "/y.ts",
-		ModuleId:    sql.NullString{String: "mod2", Valid: true},
-		Services: []*Service{{
-			BaseModel: BaseModel{Id: sql.NullString{String: "s", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
-			Name:      "Create",
-		}},
-	}
-	if err := db2.Migrator().DropTable(&RawService{}); err != nil {
-		t.Fatalf("drop raw service: %v", err)
-	}
-	if err := copyModelTreeToRaw(db2, src2); err == nil {
-		t.Fatal("expected service create failure")
-	}
-
-	db3 := openDualStoreTestDB(t)
-	if err := EnsureDualStoreTables(db3); err != nil {
-		t.Fatalf("ensure3: %v", err)
-	}
-	src3 := &Model{
-		BaseModel:   BaseModel{Id: sql.NullString{String: "m3", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
-		Name:        "Z",
-		Application: "a",
-		Path:        "/z.ts",
-		ModuleId:    sql.NullString{String: "mod3", Valid: true},
-		Services: []*Service{{
-			BaseModel:  BaseModel{Id: sql.NullString{String: "s3", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
-			Name:       "Create",
-			Parameters: []*Parameter{{BaseModel: BaseModel{Id: sql.NullString{String: "p", Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Name: "vals"}},
-		}},
-	}
-	if err := db3.Migrator().DropTable(&RawParameter{}); err != nil {
-		t.Fatalf("drop raw parameter: %v", err)
-	}
-	if err := copyModelTreeToRaw(db3, src3); err == nil {
-		t.Fatal("expected parameter create failure")
-	}
-
-	db4 := openDualStoreTestDB(t)
-	if err := EnsureDualStoreTables(db4); err != nil {
-		t.Fatalf("ensure4: %v", err)
-	}
-	src4 := &Model{
-		BaseModel:   BaseModel{Id: sql.NullString{String: "m4", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
-		Name:        "W",
-		Application: "a",
-		Path:        "/w.ts",
-		ModuleId:    sql.NullString{String: "mod4", Valid: true},
-		Services: []*Service{{
-			BaseModel:      BaseModel{Id: sql.NullString{String: "s4", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
-			Name:           "Create",
-			TypeParameters: []*TypeParameter{{BaseModel: BaseModel{Id: sql.NullString{String: "tp", Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Name: "T"}},
-		}},
-	}
-	if err := db4.Migrator().DropTable(&RawTypeParameter{}); err != nil {
-		t.Fatalf("drop raw type parameter: %v", err)
-	}
-	if err := copyModelTreeToRaw(db4, src4); err == nil {
-		t.Fatal("expected type parameter create failure")
-	}
-
-	db5 := openDualStoreTestDB(t)
-	if err := EnsureDualStoreTables(db5); err != nil {
-		t.Fatalf("ensure5: %v", err)
-	}
-	src5 := &Model{
-		BaseModel:   BaseModel{Id: sql.NullString{String: "m5", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
-		Name:        "V",
-		Application: "a",
-		Path:        "/v.ts",
-		ModuleId:    sql.NullString{String: "mod5", Valid: true},
-		Decorators: []*Decorator{{
-			BaseModel: BaseModel{Id: sql.NullString{String: "d5", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
-			Name:      "Model",
-		}},
-	}
-	if err := db5.Migrator().DropTable(&RawDecorator{}); err != nil {
-		t.Fatalf("drop raw decorator: %v", err)
-	}
-	if err := copyModelTreeToRaw(db5, src5); err == nil {
-		t.Fatal("expected decorator create failure")
-	}
-
-	db6 := openDualStoreTestDB(t)
-	if err := EnsureDualStoreTables(db6); err != nil {
-		t.Fatalf("ensure6: %v", err)
-	}
-	src6 := &Model{
-		BaseModel:   BaseModel{Id: sql.NullString{String: "m6", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
-		Name:        "U",
-		Application: "a",
-		Path:        "/u.ts",
-		ModuleId:    sql.NullString{String: "mod6", Valid: true},
-		Decorators: []*Decorator{{
-			BaseModel: BaseModel{Id: sql.NullString{String: "d6", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
-			Name:      "Model",
-			Arguments: []*Argument{{BaseModel: BaseModel{Id: sql.NullString{String: "a6", Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Type: "string", Value: `"U"`}},
-		}},
-	}
-	if err := db6.Migrator().DropTable(&RawArgument{}); err != nil {
-		t.Fatalf("drop raw argument: %v", err)
-	}
-	if err := copyModelTreeToRaw(db6, src6); err == nil {
-		t.Fatal("expected argument create failure")
-	}
-
-	// nil decorator short-circuit
-	if err := copyDecoratorToRaw(db6, nil, sql.NullString{}, sql.NullString{}, sql.NullString{}); err != nil {
+	if err := copyDecoratorToRaw(db, nil, sql.NullString{}, sql.NullString{}, sql.NullString{}); err != nil {
 		t.Fatalf("nil decorator: %v", err)
 	}
 }
@@ -671,11 +657,7 @@ func TestPersistEffectiveProjection_FailuresAndNils(t *testing.T) {
 	if err := persistDecoratorTree(db7, &Decorator{
 		Name: "Model", Arguments: []*Argument{nil, {Type: "string", Value: `"X"`}},
 	}, sql.NullString{String: "mid", Valid: true}, sql.NullString{}, sql.NullString{}); err == nil {
-		// decorator create may fail first if model_id FK — or argument table missing after decorator create
-		// If decorator table exists, create decorator works then argument fails.
-	} else if !strings.Contains(err.Error(), "meta_argument") && !strings.Contains(err.Error(), "no such table") && !strings.Contains(err.Error(), "create meta_argument") {
-		// Accept any error
-		t.Logf("persistDecoratorTree error: %v", err)
+		t.Fatal("expected argument create failure after dropping meta_argument")
 	}
 
 	if err := persistDecoratorTree(db7, nil, sql.NullString{}, sql.NullString{}, sql.NullString{}); err != nil {
@@ -684,6 +666,8 @@ func TestPersistEffectiveProjection_FailuresAndNils(t *testing.T) {
 }
 
 func TestEnsureEffectiveAppNameUniqueIndex_Dialects(t *testing.T) {
+	// namedDialector only overrides Name() for branch selection; SQL still runs on SQLite.
+	// Each case opens a fresh DB so Dialector mutation does not leak across subtests.
 	db := openDualStoreTestDB(t)
 	if err := EnsureDualStoreTables(db); err != nil {
 		t.Fatalf("ensure: %v", err)
@@ -691,7 +675,6 @@ func TestEnsureEffectiveAppNameUniqueIndex_Dialects(t *testing.T) {
 	if err := ensureEffectiveAppNameUniqueIndex(db); err != nil {
 		t.Fatalf("sqlite index: %v", err)
 	}
-	// postgres name alias uses same SQL path
 	db.Dialector = namedDialector{Dialector: db.Dialector, name: "postgres"}
 	if err := ensureEffectiveAppNameUniqueIndex(db); err != nil {
 		t.Fatalf("postgres index: %v", err)
@@ -724,6 +707,16 @@ func TestEnsureEffectiveAppNameUniqueIndex_Dialects(t *testing.T) {
 	_ = db3.Migrator().DropTable(&Model{})
 	if err := ensureEffectiveAppNameUniqueIndex(db3); err == nil {
 		t.Fatal("expected sqlite create index failure")
+	}
+
+	// sqlite/postgres DROP failure must surface (closed DB).
+	db4 := openDualStoreTestDB(t)
+	if err := EnsureDualStoreTables(db4); err != nil {
+		t.Fatalf("ensure4: %v", err)
+	}
+	closeDualStoreDB(t, db4)
+	if err := ensureEffectiveAppNameUniqueIndex(db4); err == nil || !strings.Contains(err.Error(), "drop unique index") {
+		t.Fatalf("expected drop unique index error, got %v", err)
 	}
 }
 
@@ -890,7 +883,7 @@ func TestCopyDecoratorToRaw_NilArgument(t *testing.T) {
 	}
 }
 
-func TestCopyModelTreeToRaw_FieldAndServiceDecoratorFailures(t *testing.T) {
+func TestCopyModelTreeToRaw_NestedDecoratorFailures(t *testing.T) {
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
 
 	db := openDualStoreTestDB(t)
@@ -968,8 +961,7 @@ func TestPersistEffectiveProjection_NestedDecoratorFailures(t *testing.T) {
 	if err := persistDecoratorTree(db3, &Decorator{
 		Name: "Model", Arguments: []*Argument{nil, {Type: "string", Value: `"X"`}},
 	}, sql.NullString{String: "no-model", Valid: true}, sql.NullString{}, sql.NullString{}); err != nil {
-		// may succeed without FK enforcement on sqlite
-		t.Logf("persistDecoratorTree: %v", err)
+		t.Fatalf("persistDecoratorTree with nil arg should succeed on sqlite: %v", err)
 	}
 	_ = db3.Migrator().DropTable(&Argument{})
 	if err := persistDecoratorTree(db3, &Decorator{

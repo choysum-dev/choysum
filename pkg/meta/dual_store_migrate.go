@@ -592,7 +592,11 @@ func ensureEffectiveAppNameUniqueIndex(db *gorm.DB) error {
 	switch db.Dialector.Name() {
 	case "sqlite", "postgres":
 		// Drop any prior non-partial index with the same name so we can recreate it.
-		_ = db.Exec(fmt.Sprintf("DROP INDEX IF EXISTS %s", effectiveAppNameUniqueIndex)).Error
+		// Must succeed before CREATE IF NOT EXISTS — otherwise a leftover full unique
+		// index keeps blocking live rows after soft-delete.
+		if err := db.Exec(fmt.Sprintf("DROP INDEX IF EXISTS %s", effectiveAppNameUniqueIndex)).Error; err != nil {
+			return fmt.Errorf("drop unique index %s: %w", effectiveAppNameUniqueIndex, err)
+		}
 		// Live rows only — soft-deleted tip may be reused after uninstall/reinstall.
 		stmt := fmt.Sprintf(
 			"CREATE UNIQUE INDEX IF NOT EXISTS %s ON meta_model (application, name) WHERE deleted_at IS NULL",
