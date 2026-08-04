@@ -3,6 +3,7 @@
 
 import { withContext, getContextClientTimezone } from '@/core/service/api/context';
 import { createServiceByModel } from '@/core/service/rpc';
+import { pool, type AppSettingModelCtor } from '@/core/service';
 import { isIanaTimezone } from '@/core/service/utils/datetime';
 import { newAuthError, AuthErrCode, GrpcCode } from '../error';
 import { _t } from '../i18n';
@@ -15,6 +16,9 @@ import { hashPassword, verifyPassword, withPermissionGraphBypass } from './_user
 import { buildScopePreferences } from './_user_lifecycle_scope';
 
 const CompanyService = createServiceByModel<typeof Company>('base.Company');
+
+/** Auth AppSetting key: gate D20 silent browser-timezone persist (table-local; no `auth.` prefix). */
+export const PERSIST_BROWSER_TIMEZONE_KEY = 'persist_browser_timezone';
 
 export type LoginUserLike = {
   Id: string;
@@ -43,8 +47,18 @@ export function resolveTimezoneToPersist(
   return candidate;
 }
 
+async function isPersistBrowserTimezoneEnabled(isPersistEnabled?: () => Promise<boolean>): Promise<boolean> {
+  if (isPersistEnabled) {
+    return await isPersistEnabled();
+  }
+  const flag = await pool<AppSettingModelCtor>('auth', 'AppSetting').Get(PERSIST_BROWSER_TIMEZONE_KEY, '1');
+  return String(flag ?? '') === '1';
+}
+
 /**
  * Persist browser/client IANA onto User when Timezone is empty (D20).
+ * Honors AppSetting `persist_browser_timezone` (default on). When off, skips write
+ * without failing Login/Register.
  * Returns the user (possibly reloaded) so token metadata sees the new value.
  */
 export async function persistBrowserTimezoneIfEmpty<T extends { Id: string; Timezone?: string | null }>(
@@ -53,6 +67,8 @@ export async function persistBrowserTimezoneIfEmpty<T extends { Id: string; Time
     updateTimezone: (userId: string, timezone: string) => Promise<void>;
     reloadUser?: (userId: string) => Promise<T>;
     clientTimezone?: string | null;
+    /** Test override; production reads AppSetting via pool. */
+    isPersistEnabled?: () => Promise<boolean>;
   }
 ): Promise<T> {
   const clientTz = deps.clientTimezone !== undefined ? deps.clientTimezone : getContextClientTimezone();
@@ -64,9 +80,17 @@ export async function persistBrowserTimezoneIfEmpty<T extends { Id: string; Time
   if (!userId) {
     return user;
   }
-  await withPermissionGraphBypass(async () => {
+
+  const wrote = await withPermissionGraphBypass(async () => {
+    if (!(await isPersistBrowserTimezoneEnabled(deps.isPersistEnabled))) {
+      return false;
+    }
     await deps.updateTimezone(userId, next);
+    return true;
   });
+  if (!wrote) {
+    return user;
+  }
   if (deps.reloadUser) {
     return await deps.reloadUser(userId);
   }
