@@ -82,6 +82,12 @@ func (field *RawField) TableName() string {
 	return "meta_raw_field"
 }
 
+// Overridable for tests (json.Marshal/Unmarshal rarely fail on FieldResolvedSpec).
+var (
+	rawFieldJSONMarshal   = json.Marshal
+	rawFieldJSONUnmarshal = json.Unmarshal
+)
+
 func (field *RawField) SetResolvedSpec(spec *FieldResolvedSpec) error {
 	if field == nil {
 		return nil
@@ -90,7 +96,7 @@ func (field *RawField) SetResolvedSpec(spec *FieldResolvedSpec) error {
 		field.ResolvedSpec = ""
 		return nil
 	}
-	b, err := json.Marshal(spec)
+	b, err := rawFieldJSONMarshal(spec)
 	if err != nil {
 		return err
 	}
@@ -107,7 +113,7 @@ func (field *RawField) GetResolvedSpec() (*FieldResolvedSpec, error) {
 		return nil, nil
 	}
 	var spec FieldResolvedSpec
-	if err := json.Unmarshal([]byte(rawSpec), &spec); err != nil {
+	if err := rawFieldJSONUnmarshal([]byte(rawSpec), &spec); err != nil {
 		return nil, err
 	}
 	return &spec, nil

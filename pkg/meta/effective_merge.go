@@ -39,9 +39,6 @@ func MergeSameNameModelsByExtensionChain(models []*Model) (*Model, error) {
 	var depthErr error
 	var depthOf func(*Model) int
 	depthOf = func(m *Model) int {
-		if m == nil || depthErr != nil {
-			return 0
-		}
 		if m.Path == "" {
 			return 0
 		}
