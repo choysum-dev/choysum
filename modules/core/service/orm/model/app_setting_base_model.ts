@@ -188,3 +188,13 @@ export default class AppSettingBaseModel extends BaseModel {
     return previous;
   }
 }
+
+/** Test-only: exercise memo invalidation edge cases (empty keys / no req state). */
+export function __invalidateAppSettingMemoForTest(application: string, key: string): void {
+  invalidateAppSettingMemo(application, key);
+}
+
+/** Test-only: unique-constraint message matcher used by Set race recovery. */
+export function __isUniqueConstraintErrorForTest(err: unknown): boolean {
+  return isUniqueConstraintError(err);
+}
