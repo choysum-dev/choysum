@@ -12,7 +12,15 @@ import (
 	"gorm.io/gorm"
 )
 
-const effectiveAppNameUniqueIndex = "uidx_meta_model_app_name_alive"
+const (
+	effectiveAppNameUniqueIndex     = "uidx_meta_model_app_name_alive"
+	effectiveAppNameUniqueIndexTemp = effectiveAppNameUniqueIndex + "_new"
+)
+
+// execDDL runs DDL; overridden in tests for failure injection.
+var execDDL = func(db *gorm.DB, sql string) error {
+	return db.Exec(sql).Error
+}
 
 // Test hooks (production defaults). Override in *_test.go to force error paths.
 var (
@@ -591,34 +599,61 @@ func persistDecoratorTree(db *gorm.DB, d *Decorator, modelID, fieldID, serviceID
 func ensureEffectiveAppNameUniqueIndex(db *gorm.DB) error {
 	switch db.Dialector.Name() {
 	case "sqlite", "postgres":
-		// Drop any prior non-partial index with the same name so we can recreate it.
-		// Must succeed before CREATE IF NOT EXISTS — otherwise a leftover full unique
-		// index keeps blocking live rows after soft-delete.
-		if err := db.Exec(fmt.Sprintf("DROP INDEX IF EXISTS %s", effectiveAppNameUniqueIndex)).Error; err != nil {
+		return ensurePartialAliveAppNameUniqueIndex(db)
+	default:
+		return ensureFullAppNameUniqueIndex(db)
+	}
+}
+
+// ensurePartialAliveAppNameUniqueIndex creates the live-only unique index without a
+// drop-before-create window: temp index first, then replace the final name.
+func ensurePartialAliveAppNameUniqueIndex(db *gorm.DB) error {
+	createPartial := func(name string) string {
+		return fmt.Sprintf(
+			"CREATE UNIQUE INDEX IF NOT EXISTS %s ON meta_model (application, name) WHERE deleted_at IS NULL",
+			name,
+		)
+	}
+	if err := execDDL(db, createPartial(effectiveAppNameUniqueIndexTemp)); err != nil {
+		return fmt.Errorf("create unique index %s: %w", effectiveAppNameUniqueIndexTemp, err)
+	}
+	if err := execDDL(db, fmt.Sprintf("DROP INDEX IF EXISTS %s", effectiveAppNameUniqueIndex)); err != nil {
+		return fmt.Errorf("drop unique index %s: %w", effectiveAppNameUniqueIndex, err)
+	}
+	if err := execDDL(db, createPartial(effectiveAppNameUniqueIndex)); err != nil {
+		// Temp index still enforces live uniqueness.
+		return fmt.Errorf("create unique index %s: %w", effectiveAppNameUniqueIndex, err)
+	}
+	if err := execDDL(db, fmt.Sprintf("DROP INDEX IF EXISTS %s", effectiveAppNameUniqueIndexTemp)); err != nil {
+		return fmt.Errorf("drop unique index %s: %w", effectiveAppNameUniqueIndexTemp, err)
+	}
+	return nil
+}
+
+// ensureFullAppNameUniqueIndex is the MySQL path (no partial indexes).
+func ensureFullAppNameUniqueIndex(db *gorm.DB) error {
+	createFull := func(name string) string {
+		return fmt.Sprintf("CREATE UNIQUE INDEX %s ON meta_model (application, name)", name)
+	}
+	if !db.Migrator().HasIndex("meta_model", effectiveAppNameUniqueIndexTemp) {
+		if err := execDDL(db, createFull(effectiveAppNameUniqueIndexTemp)); err != nil {
+			return fmt.Errorf("create unique index %s: %w", effectiveAppNameUniqueIndexTemp, err)
+		}
+	}
+	if db.Migrator().HasIndex("meta_model", effectiveAppNameUniqueIndex) {
+		if err := db.Migrator().DropIndex("meta_model", effectiveAppNameUniqueIndex); err != nil {
 			return fmt.Errorf("drop unique index %s: %w", effectiveAppNameUniqueIndex, err)
 		}
-		// Live rows only — soft-deleted tip may be reused after uninstall/reinstall.
-		stmt := fmt.Sprintf(
-			"CREATE UNIQUE INDEX IF NOT EXISTS %s ON meta_model (application, name) WHERE deleted_at IS NULL",
-			effectiveAppNameUniqueIndex,
-		)
-		if err := db.Exec(stmt).Error; err != nil {
+	}
+	if !db.Migrator().HasIndex("meta_model", effectiveAppNameUniqueIndex) {
+		if err := execDDL(db, createFull(effectiveAppNameUniqueIndex)); err != nil {
+			// Temp index still enforces uniqueness.
 			return fmt.Errorf("create unique index %s: %w", effectiveAppNameUniqueIndex, err)
 		}
-	default:
-		// MySQL: DROP INDEX requires ON <table>; CREATE UNIQUE INDEX has no IF NOT EXISTS.
-		// Soft-deleted keys still collide until wipe (no partial indexes).
-		if db.Migrator().HasIndex("meta_model", effectiveAppNameUniqueIndex) {
-			if err := db.Migrator().DropIndex("meta_model", effectiveAppNameUniqueIndex); err != nil {
-				return fmt.Errorf("drop unique index %s: %w", effectiveAppNameUniqueIndex, err)
-			}
-		}
-		stmt := fmt.Sprintf(
-			"CREATE UNIQUE INDEX %s ON meta_model (application, name)",
-			effectiveAppNameUniqueIndex,
-		)
-		if err := db.Exec(stmt).Error; err != nil {
-			return fmt.Errorf("create unique index %s: %w", effectiveAppNameUniqueIndex, err)
+	}
+	if db.Migrator().HasIndex("meta_model", effectiveAppNameUniqueIndexTemp) {
+		if err := db.Migrator().DropIndex("meta_model", effectiveAppNameUniqueIndexTemp); err != nil {
+			return fmt.Errorf("drop unique index %s: %w", effectiveAppNameUniqueIndexTemp, err)
 		}
 	}
 	return nil

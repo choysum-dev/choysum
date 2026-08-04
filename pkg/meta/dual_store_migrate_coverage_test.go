@@ -693,7 +693,7 @@ func TestEnsureEffectiveAppNameUniqueIndex_Dialects(t *testing.T) {
 		t.Fatalf("mysql second: %v", err)
 	}
 
-	// CREATE failure after drop table
+	// CREATE failure when table is missing (first step creates temp index).
 	_ = db2.Migrator().DropTable(&Model{})
 	if err := ensureEffectiveAppNameUniqueIndex(db2); err == nil {
 		t.Fatal("expected mysql create index failure")
@@ -705,18 +705,18 @@ func TestEnsureEffectiveAppNameUniqueIndex_Dialects(t *testing.T) {
 		t.Fatalf("ensure3: %v", err)
 	}
 	_ = db3.Migrator().DropTable(&Model{})
-	if err := ensureEffectiveAppNameUniqueIndex(db3); err == nil {
-		t.Fatal("expected sqlite create index failure")
+	if err := ensureEffectiveAppNameUniqueIndex(db3); err == nil || !strings.Contains(err.Error(), "create unique index") {
+		t.Fatalf("expected sqlite create index failure, got %v", err)
 	}
 
-	// sqlite/postgres DROP failure must surface (closed DB).
+	// sqlite/postgres DDL failure must surface (closed DB; first step is CREATE temp).
 	db4 := openDualStoreTestDB(t)
 	if err := EnsureDualStoreTables(db4); err != nil {
 		t.Fatalf("ensure4: %v", err)
 	}
 	closeDualStoreDB(t, db4)
-	if err := ensureEffectiveAppNameUniqueIndex(db4); err == nil || !strings.Contains(err.Error(), "drop unique index") {
-		t.Fatalf("expected drop unique index error, got %v", err)
+	if err := ensureEffectiveAppNameUniqueIndex(db4); err == nil || !strings.Contains(err.Error(), "create unique index") {
+		t.Fatalf("expected create unique index error on closed db, got %v", err)
 	}
 }
 
@@ -730,10 +730,155 @@ func TestEnsureEffectiveAppNameUniqueIndex_MySQLDropError(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 	// Break migrator by swapping dialector to one that reports HasIndex but fails DropIndex.
+	// HasIndex(temp) is also true, so temp create is skipped; drop of final still fails.
 	db.Dialector = failingDropDialector{Dialector: db.Dialector, name: "mysql"}
 	if err := ensureEffectiveAppNameUniqueIndex(db); err == nil || !strings.Contains(err.Error(), "drop unique index") {
 		t.Fatalf("expected drop error, got %v", err)
 	}
+}
+
+func TestEnsurePartialAliveAppNameUniqueIndex_PreservesUniquenessOnCreateFinalFailure(t *testing.T) {
+	db := openDualStoreTestDB(t)
+	if err := EnsureDualStoreTables(db); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	if err := ensureEffectiveAppNameUniqueIndex(db); err != nil {
+		t.Fatalf("initial index: %v", err)
+	}
+	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
+	soft := &Model{
+		BaseModel:   BaseModel{Id: sql.NullString{String: "soft", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+		Name:        "Partner",
+		Application: "partner",
+		Path:        "/p1.ts",
+	}
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(soft).Error; err != nil {
+		t.Fatalf("create soft: %v", err)
+	}
+	if err := db.Delete(soft).Error; err != nil {
+		t.Fatalf("soft-delete: %v", err)
+	}
+
+	prev := execDDL
+	t.Cleanup(func() { execDDL = prev })
+	execDDL = func(db *gorm.DB, sql string) error {
+		// Allow temp create + drop of final; fail recreate of the final name.
+		if strings.Contains(sql, "CREATE UNIQUE INDEX") &&
+			strings.Contains(sql, effectiveAppNameUniqueIndex) &&
+			!strings.Contains(sql, effectiveAppNameUniqueIndexTemp) {
+			return errors.New("create final boom")
+		}
+		return prev(db, sql)
+	}
+	if err := ensureEffectiveAppNameUniqueIndex(db); err == nil || !strings.Contains(err.Error(), "create final boom") {
+		t.Fatalf("expected create final failure, got %v", err)
+	}
+	// Temp partial index must still protect live uniqueness and allow soft-deleted reuse.
+	live := &Model{
+		BaseModel:   BaseModel{Id: sql.NullString{String: "live", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+		Name:        "Partner",
+		Application: "partner",
+		Path:        "/p2.ts",
+	}
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(live).Error; err != nil {
+		t.Fatalf("live row after soft-delete should succeed under temp partial index: %v", err)
+	}
+	dup := &Model{
+		BaseModel:   BaseModel{Id: sql.NullString{String: "dup", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+		Name:        "Partner",
+		Application: "partner",
+		Path:        "/p3.ts",
+	}
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(dup).Error; err == nil {
+		t.Fatal("expected live (application, name) uniqueness still enforced")
+	}
+}
+
+func TestEnsurePartialAliveAppNameUniqueIndex_DropErrors(t *testing.T) {
+	db := openDualStoreTestDB(t)
+	if err := EnsureDualStoreTables(db); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	prev := execDDL
+	t.Cleanup(func() { execDDL = prev })
+
+	execDDL = func(db *gorm.DB, sql string) error {
+		if strings.HasPrefix(strings.TrimSpace(sql), "DROP INDEX") && strings.Contains(sql, effectiveAppNameUniqueIndex) && !strings.Contains(sql, "_new") {
+			return errors.New("drop final boom")
+		}
+		return prev(db, sql)
+	}
+	if err := ensureEffectiveAppNameUniqueIndex(db); err == nil || !strings.Contains(err.Error(), "drop final boom") {
+		t.Fatalf("expected drop final error, got %v", err)
+	}
+
+	execDDL = func(db *gorm.DB, sql string) error {
+		if strings.HasPrefix(strings.TrimSpace(sql), "DROP INDEX") && strings.Contains(sql, effectiveAppNameUniqueIndexTemp) {
+			return errors.New("drop temp boom")
+		}
+		return prev(db, sql)
+	}
+	if err := ensureEffectiveAppNameUniqueIndex(db); err == nil || !strings.Contains(err.Error(), "drop temp boom") {
+		t.Fatalf("expected drop temp error, got %v", err)
+	}
+}
+
+func TestEnsureFullAppNameUniqueIndex_CreateFinalAndDropTempErrors(t *testing.T) {
+	db := openDualStoreTestDB(t)
+	if err := EnsureDualStoreTables(db); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	db.Dialector = namedDialector{Dialector: db.Dialector, name: "mysql"}
+	if err := ensureEffectiveAppNameUniqueIndex(db); err != nil {
+		t.Fatalf("initial: %v", err)
+	}
+
+	prev := execDDL
+	t.Cleanup(func() { execDDL = prev })
+	execDDL = func(db *gorm.DB, sql string) error {
+		if strings.Contains(sql, "CREATE UNIQUE INDEX") &&
+			strings.Contains(sql, effectiveAppNameUniqueIndex) &&
+			!strings.Contains(sql, effectiveAppNameUniqueIndexTemp) {
+			return errors.New("mysql create final boom")
+		}
+		return prev(db, sql)
+	}
+	if err := ensureEffectiveAppNameUniqueIndex(db); err == nil || !strings.Contains(err.Error(), "mysql create final boom") {
+		t.Fatalf("expected mysql create final error, got %v", err)
+	}
+
+	execDDL = prev
+	// Leave temp in place from the failed run, then force DropIndex(temp) to fail.
+	db.Dialector = failingDropTempDialector{Dialector: db.Dialector, name: "mysql"}
+	if err := ensureEffectiveAppNameUniqueIndex(db); err == nil || !strings.Contains(err.Error(), "drop boom temp") {
+		t.Fatalf("expected drop temp error, got %v", err)
+	}
+}
+
+type failingDropTempDialector struct {
+	gorm.Dialector
+	name string
+}
+
+func (d failingDropTempDialector) Name() string { return d.name }
+
+func (d failingDropTempDialector) Migrator(db *gorm.DB) gorm.Migrator {
+	return failingDropTempMigrator{Migrator: d.Dialector.Migrator(db)}
+}
+
+type failingDropTempMigrator struct {
+	gorm.Migrator
+}
+
+func (m failingDropTempMigrator) HasIndex(dst interface{}, name string) bool {
+	return m.Migrator.HasIndex(dst, name)
+}
+
+func (m failingDropTempMigrator) DropIndex(dst interface{}, name string) error {
+	if name == effectiveAppNameUniqueIndexTemp {
+		return errors.New("drop boom temp")
+	}
+	return m.Migrator.DropIndex(dst, name)
 }
 
 type failingDropDialector struct {
