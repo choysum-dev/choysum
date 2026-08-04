@@ -103,7 +103,13 @@ func RecomputeEffective(tx *gorm.DB, application, name string) error {
 		return nil
 	}
 
-	merged, err := MergeEffectiveModel(raws)
+	models := RawModelsAsModels(raws)
+	// Pull differently-named Extends parents (e.g. BaseModel) into each declaration
+	// before E2 same-name union — replaces pre-persist materialize (EDS4).
+	if err := ExpandModelsAlongExtends(tx, models); err != nil {
+		return fmt.Errorf("expand extends for %s/%s: %w", key.Application, key.Name, err)
+	}
+	merged, err := MergeSameNameModelsByExtensionChain(models)
 	if err != nil {
 		return fmt.Errorf("E2 merge %s/%s: %w", key.Application, key.Name, err)
 	}

@@ -873,6 +873,8 @@ func (b *ModuleBuilder) persist(buildResult *module.BuildResult) error {
 			return xfmt.Errorf("error persisting module models: %w", err)
 		}
 	}
+	// Drop in-memory trees so a later Module.Save cannot cascade-create meta_model shells.
+	mod.Models = nil
 
 	return nil
 }

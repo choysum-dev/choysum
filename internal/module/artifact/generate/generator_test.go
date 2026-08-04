@@ -147,11 +147,12 @@ func seedGeneratorAppFixture(t *testing.T, runtimeScope *generatorTestScope) (*m
 	}
 
 	model := &meta.Model{
-		BaseModel:  meta.BaseModel{Id: sql.NullString{String: "model-fixture", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 12, 0, 0, 0, time.UTC)},
-		Name:       "Partner",
-		Path:       "@/crm/models/partner.ts",
-		ModelTable: "crm_partner",
-		ModuleId:   mod.Id,
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "model-fixture", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 12, 0, 0, 0, time.UTC)},
+		Name:        "Partner",
+		Path:        "@/crm/models/partner.ts",
+		Application: "crm",
+		ModelTable:  "crm_partner",
+		ModuleId:    mod.Id,
 	}
 	if err := runtimeScope.db.Create(model).Error; err != nil {
 		t.Fatalf("create fixture model: %v", err)
@@ -344,41 +345,46 @@ func TestGetApplicationLoadsCanonicalModelsAndFiltersServices(t *testing.T) {
 	}
 
 	base := &meta.Model{
-		BaseModel:  meta.BaseModel{Id: sql.NullString{String: "model-base", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 9, 0, 0, 0, time.UTC)},
-		Name:       "Partner",
-		Path:       "@/crm/models/partner.ts",
-		ModelTable: "crm_partner",
-		ModuleId:   mod.Id,
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "model-base", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 9, 0, 0, 0, time.UTC)},
+		Name:        "Partner",
+		Path:        "@/crm/models/partner.ts",
+		Application: "crm",
+		ModelTable:  "crm_partner",
+		ModuleId:    mod.Id,
 	}
 	olderSamePath := &meta.Model{
-		BaseModel:  meta.BaseModel{Id: sql.NullString{String: "model-old", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 8, 0, 0, 0, time.UTC)},
-		Name:       "Partner",
-		Path:       "@/crm/models/partner.ts",
-		ModelTable: "crm_partner_old",
-		ModuleId:   mod.Id,
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "model-old", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 8, 0, 0, 0, time.UTC)},
+		Name:        "Partner",
+		Path:        "@/crm/models/partner.ts",
+		Application: "crm",
+		ModelTable:  "crm_partner_old",
+		ModuleId:    mod.Id,
 	}
 	extension := &meta.Model{
-		BaseModel:  meta.BaseModel{Id: sql.NullString{String: "model-ext", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 10, 0, 0, 0, time.UTC)},
-		Name:       "Partner",
-		Path:       "@/crm_ext/models/partner.ts",
-		Extends:    "@/crm/models/partner.ts",
-		ModelTable: "crm_partner",
-		ModuleId:   mod.Id,
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "model-ext", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 10, 0, 0, 0, time.UTC)},
+		Name:        "Partner",
+		Path:        "@/crm_ext/models/partner.ts",
+		Application: "crm",
+		Extends:     "@/crm/models/partner.ts",
+		ModelTable:  "crm_partner",
+		ModuleId:    mod.Id,
 	}
 	other := &meta.Model{
-		BaseModel:  meta.BaseModel{Id: sql.NullString{String: "model-other", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 11, 0, 0, 0, time.UTC)},
-		Name:       "Company",
-		Path:       "@/crm/models/company.ts",
-		ModelTable: "crm_company",
-		ModuleId:   mod.Id,
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "model-other", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 11, 0, 0, 0, time.UTC)},
+		Name:        "Company",
+		Path:        "@/crm/models/company.ts",
+		Application: "crm",
+		ModelTable:  "crm_company",
+		ModuleId:    mod.Id,
 	}
 	synthetic := &meta.Model{
-		BaseModel: meta.BaseModel{Id: sql.NullString{String: "model-synthetic", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 12, 0, 0, 0, time.UTC)},
-		Name:      "I18n",
-		Path:      "go://i18n/crm",
-		ModuleId:  mod.Id,
-		Abstract:  true,
-		Readonly:  true,
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "model-synthetic", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 12, 0, 0, 0, time.UTC)},
+		Name:        "I18n",
+		Path:        "go://i18n/crm",
+		Application: "crm",
+		ModuleId:    mod.Id,
+		Abstract:    true,
+		Readonly:    true,
 	}
 	models := []*meta.Model{olderSamePath, base, extension, other, synthetic}
 	for _, model := range models {
@@ -461,17 +467,19 @@ func TestGetApplication_SelectionAddMergeError(t *testing.T) {
 	basePath := "@/crm/models/partner.ts"
 	extPath := "@/crm_ext/models/partner.ts"
 	base := &meta.Model{
-		BaseModel: meta.BaseModel{Id: sql.NullString{String: "model-sel-base", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 9, 0, 0, 0, time.UTC)},
-		Name:      "Partner",
-		Path:      basePath,
-		ModuleId:  mod.Id,
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "model-sel-base", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 9, 0, 0, 0, time.UTC)},
+		Name:        "Partner",
+		Path:        basePath,
+		Application: "crm",
+		ModuleId:    mod.Id,
 	}
 	ext := &meta.Model{
-		BaseModel: meta.BaseModel{Id: sql.NullString{String: "model-sel-ext", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 10, 0, 0, 0, time.UTC)},
-		Name:      "Partner",
-		Path:      extPath,
-		Extends:   basePath,
-		ModuleId:  mod.Id,
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "model-sel-ext", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 10, 0, 0, 0, time.UTC)},
+		Name:        "Partner",
+		Path:        extPath,
+		Application: "crm",
+		Extends:     basePath,
+		ModuleId:    mod.Id,
 	}
 	if err := runtimeScope.db.Create(base).Error; err != nil {
 		t.Fatalf("create base: %v", err)

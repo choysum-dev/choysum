@@ -45,6 +45,7 @@ func (g *grpcGenerator) getApplication() (*meta.Application, error) {
 		return nil, result.Error
 	}
 
+	// Effective projections have empty module_id (EDS-2+); scope by application name.
 	var appModels []*meta.Model
 	if result := g.runtimeScope.Session().
 		Preload("Services", func(db *gorm.DB) *gorm.DB {
@@ -62,8 +63,7 @@ func (g *grpcGenerator) getApplication() (*meta.Application, error) {
 		Preload("Fields", func(db *gorm.DB) *gorm.DB {
 			return db.Order("id ASC")
 		}).
-		Joins("JOIN meta_module ON meta_model.module_id = meta_module.id ").
-		Where("meta_module.application_id = ?", application.Id).
+		Where("meta_model.application = ?", application.Name).
 		Where("meta_model.abstract = ?", false).
 		Order("meta_model.id ASC").
 		Find(&appModels); result.Error != nil {

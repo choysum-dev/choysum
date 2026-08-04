@@ -172,6 +172,15 @@ func RecomputeAllEffectiveFromRaw(db *gorm.DB) error {
 	}); err != nil {
 		return err
 	}
+	return EnsureEffectiveAppNameUniqueIndex(db)
+}
+
+// EnsureEffectiveAppNameUniqueIndex enforces one live effective row per (application, name).
+// Safe to call repeatedly after recomputes; call only when live duplicates are gone.
+func EnsureEffectiveAppNameUniqueIndex(db *gorm.DB) error {
+	if db == nil {
+		return fmt.Errorf("db is nil")
+	}
 	return ensureEffectiveAppNameUniqueIndex(db)
 }
 
@@ -239,6 +248,15 @@ func rawIsNewerTip(candidate, previous *RawModel) bool {
 	return false
 }
 
+func ensureBaseModelID(b *BaseModel) {
+	if b == nil {
+		return
+	}
+	if strings.TrimSpace(b.Id.String) == "" {
+		b.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	}
+}
+
 func copyModelTreeToRaw(db *gorm.DB, src *Model) error {
 	raw := &RawModel{
 		BaseModel:    BaseModel{Id: src.Id, CreatedAt: src.CreatedAt, UpdatedAt: src.UpdatedAt},
@@ -255,8 +273,9 @@ func copyModelTreeToRaw(db *gorm.DB, src *Model) error {
 		CompanyField: src.CompanyField,
 		ModuleId:     src.ModuleId,
 	}
+	ensureBaseModelID(&raw.BaseModel)
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(raw).Error; err != nil {
-		return fmt.Errorf("create meta_raw_model %s: %w", src.Id.String, err)
+		return fmt.Errorf("create meta_raw_model %s: %w", raw.Id.String, err)
 	}
 
 	for _, f := range src.Fields {
@@ -264,8 +283,9 @@ func copyModelTreeToRaw(db *gorm.DB, src *Model) error {
 			continue
 		}
 		rf := rawFieldFromField(f, raw.Id)
+		ensureBaseModelID(&rf.BaseModel)
 		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(rf).Error; err != nil {
-			return fmt.Errorf("create meta_raw_field %s: %w", f.Id.String, err)
+			return fmt.Errorf("create meta_raw_field %s: %w", rf.Id.String, err)
 		}
 		for _, d := range f.Decorators {
 			if err := copyDecoratorToRaw(db, d, sql.NullString{}, sql.NullString{String: rf.Id.String, Valid: true}, sql.NullString{}); err != nil {
@@ -279,8 +299,9 @@ func copyModelTreeToRaw(db *gorm.DB, src *Model) error {
 			continue
 		}
 		rs := rawServiceFromService(s, raw.Id)
+		ensureBaseModelID(&rs.BaseModel)
 		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(rs).Error; err != nil {
-			return fmt.Errorf("create meta_raw_service %s: %w", s.Id.String, err)
+			return fmt.Errorf("create meta_raw_service %s: %w", rs.Id.String, err)
 		}
 		for _, p := range s.Parameters {
 			if p == nil {
@@ -293,6 +314,7 @@ func copyModelTreeToRaw(db *gorm.DB, src *Model) error {
 				ProtobufType:     p.ProtobufType,
 				ServiceId:        sql.NullString{String: rs.Id.String, Valid: true},
 			}
+			ensureBaseModelID(&rp.BaseModel)
 			if err := db.Session(&gorm.Session{SkipHooks: true}).Create(rp).Error; err != nil {
 				return err
 			}
@@ -308,6 +330,7 @@ func copyModelTreeToRaw(db *gorm.DB, src *Model) error {
 				ReferenceIdent: tp.ReferenceIdent,
 				ServiceId:      sql.NullString{String: rs.Id.String, Valid: true},
 			}
+			ensureBaseModelID(&rtp.BaseModel)
 			if err := db.Session(&gorm.Session{SkipHooks: true}).Create(rtp).Error; err != nil {
 				return err
 			}
@@ -397,8 +420,9 @@ func copyDecoratorToRaw(db *gorm.DB, d *Decorator, modelID, fieldID, serviceID s
 		FieldId:        fieldID,
 		ServiceId:      serviceID,
 	}
+	ensureBaseModelID(&rd.BaseModel)
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(rd).Error; err != nil {
-		return fmt.Errorf("create meta_raw_decorator %s: %w", d.Id.String, err)
+		return fmt.Errorf("create meta_raw_decorator %s: %w", rd.Id.String, err)
 	}
 	for _, a := range d.Arguments {
 		if a == nil {
@@ -412,8 +436,9 @@ func copyDecoratorToRaw(db *gorm.DB, d *Decorator, modelID, fieldID, serviceID s
 			ModuleSpecPath: a.ModuleSpecPath,
 			DecoratorId:    sql.NullString{String: rd.Id.String, Valid: true},
 		}
+		ensureBaseModelID(&ra.BaseModel)
 		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(ra).Error; err != nil {
-			return fmt.Errorf("create meta_raw_argument %s: %w", a.Id.String, err)
+			return fmt.Errorf("create meta_raw_argument %s: %w", ra.Id.String, err)
 		}
 	}
 	return nil

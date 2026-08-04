@@ -235,7 +235,11 @@ func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion s
 			return nil, xfmt.Errorf("error saving module dependencies: %w", err)
 		}
 	}
-	if err := m.runtimeScope.Session().Save(target).Error; err != nil {
+	// Omit association trees: Persist already wrote raw + effective catalogs. Cascading
+	// Models here would duplicate effective rows with module_id (see install commitSave).
+	if err := m.runtimeScope.Session().
+		Omit("Dependencies", "Dependents", "Models", "Components", "UiResources").
+		Save(target).Error; err != nil {
 		return nil, xfmt.Errorf("error saving module: %w", err)
 	}
 	m.logUpgradeStep(target.Name, moduleStepSave, persistModuleStarted, "from_version", fromVersion, "to_version", target.Version)

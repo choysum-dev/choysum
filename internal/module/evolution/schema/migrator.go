@@ -50,6 +50,11 @@ func getModuleModels(runtimeScope scope.Scope, module *meta.Module) ([]*meta.Mod
 	}
 
 	moduleModels := meta.RawModelsAsModels(rawModels)
+	// Declaration-only raw rows omit inherited columns; expand Extends in memory for DDL.
+	if err := meta.ExpandModelsAlongExtends(runtimeScope.Session().DB, moduleModels); err != nil {
+		return nil, xfmt.Errorf("error expanding model extends for schema: %w", err)
+	}
+
 	filteredModels := make([]*meta.Model, 0, len(moduleModels))
 	for _, model := range moduleModels {
 		if model.Readonly {
