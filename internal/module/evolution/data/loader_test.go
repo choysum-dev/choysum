@@ -1122,6 +1122,7 @@ func TestApplyRecord_DirectBranches(t *testing.T) {
 		{name: "missing application", rec: record{Module: "auth", Name: "x", Model: "User", Values: map[string]any{}}, code: LoadErrorCodeMissingApplication},
 		{name: "missing model", rec: record{Module: "auth", Name: "x", Application: "auth", Values: map[string]any{}}, code: LoadErrorCodeMissingModel},
 		{name: "invalid model full name", rec: record{Module: "auth", Name: "x", Application: "auth", Model: "auth.User", Values: map[string]any{}}, code: LoadErrorCodeInvalidModel},
+		{name: "missing model row", rec: record{Module: "auth", Name: "x", Application: "auth", Model: "NoSuchModel", Values: map[string]any{}}, code: LoadErrorCodeDBResolveModel},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			err := l.applyRecord(db, "/tmp/data.json", 0, tc.rec, now)

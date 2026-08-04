@@ -226,3 +226,190 @@ END`
 		t.Fatalf("cleanModels() error = %v, want meta model data mappings failure", err)
 	}
 }
+
+func TestModuleUninstallerCleanModelsListingModelsError(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	seed := seedCleanModelsFixture(t, db)
+	dropMetaTable(t, db, &meta.Model{})
+
+	uninstaller := &moduleUninstaller{
+		runtimeScope:  runtimeScope,
+		module:        seed.module,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope},
+		ctx:           newOpContext(),
+	}
+	err := uninstaller.cleanModels()
+	if err == nil || !strings.Contains(err.Error(), "error listing models for uninstall") {
+		t.Fatalf("cleanModels() error = %v, want listing models failure", err)
+	}
+}
+
+func TestRebindMetaModelDataTipsBranches(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.AutoMigrate(&metadata.ModelData{}, &meta.Model{}, &meta.Module{}); err != nil {
+		t.Fatalf("AutoMigrate: %v", err)
+	}
+
+	t.Run("empty victims", func(t *testing.T) {
+		if err := rebindMetaModelDataTips(db, nil); err != nil {
+			t.Fatalf("empty victims: %v", err)
+		}
+	})
+
+	t.Run("missing table", func(t *testing.T) {
+		dropMetaTable(t, db, &metadata.ModelData{})
+		err := rebindMetaModelDataTips(db, []modelVictim{{
+			Id: xid.New().String(), Application: "partner", Name: "Partner",
+		}})
+		if err != nil {
+			t.Fatalf("missing table should no-op: %v", err)
+		}
+		if err := db.AutoMigrate(&metadata.ModelData{}); err != nil {
+			t.Fatalf("recreate ModelData: %v", err)
+		}
+	})
+
+	t.Run("skips blank victims and continues when tip missing", func(t *testing.T) {
+		goneID := xid.New().String()
+		if err := rebindMetaModelDataTips(db, []modelVictim{
+			{Id: "", Application: "partner", Name: "Partner"},
+			{Id: goneID, Application: "  ", Name: "Partner"},
+			{Id: goneID, Application: "partner", Name: " "},
+			{Id: goneID, Application: "partner", Name: "Gone"},
+		}); err != nil {
+			t.Fatalf("blank/missing tip: %v", err)
+		}
+	})
+
+	t.Run("tip resolve error", func(t *testing.T) {
+		dropMetaTable(t, db, &meta.Model{})
+		err := rebindMetaModelDataTips(db, []modelVictim{{
+			Id: xid.New().String(), Application: "partner", Name: "Partner",
+		}})
+		if err == nil || !strings.Contains(err.Error(), "error resolving meta model tip") {
+			t.Fatalf("tip resolve error = %v, want resolving tip failure", err)
+		}
+		if err := db.AutoMigrate(&meta.Model{}); err != nil {
+			t.Fatalf("recreate meta_model: %v", err)
+		}
+	})
+
+	t.Run("empty tip id skipped", func(t *testing.T) {
+		// Insert a live tip row whose primary key is blank so tip.Id.String trims to "".
+		if err := db.Exec(`
+INSERT INTO meta_model (id, name, path, application, model_table, created_at, updated_at)
+VALUES ('', 'EmptyTip', '@/partner/service/models/empty_tip.ts', 'partner', 'partner_empty_tip', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+`).Error; err != nil {
+			t.Fatalf("insert blank-id tip: %v", err)
+		}
+		if err := rebindMetaModelDataTips(db, []modelVictim{{
+			Id: xid.New().String(), Application: "partner", Name: "EmptyTip",
+		}}); err != nil {
+			t.Fatalf("empty tip id: %v", err)
+		}
+		_ = db.Unscoped().Where("name = ?", "EmptyTip").Delete(&meta.Model{})
+	})
+
+	t.Run("update error propagates", func(t *testing.T) {
+		tip := &meta.Model{
+			BaseModel:   meta.BaseModel{Id: sql.NullString{String: xid.New().String(), Valid: true}},
+			Name:        "UpdateFail",
+			Path:        "@/partner/service/models/update_fail.ts",
+			Application: "partner",
+			ModelTable:  "partner_update_fail",
+		}
+		if err := db.Create(tip).Error; err != nil {
+			t.Fatalf("create tip: %v", err)
+		}
+		victimID := xid.New().String()
+		if err := db.Create(&metadata.ModelData{
+			Module: "owner", Name: "row", Application: "partner", ModelName: "UpdateFail", ModelId: victimID, ResID: xid.New().String(),
+		}).Error; err != nil {
+			t.Fatalf("create mapping: %v", err)
+		}
+		if err := db.Exec(`
+CREATE TRIGGER block_meta_model_data_rebind
+BEFORE UPDATE OF model_id ON meta_model_data
+BEGIN
+  SELECT RAISE(ABORT, 'rebind blocked');
+END`).Error; err != nil {
+			t.Fatalf("create rebind trigger: %v", err)
+		}
+		err := rebindMetaModelDataTips(db, []modelVictim{{
+			Id: victimID, Application: "partner", Name: "UpdateFail",
+		}})
+		if err == nil || !strings.Contains(err.Error(), "error rebinding meta model data") {
+			t.Fatalf("update error = %v, want rebinding failure", err)
+		}
+	})
+}
+
+func TestModuleUninstallerCleanModelsRebindError(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.AutoMigrate(&metadata.ModelData{}, &meta.Model{}, &meta.Module{}); err != nil {
+		t.Fatalf("AutoMigrate: %v", err)
+	}
+
+	baseMod := &meta.Module{Name: "partner_base", Status: meta.Installed, Version: "1.0.0"}
+	baseMod.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := db.Create(baseMod).Error; err != nil {
+		t.Fatalf("create base module: %v", err)
+	}
+	extMod := &meta.Module{Name: "partner_ext", Status: meta.Installed, Version: "1.0.0"}
+	extMod.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := db.Create(extMod).Error; err != nil {
+		t.Fatalf("create ext module: %v", err)
+	}
+
+	baseModel := &meta.Model{
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: xid.New().String(), Valid: true}},
+		Name:        "Partner",
+		Path:        "@/partner_base/service/models/partner.ts",
+		Application: "partner",
+		ModelTable:  "partner_partner",
+		ModuleId:    baseMod.Id,
+	}
+	if err := db.Create(baseModel).Error; err != nil {
+		t.Fatalf("create base model: %v", err)
+	}
+	extModel := &meta.Model{
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: xid.New().String(), Valid: true}},
+		Name:        "Partner",
+		Path:        "@/partner_ext/service/models/partner.ts",
+		Application: "partner",
+		ModelTable:  "partner_partner",
+		ModuleId:    extMod.Id,
+		Extends:     baseModel.Path,
+	}
+	if err := db.Create(extModel).Error; err != nil {
+		t.Fatalf("create ext model: %v", err)
+	}
+	if err := db.Create(&metadata.ModelData{
+		Module: "seed_owner", Name: "partner_main", Application: "partner", ModelName: "Partner",
+		ModelId: extModel.Id.String, ResID: xid.New().String(),
+	}).Error; err != nil {
+		t.Fatalf("create mapping: %v", err)
+	}
+	if err := db.Exec(`
+CREATE TRIGGER block_meta_model_data_rebind_clean
+BEFORE UPDATE OF model_id ON meta_model_data
+BEGIN
+  SELECT RAISE(ABORT, 'rebind blocked');
+END`).Error; err != nil {
+		t.Fatalf("create rebind trigger: %v", err)
+	}
+
+	uninstaller := &moduleUninstaller{
+		runtimeScope:  runtimeScope,
+		module:        extMod,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope},
+		ctx:           newOpContext(),
+	}
+	err := uninstaller.cleanModels()
+	if err == nil || !strings.Contains(err.Error(), "error rebinding meta model data") {
+		t.Fatalf("cleanModels() error = %v, want rebind failure", err)
+	}
+}
