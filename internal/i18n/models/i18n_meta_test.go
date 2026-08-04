@@ -253,6 +253,22 @@ func TestEnsureI18nMetaLookupErrors(t *testing.T) {
 	}
 }
 
+func TestEnsureI18nRawServicesLookupError(t *testing.T) {
+	rs := newTestScope(t)
+	db := rs.Session().DB
+	migrateI18nDualStoreTables(t, db)
+	raw, err := ensureI18nRawModel(db, "auth", sql.NullString{})
+	if err != nil {
+		t.Fatalf("ensureI18nRawModel: %v", err)
+	}
+	if err := db.Exec("ALTER TABLE meta_raw_service RENAME COLUMN name TO name_broken").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := ensureI18nRawServices(db, raw); err == nil || !strings.Contains(err.Error(), "lookup raw Service") {
+		t.Fatalf("expected lookup raw Service error, got %v", err)
+	}
+}
+
 func TestEnsureTerminologyEditorAllowsBranches(t *testing.T) {
 	rs := newTestScope(t)
 	db := rs.Session().DB

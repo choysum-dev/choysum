@@ -66,6 +66,18 @@ func TestRecomputeEffective_PostgresLockBranch(t *testing.T) {
 	}
 }
 
+func TestLockLogicalKey_PostgresNonNotFoundError(t *testing.T) {
+	db := openRecomputeTestDB(t)
+	db.Dialector = namedDialector{Dialector: db.Dialector, name: "postgres"}
+	if err := db.Migrator().DropTable(&Model{}); err != nil {
+		t.Fatalf("drop meta_model: %v", err)
+	}
+	err := lockLogicalKey(db, LogicalKey{Application: "a", Name: "X"})
+	if err == nil || !strings.Contains(err.Error(), "lock effective row") {
+		t.Fatalf("expected lock error, got %v", err)
+	}
+}
+
 func TestRecomputeEffective_TipSelectionAmongExisting(t *testing.T) {
 	db := openRecomputeTestDB(t)
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)

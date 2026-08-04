@@ -789,6 +789,20 @@ func TestPersistHelpersAndBuild(t *testing.T) {
 	if len(loaded.Services) != 1 || len(loaded.Services[0].Decorators) != 1 || len(loaded.Services[0].TypeParameters) != 1 || len(loaded.Services[0].Parameters) != 1 || loaded.Services[0].Parameters[0].Name != "query" {
 		t.Fatalf("unexpected loaded model services: %#v", loaded.Services)
 	}
+
+	missing, err := builder.loadLatestModelByPath("/models/does-not-exist")
+	if err != nil {
+		t.Fatalf("missing path error = %v", err)
+	}
+	if missing != nil {
+		t.Fatalf("expected nil for missing path, got %#v", missing)
+	}
+	if err := db.Migrator().DropTable(&meta.RawModel{}); err != nil {
+		t.Fatalf("drop meta_raw_model: %v", err)
+	}
+	if _, err := builder.loadLatestModelByPath("/models/history"); err == nil || !strings.Contains(err.Error(), "error loading parent model by path") {
+		t.Fatalf("expected load error after drop, got %v", err)
+	}
 }
 
 func TestPathWithinModuleRoot_ResolvesSymlinkAliases(t *testing.T) {
