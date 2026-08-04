@@ -66,7 +66,8 @@ function resolveSameAppModelConstructor(fullName: string): typeof BaseModel | un
     }
   }
 
-  const models = (MetadataStorage.instance as { models?: Map<typeof BaseModel, { fullModelName?: string }> }).models;
+  // models is private on MetadataStorage; same access pattern as resolveModelConstructor.
+  const models = (MetadataStorage.instance as any)?.models as Map<typeof BaseModel, { fullModelName?: string }> | undefined;
   if (!models || typeof models.entries !== 'function') return undefined;
 
   for (const [ctor, meta] of models.entries()) {
