@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/choysum-dev/choysum/internal/module/evolution/hooks"
@@ -54,6 +55,15 @@ func (m *moduleUninstaller) cleanModels() error {
 	}
 
 	// Soft delete related meta records (soft delete won't trigger DB CASCADE).
+	// Capture IMD victims before soft-delete so MetaModelData.ModelId can rebind to a surviving tip.
+	var victims []modelVictim
+	if err := db.Model(&meta.Model{}).
+		Select("id, application, name").
+		Where("module_id = ?", moduleID).
+		Find(&victims).Error; err != nil {
+		return xfmt.Errorf("error listing models for uninstall: %w", err)
+	}
+
 	modelIDs := db.Model(&meta.Model{}).Select("id").Where("module_id = ?", moduleID)
 	serviceIDs := db.Model(&meta.Service{}).Select("id").Where("model_id IN (?)", modelIDs)
 	fieldIDs := db.Model(&meta.Field{}).Select("id").Where("model_id IN (?)", modelIDs)
@@ -85,6 +95,13 @@ func (m *moduleUninstaller) cleanModels() error {
 	if err := db.Where("id IN (?)", modelIDs).Delete(&meta.Model{}).Error; err != nil {
 		return xfmt.Errorf("error deleting models: %w", err)
 	}
+
+	// IMD: other modules' MetaModelData rows may still point at soft-deleted MetaModel ids.
+	// Rebind to the surviving tip for the same (application, name) when one remains.
+	if err := rebindMetaModelDataTips(db.DB, victims); err != nil {
+		return err
+	}
+
 	if err := db.Where("id IN (?)", componentIDs).Delete(&meta.Component{}).Error; err != nil {
 		return xfmt.Errorf("error deleting components: %w", err)
 	}
@@ -116,6 +133,62 @@ func (m *moduleUninstaller) cleanModels() error {
 		}
 	}
 
+	return nil
+}
+
+type modelVictim struct {
+	Id          string
+	Application string
+	Name        string
+}
+
+// rebindMetaModelDataTips updates MetaModelData.ModelId away from soft-deleted IMD rows
+// onto the surviving tip for the same (application, name). No-op when the table is absent
+// or when no live MetaModel remains for that logical model.
+func rebindMetaModelDataTips(db *gorm.DB, victims []modelVictim) error {
+	if len(victims) == 0 {
+		return nil
+	}
+	if !db.Migrator().HasTable((&metadata.ModelData{}).TableName()) {
+		return nil
+	}
+
+	type logicalModel struct {
+		Application string
+		Name        string
+	}
+	grouped := map[logicalModel][]string{}
+	for _, v := range victims {
+		id := strings.TrimSpace(v.Id)
+		app := strings.TrimSpace(v.Application)
+		name := strings.TrimSpace(v.Name)
+		if id == "" || app == "" || name == "" {
+			continue
+		}
+		key := logicalModel{Application: app, Name: name}
+		grouped[key] = append(grouped[key], id)
+	}
+
+	for key, victimIDs := range grouped {
+		tip := &meta.Model{}
+		if err := db.Where("application = ? AND name = ?", key.Application, key.Name).
+			Order("created_at DESC, id DESC").
+			First(tip).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				continue
+			}
+			return xfmt.Errorf("error resolving meta model tip for %s.%s: %w", key.Application, key.Name, err)
+		}
+		tipID := strings.TrimSpace(tip.Id.String)
+		if tipID == "" {
+			continue
+		}
+		if err := db.Model(&metadata.ModelData{}).
+			Where("model_id IN ?", victimIDs).
+			Update("model_id", tipID).Error; err != nil {
+			return xfmt.Errorf("error rebinding meta model data for %s.%s: %w", key.Application, key.Name, err)
+		}
+	}
 	return nil
 }
 

@@ -1233,7 +1233,9 @@ func (l *Loader) applyRecord(tx *gorm.DB, filePath string, recordIndex int, rec 
 	}
 	modelFull := app + "." + modelName
 	model := &meta.Model{}
-	if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
+	if err := tx.Where("application = ? AND name = ?", app, modelName).
+		Order("created_at DESC, id DESC").
+		First(model).Error; err != nil {
 		return wrapLoadErrorWithCode(xfmt.Errorf("resolve model %s: %w", modelFull, err), filePath, recordIndex, rec, LoadErrorKindDB, LoadErrorCodeDBResolveModel, "resolve model")
 	}
 	if strings.TrimSpace(model.ModelTable) == "" {
@@ -1877,7 +1879,9 @@ func resolveSearchModel(tx *gorm.DB, modelFull string) (*meta.Model, string, err
 		return nil, "", xfmt.Errorf("resolve search model %s: %w", modelFull, err)
 	}
 	model := &meta.Model{}
-	if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
+	if err := tx.Where("application = ? AND name = ?", app, modelName).
+		Order("created_at DESC, id DESC").
+		First(model).Error; err != nil {
 		return nil, "", xfmt.Errorf("resolve search model %s: %w", modelFull, err)
 	}
 	tableName := strings.TrimSpace(model.ModelTable)
@@ -2132,7 +2136,9 @@ func (l *Loader) detectFieldCardinality(tx *gorm.DB, modelFull string, fieldName
 
 	if !ok {
 		model := &meta.Model{}
-		if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
+		if err := tx.Where("application = ? AND name = ?", app, modelName).
+			Order("created_at DESC, id DESC").
+			First(model).Error; err != nil {
 			l.mu.Lock()
 			l.fieldCardinalityCache[cacheKey] = refCardinalityManyToOne
 			l.mu.Unlock()
@@ -2209,7 +2215,9 @@ func (l *Loader) resolveModelRef(tx *gorm.DB, modelRef string) (string, error) {
 		return "", xfmt.Errorf("resolve modelRef %s: %w", modelRef, err)
 	}
 	model := &meta.Model{}
-	if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
+	if err := tx.Where("application = ? AND name = ?", app, modelName).
+		Order("created_at DESC, id DESC").
+		First(model).Error; err != nil {
 		return "", xfmt.Errorf("resolve modelRef %s: %w", modelRef, err)
 	}
 	id := strings.TrimSpace(model.Id.String)
