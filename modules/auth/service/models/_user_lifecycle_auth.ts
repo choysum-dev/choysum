@@ -52,7 +52,7 @@ async function isPersistBrowserTimezoneEnabled(isPersistEnabled?: () => Promise<
     return await isPersistEnabled();
   }
   const flag = await pool<AppSettingModelCtor>('auth', 'AppSetting').Get(PERSIST_BROWSER_TIMEZONE_KEY, '1');
-  return String(flag ?? '') === '1';
+  return flag === '1';
 }
 
 /**
