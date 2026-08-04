@@ -522,12 +522,8 @@ func TestDeleteRawModelsForModule_Coverage(t *testing.T) {
 			_ = db2.Session(&gorm.Session{SkipHooks: true}).Create(&RawArgument{BaseModel: BaseModel{Id: sql.NullString{String: "ra2-" + tc.name, Valid: true}, CreatedAt: ts, UpdatedAt: ts}, DecoratorId: d2.Id})
 			_ = db2.Session(&gorm.Session{SkipHooks: true}).Create(&RawParameter{BaseModel: BaseModel{Id: sql.NullString{String: "rp2-" + tc.name, Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Name: "vals", ServiceId: s2.Id})
 			_ = db2.Session(&gorm.Session{SkipHooks: true}).Create(&RawTypeParameter{BaseModel: BaseModel{Id: sql.NullString{String: "rtp2-" + tc.name, Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Name: "T", ServiceId: s2.Id})
-			if tc.drop != (&RawModel{}) {
-				_ = db2.Migrator().DropTable(tc.drop)
-			} else {
-				// Drop after pluck would need model to exist first; drop before second call.
-				_ = db2.Migrator().DropTable(&RawModel{})
-			}
+			// Drop before DeleteRawModelsForModule so the first failing pluck/delete surfaces.
+			_ = db2.Migrator().DropTable(tc.drop)
 			if err := DeleteRawModelsForModule(db2, "m2"); err == nil {
 				t.Fatalf("expected delete error after dropping %s", tc.name)
 			}
@@ -707,6 +703,56 @@ func TestRecomputeEffective_PersistError(t *testing.T) {
 	}
 }
 
+func TestRecomputeEffective_PersistFailureRollsBackExisting(t *testing.T) {
+	db := openRecomputeTestDB(t)
+	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
+	raw := &RawModel{
+		BaseModel:   BaseModel{Id: sql.NullString{String: "rb-raw", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+		Name:        "Rollback",
+		Application: "rb",
+		Path:        "/rb.ts",
+		ModuleId:    sql.NullString{String: "mod", Valid: true},
+	}
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(raw).Error; err != nil {
+		t.Fatalf("create raw: %v", err)
+	}
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawField{
+		BaseModel: BaseModel{Id: sql.NullString{String: "rb-f", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+		Name:      "Name",
+		ModelId:   raw.Id,
+	}).Error; err != nil {
+		t.Fatalf("create field: %v", err)
+	}
+	if err := RecomputeEffective(db, "rb", "Rollback"); err != nil {
+		t.Fatalf("first recompute: %v", err)
+	}
+	var before Model
+	if err := db.Where("application = ? AND name = ?", "rb", "Rollback").Take(&before).Error; err != nil {
+		t.Fatalf("load before: %v", err)
+	}
+
+	const cbTag = "force-effective-field-create-fail"
+	if err := db.Callback().Create().Before("gorm:create").Register(cbTag, func(tx *gorm.DB) {
+		if tx.Statement != nil && tx.Statement.Table == "meta_field" {
+			_ = tx.AddError(errors.New("forced field create fail"))
+		}
+	}); err != nil {
+		t.Fatalf("register callback: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Callback().Create().Remove(cbTag) })
+
+	if err := RecomputeEffective(db, "rb", "Rollback"); err == nil || !strings.Contains(err.Error(), "persist effective") {
+		t.Fatalf("expected persist error, got %v", err)
+	}
+	var after Model
+	if err := db.Preload("Fields").Where("application = ? AND name = ?", "rb", "Rollback").Take(&after).Error; err != nil {
+		t.Fatalf("effective row missing after failed recompute: %v", err)
+	}
+	if after.Id.String != before.Id.String || len(after.Fields) != 1 || after.Fields[0].Name != "Name" {
+		t.Fatalf("expected rolled-back effective unchanged, got id=%q fields=%#v", after.Id.String, after.Fields)
+	}
+}
+
 func TestRecomputeEffective_EffIDFromRawTipWhenNoExisting(t *testing.T) {
 	db := openRecomputeTestDB(t)
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
@@ -763,6 +809,7 @@ func TestRecomputeEffective_HookErrorPaths(t *testing.T) {
 	expandModelsAlongExtendsFn = prevExpand
 
 	prevMerge := mergeSameNameModelsByExtensionChainFn
+	t.Cleanup(func() { mergeSameNameModelsByExtensionChainFn = prevMerge })
 	mergeSameNameModelsByExtensionChainFn = func([]*Model) (*Model, error) { return nil, errors.New("merge boom") }
 	if err := RecomputeEffective(db, "hook", "Hook"); err == nil || !strings.Contains(err.Error(), "E2 merge") {
 		t.Fatalf("expected merge error, got %v", err)

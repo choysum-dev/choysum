@@ -134,6 +134,67 @@ func TestResolveExtendsModel_DBError(t *testing.T) {
 	}
 }
 
+func TestExpandModelsAlongExtends_PrefersSameApplicationParent(t *testing.T) {
+	db := openDualStoreTestDB(t)
+	if err := EnsureDualStoreTables(db); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	parentPath := "/shared/base.ts"
+	// Newer foreign-app parent with a distinctive field would win if path-only.
+	foreign := &RawModel{
+		BaseModel:   BaseModel{Id: sql.NullString{String: "foreign-parent", Valid: true}},
+		Name:        "Base",
+		Path:        parentPath,
+		Application: "other",
+		ModuleId:    sql.NullString{String: "mod-other", Valid: true},
+	}
+	home := &RawModel{
+		BaseModel:   BaseModel{Id: sql.NullString{String: "home-parent", Valid: true}},
+		Name:        "Base",
+		Path:        parentPath,
+		Application: "home",
+		ModuleId:    sql.NullString{String: "mod-home", Valid: true},
+	}
+	for _, row := range []*RawModel{home, foreign} {
+		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(row).Error; err != nil {
+			t.Fatalf("create parent: %v", err)
+		}
+	}
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawField{
+		BaseModel: BaseModel{Id: sql.NullString{String: "ff", Valid: true}},
+		Name:      "ForeignOnly",
+		ModelId:   foreign.Id,
+	}).Error; err != nil {
+		t.Fatalf("create foreign field: %v", err)
+	}
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawField{
+		BaseModel: BaseModel{Id: sql.NullString{String: "hf", Valid: true}},
+		Name:      "HomeOnly",
+		ModelId:   home.Id,
+	}).Error; err != nil {
+		t.Fatalf("create home field: %v", err)
+	}
+	child := &Model{
+		Name:        "Child",
+		Path:        "/home/child.ts",
+		Application: "home",
+		Extends:     parentPath,
+		Fields:      []*Field{{Name: "ChildField"}},
+	}
+	if err := ExpandModelsAlongExtends(db, []*Model{child}); err != nil {
+		t.Fatalf("expand: %v", err)
+	}
+	names := map[string]bool{}
+	for _, f := range child.Fields {
+		if f != nil {
+			names[f.Name] = true
+		}
+	}
+	if !names["HomeOnly"] || names["ForeignOnly"] || !names["ChildField"] {
+		t.Fatalf("expected home parent fields, got %#v", names)
+	}
+}
+
 func TestMergeFieldsForSchema_Coverage(t *testing.T) {
 	parentPath := "/parent.ts"
 	childPath := "/child.ts"

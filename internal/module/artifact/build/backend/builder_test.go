@@ -738,6 +738,13 @@ func TestPersistHelpersAndBuild(t *testing.T) {
 	if len(persisted) != 2 || persisted[0].Path != "/models/order" || persisted[1].Name != "Partner" {
 		t.Fatalf("unexpected persisted raw models: %#v", persisted)
 	}
+	var effective []*meta.Model
+	if err := db.Where("application = ?", "partner").Order("path ASC").Find(&effective).Error; err != nil {
+		t.Fatalf("query effective models: %v", err)
+	}
+	if len(effective) != 2 || effective[0].Path != "/models/order" || effective[1].Path != "/models/partner" || effective[1].Name != "Partner" {
+		t.Fatalf("unexpected effective models: %#v", effective)
+	}
 
 	older := &meta.RawModel{BaseModel: meta.BaseModel{Id: sql.NullString{String: "aaa", Valid: true}}, Name: "Partner", Path: "/models/history"}
 	latest := &meta.RawModel{BaseModel: meta.BaseModel{Id: sql.NullString{String: "zzz", Valid: true}}, Name: "Partner", Path: "/models/history"}
@@ -1529,9 +1536,16 @@ func TestPersistModuleModels_ErrorBranches(t *testing.T) {
 
 	t.Run("persist raw model", func(t *testing.T) {
 		db, builder := openPersistDB("persist-raw")
-		if err := db.Exec("PRAGMA query_only = ON").Error; err != nil {
+		boom := errors.New("forced raw create")
+		const cbTag = "force-raw-model-create"
+		if err := db.Callback().Create().Before("gorm:create").Register(cbTag, func(tx *gorm.DB) {
+			if tx.Statement != nil && tx.Statement.Table == "meta_raw_model" {
+				_ = tx.AddError(boom)
+			}
+		}); err != nil {
 			t.Fatal(err)
 		}
+		t.Cleanup(func() { _ = db.Callback().Create().Remove(cbTag) })
 		err := builder.persistModuleModels("module-1", models)
 		if err == nil || !strings.Contains(err.Error(), "persist raw model") {
 			t.Fatalf("expected persist raw error, got %v", err)

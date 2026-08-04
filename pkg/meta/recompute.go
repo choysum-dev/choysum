@@ -66,15 +66,21 @@ func RecomputeKeys(tx *gorm.DB, keys []LogicalKey) error {
 // RecomputeEffective rebuilds one effective meta_model* tree from live meta_raw_*
 // for (application, name). Preserves existing effective id when present (EDS5).
 // When no live raw remains, hard-deletes the effective tree.
-func RecomputeEffective(tx *gorm.DB, application, name string) error {
-	if tx == nil {
+// Delete+persist runs in one transaction so a mid-rebuild failure cannot leave a hole.
+func RecomputeEffective(db *gorm.DB, application, name string) error {
+	if db == nil {
 		return fmt.Errorf("db is nil")
 	}
 	key := LogicalKey{Application: application, Name: name}.Normalized()
 	if !key.Valid() {
 		return fmt.Errorf("recompute requires non-empty application and name")
 	}
+	return db.Transaction(func(tx *gorm.DB) error {
+		return recomputeEffectiveTx(tx, key)
+	})
+}
 
+func recomputeEffectiveTx(tx *gorm.DB, key LogicalKey) error {
 	// Serialize concurrent recomputes for the same logical name (best-effort on SQLite).
 	if err := lockLogicalKeyFn(tx, key); err != nil {
 		return err

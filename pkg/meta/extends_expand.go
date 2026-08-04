@@ -5,7 +5,6 @@ package meta
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -78,7 +77,7 @@ func expandShapeAlongExtends(
 	var parentShape *expandsShape
 	parentPath := ""
 	if extends := strings.TrimSpace(model.Extends); extends != "" {
-		parent, err := resolveExtendsModel(db, extends, localByPath)
+		parent, err := resolveExtendsModel(db, extends, localByPath, strings.TrimSpace(model.Application))
 		if err != nil {
 			return nil, err
 		}
@@ -110,12 +109,30 @@ func expandShapeAlongExtends(
 	return out, nil
 }
 
-func resolveExtendsModel(db *gorm.DB, extendsPath string, localByPath map[string]*Model) (*Model, error) {
+func resolveExtendsModel(db *gorm.DB, extendsPath string, localByPath map[string]*Model, preferredApp string) (*Model, error) {
 	if local, ok := localByPath[extendsPath]; ok {
 		return local, nil
 	}
-	var raw RawModel
-	err := db.
+	raws, err := loadRawParentsByPath(db, extendsPath, preferredApp)
+	if err != nil {
+		return nil, err
+	}
+	if len(raws) == 0 && preferredApp != "" {
+		// Cross-application Extends are rare; fall back to path-only after same-app miss.
+		raws, err = loadRawParentsByPath(db, extendsPath, "")
+		if err != nil {
+			return nil, err
+		}
+	}
+	if len(raws) == 0 {
+		return nil, nil
+	}
+	converted := RawModelsAsModels([]*RawModel{&raws[0]})
+	return converted[0], nil
+}
+
+func loadRawParentsByPath(db *gorm.DB, extendsPath, application string) ([]RawModel, error) {
+	q := db.
 		Preload("Fields", func(tx *gorm.DB) *gorm.DB { return tx.Order("id ASC") }).
 		Preload("Fields.Decorators", func(tx *gorm.DB) *gorm.DB { return tx.Order("id ASC") }).
 		Preload("Fields.Decorators.Arguments", func(tx *gorm.DB) *gorm.DB { return tx.Order("id ASC") }).
@@ -124,17 +141,15 @@ func resolveExtendsModel(db *gorm.DB, extendsPath string, localByPath map[string
 		Preload("Services.Decorators.Arguments", func(tx *gorm.DB) *gorm.DB { return tx.Order("id ASC") }).
 		Preload("Services.Parameters", func(tx *gorm.DB) *gorm.DB { return tx.Order("id ASC") }).
 		Preload("Services.TypeParameters", func(tx *gorm.DB) *gorm.DB { return tx.Order("id ASC") }).
-		Where("path = ?", extendsPath).
-		Order("id DESC").
-		Take(&raw).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
+		Where("path = ?", extendsPath)
+	if application != "" {
+		q = q.Where("application = ?", application)
+	}
+	var raws []RawModel
+	if err := q.Order("id DESC").Find(&raws).Error; err != nil {
 		return nil, fmt.Errorf("load raw parent by path %s: %w", extendsPath, err)
 	}
-	converted := RawModelsAsModels([]*RawModel{&raw})
-	return converted[0], nil
+	return raws, nil
 }
 
 func mergeFieldsForSchema(parentFields, childFields []*Field, parentPath, childPath string) ([]*Field, error) {
