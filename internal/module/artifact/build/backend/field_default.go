@@ -148,14 +148,14 @@ func (b *ModuleBuilder) dbLoadFieldDefaults(app string) ([]*meta.Model, error) {
 	if app == "" || b == nil || b.runtimeScope == nil || b.runtimeScope.Session() == nil {
 		return nil, nil
 	}
-	var models []*meta.Model
+	var raws []*meta.RawModel
 	err := b.runtimeScope.Session().
 		Where("application = ? AND name = ? AND abstract = ?", app, fieldDefaultModelName, false).
-		Find(&models).Error
+		Find(&raws).Error
 	if err != nil {
 		return nil, err
 	}
-	return models, nil
+	return meta.RawModelsAsModels(raws), nil
 }
 
 func (b *ModuleBuilder) releaseFieldDefaultSchedule() {
@@ -392,7 +392,7 @@ func (b *ModuleBuilder) supersedeVirtualFieldDefaults() error {
 		return nil
 	}
 
-	var existing []*meta.Model
+	var existing []*meta.RawModel
 	if err := b.runtimeScope.Session().
 		Where("application = ? AND name = ? AND abstract = ?", app, fieldDefaultModelName, false).
 		Find(&existing).Error; err != nil {
@@ -420,14 +420,14 @@ func (b *ModuleBuilder) supersedeVirtualFieldDefaults() error {
 	// SQLite migrations disable FK constraints; delete dependents explicitly
 	// (same order as module uninstaller). Pluck IDs first for stable IN lists.
 	var serviceIDs []string
-	if err := db().Model(&meta.Service{}).Where("model_id IN ?", ids).Pluck("id", &serviceIDs).Error; err != nil {
+	if err := db().Model(&meta.RawService{}).Where("model_id IN ?", ids).Pluck("id", &serviceIDs).Error; err != nil {
 		return xfmt.Errorf("load superseded FieldDefault services: %w", err)
 	}
 	var fieldIDs []string
-	if err := db().Model(&meta.Field{}).Where("model_id IN ?", ids).Pluck("id", &fieldIDs).Error; err != nil {
+	if err := db().Model(&meta.RawField{}).Where("model_id IN ?", ids).Pluck("id", &fieldIDs).Error; err != nil {
 		return xfmt.Errorf("load superseded FieldDefault fields: %w", err)
 	}
-	decoratorQ := db().Model(&meta.Decorator{}).Where("model_id IN ?", ids)
+	decoratorQ := db().Model(&meta.RawDecorator{}).Where("model_id IN ?", ids)
 	if len(serviceIDs) > 0 {
 		decoratorQ = decoratorQ.Or("service_id IN ?", serviceIDs)
 	}
@@ -440,31 +440,34 @@ func (b *ModuleBuilder) supersedeVirtualFieldDefaults() error {
 	}
 
 	if len(decoratorIDs) > 0 {
-		if result := db().Where("decorator_id IN ?", decoratorIDs).Delete(&meta.Argument{}); result.Error != nil {
+		if result := db().Where("decorator_id IN ?", decoratorIDs).Delete(&meta.RawArgument{}); result.Error != nil {
 			return xfmt.Errorf("delete superseded FieldDefault decorator arguments: %w", result.Error)
 		}
-		if result := db().Where("id IN ?", decoratorIDs).Delete(&meta.Decorator{}); result.Error != nil {
+		if result := db().Where("id IN ?", decoratorIDs).Delete(&meta.RawDecorator{}); result.Error != nil {
 			return xfmt.Errorf("delete superseded FieldDefault decorators: %w", result.Error)
 		}
 	}
 	if len(serviceIDs) > 0 {
-		if result := db().Where("service_id IN ?", serviceIDs).Delete(&meta.TypeParameter{}); result.Error != nil {
+		if result := db().Where("service_id IN ?", serviceIDs).Delete(&meta.RawTypeParameter{}); result.Error != nil {
 			return xfmt.Errorf("delete superseded FieldDefault type parameters: %w", result.Error)
 		}
-		if result := db().Where("service_id IN ?", serviceIDs).Delete(&meta.Parameter{}); result.Error != nil {
+		if result := db().Where("service_id IN ?", serviceIDs).Delete(&meta.RawParameter{}); result.Error != nil {
 			return xfmt.Errorf("delete superseded FieldDefault parameters: %w", result.Error)
 		}
-		if result := db().Where("id IN ?", serviceIDs).Delete(&meta.Service{}); result.Error != nil {
+		if result := db().Where("id IN ?", serviceIDs).Delete(&meta.RawService{}); result.Error != nil {
 			return xfmt.Errorf("delete superseded FieldDefault services: %w", result.Error)
 		}
 	}
 	if len(fieldIDs) > 0 {
-		if result := db().Where("id IN ?", fieldIDs).Delete(&meta.Field{}); result.Error != nil {
+		if result := db().Where("id IN ?", fieldIDs).Delete(&meta.RawField{}); result.Error != nil {
 			return xfmt.Errorf("delete superseded FieldDefault fields: %w", result.Error)
 		}
 	}
-	if result := db().Where("id IN ?", ids).Delete(&meta.Model{}); result.Error != nil {
+	if result := db().Where("id IN ?", ids).Delete(&meta.RawModel{}); result.Error != nil {
 		return xfmt.Errorf("delete superseded virtual FieldDefault rows: %w", result.Error)
+	}
+	if err := meta.RecomputeKeys(root, []meta.LogicalKey{{Application: app, Name: fieldDefaultModelName}}); err != nil {
+		return xfmt.Errorf("recompute FieldDefault after supersede: %w", err)
 	}
 	return nil
 }

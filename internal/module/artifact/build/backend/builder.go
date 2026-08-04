@@ -327,27 +327,30 @@ func (b *ModuleBuilder) getNewExtends(model *meta.Model) (*meta.Model, error) {
 		return nil, nil
 	}
 
-	var extendsModels []*meta.Model
+	var extendsRaws []*meta.RawModel
 	if result := b.runtimeScope.Session().
-		Where(&meta.Model{Name: model.Name}).
+		Where("name = ?", model.Name).
 		Order("id DESC").
-		Find(&extendsModels); result.Error != nil {
+		Find(&extendsRaws); result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, xfmt.Errorf("error getting last models: %w", result.Error)
 		}
 		return nil, nil
 	}
 
-	if len(extendsModels) > 0 {
-		extendsModelPaths := make([]string, len(extendsModels))
-		for i, m := range extendsModels {
+	if len(extendsRaws) > 0 {
+		extendsModelPaths := make([]string, len(extendsRaws))
+		for i, m := range extendsRaws {
 			extendsModelPaths[i] = m.Path
 		}
 
 		if slices.Contains(extendsModelPaths, model.Extends) {
-			lastModel := extendsModels[0]
-			if lastModel.Path != model.Path && lastModel.Path != model.Extends {
-				return lastModel, nil
+			lastRaw := extendsRaws[0]
+			if lastRaw.Path != model.Path && lastRaw.Path != model.Extends {
+				converted := meta.RawModelsAsModels([]*meta.RawModel{lastRaw})
+				if len(converted) > 0 {
+					return converted[0], nil
+				}
 			}
 		}
 	}
@@ -858,10 +861,7 @@ func (b *ModuleBuilder) persist(buildResult *module.BuildResult) error {
 		}
 	}
 
-	if err := b.materializeEffectiveModels(mod); err != nil {
-		return xfmt.Errorf("error materializing effective meta: %w", err)
-	}
-
+	// EDS-2: persist declaration-only raw rows (no parent-chain materialize into DB).
 	// save module
 	// Avoid writing many2many join rows here; dependency graph is managed by ModuleManager.
 	if result := b.runtimeScope.Session().Omit("Dependencies", "Dependents", "Models").Save(mod); result.Error != nil {
@@ -882,6 +882,7 @@ func (b *ModuleBuilder) persistModuleModels(moduleID string, models []*meta.Mode
 	if moduleID == "" {
 		return nil
 	}
+	db := b.runtimeScope.Session()
 
 	orderedPaths := make([]string, 0, len(models))
 	modelByPath := make(map[string]*meta.Model, len(models))
@@ -899,24 +900,61 @@ func (b *ModuleBuilder) persistModuleModels(moduleID string, models []*meta.Mode
 		modelByPath[path] = m
 	}
 
-	rows := make([]*meta.Model, 0, len(orderedPaths))
+	keys := make([]meta.LogicalKey, 0)
+	appendKey := func(application, name string) {
+		k := meta.LogicalKey{Application: application, Name: name}.Normalized()
+		if k.Valid() {
+			keys = append(keys, k)
+		}
+	}
+
+	// Collect logical names owned by this module before rewrite (removed declarations).
+	var prevRaw []meta.RawModel
+	if err := db.Model(&meta.RawModel{}).
+		Select("application, name").
+		Where("module_id = ?", moduleID).
+		Find(&prevRaw).Error; err != nil {
+		return xfmt.Errorf("list previous raw models: %w", err)
+	}
+	for _, row := range prevRaw {
+		appendKey(row.Application, row.Name)
+	}
+
+	// Legacy IMD leftovers still carrying module_id on effective rows.
+	var prevEff []meta.Model
+	if err := db.Model(&meta.Model{}).
+		Select("id, application, name").
+		Where("module_id = ?", moduleID).
+		Find(&prevEff).Error; err != nil {
+		return xfmt.Errorf("list previous effective models: %w", err)
+	}
+	for _, row := range prevEff {
+		appendKey(row.Application, row.Name)
+		if row.Id.Valid {
+			if err := meta.DeleteEffectiveModelTree(db.DB, row.Id.String); err != nil {
+				return xfmt.Errorf("clear legacy effective model %s: %w", row.Id.String, err)
+			}
+		}
+	}
+
+	if err := meta.DeleteRawModelsForModule(db.DB, moduleID); err != nil {
+		return xfmt.Errorf("delete previous raw models: %w", err)
+	}
+
 	for _, path := range orderedPaths {
 		m := modelByPath[path]
 		if m == nil {
 			continue
 		}
 		m.ModuleId = sql.NullString{String: moduleID, Valid: true}
-		rows = append(rows, m)
+		appendKey(m.Application, m.Name)
+		if err := meta.PersistModelTreeAsRaw(db.DB, m); err != nil {
+			return xfmt.Errorf("persist raw model %s: %w", path, err)
+		}
 	}
 
-	if result := b.runtimeScope.Session().Unscoped().Where("module_id = ?", moduleID).Delete(&meta.Model{}); result.Error != nil {
-		return result.Error
-	}
-	if len(rows) == 0 {
-		return nil
-	}
-	if result := b.runtimeScope.Session().Create(&rows); result.Error != nil {
-		return result.Error
+	if err := meta.RecomputeKeys(db.DB, keys); err != nil {
+		return xfmt.Errorf("recompute effective models: %w", err)
 	}
 	return nil
 }
@@ -1111,7 +1149,7 @@ func (b *ModuleBuilder) loadLatestModelByPath(path string) (*meta.Model, error) 
 	if path == "" {
 		return nil, nil
 	}
-	var m meta.Model
+	var raw meta.RawModel
 	if result := b.runtimeScope.Session().
 		Preload("Fields", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
 		Preload("Fields.Decorators", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
@@ -1120,16 +1158,20 @@ func (b *ModuleBuilder) loadLatestModelByPath(path string) (*meta.Model, error) 
 		Preload("Services.Decorators", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
 		Preload("Services.Decorators.Arguments", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
 		Preload("Services.TypeParameters", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
-		Preload("Services.Parameters", func(db *gorm.DB) *gorm.DB { return db.Where("name != ?", "this").Order("id ASC") }).
+		Preload("Services.Parameters", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
 		Where("path = ?", path).
 		Order("id DESC").
-		Take(&m); result.Error != nil {
+		Take(&raw); result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, xfmt.Errorf("error loading parent model by path %s: %w", path, result.Error)
 	}
-	return &m, nil
+	converted := meta.RawModelsAsModels([]*meta.RawModel{&raw})
+	if len(converted) == 0 {
+		return nil, nil
+	}
+	return converted[0], nil
 }
 
 func (b *ModuleBuilder) isAlreadyMaterialized(model *meta.Model) bool {

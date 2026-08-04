@@ -80,9 +80,8 @@ func EnsureDualStoreTables(db *gorm.DB) error {
 // MigrateIMDCatalogToDualStore copies today's live meta_model* IMD rows into meta_raw_*,
 // then rebuilds meta_model* as E2 effective projections (one row per application+name).
 //
-// Intended for wipe/test and one-shot upgrades. Production Persist still writes IMD
-// meta_model until EDS-2; do not run this on a live DB that will keep writing IMD
-// without switching Persist to raw.
+// Intended for wipe/test and one-shot upgrades from legacy IMD catalogs.
+// After EDS-2, Persist writes meta_raw_* and recomputes effective projections.
 //
 // Soft-deleted meta_model rows are skipped (default GORM scope). Materialized parent
 // copies on source rows are preserved as-is (EDS-2 will stop writing them). Effective

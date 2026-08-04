@@ -279,7 +279,7 @@ func TestSupersedeVirtualFieldDefaults_GuardsAndDependents(t *testing.T) {
 	builder.module.ApplicationStr = "partner"
 
 	// Generated row with empty id → filtered out (no delete).
-	if err := db.Create(&meta.Model{
+	if err := db.Create(&meta.RawModel{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "   ", Valid: true}},
 		Name:        "FieldDefault",
 		Path:        "/virtual/modules/partner/service/models/__generated__/field_default.ts",
@@ -306,7 +306,7 @@ func TestSupersedeVirtualFieldDefaults_GuardsAndDependents(t *testing.T) {
 	})
 	builder.fieldDefaultPlan = FieldDefaultPlan{SupersedeVirtual: true}
 	virtID := "virt-dep"
-	if err := db.Create(&meta.Model{
+	if err := db.Create(&meta.RawModel{
 		BaseModel: meta.BaseModel{Id: sql.NullString{String: virtID, Valid: true}},
 		Name:      "FieldDefault", Path: "/virtual/modules/partner/service/models/__generated__/field_default.ts", Application: "partner",
 	}).Error; err != nil {
@@ -317,35 +317,35 @@ func TestSupersedeVirtualFieldDefaults_GuardsAndDependents(t *testing.T) {
 	decModel := "dec-m"
 	decField := "dec-f"
 	decSvc := "dec-s"
-	if err := db.Create(&meta.Field{BaseModel: meta.BaseModel{Id: sql.NullString{String: fieldID, Valid: true}}, Name: "Model", ModelId: sql.NullString{String: virtID, Valid: true}}).Error; err != nil {
+	if err := db.Create(&meta.RawField{BaseModel: meta.BaseModel{Id: sql.NullString{String: fieldID, Valid: true}}, Name: "Model", ModelId: sql.NullString{String: virtID, Valid: true}}).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Create(&meta.Service{BaseModel: meta.BaseModel{Id: sql.NullString{String: svcID, Valid: true}}, Name: "Get", ModelId: sql.NullString{String: virtID, Valid: true}}).Error; err != nil {
+	if err := db.Create(&meta.RawService{BaseModel: meta.BaseModel{Id: sql.NullString{String: svcID, Valid: true}}, Name: "Get", ModelId: sql.NullString{String: virtID, Valid: true}}).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Create(&meta.Decorator{BaseModel: meta.BaseModel{Id: sql.NullString{String: decModel, Valid: true}}, Name: "Model", ModelId: sql.NullString{String: virtID, Valid: true}}).Error; err != nil {
+	if err := db.Create(&meta.RawDecorator{BaseModel: meta.BaseModel{Id: sql.NullString{String: decModel, Valid: true}}, Name: "Model", ModelId: sql.NullString{String: virtID, Valid: true}}).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Create(&meta.Decorator{BaseModel: meta.BaseModel{Id: sql.NullString{String: decField, Valid: true}}, Name: "Field", FieldId: sql.NullString{String: fieldID, Valid: true}}).Error; err != nil {
+	if err := db.Create(&meta.RawDecorator{BaseModel: meta.BaseModel{Id: sql.NullString{String: decField, Valid: true}}, Name: "Field", FieldId: sql.NullString{String: fieldID, Valid: true}}).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Create(&meta.Decorator{BaseModel: meta.BaseModel{Id: sql.NullString{String: decSvc, Valid: true}}, Name: "Service", ServiceId: sql.NullString{String: svcID, Valid: true}}).Error; err != nil {
+	if err := db.Create(&meta.RawDecorator{BaseModel: meta.BaseModel{Id: sql.NullString{String: decSvc, Valid: true}}, Name: "Service", ServiceId: sql.NullString{String: svcID, Valid: true}}).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Create(&meta.Argument{BaseModel: meta.BaseModel{Id: sql.NullString{String: "arg1", Valid: true}}, DecoratorId: sql.NullString{String: decModel, Valid: true}}).Error; err != nil {
+	if err := db.Create(&meta.RawArgument{BaseModel: meta.BaseModel{Id: sql.NullString{String: "arg1", Valid: true}}, DecoratorId: sql.NullString{String: decModel, Valid: true}}).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Create(&meta.TypeParameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "tp1", Valid: true}}, Name: "T", ServiceId: sql.NullString{String: svcID, Valid: true}}).Error; err != nil {
+	if err := db.Create(&meta.RawTypeParameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "tp1", Valid: true}}, Name: "T", ServiceId: sql.NullString{String: svcID, Valid: true}}).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Create(&meta.Parameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "p1", Valid: true}}, Name: "x", ServiceId: sql.NullString{String: svcID, Valid: true}}).Error; err != nil {
+	if err := db.Create(&meta.RawParameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "p1", Valid: true}}, Name: "x", ServiceId: sql.NullString{String: svcID, Valid: true}}).Error; err != nil {
 		t.Fatal(err)
 	}
 	if err := builder.supersedeVirtualFieldDefaults(); err != nil {
 		t.Fatalf("supersede dependents: %v", err)
 	}
 	var left int64
-	if err := db.Unscoped().Model(&meta.Model{}).Where("id = ?", virtID).Count(&left).Error; err != nil || left != 0 {
+	if err := db.Unscoped().Model(&meta.RawModel{}).Where("id = ?", virtID).Count(&left).Error; err != nil || left != 0 {
 		t.Fatalf("virt model left=%d err=%v", left, err)
 	}
 }
@@ -356,7 +356,7 @@ func TestSupersedeVirtualFieldDefaults_ErrorBranches(t *testing.T) {
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	})
 	builder.fieldDefaultPlan = FieldDefaultPlan{SupersedeVirtual: true}
-	if err := db.Create(&meta.Model{
+	if err := db.Create(&meta.RawModel{
 		BaseModel: meta.BaseModel{Id: sql.NullString{String: "virt", Valid: true}},
 		Name:      "FieldDefault", Path: "/virtual/modules/partner/service/models/__generated__/field_default.ts", Application: "partner",
 	}).Error; err != nil {
@@ -380,16 +380,16 @@ func TestSupersedeVirtualFieldDefaults_ErrorBranches(t *testing.T) {
 		phase  string // query|delete
 		substr string
 	}{
-		{name: "service pluck", table: "meta_service", phase: "query", substr: "load superseded FieldDefault services"},
-		{name: "field pluck", table: "meta_field", phase: "query", substr: "load superseded FieldDefault fields"},
-		{name: "decorator pluck", table: "meta_decorator", phase: "query", substr: "load superseded FieldDefault decorators"},
-		{name: "argument delete", table: "meta_argument", phase: "delete", substr: "decorator arguments"},
-		{name: "decorator delete", table: "meta_decorator", phase: "delete", substr: "delete superseded FieldDefault decorators"},
-		{name: "type param delete", table: "meta_type_parameter", phase: "delete", substr: "type parameters"},
-		{name: "parameter delete", table: "meta_parameter", phase: "delete", substr: "delete superseded FieldDefault parameters"},
-		{name: "service delete", table: "meta_service", phase: "delete", substr: "delete superseded FieldDefault services"},
-		{name: "field delete", table: "meta_field", phase: "delete", substr: "delete superseded FieldDefault fields"},
-		{name: "model delete", table: "meta_model", phase: "delete", substr: "delete superseded virtual FieldDefault rows"},
+		{name: "service pluck", table: "meta_raw_service", phase: "query", substr: "load superseded FieldDefault services"},
+		{name: "field pluck", table: "meta_raw_field", phase: "query", substr: "load superseded FieldDefault fields"},
+		{name: "decorator pluck", table: "meta_raw_decorator", phase: "query", substr: "load superseded FieldDefault decorators"},
+		{name: "argument delete", table: "meta_raw_argument", phase: "delete", substr: "decorator arguments"},
+		{name: "decorator delete", table: "meta_raw_decorator", phase: "delete", substr: "delete superseded FieldDefault decorators"},
+		{name: "type param delete", table: "meta_raw_type_parameter", phase: "delete", substr: "type parameters"},
+		{name: "parameter delete", table: "meta_raw_parameter", phase: "delete", substr: "delete superseded FieldDefault parameters"},
+		{name: "service delete", table: "meta_raw_service", phase: "delete", substr: "delete superseded FieldDefault services"},
+		{name: "field delete", table: "meta_raw_field", phase: "delete", substr: "delete superseded FieldDefault fields"},
+		{name: "model delete", table: "meta_raw_model", phase: "delete", substr: "delete superseded virtual FieldDefault rows"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -399,7 +399,7 @@ func TestSupersedeVirtualFieldDefaults_ErrorBranches(t *testing.T) {
 			})
 			b.fieldDefaultPlan = FieldDefaultPlan{SupersedeVirtual: true}
 			virtID := "v-" + tc.name
-			if err := gdb.Create(&meta.Model{
+			if err := gdb.Create(&meta.RawModel{
 				BaseModel: meta.BaseModel{Id: sql.NullString{String: virtID, Valid: true}},
 				Name:      "FieldDefault", Path: "/virtual/modules/partner/service/models/__generated__/field_default.ts", Application: "partner",
 			}).Error; err != nil {
@@ -408,22 +408,22 @@ func TestSupersedeVirtualFieldDefaults_ErrorBranches(t *testing.T) {
 			fieldID := "f-" + tc.name
 			svcID := "s-" + tc.name
 			decID := "d-" + tc.name
-			if err := gdb.Create(&meta.Field{BaseModel: meta.BaseModel{Id: sql.NullString{String: fieldID, Valid: true}}, Name: "Model", ModelId: sql.NullString{String: virtID, Valid: true}}).Error; err != nil {
+			if err := gdb.Create(&meta.RawField{BaseModel: meta.BaseModel{Id: sql.NullString{String: fieldID, Valid: true}}, Name: "Model", ModelId: sql.NullString{String: virtID, Valid: true}}).Error; err != nil {
 				t.Fatal(err)
 			}
-			if err := gdb.Create(&meta.Service{BaseModel: meta.BaseModel{Id: sql.NullString{String: svcID, Valid: true}}, Name: "Get", ModelId: sql.NullString{String: virtID, Valid: true}}).Error; err != nil {
+			if err := gdb.Create(&meta.RawService{BaseModel: meta.BaseModel{Id: sql.NullString{String: svcID, Valid: true}}, Name: "Get", ModelId: sql.NullString{String: virtID, Valid: true}}).Error; err != nil {
 				t.Fatal(err)
 			}
-			if err := gdb.Create(&meta.Decorator{BaseModel: meta.BaseModel{Id: sql.NullString{String: decID, Valid: true}}, Name: "Model", ModelId: sql.NullString{String: virtID, Valid: true}}).Error; err != nil {
+			if err := gdb.Create(&meta.RawDecorator{BaseModel: meta.BaseModel{Id: sql.NullString{String: decID, Valid: true}}, Name: "Model", ModelId: sql.NullString{String: virtID, Valid: true}}).Error; err != nil {
 				t.Fatal(err)
 			}
-			if err := gdb.Create(&meta.Argument{BaseModel: meta.BaseModel{Id: sql.NullString{String: "a-" + tc.name, Valid: true}}, DecoratorId: sql.NullString{String: decID, Valid: true}}).Error; err != nil {
+			if err := gdb.Create(&meta.RawArgument{BaseModel: meta.BaseModel{Id: sql.NullString{String: "a-" + tc.name, Valid: true}}, DecoratorId: sql.NullString{String: decID, Valid: true}}).Error; err != nil {
 				t.Fatal(err)
 			}
-			if err := gdb.Create(&meta.TypeParameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "t-" + tc.name, Valid: true}}, Name: "T", ServiceId: sql.NullString{String: svcID, Valid: true}}).Error; err != nil {
+			if err := gdb.Create(&meta.RawTypeParameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "t-" + tc.name, Valid: true}}, Name: "T", ServiceId: sql.NullString{String: svcID, Valid: true}}).Error; err != nil {
 				t.Fatal(err)
 			}
-			if err := gdb.Create(&meta.Parameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "p-" + tc.name, Valid: true}}, Name: "x", ServiceId: sql.NullString{String: svcID, Valid: true}}).Error; err != nil {
+			if err := gdb.Create(&meta.RawParameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "p-" + tc.name, Valid: true}}, Name: "x", ServiceId: sql.NullString{String: svcID, Valid: true}}).Error; err != nil {
 				t.Fatal(err)
 			}
 
@@ -460,7 +460,13 @@ func TestBuildLifecycle_FieldDefaultInjectAndRelease(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.AutoMigrate(&meta.Application{}, &meta.Module{}, &meta.Model{}, &meta.Field{}, &meta.Service{}, &meta.Decorator{}, &meta.Argument{}, &meta.Parameter{}, &meta.TypeParameter{}); err != nil {
+	if err := db.AutoMigrate(
+		&meta.Application{}, &meta.Module{},
+		&meta.RawModel{}, &meta.RawField{}, &meta.RawService{}, &meta.RawDecorator{}, &meta.RawArgument{},
+		&meta.RawParameter{}, &meta.RawTypeParameter{},
+		&meta.Model{}, &meta.Field{}, &meta.Service{}, &meta.Decorator{}, &meta.Argument{},
+		&meta.Parameter{}, &meta.TypeParameter{},
+	); err != nil {
 		t.Fatal(err)
 	}
 	testScope := newBuilderTestScope()
@@ -612,7 +618,7 @@ func TestBuildWithoutPersist_ReleasesOnFailures(t *testing.T) {
 		runtimeScope: testScope2,
 		module:       &meta.Module{Name: "partner", Path: "/virtual/modules/partner", ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts"},
 		buildPlugin:  &stubEsbPlugin{name: "build"}, prebuildPlugin: &stubEsbPlugin{name: "prebuild"},
-		entryPoint: "",
+		entryPoint:       "",
 		fieldDefaultPlan: FieldDefaultPlan{NeedInject: true, scheduledApp: "partner"},
 	}
 	fieldDefaultScheduledApps.Store("partner", "partner")
@@ -629,7 +635,7 @@ func TestBuildWithoutPersist_ReleasesOnFailures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := dbSupersede.AutoMigrate(&meta.Model{}); err != nil {
+	if err := dbSupersede.AutoMigrate(&meta.RawModel{}, &meta.Model{}); err != nil {
 		t.Fatal(err)
 	}
 	sqlDBSupersede, err := dbSupersede.DB()
@@ -643,8 +649,8 @@ func TestBuildWithoutPersist_ReleasesOnFailures(t *testing.T) {
 		runtimeScope: scopeSupersede,
 		module:       &meta.Module{Name: "partner", Path: "/virtual/modules/partner", ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts"},
 		buildPlugin:  &stubEsbPlugin{name: "build"}, prebuildPlugin: &stubEsbPlugin{name: "prebuild"},
-		entryPoint:         "",
-		fieldDefaultPlan:   FieldDefaultPlan{SupersedeVirtual: true, scheduledApp: "partner"},
+		entryPoint:       "",
+		fieldDefaultPlan: FieldDefaultPlan{SupersedeVirtual: true, scheduledApp: "partner"},
 	}
 	fieldDefaultScheduledApps.Store("partner", "partner")
 	if err := builder.Persist(&module.BuildResult{Module: builder.module}); err == nil {
@@ -661,7 +667,10 @@ func TestBuildWithoutPersist_ReleasesOnFailures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db3.AutoMigrate(&meta.Application{}, &meta.Module{}, &meta.Model{}); err != nil {
+	if err := db3.AutoMigrate(&meta.Application{}, &meta.Module{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := meta.EnsureDualStoreTables(db3); err != nil {
 		t.Fatal(err)
 	}
 	testScope3 := newBuilderTestScope()
@@ -709,7 +718,10 @@ func TestBuildWithoutPersist_ReleasesOnFailures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db4.AutoMigrate(&meta.Application{}, &meta.Module{}, &meta.Model{}); err != nil {
+	if err := db4.AutoMigrate(&meta.Application{}, &meta.Module{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := meta.EnsureDualStoreTables(db4); err != nil {
 		t.Fatal(err)
 	}
 	testScope4 := newBuilderTestScope()

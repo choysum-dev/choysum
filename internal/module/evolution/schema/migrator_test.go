@@ -102,10 +102,18 @@ func TestGetModuleModelsFiltersAndWrapsDBErrors(t *testing.T) {
 	}
 
 	disabledAutoMigrate := false
-	models := []*meta.Model{{Name: "Order", Path: "sales/order.ts", ModelTable: "sales_order", ModuleId: module.Id, Fields: []*meta.Field{newFieldWithOptions(t, "Status", `{"type":"selection"}`)}}, {Name: "Readonly", Path: "sales/readonly.ts", ModelTable: "sales_readonly", ModuleId: module.Id, Readonly: true}, {Name: "Disabled", Path: "sales/disabled.ts", ModelTable: "sales_disabled", ModuleId: module.Id, AutoMigrate: &disabledAutoMigrate}, {Name: "Abstract", Path: "sales/abstract.ts", ModelTable: "sales_abstract", ModuleId: module.Id, Abstract: true}}
-	for _, model := range models {
+	rawModels := []*meta.RawModel{
+		{
+			Name: "Order", Path: "sales/order.ts", ModelTable: "sales_order", ModuleId: module.Id,
+			Fields: []*meta.RawField{newRawFieldWithOptions(t, "Status", `{"type":"selection"}`)},
+		},
+		{Name: "Readonly", Path: "sales/readonly.ts", ModelTable: "sales_readonly", ModuleId: module.Id, Readonly: true},
+		{Name: "Disabled", Path: "sales/disabled.ts", ModelTable: "sales_disabled", ModuleId: module.Id, AutoMigrate: &disabledAutoMigrate},
+		{Name: "Abstract", Path: "sales/abstract.ts", ModelTable: "sales_abstract", ModuleId: module.Id, Abstract: true},
+	}
+	for _, model := range rawModels {
 		if err := runtimeScope.Session().Create(model).Error; err != nil {
-			t.Fatalf("create model %s: %v", model.Name, err)
+			t.Fatalf("create raw model %s: %v", model.Name, err)
 		}
 	}
 
@@ -147,16 +155,16 @@ func TestMigratorMigrateWrapsEnsureI18nMetaError(t *testing.T) {
 	if err := i18nmodels.EnsureTranslationTermTable(runtimeScope, "auth"); err != nil {
 		t.Fatalf("EnsureTranslationTermTable() error = %v", err)
 	}
-	if err := runtimeScope.Session().AutoMigrate(&meta.Model{}, &meta.Service{}); err != nil {
+	if err := runtimeScope.Session().AutoMigrate(&meta.RawModel{}, &meta.RawService{}, &meta.Model{}, &meta.Service{}); err != nil {
 		t.Fatalf("auto migrate meta tables: %v", err)
 	}
-	if err := runtimeScope.Session().Exec(`CREATE TRIGGER IF NOT EXISTS block_i18n_model_insert
-		BEFORE INSERT ON meta_model
+	if err := runtimeScope.Session().Exec(`CREATE TRIGGER IF NOT EXISTS block_i18n_raw_model_insert
+		BEFORE INSERT ON meta_raw_model
 		WHEN NEW.name = 'I18n'
 		BEGIN
 			SELECT RAISE(ABORT, 'i18n blocked');
 		END`).Error; err != nil {
-		t.Fatalf("create i18n insert trigger: %v", err)
+		t.Fatalf("create i18n raw insert trigger: %v", err)
 	}
 
 	m := &migrator{

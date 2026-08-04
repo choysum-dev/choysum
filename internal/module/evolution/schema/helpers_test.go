@@ -76,7 +76,10 @@ func newSchemaTestScope(t *testing.T) *schemaTestScope {
 
 func migrateSchemaMetaTables(t *testing.T, session *scope.Session) {
 	t.Helper()
-	if err := session.AutoMigrate(&meta.Model{}, &meta.Field{}, &meta.Decorator{}, &meta.Argument{}, &meta.Module{}); err != nil {
+	if err := session.AutoMigrate(
+		&meta.RawModel{}, &meta.RawField{}, &meta.RawDecorator{}, &meta.RawArgument{},
+		&meta.Model{}, &meta.Field{}, &meta.Decorator{}, &meta.Argument{}, &meta.Module{},
+	); err != nil {
 		t.Fatalf("migrate schema meta tables: %v", err)
 	}
 }
@@ -92,6 +95,28 @@ func newFieldWithOptions(t *testing.T, name string, options string) *meta.Field 
 	}
 	attachResolvedSpecForTestField(field, options)
 	return field
+}
+
+func newRawFieldWithOptions(t *testing.T, name string, options string) *meta.RawField {
+	t.Helper()
+	field := &meta.RawField{
+		Name: name,
+		Decorators: []*meta.RawDecorator{{
+			Name:      "Field",
+			Arguments: []*meta.RawArgument{{Type: "ObjectLiteral", Value: options}},
+		}},
+	}
+	attachResolvedSpecForTestRawField(field, options)
+	return field
+}
+
+func attachResolvedSpecForTestRawField(field *meta.RawField, options string) {
+	if field == nil {
+		return
+	}
+	effective := &meta.Field{Name: field.Name}
+	attachResolvedSpecForTestField(effective, options)
+	field.ResolvedSpec = effective.ResolvedSpec
 }
 
 func newRelationField(name string, moduleSpecPath string, options string) *meta.Field {

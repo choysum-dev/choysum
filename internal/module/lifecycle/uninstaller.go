@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/choysum-dev/choysum/internal/module/evolution/hooks"
@@ -55,51 +54,65 @@ func (m *moduleUninstaller) cleanModels() error {
 	}
 
 	// Soft delete related meta records (soft delete won't trigger DB CASCADE).
-	// Capture IMD victims before soft-delete so MetaModelData.ModelId can rebind to a surviving tip.
+	// Collect logical names from declaration-layer raw rows before delete.
 	var victims []modelVictim
-	if err := db.Model(&meta.Model{}).
+	if err := db.Model(&meta.RawModel{}).
 		Select("id, application, name").
 		Where("module_id = ?", moduleID).
 		Find(&victims).Error; err != nil {
-		return xfmt.Errorf("error listing models for uninstall: %w", err)
+		return xfmt.Errorf("error listing raw models for uninstall: %w", err)
 	}
 
-	modelIDs := db.Model(&meta.Model{}).Select("id").Where("module_id = ?", moduleID)
-	serviceIDs := db.Model(&meta.Service{}).Select("id").Where("model_id IN (?)", modelIDs)
-	fieldIDs := db.Model(&meta.Field{}).Select("id").Where("model_id IN (?)", modelIDs)
+	modelIDs := db.Model(&meta.RawModel{}).Select("id").Where("module_id = ?", moduleID)
+	serviceIDs := db.Model(&meta.RawService{}).Select("id").Where("model_id IN (?)", modelIDs)
+	fieldIDs := db.Model(&meta.RawField{}).Select("id").Where("model_id IN (?)", modelIDs)
 	componentIDs := db.Model(&meta.Component{}).Select("id").Where("module_id = ?", moduleID)
 	uiResourceIDs := db.Model(&meta.UiResource{}).Select("id").Where("module_id = ?", moduleID)
-	decoratorIDs := db.Model(&meta.Decorator{}).Select("id").Where(
-		"model_id IN (?) OR service_id IN (?) OR field_id IN (?) OR component_id IN (?)",
-		modelIDs, serviceIDs, fieldIDs, componentIDs,
+	rawDecoratorIDs := db.Model(&meta.RawDecorator{}).Select("id").Where(
+		"model_id IN (?) OR service_id IN (?) OR field_id IN (?)",
+		modelIDs, serviceIDs, fieldIDs,
+	)
+	// Component decorators still live on the shared meta_decorator table.
+	componentDecoratorIDs := db.Model(&meta.Decorator{}).Select("id").Where(
+		"component_id IN (?)",
+		componentIDs,
 	)
 
-	if err := db.Where("decorator_id IN (?)", decoratorIDs).Delete(&meta.Argument{}).Error; err != nil {
-		return xfmt.Errorf("error deleting decorator arguments: %w", err)
+	if err := db.Where("decorator_id IN (?)", rawDecoratorIDs).Delete(&meta.RawArgument{}).Error; err != nil {
+		return xfmt.Errorf("error deleting raw decorator arguments: %w", err)
 	}
-	if err := db.Where("id IN (?)", decoratorIDs).Delete(&meta.Decorator{}).Error; err != nil {
-		return xfmt.Errorf("error deleting decorators: %w", err)
+	if err := db.Where("id IN (?)", rawDecoratorIDs).Delete(&meta.RawDecorator{}).Error; err != nil {
+		return xfmt.Errorf("error deleting raw decorators: %w", err)
 	}
-	if err := db.Where("service_id IN (?)", serviceIDs).Delete(&meta.TypeParameter{}).Error; err != nil {
-		return xfmt.Errorf("error deleting type parameters: %w", err)
+	if err := db.Where("decorator_id IN (?)", componentDecoratorIDs).Delete(&meta.Argument{}).Error; err != nil {
+		return xfmt.Errorf("error deleting component decorator arguments: %w", err)
 	}
-	if err := db.Where("service_id IN (?)", serviceIDs).Delete(&meta.Parameter{}).Error; err != nil {
-		return xfmt.Errorf("error deleting parameters: %w", err)
+	if err := db.Where("id IN (?)", componentDecoratorIDs).Delete(&meta.Decorator{}).Error; err != nil {
+		return xfmt.Errorf("error deleting component decorators: %w", err)
 	}
-	if err := db.Where("id IN (?)", serviceIDs).Delete(&meta.Service{}).Error; err != nil {
-		return xfmt.Errorf("error deleting services: %w", err)
+	if err := db.Where("service_id IN (?)", serviceIDs).Delete(&meta.RawTypeParameter{}).Error; err != nil {
+		return xfmt.Errorf("error deleting raw type parameters: %w", err)
 	}
-	if err := db.Where("id IN (?)", fieldIDs).Delete(&meta.Field{}).Error; err != nil {
-		return xfmt.Errorf("error deleting fields: %w", err)
+	if err := db.Where("service_id IN (?)", serviceIDs).Delete(&meta.RawParameter{}).Error; err != nil {
+		return xfmt.Errorf("error deleting raw parameters: %w", err)
 	}
-	if err := db.Where("id IN (?)", modelIDs).Delete(&meta.Model{}).Error; err != nil {
-		return xfmt.Errorf("error deleting models: %w", err)
+	if err := db.Where("id IN (?)", serviceIDs).Delete(&meta.RawService{}).Error; err != nil {
+		return xfmt.Errorf("error deleting raw services: %w", err)
+	}
+	if err := db.Where("id IN (?)", fieldIDs).Delete(&meta.RawField{}).Error; err != nil {
+		return xfmt.Errorf("error deleting raw fields: %w", err)
+	}
+	if err := db.Where("id IN (?)", modelIDs).Delete(&meta.RawModel{}).Error; err != nil {
+		return xfmt.Errorf("error deleting raw models: %w", err)
 	}
 
-	// IMD: other modules' MetaModelData rows may still point at soft-deleted MetaModel ids.
-	// Rebind to the surviving tip for the same (application, name) when one remains.
-	if err := rebindMetaModelDataTips(db.DB, victims); err != nil {
-		return err
+	// Rebuild effective projections for touched logical names (EDS-2; no tip rebind).
+	keys := make([]meta.LogicalKey, 0, len(victims))
+	for _, v := range victims {
+		keys = append(keys, meta.LogicalKey{Application: v.Application, Name: v.Name})
+	}
+	if err := meta.RecomputeKeys(db.DB, keys); err != nil {
+		return xfmt.Errorf("error recomputing effective models after uninstall: %w", err)
 	}
 
 	if err := db.Where("id IN (?)", componentIDs).Delete(&meta.Component{}).Error; err != nil {
@@ -140,56 +153,6 @@ type modelVictim struct {
 	Id          string
 	Application string
 	Name        string
-}
-
-// rebindMetaModelDataTips updates MetaModelData.ModelId away from soft-deleted IMD rows
-// onto the surviving tip for the same (application, name). No-op when the table is absent
-// or when no live MetaModel remains for that logical model.
-func rebindMetaModelDataTips(db *gorm.DB, victims []modelVictim) error {
-	if len(victims) == 0 {
-		return nil
-	}
-	if !db.Migrator().HasTable((&metadata.ModelData{}).TableName()) {
-		return nil
-	}
-
-	type logicalModel struct {
-		Application string
-		Name        string
-	}
-	grouped := map[logicalModel][]string{}
-	for _, v := range victims {
-		id := strings.TrimSpace(v.Id)
-		app := strings.TrimSpace(v.Application)
-		name := strings.TrimSpace(v.Name)
-		if id == "" || app == "" || name == "" {
-			continue
-		}
-		key := logicalModel{Application: app, Name: name}
-		grouped[key] = append(grouped[key], id)
-	}
-
-	for key, victimIDs := range grouped {
-		tip := &meta.Model{}
-		if err := db.Where("application = ? AND name = ?", key.Application, key.Name).
-			Order("created_at DESC, id DESC").
-			First(tip).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				continue
-			}
-			return xfmt.Errorf("error resolving meta model tip for %s.%s: %w", key.Application, key.Name, err)
-		}
-		tipID := strings.TrimSpace(tip.Id.String)
-		if tipID == "" {
-			continue
-		}
-		if err := db.Model(&metadata.ModelData{}).
-			Where("model_id IN ?", victimIDs).
-			Update("model_id", tipID).Error; err != nil {
-			return xfmt.Errorf("error rebinding meta model data for %s.%s: %w", key.Application, key.Name, err)
-		}
-	}
-	return nil
 }
 
 func (m *moduleUninstaller) uninstall() error {

@@ -10,13 +10,19 @@ import (
 
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/rs/xid"
+	"gorm.io/gorm"
 )
+
+func migrateI18nDualStoreTables(t *testing.T, db *gorm.DB) {
+	t.Helper()
+	if err := meta.EnsureDualStoreTables(db); err != nil {
+		t.Fatalf("EnsureDualStoreTables: %v", err)
+	}
+}
 
 func TestEnsureI18nMetaCreatesModelAndServices(t *testing.T) {
 	rs := newTestScope(t)
-	if err := rs.Session().AutoMigrate(&meta.Model{}, &meta.Service{}); err != nil {
-		t.Fatalf("automigrate: %v", err)
-	}
+	migrateI18nDualStoreTables(t, rs.Session().DB)
 
 	moduleID := sql.NullString{String: xid.New().String(), Valid: true}
 	if err := EnsureI18nMeta(rs, "auth", moduleID); err != nil {
@@ -26,12 +32,20 @@ func TestEnsureI18nMetaCreatesModelAndServices(t *testing.T) {
 		t.Fatalf("EnsureI18nMeta idempotent: %v", err)
 	}
 
+	var rawModel meta.RawModel
+	if err := rs.Session().Where("name = ? AND application = ?", "I18n", "auth").Take(&rawModel).Error; err != nil {
+		t.Fatalf("lookup raw Model: %v", err)
+	}
+	if !rawModel.Abstract || !rawModel.Readonly {
+		t.Fatalf("expected abstract readonly raw I18n model: %+v", rawModel)
+	}
+
 	var model meta.Model
 	if err := rs.Session().Where("name = ? AND application = ?", "I18n", "auth").Take(&model).Error; err != nil {
-		t.Fatalf("lookup Model: %v", err)
+		t.Fatalf("lookup effective Model: %v", err)
 	}
 	if !model.Abstract || !model.Readonly {
-		t.Fatalf("expected abstract readonly I18n model: %+v", model)
+		t.Fatalf("expected abstract readonly effective I18n model: %+v", model)
 	}
 
 	var services []meta.Service
@@ -55,9 +69,7 @@ func TestEnsureI18nMetaCreatesModelAndServices(t *testing.T) {
 func TestEnsureI18nMetaSeedsTerminologyEditorAllows(t *testing.T) {
 	rs := newTestScope(t)
 	db := rs.Session().DB
-	if err := db.AutoMigrate(&meta.Model{}, &meta.Service{}); err != nil {
-		t.Fatal(err)
-	}
+	migrateI18nDualStoreTables(t, db)
 	if err := db.Exec(`CREATE TABLE auth_role (
 		id TEXT PRIMARY KEY,
 		code TEXT,
@@ -123,9 +135,7 @@ func TestEnsureI18nMetaEarlyReturns(t *testing.T) {
 func TestEnsureI18nMetaUpdatesModuleID(t *testing.T) {
 	rs := newTestScope(t)
 	db := rs.Session().DB
-	if err := db.AutoMigrate(&meta.Model{}, &meta.Service{}); err != nil {
-		t.Fatal(err)
-	}
+	migrateI18nDualStoreTables(t, db)
 	if err := EnsureI18nMeta(rs, "auth", sql.NullString{}); err != nil {
 		t.Fatal(err)
 	}
@@ -133,47 +143,45 @@ func TestEnsureI18nMetaUpdatesModuleID(t *testing.T) {
 	if err := EnsureI18nMeta(rs, "auth", moduleID); err != nil {
 		t.Fatalf("update module id: %v", err)
 	}
-	var model meta.Model
-	if err := db.Where("name = ? AND application = ?", "I18n", "auth").Take(&model).Error; err != nil {
+	var rawModel meta.RawModel
+	if err := db.Where("name = ? AND application = ?", "I18n", "auth").Take(&rawModel).Error; err != nil {
 		t.Fatal(err)
 	}
-	if model.ModuleId.String != moduleID.String {
-		t.Fatalf("ModuleId = %q, want %q", model.ModuleId.String, moduleID.String)
+	if rawModel.ModuleId.String != moduleID.String {
+		t.Fatalf("raw ModuleId = %q, want %q", rawModel.ModuleId.String, moduleID.String)
 	}
 }
 
 func TestEnsureI18nMetaErrorPaths(t *testing.T) {
 	rs := newTestScope(t)
 	db := rs.Session().DB
-	if err := db.AutoMigrate(&meta.Model{}, &meta.Service{}); err != nil {
-		t.Fatal(err)
-	}
+	migrateI18nDualStoreTables(t, db)
 
-	// Force create Model failure via query_only.
+	// Force create raw Model failure via query_only.
 	if err := db.Exec("PRAGMA query_only = ON").Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := EnsureI18nMeta(rs, "auth", sql.NullString{}); err == nil || !strings.Contains(err.Error(), "create I18n Model") {
-		t.Fatalf("expected create I18n Model error, got %v", err)
+	if err := EnsureI18nMeta(rs, "auth", sql.NullString{}); err == nil || !strings.Contains(err.Error(), "create I18n raw Model") {
+		t.Fatalf("expected create I18n raw Model error, got %v", err)
 	}
 	_ = db.Exec("PRAGMA query_only = OFF")
 
-	// Seed model, then force service create failure.
+	// Seed model, then force raw service create failure.
 	if err := EnsureI18nMeta(rs, "crm", sql.NullString{}); err != nil {
 		t.Fatal(err)
 	}
-	var model meta.Model
-	if err := db.Where("name = ? AND application = ?", "I18n", "crm").Take(&model).Error; err != nil {
+	var rawModel meta.RawModel
+	if err := db.Where("name = ? AND application = ?", "I18n", "crm").Take(&rawModel).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Where("model_id = ?", model.Id.String).Delete(&meta.Service{}).Error; err != nil {
+	if err := db.Where("model_id = ?", rawModel.Id.String).Delete(&meta.RawService{}).Error; err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Exec("PRAGMA query_only = ON").Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := EnsureI18nMeta(rs, "crm", sql.NullString{}); err == nil || !strings.Contains(err.Error(), "create Service") {
-		t.Fatalf("expected create Service error, got %v", err)
+	if err := EnsureI18nMeta(rs, "crm", sql.NullString{}); err == nil || !strings.Contains(err.Error(), "create raw Service") {
+		t.Fatalf("expected create raw Service error, got %v", err)
 	}
 	_ = db.Exec("PRAGMA query_only = OFF")
 }
@@ -181,24 +189,20 @@ func TestEnsureI18nMetaErrorPaths(t *testing.T) {
 func TestEnsureI18nMetaLookupErrors(t *testing.T) {
 	rs := newTestScope(t)
 	db := rs.Session().DB
-	if err := db.AutoMigrate(&meta.Model{}, &meta.Service{}); err != nil {
+	migrateI18nDualStoreTables(t, db)
+	// Corrupt meta_raw_model so Take fails with a non-RecordNotFound error.
+	if err := db.Exec("ALTER TABLE meta_raw_model RENAME COLUMN name TO name_broken").Error; err != nil {
 		t.Fatal(err)
 	}
-	// Corrupt meta_model so Take fails with a non-RecordNotFound error.
-	if err := db.Exec("ALTER TABLE meta_model RENAME COLUMN name TO name_broken").Error; err != nil {
-		t.Fatal(err)
-	}
-	if err := EnsureI18nMeta(rs, "auth", sql.NullString{}); err == nil || !strings.Contains(err.Error(), "lookup I18n Model") {
-		t.Fatalf("expected lookup I18n Model error, got %v", err)
+	if err := EnsureI18nMeta(rs, "auth", sql.NullString{}); err == nil || !strings.Contains(err.Error(), "lookup I18n raw Model") {
+		t.Fatalf("expected lookup I18n raw Model error, got %v", err)
 	}
 }
 
 func TestEnsureTerminologyEditorAllowsBranches(t *testing.T) {
 	rs := newTestScope(t)
 	db := rs.Session().DB
-	if err := db.AutoMigrate(&meta.Model{}, &meta.Service{}); err != nil {
-		t.Fatal(err)
-	}
+	migrateI18nDualStoreTables(t, db)
 	if err := db.Exec(`CREATE TABLE auth_role (
 		id TEXT PRIMARY KEY,
 		code TEXT,
@@ -247,9 +251,7 @@ func TestEnsureTerminologyEditorAllowsBranches(t *testing.T) {
 func TestEnsureI18nMetaSaveModuleAndServiceLookupErrors(t *testing.T) {
 	rs := newTestScope(t)
 	db := rs.Session().DB
-	if err := db.AutoMigrate(&meta.Model{}, &meta.Service{}); err != nil {
-		t.Fatal(err)
-	}
+	migrateI18nDualStoreTables(t, db)
 	if err := EnsureI18nMeta(rs, "auth", sql.NullString{}); err != nil {
 		t.Fatal(err)
 	}
@@ -259,17 +261,17 @@ func TestEnsureI18nMetaSaveModuleAndServiceLookupErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 	moduleID := sql.NullString{String: xid.New().String(), Valid: true}
-	if err := EnsureI18nMeta(rs, "auth", moduleID); err == nil || !strings.Contains(err.Error(), "update I18n Model module") {
-		t.Fatalf("expected update module error, got %v", err)
+	if err := EnsureI18nMeta(rs, "auth", moduleID); err == nil || !strings.Contains(err.Error(), "update I18n raw Model module") {
+		t.Fatalf("expected update raw module error, got %v", err)
 	}
 	_ = db.Exec("PRAGMA query_only = OFF")
 
-	// Corrupt meta_service for lookup Service error.
-	if err := db.Exec("ALTER TABLE meta_service RENAME COLUMN name TO name_broken").Error; err != nil {
+	// Corrupt meta_model for lookup effective Model error after raw write path succeeds.
+	if err := db.Exec("ALTER TABLE meta_model RENAME COLUMN name TO name_broken").Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := EnsureI18nMeta(rs, "auth", sql.NullString{}); err == nil || !strings.Contains(err.Error(), "lookup Service") {
-		t.Fatalf("expected lookup Service error, got %v", err)
+	if err := EnsureI18nMeta(rs, "auth", sql.NullString{}); err == nil || !strings.Contains(err.Error(), "recompute I18n effective") {
+		t.Fatalf("expected recompute effective error, got %v", err)
 	}
 }
 

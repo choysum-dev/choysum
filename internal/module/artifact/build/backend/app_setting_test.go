@@ -36,8 +36,10 @@ func newAppSettingTestBuilder(t *testing.T, mod *meta.Module) (*ModuleBuilder, *
 		t.Fatalf("open sqlite: %v", err)
 	}
 	if err := db.AutoMigrate(
-		&meta.Application{}, &meta.Module{}, &meta.Model{},
-		&meta.Field{}, &meta.Service{}, &meta.Decorator{}, &meta.Argument{},
+		&meta.Application{}, &meta.Module{},
+		&meta.RawModel{}, &meta.RawField{}, &meta.RawService{}, &meta.RawDecorator{}, &meta.RawArgument{},
+		&meta.RawParameter{}, &meta.RawTypeParameter{},
+		&meta.Model{}, &meta.Field{}, &meta.Service{}, &meta.Decorator{}, &meta.Argument{},
 		&meta.Parameter{}, &meta.TypeParameter{},
 	); err != nil {
 		t.Fatalf("auto migrate: %v", err)
@@ -101,7 +103,7 @@ func TestDecideAppSettingPlan_DBVirtualReinjectsForOwner(t *testing.T) {
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
 	builder, db := newAppSettingTestBuilder(t, owner)
-	if err := db.Create(&meta.Model{
+	if err := db.Create(&meta.RawModel{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "fd1", Valid: true}},
 		Name:        "AppSetting",
 		Path:        "/virtual/modules/partner/service/models/__generated__/app_setting.ts",
@@ -155,7 +157,7 @@ func TestDecideAppSettingPlan_DBHandwrittenSkipsInject(t *testing.T) {
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
 	builder, db := newAppSettingTestBuilder(t, mod)
-	if err := db.Create(&meta.Model{
+	if err := db.Create(&meta.RawModel{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "hand", Valid: true}},
 		Name:        "AppSetting",
 		Path:        "/virtual/modules/partner/service/models/app_setting.ts",
@@ -178,7 +180,7 @@ func TestDecideAppSettingPlan_SupersedeVirtual(t *testing.T) {
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
 	builder, db := newAppSettingTestBuilder(t, mod)
-	if err := db.Create(&meta.Model{
+	if err := db.Create(&meta.RawModel{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "virt", Valid: true}},
 		Name:        "AppSetting",
 		Path:        "/virtual/modules/partner/service/models/__generated__/app_setting.ts",
@@ -207,7 +209,7 @@ func TestDecideAppSettingPlan_DuplicateHandwritten(t *testing.T) {
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
 	builder, db := newAppSettingTestBuilder(t, mod)
-	if err := db.Create(&meta.Model{
+	if err := db.Create(&meta.RawModel{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "hand", Valid: true}},
 		Name:        "AppSetting",
 		Path:        "/virtual/modules/partner_bank/service/models/app_setting.ts",
@@ -307,7 +309,7 @@ func TestEnsureAppSettingVirtualImports_SkipsHandwritten(t *testing.T) {
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
 	builder, db := newAppSettingTestBuilder(t, owner)
-	if err := db.Create(&meta.Model{
+	if err := db.Create(&meta.RawModel{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "hand", Valid: true}},
 		Name:        "AppSetting",
 		Path:        "/virtual/modules/partner/service/models/app_setting.ts",
@@ -343,7 +345,7 @@ func TestEnsureAppSettingVirtualImports_PrefersMetaVirtualPath(t *testing.T) {
 	}
 	builder, db := newAppSettingTestBuilder(t, sibling)
 	metaPath := "/virtual/modules/partner/service/models/__generated__/app_setting.ts"
-	if err := db.Create(&meta.Model{
+	if err := db.Create(&meta.RawModel{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "virt", Valid: true}},
 		Name:        "AppSetting",
 		Path:        metaPath,
@@ -425,7 +427,7 @@ func TestAppSettingPatchCoverage_Branches(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	})
-	if err := db.Create(&meta.Model{
+	if err := db.Create(&meta.RawModel{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "hand2", Valid: true}},
 		Name:        "AppSetting",
 		Path:        "/virtual/modules/partner/service/models/app_setting.ts",
@@ -595,7 +597,7 @@ func TestSupersedeVirtualAppSettings_DeletesGeneratedRows(t *testing.T) {
 	}
 	builder, db := newAppSettingTestBuilder(t, mod)
 	builder.appSettingPlan = AppSettingPlan{SupersedeVirtual: true}
-	if err := db.Create(&meta.Model{
+	if err := db.Create(&meta.RawModel{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "virt", Valid: true}},
 		Name:        "AppSetting",
 		Path:        "/virtual/modules/partner/service/models/__generated__/app_setting.ts",
@@ -603,7 +605,7 @@ func TestSupersedeVirtualAppSettings_DeletesGeneratedRows(t *testing.T) {
 	}).Error; err != nil {
 		t.Fatalf("seed virt: %v", err)
 	}
-	if err := db.Create(&meta.Model{
+	if err := db.Create(&meta.RawModel{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "hand", Valid: true}},
 		Name:        "AppSetting",
 		Path:        "/virtual/modules/partner_bank/service/models/app_setting.ts",
@@ -622,19 +624,26 @@ func TestSupersedeVirtualAppSettings_DeletesGeneratedRows(t *testing.T) {
 	if err := builder.supersedeVirtualAppSettings(); err != nil {
 		t.Fatalf("supersede: %v", err)
 	}
+	var virtRawLeft int64
+	if err := db.Model(&meta.RawModel{}).Where("id = ?", "virt").Count(&virtRawLeft).Error; err != nil {
+		t.Fatalf("count raw virt: %v", err)
+	}
+	if virtRawLeft != 0 {
+		t.Fatalf("expected virtual raw AppSetting deleted, count=%d", virtRawLeft)
+	}
+	var handRawLeft int64
+	if err := db.Model(&meta.RawModel{}).Where("id = ?", "hand").Count(&handRawLeft).Error; err != nil {
+		t.Fatalf("count raw hand: %v", err)
+	}
+	if handRawLeft != 1 {
+		t.Fatalf("expected handwritten raw AppSetting kept, count=%d", handRawLeft)
+	}
 	var count int64
 	if err := db.Model(&meta.Model{}).Where("name = ?", "AppSetting").Count(&count).Error; err != nil {
-		t.Fatalf("count: %v", err)
+		t.Fatalf("count effective: %v", err)
 	}
 	if count != 1 {
-		t.Fatalf("expected handwritten AppSetting kept, count=%d", count)
-	}
-	var virtLeft int64
-	if err := db.Model(&meta.Model{}).Where("id = ?", "virt").Count(&virtLeft).Error; err != nil {
-		t.Fatalf("count virt: %v", err)
-	}
-	if virtLeft != 0 {
-		t.Fatalf("expected virtual AppSetting deleted, count=%d", virtLeft)
+		t.Fatalf("expected handwritten effective AppSetting after recompute, count=%d", count)
 	}
 	if err := db.Model(&meta.Model{}).Where("name = ?", "Partner").Count(&count).Error; err != nil {
 		t.Fatalf("count partner: %v", err)

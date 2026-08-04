@@ -145,7 +145,7 @@ func (m *foreignKeyMigrator) resolveTargetModelByPath(targetModelPath string) (*
 		}
 	}
 
-	var target meta.Model
+	var target meta.RawModel
 	result := m.runtimeScope.Session().
 		Where("path = ?", targetModelPath).
 		Order("id DESC").
@@ -153,7 +153,11 @@ func (m *foreignKeyMigrator) resolveTargetModelByPath(targetModelPath string) (*
 	if result.Error != nil {
 		return nil, nil
 	}
-	return &target, nil
+	converted := meta.RawModelsAsModels([]*meta.RawModel{&target})
+	if len(converted) == 0 {
+		return nil, nil
+	}
+	return converted[0], nil
 }
 
 // ForeignKeyBuilder builds SQL for foreign key creation.

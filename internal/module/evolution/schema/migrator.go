@@ -33,7 +33,7 @@ func newMigrator(runtimeScope scope.Scope, module *meta.Module) *migrator {
 }
 
 func getModuleModels(runtimeScope scope.Scope, module *meta.Module) ([]*meta.Model, error) {
-	var moduleModels []*meta.Model
+	var rawModels []*meta.RawModel
 
 	if result := runtimeScope.Session().
 		Preload("Fields", func(db *gorm.DB) *gorm.DB {
@@ -43,12 +43,13 @@ func getModuleModels(runtimeScope scope.Scope, module *meta.Module) ([]*meta.Mod
 			return db.Order("id ASC")
 		}).
 		Preload("Fields.Decorators.Arguments", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
-		Where(&meta.Model{ModuleId: module.Id}).
+		Where(&meta.RawModel{ModuleId: module.Id}).
 		Where("abstract = ?", false).
-		Find(&moduleModels); result.Error != nil {
+		Find(&rawModels); result.Error != nil {
 		return nil, xfmt.Errorf("error getting models by module id: %w", result.Error)
 	}
 
+	moduleModels := meta.RawModelsAsModels(rawModels)
 	filteredModels := make([]*meta.Model, 0, len(moduleModels))
 	for _, model := range moduleModels {
 		if model.Readonly {

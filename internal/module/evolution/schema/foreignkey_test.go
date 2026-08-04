@@ -80,9 +80,9 @@ func TestForeignKeyMigratorRuntimePaths(t *testing.T) {
 		if err := runtimeScope.Session().Create(module).Error; err != nil {
 			t.Fatalf("create module: %v", err)
 		}
-		target := &meta.Model{Name: "User", Path: "sales/user.ts", ModelTable: "sales_user", ModuleId: module.Id}
+		target := &meta.RawModel{Name: "User", Path: "sales/user.ts", ModelTable: "sales_user", ModuleId: module.Id}
 		if err := runtimeScope.Session().Create(target).Error; err != nil {
-			t.Fatalf("create target model: %v", err)
+			t.Fatalf("create target raw model: %v", err)
 		}
 		source := &meta.Model{Name: "Order", Path: "sales/order.ts", ModelTable: "sales_order", ModuleId: module.Id, Fields: []*meta.Field{newRelationField("OwnerId", "sales/user", `{"type":"ManyToOne","relation":{"onDelete":"CASCADE"}}`)}}
 

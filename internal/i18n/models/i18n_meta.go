@@ -17,10 +17,10 @@ import (
 )
 
 const (
-	i18nModelName              = "I18n"
-	terminologyEditorRoleCode  = "terminology.editor"
-	authRoleTable              = "auth_role"
-	authRoleMethodAccessTable  = "auth_role_method_access"
+	i18nModelName             = "I18n"
+	terminologyEditorRoleCode = "terminology.editor"
+	authRoleTable             = "auth_role"
+	authRoleMethodAccessTable = "auth_role_method_access"
 )
 
 var i18nServiceMethods = []string{
@@ -29,10 +29,9 @@ var i18nServiceMethods = []string{
 	"UpdateTerm",
 }
 
-// EnsureI18nMeta registers meta.Model "I18n" + Service methods for ACL
-// (serviceRef / CheckMethodAccess). Does not register TranslationTerm.
-// When the Terminology Editor role exists, seeds precise allow rows for
-// SearchTerms and UpdateTerm (idempotent).
+// EnsureI18nMeta registers declaration-layer I18n + Service methods on meta_raw_*,
+// recomputes the effective projection, and seeds Terminology Editor ACL rows against
+// effective service ids (serviceRef / CheckMethodAccess). Does not register TranslationTerm.
 func EnsureI18nMeta(runtimeScope scope.Scope, application string, moduleID sql.NullString) error {
 	application = strings.TrimSpace(application)
 	if application == "" || application == coreApplication {
@@ -42,40 +41,52 @@ func EnsureI18nMeta(runtimeScope scope.Scope, application string, moduleID sql.N
 		return nil
 	}
 	db := runtimeScope.Session().DB
-	if !db.Migrator().HasTable((&meta.Model{}).TableName()) || !db.Migrator().HasTable((&meta.Service{}).TableName()) {
+	if !db.Migrator().HasTable((&meta.RawModel{}).TableName()) ||
+		!db.Migrator().HasTable((&meta.RawService{}).TableName()) ||
+		!db.Migrator().HasTable((&meta.Model{}).TableName()) ||
+		!db.Migrator().HasTable((&meta.Service{}).TableName()) {
 		return nil
 	}
 
-	model, err := ensureI18nModel(db, application, moduleID)
+	raw, err := ensureI18nRawModel(db, application, moduleID)
 	if err != nil {
 		return err
 	}
-	serviceIDs, err := ensureI18nServices(db, model)
+	if err := ensureI18nRawServices(db, raw); err != nil {
+		return err
+	}
+	if err := meta.RecomputeEffective(db, application, i18nModelName); err != nil {
+		return fmt.Errorf("recompute I18n effective: %w", err)
+	}
+	serviceIDs, err := loadEffectiveI18nServiceIDs(db, application)
 	if err != nil {
 		return err
 	}
 	return ensureTerminologyEditorAllows(db, serviceIDs)
 }
 
-func ensureI18nModel(db *gorm.DB, application string, moduleID sql.NullString) (*meta.Model, error) {
-	var model meta.Model
-	err := db.Where("name = ? AND application = ?", i18nModelName, application).Take(&model).Error
+func ensureI18nRawModel(db *gorm.DB, application string, moduleID sql.NullString) (*meta.RawModel, error) {
+	path := fmt.Sprintf("go://i18n/%s", application)
+	var raw meta.RawModel
+	err := db.Where("name = ? AND application = ?", i18nModelName, application).
+		Order("created_at DESC, id DESC").
+		Take(&raw).Error
 	if err == nil {
-		if moduleID.Valid && (!model.ModuleId.Valid || model.ModuleId.String == "") {
-			model.ModuleId = moduleID
-			if saveErr := db.Save(&model).Error; saveErr != nil {
-				return nil, fmt.Errorf("update I18n Model module: %w", saveErr)
+		if moduleID.Valid && (!raw.ModuleId.Valid || raw.ModuleId.String == "") {
+			raw.ModuleId = moduleID
+			if saveErr := db.Save(&raw).Error; saveErr != nil {
+				return nil, fmt.Errorf("update I18n raw Model module: %w", saveErr)
 			}
 		}
-		return &model, nil
+		return &raw, nil
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, fmt.Errorf("lookup I18n Model: %w", err)
+		return nil, fmt.Errorf("lookup I18n raw Model: %w", err)
 	}
 
-	model = meta.Model{
+	raw = meta.RawModel{
 		Name:        i18nModelName,
-		Path:        fmt.Sprintf("go://i18n/%s", application),
+		Path:        path,
 		Application: application,
 		ClassName:   i18nModelName,
 		Abstract:    true,
@@ -83,34 +94,51 @@ func ensureI18nModel(db *gorm.DB, application string, moduleID sql.NullString) (
 		ModuleId:    moduleID,
 	}
 	falseVal := false
-	model.AutoMigrate = &falseVal
-	if err := db.Create(&model).Error; err != nil {
-		return nil, fmt.Errorf("create I18n Model: %w", err)
+	raw.AutoMigrate = &falseVal
+	if err := db.Create(&raw).Error; err != nil {
+		return nil, fmt.Errorf("create I18n raw Model: %w", err)
 	}
-	return &model, nil
+	return &raw, nil
 }
 
-func ensureI18nServices(db *gorm.DB, model *meta.Model) (map[string]string, error) {
+func ensureI18nRawServices(db *gorm.DB, raw *meta.RawModel) error {
+	if raw == nil || !raw.Id.Valid {
+		return fmt.Errorf("I18n raw Model is nil")
+	}
+	for _, methodName := range i18nServiceMethods {
+		var svc meta.RawService
+		err := db.Where("model_id = ? AND name = ?", raw.Id.String, methodName).Take(&svc).Error
+		if err == nil {
+			continue
+		}
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("lookup raw Service %s: %w", methodName, err)
+		}
+		svc = meta.RawService{
+			Name:                  methodName,
+			OriginModelPath:       raw.Path,
+			AccessibilityModifier: "public",
+			IsStatic:              true,
+			ModelId:               raw.Id,
+		}
+		if err := db.Create(&svc).Error; err != nil {
+			return fmt.Errorf("create raw Service %s: %w", methodName, err)
+		}
+	}
+	return nil
+}
+
+func loadEffectiveI18nServiceIDs(db *gorm.DB, application string) (map[string]string, error) {
+	var model meta.Model
+	if err := db.Where("name = ? AND application = ?", i18nModelName, application).Take(&model).Error; err != nil {
+		return nil, fmt.Errorf("lookup I18n effective Model: %w", err)
+	}
 	out := make(map[string]string, len(i18nServiceMethods))
 	for _, methodName := range i18nServiceMethods {
 		var svc meta.Service
 		err := db.Where("model_id = ? AND name = ?", model.Id.String, methodName).Take(&svc).Error
-		if err == nil {
-			out[methodName] = svc.Id.String
-			continue
-		}
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("lookup Service %s: %w", methodName, err)
-		}
-		svc = meta.Service{
-			Name:                 methodName,
-			OriginModelPath:      model.Path,
-			AccessibilityModifier: "public",
-			IsStatic:             true,
-			ModelId:              model.Id,
-		}
-		if err := db.Create(&svc).Error; err != nil {
-			return nil, fmt.Errorf("create Service %s: %w", methodName, err)
+		if err != nil {
+			return nil, fmt.Errorf("lookup effective Service %s: %w", methodName, err)
 		}
 		out[methodName] = svc.Id.String
 	}
@@ -150,15 +178,15 @@ func ensureTerminologyEditorAllows(db *gorm.DB, serviceIDs map[string]string) er
 		}
 		now := time.Now().UTC()
 		row := map[string]any{
-			"id":                xid.New().String(),
-			"role_id":           roleID,
+			"id":                  xid.New().String(),
+			"role_id":             roleID,
 			"meta_application_id": nil,
 			"meta_model_id":       nil,
 			"meta_service_id":     serviceID,
-			"mode":              "allow",
-			"source":            "manual",
-			"created_at":        now,
-			"updated_at":        now,
+			"mode":                "allow",
+			"source":              "manual",
+			"created_at":          now,
+			"updated_at":          now,
 		}
 		if err := db.Table(authRoleMethodAccessTable).Create(row).Error; err != nil {
 			return fmt.Errorf("seed RoleMethodAccess for %s: %w", methodName, err)
