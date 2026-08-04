@@ -227,6 +227,9 @@ func TestCommitInstallMetaAndDocumentSchedules(t *testing.T) {
 	if err := db.AutoMigrate(&internaltask.Schedule{}, &meta.Module{}); err != nil {
 		t.Fatal(err)
 	}
+	if err := meta.EnsureDualStoreTables(db); err != nil {
+		t.Fatalf("EnsureDualStoreTables: %v", err)
+	}
 	now := time.Now().UTC()
 	if err := db.Create(&internaltask.Schedule{
 		Id: "sch_legacy", Active: true, Name: "meta.module_index.daily_sync",

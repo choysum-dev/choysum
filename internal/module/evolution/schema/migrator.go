@@ -18,18 +18,21 @@ type Migrator interface {
 	Migrate() error
 }
 
-func NewMigrator(runtimeScope scope.Scope, module *meta.Module) Migrator {
+func NewMigrator(runtimeScope scope.Scope, module *meta.Module) (Migrator, error) {
 	return newMigrator(runtimeScope, module)
 }
 
-func newMigrator(runtimeScope scope.Scope, module *meta.Module) *migrator {
-	models, _ := getModuleModels(runtimeScope, module)
+func newMigrator(runtimeScope scope.Scope, module *meta.Module) (*migrator, error) {
+	models, err := getModuleModels(runtimeScope, module)
+	if err != nil {
+		return nil, err
+	}
 	return &migrator{
 		runtimeScope:       runtimeScope,
 		module:             module,
 		modelMigrator:      newModelMigrator(runtimeScope, module, models),
 		foreignKeyMigrator: newForeignKeyMigrator(runtimeScope, module, models),
-	}
+	}, nil
 }
 
 func getModuleModels(runtimeScope scope.Scope, module *meta.Module) ([]*meta.Model, error) {

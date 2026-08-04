@@ -68,7 +68,9 @@ func EnsureI18nMeta(runtimeScope scope.Scope, application string, moduleID sql.N
 func ensureI18nRawModel(db *gorm.DB, application string, moduleID sql.NullString) (*meta.RawModel, error) {
 	path := fmt.Sprintf("go://i18n/%s", application)
 	var raw meta.RawModel
-	err := db.Where("name = ? AND application = ?", i18nModelName, application).
+	// Prefer the canonical go://i18n/<application> declaration. Same-name extensions
+	// share (application, name) and must not receive built-in I18n services.
+	err := db.Where("path = ? AND application = ?", path, application).
 		Order("created_at DESC, id DESC").
 		Take(&raw).Error
 	if err == nil {

@@ -327,11 +327,16 @@ func (b *ModuleBuilder) getNewExtends(model *meta.Model) (*meta.Model, error) {
 		return nil, nil
 	}
 
+	application := strings.TrimSpace(model.Application)
+	if application == "" && b.module != nil {
+		application = strings.TrimSpace(b.module.ApplicationStr)
+	}
+	query := b.runtimeScope.Session().Where("name = ?", model.Name)
+	if application != "" {
+		query = query.Where("application = ?", application)
+	}
 	var extendsRaws []*meta.RawModel
-	if result := b.runtimeScope.Session().
-		Where("name = ?", model.Name).
-		Order("id DESC").
-		Find(&extendsRaws); result.Error != nil {
+	if result := query.Order("id DESC").Find(&extendsRaws); result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, xfmt.Errorf("error getting last models: %w", result.Error)
 		}

@@ -96,7 +96,9 @@ func TestRecomputeKeys_PartnerBankCommercialFixture(t *testing.T) {
 	if err := db.Unscoped().Where("id = ?", commercial.Id.String).Delete(&meta.RawModel{}).Error; err != nil {
 		t.Fatalf("delete commercial raw: %v", err)
 	}
-	_ = db.Unscoped().Where("model_id = ?", commercial.Id.String).Delete(&meta.RawField{})
+	if err := db.Unscoped().Where("model_id = ?", commercial.Id.String).Delete(&meta.RawField{}).Error; err != nil {
+		t.Fatalf("delete commercial raw fields: %v", err)
+	}
 	if err := metaeff.RecomputeEffective(db, "partner", "Partner"); err != nil {
 		t.Fatalf("recompute after commercial: %v", err)
 	}
@@ -115,7 +117,9 @@ func TestRecomputeKeys_PartnerBankCommercialFixture(t *testing.T) {
 	if err := db.Unscoped().Where("id = ?", bank.Id.String).Delete(&meta.RawModel{}).Error; err != nil {
 		t.Fatalf("delete bank raw: %v", err)
 	}
-	_ = db.Unscoped().Where("model_id = ?", bank.Id.String).Delete(&meta.RawField{})
+	if err := db.Unscoped().Where("model_id = ?", bank.Id.String).Delete(&meta.RawField{}).Error; err != nil {
+		t.Fatalf("delete bank raw fields: %v", err)
+	}
 	if err := metaeff.RecomputeEffective(db, "partner", "Partner"); err != nil {
 		t.Fatalf("recompute after bank: %v", err)
 	}
@@ -131,7 +135,9 @@ func TestRecomputeKeys_PartnerBankCommercialFixture(t *testing.T) {
 	if err := db.Unscoped().Where("id = ?", partner.Id.String).Delete(&meta.RawModel{}).Error; err != nil {
 		t.Fatalf("delete partner raw: %v", err)
 	}
-	_ = db.Unscoped().Where("model_id = ?", partner.Id.String).Delete(&meta.RawField{})
+	if err := db.Unscoped().Where("model_id = ?", partner.Id.String).Delete(&meta.RawField{}).Error; err != nil {
+		t.Fatalf("delete partner raw fields: %v", err)
+	}
 	if err := metaeff.RecomputeEffective(db, "partner", "Partner"); err != nil {
 		t.Fatalf("recompute after full: %v", err)
 	}

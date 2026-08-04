@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/rs/xid"
@@ -132,6 +133,59 @@ func TestEnsureI18nMetaEarlyReturns(t *testing.T) {
 	}
 }
 
+func TestEnsureI18nMetaPrefersCanonicalPath(t *testing.T) {
+	rs := newTestScope(t)
+	db := rs.Session().DB
+	migrateI18nDualStoreTables(t, db)
+
+	// Newer same-name extension must not receive built-in I18n services.
+	ext := meta.RawModel{
+		BaseModel: meta.BaseModel{
+			Id: sql.NullString{String: xid.New().String(), Valid: true},
+		},
+		Name:        "I18n",
+		Path:        "modules/ext/i18n_override.ts",
+		Application: "auth",
+		ClassName:   "I18n",
+		Abstract:    true,
+		Readonly:    true,
+	}
+	if err := db.Create(&ext).Error; err != nil {
+		t.Fatalf("seed extension raw: %v", err)
+	}
+	// Bump timestamps so Order(created_at DESC) would prefer the extension if name-only.
+	if err := db.Model(&ext).Updates(map[string]any{
+		"created_at": db.NowFunc().Add(time.Hour),
+		"updated_at": db.NowFunc().Add(time.Hour),
+	}).Error; err != nil {
+		t.Fatalf("bump extension timestamps: %v", err)
+	}
+
+	moduleID := sql.NullString{String: xid.New().String(), Valid: true}
+	if err := EnsureI18nMeta(rs, "auth", moduleID); err != nil {
+		t.Fatalf("EnsureI18nMeta: %v", err)
+	}
+
+	var canonical meta.RawModel
+	if err := db.Where("path = ? AND application = ?", "go://i18n/auth", "auth").Take(&canonical).Error; err != nil {
+		t.Fatalf("canonical raw missing: %v", err)
+	}
+	var canonicalSvc int64
+	if err := db.Model(&meta.RawService{}).Where("model_id = ?", canonical.Id.String).Count(&canonicalSvc).Error; err != nil {
+		t.Fatal(err)
+	}
+	if canonicalSvc != 3 {
+		t.Fatalf("want 3 services on canonical path, got %d", canonicalSvc)
+	}
+	var extSvc int64
+	if err := db.Model(&meta.RawService{}).Where("model_id = ?", ext.Id.String).Count(&extSvc).Error; err != nil {
+		t.Fatal(err)
+	}
+	if extSvc != 0 {
+		t.Fatalf("extension must not receive built-in services, got %d", extSvc)
+	}
+}
+
 func TestEnsureI18nMetaUpdatesModuleID(t *testing.T) {
 	rs := newTestScope(t)
 	db := rs.Session().DB
@@ -191,7 +245,7 @@ func TestEnsureI18nMetaLookupErrors(t *testing.T) {
 	db := rs.Session().DB
 	migrateI18nDualStoreTables(t, db)
 	// Corrupt meta_raw_model so Take fails with a non-RecordNotFound error.
-	if err := db.Exec("ALTER TABLE meta_raw_model RENAME COLUMN name TO name_broken").Error; err != nil {
+	if err := db.Exec("ALTER TABLE meta_raw_model RENAME COLUMN path TO path_broken").Error; err != nil {
 		t.Fatal(err)
 	}
 	if err := EnsureI18nMeta(rs, "auth", sql.NullString{}); err == nil || !strings.Contains(err.Error(), "lookup I18n raw Model") {

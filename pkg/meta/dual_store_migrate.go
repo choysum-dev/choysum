@@ -481,6 +481,11 @@ func clearEffectiveShapeTrees(db *gorm.DB) error {
 	return nil
 }
 
+// persistEffectiveProjection inserts one effective model tree.
+// reuseServiceIDs maps service name → prior effective service id. Callers may pass a
+// non-nil map only after deleting existing effective rows for this logical key
+// (RecomputeEffective does this via DeleteEffectiveModelTree); otherwise reused ids
+// collide with still-present primary keys.
 func persistEffectiveProjection(db *gorm.DB, merged *Model, effectiveID string, reuseServiceIDs map[string]string) error {
 	eff := &Model{
 		BaseModel: BaseModel{

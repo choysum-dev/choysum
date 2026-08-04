@@ -608,8 +608,10 @@ func TestGetNewExtendsAndUpdatePrebuildResult(t *testing.T) {
 		t.Fatalf("ensure dual store: %v", err)
 	}
 	rows := []*meta.RawModel{
-		{Name: "Partner", Path: "/models/base", BaseModel: meta.BaseModel{Id: sql.NullString{String: "base", Valid: true}}},
-		{Name: "Partner", Path: "/models/latest", BaseModel: meta.BaseModel{Id: sql.NullString{String: "latest", Valid: true}}},
+		{Name: "Partner", Path: "/models/base", Application: "auth", BaseModel: meta.BaseModel{Id: sql.NullString{String: "base", Valid: true}}},
+		{Name: "Partner", Path: "/models/latest", Application: "auth", BaseModel: meta.BaseModel{Id: sql.NullString{String: "latest", Valid: true}}},
+		// Newer same-name declaration in another application must not win.
+		{Name: "Partner", Path: "/models/foreign-latest", Application: "crm", BaseModel: meta.BaseModel{Id: sql.NullString{String: "foreign", Valid: true}}},
 	}
 	if err := db.Create(&rows).Error; err != nil {
 		t.Fatalf("seed models: %v", err)
@@ -623,7 +625,7 @@ func TestGetNewExtendsAndUpdatePrebuildResult(t *testing.T) {
 		tsPathAlias:  map[string]string{},
 	}
 
-	current := &meta.Model{Name: "Partner", Path: "/models/current", Extends: "/models/base"}
+	current := &meta.Model{Name: "Partner", Path: "/models/current", Application: "auth", Extends: "/models/base"}
 	latest, err := builder.getNewExtends(current)
 	if err != nil {
 		t.Fatalf("getNewExtends() error = %v", err)
@@ -645,10 +647,11 @@ func TestGetNewExtendsAndUpdatePrebuildResult(t *testing.T) {
 		Path:       "/models/current.ts",
 		RawContent: rawContent,
 		Model: &meta.Model{
-			Name:       "Partner",
-			Path:       "/models/current",
-			RawExtends: "/models/base",
-			Extends:    "/models/base",
+			Name:        "Partner",
+			Path:        "/models/current",
+			Application: "auth",
+			RawExtends:  "/models/base",
+			Extends:     "/models/base",
 		},
 	})
 	if err := builder.updatePrebuildResult(buildResult); err != nil {

@@ -4,6 +4,7 @@
 package meta
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -75,7 +76,6 @@ func RecomputeEffective(tx *gorm.DB, application, name string) error {
 	}
 
 	// Serialize concurrent recomputes for the same logical name (best-effort on SQLite).
-	_ = tx.Exec("SELECT 1").Error
 	if err := lockLogicalKeyFn(tx, key); err != nil {
 		return err
 	}
@@ -211,9 +211,12 @@ func lockLogicalKey(tx *gorm.DB, key LogicalKey) error {
 		// Advisory lock keyed by app+name hash would be ideal; fall back to FOR UPDATE
 		// on any existing effective row (no-op when missing).
 		var m Model
-		_ = tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where("application = ? AND name = ?", key.Application, key.Name).
 			Take(&m).Error
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("lock effective row for %s/%s: %w", key.Application, key.Name, err)
+		}
 	default:
 		// SQLite / MySQL: rely on UNIQUE(application, name) + caller transaction.
 	}

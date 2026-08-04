@@ -213,7 +213,10 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepInitialize, initializeStarted)
 
-	migrator := schema.NewMigrator(m.runtimeScope, m.module)
+	migrator, err := schema.NewMigrator(m.runtimeScope, m.module)
+	if err != nil {
+		return xfmt.Errorf("error preparing schema migrator: %w", err)
+	}
 	schemaStarted := time.Now()
 	if err := migrator.Migrate(); err != nil {
 		return xfmt.Errorf("error migrating module: %w", err)

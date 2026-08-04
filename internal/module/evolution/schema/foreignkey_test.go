@@ -112,11 +112,37 @@ func TestForeignKeyMigratorRuntimePaths(t *testing.T) {
 
 	t.Run("reports missing target model", func(t *testing.T) {
 		runtimeScope := newSchemaTestScope(t)
+		migrateSchemaMetaTables(t, runtimeScope.Session())
 		module := &meta.Module{Name: "sales"}
 		fkMigrator := newForeignKeyMigrator(runtimeScope, module, []*meta.Model{{Name: "Order", Path: "sales/order.ts", ModelTable: "sales_order", Fields: []*meta.Field{newRelationField("OwnerId", "sales/missing", `{"type":"ManyToOne"}`)}}}).(*foreignKeyMigrator)
 
 		if _, err := fkMigrator.getManyToOneKeys(); err == nil || !strings.Contains(err.Error(), "target model sales/missing.ts not found") {
 			t.Fatalf("expected missing target error, got %v", err)
+		}
+	})
+
+	t.Run("rejects duplicate path with conflicting ModelTable", func(t *testing.T) {
+		runtimeScope := newSchemaTestScope(t)
+		migrateSchemaMetaTables(t, runtimeScope.Session())
+		modA := &meta.Module{Name: "mod_a"}
+		modB := &meta.Module{Name: "mod_b"}
+		if err := runtimeScope.Session().Create(modA).Error; err != nil {
+			t.Fatalf("create modA: %v", err)
+		}
+		if err := runtimeScope.Session().Create(modB).Error; err != nil {
+			t.Fatalf("create modB: %v", err)
+		}
+		for _, row := range []*meta.RawModel{
+			{Name: "User", Path: "shared/user.ts", ModelTable: "mod_a_user", ModuleId: modA.Id},
+			{Name: "User", Path: "shared/user.ts", ModelTable: "mod_b_user", ModuleId: modB.Id},
+		} {
+			if err := runtimeScope.Session().Create(row).Error; err != nil {
+				t.Fatalf("create raw: %v", err)
+			}
+		}
+		fkMigrator := newForeignKeyMigrator(runtimeScope, modA, nil).(*foreignKeyMigrator)
+		if _, err := fkMigrator.resolveTargetModelByPath("shared/user.ts"); err == nil || !strings.Contains(err.Error(), "ambiguous model path") {
+			t.Fatalf("expected ambiguous path error, got %v", err)
 		}
 	})
 

@@ -103,7 +103,9 @@ func TestRecomputeEffective_CreatesPreservesAndDeletes(t *testing.T) {
 	if err := db.Unscoped().Where("id = ?", bank.Id.String).Delete(&RawModel{}).Error; err != nil {
 		t.Fatalf("delete bank raw: %v", err)
 	}
-	_ = db.Unscoped().Where("model_id = ?", bank.Id.String).Delete(&RawField{}).Error
+	if err := db.Unscoped().Where("model_id = ?", bank.Id.String).Delete(&RawField{}).Error; err != nil {
+		t.Fatalf("delete bank raw fields: %v", err)
+	}
 
 	if err := RecomputeEffective(db, "partner", "Partner"); err != nil {
 		t.Fatalf("third recompute: %v", err)
@@ -122,7 +124,9 @@ func TestRecomputeEffective_CreatesPreservesAndDeletes(t *testing.T) {
 	if err := db.Unscoped().Where("id = ?", base.Id.String).Delete(&RawModel{}).Error; err != nil {
 		t.Fatalf("delete base raw: %v", err)
 	}
-	_ = db.Unscoped().Where("model_id = ?", base.Id.String).Delete(&RawField{}).Error
+	if err := db.Unscoped().Where("model_id = ?", base.Id.String).Delete(&RawField{}).Error; err != nil {
+		t.Fatalf("delete base raw fields: %v", err)
+	}
 	if err := RecomputeEffective(db, "partner", "Partner"); err != nil {
 		t.Fatalf("final recompute: %v", err)
 	}
@@ -188,6 +192,9 @@ func TestRecomputeEffective_PreservesServiceIDsByName(t *testing.T) {
 	}
 	if second.Id.String != first.Id.String {
 		t.Fatalf("model id changed: %q → %q", first.Id.String, second.Id.String)
+	}
+	if len(second.Services) != 2 {
+		t.Fatalf("want 2 services after recompute, got %d", len(second.Services))
 	}
 	for _, s := range second.Services {
 		if s == nil {
