@@ -4,7 +4,7 @@
 import { Field } from '../decorator/field';
 import { MetadataStorage } from '../metadata/storage';
 import { raiseDomainError } from '@/core/service/error';
-import { deleteReqStateKeysByPrefix, memoizeInReqState } from '../../runtime/context';
+import { memoizeInReqState } from '../../runtime/context';
 import {
   getOrInitRepositoryReqServiceState,
   getRepositoryCurrentReq,
@@ -27,7 +27,23 @@ function storeMeta(ctor: InstantiableModelCtor<AppSettingBaseModel>) {
 }
 
 function storeApplication(ctor: InstantiableModelCtor<AppSettingBaseModel>): string {
-  return String(storeMeta(ctor).application || '').trim();
+  return String(storeMeta(ctor)?.application || '').trim();
+}
+
+/** Empty/`core` stores are invalid. Hard-delete requires softDelete: false. */
+function resolveWritableApplication(ctor: InstantiableModelCtor<AppSettingBaseModel>): string {
+  const meta = storeMeta(ctor);
+  const application = String(meta?.application || '').trim();
+  if (!application || application === 'core') {
+    fail('APP_SETTING_APPLICATION_INVALID', 'AppSetting store application must be a non-core application');
+  }
+  if (meta.softDelete !== false) {
+    fail(
+      'APP_SETTING_SOFT_DELETE',
+      'AppSetting model must set softDelete: false so Set(key, null) hard-deletes and unique keys can be reused'
+    );
+  }
+  return application;
 }
 
 function normalizeKey(key: string): string {
@@ -50,7 +66,14 @@ function invalidateAppSettingMemo(application: string, key: string): void {
   const app = String(application || '').trim();
   const k = String(key || '').trim();
   if (!app || !k) return;
-  deleteReqStateKeysByPrefix(appSettingReqState(), appSettingMemoKey(app, k));
+  const state = appSettingReqState();
+  // Exact key only — prefix delete would also drop siblings like `foo` vs `foo_bar`.
+  if (state) delete state[appSettingMemoKey(app, k)];
+}
+
+function isUniqueConstraintError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /unique constraint|unique index|duplicate key|UNIQUE constraint failed/i.test(msg);
 }
 
 async function findByKey(
@@ -70,7 +93,7 @@ async function findByKey(
  * Thin app classes (hand-written or C2):
  * `@Model('AppSetting', { softDelete: false }) export default class AppSetting extends AppSettingBaseModel {}`
  *
- * Prefer `softDelete: false` so `Set(key, null)` hard-deletes and unique `key` can be reused.
+ * `softDelete: false` is required so `Set(key, null)` hard-deletes and unique `key` can be reused.
  * Access via `SomeModel.pool<AppSettingModelCtor>('AppSetting').Get/Set` — do not import C2 thin classes.
  */
 export default class AppSettingBaseModel extends BaseModel {
@@ -93,6 +116,12 @@ export default class AppSettingBaseModel extends BaseModel {
     const application = storeApplication(this);
     if (!application || application === 'core') {
       return defaultValue;
+    }
+    if (storeMeta(this).softDelete !== false) {
+      fail(
+        'APP_SETTING_SOFT_DELETE',
+        'AppSetting model must set softDelete: false so Set(key, null) hard-deletes and unique keys can be reused'
+      );
     }
 
     const memoKey = appSettingMemoKey(application, k);
@@ -117,31 +146,45 @@ export default class AppSettingBaseModel extends BaseModel {
     value: string | null | undefined
   ): Promise<string | null> {
     const k = normalizeKey(key);
-    const application = storeApplication(this);
+    const application = resolveWritableApplication(this);
 
     const existing = await findByKey(this, k);
     const previous = existing ? String((existing as any).Value ?? '') : null;
 
     if (value === null || value === undefined) {
       if (existing?.Id) {
-        // Prefer hard delete: thin AppSetting models should set softDelete: false (see class JSDoc).
         await (this as any).DeleteById(existing.Id);
       }
-      if (application) invalidateAppSettingMemo(application, k);
+      invalidateAppSettingMemo(application, k);
       return previous;
     }
 
     const stored = String(value);
     if (existing?.Id) {
       if (previous === stored) {
-        if (application) invalidateAppSettingMemo(application, k);
+        invalidateAppSettingMemo(application, k);
         return previous;
       }
       await (this as any).UpdateById(existing.Id, { Value: stored } as any);
-    } else {
-      await (this as any).Create({ Key: k, Value: stored } as any);
+      invalidateAppSettingMemo(application, k);
+      return previous;
     }
-    if (application) invalidateAppSettingMemo(application, k);
+
+    try {
+      await (this as any).Create({ Key: k, Value: stored } as any);
+    } catch (err) {
+      // Concurrent Create on the same absent key: unique hit → reload and update.
+      if (!isUniqueConstraintError(err)) throw err;
+      const raced = await findByKey(this, k);
+      if (!raced?.Id) throw err;
+      const racedPrevious = String((raced as any).Value ?? '');
+      if (racedPrevious !== stored) {
+        await (this as any).UpdateById(raced.Id, { Value: stored } as any);
+      }
+      invalidateAppSettingMemo(application, k);
+      return racedPrevious;
+    }
+    invalidateAppSettingMemo(application, k);
     return previous;
   }
 }

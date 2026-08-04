@@ -43,13 +43,17 @@ export function pool<T = typeof BaseModel>(application: string, shortName: strin
  */
 export function dial<T = Record<string, (...args: unknown[]) => unknown>>(fullModelName: string): T {
   const key = String(fullModelName || '').trim();
-  if (!key) {
-    raiseDomainError('core', 'DIAL_INVALID_MODEL', 'dial requires a full model name app.Model');
-  }
-  if (!key.includes('.')) {
-    raiseDomainError('core', 'DIAL_INVALID_MODEL', `dial requires a full model name app.Model, got ${key}`);
+  if (!key || !isValidFullModelName(key)) {
+    raiseDomainError('core', 'DIAL_INVALID_MODEL', `dial requires a full model name app.Model, got ${key || '(empty)'}`);
   }
   return createServiceByModel(key) as T;
+}
+
+function isValidFullModelName(key: string): boolean {
+  // fullModelName is `${application}.${modelName}`; modelName may itself contain dots
+  // (e.g. `@Model('test.Foo')` → `app.test.Foo`). Reject empty segments only.
+  const parts = key.split('.');
+  return parts.length >= 2 && parts.every(part => part.length > 0);
 }
 
 /** Resolve only by exact fullModelName (pool table + metadata), no short-name fallback. */

@@ -121,6 +121,76 @@ test('AppSetting blank key raises APP_SETTING_INVALID_KEY', async () => {
   await expectRejects(As1AppSetting.Set('', '1'), 'APP_SETTING_INVALID_KEY');
 });
 
+@Model('AppSetting', { application: 'core', softDelete: false })
+class As1CoreAppSetting extends AppSettingBaseModel {}
+
+@Model('AppSetting', { application: 'as1soft', softDelete: true })
+class As1SoftAppSetting extends AppSettingBaseModel {}
+
+test('AppSetting Set rejects core/empty application; Get returns default', async () => {
+  expect(await As1CoreAppSetting.Get('k', 'd')).toBe('d');
+  await expectRejects(As1CoreAppSetting.Set('k', '1'), 'APP_SETTING_APPLICATION_INVALID');
+});
+
+test('AppSetting requires softDelete: false', async () => {
+  await expectRejects(As1SoftAppSetting.Get('k'), 'APP_SETTING_SOFT_DELETE');
+  await expectRejects(As1SoftAppSetting.Set('k', '1'), 'APP_SETTING_SOFT_DELETE');
+});
+
+test('AppSetting Set retries Create unique race as Update', async () => {
+  const store: any[] = [];
+  const restore = installStoreMocks(As1AppSetting, store);
+  let createCalls = 0;
+  const origCreate = As1AppSetting.Create;
+  As1AppSetting.Create = (async (value: any) => {
+    createCalls += 1;
+    if (createCalls === 1) {
+      store.push({ Id: 'AS-race', Key: value.Key, Value: 'from-other' });
+      throw new Error('UNIQUE constraint failed: as1partner_app_setting.key');
+    }
+    return origCreate.call(As1AppSetting, value);
+  }) as any;
+  try {
+    expect(await As1AppSetting.Set('race_key', 'mine')).toBe('from-other');
+    expect(store).toHaveLength(1);
+    expect(store[0].Value).toBe('mine');
+  } finally {
+    As1AppSetting.Create = origCreate;
+    restore();
+  }
+});
+
+test('AppSetting memo invalidation is exact-key (not prefix)', async () => {
+  const store: any[] = [];
+  const restore = installStoreMocks(As1AppSetting, store);
+  let searchCount = 0;
+  const origSearch = As1AppSetting.Search;
+  As1AppSetting.Search = (async (condition: any, options?: any) => {
+    searchCount += 1;
+    return origSearch.call(As1AppSetting, condition, options);
+  }) as any;
+  try {
+    await withReq(async () => {
+      await As1AppSetting.Set('foo', '1');
+      await As1AppSetting.Set('foo_bar', '2');
+      searchCount = 0;
+      expect(await As1AppSetting.Get('foo')).toBe('1');
+      expect(await As1AppSetting.Get('foo_bar')).toBe('2');
+      expect(searchCount).toBe(2);
+
+      await As1AppSetting.Set('foo', '1b');
+      searchCount = 0;
+      expect(await As1AppSetting.Get('foo_bar')).toBe('2');
+      expect(searchCount).toBe(0);
+      expect(await As1AppSetting.Get('foo')).toBe('1b');
+      expect(searchCount).toBe(1);
+    });
+  } finally {
+    As1AppSetting.Search = origSearch;
+    restore();
+  }
+});
+
 test('AppSetting Get memoizes within request and Set invalidates', async () => {
   const store: any[] = [];
   const restore = installStoreMocks(As1AppSetting, store);
@@ -221,4 +291,18 @@ test('dial wraps createServiceByModel; rejects empty and short names', () => {
   } catch (err) {
     expect((err as ChoysumError).code).toBe('DIAL_INVALID_MODEL');
   }
+  for (const bad of ['app.', '.Model', 'app..Model']) {
+    try {
+      dial(bad);
+      expect(false).toBe(true);
+    } catch (err) {
+      expect((err as ChoysumError).code).toBe('DIAL_INVALID_MODEL');
+    }
+  }
+
+  // modelName may contain dots (`@Model('test.Foo')` → `app.test.Foo`).
+  const dotted = `as1.test.DialProbe_${Date.now()}`;
+  const dottedSvc = { ping: () => 'pong' };
+  registerServiceFactory(dotted, () => dottedSvc);
+  expect(dial(dotted)).toBe(dottedSvc);
 });
