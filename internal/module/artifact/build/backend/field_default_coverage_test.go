@@ -350,6 +350,26 @@ func TestSupersedeVirtualFieldDefaults_GuardsAndDependents(t *testing.T) {
 	}
 }
 
+func TestSupersedeVirtualFieldDefaults_RecomputeError(t *testing.T) {
+	builder, db := newFieldDefaultTestBuilder(t, &meta.Module{
+		Name: "partner_bank", Path: "/virtual/modules/partner_bank",
+		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
+	})
+	builder.fieldDefaultPlan = FieldDefaultPlan{SupersedeVirtual: true}
+	if err := db.Create(&meta.RawModel{
+		BaseModel: meta.BaseModel{Id: sql.NullString{String: "virt-recompute", Valid: true}},
+		Name:      "FieldDefault", Path: "/virtual/modules/partner/service/models/__generated__/field_default.ts", Application: "partner",
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Migrator().DropTable(&meta.Model{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := builder.supersedeVirtualFieldDefaults(); err == nil || !strings.Contains(err.Error(), "recompute FieldDefault after supersede") {
+		t.Fatalf("expected recompute error, got %v", err)
+	}
+}
+
 func TestSupersedeVirtualFieldDefaults_ErrorBranches(t *testing.T) {
 	builder, db := newFieldDefaultTestBuilder(t, &meta.Module{
 		Name: "partner_bank", Path: "/virtual/modules/partner_bank",

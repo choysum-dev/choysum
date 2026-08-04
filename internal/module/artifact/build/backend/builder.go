@@ -348,9 +348,7 @@ func (b *ModuleBuilder) getNewExtends(model *meta.Model) (*meta.Model, error) {
 			lastRaw := extendsRaws[0]
 			if lastRaw.Path != model.Path && lastRaw.Path != model.Extends {
 				converted := meta.RawModelsAsModels([]*meta.RawModel{lastRaw})
-				if len(converted) > 0 {
-					return converted[0], nil
-				}
+				return converted[0], nil
 			}
 		}
 	}
@@ -1167,9 +1165,6 @@ func (b *ModuleBuilder) loadLatestModelByPath(path string) (*meta.Model, error) 
 		return nil, xfmt.Errorf("error loading parent model by path %s: %w", path, result.Error)
 	}
 	converted := meta.RawModelsAsModels([]*meta.RawModel{&raw})
-	if len(converted) == 0 {
-		return nil, nil
-	}
 	return converted[0], nil
 }
 

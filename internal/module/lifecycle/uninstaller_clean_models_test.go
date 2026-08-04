@@ -345,6 +345,26 @@ END`).Error; err != nil {
 			},
 		},
 		{
+			name:    "recompute effective",
+			wantMsg: "error recomputing effective models after uninstall",
+			setup: func(t *testing.T, db *gorm.DB, seed cleanModelsSeed) {
+				deleteRawCleanModelsPrefix(t, db, seed)
+				if err := db.Unscoped().Delete(seed.compArgument).Error; err != nil {
+					t.Fatalf("delete component argument: %v", err)
+				}
+				if err := db.Unscoped().Delete(seed.compDecorator).Error; err != nil {
+					t.Fatalf("delete component decorator: %v", err)
+				}
+				if err := db.Unscoped().Delete(seed.rawService).Error; err != nil {
+					t.Fatalf("delete raw service: %v", err)
+				}
+				if err := db.Unscoped().Delete(seed.rawField).Error; err != nil {
+					t.Fatalf("delete raw field: %v", err)
+				}
+				dropMetaTable(t, db, &meta.Model{})
+			},
+		},
+		{
 			name:    "components",
 			wantMsg: "error deleting components",
 			setup: func(t *testing.T, db *gorm.DB, seed cleanModelsSeed) {

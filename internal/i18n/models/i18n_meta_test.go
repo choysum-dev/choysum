@@ -326,3 +326,43 @@ func TestEnsureTerminologyEditorAccessLookupAndSeedErrors(t *testing.T) {
 	}
 	_ = db.Exec("PRAGMA query_only = OFF")
 }
+
+func TestEnsureI18nRawServicesInvalidRaw(t *testing.T) {
+	rs := newTestScope(t)
+	migrateI18nDualStoreTables(t, rs.Session().DB)
+
+	if err := ensureI18nRawServices(rs.Session().DB, nil); err == nil || !strings.Contains(err.Error(), "I18n raw Model is nil") {
+		t.Fatalf("nil raw: %v", err)
+	}
+	if err := ensureI18nRawServices(rs.Session().DB, &meta.RawModel{}); err == nil || !strings.Contains(err.Error(), "I18n raw Model is nil") {
+		t.Fatalf("invalid id raw: %v", err)
+	}
+}
+
+func TestLoadEffectiveI18nServiceIDsErrors(t *testing.T) {
+	rs := newTestScope(t)
+	db := rs.Session().DB
+	migrateI18nDualStoreTables(t, db)
+	if err := EnsureI18nMeta(rs, "crm", sql.NullString{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec("ALTER TABLE meta_model RENAME COLUMN name TO name_broken").Error; err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadEffectiveI18nServiceIDs(db, "crm"); err == nil || !strings.Contains(err.Error(), "lookup I18n effective Model") {
+		t.Fatalf("expected effective model lookup error, got %v", err)
+	}
+
+	rs2 := newTestScope(t)
+	db2 := rs2.Session().DB
+	migrateI18nDualStoreTables(t, db2)
+	if err := EnsureI18nMeta(rs2, "erp", sql.NullString{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db2.Exec("ALTER TABLE meta_service RENAME COLUMN name TO name_broken").Error; err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadEffectiveI18nServiceIDs(db2, "erp"); err == nil || !strings.Contains(err.Error(), "lookup effective Service") {
+		t.Fatalf("expected effective service lookup error, got %v", err)
+	}
+}

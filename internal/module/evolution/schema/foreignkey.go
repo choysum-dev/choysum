@@ -154,9 +154,6 @@ func (m *foreignKeyMigrator) resolveTargetModelByPath(targetModelPath string) (*
 		return nil, nil
 	}
 	converted := meta.RawModelsAsModels([]*meta.RawModel{&target})
-	if len(converted) == 0 {
-		return nil, nil
-	}
 	return converted[0], nil
 }
 

@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"os"
@@ -530,6 +531,9 @@ func TestMergeCloneAndMaterializedHelpers(t *testing.T) {
 	if !builder.isAlreadyMaterialized(&meta.Model{Services: []*meta.Service{{Name: "List", OriginModelPath: "/models/base"}}}) {
 		t.Fatal("expected origin metadata to mark model as materialized")
 	}
+	if !builder.isAlreadyMaterialized(&meta.Model{Fields: []*meta.Field{{Name: "Code", OriginModelPath: "/models/base"}}}) {
+		t.Fatal("expected field origin metadata to mark model as materialized")
+	}
 
 	if cloneField(nil) != nil || cloneService(nil) != nil || cloneDecorator(nil) != nil {
 		t.Fatal("expected clone helpers to preserve nil inputs")
@@ -702,9 +706,18 @@ func TestPersistHelpersAndBuild(t *testing.T) {
 		t.Fatalf("expected Build to persist module metadata, got %#v", result)
 	}
 
-	seedModel := &meta.Model{BaseModel: meta.BaseModel{Id: sql.NullString{String: "stale", Valid: true}}, Name: "Stale", Path: "/models/stale", ModuleId: sql.NullString{String: "module-1", Valid: true}}
+	seedModel := &meta.Model{BaseModel: meta.BaseModel{Id: sql.NullString{String: "stale", Valid: true}}, Name: "Stale", Path: "/models/stale", Application: "partner", ModuleId: sql.NullString{String: "module-1", Valid: true}}
 	if err := db.Create(seedModel).Error; err != nil {
 		t.Fatalf("seed stale model: %v", err)
+	}
+	if err := db.Create(&meta.RawModel{
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "prev-raw", Valid: true}},
+		Name:        "LegacyRaw",
+		Path:        "/models/legacy-raw",
+		Application: "partner",
+		ModuleId:    sql.NullString{String: "module-1", Valid: true},
+	}).Error; err != nil {
+		t.Fatalf("seed previous raw model: %v", err)
 	}
 	models := []*meta.Model{
 		{Name: "PartnerOld", Path: "/models/partner", Application: "partner"},
@@ -1407,4 +1420,121 @@ func TestPersistApplicationLookupAndModelDeleteErrors(t *testing.T) {
 	if builder.module.Application == nil || builder.module.Application.Name != "crm" {
 		t.Fatalf("expected fallback application object, got %#v", builder.module.Application)
 	}
+}
+
+func TestGetNewExtends_FindError(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:backendbuilder-getnewextends-find?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := meta.EnsureDualStoreTables(db); err != nil {
+		t.Fatalf("ensure dual store: %v", err)
+	}
+	testRuntimeScope := newBuilderTestScope()
+	testRuntimeScope.session = &scope.Session{DB: db}
+	builder := &ModuleBuilder{
+		runtimeScope: testRuntimeScope,
+		module:       &meta.Module{ApplicationStr: "auth"},
+	}
+	if err := db.Migrator().DropTable(&meta.RawModel{}); err != nil {
+		t.Fatalf("drop meta_raw_model: %v", err)
+	}
+	current := &meta.Model{Name: "Partner", Path: "/models/current", Extends: "/models/base"}
+	if _, err := builder.getNewExtends(current); err == nil || !strings.Contains(err.Error(), "error getting last models") {
+		t.Fatalf("expected find error, got %v", err)
+	}
+}
+
+func TestPersistModuleModels_ErrorBranches(t *testing.T) {
+	openPersistDB := func(name string) (*gorm.DB, *ModuleBuilder) {
+		t.Helper()
+		db, err := gorm.Open(sqlite.Open("file:backendbuilder-persist-branches-"+name+"?mode=memory&cache=shared"), &gorm.Config{})
+		if err != nil {
+			t.Fatalf("open sqlite: %v", err)
+		}
+		if err := meta.EnsureDualStoreTables(db); err != nil {
+			t.Fatalf("ensure dual store: %v", err)
+		}
+		testRuntimeScope := newBuilderTestScope()
+		testRuntimeScope.session = &scope.Session{DB: db}
+		return db, &ModuleBuilder{runtimeScope: testRuntimeScope}
+	}
+	models := []*meta.Model{{Name: "Partner", Path: "/models/partner", Application: "partner"}}
+
+	t.Run("list previous raw models", func(t *testing.T) {
+		db, builder := openPersistDB("prev-raw")
+		if err := db.Exec("ALTER TABLE meta_raw_model RENAME COLUMN application TO application_broken").Error; err != nil {
+			t.Fatal(err)
+		}
+		err := builder.persistModuleModels("module-1", models)
+		if err == nil || !strings.Contains(err.Error(), "list previous raw models") {
+			t.Fatalf("expected list previous raw error, got %v", err)
+		}
+	})
+
+	t.Run("list previous effective models", func(t *testing.T) {
+		db, builder := openPersistDB("prev-eff")
+		if err := db.Exec("ALTER TABLE meta_model RENAME COLUMN application TO application_broken").Error; err != nil {
+			t.Fatal(err)
+		}
+		err := builder.persistModuleModels("module-1", models)
+		if err == nil || !strings.Contains(err.Error(), "list previous effective models") {
+			t.Fatalf("expected list previous effective error, got %v", err)
+		}
+	})
+
+	t.Run("delete previous raw models", func(t *testing.T) {
+		db, builder := openPersistDB("delete-raw")
+		if err := db.Create(&meta.RawModel{
+			BaseModel:   meta.BaseModel{Id: sql.NullString{String: "del-raw", Valid: true}},
+			Name:        "Old",
+			Path:        "/models/old",
+			Application: "partner",
+			ModuleId:    sql.NullString{String: "module-1", Valid: true},
+		}).Error; err != nil {
+			t.Fatal(err)
+		}
+		boom := errors.New("forced raw delete")
+		const cbTag = "force-raw-module-delete"
+		if err := db.Callback().Delete().Before("gorm:delete").Register(cbTag, func(tx *gorm.DB) {
+			if tx.Statement != nil && tx.Statement.Table == "meta_raw_model" {
+				_ = tx.AddError(boom)
+			}
+		}); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = db.Callback().Delete().Remove(cbTag) })
+		err := builder.persistModuleModels("module-1", nil)
+		if err == nil || !strings.Contains(err.Error(), "delete previous raw models") {
+			t.Fatalf("expected delete raw error, got %v", err)
+		}
+	})
+
+	t.Run("persist raw model", func(t *testing.T) {
+		db, builder := openPersistDB("persist-raw")
+		if err := db.Exec("PRAGMA query_only = ON").Error; err != nil {
+			t.Fatal(err)
+		}
+		err := builder.persistModuleModels("module-1", models)
+		if err == nil || !strings.Contains(err.Error(), "persist raw model") {
+			t.Fatalf("expected persist raw error, got %v", err)
+		}
+	})
+
+	t.Run("recompute effective models", func(t *testing.T) {
+		db, builder := openPersistDB("recompute")
+		const cbTag = "drop-effective-after-raw-create"
+		if err := db.Callback().Create().After("gorm:after_create").Register(cbTag, func(tx *gorm.DB) {
+			if tx.Statement != nil && tx.Statement.Table == "meta_raw_model" {
+				_ = tx.Migrator().DropTable(&meta.Model{})
+			}
+		}); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = db.Callback().Create().Remove(cbTag) })
+		err := builder.persistModuleModels("module-1", models)
+		if err == nil || !strings.Contains(err.Error(), "recompute effective models") {
+			t.Fatalf("expected recompute error, got %v", err)
+		}
+	})
 }

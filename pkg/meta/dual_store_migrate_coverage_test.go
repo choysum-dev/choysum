@@ -31,6 +31,16 @@ func closeDualStoreDB(t *testing.T, db *gorm.DB) {
 	}
 }
 
+func TestEnsureEffectiveAppNameUniqueIndex_NilDB(t *testing.T) {
+	if err := EnsureEffectiveAppNameUniqueIndex(nil); err == nil || !strings.Contains(err.Error(), "db is nil") {
+		t.Fatalf("expected nil db error, got %v", err)
+	}
+}
+
+func TestEnsureBaseModelID_Nil(t *testing.T) {
+	ensureBaseModelID(nil) // no panic
+}
+
 func TestEnsureDualStoreTables_NilAndClosed(t *testing.T) {
 	if err := EnsureDualStoreTables(nil); err == nil || !strings.Contains(err.Error(), "db is nil") {
 		t.Fatalf("expected nil db error, got %v", err)
@@ -585,11 +595,11 @@ func TestPersistEffectiveProjection_FailuresAndNils(t *testing.T) {
 		Decorators:  []*Decorator{nil},
 		Fields:      []*Field{nil, {Name: "Name", OriginModelPath: "kept"}},
 		Services: []*Service{nil, {
-			Name:           "Create",
+			Name:            "Create",
 			OriginModelPath: "svc-origin",
-			Parameters:     []*Parameter{nil, {Name: "this"}, {Name: "vals"}},
-			TypeParameters: []*TypeParameter{nil, {Name: "T"}},
-			Decorators:     []*Decorator{{Name: "Rpc"}},
+			Parameters:      []*Parameter{nil, {Name: "this"}, {Name: "vals"}},
+			TypeParameters:  []*TypeParameter{nil, {Name: "T"}},
+			Decorators:      []*Decorator{{Name: "Rpc"}},
 		}},
 	}
 	if err := persistEffectiveProjection(db, merged, "eff1", nil); err != nil {

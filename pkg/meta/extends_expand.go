@@ -134,9 +134,6 @@ func resolveExtendsModel(db *gorm.DB, extendsPath string, localByPath map[string
 		return nil, fmt.Errorf("load raw parent by path %s: %w", extendsPath, err)
 	}
 	converted := RawModelsAsModels([]*RawModel{&raw})
-	if len(converted) == 0 {
-		return nil, nil
-	}
 	return converted[0], nil
 }
 

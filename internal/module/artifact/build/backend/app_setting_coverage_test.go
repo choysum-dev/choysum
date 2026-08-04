@@ -350,6 +350,26 @@ func TestSupersedeVirtualAppSettings_GuardsAndDependents(t *testing.T) {
 	}
 }
 
+func TestSupersedeVirtualAppSettings_RecomputeError(t *testing.T) {
+	builder, db := newAppSettingTestBuilder(t, &meta.Module{
+		Name: "partner_bank", Path: "/virtual/modules/partner_bank",
+		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
+	})
+	builder.appSettingPlan = AppSettingPlan{SupersedeVirtual: true}
+	if err := db.Create(&meta.RawModel{
+		BaseModel: meta.BaseModel{Id: sql.NullString{String: "virt-recompute", Valid: true}},
+		Name:      "AppSetting", Path: "/virtual/modules/partner/service/models/__generated__/app_setting.ts", Application: "partner",
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Migrator().DropTable(&meta.Model{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := builder.supersedeVirtualAppSettings(); err == nil || !strings.Contains(err.Error(), "recompute AppSetting after supersede") {
+		t.Fatalf("expected recompute error, got %v", err)
+	}
+}
+
 func TestSupersedeVirtualAppSettings_ErrorBranches(t *testing.T) {
 	builder, db := newAppSettingTestBuilder(t, &meta.Module{
 		Name: "partner_bank", Path: "/virtual/modules/partner_bank",

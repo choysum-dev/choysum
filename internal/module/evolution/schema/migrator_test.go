@@ -143,6 +143,30 @@ func TestGetModuleModelsFiltersAndWrapsDBErrors(t *testing.T) {
 	}
 }
 
+func TestGetModuleModels_CircularExtends(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	migrateSchemaMetaTables(t, runtimeScope.Session())
+
+	module := &meta.Module{Name: "sales"}
+	if err := runtimeScope.Session().Create(module).Error; err != nil {
+		t.Fatalf("create module: %v", err)
+	}
+
+	rawModels := []*meta.RawModel{
+		{Name: "A", Path: "/a.ts", ModelTable: "sales_a", ModuleId: module.Id, Extends: "/b.ts"},
+		{Name: "B", Path: "/b.ts", ModelTable: "sales_b", ModuleId: module.Id, Extends: "/a.ts"},
+	}
+	for _, model := range rawModels {
+		if err := runtimeScope.Session().Create(model).Error; err != nil {
+			t.Fatalf("create raw model %s: %v", model.Name, err)
+		}
+	}
+
+	if _, err := getModuleModels(runtimeScope, module); err == nil || !strings.Contains(err.Error(), "expanding model extends") {
+		t.Fatalf("expected circular extends error, got %v", err)
+	}
+}
+
 func TestNewMigrator(t *testing.T) {
 	runtimeScope := newSchemaTestScope(t)
 	if migrated := NewMigrator(runtimeScope, &meta.Module{}); migrated == nil {

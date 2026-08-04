@@ -12,6 +12,16 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+// Test hooks (production defaults). Override in *_test.go to force error paths.
+var (
+	lockLogicalKeyFn                     = lockLogicalKey
+	expandModelsAlongExtendsFn           = ExpandModelsAlongExtends
+	mergeSameNameModelsByExtensionChainFn = MergeSameNameModelsByExtensionChain
+	deleteWhereFn                        = func(db *gorm.DB, value interface{}, query interface{}, args ...interface{}) error {
+		return db.Where(query, args...).Delete(value).Error
+	}
+)
+
 // LogicalKey identifies one effective catalog row (application + name).
 type LogicalKey struct {
 	Application string
@@ -66,7 +76,7 @@ func RecomputeEffective(tx *gorm.DB, application, name string) error {
 
 	// Serialize concurrent recomputes for the same logical name (best-effort on SQLite).
 	_ = tx.Exec("SELECT 1").Error
-	if err := lockLogicalKey(tx, key); err != nil {
+	if err := lockLogicalKeyFn(tx, key); err != nil {
 		return err
 	}
 
@@ -106,10 +116,10 @@ func RecomputeEffective(tx *gorm.DB, application, name string) error {
 	models := RawModelsAsModels(raws)
 	// Pull differently-named Extends parents (e.g. BaseModel) into each declaration
 	// before E2 same-name union — replaces pre-persist materialize (EDS4).
-	if err := ExpandModelsAlongExtends(tx, models); err != nil {
+	if err := expandModelsAlongExtendsFn(tx, models); err != nil {
 		return fmt.Errorf("expand extends for %s/%s: %w", key.Application, key.Name, err)
 	}
-	merged, err := MergeSameNameModelsByExtensionChain(models)
+	merged, err := mergeSameNameModelsByExtensionChainFn(models)
 	if err != nil {
 		return fmt.Errorf("E2 merge %s/%s: %w", key.Application, key.Name, err)
 	}
@@ -242,30 +252,30 @@ func DeleteEffectiveModelTree(db *gorm.DB, modelID string) error {
 	}
 
 	if len(decoratorIDs) > 0 {
-		if err := fresh().Where("decorator_id IN ?", decoratorIDs).Delete(&Argument{}).Error; err != nil {
+		if err := deleteWhereFn(fresh(), &Argument{}, "decorator_id IN ?", decoratorIDs); err != nil {
 			return fmt.Errorf("delete effective arguments: %w", err)
 		}
-		if err := fresh().Where("id IN ?", decoratorIDs).Delete(&Decorator{}).Error; err != nil {
+		if err := deleteWhereFn(fresh(), &Decorator{}, "id IN ?", decoratorIDs); err != nil {
 			return fmt.Errorf("delete effective decorators: %w", err)
 		}
 	}
 	if len(serviceIDs) > 0 {
-		if err := fresh().Where("service_id IN ?", serviceIDs).Delete(&TypeParameter{}).Error; err != nil {
+		if err := deleteWhereFn(fresh(), &TypeParameter{}, "service_id IN ?", serviceIDs); err != nil {
 			return fmt.Errorf("delete effective type parameters: %w", err)
 		}
-		if err := fresh().Where("service_id IN ?", serviceIDs).Delete(&Parameter{}).Error; err != nil {
+		if err := deleteWhereFn(fresh(), &Parameter{}, "service_id IN ?", serviceIDs); err != nil {
 			return fmt.Errorf("delete effective parameters: %w", err)
 		}
-		if err := fresh().Where("id IN ?", serviceIDs).Delete(&Service{}).Error; err != nil {
+		if err := deleteWhereFn(fresh(), &Service{}, "id IN ?", serviceIDs); err != nil {
 			return fmt.Errorf("delete effective services: %w", err)
 		}
 	}
 	if len(fieldIDs) > 0 {
-		if err := fresh().Where("id IN ?", fieldIDs).Delete(&Field{}).Error; err != nil {
+		if err := deleteWhereFn(fresh(), &Field{}, "id IN ?", fieldIDs); err != nil {
 			return fmt.Errorf("delete effective fields: %w", err)
 		}
 	}
-	if err := fresh().Where("id = ?", modelID).Delete(&Model{}).Error; err != nil {
+	if err := deleteWhereFn(fresh(), &Model{}, "id = ?", modelID); err != nil {
 		return fmt.Errorf("delete effective model: %w", err)
 	}
 	return nil
@@ -323,30 +333,30 @@ func DeleteRawModelsForModule(db *gorm.DB, moduleID string) error {
 	}
 
 	if len(decoratorIDs) > 0 {
-		if err := fresh().Where("decorator_id IN ?", decoratorIDs).Delete(&RawArgument{}).Error; err != nil {
+		if err := deleteWhereFn(fresh(), &RawArgument{}, "decorator_id IN ?", decoratorIDs); err != nil {
 			return fmt.Errorf("delete raw arguments: %w", err)
 		}
-		if err := fresh().Where("id IN ?", decoratorIDs).Delete(&RawDecorator{}).Error; err != nil {
+		if err := deleteWhereFn(fresh(), &RawDecorator{}, "id IN ?", decoratorIDs); err != nil {
 			return fmt.Errorf("delete raw decorators: %w", err)
 		}
 	}
 	if len(serviceIDs) > 0 {
-		if err := fresh().Where("service_id IN ?", serviceIDs).Delete(&RawTypeParameter{}).Error; err != nil {
+		if err := deleteWhereFn(fresh(), &RawTypeParameter{}, "service_id IN ?", serviceIDs); err != nil {
 			return fmt.Errorf("delete raw type parameters: %w", err)
 		}
-		if err := fresh().Where("service_id IN ?", serviceIDs).Delete(&RawParameter{}).Error; err != nil {
+		if err := deleteWhereFn(fresh(), &RawParameter{}, "service_id IN ?", serviceIDs); err != nil {
 			return fmt.Errorf("delete raw parameters: %w", err)
 		}
-		if err := fresh().Where("id IN ?", serviceIDs).Delete(&RawService{}).Error; err != nil {
+		if err := deleteWhereFn(fresh(), &RawService{}, "id IN ?", serviceIDs); err != nil {
 			return fmt.Errorf("delete raw services: %w", err)
 		}
 	}
 	if len(fieldIDs) > 0 {
-		if err := fresh().Where("id IN ?", fieldIDs).Delete(&RawField{}).Error; err != nil {
+		if err := deleteWhereFn(fresh(), &RawField{}, "id IN ?", fieldIDs); err != nil {
 			return fmt.Errorf("delete raw fields: %w", err)
 		}
 	}
-	if err := fresh().Where("id IN ?", modelIDs).Delete(&RawModel{}).Error; err != nil {
+	if err := deleteWhereFn(fresh(), &RawModel{}, "id IN ?", modelIDs); err != nil {
 		return fmt.Errorf("delete raw models: %w", err)
 	}
 	return nil
