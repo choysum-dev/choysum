@@ -6,6 +6,7 @@ package meta
 import (
 	"database/sql"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -60,7 +61,20 @@ func TestMigrateIMDCatalogToDualStore_CollapsesSameNameToEffective(t *testing.T)
 		Application: "partner",
 		Path:        basePath,
 		ModelTable:  "partner_partner",
-		Fields:      []*Field{{BaseModel: BaseModel{Id: sql.NullString{String: "f-name", Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Name: "Name"}},
+		ModuleId:    sql.NullString{String: "mod-base", Valid: true},
+		Fields: []*Field{{
+			BaseModel: BaseModel{Id: sql.NullString{String: "f-name", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+			Name:      "Name",
+			Decorators: []*Decorator{{
+				BaseModel: BaseModel{Id: sql.NullString{String: "d-name", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+				Name:      "Field",
+				Arguments: []*Argument{{
+					BaseModel: BaseModel{Id: sql.NullString{String: "a-name", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+					Type:      "object",
+					Value:     `{"type":"varchar"}`,
+				}},
+			}},
+		}},
 	}
 	bank := &Model{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "id-bank", Valid: true}, CreatedAt: ts.Add(time.Hour), UpdatedAt: ts.Add(time.Hour)},
@@ -69,6 +83,7 @@ func TestMigrateIMDCatalogToDualStore_CollapsesSameNameToEffective(t *testing.T)
 		Path:        bankPath,
 		Extends:     basePath,
 		ModelTable:  "partner_partner",
+		ModuleId:    sql.NullString{String: "mod-bank", Valid: true},
 		Fields:      []*Field{{BaseModel: BaseModel{Id: sql.NullString{String: "f-bank", Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Name: "BankAccounts"}},
 	}
 	for _, m := range []*Model{base, bank} {
@@ -78,9 +93,25 @@ func TestMigrateIMDCatalogToDualStore_CollapsesSameNameToEffective(t *testing.T)
 			t.Fatalf("create model: %v", err)
 		}
 		for _, f := range fields {
+			decs := f.Decorators
+			f.Decorators = nil
 			f.ModelId = m.Id
 			if err := db.Session(&gorm.Session{SkipHooks: true}).Create(f).Error; err != nil {
 				t.Fatalf("create field: %v", err)
+			}
+			for _, d := range decs {
+				args := d.Arguments
+				d.Arguments = nil
+				d.FieldId = f.Id
+				if err := db.Session(&gorm.Session{SkipHooks: true}).Create(d).Error; err != nil {
+					t.Fatalf("create decorator: %v", err)
+				}
+				for _, a := range args {
+					a.DecoratorId = d.Id
+					if err := db.Session(&gorm.Session{SkipHooks: true}).Create(a).Error; err != nil {
+						t.Fatalf("create argument: %v", err)
+					}
+				}
 			}
 		}
 	}
@@ -98,7 +129,7 @@ func TestMigrateIMDCatalogToDualStore_CollapsesSameNameToEffective(t *testing.T)
 	}
 
 	var eff []*Model
-	if err := db.Preload("Fields").Find(&eff).Error; err != nil {
+	if err := db.Preload("Fields.Decorators.Arguments").Find(&eff).Error; err != nil {
 		t.Fatalf("load effective: %v", err)
 	}
 	if len(eff) != 1 {
@@ -120,7 +151,35 @@ func TestMigrateIMDCatalogToDualStore_CollapsesSameNameToEffective(t *testing.T)
 		t.Fatalf("effective fields %#v", names)
 	}
 
-	// Unique (application, name) rejects a second live row.
+	var nameField *Field
+	for _, f := range eff[0].Fields {
+		if f != nil && f.Name == "Name" {
+			nameField = f
+			break
+		}
+	}
+	if nameField == nil || len(nameField.Decorators) != 1 || nameField.Decorators[0].Name != "Field" {
+		t.Fatalf("expected Name field decorator preserved, got %#v", nameField)
+	}
+	if len(nameField.Decorators[0].Arguments) != 1 {
+		t.Fatalf("expected decorator argument preserved, got %#v", nameField.Decorators[0].Arguments)
+	}
+
+	// Soft-deleted effective tip must not block a new live row (partial unique index).
+	if err := db.Delete(eff[0]).Error; err != nil {
+		t.Fatalf("soft-delete effective: %v", err)
+	}
+	replacement := &Model{
+		BaseModel:   BaseModel{Id: sql.NullString{String: "id-relive", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+		Name:        "Partner",
+		Application: "partner",
+		Path:        "/partner/partner2.ts",
+	}
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(replacement).Error; err != nil {
+		t.Fatalf("create live row after soft-delete: %v", err)
+	}
+
+	// Unique (application, name) still rejects a second live row.
 	dup := &Model{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "id-dup", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "Partner",
@@ -128,7 +187,27 @@ func TestMigrateIMDCatalogToDualStore_CollapsesSameNameToEffective(t *testing.T)
 		Path:        "/other/partner.ts",
 	}
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(dup).Error; err == nil {
-		t.Fatal("expected unique (application, name) violation")
+		t.Fatal("expected unique (application, name) violation for second live row")
+	}
+}
+
+func TestMigrateIMDCatalogToDualStore_RejectsMissingModuleId(t *testing.T) {
+	db := openDualStoreTestDB(t)
+	if err := EnsureDualStoreTables(db); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
+	src := &Model{
+		BaseModel:   BaseModel{Id: sql.NullString{String: "id-nomod", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+		Name:        "X",
+		Application: "a",
+		Path:        "/x.ts",
+	}
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(src).Error; err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if err := MigrateIMDCatalogToDualStore(db); err == nil || !strings.Contains(err.Error(), "missing module_id") {
+		t.Fatalf("expected missing module_id error, got %v", err)
 	}
 }
 
@@ -142,6 +221,7 @@ func TestMigrateIMDCatalogToDualStore_RefusesNonEmptyRaw(t *testing.T) {
 		Name:        "X",
 		Application: "a",
 		Path:        "/x.ts",
+		ModuleId:    sql.NullString{String: "mod-x", Valid: true},
 	}
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(raw).Error; err != nil {
 		t.Fatalf("create raw: %v", err)

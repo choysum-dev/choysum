@@ -5,6 +5,7 @@ package meta
 
 import (
 	"database/sql"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -139,6 +140,67 @@ func TestMergeSameNameModelsByExtensionChain_SelectionAddWithoutBaseRejected(t *
 	_, err := MergeSameNameModelsByExtensionChain([]*Model{base, ext})
 	if err == nil || !strings.Contains(err.Error(), "selectionAdd requires an inherited static selection") {
 		t.Fatalf("expected selectionAdd-without-base rejection, got %v", err)
+	}
+}
+
+func TestMergeSameNameModelsByExtensionChain_SoloSelectionAddRejected(t *testing.T) {
+	extField := &Field{Name: "Kind", FieldType: "selection"}
+	if err := extField.SetResolvedSpec(&FieldResolvedSpec{
+		FieldName: "Kind",
+		Structural: FieldStructuralSpec{
+			Name:            "Kind",
+			FieldType:       "selection",
+			HasSelectionAdd: true,
+			SelectionAdd:    []FieldSelectionItem{{Value: "vip", Label: "VIP"}},
+		},
+	}); err != nil {
+		t.Fatalf("SetResolvedSpec: %v", err)
+	}
+	solo := &Model{
+		BaseModel: BaseModel{UpdatedAt: time.Date(2026, 3, 15, 11, 0, 0, 0, time.UTC), Id: sql.NullString{String: "solo", Valid: true}},
+		Name:      "Partner",
+		Path:      "@/partner/service/models/partner.ts",
+		Fields:    []*Field{extField},
+	}
+	_, err := MergeSameNameModelsByExtensionChain([]*Model{solo})
+	if err == nil || !strings.Contains(err.Error(), "selectionAdd requires an inherited static selection") {
+		t.Fatalf("expected solo selectionAdd rejection, got %v", err)
+	}
+}
+
+func TestRawFieldAndFieldExportedColumnsMatch(t *testing.T) {
+	skip := map[string]bool{
+		"ModelId": true, "Model": true, "Decorators": true,
+	}
+	fieldType := reflect.TypeOf(Field{})
+	rawType := reflect.TypeOf(RawField{})
+	fieldCols := map[string]reflect.Type{}
+	for i := 0; i < fieldType.NumField(); i++ {
+		f := fieldType.Field(i)
+		if !f.IsExported() || skip[f.Name] {
+			continue
+		}
+		fieldCols[f.Name] = f.Type
+	}
+	rawCols := map[string]reflect.Type{}
+	for i := 0; i < rawType.NumField(); i++ {
+		f := rawType.Field(i)
+		if !f.IsExported() || skip[f.Name] {
+			continue
+		}
+		rawCols[f.Name] = f.Type
+	}
+	if len(fieldCols) != len(rawCols) {
+		t.Fatalf("Field cols=%d RawField cols=%d", len(fieldCols), len(rawCols))
+	}
+	for name, typ := range fieldCols {
+		got, ok := rawCols[name]
+		if !ok {
+			t.Fatalf("RawField missing column %s", name)
+		}
+		if got != typ {
+			t.Fatalf("RawField.%s type %v, Field.%s type %v", name, got, name, typ)
+		}
 	}
 }
 

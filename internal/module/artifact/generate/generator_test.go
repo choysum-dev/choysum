@@ -879,8 +879,11 @@ func TestMergeSameNameModelsByExtensionChain_EmptyAndNilGuards(t *testing.T) {
 	}
 	solo := &meta.Model{Name: "Partner", Path: "/solo"}
 	merged, err = mergeSameNameModelsByExtensionChain([]*meta.Model{solo})
-	if err != nil || merged != solo {
-		t.Fatalf("expected solo model passthrough, got %#v err=%v", merged, err)
+	if err != nil || merged == nil || merged.Name != "Partner" || merged.Path != "/solo" {
+		t.Fatalf("expected solo model copy, got %#v err=%v", merged, err)
+	}
+	if merged == solo {
+		t.Fatal("expected merge to return a copy, not the input pointer")
 	}
 }
 

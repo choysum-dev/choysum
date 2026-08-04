@@ -26,15 +26,19 @@ func EnsureDualStoreTables(db *gorm.DB) error {
 	return nil
 }
 
-// MigrateIMDCatalogToDualStore copies today's meta_model* IMD rows into meta_raw_*,
+// MigrateIMDCatalogToDualStore copies today's live meta_model* IMD rows into meta_raw_*,
 // then rebuilds meta_model* as E2 effective projections (one row per application+name).
 //
 // Intended for wipe/test and one-shot upgrades. Production Persist still writes IMD
 // meta_model until EDS-2; do not run this on a live DB that will keep writing IMD
 // without switching Persist to raw.
 //
-// Materialized parent copies on source rows are preserved as-is (EDS-2 will stop
-// writing them). Effective ids reuse the tip id (newest created_at, then id) when possible.
+// Soft-deleted meta_model rows are skipped (default GORM scope). Materialized parent
+// copies on source rows are preserved as-is (EDS-2 will stop writing them). Effective
+// ids reuse the tip id (newest created_at, then id) when possible.
+//
+// DDL (EnsureDualStoreTables) runs outside the transaction; copy + recompute run inside
+// one transaction so failures roll back partial raw/effective writes.
 func MigrateIMDCatalogToDualStore(db *gorm.DB) error {
 	if db == nil {
 		return fmt.Errorf("db is nil")
@@ -44,15 +48,74 @@ func MigrateIMDCatalogToDualStore(db *gorm.DB) error {
 	}
 
 	var rawCount int64
-	if err := db.Model(&RawModel{}).Count(&rawCount).Error; err != nil {
+	// Unscoped: soft-deleted raw rows still occupy uidx_raw_model_module_path.
+	if err := db.Unscoped().Model(&RawModel{}).Count(&rawCount).Error; err != nil {
 		return fmt.Errorf("count meta_raw_model: %w", err)
 	}
 	if rawCount > 0 {
-		return fmt.Errorf("meta_raw_model already has %d rows; refuse migrate (wipe raw first)", rawCount)
+		return fmt.Errorf("meta_raw_model already has %d rows (incl. soft-deleted); refuse migrate (wipe raw first)", rawCount)
 	}
 
-	var sources []*Model
-	if err := db.
+	return db.Transaction(func(tx *gorm.DB) error {
+		var sources []*Model
+		if err := tx.
+			Preload("Fields").
+			Preload("Fields.Decorators").
+			Preload("Fields.Decorators.Arguments").
+			Preload("Services").
+			Preload("Services.Parameters").
+			Preload("Services.TypeParameters").
+			Preload("Services.Decorators").
+			Preload("Services.Decorators.Arguments").
+			Preload("Decorators").
+			Preload("Decorators.Arguments").
+			Find(&sources).Error; err != nil {
+			return fmt.Errorf("load meta_model for dual-store migrate: %w", err)
+		}
+
+		seenModulePath := map[string]string{}
+		for _, src := range sources {
+			if src == nil {
+				continue
+			}
+			if !src.ModuleId.Valid || strings.TrimSpace(src.ModuleId.String) == "" {
+				return fmt.Errorf("meta_model %s (%s/%s) missing module_id; required for meta_raw_model uniqueness", src.Id.String, src.Application, src.Name)
+			}
+			key := src.ModuleId.String + "\x00" + src.Path
+			if prev, ok := seenModulePath[key]; ok {
+				return fmt.Errorf("duplicate live (module_id, path) %q / %q (models %s and %s)", src.ModuleId.String, src.Path, prev, src.Id.String)
+			}
+			seenModulePath[key] = src.Id.String
+		}
+
+		for _, src := range sources {
+			if src == nil {
+				continue
+			}
+			if err := copyModelTreeToRaw(tx, src); err != nil {
+				return err
+			}
+		}
+
+		return recomputeAllEffectiveFromRawTx(tx)
+	})
+}
+
+// RecomputeAllEffectiveFromRaw hard-deletes all effective meta_model* shape rows, then
+// rebuilds them from live meta_raw_* via E2. Runs in a transaction. Callers with only a
+// partial raw catalog will lose effective rows that have no raw counterpart.
+func RecomputeAllEffectiveFromRaw(db *gorm.DB) error {
+	if db == nil {
+		return fmt.Errorf("db is nil")
+	}
+	return db.Transaction(func(tx *gorm.DB) error {
+		return recomputeAllEffectiveFromRawTx(tx)
+	})
+}
+
+func recomputeAllEffectiveFromRawTx(tx *gorm.DB) error {
+	var raws []*RawModel
+	if err := tx.
 		Preload("Fields").
 		Preload("Fields.Decorators").
 		Preload("Fields.Decorators.Arguments").
@@ -63,34 +126,6 @@ func MigrateIMDCatalogToDualStore(db *gorm.DB) error {
 		Preload("Services.Decorators.Arguments").
 		Preload("Decorators").
 		Preload("Decorators.Arguments").
-		Find(&sources).Error; err != nil {
-		return fmt.Errorf("load meta_model for dual-store migrate: %w", err)
-	}
-
-	for _, src := range sources {
-		if src == nil {
-			continue
-		}
-		if err := copyModelTreeToRaw(db, src); err != nil {
-			return err
-		}
-	}
-
-	return RecomputeAllEffectiveFromRaw(db)
-}
-
-// RecomputeAllEffectiveFromRaw replaces effective meta_model* content from all live raw rows.
-func RecomputeAllEffectiveFromRaw(db *gorm.DB) error {
-	if db == nil {
-		return fmt.Errorf("db is nil")
-	}
-
-	var raws []*RawModel
-	if err := db.
-		Preload("Fields").
-		Preload("Services").
-		Preload("Services.Parameters").
-		Preload("Services.TypeParameters").
 		Find(&raws).Error; err != nil {
 		return fmt.Errorf("load meta_raw_model: %w", err)
 	}
@@ -109,8 +144,8 @@ func RecomputeAllEffectiveFromRaw(db *gorm.DB) error {
 		}
 	}
 
-	// Soft-delete / clear existing effective shape trees before rewrite.
-	if err := clearEffectiveShapeTrees(db); err != nil {
+	// Hard-delete (truncate) existing effective shape trees before rewrite.
+	if err := clearEffectiveShapeTrees(tx); err != nil {
 		return err
 	}
 
@@ -126,12 +161,12 @@ func RecomputeAllEffectiveFromRaw(db *gorm.DB) error {
 		if effID == "" {
 			effID = xid.New().String()
 		}
-		if err := persistEffectiveProjection(db, merged, effID); err != nil {
+		if err := persistEffectiveProjection(tx, merged, effID); err != nil {
 			return fmt.Errorf("persist effective %s: %w", key, err)
 		}
 	}
 
-	if err := ensureEffectiveAppNameUniqueIndex(db); err != nil {
+	if err := ensureEffectiveAppNameUniqueIndex(tx); err != nil {
 		return err
 	}
 	return nil
@@ -344,7 +379,7 @@ func copyDecoratorToRaw(db *gorm.DB, d *Decorator, modelID, fieldID, serviceID s
 }
 
 func clearEffectiveShapeTrees(db *gorm.DB) error {
-	// Order: arguments → decorators → parameters/type_parameters → fields/services → models.
+	// Hard-delete order: arguments → decorators → parameters/type_parameters → fields/services → models.
 	for _, step := range []struct {
 		name string
 		fn   func() error
@@ -402,10 +437,17 @@ func persistEffectiveProjection(db *gorm.DB, merged *Model, effectiveID string) 
 		return err
 	}
 
+	for _, d := range merged.Decorators {
+		if err := persistDecoratorTree(db, d, eff.Id, sql.NullString{}, sql.NullString{}); err != nil {
+			return err
+		}
+	}
+
 	for _, f := range merged.Fields {
 		if f == nil {
 			continue
 		}
+		decs := f.Decorators
 		nf := *f
 		nf.Id = sql.NullString{String: xid.New().String(), Valid: true}
 		nf.ModelId = eff.Id
@@ -417,11 +459,17 @@ func persistEffectiveProjection(db *gorm.DB, merged *Model, effectiveID string) 
 		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&nf).Error; err != nil {
 			return err
 		}
+		for _, d := range decs {
+			if err := persistDecoratorTree(db, d, sql.NullString{}, nf.Id, sql.NullString{}); err != nil {
+				return err
+			}
+		}
 	}
 	for _, s := range merged.Services {
 		if s == nil {
 			continue
 		}
+		decs := s.Decorators
 		ns := *s
 		ns.Id = sql.NullString{String: xid.New().String(), Valid: true}
 		ns.ModelId = eff.Id
@@ -461,17 +509,70 @@ func persistEffectiveProjection(db *gorm.DB, merged *Model, effectiveID string) 
 				return err
 			}
 		}
+		for _, d := range decs {
+			if err := persistDecoratorTree(db, d, sql.NullString{}, sql.NullString{}, ns.Id); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func persistDecoratorTree(db *gorm.DB, d *Decorator, modelID, fieldID, serviceID sql.NullString) error {
+	if d == nil {
+		return nil
+	}
+	nd := &Decorator{
+		BaseModel:      BaseModel{Id: sql.NullString{String: xid.New().String(), Valid: true}},
+		Name:           d.Name,
+		ModuleSpecPath: d.ModuleSpecPath,
+		ReferenceIdent: d.ReferenceIdent,
+		ModelId:        modelID,
+		FieldId:        fieldID,
+		ServiceId:      serviceID,
+	}
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(nd).Error; err != nil {
+		return fmt.Errorf("create meta_decorator: %w", err)
+	}
+	for _, a := range d.Arguments {
+		if a == nil {
+			continue
+		}
+		na := &Argument{
+			BaseModel:      BaseModel{Id: sql.NullString{String: xid.New().String(), Valid: true}},
+			Type:           a.Type,
+			Value:          a.Value,
+			ReferenceIdent: a.ReferenceIdent,
+			ModuleSpecPath: a.ModuleSpecPath,
+			DecoratorId:    nd.Id,
+		}
+		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(na).Error; err != nil {
+			return fmt.Errorf("create meta_argument: %w", err)
+		}
 	}
 	return nil
 }
 
 func ensureEffectiveAppNameUniqueIndex(db *gorm.DB) error {
-	// Soft-deleted rows still occupy the unique key on SQLite; wipe/reinstall is supported.
-	sql := fmt.Sprintf(
-		"CREATE UNIQUE INDEX IF NOT EXISTS %s ON meta_model (application, name)",
-		effectiveAppNameUniqueIndex,
-	)
-	if err := db.Exec(sql).Error; err != nil {
+	// Drop any prior non-partial index with the same name so we can recreate it.
+	_ = db.Exec(fmt.Sprintf("DROP INDEX IF EXISTS %s", effectiveAppNameUniqueIndex)).Error
+
+	var stmt string
+	switch db.Dialector.Name() {
+	case "sqlite", "postgres":
+		// Live rows only — soft-deleted tip may be reused after uninstall/reinstall.
+		stmt = fmt.Sprintf(
+			"CREATE UNIQUE INDEX IF NOT EXISTS %s ON meta_model (application, name) WHERE deleted_at IS NULL",
+			effectiveAppNameUniqueIndex,
+		)
+	default:
+		// MySQL has no partial indexes; soft-deleted keys still collide until wipe.
+		stmt = fmt.Sprintf(
+			"CREATE UNIQUE INDEX %s ON meta_model (application, name)",
+			effectiveAppNameUniqueIndex,
+		)
+	}
+	if err := db.Exec(stmt).Error; err != nil {
 		return fmt.Errorf("create unique index %s: %w", effectiveAppNameUniqueIndex, err)
 	}
 	return nil

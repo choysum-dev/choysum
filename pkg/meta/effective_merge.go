@@ -13,14 +13,12 @@ import (
 // Fields merge by name via ResolveSelectionFieldConflict; Services last-write wins.
 // Canonical model scalars come from the last ranked row. Cycles in Extends → error.
 //
-// Callers typically pass all live rows for one (application, name). Codegen may
-// pre-filter to a primary extension chain before calling this.
+// Callers typically pass all live rows for one (application, name) — including sibling
+// IMD branches (EDS2). Codegen may additionally pre-filter to a primary extension chain
+// before calling this when reading legacy multi-row IMD catalogs.
 func MergeSameNameModelsByExtensionChain(models []*Model) (*Model, error) {
 	if len(models) == 0 {
 		return nil, nil
-	}
-	if len(models) == 1 {
-		return models[0], nil
 	}
 
 	byPath := make(map[string]*Model, len(models))
@@ -183,11 +181,17 @@ func rawModelAsModel(raw *RawModel) *Model {
 		}
 		m.Services = append(m.Services, rawServiceAsService(s))
 	}
+	for _, d := range raw.Decorators {
+		if d == nil {
+			continue
+		}
+		m.Decorators = append(m.Decorators, rawDecoratorAsDecorator(d))
+	}
 	return m
 }
 
 func rawFieldAsField(f *RawField) *Field {
-	return &Field{
+	out := &Field{
 		BaseModel:                f.BaseModel,
 		Name:                     f.Name,
 		TsTypeAnnotation:         f.TsTypeAnnotation,
@@ -227,6 +231,13 @@ func rawFieldAsField(f *RawField) *Field {
 		Round:                    f.Round,
 		ResolvedSpec:             f.ResolvedSpec,
 	}
+	for _, d := range f.Decorators {
+		if d == nil {
+			continue
+		}
+		out.Decorators = append(out.Decorators, rawDecoratorAsDecorator(d))
+	}
+	return out
 }
 
 func rawServiceAsService(s *RawService) *Service {
@@ -261,5 +272,33 @@ func rawServiceAsService(s *RawService) *Service {
 			ReferenceIdent: tp.ReferenceIdent,
 		})
 	}
+	for _, d := range s.Decorators {
+		if d == nil {
+			continue
+		}
+		svc.Decorators = append(svc.Decorators, rawDecoratorAsDecorator(d))
+	}
 	return svc
+}
+
+func rawDecoratorAsDecorator(d *RawDecorator) *Decorator {
+	out := &Decorator{
+		BaseModel:      d.BaseModel,
+		Name:           d.Name,
+		ModuleSpecPath: d.ModuleSpecPath,
+		ReferenceIdent: d.ReferenceIdent,
+	}
+	for _, a := range d.Arguments {
+		if a == nil {
+			continue
+		}
+		out.Arguments = append(out.Arguments, &Argument{
+			BaseModel:      a.BaseModel,
+			Type:           a.Type,
+			Value:          a.Value,
+			ReferenceIdent: a.ReferenceIdent,
+			ModuleSpecPath: a.ModuleSpecPath,
+		})
+	}
+	return out
 }
