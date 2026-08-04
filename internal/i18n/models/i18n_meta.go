@@ -55,6 +55,11 @@ func EnsureI18nMeta(runtimeScope scope.Scope, application string, moduleID sql.N
 	if err := ensureI18nRawServices(db, raw); err != nil {
 		return err
 	}
+	// E2 tip scalars (Path, Abstract, …) come from the last-ranked same-name raw.
+	// Promote the canonical go://i18n/<application> row so extensions cannot steal Path.
+	if err := promoteI18nCanonicalTip(db, application, raw); err != nil {
+		return err
+	}
 	if err := meta.RecomputeEffective(db, application, i18nModelName); err != nil {
 		return fmt.Errorf("recompute I18n effective: %w", err)
 	}
@@ -63,6 +68,31 @@ func EnsureI18nMeta(runtimeScope scope.Scope, application string, moduleID sql.N
 		return err
 	}
 	return ensureTerminologyEditorAllows(db, serviceIDs)
+}
+
+// promoteI18nCanonicalTip bumps the canonical raw UpdatedAt past any same-name sibling so
+// MergeSameNameModelsByExtensionChain picks go://i18n/<application> for tip scalars.
+func promoteI18nCanonicalTip(db *gorm.DB, application string, canonical *meta.RawModel) error {
+	if canonical == nil || !canonical.Id.Valid {
+		return fmt.Errorf("I18n canonical raw is nil")
+	}
+	var siblings []meta.RawModel
+	if err := db.Select("id", "updated_at").
+		Where("application = ? AND name = ? AND id <> ?", application, i18nModelName, canonical.Id.String).
+		Find(&siblings).Error; err != nil {
+		return fmt.Errorf("load I18n sibling tips: %w", err)
+	}
+	tip := time.Now().UTC()
+	for _, s := range siblings {
+		if !tip.After(s.UpdatedAt) {
+			tip = s.UpdatedAt.Add(time.Millisecond)
+		}
+	}
+	if err := db.Model(canonical).UpdateColumn("updated_at", tip).Error; err != nil {
+		return fmt.Errorf("promote I18n canonical tip: %w", err)
+	}
+	canonical.UpdatedAt = tip
+	return nil
 }
 
 func ensureI18nRawModel(db *gorm.DB, application string, moduleID sql.NullString) (*meta.RawModel, error) {

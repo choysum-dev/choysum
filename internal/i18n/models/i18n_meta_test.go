@@ -184,6 +184,55 @@ func TestEnsureI18nMetaPrefersCanonicalPath(t *testing.T) {
 	if extSvc != 0 {
 		t.Fatalf("extension must not receive built-in services, got %d", extSvc)
 	}
+
+	var effective meta.Model
+	if err := db.Preload("Services").Where("name = ? AND application = ?", "I18n", "auth").Take(&effective).Error; err != nil {
+		t.Fatalf("load effective: %v", err)
+	}
+	if effective.Path != "go://i18n/auth" {
+		t.Fatalf("effective Path = %q, want go://i18n/auth", effective.Path)
+	}
+	if len(effective.Services) != 3 {
+		t.Fatalf("want 3 effective services, got %d", len(effective.Services))
+	}
+}
+
+func TestPromoteI18nCanonicalTip(t *testing.T) {
+	if err := promoteI18nCanonicalTip(nil, "auth", nil); err == nil || !strings.Contains(err.Error(), "canonical raw is nil") {
+		t.Fatalf("nil canonical: %v", err)
+	}
+	rs := newTestScope(t)
+	db := rs.Session().DB
+	migrateI18nDualStoreTables(t, db)
+	if err := promoteI18nCanonicalTip(db, "auth", &meta.RawModel{}); err == nil || !strings.Contains(err.Error(), "canonical raw is nil") {
+		t.Fatalf("invalid id: %v", err)
+	}
+
+	raw, err := ensureI18nRawModel(db, "auth", sql.NullString{})
+	if err != nil {
+		t.Fatalf("ensureI18nRawModel: %v", err)
+	}
+	if err := db.Migrator().DropTable(&meta.RawModel{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := promoteI18nCanonicalTip(db, "auth", raw); err == nil || !strings.Contains(err.Error(), "load I18n sibling tips") {
+		t.Fatalf("expected load error, got %v", err)
+	}
+
+	rs2 := newTestScope(t)
+	db2 := rs2.Session().DB
+	migrateI18nDualStoreTables(t, db2)
+	raw2, err := ensureI18nRawModel(db2, "crm", sql.NullString{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db2.Exec("PRAGMA query_only = ON").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := promoteI18nCanonicalTip(db2, "crm", raw2); err == nil || !strings.Contains(err.Error(), "promote I18n canonical tip") {
+		t.Fatalf("expected promote error, got %v", err)
+	}
+	_ = db2.Exec("PRAGMA query_only = OFF")
 }
 
 func TestEnsureI18nMetaUpdatesModuleID(t *testing.T) {
