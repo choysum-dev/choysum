@@ -66,13 +66,13 @@ func TestBuildBackendBundlesToDir_FieldDefaultOwnerAndEnsureError(t *testing.T) 
 	manager.bootstrapOnce.Do(func() {})
 	distBundlesDir := t.TempDir()
 
-	// Drop meta_raw_model so EnsureFieldDefaultVirtualImports fails while owners were collected.
+	// Drop meta_raw_model so BundleInjectAppModels fails while owners were collected.
 	if err := meta.DropRawModelTable(db); err != nil {
 		t.Fatalf("drop meta_raw_model: %v", err)
 	}
 	err := manager.buildBackendBundlesToDir(context.Background(), distBundlesDir, nil)
-	if err == nil || !strings.Contains(err.Error(), "inject FieldDefault virtual imports") {
-		t.Fatalf("expected Ensure error, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "inject app models for bundles") {
+		t.Fatalf("expected BundleInject error, got %v", err)
 	}
 
 	entryFilePath := filepath.Join(distBundlesDir, "__choysum_bundles_entry.ts")

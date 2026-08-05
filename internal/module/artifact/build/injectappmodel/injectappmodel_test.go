@@ -6,6 +6,7 @@ package injectappmodel
 import (
 	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -295,5 +296,118 @@ func TestDecideSkipsCore(t *testing.T) {
 		if plan := sess.Plan(name); plan.NeedInject || plan.SupersedeInject {
 			t.Fatalf("%s should skip core, got %+v", name, plan)
 		}
+	}
+}
+
+func TestDecide_HandwrittenSkipsInject(t *testing.T) {
+	mod := &meta.Module{
+		Name: "partner", Path: "/virtual/modules/partner",
+		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
+	}
+	sess, _, db := newTestSession(t, mod)
+	hand := "/virtual/modules/partner/service/models/field_default.ts"
+	seedDeclaration(t, db, "FieldDefault", "hand", hand, "partner")
+	if err := InjectAppModels(sess, nil); err != nil {
+		t.Fatalf("inject: %v", err)
+	}
+	plan := sess.Plan("FieldDefault")
+	if plan.NeedInject || plan.SupersedeInject {
+		t.Fatalf("expected skip when DB handwritten exists, got %+v", plan)
+	}
+}
+
+func TestProcessDedup_OtherModuleSkips(t *testing.T) {
+	ResetScheduledForTest()
+	modA := &meta.Module{
+		Name: "partner", Path: "/virtual/modules/partner",
+		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
+	}
+	sessA, _, _ := newTestSession(t, modA)
+	if err := InjectAppModels(sessA, nil); err != nil {
+		t.Fatalf("inject A: %v", err)
+	}
+	if !sessA.Plan("FieldDefault").NeedInject {
+		t.Fatal("A should inject")
+	}
+
+	modB := &meta.Module{
+		Name: "partner_bank", Path: "/virtual/modules/partner_bank",
+		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
+	}
+	hostB := &fakeHost{
+		mod:          modB,
+		db:           sessA.host.SessionDB(),
+		modulesPath:  "/virtual/modules",
+		virtualPaths: map[string]string{},
+	}
+	sessB := NewSession(hostB)
+	if err := InjectAppModels(sessB, nil); err != nil {
+		t.Fatalf("inject B: %v", err)
+	}
+	if plan := sessB.Plan("FieldDefault"); plan.NeedInject {
+		t.Fatalf("B should skip after A claimed app, got %+v", plan)
+	}
+}
+
+func TestBundleInjectAppModels_SkipsHandwritten(t *testing.T) {
+	mod := &meta.Module{
+		Name: "partner", Path: "/virtual/modules/partner",
+		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
+	}
+	sess, host, db := newTestSession(t, mod)
+	seedDeclaration(t, db, "FieldDefault", "hand", "/virtual/modules/partner/service/models/field_default.ts", "partner")
+	base := &meta.Module{
+		Name: "base", Path: "/virtual/modules/base",
+		ApplicationStr: "base", ServiceEntryPoint: "service/index.ts",
+	}
+	if err := BundleInjectAppModels(sess, []*meta.Module{mod, base}); err != nil {
+		t.Fatalf("bundle: %v", err)
+	}
+	if paths := sess.InjectPaths("FieldDefault"); len(paths) != 1 {
+		t.Fatalf("expected only base C2 path, got %#v", paths)
+	}
+	want := generatedPath(specByNameOrPanic("FieldDefault"), base.Path)
+	if paths := sess.InjectPaths("FieldDefault"); paths[0] != want {
+		t.Fatalf("path = %q want %q", paths[0], want)
+	}
+	if _, ok := host.virtualPaths[want]; !ok {
+		t.Fatalf("expected virtual source for base at %q", want)
+	}
+	partnerGen := generatedPath(specByNameOrPanic("FieldDefault"), mod.Path)
+	if _, ok := host.virtualPaths[partnerGen]; ok {
+		t.Fatal("must not inject C2 for handwritten-owned app")
+	}
+}
+
+func TestGeneratedSource_AppSettingSoftDeleteFalse(t *testing.T) {
+	src := generatedSource(specByNameOrPanic("AppSetting"), `/tmp/mod"quote`, "app'name")
+	if !strings.Contains(src, "softDelete: false") {
+		t.Fatalf("AppSetting source must set softDelete: false:\n%s", src)
+	}
+	if !strings.Contains(src, strconv.Quote("app'name")) {
+		t.Fatalf("application must be quoted:\n%s", src)
+	}
+	fd := generatedSource(specByNameOrPanic("FieldDefault"), "/tmp/mod", "partner")
+	if strings.Contains(fd, "softDelete") {
+		t.Fatalf("FieldDefault must not set softDelete:\n%s", fd)
+	}
+}
+
+func TestBundlePrefersExistingGeneratedPath(t *testing.T) {
+	mod := &meta.Module{
+		Name: "sibling", Path: "/virtual/modules/sibling",
+		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
+	}
+	sess, host, db := newTestSession(t, mod)
+	canon := "/virtual/modules/partner/service/models/__generated__/field_default.ts"
+	seedDeclaration(t, db, "FieldDefault", "virt", canon, "partner")
+	if err := BundleInjectAppModels(sess, []*meta.Module{mod}); err != nil {
+		t.Fatalf("bundle: %v", err)
+	}
+	if sess.LastInjectPath("FieldDefault") != canon {
+		t.Fatalf("path = %q want canonical %q", sess.LastInjectPath("FieldDefault"), canon)
+	}
+	if _, ok := host.virtualPaths[canon]; !ok {
+		t.Fatal("expected virtual source at canonical meta path")
 	}
 }

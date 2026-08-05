@@ -61,16 +61,8 @@ type ModuleBuilder struct {
 	entryPointImportsCache      []string
 
 	// injectSession holds C2 FieldDefault / AppSetting Decide plans and inject paths
-	// (injectappmodel). Legacy fieldDefault*/appSetting* fields mirror session state for tests.
+	// (injectappmodel).
 	injectSession *injectappmodel.Session
-
-	fieldDefaultPlan        FieldDefaultPlan
-	fieldDefaultInjectPath  string
-	fieldDefaultInjectPaths []string
-
-	appSettingPlan        AppSettingPlan
-	appSettingInjectPath  string
-	appSettingInjectPaths []string
 }
 
 func pathWithinModuleRoot(path string, root string) bool {
@@ -195,18 +187,12 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 
 	imports := b.entryPointImports()
 	// WithEntryPointImports replaces plugin EntryPointImports — always pass the
-	// full set here. Include FieldDefault / AppSetting on prebuild too so
-	// injectModelApplication can rewrite Content before the build pass that emits dist JS.
-	extra := append([]string(nil), b.fieldDefaultInjectPaths...)
-	if len(b.fieldDefaultInjectPaths) == 0 && strings.TrimSpace(b.fieldDefaultInjectPath) != "" {
-		extra = append(extra, b.fieldDefaultInjectPath)
-	}
-	extra = append(extra, b.appSettingInjectPaths...)
-	if len(b.appSettingInjectPaths) == 0 && strings.TrimSpace(b.appSettingInjectPath) != "" {
-		extra = append(extra, b.appSettingInjectPath)
-	}
-	if len(extra) > 0 {
-		imports = append(append([]string(nil), imports...), extra...)
+	// full set here. Include inject paths on prebuild too so injectModelApplication
+	// can rewrite Content before the build pass that emits dist JS.
+	if sess := b.injectSession; sess != nil {
+		if extra := sess.AllInjectPaths(); len(extra) > 0 {
+			imports = append(append([]string(nil), imports...), extra...)
+		}
 	}
 	esbOpts := []esbplugins.EsbPluginOptions{
 		esbplugins.WithEntryPointImports(imports),

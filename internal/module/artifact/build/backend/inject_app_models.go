@@ -18,9 +18,6 @@ func (b *ModuleBuilder) injectAppModels(prebuildResult *module.BuildResult) erro
 		b.releaseInjectSchedules()
 		return err
 	}
-	b.syncInjectPathsFromSession()
-	b.fieldDefaultPlan = fieldDefaultPlanFrom(sess.Plan("FieldDefault"))
-	b.appSettingPlan = appSettingPlanFrom(sess.Plan("AppSetting"))
 	return nil
 }
 
@@ -28,11 +25,7 @@ func (b *ModuleBuilder) supersedeInjectAppModels() error {
 	if b == nil {
 		return nil
 	}
-	sess := b.ensureInjectSession()
-	// Plans may have been set on legacy fields by tests; sync into session.
-	sess.SetPlan("FieldDefault", b.fieldDefaultPlan.toInject())
-	sess.SetPlan("AppSetting", b.appSettingPlan.toInject())
-	return injectappmodel.SupersedeInjectAppModels(sess)
+	return injectappmodel.SupersedeInjectAppModels(b.ensureInjectSession())
 }
 
 func (b *ModuleBuilder) validateInjectAppModels(buildResult *module.BuildResult) error {
@@ -47,10 +40,5 @@ func (b *ModuleBuilder) BundleInjectAppModels(modules []*meta.Module) error {
 	if b == nil {
 		return nil
 	}
-	sess := b.ensureInjectSession()
-	if err := injectappmodel.BundleInjectAppModels(sess, modules); err != nil {
-		return err
-	}
-	b.syncInjectPathsFromSession()
-	return nil
+	return injectappmodel.BundleInjectAppModels(b.ensureInjectSession(), modules)
 }

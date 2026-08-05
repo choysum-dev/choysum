@@ -43,89 +43,44 @@ func TestPickAppSettingOwnerModule_LastEligible(t *testing.T) {
 }
 
 type stubBundleC2Injector struct {
-	fdErr error
-	asErr error
-	fdN   int
-	asN   int
+	err error
+	n   int
+	got []*meta.Module
 }
 
-func (s *stubBundleC2Injector) EnsureFieldDefaultVirtualImports([]*meta.Module) error {
-	s.fdN++
-	return s.fdErr
+func (s *stubBundleC2Injector) BundleInjectAppModels(mods []*meta.Module) error {
+	s.n++
+	s.got = append([]*meta.Module(nil), mods...)
+	return s.err
 }
 
-func (s *stubBundleC2Injector) EnsureAppSettingVirtualImports([]*meta.Module) error {
-	s.asN++
-	return s.asErr
-}
-
-func TestEnsureBundleC2VirtualImports_AppSettingError(t *testing.T) {
+func TestEnsureBundleC2VirtualImports_BundleInject(t *testing.T) {
 	owners := []*meta.Module{{Name: "crm_partner", Path: "/m", ApplicationStr: "crm", ServiceEntryPoint: "service/main.ts"}}
+	asOwners := []*meta.Module{
+		{Name: "crm_partner", Path: "/m", ApplicationStr: "crm", ServiceEntryPoint: "service/main.ts"},
+		{Name: "crm_extra", Path: "/m2", ApplicationStr: "crm", ServiceEntryPoint: "service/main.ts"},
+	}
 
 	okStub := &stubBundleC2Injector{}
-	if err := ensureBundleC2VirtualImports(okStub, owners, owners); err != nil {
+	if err := ensureBundleC2VirtualImports(okStub, owners, asOwners); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if okStub.fdN != 1 || okStub.asN != 1 {
-		t.Fatalf("expected both Ensures called once, got fd=%d as=%d", okStub.fdN, okStub.asN)
+	if okStub.n != 1 {
+		t.Fatalf("expected BundleInjectAppModels once, got %d", okStub.n)
+	}
+	if len(okStub.got) != 2 {
+		t.Fatalf("expected merged unique owners, got %#v", okStub.got)
 	}
 
-	asFail := &stubBundleC2Injector{asErr: errors.New("as boom")}
-	err := ensureBundleC2VirtualImports(asFail, owners, owners)
-	if err == nil || !strings.Contains(err.Error(), "inject AppSetting virtual imports") {
-		t.Fatalf("expected AppSetting Ensure wrap, got %v", err)
-	}
-	if asFail.fdN != 1 || asFail.asN != 1 {
-		t.Fatalf("FieldDefault should succeed before AppSetting fails: fd=%d as=%d", asFail.fdN, asFail.asN)
+	fail := &stubBundleC2Injector{err: errors.New("boom")}
+	err := ensureBundleC2VirtualImports(fail, owners, owners)
+	if err == nil || !strings.Contains(err.Error(), "inject app models for bundles") {
+		t.Fatalf("expected wrap, got %v", err)
 	}
 
-	fdFail := &stubBundleC2Injector{fdErr: errors.New("fd boom")}
-	err = ensureBundleC2VirtualImports(fdFail, owners, owners)
-	if err == nil || !strings.Contains(err.Error(), "inject FieldDefault virtual imports") {
-		t.Fatalf("expected FieldDefault Ensure wrap, got %v", err)
-	}
-	if fdFail.asN != 0 {
-		t.Fatal("AppSetting Ensure must not run after FieldDefault failure")
-	}
-
-	// Builder without Ensure methods is a no-op.
 	if err := ensureBundleC2VirtualImports(struct{}{}, owners, owners); err != nil {
 		t.Fatalf("unexpected error for bare builder: %v", err)
 	}
-
-	fdOnly := &fieldDefaultOnlyBundleInjector{}
-	if err := ensureBundleC2VirtualImports(fdOnly, owners, owners); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if fdOnly.n != 1 {
-		t.Fatalf("expected FieldDefault-only Ensure once, got %d", fdOnly.n)
-	}
-
-	asOnly := &appSettingOnlyBundleInjector{}
-	if err := ensureBundleC2VirtualImports(asOnly, owners, owners); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if asOnly.n != 1 {
-		t.Fatalf("expected AppSetting-only Ensure once, got %d", asOnly.n)
-	}
-}
-
-type fieldDefaultOnlyBundleInjector struct {
-	n int
-}
-
-func (s *fieldDefaultOnlyBundleInjector) EnsureFieldDefaultVirtualImports([]*meta.Module) error {
-	s.n++
-	return nil
-}
-
-type appSettingOnlyBundleInjector struct {
-	n int
-}
-
-func (s *appSettingOnlyBundleInjector) EnsureAppSettingVirtualImports([]*meta.Module) error {
-	s.n++
-	return nil
 }
 
 func TestBuildBackendBundlesToDir_AppSettingOwnerAndEnsureError(t *testing.T) {
@@ -153,20 +108,13 @@ func TestBuildBackendBundlesToDir_AppSettingOwnerAndEnsureError(t *testing.T) {
 	manager.bootstrapOnce.Do(func() {})
 	distBundlesDir := t.TempDir()
 
-	// Drop meta_raw_model so Ensure*VirtualImports fails while owners were collected.
-	// FieldDefault Ensure runs first, so the surfaced error usually names FieldDefault;
-	// AppSetting Ensure shares the same owner-collection + entry-write path.
+	// Drop meta_raw_model so BundleInjectAppModels fails while owners were collected.
 	if err := meta.DropRawModelTable(db); err != nil {
 		t.Fatalf("drop meta_raw_model: %v", err)
 	}
 	err := manager.buildBackendBundlesToDir(context.Background(), distBundlesDir, nil)
-	if err == nil {
-		t.Fatal("expected Ensure error")
-	}
-	msg := err.Error()
-	if !strings.Contains(msg, "inject FieldDefault virtual imports") &&
-		!strings.Contains(msg, "inject AppSetting virtual imports") {
-		t.Fatalf("expected Ensure virtual-imports error, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "inject app models for bundles") {
+		t.Fatalf("expected BundleInject error, got %v", err)
 	}
 
 	entryFilePath := filepath.Join(distBundlesDir, "__choysum_bundles_entry.ts")

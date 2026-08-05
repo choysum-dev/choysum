@@ -105,12 +105,12 @@ func (s *Session) ClearInjectPaths(modelName string) {
 	delete(s.lastInjectPath, modelName)
 }
 
-// RememberPathForTest records an inject path (legacy backend adapters / tests).
-func (s *Session) RememberPathForTest(modelName, path string) {
-	s.rememberInjectPath(modelName, path)
+func (s *Session) allInjectPaths() []string {
+	return s.AllInjectPaths()
 }
 
-func (s *Session) allInjectPaths() []string {
+// AllInjectPaths returns inject paths for every registered Spec (registration order).
+func (s *Session) AllInjectPaths() []string {
 	if s == nil {
 		return nil
 	}

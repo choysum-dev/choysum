@@ -85,16 +85,4 @@ func (b *ModuleBuilder) releaseInjectSchedules() {
 		return
 	}
 	b.injectSession.ReleaseSchedules()
-	b.fieldDefaultPlan = fieldDefaultPlanFrom(b.injectSession.Plan("FieldDefault"))
-	b.appSettingPlan = appSettingPlanFrom(b.injectSession.Plan("AppSetting"))
-}
-
-func (b *ModuleBuilder) syncInjectPathsFromSession() {
-	if b == nil || b.injectSession == nil {
-		return
-	}
-	b.fieldDefaultInjectPaths = b.injectSession.InjectPaths("FieldDefault")
-	b.fieldDefaultInjectPath = b.injectSession.LastInjectPath("FieldDefault")
-	b.appSettingInjectPaths = b.injectSession.InjectPaths("AppSetting")
-	b.appSettingInjectPath = b.injectSession.LastInjectPath("AppSetting")
 }
