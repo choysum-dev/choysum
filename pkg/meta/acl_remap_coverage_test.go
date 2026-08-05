@@ -89,7 +89,7 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 		if err := db.Delete(shell).Error; err != nil {
 			t.Fatalf("soft-delete shell: %v", err)
 		}
-		// Duplicate live keys → pickEffectiveAmong among live rows.
+		// Duplicate live keys → pickEffectiveAmong among live rows (empty ModuleId wins over newer shell).
 		eff2 := &Model{
 			BaseModel:   BaseModel{Id: sql.NullString{String: "eff2", Valid: true}, CreatedAt: ts, UpdatedAt: ts.Add(time.Hour)},
 			Name:        "User",
@@ -99,6 +99,12 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 		}
 		if err := db.Create(eff2).Error; err != nil {
 			t.Fatalf("create eff2: %v", err)
+		}
+		if err := db.Exec(
+			`INSERT INTO auth_role_record_rule (id, meta_model_id) VALUES (?, ?)`,
+			"rr-shell", "shell",
+		).Error; err != nil {
+			t.Fatalf("seed record rule: %v", err)
 		}
 		// Inject invalid-id row via load-all hook.
 		prevAll := aclLoadAllModels
@@ -113,6 +119,13 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 		}
 		if err := RemapACLToEffectiveModelIDs(db); err != nil {
 			t.Fatalf("remap: %v", err)
+		}
+		var mid string
+		if err := db.Raw(`SELECT meta_model_id FROM auth_role_record_rule WHERE id = ?`, "rr-shell").Scan(&mid).Error; err != nil {
+			t.Fatalf("read rr: %v", err)
+		}
+		if mid != "eff" {
+			t.Fatalf("expected remap onto empty-ModuleId eff, got %q", mid)
 		}
 	})
 
@@ -184,13 +197,12 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 		mustExecACL(`INSERT INTO auth_role_field_rule (id, meta_model_id, meta_field_id) VALUES (?,?,?)`, "fr-blank-model", "  ", "of")
 		mustExecACL(`INSERT INTO auth_role_field_rule (id, meta_model_id, meta_field_id) VALUES (?,?,?)`, "fr-missing-field", "eff-h", "gone-field")
 		mustExecACL(`INSERT INTO auth_role_field_rule (id, meta_model_id, meta_field_id) VALUES (?,?,?)`, "fr-blank-name", "eff-h", "bnf")
-		mustExecACL(`INSERT INTO auth_role_field_rule (id, meta_model_id, meta_field_id) VALUES (?,?,?)`, "fr-no-repl", "eff-h", "of") // of under shell; no Login on wrong model? Wait of name Login exists on eff as nf - Take by model+name finds nf. Use field only on shell with unique name.
-		// Replace fr-no-repl: field with name only on shell.
+		// Lonely exists only under the shell model, so no replacement resolves under effective.
 		lonely := &Field{BaseModel: BaseModel{Id: sql.NullString{String: "lonely", Valid: true}}, Name: "Lonely", ModelId: shell.Id}
 		if err := db.Create(lonely).Error; err != nil {
 			t.Fatalf("lonely: %v", err)
 		}
-		mustExecACL(`UPDATE auth_role_field_rule SET meta_field_id=? WHERE id=?`, "lonely", "fr-no-repl")
+		mustExecACL(`INSERT INTO auth_role_field_rule (id, meta_model_id, meta_field_id) VALUES (?,?,?)`, "fr-no-repl", "eff-h", "lonely")
 		mustExecACL(`INSERT INTO auth_role_field_rule (id, meta_model_id, meta_field_id) VALUES (?,?,?)`, "fr-same", "eff-h", "nf")
 
 		mustExecACL(`INSERT INTO auth_role_method_access (id, meta_model_id, meta_service_id) VALUES (?,?,?)`, "ma-ok", "shell-h", "os")
@@ -283,6 +295,7 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 		t.Run("exec_field_id_error", func(t *testing.T) {
 			// Need old→new field remap to reach exec; reset shell field rule.
 			mustExecACL(`INSERT OR REPLACE INTO auth_role_field_rule (id, meta_model_id, meta_field_id) VALUES (?,?,?)`, "fr-ok2", "eff-h", "of")
+			mustExecACL(`INSERT OR REPLACE INTO auth_role_record_rule (id, meta_model_id) VALUES (?,?)`, "rr-rollback", "shell-h")
 			n := 0
 			prev := aclExec
 			t.Cleanup(func() { aclExec = prev })
@@ -295,6 +308,13 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 			}
 			if err := RemapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "field_id") {
 				t.Fatalf("got %v (exec calls before fail=%d)", err, n)
+			}
+			var mid string
+			if err := db.Raw(`SELECT meta_model_id FROM auth_role_record_rule WHERE id = ?`, "rr-rollback").Scan(&mid).Error; err != nil {
+				t.Fatalf("read rollback probe: %v", err)
+			}
+			if mid != "shell-h" {
+				t.Fatalf("expected transaction rollback to keep shell-h, got %q", mid)
 			}
 		})
 		t.Run("load_method_access_error", func(t *testing.T) {
@@ -347,6 +367,27 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 				t.Fatalf("nil id should continue: %v", err)
 			}
 		})
+		t.Run("blank_hist_application_skipped", func(t *testing.T) {
+			blankHist := &Model{
+				BaseModel: BaseModel{Id: sql.NullString{String: "blank-hist", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+			}
+			if err := db.Create(blankHist).Error; err != nil {
+				t.Fatalf("create blank hist: %v", err)
+			}
+			blankSvc := &Service{
+				BaseModel: BaseModel{Id: sql.NullString{String: "blank-hist-svc", Valid: true}},
+				Name:      "Read",
+				ModelId:   blankHist.Id,
+			}
+			if err := db.Create(blankSvc).Error; err != nil {
+				t.Fatalf("create blank hist svc: %v", err)
+			}
+			mustExecACL(`INSERT OR REPLACE INTO auth_role_method_access (id, meta_model_id, meta_service_id) VALUES (?,?,?)`,
+				"ma-blank-hist", "blank-hist", "blank-hist-svc")
+			if err := RemapACLToEffectiveModelIDs(db); err != nil {
+				t.Fatalf("blank hist application must not abort remap: %v", err)
+			}
+		})
 		t.Run("take_replacement_service_error", func(t *testing.T) {
 			prev := aclTakeServiceByModelName
 			t.Cleanup(func() { aclTakeServiceByModelName = prev })
@@ -369,44 +410,6 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 				t.Fatalf("got %v", err)
 			}
 		})
-		t.Run("invalid_eff_id_in_map", func(t *testing.T) {
-			prevLive := aclLoadLiveModels
-			prevAll := aclLoadAllModels
-			t.Cleanup(func() {
-				aclLoadLiveModels = prevLive
-				aclLoadAllModels = prevAll
-			})
-			aclLoadLiveModels = func(*gorm.DB) ([]Model, error) {
-				return []Model{{
-					BaseModel:   BaseModel{Id: sql.NullString{String: "e", Valid: true}},
-					Application: "auth", Name: "User",
-				}}, nil
-			}
-			aclLoadAllModels = func(*gorm.DB) ([]Model, error) {
-				return []Model{
-					{BaseModel: BaseModel{Id: sql.NullString{String: "old", Valid: true}}, Application: "auth", Name: "User"},
-					{BaseModel: BaseModel{Id: sql.NullString{String: "e", Valid: true}}, Application: "auth", Name: "User"},
-					// Same key but override effective with invalid Id via second pass — force !eff.Id.Valid
-					{Application: "auth", Name: "MissingEff"}, // no effective
-				}, nil
-			}
-			// Force effectiveByKey entry with invalid Id by mutating after pick — inject via live that has Valid id then replace in loadAll path using hook on effective map... simpler: custom live with Valid then all row with key that maps to empty-id effective.
-			aclLoadLiveModels = func(*gorm.DB) ([]Model, error) {
-				return []Model{{
-					Application: "auth", Name: "Z",
-					// Id invalid → skipped; empty effectiveByKey early return already tested.
-					// Provide Valid id then overwrite via duplicate with invalid — pick keeps first Valid.
-					BaseModel: BaseModel{Id: sql.NullString{String: "z-eff", Valid: true}},
-				}, {
-					Application: "auth", Name: "BadEff",
-					BaseModel: BaseModel{Id: sql.NullString{String: "bad", Valid: true}},
-				}}, nil
-			}
-			// Replace BadEff's entry: can't easily. Hit !ok path with hist for MissingEff.
-			if err := RemapACLToEffectiveModelIDs(db); err != nil {
-				t.Fatalf("got %v", err)
-			}
-		})
 	})
 
 	t.Run("same_service_id_skip", func(t *testing.T) {
@@ -421,14 +424,19 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 			BaseModel: BaseModel{Id: sql.NullString{String: "ef", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 			Name: "M", Application: "a", Path: "/e",
 		}
-		_ = db.Create(shell)
-		_ = db.Create(eff)
-		// Soft-delete shell service; replacement under eff reuses same service id string somehow — instead
-		// point method access at shell service and create replacement with SAME id under eff (impossible PK).
-		// Hit !replacement.Id.Valid via hook.
+		if err := db.Create(shell).Error; err != nil {
+			t.Fatalf("create shell: %v", err)
+		}
+		if err := db.Create(eff).Error; err != nil {
+			t.Fatalf("create eff: %v", err)
+		}
 		svc := &Service{BaseModel: BaseModel{Id: sql.NullString{String: "svc1", Valid: true}}, Name: "S", ModelId: shell.Id}
-		_ = db.Create(svc)
-		_ = db.Exec(`INSERT INTO auth_role_method_access (id, meta_model_id, meta_service_id) VALUES (?,?,?)`, "ma1", "sh", "svc1")
+		if err := db.Create(svc).Error; err != nil {
+			t.Fatalf("create svc: %v", err)
+		}
+		if err := db.Exec(`INSERT INTO auth_role_method_access (id, meta_model_id, meta_service_id) VALUES (?,?,?)`, "ma1", "sh", "svc1").Error; err != nil {
+			t.Fatalf("seed method access: %v", err)
+		}
 		prev := aclTakeServiceByModelName
 		t.Cleanup(func() { aclTakeServiceByModelName = prev })
 		aclTakeServiceByModelName = func(_ *gorm.DB, dest interface{}, _, _ string) error {
@@ -443,10 +451,12 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 	t.Run("no_auth_tables", func(t *testing.T) {
 		db := openACLRemapDB(t, "acl-no-auth")
 		ts := time.Now().UTC()
-		_ = db.Create(&Model{
+		if err := db.Create(&Model{
 			BaseModel: BaseModel{Id: sql.NullString{String: "e", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 			Name: "X", Application: "a", Path: "/x",
-		})
+		}).Error; err != nil {
+			t.Fatalf("create model: %v", err)
+		}
 		if err := RemapACLToEffectiveModelIDs(db); err != nil {
 			t.Fatalf("no auth tables: %v", err)
 		}

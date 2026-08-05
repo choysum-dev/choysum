@@ -155,6 +155,43 @@ test('resolveEffectiveModelRow covers remaining ModuleId/Id/UpdatedAt branches',
   }
 });
 
+test('resolveEffectiveModelRow pages past limit to keep older effective row', async () => {
+  const orig = (MetaModel as any).Search;
+  try {
+    const calls: Array<{ limit?: number; offset?: number }> = [];
+    (MetaModel as any).Search = async (_domain: any, opts: any) => {
+      calls.push({ limit: opts?.limit, offset: opts?.offset });
+      const offset = Number(opts?.offset || 0);
+      const limit = Number(opts?.limit || 0);
+      // First page: 500 newer shells; second page: older effective row.
+      if (offset === 0) {
+        return Array.from({ length: limit }, (_, i) => ({
+          Id: `shell-${i}`,
+          ModuleId: `mod-${i}`,
+          UpdatedAt: `2026-08-05T12:${String(i % 60).padStart(2, '0')}:00.000Z`,
+        }));
+      }
+      if (offset === limit) {
+        return [
+          {
+            Id: 'eff-old',
+            ModuleId: null,
+            UpdatedAt: '2026-08-05T01:00:00.000Z',
+          },
+        ];
+      }
+      return [];
+    };
+    const row = await resolveEffectiveModelRow('partner', 'Partner');
+    expect(row?.Id).toBe('eff-old');
+    expect(calls.length).toBeGreaterThanOrEqual(2);
+    expect(calls[0].offset).toBe(0);
+    expect(calls[1].offset).toBe(calls[0].limit);
+  } finally {
+    (MetaModel as any).Search = orig;
+  }
+});
+
 test('resolveEffectiveApplicationId returns tip Id or empty', async () => {
   const orig = (MetaApplication as any).Search;
   try {

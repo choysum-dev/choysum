@@ -84,20 +84,28 @@ export async function resolveEffectiveModelRow(
   fields: string[] = ['Id', 'ModuleId', 'UpdatedAt', 'CompanyField']
 ): Promise<any | undefined> {
   const selectedFields = Array.from(new Set(['Id', 'ModuleId', 'UpdatedAt', ...fields]));
-  const models = await MetaModel.Search(
-    {
-      And: [
-        ['Name', '=', modelName],
-        ['Application', '=', appName],
-      ],
-    } as any,
-    {
-      fields: selectedFields,
-      orderBy: { field: 'UpdatedAt', order: 'desc' },
-      limit: 50,
-    } as any
-  );
-  const rows = (models || []).filter((m: any) => rowId(m));
+  const pageSize = 500;
+  const models: any[] = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const page = await MetaModel.Search(
+      {
+        And: [
+          ['Name', '=', modelName],
+          ['Application', '=', appName],
+        ],
+      } as any,
+      {
+        fields: selectedFields,
+        orderBy: { field: 'UpdatedAt', order: 'desc' },
+        limit: pageSize,
+        offset,
+      } as any
+    );
+    const batch = (page as any[]) || [];
+    models.push(...batch);
+    if (batch.length < pageSize) break;
+  }
+  const rows = models.filter((m: any) => rowId(m));
   if (rows.length === 0) return undefined;
   if (rows.length === 1) return rows[0];
   return pickEffectiveAmong(rows);

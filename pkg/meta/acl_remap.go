@@ -109,7 +109,7 @@ func RemapACLToEffectiveModelIDs(db *gorm.DB) error {
 		}
 		key := strings.TrimSpace(row.Application) + "\x00" + strings.TrimSpace(row.Name)
 		eff, ok := effectiveByKey[key]
-		if !ok || !eff.Id.Valid {
+		if !ok {
 			continue
 		}
 		if row.Id.String == eff.Id.String {
@@ -243,6 +243,9 @@ func remapOrphanServices(db *gorm.DB, effectiveIDSet map[string]struct{}) error 
 				continue
 			}
 			return fmt.Errorf("lookup historical model for service %s: %w", svcID, err)
+		}
+		if strings.TrimSpace(hist.Application) == "" || strings.TrimSpace(hist.Name) == "" {
+			continue
 		}
 		eff, err := aclLookupEffective(db, hist.Application, hist.Name)
 		if err != nil {
