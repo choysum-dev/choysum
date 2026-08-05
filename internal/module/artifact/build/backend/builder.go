@@ -610,6 +610,11 @@ func (b *ModuleBuilder) prebuild() (*module.BuildResult, error) {
 
 func (b *ModuleBuilder) build(prebuildResult *module.BuildResult) (*module.BuildResult, error) {
 	if b.entryPoint == "" {
+		if b.buildPlugin != nil {
+			if _, err := b.buildPlugin.GetParserResults(); err != nil {
+				return nil, xfmt.Errorf("Error getting parser results: %w", err)
+			}
+		}
 		return prebuildResult, nil
 	}
 

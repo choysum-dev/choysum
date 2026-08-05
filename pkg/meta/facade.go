@@ -83,9 +83,6 @@ func ReplaceModuleDeclarations(db *gorm.DB, moduleID string, models []*Model) ([
 		return nil, fmt.Errorf("list previous raw models: %w", err)
 	}
 	for _, row := range prevDecls {
-		if row == nil {
-			continue
-		}
 		appendKey(row.Application, row.Name)
 	}
 
@@ -102,9 +99,6 @@ func ReplaceModuleDeclarations(db *gorm.DB, moduleID string, models []*Model) ([
 
 	for _, path := range orderedPaths {
 		m := modelByPath[path]
-		if m == nil {
-			continue
-		}
 		m.ModuleId = sql.NullString{String: moduleID, Valid: true}
 		appendKey(m.Application, m.Name)
 	}
@@ -115,9 +109,6 @@ func ReplaceModuleDeclarations(db *gorm.DB, moduleID string, models []*Model) ([
 		}
 		for _, path := range orderedPaths {
 			m := modelByPath[path]
-			if m == nil {
-				continue
-			}
 			if err := PersistModelTreeAsRaw(tx, m); err != nil {
 				return fmt.Errorf("persist raw model %s: %w", path, err)
 			}
