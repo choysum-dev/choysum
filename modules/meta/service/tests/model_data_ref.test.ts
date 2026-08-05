@@ -67,42 +67,16 @@ test('MetaModelData.Ref returns ResId; RefOrNull returns null; missing Ref raise
   }
 });
 
-test('MetaModelData.sqlModelId projects live MetaModel tip by Application and ModelName', () => {
+test('MetaModelData.ModelId is a physical effective FK column, not tip SqlCompute', () => {
   const modelMeta = MetadataStorage.instance.getModelMetadata(MetaModelData as any);
-  const handler = modelMeta.sqlComputeHandlers?.get('ModelId') as any;
-  expect(handler).toEqual({
-    field: 'ModelId',
-    method: 'sqlModelId',
-    deps: ['Application', 'ModelName'],
-  });
-  // SqlCompute strips the physical FK column so reads use the tip projection.
-  expect((modelMeta.fields.get('ModelId') as any)?.column).toBeUndefined();
+  expect(modelMeta.sqlComputeHandlers?.get('ModelId')).toBeUndefined();
+
+  const modelIdField = modelMeta.fields.get('ModelId') as any;
+  expect(modelIdField?.column).toBeDefined();
+  expect(modelIdField?.type).toBe('ManyToOne');
 
   const proto = MetaModelData.prototype as any;
-  expect(typeof proto.sqlModelId).toBe('function');
-
-  const colCalls: Array<[string, string]> = [];
-  const host = Object.create(proto);
-  Object.defineProperty(host, '$sql', {
-    configurable: true,
-    enumerable: false,
-    get: () => ({
-      col: (table: string, column: string) => {
-        colCalls.push([table, column]);
-        return `${table}.${column}` as any;
-      },
-    }),
-  });
-
-  const out = proto.sqlModelId.call(host);
-  expect(colCalls).toEqual([
-    ['meta_model_data', 'application'],
-    ['meta_model_data', 'model_name'],
-  ]);
-  const sqlText = String((out as any).toOperationNode().sqlFragments.join('')).toLowerCase();
-  expect(sqlText).toContain('m.deleted_at is null');
-  expect(sqlText).toContain('order by m.created_at desc, m.id desc');
-  expect(sqlText).toContain('limit 1');
+  expect(proto.sqlModelId).toBeUndefined();
 });
 
 test('createServiceByModel(meta.MetaModelData) dials Ref after factory registration', async () => {

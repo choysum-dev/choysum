@@ -1,9 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model, SqlCompute } from '@/core/service';
+import { BaseModel, Field, Model } from '@/core/service';
 import { ChoysumError, GrpcCode } from '@/core/service/error';
-import { sql } from 'kysely';
 import { _lt, _t } from '../i18n';
 import MetaModel from './model';
 
@@ -58,25 +57,9 @@ export default class MetaModelData extends BaseModel {
   @Field({ type: 'varchar', size: 255, notNull: true, index: true, string: _lt('Name', { scope: 'meta.model.MetaModelData.fields' }) })
   Name!: string;
 
+  /** Effective meta_model.id written by the host loader (LookupEffectiveModel). */
   @Field({ type: 'ManyToOne', relation: { targetModel: () => MetaModel }, string: _lt('Model', { scope: 'meta.model.MetaModelData.fields' }) })
-  readonly ModelId?: MetaModel;
-
-  /**
-   * IMD may register multiple meta_model rows with the same (application, name).
-   * Prefer the newest live tip (created_at DESC, id DESC) instead of the stored FK column.
-   */
-  @SqlCompute<MetaModelData>('ModelId', { deps: ['Application', 'ModelName'] })
-  sqlModelId() {
-    return sql<string>`(
-      select m.id
-      from meta_model as m
-      where m.application = ${this.$sql.col('meta_model_data', 'application')}
-        and m.name = ${this.$sql.col('meta_model_data', 'model_name')}
-        and m.deleted_at is null
-      order by m.created_at desc, m.id desc
-      limit 1
-    )`;
-  }
+  ModelId?: MetaModel;
 
   @Field({ type: 'varchar', size: 255, notNull: true, index: true, string: _lt('Model Name', { scope: 'meta.model.MetaModelData.fields' }) })
   ModelName!: string;
