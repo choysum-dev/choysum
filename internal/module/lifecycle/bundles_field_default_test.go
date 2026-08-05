@@ -66,9 +66,9 @@ func TestBuildBackendBundlesToDir_FieldDefaultOwnerAndEnsureError(t *testing.T) 
 	manager.bootstrapOnce.Do(func() {})
 	distBundlesDir := t.TempDir()
 
-	// Drop meta_model so EnsureFieldDefaultVirtualImports fails while owners were collected.
-	if err := db.Migrator().DropTable(&meta.Model{}); err != nil {
-		t.Fatalf("drop meta_model: %v", err)
+	// Drop meta_raw_model so EnsureFieldDefaultVirtualImports fails while owners were collected.
+	if err := db.Migrator().DropTable(&meta.RawModel{}); err != nil {
+		t.Fatalf("drop meta_raw_model: %v", err)
 	}
 	err := manager.buildBackendBundlesToDir(context.Background(), distBundlesDir, nil)
 	if err == nil || !strings.Contains(err.Error(), "inject FieldDefault virtual imports") {

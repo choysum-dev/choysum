@@ -3760,6 +3760,43 @@ func TestValidateUiResourceDependencies(t *testing.T) {
 			t.Fatalf("expected valid dependencies, got %v", err)
 		}
 	})
+
+	t.Run("prefers effective model over declaration shell", func(t *testing.T) {
+		shell := &meta.Model{
+			BaseModel:   meta.BaseModel{Id: sql.NullString{String: "shell_model", Valid: true}},
+			Application: "app",
+			Name:        "Model",
+			ModuleId:    sql.NullString{String: "mod-shell", Valid: true},
+			Path:        "/virtual/shell",
+		}
+		effective := &meta.Model{
+			BaseModel:   meta.BaseModel{Id: sql.NullString{String: "eff_model", Valid: true}},
+			Application: "app",
+			Name:        "Model",
+			Path:        "/effective/model",
+		}
+		// Insert effective first so the later shell hits the skip-continue branch.
+		if err := testRuntimeScope.db.Create(effective).Error; err != nil {
+			t.Fatalf("create effective model: %v", err)
+		}
+		if err := testRuntimeScope.db.Create(shell).Error; err != nil {
+			t.Fatalf("create shell model: %v", err)
+		}
+		if err := testRuntimeScope.db.Create(&meta.Service{
+			BaseModel: meta.BaseModel{Id: sql.NullString{String: "svc_create", Valid: true}},
+			ModelId:   sql.NullString{String: "eff_model", Valid: true},
+			Name:      "Create",
+		}).Error; err != nil {
+			t.Fatalf("create service: %v", err)
+		}
+		err := b.validateUiResourceDependencies([]*meta.UiResource{{
+			Name:     "action.create",
+			Requires: []byte(`["rpc:/app.Model/Create"]`),
+		}})
+		if err != nil {
+			t.Fatalf("expected validation success, got %v", err)
+		}
+	})
 }
 
 func TestReplaceUiResourceRelationsReplacesAndDedupesRows(t *testing.T) {

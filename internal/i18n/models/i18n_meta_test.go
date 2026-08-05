@@ -7,16 +7,23 @@ import (
 	"database/sql"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/rs/xid"
+	"gorm.io/gorm"
 )
+
+func migrateI18nDualStoreTables(t *testing.T, db *gorm.DB) {
+	t.Helper()
+	if err := meta.EnsureDualStoreTables(db); err != nil {
+		t.Fatalf("EnsureDualStoreTables: %v", err)
+	}
+}
 
 func TestEnsureI18nMetaCreatesModelAndServices(t *testing.T) {
 	rs := newTestScope(t)
-	if err := rs.Session().AutoMigrate(&meta.Model{}, &meta.Service{}); err != nil {
-		t.Fatalf("automigrate: %v", err)
-	}
+	migrateI18nDualStoreTables(t, rs.Session().DB)
 
 	moduleID := sql.NullString{String: xid.New().String(), Valid: true}
 	if err := EnsureI18nMeta(rs, "auth", moduleID); err != nil {
@@ -26,12 +33,22 @@ func TestEnsureI18nMetaCreatesModelAndServices(t *testing.T) {
 		t.Fatalf("EnsureI18nMeta idempotent: %v", err)
 	}
 
+	decls, err := meta.ListDeclarations(rs.Session().DB, meta.DeclarationQuery{
+		Application: "auth", Name: "I18n", Path: "go://i18n/auth", PreloadTree: true,
+	})
+	if err != nil || len(decls) != 1 {
+		t.Fatalf("list declaration: n=%d err=%v", len(decls), err)
+	}
+	if !decls[0].Abstract || !decls[0].Readonly {
+		t.Fatalf("expected abstract readonly declaration: %+v", decls[0])
+	}
+
 	var model meta.Model
 	if err := rs.Session().Where("name = ? AND application = ?", "I18n", "auth").Take(&model).Error; err != nil {
-		t.Fatalf("lookup Model: %v", err)
+		t.Fatalf("lookup effective Model: %v", err)
 	}
 	if !model.Abstract || !model.Readonly {
-		t.Fatalf("expected abstract readonly I18n model: %+v", model)
+		t.Fatalf("expected abstract readonly effective I18n model: %+v", model)
 	}
 
 	var services []meta.Service
@@ -55,9 +72,7 @@ func TestEnsureI18nMetaCreatesModelAndServices(t *testing.T) {
 func TestEnsureI18nMetaSeedsTerminologyEditorAllows(t *testing.T) {
 	rs := newTestScope(t)
 	db := rs.Session().DB
-	if err := db.AutoMigrate(&meta.Model{}, &meta.Service{}); err != nil {
-		t.Fatal(err)
-	}
+	migrateI18nDualStoreTables(t, db)
 	if err := db.Exec(`CREATE TABLE auth_role (
 		id TEXT PRIMARY KEY,
 		code TEXT,
@@ -96,7 +111,6 @@ func TestEnsureI18nMetaSeedsTerminologyEditorAllows(t *testing.T) {
 		t.Fatalf("expected 2 RoleMethodAccess rows, got %d", count)
 	}
 
-	// Second run exercises the count>0 continue branch.
 	if err := EnsureI18nMeta(rs, "web", sql.NullString{}); err != nil {
 		t.Fatalf("EnsureI18nMeta idempotent seed: %v", err)
 	}
@@ -114,18 +128,123 @@ func TestEnsureI18nMetaEarlyReturns(t *testing.T) {
 	}
 
 	rs := newTestScope(t)
-	// No meta tables → early return.
 	if err := EnsureI18nMeta(rs, "auth", sql.NullString{}); err != nil {
 		t.Fatalf("missing tables: %v", err)
+	}
+}
+
+func TestEnsureI18nMetaPrefersCanonicalPath(t *testing.T) {
+	rs := newTestScope(t)
+	db := rs.Session().DB
+	migrateI18nDualStoreTables(t, db)
+
+	ext := &meta.Model{
+		BaseModel: meta.BaseModel{
+			Id: sql.NullString{String: xid.New().String(), Valid: true},
+		},
+		Name:        "I18n",
+		Path:        "modules/ext/i18n_override.ts",
+		Application: "auth",
+		ClassName:   "I18n",
+		Abstract:    true,
+		Readonly:    true,
+	}
+	if err := meta.PersistModelTreeAsRaw(db, ext); err != nil {
+		t.Fatalf("seed extension declaration: %v", err)
+	}
+	// Bump timestamps so Order(created_at DESC) would prefer the extension if name-only.
+	if err := db.Table("meta_raw_model").Where("id = ?", ext.Id.String).Updates(map[string]any{
+		"created_at": db.NowFunc().Add(time.Hour),
+		"updated_at": db.NowFunc().Add(time.Hour),
+	}).Error; err != nil {
+		t.Fatalf("bump extension timestamps: %v", err)
+	}
+
+	moduleID := sql.NullString{String: xid.New().String(), Valid: true}
+	if err := EnsureI18nMeta(rs, "auth", moduleID); err != nil {
+		t.Fatalf("EnsureI18nMeta: %v", err)
+	}
+
+	canonicals, err := meta.ListDeclarations(db, meta.DeclarationQuery{
+		Application: "auth", Path: "go://i18n/auth", PreloadTree: true,
+	})
+	if err != nil || len(canonicals) != 1 {
+		t.Fatalf("canonical list: n=%d err=%v", len(canonicals), err)
+	}
+	if len(canonicals[0].Services) != 3 {
+		t.Fatalf("want 3 services on canonical path, got %d", len(canonicals[0].Services))
+	}
+	exts, err := meta.ListDeclarations(db, meta.DeclarationQuery{
+		Application: "auth", Path: ext.Path, PreloadTree: true,
+	})
+	if err != nil || len(exts) != 1 {
+		t.Fatalf("ext list: n=%d err=%v", len(exts), err)
+	}
+	if len(exts[0].Services) != 0 {
+		t.Fatalf("extension must not receive built-in services, got %d", len(exts[0].Services))
+	}
+
+	var effective meta.Model
+	if err := db.Preload("Services").Where("name = ? AND application = ?", "I18n", "auth").Take(&effective).Error; err != nil {
+		t.Fatalf("load effective: %v", err)
+	}
+	if effective.Path != "go://i18n/auth" {
+		t.Fatalf("effective Path = %q, want go://i18n/auth", effective.Path)
+	}
+	if effective.Id.String != canonicals[0].Id.String {
+		t.Fatalf("effective id = %q, want canonical id %q (not extension %q)", effective.Id.String, canonicals[0].Id.String, ext.Id.String)
+	}
+	if len(effective.Services) != 3 {
+		t.Fatalf("want 3 effective services, got %d", len(effective.Services))
+	}
+}
+
+func TestEnsureI18nMetaTipCreatedAtWins(t *testing.T) {
+	rs := newTestScope(t)
+	db := rs.Session().DB
+	migrateI18nDualStoreTables(t, db)
+
+	ext := &meta.Model{
+		BaseModel: meta.BaseModel{
+			Id: sql.NullString{String: xid.New().String(), Valid: true},
+		},
+		Name:        "I18n",
+		Path:        "modules/ext/created_at_tip.ts",
+		Application: "auth",
+		ClassName:   "I18n",
+		Abstract:    true,
+		Readonly:    true,
+	}
+	if err := meta.PersistModelTreeAsRaw(db, ext); err != nil {
+		t.Fatalf("seed extension: %v", err)
+	}
+	past := db.NowFunc().Add(-time.Hour)
+	future := db.NowFunc().Add(2 * time.Hour)
+	if err := db.Table("meta_raw_model").Where("id = ?", ext.Id.String).UpdateColumns(map[string]any{
+		"created_at": future,
+		"updated_at": past,
+	}).Error; err != nil {
+		t.Fatalf("bump timestamps: %v", err)
+	}
+
+	if err := EnsureI18nMeta(rs, "auth", sql.NullString{}); err != nil {
+		t.Fatalf("EnsureI18nMeta: %v", err)
+	}
+	canonicals, err := meta.ListDeclarations(db, meta.DeclarationQuery{
+		Application: "auth", Path: "go://i18n/auth",
+	})
+	if err != nil || len(canonicals) != 1 {
+		t.Fatalf("canonical: n=%d err=%v", len(canonicals), err)
+	}
+	if !canonicals[0].CreatedAt.After(future) {
+		t.Fatalf("canonical tip CreatedAt=%v, want after sibling CreatedAt=%v", canonicals[0].CreatedAt, future)
 	}
 }
 
 func TestEnsureI18nMetaUpdatesModuleID(t *testing.T) {
 	rs := newTestScope(t)
 	db := rs.Session().DB
-	if err := db.AutoMigrate(&meta.Model{}, &meta.Service{}); err != nil {
-		t.Fatal(err)
-	}
+	migrateI18nDualStoreTables(t, db)
 	if err := EnsureI18nMeta(rs, "auth", sql.NullString{}); err != nil {
 		t.Fatal(err)
 	}
@@ -133,47 +252,54 @@ func TestEnsureI18nMetaUpdatesModuleID(t *testing.T) {
 	if err := EnsureI18nMeta(rs, "auth", moduleID); err != nil {
 		t.Fatalf("update module id: %v", err)
 	}
-	var model meta.Model
-	if err := db.Where("name = ? AND application = ?", "I18n", "auth").Take(&model).Error; err != nil {
-		t.Fatal(err)
+	decls, err := meta.ListDeclarations(db, meta.DeclarationQuery{Application: "auth", Name: "I18n"})
+	if err != nil || len(decls) != 1 {
+		t.Fatalf("list: n=%d err=%v", len(decls), err)
 	}
-	if model.ModuleId.String != moduleID.String {
-		t.Fatalf("ModuleId = %q, want %q", model.ModuleId.String, moduleID.String)
+	if decls[0].ModuleId.String != moduleID.String {
+		t.Fatalf("ModuleId = %q, want %q", decls[0].ModuleId.String, moduleID.String)
 	}
 }
 
 func TestEnsureI18nMetaErrorPaths(t *testing.T) {
 	rs := newTestScope(t)
 	db := rs.Session().DB
-	if err := db.AutoMigrate(&meta.Model{}, &meta.Service{}); err != nil {
-		t.Fatal(err)
-	}
+	migrateI18nDualStoreTables(t, db)
 
-	// Force create Model failure via query_only.
 	if err := db.Exec("PRAGMA query_only = ON").Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := EnsureI18nMeta(rs, "auth", sql.NullString{}); err == nil || !strings.Contains(err.Error(), "create I18n Model") {
-		t.Fatalf("expected create I18n Model error, got %v", err)
+	if err := EnsureI18nMeta(rs, "auth", sql.NullString{}); err == nil || !strings.Contains(err.Error(), "create meta_raw_model") {
+		t.Fatalf("expected create meta_raw_model error, got %v", err)
 	}
 	_ = db.Exec("PRAGMA query_only = OFF")
 
-	// Seed model, then force service create failure.
 	if err := EnsureI18nMeta(rs, "crm", sql.NullString{}); err != nil {
 		t.Fatal(err)
 	}
-	var model meta.Model
-	if err := db.Where("name = ? AND application = ?", "I18n", "crm").Take(&model).Error; err != nil {
-		t.Fatal(err)
+	decls, err := meta.ListDeclarations(db, meta.DeclarationQuery{Application: "crm", Name: "I18n"})
+	if err != nil || len(decls) != 1 {
+		t.Fatalf("crm decl: n=%d err=%v", len(decls), err)
 	}
-	if err := db.Where("model_id = ?", model.Id.String).Delete(&meta.Service{}).Error; err != nil {
+	if err := db.Exec("DELETE FROM meta_raw_service WHERE model_id = ?", decls[0].Id.String).Error; err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Exec("PRAGMA query_only = ON").Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := EnsureI18nMeta(rs, "crm", sql.NullString{}); err == nil || !strings.Contains(err.Error(), "create Service") {
-		t.Fatalf("expected create Service error, got %v", err)
+	if err := EnsureI18nMeta(rs, "crm", sql.NullString{}); err == nil || !strings.Contains(err.Error(), "create declaration service") {
+		t.Fatalf("expected create declaration service error, got %v", err)
+	}
+	_ = db.Exec("PRAGMA query_only = OFF")
+
+	if err := EnsureI18nMeta(rs, "erp", sql.NullString{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec("PRAGMA query_only = ON").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := EnsureI18nMeta(rs, "erp", sql.NullString{}); err == nil || !strings.Contains(err.Error(), "promote declaration tip") {
+		t.Fatalf("expected promote tip error from EnsureI18nMeta, got %v", err)
 	}
 	_ = db.Exec("PRAGMA query_only = OFF")
 }
@@ -181,24 +307,19 @@ func TestEnsureI18nMetaErrorPaths(t *testing.T) {
 func TestEnsureI18nMetaLookupErrors(t *testing.T) {
 	rs := newTestScope(t)
 	db := rs.Session().DB
-	if err := db.AutoMigrate(&meta.Model{}, &meta.Service{}); err != nil {
+	migrateI18nDualStoreTables(t, db)
+	if err := db.Exec("ALTER TABLE meta_raw_model RENAME COLUMN path TO path_broken").Error; err != nil {
 		t.Fatal(err)
 	}
-	// Corrupt meta_model so Take fails with a non-RecordNotFound error.
-	if err := db.Exec("ALTER TABLE meta_model RENAME COLUMN name TO name_broken").Error; err != nil {
-		t.Fatal(err)
-	}
-	if err := EnsureI18nMeta(rs, "auth", sql.NullString{}); err == nil || !strings.Contains(err.Error(), "lookup I18n Model") {
-		t.Fatalf("expected lookup I18n Model error, got %v", err)
+	if err := EnsureI18nMeta(rs, "auth", sql.NullString{}); err == nil || !strings.Contains(err.Error(), "lookup declaration") {
+		t.Fatalf("expected lookup declaration error, got %v", err)
 	}
 }
 
 func TestEnsureTerminologyEditorAllowsBranches(t *testing.T) {
 	rs := newTestScope(t)
 	db := rs.Session().DB
-	if err := db.AutoMigrate(&meta.Model{}, &meta.Service{}); err != nil {
-		t.Fatal(err)
-	}
+	migrateI18nDualStoreTables(t, db)
 	if err := db.Exec(`CREATE TABLE auth_role (
 		id TEXT PRIMARY KEY,
 		code TEXT,
@@ -221,7 +342,6 @@ func TestEnsureTerminologyEditorAllowsBranches(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// No terminology.editor role → empty roleID early return.
 	if err := ensureTerminologyEditorAllows(db, map[string]string{"SearchTerms": "svc-1"}); err != nil {
 		t.Fatalf("missing role: %v", err)
 	}
@@ -230,12 +350,10 @@ func TestEnsureTerminologyEditorAllowsBranches(t *testing.T) {
 	if err := db.Exec(`INSERT INTO auth_role (id, code) VALUES (?, ?)`, roleID, terminologyEditorRoleCode).Error; err != nil {
 		t.Fatal(err)
 	}
-	// Empty serviceID skipped.
 	if err := ensureTerminologyEditorAllows(db, map[string]string{"SearchTerms": "", "UpdateTerm": ""}); err != nil {
 		t.Fatalf("empty service ids: %v", err)
 	}
 
-	// Role lookup SQL error.
 	if err := db.Exec("ALTER TABLE auth_role RENAME COLUMN code TO code_broken").Error; err != nil {
 		t.Fatal(err)
 	}
@@ -247,29 +365,25 @@ func TestEnsureTerminologyEditorAllowsBranches(t *testing.T) {
 func TestEnsureI18nMetaSaveModuleAndServiceLookupErrors(t *testing.T) {
 	rs := newTestScope(t)
 	db := rs.Session().DB
-	if err := db.AutoMigrate(&meta.Model{}, &meta.Service{}); err != nil {
-		t.Fatal(err)
-	}
+	migrateI18nDualStoreTables(t, db)
 	if err := EnsureI18nMeta(rs, "auth", sql.NullString{}); err != nil {
 		t.Fatal(err)
 	}
 
-	// Force Save(moduleId) failure.
 	if err := db.Exec("PRAGMA query_only = ON").Error; err != nil {
 		t.Fatal(err)
 	}
 	moduleID := sql.NullString{String: xid.New().String(), Valid: true}
-	if err := EnsureI18nMeta(rs, "auth", moduleID); err == nil || !strings.Contains(err.Error(), "update I18n Model module") {
-		t.Fatalf("expected update module error, got %v", err)
+	if err := EnsureI18nMeta(rs, "auth", moduleID); err == nil || !strings.Contains(err.Error(), "update declaration module") {
+		t.Fatalf("expected update declaration module error, got %v", err)
 	}
 	_ = db.Exec("PRAGMA query_only = OFF")
 
-	// Corrupt meta_service for lookup Service error.
-	if err := db.Exec("ALTER TABLE meta_service RENAME COLUMN name TO name_broken").Error; err != nil {
+	if err := db.Exec("ALTER TABLE meta_model RENAME COLUMN name TO name_broken").Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := EnsureI18nMeta(rs, "auth", sql.NullString{}); err == nil || !strings.Contains(err.Error(), "lookup Service") {
-		t.Fatalf("expected lookup Service error, got %v", err)
+	if err := EnsureI18nMeta(rs, "auth", sql.NullString{}); err == nil || !strings.Contains(err.Error(), "recompute I18n effective") {
+		t.Fatalf("expected recompute effective error, got %v", err)
 	}
 }
 
@@ -293,12 +407,10 @@ func TestEnsureTerminologyEditorAccessLookupAndSeedErrors(t *testing.T) {
 	)`).Error; err != nil {
 		t.Fatal(err)
 	}
-	// Count fails because meta_service_id / deleted_at columns are missing.
 	if err := ensureTerminologyEditorAllows(db, map[string]string{"SearchTerms": "svc-1"}); err == nil || !strings.Contains(err.Error(), "lookup RoleMethodAccess") {
 		t.Fatalf("expected RoleMethodAccess lookup error, got %v", err)
 	}
 
-	// Recreate proper access table then force seed insert failure with query_only.
 	if err := db.Exec("DROP TABLE auth_role_method_access").Error; err != nil {
 		t.Fatal(err)
 	}
@@ -323,4 +435,32 @@ func TestEnsureTerminologyEditorAccessLookupAndSeedErrors(t *testing.T) {
 		t.Fatalf("expected seed RoleMethodAccess error, got %v", err)
 	}
 	_ = db.Exec("PRAGMA query_only = OFF")
+}
+
+func TestLoadEffectiveI18nServiceIDsErrors(t *testing.T) {
+	rs := newTestScope(t)
+	db := rs.Session().DB
+	migrateI18nDualStoreTables(t, db)
+	if err := EnsureI18nMeta(rs, "crm", sql.NullString{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec("ALTER TABLE meta_model RENAME COLUMN name TO name_broken").Error; err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadEffectiveI18nServiceIDs(db, "crm"); err == nil || !strings.Contains(err.Error(), "lookup I18n effective Model") {
+		t.Fatalf("expected effective model lookup error, got %v", err)
+	}
+
+	rs2 := newTestScope(t)
+	db2 := rs2.Session().DB
+	migrateI18nDualStoreTables(t, db2)
+	if err := EnsureI18nMeta(rs2, "erp", sql.NullString{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db2.Exec("ALTER TABLE meta_service RENAME COLUMN name TO name_broken").Error; err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadEffectiveI18nServiceIDs(db2, "erp"); err == nil || !strings.Contains(err.Error(), "lookup effective Service") {
+		t.Fatalf("expected effective service lookup error, got %v", err)
+	}
 }

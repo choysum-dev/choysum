@@ -76,7 +76,10 @@ func newSchemaTestScope(t *testing.T) *schemaTestScope {
 
 func migrateSchemaMetaTables(t *testing.T, session *scope.Session) {
 	t.Helper()
-	if err := session.AutoMigrate(&meta.Model{}, &meta.Field{}, &meta.Decorator{}, &meta.Argument{}, &meta.Module{}); err != nil {
+	if err := meta.EnsureDualStoreTables(session.DB); err != nil {
+		t.Fatalf("ensure dual store: %v", err)
+	}
+	if err := session.AutoMigrate(&meta.Module{}); err != nil {
 		t.Fatalf("migrate schema meta tables: %v", err)
 	}
 }

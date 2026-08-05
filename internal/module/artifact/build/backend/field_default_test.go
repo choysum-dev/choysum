@@ -35,11 +35,10 @@ func newFieldDefaultTestBuilder(t *testing.T, mod *meta.Module) (*ModuleBuilder,
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(
-		&meta.Application{}, &meta.Module{}, &meta.Model{},
-		&meta.Field{}, &meta.Service{}, &meta.Decorator{}, &meta.Argument{},
-		&meta.Parameter{}, &meta.TypeParameter{},
-	); err != nil {
+	if err := meta.EnsureDualStoreTables(db); err != nil {
+		t.Fatalf("ensure dual store: %v", err)
+	}
+	if err := db.AutoMigrate(&meta.Application{}, &meta.Module{}); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
 	testScope := newBuilderTestScope()
@@ -51,6 +50,24 @@ func newFieldDefaultTestBuilder(t *testing.T, mod *meta.Module) (*ModuleBuilder,
 		buildPlugin:  buildPlugin,
 		entryPoint:   "/virtual/entry.ts",
 	}, db
+}
+
+func seedFieldDefaultDeclaration(t *testing.T, db *gorm.DB, id, path, application, moduleID string) {
+	t.Helper()
+	m := &meta.Model{
+		Name:        "FieldDefault",
+		Path:        path,
+		Application: application,
+	}
+	if id != "" {
+		m.Id = sql.NullString{String: id, Valid: true}
+	}
+	if moduleID != "" {
+		m.ModuleId = sql.NullString{String: moduleID, Valid: true}
+	}
+	if err := meta.PersistModelTreeAsRaw(db, m); err != nil {
+		t.Fatalf("seed FieldDefault declaration: %v", err)
+	}
 }
 
 func TestIsGeneratedFieldDefaultPath(t *testing.T) {
@@ -101,14 +118,7 @@ func TestDecideFieldDefaultPlan_DBVirtualReinjectsForOwner(t *testing.T) {
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
 	builder, db := newFieldDefaultTestBuilder(t, owner)
-	if err := db.Create(&meta.Model{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "fd1", Valid: true}},
-		Name:        "FieldDefault",
-		Path:        "/virtual/modules/partner/service/models/__generated__/field_default.ts",
-		Application: "partner",
-	}).Error; err != nil {
-		t.Fatalf("seed: %v", err)
-	}
+	seedFieldDefaultDeclaration(t, db, "fd1", "/virtual/modules/partner/service/models/__generated__/field_default.ts", "partner", "")
 	plan, err := builder.decideFieldDefaultPlan(nil)
 	if err != nil {
 		t.Fatalf("decide: %v", err)
@@ -137,14 +147,7 @@ func TestDecideFieldDefaultPlan_DBHandwrittenSkipsInject(t *testing.T) {
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
 	builder, db := newFieldDefaultTestBuilder(t, mod)
-	if err := db.Create(&meta.Model{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "hand", Valid: true}},
-		Name:        "FieldDefault",
-		Path:        "/virtual/modules/partner/service/models/field_default.ts",
-		Application: "partner",
-	}).Error; err != nil {
-		t.Fatalf("seed: %v", err)
-	}
+	seedFieldDefaultDeclaration(t, db, "hand", "/virtual/modules/partner/service/models/field_default.ts", "partner", "")
 	plan, err := builder.decideFieldDefaultPlan(nil)
 	if err != nil {
 		t.Fatalf("decide: %v", err)
@@ -160,15 +163,7 @@ func TestDecideFieldDefaultPlan_SupersedeVirtual(t *testing.T) {
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
 	builder, db := newFieldDefaultTestBuilder(t, mod)
-	if err := db.Create(&meta.Model{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "virt", Valid: true}},
-		Name:        "FieldDefault",
-		Path:        "/virtual/modules/partner/service/models/__generated__/field_default.ts",
-		Application: "partner",
-		ModuleId:    sql.NullString{String: "mod-partner", Valid: true},
-	}).Error; err != nil {
-		t.Fatalf("seed: %v", err)
-	}
+	seedFieldDefaultDeclaration(t, db, "virt", "/virtual/modules/partner/service/models/__generated__/field_default.ts", "partner", "mod-partner")
 	handPath := filepath.Join(mod.Path, "service/models/field_default.ts")
 	prebuild := []*parser.ParserResult{{
 		Path:  handPath,
@@ -189,15 +184,7 @@ func TestDecideFieldDefaultPlan_DuplicateHandwritten(t *testing.T) {
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
 	builder, db := newFieldDefaultTestBuilder(t, mod)
-	if err := db.Create(&meta.Model{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "hand", Valid: true}},
-		Name:        "FieldDefault",
-		Path:        "/virtual/modules/partner_bank/service/models/field_default.ts",
-		Application: "partner",
-		ModuleId:    sql.NullString{String: "mod-bank", Valid: true},
-	}).Error; err != nil {
-		t.Fatalf("seed: %v", err)
-	}
+	seedFieldDefaultDeclaration(t, db, "hand", "/virtual/modules/partner_bank/service/models/field_default.ts", "partner", "mod-bank")
 	handPath := filepath.Join(mod.Path, "service/models/field_default.ts")
 	prebuild := []*parser.ParserResult{{
 		Path:  handPath,
@@ -283,14 +270,7 @@ func TestEnsureFieldDefaultVirtualImports_SkipsHandwritten(t *testing.T) {
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
 	builder, db := newFieldDefaultTestBuilder(t, owner)
-	if err := db.Create(&meta.Model{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "hand", Valid: true}},
-		Name:        "FieldDefault",
-		Path:        "/virtual/modules/partner/service/models/field_default.ts",
-		Application: "partner",
-	}).Error; err != nil {
-		t.Fatalf("seed handwritten: %v", err)
-	}
+	seedFieldDefaultDeclaration(t, db, "hand", "/virtual/modules/partner/service/models/field_default.ts", "partner", "")
 	base := &meta.Module{
 		Name: "base", Path: "/virtual/modules/base",
 		ApplicationStr: "base", ServiceEntryPoint: "service/index.ts",
@@ -319,14 +299,7 @@ func TestEnsureFieldDefaultVirtualImports_PrefersMetaVirtualPath(t *testing.T) {
 	}
 	builder, db := newFieldDefaultTestBuilder(t, sibling)
 	metaPath := "/virtual/modules/partner/service/models/__generated__/field_default.ts"
-	if err := db.Create(&meta.Model{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "virt", Valid: true}},
-		Name:        "FieldDefault",
-		Path:        metaPath,
-		Application: "partner",
-	}).Error; err != nil {
-		t.Fatalf("seed virt: %v", err)
-	}
+	seedFieldDefaultDeclaration(t, db, "virt", metaPath, "partner", "")
 	if err := builder.EnsureFieldDefaultVirtualImports([]*meta.Module{sibling}); err != nil {
 		t.Fatalf("ensure: %v", err)
 	}
@@ -401,14 +374,7 @@ func TestFieldDefaultPatchCoverage_Branches(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	})
-	if err := db.Create(&meta.Model{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "hand2", Valid: true}},
-		Name:        "FieldDefault",
-		Path:        "/virtual/modules/partner/service/models/field_default.ts",
-		Application: "partner",
-	}).Error; err != nil {
-		t.Fatalf("seed: %v", err)
-	}
+	seedFieldDefaultDeclaration(t, db, "hand2", "/virtual/modules/partner/service/models/field_default.ts", "partner", "")
 	if err := builder.EnsureFieldDefaultVirtualImports([]*meta.Module{builder.module}); err != nil {
 		t.Fatalf("handwritten-only ensure: %v", err)
 	}
@@ -556,22 +522,8 @@ func TestSupersedeVirtualFieldDefaults_DeletesGeneratedRows(t *testing.T) {
 	}
 	builder, db := newFieldDefaultTestBuilder(t, mod)
 	builder.fieldDefaultPlan = FieldDefaultPlan{SupersedeVirtual: true}
-	if err := db.Create(&meta.Model{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "virt", Valid: true}},
-		Name:        "FieldDefault",
-		Path:        "/virtual/modules/partner/service/models/__generated__/field_default.ts",
-		Application: "partner",
-	}).Error; err != nil {
-		t.Fatalf("seed virt: %v", err)
-	}
-	if err := db.Create(&meta.Model{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "hand", Valid: true}},
-		Name:        "FieldDefault",
-		Path:        "/virtual/modules/partner_bank/service/models/field_default.ts",
-		Application: "partner",
-	}).Error; err != nil {
-		t.Fatalf("seed hand: %v", err)
-	}
+	seedFieldDefaultDeclaration(t, db, "virt", "/virtual/modules/partner/service/models/__generated__/field_default.ts", "partner", "")
+	seedFieldDefaultDeclaration(t, db, "hand", "/virtual/modules/partner_bank/service/models/field_default.ts", "partner", "")
 	if err := db.Create(&meta.Model{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "other", Valid: true}},
 		Name:        "Partner",
@@ -583,19 +535,32 @@ func TestSupersedeVirtualFieldDefaults_DeletesGeneratedRows(t *testing.T) {
 	if err := builder.supersedeVirtualFieldDefaults(); err != nil {
 		t.Fatalf("supersede: %v", err)
 	}
+	virtDecls, err := meta.ListDeclarations(db, meta.DeclarationQuery{
+		Application: "partner", Name: "FieldDefault",
+		Path: "/virtual/modules/partner/service/models/__generated__/field_default.ts",
+	})
+	if err != nil {
+		t.Fatalf("list virt: %v", err)
+	}
+	if len(virtDecls) != 0 {
+		t.Fatalf("expected virtual raw FieldDefault deleted, count=%d", len(virtDecls))
+	}
+	handDecls, err := meta.ListDeclarations(db, meta.DeclarationQuery{
+		Application: "partner", Name: "FieldDefault",
+		Path: "/virtual/modules/partner_bank/service/models/field_default.ts",
+	})
+	if err != nil {
+		t.Fatalf("list hand: %v", err)
+	}
+	if len(handDecls) != 1 {
+		t.Fatalf("expected handwritten raw FieldDefault kept, count=%d", len(handDecls))
+	}
 	var count int64
 	if err := db.Model(&meta.Model{}).Where("name = ?", "FieldDefault").Count(&count).Error; err != nil {
-		t.Fatalf("count: %v", err)
+		t.Fatalf("count effective: %v", err)
 	}
 	if count != 1 {
-		t.Fatalf("expected handwritten FieldDefault kept, count=%d", count)
-	}
-	var virtLeft int64
-	if err := db.Model(&meta.Model{}).Where("id = ?", "virt").Count(&virtLeft).Error; err != nil {
-		t.Fatalf("count virt: %v", err)
-	}
-	if virtLeft != 0 {
-		t.Fatalf("expected virtual FieldDefault deleted, count=%d", virtLeft)
+		t.Fatalf("expected handwritten effective FieldDefault after recompute, count=%d", count)
 	}
 	if err := db.Model(&meta.Model{}).Where("name = ?", "Partner").Count(&count).Error; err != nil {
 		t.Fatalf("count partner: %v", err)

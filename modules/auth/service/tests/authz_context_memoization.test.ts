@@ -343,7 +343,7 @@ test('P3-2: meta lookups are request-scoped memoized for record/field/method eva
         const fieldInput = {
           appName: 'auth',
           modelName: 'User',
-          rawModel: 'auth.User',
+          modelFullName: 'auth.User',
           roleIds: [],
         };
 

@@ -28,21 +28,66 @@ func openDualStoreTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
-func TestEnsureDualStoreTables_CreatesRawAndEffective(t *testing.T) {
+func TestPersistModelTreeAsRaw_AssignsIDsWhenMissing(t *testing.T) {
 	db := openDualStoreTestDB(t)
 	if err := EnsureDualStoreTables(db); err != nil {
-		t.Fatalf("EnsureDualStoreTables: %v", err)
+		t.Fatalf("ensure: %v", err)
 	}
-	m := db.Migrator()
-	for _, table := range []string{
-		"meta_model", "meta_field", "meta_service",
-		"meta_raw_model", "meta_raw_field", "meta_raw_service",
-		"meta_raw_decorator", "meta_raw_argument",
-		"meta_raw_parameter", "meta_raw_type_parameter",
-	} {
-		if !m.HasTable(table) {
-			t.Fatalf("expected table %s", table)
-		}
+
+	// Parser-shaped trees often have empty primary keys; SkipHooks Create must still mint ids
+	// so Fields preload by model_id for schema migrator.
+	src := &Model{
+		Name:        "Address",
+		Application: "base",
+		Path:        "/base/service/models/address.ts",
+		ModelTable:  "base_address",
+		ModuleId:    sql.NullString{String: "mod-base", Valid: true},
+		Fields: []*Field{{
+			Name:         "Street",
+			ResolvedSpec: `{"fieldName":"Street","structural":{"name":"Street","fieldType":"varchar"},"migration":{"shouldCreateColumn":true,"resolvedColumnType":"varchar"}}`,
+			Decorators: []*Decorator{{
+				Name: "Field",
+				Arguments: []*Argument{{
+					Type:  "object",
+					Value: `{"type":"varchar"}`,
+				}},
+			}},
+		}},
+		Services: []*Service{{
+			Name: "Search",
+			Parameters: []*Parameter{
+				{Name: "this"},
+				{Name: "domain"},
+			},
+		}},
+	}
+	if err := PersistModelTreeAsRaw(db, src); err != nil {
+		t.Fatalf("PersistModelTreeAsRaw: %v", err)
+	}
+
+	var raw RawModel
+	if err := db.Preload("Fields").Preload("Fields.Decorators").Preload("Fields.Decorators.Arguments").
+		Preload("Services").Preload("Services.Parameters").
+		Where("path = ?", src.Path).Take(&raw).Error; err != nil {
+		t.Fatalf("load raw: %v", err)
+	}
+	if strings.TrimSpace(raw.Id.String) == "" {
+		t.Fatal("expected non-empty raw model id")
+	}
+	if len(raw.Fields) != 1 || strings.TrimSpace(raw.Fields[0].Id.String) == "" {
+		t.Fatalf("expected linked field with id, got %#v", raw.Fields)
+	}
+	if raw.Fields[0].ModelId.String != raw.Id.String {
+		t.Fatalf("field.model_id=%q want %q", raw.Fields[0].ModelId.String, raw.Id.String)
+	}
+	if raw.Fields[0].ResolvedSpec == "" {
+		t.Fatal("expected ResolvedSpec preserved")
+	}
+	if len(raw.Fields[0].Decorators) != 1 || len(raw.Fields[0].Decorators[0].Arguments) != 1 {
+		t.Fatalf("expected decorator tree, got %#v", raw.Fields[0].Decorators)
+	}
+	if len(raw.Services) != 1 || len(raw.Services[0].Parameters) != 2 {
+		t.Fatalf("unexpected services: %#v", raw.Services)
 	}
 }
 

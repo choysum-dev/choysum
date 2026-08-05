@@ -145,15 +145,55 @@ func (m *foreignKeyMigrator) resolveTargetModelByPath(targetModelPath string) (*
 		}
 	}
 
-	var target meta.Model
-	result := m.runtimeScope.Session().
-		Where("path = ?", targetModelPath).
-		Order("id DESC").
-		Take(&target)
-	if result.Error != nil {
+	session := m.runtimeScope.Session()
+
+	// Prefer effective projection: tip path is canonical after dual-store recompute.
+	var effective []meta.Model
+	if err := session.Where("path = ?", targetModelPath).Order("id DESC").Find(&effective).Error; err != nil {
+		return nil, err
+	}
+	if picked, err := pickModelWithUniqueTable(targetModelPath, effective); err != nil {
+		return nil, err
+	} else if picked != nil {
+		return picked, nil
+	}
+
+	// Declaration fallback: Path is unique per ModuleId, so cross-module duplicates are possible.
+	// Do not filter by the current module — FK targets often live in dependencies.
+	decls, err := meta.ListDeclarations(session.DB, meta.DeclarationQuery{
+		Path: targetModelPath,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(decls) == 0 {
 		return nil, nil
 	}
-	return &target, nil
+	models := make([]meta.Model, 0, len(decls))
+	for _, c := range decls {
+		if c != nil {
+			models = append(models, *c)
+		}
+	}
+	return pickModelWithUniqueTable(targetModelPath, models)
+}
+
+// pickModelWithUniqueTable returns the newest row when all candidates share ModelTable.
+// Conflicting tables for one path would create an FK against the wrong table.
+func pickModelWithUniqueTable(path string, models []meta.Model) (*meta.Model, error) {
+	if len(models) == 0 {
+		return nil, nil
+	}
+	table := models[0].ModelTable
+	for i := 1; i < len(models); i++ {
+		if models[i].ModelTable != table {
+			return nil, fmt.Errorf(
+				"ambiguous model path %q: ModelTable %q vs %q",
+				path, table, models[i].ModelTable,
+			)
+		}
+	}
+	return &models[0], nil
 }
 
 // ForeignKeyBuilder builds SQL for foreign key creation.

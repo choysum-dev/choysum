@@ -213,7 +213,10 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepInitialize, initializeStarted)
 
-	migrator := schema.NewMigrator(m.runtimeScope, m.module)
+	migrator, err := schema.NewMigrator(m.runtimeScope, m.module)
+	if err != nil {
+		return xfmt.Errorf("error preparing schema migrator: %w", err)
+	}
 	schemaStarted := time.Now()
 	if err := migrator.Migrate(); err != nil {
 		return xfmt.Errorf("error migrating module: %w", err)
@@ -238,7 +241,12 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 			return xfmt.Errorf("error saving module dependencies: %w", err)
 		}
 	}
-	if err := m.runtimeScope.Session().Save(m.module).Error; err != nil {
+	// Omit association trees: Persist already wrote meta_raw_* + recomputed effective
+	// meta_model*. Cascading Models here re-creates declaration shells with module_id and
+	// duplicates logical names (breaks UI rpc dependency checks / UNIQUE(application,name)).
+	if err := m.runtimeScope.Session().
+		Omit("Dependencies", "Dependents", "Models", "Components", "UiResources").
+		Save(m.module).Error; err != nil {
 		return xfmt.Errorf("error saving module: %w", err)
 	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepSave, saveStarted)

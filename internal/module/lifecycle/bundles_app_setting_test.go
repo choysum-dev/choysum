@@ -153,11 +153,11 @@ func TestBuildBackendBundlesToDir_AppSettingOwnerAndEnsureError(t *testing.T) {
 	manager.bootstrapOnce.Do(func() {})
 	distBundlesDir := t.TempDir()
 
-	// Drop meta_model so Ensure*VirtualImports fails while owners were collected.
+	// Drop meta_raw_model so Ensure*VirtualImports fails while owners were collected.
 	// FieldDefault Ensure runs first, so the surfaced error usually names FieldDefault;
 	// AppSetting Ensure shares the same owner-collection + entry-write path.
-	if err := db.Migrator().DropTable(&meta.Model{}); err != nil {
-		t.Fatalf("drop meta_model: %v", err)
+	if err := db.Migrator().DropTable(&meta.RawModel{}); err != nil {
+		t.Fatalf("drop meta_raw_model: %v", err)
 	}
 	err := manager.buildBackendBundlesToDir(context.Background(), distBundlesDir, nil)
 	if err == nil {

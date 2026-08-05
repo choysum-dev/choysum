@@ -147,10 +147,166 @@ func TestCommitInstallPersistLaterBranches(t *testing.T) {
 	}
 }
 
+func TestCommitInstallNewMigratorError(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	mod := &meta.Module{
+		Name:           "demo_mig_err",
+		Version:        "1.0.0",
+		Status:         meta.ToInstall,
+		Path:           t.TempDir(),
+		ApplicationStr: "auth",
+	}
+	mod.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := runtimeScope.Session().Create(mod).Error; err != nil {
+		t.Fatalf("create module: %v", err)
+	}
+	for _, row := range []*meta.Model{
+		{Name: "A", Path: "/a.ts", ModelTable: "a", ModuleId: mod.Id, Extends: "/b.ts"},
+		{Name: "B", Path: "/b.ts", ModelTable: "b", ModuleId: mod.Id, Extends: "/a.ts"},
+	} {
+		if err := meta.PersistModelTreeAsRaw(runtimeScope.Session().DB, row); err != nil {
+			t.Fatalf("create circular declaration: %v", err)
+		}
+	}
+	installer := &moduleInstaller{
+		module:        mod,
+		runtimeScope:  runtimeScope,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
+		ctx:           newOpContext(),
+	}
+	if err := installer.commitInstall(nil, false); err == nil || !strings.Contains(err.Error(), "error preparing schema migrator") {
+		t.Fatalf("expected NewMigrator error, got %v", err)
+	}
+}
+
+func TestCommitUpgradeNewMigratorError(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	mod := &meta.Module{
+		Name:           "demo_upgrade_mig_err",
+		Version:        "1.0.0",
+		Status:         meta.Installed,
+		Path:           t.TempDir(),
+		ApplicationStr: "auth",
+	}
+	mod.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := runtimeScope.Session().Create(mod).Error; err != nil {
+		t.Fatalf("create module: %v", err)
+	}
+	target := &meta.Module{
+		Name:           mod.Name,
+		Version:        "1.1.0",
+		Status:         meta.ToUpgrade,
+		Path:           mod.Path,
+		ApplicationStr: "auth",
+	}
+	target.Id = mod.Id
+	for _, row := range []*meta.Model{
+		{Name: "A", Path: "/ua.ts", ModelTable: "ua", ModuleId: target.Id, Extends: "/ub.ts"},
+		{Name: "B", Path: "/ub.ts", ModelTable: "ub", ModuleId: target.Id, Extends: "/ua.ts"},
+	} {
+		if err := meta.PersistModelTreeAsRaw(runtimeScope.Session().DB, row); err != nil {
+			t.Fatalf("create circular declaration: %v", err)
+		}
+	}
+	upgrader := &moduleUpgrader{
+		runtimeScope:  runtimeScope,
+		module:        mod,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
+		ctx:           newOpContext(),
+	}
+	installer := &moduleInstaller{
+		module:        target,
+		runtimeScope:  runtimeScope,
+		moduleManager: upgrader.moduleManager,
+		ctx:           upgrader.ctx,
+	}
+	if _, err := upgrader.commitUpgrade(installer, "1.0.0", nil, false); err == nil || !strings.Contains(err.Error(), "error preparing schema migrator") {
+		t.Fatalf("expected NewMigrator error, got %v", err)
+	}
+}
+
+func TestCommitInstallSaveModuleError(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	mod := &meta.Module{
+		Name:    "demo_save_err",
+		Version: "1.0.0",
+		Status:  meta.ToInstall,
+		Path:    t.TempDir(),
+	}
+	mod.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := runtimeScope.Session().Create(mod).Error; err != nil {
+		t.Fatalf("create module: %v", err)
+	}
+	if err := runtimeScope.Session().Exec(`
+CREATE TRIGGER block_module_save
+BEFORE UPDATE ON meta_module
+BEGIN
+  SELECT RAISE(ABORT, 'module save blocked');
+END`).Error; err != nil {
+		t.Fatalf("create trigger: %v", err)
+	}
+	installer := &moduleInstaller{
+		module:        mod,
+		runtimeScope:  runtimeScope,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
+		ctx:           newOpContext(),
+	}
+	if err := installer.commitInstall(nil, false); err == nil || !strings.Contains(err.Error(), "error saving module") {
+		t.Fatalf("expected save module error, got %v", err)
+	}
+}
+
+func TestCommitUpgradeSaveModuleError(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	mod := &meta.Module{
+		Name:    "demo_upgrade_save_err",
+		Version: "1.0.0",
+		Status:  meta.Installed,
+		Path:    t.TempDir(),
+	}
+	mod.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := runtimeScope.Session().Create(mod).Error; err != nil {
+		t.Fatalf("create module: %v", err)
+	}
+	target := &meta.Module{
+		Name:    mod.Name,
+		Version: "2.0.0",
+		Status:  meta.Installed,
+		Path:    mod.Path,
+	}
+	target.Id = mod.Id
+	if err := runtimeScope.Session().Exec(`
+CREATE TRIGGER block_module_upgrade_save
+BEFORE UPDATE ON meta_module
+BEGIN
+  SELECT RAISE(ABORT, 'module upgrade save blocked');
+END`).Error; err != nil {
+		t.Fatalf("create trigger: %v", err)
+	}
+	upgrader := &moduleUpgrader{
+		runtimeScope:  runtimeScope,
+		module:        mod,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
+		ctx:           newOpContext(),
+	}
+	installer := &moduleInstaller{
+		module:        target,
+		runtimeScope:  runtimeScope,
+		moduleManager: upgrader.moduleManager,
+		ctx:           upgrader.ctx,
+	}
+	if _, err := upgrader.commitUpgrade(installer, "1.0.0", nil, false); err == nil || !strings.Contains(err.Error(), "error saving module") {
+		t.Fatalf("expected upgrade save module error, got %v", err)
+	}
+}
+
 func TestCommitInstallMetaAndDocumentSchedules(t *testing.T) {
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(&internaltask.Schedule{}, &meta.Module{}); err != nil {
 		t.Fatal(err)
+	}
+	if err := meta.EnsureDualStoreTables(db); err != nil {
+		t.Fatalf("EnsureDualStoreTables: %v", err)
 	}
 	now := time.Now().UTC()
 	if err := db.Create(&internaltask.Schedule{

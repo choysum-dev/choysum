@@ -931,7 +931,11 @@ func resolvePlaywrightCommand(opts RunOptions) (string, string, error) {
 	}
 	searchRoots = append(searchRoots, resolvePlaywrightGlobalNodeModulesRoot(opts))
 
-	playwrightBin, binDir, found := noderuntime.FindExecutable(
+	// Prefer workspace/global npm roots over PATH. A PATH hit (e.g. Homebrew
+	// @playwright/test) can disagree with CHOYSUM_E2E_GLOBAL_NODE_MODULES and
+	// then Playwright reports "did not expect test() to be called here" because
+	// the CLI and the spec import load two different test registries.
+	playwrightBin, binDir, found := noderuntime.FindExecutableInRoots(
 		"playwright",
 		searchRoots...,
 	)
@@ -944,7 +948,7 @@ func resolvePlaywrightCommand(opts RunOptions) (string, string, error) {
 		if err := noderuntime.PreflightRequiredNodeModules("e2e", moduleName, []string{"@playwright/test"}, moduleRoots...); err != nil {
 			return "", "", err
 		}
-		return "", "", xfmt.Errorf("e2e: playwright executable could not be resolved from PATH or local node_modules/.bin")
+		return "", "", xfmt.Errorf("e2e: playwright executable could not be resolved from local node_modules/.bin (PATH is ignored to avoid version skew)")
 	}
 
 	return playwrightBin, binDir, nil

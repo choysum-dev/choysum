@@ -81,8 +81,8 @@ func TestForeignKeyMigratorRuntimePaths(t *testing.T) {
 			t.Fatalf("create module: %v", err)
 		}
 		target := &meta.Model{Name: "User", Path: "sales/user.ts", ModelTable: "sales_user", ModuleId: module.Id}
-		if err := runtimeScope.Session().Create(target).Error; err != nil {
-			t.Fatalf("create target model: %v", err)
+		if err := meta.PersistModelTreeAsRaw(runtimeScope.Session().DB, target); err != nil {
+			t.Fatalf("persist target declaration: %v", err)
 		}
 		source := &meta.Model{Name: "Order", Path: "sales/order.ts", ModelTable: "sales_order", ModuleId: module.Id, Fields: []*meta.Field{newRelationField("OwnerId", "sales/user", `{"type":"ManyToOne","relation":{"onDelete":"CASCADE"}}`)}}
 
@@ -112,11 +112,93 @@ func TestForeignKeyMigratorRuntimePaths(t *testing.T) {
 
 	t.Run("reports missing target model", func(t *testing.T) {
 		runtimeScope := newSchemaTestScope(t)
+		migrateSchemaMetaTables(t, runtimeScope.Session())
 		module := &meta.Module{Name: "sales"}
 		fkMigrator := newForeignKeyMigrator(runtimeScope, module, []*meta.Model{{Name: "Order", Path: "sales/order.ts", ModelTable: "sales_order", Fields: []*meta.Field{newRelationField("OwnerId", "sales/missing", `{"type":"ManyToOne"}`)}}}).(*foreignKeyMigrator)
 
 		if _, err := fkMigrator.getManyToOneKeys(); err == nil || !strings.Contains(err.Error(), "target model sales/missing.ts not found") {
 			t.Fatalf("expected missing target error, got %v", err)
+		}
+	})
+
+	t.Run("rejects duplicate path with conflicting ModelTable", func(t *testing.T) {
+		runtimeScope := newSchemaTestScope(t)
+		migrateSchemaMetaTables(t, runtimeScope.Session())
+		modA := &meta.Module{Name: "mod_a"}
+		modB := &meta.Module{Name: "mod_b"}
+		if err := runtimeScope.Session().Create(modA).Error; err != nil {
+			t.Fatalf("create modA: %v", err)
+		}
+		if err := runtimeScope.Session().Create(modB).Error; err != nil {
+			t.Fatalf("create modB: %v", err)
+		}
+		for _, row := range []*meta.Model{
+			{Name: "User", Path: "shared/user.ts", ModelTable: "mod_a_user", ModuleId: modA.Id},
+			{Name: "User", Path: "shared/user.ts", ModelTable: "mod_b_user", ModuleId: modB.Id},
+		} {
+			if err := meta.PersistModelTreeAsRaw(runtimeScope.Session().DB, row); err != nil {
+				t.Fatalf("persist declaration: %v", err)
+			}
+		}
+		fkMigrator := newForeignKeyMigrator(runtimeScope, modA, nil).(*foreignKeyMigrator)
+		if _, err := fkMigrator.resolveTargetModelByPath("shared/user.ts"); err == nil || !strings.Contains(err.Error(), "ambiguous model path") {
+			t.Fatalf("expected ambiguous path error, got %v", err)
+		}
+	})
+
+	t.Run("resolves target from effective projection", func(t *testing.T) {
+		runtimeScope := newSchemaTestScope(t)
+		migrateSchemaMetaTables(t, runtimeScope.Session())
+		eff := &meta.Model{Name: "User", Path: "crm/user.ts", Application: "crm", ModelTable: "crm_user"}
+		if err := runtimeScope.Session().Create(eff).Error; err != nil {
+			t.Fatalf("create effective: %v", err)
+		}
+		fkMigrator := newForeignKeyMigrator(runtimeScope, &meta.Module{Name: "crm"}, nil).(*foreignKeyMigrator)
+		resolved, err := fkMigrator.resolveTargetModelByPath("crm/user.ts")
+		if err != nil {
+			t.Fatalf("resolveTargetModelByPath() error = %v", err)
+		}
+		if resolved == nil || resolved.ModelTable != "crm_user" {
+			t.Fatalf("resolved = %#v", resolved)
+		}
+	})
+
+	t.Run("rejects ambiguous effective ModelTable", func(t *testing.T) {
+		runtimeScope := newSchemaTestScope(t)
+		migrateSchemaMetaTables(t, runtimeScope.Session())
+		for _, row := range []*meta.Model{
+			{Name: "UserA", Path: "dup/user.ts", Application: "a", ModelTable: "a_user"},
+			{Name: "UserB", Path: "dup/user.ts", Application: "b", ModelTable: "b_user"},
+		} {
+			if err := runtimeScope.Session().Create(row).Error; err != nil {
+				t.Fatalf("create effective: %v", err)
+			}
+		}
+		fkMigrator := newForeignKeyMigrator(runtimeScope, nil, nil).(*foreignKeyMigrator)
+		if _, err := fkMigrator.resolveTargetModelByPath("dup/user.ts"); err == nil || !strings.Contains(err.Error(), "ambiguous model path") {
+			t.Fatalf("expected ambiguous effective path error, got %v", err)
+		}
+	})
+
+	t.Run("propagates effective and raw lookup errors", func(t *testing.T) {
+		runtimeScope := newSchemaTestScope(t)
+		migrateSchemaMetaTables(t, runtimeScope.Session())
+		fkMigrator := newForeignKeyMigrator(runtimeScope, nil, nil).(*foreignKeyMigrator)
+		if err := runtimeScope.Session().Migrator().DropTable(&meta.Model{}); err != nil {
+			t.Fatalf("drop meta_model: %v", err)
+		}
+		if _, err := fkMigrator.resolveTargetModelByPath("any/path.ts"); err == nil {
+			t.Fatal("expected effective find error")
+		}
+
+		runtimeScope2 := newSchemaTestScope(t)
+		migrateSchemaMetaTables(t, runtimeScope2.Session())
+		fkMigrator2 := newForeignKeyMigrator(runtimeScope2, nil, nil).(*foreignKeyMigrator)
+		if err := runtimeScope2.Session().Migrator().DropTable("meta_raw_model"); err != nil {
+			t.Fatalf("drop meta_raw_model: %v", err)
+		}
+		if _, err := fkMigrator2.resolveTargetModelByPath("any/path.ts"); err == nil {
+			t.Fatal("expected raw find error")
 		}
 	})
 

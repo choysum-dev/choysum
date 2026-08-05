@@ -31,6 +31,16 @@ func closeDualStoreDB(t *testing.T, db *gorm.DB) {
 	}
 }
 
+func TestEnsureEffectiveAppNameUniqueIndex_NilDB(t *testing.T) {
+	if err := EnsureEffectiveAppNameUniqueIndex(nil); err == nil || !strings.Contains(err.Error(), "db is nil") {
+		t.Fatalf("expected nil db error, got %v", err)
+	}
+}
+
+func TestEnsureBaseModelID_Nil(t *testing.T) {
+	ensureBaseModelID(nil) // no panic
+}
+
 func TestEnsureDualStoreTables_NilAndClosed(t *testing.T) {
 	if err := EnsureDualStoreTables(nil); err == nil || !strings.Contains(err.Error(), "db is nil") {
 		t.Fatalf("expected nil db error, got %v", err)
@@ -585,19 +595,19 @@ func TestPersistEffectiveProjection_FailuresAndNils(t *testing.T) {
 		Decorators:  []*Decorator{nil},
 		Fields:      []*Field{nil, {Name: "Name", OriginModelPath: "kept"}},
 		Services: []*Service{nil, {
-			Name:           "Create",
+			Name:            "Create",
 			OriginModelPath: "svc-origin",
-			Parameters:     []*Parameter{nil, {Name: "this"}, {Name: "vals"}},
-			TypeParameters: []*TypeParameter{nil, {Name: "T"}},
-			Decorators:     []*Decorator{{Name: "Rpc"}},
+			Parameters:      []*Parameter{nil, {Name: "this"}, {Name: "vals"}},
+			TypeParameters:  []*TypeParameter{nil, {Name: "T"}},
+			Decorators:      []*Decorator{{Name: "Rpc"}},
 		}},
 	}
-	if err := persistEffectiveProjection(db, merged, "eff1"); err != nil {
+	if err := persistEffectiveProjection(db, merged, "eff1", nil); err != nil {
 		t.Fatalf("persist: %v", err)
 	}
 
 	// model create failure
-	if err := persistEffectiveProjection(db, merged, "eff1"); err == nil {
+	if err := persistEffectiveProjection(db, merged, "eff1", nil); err == nil {
 		t.Fatal("expected duplicate effective id failure")
 	}
 
@@ -607,7 +617,7 @@ func TestPersistEffectiveProjection_FailuresAndNils(t *testing.T) {
 	if err := persistEffectiveProjection(db2, &Model{
 		BaseModel: BaseModel{CreatedAt: ts, UpdatedAt: ts}, Name: "X", Application: "a", Path: "/x.ts",
 		Fields: []*Field{{Name: "Name"}},
-	}, "e2"); err == nil {
+	}, "e2", nil); err == nil {
 		t.Fatal("expected field create failure")
 	}
 
@@ -617,7 +627,7 @@ func TestPersistEffectiveProjection_FailuresAndNils(t *testing.T) {
 	if err := persistEffectiveProjection(db3, &Model{
 		BaseModel: BaseModel{CreatedAt: ts, UpdatedAt: ts}, Name: "X", Application: "a", Path: "/x.ts",
 		Services: []*Service{{Name: "Create"}},
-	}, "e3"); err == nil {
+	}, "e3", nil); err == nil {
 		t.Fatal("expected service create failure")
 	}
 
@@ -627,7 +637,7 @@ func TestPersistEffectiveProjection_FailuresAndNils(t *testing.T) {
 	if err := persistEffectiveProjection(db4, &Model{
 		BaseModel: BaseModel{CreatedAt: ts, UpdatedAt: ts}, Name: "X", Application: "a", Path: "/x.ts",
 		Services: []*Service{{Name: "Create", Parameters: []*Parameter{{Name: "vals"}}}},
-	}, "e4"); err == nil {
+	}, "e4", nil); err == nil {
 		t.Fatal("expected parameter create failure")
 	}
 
@@ -637,7 +647,7 @@ func TestPersistEffectiveProjection_FailuresAndNils(t *testing.T) {
 	if err := persistEffectiveProjection(db5, &Model{
 		BaseModel: BaseModel{CreatedAt: ts, UpdatedAt: ts}, Name: "X", Application: "a", Path: "/x.ts",
 		Services: []*Service{{Name: "Create", TypeParameters: []*TypeParameter{{Name: "T"}}}},
-	}, "e5"); err == nil {
+	}, "e5", nil); err == nil {
 		t.Fatal("expected type parameter create failure")
 	}
 
@@ -647,7 +657,7 @@ func TestPersistEffectiveProjection_FailuresAndNils(t *testing.T) {
 	if err := persistEffectiveProjection(db6, &Model{
 		BaseModel: BaseModel{CreatedAt: ts, UpdatedAt: ts}, Name: "X", Application: "a", Path: "/x.ts",
 		Decorators: []*Decorator{{Name: "Model"}},
-	}, "e6"); err == nil {
+	}, "e6", nil); err == nil {
 		t.Fatal("expected decorator create failure")
 	}
 
@@ -980,7 +990,9 @@ func TestRecomputeHooks_LoadClearPersistErrorsAndEmptyTip(t *testing.T) {
 			Path:        "/empty.ts",
 		}}, nil
 	}
-	persistEffectiveProjectionFn = persistEffectiveProjection
+	persistEffectiveProjectionFn = func(db *gorm.DB, merged *Model, effectiveID string) error {
+		return persistEffectiveProjection(db, merged, effectiveID, nil)
+	}
 	clearEffectiveShapeTreesFn = clearEffectiveShapeTrees
 	if err := RecomputeAllEffectiveFromRaw(db); err != nil {
 		t.Fatalf("empty tip recompute: %v", err)
@@ -1087,7 +1099,7 @@ func TestPersistEffectiveProjection_NestedDecoratorFailures(t *testing.T) {
 	if err := persistEffectiveProjection(db, &Model{
 		BaseModel: BaseModel{CreatedAt: ts, UpdatedAt: ts}, Name: "X", Application: "a", Path: "/x.ts",
 		Fields: []*Field{{Name: "Name", Decorators: []*Decorator{{Name: "Field"}}}},
-	}, "ef"); err == nil {
+	}, "ef", nil); err == nil {
 		t.Fatal("expected field decorator persist failure")
 	}
 
@@ -1097,7 +1109,7 @@ func TestPersistEffectiveProjection_NestedDecoratorFailures(t *testing.T) {
 	if err := persistEffectiveProjection(db2, &Model{
 		BaseModel: BaseModel{CreatedAt: ts, UpdatedAt: ts}, Name: "X", Application: "a", Path: "/x.ts",
 		Services: []*Service{{Name: "Create", Decorators: []*Decorator{{Name: "Rpc"}}}},
-	}, "es"); err == nil {
+	}, "es", nil); err == nil {
 		t.Fatal("expected service decorator persist failure")
 	}
 
