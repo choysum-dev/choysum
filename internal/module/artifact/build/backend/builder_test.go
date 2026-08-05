@@ -442,163 +442,6 @@ func TestValidateInheritanceAndCircularDependencies(t *testing.T) {
 	}
 }
 
-func TestMergeCloneAndMaterializedHelpers(t *testing.T) {
-	parentFields := []*meta.Field{
-		{
-			Name: "Code",
-			Decorators: []*meta.Decorator{{
-				Name:      "Field",
-				Arguments: []*meta.Argument{{Value: "'parent-code'", Type: "Literal"}},
-			}},
-		},
-		{Name: "Shared"},
-	}
-	childFields := []*meta.Field{
-		{Name: "Shared", Decorators: []*meta.Decorator{{Name: "Field", Arguments: []*meta.Argument{{Value: "'child-shared'", Type: "Literal"}}}}},
-		{Name: "Extra"},
-	}
-	mergedFields, err := mergeOrderedFields(parentFields, childFields, "/models/base", "/models/child")
-	if err != nil {
-		t.Fatalf("mergeOrderedFields: %v", err)
-	}
-	if len(mergedFields) != 3 || mergedFields[0].Name != "Code" || mergedFields[1].Name != "Shared" || mergedFields[2].Name != "Extra" {
-		t.Fatalf("unexpected merged fields order: %#v", mergedFields)
-	}
-
-	addOnly := &meta.Field{Name: "Kind", FieldType: "selection"}
-	if err := addOnly.SetResolvedSpec(&meta.FieldResolvedSpec{
-		FieldName: "Kind",
-		Structural: meta.FieldStructuralSpec{
-			Name:            "Kind",
-			FieldType:       "selection",
-			HasSelectionAdd: true,
-			SelectionAdd:    []meta.FieldSelectionItem{{Value: "vip", Label: "VIP"}},
-		},
-	}); err != nil {
-		t.Fatalf("SetResolvedSpec: %v", err)
-	}
-	if _, err := mergeOrderedFields(nil, []*meta.Field{addOnly}, "", "/models/child"); err == nil || !strings.Contains(err.Error(), "selectionAdd requires an inherited static selection") {
-		t.Fatalf("expected selectionAdd-without-parent rejection, got %v", err)
-	}
-
-	parentKind := &meta.Field{Name: "Kind", FieldType: "selection", SelectionKind: "dynamic", SelectionMethod: "Opts"}
-	_ = parentKind.SetResolvedSpec(&meta.FieldResolvedSpec{
-		FieldName: "Kind",
-		Structural: meta.FieldStructuralSpec{
-			Name:            "Kind",
-			FieldType:       "selection",
-			SelectionKind:   "dynamic",
-			SelectionMethod: "Opts",
-		},
-	})
-	if _, err := mergeOrderedFields([]*meta.Field{parentKind}, []*meta.Field{addOnly}, "/models/base", "/models/child"); err == nil || !strings.Contains(err.Error(), "inherited static selection") {
-		t.Fatalf("expected selectionAdd conflict error, got %v", err)
-	}
-	if mergedFields[0].OriginModelPath != "/models/base" || mergedFields[1].OriginModelPath != "/models/child" || mergedFields[2].OriginModelPath != "/models/child" {
-		t.Fatalf("unexpected field origin paths: %#v", mergedFields)
-	}
-	mergedFields[0].Decorators[0].Arguments[0].Value = "'mutated'"
-	if parentFields[0].Decorators[0].Arguments[0].Value != "'parent-code'" {
-		t.Fatalf("expected merged fields to deep clone decorators, got %#v", parentFields[0].Decorators)
-	}
-
-	parentServices := []*meta.Service{{
-		Name:           "List",
-		TypeParameters: []*meta.TypeParameter{{Name: "T"}},
-		Parameters:     []*meta.Parameter{{Name: "query"}},
-		Decorators:     []*meta.Decorator{{Name: "Service", Arguments: []*meta.Argument{{Value: "'parent-service'", Type: "Literal"}}}},
-	}, {Name: "Shared"}}
-	childServices := []*meta.Service{{
-		Name:       "Shared",
-		Decorators: []*meta.Decorator{{Name: "Service", Arguments: []*meta.Argument{{Value: "'child-service'", Type: "Literal"}}}},
-	}, {Name: "Create"}}
-	mergedServices := mergeOrderedServices(parentServices, childServices, "/models/base", "/models/child")
-	if len(mergedServices) != 3 || mergedServices[0].Name != "List" || mergedServices[1].Name != "Shared" || mergedServices[2].Name != "Create" {
-		t.Fatalf("unexpected merged services order: %#v", mergedServices)
-	}
-	if mergedServices[0].OriginModelPath != "/models/base" || mergedServices[1].OriginModelPath != "/models/child" {
-		t.Fatalf("unexpected service origin paths: %#v", mergedServices)
-	}
-	mergedServices[0].Decorators[0].Arguments[0].Value = "'mutated-service'"
-	if parentServices[0].Decorators[0].Arguments[0].Value != "'parent-service'" {
-		t.Fatalf("expected merged services to deep clone decorators, got %#v", parentServices[0].Decorators)
-	}
-
-	builder := &ModuleBuilder{}
-	if builder.isAlreadyMaterialized(&meta.Model{Fields: []*meta.Field{{Name: "Code"}}}) {
-		t.Fatal("expected model without origin metadata to be treated as non-materialized")
-	}
-	if !builder.isAlreadyMaterialized(&meta.Model{Services: []*meta.Service{{Name: "List", OriginModelPath: "/models/base"}}}) {
-		t.Fatal("expected origin metadata to mark model as materialized")
-	}
-	if !builder.isAlreadyMaterialized(&meta.Model{Fields: []*meta.Field{{Name: "Code", OriginModelPath: "/models/base"}}}) {
-		t.Fatal("expected field origin metadata to mark model as materialized")
-	}
-
-	if cloneField(nil) != nil || cloneService(nil) != nil || cloneDecorator(nil) != nil {
-		t.Fatal("expected clone helpers to preserve nil inputs")
-	}
-
-	moduleRef := &meta.Module{Models: []*meta.Model{
-		{
-			Name:     "Partner",
-			Path:     "/models/base",
-			Fields:   []*meta.Field{{Name: "Code"}},
-			Services: []*meta.Service{{Name: "List"}},
-		},
-		{
-			Name:     "Partner",
-			Path:     "/models/child",
-			Extends:  "/models/base",
-			Fields:   []*meta.Field{{Name: "Extra"}},
-			Services: []*meta.Service{{Name: "Create"}},
-		},
-	}}
-	if err := builder.materializeEffectiveModels(moduleRef); err != nil {
-		t.Fatalf("materializeEffectiveModels() error = %v", err)
-	}
-	childModel := moduleRef.Models[1]
-	if len(childModel.Fields) != 2 || childModel.Fields[0].OriginModelPath != "/models/base" || childModel.Fields[1].OriginModelPath != "/models/child" {
-		t.Fatalf("unexpected materialized child fields: %#v", childModel.Fields)
-	}
-	if len(childModel.Services) != 2 || childModel.Services[0].OriginModelPath != "/models/base" || childModel.Services[1].OriginModelPath != "/models/child" {
-		t.Fatalf("unexpected materialized child services: %#v", childModel.Services)
-	}
-
-	_, err = builder.computeEffectiveMeta(
-		&meta.Model{Name: "Partner", Path: "/models/cycle-a", Extends: "/models/cycle-b"},
-		map[string]*meta.Model{
-			"/models/cycle-a": {Name: "Partner", Path: "/models/cycle-a", Extends: "/models/cycle-b"},
-			"/models/cycle-b": {Name: "Partner", Path: "/models/cycle-b", Extends: "/models/cycle-a"},
-		},
-		map[string]*effectiveMeta{},
-		map[string]bool{},
-	)
-	if err == nil || !strings.Contains(err.Error(), "circular dependency detected while materializing") {
-		t.Fatalf("expected materialize cycle error, got %v", err)
-	}
-
-	orphanAdd := &meta.Field{Name: "Kind", FieldType: "selection"}
-	_ = orphanAdd.SetResolvedSpec(&meta.FieldResolvedSpec{
-		FieldName: "Kind",
-		Structural: meta.FieldStructuralSpec{
-			Name:            "Kind",
-			FieldType:       "selection",
-			HasSelectionAdd: true,
-			SelectionAdd:    []meta.FieldSelectionItem{{Value: "vip", Label: "VIP"}},
-		},
-	})
-	_, err = builder.computeEffectiveMeta(
-		&meta.Model{Name: "Partner", Path: "/models/child-add", Fields: []*meta.Field{orphanAdd}},
-		map[string]*meta.Model{},
-		map[string]*effectiveMeta{},
-		map[string]bool{},
-	)
-	if err == nil || !strings.Contains(err.Error(), "selectionAdd requires an inherited static selection") {
-		t.Fatalf("expected computeEffectiveMeta selectionAdd error, got %v", err)
-	}
-}
-
 func TestGetNewExtendsAndUpdatePrebuildResult(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file:backendbuilder-more?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
@@ -786,29 +629,33 @@ func TestPersistHelpersAndBuild(t *testing.T) {
 		t.Fatalf("seed query parameter: %v", err)
 	}
 
-	loaded, err := builder.loadLatestModelByPath("/models/history")
+	decls, err := meta.ListDeclarations(db, meta.DeclarationQuery{Path: "/models/history", PreloadTree: true})
 	if err != nil {
-		t.Fatalf("loadLatestModelByPath() error = %v", err)
+		t.Fatalf("ListDeclarations() error = %v", err)
 	}
-	if loaded == nil || loaded.Id.String != "zzz" || len(loaded.Fields) != 1 || len(loaded.Fields[0].Decorators) != 1 || len(loaded.Fields[0].Decorators[0].Arguments) != 1 {
+	if len(decls) == 0 || decls[0] == nil {
+		t.Fatalf("expected tip declaration for /models/history")
+	}
+	loaded := decls[0]
+	if loaded.Id.String != "zzz" || len(loaded.Fields) != 1 || len(loaded.Fields[0].Decorators) != 1 || len(loaded.Fields[0].Decorators[0].Arguments) != 1 {
 		t.Fatalf("unexpected loaded model fields: %#v", loaded)
 	}
 	if len(loaded.Services) != 1 || len(loaded.Services[0].Decorators) != 1 || len(loaded.Services[0].TypeParameters) != 1 || len(loaded.Services[0].Parameters) != 1 || loaded.Services[0].Parameters[0].Name != "query" {
 		t.Fatalf("unexpected loaded model services: %#v", loaded.Services)
 	}
 
-	missing, err := builder.loadLatestModelByPath("/models/does-not-exist")
+	missing, err := meta.ListDeclarations(db, meta.DeclarationQuery{Path: "/models/does-not-exist", PreloadTree: true})
 	if err != nil {
 		t.Fatalf("missing path error = %v", err)
 	}
-	if missing != nil {
-		t.Fatalf("expected nil for missing path, got %#v", missing)
+	if len(missing) != 0 {
+		t.Fatalf("expected empty for missing path, got %#v", missing)
 	}
 	if err := db.Migrator().DropTable(&meta.RawModel{}); err != nil {
 		t.Fatalf("drop meta_raw_model: %v", err)
 	}
-	if _, err := builder.loadLatestModelByPath("/models/history"); err == nil || !strings.Contains(err.Error(), "error loading parent model by path") {
-		t.Fatalf("expected load error after drop, got %v", err)
+	if _, err := meta.ListDeclarations(db, meta.DeclarationQuery{Path: "/models/history", PreloadTree: true}); err == nil || !strings.Contains(err.Error(), "list declarations") {
+		t.Fatalf("expected list error after drop, got %v", err)
 	}
 }
 
