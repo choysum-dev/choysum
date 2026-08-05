@@ -4,6 +4,7 @@
 package meta
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -66,36 +67,37 @@ func RemapACLToEffectiveModelIDs(db *gorm.DB) error {
 		}
 		oldToEffective[row.Id.String] = eff.Id.String
 	}
-	if len(oldToEffective) == 0 {
-		return remapOrphanServices(db, effectiveIDSet)
-	}
 
-	tables := []string{
-		"auth_role_method_access",
-		"auth_role_record_rule",
-		"auth_role_field_rule",
-	}
-	for _, table := range tables {
-		if !db.Migrator().HasTable(table) {
-			continue
+	return db.Transaction(func(tx *gorm.DB) error {
+		tables := []string{
+			"auth_role_method_access",
+			"auth_role_record_rule",
+			"auth_role_field_rule",
 		}
-		for oldID, newID := range oldToEffective {
-			if err := db.Exec(
-				fmt.Sprintf("UPDATE %s SET meta_model_id = ? WHERE meta_model_id = ?", table),
-				newID, oldID,
-			).Error; err != nil {
-				return fmt.Errorf("remap %s meta_model_id %s→%s: %w", table, oldID, newID, err)
+		for _, table := range tables {
+			if !tx.Migrator().HasTable(table) {
+				continue
+			}
+			for oldID, newID := range oldToEffective {
+				if err := tx.Exec(
+					fmt.Sprintf("UPDATE %s SET meta_model_id = ? WHERE meta_model_id = ?", table),
+					newID, oldID,
+				).Error; err != nil {
+					return fmt.Errorf("remap %s meta_model_id %s→%s: %w", table, oldID, newID, err)
+				}
 			}
 		}
-	}
 
-	if err := remapFieldRuleFieldIDs(db, oldToEffective); err != nil {
-		return err
-	}
-	return remapOrphanServices(db, effectiveIDSet)
+		// Always remap field FKs: meta_model_id may already be effective while
+		// meta_field_id still points at a replaced subtree after recompute.
+		if err := remapFieldRuleFieldIDs(tx); err != nil {
+			return err
+		}
+		return remapOrphanServices(tx, effectiveIDSet)
+	})
 }
 
-func remapFieldRuleFieldIDs(db *gorm.DB, oldToEffective map[string]string) error {
+func remapFieldRuleFieldIDs(db *gorm.DB) error {
 	if !db.Migrator().HasTable("auth_role_field_rule") {
 		return nil
 	}
@@ -122,7 +124,10 @@ func remapFieldRuleFieldIDs(db *gorm.DB, oldToEffective map[string]string) error
 		// Field may still exist under the new model, or only under a deleted tree.
 		err := db.Unscoped().Select("id", "name", "model_id").Where("id = ?", fieldID).Take(&oldField).Error
 		if err != nil {
-			continue
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				continue
+			}
+			return fmt.Errorf("lookup field rule %s field %s: %w", r.ID, fieldID, err)
 		}
 		name := strings.TrimSpace(oldField.Name)
 		if name == "" {
@@ -130,7 +135,10 @@ func remapFieldRuleFieldIDs(db *gorm.DB, oldToEffective map[string]string) error
 		}
 		var newField Field
 		if takeErr := db.Where("model_id = ? AND name = ?", modelID, name).Take(&newField).Error; takeErr != nil {
-			continue
+			if errors.Is(takeErr, gorm.ErrRecordNotFound) {
+				continue
+			}
+			return fmt.Errorf("lookup field rule %s replacement field %s/%s: %w", r.ID, modelID, name, takeErr)
 		}
 		if !newField.Id.Valid || newField.Id.String == fieldID {
 			continue
@@ -141,7 +149,6 @@ func remapFieldRuleFieldIDs(db *gorm.DB, oldToEffective map[string]string) error
 		).Error; err != nil {
 			return fmt.Errorf("remap field rule %s field_id: %w", r.ID, err)
 		}
-		_ = oldToEffective // retained for call-site clarity
 	}
 	return nil
 }
@@ -168,14 +175,20 @@ func remapOrphanServices(db *gorm.DB, effectiveIDSet map[string]struct{}) error 
 		}
 		var svc Service
 		if err := db.Unscoped().Select("id", "name", "model_id").Where("id = ?", svcID).Take(&svc).Error; err != nil {
-			continue
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				continue
+			}
+			return fmt.Errorf("lookup method access %s service %s: %w", r.ID, svcID, err)
 		}
 		if svc.ModelId.Valid {
 			if _, ok := effectiveIDSet[svc.ModelId.String]; ok {
-				// Still under an effective model — leave alone (EDS-2 reuses service ids).
+				// Still under an effective model — leave alone if the service row is live
+				// (EDS-2 reuses service ids). Soft-deleted under effective → fall through.
 				var live Service
 				if err := db.Where("id = ?", svcID).Take(&live).Error; err == nil {
 					continue
+				} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+					return fmt.Errorf("lookup live service %s: %w", svcID, err)
 				}
 			}
 		}
@@ -186,15 +199,27 @@ func remapOrphanServices(db *gorm.DB, effectiveIDSet map[string]struct{}) error 
 		// Resolve effective model for the service's historical model, then find service by name.
 		var hist Model
 		if err := db.Unscoped().Select("id", "application", "name").Where("id = ?", svc.ModelId.String).Take(&hist).Error; err != nil {
-			continue
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				continue
+			}
+			return fmt.Errorf("lookup historical model for service %s: %w", svcID, err)
 		}
 		eff, err := LookupEffectiveModel(db, hist.Application, hist.Name)
-		if err != nil || eff == nil || !eff.Id.Valid {
+		if err != nil {
+			if IsEffectiveModelNotFound(err) {
+				continue
+			}
+			return fmt.Errorf("lookup effective model for service %s: %w", svcID, err)
+		}
+		if eff == nil || !eff.Id.Valid {
 			continue
 		}
 		var replacement Service
 		if err := db.Where("model_id = ? AND name = ?", eff.Id.String, name).Take(&replacement).Error; err != nil {
-			continue
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				continue
+			}
+			return fmt.Errorf("lookup replacement service %s/%s: %w", eff.Id.String, name, err)
 		}
 		if !replacement.Id.Valid || replacement.Id.String == svcID {
 			continue

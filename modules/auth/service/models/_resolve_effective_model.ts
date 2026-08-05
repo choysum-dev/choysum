@@ -18,6 +18,40 @@ function moduleIdEmpty(row: any): boolean {
   return String(raw).trim() === '';
 }
 
+function rowId(row: any): string {
+  return String(row?.Id ?? row?.id ?? '').trim();
+}
+
+function rowUpdatedAt(row: any): number {
+  const raw = row?.UpdatedAt ?? row?.updated_at;
+  if (raw == null || raw === '') return 0;
+  if (typeof raw === 'number') return raw;
+  const ms = Date.parse(String(raw));
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+/** Align with Go pickEffectiveAmong: empty ModuleId first, then newest UpdatedAt, then larger Id. */
+function pickEffectiveAmong(rows: any[]): any {
+  let best = rows[0];
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const empty = moduleIdEmpty(row);
+    const bestEmpty = moduleIdEmpty(best);
+    if (empty && !bestEmpty) {
+      best = row;
+      continue;
+    }
+    if (empty === bestEmpty) {
+      const rowTs = rowUpdatedAt(row);
+      const bestTs = rowUpdatedAt(best);
+      if (rowTs > bestTs || (rowTs === bestTs && rowId(row) > rowId(best))) {
+        best = row;
+      }
+    }
+  }
+  return best;
+}
+
 /**
  * Resolve the single effective MetaModel id for (application, name).
  * Prefers empty ModuleId (E2 projection) over legacy declaration shells.
@@ -29,12 +63,15 @@ export async function resolveEffectiveModelId(appName: string, modelName: string
 
 /**
  * Resolve the effective MetaModel row (optional extra fields).
+ * Always fetches Id/ModuleId/UpdatedAt so shell vs effective selection stays correct
+ * even when callers omit those columns from `fields`.
  */
 export async function resolveEffectiveModelRow(
   appName: string,
   modelName: string,
   fields: string[] = ['Id', 'ModuleId', 'UpdatedAt', 'CompanyField']
 ): Promise<any | undefined> {
+  const selectedFields = Array.from(new Set(['Id', 'ModuleId', 'UpdatedAt', ...fields]));
   const models = await MetaModel.Search(
     {
       And: [
@@ -43,18 +80,15 @@ export async function resolveEffectiveModelRow(
       ],
     } as any,
     {
-      fields,
+      fields: selectedFields,
       orderBy: { field: 'UpdatedAt', order: 'desc' },
       limit: 50,
     } as any
   );
-  const rows = (models || []).filter((m: any) => String(m?.Id || '').trim());
+  const rows = (models || []).filter((m: any) => rowId(m));
   if (rows.length === 0) return undefined;
   if (rows.length === 1) return rows[0];
-
-  const emptyModule = rows.filter((m: any) => moduleIdEmpty(m));
-  const pool = emptyModule.length > 0 ? emptyModule : rows;
-  return pool[0];
+  return pickEffectiveAmong(rows);
 }
 
 /**
