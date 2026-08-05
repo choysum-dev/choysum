@@ -139,6 +139,9 @@ test('buildAclAggregation dedupes same application+name for app and global scope
         { Application: 'auth', Name: 'User', ModuleId: 'shell', UpdatedAt: '2026-08-05T12:00:00.000Z' },
         { Application: 'auth', Name: 'User', ModuleId: null, UpdatedAt: '2026-08-05T10:00:00.000Z' },
         { Application: 'auth', Name: 'Role', ModuleId: null, UpdatedAt: '2026-08-05T11:00:00.000Z' },
+        // null Application / Name hit `appRaw == null ? ''` / `nameRaw == null ? ''`.
+        { Application: null, Name: 'Ghost' },
+        { Application: 'auth', Name: null },
         { Application: '', Name: 'Bad' },
         { Application: 'auth', Name: '  ' },
       ];

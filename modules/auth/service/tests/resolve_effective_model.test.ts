@@ -116,6 +116,20 @@ test('resolveEffectiveModelRow covers remaining ModuleId/Id/UpdatedAt branches',
     ];
     expect((await resolveEffectiveModelRow('a', 'M'))?.Id).toBe('newer');
 
+    // UpdatedAt null with no updated_at → raw == null path in rowUpdatedAt.
+    (MetaModel as any).Search = async () => [
+      { Id: 'keep', ModuleId: null, UpdatedAt: '2026-08-05T12:00:00.000Z' },
+      { Id: 'null-ts', ModuleId: null, UpdatedAt: null },
+    ];
+    expect((await resolveEffectiveModelRow('a', 'M'))?.Id).toBe('keep');
+
+    // UpdatedAt null falls through to updated_at.
+    (MetaModel as any).Search = async () => [
+      { Id: 'via-snake', ModuleId: null, UpdatedAt: null, updated_at: '2026-08-05T13:00:00.000Z' },
+      { Id: 'older-iso', ModuleId: null, UpdatedAt: '2026-08-05T10:00:00.000Z' },
+    ];
+    expect((await resolveEffectiveModelRow('a', 'M'))?.Id).toBe('via-snake');
+
     // Equal UpdatedAt but smaller Id must not replace best.
     (MetaModel as any).Search = async () => [
       { Id: 'zzz', ModuleId: null, UpdatedAt: '2026-08-05T12:00:00.000Z' },

@@ -117,6 +117,10 @@ export async function buildAclAggregation(
 
   // Effective projections: at most one live row per (application, name).
   // Deduplicate by name in case legacy shells still coexist.
+  const trimMetaLabel = (v: any): string => {
+    if (v == null) return '';
+    return String(v).trim();
+  };
   const modelsByApp = new Map<string, Array<{ app: string; name: string }>>();
   const appNames = Array.from(new Set(appNameById.values()));
   if (appNames.length > 0) {
@@ -126,9 +130,10 @@ export async function buildAclAggregation(
       limit: 50000,
     } as any);
     const seen = new Set<string>();
-    for (const r of rows ?? []) {
-      const app = String((r as any).Application ?? '').trim();
-      const name = String((r as any).Name ?? '').trim();
+    const list = rows == null ? [] : rows;
+    for (const r of list) {
+      const app = trimMetaLabel((r as any).Application);
+      const name = trimMetaLabel((r as any).Name);
       if (!app) continue;
       if (!name) continue;
       const key = `${app}\0${name}`;
@@ -154,9 +159,10 @@ export async function buildAclAggregation(
     } as any);
     const seen = new Set<string>();
     const out: Array<{ app: string; name: string }> = [];
-    for (const r of rows ?? []) {
-      const app = String((r as any).Application ?? '').trim();
-      const name = String((r as any).Name ?? '').trim();
+    const list = rows == null ? [] : rows;
+    for (const r of list) {
+      const app = trimMetaLabel((r as any).Application);
+      const name = trimMetaLabel((r as any).Name);
       if (!app) continue;
       if (!name) continue;
       const key = `${app}\0${name}`;

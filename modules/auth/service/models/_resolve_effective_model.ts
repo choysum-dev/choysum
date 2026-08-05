@@ -26,7 +26,10 @@ function rowId(row: any): string {
 }
 
 function rowUpdatedAt(row: any): number {
-  const raw = row.UpdatedAt ?? row.updated_at;
+  let raw: any = row.UpdatedAt;
+  if (raw == null) {
+    raw = row.updated_at;
+  }
   if (raw == null) return 0;
   if (raw === '') return 0;
   if (typeof raw === 'number') return raw;
