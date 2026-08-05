@@ -153,6 +153,12 @@ func TestDeleteDeclarationTrees_Cascade(t *testing.T) {
 	if err := db.Unscoped().Model(&RawModel{}).Where("id = ?", id).Count(&n).Error; err != nil || n != 0 {
 		t.Fatalf("left=%d err=%v", n, err)
 	}
+	for name, dest := range map[string]any{"field": &RawField{}, "service": &RawService{}} {
+		var c int64
+		if err := db.Unscoped().Model(dest).Where("model_id = ?", id).Count(&c).Error; err != nil || c != 0 {
+			t.Fatalf("%s rows left=%d err=%v", name, c, err)
+		}
+	}
 	if err := DeleteDeclarationTrees(nil, []string{"x"}); err == nil || !strings.Contains(err.Error(), "db is nil") {
 		t.Fatalf("nil db: %v", err)
 	}

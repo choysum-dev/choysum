@@ -16,6 +16,12 @@ type expandsShape struct {
 	services []*Service
 }
 
+// expandsShapeKey scopes cache / cycle / local lookups by application + path so
+// same-path declarations from different applications cannot collide.
+func expandsShapeKey(application, path string) string {
+	return strings.TrimSpace(application) + "\x00" + strings.TrimSpace(path)
+}
+
 // ExpandModelsAlongExtends merges parent Fields and Services into each model in memory
 // by walking Extends paths against meta_raw_* (and the provided local set).
 //
@@ -29,12 +35,14 @@ func ExpandModelsAlongExtends(db *gorm.DB, models []*Model) error {
 	if db == nil {
 		return fmt.Errorf("db is nil")
 	}
+	localByAppPath := make(map[string]*Model, len(models))
 	localByPath := make(map[string]*Model, len(models))
 	for _, m := range models {
 		if m == nil || strings.TrimSpace(m.Path) == "" {
 			continue
 		}
-		localByPath[m.Path] = m
+		localByAppPath[expandsShapeKey(m.Application, m.Path)] = m
+		localByPath[strings.TrimSpace(m.Path)] = m
 	}
 	cache := make(map[string]*expandsShape)
 	visiting := make(map[string]bool)
@@ -42,7 +50,7 @@ func ExpandModelsAlongExtends(db *gorm.DB, models []*Model) error {
 		if m == nil {
 			continue
 		}
-		shape, err := expandShapeAlongExtends(db, m, localByPath, cache, visiting)
+		shape, err := expandShapeAlongExtends(db, m, localByAppPath, localByPath, cache, visiting)
 		if err != nil {
 			return err
 		}
@@ -55,6 +63,7 @@ func ExpandModelsAlongExtends(db *gorm.DB, models []*Model) error {
 func expandShapeAlongExtends(
 	db *gorm.DB,
 	model *Model,
+	localByAppPath map[string]*Model,
 	localByPath map[string]*Model,
 	cache map[string]*expandsShape,
 	visiting map[string]bool,
@@ -63,27 +72,29 @@ func expandShapeAlongExtends(
 		return &expandsShape{}, nil
 	}
 	path := strings.TrimSpace(model.Path)
+	key := ""
 	if path != "" {
-		if cached, ok := cache[path]; ok {
+		key = expandsShapeKey(model.Application, path)
+		if cached, ok := cache[key]; ok {
 			return cached, nil
 		}
-		if visiting[path] {
+		if visiting[key] {
 			return nil, fmt.Errorf("circular extends while expanding model shape: %s", path)
 		}
-		visiting[path] = true
-		defer delete(visiting, path)
+		visiting[key] = true
+		defer delete(visiting, key)
 	}
 
 	var parentShape *expandsShape
 	parentPath := ""
 	if extends := strings.TrimSpace(model.Extends); extends != "" {
-		parent, err := resolveExtendsModel(db, extends, localByPath, strings.TrimSpace(model.Application))
+		parent, err := resolveExtendsModel(db, extends, localByAppPath, localByPath, strings.TrimSpace(model.Application))
 		if err != nil {
 			return nil, err
 		}
 		if parent != nil {
 			parentPath = parent.Path
-			parentShape, err = expandShapeAlongExtends(db, parent, localByPath, cache, visiting)
+			parentShape, err = expandShapeAlongExtends(db, parent, localByAppPath, localByPath, cache, visiting)
 			if err != nil {
 				return nil, err
 			}
@@ -103,13 +114,24 @@ func expandShapeAlongExtends(
 	}
 	services := mergeServicesForSchema(parentServices, model.Services, parentPath, path)
 	out := &expandsShape{fields: fields, services: services}
-	if path != "" {
-		cache[path] = out
+	if key != "" {
+		cache[key] = out
 	}
 	return out, nil
 }
 
-func resolveExtendsModel(db *gorm.DB, extendsPath string, localByPath map[string]*Model, preferredApp string) (*Model, error) {
+func resolveExtendsModel(
+	db *gorm.DB,
+	extendsPath string,
+	localByAppPath map[string]*Model,
+	localByPath map[string]*Model,
+	preferredApp string,
+) (*Model, error) {
+	if preferredApp != "" {
+		if local, ok := localByAppPath[expandsShapeKey(preferredApp, extendsPath)]; ok {
+			return local, nil
+		}
+	}
 	if local, ok := localByPath[extendsPath]; ok {
 		return local, nil
 	}

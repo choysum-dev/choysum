@@ -171,12 +171,17 @@ func TestModuleUninstallerCleanModelsRecomputesAfterExtRawDelete(t *testing.T) {
 		t.Fatalf("base raw model should survive, count = %d", baseRawCount)
 	}
 
-	var effectiveCount int64
-	if err := db.Model(&meta.Model{}).Where("application = ? AND name = ?", "partner", "Partner").Count(&effectiveCount).Error; err != nil {
-		t.Fatalf("count effective model: %v", err)
+	var effectives []meta.Model
+	if err := db.Where("application = ? AND name = ?", "partner", "Partner").Find(&effectives).Error; err != nil {
+		t.Fatalf("load effective models: %v", err)
 	}
-	if effectiveCount != 1 {
-		t.Fatalf("survivor raw should yield one effective model, count = %d", effectiveCount)
+	if len(effectives) != 1 {
+		t.Fatalf("survivor raw should yield one effective model, count = %d", len(effectives))
+	}
+	// Effective projections intentionally omit ModuleId (merged across declarations);
+	// Path still identifies which tip declaration was reprojected.
+	if effectives[0].Path != basePath {
+		t.Fatalf("effective model path = %q, want survivor base path %q", effectives[0].Path, basePath)
 	}
 }
 

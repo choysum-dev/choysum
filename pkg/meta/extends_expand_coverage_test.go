@@ -141,16 +141,26 @@ func TestExpandModelsAlongExtends_PrefersSameApplicationParent(t *testing.T) {
 		t.Fatalf("ensure: %v", err)
 	}
 	parentPath := "/shared/base.ts"
+	homeCreated := time.Now().UTC().Add(-time.Hour)
+	foreignCreated := homeCreated.Add(time.Minute)
 	// Newer foreign-app parent with a distinctive field would win if path-only.
 	foreign := &RawModel{
-		BaseModel:   BaseModel{Id: sql.NullString{String: "foreign-parent", Valid: true}},
+		BaseModel: BaseModel{
+			Id:        sql.NullString{String: "foreign-parent", Valid: true},
+			CreatedAt: foreignCreated,
+			UpdatedAt: foreignCreated,
+		},
 		Name:        "Base",
 		Path:        parentPath,
 		Application: "other",
 		ModuleId:    sql.NullString{String: "mod-other", Valid: true},
 	}
 	home := &RawModel{
-		BaseModel:   BaseModel{Id: sql.NullString{String: "home-parent", Valid: true}},
+		BaseModel: BaseModel{
+			Id:        sql.NullString{String: "home-parent", Valid: true},
+			CreatedAt: homeCreated,
+			UpdatedAt: homeCreated,
+		},
 		Name:        "Base",
 		Path:        parentPath,
 		Application: "home",
@@ -193,6 +203,95 @@ func TestExpandModelsAlongExtends_PrefersSameApplicationParent(t *testing.T) {
 	}
 	if !names["HomeOnly"] || names["ForeignOnly"] || !names["ChildField"] {
 		t.Fatalf("expected home parent fields, got %#v", names)
+	}
+}
+
+func TestExpandModelsAlongExtends_BatchKeepsPerApplicationParentShapes(t *testing.T) {
+	db := openDualStoreTestDB(t)
+	if err := EnsureDualStoreTables(db); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	parentPath := "/shared/base-batch.ts"
+	homeCreated := time.Now().UTC().Add(-time.Hour)
+	foreignCreated := homeCreated.Add(time.Minute)
+	foreign := &RawModel{
+		BaseModel: BaseModel{
+			Id:        sql.NullString{String: "batch-foreign-parent", Valid: true},
+			CreatedAt: foreignCreated,
+			UpdatedAt: foreignCreated,
+		},
+		Name:        "Base",
+		Path:        parentPath,
+		Application: "other",
+		ModuleId:    sql.NullString{String: "mod-other", Valid: true},
+	}
+	home := &RawModel{
+		BaseModel: BaseModel{
+			Id:        sql.NullString{String: "batch-home-parent", Valid: true},
+			CreatedAt: homeCreated,
+			UpdatedAt: homeCreated,
+		},
+		Name:        "Base",
+		Path:        parentPath,
+		Application: "home",
+		ModuleId:    sql.NullString{String: "mod-home", Valid: true},
+	}
+	for _, row := range []*RawModel{home, foreign} {
+		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(row).Error; err != nil {
+			t.Fatalf("create parent: %v", err)
+		}
+	}
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawField{
+		BaseModel: BaseModel{Id: sql.NullString{String: "batch-ff", Valid: true}},
+		Name:      "ForeignOnly",
+		ModelId:   foreign.Id,
+	}).Error; err != nil {
+		t.Fatalf("create foreign field: %v", err)
+	}
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawField{
+		BaseModel: BaseModel{Id: sql.NullString{String: "batch-hf", Valid: true}},
+		Name:      "HomeOnly",
+		ModelId:   home.Id,
+	}).Error; err != nil {
+		t.Fatalf("create home field: %v", err)
+	}
+
+	homeChild := &Model{
+		Name:        "HomeChild",
+		Path:        "/home/batch-child.ts",
+		Application: "home",
+		Extends:     parentPath,
+		Fields:      []*Field{{Name: "HomeChildField"}},
+	}
+	foreignChild := &Model{
+		Name:        "ForeignChild",
+		Path:        "/other/batch-child.ts",
+		Application: "other",
+		Extends:     parentPath,
+		Fields:      []*Field{{Name: "ForeignChildField"}},
+	}
+	// Expand both in one call so path-keyed caching would cross-contaminate.
+	if err := ExpandModelsAlongExtends(db, []*Model{homeChild, foreignChild}); err != nil {
+		t.Fatalf("expand: %v", err)
+	}
+
+	homeNames := map[string]bool{}
+	for _, f := range homeChild.Fields {
+		if f != nil {
+			homeNames[f.Name] = true
+		}
+	}
+	foreignNames := map[string]bool{}
+	for _, f := range foreignChild.Fields {
+		if f != nil {
+			foreignNames[f.Name] = true
+		}
+	}
+	if !homeNames["HomeOnly"] || homeNames["ForeignOnly"] || !homeNames["HomeChildField"] {
+		t.Fatalf("home child fields = %#v", homeNames)
+	}
+	if !foreignNames["ForeignOnly"] || foreignNames["HomeOnly"] || !foreignNames["ForeignChildField"] {
+		t.Fatalf("foreign child fields = %#v", foreignNames)
 	}
 }
 
@@ -261,7 +360,7 @@ func TestResolveExtendsModel_CrossAppFallbackLoadError(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Callback().Query().Remove(cbTag) })
 
-	_, err := resolveExtendsModel(db, "/missing/cross.ts", nil, "home")
+	_, err := resolveExtendsModel(db, "/missing/cross.ts", nil, nil, "home")
 	if err == nil || !strings.Contains(err.Error(), "load raw parent") {
 		t.Fatalf("expected fallback load error, got %v", err)
 	}
@@ -487,7 +586,7 @@ func TestCloneServiceShallow_Coverage(t *testing.T) {
 }
 
 func TestExpandShapeAlongExtends_NilModel(t *testing.T) {
-	shape, err := expandShapeAlongExtends(nil, nil, nil, nil, nil)
+	shape, err := expandShapeAlongExtends(nil, nil, nil, nil, nil, nil)
 	if err != nil || shape == nil || len(shape.fields) != 0 {
 		t.Fatalf("nil model: shape=%#v err=%v", shape, err)
 	}

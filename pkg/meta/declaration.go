@@ -47,17 +47,18 @@ func ListDeclarations(db *gorm.DB, q DeclarationQuery) ([]*Model, error) {
 		query = query.Where("abstract = ?", *q.Abstract)
 	}
 	if q.PreloadTree {
+		orderID := func(tx *gorm.DB) *gorm.DB { return tx.Order("id ASC") }
 		query = query.
-			Preload("Fields", func(tx *gorm.DB) *gorm.DB { return tx.Order("id ASC") }).
-			Preload("Fields.Decorators", func(tx *gorm.DB) *gorm.DB { return tx.Order("id ASC") }).
-			Preload("Fields.Decorators.Arguments", func(tx *gorm.DB) *gorm.DB { return tx.Order("id ASC") }).
-			Preload("Services").
-			Preload("Services.Parameters").
-			Preload("Services.TypeParameters").
-			Preload("Services.Decorators").
-			Preload("Services.Decorators.Arguments").
-			Preload("Decorators").
-			Preload("Decorators.Arguments")
+			Preload("Fields", orderID).
+			Preload("Fields.Decorators", orderID).
+			Preload("Fields.Decorators.Arguments", orderID).
+			Preload("Services", orderID).
+			Preload("Services.Parameters", orderID).
+			Preload("Services.TypeParameters", orderID).
+			Preload("Services.Decorators", orderID).
+			Preload("Services.Decorators.Arguments", orderID).
+			Preload("Decorators", orderID).
+			Preload("Decorators.Arguments", orderID)
 	}
 
 	var raws []*RawModel
@@ -83,51 +84,53 @@ func UpsertDeclaration(db *gorm.DB, src *Model) error {
 		return fmt.Errorf("upsert declaration requires path and application")
 	}
 
-	var existing RawModel
-	err := db.Where("path = ? AND application = ?", path, app).
-		Order("created_at DESC, id DESC").
-		Take(&existing).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return PersistModelTreeAsRaw(db, src)
-	}
-	if err != nil {
-		return fmt.Errorf("lookup declaration %s: %w", path, err)
-	}
+	return db.Transaction(func(tx *gorm.DB) error {
+		var existing RawModel
+		err := tx.Where("path = ? AND application = ?", path, app).
+			Order("created_at DESC, id DESC").
+			Take(&existing).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return PersistModelTreeAsRaw(tx, src)
+		}
+		if err != nil {
+			return fmt.Errorf("lookup declaration %s: %w", path, err)
+		}
 
-	if src.ModuleId.Valid && strings.TrimSpace(src.ModuleId.String) != "" &&
-		(!existing.ModuleId.Valid || strings.TrimSpace(existing.ModuleId.String) == "") {
-		if saveErr := db.Model(&existing).Update("module_id", src.ModuleId.String).Error; saveErr != nil {
-			return fmt.Errorf("update declaration module: %w", saveErr)
+		if src.ModuleId.Valid && strings.TrimSpace(src.ModuleId.String) != "" &&
+			(!existing.ModuleId.Valid || strings.TrimSpace(existing.ModuleId.String) == "") {
+			if saveErr := tx.Model(&existing).Update("module_id", src.ModuleId.String).Error; saveErr != nil {
+				return fmt.Errorf("update declaration module: %w", saveErr)
+			}
+			existing.ModuleId = src.ModuleId
 		}
-		existing.ModuleId = src.ModuleId
-	}
 
-	for _, s := range src.Services {
-		if s == nil || strings.TrimSpace(s.Name) == "" {
-			continue
+		for _, s := range src.Services {
+			if s == nil || strings.TrimSpace(s.Name) == "" {
+				continue
+			}
+			var svc RawService
+			takeErr := tx.Where("model_id = ? AND name = ?", existing.Id.String, s.Name).Take(&svc).Error
+			if takeErr == nil {
+				continue
+			}
+			if !errors.Is(takeErr, gorm.ErrRecordNotFound) {
+				return fmt.Errorf("lookup declaration service %s: %w", s.Name, takeErr)
+			}
+			ns := *s
+			if strings.TrimSpace(ns.OriginModelPath) == "" {
+				ns.OriginModelPath = existing.Path
+			}
+			if strings.TrimSpace(ns.AccessibilityModifier) == "" {
+				ns.AccessibilityModifier = "public"
+			}
+			rs := rawServiceFromService(&ns, existing.Id)
+			ensureBaseModelID(&rs.BaseModel)
+			if createErr := tx.Create(rs).Error; createErr != nil {
+				return fmt.Errorf("create declaration service %s: %w", s.Name, createErr)
+			}
 		}
-		var svc RawService
-		takeErr := db.Where("model_id = ? AND name = ?", existing.Id.String, s.Name).Take(&svc).Error
-		if takeErr == nil {
-			continue
-		}
-		if !errors.Is(takeErr, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("lookup declaration service %s: %w", s.Name, takeErr)
-		}
-		ns := *s
-		if strings.TrimSpace(ns.OriginModelPath) == "" {
-			ns.OriginModelPath = existing.Path
-		}
-		if strings.TrimSpace(ns.AccessibilityModifier) == "" {
-			ns.AccessibilityModifier = "public"
-		}
-		rs := rawServiceFromService(&ns, existing.Id)
-		ensureBaseModelID(&rs.BaseModel)
-		if createErr := db.Create(rs).Error; createErr != nil {
-			return fmt.Errorf("create declaration service %s: %w", s.Name, createErr)
-		}
-	}
-	return nil
+		return nil
+	})
 }
 
 // PreferDeclarationTip bumps created_at/updated_at on the declaration at path so
@@ -200,57 +203,58 @@ func DeleteDeclarationTrees(db *gorm.DB, modelIDs []string) error {
 		return nil
 	}
 
-	root := db
-	fresh := func() *gorm.DB { return root.Session(&gorm.Session{NewDB: true}).Unscoped() }
+	return db.Transaction(func(tx *gorm.DB) error {
+		fresh := func() *gorm.DB { return tx.Session(&gorm.Session{NewDB: true}).Unscoped() }
 
-	var serviceIDs []string
-	if err := fresh().Model(&RawService{}).Where("model_id IN ?", ids).Pluck("id", &serviceIDs).Error; err != nil {
-		return fmt.Errorf("load declaration services: %w", err)
-	}
-	var fieldIDs []string
-	if err := fresh().Model(&RawField{}).Where("model_id IN ?", ids).Pluck("id", &fieldIDs).Error; err != nil {
-		return fmt.Errorf("load declaration fields: %w", err)
-	}
-	decoratorQ := fresh().Model(&RawDecorator{}).Where("model_id IN ?", ids)
-	if len(serviceIDs) > 0 {
-		decoratorQ = decoratorQ.Or("service_id IN ?", serviceIDs)
-	}
-	if len(fieldIDs) > 0 {
-		decoratorQ = decoratorQ.Or("field_id IN ?", fieldIDs)
-	}
-	var decoratorIDs []string
-	if err := decoratorQ.Pluck("id", &decoratorIDs).Error; err != nil {
-		return fmt.Errorf("load declaration decorators: %w", err)
-	}
+		var serviceIDs []string
+		if err := fresh().Model(&RawService{}).Where("model_id IN ?", ids).Pluck("id", &serviceIDs).Error; err != nil {
+			return fmt.Errorf("load declaration services: %w", err)
+		}
+		var fieldIDs []string
+		if err := fresh().Model(&RawField{}).Where("model_id IN ?", ids).Pluck("id", &fieldIDs).Error; err != nil {
+			return fmt.Errorf("load declaration fields: %w", err)
+		}
+		decoratorQ := fresh().Model(&RawDecorator{}).Where("model_id IN ?", ids)
+		if len(serviceIDs) > 0 {
+			decoratorQ = decoratorQ.Or("service_id IN ?", serviceIDs)
+		}
+		if len(fieldIDs) > 0 {
+			decoratorQ = decoratorQ.Or("field_id IN ?", fieldIDs)
+		}
+		var decoratorIDs []string
+		if err := decoratorQ.Pluck("id", &decoratorIDs).Error; err != nil {
+			return fmt.Errorf("load declaration decorators: %w", err)
+		}
 
-	if len(decoratorIDs) > 0 {
-		if err := deleteWhereFn(fresh(), &RawArgument{}, "decorator_id IN ?", decoratorIDs); err != nil {
-			return fmt.Errorf("delete declaration arguments: %w", err)
+		if len(decoratorIDs) > 0 {
+			if err := deleteWhereFn(fresh(), &RawArgument{}, "decorator_id IN ?", decoratorIDs); err != nil {
+				return fmt.Errorf("delete declaration arguments: %w", err)
+			}
+			if err := deleteWhereFn(fresh(), &RawDecorator{}, "id IN ?", decoratorIDs); err != nil {
+				return fmt.Errorf("delete declaration decorators: %w", err)
+			}
 		}
-		if err := deleteWhereFn(fresh(), &RawDecorator{}, "id IN ?", decoratorIDs); err != nil {
-			return fmt.Errorf("delete declaration decorators: %w", err)
+		if len(serviceIDs) > 0 {
+			if err := deleteWhereFn(fresh(), &RawTypeParameter{}, "service_id IN ?", serviceIDs); err != nil {
+				return fmt.Errorf("delete declaration type parameters: %w", err)
+			}
+			if err := deleteWhereFn(fresh(), &RawParameter{}, "service_id IN ?", serviceIDs); err != nil {
+				return fmt.Errorf("delete declaration parameters: %w", err)
+			}
+			if err := deleteWhereFn(fresh(), &RawService{}, "id IN ?", serviceIDs); err != nil {
+				return fmt.Errorf("delete declaration services: %w", err)
+			}
 		}
-	}
-	if len(serviceIDs) > 0 {
-		if err := deleteWhereFn(fresh(), &RawTypeParameter{}, "service_id IN ?", serviceIDs); err != nil {
-			return fmt.Errorf("delete declaration type parameters: %w", err)
+		if len(fieldIDs) > 0 {
+			if err := deleteWhereFn(fresh(), &RawField{}, "id IN ?", fieldIDs); err != nil {
+				return fmt.Errorf("delete declaration fields: %w", err)
+			}
 		}
-		if err := deleteWhereFn(fresh(), &RawParameter{}, "service_id IN ?", serviceIDs); err != nil {
-			return fmt.Errorf("delete declaration parameters: %w", err)
+		if err := deleteWhereFn(fresh(), &RawModel{}, "id IN ?", ids); err != nil {
+			return fmt.Errorf("delete declaration models: %w", err)
 		}
-		if err := deleteWhereFn(fresh(), &RawService{}, "id IN ?", serviceIDs); err != nil {
-			return fmt.Errorf("delete declaration services: %w", err)
-		}
-	}
-	if len(fieldIDs) > 0 {
-		if err := deleteWhereFn(fresh(), &RawField{}, "id IN ?", fieldIDs); err != nil {
-			return fmt.Errorf("delete declaration fields: %w", err)
-		}
-	}
-	if err := deleteWhereFn(fresh(), &RawModel{}, "id IN ?", ids); err != nil {
-		return fmt.Errorf("delete declaration models: %w", err)
-	}
-	return nil
+		return nil
+	})
 }
 
 // HasDeclarationCatalog reports whether meta_raw_model / meta_raw_service exist.
@@ -259,7 +263,7 @@ func HasDeclarationCatalog(db *gorm.DB) bool {
 		return false
 	}
 	m := db.Migrator()
-	return m.HasTable("meta_raw_model") && m.HasTable("meta_raw_service")
+	return m.HasTable((&RawModel{}).TableName()) && m.HasTable((&RawService{}).TableName())
 }
 
 // HasEffectiveCatalog reports whether meta_model / meta_service exist.
