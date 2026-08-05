@@ -15,10 +15,10 @@ import (
 
 // Test hooks (production defaults). Override in *_test.go to force error paths.
 var (
-	lockLogicalKeyFn                     = lockLogicalKey
-	expandModelsAlongExtendsFn           = ExpandModelsAlongExtends
+	lockLogicalKeyFn                      = lockLogicalKey
+	expandModelsAlongExtendsFn            = ExpandModelsAlongExtends
 	mergeSameNameModelsByExtensionChainFn = MergeSameNameModelsByExtensionChain
-	deleteWhereFn                        = func(db *gorm.DB, value interface{}, query interface{}, args ...interface{}) error {
+	deleteWhereFn                         = func(db *gorm.DB, value interface{}, query interface{}, args ...interface{}) error {
 		return db.Where(query, args...).Delete(value).Error
 	}
 )
@@ -63,6 +63,12 @@ func RecomputeKeys(tx *gorm.DB, keys []LogicalKey) error {
 	return nil
 }
 
+// FlushEffective rebuilds effective projections for the given keys. Prefer this name
+// at install/persist boundaries; RecomputeKeys remains as the historical alias.
+func FlushEffective(tx *gorm.DB, keys []LogicalKey) error {
+	return RecomputeKeys(tx, keys)
+}
+
 // RecomputeEffective rebuilds one effective meta_model* tree from live meta_raw_*
 // for (application, name). Preserves existing effective id when present (EDS5).
 // When no live raw remains, hard-deletes the effective tree.
@@ -86,7 +92,7 @@ func recomputeEffectiveTx(tx *gorm.DB, key LogicalKey) error {
 		return err
 	}
 
-	var raws []*RawModel
+	var raws []*rawModel
 	if err := tx.
 		Preload("Fields").
 		Preload("Fields.Decorators").
@@ -111,7 +117,7 @@ func recomputeEffectiveTx(tx *gorm.DB, key LogicalKey) error {
 	if len(raws) == 0 {
 		for _, row := range existing {
 			if row.Id.Valid {
-				if err := DeleteEffectiveModelTree(tx, row.Id.String); err != nil {
+				if err := deleteEffectiveModelTree(tx, row.Id.String); err != nil {
 					return err
 				}
 			}
@@ -119,7 +125,7 @@ func recomputeEffectiveTx(tx *gorm.DB, key LogicalKey) error {
 		return nil
 	}
 
-	models := RawModelsAsModels(raws)
+	models := rawModelsAsModels(raws)
 	// Pull differently-named Extends parents (e.g. BaseModel) into each declaration
 	// before E2 same-name union — replaces pre-persist materialize (EDS4).
 	if err := expandModelsAlongExtendsFn(tx, models); err != nil {
@@ -166,7 +172,7 @@ func recomputeEffectiveTx(tx *gorm.DB, key LogicalKey) error {
 
 	for _, row := range existing {
 		if row.Id.Valid {
-			if err := DeleteEffectiveModelTree(tx, row.Id.String); err != nil {
+			if err := deleteEffectiveModelTree(tx, row.Id.String); err != nil {
 				return err
 			}
 		}
@@ -198,8 +204,8 @@ func loadEffectiveServiceIDsByName(tx *gorm.DB, modelID string) (map[string]stri
 	return out, nil
 }
 
-func pickTipRaw(raws []*RawModel) *RawModel {
-	var tip *RawModel
+func pickTipRaw(raws []*rawModel) *rawModel {
+	var tip *rawModel
 	for _, raw := range raws {
 		if raw == nil {
 			continue
@@ -229,9 +235,9 @@ func lockLogicalKey(tx *gorm.DB, key LogicalKey) error {
 	return nil
 }
 
-// DeleteEffectiveModelTree hard-deletes one effective model and its shape children.
+// deleteEffectiveModelTree hard-deletes one effective model and its shape children.
 // IDs are plucked first so SQLite does not reject DELETE … WHERE id IN (SELECT … same table).
-func DeleteEffectiveModelTree(db *gorm.DB, modelID string) error {
+func deleteEffectiveModelTree(db *gorm.DB, modelID string) error {
 	modelID = strings.TrimSpace(modelID)
 	if modelID == "" {
 		return nil
@@ -290,13 +296,6 @@ func DeleteEffectiveModelTree(db *gorm.DB, modelID string) error {
 	return nil
 }
 
-// PersistEffectiveProjection writes one E2-merged model as the effective tree.
-// Exported for migrate helpers and metaeff. Service ids are minted fresh unless
-// callers use persistEffectiveProjection with a reuse map (RecomputeEffective).
-func PersistEffectiveProjection(db *gorm.DB, merged *Model, effectiveID string) error {
-	return persistEffectiveProjection(db, merged, effectiveID, nil)
-}
-
 // PersistModelTreeAsRaw copies a declaration Model tree into meta_raw_*.
 func PersistModelTreeAsRaw(db *gorm.DB, src *Model) error {
 	return copyModelTreeToRaw(db, src)
@@ -314,7 +313,7 @@ func DeleteRawModelsForModule(db *gorm.DB, moduleID string) error {
 	}
 	fresh := db.Session(&gorm.Session{NewDB: true}).Unscoped()
 	var modelIDs []string
-	if err := fresh.Model(&RawModel{}).Where("module_id = ?", moduleID).Pluck("id", &modelIDs).Error; err != nil {
+	if err := fresh.Model(&rawModel{}).Where("module_id = ?", moduleID).Pluck("id", &modelIDs).Error; err != nil {
 		return fmt.Errorf("load raw models: %w", err)
 	}
 	return DeleteDeclarationTrees(db, modelIDs)

@@ -7,17 +7,17 @@ import (
 	"database/sql"
 )
 
-// RawTypeParameter is a declaration-layer type parameter under RawService.
-type RawTypeParameter struct {
+// rawTypeParameter is a declaration-layer type parameter under rawService.
+type rawTypeParameter struct {
 	BaseModel      `gorm:"embedded"`
 	Name           string `gorm:"type:varchar(255);not null" json:"name"`
 	ModuleSpecPath string `gorm:"type:varchar(255);" json:"module_spec_path"`
 	ReferenceIdent string `gorm:"type:varchar(255);" json:"reference_ident"`
 
 	ServiceId sql.NullString `gorm:"type:char(20)" json:"service_id"`
-	Service   *RawService    `gorm:"foreignKey:ServiceId" json:"service"`
+	Service   *rawService    `gorm:"foreignKey:ServiceId" json:"service"`
 }
 
-func (tp *RawTypeParameter) TableName() string {
+func (tp *rawTypeParameter) TableName() string {
 	return "meta_raw_type_parameter"
 }

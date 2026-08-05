@@ -279,14 +279,12 @@ func TestSupersedeVirtualAppSettings_GuardsAndDependents(t *testing.T) {
 	builder.module.ApplicationStr = "partner"
 
 	// Generated row with empty id → filtered out (no delete).
-	if err := db.Create(&meta.RawModel{
+	persistDeclaration(t, db, &meta.Model{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "   ", Valid: true}},
 		Name:        "AppSetting",
 		Path:        "/virtual/modules/partner/service/models/__generated__/app_setting.ts",
 		Application: "partner",
-	}).Error; err != nil {
-		t.Fatal(err)
-	}
+	})
 	if err := builder.supersedeVirtualAppSettings(); err != nil {
 		t.Fatal(err)
 	}
@@ -306,68 +304,38 @@ func TestSupersedeVirtualAppSettings_GuardsAndDependents(t *testing.T) {
 	})
 	builder.appSettingPlan = AppSettingPlan{SupersedeVirtual: true}
 	virtID := "virt-dep"
-	if err := db.Create(&meta.RawModel{
-		BaseModel: meta.BaseModel{Id: sql.NullString{String: virtID, Valid: true}},
-		Name:      "AppSetting", Path: "/virtual/modules/partner/service/models/__generated__/app_setting.ts", Application: "partner",
-	}).Error; err != nil {
-		t.Fatal(err)
-	}
 	fieldID := "fld1"
 	svcID := "svc1"
 	decModel := "dec-m"
 	decField := "dec-f"
 	decSvc := "dec-s"
-	if err := db.Create(&meta.RawField{BaseModel: meta.BaseModel{Id: sql.NullString{String: fieldID, Valid: true}}, Name: "Model", ModelId: sql.NullString{String: virtID, Valid: true}}).Error; err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Create(&meta.RawService{BaseModel: meta.BaseModel{Id: sql.NullString{String: svcID, Valid: true}}, Name: "Get", ModelId: sql.NullString{String: virtID, Valid: true}}).Error; err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Create(&meta.RawDecorator{BaseModel: meta.BaseModel{Id: sql.NullString{String: decModel, Valid: true}}, Name: "Model", ModelId: sql.NullString{String: virtID, Valid: true}}).Error; err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Create(&meta.RawDecorator{BaseModel: meta.BaseModel{Id: sql.NullString{String: decField, Valid: true}}, Name: "Field", FieldId: sql.NullString{String: fieldID, Valid: true}}).Error; err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Create(&meta.RawDecorator{BaseModel: meta.BaseModel{Id: sql.NullString{String: decSvc, Valid: true}}, Name: "Service", ServiceId: sql.NullString{String: svcID, Valid: true}}).Error; err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Create(&meta.RawArgument{BaseModel: meta.BaseModel{Id: sql.NullString{String: "arg1", Valid: true}}, DecoratorId: sql.NullString{String: decModel, Valid: true}}).Error; err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Create(&meta.RawTypeParameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "tp1", Valid: true}}, Name: "T", ServiceId: sql.NullString{String: svcID, Valid: true}}).Error; err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Create(&meta.RawParameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "p1", Valid: true}}, Name: "x", ServiceId: sql.NullString{String: svcID, Valid: true}}).Error; err != nil {
-		t.Fatal(err)
-	}
+	seedVirtualDeclarationTree(t, db,
+		"AppSetting", "/virtual/modules/partner/service/models/__generated__/app_setting.ts",
+		virtID, fieldID, svcID, decModel, decField, decSvc, "arg1", "tp1", "p1",
+	)
 	if err := builder.supersedeVirtualAppSettings(); err != nil {
 		t.Fatalf("supersede dependents: %v", err)
 	}
-	var left int64
-	if err := db.Unscoped().Model(&meta.RawModel{}).Where("id = ?", virtID).Count(&left).Error; err != nil || left != 0 {
-		t.Fatalf("virt model left=%d err=%v", left, err)
-	}
+	assertRawModelAbsent(t, db, virtID)
 }
 
-func TestSupersedeVirtualAppSettings_RecomputeError(t *testing.T) {
+func TestSupersedeVirtualAppSettings_NoRecomputeOnBoundary(t *testing.T) {
 	builder, db := newAppSettingTestBuilder(t, &meta.Module{
 		Name: "partner_bank", Path: "/virtual/modules/partner_bank",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	})
 	builder.appSettingPlan = AppSettingPlan{SupersedeVirtual: true}
-	if err := db.Create(&meta.RawModel{
-		BaseModel: meta.BaseModel{Id: sql.NullString{String: "virt-recompute", Valid: true}},
+	persistDeclaration(t, db, &meta.Model{
+		BaseModel: meta.BaseModel{Id: sql.NullString{String: "virt-norecompute", Valid: true}},
 		Name:      "AppSetting", Path: "/virtual/modules/partner/service/models/__generated__/app_setting.ts", Application: "partner",
-	}).Error; err != nil {
-		t.Fatal(err)
-	}
+	})
 	if err := db.Migrator().DropTable(&meta.Model{}); err != nil {
 		t.Fatal(err)
 	}
-	if err := builder.supersedeVirtualAppSettings(); err == nil || !strings.Contains(err.Error(), "recompute AppSetting after supersede") {
-		t.Fatalf("expected recompute error, got %v", err)
+	if err := builder.supersedeVirtualAppSettings(); err != nil {
+		t.Fatalf("supersede without recompute: %v", err)
 	}
+	assertRawModelAbsent(t, db, "virt-norecompute")
 }
 
 func TestSupersedeVirtualAppSettings_ErrorBranches(t *testing.T) {
@@ -376,12 +344,10 @@ func TestSupersedeVirtualAppSettings_ErrorBranches(t *testing.T) {
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	})
 	builder.appSettingPlan = AppSettingPlan{SupersedeVirtual: true}
-	if err := db.Create(&meta.RawModel{
+	persistDeclaration(t, db, &meta.Model{
 		BaseModel: meta.BaseModel{Id: sql.NullString{String: "virt", Valid: true}},
 		Name:      "AppSetting", Path: "/virtual/modules/partner/service/models/__generated__/app_setting.ts", Application: "partner",
-	}).Error; err != nil {
-		t.Fatal(err)
-	}
+	})
 
 	// Find error
 	sqlDB, err := db.DB()
@@ -419,33 +385,13 @@ func TestSupersedeVirtualAppSettings_ErrorBranches(t *testing.T) {
 			})
 			b.appSettingPlan = AppSettingPlan{SupersedeVirtual: true}
 			virtID := "v-" + tc.name
-			if err := gdb.Create(&meta.RawModel{
-				BaseModel: meta.BaseModel{Id: sql.NullString{String: virtID, Valid: true}},
-				Name:      "AppSetting", Path: "/virtual/modules/partner/service/models/__generated__/app_setting.ts", Application: "partner",
-			}).Error; err != nil {
-				t.Fatal(err)
-			}
 			fieldID := "f-" + tc.name
 			svcID := "s-" + tc.name
 			decID := "d-" + tc.name
-			if err := gdb.Create(&meta.RawField{BaseModel: meta.BaseModel{Id: sql.NullString{String: fieldID, Valid: true}}, Name: "Model", ModelId: sql.NullString{String: virtID, Valid: true}}).Error; err != nil {
-				t.Fatal(err)
-			}
-			if err := gdb.Create(&meta.RawService{BaseModel: meta.BaseModel{Id: sql.NullString{String: svcID, Valid: true}}, Name: "Get", ModelId: sql.NullString{String: virtID, Valid: true}}).Error; err != nil {
-				t.Fatal(err)
-			}
-			if err := gdb.Create(&meta.RawDecorator{BaseModel: meta.BaseModel{Id: sql.NullString{String: decID, Valid: true}}, Name: "Model", ModelId: sql.NullString{String: virtID, Valid: true}}).Error; err != nil {
-				t.Fatal(err)
-			}
-			if err := gdb.Create(&meta.RawArgument{BaseModel: meta.BaseModel{Id: sql.NullString{String: "a-" + tc.name, Valid: true}}, DecoratorId: sql.NullString{String: decID, Valid: true}}).Error; err != nil {
-				t.Fatal(err)
-			}
-			if err := gdb.Create(&meta.RawTypeParameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "t-" + tc.name, Valid: true}}, Name: "T", ServiceId: sql.NullString{String: svcID, Valid: true}}).Error; err != nil {
-				t.Fatal(err)
-			}
-			if err := gdb.Create(&meta.RawParameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "p-" + tc.name, Valid: true}}, Name: "x", ServiceId: sql.NullString{String: svcID, Valid: true}}).Error; err != nil {
-				t.Fatal(err)
-			}
+			seedVirtualDeclarationErrorBranchTree(t, gdb,
+				"AppSetting", "/virtual/modules/partner/service/models/__generated__/app_setting.ts",
+				virtID, fieldID, svcID, decID, "a-"+tc.name, "t-"+tc.name, "p-"+tc.name,
+			)
 
 			boom := errors.New("forced-" + tc.name)
 			switch tc.phase {
@@ -480,13 +426,7 @@ func TestBuildLifecycle_AppSettingInjectAndRelease(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.AutoMigrate(
-		&meta.Application{}, &meta.Module{},
-		&meta.RawModel{}, &meta.RawField{}, &meta.RawService{}, &meta.RawDecorator{}, &meta.RawArgument{},
-		&meta.RawParameter{}, &meta.RawTypeParameter{},
-		&meta.Model{}, &meta.Field{}, &meta.Service{}, &meta.Decorator{}, &meta.Argument{},
-		&meta.Parameter{}, &meta.TypeParameter{},
-	); err != nil {
+	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
 		t.Fatal(err)
 	}
 	testScope := newBuilderTestScope()
@@ -549,7 +489,10 @@ func TestBuildWithoutPersist_ReleasesAppSettingOnFailures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.AutoMigrate(&meta.Application{}, &meta.Module{}, &meta.RawModel{}, &meta.Model{}); err != nil {
+	if err := db.AutoMigrate(&meta.Application{}, &meta.Module{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := meta.EnsureDualStoreTables(db); err != nil {
 		t.Fatal(err)
 	}
 	testScope := newBuilderTestScope()
@@ -569,14 +512,12 @@ func TestBuildWithoutPersist_ReleasesAppSettingOnFailures(t *testing.T) {
 	// planAndInjectAppSetting failure after FieldDefault skips (handwritten FD owns app).
 	// Empty Path makes AppSetting NeedInject fail in apply; FieldDefault Decide skips.
 	mod := &meta.Module{Name: "partner", ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts"}
-	if err := db.Create(&meta.RawModel{
+	persistDeclaration(t, db, &meta.Model{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "as-hand", Valid: true}},
 		Name:        "FieldDefault",
 		Path:        "/virtual/modules/partner/service/models/field_default.ts",
 		Application: "partner",
-	}).Error; err != nil {
-		t.Fatal(err)
-	}
+	})
 	builder = &ModuleBuilder{
 		runtimeScope: testScope, module: mod,
 		buildPlugin: &stubEsbPlugin{name: "build"}, prebuildPlugin: &stubEsbPlugin{name: "prebuild"},
@@ -664,7 +605,7 @@ func TestBuildWithoutPersist_ReleasesAppSettingOnFailures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := dbSupersede.AutoMigrate(&meta.RawModel{}, &meta.Model{}); err != nil {
+	if err := meta.EnsureDualStoreTables(dbSupersede); err != nil {
 		t.Fatal(err)
 	}
 	sqlDBSupersede, err := dbSupersede.DB()
@@ -696,7 +637,10 @@ func TestBuildWithoutPersist_ReleasesAppSettingOnFailures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db3.AutoMigrate(&meta.Application{}, &meta.Module{}, &meta.RawModel{}, &meta.Model{}); err != nil {
+	if err := db3.AutoMigrate(&meta.Application{}, &meta.Module{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := meta.EnsureDualStoreTables(db3); err != nil {
 		t.Fatal(err)
 	}
 	testScope3 := newBuilderTestScope()
@@ -744,7 +688,10 @@ func TestBuildWithoutPersist_ReleasesAppSettingOnFailures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db4.AutoMigrate(&meta.Application{}, &meta.Module{}, &meta.RawModel{}, &meta.Model{}); err != nil {
+	if err := db4.AutoMigrate(&meta.Application{}, &meta.Module{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := meta.EnsureDualStoreTables(db4); err != nil {
 		t.Fatal(err)
 	}
 	testScope4 := newBuilderTestScope()
@@ -800,17 +747,15 @@ func TestBundle_AppSettingFailurePaths(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := dbFD.AutoMigrate(&meta.RawModel{}); err != nil {
+	if err := meta.EnsureDualStoreTables(dbFD); err != nil {
 		t.Fatal(err)
 	}
-	if err := dbFD.Create(&meta.RawModel{
+	persistDeclaration(t, dbFD, &meta.Model{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "as-hand", Valid: true}},
 		Name:        "FieldDefault",
 		Path:        "/virtual/modules/partner/service/models/field_default.ts",
 		Application: "partner",
-	}).Error; err != nil {
-		t.Fatal(err)
-	}
+	})
 	scopeFD := newBuilderTestScope()
 	scopeFD.session = &scope.Session{DB: dbFD}
 	builder = &ModuleBuilder{

@@ -149,11 +149,11 @@ func resolveExtendsModel(
 	if len(raws) == 0 {
 		return nil, nil
 	}
-	converted := RawModelsAsModels([]*RawModel{&raws[0]})
+	converted := rawModelsAsModels([]*rawModel{&raws[0]})
 	return converted[0], nil
 }
 
-func loadRawParentsByPath(db *gorm.DB, extendsPath, application string) ([]RawModel, error) {
+func loadRawParentsByPath(db *gorm.DB, extendsPath, application string) ([]rawModel, error) {
 	q := db.
 		Preload("Fields", func(tx *gorm.DB) *gorm.DB { return tx.Order("id ASC") }).
 		Preload("Fields.Decorators", func(tx *gorm.DB) *gorm.DB { return tx.Order("id ASC") }).
@@ -167,7 +167,7 @@ func loadRawParentsByPath(db *gorm.DB, extendsPath, application string) ([]RawMo
 	if application != "" {
 		q = q.Where("application = ?", application)
 	}
-	var raws []RawModel
+	var raws []rawModel
 	if err := q.Order("id DESC").Find(&raws).Error; err != nil {
 		return nil, fmt.Errorf("load raw parent by path %s: %w", extendsPath, err)
 	}

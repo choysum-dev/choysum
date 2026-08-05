@@ -11,14 +11,14 @@ import (
 
 func TestRawField_SetResolvedSpec(t *testing.T) {
 	t.Run("nil receiver", func(t *testing.T) {
-		var field *RawField
+		var field *rawField
 		if err := field.SetResolvedSpec(&FieldResolvedSpec{FieldName: "x"}); err != nil {
 			t.Fatalf("nil receiver: unexpected error: %v", err)
 		}
 	})
 
 	t.Run("nil spec clears ResolvedSpec", func(t *testing.T) {
-		field := &RawField{ResolvedSpec: `{"fieldName":"old"}`}
+		field := &rawField{ResolvedSpec: `{"fieldName":"old"}`}
 		if err := field.SetResolvedSpec(nil); err != nil {
 			t.Fatalf("nil spec: unexpected error: %v", err)
 		}
@@ -28,7 +28,7 @@ func TestRawField_SetResolvedSpec(t *testing.T) {
 	})
 
 	t.Run("valid spec serialises to JSON", func(t *testing.T) {
-		field := &RawField{}
+		field := &rawField{}
 		spec := &FieldResolvedSpec{
 			FieldName: "amount",
 			Structural: FieldStructuralSpec{
@@ -57,7 +57,7 @@ func TestRawField_SetResolvedSpec(t *testing.T) {
 		rawFieldJSONMarshal = func(any) ([]byte, error) {
 			return nil, errors.New("marshal boom")
 		}
-		field := &RawField{}
+		field := &rawField{}
 		if err := field.SetResolvedSpec(&FieldResolvedSpec{FieldName: "x"}); err == nil || err.Error() != "marshal boom" {
 			t.Fatalf("expected marshal boom, got %v", err)
 		}
@@ -66,7 +66,7 @@ func TestRawField_SetResolvedSpec(t *testing.T) {
 
 func TestRawField_GetResolvedSpec(t *testing.T) {
 	t.Run("nil receiver", func(t *testing.T) {
-		var field *RawField
+		var field *rawField
 		spec, err := field.GetResolvedSpec()
 		if err != nil || spec != nil {
 			t.Fatalf("expected nil,nil got %#v %v", spec, err)
@@ -74,7 +74,7 @@ func TestRawField_GetResolvedSpec(t *testing.T) {
 	})
 
 	t.Run("empty ResolvedSpec", func(t *testing.T) {
-		field := &RawField{ResolvedSpec: "  "}
+		field := &rawField{ResolvedSpec: "  "}
 		spec, err := field.GetResolvedSpec()
 		if err != nil || spec != nil {
 			t.Fatalf("expected nil,nil got %#v %v", spec, err)
@@ -82,7 +82,7 @@ func TestRawField_GetResolvedSpec(t *testing.T) {
 	})
 
 	t.Run("round trip", func(t *testing.T) {
-		field := &RawField{}
+		field := &rawField{}
 		want := &FieldResolvedSpec{FieldName: "n"}
 		if err := field.SetResolvedSpec(want); err != nil {
 			t.Fatalf("set: %v", err)
@@ -97,7 +97,7 @@ func TestRawField_GetResolvedSpec(t *testing.T) {
 	})
 
 	t.Run("unmarshal error", func(t *testing.T) {
-		field := &RawField{ResolvedSpec: "{not-json"}
+		field := &rawField{ResolvedSpec: "{not-json"}
 		_, err := field.GetResolvedSpec()
 		if err == nil {
 			t.Fatal("expected unmarshal error")

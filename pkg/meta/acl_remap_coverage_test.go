@@ -45,7 +45,7 @@ func seedACLTables(t *testing.T, db *gorm.DB) {
 func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 	t.Run("empty_live_catalog", func(t *testing.T) {
 		db := openACLRemapDB(t, "acl-empty-live")
-		if err := RemapACLToEffectiveModelIDs(db); err != nil {
+		if err := remapACLToEffectiveModelIDs(db); err != nil {
 			t.Fatalf("empty live: %v", err)
 		}
 	})
@@ -117,7 +117,7 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 			rows = append(rows, Model{Name: "Ghost", Application: "auth"}) // Id invalid
 			return rows, nil
 		}
-		if err := RemapACLToEffectiveModelIDs(db); err != nil {
+		if err := remapACLToEffectiveModelIDs(db); err != nil {
 			t.Fatalf("remap: %v", err)
 		}
 		var mid string
@@ -237,7 +237,7 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 			t.Fatalf("norepl: %v", err)
 		}
 
-		if err := RemapACLToEffectiveModelIDs(db); err != nil {
+		if err := remapACLToEffectiveModelIDs(db); err != nil {
 			t.Fatalf("happy path branches: %v", err)
 		}
 
@@ -248,7 +248,7 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 			prev := aclLoadLiveModels
 			t.Cleanup(func() { aclLoadLiveModels = prev })
 			aclLoadLiveModels = func(*gorm.DB) ([]Model, error) { return nil, forceErr }
-			if err := RemapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "load live") {
+			if err := remapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "load live") {
 				t.Fatalf("got %v", err)
 			}
 		})
@@ -256,7 +256,7 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 			prev := aclLoadAllModels
 			t.Cleanup(func() { aclLoadAllModels = prev })
 			aclLoadAllModels = func(*gorm.DB) ([]Model, error) { return nil, forceErr }
-			if err := RemapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "including deleted") {
+			if err := remapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "including deleted") {
 				t.Fatalf("got %v", err)
 			}
 		})
@@ -264,7 +264,7 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 			prev := aclExec
 			t.Cleanup(func() { aclExec = prev })
 			aclExec = func(*gorm.DB, string, ...interface{}) error { return forceErr }
-			if err := RemapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "remap") {
+			if err := remapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "remap") {
 				t.Fatalf("got %v", err)
 			}
 		})
@@ -272,7 +272,7 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 			prev := aclLoadFieldRules
 			t.Cleanup(func() { aclLoadFieldRules = prev })
 			aclLoadFieldRules = func(*gorm.DB, interface{}) error { return forceErr }
-			if err := RemapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "load field rules") {
+			if err := remapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "load field rules") {
 				t.Fatalf("got %v", err)
 			}
 		})
@@ -280,7 +280,7 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 			prev := aclTakeFieldUnscoped
 			t.Cleanup(func() { aclTakeFieldUnscoped = prev })
 			aclTakeFieldUnscoped = func(*gorm.DB, interface{}, string) error { return forceErr }
-			if err := RemapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "lookup field rule") {
+			if err := remapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "lookup field rule") {
 				t.Fatalf("got %v", err)
 			}
 		})
@@ -288,7 +288,7 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 			prev := aclTakeFieldByModelName
 			t.Cleanup(func() { aclTakeFieldByModelName = prev })
 			aclTakeFieldByModelName = func(*gorm.DB, interface{}, string, string) error { return forceErr }
-			if err := RemapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "replacement field") {
+			if err := remapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "replacement field") {
 				t.Fatalf("got %v", err)
 			}
 		})
@@ -306,7 +306,7 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 				n++
 				return prev(db, sql, values...)
 			}
-			if err := RemapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "field_id") {
+			if err := remapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "field_id") {
 				t.Fatalf("got %v (exec calls before fail=%d)", err, n)
 			}
 			var mid string
@@ -321,7 +321,7 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 			prev := aclLoadMethodAccess
 			t.Cleanup(func() { aclLoadMethodAccess = prev })
 			aclLoadMethodAccess = func(*gorm.DB, interface{}) error { return forceErr }
-			if err := RemapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "load method access") {
+			if err := remapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "load method access") {
 				t.Fatalf("got %v", err)
 			}
 		})
@@ -329,7 +329,7 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 			prev := aclTakeServiceUnscoped
 			t.Cleanup(func() { aclTakeServiceUnscoped = prev })
 			aclTakeServiceUnscoped = func(*gorm.DB, interface{}, string) error { return forceErr }
-			if err := RemapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "lookup method access") {
+			if err := remapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "lookup method access") {
 				t.Fatalf("got %v", err)
 			}
 		})
@@ -337,7 +337,7 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 			prev := aclTakeServiceLive
 			t.Cleanup(func() { aclTakeServiceLive = prev })
 			aclTakeServiceLive = func(*gorm.DB, interface{}, string) error { return forceErr }
-			if err := RemapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "lookup live service") {
+			if err := remapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "lookup live service") {
 				t.Fatalf("got %v", err)
 			}
 		})
@@ -345,7 +345,7 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 			prev := aclTakeModelUnscoped
 			t.Cleanup(func() { aclTakeModelUnscoped = prev })
 			aclTakeModelUnscoped = func(*gorm.DB, interface{}, string) error { return forceErr }
-			if err := RemapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "historical model") {
+			if err := remapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "historical model") {
 				t.Fatalf("got %v", err)
 			}
 		})
@@ -353,7 +353,7 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 			prev := aclLookupEffective
 			t.Cleanup(func() { aclLookupEffective = prev })
 			aclLookupEffective = func(*gorm.DB, string, string) (*Model, error) { return nil, forceErr }
-			if err := RemapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "lookup effective model") {
+			if err := remapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "lookup effective model") {
 				t.Fatalf("got %v", err)
 			}
 		})
@@ -363,7 +363,7 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 			aclLookupEffective = func(*gorm.DB, string, string) (*Model, error) {
 				return &Model{}, nil // Id invalid
 			}
-			if err := RemapACLToEffectiveModelIDs(db); err != nil {
+			if err := remapACLToEffectiveModelIDs(db); err != nil {
 				t.Fatalf("nil id should continue: %v", err)
 			}
 		})
@@ -384,7 +384,7 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 			}
 			mustExecACL(`INSERT OR REPLACE INTO auth_role_method_access (id, meta_model_id, meta_service_id) VALUES (?,?,?)`,
 				"ma-blank-hist", "blank-hist", "blank-hist-svc")
-			if err := RemapACLToEffectiveModelIDs(db); err != nil {
+			if err := remapACLToEffectiveModelIDs(db); err != nil {
 				t.Fatalf("blank hist application must not abort remap: %v", err)
 			}
 		})
@@ -392,7 +392,7 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 			prev := aclTakeServiceByModelName
 			t.Cleanup(func() { aclTakeServiceByModelName = prev })
 			aclTakeServiceByModelName = func(*gorm.DB, interface{}, string, string) error { return forceErr }
-			if err := RemapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "replacement service") {
+			if err := remapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "replacement service") {
 				t.Fatalf("got %v", err)
 			}
 		})
@@ -406,7 +406,7 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 				}
 				return prev(db, sql, values...)
 			}
-			if err := RemapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "service_id") {
+			if err := remapACLToEffectiveModelIDs(db); err == nil || !strings.Contains(err.Error(), "service_id") {
 				t.Fatalf("got %v", err)
 			}
 		})
@@ -443,7 +443,7 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 			// Leave Id invalid
 			return nil
 		}
-		if err := RemapACLToEffectiveModelIDs(db); err != nil {
+		if err := remapACLToEffectiveModelIDs(db); err != nil {
 			t.Fatalf("got %v", err)
 		}
 	})
@@ -457,7 +457,7 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 		}).Error; err != nil {
 			t.Fatalf("create model: %v", err)
 		}
-		if err := RemapACLToEffectiveModelIDs(db); err != nil {
+		if err := remapACLToEffectiveModelIDs(db); err != nil {
 			t.Fatalf("no auth tables: %v", err)
 		}
 	})
@@ -469,7 +469,7 @@ func TestRemapACLToEffectiveModelIDs_CoverageBranches(t *testing.T) {
 			return []Model{{Application: "a", Name: "X"}}, nil // invalid Id
 		}
 		db := openACLRemapDB(t, "acl-inv-live")
-		if err := RemapACLToEffectiveModelIDs(db); err != nil {
+		if err := remapACLToEffectiveModelIDs(db); err != nil {
 			t.Fatalf("got %v", err)
 		}
 	})
@@ -492,7 +492,7 @@ func TestMigrateAndRecompute_RemapACLWiring(t *testing.T) {
 		prev := execDDL
 		t.Cleanup(func() { execDDL = prev })
 		execDDL = func(*gorm.DB, string) error { return errors.New("index boom") }
-		if err := MigrateIMDCatalogToDualStore(db); err == nil || !strings.Contains(err.Error(), "index boom") {
+		if err := migrateIMDCatalogToDualStore(db); err == nil || !strings.Contains(err.Error(), "index boom") {
 			t.Fatalf("expected index error, got %v", err)
 		}
 	})
@@ -513,7 +513,7 @@ func TestMigrateAndRecompute_RemapACLWiring(t *testing.T) {
 		prev := remapACLToEffectiveModelIDsFn
 		t.Cleanup(func() { remapACLToEffectiveModelIDsFn = prev })
 		remapACLToEffectiveModelIDsFn = func(*gorm.DB) error { return errors.New("remap boom") }
-		if err := MigrateIMDCatalogToDualStore(db); err == nil || !strings.Contains(err.Error(), "remap boom") {
+		if err := migrateIMDCatalogToDualStore(db); err == nil || !strings.Contains(err.Error(), "remap boom") {
 			t.Fatalf("expected remap error, got %v", err)
 		}
 	})
@@ -524,7 +524,7 @@ func TestMigrateAndRecompute_RemapACLWiring(t *testing.T) {
 			t.Fatalf("ensure: %v", err)
 		}
 		ts := time.Now().UTC()
-		raw := &RawModel{
+		raw := &rawModel{
 			BaseModel: BaseModel{Id: sql.NullString{String: "r1", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 			Name: "Z", Application: "a", Path: "/z.ts", ModuleId: sql.NullString{String: "mod", Valid: true},
 		}
@@ -534,7 +534,7 @@ func TestMigrateAndRecompute_RemapACLWiring(t *testing.T) {
 		prev := execDDL
 		t.Cleanup(func() { execDDL = prev })
 		execDDL = func(*gorm.DB, string) error { return errors.New("recompute index boom") }
-		if err := RecomputeAllEffectiveFromRaw(db); err == nil || !strings.Contains(err.Error(), "recompute index boom") {
+		if err := recomputeAllEffectiveFromRaw(db); err == nil || !strings.Contains(err.Error(), "recompute index boom") {
 			t.Fatalf("expected index error, got %v", err)
 		}
 	})
@@ -545,7 +545,7 @@ func TestMigrateAndRecompute_RemapACLWiring(t *testing.T) {
 			t.Fatalf("ensure: %v", err)
 		}
 		ts := time.Now().UTC()
-		raw := &RawModel{
+		raw := &rawModel{
 			BaseModel: BaseModel{Id: sql.NullString{String: "r2", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 			Name: "W", Application: "a", Path: "/w.ts", ModuleId: sql.NullString{String: "mod", Valid: true},
 		}
@@ -555,7 +555,7 @@ func TestMigrateAndRecompute_RemapACLWiring(t *testing.T) {
 		prev := remapACLToEffectiveModelIDsFn
 		t.Cleanup(func() { remapACLToEffectiveModelIDsFn = prev })
 		remapACLToEffectiveModelIDsFn = func(*gorm.DB) error { return errors.New("recompute remap boom") }
-		if err := RecomputeAllEffectiveFromRaw(db); err == nil || !strings.Contains(err.Error(), "recompute remap boom") {
+		if err := recomputeAllEffectiveFromRaw(db); err == nil || !strings.Contains(err.Error(), "recompute remap boom") {
 			t.Fatalf("expected remap error, got %v", err)
 		}
 	})

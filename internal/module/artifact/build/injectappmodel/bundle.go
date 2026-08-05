@@ -1,0 +1,87 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+package injectappmodel
+
+import (
+	"path/filepath"
+	"strings"
+
+	"github.com/choysum-dev/choysum/pkg/meta"
+	xfmt "golang.org/x/exp/errors/fmt"
+)
+
+// BundleInjectAppModels registers C2 inject sources for each distinct non-core
+// application represented by modules and merges paths into entry-point imports.
+// Runs every registered Spec against the same modules list.
+func BundleInjectAppModels(sess *Session, modules []*meta.Module) error {
+	if sess == nil || sess.host == nil {
+		return nil
+	}
+	for _, spec := range specsList() {
+		if err := BundleOne(sess, spec.ModelName, modules); err != nil {
+			return err
+		}
+	}
+	if paths := sess.allInjectPaths(); len(paths) > 0 {
+		imports := append(sess.host.EntryPointImports(), paths...)
+		sess.host.SetEntryPointImports(imports)
+	}
+	return nil
+}
+
+// BundleOne registers inject sources for one Spec (legacy Ensure*VirtualImports adapters).
+func BundleOne(sess *Session, modelName string, modules []*meta.Module) error {
+	if sess == nil || sess.host == nil {
+		return nil
+	}
+	spec, ok := specByName(modelName)
+	if !ok {
+		return nil
+	}
+	return bundleSpec(sess, spec, modules)
+}
+
+func bundleSpec(sess *Session, spec *Spec, modules []*meta.Module) error {
+	modulesPath := strings.TrimSpace(sess.host.ModulesPath())
+	seenApp := make(map[string]struct{})
+	for _, mod := range modules {
+		if mod == nil {
+			continue
+		}
+		app := strings.TrimSpace(mod.ApplicationStr)
+		if app == "" || app == "core" || strings.TrimSpace(mod.ServiceEntryPoint) == "" {
+			continue
+		}
+		if _, ok := seenApp[app]; ok {
+			continue
+		}
+		if strings.TrimSpace(mod.Path) == "" {
+			continue
+		}
+		seenApp[app] = struct{}{}
+
+		existing, err := dbLoadModels(spec, sess.host.SessionDB(), app)
+		if err != nil {
+			return xfmt.Errorf("load %s models for application %q: %w", spec.ModelName, app, err)
+		}
+		if len(handwrittenModels(spec, existing)) > 0 {
+			continue
+		}
+
+		path := generatedPath(spec, mod.Path)
+		if virt := generatedModels(spec, existing); len(virt) > 0 {
+			if p := strings.TrimSpace(virt[0].Path); p != "" {
+				path = filepath.ToSlash(filepath.Clean(p))
+			}
+		}
+		sess.rememberInjectPath(spec.ModelName, path)
+		mp := modulesPath
+		if mp == "" {
+			mp = filepath.Dir(mod.Path)
+		}
+		source := generatedSource(spec, mp, app)
+		sess.host.RegisterVirtualSource(path, source)
+	}
+	return nil
+}

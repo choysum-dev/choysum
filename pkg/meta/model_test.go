@@ -36,6 +36,9 @@ func TestEntitiesAndTableNames(t *testing.T) {
 		reflect.TypeOf(&Application{}),
 		reflect.TypeOf(&Module{}),
 		reflect.TypeOf(&Component{}),
+		reflect.TypeOf(&UiResource{}),
+		reflect.TypeOf(&UiResourceMenuRoute{}),
+		reflect.TypeOf(&UiResourceRouteAction{}),
 		reflect.TypeOf(&Model{}),
 		reflect.TypeOf(&Field{}),
 		reflect.TypeOf(&Service{}),
@@ -43,16 +46,6 @@ func TestEntitiesAndTableNames(t *testing.T) {
 		reflect.TypeOf(&Parameter{}),
 		reflect.TypeOf(&Decorator{}),
 		reflect.TypeOf(&Argument{}),
-		reflect.TypeOf(&UiResource{}),
-		reflect.TypeOf(&UiResourceMenuRoute{}),
-		reflect.TypeOf(&UiResourceRouteAction{}),
-		reflect.TypeOf(&RawModel{}),
-		reflect.TypeOf(&RawField{}),
-		reflect.TypeOf(&RawService{}),
-		reflect.TypeOf(&RawTypeParameter{}),
-		reflect.TypeOf(&RawParameter{}),
-		reflect.TypeOf(&RawDecorator{}),
-		reflect.TypeOf(&RawArgument{}),
 	}
 
 	if len(entities) != len(expectedTypes) {
@@ -62,6 +55,29 @@ func TestEntitiesAndTableNames(t *testing.T) {
 		if reflect.TypeOf(entity) != expectedTypes[index] {
 			t.Fatalf("Entities()[%d] type = %v, want %v", index, reflect.TypeOf(entity), expectedTypes[index])
 		}
+	}
+
+	rawExpected := []reflect.Type{
+		reflect.TypeOf(&rawModel{}),
+		reflect.TypeOf(&rawField{}),
+		reflect.TypeOf(&rawService{}),
+		reflect.TypeOf(&rawTypeParameter{}),
+		reflect.TypeOf(&rawParameter{}),
+		reflect.TypeOf(&rawDecorator{}),
+		reflect.TypeOf(&rawArgument{}),
+	}
+	rawEntities := DualStoreRawEntities()
+	if len(rawEntities) != len(rawExpected) {
+		t.Fatalf("DualStoreRawEntities() len = %d, want %d", len(rawEntities), len(rawExpected))
+	}
+	for index, entity := range rawEntities {
+		if reflect.TypeOf(entity) != rawExpected[index] {
+			t.Fatalf("DualStoreRawEntities()[%d] type = %v, want %v", index, reflect.TypeOf(entity), rawExpected[index])
+		}
+	}
+	catalog := CatalogEntities()
+	if len(catalog) != len(entities)+len(rawEntities) {
+		t.Fatalf("CatalogEntities() len = %d, want %d", len(catalog), len(entities)+len(rawEntities))
 	}
 
 	tableNames := []struct {
@@ -82,13 +98,13 @@ func TestEntitiesAndTableNames(t *testing.T) {
 		{name: "UiResource", got: (&UiResource{}).TableName(), want: "meta_ui_resource"},
 		{name: "UiResourceMenuRoute", got: (&UiResourceMenuRoute{}).TableName(), want: "meta_ui_resource_menu_route"},
 		{name: "UiResourceRouteAction", got: (&UiResourceRouteAction{}).TableName(), want: "meta_ui_resource_route_action"},
-		{name: "RawModel", got: (&RawModel{}).TableName(), want: "meta_raw_model"},
-		{name: "RawField", got: (&RawField{}).TableName(), want: "meta_raw_field"},
-		{name: "RawService", got: (&RawService{}).TableName(), want: "meta_raw_service"},
-		{name: "RawTypeParameter", got: (&RawTypeParameter{}).TableName(), want: "meta_raw_type_parameter"},
-		{name: "RawParameter", got: (&RawParameter{}).TableName(), want: "meta_raw_parameter"},
-		{name: "RawDecorator", got: (&RawDecorator{}).TableName(), want: "meta_raw_decorator"},
-		{name: "RawArgument", got: (&RawArgument{}).TableName(), want: "meta_raw_argument"},
+		{name: "rawModel", got: (&rawModel{}).TableName(), want: "meta_raw_model"},
+		{name: "rawField", got: (&rawField{}).TableName(), want: "meta_raw_field"},
+		{name: "rawService", got: (&rawService{}).TableName(), want: "meta_raw_service"},
+		{name: "rawTypeParameter", got: (&rawTypeParameter{}).TableName(), want: "meta_raw_type_parameter"},
+		{name: "rawParameter", got: (&rawParameter{}).TableName(), want: "meta_raw_parameter"},
+		{name: "rawDecorator", got: (&rawDecorator{}).TableName(), want: "meta_raw_decorator"},
+		{name: "rawArgument", got: (&rawArgument{}).TableName(), want: "meta_raw_argument"},
 	}
 
 	for _, check := range tableNames {

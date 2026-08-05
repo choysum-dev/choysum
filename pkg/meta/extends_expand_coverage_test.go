@@ -43,7 +43,7 @@ func TestExpandModelsAlongExtends_CacheHitViaTwoChildren(t *testing.T) {
 		t.Fatalf("ensure: %v", err)
 	}
 	parentPath := "/parent.ts"
-	parent := &RawModel{
+	parent := &rawModel{
 		BaseModel: BaseModel{Id: sql.NullString{String: "raw-p", Valid: true}},
 		Name:      "Parent",
 		Path:      parentPath,
@@ -52,14 +52,14 @@ func TestExpandModelsAlongExtends_CacheHitViaTwoChildren(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(parent).Error; err != nil {
 		t.Fatalf("create parent: %v", err)
 	}
-	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawField{
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&rawField{
 		BaseModel: BaseModel{Id: sql.NullString{String: "pf", Valid: true}},
 		Name:      "Shared",
 		ModelId:   parent.Id,
 	}).Error; err != nil {
 		t.Fatalf("create parent field: %v", err)
 	}
-	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawService{
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&rawService{
 		BaseModel: BaseModel{Id: sql.NullString{String: "ps", Valid: true}},
 		Name:      "ParentSvc",
 		ModelId:   parent.Id,
@@ -126,7 +126,7 @@ func TestResolveExtendsModel_DBError(t *testing.T) {
 	if err := EnsureDualStoreTables(db); err != nil {
 		t.Fatalf("ensure: %v", err)
 	}
-	if err := db.Migrator().DropTable(&RawModel{}); err != nil {
+	if err := db.Migrator().DropTable(&rawModel{}); err != nil {
 		t.Fatalf("drop: %v", err)
 	}
 	child := &Model{Name: "Child", Path: "/c.ts", Extends: "/parent.ts", Fields: []*Field{{Name: "X"}}}
@@ -144,7 +144,7 @@ func TestExpandModelsAlongExtends_PrefersSameApplicationParent(t *testing.T) {
 	homeCreated := time.Now().UTC().Add(-time.Hour)
 	foreignCreated := homeCreated.Add(time.Minute)
 	// Newer foreign-app parent with a distinctive field would win if path-only.
-	foreign := &RawModel{
+	foreign := &rawModel{
 		BaseModel: BaseModel{
 			Id:        sql.NullString{String: "foreign-parent", Valid: true},
 			CreatedAt: foreignCreated,
@@ -155,7 +155,7 @@ func TestExpandModelsAlongExtends_PrefersSameApplicationParent(t *testing.T) {
 		Application: "other",
 		ModuleId:    sql.NullString{String: "mod-other", Valid: true},
 	}
-	home := &RawModel{
+	home := &rawModel{
 		BaseModel: BaseModel{
 			Id:        sql.NullString{String: "home-parent", Valid: true},
 			CreatedAt: homeCreated,
@@ -166,19 +166,19 @@ func TestExpandModelsAlongExtends_PrefersSameApplicationParent(t *testing.T) {
 		Application: "home",
 		ModuleId:    sql.NullString{String: "mod-home", Valid: true},
 	}
-	for _, row := range []*RawModel{home, foreign} {
+	for _, row := range []*rawModel{home, foreign} {
 		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(row).Error; err != nil {
 			t.Fatalf("create parent: %v", err)
 		}
 	}
-	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawField{
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&rawField{
 		BaseModel: BaseModel{Id: sql.NullString{String: "ff", Valid: true}},
 		Name:      "ForeignOnly",
 		ModelId:   foreign.Id,
 	}).Error; err != nil {
 		t.Fatalf("create foreign field: %v", err)
 	}
-	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawField{
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&rawField{
 		BaseModel: BaseModel{Id: sql.NullString{String: "hf", Valid: true}},
 		Name:      "HomeOnly",
 		ModelId:   home.Id,
@@ -214,7 +214,7 @@ func TestExpandModelsAlongExtends_BatchKeepsPerApplicationParentShapes(t *testin
 	parentPath := "/shared/base-batch.ts"
 	homeCreated := time.Now().UTC().Add(-time.Hour)
 	foreignCreated := homeCreated.Add(time.Minute)
-	foreign := &RawModel{
+	foreign := &rawModel{
 		BaseModel: BaseModel{
 			Id:        sql.NullString{String: "batch-foreign-parent", Valid: true},
 			CreatedAt: foreignCreated,
@@ -225,7 +225,7 @@ func TestExpandModelsAlongExtends_BatchKeepsPerApplicationParentShapes(t *testin
 		Application: "other",
 		ModuleId:    sql.NullString{String: "mod-other", Valid: true},
 	}
-	home := &RawModel{
+	home := &rawModel{
 		BaseModel: BaseModel{
 			Id:        sql.NullString{String: "batch-home-parent", Valid: true},
 			CreatedAt: homeCreated,
@@ -236,19 +236,19 @@ func TestExpandModelsAlongExtends_BatchKeepsPerApplicationParentShapes(t *testin
 		Application: "home",
 		ModuleId:    sql.NullString{String: "mod-home", Valid: true},
 	}
-	for _, row := range []*RawModel{home, foreign} {
+	for _, row := range []*rawModel{home, foreign} {
 		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(row).Error; err != nil {
 			t.Fatalf("create parent: %v", err)
 		}
 	}
-	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawField{
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&rawField{
 		BaseModel: BaseModel{Id: sql.NullString{String: "batch-ff", Valid: true}},
 		Name:      "ForeignOnly",
 		ModelId:   foreign.Id,
 	}).Error; err != nil {
 		t.Fatalf("create foreign field: %v", err)
 	}
-	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawField{
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&rawField{
 		BaseModel: BaseModel{Id: sql.NullString{String: "batch-hf", Valid: true}},
 		Name:      "HomeOnly",
 		ModelId:   home.Id,
@@ -301,7 +301,7 @@ func TestExpandModelsAlongExtends_CrossAppParentFallback(t *testing.T) {
 		t.Fatalf("ensure: %v", err)
 	}
 	parentPath := "/shared/only-other.ts"
-	foreign := &RawModel{
+	foreign := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "only-other", Valid: true}},
 		Name:        "Base",
 		Path:        parentPath,
@@ -311,7 +311,7 @@ func TestExpandModelsAlongExtends_CrossAppParentFallback(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(foreign).Error; err != nil {
 		t.Fatalf("create foreign parent: %v", err)
 	}
-	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawField{
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&rawField{
 		BaseModel: BaseModel{Id: sql.NullString{String: "of", Valid: true}},
 		Name:      "OtherField",
 		ModelId:   foreign.Id,
@@ -663,7 +663,7 @@ func TestResolveExtendsModel_FullPreloadFromDB(t *testing.T) {
 		t.Fatalf("ensure: %v", err)
 	}
 	parentPath := "/db/parent.ts"
-	parent := &RawModel{
+	parent := &rawModel{
 		BaseModel: BaseModel{Id: sql.NullString{String: "db-parent", Valid: true}},
 		Name:      "DbParent",
 		Path:      parentPath,
@@ -672,7 +672,7 @@ func TestResolveExtendsModel_FullPreloadFromDB(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(parent).Error; err != nil {
 		t.Fatalf("create parent: %v", err)
 	}
-	field := &RawField{
+	field := &rawField{
 		BaseModel: BaseModel{Id: sql.NullString{String: "dbf", Valid: true}},
 		Name:      "F",
 		ModelId:   parent.Id,
@@ -680,7 +680,7 @@ func TestResolveExtendsModel_FullPreloadFromDB(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(field).Error; err != nil {
 		t.Fatalf("create field: %v", err)
 	}
-	fieldDec := &RawDecorator{
+	fieldDec := &rawDecorator{
 		BaseModel: BaseModel{Id: sql.NullString{String: "dbfd", Valid: true}},
 		Name:      "FieldDec",
 		FieldId:   sql.NullString{String: field.Id.String, Valid: true},
@@ -688,7 +688,7 @@ func TestResolveExtendsModel_FullPreloadFromDB(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(fieldDec).Error; err != nil {
 		t.Fatalf("create field dec: %v", err)
 	}
-	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawArgument{
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&rawArgument{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "dbfa", Valid: true}},
 		Type:        "string",
 		Value:       `"x"`,
@@ -696,7 +696,7 @@ func TestResolveExtendsModel_FullPreloadFromDB(t *testing.T) {
 	}).Error; err != nil {
 		t.Fatalf("create field arg: %v", err)
 	}
-	svc := &RawService{
+	svc := &rawService{
 		BaseModel: BaseModel{Id: sql.NullString{String: "dbs", Valid: true}},
 		Name:      "Svc",
 		ModelId:   parent.Id,
@@ -704,7 +704,7 @@ func TestResolveExtendsModel_FullPreloadFromDB(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(svc).Error; err != nil {
 		t.Fatalf("create service: %v", err)
 	}
-	svcDec := &RawDecorator{
+	svcDec := &rawDecorator{
 		BaseModel: BaseModel{Id: sql.NullString{String: "dbsd", Valid: true}},
 		Name:      "SvcDec",
 		ServiceId: svc.Id,
@@ -712,7 +712,7 @@ func TestResolveExtendsModel_FullPreloadFromDB(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(svcDec).Error; err != nil {
 		t.Fatalf("create svc dec: %v", err)
 	}
-	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawArgument{
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&rawArgument{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "dbsa", Valid: true}},
 		Type:        "string",
 		Value:       `"y"`,

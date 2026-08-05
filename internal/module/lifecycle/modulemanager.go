@@ -1646,8 +1646,9 @@ func NewModuleManager(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExec
 		moduleIndexSyncLocal: SyncLocalModuleIndex,
 	}
 
-	// Default entity set: shared IR, module admin/ops, and lease models.
-	m.entities = append(meta.Entities(), metadata.Entities()...)
+	// Default entity set: shared IR (effective + declaration dual-store), module admin/ops, and lease models.
+	m.entities = append(meta.Entities(), meta.DualStoreRawEntities()...)
+	m.entities = append(m.entities, metadata.Entities()...)
 	m.entities = append(m.entities, leasemodel.Entities()...)
 
 	// Apply external injections.

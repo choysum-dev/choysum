@@ -28,7 +28,7 @@ func TestBootstrapMetaTablesSkipsWhenBaseTablesExist(t *testing.T) {
 
 func TestModuleManagerListInstalledNonWebApps(t *testing.T) {
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 	for _, row := range []meta.Module{
@@ -63,7 +63,7 @@ func TestModuleManagerListInstalledNonWebApps(t *testing.T) {
 
 func TestModuleManagerListInstalledNonWebAppsQueryError(t *testing.T) {
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 	if err := db.Migrator().DropTable(&meta.Module{}); err != nil {
@@ -81,7 +81,7 @@ func TestModuleManagerListInstalledNonWebAppsQueryError(t *testing.T) {
 
 func TestModuleOpCtxBinderDelegatesToCtxMethods(t *testing.T) {
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 

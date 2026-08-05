@@ -555,12 +555,16 @@ func TestSupersedeVirtualFieldDefaults_DeletesGeneratedRows(t *testing.T) {
 	if len(handDecls) != 1 {
 		t.Fatalf("expected handwritten raw FieldDefault kept, count=%d", len(handDecls))
 	}
+	// EDS-opt-2: supersede does not FlushEffective; persist boundary does.
+	if err := meta.FlushEffective(db, []meta.LogicalKey{{Application: "partner", Name: "FieldDefault"}}); err != nil {
+		t.Fatalf("flush: %v", err)
+	}
 	var count int64
 	if err := db.Model(&meta.Model{}).Where("name = ?", "FieldDefault").Count(&count).Error; err != nil {
 		t.Fatalf("count effective: %v", err)
 	}
 	if count != 1 {
-		t.Fatalf("expected handwritten effective FieldDefault after recompute, count=%d", count)
+		t.Fatalf("expected handwritten effective FieldDefault after flush, count=%d", count)
 	}
 	if err := db.Model(&meta.Model{}).Where("name = ?", "Partner").Count(&count).Error; err != nil {
 		t.Fatalf("count partner: %v", err)

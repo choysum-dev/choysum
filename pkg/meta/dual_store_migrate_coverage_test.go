@@ -32,7 +32,7 @@ func closeDualStoreDB(t *testing.T, db *gorm.DB) {
 }
 
 func TestEnsureEffectiveAppNameUniqueIndex_NilDB(t *testing.T) {
-	if err := EnsureEffectiveAppNameUniqueIndex(nil); err == nil || !strings.Contains(err.Error(), "db is nil") {
+	if err := ensureEffectiveAppNameUniqueIndex(nil); err == nil || !strings.Contains(err.Error(), "db is nil") {
 		t.Fatalf("expected nil db error, got %v", err)
 	}
 }
@@ -53,7 +53,7 @@ func TestEnsureDualStoreTables_NilAndClosed(t *testing.T) {
 }
 
 func TestMigrateIMDCatalogToDualStore_NilAndCountError(t *testing.T) {
-	if err := MigrateIMDCatalogToDualStore(nil); err == nil || !strings.Contains(err.Error(), "db is nil") {
+	if err := migrateIMDCatalogToDualStore(nil); err == nil || !strings.Contains(err.Error(), "db is nil") {
 		t.Fatalf("expected nil db error, got %v", err)
 	}
 	db := openDualStoreTestDB(t)
@@ -61,7 +61,7 @@ func TestMigrateIMDCatalogToDualStore_NilAndCountError(t *testing.T) {
 		t.Fatalf("ensure: %v", err)
 	}
 	closeDualStoreDB(t, db)
-	if err := MigrateIMDCatalogToDualStore(db); err == nil {
+	if err := migrateIMDCatalogToDualStore(db); err == nil {
 		t.Fatal("expected count/ensure error on closed db")
 	}
 }
@@ -84,7 +84,7 @@ func TestMigrateIMDCatalogToDualStore_DuplicateModulePath(t *testing.T) {
 			t.Fatalf("create %s: %v", id, err)
 		}
 	}
-	if err := MigrateIMDCatalogToDualStore(db); err == nil || !strings.Contains(err.Error(), "duplicate live") {
+	if err := migrateIMDCatalogToDualStore(db); err == nil || !strings.Contains(err.Error(), "duplicate live") {
 		t.Fatalf("expected duplicate path error, got %v", err)
 	}
 }
@@ -205,7 +205,7 @@ func TestMigrateIMDCatalogToDualStore_FullTreeCopy(t *testing.T) {
 
 	// Also exercise nil skips in copyModelTreeToRaw via direct call after migrate would work;
 	// migrate path covers the live preload tree.
-	if err := MigrateIMDCatalogToDualStore(db); err != nil {
+	if err := migrateIMDCatalogToDualStore(db); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 
@@ -265,7 +265,7 @@ func TestMigrateIMDCatalogToDualStore_FullTreeCopy(t *testing.T) {
 }
 
 func TestRecomputeAllEffectiveFromRaw_NilAndErrors(t *testing.T) {
-	if err := RecomputeAllEffectiveFromRaw(nil); err == nil || !strings.Contains(err.Error(), "db is nil") {
+	if err := recomputeAllEffectiveFromRaw(nil); err == nil || !strings.Contains(err.Error(), "db is nil") {
 		t.Fatalf("expected nil db error, got %v", err)
 	}
 
@@ -274,7 +274,7 @@ func TestRecomputeAllEffectiveFromRaw_NilAndErrors(t *testing.T) {
 		t.Fatalf("ensure: %v", err)
 	}
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-	raw := &RawModel{
+	raw := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "id-older", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "X",
 		Application: "a",
@@ -284,7 +284,7 @@ func TestRecomputeAllEffectiveFromRaw_NilAndErrors(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(raw).Error; err != nil {
 		t.Fatalf("create raw: %v", err)
 	}
-	newer := &RawModel{
+	newer := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "id-newer", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "X",
 		Application: "a",
@@ -294,7 +294,7 @@ func TestRecomputeAllEffectiveFromRaw_NilAndErrors(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(newer).Error; err != nil {
 		t.Fatalf("create newer: %v", err)
 	}
-	olderTime := &RawModel{
+	olderTime := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "zzz", Valid: true}, CreatedAt: ts.Add(-time.Hour), UpdatedAt: ts},
 		Name:        "Y",
 		Application: "b",
@@ -304,7 +304,7 @@ func TestRecomputeAllEffectiveFromRaw_NilAndErrors(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(olderTime).Error; err != nil {
 		t.Fatalf("create olderTime: %v", err)
 	}
-	younger := &RawModel{
+	younger := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "aaa", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "Y",
 		Application: "b",
@@ -315,7 +315,7 @@ func TestRecomputeAllEffectiveFromRaw_NilAndErrors(t *testing.T) {
 		t.Fatalf("create younger: %v", err)
 	}
 
-	if err := RecomputeAllEffectiveFromRaw(db); err != nil {
+	if err := recomputeAllEffectiveFromRaw(db); err != nil {
 		t.Fatalf("recompute: %v", err)
 	}
 
@@ -342,7 +342,7 @@ func TestRecomputeAllEffectiveFromRaw_MergeError(t *testing.T) {
 		t.Fatalf("ensure: %v", err)
 	}
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-	raw := &RawModel{
+	raw := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "r1", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "X",
 		Application: "a",
@@ -352,7 +352,7 @@ func TestRecomputeAllEffectiveFromRaw_MergeError(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(raw).Error; err != nil {
 		t.Fatalf("create raw: %v", err)
 	}
-	f := &RawField{
+	f := &rawField{
 		BaseModel: BaseModel{Id: sql.NullString{String: "f1", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:      "Kind",
 		FieldType: "selection",
@@ -373,7 +373,7 @@ func TestRecomputeAllEffectiveFromRaw_MergeError(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(f).Error; err != nil {
 		t.Fatalf("create field: %v", err)
 	}
-	if err := RecomputeAllEffectiveFromRaw(db); err == nil || !strings.Contains(err.Error(), "selectionAdd") {
+	if err := recomputeAllEffectiveFromRaw(db); err == nil || !strings.Contains(err.Error(), "selectionAdd") {
 		t.Fatalf("expected merge error, got %v", err)
 	}
 }
@@ -384,19 +384,19 @@ func TestRecomputeAllEffectiveFromRaw_TxErrorOnClosed(t *testing.T) {
 		t.Fatalf("ensure: %v", err)
 	}
 	closeDualStoreDB(t, db)
-	if err := RecomputeAllEffectiveFromRaw(db); err == nil {
+	if err := recomputeAllEffectiveFromRaw(db); err == nil {
 		t.Fatal("expected recompute error on closed db")
 	}
 }
 
 func TestFindRawByIDAndRawIsNewerTip(t *testing.T) {
-	if findRawByID([]*RawModel{nil}, "x") != nil {
+	if findRawByID([]*rawModel{nil}, "x") != nil {
 		t.Fatal("expected nil")
 	}
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-	a := &RawModel{BaseModel: BaseModel{Id: sql.NullString{String: "a", Valid: true}, CreatedAt: ts}}
-	b := &RawModel{BaseModel: BaseModel{Id: sql.NullString{String: "b", Valid: true}, CreatedAt: ts}}
-	if findRawByID([]*RawModel{nil, a}, "a") != a {
+	a := &rawModel{BaseModel: BaseModel{Id: sql.NullString{String: "a", Valid: true}, CreatedAt: ts}}
+	b := &rawModel{BaseModel: BaseModel{Id: sql.NullString{String: "b", Valid: true}, CreatedAt: ts}}
+	if findRawByID([]*rawModel{nil, a}, "a") != a {
 		t.Fatal("expected find a")
 	}
 	if !rawIsNewerTip(a, nil) {
@@ -405,11 +405,11 @@ func TestFindRawByIDAndRawIsNewerTip(t *testing.T) {
 	if !rawIsNewerTip(b, a) { // equal time, higher id
 		t.Fatal("expected b newer by id")
 	}
-	older := &RawModel{BaseModel: BaseModel{Id: sql.NullString{String: "z", Valid: true}, CreatedAt: ts.Add(-time.Hour)}}
+	older := &rawModel{BaseModel: BaseModel{Id: sql.NullString{String: "z", Valid: true}, CreatedAt: ts.Add(-time.Hour)}}
 	if rawIsNewerTip(older, a) {
 		t.Fatal("older should not win")
 	}
-	newer := &RawModel{BaseModel: BaseModel{Id: sql.NullString{String: "c", Valid: true}, CreatedAt: ts.Add(time.Hour)}}
+	newer := &rawModel{BaseModel: BaseModel{Id: sql.NullString{String: "c", Valid: true}, CreatedAt: ts.Add(time.Hour)}}
 	if !rawIsNewerTip(newer, a) {
 		t.Fatal("newer CreatedAt should win")
 	}
@@ -421,7 +421,7 @@ func TestCopyModelTreeToRaw_CreateFailures(t *testing.T) {
 		t.Fatalf("ensure: %v", err)
 	}
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-	existing := &RawModel{
+	existing := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "existing", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "X",
 		Application: "a",
@@ -452,7 +452,7 @@ func TestCopyModelTreeToRaw_ChildTableFailures(t *testing.T) {
 	}{
 		{
 			name: "raw field",
-			drop: &RawField{},
+			drop: &rawField{},
 			src: &Model{
 				BaseModel:   BaseModel{Id: sql.NullString{String: "m", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 				Name:        "X",
@@ -467,7 +467,7 @@ func TestCopyModelTreeToRaw_ChildTableFailures(t *testing.T) {
 		},
 		{
 			name: "raw service",
-			drop: &RawService{},
+			drop: &rawService{},
 			src: &Model{
 				BaseModel:   BaseModel{Id: sql.NullString{String: "m2", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 				Name:        "Y",
@@ -482,7 +482,7 @@ func TestCopyModelTreeToRaw_ChildTableFailures(t *testing.T) {
 		},
 		{
 			name: "raw parameter",
-			drop: &RawParameter{},
+			drop: &rawParameter{},
 			src: &Model{
 				BaseModel:   BaseModel{Id: sql.NullString{String: "m3", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 				Name:        "Z",
@@ -498,7 +498,7 @@ func TestCopyModelTreeToRaw_ChildTableFailures(t *testing.T) {
 		},
 		{
 			name: "raw type parameter",
-			drop: &RawTypeParameter{},
+			drop: &rawTypeParameter{},
 			src: &Model{
 				BaseModel:   BaseModel{Id: sql.NullString{String: "m4", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 				Name:        "W",
@@ -514,7 +514,7 @@ func TestCopyModelTreeToRaw_ChildTableFailures(t *testing.T) {
 		},
 		{
 			name: "raw decorator",
-			drop: &RawDecorator{},
+			drop: &rawDecorator{},
 			src: &Model{
 				BaseModel:   BaseModel{Id: sql.NullString{String: "m5", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 				Name:        "V",
@@ -529,7 +529,7 @@ func TestCopyModelTreeToRaw_ChildTableFailures(t *testing.T) {
 		},
 		{
 			name: "raw argument",
-			drop: &RawArgument{},
+			drop: &rawArgument{},
 			src: &Model{
 				BaseModel:   BaseModel{Id: sql.NullString{String: "m6", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 				Name:        "U",
@@ -921,7 +921,7 @@ func TestMigrateIMDCatalogToDualStore_FindError(t *testing.T) {
 	loadIMDModelsForMigrate = func(*gorm.DB) ([]*Model, error) {
 		return nil, errors.New("find boom")
 	}
-	if err := MigrateIMDCatalogToDualStore(db); err == nil || !strings.Contains(err.Error(), "load meta_model") {
+	if err := migrateIMDCatalogToDualStore(db); err == nil || !strings.Contains(err.Error(), "load meta_model") {
 		t.Fatalf("expected load meta_model error, got %v", err)
 	}
 }
@@ -931,12 +931,12 @@ func TestMigrateIMDCatalogToDualStore_CountError(t *testing.T) {
 	if err := EnsureDualStoreTables(db); err != nil {
 		t.Fatalf("ensure: %v", err)
 	}
-	prev := countMetaRawModels
-	t.Cleanup(func() { countMetaRawModels = prev })
-	countMetaRawModels = func(*gorm.DB) (int64, error) {
+	prev := countMetarawModels
+	t.Cleanup(func() { countMetarawModels = prev })
+	countMetarawModels = func(*gorm.DB) (int64, error) {
 		return 0, errors.New("count boom")
 	}
-	if err := MigrateIMDCatalogToDualStore(db); err == nil || !strings.Contains(err.Error(), "count meta_raw_model") {
+	if err := migrateIMDCatalogToDualStore(db); err == nil || !strings.Contains(err.Error(), "count meta_raw_model") {
 		t.Fatalf("expected count error, got %v", err)
 	}
 }
@@ -947,23 +947,23 @@ func TestRecomputeHooks_LoadClearPersistErrorsAndEmptyTip(t *testing.T) {
 		t.Fatalf("ensure: %v", err)
 	}
 
-	prevLoad, prevClear, prevPersist := loadRawModelsForRecompute, clearEffectiveShapeTreesFn, persistEffectiveProjectionFn
+	prevLoad, prevClear, prevPersist := loadrawModelsForRecompute, clearEffectiveShapeTreesFn, persistEffectiveProjectionFn
 	t.Cleanup(func() {
-		loadRawModelsForRecompute = prevLoad
+		loadrawModelsForRecompute = prevLoad
 		clearEffectiveShapeTreesFn = prevClear
 		persistEffectiveProjectionFn = prevPersist
 	})
 
-	loadRawModelsForRecompute = func(*gorm.DB) ([]*RawModel, error) {
+	loadrawModelsForRecompute = func(*gorm.DB) ([]*rawModel, error) {
 		return nil, errors.New("raw find boom")
 	}
-	if err := RecomputeAllEffectiveFromRaw(db); err == nil || !strings.Contains(err.Error(), "load meta_raw_model") {
+	if err := recomputeAllEffectiveFromRaw(db); err == nil || !strings.Contains(err.Error(), "load meta_raw_model") {
 		t.Fatalf("expected load raw error, got %v", err)
 	}
 
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-	loadRawModelsForRecompute = func(*gorm.DB) ([]*RawModel, error) {
-		return []*RawModel{{
+	loadrawModelsForRecompute = func(*gorm.DB) ([]*rawModel, error) {
+		return []*rawModel{{
 			BaseModel:   BaseModel{Id: sql.NullString{String: "r", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 			Name:        "X",
 			Application: "a",
@@ -971,19 +971,19 @@ func TestRecomputeHooks_LoadClearPersistErrorsAndEmptyTip(t *testing.T) {
 		}}, nil
 	}
 	clearEffectiveShapeTreesFn = func(*gorm.DB) error { return errors.New("clear boom") }
-	if err := RecomputeAllEffectiveFromRaw(db); err == nil || !strings.Contains(err.Error(), "clear boom") {
+	if err := recomputeAllEffectiveFromRaw(db); err == nil || !strings.Contains(err.Error(), "clear boom") {
 		t.Fatalf("expected clear error, got %v", err)
 	}
 
 	clearEffectiveShapeTreesFn = func(*gorm.DB) error { return nil }
 	persistEffectiveProjectionFn = func(*gorm.DB, *Model, string) error { return errors.New("persist boom") }
-	if err := RecomputeAllEffectiveFromRaw(db); err == nil || !strings.Contains(err.Error(), "persist effective") {
+	if err := recomputeAllEffectiveFromRaw(db); err == nil || !strings.Contains(err.Error(), "persist effective") {
 		t.Fatalf("expected persist error, got %v", err)
 	}
 
 	// Empty tip id → xid path.
-	loadRawModelsForRecompute = func(*gorm.DB) ([]*RawModel, error) {
-		return []*RawModel{{
+	loadrawModelsForRecompute = func(*gorm.DB) ([]*rawModel, error) {
+		return []*rawModel{{
 			BaseModel:   BaseModel{Id: sql.NullString{String: "", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 			Name:        "EmptyTip",
 			Application: "a",
@@ -994,7 +994,7 @@ func TestRecomputeHooks_LoadClearPersistErrorsAndEmptyTip(t *testing.T) {
 		return persistEffectiveProjection(db, merged, effectiveID, nil)
 	}
 	clearEffectiveShapeTreesFn = clearEffectiveShapeTrees
-	if err := RecomputeAllEffectiveFromRaw(db); err != nil {
+	if err := recomputeAllEffectiveFromRaw(db); err != nil {
 		t.Fatalf("empty tip recompute: %v", err)
 	}
 	var count int64
@@ -1059,7 +1059,7 @@ func TestCopyModelTreeToRaw_NestedDecoratorFailures(t *testing.T) {
 			Decorators: []*Decorator{{BaseModel: BaseModel{Id: sql.NullString{String: "df", Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Name: "Field"}},
 		}},
 	}
-	if err := db.Migrator().DropTable(&RawDecorator{}); err != nil {
+	if err := db.Migrator().DropTable(&rawDecorator{}); err != nil {
 		t.Fatalf("drop: %v", err)
 	}
 	if err := copyModelTreeToRaw(db, src); err == nil {
@@ -1082,7 +1082,7 @@ func TestCopyModelTreeToRaw_NestedDecoratorFailures(t *testing.T) {
 			Decorators: []*Decorator{{BaseModel: BaseModel{Id: sql.NullString{String: "ds", Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Name: "Rpc"}},
 		}},
 	}
-	if err := db2.Migrator().DropTable(&RawDecorator{}); err != nil {
+	if err := db2.Migrator().DropTable(&rawDecorator{}); err != nil {
 		t.Fatalf("drop2: %v", err)
 	}
 	if err := copyModelTreeToRaw(db2, src2); err == nil {
@@ -1134,7 +1134,7 @@ func TestMigrateIMDSources_CopyErrorPropagates(t *testing.T) {
 		t.Fatalf("ensure: %v", err)
 	}
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-	existing := &RawModel{
+	existing := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "ex", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "X",
 		Application: "a",

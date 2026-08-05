@@ -31,7 +31,7 @@ func TestRecomputeEffective_CreatesPreservesAndDeletes(t *testing.T) {
 	db := openRecomputeTestDB(t)
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
 
-	base := &RawModel{
+	base := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "raw-base", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "Partner",
 		Application: "partner",
@@ -41,7 +41,7 @@ func TestRecomputeEffective_CreatesPreservesAndDeletes(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(base).Error; err != nil {
 		t.Fatalf("create base: %v", err)
 	}
-	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawField{
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&rawField{
 		BaseModel: BaseModel{Id: sql.NullString{String: "f-name", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:      "Name",
 		ModelId:   base.Id,
@@ -61,7 +61,7 @@ func TestRecomputeEffective_CreatesPreservesAndDeletes(t *testing.T) {
 	}
 	firstID := first.Id.String
 
-	bank := &RawModel{
+	bank := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "raw-bank", Valid: true}, CreatedAt: ts.Add(time.Hour), UpdatedAt: ts.Add(time.Hour)},
 		Name:        "Partner",
 		Application: "partner",
@@ -72,7 +72,7 @@ func TestRecomputeEffective_CreatesPreservesAndDeletes(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(bank).Error; err != nil {
 		t.Fatalf("create bank: %v", err)
 	}
-	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawField{
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&rawField{
 		BaseModel: BaseModel{Id: sql.NullString{String: "f-bank", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:      "BankAccounts",
 		ModelId:   bank.Id,
@@ -100,10 +100,10 @@ func TestRecomputeEffective_CreatesPreservesAndDeletes(t *testing.T) {
 		t.Fatalf("expected union fields, got %#v", names)
 	}
 
-	if err := db.Unscoped().Where("id = ?", bank.Id.String).Delete(&RawModel{}).Error; err != nil {
+	if err := db.Unscoped().Where("id = ?", bank.Id.String).Delete(&rawModel{}).Error; err != nil {
 		t.Fatalf("delete bank raw: %v", err)
 	}
-	if err := db.Unscoped().Where("model_id = ?", bank.Id.String).Delete(&RawField{}).Error; err != nil {
+	if err := db.Unscoped().Where("model_id = ?", bank.Id.String).Delete(&rawField{}).Error; err != nil {
 		t.Fatalf("delete bank raw fields: %v", err)
 	}
 
@@ -121,10 +121,10 @@ func TestRecomputeEffective_CreatesPreservesAndDeletes(t *testing.T) {
 		t.Fatalf("expected only Name after bank gone, got %#v", third.Fields)
 	}
 
-	if err := db.Unscoped().Where("id = ?", base.Id.String).Delete(&RawModel{}).Error; err != nil {
+	if err := db.Unscoped().Where("id = ?", base.Id.String).Delete(&rawModel{}).Error; err != nil {
 		t.Fatalf("delete base raw: %v", err)
 	}
-	if err := db.Unscoped().Where("model_id = ?", base.Id.String).Delete(&RawField{}).Error; err != nil {
+	if err := db.Unscoped().Where("model_id = ?", base.Id.String).Delete(&rawField{}).Error; err != nil {
 		t.Fatalf("delete base raw fields: %v", err)
 	}
 	if err := RecomputeEffective(db, "partner", "Partner"); err != nil {
@@ -143,7 +143,7 @@ func TestRecomputeEffective_PreservesServiceIDsByName(t *testing.T) {
 	db := openRecomputeTestDB(t)
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
 
-	raw := &RawModel{
+	raw := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "raw-i18n", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "I18n",
 		Application: "base",
@@ -155,7 +155,7 @@ func TestRecomputeEffective_PreservesServiceIDsByName(t *testing.T) {
 		t.Fatalf("create raw: %v", err)
 	}
 	for _, name := range []string{"SearchTerms", "UpdateTerm"} {
-		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawService{
+		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&rawService{
 			BaseModel:             BaseModel{Id: sql.NullString{String: "rs-" + name, Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 			Name:                  name,
 			AccessibilityModifier: "public",
@@ -209,7 +209,7 @@ func TestRecomputeEffective_PreservesServiceIDsByName(t *testing.T) {
 func TestRecomputeKeys_Dedupes(t *testing.T) {
 	db := openRecomputeTestDB(t)
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-	raw := &RawModel{
+	raw := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "r1", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "X",
 		Application: "a",

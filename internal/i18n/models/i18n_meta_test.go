@@ -382,8 +382,8 @@ func TestEnsureI18nMetaSaveModuleAndServiceLookupErrors(t *testing.T) {
 	if err := db.Exec("ALTER TABLE meta_model RENAME COLUMN name TO name_broken").Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := EnsureI18nMeta(rs, "auth", sql.NullString{}); err == nil || !strings.Contains(err.Error(), "recompute I18n effective") {
-		t.Fatalf("expected recompute effective error, got %v", err)
+	if err := EnsureI18nMeta(rs, "auth", sql.NullString{}); err == nil || !strings.Contains(err.Error(), "flush I18n effective") {
+		t.Fatalf("expected flush effective error, got %v", err)
 	}
 }
 

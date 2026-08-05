@@ -131,7 +131,7 @@ func (s *appSettingOnlyBundleInjector) EnsureAppSettingVirtualImports([]*meta.Mo
 func TestBuildBackendBundlesToDir_AppSettingOwnerAndEnsureError(t *testing.T) {
 	modulesPath := t.TempDir()
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
 	modPath := filepath.Join(modulesPath, "crm_partner")
@@ -156,7 +156,7 @@ func TestBuildBackendBundlesToDir_AppSettingOwnerAndEnsureError(t *testing.T) {
 	// Drop meta_raw_model so Ensure*VirtualImports fails while owners were collected.
 	// FieldDefault Ensure runs first, so the surfaced error usually names FieldDefault;
 	// AppSetting Ensure shares the same owner-collection + entry-write path.
-	if err := db.Migrator().DropTable(&meta.RawModel{}); err != nil {
+	if err := meta.DropRawModelTable(db); err != nil {
 		t.Fatalf("drop meta_raw_model: %v", err)
 	}
 	err := manager.buildBackendBundlesToDir(context.Background(), distBundlesDir, nil)

@@ -9,8 +9,8 @@ import (
 	"strings"
 )
 
-// RawField is a declaration-layer field row under RawModel (table meta_raw_field).
-type RawField struct {
+// rawField is a declaration-layer field row under rawModel (table meta_raw_field).
+type rawField struct {
 	BaseModel `gorm:"embedded"`
 
 	Name             string `gorm:"type:varchar(255);not null;index:idx_raw_model_field_name,unique" json:"name"`
@@ -73,12 +73,12 @@ type RawField struct {
 	ResolvedSpec string `gorm:"type:text" json:"resolved_spec,omitempty"`
 
 	ModelId sql.NullString `gorm:"type:char(20);index:idx_raw_model_field_name,unique" json:"model_id"`
-	Model   *RawModel      `gorm:"foreignKey:ModelId" json:"model"`
+	Model   *rawModel      `gorm:"foreignKey:ModelId" json:"model"`
 
-	Decorators []*RawDecorator `gorm:"foreignKey:FieldId;constraint:OnDelete:CASCADE;" json:"decorators"`
+	Decorators []*rawDecorator `gorm:"foreignKey:FieldId;constraint:OnDelete:CASCADE;" json:"decorators"`
 }
 
-func (field *RawField) TableName() string {
+func (field *rawField) TableName() string {
 	return "meta_raw_field"
 }
 
@@ -88,7 +88,7 @@ var (
 	rawFieldJSONUnmarshal = json.Unmarshal
 )
 
-func (field *RawField) SetResolvedSpec(spec *FieldResolvedSpec) error {
+func (field *rawField) SetResolvedSpec(spec *FieldResolvedSpec) error {
 	if field == nil {
 		return nil
 	}
@@ -104,7 +104,7 @@ func (field *RawField) SetResolvedSpec(spec *FieldResolvedSpec) error {
 	return nil
 }
 
-func (field *RawField) GetResolvedSpec() (*FieldResolvedSpec, error) {
+func (field *rawField) GetResolvedSpec() (*FieldResolvedSpec, error) {
 	if field == nil {
 		return nil, nil
 	}

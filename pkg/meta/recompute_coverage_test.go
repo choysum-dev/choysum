@@ -21,7 +21,7 @@ func TestRecomputeKeys_NilAndFailure(t *testing.T) {
 
 	db := openRecomputeTestDB(t)
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-	raw := &RawModel{
+	raw := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "r1", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "X",
 		Application: "a",
@@ -51,7 +51,7 @@ func TestRecomputeEffective_PostgresLockBranch(t *testing.T) {
 	db := openRecomputeTestDB(t)
 	db.Dialector = namedDialector{Dialector: db.Dialector, name: "postgres"}
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-	raw := &RawModel{
+	raw := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "pg-raw", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "PgModel",
 		Application: "pg",
@@ -112,21 +112,21 @@ func TestRecomputeEffective_TipSelectionAmongExisting(t *testing.T) {
 		}
 	}
 
-	rawTip := &RawModel{
+	rawTip := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "raw-tip", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "TipPick",
 		Application: "app",
 		Path:        "/raw.ts",
 		ModuleId:    sql.NullString{String: "mod", Valid: true},
 	}
-	rawSame := &RawModel{
+	rawSame := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "raw-same", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "SameTime",
 		Application: "app",
 		Path:        "/raw-same.ts",
 		ModuleId:    sql.NullString{String: "mod2", Valid: true},
 	}
-	for _, r := range []*RawModel{rawTip, rawSame} {
+	for _, r := range []*rawModel{rawTip, rawSame} {
 		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(r).Error; err != nil {
 			t.Fatalf("create raw: %v", err)
 		}
@@ -158,7 +158,7 @@ func TestRecomputeEffective_TipSelectionAmongExisting(t *testing.T) {
 func TestRecomputeEffective_EffIDFromXidWhenNoExistingAndEmptyRawTip(t *testing.T) {
 	db := openRecomputeTestDB(t)
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-	raw := &RawModel{
+	raw := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "Fresh",
 		Application: "fresh",
@@ -223,20 +223,20 @@ func TestLoadEffectiveServiceIDsByName_Coverage(t *testing.T) {
 
 func TestPickTipRaw_NilEntries(t *testing.T) {
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-	a := &RawModel{BaseModel: BaseModel{Id: sql.NullString{String: "a", Valid: true}, CreatedAt: ts}}
-	b := &RawModel{BaseModel: BaseModel{Id: sql.NullString{String: "b", Valid: true}, CreatedAt: ts.Add(time.Hour)}}
-	tip := pickTipRaw([]*RawModel{nil, a, nil, b})
+	a := &rawModel{BaseModel: BaseModel{Id: sql.NullString{String: "a", Valid: true}, CreatedAt: ts}}
+	b := &rawModel{BaseModel: BaseModel{Id: sql.NullString{String: "b", Valid: true}, CreatedAt: ts.Add(time.Hour)}}
+	tip := pickTipRaw([]*rawModel{nil, a, nil, b})
 	if tip == nil || tip.Id.String != "b" {
 		t.Fatalf("pickTipRaw: got %#v", tip)
 	}
 }
 
 func TestDeleteEffectiveModelTree_Coverage(t *testing.T) {
-	if err := DeleteEffectiveModelTree(nil, ""); err != nil {
+	if err := deleteEffectiveModelTree(nil, ""); err != nil {
 		t.Fatalf("empty modelID no-op: %v", err)
 	}
 	db := openRecomputeTestDB(t)
-	if err := DeleteEffectiveModelTree(db, "  "); err != nil {
+	if err := deleteEffectiveModelTree(db, "  "); err != nil {
 		t.Fatalf("whitespace no-op: %v", err)
 	}
 
@@ -316,7 +316,7 @@ func TestDeleteEffectiveModelTree_Coverage(t *testing.T) {
 		t.Fatalf("create model dec: %v", err)
 	}
 
-	if err := DeleteEffectiveModelTree(db, eff.Id.String); err != nil {
+	if err := deleteEffectiveModelTree(db, eff.Id.String); err != nil {
 		t.Fatalf("delete tree: %v", err)
 	}
 	var count int64
@@ -360,14 +360,14 @@ func TestDeleteEffectiveModelTree_Coverage(t *testing.T) {
 			_ = db2.Session(&gorm.Session{SkipHooks: true}).Create(&Parameter{BaseModel: BaseModel{Id: sql.NullString{String: "p-" + tc.name, Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Name: "vals", ServiceId: s2.Id})
 			_ = db2.Session(&gorm.Session{SkipHooks: true}).Create(&TypeParameter{BaseModel: BaseModel{Id: sql.NullString{String: "tp-" + tc.name, Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Name: "T", ServiceId: s2.Id})
 			_ = db2.Migrator().DropTable(tc.drop)
-			if err := DeleteEffectiveModelTree(db2, eff2.Id.String); err == nil {
+			if err := deleteEffectiveModelTree(db2, eff2.Id.String); err == nil {
 				t.Fatalf("expected delete error after dropping %s", tc.name)
 			}
 		})
 	}
 }
 
-func TestPersistEffectiveProjection_ExportedWrapper(t *testing.T) {
+func TestPersistEffectiveProjection_PrivateHelper(t *testing.T) {
 	db := openRecomputeTestDB(t)
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
 	merged := &Model{
@@ -377,8 +377,8 @@ func TestPersistEffectiveProjection_ExportedWrapper(t *testing.T) {
 		Path:        "/wrap.ts",
 		Fields:      []*Field{{Name: "Name"}},
 	}
-	if err := PersistEffectiveProjection(db, merged, "wrap-eff"); err != nil {
-		t.Fatalf("PersistEffectiveProjection: %v", err)
+	if err := persistEffectiveProjection(db, merged, "wrap-eff", nil); err != nil {
+		t.Fatalf("persistEffectiveProjection: %v", err)
 	}
 	var count int64
 	if err := db.Model(&Model{}).Where("id = ?", "wrap-eff").Count(&count).Error; err != nil {
@@ -403,7 +403,7 @@ func TestDeleteRawModelsForModule_Coverage(t *testing.T) {
 
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
 	modID := "mod-del"
-	raw := &RawModel{
+	raw := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "raw-del", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "RawDel",
 		Application: "raw",
@@ -413,7 +413,7 @@ func TestDeleteRawModelsForModule_Coverage(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(raw).Error; err != nil {
 		t.Fatalf("create raw: %v", err)
 	}
-	field := &RawField{
+	field := &rawField{
 		BaseModel: BaseModel{Id: sql.NullString{String: "rf", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:      "Name",
 		ModelId:   raw.Id,
@@ -421,7 +421,7 @@ func TestDeleteRawModelsForModule_Coverage(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(field).Error; err != nil {
 		t.Fatalf("create field: %v", err)
 	}
-	fieldDec := &RawDecorator{
+	fieldDec := &rawDecorator{
 		BaseModel: BaseModel{Id: sql.NullString{String: "rfd", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:      "Field",
 		FieldId:   sql.NullString{String: field.Id.String, Valid: true},
@@ -429,7 +429,7 @@ func TestDeleteRawModelsForModule_Coverage(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(fieldDec).Error; err != nil {
 		t.Fatalf("create field dec: %v", err)
 	}
-	fieldArg := &RawArgument{
+	fieldArg := &rawArgument{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "rfa", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Type:        "string",
 		Value:       `"x"`,
@@ -438,7 +438,7 @@ func TestDeleteRawModelsForModule_Coverage(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(fieldArg).Error; err != nil {
 		t.Fatalf("create field arg: %v", err)
 	}
-	svc := &RawService{
+	svc := &rawService{
 		BaseModel: BaseModel{Id: sql.NullString{String: "rs", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:      "Create",
 		ModelId:   raw.Id,
@@ -446,7 +446,7 @@ func TestDeleteRawModelsForModule_Coverage(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(svc).Error; err != nil {
 		t.Fatalf("create service: %v", err)
 	}
-	param := &RawParameter{
+	param := &rawParameter{
 		BaseModel: BaseModel{Id: sql.NullString{String: "rp", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:      "vals",
 		ServiceId: svc.Id,
@@ -454,7 +454,7 @@ func TestDeleteRawModelsForModule_Coverage(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(param).Error; err != nil {
 		t.Fatalf("create param: %v", err)
 	}
-	tp := &RawTypeParameter{
+	tp := &rawTypeParameter{
 		BaseModel: BaseModel{Id: sql.NullString{String: "rtp", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:      "T",
 		ServiceId: svc.Id,
@@ -462,7 +462,7 @@ func TestDeleteRawModelsForModule_Coverage(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(tp).Error; err != nil {
 		t.Fatalf("create tp: %v", err)
 	}
-	svcDec := &RawDecorator{
+	svcDec := &rawDecorator{
 		BaseModel: BaseModel{Id: sql.NullString{String: "rsd", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:      "Rpc",
 		ServiceId: svc.Id,
@@ -470,7 +470,7 @@ func TestDeleteRawModelsForModule_Coverage(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(svcDec).Error; err != nil {
 		t.Fatalf("create svc dec: %v", err)
 	}
-	modelDec := &RawDecorator{
+	modelDec := &rawDecorator{
 		BaseModel: BaseModel{Id: sql.NullString{String: "rmd", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:      "Model",
 		ModelId:   raw.Id,
@@ -483,7 +483,7 @@ func TestDeleteRawModelsForModule_Coverage(t *testing.T) {
 		t.Fatalf("delete raw module: %v", err)
 	}
 	var count int64
-	if err := db.Model(&RawModel{}).Where("module_id = ?", modID).Count(&count).Error; err != nil {
+	if err := db.Model(&rawModel{}).Where("module_id = ?", modID).Count(&count).Error; err != nil {
 		t.Fatalf("count raw: %v", err)
 	}
 	if count != 0 {
@@ -494,18 +494,18 @@ func TestDeleteRawModelsForModule_Coverage(t *testing.T) {
 		name string
 		drop any
 	}{
-		{"raw models pluck", &RawModel{}},
-		{"raw services", &RawService{}},
-		{"raw fields", &RawField{}},
-		{"raw decorators", &RawDecorator{}},
-		{"raw arguments", &RawArgument{}},
-		{"raw type parameters", &RawTypeParameter{}},
-		{"raw parameters", &RawParameter{}},
+		{"raw models pluck", &rawModel{}},
+		{"raw services", &rawService{}},
+		{"raw fields", &rawField{}},
+		{"raw decorators", &rawDecorator{}},
+		{"raw arguments", &rawArgument{}},
+		{"raw type parameters", &rawTypeParameter{}},
+		{"raw parameters", &rawParameter{}},
 	}
 	for _, tc := range dropCases {
 		t.Run(tc.name, func(t *testing.T) {
 			db2 := openRecomputeTestDB(t)
-			r2 := &RawModel{
+			r2 := &rawModel{
 				BaseModel:   BaseModel{Id: sql.NullString{String: "r2-" + tc.name, Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 				Name:        "R",
 				Application: "r",
@@ -513,15 +513,15 @@ func TestDeleteRawModelsForModule_Coverage(t *testing.T) {
 				ModuleId:    sql.NullString{String: "m2", Valid: true},
 			}
 			_ = db2.Session(&gorm.Session{SkipHooks: true}).Create(r2)
-			f2 := &RawField{BaseModel: BaseModel{Id: sql.NullString{String: "rf2-" + tc.name, Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Name: "N", ModelId: r2.Id}
+			f2 := &rawField{BaseModel: BaseModel{Id: sql.NullString{String: "rf2-" + tc.name, Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Name: "N", ModelId: r2.Id}
 			_ = db2.Session(&gorm.Session{SkipHooks: true}).Create(f2)
-			s2 := &RawService{BaseModel: BaseModel{Id: sql.NullString{String: "rs2-" + tc.name, Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Name: "S", ModelId: r2.Id}
+			s2 := &rawService{BaseModel: BaseModel{Id: sql.NullString{String: "rs2-" + tc.name, Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Name: "S", ModelId: r2.Id}
 			_ = db2.Session(&gorm.Session{SkipHooks: true}).Create(s2)
-			d2 := &RawDecorator{BaseModel: BaseModel{Id: sql.NullString{String: "rd2-" + tc.name, Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Name: "D", FieldId: sql.NullString{String: f2.Id.String, Valid: true}, ServiceId: s2.Id, ModelId: r2.Id}
+			d2 := &rawDecorator{BaseModel: BaseModel{Id: sql.NullString{String: "rd2-" + tc.name, Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Name: "D", FieldId: sql.NullString{String: f2.Id.String, Valid: true}, ServiceId: s2.Id, ModelId: r2.Id}
 			_ = db2.Session(&gorm.Session{SkipHooks: true}).Create(d2)
-			_ = db2.Session(&gorm.Session{SkipHooks: true}).Create(&RawArgument{BaseModel: BaseModel{Id: sql.NullString{String: "ra2-" + tc.name, Valid: true}, CreatedAt: ts, UpdatedAt: ts}, DecoratorId: d2.Id})
-			_ = db2.Session(&gorm.Session{SkipHooks: true}).Create(&RawParameter{BaseModel: BaseModel{Id: sql.NullString{String: "rp2-" + tc.name, Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Name: "vals", ServiceId: s2.Id})
-			_ = db2.Session(&gorm.Session{SkipHooks: true}).Create(&RawTypeParameter{BaseModel: BaseModel{Id: sql.NullString{String: "rtp2-" + tc.name, Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Name: "T", ServiceId: s2.Id})
+			_ = db2.Session(&gorm.Session{SkipHooks: true}).Create(&rawArgument{BaseModel: BaseModel{Id: sql.NullString{String: "ra2-" + tc.name, Valid: true}, CreatedAt: ts, UpdatedAt: ts}, DecoratorId: d2.Id})
+			_ = db2.Session(&gorm.Session{SkipHooks: true}).Create(&rawParameter{BaseModel: BaseModel{Id: sql.NullString{String: "rp2-" + tc.name, Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Name: "vals", ServiceId: s2.Id})
+			_ = db2.Session(&gorm.Session{SkipHooks: true}).Create(&rawTypeParameter{BaseModel: BaseModel{Id: sql.NullString{String: "rtp2-" + tc.name, Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Name: "T", ServiceId: s2.Id})
 			// Drop before DeleteRawModelsForModule so the first failing pluck/delete surfaces.
 			_ = db2.Migrator().DropTable(tc.drop)
 			if err := DeleteRawModelsForModule(db2, "m2"); err == nil {
@@ -533,7 +533,7 @@ func TestDeleteRawModelsForModule_Coverage(t *testing.T) {
 
 func TestRecomputeEffective_LoadAndExpandErrors(t *testing.T) {
 	db := openRecomputeTestDB(t)
-	if err := db.Migrator().DropTable(&RawModel{}); err != nil {
+	if err := db.Migrator().DropTable(&rawModel{}); err != nil {
 		t.Fatalf("drop raw: %v", err)
 	}
 	if err := RecomputeEffective(db, "a", "X"); err == nil || !strings.Contains(err.Error(), "load meta_raw_model") {
@@ -545,7 +545,7 @@ func TestRecomputeEffective_LoadAndExpandErrors(t *testing.T) {
 		t.Fatalf("drop model: %v", err)
 	}
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-	raw := &RawModel{
+	raw := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "r", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "X",
 		Application: "a",
@@ -584,7 +584,7 @@ func TestRecomputeEffective_DeleteExistingError(t *testing.T) {
 func TestRecomputeEffective_ExpandExtendsError(t *testing.T) {
 	db := openRecomputeTestDB(t)
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-	a := &RawModel{
+	a := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "ra", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "Circ",
 		Application: "circ",
@@ -592,7 +592,7 @@ func TestRecomputeEffective_ExpandExtendsError(t *testing.T) {
 		Extends:     "/b.ts",
 		ModuleId:    sql.NullString{String: "m1", Valid: true},
 	}
-	b := &RawModel{
+	b := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "rb", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "Circ",
 		Application: "circ",
@@ -600,7 +600,7 @@ func TestRecomputeEffective_ExpandExtendsError(t *testing.T) {
 		Extends:     "/a.ts",
 		ModuleId:    sql.NullString{String: "m2", Valid: true},
 	}
-	for _, r := range []*RawModel{a, b} {
+	for _, r := range []*rawModel{a, b} {
 		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(r).Error; err != nil {
 			t.Fatalf("create raw: %v", err)
 		}
@@ -622,7 +622,7 @@ func TestRecomputeEffective_LoadPriorServicesError(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(eff).Error; err != nil {
 		t.Fatalf("create effective: %v", err)
 	}
-	raw := &RawModel{
+	raw := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "prior-raw", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "Prior",
 		Application: "prior",
@@ -657,7 +657,7 @@ func TestRecomputeEffective_DeleteExistingWithRawsError(t *testing.T) {
 		Name:      "N",
 		ModelId:   eff.Id,
 	})
-	raw := &RawModel{
+	raw := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "del-raw", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "DelRaw",
 		Application: "delraw",
@@ -678,7 +678,7 @@ func TestRecomputeEffective_DeleteExistingWithRawsError(t *testing.T) {
 func TestRecomputeEffective_PersistError(t *testing.T) {
 	db := openRecomputeTestDB(t)
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-	raw := &RawModel{
+	raw := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "persist-raw", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "PersistErr",
 		Application: "perr",
@@ -688,7 +688,7 @@ func TestRecomputeEffective_PersistError(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(raw).Error; err != nil {
 		t.Fatalf("create raw: %v", err)
 	}
-	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawField{
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&rawField{
 		BaseModel: BaseModel{Id: sql.NullString{String: "pf", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:      "Name",
 		ModelId:   raw.Id,
@@ -706,7 +706,7 @@ func TestRecomputeEffective_PersistError(t *testing.T) {
 func TestRecomputeEffective_PersistFailureRollsBackExisting(t *testing.T) {
 	db := openRecomputeTestDB(t)
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-	raw := &RawModel{
+	raw := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "rb-raw", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "Rollback",
 		Application: "rb",
@@ -716,7 +716,7 @@ func TestRecomputeEffective_PersistFailureRollsBackExisting(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(raw).Error; err != nil {
 		t.Fatalf("create raw: %v", err)
 	}
-	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawField{
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&rawField{
 		BaseModel: BaseModel{Id: sql.NullString{String: "rb-f", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:      "Name",
 		ModelId:   raw.Id,
@@ -756,7 +756,7 @@ func TestRecomputeEffective_PersistFailureRollsBackExisting(t *testing.T) {
 func TestRecomputeEffective_EffIDFromRawTipWhenNoExisting(t *testing.T) {
 	db := openRecomputeTestDB(t)
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-	raw := &RawModel{
+	raw := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "raw-tip-id", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "RawTip",
 		Application: "rtip",
@@ -781,7 +781,7 @@ func TestRecomputeEffective_EffIDFromRawTipWhenNoExisting(t *testing.T) {
 func TestRecomputeEffective_HookErrorPaths(t *testing.T) {
 	db := openRecomputeTestDB(t)
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-	raw := &RawModel{
+	raw := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "hook-raw", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "Hook",
 		Application: "hook",
@@ -905,7 +905,7 @@ func TestDeleteTrees_LateDeleteHookErrors(t *testing.T) {
 			}
 			return prev(db, value, query, args...)
 		}
-		err := DeleteEffectiveModelTree(db, id)
+		err := deleteEffectiveModelTree(db, id)
 		if err == nil || !strings.Contains(err.Error(), tc.wantMsg) {
 			t.Fatalf("want %q, got %v", tc.wantMsg, err)
 		}
@@ -915,7 +915,7 @@ func TestDeleteTrees_LateDeleteHookErrors(t *testing.T) {
 	seedRaw := func(t *testing.T, db *gorm.DB, moduleID string) {
 		t.Helper()
 		ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-		raw := &RawModel{
+		raw := &rawModel{
 			BaseModel:   BaseModel{Id: sql.NullString{String: xid.New().String(), Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 			Name:        "RawHook",
 			Application: "rh",
@@ -925,7 +925,7 @@ func TestDeleteTrees_LateDeleteHookErrors(t *testing.T) {
 		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(raw).Error; err != nil {
 			t.Fatalf("create raw: %v", err)
 		}
-		rsvc := &RawService{
+		rsvc := &rawService{
 			BaseModel: BaseModel{Id: sql.NullString{String: xid.New().String(), Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 			Name:      "Create",
 			ModelId:   raw.Id,
@@ -933,14 +933,14 @@ func TestDeleteTrees_LateDeleteHookErrors(t *testing.T) {
 		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(rsvc).Error; err != nil {
 			t.Fatalf("create raw service: %v", err)
 		}
-		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawField{
+		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&rawField{
 			BaseModel: BaseModel{Id: sql.NullString{String: xid.New().String(), Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 			Name:      "Name",
 			ModelId:   raw.Id,
 		}).Error; err != nil {
 			t.Fatalf("create raw field: %v", err)
 		}
-		rdec := &RawDecorator{
+		rdec := &rawDecorator{
 			BaseModel: BaseModel{Id: sql.NullString{String: xid.New().String(), Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 			Name:      "D",
 			ModelId:   raw.Id,
@@ -948,20 +948,20 @@ func TestDeleteTrees_LateDeleteHookErrors(t *testing.T) {
 		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(rdec).Error; err != nil {
 			t.Fatalf("create raw decorator: %v", err)
 		}
-		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawArgument{
+		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&rawArgument{
 			BaseModel:   BaseModel{Id: sql.NullString{String: xid.New().String(), Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 			DecoratorId: rdec.Id,
 		}).Error; err != nil {
 			t.Fatalf("create raw arg: %v", err)
 		}
-		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawParameter{
+		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&rawParameter{
 			BaseModel: BaseModel{Id: sql.NullString{String: xid.New().String(), Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 			Name:      "x",
 			ServiceId: rsvc.Id,
 		}).Error; err != nil {
 			t.Fatalf("create raw param: %v", err)
 		}
-		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawTypeParameter{
+		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&rawTypeParameter{
 			BaseModel: BaseModel{Id: sql.NullString{String: xid.New().String(), Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 			Name:      "T",
 			ServiceId: rsvc.Id,
@@ -971,12 +971,12 @@ func TestDeleteTrees_LateDeleteHookErrors(t *testing.T) {
 	}
 
 	rawCases := []failCase{
-		{func(v interface{}) bool { _, ok := v.(*RawDecorator); return ok }, "delete declaration decorators"},
-		{func(v interface{}) bool { _, ok := v.(*RawTypeParameter); return ok }, "delete declaration type parameters"},
-		{func(v interface{}) bool { _, ok := v.(*RawParameter); return ok }, "delete declaration parameters"},
-		{func(v interface{}) bool { _, ok := v.(*RawService); return ok }, "delete declaration services"},
-		{func(v interface{}) bool { _, ok := v.(*RawField); return ok }, "delete declaration fields"},
-		{func(v interface{}) bool { _, ok := v.(*RawModel); return ok }, "delete declaration models"},
+		{func(v interface{}) bool { _, ok := v.(*rawDecorator); return ok }, "delete declaration decorators"},
+		{func(v interface{}) bool { _, ok := v.(*rawTypeParameter); return ok }, "delete declaration type parameters"},
+		{func(v interface{}) bool { _, ok := v.(*rawParameter); return ok }, "delete declaration parameters"},
+		{func(v interface{}) bool { _, ok := v.(*rawService); return ok }, "delete declaration services"},
+		{func(v interface{}) bool { _, ok := v.(*rawField); return ok }, "delete declaration fields"},
+		{func(v interface{}) bool { _, ok := v.(*rawModel); return ok }, "delete declaration models"},
 	}
 	for i, tc := range rawCases {
 		db := openRecomputeTestDB(t)

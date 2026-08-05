@@ -101,21 +101,21 @@ func TestPreferDeclarationTip_PromotesCanonical(t *testing.T) {
 	}
 	older := time.Now().UTC().Add(-time.Hour)
 	newer := older.Add(time.Minute)
-	ext := &RawModel{
+	ext := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: xid.New().String(), Valid: true}, CreatedAt: newer, UpdatedAt: newer},
 		Name:        "I18n",
 		Path:        "/ext",
 		Application: "auth",
 		Abstract:    true,
 	}
-	canon := &RawModel{
+	canon := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: xid.New().String(), Valid: true}, CreatedAt: older, UpdatedAt: older},
 		Name:        "I18n",
 		Path:        "go://i18n/auth",
 		Application: "auth",
 		Abstract:    true,
 	}
-	for _, row := range []*RawModel{ext, canon} {
+	for _, row := range []*rawModel{ext, canon} {
 		if err := db.Create(row).Error; err != nil {
 			t.Fatal(err)
 		}
@@ -123,7 +123,7 @@ func TestPreferDeclarationTip_PromotesCanonical(t *testing.T) {
 	if err := PreferDeclarationTip(db, "auth", "I18n", "go://i18n/auth"); err != nil {
 		t.Fatal(err)
 	}
-	var tip RawModel
+	var tip rawModel
 	if err := db.Where("path = ?", "go://i18n/auth").Take(&tip).Error; err != nil {
 		t.Fatal(err)
 	}
@@ -150,10 +150,10 @@ func TestDeleteDeclarationTrees_Cascade(t *testing.T) {
 		t.Fatal(err)
 	}
 	var n int64
-	if err := db.Unscoped().Model(&RawModel{}).Where("id = ?", id).Count(&n).Error; err != nil || n != 0 {
+	if err := db.Unscoped().Model(&rawModel{}).Where("id = ?", id).Count(&n).Error; err != nil || n != 0 {
 		t.Fatalf("left=%d err=%v", n, err)
 	}
-	for name, dest := range map[string]any{"field": &RawField{}, "service": &RawService{}} {
+	for name, dest := range map[string]any{"field": &rawField{}, "service": &rawService{}} {
 		var c int64
 		if err := db.Unscoped().Model(dest).Where("model_id = ?", id).Count(&c).Error; err != nil || c != 0 {
 			t.Fatalf("%s rows left=%d err=%v", name, c, err)

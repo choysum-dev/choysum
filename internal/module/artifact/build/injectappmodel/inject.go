@@ -1,0 +1,204 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+package injectappmodel
+
+import (
+	"path/filepath"
+	"strings"
+
+	"github.com/choysum-dev/choysum/internal/parser"
+	xfmt "golang.org/x/exp/errors/fmt"
+)
+
+// InjectAppModels runs Decide + Inject for every registered Spec.
+func InjectAppModels(sess *Session, prebuildResults []*parser.ParserResult) error {
+	if sess == nil {
+		return nil
+	}
+	for _, spec := range specsList() {
+		if err := DecideAndInjectOne(sess, spec.ModelName, prebuildResults); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// DecideAndInjectOne runs Decide + Inject for a single Spec (legacy test adapters).
+func DecideAndInjectOne(sess *Session, modelName string, prebuildResults []*parser.ParserResult) error {
+	if sess == nil {
+		return nil
+	}
+	spec, ok := specByName(modelName)
+	if !ok {
+		return xfmt.Errorf("injectappmodel: unknown Spec %q", modelName)
+	}
+	plan, err := decidePlan(spec, sess, prebuildResults)
+	if err != nil {
+		return err
+	}
+	sess.plans[spec.ModelName] = plan
+	if err := applyInject(sess, spec, plan); err != nil {
+		sess.releaseScheduleFor(spec)
+		return xfmt.Errorf("error injecting %s: %w", spec.ModelName, err)
+	}
+	return nil
+}
+
+// DecideOne runs Decide for one Spec and stores the plan.
+func DecideOne(sess *Session, modelName string, prebuildResults []*parser.ParserResult) (Plan, error) {
+	plan := Plan{}
+	if sess == nil {
+		return plan, nil
+	}
+	spec, ok := specByName(modelName)
+	if !ok {
+		return plan, xfmt.Errorf("injectappmodel: unknown Spec %q", modelName)
+	}
+	plan, err := decidePlan(spec, sess, prebuildResults)
+	if err != nil {
+		return plan, err
+	}
+	sess.plans[spec.ModelName] = plan
+	return plan, nil
+}
+
+// ApplyInjectOne applies NeedInject for one Spec using the stored plan.
+func ApplyInjectOne(sess *Session, modelName string) error {
+	if sess == nil {
+		return nil
+	}
+	spec, ok := specByName(modelName)
+	if !ok {
+		return xfmt.Errorf("injectappmodel: unknown Spec %q", modelName)
+	}
+	return applyInject(sess, spec, sess.plans[modelName])
+}
+
+func decidePlan(spec *Spec, sess *Session, prebuildResults []*parser.ParserResult) (Plan, error) {
+	plan := Plan{}
+	if spec == nil || sess == nil || sess.host == nil {
+		return plan, nil
+	}
+	mod := sess.host.Module()
+	if mod == nil {
+		return plan, nil
+	}
+	if strings.TrimSpace(mod.ServiceEntryPoint) == "" ||
+		strings.TrimSpace(mod.ApplicationStr) == "" ||
+		strings.TrimSpace(mod.ApplicationStr) == "core" {
+		return plan, nil
+	}
+
+	app := strings.TrimSpace(mod.ApplicationStr)
+	local := modelsIn(spec, prebuildResults, mod.Path)
+	localHand := handwrittenModels(spec, local)
+	if len(localHand) > 1 {
+		return plan, xfmt.Errorf("%s: application %q has multiple handwritten %s models in module %q", spec.DuplicateCode, app, spec.ModelName, mod.Name)
+	}
+
+	existing, err := dbLoadModels(spec, sess.host.SessionDB(), app)
+	if err != nil {
+		return plan, xfmt.Errorf("load %s models for application %q: %w", spec.ModelName, app, err)
+	}
+	existingVirt := generatedModels(spec, existing)
+	existingHand := handwrittenModels(spec, existing)
+
+	if len(localHand) > 0 {
+		if len(existingHand) > 0 && !sameModule(existingHand, mod) {
+			return plan, xfmt.Errorf("%s: application %q already has a handwritten %s outside module %q", spec.DuplicateCode, app, spec.ModelName, mod.Name)
+		}
+		if len(existingVirt) > 0 {
+			return Plan{SupersedeInject: true}, nil
+		}
+		return plan, nil
+	}
+
+	// No local handwritten model — consider C2 inject.
+	if len(existingHand) > 0 {
+		return plan, nil
+	}
+	if len(local) > 0 {
+		return plan, nil
+	}
+	if len(existingVirt) > 0 {
+		if sameModule(existingVirt, mod) {
+			return claimNeedInject(spec, app, mod.Name), nil
+		}
+		return plan, nil
+	}
+	return claimFirstNeedInject(spec, app, mod.Name), nil
+}
+
+func claimNeedInject(spec *Spec, app, modName string) Plan {
+	if spec.ForeignClaimOnOwnerReinject {
+		owner, loaded := spec.scheduled.LoadOrStore(app, modName)
+		if loaded {
+			if ownerName, ok := owner.(string); ok && ownerName != modName {
+				return Plan{NeedInject: true}
+			}
+		}
+		return Plan{NeedInject: true, ScheduledApp: app}
+	}
+	return Plan{NeedInject: true, ScheduledApp: app}
+}
+
+func claimFirstNeedInject(spec *Spec, app, modName string) Plan {
+	owner, loaded := spec.scheduled.LoadOrStore(app, modName)
+	if loaded {
+		if ownerName, ok := owner.(string); ok && ownerName == modName {
+			return Plan{NeedInject: true, ScheduledApp: app}
+		}
+		return Plan{}
+	}
+	return Plan{NeedInject: true, ScheduledApp: app}
+}
+
+func applyInject(sess *Session, spec *Spec, plan Plan) error {
+	if sess == nil || spec == nil || !plan.NeedInject {
+		return nil
+	}
+	mod := sess.host.Module()
+	if mod == nil {
+		return nil
+	}
+	if strings.TrimSpace(mod.Path) == "" {
+		return xfmt.Errorf("%s inject requires a non-empty module path", spec.ModelName)
+	}
+	path := generatedPath(spec, mod.Path)
+	sess.rememberInjectPath(spec.ModelName, path)
+
+	imports := append(sess.host.EntryPointImports(), sess.allInjectPaths()...)
+	sess.host.SetEntryPointImports(imports)
+
+	modulesPath := strings.TrimSpace(sess.host.ModulesPath())
+	if modulesPath == "" {
+		modulesPath = filepath.Dir(mod.Path)
+	}
+	source := generatedSource(spec, modulesPath, mod.ApplicationStr)
+	sess.host.RegisterVirtualSource(path, source)
+	return nil
+}
+
+// ValidateInjectAppModels checks build output for duplicate inject models per application.
+func ValidateInjectAppModels(sess *Session, buildResults []*parser.ParserResult) error {
+	if sess == nil || sess.host == nil {
+		return nil
+	}
+	mod := sess.host.Module()
+	if mod == nil {
+		return nil
+	}
+	app := strings.TrimSpace(mod.ApplicationStr)
+	if app == "" || app == "core" {
+		return nil
+	}
+	for _, spec := range specsList() {
+		models := modelsIn(spec, buildResults, mod.Path)
+		if len(models) <= 1 {
+			continue
+		}
+		return xfmt.Errorf("%s: application %q build produced multiple %s models", spec.DuplicateCode, app, spec.ModelName)
+	}
+	return nil
+}

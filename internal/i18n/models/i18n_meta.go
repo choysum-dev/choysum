@@ -29,8 +29,8 @@ var i18nServiceMethods = []string{
 }
 
 // EnsureI18nMeta registers declaration-layer I18n + Service methods via the meta
-// declaration facade, recomputes the effective projection, and seeds Terminology
-// Editor ACL rows against effective service ids. Does not register TranslationTerm.
+// declaration facade, flushes the effective projection for ACL seeding, and seeds
+// Terminology Editor ACL rows against effective service ids. Does not register TranslationTerm.
 func EnsureI18nMeta(runtimeScope scope.Scope, application string, moduleID sql.NullString) error {
 	application = strings.TrimSpace(application)
 	if application == "" || application == coreApplication {
@@ -45,18 +45,18 @@ func EnsureI18nMeta(runtimeScope scope.Scope, application string, moduleID sql.N
 	}
 
 	path := fmt.Sprintf("go://i18n/%s", application)
-	decl := meta.NewAbstractReadonlyDeclaration(i18nModelName, path, application, moduleID, i18nServiceMethods)
-	if err := meta.UpsertDeclaration(db, decl); err != nil {
+	if err := meta.EnsureAbstractModel(db, meta.AbstractModelSpec{
+		Name:         i18nModelName,
+		Path:         path,
+		Application:  application,
+		ModuleID:     moduleID,
+		ServiceNames: i18nServiceMethods,
+	}); err != nil {
 		return err
 	}
-	// E2 tip scalars (Path, Abstract, …) come from the last-ranked same-name raw, and the
-	// first effective id is minted from pickTipRaw (created_at). Prefer the canonical path
-	// so Path and id stay on go://i18n/<application>.
-	if err := meta.PreferDeclarationTip(db, application, i18nModelName, path); err != nil {
-		return err
-	}
-	if err := meta.RecomputeEffective(db, application, i18nModelName); err != nil {
-		return fmt.Errorf("recompute I18n effective: %w", err)
+	// Flush before ACL seeding reads effective service ids (install boundary for I18n).
+	if err := meta.FlushEffective(db, []meta.LogicalKey{{Application: application, Name: i18nModelName}}); err != nil {
+		return fmt.Errorf("flush I18n effective: %w", err)
 	}
 	serviceIDs, err := loadEffectiveI18nServiceIDs(db, application)
 	if err != nil {

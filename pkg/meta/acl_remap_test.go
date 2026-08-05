@@ -118,8 +118,8 @@ func TestRemapACLToEffectiveModelIDs(t *testing.T) {
 		t.Fatalf("seed method access: %v", err)
 	}
 
-	if err := RemapACLToEffectiveModelIDs(db); err != nil {
-		t.Fatalf("RemapACLToEffectiveModelIDs: %v", err)
+	if err := remapACLToEffectiveModelIDs(db); err != nil {
+		t.Fatalf("remapACLToEffectiveModelIDs: %v", err)
 	}
 
 	var rrModelID, frModelID, frFieldID, maModelID, maServiceID string
@@ -143,7 +143,7 @@ func TestRemapACLToEffectiveModelIDs(t *testing.T) {
 	}
 
 	// Idempotent: values stay on effective ids.
-	if err := RemapACLToEffectiveModelIDs(db); err != nil {
+	if err := remapACLToEffectiveModelIDs(db); err != nil {
 		t.Fatalf("second RemapACL: %v", err)
 	}
 	var rr2, fr2Model, fr2Field, ma2Model, ma2Svc string
@@ -160,7 +160,7 @@ func TestRemapACLToEffectiveModelIDs(t *testing.T) {
 		t.Fatalf("second run changed values: rr=%q frModel=%q frField=%q maModel=%q maSvc=%q", rr2, fr2Model, fr2Field, ma2Model, ma2Svc)
 	}
 
-	if err := RemapACLToEffectiveModelIDs(nil); err == nil {
+	if err := remapACLToEffectiveModelIDs(nil); err == nil {
 		t.Fatal("expected nil db error")
 	}
 }
@@ -216,7 +216,7 @@ func TestRemapACLToEffectiveModelIDs_FieldOnlyWhenModelAlreadyEffective(t *testi
 		t.Fatalf("seed field rule: %v", err)
 	}
 
-	if err := RemapACLToEffectiveModelIDs(db); err != nil {
+	if err := remapACLToEffectiveModelIDs(db); err != nil {
 		t.Fatalf("RemapACL: %v", err)
 	}
 	var modelID, fieldID string

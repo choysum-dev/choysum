@@ -5,8 +5,8 @@ package meta
 
 import "database/sql"
 
-// RawArgument is a declaration-layer decorator argument.
-type RawArgument struct {
+// rawArgument is a declaration-layer decorator argument.
+type rawArgument struct {
 	BaseModel `gorm:"embedded"`
 
 	Type  string `gorm:"type:varchar" json:"ts_type"`
@@ -16,9 +16,9 @@ type RawArgument struct {
 	ModuleSpecPath string `gorm:"type:varchar" json:"module_spec_path"`
 
 	DecoratorId sql.NullString `gorm:"type:char(20)" json:"decorator_id"`
-	Decorator   *RawDecorator  `gorm:"foreignKey:DecoratorId" json:"decorator"`
+	Decorator   *rawDecorator  `gorm:"foreignKey:DecoratorId" json:"decorator"`
 }
 
-func (arg *RawArgument) TableName() string {
+func (arg *rawArgument) TableName() string {
 	return "meta_raw_argument"
 }

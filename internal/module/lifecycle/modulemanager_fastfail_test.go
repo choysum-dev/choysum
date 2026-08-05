@@ -68,7 +68,7 @@ func TestModuleManagerUninstallFastFailWhenModuleMissing(t *testing.T) {
 	manager := NewModuleManager(runtimeScope, nil, WithLockerFactory(func(scope.Scope) statepkg.Locker {
 		return locker
 	}))
-	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 	manager.bootstrapOnce.Do(func() {})
@@ -104,7 +104,7 @@ func TestModuleManagerUpgradeFastFailWhenLocalModuleMissing(t *testing.T) {
 	manager := NewModuleManager(runtimeScope, nil, WithLockerFactory(func(scope.Scope) statepkg.Locker {
 		return locker
 	}))
-	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 	manager.bootstrapOnce.Do(func() {})

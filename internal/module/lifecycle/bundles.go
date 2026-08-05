@@ -137,7 +137,7 @@ func (m *ModuleManager) buildBackendBundlesToDir(ctx context.Context, distBundle
 	return nil
 }
 
-// ensureBundleC2VirtualImports registers FieldDefault then AppSetting C2 virtual
+// ensureBundleC2VirtualImports registers FieldDefault then AppSetting C2 inject
 // sources on a multi-app bundle builder. Extracted for unit tests of error wrapping.
 func ensureBundleC2VirtualImports(builder any, fieldDefaultOwners, appSettingOwners []*meta.Module) error {
 	if injector, ok := builder.(interface {

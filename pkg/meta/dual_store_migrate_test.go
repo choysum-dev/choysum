@@ -65,7 +65,7 @@ func TestPersistModelTreeAsRaw_AssignsIDsWhenMissing(t *testing.T) {
 		t.Fatalf("PersistModelTreeAsRaw: %v", err)
 	}
 
-	var raw RawModel
+	var raw rawModel
 	if err := db.Preload("Fields").Preload("Fields.Decorators").Preload("Fields.Decorators.Arguments").
 		Preload("Services").Preload("Services.Parameters").
 		Where("path = ?", src.Path).Take(&raw).Error; err != nil {
@@ -162,12 +162,12 @@ func TestMigrateIMDCatalogToDualStore_CollapsesSameNameToEffective(t *testing.T)
 		}
 	}
 
-	if err := MigrateIMDCatalogToDualStore(db); err != nil {
-		t.Fatalf("MigrateIMDCatalogToDualStore: %v", err)
+	if err := migrateIMDCatalogToDualStore(db); err != nil {
+		t.Fatalf("migrateIMDCatalogToDualStore: %v", err)
 	}
 
 	var rawCount int64
-	if err := db.Model(&RawModel{}).Count(&rawCount).Error; err != nil {
+	if err := db.Model(&rawModel{}).Count(&rawCount).Error; err != nil {
 		t.Fatalf("count raw: %v", err)
 	}
 	if rawCount != 2 {
@@ -256,7 +256,7 @@ func TestMigrateIMDCatalogToDualStore_RejectsMissingModuleId(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(src).Error; err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	if err := MigrateIMDCatalogToDualStore(db); err == nil || !strings.Contains(err.Error(), "missing module_id") {
+	if err := migrateIMDCatalogToDualStore(db); err == nil || !strings.Contains(err.Error(), "missing module_id") {
 		t.Fatalf("expected missing module_id error, got %v", err)
 	}
 }
@@ -266,7 +266,7 @@ func TestMigrateIMDCatalogToDualStore_RefusesNonEmptyRaw(t *testing.T) {
 	if err := EnsureDualStoreTables(db); err != nil {
 		t.Fatalf("ensure: %v", err)
 	}
-	raw := &RawModel{
+	raw := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "r1", Valid: true}},
 		Name:        "X",
 		Application: "a",
@@ -276,7 +276,7 @@ func TestMigrateIMDCatalogToDualStore_RefusesNonEmptyRaw(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(raw).Error; err != nil {
 		t.Fatalf("create raw: %v", err)
 	}
-	if err := MigrateIMDCatalogToDualStore(db); err == nil {
+	if err := migrateIMDCatalogToDualStore(db); err == nil {
 		t.Fatal("expected refuse when raw non-empty")
 	}
 }
@@ -299,8 +299,8 @@ func TestMigrateIMDCatalogToDualStore_EmptySourcesIsNoOp(t *testing.T) {
 	if err := db.Delete(kept).Error; err != nil {
 		t.Fatalf("soft-delete: %v", err)
 	}
-	if err := MigrateIMDCatalogToDualStore(db); err != nil {
-		t.Fatalf("MigrateIMDCatalogToDualStore: %v", err)
+	if err := migrateIMDCatalogToDualStore(db); err != nil {
+		t.Fatalf("migrateIMDCatalogToDualStore: %v", err)
 	}
 	var count int64
 	if err := db.Unscoped().Model(&Model{}).Count(&count).Error; err != nil {
@@ -317,7 +317,7 @@ func TestRecomputeAllEffectiveFromRaw_OmitsThisParameter(t *testing.T) {
 		t.Fatalf("ensure: %v", err)
 	}
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-	raw := &RawModel{
+	raw := &rawModel{
 		BaseModel:   BaseModel{Id: sql.NullString{String: "r-svc", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "Partner",
 		Application: "partner",
@@ -327,7 +327,7 @@ func TestRecomputeAllEffectiveFromRaw_OmitsThisParameter(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(raw).Error; err != nil {
 		t.Fatalf("create raw: %v", err)
 	}
-	svc := &RawService{
+	svc := &rawService{
 		BaseModel: BaseModel{Id: sql.NullString{String: "s1", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:      "Create",
 		ModelId:   raw.Id,
@@ -336,7 +336,7 @@ func TestRecomputeAllEffectiveFromRaw_OmitsThisParameter(t *testing.T) {
 		t.Fatalf("create service: %v", err)
 	}
 	for i, name := range []string{"this", "vals"} {
-		p := &RawParameter{
+		p := &rawParameter{
 			BaseModel: BaseModel{Id: sql.NullString{String: fmt.Sprintf("p%d", i), Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 			Name:      name,
 			ServiceId: svc.Id,
@@ -345,8 +345,8 @@ func TestRecomputeAllEffectiveFromRaw_OmitsThisParameter(t *testing.T) {
 			t.Fatalf("create param %s: %v", name, err)
 		}
 	}
-	if err := RecomputeAllEffectiveFromRaw(db); err != nil {
-		t.Fatalf("RecomputeAllEffectiveFromRaw: %v", err)
+	if err := recomputeAllEffectiveFromRaw(db); err != nil {
+		t.Fatalf("recomputeAllEffectiveFromRaw: %v", err)
 	}
 	var eff []*Model
 	if err := db.Preload("Services.Parameters").Find(&eff).Error; err != nil {
@@ -359,7 +359,7 @@ func TestRecomputeAllEffectiveFromRaw_OmitsThisParameter(t *testing.T) {
 	if len(params) != 1 || params[0].Name != "vals" {
 		t.Fatalf("expected only vals on effective service, got %#v", params)
 	}
-	var rawParams []*RawParameter
+	var rawParams []*rawParameter
 	if err := db.Where("service_id = ?", svc.Id).Find(&rawParams).Error; err != nil {
 		t.Fatalf("load raw params: %v", err)
 	}

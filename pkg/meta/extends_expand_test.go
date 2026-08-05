@@ -25,7 +25,7 @@ func TestExpandModelsAlongExtends_MergesParentFields(t *testing.T) {
 
 	parentPath := "/core/service/orm/model/model.ts"
 	childPath := "/base/service/models/address.ts"
-	parent := &RawModel{
+	parent := &rawModel{
 		BaseModel: BaseModel{Id: sql.NullString{String: "raw-parent", Valid: true}},
 		Name:      "BaseModel",
 		Path:      parentPath,
@@ -35,7 +35,7 @@ func TestExpandModelsAlongExtends_MergesParentFields(t *testing.T) {
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(parent).Error; err != nil {
 		t.Fatalf("create parent: %v", err)
 	}
-	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawField{
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&rawField{
 		BaseModel:    BaseModel{Id: sql.NullString{String: "f-id", Valid: true}},
 		Name:         "Id",
 		ResolvedSpec: `{"fieldName":"Id","structural":{"name":"Id","fieldType":"varchar"},"migration":{"shouldCreateColumn":true,"resolvedColumnType":"varchar"}}`,
@@ -43,7 +43,7 @@ func TestExpandModelsAlongExtends_MergesParentFields(t *testing.T) {
 	}).Error; err != nil {
 		t.Fatalf("create parent field: %v", err)
 	}
-	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&RawService{
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&rawService{
 		BaseModel: BaseModel{Id: sql.NullString{String: "s-create", Valid: true}},
 		Name:      "Create",
 		ModelId:   parent.Id,

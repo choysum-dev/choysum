@@ -50,7 +50,7 @@ func (c *countingPrefetchOriginCoordinator) lookup(input string) *meta.Module {
 func TestPrefetchInstallModulesThenResolveUsesCache(t *testing.T) {
 	modulesPath := t.TempDir()
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
 

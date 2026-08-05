@@ -7,9 +7,9 @@ import (
 	"database/sql"
 )
 
-// RawModel is a per-module/file declaration row (IMD may have many rows per logical name).
+// rawModel is a per-module/file declaration row (IMD may have many rows per logical name).
 // Effective projection lives in Model / meta_model (see MergeSameNameModelsByExtensionChain).
-type RawModel struct {
+type rawModel struct {
 	BaseModel `gorm:"embedded"`
 
 	Name        string `gorm:"type:varchar(255);not null;index:idx_raw_model_app_name" json:"name"`
@@ -27,13 +27,13 @@ type RawModel struct {
 
 	CompanyField *string `gorm:"type:varchar(255);" json:"company_field"`
 
-	Decorators []*RawDecorator `gorm:"foreignKey:ModelId;constraint:OnDelete:CASCADE;" json:"decorators"`
-	Services   []*RawService   `gorm:"foreignKey:ModelId;constraint:OnDelete:CASCADE;" json:"services"`
-	Fields     []*RawField     `gorm:"foreignKey:ModelId;constraint:OnDelete:CASCADE;" json:"fields"`
+	Decorators []*rawDecorator `gorm:"foreignKey:ModelId;constraint:OnDelete:CASCADE;" json:"decorators"`
+	Services   []*rawService   `gorm:"foreignKey:ModelId;constraint:OnDelete:CASCADE;" json:"services"`
+	Fields     []*rawField     `gorm:"foreignKey:ModelId;constraint:OnDelete:CASCADE;" json:"fields"`
 	ModuleId   sql.NullString  `gorm:"type:char(20);uniqueIndex:uidx_raw_model_module_path" json:"module_id"`
 	Module     *Module         `gorm:"foreignKey:ModuleId" json:"module"`
 }
 
-func (model *RawModel) TableName() string {
+func (model *rawModel) TableName() string {
 	return "meta_raw_model"
 }

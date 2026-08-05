@@ -62,12 +62,12 @@ var (
 	}
 )
 
-// RemapACLToEffectiveModelIDs rewrites auth ACL meta_model_id (and related field/service
+// remapACLToEffectiveModelIDs rewrites auth ACL meta_model_id (and related field/service
 // FKs) from historical/shell meta_model ids onto the live effective id per (application, name).
 //
 // Safe to run repeatedly. Missing auth_* tables are skipped (fresh DB before auth install).
 // Intended for one-shot upgrades after dual-store migrate; wipe+reseed also works.
-func RemapACLToEffectiveModelIDs(db *gorm.DB) error {
+func remapACLToEffectiveModelIDs(db *gorm.DB) error {
 	if db == nil {
 		return fmt.Errorf("db is nil")
 	}

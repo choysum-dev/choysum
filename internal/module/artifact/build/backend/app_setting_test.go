@@ -597,11 +597,14 @@ func TestSupersedeVirtualAppSettings_DeletesGeneratedRows(t *testing.T) {
 		t.Fatalf("expected handwritten raw AppSetting kept, count=%d", len(handDecls))
 	}
 	var count int64
+	if err := meta.FlushEffective(db, []meta.LogicalKey{{Application: "partner", Name: "AppSetting"}}); err != nil {
+		t.Fatalf("flush: %v", err)
+	}
 	if err := db.Model(&meta.Model{}).Where("name = ?", "AppSetting").Count(&count).Error; err != nil {
 		t.Fatalf("count effective: %v", err)
 	}
 	if count != 1 {
-		t.Fatalf("expected handwritten effective AppSetting after recompute, count=%d", count)
+		t.Fatalf("expected handwritten effective AppSetting after flush, count=%d", count)
 	}
 	if err := db.Model(&meta.Model{}).Where("name = ?", "Partner").Count(&count).Error; err != nil {
 		t.Fatalf("count partner: %v", err)

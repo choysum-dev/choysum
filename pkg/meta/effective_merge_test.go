@@ -60,24 +60,24 @@ func TestMergeSameNameModelsByExtensionChain_PartnerStyleUnion(t *testing.T) {
 func TestMergeEffectiveModel_FromRaw(t *testing.T) {
 	basePath := "@/partner/service/models/partner.ts"
 	bankPath := "@/partner_bank/service/models/partner.ts"
-	raws := []*RawModel{
+	raws := []*rawModel{
 		{
 			BaseModel: BaseModel{UpdatedAt: time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC), Id: sql.NullString{String: "base", Valid: true}},
 			Name:      "Partner",
 			Path:      basePath,
-			Fields:    []*RawField{{Name: "Name"}},
+			Fields:    []*rawField{{Name: "Name"}},
 		},
 		{
 			BaseModel: BaseModel{UpdatedAt: time.Date(2026, 3, 15, 11, 0, 0, 0, time.UTC), Id: sql.NullString{String: "bank", Valid: true}},
 			Name:      "Partner",
 			Path:      bankPath,
 			Extends:   basePath,
-			Fields:    []*RawField{{Name: "BankAccounts"}},
+			Fields:    []*rawField{{Name: "BankAccounts"}},
 		},
 	}
-	merged, err := MergeEffectiveModel(raws)
+	merged, err := mergeEffectiveModel(raws)
 	if err != nil {
-		t.Fatalf("MergeEffectiveModel: %v", err)
+		t.Fatalf("mergeEffectiveModel: %v", err)
 	}
 	names := map[string]bool{}
 	for _, f := range merged.Fields {
@@ -91,22 +91,22 @@ func TestMergeEffectiveModel_FromRaw(t *testing.T) {
 }
 
 func TestMergeEffectiveModel_OmitsThisParameter(t *testing.T) {
-	raws := []*RawModel{{
+	raws := []*rawModel{{
 		BaseModel:   BaseModel{UpdatedAt: time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC), Id: sql.NullString{String: "base", Valid: true}},
 		Name:        "Partner",
 		Application: "partner",
 		Path:        "@/partner/service/models/partner.ts",
-		Services: []*RawService{{
+		Services: []*rawService{{
 			Name: "Create",
-			Parameters: []*RawParameter{
+			Parameters: []*rawParameter{
 				{Name: "this"},
 				{Name: "vals"},
 			},
 		}},
 	}}
-	merged, err := MergeEffectiveModel(raws)
+	merged, err := mergeEffectiveModel(raws)
 	if err != nil {
-		t.Fatalf("MergeEffectiveModel: %v", err)
+		t.Fatalf("mergeEffectiveModel: %v", err)
 	}
 	if merged == nil || len(merged.Services) != 1 {
 		t.Fatalf("expected one service, got %#v", merged)
@@ -200,7 +200,7 @@ func TestRawFieldAndFieldExportedColumnsMatch(t *testing.T) {
 		"ModelId": true, "Model": true, "Decorators": true,
 	}
 	fieldType := reflect.TypeOf(Field{})
-	rawType := reflect.TypeOf(RawField{})
+	rawType := reflect.TypeOf(rawField{})
 	fieldCols := map[string]reflect.Type{}
 	for i := 0; i < fieldType.NumField(); i++ {
 		f := fieldType.Field(i)
@@ -218,15 +218,15 @@ func TestRawFieldAndFieldExportedColumnsMatch(t *testing.T) {
 		rawCols[f.Name] = f.Type
 	}
 	if len(fieldCols) != len(rawCols) {
-		t.Fatalf("Field cols=%d RawField cols=%d", len(fieldCols), len(rawCols))
+		t.Fatalf("Field cols=%d rawField cols=%d", len(fieldCols), len(rawCols))
 	}
 	for name, typ := range fieldCols {
 		got, ok := rawCols[name]
 		if !ok {
-			t.Fatalf("RawField missing column %s", name)
+			t.Fatalf("rawField missing column %s", name)
 		}
 		if got != typ {
-			t.Fatalf("RawField.%s type %v, Field.%s type %v", name, got, name, typ)
+			t.Fatalf("rawField.%s type %v, Field.%s type %v", name, got, name, typ)
 		}
 	}
 }
