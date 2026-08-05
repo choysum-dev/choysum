@@ -33,11 +33,11 @@ func (s *Session) ReleaseSchedules() {
 		if app == "" {
 			continue
 		}
-		if spec, ok := specByName(modelName); ok {
+		if spec, ok := specByName(modelName); ok && spec.scheduled != nil {
 			spec.scheduled.Delete(app)
 		}
 		plan.ScheduledApp = ""
-		s.plans[modelName] = plan
+		s.SetPlan(modelName, plan)
 	}
 }
 
@@ -87,6 +87,12 @@ func (s *Session) rememberInjectPath(modelName, path string) {
 	if s == nil || path == "" {
 		return
 	}
+	if s.lastInjectPath == nil {
+		s.lastInjectPath = make(map[string]string)
+	}
+	if s.injectPaths == nil {
+		s.injectPaths = make(map[string][]string)
+	}
 	s.lastInjectPath[modelName] = path
 	for _, existing := range s.injectPaths[modelName] {
 		if existing == path {
@@ -130,7 +136,9 @@ func (s *Session) releaseScheduleFor(spec *Spec) {
 	if app == "" {
 		return
 	}
-	spec.scheduled.Delete(app)
+	if spec.scheduled != nil {
+		spec.scheduled.Delete(app)
+	}
 	plan.ScheduledApp = ""
-	s.plans[spec.ModelName] = plan
+	s.SetPlan(spec.ModelName, plan)
 }

@@ -6,6 +6,7 @@ package injectappmodel
 import (
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/choysum-dev/choysum/internal/parser"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -37,7 +38,7 @@ func DecideAndInjectOne(sess *Session, modelName string, prebuildResults []*pars
 	if err != nil {
 		return err
 	}
-	sess.plans[spec.ModelName] = plan
+	sess.SetPlan(spec.ModelName, plan)
 	if err := applyInject(sess, spec, plan); err != nil {
 		sess.releaseScheduleFor(spec)
 		return xfmt.Errorf("error injecting %s: %w", spec.ModelName, err)
@@ -59,7 +60,7 @@ func DecideOne(sess *Session, modelName string, prebuildResults []*parser.Parser
 	if err != nil {
 		return plan, err
 	}
-	sess.plans[spec.ModelName] = plan
+	sess.SetPlan(spec.ModelName, plan)
 	return plan, nil
 }
 
@@ -72,7 +73,7 @@ func ApplyInjectOne(sess *Session, modelName string) error {
 	if !ok {
 		return xfmt.Errorf("injectappmodel: unknown Spec %q", modelName)
 	}
-	return applyInject(sess, spec, sess.plans[modelName])
+	return applyInject(sess, spec, sess.Plan(modelName))
 }
 
 func decidePlan(spec *Spec, sess *Session, prebuildResults []*parser.ParserResult) (Plan, error) {
@@ -132,6 +133,9 @@ func decidePlan(spec *Spec, sess *Session, prebuildResults []*parser.ParserResul
 
 func claimNeedInject(spec *Spec, app, modName string) Plan {
 	if spec.ForeignClaimOnOwnerReinject {
+		if spec.scheduled == nil {
+			spec.scheduled = &sync.Map{}
+		}
 		owner, loaded := spec.scheduled.LoadOrStore(app, modName)
 		if loaded {
 			if ownerName, ok := owner.(string); ok && ownerName != modName {
@@ -144,6 +148,9 @@ func claimNeedInject(spec *Spec, app, modName string) Plan {
 }
 
 func claimFirstNeedInject(spec *Spec, app, modName string) Plan {
+	if spec.scheduled == nil {
+		spec.scheduled = &sync.Map{}
+	}
 	owner, loaded := spec.scheduled.LoadOrStore(app, modName)
 	if loaded {
 		if ownerName, ok := owner.(string); ok && ownerName == modName {
@@ -155,7 +162,7 @@ func claimFirstNeedInject(spec *Spec, app, modName string) Plan {
 }
 
 func applyInject(sess *Session, spec *Spec, plan Plan) error {
-	if sess == nil || spec == nil || !plan.NeedInject {
+	if sess == nil || sess.host == nil || spec == nil || !plan.NeedInject {
 		return nil
 	}
 	mod := sess.host.Module()
@@ -168,7 +175,7 @@ func applyInject(sess *Session, spec *Spec, plan Plan) error {
 	path := generatedPath(spec, mod.Path)
 	sess.rememberInjectPath(spec.ModelName, path)
 
-	imports := append(sess.host.EntryPointImports(), sess.allInjectPaths()...)
+	imports := mergeUniqueStrings(sess.host.EntryPointImports(), sess.allInjectPaths())
 	sess.host.SetEntryPointImports(imports)
 
 	modulesPath := strings.TrimSpace(sess.host.ModulesPath())

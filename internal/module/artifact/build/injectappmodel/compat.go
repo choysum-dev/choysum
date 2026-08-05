@@ -11,7 +11,7 @@ func ReleaseSchedule(modelName, app string) {
 	if app == "" {
 		return
 	}
-	if spec, ok := specByName(modelName); ok {
+	if spec, ok := specByName(modelName); ok && spec.scheduled != nil {
 		spec.scheduled.Delete(app)
 	}
 }

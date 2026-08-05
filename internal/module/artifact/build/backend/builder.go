@@ -878,9 +878,11 @@ func (b *ModuleBuilder) persistModuleModels(moduleID string, models []*meta.Mode
 	// single FlushEffective at this persist boundary (EDS-opt-2).
 	if b.injectSession != nil && b.module != nil {
 		app := strings.TrimSpace(b.module.ApplicationStr)
-		for _, name := range []string{"FieldDefault", "AppSetting"} {
-			if b.injectSession.Plan(name).SupersedeInject {
-				keys = append(keys, meta.LogicalKey{Application: app, Name: name})
+		if app != "" {
+			for _, spec := range injectappmodel.Specs() {
+				if b.injectSession.Plan(spec.ModelName).SupersedeInject {
+					keys = append(keys, meta.LogicalKey{Application: app, Name: spec.ModelName})
+				}
 			}
 		}
 	}

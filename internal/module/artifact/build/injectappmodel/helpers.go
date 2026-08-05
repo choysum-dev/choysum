@@ -106,3 +106,30 @@ func dbLoadModels(spec *Spec, db *gorm.DB, app string) ([]*meta.Model, error) {
 		Abstract:    &absFalse,
 	})
 }
+
+// mergeUniqueStrings copies base and extras into a fresh slice, dropping empties and duplicates.
+func mergeUniqueStrings(base []string, extras ...[]string) []string {
+	seen := make(map[string]struct{}, len(base))
+	out := make([]string, 0, len(base))
+	appendOne := func(s string) {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			return
+		}
+		if _, ok := seen[s]; ok {
+			return
+		}
+		seen[s] = struct{}{}
+		out = append(out, s)
+	}
+	for _, s := range base {
+		appendOne(s)
+	}
+	for _, chunk := range extras {
+		for _, s := range chunk {
+			appendOne(s)
+		}
+	}
+	return out
+}
+

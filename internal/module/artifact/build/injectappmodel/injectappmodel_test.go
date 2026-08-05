@@ -47,6 +47,7 @@ func (h *fakeHost) RegisterVirtualSource(path, contents string) { h.virtualPaths
 func newTestSession(t *testing.T, mod *meta.Module) (*Session, *fakeHost, *gorm.DB) {
 	t.Helper()
 	ResetScheduledForTest()
+	t.Cleanup(ResetScheduledForTest)
 	db, err := gorm.Open(sqlite.Open(testMemoryDSN(t, "injectappmodel")), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
@@ -196,7 +197,7 @@ func TestReleaseSchedules_ClearsClaim(t *testing.T) {
 	if err := InjectAppModels(sess, nil); err != nil {
 		t.Fatalf("inject: %v", err)
 	}
-	spec, _ := specByName("FieldDefault")
+	spec := specByNameOrPanic("FieldDefault")
 	if _, ok := spec.scheduled.Load("partner"); !ok {
 		t.Fatal("expected scheduled claim")
 	}
@@ -257,12 +258,23 @@ func TestInjectRegistersVirtualSource(t *testing.T) {
 	if err := InjectAppModels(sess, nil); err != nil {
 		t.Fatalf("inject: %v", err)
 	}
-	want := generatedPath(specByNameOrPanic("FieldDefault"), mod.Path)
-	if _, ok := host.virtualPaths[want]; !ok {
-		t.Fatalf("expected virtual source at %q, got keys %#v", want, host.virtualPaths)
+	wantFD := generatedPath(specByNameOrPanic("FieldDefault"), mod.Path)
+	wantAS := generatedPath(specByNameOrPanic("AppSetting"), mod.Path)
+	if _, ok := host.virtualPaths[wantFD]; !ok {
+		t.Fatalf("expected virtual source at %q, got keys %#v", wantFD, host.virtualPaths)
 	}
-	if sess.LastInjectPath("FieldDefault") != want {
-		t.Fatalf("LastInjectPath = %q want %q", sess.LastInjectPath("FieldDefault"), want)
+	if sess.LastInjectPath("FieldDefault") != wantFD {
+		t.Fatalf("LastInjectPath = %q want %q", sess.LastInjectPath("FieldDefault"), wantFD)
+	}
+	if len(host.entryImports) != 2 {
+		t.Fatalf("entryImports = %#v, want unique [FieldDefault, AppSetting] paths", host.entryImports)
+	}
+	seen := map[string]int{}
+	for _, p := range host.entryImports {
+		seen[p]++
+	}
+	if seen[wantFD] != 1 || seen[wantAS] != 1 {
+		t.Fatalf("entryImports = %#v, want one each of %q and %q", host.entryImports, wantFD, wantAS)
 	}
 }
 

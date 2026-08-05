@@ -100,10 +100,6 @@ func ReplaceModuleDeclarations(db *gorm.DB, moduleID string, models []*Model) ([
 		appendKey(row.Application, row.Name)
 	}
 
-	if err := DeleteRawModelsForModule(db, moduleID); err != nil {
-		return nil, fmt.Errorf("delete previous raw models: %w", err)
-	}
-
 	for _, path := range orderedPaths {
 		m := modelByPath[path]
 		if m == nil {
@@ -111,9 +107,25 @@ func ReplaceModuleDeclarations(db *gorm.DB, moduleID string, models []*Model) ([
 		}
 		m.ModuleId = sql.NullString{String: moduleID, Valid: true}
 		appendKey(m.Application, m.Name)
-		if err := PersistModelTreeAsRaw(db, m); err != nil {
-			return nil, fmt.Errorf("persist raw model %s: %w", path, err)
+	}
+
+	err = db.Transaction(func(tx *gorm.DB) error {
+		if err := DeleteRawModelsForModule(tx, moduleID); err != nil {
+			return fmt.Errorf("delete previous raw models: %w", err)
 		}
+		for _, path := range orderedPaths {
+			m := modelByPath[path]
+			if m == nil {
+				continue
+			}
+			if err := PersistModelTreeAsRaw(tx, m); err != nil {
+				return fmt.Errorf("persist raw model %s: %w", path, err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return keys, nil
 }

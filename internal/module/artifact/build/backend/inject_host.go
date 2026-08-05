@@ -14,6 +14,8 @@ type injectHost struct {
 	b *ModuleBuilder
 }
 
+var _ injectappmodel.Host = injectHost{}
+
 func (h injectHost) Module() *meta.Module {
 	if h.b == nil {
 		return nil

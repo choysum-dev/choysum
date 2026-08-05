@@ -24,7 +24,7 @@ func BundleInjectAppModels(sess *Session, modules []*meta.Module) error {
 		}
 	}
 	if paths := sess.allInjectPaths(); len(paths) > 0 {
-		imports := append(sess.host.EntryPointImports(), paths...)
+		imports := mergeUniqueStrings(sess.host.EntryPointImports(), paths)
 		sess.host.SetEntryPointImports(imports)
 	}
 	return nil

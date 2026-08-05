@@ -68,3 +68,53 @@ func TestEnsureAbstractModelAndReplaceModuleDeclarations(t *testing.T) {
 		t.Fatalf("effective Partner count=%d err=%v", n, err)
 	}
 }
+
+func TestReplaceModuleDeclarations_RollsBackOnPersistFailure(t *testing.T) {
+	dsn := filepath.Join(t.TempDir(), "facade-rollback.sqlite")
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := EnsureDualStoreTables(db); err != nil {
+		t.Fatal(err)
+	}
+
+	modID := "mod-rollback"
+	prevPath := "/m/partner/service/models/old.ts"
+	prev := &Model{
+		BaseModel:   BaseModel{Id: sql.NullString{String: "raw-old", Valid: true}},
+		Name:        "OldPartner",
+		Path:        prevPath,
+		Application: "partner",
+		ModuleId:    sql.NullString{String: modID, Valid: true},
+	}
+	if err := PersistModelTreeAsRaw(db, prev); err != nil {
+		t.Fatalf("seed previous declaration: %v", err)
+	}
+
+	_, err = ReplaceModuleDeclarations(db, modID, []*Model{
+		{
+			BaseModel:   BaseModel{Id: sql.NullString{String: "dup-id", Valid: true}},
+			Name:        "First",
+			Path:        "/m/partner/service/models/first.ts",
+			Application: "partner",
+		},
+		{
+			BaseModel:   BaseModel{Id: sql.NullString{String: "dup-id", Valid: true}},
+			Name:        "Second",
+			Path:        "/m/partner/service/models/second.ts",
+			Application: "partner",
+		},
+	})
+	if err == nil {
+		t.Fatal("expected persist failure for duplicate id")
+	}
+
+	decls, listErr := ListDeclarations(db, DeclarationQuery{ModuleID: modID})
+	if listErr != nil {
+		t.Fatalf("list after failed replace: %v", listErr)
+	}
+	if len(decls) != 1 || decls[0] == nil || decls[0].Path != prevPath || decls[0].Name != "OldPartner" {
+		t.Fatalf("expected previous declaration retained, got %#v", decls)
+	}
+}

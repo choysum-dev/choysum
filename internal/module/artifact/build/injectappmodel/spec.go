@@ -16,7 +16,9 @@ type Spec struct {
 	// in-process builder holds the schedule claim, still NeedInject without adopting release.
 	ForeignClaimOnOwnerReinject bool
 
-	scheduled sync.Map // process-wide NeedInject dedup keyed by application
+	// scheduled is process-wide NeedInject dedup keyed by application.
+	// Pointer so Spec value copies (Specs()) never copy a sync.Map.
+	scheduled *sync.Map
 }
 
 var (
@@ -33,6 +35,9 @@ func Register(spec Spec) {
 		panic("injectappmodel: duplicate Register for " + spec.ModelName)
 	}
 	s := spec
+	if s.scheduled == nil {
+		s.scheduled = &sync.Map{}
+	}
 	specsBy[spec.ModelName] = &s
 	specOrder = append(specOrder, spec.ModelName)
 }
@@ -72,6 +77,9 @@ func specsList() []*Spec {
 // ResetScheduledForTest clears process-wide inject dedup maps (tests only).
 func ResetScheduledForTest() {
 	for _, spec := range specsList() {
+		if spec.scheduled == nil {
+			continue
+		}
 		spec.scheduled.Range(func(key, _ any) bool {
 			spec.scheduled.Delete(key)
 			return true
@@ -81,8 +89,9 @@ func ResetScheduledForTest() {
 
 // ScheduledApps returns the process-wide NeedInject dedup map for modelName (tests).
 func ScheduledApps(modelName string) *sync.Map {
-	if spec, ok := specByName(modelName); ok {
-		return &spec.scheduled
+	spec, ok := specByName(modelName)
+	if !ok || spec.scheduled == nil {
+		panic("injectappmodel: ScheduledApps unknown model " + modelName)
 	}
-	return &sync.Map{}
+	return spec.scheduled
 }
