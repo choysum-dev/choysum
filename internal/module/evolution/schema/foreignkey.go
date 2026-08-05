@@ -158,18 +158,19 @@ func (m *foreignKeyMigrator) resolveTargetModelByPath(targetModelPath string) (*
 		return picked, nil
 	}
 
-	// Raw fallback: Path is unique per ModuleId, so cross-module duplicates are possible.
+	// Declaration fallback: Path is unique per ModuleId, so cross-module duplicates are possible.
 	// Do not filter by the current module — FK targets often live in dependencies.
-	var raws []*meta.RawModel
-	if err := session.Where("path = ?", targetModelPath).Order("id DESC").Find(&raws).Error; err != nil {
+	decls, err := meta.ListDeclarations(session.DB, meta.DeclarationQuery{
+		Path: targetModelPath,
+	})
+	if err != nil {
 		return nil, err
 	}
-	if len(raws) == 0 {
+	if len(decls) == 0 {
 		return nil, nil
 	}
-	converted := meta.RawModelsAsModels(raws)
-	models := make([]meta.Model, 0, len(converted))
-	for _, c := range converted {
+	models := make([]meta.Model, 0, len(decls))
+	for _, c := range decls {
 		if c != nil {
 			models = append(models, *c)
 		}

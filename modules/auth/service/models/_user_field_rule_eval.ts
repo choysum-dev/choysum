@@ -53,7 +53,7 @@ const SYSTEM_FIELDS = new Set(['Id', 'CreatedAt', 'UpdatedAt', 'DeletedAt', 'Dis
 export type FieldRuleEvalInput = {
   appName: string;
   modelName: string;
-  rawModel: string;
+  modelFullName: string;
   roleIds: string[];
 };
 
@@ -145,7 +145,7 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
       message: _t('Model does not exist', { scope: 'service/models/_user_field_rule_eval' }),
     })
       .withGrpcCode(GrpcCode.InvalidArgument)
-      .withMetadata({ model: input.rawModel });
+      .withMetadata({ model: input.modelFullName });
   }
 
   // Load meta fields (needed for deny-all early exits and per-field decisions).

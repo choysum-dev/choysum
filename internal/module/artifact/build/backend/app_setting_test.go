@@ -35,13 +35,10 @@ func newAppSettingTestBuilder(t *testing.T, mod *meta.Module) (*ModuleBuilder, *
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(
-		&meta.Application{}, &meta.Module{},
-		&meta.RawModel{}, &meta.RawField{}, &meta.RawService{}, &meta.RawDecorator{}, &meta.RawArgument{},
-		&meta.RawParameter{}, &meta.RawTypeParameter{},
-		&meta.Model{}, &meta.Field{}, &meta.Service{}, &meta.Decorator{}, &meta.Argument{},
-		&meta.Parameter{}, &meta.TypeParameter{},
-	); err != nil {
+	if err := meta.EnsureDualStoreTables(db); err != nil {
+		t.Fatalf("ensure dual store: %v", err)
+	}
+	if err := db.AutoMigrate(&meta.Application{}, &meta.Module{}); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
 	testScope := newBuilderTestScope()
@@ -53,6 +50,24 @@ func newAppSettingTestBuilder(t *testing.T, mod *meta.Module) (*ModuleBuilder, *
 		buildPlugin:  buildPlugin,
 		entryPoint:   "/virtual/entry.ts",
 	}, db
+}
+
+func seedAppSettingDeclaration(t *testing.T, db *gorm.DB, id, path, application, moduleID string) {
+	t.Helper()
+	m := &meta.Model{
+		Name:        "AppSetting",
+		Path:        path,
+		Application: application,
+	}
+	if id != "" {
+		m.Id = sql.NullString{String: id, Valid: true}
+	}
+	if moduleID != "" {
+		m.ModuleId = sql.NullString{String: moduleID, Valid: true}
+	}
+	if err := meta.PersistModelTreeAsRaw(db, m); err != nil {
+		t.Fatalf("seed AppSetting declaration: %v", err)
+	}
 }
 
 func TestIsGeneratedAppSettingPath(t *testing.T) {
@@ -103,14 +118,7 @@ func TestDecideAppSettingPlan_DBVirtualReinjectsForOwner(t *testing.T) {
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
 	builder, db := newAppSettingTestBuilder(t, owner)
-	if err := db.Create(&meta.RawModel{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "fd1", Valid: true}},
-		Name:        "AppSetting",
-		Path:        "/virtual/modules/partner/service/models/__generated__/app_setting.ts",
-		Application: "partner",
-	}).Error; err != nil {
-		t.Fatalf("seed: %v", err)
-	}
+	seedAppSettingDeclaration(t, db, "fd1", "/virtual/modules/partner/service/models/__generated__/app_setting.ts", "partner", "")
 	plan, err := builder.decideAppSettingPlan(nil)
 	if err != nil {
 		t.Fatalf("decide: %v", err)
@@ -157,14 +165,7 @@ func TestDecideAppSettingPlan_DBHandwrittenSkipsInject(t *testing.T) {
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
 	builder, db := newAppSettingTestBuilder(t, mod)
-	if err := db.Create(&meta.RawModel{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "hand", Valid: true}},
-		Name:        "AppSetting",
-		Path:        "/virtual/modules/partner/service/models/app_setting.ts",
-		Application: "partner",
-	}).Error; err != nil {
-		t.Fatalf("seed: %v", err)
-	}
+	seedAppSettingDeclaration(t, db, "hand", "/virtual/modules/partner/service/models/app_setting.ts", "partner", "")
 	plan, err := builder.decideAppSettingPlan(nil)
 	if err != nil {
 		t.Fatalf("decide: %v", err)
@@ -180,15 +181,7 @@ func TestDecideAppSettingPlan_SupersedeVirtual(t *testing.T) {
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
 	builder, db := newAppSettingTestBuilder(t, mod)
-	if err := db.Create(&meta.RawModel{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "virt", Valid: true}},
-		Name:        "AppSetting",
-		Path:        "/virtual/modules/partner/service/models/__generated__/app_setting.ts",
-		Application: "partner",
-		ModuleId:    sql.NullString{String: "mod-partner", Valid: true},
-	}).Error; err != nil {
-		t.Fatalf("seed: %v", err)
-	}
+	seedAppSettingDeclaration(t, db, "virt", "/virtual/modules/partner/service/models/__generated__/app_setting.ts", "partner", "mod-partner")
 	handPath := filepath.Join(mod.Path, "service/models/app_setting.ts")
 	prebuild := []*parser.ParserResult{{
 		Path:  handPath,
@@ -209,15 +202,7 @@ func TestDecideAppSettingPlan_DuplicateHandwritten(t *testing.T) {
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
 	builder, db := newAppSettingTestBuilder(t, mod)
-	if err := db.Create(&meta.RawModel{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "hand", Valid: true}},
-		Name:        "AppSetting",
-		Path:        "/virtual/modules/partner_bank/service/models/app_setting.ts",
-		Application: "partner",
-		ModuleId:    sql.NullString{String: "mod-bank", Valid: true},
-	}).Error; err != nil {
-		t.Fatalf("seed: %v", err)
-	}
+	seedAppSettingDeclaration(t, db, "hand", "/virtual/modules/partner_bank/service/models/app_setting.ts", "partner", "mod-bank")
 	handPath := filepath.Join(mod.Path, "service/models/app_setting.ts")
 	prebuild := []*parser.ParserResult{{
 		Path:  handPath,
@@ -309,14 +294,7 @@ func TestEnsureAppSettingVirtualImports_SkipsHandwritten(t *testing.T) {
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
 	builder, db := newAppSettingTestBuilder(t, owner)
-	if err := db.Create(&meta.RawModel{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "hand", Valid: true}},
-		Name:        "AppSetting",
-		Path:        "/virtual/modules/partner/service/models/app_setting.ts",
-		Application: "partner",
-	}).Error; err != nil {
-		t.Fatalf("seed handwritten: %v", err)
-	}
+	seedAppSettingDeclaration(t, db, "hand", "/virtual/modules/partner/service/models/app_setting.ts", "partner", "")
 	base := &meta.Module{
 		Name: "base", Path: "/virtual/modules/base",
 		ApplicationStr: "base", ServiceEntryPoint: "service/index.ts",
@@ -345,14 +323,7 @@ func TestEnsureAppSettingVirtualImports_PrefersMetaVirtualPath(t *testing.T) {
 	}
 	builder, db := newAppSettingTestBuilder(t, sibling)
 	metaPath := "/virtual/modules/partner/service/models/__generated__/app_setting.ts"
-	if err := db.Create(&meta.RawModel{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "virt", Valid: true}},
-		Name:        "AppSetting",
-		Path:        metaPath,
-		Application: "partner",
-	}).Error; err != nil {
-		t.Fatalf("seed virt: %v", err)
-	}
+	seedAppSettingDeclaration(t, db, "virt", metaPath, "partner", "")
 	if err := builder.EnsureAppSettingVirtualImports([]*meta.Module{sibling}); err != nil {
 		t.Fatalf("ensure: %v", err)
 	}
@@ -427,14 +398,7 @@ func TestAppSettingPatchCoverage_Branches(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	})
-	if err := db.Create(&meta.RawModel{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "hand2", Valid: true}},
-		Name:        "AppSetting",
-		Path:        "/virtual/modules/partner/service/models/app_setting.ts",
-		Application: "partner",
-	}).Error; err != nil {
-		t.Fatalf("seed: %v", err)
-	}
+	seedAppSettingDeclaration(t, db, "hand2", "/virtual/modules/partner/service/models/app_setting.ts", "partner", "")
 	if err := builder.EnsureAppSettingVirtualImports([]*meta.Module{builder.module}); err != nil {
 		t.Fatalf("handwritten-only ensure: %v", err)
 	}
@@ -597,22 +561,8 @@ func TestSupersedeVirtualAppSettings_DeletesGeneratedRows(t *testing.T) {
 	}
 	builder, db := newAppSettingTestBuilder(t, mod)
 	builder.appSettingPlan = AppSettingPlan{SupersedeVirtual: true}
-	if err := db.Create(&meta.RawModel{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "virt", Valid: true}},
-		Name:        "AppSetting",
-		Path:        "/virtual/modules/partner/service/models/__generated__/app_setting.ts",
-		Application: "partner",
-	}).Error; err != nil {
-		t.Fatalf("seed virt: %v", err)
-	}
-	if err := db.Create(&meta.RawModel{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "hand", Valid: true}},
-		Name:        "AppSetting",
-		Path:        "/virtual/modules/partner_bank/service/models/app_setting.ts",
-		Application: "partner",
-	}).Error; err != nil {
-		t.Fatalf("seed hand: %v", err)
-	}
+	seedAppSettingDeclaration(t, db, "virt", "/virtual/modules/partner/service/models/__generated__/app_setting.ts", "partner", "")
+	seedAppSettingDeclaration(t, db, "hand", "/virtual/modules/partner_bank/service/models/app_setting.ts", "partner", "")
 	if err := db.Create(&meta.Model{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "other", Valid: true}},
 		Name:        "Partner",
@@ -625,18 +575,26 @@ func TestSupersedeVirtualAppSettings_DeletesGeneratedRows(t *testing.T) {
 		t.Fatalf("supersede: %v", err)
 	}
 	var virtRawLeft int64
-	if err := db.Model(&meta.RawModel{}).Where("id = ?", "virt").Count(&virtRawLeft).Error; err != nil {
-		t.Fatalf("count raw virt: %v", err)
+	virtDecls, err := meta.ListDeclarations(db, meta.DeclarationQuery{
+		Application: "partner", Name: "AppSetting",
+		Path: "/virtual/modules/partner/service/models/__generated__/app_setting.ts",
+	})
+	if err != nil {
+		t.Fatalf("list virt: %v", err)
 	}
+	virtRawLeft = int64(len(virtDecls))
 	if virtRawLeft != 0 {
 		t.Fatalf("expected virtual raw AppSetting deleted, count=%d", virtRawLeft)
 	}
-	var handRawLeft int64
-	if err := db.Model(&meta.RawModel{}).Where("id = ?", "hand").Count(&handRawLeft).Error; err != nil {
-		t.Fatalf("count raw hand: %v", err)
+	handDecls, err := meta.ListDeclarations(db, meta.DeclarationQuery{
+		Application: "partner", Name: "AppSetting",
+		Path: "/virtual/modules/partner_bank/service/models/app_setting.ts",
+	})
+	if err != nil {
+		t.Fatalf("list hand: %v", err)
 	}
-	if handRawLeft != 1 {
-		t.Fatalf("expected handwritten raw AppSetting kept, count=%d", handRawLeft)
+	if len(handDecls) != 1 {
+		t.Fatalf("expected handwritten raw AppSetting kept, count=%d", len(handDecls))
 	}
 	var count int64
 	if err := db.Model(&meta.Model{}).Where("name = ?", "AppSetting").Count(&count).Error; err != nil {

@@ -400,16 +400,16 @@ func TestSupersedeVirtualAppSettings_ErrorBranches(t *testing.T) {
 		phase  string // query|delete
 		substr string
 	}{
-		{name: "service pluck", table: "meta_raw_service", phase: "query", substr: "load superseded AppSetting services"},
-		{name: "field pluck", table: "meta_raw_field", phase: "query", substr: "load superseded AppSetting fields"},
-		{name: "decorator pluck", table: "meta_raw_decorator", phase: "query", substr: "load superseded AppSetting decorators"},
-		{name: "argument delete", table: "meta_raw_argument", phase: "delete", substr: "decorator arguments"},
-		{name: "decorator delete", table: "meta_raw_decorator", phase: "delete", substr: "delete superseded AppSetting decorators"},
-		{name: "type param delete", table: "meta_raw_type_parameter", phase: "delete", substr: "type parameters"},
-		{name: "parameter delete", table: "meta_raw_parameter", phase: "delete", substr: "delete superseded AppSetting parameters"},
-		{name: "service delete", table: "meta_raw_service", phase: "delete", substr: "delete superseded AppSetting services"},
-		{name: "field delete", table: "meta_raw_field", phase: "delete", substr: "delete superseded AppSetting fields"},
-		{name: "model delete", table: "meta_raw_model", phase: "delete", substr: "delete superseded virtual AppSetting rows"},
+		{name: "service pluck", table: "meta_raw_service", phase: "query", substr: "load declaration services"},
+		{name: "field pluck", table: "meta_raw_field", phase: "query", substr: "load declaration fields"},
+		{name: "decorator pluck", table: "meta_raw_decorator", phase: "query", substr: "load declaration decorators"},
+		{name: "argument delete", table: "meta_raw_argument", phase: "delete", substr: "delete declaration arguments"},
+		{name: "decorator delete", table: "meta_raw_decorator", phase: "delete", substr: "delete declaration decorators"},
+		{name: "type param delete", table: "meta_raw_type_parameter", phase: "delete", substr: "delete declaration type parameters"},
+		{name: "parameter delete", table: "meta_raw_parameter", phase: "delete", substr: "delete declaration parameters"},
+		{name: "service delete", table: "meta_raw_service", phase: "delete", substr: "delete declaration services"},
+		{name: "field delete", table: "meta_raw_field", phase: "delete", substr: "delete declaration fields"},
+		{name: "model delete", table: "meta_raw_model", phase: "delete", substr: "delete declaration models"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

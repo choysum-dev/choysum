@@ -802,6 +802,28 @@ func TestResolvePlaywrightCommandSearchesAcceptedPreflightRoots(t *testing.T) {
 			t.Fatalf("playwright bin dir = %q, want %q", gotBinDir, filepath.Dir(playwrightPath))
 		}
 	})
+
+	t.Run("ignores PATH playwright when workspace install exists", func(t *testing.T) {
+		workDir := t.TempDir()
+		localBin := filepath.Join(workDir, "node_modules", ".bin", "playwright")
+		writeExecFile(t, localBin, "#!/bin/sh\nexit 0\n")
+
+		pathBinDir := t.TempDir()
+		pathBin := filepath.Join(pathBinDir, "playwright")
+		writeExecFile(t, pathBin, "#!/bin/sh\nexit 0\n")
+		t.Setenv("PATH", pathBinDir)
+
+		gotBin, gotBinDir, err := resolvePlaywrightCommand(RunOptions{WorkDir: workDir})
+		if err != nil {
+			t.Fatalf("resolvePlaywrightCommand() error = %v", err)
+		}
+		if gotBin != localBin {
+			t.Fatalf("playwright bin = %q, want workspace %q (PATH must not win)", gotBin, localBin)
+		}
+		if gotBinDir != filepath.Dir(localBin) {
+			t.Fatalf("playwright bin dir = %q, want %q", gotBinDir, filepath.Dir(localBin))
+		}
+	})
 }
 
 func TestMergeNodeOptionsImport(t *testing.T) {

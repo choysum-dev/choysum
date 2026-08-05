@@ -309,64 +309,13 @@ func DeleteRawModelsForModule(db *gorm.DB, moduleID string) error {
 	if moduleID == "" {
 		return nil
 	}
-	root := db
-	fresh := func() *gorm.DB { return root.Session(&gorm.Session{NewDB: true}).Unscoped() }
-
+	if db == nil {
+		return fmt.Errorf("db is nil")
+	}
+	fresh := db.Session(&gorm.Session{NewDB: true}).Unscoped()
 	var modelIDs []string
-	if err := fresh().Model(&RawModel{}).Where("module_id = ?", moduleID).Pluck("id", &modelIDs).Error; err != nil {
+	if err := fresh.Model(&RawModel{}).Where("module_id = ?", moduleID).Pluck("id", &modelIDs).Error; err != nil {
 		return fmt.Errorf("load raw models: %w", err)
 	}
-	if len(modelIDs) == 0 {
-		return nil
-	}
-
-	var serviceIDs []string
-	if err := fresh().Model(&RawService{}).Where("model_id IN ?", modelIDs).Pluck("id", &serviceIDs).Error; err != nil {
-		return fmt.Errorf("load raw services: %w", err)
-	}
-	var fieldIDs []string
-	if err := fresh().Model(&RawField{}).Where("model_id IN ?", modelIDs).Pluck("id", &fieldIDs).Error; err != nil {
-		return fmt.Errorf("load raw fields: %w", err)
-	}
-
-	decoratorQ := fresh().Model(&RawDecorator{}).Where("model_id IN ?", modelIDs)
-	if len(serviceIDs) > 0 {
-		decoratorQ = decoratorQ.Or("service_id IN ?", serviceIDs)
-	}
-	if len(fieldIDs) > 0 {
-		decoratorQ = decoratorQ.Or("field_id IN ?", fieldIDs)
-	}
-	var decoratorIDs []string
-	if err := decoratorQ.Pluck("id", &decoratorIDs).Error; err != nil {
-		return fmt.Errorf("load raw decorators: %w", err)
-	}
-
-	if len(decoratorIDs) > 0 {
-		if err := deleteWhereFn(fresh(), &RawArgument{}, "decorator_id IN ?", decoratorIDs); err != nil {
-			return fmt.Errorf("delete raw arguments: %w", err)
-		}
-		if err := deleteWhereFn(fresh(), &RawDecorator{}, "id IN ?", decoratorIDs); err != nil {
-			return fmt.Errorf("delete raw decorators: %w", err)
-		}
-	}
-	if len(serviceIDs) > 0 {
-		if err := deleteWhereFn(fresh(), &RawTypeParameter{}, "service_id IN ?", serviceIDs); err != nil {
-			return fmt.Errorf("delete raw type parameters: %w", err)
-		}
-		if err := deleteWhereFn(fresh(), &RawParameter{}, "service_id IN ?", serviceIDs); err != nil {
-			return fmt.Errorf("delete raw parameters: %w", err)
-		}
-		if err := deleteWhereFn(fresh(), &RawService{}, "id IN ?", serviceIDs); err != nil {
-			return fmt.Errorf("delete raw services: %w", err)
-		}
-	}
-	if len(fieldIDs) > 0 {
-		if err := deleteWhereFn(fresh(), &RawField{}, "id IN ?", fieldIDs); err != nil {
-			return fmt.Errorf("delete raw fields: %w", err)
-		}
-	}
-	if err := deleteWhereFn(fresh(), &RawModel{}, "id IN ?", modelIDs); err != nil {
-		return fmt.Errorf("delete raw models: %w", err)
-	}
-	return nil
+	return DeleteDeclarationTrees(db, modelIDs)
 }

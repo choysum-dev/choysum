@@ -331,29 +331,28 @@ func (b *ModuleBuilder) getNewExtends(model *meta.Model) (*meta.Model, error) {
 	if application == "" && b.module != nil {
 		application = strings.TrimSpace(b.module.ApplicationStr)
 	}
-	query := b.runtimeScope.Session().Where("name = ?", model.Name)
+	q := meta.DeclarationQuery{Name: model.Name}
 	if application != "" {
-		query = query.Where("application = ?", application)
+		q.Application = application
 	}
-	var extendsRaws []*meta.RawModel
-	if result := query.Order("id DESC").Find(&extendsRaws); result.Error != nil {
-		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, xfmt.Errorf("error getting last models: %w", result.Error)
-		}
-		return nil, nil
+	extendsDecls, err := meta.ListDeclarations(b.runtimeScope.Session().DB, q)
+	if err != nil {
+		return nil, xfmt.Errorf("error getting last models: %w", err)
 	}
 
-	if len(extendsRaws) > 0 {
-		extendsModelPaths := make([]string, len(extendsRaws))
-		for i, m := range extendsRaws {
+	if len(extendsDecls) > 0 {
+		extendsModelPaths := make([]string, len(extendsDecls))
+		for i, m := range extendsDecls {
+			if m == nil {
+				continue
+			}
 			extendsModelPaths[i] = m.Path
 		}
 
 		if slices.Contains(extendsModelPaths, model.Extends) {
-			lastRaw := extendsRaws[0]
-			if lastRaw.Path != model.Path && lastRaw.Path != model.Extends {
-				converted := meta.RawModelsAsModels([]*meta.RawModel{lastRaw})
-				return converted[0], nil
+			last := extendsDecls[0]
+			if last != nil && last.Path != model.Path && last.Path != model.Extends {
+				return last, nil
 			}
 		}
 	}
@@ -914,14 +913,14 @@ func (b *ModuleBuilder) persistModuleModels(moduleID string, models []*meta.Mode
 	}
 
 	// Collect logical names owned by this module before rewrite (removed declarations).
-	var prevRaw []meta.RawModel
-	if err := db.Model(&meta.RawModel{}).
-		Select("application, name").
-		Where("module_id = ?", moduleID).
-		Find(&prevRaw).Error; err != nil {
+	prevDecls, err := meta.ListDeclarations(db.DB, meta.DeclarationQuery{ModuleID: moduleID})
+	if err != nil {
 		return xfmt.Errorf("list previous raw models: %w", err)
 	}
-	for _, row := range prevRaw {
+	for _, row := range prevDecls {
+		if row == nil {
+			continue
+		}
 		appendKey(row.Application, row.Name)
 	}
 
@@ -1151,26 +1150,17 @@ func (b *ModuleBuilder) loadLatestModelByPath(path string) (*meta.Model, error) 
 	if path == "" {
 		return nil, nil
 	}
-	var raw meta.RawModel
-	if result := b.runtimeScope.Session().
-		Preload("Fields", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
-		Preload("Fields.Decorators", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
-		Preload("Fields.Decorators.Arguments", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
-		Preload("Services", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
-		Preload("Services.Decorators", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
-		Preload("Services.Decorators.Arguments", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
-		Preload("Services.TypeParameters", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
-		Preload("Services.Parameters", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
-		Where("path = ?", path).
-		Order("id DESC").
-		Take(&raw); result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, xfmt.Errorf("error loading parent model by path %s: %w", path, result.Error)
+	decls, err := meta.ListDeclarations(b.runtimeScope.Session().DB, meta.DeclarationQuery{
+		Path:        path,
+		PreloadTree: true,
+	})
+	if err != nil {
+		return nil, xfmt.Errorf("error loading parent model by path %s: %w", path, err)
 	}
-	converted := meta.RawModelsAsModels([]*meta.RawModel{&raw})
-	return converted[0], nil
+	if len(decls) == 0 || decls[0] == nil {
+		return nil, nil
+	}
+	return decls[0], nil
 }
 
 func (b *ModuleBuilder) isAlreadyMaterialized(model *meta.Model) bool {

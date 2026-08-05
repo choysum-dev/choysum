@@ -5,12 +5,14 @@ package lifecycle
 
 import (
 	"database/sql"
+	"errors"
 	"strings"
 	"testing"
 
 	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/rs/xid"
+	"gorm.io/gorm"
 )
 
 func TestModuleUninstallerCleanModelsClearsMetaModelDataOnly(t *testing.T) {
@@ -156,11 +158,9 @@ func TestModuleUninstallerCleanModelsRecomputesAfterExtRawDelete(t *testing.T) {
 	}
 
 	var extRawDeleted meta.RawModel
-	if err := db.Unscoped().Where("id = ?", extRaw.Id.String).First(&extRawDeleted).Error; err != nil {
-		t.Fatalf("ext raw model row should still exist (soft-deleted): %v", err)
-	}
-	if !extRawDeleted.DeletedAt.Valid {
-		t.Fatalf("ext raw model should be soft-deleted")
+	err := db.Unscoped().Where("id = ?", extRaw.Id.String).First(&extRawDeleted).Error
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("ext raw model should be hard-deleted, got err=%v row=%+v", err, extRawDeleted)
 	}
 
 	var baseRawCount int64

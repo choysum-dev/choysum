@@ -102,18 +102,18 @@ func TestGetModuleModelsFiltersAndWrapsDBErrors(t *testing.T) {
 	}
 
 	disabledAutoMigrate := false
-	rawModels := []*meta.RawModel{
+	decls := []*meta.Model{
 		{
 			Name: "Order", Path: "sales/order.ts", ModelTable: "sales_order", ModuleId: module.Id,
-			Fields: []*meta.RawField{newRawFieldWithOptions(t, "Status", `{"type":"selection"}`)},
+			Fields: []*meta.Field{newFieldWithOptions(t, "Status", `{"type":"selection"}`)},
 		},
 		{Name: "Readonly", Path: "sales/readonly.ts", ModelTable: "sales_readonly", ModuleId: module.Id, Readonly: true},
 		{Name: "Disabled", Path: "sales/disabled.ts", ModelTable: "sales_disabled", ModuleId: module.Id, AutoMigrate: &disabledAutoMigrate},
 		{Name: "Abstract", Path: "sales/abstract.ts", ModelTable: "sales_abstract", ModuleId: module.Id, Abstract: true},
 	}
-	for _, model := range rawModels {
-		if err := runtimeScope.Session().Create(model).Error; err != nil {
-			t.Fatalf("create raw model %s: %v", model.Name, err)
+	for _, model := range decls {
+		if err := meta.PersistModelTreeAsRaw(runtimeScope.Session().DB, model); err != nil {
+			t.Fatalf("persist declaration %s: %v", model.Name, err)
 		}
 	}
 
@@ -152,13 +152,13 @@ func TestGetModuleModels_CircularExtends(t *testing.T) {
 		t.Fatalf("create module: %v", err)
 	}
 
-	rawModels := []*meta.RawModel{
+	decls := []*meta.Model{
 		{Name: "A", Path: "/a.ts", ModelTable: "sales_a", ModuleId: module.Id, Extends: "/b.ts"},
 		{Name: "B", Path: "/b.ts", ModelTable: "sales_b", ModuleId: module.Id, Extends: "/a.ts"},
 	}
-	for _, model := range rawModels {
-		if err := runtimeScope.Session().Create(model).Error; err != nil {
-			t.Fatalf("create raw model %s: %v", model.Name, err)
+	for _, model := range decls {
+		if err := meta.PersistModelTreeAsRaw(runtimeScope.Session().DB, model); err != nil {
+			t.Fatalf("persist declaration %s: %v", model.Name, err)
 		}
 	}
 
@@ -186,13 +186,13 @@ func TestNewMigratorPropagatesLoadError(t *testing.T) {
 	if err := runtimeScope.Session().Create(module).Error; err != nil {
 		t.Fatalf("create module: %v", err)
 	}
-	rawModels := []*meta.RawModel{
+	decls := []*meta.Model{
 		{Name: "A", Path: "/a.ts", ModelTable: "sales_a", ModuleId: module.Id, Extends: "/b.ts"},
 		{Name: "B", Path: "/b.ts", ModelTable: "sales_b", ModuleId: module.Id, Extends: "/a.ts"},
 	}
-	for _, model := range rawModels {
-		if err := runtimeScope.Session().Create(model).Error; err != nil {
-			t.Fatalf("create raw model %s: %v", model.Name, err)
+	for _, model := range decls {
+		if err := meta.PersistModelTreeAsRaw(runtimeScope.Session().DB, model); err != nil {
+			t.Fatalf("persist declaration %s: %v", model.Name, err)
 		}
 	}
 	if _, err := NewMigrator(runtimeScope, module); err == nil || !strings.Contains(err.Error(), "expanding model extends") {
@@ -205,8 +205,8 @@ func TestMigratorMigrateWrapsEnsureI18nMetaError(t *testing.T) {
 	if err := i18nmodels.EnsureTranslationTermTable(runtimeScope, "auth"); err != nil {
 		t.Fatalf("EnsureTranslationTermTable() error = %v", err)
 	}
-	if err := runtimeScope.Session().AutoMigrate(&meta.RawModel{}, &meta.RawService{}, &meta.Model{}, &meta.Service{}); err != nil {
-		t.Fatalf("auto migrate meta tables: %v", err)
+	if err := meta.EnsureDualStoreTables(runtimeScope.Session().DB); err != nil {
+		t.Fatalf("ensure dual store: %v", err)
 	}
 	if err := runtimeScope.Session().Exec(`CREATE TRIGGER IF NOT EXISTS block_i18n_raw_model_insert
 		BEFORE INSERT ON meta_raw_model

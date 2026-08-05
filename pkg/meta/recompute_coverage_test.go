@@ -971,12 +971,12 @@ func TestDeleteTrees_LateDeleteHookErrors(t *testing.T) {
 	}
 
 	rawCases := []failCase{
-		{func(v interface{}) bool { _, ok := v.(*RawDecorator); return ok }, "delete raw decorators"},
-		{func(v interface{}) bool { _, ok := v.(*RawTypeParameter); return ok }, "delete raw type parameters"},
-		{func(v interface{}) bool { _, ok := v.(*RawParameter); return ok }, "delete raw parameters"},
-		{func(v interface{}) bool { _, ok := v.(*RawService); return ok }, "delete raw services"},
-		{func(v interface{}) bool { _, ok := v.(*RawField); return ok }, "delete raw fields"},
-		{func(v interface{}) bool { _, ok := v.(*RawModel); return ok }, "delete raw models"},
+		{func(v interface{}) bool { _, ok := v.(*RawDecorator); return ok }, "delete declaration decorators"},
+		{func(v interface{}) bool { _, ok := v.(*RawTypeParameter); return ok }, "delete declaration type parameters"},
+		{func(v interface{}) bool { _, ok := v.(*RawParameter); return ok }, "delete declaration parameters"},
+		{func(v interface{}) bool { _, ok := v.(*RawService); return ok }, "delete declaration services"},
+		{func(v interface{}) bool { _, ok := v.(*RawField); return ok }, "delete declaration fields"},
+		{func(v interface{}) bool { _, ok := v.(*RawModel); return ok }, "delete declaration models"},
 	}
 	for i, tc := range rawCases {
 		db := openRecomputeTestDB(t)

@@ -53,68 +53,42 @@ func (m *moduleUninstaller) cleanModels() error {
 		return xfmt.Errorf("error updating module status: %w", err)
 	}
 
-	// Soft delete related meta records (soft delete won't trigger DB CASCADE).
-	// Collect logical names from declaration-layer raw rows before delete.
-	var victims []modelVictim
-	if err := db.Model(&meta.RawModel{}).
-		Select("id, application, name").
-		Where("module_id = ?", moduleID).
-		Find(&victims).Error; err != nil {
+	// Collect logical names from declaration-layer rows before hard-delete (align with persist).
+	decls, err := meta.ListDeclarations(db.DB, meta.DeclarationQuery{ModuleID: moduleID})
+	if err != nil {
 		return xfmt.Errorf("error listing raw models for uninstall: %w", err)
 	}
 
-	modelIDs := db.Model(&meta.RawModel{}).Select("id").Where("module_id = ?", moduleID)
-	serviceIDs := db.Model(&meta.RawService{}).Select("id").Where("model_id IN (?)", modelIDs)
-	fieldIDs := db.Model(&meta.RawField{}).Select("id").Where("model_id IN (?)", modelIDs)
 	componentIDs := db.Model(&meta.Component{}).Select("id").Where("module_id = ?", moduleID)
 	uiResourceIDs := db.Model(&meta.UiResource{}).Select("id").Where("module_id = ?", moduleID)
-	rawDecoratorIDs := db.Model(&meta.RawDecorator{}).Select("id").Where(
-		"model_id IN (?) OR service_id IN (?) OR field_id IN (?)",
-		modelIDs, serviceIDs, fieldIDs,
-	)
 	// Component decorators still live on the shared meta_decorator table.
 	componentDecoratorIDs := db.Model(&meta.Decorator{}).Select("id").Where(
 		"component_id IN (?)",
 		componentIDs,
 	)
 
-	if err := db.Where("decorator_id IN (?)", rawDecoratorIDs).Delete(&meta.RawArgument{}).Error; err != nil {
-		return xfmt.Errorf("error deleting raw decorator arguments: %w", err)
+	if err := meta.DeleteRawModelsForModule(db.DB, moduleID); err != nil {
+		return xfmt.Errorf("error deleting raw models: %w", err)
 	}
-	if err := db.Where("id IN (?)", rawDecoratorIDs).Delete(&meta.RawDecorator{}).Error; err != nil {
-		return xfmt.Errorf("error deleting raw decorators: %w", err)
+
+	// Rebuild effective projections for touched logical names (EDS-2; no tip rebind).
+	keys := make([]meta.LogicalKey, 0, len(decls))
+	for _, d := range decls {
+		if d == nil {
+			continue
+		}
+		keys = append(keys, meta.LogicalKey{Application: d.Application, Name: d.Name})
 	}
+	if err := meta.RecomputeKeys(db.DB, keys); err != nil {
+		return xfmt.Errorf("error recomputing effective models after uninstall: %w", err)
+	}
+
 	if err := db.Where("decorator_id IN (?)", componentDecoratorIDs).Delete(&meta.Argument{}).Error; err != nil {
 		return xfmt.Errorf("error deleting component decorator arguments: %w", err)
 	}
 	if err := db.Where("id IN (?)", componentDecoratorIDs).Delete(&meta.Decorator{}).Error; err != nil {
 		return xfmt.Errorf("error deleting component decorators: %w", err)
 	}
-	if err := db.Where("service_id IN (?)", serviceIDs).Delete(&meta.RawTypeParameter{}).Error; err != nil {
-		return xfmt.Errorf("error deleting raw type parameters: %w", err)
-	}
-	if err := db.Where("service_id IN (?)", serviceIDs).Delete(&meta.RawParameter{}).Error; err != nil {
-		return xfmt.Errorf("error deleting raw parameters: %w", err)
-	}
-	if err := db.Where("id IN (?)", serviceIDs).Delete(&meta.RawService{}).Error; err != nil {
-		return xfmt.Errorf("error deleting raw services: %w", err)
-	}
-	if err := db.Where("id IN (?)", fieldIDs).Delete(&meta.RawField{}).Error; err != nil {
-		return xfmt.Errorf("error deleting raw fields: %w", err)
-	}
-	if err := db.Where("id IN (?)", modelIDs).Delete(&meta.RawModel{}).Error; err != nil {
-		return xfmt.Errorf("error deleting raw models: %w", err)
-	}
-
-	// Rebuild effective projections for touched logical names (EDS-2; no tip rebind).
-	keys := make([]meta.LogicalKey, 0, len(victims))
-	for _, v := range victims {
-		keys = append(keys, meta.LogicalKey{Application: v.Application, Name: v.Name})
-	}
-	if err := meta.RecomputeKeys(db.DB, keys); err != nil {
-		return xfmt.Errorf("error recomputing effective models after uninstall: %w", err)
-	}
-
 	if err := db.Where("id IN (?)", componentIDs).Delete(&meta.Component{}).Error; err != nil {
 		return xfmt.Errorf("error deleting components: %w", err)
 	}
@@ -147,12 +121,6 @@ func (m *moduleUninstaller) cleanModels() error {
 	}
 
 	return nil
-}
-
-type modelVictim struct {
-	Id          string
-	Application string
-	Name        string
 }
 
 func (m *moduleUninstaller) uninstall() error {

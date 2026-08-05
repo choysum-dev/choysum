@@ -33,49 +33,36 @@ func openMetaeffTestDB(t *testing.T) *gorm.DB {
 func TestRecomputeKeys_PartnerBankCommercialFixture(t *testing.T) {
 	db := openMetaeffTestDB(t)
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-	skip := db.Session(&gorm.Session{SkipHooks: true})
 
-	partner := &meta.RawModel{
+	partner := &meta.Model{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "raw-partner", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
 		Name:        "Partner",
 		Application: "partner",
 		Path:        "/partner/partner.ts",
 		ModuleId:    sql.NullString{String: "mod-partner", Valid: true},
+		Fields:      []*meta.Field{{BaseModel: meta.BaseModel{Id: sql.NullString{String: "f-name", Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Name: "Name"}},
 	}
-	bank := &meta.RawModel{
+	bank := &meta.Model{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "raw-bank", Valid: true}, CreatedAt: ts.Add(time.Hour), UpdatedAt: ts.Add(time.Hour)},
 		Name:        "Partner",
 		Application: "partner",
 		Path:        "/partner_bank/partner.ts",
 		Extends:     "/partner/partner.ts",
 		ModuleId:    sql.NullString{String: "mod-bank", Valid: true},
+		Fields:      []*meta.Field{{BaseModel: meta.BaseModel{Id: sql.NullString{String: "f-bank", Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Name: "BankAccounts"}},
 	}
-	commercial := &meta.RawModel{
+	commercial := &meta.Model{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "raw-commercial", Valid: true}, CreatedAt: ts.Add(2 * time.Hour), UpdatedAt: ts.Add(2 * time.Hour)},
 		Name:        "Partner",
 		Application: "partner",
 		Path:        "/partner_commercial/partner.ts",
 		Extends:     "/partner/partner.ts",
 		ModuleId:    sql.NullString{String: "mod-commercial", Valid: true},
+		Fields:      []*meta.Field{{BaseModel: meta.BaseModel{Id: sql.NullString{String: "f-vat", Valid: true}, CreatedAt: ts, UpdatedAt: ts}, Name: "Vat"}},
 	}
-	for _, row := range []*meta.RawModel{partner, bank, commercial} {
-		if err := skip.Create(row).Error; err != nil {
-			t.Fatalf("create raw: %v", err)
-		}
-	}
-	for _, f := range []struct {
-		id, name, model string
-	}{
-		{"f-name", "Name", "raw-partner"},
-		{"f-bank", "BankAccounts", "raw-bank"},
-		{"f-vat", "Vat", "raw-commercial"},
-	} {
-		if err := skip.Create(&meta.RawField{
-			BaseModel: meta.BaseModel{Id: sql.NullString{String: f.id, Valid: true}, CreatedAt: ts, UpdatedAt: ts},
-			Name:      f.name,
-			ModelId:   sql.NullString{String: f.model, Valid: true},
-		}).Error; err != nil {
-			t.Fatalf("create field %s: %v", f.name, err)
+	for _, row := range []*meta.Model{partner, bank, commercial} {
+		if err := meta.PersistModelTreeAsRaw(db, row); err != nil {
+			t.Fatalf("persist declaration: %v", err)
 		}
 	}
 
@@ -93,11 +80,8 @@ func TestRecomputeKeys_PartnerBankCommercialFixture(t *testing.T) {
 	firstID := first.Id.String
 
 	// Uninstall commercial: field Vat gone, id stable.
-	if err := db.Unscoped().Where("id = ?", commercial.Id.String).Delete(&meta.RawModel{}).Error; err != nil {
-		t.Fatalf("delete commercial raw: %v", err)
-	}
-	if err := db.Unscoped().Where("model_id = ?", commercial.Id.String).Delete(&meta.RawField{}).Error; err != nil {
-		t.Fatalf("delete commercial raw fields: %v", err)
+	if err := meta.DeleteDeclarationTrees(db, []string{commercial.Id.String}); err != nil {
+		t.Fatalf("delete commercial: %v", err)
 	}
 	if err := metaeff.RecomputeEffective(db, "partner", "Partner"); err != nil {
 		t.Fatalf("recompute after commercial: %v", err)
@@ -114,11 +98,8 @@ func TestRecomputeKeys_PartnerBankCommercialFixture(t *testing.T) {
 	}
 
 	// Uninstall bank.
-	if err := db.Unscoped().Where("id = ?", bank.Id.String).Delete(&meta.RawModel{}).Error; err != nil {
-		t.Fatalf("delete bank raw: %v", err)
-	}
-	if err := db.Unscoped().Where("model_id = ?", bank.Id.String).Delete(&meta.RawField{}).Error; err != nil {
-		t.Fatalf("delete bank raw fields: %v", err)
+	if err := meta.DeleteDeclarationTrees(db, []string{bank.Id.String}); err != nil {
+		t.Fatalf("delete bank: %v", err)
 	}
 	if err := metaeff.RecomputeEffective(db, "partner", "Partner"); err != nil {
 		t.Fatalf("recompute after bank: %v", err)
@@ -132,11 +113,8 @@ func TestRecomputeKeys_PartnerBankCommercialFixture(t *testing.T) {
 	}
 
 	// Full uninstall: effective gone.
-	if err := db.Unscoped().Where("id = ?", partner.Id.String).Delete(&meta.RawModel{}).Error; err != nil {
-		t.Fatalf("delete partner raw: %v", err)
-	}
-	if err := db.Unscoped().Where("model_id = ?", partner.Id.String).Delete(&meta.RawField{}).Error; err != nil {
-		t.Fatalf("delete partner raw fields: %v", err)
+	if err := meta.DeleteDeclarationTrees(db, []string{partner.Id.String}); err != nil {
+		t.Fatalf("delete partner: %v", err)
 	}
 	if err := metaeff.RecomputeEffective(db, "partner", "Partner"); err != nil {
 		t.Fatalf("recompute after full: %v", err)

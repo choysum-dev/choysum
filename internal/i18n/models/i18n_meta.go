@@ -5,7 +5,6 @@ package models
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -29,9 +28,9 @@ var i18nServiceMethods = []string{
 	"UpdateTerm",
 }
 
-// EnsureI18nMeta registers declaration-layer I18n + Service methods on meta_raw_*,
-// recomputes the effective projection, and seeds Terminology Editor ACL rows against
-// effective service ids (serviceRef / CheckMethodAccess). Does not register TranslationTerm.
+// EnsureI18nMeta registers declaration-layer I18n + Service methods via the meta
+// declaration facade, recomputes the effective projection, and seeds Terminology
+// Editor ACL rows against effective service ids. Does not register TranslationTerm.
 func EnsureI18nMeta(runtimeScope scope.Scope, application string, moduleID sql.NullString) error {
 	application = strings.TrimSpace(application)
 	if application == "" || application == coreApplication {
@@ -41,24 +40,19 @@ func EnsureI18nMeta(runtimeScope scope.Scope, application string, moduleID sql.N
 		return nil
 	}
 	db := runtimeScope.Session().DB
-	if !db.Migrator().HasTable((&meta.RawModel{}).TableName()) ||
-		!db.Migrator().HasTable((&meta.RawService{}).TableName()) ||
-		!db.Migrator().HasTable((&meta.Model{}).TableName()) ||
-		!db.Migrator().HasTable((&meta.Service{}).TableName()) {
+	if !meta.HasDeclarationCatalog(db) || !meta.HasEffectiveCatalog(db) {
 		return nil
 	}
 
-	raw, err := ensureI18nRawModel(db, application, moduleID)
-	if err != nil {
-		return err
-	}
-	if err := ensureI18nRawServices(db, raw); err != nil {
+	path := fmt.Sprintf("go://i18n/%s", application)
+	decl := meta.NewAbstractReadonlyDeclaration(i18nModelName, path, application, moduleID, i18nServiceMethods)
+	if err := meta.UpsertDeclaration(db, decl); err != nil {
 		return err
 	}
 	// E2 tip scalars (Path, Abstract, …) come from the last-ranked same-name raw, and the
-	// first effective id is minted from pickTipRaw (created_at). Promote both timestamps on
-	// go://i18n/<application> so Path and id stay on the canonical declaration.
-	if err := promoteI18nCanonicalTip(db, application, raw); err != nil {
+	// first effective id is minted from pickTipRaw (created_at). Prefer the canonical path
+	// so Path and id stay on go://i18n/<application>.
+	if err := meta.PreferDeclarationTip(db, application, i18nModelName, path); err != nil {
 		return err
 	}
 	if err := meta.RecomputeEffective(db, application, i18nModelName); err != nil {
@@ -69,103 +63,6 @@ func EnsureI18nMeta(runtimeScope scope.Scope, application string, moduleID sql.N
 		return err
 	}
 	return ensureTerminologyEditorAllows(db, serviceIDs)
-}
-
-// promoteI18nCanonicalTip bumps the canonical raw created_at/updated_at past any same-name
-// sibling so both pickTipRaw (first effective id) and E2 tip scalars use go://i18n/<application>.
-func promoteI18nCanonicalTip(db *gorm.DB, application string, canonical *meta.RawModel) error {
-	if canonical == nil || !canonical.Id.Valid {
-		return fmt.Errorf("I18n canonical raw is nil")
-	}
-	var siblings []meta.RawModel
-	if err := db.Select("id", "created_at", "updated_at").
-		Where("application = ? AND name = ? AND id <> ?", application, i18nModelName, canonical.Id.String).
-		Find(&siblings).Error; err != nil {
-		return fmt.Errorf("load I18n sibling tips: %w", err)
-	}
-	tip := time.Now().UTC()
-	for _, s := range siblings {
-		if !tip.After(s.UpdatedAt) {
-			tip = s.UpdatedAt.Add(time.Millisecond)
-		}
-		if !tip.After(s.CreatedAt) {
-			tip = s.CreatedAt.Add(time.Millisecond)
-		}
-	}
-	if err := db.Model(canonical).UpdateColumns(map[string]any{
-		"created_at": tip,
-		"updated_at": tip,
-	}).Error; err != nil {
-		return fmt.Errorf("promote I18n canonical tip: %w", err)
-	}
-	canonical.CreatedAt = tip
-	canonical.UpdatedAt = tip
-	return nil
-}
-
-func ensureI18nRawModel(db *gorm.DB, application string, moduleID sql.NullString) (*meta.RawModel, error) {
-	path := fmt.Sprintf("go://i18n/%s", application)
-	var raw meta.RawModel
-	// Prefer the canonical go://i18n/<application> declaration. Same-name extensions
-	// share (application, name) and must not receive built-in I18n services.
-	err := db.Where("path = ? AND application = ?", path, application).
-		Order("created_at DESC, id DESC").
-		Take(&raw).Error
-	if err == nil {
-		if moduleID.Valid && (!raw.ModuleId.Valid || raw.ModuleId.String == "") {
-			raw.ModuleId = moduleID
-			if saveErr := db.Save(&raw).Error; saveErr != nil {
-				return nil, fmt.Errorf("update I18n raw Model module: %w", saveErr)
-			}
-		}
-		return &raw, nil
-	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, fmt.Errorf("lookup I18n raw Model: %w", err)
-	}
-
-	raw = meta.RawModel{
-		Name:        i18nModelName,
-		Path:        path,
-		Application: application,
-		ClassName:   i18nModelName,
-		Abstract:    true,
-		Readonly:    true,
-		ModuleId:    moduleID,
-	}
-	falseVal := false
-	raw.AutoMigrate = &falseVal
-	if err := db.Create(&raw).Error; err != nil {
-		return nil, fmt.Errorf("create I18n raw Model: %w", err)
-	}
-	return &raw, nil
-}
-
-func ensureI18nRawServices(db *gorm.DB, raw *meta.RawModel) error {
-	if raw == nil || !raw.Id.Valid {
-		return fmt.Errorf("I18n raw Model is nil")
-	}
-	for _, methodName := range i18nServiceMethods {
-		var svc meta.RawService
-		err := db.Where("model_id = ? AND name = ?", raw.Id.String, methodName).Take(&svc).Error
-		if err == nil {
-			continue
-		}
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("lookup raw Service %s: %w", methodName, err)
-		}
-		svc = meta.RawService{
-			Name:                  methodName,
-			OriginModelPath:       raw.Path,
-			AccessibilityModifier: "public",
-			IsStatic:              true,
-			ModelId:               raw.Id,
-		}
-		if err := db.Create(&svc).Error; err != nil {
-			return fmt.Errorf("create raw Service %s: %w", methodName, err)
-		}
-	}
-	return nil
 }
 
 func loadEffectiveI18nServiceIDs(db *gorm.DB, application string) (map[string]string, error) {

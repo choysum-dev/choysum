@@ -11,7 +11,6 @@ import (
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
-	"gorm.io/gorm"
 )
 
 type Migrator interface {
@@ -36,23 +35,16 @@ func newMigrator(runtimeScope scope.Scope, module *meta.Module) (*migrator, erro
 }
 
 func getModuleModels(runtimeScope scope.Scope, module *meta.Module) ([]*meta.Model, error) {
-	var rawModels []*meta.RawModel
-
-	if result := runtimeScope.Session().
-		Preload("Fields", func(db *gorm.DB) *gorm.DB {
-			return db.Order("id ASC")
-		}).
-		Preload("Fields.Decorators", func(db *gorm.DB) *gorm.DB {
-			return db.Order("id ASC")
-		}).
-		Preload("Fields.Decorators.Arguments", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
-		Where(&meta.RawModel{ModuleId: module.Id}).
-		Where("abstract = ?", false).
-		Find(&rawModels); result.Error != nil {
-		return nil, xfmt.Errorf("error getting models by module id: %w", result.Error)
+	absFalse := false
+	moduleModels, err := meta.ListDeclarations(runtimeScope.Session().DB, meta.DeclarationQuery{
+		ModuleID:    module.Id.String,
+		Abstract:    &absFalse,
+		PreloadTree: true,
+	})
+	if err != nil {
+		return nil, xfmt.Errorf("error getting models by module id: %w", err)
 	}
 
-	moduleModels := meta.RawModelsAsModels(rawModels)
 	// Declaration-only raw rows omit inherited columns; expand Extends in memory for DDL.
 	if err := meta.ExpandModelsAlongExtends(runtimeScope.Session().DB, moduleModels); err != nil {
 		return nil, xfmt.Errorf("error expanding model extends for schema: %w", err)

@@ -842,18 +842,18 @@ export default class User extends BaseModel {
         return { kind: 'false', reason: 'missing_identity_user_id' };
       }
 
-      const rawModel = String(model || '').trim();
+      const modelFullName = String(model || '').trim();
       const rawOp = String(op || '')
         .trim()
         .toLowerCase();
-      if (!rawModel) return { kind: 'false', reason: 'missing_model' };
+      if (!modelFullName) return { kind: 'false', reason: 'missing_model' };
 
       const opValue = rawOp as RecordRuleOp;
       if (!['read', 'write', 'create', 'delete'].includes(opValue)) {
         return { kind: 'false', reason: 'invalid_op' };
       }
 
-      const parsedModel = parseModelFullName(rawModel);
+      const parsedModel = parseModelFullName(modelFullName);
       if (!parsedModel) return { kind: 'false', reason: 'invalid_model_full_name' };
 
       const { enabledCompanyIds } = getCompanyScopeFromRequestContext();
@@ -896,22 +896,22 @@ export default class User extends BaseModel {
         }).withGrpcCode(GrpcCode.Unauthenticated);
       }
 
-      const rawModel = String(model || '').trim();
-      if (!rawModel) {
+      const modelFullName = String(model || '').trim();
+      if (!modelFullName) {
         throw newAuthError({
           code: AuthErrCode.VALIDATION_FAILED,
           message: _t('Missing model name (model)', { scope: 'service/models/user' }),
         }).withGrpcCode(GrpcCode.InvalidArgument);
       }
 
-      const parsedModel = parseModelFullName(rawModel);
+      const parsedModel = parseModelFullName(modelFullName);
       if (!parsedModel) {
         throw newAuthError({
           code: AuthErrCode.VALIDATION_FAILED,
           message: _t('Invalid model full name; expected "<app>.<Model>"', { scope: 'service/models/user' }),
         })
           .withGrpcCode(GrpcCode.InvalidArgument)
-          .withMetadata({ model: rawModel });
+          .withMetadata({ model: modelFullName });
       }
 
       return await withPermissionGraphBypass(async () => {
@@ -920,7 +920,7 @@ export default class User extends BaseModel {
         return await evaluateFieldRules({
           appName: parsedModel.appName,
           modelName: parsedModel.modelName,
-          rawModel,
+          modelFullName,
           roleIds,
         });
       });

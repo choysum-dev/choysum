@@ -227,27 +227,17 @@ END`).Error; err != nil {
 			},
 		},
 		{
-			name:    "raw decorator arguments",
-			wantMsg: "error deleting raw decorator arguments",
+			name:    "raw models",
+			wantMsg: "error deleting raw models",
 			setup: func(t *testing.T, db *gorm.DB, _ cleanModelsSeed) {
 				dropMetaTable(t, db, &meta.RawArgument{})
-			},
-		},
-		{
-			name:    "raw decorators",
-			wantMsg: "error deleting raw decorators",
-			setup: func(t *testing.T, db *gorm.DB, seed cleanModelsSeed) {
-				if err := db.Unscoped().Delete(seed.rawArgument).Error; err != nil {
-					t.Fatalf("delete raw argument: %v", err)
-				}
-				blockMetaSoftDeletes(t, db, "meta_raw_decorator")
 			},
 		},
 		{
 			name:    "component decorator arguments",
 			wantMsg: "error deleting component decorator arguments",
 			setup: func(t *testing.T, db *gorm.DB, seed cleanModelsSeed) {
-				deleteRawCleanModelsPrefix(t, db, seed)
+				deleteRawModelTree(t, db, seed)
 				dropMetaTable(t, db, &meta.Argument{})
 			},
 		},
@@ -255,7 +245,7 @@ END`).Error; err != nil {
 			name:    "component decorators",
 			wantMsg: "error deleting component decorators",
 			setup: func(t *testing.T, db *gorm.DB, seed cleanModelsSeed) {
-				deleteRawCleanModelsPrefix(t, db, seed)
+				deleteRawModelTree(t, db, seed)
 				if err := db.Unscoped().Delete(seed.compArgument).Error; err != nil {
 					t.Fatalf("delete component argument: %v", err)
 				}
@@ -263,104 +253,9 @@ END`).Error; err != nil {
 			},
 		},
 		{
-			name:    "raw type parameters",
-			wantMsg: "error deleting raw type parameters",
-			setup: func(t *testing.T, db *gorm.DB, seed cleanModelsSeed) {
-				deleteRawCleanModelsPrefix(t, db, seed)
-				if err := db.Unscoped().Delete(seed.compArgument).Error; err != nil {
-					t.Fatalf("delete component argument: %v", err)
-				}
-				if err := db.Unscoped().Delete(seed.compDecorator).Error; err != nil {
-					t.Fatalf("delete component decorator: %v", err)
-				}
-				dropMetaTable(t, db, &meta.RawTypeParameter{})
-			},
-		},
-		{
-			name:    "raw parameters",
-			wantMsg: "error deleting raw parameters",
-			setup: func(t *testing.T, db *gorm.DB, seed cleanModelsSeed) {
-				deleteRawCleanModelsPrefix(t, db, seed)
-				if err := db.Unscoped().Delete(seed.compArgument).Error; err != nil {
-					t.Fatalf("delete component argument: %v", err)
-				}
-				if err := db.Unscoped().Delete(seed.compDecorator).Error; err != nil {
-					t.Fatalf("delete component decorator: %v", err)
-				}
-				if err := db.Unscoped().Delete(seed.rawTypeParam).Error; err != nil {
-					t.Fatalf("delete raw type parameter: %v", err)
-				}
-				dropMetaTable(t, db, &meta.RawParameter{})
-			},
-		},
-		{
-			name:    "raw services",
-			wantMsg: "error deleting raw services",
-			setup: func(t *testing.T, db *gorm.DB, seed cleanModelsSeed) {
-				deleteRawCleanModelsPrefix(t, db, seed)
-				if err := db.Unscoped().Delete(seed.compArgument).Error; err != nil {
-					t.Fatalf("delete component argument: %v", err)
-				}
-				if err := db.Unscoped().Delete(seed.compDecorator).Error; err != nil {
-					t.Fatalf("delete component decorator: %v", err)
-				}
-				blockMetaSoftDeletes(t, db, "meta_raw_service")
-			},
-		},
-		{
-			name:    "raw fields",
-			wantMsg: "error deleting raw fields",
-			setup: func(t *testing.T, db *gorm.DB, seed cleanModelsSeed) {
-				deleteRawCleanModelsPrefix(t, db, seed)
-				if err := db.Unscoped().Delete(seed.compArgument).Error; err != nil {
-					t.Fatalf("delete component argument: %v", err)
-				}
-				if err := db.Unscoped().Delete(seed.compDecorator).Error; err != nil {
-					t.Fatalf("delete component decorator: %v", err)
-				}
-				if err := db.Unscoped().Delete(seed.rawService).Error; err != nil {
-					t.Fatalf("delete raw service: %v", err)
-				}
-				blockMetaSoftDeletes(t, db, "meta_raw_field")
-			},
-		},
-		{
-			name:    "raw models",
-			wantMsg: "error deleting raw models",
-			setup: func(t *testing.T, db *gorm.DB, seed cleanModelsSeed) {
-				deleteRawCleanModelsPrefix(t, db, seed)
-				if err := db.Unscoped().Delete(seed.compArgument).Error; err != nil {
-					t.Fatalf("delete component argument: %v", err)
-				}
-				if err := db.Unscoped().Delete(seed.compDecorator).Error; err != nil {
-					t.Fatalf("delete component decorator: %v", err)
-				}
-				if err := db.Unscoped().Delete(seed.rawService).Error; err != nil {
-					t.Fatalf("delete raw service: %v", err)
-				}
-				if err := db.Unscoped().Delete(seed.rawField).Error; err != nil {
-					t.Fatalf("delete raw field: %v", err)
-				}
-				blockMetaSoftDeletes(t, db, "meta_raw_model")
-			},
-		},
-		{
 			name:    "recompute effective",
 			wantMsg: "error recomputing effective models after uninstall",
 			setup: func(t *testing.T, db *gorm.DB, seed cleanModelsSeed) {
-				deleteRawCleanModelsPrefix(t, db, seed)
-				if err := db.Unscoped().Delete(seed.compArgument).Error; err != nil {
-					t.Fatalf("delete component argument: %v", err)
-				}
-				if err := db.Unscoped().Delete(seed.compDecorator).Error; err != nil {
-					t.Fatalf("delete component decorator: %v", err)
-				}
-				if err := db.Unscoped().Delete(seed.rawService).Error; err != nil {
-					t.Fatalf("delete raw service: %v", err)
-				}
-				if err := db.Unscoped().Delete(seed.rawField).Error; err != nil {
-					t.Fatalf("delete raw field: %v", err)
-				}
 				dropMetaTable(t, db, &meta.Model{})
 			},
 		},
@@ -369,6 +264,12 @@ END`).Error; err != nil {
 			wantMsg: "error deleting components",
 			setup: func(t *testing.T, db *gorm.DB, seed cleanModelsSeed) {
 				deleteRawModelTree(t, db, seed)
+				if err := db.Unscoped().Delete(seed.compArgument).Error; err != nil {
+					t.Fatalf("delete component argument: %v", err)
+				}
+				if err := db.Unscoped().Delete(seed.compDecorator).Error; err != nil {
+					t.Fatalf("delete component decorator: %v", err)
+				}
 				blockMetaSoftDeletes(t, db, "meta_component")
 			},
 		},

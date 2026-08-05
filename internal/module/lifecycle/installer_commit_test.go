@@ -160,12 +160,12 @@ func TestCommitInstallNewMigratorError(t *testing.T) {
 	if err := runtimeScope.Session().Create(mod).Error; err != nil {
 		t.Fatalf("create module: %v", err)
 	}
-	for _, row := range []*meta.RawModel{
+	for _, row := range []*meta.Model{
 		{Name: "A", Path: "/a.ts", ModelTable: "a", ModuleId: mod.Id, Extends: "/b.ts"},
 		{Name: "B", Path: "/b.ts", ModelTable: "b", ModuleId: mod.Id, Extends: "/a.ts"},
 	} {
-		if err := runtimeScope.Session().Create(row).Error; err != nil {
-			t.Fatalf("create circular raw: %v", err)
+		if err := meta.PersistModelTreeAsRaw(runtimeScope.Session().DB, row); err != nil {
+			t.Fatalf("create circular declaration: %v", err)
 		}
 	}
 	installer := &moduleInstaller{
@@ -200,12 +200,12 @@ func TestCommitUpgradeNewMigratorError(t *testing.T) {
 		ApplicationStr: "auth",
 	}
 	target.Id = mod.Id
-	for _, row := range []*meta.RawModel{
+	for _, row := range []*meta.Model{
 		{Name: "A", Path: "/ua.ts", ModelTable: "ua", ModuleId: target.Id, Extends: "/ub.ts"},
 		{Name: "B", Path: "/ub.ts", ModelTable: "ub", ModuleId: target.Id, Extends: "/ua.ts"},
 	} {
-		if err := runtimeScope.Session().Create(row).Error; err != nil {
-			t.Fatalf("create circular raw: %v", err)
+		if err := meta.PersistModelTreeAsRaw(runtimeScope.Session().DB, row); err != nil {
+			t.Fatalf("create circular declaration: %v", err)
 		}
 	}
 	upgrader := &moduleUpgrader{

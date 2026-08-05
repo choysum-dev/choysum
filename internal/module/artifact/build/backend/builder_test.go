@@ -1487,7 +1487,7 @@ func TestPersistModuleModels_ErrorBranches(t *testing.T) {
 
 	t.Run("list previous raw models", func(t *testing.T) {
 		db, builder := openPersistDB("prev-raw")
-		if err := db.Exec("ALTER TABLE meta_raw_model RENAME COLUMN application TO application_broken").Error; err != nil {
+		if err := db.Migrator().DropTable(&meta.RawModel{}); err != nil {
 			t.Fatal(err)
 		}
 		err := builder.persistModuleModels("module-1", models)

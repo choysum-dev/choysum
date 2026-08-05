@@ -1273,7 +1273,7 @@ test('P4 field rule deny-default: no roles denies all non-system fields', async 
     return await evaluateFieldRules({
       appName: 'auth',
       modelName: 'CompanyScopedResource',
-      rawModel: 'auth.CompanyScopedResource',
+      modelFullName: 'auth.CompanyScopedResource',
       roleIds: [],
     });
   }, { merge: false });
@@ -1301,7 +1301,7 @@ test('P4 field rule deny-default: only system fields yields no_fields_deny_by_de
       return await evaluateFieldRules({
         appName: 'auth',
         modelName: 'CompanyScopedResource',
-        rawModel: 'auth.CompanyScopedResource',
+        modelFullName: 'auth.CompanyScopedResource',
         roleIds: ['role_unused'],
       });
     }, { merge: false });
@@ -1340,7 +1340,7 @@ test('P4 field rule deny-default: roles without FR rows deny all non-system fiel
       return await evaluateFieldRules({
         appName: 'auth',
         modelName: 'CompanyScopedResource',
-        rawModel: 'auth.CompanyScopedResource',
+        modelFullName: 'auth.CompanyScopedResource',
         roleIds: [roleId],
       });
     },
@@ -1397,7 +1397,7 @@ test('P4 field rule deny-default: uncovered field is denied when other FR rows e
       return await evaluateFieldRules({
         appName: 'auth',
         modelName: 'CompanyScopedResource',
-        rawModel: 'auth.CompanyScopedResource',
+        modelFullName: 'auth.CompanyScopedResource',
         roleIds: [roleId],
       });
     },
@@ -1473,7 +1473,7 @@ test('PR-D-2: wide model allow + field-scope deny clamps sensitive column', asyn
       return await evaluateFieldRules({
         appName: 'auth',
         modelName: 'CompanyScopedResource',
-        rawModel: 'auth.CompanyScopedResource',
+        modelFullName: 'auth.CompanyScopedResource',
         roleIds: [roleId],
       });
     },
@@ -1517,7 +1517,7 @@ test('P4 field rule deny-default: null FR Search result denies all non-system fi
         return await evaluateFieldRules({
           appName: 'auth',
           modelName: 'CompanyScopedResource',
-          rawModel: 'auth.CompanyScopedResource',
+          modelFullName: 'auth.CompanyScopedResource',
           roleIds: [roleId],
         });
       },
@@ -1581,7 +1581,7 @@ test('P4 field rule observability: hitRuleIds collect present Ids and tolerate m
         return await evaluateFieldRules({
           appName: 'auth',
           modelName: 'CompanyScopedResource',
-          rawModel: 'auth.CompanyScopedResource',
+          modelFullName: 'auth.CompanyScopedResource',
           roleIds: [roleId],
         });
       },

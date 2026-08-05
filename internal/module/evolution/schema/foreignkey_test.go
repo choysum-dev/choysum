@@ -80,9 +80,9 @@ func TestForeignKeyMigratorRuntimePaths(t *testing.T) {
 		if err := runtimeScope.Session().Create(module).Error; err != nil {
 			t.Fatalf("create module: %v", err)
 		}
-		target := &meta.RawModel{Name: "User", Path: "sales/user.ts", ModelTable: "sales_user", ModuleId: module.Id}
-		if err := runtimeScope.Session().Create(target).Error; err != nil {
-			t.Fatalf("create target raw model: %v", err)
+		target := &meta.Model{Name: "User", Path: "sales/user.ts", ModelTable: "sales_user", ModuleId: module.Id}
+		if err := meta.PersistModelTreeAsRaw(runtimeScope.Session().DB, target); err != nil {
+			t.Fatalf("persist target declaration: %v", err)
 		}
 		source := &meta.Model{Name: "Order", Path: "sales/order.ts", ModelTable: "sales_order", ModuleId: module.Id, Fields: []*meta.Field{newRelationField("OwnerId", "sales/user", `{"type":"ManyToOne","relation":{"onDelete":"CASCADE"}}`)}}
 
@@ -132,12 +132,12 @@ func TestForeignKeyMigratorRuntimePaths(t *testing.T) {
 		if err := runtimeScope.Session().Create(modB).Error; err != nil {
 			t.Fatalf("create modB: %v", err)
 		}
-		for _, row := range []*meta.RawModel{
+		for _, row := range []*meta.Model{
 			{Name: "User", Path: "shared/user.ts", ModelTable: "mod_a_user", ModuleId: modA.Id},
 			{Name: "User", Path: "shared/user.ts", ModelTable: "mod_b_user", ModuleId: modB.Id},
 		} {
-			if err := runtimeScope.Session().Create(row).Error; err != nil {
-				t.Fatalf("create raw: %v", err)
+			if err := meta.PersistModelTreeAsRaw(runtimeScope.Session().DB, row); err != nil {
+				t.Fatalf("persist declaration: %v", err)
 			}
 		}
 		fkMigrator := newForeignKeyMigrator(runtimeScope, modA, nil).(*foreignKeyMigrator)
@@ -194,7 +194,7 @@ func TestForeignKeyMigratorRuntimePaths(t *testing.T) {
 		runtimeScope2 := newSchemaTestScope(t)
 		migrateSchemaMetaTables(t, runtimeScope2.Session())
 		fkMigrator2 := newForeignKeyMigrator(runtimeScope2, nil, nil).(*foreignKeyMigrator)
-		if err := runtimeScope2.Session().Migrator().DropTable(&meta.RawModel{}); err != nil {
+		if err := runtimeScope2.Session().Migrator().DropTable("meta_raw_model"); err != nil {
 			t.Fatalf("drop meta_raw_model: %v", err)
 		}
 		if _, err := fkMigrator2.resolveTargetModelByPath("any/path.ts"); err == nil {
