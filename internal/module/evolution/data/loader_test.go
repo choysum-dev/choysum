@@ -439,9 +439,9 @@ func seedLoaderTestSchema(t *testing.T, db *gorm.DB) {
 
 func loaderTestModelID(t *testing.T, db *gorm.DB, app, name string) string {
 	t.Helper()
-	var m meta.Model
-	if err := db.Where("application = ? AND name = ?", app, name).First(&m).Error; err != nil {
-		t.Fatalf("lookup meta_model %s.%s: %v", app, name, err)
+	m, err := meta.LookupEffectiveModel(db, app, name)
+	if err != nil {
+		t.Fatalf("lookup effective meta_model %s.%s: %v", app, name, err)
 	}
 	if !m.Id.Valid || m.Id.String == "" {
 		t.Fatalf("meta_model %s.%s has empty id", app, name)
