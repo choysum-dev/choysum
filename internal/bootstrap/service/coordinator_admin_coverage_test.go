@@ -140,6 +140,69 @@ func TestDefaultUpdateAdminAndMarkerDBLookupFailures(t *testing.T) {
 			t.Fatalf("error = %q, want generic admin save failure", err.Error())
 		}
 	})
+
+	t.Run("effective model not found", func(t *testing.T) {
+		c, db := newFreshnessTestCoordinator(t)
+		c.now = func() time.Time { return fixedNow }
+		if err := db.AutoMigrate(&metadata.ModelData{}, &meta.Model{}); err != nil {
+			t.Fatalf("auto migrate: %v", err)
+		}
+		if err := db.Create(&metadata.ModelData{
+			Module: "auth", Name: "user_admin", Application: "auth", ModelName: "User", ModelId: "missing", ResID: "user-1",
+		}).Error; err != nil {
+			t.Fatalf("seed model_data: %v", err)
+		}
+
+		err := c.defaultUpdateAdminAndMarker(context.Background(), initializeInput{
+			AdminUsername: "admin",
+			Password:      wirePassword,
+		})
+		if err == nil {
+			t.Fatal("expected admin update failure")
+		}
+		if got := bootstrapErrorCode(err); got != bootstrapErrCodeAdminUpdateFailed {
+			t.Fatalf("bootstrapErrorCode(err) = %q, want %q", got, bootstrapErrCodeAdminUpdateFailed)
+		}
+		if !strings.Contains(err.Error(), "administrator account schema is not available") {
+			t.Fatalf("error = %q, want schema unavailable message", err.Error())
+		}
+	})
+
+	t.Run("effective model table missing", func(t *testing.T) {
+		c, db := newFreshnessTestCoordinator(t)
+		c.now = func() time.Time { return fixedNow }
+		if err := db.AutoMigrate(&metadata.ModelData{}, &meta.Model{}); err != nil {
+			t.Fatalf("auto migrate: %v", err)
+		}
+		authUserModel := &meta.Model{
+			Application: "auth",
+			Name:        "User",
+			ModelTable:  "  ",
+			Path:        "/tmp",
+		}
+		if err := db.Create(authUserModel).Error; err != nil {
+			t.Fatalf("seed auth.User: %v", err)
+		}
+		if err := db.Create(&metadata.ModelData{
+			Module: "auth", Name: "user_admin", Application: "auth", ModelName: "User", ModelId: authUserModel.Id.String, ResID: "user-1",
+		}).Error; err != nil {
+			t.Fatalf("seed model_data: %v", err)
+		}
+
+		err := c.defaultUpdateAdminAndMarker(context.Background(), initializeInput{
+			AdminUsername: "admin",
+			Password:      wirePassword,
+		})
+		if err == nil {
+			t.Fatal("expected admin update failure")
+		}
+		if got := bootstrapErrorCode(err); got != bootstrapErrCodeAdminUpdateFailed {
+			t.Fatalf("bootstrapErrorCode(err) = %q, want %q", got, bootstrapErrCodeAdminUpdateFailed)
+		}
+		if !strings.Contains(err.Error(), "administrator account schema is not available") {
+			t.Fatalf("error = %q, want schema unavailable message", err.Error())
+		}
+	})
 }
 
 func TestDefaultUpdateAdminAndMarkerSuccessUpsertsBootstrapSettings(t *testing.T) {

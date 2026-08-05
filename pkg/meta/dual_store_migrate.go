@@ -65,6 +65,7 @@ var (
 	persistEffectiveProjectionFn = func(db *gorm.DB, merged *Model, effectiveID string) error {
 		return persistEffectiveProjection(db, merged, effectiveID, nil)
 	}
+	remapACLToEffectiveModelIDsFn = RemapACLToEffectiveModelIDs
 )
 
 // EnsureDualStoreTables creates raw + effective catalog tables (idempotent).
@@ -132,7 +133,7 @@ func MigrateIMDCatalogToDualStore(db *gorm.DB) error {
 	if err := ensureEffectiveAppNameUniqueIndex(db); err != nil {
 		return err
 	}
-	return RemapACLToEffectiveModelIDs(db)
+	return remapACLToEffectiveModelIDsFn(db)
 }
 
 // migrateIMDSources copies live IMD sources into meta_raw_* then rebuilds effective rows.
@@ -180,7 +181,7 @@ func RecomputeAllEffectiveFromRaw(db *gorm.DB) error {
 	if err := EnsureEffectiveAppNameUniqueIndex(db); err != nil {
 		return err
 	}
-	return RemapACLToEffectiveModelIDs(db)
+	return remapACLToEffectiveModelIDsFn(db)
 }
 
 // EnsureEffectiveAppNameUniqueIndex enforces one live effective row per (application, name).

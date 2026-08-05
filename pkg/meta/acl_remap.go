@@ -11,6 +11,57 @@ import (
 	"gorm.io/gorm"
 )
 
+// Test hooks (production defaults). Override in *_test.go to force error paths.
+var (
+	aclLoadLiveModels = func(db *gorm.DB) ([]Model, error) {
+		var live []Model
+		err := db.Select("id", "application", "name", "module_id", "updated_at").Find(&live).Error
+		return live, err
+	}
+	aclLoadAllModels = func(db *gorm.DB) ([]Model, error) {
+		var all []Model
+		err := db.Unscoped().Select("id", "application", "name").Find(&all).Error
+		return all, err
+	}
+	aclExec = func(db *gorm.DB, sql string, values ...interface{}) error {
+		return db.Exec(sql, values...).Error
+	}
+	aclHasTable = func(db *gorm.DB, name string) bool {
+		return db.Migrator().HasTable(name)
+	}
+	aclLoadFieldRules = func(db *gorm.DB, dest interface{}) error {
+		return db.Table("auth_role_field_rule").
+			Select("id", "meta_model_id", "meta_field_id").
+			Where("meta_field_id IS NOT NULL AND meta_field_id <> ''").
+			Find(dest).Error
+	}
+	aclTakeFieldUnscoped = func(db *gorm.DB, dest interface{}, fieldID string) error {
+		return db.Unscoped().Select("id", "name", "model_id").Where("id = ?", fieldID).Take(dest).Error
+	}
+	aclTakeFieldByModelName = func(db *gorm.DB, dest interface{}, modelID, name string) error {
+		return db.Where("model_id = ? AND name = ?", modelID, name).Take(dest).Error
+	}
+	aclLoadMethodAccess = func(db *gorm.DB, dest interface{}) error {
+		return db.Table("auth_role_method_access").
+			Select("id", "meta_service_id").
+			Where("meta_service_id IS NOT NULL AND meta_service_id <> ''").
+			Find(dest).Error
+	}
+	aclTakeServiceUnscoped = func(db *gorm.DB, dest interface{}, svcID string) error {
+		return db.Unscoped().Select("id", "name", "model_id").Where("id = ?", svcID).Take(dest).Error
+	}
+	aclTakeServiceLive = func(db *gorm.DB, dest interface{}, svcID string) error {
+		return db.Where("id = ?", svcID).Take(dest).Error
+	}
+	aclTakeModelUnscoped = func(db *gorm.DB, dest interface{}, modelID string) error {
+		return db.Unscoped().Select("id", "application", "name").Where("id = ?", modelID).Take(dest).Error
+	}
+	aclLookupEffective = LookupEffectiveModel
+	aclTakeServiceByModelName = func(db *gorm.DB, dest interface{}, modelID, name string) error {
+		return db.Where("model_id = ? AND name = ?", modelID, name).Take(dest).Error
+	}
+)
+
 // RemapACLToEffectiveModelIDs rewrites auth ACL meta_model_id (and related field/service
 // FKs) from historical/shell meta_model ids onto the live effective id per (application, name).
 //
@@ -21,8 +72,8 @@ func RemapACLToEffectiveModelIDs(db *gorm.DB) error {
 		return fmt.Errorf("db is nil")
 	}
 
-	var live []Model
-	if err := db.Select("id", "application", "name", "module_id", "updated_at").Find(&live).Error; err != nil {
+	live, err := aclLoadLiveModels(db)
+	if err != nil {
 		return fmt.Errorf("load live meta_model: %w", err)
 	}
 	effectiveByKey := map[string]Model{}
@@ -47,9 +98,8 @@ func RemapACLToEffectiveModelIDs(db *gorm.DB) error {
 		effectiveIDSet[m.Id.String] = struct{}{}
 	}
 
-	// Map any historical id (including soft-deleted) → effective id by (app, name).
-	var allIncludingDeleted []Model
-	if err := db.Unscoped().Select("id", "application", "name").Find(&allIncludingDeleted).Error; err != nil {
+	allIncludingDeleted, err := aclLoadAllModels(db)
+	if err != nil {
 		return fmt.Errorf("load meta_model including deleted: %w", err)
 	}
 	oldToEffective := map[string]string{}
@@ -75,14 +125,14 @@ func RemapACLToEffectiveModelIDs(db *gorm.DB) error {
 			"auth_role_field_rule",
 		}
 		for _, table := range tables {
-			if !tx.Migrator().HasTable(table) {
+			if !aclHasTable(tx, table) {
 				continue
 			}
 			for oldID, newID := range oldToEffective {
-				if err := tx.Exec(
+				if err := aclExec(tx,
 					fmt.Sprintf("UPDATE %s SET meta_model_id = ? WHERE meta_model_id = ?", table),
 					newID, oldID,
-				).Error; err != nil {
+				); err != nil {
 					return fmt.Errorf("remap %s meta_model_id %s→%s: %w", table, oldID, newID, err)
 				}
 			}
@@ -98,7 +148,7 @@ func RemapACLToEffectiveModelIDs(db *gorm.DB) error {
 }
 
 func remapFieldRuleFieldIDs(db *gorm.DB) error {
-	if !db.Migrator().HasTable("auth_role_field_rule") {
+	if !aclHasTable(db, "auth_role_field_rule") {
 		return nil
 	}
 	type fieldRuleRow struct {
@@ -107,10 +157,7 @@ func remapFieldRuleFieldIDs(db *gorm.DB) error {
 		MetaFieldID string `gorm:"column:meta_field_id"`
 	}
 	var rules []fieldRuleRow
-	if err := db.Table("auth_role_field_rule").
-		Select("id", "meta_model_id", "meta_field_id").
-		Where("meta_field_id IS NOT NULL AND meta_field_id <> ''").
-		Find(&rules).Error; err != nil {
+	if err := aclLoadFieldRules(db, &rules); err != nil {
 		return fmt.Errorf("load field rules for remap: %w", err)
 	}
 
@@ -121,8 +168,7 @@ func remapFieldRuleFieldIDs(db *gorm.DB) error {
 			continue
 		}
 		var oldField Field
-		// Field may still exist under the new model, or only under a deleted tree.
-		err := db.Unscoped().Select("id", "name", "model_id").Where("id = ?", fieldID).Take(&oldField).Error
+		err := aclTakeFieldUnscoped(db, &oldField, fieldID)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				continue
@@ -134,7 +180,7 @@ func remapFieldRuleFieldIDs(db *gorm.DB) error {
 			continue
 		}
 		var newField Field
-		if takeErr := db.Where("model_id = ? AND name = ?", modelID, name).Take(&newField).Error; takeErr != nil {
+		if takeErr := aclTakeFieldByModelName(db, &newField, modelID, name); takeErr != nil {
 			if errors.Is(takeErr, gorm.ErrRecordNotFound) {
 				continue
 			}
@@ -143,10 +189,10 @@ func remapFieldRuleFieldIDs(db *gorm.DB) error {
 		if !newField.Id.Valid || newField.Id.String == fieldID {
 			continue
 		}
-		if err := db.Exec(
+		if err := aclExec(db,
 			"UPDATE auth_role_field_rule SET meta_field_id = ? WHERE id = ?",
 			newField.Id.String, r.ID,
-		).Error; err != nil {
+		); err != nil {
 			return fmt.Errorf("remap field rule %s field_id: %w", r.ID, err)
 		}
 	}
@@ -154,7 +200,7 @@ func remapFieldRuleFieldIDs(db *gorm.DB) error {
 }
 
 func remapOrphanServices(db *gorm.DB, effectiveIDSet map[string]struct{}) error {
-	if !db.Migrator().HasTable("auth_role_method_access") {
+	if !aclHasTable(db, "auth_role_method_access") {
 		return nil
 	}
 	type maRow struct {
@@ -162,10 +208,7 @@ func remapOrphanServices(db *gorm.DB, effectiveIDSet map[string]struct{}) error 
 		MetaServiceID string `gorm:"column:meta_service_id"`
 	}
 	var rows []maRow
-	if err := db.Table("auth_role_method_access").
-		Select("id", "meta_service_id").
-		Where("meta_service_id IS NOT NULL AND meta_service_id <> ''").
-		Find(&rows).Error; err != nil {
+	if err := aclLoadMethodAccess(db, &rows); err != nil {
 		return fmt.Errorf("load method access for service remap: %w", err)
 	}
 	for _, r := range rows {
@@ -174,7 +217,7 @@ func remapOrphanServices(db *gorm.DB, effectiveIDSet map[string]struct{}) error 
 			continue
 		}
 		var svc Service
-		if err := db.Unscoped().Select("id", "name", "model_id").Where("id = ?", svcID).Take(&svc).Error; err != nil {
+		if err := aclTakeServiceUnscoped(db, &svc, svcID); err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				continue
 			}
@@ -182,10 +225,8 @@ func remapOrphanServices(db *gorm.DB, effectiveIDSet map[string]struct{}) error 
 		}
 		if svc.ModelId.Valid {
 			if _, ok := effectiveIDSet[svc.ModelId.String]; ok {
-				// Still under an effective model — leave alone if the service row is live
-				// (EDS-2 reuses service ids). Soft-deleted under effective → fall through.
 				var live Service
-				if err := db.Where("id = ?", svcID).Take(&live).Error; err == nil {
+				if err := aclTakeServiceLive(db, &live, svcID); err == nil {
 					continue
 				} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 					return fmt.Errorf("lookup live service %s: %w", svcID, err)
@@ -196,15 +237,14 @@ func remapOrphanServices(db *gorm.DB, effectiveIDSet map[string]struct{}) error 
 		if name == "" || !svc.ModelId.Valid {
 			continue
 		}
-		// Resolve effective model for the service's historical model, then find service by name.
 		var hist Model
-		if err := db.Unscoped().Select("id", "application", "name").Where("id = ?", svc.ModelId.String).Take(&hist).Error; err != nil {
+		if err := aclTakeModelUnscoped(db, &hist, svc.ModelId.String); err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				continue
 			}
 			return fmt.Errorf("lookup historical model for service %s: %w", svcID, err)
 		}
-		eff, err := LookupEffectiveModel(db, hist.Application, hist.Name)
+		eff, err := aclLookupEffective(db, hist.Application, hist.Name)
 		if err != nil {
 			if IsEffectiveModelNotFound(err) {
 				continue
@@ -215,7 +255,7 @@ func remapOrphanServices(db *gorm.DB, effectiveIDSet map[string]struct{}) error 
 			continue
 		}
 		var replacement Service
-		if err := db.Where("model_id = ? AND name = ?", eff.Id.String, name).Take(&replacement).Error; err != nil {
+		if err := aclTakeServiceByModelName(db, &replacement, eff.Id.String, name); err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				continue
 			}
@@ -224,10 +264,10 @@ func remapOrphanServices(db *gorm.DB, effectiveIDSet map[string]struct{}) error 
 		if !replacement.Id.Valid || replacement.Id.String == svcID {
 			continue
 		}
-		if err := db.Exec(
+		if err := aclExec(db,
 			"UPDATE auth_role_method_access SET meta_service_id = ? WHERE id = ?",
 			replacement.Id.String, r.ID,
-		).Error; err != nil {
+		); err != nil {
 			return fmt.Errorf("remap method access %s service_id: %w", r.ID, err)
 		}
 	}

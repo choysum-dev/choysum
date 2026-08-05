@@ -5,6 +5,7 @@ package meta
 
 import (
 	"database/sql"
+	"strings"
 	"testing"
 	"time"
 
@@ -58,4 +59,73 @@ func TestLookupEffectiveModel_PrefersEmptyModuleID(t *testing.T) {
 	if _, err := LookupEffectiveModel(db, "", "x"); err == nil {
 		t.Fatal("expected empty key error")
 	}
+}
+
+func TestLookupEffectiveModel_FindErrorAndPickBranches(t *testing.T) {
+	t.Run("find_error_closed_db", func(t *testing.T) {
+		db, err := gorm.Open(sqlite.Open("file:lookup-eff-closed?mode=memory&cache=shared"), &gorm.Config{})
+		if err != nil {
+			t.Fatalf("open: %v", err)
+		}
+		if err := EnsureDualStoreTables(db); err != nil {
+			t.Fatalf("ensure: %v", err)
+		}
+		sqlDB, err := db.DB()
+		if err != nil {
+			t.Fatalf("db.DB: %v", err)
+		}
+		if err := sqlDB.Close(); err != nil {
+			t.Fatalf("close: %v", err)
+		}
+		if _, err := LookupEffectiveModel(db, "a", "B"); err == nil || !strings.Contains(err.Error(), "lookup effective") {
+			t.Fatalf("expected find error, got %v", err)
+		}
+	})
+
+	t.Run("single_row_and_tie_breaks", func(t *testing.T) {
+		ts := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+		only := Model{
+			BaseModel: BaseModel{Id: sql.NullString{String: "only", Valid: true}, UpdatedAt: ts},
+			Name:      "X", Application: "a",
+			ModuleId:  sql.NullString{String: "mod", Valid: true},
+		}
+		if got := pickEffectiveAmong([]Model{only}); got.Id.String != "only" {
+			t.Fatalf("single row: %#v", got)
+		}
+
+		older := Model{
+			BaseModel: BaseModel{Id: sql.NullString{String: "a-id", Valid: true}, UpdatedAt: ts},
+			ModuleId:  sql.NullString{String: "m1", Valid: true},
+		}
+		newer := Model{
+			BaseModel: BaseModel{Id: sql.NullString{String: "b-id", Valid: true}, UpdatedAt: ts.Add(time.Hour)},
+			ModuleId:  sql.NullString{String: "m2", Valid: true},
+		}
+		if got := pickEffectiveAmong([]Model{older, newer}); got.Id.String != "b-id" {
+			t.Fatalf("prefer newer UpdatedAt among shells: %#v", got)
+		}
+
+		low := Model{
+			BaseModel: BaseModel{Id: sql.NullString{String: "aaa", Valid: true}, UpdatedAt: ts},
+		}
+		high := Model{
+			BaseModel: BaseModel{Id: sql.NullString{String: "zzz", Valid: true}, UpdatedAt: ts},
+		}
+		if got := pickEffectiveAmong([]Model{low, high}); got.Id.String != "zzz" {
+			t.Fatalf("prefer larger Id on equal UpdatedAt: %#v", got)
+		}
+
+		// Whitespace ModuleId counts as empty; prefer it over shell.
+		shell := Model{
+			BaseModel: BaseModel{Id: sql.NullString{String: "shell", Valid: true}, UpdatedAt: ts.Add(time.Hour)},
+			ModuleId:  sql.NullString{String: "mod", Valid: true},
+		}
+		wsEmpty := Model{
+			BaseModel: BaseModel{Id: sql.NullString{String: "ws", Valid: true}, UpdatedAt: ts},
+			ModuleId:  sql.NullString{String: "  ", Valid: true},
+		}
+		if got := pickEffectiveAmong([]Model{shell, wsEmpty}); got.Id.String != "ws" {
+			t.Fatalf("prefer whitespace-empty ModuleId: %#v", got)
+		}
+	})
 }
