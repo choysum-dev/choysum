@@ -102,3 +102,140 @@ test('buildAclAggregation collects MetaServiceId/MetaModelId/MetaApplicationId f
     (MetaApplication as any).Search = origApp;
   }
 });
+
+test('buildAclAggregation dedupes same application+name for app and global scopes', async () => {
+  const origAccess = (RoleMethodAccess as any).Search;
+  const origService = (MetaService as any).Search;
+  const origModel = (MetaModel as any).Search;
+  const origApp = (MetaApplication as any).Search;
+
+  try {
+    (RoleMethodAccess as any).Search = async () => [
+      {
+        RoleId: 'role_1',
+        MetaServiceId: null,
+        MetaModelId: null,
+        MetaApplicationId: 'app_1',
+        Mode: 'allow',
+        Source: 'manual',
+      },
+      {
+        RoleId: 'role_1',
+        MetaServiceId: null,
+        MetaModelId: null,
+        MetaApplicationId: null,
+        Mode: 'allow',
+        Source: 'manual',
+      },
+    ];
+    (MetaService as any).Search = async () => [];
+    (MetaApplication as any).Search = async () => [{ Id: 'app_1', Name: 'auth' }];
+    let modelSearchCalls = 0;
+    (MetaModel as any).Search = async (domain: any) => {
+      modelSearchCalls++;
+      // App-scoped Search uses Application in; global uses empty domain.
+      const isGlobal = Array.isArray(domain) && domain.length === 0;
+      const rows = [
+        { Application: 'auth', Name: 'User', ModuleId: 'shell', UpdatedAt: '2026-08-05T12:00:00.000Z' },
+        { Application: 'auth', Name: 'User', ModuleId: null, UpdatedAt: '2026-08-05T10:00:00.000Z' },
+        { Application: 'auth', Name: 'Role', ModuleId: null, UpdatedAt: '2026-08-05T11:00:00.000Z' },
+        // null Application / Name hit `appRaw == null ? ''` / `nameRaw == null ? ''`.
+        { Application: null, Name: 'Ghost' },
+        { Application: 'auth', Name: null },
+        { Application: '', Name: 'Bad' },
+        { Application: 'auth', Name: '  ' },
+      ];
+      if (isGlobal) {
+        return [...rows, { Application: 'other', Name: 'X', UpdatedAt: '2026-08-05T09:00:00.000Z' }];
+      }
+      return rows;
+    };
+
+    const agg = await buildAclAggregation(['role_1'], { role_1: { global: true, companies: [] } });
+    expect(modelSearchCalls).toBeGreaterThanOrEqual(2);
+    // Deduped: auth.User once + auth.Role from app scope; global also adds other.X.
+    const allow = agg.requiresAllowKeysByCompany.get('*') || new Set();
+    expect(allow.has('rpc:/auth.User/*')).toBe(true);
+    expect(allow.has('rpc:/auth.Role/*')).toBe(true);
+    expect(allow.has('rpc:/other.X/*')).toBe(true);
+    expect(agg.companyGlobalAllow.has('*')).toBe(true);
+  } finally {
+    (RoleMethodAccess as any).Search = origAccess;
+    (MetaService as any).Search = origService;
+    (MetaModel as any).Search = origModel;
+    (MetaApplication as any).Search = origApp;
+  }
+});
+
+test('buildAclAggregation dedupe tolerates null MetaModel Search and multi-app maps', async () => {
+  const origAccess = (RoleMethodAccess as any).Search;
+  const origService = (MetaService as any).Search;
+  const origModel = (MetaModel as any).Search;
+  const origApp = (MetaApplication as any).Search;
+
+  try {
+    (RoleMethodAccess as any).Search = async () => [
+      {
+        RoleId: 'role_1',
+        MetaServiceId: null,
+        MetaModelId: null,
+        MetaApplicationId: 'app_auth',
+        Mode: 'allow',
+        Source: 'manual',
+      },
+      {
+        RoleId: 'role_1',
+        MetaServiceId: null,
+        MetaModelId: null,
+        MetaApplicationId: 'app_base',
+        Mode: 'deny',
+        Source: 'manual',
+      },
+      {
+        RoleId: 'role_1',
+        MetaServiceId: null,
+        MetaModelId: null,
+        MetaApplicationId: null,
+        Mode: 'allow',
+        Source: 'manual',
+      },
+      // Second global rule reuses memoized getAllModels (allModels already set).
+      {
+        RoleId: 'role_1',
+        MetaServiceId: null,
+        MetaModelId: null,
+        MetaApplicationId: null,
+        Mode: 'deny',
+        Source: 'manual',
+      },
+    ];
+    (MetaService as any).Search = async () => [];
+    (MetaApplication as any).Search = async () => [
+      { Id: 'app_auth', Name: 'auth' },
+      { Id: 'app_base', Name: 'base' },
+    ];
+    let globalCalls = 0;
+    (MetaModel as any).Search = async (domain: any) => {
+      const isGlobal = Array.isArray(domain) && domain.length === 0;
+      if (isGlobal) {
+        globalCalls++;
+        // null hits `rows || []`; second global access must not Search again.
+        if (globalCalls === 1) return null;
+        return [{ Application: 'ghost', Name: 'ShouldNotMatter' }];
+      }
+      // null hits `rows || []` for app-scoped modelsByApp loop.
+      return null;
+    };
+
+    const agg = await buildAclAggregation(['role_1'], { role_1: { global: true, companies: [] } });
+    expect(globalCalls).toBe(1);
+    expect(agg.companyGlobalAllow.has('*')).toBe(true);
+    expect(agg.companyGlobalDeny.has('*')).toBe(true);
+    expect(agg.requiresAllowKeysByCompany.get('*')?.size || 0).toBe(0);
+  } finally {
+    (RoleMethodAccess as any).Search = origAccess;
+    (MetaService as any).Search = origService;
+    (MetaModel as any).Search = origModel;
+    (MetaApplication as any).Search = origApp;
+  }
+});

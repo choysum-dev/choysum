@@ -1922,6 +1922,7 @@ func (b *WebModuleBuilder) validateUiResourceDependencies(uiResources []*meta.Ui
 	if result := b.runtimeScope.Session().
 		Model(&meta.Model{}).
 		Select("id", "application", "name", "module_id").
+		Where("(module_id IS NULL OR module_id = '')").
 		Find(&models); result.Error != nil {
 		return xfmt.Errorf("query meta models failed: %w", result.Error)
 	}
@@ -1934,12 +1935,6 @@ func (b *WebModuleBuilder) validateUiResourceDependencies(uiResources []*meta.Ui
 		k := strings.TrimSpace(m.Application) + "." + strings.TrimSpace(m.Name)
 		if strings.TrimSpace(k) == "." {
 			continue
-		}
-		// Prefer effective projections (empty module_id) over legacy declaration shells.
-		if _, ok := modelIDByKey[k]; ok {
-			if m.ModuleId.Valid && strings.TrimSpace(m.ModuleId.String) != "" {
-				continue
-			}
 		}
 		modelIDByKey[k] = m.Id.String
 	}

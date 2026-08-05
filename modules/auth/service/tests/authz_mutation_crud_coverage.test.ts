@@ -10,12 +10,11 @@ import RoleMethodAccess from '@/auth/service/models/role_method_access';
 import RoleRecordRule from '@/auth/service/models/role_record_rule';
 import RoleFieldRule from '@/auth/service/models/role_field_rule';
 import { createServiceByModel } from '@/core/service/rpc';
-import type MetaModelModel from '@/meta/service/models/model';
 import type MetaServiceModel from '@/meta/service/models/service';
 import type MetaFieldModel from '@/meta/service/models/field';
+import { resolveEffectiveModelId } from '../models/_resolve_effective_model';
 import { ensureRequestContext, resetRequestContext, uid } from '@/auth/service/tests/_request_context_fixtures';
 
-const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
 const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
 const MetaField = createServiceByModel<typeof MetaFieldModel>('meta.MetaField');
 
@@ -134,18 +133,7 @@ async function createRole(codePrefix: string): Promise<{ id: string }> {
 }
 
 async function resolveModelId(app: string, name: string): Promise<string> {
-  const hit = (
-    await MetaModel.Search(
-      {
-        And: [
-          ['Application', '=', app],
-          ['Name', '=', name],
-        ],
-      } as any,
-      { fields: ['Id'], limit: 1 } as any
-    )
-  )?.[0] as any;
-  const id = String(hit?.Id || '').trim();
+  const id = await resolveEffectiveModelId(app, name);
   if (!id) throw new Error(`meta model not found: ${app}.${name}`);
   return id;
 }

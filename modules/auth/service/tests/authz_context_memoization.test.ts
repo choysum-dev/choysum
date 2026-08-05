@@ -11,6 +11,7 @@ import RoleInheritance from '@/auth/service/models/role_inheritance';
 import { evaluateRecordRuleCondition } from '@/auth/service/models/_user_record_rule_eval';
 import { evaluateFieldRules } from '@/auth/service/models/_user_field_rule_eval';
 import { resolveMethodAccessMeta } from '@/auth/service/models/_user_method_access';
+import { resolveEffectiveModelId } from '../models/_resolve_effective_model';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaApplicationModel from '@/meta/service/models/application';
 import type MetaModelModel from '@/meta/service/models/model';
@@ -166,18 +167,7 @@ async function createRole(codePrefix: string): Promise<{ id: string; code: strin
 }
 
 async function resolveModelId(app: string, name: string): Promise<string> {
-  const hit = (
-    await MetaModel.Search(
-      {
-        And: [
-          ['Application', '=', app],
-          ['Name', '=', name],
-        ],
-      } as any,
-      { fields: ['Id'], limit: 1 } as any
-    )
-  )?.[0] as any;
-  const id = String(hit?.Id || '').trim();
+  const id = await resolveEffectiveModelId(app, name);
   if (!id) throw new Error(`meta model not found: ${app}.${name}`);
   return id;
 }

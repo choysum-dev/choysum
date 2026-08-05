@@ -152,7 +152,6 @@ func seedGeneratorAppFixture(t *testing.T, runtimeScope *generatorTestScope) (*m
 		Path:        "@/crm/models/partner.ts",
 		Application: "crm",
 		ModelTable:  "crm_partner",
-		ModuleId:    mod.Id,
 	}
 	if err := runtimeScope.db.Create(model).Error; err != nil {
 		t.Fatalf("create fixture model: %v", err)
@@ -344,37 +343,28 @@ func TestGetApplicationLoadsCanonicalModelsAndFiltersServices(t *testing.T) {
 		t.Fatalf("create module: %v", err)
 	}
 
-	base := &meta.Model{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "model-base", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 9, 0, 0, 0, time.UTC)},
-		Name:        "Partner",
-		Path:        "@/crm/models/partner.ts",
-		Application: "crm",
-		ModelTable:  "crm_partner",
-		ModuleId:    mod.Id,
-	}
-	olderSamePath := &meta.Model{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "model-old", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 8, 0, 0, 0, time.UTC)},
-		Name:        "Partner",
-		Path:        "@/crm/models/partner.ts",
-		Application: "crm",
-		ModelTable:  "crm_partner_old",
-		ModuleId:    mod.Id,
-	}
-	extension := &meta.Model{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "model-ext", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 10, 0, 0, 0, time.UTC)},
+	// Effective E2 projections (empty module_id) — already merged shapes.
+	partnerEff := &meta.Model{
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "model-partner-eff", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 10, 0, 0, 0, time.UTC)},
 		Name:        "Partner",
 		Path:        "@/crm_ext/models/partner.ts",
 		Application: "crm",
-		Extends:     "@/crm/models/partner.ts",
 		ModelTable:  "crm_partner",
-		ModuleId:    mod.Id,
 	}
-	other := &meta.Model{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "model-other", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 11, 0, 0, 0, time.UTC)},
+	companyEff := &meta.Model{
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "model-company-eff", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 11, 0, 0, 0, time.UTC)},
 		Name:        "Company",
 		Path:        "@/crm/models/company.ts",
 		Application: "crm",
 		ModelTable:  "crm_company",
+	}
+	// Legacy declaration shell must be ignored by getApplication.
+	partnerShell := &meta.Model{
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "model-partner-shell", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 12, 0, 0, 0, time.UTC)},
+		Name:        "Partner",
+		Path:        "@/crm/models/partner.ts",
+		Application: "crm",
+		ModelTable:  "crm_partner",
 		ModuleId:    mod.Id,
 	}
 	synthetic := &meta.Model{
@@ -382,21 +372,19 @@ func TestGetApplicationLoadsCanonicalModelsAndFiltersServices(t *testing.T) {
 		Name:        "I18n",
 		Path:        "go://i18n/crm",
 		Application: "crm",
-		ModuleId:    mod.Id,
 		Abstract:    true,
 		Readonly:    true,
 	}
-	models := []*meta.Model{olderSamePath, base, extension, other, synthetic}
-	for _, model := range models {
+	for _, model := range []*meta.Model{partnerEff, companyEff, partnerShell, synthetic} {
 		if err := runtimeScope.db.Create(model).Error; err != nil {
 			t.Fatalf("create model %s: %v", model.Name, err)
 		}
 	}
 	fields := []*meta.Field{
-		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "field-1", Valid: true}}, Name: "Name", ModelId: base.Id},
-		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "field-2", Valid: true}}, Name: "Code", ModelId: olderSamePath.Id},
-		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "field-3", Valid: true}}, Name: "ExtField", ModelId: extension.Id},
-		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "field-4", Valid: true}}, Name: "Vat", ModelId: other.Id},
+		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "field-1", Valid: true}}, Name: "Name", ModelId: partnerEff.Id},
+		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "field-3", Valid: true}}, Name: "ExtField", ModelId: partnerEff.Id},
+		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "field-shell", Valid: true}}, Name: "ShellOnly", ModelId: partnerShell.Id},
+		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "field-4", Valid: true}}, Name: "Vat", ModelId: companyEff.Id},
 	}
 	for _, field := range fields {
 		if err := runtimeScope.db.Create(field).Error; err != nil {
@@ -404,9 +392,9 @@ func TestGetApplicationLoadsCanonicalModelsAndFiltersServices(t *testing.T) {
 		}
 	}
 	services := []*meta.Service{
-		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "service-a", Valid: true}}, Name: "zeta", AccessibilityModifier: "public", IsStatic: true, ModelId: extension.Id},
-		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "service-b", Valid: true}}, Name: "Alpha", AccessibilityModifier: "public", IsStatic: true, ModelId: extension.Id},
-		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "service-c", Valid: true}}, Name: "Zeta", AccessibilityModifier: "public", IsStatic: true, ModelId: extension.Id},
+		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "service-a", Valid: true}}, Name: "zeta", AccessibilityModifier: "public", IsStatic: true, ModelId: partnerEff.Id},
+		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "service-b", Valid: true}}, Name: "Alpha", AccessibilityModifier: "public", IsStatic: true, ModelId: partnerEff.Id},
+		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "service-c", Valid: true}}, Name: "Zeta", AccessibilityModifier: "public", IsStatic: true, ModelId: partnerEff.Id},
 		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "service-i18n", Valid: true}}, Name: "GetTranslations", AccessibilityModifier: "public", IsStatic: true, ModelId: synthetic.Id},
 	}
 	for _, service := range services {
@@ -428,20 +416,23 @@ func TestGetApplicationLoadsCanonicalModelsAndFiltersServices(t *testing.T) {
 		t.Fatalf("unexpected application: %#v", loaded)
 	}
 	if len(loaded.Models) != 2 {
-		t.Fatalf("expected 2 canonical models, got %#v", loaded.Models)
+		t.Fatalf("expected 2 effective models, got %#v", loaded.Models)
 	}
 	if loaded.Models[0].Name != "Company" || loaded.Models[1].Name != "Partner" {
 		t.Fatalf("unexpected model order: %#v", loaded.Models)
 	}
 	partner := loaded.Models[1]
+	if partner.Id.String != "model-partner-eff" {
+		t.Fatalf("expected effective partner id, got %#v", partner)
+	}
 	fieldNames := map[string]bool{}
 	for _, field := range partner.Fields {
 		if field != nil && field.Name != "" {
 			fieldNames[field.Name] = true
 		}
 	}
-	if !fieldNames["Name"] || !fieldNames["ExtField"] || fieldNames["Code"] {
-		t.Fatalf("unexpected merged partner fields: %#v", fieldNames)
+	if !fieldNames["Name"] || !fieldNames["ExtField"] || fieldNames["ShellOnly"] {
+		t.Fatalf("unexpected partner fields: %#v", fieldNames)
 	}
 	if len(partner.Services) != 2 || partner.Services[0].Name != "Alpha" || partner.Services[1].Name != "Zeta" {
 		t.Fatalf("unexpected filtered services: %#v", partner.Services)
@@ -451,7 +442,7 @@ func TestGetApplicationLoadsCanonicalModelsAndFiltersServices(t *testing.T) {
 	}
 }
 
-func TestGetApplication_SelectionAddMergeError(t *testing.T) {
+func TestGetApplication_IgnoresDeclarationShells(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
 	seedGeneratorMetaTables(t, runtimeScope)
 
@@ -464,71 +455,24 @@ func TestGetApplication_SelectionAddMergeError(t *testing.T) {
 		t.Fatalf("create module: %v", err)
 	}
 
-	basePath := "@/crm/models/partner.ts"
-	extPath := "@/crm_ext/models/partner.ts"
-	base := &meta.Model{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "model-sel-base", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 9, 0, 0, 0, time.UTC)},
+	shellOnly := &meta.Model{
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "model-shell-only", Valid: true}},
 		Name:        "Partner",
-		Path:        basePath,
+		Path:        "@/crm/models/partner.ts",
 		Application: "crm",
 		ModuleId:    mod.Id,
 	}
-	ext := &meta.Model{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "model-sel-ext", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 10, 0, 0, 0, time.UTC)},
-		Name:        "Partner",
-		Path:        extPath,
-		Application: "crm",
-		Extends:     basePath,
-		ModuleId:    mod.Id,
-	}
-	if err := runtimeScope.db.Create(base).Error; err != nil {
-		t.Fatalf("create base: %v", err)
-	}
-	if err := runtimeScope.db.Create(ext).Error; err != nil {
-		t.Fatalf("create ext: %v", err)
-	}
-
-	baseField := &meta.Field{
-		BaseModel:       meta.BaseModel{Id: sql.NullString{String: "field-sel-base", Valid: true}},
-		Name:            "Kind",
-		FieldType:       "selection",
-		SelectionKind:   "dynamic",
-		SelectionMethod: "Opts",
-		ModelId:         base.Id,
-	}
-	_ = baseField.SetResolvedSpec(&meta.FieldResolvedSpec{
-		FieldName: "Kind",
-		Structural: meta.FieldStructuralSpec{
-			Name:            "Kind",
-			FieldType:       "selection",
-			SelectionKind:   "dynamic",
-			SelectionMethod: "Opts",
-		},
-	})
-	extField := &meta.Field{
-		BaseModel: meta.BaseModel{Id: sql.NullString{String: "field-sel-ext", Valid: true}},
-		Name:      "Kind",
-		FieldType: "selection",
-		ModelId:   ext.Id,
-	}
-	_ = extField.SetResolvedSpec(&meta.FieldResolvedSpec{
-		FieldName: "Kind",
-		Structural: meta.FieldStructuralSpec{
-			Name:            "Kind",
-			FieldType:       "selection",
-			HasSelectionAdd: true,
-			SelectionAdd:    []meta.FieldSelectionItem{{Value: "vip", Label: "VIP"}},
-		},
-	})
-	for _, field := range []*meta.Field{baseField, extField} {
-		if err := runtimeScope.db.Create(field).Error; err != nil {
-			t.Fatalf("create field %s: %v", field.Name, err)
-		}
+	if err := runtimeScope.db.Create(shellOnly).Error; err != nil {
+		t.Fatalf("create shell: %v", err)
 	}
 
 	g := &grpcGenerator{runtimeScope: runtimeScope, module: mod}
-	if _, err := g.getApplication(); err == nil || !strings.Contains(err.Error(), "inherited static selection") {
-		t.Fatalf("expected getApplication selectionAdd merge error, got %v", err)
+	loaded, err := g.getApplication()
+	if err != nil {
+		t.Fatalf("getApplication() error = %v", err)
+	}
+	if len(loaded.Models) != 0 {
+		t.Fatalf("expected no effective models when only shells exist, got %#v", loaded.Models)
 	}
 }
 

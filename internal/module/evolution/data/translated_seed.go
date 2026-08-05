@@ -66,11 +66,9 @@ func (l *Loader) languageCodeExists(tx *gorm.DB, code string) (bool, error) {
 	if code == "" {
 		return false, nil
 	}
-	model := &meta.Model{}
-	if err := tx.Where("application = ? AND name = ?", "base", "Language").
-		Order("created_at DESC, id DESC").
-		First(model).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+	model, err := meta.LookupEffectiveModel(tx, "base", "Language")
+	if err != nil {
+		if meta.IsEffectiveModelNotFound(err) || errors.Is(err, gorm.ErrRecordNotFound) {
 			return false, nil
 		}
 		return false, err

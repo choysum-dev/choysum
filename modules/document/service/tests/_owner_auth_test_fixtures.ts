@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import MetaModel from '@/meta/service/models/model';
 import Role from '@/auth/service/models/role';
+import { resolveEffectiveModelId } from '@/auth/service/models/_resolve_effective_model';
 import RoleFieldRule from '@/auth/service/models/role_field_rule';
 import RoleRecordRule from '@/auth/service/models/role_record_rule';
 import User from '@/auth/service/models/user';
@@ -104,16 +104,7 @@ export async function ensureAuthUserOwnerRecordRuleGrants(): Promise<void> {
   if (authUserOwnerGrantsSeeded) return;
 
   await withPermissionGraphBypass(async () => {
-    const modelRows = await MetaModel.Search(
-      {
-        And: [
-          ['Application', '=', 'auth'],
-          ['Name', '=', 'User'],
-        ],
-      } as any,
-      { fields: ['Id'], limit: 1 } as any
-    );
-    const modelId = String((modelRows[0] as any)?.Id || '').trim();
+    const modelId = await resolveEffectiveModelId('auth', 'User');
     if (!modelId) {
       throw new Error('meta model auth.User not found for document owner RR fixture');
     }

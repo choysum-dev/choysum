@@ -115,17 +115,32 @@ export async function buildAclAggregation(
     }
   }
 
+  // Effective projections: at most one live row per (application, name).
+  // Deduplicate by name in case legacy shells still coexist.
+  const trimMetaLabel = (v: any): string => {
+    if (v == null) return '';
+    return String(v).trim();
+  };
   const modelsByApp = new Map<string, Array<{ app: string; name: string }>>();
   const appNames = Array.from(new Set(appNameById.values()));
   if (appNames.length > 0) {
-    const rows = await MetaModel.Search(['Application', 'in', appNames] as any, { fields: ['Application', 'Name'], limit: 50000 } as any);
-    for (const r of rows || []) {
-      const app = String((r as any).Application || '').trim();
-      const name = String((r as any).Name || '').trim();
-      if (app && name) {
-        if (!modelsByApp.has(app)) modelsByApp.set(app, []);
-        modelsByApp.get(app)!.push({ app, name });
-      }
+    const rows = await MetaModel.Search(['Application', 'in', appNames] as any, {
+      fields: ['Application', 'Name', 'ModuleId', 'UpdatedAt'],
+      orderBy: { field: 'UpdatedAt', order: 'desc' },
+      limit: 50000,
+    } as any);
+    const seen = new Set<string>();
+    const list = rows == null ? [] : rows;
+    for (const r of list) {
+      const app = trimMetaLabel((r as any).Application);
+      const name = trimMetaLabel((r as any).Name);
+      if (!app) continue;
+      if (!name) continue;
+      const key = `${app}\0${name}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (!modelsByApp.has(app)) modelsByApp.set(app, []);
+      modelsByApp.get(app)!.push({ app, name });
     }
   }
 
@@ -137,10 +152,24 @@ export async function buildAclAggregation(
   let allModels: Array<{ app: string; name: string }> | undefined;
   const getAllModels = async (): Promise<Array<{ app: string; name: string }>> => {
     if (allModels) return allModels;
-    const rows = await MetaModel.Search([] as any, { fields: ['Application', 'Name'], limit: 50000 } as any);
-    const out = (rows || [])
-      .map((r: any) => ({ app: String((r as any).Application || '').trim(), name: String((r as any).Name || '').trim() }))
-      .filter((r: { app: string; name: string }) => r.app && r.name);
+    const rows = await MetaModel.Search([] as any, {
+      fields: ['Application', 'Name', 'UpdatedAt'],
+      orderBy: { field: 'UpdatedAt', order: 'desc' },
+      limit: 50000,
+    } as any);
+    const seen = new Set<string>();
+    const out: Array<{ app: string; name: string }> = [];
+    const list = rows == null ? [] : rows;
+    for (const r of list) {
+      const app = trimMetaLabel((r as any).Application);
+      const name = trimMetaLabel((r as any).Name);
+      if (!app) continue;
+      if (!name) continue;
+      const key = `${app}\0${name}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ app, name });
+    }
     allModels = out;
     return out;
   };
