@@ -3,6 +3,7 @@
 
 import RoleRecordRule from '@/auth/service/models/role_record_rule';
 import { buildCompanyGateExpr, evaluateRecordRuleCondition } from '@/auth/service/models/_user_record_rule_eval';
+import { resolveEffectiveModelId } from '../models/_resolve_effective_model';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaApplicationModel from '@/meta/service/models/application';
 import type MetaFieldModel from '@/meta/service/models/field';
@@ -45,16 +46,7 @@ function uid(prefix: string): string {
 }
 
 async function resolveModelId(appName: string, modelName: string): Promise<string> {
-  const rows = await MetaModel.Search(
-    {
-      And: [
-        ['Name', '=', modelName],
-        ['Application', '=', appName],
-      ],
-    } as any,
-    { fields: ['Id'], limit: 1 }
-  );
-  const id = String((rows[0] as any)?.Id || '').trim();
+  const id = await resolveEffectiveModelId(appName, modelName);
   if (!id) throw new Error(`meta model not found: ${appName}.${modelName}`);
   return id;
 }

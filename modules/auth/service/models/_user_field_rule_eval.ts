@@ -6,13 +6,10 @@ import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/co
 import { newAuthError, AuthErrCode, GrpcCode } from '../error';
 import { _t } from '../i18n';
 import RoleFieldRule from './role_field_rule';
-import type MetaApplicationModel from '@/meta/service/models/application';
 import type MetaFieldModel from '@/meta/service/models/field';
-import type MetaModelModel from '@/meta/service/models/model';
 import { normalizeRefId } from '@/core/service/utils/normalization';
+import { resolveEffectiveApplicationId, resolveEffectiveModelId } from './_resolve_effective_model';
 
-const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
-const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
 const MetaField = createServiceByModel<typeof MetaFieldModel>('meta.MetaField');
 
 function normalizeFieldPerm(v: any): 'allow' | 'deny' | null {
@@ -74,56 +71,21 @@ function buildFieldRuleMetaCacheKey(type: 'app' | 'model', appName: string, mode
 }
 
 /**
- * Resolve meta application ids by name.
+ * Resolve meta application id by name (single effective row).
  */
-async function resolveApplicationIds(appName: string): Promise<string[]> {
+async function resolveApplicationId(appName: string): Promise<string> {
   const state = getFieldRuleReqState();
   const key = buildFieldRuleMetaCacheKey('app', appName);
-  return await memoizeInReqState(state, key, async () => {
-    const apps = await MetaApplication.Search(
-      ['Name', '=', appName] as any,
-      { fields: ['Id', 'UpdatedAt'], orderBy: { field: 'UpdatedAt', order: 'desc' }, limit: 5000 } as any
-    );
-    const idSet = new Set<string>();
-    const ids: string[] = [];
-    for (const a of apps || []) {
-      const id = String((a as any)?.Id || '').trim();
-      if (!id) continue;
-      if (idSet.has(id)) continue;
-      idSet.add(id);
-      ids.push(id);
-    }
-    return ids;
-  });
+  return await memoizeInReqState(state, key, async () => resolveEffectiveApplicationId(appName));
 }
 
 /**
- * Resolve meta model ids by logical name (application-agnostic to handle re-materializations).
+ * Resolve the single effective meta model id for (application, name).
  */
-async function resolveModelIds(appName: string, modelName: string): Promise<string[]> {
+async function resolveModelId(appName: string, modelName: string): Promise<string> {
   const state = getFieldRuleReqState();
   const key = buildFieldRuleMetaCacheKey('model', appName, modelName);
-  return await memoizeInReqState(state, key, async () => {
-    const models = await MetaModel.Search(
-      {
-        And: [
-          ['Name', '=', modelName],
-          ['Application', '=', appName],
-        ],
-      } as any,
-      { fields: ['Id', 'UpdatedAt'], orderBy: { field: 'UpdatedAt', order: 'desc' }, limit: 5000 } as any
-    );
-    const idSet = new Set<string>();
-    const ids: string[] = [];
-    for (const m of models || []) {
-      const id = String((m as any)?.Id || '').trim();
-      if (!id) continue;
-      if (idSet.has(id)) continue;
-      idSet.add(id);
-      ids.push(id);
-    }
-    return ids;
-  });
+  return await memoizeInReqState(state, key, async () => resolveEffectiveModelId(appName, modelName));
 }
 
 function denyAllNonSystemFields(fieldNames: string[], reason: string, hitRuleIds?: string[]): FieldRuleEvalResult {
@@ -138,8 +100,11 @@ function denyAllNonSystemFields(fieldNames: string[], reason: string, hitRuleIds
  * More-specific scope wins; same-scope deny-wins; read-deny ⇒ write-deny.
  */
 export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<FieldRuleEvalResult> {
-  const [applicationIds, modelIds] = await Promise.all([resolveApplicationIds(input.appName), resolveModelIds(input.appName, input.modelName)]);
-  if (modelIds.length === 0) {
+  const [applicationId, modelId] = await Promise.all([
+    resolveApplicationId(input.appName),
+    resolveModelId(input.appName, input.modelName),
+  ]);
+  if (!modelId) {
     throw newAuthError({
       code: AuthErrCode.VALIDATION_FAILED,
       message: _t('Model does not exist', { scope: 'service/models/_user_field_rule_eval' }),
@@ -149,7 +114,7 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
   }
 
   // Load meta fields (needed for deny-all early exits and per-field decisions).
-  const fields = await MetaField.Search(['ModelId', 'in', modelIds] as any, { fields: ['Id', 'Name'], limit: 5000 } as any);
+  const fields = await MetaField.Search(['ModelId', '=', modelId] as any, { fields: ['Id', 'Name'], limit: 5000 } as any);
   const fieldNameById = new Map<string, string>();
   const fieldIdsByName = new Map<string, string[]>();
   const fieldIdSet = new Set<string>();
@@ -176,9 +141,6 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
     return denyAllNonSystemFields(fieldNames, 'no_roles_deny_by_default');
   }
 
-  const modelIdSet = new Set<string>(modelIds);
-  const applicationIdSet = new Set<string>(applicationIds);
-
   // Load rules
   const rules = await RoleFieldRule.Search(
     {
@@ -188,23 +150,23 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
           Or: [
             {
               And: [
-                ['MetaModelId', 'in', modelIds],
+                ['MetaModelId', '=', modelId],
                 ['MetaFieldId', 'in', Array.from(fieldIdSet)],
                 ['MetaApplicationId', 'is', null],
               ],
             },
             {
               And: [
-                ['MetaModelId', 'in', modelIds],
+                ['MetaModelId', '=', modelId],
                 ['MetaFieldId', 'is', null],
                 ['MetaApplicationId', 'is', null],
               ],
             },
-            ...(applicationIds.length > 0
+            ...(applicationId
               ? [
                   {
                     And: [
-                      ['MetaApplicationId', 'in', applicationIds],
+                      ['MetaApplicationId', '=', applicationId],
                       ['MetaModelId', 'is', null],
                       ['MetaFieldId', 'is', null],
                     ],
@@ -256,17 +218,17 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
 
     if (isField) {
       if (!fieldIdSet.has(irField)) continue;
-      if (!modelIdSet.has(irModel)) continue;
+      if (irModel !== modelId) continue;
       const fieldName = fieldNameById.get(irField);
       if (!fieldName) continue;
       const xs = fieldRulesByFieldName.get(fieldName) || [];
       xs.push(rule);
       fieldRulesByFieldName.set(fieldName, xs);
     } else if (isModel) {
-      if (!modelIdSet.has(irModel)) continue;
+      if (irModel !== modelId) continue;
       modelRules.push(rule);
     } else if (isApp) {
-      if (!applicationIdSet.has(irApp)) continue;
+      if (!applicationId || irApp !== applicationId) continue;
       appRules.push(rule);
     } else if (isGlobal) {
       globalRules.push(rule);

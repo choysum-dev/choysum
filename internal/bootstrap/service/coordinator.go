@@ -650,12 +650,14 @@ func (c *coordinator) defaultUpdateAdminAndMarker(ctx context.Context, input ini
 		}
 
 		var model meta.Model
-		if err := txScope.Session().Where("application = ? AND name = ?", "auth", "User").Take(&model).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
+		lookedUp, err := meta.LookupEffectiveModel(txScope.Session().DB, "auth", "User")
+		if err != nil {
+			if meta.IsEffectiveModelNotFound(err) || errors.Is(err, gorm.ErrRecordNotFound) {
 				return errBootstrapAdminModelNotFound
 			}
 			return err
 		}
+		model = *lookedUp
 
 		if strings.TrimSpace(model.ModelTable) == "" {
 			return errBootstrapAdminModelTableMissing

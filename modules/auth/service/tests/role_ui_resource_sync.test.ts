@@ -7,11 +7,8 @@ import RoleMethodAccess from '@/auth/service/models/role_method_access';
 import RoleUiResource from '@/auth/service/models/role_ui_resource';
 import MetaUiResource from '@/meta/service/models/ui_resource';
 import { createServiceByModel } from '@/core/service/rpc';
-import type MetaApplicationModel from '@/meta/service/models/application';
-import type MetaModelModel from '@/meta/service/models/model';
 import type MetaServiceModel from '@/meta/service/models/service';
-const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
-const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
+import { resolveEffectiveApplicationId, resolveEffectiveModelId } from '../models/_resolve_effective_model';
 const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
@@ -107,28 +104,13 @@ function setupAllowlistForFixtures(): void {
 }
 
 async function resolveApplicationId(applicationName: string): Promise<string> {
-  const rows = await MetaApplication.Search(
-    {
-      And: [['Name', '=', applicationName]],
-    } as any,
-    { fields: ['Id'], limit: 1 }
-  );
-  const id = String((rows as any)?.[0]?.Id || '').trim();
+  const id = await resolveEffectiveApplicationId(applicationName);
   if (!id) throw new Error(`meta application not found: ${applicationName}`);
   return id;
 }
 
 async function resolveModelId(appName: string, modelName: string): Promise<string> {
-  const rows = await MetaModel.Search(
-    {
-      And: [
-        ['Name', '=', modelName],
-        ['Application', '=', appName],
-      ],
-    } as any,
-    { fields: ['Id'], limit: 1 }
-  );
-  const id = String((rows as any)?.[0]?.Id || '').trim();
+  const id = await resolveEffectiveModelId(appName, modelName);
   if (!id) throw new Error(`meta model not found: ${appName}.${modelName}`);
   return id;
 }

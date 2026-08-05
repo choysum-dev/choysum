@@ -10,12 +10,9 @@ import Role from '@/auth/service/models/role';
 import UserRole from '@/auth/service/models/user_role';
 import RoleFieldRule from '@/auth/service/models/role_field_rule';
 import { evaluateFieldRules } from '@/auth/service/models/_user_field_rule_eval';
+import { resolveEffectiveApplicationId, resolveEffectiveModelId } from '../models/_resolve_effective_model';
 import { createServiceByModel } from '@/core/service/rpc';
-import type MetaApplicationModel from '@/meta/service/models/application';
-import type MetaModelModel from '@/meta/service/models/model';
 import type MetaFieldModel from '@/meta/service/models/field';
-const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
-const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
 const MetaField = createServiceByModel<typeof MetaFieldModel>('meta.MetaField');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
@@ -208,26 +205,13 @@ function toChoysumErrorLike(err: any): { domain?: string; code?: string; message
 }
 
 async function resolveModelId(appName: string, modelName: string): Promise<string> {
-  const rows = await MetaModel.Search(
-    {
-      And: [
-        ['Name', '=', modelName],
-        ['Application', '=', appName],
-      ],
-    } as any,
-    { fields: ['Id', 'UpdatedAt'], orderBy: { field: 'UpdatedAt', order: 'desc' }, limit: 1 }
-  );
-  const id = String((rows as any)?.[0]?.Id || '').trim();
+  const id = await resolveEffectiveModelId(appName, modelName);
   if (!id) throw new Error(`meta model not found: app=${appName} model=${modelName}`);
   return id;
 }
 
 async function resolveApplicationId(appName: string): Promise<string> {
-  const rows = await MetaApplication.Search(
-    ['Name', '=', appName] as any,
-    { fields: ['Id', 'UpdatedAt'], orderBy: { field: 'UpdatedAt', order: 'desc' }, limit: 1 } as any
-  );
-  const id = String((rows as any)?.[0]?.Id || '').trim();
+  const id = await resolveEffectiveApplicationId(appName);
   if (!id) throw new Error(`meta application not found: name=${appName}`);
   return id;
 }

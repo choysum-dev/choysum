@@ -65,74 +65,22 @@ func (g *grpcGenerator) getApplication() (*meta.Application, error) {
 		}).
 		Where("meta_model.application = ?", application.Name).
 		Where("meta_model.abstract = ?", false).
-		Order("meta_model.id ASC").
+		Where("(meta_model.module_id IS NULL OR meta_model.module_id = '')").
+		Order("meta_model.name ASC").
 		Find(&appModels); result.Error != nil {
 		return nil, result.Error
 	}
 
-	// Deduplicate models by name with a map.
-	// First deduplicate by path, keeping the newest version for the same path,
-	// then merge same-name models along the extension chain to avoid losing
-	// extended fields in frontend fieldsMetadata.
-	byPath := make(map[string]*meta.Model)
-	var noPath []*meta.Model
+	// Effective catalog is already E2-merged (one row per name). Keep merge helpers
+	// for gold-standard unit tests only — do not re-merge in production codegen.
+	uniqueModels := make([]*meta.Model, 0, len(appModels))
 	for _, model := range appModels {
 		if model == nil || model.Name == "" {
 			continue
 		}
-		if model.Path == "" {
-			noPath = append(noPath, model)
-			continue
-		}
-		existing, ok := byPath[model.Path]
-		if !ok || existing == nil {
-			byPath[model.Path] = model
-			continue
-		}
-		if model.UpdatedAt.After(existing.UpdatedAt) || (model.UpdatedAt.Equal(existing.UpdatedAt) && model.Id.String > existing.Id.String) {
-			byPath[model.Path] = model
-		}
-	}
-
-	pathModels := make([]*meta.Model, 0, len(byPath))
-	for _, m := range byPath {
-		pathModels = append(pathModels, m)
-	}
-
-	canonicalModels := append(pathModels, noPath...)
-	nameGroups := make(map[string][]*meta.Model)
-	for _, model := range canonicalModels {
-		if model == nil || model.Name == "" {
-			continue
-		}
-		nameGroups[model.Name] = append(nameGroups[model.Name], model)
-	}
-
-	modelMap := make(map[string]*meta.Model, len(nameGroups))
-	for name, group := range nameGroups {
-		candidates := selectSameNameModelsInPrimaryExtensionChain(group)
-		merged, err := mergeSameNameModelsByExtensionChain(candidates)
-		if err != nil {
-			return nil, err
-		}
-		if merged == nil {
-			continue
-		}
-		modelMap[name] = merged
-	}
-
-	// Convert the deduplicated models back into a slice.
-	uniqueModels := make([]*meta.Model, 0, len(modelMap))
-	for _, model := range modelMap {
 		model.Services = g.filterServices(model.Services)
-
 		uniqueModels = append(uniqueModels, model)
 	}
-
-	// Sort by name.
-	sort.Slice(uniqueModels, func(i, j int) bool {
-		return uniqueModels[i].Name < uniqueModels[j].Name
-	})
 
 	application.Models = uniqueModels
 	return application, nil

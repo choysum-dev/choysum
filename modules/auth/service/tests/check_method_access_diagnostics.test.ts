@@ -9,12 +9,11 @@ import RoleMethodAccess from '@/auth/service/models/role_method_access';
 import RoleUiResource from '@/auth/service/models/role_ui_resource';
 import { evaluateUiDerivedMethodDecision } from '@/auth/service/models/_user_method_access';
 import { buildMethodAccessCacheKey } from '@/auth/service/models/_request_cache_invalidation';
+import { resolveEffectiveModelId } from '../models/_resolve_effective_model';
 import MetaUiResource from '@/meta/service/models/ui_resource';
 import { createServiceByModel } from '@/core/service/rpc';
-import type MetaModelModel from '@/meta/service/models/model';
 import type MetaServiceModel from '@/meta/service/models/service';
 
-const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
 const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
@@ -156,11 +155,7 @@ async function createRole(): Promise<string> {
 }
 
 async function resolveBrowse(): Promise<{ name: string; modelId: string; serviceId: string }> {
-  const models = await MetaModel.Search(
-    { And: [['Name', '=', 'User'], ['Application', '=', 'auth']] } as any,
-    { fields: ['Id'], limit: 1 } as any
-  );
-  const modelId = String((models as any)?.[0]?.Id || '').trim();
+  const modelId = await resolveEffectiveModelId('auth', 'User');
   const services = await MetaService.Search({ And: [['ModelId', '=', modelId]] } as any, {
     fields: ['Id', 'Name'],
     limit: 5000,

@@ -61,7 +61,7 @@ var (
 			Find(&raws).Error
 		return raws, err
 	}
-	clearEffectiveShapeTreesFn = clearEffectiveShapeTrees
+	clearEffectiveShapeTreesFn   = clearEffectiveShapeTrees
 	persistEffectiveProjectionFn = func(db *gorm.DB, merged *Model, effectiveID string) error {
 		return persistEffectiveProjection(db, merged, effectiveID, nil)
 	}
@@ -129,7 +129,10 @@ func MigrateIMDCatalogToDualStore(db *gorm.DB) error {
 	}); err != nil {
 		return err
 	}
-	return ensureEffectiveAppNameUniqueIndex(db)
+	if err := ensureEffectiveAppNameUniqueIndex(db); err != nil {
+		return err
+	}
+	return RemapACLToEffectiveModelIDs(db)
 }
 
 // migrateIMDSources copies live IMD sources into meta_raw_* then rebuilds effective rows.
@@ -174,7 +177,10 @@ func RecomputeAllEffectiveFromRaw(db *gorm.DB) error {
 	}); err != nil {
 		return err
 	}
-	return EnsureEffectiveAppNameUniqueIndex(db)
+	if err := EnsureEffectiveAppNameUniqueIndex(db); err != nil {
+		return err
+	}
+	return RemapACLToEffectiveModelIDs(db)
 }
 
 // EnsureEffectiveAppNameUniqueIndex enforces one live effective row per (application, name).
