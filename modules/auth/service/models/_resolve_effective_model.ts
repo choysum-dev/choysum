@@ -9,25 +9,30 @@ const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.
 const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
 
 function moduleIdEmpty(row: any): boolean {
-  const raw = row?.ModuleId ?? row?.module_id ?? row?.ModuleID;
-  if (raw == null || raw === '') return true;
+  const raw = row.ModuleId ?? row.module_id ?? row.ModuleID;
+  if (raw == null) return true;
+  if (raw === '') return true;
   if (typeof raw === 'object') {
-    const id = (raw as any)?.Id ?? (raw as any)?.id;
-    return id == null || String(id).trim() === '';
+    const id = (raw as any).Id ?? (raw as any).id;
+    if (id == null) return true;
+    return String(id).trim() === '';
   }
   return String(raw).trim() === '';
 }
 
 function rowId(row: any): string {
-  return String(row?.Id ?? row?.id ?? '').trim();
+  if (row == null) return '';
+  return String(row.Id ?? row.id ?? '').trim();
 }
 
 function rowUpdatedAt(row: any): number {
-  const raw = row?.UpdatedAt ?? row?.updated_at;
-  if (raw == null || raw === '') return 0;
+  const raw = row.UpdatedAt ?? row.updated_at;
+  if (raw == null) return 0;
+  if (raw === '') return 0;
   if (typeof raw === 'number') return raw;
   const ms = Date.parse(String(raw));
-  return Number.isFinite(ms) ? ms : 0;
+  if (!Number.isFinite(ms)) return 0;
+  return ms;
 }
 
 /** Align with Go pickEffectiveAmong: empty ModuleId first, then newest UpdatedAt, then larger Id. */
@@ -44,8 +49,12 @@ function pickEffectiveAmong(rows: any[]): any {
     if (empty === bestEmpty) {
       const rowTs = rowUpdatedAt(row);
       const bestTs = rowUpdatedAt(best);
-      if (rowTs > bestTs || (rowTs === bestTs && rowId(row) > rowId(best))) {
+      if (rowTs > bestTs) {
         best = row;
+      } else if (rowTs === bestTs) {
+        if (rowId(row) > rowId(best)) {
+          best = row;
+        }
       }
     }
   }

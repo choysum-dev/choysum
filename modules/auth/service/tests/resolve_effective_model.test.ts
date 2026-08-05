@@ -69,11 +69,11 @@ test('resolveEffectiveModelRow ModuleId object / whitespace / UpdatedAt / Id tie
     ];
     expect((await resolveEffectiveModelRow('a', 'M'))?.Id).toBe('zzz');
 
-    // Number UpdatedAt + invalid date parse fallback.
+    // Number UpdatedAt + invalid date parse on empty-ModuleId rows (hits Number.isFinite false).
     (MetaModel as any).Search = async () => [
       { Id: 'n1', ModuleId: null, UpdatedAt: 100 },
       { Id: 'n2', ModuleId: null, UpdatedAt: 200 },
-      { Id: 'bad', ModuleId: 'm', UpdatedAt: 'not-a-date' },
+      { Id: 'bad', ModuleId: null, UpdatedAt: 'not-a-date' },
     ];
     expect((await resolveEffectiveModelRow('a', 'M'))?.Id).toBe('n2');
 
@@ -87,6 +87,55 @@ test('resolveEffectiveModelRow ModuleId object / whitespace / UpdatedAt / Id tie
 
     (MetaModel as any).Search = async () => null;
     expect(await resolveEffectiveModelRow('a', 'M')).toBeUndefined();
+  } finally {
+    (MetaModel as any).Search = orig;
+  }
+});
+
+test('resolveEffectiveModelRow covers remaining ModuleId/Id/UpdatedAt branches', async () => {
+  const orig = (MetaModel as any).Search;
+  try {
+    // ModuleID key + object ModuleId.id (lowercase) empty.
+    (MetaModel as any).Search = async () => [
+      { Id: 'shell', ModuleID: 'mod-x', UpdatedAt: '2026-08-05T12:00:00.000Z' },
+      { Id: 'eff-id-key', ModuleId: { id: null }, UpdatedAt: '2026-08-05T09:00:00.000Z' },
+    ];
+    expect((await resolveEffectiveModelRow('a', 'M'))?.Id).toBe('eff-id-key');
+
+    // Object ModuleId with lowercase id whitespace-only counts as empty; row id via lowercase `id`.
+    (MetaModel as any).Search = async () => [
+      { Id: 'shell', ModuleId: { Id: 'm' }, UpdatedAt: '2026-08-05T12:00:00.000Z' },
+      { id: 'eff-ws-obj', ModuleId: { id: '  ' }, UpdatedAt: '2026-08-05T08:00:00.000Z' },
+    ];
+    expect((await resolveEffectiveModelRow('a', 'M'))?.id).toBe('eff-ws-obj');
+
+    // Empty UpdatedAt string → 0; older candidate must not beat newer best.
+    (MetaModel as any).Search = async () => [
+      { Id: 'newer', ModuleId: null, UpdatedAt: '2026-08-05T12:00:00.000Z' },
+      { Id: 'older', ModuleId: null, UpdatedAt: '' },
+    ];
+    expect((await resolveEffectiveModelRow('a', 'M'))?.Id).toBe('newer');
+
+    // Equal UpdatedAt but smaller Id must not replace best.
+    (MetaModel as any).Search = async () => [
+      { Id: 'zzz', ModuleId: null, UpdatedAt: '2026-08-05T12:00:00.000Z' },
+      { Id: 'aaa', ModuleId: null, UpdatedAt: '2026-08-05T12:00:00.000Z' },
+    ];
+    expect((await resolveEffectiveModelRow('a', 'M'))?.Id).toBe('zzz');
+
+    // Shell after effective already selected must not steal (empty=false, bestEmpty=true).
+    (MetaModel as any).Search = async () => [
+      { Id: 'eff-first', ModuleId: null, UpdatedAt: '2026-08-05T08:00:00.000Z' },
+      { Id: 'shell-later', ModuleId: 'mod', UpdatedAt: '2026-08-05T12:00:00.000Z' },
+    ];
+    expect((await resolveEffectiveModelRow('a', 'M'))?.Id).toBe('eff-first');
+
+    // Default fields argument (omit third param).
+    (MetaModel as any).Search = async (_d: any, opts: any) => {
+      expect(opts.fields.includes('CompanyField')).toBe(true);
+      return [{ Id: 'solo-default', ModuleId: null, UpdatedAt: 1 }];
+    };
+    expect((await resolveEffectiveModelRow('a', 'M'))?.Id).toBe('solo-default');
   } finally {
     (MetaModel as any).Search = orig;
   }

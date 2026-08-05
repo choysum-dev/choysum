@@ -126,10 +126,11 @@ export async function buildAclAggregation(
       limit: 50000,
     } as any);
     const seen = new Set<string>();
-    for (const r of rows || []) {
-      const app = String((r as any).Application || '').trim();
-      const name = String((r as any).Name || '').trim();
-      if (!app || !name) continue;
+    for (const r of rows ?? []) {
+      const app = String((r as any).Application ?? '').trim();
+      const name = String((r as any).Name ?? '').trim();
+      if (!app) continue;
+      if (!name) continue;
       const key = `${app}\0${name}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -153,10 +154,11 @@ export async function buildAclAggregation(
     } as any);
     const seen = new Set<string>();
     const out: Array<{ app: string; name: string }> = [];
-    for (const r of rows || []) {
-      const app = String((r as any).Application || '').trim();
-      const name = String((r as any).Name || '').trim();
-      if (!app || !name) continue;
+    for (const r of rows ?? []) {
+      const app = String((r as any).Application ?? '').trim();
+      const name = String((r as any).Name ?? '').trim();
+      if (!app) continue;
+      if (!name) continue;
       const key = `${app}\0${name}`;
       if (seen.has(key)) continue;
       seen.add(key);
