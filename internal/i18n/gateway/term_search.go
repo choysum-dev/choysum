@@ -24,7 +24,7 @@ func writeTermsRPCError(w http.ResponseWriter, err error) {
 	code := status.Code(err)
 	switch code {
 	case codes.PermissionDenied:
-		writeJSON(w, http.StatusForbidden, map[string]any{"error": "terminology editor permission required"})
+		writeJSON(w, http.StatusForbidden, map[string]any{"error": "permission denied"})
 	case codes.Unauthenticated:
 		writeJSON(w, http.StatusUnauthorized, map[string]any{"error": "authentication is required"})
 	case codes.InvalidArgument:

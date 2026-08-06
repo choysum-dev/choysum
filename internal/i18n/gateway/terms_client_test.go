@@ -78,13 +78,14 @@ func TestFetchAppSearchTermsRequireApplication(t *testing.T) {
 
 func TestWriteTermsRPCError(t *testing.T) {
 	cases := []struct {
-		err  error
-		code int
+		err     error
+		code    int
+		wantSub string
 	}{
-		{status.Error(codes.PermissionDenied, "no"), http.StatusForbidden},
-		{status.Error(codes.Unauthenticated, "auth"), http.StatusUnauthorized},
-		{status.Error(codes.InvalidArgument, "bad"), http.StatusBadRequest},
-		{status.Error(codes.Unavailable, "down"), http.StatusBadGateway},
+		{status.Error(codes.PermissionDenied, "no"), http.StatusForbidden, `"error":"permission denied"`},
+		{status.Error(codes.Unauthenticated, "auth"), http.StatusUnauthorized, `"error":"authentication is required"`},
+		{status.Error(codes.InvalidArgument, "bad"), http.StatusBadRequest, "InvalidArgument"},
+		{status.Error(codes.Unavailable, "down"), http.StatusBadGateway, "Unavailable"},
 	}
 	for _, tc := range cases {
 		rr := httptest.NewRecorder()
@@ -92,5 +93,16 @@ func TestWriteTermsRPCError(t *testing.T) {
 		if rr.Code != tc.code {
 			t.Fatalf("code=%v status=%d body=%s", status.Code(tc.err), rr.Code, rr.Body.String())
 		}
+		if !strings.Contains(rr.Body.String(), tc.wantSub) {
+			t.Fatalf("body=%s, want substring %q", rr.Body.String(), tc.wantSub)
+		}
+	}
+}
+
+func TestSearchAppUsesFetchWhenHookNil(t *testing.T) {
+	h := &handler{}
+	_, err := h.searchApp(context.Background(), "tok", "  ", "zh_CN", nil, "", 10, 0)
+	if err == nil || !strings.Contains(err.Error(), "application is required") {
+		t.Fatalf("expected fetchAppSearchTerms empty-app error, got %v", err)
 	}
 }
