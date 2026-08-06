@@ -53,6 +53,9 @@ func TestInjectEffects_NilGuards(t *testing.T) {
 		Files:   []injectappmodel.VirtualFile{{Path: "p", Contents: "c"}},
 		Imports: []string{"x"},
 	})
+	if ctx := (*ModuleBuilder)(nil).injectBuildCtx(); ctx.Module != nil || ctx.DB != nil || ctx.ModulesPath != "" {
+		t.Fatalf("nil injectBuildCtx: %+v", ctx)
+	}
 	b := &ModuleBuilder{}
 	b.applyInjectEffects(injectappmodel.Effects{
 		Files:   []injectappmodel.VirtualFile{{Path: "", Contents: "c"}, {Path: "p2", Contents: "c2"}},
@@ -68,6 +71,18 @@ func TestInjectEffects_NilGuards(t *testing.T) {
 	}
 	if b.injectBuildCtx().Module != nil {
 		t.Fatal("empty injectBuildCtx module")
+	}
+	// runtimeScope set but Session() nil → DB stays nil.
+	ts := newBuilderTestScope()
+	ts.session = nil
+	b.runtimeScope = ts
+	if b.injectBuildCtx().DB != nil {
+		t.Fatal("expected nil DB when Session is nil")
+	}
+
+	got := mergeImportPaths([]string{"a", " ", "a"}, []string{"", "a", "b", "  "})
+	if strings.Join(got, ",") != "a,b" {
+		t.Fatalf("mergeImportPaths=%#v", got)
 	}
 }
 
@@ -294,6 +309,20 @@ func TestBundle_InjectError(t *testing.T) {
 	builder, _, _ := newInjectTestBuilder(t, mod, results)
 	if _, err := builder.Bundle(); err == nil {
 		t.Fatal("expected Bundle injectAppModels error")
+	}
+}
+
+func TestBundleInjectAppModels_PropagatesError(t *testing.T) {
+	mod := &meta.Module{
+		Name: "partner", Path: "/virtual/modules/partner",
+		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
+	}
+	builder, _, db := newInjectTestBuilder(t, mod, nil)
+	if err := meta.DropRawModelTable(db); err != nil {
+		t.Fatal(err)
+	}
+	if err := builder.BundleInjectAppModels([]*meta.Module{mod}); err == nil {
+		t.Fatal("expected BundleInjectAppModels load error")
 	}
 }
 

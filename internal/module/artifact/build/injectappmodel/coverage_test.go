@@ -247,6 +247,30 @@ func TestRegistryNilAndLookup(t *testing.T) {
 	if specs := DefaultSpecs(); len(specs) != 2 {
 		t.Fatalf("DefaultSpecs=%d", len(specs))
 	}
+
+	// claimMapLocked: scheduled map nil, and per-model map absent.
+	empty := &Registry{}
+	if owner, loaded := empty.TryClaim("X", "app", "mod"); loaded || owner != "mod" {
+		t.Fatalf("empty registry TryClaim: owner=%q loaded=%v", owner, loaded)
+	}
+	if _, ok := empty.ClaimOwner("MissingModel", "app"); ok {
+		t.Fatal("ClaimOwner missing map")
+	}
+	if _, ok := NewRegistry().ClaimOwner("NoSuch", "app"); ok {
+		t.Fatal("ClaimOwner absent model map")
+	}
+	// claimMap for unknown model (ScheduledApps path helper).
+	m := NewRegistry().claimMap("BrandNew")
+	if m == nil {
+		t.Fatal("claimMap should allocate")
+	}
+}
+
+func TestPackageSpecsList(t *testing.T) {
+	list := specsList()
+	if len(list) != 2 || list[0].ModelName != "FieldDefault" {
+		t.Fatalf("package specsList: %#v", list)
+	}
 }
 
 func TestClaimNeedInject_RegistryClaims(t *testing.T) {
@@ -326,6 +350,9 @@ func TestSessionMapsAndPaths(t *testing.T) {
 	if len(all) < 2 {
 		t.Fatalf("AllInjectPaths=%#v", all)
 	}
+	if len(s.allInjectPaths()) != len(all) {
+		t.Fatal("allInjectPaths wrapper")
+	}
 	s.ClearInjectPaths("FieldDefault")
 	if s.InjectPaths("FieldDefault") != nil || s.LastInjectPath("FieldDefault") != "" {
 		t.Fatal("ClearInjectPaths")
@@ -346,6 +373,14 @@ func TestSessionMapsAndPaths(t *testing.T) {
 	s.ReleaseSchedules() // empty plans / no apps
 	s.SetPlan("FieldDefault", Plan{ScheduledApp: "  "})
 	s.ReleaseSchedules() // whitespace app skipped
+
+	// Lazy map init on zero Session (NewSession pre-allocates maps).
+	bare := &Session{reg: reg}
+	bare.SetPlan("FieldDefault", Plan{NeedInject: true})
+	bare.rememberInjectPath("FieldDefault", "/lazy")
+	if bare.LastInjectPath("FieldDefault") != "/lazy" || len(bare.InjectPaths("FieldDefault")) != 1 {
+		t.Fatalf("bare session lazy maps: %+v paths=%#v", bare.Plan("FieldDefault"), bare.InjectPaths("FieldDefault"))
+	}
 }
 
 func TestReleaseScheduleCompat(t *testing.T) {
