@@ -818,6 +818,12 @@ func (b *ModuleBuilder) validate(buildResult *module.BuildResult) error {
 func (b *ModuleBuilder) persist(buildResult *module.BuildResult) error {
 	mod := buildResult.Module
 
+	// Ensure mutates ServiceEntryPoint in memory for the build round only.
+	// Revert before Save so DB stays package.json-sourced; cold builds re-Ensure.
+	if b.injectSession != nil {
+		b.injectSession.RevertEnsuredServiceEntry()
+	}
+
 	if err := b.supersedeInjectAppModels(); err != nil {
 		return err
 	}
@@ -899,6 +905,32 @@ func (b *ModuleBuilder) persistModuleModels(moduleID string, models []*meta.Mode
 	return nil
 }
 
+// registerMissingEntryVirtualSource registers a stub when entryPoint is set but
+// the file is not on disk (EnsureServiceEntry virtual path reused across builds).
+func (b *ModuleBuilder) registerMissingEntryVirtualSource() {
+	if b == nil {
+		return
+	}
+	entry := strings.TrimSpace(b.entryPoint)
+	if entry == "" {
+		return
+	}
+	if _, err := os.Stat(entry); err == nil {
+		return
+	}
+	contents := injectappmodel.VirtualServiceEntrySource()
+	if registrar, ok := b.buildPlugin.(interface {
+		RegisterVirtualSource(path string, contents string)
+	}); ok {
+		registrar.RegisterVirtualSource(entry, contents)
+	}
+	if registrar, ok := b.prebuildPlugin.(interface {
+		RegisterVirtualSource(path string, contents string)
+	}); ok {
+		registrar.RegisterVirtualSource(entry, contents)
+	}
+}
+
 func (b *ModuleBuilder) Build() (*module.BuildResult, error) {
 	buildResult, err := b.BuildWithoutPersist()
 	if err != nil {
@@ -913,13 +945,17 @@ func (b *ModuleBuilder) Build() (*module.BuildResult, error) {
 // BuildWithoutPersist compiles and validates the module without writing Module /
 // Model rows. Call Persist inside a short commit transaction afterward.
 func (b *ModuleBuilder) BuildWithoutPersist() (*module.BuildResult, error) {
+	// If a prior Ensure path was reused as entryPoint but the file is not on disk,
+	// register a virtual stub before prebuild so esbuild can resolve it.
+	b.registerMissingEntryVirtualSource()
+
 	// 1. prebuild for parse original model extends
 	prebuildResult, err := b.prebuild()
 	if err != nil {
 		return nil, xfmt.Errorf("error prebuilding: %w", err)
 	}
 
-	// 1b. FieldDefault / AppSetting C2 Decide / Inject (before extends rewrite + build)
+	// 1b. FieldDefault / AppSetting / TranslationTerm C2 Decide / Inject
 	if err := b.injectAppModels(prebuildResult); err != nil {
 		return nil, err
 	}
@@ -943,6 +979,13 @@ func (b *ModuleBuilder) BuildWithoutPersist() (*module.BuildResult, error) {
 		return nil, xfmt.Errorf("error validating: %w", err)
 	}
 
+	// Revert Ensure'd ServiceEntryPoint after a successful build round so
+	// forCommitScope / Persist do not persist a virtual path or recreate a
+	// builder whose entryPoint points at a non-existent disk file.
+	if b.injectSession != nil {
+		b.injectSession.RevertEnsuredServiceEntry()
+	}
+
 	return buildResult, nil
 }
 
@@ -963,6 +1006,8 @@ func (b *ModuleBuilder) Persist(buildResult *module.BuildResult) error {
 func (b *ModuleBuilder) Bundle() (*module.BuildResult, error) {
 	// Bundle never persists meta; always release any NeedInject process claim.
 	defer b.releaseInjectSchedules()
+
+	b.registerMissingEntryVirtualSource()
 
 	prebuildResult, err := b.prebuild()
 	if err != nil {

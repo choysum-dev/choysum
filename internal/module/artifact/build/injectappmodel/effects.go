@@ -3,6 +3,8 @@
 
 package injectappmodel
 
+import "strings"
+
 // VirtualFile is a generated source the caller should register on the build plugin.
 type VirtualFile struct {
 	Path     string
@@ -10,17 +12,27 @@ type VirtualFile struct {
 }
 
 // Effects are pure inject/bundle outputs. The caller applies them to the build
-// pipeline (RegisterVirtualSource, SetEntryPointImports).
+// pipeline (RegisterVirtualSource, SetEntryPointImports, SetEntryPoint).
 type Effects struct {
 	Files   []VirtualFile
 	Imports []string // inject paths to merge into entry-point imports
+	// ServiceEntryPath, when set, is a virtual service entry created by Ensure.
+	// The caller should set builder entryPoint (only when currently empty) and
+	// plugin EntryPoint; Module.ServiceEntryPoint is mutated during Materialize
+	// so later Specs in the same InjectAppModels loop see a non-empty entry.
+	ServiceEntryPath string
 }
 
 // Merge appends other's files and uniquely merges import paths.
+// ServiceEntryPath keeps the first non-empty value.
 func (e Effects) Merge(other Effects) Effects {
-	out := Effects{
-		Files:   append(append([]VirtualFile(nil), e.Files...), other.Files...),
-		Imports: mergeUniqueStrings(e.Imports, other.Imports),
+	serviceEntry := strings.TrimSpace(e.ServiceEntryPath)
+	if serviceEntry == "" {
+		serviceEntry = strings.TrimSpace(other.ServiceEntryPath)
 	}
-	return out
+	return Effects{
+		Files:            append(append([]VirtualFile(nil), e.Files...), other.Files...),
+		Imports:          mergeUniqueStrings(e.Imports, other.Imports),
+		ServiceEntryPath: serviceEntry,
+	}
 }

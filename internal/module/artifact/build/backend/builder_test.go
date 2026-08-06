@@ -853,6 +853,8 @@ func TestBundleToDirCtx_UsesContextSessionForRuntimeState(t *testing.T) {
 		publishDist:    false,
 		outFileName:    "index.js",
 		globalName:     "AuthApp",
+		// Empty registry: this test covers entry imports / runtime session wiring, not C2 inject.
+		injectRegistry: injectappmodel.NewRegistry(),
 		tsParserFactory: func(runtimeScope scope.Scope, module *meta.Module) parser.Parser {
 			parserRuntimeScope = runtimeScope
 			return fixedParser{}
@@ -940,6 +942,8 @@ func TestBundleToDirCtx_PreservesRuntimeTransactionWhenCallerContextHasNoTransac
 		publishDist:    false,
 		outFileName:    "index.js",
 		globalName:     "AuthApp",
+		// Empty registry: this test covers transaction preservation, not C2 inject.
+		injectRegistry: injectappmodel.NewRegistry(),
 		tsParserFactory: func(runtimeScope scope.Scope, module *meta.Module) parser.Parser {
 			parserRuntimeScope = runtimeScope
 			return fixedParser{}

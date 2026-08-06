@@ -245,7 +245,7 @@ func TestRegistryNilAndLookup(t *testing.T) {
 		t.Fatalf("Lookup: %+v ok=%v", spec, ok)
 	}
 	reg.ReleaseClaim("FieldDefault", "") // empty app no-op
-	if specs := DefaultSpecs(); len(specs) != 2 {
+	if specs := DefaultSpecs(); len(specs) != 3 {
 		t.Fatalf("DefaultSpecs=%d", len(specs))
 	}
 
@@ -269,7 +269,7 @@ func TestRegistryNilAndLookup(t *testing.T) {
 
 func TestPackageSpecsList(t *testing.T) {
 	list := specsList()
-	if len(list) != 2 || list[0].ModelName != "FieldDefault" {
+	if len(list) != 3 || list[0].ModelName != "TranslationTerm" {
 		t.Fatalf("package specsList: %#v", list)
 	}
 }
@@ -476,12 +476,14 @@ func TestHelpersCoverage(t *testing.T) {
 
 func TestEffects_Merge(t *testing.T) {
 	a := Effects{
-		Files:   []VirtualFile{{Path: "/a.ts", Contents: "a"}},
-		Imports: []string{"/a.ts", " /x "},
+		Files:            []VirtualFile{{Path: "/a.ts", Contents: "a"}},
+		Imports:          []string{"/a.ts", " /x "},
+		ServiceEntryPath: "/svc/a.ts",
 	}
 	b := Effects{
-		Files:   []VirtualFile{{Path: "/b.ts", Contents: "b"}},
-		Imports: []string{"/a.ts", "/b.ts"},
+		Files:            []VirtualFile{{Path: "/b.ts", Contents: "b"}},
+		Imports:          []string{"/a.ts", "/b.ts"},
+		ServiceEntryPath: "/svc/b.ts",
 	}
 	merged := a.Merge(b)
 	if len(merged.Files) != 2 || merged.Files[0].Path != "/a.ts" || merged.Files[1].Path != "/b.ts" {
@@ -489,6 +491,9 @@ func TestEffects_Merge(t *testing.T) {
 	}
 	if strings.Join(merged.Imports, ",") != "/a.ts,/x,/b.ts" {
 		t.Fatalf("Imports=%#v", merged.Imports)
+	}
+	if merged.ServiceEntryPath != "/svc/a.ts" {
+		t.Fatalf("ServiceEntryPath=%q, want first non-empty", merged.ServiceEntryPath)
 	}
 }
 
@@ -737,7 +742,8 @@ func TestDecideAndInjectOne_ApplyInjectErrorReleases(t *testing.T) {
 	}
 	sess, _ := newTestSession(t, mod)
 	sess.Context().Module.Path = ""
-	if _, err := DecideAndInjectOne(sess, "FieldDefault", nil); err == nil {
+	// Decide skips empty path; Materialize still requires it when NeedInject is forced.
+	if _, err := materializeInject(sess, specByNameOrPanic("FieldDefault"), Plan{NeedInject: true}); err == nil {
 		t.Fatal("expected inject path error")
 	}
 }

@@ -4,6 +4,7 @@
 package injectappmodel
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -22,10 +23,9 @@ func BundleInjectAppModels(sess *Session, modules []*meta.Module) (Effects, erro
 		fx, err := BundleOne(sess, spec.ModelName, modules)
 		if err != nil {
 			sess.ClearAllInjectPaths()
-			return out, err
+			return Effects{}, err
 		}
-		out.Files = append(out.Files, fx.Files...)
-		out.Imports = mergeUniqueStrings(out.Imports, fx.Imports)
+		out = out.Merge(fx)
 	}
 	return out, nil
 }
@@ -52,15 +52,37 @@ func bundleSpec(sess *Session, spec *Spec, modules []*meta.Module) (Effects, err
 			continue
 		}
 		app := strings.TrimSpace(mod.ApplicationStr)
-		if app == "" || app == "core" || strings.TrimSpace(mod.ServiceEntryPoint) == "" {
-			continue
-		}
-		if _, ok := seenApp[app]; ok {
+		if app == "" || app == "core" {
 			continue
 		}
 		if strings.TrimSpace(mod.Path) == "" {
 			continue
 		}
+		if _, ok := seenApp[app]; ok {
+			continue
+		}
+
+		entry := strings.TrimSpace(mod.ServiceEntryPoint)
+		if entry == "" {
+			if !spec.EnsureServiceEntry {
+				continue
+			}
+			entry = virtualServiceEntryPath(mod.Path)
+			mod.ServiceEntryPoint = entry
+			out.Files = append(out.Files, VirtualFile{
+				Path:     entry,
+				Contents: virtualServiceEntrySource(),
+			})
+		} else if spec.EnsureServiceEntry {
+			// Prior Ensure may have persisted a virtual path with no disk file.
+			if _, err := os.Stat(filepath.Clean(entry)); err != nil {
+				out.Files = append(out.Files, VirtualFile{
+					Path:     filepath.ToSlash(filepath.Clean(entry)),
+					Contents: virtualServiceEntrySource(),
+				})
+			}
+		}
+
 		seenApp[app] = struct{}{}
 
 		existing, err := dbLoadModels(spec, sess.ctx.DB, app)

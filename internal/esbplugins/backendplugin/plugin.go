@@ -139,6 +139,14 @@ func (p *BackendPlugin) SetEntryPointImports(imports []string) {
 	p.EntryPointImports = append([]string(nil), imports...)
 }
 
+// SetEntryPoint updates the plugin entry path (e.g. after EnsureServiceEntry).
+func (p *BackendPlugin) SetEntryPoint(path string) {
+	if p == nil {
+		return
+	}
+	p.EntryPoint = strings.TrimSpace(path)
+}
+
 func normalizeBackendPluginImportPath(path string) string {
 	trimmed := strings.TrimSpace(path)
 	if trimmed == "" {
@@ -1143,7 +1151,7 @@ func (p *BackendPlugin) DefinePlugins(runtimeScope scope.Scope, jsExecutor jsexe
 				}
 				return api.OnResolveResult{}, nil
 			}
-			build.OnResolve(api.OnResolveOptions{Filter: `(field_default|app_setting)\.ts$`}, resolveVirtual)
+			build.OnResolve(api.OnResolveOptions{Filter: `(field_default|app_setting|translation_term)\.ts$|service/index\.ts$`}, resolveVirtual)
 			build.OnLoad(api.OnLoadOptions{Filter: `\.ts$`}, func(args api.OnLoadArgs) (api.OnLoadResult, error) {
 				p.Mu.Lock()
 				defer p.Mu.Unlock()

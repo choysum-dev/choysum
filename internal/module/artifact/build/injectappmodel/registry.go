@@ -185,8 +185,18 @@ var (
 )
 
 // DefaultSpecs returns builtin C2 Spec definitions without registering them.
+// TranslationTerm is first so EnsureServiceEntry runs before FieldDefault /
+// AppSetting Decide in the same InjectAppModels loop.
 func DefaultSpecs() []Spec {
 	return []Spec{
+		{
+			ModelName:          "TranslationTerm",
+			GeneratedRelPath:   "service/models/__generated__/translation_term.ts",
+			DuplicateCode:      "TRANSLATION_TERM_DUPLICATE",
+			BaseModelFile:      "core/service/orm/model/translation_term_base_model.ts",
+			SoftDeleteFalse:    true,
+			EnsureServiceEntry: true,
+		},
 		{
 			ModelName:        "FieldDefault",
 			GeneratedRelPath: "service/models/__generated__/field_default.ts",
