@@ -106,46 +106,84 @@ func TestDecideAppSetting_SupersedeInject(t *testing.T) {
 	}
 }
 
-func TestDecideAppSetting_ForeignClaimOnOwnerReinject(t *testing.T) {
-	mod := &meta.Module{
-		Name: "partner", Path: "/virtual/modules/partner",
-		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
-	}
-	sess, db := newTestSession(t, mod)
-	virt := "/virtual/modules/partner/service/models/__generated__/app_setting.ts"
-	seedDeclaration(t, db, "AppSetting", "as1", virt, "partner")
+func TestDecide_OwnerReinjectForeignClaim_NoScheduledApp(t *testing.T) {
+	// FieldDefault and AppSetting share the same claim semantics after P1.
+	for _, modelName := range []string{"FieldDefault", "AppSetting"} {
+		t.Run(modelName, func(t *testing.T) {
+			mod := &meta.Module{
+				Name: "partner", Path: "/virtual/modules/partner",
+				ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
+			}
+			sess, db := newTestSession(t, mod)
+			rel := "field_default"
+			if modelName == "AppSetting" {
+				rel = "app_setting"
+			}
+			virt := "/virtual/modules/partner/service/models/__generated__/" + rel + ".ts"
+			seedDeclaration(t, db, modelName, "virt1", virt, "partner")
 
-	sess.Registry().TryClaim("AppSetting", "partner", "other_builder")
+			sess.Registry().TryClaim(modelName, "partner", "other_builder")
 
-	if _, err := InjectAppModels(sess, nil); err != nil {
-		t.Fatalf("inject: %v", err)
-	}
-	plan := sess.Plan("AppSetting")
-	if !plan.NeedInject || plan.ScheduledApp != "" {
-		t.Fatalf("expected NeedInject without adopting foreign claim, got %+v", plan)
-	}
-	if owner, ok := sess.Registry().ClaimOwner("AppSetting", "partner"); !ok || owner != "other_builder" {
-		t.Fatalf("foreign claim must remain, got %#v ok=%v", owner, ok)
+			if _, err := InjectAppModels(sess, nil); err != nil {
+				t.Fatalf("inject: %v", err)
+			}
+			plan := sess.Plan(modelName)
+			if !plan.NeedInject || plan.ScheduledApp != "" {
+				t.Fatalf("expected NeedInject without adopting foreign claim, got %+v", plan)
+			}
+			if owner, ok := sess.Registry().ClaimOwner(modelName, "partner"); !ok || owner != "other_builder" {
+				t.Fatalf("foreign claim must remain, got %#v ok=%v", owner, ok)
+			}
+		})
 	}
 }
 
-func TestDecideFieldDefault_SameModuleReclaimWithoutForeignBranch(t *testing.T) {
+func TestDecide_EmptyServiceEntry_SkipsWithoutEnsure(t *testing.T) {
 	mod := &meta.Module{
-		Name: "partner", Path: "/virtual/modules/partner",
-		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
+		Name: "web", Path: "/virtual/modules/web",
+		ApplicationStr: "web", ServiceEntryPoint: "",
 	}
-	sess, db := newTestSession(t, mod)
-	virt := "/virtual/modules/partner/service/models/__generated__/field_default.ts"
-	seedDeclaration(t, db, "FieldDefault", "fd1", virt, "partner")
-
-	sess.Registry().TryClaim("FieldDefault", "partner", "other_builder")
-
+	sess, _ := newTestSession(t, mod)
 	if _, err := InjectAppModels(sess, nil); err != nil {
 		t.Fatalf("inject: %v", err)
 	}
-	plan := sess.Plan("FieldDefault")
-	if !plan.NeedInject || plan.ScheduledApp != "partner" {
-		t.Fatalf("FieldDefault re-injects with scheduledApp even under foreign claim, got %+v", plan)
+	for _, name := range []string{"FieldDefault", "AppSetting"} {
+		plan := sess.Plan(name)
+		if plan.NeedInject || plan.SupersedeInject {
+			t.Fatalf("%s: empty entry should skip, got %+v", name, plan)
+		}
+	}
+	specs := sess.Registry().Specs()
+	for _, s := range specs {
+		if s.EnsureServiceEntry {
+			t.Fatalf("builtin %s must leave EnsureServiceEntry false", s.ModelName)
+		}
+	}
+}
+
+func TestDecide_EnsureServiceEntry_EmptyEntryAllowsNeedInject(t *testing.T) {
+	mod := &meta.Module{
+		Name: "web", Path: "/virtual/modules/web",
+		ApplicationStr: "web", ServiceEntryPoint: "",
+	}
+	sess, _ := newTestSession(t, mod)
+	sess.Registry().Register(Spec{
+		ModelName:          "TempEnsure",
+		GeneratedRelPath:   "service/models/__generated__/temp_ensure.ts",
+		DuplicateCode:      "TEMP_ENSURE_DUPLICATE",
+		EnsureServiceEntry: true,
+	})
+	fx, err := DecideAndInjectOne(sess, "TempEnsure", nil)
+	if err != nil {
+		t.Fatalf("DecideAndInjectOne: %v", err)
+	}
+	plan := sess.Plan("TempEnsure")
+	if !plan.NeedInject || plan.ScheduledApp != "web" {
+		t.Fatalf("expected NeedInject with scheduledApp, got %+v", plan)
+	}
+	// P1: no Effects until P2 materializes the virtual service entry.
+	if len(fx.Files) != 0 || len(fx.Imports) != 0 {
+		t.Fatalf("P1 stub must not emit Effects before Ensure materialize, got %+v", fx)
 	}
 }
 
