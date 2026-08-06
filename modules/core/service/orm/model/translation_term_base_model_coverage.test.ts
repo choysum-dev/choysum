@@ -193,24 +193,27 @@ test('ensureTermUniqueIndex covers dialects, cache, and duplicate errors', async
     __resetTranslationTermUniqueIndexTablesForTest();
     const meta = MetadataStorage.instance.getModelMetadata(TtCovTerm as any);
     const originalTable = meta.tableName;
-    meta.tableName = (() => 'tt_fn_table') as any;
-    (globalThis as any).$choysum = {
-      db: {
-        dialectName: 'sqlite',
-        execute: async (ddl: string) => {
-          ddls.push(ddl);
+    try {
+      meta.tableName = (() => 'tt_fn_table') as any;
+      (globalThis as any).$choysum = {
+        db: {
+          dialectName: 'sqlite',
+          execute: async (ddl: string) => {
+            ddls.push(ddl);
+          },
         },
-      },
-    };
-    await TtCovTerm.GetTranslations({ lang: 'en_US', module_names: ['x'] });
-    expect(ddls.some(d => d.includes('tt_fn_table'))).toBe(true);
+      };
+      await TtCovTerm.GetTranslations({ lang: 'en_US', module_names: ['x'] });
+      expect(ddls.some(d => d.includes('tt_fn_table'))).toBe(true);
 
-    meta.tableName = '' as any;
-    __resetTranslationTermUniqueIndexTablesForTest();
-    const beforeEmpty = ddls.length;
-    await TtCovTerm.GetTranslations({ lang: 'en_US', module_names: ['x'] });
-    expect(ddls.length).toBe(beforeEmpty);
-    meta.tableName = originalTable;
+      meta.tableName = '' as any;
+      __resetTranslationTermUniqueIndexTablesForTest();
+      const beforeEmpty = ddls.length;
+      await TtCovTerm.GetTranslations({ lang: 'en_US', module_names: ['x'] });
+      expect(ddls.length).toBe(beforeEmpty);
+    } finally {
+      meta.tableName = originalTable;
+    }
   } finally {
     (globalThis as any).$choysum = originalChoysum;
     restore();

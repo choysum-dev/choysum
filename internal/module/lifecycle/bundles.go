@@ -113,37 +113,53 @@ func (m *ModuleManager) buildBackendBundlesToDir(ctx context.Context, distBundle
 		return xfmt.Errorf("write bundles entry: %w", err)
 	}
 
-	// Build bundles/index.js into distBundlesDir.
-	if len(orderedApps) > 0 {
-		mods := modsByApp[orderedApps[0]]
-		if len(mods) == 0 {
-			return nil
-		}
-		rep := mods[len(mods)-1]
-		builder := internalbackendbuilder.NewModuleBuilder(
-			m.runtimeScope,
-			m.jsExecutor,
-			rep,
-			entryFilePath,
-			internalbackendbuilder.WithGlobalName("bundles"),
-			internalbackendbuilder.WithOutFileName("index.js"),
-			internalbackendbuilder.WithPublishDist(true),
-		)
-		// Multi-app entry only Decide/Injects against `rep` (often core). Explicitly
-		// re-register C2 FieldDefault / AppSetting virtual sources for every non-core
-		// app so the final bundles/index.js actually contains the store classes.
-		if err := ensureBundleC2VirtualImports(builder, fieldDefaultOwners, appSettingOwners, translationTermOwners); err != nil {
-			return err
-		}
-		bundlerToDir, ok := builder.(module.BundlerToDir)
-		if !ok {
-			return xfmt.Errorf("backend builder does not support BundleToDirCtx")
-		}
-		if _, err := bundlerToDir.BundleToDirCtx(ctx, distBundlesDir); err != nil {
-			return xfmt.Errorf("backend bundle failed for bundles: %w", err)
-		}
+	// Build bundles/index.js into distBundlesDir. Prefer a backend representative;
+	// fall back to a TranslationTerm Ensure owner when every app lacks a service entry.
+	rep := pickBackendBundleRepresentative(orderedApps, modsByApp, translationTermOwners)
+	if rep == nil {
+		return nil
+	}
+	builder := internalbackendbuilder.NewModuleBuilder(
+		m.runtimeScope,
+		m.jsExecutor,
+		rep,
+		entryFilePath,
+		internalbackendbuilder.WithGlobalName("bundles"),
+		internalbackendbuilder.WithOutFileName("index.js"),
+		internalbackendbuilder.WithPublishDist(true),
+	)
+	// Multi-app entry only Decide/Injects against `rep` (often core). Explicitly
+	// re-register C2 FieldDefault / AppSetting / TranslationTerm virtual sources
+	// for every non-core app so the final bundles/index.js contains the stores.
+	if err := ensureBundleC2VirtualImports(builder, fieldDefaultOwners, appSettingOwners, translationTermOwners); err != nil {
+		return err
+	}
+	bundlerToDir, ok := builder.(module.BundlerToDir)
+	if !ok {
+		return xfmt.Errorf("backend builder does not support BundleToDirCtx")
+	}
+	if _, err := bundlerToDir.BundleToDirCtx(ctx, distBundlesDir); err != nil {
+		return xfmt.Errorf("backend bundle failed for bundles: %w", err)
 	}
 
+	return nil
+}
+
+// pickBackendBundleRepresentative chooses the ModuleBuilder host for multi-app
+// bundles. Prefer the last backend module of the first topo-ordered app; if no
+// backend entries exist, use the first TranslationTerm Ensure owner.
+func pickBackendBundleRepresentative(orderedApps []string, modsByApp map[string][]*meta.Module, translationTermOwners []*meta.Module) *meta.Module {
+	if len(orderedApps) > 0 {
+		mods := modsByApp[orderedApps[0]]
+		if len(mods) > 0 {
+			return mods[len(mods)-1]
+		}
+	}
+	for _, owner := range translationTermOwners {
+		if owner != nil && strings.TrimSpace(owner.Path) != "" {
+			return owner
+		}
+	}
 	return nil
 }
 
@@ -250,6 +266,7 @@ func appendTranslationTermOwnersFromInstalled(owners []*meta.Module, installed [
 		}
 	}
 	byApp := map[string][]*meta.Module{}
+	appOrder := make([]string, 0)
 	for i := range installed {
 		mod := &installed[i]
 		app := strings.TrimSpace(mod.ApplicationStr)
@@ -259,10 +276,13 @@ func appendTranslationTermOwnersFromInstalled(owners []*meta.Module, installed [
 		if _, ok := seenApp[app]; ok {
 			continue
 		}
+		if _, ok := byApp[app]; !ok {
+			appOrder = append(appOrder, app)
+		}
 		byApp[app] = append(byApp[app], mod)
 	}
-	for app, mods := range byApp {
-		if owner := pickTranslationTermOwnerModule(app, mods); owner != nil {
+	for _, app := range appOrder {
+		if owner := pickTranslationTermOwnerModule(app, byApp[app]); owner != nil {
 			owners = append(owners, owner)
 			seenApp[app] = struct{}{}
 		}
