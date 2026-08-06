@@ -542,22 +542,22 @@ msgctxt "base.model.State.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/uom.ts:72
+#: service/models/uom.ts:84
 msgctxt "base.model.UoM.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/uom.ts:36
+#: service/models/uom.ts:37
 msgctxt "base.model.UoM.fields"
 msgid "Category"
 msgstr ""
 
-#: service/models/uom.ts:54
+#: service/models/uom.ts:66
 msgctxt "base.model.UoM.fields"
 msgid "Conversion Factor"
 msgstr ""
 
-#: service/models/uom.ts:55
+#: service/models/uom.ts:67
 msgctxt "base.model.UoM.fields"
 msgid "Multiplier to convert this unit to the category reference unit."
 msgstr ""
@@ -567,17 +567,17 @@ msgctxt "base.model.UoM.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/uom.ts:45
+#: service/models/uom.ts:46
 msgctxt "base.model.UoM.fields"
 msgid "One reference unit per category; its factor must be 1."
 msgstr ""
 
-#: service/models/uom.ts:44
+#: service/models/uom.ts:45
 msgctxt "base.model.UoM.fields"
 msgid "Reference Unit"
 msgstr ""
 
-#: service/models/uom.ts:63
+#: service/models/uom.ts:75
 msgctxt "base.model.UoM.fields"
 msgid "Rounding"
 msgstr ""
@@ -865,33 +865,32 @@ msgctxt "service/models/currency"
 msgid "Rounding must be greater than 0"
 msgstr ""
 
-#: service/models/exchange_rate.ts:77
-#: service/models/exchange_rate.ts:85
+#: service/models/exchange_rate.ts:81
 msgctxt "service/models/exchange_rate"
 msgid "Date is invalid"
 msgstr ""
 
-#: service/models/exchange_rate.ts:84
+#: service/models/exchange_rate.ts:80
 msgctxt "service/models/exchange_rate"
 msgid "Date is required"
 msgstr ""
 
-#: service/models/exchange_rate.ts:86
+#: service/models/exchange_rate.ts:82
 msgctxt "service/models/exchange_rate"
 msgid "Date must be YYYY-MM-DD"
 msgstr ""
 
-#: service/models/exchange_rate.ts:113
+#: service/models/exchange_rate.ts:109
 msgctxt "service/models/exchange_rate"
 msgid "ExchangeRate must be unique for CompanyId + CurrencyId + Date"
 msgstr ""
 
-#: service/models/exchange_rate.ts:123
+#: service/models/exchange_rate.ts:119
 msgctxt "service/models/exchange_rate"
 msgid "Rate must be a valid decimal"
 msgstr ""
 
-#: service/models/exchange_rate.ts:122
+#: service/models/exchange_rate.ts:118
 msgctxt "service/models/exchange_rate"
 msgid "Rate must be greater than 0"
 msgstr ""
@@ -956,37 +955,37 @@ msgctxt "service/models/state"
 msgid "State Code must be unique within Country"
 msgstr ""
 
-#: service/models/uom.ts:90
+#: service/models/uom.ts:102
 msgctxt "service/models/uom"
 msgid "Each UoM category can only have one reference unit"
 msgstr ""
 
-#: service/models/uom.ts:96
+#: service/models/uom.ts:108
 msgctxt "service/models/uom"
 msgid "Each UoM category must have one reference unit"
 msgstr ""
 
-#: service/models/uom.ts:110
+#: service/models/uom.ts:122
 msgctxt "service/models/uom"
 msgid "Factor must be a valid decimal"
 msgstr ""
 
-#: service/models/uom.ts:109
+#: service/models/uom.ts:121
 msgctxt "service/models/uom"
 msgid "Factor must be greater than 0"
 msgstr ""
 
-#: service/models/uom.ts:113
+#: service/models/uom.ts:125
 msgctxt "service/models/uom"
 msgid "Reference UoM must have Factor = 1"
 msgstr ""
 
-#: service/models/uom.ts:122
+#: service/models/uom.ts:134
 msgctxt "service/models/uom"
 msgid "Rounding must be a valid decimal"
 msgstr ""
 
-#: service/models/uom.ts:121
+#: service/models/uom.ts:133
 msgctxt "service/models/uom"
 msgid "Rounding must be greater than 0"
 msgstr ""
@@ -1036,12 +1035,12 @@ msgctxt "web/menu/menus"
 msgid "Master Data"
 msgstr ""
 
-#: web/menu/menus.ts:35
+#: web/menu/menus.ts:27
 msgctxt "web/menu/menus"
 msgid "Sequence Idempotency Record"
 msgstr ""
 
-#: web/menu/menus.ts:34
+#: web/menu/menus.ts:26
 msgctxt "web/menu/menus"
 msgid "Sequence Management"
 msgstr ""
@@ -1051,17 +1050,12 @@ msgctxt "web/menu/menus"
 msgid "State Management"
 msgstr ""
 
-#: web/menu/menus.ts:27
-msgctxt "web/menu/menus"
-msgid "Terminology Editor"
-msgstr ""
-
-#: web/menu/menus.ts:37
+#: web/menu/menus.ts:29
 msgctxt "web/menu/menus"
 msgid "Unit of Measure"
 msgstr ""
 
-#: web/menu/menus.ts:36
+#: web/menu/menus.ts:28
 msgctxt "web/menu/menus"
 msgid "Unit of Measure Category"
 msgstr ""
@@ -1151,7 +1145,7 @@ msgctxt "web/route/routes"
 msgid "Create Exchange Rate"
 msgstr ""
 
-#: web/route/routes.ts:340
+#: web/route/routes.ts:330
 msgctxt "web/route/routes"
 msgid "Create Idempotency Record"
 msgstr ""
@@ -1161,22 +1155,22 @@ msgctxt "web/route/routes"
 msgid "Create Language"
 msgstr ""
 
-#: web/route/routes.ts:298
+#: web/route/routes.ts:288
 msgctxt "web/route/routes"
 msgid "Create Sequence"
 msgstr ""
 
-#: web/route/routes.ts:377
+#: web/route/routes.ts:367
 msgctxt "web/route/routes"
 msgid "Create State"
 msgstr ""
 
-#: web/route/routes.ts:409
+#: web/route/routes.ts:399
 msgctxt "web/route/routes"
 msgid "Create Unit of Measure"
 msgstr ""
 
-#: web/route/routes.ts:441
+#: web/route/routes.ts:431
 msgctxt "web/route/routes"
 msgid "Create Unit of Measure Category"
 msgstr ""
@@ -1201,7 +1195,7 @@ msgctxt "web/route/routes"
 msgid "Exchange Rate List"
 msgstr ""
 
-#: web/route/routes.ts:325
+#: web/route/routes.ts:315
 msgctxt "web/route/routes"
 msgid "Idempotency Record Details"
 msgstr ""
@@ -1216,52 +1210,47 @@ msgctxt "web/route/routes"
 msgid "Language List"
 msgstr ""
 
-#: web/route/routes.ts:288
+#: web/route/routes.ts:278
 msgctxt "web/route/routes"
 msgid "Sequence Details"
 msgstr ""
 
-#: web/route/routes.ts:311
+#: web/route/routes.ts:301
 msgctxt "web/route/routes"
 msgid "Sequence Idempotency Record"
 msgstr ""
 
-#: web/route/routes.ts:279
+#: web/route/routes.ts:269
 msgctxt "web/route/routes"
 msgid "Sequence List"
 msgstr ""
 
-#: web/route/routes.ts:367
+#: web/route/routes.ts:357
 msgctxt "web/route/routes"
 msgid "State Details"
 msgstr ""
 
-#: web/route/routes.ts:358
+#: web/route/routes.ts:348
 msgctxt "web/route/routes"
 msgid "State List"
 msgstr ""
 
-#: web/route/routes.ts:266
-msgctxt "web/route/routes"
-msgid "Terminology Editor"
-msgstr ""
-
-#: web/route/routes.ts:422
+#: web/route/routes.ts:412
 msgctxt "web/route/routes"
 msgid "Unit of Measure Category"
 msgstr ""
 
-#: web/route/routes.ts:431
+#: web/route/routes.ts:421
 msgctxt "web/route/routes"
 msgid "Unit of Measure Category Details"
 msgstr ""
 
-#: web/route/routes.ts:399
+#: web/route/routes.ts:389
 msgctxt "web/route/routes"
 msgid "Unit of Measure Details"
 msgstr ""
 
-#: web/route/routes.ts:390
+#: web/route/routes.ts:380
 msgctxt "web/route/routes"
 msgid "Unit of Measure List"
 msgstr ""

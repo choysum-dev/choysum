@@ -28,7 +28,7 @@ func accessTokenFromHTTP(ctx context.Context, authorizationHeader string) string
 
 // requireTermsAuth accepts either a trusted Identity in context or a Bearer token.
 // /web/ is HTTP-auth excluded, so IdentityFromContext is often empty and the
-// Authorization header is the primary signal for terms routes.
+// Authorization header is the primary signal for PO export (and former terms routes).
 func requireTermsAuth(ctx context.Context, authorizationHeader string) (accessToken string, ok bool) {
 	token := accessTokenFromHTTP(ctx, authorizationHeader)
 	if id := auth.IdentityFromContext(ctx); id != nil && id.IsValid() {

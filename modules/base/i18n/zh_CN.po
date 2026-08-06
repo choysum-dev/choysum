@@ -536,22 +536,22 @@ msgctxt "base.model.State.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/uom.ts:72
+#: service/models/uom.ts:84
 msgctxt "base.model.UoM.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/uom.ts:36
+#: service/models/uom.ts:37
 msgctxt "base.model.UoM.fields"
 msgid "Category"
 msgstr "类别"
 
-#: service/models/uom.ts:54
+#: service/models/uom.ts:66
 msgctxt "base.model.UoM.fields"
 msgid "Conversion Factor"
 msgstr "换算系数"
 
-#: service/models/uom.ts:55
+#: service/models/uom.ts:67
 msgctxt "base.model.UoM.fields"
 msgid "Multiplier to convert this unit to the category reference unit."
 msgstr "换算到该类别基准单位的乘数。"
@@ -561,17 +561,17 @@ msgctxt "base.model.UoM.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/uom.ts:45
+#: service/models/uom.ts:46
 msgctxt "base.model.UoM.fields"
 msgid "One reference unit per category; its factor must be 1."
 msgstr "每个类别仅一个基准单位；其换算因子必须为 1。"
 
-#: service/models/uom.ts:44
+#: service/models/uom.ts:45
 msgctxt "base.model.UoM.fields"
 msgid "Reference Unit"
 msgstr "基准单位"
 
-#: service/models/uom.ts:63
+#: service/models/uom.ts:75
 msgctxt "base.model.UoM.fields"
 msgid "Rounding"
 msgstr "舍入精度"
@@ -856,32 +856,32 @@ msgctxt "service/models/currency"
 msgid "Rounding must be greater than 0"
 msgstr "Rounding 必须大于 0"
 
-#: service/models/exchange_rate.ts:77 service/models/exchange_rate.ts:85
+#: service/models/exchange_rate.ts:81
 msgctxt "service/models/exchange_rate"
 msgid "Date is invalid"
 msgstr "日期无效"
 
-#: service/models/exchange_rate.ts:84
+#: service/models/exchange_rate.ts:80
 msgctxt "service/models/exchange_rate"
 msgid "Date is required"
 msgstr "日期为必填项"
 
-#: service/models/exchange_rate.ts:86
+#: service/models/exchange_rate.ts:82
 msgctxt "service/models/exchange_rate"
 msgid "Date must be YYYY-MM-DD"
 msgstr "日期格式必须为 YYYY-MM-DD"
 
-#: service/models/exchange_rate.ts:113
+#: service/models/exchange_rate.ts:109
 msgctxt "service/models/exchange_rate"
 msgid "ExchangeRate must be unique for CompanyId + CurrencyId + Date"
 msgstr "ExchangeRate 在相同 CompanyId、CurrencyId 和 Date 下必须唯一"
 
-#: service/models/exchange_rate.ts:123
+#: service/models/exchange_rate.ts:119
 msgctxt "service/models/exchange_rate"
 msgid "Rate must be a valid decimal"
 msgstr "Rate 必须为有效的小数"
 
-#: service/models/exchange_rate.ts:122
+#: service/models/exchange_rate.ts:118
 msgctxt "service/models/exchange_rate"
 msgid "Rate must be greater than 0"
 msgstr "Rate 必须大于 0"
@@ -946,37 +946,37 @@ msgctxt "service/models/state"
 msgid "State Code must be unique within Country"
 msgstr "州/省编码在同一国家/地区内必须唯一"
 
-#: service/models/uom.ts:90
+#: service/models/uom.ts:102
 msgctxt "service/models/uom"
 msgid "Each UoM category can only have one reference unit"
 msgstr "每个计量单位类别只能有一个基准单位"
 
-#: service/models/uom.ts:96
+#: service/models/uom.ts:108
 msgctxt "service/models/uom"
 msgid "Each UoM category must have one reference unit"
 msgstr "每个计量单位类别必须有一个基准单位"
 
-#: service/models/uom.ts:110
+#: service/models/uom.ts:122
 msgctxt "service/models/uom"
 msgid "Factor must be a valid decimal"
 msgstr "Factor 必须为有效的小数"
 
-#: service/models/uom.ts:109
+#: service/models/uom.ts:121
 msgctxt "service/models/uom"
 msgid "Factor must be greater than 0"
 msgstr "Factor 必须大于 0"
 
-#: service/models/uom.ts:113
+#: service/models/uom.ts:125
 msgctxt "service/models/uom"
 msgid "Reference UoM must have Factor = 1"
 msgstr "基准计量单位的 Factor 必须等于 1"
 
-#: service/models/uom.ts:122
+#: service/models/uom.ts:134
 msgctxt "service/models/uom"
 msgid "Rounding must be a valid decimal"
 msgstr "Rounding 必须为有效的小数"
 
-#: service/models/uom.ts:121
+#: service/models/uom.ts:133
 msgctxt "service/models/uom"
 msgid "Rounding must be greater than 0"
 msgstr "Rounding 必须大于 0"
@@ -1026,12 +1026,12 @@ msgctxt "web/menu/menus"
 msgid "Master Data"
 msgstr "基础数据"
 
-#: web/menu/menus.ts:35
+#: web/menu/menus.ts:27
 msgctxt "web/menu/menus"
 msgid "Sequence Idempotency Record"
 msgstr "序列幂等记录"
 
-#: web/menu/menus.ts:34
+#: web/menu/menus.ts:26
 msgctxt "web/menu/menus"
 msgid "Sequence Management"
 msgstr "序列管理"
@@ -1041,17 +1041,12 @@ msgctxt "web/menu/menus"
 msgid "State Management"
 msgstr "州/省管理"
 
-#: web/menu/menus.ts:27
-msgctxt "web/menu/menus"
-msgid "Terminology Editor"
-msgstr "术语编辑器"
-
-#: web/menu/menus.ts:37
+#: web/menu/menus.ts:29
 msgctxt "web/menu/menus"
 msgid "Unit of Measure"
 msgstr "计量单位"
 
-#: web/menu/menus.ts:36
+#: web/menu/menus.ts:28
 msgctxt "web/menu/menus"
 msgid "Unit of Measure Category"
 msgstr "计量单位类别"
@@ -1141,7 +1136,7 @@ msgctxt "web/route/routes"
 msgid "Create Exchange Rate"
 msgstr "新建汇率"
 
-#: web/route/routes.ts:340
+#: web/route/routes.ts:330
 msgctxt "web/route/routes"
 msgid "Create Idempotency Record"
 msgstr "新建幂等记录"
@@ -1151,22 +1146,22 @@ msgctxt "web/route/routes"
 msgid "Create Language"
 msgstr "新建语言"
 
-#: web/route/routes.ts:298
+#: web/route/routes.ts:288
 msgctxt "web/route/routes"
 msgid "Create Sequence"
 msgstr "新建序列"
 
-#: web/route/routes.ts:377
+#: web/route/routes.ts:367
 msgctxt "web/route/routes"
 msgid "Create State"
 msgstr "新建州/省"
 
-#: web/route/routes.ts:409
+#: web/route/routes.ts:399
 msgctxt "web/route/routes"
 msgid "Create Unit of Measure"
 msgstr "新建计量单位"
 
-#: web/route/routes.ts:441
+#: web/route/routes.ts:431
 msgctxt "web/route/routes"
 msgid "Create Unit of Measure Category"
 msgstr "新建计量单位类别"
@@ -1191,7 +1186,7 @@ msgctxt "web/route/routes"
 msgid "Exchange Rate List"
 msgstr "汇率列表"
 
-#: web/route/routes.ts:325
+#: web/route/routes.ts:315
 msgctxt "web/route/routes"
 msgid "Idempotency Record Details"
 msgstr "幂等记录详情"
@@ -1206,52 +1201,47 @@ msgctxt "web/route/routes"
 msgid "Language List"
 msgstr "语言列表"
 
-#: web/route/routes.ts:288
+#: web/route/routes.ts:278
 msgctxt "web/route/routes"
 msgid "Sequence Details"
 msgstr "序列详情"
 
-#: web/route/routes.ts:311
+#: web/route/routes.ts:301
 msgctxt "web/route/routes"
 msgid "Sequence Idempotency Record"
 msgstr "序列幂等记录"
 
-#: web/route/routes.ts:279
+#: web/route/routes.ts:269
 msgctxt "web/route/routes"
 msgid "Sequence List"
 msgstr "序列列表"
 
-#: web/route/routes.ts:367
+#: web/route/routes.ts:357
 msgctxt "web/route/routes"
 msgid "State Details"
 msgstr "州/省详情"
 
-#: web/route/routes.ts:358
+#: web/route/routes.ts:348
 msgctxt "web/route/routes"
 msgid "State List"
 msgstr "州/省列表"
 
-#: web/route/routes.ts:266
-msgctxt "web/route/routes"
-msgid "Terminology Editor"
-msgstr "术语编辑器"
-
-#: web/route/routes.ts:422
+#: web/route/routes.ts:412
 msgctxt "web/route/routes"
 msgid "Unit of Measure Category"
 msgstr "计量单位类别"
 
-#: web/route/routes.ts:431
+#: web/route/routes.ts:421
 msgctxt "web/route/routes"
 msgid "Unit of Measure Category Details"
 msgstr "计量单位类别详情"
 
-#: web/route/routes.ts:399
+#: web/route/routes.ts:389
 msgctxt "web/route/routes"
 msgid "Unit of Measure Details"
 msgstr "计量单位详情"
 
-#: web/route/routes.ts:390
+#: web/route/routes.ts:380
 msgctxt "web/route/routes"
 msgid "Unit of Measure List"
 msgstr "计量单位列表"
@@ -2120,3 +2110,11 @@ msgstr "编辑计量单位"
 msgctxt "web/views/UoMListView"
 msgid "Unit of Measure"
 msgstr "计量单位"
+
+#~ msgctxt "web/menu/menus"
+#~ msgid "Terminology Editor"
+#~ msgstr "术语编辑器"
+
+#~ msgctxt "web/route/routes"
+#~ msgid "Terminology Editor"
+#~ msgstr "术语编辑器"

@@ -6,6 +6,7 @@ package i18ngateway
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -21,8 +22,10 @@ import (
 	grpcclient "github.com/choysum-dev/choysum/pkg/grpc/client"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -142,7 +145,65 @@ func newAuthI18nDialer(t *testing.T, rs scope.Scope) grpcclient.ServiceDialer {
 	}
 }
 
-func TestFetchAppSearchTermsAndUpdateViaBufconn(t *testing.T) {
+// newAuthTranslationTermDialer serves GetTranslations under auth.TranslationTerm,
+// delegating to the Go I18n TermStore handlers (wire-compatible field layout).
+func newAuthTranslationTermDialer(t *testing.T, rs scope.Scope) grpcclient.ServiceDialer {
+	t.Helper()
+	svc := i18nservice.New("auth", rs)
+	i18nDesc, err := svc.ServiceDesc()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var getMethod *grpc.MethodDesc
+	for i := range i18nDesc.Methods {
+		if i18nDesc.Methods[i].MethodName == i18nservice.MethodGetTranslations {
+			getMethod = &i18nDesc.Methods[i]
+			break
+		}
+	}
+	if getMethod == nil {
+		t.Fatal("I18n ServiceDesc missing GetTranslations")
+	}
+	ttDesc := &grpc.ServiceDesc{
+		ServiceName: "auth.TranslationTerm",
+		HandlerType: (*interface{})(nil),
+		Methods:     []grpc.MethodDesc{*getMethod},
+		Streams:     []grpc.StreamDesc{},
+		Metadata:    "auth/translation_term.proto",
+	}
+
+	lis := bufconn.Listen(1024 * 1024)
+	server := grpc.NewServer()
+	server.RegisterService(ttDesc, svc)
+	go func() { _ = server.Serve(lis) }()
+	t.Cleanup(server.Stop)
+
+	var conn *grpc.ClientConn
+	t.Cleanup(func() {
+		if conn != nil {
+			_ = conn.Close()
+		}
+	})
+	return func(ctx context.Context, serviceName string) (*grpc.ClientConn, error) {
+		if serviceName != "auth.TranslationTerm" {
+			return nil, fmt.Errorf("unexpected service: %s", serviceName)
+		}
+		if conn != nil {
+			return conn, nil
+		}
+		c, err := grpc.DialContext(ctx, "bufnet",
+			grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) { return lis.Dial() }),
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		)
+		if err != nil {
+			return nil, err
+		}
+		conn = c
+		return conn, nil
+	}
+}
+
+func TestFetchAppSearchTermsViaBufconn(t *testing.T) {
 	rs := newRPCTestScope(t)
 	seedAuthTerm(t, rs, "web/a@title", "Hello", "你好")
 	store.RegistryFor(rs).RememberModuleApplication("auth", "auth")
@@ -159,33 +220,6 @@ func TestFetchAppSearchTermsAndUpdateViaBufconn(t *testing.T) {
 	if result.Items[0].Src != "Hello" || result.Items[0].Value != "你好" {
 		t.Fatalf("unexpected item: %#v", result.Items[0])
 	}
-
-	updated, hash, err := invokeAppUpdateTerm(ctx, rs, "user-token", "auth", "zh_CN", termItem{
-		Module: "auth",
-		Scope:  "web/a@title",
-		Src:    "Hello",
-		Value:  "您好",
-	})
-	if err != nil {
-		t.Fatalf("invokeAppUpdateTerm: %v", err)
-	}
-	if updated == nil || updated.Value != "您好" {
-		t.Fatalf("updated = %#v", updated)
-	}
-	if strings.TrimSpace(hash) == "" {
-		t.Fatal("expected non-empty hash")
-	}
-
-	// Default kind when omitted.
-	_, _, err = invokeAppUpdateTerm(ctx, rs, "user-token", "auth", "zh_CN", termItem{
-		Module: "auth",
-		Scope:  "web/a@ok",
-		Src:    "OK",
-		Value:  "好的",
-	})
-	if err != nil {
-		t.Fatalf("invokeAppUpdateTerm create: %v", err)
-	}
 }
 
 func TestFetchAppTranslationsViaBufconn(t *testing.T) {
@@ -193,7 +227,7 @@ func TestFetchAppTranslationsViaBufconn(t *testing.T) {
 	seedAuthTerm(t, rs, "web/a@title", "Hello", "你好")
 	store.RegistryFor(rs).RememberModuleApplication("auth", "auth")
 
-	ctx := grpcclient.ContextWithServiceDialer(context.Background(), newAuthI18nDialer(t, rs))
+	ctx := grpcclient.ContextWithServiceDialer(context.Background(), newAuthTranslationTermDialer(t, rs))
 	got, err := fetchAppTranslations(ctx, rs, "auth", "zh_CN", []string{"auth"})
 	if err != nil {
 		t.Fatalf("fetchAppTranslations: %v", err)
@@ -205,7 +239,6 @@ func TestFetchAppTranslationsViaBufconn(t *testing.T) {
 		t.Fatalf("terms = %#v", got.Terms)
 	}
 
-	// Internal key metadata should be attached for non-production.
 	md, ok := metadata.FromOutgoingContext(outgoingContextForInternalRPC(context.Background(), rs))
 	if !ok || len(md.Get(internalKeyHeader)) == 0 {
 		t.Fatalf("expected internal key metadata, md=%v", md)
@@ -255,9 +288,84 @@ func TestFetchAppSearchTermsDialFailure(t *testing.T) {
 	if _, err := fetchAppSearchTerms(ctx, nil, "tok", "auth", "zh_CN", nil, "", 10, 0); err == nil {
 		t.Fatal("expected dial error")
 	}
-	if _, _, err := invokeAppUpdateTerm(ctx, nil, "tok", "auth", "zh_CN", termItem{
-		Module: "auth", Scope: "a", Src: "x", Value: "y",
-	}); err == nil {
+}
+
+func TestFetchAppTranslationsDialFailure(t *testing.T) {
+	ctx := grpcclient.ContextWithServiceDialer(context.Background(), func(ctx context.Context, serviceName string) (*grpc.ClientConn, error) {
+		if serviceName != "auth.TranslationTerm" {
+			t.Fatalf("unexpected dial target %q", serviceName)
+		}
+		return nil, errors.New("dial boom")
+	})
+	if _, err := fetchAppTranslations(ctx, nil, "auth", "zh_CN", []string{"auth"}); err == nil {
 		t.Fatal("expected dial error")
+	}
+}
+
+func TestFetchAppTranslationsInvokeFailure(t *testing.T) {
+	lis := bufconn.Listen(1024 * 1024)
+	server := grpc.NewServer()
+	server.RegisterService(&grpc.ServiceDesc{
+		ServiceName: "auth.TranslationTerm",
+		HandlerType: (*interface{})(nil),
+		Methods: []grpc.MethodDesc{{
+			MethodName: "GetTranslations",
+			Handler: func(srv any, ctx context.Context, dec func(any) error, interceptor grpc.UnaryServerInterceptor) (any, error) {
+				reqMsg, err := i18nservice.NewRequestMessage("auth")
+				if err != nil {
+					return nil, err
+				}
+				if err := dec(reqMsg); err != nil {
+					return nil, err
+				}
+				return nil, status.Error(codes.Unavailable, "invoke boom")
+			},
+		}},
+		Streams:  []grpc.StreamDesc{},
+		Metadata: "auth/translation_term.proto",
+	}, nil)
+	go func() { _ = server.Serve(lis) }()
+	t.Cleanup(server.Stop)
+
+	var conn *grpc.ClientConn
+	t.Cleanup(func() {
+		if conn != nil {
+			_ = conn.Close()
+		}
+	})
+	ctx := grpcclient.ContextWithServiceDialer(context.Background(), func(ctx context.Context, serviceName string) (*grpc.ClientConn, error) {
+		if serviceName != "auth.TranslationTerm" {
+			return nil, fmt.Errorf("unexpected service: %s", serviceName)
+		}
+		if conn != nil {
+			return conn, nil
+		}
+		c, err := grpc.DialContext(ctx, "bufnet",
+			grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) { return lis.Dial() }),
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		)
+		if err != nil {
+			return nil, err
+		}
+		conn = c
+		return conn, nil
+	})
+
+	if _, err := fetchAppTranslations(ctx, nil, "auth", "zh_CN", []string{"auth"}); err == nil {
+		t.Fatal("expected invoke error")
+	}
+}
+
+func TestSearchAppUsesInjectedHook(t *testing.T) {
+	called := false
+	h := &handler{
+		search: func(ctx context.Context, accessToken, app, lang string, modules []string, q string, limit, offset int) (*searchTermsResult, error) {
+			called = true
+			return &searchTermsResult{Lang: lang, Total: 0}, nil
+		},
+	}
+	got, err := h.searchApp(context.Background(), "tok", "auth", "zh_CN", []string{"auth"}, "", 10, 0)
+	if err != nil || !called || got == nil || got.Lang != "zh_CN" {
+		t.Fatalf("injected searchApp failed: called=%v got=%#v err=%v", called, got, err)
 	}
 }

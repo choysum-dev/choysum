@@ -53,6 +53,7 @@ var internalAuthPreferredMethods = []string{
 	"task.Job/GetJob",
 	"*.TaskWorker/*",
 	"*.I18n/GetTranslations",
+	"*.TranslationTerm/GetTranslations",
 	"meta.MetaApplication/*",
 	"meta.MetaField/*",
 	"meta.MetaModel/*",

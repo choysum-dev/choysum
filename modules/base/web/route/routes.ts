@@ -261,16 +261,6 @@ export const languageRoutes: RouteRecordRaw[] = [
     actions: ['base.action.language_create', 'base.action.language_edit', 'base.action.language_delete', 'base.action.language_copy'],
     meta: { requiresAuth: true },
   }),
-  defineRoute('base.route.terminology_editor', {
-    sequence: 40,
-    title: _lt('Terminology Editor'),
-    path: 'base/terminology',
-    name: 'TerminologyEditor',
-    component: () => import('@/web/web/pages/TerminologyEditor.vue'),
-    defaultRoles: ['terminology.editor'],
-    requires: [{ model: 'web.I18n', method: 'SearchTerms' }],
-    meta: { requiresAuth: true },
-  }),
 ];
 
 export const sequenceRoutes: RouteRecordRaw[] = [

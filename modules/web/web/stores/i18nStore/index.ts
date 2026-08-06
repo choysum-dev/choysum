@@ -25,7 +25,6 @@ export * from './types';
 export { SUPPORTED_LOCALES } from './locales';
 export { uiKeyToLang, langToUiKey } from './lang';
 export { fetchWebTranslations } from './terminology_loader';
-export { fetchTerms, patchTerms, downloadTerminologyPo } from './terms_api';
 
 export { componentHintFromScope } from './component_hint';
 export { afterLocaleChange, resolveLocaleRemountMode, softLocaleRemount } from './locale_remount';
@@ -41,7 +40,6 @@ export {
 } from './language_format';
 
 export type { TerminologyLoadResult } from './terminology_loader';
-export type { TermItem, TermsListResponse } from './terms_api';
 export type { SupportedLocale };
 
 /**
