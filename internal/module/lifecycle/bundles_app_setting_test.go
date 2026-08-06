@@ -72,6 +72,20 @@ func TestEnsureBundleC2VirtualImports_BundleInject(t *testing.T) {
 		t.Fatalf("expected merged unique owners, got %#v", okStub.got)
 	}
 
+	// Cover appendUnique skips: nil module and empty name+path key.
+	skipStub := &stubBundleC2Injector{}
+	if err := ensureBundleC2VirtualImports(skipStub, []*meta.Module{
+		nil,
+		{Name: "", Path: "", ApplicationStr: "crm"},
+		{Name: "  ", Path: "  ", ApplicationStr: "crm"},
+		{Name: "keep", Path: "/keep", ApplicationStr: "crm"},
+	}, nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(skipStub.got) != 1 || skipStub.got[0].Name != "keep" {
+		t.Fatalf("expected only keep owner, got %#v", skipStub.got)
+	}
+
 	fail := &stubBundleC2Injector{err: errors.New("boom")}
 	err := ensureBundleC2VirtualImports(fail, owners, owners)
 	if err == nil || !strings.Contains(err.Error(), "inject app models for bundles") {
