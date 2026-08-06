@@ -164,13 +164,3 @@ func (s *Session) releaseScheduleFor(spec *Spec) {
 	plan.ScheduledApp = ""
 	s.SetPlan(spec.ModelName, plan)
 }
-
-func (s *Session) effectsImports() []string {
-	paths := s.AllInjectPaths()
-	if len(paths) == 0 {
-		return nil
-	}
-	out := make([]string, len(paths))
-	copy(out, paths)
-	return out
-}

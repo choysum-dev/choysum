@@ -24,8 +24,8 @@ func InjectAppModels(sess *Session, prebuildResults []*parser.ParserResult) (Eff
 			return out, err
 		}
 		out.Files = append(out.Files, fx.Files...)
+		out.Imports = mergeUniqueStrings(out.Imports, fx.Imports)
 	}
-	out.Imports = sess.effectsImports()
 	return out, nil
 }
 
@@ -80,12 +80,7 @@ func ApplyInjectOne(sess *Session, modelName string) (Effects, error) {
 	if !ok {
 		return out, xfmt.Errorf("injectappmodel: unknown Spec %q", modelName)
 	}
-	fx, err := materializeInject(sess, spec, sess.Plan(modelName))
-	if err != nil {
-		return out, err
-	}
-	fx.Imports = sess.effectsImports()
-	return fx, nil
+	return materializeInject(sess, spec, sess.Plan(modelName))
 }
 
 func decidePlan(spec *Spec, sess *Session, prebuildResults []*parser.ParserResult) (Plan, error) {

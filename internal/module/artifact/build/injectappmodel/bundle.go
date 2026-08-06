@@ -24,8 +24,8 @@ func BundleInjectAppModels(sess *Session, modules []*meta.Module) (Effects, erro
 			return out, err
 		}
 		out.Files = append(out.Files, fx.Files...)
+		out.Imports = mergeUniqueStrings(out.Imports, fx.Imports)
 	}
-	out.Imports = sess.effectsImports()
 	return out, nil
 }
 

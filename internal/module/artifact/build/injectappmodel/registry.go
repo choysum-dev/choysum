@@ -104,9 +104,7 @@ func (r *Registry) specsList() []*Spec {
 	return out
 }
 
-func (r *Registry) claimMap(modelName string) *sync.Map {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+func (r *Registry) claimMapLocked(modelName string) *sync.Map {
 	if r.scheduled == nil {
 		r.scheduled = make(map[string]*sync.Map)
 	}
@@ -118,13 +116,21 @@ func (r *Registry) claimMap(modelName string) *sync.Map {
 	return m
 }
 
+func (r *Registry) claimMap(modelName string) *sync.Map {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.claimMapLocked(modelName)
+}
+
 // TryClaim records that modName owns NeedInject for (modelName, app).
 // loaded is true when another (or the same) owner already held the slot.
 func (r *Registry) TryClaim(modelName, app, modName string) (owner string, loaded bool) {
 	if r == nil {
 		return "", false
 	}
-	v, loaded := r.claimMap(modelName).LoadOrStore(app, modName)
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	v, loaded := r.claimMapLocked(modelName).LoadOrStore(app, modName)
 	owner, _ = v.(string)
 	return owner, loaded
 }
@@ -134,9 +140,9 @@ func (r *Registry) ReleaseClaim(modelName, app string) {
 	if r == nil || app == "" {
 		return
 	}
-	r.mu.RLock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	m := r.scheduled[modelName]
-	r.mu.RUnlock()
 	if m != nil {
 		m.Delete(app)
 	}
@@ -148,8 +154,8 @@ func (r *Registry) ClaimOwner(modelName, app string) (modName string, ok bool) {
 		return "", false
 	}
 	r.mu.RLock()
+	defer r.mu.RUnlock()
 	m := r.scheduled[modelName]
-	r.mu.RUnlock()
 	if m == nil {
 		return "", false
 	}
@@ -168,14 +174,8 @@ func (r *Registry) ResetClaims() {
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	for _, m := range r.scheduled {
-		if m == nil {
-			continue
-		}
-		m.Range(func(key, _ any) bool {
-			m.Delete(key)
-			return true
-		})
+	for name := range r.scheduled {
+		r.scheduled[name] = &sync.Map{}
 	}
 }
 
