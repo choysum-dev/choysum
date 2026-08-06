@@ -51,6 +51,21 @@ msgctxt "meta.model.MetaArgument.fields"
 msgid "Value"
 msgstr "值"
 
+#: service/models/argument_raw.ts:19
+msgctxt "meta.model.MetaArgumentRaw.fields"
+msgid "Decorator"
+msgstr "装饰器"
+
+#: service/models/argument_raw.ts:13
+msgctxt "meta.model.MetaArgumentRaw.fields"
+msgid "Type"
+msgstr "类型"
+
+#: service/models/argument_raw.ts:16
+msgctxt "meta.model.MetaArgumentRaw.fields"
+msgid "Value"
+msgstr "值"
+
 #: service/models/component.ts:22
 msgctxt "meta.model.MetaComponent.fields"
 msgid "Extends"
@@ -113,6 +128,31 @@ msgstr "引用标识"
 
 #: service/models/decorator.ts:29
 msgctxt "meta.model.MetaDecorator.fields"
+msgid "Service"
+msgstr "服务"
+
+#: service/models/decorator_raw.ts:31
+msgctxt "meta.model.MetaDecoratorRaw.fields"
+msgid "Arguments"
+msgstr "参数"
+
+#: service/models/decorator_raw.ts:25
+msgctxt "meta.model.MetaDecoratorRaw.fields"
+msgid "Field"
+msgstr "字段"
+
+#: service/models/decorator_raw.ts:19
+msgctxt "meta.model.MetaDecoratorRaw.fields"
+msgid "Model"
+msgstr "模型"
+
+#: service/models/decorator_raw.ts:16
+msgctxt "meta.model.MetaDecoratorRaw.fields"
+msgid "Name"
+msgstr "名称"
+
+#: service/models/decorator_raw.ts:22
+msgctxt "meta.model.MetaDecoratorRaw.fields"
 msgid "Service"
 msgstr "服务"
 
@@ -271,77 +311,107 @@ msgctxt "meta.model.MetaField.fields"
 msgid "Title Text"
 msgstr "标题文本"
 
-#: service/models/model.ts:55
+#: service/models/field_raw.ts:33
+msgctxt "meta.model.MetaFieldRaw.fields"
+msgid "Decorators"
+msgstr "装饰器"
+
+#: service/models/field_raw.ts:24
+msgctxt "meta.model.MetaFieldRaw.fields"
+msgid "Field Type"
+msgstr "字段类型"
+
+#: service/models/field_raw.ts:27
+msgctxt "meta.model.MetaFieldRaw.fields"
+msgid "Model"
+msgstr "模型"
+
+#: service/models/field_raw.ts:15
+msgctxt "meta.model.MetaFieldRaw.fields"
+msgid "Name"
+msgstr "名称"
+
+#: service/models/field_raw.ts:21
+msgctxt "meta.model.MetaFieldRaw.fields"
+msgid "Origin Model Path"
+msgstr "来源模型路径"
+
+#: service/models/field_raw.ts:18
+msgctxt "meta.model.MetaFieldRaw.fields"
+msgid "TS Type Annotation"
+msgstr "TS 类型注解"
+
+#: service/models/model.ts:60
 msgctxt "meta.model.MetaModel.fields"
 msgid "Abstract"
 msgstr "抽象"
 
-#: service/models/model.ts:46
+#: service/models/model.ts:51
 msgctxt "meta.model.MetaModel.fields"
 msgid "Application"
 msgstr "应用"
 
-#: service/models/model.ts:58
+#: service/models/model.ts:63
 msgctxt "meta.model.MetaModel.fields"
 msgid "Auto Migrate"
 msgstr "自动迁移"
 
-#: service/models/model.ts:49
+#: service/models/model.ts:54
 msgctxt "meta.model.MetaModel.fields"
 msgid "Class Name"
 msgstr "类名"
 
-#: service/models/model.ts:70
+#: service/models/model.ts:75
 msgctxt "meta.model.MetaModel.fields"
 msgid "Company Field"
 msgstr "公司字段"
 
-#: service/models/model.ts:79
+#: service/models/model.ts:85
 msgctxt "meta.model.MetaModel.fields"
 msgid "Decorators"
 msgstr "装饰器"
 
-#: service/models/model.ts:67
+#: service/models/model.ts:72
 msgctxt "meta.model.MetaModel.fields"
 msgid "Extends"
 msgstr "扩展"
 
-#: service/models/model.ts:93
+#: service/models/model.ts:99
 msgctxt "meta.model.MetaModel.fields"
 msgid "Fields"
 msgstr "字段"
 
-#: service/models/model.ts:73
+#: service/models/model.ts:78
 msgctxt "meta.model.MetaModel.fields"
 msgid "Module"
 msgstr "模块"
 
-#: service/models/model.ts:40
+#: service/models/model.ts:45
 msgctxt "meta.model.MetaModel.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/model.ts:43
+#: service/models/model.ts:48
 msgctxt "meta.model.MetaModel.fields"
 msgid "Path"
 msgstr "路径"
 
-#: service/models/model.ts:64
+#: service/models/model.ts:69
 msgctxt "meta.model.MetaModel.fields"
 msgid "Raw Extends"
 msgstr "原始扩展"
 
-#: service/models/model.ts:61
+#: service/models/model.ts:66
 msgctxt "meta.model.MetaModel.fields"
 msgid "Readonly"
 msgstr "只读"
 
-#: service/models/model.ts:86
+#: service/models/model.ts:92
 msgctxt "meta.model.MetaModel.fields"
 msgid "Services"
 msgstr "服务"
 
-#: service/models/model.ts:52
+#: service/models/model.ts:57
 msgctxt "meta.model.MetaModel.fields"
 msgid "Table Name"
 msgstr "表名"
@@ -351,12 +421,12 @@ msgctxt "meta.model.MetaModelData.fields"
 msgid "Application"
 msgstr "应用"
 
-#: service/models/model_data.ts:60
+#: service/models/model_data.ts:61
 msgctxt "meta.model.MetaModelData.fields"
 msgid "Model"
 msgstr "模型"
 
-#: service/models/model_data.ts:63
+#: service/models/model_data.ts:64
 msgctxt "meta.model.MetaModelData.fields"
 msgid "Model Name"
 msgstr "模型名"
@@ -371,15 +441,90 @@ msgctxt "meta.model.MetaModelData.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/model_data.ts:69
+#: service/models/model_data.ts:70
 msgctxt "meta.model.MetaModelData.fields"
 msgid "No Update"
 msgstr "禁止更新"
 
-#: service/models/model_data.ts:66
+#: service/models/model_data.ts:67
 msgctxt "meta.model.MetaModelData.fields"
 msgid "Resource Id"
 msgstr "资源 ID"
+
+#: service/models/model_raw.ts:36
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Abstract"
+msgstr "抽象"
+
+#: service/models/model_raw.ts:27
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Application"
+msgstr "应用"
+
+#: service/models/model_raw.ts:39
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Auto Migrate"
+msgstr "自动迁移"
+
+#: service/models/model_raw.ts:30
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Class Name"
+msgstr "类名"
+
+#: service/models/model_raw.ts:51
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Company Field"
+msgstr "公司字段"
+
+#: service/models/model_raw.ts:65
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Decorators"
+msgstr "装饰器"
+
+#: service/models/model_raw.ts:48
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Extends"
+msgstr "扩展"
+
+#: service/models/model_raw.ts:79
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Fields"
+msgstr "字段"
+
+#: service/models/model_raw.ts:58
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Module"
+msgstr "模块"
+
+#: service/models/model_raw.ts:21
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Name"
+msgstr "名称"
+
+#: service/models/model_raw.ts:24
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Path"
+msgstr "路径"
+
+#: service/models/model_raw.ts:45
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Raw Extends"
+msgstr "原始扩展"
+
+#: service/models/model_raw.ts:42
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Readonly"
+msgstr "只读"
+
+#: service/models/model_raw.ts:72
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Services"
+msgstr "服务"
+
+#: service/models/model_raw.ts:33
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Table Name"
+msgstr "表名"
 
 #: service/models/module.ts:137 service/models/module.ts:176
 msgctxt "meta.model.MetaModule.fields"
@@ -661,6 +806,16 @@ msgctxt "meta.model.MetaParameter.fields"
 msgid "TS Type Annotation"
 msgstr "TS 类型注解"
 
+#: service/models/parameter_raw.ts:13
+msgctxt "meta.model.MetaParameterRaw.fields"
+msgid "Name"
+msgstr "名称"
+
+#: service/models/parameter_raw.ts:16
+msgctxt "meta.model.MetaParameterRaw.fields"
+msgid "Service"
+msgstr "服务"
+
 #: service/models/service.ts:23
 msgctxt "meta.model.MetaService.fields"
 msgid "Accessibility Modifier"
@@ -711,6 +866,46 @@ msgctxt "meta.model.MetaService.fields"
 msgid "Type Parameters"
 msgstr "类型参数"
 
+#: service/models/service_raw.ts:23
+msgctxt "meta.model.MetaServiceRaw.fields"
+msgid "Accessibility Modifier"
+msgstr "可访问性修饰符"
+
+#: service/models/service_raw.ts:49
+msgctxt "meta.model.MetaServiceRaw.fields"
+msgid "Decorators"
+msgstr "装饰器"
+
+#: service/models/service_raw.ts:29
+msgctxt "meta.model.MetaServiceRaw.fields"
+msgid "Model"
+msgstr "模型"
+
+#: service/models/service_raw.ts:17
+msgctxt "meta.model.MetaServiceRaw.fields"
+msgid "Name"
+msgstr "名称"
+
+#: service/models/service_raw.ts:20
+msgctxt "meta.model.MetaServiceRaw.fields"
+msgid "Origin Model Path"
+msgstr "来源模型路径"
+
+#: service/models/service_raw.ts:42
+msgctxt "meta.model.MetaServiceRaw.fields"
+msgid "Parameters"
+msgstr "参数"
+
+#: service/models/service_raw.ts:26
+msgctxt "meta.model.MetaServiceRaw.fields"
+msgid "Static"
+msgstr "静态"
+
+#: service/models/service_raw.ts:35
+msgctxt "meta.model.MetaServiceRaw.fields"
+msgid "Type Parameters"
+msgstr "类型参数"
+
 #: service/models/type_parameter.ts:16
 msgctxt "meta.model.MetaTypeParameter.fields"
 msgid "Module Spec Path"
@@ -728,6 +923,16 @@ msgstr "引用标识"
 
 #: service/models/type_parameter.ts:22
 msgctxt "meta.model.MetaTypeParameter.fields"
+msgid "Service"
+msgstr "服务"
+
+#: service/models/type_parameter_raw.ts:13
+msgctxt "meta.model.MetaTypeParameterRaw.fields"
+msgid "Name"
+msgstr "名称"
+
+#: service/models/type_parameter_raw.ts:16
+msgctxt "meta.model.MetaTypeParameterRaw.fields"
 msgid "Service"
 msgstr "服务"
 
@@ -891,7 +1096,7 @@ msgctxt "meta.model.ModuleManagementLog.fields"
 msgid "Summary"
 msgstr "摘要"
 
-#: service/models/model_data.ts:80
+#: service/models/model_data.ts:81
 msgctxt "service/models/model_data"
 msgid "external id %s not found"
 msgstr "未找到外部 ID %s"

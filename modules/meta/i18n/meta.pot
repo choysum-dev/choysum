@@ -57,6 +57,21 @@ msgctxt "meta.model.MetaArgument.fields"
 msgid "Value"
 msgstr ""
 
+#: service/models/argument_raw.ts:19
+msgctxt "meta.model.MetaArgumentRaw.fields"
+msgid "Decorator"
+msgstr ""
+
+#: service/models/argument_raw.ts:13
+msgctxt "meta.model.MetaArgumentRaw.fields"
+msgid "Type"
+msgstr ""
+
+#: service/models/argument_raw.ts:16
+msgctxt "meta.model.MetaArgumentRaw.fields"
+msgid "Value"
+msgstr ""
+
 #: service/models/component.ts:22
 msgctxt "meta.model.MetaComponent.fields"
 msgid "Extends"
@@ -119,6 +134,31 @@ msgstr ""
 
 #: service/models/decorator.ts:29
 msgctxt "meta.model.MetaDecorator.fields"
+msgid "Service"
+msgstr ""
+
+#: service/models/decorator_raw.ts:31
+msgctxt "meta.model.MetaDecoratorRaw.fields"
+msgid "Arguments"
+msgstr ""
+
+#: service/models/decorator_raw.ts:25
+msgctxt "meta.model.MetaDecoratorRaw.fields"
+msgid "Field"
+msgstr ""
+
+#: service/models/decorator_raw.ts:19
+msgctxt "meta.model.MetaDecoratorRaw.fields"
+msgid "Model"
+msgstr ""
+
+#: service/models/decorator_raw.ts:16
+msgctxt "meta.model.MetaDecoratorRaw.fields"
+msgid "Name"
+msgstr ""
+
+#: service/models/decorator_raw.ts:22
+msgctxt "meta.model.MetaDecoratorRaw.fields"
 msgid "Service"
 msgstr ""
 
@@ -277,77 +317,107 @@ msgctxt "meta.model.MetaField.fields"
 msgid "Title Text"
 msgstr ""
 
-#: service/models/model.ts:55
+#: service/models/field_raw.ts:33
+msgctxt "meta.model.MetaFieldRaw.fields"
+msgid "Decorators"
+msgstr ""
+
+#: service/models/field_raw.ts:24
+msgctxt "meta.model.MetaFieldRaw.fields"
+msgid "Field Type"
+msgstr ""
+
+#: service/models/field_raw.ts:27
+msgctxt "meta.model.MetaFieldRaw.fields"
+msgid "Model"
+msgstr ""
+
+#: service/models/field_raw.ts:15
+msgctxt "meta.model.MetaFieldRaw.fields"
+msgid "Name"
+msgstr ""
+
+#: service/models/field_raw.ts:21
+msgctxt "meta.model.MetaFieldRaw.fields"
+msgid "Origin Model Path"
+msgstr ""
+
+#: service/models/field_raw.ts:18
+msgctxt "meta.model.MetaFieldRaw.fields"
+msgid "TS Type Annotation"
+msgstr ""
+
+#: service/models/model.ts:60
 msgctxt "meta.model.MetaModel.fields"
 msgid "Abstract"
 msgstr ""
 
-#: service/models/model.ts:46
+#: service/models/model.ts:51
 msgctxt "meta.model.MetaModel.fields"
 msgid "Application"
 msgstr ""
 
-#: service/models/model.ts:58
+#: service/models/model.ts:63
 msgctxt "meta.model.MetaModel.fields"
 msgid "Auto Migrate"
 msgstr ""
 
-#: service/models/model.ts:49
+#: service/models/model.ts:54
 msgctxt "meta.model.MetaModel.fields"
 msgid "Class Name"
 msgstr ""
 
-#: service/models/model.ts:70
+#: service/models/model.ts:75
 msgctxt "meta.model.MetaModel.fields"
 msgid "Company Field"
 msgstr ""
 
-#: service/models/model.ts:79
+#: service/models/model.ts:85
 msgctxt "meta.model.MetaModel.fields"
 msgid "Decorators"
 msgstr ""
 
-#: service/models/model.ts:67
+#: service/models/model.ts:72
 msgctxt "meta.model.MetaModel.fields"
 msgid "Extends"
 msgstr ""
 
-#: service/models/model.ts:93
+#: service/models/model.ts:99
 msgctxt "meta.model.MetaModel.fields"
 msgid "Fields"
 msgstr ""
 
-#: service/models/model.ts:73
+#: service/models/model.ts:78
 msgctxt "meta.model.MetaModel.fields"
 msgid "Module"
 msgstr ""
 
-#: service/models/model.ts:40
+#: service/models/model.ts:45
 msgctxt "meta.model.MetaModel.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/model.ts:43
+#: service/models/model.ts:48
 msgctxt "meta.model.MetaModel.fields"
 msgid "Path"
 msgstr ""
 
-#: service/models/model.ts:64
+#: service/models/model.ts:69
 msgctxt "meta.model.MetaModel.fields"
 msgid "Raw Extends"
 msgstr ""
 
-#: service/models/model.ts:61
+#: service/models/model.ts:66
 msgctxt "meta.model.MetaModel.fields"
 msgid "Readonly"
 msgstr ""
 
-#: service/models/model.ts:86
+#: service/models/model.ts:92
 msgctxt "meta.model.MetaModel.fields"
 msgid "Services"
 msgstr ""
 
-#: service/models/model.ts:52
+#: service/models/model.ts:57
 msgctxt "meta.model.MetaModel.fields"
 msgid "Table Name"
 msgstr ""
@@ -357,12 +427,12 @@ msgctxt "meta.model.MetaModelData.fields"
 msgid "Application"
 msgstr ""
 
-#: service/models/model_data.ts:60
+#: service/models/model_data.ts:61
 msgctxt "meta.model.MetaModelData.fields"
 msgid "Model"
 msgstr ""
 
-#: service/models/model_data.ts:63
+#: service/models/model_data.ts:64
 msgctxt "meta.model.MetaModelData.fields"
 msgid "Model Name"
 msgstr ""
@@ -377,14 +447,89 @@ msgctxt "meta.model.MetaModelData.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/model_data.ts:69
+#: service/models/model_data.ts:70
 msgctxt "meta.model.MetaModelData.fields"
 msgid "No Update"
 msgstr ""
 
-#: service/models/model_data.ts:66
+#: service/models/model_data.ts:67
 msgctxt "meta.model.MetaModelData.fields"
 msgid "Resource Id"
+msgstr ""
+
+#: service/models/model_raw.ts:36
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Abstract"
+msgstr ""
+
+#: service/models/model_raw.ts:27
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Application"
+msgstr ""
+
+#: service/models/model_raw.ts:39
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Auto Migrate"
+msgstr ""
+
+#: service/models/model_raw.ts:30
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Class Name"
+msgstr ""
+
+#: service/models/model_raw.ts:51
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Company Field"
+msgstr ""
+
+#: service/models/model_raw.ts:65
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Decorators"
+msgstr ""
+
+#: service/models/model_raw.ts:48
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Extends"
+msgstr ""
+
+#: service/models/model_raw.ts:79
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Fields"
+msgstr ""
+
+#: service/models/model_raw.ts:58
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Module"
+msgstr ""
+
+#: service/models/model_raw.ts:21
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Name"
+msgstr ""
+
+#: service/models/model_raw.ts:24
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Path"
+msgstr ""
+
+#: service/models/model_raw.ts:45
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Raw Extends"
+msgstr ""
+
+#: service/models/model_raw.ts:42
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Readonly"
+msgstr ""
+
+#: service/models/model_raw.ts:72
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Services"
+msgstr ""
+
+#: service/models/model_raw.ts:33
+msgctxt "meta.model.MetaModelRaw.fields"
+msgid "Table Name"
 msgstr ""
 
 #: service/models/module.ts:137
@@ -669,6 +814,16 @@ msgctxt "meta.model.MetaParameter.fields"
 msgid "TS Type Annotation"
 msgstr ""
 
+#: service/models/parameter_raw.ts:13
+msgctxt "meta.model.MetaParameterRaw.fields"
+msgid "Name"
+msgstr ""
+
+#: service/models/parameter_raw.ts:16
+msgctxt "meta.model.MetaParameterRaw.fields"
+msgid "Service"
+msgstr ""
+
 #: service/models/service.ts:23
 msgctxt "meta.model.MetaService.fields"
 msgid "Accessibility Modifier"
@@ -719,6 +874,46 @@ msgctxt "meta.model.MetaService.fields"
 msgid "Type Parameters"
 msgstr ""
 
+#: service/models/service_raw.ts:23
+msgctxt "meta.model.MetaServiceRaw.fields"
+msgid "Accessibility Modifier"
+msgstr ""
+
+#: service/models/service_raw.ts:49
+msgctxt "meta.model.MetaServiceRaw.fields"
+msgid "Decorators"
+msgstr ""
+
+#: service/models/service_raw.ts:29
+msgctxt "meta.model.MetaServiceRaw.fields"
+msgid "Model"
+msgstr ""
+
+#: service/models/service_raw.ts:17
+msgctxt "meta.model.MetaServiceRaw.fields"
+msgid "Name"
+msgstr ""
+
+#: service/models/service_raw.ts:20
+msgctxt "meta.model.MetaServiceRaw.fields"
+msgid "Origin Model Path"
+msgstr ""
+
+#: service/models/service_raw.ts:42
+msgctxt "meta.model.MetaServiceRaw.fields"
+msgid "Parameters"
+msgstr ""
+
+#: service/models/service_raw.ts:26
+msgctxt "meta.model.MetaServiceRaw.fields"
+msgid "Static"
+msgstr ""
+
+#: service/models/service_raw.ts:35
+msgctxt "meta.model.MetaServiceRaw.fields"
+msgid "Type Parameters"
+msgstr ""
+
 #: service/models/type_parameter.ts:16
 msgctxt "meta.model.MetaTypeParameter.fields"
 msgid "Module Spec Path"
@@ -736,6 +931,16 @@ msgstr ""
 
 #: service/models/type_parameter.ts:22
 msgctxt "meta.model.MetaTypeParameter.fields"
+msgid "Service"
+msgstr ""
+
+#: service/models/type_parameter_raw.ts:13
+msgctxt "meta.model.MetaTypeParameterRaw.fields"
+msgid "Name"
+msgstr ""
+
+#: service/models/type_parameter_raw.ts:16
+msgctxt "meta.model.MetaTypeParameterRaw.fields"
 msgid "Service"
 msgstr ""
 
@@ -900,7 +1105,7 @@ msgctxt "meta.model.ModuleManagementLog.fields"
 msgid "Summary"
 msgstr ""
 
-#: service/models/model_data.ts:80
+#: service/models/model_data.ts:81
 msgctxt "service/models/model_data"
 msgid "external id %s not found"
 msgstr ""
