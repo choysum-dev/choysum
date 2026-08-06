@@ -6,7 +6,6 @@ package backendbuilder
 import (
 	"context"
 	"crypto/sha1"
-	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -19,6 +18,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/esbplugins"
 	internalbackendplugin "github.com/choysum-dev/choysum/internal/esbplugins/backendplugin"
 	"github.com/choysum-dev/choysum/internal/esmresolver"
+	"github.com/choysum-dev/choysum/internal/module/artifact/build/injectappmodel"
 	modulegenerator "github.com/choysum-dev/choysum/internal/module/artifact/generate"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
@@ -60,16 +60,10 @@ type ModuleBuilder struct {
 	entryPointImportsCacheValid bool
 	entryPointImportsCache      []string
 
-	// FieldDefault C2 plan from Decide; Inject path(s) are applied on the build pass only.
-	// Multi-app bundles may inject one virtual store per application.
-	fieldDefaultPlan        FieldDefaultPlan
-	fieldDefaultInjectPath  string   // last injected path (single-module / tests)
-	fieldDefaultInjectPaths []string // all inject paths merged into build entry imports
-
-	// AppSetting C2 plan / inject paths (parallel to FieldDefault).
-	appSettingPlan        AppSettingPlan
-	appSettingInjectPath  string
-	appSettingInjectPaths []string
+	// injectRegistry is the shared Spec/claim catalog (nil ⇒ DefaultRegistry).
+	injectRegistry *injectappmodel.Registry
+	// injectSession holds per-build Decide plans and inject paths.
+	injectSession *injectappmodel.Session
 }
 
 func pathWithinModuleRoot(path string, root string) bool {
@@ -194,18 +188,12 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 
 	imports := b.entryPointImports()
 	// WithEntryPointImports replaces plugin EntryPointImports — always pass the
-	// full set here. Include FieldDefault / AppSetting on prebuild too so
-	// injectModelApplication can rewrite Content before the build pass that emits dist JS.
-	extra := append([]string(nil), b.fieldDefaultInjectPaths...)
-	if len(b.fieldDefaultInjectPaths) == 0 && strings.TrimSpace(b.fieldDefaultInjectPath) != "" {
-		extra = append(extra, b.fieldDefaultInjectPath)
-	}
-	extra = append(extra, b.appSettingInjectPaths...)
-	if len(b.appSettingInjectPaths) == 0 && strings.TrimSpace(b.appSettingInjectPath) != "" {
-		extra = append(extra, b.appSettingInjectPath)
-	}
-	if len(extra) > 0 {
-		imports = append(append([]string(nil), imports...), extra...)
+	// full set here. Include inject paths on prebuild too so injectModelApplication
+	// can rewrite Content before the build pass that emits dist JS.
+	if sess := b.injectSession; sess != nil {
+		if extra := sess.AllInjectPaths(); len(extra) > 0 {
+			imports = append(append([]string(nil), imports...), extra...)
+		}
 	}
 	esbOpts := []esbplugins.EsbPluginOptions{
 		esbplugins.WithEntryPointImports(imports),
@@ -623,6 +611,11 @@ func (b *ModuleBuilder) prebuild() (*module.BuildResult, error) {
 
 func (b *ModuleBuilder) build(prebuildResult *module.BuildResult) (*module.BuildResult, error) {
 	if b.entryPoint == "" {
+		if b.buildPlugin != nil {
+			if _, err := b.buildPlugin.GetParserResults(); err != nil {
+				return nil, xfmt.Errorf("Error getting parser results: %w", err)
+			}
+		}
 		return prebuildResult, nil
 	}
 
@@ -815,10 +808,7 @@ func (b *ModuleBuilder) validate(buildResult *module.BuildResult) error {
 		}
 	}
 
-	if err := b.validateFieldDefault(buildResult); err != nil {
-		return err
-	}
-	if err := b.validateAppSetting(buildResult); err != nil {
+	if err := b.validateInjectAppModels(buildResult); err != nil {
 		return err
 	}
 
@@ -828,10 +818,7 @@ func (b *ModuleBuilder) validate(buildResult *module.BuildResult) error {
 func (b *ModuleBuilder) persist(buildResult *module.BuildResult) error {
 	mod := buildResult.Module
 
-	if err := b.supersedeVirtualFieldDefaults(); err != nil {
-		return err
-	}
-	if err := b.supersedeVirtualAppSettings(); err != nil {
+	if err := b.supersedeInjectAppModels(); err != nil {
 		return err
 	}
 
@@ -888,74 +875,26 @@ func (b *ModuleBuilder) persistModuleModels(moduleID string, models []*meta.Mode
 	}
 	db := b.runtimeScope.Session()
 
-	orderedPaths := make([]string, 0, len(models))
-	modelByPath := make(map[string]*meta.Model, len(models))
-	for _, m := range models {
-		if m == nil {
-			continue
-		}
-		path := strings.TrimSpace(m.Path)
-		if path == "" {
-			continue
-		}
-		if _, exists := modelByPath[path]; !exists {
-			orderedPaths = append(orderedPaths, path)
-		}
-		modelByPath[path] = m
-	}
-
-	keys := make([]meta.LogicalKey, 0)
-	appendKey := func(application, name string) {
-		k := meta.LogicalKey{Application: application, Name: name}.Normalized()
-		if k.Valid() {
-			keys = append(keys, k)
-		}
-	}
-
-	// Collect logical names owned by this module before rewrite (removed declarations).
-	prevDecls, err := meta.ListDeclarations(db.DB, meta.DeclarationQuery{ModuleID: moduleID})
+	keys, err := meta.ReplaceModuleDeclarations(db.DB, moduleID, models)
 	if err != nil {
-		return xfmt.Errorf("list previous raw models: %w", err)
-	}
-	for _, row := range prevDecls {
-		if row == nil {
-			continue
-		}
-		appendKey(row.Application, row.Name)
+		return err
 	}
 
-	// Legacy IMD leftovers still carrying module_id on effective rows: include their
-	// logical names in recompute so EDS5 can keep the tip id. Do not delete here —
-	// RecomputeEffective deletes all existing trees after capturing the tip.
-	var prevEff []meta.Model
-	if err := db.Model(&meta.Model{}).
-		Select("id, application, name").
-		Where("module_id = ?", moduleID).
-		Find(&prevEff).Error; err != nil {
-		return xfmt.Errorf("list previous effective models: %w", err)
-	}
-	for _, row := range prevEff {
-		appendKey(row.Application, row.Name)
-	}
-
-	if err := meta.DeleteRawModelsForModule(db.DB, moduleID); err != nil {
-		return xfmt.Errorf("delete previous raw models: %w", err)
-	}
-
-	for _, path := range orderedPaths {
-		m := modelByPath[path]
-		if m == nil {
-			continue
-		}
-		m.ModuleId = sql.NullString{String: moduleID, Valid: true}
-		appendKey(m.Application, m.Name)
-		if err := meta.PersistModelTreeAsRaw(db.DB, m); err != nil {
-			return xfmt.Errorf("persist raw model %s: %w", path, err)
+	// Supersede may have deleted cross-module generated decls; include those keys in the
+	// single FlushEffective at this persist boundary (EDS-opt-2).
+	if b.injectSession != nil && b.module != nil {
+		app := strings.TrimSpace(b.module.ApplicationStr)
+		if app != "" {
+			for _, spec := range b.injectSession.Registry().Specs() {
+				if b.injectSession.Plan(spec.ModelName).SupersedeInject {
+					keys = append(keys, meta.LogicalKey{Application: app, Name: spec.ModelName})
+				}
+			}
 		}
 	}
 
-	if err := meta.RecomputeKeys(db.DB, keys); err != nil {
-		return xfmt.Errorf("recompute effective models: %w", err)
+	if err := meta.FlushEffective(db.DB, keys); err != nil {
+		return xfmt.Errorf("flush effective models: %w", err)
 	}
 	return nil
 }
@@ -981,33 +920,26 @@ func (b *ModuleBuilder) BuildWithoutPersist() (*module.BuildResult, error) {
 	}
 
 	// 1b. FieldDefault / AppSetting C2 Decide / Inject (before extends rewrite + build)
-	if err := b.planAndInjectFieldDefault(prebuildResult); err != nil {
-		return nil, err
-	}
-	if err := b.planAndInjectAppSetting(prebuildResult); err != nil {
-		b.releaseFieldDefaultSchedule()
+	if err := b.injectAppModels(prebuildResult); err != nil {
 		return nil, err
 	}
 
 	// 2. recompute and modify file content for model extends
 	if err := b.updatePrebuildResult(prebuildResult); err != nil {
-		b.releaseFieldDefaultSchedule()
-		b.releaseAppSettingSchedule()
+		b.releaseInjectSchedules()
 		return nil, xfmt.Errorf("error generating content: %w", err)
 	}
 
 	// 3. build for output
 	buildResult, err := b.build(prebuildResult)
 	if err != nil {
-		b.releaseFieldDefaultSchedule()
-		b.releaseAppSettingSchedule()
+		b.releaseInjectSchedules()
 		return nil, xfmt.Errorf("error building: %w", err)
 	}
 
 	// 4. validate models
 	if err := b.validate(buildResult); err != nil {
-		b.releaseFieldDefaultSchedule()
-		b.releaseAppSettingSchedule()
+		b.releaseInjectSchedules()
 		return nil, xfmt.Errorf("error validating: %w", err)
 	}
 
@@ -1018,13 +950,11 @@ func (b *ModuleBuilder) BuildWithoutPersist() (*module.BuildResult, error) {
 // builder's ambient session. Intended for a short Required commit window.
 func (b *ModuleBuilder) Persist(buildResult *module.BuildResult) error {
 	if err := b.persist(buildResult); err != nil {
-		b.releaseFieldDefaultSchedule()
-		b.releaseAppSettingSchedule()
+		b.releaseInjectSchedules()
 		return xfmt.Errorf("error persisting build result: %w", err)
 	}
 	// DB now holds FieldDefault / AppSetting (or none was claimed); drop process-local claims.
-	b.releaseFieldDefaultSchedule()
-	b.releaseAppSettingSchedule()
+	b.releaseInjectSchedules()
 	return nil
 }
 
@@ -1032,18 +962,14 @@ func (b *ModuleBuilder) Persist(buildResult *module.BuildResult) error {
 // This is intended for application-stage bundling where DB/IR is already correct.
 func (b *ModuleBuilder) Bundle() (*module.BuildResult, error) {
 	// Bundle never persists meta; always release any NeedInject process claim.
-	defer b.releaseFieldDefaultSchedule()
-	defer b.releaseAppSettingSchedule()
+	defer b.releaseInjectSchedules()
 
 	prebuildResult, err := b.prebuild()
 	if err != nil {
 		return nil, xfmt.Errorf("error prebuilding: %w", err)
 	}
 
-	if err := b.planAndInjectFieldDefault(prebuildResult); err != nil {
-		return nil, err
-	}
-	if err := b.planAndInjectAppSetting(prebuildResult); err != nil {
+	if err := b.injectAppModels(prebuildResult); err != nil {
 		return nil, err
 	}
 
@@ -1136,5 +1062,13 @@ func WithOutFileName(name string) func(*ModuleBuilder) {
 func WithGlobalName(name string) func(*ModuleBuilder) {
 	return func(b *ModuleBuilder) {
 		b.globalName = name
+	}
+}
+
+// WithInjectRegistry sets the inject Spec/claim registry for this builder.
+// If omitted, ensureInjectSession uses injectappmodel.DefaultRegistry().
+func WithInjectRegistry(reg *injectappmodel.Registry) func(*ModuleBuilder) {
+	return func(b *ModuleBuilder) {
+		b.injectRegistry = reg
 	}
 }

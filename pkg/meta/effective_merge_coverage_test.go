@@ -142,48 +142,48 @@ func TestMergeSameNameModelsByExtensionChain_SameUpdatedAtIdTieBreak(t *testing.
 }
 
 func TestRawModelsAsModels_SkipsNilAndMapsTrees(t *testing.T) {
-	raws := []*RawModel{
+	raws := []*rawModel{
 		nil,
 		{
 			BaseModel: BaseModel{Id: sql.NullString{String: "r1", Valid: true}},
 			Name:      "X",
 			Path:      "/x.ts",
-			Fields: []*RawField{
+			Fields: []*rawField{
 				nil,
 				{
 					Name: "Name",
-					Decorators: []*RawDecorator{
+					Decorators: []*rawDecorator{
 						nil,
-						{Name: "Field", Arguments: []*RawArgument{nil, {Type: "object", Value: "{}"}}},
+						{Name: "Field", Arguments: []*rawArgument{nil, {Type: "object", Value: "{}"}}},
 					},
 				},
 			},
-			Services: []*RawService{
+			Services: []*rawService{
 				nil,
 				{
 					Name: "Create",
-					Parameters: []*RawParameter{
+					Parameters: []*rawParameter{
 						nil,
 						{Name: "this"},
 						{Name: "vals"},
 					},
-					TypeParameters: []*RawTypeParameter{
+					TypeParameters: []*rawTypeParameter{
 						nil,
 						{Name: "T", ModuleSpecPath: "/m", ReferenceIdent: "T"},
 					},
-					Decorators: []*RawDecorator{
+					Decorators: []*rawDecorator{
 						nil,
 						{Name: "Rpc"},
 					},
 				},
 			},
-			Decorators: []*RawDecorator{
+			Decorators: []*rawDecorator{
 				nil,
-				{Name: "Model", Arguments: []*RawArgument{{Type: "string", Value: `"X"`}}},
+				{Name: "Model", Arguments: []*rawArgument{{Type: "string", Value: `"X"`}}},
 			},
 		},
 	}
-	models := RawModelsAsModels(raws)
+	models := rawModelsAsModels(raws)
 	if len(models) != 1 {
 		t.Fatalf("models = %d", len(models))
 	}

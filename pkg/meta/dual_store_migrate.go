@@ -24,9 +24,9 @@ var execDDL = func(db *gorm.DB, sql string) error {
 
 // Test hooks (production defaults). Override in *_test.go to force error paths.
 var (
-	countMetaRawModels = func(db *gorm.DB) (int64, error) {
+	countMetarawModels = func(db *gorm.DB) (int64, error) {
 		var n int64
-		err := db.Unscoped().Model(&RawModel{}).Count(&n).Error
+		err := db.Unscoped().Model(&rawModel{}).Count(&n).Error
 		return n, err
 	}
 	loadIMDModelsForMigrate = func(tx *gorm.DB) ([]*Model, error) {
@@ -45,8 +45,8 @@ var (
 			Find(&sources).Error
 		return sources, err
 	}
-	loadRawModelsForRecompute = func(tx *gorm.DB) ([]*RawModel, error) {
-		var raws []*RawModel
+	loadrawModelsForRecompute = func(tx *gorm.DB) ([]*rawModel, error) {
+		var raws []*rawModel
 		err := tx.
 			Preload("Fields").
 			Preload("Fields.Decorators").
@@ -65,7 +65,7 @@ var (
 	persistEffectiveProjectionFn = func(db *gorm.DB, merged *Model, effectiveID string) error {
 		return persistEffectiveProjection(db, merged, effectiveID, nil)
 	}
-	remapACLToEffectiveModelIDsFn = RemapACLToEffectiveModelIDs
+	remapACLToEffectiveModelIDsFn = remapACLToEffectiveModelIDs
 )
 
 // EnsureDualStoreTables creates raw + effective catalog tables (idempotent).
@@ -80,7 +80,7 @@ func EnsureDualStoreTables(db *gorm.DB) error {
 	return nil
 }
 
-// MigrateIMDCatalogToDualStore copies today's live meta_model* IMD rows into meta_raw_*,
+// migrateIMDCatalogToDualStore copies today's live meta_model* IMD rows into meta_raw_*,
 // then rebuilds meta_model* as E2 effective projections (one row per application+name).
 //
 // Intended for wipe/test and one-shot upgrades from legacy IMD catalogs.
@@ -94,7 +94,7 @@ func EnsureDualStoreTables(db *gorm.DB) error {
 // DDL (EnsureDualStoreTables + effective unique index) runs outside the transaction;
 // copy + recompute run inside one transaction so failures roll back partial raw/effective
 // writes. MySQL DDL would implicitly commit if run inside the transaction.
-func MigrateIMDCatalogToDualStore(db *gorm.DB) error {
+func migrateIMDCatalogToDualStore(db *gorm.DB) error {
 	if db == nil {
 		return fmt.Errorf("db is nil")
 	}
@@ -102,7 +102,7 @@ func MigrateIMDCatalogToDualStore(db *gorm.DB) error {
 		return err
 	}
 
-	rawCount, err := countMetaRawModels(db)
+	rawCount, err := countMetarawModels(db)
 	if err != nil {
 		return fmt.Errorf("count meta_raw_model: %w", err)
 	}
@@ -165,11 +165,11 @@ func migrateIMDSources(tx *gorm.DB, sources []*Model) error {
 	return recomputeAllEffectiveFromRawTx(tx)
 }
 
-// RecomputeAllEffectiveFromRaw hard-deletes all effective meta_model* shape rows, then
+// recomputeAllEffectiveFromRaw hard-deletes all effective meta_model* shape rows, then
 // rebuilds them from live meta_raw_* via E2. DML runs in a transaction; the effective
 // unique-index DDL runs after commit. Callers with only a partial raw catalog will lose
 // effective rows that have no raw counterpart.
-func RecomputeAllEffectiveFromRaw(db *gorm.DB) error {
+func recomputeAllEffectiveFromRaw(db *gorm.DB) error {
 	if db == nil {
 		return fmt.Errorf("db is nil")
 	}
@@ -178,28 +178,33 @@ func RecomputeAllEffectiveFromRaw(db *gorm.DB) error {
 	}); err != nil {
 		return err
 	}
-	if err := EnsureEffectiveAppNameUniqueIndex(db); err != nil {
+	if err := ensureEffectiveAppNameUniqueIndex(db); err != nil {
 		return err
 	}
 	return remapACLToEffectiveModelIDsFn(db)
 }
 
-// EnsureEffectiveAppNameUniqueIndex enforces one live effective row per (application, name).
+// ensureEffectiveAppNameUniqueIndex enforces one live effective row per (application, name).
 // Safe to call repeatedly after recomputes; call only when live duplicates are gone.
-func EnsureEffectiveAppNameUniqueIndex(db *gorm.DB) error {
+func ensureEffectiveAppNameUniqueIndex(db *gorm.DB) error {
 	if db == nil {
 		return fmt.Errorf("db is nil")
 	}
-	return ensureEffectiveAppNameUniqueIndex(db)
+	switch db.Dialector.Name() {
+	case "sqlite", "postgres":
+		return ensurePartialAliveAppNameUniqueIndex(db)
+	default:
+		return ensureFullAppNameUniqueIndex(db)
+	}
 }
 
 func recomputeAllEffectiveFromRawTx(tx *gorm.DB) error {
-	raws, err := loadRawModelsForRecompute(tx)
+	raws, err := loadrawModelsForRecompute(tx)
 	if err != nil {
 		return fmt.Errorf("load meta_raw_model: %w", err)
 	}
 
-	groups := map[string][]*RawModel{}
+	groups := map[string][]*rawModel{}
 	tipIDs := map[string]string{}
 	for _, raw := range raws {
 		key := logicalModelKey(raw.Application, raw.Name)
@@ -216,7 +221,7 @@ func recomputeAllEffectiveFromRawTx(tx *gorm.DB) error {
 	}
 
 	for key, group := range groups {
-		merged, err := MergeEffectiveModel(group)
+		merged, err := mergeEffectiveModel(group)
 		if err != nil {
 			return fmt.Errorf("E2 merge %s: %w", key, err)
 		}
@@ -235,7 +240,7 @@ func logicalModelKey(application, name string) string {
 	return strings.TrimSpace(application) + "\x00" + strings.TrimSpace(name)
 }
 
-func findRawByID(raws []*RawModel, id string) *RawModel {
+func findRawByID(raws []*rawModel, id string) *rawModel {
 	for _, r := range raws {
 		if r != nil && r.Id.String == id {
 			return r
@@ -244,7 +249,7 @@ func findRawByID(raws []*RawModel, id string) *RawModel {
 	return nil
 }
 
-func rawIsNewerTip(candidate, previous *RawModel) bool {
+func rawIsNewerTip(candidate, previous *rawModel) bool {
 	if previous == nil {
 		return true
 	}
@@ -267,7 +272,7 @@ func ensureBaseModelID(b *BaseModel) {
 }
 
 func copyModelTreeToRaw(db *gorm.DB, src *Model) error {
-	raw := &RawModel{
+	raw := &rawModel{
 		BaseModel:    BaseModel{Id: src.Id, CreatedAt: src.CreatedAt, UpdatedAt: src.UpdatedAt},
 		Name:         src.Name,
 		Path:         src.Path,
@@ -316,7 +321,7 @@ func copyModelTreeToRaw(db *gorm.DB, src *Model) error {
 			if p == nil {
 				continue
 			}
-			rp := &RawParameter{
+			rp := &rawParameter{
 				BaseModel:        BaseModel{Id: p.Id, CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt},
 				Name:             p.Name,
 				TsTypeAnnotation: p.TsTypeAnnotation,
@@ -332,7 +337,7 @@ func copyModelTreeToRaw(db *gorm.DB, src *Model) error {
 			if tp == nil {
 				continue
 			}
-			rtp := &RawTypeParameter{
+			rtp := &rawTypeParameter{
 				BaseModel:      BaseModel{Id: tp.Id, CreatedAt: tp.CreatedAt, UpdatedAt: tp.UpdatedAt},
 				Name:           tp.Name,
 				ModuleSpecPath: tp.ModuleSpecPath,
@@ -359,8 +364,8 @@ func copyModelTreeToRaw(db *gorm.DB, src *Model) error {
 	return nil
 }
 
-func rawFieldFromField(f *Field, modelID sql.NullString) *RawField {
-	return &RawField{
+func rawFieldFromField(f *Field, modelID sql.NullString) *rawField {
+	return &rawField{
 		BaseModel:                BaseModel{Id: f.Id, CreatedAt: f.CreatedAt, UpdatedAt: f.UpdatedAt},
 		Name:                     f.Name,
 		TsTypeAnnotation:         f.TsTypeAnnotation,
@@ -403,8 +408,8 @@ func rawFieldFromField(f *Field, modelID sql.NullString) *RawField {
 	}
 }
 
-func rawServiceFromService(s *Service, modelID sql.NullString) *RawService {
-	return &RawService{
+func rawServiceFromService(s *Service, modelID sql.NullString) *rawService {
+	return &rawService{
 		BaseModel:             BaseModel{Id: s.Id, CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt},
 		Name:                  s.Name,
 		OriginModelPath:       s.OriginModelPath,
@@ -420,7 +425,7 @@ func copyDecoratorToRaw(db *gorm.DB, d *Decorator, modelID, fieldID, serviceID s
 	if d == nil {
 		return nil
 	}
-	rd := &RawDecorator{
+	rd := &rawDecorator{
 		BaseModel:      BaseModel{Id: d.Id, CreatedAt: d.CreatedAt, UpdatedAt: d.UpdatedAt},
 		Name:           d.Name,
 		ModuleSpecPath: d.ModuleSpecPath,
@@ -437,7 +442,7 @@ func copyDecoratorToRaw(db *gorm.DB, d *Decorator, modelID, fieldID, serviceID s
 		if a == nil {
 			continue
 		}
-		ra := &RawArgument{
+		ra := &rawArgument{
 			BaseModel:      BaseModel{Id: a.Id, CreatedAt: a.CreatedAt, UpdatedAt: a.UpdatedAt},
 			Type:           a.Type,
 			Value:          a.Value,
@@ -491,7 +496,7 @@ func clearEffectiveShapeTrees(db *gorm.DB) error {
 // persistEffectiveProjection inserts one effective model tree.
 // reuseServiceIDs maps service name → prior effective service id. Callers may pass a
 // non-nil map only after deleting existing effective rows for this logical key
-// (RecomputeEffective does this via DeleteEffectiveModelTree); otherwise reused ids
+// (RecomputeEffective does this via deleteEffectiveModelTree); otherwise reused ids
 // collide with still-present primary keys.
 func persistEffectiveProjection(db *gorm.DB, merged *Model, effectiveID string, reuseServiceIDs map[string]string) error {
 	eff := &Model{
@@ -640,15 +645,6 @@ func persistDecoratorTree(db *gorm.DB, d *Decorator, modelID, fieldID, serviceID
 		}
 	}
 	return nil
-}
-
-func ensureEffectiveAppNameUniqueIndex(db *gorm.DB) error {
-	switch db.Dialector.Name() {
-	case "sqlite", "postgres":
-		return ensurePartialAliveAppNameUniqueIndex(db)
-	default:
-		return ensureFullAppNameUniqueIndex(db)
-	}
 }
 
 // ensurePartialAliveAppNameUniqueIndex creates the live-only unique index without a

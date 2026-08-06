@@ -13,10 +13,12 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/esbplugins"
+	"github.com/choysum-dev/choysum/internal/module/artifact/build/injectappmodel"
 	modulegenerator "github.com/choysum-dev/choysum/internal/module/artifact/generate"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	"github.com/choysum-dev/choysum/internal/parser"
@@ -450,14 +452,16 @@ func TestGetNewExtendsAndUpdatePrebuildResult(t *testing.T) {
 	if err := meta.EnsureDualStoreTables(db); err != nil {
 		t.Fatalf("ensure dual store: %v", err)
 	}
-	rows := []*meta.RawModel{
+	rows := []*meta.Model{
 		{Name: "Partner", Path: "/models/base", Application: "auth", BaseModel: meta.BaseModel{Id: sql.NullString{String: "base", Valid: true}}},
 		{Name: "Partner", Path: "/models/latest", Application: "auth", BaseModel: meta.BaseModel{Id: sql.NullString{String: "latest", Valid: true}}},
 		// Newer same-name declaration in another application must not win.
 		{Name: "Partner", Path: "/models/foreign-latest", Application: "crm", BaseModel: meta.BaseModel{Id: sql.NullString{String: "foreign", Valid: true}}},
 	}
-	if err := db.Create(&rows).Error; err != nil {
-		t.Fatalf("seed models: %v", err)
+	for _, row := range rows {
+		if err := meta.PersistModelTreeAsRaw(db, row); err != nil {
+			t.Fatalf("seed models: %v", err)
+		}
 	}
 
 	testRuntimeScope := newBuilderTestScope()
@@ -556,13 +560,13 @@ func TestPersistHelpersAndBuild(t *testing.T) {
 	if err := db.Create(seedModel).Error; err != nil {
 		t.Fatalf("seed stale model: %v", err)
 	}
-	if err := db.Create(&meta.RawModel{
+	if err := meta.PersistModelTreeAsRaw(db, &meta.Model{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "prev-raw", Valid: true}},
 		Name:        "LegacyRaw",
 		Path:        "/models/legacy-raw",
 		Application: "partner",
 		ModuleId:    sql.NullString{String: "module-1", Valid: true},
-	}).Error; err != nil {
+	}); err != nil {
 		t.Fatalf("seed previous raw model: %v", err)
 	}
 	models := []*meta.Model{
@@ -574,10 +578,11 @@ func TestPersistHelpersAndBuild(t *testing.T) {
 	if err := builder.persistModuleModels("module-1", models); err != nil {
 		t.Fatalf("persistModuleModels() error = %v", err)
 	}
-	var persisted []*meta.RawModel
-	if err := db.Where("module_id = ?", "module-1").Order("path ASC").Find(&persisted).Error; err != nil {
+	persisted, err := meta.ListDeclarations(db, meta.DeclarationQuery{ModuleID: "module-1"})
+	if err != nil {
 		t.Fatalf("query persisted raw models: %v", err)
 	}
+	sort.Slice(persisted, func(i, j int) bool { return persisted[i].Path < persisted[j].Path })
 	if len(persisted) != 2 || persisted[0].Path != "/models/order" || persisted[1].Name != "Partner" {
 		t.Fatalf("unexpected persisted raw models: %#v", persisted)
 	}
@@ -589,44 +594,53 @@ func TestPersistHelpersAndBuild(t *testing.T) {
 		t.Fatalf("unexpected effective models: %#v", effective)
 	}
 
-	older := &meta.RawModel{BaseModel: meta.BaseModel{Id: sql.NullString{String: "aaa", Valid: true}}, Name: "Partner", Path: "/models/history"}
-	latest := &meta.RawModel{BaseModel: meta.BaseModel{Id: sql.NullString{String: "zzz", Valid: true}}, Name: "Partner", Path: "/models/history"}
-	if err := db.Create(older).Error; err != nil {
+	if err := meta.PersistModelTreeAsRaw(db, &meta.Model{
+		BaseModel: meta.BaseModel{Id: sql.NullString{String: "aaa", Valid: true}},
+		Name:      "Partner",
+		Path:      "/models/history",
+	}); err != nil {
 		t.Fatalf("seed older history model: %v", err)
 	}
-	if err := db.Create(latest).Error; err != nil {
+	if err := meta.PersistModelTreeAsRaw(db, &meta.Model{
+		BaseModel: meta.BaseModel{Id: sql.NullString{String: "zzz", Valid: true}},
+		Name:      "Partner",
+		Path:      "/models/history",
+		Fields: []*meta.Field{{
+			BaseModel: meta.BaseModel{Id: sql.NullString{String: "field1", Valid: true}},
+			Name:      "Name",
+			Decorators: []*meta.Decorator{{
+				BaseModel: meta.BaseModel{Id: sql.NullString{String: "fielddec", Valid: true}},
+				Name:      "Field",
+				Arguments: []*meta.Argument{{
+					BaseModel: meta.BaseModel{Id: sql.NullString{String: "arg1", Valid: true}},
+					Type:      "Literal",
+					Value:     "'name'",
+				}},
+			}},
+		}},
+		Services: []*meta.Service{{
+			BaseModel: meta.BaseModel{Id: sql.NullString{String: "svc1", Valid: true}},
+			Name:      "List",
+			Decorators: []*meta.Decorator{{
+				BaseModel: meta.BaseModel{Id: sql.NullString{String: "svcdec", Valid: true}},
+				Name:      "Service",
+				Arguments: []*meta.Argument{{
+					BaseModel: meta.BaseModel{Id: sql.NullString{String: "arg2", Valid: true}},
+					Type:      "Literal",
+					Value:     "'list'",
+				}},
+			}},
+			TypeParameters: []*meta.TypeParameter{{
+				BaseModel: meta.BaseModel{Id: sql.NullString{String: "tp1", Valid: true}},
+				Name:      "T",
+			}},
+			Parameters: []*meta.Parameter{
+				{BaseModel: meta.BaseModel{Id: sql.NullString{String: "param1", Valid: true}}, Name: "this"},
+				{BaseModel: meta.BaseModel{Id: sql.NullString{String: "param2", Valid: true}}, Name: "query"},
+			},
+		}},
+	}); err != nil {
 		t.Fatalf("seed latest history model: %v", err)
-	}
-	field := &meta.RawField{BaseModel: meta.BaseModel{Id: sql.NullString{String: "field1", Valid: true}}, Name: "Name", ModelId: latest.Id}
-	if err := db.Create(field).Error; err != nil {
-		t.Fatalf("seed field: %v", err)
-	}
-	fieldDec := &meta.RawDecorator{BaseModel: meta.BaseModel{Id: sql.NullString{String: "fielddec", Valid: true}}, Name: "Field", FieldId: field.Id}
-	if err := db.Create(fieldDec).Error; err != nil {
-		t.Fatalf("seed field decorator: %v", err)
-	}
-	if err := db.Create(&meta.RawArgument{BaseModel: meta.BaseModel{Id: sql.NullString{String: "arg1", Valid: true}}, Type: "Literal", Value: "'name'", DecoratorId: fieldDec.Id}).Error; err != nil {
-		t.Fatalf("seed field argument: %v", err)
-	}
-	service := &meta.RawService{BaseModel: meta.BaseModel{Id: sql.NullString{String: "svc1", Valid: true}}, Name: "List", ModelId: latest.Id}
-	if err := db.Create(service).Error; err != nil {
-		t.Fatalf("seed service: %v", err)
-	}
-	serviceDec := &meta.RawDecorator{BaseModel: meta.BaseModel{Id: sql.NullString{String: "svcdec", Valid: true}}, Name: "Service", ServiceId: service.Id}
-	if err := db.Create(serviceDec).Error; err != nil {
-		t.Fatalf("seed service decorator: %v", err)
-	}
-	if err := db.Create(&meta.RawArgument{BaseModel: meta.BaseModel{Id: sql.NullString{String: "arg2", Valid: true}}, Type: "Literal", Value: "'list'", DecoratorId: serviceDec.Id}).Error; err != nil {
-		t.Fatalf("seed service argument: %v", err)
-	}
-	if err := db.Create(&meta.RawTypeParameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "tp1", Valid: true}}, Name: "T", ServiceId: service.Id}).Error; err != nil {
-		t.Fatalf("seed type parameter: %v", err)
-	}
-	if err := db.Create(&meta.RawParameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "param1", Valid: true}}, Name: "this", ServiceId: service.Id}).Error; err != nil {
-		t.Fatalf("seed this parameter: %v", err)
-	}
-	if err := db.Create(&meta.RawParameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "param2", Valid: true}}, Name: "query", ServiceId: service.Id}).Error; err != nil {
-		t.Fatalf("seed query parameter: %v", err)
 	}
 
 	decls, err := meta.ListDeclarations(db, meta.DeclarationQuery{Path: "/models/history", PreloadTree: true})
@@ -651,7 +665,7 @@ func TestPersistHelpersAndBuild(t *testing.T) {
 	if len(missing) != 0 {
 		t.Fatalf("expected empty for missing path, got %#v", missing)
 	}
-	if err := db.Migrator().DropTable(&meta.RawModel{}); err != nil {
+	if err := meta.DropRawModelTable(db); err != nil {
 		t.Fatalf("drop meta_raw_model: %v", err)
 	}
 	if _, err := meta.ListDeclarations(db, meta.DeclarationQuery{Path: "/models/history", PreloadTree: true}); err == nil || !strings.Contains(err.Error(), "list declarations") {
@@ -732,6 +746,7 @@ func TestNewModuleBuilderOptionsAndBundleToDirCtx(t *testing.T) {
 		WithPublishDist(false),
 		WithOutFileName("bundle.js"),
 		WithGlobalName("AuthApp"),
+		WithInjectRegistry(injectappmodel.NewRegistryWithDefaults()),
 	).(*ModuleBuilder)
 	if !ok {
 		t.Fatalf("expected *ModuleBuilder, got %T", configured)
@@ -744,7 +759,7 @@ func TestNewModuleBuilderOptionsAndBundleToDirCtx(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected configured build plugin concrete type, got %T", configured.buildPlugin)
 	}
-	if configuredPrebuild != prebuildPlugin || configuredBuild != buildPlugin || configured.publishDist || configured.outFileName != "bundle.js" || configured.globalName != "AuthApp" {
+	if configuredPrebuild != prebuildPlugin || configuredBuild != buildPlugin || configured.publishDist || configured.outFileName != "bundle.js" || configured.globalName != "AuthApp" || configured.injectRegistry == nil {
 		t.Fatalf("unexpected configured builder: %#v", configured)
 	}
 
@@ -1264,7 +1279,7 @@ func TestPersistApplicationLookupAndModelDeleteErrors(t *testing.T) {
 		t.Fatalf("ensure dual store: %v", err)
 	}
 	testRuntimeScope.session = &scope.Session{DB: db}
-	if err := db.Migrator().DropTable(&meta.RawModel{}); err != nil {
+	if err := meta.DropRawModelTable(db); err != nil {
 		t.Fatalf("drop meta_raw_model: %v", err)
 	}
 	err = builder.persistModuleModels("module-1", []*meta.Model{{Name: "Partner", Path: "/models/partner"}})
@@ -1307,7 +1322,7 @@ func TestGetNewExtends_FindError(t *testing.T) {
 		runtimeScope: testRuntimeScope,
 		module:       &meta.Module{ApplicationStr: "auth"},
 	}
-	if err := db.Migrator().DropTable(&meta.RawModel{}); err != nil {
+	if err := meta.DropRawModelTable(db); err != nil {
 		t.Fatalf("drop meta_raw_model: %v", err)
 	}
 	current := &meta.Model{Name: "Partner", Path: "/models/current", Extends: "/models/base"}
@@ -1334,7 +1349,7 @@ func TestPersistModuleModels_ErrorBranches(t *testing.T) {
 
 	t.Run("list previous raw models", func(t *testing.T) {
 		db, builder := openPersistDB("prev-raw")
-		if err := db.Migrator().DropTable(&meta.RawModel{}); err != nil {
+		if err := meta.DropRawModelTable(db); err != nil {
 			t.Fatal(err)
 		}
 		err := builder.persistModuleModels("module-1", models)
@@ -1356,13 +1371,13 @@ func TestPersistModuleModels_ErrorBranches(t *testing.T) {
 
 	t.Run("delete previous raw models", func(t *testing.T) {
 		db, builder := openPersistDB("delete-raw")
-		if err := db.Create(&meta.RawModel{
+		if err := meta.PersistModelTreeAsRaw(db, &meta.Model{
 			BaseModel:   meta.BaseModel{Id: sql.NullString{String: "del-raw", Valid: true}},
 			Name:        "Old",
 			Path:        "/models/old",
 			Application: "partner",
 			ModuleId:    sql.NullString{String: "module-1", Valid: true},
-		}).Error; err != nil {
+		}); err != nil {
 			t.Fatal(err)
 		}
 		boom := errors.New("forced raw delete")
@@ -1399,8 +1414,8 @@ func TestPersistModuleModels_ErrorBranches(t *testing.T) {
 		}
 	})
 
-	t.Run("recompute effective models", func(t *testing.T) {
-		db, builder := openPersistDB("recompute")
+	t.Run("flush effective models", func(t *testing.T) {
+		db, builder := openPersistDB("flush")
 		const cbTag = "drop-effective-after-raw-create"
 		if err := db.Callback().Create().After("gorm:after_create").Register(cbTag, func(tx *gorm.DB) {
 			if tx.Statement != nil && tx.Statement.Table == "meta_raw_model" {
@@ -1411,8 +1426,8 @@ func TestPersistModuleModels_ErrorBranches(t *testing.T) {
 		}
 		t.Cleanup(func() { _ = db.Callback().Create().Remove(cbTag) })
 		err := builder.persistModuleModels("module-1", models)
-		if err == nil || !strings.Contains(err.Error(), "recompute effective models") {
-			t.Fatalf("expected recompute error, got %v", err)
+		if err == nil || !strings.Contains(err.Error(), "flush effective models") {
+			t.Fatalf("expected flush error, got %v", err)
 		}
 	})
 }

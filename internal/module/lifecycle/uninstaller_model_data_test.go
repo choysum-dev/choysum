@@ -5,14 +5,12 @@ package lifecycle
 
 import (
 	"database/sql"
-	"errors"
 	"strings"
 	"testing"
 
 	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/rs/xid"
-	"gorm.io/gorm"
 )
 
 func TestModuleUninstallerCleanModelsClearsMetaModelDataOnly(t *testing.T) {
@@ -123,27 +121,27 @@ func TestModuleUninstallerCleanModelsRecomputesAfterExtRawDelete(t *testing.T) {
 	}
 
 	basePath := "@/partner/service/models/partner.ts"
-	baseRaw := &meta.RawModel{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: xid.New().String(), Valid: true}},
+	baseRawID := xid.New().String()
+	if err := meta.PersistModelTreeAsRaw(db, &meta.Model{
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: baseRawID, Valid: true}},
 		Name:        "Partner",
 		Path:        basePath,
 		Application: "partner",
 		ModelTable:  "partner_partner",
 		ModuleId:    baseMod.Id,
-	}
-	if err := db.Create(baseRaw).Error; err != nil {
+	}); err != nil {
 		t.Fatalf("create base raw model: %v", err)
 	}
-	extRaw := &meta.RawModel{
-		BaseModel:   meta.BaseModel{Id: sql.NullString{String: xid.New().String(), Valid: true}},
+	extRawID := xid.New().String()
+	if err := meta.PersistModelTreeAsRaw(db, &meta.Model{
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: extRawID, Valid: true}},
 		Name:        "Partner",
 		Path:        "@/partner_commercial/service/models/partner.ts",
 		Application: "partner",
 		ModelTable:  "partner_partner",
 		ModuleId:    extMod.Id,
 		Extends:     basePath,
-	}
-	if err := db.Create(extRaw).Error; err != nil {
+	}); err != nil {
 		t.Fatalf("create ext raw model: %v", err)
 	}
 
@@ -157,14 +155,16 @@ func TestModuleUninstallerCleanModelsRecomputesAfterExtRawDelete(t *testing.T) {
 		t.Fatalf("cleanModels() error = %v", err)
 	}
 
-	var extRawDeleted meta.RawModel
-	err := db.Unscoped().Where("id = ?", extRaw.Id.String).First(&extRawDeleted).Error
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		t.Fatalf("ext raw model should be hard-deleted, got err=%v row=%+v", err, extRawDeleted)
+	extCount, err := meta.CountRawModelsByID(db, extRawID, true)
+	if err != nil {
+		t.Fatalf("count ext raw: %v", err)
+	}
+	if extCount != 0 {
+		t.Fatalf("ext raw model should be hard-deleted, count=%d", extCount)
 	}
 
-	var baseRawCount int64
-	if err := db.Model(&meta.RawModel{}).Where("id = ?", baseRaw.Id.String).Count(&baseRawCount).Error; err != nil {
+	baseRawCount, err := meta.CountRawModelsByID(db, baseRawID, false)
+	if err != nil {
 		t.Fatalf("count base raw: %v", err)
 	}
 	if baseRawCount != 1 {
@@ -223,7 +223,7 @@ func TestModuleUninstallerCleanModelsListingRawModelsError(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	seed := seedCleanModelsFixture(t, db)
-	dropMetaTable(t, db, &meta.RawModel{})
+	dropMetaTable(t, db, meta.RawModelTable)
 
 	uninstaller := &moduleUninstaller{
 		runtimeScope:  runtimeScope,

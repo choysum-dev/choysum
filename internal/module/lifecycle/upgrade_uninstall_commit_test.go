@@ -35,7 +35,7 @@ func newLifecycleCommitTestScope(t *testing.T) scope.Scope {
 		scopetest.FactoryInputFromConfig(cfg),
 		logger,
 	)
-	if err := runtimeScope.Session().AutoMigrate(meta.Entities()...); err != nil {
+	if err := runtimeScope.Session().AutoMigrate(meta.CatalogEntities()...); err != nil {
 		t.Fatalf("AutoMigrate: %v", err)
 	}
 	if err := runtimeScope.Session().AutoMigrate(&metadata.ModelData{}); err != nil {

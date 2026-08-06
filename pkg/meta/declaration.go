@@ -30,7 +30,7 @@ func ListDeclarations(db *gorm.DB, q DeclarationQuery) ([]*Model, error) {
 	if db == nil {
 		return nil, fmt.Errorf("db is nil")
 	}
-	query := db.Model(&RawModel{})
+	query := db.Model(&rawModel{})
 	if app := strings.TrimSpace(q.Application); app != "" {
 		query = query.Where("application = ?", app)
 	}
@@ -61,11 +61,11 @@ func ListDeclarations(db *gorm.DB, q DeclarationQuery) ([]*Model, error) {
 			Preload("Decorators.Arguments", orderID)
 	}
 
-	var raws []*RawModel
+	var raws []*rawModel
 	if err := query.Order("id DESC").Find(&raws).Error; err != nil {
 		return nil, fmt.Errorf("list declarations: %w", err)
 	}
-	return RawModelsAsModels(raws), nil
+	return rawModelsAsModels(raws), nil
 }
 
 // UpsertDeclaration ensures a declaration at (application, path) exists.
@@ -85,7 +85,7 @@ func UpsertDeclaration(db *gorm.DB, src *Model) error {
 	}
 
 	return db.Transaction(func(tx *gorm.DB) error {
-		var existing RawModel
+		var existing rawModel
 		err := tx.Where("path = ? AND application = ?", path, app).
 			Order("created_at DESC, id DESC").
 			Take(&existing).Error
@@ -108,7 +108,7 @@ func UpsertDeclaration(db *gorm.DB, src *Model) error {
 			if s == nil || strings.TrimSpace(s.Name) == "" {
 				continue
 			}
-			var svc RawService
+			var svc rawService
 			takeErr := tx.Where("model_id = ? AND name = ?", existing.Id.String, s.Name).Take(&svc).Error
 			if takeErr == nil {
 				continue
@@ -146,7 +146,7 @@ func PreferDeclarationTip(db *gorm.DB, application, name, path string) error {
 		return fmt.Errorf("prefer tip requires application, name, and path")
 	}
 
-	var canonical RawModel
+	var canonical rawModel
 	if err := db.Where("path = ? AND application = ?", path, application).
 		Order("created_at DESC, id DESC").
 		Take(&canonical).Error; err != nil {
@@ -156,7 +156,7 @@ func PreferDeclarationTip(db *gorm.DB, application, name, path string) error {
 		return fmt.Errorf("tip declaration id is empty")
 	}
 
-	var siblings []RawModel
+	var siblings []rawModel
 	if err := db.Select("id", "created_at", "updated_at").
 		Where("application = ? AND name = ? AND id <> ?", application, name, canonical.Id.String).
 		Find(&siblings).Error; err != nil {
@@ -207,14 +207,14 @@ func DeleteDeclarationTrees(db *gorm.DB, modelIDs []string) error {
 		fresh := func() *gorm.DB { return tx.Session(&gorm.Session{NewDB: true}).Unscoped() }
 
 		var serviceIDs []string
-		if err := fresh().Model(&RawService{}).Where("model_id IN ?", ids).Pluck("id", &serviceIDs).Error; err != nil {
+		if err := fresh().Model(&rawService{}).Where("model_id IN ?", ids).Pluck("id", &serviceIDs).Error; err != nil {
 			return fmt.Errorf("load declaration services: %w", err)
 		}
 		var fieldIDs []string
-		if err := fresh().Model(&RawField{}).Where("model_id IN ?", ids).Pluck("id", &fieldIDs).Error; err != nil {
+		if err := fresh().Model(&rawField{}).Where("model_id IN ?", ids).Pluck("id", &fieldIDs).Error; err != nil {
 			return fmt.Errorf("load declaration fields: %w", err)
 		}
-		decoratorQ := fresh().Model(&RawDecorator{}).Where("model_id IN ?", ids)
+		decoratorQ := fresh().Model(&rawDecorator{}).Where("model_id IN ?", ids)
 		if len(serviceIDs) > 0 {
 			decoratorQ = decoratorQ.Or("service_id IN ?", serviceIDs)
 		}
@@ -227,30 +227,30 @@ func DeleteDeclarationTrees(db *gorm.DB, modelIDs []string) error {
 		}
 
 		if len(decoratorIDs) > 0 {
-			if err := deleteWhereFn(fresh(), &RawArgument{}, "decorator_id IN ?", decoratorIDs); err != nil {
+			if err := deleteWhereFn(fresh(), &rawArgument{}, "decorator_id IN ?", decoratorIDs); err != nil {
 				return fmt.Errorf("delete declaration arguments: %w", err)
 			}
-			if err := deleteWhereFn(fresh(), &RawDecorator{}, "id IN ?", decoratorIDs); err != nil {
+			if err := deleteWhereFn(fresh(), &rawDecorator{}, "id IN ?", decoratorIDs); err != nil {
 				return fmt.Errorf("delete declaration decorators: %w", err)
 			}
 		}
 		if len(serviceIDs) > 0 {
-			if err := deleteWhereFn(fresh(), &RawTypeParameter{}, "service_id IN ?", serviceIDs); err != nil {
+			if err := deleteWhereFn(fresh(), &rawTypeParameter{}, "service_id IN ?", serviceIDs); err != nil {
 				return fmt.Errorf("delete declaration type parameters: %w", err)
 			}
-			if err := deleteWhereFn(fresh(), &RawParameter{}, "service_id IN ?", serviceIDs); err != nil {
+			if err := deleteWhereFn(fresh(), &rawParameter{}, "service_id IN ?", serviceIDs); err != nil {
 				return fmt.Errorf("delete declaration parameters: %w", err)
 			}
-			if err := deleteWhereFn(fresh(), &RawService{}, "id IN ?", serviceIDs); err != nil {
+			if err := deleteWhereFn(fresh(), &rawService{}, "id IN ?", serviceIDs); err != nil {
 				return fmt.Errorf("delete declaration services: %w", err)
 			}
 		}
 		if len(fieldIDs) > 0 {
-			if err := deleteWhereFn(fresh(), &RawField{}, "id IN ?", fieldIDs); err != nil {
+			if err := deleteWhereFn(fresh(), &rawField{}, "id IN ?", fieldIDs); err != nil {
 				return fmt.Errorf("delete declaration fields: %w", err)
 			}
 		}
-		if err := deleteWhereFn(fresh(), &RawModel{}, "id IN ?", ids); err != nil {
+		if err := deleteWhereFn(fresh(), &rawModel{}, "id IN ?", ids); err != nil {
 			return fmt.Errorf("delete declaration models: %w", err)
 		}
 		return nil
@@ -263,7 +263,7 @@ func HasDeclarationCatalog(db *gorm.DB) bool {
 		return false
 	}
 	m := db.Migrator()
-	return m.HasTable((&RawModel{}).TableName()) && m.HasTable((&RawService{}).TableName())
+	return m.HasTable((&rawModel{}).TableName()) && m.HasTable((&rawService{}).TableName())
 }
 
 // HasEffectiveCatalog reports whether meta_model / meta_service exist.

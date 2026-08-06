@@ -137,22 +137,39 @@ func (m *ModuleManager) buildBackendBundlesToDir(ctx context.Context, distBundle
 	return nil
 }
 
-// ensureBundleC2VirtualImports registers FieldDefault then AppSetting C2 virtual
-// sources on a multi-app bundle builder. Extracted for unit tests of error wrapping.
+// ensureBundleC2VirtualImports registers C2 inject sources on a multi-app bundle
+// builder. Extracted for unit tests of error wrapping.
 func ensureBundleC2VirtualImports(builder any, fieldDefaultOwners, appSettingOwners []*meta.Module) error {
-	if injector, ok := builder.(interface {
-		EnsureFieldDefaultVirtualImports([]*meta.Module) error
-	}); ok {
-		if err := injector.EnsureFieldDefaultVirtualImports(fieldDefaultOwners); err != nil {
-			return xfmt.Errorf("inject FieldDefault virtual imports for bundles: %w", err)
+	injector, ok := builder.(interface {
+		BundleInjectAppModels([]*meta.Module) error
+	})
+	if !ok {
+		return nil
+	}
+	// Owners are usually the same eligible backend modules; merge preserving order
+	// and uniqueness so one BundleInjectAppModels covers every Spec.
+	seen := make(map[string]struct{})
+	owners := make([]*meta.Module, 0, len(fieldDefaultOwners)+len(appSettingOwners))
+	appendUnique := func(mods []*meta.Module) {
+		for _, mod := range mods {
+			if mod == nil {
+				continue
+			}
+			key := strings.TrimSpace(mod.Name) + "\x00" + strings.TrimSpace(mod.Path)
+			if key == "\x00" {
+				continue
+			}
+			if _, ok := seen[key]; ok {
+				continue
+			}
+			seen[key] = struct{}{}
+			owners = append(owners, mod)
 		}
 	}
-	if injector, ok := builder.(interface {
-		EnsureAppSettingVirtualImports([]*meta.Module) error
-	}); ok {
-		if err := injector.EnsureAppSettingVirtualImports(appSettingOwners); err != nil {
-			return xfmt.Errorf("inject AppSetting virtual imports for bundles: %w", err)
-		}
+	appendUnique(fieldDefaultOwners)
+	appendUnique(appSettingOwners)
+	if err := injector.BundleInjectAppModels(owners); err != nil {
+		return xfmt.Errorf("inject app models for bundles: %w", err)
 	}
 	return nil
 }
@@ -161,8 +178,8 @@ func ensureBundleC2VirtualImports(builder any, fieldDefaultOwners, appSettingOwn
 // virtual file for an application (one store per app).
 //
 // Prefer the last eligible backend module so the owner matches how the multi-app
-// Bundle picks its representative (`mods[len-1]`). EnsureFieldDefaultVirtualImports
-// still rewrites the path to any existing virtual meta row when present.
+// Bundle picks its representative (`mods[len-1]`). BundleInjectAppModels still
+// rewrites the path to any existing generated meta row when present.
 func pickFieldDefaultOwnerModule(app string, mods []*meta.Module) *meta.Module {
 	app = strings.TrimSpace(app)
 	if app == "" || app == "core" || len(mods) == 0 {

@@ -28,43 +28,38 @@ func (m *BaseModel) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// Entities returns the core model set for external use.
+// Entities returns AutoMigrate models for non-declaration catalog tables plus the
+// effective dual-store projection. Declaration-layer tables are registered via
+// DualStoreRawEntities (callers that need both should append both slices).
 func Entities() []any {
-	return []any{
+	out := []any{
 		&Application{},
 		&Module{},
 		&Component{},
-		&Model{},
-		&Field{},
-		&Service{},
-		&TypeParameter{},
-		&Parameter{},
-		&Decorator{},
-		&Argument{},
 		&UiResource{},
 		&UiResourceMenuRoute{},
 		&UiResourceRouteAction{},
-		// Declaration layer (EDS raw dual-store). Empty until Persist is rewired (EDS-2).
-		&RawModel{},
-		&RawField{},
-		&RawService{},
-		&RawTypeParameter{},
-		&RawParameter{},
-		&RawDecorator{},
-		&RawArgument{},
 	}
+	return append(out, DualStoreEffectiveEntities()...)
+}
+
+// CatalogEntities returns Entities plus DualStoreRawEntities for AutoMigrate of the
+// full dual-store catalog (effective projection + declaration tables).
+func CatalogEntities() []any {
+	out := append([]any{}, Entities()...)
+	return append(out, DualStoreRawEntities()...)
 }
 
 // DualStoreRawEntities returns declaration-layer tables only.
 func DualStoreRawEntities() []any {
 	return []any{
-		&RawModel{},
-		&RawField{},
-		&RawService{},
-		&RawTypeParameter{},
-		&RawParameter{},
-		&RawDecorator{},
-		&RawArgument{},
+		&rawModel{},
+		&rawField{},
+		&rawService{},
+		&rawTypeParameter{},
+		&rawParameter{},
+		&rawDecorator{},
+		&rawArgument{},
 	}
 }
 

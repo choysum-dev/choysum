@@ -14,23 +14,23 @@ import (
 )
 
 type cleanModelsSeed struct {
-	module        *meta.Module
-	rawModel      *meta.RawModel
-	rawService    *meta.RawService
-	rawField      *meta.RawField
-	rawDecorator  *meta.RawDecorator
-	rawArgument   *meta.RawArgument
-	component     *meta.Component
-	compDecorator *meta.Decorator
-	compArgument  *meta.Argument
-	menuUI        *meta.UiResource
-	routeUI       *meta.UiResource
-	actionUI      *meta.UiResource
-	menuRoute     *meta.UiResourceMenuRoute
-	routeAction   *meta.UiResourceRouteAction
-	rawTypeParam  *meta.RawTypeParameter
-	rawParameter  *meta.RawParameter
-	dependModule  *meta.Module
+	module         *meta.Module
+	rawModelID     string
+	rawServiceID   string
+	rawFieldID     string
+	rawDecoratorID string
+	rawArgumentID  string
+	component      *meta.Component
+	compDecorator  *meta.Decorator
+	compArgument   *meta.Argument
+	menuUI         *meta.UiResource
+	routeUI        *meta.UiResource
+	actionUI       *meta.UiResource
+	menuRoute      *meta.UiResourceMenuRoute
+	routeAction    *meta.UiResourceRouteAction
+	rawTypeParamID string
+	rawParameterID string
+	dependModule   *meta.Module
 }
 
 func seedCleanModelsFixture(t *testing.T, db *gorm.DB) cleanModelsSeed {
@@ -42,34 +42,46 @@ func seedCleanModelsFixture(t *testing.T, db *gorm.DB) cleanModelsSeed {
 		t.Fatalf("create module: %v", err)
 	}
 
-	rawModel := &meta.RawModel{
+	rawModelID := xid.New().String()
+	rawServiceID := xid.New().String()
+	rawFieldID := xid.New().String()
+	rawDecoratorID := xid.New().String()
+	rawArgumentID := xid.New().String()
+	rawTypeParamID := xid.New().String()
+	rawParameterID := xid.New().String()
+	if err := meta.PersistModelTreeAsRaw(db, &meta.Model{
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: rawModelID, Valid: true}},
 		Name:        "demo.model",
 		Path:        "demo/model",
 		Application: "demo",
 		ModuleId:    mod.Id,
-	}
-	if err := db.Create(rawModel).Error; err != nil {
-		t.Fatalf("create raw model: %v", err)
-	}
-
-	rawService := &meta.RawService{Name: "search", ModelId: rawModel.Id}
-	if err := db.Create(rawService).Error; err != nil {
-		t.Fatalf("create raw service: %v", err)
-	}
-
-	rawField := &meta.RawField{Name: "name", ModelId: rawModel.Id}
-	if err := db.Create(rawField).Error; err != nil {
-		t.Fatalf("create raw field: %v", err)
-	}
-
-	rawDecorator := &meta.RawDecorator{Name: "readonly", ModelId: rawModel.Id}
-	if err := db.Create(rawDecorator).Error; err != nil {
-		t.Fatalf("create raw decorator: %v", err)
-	}
-
-	rawArgument := &meta.RawArgument{Type: "string", Value: "true", DecoratorId: rawDecorator.Id}
-	if err := db.Create(rawArgument).Error; err != nil {
-		t.Fatalf("create raw argument: %v", err)
+		Fields: []*meta.Field{{
+			BaseModel: meta.BaseModel{Id: sql.NullString{String: rawFieldID, Valid: true}},
+			Name:      "name",
+		}},
+		Services: []*meta.Service{{
+			BaseModel: meta.BaseModel{Id: sql.NullString{String: rawServiceID, Valid: true}},
+			Name:      "search",
+			TypeParameters: []*meta.TypeParameter{{
+				BaseModel: meta.BaseModel{Id: sql.NullString{String: rawTypeParamID, Valid: true}},
+				Name:      "T",
+			}},
+			Parameters: []*meta.Parameter{{
+				BaseModel: meta.BaseModel{Id: sql.NullString{String: rawParameterID, Valid: true}},
+				Name:      "id",
+			}},
+		}},
+		Decorators: []*meta.Decorator{{
+			BaseModel: meta.BaseModel{Id: sql.NullString{String: rawDecoratorID, Valid: true}},
+			Name:      "readonly",
+			Arguments: []*meta.Argument{{
+				BaseModel: meta.BaseModel{Id: sql.NullString{String: rawArgumentID, Valid: true}},
+				Type:      "string",
+				Value:     "true",
+			}},
+		}},
+	}); err != nil {
+		t.Fatalf("persist raw model tree: %v", err)
 	}
 
 	component := &meta.Component{Name: "demo.comp", Path: "demo/comp", ModuleId: mod.Id}
@@ -112,16 +124,6 @@ func seedCleanModelsFixture(t *testing.T, db *gorm.DB) cleanModelsSeed {
 		t.Fatalf("create ui route-action relation: %v", err)
 	}
 
-	rawTypeParam := &meta.RawTypeParameter{Name: "T", ServiceId: rawService.Id}
-	if err := db.Create(rawTypeParam).Error; err != nil {
-		t.Fatalf("create raw type parameter: %v", err)
-	}
-
-	rawParameter := &meta.RawParameter{Name: "id", ServiceId: rawService.Id}
-	if err := db.Create(rawParameter).Error; err != nil {
-		t.Fatalf("create raw parameter: %v", err)
-	}
-
 	dependModule := &meta.Module{Name: "dep", Status: meta.Installed, Version: "1.0.0"}
 	dependModule.Id = sql.NullString{String: xid.New().String(), Valid: true}
 	if err := db.Create(dependModule).Error; err != nil {
@@ -135,30 +137,30 @@ func seedCleanModelsFixture(t *testing.T, db *gorm.DB) cleanModelsSeed {
 	}
 
 	return cleanModelsSeed{
-		module:        mod,
-		rawModel:      rawModel,
-		rawService:    rawService,
-		rawField:      rawField,
-		rawDecorator:  rawDecorator,
-		rawArgument:   rawArgument,
-		component:     component,
-		compDecorator: compDecorator,
-		compArgument:  compArgument,
-		menuUI:        menuUI,
-		routeUI:       routeUI,
-		actionUI:      actionUI,
-		menuRoute:     menuRoute,
-		routeAction:   routeAction,
-		rawTypeParam:  rawTypeParam,
-		rawParameter:  rawParameter,
-		dependModule:  dependModule,
+		module:         mod,
+		rawModelID:     rawModelID,
+		rawServiceID:   rawServiceID,
+		rawFieldID:     rawFieldID,
+		rawDecoratorID: rawDecoratorID,
+		rawArgumentID:  rawArgumentID,
+		component:      component,
+		compDecorator:  compDecorator,
+		compArgument:   compArgument,
+		menuUI:         menuUI,
+		routeUI:        routeUI,
+		actionUI:       actionUI,
+		menuRoute:      menuRoute,
+		routeAction:    routeAction,
+		rawTypeParamID: rawTypeParamID,
+		rawParameterID: rawParameterID,
+		dependModule:   dependModule,
 	}
 }
 
-func dropMetaTable(t *testing.T, db *gorm.DB, model any) {
+func dropMetaTable(t *testing.T, db *gorm.DB, table string) {
 	t.Helper()
-	if err := db.Migrator().DropTable(model); err != nil {
-		t.Fatalf("drop table for %#T: %v", model, err)
+	if err := db.Migrator().DropTable(table); err != nil {
+		t.Fatalf("drop table %s: %v", table, err)
 	}
 }
 
@@ -176,34 +178,27 @@ END`
 	}
 }
 
+func deleteRawRow(t *testing.T, db *gorm.DB, table, id string) {
+	t.Helper()
+	if err := db.Unscoped().Table(table).Where("id = ?", id).Delete(nil).Error; err != nil {
+		t.Fatalf("delete %s id=%s: %v", table, id, err)
+	}
+}
+
 func deleteRawCleanModelsPrefix(t *testing.T, db *gorm.DB, seed cleanModelsSeed) {
 	t.Helper()
-	if err := db.Unscoped().Delete(seed.rawArgument).Error; err != nil {
-		t.Fatalf("delete raw argument: %v", err)
-	}
-	if err := db.Unscoped().Delete(seed.rawDecorator).Error; err != nil {
-		t.Fatalf("delete raw decorator: %v", err)
-	}
-	if err := db.Unscoped().Delete(seed.rawTypeParam).Error; err != nil {
-		t.Fatalf("delete raw type parameter: %v", err)
-	}
-	if err := db.Unscoped().Delete(seed.rawParameter).Error; err != nil {
-		t.Fatalf("delete raw parameter: %v", err)
-	}
+	deleteRawRow(t, db, meta.RawArgumentTable, seed.rawArgumentID)
+	deleteRawRow(t, db, meta.RawDecoratorTable, seed.rawDecoratorID)
+	deleteRawRow(t, db, meta.RawTypeParameterTable, seed.rawTypeParamID)
+	deleteRawRow(t, db, meta.RawParameterTable, seed.rawParameterID)
 }
 
 func deleteRawModelTree(t *testing.T, db *gorm.DB, seed cleanModelsSeed) {
 	t.Helper()
 	deleteRawCleanModelsPrefix(t, db, seed)
-	if err := db.Unscoped().Delete(seed.rawService).Error; err != nil {
-		t.Fatalf("delete raw service: %v", err)
-	}
-	if err := db.Unscoped().Delete(seed.rawField).Error; err != nil {
-		t.Fatalf("delete raw field: %v", err)
-	}
-	if err := db.Unscoped().Delete(seed.rawModel).Error; err != nil {
-		t.Fatalf("delete raw model: %v", err)
-	}
+	deleteRawRow(t, db, meta.RawServiceTable, seed.rawServiceID)
+	deleteRawRow(t, db, meta.RawFieldTable, seed.rawFieldID)
+	deleteRawRow(t, db, meta.RawModelTable, seed.rawModelID)
 }
 
 func TestModuleUninstallerCleanModelsErrorPaths(t *testing.T) {
@@ -230,7 +225,7 @@ END`).Error; err != nil {
 			name:    "raw models",
 			wantMsg: "error deleting raw models",
 			setup: func(t *testing.T, db *gorm.DB, _ cleanModelsSeed) {
-				dropMetaTable(t, db, &meta.RawArgument{})
+				dropMetaTable(t, db, meta.RawArgumentTable)
 			},
 		},
 		{
@@ -238,7 +233,7 @@ END`).Error; err != nil {
 			wantMsg: "error deleting component decorator arguments",
 			setup: func(t *testing.T, db *gorm.DB, seed cleanModelsSeed) {
 				deleteRawModelTree(t, db, seed)
-				dropMetaTable(t, db, &meta.Argument{})
+				dropMetaTable(t, db, "meta_argument")
 			},
 		},
 		{
@@ -256,7 +251,7 @@ END`).Error; err != nil {
 			name:    "recompute effective",
 			wantMsg: "error recomputing effective models after uninstall",
 			setup: func(t *testing.T, db *gorm.DB, seed cleanModelsSeed) {
-				dropMetaTable(t, db, &meta.Model{})
+				dropMetaTable(t, db, "meta_model")
 			},
 		},
 		{
@@ -287,7 +282,7 @@ END`).Error; err != nil {
 				if err := db.Unscoped().Delete(seed.component).Error; err != nil {
 					t.Fatalf("delete component: %v", err)
 				}
-				dropMetaTable(t, db, &meta.UiResourceMenuRoute{})
+				dropMetaTable(t, db, "meta_ui_resource_menu_route")
 			},
 		},
 		{
@@ -307,7 +302,7 @@ END`).Error; err != nil {
 				if err := db.Unscoped().Delete(seed.menuRoute).Error; err != nil {
 					t.Fatalf("delete menu-route relation: %v", err)
 				}
-				dropMetaTable(t, db, &meta.UiResourceRouteAction{})
+				dropMetaTable(t, db, "meta_ui_resource_route_action")
 			},
 		},
 		{

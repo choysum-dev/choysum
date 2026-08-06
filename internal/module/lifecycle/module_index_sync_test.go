@@ -140,7 +140,7 @@ func TestModuleManagerBuildGlobalWebToDirResolvesRelativeEntryPath(t *testing.T)
 	modulesPath := t.TempDir()
 
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
@@ -213,7 +213,7 @@ func TestModuleManagerRefreshModuleIndexForLocalModules(t *testing.T) {
 func TestModuleManagerBuildBackendAppToDirWritesModuleBasedEntryImports(t *testing.T) {
 	modulesPath := t.TempDir()
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
@@ -250,7 +250,7 @@ func TestModuleManagerBuildBackendAppToDirWritesModuleBasedEntryImports(t *testi
 func TestModuleManagerGenerateAppToDirsPropagatesGeneratorError(t *testing.T) {
 	modulesPath := t.TempDir()
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
@@ -276,7 +276,7 @@ func TestModuleManagerGenerateAppToDirsPropagatesGeneratorError(t *testing.T) {
 func TestModuleManagerBuildBackendBundlesToDirWritesModuleBasedEntryImports(t *testing.T) {
 	modulesPath := t.TempDir()
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
@@ -912,7 +912,7 @@ func TestModuleManagerInstallRunsAppStageCallbacks(t *testing.T) {
 	defaultChoysumPath := filepath.Join(t.TempDir(), ".choysum")
 
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
@@ -980,7 +980,7 @@ func TestModuleManagerUninstallRunsAppStageCallbacks(t *testing.T) {
 	defaultChoysumPath := filepath.Join(t.TempDir(), ".choysum")
 
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
@@ -1049,7 +1049,7 @@ func TestModuleManagerInstallPropagatesGeneratedAPIRootError(t *testing.T) {
 	modulesPath := t.TempDir()
 
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
@@ -1098,7 +1098,7 @@ func TestModuleManagerUninstallPropagatesGeneratedAPIRootError(t *testing.T) {
 	modulesPath := t.TempDir()
 
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
@@ -1138,7 +1138,7 @@ func TestModuleManagerUpgradePropagatesGeneratedAPIRootError(t *testing.T) {
 	modulesPath := t.TempDir()
 
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
@@ -1178,7 +1178,7 @@ func TestModuleManagerUpgradeRunsAppStageCallbacks(t *testing.T) {
 	defaultChoysumPath := filepath.Join(t.TempDir(), ".choysum")
 
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 

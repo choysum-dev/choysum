@@ -133,14 +133,14 @@ func MergeSameNameModelsByExtensionChain(models []*Model) (*Model, error) {
 	return &merged, nil
 }
 
-// MergeEffectiveModel runs E2 over declaration-layer RawModel rows.
-func MergeEffectiveModel(raws []*RawModel) (*Model, error) {
-	return MergeSameNameModelsByExtensionChain(RawModelsAsModels(raws))
+// mergeEffectiveModel runs E2 over declaration-layer rawModel rows.
+func mergeEffectiveModel(raws []*rawModel) (*Model, error) {
+	return MergeSameNameModelsByExtensionChain(rawModelsAsModels(raws))
 }
 
-// RawModelsAsModels converts raw declaration trees into in-memory Model trees for E2 merge.
+// rawModelsAsModels converts raw declaration trees into in-memory Model trees for E2 merge.
 // IDs and timestamps are preserved for ranking; FK targets are not DB-backed.
-func RawModelsAsModels(raws []*RawModel) []*Model {
+func rawModelsAsModels(raws []*rawModel) []*Model {
 	out := make([]*Model, 0, len(raws))
 	for _, raw := range raws {
 		if raw == nil {
@@ -151,7 +151,7 @@ func RawModelsAsModels(raws []*RawModel) []*Model {
 	return out
 }
 
-func rawModelAsModel(raw *RawModel) *Model {
+func rawModelAsModel(raw *rawModel) *Model {
 	m := &Model{
 		BaseModel:    raw.BaseModel,
 		Name:         raw.Name,
@@ -188,7 +188,7 @@ func rawModelAsModel(raw *RawModel) *Model {
 	return m
 }
 
-func rawFieldAsField(f *RawField) *Field {
+func rawFieldAsField(f *rawField) *Field {
 	out := &Field{
 		BaseModel:                f.BaseModel,
 		Name:                     f.Name,
@@ -238,7 +238,7 @@ func rawFieldAsField(f *RawField) *Field {
 	return out
 }
 
-func rawServiceAsService(s *RawService) *Service {
+func rawServiceAsService(s *rawService) *Service {
 	svc := &Service{
 		BaseModel:             s.BaseModel,
 		Name:                  s.Name,
@@ -281,7 +281,7 @@ func rawServiceAsService(s *RawService) *Service {
 	return svc
 }
 
-func rawDecoratorAsDecorator(d *RawDecorator) *Decorator {
+func rawDecoratorAsDecorator(d *rawDecorator) *Decorator {
 	out := &Decorator{
 		BaseModel:      d.BaseModel,
 		Name:           d.Name,
