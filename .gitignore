@@ -70,8 +70,16 @@ odoo/
 tryon
 tryon/
 
-# Local dev files
-.dev/
+# Local dev files (track terminology i18n design docs under .dev/docs/infra/i18n/)
+.dev/*
+!.dev/docs/
+.dev/docs/*
+!.dev/docs/infra/
+.dev/docs/infra/*
+!.dev/docs/infra/i18n/
+.dev/docs/infra/i18n/*
+!.dev/docs/infra/i18n/terminology-i18n-design.md
+!.dev/docs/infra/i18n/terminology-i18n-injectappmodel-design.md
 /cert/
 **/tsconfig.json
 
