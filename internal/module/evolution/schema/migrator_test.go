@@ -4,9 +4,11 @@
 package schema
 
 import (
+	"database/sql"
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/choysum-dev/choysum/pkg/meta"
 )
@@ -89,6 +91,146 @@ func TestMigratorMigrateWrapsErrors(t *testing.T) {
 	}
 	if err := m.Migrate(); err == nil || !strings.Contains(err.Error(), "migrate foreign keys") || !strings.Contains(err.Error(), "fk broken") {
 		t.Fatalf("expected wrapped foreign key error, got %v", err)
+	}
+}
+
+func TestMigratorMigrateWrapsTerminologyEditorAllowsError(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := meta.EnsureDualStoreTables(db); err != nil {
+		t.Fatalf("EnsureDualStoreTables: %v", err)
+	}
+	for _, ddl := range []string{
+		`CREATE TABLE auth_role (
+			id TEXT PRIMARY KEY,
+			code TEXT,
+			deleted_at DATETIME
+		)`,
+		`CREATE TABLE auth_role_method_access (
+			id TEXT PRIMARY KEY,
+			role_id TEXT,
+			meta_application_id TEXT,
+			meta_model_id TEXT,
+			meta_service_id TEXT,
+			mode TEXT,
+			source TEXT,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME
+		)`,
+	} {
+		if err := db.Exec(ddl).Error; err != nil {
+			t.Fatalf("create acl table: %v", err)
+		}
+	}
+	if err := db.Exec(`CREATE TRIGGER no_acl_insert BEFORE INSERT ON auth_role_method_access
+		BEGIN SELECT RAISE(ABORT, 'blocked'); END`).Error; err != nil {
+		t.Fatalf("create trigger: %v", err)
+	}
+	if err := db.Exec(`INSERT INTO auth_role (id, code) VALUES (?, ?)`, "role-1", "terminology.editor").Error; err != nil {
+		t.Fatalf("insert role: %v", err)
+	}
+	ts := time.Now().UTC()
+	model := &meta.Model{
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "model-tt", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+		Name:        "TranslationTerm",
+		Path:        "auth/translation_term.ts",
+		Application: "auth",
+	}
+	if err := db.Create(model).Error; err != nil {
+		t.Fatalf("create model: %v", err)
+	}
+	for _, methodName := range []string{"Search", "Browse", "Update", "Count"} {
+		svc := &meta.Service{
+			BaseModel: meta.BaseModel{Id: sql.NullString{String: "svc-" + methodName, Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+			Name:      methodName,
+			ModelId:   model.Id,
+		}
+		if err := db.Create(svc).Error; err != nil {
+			t.Fatalf("create service %s: %v", methodName, err)
+		}
+	}
+
+	m := &migrator{
+		runtimeScope:       runtimeScope,
+		module:             &meta.Module{Name: "auth", ApplicationStr: "auth"},
+		modelMigrator:      modelMigratorFunc(func() error { return nil }),
+		foreignKeyMigrator: foreignKeyMigratorFunc(func() error { return nil }),
+	}
+	err := m.Migrate()
+	if err == nil || !strings.Contains(err.Error(), "ensure terminology editor allows") {
+		t.Fatalf("expected wrapped ACL error, got %v", err)
+	}
+}
+
+func TestMigratorMigrateSeedsTerminologyEditorAllows(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := meta.EnsureDualStoreTables(db); err != nil {
+		t.Fatalf("EnsureDualStoreTables: %v", err)
+	}
+	for _, ddl := range []string{
+		`CREATE TABLE auth_role (
+			id TEXT PRIMARY KEY,
+			code TEXT,
+			deleted_at DATETIME
+		)`,
+		`CREATE TABLE auth_role_method_access (
+			id TEXT PRIMARY KEY,
+			role_id TEXT,
+			meta_application_id TEXT,
+			meta_model_id TEXT,
+			meta_service_id TEXT,
+			mode TEXT,
+			source TEXT,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME
+		)`,
+	} {
+		if err := db.Exec(ddl).Error; err != nil {
+			t.Fatalf("create acl table: %v", err)
+		}
+	}
+	if err := db.Exec(`INSERT INTO auth_role (id, code) VALUES (?, ?)`, "role-1", "terminology.editor").Error; err != nil {
+		t.Fatalf("insert role: %v", err)
+	}
+	ts := time.Now().UTC()
+	model := &meta.Model{
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "model-tt", Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+		Name:        "TranslationTerm",
+		Path:        "auth/translation_term.ts",
+		Application: "auth",
+	}
+	if err := db.Create(model).Error; err != nil {
+		t.Fatalf("create model: %v", err)
+	}
+	for _, methodName := range []string{"Search", "Browse", "Update", "Count"} {
+		svc := &meta.Service{
+			BaseModel: meta.BaseModel{Id: sql.NullString{String: "svc-" + methodName, Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+			Name:      methodName,
+			ModelId:   model.Id,
+		}
+		if err := db.Create(svc).Error; err != nil {
+			t.Fatalf("create service %s: %v", methodName, err)
+		}
+	}
+
+	m := &migrator{
+		runtimeScope:       runtimeScope,
+		module:             &meta.Module{Name: "auth", ApplicationStr: "auth"},
+		modelMigrator:      modelMigratorFunc(func() error { return nil }),
+		foreignKeyMigrator: foreignKeyMigratorFunc(func() error { return nil }),
+	}
+	if err := m.Migrate(); err != nil {
+		t.Fatalf("Migrate: %v", err)
+	}
+	var count int64
+	if err := db.Table("auth_role_method_access").Where("role_id = ?", "role-1").Count(&count).Error; err != nil {
+		t.Fatalf("count acl: %v", err)
+	}
+	if count != 4 {
+		t.Fatalf("acl rows = %d, want 4", count)
 	}
 }
 

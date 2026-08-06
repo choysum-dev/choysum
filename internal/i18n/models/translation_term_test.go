@@ -129,6 +129,18 @@ func TestMigrateTranslationTermTableCreatesAuthTable(t *testing.T) {
 	}
 }
 
+func TestNormalizeKind(t *testing.T) {
+	if got := NormalizeKind(""); got != KindLiteral {
+		t.Fatalf("empty = %q", got)
+	}
+	if got := NormalizeKind("  "); got != KindLiteral {
+		t.Fatalf("whitespace = %q", got)
+	}
+	if got := NormalizeKind("custom_title"); got != "custom_title" {
+		t.Fatalf("custom = %q", got)
+	}
+}
+
 func TestCreateUniqueIndexSQLMySQLUsesSrcPrefix(t *testing.T) {
 	got := createUniqueIndexSQL("mysql", "auth_translation_term", "uq_auth_translation_term_key")
 	want := "CREATE UNIQUE INDEX `uq_auth_translation_term_key` ON `auth_translation_term` (module(64), lang, scope(255), src(255), kind)"
@@ -138,6 +150,44 @@ func TestCreateUniqueIndexSQLMySQLUsesSrcPrefix(t *testing.T) {
 	sqlite := createUniqueIndexSQL("sqlite", "auth_translation_term", "uq_auth_translation_term_key")
 	if strings.Contains(sqlite, "src(255)") {
 		t.Fatalf("sqlite index must not use MySQL prefix length, got %q", sqlite)
+	}
+	pg := createUniqueIndexSQL("postgres", "auth_translation_term", "uq_auth_translation_term_key")
+	wantPG := `CREATE UNIQUE INDEX "uq_auth_translation_term_key" ON "auth_translation_term" (module, lang, scope, src, kind)`
+	if pg != wantPG {
+		t.Fatalf("createUniqueIndexSQL(postgres) = %q, want %q", pg, wantPG)
+	}
+}
+
+func TestMigrateTranslationTermTableAutoMigrateError(t *testing.T) {
+	rs := newTestScope(t)
+	sqlDB, err := rs.Session().DB.DB()
+	if err != nil {
+		t.Fatalf("db.DB: %v", err)
+	}
+	if err := sqlDB.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	err = MigrateTranslationTermTable(rs, "auth")
+	if err == nil || !strings.Contains(err.Error(), "migrate auth_translation_term") {
+		t.Fatalf("expected AutoMigrate wrap, got %v", err)
+	}
+}
+
+func TestMigrateTranslationTermTableUniqueIndexError(t *testing.T) {
+	rs := newTestScope(t)
+	if err := MigrateTranslationTermTable(rs, "auth"); err != nil {
+		t.Fatalf("initial migrate: %v", err)
+	}
+	indexName := translationTermUniqueIndexName("auth_translation_term")
+	if err := rs.Session().Exec("DROP INDEX IF EXISTS `" + indexName + "`").Error; err != nil {
+		t.Fatalf("drop index: %v", err)
+	}
+	if err := rs.Session().Exec("PRAGMA query_only = ON").Error; err != nil {
+		t.Fatalf("query_only: %v", err)
+	}
+	err := MigrateTranslationTermTable(rs, "auth")
+	if err == nil || !strings.Contains(err.Error(), "unique index") {
+		t.Fatalf("expected unique index wrap, got %v", err)
 	}
 }
 

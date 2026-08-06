@@ -58,6 +58,56 @@ func newTestScope(t *testing.T) *testScope {
 	}
 }
 
+func TestUpsertPackagedTermsMigratesMissingTable(t *testing.T) {
+	rs := newTestScope(t)
+	if rs.Session().Migrator().HasTable("auth_translation_term") {
+		t.Fatal("expected missing table before upsert")
+	}
+	poText := []byte(`
+msgctxt "web/a@new"
+msgid "Hello"
+msgstr "你好"
+`)
+	reg := store.NewRegistry(rs)
+	stats, err := i18nimport.UpsertPackagedTerms(rs, reg, "auth", "auth", "zh_CN", poText)
+	if err != nil {
+		t.Fatalf("UpsertPackagedTerms: %v", err)
+	}
+	if stats.Upserted != 1 {
+		t.Fatalf("stats=%+v", stats)
+	}
+	if !rs.Session().Migrator().HasTable("auth_translation_term") {
+		t.Fatal("expected UpsertPackagedTerms to migrate missing table")
+	}
+	var row i18nmodels.TranslationTerm
+	if err := rs.Session().Table("auth_translation_term").Where("src = ?", "Hello").Take(&row).Error; err != nil {
+		t.Fatal(err)
+	}
+	if row.Value != "你好" {
+		t.Fatalf("row=%+v", row)
+	}
+}
+
+func TestUpsertPackagedTermsMigrateMissingTableError(t *testing.T) {
+	rs := newTestScope(t)
+	sqlDB, err := rs.Session().DB.DB()
+	if err != nil {
+		t.Fatalf("db.DB: %v", err)
+	}
+	if err := sqlDB.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	poText := []byte(`
+msgctxt "web/a@new"
+msgid "Hello"
+msgstr "你好"
+`)
+	_, err = i18nimport.UpsertPackagedTerms(rs, nil, "auth", "auth", "zh_CN", poText)
+	if err == nil {
+		t.Fatal("expected migrate error for missing table on closed DB")
+	}
+}
+
 func TestUpsertPackagedTermsMsgctxtOverrideAndObsolete(t *testing.T) {
 	rs := newTestScope(t)
 	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {

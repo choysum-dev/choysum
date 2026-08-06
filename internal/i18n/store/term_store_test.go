@@ -329,7 +329,6 @@ func TestTermStoreWarmMissingTableAndBumpInvalidate(t *testing.T) {
 	}).Error; err != nil {
 		t.Fatal(err)
 	}
-	ts = store.NewTermStore(rs, "auth")
 	if err := ts.WarmLanguage("zh_CN"); err != nil {
 		t.Fatal(err)
 	}

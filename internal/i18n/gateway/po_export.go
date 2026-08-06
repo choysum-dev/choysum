@@ -123,10 +123,6 @@ func (h *handler) collectAllTerms(ctx context.Context, accessToken, app, lang st
 	truncated := false
 	for {
 		remaining := poExportMaxItems - len(all)
-		if remaining <= 0 {
-			truncated = true
-			break
-		}
 		page := poExportPageSize
 		if page > remaining {
 			page = remaining
