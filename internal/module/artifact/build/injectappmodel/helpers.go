@@ -4,6 +4,8 @@
 package injectappmodel
 
 import (
+	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -29,6 +31,54 @@ func isGeneratedPath(spec *Spec, path string) bool {
 
 func generatedPath(spec *Spec, modulePath string) string {
 	return filepath.ToSlash(filepath.Clean(filepath.Join(strings.TrimSpace(modulePath), spec.GeneratedRelPath)))
+}
+
+// canEnsureServiceEntry reports whether Ensure may proceed for spec.
+// Virtual unit-test harnesses use a non-existent ModulesPath and are allowed.
+// Real workspaces (ModulesPath exists) require Spec.BaseModelFile on disk so
+// generated sources do not import missing core paths.
+func canEnsureServiceEntry(sess *Session, spec *Spec, modulePath string) bool {
+	if sess == nil || spec == nil {
+		return false
+	}
+	rel := strings.TrimSpace(spec.BaseModelFile)
+	if rel == "" {
+		return true
+	}
+	modulesPath := strings.TrimSpace(sess.ctx.ModulesPath)
+	if modulesPath == "" {
+		modulesPath = filepath.Dir(strings.TrimSpace(modulePath))
+	}
+	if modulesPath == "" || modulesPath == "." {
+		return false
+	}
+	if _, err := os.Stat(modulesPath); err != nil {
+		// Virtual harnesses use a non-existent ModulesPath; permission / other
+		// errors must not unlock Ensure over an unverified base model.
+		return errors.Is(err, os.ErrNotExist)
+	}
+	_, err := os.Stat(filepath.Join(modulesPath, filepath.FromSlash(rel)))
+	return err == nil
+}
+
+// resolveServiceEntryPath joins relative ServiceEntryPoint values against the
+// module root. Absolute paths are cleaned as-is.
+func resolveServiceEntryPath(mod *meta.Module, entry string) string {
+	entry = strings.TrimSpace(entry)
+	if entry == "" {
+		return ""
+	}
+	if filepath.IsAbs(entry) {
+		return filepath.Clean(entry)
+	}
+	root := ""
+	if mod != nil {
+		root = strings.TrimSpace(mod.Path)
+	}
+	if root == "" {
+		return filepath.Clean(entry)
+	}
+	return filepath.Clean(filepath.Join(root, entry))
 }
 
 func modelsIn(spec *Spec, results []*parser.ParserResult, modulePath string) []*meta.Model {

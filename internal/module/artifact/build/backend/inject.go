@@ -46,9 +46,14 @@ func (b *ModuleBuilder) releaseInjectSchedules() {
 		return
 	}
 	b.injectSession.ReleaseSchedules()
+	// Failure paths call this without the success-path Revert; Bundle defers it.
+	// Always restore Ensure'd Module.ServiceEntryPoint so virtual paths never leak.
+	b.injectSession.RevertEnsuredServiceEntry()
 }
 
 // applyInjectEffects registers virtual sources and merges entry-point imports.
+// When Effects.ServiceEntryPath is set and the builder has no entry yet, adopt it
+// so subsequent esbuild runs (and later Specs via Module.ServiceEntryPoint) work.
 func (b *ModuleBuilder) applyInjectEffects(fx injectappmodel.Effects) {
 	if b == nil {
 		return
@@ -67,6 +72,16 @@ func (b *ModuleBuilder) applyInjectEffects(fx injectappmodel.Effects) {
 			RegisterVirtualSource(path string, contents string)
 		}); ok {
 			registrar.RegisterVirtualSource(path, f.Contents)
+		}
+	}
+	if entry := strings.TrimSpace(fx.ServiceEntryPath); entry != "" && strings.TrimSpace(b.entryPoint) == "" {
+		b.entryPoint = entry
+		b.entryPointImportsCacheValid = false
+		if setter, ok := b.buildPlugin.(interface{ SetEntryPoint(string) }); ok {
+			setter.SetEntryPoint(entry)
+		}
+		if setter, ok := b.prebuildPlugin.(interface{ SetEntryPoint(string) }); ok {
+			setter.SetEntryPoint(entry)
 		}
 	}
 	if len(fx.Imports) == 0 {

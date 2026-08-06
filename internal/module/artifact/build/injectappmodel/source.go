@@ -10,6 +10,18 @@ import (
 	"strings"
 )
 
+// virtualServiceEntryPath is the in-memory service entry for EnsureServiceEntry.
+// It is never written to package.json or the module source tree.
+func virtualServiceEntryPath(modulePath string) string {
+	return filepath.ToSlash(filepath.Clean(filepath.Join(strings.TrimSpace(modulePath), "service/index.ts")))
+}
+
+// virtualServiceEntrySource is a minimal TS module so esbuild can treat the
+// path as an entry; inject models arrive via EntryPointImports.
+func virtualServiceEntrySource() string {
+	return "// Virtual service entry ensured by injectappmodel (TranslationTerm).\nexport {};\n"
+}
+
 // generatedSource builds C2 thin-class source with absolute imports so esbuild can
 // resolve them even when the pseudo __generated__ directory is not on disk.
 func generatedSource(spec *Spec, modulesPath, application string) string {

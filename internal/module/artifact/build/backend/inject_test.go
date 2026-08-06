@@ -6,6 +6,7 @@ package backendbuilder
 import (
 	"database/sql"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -46,6 +47,101 @@ func newInjectTestBuilder(t *testing.T, mod *meta.Module, results []*parser.Pars
 		injectRegistry: reg,
 	}
 	return builder, buildPlugin, db
+}
+
+func TestApplyInjectEffects_AdoptsDiskEnsuredServiceEntry(t *testing.T) {
+	dir := t.TempDir()
+	modPath := filepath.Join(dir, "auth")
+	svcDir := filepath.Join(modPath, "service")
+	if err := os.MkdirAll(svcDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	entryPath := filepath.Join(svcDir, "index.ts")
+	if err := os.WriteFile(entryPath, []byte("export {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	mod := &meta.Module{
+		Name: "auth", Path: modPath,
+		ApplicationStr: "auth", ServiceEntryPoint: "",
+	}
+	builder, buildPlugin, _ := newInjectTestBuilder(t, mod, nil)
+	builder.runtimeScope.(*builderTestScope).cfg.ModulesPath = filepath.Join(dir, "missing-modules-root")
+	builder.entryPoint = ""
+	if err := builder.injectAppModels(nil); err != nil {
+		t.Fatal(err)
+	}
+	if builder.entryPoint != entryPath && filepath.Clean(builder.entryPoint) != filepath.Clean(entryPath) {
+		t.Fatalf("builder entryPoint = %q want disk entry %q", builder.entryPoint, entryPath)
+	}
+	if buildPlugin.entryPoint != entryPath && filepath.Clean(buildPlugin.entryPoint) != filepath.Clean(entryPath) {
+		t.Fatalf("plugin entryPoint = %q want disk entry %q", buildPlugin.entryPoint, entryPath)
+	}
+	if _, ok := buildPlugin.virtualSources[entryPath]; ok {
+		t.Fatal("must not register virtual stub over on-disk service entry")
+	}
+}
+
+func TestApplyInjectEffects_AdoptsServiceEntryPath(t *testing.T) {
+	mod := &meta.Module{
+		Name: "web", Path: "/virtual/modules/web",
+		ApplicationStr: "web", ServiceEntryPoint: "",
+	}
+	builder, buildPlugin, _ := newInjectTestBuilder(t, mod, nil)
+	pre := builder.prebuildPlugin.(*stubEsbPlugin)
+	builder.entryPoint = ""
+	builder.entryPointImportsCacheValid = true
+
+	builder.applyInjectEffects(injectappmodel.Effects{
+		ServiceEntryPath: "/virtual/modules/web/service/index.ts",
+		Files:            []injectappmodel.VirtualFile{{Path: "/virtual/modules/web/service/index.ts", Contents: "export {}\n"}},
+		Imports:          []string{"/virtual/modules/web/service/models/__generated__/translation_term.ts"},
+	})
+	if builder.entryPoint != "/virtual/modules/web/service/index.ts" {
+		t.Fatalf("entryPoint = %q", builder.entryPoint)
+	}
+	if buildPlugin.entryPoint != "/virtual/modules/web/service/index.ts" {
+		t.Fatalf("build plugin entryPoint = %q", buildPlugin.entryPoint)
+	}
+	if pre.entryPoint != "/virtual/modules/web/service/index.ts" {
+		t.Fatalf("prebuild plugin entryPoint = %q", pre.entryPoint)
+	}
+	if len(buildPlugin.entryImports) == 0 {
+		t.Fatal("expected entry imports merged")
+	}
+
+	builder.entryPoint = "/already"
+	builder.applyInjectEffects(injectappmodel.Effects{ServiceEntryPath: "/ignored"})
+	if builder.entryPoint != "/already" {
+		t.Fatalf("existing entryPoint mutated: %q", builder.entryPoint)
+	}
+
+	// ServiceEntryPath alone (no Imports) still clears the imports cache.
+	builder2, _, _ := newInjectTestBuilder(t, mod, nil)
+	builder2.entryPoint = ""
+	builder2.entryPointImportsCacheValid = true
+	builder2.applyInjectEffects(injectappmodel.Effects{ServiceEntryPath: "/virtual/only-entry.ts"})
+	if builder2.entryPoint != "/virtual/only-entry.ts" || builder2.entryPointImportsCacheValid {
+		t.Fatalf("adopt without imports: entry=%q cacheValid=%v", builder2.entryPoint, builder2.entryPointImportsCacheValid)
+	}
+}
+
+func TestReleaseInjectSchedules_RevertsEnsuredEntry(t *testing.T) {
+	mod := &meta.Module{
+		Name: "web", Path: "/virtual/modules/web",
+		ApplicationStr: "web", ServiceEntryPoint: "",
+	}
+	builder, _, _ := newInjectTestBuilder(t, mod, nil)
+	builder.runtimeScope.(*builderTestScope).cfg.ModulesPath = filepath.Join(t.TempDir(), "missing-modules-root")
+	if err := builder.injectAppModels(nil); err != nil {
+		t.Fatal(err)
+	}
+	if mod.ServiceEntryPoint == "" {
+		t.Fatal("expected Ensure to set ServiceEntryPoint")
+	}
+	builder.releaseInjectSchedules()
+	if mod.ServiceEntryPoint != "" {
+		t.Fatalf("expected revert to empty, got %q", mod.ServiceEntryPoint)
+	}
 }
 
 func TestInjectEffects_NilGuards(t *testing.T) {

@@ -105,6 +105,7 @@ type stubEsbPlugin struct {
 	name                string
 	parserResults       []*parser.ParserResult
 	entryImports        []string
+	entryPoint          string
 	virtualSources      map[string]string
 	getParserResultsErr error
 }
@@ -137,6 +138,10 @@ func (p *stubEsbPlugin) SetParserResults(parserResults []*parser.ParserResult) e
 
 func (p *stubEsbPlugin) SetEntryPointImports(imports []string) {
 	p.entryImports = append([]string(nil), imports...)
+}
+
+func (p *stubEsbPlugin) SetEntryPoint(path string) {
+	p.entryPoint = strings.TrimSpace(path)
 }
 
 func (p *stubEsbPlugin) RegisterVirtualSource(path string, contents string) {
@@ -853,6 +858,8 @@ func TestBundleToDirCtx_UsesContextSessionForRuntimeState(t *testing.T) {
 		publishDist:    false,
 		outFileName:    "index.js",
 		globalName:     "AuthApp",
+		// Empty registry: this test covers entry imports / runtime session wiring, not C2 inject.
+		injectRegistry: injectappmodel.NewRegistry(),
 		tsParserFactory: func(runtimeScope scope.Scope, module *meta.Module) parser.Parser {
 			parserRuntimeScope = runtimeScope
 			return fixedParser{}
@@ -940,6 +947,8 @@ func TestBundleToDirCtx_PreservesRuntimeTransactionWhenCallerContextHasNoTransac
 		publishDist:    false,
 		outFileName:    "index.js",
 		globalName:     "AuthApp",
+		// Empty registry: this test covers transaction preservation, not C2 inject.
+		injectRegistry: injectappmodel.NewRegistry(),
 		tsParserFactory: func(runtimeScope scope.Scope, module *meta.Module) parser.Parser {
 			parserRuntimeScope = runtimeScope
 			return fixedParser{}

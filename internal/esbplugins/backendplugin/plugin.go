@@ -6,6 +6,7 @@ package backendplugin
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -137,6 +138,14 @@ func (p *BackendPlugin) bindRuntimeState(runtimeScope scope.Scope, module *meta.
 // SetEntryPointImports stores imports that should be prepended to the backend entry point.
 func (p *BackendPlugin) SetEntryPointImports(imports []string) {
 	p.EntryPointImports = append([]string(nil), imports...)
+}
+
+// SetEntryPoint updates the plugin entry path (e.g. after EnsureServiceEntry).
+func (p *BackendPlugin) SetEntryPoint(path string) {
+	if p == nil {
+		return
+	}
+	p.EntryPoint = strings.TrimSpace(path)
 }
 
 func normalizeBackendPluginImportPath(path string) string {
@@ -1143,7 +1152,7 @@ func (p *BackendPlugin) DefinePlugins(runtimeScope scope.Scope, jsExecutor jsexe
 				}
 				return api.OnResolveResult{}, nil
 			}
-			build.OnResolve(api.OnResolveOptions{Filter: `(field_default|app_setting)\.ts$`}, resolveVirtual)
+			build.OnResolve(api.OnResolveOptions{Filter: `(field_default|app_setting|translation_term)\.ts$|service/index\.ts$`}, resolveVirtual)
 			build.OnLoad(api.OnLoadOptions{Filter: `\.ts$`}, func(args api.OnLoadArgs) (api.OnLoadResult, error) {
 				p.Mu.Lock()
 				defer p.Mu.Unlock()
@@ -1198,9 +1207,15 @@ func (p *BackendPlugin) DefinePlugins(runtimeScope scope.Scope, jsExecutor jsexe
 				}
 				if virtualLoad {
 					resolveDir := filepath.Dir(args.Path)
-					if p.Module != nil && strings.TrimSpace(p.Module.Path) != "" {
-						if parent := filepath.Dir(p.Module.Path); parent != "" && parent != "." {
-							resolveDir = parent
+					// Prefer module-root ResolveDir only for pure virtual paths.
+					// If a real file exists at args.Path (virtual stub shadowed a
+					// disk entry), keep dirname(path) so relative imports like
+					// ./models resolve under service/.
+					if _, err := os.Stat(args.Path); err != nil {
+						if p.Module != nil && strings.TrimSpace(p.Module.Path) != "" {
+							if parent := filepath.Dir(p.Module.Path); parent != "" && parent != "." {
+								resolveDir = parent
+							}
 						}
 					}
 					result.ResolveDir = resolveDir

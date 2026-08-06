@@ -4,6 +4,8 @@
 package injectappmodel
 
 import (
+	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -22,10 +24,9 @@ func BundleInjectAppModels(sess *Session, modules []*meta.Module) (Effects, erro
 		fx, err := BundleOne(sess, spec.ModelName, modules)
 		if err != nil {
 			sess.ClearAllInjectPaths()
-			return out, err
+			return Effects{}, err
 		}
-		out.Files = append(out.Files, fx.Files...)
-		out.Imports = mergeUniqueStrings(out.Imports, fx.Imports)
+		out = out.Merge(fx)
 	}
 	return out, nil
 }
@@ -52,15 +53,47 @@ func bundleSpec(sess *Session, spec *Spec, modules []*meta.Module) (Effects, err
 			continue
 		}
 		app := strings.TrimSpace(mod.ApplicationStr)
-		if app == "" || app == "core" || strings.TrimSpace(mod.ServiceEntryPoint) == "" {
-			continue
-		}
-		if _, ok := seenApp[app]; ok {
+		if app == "" || app == "core" {
 			continue
 		}
 		if strings.TrimSpace(mod.Path) == "" {
 			continue
 		}
+		if _, ok := seenApp[app]; ok {
+			continue
+		}
+
+		entry := strings.TrimSpace(mod.ServiceEntryPoint)
+		if entry == "" {
+			if !spec.EnsureServiceEntry {
+				continue
+			}
+			if !canEnsureServiceEntry(sess, spec, mod.Path) {
+				continue
+			}
+			// Emit a virtual service entry for this Spec only. Do not mutate
+			// mod.ServiceEntryPoint — otherwise later Specs (FieldDefault /
+			// AppSetting) would incorrectly see a non-empty entry in the same
+			// BundleInjectAppModels pass. Never shadow a real on-disk entry.
+			entry = virtualServiceEntryPath(mod.Path)
+			if _, err := os.Stat(filepath.Clean(entry)); errors.Is(err, os.ErrNotExist) {
+				out.Files = append(out.Files, VirtualFile{
+					Path:     entry,
+					Contents: virtualServiceEntrySource(),
+				})
+			}
+		} else if spec.EnsureServiceEntry {
+			// Prior Ensure may have left a virtual path with no disk file.
+			// Persist/meta may store relative "service/index.ts" — resolve first.
+			absEntry := resolveServiceEntryPath(mod, entry)
+			if _, err := os.Stat(absEntry); errors.Is(err, os.ErrNotExist) {
+				out.Files = append(out.Files, VirtualFile{
+					Path:     filepath.ToSlash(absEntry),
+					Contents: virtualServiceEntrySource(),
+				})
+			}
+		}
+
 		seenApp[app] = struct{}{}
 
 		existing, err := dbLoadModels(spec, sess.ctx.DB, app)

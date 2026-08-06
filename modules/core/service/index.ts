@@ -1,9 +1,11 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-// Side-effect: register FieldDefaultBaseModel / AppSettingBaseModel fields for materialize/merge into thin subclasses.
+// Side-effect: register FieldDefaultBaseModel / AppSettingBaseModel /
+// TranslationTermBaseModel fields for materialize/merge into thin subclasses.
 import './orm/model/field_default_base_model';
 import './orm/model/app_setting_base_model';
+import './orm/model/translation_term_base_model';
 
 export { default as BaseModel } from './orm/model/model';
 export { Field } from './orm/decorator/field';

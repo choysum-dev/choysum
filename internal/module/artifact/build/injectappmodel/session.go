@@ -12,6 +12,11 @@ type Session struct {
 	plans          map[string]Plan
 	injectPaths    map[string][]string
 	lastInjectPath map[string]string
+
+	// ensuredServiceEntry tracks an in-memory Module.ServiceEntryPoint mutation
+	// from Ensure so failed inject can restore the prior value.
+	ensuredServiceEntry bool
+	priorServiceEntry   string
 }
 
 // NewSession creates a Session bound to ctx and reg.
@@ -137,12 +142,46 @@ func (s *Session) ClearInjectPaths(modelName string) {
 
 // ClearAllInjectPaths drops every remembered inject path (failed inject/bundle
 // before Effects are applied, so buildOptions cannot import stale generated paths).
+// Also reverts an in-memory Ensure of Module.ServiceEntryPoint.
 func (s *Session) ClearAllInjectPaths() {
 	if s == nil {
 		return
 	}
 	s.injectPaths = nil
 	s.lastInjectPath = nil
+	s.revertEnsuredServiceEntry()
+}
+
+// ensureServiceEntryPath sets Module.ServiceEntryPoint for this build round.
+// Remembers the prior value once so ClearAllInjectPaths can restore on failure.
+func (s *Session) ensureServiceEntryPath(path string) {
+	path = strings.TrimSpace(path)
+	if s == nil || path == "" || s.ctx.Module == nil {
+		return
+	}
+	if !s.ensuredServiceEntry {
+		s.priorServiceEntry = s.ctx.Module.ServiceEntryPoint
+		s.ensuredServiceEntry = true
+	}
+	s.ctx.Module.ServiceEntryPoint = path
+}
+
+// revertEnsuredServiceEntry restores Module.ServiceEntryPoint when Ensure mutated
+// it for this build. Exported for Persist so DB stays aligned with package.json
+// (cold builds always re-Ensure from an empty disk entry).
+func (s *Session) RevertEnsuredServiceEntry() {
+	s.revertEnsuredServiceEntry()
+}
+
+func (s *Session) revertEnsuredServiceEntry() {
+	if s == nil || !s.ensuredServiceEntry {
+		return
+	}
+	if s.ctx.Module != nil {
+		s.ctx.Module.ServiceEntryPoint = s.priorServiceEntry
+	}
+	s.ensuredServiceEntry = false
+	s.priorServiceEntry = ""
 }
 
 func (s *Session) allInjectPaths() []string {

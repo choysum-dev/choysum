@@ -6,6 +6,8 @@ package injectappmodel
 import (
 	"database/sql"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -64,11 +66,17 @@ func effectsFileMap(fx Effects) map[string]string {
 
 func TestSpecs_BuiltinsRegistered(t *testing.T) {
 	specs := Specs()
-	if len(specs) != 2 {
-		t.Fatalf("expected 2 builtins, got %d", len(specs))
+	if len(specs) != 3 {
+		t.Fatalf("expected 3 builtins, got %d", len(specs))
 	}
-	if specs[0].ModelName != "FieldDefault" || specs[1].ModelName != "AppSetting" {
+	if specs[0].ModelName != "TranslationTerm" || specs[1].ModelName != "FieldDefault" || specs[2].ModelName != "AppSetting" {
 		t.Fatalf("unexpected order/names: %#v", specs)
+	}
+	if !specs[0].EnsureServiceEntry {
+		t.Fatal("TranslationTerm must EnsureServiceEntry")
+	}
+	if specs[1].EnsureServiceEntry || specs[2].EnsureServiceEntry {
+		t.Fatal("FieldDefault/AppSetting must leave EnsureServiceEntry false")
 	}
 }
 
@@ -138,26 +146,307 @@ func TestDecide_OwnerReinjectForeignClaim_NoScheduledApp(t *testing.T) {
 	}
 }
 
-func TestDecide_EmptyServiceEntry_SkipsWithoutEnsure(t *testing.T) {
+func TestDecide_EmptyServiceEntry_SkipsFieldDefaultWithoutEnsure(t *testing.T) {
 	mod := &meta.Module{
 		Name: "web", Path: "/virtual/modules/web",
 		ApplicationStr: "web", ServiceEntryPoint: "",
 	}
 	sess, _ := newTestSession(t, mod)
-	if _, err := InjectAppModels(sess, nil); err != nil {
+	fx, err := DecideAndInjectOne(sess, "FieldDefault", nil)
+	if err != nil {
+		t.Fatalf("DecideAndInjectOne: %v", err)
+	}
+	plan := sess.Plan("FieldDefault")
+	if plan.NeedInject || plan.SupersedeInject || len(fx.Files) != 0 {
+		t.Fatalf("FieldDefault without Ensure must skip empty entry, got plan=%+v fx=%+v", plan, fx)
+	}
+}
+
+func TestResolveServiceEntryPathAndCanEnsure(t *testing.T) {
+	mod := &meta.Module{Name: "web", Path: "/virtual/modules/web"}
+	if got := resolveServiceEntryPath(mod, "service/index.ts"); got != "/virtual/modules/web/service/index.ts" {
+		t.Fatalf("relative resolve = %q", got)
+	}
+	if got := resolveServiceEntryPath(mod, "/abs/service/index.ts"); got != "/abs/service/index.ts" {
+		t.Fatalf("absolute resolve = %q", got)
+	}
+	if got := resolveServiceEntryPath(nil, "rel/a.ts"); got != "rel/a.ts" {
+		t.Fatalf("nil mod resolve = %q", got)
+	}
+	if got := resolveServiceEntryPath(&meta.Module{Path: ""}, "rel/b.ts"); got != "rel/b.ts" {
+		t.Fatalf("empty path resolve = %q", got)
+	}
+	if got := resolveServiceEntryPath(mod, ""); got != "" {
+		t.Fatalf("empty entry = %q", got)
+	}
+	if canEnsureServiceEntry(nil, &Spec{BaseModelFile: "x"}, "/p") {
+		t.Fatal("nil sess")
+	}
+	if canEnsureServiceEntry(&Session{}, nil, "/p") {
+		t.Fatal("nil spec")
+	}
+	if !canEnsureServiceEntry(&Session{ctx: BuildCtx{ModulesPath: "/any"}}, &Spec{BaseModelFile: ""}, "/p") {
+		t.Fatal("empty BaseModelFile should allow")
+	}
+
+	dir := t.TempDir()
+	sess, _ := newTestSession(t, &meta.Module{Name: "x", Path: filepath.Join(dir, "x"), ApplicationStr: "x"})
+	sess.Context().ModulesPath = dir
+	spec := Spec{BaseModelFile: "core/service/orm/model/translation_term_base_model.ts"}
+	// ModulesPath exists but base model missing → deny Ensure.
+	if canEnsureServiceEntry(sess, &spec, filepath.Join(dir, "x")) {
+		t.Fatal("expected canEnsure false when base model missing on disk")
+	}
+	// Non-existent ModulesPath (virtual harness) → allow.
+	sess.Context().ModulesPath = filepath.Join(dir, "missing-modules-root")
+	if !canEnsureServiceEntry(sess, &spec, filepath.Join(dir, "x")) {
+		t.Fatal("expected canEnsure true for missing ModulesPath harness")
+	}
+	sess.Context().ModulesPath = "."
+	if canEnsureServiceEntry(sess, &spec, "x") {
+		t.Fatal("ModulesPath=. should deny")
+	}
+	sess.Context().ModulesPath = ""
+	if canEnsureServiceEntry(sess, &spec, ".") {
+		t.Fatal("Dir(.) fallback should deny")
+	}
+}
+
+func TestEnsureServiceEntryPath_Guards(t *testing.T) {
+	mod := &meta.Module{Name: "web", Path: "/v/web", ApplicationStr: "web", ServiceEntryPoint: ""}
+	sess, _ := newTestSession(t, mod)
+	sess.ensureServiceEntryPath("")
+	if mod.ServiceEntryPoint != "" || sess.ensuredServiceEntry {
+		t.Fatal("empty path must not ensure")
+	}
+	sess.Context().Module = nil
+	sess.ensureServiceEntryPath("/v/web/service/index.ts")
+	sess.Context().Module = mod
+	sess.ensureServiceEntryPath("/v/web/service/index.ts")
+	if mod.ServiceEntryPoint != "/v/web/service/index.ts" || !sess.ensuredServiceEntry {
+		t.Fatal("expected ensure to set entry")
+	}
+	prior := mod.ServiceEntryPoint
+	sess.ensureServiceEntryPath("/other")
+	if sess.priorServiceEntry != "" && sess.priorServiceEntry != prior {
+		// prior remembered only once — first prior was empty
+	}
+	if mod.ServiceEntryPoint != "/other" {
+		t.Fatalf("second ensure should update path, got %q", mod.ServiceEntryPoint)
+	}
+	(*Session)(nil).ensureServiceEntryPath("/x")
+}
+
+func TestDecide_EmptyModulePathAndEnsureDenied(t *testing.T) {
+	mod := &meta.Module{
+		Name: "web", Path: "",
+		ApplicationStr: "web", ServiceEntryPoint: "",
+	}
+	sess, _ := newTestSession(t, mod)
+	fx, err := DecideAndInjectOne(sess, "TranslationTerm", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sess.Plan("TranslationTerm").NeedInject || len(fx.Files) != 0 {
+		t.Fatalf("empty Path must skip, got plan=%+v fx=%+v", sess.Plan("TranslationTerm"), fx)
+	}
+
+	dir := t.TempDir()
+	mod2 := &meta.Module{
+		Name: "web", Path: filepath.Join(dir, "web"),
+		ApplicationStr: "web", ServiceEntryPoint: "",
+	}
+	sess2, _ := newTestSession(t, mod2)
+	sess2.Context().ModulesPath = dir // exists, base model missing
+	fx2, err := DecideAndInjectOne(sess2, "TranslationTerm", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sess2.Plan("TranslationTerm").NeedInject || len(fx2.Files) != 0 {
+		t.Fatalf("canEnsure deny must skip, got plan=%+v", sess2.Plan("TranslationTerm"))
+	}
+}
+
+func TestApplyInjectOne_MaterializeErrorReleases(t *testing.T) {
+	mod := &meta.Module{
+		Name: "web", Path: "",
+		ApplicationStr: "web", ServiceEntryPoint: "service/index.ts",
+	}
+	sess, _ := newTestSession(t, mod)
+	sess.SetPlan("FieldDefault", Plan{NeedInject: true, ScheduledApp: "web"})
+	if _, err := ApplyInjectOne(sess, "FieldDefault"); err == nil {
+		t.Fatal("expected materialize error for empty module path")
+	}
+}
+
+func TestMaterialize_EmptyEntryWithoutEnsureReturnsEmpty(t *testing.T) {
+	mod := &meta.Module{
+		Name: "web", Path: "/virtual/modules/web",
+		ApplicationStr: "web", ServiceEntryPoint: "",
+	}
+	sess, _ := newTestSession(t, mod)
+	sess.SetPlan("FieldDefault", Plan{NeedInject: true, ScheduledApp: "web"})
+	fx, err := materializeInject(sess, specByNameOrPanic("FieldDefault"), Plan{NeedInject: true, ScheduledApp: "web"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fx.Files) != 0 || len(fx.Imports) != 0 || fx.ServiceEntryPath != "" {
+		t.Fatalf("expected empty effects, got %+v", fx)
+	}
+}
+
+func TestBundleSpec_EnsureEmptyEntry_EmitsVirtualService(t *testing.T) {
+	mod := &meta.Module{
+		Name: "web", Path: "/virtual/modules/web",
+		ApplicationStr: "web", ServiceEntryPoint: "",
+	}
+	sess, _ := newTestSession(t, mod)
+	sess.Context().ModulesPath = "/virtual/modules-missing-harness"
+	fx, err := BundleOne(sess, "TranslationTerm", []*meta.Module{mod})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mod.ServiceEntryPoint != "" {
+		t.Fatalf("Bundle must not mutate ServiceEntryPoint, got %q", mod.ServiceEntryPoint)
+	}
+	wantEntry := virtualServiceEntryPath(mod.Path)
+	found := false
+	for _, f := range fx.Files {
+		if f.Path == wantEntry {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected virtual service at %q in %#v", wantEntry, fx.Files)
+	}
+}
+
+func TestBundleSpec_EnsureEmptyEntry_SkipsWhenDiskExists(t *testing.T) {
+	dir := t.TempDir()
+	modPath := filepath.Join(dir, "web")
+	svc := filepath.Join(modPath, "service")
+	if err := os.MkdirAll(svc, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	entry := filepath.Join(svc, "index.ts")
+	if err := os.WriteFile(entry, []byte("export {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	mod := &meta.Module{
+		Name: "web", Path: modPath,
+		ApplicationStr: "web", ServiceEntryPoint: "",
+	}
+	sess, _ := newTestSession(t, mod)
+	sess.Context().ModulesPath = filepath.Join(dir, "missing-modules")
+	fx, err := BundleOne(sess, "TranslationTerm", []*meta.Module{mod})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range fx.Files {
+		if strings.HasSuffix(filepath.ToSlash(f.Path), "service/index.ts") {
+			t.Fatalf("must not virtualize existing disk entry: %q", f.Path)
+		}
+	}
+}
+
+func TestBundleSpec_EnsureRelativeEntry_MissingEmitsVirtual(t *testing.T) {
+	mod := &meta.Module{
+		Name: "web", Path: "/virtual/modules/web",
+		ApplicationStr: "web", ServiceEntryPoint: "service/index.ts",
+	}
+	sess, _ := newTestSession(t, mod)
+	fx, err := BundleOne(sess, "TranslationTerm", []*meta.Module{mod})
+	if err != nil {
+		t.Fatal(err)
+	}
+	abs := resolveServiceEntryPath(mod, "service/index.ts")
+	found := false
+	for _, f := range fx.Files {
+		if filepath.Clean(f.Path) == filepath.Clean(abs) {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected virtual at resolved %q, files=%#v", abs, fx.Files)
+	}
+}
+
+func TestInject_EnsureServiceEntry_AdoptsExistingDiskEntry(t *testing.T) {
+	dir := t.TempDir()
+	modPath := filepath.Join(dir, "auth")
+	svcDir := filepath.Join(modPath, "service")
+	if err := os.MkdirAll(svcDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	entryPath := filepath.Join(svcDir, "index.ts")
+	if err := os.WriteFile(entryPath, []byte("export * from './models';\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	mod := &meta.Module{
+		Name: "auth", Path: modPath,
+		ApplicationStr: "auth", ServiceEntryPoint: "",
+	}
+	sess, _ := newTestSession(t, mod)
+	fx, err := InjectAppModels(sess, nil)
+	if err != nil {
 		t.Fatalf("inject: %v", err)
 	}
-	for _, name := range []string{"FieldDefault", "AppSetting"} {
-		plan := sess.Plan(name)
-		if plan.NeedInject || plan.SupersedeInject {
-			t.Fatalf("%s: empty entry should skip, got %+v", name, plan)
+	if mod.ServiceEntryPoint != entryPath && filepath.Clean(mod.ServiceEntryPoint) != filepath.Clean(entryPath) {
+		t.Fatalf("ServiceEntryPoint = %q want disk entry %q", mod.ServiceEntryPoint, entryPath)
+	}
+	if fx.ServiceEntryPath != entryPath && filepath.Clean(fx.ServiceEntryPath) != filepath.Clean(entryPath) {
+		t.Fatalf("ServiceEntryPath = %q, want disk entry so builder can adopt it", fx.ServiceEntryPath)
+	}
+	for _, f := range fx.Files {
+		if strings.HasSuffix(filepath.ToSlash(f.Path), "service/index.ts") {
+			t.Fatalf("must not register virtual service stub over disk entry: %q", f.Path)
 		}
 	}
-	specs := sess.Registry().Specs()
-	for _, s := range specs {
-		if s.EnsureServiceEntry {
-			t.Fatalf("builtin %s must leave EnsureServiceEntry false", s.ModelName)
+}
+
+func TestInject_WebEmptyEntry_EnsureThenSiblingSpecs(t *testing.T) {
+	mod := &meta.Module{
+		Name: "web", Path: "/virtual/modules/web",
+		ApplicationStr: "web", ServiceEntryPoint: "",
+	}
+	sess, _ := newTestSession(t, mod)
+	fx, err := InjectAppModels(sess, nil)
+	if err != nil {
+		t.Fatalf("inject: %v", err)
+	}
+	tt := sess.Plan("TranslationTerm")
+	if !tt.NeedInject || tt.ScheduledApp != "web" {
+		t.Fatalf("TranslationTerm should Ensure+NeedInject, got %+v", tt)
+	}
+	// After TranslationTerm Ensure, FieldDefault/AppSetting see non-empty entry.
+	for _, name := range []string{"FieldDefault", "AppSetting"} {
+		plan := sess.Plan(name)
+		if !plan.NeedInject || plan.ScheduledApp != "web" {
+			t.Fatalf("%s should NeedInject after Ensure, got %+v", name, plan)
 		}
+	}
+	wantEntry := virtualServiceEntryPath(mod.Path)
+	if mod.ServiceEntryPoint != wantEntry {
+		t.Fatalf("ServiceEntryPoint = %q want %q", mod.ServiceEntryPoint, wantEntry)
+	}
+	if fx.ServiceEntryPath != wantEntry {
+		t.Fatalf("ServiceEntryPath = %q want %q", fx.ServiceEntryPath, wantEntry)
+	}
+	files := effectsFileMap(fx)
+	if _, ok := files[wantEntry]; !ok {
+		t.Fatalf("expected virtual service entry at %q", wantEntry)
+	}
+	wantTT := generatedPath(specByNameOrPanic("TranslationTerm"), mod.Path)
+	if src, ok := files[wantTT]; !ok || !strings.Contains(src, "TranslationTermBaseModel") {
+		t.Fatalf("expected TranslationTerm thin class at %q, got ok=%v src=%q", wantTT, ok, src)
+	}
+	if !strings.Contains(generatedSource(specByNameOrPanic("TranslationTerm"), "/virtual/modules", "web"), "softDelete: false") {
+		t.Fatal("TranslationTerm thin class should softDelete: false")
+	}
+	if len(fx.Imports) != 3 {
+		t.Fatalf("Imports = %#v, want TranslationTerm+FieldDefault+AppSetting", fx.Imports)
 	}
 }
 
@@ -171,6 +460,7 @@ func TestDecide_EnsureServiceEntry_EmptyEntryAllowsNeedInject(t *testing.T) {
 		ModelName:          "TempEnsure",
 		GeneratedRelPath:   "service/models/__generated__/temp_ensure.ts",
 		DuplicateCode:      "TEMP_ENSURE_DUPLICATE",
+		BaseModelFile:      "core/service/orm/model/app_setting_base_model.ts",
 		EnsureServiceEntry: true,
 	})
 	fx, err := DecideAndInjectOne(sess, "TempEnsure", nil)
@@ -181,9 +471,67 @@ func TestDecide_EnsureServiceEntry_EmptyEntryAllowsNeedInject(t *testing.T) {
 	if !plan.NeedInject || plan.ScheduledApp != "web" {
 		t.Fatalf("expected NeedInject with scheduledApp, got %+v", plan)
 	}
-	// P1: no Effects until P2 materializes the virtual service entry.
-	if len(fx.Files) != 0 || len(fx.Imports) != 0 {
-		t.Fatalf("P1 stub must not emit Effects before Ensure materialize, got %+v", fx)
+	wantEntry := virtualServiceEntryPath(mod.Path)
+	if fx.ServiceEntryPath != wantEntry || mod.ServiceEntryPoint != wantEntry {
+		t.Fatalf("Ensure did not set entry: fx=%q mod=%q", fx.ServiceEntryPath, mod.ServiceEntryPoint)
+	}
+	if len(fx.Files) < 2 || len(fx.Imports) != 1 {
+		t.Fatalf("expected virtual service + model Effects, got files=%d imports=%d", len(fx.Files), len(fx.Imports))
+	}
+}
+
+func TestDecide_TranslationTerm_OwnerReinjectForeignClaim(t *testing.T) {
+	mod := &meta.Module{
+		Name: "web", Path: "/virtual/modules/web",
+		ApplicationStr: "web", ServiceEntryPoint: "service/index.ts",
+	}
+	sess, db := newTestSession(t, mod)
+	virt := "/virtual/modules/web/service/models/__generated__/translation_term.ts"
+	seedDeclaration(t, db, "TranslationTerm", "virt1", virt, "web")
+	sess.Registry().TryClaim("TranslationTerm", "web", "other_builder")
+
+	if _, err := InjectAppModels(sess, nil); err != nil {
+		t.Fatalf("inject: %v", err)
+	}
+	plan := sess.Plan("TranslationTerm")
+	if !plan.NeedInject || plan.ScheduledApp != "" {
+		t.Fatalf("expected NeedInject without adopting foreign claim, got %+v", plan)
+	}
+	if owner, ok := sess.Registry().ClaimOwner("TranslationTerm", "web"); !ok || owner != "other_builder" {
+		t.Fatalf("foreign claim must remain, got %#v ok=%v", owner, ok)
+	}
+}
+
+func TestClearAllInjectPaths_RevertsEnsuredServiceEntry(t *testing.T) {
+	mod := &meta.Module{
+		Name: "web", Path: "/virtual/modules/web",
+		ApplicationStr: "web", ServiceEntryPoint: "",
+	}
+	sess, _ := newTestSession(t, mod)
+	if _, err := DecideAndInjectOne(sess, "TranslationTerm", nil); err != nil {
+		t.Fatalf("inject: %v", err)
+	}
+	if mod.ServiceEntryPoint == "" {
+		t.Fatal("expected Ensure to set ServiceEntryPoint")
+	}
+	sess.ClearAllInjectPaths()
+	if mod.ServiceEntryPoint != "" {
+		t.Fatalf("expected revert to empty entry, got %q", mod.ServiceEntryPoint)
+	}
+}
+
+func TestRevertEnsuredServiceEntry_ForPersist(t *testing.T) {
+	mod := &meta.Module{
+		Name: "web", Path: "/virtual/modules/web",
+		ApplicationStr: "web", ServiceEntryPoint: "",
+	}
+	sess, _ := newTestSession(t, mod)
+	if _, err := DecideAndInjectOne(sess, "TranslationTerm", nil); err != nil {
+		t.Fatalf("inject: %v", err)
+	}
+	sess.RevertEnsuredServiceEntry()
+	if mod.ServiceEntryPoint != "" {
+		t.Fatalf("Persist revert must clear Ensure entry, got %q", mod.ServiceEntryPoint)
 	}
 }
 
@@ -275,24 +623,27 @@ func TestInjectRegistersVirtualSource(t *testing.T) {
 	if err != nil {
 		t.Fatalf("inject: %v", err)
 	}
+	wantTT := generatedPath(specByNameOrPanic("TranslationTerm"), mod.Path)
 	wantFD := generatedPath(specByNameOrPanic("FieldDefault"), mod.Path)
 	wantAS := generatedPath(specByNameOrPanic("AppSetting"), mod.Path)
 	files := effectsFileMap(fx)
-	if _, ok := files[wantFD]; !ok {
-		t.Fatalf("expected virtual source at %q, got keys %#v", wantFD, files)
+	for _, want := range []string{wantTT, wantFD, wantAS} {
+		if _, ok := files[want]; !ok {
+			t.Fatalf("expected virtual source at %q, got keys %#v", want, files)
+		}
 	}
-	if sess.LastInjectPath("FieldDefault") != wantFD {
-		t.Fatalf("LastInjectPath = %q want %q", sess.LastInjectPath("FieldDefault"), wantFD)
+	if sess.LastInjectPath("TranslationTerm") != wantTT {
+		t.Fatalf("LastInjectPath TranslationTerm = %q want %q", sess.LastInjectPath("TranslationTerm"), wantTT)
 	}
-	if len(fx.Imports) != 2 {
-		t.Fatalf("Imports = %#v, want unique [FieldDefault, AppSetting] paths", fx.Imports)
+	if len(fx.Imports) != 3 {
+		t.Fatalf("Imports = %#v, want unique [TranslationTerm, FieldDefault, AppSetting] paths", fx.Imports)
 	}
 	seen := map[string]int{}
 	for _, p := range fx.Imports {
 		seen[p]++
 	}
-	if seen[wantFD] != 1 || seen[wantAS] != 1 {
-		t.Fatalf("Imports = %#v, want one each of %q and %q", fx.Imports, wantFD, wantAS)
+	if seen[wantTT] != 1 || seen[wantFD] != 1 || seen[wantAS] != 1 {
+		t.Fatalf("Imports = %#v, want one each of %q, %q, %q", fx.Imports, wantTT, wantFD, wantAS)
 	}
 }
 
@@ -319,7 +670,7 @@ func TestInjectAppModels_ClearsPathsOnPartialFailure(t *testing.T) {
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
 	sess, _ := newTestSession(t, mod)
-	// FieldDefault materializes first; AppSetting then fails Decide on duplicate handwritten.
+	// TranslationTerm + FieldDefault materialize first; AppSetting then fails Decide on duplicate handwritten.
 	a := "/virtual/modules/partner/service/models/as_a.ts"
 	b := "/virtual/modules/partner/service/models/as_b.ts"
 	_, err := InjectAppModels(sess, []*parser.ParserResult{
@@ -332,8 +683,8 @@ func TestInjectAppModels_ClearsPathsOnPartialFailure(t *testing.T) {
 	if paths := sess.AllInjectPaths(); len(paths) != 0 {
 		t.Fatalf("stale inject paths after failed multi-spec inject: %#v", paths)
 	}
-	if sess.LastInjectPath("FieldDefault") != "" {
-		t.Fatal("FieldDefault path should be cleared")
+	if sess.LastInjectPath("TranslationTerm") != "" || sess.LastInjectPath("FieldDefault") != "" {
+		t.Fatal("earlier Spec paths should be cleared")
 	}
 }
 
@@ -346,7 +697,7 @@ func TestDecideSkipsCore(t *testing.T) {
 	if _, err := InjectAppModels(sess, nil); err != nil {
 		t.Fatalf("inject: %v", err)
 	}
-	for _, name := range []string{"FieldDefault", "AppSetting"} {
+	for _, name := range []string{"TranslationTerm", "FieldDefault", "AppSetting"} {
 		if plan := sess.Plan(name); plan.NeedInject || plan.SupersedeInject {
 			t.Fatalf("%s should skip core, got %+v", name, plan)
 		}

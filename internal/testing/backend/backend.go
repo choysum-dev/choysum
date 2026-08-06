@@ -1245,9 +1245,10 @@ func buildAppBundle(ctx context.Context, runtimeScope scope.Scope, jsExec jsexec
 	}
 
 	mod := &meta.Module{
-		Name:           app,
-		ApplicationStr: app,
-		Path:           filepath.Join(runtimeOptionsFromScope(runtimeScope).modulesPath, app),
+		Name:              app,
+		ApplicationStr:    app,
+		Path:              filepath.Join(runtimeOptionsFromScope(runtimeScope).modulesPath, app),
+		ServiceEntryPoint: entryPoint,
 	}
 
 	b := newBackendBuilderHook(runtimeScope, jsExec, mod, entryPoint, outFileName, globalName)

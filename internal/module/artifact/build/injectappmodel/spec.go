@@ -13,8 +13,8 @@ type Spec struct {
 	BaseModelFile    string // relative under modules, e.g. core/service/orm/model/field_default_base_model.ts
 	SoftDeleteFalse  bool   // AppSetting: emit softDelete: false in @Model options
 	// EnsureServiceEntry: when true, Decide may proceed without ServiceEntryPoint
-	// (Materialize of a virtual service entry is PR-P2). FieldDefault / AppSetting
-	// leave this false (empty entry → skip).
+	// and Materialize emits a virtual service/index.ts (no package.json / disk
+	// pollution). FieldDefault / AppSetting leave this false (empty entry → skip).
 	EnsureServiceEntry bool
 }
 

@@ -4,9 +4,11 @@
 package injectappmodel
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 
+	"errors"
 	"github.com/choysum-dev/choysum/internal/parser"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
@@ -24,10 +26,9 @@ func InjectAppModels(sess *Session, prebuildResults []*parser.ParserResult) (Eff
 			// Paths from earlier Specs were not applied; drop them so a reused
 			// Session/builder cannot feed stale imports into buildOptions.
 			sess.ClearAllInjectPaths()
-			return out, err
+			return Effects{}, err
 		}
-		out.Files = append(out.Files, fx.Files...)
-		out.Imports = mergeUniqueStrings(out.Imports, fx.Imports)
+		out = out.Merge(fx)
 	}
 	return out, nil
 }
@@ -103,6 +104,15 @@ func decidePlan(spec *Spec, sess *Session, prebuildResults []*parser.ParserResul
 		strings.TrimSpace(mod.ApplicationStr) == "core" {
 		return plan, nil
 	}
+	if strings.TrimSpace(mod.Path) == "" {
+		return plan, nil
+	}
+	// Ensure needs the Spec base model on disk (normally under modules/core).
+	// Skip rather than emit broken absolute imports when the workspace stub
+	// has no core (CLI e2e fixtures, thin lifecycle tests).
+	if !hasServiceEntry && spec.EnsureServiceEntry && !canEnsureServiceEntry(sess, spec, mod.Path) {
+		return plan, nil
+	}
 
 	app := strings.TrimSpace(mod.ApplicationStr)
 	local := modelsIn(spec, prebuildResults, mod.Path)
@@ -166,7 +176,8 @@ func claimFirstNeedInject(reg *Registry, spec *Spec, app, modName string) Plan {
 	return Plan{NeedInject: true, ScheduledApp: app}
 }
 
-// materializeInject builds Effects for a NeedInject plan (no build side effects).
+// materializeInject builds Effects for a NeedInject plan (no build side effects
+// beyond mutating Module.ServiceEntryPoint when Ensure runs).
 func materializeInject(sess *Session, spec *Spec, plan Plan) (Effects, error) {
 	var out Effects
 	if sess == nil || spec == nil || !plan.NeedInject {
@@ -176,14 +187,32 @@ func materializeInject(sess *Session, spec *Spec, plan Plan) (Effects, error) {
 	if mod == nil {
 		return out, nil
 	}
-	// PR-P1: Spec.EnsureServiceEntry allows Decide without an entry; virtual
-	// service Materialize is PR-P2 — skip model Effects until entry exists.
-	if spec.EnsureServiceEntry && strings.TrimSpace(mod.ServiceEntryPoint) == "" {
-		return out, nil
-	}
 	if strings.TrimSpace(mod.Path) == "" {
 		return out, xfmt.Errorf("%s inject requires a non-empty module path", spec.ModelName)
 	}
+
+	if spec.EnsureServiceEntry && strings.TrimSpace(mod.ServiceEntryPoint) == "" {
+		entryPath := virtualServiceEntryPath(mod.Path)
+		sess.ensureServiceEntryPath(entryPath)
+		// If a real service entry already exists on disk (common when the builder
+		// was given an entryPoint but Module.ServiceEntryPoint was left empty),
+		// adopt it — never register a virtual stub that would shadow the file.
+		if _, err := os.Stat(filepath.Clean(entryPath)); errors.Is(err, os.ErrNotExist) {
+			out.Files = append(out.Files, VirtualFile{
+				Path:     entryPath,
+				Contents: virtualServiceEntrySource(),
+			})
+		}
+		// Always set ServiceEntryPath (disk adopt or virtual) so applyInjectEffects
+		// can adopt it onto an empty builder entryPoint / plugin EntryPoint.
+		out.ServiceEntryPath = entryPath
+	}
+
+	if strings.TrimSpace(mod.ServiceEntryPoint) == "" {
+		// Specs without EnsureServiceEntry still skip when entry is empty.
+		return out, nil
+	}
+
 	path := generatedPath(spec, mod.Path)
 	sess.rememberInjectPath(spec.ModelName, path)
 
@@ -192,8 +221,8 @@ func materializeInject(sess *Session, spec *Spec, plan Plan) (Effects, error) {
 		modulesPath = filepath.Dir(mod.Path)
 	}
 	source := generatedSource(spec, modulesPath, mod.ApplicationStr)
-	out.Files = []VirtualFile{{Path: path, Contents: source}}
-	out.Imports = []string{path}
+	out.Files = append(out.Files, VirtualFile{Path: path, Contents: source})
+	out.Imports = append(out.Imports, path)
 	return out, nil
 }
 

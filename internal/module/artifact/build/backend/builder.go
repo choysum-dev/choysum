@@ -818,6 +818,12 @@ func (b *ModuleBuilder) validate(buildResult *module.BuildResult) error {
 func (b *ModuleBuilder) persist(buildResult *module.BuildResult) error {
 	mod := buildResult.Module
 
+	// Ensure mutates ServiceEntryPoint in memory for the build round only.
+	// Revert before Save so DB stays package.json-sourced; cold builds re-Ensure.
+	if b.injectSession != nil {
+		b.injectSession.RevertEnsuredServiceEntry()
+	}
+
 	if err := b.supersedeInjectAppModels(); err != nil {
 		return err
 	}
@@ -919,7 +925,7 @@ func (b *ModuleBuilder) BuildWithoutPersist() (*module.BuildResult, error) {
 		return nil, xfmt.Errorf("error prebuilding: %w", err)
 	}
 
-	// 1b. FieldDefault / AppSetting C2 Decide / Inject (before extends rewrite + build)
+	// 1b. FieldDefault / AppSetting / TranslationTerm C2 Decide / Inject
 	if err := b.injectAppModels(prebuildResult); err != nil {
 		return nil, err
 	}
@@ -941,6 +947,13 @@ func (b *ModuleBuilder) BuildWithoutPersist() (*module.BuildResult, error) {
 	if err := b.validate(buildResult); err != nil {
 		b.releaseInjectSchedules()
 		return nil, xfmt.Errorf("error validating: %w", err)
+	}
+
+	// Revert Ensure'd ServiceEntryPoint after a successful build round so
+	// forCommitScope / Persist do not persist a virtual path or recreate a
+	// builder whose entryPoint points at a non-existent disk file.
+	if b.injectSession != nil {
+		b.injectSession.RevertEnsuredServiceEntry()
 	}
 
 	return buildResult, nil
