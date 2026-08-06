@@ -1225,12 +1225,12 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Year"
 msgstr ""
 
-#: web/components/view/search/OSearchFilter.vue:82
+#: web/components/view/search/OSearchFilter.vue:83
 msgctxt "web/components/view/search/OSearchFilter"
 msgid "(empty)"
 msgstr ""
 
-#: web/components/view/search/OSearchFilter.vue:88
+#: web/components/view/search/OSearchFilter.vue:89
 msgctxt "web/components/view/search/OSearchFilter"
 msgid "(incomplete)"
 msgstr ""
@@ -1240,14 +1240,14 @@ msgctxt "web/components/view/search/OSearchFilter"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/view/search/OSearchFilter.vue:8
-msgctxt "web/components/view/search/OSearchFilter"
-msgid "Preview (%s):"
-msgstr ""
-
 #: web/components/view/search/OSearchFilter.vue:13
 msgctxt "web/components/view/search/OSearchFilter"
 msgid "Confirm"
+msgstr ""
+
+#: web/components/view/search/OSearchFilter.vue:8
+msgctxt "web/components/view/search/OSearchFilter"
+msgid "Preview (%s):"
 msgstr ""
 
 #: web/components/view/search/OSearchFilterCondition.vue:11
@@ -1519,6 +1519,41 @@ msgstr ""
 #: web/pages/ErrorView.vue:78
 msgctxt "web/pages/ErrorView"
 msgid "You do not have permission to access this page"
+msgstr ""
+
+#: web/pages/TerminologyEditor.vue:4
+msgctxt "web/pages/TerminologyEditor"
+msgid "Application"
+msgstr ""
+
+#: web/pages/TerminologyEditor.vue:9
+msgctxt "web/pages/TerminologyEditor"
+msgid "Download PO"
+msgstr ""
+
+#: web/pages/TerminologyEditor.vue:52
+msgctxt "web/pages/TerminologyEditor"
+msgid "Failed to load applications"
+msgstr ""
+
+#: web/pages/TerminologyEditor.vue:7
+msgctxt "web/pages/TerminologyEditor"
+msgid "Module (required for PO)"
+msgstr ""
+
+#: web/pages/TerminologyEditor.vue:103
+msgctxt "web/pages/TerminologyEditor"
+msgid "PO download failed"
+msgstr ""
+
+#: web/pages/TerminologyEditor.vue:23
+msgctxt "web/pages/TerminologyEditor"
+msgid "Select an application to edit terminology"
+msgstr ""
+
+#: web/pages/TerminologyEditor.vue:82
+msgctxt "web/pages/TerminologyEditor"
+msgid "TranslationTerm store is not available for this application"
 msgstr ""
 
 #: web/query/utils/filter/operators.ts:29

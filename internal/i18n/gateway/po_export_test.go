@@ -41,6 +41,23 @@ func TestPORequiresApplication(t *testing.T) {
 	}
 }
 
+func TestPORequiresModule(t *testing.T) {
+	h := &handler{
+		listModules: func() (map[string][]string, error) {
+			return map[string][]string{"auth": {"auth"}}, nil
+		},
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc(poPath, h.servePO)
+	req := httptest.NewRequest(http.MethodGet, "/web/i18n/po?lang=zh_CN&application=auth", nil)
+	req.Header.Set("Authorization", "Bearer test-token")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), "module is required") {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
 func TestPORejectsModuleOutsideApplication(t *testing.T) {
 	h := &handler{
 		listModules: func() (map[string][]string, error) {
@@ -89,7 +106,7 @@ func TestPOExportAttachment(t *testing.T) {
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc(poPath, h.servePO)
-	req := httptest.NewRequest(http.MethodGet, "/web/i18n/po?lang=zh_CN&application=auth", nil)
+	req := httptest.NewRequest(http.MethodGet, "/web/i18n/po?lang=zh_CN&application=auth&module=auth", nil)
 	req.Header.Set("Authorization", "Bearer test-token")
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
@@ -147,7 +164,7 @@ func TestPOExportSetsTruncatedHeader(t *testing.T) {
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc(poPath, h.servePO)
-	req := httptest.NewRequest(http.MethodGet, "/web/i18n/po?lang=zh_CN&application=auth", nil)
+	req := httptest.NewRequest(http.MethodGet, "/web/i18n/po?lang=zh_CN&application=auth&module=auth", nil)
 	req.Header.Set("Authorization", "Bearer test-token")
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)

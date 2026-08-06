@@ -5,6 +5,7 @@ package models
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -17,6 +18,7 @@ import (
 
 const (
 	i18nModelName             = "I18n"
+	translationTermModelName  = "TranslationTerm"
 	terminologyEditorRoleCode = "terminology.editor"
 	authRoleTable             = "auth_role"
 	authRoleMethodAccessTable = "auth_role_method_access"
@@ -28,9 +30,16 @@ var i18nServiceMethods = []string{
 	"UpdateTerm",
 }
 
+// TranslationTerm methods bound to terminology.editor (never GetTranslations).
+var terminologyEditorServiceMethods = []string{
+	"Search",
+	"Read",
+	"Update",
+}
+
 // EnsureI18nMeta registers declaration-layer I18n + Service methods via the meta
-// declaration facade, flushes the effective projection for ACL seeding, and seeds
-// Terminology Editor ACL rows against effective service ids. Does not register TranslationTerm.
+// declaration facade, flushes the effective projection, and seeds Terminology
+// Editor ACL rows against TranslationTerm Search/Read/Update (not I18n methods).
 func EnsureI18nMeta(runtimeScope scope.Scope, application string, moduleID sql.NullString) error {
 	application = strings.TrimSpace(application)
 	if application == "" || application == coreApplication {
@@ -54,24 +63,20 @@ func EnsureI18nMeta(runtimeScope scope.Scope, application string, moduleID sql.N
 	}); err != nil {
 		return err
 	}
-	// Flush before ACL seeding reads effective service ids (install boundary for I18n).
+	// Flush before any effective reads (install boundary for I18n).
 	if err := meta.FlushEffective(db, []meta.LogicalKey{{Application: application, Name: i18nModelName}}); err != nil {
 		return fmt.Errorf("flush I18n effective: %w", err)
 	}
-	serviceIDs, err := loadEffectiveI18nServiceIDs(db, application)
-	if err != nil {
-		return err
-	}
-	return ensureTerminologyEditorAllows(db, serviceIDs)
+	return ensureTerminologyEditorAllows(db, application)
 }
 
-func loadEffectiveI18nServiceIDs(db *gorm.DB, application string) (map[string]string, error) {
+func loadEffectiveTranslationTermServiceIDs(db *gorm.DB, application string) (map[string]string, error) {
 	var model meta.Model
-	if err := db.Where("name = ? AND application = ?", i18nModelName, application).Take(&model).Error; err != nil {
-		return nil, fmt.Errorf("lookup I18n effective Model: %w", err)
+	if err := db.Where("name = ? AND application = ?", translationTermModelName, application).Take(&model).Error; err != nil {
+		return nil, err
 	}
-	out := make(map[string]string, len(i18nServiceMethods))
-	for _, methodName := range i18nServiceMethods {
+	out := make(map[string]string, len(terminologyEditorServiceMethods))
+	for _, methodName := range terminologyEditorServiceMethods {
 		var svc meta.Service
 		err := db.Where("model_id = ? AND name = ?", model.Id.String, methodName).Take(&svc).Error
 		if err != nil {
@@ -82,7 +87,7 @@ func loadEffectiveI18nServiceIDs(db *gorm.DB, application string) (map[string]st
 	return out, nil
 }
 
-func ensureTerminologyEditorAllows(db *gorm.DB, serviceIDs map[string]string) error {
+func ensureTerminologyEditorAllows(db *gorm.DB, application string) error {
 	if !db.Migrator().HasTable(authRoleTable) || !db.Migrator().HasTable(authRoleMethodAccessTable) {
 		return nil
 	}
@@ -99,7 +104,16 @@ func ensureTerminologyEditorAllows(db *gorm.DB, serviceIDs map[string]string) er
 		return nil
 	}
 
-	for _, methodName := range []string{"SearchTerms", "UpdateTerm"} {
+	serviceIDs, err := loadEffectiveTranslationTermServiceIDs(db, application)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// TranslationTerm not registered for this app yet (Ensure-only timing).
+			return nil
+		}
+		return err
+	}
+
+	for _, methodName := range terminologyEditorServiceMethods {
 		serviceID := strings.TrimSpace(serviceIDs[methodName])
 		if serviceID == "" {
 			continue

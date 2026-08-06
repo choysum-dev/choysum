@@ -1026,12 +1026,12 @@ msgctxt "web/menu/menus"
 msgid "Master Data"
 msgstr "基础数据"
 
-#: web/menu/menus.ts:27
+#: web/menu/menus.ts:35
 msgctxt "web/menu/menus"
 msgid "Sequence Idempotency Record"
 msgstr "序列幂等记录"
 
-#: web/menu/menus.ts:26
+#: web/menu/menus.ts:34
 msgctxt "web/menu/menus"
 msgid "Sequence Management"
 msgstr "序列管理"
@@ -1041,12 +1041,17 @@ msgctxt "web/menu/menus"
 msgid "State Management"
 msgstr "州/省管理"
 
-#: web/menu/menus.ts:29
+#: web/menu/menus.ts:27
+msgctxt "web/menu/menus"
+msgid "Terminology Editor"
+msgstr "术语编辑器"
+
+#: web/menu/menus.ts:37
 msgctxt "web/menu/menus"
 msgid "Unit of Measure"
 msgstr "计量单位"
 
-#: web/menu/menus.ts:28
+#: web/menu/menus.ts:36
 msgctxt "web/menu/menus"
 msgid "Unit of Measure Category"
 msgstr "计量单位类别"
@@ -1136,7 +1141,7 @@ msgctxt "web/route/routes"
 msgid "Create Exchange Rate"
 msgstr "新建汇率"
 
-#: web/route/routes.ts:330
+#: web/route/routes.ts:340
 msgctxt "web/route/routes"
 msgid "Create Idempotency Record"
 msgstr "新建幂等记录"
@@ -1146,22 +1151,22 @@ msgctxt "web/route/routes"
 msgid "Create Language"
 msgstr "新建语言"
 
-#: web/route/routes.ts:288
+#: web/route/routes.ts:298
 msgctxt "web/route/routes"
 msgid "Create Sequence"
 msgstr "新建序列"
 
-#: web/route/routes.ts:367
+#: web/route/routes.ts:377
 msgctxt "web/route/routes"
 msgid "Create State"
 msgstr "新建州/省"
 
-#: web/route/routes.ts:399
+#: web/route/routes.ts:409
 msgctxt "web/route/routes"
 msgid "Create Unit of Measure"
 msgstr "新建计量单位"
 
-#: web/route/routes.ts:431
+#: web/route/routes.ts:441
 msgctxt "web/route/routes"
 msgid "Create Unit of Measure Category"
 msgstr "新建计量单位类别"
@@ -1186,7 +1191,7 @@ msgctxt "web/route/routes"
 msgid "Exchange Rate List"
 msgstr "汇率列表"
 
-#: web/route/routes.ts:315
+#: web/route/routes.ts:325
 msgctxt "web/route/routes"
 msgid "Idempotency Record Details"
 msgstr "幂等记录详情"
@@ -1201,47 +1206,52 @@ msgctxt "web/route/routes"
 msgid "Language List"
 msgstr "语言列表"
 
-#: web/route/routes.ts:278
+#: web/route/routes.ts:288
 msgctxt "web/route/routes"
 msgid "Sequence Details"
 msgstr "序列详情"
 
-#: web/route/routes.ts:301
+#: web/route/routes.ts:311
 msgctxt "web/route/routes"
 msgid "Sequence Idempotency Record"
 msgstr "序列幂等记录"
 
-#: web/route/routes.ts:269
+#: web/route/routes.ts:279
 msgctxt "web/route/routes"
 msgid "Sequence List"
 msgstr "序列列表"
 
-#: web/route/routes.ts:357
+#: web/route/routes.ts:367
 msgctxt "web/route/routes"
 msgid "State Details"
 msgstr "州/省详情"
 
-#: web/route/routes.ts:348
+#: web/route/routes.ts:358
 msgctxt "web/route/routes"
 msgid "State List"
 msgstr "州/省列表"
 
-#: web/route/routes.ts:412
+#: web/route/routes.ts:266
+msgctxt "web/route/routes"
+msgid "Terminology Editor"
+msgstr "术语编辑器"
+
+#: web/route/routes.ts:422
 msgctxt "web/route/routes"
 msgid "Unit of Measure Category"
 msgstr "计量单位类别"
 
-#: web/route/routes.ts:421
+#: web/route/routes.ts:431
 msgctxt "web/route/routes"
 msgid "Unit of Measure Category Details"
 msgstr "计量单位类别详情"
 
-#: web/route/routes.ts:389
+#: web/route/routes.ts:399
 msgctxt "web/route/routes"
 msgid "Unit of Measure Details"
 msgstr "计量单位详情"
 
-#: web/route/routes.ts:380
+#: web/route/routes.ts:390
 msgctxt "web/route/routes"
 msgid "Unit of Measure List"
 msgstr "计量单位列表"
@@ -2110,11 +2120,3 @@ msgstr "编辑计量单位"
 msgctxt "web/views/UoMListView"
 msgid "Unit of Measure"
 msgstr "计量单位"
-
-#~ msgctxt "web/menu/menus"
-#~ msgid "Terminology Editor"
-#~ msgstr "术语编辑器"
-
-#~ msgctxt "web/route/routes"
-#~ msgid "Terminology Editor"
-#~ msgstr "术语编辑器"
