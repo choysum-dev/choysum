@@ -12,9 +12,9 @@ type Spec struct {
 	DuplicateCode    string
 	BaseModelFile    string // relative under modules, e.g. core/service/orm/model/field_default_base_model.ts
 	SoftDeleteFalse  bool   // AppSetting: emit softDelete: false in @Model options
-	// EnsureServiceEntry: when true, Decide may proceed without ServiceEntryPoint and
-	// set Plan.NeedEnsureServiceEntry (Materialize of the virtual entry is PR-P2).
-	// FieldDefault / AppSetting leave this false (empty entry → skip).
+	// EnsureServiceEntry: when true, Decide may proceed without ServiceEntryPoint
+	// (Materialize of a virtual service entry is PR-P2). FieldDefault / AppSetting
+	// leave this false (empty entry → skip).
 	EnsureServiceEntry bool
 }
 

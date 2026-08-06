@@ -137,18 +137,11 @@ func decidePlan(spec *Spec, sess *Session, prebuildResults []*parser.ParserResul
 	}
 	if len(existingVirt) > 0 {
 		if sameModule(existingVirt, mod) {
-			return markEnsureIfNeeded(claimNeedInject(sess.Registry(), spec, app, mod.Name), spec, hasServiceEntry), nil
+			return claimNeedInject(sess.Registry(), spec, app, mod.Name), nil
 		}
 		return plan, nil
 	}
-	return markEnsureIfNeeded(claimFirstNeedInject(sess.Registry(), spec, app, mod.Name), spec, hasServiceEntry), nil
-}
-
-func markEnsureIfNeeded(plan Plan, spec *Spec, hasServiceEntry bool) Plan {
-	if plan.NeedInject && spec != nil && spec.EnsureServiceEntry && !hasServiceEntry {
-		plan.NeedEnsureServiceEntry = true
-	}
-	return plan
+	return claimFirstNeedInject(sess.Registry(), spec, app, mod.Name), nil
 }
 
 // claimNeedInject is used when DB already has a virtual model owned by this module
@@ -183,8 +176,9 @@ func materializeInject(sess *Session, spec *Spec, plan Plan) (Effects, error) {
 	if mod == nil {
 		return out, nil
 	}
-	// PR-P1: reserve NeedEnsureServiceEntry only; virtual service entry lands in PR-P2.
-	if plan.NeedEnsureServiceEntry && strings.TrimSpace(mod.ServiceEntryPoint) == "" {
+	// PR-P1: Spec.EnsureServiceEntry allows Decide without an entry; virtual
+	// service Materialize is PR-P2 — skip model Effects until entry exists.
+	if spec.EnsureServiceEntry && strings.TrimSpace(mod.ServiceEntryPoint) == "" {
 		return out, nil
 	}
 	if strings.TrimSpace(mod.Path) == "" {

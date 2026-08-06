@@ -149,7 +149,7 @@ func TestDecide_EmptyServiceEntry_SkipsWithoutEnsure(t *testing.T) {
 	}
 	for _, name := range []string{"FieldDefault", "AppSetting"} {
 		plan := sess.Plan(name)
-		if plan.NeedInject || plan.NeedEnsureServiceEntry || plan.SupersedeInject {
+		if plan.NeedInject || plan.SupersedeInject {
 			t.Fatalf("%s: empty entry should skip, got %+v", name, plan)
 		}
 	}
@@ -161,7 +161,7 @@ func TestDecide_EmptyServiceEntry_SkipsWithoutEnsure(t *testing.T) {
 	}
 }
 
-func TestDecide_EnsureServiceEntry_EmptyEntrySetsNeedEnsure(t *testing.T) {
+func TestDecide_EnsureServiceEntry_EmptyEntryAllowsNeedInject(t *testing.T) {
 	mod := &meta.Module{
 		Name: "web", Path: "/virtual/modules/web",
 		ApplicationStr: "web", ServiceEntryPoint: "",
@@ -178,10 +178,10 @@ func TestDecide_EnsureServiceEntry_EmptyEntrySetsNeedEnsure(t *testing.T) {
 		t.Fatalf("DecideAndInjectOne: %v", err)
 	}
 	plan := sess.Plan("TempEnsure")
-	if !plan.NeedInject || !plan.NeedEnsureServiceEntry || plan.ScheduledApp != "web" {
-		t.Fatalf("expected NeedInject+NeedEnsure with scheduledApp, got %+v", plan)
+	if !plan.NeedInject || plan.ScheduledApp != "web" {
+		t.Fatalf("expected NeedInject with scheduledApp, got %+v", plan)
 	}
-	// P1 stub: no Effects until P2 materializes the virtual service entry.
+	// P1: no Effects until P2 materializes the virtual service entry.
 	if len(fx.Files) != 0 || len(fx.Imports) != 0 {
 		t.Fatalf("P1 stub must not emit Effects before Ensure materialize, got %+v", fx)
 	}
