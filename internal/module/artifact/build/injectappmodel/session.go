@@ -135,6 +135,16 @@ func (s *Session) ClearInjectPaths(modelName string) {
 	delete(s.lastInjectPath, modelName)
 }
 
+// ClearAllInjectPaths drops every remembered inject path (failed inject/bundle
+// before Effects are applied, so buildOptions cannot import stale generated paths).
+func (s *Session) ClearAllInjectPaths() {
+	if s == nil {
+		return
+	}
+	s.injectPaths = nil
+	s.lastInjectPath = nil
+}
+
 func (s *Session) allInjectPaths() []string {
 	return s.AllInjectPaths()
 }

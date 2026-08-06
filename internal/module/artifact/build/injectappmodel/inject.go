@@ -21,6 +21,9 @@ func InjectAppModels(sess *Session, prebuildResults []*parser.ParserResult) (Eff
 	for _, spec := range sess.Registry().specsList() {
 		fx, err := DecideAndInjectOne(sess, spec.ModelName, prebuildResults)
 		if err != nil {
+			// Paths from earlier Specs were not applied; drop them so a reused
+			// Session/builder cannot feed stale imports into buildOptions.
+			sess.ClearAllInjectPaths()
 			return out, err
 		}
 		out.Files = append(out.Files, fx.Files...)

@@ -21,6 +21,7 @@ func BundleInjectAppModels(sess *Session, modules []*meta.Module) (Effects, erro
 	for _, spec := range sess.Registry().specsList() {
 		fx, err := BundleOne(sess, spec.ModelName, modules)
 		if err != nil {
+			sess.ClearAllInjectPaths()
 			return out, err
 		}
 		out.Files = append(out.Files, fx.Files...)

@@ -115,6 +115,9 @@ func TestInjectAppModelsWrappers(t *testing.T) {
 	if err := builder.injectAppModels(pre); err == nil || !strings.Contains(err.Error(), "FIELD_DEFAULT_DUPLICATE") {
 		t.Fatalf("expected inject error with release, got %v", err)
 	}
+	if paths := builder.ensureInjectSession().AllInjectPaths(); len(paths) != 0 {
+		t.Fatalf("expected no stale inject paths after failed inject, got %#v", paths)
+	}
 
 	if err := builder.injectAppModels(nil); err != nil {
 		t.Fatal(err)

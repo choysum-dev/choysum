@@ -275,6 +275,30 @@ func TestValidateInjectAppModels_Duplicate(t *testing.T) {
 	}
 }
 
+func TestInjectAppModels_ClearsPathsOnPartialFailure(t *testing.T) {
+	mod := &meta.Module{
+		Name: "partner", Path: "/virtual/modules/partner",
+		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
+	}
+	sess, _ := newTestSession(t, mod)
+	// FieldDefault materializes first; AppSetting then fails Decide on duplicate handwritten.
+	a := "/virtual/modules/partner/service/models/as_a.ts"
+	b := "/virtual/modules/partner/service/models/as_b.ts"
+	_, err := InjectAppModels(sess, []*parser.ParserResult{
+		{Path: a, Model: &meta.Model{Name: "AppSetting", Path: a}},
+		{Path: b, Model: &meta.Model{Name: "AppSetting", Path: b}},
+	})
+	if err == nil || !strings.Contains(err.Error(), "APP_SETTING_DUPLICATE") {
+		t.Fatalf("expected AppSetting duplicate, got %v", err)
+	}
+	if paths := sess.AllInjectPaths(); len(paths) != 0 {
+		t.Fatalf("stale inject paths after failed multi-spec inject: %#v", paths)
+	}
+	if sess.LastInjectPath("FieldDefault") != "" {
+		t.Fatal("FieldDefault path should be cleared")
+	}
+}
+
 func TestDecideSkipsCore(t *testing.T) {
 	mod := &meta.Module{
 		Name: "core", Path: "/virtual/modules/core",

@@ -60,6 +60,7 @@ func TestNilSessionGuards(t *testing.T) {
 		t.Fatal("nil LastInjectPath")
 	}
 	nilSess.ClearInjectPaths("x")
+	nilSess.ClearAllInjectPaths()
 	if nilSess.AllInjectPaths() != nil {
 		t.Fatal("nil AllInjectPaths")
 	}
