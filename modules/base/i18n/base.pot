@@ -1035,12 +1035,12 @@ msgctxt "web/menu/menus"
 msgid "Master Data"
 msgstr ""
 
-#: web/menu/menus.ts:27
+#: web/menu/menus.ts:35
 msgctxt "web/menu/menus"
 msgid "Sequence Idempotency Record"
 msgstr ""
 
-#: web/menu/menus.ts:26
+#: web/menu/menus.ts:34
 msgctxt "web/menu/menus"
 msgid "Sequence Management"
 msgstr ""
@@ -1050,12 +1050,17 @@ msgctxt "web/menu/menus"
 msgid "State Management"
 msgstr ""
 
-#: web/menu/menus.ts:29
+#: web/menu/menus.ts:27
+msgctxt "web/menu/menus"
+msgid "Terminology Editor"
+msgstr ""
+
+#: web/menu/menus.ts:37
 msgctxt "web/menu/menus"
 msgid "Unit of Measure"
 msgstr ""
 
-#: web/menu/menus.ts:28
+#: web/menu/menus.ts:36
 msgctxt "web/menu/menus"
 msgid "Unit of Measure Category"
 msgstr ""
@@ -1145,7 +1150,7 @@ msgctxt "web/route/routes"
 msgid "Create Exchange Rate"
 msgstr ""
 
-#: web/route/routes.ts:330
+#: web/route/routes.ts:340
 msgctxt "web/route/routes"
 msgid "Create Idempotency Record"
 msgstr ""
@@ -1155,22 +1160,22 @@ msgctxt "web/route/routes"
 msgid "Create Language"
 msgstr ""
 
-#: web/route/routes.ts:288
+#: web/route/routes.ts:298
 msgctxt "web/route/routes"
 msgid "Create Sequence"
 msgstr ""
 
-#: web/route/routes.ts:367
+#: web/route/routes.ts:377
 msgctxt "web/route/routes"
 msgid "Create State"
 msgstr ""
 
-#: web/route/routes.ts:399
+#: web/route/routes.ts:409
 msgctxt "web/route/routes"
 msgid "Create Unit of Measure"
 msgstr ""
 
-#: web/route/routes.ts:431
+#: web/route/routes.ts:441
 msgctxt "web/route/routes"
 msgid "Create Unit of Measure Category"
 msgstr ""
@@ -1195,7 +1200,7 @@ msgctxt "web/route/routes"
 msgid "Exchange Rate List"
 msgstr ""
 
-#: web/route/routes.ts:315
+#: web/route/routes.ts:325
 msgctxt "web/route/routes"
 msgid "Idempotency Record Details"
 msgstr ""
@@ -1210,47 +1215,52 @@ msgctxt "web/route/routes"
 msgid "Language List"
 msgstr ""
 
-#: web/route/routes.ts:278
+#: web/route/routes.ts:288
 msgctxt "web/route/routes"
 msgid "Sequence Details"
 msgstr ""
 
-#: web/route/routes.ts:301
+#: web/route/routes.ts:311
 msgctxt "web/route/routes"
 msgid "Sequence Idempotency Record"
 msgstr ""
 
-#: web/route/routes.ts:269
+#: web/route/routes.ts:279
 msgctxt "web/route/routes"
 msgid "Sequence List"
 msgstr ""
 
-#: web/route/routes.ts:357
+#: web/route/routes.ts:367
 msgctxt "web/route/routes"
 msgid "State Details"
 msgstr ""
 
-#: web/route/routes.ts:348
+#: web/route/routes.ts:358
 msgctxt "web/route/routes"
 msgid "State List"
 msgstr ""
 
-#: web/route/routes.ts:412
+#: web/route/routes.ts:266
+msgctxt "web/route/routes"
+msgid "Terminology Editor"
+msgstr ""
+
+#: web/route/routes.ts:422
 msgctxt "web/route/routes"
 msgid "Unit of Measure Category"
 msgstr ""
 
-#: web/route/routes.ts:421
+#: web/route/routes.ts:431
 msgctxt "web/route/routes"
 msgid "Unit of Measure Category Details"
 msgstr ""
 
-#: web/route/routes.ts:389
+#: web/route/routes.ts:399
 msgctxt "web/route/routes"
 msgid "Unit of Measure Details"
 msgstr ""
 
-#: web/route/routes.ts:380
+#: web/route/routes.ts:390
 msgctxt "web/route/routes"
 msgid "Unit of Measure List"
 msgstr ""

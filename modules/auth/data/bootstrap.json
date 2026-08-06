@@ -35,11 +35,26 @@
         "Name": "Terminology Editor",
         "Code": "terminology.editor",
         "Description": {
-          "en_US": "Edit terminology translations via SearchTerms/UpdateTerm",
-          "zh_CN": "可通过 SearchTerms/UpdateTerm 编辑术语翻译"
+          "en_US": "Edit terminology via TranslationTerm Search/Browse/Update; Download PO via I18n SearchTerms",
+          "zh_CN": "可通过 TranslationTerm Search/Browse/Update 编辑术语；通过 I18n SearchTerms 下载 PO"
         },
         "IsActive": true,
         "IsSystem": true
+      }
+    },
+    {
+      "name": "rma_terminology_editor_i18n_search_terms",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_terminology_editor"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": {
+          "serviceRef": "auth.I18n/SearchTerms"
+        },
+        "Mode": "allow"
       }
     },
     {
@@ -82,36 +97,6 @@
         "MetaApplicationId": null,
         "MetaModelId": null,
         "MetaServiceId": null,
-        "Mode": "allow"
-      }
-    },
-    {
-      "name": "rma_terminology_editor_auth_search_terms",
-      "model": "RoleMethodAccess",
-      "values": {
-        "RoleId": {
-          "ref": "auth.role_terminology_editor"
-        },
-        "MetaApplicationId": null,
-        "MetaModelId": null,
-        "MetaServiceId": {
-          "serviceRef": "auth.I18n/SearchTerms"
-        },
-        "Mode": "allow"
-      }
-    },
-    {
-      "name": "rma_terminology_editor_auth_update_term",
-      "model": "RoleMethodAccess",
-      "values": {
-        "RoleId": {
-          "ref": "auth.role_terminology_editor"
-        },
-        "MetaApplicationId": null,
-        "MetaModelId": null,
-        "MetaServiceId": {
-          "serviceRef": "auth.I18n/UpdateTerm"
-        },
         "Mode": "allow"
       }
     },

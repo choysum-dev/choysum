@@ -48,6 +48,10 @@ func (h *handler) servePO(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	module := strings.TrimSpace(r.URL.Query().Get("module"))
+	if module == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "module is required"})
+		return
+	}
 
 	byApp, err := h.modulesByApp()
 	if err != nil {
@@ -60,13 +64,11 @@ func (h *handler) servePO(w http.ResponseWriter, r *http.Request) {
 	}
 
 	modules := byApp[application]
-	if module != "" {
-		if !moduleBelongsToApp(modules, module) {
-			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "module does not belong to application"})
-			return
-		}
-		modules = []string{module}
+	if !moduleBelongsToApp(modules, module) {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "module does not belong to application"})
+		return
 	}
+	modules = []string{module}
 
 	items, truncated, err := h.collectAllTerms(r.Context(), accessToken, application, lang, modules)
 	if err != nil {
@@ -75,18 +77,18 @@ func (h *handler) servePO(w http.ResponseWriter, r *http.Request) {
 	}
 
 	entries := buildPOEntries(lang, items)
-	filename := fmt.Sprintf("%s-%s.po", application, lang)
+	filename := fmt.Sprintf("%s-%s.po", module, lang)
 	w.Header().Set("Content-Type", "text/x-po; charset=utf-8")
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
 	if truncated {
 		w.Header().Set("X-Choysum-PO-Truncated", "1")
 		h.logger().Warn("i18n po export truncated",
-			"application", application, "lang", lang, "limit", poExportMaxItems, "exported", len(items))
+			"application", application, "module", module, "lang", lang, "limit", poExportMaxItems, "exported", len(items))
 	}
 	w.WriteHeader(http.StatusOK)
 	if err := po.Write(w, entries); err != nil {
 		// Headers already sent; cannot change status — log for ops visibility.
-		h.logger().Error("failed to write PO export", "error", err, "application", application, "lang", lang)
+		h.logger().Error("failed to write PO export", "error", err, "application", application, "module", module, "lang", lang)
 		return
 	}
 }

@@ -3,6 +3,7 @@
 
 import { test, expect, type Page, type Locator } from '@playwright/test';
 import fs from 'node:fs';
+import { loginAsE2EAdmin } from '../../auth/e2e/utils/login.ts';
 
 test.setTimeout(10 * 60 * 1000);
 
@@ -90,33 +91,12 @@ function readRuntimeInfo(): RuntimeInfo {
 
 /**
  * Opens the module management page and authenticates if the session is not yet logged in.
+ *
+ * Uses auth's hardened e2e-admin login (nprogress / ensureAuthReady race) instead of a
+ * fragile fill+click that can leave the suite stuck on `/web/login?redirect=...`.
  */
 async function ensureLoggedIn(page: Page, baseURL: string) {
-  await page.goto(`${baseURL}/web/meta/modules`, { waitUntil: 'domcontentloaded' });
-  await page.waitForLoadState('domcontentloaded');
-  const loginInput = page.getByPlaceholder(/用户名|username/i);
-  const loginVisible = await loginInput.isVisible().catch(() => false);
-  if (page.url().includes('/web/login') || loginVisible) {
-    await loginInput.waitFor({ state: 'visible', timeout: 10000 });
-    const tryLogin = async (username: string, password: string) => {
-      await page.getByPlaceholder(/用户名|username/i).fill(username);
-      await page.getByPlaceholder(/密码|password/i).fill(password);
-      const submit = page.locator('button[type="submit"]');
-      const canClick = await submit.isEnabled().catch(() => false);
-      if (canClick) {
-        await submit.click();
-      } else {
-        await page.getByPlaceholder(/密码|password/i).press('Enter');
-      }
-      await page.waitForURL(/\/(web\/)?meta\/modules/, { timeout: 15000 }).catch(() => null);
-      return !page.url().includes('/web/login');
-    };
-    const ok = await tryLogin('admin', 'admin');
-    if (!ok) {
-      await tryLogin('e2e-admin', 'e2e-admin');
-    }
-    await expect(page).not.toHaveURL(/\/web\/login/, { timeout: 15000 });
-  }
+  await loginAsE2EAdmin(page, baseURL);
   await page.goto(`${baseURL}/web/meta/modules`, { waitUntil: 'domcontentloaded' });
   await page.waitForURL('**/web/meta/modules', { timeout: 30000 });
   await waitForModuleList(page);
