@@ -510,3 +510,83 @@ func TestLoadEffectiveTranslationTermServiceIDsErrors(t *testing.T) {
 		t.Fatalf("expected effective service lookup error, got %v", err)
 	}
 }
+
+func TestLoadEffectiveI18nSearchTermsServiceIDErrors(t *testing.T) {
+	rs := newTestScope(t)
+	db := rs.Session().DB
+	migrateI18nDualStoreTables(t, db)
+	if _, err := loadEffectiveI18nSearchTermsServiceID(db, "crm"); err == nil || !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("expected missing I18n model error, got %v", err)
+	}
+
+	if err := EnsureI18nMeta(rs, "erp", sql.NullString{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec("DELETE FROM meta_service WHERE name = ?", terminologyEditorPOExportMethod).Error; err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadEffectiveI18nSearchTermsServiceID(db, "erp"); err == nil || !strings.Contains(err.Error(), "lookup effective Service SearchTerms") {
+		t.Fatalf("expected SearchTerms service lookup error, got %v", err)
+	}
+}
+
+func TestSeedRoleMethodAllowEmptyServiceID(t *testing.T) {
+	rs := newTestScope(t)
+	db := rs.Session().DB
+	if err := seedRoleMethodAllow(db, "role", "  ", "Search"); err != nil {
+		t.Fatalf("empty service id must no-op: %v", err)
+	}
+}
+
+func TestEnsureTerminologyEditorAllowsNonNotFoundErrors(t *testing.T) {
+	rs := newTestScope(t)
+	db := rs.Session().DB
+	migrateI18nDualStoreTables(t, db)
+	if err := db.Exec(`CREATE TABLE auth_role (
+		id TEXT PRIMARY KEY,
+		code TEXT,
+		deleted_at DATETIME
+	)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`CREATE TABLE auth_role_method_access (
+		id TEXT PRIMARY KEY,
+		role_id TEXT,
+		meta_application_id TEXT,
+		meta_model_id TEXT,
+		meta_service_id TEXT,
+		mode TEXT,
+		source TEXT,
+		created_at DATETIME,
+		updated_at DATETIME,
+		deleted_at DATETIME
+	)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	roleID := xid.New().String()
+	if err := db.Exec(`INSERT INTO auth_role (id, code) VALUES (?, ?)`, roleID, terminologyEditorRoleCode).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	seedTranslationTermEffective(t, db, "web")
+	if err := db.Exec("ALTER TABLE meta_model RENAME COLUMN name TO name_broken").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := ensureTerminologyEditorAllows(db, "web"); err == nil {
+		t.Fatal("expected non-RecordNotFound TranslationTerm lookup error")
+	}
+
+	// Restore model name column, ensure I18n, then break service lookup for SearchTerms.
+	if err := db.Exec("ALTER TABLE meta_model RENAME COLUMN name_broken TO name").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := EnsureI18nMeta(rs, "auth", sql.NullString{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec("ALTER TABLE meta_service RENAME COLUMN name TO name_broken").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := ensureTerminologyEditorAllows(db, "auth"); err == nil || !strings.Contains(err.Error(), "lookup effective Service") {
+		t.Fatalf("expected SearchTerms service lookup error, got %v", err)
+	}
+}

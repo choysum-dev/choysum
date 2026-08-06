@@ -41,6 +41,45 @@ describe('downloadTerminologyPo', () => {
     });
   });
 
+  it('omits Authorization when accessToken is empty', async () => {
+    const blob = new Blob(['x']);
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      blob: async () => blob,
+    })) as unknown as typeof fetch;
+
+    await downloadTerminologyPo({
+      lang: 'zh-CN',
+      application: 'web',
+      module: 'web',
+      accessToken: '   ',
+      fetchImpl,
+    });
+    expect(fetchImpl).toHaveBeenCalledWith('/web/i18n/po?lang=zh-CN&application=web&module=web', {
+      headers: {},
+    });
+  });
+
+  it('uses global fetch when fetchImpl is omitted', async () => {
+    const blob = new Blob(['x']);
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      blob: async () => blob,
+    }));
+    vi.stubGlobal('fetch', fetchImpl);
+    try {
+      const out = await downloadTerminologyPo({
+        lang: 'zh-CN',
+        application: 'web',
+        module: 'web',
+      });
+      expect(out).toBe(blob);
+      expect(fetchImpl).toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('surfaces gateway error body', async () => {
     const fetchImpl = vi.fn(async () => ({
       ok: false,
@@ -52,5 +91,33 @@ describe('downloadTerminologyPo', () => {
     await expect(
       downloadTerminologyPo({ lang: 'zh-CN', application: 'web', module: 'web', fetchImpl })
     ).rejects.toThrow('module is required');
+  });
+
+  it('falls back to statusText when error JSON is invalid', async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: false,
+      status: 502,
+      statusText: 'Bad Gateway',
+      json: async () => {
+        throw new Error('not json');
+      },
+    })) as unknown as typeof fetch;
+
+    await expect(
+      downloadTerminologyPo({ lang: 'zh-CN', application: 'web', module: 'web', fetchImpl })
+    ).rejects.toThrow('Bad Gateway');
+  });
+
+  it('falls back to status code when body and statusText are empty', async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: false,
+      status: 503,
+      statusText: '',
+      json: async () => ({}),
+    })) as unknown as typeof fetch;
+
+    await expect(
+      downloadTerminologyPo({ lang: 'zh-CN', application: 'web', module: 'web', fetchImpl })
+    ).rejects.toThrow('PO download failed (503)');
   });
 });

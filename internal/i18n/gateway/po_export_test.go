@@ -197,3 +197,139 @@ func TestBuildPOEntriesMarksFuzzy(t *testing.T) {
 		t.Fatal("entry missing")
 	}
 }
+
+func TestPORequiresLangAndValidFormat(t *testing.T) {
+	h := &handler{
+		listModules: func() (map[string][]string, error) {
+			return map[string][]string{"auth": {"auth"}}, nil
+		},
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc(poPath, h.servePO)
+
+	req := httptest.NewRequest(http.MethodGet, "/web/i18n/po?application=auth&module=auth", nil)
+	req.Header.Set("Authorization", "Bearer test-token")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), "lang is required") {
+		t.Fatalf("missing lang: status=%d body=%s", rr.Code, rr.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/web/i18n/po?lang=zh/CN&application=auth&module=auth", nil)
+	req.Header.Set("Authorization", "Bearer test-token")
+	rr = httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), "invalid lang format") {
+		t.Fatalf("invalid lang: status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestPOModulesByAppAndUnknownApplication(t *testing.T) {
+	h := &handler{
+		listModules: func() (map[string][]string, error) {
+			return nil, context.Canceled
+		},
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc(poPath, h.servePO)
+	req := httptest.NewRequest(http.MethodGet, "/web/i18n/po?lang=zh_CN&application=auth&module=auth", nil)
+	req.Header.Set("Authorization", "Bearer test-token")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusInternalServerError {
+		t.Fatalf("modulesByApp error: status=%d body=%s", rr.Code, rr.Body.String())
+	}
+
+	h.listModules = func() (map[string][]string, error) {
+		return map[string][]string{"auth": {"auth"}}, nil
+	}
+	req = httptest.NewRequest(http.MethodGet, "/web/i18n/po?lang=zh_CN&application=web&module=web", nil)
+	req.Header.Set("Authorization", "Bearer test-token")
+	rr = httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), "unknown application") {
+		t.Fatalf("unknown app: status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestPOCollectAllTermsErrorsAndEmpty(t *testing.T) {
+	h := &handler{
+		listModules: func() (map[string][]string, error) {
+			return map[string][]string{"auth": {"auth"}}, nil
+		},
+		search: func(ctx context.Context, accessToken, app, lang string, modules []string, q string, limit, offset int) (*searchTermsResult, error) {
+			return nil, context.Canceled
+		},
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc(poPath, h.servePO)
+	req := httptest.NewRequest(http.MethodGet, "/web/i18n/po?lang=zh_CN&application=auth&module=auth", nil)
+	req.Header.Set("Authorization", "Bearer test-token")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code == http.StatusOK {
+		t.Fatalf("expected search error status, got %d", rr.Code)
+	}
+
+	h.search = func(ctx context.Context, accessToken, app, lang string, modules []string, q string, limit, offset int) (*searchTermsResult, error) {
+		return nil, nil
+	}
+	rr = httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("nil search result: status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestCollectAllTermsMaxItemsZeroTruncates(t *testing.T) {
+	oldMax := poExportMaxItems
+	poExportMaxItems = 0
+	t.Cleanup(func() { poExportMaxItems = oldMax })
+
+	h := &handler{
+		search: func(ctx context.Context, accessToken, app, lang string, modules []string, q string, limit, offset int) (*searchTermsResult, error) {
+			t.Fatal("search must not run when max items is 0")
+			return nil, nil
+		},
+	}
+	items, truncated, err := h.collectAllTerms(context.Background(), "tok", "auth", "zh_CN", []string{"auth"})
+	if err != nil || len(items) != 0 || !truncated {
+		t.Fatalf("items=%d truncated=%v err=%v", len(items), truncated, err)
+	}
+}
+
+type errWriter struct {
+	header http.Header
+	code   int
+}
+
+func (w *errWriter) Header() http.Header {
+	if w.header == nil {
+		w.header = make(http.Header)
+	}
+	return w.header
+}
+func (w *errWriter) Write([]byte) (int, error) { return 0, context.Canceled }
+func (w *errWriter) WriteHeader(statusCode int)  { w.code = statusCode }
+
+func TestPOWriteErrorIsLogged(t *testing.T) {
+	h := &handler{
+		listModules: func() (map[string][]string, error) {
+			return map[string][]string{"auth": {"auth"}}, nil
+		},
+		search: func(ctx context.Context, accessToken, app, lang string, modules []string, q string, limit, offset int) (*searchTermsResult, error) {
+			return &searchTermsResult{
+				Lang:  lang,
+				Total: 1,
+				Items: []termItem{{Scope: "a@b", Src: "Hi", Value: "你好", Kind: "literal"}},
+			}, nil
+		},
+	}
+	req := httptest.NewRequest(http.MethodGet, "/web/i18n/po?lang=zh_CN&application=auth&module=auth", nil)
+	req.Header.Set("Authorization", "Bearer test-token")
+	w := &errWriter{}
+	h.servePO(w, req)
+	if w.code != http.StatusOK {
+		t.Fatalf("WriteHeader code=%d", w.code)
+	}
+}

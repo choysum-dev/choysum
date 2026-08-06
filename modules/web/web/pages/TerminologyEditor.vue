@@ -116,8 +116,9 @@ function wrapStoreForReload(store: WebModelStore<any>): WebModelStore<any> {
   return store;
 }
 
-function onApplicationChange() {
-  const app = selectedApp.value.trim();
+function onApplicationChange(appName?: string) {
+  const app = String(appName ?? selectedApp.value).trim();
+  selectedApp.value = app;
   termStore.value = null;
   moduleFilter.value = '';
   if (!app) return;
