@@ -13,25 +13,25 @@ import (
 )
 
 func TestNilSessionGuards(t *testing.T) {
-	if err := InjectAppModels(nil, nil); err != nil {
+	if _, err := InjectAppModels(nil, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := DecideAndInjectOne(nil, "FieldDefault", nil); err != nil {
+	if _, err := DecideAndInjectOne(nil, "FieldDefault", nil); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := DecideOne(nil, "FieldDefault", nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := ApplyInjectOne(nil, "FieldDefault"); err != nil {
+	if _, err := ApplyInjectOne(nil, "FieldDefault"); err != nil {
 		t.Fatal(err)
 	}
 	if err := ValidateInjectAppModels(nil, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := BundleInjectAppModels(nil, nil); err != nil {
+	if _, err := BundleInjectAppModels(nil, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := BundleOne(nil, "FieldDefault", nil); err != nil {
+	if _, err := BundleOne(nil, "FieldDefault", nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := SupersedeInjectAppModels(nil); err != nil {
@@ -45,6 +45,9 @@ func TestNilSessionGuards(t *testing.T) {
 	ReleaseSchedule("Missing", "partner")
 
 	var nilSess *Session
+	if nilSess.Context() != nil {
+		t.Fatal("nil Context")
+	}
 	nilSess.ReleaseSchedules()
 	nilSess.SetPlan("x", Plan{})
 	if p := nilSess.Plan("x"); p.NeedInject {
@@ -68,7 +71,7 @@ func TestNilSessionGuards(t *testing.T) {
 	nilSess.releaseScheduleFor(specByNameOrPanic("FieldDefault"))
 
 	// NewSession with nil reg uses DefaultRegistry.
-	s := NewSession(nil, nil)
+	s := NewSession(BuildCtx{}, nil)
 	if s.Registry() != DefaultRegistry() {
 		t.Fatal("expected DefaultRegistry")
 	}
@@ -79,7 +82,7 @@ func TestDecideOneAndApplyInjectOne(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, _, _ := newTestSession(t, mod)
+	sess, _ := newTestSession(t, mod)
 	plan, err := DecideOne(sess, "FieldDefault", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -90,10 +93,10 @@ func TestDecideOneAndApplyInjectOne(t *testing.T) {
 	if _, err := DecideOne(sess, "NoSuch", nil); err == nil {
 		t.Fatal("expected unknown Spec error")
 	}
-	if err := ApplyInjectOne(sess, "NoSuch"); err == nil {
+	if _, err := ApplyInjectOne(sess, "NoSuch"); err == nil {
 		t.Fatal("expected unknown Spec error")
 	}
-	if err := ApplyInjectOne(sess, "FieldDefault"); err != nil {
+	if _, err := ApplyInjectOne(sess, "FieldDefault"); err != nil {
 		t.Fatal(err)
 	}
 	if sess.LastInjectPath("FieldDefault") == "" {
@@ -106,14 +109,14 @@ func TestDecideAndInjectOne_UnknownAndErrors(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, _, _ := newTestSession(t, mod)
-	if err := DecideAndInjectOne(sess, "NoSuch", nil); err == nil {
+	sess, _ := newTestSession(t, mod)
+	if _, err := DecideAndInjectOne(sess, "NoSuch", nil); err == nil {
 		t.Fatal("expected unknown Spec")
 	}
 
 	a := "/virtual/modules/partner/service/models/fd_a.ts"
 	b := "/virtual/modules/partner/service/models/fd_b.ts"
-	if err := DecideAndInjectOne(sess, "FieldDefault", []*parser.ParserResult{
+	if _, err := DecideAndInjectOne(sess, "FieldDefault", []*parser.ParserResult{
 		{Path: a, Model: &meta.Model{Name: "FieldDefault", Path: a}},
 		{Path: b, Model: &meta.Model{Name: "FieldDefault", Path: b}},
 	}); err == nil || !strings.Contains(err.Error(), "FIELD_DEFAULT_DUPLICATE") {
@@ -126,7 +129,7 @@ func TestDecidePlan_Branches(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, host, db := newTestSession(t, mod)
+	sess, db := newTestSession(t, mod)
 
 	if plan, err := decidePlan(nil, sess, nil); err != nil || plan.NeedInject {
 		t.Fatalf("nil spec: %+v %v", plan, err)
@@ -135,20 +138,20 @@ func TestDecidePlan_Branches(t *testing.T) {
 	if plan, err := decidePlan(spec, nil, nil); err != nil || plan.NeedInject {
 		t.Fatalf("nil sess: %+v %v", plan, err)
 	}
-	host.mod = nil
+	sess.Context().Module = nil
 	if plan, err := decidePlan(spec, sess, nil); err != nil || plan.NeedInject {
 		t.Fatalf("nil module: %+v %v", plan, err)
 	}
-	host.mod = &meta.Module{Name: "x", Path: "/p", ApplicationStr: "partner"} // empty ServiceEntryPoint
+	sess.Context().Module = &meta.Module{Name: "x", Path: "/p", ApplicationStr: "partner"} // empty ServiceEntryPoint
 	if plan, err := decidePlan(spec, sess, nil); err != nil || plan.NeedInject {
 		t.Fatalf("empty entry: %+v %v", plan, err)
 	}
-	host.mod = &meta.Module{Name: "x", Path: "/p", ApplicationStr: "", ServiceEntryPoint: "s"}
+	sess.Context().Module = &meta.Module{Name: "x", Path: "/p", ApplicationStr: "", ServiceEntryPoint: "s"}
 	if plan, err := decidePlan(spec, sess, nil); err != nil || plan.NeedInject {
 		t.Fatalf("empty app: %+v %v", plan, err)
 	}
 
-	host.mod = mod
+	sess.Context().Module = mod
 	otherHand := "/virtual/modules/other/service/models/field_default.ts"
 	seedDeclaration(t, db, "FieldDefault", "other-hand", otherHand, "partner")
 	localHand := "/virtual/modules/partner/service/models/field_default.ts"
@@ -191,18 +194,19 @@ func TestApplyInject_EmptyModulePathAndModulesPathFallback(t *testing.T) {
 		Name: "partner", Path: "",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, host, _ := newTestSession(t, mod)
+	sess, _ := newTestSession(t, mod)
 	sess.SetPlan("FieldDefault", Plan{NeedInject: true})
-	if err := applyInject(sess, specByNameOrPanic("FieldDefault"), Plan{NeedInject: true}); err == nil {
+	if _, err := materializeInject(sess, specByNameOrPanic("FieldDefault"), Plan{NeedInject: true}); err == nil {
 		t.Fatal("expected empty path error")
 	}
 
 	mod.Path = "/virtual/modules/partner"
-	host.modulesPath = ""
-	if err := applyInject(sess, specByNameOrPanic("FieldDefault"), Plan{NeedInject: true}); err != nil {
+	sess.Context().ModulesPath = ""
+	fx, err := materializeInject(sess, specByNameOrPanic("FieldDefault"), Plan{NeedInject: true})
+	if err != nil {
 		t.Fatal(err)
 	}
-	src := host.virtualPaths[generatedPath(specByNameOrPanic("FieldDefault"), mod.Path)]
+	src := effectsFileMap(fx)[generatedPath(specByNameOrPanic("FieldDefault"), mod.Path)]
 	if src == "" {
 		t.Fatal("expected virtual source with modulesPath fallback")
 	}
@@ -272,12 +276,12 @@ func TestClaimNeedInject_RegistryClaims(t *testing.T) {
 }
 
 func TestValidateInjectAppModels_Guards(t *testing.T) {
-	sess := &Session{} // host nil
+	sess := &Session{} // empty BuildCtx
 	if err := ValidateInjectAppModels(sess, nil); err != nil {
 		t.Fatal(err)
 	}
 	mod := &meta.Module{Name: "p", Path: "/p", ApplicationStr: ""}
-	sess, _, _ = newTestSession(t, mod)
+	sess, _ = newTestSession(t, mod)
 	if err := ValidateInjectAppModels(sess, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -299,7 +303,7 @@ func TestValidateInjectAppModels_Guards(t *testing.T) {
 
 func TestSessionMapsAndPaths(t *testing.T) {
 	reg := NewRegistryWithDefaults()
-	s := NewSession(nil, reg)
+	s := NewSession(BuildCtx{}, reg)
 	s.SetPlan("FieldDefault", Plan{NeedInject: true, ScheduledApp: "partner"})
 	if !s.Plan("FieldDefault").NeedInject {
 		t.Fatal("SetPlan lazy maps")
@@ -434,6 +438,24 @@ func TestHelpersCoverage(t *testing.T) {
 	}
 }
 
+func TestEffects_Merge(t *testing.T) {
+	a := Effects{
+		Files:   []VirtualFile{{Path: "/a.ts", Contents: "a"}},
+		Imports: []string{"/a.ts", " /x "},
+	}
+	b := Effects{
+		Files:   []VirtualFile{{Path: "/b.ts", Contents: "b"}},
+		Imports: []string{"/a.ts", "/b.ts"},
+	}
+	merged := a.Merge(b)
+	if len(merged.Files) != 2 || merged.Files[0].Path != "/a.ts" || merged.Files[1].Path != "/b.ts" {
+		t.Fatalf("Files=%#v", merged.Files)
+	}
+	if strings.Join(merged.Imports, ",") != "/a.ts,/x,/b.ts" {
+		t.Fatalf("Imports=%#v", merged.Imports)
+	}
+}
+
 func TestGeneratedSource_EmptyApplication(t *testing.T) {
 	src := generatedSource(specByNameOrPanic("FieldDefault"), "/mods", "  ")
 	if !strings.Contains(src, strconvQuoteFallback()) {
@@ -451,25 +473,25 @@ func TestBundleInject_GuardsAndErrors(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, host, db := newTestSession(t, mod)
-	if err := BundleOne(sess, "NoSuch", []*meta.Module{mod}); err != nil {
+	sess, db := newTestSession(t, mod)
+	if _, err := BundleOne(sess, "NoSuch", []*meta.Module{mod}); err != nil {
 		t.Fatal(err)
 	}
-	sess2 := &Session{host: nil}
-	if err := BundleInjectAppModels(sess2, nil); err != nil {
+	sess2 := &Session{}
+	if _, err := BundleInjectAppModels(sess2, nil); err != nil {
 		t.Fatal(err)
 	}
 
-	host.modulesPath = ""
+	sess.Context().ModulesPath = ""
 	core := &meta.Module{Name: "core", Path: "/virtual/modules/core", ApplicationStr: "core", ServiceEntryPoint: "s"}
 	emptyApp := &meta.Module{Name: "e", Path: "/p", ApplicationStr: "", ServiceEntryPoint: "s"}
 	noEntry := &meta.Module{Name: "n", Path: "/p", ApplicationStr: "base", ServiceEntryPoint: ""}
 	noPath := &meta.Module{Name: "np", Path: "  ", ApplicationStr: "base", ServiceEntryPoint: "s"}
 	dup := &meta.Module{Name: "partner2", Path: "/virtual/modules/partner2", ApplicationStr: "partner", ServiceEntryPoint: "s"}
-	if err := BundleInjectAppModels(sess, []*meta.Module{nil, core, emptyApp, noEntry, noPath, mod, dup}); err != nil {
+	if _, err := BundleInjectAppModels(sess, []*meta.Module{nil, core, emptyApp, noEntry, noPath, mod, dup}); err != nil {
 		t.Fatal(err)
 	}
-	if host.modulesPath != "" {
+	if sess.Context().ModulesPath != "" {
 		t.Fatal("modulesPath stayed empty; fallback should still register")
 	}
 	if len(sess.AllInjectPaths()) == 0 {
@@ -479,10 +501,10 @@ func TestBundleInject_GuardsAndErrors(t *testing.T) {
 	if err := meta.DropRawModelTable(db); err != nil {
 		t.Fatal(err)
 	}
-	sess3, _, _ := newTestSession(t, mod)
+	sess3, _ := newTestSession(t, mod)
 	// reopen dropped on different db — use same dropped db
-	sess3.host.(*fakeHost).db = db
-	if err := BundleInjectAppModels(sess3, []*meta.Module{mod}); err == nil {
+	sess3.Context().DB = db
+	if _, err := BundleInjectAppModels(sess3, []*meta.Module{mod}); err == nil {
 		t.Fatal("expected load error")
 	}
 }
@@ -492,7 +514,7 @@ func TestSupersede_GuardsAndErrors(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, host, db := newTestSession(t, mod)
+	sess, db := newTestSession(t, mod)
 	if err := SupersedeInjectAppModels(&Session{}); err != nil {
 		t.Fatal(err)
 	}
@@ -505,20 +527,20 @@ func TestSupersede_GuardsAndErrors(t *testing.T) {
 	}
 
 	sess.SetPlan("AppSetting", Plan{SupersedeInject: true})
-	host.db = nil
+	sess.Context().DB = nil
 	if err := SupersedeOne(sess, "AppSetting"); err != nil {
 		t.Fatal(err)
 	}
-	host.db = db
-	host.mod = nil
+	sess.Context().DB = db
+	sess.Context().Module = nil
 	if err := SupersedeOne(sess, "AppSetting"); err != nil {
 		t.Fatal(err)
 	}
-	host.mod = &meta.Module{ApplicationStr: "  "}
+	sess.Context().Module = &meta.Module{ApplicationStr: "  "}
 	if err := SupersedeOne(sess, "AppSetting"); err != nil {
 		t.Fatal(err)
 	}
-	host.mod = mod
+	sess.Context().Module = mod
 
 	// blank id skipped
 	virt := "/virtual/modules/partner/service/models/__generated__/app_setting.ts"
@@ -547,7 +569,7 @@ func TestSupersede_DeleteError(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, _, db := newTestSession(t, mod)
+	sess, db := newTestSession(t, mod)
 	virt := "/virtual/modules/partner/service/models/__generated__/app_setting.ts"
 	seedDeclaration(t, db, "AppSetting", "del-me", virt, "partner")
 	sess.SetPlan("AppSetting", Plan{SupersedeInject: true})
@@ -567,7 +589,7 @@ func TestDecideOne_DecidePlanError(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, _, db := newTestSession(t, mod)
+	sess, db := newTestSession(t, mod)
 	if err := meta.DropRawModelTable(db); err != nil {
 		t.Fatal(err)
 	}
@@ -581,7 +603,7 @@ func TestDecidePlan_LocalHandwrittenOnlyAndLocalGeneratedOnly(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, _, _ := newTestSession(t, mod)
+	sess, _ := newTestSession(t, mod)
 	spec := specByNameOrPanic("FieldDefault")
 	hand := "/virtual/modules/partner/service/models/field_default.ts"
 	plan, err := decidePlan(spec, sess, []*parser.ParserResult{
@@ -605,9 +627,9 @@ func TestApplyInject_NilModule(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, host, _ := newTestSession(t, mod)
-	host.mod = nil
-	if err := applyInject(sess, specByNameOrPanic("FieldDefault"), Plan{NeedInject: true}); err != nil {
+	sess, _ := newTestSession(t, mod)
+	sess.Context().Module = nil
+	if _, err := materializeInject(sess, specByNameOrPanic("FieldDefault"), Plan{NeedInject: true}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -617,8 +639,8 @@ func TestValidateInjectAppModels_NilModule(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, host, _ := newTestSession(t, mod)
-	host.mod = nil
+	sess, _ := newTestSession(t, mod)
+	sess.Context().Module = nil
 	if err := ValidateInjectAppModels(sess, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -629,7 +651,7 @@ func TestSupersedeInjectAppModels_PropagatesError(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, _, db := newTestSession(t, mod)
+	sess, db := newTestSession(t, mod)
 	sess.SetPlan("FieldDefault", Plan{SupersedeInject: true})
 	sess.SetPlan("AppSetting", Plan{SupersedeInject: true})
 	if err := meta.DropRawModelTable(db); err != nil {
@@ -645,7 +667,7 @@ func TestSupersedeGenerated_DeleteError(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	_, _, db := newTestSession(t, mod)
+	_, db := newTestSession(t, mod)
 	virt := "/virtual/modules/partner/service/models/__generated__/app_setting.ts"
 	seedDeclaration(t, db, "AppSetting", "del-fail", virt, "partner")
 	if err := db.Migrator().DropTable(meta.RawServiceTable); err != nil {
@@ -661,10 +683,10 @@ func TestInjectAppModels_PropagatesDecideError(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, _, _ := newTestSession(t, mod)
+	sess, _ := newTestSession(t, mod)
 	a := "/virtual/modules/partner/service/models/a.ts"
 	b := "/virtual/modules/partner/service/models/b.ts"
-	if err := InjectAppModels(sess, []*parser.ParserResult{
+	if _, err := InjectAppModels(sess, []*parser.ParserResult{
 		{Path: a, Model: &meta.Model{Name: "FieldDefault", Path: a}},
 		{Path: b, Model: &meta.Model{Name: "FieldDefault", Path: b}},
 	}); err == nil {
@@ -677,9 +699,9 @@ func TestDecideAndInjectOne_ApplyInjectErrorReleases(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, host, _ := newTestSession(t, mod)
-	host.mod.Path = ""
-	if err := DecideAndInjectOne(sess, "FieldDefault", nil); err == nil {
+	sess, _ := newTestSession(t, mod)
+	sess.Context().Module.Path = ""
+	if _, err := DecideAndInjectOne(sess, "FieldDefault", nil); err == nil {
 		t.Fatal("expected inject path error")
 	}
 }
@@ -689,8 +711,8 @@ func TestBundleOne_SuccessPath(t *testing.T) {
 		Name: "base", Path: "/virtual/modules/base",
 		ApplicationStr: "base", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, _, _ := newTestSession(t, mod)
-	if err := BundleOne(sess, "FieldDefault", []*meta.Module{mod}); err != nil {
+	sess, _ := newTestSession(t, mod)
+	if _, err := BundleOne(sess, "FieldDefault", []*meta.Module{mod}); err != nil {
 		t.Fatal(err)
 	}
 	if sess.LastInjectPath("FieldDefault") == "" {

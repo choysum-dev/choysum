@@ -14,7 +14,7 @@ import (
 // SupersedeInjectAppModels deletes generated-path declaration trees when Decide
 // set SupersedeInject. Does not call meta.RecomputeKeys (EDS-opt-2).
 func SupersedeInjectAppModels(sess *Session) error {
-	if sess == nil || sess.host == nil {
+	if sess == nil {
 		return nil
 	}
 	for _, spec := range sess.Registry().specsList() {
@@ -27,7 +27,7 @@ func SupersedeInjectAppModels(sess *Session) error {
 
 // SupersedeOne supersedes generated declarations for one Spec when its plan says so.
 func SupersedeOne(sess *Session, modelName string) error {
-	if sess == nil || sess.host == nil {
+	if sess == nil {
 		return nil
 	}
 	spec, ok := sess.Registry().lookupPtr(modelName)
@@ -38,8 +38,8 @@ func SupersedeOne(sess *Session, modelName string) error {
 	if !plan.SupersedeInject {
 		return nil
 	}
-	db := sess.host.SessionDB()
-	mod := sess.host.Module()
+	db := sess.ctx.DB
+	mod := sess.ctx.Module
 	if db == nil || mod == nil {
 		return nil
 	}

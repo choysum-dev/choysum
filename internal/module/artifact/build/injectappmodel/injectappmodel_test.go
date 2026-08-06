@@ -25,26 +25,7 @@ func testMemoryDSN(t *testing.T, prefix string) string {
 	return fmt.Sprintf("file:%s-%s-%d?mode=memory&cache=shared", prefix, name, testDBSeq.Add(1))
 }
 
-type fakeHost struct {
-	mod            *meta.Module
-	db             *gorm.DB
-	modulesPath    string
-	entryImports   []string
-	virtualPaths   map[string]string
-	setImportCalls int
-}
-
-func (h *fakeHost) Module() *meta.Module        { return h.mod }
-func (h *fakeHost) SessionDB() *gorm.DB         { return h.db }
-func (h *fakeHost) ModulesPath() string         { return h.modulesPath }
-func (h *fakeHost) EntryPointImports() []string { return h.entryImports }
-func (h *fakeHost) SetEntryPointImports(imports []string) {
-	h.setImportCalls++
-	h.entryImports = append([]string(nil), imports...)
-}
-func (h *fakeHost) RegisterVirtualSource(path, contents string) { h.virtualPaths[path] = contents }
-
-func newTestSession(t *testing.T, mod *meta.Module) (*Session, *fakeHost, *gorm.DB) {
+func newTestSession(t *testing.T, mod *meta.Module) (*Session, *gorm.DB) {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open(testMemoryDSN(t, "injectappmodel")), &gorm.Config{})
 	if err != nil {
@@ -53,14 +34,13 @@ func newTestSession(t *testing.T, mod *meta.Module) (*Session, *fakeHost, *gorm.
 	if err := meta.EnsureDualStoreTables(db); err != nil {
 		t.Fatalf("EnsureDualStoreTables: %v", err)
 	}
-	host := &fakeHost{
-		mod:          mod,
-		db:           db,
-		modulesPath:  "/virtual/modules",
-		virtualPaths: map[string]string{},
-	}
 	reg := NewRegistryWithDefaults()
-	return NewSession(host, reg), host, db
+	sess := NewSession(BuildCtx{
+		Module:      mod,
+		DB:          db,
+		ModulesPath: "/virtual/modules",
+	}, reg)
+	return sess, db
 }
 
 func seedDeclaration(t *testing.T, db *gorm.DB, name, id, path, application string) {
@@ -72,6 +52,14 @@ func seedDeclaration(t *testing.T, db *gorm.DB, name, id, path, application stri
 	if err := meta.PersistModelTreeAsRaw(db, m); err != nil {
 		t.Fatalf("seed %s: %v", name, err)
 	}
+}
+
+func effectsFileMap(fx Effects) map[string]string {
+	out := make(map[string]string, len(fx.Files))
+	for _, f := range fx.Files {
+		out[f.Path] = f.Contents
+	}
+	return out
 }
 
 func TestSpecs_BuiltinsRegistered(t *testing.T) {
@@ -89,8 +77,8 @@ func TestDecideFieldDefault_NeedInject(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, _, _ := newTestSession(t, mod)
-	if err := InjectAppModels(sess, nil); err != nil {
+	sess, _ := newTestSession(t, mod)
+	if _, err := InjectAppModels(sess, nil); err != nil {
 		t.Fatalf("inject: %v", err)
 	}
 	plan := sess.Plan("FieldDefault")
@@ -104,10 +92,10 @@ func TestDecideAppSetting_SupersedeInject(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, _, db := newTestSession(t, mod)
+	sess, db := newTestSession(t, mod)
 	hand := "/virtual/modules/partner/service/models/app_setting.ts"
 	seedDeclaration(t, db, "AppSetting", "as-virt", "/virtual/modules/partner/service/models/__generated__/app_setting.ts", "partner")
-	if err := InjectAppModels(sess, []*parser.ParserResult{
+	if _, err := InjectAppModels(sess, []*parser.ParserResult{
 		{Path: hand, Model: &meta.Model{Name: "AppSetting", Path: hand}},
 	}); err != nil {
 		t.Fatalf("inject: %v", err)
@@ -123,13 +111,13 @@ func TestDecideAppSetting_ForeignClaimOnOwnerReinject(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, _, db := newTestSession(t, mod)
+	sess, db := newTestSession(t, mod)
 	virt := "/virtual/modules/partner/service/models/__generated__/app_setting.ts"
 	seedDeclaration(t, db, "AppSetting", "as1", virt, "partner")
 
 	sess.Registry().TryClaim("AppSetting", "partner", "other_builder")
 
-	if err := InjectAppModels(sess, nil); err != nil {
+	if _, err := InjectAppModels(sess, nil); err != nil {
 		t.Fatalf("inject: %v", err)
 	}
 	plan := sess.Plan("AppSetting")
@@ -146,13 +134,13 @@ func TestDecideFieldDefault_SameModuleReclaimWithoutForeignBranch(t *testing.T) 
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, _, db := newTestSession(t, mod)
+	sess, db := newTestSession(t, mod)
 	virt := "/virtual/modules/partner/service/models/__generated__/field_default.ts"
 	seedDeclaration(t, db, "FieldDefault", "fd1", virt, "partner")
 
 	sess.Registry().TryClaim("FieldDefault", "partner", "other_builder")
 
-	if err := InjectAppModels(sess, nil); err != nil {
+	if _, err := InjectAppModels(sess, nil); err != nil {
 		t.Fatalf("inject: %v", err)
 	}
 	plan := sess.Plan("FieldDefault")
@@ -166,11 +154,11 @@ func TestProcessDedup_SameModuleReclaim(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, _, _ := newTestSession(t, mod)
-	if err := InjectAppModels(sess, nil); err != nil {
+	sess, _ := newTestSession(t, mod)
+	if _, err := InjectAppModels(sess, nil); err != nil {
 		t.Fatalf("first inject: %v", err)
 	}
-	if err := InjectAppModels(sess, nil); err != nil {
+	if _, err := InjectAppModels(sess, nil); err != nil {
 		t.Fatalf("reclaim inject: %v", err)
 	}
 	plan := sess.Plan("FieldDefault")
@@ -184,8 +172,8 @@ func TestReleaseSchedules_ClearsClaim(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, _, _ := newTestSession(t, mod)
-	if err := InjectAppModels(sess, nil); err != nil {
+	sess, _ := newTestSession(t, mod)
+	if _, err := InjectAppModels(sess, nil); err != nil {
 		t.Fatalf("inject: %v", err)
 	}
 	if owner, ok := sess.Registry().ClaimOwner("FieldDefault", "partner"); !ok || owner == "" {
@@ -205,7 +193,7 @@ func TestSupersedeInjectAppModels_DeletesGeneratedOnly(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, _, db := newTestSession(t, mod)
+	sess, db := newTestSession(t, mod)
 	hand := "/virtual/modules/partner/service/models/app_setting.ts"
 	virt := "/virtual/modules/partner/service/models/__generated__/app_setting.ts"
 	seedDeclaration(t, db, "AppSetting", "virt-id", virt, "partner")
@@ -244,27 +232,29 @@ func TestInjectRegistersVirtualSource(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, host, _ := newTestSession(t, mod)
-	if err := InjectAppModels(sess, nil); err != nil {
+	sess, _ := newTestSession(t, mod)
+	fx, err := InjectAppModels(sess, nil)
+	if err != nil {
 		t.Fatalf("inject: %v", err)
 	}
 	wantFD := generatedPath(specByNameOrPanic("FieldDefault"), mod.Path)
 	wantAS := generatedPath(specByNameOrPanic("AppSetting"), mod.Path)
-	if _, ok := host.virtualPaths[wantFD]; !ok {
-		t.Fatalf("expected virtual source at %q, got keys %#v", wantFD, host.virtualPaths)
+	files := effectsFileMap(fx)
+	if _, ok := files[wantFD]; !ok {
+		t.Fatalf("expected virtual source at %q, got keys %#v", wantFD, files)
 	}
 	if sess.LastInjectPath("FieldDefault") != wantFD {
 		t.Fatalf("LastInjectPath = %q want %q", sess.LastInjectPath("FieldDefault"), wantFD)
 	}
-	if len(host.entryImports) != 2 {
-		t.Fatalf("entryImports = %#v, want unique [FieldDefault, AppSetting] paths", host.entryImports)
+	if len(fx.Imports) != 2 {
+		t.Fatalf("Imports = %#v, want unique [FieldDefault, AppSetting] paths", fx.Imports)
 	}
 	seen := map[string]int{}
-	for _, p := range host.entryImports {
+	for _, p := range fx.Imports {
 		seen[p]++
 	}
 	if seen[wantFD] != 1 || seen[wantAS] != 1 {
-		t.Fatalf("entryImports = %#v, want one each of %q and %q", host.entryImports, wantFD, wantAS)
+		t.Fatalf("Imports = %#v, want one each of %q and %q", fx.Imports, wantFD, wantAS)
 	}
 }
 
@@ -273,7 +263,7 @@ func TestValidateInjectAppModels_Duplicate(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, _, _ := newTestSession(t, mod)
+	sess, _ := newTestSession(t, mod)
 	a := "/virtual/modules/partner/service/models/fd_a.ts"
 	b := "/virtual/modules/partner/service/models/fd_b.ts"
 	err := ValidateInjectAppModels(sess, []*parser.ParserResult{
@@ -290,8 +280,8 @@ func TestDecideSkipsCore(t *testing.T) {
 		Name: "core", Path: "/virtual/modules/core",
 		ApplicationStr: "core", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, _, _ := newTestSession(t, mod)
-	if err := InjectAppModels(sess, nil); err != nil {
+	sess, _ := newTestSession(t, mod)
+	if _, err := InjectAppModels(sess, nil); err != nil {
 		t.Fatalf("inject: %v", err)
 	}
 	for _, name := range []string{"FieldDefault", "AppSetting"} {
@@ -306,10 +296,10 @@ func TestDecide_HandwrittenSkipsInject(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, _, db := newTestSession(t, mod)
+	sess, db := newTestSession(t, mod)
 	hand := "/virtual/modules/partner/service/models/field_default.ts"
 	seedDeclaration(t, db, "FieldDefault", "hand", hand, "partner")
-	if err := InjectAppModels(sess, nil); err != nil {
+	if _, err := InjectAppModels(sess, nil); err != nil {
 		t.Fatalf("inject: %v", err)
 	}
 	plan := sess.Plan("FieldDefault")
@@ -323,8 +313,8 @@ func TestProcessDedup_OtherModuleSkips(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sessA, _, db := newTestSession(t, modA)
-	if err := InjectAppModels(sessA, nil); err != nil {
+	sessA, db := newTestSession(t, modA)
+	if _, err := InjectAppModels(sessA, nil); err != nil {
 		t.Fatalf("inject A: %v", err)
 	}
 	if !sessA.Plan("FieldDefault").NeedInject {
@@ -335,14 +325,12 @@ func TestProcessDedup_OtherModuleSkips(t *testing.T) {
 		Name: "partner_bank", Path: "/virtual/modules/partner_bank",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	hostB := &fakeHost{
-		mod:          modB,
-		db:           db,
-		modulesPath:  "/virtual/modules",
-		virtualPaths: map[string]string{},
-	}
-	sessB := NewSession(hostB, sessA.Registry())
-	if err := InjectAppModels(sessB, nil); err != nil {
+	sessB := NewSession(BuildCtx{
+		Module:      modB,
+		DB:          db,
+		ModulesPath: "/virtual/modules",
+	}, sessA.Registry())
+	if _, err := InjectAppModels(sessB, nil); err != nil {
 		t.Fatalf("inject B: %v", err)
 	}
 	if plan := sessB.Plan("FieldDefault"); plan.NeedInject {
@@ -355,13 +343,14 @@ func TestBundleInjectAppModels_SkipsHandwritten(t *testing.T) {
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, host, db := newTestSession(t, mod)
+	sess, db := newTestSession(t, mod)
 	seedDeclaration(t, db, "FieldDefault", "hand", "/virtual/modules/partner/service/models/field_default.ts", "partner")
 	base := &meta.Module{
 		Name: "base", Path: "/virtual/modules/base",
 		ApplicationStr: "base", ServiceEntryPoint: "service/index.ts",
 	}
-	if err := BundleInjectAppModels(sess, []*meta.Module{mod, base}); err != nil {
+	fx, err := BundleInjectAppModels(sess, []*meta.Module{mod, base})
+	if err != nil {
 		t.Fatalf("bundle: %v", err)
 	}
 	if paths := sess.InjectPaths("FieldDefault"); len(paths) != 1 {
@@ -371,11 +360,12 @@ func TestBundleInjectAppModels_SkipsHandwritten(t *testing.T) {
 	if paths := sess.InjectPaths("FieldDefault"); paths[0] != want {
 		t.Fatalf("path = %q want %q", paths[0], want)
 	}
-	if _, ok := host.virtualPaths[want]; !ok {
+	files := effectsFileMap(fx)
+	if _, ok := files[want]; !ok {
 		t.Fatalf("expected virtual source for base at %q", want)
 	}
 	partnerGen := generatedPath(specByNameOrPanic("FieldDefault"), mod.Path)
-	if _, ok := host.virtualPaths[partnerGen]; ok {
+	if _, ok := files[partnerGen]; ok {
 		t.Fatal("must not inject C2 for handwritten-owned app")
 	}
 }
@@ -399,16 +389,17 @@ func TestBundlePrefersExistingGeneratedPath(t *testing.T) {
 		Name: "sibling", Path: "/virtual/modules/sibling",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sess, host, db := newTestSession(t, mod)
+	sess, db := newTestSession(t, mod)
 	canon := "/virtual/modules/partner/service/models/__generated__/field_default.ts"
 	seedDeclaration(t, db, "FieldDefault", "virt", canon, "partner")
-	if err := BundleInjectAppModels(sess, []*meta.Module{mod}); err != nil {
+	fx, err := BundleInjectAppModels(sess, []*meta.Module{mod})
+	if err != nil {
 		t.Fatalf("bundle: %v", err)
 	}
 	if sess.LastInjectPath("FieldDefault") != canon {
 		t.Fatalf("path = %q want canonical %q", sess.LastInjectPath("FieldDefault"), canon)
 	}
-	if _, ok := host.virtualPaths[canon]; !ok {
+	if _, ok := effectsFileMap(fx)[canon]; !ok {
 		t.Fatal("expected virtual source at canonical meta path")
 	}
 }

@@ -11,39 +11,40 @@ import (
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
-// BundleInjectAppModels registers C2 inject sources for each distinct non-core
-// application represented by modules and merges paths into entry-point imports.
-// Runs every registered Spec against the same modules list.
-func BundleInjectAppModels(sess *Session, modules []*meta.Module) error {
-	if sess == nil || sess.host == nil {
-		return nil
+// BundleInjectAppModels materializes C2 inject sources for each distinct non-core
+// application represented by modules. The caller applies returned Effects.
+func BundleInjectAppModels(sess *Session, modules []*meta.Module) (Effects, error) {
+	var out Effects
+	if sess == nil {
+		return out, nil
 	}
 	for _, spec := range sess.Registry().specsList() {
-		if err := BundleOne(sess, spec.ModelName, modules); err != nil {
-			return err
+		fx, err := BundleOne(sess, spec.ModelName, modules)
+		if err != nil {
+			return out, err
 		}
+		out.Files = append(out.Files, fx.Files...)
 	}
-	if paths := sess.allInjectPaths(); len(paths) > 0 {
-		imports := mergeUniqueStrings(sess.host.EntryPointImports(), paths)
-		sess.host.SetEntryPointImports(imports)
-	}
-	return nil
+	out.Imports = sess.effectsImports()
+	return out, nil
 }
 
-// BundleOne registers inject sources for one Spec (legacy Ensure*VirtualImports adapters).
-func BundleOne(sess *Session, modelName string, modules []*meta.Module) error {
-	if sess == nil || sess.host == nil {
-		return nil
+// BundleOne materializes inject sources for one Spec.
+func BundleOne(sess *Session, modelName string, modules []*meta.Module) (Effects, error) {
+	var out Effects
+	if sess == nil {
+		return out, nil
 	}
 	spec, ok := sess.Registry().lookupPtr(modelName)
 	if !ok {
-		return nil
+		return out, nil
 	}
 	return bundleSpec(sess, spec, modules)
 }
 
-func bundleSpec(sess *Session, spec *Spec, modules []*meta.Module) error {
-	modulesPath := strings.TrimSpace(sess.host.ModulesPath())
+func bundleSpec(sess *Session, spec *Spec, modules []*meta.Module) (Effects, error) {
+	var out Effects
+	modulesPath := strings.TrimSpace(sess.ctx.ModulesPath)
 	seenApp := make(map[string]struct{})
 	for _, mod := range modules {
 		if mod == nil {
@@ -61,9 +62,9 @@ func bundleSpec(sess *Session, spec *Spec, modules []*meta.Module) error {
 		}
 		seenApp[app] = struct{}{}
 
-		existing, err := dbLoadModels(spec, sess.host.SessionDB(), app)
+		existing, err := dbLoadModels(spec, sess.ctx.DB, app)
 		if err != nil {
-			return xfmt.Errorf("load %s models for application %q: %w", spec.ModelName, app, err)
+			return out, xfmt.Errorf("load %s models for application %q: %w", spec.ModelName, app, err)
 		}
 		if len(handwrittenModels(spec, existing)) > 0 {
 			continue
@@ -81,7 +82,8 @@ func bundleSpec(sess *Session, spec *Spec, modules []*meta.Module) error {
 			mp = filepath.Dir(mod.Path)
 		}
 		source := generatedSource(spec, mp, app)
-		sess.host.RegisterVirtualSource(path, source)
+		out.Files = append(out.Files, VirtualFile{Path: path, Contents: source})
+		out.Imports = append(out.Imports, path)
 	}
-	return nil
+	return out, nil
 }

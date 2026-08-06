@@ -48,32 +48,27 @@ func newInjectTestBuilder(t *testing.T, mod *meta.Module, results []*parser.Pars
 	return builder, buildPlugin, db
 }
 
-func TestInjectHost_NilGuards(t *testing.T) {
-	h := injectHost{}
-	if h.Module() != nil || h.SessionDB() != nil || h.EntryPointImports() != nil {
-		t.Fatal("nil builder host accessors")
-	}
-	if h.ModulesPath() != "" {
-		t.Fatal("nil ModulesPath")
-	}
-	h.SetEntryPointImports([]string{"x"})
-	h.RegisterVirtualSource("p", "c")
-
+func TestInjectEffects_NilGuards(t *testing.T) {
+	(*ModuleBuilder)(nil).applyInjectEffects(injectappmodel.Effects{
+		Files:   []injectappmodel.VirtualFile{{Path: "p", Contents: "c"}},
+		Imports: []string{"x"},
+	})
 	b := &ModuleBuilder{}
-	h2 := injectHost{b: b}
-	if h2.SessionDB() != nil {
-		t.Fatal("nil scope SessionDB")
-	}
-	_ = h2.ModulesPath()
-	_ = h2.EntryPointImports()
-	h2.SetEntryPointImports([]string{"y"})
-	h2.RegisterVirtualSource("p2", "c2")
-
+	b.applyInjectEffects(injectappmodel.Effects{
+		Files:   []injectappmodel.VirtualFile{{Path: "", Contents: "c"}, {Path: "p2", Contents: "c2"}},
+		Imports: []string{"y"},
+	})
 	if (*ModuleBuilder)(nil).ensureInjectSession() != nil {
 		t.Fatal("nil ensureInjectSession")
 	}
 	(*ModuleBuilder)(nil).releaseInjectSchedules()
 	b.releaseInjectSchedules()
+	if b.sessionDB() != nil {
+		t.Fatal("nil sessionDB")
+	}
+	if b.injectBuildCtx().Module != nil {
+		t.Fatal("empty injectBuildCtx module")
+	}
 }
 
 func TestInjectAppModelsWrappers(t *testing.T) {
@@ -133,15 +128,16 @@ func TestInjectAppModelsWrappers(t *testing.T) {
 		t.Fatal("expected bundle inject paths")
 	}
 
-	host := injectHost{b: builder}
-	if host.Module() != mod || host.SessionDB() == nil || host.ModulesPath() == "" {
-		t.Fatal("live host accessors")
+	ctx := builder.injectBuildCtx()
+	if ctx.Module != mod || ctx.DB == nil || ctx.ModulesPath == "" {
+		t.Fatalf("injectBuildCtx: %+v", ctx)
 	}
-	_ = host.EntryPointImports()
-	host.SetEntryPointImports([]string{"/imp"})
-	host.RegisterVirtualSource("/v.ts", "export {}")
+	builder.applyInjectEffects(injectappmodel.Effects{
+		Files:   []injectappmodel.VirtualFile{{Path: "/v.ts", Contents: "export {}"}},
+		Imports: []string{"/imp"},
+	})
 	if buildPlugin.virtualSources["/v.ts"] == "" {
-		t.Fatal("RegisterVirtualSource")
+		t.Fatal("applyInjectEffects RegisterVirtualSource")
 	}
 }
 

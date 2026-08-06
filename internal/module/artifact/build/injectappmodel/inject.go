@@ -11,38 +11,45 @@ import (
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
-// InjectAppModels runs Decide + Inject for every Spec in the session registry.
-func InjectAppModels(sess *Session, prebuildResults []*parser.ParserResult) error {
+// InjectAppModels runs Decide + Materialize for every Spec and returns Effects
+// for the caller to apply (virtual sources / entry imports).
+func InjectAppModels(sess *Session, prebuildResults []*parser.ParserResult) (Effects, error) {
+	var out Effects
 	if sess == nil {
-		return nil
+		return out, nil
 	}
 	for _, spec := range sess.Registry().specsList() {
-		if err := DecideAndInjectOne(sess, spec.ModelName, prebuildResults); err != nil {
-			return err
+		fx, err := DecideAndInjectOne(sess, spec.ModelName, prebuildResults)
+		if err != nil {
+			return out, err
 		}
+		out.Files = append(out.Files, fx.Files...)
 	}
-	return nil
+	out.Imports = sess.effectsImports()
+	return out, nil
 }
 
-// DecideAndInjectOne runs Decide + Inject for a single Spec (legacy test adapters).
-func DecideAndInjectOne(sess *Session, modelName string, prebuildResults []*parser.ParserResult) error {
+// DecideAndInjectOne runs Decide + Materialize for a single Spec.
+func DecideAndInjectOne(sess *Session, modelName string, prebuildResults []*parser.ParserResult) (Effects, error) {
+	var out Effects
 	if sess == nil {
-		return nil
+		return out, nil
 	}
 	spec, ok := sess.Registry().lookupPtr(modelName)
 	if !ok {
-		return xfmt.Errorf("injectappmodel: unknown Spec %q", modelName)
+		return out, xfmt.Errorf("injectappmodel: unknown Spec %q", modelName)
 	}
 	plan, err := decidePlan(spec, sess, prebuildResults)
 	if err != nil {
-		return err
+		return out, err
 	}
 	sess.SetPlan(spec.ModelName, plan)
-	if err := applyInject(sess, spec, plan); err != nil {
+	fx, err := materializeInject(sess, spec, plan)
+	if err != nil {
 		sess.releaseScheduleFor(spec)
-		return xfmt.Errorf("error injecting %s: %w", spec.ModelName, err)
+		return out, xfmt.Errorf("error injecting %s: %w", spec.ModelName, err)
 	}
-	return nil
+	return fx, nil
 }
 
 // DecideOne runs Decide for one Spec and stores the plan.
@@ -63,24 +70,30 @@ func DecideOne(sess *Session, modelName string, prebuildResults []*parser.Parser
 	return plan, nil
 }
 
-// ApplyInjectOne applies NeedInject for one Spec using the stored plan.
-func ApplyInjectOne(sess *Session, modelName string) error {
+// ApplyInjectOne materializes NeedInject for one Spec using the stored plan.
+func ApplyInjectOne(sess *Session, modelName string) (Effects, error) {
+	var out Effects
 	if sess == nil {
-		return nil
+		return out, nil
 	}
 	spec, ok := sess.Registry().lookupPtr(modelName)
 	if !ok {
-		return xfmt.Errorf("injectappmodel: unknown Spec %q", modelName)
+		return out, xfmt.Errorf("injectappmodel: unknown Spec %q", modelName)
 	}
-	return applyInject(sess, spec, sess.Plan(modelName))
+	fx, err := materializeInject(sess, spec, sess.Plan(modelName))
+	if err != nil {
+		return out, err
+	}
+	fx.Imports = sess.effectsImports()
+	return fx, nil
 }
 
 func decidePlan(spec *Spec, sess *Session, prebuildResults []*parser.ParserResult) (Plan, error) {
 	plan := Plan{}
-	if spec == nil || sess == nil || sess.host == nil {
+	if spec == nil || sess == nil {
 		return plan, nil
 	}
-	mod := sess.host.Module()
+	mod := sess.ctx.Module
 	if mod == nil {
 		return plan, nil
 	}
@@ -97,7 +110,7 @@ func decidePlan(spec *Spec, sess *Session, prebuildResults []*parser.ParserResul
 		return plan, xfmt.Errorf("%s: application %q has multiple handwritten %s models in module %q", spec.DuplicateCode, app, spec.ModelName, mod.Name)
 	}
 
-	existing, err := dbLoadModels(spec, sess.host.SessionDB(), app)
+	existing, err := dbLoadModels(spec, sess.ctx.DB, app)
 	if err != nil {
 		return plan, xfmt.Errorf("load %s models for application %q: %w", spec.ModelName, app, err)
 	}
@@ -152,38 +165,38 @@ func claimFirstNeedInject(reg *Registry, spec *Spec, app, modName string) Plan {
 	return Plan{NeedInject: true, ScheduledApp: app}
 }
 
-func applyInject(sess *Session, spec *Spec, plan Plan) error {
-	if sess == nil || sess.host == nil || spec == nil || !plan.NeedInject {
-		return nil
+// materializeInject builds Effects for a NeedInject plan (no build side effects).
+func materializeInject(sess *Session, spec *Spec, plan Plan) (Effects, error) {
+	var out Effects
+	if sess == nil || spec == nil || !plan.NeedInject {
+		return out, nil
 	}
-	mod := sess.host.Module()
+	mod := sess.ctx.Module
 	if mod == nil {
-		return nil
+		return out, nil
 	}
 	if strings.TrimSpace(mod.Path) == "" {
-		return xfmt.Errorf("%s inject requires a non-empty module path", spec.ModelName)
+		return out, xfmt.Errorf("%s inject requires a non-empty module path", spec.ModelName)
 	}
 	path := generatedPath(spec, mod.Path)
 	sess.rememberInjectPath(spec.ModelName, path)
 
-	imports := mergeUniqueStrings(sess.host.EntryPointImports(), sess.allInjectPaths())
-	sess.host.SetEntryPointImports(imports)
-
-	modulesPath := strings.TrimSpace(sess.host.ModulesPath())
+	modulesPath := strings.TrimSpace(sess.ctx.ModulesPath)
 	if modulesPath == "" {
 		modulesPath = filepath.Dir(mod.Path)
 	}
 	source := generatedSource(spec, modulesPath, mod.ApplicationStr)
-	sess.host.RegisterVirtualSource(path, source)
-	return nil
+	out.Files = []VirtualFile{{Path: path, Contents: source}}
+	out.Imports = []string{path}
+	return out, nil
 }
 
 // ValidateInjectAppModels checks build output for duplicate inject models per application.
 func ValidateInjectAppModels(sess *Session, buildResults []*parser.ParserResult) error {
-	if sess == nil || sess.host == nil {
+	if sess == nil {
 		return nil
 	}
-	mod := sess.host.Module()
+	mod := sess.ctx.Module
 	if mod == nil {
 		return nil
 	}

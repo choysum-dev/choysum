@@ -7,26 +7,34 @@ import "strings"
 
 // Session holds per-build inject plans and paths for Specs in a Registry.
 type Session struct {
-	host           Host
+	ctx            BuildCtx
 	reg            *Registry
 	plans          map[string]Plan
 	injectPaths    map[string][]string
 	lastInjectPath map[string]string
 }
 
-// NewSession creates a Session bound to host and reg.
+// NewSession creates a Session bound to ctx and reg.
 // If reg is nil, DefaultRegistry() is used.
-func NewSession(host Host, reg *Registry) *Session {
+func NewSession(ctx BuildCtx, reg *Registry) *Session {
 	if reg == nil {
 		reg = DefaultRegistry()
 	}
 	return &Session{
-		host:           host,
+		ctx:            ctx,
 		reg:            reg,
 		plans:          make(map[string]Plan),
 		injectPaths:    make(map[string][]string),
 		lastInjectPath: make(map[string]string),
 	}
+}
+
+// Context returns a pointer to the session BuildCtx (tests may mutate fields).
+func (s *Session) Context() *BuildCtx {
+	if s == nil {
+		return nil
+	}
+	return &s.ctx
 }
 
 // Registry returns the Spec/claim registry for this session.
@@ -155,4 +163,14 @@ func (s *Session) releaseScheduleFor(spec *Spec) {
 	s.Registry().ReleaseClaim(spec.ModelName, app)
 	plan.ScheduledApp = ""
 	s.SetPlan(spec.ModelName, plan)
+}
+
+func (s *Session) effectsImports() []string {
+	paths := s.AllInjectPaths()
+	if len(paths) == 0 {
+		return nil
+	}
+	out := make([]string, len(paths))
+	copy(out, paths)
+	return out
 }

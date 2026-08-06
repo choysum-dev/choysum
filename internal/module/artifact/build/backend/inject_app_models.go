@@ -14,10 +14,12 @@ func (b *ModuleBuilder) injectAppModels(prebuildResult *module.BuildResult) erro
 		return nil
 	}
 	sess := b.ensureInjectSession()
-	if err := injectappmodel.InjectAppModels(sess, module.ParserResults(prebuildResult)); err != nil {
+	fx, err := injectappmodel.InjectAppModels(sess, module.ParserResults(prebuildResult))
+	if err != nil {
 		b.releaseInjectSchedules()
 		return err
 	}
+	b.applyInjectEffects(fx)
 	return nil
 }
 
@@ -40,5 +42,10 @@ func (b *ModuleBuilder) BundleInjectAppModels(modules []*meta.Module) error {
 	if b == nil {
 		return nil
 	}
-	return injectappmodel.BundleInjectAppModels(b.ensureInjectSession(), modules)
+	fx, err := injectappmodel.BundleInjectAppModels(b.ensureInjectSession(), modules)
+	if err != nil {
+		return err
+	}
+	b.applyInjectEffects(fx)
+	return nil
 }
