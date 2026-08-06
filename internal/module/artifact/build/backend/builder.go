@@ -905,32 +905,6 @@ func (b *ModuleBuilder) persistModuleModels(moduleID string, models []*meta.Mode
 	return nil
 }
 
-// registerMissingEntryVirtualSource registers a stub when entryPoint is set but
-// the file is not on disk (EnsureServiceEntry virtual path reused across builds).
-func (b *ModuleBuilder) registerMissingEntryVirtualSource() {
-	if b == nil {
-		return
-	}
-	entry := strings.TrimSpace(b.entryPoint)
-	if entry == "" {
-		return
-	}
-	if _, err := os.Stat(entry); err == nil {
-		return
-	}
-	contents := injectappmodel.VirtualServiceEntrySource()
-	if registrar, ok := b.buildPlugin.(interface {
-		RegisterVirtualSource(path string, contents string)
-	}); ok {
-		registrar.RegisterVirtualSource(entry, contents)
-	}
-	if registrar, ok := b.prebuildPlugin.(interface {
-		RegisterVirtualSource(path string, contents string)
-	}); ok {
-		registrar.RegisterVirtualSource(entry, contents)
-	}
-}
-
 func (b *ModuleBuilder) Build() (*module.BuildResult, error) {
 	buildResult, err := b.BuildWithoutPersist()
 	if err != nil {
@@ -945,10 +919,6 @@ func (b *ModuleBuilder) Build() (*module.BuildResult, error) {
 // BuildWithoutPersist compiles and validates the module without writing Module /
 // Model rows. Call Persist inside a short commit transaction afterward.
 func (b *ModuleBuilder) BuildWithoutPersist() (*module.BuildResult, error) {
-	// If a prior Ensure path was reused as entryPoint but the file is not on disk,
-	// register a virtual stub before prebuild so esbuild can resolve it.
-	b.registerMissingEntryVirtualSource()
-
 	// 1. prebuild for parse original model extends
 	prebuildResult, err := b.prebuild()
 	if err != nil {
@@ -1006,8 +976,6 @@ func (b *ModuleBuilder) Persist(buildResult *module.BuildResult) error {
 func (b *ModuleBuilder) Bundle() (*module.BuildResult, error) {
 	// Bundle never persists meta; always release any NeedInject process claim.
 	defer b.releaseInjectSchedules()
-
-	b.registerMissingEntryVirtualSource()
 
 	prebuildResult, err := b.prebuild()
 	if err != nil {

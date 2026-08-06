@@ -16,11 +16,6 @@ func virtualServiceEntryPath(modulePath string) string {
 	return filepath.ToSlash(filepath.Clean(filepath.Join(strings.TrimSpace(modulePath), "service/index.ts")))
 }
 
-// VirtualServiceEntrySource is the minimal TS module used for EnsureServiceEntry.
-func VirtualServiceEntrySource() string {
-	return virtualServiceEntrySource()
-}
-
 // virtualServiceEntrySource is a minimal TS module so esbuild can treat the
 // path as an entry; inject models arrive via EntryPointImports.
 func virtualServiceEntrySource() string {

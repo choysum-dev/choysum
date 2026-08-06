@@ -105,6 +105,12 @@ func decidePlan(spec *Spec, sess *Session, prebuildResults []*parser.ParserResul
 	if strings.TrimSpace(mod.Path) == "" {
 		return plan, nil
 	}
+	// Ensure needs the Spec base model on disk (normally under modules/core).
+	// Skip rather than emit broken absolute imports when the workspace stub
+	// has no core (CLI e2e fixtures, thin lifecycle tests).
+	if !hasServiceEntry && spec.EnsureServiceEntry && !canEnsureServiceEntry(sess, spec, mod.Path) {
+		return plan, nil
+	}
 
 	app := strings.TrimSpace(mod.ApplicationStr)
 	local := modelsIn(spec, prebuildResults, mod.Path)

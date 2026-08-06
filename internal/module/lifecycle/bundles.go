@@ -38,11 +38,9 @@ func (m *ModuleManager) buildBackendBundlesToDir(ctx context.Context, distBundle
 	}
 
 	// Load backend entry modules for each app in install order.
-	// Include modules without ServiceEntryPoint so TranslationTerm Ensure can
-	// still claim a host (e.g. application=web).
 	var backendMods []meta.Module
 	if err := m.runtimeScope.Session().
-		Where("status = ? AND application_str <> '' AND path <> ''", meta.Installed).
+		Where("status = ? AND application_str <> '' AND service_entry_point <> ''", meta.Installed).
 		Order("id ASC").
 		Find(&backendMods).Error; err != nil {
 		return xfmt.Errorf("error loading backend modules: %w", err)

@@ -17,4 +17,3 @@ export { Model } from './orm/decorator/model';
 export { default as Decimal } from '../utils/decimal';
 export { pool, dial } from './orm/model/model_pool';
 export { default as AppSettingBaseModel, type AppSettingModelCtor } from './orm/model/app_setting_base_model';
-export { default as TranslationTermBaseModel, type TranslationTermModelCtor } from './orm/model/translation_term_base_model';

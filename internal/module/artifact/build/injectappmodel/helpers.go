@@ -4,6 +4,7 @@
 package injectappmodel
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -29,6 +30,32 @@ func isGeneratedPath(spec *Spec, path string) bool {
 
 func generatedPath(spec *Spec, modulePath string) string {
 	return filepath.ToSlash(filepath.Clean(filepath.Join(strings.TrimSpace(modulePath), spec.GeneratedRelPath)))
+}
+
+// canEnsureServiceEntry reports whether Ensure may proceed for spec.
+// Virtual unit-test harnesses use a non-existent ModulesPath and are allowed.
+// Real workspaces (ModulesPath exists) require Spec.BaseModelFile on disk so
+// generated sources do not import missing core paths.
+func canEnsureServiceEntry(sess *Session, spec *Spec, modulePath string) bool {
+	if sess == nil || spec == nil {
+		return false
+	}
+	rel := strings.TrimSpace(spec.BaseModelFile)
+	if rel == "" {
+		return true
+	}
+	modulesPath := strings.TrimSpace(sess.ctx.ModulesPath)
+	if modulesPath == "" {
+		modulesPath = filepath.Dir(strings.TrimSpace(modulePath))
+	}
+	if modulesPath == "" || modulesPath == "." {
+		return false
+	}
+	if _, err := os.Stat(modulesPath); err != nil {
+		return true
+	}
+	_, err := os.Stat(filepath.Join(modulesPath, filepath.FromSlash(rel)))
+	return err == nil
 }
 
 func modelsIn(spec *Spec, results []*parser.ParserResult, modulePath string) []*meta.Model {

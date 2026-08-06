@@ -67,14 +67,20 @@ func bundleSpec(sess *Session, spec *Spec, modules []*meta.Module) (Effects, err
 			if !spec.EnsureServiceEntry {
 				continue
 			}
+			if !canEnsureServiceEntry(sess, spec, mod.Path) {
+				continue
+			}
+			// Emit a virtual service entry for this Spec only. Do not mutate
+			// mod.ServiceEntryPoint — otherwise later Specs (FieldDefault /
+			// AppSetting) would incorrectly see a non-empty entry in the same
+			// BundleInjectAppModels pass.
 			entry = virtualServiceEntryPath(mod.Path)
-			mod.ServiceEntryPoint = entry
 			out.Files = append(out.Files, VirtualFile{
 				Path:     entry,
 				Contents: virtualServiceEntrySource(),
 			})
 		} else if spec.EnsureServiceEntry {
-			// Prior Ensure may have persisted a virtual path with no disk file.
+			// Prior Ensure may have left a virtual path with no disk file.
 			if _, err := os.Stat(filepath.Clean(entry)); err != nil {
 				out.Files = append(out.Files, VirtualFile{
 					Path:     filepath.ToSlash(filepath.Clean(entry)),
