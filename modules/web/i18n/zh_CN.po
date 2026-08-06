@@ -1496,11 +1496,6 @@ msgctxt "web/pages/TerminologyEditor"
 msgid "Download PO"
 msgstr "下载 PO"
 
-#: web/pages/TerminologyEditor.vue:52
-msgctxt "web/pages/TerminologyEditor"
-msgid "Failed to load applications"
-msgstr "加载应用列表失败"
-
 #: web/pages/TerminologyEditor.vue:7
 msgctxt "web/pages/TerminologyEditor"
 msgid "Module (required for PO)"
@@ -1605,3 +1600,7 @@ msgstr "详情"
 msgctxt "web/stores/breadcrumbStore"
 msgid "Page"
 msgstr "页面"
+
+#~ msgctxt "web/pages/TerminologyEditor"
+#~ msgid "Failed to load applications"
+#~ msgstr "加载应用列表失败"

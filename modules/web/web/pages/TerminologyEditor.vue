@@ -57,7 +57,7 @@ import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
 import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
 import OTextField from '@/web/web/components/field/OTextField.vue';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createStoreByModel, listRegisteredModelNames } from '@/web/web/stores/registry';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
 import { downloadTerminologyPo } from '@/web/web/stores/i18nStore/po_download';
@@ -83,33 +83,26 @@ const canDownloadPo = computed(
   () => Boolean(selectedApp.value.trim() && moduleFilter.value.trim() && i18nStore.terminologyLang)
 );
 
-async function loadApplications() {
-  try {
-    const appStore = createStoreByModel('meta.MetaApplication', {
-      storeId: `TerminologyEditor_MetaApplication_${route.fullPath}`,
-      scopeManager,
-    });
-    const rows = (await appStore.Search([] as any, {
-      fields: ['Name'] as any,
-      limit: 500,
-    })) as any[];
-    const names = (rows || [])
-      .map((r: any) => String(r?.Name || r?.name || '').trim())
-      .filter((n: string) => n && n !== 'core');
-    applications.value = [...new Set(names)].sort();
-  } catch (err: any) {
-    ElMessage.warning(err?.message || _t('Failed to load applications'));
-    applications.value = [];
-  }
+const translationTermSuffix = '.TranslationTerm';
+
+function loadApplications() {
+  const names = listRegisteredModelNames()
+    .filter((modelName) => modelName.endsWith(translationTermSuffix))
+    .map((modelName) => modelName.slice(0, -translationTermSuffix.length).trim())
+    .filter((app) => app && app !== 'core');
+  applications.value = [...new Set(names)].sort();
 }
 
 function wrapStoreForReload(store: WebModelStore<any>): WebModelStore<any> {
+  if ((store.UpdateById as any).__reloadsTerminology) {
+    return store;
+  }
   const original = store.UpdateById.bind(store) as (
     id: string,
     vals: Record<string, unknown>,
     fields?: string[]
   ) => Promise<unknown>;
-  store.UpdateById = (async (id: string, vals: Record<string, unknown>, fields?: string[]) => {
+  const wrapped = (async (id: string, vals: Record<string, unknown>, fields?: string[]) => {
     const out = await original(id, vals, fields);
     try {
       await i18nStore.reloadTerminology();
@@ -118,12 +111,15 @@ function wrapStoreForReload(store: WebModelStore<any>): WebModelStore<any> {
     }
     return out;
   }) as typeof store.UpdateById;
+  (wrapped as any).__reloadsTerminology = true;
+  store.UpdateById = wrapped;
   return store;
 }
 
 function onApplicationChange() {
   const app = selectedApp.value.trim();
   termStore.value = null;
+  moduleFilter.value = '';
   if (!app) return;
   try {
     const store = createStoreByModel(`${app}.TranslationTerm`, {
@@ -160,7 +156,7 @@ async function onDownloadPo() {
 }
 
 onMounted(() => {
-  void loadApplications();
+  loadApplications();
 });
 </script>
 

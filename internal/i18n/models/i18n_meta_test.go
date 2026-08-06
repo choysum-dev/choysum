@@ -110,8 +110,8 @@ func TestEnsureI18nMetaSeedsTerminologyEditorAllows(t *testing.T) {
 	if err := db.Table("auth_role_method_access").Where("role_id = ?", roleID).Count(&count).Error; err != nil {
 		t.Fatal(err)
 	}
-	if count != 3 {
-		t.Fatalf("expected 3 RoleMethodAccess rows (Search/Browse/Update), got %d", count)
+	if count != 4 {
+		t.Fatalf("expected 4 RoleMethodAccess rows (TT Search/Browse/Update + I18n SearchTerms), got %d", count)
 	}
 
 	var getTranslationsAllows int64
@@ -126,8 +126,27 @@ func TestEnsureI18nMetaSeedsTerminologyEditorAllows(t *testing.T) {
 		t.Fatalf("GetTranslations must not be bound to terminology.editor, got %d", getTranslationsAllows)
 	}
 
+	var searchTermsAllows int64
+	if err := db.Raw(`
+		SELECT COUNT(*) FROM auth_role_method_access rma
+		JOIN meta_service s ON s.id = rma.meta_service_id
+		JOIN meta_model m ON m.id = s.model_id
+		WHERE rma.role_id = ? AND s.name = ? AND m.name = ? AND rma.deleted_at IS NULL
+	`, roleID, "SearchTerms", "I18n").Scan(&searchTermsAllows).Error; err != nil {
+		t.Fatal(err)
+	}
+	if searchTermsAllows != 1 {
+		t.Fatalf("SearchTerms must be bound to terminology.editor for PO export, got %d", searchTermsAllows)
+	}
+
 	if err := EnsureI18nMeta(rs, "web", sql.NullString{}); err != nil {
 		t.Fatalf("EnsureI18nMeta idempotent seed: %v", err)
+	}
+	if err := db.Table("auth_role_method_access").Where("role_id = ?", roleID).Count(&count).Error; err != nil {
+		t.Fatal(err)
+	}
+	if count != 4 {
+		t.Fatalf("idempotent seed must keep 4 RoleMethodAccess rows, got %d", count)
 	}
 }
 
@@ -475,11 +494,12 @@ func TestLoadEffectiveTranslationTermServiceIDsErrors(t *testing.T) {
 	rs := newTestScope(t)
 	db := rs.Session().DB
 	migrateI18nDualStoreTables(t, db)
-	if _, err := loadEffectiveTranslationTermServiceIDs(db, "crm"); err == nil || !errors.Is(err, gorm.ErrRecordNotFound) && !strings.Contains(err.Error(), "record not found") {
-		// gorm Take returns ErrRecordNotFound
-		if err == nil {
-			t.Fatal("expected missing TranslationTerm model error")
-		}
+	_, err := loadEffectiveTranslationTermServiceIDs(db, "crm")
+	if err == nil {
+		t.Fatal("expected missing TranslationTerm model error")
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("expected gorm.ErrRecordNotFound, got %v", err)
 	}
 
 	seedTranslationTermEffective(t, db, "erp")

@@ -1531,11 +1531,6 @@ msgctxt "web/pages/TerminologyEditor"
 msgid "Download PO"
 msgstr ""
 
-#: web/pages/TerminologyEditor.vue:52
-msgctxt "web/pages/TerminologyEditor"
-msgid "Failed to load applications"
-msgstr ""
-
 #: web/pages/TerminologyEditor.vue:7
 msgctxt "web/pages/TerminologyEditor"
 msgid "Module (required for PO)"
