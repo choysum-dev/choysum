@@ -5,11 +5,13 @@ package lifecycle
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	"github.com/choysum-dev/choysum/pkg/meta"
 )
 
@@ -77,10 +79,105 @@ func TestPickBackendBundleRepresentative_FallsBackToTranslationTermOwner(t *test
 	if got := pickBackendBundleRepresentative(nil, nil, []*meta.Module{nil, tt}); got != tt {
 		t.Fatalf("expected TT fallback, got %#v", got)
 	}
+	// orderedApps non-empty but modsByApp missing/empty → still fall through to TT.
+	if got := pickBackendBundleRepresentative([]string{"auth"}, map[string][]*meta.Module{"auth": {}}, []*meta.Module{tt}); got != tt {
+		t.Fatalf("expected TT fallback for empty mods, got %#v", got)
+	}
+	if got := pickBackendBundleRepresentative([]string{"auth"}, nil, []*meta.Module{tt}); got != tt {
+		t.Fatalf("expected TT fallback for nil modsByApp, got %#v", got)
+	}
 	be := &meta.Module{Name: "auth", Path: "/m/auth", ApplicationStr: "auth", ServiceEntryPoint: "s"}
 	modsByApp := map[string][]*meta.Module{"auth": {be}}
 	if got := pickBackendBundleRepresentative([]string{"auth"}, modsByApp, []*meta.Module{tt}); got != be {
 		t.Fatalf("expected backend rep, got %#v", got)
+	}
+}
+
+type stubBundlerToDir struct {
+	err error
+	n   int
+	dir string
+}
+
+func (s *stubBundlerToDir) BundleToDirCtx(_ context.Context, distAppDir string) (*module.BuildResult, error) {
+	s.n++
+	s.dir = distAppDir
+	if s.err != nil {
+		return nil, s.err
+	}
+	return &module.BuildResult{}, nil
+}
+
+func TestWriteBackendBundleToDir(t *testing.T) {
+	if err := writeBackendBundleToDir(context.Background(), struct{}{}, t.TempDir()); err == nil ||
+		!strings.Contains(err.Error(), "does not support BundleToDirCtx") {
+		t.Fatalf("expected BundlerToDir !ok error, got %v", err)
+	}
+
+	fail := &stubBundlerToDir{err: errors.New("esbuild boom")}
+	err := writeBackendBundleToDir(context.Background(), fail, t.TempDir())
+	if err == nil || !strings.Contains(err.Error(), "backend bundle failed for bundles") {
+		t.Fatalf("expected wrap, got %v", err)
+	}
+
+	ok := &stubBundlerToDir{}
+	dir := t.TempDir()
+	if err := writeBackendBundleToDir(context.Background(), ok, dir); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if ok.n != 1 || ok.dir != dir {
+		t.Fatalf("expected one BundleToDirCtx(%q), got n=%d dir=%q", dir, ok.n, ok.dir)
+	}
+}
+
+func TestBuildBackendBundlesToDir_NoRepresentativeReturnsNil(t *testing.T) {
+	modulesPath := t.TempDir()
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
+		t.Fatalf("auto migrate: %v", err)
+	}
+	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	manager := NewModuleManager(runtimeScope, nil)
+	manager.bootstrapOnce.Do(func() {})
+
+	if err := manager.buildBackendBundlesToDir(context.Background(), t.TempDir(), nil); err != nil {
+		t.Fatalf("expected nil with no reps, got %v", err)
+	}
+}
+
+func TestBuildBackendBundlesToDir_SuccessfulWrite(t *testing.T) {
+	modulesPath := t.TempDir()
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
+		t.Fatalf("auto migrate: %v", err)
+	}
+	modPath := filepath.Join(modulesPath, "core")
+	if err := os.MkdirAll(filepath.Join(modPath, "service"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(modPath, "service", "index.ts"), []byte("export {}\n"), 0o644); err != nil {
+		t.Fatalf("write entry: %v", err)
+	}
+	// core-only: no C2 owners, so BundleInjectAppModels runs with an empty list.
+	if err := db.Create(&meta.Module{
+		Name:              "core",
+		ApplicationStr:    "core",
+		Status:            meta.Installed,
+		ServiceEntryPoint: "service/index.ts",
+		Path:              modPath,
+	}).Error; err != nil {
+		t.Fatalf("seed module: %v", err)
+	}
+
+	prev := writeBackendBundleToDirFn
+	writeBackendBundleToDirFn = func(context.Context, any, string) error { return nil }
+	t.Cleanup(func() { writeBackendBundleToDirFn = prev })
+
+	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	manager := NewModuleManager(runtimeScope, nil)
+	manager.bootstrapOnce.Do(func() {})
+	if err := manager.buildBackendBundlesToDir(context.Background(), t.TempDir(), nil); err != nil {
+		t.Fatalf("expected success, got %v", err)
 	}
 }
 

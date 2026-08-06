@@ -134,6 +134,18 @@ func (m *ModuleManager) buildBackendBundlesToDir(ctx context.Context, distBundle
 	if err := ensureBundleC2VirtualImports(builder, fieldDefaultOwners, appSettingOwners, translationTermOwners); err != nil {
 		return err
 	}
+	if err := writeBackendBundleToDirFn(ctx, builder, distBundlesDir); err != nil {
+		return err
+	}
+	return nil
+}
+
+// writeBackendBundleToDirFn is the BundleToDir step for multi-app bundles.
+// Tests swap it to avoid running a full esbuild publish.
+var writeBackendBundleToDirFn = writeBackendBundleToDir
+
+// writeBackendBundleToDir type-asserts the builder and writes bundles/index.js.
+func writeBackendBundleToDir(ctx context.Context, builder any, distBundlesDir string) error {
 	bundlerToDir, ok := builder.(module.BundlerToDir)
 	if !ok {
 		return xfmt.Errorf("backend builder does not support BundleToDirCtx")
@@ -141,7 +153,6 @@ func (m *ModuleManager) buildBackendBundlesToDir(ctx context.Context, distBundle
 	if _, err := bundlerToDir.BundleToDirCtx(ctx, distBundlesDir); err != nil {
 		return xfmt.Errorf("backend bundle failed for bundles: %w", err)
 	}
-
 	return nil
 }
 
