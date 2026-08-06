@@ -4,6 +4,7 @@
 package injectappmodel
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -75,7 +76,7 @@ func bundleSpec(sess *Session, spec *Spec, modules []*meta.Module) (Effects, err
 			// AppSetting) would incorrectly see a non-empty entry in the same
 			// BundleInjectAppModels pass. Never shadow a real on-disk entry.
 			entry = virtualServiceEntryPath(mod.Path)
-			if _, err := os.Stat(filepath.Clean(entry)); err != nil {
+			if _, err := os.Stat(filepath.Clean(entry)); errors.Is(err, os.ErrNotExist) {
 				out.Files = append(out.Files, VirtualFile{
 					Path:     entry,
 					Contents: virtualServiceEntrySource(),
@@ -83,9 +84,11 @@ func bundleSpec(sess *Session, spec *Spec, modules []*meta.Module) (Effects, err
 			}
 		} else if spec.EnsureServiceEntry {
 			// Prior Ensure may have left a virtual path with no disk file.
-			if _, err := os.Stat(filepath.Clean(entry)); err != nil {
+			// Persist/meta may store relative "service/index.ts" — resolve first.
+			absEntry := resolveServiceEntryPath(mod, entry)
+			if _, err := os.Stat(absEntry); errors.Is(err, os.ErrNotExist) {
 				out.Files = append(out.Files, VirtualFile{
-					Path:     filepath.ToSlash(filepath.Clean(entry)),
+					Path:     filepath.ToSlash(absEntry),
 					Contents: virtualServiceEntrySource(),
 				})
 			}

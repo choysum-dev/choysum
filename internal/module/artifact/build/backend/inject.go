@@ -46,6 +46,9 @@ func (b *ModuleBuilder) releaseInjectSchedules() {
 		return
 	}
 	b.injectSession.ReleaseSchedules()
+	// Failure paths call this without the success-path Revert; Bundle defers it.
+	// Always restore Ensure'd Module.ServiceEntryPoint so virtual paths never leak.
+	b.injectSession.RevertEnsuredServiceEntry()
 }
 
 // applyInjectEffects registers virtual sources and merges entry-point imports.

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"errors"
 	"github.com/choysum-dev/choysum/internal/parser"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
@@ -196,9 +197,7 @@ func materializeInject(sess *Session, spec *Spec, plan Plan) (Effects, error) {
 		// If a real service entry already exists on disk (common when the builder
 		// was given an entryPoint but Module.ServiceEntryPoint was left empty),
 		// adopt it — never register a virtual stub that would shadow the file.
-		if _, err := os.Stat(filepath.Clean(entryPath)); err == nil {
-			// Sibling Specs now see a non-empty entry; no virtual Effects needed.
-		} else {
+		if _, err := os.Stat(filepath.Clean(entryPath)); errors.Is(err, os.ErrNotExist) {
 			out.Files = append(out.Files, VirtualFile{
 				Path:     entryPath,
 				Contents: virtualServiceEntrySource(),
@@ -221,7 +220,7 @@ func materializeInject(sess *Session, spec *Spec, plan Plan) (Effects, error) {
 	}
 	source := generatedSource(spec, modulesPath, mod.ApplicationStr)
 	out.Files = append(out.Files, VirtualFile{Path: path, Contents: source})
-	out.Imports = []string{path}
+	out.Imports = append(out.Imports, path)
 	return out, nil
 }
 

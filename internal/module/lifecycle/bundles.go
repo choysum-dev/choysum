@@ -103,6 +103,12 @@ func (m *ModuleManager) buildBackendBundlesToDir(ctx context.Context, distBundle
 			translationTermOwners = append(translationTermOwners, owner)
 		}
 	}
+	// backendMods excludes empty ServiceEntryPoint, so Ensure-only apps (e.g. web)
+	// never reach orderedApps. Collect TranslationTerm owners from all installed
+	// non-core modules so BundleInject can materialize virtual service + model.
+	translationTermOwners = appendTranslationTermOwnersFromInstalled(
+		translationTermOwners, installedMods,
+	)
 	if err := os.WriteFile(entryFilePath, []byte(b.String()), 0o644); err != nil {
 		return xfmt.Errorf("write bundles entry: %w", err)
 	}
@@ -229,4 +235,37 @@ func pickTranslationTermOwnerModule(app string, mods []*meta.Module) *meta.Modul
 		return withEntry
 	}
 	return withoutEntry
+}
+
+// appendTranslationTermOwnersFromInstalled adds TranslationTerm owners for apps
+// that only appear with empty ServiceEntryPoint (excluded from backendMods).
+func appendTranslationTermOwnersFromInstalled(owners []*meta.Module, installed []meta.Module) []*meta.Module {
+	seenApp := make(map[string]struct{}, len(owners))
+	for _, owner := range owners {
+		if owner == nil {
+			continue
+		}
+		if app := strings.TrimSpace(owner.ApplicationStr); app != "" {
+			seenApp[app] = struct{}{}
+		}
+	}
+	byApp := map[string][]*meta.Module{}
+	for i := range installed {
+		mod := &installed[i]
+		app := strings.TrimSpace(mod.ApplicationStr)
+		if app == "" || app == "core" {
+			continue
+		}
+		if _, ok := seenApp[app]; ok {
+			continue
+		}
+		byApp[app] = append(byApp[app], mod)
+	}
+	for app, mods := range byApp {
+		if owner := pickTranslationTermOwnerModule(app, mods); owner != nil {
+			owners = append(owners, owner)
+			seenApp[app] = struct{}{}
+		}
+	}
+	return owners
 }

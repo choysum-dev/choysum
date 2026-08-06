@@ -195,8 +195,14 @@ async function ensureTermUniqueIndex(ctor: InstantiableModelCtor<TranslationTerm
       await exec.call(($choysum as any).db, ddl, '[]');
       ensuredUniqueIndexTables.add(table);
     }
-  } catch {
-    // Best-effort: uniqueness still enforced when writers collide.
+  } catch (err) {
+    // MySQL lacks CREATE UNIQUE INDEX IF NOT EXISTS; duplicate-name failures mean
+    // the index already exists — cache it so we do not retry DDL on every call.
+    const msg = String((err as any)?.message ?? err ?? '');
+    if (/duplicate|already exists|exists/i.test(msg)) {
+      ensuredUniqueIndexTables.add(table);
+    }
+    // Best-effort otherwise: uniqueness still enforced when writers collide.
   }
 }
 
@@ -242,8 +248,9 @@ export default class TranslationTermBaseModel extends BaseModel {
   Comments!: string;
 
   /**
-   * Gateway catalog read: literal terms for `lang`, optionally filtered by module_names.
-   * Shape matches Go I18n GetTranslations (terms_by_module: module → scope → src → value).
+   * Gateway catalog read: language-wide term hash; `module_names` filters
+   * `terms_by_module` only (empty → `{}`, matching Go I18n GetTranslations).
+   * Shape: terms_by_module module → scope → src → value (literal kind only).
    */
   static async GetTranslations(
     this: InstantiableModelCtor<TranslationTermBaseModel>,
@@ -273,16 +280,14 @@ export default class TranslationTermBaseModel extends BaseModel {
 
     await ensureTermUniqueIndex(this);
 
-    const moduleNames = parseModuleNames(req);
-    const condition: any =
-      moduleNames.length > 0
-        ? { And: [['Lang', '=', lang], ['Module', 'in', moduleNames]] }
-        : { And: [['Lang', '=', lang]] };
-
-    const rows = (await (this as any).Search(condition, {
-      fields: ['Module', 'Scope', 'Src', 'Value', 'Kind', 'Source'] as any,
-      limit: 0,
-    } as any)) as TranslationTermBaseModel[];
+    // Match Go TermStore: hash is language-wide; module_names only filters the payload.
+    const rows = (await (this as any).Search(
+      { And: [['Lang', '=', lang]] },
+      {
+        fields: ['Module', 'Scope', 'Src', 'Value', 'Kind', 'Source'] as any,
+        limit: 0,
+      } as any
+    )) as TranslationTermBaseModel[];
 
     const list = Array.isArray(rows) ? rows : [];
     const hash = computeTermHash(
@@ -300,16 +305,21 @@ export default class TranslationTermBaseModel extends BaseModel {
       return { lang, hash, unchanged: true };
     }
 
+    const moduleNames = parseModuleNames(req);
+    // Empty module_names → empty terms_by_module (Go TermsByModules([], …)).
     const termsByModule: Record<string, Record<string, Record<string, string>>> = {};
-    for (const row of list) {
-      if (normalizeKind((row as any).Kind) !== KIND_LITERAL) continue;
-      const mod = String((row as any).Module || '').trim();
-      const scope = String((row as any).Scope || '');
-      const src = String((row as any).Src || '');
-      if (!mod || !src) continue;
-      if (!termsByModule[mod]) termsByModule[mod] = {};
-      if (!termsByModule[mod][scope]) termsByModule[mod][scope] = {};
-      termsByModule[mod][scope][src] = String((row as any).Value ?? '');
+    if (moduleNames.length > 0) {
+      const wanted = new Set(moduleNames);
+      for (const row of list) {
+        if (normalizeKind((row as any).Kind) !== KIND_LITERAL) continue;
+        const mod = String((row as any).Module || '').trim();
+        const scope = String((row as any).Scope || '');
+        const src = String((row as any).Src || '');
+        if (!mod || !src || !wanted.has(mod)) continue;
+        if (!termsByModule[mod]) termsByModule[mod] = {};
+        if (!termsByModule[mod][scope]) termsByModule[mod][scope] = {};
+        termsByModule[mod][scope][src] = String((row as any).Value ?? '');
+      }
     }
 
     return {

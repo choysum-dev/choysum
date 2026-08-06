@@ -4,6 +4,7 @@
 package injectappmodel
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -52,10 +53,32 @@ func canEnsureServiceEntry(sess *Session, spec *Spec, modulePath string) bool {
 		return false
 	}
 	if _, err := os.Stat(modulesPath); err != nil {
-		return true
+		// Virtual harnesses use a non-existent ModulesPath; permission / other
+		// errors must not unlock Ensure over an unverified base model.
+		return errors.Is(err, os.ErrNotExist)
 	}
 	_, err := os.Stat(filepath.Join(modulesPath, filepath.FromSlash(rel)))
 	return err == nil
+}
+
+// resolveServiceEntryPath joins relative ServiceEntryPoint values against the
+// module root. Absolute paths are cleaned as-is.
+func resolveServiceEntryPath(mod *meta.Module, entry string) string {
+	entry = strings.TrimSpace(entry)
+	if entry == "" {
+		return ""
+	}
+	if filepath.IsAbs(entry) {
+		return filepath.Clean(entry)
+	}
+	root := ""
+	if mod != nil {
+		root = strings.TrimSpace(mod.Path)
+	}
+	if root == "" {
+		return filepath.Clean(entry)
+	}
+	return filepath.Clean(filepath.Join(root, entry))
 }
 
 func modelsIn(spec *Spec, results []*parser.ParserResult, modulePath string) []*meta.Model {

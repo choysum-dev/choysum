@@ -162,6 +162,30 @@ func TestDecide_EmptyServiceEntry_SkipsFieldDefaultWithoutEnsure(t *testing.T) {
 	}
 }
 
+func TestResolveServiceEntryPathAndCanEnsure(t *testing.T) {
+	mod := &meta.Module{Name: "web", Path: "/virtual/modules/web"}
+	if got := resolveServiceEntryPath(mod, "service/index.ts"); got != "/virtual/modules/web/service/index.ts" {
+		t.Fatalf("relative resolve = %q", got)
+	}
+	if got := resolveServiceEntryPath(mod, "/abs/service/index.ts"); got != "/abs/service/index.ts" {
+		t.Fatalf("absolute resolve = %q", got)
+	}
+
+	dir := t.TempDir()
+	sess, _ := newTestSession(t, &meta.Module{Name: "x", Path: filepath.Join(dir, "x"), ApplicationStr: "x"})
+	sess.Context().ModulesPath = dir
+	spec := Spec{BaseModelFile: "core/service/orm/model/translation_term_base_model.ts"}
+	// ModulesPath exists but base model missing → deny Ensure.
+	if canEnsureServiceEntry(sess, &spec, filepath.Join(dir, "x")) {
+		t.Fatal("expected canEnsure false when base model missing on disk")
+	}
+	// Non-existent ModulesPath (virtual harness) → allow.
+	sess.Context().ModulesPath = filepath.Join(dir, "missing-modules-root")
+	if !canEnsureServiceEntry(sess, &spec, filepath.Join(dir, "x")) {
+		t.Fatal("expected canEnsure true for missing ModulesPath harness")
+	}
+}
+
 func TestInject_EnsureServiceEntry_AdoptsExistingDiskEntry(t *testing.T) {
 	dir := t.TempDir()
 	modPath := filepath.Join(dir, "auth")
