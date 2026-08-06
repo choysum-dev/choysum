@@ -4,7 +4,12 @@
 import { Model } from '../decorator';
 import { ChoysumError } from '@/core/service/error';
 import { MetadataStorage } from '../metadata/storage';
-import TranslationTermBaseModel, { __resetTranslationTermUniqueIndexTablesForTest } from './translation_term_base_model';
+import TranslationTermBaseModel, {
+  __compareTermHashKeysForTest,
+  __normalizeKindForTest,
+  __normalizeSourceForTest,
+  __resetTranslationTermUniqueIndexTablesForTest,
+} from './translation_term_base_model';
 
 @Model('TranslationTerm', { application: 'ttcov', softDelete: false })
 class TtCovTerm extends TranslationTermBaseModel {}
@@ -211,6 +216,130 @@ test('ensureTermUniqueIndex covers dialects, cache, and duplicate errors', async
     restore();
     __resetTranslationTermUniqueIndexTablesForTest();
   }
+});
+
+test('GetTranslations covers nullish/falsy branches and default req', async () => {
+  __resetTranslationTermUniqueIndexTablesForTest();
+  // Default parameter `req = {}` (no-arg call).
+  await expectRejects(TtCovTerm.GetTranslations(), 'TRANSLATION_TERM_LANG_REQUIRED');
+
+  const rows = [
+    // falsy Module/Scope/Src/Value for || and ?? in hash map + terms filter
+    { Module: '', Scope: '', Src: 'keep-out', Value: null, Kind: null, Source: null },
+    { Module: null, Scope: null, Src: null, Value: undefined, Kind: undefined, Source: undefined },
+    // literal with null Value still emitted when module wanted
+    { Module: 'auth', Scope: 'ui', Src: 'NullVal', Value: null, Kind: 'literal', Source: 'packaged' },
+    { Module: 'auth', Scope: '', Src: 'EmptyScope', Value: undefined, Kind: 'literal', Source: '' },
+    // force sort ternary both directions on kind/value/source
+    { Module: 'sort', Scope: 's', Src: 'k', Value: 'a', Kind: 'aaa', Source: 'aaa' },
+    { Module: 'sort', Scope: 's', Src: 'k', Value: 'z', Kind: 'zzz', Source: 'zzz' },
+    { Module: 'sort', Scope: 's', Src: 'k', Value: 'm', Kind: 'mmm', Source: 'mmm' },
+  ];
+  const restore = installSearch(TtCovTerm, rows);
+  const originalChoysum = (globalThis as any).$choysum;
+  // dialectName missing → || 'sqlite' fallback; no execute function branch
+  (globalThis as any).$choysum = { db: {} };
+  try {
+    const out = await TtCovTerm.GetTranslations({
+      lang: 'zh_CN',
+      module_names: ['auth', null, undefined, '', 'auth', 'sort'] as any,
+    });
+    expect(out.terms_by_module.auth.ui.NullVal).toBe('');
+    expect(out.terms_by_module.auth[''].EmptyScope).toBe('');
+    expect(out.hash).toHaveLength(16);
+  } finally {
+    (globalThis as any).$choysum = originalChoysum;
+    restore();
+    __resetTranslationTermUniqueIndexTablesForTest();
+  }
+});
+
+test('GetTranslations empty application metadata branch', async () => {
+  __resetTranslationTermUniqueIndexTablesForTest();
+  const meta = MetadataStorage.instance.getModelMetadata(TtCovTerm as any);
+  const prev = meta.application;
+  meta.application = '';
+  try {
+    const out = await TtCovTerm.GetTranslations({ lang: 'en_US' });
+    expect(out.hash).toBe('e3b0c44298fc1c14');
+    expect(out.terms_by_module).toEqual({});
+    const unchanged = await TtCovTerm.GetTranslations({ lang: 'en_US', hash: 'e3b0c44298fc1c14' });
+    expect(unchanged.unchanged).toBe(true);
+  } finally {
+    meta.application = prev;
+    __resetTranslationTermUniqueIndexTablesForTest();
+  }
+});
+
+test('ensureTermUniqueIndex catch nullish message branches', async () => {
+  __resetTranslationTermUniqueIndexTablesForTest();
+  const restore = installSearch(TtCovTerm, []);
+  const originalChoysum = (globalThis as any).$choysum;
+  try {
+    // throw string → message missing, fall through to err
+    (globalThis as any).$choysum = {
+      db: {
+        dialectName: 'mysql',
+        execute: async () => {
+          throw 'already exists';
+        },
+      },
+    };
+    await TtCovTerm.GetTranslations({ lang: 'en_US', module_names: ['x'] });
+
+    __resetTranslationTermUniqueIndexTablesForTest();
+    // throw null → message and err both nullish → ''
+    (globalThis as any).$choysum = {
+      db: {
+        dialectName: 'mysql',
+        execute: async () => {
+          throw null;
+        },
+      },
+    };
+    await TtCovTerm.GetTranslations({ lang: 'en_US', module_names: ['x'] });
+
+    __resetTranslationTermUniqueIndexTablesForTest();
+    // mysql success path (no throw)
+    const ddls: string[] = [];
+    (globalThis as any).$choysum = {
+      db: {
+        dialectName: 'mysql',
+        execute: async (ddl: string) => {
+          ddls.push(ddl);
+        },
+      },
+    };
+    await TtCovTerm.GetTranslations({ lang: 'en_US', module_names: ['x'] });
+    expect(ddls[0]).toContain('module(64)');
+  } finally {
+    (globalThis as any).$choysum = originalChoysum;
+    restore();
+    __resetTranslationTermUniqueIndexTablesForTest();
+  }
+});
+
+test('normalizeKind/Source and compareTermHashKeys cover every branch', () => {
+  expect(__normalizeKindForTest(null)).toBe('literal');
+  expect(__normalizeKindForTest(undefined)).toBe('literal');
+  expect(__normalizeKindForTest('')).toBe('literal');
+  expect(__normalizeKindForTest('  ')).toBe('literal');
+  expect(__normalizeKindForTest('model')).toBe('model');
+
+  expect(__normalizeSourceForTest(null)).toBe('packaged');
+  expect(__normalizeSourceForTest(undefined)).toBe('packaged');
+  expect(__normalizeSourceForTest('')).toBe('packaged');
+  expect(__normalizeSourceForTest('  ')).toBe('packaged');
+  expect(__normalizeSourceForTest('override')).toBe('override');
+
+  const base = { module: 'm', scope: 's', src: 'r', kind: 'k', value: 'v', source: 'o' };
+  for (const dim of ['module', 'scope', 'src', 'kind', 'value', 'source'] as const) {
+    const low = { ...base, [dim]: 'a' };
+    const high = { ...base, [dim]: 'z' };
+    expect(__compareTermHashKeysForTest(low, high)).toBe(-1);
+    expect(__compareTermHashKeysForTest(high, low)).toBe(1);
+  }
+  expect(__compareTermHashKeysForTest(base, { ...base })).toBe(0);
 });
 
 test('computeTermHash sort comparator covers all key dimensions', async () => {

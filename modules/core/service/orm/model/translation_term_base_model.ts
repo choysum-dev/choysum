@@ -145,8 +145,39 @@ function termHashHex8(message: Uint8Array): string {
   return out;
 }
 
+function compareTermHashKeys(
+  a: { module: string; scope: string; src: string; kind: string; value: string; source: string },
+  b: { module: string; scope: string; src: string; kind: string; value: string; source: string }
+): number {
+  if (a.module !== b.module) {
+    if (a.module < b.module) return -1;
+    return 1;
+  }
+  if (a.scope !== b.scope) {
+    if (a.scope < b.scope) return -1;
+    return 1;
+  }
+  if (a.src !== b.src) {
+    if (a.src < b.src) return -1;
+    return 1;
+  }
+  if (a.kind !== b.kind) {
+    if (a.kind < b.kind) return -1;
+    return 1;
+  }
+  if (a.value !== b.value) {
+    if (a.value < b.value) return -1;
+    return 1;
+  }
+  if (a.source !== b.source) {
+    if (a.source < b.source) return -1;
+    return 1;
+  }
+  return 0;
+}
+
 function computeTermHash(
-  rows: Array<{ Module: string; Scope: string; Src: string; Kind: string; Value: string; Source: string }>
+  rows: Array<{ Module: string; Scope: string; Src: string; Kind: string; Value: unknown; Source: string }>
 ): string {
   if (!rows.length) return EMPTY_TERM_HASH;
   const keys = rows.map(row => ({
@@ -154,18 +185,10 @@ function computeTermHash(
     scope: String(row.Scope || ''),
     src: String(row.Src || ''),
     kind: normalizeKind(row.Kind),
-    value: String(row.Value ?? ''),
+    value: row.Value == null ? '' : String(row.Value),
     source: normalizeSource(row.Source),
   }));
-  keys.sort((a, b) => {
-    if (a.module !== b.module) return a.module < b.module ? -1 : 1;
-    if (a.scope !== b.scope) return a.scope < b.scope ? -1 : 1;
-    if (a.src !== b.src) return a.src < b.src ? -1 : 1;
-    if (a.kind !== b.kind) return a.kind < b.kind ? -1 : 1;
-    if (a.value !== b.value) return a.value < b.value ? -1 : 1;
-    if (a.source !== b.source) return a.source < b.source ? -1 : 1;
-    return 0;
-  });
+  keys.sort(compareTermHashKeys);
   const parts: string[] = [];
   for (const k of keys) {
     parts.push(`${k.module}\x1f${k.scope}\x1f${k.src}\x1f${k.kind}\x1f${k.value}\x1f${k.source}\n`);
@@ -209,6 +232,23 @@ async function ensureTermUniqueIndex(ctor: InstantiableModelCtor<TranslationTerm
 /** Test-only: clear process-local unique-index DDL cache. */
 export function __resetTranslationTermUniqueIndexTablesForTest(): void {
   ensuredUniqueIndexTables.clear();
+}
+
+/** Test-only: expose hash-key compare for branch coverage. */
+export function __compareTermHashKeysForTest(
+  a: { module: string; scope: string; src: string; kind: string; value: string; source: string },
+  b: { module: string; scope: string; src: string; kind: string; value: string; source: string }
+): number {
+  return compareTermHashKeys(a, b);
+}
+
+/** Test-only: expose kind/source normalizers for branch coverage. */
+export function __normalizeKindForTest(kind: string | null | undefined): string {
+  return normalizeKind(kind);
+}
+
+export function __normalizeSourceForTest(source: string | null | undefined): string {
+  return normalizeSource(source);
 }
 
 /**
@@ -296,7 +336,7 @@ export default class TranslationTermBaseModel extends BaseModel {
         Scope: String((row as any).Scope || ''),
         Src: String((row as any).Src || ''),
         Kind: String((row as any).Kind || ''),
-        Value: String((row as any).Value ?? ''),
+        Value: (row as any).Value,
         Source: String((row as any).Source || ''),
       }))
     );
@@ -318,7 +358,7 @@ export default class TranslationTermBaseModel extends BaseModel {
         if (!mod || !src || !wanted.has(mod)) continue;
         if (!termsByModule[mod]) termsByModule[mod] = {};
         if (!termsByModule[mod][scope]) termsByModule[mod][scope] = {};
-        termsByModule[mod][scope][src] = String((row as any).Value ?? '');
+        termsByModule[mod][scope][src] = (row as any).Value == null ? '' : String((row as any).Value);
       }
     }
 
