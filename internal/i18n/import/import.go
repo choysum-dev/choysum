@@ -49,12 +49,13 @@ type poTerm struct {
 	comments string
 }
 
-// ImportModulePo parses poText with gotext and upserts packaged terms for (application, module, lang).
-// Existing Source=override rows are not overwritten. Obsolete (#~) entries do not prune ordinary
-// rows (D12a), but retired S7 metadata kinds are removed for the imported module, including overrides.
-// Entries without msgctxt are rejected and logged (D12c).
-// Kind defaults to literal; an explicit `#. kind: <name>` comment overrides it.
-func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, module, lang string, poText []byte) (*ImportStats, error) {
+// UpsertPackagedTerms is the sole packaged-term write helper: parse PO → upsert rows
+// (skip Source=override) → purge retired S7 kinds → InvalidateModule + WarmLanguage.
+// Install/CLI call this path only; do not dial model gRPC for packaged import.
+// Obsolete (#~) entries do not prune ordinary rows (D12a). Entries without msgctxt
+// are rejected and logged (D12c). Kind defaults to literal; `#. kind: <name>` overrides.
+// The physical table must already exist (TranslationTerm MetaModel migrate).
+func UpsertPackagedTerms(runtimeScope scope.Scope, reg *store.Registry, application, module, lang string, poText []byte) (*ImportStats, error) {
 	application = strings.TrimSpace(application)
 	module = strings.TrimSpace(module)
 	lang = strings.TrimSpace(lang)
@@ -72,8 +73,13 @@ func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, 
 	stats.SkippedObsolete = obsolete
 
 	tableName := i18nmodels.TranslationTermTableName(application)
-	if err := i18nmodels.EnsureTranslationTermTable(runtimeScope, application); err != nil {
-		return stats, err
+	if !runtimeScope.Session().Migrator().HasTable(tableName) {
+		// Production tables come from TranslationTerm MetaModel migrate; create
+		// here only when the write path runs without a prior migrate (tests /
+		// install ordering).
+		if err := i18nmodels.MigrateTranslationTermTable(runtimeScope, application); err != nil {
+			return stats, err
+		}
 	}
 	logger := runtimeScope.Logger()
 	if logger == nil {
@@ -333,7 +339,7 @@ func ImportModuleI18nDir(runtimeScope scope.Scope, reg *store.Registry, applicat
 		if err != nil {
 			return err
 		}
-		if _, err := ImportModulePo(runtimeScope, reg, application, module, lang, raw); err != nil {
+		if _, err := UpsertPackagedTerms(runtimeScope, reg, application, module, lang, raw); err != nil {
 			return fmt.Errorf("import %s: %w", name, err)
 		}
 	}

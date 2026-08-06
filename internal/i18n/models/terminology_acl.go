@@ -4,7 +4,6 @@
 package models
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -17,37 +16,26 @@ import (
 )
 
 const (
-	i18nModelName             = "I18n"
 	translationTermModelName  = "TranslationTerm"
 	terminologyEditorRoleCode = "terminology.editor"
 	authRoleTable             = "auth_role"
 	authRoleMethodAccessTable = "auth_role_method_access"
 )
 
-var i18nServiceMethods = []string{
-	"GetTranslations",
-	"SearchTerms",
-	"UpdateTerm",
-}
-
 // TranslationTerm methods bound to terminology.editor (never GetTranslations).
 // Choysum ORM uses Browse (not Read) for single-record fetch.
+// Count is required for PO export paging (Search has no total).
 var terminologyEditorServiceMethods = []string{
 	"Search",
 	"Browse",
 	"Update",
+	"Count",
 }
 
-// PO export still dials {app}.I18n/SearchTerms with the caller's token, so
-// terminology.editor must keep SearchTerms allow until export switches to
-// TranslationTerm Search.
-const terminologyEditorPOExportMethod = "SearchTerms"
-
-// EnsureI18nMeta registers declaration-layer I18n + Service methods via the meta
-// declaration facade, flushes the effective projection, and seeds Terminology
-// Editor ACL rows against TranslationTerm Search/Browse/Update plus I18n
-// SearchTerms (PO download). Never binds GetTranslations / UpdateTerm.
-func EnsureI18nMeta(runtimeScope scope.Scope, application string, moduleID sql.NullString) error {
+// EnsureTerminologyEditorAllows seeds RoleMethodAccess allows for
+// TranslationTerm Search/Browse/Update on the given application so Editor and
+// PO export (user-token Search) work for terminology.editor.
+func EnsureTerminologyEditorAllows(runtimeScope scope.Scope, application string) error {
 	application = strings.TrimSpace(application)
 	if application == "" || application == coreApplication {
 		return nil
@@ -56,23 +44,8 @@ func EnsureI18nMeta(runtimeScope scope.Scope, application string, moduleID sql.N
 		return nil
 	}
 	db := runtimeScope.Session().DB
-	if !meta.HasDeclarationCatalog(db) || !meta.HasEffectiveCatalog(db) {
+	if !meta.HasEffectiveCatalog(db) {
 		return nil
-	}
-
-	path := fmt.Sprintf("go://i18n/%s", application)
-	if err := meta.EnsureAbstractModel(db, meta.AbstractModelSpec{
-		Name:         i18nModelName,
-		Path:         path,
-		Application:  application,
-		ModuleID:     moduleID,
-		ServiceNames: i18nServiceMethods,
-	}); err != nil {
-		return err
-	}
-	// Flush before any effective reads (install boundary for I18n).
-	if err := meta.FlushEffective(db, []meta.LogicalKey{{Application: application, Name: i18nModelName}}); err != nil {
-		return fmt.Errorf("flush I18n effective: %w", err)
 	}
 	return ensureTerminologyEditorAllows(db, application)
 }
@@ -92,18 +65,6 @@ func loadEffectiveTranslationTermServiceIDs(db *gorm.DB, application string) (ma
 		out[methodName] = svc.Id.String
 	}
 	return out, nil
-}
-
-func loadEffectiveI18nSearchTermsServiceID(db *gorm.DB, application string) (string, error) {
-	var model meta.Model
-	if err := db.Where("name = ? AND application = ?", i18nModelName, application).Take(&model).Error; err != nil {
-		return "", err
-	}
-	var svc meta.Service
-	if err := db.Where("model_id = ? AND name = ?", model.Id.String, terminologyEditorPOExportMethod).Take(&svc).Error; err != nil {
-		return "", fmt.Errorf("lookup effective Service %s: %w", terminologyEditorPOExportMethod, err)
-	}
-	return svc.Id.String, nil
 }
 
 func seedRoleMethodAllow(db *gorm.DB, roleID, serviceID, methodName string) error {
@@ -157,24 +118,16 @@ func ensureTerminologyEditorAllows(db *gorm.DB, application string) error {
 
 	serviceIDs, err := loadEffectiveTranslationTermServiceIDs(db, application)
 	if err != nil {
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return err
-		}
-		// TranslationTerm not registered for this app yet (Ensure-only timing).
-	} else {
-		for _, methodName := range terminologyEditorServiceMethods {
-			if err := seedRoleMethodAllow(db, roleID, serviceIDs[methodName], methodName); err != nil {
-				return err
-			}
-		}
-	}
-
-	searchTermsID, err := loadEffectiveI18nSearchTermsServiceID(db, application)
-	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// TranslationTerm not registered for this app yet.
 			return nil
 		}
 		return err
 	}
-	return seedRoleMethodAllow(db, roleID, searchTermsID, terminologyEditorPOExportMethod)
+	for _, methodName := range terminologyEditorServiceMethods {
+		if err := seedRoleMethodAllow(db, roleID, serviceIDs[methodName], methodName); err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	i18nmodels "github.com/choysum-dev/choysum/internal/i18n/models"
 	"github.com/choysum-dev/choysum/pkg/meta"
 )
 
@@ -44,7 +43,7 @@ func TestMigratorMigrateOrdersSchemaBeforeForeignKeys(t *testing.T) {
 	}
 }
 
-func TestMigratorMigrateEnsuresTranslationTermTable(t *testing.T) {
+func TestMigratorMigrateCallsTerminologyEditorAllows(t *testing.T) {
 	runtimeScope := newSchemaTestScope(t)
 
 	authMigrator := &migrator{
@@ -56,8 +55,9 @@ func TestMigratorMigrateEnsuresTranslationTermTable(t *testing.T) {
 	if err := authMigrator.Migrate(); err != nil {
 		t.Fatalf("Migrate(auth): %v", err)
 	}
-	if !runtimeScope.Session().Migrator().HasTable("auth_translation_term") {
-		t.Fatal("expected auth_translation_term after Migrate")
+	// Table creation is MetaModel migrate's job; schema migrator only seeds ACL.
+	if runtimeScope.Session().Migrator().HasTable("auth_translation_term") {
+		t.Fatal("Migrate must not create auth_translation_term directly")
 	}
 
 	coreMigrator := &migrator{
@@ -200,31 +200,16 @@ func TestNewMigratorPropagatesLoadError(t *testing.T) {
 	}
 }
 
-func TestMigratorMigrateWrapsEnsureI18nMetaError(t *testing.T) {
+func TestMigratorMigrateTerminologyEditorAllowsNoopWithoutRoleTable(t *testing.T) {
 	runtimeScope := newSchemaTestScope(t)
-	if err := i18nmodels.EnsureTranslationTermTable(runtimeScope, "auth"); err != nil {
-		t.Fatalf("EnsureTranslationTermTable() error = %v", err)
-	}
-	if err := meta.EnsureDualStoreTables(runtimeScope.Session().DB); err != nil {
-		t.Fatalf("ensure dual store: %v", err)
-	}
-	if err := runtimeScope.Session().Exec(`CREATE TRIGGER IF NOT EXISTS block_i18n_raw_model_insert
-		BEFORE INSERT ON meta_raw_model
-		WHEN NEW.name = 'I18n'
-		BEGIN
-			SELECT RAISE(ABORT, 'i18n blocked');
-		END`).Error; err != nil {
-		t.Fatalf("create i18n raw insert trigger: %v", err)
-	}
-
 	m := &migrator{
 		runtimeScope:       runtimeScope,
 		module:             &meta.Module{Name: "auth", ApplicationStr: "auth"},
 		modelMigrator:      modelMigratorFunc(func() error { return nil }),
 		foreignKeyMigrator: foreignKeyMigratorFunc(func() error { return nil }),
 	}
-	if err := m.Migrate(); err == nil || !strings.Contains(err.Error(), "ensure i18n ir meta") {
-		t.Fatalf("Migrate() error = %v, want wrapped ensure i18n meta failure", err)
+	if err := m.Migrate(); err != nil {
+		t.Fatalf("Migrate() error = %v, want success when auth_role tables are absent", err)
 	}
 }
 

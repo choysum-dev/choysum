@@ -34,10 +34,8 @@ func NormalizeKind(kind string) string {
 
 // TranslationTerm is the per-application terminology storage row.
 // Physical table name is {application}_translation_term (see TranslationTermTableName).
-// MVP: no Model / @Model registration.
-//
-// Unique key (Module, Lang, Scope, Src, Kind) is created per table in
-// EnsureTranslationTermTable — index names must be table-scoped (SQLite indexes are DB-global).
+// Runtime tables are created by TranslationTerm MetaModel AutoMigrate (unique key on
+// Module, Lang, Scope, Src, Kind is ensured by the TS model / migrate path).
 type TranslationTerm struct {
 	meta.BaseModel `gorm:"embedded"`
 
@@ -74,9 +72,9 @@ func TranslationTermTableName(application string) string {
 	return strings.TrimSpace(application) + "_translation_term"
 }
 
-// EnsureTranslationTermTable creates or updates the per-application translation_term table.
-// When application is "core" (or empty), this is a no-op — core does not get a terminology table.
-func EnsureTranslationTermTable(runtimeScope scope.Scope, application string) error {
+// MigrateTranslationTermTable creates the physical table for unit-test fixtures.
+// Production installs rely on TranslationTerm MetaModel AutoMigrate only.
+func MigrateTranslationTermTable(runtimeScope scope.Scope, application string) error {
 	application = strings.TrimSpace(application)
 	if application == "" || application == coreApplication {
 		return nil
@@ -91,10 +89,10 @@ func EnsureTranslationTermTable(runtimeScope scope.Scope, application string) er
 	tableName := TranslationTermTableName(application)
 	db := runtimeScope.Session().Table(tableName)
 	if err := db.AutoMigrate(&TranslationTerm{}); err != nil {
-		return fmt.Errorf("ensure %s: %w", tableName, err)
+		return fmt.Errorf("migrate %s: %w", tableName, err)
 	}
 	if err := ensureTranslationTermUniqueIndex(runtimeScope, tableName); err != nil {
-		return fmt.Errorf("ensure %s unique index: %w", tableName, err)
+		return fmt.Errorf("migrate %s unique index: %w", tableName, err)
 	}
 	return nil
 }
@@ -109,7 +107,6 @@ func ensureTranslationTermUniqueIndex(runtimeScope scope.Scope, tableName string
 	if db.Migrator().HasIndex(tableName, indexName) {
 		return nil
 	}
-	// Per-table index name: SQLite index names are database-global.
 	sql := createUniqueIndexSQL(db.Dialector.Name(), tableName, indexName)
 	return db.Exec(sql).Error
 }
@@ -120,8 +117,6 @@ func createUniqueIndexSQL(dialect, tableName, indexName string) string {
 	case "postgres":
 		return fmt.Sprintf(`CREATE UNIQUE INDEX "%s" ON "%s" (%s)`, indexName, tableName, cols)
 	case "mysql":
-		// InnoDB utf8mb4 unique keys are capped at 3072 bytes. Prefix long
-		// columns so the composite key stays under that limit.
 		mysqlCols := "module(64), lang, scope(255), src(255), kind"
 		return fmt.Sprintf("CREATE UNIQUE INDEX `%s` ON `%s` (%s)", indexName, tableName, mysqlCols)
 	default: // sqlite and others

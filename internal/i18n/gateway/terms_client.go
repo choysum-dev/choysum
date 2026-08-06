@@ -8,10 +8,17 @@ import (
 	"fmt"
 	"strings"
 
-	i18nservice "github.com/choysum-dev/choysum/internal/i18n/service"
 	"github.com/choysum-dev/choysum/pkg/grpc/client"
 	"github.com/choysum-dev/choysum/pkg/grpc/converter"
+	"github.com/choysum-dev/choysum/pkg/grpc/loader"
 	"github.com/choysum-dev/choysum/pkg/scope"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/dynamicpb"
+)
+
+const (
+	translationTermSearch = "Search"
+	translationTermCount  = "Count"
 )
 
 type termItem struct {
@@ -33,61 +40,180 @@ type searchTermsResult struct {
 	Offset int
 }
 
+// fetchAppSearchTerms dials {app}.TranslationTerm/Count then Search with the caller's token (PO export).
 func fetchAppSearchTerms(ctx context.Context, runtimeScope scope.Scope, accessToken, app, lang string, modules []string, q string, limit, offset int) (*searchTermsResult, error) {
 	_ = runtimeScope
 	app = strings.TrimSpace(app)
+	lang = strings.TrimSpace(lang)
+	q = strings.TrimSpace(q)
 	if app == "" {
 		return nil, fmt.Errorf("application is required")
 	}
-
-	reqMsg, err := i18nservice.NewSearchRequestMessage(app)
-	if err != nil {
-		return nil, err
+	if limit <= 0 {
+		limit = 50
 	}
-	modulesAny := make([]any, 0, len(modules))
-	for _, m := range modules {
-		modulesAny = append(modulesAny, m)
-	}
-	if err := converter.MapToMessage(map[string]any{
-		"lang":    lang,
-		"modules": modulesAny,
-		"q":       q,
-		"limit":   limit,
-		"offset":  offset,
-	}, reqMsg); err != nil {
-		return nil, fmt.Errorf("build SearchTerms request: %w", err)
+	if offset < 0 {
+		offset = 0
 	}
 
-	respMsg, err := i18nservice.NewSearchResponseMessage(app)
-	if err != nil {
-		return nil, err
-	}
+	service := app + "." + translationTermModelName
+	condition := buildTermSearchCondition(lang, modules, q)
 
 	rpcCtx := outgoingContextForUserRPC(ctx, accessToken)
-	conn, err := client.Dial(rpcCtx, app+".I18n")
+	conn, err := client.Dial(rpcCtx, service)
 	if err != nil {
 		return nil, client.ToStatusError(err)
 	}
-	if err := conn.Invoke(rpcCtx, i18nservice.FullMethod(app, i18nservice.MethodSearchTerms), reqMsg, respMsg); err != nil {
+
+	total, err := invokeTranslationTermCount(rpcCtx, conn, service, condition)
+	if err != nil {
+		return nil, err
+	}
+	return searchTranslationTermPage(rpcCtx, conn, service, app, lang, condition, total, limit, offset)
+}
+
+// countAppTerms dials {app}.TranslationTerm/Count with the caller's token.
+func countAppTerms(ctx context.Context, accessToken, app, lang string, modules []string, q string) (int64, error) {
+	app = strings.TrimSpace(app)
+	if app == "" {
+		return 0, fmt.Errorf("application is required")
+	}
+	service := app + "." + translationTermModelName
+	condition := buildTermSearchCondition(strings.TrimSpace(lang), modules, strings.TrimSpace(q))
+	rpcCtx := outgoingContextForUserRPC(ctx, accessToken)
+	conn, err := client.Dial(rpcCtx, service)
+	if err != nil {
+		return 0, client.ToStatusError(err)
+	}
+	return invokeTranslationTermCount(rpcCtx, conn, service, condition)
+}
+
+// searchAppTermsPage dials Search only (caller supplies total from Count).
+func searchAppTermsPage(ctx context.Context, accessToken, app, lang string, modules []string, q string, total int64, limit, offset int) (*searchTermsResult, error) {
+	app = strings.TrimSpace(app)
+	lang = strings.TrimSpace(lang)
+	q = strings.TrimSpace(q)
+	if app == "" {
+		return nil, fmt.Errorf("application is required")
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	service := app + "." + translationTermModelName
+	condition := buildTermSearchCondition(lang, modules, q)
+	rpcCtx := outgoingContextForUserRPC(ctx, accessToken)
+	conn, err := client.Dial(rpcCtx, service)
+	if err != nil {
+		return nil, client.ToStatusError(err)
+	}
+	return searchTranslationTermPage(rpcCtx, conn, service, app, lang, condition, total, limit, offset)
+}
+
+func searchTranslationTermPage(ctx context.Context, conn *grpc.ClientConn, service, app, lang string, condition map[string]any, total int64, limit, offset int) (*searchTermsResult, error) {
+	searchMD, err := loader.Global().GetMethodDescriptor(service + "." + translationTermSearch)
+	if err != nil {
+		return nil, fmt.Errorf("load Search descriptor: %w", err)
+	}
+	reqMsg := dynamicpb.NewMessage(searchMD.Input())
+	if err := converter.MapToMessage(map[string]any{
+		"condition": condition,
+		"options": map[string]any{
+			"fields": []any{"Application", "Module", "Scope", "Src", "Value", "Kind", "Source", "Comments"},
+			"limit":  limit,
+			"offset": offset,
+			"orderBy": []any{
+				map[string]any{"field": "Module", "order": "asc"},
+				map[string]any{"field": "Scope", "order": "asc"},
+				map[string]any{"field": "Src", "order": "asc"},
+				map[string]any{"field": "Kind", "order": "asc"},
+			},
+		},
+	}, reqMsg); err != nil {
+		return nil, fmt.Errorf("build Search request: %w", err)
+	}
+
+	respMsg := dynamicpb.NewMessage(searchMD.Output())
+	if err := conn.Invoke(ctx, "/"+service+"/"+translationTermSearch, reqMsg, respMsg); err != nil {
 		return nil, client.ToStatusError(err)
 	}
 
 	out, err := converter.MessageToMap(respMsg)
 	if err != nil {
-		return nil, fmt.Errorf("decode SearchTerms response: %w", err)
+		return nil, fmt.Errorf("decode Search response: %w", err)
 	}
-	return parseSearchTermsResult(app, out), nil
+	return parseSearchResult(app, lang, limit, offset, total, out), nil
 }
 
-func parseSearchTermsResult(app string, out map[string]any) *searchTermsResult {
-	result := &searchTermsResult{
-		Lang:   strings.TrimSpace(fmt.Sprintf("%v", out["lang"])),
-		Items:  nil,
-		Total:  toInt64(out["total"]),
-		Limit:  int(toInt64(out["limit"])),
-		Offset: int(toInt64(out["offset"])),
+func buildTermSearchCondition(lang string, modules []string, q string) map[string]any {
+	and := []any{
+		[]any{"Lang", "=", lang},
 	}
-	rawItems, _ := out["items"].([]any)
+	wantedModules := make([]string, 0, len(modules))
+	for _, m := range modules {
+		m = strings.TrimSpace(m)
+		if m != "" {
+			wantedModules = append(wantedModules, m)
+		}
+	}
+	switch len(wantedModules) {
+	case 0:
+		// language-wide
+	case 1:
+		and = append(and, []any{"Module", "=", wantedModules[0]})
+	default:
+		ors := make([]any, 0, len(wantedModules))
+		for _, m := range wantedModules {
+			ors = append(ors, []any{"Module", "=", m})
+		}
+		and = append(and, map[string]any{"Or": ors})
+	}
+	if q != "" {
+		like := "%" + q + "%"
+		and = append(and, map[string]any{"Or": []any{
+			[]any{"Module", "ilike", like},
+			[]any{"Scope", "ilike", like},
+			[]any{"Src", "ilike", like},
+			[]any{"Value", "ilike", like},
+		}})
+	}
+	return map[string]any{"And": and}
+}
+
+func invokeTranslationTermCount(ctx context.Context, conn *grpc.ClientConn, service string, condition map[string]any) (int64, error) {
+	md, err := loader.Global().GetMethodDescriptor(service + "." + translationTermCount)
+	if err != nil {
+		return 0, fmt.Errorf("load Count descriptor: %w", err)
+	}
+	reqMsg := dynamicpb.NewMessage(md.Input())
+	if err := converter.MapToMessage(map[string]any{
+		"condition": condition,
+		"options":   map[string]any{},
+	}, reqMsg); err != nil {
+		return 0, fmt.Errorf("build Count request: %w", err)
+	}
+	respMsg := dynamicpb.NewMessage(md.Output())
+	if err := conn.Invoke(ctx, "/"+service+"/"+translationTermCount, reqMsg, respMsg); err != nil {
+		return 0, client.ToStatusError(err)
+	}
+	out, err := converter.MessageToMap(respMsg)
+	if err != nil {
+		return 0, fmt.Errorf("decode Count response: %w", err)
+	}
+	return toInt64(out["result"]), nil
+}
+
+func parseSearchResult(app, lang string, limit, offset int, total int64, out map[string]any) *searchTermsResult {
+	result := &searchTermsResult{
+		Lang:   lang,
+		Limit:  limit,
+		Offset: offset,
+		Total:  total,
+	}
+	rawItems, _ := out["result"].([]any)
 	for _, raw := range rawItems {
 		m, ok := raw.(map[string]any)
 		if !ok {
@@ -103,34 +229,46 @@ func parseTermItem(app string, m map[string]any) termItem {
 		return termItem{Application: app}
 	}
 	item := termItem{
-		Application: strings.TrimSpace(fmt.Sprintf("%v", m["application"])),
-		Module:      strings.TrimSpace(fmt.Sprintf("%v", m["module"])),
-		Scope:       strings.TrimSpace(fmt.Sprintf("%v", m["scope"])),
-		Src:         fmt.Sprintf("%v", m["src"]),
-		Value:       fmt.Sprintf("%v", m["value"]),
-		Kind:        strings.TrimSpace(fmt.Sprintf("%v", m["kind"])),
-		Source:      strings.TrimSpace(fmt.Sprintf("%v", m["source"])),
-		Status:      strings.TrimSpace(fmt.Sprintf("%v", m["status"])),
+		Application: mapString(m, "Application", "application"),
+		Module:      mapString(m, "Module", "module"),
+		Scope:       mapString(m, "Scope", "scope"),
+		Src:         mapString(m, "Src", "src"),
+		Value:       mapString(m, "Value", "value"),
+		Kind:        mapString(m, "Kind", "kind"),
+		Source:      mapString(m, "Source", "source"),
 	}
-	if item.Application == "" || item.Application == "<nil>" {
+	comments := mapString(m, "Comments", "comments")
+	if item.Application == "" {
 		item.Application = app
 	}
-	if item.Src == "<nil>" {
-		item.Src = ""
-	}
-	if item.Value == "<nil>" {
-		item.Value = ""
-	}
-	if item.Kind == "" || item.Kind == "<nil>" {
+	if item.Kind == "" {
 		item.Kind = "literal"
 	}
-	if item.Source == "<nil>" {
-		item.Source = ""
-	}
-	if item.Status == "<nil>" {
-		item.Status = ""
-	}
+	item.Status = termStatus(item.Value, comments)
 	return item
+}
+
+func mapString(m map[string]any, keys ...string) string {
+	for _, key := range keys {
+		if v, ok := m[key]; ok {
+			s := strings.TrimSpace(fmt.Sprintf("%v", v))
+			if s == "" || s == "<nil>" {
+				return ""
+			}
+			return s
+		}
+	}
+	return ""
+}
+
+func termStatus(value, comments string) string {
+	if strings.TrimSpace(value) == "" {
+		return "missing"
+	}
+	if strings.Contains(strings.ToLower(comments), "fuzzy") {
+		return "fuzzy"
+	}
+	return "translated"
 }
 
 func toInt64(v any) int64 {
@@ -142,6 +280,8 @@ func toInt64(v any) int64 {
 	case int64:
 		return typed
 	case float64:
+		return int64(typed)
+	case float32:
 		return int64(typed)
 	default:
 		s := strings.TrimSpace(fmt.Sprintf("%v", v))

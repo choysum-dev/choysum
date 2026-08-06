@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Shared helpers for PO export (SearchTerms dial). Terms HTTP routes were removed in P3.
+// Shared helpers for PO export (TranslationTerm Search dial). Terms HTTP routes were removed in P3.
 
 func (h *handler) searchApp(ctx context.Context, accessToken, app, lang string, modules []string, q string, limit, offset int) (*searchTermsResult, error) {
 	if h.search != nil {

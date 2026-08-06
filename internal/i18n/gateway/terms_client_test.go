@@ -35,25 +35,24 @@ func TestParseTermItemDefaults(t *testing.T) {
 	if got.Src != "" || got.Value != "" || got.Kind != "literal" {
 		t.Fatalf("defaults = %#v", got)
 	}
-	if got.Source != "" || got.Status != "" {
-		t.Fatalf("nil source/status = %#v", got)
+	if got.Source != "" || got.Status != "missing" {
+		t.Fatalf("nil source / empty-value status = %#v", got)
 	}
 }
 
-func TestParseSearchTermsResultAndToInt64(t *testing.T) {
-	result := parseSearchTermsResult("auth", map[string]any{
-		"lang":   "zh_CN",
-		"total":  float64(3),
-		"limit":  int32(10),
-		"offset": "2",
-		"items": []any{
-			map[string]any{"module": "auth", "scope": "a", "src": "Hi", "value": "你好"},
+func TestParseSearchResultAndToInt64(t *testing.T) {
+	result := parseSearchResult("auth", "zh_CN", 10, 2, 42, map[string]any{
+		"result": []any{
+			map[string]any{"Module": "auth", "Scope": "a", "Src": "Hi", "Value": "你好"},
 			"skip-me",
 			map[string]any{"module": "auth", "scope": "b", "src": "Bye", "kind": "custom"},
 		},
 	})
-	if result.Lang != "zh_CN" || result.Total != 3 || result.Limit != 10 || result.Offset != 2 {
+	if result.Lang != "zh_CN" || result.Limit != 10 || result.Offset != 2 {
 		t.Fatalf("pagination = %#v", result)
+	}
+	if result.Total != 42 {
+		t.Fatalf("total = %d, want Count result 42", result.Total)
 	}
 	if len(result.Items) != 2 {
 		t.Fatalf("items = %#v", result.Items)
@@ -62,10 +61,16 @@ func TestParseSearchTermsResultAndToInt64(t *testing.T) {
 		t.Fatalf("kinds = %#v", result.Items)
 	}
 
+	cond := buildTermSearchCondition("zh_CN", []string{"auth", "web"}, "Hi")
+	and, ok := cond["And"].([]any)
+	if !ok || len(and) < 3 {
+		t.Fatalf("condition = %#v", cond)
+	}
+
 	if toInt64(nil) != 0 || toInt64("") != 0 || toInt64("<nil>") != 0 {
 		t.Fatal("expected zero for empty inputs")
 	}
-	if toInt64(7) != 7 || toInt64(int64(8)) != 8 || toInt64("9") != 9 {
+	if toInt64(7) != 7 || toInt64(int64(8)) != 8 || toInt64("9") != 9 || toInt64(float64(10)) != 10 {
 		t.Fatal("expected numeric coercion")
 	}
 }

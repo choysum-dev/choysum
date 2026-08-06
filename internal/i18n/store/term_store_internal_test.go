@@ -53,7 +53,7 @@ func TestWarmLanguageRetriesAfterConcurrentOverride(t *testing.T) {
 		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
 		session: &scope.Session{DB: db},
 	}
-	if err := i18nmodels.EnsureTranslationTermTable(rs, "auth"); err != nil {
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
 		t.Fatalf("ensure: %v", err)
 	}
 	table := rs.Session().Table("auth_translation_term")
@@ -79,8 +79,8 @@ func TestWarmLanguageRetriesAfterConcurrentOverride(t *testing.T) {
 		t.Fatalf("warm: %v", err)
 	}
 
-	// Inject a concurrent override after WarmLanguage has read the DB snapshot
-	// but before it installs the cache. WarmLanguage must retry and reload.
+	// Inject a concurrent DB update + Invalidate after WarmLanguage has read the
+	// snapshot but before it installs the cache. WarmLanguage must retry and reload.
 	prev := warmAfterLoadHook
 	t.Cleanup(func() { warmAfterLoadHook = prev })
 	var injected bool
@@ -89,9 +89,13 @@ func TestWarmLanguageRetriesAfterConcurrentOverride(t *testing.T) {
 			return
 		}
 		injected = true
-		if _, err := ts.UpsertOverride("auth", "zh_CN", "web/a@t", "Hello", "", "您好"); err != nil {
-			t.Errorf("upsert during warm: %v", err)
+		if err := rs.Session().Table("auth_translation_term").
+			Where("module = ? AND lang = ? AND scope = ? AND src = ?", "auth", "zh_CN", "web/a@t", "Hello").
+			Update("value", "您好").Error; err != nil {
+			t.Errorf("update during warm: %v", err)
+			return
 		}
+		ts.InvalidateModule("auth")
 	}
 
 	if err := ts.WarmLanguage("zh_CN"); err != nil {
@@ -117,7 +121,7 @@ func TestWarmLanguageErrorsAfterExhaustedRetries(t *testing.T) {
 		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
 		session: &scope.Session{DB: db},
 	}
-	if err := i18nmodels.EnsureTranslationTermTable(rs, "auth"); err != nil {
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
 		t.Fatalf("ensure: %v", err)
 	}
 	if err := rs.Session().Table("auth_translation_term").Create(&i18nmodels.TranslationTerm{

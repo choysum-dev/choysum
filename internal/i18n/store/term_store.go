@@ -6,7 +6,6 @@ package store
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -14,11 +13,11 @@ import (
 
 	i18nmodels "github.com/choysum-dev/choysum/internal/i18n/models"
 	"github.com/choysum-dev/choysum/pkg/scope"
-	"gorm.io/gorm"
 )
 
-// TermStore is the in-process terminology cache for one Application.
-// Hot path reads memory only; callers must WarmLanguage before Lookup hits.
+// TermStore is the in-process Lookup cache for one Application (`_t` hot path).
+// Packaged writes go through i18nimport.UpsertPackagedTerms; overrides via
+// TranslationTerm ORM. This type is not a Search/Update service backend.
 type TermStore struct {
 	mu           sync.RWMutex
 	runtimeScope scope.Scope
@@ -164,58 +163,6 @@ func (s *TermStore) Lookup(module, lang, scopeKey, src, kind string) (string, bo
 	return val, ok
 }
 
-// TermsByModules returns a deep copy of warmed **literal** terms for the given modules.
-// Explicit non-literal kinds are omitted so Gateway vue-i18n messages stay kind-free.
-// Modules absent from cache are omitted. Call WarmLanguage first for a complete view.
-// Shape: module → scope → src → value.
-func (s *TermStore) TermsByModules(lang string, modules []string) map[string]map[string]map[string]string {
-	lang = strings.TrimSpace(lang)
-	if lang == "" || len(modules) == 0 {
-		return map[string]map[string]map[string]string{}
-	}
-	wanted := make(map[string]struct{}, len(modules))
-	for _, m := range modules {
-		m = strings.TrimSpace(m)
-		if m != "" {
-			wanted[m] = struct{}{}
-		}
-	}
-	if len(wanted) == 0 {
-		return map[string]map[string]map[string]string{}
-	}
-
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	byMod, ok := s.cache[lang]
-	if !ok {
-		return map[string]map[string]map[string]string{}
-	}
-
-	out := make(map[string]map[string]map[string]string)
-	for mod := range wanted {
-		byScope, ok := byMod[mod]
-		if !ok {
-			continue
-		}
-		modCopy := make(map[string]map[string]string)
-		for scopeKey, byKind := range byScope {
-			bySrc, ok := byKind[i18nmodels.KindLiteral]
-			if !ok || len(bySrc) == 0 {
-				continue
-			}
-			srcCopy := make(map[string]string, len(bySrc))
-			for src, val := range bySrc {
-				srcCopy[src] = val
-			}
-			modCopy[scopeKey] = srcCopy
-		}
-		if len(modCopy) > 0 {
-			out[mod] = modCopy
-		}
-	}
-	return out
-}
-
 // InvalidateModule drops module entries from all warmed languages and bumps hashes.
 func (s *TermStore) InvalidateModule(module string) {
 	module = strings.TrimSpace(module)
@@ -228,195 +175,7 @@ func (s *TermStore) InvalidateModule(module string) {
 	}
 }
 
-// TermListItem is one terminology catalog row (SearchTerms / UpdateTerm).
-type TermListItem struct {
-	Application string
-	Module      string
-	Scope       string
-	Src         string
-	Value       string
-	Kind        string
-	Source      string
-	Status      string
-}
-
-const (
-	statusTranslated = "translated"
-	statusMissing    = "missing"
-	statusFuzzy      = "fuzzy"
-)
-
-// SearchTerms lists DB rows for lang with optional module filter and free-text q.
-// When modules is empty, all modules in this application table are included.
-// q matches module, scope, src, or value (case-insensitive substring).
-func (s *TermStore) SearchTerms(lang string, modules []string, q string, limit, offset int) ([]TermListItem, int64, error) {
-	lang = strings.TrimSpace(lang)
-	q = strings.TrimSpace(q)
-	if lang == "" || s.application == "" || s.application == "core" {
-		return nil, 0, nil
-	}
-	if s.runtimeScope == nil || s.runtimeScope.Session() == nil {
-		return nil, 0, fmt.Errorf("search terms: missing runtime session")
-	}
-	if limit <= 0 {
-		limit = 50
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	tableName := i18nmodels.TranslationTermTableName(s.application)
-	if !s.runtimeScope.Session().Migrator().HasTable(tableName) {
-		return nil, 0, nil
-	}
-
-	base := s.runtimeScope.Session().Table(tableName).Where("lang = ?", lang)
-	if len(modules) > 0 {
-		wanted := make([]string, 0, len(modules))
-		for _, m := range modules {
-			m = strings.TrimSpace(m)
-			if m != "" {
-				wanted = append(wanted, m)
-			}
-		}
-		if len(wanted) == 0 {
-			return nil, 0, nil
-		}
-		base = base.Where("module IN ?", wanted)
-	}
-	if q != "" {
-		like := "%" + q + "%"
-		base = base.Where("(module LIKE ? OR scope LIKE ? OR src LIKE ? OR value LIKE ?)", like, like, like, like)
-	}
-
-	var total int64
-	if err := base.Session(&gorm.Session{}).Count(&total).Error; err != nil {
-		return nil, 0, fmt.Errorf("count terms: %w", err)
-	}
-
-	var rows []i18nmodels.TranslationTerm
-	if err := base.Order("module ASC, scope ASC, src ASC, kind ASC").
-		Limit(limit).Offset(offset).Find(&rows).Error; err != nil {
-		return nil, 0, fmt.Errorf("list terms: %w", err)
-	}
-
-	items := make([]TermListItem, 0, len(rows))
-	for _, row := range rows {
-		items = append(items, termListItemFromRow(s.application, row))
-	}
-	return items, total, nil
-}
-
-// UpsertOverride writes Source=override, refreshes the hot cache, and bumps termHash.
-func (s *TermStore) UpsertOverride(module, lang, scopeKey, src, kind, value string) (TermListItem, error) {
-	module = strings.TrimSpace(module)
-	lang = strings.TrimSpace(lang)
-	scopeKey = strings.TrimSpace(scopeKey)
-	src = strings.TrimSpace(src)
-	kind = i18nmodels.NormalizeKind(kind)
-	if module == "" || lang == "" || scopeKey == "" || src == "" {
-		return TermListItem{}, fmt.Errorf("upsert override: module, lang, scope, and src are required")
-	}
-	if s.application == "" || s.application == "core" {
-		return TermListItem{}, fmt.Errorf("upsert override: invalid application")
-	}
-	if s.runtimeScope == nil || s.runtimeScope.Session() == nil {
-		return TermListItem{}, fmt.Errorf("upsert override: missing runtime session")
-	}
-
-	if err := i18nmodels.EnsureTranslationTermTable(s.runtimeScope, s.application); err != nil {
-		return TermListItem{}, err
-	}
-	tableName := i18nmodels.TranslationTermTableName(s.application)
-	session := s.runtimeScope.Session()
-
-	var existing i18nmodels.TranslationTerm
-	err := session.Table(tableName).
-		Where("module = ? AND lang = ? AND scope = ? AND src = ? AND kind = ?",
-			module, lang, scopeKey, src, kind).
-		Take(&existing).Error
-	if err == nil {
-		existing.Value = value
-		existing.Source = i18nmodels.SourceOverride
-		existing.Application = s.application
-		if err := session.Table(tableName).Save(&existing).Error; err != nil {
-			return TermListItem{}, fmt.Errorf("update override: %w", err)
-		}
-		s.applyOverrideToCache(module, lang, scopeKey, src, kind, value)
-		s.BumpTermHash(lang)
-		return termListItemFromRow(s.application, existing), nil
-	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return TermListItem{}, fmt.Errorf("lookup term: %w", err)
-	}
-
-	row := i18nmodels.TranslationTerm{
-		Application: s.application,
-		Module:      module,
-		Lang:        lang,
-		Scope:       scopeKey,
-		Src:         src,
-		Value:       value,
-		Kind:        kind,
-		Source:      i18nmodels.SourceOverride,
-	}
-	if err := session.Table(tableName).Create(&row).Error; err != nil {
-		return TermListItem{}, fmt.Errorf("create override: %w", err)
-	}
-	s.applyOverrideToCache(module, lang, scopeKey, src, kind, value)
-	s.BumpTermHash(lang)
-	return termListItemFromRow(s.application, row), nil
-}
-
-func (s *TermStore) applyOverrideToCache(module, lang, scopeKey, src, kind, value string) {
-	kind = i18nmodels.NormalizeKind(kind)
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.warmEpoch[lang]++
-	if s.cache[lang] == nil {
-		s.cache[lang] = make(map[string]map[string]map[string]map[string]string)
-	}
-	if s.cache[lang][module] == nil {
-		s.cache[lang][module] = make(map[string]map[string]map[string]string)
-	}
-	if s.cache[lang][module][scopeKey] == nil {
-		s.cache[lang][module][scopeKey] = make(map[string]map[string]string)
-	}
-	if s.cache[lang][module][scopeKey][kind] == nil {
-		s.cache[lang][module][scopeKey][kind] = make(map[string]string)
-	}
-	s.cache[lang][module][scopeKey][kind][src] = value
-}
-
-func termListItemFromRow(application string, row i18nmodels.TranslationTerm) TermListItem {
-	kind := i18nmodels.NormalizeKind(row.Kind)
-	source := row.Source
-	if source == "" {
-		source = i18nmodels.SourcePackaged
-	}
-	status := statusTranslated
-	if strings.TrimSpace(row.Value) == "" {
-		status = statusMissing
-	} else if strings.Contains(strings.ToLower(row.Comments), "fuzzy") {
-		status = statusFuzzy
-	}
-	app := row.Application
-	if app == "" {
-		app = application
-	}
-	return TermListItem{
-		Application: app,
-		Module:      row.Module,
-		Scope:       row.Scope,
-		Src:         row.Src,
-		Value:       row.Value,
-		Kind:        kind,
-		Source:      source,
-		Status:      status,
-	}
-}
-
-// BumpTermHash updates the hash for lang (e.g. after UpdateTerm) without full recompute.
+// BumpTermHash updates the hash for lang without full recompute.
 func (s *TermStore) BumpTermHash(lang string) string {
 	lang = strings.TrimSpace(lang)
 	s.mu.Lock()

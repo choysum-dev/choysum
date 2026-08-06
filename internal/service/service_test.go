@@ -964,12 +964,11 @@ message PingReply { string msg = 1; }
 	if err != nil {
 		t.Fatalf("auth ServiceDescs: %v", err)
 	}
-	if len(descs) != 3 {
-		t.Fatalf("expected 3 service desc for auth (AuthService+TaskWorker+I18n); got %d", len(descs))
+	if len(descs) != 2 {
+		t.Fatalf("expected 2 service desc for auth (AuthService+TaskWorker); got %d", len(descs))
 	}
 	var hasAuthService bool
 	var hasTaskWorker bool
-	var hasI18n bool
 	for _, desc := range descs {
 		if desc.ServiceName == "auth.AuthService" {
 			hasAuthService = true
@@ -978,7 +977,7 @@ message PingReply { string msg = 1; }
 			hasTaskWorker = true
 		}
 		if desc.ServiceName == "auth.I18n" {
-			hasI18n = true
+			t.Fatalf("auth must not inject I18n: %q", desc.ServiceName)
 		}
 		if strings.Contains(desc.ServiceName, "meta.") {
 			t.Fatalf("auth desc should not include meta: %q", desc.ServiceName)
@@ -990,9 +989,6 @@ message PingReply { string msg = 1; }
 	if !hasTaskWorker {
 		t.Fatalf("missing auth.TaskWorker descriptor")
 	}
-	if !hasI18n {
-		t.Fatalf("missing auth.I18n descriptor")
-	}
 
 	metaSvc, err := NewApplicationService(runtimeScope, "meta", nil)
 	if err != nil {
@@ -1002,12 +998,11 @@ message PingReply { string msg = 1; }
 	if err != nil {
 		t.Fatalf("meta ServiceDescs: %v", err)
 	}
-	if len(metaDescs) != 3 {
-		t.Fatalf("expected 3 service desc for meta (Service+TaskWorker+I18n); got %d", len(metaDescs))
+	if len(metaDescs) != 2 {
+		t.Fatalf("expected 2 service desc for meta (Service+TaskWorker); got %d", len(metaDescs))
 	}
 	var hasService bool
 	var hasMetaTaskWorker bool
-	var hasMetaI18n bool
 	for _, desc := range metaDescs {
 		if desc.ServiceName == "meta.MetaService" {
 			hasService = true
@@ -1016,7 +1011,7 @@ message PingReply { string msg = 1; }
 			hasMetaTaskWorker = true
 		}
 		if desc.ServiceName == "meta.I18n" {
-			hasMetaI18n = true
+			t.Fatalf("meta must not inject I18n: %q", desc.ServiceName)
 		}
 		if strings.Contains(desc.ServiceName, "auth.") {
 			t.Fatalf("meta desc should not include auth: %q", desc.ServiceName)
@@ -1027,9 +1022,6 @@ message PingReply { string msg = 1; }
 	}
 	if !hasMetaTaskWorker {
 		t.Fatalf("missing meta.TaskWorker descriptor")
-	}
-	if !hasMetaI18n {
-		t.Fatalf("missing meta.I18n descriptor")
 	}
 	if got := metaDescs[0].ServiceName; got != "meta.MetaService" {
 		t.Fatalf("unexpected meta service name: got=%q want=%q", got, "meta.MetaService")
@@ -1820,17 +1812,13 @@ message PingReply { string msg = 1; }
 		if err != nil {
 			t.Fatalf("ServiceDescs(loaderapp) error = %v", err)
 		}
-		if len(descs) != 3 {
-			t.Fatalf("expected loaderapp desc plus TaskWorker plus I18n, got %#v", descs)
+		if len(descs) != 2 {
+			t.Fatalf("expected loaderapp desc plus TaskWorker, got %#v", descs)
 		}
-		var hasLoaderI18n bool
 		for _, desc := range descs {
 			if desc.ServiceName == "loaderapp.I18n" {
-				hasLoaderI18n = true
+				t.Fatalf("loaderapp must not inject I18n in %#v", descs)
 			}
-		}
-		if !hasLoaderI18n {
-			t.Fatalf("missing loaderapp.I18n descriptor in %#v", descs)
 		}
 		md, err := loader.Global().GetMethodDescriptor("loaderapp.LoaderService.Ping")
 		if err != nil {
@@ -1867,7 +1855,7 @@ message PingReply { string msg = 1; }
 		if err != nil {
 			t.Fatalf("ServiceDescs(web) error = %v", err)
 		}
-		var hasWebService, hasTaskWorker, hasI18n bool
+		var hasWebService, hasTaskWorker bool
 		for _, desc := range descs {
 			switch desc.ServiceName {
 			case "web.WebService":
@@ -1875,17 +1863,17 @@ message PingReply { string msg = 1; }
 			case "web.TaskWorker":
 				hasTaskWorker = true
 			case "web.I18n":
-				hasI18n = true
+				t.Fatalf("web must not inject I18n: %#v", descs)
 			}
 		}
-		if !hasWebService || hasTaskWorker || !hasI18n || len(descs) != 2 {
-			t.Fatalf("expected web.WebService+web.I18n without TaskWorker, got %#v", descs)
+		if !hasWebService || hasTaskWorker || len(descs) != 1 {
+			t.Fatalf("expected web.WebService only without TaskWorker/I18n, got %#v", descs)
 		}
 	})
 }
 
 func TestServiceDescsEdgeCases(t *testing.T) {
-	t.Run("missing proto directory still injects TaskWorker and I18n", func(t *testing.T) {
+	t.Run("missing proto directory still injects TaskWorker", func(t *testing.T) {
 		root := t.TempDir()
 		runtimeScope := newHelperScope(root)
 		svc := &ApplicationService{runtimeScope: runtimeScope, name: "auth", appDistPath: root, protoRootDir: filepath.Join(root, "missing")}
@@ -1894,21 +1882,21 @@ func TestServiceDescsEdgeCases(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ServiceDescs(missing) error = %v", err)
 		}
-		var hasTaskWorker, hasI18n bool
+		var hasTaskWorker bool
 		for _, desc := range descs {
 			switch desc.ServiceName {
 			case "auth.TaskWorker":
 				hasTaskWorker = true
 			case "auth.I18n":
-				hasI18n = true
+				t.Fatalf("auth must not inject I18n: %#v", descs)
 			}
 		}
-		if !hasTaskWorker || !hasI18n || len(descs) != 2 {
-			t.Fatalf("expected TaskWorker+I18n for missing proto dir, got %#v", descs)
+		if !hasTaskWorker || len(descs) != 1 {
+			t.Fatalf("expected TaskWorker only for missing proto dir, got %#v", descs)
 		}
 	})
 
-	t.Run("non-web empty proto dir still injects TaskWorker and I18n", func(t *testing.T) {
+	t.Run("non-web empty proto dir still injects TaskWorker", func(t *testing.T) {
 		root := t.TempDir()
 		protoDir := filepath.Join(root, "assets")
 		if err := os.MkdirAll(protoDir, 0o755); err != nil {
@@ -1921,17 +1909,17 @@ func TestServiceDescsEdgeCases(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ServiceDescs(empty) error = %v", err)
 		}
-		var hasTaskWorker, hasI18n bool
+		var hasTaskWorker bool
 		for _, desc := range descs {
 			switch desc.ServiceName {
 			case "auth.TaskWorker":
 				hasTaskWorker = true
 			case "auth.I18n":
-				hasI18n = true
+				t.Fatalf("auth must not inject I18n: %#v", descs)
 			}
 		}
-		if !hasTaskWorker || !hasI18n || len(descs) != 2 {
-			t.Fatalf("expected TaskWorker+I18n for empty proto dir, got %#v", descs)
+		if !hasTaskWorker || len(descs) != 1 {
+			t.Fatalf("expected TaskWorker only for empty proto dir, got %#v", descs)
 		}
 	})
 
