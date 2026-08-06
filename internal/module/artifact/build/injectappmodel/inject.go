@@ -202,8 +202,10 @@ func materializeInject(sess *Session, spec *Spec, plan Plan) (Effects, error) {
 				Path:     entryPath,
 				Contents: virtualServiceEntrySource(),
 			})
-			out.ServiceEntryPath = entryPath
 		}
+		// Always set ServiceEntryPath (disk adopt or virtual) so applyInjectEffects
+		// can adopt it onto an empty builder entryPoint / plugin EntryPoint.
+		out.ServiceEntryPath = entryPath
 	}
 
 	if strings.TrimSpace(mod.ServiceEntryPoint) == "" {

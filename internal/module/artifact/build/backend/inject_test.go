@@ -6,6 +6,7 @@ package backendbuilder
 import (
 	"database/sql"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -46,6 +47,38 @@ func newInjectTestBuilder(t *testing.T, mod *meta.Module, results []*parser.Pars
 		injectRegistry: reg,
 	}
 	return builder, buildPlugin, db
+}
+
+func TestApplyInjectEffects_AdoptsDiskEnsuredServiceEntry(t *testing.T) {
+	dir := t.TempDir()
+	modPath := filepath.Join(dir, "auth")
+	svcDir := filepath.Join(modPath, "service")
+	if err := os.MkdirAll(svcDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	entryPath := filepath.Join(svcDir, "index.ts")
+	if err := os.WriteFile(entryPath, []byte("export {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	mod := &meta.Module{
+		Name: "auth", Path: modPath,
+		ApplicationStr: "auth", ServiceEntryPoint: "",
+	}
+	builder, buildPlugin, _ := newInjectTestBuilder(t, mod, nil)
+	builder.runtimeScope.(*builderTestScope).cfg.ModulesPath = filepath.Join(dir, "missing-modules-root")
+	builder.entryPoint = ""
+	if err := builder.injectAppModels(nil); err != nil {
+		t.Fatal(err)
+	}
+	if builder.entryPoint != entryPath && filepath.Clean(builder.entryPoint) != filepath.Clean(entryPath) {
+		t.Fatalf("builder entryPoint = %q want disk entry %q", builder.entryPoint, entryPath)
+	}
+	if buildPlugin.entryPoint != entryPath && filepath.Clean(buildPlugin.entryPoint) != filepath.Clean(entryPath) {
+		t.Fatalf("plugin entryPoint = %q want disk entry %q", buildPlugin.entryPoint, entryPath)
+	}
+	if _, ok := buildPlugin.virtualSources[entryPath]; ok {
+		t.Fatal("must not register virtual stub over on-disk service entry")
+	}
 }
 
 func TestApplyInjectEffects_AdoptsServiceEntryPath(t *testing.T) {

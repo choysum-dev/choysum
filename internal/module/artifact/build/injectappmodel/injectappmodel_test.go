@@ -396,8 +396,8 @@ func TestInject_EnsureServiceEntry_AdoptsExistingDiskEntry(t *testing.T) {
 	if mod.ServiceEntryPoint != entryPath && filepath.Clean(mod.ServiceEntryPoint) != filepath.Clean(entryPath) {
 		t.Fatalf("ServiceEntryPoint = %q want disk entry %q", mod.ServiceEntryPoint, entryPath)
 	}
-	if fx.ServiceEntryPath != "" {
-		t.Fatalf("ServiceEntryPath = %q, want empty (disk entry must not be virtualized)", fx.ServiceEntryPath)
+	if fx.ServiceEntryPath != entryPath && filepath.Clean(fx.ServiceEntryPath) != filepath.Clean(entryPath) {
+		t.Fatalf("ServiceEntryPath = %q, want disk entry so builder can adopt it", fx.ServiceEntryPath)
 	}
 	for _, f := range fx.Files {
 		if strings.HasSuffix(filepath.ToSlash(f.Path), "service/index.ts") {

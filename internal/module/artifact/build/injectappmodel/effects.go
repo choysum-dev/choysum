@@ -16,10 +16,11 @@ type VirtualFile struct {
 type Effects struct {
 	Files   []VirtualFile
 	Imports []string // inject paths to merge into entry-point imports
-	// ServiceEntryPath, when set, is a virtual service entry created by Ensure.
-	// The caller should set builder entryPoint (only when currently empty) and
-	// plugin EntryPoint; Module.ServiceEntryPoint is mutated during Materialize
-	// so later Specs in the same InjectAppModels loop see a non-empty entry.
+	// ServiceEntryPath, when set, is the Ensure'd service entry (virtual stub or
+	// adopted on-disk path). The caller should set builder entryPoint (only when
+	// currently empty) and plugin EntryPoint; Module.ServiceEntryPoint is mutated
+	// during Materialize so later Specs in the same InjectAppModels loop see a
+	// non-empty entry.
 	ServiceEntryPath string
 }
 
