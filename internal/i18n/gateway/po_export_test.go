@@ -309,8 +309,8 @@ func (w *errWriter) Header() http.Header {
 	}
 	return w.header
 }
-func (w *errWriter) Write([]byte) (int, error) { return 0, context.Canceled }
-func (w *errWriter) WriteHeader(statusCode int)  { w.code = statusCode }
+func (w *errWriter) Write([]byte) (int, error)  { return 0, context.Canceled }
+func (w *errWriter) WriteHeader(statusCode int) { w.code = statusCode }
 
 func TestPOWriteErrorIsLogged(t *testing.T) {
 	h := &handler{

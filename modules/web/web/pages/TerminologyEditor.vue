@@ -148,7 +148,8 @@ async function onDownloadPo() {
     a.href = url;
     a.download = `${moduleFilter.value.trim()}-${i18nStore.terminologyLang}.po`;
     a.click();
-    URL.revokeObjectURL(url);
+    // Some browsers cancel the download if the blob URL is revoked synchronously.
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   } catch (err: any) {
     ElMessage.error(err?.message || _t('PO download failed'));
   } finally {

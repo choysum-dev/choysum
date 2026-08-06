@@ -229,7 +229,8 @@ describe('TerminologyEditor page', () => {
 
     createObjectURL = vi.fn(() => 'blob:po');
     revokeObjectURL = vi.fn();
-    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL });
+    vi.spyOn(URL, 'createObjectURL').mockImplementation(createObjectURL as typeof URL.createObjectURL);
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(revokeObjectURL as typeof URL.revokeObjectURL);
 
     clickSpy = vi.fn();
     const realCreate = document.createElement.bind(document);
@@ -244,7 +245,7 @@ describe('TerminologyEditor page', () => {
 
   afterEach(() => {
     createElementSpy.mockRestore();
-    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it('loads TranslationTerm applications on mount and skips core/empty', async () => {
@@ -324,6 +325,7 @@ describe('TerminologyEditor page', () => {
 
     await wrapper.find('.download-btn').trigger('click');
     await flushPromises();
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(downloadTerminologyPo).toHaveBeenCalledWith({
       lang: 'zh_CN',
