@@ -111,7 +111,7 @@ func TestEnsureI18nMetaSeedsTerminologyEditorAllows(t *testing.T) {
 		t.Fatal(err)
 	}
 	if count != 3 {
-		t.Fatalf("expected 3 RoleMethodAccess rows (Search/Read/Update), got %d", count)
+		t.Fatalf("expected 3 RoleMethodAccess rows (Search/Browse/Update), got %d", count)
 	}
 
 	var getTranslationsAllows int64
@@ -137,7 +137,7 @@ func seedTranslationTermEffective(t *testing.T, db *gorm.DB, application string)
 		Name:         translationTermModelName,
 		Path:         "go://translation_term/" + application,
 		Application:  application,
-		ServiceNames: []string{"Search", "Read", "Update", "GetTranslations", "Create"},
+		ServiceNames: []string{"Search", "Browse", "Update", "GetTranslations", "Create"},
 	}); err != nil {
 		t.Fatalf("EnsureAbstractModel TranslationTerm: %v", err)
 	}

@@ -28,8 +28,8 @@ export const baseMenus: MenuItem[] = [
         icon: School,
         path: '/base/terminology',
         sequence: 95,
+        // Role-gated only; see base.route.terminology_editor comment.
         defaultRoles: ['terminology.editor'],
-        requires: [{ model: 'auth.TranslationTerm', method: 'Search' }],
       }),
       defineMenu('base.menu.sequence', { title: _lt('Sequence Management'), icon: School, path: '/base/sequences', sequence: 110 }),
       defineMenu('base.menu.sequence_idempotency', { title: _lt('Sequence Idempotency Record'), icon: School, path: '/base/sequence-idempotencies', sequence: 120 }),

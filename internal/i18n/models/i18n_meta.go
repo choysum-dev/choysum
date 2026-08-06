@@ -31,15 +31,16 @@ var i18nServiceMethods = []string{
 }
 
 // TranslationTerm methods bound to terminology.editor (never GetTranslations).
+// Choysum ORM uses Browse (not Read) for single-record fetch.
 var terminologyEditorServiceMethods = []string{
 	"Search",
-	"Read",
+	"Browse",
 	"Update",
 }
 
 // EnsureI18nMeta registers declaration-layer I18n + Service methods via the meta
 // declaration facade, flushes the effective projection, and seeds Terminology
-// Editor ACL rows against TranslationTerm Search/Read/Update (not I18n methods).
+// Editor ACL rows against TranslationTerm Search/Browse/Update (not I18n methods).
 func EnsureI18nMeta(runtimeScope scope.Scope, application string, moduleID sql.NullString) error {
 	application = strings.TrimSpace(application)
 	if application == "" || application == coreApplication {

@@ -35,8 +35,8 @@
         "Name": "Terminology Editor",
         "Code": "terminology.editor",
         "Description": {
-          "en_US": "Edit terminology translations via TranslationTerm Search/Update",
-          "zh_CN": "可通过 TranslationTerm Search/Update 编辑术语翻译"
+          "en_US": "Edit terminology translations via TranslationTerm Search/Browse/Update",
+          "zh_CN": "可通过 TranslationTerm Search/Browse/Update 编辑术语翻译"
         },
         "IsActive": true,
         "IsSystem": true
@@ -82,51 +82,6 @@
         "MetaApplicationId": null,
         "MetaModelId": null,
         "MetaServiceId": null,
-        "Mode": "allow"
-      }
-    },
-    {
-      "name": "rma_terminology_editor_auth_tt_search",
-      "model": "RoleMethodAccess",
-      "values": {
-        "RoleId": {
-          "ref": "auth.role_terminology_editor"
-        },
-        "MetaApplicationId": null,
-        "MetaModelId": null,
-        "MetaServiceId": {
-          "serviceRef": "auth.TranslationTerm/Search"
-        },
-        "Mode": "allow"
-      }
-    },
-    {
-      "name": "rma_terminology_editor_auth_tt_read",
-      "model": "RoleMethodAccess",
-      "values": {
-        "RoleId": {
-          "ref": "auth.role_terminology_editor"
-        },
-        "MetaApplicationId": null,
-        "MetaModelId": null,
-        "MetaServiceId": {
-          "serviceRef": "auth.TranslationTerm/Read"
-        },
-        "Mode": "allow"
-      }
-    },
-    {
-      "name": "rma_terminology_editor_auth_tt_update",
-      "model": "RoleMethodAccess",
-      "values": {
-        "RoleId": {
-          "ref": "auth.role_terminology_editor"
-        },
-        "MetaApplicationId": null,
-        "MetaModelId": null,
-        "MetaServiceId": {
-          "serviceRef": "auth.TranslationTerm/Update"
-        },
         "Mode": "allow"
       }
     },

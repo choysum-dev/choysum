@@ -267,8 +267,10 @@ export const languageRoutes: RouteRecordRaw[] = [
     path: 'base/terminology',
     name: 'TerminologyEditor',
     component: () => import('@/web/web/pages/TerminologyEditor.vue'),
+    // Role-gated only: TranslationTerm MetaModel is injected per app and is not
+    // guaranteed to exist when base UI resources are validated (auth installs later).
+    // Method allows are seeded by ensureTerminologyEditorAllows (Search/Browse/Update).
     defaultRoles: ['terminology.editor'],
-    requires: [{ model: 'auth.TranslationTerm', method: 'Search' }],
     meta: { requiresAuth: true },
   }),
 ];
