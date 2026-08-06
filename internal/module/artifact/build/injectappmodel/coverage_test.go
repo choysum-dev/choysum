@@ -60,9 +60,18 @@ func TestNilSessionGuards(t *testing.T) {
 	if nilSess.AllInjectPaths() != nil {
 		t.Fatal("nil AllInjectPaths")
 	}
+	if nilSess.Registry() != nil {
+		t.Fatal("nil Registry")
+	}
 	nilSess.rememberInjectPath("x", "p")
 	nilSess.releaseScheduleFor(nil)
 	nilSess.releaseScheduleFor(specByNameOrPanic("FieldDefault"))
+
+	// NewSession with nil reg uses DefaultRegistry.
+	s := NewSession(nil, nil)
+	if s.Registry() != DefaultRegistry() {
+		t.Fatal("expected DefaultRegistry")
+	}
 }
 
 func TestDecideOneAndApplyInjectOne(t *testing.T) {
@@ -150,7 +159,7 @@ func TestDecidePlan_Branches(t *testing.T) {
 	}
 
 	// Local non-handwritten model present → skip inject.
-	ResetScheduledForTest()
+	sess.Registry().ResetClaims()
 	localVirt := "/virtual/modules/partner/service/models/__generated__/field_default.ts"
 	if plan, err := decidePlan(spec, sess, []*parser.ParserResult{
 		{Path: localVirt, Model: &meta.Model{Name: "FieldDefault", Path: localVirt}},
@@ -159,7 +168,7 @@ func TestDecidePlan_Branches(t *testing.T) {
 	}
 
 	// Existing virt owned by another module → skip.
-	ResetScheduledForTest()
+	sess.Registry().ResetClaims()
 	_ = meta.DeleteDeclarationTrees(db, []string{"other-hand"})
 	otherVirt := "/virtual/modules/other/service/models/__generated__/field_default.ts"
 	seedDeclaration(t, db, "FieldDefault", "ov", otherVirt, "partner")
@@ -168,7 +177,7 @@ func TestDecidePlan_Branches(t *testing.T) {
 	}
 
 	// DB load error.
-	ResetScheduledForTest()
+	sess.Registry().ResetClaims()
 	if err := meta.DropRawModelTable(db); err != nil {
 		t.Fatal(err)
 	}
@@ -199,19 +208,66 @@ func TestApplyInject_EmptyModulePathAndModulesPathFallback(t *testing.T) {
 	}
 }
 
-func TestClaimNeedInject_NilScheduledMap(t *testing.T) {
-	spec := &Spec{ModelName: "Temp", ForeignClaimOnOwnerReinject: true, scheduled: nil}
-	plan := claimNeedInject(spec, "app", "mod")
-	if !plan.NeedInject || plan.ScheduledApp != "app" || spec.scheduled == nil {
-		t.Fatalf("expected lazy scheduled init, got %+v scheduled=%v", plan, spec.scheduled)
+func TestRegistryNilAndLookup(t *testing.T) {
+	var nilReg *Registry
+	if nilReg.Specs() != nil {
+		t.Fatal("nil Specs")
 	}
-	plan2 := claimNeedInject(spec, "app", "other")
+	if _, ok := nilReg.Lookup("x"); ok {
+		t.Fatal("nil Lookup")
+	}
+	if _, ok := nilReg.lookupPtr("x"); ok {
+		t.Fatal("nil lookupPtr")
+	}
+	if nilReg.specsList() != nil {
+		t.Fatal("nil specsList")
+	}
+	if owner, loaded := nilReg.TryClaim("x", "a", "m"); loaded || owner != "" {
+		t.Fatal("nil TryClaim")
+	}
+	nilReg.ReleaseClaim("x", "a")
+	if _, ok := nilReg.ClaimOwner("x", "a"); ok {
+		t.Fatal("nil ClaimOwner")
+	}
+	nilReg.ResetClaims()
+
+	reg := NewRegistryWithDefaults()
+	if _, ok := reg.Lookup("NoSuch"); ok {
+		t.Fatal("missing Lookup")
+	}
+	spec, ok := reg.Lookup("FieldDefault")
+	if !ok || spec.ModelName != "FieldDefault" {
+		t.Fatalf("Lookup: %+v ok=%v", spec, ok)
+	}
+	reg.ReleaseClaim("FieldDefault", "") // empty app no-op
+	if specs := DefaultSpecs(); len(specs) != 2 {
+		t.Fatalf("DefaultSpecs=%d", len(specs))
+	}
+}
+
+func TestClaimNeedInject_RegistryClaims(t *testing.T) {
+	reg := NewRegistry()
+	reg.Register(Spec{ModelName: "Temp", ForeignClaimOnOwnerReinject: true})
+	spec, _ := reg.lookupPtr("Temp")
+	plan := claimNeedInject(reg, spec, "app", "mod")
+	if !plan.NeedInject || plan.ScheduledApp != "app" {
+		t.Fatalf("expected claim, got %+v", plan)
+	}
+	plan2 := claimNeedInject(reg, spec, "app", "other")
 	if !plan2.NeedInject || plan2.ScheduledApp != "" {
 		t.Fatalf("foreign claim branch: %+v", plan2)
 	}
-	plan3 := claimFirstNeedInject(&Spec{ModelName: "T2"}, "a", "m")
+
+	reg2 := NewRegistry()
+	reg2.Register(Spec{ModelName: "T2"})
+	spec2, _ := reg2.lookupPtr("T2")
+	plan3 := claimFirstNeedInject(reg2, spec2, "a", "m")
 	if !plan3.NeedInject || plan3.ScheduledApp != "a" {
-		t.Fatalf("claimFirst nil scheduled: %+v", plan3)
+		t.Fatalf("claimFirst: %+v", plan3)
+	}
+	plan4 := claimFirstNeedInject(reg2, spec2, "a", "other")
+	if plan4.NeedInject {
+		t.Fatalf("claimFirst other owner should skip: %+v", plan4)
 	}
 }
 
@@ -242,7 +298,8 @@ func TestValidateInjectAppModels_Guards(t *testing.T) {
 }
 
 func TestSessionMapsAndPaths(t *testing.T) {
-	s := &Session{}
+	reg := NewRegistryWithDefaults()
+	s := NewSession(nil, reg)
 	s.SetPlan("FieldDefault", Plan{NeedInject: true, ScheduledApp: "partner"})
 	if !s.Plan("FieldDefault").NeedInject {
 		t.Fatal("SetPlan lazy maps")
@@ -270,12 +327,11 @@ func TestSessionMapsAndPaths(t *testing.T) {
 		t.Fatal("ClearInjectPaths")
 	}
 
-	ResetScheduledForTest()
-	spec := specByNameOrPanic("FieldDefault")
-	spec.scheduled.Store("partner", "mod")
+	reg.TryClaim("FieldDefault", "partner", "mod")
+	spec, _ := reg.lookupPtr("FieldDefault")
 	s.SetPlan("FieldDefault", Plan{ScheduledApp: "partner"})
 	s.releaseScheduleFor(spec)
-	if _, ok := spec.scheduled.Load("partner"); ok {
+	if _, ok := reg.ClaimOwner("FieldDefault", "partner"); ok {
 		t.Fatal("releaseScheduleFor should clear")
 	}
 	if s.Plan("FieldDefault").ScheduledApp != "" {
@@ -289,16 +345,19 @@ func TestSessionMapsAndPaths(t *testing.T) {
 }
 
 func TestReleaseScheduleCompat(t *testing.T) {
-	ResetScheduledForTest()
-	spec := specByNameOrPanic("FieldDefault")
-	spec.scheduled.Store("partner", "mod")
+	DefaultRegistry().ResetClaims()
+	t.Cleanup(DefaultRegistry().ResetClaims)
+	DefaultRegistry().TryClaim("FieldDefault", "partner", "mod")
 	ReleaseSchedule("FieldDefault", "partner")
-	if _, ok := spec.scheduled.Load("partner"); ok {
+	if _, ok := DefaultRegistry().ClaimOwner("FieldDefault", "partner"); ok {
 		t.Fatal("expected cleared")
 	}
 }
 
-func TestScheduledAppsAndRegister(t *testing.T) {
+func TestRegistryAndDeprecatedHelpers(t *testing.T) {
+	DefaultRegistry().ResetClaims()
+	t.Cleanup(DefaultRegistry().ResetClaims)
+
 	m := ScheduledApps("FieldDefault")
 	if m == nil {
 		t.Fatal("ScheduledApps")
@@ -321,25 +380,22 @@ func TestScheduledAppsAndRegister(t *testing.T) {
 		Register(Spec{ModelName: "FieldDefault"})
 	}()
 
-	// ResetScheduledForTest skips nil scheduled.
-	tmp := &Spec{ModelName: "tmp-nil-sched", scheduled: nil}
-	specsMu.Lock()
-	specsBy["tmp-nil-sched"] = tmp
-	specOrder = append(specOrder, "tmp-nil-sched")
-	specsMu.Unlock()
-	t.Cleanup(func() {
-		specsMu.Lock()
-		delete(specsBy, "tmp-nil-sched")
-		filtered := specOrder[:0]
-		for _, n := range specOrder {
-			if n != "tmp-nil-sched" {
-				filtered = append(filtered, n)
+	func() {
+		defer func() {
+			if recover() == nil {
+				t.Fatal("expected nil Registry Register panic")
 			}
-		}
-		specOrder = filtered
-		specsMu.Unlock()
-	})
-	ResetScheduledForTest()
+		}()
+		(*Registry)(nil).Register(Spec{ModelName: "x"})
+	}()
+
+	reg := NewRegistryWithDefaults()
+	reg.TryClaim("FieldDefault", "partner", "mod")
+	reg.ResetClaims()
+	if _, ok := reg.ClaimOwner("FieldDefault", "partner"); ok {
+		t.Fatal("ResetClaims should clear")
+	}
+	ResetScheduledForTest() // deprecated package helper still works
 }
 
 func TestHelpersCoverage(t *testing.T) {

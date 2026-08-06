@@ -18,7 +18,7 @@ func BundleInjectAppModels(sess *Session, modules []*meta.Module) error {
 	if sess == nil || sess.host == nil {
 		return nil
 	}
-	for _, spec := range specsList() {
+	for _, spec := range sess.Registry().specsList() {
 		if err := BundleOne(sess, spec.ModelName, modules); err != nil {
 			return err
 		}
@@ -35,7 +35,7 @@ func BundleOne(sess *Session, modelName string, modules []*meta.Module) error {
 	if sess == nil || sess.host == nil {
 		return nil
 	}
-	spec, ok := specByName(modelName)
+	spec, ok := sess.Registry().lookupPtr(modelName)
 	if !ok {
 		return nil
 	}

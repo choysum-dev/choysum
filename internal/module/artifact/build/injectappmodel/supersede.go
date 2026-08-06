@@ -17,7 +17,7 @@ func SupersedeInjectAppModels(sess *Session) error {
 	if sess == nil || sess.host == nil {
 		return nil
 	}
-	for _, spec := range specsList() {
+	for _, spec := range sess.Registry().specsList() {
 		if err := SupersedeOne(sess, spec.ModelName); err != nil {
 			return err
 		}
@@ -30,7 +30,7 @@ func SupersedeOne(sess *Session, modelName string) error {
 	if sess == nil || sess.host == nil {
 		return nil
 	}
-	spec, ok := specByName(modelName)
+	spec, ok := sess.Registry().lookupPtr(modelName)
 	if !ok {
 		return nil
 	}

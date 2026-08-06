@@ -6,18 +6,17 @@ package injectappmodel
 import (
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/choysum-dev/choysum/internal/parser"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
-// InjectAppModels runs Decide + Inject for every registered Spec.
+// InjectAppModels runs Decide + Inject for every Spec in the session registry.
 func InjectAppModels(sess *Session, prebuildResults []*parser.ParserResult) error {
 	if sess == nil {
 		return nil
 	}
-	for _, spec := range specsList() {
+	for _, spec := range sess.Registry().specsList() {
 		if err := DecideAndInjectOne(sess, spec.ModelName, prebuildResults); err != nil {
 			return err
 		}
@@ -30,7 +29,7 @@ func DecideAndInjectOne(sess *Session, modelName string, prebuildResults []*pars
 	if sess == nil {
 		return nil
 	}
-	spec, ok := specByName(modelName)
+	spec, ok := sess.Registry().lookupPtr(modelName)
 	if !ok {
 		return xfmt.Errorf("injectappmodel: unknown Spec %q", modelName)
 	}
@@ -52,7 +51,7 @@ func DecideOne(sess *Session, modelName string, prebuildResults []*parser.Parser
 	if sess == nil {
 		return plan, nil
 	}
-	spec, ok := specByName(modelName)
+	spec, ok := sess.Registry().lookupPtr(modelName)
 	if !ok {
 		return plan, xfmt.Errorf("injectappmodel: unknown Spec %q", modelName)
 	}
@@ -69,7 +68,7 @@ func ApplyInjectOne(sess *Session, modelName string) error {
 	if sess == nil {
 		return nil
 	}
-	spec, ok := specByName(modelName)
+	spec, ok := sess.Registry().lookupPtr(modelName)
 	if !ok {
 		return xfmt.Errorf("injectappmodel: unknown Spec %q", modelName)
 	}
@@ -124,36 +123,28 @@ func decidePlan(spec *Spec, sess *Session, prebuildResults []*parser.ParserResul
 	}
 	if len(existingVirt) > 0 {
 		if sameModule(existingVirt, mod) {
-			return claimNeedInject(spec, app, mod.Name), nil
+			return claimNeedInject(sess.Registry(), spec, app, mod.Name), nil
 		}
 		return plan, nil
 	}
-	return claimFirstNeedInject(spec, app, mod.Name), nil
+	return claimFirstNeedInject(sess.Registry(), spec, app, mod.Name), nil
 }
 
-func claimNeedInject(spec *Spec, app, modName string) Plan {
+func claimNeedInject(reg *Registry, spec *Spec, app, modName string) Plan {
 	if spec.ForeignClaimOnOwnerReinject {
-		if spec.scheduled == nil {
-			spec.scheduled = &sync.Map{}
-		}
-		owner, loaded := spec.scheduled.LoadOrStore(app, modName)
-		if loaded {
-			if ownerName, ok := owner.(string); ok && ownerName != modName {
-				return Plan{NeedInject: true}
-			}
+		owner, loaded := reg.TryClaim(spec.ModelName, app, modName)
+		if loaded && owner != "" && owner != modName {
+			return Plan{NeedInject: true}
 		}
 		return Plan{NeedInject: true, ScheduledApp: app}
 	}
 	return Plan{NeedInject: true, ScheduledApp: app}
 }
 
-func claimFirstNeedInject(spec *Spec, app, modName string) Plan {
-	if spec.scheduled == nil {
-		spec.scheduled = &sync.Map{}
-	}
-	owner, loaded := spec.scheduled.LoadOrStore(app, modName)
+func claimFirstNeedInject(reg *Registry, spec *Spec, app, modName string) Plan {
+	owner, loaded := reg.TryClaim(spec.ModelName, app, modName)
 	if loaded {
-		if ownerName, ok := owner.(string); ok && ownerName == modName {
+		if owner == modName {
 			return Plan{NeedInject: true, ScheduledApp: app}
 		}
 		return Plan{}
@@ -200,7 +191,7 @@ func ValidateInjectAppModels(sess *Session, buildResults []*parser.ParserResult)
 	if app == "" || app == "core" {
 		return nil
 	}
-	for _, spec := range specsList() {
+	for _, spec := range sess.Registry().specsList() {
 		models := modelsIn(spec, buildResults, mod.Path)
 		if len(models) <= 1 {
 			continue

@@ -46,8 +46,6 @@ func (h *fakeHost) RegisterVirtualSource(path, contents string) { h.virtualPaths
 
 func newTestSession(t *testing.T, mod *meta.Module) (*Session, *fakeHost, *gorm.DB) {
 	t.Helper()
-	ResetScheduledForTest()
-	t.Cleanup(ResetScheduledForTest)
 	db, err := gorm.Open(sqlite.Open(testMemoryDSN(t, "injectappmodel")), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
@@ -61,7 +59,8 @@ func newTestSession(t *testing.T, mod *meta.Module) (*Session, *fakeHost, *gorm.
 		modulesPath:  "/virtual/modules",
 		virtualPaths: map[string]string{},
 	}
-	return NewSession(host), host, db
+	reg := NewRegistryWithDefaults()
+	return NewSession(host, reg), host, db
 }
 
 func seedDeclaration(t *testing.T, db *gorm.DB, name, id, path, application string) {
@@ -128,11 +127,7 @@ func TestDecideAppSetting_ForeignClaimOnOwnerReinject(t *testing.T) {
 	virt := "/virtual/modules/partner/service/models/__generated__/app_setting.ts"
 	seedDeclaration(t, db, "AppSetting", "as1", virt, "partner")
 
-	spec, ok := specByName("AppSetting")
-	if !ok {
-		t.Fatal("AppSetting spec missing")
-	}
-	spec.scheduled.Store("partner", "other_builder")
+	sess.Registry().TryClaim("AppSetting", "partner", "other_builder")
 
 	if err := InjectAppModels(sess, nil); err != nil {
 		t.Fatalf("inject: %v", err)
@@ -141,7 +136,7 @@ func TestDecideAppSetting_ForeignClaimOnOwnerReinject(t *testing.T) {
 	if !plan.NeedInject || plan.ScheduledApp != "" {
 		t.Fatalf("expected NeedInject without adopting foreign claim, got %+v", plan)
 	}
-	if owner, ok := spec.scheduled.Load("partner"); !ok || owner != "other_builder" {
+	if owner, ok := sess.Registry().ClaimOwner("AppSetting", "partner"); !ok || owner != "other_builder" {
 		t.Fatalf("foreign claim must remain, got %#v ok=%v", owner, ok)
 	}
 }
@@ -155,11 +150,7 @@ func TestDecideFieldDefault_SameModuleReclaimWithoutForeignBranch(t *testing.T) 
 	virt := "/virtual/modules/partner/service/models/__generated__/field_default.ts"
 	seedDeclaration(t, db, "FieldDefault", "fd1", virt, "partner")
 
-	spec, ok := specByName("FieldDefault")
-	if !ok {
-		t.Fatal("FieldDefault spec missing")
-	}
-	spec.scheduled.Store("partner", "other_builder")
+	sess.Registry().TryClaim("FieldDefault", "partner", "other_builder")
 
 	if err := InjectAppModels(sess, nil); err != nil {
 		t.Fatalf("inject: %v", err)
@@ -197,12 +188,11 @@ func TestReleaseSchedules_ClearsClaim(t *testing.T) {
 	if err := InjectAppModels(sess, nil); err != nil {
 		t.Fatalf("inject: %v", err)
 	}
-	spec := specByNameOrPanic("FieldDefault")
-	if _, ok := spec.scheduled.Load("partner"); !ok {
-		t.Fatal("expected scheduled claim")
+	if owner, ok := sess.Registry().ClaimOwner("FieldDefault", "partner"); !ok || owner == "" {
+		t.Fatalf("expected scheduled claim, got owner=%q ok=%v", owner, ok)
 	}
 	sess.ReleaseSchedules()
-	if _, ok := spec.scheduled.Load("partner"); ok {
+	if _, ok := sess.Registry().ClaimOwner("FieldDefault", "partner"); ok {
 		t.Fatal("expected claim cleared")
 	}
 	if plan := sess.Plan("FieldDefault"); plan.ScheduledApp != "" {
@@ -329,12 +319,11 @@ func TestDecide_HandwrittenSkipsInject(t *testing.T) {
 }
 
 func TestProcessDedup_OtherModuleSkips(t *testing.T) {
-	ResetScheduledForTest()
 	modA := &meta.Module{
 		Name: "partner", Path: "/virtual/modules/partner",
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
-	sessA, _, _ := newTestSession(t, modA)
+	sessA, _, db := newTestSession(t, modA)
 	if err := InjectAppModels(sessA, nil); err != nil {
 		t.Fatalf("inject A: %v", err)
 	}
@@ -348,11 +337,11 @@ func TestProcessDedup_OtherModuleSkips(t *testing.T) {
 	}
 	hostB := &fakeHost{
 		mod:          modB,
-		db:           sessA.host.SessionDB(),
+		db:           db,
 		modulesPath:  "/virtual/modules",
 		virtualPaths: map[string]string{},
 	}
-	sessB := NewSession(hostB)
+	sessB := NewSession(hostB, sessA.Registry())
 	if err := InjectAppModels(sessB, nil); err != nil {
 		t.Fatalf("inject B: %v", err)
 	}

@@ -21,8 +21,7 @@ import (
 
 func newInjectTestBuilder(t *testing.T, mod *meta.Module, results []*parser.ParserResult) (*ModuleBuilder, *stubEsbPlugin, *gorm.DB) {
 	t.Helper()
-	injectappmodel.ResetScheduledForTest()
-	t.Cleanup(injectappmodel.ResetScheduledForTest)
+	reg := injectappmodel.NewRegistryWithDefaults()
 
 	dsn := filepath.Join(t.TempDir(), "inject-cov.sqlite")
 	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
@@ -44,6 +43,7 @@ func newInjectTestBuilder(t *testing.T, mod *meta.Module, results []*parser.Pars
 		buildPlugin:    buildPlugin,
 		prebuildPlugin: prebuildPlugin,
 		entryPoint:     "", // skip esbuild; use plugin parser results
+		injectRegistry: reg,
 	}
 	return builder, buildPlugin, db
 }

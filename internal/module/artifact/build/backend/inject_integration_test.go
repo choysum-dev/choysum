@@ -15,7 +15,7 @@ import (
 )
 
 func TestInjectAppModels_LifecycleReleasesSchedule(t *testing.T) {
-	injectappmodel.ResetScheduledForTest()
+	reg := injectappmodel.NewRegistryWithDefaults()
 	dsn := filepath.Join(t.TempDir(), "inject-lifecycle.sqlite")
 	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	if err != nil {
@@ -42,6 +42,7 @@ func TestInjectAppModels_LifecycleReleasesSchedule(t *testing.T) {
 		buildPlugin:    buildPlugin,
 		prebuildPlugin: prebuildPlugin,
 		entryPoint:     "",
+		injectRegistry: reg,
 	}
 
 	if err := builder.injectAppModels(nil); err != nil {
@@ -64,7 +65,7 @@ func TestInjectAppModels_LifecycleReleasesSchedule(t *testing.T) {
 	if plan := sess.Plan("FieldDefault"); plan.ScheduledApp != "" {
 		t.Fatalf("expected schedule cleared, got %+v", plan)
 	}
-	if _, loaded := injectappmodel.ScheduledApps("FieldDefault").Load("partner"); loaded {
+	if _, ok := reg.ClaimOwner("FieldDefault", "partner"); ok {
 		t.Fatal("expected process claim cleared")
 	}
 }

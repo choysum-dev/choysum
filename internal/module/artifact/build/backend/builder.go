@@ -60,8 +60,9 @@ type ModuleBuilder struct {
 	entryPointImportsCacheValid bool
 	entryPointImportsCache      []string
 
-	// injectSession holds C2 FieldDefault / AppSetting Decide plans and inject paths
-	// (injectappmodel).
+	// injectRegistry is the shared Spec/claim catalog (nil ⇒ DefaultRegistry).
+	injectRegistry *injectappmodel.Registry
+	// injectSession holds per-build Decide plans and inject paths.
 	injectSession *injectappmodel.Session
 }
 
@@ -884,7 +885,7 @@ func (b *ModuleBuilder) persistModuleModels(moduleID string, models []*meta.Mode
 	if b.injectSession != nil && b.module != nil {
 		app := strings.TrimSpace(b.module.ApplicationStr)
 		if app != "" {
-			for _, spec := range injectappmodel.Specs() {
+			for _, spec := range b.injectSession.Registry().Specs() {
 				if b.injectSession.Plan(spec.ModelName).SupersedeInject {
 					keys = append(keys, meta.LogicalKey{Application: app, Name: spec.ModelName})
 				}
@@ -1061,5 +1062,13 @@ func WithOutFileName(name string) func(*ModuleBuilder) {
 func WithGlobalName(name string) func(*ModuleBuilder) {
 	return func(b *ModuleBuilder) {
 		b.globalName = name
+	}
+}
+
+// WithInjectRegistry sets the inject Spec/claim registry for this builder.
+// If omitted, ensureInjectSession uses injectappmodel.DefaultRegistry().
+func WithInjectRegistry(reg *injectappmodel.Registry) func(*ModuleBuilder) {
+	return func(b *ModuleBuilder) {
+		b.injectRegistry = reg
 	}
 }

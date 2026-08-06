@@ -77,7 +77,11 @@ func (b *ModuleBuilder) ensureInjectSession() *injectappmodel.Session {
 		return nil
 	}
 	if b.injectSession == nil {
-		b.injectSession = injectappmodel.NewSession(injectHost{b})
+		reg := b.injectRegistry
+		if reg == nil {
+			reg = injectappmodel.DefaultRegistry()
+		}
+		b.injectSession = injectappmodel.NewSession(injectHost{b}, reg)
 	}
 	return b.injectSession
 }

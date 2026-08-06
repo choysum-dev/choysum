@@ -15,83 +15,39 @@ type Spec struct {
 	// ForeignClaimOnOwnerReinject: when DB virtual rows belong to this module but another
 	// in-process builder holds the schedule claim, still NeedInject without adopting release.
 	ForeignClaimOnOwnerReinject bool
-
-	// scheduled is process-wide NeedInject dedup keyed by application.
-	// Pointer so Spec value copies (Specs()) never copy a sync.Map.
-	scheduled *sync.Map
 }
 
-var (
-	specsMu   sync.RWMutex
-	specOrder []string
-	specsBy   = map[string]*Spec{}
-)
-
-// Register adds a Spec to the process-wide registry. ModelName must be unique.
+// Register adds a Spec to DefaultRegistry(). ModelName must be unique.
 func Register(spec Spec) {
-	specsMu.Lock()
-	defer specsMu.Unlock()
-	if _, exists := specsBy[spec.ModelName]; exists {
-		panic("injectappmodel: duplicate Register for " + spec.ModelName)
-	}
-	s := spec
-	if s.scheduled == nil {
-		s.scheduled = &sync.Map{}
-	}
-	specsBy[spec.ModelName] = &s
-	specOrder = append(specOrder, spec.ModelName)
+	DefaultRegistry().Register(spec)
 }
 
-// Specs returns registered specs in registration order.
+// Specs returns specs from DefaultRegistry() in registration order.
 func Specs() []Spec {
-	specsMu.RLock()
-	defer specsMu.RUnlock()
-	out := make([]Spec, 0, len(specOrder))
-	for _, name := range specOrder {
-		if s, ok := specsBy[name]; ok {
-			out = append(out, *s)
-		}
-	}
-	return out
+	return DefaultRegistry().Specs()
 }
 
 func specByName(name string) (*Spec, bool) {
-	specsMu.RLock()
-	defer specsMu.RUnlock()
-	s, ok := specsBy[name]
-	return s, ok
+	return DefaultRegistry().lookupPtr(name)
 }
 
 func specsList() []*Spec {
-	specsMu.RLock()
-	defer specsMu.RUnlock()
-	out := make([]*Spec, 0, len(specOrder))
-	for _, name := range specOrder {
-		if s, ok := specsBy[name]; ok {
-			out = append(out, s)
-		}
-	}
-	return out
+	return DefaultRegistry().specsList()
 }
 
-// ResetScheduledForTest clears process-wide inject dedup maps (tests only).
+// ResetScheduledForTest clears DefaultRegistry claims (tests only).
+// Deprecated: prefer Registry.ResetClaims on a test-owned registry, or
+// DefaultRegistry().ResetClaims().
 func ResetScheduledForTest() {
-	for _, spec := range specsList() {
-		if spec.scheduled == nil {
-			continue
-		}
-		spec.scheduled.Range(func(key, _ any) bool {
-			spec.scheduled.Delete(key)
-			return true
-		})
-	}
+	DefaultRegistry().ResetClaims()
 }
 
-// ScheduledApps returns the process-wide NeedInject dedup map for modelName (tests).
+// ScheduledApps returns the NeedInject dedup map for modelName on DefaultRegistry (tests).
+// Deprecated: prefer Registry.ClaimOwner / TryClaim / ResetClaims.
 func ScheduledApps(modelName string) *sync.Map {
-	spec, ok := specByName(modelName)
-	if !ok || spec.scheduled == nil {
+	r := DefaultRegistry()
+	if _, ok := r.Lookup(modelName); !ok {
 		panic("injectappmodel: ScheduledApps unknown model " + modelName)
 	}
-	return spec.scheduled
+	return r.claimMap(modelName)
 }

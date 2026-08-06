@@ -5,22 +5,39 @@ package injectappmodel
 
 import "strings"
 
-// Session holds per-build inject plans and paths for all registered Specs.
+// Session holds per-build inject plans and paths for Specs in a Registry.
 type Session struct {
 	host           Host
+	reg            *Registry
 	plans          map[string]Plan
 	injectPaths    map[string][]string
 	lastInjectPath map[string]string
 }
 
-// NewSession creates a Session bound to host.
-func NewSession(host Host) *Session {
+// NewSession creates a Session bound to host and reg.
+// If reg is nil, DefaultRegistry() is used.
+func NewSession(host Host, reg *Registry) *Session {
+	if reg == nil {
+		reg = DefaultRegistry()
+	}
 	return &Session{
 		host:           host,
+		reg:            reg,
 		plans:          make(map[string]Plan),
 		injectPaths:    make(map[string][]string),
 		lastInjectPath: make(map[string]string),
 	}
+}
+
+// Registry returns the Spec/claim registry for this session.
+func (s *Session) Registry() *Registry {
+	if s == nil {
+		return nil
+	}
+	if s.reg == nil {
+		return DefaultRegistry()
+	}
+	return s.reg
 }
 
 // ReleaseSchedules clears all scheduled apps claimed by this session.
@@ -28,14 +45,13 @@ func (s *Session) ReleaseSchedules() {
 	if s == nil {
 		return
 	}
+	reg := s.Registry()
 	for modelName, plan := range s.plans {
 		app := strings.TrimSpace(plan.ScheduledApp)
 		if app == "" {
 			continue
 		}
-		if spec, ok := specByName(modelName); ok && spec.scheduled != nil {
-			spec.scheduled.Delete(app)
-		}
+		reg.ReleaseClaim(modelName, app)
 		plan.ScheduledApp = ""
 		s.SetPlan(modelName, plan)
 	}
@@ -115,13 +131,13 @@ func (s *Session) allInjectPaths() []string {
 	return s.AllInjectPaths()
 }
 
-// AllInjectPaths returns inject paths for every registered Spec (registration order).
+// AllInjectPaths returns inject paths for every Spec in the session registry.
 func (s *Session) AllInjectPaths() []string {
 	if s == nil {
 		return nil
 	}
 	var out []string
-	for _, spec := range specsList() {
+	for _, spec := range s.Registry().specsList() {
 		out = append(out, s.injectPaths[spec.ModelName]...)
 	}
 	return out
@@ -136,9 +152,7 @@ func (s *Session) releaseScheduleFor(spec *Spec) {
 	if app == "" {
 		return
 	}
-	if spec.scheduled != nil {
-		spec.scheduled.Delete(app)
-	}
+	s.Registry().ReleaseClaim(spec.ModelName, app)
 	plan.ScheduledApp = ""
 	s.SetPlan(spec.ModelName, plan)
 }

@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/esbplugins"
+	"github.com/choysum-dev/choysum/internal/module/artifact/build/injectappmodel"
 	modulegenerator "github.com/choysum-dev/choysum/internal/module/artifact/generate"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	"github.com/choysum-dev/choysum/internal/parser"
@@ -745,6 +746,7 @@ func TestNewModuleBuilderOptionsAndBundleToDirCtx(t *testing.T) {
 		WithPublishDist(false),
 		WithOutFileName("bundle.js"),
 		WithGlobalName("AuthApp"),
+		WithInjectRegistry(injectappmodel.NewRegistryWithDefaults()),
 	).(*ModuleBuilder)
 	if !ok {
 		t.Fatalf("expected *ModuleBuilder, got %T", configured)
@@ -757,7 +759,7 @@ func TestNewModuleBuilderOptionsAndBundleToDirCtx(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected configured build plugin concrete type, got %T", configured.buildPlugin)
 	}
-	if configuredPrebuild != prebuildPlugin || configuredBuild != buildPlugin || configured.publishDist || configured.outFileName != "bundle.js" || configured.globalName != "AuthApp" {
+	if configuredPrebuild != prebuildPlugin || configuredBuild != buildPlugin || configured.publishDist || configured.outFileName != "bundle.js" || configured.globalName != "AuthApp" || configured.injectRegistry == nil {
 		t.Fatalf("unexpected configured builder: %#v", configured)
 	}
 

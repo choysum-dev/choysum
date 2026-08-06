@@ -5,13 +5,11 @@ package injectappmodel
 
 import "strings"
 
-// ReleaseSchedule clears one process-wide NeedInject claim for modelName/app.
+// ReleaseSchedule clears one NeedInject claim for modelName/app on DefaultRegistry.
 func ReleaseSchedule(modelName, app string) {
 	app = strings.TrimSpace(app)
 	if app == "" {
 		return
 	}
-	if spec, ok := specByName(modelName); ok && spec.scheduled != nil {
-		spec.scheduled.Delete(app)
-	}
+	DefaultRegistry().ReleaseClaim(modelName, app)
 }
