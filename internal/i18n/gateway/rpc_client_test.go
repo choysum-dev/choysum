@@ -22,8 +22,10 @@ import (
 	grpcclient "github.com/choysum-dev/choysum/pkg/grpc/client"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -297,5 +299,73 @@ func TestFetchAppTranslationsDialFailure(t *testing.T) {
 	})
 	if _, err := fetchAppTranslations(ctx, nil, "auth", "zh_CN", []string{"auth"}); err == nil {
 		t.Fatal("expected dial error")
+	}
+}
+
+func TestFetchAppTranslationsInvokeFailure(t *testing.T) {
+	lis := bufconn.Listen(1024 * 1024)
+	server := grpc.NewServer()
+	server.RegisterService(&grpc.ServiceDesc{
+		ServiceName: "auth.TranslationTerm",
+		HandlerType: (*interface{})(nil),
+		Methods: []grpc.MethodDesc{{
+			MethodName: "GetTranslations",
+			Handler: func(srv any, ctx context.Context, dec func(any) error, interceptor grpc.UnaryServerInterceptor) (any, error) {
+				reqMsg, err := i18nservice.NewRequestMessage("auth")
+				if err != nil {
+					return nil, err
+				}
+				if err := dec(reqMsg); err != nil {
+					return nil, err
+				}
+				return nil, status.Error(codes.Unavailable, "invoke boom")
+			},
+		}},
+		Streams:  []grpc.StreamDesc{},
+		Metadata: "auth/translation_term.proto",
+	}, nil)
+	go func() { _ = server.Serve(lis) }()
+	t.Cleanup(server.Stop)
+
+	var conn *grpc.ClientConn
+	t.Cleanup(func() {
+		if conn != nil {
+			_ = conn.Close()
+		}
+	})
+	ctx := grpcclient.ContextWithServiceDialer(context.Background(), func(ctx context.Context, serviceName string) (*grpc.ClientConn, error) {
+		if serviceName != "auth.TranslationTerm" {
+			return nil, fmt.Errorf("unexpected service: %s", serviceName)
+		}
+		if conn != nil {
+			return conn, nil
+		}
+		c, err := grpc.DialContext(ctx, "bufnet",
+			grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) { return lis.Dial() }),
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		)
+		if err != nil {
+			return nil, err
+		}
+		conn = c
+		return conn, nil
+	})
+
+	if _, err := fetchAppTranslations(ctx, nil, "auth", "zh_CN", []string{"auth"}); err == nil {
+		t.Fatal("expected invoke error")
+	}
+}
+
+func TestSearchAppUsesInjectedHook(t *testing.T) {
+	called := false
+	h := &handler{
+		search: func(ctx context.Context, accessToken, app, lang string, modules []string, q string, limit, offset int) (*searchTermsResult, error) {
+			called = true
+			return &searchTermsResult{Lang: lang, Total: 0}, nil
+		},
+	}
+	got, err := h.searchApp(context.Background(), "tok", "auth", "zh_CN", []string{"auth"}, "", 10, 0)
+	if err != nil || !called || got == nil || got.Lang != "zh_CN" {
+		t.Fatalf("injected searchApp failed: called=%v got=%#v err=%v", called, got, err)
 	}
 }
