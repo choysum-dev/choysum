@@ -6,6 +6,8 @@ package injectappmodel
 import (
 	"database/sql"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -157,6 +159,39 @@ func TestDecide_EmptyServiceEntry_SkipsFieldDefaultWithoutEnsure(t *testing.T) {
 	plan := sess.Plan("FieldDefault")
 	if plan.NeedInject || plan.SupersedeInject || len(fx.Files) != 0 {
 		t.Fatalf("FieldDefault without Ensure must skip empty entry, got plan=%+v fx=%+v", plan, fx)
+	}
+}
+
+func TestInject_EnsureServiceEntry_AdoptsExistingDiskEntry(t *testing.T) {
+	dir := t.TempDir()
+	modPath := filepath.Join(dir, "auth")
+	svcDir := filepath.Join(modPath, "service")
+	if err := os.MkdirAll(svcDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	entryPath := filepath.Join(svcDir, "index.ts")
+	if err := os.WriteFile(entryPath, []byte("export * from './models';\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	mod := &meta.Module{
+		Name: "auth", Path: modPath,
+		ApplicationStr: "auth", ServiceEntryPoint: "",
+	}
+	sess, _ := newTestSession(t, mod)
+	fx, err := InjectAppModels(sess, nil)
+	if err != nil {
+		t.Fatalf("inject: %v", err)
+	}
+	if mod.ServiceEntryPoint != entryPath && filepath.Clean(mod.ServiceEntryPoint) != filepath.Clean(entryPath) {
+		t.Fatalf("ServiceEntryPoint = %q want disk entry %q", mod.ServiceEntryPoint, entryPath)
+	}
+	if fx.ServiceEntryPath != "" {
+		t.Fatalf("ServiceEntryPath = %q, want empty (disk entry must not be virtualized)", fx.ServiceEntryPath)
+	}
+	for _, f := range fx.Files {
+		if strings.HasSuffix(filepath.ToSlash(f.Path), "service/index.ts") {
+			t.Fatalf("must not register virtual service stub over disk entry: %q", f.Path)
+		}
 	}
 }
 

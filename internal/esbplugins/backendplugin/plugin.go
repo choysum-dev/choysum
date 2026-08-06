@@ -6,6 +6,7 @@ package backendplugin
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -1206,9 +1207,15 @@ func (p *BackendPlugin) DefinePlugins(runtimeScope scope.Scope, jsExecutor jsexe
 				}
 				if virtualLoad {
 					resolveDir := filepath.Dir(args.Path)
-					if p.Module != nil && strings.TrimSpace(p.Module.Path) != "" {
-						if parent := filepath.Dir(p.Module.Path); parent != "" && parent != "." {
-							resolveDir = parent
+					// Prefer module-root ResolveDir only for pure virtual paths.
+					// If a real file exists at args.Path (virtual stub shadowed a
+					// disk entry), keep dirname(path) so relative imports like
+					// ./models resolve under service/.
+					if _, err := os.Stat(args.Path); err != nil {
+						if p.Module != nil && strings.TrimSpace(p.Module.Path) != "" {
+							if parent := filepath.Dir(p.Module.Path); parent != "" && parent != "." {
+								resolveDir = parent
+							}
 						}
 					}
 					result.ResolveDir = resolveDir

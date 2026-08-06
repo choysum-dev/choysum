@@ -4,6 +4,7 @@
 package injectappmodel
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -192,11 +193,18 @@ func materializeInject(sess *Session, spec *Spec, plan Plan) (Effects, error) {
 	if spec.EnsureServiceEntry && strings.TrimSpace(mod.ServiceEntryPoint) == "" {
 		entryPath := virtualServiceEntryPath(mod.Path)
 		sess.ensureServiceEntryPath(entryPath)
-		out.Files = append(out.Files, VirtualFile{
-			Path:     entryPath,
-			Contents: virtualServiceEntrySource(),
-		})
-		out.ServiceEntryPath = entryPath
+		// If a real service entry already exists on disk (common when the builder
+		// was given an entryPoint but Module.ServiceEntryPoint was left empty),
+		// adopt it — never register a virtual stub that would shadow the file.
+		if _, err := os.Stat(filepath.Clean(entryPath)); err == nil {
+			// Sibling Specs now see a non-empty entry; no virtual Effects needed.
+		} else {
+			out.Files = append(out.Files, VirtualFile{
+				Path:     entryPath,
+				Contents: virtualServiceEntrySource(),
+			})
+			out.ServiceEntryPath = entryPath
+		}
 	}
 
 	if strings.TrimSpace(mod.ServiceEntryPoint) == "" {
