@@ -105,6 +105,7 @@ type stubEsbPlugin struct {
 	name                string
 	parserResults       []*parser.ParserResult
 	entryImports        []string
+	entryPoint          string
 	virtualSources      map[string]string
 	getParserResultsErr error
 }
@@ -137,6 +138,10 @@ func (p *stubEsbPlugin) SetParserResults(parserResults []*parser.ParserResult) e
 
 func (p *stubEsbPlugin) SetEntryPointImports(imports []string) {
 	p.entryImports = append([]string(nil), imports...)
+}
+
+func (p *stubEsbPlugin) SetEntryPoint(path string) {
+	p.entryPoint = strings.TrimSpace(path)
 }
 
 func (p *stubEsbPlugin) RegisterVirtualSource(path string, contents string) {

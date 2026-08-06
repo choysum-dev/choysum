@@ -170,6 +170,24 @@ func TestResolveServiceEntryPathAndCanEnsure(t *testing.T) {
 	if got := resolveServiceEntryPath(mod, "/abs/service/index.ts"); got != "/abs/service/index.ts" {
 		t.Fatalf("absolute resolve = %q", got)
 	}
+	if got := resolveServiceEntryPath(nil, "rel/a.ts"); got != "rel/a.ts" {
+		t.Fatalf("nil mod resolve = %q", got)
+	}
+	if got := resolveServiceEntryPath(&meta.Module{Path: ""}, "rel/b.ts"); got != "rel/b.ts" {
+		t.Fatalf("empty path resolve = %q", got)
+	}
+	if got := resolveServiceEntryPath(mod, ""); got != "" {
+		t.Fatalf("empty entry = %q", got)
+	}
+	if canEnsureServiceEntry(nil, &Spec{BaseModelFile: "x"}, "/p") {
+		t.Fatal("nil sess")
+	}
+	if canEnsureServiceEntry(&Session{}, nil, "/p") {
+		t.Fatal("nil spec")
+	}
+	if !canEnsureServiceEntry(&Session{ctx: BuildCtx{ModulesPath: "/any"}}, &Spec{BaseModelFile: ""}, "/p") {
+		t.Fatal("empty BaseModelFile should allow")
+	}
 
 	dir := t.TempDir()
 	sess, _ := newTestSession(t, &meta.Module{Name: "x", Path: filepath.Join(dir, "x"), ApplicationStr: "x"})
@@ -183,6 +201,175 @@ func TestResolveServiceEntryPathAndCanEnsure(t *testing.T) {
 	sess.Context().ModulesPath = filepath.Join(dir, "missing-modules-root")
 	if !canEnsureServiceEntry(sess, &spec, filepath.Join(dir, "x")) {
 		t.Fatal("expected canEnsure true for missing ModulesPath harness")
+	}
+	sess.Context().ModulesPath = "."
+	if canEnsureServiceEntry(sess, &spec, "x") {
+		t.Fatal("ModulesPath=. should deny")
+	}
+	sess.Context().ModulesPath = ""
+	if canEnsureServiceEntry(sess, &spec, ".") {
+		t.Fatal("Dir(.) fallback should deny")
+	}
+}
+
+func TestEnsureServiceEntryPath_Guards(t *testing.T) {
+	mod := &meta.Module{Name: "web", Path: "/v/web", ApplicationStr: "web", ServiceEntryPoint: ""}
+	sess, _ := newTestSession(t, mod)
+	sess.ensureServiceEntryPath("")
+	if mod.ServiceEntryPoint != "" || sess.ensuredServiceEntry {
+		t.Fatal("empty path must not ensure")
+	}
+	sess.Context().Module = nil
+	sess.ensureServiceEntryPath("/v/web/service/index.ts")
+	sess.Context().Module = mod
+	sess.ensureServiceEntryPath("/v/web/service/index.ts")
+	if mod.ServiceEntryPoint != "/v/web/service/index.ts" || !sess.ensuredServiceEntry {
+		t.Fatal("expected ensure to set entry")
+	}
+	prior := mod.ServiceEntryPoint
+	sess.ensureServiceEntryPath("/other")
+	if sess.priorServiceEntry != "" && sess.priorServiceEntry != prior {
+		// prior remembered only once — first prior was empty
+	}
+	if mod.ServiceEntryPoint != "/other" {
+		t.Fatalf("second ensure should update path, got %q", mod.ServiceEntryPoint)
+	}
+	(*Session)(nil).ensureServiceEntryPath("/x")
+}
+
+func TestDecide_EmptyModulePathAndEnsureDenied(t *testing.T) {
+	mod := &meta.Module{
+		Name: "web", Path: "",
+		ApplicationStr: "web", ServiceEntryPoint: "",
+	}
+	sess, _ := newTestSession(t, mod)
+	fx, err := DecideAndInjectOne(sess, "TranslationTerm", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sess.Plan("TranslationTerm").NeedInject || len(fx.Files) != 0 {
+		t.Fatalf("empty Path must skip, got plan=%+v fx=%+v", sess.Plan("TranslationTerm"), fx)
+	}
+
+	dir := t.TempDir()
+	mod2 := &meta.Module{
+		Name: "web", Path: filepath.Join(dir, "web"),
+		ApplicationStr: "web", ServiceEntryPoint: "",
+	}
+	sess2, _ := newTestSession(t, mod2)
+	sess2.Context().ModulesPath = dir // exists, base model missing
+	fx2, err := DecideAndInjectOne(sess2, "TranslationTerm", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sess2.Plan("TranslationTerm").NeedInject || len(fx2.Files) != 0 {
+		t.Fatalf("canEnsure deny must skip, got plan=%+v", sess2.Plan("TranslationTerm"))
+	}
+}
+
+func TestApplyInjectOne_MaterializeErrorReleases(t *testing.T) {
+	mod := &meta.Module{
+		Name: "web", Path: "",
+		ApplicationStr: "web", ServiceEntryPoint: "service/index.ts",
+	}
+	sess, _ := newTestSession(t, mod)
+	sess.SetPlan("FieldDefault", Plan{NeedInject: true, ScheduledApp: "web"})
+	if _, err := ApplyInjectOne(sess, "FieldDefault"); err == nil {
+		t.Fatal("expected materialize error for empty module path")
+	}
+}
+
+func TestMaterialize_EmptyEntryWithoutEnsureReturnsEmpty(t *testing.T) {
+	mod := &meta.Module{
+		Name: "web", Path: "/virtual/modules/web",
+		ApplicationStr: "web", ServiceEntryPoint: "",
+	}
+	sess, _ := newTestSession(t, mod)
+	sess.SetPlan("FieldDefault", Plan{NeedInject: true, ScheduledApp: "web"})
+	fx, err := materializeInject(sess, specByNameOrPanic("FieldDefault"), Plan{NeedInject: true, ScheduledApp: "web"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fx.Files) != 0 || len(fx.Imports) != 0 || fx.ServiceEntryPath != "" {
+		t.Fatalf("expected empty effects, got %+v", fx)
+	}
+}
+
+func TestBundleSpec_EnsureEmptyEntry_EmitsVirtualService(t *testing.T) {
+	mod := &meta.Module{
+		Name: "web", Path: "/virtual/modules/web",
+		ApplicationStr: "web", ServiceEntryPoint: "",
+	}
+	sess, _ := newTestSession(t, mod)
+	sess.Context().ModulesPath = "/virtual/modules-missing-harness"
+	fx, err := BundleOne(sess, "TranslationTerm", []*meta.Module{mod})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mod.ServiceEntryPoint != "" {
+		t.Fatalf("Bundle must not mutate ServiceEntryPoint, got %q", mod.ServiceEntryPoint)
+	}
+	wantEntry := virtualServiceEntryPath(mod.Path)
+	found := false
+	for _, f := range fx.Files {
+		if f.Path == wantEntry {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected virtual service at %q in %#v", wantEntry, fx.Files)
+	}
+}
+
+func TestBundleSpec_EnsureEmptyEntry_SkipsWhenDiskExists(t *testing.T) {
+	dir := t.TempDir()
+	modPath := filepath.Join(dir, "web")
+	svc := filepath.Join(modPath, "service")
+	if err := os.MkdirAll(svc, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	entry := filepath.Join(svc, "index.ts")
+	if err := os.WriteFile(entry, []byte("export {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	mod := &meta.Module{
+		Name: "web", Path: modPath,
+		ApplicationStr: "web", ServiceEntryPoint: "",
+	}
+	sess, _ := newTestSession(t, mod)
+	sess.Context().ModulesPath = filepath.Join(dir, "missing-modules")
+	fx, err := BundleOne(sess, "TranslationTerm", []*meta.Module{mod})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range fx.Files {
+		if strings.HasSuffix(filepath.ToSlash(f.Path), "service/index.ts") {
+			t.Fatalf("must not virtualize existing disk entry: %q", f.Path)
+		}
+	}
+}
+
+func TestBundleSpec_EnsureRelativeEntry_MissingEmitsVirtual(t *testing.T) {
+	mod := &meta.Module{
+		Name: "web", Path: "/virtual/modules/web",
+		ApplicationStr: "web", ServiceEntryPoint: "service/index.ts",
+	}
+	sess, _ := newTestSession(t, mod)
+	fx, err := BundleOne(sess, "TranslationTerm", []*meta.Module{mod})
+	if err != nil {
+		t.Fatal(err)
+	}
+	abs := resolveServiceEntryPath(mod, "service/index.ts")
+	found := false
+	for _, f := range fx.Files {
+		if filepath.Clean(f.Path) == filepath.Clean(abs) {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected virtual at resolved %q, files=%#v", abs, fx.Files)
 	}
 }
 

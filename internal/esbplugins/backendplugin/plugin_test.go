@@ -550,6 +550,11 @@ func TestBackendPluginConstructorsAndParserResults(t *testing.T) {
 	if len(created.EntryPointImports) != 2 || created.EntryPointImports[0] != "/virtual/.choysum/generated/service/auth/index.ts" || created.EntryPointImports[1] != "/virtual/.choysum/generated/service/base/index.ts" {
 		t.Fatalf("expected SetEntryPointImports to clone imports, got %#v", created.EntryPointImports)
 	}
+	(*BackendPlugin)(nil).SetEntryPoint("/ignored")
+	created.SetEntryPoint("  /virtual/modules/web/service/index.ts  ")
+	if created.EntryPoint != "/virtual/modules/web/service/index.ts" {
+		t.Fatalf("SetEntryPoint = %q", created.EntryPoint)
+	}
 
 	results := []*parser.ParserResult{}
 	if err := created.SetParserResults(results); err != nil {
@@ -713,6 +718,44 @@ func captureBackendOnResolve(t *testing.T, plugin api.Plugin, buildOptions *api.
 		t.Fatal("expected backend plugin to register an OnResolve callback")
 	}
 	return onResolve
+}
+
+func TestBackendPluginDefinePluginsOnLoad_DiskShadowKeepsServiceResolveDir(t *testing.T) {
+	testRuntimeScope := newPluginTestScope()
+	moduleDir := filepath.Join(t.TempDir(), "auth")
+	serviceDir := filepath.Join(moduleDir, "service")
+	if err := os.MkdirAll(serviceDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	entryPath := filepath.Join(serviceDir, "index.ts")
+	realContent := "export * from './models';\n"
+	if err := os.WriteFile(entryPath, []byte(realContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
+		Env:              testRuntimeScope,
+		Module:           &meta.Module{Path: moduleDir, ApplicationStr: "auth"},
+		EntryPoint:       entryPath,
+		ParserResultChan: make(chan *parser.ParserResult, 1),
+		TsExports:        make(map[string]map[string]*parser.Export),
+		ParserResults:    make([]*parser.ParserResult, 0),
+	}}
+	// Virtual stub shadows the same path; OnLoad must keep ResolveDir under service/.
+	plugin.RegisterVirtualSource(entryPath, "export {}\n")
+	plugin.Parser = fakeParser{parseFn: func(_ map[string]string, gotPath string, content string) (*parser.ParserResult, error) {
+		return &parser.ParserResult{Path: gotPath, RawContent: content}, nil
+	}}
+
+	defined := plugin.DefinePlugins(testRuntimeScope, nil, plugin.Module)[0]
+	onLoad := captureBackendOnLoad(t, defined, &api.BuildOptions{})
+	result, err := onLoad(api.OnLoadArgs{Path: entryPath})
+	if err != nil {
+		t.Fatalf("onLoad: %v", err)
+	}
+	if result.ResolveDir != serviceDir {
+		t.Fatalf("ResolveDir = %q, want service dir %q", result.ResolveDir, serviceDir)
+	}
 }
 
 func TestBackendPluginDefinePluginsOnLoad_ServesVirtualSource(t *testing.T) {
