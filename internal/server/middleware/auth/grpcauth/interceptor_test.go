@@ -253,6 +253,18 @@ func TestUnaryInterceptorBypassesSystemAndInternalMethods(t *testing.T) {
 	if err != nil || resp != "ok" || called != 1 {
 		t.Fatalf("I18n with internal key resp=%v err=%v called=%d", resp, err, called)
 	}
+
+	called = 0
+	_, err = interceptor(context.Background(), nil, &grpc.UnaryServerInfo{FullMethod: "/auth.TranslationTerm/GetTranslations"}, handler)
+	if status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("TranslationTerm without auth: want Unauthenticated, got %v", err)
+	}
+
+	called = 0
+	resp, err = interceptor(ctx, nil, &grpc.UnaryServerInfo{FullMethod: "/auth.TranslationTerm/GetTranslations"}, handler)
+	if err != nil || resp != "ok" || called != 1 {
+		t.Fatalf("TranslationTerm with internal key resp=%v err=%v called=%d", resp, err, called)
+	}
 }
 
 func TestUnaryInterceptorHandlesEntrySkipErrorsAndSuccess(t *testing.T) {

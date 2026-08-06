@@ -15,19 +15,28 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-const internalKeyHeader = "x-choysum-internal-key"
+const (
+	internalKeyHeader              = "x-choysum-internal-key"
+	translationTermModelName       = "TranslationTerm"
+	translationTermGetTranslations = "GetTranslations"
+)
 
 type appTranslations struct {
 	Hash  string
 	Terms map[string]map[string]map[string]string
 }
 
-// fetchAppTranslations dials {app}.I18n/GetTranslations with internal identity (D1).
+// fetchAppTranslations dials {app}.TranslationTerm/GetTranslations with internal identity (D1).
+// Request/response wire fields match the TS TranslationTerm model (and the legacy I18n
+// descriptors used here for dynamicpb construction until P5b removes Go I18n).
 func fetchAppTranslations(ctx context.Context, runtimeScope scope.Scope, app, lang string, moduleNames []string) (*appTranslations, error) {
 	app = strings.TrimSpace(app)
 	if app == "" {
 		return nil, fmt.Errorf("application is required")
 	}
+
+	service := app + "." + translationTermModelName
+	invokeMethod := "/" + service + "/" + translationTermGetTranslations
 
 	reqMsg, err := i18nservice.NewRequestMessage(app)
 	if err != nil {
@@ -51,11 +60,11 @@ func fetchAppTranslations(ctx context.Context, runtimeScope scope.Scope, app, la
 	}
 
 	rpcCtx := outgoingContextForInternalRPC(ctx, runtimeScope)
-	conn, err := client.Dial(rpcCtx, app+".I18n")
+	conn, err := client.Dial(rpcCtx, service)
 	if err != nil {
 		return nil, client.ToStatusError(err)
 	}
-	if err := conn.Invoke(rpcCtx, i18nservice.FullMethodGetTranslations(app), reqMsg, respMsg); err != nil {
+	if err := conn.Invoke(rpcCtx, invokeMethod, reqMsg, respMsg); err != nil {
 		return nil, client.ToStatusError(err)
 	}
 

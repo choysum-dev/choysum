@@ -79,59 +79,6 @@ func fetchAppSearchTerms(ctx context.Context, runtimeScope scope.Scope, accessTo
 	return parseSearchTermsResult(app, out), nil
 }
 
-func invokeAppUpdateTerm(ctx context.Context, runtimeScope scope.Scope, accessToken, app, lang string, item termItem) (*termItem, string, error) {
-	_ = runtimeScope
-	app = strings.TrimSpace(app)
-	if app == "" {
-		return nil, "", fmt.Errorf("application is required")
-	}
-	kind := strings.TrimSpace(item.Kind)
-	if kind == "" {
-		kind = "literal"
-	}
-
-	reqMsg, err := i18nservice.NewUpdateRequestMessage(app)
-	if err != nil {
-		return nil, "", err
-	}
-	if err := converter.MapToMessage(map[string]any{
-		"module": item.Module,
-		"lang":   lang,
-		"scope":  item.Scope,
-		"src":    item.Src,
-		"value":  item.Value,
-		"kind":   kind,
-	}, reqMsg); err != nil {
-		return nil, "", fmt.Errorf("build UpdateTerm request: %w", err)
-	}
-
-	respMsg, err := i18nservice.NewUpdateResponseMessage(app)
-	if err != nil {
-		return nil, "", err
-	}
-
-	rpcCtx := outgoingContextForUserRPC(ctx, accessToken)
-	conn, err := client.Dial(rpcCtx, app+".I18n")
-	if err != nil {
-		return nil, "", client.ToStatusError(err)
-	}
-	if err := conn.Invoke(rpcCtx, i18nservice.FullMethod(app, i18nservice.MethodUpdateTerm), reqMsg, respMsg); err != nil {
-		return nil, "", client.ToStatusError(err)
-	}
-
-	out, err := converter.MessageToMap(respMsg)
-	if err != nil {
-		return nil, "", fmt.Errorf("decode UpdateTerm response: %w", err)
-	}
-	hash := strings.TrimSpace(fmt.Sprintf("%v", out["hash"]))
-	if hash == "<nil>" {
-		hash = ""
-	}
-	rawItem, _ := out["item"].(map[string]any)
-	updated := parseTermItem(app, rawItem)
-	return &updated, hash, nil
-}
-
 func parseSearchTermsResult(app string, out map[string]any) *searchTermsResult {
 	result := &searchTermsResult{
 		Lang:   strings.TrimSpace(fmt.Sprintf("%v", out["lang"])),

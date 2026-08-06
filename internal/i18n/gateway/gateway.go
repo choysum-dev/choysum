@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-// Package i18ngateway mounts host HTTP routes that aggregate {app}.I18n RPCs.
+// Package i18ngateway mounts host HTTP routes for terminology translations and PO export.
+// GET /web/i18n/translations dials {app}.TranslationTerm/GetTranslations.
 package i18ngateway
 
 import (
@@ -23,6 +24,5 @@ func RegisterHandlers(mux *http.ServeMux, envs ...scope.Scope) {
 	}
 	h := newHandler(runtimeScope)
 	mux.HandleFunc(translationsPath, h.serveTranslations)
-	mux.HandleFunc(termsPath, h.serveTerms)
 	mux.HandleFunc(poPath, h.servePO)
 }

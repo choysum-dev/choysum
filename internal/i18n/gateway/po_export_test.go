@@ -72,7 +72,7 @@ func TestPOExportAttachment(t *testing.T) {
 				return &searchTermsResult{Lang: lang, Items: nil, Total: 1}, nil
 			}
 			return &searchTermsResult{
-				Lang: lang,
+				Lang:  lang,
 				Total: 1,
 				Items: []termItem{{
 					Application: "auth",

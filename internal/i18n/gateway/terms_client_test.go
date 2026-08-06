@@ -70,16 +70,13 @@ func TestParseSearchTermsResultAndToInt64(t *testing.T) {
 	}
 }
 
-func TestFetchAndUpdateRequireApplication(t *testing.T) {
+func TestFetchAppSearchTermsRequireApplication(t *testing.T) {
 	if _, err := fetchAppSearchTerms(context.Background(), nil, "tok", "  ", "zh_CN", nil, "", 10, 0); err == nil || !strings.Contains(err.Error(), "application is required") {
 		t.Fatalf("fetchAppSearchTerms empty app: %v", err)
 	}
-	if _, _, err := invokeAppUpdateTerm(context.Background(), nil, "tok", "", "zh_CN", termItem{}); err == nil || !strings.Contains(err.Error(), "application is required") {
-		t.Fatalf("invokeAppUpdateTerm empty app: %v", err)
-	}
 }
 
-func TestWriteTermsRPCErrorAndParseQueryInt(t *testing.T) {
+func TestWriteTermsRPCError(t *testing.T) {
 	cases := []struct {
 		err  error
 		code int
@@ -95,43 +92,5 @@ func TestWriteTermsRPCErrorAndParseQueryInt(t *testing.T) {
 		if rr.Code != tc.code {
 			t.Fatalf("code=%v status=%d body=%s", status.Code(tc.err), rr.Code, rr.Body.String())
 		}
-	}
-
-	if parseQueryInt("", 7) != 7 || parseQueryInt("x", 3) != 3 || parseQueryInt("12", 0) != 12 {
-		t.Fatal("parseQueryInt mismatch")
-	}
-}
-
-func TestTermsInfersApplicationFromModule(t *testing.T) {
-	h := &handler{
-		listModules: func() (map[string][]string, error) {
-			return map[string][]string{"auth": {"auth", "core"}}, nil
-		},
-		search: func(ctx context.Context, accessToken, app, lang string, modules []string, q string, limit, offset int) (*searchTermsResult, error) {
-			if app != "auth" || len(modules) != 1 || modules[0] != "auth" {
-				t.Fatalf("unexpected search app=%q modules=%v", app, modules)
-			}
-			return &searchTermsResult{Lang: lang, Items: nil, Total: 0, Limit: limit, Offset: offset}, nil
-		},
-	}
-	mux := http.NewServeMux()
-	mux.HandleFunc(termsPath, h.serveTerms)
-	req := httptest.NewRequest(http.MethodGet, "/web/i18n/terms?lang=zh_CN&module=auth", nil)
-	req.Header.Set("Authorization", "Bearer tok")
-	rr := httptest.NewRecorder()
-	mux.ServeHTTP(rr, req)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
-	}
-}
-
-func TestTermsMethodNotAllowed(t *testing.T) {
-	mux := http.NewServeMux()
-	RegisterHandlers(mux)
-	req := httptest.NewRequest(http.MethodPost, "/web/i18n/terms", nil)
-	rr := httptest.NewRecorder()
-	mux.ServeHTTP(rr, req)
-	if rr.Code != http.StatusMethodNotAllowed {
-		t.Fatalf("status=%d", rr.Code)
 	}
 }
