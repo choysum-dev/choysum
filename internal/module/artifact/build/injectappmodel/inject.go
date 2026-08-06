@@ -95,8 +95,11 @@ func decidePlan(spec *Spec, sess *Session, prebuildResults []*parser.ParserResul
 	if mod == nil {
 		return plan, nil
 	}
-	if strings.TrimSpace(mod.ServiceEntryPoint) == "" ||
-		strings.TrimSpace(mod.ApplicationStr) == "" ||
+	hasServiceEntry := strings.TrimSpace(mod.ServiceEntryPoint) != ""
+	if !hasServiceEntry && !spec.EnsureServiceEntry {
+		return plan, nil
+	}
+	if strings.TrimSpace(mod.ApplicationStr) == "" ||
 		strings.TrimSpace(mod.ApplicationStr) == "core" {
 		return plan, nil
 	}
@@ -134,20 +137,27 @@ func decidePlan(spec *Spec, sess *Session, prebuildResults []*parser.ParserResul
 	}
 	if len(existingVirt) > 0 {
 		if sameModule(existingVirt, mod) {
-			return claimNeedInject(sess.Registry(), spec, app, mod.Name), nil
+			return markEnsureIfNeeded(claimNeedInject(sess.Registry(), spec, app, mod.Name), spec, hasServiceEntry), nil
 		}
 		return plan, nil
 	}
-	return claimFirstNeedInject(sess.Registry(), spec, app, mod.Name), nil
+	return markEnsureIfNeeded(claimFirstNeedInject(sess.Registry(), spec, app, mod.Name), spec, hasServiceEntry), nil
 }
 
+func markEnsureIfNeeded(plan Plan, spec *Spec, hasServiceEntry bool) Plan {
+	if plan.NeedInject && spec != nil && spec.EnsureServiceEntry && !hasServiceEntry {
+		plan.NeedEnsureServiceEntry = true
+	}
+	return plan
+}
+
+// claimNeedInject is used when DB already has a virtual model owned by this module
+// (owner reinject). Always: NeedInject; adopt ScheduledApp only when this module
+// holds (or newly takes) the process claim — never steal a foreign claim's release.
 func claimNeedInject(reg *Registry, spec *Spec, app, modName string) Plan {
-	if spec.ForeignClaimOnOwnerReinject {
-		owner, loaded := reg.TryClaim(spec.ModelName, app, modName)
-		if loaded && owner != "" && owner != modName {
-			return Plan{NeedInject: true}
-		}
-		return Plan{NeedInject: true, ScheduledApp: app}
+	owner, loaded := reg.TryClaim(spec.ModelName, app, modName)
+	if loaded && owner != "" && owner != modName {
+		return Plan{NeedInject: true}
 	}
 	return Plan{NeedInject: true, ScheduledApp: app}
 }
@@ -171,6 +181,10 @@ func materializeInject(sess *Session, spec *Spec, plan Plan) (Effects, error) {
 	}
 	mod := sess.ctx.Module
 	if mod == nil {
+		return out, nil
+	}
+	// PR-P1: reserve NeedEnsureServiceEntry only; virtual service entry lands in PR-P2.
+	if plan.NeedEnsureServiceEntry && strings.TrimSpace(mod.ServiceEntryPoint) == "" {
 		return out, nil
 	}
 	if strings.TrimSpace(mod.Path) == "" {

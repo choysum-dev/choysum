@@ -12,9 +12,10 @@ type Spec struct {
 	DuplicateCode    string
 	BaseModelFile    string // relative under modules, e.g. core/service/orm/model/field_default_base_model.ts
 	SoftDeleteFalse  bool   // AppSetting: emit softDelete: false in @Model options
-	// ForeignClaimOnOwnerReinject: when DB virtual rows belong to this module but another
-	// in-process builder holds the schedule claim, still NeedInject without adopting release.
-	ForeignClaimOnOwnerReinject bool
+	// EnsureServiceEntry: when true, Decide may proceed without ServiceEntryPoint and
+	// set Plan.NeedEnsureServiceEntry (Materialize of the virtual entry is PR-P2).
+	// FieldDefault / AppSetting leave this false (empty entry → skip).
+	EnsureServiceEntry bool
 }
 
 // Register adds a Spec to DefaultRegistry(). ModelName must be unique.

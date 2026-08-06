@@ -276,7 +276,7 @@ func TestPackageSpecsList(t *testing.T) {
 
 func TestClaimNeedInject_RegistryClaims(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(Spec{ModelName: "Temp", ForeignClaimOnOwnerReinject: true})
+	reg.Register(Spec{ModelName: "Temp"})
 	spec, _ := reg.lookupPtr("Temp")
 	plan := claimNeedInject(reg, spec, "app", "mod")
 	if !plan.NeedInject || plan.ScheduledApp != "app" {

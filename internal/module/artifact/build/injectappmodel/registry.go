@@ -192,14 +192,15 @@ func DefaultSpecs() []Spec {
 			GeneratedRelPath: "service/models/__generated__/field_default.ts",
 			DuplicateCode:    "FIELD_DEFAULT_DUPLICATE",
 			BaseModelFile:    "core/service/orm/model/field_default_base_model.ts",
+			// EnsureServiceEntry: false — empty ServiceEntryPoint skips inject.
 		},
 		{
-			ModelName:                   "AppSetting",
-			GeneratedRelPath:            "service/models/__generated__/app_setting.ts",
-			DuplicateCode:               "APP_SETTING_DUPLICATE",
-			BaseModelFile:               "core/service/orm/model/app_setting_base_model.ts",
-			SoftDeleteFalse:             true,
-			ForeignClaimOnOwnerReinject: true,
+			ModelName:        "AppSetting",
+			GeneratedRelPath: "service/models/__generated__/app_setting.ts",
+			DuplicateCode:    "APP_SETTING_DUPLICATE",
+			BaseModelFile:    "core/service/orm/model/app_setting_base_model.ts",
+			SoftDeleteFalse:  true,
+			// EnsureServiceEntry: false — empty ServiceEntryPoint skips inject.
 		},
 	}
 }
