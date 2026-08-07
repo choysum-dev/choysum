@@ -73,13 +73,9 @@ func UpsertPackagedTerms(runtimeScope scope.Scope, reg *store.Registry, applicat
 	stats.SkippedObsolete = obsolete
 
 	tableName := i18nmodels.TranslationTermTableName(application)
-	if !runtimeScope.Session().Migrator().HasTable(tableName) {
-		// Production tables come from TranslationTerm MetaModel migrate; create
-		// here only when the write path runs without a prior migrate (tests /
-		// install ordering).
-		if err := i18nmodels.MigrateTranslationTermTable(runtimeScope, application); err != nil {
-			return stats, err
-		}
+	migrateErr := migrateTranslationTermTableIfMissing(runtimeScope, application, tableName)
+	if migrateErr != nil {
+		return stats, migrateErr
 	}
 	logger := runtimeScope.Logger()
 	if logger == nil {
@@ -192,6 +188,18 @@ func UpsertPackagedTerms(runtimeScope scope.Scope, reg *store.Registry, applicat
 		}
 	}
 	return stats, nil
+}
+
+// Swapped in tests to force migrate failures without closing the DB.
+var migrateTranslationTermTable = i18nmodels.MigrateTranslationTermTable
+
+// migrateTranslationTermTableIfMissing creates the physical table when the write
+// path runs without a prior MetaModel migrate (tests / install ordering).
+func migrateTranslationTermTableIfMissing(runtimeScope scope.Scope, application, tableName string) error {
+	if runtimeScope.Session().Migrator().HasTable(tableName) {
+		return nil
+	}
+	return migrateTranslationTermTable(runtimeScope, application)
 }
 
 func termLookupKey(scopeName, src, kind string) string {
