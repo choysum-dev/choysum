@@ -10,34 +10,28 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-
 	"io"
 	"net"
-
-	clicompat "github.com/choysum-dev/choysum/internal/cli/compat"
-	"github.com/choysum-dev/choysum/pkg/config"
-	"github.com/choysum-dev/choysum/pkg/meta"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
-
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"os/exec"
-
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
-
 	"syscall"
 	"testing"
-
 	"time"
 
-	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
+	clicompat "github.com/choysum-dev/choysum/internal/cli/compat"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
+	"github.com/choysum-dev/choysum/pkg/config"
+	"github.com/choysum-dev/choysum/pkg/meta"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 func TestCLIErrorBlockLastOutput_InitInteractive(t *testing.T) {
@@ -543,10 +537,10 @@ func writeInitializedSqliteDB(t *testing.T) string {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&metadata.Setting{}); err != nil {
+	if err := db.AutoMigrate(&modmeta.Setting{}); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
-	if err := db.Create(&metadata.Setting{Key: "system.init.done", Value: "true"}).Error; err != nil {
+	if err := db.Create(&modmeta.Setting{Key: "system.init.done", Value: "true"}).Error; err != nil {
 		t.Fatalf("insert init marker: %v", err)
 	}
 	return path
@@ -1940,7 +1934,7 @@ func TestCLIRunDoesNotWriteInitArtifacts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	var settings []metadata.Setting
+	var settings []modmeta.Setting
 	if err := db.Find(&settings).Error; err != nil {
 		t.Fatalf("query settings: %v", err)
 	}

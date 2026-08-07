@@ -6,13 +6,14 @@ package injectappmodel
 import (
 	"strings"
 
-	"github.com/choysum-dev/choysum/pkg/meta"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	xfmt "golang.org/x/exp/errors/fmt"
 	"gorm.io/gorm"
+
 )
 
 // SupersedeInjectAppModels deletes generated-path declaration trees when Decide
-// set SupersedeInject. Does not call meta.RecomputeKeys (EDS-opt-2).
+// set SupersedeInject. Does not call modmeta.FlushEffective (EDS-opt-2).
 func SupersedeInjectAppModels(sess *Session) error {
 	if sess == nil {
 		return nil
@@ -52,7 +53,7 @@ func SupersedeOne(sess *Session, modelName string) error {
 
 func supersedeGenerated(spec *Spec, db *gorm.DB, app string) error {
 	absFalse := false
-	existing, err := meta.ListDeclarations(db, meta.DeclarationQuery{
+	existing, err := modmeta.ListDeclarations(db, modmeta.DeclarationQuery{
 		Application: app,
 		Name:        spec.ModelName,
 		Abstract:    &absFalse,
@@ -74,7 +75,7 @@ func supersedeGenerated(spec *Spec, db *gorm.DB, app string) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	if err := meta.DeleteDeclarationTrees(db, ids); err != nil {
+	if err := modmeta.DeleteDeclarationTrees(db, ids); err != nil {
 		return xfmt.Errorf("delete superseded generated %s rows: %w", spec.ModelName, err)
 	}
 	return nil

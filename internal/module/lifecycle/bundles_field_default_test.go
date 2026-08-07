@@ -10,7 +10,9 @@ import (
 	"strings"
 	"testing"
 
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
+
 )
 
 func TestPickFieldDefaultOwnerModule_LastEligible(t *testing.T) {
@@ -44,7 +46,7 @@ func TestPickFieldDefaultOwnerModule_LastEligible(t *testing.T) {
 func TestBuildBackendBundlesToDir_FieldDefaultOwnerAndEnsureError(t *testing.T) {
 	modulesPath := t.TempDir()
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
 	modPath := filepath.Join(modulesPath, "crm_partner")
@@ -67,7 +69,7 @@ func TestBuildBackendBundlesToDir_FieldDefaultOwnerAndEnsureError(t *testing.T) 
 	distBundlesDir := t.TempDir()
 
 	// Drop meta_raw_model so BundleInjectAppModels fails while owners were collected.
-	if err := meta.DropRawModelTable(db); err != nil {
+	if err := db.Migrator().DropTable("meta_raw_model"); err != nil {
 		t.Fatalf("drop meta_raw_model: %v", err)
 	}
 	err := manager.buildBackendBundlesToDir(context.Background(), distBundlesDir, nil)

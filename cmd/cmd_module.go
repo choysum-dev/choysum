@@ -16,8 +16,7 @@ import (
 	clicompat "github.com/choysum-dev/choysum/internal/cli/compat"
 	clioutput "github.com/choysum-dev/choysum/internal/cli/output"
 	cliruntime "github.com/choysum-dev/choysum/internal/cli/runtime"
-	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
-
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
 	sourceregistry "github.com/choysum-dev/choysum/internal/module/origin/registry"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -493,12 +492,12 @@ func queryModuleIndexViews(runtimeScope scope.Scope, moduleName string) ([]modul
 			return nil
 		}
 		db := txScope.Session().DB
-		if !db.Migrator().HasTable(&metadata.ModuleIndex{}) {
+		if !db.Migrator().HasTable(&modmeta.ModuleIndex{}) {
 			return nil
 		}
 		hasIndex = true
 
-		q := db.Table((metadata.ModuleIndex{}).TableName() + " AS idx")
+		q := db.Table((modmeta.ModuleIndex{}).TableName() + " AS idx")
 		if db.Migrator().HasTable(&meta.Module{}) {
 			q = q.
 				Select("idx.module_name, idx.origin_type, idx.origin_ref, idx.available, idx.version, idx.local_path, mod.status AS install_status").

@@ -5,6 +5,7 @@ package schema
 
 import (
 	"fmt"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -32,7 +33,7 @@ func newMigrator(runtimeScope scope.Scope, module *meta.Module) (*migrator, erro
 
 func getModuleModels(runtimeScope scope.Scope, module *meta.Module) ([]*meta.Model, error) {
 	absFalse := false
-	moduleModels, err := meta.ListDeclarations(runtimeScope.Session().DB, meta.DeclarationQuery{
+	moduleModels, err := modmeta.ListDeclarations(runtimeScope.Session().DB, modmeta.DeclarationQuery{
 		ModuleID:    module.Id.String,
 		Abstract:    &absFalse,
 		PreloadTree: true,
@@ -42,7 +43,7 @@ func getModuleModels(runtimeScope scope.Scope, module *meta.Module) ([]*meta.Mod
 	}
 
 	// Declaration-only raw rows omit inherited columns; expand Extends in memory for DDL.
-	if err := meta.ExpandModelsAlongExtends(runtimeScope.Session().DB, moduleModels); err != nil {
+	if err := modmeta.ExpandModelsAlongExtends(runtimeScope.Session().DB, moduleModels); err != nil {
 		return nil, xfmt.Errorf("error expanding model extends for schema: %w", err)
 	}
 

@@ -1349,7 +1349,7 @@ func TestSeedModuleIndexForE2EAutoMigrateError(t *testing.T) {
 	}
 
 	err := seedModuleIndexForE2E(context.Background(), writeTempE2EConfig(t, t.TempDir()), map[string]*sourceModulePackage{})
-	if err == nil || !strings.Contains(err.Error(), "auto-migrate metadata.ModuleIndex") {
+	if err == nil || !strings.Contains(err.Error(), "auto-migrate modmeta.ModuleIndex") {
 		t.Fatalf("seedModuleIndexForE2E() error = %v, want auto-migrate failure", err)
 	}
 }

@@ -6,12 +6,13 @@ package scripts
 import (
 	"context"
 	"errors"
-	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
 	"time"
 
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
+
 )
 
 type HistoryStore struct {
@@ -33,7 +34,7 @@ func (s *HistoryStore) session(ctx context.Context) *scope.Session {
 	return sess
 }
 
-func (s *HistoryStore) Prepare(ctx context.Context, script Script) (*metadata.ModuleMigrationHistory, bool, error) {
+func (s *HistoryStore) Prepare(ctx context.Context, script Script) (*modmeta.ModuleMigrationHistory, bool, error) {
 	if s == nil || s.runtimeScope == nil {
 		return nil, false, nil
 	}
@@ -42,7 +43,7 @@ func (s *HistoryStore) Prepare(ctx context.Context, script Script) (*metadata.Mo
 		return nil, false, gorm.ErrInvalidDB
 	}
 
-	var existing metadata.ModuleMigrationHistory
+	var existing modmeta.ModuleMigrationHistory
 	q := db.WithContext(ctx).Where(
 		"module_name = ? AND version = ? AND phase = ? AND script = ?",
 		script.ModuleName, script.Version, string(script.Phase), script.Name,
@@ -58,7 +59,7 @@ func (s *HistoryStore) Prepare(ctx context.Context, script Script) (*metadata.Mo
 		return nil, false, err
 	}
 
-	entry := &metadata.ModuleMigrationHistory{
+	entry := &modmeta.ModuleMigrationHistory{
 		ModuleName: script.ModuleName,
 		Version:    script.Version,
 		Phase:      string(script.Phase),
@@ -74,7 +75,7 @@ func (s *HistoryStore) Prepare(ctx context.Context, script Script) (*metadata.Mo
 	return entry, false, nil
 }
 
-func (s *HistoryStore) markRunning(ctx context.Context, entry *metadata.ModuleMigrationHistory, script Script) (*metadata.ModuleMigrationHistory, bool, error) {
+func (s *HistoryStore) markRunning(ctx context.Context, entry *modmeta.ModuleMigrationHistory, script Script) (*modmeta.ModuleMigrationHistory, bool, error) {
 	db := s.session(ctx)
 	if db == nil {
 		return nil, false, gorm.ErrInvalidDB
@@ -91,7 +92,7 @@ func (s *HistoryStore) markRunning(ctx context.Context, entry *metadata.ModuleMi
 	return entry, false, nil
 }
 
-func (s *HistoryStore) MarkSuccess(ctx context.Context, entry *metadata.ModuleMigrationHistory) error {
+func (s *HistoryStore) MarkSuccess(ctx context.Context, entry *modmeta.ModuleMigrationHistory) error {
 	if s == nil || s.runtimeScope == nil || entry == nil {
 		return nil
 	}
@@ -105,7 +106,7 @@ func (s *HistoryStore) MarkSuccess(ctx context.Context, entry *metadata.ModuleMi
 	return db.WithContext(ctx).Save(entry).Error
 }
 
-func (s *HistoryStore) MarkFailed(ctx context.Context, entry *metadata.ModuleMigrationHistory, msg string) error {
+func (s *HistoryStore) MarkFailed(ctx context.Context, entry *modmeta.ModuleMigrationHistory, msg string) error {
 	if s == nil || s.runtimeScope == nil || entry == nil {
 		return nil
 	}

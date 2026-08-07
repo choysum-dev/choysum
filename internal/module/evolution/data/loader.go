@@ -16,8 +16,7 @@ import (
 	"sync"
 	"time"
 
-	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
-
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/ettle/strcase"
@@ -762,8 +761,8 @@ func (l *Loader) planBatchRecordOrder(tx *gorm.DB, owner *meta.Module, records [
 				ids = append(ids, id)
 			}
 			sort.Strings(ids)
-			var rows []metadata.ModelData
-			if err := tx.Model(&metadata.ModelData{}).Select("name").Where("module = ? AND name IN ?", mod, ids).Find(&rows).Error; err != nil {
+			var rows []modmeta.ModelData
+			if err := tx.Model(&modmeta.ModelData{}).Select("name").Where("module = ? AND name IN ?", mod, ids).Find(&rows).Error; err != nil {
 				return nil, xfmt.Errorf("lookup model_data for refs: %w", err)
 			}
 			m := map[string]struct{}{}
@@ -1032,8 +1031,8 @@ func (l *Loader) planRecordOrder(tx *gorm.DB, owner *meta.Module, filePath strin
 			ids = append(ids, id)
 		}
 		sort.Strings(ids)
-		var rows []metadata.ModelData
-		if err := tx.Model(&metadata.ModelData{}).Select("name").Where("module = ? AND name IN ?", mod, ids).Find(&rows).Error; err != nil {
+		var rows []modmeta.ModelData
+		if err := tx.Model(&modmeta.ModelData{}).Select("name").Where("module = ? AND name IN ?", mod, ids).Find(&rows).Error; err != nil {
 			return nil, xfmt.Errorf("lookup model_data for refs: %w", err)
 		}
 		m := map[string]struct{}{}
@@ -1232,7 +1231,7 @@ func (l *Loader) applyRecord(tx *gorm.DB, filePath string, recordIndex int, rec 
 		return err
 	}
 	modelFull := app + "." + modelName
-	model, err := meta.LookupEffectiveModel(tx, app, modelName)
+	model, err := modmeta.LookupEffectiveModel(tx, app, modelName)
 	if err != nil {
 		return wrapLoadErrorWithCode(xfmt.Errorf("resolve model %s: %w", modelFull, err), filePath, recordIndex, rec, LoadErrorKindDB, LoadErrorCodeDBResolveModel, "resolve model")
 	}
@@ -1251,7 +1250,7 @@ func (l *Loader) applyRecord(tx *gorm.DB, filePath string, recordIndex int, rec 
 		return err
 	}
 
-	mapping := &metadata.ModelData{}
+	mapping := &modmeta.ModelData{}
 	err = tx.Where("module = ? AND name = ?", moduleName, localName).First(mapping).Error
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -1502,7 +1501,7 @@ func (l *Loader) resolveRef(tx *gorm.DB, ref string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	mapping := &metadata.ModelData{}
+	mapping := &modmeta.ModelData{}
 	if err := tx.Where("module = ? AND name = ?", mod, localName).First(mapping).Error; err != nil {
 		return "", xfmt.Errorf("resolve ref %s: %w", ref, err)
 	}
@@ -1876,7 +1875,7 @@ func resolveSearchModel(tx *gorm.DB, modelFull string) (*meta.Model, string, err
 	if err != nil {
 		return nil, "", xfmt.Errorf("resolve search model %s: %w", modelFull, err)
 	}
-	model, err := meta.LookupEffectiveModel(tx, app, modelName)
+	model, err := modmeta.LookupEffectiveModel(tx, app, modelName)
 	if err != nil {
 		return nil, "", xfmt.Errorf("resolve search model %s: %w", modelFull, err)
 	}
@@ -2131,7 +2130,7 @@ func (l *Loader) detectFieldCardinality(tx *gorm.DB, modelFull string, fieldName
 	l.mu.RUnlock()
 
 	if !ok {
-		model, err := meta.LookupEffectiveModel(tx, app, modelName)
+		model, err := modmeta.LookupEffectiveModel(tx, app, modelName)
 		if err != nil {
 			l.mu.Lock()
 			l.fieldCardinalityCache[cacheKey] = refCardinalityManyToOne
@@ -2208,7 +2207,7 @@ func (l *Loader) resolveModelRef(tx *gorm.DB, modelRef string) (string, error) {
 	if err != nil {
 		return "", xfmt.Errorf("resolve modelRef %s: %w", modelRef, err)
 	}
-	model, err := meta.LookupEffectiveModel(tx, app, modelName)
+	model, err := modmeta.LookupEffectiveModel(tx, app, modelName)
 	if err != nil {
 		return "", xfmt.Errorf("resolve modelRef %s: %w", modelRef, err)
 	}

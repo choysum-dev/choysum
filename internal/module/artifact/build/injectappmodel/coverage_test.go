@@ -8,8 +8,10 @@ import (
 	"strings"
 	"testing"
 
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/parser"
 	"github.com/choysum-dev/choysum/pkg/meta"
+
 )
 
 func TestNilSessionGuards(t *testing.T) {
@@ -173,7 +175,7 @@ func TestDecidePlan_Branches(t *testing.T) {
 
 	// Existing virt owned by another module → skip.
 	sess.Registry().ResetClaims()
-	_ = meta.DeleteDeclarationTrees(db, []string{"other-hand"})
+	_ = modmeta.DeleteDeclarationTrees(db, []string{"other-hand"})
 	otherVirt := "/virtual/modules/other/service/models/__generated__/field_default.ts"
 	seedDeclaration(t, db, "FieldDefault", "ov", otherVirt, "partner")
 	if plan, err := decidePlan(spec, sess, nil); err != nil || plan.NeedInject {
@@ -182,7 +184,7 @@ func TestDecidePlan_Branches(t *testing.T) {
 
 	// DB load error.
 	sess.Registry().ResetClaims()
-	if err := meta.DropRawModelTable(db); err != nil {
+	if err := db.Migrator().DropTable("meta_raw_model"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := decidePlan(spec, sess, nil); err == nil {
@@ -539,7 +541,7 @@ func TestBundleInject_GuardsAndErrors(t *testing.T) {
 		t.Fatal("expected inject paths for partner")
 	}
 
-	if err := meta.DropRawModelTable(db); err != nil {
+	if err := db.Migrator().DropTable("meta_raw_model"); err != nil {
 		t.Fatal(err)
 	}
 	sess3, _ := newTestSession(t, mod)
@@ -597,7 +599,7 @@ func TestSupersede_GuardsAndErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := meta.DropRawModelTable(db); err != nil {
+	if err := db.Migrator().DropTable("meta_raw_model"); err != nil {
 		t.Fatal(err)
 	}
 	if err := supersedeGenerated(specByNameOrPanic("AppSetting"), db, "partner"); err == nil {
@@ -631,7 +633,7 @@ func TestDecideOne_DecidePlanError(t *testing.T) {
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
 	sess, db := newTestSession(t, mod)
-	if err := meta.DropRawModelTable(db); err != nil {
+	if err := db.Migrator().DropTable("meta_raw_model"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := DecideOne(sess, "FieldDefault", nil); err == nil {
@@ -695,7 +697,7 @@ func TestSupersedeInjectAppModels_PropagatesError(t *testing.T) {
 	sess, db := newTestSession(t, mod)
 	sess.SetPlan("FieldDefault", Plan{SupersedeInject: true})
 	sess.SetPlan("AppSetting", Plan{SupersedeInject: true})
-	if err := meta.DropRawModelTable(db); err != nil {
+	if err := db.Migrator().DropTable("meta_raw_model"); err != nil {
 		t.Fatal(err)
 	}
 	if err := SupersedeInjectAppModels(sess); err == nil {
@@ -711,7 +713,7 @@ func TestSupersedeGenerated_DeleteError(t *testing.T) {
 	_, db := newTestSession(t, mod)
 	virt := "/virtual/modules/partner/service/models/__generated__/app_setting.ts"
 	seedDeclaration(t, db, "AppSetting", "del-fail", virt, "partner")
-	if err := db.Migrator().DropTable(meta.RawServiceTable); err != nil {
+	if err := db.Migrator().DropTable("meta_raw_service"); err != nil {
 		t.Fatal(err)
 	}
 	if err := supersedeGenerated(specByNameOrPanic("AppSetting"), db, "partner"); err == nil {

@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/parser"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"gorm.io/driver/sqlite"
@@ -33,8 +34,8 @@ func newTestSession(t *testing.T, mod *meta.Module) (*Session, *gorm.DB) {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := meta.EnsureDualStoreTables(db); err != nil {
-		t.Fatalf("EnsureDualStoreTables: %v", err)
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
+		t.Fatalf("AutoMigrate CatalogEntities: %v", err)
 	}
 	reg := NewRegistryWithDefaults()
 	sess := NewSession(BuildCtx{
@@ -47,11 +48,26 @@ func newTestSession(t *testing.T, mod *meta.Module) (*Session, *gorm.DB) {
 
 func seedDeclaration(t *testing.T, db *gorm.DB, name, id, path, application string) {
 	t.Helper()
-	m := &meta.Model{Name: name, Path: path, Application: application}
+	moduleID := "seed-" + application
+	m := &meta.Model{
+		Name: name, Path: path, Application: application,
+		ModuleId: sql.NullString{String: moduleID, Valid: true},
+	}
 	if id != "" {
 		m.Id = sql.NullString{String: id, Valid: true}
 	}
-	if err := meta.PersistModelTreeAsRaw(db, m); err != nil {
+	existing, err := modmeta.ListDeclarations(db, modmeta.DeclarationQuery{ModuleID: moduleID, PreloadTree: true})
+	if err != nil {
+		t.Fatalf("list declarations for seed: %v", err)
+	}
+	out := make([]*meta.Model, 0, len(existing)+1)
+	for _, e := range existing {
+		if e != nil && e.Path != path {
+			out = append(out, e)
+		}
+	}
+	out = append(out, m)
+	if _, err := modmeta.ReplaceModuleDeclarations(db, moduleID, out); err != nil {
 		t.Fatalf("seed %s: %v", name, err)
 	}
 }
@@ -590,7 +606,7 @@ func TestSupersedeInjectAppModels_DeletesGeneratedOnly(t *testing.T) {
 		t.Fatalf("supersede: %v", err)
 	}
 
-	remaining, err := meta.ListDeclarations(db, meta.DeclarationQuery{
+	remaining, err := modmeta.ListDeclarations(db, modmeta.DeclarationQuery{
 		Application: "partner",
 		Name:        "AppSetting",
 	})

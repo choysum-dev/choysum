@@ -12,10 +12,9 @@ import (
 	"strings"
 	"testing"
 
-	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
-	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
-
 	modulegenerator "github.com/choysum-dev/choysum/internal/module/artifact/generate"
+	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/testing/jsexecutortest"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -334,7 +333,7 @@ func TestRunnerRunPhaseExecutesMigrationsAndRestoresScripts(t *testing.T) {
 		t.Fatalf("unexpected migration args: %#v", migrationArgs)
 	}
 
-	var history []metadata.ModuleMigrationHistory
+	var history []modmeta.ModuleMigrationHistory
 	if err := testRuntimeScope.session.WithContext(context.Background()).Order("version asc, script asc").Find(&history).Error; err != nil {
 		t.Fatalf("load migration history: %v", err)
 	}
@@ -425,7 +424,7 @@ func TestRunnerValidateAndRunPhaseFailurePaths(t *testing.T) {
 			t.Fatalf("expected migration failure, got %v", err)
 		}
 
-		var row metadata.ModuleMigrationHistory
+		var row modmeta.ModuleMigrationHistory
 		if err := testRuntimeScope.session.WithContext(context.Background()).Where("script = ?", "broken").Take(&row).Error; err != nil {
 			t.Fatalf("load failed history row: %v", err)
 		}

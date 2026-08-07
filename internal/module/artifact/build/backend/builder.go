@@ -22,6 +22,7 @@ import (
 	modulegenerator "github.com/choysum-dev/choysum/internal/module/artifact/generate"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/parser"
 	"github.com/choysum-dev/choysum/internal/parser/backendtsparser"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
@@ -30,6 +31,7 @@ import (
 	"github.com/evanw/esbuild/pkg/api"
 	xfmt "golang.org/x/exp/errors/fmt"
 	"gorm.io/gorm"
+
 )
 
 type ModuleBuilder struct {
@@ -319,11 +321,11 @@ func (b *ModuleBuilder) getNewExtends(model *meta.Model) (*meta.Model, error) {
 	if application == "" && b.module != nil {
 		application = strings.TrimSpace(b.module.ApplicationStr)
 	}
-	q := meta.DeclarationQuery{Name: model.Name}
+	q := modmeta.DeclarationQuery{Name: model.Name}
 	if application != "" {
 		q.Application = application
 	}
-	extendsDecls, err := meta.ListDeclarations(b.runtimeScope.Session().DB, q)
+	extendsDecls, err := modmeta.ListDeclarations(b.runtimeScope.Session().DB, q)
 	if err != nil {
 		return nil, xfmt.Errorf("error getting last models: %w", err)
 	}
@@ -881,7 +883,7 @@ func (b *ModuleBuilder) persistModuleModels(moduleID string, models []*meta.Mode
 	}
 	db := b.runtimeScope.Session()
 
-	keys, err := meta.ReplaceModuleDeclarations(db.DB, moduleID, models)
+	keys, err := modmeta.ReplaceModuleDeclarations(db.DB, moduleID, models)
 	if err != nil {
 		return err
 	}
@@ -893,13 +895,13 @@ func (b *ModuleBuilder) persistModuleModels(moduleID string, models []*meta.Mode
 		if app != "" {
 			for _, spec := range b.injectSession.Registry().Specs() {
 				if b.injectSession.Plan(spec.ModelName).SupersedeInject {
-					keys = append(keys, meta.LogicalKey{Application: app, Name: spec.ModelName})
+					keys = append(keys, modmeta.LogicalKey{Application: app, Name: spec.ModelName})
 				}
 			}
 		}
 	}
 
-	if err := meta.FlushEffective(db.DB, keys); err != nil {
+	if err := modmeta.FlushEffective(db.DB, keys); err != nil {
 		return xfmt.Errorf("flush effective models: %w", err)
 	}
 	return nil

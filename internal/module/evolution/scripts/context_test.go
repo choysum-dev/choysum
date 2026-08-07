@@ -13,8 +13,7 @@ import (
 	"testing"
 
 	_ "github.com/choysum-dev/choysum/internal/defaultjsexecutor"
-	modulemetadata "github.com/choysum-dev/choysum/internal/module/metadata"
-
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/auth"
 	"github.com/choysum-dev/choysum/pkg/config"
@@ -103,7 +102,7 @@ func newScriptsTestScope(t *testing.T) *scriptsTestScope {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&modulemetadata.ModuleMigrationHistory{}); err != nil {
+	if err := db.AutoMigrate(&modmeta.ModuleMigrationHistory{}); err != nil {
 		t.Fatalf("migrate history table: %v", err)
 	}
 	return &scriptsTestScope{

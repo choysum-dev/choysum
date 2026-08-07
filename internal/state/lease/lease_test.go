@@ -6,7 +6,7 @@ package lease
 import (
 	"context"
 	"errors"
-	leasemodel "github.com/choysum-dev/choysum/internal/state/lease/model"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"io"
 	"log/slog"
 	"path/filepath"
@@ -155,7 +155,7 @@ func newSQLiteLocker(t *testing.T) (*Locker, scope.Scope) {
 		slog.New(slog.NewTextHandler(io.Discard, nil)),
 	)
 
-	if err := runtimeScope.Session().AutoMigrate(&leasemodel.LockLease{}); err != nil {
+	if err := runtimeScope.Session().AutoMigrate(&modmeta.LockLease{}); err != nil {
 		t.Fatalf("AutoMigrate: %v", err)
 	}
 
@@ -166,10 +166,10 @@ func newSQLiteLocker(t *testing.T) (*Locker, scope.Scope) {
 	return New(runtimeScope), runtimeScope
 }
 
-func fetchLease(t *testing.T, runtimeScope scope.Scope, resource string) (*leasemodel.LockLease, bool) {
+func fetchLease(t *testing.T, runtimeScope scope.Scope, resource string) (*modmeta.LockLease, bool) {
 	t.Helper()
 
-	var record leasemodel.LockLease
+	var record modmeta.LockLease
 	err := runtimeScope.Session().Unscoped().Where("resource = ?", resource).Take(&record).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, false
@@ -189,7 +189,7 @@ func registerLeaseInsertConflict(t *testing.T, db *gorm.DB, resource, ownerId st
 		if inserted {
 			return
 		}
-		leaseRow, ok := tx.Statement.Dest.(*leasemodel.LockLease)
+		leaseRow, ok := tx.Statement.Dest.(*modmeta.LockLease)
 		if !ok || leaseRow.Resource != resource {
 			return
 		}
@@ -284,7 +284,7 @@ func TestAcquireCreateBusyTakeoverAndRestoreDeletedLease(t *testing.T) {
 		t.Fatalf("Acquire busy error = %v, want %v", err, ErrLeaseBusy)
 	}
 
-	expired := &leasemodel.LockLease{Resource: "resource-expired", OwnerId: "owner-old", ExpiresAt: time.Now().Add(-time.Minute)}
+	expired := &modmeta.LockLease{Resource: "resource-expired", OwnerId: "owner-old", ExpiresAt: time.Now().Add(-time.Minute)}
 	if err := runtimeScope.Session().Create(expired).Error; err != nil {
 		t.Fatalf("create expired lease: %v", err)
 	}
@@ -313,7 +313,7 @@ func TestAcquireWithinRunUsesSQLiteSessionFastPath(t *testing.T) {
 		}
 
 		var count int64
-		if err := executionScope.Session().Model(&leasemodel.LockLease{}).Where("resource = ?", "resource-run").Count(&count).Error; err != nil {
+		if err := executionScope.Session().Model(&modmeta.LockLease{}).Where("resource = ?", "resource-run").Count(&count).Error; err != nil {
 			return err
 		}
 		if count != 1 {

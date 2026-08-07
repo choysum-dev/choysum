@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/module/origin/contract"
 	"github.com/choysum-dev/choysum/pkg/oerrors"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -147,7 +147,7 @@ func SyncLocalModuleIndex(ctx context.Context, runtimeScope scope.Scope, lockerF
 	if !hasError {
 		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
 			return txSession.WithContext(ctx).
-				Model(&metadata.ModuleIndex{}).
+				Model(&modmeta.ModuleIndex{}).
 				Where("origin_type = ? AND origin_ref = ?", "local", "local").
 				Updates(map[string]any{"last_batch_sync_at": now}).Error
 		}); err != nil {
@@ -176,7 +176,7 @@ func moduleIndexLockTTL(ctx context.Context, runtimeScope scope.Scope) time.Dura
 		return fallbackTime
 	}
 
-	var setting metadata.Setting
+	var setting modmeta.Setting
 	res := sess.WithContext(ctx).Where("key = ?", settingKey).Take(&setting)
 	if res.Error != nil {
 		return fallbackTime
@@ -241,7 +241,7 @@ func upsertModuleIndexSuccess(ctx context.Context, runtimeScope scope.Scope, ses
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	entry := metadata.ModuleIndex{
+	entry := modmeta.ModuleIndex{
 		ModuleName: moduleName,
 		OriginType: "local",
 		OriginRef:  "local",
@@ -274,7 +274,7 @@ func upsertModuleIndexFailure(ctx context.Context, runtimeScope scope.Scope, ses
 		ctx = context.Background()
 	}
 	msg := SanitizeModuleIndexError(runtimeScope, cause)
-	entry := metadata.ModuleIndex{
+	entry := modmeta.ModuleIndex{
 		ModuleName:       moduleName,
 		OriginType:       "local",
 		OriginRef:        "local",
@@ -302,7 +302,7 @@ func reconcileMissingModules(ctx context.Context, runtimeScope scope.Scope, sess
 	}
 	return withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
 		query := txSession.WithContext(ctx).
-			Model(&metadata.ModuleIndex{}).
+			Model(&modmeta.ModuleIndex{}).
 			Where("origin_type = ? AND origin_ref = ?", "local", "local")
 		if len(names) > 0 {
 			query = query.Where("module_name NOT IN ?", names)

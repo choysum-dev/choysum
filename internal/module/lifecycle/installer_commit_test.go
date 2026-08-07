@@ -13,6 +13,7 @@ import (
 
 	i18nmodels "github.com/choysum-dev/choysum/internal/i18n/models"
 	moduleresult "github.com/choysum-dev/choysum/internal/module/artifact/result"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	internaltask "github.com/choysum-dev/choysum/internal/task"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/rs/xid"
@@ -160,13 +161,11 @@ func TestCommitInstallNewMigratorError(t *testing.T) {
 	if err := runtimeScope.Session().Create(mod).Error; err != nil {
 		t.Fatalf("create module: %v", err)
 	}
-	for _, row := range []*meta.Model{
+	if _, err := modmeta.ReplaceModuleDeclarations(runtimeScope.Session().DB, mod.Id.String, []*meta.Model{
 		{Name: "A", Path: "/a.ts", ModelTable: "a", ModuleId: mod.Id, Extends: "/b.ts"},
 		{Name: "B", Path: "/b.ts", ModelTable: "b", ModuleId: mod.Id, Extends: "/a.ts"},
-	} {
-		if err := meta.PersistModelTreeAsRaw(runtimeScope.Session().DB, row); err != nil {
-			t.Fatalf("create circular declaration: %v", err)
-		}
+	}); err != nil {
+		t.Fatalf("create circular declaration: %v", err)
 	}
 	installer := &moduleInstaller{
 		module:        mod,
@@ -200,13 +199,11 @@ func TestCommitUpgradeNewMigratorError(t *testing.T) {
 		ApplicationStr: "auth",
 	}
 	target.Id = mod.Id
-	for _, row := range []*meta.Model{
+	if _, err := modmeta.ReplaceModuleDeclarations(runtimeScope.Session().DB, target.Id.String, []*meta.Model{
 		{Name: "A", Path: "/ua.ts", ModelTable: "ua", ModuleId: target.Id, Extends: "/ub.ts"},
 		{Name: "B", Path: "/ub.ts", ModelTable: "ub", ModuleId: target.Id, Extends: "/ua.ts"},
-	} {
-		if err := meta.PersistModelTreeAsRaw(runtimeScope.Session().DB, row); err != nil {
-			t.Fatalf("create circular declaration: %v", err)
-		}
+	}); err != nil {
+		t.Fatalf("create circular declaration: %v", err)
 	}
 	upgrader := &moduleUpgrader{
 		runtimeScope:  runtimeScope,
@@ -305,8 +302,8 @@ func TestCommitInstallMetaAndDocumentSchedules(t *testing.T) {
 	if err := db.AutoMigrate(&internaltask.Schedule{}, &meta.Module{}); err != nil {
 		t.Fatal(err)
 	}
-	if err := meta.EnsureDualStoreTables(db); err != nil {
-		t.Fatalf("EnsureDualStoreTables: %v", err)
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
+		t.Fatalf("AutoMigrate CatalogEntities: %v", err)
 	}
 	now := time.Now().UTC()
 	if err := db.Create(&internaltask.Schedule{

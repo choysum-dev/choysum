@@ -12,7 +12,9 @@ import (
 	"testing"
 
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
+
 )
 
 func TestPickTranslationTermOwnerModule_EmptyEntryAllowed(t *testing.T) {
@@ -133,7 +135,7 @@ func TestWriteBackendBundleToDir(t *testing.T) {
 func TestBuildBackendBundlesToDir_NoRepresentativeReturnsNil(t *testing.T) {
 	modulesPath := t.TempDir()
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
 	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
@@ -148,7 +150,7 @@ func TestBuildBackendBundlesToDir_NoRepresentativeReturnsNil(t *testing.T) {
 func TestBuildBackendBundlesToDir_SuccessfulWrite(t *testing.T) {
 	modulesPath := t.TempDir()
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
 	modPath := filepath.Join(modulesPath, "core")
@@ -184,7 +186,7 @@ func TestBuildBackendBundlesToDir_SuccessfulWrite(t *testing.T) {
 func TestBuildBackendBundlesToDir_EmptyEntryOnlyStillInjectsTranslationTerm(t *testing.T) {
 	modulesPath := t.TempDir()
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
 	modPath := filepath.Join(modulesPath, "web")
@@ -216,7 +218,7 @@ func TestBuildBackendBundlesToDir_EmptyEntryOnlyStillInjectsTranslationTerm(t *t
 
 	// Drop meta_raw_model so BundleInjectAppModels fails after owners were collected
 	// and the Ensure-only representative path was selected.
-	if err := meta.DropRawModelTable(db); err != nil {
+	if err := db.Migrator().DropTable("meta_raw_model"); err != nil {
 		t.Fatalf("drop meta_raw_model: %v", err)
 	}
 	err := manager.buildBackendBundlesToDir(context.Background(), distBundlesDir, nil)

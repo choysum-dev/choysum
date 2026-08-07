@@ -44,7 +44,7 @@ type TermReference struct {
 	Kind   string `json:"kind"`
 }
 
-const TermReferenceNamespace = "__terms"
+const termReferenceNamespace = "__terms"
 
 func TermReferenceKey(module, scope, src, kind string) string {
 	values := []string{module, scope, src, kind}
@@ -53,7 +53,7 @@ func TermReferenceKey(module, scope, src, kind string) string {
 		identity.WriteString(fmt.Sprintf("%d:", len([]byte(value))))
 		identity.WriteString(value)
 	}
-	return TermReferenceNamespace + "." + hex.EncodeToString([]byte(identity.String()))
+	return termReferenceNamespace + "." + hex.EncodeToString([]byte(identity.String()))
 }
 
 func NewTermReference(module, scope, src, kind string) TermReference {

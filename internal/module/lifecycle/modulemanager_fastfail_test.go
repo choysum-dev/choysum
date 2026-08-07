@@ -9,9 +9,11 @@ import (
 	"strings"
 	"testing"
 
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	statepkg "github.com/choysum-dev/choysum/pkg/state"
+
 )
 
 type fastFailOriginCoordinator struct {
@@ -68,7 +70,7 @@ func TestModuleManagerUninstallFastFailWhenModuleMissing(t *testing.T) {
 	manager := NewModuleManager(runtimeScope, nil, WithLockerFactory(func(scope.Scope) statepkg.Locker {
 		return locker
 	}))
-	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 	manager.bootstrapOnce.Do(func() {})
@@ -104,7 +106,7 @@ func TestModuleManagerUpgradeFastFailWhenLocalModuleMissing(t *testing.T) {
 	manager := NewModuleManager(runtimeScope, nil, WithLockerFactory(func(scope.Scope) statepkg.Locker {
 		return locker
 	}))
-	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 	manager.bootstrapOnce.Do(func() {})

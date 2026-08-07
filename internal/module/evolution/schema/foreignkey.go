@@ -6,6 +6,7 @@ package schema
 import (
 	"encoding/json"
 	"fmt"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -160,7 +161,7 @@ func (m *foreignKeyMigrator) resolveTargetModelByPath(targetModelPath string) (*
 
 	// Declaration fallback: Path is unique per ModuleId, so cross-module duplicates are possible.
 	// Do not filter by the current module — FK targets often live in dependencies.
-	decls, err := meta.ListDeclarations(session.DB, meta.DeclarationQuery{
+	decls, err := modmeta.ListDeclarations(session.DB, modmeta.DeclarationQuery{
 		Path: targetModelPath,
 	})
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"gorm.io/gorm"
@@ -81,7 +82,7 @@ func TestForeignKeyMigratorRuntimePaths(t *testing.T) {
 			t.Fatalf("create module: %v", err)
 		}
 		target := &meta.Model{Name: "User", Path: "sales/user.ts", ModelTable: "sales_user", ModuleId: module.Id}
-		if err := meta.PersistModelTreeAsRaw(runtimeScope.Session().DB, target); err != nil {
+		if _, err := modmeta.ReplaceModuleDeclarations(runtimeScope.Session().DB, module.Id.String, []*meta.Model{target}); err != nil {
 			t.Fatalf("persist target declaration: %v", err)
 		}
 		source := &meta.Model{Name: "Order", Path: "sales/order.ts", ModelTable: "sales_order", ModuleId: module.Id, Fields: []*meta.Field{newRelationField("OwnerId", "sales/user", `{"type":"ManyToOne","relation":{"onDelete":"CASCADE"}}`)}}
@@ -132,13 +133,15 @@ func TestForeignKeyMigratorRuntimePaths(t *testing.T) {
 		if err := runtimeScope.Session().Create(modB).Error; err != nil {
 			t.Fatalf("create modB: %v", err)
 		}
-		for _, row := range []*meta.Model{
+		if _, err := modmeta.ReplaceModuleDeclarations(runtimeScope.Session().DB, modA.Id.String, []*meta.Model{
 			{Name: "User", Path: "shared/user.ts", ModelTable: "mod_a_user", ModuleId: modA.Id},
+		}); err != nil {
+			t.Fatalf("persist declaration: %v", err)
+		}
+		if _, err := modmeta.ReplaceModuleDeclarations(runtimeScope.Session().DB, modB.Id.String, []*meta.Model{
 			{Name: "User", Path: "shared/user.ts", ModelTable: "mod_b_user", ModuleId: modB.Id},
-		} {
-			if err := meta.PersistModelTreeAsRaw(runtimeScope.Session().DB, row); err != nil {
-				t.Fatalf("persist declaration: %v", err)
-			}
+		}); err != nil {
+			t.Fatalf("persist declaration: %v", err)
 		}
 		fkMigrator := newForeignKeyMigrator(runtimeScope, modA, nil).(*foreignKeyMigrator)
 		if _, err := fkMigrator.resolveTargetModelByPath("shared/user.ts"); err == nil || !strings.Contains(err.Error(), "ambiguous model path") {

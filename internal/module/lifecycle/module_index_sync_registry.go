@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/oerrors"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -113,7 +113,7 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 	seen := make(map[string]struct{})
 	now := time.Now().UTC()
 	hasError := false
-	records := make([]metadata.ModuleIndex, 0, len(index.Modules))
+	records := make([]modmeta.ModuleIndex, 0, len(index.Modules))
 
 	for moduleName, module := range index.Modules {
 		select {
@@ -144,7 +144,7 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 			continue
 		}
 
-		records = append(records, metadata.ModuleIndex{
+		records = append(records, modmeta.ModuleIndex{
 			ModuleName:   name,
 			OriginType:   "registry",
 			OriginRef:    originRef,
@@ -158,7 +158,7 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 	if len(records) > 0 {
 		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
 			return txSession.WithContext(ctx).
-				Model(&metadata.ModuleIndex{}).
+				Model(&modmeta.ModuleIndex{}).
 				Clauses(clause.OnConflict{
 					Columns:   []clause.Column{{Name: "module_name"}, {Name: "origin_type"}, {Name: "origin_ref"}},
 					DoUpdates: clause.AssignmentColumns([]string{"available", "version", "manifest_json", "last_sync_at"}),
@@ -174,7 +174,7 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 				entry := record
 				if rowErr := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
 					return txSession.WithContext(ctx).
-						Model(&metadata.ModuleIndex{}).
+						Model(&modmeta.ModuleIndex{}).
 						Clauses(clause.OnConflict{
 							Columns:   []clause.Column{{Name: "module_name"}, {Name: "origin_type"}, {Name: "origin_ref"}},
 							DoUpdates: clause.AssignmentColumns([]string{"available", "version", "manifest_json", "last_sync_at"}),
@@ -195,9 +195,9 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 
 	// Mark registry entries absent from the current catalog snapshot as unavailable.
 	if len(seen) > 0 {
-		existing := make([]metadata.ModuleIndex, 0)
+		existing := make([]modmeta.ModuleIndex, 0)
 		if err := session.WithContext(ctx).
-			Model(&metadata.ModuleIndex{}).
+			Model(&modmeta.ModuleIndex{}).
 			Where("origin_type = ?", "registry").
 			Find(&existing).Error; err != nil {
 			hasError = true
@@ -223,7 +223,7 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 			if len(orphanedIDs) > 0 {
 				if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
 					return txSession.WithContext(ctx).
-						Model(&metadata.ModuleIndex{}).
+						Model(&modmeta.ModuleIndex{}).
 						Where("id IN ?", orphanedIDs).
 						Updates(map[string]any{"available": false, "last_sync_at": now}).Error
 				}); err != nil {
@@ -237,7 +237,7 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 				originRef := key.originRef
 				if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
 					return txSession.WithContext(ctx).
-						Model(&metadata.ModuleIndex{}).
+						Model(&modmeta.ModuleIndex{}).
 						Where("module_name = ? AND origin_type = ? AND origin_ref = ?", moduleName, "registry", originRef).
 						Updates(map[string]any{"available": false, "last_sync_at": now}).Error
 				}); err != nil {
@@ -251,7 +251,7 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 	if !hasError {
 		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
 			return txSession.WithContext(ctx).
-				Model(&metadata.ModuleIndex{}).
+				Model(&modmeta.ModuleIndex{}).
 				Where("origin_type = ?", "registry").
 				Updates(map[string]any{"last_batch_sync_at": now}).Error
 		}); err != nil {

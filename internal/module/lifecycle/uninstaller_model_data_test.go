@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/rs/xid"
 )
@@ -16,7 +16,7 @@ import (
 func TestModuleUninstallerCleanModelsClearsMetaModelDataOnly(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
-	if err := db.AutoMigrate(&metadata.ModelData{}); err != nil {
+	if err := db.AutoMigrate(&modmeta.ModelData{}); err != nil {
 		t.Fatalf("AutoMigrate ModelData: %v", err)
 	}
 
@@ -39,10 +39,10 @@ func TestModuleUninstallerCleanModelsClearsMetaModelDataOnly(t *testing.T) {
 		t.Fatalf("insert other business row: %v", err)
 	}
 
-	demoMapping := &metadata.ModelData{
+	demoMapping := &modmeta.ModelData{
 		Module: seed.module.Name, Name: "seed_row", Application: "demo", ModelName: "Item", ModelId: xid.New().String(), ResID: resID,
 	}
-	otherMapping := &metadata.ModelData{
+	otherMapping := &modmeta.ModelData{
 		Module: otherModule.Name, Name: "other_row", Application: "other", ModelName: "Item", ModelId: xid.New().String(), ResID: otherResID,
 	}
 	if err := db.Create(demoMapping).Error; err != nil {
@@ -63,14 +63,14 @@ func TestModuleUninstallerCleanModelsClearsMetaModelDataOnly(t *testing.T) {
 	}
 
 	var remaining int64
-	if err := db.Model(&metadata.ModelData{}).Where("module = ?", seed.module.Name).Count(&remaining).Error; err != nil {
+	if err := db.Model(&modmeta.ModelData{}).Where("module = ?", seed.module.Name).Count(&remaining).Error; err != nil {
 		t.Fatalf("count demo mappings: %v", err)
 	}
 	if remaining != 0 {
 		t.Fatalf("demo mappings remaining = %d, want 0", remaining)
 	}
 
-	var other metadata.ModelData
+	var other modmeta.ModelData
 	if err := db.Where("module = ? AND name = ?", otherModule.Name, "other_row").First(&other).Error; err != nil {
 		t.Fatalf("other module mapping should remain: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestModuleUninstallerCleanModelsClearsMetaModelDataOnly(t *testing.T) {
 	}
 
 	var hardDeleted int64
-	if err := db.Unscoped().Model(&metadata.ModelData{}).Where("module = ? AND name = ?", seed.module.Name, "seed_row").Count(&hardDeleted).Error; err != nil {
+	if err := db.Unscoped().Model(&modmeta.ModelData{}).Where("module = ? AND name = ?", seed.module.Name, "seed_row").Count(&hardDeleted).Error; err != nil {
 		t.Fatalf("count hard-deleted mapping: %v", err)
 	}
 	if hardDeleted != 0 {
@@ -95,7 +95,7 @@ func TestModuleUninstallerCleanModelsClearsMetaModelDataOnly(t *testing.T) {
 	}
 
 	// Reinstall must be able to recreate the same (module, name) key after cleanup.
-	if err := db.Create(&metadata.ModelData{
+	if err := db.Create(&modmeta.ModelData{
 		Module: seed.module.Name, Name: "seed_row", Application: "demo", ModelName: "Item", ModelId: xid.New().String(), ResID: xid.New().String(),
 	}).Error; err != nil {
 		t.Fatalf("recreate mapping after uninstall cleanup: %v", err)
@@ -105,8 +105,8 @@ func TestModuleUninstallerCleanModelsClearsMetaModelDataOnly(t *testing.T) {
 func TestModuleUninstallerCleanModelsRecomputesAfterExtRawDelete(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
-	if err := meta.EnsureDualStoreTables(db); err != nil {
-		t.Fatalf("EnsureDualStoreTables: %v", err)
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
+		t.Fatalf("AutoMigrate CatalogEntities: %v", err)
 	}
 
 	baseMod := &meta.Module{Name: "partner", Status: meta.Installed, Version: "1.0.0"}
@@ -122,18 +122,18 @@ func TestModuleUninstallerCleanModelsRecomputesAfterExtRawDelete(t *testing.T) {
 
 	basePath := "@/partner/service/models/partner.ts"
 	baseRawID := xid.New().String()
-	if err := meta.PersistModelTreeAsRaw(db, &meta.Model{
+	if _, err := modmeta.ReplaceModuleDeclarations(db, baseMod.Id.String, []*meta.Model{{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: baseRawID, Valid: true}},
 		Name:        "Partner",
 		Path:        basePath,
 		Application: "partner",
 		ModelTable:  "partner_partner",
 		ModuleId:    baseMod.Id,
-	}); err != nil {
+	}}); err != nil {
 		t.Fatalf("create base raw model: %v", err)
 	}
 	extRawID := xid.New().String()
-	if err := meta.PersistModelTreeAsRaw(db, &meta.Model{
+	if _, err := modmeta.ReplaceModuleDeclarations(db, extMod.Id.String, []*meta.Model{{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: extRawID, Valid: true}},
 		Name:        "Partner",
 		Path:        "@/partner_commercial/service/models/partner.ts",
@@ -141,7 +141,7 @@ func TestModuleUninstallerCleanModelsRecomputesAfterExtRawDelete(t *testing.T) {
 		ModelTable:  "partner_partner",
 		ModuleId:    extMod.Id,
 		Extends:     basePath,
-	}); err != nil {
+	}}); err != nil {
 		t.Fatalf("create ext raw model: %v", err)
 	}
 
@@ -155,16 +155,16 @@ func TestModuleUninstallerCleanModelsRecomputesAfterExtRawDelete(t *testing.T) {
 		t.Fatalf("cleanModels() error = %v", err)
 	}
 
-	extCount, err := meta.CountRawModelsByID(db, extRawID, true)
-	if err != nil {
+	var extCount int64
+	if err := db.Unscoped().Table("meta_raw_model").Where("id = ?", extRawID).Count(&extCount).Error; err != nil {
 		t.Fatalf("count ext raw: %v", err)
 	}
 	if extCount != 0 {
 		t.Fatalf("ext raw model should be hard-deleted, count=%d", extCount)
 	}
 
-	baseRawCount, err := meta.CountRawModelsByID(db, baseRawID, false)
-	if err != nil {
+	var baseRawCount int64
+	if err := db.Table("meta_raw_model").Where("id = ?", baseRawID).Count(&baseRawCount).Error; err != nil {
 		t.Fatalf("count base raw: %v", err)
 	}
 	if baseRawCount != 1 {
@@ -188,11 +188,11 @@ func TestModuleUninstallerCleanModelsRecomputesAfterExtRawDelete(t *testing.T) {
 func TestModuleUninstallerCleanModelsMetaModelDataError(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
-	if err := db.AutoMigrate(&metadata.ModelData{}); err != nil {
+	if err := db.AutoMigrate(&modmeta.ModelData{}); err != nil {
 		t.Fatalf("AutoMigrate ModelData: %v", err)
 	}
 	seed := seedCleanModelsFixture(t, db)
-	if err := db.Create(&metadata.ModelData{
+	if err := db.Create(&modmeta.ModelData{
 		Module: seed.module.Name, Name: "seed_row", Application: "demo", ModelName: "Item", ModelId: xid.New().String(), ResID: xid.New().String(),
 	}).Error; err != nil {
 		t.Fatalf("create mapping: %v", err)
@@ -223,7 +223,7 @@ func TestModuleUninstallerCleanModelsListingRawModelsError(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	seed := seedCleanModelsFixture(t, db)
-	dropMetaTable(t, db, meta.RawModelTable)
+	dropMetaTable(t, db, "meta_raw_model")
 
 	uninstaller := &moduleUninstaller{
 		runtimeScope:  runtimeScope,
@@ -232,7 +232,7 @@ func TestModuleUninstallerCleanModelsListingRawModelsError(t *testing.T) {
 		ctx:           newOpContext(),
 	}
 	err := uninstaller.cleanModels()
-	if err == nil || !strings.Contains(err.Error(), "error listing raw models for uninstall") {
-		t.Fatalf("cleanModels() error = %v, want listing raw models failure", err)
+	if err == nil || !strings.Contains(err.Error(), "error removing module declarations") {
+		t.Fatalf("cleanModels() error = %v, want removing module declarations failure", err)
 	}
 }

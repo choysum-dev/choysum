@@ -19,8 +19,8 @@ func TestTermReferenceKeyStabilityAndJSONRoundTrip(t *testing.T) {
 	if key != TermReferenceKey(identity[0], identity[1], identity[2], identity[3]) {
 		t.Fatal("key is not deterministic")
 	}
-	if !strings.HasPrefix(key, TermReferenceNamespace+".") ||
-		strings.Contains(strings.TrimPrefix(key, TermReferenceNamespace+"."), ".") {
+	if !strings.HasPrefix(key, termReferenceNamespace+".") ||
+		strings.Contains(strings.TrimPrefix(key, termReferenceNamespace+"."), ".") {
 		t.Fatalf("key is not vue-i18n path safe: %q", key)
 	}
 	for index := range identity {
