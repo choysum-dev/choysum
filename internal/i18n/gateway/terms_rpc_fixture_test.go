@@ -60,13 +60,10 @@ service TranslationTerm {
 }
 
 message GetTranslationsReq {
-  string lang = 1;
-  repeated string module_names = 2;
-  string hash = 3;
+  google.protobuf.Value req = 1;
 }
 message GetTranslationsResp {
-  string hash = 1;
-  google.protobuf.Struct terms_by_module = 2;
+  google.protobuf.Value result = 1;
 }
 
 message SearchReq {
@@ -154,7 +151,7 @@ func newTranslationTermDialer(t *testing.T, behavior *translationTermRPCBehavior
 			if behavior.getTerms != nil {
 				payload["terms_by_module"] = behavior.getTerms
 			}
-			if err := converter.MapToMessage(payload, resp); err != nil {
+			if err := converter.MapToMessage(map[string]any{"result": payload}, resp); err != nil {
 				return err
 			}
 		default:
@@ -465,9 +462,7 @@ service TranslationTerm {
 }
 
 message GetTranslationsReq {
-  string lang = 1;
-  repeated string module_names = 2;
-  string hash = 3;
+  google.protobuf.Value req = 1;
 }
 message SearchReq {
   google.protobuf.Struct condition = 1;
@@ -560,13 +555,11 @@ service TranslationTerm {
   rpc Count(CountReq) returns (CountResp);
 }
 message BadGetReq {
-  google.protobuf.Struct lang = 1;
-  repeated string module_names = 2;
-  string hash = 3;
+  // ListValue cannot accept the map payload MapToMessage sends for "req".
+  google.protobuf.ListValue req = 1;
 }
 message GetTranslationsResp {
-  string hash = 1;
-  google.protobuf.Struct terms_by_module = 2;
+  google.protobuf.Value result = 1;
 }
 message SearchReq {
   google.protobuf.Struct condition = 1;

@@ -47,11 +47,15 @@ func fetchAppTranslations(ctx context.Context, runtimeScope scope.Scope, app, la
 	for _, m := range moduleNames {
 		moduleNamesAny = append(moduleNamesAny, m)
 	}
+	// Generated protos wrap the single TS param as google.protobuf.Value req
+	// (TranslationTerm_GetTranslations_Req), matching document gateway's {"req": ...} shape.
 	reqMsg := dynamicpb.NewMessage(md.Input())
 	if err := converter.MapToMessage(map[string]any{
-		"lang":         lang,
-		"module_names": moduleNamesAny,
-		"hash":         "",
+		"req": map[string]any{
+			"lang":         lang,
+			"module_names": moduleNamesAny,
+			"hash":         "",
+		},
 	}, reqMsg); err != nil {
 		return nil, fmt.Errorf("build GetTranslations request: %w", err)
 	}
@@ -70,7 +74,12 @@ func fetchAppTranslations(ctx context.Context, runtimeScope scope.Scope, app, la
 	if err != nil {
 		return nil, fmt.Errorf("decode GetTranslations response: %w", err)
 	}
-	return parseAppTranslations(out), nil
+	// Response is TranslationTerm_GetTranslations_Resp{ Value result = 1 }.
+	payload, _ := out["result"].(map[string]any)
+	if payload == nil {
+		payload = out
+	}
+	return parseAppTranslations(payload), nil
 }
 
 func parseAppTranslations(out map[string]any) *appTranslations {
