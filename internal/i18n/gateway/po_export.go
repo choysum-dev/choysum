@@ -142,7 +142,9 @@ func (h *handler) collectAllTerms(ctx context.Context, accessToken, app, lang st
 		all = append(all, result.Items...)
 		offset += len(result.Items)
 		if len(all) >= poExportMaxItems {
-			if total > int64(len(all)) {
+			// Unknown total (hooks that omit Total): prefer signaling truncation
+			// over silently returning a capped subset.
+			if total <= 0 || total > int64(len(all)) {
 				truncated = true
 			}
 			break

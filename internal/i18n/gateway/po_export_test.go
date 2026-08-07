@@ -360,6 +360,39 @@ func TestCollectAllTermsBackfillsTotalFromPage(t *testing.T) {
 	}
 }
 
+func TestCollectAllTermsMarksTruncatedWhenCapHitWithUnknownTotal(t *testing.T) {
+	oldMax := poExportMaxItems
+	oldPage := poExportPageSize
+	poExportMaxItems = 2
+	poExportPageSize = 2
+	t.Cleanup(func() {
+		poExportMaxItems = oldMax
+		poExportPageSize = oldPage
+	})
+
+	items := []termItem{
+		{Application: "auth", Module: "auth", Scope: "a@1", Src: "One", Value: "1"},
+		{Application: "auth", Module: "auth", Scope: "a@2", Src: "Two", Value: "2"},
+		{Application: "auth", Module: "auth", Scope: "a@3", Src: "Three", Value: "3"},
+	}
+	h := &handler{
+		search: func(ctx context.Context, accessToken, app, lang string, modules []string, q string, limit, offset int) (*searchTermsResult, error) {
+			if offset >= len(items) {
+				return &searchTermsResult{Lang: lang}, nil
+			}
+			end := offset + limit
+			if end > len(items) {
+				end = len(items)
+			}
+			return &searchTermsResult{Lang: lang, Items: items[offset:end]}, nil
+		},
+	}
+	got, truncated, err := h.collectAllTerms(context.Background(), "tok", "auth", "zh_CN", []string{"auth"})
+	if err != nil || !truncated || len(got) != 2 {
+		t.Fatalf("got=%d truncated=%v err=%v", len(got), truncated, err)
+	}
+}
+
 type errWriter struct {
 	header http.Header
 	code   int
