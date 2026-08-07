@@ -87,7 +87,7 @@ func TestWriteTermsRPCError(t *testing.T) {
 		code    int
 		wantSub string
 	}{
-		{status.Error(codes.PermissionDenied, "no"), http.StatusForbidden, `"error":"permission denied"`},
+		{status.Error(codes.PermissionDenied, "no"), http.StatusForbidden, `"error":"permission denied: TranslationTerm requires the terminology.editor role"`},
 		{status.Error(codes.Unauthenticated, "auth"), http.StatusUnauthorized, `"error":"authentication is required"`},
 		{status.Error(codes.InvalidArgument, "bad"), http.StatusBadRequest, "InvalidArgument"},
 		{status.Error(codes.Unavailable, "down"), http.StatusBadGateway, "Unavailable"},
