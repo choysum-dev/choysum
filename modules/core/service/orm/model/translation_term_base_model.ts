@@ -4,6 +4,7 @@
 import { Field } from '../decorator/field';
 import { MetadataStorage } from '../metadata/storage';
 import { raiseDomainError } from '@/core/service/error';
+import { withRepositoryAuthzRuleBypass } from '../repository/authz';
 import BaseModel from './model';
 import type { InstantiableModelCtor } from './types';
 import type {
@@ -350,12 +351,18 @@ export default class TranslationTermBaseModel extends BaseModel {
     await ensureTermUniqueIndex(this);
 
     // Match Go TermStore: hash is language-wide; module_names only filters the payload.
-    const rows = (await (this as any).Search(
-      { And: [['Lang', '=', lang]] },
-      {
-        fields: ['Module', 'Scope', 'Src', 'Value', 'Kind', 'Source'] as any,
-        limit: 0,
-      } as any
+    // Catalog-wide read for every caller (SPA language pack), not per-user scoped
+    // terms — same pattern as FieldDefault.GetEffective (§7.3). RecordRule-aware
+    // CRUD remains on Search/Create/Write; gateway internal identity without
+    // bypass would otherwise get an empty read set on non-meta hosts.
+    const rows = (await withRepositoryAuthzRuleBypass(async () =>
+      (this as any).Search(
+        { And: [['Lang', '=', lang]] },
+        {
+          fields: ['Module', 'Scope', 'Src', 'Value', 'Kind', 'Source'] as any,
+          limit: 0,
+        } as any
+      )
     )) as TranslationTermBaseModel[];
 
     const list = Array.isArray(rows) ? rows : [];

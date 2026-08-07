@@ -32,6 +32,9 @@ func ValidateDistForTargets(bundleMode string, distRoot string, targets []string
 		}
 		if name == "web" {
 			needsWeb = true
+			// web also hosts TranslationTerm gRPC (EnsureServiceEntry); treat it
+			// as a backend proto target while still requiring dist/web for SPA.
+			backendTargets = append(backendTargets, name)
 			continue
 		}
 		backendTargets = append(backendTargets, name)
@@ -69,6 +72,20 @@ func ValidateDistForTargets(bundleMode string, distRoot string, targets []string
 	case "application":
 		appsDir := filepath.Join(distRoot, "apps")
 		for _, app := range backendTargets {
+			if app == "web" {
+				// SPA lives under dist/web; backend scripts/proto for web use
+				// dist/apps/web when not in bundle mode.
+				appDir := filepath.Join(appsDir, app)
+				indexJS := filepath.Join(appDir, "index.js")
+				if st, err := os.Stat(indexJS); err != nil || st.IsDir() {
+					return xfmt.Errorf("app index missing: %s", indexJS)
+				}
+				protoDir := config.APIAppProtoDir(distRoot, app)
+				if st, err := os.Stat(protoDir); err != nil || !st.IsDir() {
+					return xfmt.Errorf("api proto assets missing: %s", protoDir)
+				}
+				continue
+			}
 			appDir := filepath.Join(appsDir, app)
 			indexJS := filepath.Join(appDir, "index.js")
 			if st, err := os.Stat(indexJS); err != nil || st.IsDir() {
@@ -147,8 +164,17 @@ func resolveDefaultTargetsFromDist(bundleMode string, distRoot string) ([]string
 
 	out := make([]string, 0, len(backend)+1)
 	out = append(out, backend...)
-	if st, err := os.Stat(filepath.Join(distRoot, "web")); err == nil && st.IsDir() {
-		out = append(out, "web")
+	hasWeb := false
+	for _, app := range backend {
+		if app == "web" {
+			hasWeb = true
+			break
+		}
+	}
+	if !hasWeb {
+		if st, err := os.Stat(filepath.Join(distRoot, "web")); err == nil && st.IsDir() {
+			out = append(out, "web")
+		}
 	}
 	return out, nil
 }

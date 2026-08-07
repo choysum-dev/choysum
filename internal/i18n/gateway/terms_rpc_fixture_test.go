@@ -60,13 +60,10 @@ service TranslationTerm {
 }
 
 message GetTranslationsReq {
-  string lang = 1;
-  repeated string module_names = 2;
-  string hash = 3;
+  google.protobuf.Value req = 1;
 }
 message GetTranslationsResp {
-  string hash = 1;
-  google.protobuf.Struct terms_by_module = 2;
+  google.protobuf.Value result = 1;
 }
 
 message SearchReq {
@@ -103,6 +100,9 @@ type translationTermRPCBehavior struct {
 	getHash     string
 	getTerms    map[string]any
 	getErr      error
+	// getResultRaw when non-nil is written as the GetTranslations "result" Value
+	// (e.g. a string) instead of the normal catalog object.
+	getResultRaw any
 }
 
 func newTranslationTermDialer(t *testing.T, behavior *translationTermRPCBehavior) grpcclient.ServiceDialer {
@@ -150,11 +150,17 @@ func newTranslationTermDialer(t *testing.T, behavior *translationTermRPCBehavior
 			if behavior.getErr != nil {
 				return behavior.getErr
 			}
-			payload := map[string]any{"hash": behavior.getHash}
-			if behavior.getTerms != nil {
-				payload["terms_by_module"] = behavior.getTerms
+			var result any
+			if behavior.getResultRaw != nil {
+				result = behavior.getResultRaw
+			} else {
+				payload := map[string]any{"hash": behavior.getHash}
+				if behavior.getTerms != nil {
+					payload["terms_by_module"] = behavior.getTerms
+				}
+				result = payload
 			}
-			if err := converter.MapToMessage(payload, resp); err != nil {
+			if err := converter.MapToMessage(map[string]any{"result": result}, resp); err != nil {
 				return err
 			}
 		default:
@@ -338,6 +344,15 @@ func TestFetchAppTranslationsSuccess(t *testing.T) {
 	}
 }
 
+func TestFetchAppTranslationsMalformedResult(t *testing.T) {
+	behavior := &translationTermRPCBehavior{getResultRaw: "not-an-object"}
+	ctx := grpcclient.ContextWithServiceDialer(context.Background(), newTranslationTermDialer(t, behavior))
+	_, err := fetchAppTranslations(ctx, nil, "auth", "zh_CN", []string{"auth"})
+	if err == nil || !strings.Contains(err.Error(), "result must be an object") {
+		t.Fatalf("err = %v, want result must be an object", err)
+	}
+}
+
 func TestFetchAppTranslationsDialFailureWithDescriptor(t *testing.T) {
 	registerAuthTranslationTermProtoForTests()
 	ctx := grpcclient.ContextWithServiceDialer(context.Background(), func(ctx context.Context, serviceName string) (*grpc.ClientConn, error) {
@@ -465,9 +480,7 @@ service TranslationTerm {
 }
 
 message GetTranslationsReq {
-  string lang = 1;
-  repeated string module_names = 2;
-  string hash = 3;
+  google.protobuf.Value req = 1;
 }
 message SearchReq {
   google.protobuf.Struct condition = 1;
@@ -560,13 +573,11 @@ service TranslationTerm {
   rpc Count(CountReq) returns (CountResp);
 }
 message BadGetReq {
-  google.protobuf.Struct lang = 1;
-  repeated string module_names = 2;
-  string hash = 3;
+  // ListValue cannot accept the map payload MapToMessage sends for "req".
+  google.protobuf.ListValue req = 1;
 }
 message GetTranslationsResp {
-  string hash = 1;
-  google.protobuf.Struct terms_by_module = 2;
+  google.protobuf.Value result = 1;
 }
 message SearchReq {
   google.protobuf.Struct condition = 1;

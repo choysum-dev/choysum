@@ -4,6 +4,7 @@
 package lifecycle
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -29,7 +30,6 @@ import (
 	"google.golang.org/grpc/status"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-
 )
 
 type moduleIndexSyncTestScope struct {
@@ -1233,5 +1233,67 @@ func TestModuleManagerUpgradeRunsAppStageCallbacks(t *testing.T) {
 		if info, statErr := os.Stat(dir); statErr != nil || !info.IsDir() {
 			t.Fatalf("expected staged app output dir %q, stat err=%v info=%#v", dir, statErr, info)
 		}
+	}
+}
+
+func TestModuleManagerUpgradeCoreUsesListInstalledApps(t *testing.T) {
+	modulesPath := t.TempDir()
+	distPath := filepath.Join(t.TempDir(), "dist")
+	tmpPath := filepath.Join(t.TempDir(), "tmp")
+	defaultChoysumPath := filepath.Join(t.TempDir(), ".choysum")
+
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
+		t.Fatalf("auto migrate meta entities: %v", err)
+	}
+
+	var logBuf bytes.Buffer
+	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	runtimeScope.logger = slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	runtimeScope.cfg.DistPath = distPath
+	runtimeScope.cfg.TmpPath = tmpPath
+	runtimeScope.cfg.DefaultChoysumPath = defaultChoysumPath
+	runtimeScope.cfg.Compile = &config.CompileConfig{BundleMode: string(config.BundleModeApplication)}
+
+	locker := &moduleIndexSyncTestLocker{}
+	coordinator := &moduleManagerInstallOriginCoordinator{module: &meta.Module{
+		Name:           "core",
+		ApplicationStr: "core",
+		Version:        "v1.2.0",
+		Path:           filepath.Join(modulesPath, "core"),
+	}}
+	manager := NewModuleManager(
+		runtimeScope,
+		&moduleManagerNoopScriptExecutor{},
+		WithLockerFactory(func(scope.Scope) statepkg.Locker { return locker }),
+		WithOriginCoordinatorFactory(func(scope.Scope) OriginCoordinator { return coordinator }),
+	)
+	manager.bootstrapOnce.Do(func() {})
+	for _, name := range []string{"core", "web"} {
+		if err := os.MkdirAll(filepath.Join(modulesPath, name), 0o755); err != nil {
+			t.Fatalf("mkdir %s module dir: %v", name, err)
+		}
+	}
+
+	for _, row := range []meta.Module{
+		{Name: "core", Status: meta.Installed, Version: "v1.0.0", ApplicationStr: "core", Path: filepath.Join(modulesPath, "core")},
+		{Name: "web", Status: meta.Installed, Version: "v1.0.0", ApplicationStr: "web", Path: filepath.Join(modulesPath, "web")},
+	} {
+		if err := db.Create(&row).Error; err != nil {
+			t.Fatalf("seed module %q: %v", row.Name, err)
+		}
+	}
+
+	// Staging may still fail for Ensure-only web; the plan log is emitted after
+	// listInstalledApps overrides AffectedApps for core upgrades.
+	_ = manager.Upgrade(context.Background(), "core")
+
+	logs := logBuf.String()
+	if !strings.Contains(logs, `"msg":"module operation plan"`) {
+		t.Fatalf("expected module operation plan log, got %q", logs)
+	}
+	// listInstalledApps sorts apps; web must be present (old NonWeb helper excluded it).
+	if !strings.Contains(logs, `"apps":["core","web"]`) && !strings.Contains(logs, `"apps":["web","core"]`) {
+		t.Fatalf("expected plan apps to include web via listInstalledApps, got %q", logs)
 	}
 }

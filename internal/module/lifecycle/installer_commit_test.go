@@ -26,24 +26,6 @@ func (commitStubBuilder) Build() (*moduleresult.BuildResult, error) {
 	return &moduleresult.BuildResult{}, nil
 }
 
-type commitStubSplitBuilder struct {
-	persistCalls int
-	persistErr   error
-}
-
-func (b *commitStubSplitBuilder) Build() (*moduleresult.BuildResult, error) {
-	return &moduleresult.BuildResult{}, nil
-}
-
-func (b *commitStubSplitBuilder) BuildWithoutPersist() (*moduleresult.BuildResult, error) {
-	return &moduleresult.BuildResult{}, nil
-}
-
-func (b *commitStubSplitBuilder) Persist(result *moduleresult.BuildResult) error {
-	b.persistCalls++
-	return b.persistErr
-}
-
 func TestCommitInstallSoftDeleteRestoreAndSave(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
 	modulePath := t.TempDir()

@@ -31,6 +31,10 @@ type ApplicationService struct {
 	name             string
 	runtimeOptions   runtimeOptions
 	appDistPath      string
+	// scriptDistPath is where index.js lives for QuickJS service handlers.
+	// For application "web", static UI stays on appDistPath (dist/web) while
+	// scripts come from bundles (or dist/apps/web) so TranslationTerm RPC works.
+	scriptDistPath   string
 	protoRootDir     string
 	bundleMode       string
 	jsExecutor       jsexecutor.ScriptExecutor
@@ -270,6 +274,8 @@ func (s *ApplicationService) ServiceDescs() ([]*grpc.ServiceDesc, error) {
 		serviceDescs = append(serviceDescs, parsed...)
 
 		// Register app protos into the global loader for ExecuteJob routing.
+		// Paths must be "{app}/{file}.proto" so ProtoLoader.appProtoFiles(app)
+		// can find them (same convention as generated service clients).
 		if len(protoFiles) > 0 && len(s.protoImportPaths) > 0 {
 			importRoot := s.protoImportPaths[0]
 			for _, file := range protoFiles {
@@ -285,7 +291,7 @@ func (s *ApplicationService) ServiceDescs() ([]*grpc.ServiceDesc, error) {
 				if err != nil {
 					continue
 				}
-				loader.Global().RegisterProto(rel, string(content))
+				loader.Global().RegisterProto(loaderRegisterPath(s.name, rel), string(content))
 			}
 		}
 	}
@@ -301,10 +307,11 @@ func (s *ApplicationService) ServiceDescs() ([]*grpc.ServiceDesc, error) {
 }
 
 func (s *ApplicationService) ServiceScripts() []*jsengine.JsScript {
-	if s.name == "web" {
-		return nil
+	scriptRoot := strings.TrimSpace(s.scriptDistPath)
+	if scriptRoot == "" {
+		scriptRoot = s.appDistPath
 	}
-	scriptPath := filepath.Join(s.appDistPath, "index.js")
+	scriptPath := filepath.Join(scriptRoot, "index.js")
 	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
 		return nil
 	}
@@ -470,16 +477,25 @@ func NewApplicationService(runtimeScope scope.Scope, name string, jsExecutor jse
 	distPath := service.runtimeOptions.distPath
 
 	// Resolve dist paths for runtime.
+	// application "web" still serves static assets from dist/web, but also
+	// exposes api/web/proto + backend scripts (TranslationTerm EnsureServiceEntry).
 	if name == "web" {
 		service.appDistPath = filepath.Join(distPath, "web")
-		service.protoImportPaths = nil
-		service.protoRootDir = ""
+		service.protoRootDir = config.APIAppProtoDir(distPath, name)
+		service.protoImportPaths = []string{service.protoRootDir}
+		if mode == "bundle" {
+			service.scriptDistPath = filepath.Join(distPath, "bundles")
+		} else {
+			service.scriptDistPath = filepath.Join(distPath, "apps", name)
+		}
 	} else if mode == "bundle" {
 		service.appDistPath = filepath.Join(distPath, "bundles")
+		service.scriptDistPath = service.appDistPath
 		service.protoRootDir = config.APIAppProtoDir(distPath, name)
 		service.protoImportPaths = []string{config.APIAppProtoDir(distPath, name)}
 	} else {
 		service.appDistPath = filepath.Join(distPath, "apps", name)
+		service.scriptDistPath = service.appDistPath
 		service.protoRootDir = config.APIAppProtoDir(distPath, name)
 		service.protoImportPaths = []string{config.APIAppProtoDir(distPath, name)}
 	}
@@ -489,4 +505,25 @@ func NewApplicationService(runtimeScope scope.Scope, name string, jsExecutor jse
 	}
 
 	return service, nil
+}
+
+// loaderRegisterPath mirrors generate.resolveProtoRegisterPath: app-owned
+// files become "{app}/{rel}", while google/* stays unprefixed.
+func loaderRegisterPath(appName, relPath string) string {
+	rel := filepath.ToSlash(strings.TrimSpace(relPath))
+	if rel == "" || rel == "." {
+		return ""
+	}
+	if strings.HasPrefix(rel, "google/") {
+		return rel
+	}
+	app := strings.TrimSpace(appName)
+	if app == "" {
+		return rel
+	}
+	// Already "{app}/..." (e.g. tests that walk a parent import root).
+	if strings.HasPrefix(rel, app+"/") {
+		return rel
+	}
+	return filepath.ToSlash(filepath.Join(app, rel))
 }

@@ -78,7 +78,7 @@ func TestBuildRunDecision_ExplicitBackendValidationFailureIsError(t *testing.T) 
 	}
 }
 
-func TestBuildRunDecision_DefaultWebOnlyCanRunApplication(t *testing.T) {
+func TestBuildRunDecision_DefaultWebOnlyWithoutBackendFallsBackToBootstrap(t *testing.T) {
 	distRoot := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(distRoot, "web"), 0o755); err != nil {
 		t.Fatalf("MkdirAll(web) error = %v", err)
@@ -88,10 +88,9 @@ func TestBuildRunDecision_DefaultWebOnlyCanRunApplication(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildRunDecision() error = %v", err)
 	}
-	if decision.RunMode != RunModeApplication {
-		t.Fatalf("buildRunDecision() run mode = %q, want %q", decision.RunMode, RunModeApplication)
-	}
-	if len(decision.ServeTargets) != 1 || decision.ServeTargets[0] != "web" {
-		t.Fatalf("buildRunDecision() targets = %#v, want [web]", decision.ServeTargets)
+	// web now requires bundles + api/web/proto for TranslationTerm; SPA-only
+	// dist/web is not enough to enter application mode.
+	if decision.RunMode != RunModeBootstrap {
+		t.Fatalf("buildRunDecision() run mode = %q, want %q", decision.RunMode, RunModeBootstrap)
 	}
 }

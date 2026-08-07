@@ -296,10 +296,9 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.Module, cb Callb
 		if app == "" {
 			return nil
 		}
-		// "web" application is handled by the global web build stage.
-		if strings.EqualFold(app, "web") {
-			return nil
-		}
+		// application "web" still needs proto/service/web-client staging for
+		// TranslationTerm (EnsureServiceEntry). Global SPA build remains a
+		// separate stage writing dist/web.
 		if err := checkCtx(); err != nil {
 			return err
 		}

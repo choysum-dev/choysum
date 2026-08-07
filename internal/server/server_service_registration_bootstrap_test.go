@@ -25,6 +25,7 @@ func TestBootstrapValidateRuntimeReadyUsesManifestCompileBundleMode(t *testing.T
 	if err := os.MkdirAll(filepath.Join(distRoot, "web"), 0o755); err != nil {
 		t.Fatalf("mkdir web: %v", err)
 	}
+	seedApplicationModeWebBackendDist(t, distRoot)
 
 	if err := os.MkdirAll(filepath.Join(distRoot, "apps", "auth", "assets"), 0o755); err != nil {
 		t.Fatalf("mkdir app assets: %v", err)

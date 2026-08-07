@@ -705,8 +705,11 @@ func TestServiceScriptsAndWebHandlers(t *testing.T) {
 	if len(scripts) != 1 || scripts[0].FileName != filepath.Join(appDir, "index.js") || scripts[0].Content != "console.log('auth')" {
 		t.Fatalf("unexpected service scripts: %#v", scripts)
 	}
-	if webScripts := (&ApplicationService{runtimeScope: runtimeScope, name: "web", appDistPath: webDir}).ServiceScripts(); webScripts != nil {
-		t.Fatalf("expected web service scripts to be nil, got %#v", webScripts)
+	if webScripts := (&ApplicationService{runtimeScope: runtimeScope, name: "web", appDistPath: webDir, scriptDistPath: appDir}).ServiceScripts(); len(webScripts) != 1 {
+		t.Fatalf("expected web service scripts from scriptDistPath, got %#v", webScripts)
+	}
+	if webScriptsNil := (&ApplicationService{runtimeScope: runtimeScope, name: "web", appDistPath: webDir}).ServiceScripts(); webScriptsNil != nil {
+		t.Fatalf("expected web without scriptDistPath/index.js to return nil, got %#v", webScriptsNil)
 	}
 	if missingScripts := (&ApplicationService{runtimeScope: runtimeScope, name: "auth", appDistPath: filepath.Join(distDir, "apps", "missing")}).ServiceScripts(); missingScripts != nil {
 		t.Fatalf("expected missing script path to return nil, got %#v", missingScripts)
@@ -871,11 +874,13 @@ func TestSafeStaticPathRejectsParentRoot(t *testing.T) {
 func TestNewApplicationServiceResolvesPaths(t *testing.T) {
 	distDir := t.TempDir()
 	authAPIProtoDir := config.APIAppProtoDir(distDir, "auth")
+	webAPIProtoDir := config.APIAppProtoDir(distDir, "web")
 	for _, dir := range []string{
 		filepath.Join(distDir, "web"),
 		filepath.Join(distDir, "bundles"),
 		filepath.Join(distDir, "apps", "auth"),
 		authAPIProtoDir,
+		webAPIProtoDir,
 	} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatalf("mkdir %s: %v", dir, err)
@@ -906,8 +911,24 @@ func TestNewApplicationServiceResolvesPaths(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewApplicationService(web) error = %v", err)
 	}
-	if webSvc.appDistPath != filepath.Join(distDir, "web") || webSvc.protoRootDir != "" || webSvc.protoImportPaths != nil {
+	if webSvc.appDistPath != filepath.Join(distDir, "web") ||
+		webSvc.scriptDistPath != filepath.Join(distDir, "bundles") ||
+		webSvc.protoRootDir != webAPIProtoDir ||
+		len(webSvc.protoImportPaths) != 1 ||
+		webSvc.protoImportPaths[0] != webAPIProtoDir {
 		t.Fatalf("unexpected web service paths: %#v", webSvc)
+	}
+
+	webAppMode, err := NewApplicationService(runtimeScope, "web", nil, WithBundleMode("application"))
+	if err != nil {
+		t.Fatalf("NewApplicationService(web, application) error = %v", err)
+	}
+	if webAppMode.appDistPath != filepath.Join(distDir, "web") ||
+		webAppMode.scriptDistPath != filepath.Join(distDir, "apps", "web") ||
+		webAppMode.protoRootDir != webAPIProtoDir ||
+		len(webAppMode.protoImportPaths) != 1 ||
+		webAppMode.protoImportPaths[0] != webAPIProtoDir {
+		t.Fatalf("unexpected web application-mode paths: %#v", webAppMode)
 	}
 }
 
@@ -1785,6 +1806,27 @@ func TestUnaryHandlerErrorPaths(t *testing.T) {
 	})
 }
 
+func TestLoaderRegisterPath(t *testing.T) {
+	if got := loaderRegisterPath("web", "web.proto"); got != "web/web.proto" {
+		t.Fatalf("api-layout path = %q, want web/web.proto", got)
+	}
+	if got := loaderRegisterPath("web", "web/web.proto"); got != "web/web.proto" {
+		t.Fatalf("already-prefixed path = %q, want unchanged", got)
+	}
+	if got := loaderRegisterPath("web", "google/protobuf/empty.proto"); got != "google/protobuf/empty.proto" {
+		t.Fatalf("google path = %q", got)
+	}
+	if got := loaderRegisterPath("", "x.proto"); got != "x.proto" {
+		t.Fatalf("empty app = %q", got)
+	}
+	if got := loaderRegisterPath("web", ""); got != "" {
+		t.Fatalf("empty rel = %q, want empty", got)
+	}
+	if got := loaderRegisterPath("web", "."); got != "" {
+		t.Fatalf("dot rel = %q, want empty", got)
+	}
+}
+
 func TestServiceDescsRegistersLoaderAndSkipsTaskWorkerForWeb(t *testing.T) {
 	t.Run("non-web service registers proto in global loader", func(t *testing.T) {
 		root := t.TempDir()
@@ -1868,6 +1910,51 @@ message PingReply { string msg = 1; }
 		}
 		if !hasWebService || hasTaskWorker || len(descs) != 1 {
 			t.Fatalf("expected web.WebService only without TaskWorker/I18n, got %#v", descs)
+		}
+	})
+
+	t.Run("api-app-proto-dir layout registers web/web.proto for loader", func(t *testing.T) {
+		// Matches NewApplicationService: protoRootDir == protoImportPaths == api/<app>/proto.
+		root := t.TempDir()
+		protoDir := filepath.Join(root, "api", "web", "proto")
+		if err := os.MkdirAll(protoDir, 0o755); err != nil {
+			t.Fatalf("mkdir api web proto: %v", err)
+		}
+		protoText := `syntax = "proto3";
+package web;
+
+service TranslationTerm {
+  rpc GetTranslations(GetTranslationsReq) returns (GetTranslationsResp);
+}
+
+message GetTranslationsReq { string lang = 1; }
+message GetTranslationsResp { string hash = 1; }
+`
+		if err := os.WriteFile(filepath.Join(protoDir, "web.proto"), []byte(protoText), 0o644); err != nil {
+			t.Fatalf("write web.proto: %v", err)
+		}
+
+		loader.ResetGlobalForTests()
+		runtimeScope := newHelperScope(root)
+		svc := &ApplicationService{
+			runtimeScope:     runtimeScope,
+			name:             "web",
+			appDistPath:      filepath.Join(root, "web"),
+			protoRootDir:     protoDir,
+			protoImportPaths: []string{protoDir},
+		}
+		if err := os.MkdirAll(svc.appDistPath, 0o755); err != nil {
+			t.Fatalf("mkdir web dist: %v", err)
+		}
+		if _, err := svc.ServiceDescs(); err != nil {
+			t.Fatalf("ServiceDescs(web api layout) error = %v", err)
+		}
+		md, err := loader.Global().GetMethodDescriptor("web.TranslationTerm.GetTranslations")
+		if err != nil {
+			t.Fatalf("expected web GetTranslations descriptor after Go RegisterProto, got %v", err)
+		}
+		if string(md.FullName()) != "web.TranslationTerm.GetTranslations" {
+			t.Fatalf("unexpected method: %s", md.FullName())
 		}
 	})
 }

@@ -37,7 +37,7 @@ func SyncMissingProtos(distRoot string, apps []string) ([]string, error) {
 	seen := map[string]bool{}
 	for _, app := range apps {
 		app = strings.TrimSpace(app)
-		if app == "" || strings.EqualFold(app, "web") || seen[app] || strings.ContainsAny(app, `/\`) || strings.Contains(app, "..") || app != filepath.Base(app) {
+		if app == "" || seen[app] || strings.ContainsAny(app, `/\`) || strings.Contains(app, "..") || app != filepath.Base(app) {
 			continue
 		}
 		seen[app] = true

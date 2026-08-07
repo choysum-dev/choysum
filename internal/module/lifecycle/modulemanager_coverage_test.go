@@ -125,7 +125,7 @@ func seedDuplicateLiveModelsForTest(t *testing.T, db *gorm.DB) {
 	}
 }
 
-func TestModuleManagerListInstalledNonWebApps(t *testing.T) {
+func TestModuleManagerListInstalledApps(t *testing.T) {
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
@@ -143,24 +143,24 @@ func TestModuleManagerListInstalledNonWebApps(t *testing.T) {
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 	manager := NewModuleManager(runtimeScope, nil)
 
-	apps, err := manager.listInstalledNonWebApps(context.Background())
+	apps, err := manager.listInstalledApps(context.Background())
 	if err != nil {
-		t.Fatalf("listInstalledNonWebApps() error = %v", err)
+		t.Fatalf("listInstalledApps() error = %v", err)
 	}
-	if len(apps) != 1 || apps[0] != "crm" {
-		t.Fatalf("listInstalledNonWebApps() = %#v, want [crm]", apps)
+	if len(apps) != 2 || apps[0] != "crm" || apps[1] != "web" {
+		t.Fatalf("listInstalledApps() = %#v, want [crm web]", apps)
 	}
 
-	apps, err = manager.listInstalledNonWebApps(nil)
+	apps, err = manager.listInstalledApps(nil)
 	if err != nil {
-		t.Fatalf("listInstalledNonWebApps(nil ctx) error = %v", err)
+		t.Fatalf("listInstalledApps(nil ctx) error = %v", err)
 	}
-	if len(apps) != 1 || apps[0] != "crm" {
-		t.Fatalf("listInstalledNonWebApps(nil ctx) = %#v, want [crm]", apps)
+	if len(apps) != 2 || apps[0] != "crm" || apps[1] != "web" {
+		t.Fatalf("listInstalledApps(nil ctx) = %#v, want [crm web]", apps)
 	}
 }
 
-func TestModuleManagerListInstalledNonWebAppsQueryError(t *testing.T) {
+func TestModuleManagerListInstalledAppsQueryError(t *testing.T) {
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
@@ -172,9 +172,9 @@ func TestModuleManagerListInstalledNonWebAppsQueryError(t *testing.T) {
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 	manager := NewModuleManager(runtimeScope, nil)
 
-	_, err := manager.listInstalledNonWebApps(context.Background())
+	_, err := manager.listInstalledApps(context.Background())
 	if err == nil || !strings.Contains(err.Error(), "list installed apps") {
-		t.Fatalf("listInstalledNonWebApps() error = %v, want list installed apps failure", err)
+		t.Fatalf("listInstalledApps() error = %v, want list installed apps failure", err)
 	}
 }
 

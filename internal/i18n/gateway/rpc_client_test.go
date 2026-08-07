@@ -57,6 +57,30 @@ func (s *rpcTestScope) FactoryInput() scope.FactoryInput {
 	return scopetest.FactoryInputFromConfig(s.Config())
 }
 
+func TestUnwrapGetTranslationsPayload(t *testing.T) {
+	wrapped, err := unwrapGetTranslationsPayload(map[string]any{
+		"result": map[string]any{"hash": "abc", "terms_by_module": map[string]any{}},
+	})
+	if err != nil || wrapped["hash"] != "abc" {
+		t.Fatalf("wrapped = %#v err=%v", wrapped, err)
+	}
+
+	legacy, err := unwrapGetTranslationsPayload(map[string]any{"hash": "legacy"})
+	if err != nil || legacy["hash"] != "legacy" {
+		t.Fatalf("legacy = %#v err=%v", legacy, err)
+	}
+
+	_, err = unwrapGetTranslationsPayload(map[string]any{"result": "not-an-object"})
+	if err == nil || !strings.Contains(err.Error(), "result must be an object") {
+		t.Fatalf("malformed result err = %v", err)
+	}
+
+	_, err = unwrapGetTranslationsPayload(map[string]any{"result": nil})
+	if err == nil || !strings.Contains(err.Error(), "result must be an object") {
+		t.Fatalf("null result err = %v", err)
+	}
+}
+
 func TestParseAppTranslationsBranches(t *testing.T) {
 	empty := parseAppTranslations(map[string]any{"hash": "<nil>"})
 	if empty.Hash != "" || len(empty.Terms) != 0 {

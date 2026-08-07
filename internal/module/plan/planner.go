@@ -48,11 +48,10 @@ func BuildPlan(ctx context.Context, op OpType, root *meta.Module, r Resolver) (P
 		if name == "" {
 			return
 		}
-		// "web" application is handled by the global web build stage (dist/web).
-		// Including it in app-stage would collide with dist/web publication.
-		if strings.EqualFold(name, "web") {
-			return
-		}
+		// Keep application "web" in AffectedApps so app-stage can generate
+		// api/web/proto (TranslationTerm via EnsureServiceEntry). Global SPA
+		// output stays on dist/web (NeedsGlobalWebBuild); modules WebDir is
+		// generated/web/web and does not collide with that publication.
 		apps[name] = true
 	}
 
