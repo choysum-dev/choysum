@@ -446,3 +446,40 @@ func writeServerTestAppDist(t *testing.T, distRoot string, appName string, scrip
 		t.Fatalf("WriteFile(service.proto) error = %v", err)
 	}
 }
+
+// seedBundleModeWebReadyDist creates the minimal layout for "web" as both SPA
+// (dist/web) and TranslationTerm backend (bundles + api/web/proto).
+func seedBundleModeWebReadyDist(t *testing.T, distRoot string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Join(distRoot, "web"), 0o755); err != nil {
+		t.Fatalf("MkdirAll(web) error = %v", err)
+	}
+	bundlesDir := filepath.Join(distRoot, "bundles")
+	if err := os.MkdirAll(bundlesDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll(bundles) error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(bundlesDir, "index.js"), []byte("export {}\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile(bundles/index.js) error = %v", err)
+	}
+	protoDir := config.APIAppProtoDir(distRoot, "web")
+	if err := os.MkdirAll(protoDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll(api/web/proto) error = %v", err)
+	}
+}
+
+// seedApplicationModeWebBackendDist adds apps/web + api/web/proto required when
+// ValidateDistForTargets treats web as a backend target in application mode.
+func seedApplicationModeWebBackendDist(t *testing.T, distRoot string) {
+	t.Helper()
+	appDir := filepath.Join(distRoot, "apps", "web")
+	if err := os.MkdirAll(appDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll(apps/web) error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(appDir, "index.js"), []byte("export {}\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile(apps/web/index.js) error = %v", err)
+	}
+	protoDir := config.APIAppProtoDir(distRoot, "web")
+	if err := os.MkdirAll(protoDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll(api/web/proto) error = %v", err)
+	}
+}

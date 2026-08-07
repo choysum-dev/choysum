@@ -65,9 +65,7 @@ func TestServerServeFallsThroughToServeAfterValidation(t *testing.T) {
 	runtimeScope.cfg.Server.HotReload = false
 	runtimeScope.cfg.Server.JsEngineFactory = "missing"
 
-	if err := os.MkdirAll(filepath.Join(runtimeScope.cfg.DistPath, "web"), 0o755); err != nil {
-		t.Fatalf("MkdirAll(web) error = %v", err)
-	}
+	seedBundleModeWebReadyDist(t, runtimeScope.cfg.DistPath)
 
 	srv := NewServer(runtimeScope).(*GRPCWebServer)
 	t.Cleanup(func() {

@@ -10,8 +10,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -152,9 +150,7 @@ func TestServerRequestBootstrapModeSwitchTransitionsToApplicationAndRestarts(t *
 	runtimeScope.cfg.DistPath = t.TempDir()
 	runtimeScope.cfg.Compile.BundleMode = "bundle"
 
-	if err := os.MkdirAll(filepath.Join(runtimeScope.cfg.DistPath, "web"), 0o755); err != nil {
-		t.Fatalf("MkdirAll(web) error = %v", err)
-	}
+	seedBundleModeWebReadyDist(t, runtimeScope.cfg.DistPath)
 
 	srv := NewServer(runtimeScope).(*GRPCWebServer)
 	restoreRunStateForTest(srv, runStateSnapshot{
@@ -199,9 +195,7 @@ func TestServerRequestBootstrapModeSwitchDefaultRestartUsesColdStart(t *testing.
 	runtimeScope.cfg.Server.EnableGrpcWebProxy = false
 	runtimeScope.cfg.Server.HotReload = false
 
-	if err := os.MkdirAll(filepath.Join(runtimeScope.cfg.DistPath, "web"), 0o755); err != nil {
-		t.Fatalf("MkdirAll(web) error = %v", err)
-	}
+	seedBundleModeWebReadyDist(t, runtimeScope.cfg.DistPath)
 
 	srv := NewServer(runtimeScope).(*GRPCWebServer)
 	t.Cleanup(func() {
@@ -251,9 +245,7 @@ func TestServerRequestBootstrapModeSwitchRestoresStateWhenRestartFails(t *testin
 	runtimeScope.cfg.DistPath = t.TempDir()
 	runtimeScope.cfg.Compile.BundleMode = "bundle"
 
-	if err := os.MkdirAll(filepath.Join(runtimeScope.cfg.DistPath, "web"), 0o755); err != nil {
-		t.Fatalf("MkdirAll(web) error = %v", err)
-	}
+	seedBundleModeWebReadyDist(t, runtimeScope.cfg.DistPath)
 
 	previousManifest := &distmanifest.DistManifestV2{}
 	previousTargets := []string{"bootstrap"}
