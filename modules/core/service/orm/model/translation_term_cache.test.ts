@@ -236,7 +236,7 @@ test('ImportPackaged forwards to $choysum.i18n.upsertPackagedTerms', async () =>
   }
 });
 
-function withInvalidateSpy(run: (calls: Array<[string, string]>, restore: () => void) => Promise<void>) {
+function withInvalidateSpy(run: (calls: Array<[string, string]>) => Promise<void>) {
   return async () => {
     const root = globalThis as any;
     const prev = root.$choysum;
@@ -249,22 +249,17 @@ function withInvalidateSpy(run: (calls: Array<[string, string]>, restore: () => 
         },
       },
     };
-    const BaseModel = Object.getPrototypeOf(TranslationTermBaseModel.prototype)
-      .constructor as typeof TranslationTermBaseModel;
     try {
-      await run(calls, () => {
-        root.$choysum = prev;
-      });
+      await run(calls);
     } finally {
       root.$choysum = prev;
-      void BaseModel;
     }
   };
 }
 
 test(
   'Create invalidates Module from created row',
-  withInvalidateSpy(async (calls, restore) => {
+  withInvalidateSpy(async calls => {
     const BaseModel = Object.getPrototypeOf(TranslationTermBaseModel.prototype)
       .constructor as typeof TranslationTermBaseModel;
     const originalCreate = BaseModel.Create;
@@ -274,14 +269,13 @@ test(
       expect(calls).toEqual([['ttinv', 'web']]);
     } finally {
       BaseModel.Create = originalCreate;
-      restore();
     }
   })
 );
 
 test(
   'Create invalidates Module from payload when returnFields omit it',
-  withInvalidateSpy(async (calls, restore) => {
+  withInvalidateSpy(async calls => {
     const BaseModel = Object.getPrototypeOf(TranslationTermBaseModel.prototype)
       .constructor as typeof TranslationTermBaseModel;
     const originalCreate = BaseModel.Create;
@@ -291,14 +285,13 @@ test(
       expect(calls).toEqual([['ttinv', 'web']]);
     } finally {
       BaseModel.Create = originalCreate;
-      restore();
     }
   })
 );
 
 test(
   'CreateMany invalidates modules from payloads and rows',
-  withInvalidateSpy(async (calls, restore) => {
+  withInvalidateSpy(async calls => {
     const BaseModel = Object.getPrototypeOf(TranslationTermBaseModel.prototype)
       .constructor as typeof TranslationTermBaseModel;
     const original = BaseModel.CreateMany;
@@ -311,14 +304,13 @@ test(
       ]);
     } finally {
       BaseModel.CreateMany = original;
-      restore();
     }
   })
 );
 
 test(
   'Update invalidates modules from before/payload/out',
-  withInvalidateSpy(async (calls, restore) => {
+  withInvalidateSpy(async calls => {
     const BaseModel = Object.getPrototypeOf(TranslationTermBaseModel.prototype)
       .constructor as typeof TranslationTermBaseModel;
     const originalSearch = TtInvTerm.Search;
@@ -334,14 +326,13 @@ test(
     } finally {
       TtInvTerm.Search = originalSearch;
       BaseModel.Update = originalUpdate;
-      restore();
     }
   })
 );
 
 test(
   'UpdateById uses payload Module without Browse',
-  withInvalidateSpy(async (calls, restore) => {
+  withInvalidateSpy(async calls => {
     const BaseModel = Object.getPrototypeOf(TranslationTermBaseModel.prototype)
       .constructor as typeof TranslationTermBaseModel;
     const originalBrowse = TtInvTerm.Browse;
@@ -359,14 +350,13 @@ test(
     } finally {
       TtInvTerm.Browse = originalBrowse;
       BaseModel.UpdateById = originalUpdateById;
-      restore();
     }
   })
 );
 
 test(
   'UpdateById Browses Module when payload omits it then invalidates',
-  withInvalidateSpy(async (calls, restore) => {
+  withInvalidateSpy(async calls => {
     const BaseModel = Object.getPrototypeOf(TranslationTermBaseModel.prototype)
       .constructor as typeof TranslationTermBaseModel;
     const originalBrowse = TtInvTerm.Browse;
@@ -379,14 +369,13 @@ test(
     } finally {
       BaseModel.UpdateById = originalUpdateById;
       TtInvTerm.Browse = originalBrowse;
-      restore();
     }
   })
 );
 
 test(
   'UpdateById continues when Browse throws',
-  withInvalidateSpy(async (calls, restore) => {
+  withInvalidateSpy(async calls => {
     const BaseModel = Object.getPrototypeOf(TranslationTermBaseModel.prototype)
       .constructor as typeof TranslationTermBaseModel;
     const originalBrowse = TtInvTerm.Browse;
@@ -401,14 +390,13 @@ test(
     } finally {
       TtInvTerm.Browse = originalBrowse;
       BaseModel.UpdateById = originalUpdateById;
-      restore();
     }
   })
 );
 
 test(
   'Delete invalidates modules from pre-search',
-  withInvalidateSpy(async (calls, restore) => {
+  withInvalidateSpy(async calls => {
     const BaseModel = Object.getPrototypeOf(TranslationTermBaseModel.prototype)
       .constructor as typeof TranslationTermBaseModel;
     const originalSearch = TtInvTerm.Search;
@@ -425,14 +413,13 @@ test(
     } finally {
       TtInvTerm.Search = originalSearch;
       BaseModel.Delete = originalDelete;
-      restore();
     }
   })
 );
 
 test(
   'DeleteById invalidates Module from Browse',
-  withInvalidateSpy(async (calls, restore) => {
+  withInvalidateSpy(async calls => {
     const BaseModel = Object.getPrototypeOf(TranslationTermBaseModel.prototype)
       .constructor as typeof TranslationTermBaseModel;
     const originalBrowse = TtInvTerm.Browse;
@@ -446,14 +433,13 @@ test(
     } finally {
       TtInvTerm.Browse = originalBrowse;
       BaseModel.DeleteById = originalDeleteById;
-      restore();
     }
   })
 );
 
 test(
   'DeleteById continues when Browse throws',
-  withInvalidateSpy(async (calls, restore) => {
+  withInvalidateSpy(async calls => {
     const BaseModel = Object.getPrototypeOf(TranslationTermBaseModel.prototype)
       .constructor as typeof TranslationTermBaseModel;
     const originalBrowse = TtInvTerm.Browse;
@@ -468,7 +454,6 @@ test(
     } finally {
       TtInvTerm.Browse = originalBrowse;
       BaseModel.DeleteById = originalDeleteById;
-      restore();
     }
   })
 );

@@ -189,8 +189,9 @@ func TestPerformUpsertPackagedTermsBranches(t *testing.T) {
 	provider := jsengine.StaticScopeProvider(rs)
 	reg := store.RegistryFor(rs)
 	engine := newCoverageEngine(t, WithTerminologyProvider(provider))
+	deps := defaultUpsertPackagedDeps()
 
-	short := performUpsertPackagedTerms(engine.Ctx, engine, provider, reg, nil)
+	short := performUpsertPackagedTerms(engine.Ctx, engine, provider, reg, nil, deps)
 	defer short.Free()
 	if !short.IsError() {
 		t.Fatal("expected error for short args")
@@ -201,7 +202,7 @@ func TestPerformUpsertPackagedTermsBranches(t *testing.T) {
 		engine.Ctx.String("auth"),
 		engine.Ctx.String("zh_CN"),
 		engine.Ctx.Int32(1),
-	})
+	}, deps)
 	defer badType.Free()
 	if !badType.IsError() {
 		t.Fatal("expected error for non-string poText")
@@ -212,7 +213,7 @@ func TestPerformUpsertPackagedTermsBranches(t *testing.T) {
 		engine.Ctx.String("auth"),
 		engine.Ctx.String("zh_CN"),
 		engine.Ctx.String("x"),
-	})
+	}, deps)
 	defer coreApp.Free()
 	if !coreApp.IsError() {
 		t.Fatal("expected error for core application")
@@ -226,7 +227,7 @@ func TestPerformUpsertPackagedTermsBranches(t *testing.T) {
 		engine.Ctx.String("auth"),
 		engine.Ctx.String("zh_CN"),
 		engine.Ctx.String("x"),
-	})
+	}, deps)
 	defer noSession.Free()
 	if !noSession.IsError() {
 		t.Fatal("expected error for missing session")
@@ -237,36 +238,36 @@ func TestPerformUpsertPackagedTermsBranches(t *testing.T) {
 		engine.Ctx.String("auth"),
 		engine.Ctx.String("zh_CN"),
 		engine.Ctx.String("x"),
-	})
+	}, deps)
 	defer nilProvider.Free()
 	if !nilProvider.IsError() {
 		t.Fatal("expected error for nil scope provider")
 	}
 
-	prevUpsert := upsertPackagedTermsFn
-	upsertPackagedTermsFn = func(runtimeScope scope.Scope, reg *store.Registry, application, module, lang string, poText []byte) (*i18nimport.ImportStats, error) {
-		return nil, fmt.Errorf("forced upsert failure")
-	}
-	t.Cleanup(func() { upsertPackagedTermsFn = prevUpsert })
 	failUpsert := performUpsertPackagedTerms(engine.Ctx, engine, provider, reg, []*quickjs.Value{
 		engine.Ctx.String("auth"),
 		engine.Ctx.String("auth"),
 		engine.Ctx.String("zh_CN"),
 		engine.Ctx.String("x"),
+	}, upsertPackagedDeps{
+		upsert: func(runtimeScope scope.Scope, reg *store.Registry, application, module, lang string, poText []byte) (*i18nimport.ImportStats, error) {
+			return nil, fmt.Errorf("forced upsert failure")
+		},
 	})
 	defer failUpsert.Free()
 	if !failUpsert.IsError() {
 		t.Fatal("expected error from upsert failure")
 	}
 
-	upsertPackagedTermsFn = func(runtimeScope scope.Scope, reg *store.Registry, application, module, lang string, poText []byte) (*i18nimport.ImportStats, error) {
-		return nil, nil
-	}
 	nilStats := performUpsertPackagedTerms(engine.Ctx, engine, provider, reg, []*quickjs.Value{
 		engine.Ctx.String("auth"),
 		engine.Ctx.String("auth"),
 		engine.Ctx.String("zh_CN"),
 		engine.Ctx.String("x"),
+	}, upsertPackagedDeps{
+		upsert: func(runtimeScope scope.Scope, reg *store.Registry, application, module, lang string, poText []byte) (*i18nimport.ImportStats, error) {
+			return nil, nil
+		},
 	})
 	defer nilStats.Free()
 	if nilStats.IsError() {
@@ -278,19 +279,18 @@ func TestPerformUpsertPackagedTermsBranches(t *testing.T) {
 		t.Fatalf("lang=%q, want zh_CN", lang.String())
 	}
 
-	upsertPackagedTermsFn = func(runtimeScope scope.Scope, reg *store.Registry, application, module, lang string, poText []byte) (*i18nimport.ImportStats, error) {
-		return &i18nimport.ImportStats{Lang: lang, Upserted: 2}, nil
-	}
-	prevMarshal := marshalFn
-	marshalFn = func(ctx *quickjs.Context, v any) (*quickjs.Value, error) {
-		return nil, fmt.Errorf("forced marshal failure")
-	}
-	t.Cleanup(func() { marshalFn = prevMarshal })
 	failMarshal := performUpsertPackagedTerms(engine.Ctx, engine, provider, reg, []*quickjs.Value{
 		engine.Ctx.String("auth"),
 		engine.Ctx.String("auth"),
 		engine.Ctx.String("zh_CN"),
 		engine.Ctx.String("x"),
+	}, upsertPackagedDeps{
+		upsert: func(runtimeScope scope.Scope, reg *store.Registry, application, module, lang string, poText []byte) (*i18nimport.ImportStats, error) {
+			return &i18nimport.ImportStats{Lang: lang, Upserted: 2}, nil
+		},
+		marshal: func(ctx *quickjs.Context, v any) (*quickjs.Value, error) {
+			return nil, fmt.Errorf("forced marshal failure")
+		},
 	})
 	defer failMarshal.Free()
 	if !failMarshal.IsError() {
@@ -302,7 +302,7 @@ func TestPerformUpsertPackagedTermsBranches(t *testing.T) {
 		engine.Ctx.Null(),
 		engine.Ctx.String("zh_CN"),
 		engine.Ctx.String("x"),
-	})
+	}, deps)
 	defer nullModule.Free()
 	if !nullModule.IsError() {
 		t.Fatal("expected error for null module")
@@ -312,9 +312,21 @@ func TestPerformUpsertPackagedTermsBranches(t *testing.T) {
 		engine.Ctx.String("auth"),
 		engine.Ctx.Undefined(),
 		engine.Ctx.String("x"),
-	})
+	}, deps)
 	defer undefLang.Free()
 	if !undefLang.IsError() {
 		t.Fatal("expected error for undefined lang")
+	}
+
+	// Empty deps fills production defaults.
+	emptyDeps := performUpsertPackagedTerms(engine.Ctx, engine, provider, reg, []*quickjs.Value{
+		engine.Ctx.String("auth"),
+		engine.Ctx.String("auth"),
+		engine.Ctx.String(""),
+		engine.Ctx.String("x"),
+	}, upsertPackagedDeps{})
+	defer emptyDeps.Free()
+	if !emptyDeps.IsError() {
+		t.Fatal("expected validation error with empty deps defaults")
 	}
 }

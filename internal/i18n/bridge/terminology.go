@@ -14,18 +14,25 @@ import (
 	"github.com/choysum-dev/choysum/internal/i18n/store"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsengine/quickjsengine"
+	"github.com/choysum-dev/choysum/pkg/scope"
 )
 
 // LookupFunc is the sync terminology lookup used by $choysum.i18n.t.
 type LookupFunc func(module, lang, scope, src, kind string) (value string, ok bool)
 
-// Test hooks (production defaults); overridden in package tests for error branches.
-var (
-	upsertPackagedTermsFn = i18nimport.UpsertPackagedTerms
-	marshalFn             = func(ctx *quickjs.Context, v any) (*quickjs.Value, error) {
-		return ctx.Marshal(v)
+type upsertPackagedDeps struct {
+	upsert  func(runtimeScope scope.Scope, reg *store.Registry, application, module, lang string, poText []byte) (*i18nimport.ImportStats, error)
+	marshal func(ctx *quickjs.Context, v any) (*quickjs.Value, error)
+}
+
+func defaultUpsertPackagedDeps() upsertPackagedDeps {
+	return upsertPackagedDeps{
+		upsert: i18nimport.UpsertPackagedTerms,
+		marshal: func(ctx *quickjs.Context, v any) (*quickjs.Value, error) {
+			return ctx.Marshal(v)
+		},
 	}
-)
+}
 
 // WithTerminology registers sync $choysum.i18n.t against a fixed registry (lookup only).
 // Prefer WithTerminologyProvider when invalidate/import are needed.
@@ -140,9 +147,10 @@ func invalidateModuleFunc(reg *store.Registry) func(ctx *quickjs.Context, this *
 }
 
 func upsertPackagedTermsAsyncFactory(jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider, reg *store.Registry) func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
+	deps := defaultUpsertPackagedDeps()
 	return func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
 		return ctx.NewPromise(func(resolve, reject func(*quickjs.Value)) {
-			ret := performUpsertPackagedTerms(ctx, jse, scopeProvider, reg, args)
+			ret := performUpsertPackagedTerms(ctx, jse, scopeProvider, reg, args, deps)
 			// NewError values are IsError; never resolve ThrowError's JS_EXCEPTION sentinel.
 			if ret.IsError() {
 				defer ret.Free()
@@ -155,7 +163,13 @@ func upsertPackagedTermsAsyncFactory(jse *quickjsengine.QuickjsEngine, scopeProv
 	}
 }
 
-func performUpsertPackagedTerms(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider, reg *store.Registry, args []*quickjs.Value) *quickjs.Value {
+func performUpsertPackagedTerms(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider, reg *store.Registry, args []*quickjs.Value, deps upsertPackagedDeps) *quickjs.Value {
+	if deps.upsert == nil {
+		deps.upsert = defaultUpsertPackagedDeps().upsert
+	}
+	if deps.marshal == nil {
+		deps.marshal = defaultUpsertPackagedDeps().marshal
+	}
 	if len(args) < 4 {
 		return ctx.NewError(fmt.Errorf("upsertPackagedTerms requires application, module, lang, poText"))
 	}
@@ -180,7 +194,7 @@ func performUpsertPackagedTerms(ctx *quickjs.Context, jse *quickjsengine.Quickjs
 	if rs == nil || rs.Session() == nil {
 		return ctx.NewError(fmt.Errorf("upsertPackagedTerms: missing runtime session"))
 	}
-	stats, err := upsertPackagedTermsFn(rs, reg, application, module, lang, poText)
+	stats, err := deps.upsert(rs, reg, application, module, lang, poText)
 	if err != nil {
 		return ctx.NewError(err)
 	}
@@ -195,7 +209,7 @@ func performUpsertPackagedTerms(ctx *quickjs.Context, jse *quickjsengine.Quickjs
 		"purgedRetired":   stats.PurgedRetired,
 		"lang":            stats.Lang,
 	}
-	val, marshalErr := marshalFn(ctx, payload)
+	val, marshalErr := deps.marshal(ctx, payload)
 	if marshalErr != nil {
 		return ctx.NewError(marshalErr)
 	}
