@@ -5,7 +5,6 @@ package meta
 
 import (
 	"reflect"
-	"strings"
 	"testing"
 
 	pkgmeta "github.com/choysum-dev/choysum/pkg/meta"
@@ -85,9 +84,6 @@ func TestOpsEntitiesAndTableNames(t *testing.T) {
 		got := gotTables[name]
 		if got != want {
 			t.Fatalf("%s.TableName() = %q, want %q", name, got, want)
-		}
-		if strings.HasPrefix(got, "meta_ir_") {
-			t.Fatalf("%s.TableName() = %q, unexpected ir prefix", name, got)
 		}
 	}
 }

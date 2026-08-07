@@ -432,7 +432,14 @@ func persistDecoratorTree(db *gorm.DB, d *pkgmeta.Decorator, modelID, fieldID, s
 
 // ensurePartialAliveAppNameUniqueIndex creates the live-only unique index without a
 // drop-before-create window: temp index first, then replace the final name.
+// Idempotent: when the final index already exists, only leftover temp indexes are cleaned up.
 func ensurePartialAliveAppNameUniqueIndex(db *gorm.DB) error {
+	if db.Migrator().HasIndex("meta_model", effectiveAppNameUniqueIndex) {
+		if err := execDDL(db, fmt.Sprintf("DROP INDEX IF EXISTS %s", effectiveAppNameUniqueIndexTemp)); err != nil {
+			return fmt.Errorf("drop unique index %s: %w", effectiveAppNameUniqueIndexTemp, err)
+		}
+		return nil
+	}
 	createPartial := func(name string) string {
 		return fmt.Sprintf(
 			"CREATE UNIQUE INDEX IF NOT EXISTS %s ON meta_model (application, name) WHERE deleted_at IS NULL",
@@ -456,18 +463,22 @@ func ensurePartialAliveAppNameUniqueIndex(db *gorm.DB) error {
 }
 
 // ensureFullAppNameUniqueIndex is the MySQL path (no partial indexes).
+// Idempotent: when the final index already exists, only leftover temp indexes are cleaned up.
 func ensureFullAppNameUniqueIndex(db *gorm.DB) error {
+	if db.Migrator().HasIndex("meta_model", effectiveAppNameUniqueIndex) {
+		if db.Migrator().HasIndex("meta_model", effectiveAppNameUniqueIndexTemp) {
+			if err := db.Migrator().DropIndex("meta_model", effectiveAppNameUniqueIndexTemp); err != nil {
+				return fmt.Errorf("drop unique index %s: %w", effectiveAppNameUniqueIndexTemp, err)
+			}
+		}
+		return nil
+	}
 	createFull := func(name string) string {
 		return fmt.Sprintf("CREATE UNIQUE INDEX %s ON meta_model (application, name)", name)
 	}
 	if !db.Migrator().HasIndex("meta_model", effectiveAppNameUniqueIndexTemp) {
 		if err := execDDL(db, createFull(effectiveAppNameUniqueIndexTemp)); err != nil {
 			return fmt.Errorf("create unique index %s: %w", effectiveAppNameUniqueIndexTemp, err)
-		}
-	}
-	if db.Migrator().HasIndex("meta_model", effectiveAppNameUniqueIndex) {
-		if err := db.Migrator().DropIndex("meta_model", effectiveAppNameUniqueIndex); err != nil {
-			return fmt.Errorf("drop unique index %s: %w", effectiveAppNameUniqueIndex, err)
 		}
 	}
 	if !db.Migrator().HasIndex("meta_model", effectiveAppNameUniqueIndex) {

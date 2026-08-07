@@ -183,15 +183,8 @@ func RemoveModuleDeclarations(db *gorm.DB, moduleID string) ([]LogicalKey, error
 		appendKey(row.Application, row.Name)
 	}
 
-	var prevEff []pkgmeta.Model
-	if err := db.Model(&pkgmeta.Model{}).
-		Select("id, application, name").
-		Where("module_id = ?", moduleID).
-		Find(&prevEff).Error; err != nil {
-		return nil, fmt.Errorf("list previous effective models: %w", err)
-	}
-	for _, row := range prevEff {
-		appendKey(row.Application, row.Name)
+	if err := appendEffectiveKeysForModule(db, moduleID, appendKey); err != nil {
+		return nil, err
 	}
 
 	if err := deleteRawModelsForModule(db, moduleID); err != nil {
@@ -246,15 +239,8 @@ func ReplaceModuleDeclarations(db *gorm.DB, moduleID string, models []*pkgmeta.M
 		appendKey(row.Application, row.Name)
 	}
 
-	var prevEff []pkgmeta.Model
-	if err := db.Model(&pkgmeta.Model{}).
-		Select("id, application, name").
-		Where("module_id = ?", moduleID).
-		Find(&prevEff).Error; err != nil {
-		return nil, fmt.Errorf("list previous effective models: %w", err)
-	}
-	for _, row := range prevEff {
-		appendKey(row.Application, row.Name)
+	if err := appendEffectiveKeysForModule(db, moduleID, appendKey); err != nil {
+		return nil, err
 	}
 
 	for _, path := range orderedPaths {
@@ -279,4 +265,20 @@ func ReplaceModuleDeclarations(db *gorm.DB, moduleID string, models []*pkgmeta.M
 		return nil, err
 	}
 	return keys, nil
+}
+
+// appendEffectiveKeysForModule collects (application, name) from live effective rows
+// still tagged with moduleID (legacy shells) and feeds them to appendKey.
+func appendEffectiveKeysForModule(db *gorm.DB, moduleID string, appendKey func(application, name string)) error {
+	var prevEff []pkgmeta.Model
+	if err := db.Model(&pkgmeta.Model{}).
+		Select("id, application, name").
+		Where("module_id = ?", moduleID).
+		Find(&prevEff).Error; err != nil {
+		return fmt.Errorf("list previous effective models: %w", err)
+	}
+	for _, row := range prevEff {
+		appendKey(row.Application, row.Name)
+	}
+	return nil
 }

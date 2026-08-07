@@ -6,6 +6,7 @@ package meta
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -317,12 +318,12 @@ func TestEnsureEffectiveAppNameUniqueIndex_Dialects(t *testing.T) {
 	if err := ensureEffectiveAppNameUniqueIndex(db2); err != nil {
 		t.Fatalf("mysql first: %v", err)
 	}
-	// second call: HasIndex true → DropIndex → Create
+	// second call is a no-op when the final index already exists
 	if err := ensureEffectiveAppNameUniqueIndex(db2); err != nil {
 		t.Fatalf("mysql second: %v", err)
 	}
 
-	// CREATE failure when table is missing (first step creates temp index).
+	// Missing final index must recreate; drop final then fail create.
 	_ = db2.Migrator().DropTable(&pkgmeta.Model{})
 	if err := ensureEffectiveAppNameUniqueIndex(db2); err == nil {
 		t.Fatal("expected mysql create index failure")
@@ -348,7 +349,7 @@ func TestEnsureEffectiveAppNameUniqueIndex_Dialects(t *testing.T) {
 		t.Fatalf("expected create unique index error on closed db, got %v", err)
 	}
 }
-func TestEnsureEffectiveAppNameUniqueIndex_MySQLDropError(t *testing.T) {
+func TestEnsureEffectiveAppNameUniqueIndex_MySQLDropTempError(t *testing.T) {
 	db := openDualStoreTestDB(t)
 	if err := ensureDualStoreTables(db); err != nil {
 		t.Fatalf("ensure: %v", err)
@@ -357,11 +358,13 @@ func TestEnsureEffectiveAppNameUniqueIndex_MySQLDropError(t *testing.T) {
 	if err := ensureEffectiveAppNameUniqueIndex(db); err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	// Break migrator by swapping dialector to one that reports HasIndex but fails DropIndex.
-	// HasIndex(temp) is also true, so temp create is skipped; drop of final still fails.
-	db.Dialector = failingDropDialector{Dialector: db.Dialector, name: "mysql"}
-	if err := ensureEffectiveAppNameUniqueIndex(db); err == nil || !strings.Contains(err.Error(), "drop unique index") {
-		t.Fatalf("expected drop error, got %v", err)
+	// Leave a temp index behind (interrupted prior run); cleanup drop must surface errors.
+	if err := execDDL(db, fmt.Sprintf("CREATE UNIQUE INDEX %s ON meta_model (application, name)", effectiveAppNameUniqueIndexTemp)); err != nil {
+		t.Fatalf("seed temp index: %v", err)
+	}
+	db.Dialector = failingDropTempDialector{Dialector: db.Dialector, name: "mysql"}
+	if err := ensureEffectiveAppNameUniqueIndex(db); err == nil || !strings.Contains(err.Error(), "drop boom temp") {
+		t.Fatalf("expected drop temp error, got %v", err)
 	}
 }
 func TestEnsurePartialAliveAppNameUniqueIndex_PreservesUniquenessOnCreateFinalFailure(t *testing.T) {
@@ -371,6 +374,10 @@ func TestEnsurePartialAliveAppNameUniqueIndex_PreservesUniquenessOnCreateFinalFa
 	}
 	if err := ensureEffectiveAppNameUniqueIndex(db); err != nil {
 		t.Fatalf("initial index: %v", err)
+	}
+	// Force recreate path: drop the final index so Ensure rebuilds via temp → final.
+	if err := execDDL(db, fmt.Sprintf("DROP INDEX IF EXISTS %s", effectiveAppNameUniqueIndex)); err != nil {
+		t.Fatalf("drop final index: %v", err)
 	}
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
 	soft := &pkgmeta.Model{
@@ -428,6 +435,12 @@ func TestEnsurePartialAliveAppNameUniqueIndex_DropErrors(t *testing.T) {
 	prev := execDDL
 	t.Cleanup(func() { execDDL = prev })
 
+	if err := prev(db, fmt.Sprintf(
+		`DROP INDEX IF EXISTS "%s"`,
+		effectiveAppNameUniqueIndex,
+	)); err != nil {
+		t.Fatalf("drop final before recreate: %v", err)
+	}
 	execDDL = func(db *gorm.DB, sql string) error {
 		if strings.HasPrefix(strings.TrimSpace(sql), "DROP INDEX") && strings.Contains(sql, effectiveAppNameUniqueIndex) && !strings.Contains(sql, "_new") {
 			return errors.New("drop final boom")
@@ -438,6 +451,12 @@ func TestEnsurePartialAliveAppNameUniqueIndex_DropErrors(t *testing.T) {
 		t.Fatalf("expected drop final error, got %v", err)
 	}
 
+	if err := prev(db, fmt.Sprintf(
+		`DROP INDEX IF EXISTS "%s"`,
+		effectiveAppNameUniqueIndex,
+	)); err != nil {
+		t.Fatalf("drop final before temp-drop path: %v", err)
+	}
 	execDDL = func(db *gorm.DB, sql string) error {
 		if strings.HasPrefix(strings.TrimSpace(sql), "DROP INDEX") && strings.Contains(sql, effectiveAppNameUniqueIndexTemp) {
 			return errors.New("drop temp boom")
@@ -460,6 +479,12 @@ func TestEnsureFullAppNameUniqueIndex_CreateFinalAndDropTempErrors(t *testing.T)
 
 	prev := execDDL
 	t.Cleanup(func() { execDDL = prev })
+	if err := prev(db, fmt.Sprintf(
+		`DROP INDEX IF EXISTS "%s"`,
+		effectiveAppNameUniqueIndex,
+	)); err != nil {
+		t.Fatalf("drop final before recreate: %v", err)
+	}
 	execDDL = func(db *gorm.DB, sql string) error {
 		if strings.Contains(sql, "CREATE UNIQUE INDEX") &&
 			strings.Contains(sql, effectiveAppNameUniqueIndex) &&
@@ -474,6 +499,7 @@ func TestEnsureFullAppNameUniqueIndex_CreateFinalAndDropTempErrors(t *testing.T)
 
 	execDDL = prev
 	// Leave temp in place from the failed run, then force DropIndex(temp) to fail.
+	// Final index is still missing, so ensure must clean leftover temp before recreate.
 	db.Dialector = failingDropTempDialector{Dialector: db.Dialector, name: "mysql"}
 	if err := ensureEffectiveAppNameUniqueIndex(db); err == nil || !strings.Contains(err.Error(), "drop boom temp") {
 		t.Fatalf("expected drop temp error, got %v", err)
