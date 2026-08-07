@@ -59,6 +59,35 @@ func TestRegistryLoadModuleApplicationWithoutMetaModuleTable(t *testing.T) {
 	}
 }
 
+func TestRegistryExistingStore(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "existing-store.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	rs := &registryCoverageScope{
+		ctx:     context.Background(),
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		session: &scope.Session{DB: db},
+	}
+	reg := NewRegistry(rs)
+
+	if _, ok := reg.ExistingStore(""); ok {
+		t.Fatal("ExistingStore('') should be false")
+	}
+	if _, ok := reg.ExistingStore("auth"); ok {
+		t.Fatal("ExistingStore before StoreFor should be false")
+	}
+	created := reg.StoreFor("auth")
+	got, ok := reg.ExistingStore("auth")
+	if !ok || got != created {
+		t.Fatalf("ExistingStore(auth) ok=%v store=%p want %p", ok, got, created)
+	}
+	got, ok = reg.ExistingStore("  auth  ")
+	if !ok || got != created {
+		t.Fatalf("ExistingStore trimmed ok=%v", ok)
+	}
+}
+
 func TestRegistryListHostApplicationsWithoutMetaModuleTable(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "registry-hosts-no-meta.db")), &gorm.Config{})
 	if err != nil {

@@ -76,6 +76,20 @@ export function createTermReferenceKey(
 
 type ChoysumI18n = {
   t: (module: string, lang: string, scope: string, src: string, kind?: string) => string;
+  invalidateModule?: (application: string, module: string) => boolean;
+  upsertPackagedTerms?: (
+    application: string,
+    module: string,
+    lang: string,
+    poText: string | Uint8Array
+  ) => Promise<{
+    upserted: number;
+    skippedOverride: number;
+    rejectedNoCtxt: number;
+    skippedObsolete: number;
+    purgedRetired: number;
+    lang: string;
+  }>;
 };
 
 function getBridge(): ChoysumI18n | undefined {
