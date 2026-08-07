@@ -79,9 +79,9 @@ func TestValidApplicationIdentifier(t *testing.T) {
 	}
 }
 
-func TestEnsureTranslationTermTableRejectsUnsafeApplication(t *testing.T) {
+func TestMigrateTranslationTermTableRejectsUnsafeApplication(t *testing.T) {
 	rs := newTestScope(t)
-	err := EnsureTranslationTermTable(rs, `auth"; drop table users; --`)
+	err := MigrateTranslationTermTable(rs, `auth"; drop table users; --`)
 	if err == nil || !strings.Contains(err.Error(), "invalid application name") {
 		t.Fatalf("expected invalid application name error, got %v", err)
 	}
@@ -90,32 +90,32 @@ func TestEnsureTranslationTermTableRejectsUnsafeApplication(t *testing.T) {
 	}
 }
 
-func TestEnsureTranslationTermTableSkipsCoreAndEmpty(t *testing.T) {
+func TestMigrateTranslationTermTableSkipsCoreAndEmpty(t *testing.T) {
 	rs := newTestScope(t)
 
-	if err := EnsureTranslationTermTable(rs, "core"); err != nil {
-		t.Fatalf("EnsureTranslationTermTable(core): %v", err)
+	if err := MigrateTranslationTermTable(rs, "core"); err != nil {
+		t.Fatalf("MigrateTranslationTermTable(core): %v", err)
 	}
 	if rs.Session().Migrator().HasTable("core_translation_term") {
 		t.Fatal("expected no core_translation_term table")
 	}
 
-	if err := EnsureTranslationTermTable(rs, ""); err != nil {
-		t.Fatalf("EnsureTranslationTermTable(\"\"): %v", err)
+	if err := MigrateTranslationTermTable(rs, ""); err != nil {
+		t.Fatalf("MigrateTranslationTermTable(\"\"): %v", err)
 	}
-	if err := EnsureTranslationTermTable(nil, "auth"); err != nil {
-		t.Fatalf("EnsureTranslationTermTable(nil scope): %v", err)
+	if err := MigrateTranslationTermTable(nil, "auth"); err != nil {
+		t.Fatalf("MigrateTranslationTermTable(nil scope): %v", err)
 	}
-	if err := EnsureTranslationTermTable(&testScope{}, "auth"); err != nil {
-		t.Fatalf("EnsureTranslationTermTable(nil session): %v", err)
+	if err := MigrateTranslationTermTable(&testScope{}, "auth"); err != nil {
+		t.Fatalf("MigrateTranslationTermTable(nil session): %v", err)
 	}
 }
 
-func TestEnsureTranslationTermTableCreatesAuthTable(t *testing.T) {
+func TestMigrateTranslationTermTableCreatesAuthTable(t *testing.T) {
 	rs := newTestScope(t)
 
-	if err := EnsureTranslationTermTable(rs, "auth"); err != nil {
-		t.Fatalf("EnsureTranslationTermTable(auth): %v", err)
+	if err := MigrateTranslationTermTable(rs, "auth"); err != nil {
+		t.Fatalf("MigrateTranslationTermTable(auth): %v", err)
 	}
 	if !rs.Session().Migrator().HasTable("auth_translation_term") {
 		t.Fatal("expected auth_translation_term table")
@@ -124,8 +124,20 @@ func TestEnsureTranslationTermTableCreatesAuthTable(t *testing.T) {
 		t.Fatal("ensure auth must not create core_translation_term")
 	}
 
-	if err := EnsureTranslationTermTable(rs, "auth"); err != nil {
-		t.Fatalf("EnsureTranslationTermTable(auth) second call: %v", err)
+	if err := MigrateTranslationTermTable(rs, "auth"); err != nil {
+		t.Fatalf("MigrateTranslationTermTable(auth) second call: %v", err)
+	}
+}
+
+func TestNormalizeKind(t *testing.T) {
+	if got := NormalizeKind(""); got != KindLiteral {
+		t.Fatalf("empty = %q", got)
+	}
+	if got := NormalizeKind("  "); got != KindLiteral {
+		t.Fatalf("whitespace = %q", got)
+	}
+	if got := NormalizeKind("custom_title"); got != "custom_title" {
+		t.Fatalf("custom = %q", got)
 	}
 }
 
@@ -139,14 +151,58 @@ func TestCreateUniqueIndexSQLMySQLUsesSrcPrefix(t *testing.T) {
 	if strings.Contains(sqlite, "src(255)") {
 		t.Fatalf("sqlite index must not use MySQL prefix length, got %q", sqlite)
 	}
+	pg := createUniqueIndexSQL("postgres", "auth_translation_term", "uq_auth_translation_term_key")
+	wantPG := `CREATE UNIQUE INDEX "uq_auth_translation_term_key" ON "auth_translation_term" (module, lang, scope, src, kind)`
+	if pg != wantPG {
+		t.Fatalf("createUniqueIndexSQL(postgres) = %q, want %q", pg, wantPG)
+	}
 }
 
-func TestEnsureTranslationTermTableMultiApp(t *testing.T) {
+func TestMigrateTranslationTermTableAutoMigrateError(t *testing.T) {
+	rs := newTestScope(t)
+	sqlDB, err := rs.Session().DB.DB()
+	if err != nil {
+		t.Fatalf("db.DB: %v", err)
+	}
+	if err := sqlDB.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	err = MigrateTranslationTermTable(rs, "auth")
+	if err == nil || !strings.Contains(err.Error(), "migrate auth_translation_term") {
+		t.Fatalf("expected AutoMigrate wrap, got %v", err)
+	}
+}
+
+func TestMigrateTranslationTermTableUniqueIndexError(t *testing.T) {
+	rs := newTestScope(t)
+	sqlDB, err := rs.Session().DB.DB()
+	if err != nil {
+		t.Fatalf("db.DB: %v", err)
+	}
+	// PRAGMA query_only is per-connection; pin the pool so migrate reuses it.
+	sqlDB.SetMaxOpenConns(1)
+	if err := MigrateTranslationTermTable(rs, "auth"); err != nil {
+		t.Fatalf("initial migrate: %v", err)
+	}
+	indexName := translationTermUniqueIndexName("auth_translation_term")
+	if err := rs.Session().Exec("DROP INDEX IF EXISTS `" + indexName + "`").Error; err != nil {
+		t.Fatalf("drop index: %v", err)
+	}
+	if err := rs.Session().Exec("PRAGMA query_only = ON").Error; err != nil {
+		t.Fatalf("query_only: %v", err)
+	}
+	err = MigrateTranslationTermTable(rs, "auth")
+	if err == nil || !strings.Contains(err.Error(), "unique index") {
+		t.Fatalf("expected unique index wrap, got %v", err)
+	}
+}
+
+func TestMigrateTranslationTermTableMultiApp(t *testing.T) {
 	rs := newTestScope(t)
 
 	for _, app := range []string{"auth", "web"} {
-		if err := EnsureTranslationTermTable(rs, app); err != nil {
-			t.Fatalf("EnsureTranslationTermTable(%s): %v", app, err)
+		if err := MigrateTranslationTermTable(rs, app); err != nil {
+			t.Fatalf("MigrateTranslationTermTable(%s): %v", app, err)
 		}
 	}
 	if !rs.Session().Migrator().HasTable("auth_translation_term") || !rs.Session().Migrator().HasTable("web_translation_term") {
@@ -156,7 +212,7 @@ func TestEnsureTranslationTermTableMultiApp(t *testing.T) {
 
 func TestTranslationTermUniqueKeyAndApplicationColumn(t *testing.T) {
 	rs := newTestScope(t)
-	if err := EnsureTranslationTermTable(rs, "auth"); err != nil {
+	if err := MigrateTranslationTermTable(rs, "auth"); err != nil {
 		t.Fatalf("ensure: %v", err)
 	}
 
@@ -207,12 +263,12 @@ func TestTranslationTermUniqueKeyAndApplicationColumn(t *testing.T) {
 	}
 }
 
-func TestEnsureTranslationTermTableDoesNotRegisterModel(t *testing.T) {
+func TestMigrateTranslationTermTableDoesNotRegisterModel(t *testing.T) {
 	rs := newTestScope(t)
 	if err := rs.Session().AutoMigrate(&meta.Model{}); err != nil {
 		t.Fatalf("migrate Model: %v", err)
 	}
-	if err := EnsureTranslationTermTable(rs, "auth"); err != nil {
+	if err := MigrateTranslationTermTable(rs, "auth"); err != nil {
 		t.Fatalf("ensure: %v", err)
 	}
 

@@ -49,12 +49,15 @@ type poTerm struct {
 	comments string
 }
 
-// ImportModulePo parses poText with gotext and upserts packaged terms for (application, module, lang).
-// Existing Source=override rows are not overwritten. Obsolete (#~) entries do not prune ordinary
-// rows (D12a), but retired S7 metadata kinds are removed for the imported module, including overrides.
-// Entries without msgctxt are rejected and logged (D12c).
-// Kind defaults to literal; an explicit `#. kind: <name>` comment overrides it.
-func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, module, lang string, poText []byte) (*ImportStats, error) {
+// UpsertPackagedTerms is the sole packaged-term write helper: parse PO → upsert rows
+// (skip Source=override) → purge retired S7 kinds → InvalidateModule + WarmLanguage.
+// Install/CLI call this path only; do not dial model gRPC for packaged import.
+// Obsolete (#~) entries do not prune ordinary rows (D12a). Entries without msgctxt
+// are rejected and logged (D12c). Kind defaults to literal; `#. kind: <name>` overrides.
+// Schema ownership is TranslationTerm MetaModel migrate; if the physical table is
+// still missing, a create-only fallback runs (indexes/columns on existing tables
+// are not evolved here).
+func UpsertPackagedTerms(runtimeScope scope.Scope, reg *store.Registry, application, module, lang string, poText []byte) (*ImportStats, error) {
 	application = strings.TrimSpace(application)
 	module = strings.TrimSpace(module)
 	lang = strings.TrimSpace(lang)
@@ -72,8 +75,9 @@ func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, 
 	stats.SkippedObsolete = obsolete
 
 	tableName := i18nmodels.TranslationTermTableName(application)
-	if err := i18nmodels.EnsureTranslationTermTable(runtimeScope, application); err != nil {
-		return stats, err
+	migrateErr := migrateTranslationTermTableIfMissing(runtimeScope, application, tableName)
+	if migrateErr != nil {
+		return stats, migrateErr
 	}
 	logger := runtimeScope.Logger()
 	if logger == nil {
@@ -186,6 +190,20 @@ func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, 
 		}
 	}
 	return stats, nil
+}
+
+// Swapped in tests to force migrate failures without closing the DB.
+var migrateTranslationTermTable = i18nmodels.MigrateTranslationTermTable
+
+// migrateTranslationTermTableIfMissing creates the physical table when the write
+// path runs without a prior MetaModel migrate (tests / install ordering).
+// It does not AutoMigrate or re-ensure indexes when the table already exists;
+// schema evolution stays on the TranslationTerm MetaModel path.
+func migrateTranslationTermTableIfMissing(runtimeScope scope.Scope, application, tableName string) error {
+	if runtimeScope.Session().Migrator().HasTable(tableName) {
+		return nil
+	}
+	return migrateTranslationTermTable(runtimeScope, application)
 }
 
 func termLookupKey(scopeName, src, kind string) string {
@@ -333,7 +351,7 @@ func ImportModuleI18nDir(runtimeScope scope.Scope, reg *store.Registry, applicat
 		if err != nil {
 			return err
 		}
-		if _, err := ImportModulePo(runtimeScope, reg, application, module, lang, raw); err != nil {
+		if _, err := UpsertPackagedTerms(runtimeScope, reg, application, module, lang, raw); err != nil {
 			return fmt.Errorf("import %s: %w", name, err)
 		}
 	}

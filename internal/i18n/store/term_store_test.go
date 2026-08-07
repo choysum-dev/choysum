@@ -59,7 +59,7 @@ func newTestScope(t *testing.T) *testScope {
 
 func TestTermStoreWarmLookupInvalidate(t *testing.T) {
 	rs := newTestScope(t)
-	if err := i18nmodels.EnsureTranslationTermTable(rs, "auth"); err != nil {
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
 		t.Fatalf("ensure: %v", err)
 	}
 	table := rs.Session().Table("auth_translation_term")
@@ -108,7 +108,7 @@ func TestTermStoreWarmLookupInvalidate(t *testing.T) {
 
 func TestRegistryLookupViaModuleMapping(t *testing.T) {
 	rs := newTestScope(t)
-	if err := i18nmodels.EnsureTranslationTermTable(rs, "auth"); err != nil {
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
 		t.Fatalf("ensure: %v", err)
 	}
 	if err := rs.Session().Table("auth_translation_term").Create(&i18nmodels.TranslationTerm{
@@ -137,7 +137,7 @@ func TestRegistryLookupViaModuleMapping(t *testing.T) {
 
 func TestRegistryLookupFrameworkModuleInHostStore(t *testing.T) {
 	rs := newTestScope(t)
-	if err := i18nmodels.EnsureTranslationTermTable(rs, "auth"); err != nil {
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
 		t.Fatalf("ensure: %v", err)
 	}
 	if err := rs.Session().Table("auth_translation_term").Create(&i18nmodels.TranslationTerm{
@@ -165,9 +165,9 @@ func TestRegistryLookupFrameworkModuleInHostStore(t *testing.T) {
 	}
 }
 
-func TestTermStoreExplicitKindAndTermsByModulesLiteralOnly(t *testing.T) {
+func TestTermStoreExplicitKindLookup(t *testing.T) {
 	rs := newTestScope(t)
-	if err := i18nmodels.EnsureTranslationTermTable(rs, "auth"); err != nil {
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
 		t.Fatalf("ensure: %v", err)
 	}
 	table := rs.Session().Table("auth_translation_term")
@@ -211,63 +211,6 @@ func TestTermStoreExplicitKindAndTermsByModulesLiteralOnly(t *testing.T) {
 	if !ok || litVal != "登录" {
 		t.Fatalf("literal Lookup = %q ok=%v", litVal, ok)
 	}
-
-	exported := ts.TermsByModules("zh_CN", []string{"auth"})
-	if got := exported["auth"]["web/pages/Login@title"]["Sign in"]; got != "登录" {
-		t.Fatalf("TermsByModules literal = %q", got)
-	}
-	if _, hasCustom := exported["auth"]["web/menu/menus.ts@base.menu.company"]; hasCustom {
-		t.Fatal("TermsByModules must omit explicit non-literal kinds")
-	}
-}
-
-func TestTermStoreSearchTermsAndUpsertOverride(t *testing.T) {
-	rs := newTestScope(t)
-	if err := i18nmodels.EnsureTranslationTermTable(rs, "auth"); err != nil {
-		t.Fatalf("ensure: %v", err)
-	}
-	table := rs.Session().Table("auth_translation_term")
-	for _, row := range []i18nmodels.TranslationTerm{
-		{Application: "auth", Module: "auth", Lang: "zh_CN", Scope: "a@one", Src: "Alpha", Value: "甲", Kind: i18nmodels.KindLiteral, Source: i18nmodels.SourcePackaged},
-		{Application: "auth", Module: "auth", Lang: "zh_CN", Scope: "a@two", Src: "Beta", Value: "乙", Kind: i18nmodels.KindLiteral, Source: i18nmodels.SourcePackaged},
-		{Application: "auth", Module: "web", Lang: "zh_CN", Scope: "w@x", Src: "Gamma", Value: "丙", Kind: i18nmodels.KindLiteral, Source: i18nmodels.SourcePackaged},
-	} {
-		if err := table.Create(&row).Error; err != nil {
-			t.Fatalf("seed: %v", err)
-		}
-	}
-
-	ts := store.NewTermStore(rs, "auth")
-	items, total, err := ts.SearchTerms("zh_CN", nil, "Alpha", 10, 0)
-	if err != nil || total != 1 || len(items) != 1 || items[0].Src != "Alpha" {
-		t.Fatalf("q filter items=%#v total=%d err=%v", items, total, err)
-	}
-	items, total, err = ts.SearchTerms("zh_CN", []string{"web"}, "", 10, 0)
-	if err != nil || total != 1 || items[0].Module != "web" {
-		t.Fatalf("module filter items=%#v total=%d err=%v", items, total, err)
-	}
-	items, total, err = ts.SearchTerms("zh_CN", nil, "", 1, 1)
-	if err != nil || total != 3 || len(items) != 1 {
-		t.Fatalf("pagination items=%#v total=%d err=%v", items, total, err)
-	}
-	if _, _, err := ts.SearchTerms("", nil, "", 10, 0); err != nil {
-		t.Fatalf("empty lang should no-op: %v", err)
-	}
-
-	created, err := ts.UpsertOverride("auth", "zh_CN", "a@new", "Fresh", "", "新")
-	if err != nil {
-		t.Fatalf("UpsertOverride create: %v", err)
-	}
-	if created.Value != "新" || created.Source != i18nmodels.SourceOverride {
-		t.Fatalf("created = %#v", created)
-	}
-	val, ok := ts.Lookup("auth", "zh_CN", "a@new", "Fresh", "")
-	if !ok || val != "新" {
-		t.Fatalf("Lookup after create = %q ok=%v", val, ok)
-	}
-	if _, err := ts.UpsertOverride("", "zh_CN", "a", "s", "", "v"); err == nil {
-		t.Fatal("expected validation error")
-	}
 }
 
 func TestEmptyTermHashAndApplication(t *testing.T) {
@@ -290,39 +233,8 @@ func TestEmptyTermHashAndApplication(t *testing.T) {
 	}
 }
 
-func TestSearchTermsStatusAndWarmCoreNoop(t *testing.T) {
+func TestWarmCoreAndEmptyLangNoop(t *testing.T) {
 	rs := newTestScope(t)
-	if err := i18nmodels.EnsureTranslationTermTable(rs, "auth"); err != nil {
-		t.Fatal(err)
-	}
-	table := rs.Session().Table("auth_translation_term")
-	for _, row := range []i18nmodels.TranslationTerm{
-		{Application: "", Module: "auth", Lang: "zh_CN", Scope: "a@m", Src: "Missing", Value: "", Kind: i18nmodels.KindLiteral, Source: ""},
-		{Application: "auth", Module: "auth", Lang: "zh_CN", Scope: "a@f", Src: "Fuzzy", Value: "模糊", Kind: i18nmodels.KindLiteral, Source: i18nmodels.SourcePackaged, Comments: "fuzzy"},
-	} {
-		if err := table.Create(&row).Error; err != nil {
-			t.Fatal(err)
-		}
-	}
-	ts := store.NewTermStore(rs, "auth")
-	items, total, err := ts.SearchTerms("zh_CN", []string{"auth"}, "", 10, 0)
-	if err != nil || total != 2 {
-		t.Fatalf("items=%#v total=%d err=%v", items, total, err)
-	}
-	bySrc := map[string]string{}
-	for _, item := range items {
-		bySrc[item.Src] = item.Status
-		if item.Src == "Missing" && item.Application != "auth" {
-			t.Fatalf("empty application row should fall back: %#v", item)
-		}
-		if item.Src == "Missing" && item.Source != i18nmodels.SourcePackaged {
-			t.Fatalf("empty source fallback: %#v", item)
-		}
-	}
-	if bySrc["Missing"] != "missing" || bySrc["Fuzzy"] != "fuzzy" {
-		t.Fatalf("status map=%#v", bySrc)
-	}
-
 	core := store.NewTermStore(rs, "core")
 	if err := core.WarmLanguage("zh_CN"); err != nil {
 		t.Fatal(err)
@@ -397,47 +309,43 @@ func TestRegistryListHostApplicationsViaModule(t *testing.T) {
 	}
 }
 
-func TestTermStoreWarmMissingTableAndUpsertUpdate(t *testing.T) {
+func TestTermStoreWarmMissingTableAndBumpInvalidate(t *testing.T) {
 	rs := newTestScope(t)
 	ts := store.NewTermStore(rs, "auth")
 	if err := ts.WarmLanguage("zh_CN"); err != nil {
 		t.Fatal(err)
 	}
 	if ts.TermHash("zh_CN") == "" {
-		t.Fatal("expected empty hash after warm without table")
+		t.Fatal("expected emptyTermHash after warm without table")
 	}
 
-	if err := i18nmodels.EnsureTranslationTermTable(rs, "auth"); err != nil {
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
 		t.Fatal(err)
 	}
 	if err := rs.Session().Table("auth_translation_term").Create(&i18nmodels.TranslationTerm{
 		Application: "auth", Module: "auth", Lang: "zh_CN",
-		Scope: "a@t", Src: "Hello", Value: "旧",
+		Scope: "a@t", Src: "Hello", Value: "你好",
 		Kind: i18nmodels.KindLiteral, Source: i18nmodels.SourcePackaged,
 	}).Error; err != nil {
 		t.Fatal(err)
 	}
-	ts = store.NewTermStore(rs, "auth")
-	updated, err := ts.UpsertOverride("auth", "zh_CN", "a@t", "Hello", "", "新")
-	if err != nil {
+	if err := ts.WarmLanguage("zh_CN"); err != nil {
 		t.Fatal(err)
-	}
-	if updated.Value != "新" || updated.Source != i18nmodels.SourceOverride {
-		t.Fatalf("updated=%#v", updated)
 	}
 	val, ok := ts.Lookup("auth", "zh_CN", "a@t", "Hello", "")
-	if !ok || val != "新" {
+	if !ok || val != "你好" {
 		t.Fatalf("lookup=%q ok=%v", val, ok)
 	}
-	if _, err := store.NewTermStore(rs, "core").UpsertOverride("core", "zh_CN", "a", "s", "", "v"); err == nil {
-		t.Fatal("core upsert should no-op or err")
+	hash := ts.TermHash("zh_CN")
+	bumped := ts.BumpTermHash("zh_CN")
+	if bumped == "" || bumped == hash {
+		t.Fatalf("BumpTermHash = %q, previous %q", bumped, hash)
 	}
-	items, _, err := ts.SearchTerms("zh_CN", []string{"", " "}, "", 0, -1)
-	if err != nil {
-		t.Fatal(err)
+	ts.InvalidateModule("auth")
+	if _, ok := ts.Lookup("auth", "zh_CN", "a@t", "Hello", ""); ok {
+		t.Fatal("expected miss after InvalidateModule")
 	}
-	_ = items
-	if _, _, err := ts.SearchTerms("zh_CN", nil, "", 0, -1); err != nil {
-		t.Fatal(err)
+	if ts.TermHash("zh_CN") == bumped {
+		t.Fatal("expected hash change after InvalidateModule")
 	}
 }

@@ -21,7 +21,7 @@ type handler struct {
 	fetch func(ctx context.Context, app, lang string, moduleNames []string) (*appTranslations, error)
 	// listModules is injectable for tests; nil queries Module.
 	listModules func() (map[string][]string, error)
-	// search is injectable for PO export (user-identity SearchTerms dial).
+	// search is injectable for PO export (user-identity TranslationTerm Search dial).
 	search func(ctx context.Context, accessToken, app, lang string, modules []string, q string, limit, offset int) (*searchTermsResult, error)
 }
 

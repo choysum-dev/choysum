@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	i18nmodels "github.com/choysum-dev/choysum/internal/i18n/models"
 	"github.com/choysum-dev/choysum/pkg/meta"
 )
 
@@ -41,36 +40,6 @@ func TestMigratorMigrateOrdersSchemaBeforeForeignKeys(t *testing.T) {
 	}
 	if len(order) != 2 || order[0] != "schema" || order[1] != "fk" {
 		t.Fatalf("unexpected call order: %#v", order)
-	}
-}
-
-func TestMigratorMigrateEnsuresTranslationTermTable(t *testing.T) {
-	runtimeScope := newSchemaTestScope(t)
-
-	authMigrator := &migrator{
-		runtimeScope:       runtimeScope,
-		module:             &meta.Module{Name: "auth", ApplicationStr: "auth"},
-		modelMigrator:      modelMigratorFunc(func() error { return nil }),
-		foreignKeyMigrator: foreignKeyMigratorFunc(func() error { return nil }),
-	}
-	if err := authMigrator.Migrate(); err != nil {
-		t.Fatalf("Migrate(auth): %v", err)
-	}
-	if !runtimeScope.Session().Migrator().HasTable("auth_translation_term") {
-		t.Fatal("expected auth_translation_term after Migrate")
-	}
-
-	coreMigrator := &migrator{
-		runtimeScope:       runtimeScope,
-		module:             &meta.Module{Name: "base", ApplicationStr: "core"},
-		modelMigrator:      modelMigratorFunc(func() error { return nil }),
-		foreignKeyMigrator: foreignKeyMigratorFunc(func() error { return nil }),
-	}
-	if err := coreMigrator.Migrate(); err != nil {
-		t.Fatalf("Migrate(core): %v", err)
-	}
-	if runtimeScope.Session().Migrator().HasTable("core_translation_term") {
-		t.Fatal("expected no core_translation_term when application == core")
 	}
 }
 
@@ -197,34 +166,6 @@ func TestNewMigratorPropagatesLoadError(t *testing.T) {
 	}
 	if _, err := NewMigrator(runtimeScope, module); err == nil || !strings.Contains(err.Error(), "expanding model extends") {
 		t.Fatalf("expected expand error from NewMigrator, got %v", err)
-	}
-}
-
-func TestMigratorMigrateWrapsEnsureI18nMetaError(t *testing.T) {
-	runtimeScope := newSchemaTestScope(t)
-	if err := i18nmodels.EnsureTranslationTermTable(runtimeScope, "auth"); err != nil {
-		t.Fatalf("EnsureTranslationTermTable() error = %v", err)
-	}
-	if err := meta.EnsureDualStoreTables(runtimeScope.Session().DB); err != nil {
-		t.Fatalf("ensure dual store: %v", err)
-	}
-	if err := runtimeScope.Session().Exec(`CREATE TRIGGER IF NOT EXISTS block_i18n_raw_model_insert
-		BEFORE INSERT ON meta_raw_model
-		WHEN NEW.name = 'I18n'
-		BEGIN
-			SELECT RAISE(ABORT, 'i18n blocked');
-		END`).Error; err != nil {
-		t.Fatalf("create i18n raw insert trigger: %v", err)
-	}
-
-	m := &migrator{
-		runtimeScope:       runtimeScope,
-		module:             &meta.Module{Name: "auth", ApplicationStr: "auth"},
-		modelMigrator:      modelMigratorFunc(func() error { return nil }),
-		foreignKeyMigrator: foreignKeyMigratorFunc(func() error { return nil }),
-	}
-	if err := m.Migrate(); err == nil || !strings.Contains(err.Error(), "ensure i18n ir meta") {
-		t.Fatalf("Migrate() error = %v, want wrapped ensure i18n meta failure", err)
 	}
 }
 

@@ -8,11 +8,12 @@ import (
 	"fmt"
 	"strings"
 
-	i18nservice "github.com/choysum-dev/choysum/internal/i18n/service"
 	"github.com/choysum-dev/choysum/pkg/grpc/client"
 	"github.com/choysum-dev/choysum/pkg/grpc/converter"
+	"github.com/choysum-dev/choysum/pkg/grpc/loader"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/types/dynamicpb"
 )
 
 const (
@@ -27,8 +28,6 @@ type appTranslations struct {
 }
 
 // fetchAppTranslations dials {app}.TranslationTerm/GetTranslations with internal identity (D1).
-// Request/response wire fields match the TS TranslationTerm model (and the legacy I18n
-// descriptors used here for dynamicpb construction until P5b removes Go I18n).
 func fetchAppTranslations(ctx context.Context, runtimeScope scope.Scope, app, lang string, moduleNames []string) (*appTranslations, error) {
 	app = strings.TrimSpace(app)
 	if app == "" {
@@ -36,16 +35,19 @@ func fetchAppTranslations(ctx context.Context, runtimeScope scope.Scope, app, la
 	}
 
 	service := app + "." + translationTermModelName
+	descriptorMethod := service + "." + translationTermGetTranslations
 	invokeMethod := "/" + service + "/" + translationTermGetTranslations
 
-	reqMsg, err := i18nservice.NewRequestMessage(app)
+	md, err := loader.Global().GetMethodDescriptor(descriptorMethod)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("load GetTranslations descriptor: %w", err)
 	}
+
 	moduleNamesAny := make([]any, 0, len(moduleNames))
 	for _, m := range moduleNames {
 		moduleNamesAny = append(moduleNamesAny, m)
 	}
+	reqMsg := dynamicpb.NewMessage(md.Input())
 	if err := converter.MapToMessage(map[string]any{
 		"lang":         lang,
 		"module_names": moduleNamesAny,
@@ -54,16 +56,12 @@ func fetchAppTranslations(ctx context.Context, runtimeScope scope.Scope, app, la
 		return nil, fmt.Errorf("build GetTranslations request: %w", err)
 	}
 
-	respMsg, err := i18nservice.NewResponseMessage(app)
-	if err != nil {
-		return nil, err
-	}
-
 	rpcCtx := outgoingContextForInternalRPC(ctx, runtimeScope)
 	conn, err := client.Dial(rpcCtx, service)
 	if err != nil {
 		return nil, client.ToStatusError(err)
 	}
+	respMsg := dynamicpb.NewMessage(md.Output())
 	if err := conn.Invoke(rpcCtx, invokeMethod, reqMsg, respMsg); err != nil {
 		return nil, client.ToStatusError(err)
 	}

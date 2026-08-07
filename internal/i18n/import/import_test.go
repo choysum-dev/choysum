@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	i18nimport "github.com/choysum-dev/choysum/internal/i18n/import"
@@ -58,9 +59,59 @@ func newTestScope(t *testing.T) *testScope {
 	}
 }
 
-func TestImportModulePoMsgctxtOverrideAndObsolete(t *testing.T) {
+func TestUpsertPackagedTermsMigratesMissingTable(t *testing.T) {
 	rs := newTestScope(t)
-	if err := i18nmodels.EnsureTranslationTermTable(rs, "auth"); err != nil {
+	if rs.Session().Migrator().HasTable("auth_translation_term") {
+		t.Fatal("expected missing table before upsert")
+	}
+	poText := []byte(`
+msgctxt "web/a@new"
+msgid "Hello"
+msgstr "你好"
+`)
+	reg := store.NewRegistry(rs)
+	stats, err := i18nimport.UpsertPackagedTerms(rs, reg, "auth", "auth", "zh_CN", poText)
+	if err != nil {
+		t.Fatalf("UpsertPackagedTerms: %v", err)
+	}
+	if stats.Upserted != 1 {
+		t.Fatalf("stats=%+v", stats)
+	}
+	if !rs.Session().Migrator().HasTable("auth_translation_term") {
+		t.Fatal("expected UpsertPackagedTerms to migrate missing table")
+	}
+	var row i18nmodels.TranslationTerm
+	if err := rs.Session().Table("auth_translation_term").Where("src = ?", "Hello").Take(&row).Error; err != nil {
+		t.Fatal(err)
+	}
+	if row.Value != "你好" {
+		t.Fatalf("row=%+v", row)
+	}
+}
+
+func TestUpsertPackagedTermsMigrateMissingTableError(t *testing.T) {
+	rs := newTestScope(t)
+	sqlDB, err := rs.Session().DB.DB()
+	if err != nil {
+		t.Fatalf("db.DB: %v", err)
+	}
+	if err := sqlDB.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	poText := []byte(`
+msgctxt "web/a@new"
+msgid "Hello"
+msgstr "你好"
+`)
+	_, err = i18nimport.UpsertPackagedTerms(rs, nil, "auth", "auth", "zh_CN", poText)
+	if err == nil || !strings.Contains(err.Error(), "migrate auth_translation_term") {
+		t.Fatalf("expected migrate error for missing table on closed DB, got %v", err)
+	}
+}
+
+func TestUpsertPackagedTermsMsgctxtOverrideAndObsolete(t *testing.T) {
+	rs := newTestScope(t)
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
 		t.Fatal(err)
 	}
 	table := rs.Session().Table("auth_translation_term")
@@ -110,9 +161,9 @@ msgstr "新的"
 `)
 
 	reg := store.NewRegistry(rs)
-	stats, err := i18nimport.ImportModulePo(rs, reg, "auth", "auth", "zh_CN", poText)
+	stats, err := i18nimport.UpsertPackagedTerms(rs, reg, "auth", "auth", "zh_CN", poText)
 	if err != nil {
-		t.Fatalf("ImportModulePo: %v", err)
+		t.Fatalf("UpsertPackagedTerms: %v", err)
 	}
 	if stats.Upserted != 1 || stats.SkippedOverride != 1 || stats.RejectedNoCtxt != 1 || stats.SkippedObsolete != 1 {
 		t.Fatalf("unexpected stats: %+v", stats)
@@ -150,7 +201,7 @@ msgstr "新的"
 
 func TestDeleteModuleTerms(t *testing.T) {
 	rs := newTestScope(t)
-	if err := i18nmodels.EnsureTranslationTermTable(rs, "auth"); err != nil {
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
 		t.Fatal(err)
 	}
 	table := rs.Session().Table("auth_translation_term")
@@ -179,8 +230,11 @@ func TestDeleteModuleTerms(t *testing.T) {
 	}
 }
 
-func TestImportModulePoMultilineMsgstr(t *testing.T) {
+func TestUpsertPackagedTermsMultilineMsgstr(t *testing.T) {
 	rs := newTestScope(t)
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
+		t.Fatal(err)
+	}
 	poText := []byte(`
 msgctxt "web/a@body"
 msgid ""
@@ -191,7 +245,7 @@ msgstr ""
 "世界"
 `)
 	reg := store.NewRegistry(rs)
-	stats, err := i18nimport.ImportModulePo(rs, reg, "auth", "auth", "zh_CN", poText)
+	stats, err := i18nimport.UpsertPackagedTerms(rs, reg, "auth", "auth", "zh_CN", poText)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,8 +261,11 @@ msgstr ""
 	}
 }
 
-func TestImportModulePoKindFromExtractedComment(t *testing.T) {
+func TestUpsertPackagedTermsKindFromExtractedComment(t *testing.T) {
 	rs := newTestScope(t)
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
+		t.Fatal(err)
+	}
 	poText := []byte(`
 msgid ""
 msgstr "Language: zh_CN\n"
@@ -229,9 +286,9 @@ msgid "Hello"
 msgstr "你好"
 `)
 	reg := store.NewRegistry(rs)
-	stats, err := i18nimport.ImportModulePo(rs, reg, "auth", "auth", "zh_CN", poText)
+	stats, err := i18nimport.UpsertPackagedTerms(rs, reg, "auth", "auth", "zh_CN", poText)
 	if err != nil {
-		t.Fatalf("ImportModulePo: %v", err)
+		t.Fatalf("UpsertPackagedTerms: %v", err)
 	}
 	if stats.Upserted != 3 {
 		t.Fatalf("stats=%+v", stats)
@@ -284,9 +341,9 @@ msgstr "你好"
 	}
 }
 
-func TestImportModulePoPurgesOnlyRetiredS7Kinds(t *testing.T) {
+func TestUpsertPackagedTermsPurgesOnlyRetiredS7Kinds(t *testing.T) {
 	rs := newTestScope(t)
-	if err := i18nmodels.EnsureTranslationTermTable(rs, "auth"); err != nil {
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
 		t.Fatal(err)
 	}
 	table := rs.Session().Table("auth_translation_term")
@@ -350,9 +407,9 @@ msgctxt "retired/reintroduced"
 msgid "Reintroduced"
 msgstr "不应保留"
 `)
-	stats, err := i18nimport.ImportModulePo(rs, reg, "auth", "auth", "zh_CN", poText)
+	stats, err := i18nimport.UpsertPackagedTerms(rs, reg, "auth", "auth", "zh_CN", poText)
 	if err != nil {
-		t.Fatalf("ImportModulePo: %v", err)
+		t.Fatalf("UpsertPackagedTerms: %v", err)
 	}
 	if stats.PurgedRetired != 7 {
 		t.Fatalf("PurgedRetired = %d, want 7", stats.PurgedRetired)
@@ -397,9 +454,9 @@ msgstr "不应保留"
 	}
 }
 
-func TestImportModulePoUsesCallerTransaction(t *testing.T) {
+func TestUpsertPackagedTermsUsesCallerTransaction(t *testing.T) {
 	rs := newTestScope(t)
-	if err := i18nmodels.EnsureTranslationTermTable(rs, "auth"); err != nil {
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
 		t.Fatal(err)
 	}
 	table := rs.Session().Table("auth_translation_term")
@@ -427,14 +484,14 @@ func TestImportModulePoUsesCallerTransaction(t *testing.T) {
 		logger:  rs.logger,
 		session: &scope.Session{DB: tx},
 	}
-	stats, err := i18nimport.ImportModulePo(txScope, nil, "auth", "auth", "zh_CN", []byte(`
+	stats, err := i18nimport.UpsertPackagedTerms(txScope, nil, "auth", "auth", "zh_CN", []byte(`
 msgctxt "literal/new"
 msgid "New"
 msgstr "新的"
 `))
 	if err != nil {
 		_ = tx.Rollback()
-		t.Fatalf("ImportModulePo: %v", err)
+		t.Fatalf("UpsertPackagedTerms: %v", err)
 	}
 	if stats.PurgedRetired != 1 {
 		_ = tx.Rollback()
@@ -474,11 +531,14 @@ msgstr "新的"
 	}
 }
 
-func TestImportModulePoSkipsCoreAndImportModuleI18nDir(t *testing.T) {
+func TestUpsertPackagedTermsSkipsCoreAndImportModuleI18nDir(t *testing.T) {
 	rs := newTestScope(t)
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
+		t.Fatal(err)
+	}
 	reg := store.NewRegistry(rs)
 
-	stats, err := i18nimport.ImportModulePo(rs, reg, "core", "auth", "zh_CN", []byte(`msgid "x"`))
+	stats, err := i18nimport.UpsertPackagedTerms(rs, reg, "core", "auth", "zh_CN", []byte(`msgid "x"`))
 	if err != nil || stats == nil || stats.Upserted != 0 {
 		t.Fatalf("core skip stats=%#v err=%v", stats, err)
 	}
@@ -519,9 +579,9 @@ msgstr "你好"
 	}
 }
 
-func TestImportModulePoUpdatesExistingPackaged(t *testing.T) {
+func TestUpsertPackagedTermsUpdatesExistingPackaged(t *testing.T) {
 	rs := newTestScope(t)
-	if err := i18nmodels.EnsureTranslationTermTable(rs, "auth"); err != nil {
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
 		t.Fatal(err)
 	}
 	if err := rs.Session().Table("auth_translation_term").Create(&i18nmodels.TranslationTerm{
@@ -532,7 +592,7 @@ func TestImportModulePoUpdatesExistingPackaged(t *testing.T) {
 		t.Fatal(err)
 	}
 	reg := store.NewRegistry(rs)
-	stats, err := i18nimport.ImportModulePo(rs, reg, "auth", "auth", "zh_CN", []byte(`
+	stats, err := i18nimport.UpsertPackagedTerms(rs, reg, "auth", "auth", "zh_CN", []byte(`
 #, fuzzy
 msgctxt "a@t"
 msgid "Hello"
@@ -578,9 +638,9 @@ func TestDeleteModuleTermsNoops(t *testing.T) {
 	}
 }
 
-func TestImportModulePoMissingSession(t *testing.T) {
+func TestUpsertPackagedTermsMissingSession(t *testing.T) {
 	reg := store.NewRegistry(nil)
-	if _, err := i18nimport.ImportModulePo(nil, reg, "auth", "auth", "zh_CN", []byte(`msgctxt "a" msgid "x" msgstr "y"`)); err == nil {
+	if _, err := i18nimport.UpsertPackagedTerms(nil, reg, "auth", "auth", "zh_CN", []byte(`msgctxt "a" msgid "x" msgstr "y"`)); err == nil {
 		t.Fatal("expected missing session")
 	}
 }

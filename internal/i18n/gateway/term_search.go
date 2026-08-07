@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Shared helpers for PO export (SearchTerms dial). Terms HTTP routes were removed in P3.
+// Shared helpers for PO export (TranslationTerm Search dial). Terms HTTP routes were removed in P3.
 
 func (h *handler) searchApp(ctx context.Context, accessToken, app, lang string, modules []string, q string, limit, offset int) (*searchTermsResult, error) {
 	if h.search != nil {
@@ -24,7 +24,9 @@ func writeTermsRPCError(w http.ResponseWriter, err error) {
 	code := status.Code(err)
 	switch code {
 	case codes.PermissionDenied:
-		writeJSON(w, http.StatusForbidden, map[string]any{"error": "permission denied"})
+		writeJSON(w, http.StatusForbidden, map[string]any{
+			"error": "permission denied: TranslationTerm requires the terminology.editor role",
+		})
 	case codes.Unauthenticated:
 		writeJSON(w, http.StatusUnauthorized, map[string]any{"error": "authentication is required"})
 	case codes.InvalidArgument:

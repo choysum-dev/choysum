@@ -297,11 +297,6 @@ func (s *ApplicationService) ServiceDescs() ([]*grpc.ServiceDesc, error) {
 		}
 	}
 
-	// Always inject {app}.I18n (D5: empty apps still register).
-	if i18nDesc, err := s.i18nServiceDesc(); err == nil && i18nDesc != nil {
-		serviceDescs = append(serviceDescs, i18nDesc)
-	}
-
 	return serviceDescs, nil
 }
 

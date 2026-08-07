@@ -16,7 +16,7 @@ const poPath = "/web/i18n/po"
 
 // Tunable for tests; production defaults keep PO downloads bounded.
 var (
-	// Keep in sync with i18nservice maxSearchLimit so export pages are not capped smaller.
+	// Keep in sync with typical ORM Search page sizes so export pages stay bounded.
 	poExportPageSize = 500
 	poExportMaxItems = 10000
 )
@@ -94,20 +94,45 @@ func (h *handler) servePO(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) collectAllTerms(ctx context.Context, accessToken, app, lang string, modules []string) ([]termItem, bool, error) {
+	if poExportMaxItems <= 0 {
+		return nil, true, nil
+	}
+
+	var (
+		total int64
+		err   error
+	)
+	if h.search != nil {
+		// Injected search hooks historically return Total per page; ask once with limit=1.
+		probe, err := h.search(ctx, accessToken, app, lang, modules, "", 1, 0)
+		if err != nil {
+			return nil, false, err
+		}
+		if probe != nil {
+			total = probe.Total
+		}
+	} else {
+		total, err = countAppTerms(ctx, accessToken, app, lang, modules, "")
+		if err != nil {
+			return nil, false, err
+		}
+	}
+
 	var all []termItem
 	offset := 0
 	truncated := false
 	for {
 		remaining := poExportMaxItems - len(all)
-		if remaining <= 0 {
-			truncated = true
-			break
-		}
 		page := poExportPageSize
 		if page > remaining {
 			page = remaining
 		}
-		result, err := h.searchApp(ctx, accessToken, app, lang, modules, "", page, offset)
+		var result *searchTermsResult
+		if h.search != nil {
+			result, err = h.search(ctx, accessToken, app, lang, modules, "", page, offset)
+		} else {
+			result, err = searchAppTermsPage(ctx, accessToken, app, lang, modules, "", total, page, offset)
+		}
 		if err != nil {
 			return nil, false, err
 		}
@@ -117,12 +142,22 @@ func (h *handler) collectAllTerms(ctx context.Context, accessToken, app, lang st
 		all = append(all, result.Items...)
 		offset += len(result.Items)
 		if len(all) >= poExportMaxItems {
-			if result.Total > int64(len(all)) {
+			// Unknown total (hooks that omit Total): prefer signaling truncation
+			// over silently returning a capped subset.
+			if total <= 0 || total > int64(len(all)) {
 				truncated = true
 			}
 			break
 		}
-		if int64(offset) >= result.Total || len(result.Items) < page {
+		// Hooks may omit Total on the probe; adopt a later page total when present.
+		if total <= 0 && result.Total > 0 {
+			total = result.Total
+		}
+		// When total is still unknown, keep paging until a short page.
+		if len(result.Items) < page {
+			break
+		}
+		if total > 0 && int64(offset) >= total {
 			break
 		}
 	}

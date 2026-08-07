@@ -35,15 +35,15 @@
         "Name": "Terminology Editor",
         "Code": "terminology.editor",
         "Description": {
-          "en_US": "Edit terminology via TranslationTerm Search/Browse/Update; Download PO via I18n SearchTerms",
-          "zh_CN": "可通过 TranslationTerm Search/Browse/Update 编辑术语；通过 I18n SearchTerms 下载 PO"
+          "en_US": "Edit terminology and download PO via TranslationTerm Search/Browse/Update/Count",
+          "zh_CN": "可通过 TranslationTerm Search/Browse/Update/Count 编辑术语并下载 PO"
         },
         "IsActive": true,
         "IsSystem": true
       }
     },
     {
-      "name": "rma_terminology_editor_i18n_search_terms",
+      "name": "rma_terminology_editor_tt_search",
       "model": "RoleMethodAccess",
       "values": {
         "RoleId": {
@@ -52,7 +52,52 @@
         "MetaApplicationId": null,
         "MetaModelId": null,
         "MetaServiceId": {
-          "serviceRef": "auth.I18n/SearchTerms"
+          "serviceRef": "auth.TranslationTerm/Search"
+        },
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rma_terminology_editor_tt_browse",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_terminology_editor"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": {
+          "serviceRef": "auth.TranslationTerm/Browse"
+        },
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rma_terminology_editor_tt_update",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_terminology_editor"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": {
+          "serviceRef": "auth.TranslationTerm/Update"
+        },
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rma_terminology_editor_tt_count",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_terminology_editor"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": {
+          "serviceRef": "auth.TranslationTerm/Count"
         },
         "Mode": "allow"
       }
