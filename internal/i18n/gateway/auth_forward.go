@@ -28,7 +28,7 @@ func accessTokenFromHTTP(ctx context.Context, authorizationHeader string) string
 
 // requireTermsAuth accepts either a trusted Identity in context or a Bearer token.
 // /web/ is HTTP-auth excluded, so IdentityFromContext is often empty and the
-// Authorization header is the primary signal for PO export (and former terms routes).
+// Authorization header is the primary signal for PO export.
 func requireTermsAuth(ctx context.Context, authorizationHeader string) (accessToken string, ok bool) {
 	token := accessTokenFromHTTP(ctx, authorizationHeader)
 	if id := auth.IdentityFromContext(ctx); id != nil && id.IsValid() {
@@ -40,7 +40,7 @@ func requireTermsAuth(ctx context.Context, authorizationHeader string) (accessTo
 	return token, true
 }
 
-// outgoingContextForUserRPC forwards the caller's identity (D1) for SearchTerms/UpdateTerm.
+// outgoingContextForUserRPC forwards the caller's identity (D1) for user-scoped RPCs.
 func outgoingContextForUserRPC(ctx context.Context, accessToken string) context.Context {
 	md := metadata.MD{}
 	if in, ok := metadata.FromIncomingContext(ctx); ok {

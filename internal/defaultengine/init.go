@@ -6,7 +6,6 @@ package defaultengine
 import (
 	"github.com/choysum-dev/choysum/internal/defaultengine/quickjsruntime"
 	i18nbridge "github.com/choysum-dev/choysum/internal/i18n/bridge"
-	i18nstore "github.com/choysum-dev/choysum/internal/i18n/store"
 	"github.com/choysum-dev/choysum/pkg/auth"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsengine/quickjsbridge"
@@ -39,9 +38,8 @@ func defaultQuickjsReplaceableRuntimePlugins() []jsengine.RuntimePlugin {
 		jsengine.NewRuntimePlugin(quickjsengine.RuntimePluginFS, func(runtimeScope scope.Scope, authenticator auth.Authenticator) []jsengine.JsEngineOption {
 			return []jsengine.JsEngineOption{quickjsruntime.WithCompilerFs()}
 		}),
-		jsengine.NewRuntimePlugin(quickjsengine.RuntimePluginI18n, func(runtimeScope scope.Scope, authenticator auth.Authenticator) []jsengine.JsEngineOption {
-			reg := i18nstore.RegistryFor(runtimeScope)
-			return []jsengine.JsEngineOption{i18nbridge.WithTerminology(reg)}
+		jsengine.NewRuntimePluginWithProvider(quickjsengine.RuntimePluginI18n, func(scopeProvider jsengine.ScopeProvider, authenticator auth.Authenticator) []jsengine.JsEngineOption {
+			return []jsengine.JsEngineOption{i18nbridge.WithTerminologyProvider(scopeProvider)}
 		}),
 		jsengine.NewRuntimePlugin(quickjsengine.RuntimePluginGRPC, func(runtimeScope scope.Scope, authenticator auth.Authenticator) []jsengine.JsEngineOption {
 			return []jsengine.JsEngineOption{quickjsbridge.WithGrpc(runtimeScope)}

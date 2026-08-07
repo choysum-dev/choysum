@@ -4,11 +4,22 @@
 package bridge_test
 
 import (
+	"context"
+	"fmt"
+	"io"
+	"log/slog"
+	"path/filepath"
 	"testing"
 
+	"github.com/buke/quickjs-go"
 	"github.com/choysum-dev/choysum/internal/i18n/bridge"
+	"github.com/choysum-dev/choysum/internal/i18n/store"
+	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsengine/quickjsengine"
+	"github.com/choysum-dev/choysum/pkg/scope"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 func TestWithTerminologyLookupSync(t *testing.T) {
@@ -110,4 +121,129 @@ func TestWithTerminologyLookupExplicitKind(t *testing.T) {
 	if lit.String() != "你好" {
 		t.Fatalf("literal = %q, want 你好", lit.String())
 	}
+}
+
+func TestWithTerminologyProviderInvalidateAndUpsert(t *testing.T) {
+	store.ResetSharedRegistryForTests()
+	t.Cleanup(store.ResetSharedRegistryForTests)
+
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "bridge.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	rs := &bridgeTestScope{
+		ctx:     context.Background(),
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		session: &scope.Session{DB: db},
+	}
+	provider := jsengine.StaticScopeProvider(rs)
+
+	engineIface, err := quickjsengine.NewFactory(bridge.WithTerminologyProvider(provider))()
+	if err != nil {
+		t.Fatalf("NewFactory: %v", err)
+	}
+	engine := engineIface.(*quickjsengine.QuickjsEngine)
+	t.Cleanup(func() { _ = engine.Close() })
+
+	noop := engine.Ctx.Eval(`$choysum.i18n.invalidateModule('', 'auth')`)
+	defer noop.Free()
+	if noop.IsException() {
+		t.Fatalf("invalidate empty app: %v", engine.Ctx.Exception())
+	}
+	if noop.ToBool() {
+		t.Fatal("expected invalidateModule('', ...) to return false")
+	}
+
+	ok := engine.Ctx.Eval(`$choysum.i18n.invalidateModule('auth', 'auth')`)
+	defer ok.Free()
+	if ok.IsException() {
+		t.Fatalf("invalidate: %v", engine.Ctx.Exception())
+	}
+	if !ok.ToBool() {
+		t.Fatal("expected invalidateModule to return true")
+	}
+
+	promise := engine.Ctx.Eval(`$choysum.i18n.upsertPackagedTerms('auth', 'auth', 'zh_CN', ` + "`" + `
+msgctxt "web/a@new"
+msgid "Hello"
+msgstr "你好"
+` + "`" + `)`)
+	defer promise.Free()
+	if promise.IsException() {
+		t.Fatalf("upsertPackagedTerms eval: %v", engine.Ctx.Exception())
+	}
+	result, err := awaitPromise(engine, promise)
+	if err != nil {
+		t.Fatalf("upsertPackagedTerms: %v", err)
+	}
+	defer result.Free()
+	upserted := result.Get("upserted")
+	defer upserted.Free()
+	if int(upserted.ToInt64()) != 1 {
+		t.Fatalf("upserted=%v, want 1", upserted.ToInt64())
+	}
+
+	var count int64
+	if err := rs.Session().Table("auth_translation_term").Count(&count).Error; err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("db rows=%d, want 1", count)
+	}
+
+	// The engine-captured registry (not RegistryFor(rs)) holds the warm cache.
+	hit := engine.Ctx.Eval(`$choysum.i18n.t('auth', 'zh_CN', 'web/a@new', 'Hello')`)
+	defer hit.Free()
+	if hit.IsException() {
+		t.Fatalf("lookup after upsert: %v", engine.Ctx.Exception())
+	}
+	if hit.String() != "你好" {
+		t.Fatalf("t after upsert = %q, want 你好", hit.String())
+	}
+
+	bad := engine.Ctx.Eval(`$choysum.i18n.upsertPackagedTerms('auth', 'auth', '', 'x')`)
+	defer bad.Free()
+	if _, err := awaitPromise(engine, bad); err == nil {
+		t.Fatal("expected upsertPackagedTerms validation error")
+	}
+}
+
+type bridgeTestScope struct {
+	ctx     context.Context
+	logger  *slog.Logger
+	session *scope.Session
+}
+
+func (s *bridgeTestScope) Run(fn func(scope.Scope) error) error { return fn(s) }
+func (s *bridgeTestScope) Transactor() scope.Transactor {
+	return scopetest.NewPassthroughTransactor(s)
+}
+func (s *bridgeTestScope) Session() *scope.Session { return s.session }
+func (s *bridgeTestScope) WithContext(ctx context.Context) scope.Scope {
+	if ctx == nil {
+		ctx = s.ctx
+	}
+	return &bridgeTestScope{ctx: ctx, logger: s.logger, session: s.session}
+}
+func (s *bridgeTestScope) Context() context.Context {
+	if s.ctx != nil {
+		return s.ctx
+	}
+	return context.Background()
+}
+func (s *bridgeTestScope) Logger() *slog.Logger { return s.logger }
+
+func awaitPromise(engine *quickjsengine.QuickjsEngine, promise *quickjs.Value) (*quickjs.Value, error) {
+	if promise == nil {
+		return nil, fmt.Errorf("nil promise")
+	}
+	result := promise.Await()
+	if result == nil {
+		return nil, fmt.Errorf("await returned nil")
+	}
+	if result.IsException() {
+		defer result.Free()
+		return nil, engine.Ctx.Exception()
+	}
+	return result, nil
 }

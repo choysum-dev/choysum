@@ -6,6 +6,20 @@ import { MetadataStorage } from '../metadata/storage';
 import { raiseDomainError } from '@/core/service/error';
 import BaseModel from './model';
 import type { InstantiableModelCtor } from './types';
+import type {
+  Insertable,
+  Updateable,
+  FieldSelection,
+  QueryCondition,
+  DeleteOptions,
+  UpdateOptions,
+} from '../repository/types';
+import {
+  getChoysumI18nBridge,
+  invalidateTerminologyModules,
+  modulesFromPayloads,
+  modulesFromRows,
+} from './_translation_term_cache';
 
 /** Minimal surface for `pool<TranslationTermModelCtor>('TranslationTerm')` typing. */
 export type TranslationTermModelCtor = {
@@ -24,6 +38,21 @@ export type GetTranslationsResp = {
   hash: string;
   unchanged: boolean;
   terms_by_module?: Record<string, Record<string, Record<string, string>>>;
+};
+
+export type ImportPackagedReq = {
+  module: string;
+  lang: string;
+  poText: string | Uint8Array;
+};
+
+export type ImportPackagedResp = {
+  upserted: number;
+  skippedOverride: number;
+  rejectedNoCtxt: number;
+  skippedObsolete: number;
+  purgedRetired: number;
+  lang: string;
 };
 
 const KIND_LITERAL = 'literal';
@@ -289,7 +318,7 @@ export default class TranslationTermBaseModel extends BaseModel {
 
   /**
    * Gateway catalog read: language-wide term hash; `module_names` filters
-   * `terms_by_module` only (empty → `{}`, matching Go I18n GetTranslations).
+   * `terms_by_module` only (empty → `{}`, matching TranslationTerm GetTranslations).
    * Shape: terms_by_module module → scope → src → value (literal kind only).
    */
   static async GetTranslations(
@@ -369,4 +398,136 @@ export default class TranslationTermBaseModel extends BaseModel {
       terms_by_module: termsByModule,
     };
   }
+
+  /**
+   * Packaged PO upsert via Go shared helper (not the install default path).
+   */
+  static async ImportPackaged(
+    this: InstantiableModelCtor<TranslationTermBaseModel>,
+    req: ImportPackagedReq
+  ): Promise<ImportPackagedResp> {
+    const application = String(storeMeta(this)?.application || '').trim();
+    if (!application || application === 'core') {
+      fail('TRANSLATION_TERM_IMPORT_APP', 'ImportPackaged requires a non-core application host');
+    }
+    const module = String(req?.module ?? '').trim();
+    const lang = String(req?.lang ?? '').trim();
+    if (!module || !lang) {
+      fail('TRANSLATION_TERM_IMPORT_ARGS', 'module and lang are required');
+    }
+    if (req?.poText == null) {
+      fail('TRANSLATION_TERM_IMPORT_ARGS', 'poText is required');
+    }
+    const bridge = getChoysumI18nBridge();
+    if (!bridge || typeof bridge.upsertPackagedTerms !== 'function') {
+      fail('TRANSLATION_TERM_IMPORT_BRIDGE', '$choysum.i18n.upsertPackagedTerms is not available');
+    }
+    return bridge.upsertPackagedTerms(application, module, lang, req.poText);
+  }
+
+  static override async Create<T extends BaseModel>(
+    this: { new (...args: any[]): T } & typeof BaseModel,
+    value: Partial<Insertable<T & BaseModel>>,
+    returnFields?: FieldSelection<T>
+  ): Promise<T> {
+    const application = hostApplication(this);
+    const out = await super.Create(value as any, returnFields as any);
+    invalidateTerminologyModules(application, modulesFromRows(out));
+    return out as unknown as T;
+  }
+
+  static override async CreateMany<T extends BaseModel>(
+    this: { new (...args: any[]): T } & typeof BaseModel,
+    values: Partial<Insertable<T & BaseModel>>[],
+    returnFields?: FieldSelection<T>
+  ): Promise<T[]> {
+    const application = hostApplication(this);
+    const out = await super.CreateMany(values as any, returnFields as any);
+    invalidateTerminologyModules(application, [
+      ...modulesFromPayloads(values),
+      ...modulesFromRows(out),
+    ]);
+    return out as unknown as T[];
+  }
+
+  static override async Update<T extends BaseModel>(
+    this: { new (...args: any[]): T } & typeof BaseModel,
+    condition: QueryCondition<T>,
+    values: Partial<Updateable<T & BaseModel>>,
+    returnFields?: FieldSelection<T>,
+    options?: UpdateOptions
+  ): Promise<Partial<T>[]> {
+    const application = hostApplication(this);
+    const before = await (this as any).Search(condition as any, {
+      fields: ['Module'] as any,
+      limit: 0,
+    });
+    const out = await super.Update(condition as any, values as any, returnFields as any, options as any);
+    invalidateTerminologyModules(application, [
+      ...modulesFromPayloads(values),
+      ...modulesFromRows(before),
+      ...modulesFromRows(out),
+    ]);
+    return out as unknown as Partial<T>[];
+  }
+
+  static override async UpdateById<T extends BaseModel>(
+    this: { new (...args: any[]): T } & typeof BaseModel,
+    id: string,
+    values: Partial<Updateable<T & BaseModel>>,
+    returnFields?: FieldSelection<T>,
+    options?: UpdateOptions
+  ): Promise<Partial<T>> {
+    const application = hostApplication(this);
+    let module = String((values as any)?.Module ?? '').trim();
+    if (!module) {
+      try {
+        const existing = await (this as any).Browse(id, ['Module'] as any);
+        module = String(existing?.Module ?? '').trim();
+      } catch {
+        /* Browse may fail if row gone; still attempt update */
+      }
+    }
+    const out = await super.UpdateById(id as any, values as any, returnFields as any, options as any);
+    invalidateTerminologyModules(application, [module, ...modulesFromRows(out)]);
+    return out as unknown as Partial<T>;
+  }
+
+  static override async Delete<T extends BaseModel>(
+    this: { new (...args: any[]): T } & typeof BaseModel,
+    condition: QueryCondition<T>,
+    options?: DeleteOptions
+  ): Promise<number> {
+    const application = hostApplication(this);
+    const before = await (this as any).Search(condition as any, {
+      fields: ['Module'] as any,
+      limit: 0,
+      ...(options || {}),
+    });
+    const count = await super.Delete(condition as any, options as any);
+    invalidateTerminologyModules(application, modulesFromRows(before));
+    return count;
+  }
+
+  static override async DeleteById<T extends BaseModel>(
+    this: { new (...args: any[]): T } & typeof BaseModel,
+    id: string,
+    options?: DeleteOptions
+  ): Promise<number> {
+    const application = hostApplication(this);
+    let module = '';
+    try {
+      const existing = await (this as any).Browse(id, ['Module'] as any, options as any);
+      module = String(existing?.Module ?? '').trim();
+    } catch {
+      /* missing row */
+    }
+    const count = await super.DeleteById(id as any, options as any);
+    invalidateTerminologyModules(application, [module]);
+    return count;
+  }
+}
+
+function hostApplication(ctor: any): string {
+  return String(storeMeta(ctor as InstantiableModelCtor<TranslationTermBaseModel>)?.application || '').trim();
 }
