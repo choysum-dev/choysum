@@ -3,11 +3,11 @@
 
 package meta
 
-import "github.com/choysum-dev/choysum/pkg/meta"
+import pkgmeta "github.com/choysum-dev/choysum/pkg/meta"
 
 // Setting stores key/value settings for stable system state.
 type Setting struct {
-	meta.BaseModel `gorm:"embedded"`
+	pkgmeta.BaseModel `gorm:"embedded"`
 
 	Key   string `gorm:"type:varchar(255);not null;uniqueIndex"`
 	Value string `gorm:"type:text;not null"`

@@ -5,6 +5,7 @@ package meta
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	pkgmeta "github.com/choysum-dev/choysum/pkg/meta"
@@ -65,33 +66,28 @@ func TestOpsEntitiesAndTableNames(t *testing.T) {
 	}
 
 	wantTables := map[string]string{
+		"ModuleIndex":            "meta_module_index",
+		"ModelData":              "meta_model_data",
+		"Setting":                "meta_setting",
+		"ModuleMigrationHistory": "meta_module_migration_history",
+		"ModuleManagementLog":    "meta_module_management_log",
+		"LockLease":              "meta_lock_lease",
+	}
+	gotTables := map[string]string{
 		"ModuleIndex":            (&ModuleIndex{}).TableName(),
 		"ModelData":              (&ModelData{}).TableName(),
 		"Setting":                (&Setting{}).TableName(),
 		"ModuleMigrationHistory": (ModuleMigrationHistory{}).TableName(),
+		"ModuleManagementLog":    (ModuleManagementLog{}).TableName(),
 		"LockLease":              (&LockLease{}).TableName(),
 	}
-	for name, table := range wantTables {
-		if table == "" || table == "meta_ir_"+name {
-			t.Fatalf("%s.TableName() = %q, unexpected ir prefix or empty", name, table)
+	for name, want := range wantTables {
+		got := gotTables[name]
+		if got != want {
+			t.Fatalf("%s.TableName() = %q, want %q", name, got, want)
 		}
-	}
-	if got := (&ModuleIndex{}).TableName(); got != "meta_module_index" {
-		t.Fatalf("ModuleIndex.TableName() = %q", got)
-	}
-	if got := (&ModelData{}).TableName(); got != "meta_model_data" {
-		t.Fatalf("ModelData.TableName() = %q", got)
-	}
-	if got := (&Setting{}).TableName(); got != "meta_setting" {
-		t.Fatalf("Setting.TableName() = %q", got)
-	}
-	if got := (ModuleMigrationHistory{}).TableName(); got != "meta_module_migration_history" {
-		t.Fatalf("ModuleMigrationHistory.TableName() = %q", got)
-	}
-	if got := (ModuleManagementLog{}).TableName(); got != "meta_module_management_log" {
-		t.Fatalf("ModuleManagementLog.TableName() = %q", got)
-	}
-	if got := (&LockLease{}).TableName(); got != "meta_lock_lease" {
-		t.Fatalf("LockLease.TableName() = %q", got)
+		if strings.HasPrefix(got, "meta_ir_") {
+			t.Fatalf("%s.TableName() = %q, unexpected ir prefix", name, got)
+		}
 	}
 }

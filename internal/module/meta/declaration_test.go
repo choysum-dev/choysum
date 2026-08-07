@@ -10,6 +10,7 @@ import (
 
 	pkgmeta "github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/rs/xid"
+	"gorm.io/gorm"
 )
 
 func TestListDeclarations_FiltersAndPreload(t *testing.T) {
@@ -204,5 +205,36 @@ func TestRemoveModuleDeclarations(t *testing.T) {
 	}
 	if keys, err := RemoveModuleDeclarations(db, ""); err != nil || keys != nil {
 		t.Fatalf("empty moduleID: keys=%v err=%v", keys, err)
+	}
+}
+
+func TestRemoveModuleDeclarations_IncludesLegacyEffectiveKeys(t *testing.T) {
+	db := openDeclarationTestDB(t, "remove-eff-only")
+	if err := ensureDualStoreTables(db); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	modID := "mod-eff-only"
+	eff := pkgmeta.Model{
+		BaseModel:   pkgmeta.BaseModel{Id: sql.NullString{String: "eff-legacy", Valid: true}},
+		Name:        "LegacyShell",
+		Path:        "/legacy.ts",
+		Application: "partner",
+		ModuleId:    sql.NullString{String: modID, Valid: true},
+	}
+	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(&eff).Error; err != nil {
+		t.Fatalf("seed effective: %v", err)
+	}
+	keys, err := RemoveModuleDeclarations(db, modID)
+	if err != nil {
+		t.Fatalf("RemoveModuleDeclarations: %v", err)
+	}
+	found := false
+	for _, k := range keys {
+		if k.Application == "partner" && k.Name == "LegacyShell" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected legacy effective key, got %#v", keys)
 	}
 }

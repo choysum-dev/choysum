@@ -11,7 +11,6 @@ import (
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/rs/xid"
-
 )
 
 func TestModuleUninstallerCleanModelsClearsMetaModelDataOnly(t *testing.T) {
@@ -107,7 +106,7 @@ func TestModuleUninstallerCleanModelsRecomputesAfterExtRawDelete(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
-		t.Fatalf("EnsureDualStoreTables: %v", err)
+		t.Fatalf("AutoMigrate CatalogEntities: %v", err)
 	}
 
 	baseMod := &meta.Module{Name: "partner", Status: meta.Installed, Version: "1.0.0"}

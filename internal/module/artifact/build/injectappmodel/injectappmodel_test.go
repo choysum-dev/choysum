@@ -18,7 +18,6 @@ import (
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-
 )
 
 var testDBSeq atomic.Uint64
@@ -36,7 +35,7 @@ func newTestSession(t *testing.T, mod *meta.Module) (*Session, *gorm.DB) {
 		t.Fatalf("open sqlite: %v", err)
 	}
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
-		t.Fatalf("EnsureDualStoreTables: %v", err)
+		t.Fatalf("AutoMigrate CatalogEntities: %v", err)
 	}
 	reg := NewRegistryWithDefaults()
 	sess := NewSession(BuildCtx{

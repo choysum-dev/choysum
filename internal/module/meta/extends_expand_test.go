@@ -28,7 +28,7 @@ func TestExpandModelsAlongExtends_MergesParentFields(t *testing.T) {
 	childPath := "/base/service/models/address.ts"
 	parent := &rawModel{
 		BaseModel: pkgmeta.BaseModel{Id: sql.NullString{String: "raw-parent", Valid: true}},
-		Name:      "pkgmeta.BaseModel",
+		Name:      "BaseModel",
 		Path:      parentPath,
 		Abstract:  true,
 		ModuleId:  sql.NullString{String: "mod-core", Valid: true},

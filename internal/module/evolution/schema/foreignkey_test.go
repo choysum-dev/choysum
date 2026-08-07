@@ -12,7 +12,6 @@ import (
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"gorm.io/gorm"
-
 )
 
 func TestForeignKeySQLBuilders(t *testing.T) {

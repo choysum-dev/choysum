@@ -11,7 +11,6 @@ import (
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"gorm.io/gorm"
-
 )
 
 const translatedBaseLang = "en_US"
@@ -70,7 +69,7 @@ func (l *Loader) languageCodeExists(tx *gorm.DB, code string) (bool, error) {
 	}
 	model, err := modmeta.LookupEffectiveModel(tx, "base", "Language")
 	if err != nil {
-		if modmeta.IsEffectiveModelNotFound(err) || errors.Is(err, gorm.ErrRecordNotFound) {
+		if modmeta.IsEffectiveModelNotFound(err) {
 			return false, nil
 		}
 		return false, err

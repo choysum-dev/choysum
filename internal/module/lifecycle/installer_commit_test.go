@@ -18,7 +18,6 @@ import (
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/rs/xid"
 	"gorm.io/gorm"
-
 )
 
 type commitStubBuilder struct{}
@@ -304,7 +303,7 @@ func TestCommitInstallMetaAndDocumentSchedules(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
-		t.Fatalf("EnsureDualStoreTables: %v", err)
+		t.Fatalf("AutoMigrate CatalogEntities: %v", err)
 	}
 	now := time.Now().UTC()
 	if err := db.Create(&internaltask.Schedule{

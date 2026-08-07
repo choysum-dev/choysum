@@ -6,11 +6,11 @@ package meta
 import (
 	"time"
 
-	"github.com/choysum-dev/choysum/pkg/meta"
+	pkgmeta "github.com/choysum-dev/choysum/pkg/meta"
 )
 
 type ModuleMigrationHistory struct {
-	meta.BaseModel
+	pkgmeta.BaseModel
 	ModuleName string    `gorm:"column:module_name;size:255;index:idx_meta_module_migration_history,unique"`
 	Version    string    `gorm:"column:version;size:64;index:idx_meta_module_migration_history,unique"`
 	Phase      string    `gorm:"column:phase;size:16;index:idx_meta_module_migration_history,unique"`

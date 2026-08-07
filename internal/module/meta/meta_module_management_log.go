@@ -6,12 +6,12 @@ package meta
 import (
 	"time"
 
-	"github.com/choysum-dev/choysum/pkg/meta"
+	pkgmeta "github.com/choysum-dev/choysum/pkg/meta"
 	"gorm.io/datatypes"
 )
 
 type ModuleManagementLog struct {
-	meta.BaseModel
+	pkgmeta.BaseModel
 	JobId            string         `gorm:"column:job_id;size:64;uniqueIndex"`
 	ModuleName       string         `gorm:"column:module_name;size:255;index"`
 	Action           string         `gorm:"column:action;size:32;index"`

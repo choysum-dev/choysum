@@ -208,6 +208,12 @@ func (m *ModuleManager) bootstrapMetaTables(txScope scope.Scope) error {
 	migrator := txScope.Session().Migrator()
 
 	if migrator.HasTable(&meta.Module{}) && migrator.HasTable(&modmeta.LockLease{}) {
+		// Tables may predate SPL12; ensure the live unique index once meta_model exists.
+		if migrator.HasTable(&meta.Model{}) {
+			if err := modmeta.EnsureEffectiveAppNameUniqueIndex(txScope.Session().DB); err != nil {
+				return xfmt.Errorf("ensure effective app/name unique index: %w", err)
+			}
+		}
 		return nil
 	}
 
@@ -252,6 +258,9 @@ func (m *ModuleManager) bootstrapMetaTables(txScope scope.Scope) error {
 
 	if err := txScope.Session().AutoMigrate(m.entities...); err != nil {
 		return xfmt.Errorf("auto migrate meta entities: %w", err)
+	}
+	if err := modmeta.EnsureEffectiveAppNameUniqueIndex(txScope.Session().DB); err != nil {
+		return xfmt.Errorf("ensure effective app/name unique index: %w", err)
 	}
 	if logger != nil {
 		logger.Info("meta base table bootstrap completed", "duration_ms", time.Since(startedAt).Milliseconds())
@@ -351,6 +360,9 @@ func (m *ModuleManager) migrateBaseModule() error {
 		m.entities...,
 	); err != nil {
 		return xfmt.Errorf("error migrating base module: %w", err)
+	}
+	if err := modmeta.EnsureEffectiveAppNameUniqueIndex(m.runtimeScope.Session().DB); err != nil {
+		return xfmt.Errorf("ensure effective app/name unique index: %w", err)
 	}
 	return nil
 }

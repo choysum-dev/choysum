@@ -21,7 +21,6 @@ import (
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-
 )
 
 type schemaTestScope struct {

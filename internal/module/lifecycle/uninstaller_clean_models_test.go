@@ -12,7 +12,6 @@ import (
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/rs/xid"
 	"gorm.io/gorm"
-
 )
 
 type cleanModelsSeed struct {
@@ -254,7 +253,21 @@ END`).Error; err != nil {
 			name:    "recompute effective",
 			wantMsg: "error flushing effective models after uninstall",
 			setup: func(t *testing.T, db *gorm.DB, seed cleanModelsSeed) {
-				dropMetaTable(t, db, "meta_model")
+				// Materialize effective so Flush has a tree to delete; block hard deletes to fail Flush.
+				if err := modmeta.FlushEffective(db, []modmeta.LogicalKey{{
+					Application: "demo",
+					Name:        "demo.model",
+				}}); err != nil {
+					t.Fatalf("seed effective projection: %v", err)
+				}
+				if err := db.Exec(`
+CREATE TRIGGER block_meta_model_delete
+BEFORE DELETE ON meta_model
+BEGIN
+  SELECT RAISE(ABORT, 'flush blocked');
+END`).Error; err != nil {
+					t.Fatalf("create meta_model delete trigger: %v", err)
+				}
 			},
 		},
 		{

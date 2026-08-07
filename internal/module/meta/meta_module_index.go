@@ -7,13 +7,13 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/choysum-dev/choysum/pkg/meta"
+	pkgmeta "github.com/choysum-dev/choysum/pkg/meta"
 	"gorm.io/datatypes"
 )
 
 // ModuleIndex stores module availability and manifest snapshots.
 type ModuleIndex struct {
-	meta.BaseModel `gorm:"embedded"`
+	pkgmeta.BaseModel `gorm:"embedded"`
 
 	ModuleName       string         `gorm:"column:module_name;type:varchar(255);not null;uniqueIndex:idx_meta_module_index_origin,priority:1"`
 	OriginType       string         `gorm:"column:origin_type;type:varchar(32);not null;uniqueIndex:idx_meta_module_index_origin,priority:2"`

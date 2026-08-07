@@ -10,15 +10,10 @@ import (
 	"time"
 
 	pkgmeta "github.com/choysum-dev/choysum/pkg/meta"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
 func TestLookupEffectiveModel_FindsLiveRow(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open("file:lookup-eff?mode=memory&cache=shared"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
+	db := openDualStoreTestDB(t)
 	if err := ensureDualStoreTables(db); err != nil {
 		t.Fatalf("ensure dual store: %v", err)
 	}
@@ -54,10 +49,7 @@ func TestLookupEffectiveModel_FindsLiveRow(t *testing.T) {
 
 func TestLookupEffectiveModel_FindErrorAndPickBranches(t *testing.T) {
 	t.Run("find_error_closed_db", func(t *testing.T) {
-		db, err := gorm.Open(sqlite.Open("file:lookup-eff-closed?mode=memory&cache=shared"), &gorm.Config{})
-		if err != nil {
-			t.Fatalf("open: %v", err)
-		}
+		db := openDualStoreTestDB(t)
 		if err := ensureDualStoreTables(db); err != nil {
 			t.Fatalf("ensure: %v", err)
 		}

@@ -10,7 +10,6 @@ import (
 
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
-
 )
 
 type fakeModelMigrator struct{ err error }

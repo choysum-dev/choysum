@@ -146,6 +146,8 @@ func DeleteDeclarationTrees(db *gorm.DB, modelIDs []string) error {
 
 // RemoveModuleDeclarations hard-deletes all declaration trees for moduleID and returns
 // the logical keys that must be flushed afterward. Does not call FlushEffective.
+// Keys include both live raw declarations and any legacy effective rows still tagged
+// with moduleID so FlushEffective can clear shells that have no remaining raw.
 func RemoveModuleDeclarations(db *gorm.DB, moduleID string) ([]LogicalKey, error) {
 	moduleID = strings.TrimSpace(moduleID)
 	if moduleID == "" {
@@ -155,26 +157,41 @@ func RemoveModuleDeclarations(db *gorm.DB, moduleID string) ([]LogicalKey, error
 		return nil, fmt.Errorf("db is nil")
 	}
 
+	keys := make([]LogicalKey, 0)
+	seen := map[string]struct{}{}
+	appendKey := func(application, name string) {
+		k := LogicalKey{Application: application, Name: name}.Normalized()
+		if !k.Valid() {
+			return
+		}
+		id := k.Application + "\x00" + k.Name
+		if _, ok := seen[id]; ok {
+			return
+		}
+		seen[id] = struct{}{}
+		keys = append(keys, k)
+	}
+
 	decls, err := ListDeclarations(db, DeclarationQuery{ModuleID: moduleID})
 	if err != nil {
 		return nil, fmt.Errorf("list previous raw models: %w", err)
 	}
-	keys := make([]LogicalKey, 0, len(decls))
-	seen := map[string]struct{}{}
 	for _, row := range decls {
 		if row == nil {
 			continue
 		}
-		k := LogicalKey{Application: row.Application, Name: row.Name}.Normalized()
-		if !k.Valid() {
-			continue
-		}
-		id := k.Application + "\x00" + k.Name
-		if _, ok := seen[id]; ok {
-			continue
-		}
-		seen[id] = struct{}{}
-		keys = append(keys, k)
+		appendKey(row.Application, row.Name)
+	}
+
+	var prevEff []pkgmeta.Model
+	if err := db.Model(&pkgmeta.Model{}).
+		Select("id, application, name").
+		Where("module_id = ?", moduleID).
+		Find(&prevEff).Error; err != nil {
+		return nil, fmt.Errorf("list previous effective models: %w", err)
+	}
+	for _, row := range prevEff {
+		appendKey(row.Application, row.Name)
 	}
 
 	if err := deleteRawModelsForModule(db, moduleID); err != nil {
@@ -185,6 +202,9 @@ func RemoveModuleDeclarations(db *gorm.DB, moduleID string) ([]LogicalKey, error
 
 // ReplaceModuleDeclarations rewrites all declaration trees for moduleID from models
 // and returns the logical keys that must be flushed afterward.
+//
+// Side effect: each non-nil model with a non-empty Path has ModuleId set to moduleID
+// before persist (callers that share those pointers observe the mutation).
 func ReplaceModuleDeclarations(db *gorm.DB, moduleID string, models []*pkgmeta.Model) ([]LogicalKey, error) {
 	moduleID = strings.TrimSpace(moduleID)
 	if moduleID == "" {

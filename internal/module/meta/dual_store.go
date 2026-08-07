@@ -47,8 +47,13 @@ func ensureDualStoreTables(db *gorm.DB) error {
 	return nil
 }
 
-// ensureEffectiveAppNameUniqueIndex enforces one live effective row per (application, name).
+// EnsureEffectiveAppNameUniqueIndex enforces one live effective row per (application, name).
 // Safe to call repeatedly after recomputes; call only when live duplicates are gone.
+// Catalog AutoMigrate alone does not create this index — call after migrating CatalogEntities.
+func EnsureEffectiveAppNameUniqueIndex(db *gorm.DB) error {
+	return ensureEffectiveAppNameUniqueIndex(db)
+}
+
 func ensureEffectiveAppNameUniqueIndex(db *gorm.DB) error {
 	if db == nil {
 		return fmt.Errorf("db is nil")
@@ -65,7 +70,8 @@ func ensureBaseModelID(b *pkgmeta.BaseModel) {
 	if b == nil {
 		return
 	}
-	if strings.TrimSpace(b.Id.String) == "" {
+	// Invalid NullString still writes NULL even when String is non-empty.
+	if !b.Id.Valid || strings.TrimSpace(b.Id.String) == "" {
 		b.Id = sql.NullString{String: xid.New().String(), Valid: true}
 	}
 }

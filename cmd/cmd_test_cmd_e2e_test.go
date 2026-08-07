@@ -32,7 +32,6 @@ import (
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-
 )
 
 func TestCLIErrorBlockLastOutput_InitInteractive(t *testing.T) {

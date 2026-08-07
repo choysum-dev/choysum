@@ -294,7 +294,8 @@ func TestPersistEffectiveProjection_FailuresAndNils(t *testing.T) {
 	}
 }
 func TestEnsureEffectiveAppNameUniqueIndex_Dialects(t *testing.T) {
-	// namedDialector only overrides Name() for branch selection; SQL still runs on SQLite.
+	// Smoke-only: namedDialector fakes Dialector.Name() while SQL still runs on SQLite.
+	// Does not prove MySQL/Postgres DDL semantics (partial vs full unique index).
 	// Each case opens a fresh DB so Dialector mutation does not leak across subtests.
 	db := openDualStoreTestDB(t)
 	if err := ensureDualStoreTables(db); err != nil {

@@ -683,7 +683,7 @@ func seedModuleIndexForE2E(ctx context.Context, configPath string, packages map[
 			return xfmt.Errorf("missing db session")
 		}
 		if err := sess.DB.AutoMigrate(&modmeta.ModuleIndex{}); err != nil {
-			return xfmt.Errorf("auto-migrate metadata.ModuleIndex: %w", err)
+			return xfmt.Errorf("auto-migrate modmeta.ModuleIndex: %w", err)
 		}
 
 		now := time.Now()
