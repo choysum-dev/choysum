@@ -19,6 +19,14 @@ import (
 // LookupFunc is the sync terminology lookup used by $choysum.i18n.t.
 type LookupFunc func(module, lang, scope, src, kind string) (value string, ok bool)
 
+// Test hooks (production defaults); overridden in package tests for error branches.
+var (
+	upsertPackagedTermsFn = i18nimport.UpsertPackagedTerms
+	marshalFn             = func(ctx *quickjs.Context, v any) (*quickjs.Value, error) {
+		return ctx.Marshal(v)
+	}
+)
+
 // WithTerminology registers sync $choysum.i18n.t against a fixed registry (lookup only).
 // Prefer WithTerminologyProvider when invalidate/import are needed.
 func WithTerminology(reg *store.Registry) jsengine.JsEngineOption {
@@ -168,14 +176,11 @@ func performUpsertPackagedTerms(ctx *quickjs.Context, jse *quickjsengine.Quickjs
 	}
 
 	execCtx := jse.ExecContext()
-	if execCtx == nil {
-		execCtx = context.Background()
-	}
 	rs := jsengine.ResolveScope(scopeProvider, execCtx)
 	if rs == nil || rs.Session() == nil {
 		return ctx.NewError(fmt.Errorf("upsertPackagedTerms: missing runtime session"))
 	}
-	stats, err := i18nimport.UpsertPackagedTerms(rs, reg, application, module, lang, poText)
+	stats, err := upsertPackagedTermsFn(rs, reg, application, module, lang, poText)
 	if err != nil {
 		return ctx.NewError(err)
 	}
@@ -190,7 +195,7 @@ func performUpsertPackagedTerms(ctx *quickjs.Context, jse *quickjsengine.Quickjs
 		"purgedRetired":   stats.PurgedRetired,
 		"lang":            stats.Lang,
 	}
-	val, marshalErr := ctx.Marshal(payload)
+	val, marshalErr := marshalFn(ctx, payload)
 	if marshalErr != nil {
 		return ctx.NewError(marshalErr)
 	}

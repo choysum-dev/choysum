@@ -230,6 +230,52 @@ msgstr "你好"
 	if _, err := awaitPromise(engine, nullApp); err == nil {
 		t.Fatal("expected upsertPackagedTerms null application to reject")
 	}
+
+	coreInv := engine.Ctx.Eval(`$choysum.i18n.invalidateModule('core', 'auth')`)
+	defer coreInv.Free()
+	if coreInv.ToBool() {
+		t.Fatal("expected invalidateModule('core', ...) to return false")
+	}
+	emptyMod := engine.Ctx.Eval(`$choysum.i18n.invalidateModule('auth', '')`)
+	defer emptyMod.Free()
+	if emptyMod.ToBool() {
+		t.Fatal("expected invalidateModule(..., '') to return false")
+	}
+	undefMod := engine.Ctx.Eval(`$choysum.i18n.invalidateModule('auth', undefined)`)
+	defer undefMod.Free()
+	if undefMod.ToBool() {
+		t.Fatal("expected invalidateModule(..., undefined) to return false")
+	}
+	shortInv := engine.Ctx.Eval(`$choysum.i18n.invalidateModule('auth')`)
+	defer shortInv.Free()
+	if shortInv.ToBool() {
+		t.Fatal("expected invalidateModule with one arg to return false")
+	}
+
+	u8 := engine.Ctx.Eval(`$choysum.i18n.upsertPackagedTerms('auth', 'web', 'zh_CN', new TextEncoder().encode('msgctxt "s"\nmsgid "X"\nmsgstr "Y"\n'))`)
+	// TextEncoder may be unavailable — fall back to Uint8Array of a minimal PO.
+	if u8.IsException() {
+		u8.Free()
+		_ = engine.Ctx.Exception()
+		u8 = engine.Ctx.Eval(`(() => {
+			const s = 'msgctxt "s"\nmsgid "X"\nmsgstr "Y"\n';
+			const a = new Uint8Array(s.length);
+			for (let i = 0; i < s.length; i++) a[i] = s.charCodeAt(i);
+			return $choysum.i18n.upsertPackagedTerms('auth', 'web', 'zh_CN', a);
+		})()`)
+	}
+	defer u8.Free()
+	u8Result, err := awaitPromise(engine, u8)
+	if err != nil {
+		t.Fatalf("upsertPackagedTerms Uint8Array: %v", err)
+	}
+	u8Result.Free()
+
+	fewArgs := engine.Ctx.Eval(`$choysum.i18n.upsertPackagedTerms('auth', 'auth', 'zh_CN')`)
+	defer fewArgs.Free()
+	if _, err := awaitPromise(engine, fewArgs); err == nil {
+		t.Fatal("expected upsertPackagedTerms with missing poText to reject")
+	}
 }
 
 type bridgeTestScope struct {
