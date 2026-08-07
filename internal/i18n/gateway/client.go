@@ -74,12 +74,24 @@ func fetchAppTranslations(ctx context.Context, runtimeScope scope.Scope, app, la
 	if err != nil {
 		return nil, fmt.Errorf("decode GetTranslations response: %w", err)
 	}
-	// Response is TranslationTerm_GetTranslations_Resp{ Value result = 1 }.
-	payload, _ := out["result"].(map[string]any)
-	if payload == nil {
-		payload = out
+	payload, err := unwrapGetTranslationsPayload(out)
+	if err != nil {
+		return nil, err
 	}
 	return parseAppTranslations(payload), nil
+}
+
+// unwrapGetTranslationsPayload accepts Resp{ Value result = 1 } or a legacy
+// unwrapped body. A present non-object result is a decode error (not empty catalog).
+func unwrapGetTranslationsPayload(out map[string]any) (map[string]any, error) {
+	payload, ok := out["result"].(map[string]any)
+	if ok {
+		return payload, nil
+	}
+	if _, hasResult := out["result"]; hasResult {
+		return nil, fmt.Errorf("decode GetTranslations response: result must be an object")
+	}
+	return out, nil
 }
 
 func parseAppTranslations(out map[string]any) *appTranslations {

@@ -351,9 +351,10 @@ export default class TranslationTermBaseModel extends BaseModel {
     await ensureTermUniqueIndex(this);
 
     // Match Go TermStore: hash is language-wide; module_names only filters the payload.
-    // Gateway dials GetTranslations with internal identity (no userId). Without a
-    // RecordRule bypass, non-meta hosts return an empty read set — same pattern as
-    // FieldDefault.GetEffective (§7.3 authz bypass, no Model.sudo audit noise).
+    // Catalog-wide read for every caller (SPA language pack), not per-user scoped
+    // terms — same pattern as FieldDefault.GetEffective (§7.3). RecordRule-aware
+    // CRUD remains on Search/Create/Write; gateway internal identity without
+    // bypass would otherwise get an empty read set on non-meta hosts.
     const rows = (await withRepositoryAuthzRuleBypass(async () =>
       (this as any).Search(
         { And: [['Lang', '=', lang]] },

@@ -62,6 +62,8 @@ test('GetTranslations Search runs under authz rule bypass (gateway internal iden
   try {
     const out = await TtCovTerm.GetTranslations({ lang: 'zh_CN', module_names: ['auth'] });
     expect(sawBypass).toBe(true);
+    expect(getRepositoryRecordRuleBypassDepth()).toBe(0);
+    expect(getRepositoryFieldRuleBypassDepth()).toBe(0);
     expect(out.terms_by_module).toEqual({ auth: { ui: { Hi: '你好' } } });
   } finally {
     if (hadOwn) (globalThis as Record<string, unknown>)[key] = previous;
