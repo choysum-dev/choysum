@@ -274,6 +274,8 @@ func (s *ApplicationService) ServiceDescs() ([]*grpc.ServiceDesc, error) {
 		serviceDescs = append(serviceDescs, parsed...)
 
 		// Register app protos into the global loader for ExecuteJob routing.
+		// Paths must be "{app}/{file}.proto" so ProtoLoader.appProtoFiles(app)
+		// can find them (same convention as generated service clients).
 		if len(protoFiles) > 0 && len(s.protoImportPaths) > 0 {
 			importRoot := s.protoImportPaths[0]
 			for _, file := range protoFiles {
@@ -289,7 +291,7 @@ func (s *ApplicationService) ServiceDescs() ([]*grpc.ServiceDesc, error) {
 				if err != nil {
 					continue
 				}
-				loader.Global().RegisterProto(rel, string(content))
+				loader.Global().RegisterProto(loaderRegisterPath(s.name, rel), string(content))
 			}
 		}
 	}
@@ -503,4 +505,25 @@ func NewApplicationService(runtimeScope scope.Scope, name string, jsExecutor jse
 	}
 
 	return service, nil
+}
+
+// loaderRegisterPath mirrors generate.resolveProtoRegisterPath: app-owned
+// files become "{app}/{rel}", while google/* stays unprefixed.
+func loaderRegisterPath(appName, relPath string) string {
+	rel := filepath.ToSlash(strings.TrimSpace(relPath))
+	if rel == "" || rel == "." {
+		return ""
+	}
+	if strings.HasPrefix(rel, "google/") {
+		return rel
+	}
+	app := strings.TrimSpace(appName)
+	if app == "" {
+		return rel
+	}
+	// Already "{app}/..." (e.g. tests that walk a parent import root).
+	if strings.HasPrefix(rel, app+"/") {
+		return rel
+	}
+	return filepath.ToSlash(filepath.Join(app, rel))
 }

@@ -1794,6 +1794,21 @@ func TestUnaryHandlerErrorPaths(t *testing.T) {
 	})
 }
 
+func TestLoaderRegisterPath(t *testing.T) {
+	if got := loaderRegisterPath("web", "web.proto"); got != "web/web.proto" {
+		t.Fatalf("api-layout path = %q, want web/web.proto", got)
+	}
+	if got := loaderRegisterPath("web", "web/web.proto"); got != "web/web.proto" {
+		t.Fatalf("already-prefixed path = %q, want unchanged", got)
+	}
+	if got := loaderRegisterPath("web", "google/protobuf/empty.proto"); got != "google/protobuf/empty.proto" {
+		t.Fatalf("google path = %q", got)
+	}
+	if got := loaderRegisterPath("", "x.proto"); got != "x.proto" {
+		t.Fatalf("empty app = %q", got)
+	}
+}
+
 func TestServiceDescsRegistersLoaderAndSkipsTaskWorkerForWeb(t *testing.T) {
 	t.Run("non-web service registers proto in global loader", func(t *testing.T) {
 		root := t.TempDir()
@@ -1877,6 +1892,51 @@ message PingReply { string msg = 1; }
 		}
 		if !hasWebService || hasTaskWorker || len(descs) != 1 {
 			t.Fatalf("expected web.WebService only without TaskWorker/I18n, got %#v", descs)
+		}
+	})
+
+	t.Run("api-app-proto-dir layout registers web/web.proto for loader", func(t *testing.T) {
+		// Matches NewApplicationService: protoRootDir == protoImportPaths == api/<app>/proto.
+		root := t.TempDir()
+		protoDir := filepath.Join(root, "api", "web", "proto")
+		if err := os.MkdirAll(protoDir, 0o755); err != nil {
+			t.Fatalf("mkdir api web proto: %v", err)
+		}
+		protoText := `syntax = "proto3";
+package web;
+
+service TranslationTerm {
+  rpc GetTranslations(GetTranslationsReq) returns (GetTranslationsResp);
+}
+
+message GetTranslationsReq { string lang = 1; }
+message GetTranslationsResp { string hash = 1; }
+`
+		if err := os.WriteFile(filepath.Join(protoDir, "web.proto"), []byte(protoText), 0o644); err != nil {
+			t.Fatalf("write web.proto: %v", err)
+		}
+
+		loader.ResetGlobalForTests()
+		runtimeScope := newHelperScope(root)
+		svc := &ApplicationService{
+			runtimeScope:     runtimeScope,
+			name:             "web",
+			appDistPath:      filepath.Join(root, "web"),
+			protoRootDir:     protoDir,
+			protoImportPaths: []string{protoDir},
+		}
+		if err := os.MkdirAll(svc.appDistPath, 0o755); err != nil {
+			t.Fatalf("mkdir web dist: %v", err)
+		}
+		if _, err := svc.ServiceDescs(); err != nil {
+			t.Fatalf("ServiceDescs(web api layout) error = %v", err)
+		}
+		md, err := loader.Global().GetMethodDescriptor("web.TranslationTerm.GetTranslations")
+		if err != nil {
+			t.Fatalf("expected web GetTranslations descriptor after Go RegisterProto, got %v", err)
+		}
+		if string(md.FullName()) != "web.TranslationTerm.GetTranslations" {
+			t.Fatalf("unexpected method: %s", md.FullName())
 		}
 	})
 }
