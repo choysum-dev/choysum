@@ -918,6 +918,16 @@ func TestNewApplicationServiceResolvesPaths(t *testing.T) {
 		webSvc.protoImportPaths[0] != webAPIProtoDir {
 		t.Fatalf("unexpected web service paths: %#v", webSvc)
 	}
+
+	webAppMode, err := NewApplicationService(runtimeScope, "web", nil, WithBundleMode("application"))
+	if err != nil {
+		t.Fatalf("NewApplicationService(web, application) error = %v", err)
+	}
+	if webAppMode.appDistPath != filepath.Join(distDir, "web") ||
+		webAppMode.scriptDistPath != filepath.Join(distDir, "apps", "web") ||
+		webAppMode.protoRootDir != webAPIProtoDir {
+		t.Fatalf("unexpected web application-mode paths: %#v", webAppMode)
+	}
 }
 
 func TestBundleMode_ServiceDescs_LoadsOnlyTargetAppProto(t *testing.T) {
@@ -1806,6 +1816,12 @@ func TestLoaderRegisterPath(t *testing.T) {
 	}
 	if got := loaderRegisterPath("", "x.proto"); got != "x.proto" {
 		t.Fatalf("empty app = %q", got)
+	}
+	if got := loaderRegisterPath("web", ""); got != "" {
+		t.Fatalf("empty rel = %q, want empty", got)
+	}
+	if got := loaderRegisterPath("web", "."); got != "" {
+		t.Fatalf("dot rel = %q, want empty", got)
 	}
 }
 

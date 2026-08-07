@@ -118,13 +118,7 @@ func (m *ModuleManager) ensureInjectedAppModelsForCodegen(ctx context.Context, m
 	if entry != "" && !filepath.IsAbs(entry) {
 		entry = filepath.Join(runtimeOpts.modulesPath, mod.Name, entry)
 	}
-	builder := internalbackendbuilder.NewModuleBuilder(
-		m.runtimeScope,
-		m.jsExecutor,
-		mod,
-		entry,
-		internalbackendbuilder.WithPublishDist(false),
-	)
+	builder := newCodegenModuleBuilderFn(m.runtimeScope, m.jsExecutor, mod, entry)
 	split, ok := builder.(module.SplitBuilder)
 	if !ok {
 		return xfmt.Errorf("builder does not support BuildWithoutPersist for module %s", mod.Name)
@@ -137,6 +131,18 @@ func (m *ModuleManager) ensureInjectedAppModelsForCodegen(ctx context.Context, m
 		return xfmt.Errorf("persist TranslationTerm inject for application %s: %w", app, err)
 	}
 	return nil
+}
+
+// newCodegenModuleBuilderFn builds the module builder used to Persist EnsureServiceEntry
+// Specs before app codegen. Tests may override it to force SplitBuilder failures.
+var newCodegenModuleBuilderFn = func(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, mod *meta.Module, entry string) any {
+	return internalbackendbuilder.NewModuleBuilder(
+		runtimeScope,
+		jsExecutor,
+		mod,
+		entry,
+		internalbackendbuilder.WithPublishDist(false),
+	)
 }
 
 func (m *ModuleManager) buildBackendAppToDir(ctx context.Context, appName string, distAppDir string) error {

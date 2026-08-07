@@ -187,6 +187,63 @@ func TestValidateDistForTargets_ApplicationMode_SucceedsWithAssetsAndWeb(t *test
 	}
 }
 
+func TestValidateDistForTargets_ApplicationMode_WebIndexMissing(t *testing.T) {
+	distRoot := t.TempDir()
+	for _, dir := range []string{
+		filepath.Join(distRoot, "web"),
+		filepath.Join(distRoot, "apps", "web"),
+	} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", dir, err)
+		}
+	}
+	err := ValidateDistForTargets("application", distRoot, []string{"web"})
+	if err == nil || !strings.Contains(err.Error(), "app index missing") {
+		t.Fatalf("expected app index missing for web, got %v", err)
+	}
+
+	// index.js present as a directory also counts as missing.
+	if err := os.MkdirAll(filepath.Join(distRoot, "apps", "web", "index.js"), 0o755); err != nil {
+		t.Fatalf("mkdir index.js dir: %v", err)
+	}
+	err = ValidateDistForTargets("application", distRoot, []string{"web"})
+	if err == nil || !strings.Contains(err.Error(), "app index missing") {
+		t.Fatalf("expected app index missing when index.js is a dir, got %v", err)
+	}
+}
+
+func TestValidateDistForTargets_ApplicationMode_WebProtoMissing(t *testing.T) {
+	distRoot := t.TempDir()
+	for _, dir := range []string{
+		filepath.Join(distRoot, "web"),
+		filepath.Join(distRoot, "apps", "web"),
+	} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", dir, err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(distRoot, "apps", "web", "index.js"), []byte("// web"), 0o644); err != nil {
+		t.Fatalf("write web index: %v", err)
+	}
+	err := ValidateDistForTargets("application", distRoot, []string{"web"})
+	if err == nil || !strings.Contains(err.Error(), "api proto assets missing") {
+		t.Fatalf("expected api proto missing for web, got %v", err)
+	}
+
+	// Proto path present as a file is not a proto dir.
+	protoFile := config.APIAppProtoDir(distRoot, "web")
+	if err := os.MkdirAll(filepath.Dir(protoFile), 0o755); err != nil {
+		t.Fatalf("mkdir api parent: %v", err)
+	}
+	if err := os.WriteFile(protoFile, []byte("not-a-dir"), 0o644); err != nil {
+		t.Fatalf("write proto path as file: %v", err)
+	}
+	err = ValidateDistForTargets("application", distRoot, []string{"web"})
+	if err == nil || !strings.Contains(err.Error(), "api proto assets missing") {
+		t.Fatalf("expected api proto missing when proto path is a file, got %v", err)
+	}
+}
+
 func TestValidateDistForTargets_InvalidBundleMode(t *testing.T) {
 	err := ValidateDistForTargets("broken", t.TempDir(), []string{"auth"})
 	if err == nil {
@@ -267,6 +324,25 @@ func TestResolveDefaultTargetsFromDist_ApplicationMode_EnumeratesAppsAndWeb(t *t
 	}
 	if len(targets) != 3 || targets[0] != "auth" || targets[1] != "base" || targets[2] != "web" {
 		t.Fatalf("unexpected targets: %#v", targets)
+	}
+}
+
+func TestResolveDefaultTargetsFromDist_ApplicationMode_DoesNotDuplicateWeb(t *testing.T) {
+	distRoot := t.TempDir()
+	for _, dir := range []string{
+		filepath.Join(distRoot, "apps", "web"),
+		filepath.Join(distRoot, "web"),
+	} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", dir, err)
+		}
+	}
+	targets, err := resolveDefaultTargetsFromDist("application", distRoot)
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if len(targets) != 1 || targets[0] != "web" {
+		t.Fatalf("unexpected targets: %#v, want [web] once", targets)
 	}
 }
 
