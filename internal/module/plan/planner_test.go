@@ -85,7 +85,7 @@ func TestBuildPlanInstallErrorsAndAppCollection(t *testing.T) {
 	if len(plan.ModuleOrder) != 3 || plan.ModuleOrder[0] != "dep" || plan.ModuleOrder[1] != "webmod" || plan.ModuleOrder[2] != "base" {
 		t.Fatalf("unexpected module order: %v", plan.ModuleOrder)
 	}
-	if len(plan.AffectedApps) != 1 || plan.AffectedApps[0] != "crm" {
+	if len(plan.AffectedApps) != 2 || plan.AffectedApps[0] != "crm" || plan.AffectedApps[1] != "web" {
 		t.Fatalf("unexpected affected apps: %v", plan.AffectedApps)
 	}
 	if !plan.NeedsGlobalWebBuild {
@@ -366,10 +366,10 @@ func TestBuildPlan_AffectedAppsSortedForStableLogs(t *testing.T) {
 		t.Fatalf("BuildPlan error: %v", err)
 	}
 
-	if len(plan.AffectedApps) != 3 {
-		t.Fatalf("expected 3 affected apps, got %v", plan.AffectedApps)
+	if len(plan.AffectedApps) != 4 {
+		t.Fatalf("expected 4 affected apps, got %v", plan.AffectedApps)
 	}
-	want := []string{"alpha", "beta", "zeta"}
+	want := []string{"alpha", "beta", "web", "zeta"}
 	for i := range want {
 		if plan.AffectedApps[i] != want[i] {
 			t.Fatalf("expected sorted affected apps %v, got %v", want, plan.AffectedApps)

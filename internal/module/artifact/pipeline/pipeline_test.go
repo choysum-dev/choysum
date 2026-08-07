@@ -483,7 +483,9 @@ func TestExecuteInfoLogsSummarizeAppStageAndHideManifestCommit(t *testing.T) {
 		t.Fatalf("expected app stage summary record in logs, got %q", logs)
 	}
 }
-func TestExecuteInstallSkipsWebModuleGeneration(t *testing.T) {
+func TestExecuteInstallGeneratesWebApplicationModules(t *testing.T) {
+	rootDir := t.TempDir()
+	modulesRoot := filepath.Join(rootDir, "modules")
 	root := &meta.Module{Name: "webmod", ApplicationStr: "web"}
 	installCalls := 0
 	generateCalls := 0
@@ -502,11 +504,27 @@ func TestExecuteInstallSkipsWebModuleGeneration(t *testing.T) {
 		},
 		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 			appTargetsCalls++
-			return "", ModulesAppTargets{}, nil
+			if appName != "web" {
+				t.Fatalf("unexpected app %q", appName)
+			}
+			return "", ModulesAppTargets{
+				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+				WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+				ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
+			}, nil
 		},
 		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
 			generateCalls++
-			return nil
+			if appName != "web" {
+				t.Fatalf("unexpected generate app %q", appName)
+			}
+			if err := writeStageFile(modulesStaging.ProtoDir, "web.proto", "syntax = \"proto3\";"); err != nil {
+				return err
+			}
+			if err := writeStageFile(modulesStaging.WebDir, "index.ts", "export const web = true"); err != nil {
+				return err
+			}
+			return writeStageFile(modulesStaging.ServiceDir, "index.ts", "export const service = true")
 		},
 	})
 	if err != nil {
@@ -515,8 +533,8 @@ func TestExecuteInstallSkipsWebModuleGeneration(t *testing.T) {
 	if installCalls != 1 {
 		t.Fatalf("install calls = %d, want 1", installCalls)
 	}
-	if appTargetsCalls != 0 || generateCalls != 0 {
-		t.Fatalf("expected web app module generation to be skipped, got appTargets=%d generate=%d", appTargetsCalls, generateCalls)
+	if appTargetsCalls != 1 || generateCalls != 1 {
+		t.Fatalf("expected web app module generation once, got appTargets=%d generate=%d", appTargetsCalls, generateCalls)
 	}
 }
 

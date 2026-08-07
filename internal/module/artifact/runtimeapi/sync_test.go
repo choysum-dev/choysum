@@ -37,8 +37,15 @@ func TestSyncMissingProtosRestoresFromGenerated(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SyncMissingProtos: %v", err)
 	}
-	if len(synced) != 2 {
-		t.Fatalf("synced = %v, want auth+task", synced)
+	if len(synced) != 3 {
+		t.Fatalf("synced = %v, want auth+task+web", synced)
+	}
+	seen := map[string]bool{}
+	for _, app := range synced {
+		seen[app] = true
+	}
+	if !seen["auth"] || !seen["task"] || !seen["web"] {
+		t.Fatalf("synced = %v, want auth+task+web", synced)
 	}
 
 	authBody, err := os.ReadFile(filepath.Join(root, "api", "auth", "proto", "auth.proto"))

@@ -31,6 +31,10 @@ type ApplicationService struct {
 	name             string
 	runtimeOptions   runtimeOptions
 	appDistPath      string
+	// scriptDistPath is where index.js lives for QuickJS service handlers.
+	// For application "web", static UI stays on appDistPath (dist/web) while
+	// scripts come from bundles (or dist/apps/web) so TranslationTerm RPC works.
+	scriptDistPath   string
 	protoRootDir     string
 	bundleMode       string
 	jsExecutor       jsexecutor.ScriptExecutor
@@ -301,10 +305,11 @@ func (s *ApplicationService) ServiceDescs() ([]*grpc.ServiceDesc, error) {
 }
 
 func (s *ApplicationService) ServiceScripts() []*jsengine.JsScript {
-	if s.name == "web" {
-		return nil
+	scriptRoot := strings.TrimSpace(s.scriptDistPath)
+	if scriptRoot == "" {
+		scriptRoot = s.appDistPath
 	}
-	scriptPath := filepath.Join(s.appDistPath, "index.js")
+	scriptPath := filepath.Join(scriptRoot, "index.js")
 	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
 		return nil
 	}
@@ -470,16 +475,25 @@ func NewApplicationService(runtimeScope scope.Scope, name string, jsExecutor jse
 	distPath := service.runtimeOptions.distPath
 
 	// Resolve dist paths for runtime.
+	// application "web" still serves static assets from dist/web, but also
+	// exposes api/web/proto + backend scripts (TranslationTerm EnsureServiceEntry).
 	if name == "web" {
 		service.appDistPath = filepath.Join(distPath, "web")
-		service.protoImportPaths = nil
-		service.protoRootDir = ""
+		service.protoRootDir = config.APIAppProtoDir(distPath, name)
+		service.protoImportPaths = []string{service.protoRootDir}
+		if mode == "bundle" {
+			service.scriptDistPath = filepath.Join(distPath, "bundles")
+		} else {
+			service.scriptDistPath = filepath.Join(distPath, "apps", name)
+		}
 	} else if mode == "bundle" {
 		service.appDistPath = filepath.Join(distPath, "bundles")
+		service.scriptDistPath = service.appDistPath
 		service.protoRootDir = config.APIAppProtoDir(distPath, name)
 		service.protoImportPaths = []string{config.APIAppProtoDir(distPath, name)}
 	} else {
 		service.appDistPath = filepath.Join(distPath, "apps", name)
+		service.scriptDistPath = service.appDistPath
 		service.protoRootDir = config.APIAppProtoDir(distPath, name)
 		service.protoImportPaths = []string{config.APIAppProtoDir(distPath, name)}
 	}

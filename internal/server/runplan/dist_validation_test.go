@@ -37,13 +37,33 @@ func TestValidateDistForTargets_BundleMode_BundlesIndexMissing(t *testing.T) {
 	}
 }
 
-func TestValidateDistForTargets_WebOnly_DoesNotRequireBundles(t *testing.T) {
+func TestValidateDistForTargets_WebOnly_RequiresBundlesAndProto(t *testing.T) {
 	distRoot := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(distRoot, "web"), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
+	err := ValidateDistForTargets("bundle", distRoot, []string{"web"})
+	if err == nil || !strings.Contains(err.Error(), "bundles dir missing") {
+		t.Fatalf("expected bundles dir missing for web-only, got %v", err)
+	}
+
+	if err := os.MkdirAll(filepath.Join(distRoot, "bundles"), 0o755); err != nil {
+		t.Fatalf("mkdir bundles: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(distRoot, "bundles", "index.js"), []byte("export {}\n"), 0o644); err != nil {
+		t.Fatalf("write bundles index: %v", err)
+	}
+	err = ValidateDistForTargets("bundle", distRoot, []string{"web"})
+	if err == nil || !strings.Contains(err.Error(), "api proto assets missing") {
+		t.Fatalf("expected api proto missing for web-only, got %v", err)
+	}
+
+	webProto := config.APIAppProtoDir(distRoot, "web")
+	if err := os.MkdirAll(webProto, 0o755); err != nil {
+		t.Fatalf("mkdir web proto: %v", err)
+	}
 	if err := ValidateDistForTargets("bundle", distRoot, []string{"web"}); err != nil {
-		t.Fatalf("expected nil error, got %v", err)
+		t.Fatalf("expected nil error with web+bundles+proto, got %v", err)
 	}
 }
 
@@ -70,6 +90,7 @@ func TestValidateDistForTargets_DefaultBundleMode_SucceedsWithBackendAndWeb(t *t
 	for _, dir := range []string{
 		filepath.Join(distRoot, "bundles"),
 		config.APIAppProtoDir(distRoot, "auth"),
+		config.APIAppProtoDir(distRoot, "web"),
 		filepath.Join(distRoot, "web"),
 	} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -137,7 +158,9 @@ func TestValidateDistForTargets_ApplicationMode_SucceedsWithAssetsAndWeb(t *test
 	for _, dir := range []string{
 		filepath.Join(distRoot, "apps", "auth", "assets"),
 		filepath.Join(distRoot, "apps", "base", "assets"),
+		filepath.Join(distRoot, "apps", "web"),
 		filepath.Join(distRoot, "web"),
+		config.APIAppProtoDir(distRoot, "web"),
 	} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatalf("mkdir %s: %v", dir, err)
@@ -148,6 +171,9 @@ func TestValidateDistForTargets_ApplicationMode_SucceedsWithAssetsAndWeb(t *test
 	}
 	if err := os.WriteFile(filepath.Join(distRoot, "apps", "base", "index.js"), []byte("// base"), 0o644); err != nil {
 		t.Fatalf("write base index: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(distRoot, "apps", "web", "index.js"), []byte("// web"), 0o644); err != nil {
+		t.Fatalf("write web index: %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(distRoot, "apps", "auth", "assets", "a.proto"), []byte("syntax = \"proto3\";"), 0o644); err != nil {
 		t.Fatalf("write auth asset: %v", err)

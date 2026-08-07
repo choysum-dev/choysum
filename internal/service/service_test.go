@@ -705,8 +705,11 @@ func TestServiceScriptsAndWebHandlers(t *testing.T) {
 	if len(scripts) != 1 || scripts[0].FileName != filepath.Join(appDir, "index.js") || scripts[0].Content != "console.log('auth')" {
 		t.Fatalf("unexpected service scripts: %#v", scripts)
 	}
-	if webScripts := (&ApplicationService{runtimeScope: runtimeScope, name: "web", appDistPath: webDir}).ServiceScripts(); webScripts != nil {
-		t.Fatalf("expected web service scripts to be nil, got %#v", webScripts)
+	if webScripts := (&ApplicationService{runtimeScope: runtimeScope, name: "web", appDistPath: webDir, scriptDistPath: appDir}).ServiceScripts(); len(webScripts) != 1 {
+		t.Fatalf("expected web service scripts from scriptDistPath, got %#v", webScripts)
+	}
+	if webScriptsNil := (&ApplicationService{runtimeScope: runtimeScope, name: "web", appDistPath: webDir}).ServiceScripts(); webScriptsNil != nil {
+		t.Fatalf("expected web without scriptDistPath/index.js to return nil, got %#v", webScriptsNil)
 	}
 	if missingScripts := (&ApplicationService{runtimeScope: runtimeScope, name: "auth", appDistPath: filepath.Join(distDir, "apps", "missing")}).ServiceScripts(); missingScripts != nil {
 		t.Fatalf("expected missing script path to return nil, got %#v", missingScripts)
@@ -871,11 +874,13 @@ func TestSafeStaticPathRejectsParentRoot(t *testing.T) {
 func TestNewApplicationServiceResolvesPaths(t *testing.T) {
 	distDir := t.TempDir()
 	authAPIProtoDir := config.APIAppProtoDir(distDir, "auth")
+	webAPIProtoDir := config.APIAppProtoDir(distDir, "web")
 	for _, dir := range []string{
 		filepath.Join(distDir, "web"),
 		filepath.Join(distDir, "bundles"),
 		filepath.Join(distDir, "apps", "auth"),
 		authAPIProtoDir,
+		webAPIProtoDir,
 	} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatalf("mkdir %s: %v", dir, err)
@@ -906,7 +911,11 @@ func TestNewApplicationServiceResolvesPaths(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewApplicationService(web) error = %v", err)
 	}
-	if webSvc.appDistPath != filepath.Join(distDir, "web") || webSvc.protoRootDir != "" || webSvc.protoImportPaths != nil {
+	if webSvc.appDistPath != filepath.Join(distDir, "web") ||
+		webSvc.scriptDistPath != filepath.Join(distDir, "bundles") ||
+		webSvc.protoRootDir != webAPIProtoDir ||
+		len(webSvc.protoImportPaths) != 1 ||
+		webSvc.protoImportPaths[0] != webAPIProtoDir {
 		t.Fatalf("unexpected web service paths: %#v", webSvc)
 	}
 }
