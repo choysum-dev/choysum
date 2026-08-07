@@ -214,8 +214,8 @@ func TestFetchAppSearchTermsSuccessAndDefaults(t *testing.T) {
 	if got.Total != 1 || got.Limit != 50 || got.Offset != 0 || len(got.Items) != 1 {
 		t.Fatalf("got = %#v", got)
 	}
-	if got.Items[0].Status != "fuzzy" {
-		t.Fatalf("status = %q, want fuzzy", got.Items[0].Status)
+	if got.Items[0].Status != "translated" {
+		t.Fatalf("status = %q, want translated (Comments are refs, not fuzzy flags)", got.Items[0].Status)
 	}
 }
 
@@ -377,11 +377,11 @@ func TestBuildTermSearchConditionBranches(t *testing.T) {
 }
 
 func TestTermStatusAndToInt64Edges(t *testing.T) {
-	if termStatus("x", "FUZZY flag") != "fuzzy" {
-		t.Fatal("expected fuzzy")
-	}
-	if termStatus("x", "ok") != "translated" {
+	if termStatus("x") != "translated" {
 		t.Fatal("expected translated")
+	}
+	if termStatus("") != "missing" || termStatus("  ") != "missing" {
+		t.Fatal("expected missing for blank value")
 	}
 	if toInt64(int32(3)) != 3 || toInt64(float32(4)) != 4 {
 		t.Fatal("expected int32/float32 coercion")

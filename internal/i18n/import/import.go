@@ -54,7 +54,9 @@ type poTerm struct {
 // Install/CLI call this path only; do not dial model gRPC for packaged import.
 // Obsolete (#~) entries do not prune ordinary rows (D12a). Entries without msgctxt
 // are rejected and logged (D12c). Kind defaults to literal; `#. kind: <name>` overrides.
-// The physical table must already exist (TranslationTerm MetaModel migrate).
+// Schema ownership is TranslationTerm MetaModel migrate; if the physical table is
+// still missing, a create-only fallback runs (indexes/columns on existing tables
+// are not evolved here).
 func UpsertPackagedTerms(runtimeScope scope.Scope, reg *store.Registry, application, module, lang string, poText []byte) (*ImportStats, error) {
 	application = strings.TrimSpace(application)
 	module = strings.TrimSpace(module)
@@ -195,6 +197,8 @@ var migrateTranslationTermTable = i18nmodels.MigrateTranslationTermTable
 
 // migrateTranslationTermTableIfMissing creates the physical table when the write
 // path runs without a prior MetaModel migrate (tests / install ordering).
+// It does not AutoMigrate or re-ensure indexes when the table already exists;
+// schema evolution stays on the TranslationTerm MetaModel path.
 func migrateTranslationTermTableIfMissing(runtimeScope scope.Scope, application, tableName string) error {
 	if runtimeScope.Session().Migrator().HasTable(tableName) {
 		return nil

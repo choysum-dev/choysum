@@ -147,7 +147,15 @@ func (h *handler) collectAllTerms(ctx context.Context, accessToken, app, lang st
 			}
 			break
 		}
-		if int64(offset) >= total || len(result.Items) < page {
+		// Hooks may omit Total on the probe; adopt a later page total when present.
+		if total <= 0 && result.Total > 0 {
+			total = result.Total
+		}
+		// When total is still unknown, keep paging until a short page.
+		if len(result.Items) < page {
+			break
+		}
+		if total > 0 && int64(offset) >= total {
 			break
 		}
 	}

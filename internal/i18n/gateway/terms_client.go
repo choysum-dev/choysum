@@ -237,14 +237,14 @@ func parseTermItem(app string, m map[string]any) termItem {
 		Kind:        mapString(m, "Kind", "kind"),
 		Source:      mapString(m, "Source", "source"),
 	}
-	comments := mapString(m, "Comments", "comments")
 	if item.Application == "" {
 		item.Application = app
 	}
 	if item.Kind == "" {
 		item.Kind = "literal"
 	}
-	item.Status = termStatus(item.Value, comments)
+	// Comments hold PO file:line refs only; TranslationTerm has no fuzzy flag field.
+	item.Status = termStatus(item.Value)
 	return item
 }
 
@@ -261,12 +261,9 @@ func mapString(m map[string]any, keys ...string) string {
 	return ""
 }
 
-func termStatus(value, comments string) string {
+func termStatus(value string) string {
 	if strings.TrimSpace(value) == "" {
 		return "missing"
-	}
-	if strings.Contains(strings.ToLower(comments), "fuzzy") {
-		return "fuzzy"
 	}
 	return "translated"
 }
