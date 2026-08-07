@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	leasemodel "github.com/choysum-dev/choysum/internal/state/lease/model"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 
 	"github.com/choysum-dev/choysum/pkg/scope"
 	statepkg "github.com/choysum-dev/choysum/pkg/state"
@@ -122,7 +122,7 @@ func acquireLease(db *gorm.DB, resource, ownerId string, now, expiresAt time.Tim
 	}
 
 	// Fast path: update existing expired/owned lease (also restores from soft delete).
-	res := newDB().Model(&leasemodel.LockLease{}).
+	res := newDB().Model(&modmeta.LockLease{}).
 		Where("resource = ? AND (expires_at < ? OR owner_id = ?)", resource, now, ownerId).
 		Updates(map[string]any{"owner_id": ownerId, "expires_at": expiresAt, "deleted_at": nil})
 	if res.Error != nil {
@@ -133,21 +133,21 @@ func acquireLease(db *gorm.DB, resource, ownerId string, now, expiresAt time.Tim
 	}
 
 	// Try insert.
-	row := &leasemodel.LockLease{Resource: resource, OwnerId: ownerId, ExpiresAt: expiresAt}
+	row := &modmeta.LockLease{Resource: resource, OwnerId: ownerId, ExpiresAt: expiresAt}
 	if err := newDB().Create(row).Error; err != nil {
 		if !isUniqueViolation(err) {
 			return fmt.Errorf("acquire lease insert: %w", err)
 		}
 
 		// Someone else inserted concurrently; re-check.
-		var existing leasemodel.LockLease
+		var existing modmeta.LockLease
 		if err := newDB().Where("resource = ?", resource).Take(&existing).Error; err != nil {
 			return fmt.Errorf("acquire lease reload: %w", err)
 		}
 
 		// Idempotent: treat as acquired, refresh.
 		if existing.OwnerId == ownerId {
-			if err := newDB().Model(&leasemodel.LockLease{}).
+			if err := newDB().Model(&modmeta.LockLease{}).
 				Where("resource = ? AND owner_id = ?", resource, ownerId).
 				Updates(map[string]any{"expires_at": expiresAt, "deleted_at": nil}).Error; err != nil {
 				return fmt.Errorf("acquire lease refresh: %w", err)
@@ -157,7 +157,7 @@ func acquireLease(db *gorm.DB, resource, ownerId string, now, expiresAt time.Tim
 
 		// Try take over if expired.
 		if existing.ExpiresAt.Before(now) {
-			res2 := newDB().Model(&leasemodel.LockLease{}).
+			res2 := newDB().Model(&modmeta.LockLease{}).
 				Where("resource = ? AND expires_at < ?", resource, now).
 				Updates(map[string]any{"owner_id": ownerId, "expires_at": expiresAt, "deleted_at": nil})
 			if res2.Error != nil {
@@ -229,7 +229,7 @@ func (l *Locker) Renew(ctx context.Context, resource, ownerId string, ttl time.D
 }
 
 func renewLeaseOnDB(db *gorm.DB, resource, ownerId string, expiresAt time.Time) error {
-	res := db.Session(&gorm.Session{}).Unscoped().Model(&leasemodel.LockLease{}).
+	res := db.Session(&gorm.Session{}).Unscoped().Model(&modmeta.LockLease{}).
 		Where("resource = ? AND owner_id = ?", resource, ownerId).
 		Updates(map[string]any{"expires_at": expiresAt, "deleted_at": nil})
 	if res.Error != nil {
@@ -250,14 +250,14 @@ func (l *Locker) Release(ctx context.Context, resource, ownerId string) error {
 		newDB := func() *gorm.DB {
 			return db.Session(&gorm.Session{}).Unscoped()
 		}
-		res := newDB().Where("resource = ? AND owner_id = ?", resource, ownerId).Delete(&leasemodel.LockLease{})
+		res := newDB().Where("resource = ? AND owner_id = ?", resource, ownerId).Delete(&modmeta.LockLease{})
 		if res.Error != nil {
 			return fmt.Errorf("release lease: %w", res.Error)
 		}
 		if res.RowsAffected == 1 {
 			return nil
 		}
-		var existing leasemodel.LockLease
+		var existing modmeta.LockLease
 		err := newDB().Where("resource = ?", resource).Take(&existing).Error
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -279,7 +279,7 @@ func (l *Locker) Release(ctx context.Context, resource, ownerId string) error {
 			}
 
 			// Hard delete to avoid unique-index conflicts with soft deletes.
-			res := newDB().Where("resource = ? AND owner_id = ?", resource, ownerId).Delete(&leasemodel.LockLease{})
+			res := newDB().Where("resource = ? AND owner_id = ?", resource, ownerId).Delete(&modmeta.LockLease{})
 			if res.Error != nil {
 				return fmt.Errorf("release lease: %w", res.Error)
 			}
@@ -288,7 +288,7 @@ func (l *Locker) Release(ctx context.Context, resource, ownerId string) error {
 			}
 
 			// Distinguish "doesn't exist" vs "not owner".
-			var existing leasemodel.LockLease
+			var existing modmeta.LockLease
 			err := newDB().Where("resource = ?", resource).Take(&existing).Error
 			if err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {

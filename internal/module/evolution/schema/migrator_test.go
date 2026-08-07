@@ -8,7 +8,9 @@ import (
 	"strings"
 	"testing"
 
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
+
 )
 
 type fakeModelMigrator struct{ err error }
@@ -80,10 +82,8 @@ func TestGetModuleModelsFiltersAndWrapsDBErrors(t *testing.T) {
 		{Name: "Disabled", Path: "sales/disabled.ts", ModelTable: "sales_disabled", ModuleId: module.Id, AutoMigrate: &disabledAutoMigrate},
 		{Name: "Abstract", Path: "sales/abstract.ts", ModelTable: "sales_abstract", ModuleId: module.Id, Abstract: true},
 	}
-	for _, model := range decls {
-		if err := meta.PersistModelTreeAsRaw(runtimeScope.Session().DB, model); err != nil {
-			t.Fatalf("persist declaration %s: %v", model.Name, err)
-		}
+	if _, err := modmeta.ReplaceModuleDeclarations(runtimeScope.Session().DB, module.Id.String, decls); err != nil {
+		t.Fatalf("persist declarations: %v", err)
 	}
 
 	loaded, err := getModuleModels(runtimeScope, module)
@@ -125,10 +125,8 @@ func TestGetModuleModels_CircularExtends(t *testing.T) {
 		{Name: "A", Path: "/a.ts", ModelTable: "sales_a", ModuleId: module.Id, Extends: "/b.ts"},
 		{Name: "B", Path: "/b.ts", ModelTable: "sales_b", ModuleId: module.Id, Extends: "/a.ts"},
 	}
-	for _, model := range decls {
-		if err := meta.PersistModelTreeAsRaw(runtimeScope.Session().DB, model); err != nil {
-			t.Fatalf("persist declaration %s: %v", model.Name, err)
-		}
+	if _, err := modmeta.ReplaceModuleDeclarations(runtimeScope.Session().DB, module.Id.String, decls); err != nil {
+		t.Fatalf("persist declarations: %v", err)
 	}
 
 	if _, err := getModuleModels(runtimeScope, module); err == nil || !strings.Contains(err.Error(), "expanding model extends") {
@@ -159,10 +157,8 @@ func TestNewMigratorPropagatesLoadError(t *testing.T) {
 		{Name: "A", Path: "/a.ts", ModelTable: "sales_a", ModuleId: module.Id, Extends: "/b.ts"},
 		{Name: "B", Path: "/b.ts", ModelTable: "sales_b", ModuleId: module.Id, Extends: "/a.ts"},
 	}
-	for _, model := range decls {
-		if err := meta.PersistModelTreeAsRaw(runtimeScope.Session().DB, model); err != nil {
-			t.Fatalf("persist declaration %s: %v", model.Name, err)
-		}
+	if _, err := modmeta.ReplaceModuleDeclarations(runtimeScope.Session().DB, module.Id.String, decls); err != nil {
+		t.Fatalf("persist declarations: %v", err)
 	}
 	if _, err := NewMigrator(runtimeScope, module); err == nil || !strings.Contains(err.Error(), "expanding model extends") {
 		t.Fatalf("expected expand error from NewMigrator, got %v", err)

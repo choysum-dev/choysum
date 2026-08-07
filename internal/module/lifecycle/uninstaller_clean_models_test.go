@@ -8,9 +8,11 @@ import (
 	"strings"
 	"testing"
 
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/rs/xid"
 	"gorm.io/gorm"
+
 )
 
 type cleanModelsSeed struct {
@@ -49,7 +51,7 @@ func seedCleanModelsFixture(t *testing.T, db *gorm.DB) cleanModelsSeed {
 	rawArgumentID := xid.New().String()
 	rawTypeParamID := xid.New().String()
 	rawParameterID := xid.New().String()
-	if err := meta.PersistModelTreeAsRaw(db, &meta.Model{
+	tree := &meta.Model{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: rawModelID, Valid: true}},
 		Name:        "demo.model",
 		Path:        "demo/model",
@@ -80,7 +82,8 @@ func seedCleanModelsFixture(t *testing.T, db *gorm.DB) cleanModelsSeed {
 				Value:     "true",
 			}},
 		}},
-	}); err != nil {
+	}
+	if _, err := modmeta.ReplaceModuleDeclarations(db, mod.Id.String, []*meta.Model{tree}); err != nil {
 		t.Fatalf("persist raw model tree: %v", err)
 	}
 
@@ -187,18 +190,18 @@ func deleteRawRow(t *testing.T, db *gorm.DB, table, id string) {
 
 func deleteRawCleanModelsPrefix(t *testing.T, db *gorm.DB, seed cleanModelsSeed) {
 	t.Helper()
-	deleteRawRow(t, db, meta.RawArgumentTable, seed.rawArgumentID)
-	deleteRawRow(t, db, meta.RawDecoratorTable, seed.rawDecoratorID)
-	deleteRawRow(t, db, meta.RawTypeParameterTable, seed.rawTypeParamID)
-	deleteRawRow(t, db, meta.RawParameterTable, seed.rawParameterID)
+	deleteRawRow(t, db, "meta_raw_argument", seed.rawArgumentID)
+	deleteRawRow(t, db, "meta_raw_decorator", seed.rawDecoratorID)
+	deleteRawRow(t, db, "meta_raw_type_parameter", seed.rawTypeParamID)
+	deleteRawRow(t, db, "meta_raw_parameter", seed.rawParameterID)
 }
 
 func deleteRawModelTree(t *testing.T, db *gorm.DB, seed cleanModelsSeed) {
 	t.Helper()
 	deleteRawCleanModelsPrefix(t, db, seed)
-	deleteRawRow(t, db, meta.RawServiceTable, seed.rawServiceID)
-	deleteRawRow(t, db, meta.RawFieldTable, seed.rawFieldID)
-	deleteRawRow(t, db, meta.RawModelTable, seed.rawModelID)
+	deleteRawRow(t, db, "meta_raw_service", seed.rawServiceID)
+	deleteRawRow(t, db, "meta_raw_field", seed.rawFieldID)
+	deleteRawRow(t, db, "meta_raw_model", seed.rawModelID)
 }
 
 func TestModuleUninstallerCleanModelsErrorPaths(t *testing.T) {
@@ -223,9 +226,9 @@ END`).Error; err != nil {
 		},
 		{
 			name:    "raw models",
-			wantMsg: "error deleting raw models",
+			wantMsg: "error removing module declarations",
 			setup: func(t *testing.T, db *gorm.DB, _ cleanModelsSeed) {
-				dropMetaTable(t, db, meta.RawArgumentTable)
+				dropMetaTable(t, db, "meta_raw_argument")
 			},
 		},
 		{
@@ -249,7 +252,7 @@ END`).Error; err != nil {
 		},
 		{
 			name:    "recompute effective",
-			wantMsg: "error recomputing effective models after uninstall",
+			wantMsg: "error flushing effective models after uninstall",
 			setup: func(t *testing.T, db *gorm.DB, seed cleanModelsSeed) {
 				dropMetaTable(t, db, "meta_model")
 			},

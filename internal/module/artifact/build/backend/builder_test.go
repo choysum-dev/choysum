@@ -21,6 +21,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/module/artifact/build/injectappmodel"
 	modulegenerator "github.com/choysum-dev/choysum/internal/module/artifact/generate"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/parser"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/config"
@@ -30,6 +31,7 @@ import (
 	"github.com/evanw/esbuild/pkg/api"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+
 )
 
 type builderTestScope struct {
@@ -454,19 +456,18 @@ func TestGetNewExtendsAndUpdatePrebuildResult(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := meta.EnsureDualStoreTables(db); err != nil {
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("ensure dual store: %v", err)
 	}
+	seedMod := sql.NullString{String: "seed-extends", Valid: true}
 	rows := []*meta.Model{
-		{Name: "Partner", Path: "/models/base", Application: "auth", BaseModel: meta.BaseModel{Id: sql.NullString{String: "base", Valid: true}}},
-		{Name: "Partner", Path: "/models/latest", Application: "auth", BaseModel: meta.BaseModel{Id: sql.NullString{String: "latest", Valid: true}}},
+		{Name: "Partner", Path: "/models/base", Application: "auth", BaseModel: meta.BaseModel{Id: sql.NullString{String: "base", Valid: true}}, ModuleId: seedMod},
+		{Name: "Partner", Path: "/models/latest", Application: "auth", BaseModel: meta.BaseModel{Id: sql.NullString{String: "latest", Valid: true}}, ModuleId: seedMod},
 		// Newer same-name declaration in another application must not win.
-		{Name: "Partner", Path: "/models/foreign-latest", Application: "crm", BaseModel: meta.BaseModel{Id: sql.NullString{String: "foreign", Valid: true}}},
+		{Name: "Partner", Path: "/models/foreign-latest", Application: "crm", BaseModel: meta.BaseModel{Id: sql.NullString{String: "foreign", Valid: true}}, ModuleId: seedMod},
 	}
-	for _, row := range rows {
-		if err := meta.PersistModelTreeAsRaw(db, row); err != nil {
-			t.Fatalf("seed models: %v", err)
-		}
+	if _, err := modmeta.ReplaceModuleDeclarations(db, seedMod.String, rows); err != nil {
+		t.Fatalf("seed models: %v", err)
 	}
 
 	testRuntimeScope := newBuilderTestScope()
@@ -545,7 +546,7 @@ func TestPersistHelpersAndBuild(t *testing.T) {
 	if err := db.AutoMigrate(&meta.Application{}, &meta.Module{}); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
-	if err := meta.EnsureDualStoreTables(db); err != nil {
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("ensure dual store: %v", err)
 	}
 
@@ -565,13 +566,13 @@ func TestPersistHelpersAndBuild(t *testing.T) {
 	if err := db.Create(seedModel).Error; err != nil {
 		t.Fatalf("seed stale model: %v", err)
 	}
-	if err := meta.PersistModelTreeAsRaw(db, &meta.Model{
+	if _, err := modmeta.ReplaceModuleDeclarations(db, "module-1", []*meta.Model{{
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "prev-raw", Valid: true}},
 		Name:        "LegacyRaw",
 		Path:        "/models/legacy-raw",
 		Application: "partner",
 		ModuleId:    sql.NullString{String: "module-1", Valid: true},
-	}); err != nil {
+	}}); err != nil {
 		t.Fatalf("seed previous raw model: %v", err)
 	}
 	models := []*meta.Model{
@@ -583,7 +584,7 @@ func TestPersistHelpersAndBuild(t *testing.T) {
 	if err := builder.persistModuleModels("module-1", models); err != nil {
 		t.Fatalf("persistModuleModels() error = %v", err)
 	}
-	persisted, err := meta.ListDeclarations(db, meta.DeclarationQuery{ModuleID: "module-1"})
+	persisted, err := modmeta.ListDeclarations(db, modmeta.DeclarationQuery{ModuleID: "module-1"})
 	if err != nil {
 		t.Fatalf("query persisted raw models: %v", err)
 	}
@@ -599,17 +600,19 @@ func TestPersistHelpersAndBuild(t *testing.T) {
 		t.Fatalf("unexpected effective models: %#v", effective)
 	}
 
-	if err := meta.PersistModelTreeAsRaw(db, &meta.Model{
+	if _, err := modmeta.ReplaceModuleDeclarations(db, "hist-old", []*meta.Model{{
 		BaseModel: meta.BaseModel{Id: sql.NullString{String: "aaa", Valid: true}},
 		Name:      "Partner",
 		Path:      "/models/history",
-	}); err != nil {
+		ModuleId:  sql.NullString{String: "hist-old", Valid: true},
+	}}); err != nil {
 		t.Fatalf("seed older history model: %v", err)
 	}
-	if err := meta.PersistModelTreeAsRaw(db, &meta.Model{
+	if _, err := modmeta.ReplaceModuleDeclarations(db, "hist-new", []*meta.Model{{
 		BaseModel: meta.BaseModel{Id: sql.NullString{String: "zzz", Valid: true}},
 		Name:      "Partner",
 		Path:      "/models/history",
+		ModuleId:  sql.NullString{String: "hist-new", Valid: true},
 		Fields: []*meta.Field{{
 			BaseModel: meta.BaseModel{Id: sql.NullString{String: "field1", Valid: true}},
 			Name:      "Name",
@@ -644,11 +647,11 @@ func TestPersistHelpersAndBuild(t *testing.T) {
 				{BaseModel: meta.BaseModel{Id: sql.NullString{String: "param2", Valid: true}}, Name: "query"},
 			},
 		}},
-	}); err != nil {
+	}}); err != nil {
 		t.Fatalf("seed latest history model: %v", err)
 	}
 
-	decls, err := meta.ListDeclarations(db, meta.DeclarationQuery{Path: "/models/history", PreloadTree: true})
+	decls, err := modmeta.ListDeclarations(db, modmeta.DeclarationQuery{Path: "/models/history", PreloadTree: true})
 	if err != nil {
 		t.Fatalf("ListDeclarations() error = %v", err)
 	}
@@ -663,17 +666,17 @@ func TestPersistHelpersAndBuild(t *testing.T) {
 		t.Fatalf("unexpected loaded model services: %#v", loaded.Services)
 	}
 
-	missing, err := meta.ListDeclarations(db, meta.DeclarationQuery{Path: "/models/does-not-exist", PreloadTree: true})
+	missing, err := modmeta.ListDeclarations(db, modmeta.DeclarationQuery{Path: "/models/does-not-exist", PreloadTree: true})
 	if err != nil {
 		t.Fatalf("missing path error = %v", err)
 	}
 	if len(missing) != 0 {
 		t.Fatalf("expected empty for missing path, got %#v", missing)
 	}
-	if err := meta.DropRawModelTable(db); err != nil {
+	if err := db.Migrator().DropTable("meta_raw_model"); err != nil {
 		t.Fatalf("drop meta_raw_model: %v", err)
 	}
-	if _, err := meta.ListDeclarations(db, meta.DeclarationQuery{Path: "/models/history", PreloadTree: true}); err == nil || !strings.Contains(err.Error(), "list declarations") {
+	if _, err := modmeta.ListDeclarations(db, modmeta.DeclarationQuery{Path: "/models/history", PreloadTree: true}); err == nil || !strings.Contains(err.Error(), "list declarations") {
 		t.Fatalf("expected list error after drop, got %v", err)
 	}
 }
@@ -1284,11 +1287,11 @@ func TestPersistApplicationLookupAndModelDeleteErrors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reopen sqlite: %v", err)
 	}
-	if err := meta.EnsureDualStoreTables(db); err != nil {
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("ensure dual store: %v", err)
 	}
 	testRuntimeScope.session = &scope.Session{DB: db}
-	if err := meta.DropRawModelTable(db); err != nil {
+	if err := db.Migrator().DropTable("meta_raw_model"); err != nil {
 		t.Fatalf("drop meta_raw_model: %v", err)
 	}
 	err = builder.persistModuleModels("module-1", []*meta.Model{{Name: "Partner", Path: "/models/partner"}})
@@ -1303,7 +1306,7 @@ func TestPersistApplicationLookupAndModelDeleteErrors(t *testing.T) {
 	if err := db.AutoMigrate(&meta.Application{}, &meta.Module{}); err != nil {
 		t.Fatalf("auto migrate fallback db: %v", err)
 	}
-	if err := meta.EnsureDualStoreTables(db); err != nil {
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("ensure dual store fallback: %v", err)
 	}
 	testRuntimeScope.session = &scope.Session{DB: db}
@@ -1322,7 +1325,7 @@ func TestGetNewExtends_FindError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := meta.EnsureDualStoreTables(db); err != nil {
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("ensure dual store: %v", err)
 	}
 	testRuntimeScope := newBuilderTestScope()
@@ -1331,7 +1334,7 @@ func TestGetNewExtends_FindError(t *testing.T) {
 		runtimeScope: testRuntimeScope,
 		module:       &meta.Module{ApplicationStr: "auth"},
 	}
-	if err := meta.DropRawModelTable(db); err != nil {
+	if err := db.Migrator().DropTable("meta_raw_model"); err != nil {
 		t.Fatalf("drop meta_raw_model: %v", err)
 	}
 	current := &meta.Model{Name: "Partner", Path: "/models/current", Extends: "/models/base"}
@@ -1347,7 +1350,7 @@ func TestPersistModuleModels_ErrorBranches(t *testing.T) {
 		if err != nil {
 			t.Fatalf("open sqlite: %v", err)
 		}
-		if err := meta.EnsureDualStoreTables(db); err != nil {
+		if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 			t.Fatalf("ensure dual store: %v", err)
 		}
 		testRuntimeScope := newBuilderTestScope()
@@ -1358,7 +1361,7 @@ func TestPersistModuleModels_ErrorBranches(t *testing.T) {
 
 	t.Run("list previous raw models", func(t *testing.T) {
 		db, builder := openPersistDB("prev-raw")
-		if err := meta.DropRawModelTable(db); err != nil {
+		if err := db.Migrator().DropTable("meta_raw_model"); err != nil {
 			t.Fatal(err)
 		}
 		err := builder.persistModuleModels("module-1", models)
@@ -1380,13 +1383,13 @@ func TestPersistModuleModels_ErrorBranches(t *testing.T) {
 
 	t.Run("delete previous raw models", func(t *testing.T) {
 		db, builder := openPersistDB("delete-raw")
-		if err := meta.PersistModelTreeAsRaw(db, &meta.Model{
+		if _, err := modmeta.ReplaceModuleDeclarations(db, "module-1", []*meta.Model{{
 			BaseModel:   meta.BaseModel{Id: sql.NullString{String: "del-raw", Valid: true}},
 			Name:        "Old",
 			Path:        "/models/old",
 			Application: "partner",
 			ModuleId:    sql.NullString{String: "module-1", Valid: true},
-		}); err != nil {
+		}}); err != nil {
 			t.Fatal(err)
 		}
 		boom := errors.New("forced raw delete")

@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/choysum-dev/choysum/internal/module/artifact/pipeline"
-	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/config"
@@ -29,6 +29,7 @@ import (
 	"google.golang.org/grpc/status"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+
 )
 
 type moduleIndexSyncTestScope struct {
@@ -89,7 +90,7 @@ func newModuleIndexSyncDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatalf("open sqlite db: %v", err)
 	}
-	if err := db.AutoMigrate(&metadata.ModuleIndex{}, &metadata.Setting{}); err != nil {
+	if err := db.AutoMigrate(&modmeta.ModuleIndex{}, &modmeta.Setting{}); err != nil {
 		t.Fatalf("auto migrate meta tables: %v", err)
 	}
 	return db
@@ -140,7 +141,7 @@ func TestModuleManagerBuildGlobalWebToDirResolvesRelativeEntryPath(t *testing.T)
 	modulesPath := t.TempDir()
 
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
@@ -181,7 +182,7 @@ func TestModuleManagerRefreshModuleIndexForLocalModules(t *testing.T) {
 		t.Fatalf("refreshModuleIndexForLocalModules() error = %v", err)
 	}
 
-	var partner metadata.ModuleIndex
+	var partner modmeta.ModuleIndex
 	if err := db.Where("module_name = ? AND origin_type = ? AND origin_ref = ?", "partner", "local", "local").Take(&partner).Error; err != nil {
 		t.Fatalf("load partner module index row: %v", err)
 	}
@@ -195,7 +196,7 @@ func TestModuleManagerRefreshModuleIndexForLocalModules(t *testing.T) {
 		t.Fatalf("expected partner last error to be empty, got %#v", partner.LastErrorMessage)
 	}
 
-	var missing metadata.ModuleIndex
+	var missing modmeta.ModuleIndex
 	if err := db.Where("module_name = ? AND origin_type = ? AND origin_ref = ?", "missing", "local", "local").Take(&missing).Error; err != nil {
 		t.Fatalf("load missing module index row: %v", err)
 	}
@@ -213,7 +214,7 @@ func TestModuleManagerRefreshModuleIndexForLocalModules(t *testing.T) {
 func TestModuleManagerBuildBackendAppToDirWritesModuleBasedEntryImports(t *testing.T) {
 	modulesPath := t.TempDir()
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
@@ -250,7 +251,7 @@ func TestModuleManagerBuildBackendAppToDirWritesModuleBasedEntryImports(t *testi
 func TestModuleManagerGenerateAppToDirsPropagatesGeneratorError(t *testing.T) {
 	modulesPath := t.TempDir()
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
@@ -276,7 +277,7 @@ func TestModuleManagerGenerateAppToDirsPropagatesGeneratorError(t *testing.T) {
 func TestModuleManagerBuildBackendBundlesToDirWritesModuleBasedEntryImports(t *testing.T) {
 	modulesPath := t.TempDir()
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
@@ -402,7 +403,7 @@ func TestSyncLocalModuleIndex_SyncsRowsAndReconcilesMissingModules(t *testing.T)
 	}
 
 	db := newModuleIndexSyncDB(t)
-	if err := db.Create(&metadata.ModuleIndex{
+	if err := db.Create(&modmeta.ModuleIndex{
 		ModuleName: "stale",
 		OriginType: "local",
 		OriginRef:  "local",
@@ -427,7 +428,7 @@ func TestSyncLocalModuleIndex_SyncsRowsAndReconcilesMissingModules(t *testing.T)
 		t.Fatalf("locker Release calls = %d, want 1", locker.released)
 	}
 
-	var partner metadata.ModuleIndex
+	var partner modmeta.ModuleIndex
 	if err := db.Where("module_name = ? AND origin_type = ? AND origin_ref = ?", "partner", "local", "local").Take(&partner).Error; err != nil {
 		t.Fatalf("load partner row: %v", err)
 	}
@@ -441,7 +442,7 @@ func TestSyncLocalModuleIndex_SyncsRowsAndReconcilesMissingModules(t *testing.T)
 		t.Fatalf("expected empty partner error, got %#v", partner.LastErrorMessage)
 	}
 
-	var broken metadata.ModuleIndex
+	var broken modmeta.ModuleIndex
 	if err := db.Where("module_name = ? AND origin_type = ? AND origin_ref = ?", "broken", "local", "local").Take(&broken).Error; err != nil {
 		t.Fatalf("load broken row: %v", err)
 	}
@@ -452,7 +453,7 @@ func TestSyncLocalModuleIndex_SyncsRowsAndReconcilesMissingModules(t *testing.T)
 		t.Fatalf("expected broken error message, got %#v", broken.LastErrorMessage)
 	}
 
-	var stale metadata.ModuleIndex
+	var stale modmeta.ModuleIndex
 	if err := db.Where("module_name = ? AND origin_type = ? AND origin_ref = ?", "stale", "local", "local").Take(&stale).Error; err != nil {
 		t.Fatalf("load stale row: %v", err)
 	}
@@ -484,7 +485,7 @@ func TestSyncLocalModuleIndex_AllSuccessUpdatesBatchSyncAt(t *testing.T) {
 		t.Fatalf("unexpected stats = %+v", stats)
 	}
 
-	var rows []metadata.ModuleIndex
+	var rows []modmeta.ModuleIndex
 	if err := db.Where("origin_type = ? AND origin_ref = ?", "local", "local").Find(&rows).Error; err != nil {
 		t.Fatalf("query local rows: %v", err)
 	}
@@ -526,14 +527,14 @@ func TestModuleIndexLockTTL_UsesSettingAndClampsRange(t *testing.T) {
 	db := newModuleIndexSyncDB(t)
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 
-	if err := db.Create(&metadata.Setting{Key: "meta.module_index.sync_lock_ttl_ms", Value: "999999"}).Error; err != nil {
+	if err := db.Create(&modmeta.Setting{Key: "meta.module_index.sync_lock_ttl_ms", Value: "999999"}).Error; err != nil {
 		t.Fatalf("seed setting: %v", err)
 	}
 	if got := moduleIndexLockTTL(context.Background(), runtimeScope); got != 120*time.Second {
 		t.Fatalf("ttl = %v, want %v", got, 120*time.Second)
 	}
 
-	if err := db.Model(&metadata.Setting{}).Where("key = ?", "meta.module_index.sync_lock_ttl_ms").Update("value", "10").Error; err != nil {
+	if err := db.Model(&modmeta.Setting{}).Where("key = ?", "meta.module_index.sync_lock_ttl_ms").Update("value", "10").Error; err != nil {
 		t.Fatalf("update setting low value: %v", err)
 	}
 	if got := moduleIndexLockTTL(context.Background(), runtimeScope); got != 1*time.Second {
@@ -556,7 +557,7 @@ func TestModuleIndexLockTTL_FallbackCases(t *testing.T) {
 		if err != nil {
 			t.Fatalf("open sqlite db: %v", err)
 		}
-		if err := db.AutoMigrate(&metadata.ModuleIndex{}); err != nil {
+		if err := db.AutoMigrate(&modmeta.ModuleIndex{}); err != nil {
 			t.Fatalf("auto migrate module index table: %v", err)
 		}
 		runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
@@ -567,7 +568,7 @@ func TestModuleIndexLockTTL_FallbackCases(t *testing.T) {
 
 	t.Run("invalid setting value", func(t *testing.T) {
 		db := newModuleIndexSyncDB(t)
-		if err := db.Create(&metadata.Setting{Key: "meta.module_index.sync_lock_ttl_ms", Value: "invalid"}).Error; err != nil {
+		if err := db.Create(&modmeta.Setting{Key: "meta.module_index.sync_lock_ttl_ms", Value: "invalid"}).Error; err != nil {
 			t.Fatalf("seed invalid setting: %v", err)
 		}
 		runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
@@ -766,7 +767,7 @@ func TestWithModuleIndexWriteRetrySQLiteRetriesAtTransactionBoundary(t *testing.
 	err := withModuleIndexWriteRetry(context.Background(), runtimeScope, session, func(txSession *scope.Session) error {
 		attempt++
 		if attempt == 1 {
-			if err := txSession.Create(&metadata.ModuleIndex{
+			if err := txSession.Create(&modmeta.ModuleIndex{
 				ModuleName: "auth",
 				OriginType: "local",
 				OriginRef:  "local",
@@ -778,7 +779,7 @@ func TestWithModuleIndexWriteRetrySQLiteRetriesAtTransactionBoundary(t *testing.
 		}
 
 		var count int64
-		if err := txSession.Model(&metadata.ModuleIndex{}).
+		if err := txSession.Model(&modmeta.ModuleIndex{}).
 			Where("module_name = ? AND origin_type = ? AND origin_ref = ?", "auth", "local", "local").
 			Count(&count).Error; err != nil {
 			return err
@@ -787,7 +788,7 @@ func TestWithModuleIndexWriteRetrySQLiteRetriesAtTransactionBoundary(t *testing.
 			return errors.New("retry observed rows from failed attempt")
 		}
 
-		return txSession.Create(&metadata.ModuleIndex{
+		return txSession.Create(&modmeta.ModuleIndex{
 			ModuleName: "auth",
 			OriginType: "local",
 			OriginRef:  "local",
@@ -802,7 +803,7 @@ func TestWithModuleIndexWriteRetrySQLiteRetriesAtTransactionBoundary(t *testing.
 	}
 
 	var persisted int64
-	if err := db.Model(&metadata.ModuleIndex{}).
+	if err := db.Model(&modmeta.ModuleIndex{}).
 		Where("module_name = ? AND origin_type = ? AND origin_ref = ?", "auth", "local", "local").
 		Count(&persisted).Error; err != nil {
 		t.Fatalf("count persisted rows: %v", err)
@@ -912,7 +913,7 @@ func TestModuleManagerInstallRunsAppStageCallbacks(t *testing.T) {
 	defaultChoysumPath := filepath.Join(t.TempDir(), ".choysum")
 
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
@@ -980,7 +981,7 @@ func TestModuleManagerUninstallRunsAppStageCallbacks(t *testing.T) {
 	defaultChoysumPath := filepath.Join(t.TempDir(), ".choysum")
 
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
@@ -1049,7 +1050,7 @@ func TestModuleManagerInstallPropagatesGeneratedAPIRootError(t *testing.T) {
 	modulesPath := t.TempDir()
 
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
@@ -1098,7 +1099,7 @@ func TestModuleManagerUninstallPropagatesGeneratedAPIRootError(t *testing.T) {
 	modulesPath := t.TempDir()
 
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
@@ -1138,7 +1139,7 @@ func TestModuleManagerUpgradePropagatesGeneratedAPIRootError(t *testing.T) {
 	modulesPath := t.TempDir()
 
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
@@ -1178,7 +1179,7 @@ func TestModuleManagerUpgradeRunsAppStageCallbacks(t *testing.T) {
 	defaultChoysumPath := filepath.Join(t.TempDir(), ".choysum")
 
 	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(meta.CatalogEntities()...); err != nil {
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 

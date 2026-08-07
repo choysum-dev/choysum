@@ -9,9 +9,11 @@ import (
 	"strings"
 
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"gorm.io/gorm"
+
 )
 
 type grpcGenerator struct {
@@ -162,7 +164,7 @@ func selectSameNameModelsInPrimaryExtensionChain(models []*meta.Model) []*meta.M
 }
 
 func mergeSameNameModelsByExtensionChain(models []*meta.Model) (*meta.Model, error) {
-	return meta.MergeSameNameModelsByExtensionChain(models)
+	return modmeta.MergeSameNameModelsByExtensionChain(models)
 }
 
 func (g *grpcGenerator) Generate() ([]*module.GeneratorResult, error) {

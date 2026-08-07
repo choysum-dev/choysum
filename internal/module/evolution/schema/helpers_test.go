@@ -14,12 +14,14 @@ import (
 	"testing"
 
 	dynamicstruct "github.com/Chise1/dynamic-struct"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+
 )
 
 type schemaTestScope struct {
@@ -76,7 +78,7 @@ func newSchemaTestScope(t *testing.T) *schemaTestScope {
 
 func migrateSchemaMetaTables(t *testing.T, session *scope.Session) {
 	t.Helper()
-	if err := meta.EnsureDualStoreTables(session.DB); err != nil {
+	if err := session.DB.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("ensure dual store: %v", err)
 	}
 	if err := session.AutoMigrate(&meta.Module{}); err != nil {

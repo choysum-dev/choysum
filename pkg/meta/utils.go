@@ -12,9 +12,9 @@ import (
 	"github.com/choysum-dev/choysum/pkg/scope"
 )
 
-// IsConventionalServiceName returns true when a service method name starts with
+// isConventionalServiceName returns true when a service method name starts with
 // an upper-case rune.
-func IsConventionalServiceName(name string) bool {
+func isConventionalServiceName(name string) bool {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return false
@@ -35,7 +35,7 @@ func IsConventionalModelService(accessibilityModifier string, isStatic bool, ser
 		return false
 	}
 
-	return IsConventionalServiceName(serviceName)
+	return isConventionalServiceName(serviceName)
 }
 
 func IsCoreModule(moduleName string) bool {

@@ -28,8 +28,6 @@ import (
 	tscore "github.com/buke/typescript-go-internal/pkg/core"
 	tsparser "github.com/buke/typescript-go-internal/pkg/parser"
 
-	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
-
 	"github.com/choysum-dev/choysum/internal/config/snapshot"
 	_ "github.com/choysum-dev/choysum/internal/defaultengine"
 	_ "github.com/choysum-dev/choysum/internal/defaultjsexecutor"
@@ -37,6 +35,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/logger"
 	dataloader "github.com/choysum-dev/choysum/internal/module/evolution/data"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	moddeps "github.com/choysum-dev/choysum/internal/testing/moddeps"
 	noderuntime "github.com/choysum-dev/choysum/internal/testing/noderuntime"
 	testsemantics "github.com/choysum-dev/choysum/internal/testing/semantics"
@@ -683,7 +682,7 @@ func seedModuleIndexForE2E(ctx context.Context, configPath string, packages map[
 		if sess == nil || sess.DB == nil {
 			return xfmt.Errorf("missing db session")
 		}
-		if err := sess.DB.AutoMigrate(&metadata.ModuleIndex{}); err != nil {
+		if err := sess.DB.AutoMigrate(&modmeta.ModuleIndex{}); err != nil {
 			return xfmt.Errorf("auto-migrate metadata.ModuleIndex: %w", err)
 		}
 
@@ -707,7 +706,7 @@ func seedModuleIndexForE2E(ctx context.Context, configPath string, packages map[
 			revision := fmt.Sprintf("%d:%d", info.ModTime().UnixNano(), info.Size())
 			localPath := filepath.Join(runtimeOptions.modulesPath, sm.DirName)
 
-			rec := metadata.ModuleIndex{
+			rec := modmeta.ModuleIndex{
 				ModuleName:      name,
 				OriginType:      "local",
 				OriginRef:       "local",

@@ -10,9 +10,11 @@ import (
 	"strings"
 
 	"github.com/choysum-dev/choysum/internal/esbplugins"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/parser"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"gorm.io/gorm"
+
 )
 
 func pathWithinModuleRoot(path, root string) bool {
@@ -150,7 +152,7 @@ func dbLoadModels(spec *Spec, db *gorm.DB, app string) ([]*meta.Model, error) {
 		return nil, nil
 	}
 	absFalse := false
-	return meta.ListDeclarations(db, meta.DeclarationQuery{
+	return modmeta.ListDeclarations(db, modmeta.DeclarationQuery{
 		Application: app,
 		Name:        spec.ModelName,
 		Abstract:    &absFalse,

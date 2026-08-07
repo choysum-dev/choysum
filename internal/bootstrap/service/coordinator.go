@@ -13,8 +13,7 @@ import (
 	"strings"
 	"time"
 
-	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
-	leasemodel "github.com/choysum-dev/choysum/internal/state/lease/model"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 
 	"github.com/choysum-dev/choysum/internal/logger"
 	modulestaging "github.com/choysum-dev/choysum/internal/module/artifact/staging"
@@ -335,8 +334,8 @@ func (c *coordinator) defaultAcquireInitLease(ctx context.Context) (*leaseHandle
 		return nil, newBootstrapError(bootstrapErrCodeGateError, "database session is not available", nil)
 	}
 
-	if !session.Migrator().HasTable((&leasemodel.LockLease{}).TableName()) {
-		if err := session.AutoMigrate(&leasemodel.LockLease{}); err != nil {
+	if !session.Migrator().HasTable((&modmeta.LockLease{}).TableName()) {
+		if err := session.AutoMigrate(&modmeta.LockLease{}); err != nil {
 			return nil, newBootstrapError(bootstrapErrCodeGateError, "failed to initialize the setup lock", err)
 		}
 	}
@@ -641,7 +640,7 @@ func (c *coordinator) defaultUpdateAdminAndMarker(ctx context.Context, input ini
 	now := c.now().UTC()
 	txRoot := c.runtimeScope.WithContext(ctx)
 	err = txRoot.Transactor().Required(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
-		var modelData metadata.ModelData
+		var modelData modmeta.ModelData
 		if err := txScope.Session().Where("module = ? AND name = ?", "auth", "user_admin").Take(&modelData).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return errBootstrapAdminNameNotFound
@@ -650,9 +649,9 @@ func (c *coordinator) defaultUpdateAdminAndMarker(ctx context.Context, input ini
 		}
 
 		var model meta.Model
-		lookedUp, err := meta.LookupEffectiveModel(txScope.Session().DB, "auth", "User")
+		lookedUp, err := modmeta.LookupEffectiveModel(txScope.Session().DB, "auth", "User")
 		if err != nil {
-			if meta.IsEffectiveModelNotFound(err) || errors.Is(err, gorm.ErrRecordNotFound) {
+			if modmeta.IsEffectiveModelNotFound(err) || errors.Is(err, gorm.ErrRecordNotFound) {
 				return errBootstrapAdminModelNotFound
 			}
 			return err
@@ -737,11 +736,11 @@ func upsertBootstrapSetting(session *scope.Session, key, value string) error {
 		return errors.New("database session is not available")
 	}
 
-	var setting metadata.Setting
+	var setting modmeta.Setting
 	err := session.Unscoped().Where("key = ?", key).Take(&setting).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return session.Create(&metadata.Setting{Key: key, Value: value}).Error
+			return session.Create(&modmeta.Setting{Key: key, Value: value}).Error
 		}
 		return err
 	}

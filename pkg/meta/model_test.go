@@ -57,29 +57,6 @@ func TestEntitiesAndTableNames(t *testing.T) {
 		}
 	}
 
-	rawExpected := []reflect.Type{
-		reflect.TypeOf(&rawModel{}),
-		reflect.TypeOf(&rawField{}),
-		reflect.TypeOf(&rawService{}),
-		reflect.TypeOf(&rawTypeParameter{}),
-		reflect.TypeOf(&rawParameter{}),
-		reflect.TypeOf(&rawDecorator{}),
-		reflect.TypeOf(&rawArgument{}),
-	}
-	rawEntities := DualStoreRawEntities()
-	if len(rawEntities) != len(rawExpected) {
-		t.Fatalf("DualStoreRawEntities() len = %d, want %d", len(rawEntities), len(rawExpected))
-	}
-	for index, entity := range rawEntities {
-		if reflect.TypeOf(entity) != rawExpected[index] {
-			t.Fatalf("DualStoreRawEntities()[%d] type = %v, want %v", index, reflect.TypeOf(entity), rawExpected[index])
-		}
-	}
-	catalog := CatalogEntities()
-	if len(catalog) != len(entities)+len(rawEntities) {
-		t.Fatalf("CatalogEntities() len = %d, want %d", len(catalog), len(entities)+len(rawEntities))
-	}
-
 	tableNames := []struct {
 		name string
 		got  string
@@ -98,13 +75,6 @@ func TestEntitiesAndTableNames(t *testing.T) {
 		{name: "UiResource", got: (&UiResource{}).TableName(), want: "meta_ui_resource"},
 		{name: "UiResourceMenuRoute", got: (&UiResourceMenuRoute{}).TableName(), want: "meta_ui_resource_menu_route"},
 		{name: "UiResourceRouteAction", got: (&UiResourceRouteAction{}).TableName(), want: "meta_ui_resource_route_action"},
-		{name: "rawModel", got: (&rawModel{}).TableName(), want: "meta_raw_model"},
-		{name: "rawField", got: (&rawField{}).TableName(), want: "meta_raw_field"},
-		{name: "rawService", got: (&rawService{}).TableName(), want: "meta_raw_service"},
-		{name: "rawTypeParameter", got: (&rawTypeParameter{}).TableName(), want: "meta_raw_type_parameter"},
-		{name: "rawParameter", got: (&rawParameter{}).TableName(), want: "meta_raw_parameter"},
-		{name: "rawDecorator", got: (&rawDecorator{}).TableName(), want: "meta_raw_decorator"},
-		{name: "rawArgument", got: (&rawArgument{}).TableName(), want: "meta_raw_argument"},
 	}
 
 	for _, check := range tableNames {

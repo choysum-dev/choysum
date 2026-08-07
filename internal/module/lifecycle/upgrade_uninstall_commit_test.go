@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/defaultscope"
-	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -35,10 +35,10 @@ func newLifecycleCommitTestScope(t *testing.T) scope.Scope {
 		scopetest.FactoryInputFromConfig(cfg),
 		logger,
 	)
-	if err := runtimeScope.Session().AutoMigrate(meta.CatalogEntities()...); err != nil {
+	if err := runtimeScope.Session().AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("AutoMigrate: %v", err)
 	}
-	if err := runtimeScope.Session().AutoMigrate(&metadata.ModelData{}); err != nil {
+	if err := runtimeScope.Session().AutoMigrate(&modmeta.ModelData{}); err != nil {
 		t.Fatalf("AutoMigrate ModelData: %v", err)
 	}
 	return runtimeScope

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	statepkg "github.com/choysum-dev/choysum/pkg/state"
@@ -99,7 +99,7 @@ func TestDefaultUpdateAdminAndMarkerDBLookupFailures(t *testing.T) {
 	t.Run("model_data name not found", func(t *testing.T) {
 		c, db := newFreshnessTestCoordinator(t)
 		c.now = func() time.Time { return fixedNow }
-		if err := db.AutoMigrate(&metadata.ModelData{}); err != nil {
+		if err := db.AutoMigrate(&modmeta.ModelData{}); err != nil {
 			t.Fatalf("auto migrate model_data: %v", err)
 		}
 
@@ -144,10 +144,10 @@ func TestDefaultUpdateAdminAndMarkerDBLookupFailures(t *testing.T) {
 	t.Run("effective model not found", func(t *testing.T) {
 		c, db := newFreshnessTestCoordinator(t)
 		c.now = func() time.Time { return fixedNow }
-		if err := db.AutoMigrate(&metadata.ModelData{}, &meta.Model{}); err != nil {
+		if err := db.AutoMigrate(&modmeta.ModelData{}, &meta.Model{}); err != nil {
 			t.Fatalf("auto migrate: %v", err)
 		}
-		if err := db.Create(&metadata.ModelData{
+		if err := db.Create(&modmeta.ModelData{
 			Module: "auth", Name: "user_admin", Application: "auth", ModelName: "User", ModelId: "missing", ResID: "user-1",
 		}).Error; err != nil {
 			t.Fatalf("seed model_data: %v", err)
@@ -171,7 +171,7 @@ func TestDefaultUpdateAdminAndMarkerDBLookupFailures(t *testing.T) {
 	t.Run("effective model table missing", func(t *testing.T) {
 		c, db := newFreshnessTestCoordinator(t)
 		c.now = func() time.Time { return fixedNow }
-		if err := db.AutoMigrate(&metadata.ModelData{}, &meta.Model{}); err != nil {
+		if err := db.AutoMigrate(&modmeta.ModelData{}, &meta.Model{}); err != nil {
 			t.Fatalf("auto migrate: %v", err)
 		}
 		authUserModel := &meta.Model{
@@ -183,7 +183,7 @@ func TestDefaultUpdateAdminAndMarkerDBLookupFailures(t *testing.T) {
 		if err := db.Create(authUserModel).Error; err != nil {
 			t.Fatalf("seed auth.User: %v", err)
 		}
-		if err := db.Create(&metadata.ModelData{
+		if err := db.Create(&modmeta.ModelData{
 			Module: "auth", Name: "user_admin", Application: "auth", ModelName: "User", ModelId: authUserModel.Id.String, ResID: "user-1",
 		}).Error; err != nil {
 			t.Fatalf("seed model_data: %v", err)
@@ -211,7 +211,7 @@ func TestDefaultUpdateAdminAndMarkerSuccessUpsertsBootstrapSettings(t *testing.T
 	c.now = func() time.Time { return fixedNow }
 	wirePassword := "$CH$" + strings.Repeat("cd", 32)
 
-	if err := db.AutoMigrate(&metadata.ModelData{}, &meta.Model{}, &metadata.Setting{}); err != nil {
+	if err := db.AutoMigrate(&modmeta.ModelData{}, &meta.Model{}, &modmeta.Setting{}); err != nil {
 		t.Fatalf("auto migrate admin tables: %v", err)
 	}
 	mustExec(t, db, `CREATE TABLE auth_user (
@@ -232,12 +232,12 @@ func TestDefaultUpdateAdminAndMarkerSuccessUpsertsBootstrapSettings(t *testing.T
 	if err := db.Create(authUserModel).Error; err != nil {
 		t.Fatalf("seed auth.User model: %v", err)
 	}
-	if err := db.Create(&metadata.ModelData{
+	if err := db.Create(&modmeta.ModelData{
 		Module: "auth", Name: "user_admin", Application: "auth", ModelName: "User", ModelId: authUserModel.Id.String, ResID: resID,
 	}).Error; err != nil {
 		t.Fatalf("seed model_data: %v", err)
 	}
-	if err := db.Create(&metadata.Setting{Key: "system.init.done", Value: "false"}).Error; err != nil {
+	if err := db.Create(&modmeta.Setting{Key: "system.init.done", Value: "false"}).Error; err != nil {
 		t.Fatalf("seed existing bootstrap setting: %v", err)
 	}
 
@@ -260,7 +260,7 @@ func TestDefaultUpdateAdminAndMarkerSuccessUpsertsBootstrapSettings(t *testing.T
 	}
 
 	for _, key := range []string{"system.init.done", "system.init.at"} {
-		var setting metadata.Setting
+		var setting modmeta.Setting
 		if err := db.Where("key = ?", key).Take(&setting).Error; err != nil {
 			t.Fatalf("query setting %q: %v", key, err)
 		}
@@ -281,7 +281,7 @@ func TestUpsertBootstrapSettingBranches(t *testing.T) {
 	})
 
 	c, db := newFreshnessTestCoordinator(t)
-	if err := db.AutoMigrate(&metadata.Setting{}); err != nil {
+	if err := db.AutoMigrate(&modmeta.Setting{}); err != nil {
 		t.Fatalf("auto migrate settings: %v", err)
 	}
 	session := c.runtimeScope.Session()

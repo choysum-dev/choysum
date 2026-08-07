@@ -10,14 +10,17 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/choysum-dev/choysum/internal/module/artifact/build/injectappmodel"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/parser"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+
 )
 
 func newInjectTestBuilder(t *testing.T, mod *meta.Module, results []*parser.ParserResult) (*ModuleBuilder, *stubEsbPlugin, *gorm.DB) {
@@ -29,7 +32,7 @@ func newInjectTestBuilder(t *testing.T, mod *meta.Module, results []*parser.Pars
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := meta.EnsureDualStoreTables(db); err != nil {
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatal(err)
 	}
 	_ = db.AutoMigrate(&meta.Application{}, &meta.Module{})
@@ -318,7 +321,7 @@ func TestPersist_SupersedeInjectError(t *testing.T) {
 	mod.Id = sql.NullString{String: "mod-sup-err", Valid: true}
 	builder, _, db := newInjectTestBuilder(t, mod, nil)
 	builder.ensureInjectSession().SetPlan("FieldDefault", injectappmodel.Plan{SupersedeInject: true})
-	if err := meta.DropRawModelTable(db); err != nil {
+	if err := db.Migrator().DropTable("meta_raw_model"); err != nil {
 		t.Fatal(err)
 	}
 	result := &module.BuildResult{Module: mod}
@@ -417,7 +420,7 @@ func TestBundleInjectAppModels_PropagatesError(t *testing.T) {
 		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 	}
 	builder, _, db := newInjectTestBuilder(t, mod, nil)
-	if err := meta.DropRawModelTable(db); err != nil {
+	if err := db.Migrator().DropTable("meta_raw_model"); err != nil {
 		t.Fatal(err)
 	}
 	if err := builder.BundleInjectAppModels([]*meta.Module{mod}); err == nil {
@@ -453,21 +456,29 @@ func TestBuildWithoutPersist_UpdateAndValidateRelease(t *testing.T) {
 		Model:   &meta.Model{Name: "Partner", Path: curPath, Extends: oldPath, Application: "partner"},
 		Imports: map[string]*parser.Import{},
 	}})
-	for _, seed := range []struct{ id, path string }{
-		{"raw-old", oldPath},
-		{"raw-tip", tipPath},
-	} {
-		if err := meta.PersistModelTreeAsRaw(db, &meta.Model{
-			BaseModel:   meta.BaseModel{Id: sql.NullString{String: seed.id, Valid: true}},
+	if _, err := modmeta.ReplaceModuleDeclarations(db, "seed-tip", []*meta.Model{
+		{
+			BaseModel:   meta.BaseModel{Id: sql.NullString{String: "raw-old", Valid: true}},
 			Name:        "Partner",
-			Path:        seed.path,
+			Path:        oldPath,
 			Application: "partner",
-		}); err != nil {
-			t.Fatal(err)
-		}
+			ModuleId:    sql.NullString{String: "seed-tip", Valid: true},
+		},
+		{
+			BaseModel:   meta.BaseModel{Id: sql.NullString{String: "raw-tip", Valid: true}},
+			Name:        "Partner",
+			Path:        tipPath,
+			Application: "partner",
+			ModuleId:    sql.NullString{String: "seed-tip", Valid: true},
+		},
+	}); err != nil {
+		t.Fatal(err)
 	}
-	// Tip ordering: prefer tipPath by bumping timestamps via PreferDeclarationTip.
-	if err := meta.PreferDeclarationTip(db, "partner", "Partner", tipPath); err != nil {
+	// Tip ordering: prefer tipPath by bumping timestamps via UpdateColumns.
+	tip := time.Now().UTC()
+	if err := db.Table("meta_raw_model").
+		Where("path = ? AND application = ?", tipPath, "partner").
+		UpdateColumns(map[string]any{"created_at": tip, "updated_at": tip}).Error; err != nil {
 		t.Fatal(err)
 	}
 	builder2.tsParser = fixedParser{err: sql.ErrConnDone}
@@ -483,7 +494,7 @@ func TestInjectAppModels_LifecycleReleasesSchedule(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := meta.EnsureDualStoreTables(db); err != nil {
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.AutoMigrate(&meta.Application{}, &meta.Module{}); err != nil {

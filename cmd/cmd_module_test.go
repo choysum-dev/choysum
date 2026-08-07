@@ -20,7 +20,7 @@ import (
 	clicompat "github.com/choysum-dev/choysum/internal/cli/compat"
 	cliruntime "github.com/choysum-dev/choysum/internal/cli/runtime"
 	"github.com/choysum-dev/choysum/internal/config/snapshot"
-	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
 	sourceregistry "github.com/choysum-dev/choysum/internal/module/origin/registry"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
@@ -575,10 +575,10 @@ func TestQueryModuleIndexViewsBranches(t *testing.T) {
 
 	t.Run("queries index without module table join", func(t *testing.T) {
 		runtimeScope, db := newModuleQueryTestScope(t)
-		if err := db.AutoMigrate(&metadata.ModuleIndex{}); err != nil {
+		if err := db.AutoMigrate(&modmeta.ModuleIndex{}); err != nil {
 			t.Fatalf("auto migrate module index: %v", err)
 		}
-		if err := db.Create(&metadata.ModuleIndex{
+		if err := db.Create(&modmeta.ModuleIndex{
 			ModuleName: "auth",
 			OriginType: "local",
 			OriginRef:  "modules/auth",
@@ -604,10 +604,10 @@ func TestQueryModuleIndexViewsBranches(t *testing.T) {
 
 	t.Run("joins module install status when module table exists", func(t *testing.T) {
 		runtimeScope, db := newModuleQueryTestScope(t)
-		if err := db.AutoMigrate(&metadata.ModuleIndex{}, &meta.Module{}); err != nil {
+		if err := db.AutoMigrate(&modmeta.ModuleIndex{}, &meta.Module{}); err != nil {
 			t.Fatalf("auto migrate module tables: %v", err)
 		}
-		if err := db.Create(&metadata.ModuleIndex{
+		if err := db.Create(&modmeta.ModuleIndex{
 			ModuleName: "auth",
 			OriginType: "local",
 			OriginRef:  "modules/auth",

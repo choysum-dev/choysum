@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/choysum-dev/choysum/internal/module/evolution/hooks"
-	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -53,12 +53,6 @@ func (m *moduleUninstaller) cleanModels() error {
 		return xfmt.Errorf("error updating module status: %w", err)
 	}
 
-	// Collect logical names from declaration-layer rows before hard-delete (align with persist).
-	decls, err := meta.ListDeclarations(db.DB, meta.DeclarationQuery{ModuleID: moduleID})
-	if err != nil {
-		return xfmt.Errorf("error listing raw models for uninstall: %w", err)
-	}
-
 	componentIDs := db.Model(&meta.Component{}).Select("id").Where("module_id = ?", moduleID)
 	uiResourceIDs := db.Model(&meta.UiResource{}).Select("id").Where("module_id = ?", moduleID)
 	// Component decorators still live on the shared meta_decorator table.
@@ -67,20 +61,13 @@ func (m *moduleUninstaller) cleanModels() error {
 		componentIDs,
 	)
 
-	if err := meta.DeleteRawModelsForModule(db.DB, moduleID); err != nil {
-		return xfmt.Errorf("error deleting raw models: %w", err)
+	// Remove declaration trees then rebuild effective projections (symmetric with Replace+Flush).
+	keys, err := modmeta.RemoveModuleDeclarations(db.DB, moduleID)
+	if err != nil {
+		return xfmt.Errorf("error removing module declarations: %w", err)
 	}
-
-	// Rebuild effective projections for touched logical names (EDS-2; no tip rebind).
-	keys := make([]meta.LogicalKey, 0, len(decls))
-	for _, d := range decls {
-		if d == nil {
-			continue
-		}
-		keys = append(keys, meta.LogicalKey{Application: d.Application, Name: d.Name})
-	}
-	if err := meta.RecomputeKeys(db.DB, keys); err != nil {
-		return xfmt.Errorf("error recomputing effective models after uninstall: %w", err)
+	if err := modmeta.FlushEffective(db.DB, keys); err != nil {
+		return xfmt.Errorf("error flushing effective models after uninstall: %w", err)
 	}
 
 	if err := db.Where("decorator_id IN (?)", componentDecoratorIDs).Delete(&meta.Argument{}).Error; err != nil {
@@ -114,8 +101,8 @@ func (m *moduleUninstaller) cleanModels() error {
 	// Soft-delete would leave (module, name) unique-index collisions that block reinstall
 	// (loader scoped First misses soft-deleted rows, then Create fails). Do not cascade-
 	// delete the business seed rows those mappings point at (V1).
-	if db.Migrator().HasTable((&metadata.ModelData{}).TableName()) {
-		if err := db.Unscoped().Where("module = ?", m.module.Name).Delete(&metadata.ModelData{}).Error; err != nil {
+	if db.Migrator().HasTable((&modmeta.ModelData{}).TableName()) {
+		if err := db.Unscoped().Where("module = ?", m.module.Name).Delete(&modmeta.ModelData{}).Error; err != nil {
 			return xfmt.Errorf("error deleting meta model data mappings: %w", err)
 		}
 	}

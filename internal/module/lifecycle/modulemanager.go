@@ -17,8 +17,7 @@ import (
 	"sync"
 	"time"
 
-	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
-	leasemodel "github.com/choysum-dev/choysum/internal/state/lease/model"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 
 	"github.com/choysum-dev/choysum/internal/distmanifest"
 	logutil "github.com/choysum-dev/choysum/internal/logger"
@@ -208,7 +207,7 @@ func (m *ModuleManager) ensureMetaTables() error {
 func (m *ModuleManager) bootstrapMetaTables(txScope scope.Scope) error {
 	migrator := txScope.Session().Migrator()
 
-	if migrator.HasTable(&meta.Module{}) && migrator.HasTable(&leasemodel.LockLease{}) {
+	if migrator.HasTable(&meta.Module{}) && migrator.HasTable(&modmeta.LockLease{}) {
 		return nil
 	}
 
@@ -602,7 +601,7 @@ func (m *ModuleManager) refreshModuleIndexForLocalModules(ctx context.Context, m
 		packageJSONPath := filepath.Join(modulesPath, name, "package.json")
 		packageJSONData, readErr := os.ReadFile(packageJSONPath)
 
-		entry := metadata.ModuleIndex{
+		entry := modmeta.ModuleIndex{
 			ModuleName:       name,
 			OriginType:       "local",
 			OriginRef:        "local",
@@ -1646,10 +1645,8 @@ func NewModuleManager(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExec
 		moduleIndexSyncLocal: SyncLocalModuleIndex,
 	}
 
-	// Default entity set: shared IR (effective + declaration dual-store), module admin/ops, and lease models.
-	m.entities = append(meta.Entities(), meta.DualStoreRawEntities()...)
-	m.entities = append(m.entities, metadata.Entities()...)
-	m.entities = append(m.entities, leasemodel.Entities()...)
+	// Default entity set: full catalog (pkg IR + dual-store raw + ops, incl. lock lease).
+	m.entities = append([]any{}, modmeta.CatalogEntities()...)
 
 	// Apply external injections.
 	for _, opt := range opts {

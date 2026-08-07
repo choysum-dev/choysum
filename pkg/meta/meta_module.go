@@ -12,12 +12,10 @@ import (
 type Status string
 
 const (
-	Uninstallable Status = "uninstallable"
-	Uninstalled   Status = "uninstalled"
-	Installed     Status = "installed"
-	ToUpgrade     Status = "to upgrade"
-	ToRemove      Status = "to remove"
-	ToInstall     Status = "to install"
+	Uninstalled Status = "uninstalled"
+	Installed   Status = "installed"
+	ToUpgrade   Status = "to upgrade"
+	ToInstall   Status = "to install"
 )
 
 type Module struct {

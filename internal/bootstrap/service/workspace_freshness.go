@@ -6,8 +6,7 @@ package service
 import (
 	"context"
 	"errors"
-	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
-
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"gorm.io/gorm"
@@ -50,8 +49,8 @@ func (c *coordinator) defaultCheckWorkspaceFreshness(ctx context.Context) error 
 			}
 		}
 
-		if session.Migrator().HasTable((&metadata.ModelData{}).TableName()) {
-			var modelData metadata.ModelData
+		if session.Migrator().HasTable((&modmeta.ModelData{}).TableName()) {
+			var modelData modmeta.ModelData
 			err := session.Select("id").Where("module = ? AND name = ?", "auth", "user_admin").Take(&modelData).Error
 			if err == nil {
 				return newBootstrapError(bootstrapErrCodeWorkspaceNotFresh, "initial setup has already been completed: administrator setup data already exists", nil)
