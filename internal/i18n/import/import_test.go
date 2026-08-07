@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	i18nimport "github.com/choysum-dev/choysum/internal/i18n/import"
@@ -103,8 +104,8 @@ msgid "Hello"
 msgstr "你好"
 `)
 	_, err = i18nimport.UpsertPackagedTerms(rs, nil, "auth", "auth", "zh_CN", poText)
-	if err == nil {
-		t.Fatal("expected migrate error for missing table on closed DB")
+	if err == nil || !strings.Contains(err.Error(), "migrate auth_translation_term") {
+		t.Fatalf("expected migrate error for missing table on closed DB, got %v", err)
 	}
 }
 

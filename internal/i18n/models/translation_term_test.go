@@ -175,6 +175,12 @@ func TestMigrateTranslationTermTableAutoMigrateError(t *testing.T) {
 
 func TestMigrateTranslationTermTableUniqueIndexError(t *testing.T) {
 	rs := newTestScope(t)
+	sqlDB, err := rs.Session().DB.DB()
+	if err != nil {
+		t.Fatalf("db.DB: %v", err)
+	}
+	// PRAGMA query_only is per-connection; pin the pool so migrate reuses it.
+	sqlDB.SetMaxOpenConns(1)
 	if err := MigrateTranslationTermTable(rs, "auth"); err != nil {
 		t.Fatalf("initial migrate: %v", err)
 	}
@@ -185,7 +191,7 @@ func TestMigrateTranslationTermTableUniqueIndexError(t *testing.T) {
 	if err := rs.Session().Exec("PRAGMA query_only = ON").Error; err != nil {
 		t.Fatalf("query_only: %v", err)
 	}
-	err := MigrateTranslationTermTable(rs, "auth")
+	err = MigrateTranslationTermTable(rs, "auth")
 	if err == nil || !strings.Contains(err.Error(), "unique index") {
 		t.Fatalf("expected unique index wrap, got %v", err)
 	}
