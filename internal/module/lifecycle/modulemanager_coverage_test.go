@@ -51,18 +51,7 @@ func TestBootstrapMetaTablesEnsureUniqueIndexErrorWhenModelExists(t *testing.T) 
 	if err := db.AutoMigrate(&meta.Module{}, &modmeta.LockLease{}, &meta.Model{}); err != nil {
 		t.Fatalf("auto migrate base tables: %v", err)
 	}
-	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-	for _, id := range []string{"dup-a", "dup-b"} {
-		row := &meta.Model{
-			BaseModel:   meta.BaseModel{Id: sql.NullString{String: id, Valid: true}, CreatedAt: ts, UpdatedAt: ts},
-			Name:        "Partner",
-			Application: "partner",
-			Path:        "/" + id + ".ts",
-		}
-		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(row).Error; err != nil {
-			t.Fatalf("seed duplicate %s: %v", id, err)
-		}
-	}
+	seedDuplicateLiveModelsForTest(t, db)
 
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 	manager := NewModuleManager(runtimeScope, nil)
@@ -110,6 +99,18 @@ func TestModuleManagerMigrateBaseModuleEnsureUniqueIndexError(t *testing.T) {
 	if err := db.Exec(`DROP INDEX IF EXISTS "uidx_meta_model_app_name_alive"`).Error; err != nil {
 		t.Fatalf("drop unique index: %v", err)
 	}
+	seedDuplicateLiveModelsForTest(t, db)
+
+	err := manager.migrateBaseModule()
+	if err == nil || !strings.Contains(err.Error(), "ensure effective app/name unique index") {
+		t.Fatalf("migrateBaseModule() error = %v, want unique index failure", err)
+	}
+}
+
+// seedDuplicateLiveModelsForTest inserts two live meta_model rows that share
+// (application, name) so EnsureEffectiveAppNameUniqueIndex must fail.
+func seedDuplicateLiveModelsForTest(t *testing.T, db *gorm.DB) {
+	t.Helper()
 	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
 	for _, id := range []string{"dup-a", "dup-b"} {
 		row := &meta.Model{
@@ -121,11 +122,6 @@ func TestModuleManagerMigrateBaseModuleEnsureUniqueIndexError(t *testing.T) {
 		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(row).Error; err != nil {
 			t.Fatalf("seed duplicate %s: %v", id, err)
 		}
-	}
-
-	err := manager.migrateBaseModule()
-	if err == nil || !strings.Contains(err.Error(), "ensure effective app/name unique index") {
-		t.Fatalf("migrateBaseModule() error = %v, want unique index failure", err)
 	}
 }
 
