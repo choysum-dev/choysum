@@ -15,6 +15,7 @@ import {
 import BaseModel from './model';
 import { resolveEffectiveFieldDefaults } from './field_default_resolve';
 import type { InstantiableModelCtor } from './types';
+import { registerLogicalModelName } from './logical_model_registry';
 
 /** Align Odoo: False→global; True→current; id→specific. */
 export type FieldDefaultScopeDim = string | boolean | null | undefined;
@@ -380,3 +381,6 @@ export function __resetFieldDefaultUniqueIndexTablesForTest(): void {
 export function __invalidateFieldDefaultMemoForTest(application: string, modelShort: string): void {
   invalidateFieldDefaultMemo(application, modelShort);
 }
+
+// LogicalModel ACL eligibility (auth RoleMethodAccess / RoleFieldRule).
+registerLogicalModelName('FieldDefault');

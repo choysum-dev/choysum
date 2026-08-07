@@ -10,6 +10,7 @@ import { buildUiGrantCacheKey } from './_request_cache_invalidation';
 import RoleMethodAccess from './role_method_access';
 import RoleUiResource from './role_ui_resource';
 import { normalizeScopeRefId, normalizeUiResourceId, parseJsonStringArray, requireMatchesMethod, sortStrings } from './_user_authz_shared';
+import { logicalMethodsAllow } from './_logical_model_registry';
 import { resolveEffectiveApplicationId, resolveEffectiveModelId } from './_resolve_effective_model';
 
 const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
@@ -86,6 +87,7 @@ export async function resolveMethodAccessMeta(
           ['MetaServiceId', '=', irServiceId],
           ['MetaModelId', 'is', null],
           ['MetaApplicationId', 'is', null],
+          ['LogicalModelName', 'is', null],
         ],
       },
       {
@@ -93,6 +95,7 @@ export async function resolveMethodAccessMeta(
           ['MetaServiceId', 'is', null],
           ['MetaModelId', '=', modelId],
           ['MetaApplicationId', 'is', null],
+          ['LogicalModelName', 'is', null],
         ],
       },
       {
@@ -100,16 +103,27 @@ export async function resolveMethodAccessMeta(
           ['MetaServiceId', 'is', null],
           ['MetaModelId', 'is', null],
           ['MetaApplicationId', 'is', null],
+          ['LogicalModelName', '=', modelName],
+        ],
+      },
+      {
+        And: [
+          ['MetaServiceId', 'is', null],
+          ['MetaModelId', 'is', null],
+          ['MetaApplicationId', 'is', null],
+          ['LogicalModelName', 'is', null],
         ],
       },
     ];
 
     if (irApplicationId) {
+      // Insert Application between MetaModel and LogicalModel (index 2).
       scopeOr.splice(2, 0, {
         And: [
           ['MetaServiceId', 'is', null],
           ['MetaModelId', 'is', null],
           ['MetaApplicationId', '=', irApplicationId],
+          ['LogicalModelName', 'is', null],
         ],
       });
     }
@@ -127,19 +141,32 @@ export async function resolveMethodAccessMeta(
 
 /**
  * Evaluate explicit RoleMethodAccess rules with deny-wins semantics.
+ *
+ * LogicalModel rows may include LogicalMethods; callers pass methodLower so
+ * method-restricted logical rules only apply when the method matches.
  */
 export async function evaluateRoleMethodAccess(
   roleIds: string[],
-  scopeOr: any[]
+  scopeOr: any[],
+  methodLower?: string
 ): Promise<{ denied: boolean; allowed: boolean; hitRuleIds: string[]; reason: string }> {
   const accessesRaw = await RoleMethodAccess.Search(
     {
       And: [['RoleId', 'in', roleIds], { Or: scopeOr } as any],
     } as any,
-    { fields: ['Id', 'Mode', 'Source'], limit: 5000 }
+    { fields: ['Id', 'Mode', 'Source', 'LogicalModelName', 'LogicalMethods'], limit: 5000 }
   );
   // UI-Option-A: Source=ui rows are not manual ACL (runtime ui-derived path owns UI→Method).
-  const accesses = (accessesRaw || []).filter(a => String((a as any).Source || 'manual').toLowerCase() !== 'ui');
+  const methodKey = String(methodLower || '')
+    .trim()
+    .toLowerCase();
+  const accesses = (accessesRaw || []).filter(a => {
+    if (String((a as any).Source || 'manual').toLowerCase() === 'ui') return false;
+    const logicalName = String((a as any).LogicalModelName || '').trim();
+    if (!logicalName) return true;
+    if (!methodKey) return false;
+    return logicalMethodsAllow((a as any).LogicalMethods, methodKey);
+  });
 
   let allowed = false;
   const allowHitRuleIds: string[] = [];

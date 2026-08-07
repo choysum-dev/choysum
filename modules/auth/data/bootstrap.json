@@ -43,7 +43,7 @@
       }
     },
     {
-      "name": "rma_terminology_editor_tt_search",
+      "name": "rma_terminology_editor_tt_logical",
       "model": "RoleMethodAccess",
       "values": {
         "RoleId": {
@@ -51,55 +51,85 @@
         },
         "MetaApplicationId": null,
         "MetaModelId": null,
-        "MetaServiceId": {
-          "serviceRef": "auth.TranslationTerm/Search"
-        },
+        "MetaServiceId": null,
+        "LogicalModelName": "TranslationTerm",
+        "LogicalMethods": ["Search", "Browse", "Update", "Count"],
         "Mode": "allow"
       }
     },
     {
-      "name": "rma_terminology_editor_tt_browse",
-      "model": "RoleMethodAccess",
+      "name": "rfr_terminology_editor_tt_logical",
+      "model": "RoleFieldRule",
       "values": {
         "RoleId": {
           "ref": "auth.role_terminology_editor"
         },
         "MetaApplicationId": null,
         "MetaModelId": null,
-        "MetaServiceId": {
-          "serviceRef": "auth.TranslationTerm/Browse"
+        "MetaFieldId": null,
+        "LogicalModelName": "TranslationTerm",
+        "PermRead": "allow",
+        "PermWrite": "allow"
+      }
+    },
+    {
+      "name": "rma_base_user_field_default_logical",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
         },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": null,
+        "LogicalModelName": "FieldDefault",
+        "LogicalMethods": ["Get", "Set"],
         "Mode": "allow"
       }
     },
     {
-      "name": "rma_terminology_editor_tt_update",
-      "model": "RoleMethodAccess",
+      "name": "rfr_base_user_field_default_logical",
+      "model": "RoleFieldRule",
       "values": {
         "RoleId": {
-          "ref": "auth.role_terminology_editor"
+          "ref": "auth.role_base_user"
         },
         "MetaApplicationId": null,
         "MetaModelId": null,
-        "MetaServiceId": {
-          "serviceRef": "auth.TranslationTerm/Update"
+        "MetaFieldId": null,
+        "LogicalModelName": "FieldDefault",
+        "PermRead": "allow",
+        "PermWrite": "allow"
+      }
+    },
+    {
+      "name": "rma_sys_admin_app_setting_logical",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_sys_admin"
         },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": null,
+        "LogicalModelName": "AppSetting",
+        "LogicalMethods": ["Get", "Set"],
         "Mode": "allow"
       }
     },
     {
-      "name": "rma_terminology_editor_tt_count",
-      "model": "RoleMethodAccess",
+      "name": "rfr_sys_admin_app_setting_logical",
+      "model": "RoleFieldRule",
       "values": {
         "RoleId": {
-          "ref": "auth.role_terminology_editor"
+          "ref": "auth.role_sys_admin"
         },
         "MetaApplicationId": null,
         "MetaModelId": null,
-        "MetaServiceId": {
-          "serviceRef": "auth.TranslationTerm/Count"
-        },
-        "Mode": "allow"
+        "MetaFieldId": null,
+        "LogicalModelName": "AppSetting",
+        "PermRead": "allow",
+        "PermWrite": "allow"
       }
     },
     {

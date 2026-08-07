@@ -11,6 +11,7 @@ import {
 } from '../repository/authz';
 import BaseModel from './model';
 import type { InstantiableModelCtor } from './types';
+import { registerLogicalModelName } from './logical_model_registry';
 
 /** Minimal surface for `pool<AppSettingModelCtor>('AppSetting')` typing. */
 export type AppSettingModelCtor = {
@@ -203,3 +204,6 @@ export function __invalidateAppSettingMemoForTest(application: string, key: stri
 export function __isUniqueConstraintErrorForTest(err: unknown): boolean {
   return isUniqueConstraintError(err);
 }
+
+// LogicalModel ACL eligibility (auth RoleMethodAccess / RoleFieldRule).
+registerLogicalModelName('AppSetting');

@@ -153,6 +153,7 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
                 ['MetaModelId', '=', modelId],
                 ['MetaFieldId', 'in', Array.from(fieldIdSet)],
                 ['MetaApplicationId', 'is', null],
+                ['LogicalModelName', 'is', null],
               ],
             },
             {
@@ -160,6 +161,7 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
                 ['MetaModelId', '=', modelId],
                 ['MetaFieldId', 'is', null],
                 ['MetaApplicationId', 'is', null],
+                ['LogicalModelName', 'is', null],
               ],
             },
             ...(applicationId
@@ -169,6 +171,7 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
                       ['MetaApplicationId', '=', applicationId],
                       ['MetaModelId', 'is', null],
                       ['MetaFieldId', 'is', null],
+                      ['LogicalModelName', 'is', null],
                     ],
                   },
                 ]
@@ -178,6 +181,15 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
                 ['MetaApplicationId', 'is', null],
                 ['MetaModelId', 'is', null],
                 ['MetaFieldId', 'is', null],
+                ['LogicalModelName', '=', input.modelName],
+              ],
+            },
+            {
+              And: [
+                ['MetaApplicationId', 'is', null],
+                ['MetaModelId', 'is', null],
+                ['MetaFieldId', 'is', null],
+                ['LogicalModelName', 'is', null],
               ],
             },
           ],
@@ -185,7 +197,7 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
       ],
     } as any,
     {
-      fields: ['Id', 'MetaApplicationId', 'MetaModelId', 'MetaFieldId', 'PermRead', 'PermWrite'],
+      fields: ['Id', 'MetaApplicationId', 'MetaModelId', 'MetaFieldId', 'LogicalModelName', 'PermRead', 'PermWrite'],
       limit: 5000,
     } as any
   );
@@ -198,23 +210,27 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
   const fieldRulesByFieldName = new Map<string, any[]>();
   const modelRules: any[] = [];
   const appRules: any[] = [];
+  const logicalRules: any[] = [];
   const globalRules: any[] = [];
+  const modelNameWant = String(input.modelName || '').trim();
 
   for (const r of rules || []) {
     const rid = String((r as any)?.Id ?? '').trim();
     const irApp = normalizeRefId(pickField(r, ['MetaApplicationId', 'meta_application_id', 'irApplicationId']));
     const irModel = normalizeRefId(pickField(r, ['MetaModelId', 'meta_model_id', 'irModelId']));
     const irField = normalizeRefId(pickField(r, ['MetaFieldId', 'meta_field_id', 'irFieldId']));
+    const logicalName = String(pickField(r, ['LogicalModelName', 'logical_model_name']) ?? '').trim() || null;
     const permRead = normalizeFieldPerm(pickField(r, ['PermRead', 'perm_read', 'permRead']));
     const permWrite = normalizeFieldPerm(pickField(r, ['PermWrite', 'perm_write', 'permWrite']));
 
-    const rule: Record<string, unknown> = { irApp, irModel, irField, permRead, permWrite };
+    const rule: Record<string, unknown> = { irApp, irModel, irField, logicalName, permRead, permWrite };
     if (rid) rule.__rid = rid;
 
-    const isField = irField != null && irModel != null && irApp == null;
-    const isModel = irField == null && irModel != null && irApp == null;
-    const isApp = irField == null && irModel == null && irApp != null;
-    const isGlobal = irField == null && irModel == null && irApp == null;
+    const isField = irField != null && irModel != null && irApp == null && logicalName == null;
+    const isModel = irField == null && irModel != null && irApp == null && logicalName == null;
+    const isApp = irField == null && irModel == null && irApp != null && logicalName == null;
+    const isLogical = irField == null && irModel == null && irApp == null && logicalName != null;
+    const isGlobal = irField == null && irModel == null && irApp == null && logicalName == null;
 
     if (isField) {
       if (!fieldIdSet.has(irField)) continue;
@@ -230,6 +246,9 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
     } else if (isApp) {
       if (!applicationId || irApp !== applicationId) continue;
       appRules.push(rule);
+    } else if (isLogical) {
+      if (logicalName !== modelNameWant) continue;
+      logicalRules.push(rule);
     } else if (isGlobal) {
       globalRules.push(rule);
     }
@@ -246,7 +265,14 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
   }
 
   function decideEffective(fieldName: string, dim: 'read' | 'write'): 'allow' | 'deny' {
-    const buckets: any[][] = [fieldRulesByFieldName.get(fieldName) || [], modelRules, appRules, globalRules];
+    // Field > MetaModel > Application > LogicalModel > Global
+    const buckets: any[][] = [
+      fieldRulesByFieldName.get(fieldName) || [],
+      modelRules,
+      appRules,
+      logicalRules,
+      globalRules,
+    ];
     for (const b of buckets) {
       const d = decideInScope(b, dim);
       if (d) return d;
@@ -274,6 +300,7 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
         ...Array.from(fieldRulesByFieldName.values()).flat(),
         ...modelRules,
         ...appRules,
+        ...logicalRules,
         ...globalRules,
       ]
         .map(r => String((r as any)?.__rid ?? '').trim())

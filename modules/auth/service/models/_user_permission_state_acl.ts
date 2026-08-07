@@ -7,6 +7,7 @@ import type MetaModelModel from '@/meta/service/models/model';
 import type MetaServiceModel from '@/meta/service/models/service';
 import RoleMethodAccess from './role_method_access';
 import { maybeId } from './_user_authz_shared';
+import { normalizeLogicalMethods } from './_logical_model_registry';
 
 const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
 const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
@@ -45,7 +46,7 @@ export async function buildAclAggregation(
   roleScopesById: Record<string, { global: boolean; companies: string[] }>
 ): Promise<AclAggregationResult> {
   const accessesRaw = await RoleMethodAccess.Search(['RoleId', 'in', roleIds] as any, {
-    fields: ['RoleId', 'MetaServiceId', 'MetaModelId', 'MetaApplicationId', 'Mode', 'Source'],
+    fields: ['RoleId', 'MetaServiceId', 'MetaModelId', 'MetaApplicationId', 'LogicalModelName', 'LogicalMethods', 'Mode', 'Source'],
     limit: 50000,
   });
   // UI-Option-A: ignore legacy Source=ui rows in PermissionState ACL aggregation.
@@ -182,11 +183,40 @@ export async function buildAclAggregation(
     const sid = String((a as any).MetaServiceId || '').trim();
     const mid = String((a as any).MetaModelId || '').trim();
     const aid = String((a as any).MetaApplicationId || '').trim();
+    const logicalName = String((a as any).LogicalModelName || '').trim();
     const mode = String((a as any).Mode || '').toLowerCase();
     if (!roleId || (mode !== 'allow' && mode !== 'deny')) continue;
 
-    // global scope
-    if (!sid && !mid && !aid) {
+    // LogicalModel scope: all host apps whose @Model short name matches.
+    if (!sid && !mid && !aid && logicalName) {
+      const models = (await getAllModels()).filter(m => m.name === logicalName);
+      if (models.length === 0) continue;
+      let methods: string[] | null;
+      try {
+        methods = normalizeLogicalMethods((a as any).LogicalMethods);
+      } catch {
+        continue;
+      }
+      scope(roleId)(companyKey => {
+        for (const m of models) {
+          const serviceFullName = `${m.app}.${m.name}`;
+          const agg = ensureAgg(companyKey, serviceFullName);
+          if (methods == null) {
+            if (mode === 'allow') agg.allowAll = true;
+            else agg.denyAll = true;
+          } else {
+            for (const methodName of methods) {
+              if (mode === 'allow') agg.allow.add(methodName);
+              else agg.deny.add(methodName);
+            }
+          }
+        }
+      });
+      continue;
+    }
+
+    // global scope (Meta* and LogicalModelName all empty)
+    if (!sid && !mid && !aid && !logicalName) {
       const models = await getAllModels();
       scope(roleId)(companyKey => {
         if (mode === 'allow') companyGlobalAllow.add(companyKey);
@@ -202,7 +232,7 @@ export async function buildAclAggregation(
     }
 
     // application scope
-    if (!sid && !mid && aid) {
+    if (!sid && !mid && aid && !logicalName) {
       const appName = appNameById.get(aid);
       if (!appName) continue;
       const models = getModelsForApp(appName);
@@ -218,7 +248,7 @@ export async function buildAclAggregation(
     }
 
     // model scope
-    if (!sid && mid && !aid) {
+    if (!sid && mid && !aid && !logicalName) {
       const mdl = modelById.get(mid);
       if (!mdl) continue;
       const serviceFullName = `${mdl.app}.${mdl.name}`;
@@ -231,7 +261,7 @@ export async function buildAclAggregation(
     }
 
     // service(method) scope
-    if (sid && !mid && !aid) {
+    if (sid && !mid && !aid && !logicalName) {
       const svc = serviceById.get(sid);
       if (!svc) continue;
       const mdl = modelById.get(svc.modelId);

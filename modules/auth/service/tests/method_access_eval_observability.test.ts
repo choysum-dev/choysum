@@ -85,6 +85,29 @@ test('evaluateRoleMethodAccess returns deny allow and empty diagnostics with hit
       hitRuleIds: [],
       reason: 'method_access_no_manual_rule',
     });
+
+    // LogicalModel + LogicalMethods: only matching methods participate.
+    (RoleMethodAccess as any).Search = async () => [
+      {
+        Id: 'ma_logical_search',
+        Mode: 'allow',
+        Source: 'manual',
+        LogicalModelName: 'TranslationTerm',
+        LogicalMethods: ['Search', 'Browse'],
+      },
+    ];
+    expect(await evaluateRoleMethodAccess(['role_1'], [[['LogicalModelName', '=', 'TranslationTerm']] as any], 'search')).toEqual({
+      denied: false,
+      allowed: true,
+      hitRuleIds: ['ma_logical_search'],
+      reason: 'method_access_allow',
+    });
+    expect(await evaluateRoleMethodAccess(['role_1'], [[['LogicalModelName', '=', 'TranslationTerm']] as any], 'update')).toEqual({
+      denied: false,
+      allowed: false,
+      hitRuleIds: [],
+      reason: 'method_access_no_manual_rule',
+    });
   } finally {
     (RoleMethodAccess as any).Search = orig;
   }

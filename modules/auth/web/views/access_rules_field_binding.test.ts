@@ -33,4 +33,15 @@ describe('Access Rules admin field binding (PR-C-5)', () => {
       expect(form).toContain('Select Role');
     }
   });
+
+  it('exposes LogicalModel scope on Method Access and Field Rule forms (PR-LM-4)', () => {
+    const methodForm = viewSource('RoleMethodAccessFormView.vue');
+    expect(methodForm).toContain('prop="LogicalModelName"');
+    expect(methodForm).toContain('prop="LogicalMethods"');
+    expect(methodForm).toContain('Logical Model (all host apps sharing that short name)');
+
+    const fieldForm = viewSource('RoleFieldRuleFormView.vue');
+    expect(fieldForm).toContain('prop="LogicalModelName"');
+    expect(fieldForm).toContain('Logical Model (all host apps / all business fields on that short name)');
+  });
 });

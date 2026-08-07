@@ -2,11 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { normalizeRefId } from '@/core/service/utils/normalization';
+import { normalizeLogicalModelName } from './_logical_model_registry';
 
 /**
  * Scope profile for the four Role* rule models.
  *
  * Extracted in PR-E-1; wired into method/record/field/ui models in PR-E-2.
+ * LogicalModel scope added for method/field (logical_model_acl_field_rule_design.md).
  */
 export type RuleScopeProfile = 'method' | 'record' | 'field' | 'ui';
 
@@ -15,7 +17,8 @@ export type RuleScopeProfile = 'method' | 'record' | 'field' | 'ui';
  */
 export type AssertExclusiveScopeMode = 'create' | 'update';
 
-type ScopeFieldKey = 'MetaServiceId' | 'MetaModelId' | 'MetaApplicationId' | 'MetaFieldId' | 'MetaUiResourceId';
+type MetaScopeFieldKey = 'MetaServiceId' | 'MetaModelId' | 'MetaApplicationId' | 'MetaFieldId' | 'MetaUiResourceId';
+type ScopeFieldKey = MetaScopeFieldKey | 'LogicalModelName';
 
 type ProfileSpec = {
   modelName: string;
@@ -23,21 +26,31 @@ type ProfileSpec = {
   shapesLabel: string;
   /** When true, create always validates/normalizes scope even if no scope keys are present (empty → global). */
   alwaysValidateOnCreate: boolean;
+  /** When true, LogicalModelName participates and is registry-validated. */
+  supportsLogicalModel: boolean;
   isValidShape: (ids: Record<ScopeFieldKey, string | null>) => boolean;
 };
 
 const PROFILE_SPECS: Record<RuleScopeProfile, ProfileSpec> = {
   method: {
     modelName: 'RoleMethodAccess',
-    fields: ['MetaServiceId', 'MetaModelId', 'MetaApplicationId'],
-    shapesLabel: 'service/model/application/global',
+    fields: ['MetaServiceId', 'MetaModelId', 'MetaApplicationId', 'LogicalModelName'],
+    shapesLabel: 'service/model/application/logical_model/global',
     alwaysValidateOnCreate: false,
+    supportsLogicalModel: true,
     isValidShape: ids => {
-      const isService = ids.MetaServiceId != null && ids.MetaModelId == null && ids.MetaApplicationId == null;
-      const isModel = ids.MetaServiceId == null && ids.MetaModelId != null && ids.MetaApplicationId == null;
-      const isApplication = ids.MetaServiceId == null && ids.MetaModelId == null && ids.MetaApplicationId != null;
-      const isGlobal = ids.MetaServiceId == null && ids.MetaModelId == null && ids.MetaApplicationId == null;
-      return isService || isModel || isApplication || isGlobal;
+      const logical = ids.LogicalModelName;
+      const isService =
+        ids.MetaServiceId != null && ids.MetaModelId == null && ids.MetaApplicationId == null && logical == null;
+      const isModel =
+        ids.MetaServiceId == null && ids.MetaModelId != null && ids.MetaApplicationId == null && logical == null;
+      const isApplication =
+        ids.MetaServiceId == null && ids.MetaModelId == null && ids.MetaApplicationId != null && logical == null;
+      const isLogical =
+        logical != null && ids.MetaServiceId == null && ids.MetaModelId == null && ids.MetaApplicationId == null;
+      const isGlobal =
+        ids.MetaServiceId == null && ids.MetaModelId == null && ids.MetaApplicationId == null && logical == null;
+      return isService || isModel || isApplication || isLogical || isGlobal;
     },
   },
   record: {
@@ -45,6 +58,7 @@ const PROFILE_SPECS: Record<RuleScopeProfile, ProfileSpec> = {
     fields: ['MetaModelId', 'MetaApplicationId'],
     shapesLabel: 'model/application/global',
     alwaysValidateOnCreate: false,
+    supportsLogicalModel: false,
     isValidShape: ids => {
       const isModel = ids.MetaModelId != null && ids.MetaApplicationId == null;
       const isApplication = ids.MetaModelId == null && ids.MetaApplicationId != null;
@@ -54,15 +68,23 @@ const PROFILE_SPECS: Record<RuleScopeProfile, ProfileSpec> = {
   },
   field: {
     modelName: 'RoleFieldRule',
-    fields: ['MetaFieldId', 'MetaModelId', 'MetaApplicationId'],
-    shapesLabel: 'field/model/application/global',
+    fields: ['MetaFieldId', 'MetaModelId', 'MetaApplicationId', 'LogicalModelName'],
+    shapesLabel: 'field/model/application/logical_model/global',
     alwaysValidateOnCreate: true,
+    supportsLogicalModel: true,
     isValidShape: ids => {
-      const isField = ids.MetaFieldId != null && ids.MetaModelId != null && ids.MetaApplicationId == null;
-      const isModel = ids.MetaFieldId == null && ids.MetaModelId != null && ids.MetaApplicationId == null;
-      const isApplication = ids.MetaFieldId == null && ids.MetaModelId == null && ids.MetaApplicationId != null;
-      const isGlobal = ids.MetaFieldId == null && ids.MetaModelId == null && ids.MetaApplicationId == null;
-      return isField || isModel || isApplication || isGlobal;
+      const logical = ids.LogicalModelName;
+      const isField =
+        ids.MetaFieldId != null && ids.MetaModelId != null && ids.MetaApplicationId == null && logical == null;
+      const isModel =
+        ids.MetaFieldId == null && ids.MetaModelId != null && ids.MetaApplicationId == null && logical == null;
+      const isApplication =
+        ids.MetaFieldId == null && ids.MetaModelId == null && ids.MetaApplicationId != null && logical == null;
+      const isLogical =
+        logical != null && ids.MetaFieldId == null && ids.MetaModelId == null && ids.MetaApplicationId == null;
+      const isGlobal =
+        ids.MetaFieldId == null && ids.MetaModelId == null && ids.MetaApplicationId == null && logical == null;
+      return isField || isModel || isApplication || isLogical || isGlobal;
     },
   },
   ui: {
@@ -70,6 +92,7 @@ const PROFILE_SPECS: Record<RuleScopeProfile, ProfileSpec> = {
     fields: ['MetaUiResourceId', 'MetaApplicationId'],
     shapesLabel: 'resource/application/global',
     alwaysValidateOnCreate: false,
+    supportsLogicalModel: false,
     isValidShape: ids => {
       const isResource = ids.MetaUiResourceId != null && ids.MetaApplicationId == null;
       const isApplication = ids.MetaUiResourceId == null && ids.MetaApplicationId != null;
@@ -94,7 +117,8 @@ function touchesAnyScopeField(values: Record<string, any>, fields: ScopeFieldKey
  * Assert and normalize mutually exclusive scope refs on a rule row payload.
  *
  * Error message strings are byte-stable with the pre-E-1 `_validateScopeShape` implementations
- * so existing tests and call sites can migrate without golden churn.
+ * so existing tests and call sites can migrate without golden churn — except method/field
+ * shapesLabel which now includes `logical_model`.
  *
  * Mutates `values` in place when scope columns are validated/normalized.
  */
@@ -118,7 +142,11 @@ export function assertExclusiveScope(values: Record<string, any>, mode: AssertEx
 
   const ids = {} as Record<ScopeFieldKey, string | null>;
   for (const f of spec.fields) {
-    ids[f] = normalizeRefId((values as any)[f]);
+    if (f === 'LogicalModelName') {
+      ids[f] = normalizeLogicalModelName((values as any)[f]);
+    } else {
+      ids[f] = normalizeRefId((values as any)[f]);
+    }
   }
 
   if (!spec.isValidShape(ids)) {
