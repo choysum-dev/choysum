@@ -12,35 +12,11 @@ import (
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/module/artifact/pipeline"
-	moduleresult "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 )
-
-type codegenStubSplitBuilder struct {
-	entrySeen    string
-	buildErr     error
-	persistErr   error
-	persistCalls int
-}
-
-func (b *codegenStubSplitBuilder) Build() (*moduleresult.BuildResult, error) {
-	return &moduleresult.BuildResult{}, nil
-}
-
-func (b *codegenStubSplitBuilder) BuildWithoutPersist() (*moduleresult.BuildResult, error) {
-	if b.buildErr != nil {
-		return nil, b.buildErr
-	}
-	return &moduleresult.BuildResult{}, nil
-}
-
-func (b *codegenStubSplitBuilder) Persist(result *moduleresult.BuildResult) error {
-	b.persistCalls++
-	return b.persistErr
-}
 
 func TestEnsureInjectedAppModelsForCodegenEarlyReturns(t *testing.T) {
 	db := newModuleIndexSyncDB(t)
@@ -128,7 +104,7 @@ func TestEnsureInjectedAppModelsForCodegenBuilderBranches(t *testing.T) {
 	})
 
 	t.Run("build error", func(t *testing.T) {
-		stub := &codegenStubSplitBuilder{buildErr: errors.New("build boom")}
+		stub := &commitStubSplitBuilder{buildErr: errors.New("build boom")}
 		newCodegenModuleBuilderFn = func(_ scope.Scope, _ jsexecutor.ScriptExecutor, _ *meta.Module, entry string) any {
 			stub.entrySeen = entry
 			return stub
@@ -146,7 +122,7 @@ func TestEnsureInjectedAppModelsForCodegenBuilderBranches(t *testing.T) {
 	})
 
 	t.Run("persist error", func(t *testing.T) {
-		stub := &codegenStubSplitBuilder{persistErr: errors.New("persist boom")}
+		stub := &commitStubSplitBuilder{persistErr: errors.New("persist boom")}
 		newCodegenModuleBuilderFn = func(scope.Scope, jsexecutor.ScriptExecutor, *meta.Module, string) any {
 			return stub
 		}
@@ -159,7 +135,7 @@ func TestEnsureInjectedAppModelsForCodegenBuilderBranches(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
-		stub := &codegenStubSplitBuilder{}
+		stub := &commitStubSplitBuilder{}
 		newCodegenModuleBuilderFn = func(scope.Scope, jsexecutor.ScriptExecutor, *meta.Module, string) any {
 			return stub
 		}
@@ -187,7 +163,7 @@ func TestGenerateAppToDirsPropagatesEnsureInjectedError(t *testing.T) {
 
 	prev := newCodegenModuleBuilderFn
 	newCodegenModuleBuilderFn = func(scope.Scope, jsexecutor.ScriptExecutor, *meta.Module, string) any {
-		return &codegenStubSplitBuilder{buildErr: errors.New("inject boom")}
+		return &commitStubSplitBuilder{buildErr: errors.New("inject boom")}
 	}
 	t.Cleanup(func() { newCodegenModuleBuilderFn = prev })
 

@@ -27,6 +27,8 @@ func (commitStubBuilder) Build() (*moduleresult.BuildResult, error) {
 }
 
 type commitStubSplitBuilder struct {
+	entrySeen    string
+	buildErr     error
 	persistCalls int
 	persistErr   error
 }
@@ -36,6 +38,9 @@ func (b *commitStubSplitBuilder) Build() (*moduleresult.BuildResult, error) {
 }
 
 func (b *commitStubSplitBuilder) BuildWithoutPersist() (*moduleresult.BuildResult, error) {
+	if b.buildErr != nil {
+		return nil, b.buildErr
+	}
 	return &moduleresult.BuildResult{}, nil
 }
 

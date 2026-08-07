@@ -4,6 +4,7 @@
 package lifecycle
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -1246,7 +1247,9 @@ func TestModuleManagerUpgradeCoreUsesListInstalledApps(t *testing.T) {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
+	var logBuf bytes.Buffer
 	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	runtimeScope.logger = slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	runtimeScope.cfg.DistPath = distPath
 	runtimeScope.cfg.TmpPath = tmpPath
 	runtimeScope.cfg.DefaultChoysumPath = defaultChoysumPath
@@ -1266,8 +1269,10 @@ func TestModuleManagerUpgradeCoreUsesListInstalledApps(t *testing.T) {
 		WithOriginCoordinatorFactory(func(scope.Scope) OriginCoordinator { return coordinator }),
 	)
 	manager.bootstrapOnce.Do(func() {})
-	if err := os.MkdirAll(filepath.Join(modulesPath, "core"), 0o755); err != nil {
-		t.Fatalf("mkdir core module dir: %v", err)
+	for _, name := range []string{"core", "web"} {
+		if err := os.MkdirAll(filepath.Join(modulesPath, name), 0o755); err != nil {
+			t.Fatalf("mkdir %s module dir: %v", name, err)
+		}
 	}
 
 	for _, row := range []meta.Module{
@@ -1279,9 +1284,16 @@ func TestModuleManagerUpgradeCoreUsesListInstalledApps(t *testing.T) {
 		}
 	}
 
-	// Upgrade may fail later in staging for Ensure-only web; listInstalledApps must still run.
+	// Staging may still fail for Ensure-only web; the plan log is emitted after
+	// listInstalledApps overrides AffectedApps for core upgrades.
 	_ = manager.Upgrade(context.Background(), "core")
-	if locker.acquired != 1 {
-		t.Fatalf("locker.acquired = %d, want 1 (upgrade entered lease past listInstalledApps)", locker.acquired)
+
+	logs := logBuf.String()
+	if !strings.Contains(logs, `"msg":"module operation plan"`) {
+		t.Fatalf("expected module operation plan log, got %q", logs)
+	}
+	// listInstalledApps sorts apps; web must be present (old NonWeb helper excluded it).
+	if !strings.Contains(logs, `"apps":["core","web"]`) && !strings.Contains(logs, `"apps":["web","core"]`) {
+		t.Fatalf("expected plan apps to include web via listInstalledApps, got %q", logs)
 	}
 }

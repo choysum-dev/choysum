@@ -925,7 +925,9 @@ func TestNewApplicationServiceResolvesPaths(t *testing.T) {
 	}
 	if webAppMode.appDistPath != filepath.Join(distDir, "web") ||
 		webAppMode.scriptDistPath != filepath.Join(distDir, "apps", "web") ||
-		webAppMode.protoRootDir != webAPIProtoDir {
+		webAppMode.protoRootDir != webAPIProtoDir ||
+		len(webAppMode.protoImportPaths) != 1 ||
+		webAppMode.protoImportPaths[0] != webAPIProtoDir {
 		t.Fatalf("unexpected web application-mode paths: %#v", webAppMode)
 	}
 }
