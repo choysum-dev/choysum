@@ -5,11 +5,14 @@ package lifecycle
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 	"testing"
+	"time"
 
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
+	"gorm.io/gorm"
 )
 
 func TestBootstrapMetaTablesSkipsWhenBaseTablesExist(t *testing.T) {
@@ -23,6 +26,106 @@ func TestBootstrapMetaTablesSkipsWhenBaseTablesExist(t *testing.T) {
 
 	if err := manager.bootstrapMetaTables(runtimeScope); err != nil {
 		t.Fatalf("bootstrapMetaTables() error = %v", err)
+	}
+}
+
+func TestBootstrapMetaTablesEnsuresUniqueIndexWhenModelExists(t *testing.T) {
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(&meta.Module{}, &modmeta.LockLease{}, &meta.Model{}); err != nil {
+		t.Fatalf("auto migrate base tables: %v", err)
+	}
+
+	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	manager := NewModuleManager(runtimeScope, nil)
+
+	if err := manager.bootstrapMetaTables(runtimeScope); err != nil {
+		t.Fatalf("bootstrapMetaTables() error = %v", err)
+	}
+	if !db.Migrator().HasIndex(&meta.Model{}, "uidx_meta_model_app_name_alive") {
+		t.Fatal("expected live unique index after early-path bootstrap")
+	}
+}
+
+func TestBootstrapMetaTablesEnsureUniqueIndexErrorWhenModelExists(t *testing.T) {
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(&meta.Module{}, &modmeta.LockLease{}, &meta.Model{}); err != nil {
+		t.Fatalf("auto migrate base tables: %v", err)
+	}
+	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
+	for _, id := range []string{"dup-a", "dup-b"} {
+		row := &meta.Model{
+			BaseModel:   meta.BaseModel{Id: sql.NullString{String: id, Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+			Name:        "Partner",
+			Application: "partner",
+			Path:        "/" + id + ".ts",
+		}
+		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(row).Error; err != nil {
+			t.Fatalf("seed duplicate %s: %v", id, err)
+		}
+	}
+
+	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	manager := NewModuleManager(runtimeScope, nil)
+	err := manager.bootstrapMetaTables(runtimeScope)
+	if err == nil || !strings.Contains(err.Error(), "ensure effective app/name unique index") {
+		t.Fatalf("bootstrapMetaTables() error = %v, want unique index failure", err)
+	}
+}
+
+func TestBootstrapMetaTablesFullPathEnsuresUniqueIndex(t *testing.T) {
+	db := newModuleIndexSyncDB(t)
+	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	manager := NewModuleManager(runtimeScope, nil)
+
+	if err := manager.bootstrapMetaTables(runtimeScope); err != nil {
+		t.Fatalf("bootstrapMetaTables() error = %v", err)
+	}
+	if !db.Migrator().HasIndex(&meta.Model{}, "uidx_meta_model_app_name_alive") {
+		t.Fatal("expected live unique index after full bootstrap")
+	}
+}
+
+func TestBootstrapMetaTablesFullPathEnsureUniqueIndexError(t *testing.T) {
+	db := newModuleIndexSyncDB(t)
+	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	manager := NewModuleManager(runtimeScope, nil)
+	// Skip catalog tables so Ensure runs against a missing meta_model.
+	manager.entities = nil
+
+	err := manager.bootstrapMetaTables(runtimeScope)
+	if err == nil || !strings.Contains(err.Error(), "ensure effective app/name unique index") {
+		t.Fatalf("bootstrapMetaTables() error = %v, want unique index failure", err)
+	}
+}
+
+func TestModuleManagerMigrateBaseModuleEnsureUniqueIndexError(t *testing.T) {
+	db := newModuleIndexSyncDB(t)
+	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	manager := NewModuleManager(runtimeScope, nil)
+	manager.bootstrapOnce.Do(func() {})
+
+	if err := manager.migrateBaseModule(); err != nil {
+		t.Fatalf("migrateBaseModule() error = %v", err)
+	}
+	if err := db.Exec(`DROP INDEX IF EXISTS "uidx_meta_model_app_name_alive"`).Error; err != nil {
+		t.Fatalf("drop unique index: %v", err)
+	}
+	ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
+	for _, id := range []string{"dup-a", "dup-b"} {
+		row := &meta.Model{
+			BaseModel:   meta.BaseModel{Id: sql.NullString{String: id, Valid: true}, CreatedAt: ts, UpdatedAt: ts},
+			Name:        "Partner",
+			Application: "partner",
+			Path:        "/" + id + ".ts",
+		}
+		if err := db.Session(&gorm.Session{SkipHooks: true}).Create(row).Error; err != nil {
+			t.Fatalf("seed duplicate %s: %v", id, err)
+		}
+	}
+
+	err := manager.migrateBaseModule()
+	if err == nil || !strings.Contains(err.Error(), "ensure effective app/name unique index") {
+		t.Fatalf("migrateBaseModule() error = %v, want unique index failure", err)
 	}
 }
 

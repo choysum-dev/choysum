@@ -33,7 +33,7 @@ func closeDualStoreDB(t *testing.T, db *gorm.DB) {
 	}
 }
 func TestEnsureEffectiveAppNameUniqueIndex_NilDB(t *testing.T) {
-	if err := ensureEffectiveAppNameUniqueIndex(nil); err == nil || !strings.Contains(err.Error(), "db is nil") {
+	if err := EnsureEffectiveAppNameUniqueIndex(nil); err == nil || !strings.Contains(err.Error(), "db is nil") {
 		t.Fatalf("expected nil db error, got %v", err)
 	}
 }
@@ -48,6 +48,17 @@ func TestEnsureDualStoreTables_NilAndClosed(t *testing.T) {
 	closeDualStoreDB(t, db)
 	if err := ensureDualStoreTables(db); err == nil {
 		t.Fatal("expected AutoMigrate error on closed db")
+	}
+}
+func TestEnsureDualStoreTables_UniqueIndexError(t *testing.T) {
+	db := openDualStoreTestDB(t)
+	prev := execDDL
+	t.Cleanup(func() { execDDL = prev })
+	execDDL = func(db *gorm.DB, sql string) error {
+		return errors.New("index boom")
+	}
+	if err := ensureDualStoreTables(db); err == nil || !strings.Contains(err.Error(), "index boom") {
+		t.Fatalf("expected unique index error, got %v", err)
 	}
 }
 func TestCopyModelTreeToRaw_CreateFailures(t *testing.T) {
@@ -365,6 +376,45 @@ func TestEnsureEffectiveAppNameUniqueIndex_MySQLDropTempError(t *testing.T) {
 	db.Dialector = failingDropTempDialector{Dialector: db.Dialector, name: "mysql"}
 	if err := ensureEffectiveAppNameUniqueIndex(db); err == nil || !strings.Contains(err.Error(), "drop boom temp") {
 		t.Fatalf("expected drop temp error, got %v", err)
+	}
+}
+func TestEnsurePartialAliveAppNameUniqueIndex_DropTempWhenFinalExists(t *testing.T) {
+	db := openDualStoreTestDB(t)
+	if err := ensureDualStoreTables(db); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	if err := execDDL(db, fmt.Sprintf(
+		"CREATE UNIQUE INDEX IF NOT EXISTS %s ON meta_model (application, name) WHERE deleted_at IS NULL",
+		effectiveAppNameUniqueIndexTemp,
+	)); err != nil {
+		t.Fatalf("seed temp: %v", err)
+	}
+	prev := execDDL
+	t.Cleanup(func() { execDDL = prev })
+	execDDL = func(db *gorm.DB, sql string) error {
+		if strings.Contains(sql, "DROP INDEX") && strings.Contains(sql, effectiveAppNameUniqueIndexTemp) {
+			return errors.New("drop leftover temp boom")
+		}
+		return prev(db, sql)
+	}
+	if err := ensureEffectiveAppNameUniqueIndex(db); err == nil || !strings.Contains(err.Error(), "drop leftover temp boom") {
+		t.Fatalf("expected leftover temp drop error, got %v", err)
+	}
+}
+func TestEnsureFullAppNameUniqueIndex_RecreateSuccess(t *testing.T) {
+	db := openDualStoreTestDB(t)
+	if err := ensureDualStoreTables(db); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	db.Dialector = namedDialector{Dialector: db.Dialector, name: "mysql"}
+	if err := execDDL(db, fmt.Sprintf("DROP INDEX IF EXISTS %s", effectiveAppNameUniqueIndex)); err != nil {
+		t.Fatalf("drop final: %v", err)
+	}
+	if err := EnsureEffectiveAppNameUniqueIndex(db); err != nil {
+		t.Fatalf("recreate: %v", err)
+	}
+	if !db.Migrator().HasIndex("meta_model", effectiveAppNameUniqueIndex) {
+		t.Fatal("expected final unique index after recreate")
 	}
 }
 func TestEnsurePartialAliveAppNameUniqueIndex_PreservesUniquenessOnCreateFinalFailure(t *testing.T) {

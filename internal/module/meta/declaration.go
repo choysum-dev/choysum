@@ -177,9 +177,6 @@ func RemoveModuleDeclarations(db *gorm.DB, moduleID string) ([]LogicalKey, error
 		return nil, fmt.Errorf("list previous raw models: %w", err)
 	}
 	for _, row := range decls {
-		if row == nil {
-			continue
-		}
 		appendKey(row.Application, row.Name)
 	}
 
