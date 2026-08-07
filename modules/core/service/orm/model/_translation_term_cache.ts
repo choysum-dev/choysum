@@ -33,8 +33,13 @@ export function invalidateTerminologyModule(application: string, module: string)
   if (!bridge || typeof bridge.invalidateModule !== 'function') return;
   try {
     bridge.invalidateModule(app, mod);
-  } catch {
-    /* best-effort: write already succeeded */
+  } catch (err) {
+    // best-effort: write already succeeded; cache may stay stale until next warm
+    try {
+      console.warn('invalidateTerminologyModule failed', app, mod, err);
+    } catch {
+      /* console may be unavailable in some test hosts */
+    }
   }
 }
 
@@ -60,11 +65,5 @@ export function modulesFromRows(rows: unknown): string[] {
 }
 
 export function modulesFromPayloads(values: unknown): string[] {
-  const list = Array.isArray(values) ? values : values != null ? [values] : [];
-  const out: string[] = [];
-  for (const row of list) {
-    const mod = String((row as any)?.Module ?? '').trim();
-    if (mod) out.push(mod);
-  }
-  return out;
+  return modulesFromRows(values);
 }

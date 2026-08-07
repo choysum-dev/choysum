@@ -248,8 +248,10 @@ declare var $choysum: {
    */
   i18n: {
     t: (module: string, lang: string, scope: string, src: string, kind?: string) => string;
-    invalidateModule: (application: string, module: string) => boolean;
-    upsertPackagedTerms: (
+    /** Present when the engine was installed with a terminology Registry. */
+    invalidateModule?: (application: string, module: string) => boolean;
+    /** Present when the engine was installed with Registry + ScopeProvider. */
+    upsertPackagedTerms?: (
       application: string,
       module: string,
       lang: string,

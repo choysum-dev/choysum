@@ -154,13 +154,22 @@ func TestWithTerminologyProviderInvalidateAndUpsert(t *testing.T) {
 		t.Fatal("expected invalidateModule('', ...) to return false")
 	}
 
-	ok := engine.Ctx.Eval(`$choysum.i18n.invalidateModule('auth', 'auth')`)
-	defer ok.Free()
-	if ok.IsException() {
-		t.Fatalf("invalidate: %v", engine.Ctx.Exception())
+	// No store yet: must not create one as a side effect of invalidate.
+	cold := engine.Ctx.Eval(`$choysum.i18n.invalidateModule('auth', 'auth')`)
+	defer cold.Free()
+	if cold.IsException() {
+		t.Fatalf("invalidate cold: %v", engine.Ctx.Exception())
 	}
-	if !ok.ToBool() {
-		t.Fatal("expected invalidateModule to return true")
+	if cold.ToBool() {
+		t.Fatal("expected invalidateModule before store exists to return false")
+	}
+	nullish := engine.Ctx.Eval(`$choysum.i18n.invalidateModule(null, 'auth')`)
+	defer nullish.Free()
+	if nullish.IsException() {
+		t.Fatalf("invalidate nullish: %v", engine.Ctx.Exception())
+	}
+	if nullish.ToBool() {
+		t.Fatal("expected invalidateModule(null, ...) to return false")
 	}
 
 	promise := engine.Ctx.Eval(`$choysum.i18n.upsertPackagedTerms('auth', 'auth', 'zh_CN', ` + "`" + `
@@ -201,10 +210,25 @@ msgstr "你好"
 		t.Fatalf("t after upsert = %q, want 你好", hit.String())
 	}
 
+	warmInv := engine.Ctx.Eval(`$choysum.i18n.invalidateModule('auth', 'auth')`)
+	defer warmInv.Free()
+	if warmInv.IsException() {
+		t.Fatalf("invalidate warm: %v", engine.Ctx.Exception())
+	}
+	if !warmInv.ToBool() {
+		t.Fatal("expected invalidateModule after upsert to return true")
+	}
+
 	bad := engine.Ctx.Eval(`$choysum.i18n.upsertPackagedTerms('auth', 'auth', '', 'x')`)
 	defer bad.Free()
 	if _, err := awaitPromise(engine, bad); err == nil {
 		t.Fatal("expected upsertPackagedTerms validation error")
+	}
+
+	nullApp := engine.Ctx.Eval(`$choysum.i18n.upsertPackagedTerms(null, 'auth', 'zh_CN', 'x')`)
+	defer nullApp.Free()
+	if _, err := awaitPromise(engine, nullApp); err == nil {
+		t.Fatal("expected upsertPackagedTerms null application to reject")
 	}
 }
 

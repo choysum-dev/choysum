@@ -45,6 +45,18 @@ func (r *Registry) StoreFor(application string) *TermStore {
 	return s
 }
 
+// ExistingStore returns the TermStore for an application without creating one.
+func (r *Registry) ExistingStore(application string) (*TermStore, bool) {
+	application = strings.TrimSpace(application)
+	if application == "" {
+		return nil, false
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	s, ok := r.stores[application]
+	return s, ok
+}
+
 // Lookup resolves the module's application, then looks up in that store's cache.
 // Framework module "core" is hosted in each real application's table (Scheme A);
 // Lookup probes host app stores until a hit (terms are identical across hosts).

@@ -26,9 +26,12 @@ test('modulesFrom helpers collect Module names', () => {
 test('invalidateTerminologyModule is no-op without bridge', () => {
   const root = globalThis as any;
   const prev = root.$choysum;
-  delete root.$choysum;
-  expect(() => invalidateTerminologyModule('auth', 'auth')).not.toThrow();
-  root.$choysum = prev;
+  try {
+    delete root.$choysum;
+    expect(() => invalidateTerminologyModule('auth', 'auth')).not.toThrow();
+  } finally {
+    root.$choysum = prev;
+  }
 });
 
 test('invalidateTerminologyModules calls bridge once per distinct module', () => {
@@ -55,13 +58,17 @@ test('invalidateTerminologyModules calls bridge once per distinct module', () =>
 });
 
 async function expectRejects(promise: Promise<unknown>, code: string) {
+  let rejected: unknown;
+  let settled = false;
   try {
     await promise;
-    expect(false).toBe(true);
+    settled = true;
   } catch (err) {
-    expect(err instanceof ChoysumError).toBe(true);
-    expect((err as ChoysumError).code).toBe(code);
+    rejected = err;
   }
+  expect(settled).toBe(false);
+  expect(rejected instanceof ChoysumError).toBe(true);
+  expect((rejected as ChoysumError).code).toBe(code);
 }
 
 test('ImportPackaged validates host application and args', async () => {
@@ -144,6 +151,31 @@ test('Create invalidates Module from created row', async () => {
   BaseModel.Create = (async (_value: any) => ({ Module: 'web', Src: 'Hello' })) as any;
   try {
     await TtInvTerm.Create({ Module: 'web', Src: 'Hello', Value: '你好' } as any);
+    expect(calls).toEqual([['ttinv', 'web']]);
+  } finally {
+    BaseModel.Create = originalCreate;
+    root.$choysum = prev;
+  }
+});
+
+test('Create invalidates Module from payload when returnFields omit it', async () => {
+  const root = globalThis as any;
+  const prev = root.$choysum;
+  const calls: Array<[string, string]> = [];
+  root.$choysum = {
+    i18n: {
+      invalidateModule: (app: string, mod: string) => {
+        calls.push([app, mod]);
+        return true;
+      },
+    },
+  };
+
+  const BaseModel = Object.getPrototypeOf(TranslationTermBaseModel.prototype).constructor as typeof TranslationTermBaseModel;
+  const originalCreate = BaseModel.Create;
+  BaseModel.Create = (async (_value: any) => ({ Id: '1', Src: 'Hello' })) as any;
+  try {
+    await TtInvTerm.Create({ Module: 'web', Src: 'Hello', Value: '你好' } as any, ['Id', 'Src'] as any);
     expect(calls).toEqual([['ttinv', 'web']]);
   } finally {
     BaseModel.Create = originalCreate;

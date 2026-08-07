@@ -432,7 +432,10 @@ export default class TranslationTermBaseModel extends BaseModel {
   ): Promise<T> {
     const application = hostApplication(this);
     const out = await super.Create(value as any, returnFields as any);
-    invalidateTerminologyModules(application, modulesFromRows(out));
+    invalidateTerminologyModules(application, [
+      ...modulesFromPayloads(value),
+      ...modulesFromRows(out),
+    ]);
     return out as unknown as T;
   }
 

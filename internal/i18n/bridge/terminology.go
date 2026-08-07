@@ -113,12 +113,20 @@ func invalidateModuleFunc(reg *store.Registry) func(ctx *quickjs.Context, this *
 		if reg == nil || len(args) < 2 {
 			return ctx.Bool(false)
 		}
+		if args[0] == nil || args[0].IsUndefined() || args[0].IsNull() ||
+			args[1] == nil || args[1].IsUndefined() || args[1].IsNull() {
+			return ctx.Bool(false)
+		}
 		application := strings.TrimSpace(args[0].String())
 		module := strings.TrimSpace(args[1].String())
 		if application == "" || application == "core" || module == "" {
 			return ctx.Bool(false)
 		}
-		reg.StoreFor(application).InvalidateModule(module)
+		ts, ok := reg.ExistingStore(application)
+		if !ok {
+			return ctx.Bool(false)
+		}
+		ts.InvalidateModule(module)
 		return ctx.Bool(true)
 	}
 }
@@ -127,6 +135,7 @@ func upsertPackagedTermsAsyncFactory(jse *quickjsengine.QuickjsEngine, scopeProv
 	return func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
 		return ctx.NewPromise(func(resolve, reject func(*quickjs.Value)) {
 			ret := performUpsertPackagedTerms(ctx, jse, scopeProvider, reg, args)
+			// NewError values are IsError; never resolve ThrowError's JS_EXCEPTION sentinel.
 			if ret.IsError() {
 				defer ret.Free()
 				reject(ret)
@@ -140,17 +149,22 @@ func upsertPackagedTermsAsyncFactory(jse *quickjsengine.QuickjsEngine, scopeProv
 
 func performUpsertPackagedTerms(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider, reg *store.Registry, args []*quickjs.Value) *quickjs.Value {
 	if len(args) < 4 {
-		return ctx.ThrowError(fmt.Errorf("upsertPackagedTerms requires application, module, lang, poText"))
+		return ctx.NewError(fmt.Errorf("upsertPackagedTerms requires application, module, lang, poText"))
+	}
+	if args[0] == nil || args[0].IsUndefined() || args[0].IsNull() ||
+		args[1] == nil || args[1].IsUndefined() || args[1].IsNull() ||
+		args[2] == nil || args[2].IsUndefined() || args[2].IsNull() {
+		return ctx.NewError(fmt.Errorf("upsertPackagedTerms: application, module, and lang are required"))
 	}
 	application := strings.TrimSpace(args[0].String())
 	module := strings.TrimSpace(args[1].String())
 	lang := strings.TrimSpace(args[2].String())
 	poText, err := poTextBytes(args[3])
 	if err != nil {
-		return ctx.ThrowError(err)
+		return ctx.NewError(err)
 	}
 	if application == "" || application == "core" || module == "" || lang == "" {
-		return ctx.ThrowError(fmt.Errorf("upsertPackagedTerms: application, module, and lang are required"))
+		return ctx.NewError(fmt.Errorf("upsertPackagedTerms: application, module, and lang are required"))
 	}
 
 	execCtx := jse.ExecContext()
@@ -159,11 +173,11 @@ func performUpsertPackagedTerms(ctx *quickjs.Context, jse *quickjsengine.Quickjs
 	}
 	rs := jsengine.ResolveScope(scopeProvider, execCtx)
 	if rs == nil || rs.Session() == nil {
-		return ctx.ThrowError(fmt.Errorf("upsertPackagedTerms: missing runtime session"))
+		return ctx.NewError(fmt.Errorf("upsertPackagedTerms: missing runtime session"))
 	}
 	stats, err := i18nimport.UpsertPackagedTerms(rs, reg, application, module, lang, poText)
 	if err != nil {
-		return ctx.ThrowError(err)
+		return ctx.NewError(err)
 	}
 	if stats == nil {
 		stats = &i18nimport.ImportStats{Lang: lang}
@@ -178,7 +192,7 @@ func performUpsertPackagedTerms(ctx *quickjs.Context, jse *quickjsengine.Quickjs
 	}
 	val, marshalErr := ctx.Marshal(payload)
 	if marshalErr != nil {
-		return ctx.ThrowError(marshalErr)
+		return ctx.NewError(marshalErr)
 	}
 	return val
 }
