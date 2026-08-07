@@ -31,6 +31,7 @@ test('normalizeLogicalMethods canonicalizes PascalCase and dedupes case-insensit
   expect(canonicalizeLogicalMethodName('getEffective')).toBe('GetEffective');
   expect(normalizeLogicalMethods('["Update"]')).toEqual(['Update']);
   expect(() => normalizeLogicalMethods('not-json')).toThrow(/must be a JSON string array/);
+  expect(() => normalizeLogicalMethods([1 as any])).toThrow(/each entry must be a string/);
 });
 
 test('logicalMethodsAllow treats null/empty as all methods', () => {

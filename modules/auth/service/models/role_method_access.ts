@@ -188,11 +188,13 @@ export default class RoleMethodAccess extends BaseModel {
           throw new Error('invalid RoleMethodAccess: LogicalMethods requires LogicalModel scope');
         }
         (values as any).LogicalMethods = null;
+      } else if (mode === 'update' && !touchesMethods) {
+        // Logical name changed/re-set without a new whitelist → drop stale methods for the prior model.
+        (values as any).LogicalMethods = null;
       }
-    } else if (mode === 'update' && touchesMethods && (values as any).LogicalMethods != null) {
-      // Methods-only update without LogicalModelName: cannot prove logical scope.
-      throw new Error('invalid RoleMethodAccess: LogicalMethods requires LogicalModel scope');
     }
+    // Methods-only update (no LogicalModelName in payload): normalize and persist.
+    // Eval ignores LogicalMethods unless the persisted row is Logical scope.
   }
 
   private static _prepareValues(values: Record<string, any>, mode: 'create' | 'update'): void {

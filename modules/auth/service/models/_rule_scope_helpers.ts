@@ -26,8 +26,6 @@ type ProfileSpec = {
   shapesLabel: string;
   /** When true, create always validates/normalizes scope even if no scope keys are present (empty → global). */
   alwaysValidateOnCreate: boolean;
-  /** When true, LogicalModelName participates and is registry-validated. */
-  supportsLogicalModel: boolean;
   isValidShape: (ids: Record<ScopeFieldKey, string | null>) => boolean;
 };
 
@@ -37,7 +35,6 @@ const PROFILE_SPECS: Record<RuleScopeProfile, ProfileSpec> = {
     fields: ['MetaServiceId', 'MetaModelId', 'MetaApplicationId', 'LogicalModelName'],
     shapesLabel: 'service/model/application/logical_model/global',
     alwaysValidateOnCreate: false,
-    supportsLogicalModel: true,
     isValidShape: ids => {
       const logical = ids.LogicalModelName;
       const isService =
@@ -58,7 +55,6 @@ const PROFILE_SPECS: Record<RuleScopeProfile, ProfileSpec> = {
     fields: ['MetaModelId', 'MetaApplicationId'],
     shapesLabel: 'model/application/global',
     alwaysValidateOnCreate: false,
-    supportsLogicalModel: false,
     isValidShape: ids => {
       const isModel = ids.MetaModelId != null && ids.MetaApplicationId == null;
       const isApplication = ids.MetaModelId == null && ids.MetaApplicationId != null;
@@ -71,7 +67,6 @@ const PROFILE_SPECS: Record<RuleScopeProfile, ProfileSpec> = {
     fields: ['MetaFieldId', 'MetaModelId', 'MetaApplicationId', 'LogicalModelName'],
     shapesLabel: 'field/model/application/logical_model/global',
     alwaysValidateOnCreate: true,
-    supportsLogicalModel: true,
     isValidShape: ids => {
       const logical = ids.LogicalModelName;
       const isField =
@@ -92,7 +87,6 @@ const PROFILE_SPECS: Record<RuleScopeProfile, ProfileSpec> = {
     fields: ['MetaUiResourceId', 'MetaApplicationId'],
     shapesLabel: 'resource/application/global',
     alwaysValidateOnCreate: false,
-    supportsLogicalModel: false,
     isValidShape: ids => {
       const isResource = ids.MetaUiResourceId != null && ids.MetaApplicationId == null;
       const isApplication = ids.MetaUiResourceId == null && ids.MetaApplicationId != null;

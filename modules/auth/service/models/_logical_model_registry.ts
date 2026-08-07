@@ -71,6 +71,9 @@ export function normalizeLogicalMethods(raw: unknown): string[] | null {
   const out: string[] = [];
   const seen = new Set<string>();
   for (const item of arr) {
+    if (typeof item !== 'string') {
+      throw new Error('invalid LogicalMethods: each entry must be a string');
+    }
     const name = canonicalizeLogicalMethodName(item);
     if (!name) continue;
     const key = name.toLowerCase();
@@ -83,6 +86,7 @@ export function normalizeLogicalMethods(raw: unknown): string[] | null {
 
 /**
  * Whether a LogicalMethods whitelist (null/empty = all) covers `methodName`.
+ * Malformed payloads throw; callers that must not abort evaluation should catch.
  */
 export function logicalMethodsAllow(methods: unknown, methodName: string): boolean {
   const want = String(methodName || '')

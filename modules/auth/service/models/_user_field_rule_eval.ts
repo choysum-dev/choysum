@@ -100,6 +100,7 @@ function denyAllNonSystemFields(fieldNames: string[], reason: string, hitRuleIds
  * More-specific scope wins; same-scope deny-wins; read-deny ⇒ write-deny.
  */
 export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<FieldRuleEvalResult> {
+  const modelNameWant = String(input.modelName || '').trim();
   const [applicationId, modelId] = await Promise.all([
     resolveApplicationId(input.appName),
     resolveModelId(input.appName, input.modelName),
@@ -181,7 +182,7 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
                 ['MetaApplicationId', 'is', null],
                 ['MetaModelId', 'is', null],
                 ['MetaFieldId', 'is', null],
-                ['LogicalModelName', '=', input.modelName],
+                ['LogicalModelName', '=', modelNameWant],
               ],
             },
             {
@@ -212,7 +213,6 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
   const appRules: any[] = [];
   const logicalRules: any[] = [];
   const globalRules: any[] = [];
-  const modelNameWant = String(input.modelName || '').trim();
 
   for (const r of rules || []) {
     const rid = String((r as any)?.Id ?? '').trim();

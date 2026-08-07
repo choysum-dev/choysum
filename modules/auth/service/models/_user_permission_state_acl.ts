@@ -195,7 +195,9 @@ export async function buildAclAggregation(
       try {
         methods = normalizeLogicalMethods((a as any).LogicalMethods);
       } catch {
-        continue;
+        // Malformed payload: deny → model-wide (fail closed); allow → skip (no over-grant).
+        if (mode === 'deny') methods = null;
+        else continue;
       }
       scope(roleId)(companyKey => {
         for (const m of models) {

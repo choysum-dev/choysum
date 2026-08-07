@@ -165,7 +165,12 @@ export async function evaluateRoleMethodAccess(
     const logicalName = String((a as any).LogicalModelName || '').trim();
     if (!logicalName) return true;
     if (!methodKey) return false;
-    return logicalMethodsAllow((a as any).LogicalMethods, methodKey);
+    try {
+      return logicalMethodsAllow((a as any).LogicalMethods, methodKey);
+    } catch {
+      // Malformed LogicalMethods: keep deny (fail closed), drop broken allow.
+      return String((a as any).Mode || '').toLowerCase() === 'deny';
+    }
   });
 
   let allowed = false;

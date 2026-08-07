@@ -275,6 +275,24 @@ test('buildAclAggregation treats LogicalModelName as logical scope not global', 
     expect(allows.has('rpc:/base.FieldDefault/Get')).toBe(true);
     expect(allows.has('rpc:/auth.FieldDefault/*')).toBe(false);
     expect(allows.has('rpc:/auth.User/*')).toBe(false);
+
+    (RoleMethodAccess as any).Search = async () => [
+      {
+        RoleId: 'role_1',
+        MetaServiceId: null,
+        MetaModelId: null,
+        MetaApplicationId: null,
+        LogicalModelName: 'FieldDefault',
+        LogicalMethods: null,
+        Mode: 'allow',
+        Source: 'manual',
+      },
+    ];
+    const aggAll = await buildAclAggregation(['role_1'], { role_1: { global: true, companies: [] } });
+    const allowsAll = aggAll.requiresAllowKeysByCompany.get('*') || new Set();
+    expect(allowsAll.has('rpc:/auth.FieldDefault/*')).toBe(true);
+    expect(allowsAll.has('rpc:/base.FieldDefault/*')).toBe(true);
+    expect(aggAll.companyGlobalAllow.has('*')).toBe(false);
   } finally {
     (RoleMethodAccess as any).Search = origAccess;
     (MetaService as any).Search = origService;

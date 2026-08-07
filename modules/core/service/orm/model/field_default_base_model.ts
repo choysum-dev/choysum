@@ -209,11 +209,14 @@ async function findExactRow(
   userId: string | null,
   companyId: string | null
 ): Promise<FieldDefaultBaseModel | undefined> {
-  const rows = await (ctor as any).Search(
-    {
-      And: [['Model', '=', model], ['Field', '=', field], scopeCondition('UserId', userId), scopeCondition('CompanyId', companyId)],
-    } as any,
-    { fields: ['Id', 'Model', 'Field', 'UserId', 'CompanyId', 'Value'] as any, limit: 2 } as any
+  // Store lookup is not RecordRule-scoped (design §6.3); Method ACL gates Get/Set/Unset.
+  const rows = await withRepositoryAuthzRuleBypass(async () =>
+    (ctor as any).Search(
+      {
+        And: [['Model', '=', model], ['Field', '=', field], scopeCondition('UserId', userId), scopeCondition('CompanyId', companyId)],
+      } as any,
+      { fields: ['Id', 'Model', 'Field', 'UserId', 'CompanyId', 'Value'] as any, limit: 2 } as any
+    )
   );
   return (rows && rows[0]) || undefined;
 }
@@ -258,20 +261,23 @@ export default class FieldDefaultBaseModel extends BaseModel {
 
     await ensureScopeUniqueIndex(this);
 
+    // Method ACL gates Set; store rows are not RecordRule-scoped (design §6.3).
     try {
-      await (this as any).withSavepoint(async () => {
-        const existing = await findExactRow(this, modelShort, fieldName, userId, companyId);
-        if (existing?.Id) {
-          await (this as any).UpdateById(existing.Id, { Value: stored } as any);
-          return;
-        }
-        await (this as any).Create({
-          Model: modelShort,
-          Field: fieldName,
-          UserId: userId,
-          CompanyId: companyId,
-          Value: stored,
-        } as any);
+      await withRepositoryAuthzRuleBypass(async () => {
+        await (this as any).withSavepoint(async () => {
+          const existing = await findExactRow(this, modelShort, fieldName, userId, companyId);
+          if (existing?.Id) {
+            await (this as any).UpdateById(existing.Id, { Value: stored } as any);
+            return;
+          }
+          await (this as any).Create({
+            Model: modelShort,
+            Field: fieldName,
+            UserId: userId,
+            CompanyId: companyId,
+            Value: stored,
+          } as any);
+        });
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -366,7 +372,10 @@ export default class FieldDefaultBaseModel extends BaseModel {
     const modelShort = String(model).trim();
     const row = await findExactRow(this, modelShort, String(field).trim(), userId, companyId);
     if (row?.Id) {
-      await (this as any).DeleteById(row.Id);
+      // Method ACL gates Unset when exposed; store delete is not RecordRule-scoped (§6.3).
+      await withRepositoryAuthzRuleBypass(async () => {
+        await (this as any).DeleteById(row.Id);
+      });
       invalidateFieldDefaultMemo(resolveFieldDefaultApplication(this, targetMeta), modelShort);
     }
   }
