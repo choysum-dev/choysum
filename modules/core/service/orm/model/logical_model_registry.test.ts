@@ -31,8 +31,12 @@ test('listLogicalModelSelection mirrors registered names for FieldsGet', () => {
 
 test('registerLogicalModelName is idempotent and ignores blanks', () => {
   registerLogicalModelName('  ');
+  registerLogicalModelName(null as any);
+  registerLogicalModelName(undefined as any);
   registerLogicalModelName('AppSetting');
   expect(listLogicalModelNames()).toEqual(['AppSetting', 'FieldDefault', 'TranslationTerm']);
+  expect(isRegisteredLogicalModelName(null)).toBe(false);
+  expect(isRegisteredLogicalModelName(undefined)).toBe(false);
 });
 
 test('__resetLogicalModelNamesForTest clears registry for isolation', () => {
