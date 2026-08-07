@@ -582,26 +582,6 @@ func (m failingDropTempMigrator) DropIndex(dst interface{}, name string) error {
 	return m.Migrator.DropIndex(dst, name)
 }
 
-type failingDropDialector struct {
-	gorm.Dialector
-	name string
-}
-
-func (d failingDropDialector) Name() string { return d.name }
-
-func (d failingDropDialector) Migrator(db *gorm.DB) gorm.Migrator {
-	return failingDropMigrator{Migrator: d.Dialector.Migrator(db)}
-}
-
-type failingDropMigrator struct {
-	gorm.Migrator
-}
-
-func (m failingDropMigrator) HasIndex(dst interface{}, name string) bool { return true }
-func (m failingDropMigrator) DropIndex(dst interface{}, name string) error {
-	return errors.New("drop boom")
-}
-
 func TestCopyDecoratorToRaw_NilArgument(t *testing.T) {
 	db := openDualStoreTestDB(t)
 	if err := ensureDualStoreTables(db); err != nil {
