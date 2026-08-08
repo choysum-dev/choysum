@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import BaseModel from './model';
+import { resolveModelConstructor } from './model_registry';
 
 /**
  * Minimal FieldDefault model surface used by the DefaultGet pipeline.
@@ -39,7 +39,7 @@ export function lookupFieldDefaultModel(application: string | undefined): FieldD
     return testOverrides.get(app);
   }
 
-  const ctor = BaseModel.resolveModelConstructor(`${app}.FieldDefault`);
+  const ctor = resolveModelConstructor(`${app}.FieldDefault`);
   if (!ctor || typeof (ctor as unknown as FieldDefaultModelCtor).GetEffective !== 'function') {
     return undefined;
   }

@@ -5,8 +5,9 @@
  * Resolve `@Field({ condition })` for Search/`forField` and relation load (PR-P1-F4).
  */
 
-import BaseModel from './model';
 import { MetadataStorage } from '../metadata';
+import type BaseModel from './model';
+import { resolveModelConstructor } from './model_registry';
 import type { FieldMetadata, ModelCtor } from '../metadata/field';
 import { RELATIONAL_CONDITION_TYPES } from '../metadata/field';
 import type { ModelMetadata } from '../metadata/model';
@@ -125,7 +126,7 @@ export function resolveForFieldCondition(
   const model = trimRequired('model', (forField as ForField).model);
   const field = trimRequired('field', (forField as ForField).field);
 
-  const SourceCtor = BaseModel.resolveModelConstructor(model) as ModelCtor | undefined;
+  const SourceCtor = resolveModelConstructor(model) as ModelCtor | undefined;
   if (!SourceCtor) {
     throw new Error(`forField.model "${model}" is not a registered model`);
   }

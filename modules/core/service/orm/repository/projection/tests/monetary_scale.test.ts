@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import BaseModel from '../../../model/model';
+import { __setResolveModelConstructorForTest } from '../../../model/model_registry';
 import { buildHiddenScaleAlias } from '../../hidden_scale_alias';
 import {
   browseCurrencyDecimalDigits,
@@ -181,37 +181,42 @@ test('collectMonetaryCurrencyFieldCompanions and inline helpers', () => {
   expect(currencyIdOf(' X ')).toBe('X');
 });
 
-test('browseCurrencyDecimalDigits uses BaseModel.resolveModelConstructor when present', async () => {
+test('browseCurrencyDecimalDigits uses resolveModelConstructor when present', async () => {
   expect((await browseCurrencyDecimalDigits([])).size).toBe(0);
   expect((await browseCurrencyDecimalDigits(['', '  '])).size).toBe(0);
 
-  const original = BaseModel.resolveModelConstructor;
   try {
-    (BaseModel as any).resolveModelConstructor = () => undefined;
+    __setResolveModelConstructorForTest(() => undefined);
     expect((await browseCurrencyDecimalDigits(['C1'])).size).toBe(0);
 
-    (BaseModel as any).resolveModelConstructor = () => ({});
+    __setResolveModelConstructorForTest(() => ({}) as any);
     expect((await browseCurrencyDecimalDigits(['C1'])).size).toBe(0);
 
-    (BaseModel as any).resolveModelConstructor = () => ({
-      BrowseMany: async () => null,
-    });
+    __setResolveModelConstructorForTest(
+      () =>
+        ({
+          BrowseMany: async () => null,
+        }) as any
+    );
     expect((await browseCurrencyDecimalDigits(['C1'])).size).toBe(0);
 
-    (BaseModel as any).resolveModelConstructor = () => ({
-      BrowseMany: async () => [
-        { Id: 'C1', DecimalDigits: 2 },
-        { Id: '', DecimalDigits: 2 },
-        { Id: 'C2', DecimalDigits: 99 },
-        { Id: 'C3', DecimalDigits: 0 },
-        null,
-      ],
-    });
+    __setResolveModelConstructorForTest(
+      () =>
+        ({
+          BrowseMany: async () => [
+            { Id: 'C1', DecimalDigits: 2 },
+            { Id: '', DecimalDigits: 2 },
+            { Id: 'C2', DecimalDigits: 99 },
+            { Id: 'C3', DecimalDigits: 0 },
+            null,
+          ],
+        }) as any
+    );
     const map = await browseCurrencyDecimalDigits(['C1', 'C1', 'C3']);
     expect(map.get('C1')).toBe(2);
     expect(map.get('C3')).toBe(0);
     expect(map.has('C2')).toBe(false);
   } finally {
-    (BaseModel as any).resolveModelConstructor = original;
+    __setResolveModelConstructorForTest(undefined);
   }
 });

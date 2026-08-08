@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Entity } from '../repository';
-import type { Repository } from '../repository';
 import { Field, SqlCompute } from '../decorator';
 import {
   QueryCondition,
@@ -65,7 +64,6 @@ import {
 } from './model_instance';
 import { browseModel, browseManyModels, searchModels, countModels, readGroupedModels, countGroupedModels } from './model_read_facade';
 import { withModelSavepoint, hydrateModelFacade, toPlainObject as toPlainObjectExternal, toEntity as toEntityExternal } from './model_edge_facade';
-import { getModelRepository } from './model_internal_facade';
 import { runModelOnchange } from './model_runtime_service_facade';
 import { pool as poolModel, dial as dialService } from './model_pool';
 import { runDefaultGetPipeline } from './model_default_get_pipeline';
@@ -291,45 +289,6 @@ class BaseModel {
   }
 
   /**
-   * Resolve a model constructor by its identifier.
-   *
-   * @internal Engine / registry lookup — prefer {@link BaseModel.pool} for
-   * same-app short names and {@link BaseModel.dial} for cross-app services.
-   *
-   * The identifier can be a full model name (e.g. "meta.MetaModule"),
-   * a short model name ("MetaModule"), the metadata name, or the
-   * constructor class name.
-   */
-  static resolveModelConstructor(identifier: string): typeof BaseModel | undefined {
-    const key = String(identifier || '').trim();
-    if (!key) return undefined;
-
-    const pool = (globalThis as any)?.pool;
-    if (pool && typeof pool.get === 'function') {
-      const ctor = pool.get(key);
-      if (ctor && typeof ctor === 'function') {
-        return ctor as typeof BaseModel;
-      }
-    }
-
-    const models = (MetadataStorage.instance as any)?.models as Map<typeof BaseModel, any> | undefined;
-    if (!models || typeof models.entries !== 'function') return undefined;
-
-    for (const [ctor, meta] of models.entries()) {
-      if (!ctor) continue;
-      const fullModelName = String(meta?.fullModelName || '').trim();
-      const modelName = String(meta?.modelName || '').trim();
-      const name = String(meta?.name || '').trim();
-      const className = String(ctor.name || '').trim();
-      if (key === fullModelName || key === modelName || key === name || key === className) {
-        return ctor;
-      }
-    }
-
-    return undefined;
-  }
-
-  /**
    * Same-app typed resolve: `${this.application}.${shortName}` → Model ctor.
    *
    * Not `globalThis.pool`. Does not cross applications. See {@link pool}.
@@ -513,16 +472,6 @@ class BaseModel {
       throw new Error('Models cannot be directly instantiated. Use factory methods like Create(), Browse(), or Search() instead.');
     }
     EntityConverter.entityToModel(this, entity);
-  }
-
-  /**
-   * Returns the repository bound to the current model constructor.
-   *
-   * @internal Prefer Model collection APIs (`Search` / `Create` / …) over
-   * reaching into the repository from business code.
-   */
-  static getRepository<T extends BaseModel>(this: BaseModelCtor<T>): Repository {
-    return getModelRepository(this as unknown as RuntimeModelCtor<T>);
   }
 
   /**

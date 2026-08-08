@@ -10,7 +10,7 @@ import type BaseModel from './model';
  * Same-app typed resolve by short model name.
  *
  * Resolves only `${application}.${shortName}` — never scans the global short-name
- * registry (unlike {@link BaseModel.resolveModelConstructor}).
+ * registry (unlike `resolveModelConstructor` in `model_registry`).
  *
  * Not an alias of `globalThis.pool` (ApplicationModelPool registration table).
  */
@@ -66,7 +66,7 @@ function resolveSameAppModelConstructor(fullName: string): typeof BaseModel | un
     }
   }
 
-  // models is private on MetadataStorage; same access pattern as resolveModelConstructor.
+  // models is private on MetadataStorage; same access pattern as model_registry.
   const models = (MetadataStorage.instance as any)?.models as Map<typeof BaseModel, { fullModelName?: string }> | undefined;
   if (!models || typeof models.entries !== 'function') return undefined;
 

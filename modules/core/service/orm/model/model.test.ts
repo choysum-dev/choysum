@@ -6,6 +6,7 @@ import { Field } from '../decorator';
 import { MetadataStorage } from '../metadata/storage';
 import { RepositoryFactory } from '../repository/repository_factory';
 import BaseModel from './model';
+import { getModelRepository } from './model_internal_facade';
 import { CreateOperations } from './model_create';
 import { DeleteOperations } from './model_delete';
 import { OnchangeOperations } from './model_onchange';
@@ -76,7 +77,7 @@ test('model static CreateMany handles empty payload fast path', async () => {
   expect(out).toEqual([]);
 });
 
-test('model static getRepository and withSavepoint delegate to repository layer', async () => {
+test('getModelRepository and withSavepoint delegate to repository layer', async () => {
   const originalGetRepository = RepositoryFactory.getRepository;
   const calls: Array<{ name: string; arg?: any }> = [];
   const repository = {
@@ -89,7 +90,7 @@ test('model static getRepository and withSavepoint delegate to repository layer'
   try {
     RepositoryFactory.getRepository = (() => repository as any) as any;
 
-    const repo = ModelSurfaceHarness.getRepository();
+    const repo = getModelRepository(ModelSurfaceHarness as any);
     expect(repo).toBe(repository as any);
 
     const value = await ModelSurfaceHarness.withSavepoint(async () => 'ok', 'sp1');
@@ -458,36 +459,5 @@ test('baseModel ensureCompanyId returns active company or throws when missing', 
   } finally {
     if (hadPrev) globalAny.$choysum = prev;
     else delete globalAny.$choysum;
-  }
-});
-
-test('baseModel resolveModelConstructor returns undefined for empty or unknown keys', () => {
-  expect(BaseModel.resolveModelConstructor('')).toBe(undefined);
-  expect(BaseModel.resolveModelConstructor('   ')).toBe(undefined);
-  expect(BaseModel.resolveModelConstructor('__completely_unknown_model__')).toBe(undefined);
-});
-
-test('baseModel resolveModelConstructor resolves by fullModelName, modelName, name, and className', () => {
-  const storage = MetadataStorage.instance as any;
-  const savedModels = storage.models;
-
-  class ResolveTestModel extends BaseModel {}
-  const testCtor = ResolveTestModel as any;
-
-  try {
-    const models = new Map();
-    models.set(testCtor, {
-      fullModelName: 'test.ResolveModel',
-      modelName: 'ResolveModel',
-      name: 'TestResolveModelShort',
-    });
-    storage.models = models;
-
-    expect(BaseModel.resolveModelConstructor('test.ResolveModel')).toBe(testCtor);
-    expect(BaseModel.resolveModelConstructor('ResolveModel')).toBe(testCtor);
-    expect(BaseModel.resolveModelConstructor('TestResolveModelShort')).toBe(testCtor);
-    expect(BaseModel.resolveModelConstructor('ResolveTestModel')).toBe(testCtor); // className
-  } finally {
-    storage.models = savedModels;
   }
 });

@@ -3,6 +3,7 @@
 
 import { ChoysumError } from '@/core/service/error';
 import { withContext as withModelContext } from '@/core/service/api/context';
+import { getTestRepository } from '@/core/service/testing';
 import CompanyScopedResource from '@/auth/service/models/company_scoped_resource';
 import User from '@/auth/service/models/user';
 import Role from '@/auth/service/models/role';
@@ -1168,7 +1169,7 @@ test('RoleRecordRule db check: deleted rows bypass scope xor', async () => {
 
     await RoleRecordRule.DeleteById(id);
 
-    const repo = RoleRecordRule.getRepository().withDeleted();
+    const repo = getTestRepository(RoleRecordRule as any).withDeleted();
     const updated = await repo.update(
       {
         MetaModelId: modelId,

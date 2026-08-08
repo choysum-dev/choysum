@@ -3,8 +3,8 @@
 
 import { normalizeOptionalString } from '@/core/service/utils/normalization';
 import { createTranslate } from '@/core/service/i18n';
-import BaseModel from '@/core/service/orm/model/model';
 import { MetadataStorage } from '@/core/service/orm/metadata/storage';
+import { resolveModelConstructor } from '@/core/service/orm/model/model_registry';
 import type { FieldMetadata } from '@/core/service/orm/metadata/field';
 import { toDate } from '@/core/service/utils/datetime';
 import {
@@ -46,7 +46,7 @@ import { DEFAULT_GLOBAL_MAX_UPLOAD_BYTES } from './_upload';
 const { _t } = createTranslate('document');
 
 function resolveOwnerFieldMetadata(ownerModel: string, fieldName: string): FieldMetadata | undefined {
-  const ModelCtor = BaseModel.resolveModelConstructor(ownerModel);
+  const ModelCtor = resolveModelConstructor(ownerModel);
   if (!ModelCtor) {
     return undefined;
   }

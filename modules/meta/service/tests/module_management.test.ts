@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { RepositoryFactory } from '@/core/service/orm/repository';
 import MetaModule from '@/meta/service/models/module';
 import MetaModuleIndex from '@/meta/service/models/module_index';
 import ModuleManagementLog from '@/meta/service/models/module_management_log';
@@ -160,7 +161,7 @@ function ensureModuleManagementBridge() {
  * Replaces the MetaModuleIndex repository with a deterministic select builder stub.
  */
 function mockMetaModuleIndexRepo(rows: Array<Record<string, any>>): () => void {
-  const original = (MetaModuleIndex as any).getRepository;
+  const original = RepositoryFactory.getRepository(MetaModuleIndex as any);
   const builder: any = {
     select(sel: any) {
       if (typeof sel === 'function') {
@@ -176,12 +177,12 @@ function mockMetaModuleIndexRepo(rows: Array<Record<string, any>>): () => void {
       return builder;
     },
   };
-  (MetaModuleIndex as any).getRepository = () => ({
+  RepositoryFactory.setRepository(MetaModuleIndex as any, {
     selectQueryBuilder: () => builder,
     execute: async () => rows,
-  });
+  } as any);
   return () => {
-    (MetaModuleIndex as any).getRepository = original;
+    RepositoryFactory.setRepository(MetaModuleIndex as any, original);
   };
 }
 
@@ -189,13 +190,13 @@ function mockMetaModuleIndexRepo(rows: Array<Record<string, any>>): () => void {
  * Replaces MetaModuleIndex repository grouped-read methods for Search/Count tests.
  */
 function mockMetaModuleIndexGroupedRepo(groupRows: Array<Record<string, any>>, groupCount?: number): () => void {
-  const original = (MetaModuleIndex as any).getRepository;
-  (MetaModuleIndex as any).getRepository = () => ({
+  const original = RepositoryFactory.getRepository(MetaModuleIndex as any);
+  RepositoryFactory.setRepository(MetaModuleIndex as any, {
     readGroup: async () => groupRows,
     readGroupCount: async () => (typeof groupCount === 'number' ? groupCount : groupRows.length),
-  });
+  } as any);
   return () => {
-    (MetaModuleIndex as any).getRepository = original;
+    RepositoryFactory.setRepository(MetaModuleIndex as any, original);
   };
 }
 

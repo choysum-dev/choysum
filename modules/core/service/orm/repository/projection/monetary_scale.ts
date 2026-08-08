@@ -32,8 +32,8 @@ export async function browseCurrencyDecimalDigits(currencyIds: string[]): Promis
   const ids = [...new Set(currencyIds.map(id => String(id || '').trim()).filter(Boolean))];
   if (!ids.length) return out;
 
-  const { default: BaseModelCtor } = await import('../../model/model');
-  const Currency = BaseModelCtor.resolveModelConstructor('base.Currency') as unknown as CurrencyBrowseCtor | undefined;
+  const { resolveModelConstructor } = await import('../../model/model_registry');
+  const Currency = resolveModelConstructor('base.Currency') as unknown as CurrencyBrowseCtor | undefined;
   if (!Currency || typeof Currency.BrowseMany !== 'function') {
     return out;
   }

@@ -335,14 +335,14 @@ function isBaseModelLike(input: unknown): input is BaseModel {
   // We avoid `instanceof BaseModel` because model instances may be proxies.
   const toPlainObject = inputRecord.toPlainObject;
   if (typeof toPlainObject !== 'function') return false;
-  const ctor = inputRecord.constructor as { getRepository?: unknown } | undefined;
-  return Boolean(ctor && typeof ctor.getRepository === 'function');
+  return isModelCtorLike(inputRecord.constructor);
 }
 
-function isModelCtorLike(input: unknown): input is { getRepository: () => unknown } {
+function isModelCtorLike(input: unknown): boolean {
   if (!(typeof input === 'function' || typeof input === 'object') || !input) return false;
-  const candidate = input as { getRepository?: unknown };
-  return typeof candidate.getRepository === 'function';
+  // Duck-type via author-surface markers (getRepository was removed from BaseModel).
+  const candidate = input as { hydrate?: unknown; Search?: unknown; Browse?: unknown };
+  return typeof candidate.hydrate === 'function' || typeof candidate.Search === 'function' || typeof candidate.Browse === 'function';
 }
 
 function isChoysumPlainPayload(input: unknown): boolean {
@@ -370,26 +370,16 @@ async function stripDenyReadFieldsForModelPlain(modelCtor: unknown, plain: unkno
   const resolveRepo = (ctor: unknown): { getDenyReadFields: () => Promise<unknown> } | undefined => {
     if (!(typeof ctor === 'function' || typeof ctor === 'object') || !ctor) return undefined;
 
-    const ctorLike = ctor as { getRepository?: () => unknown };
-    if (typeof ctorLike.getRepository === 'function') {
-      try {
-        const repoViaCtor = ctorLike.getRepository();
-        const repoRecord = asObjectRecord(repoViaCtor);
-        if (repoRecord && typeof repoRecord.getDenyReadFields === 'function') {
-          return repoViaCtor as { getDenyReadFields: () => Promise<unknown> };
-        }
-      } catch {
-        // fall through to RepositoryFactory lookup
-      }
-    }
-
     try {
-      return RepositoryFactory.getRepository(ctor as Parameters<typeof RepositoryFactory.getRepository>[0]) as unknown as {
-        getDenyReadFields: () => Promise<unknown>;
-      };
+      const repo = RepositoryFactory.getRepository(ctor as Parameters<typeof RepositoryFactory.getRepository>[0]);
+      const repoRecord = asObjectRecord(repo);
+      if (repoRecord && typeof repoRecord.getDenyReadFields === 'function') {
+        return repo as { getDenyReadFields: () => Promise<unknown> };
+      }
     } catch {
       return undefined;
     }
+    return undefined;
   };
 
   const getDenyReadFields = async (ctor: unknown): Promise<string[]> => {

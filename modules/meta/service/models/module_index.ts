@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model, SqlCompute } from '@/core/service';
+import { getModelRepository } from '@/core/service/orm/model';
 import { sql } from 'kysely';
 import Job from '@/task/service/models/job';
 import { getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
@@ -485,7 +486,7 @@ export default class MetaModuleIndex extends BaseModel {
     }
     applySoftDeleteOptions(readGroupOptions, rawOptions);
 
-    const groupedRows = await this.getRepository().readGroup({
+    const groupedRows = await getModelRepository(this as any).readGroup({
       ...readGroupOptions,
       condition: normalized,
     } as any);
@@ -579,7 +580,7 @@ export default class MetaModuleIndex extends BaseModel {
       condition: normalized,
     };
     applySoftDeleteOptions(readGroupCountOptions, { ...(options || {}) });
-    return await this.getRepository().readGroupCount(readGroupCountOptions as any);
+    return await getModelRepository(this as any).readGroupCount(readGroupCountOptions as any);
   }
 
   static async RequestSync(params: RequestSyncParams = {}): Promise<string> {
@@ -603,7 +604,7 @@ export default class MetaModuleIndex extends BaseModel {
       if (runningJobId) return runningJobId;
     }
     if (ifStale && !force) {
-      const repo = this.getRepository();
+      const repo = getModelRepository(this as any);
       const isOriginStale = async (target: ModuleOriginType): Promise<boolean> => {
         let query = repo
           .selectQueryBuilder()
