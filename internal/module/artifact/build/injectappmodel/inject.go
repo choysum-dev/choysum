@@ -96,8 +96,24 @@ func decidePlan(spec *Spec, sess *Session, prebuildResults []*parser.ParserResul
 	if mod == nil {
 		return plan, nil
 	}
-	hasServiceEntry := strings.TrimSpace(mod.ServiceEntryPoint) != ""
+	// Honor the declared package.json entry for Specs that do not Ensure.
+	// TranslationTerm may synthesize a virtual service entry in-memory; that
+	// must not unlock FieldDefault / AppSetting for web-only modules.
+	hasServiceEntry := sess.declaredServiceEntry(spec) != ""
 	if !hasServiceEntry && !spec.EnsureServiceEntry {
+		app := strings.TrimSpace(mod.ApplicationStr)
+		if app == "" || app == "core" || strings.TrimSpace(mod.Path) == "" {
+			return plan, nil
+		}
+		// Purge stale C2 rows left by older builds that unlocked siblings via
+		// a virtual Ensure (e.g. web_field_default / web_app_setting).
+		existing, err := dbLoadModels(spec, sess.ctx.DB, app)
+		if err != nil {
+			return plan, xfmt.Errorf("load %s models for application %q: %w", spec.ModelName, app, err)
+		}
+		if len(generatedModels(spec, existing)) > 0 {
+			return Plan{SupersedeInject: true}, nil
+		}
 		return plan, nil
 	}
 	if strings.TrimSpace(mod.ApplicationStr) == "" ||
@@ -193,11 +209,13 @@ func materializeInject(sess *Session, spec *Spec, plan Plan) (Effects, error) {
 
 	if spec.EnsureServiceEntry && strings.TrimSpace(mod.ServiceEntryPoint) == "" {
 		entryPath := virtualServiceEntryPath(mod.Path)
-		sess.ensureServiceEntryPath(entryPath)
 		// If a real service entry already exists on disk (common when the builder
 		// was given an entryPoint but Module.ServiceEntryPoint was left empty),
 		// adopt it — never register a virtual stub that would shadow the file.
-		if _, err := os.Stat(filepath.Clean(entryPath)); errors.Is(err, os.ErrNotExist) {
+		_, statErr := os.Stat(filepath.Clean(entryPath))
+		virtual := errors.Is(statErr, os.ErrNotExist)
+		sess.ensureServiceEntryPath(entryPath, virtual)
+		if virtual {
 			out.Files = append(out.Files, VirtualFile{
 				Path:     entryPath,
 				Contents: virtualServiceEntrySource(),
@@ -208,8 +226,9 @@ func materializeInject(sess *Session, spec *Spec, plan Plan) (Effects, error) {
 		out.ServiceEntryPath = entryPath
 	}
 
-	if strings.TrimSpace(mod.ServiceEntryPoint) == "" {
-		// Specs without EnsureServiceEntry still skip when entry is empty.
+	if sess.declaredServiceEntry(spec) == "" {
+		// Specs without EnsureServiceEntry still skip when the declared entry is empty
+		// (a virtual Ensure on Module.ServiceEntryPoint must not unlock them).
 		return out, nil
 	}
 

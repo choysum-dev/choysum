@@ -14,9 +14,12 @@ type Spec struct {
 	SoftDeleteFalse  bool   // AppSetting: emit softDelete: false in @Model options
 	// EnsureServiceEntry: when true, Decide may proceed without ServiceEntryPoint
 	// and Materialize emits a virtual service/index.ts (no package.json / disk
-	// pollution). FieldDefault / AppSetting leave this false (empty entry → skip).
+	// pollution). FieldDefault / AppSetting leave this false so a virtual Ensure
+	// for TranslationTerm does not unlock them — they require a declared
+	// entryPoints.service on the module.
 	EnsureServiceEntry bool
 }
+
 
 // Register adds a Spec to DefaultRegistry(). ModelName must be unique.
 func Register(spec Spec) {

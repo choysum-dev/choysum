@@ -17,6 +17,10 @@ type Session struct {
 	// from Ensure so failed inject can restore the prior value.
 	ensuredServiceEntry bool
 	priorServiceEntry   string
+	// ensuredVirtual is true when Ensure synthesized a virtual service/index.ts
+	// because package.json had no entryPoints.service. Sibling Specs without
+	// EnsureServiceEntry must keep treating the declared entry as empty.
+	ensuredVirtual bool
 }
 
 // NewSession creates a Session bound to ctx and reg.
@@ -154,7 +158,10 @@ func (s *Session) ClearAllInjectPaths() {
 
 // ensureServiceEntryPath sets Module.ServiceEntryPoint for this build round.
 // Remembers the prior value once so ClearAllInjectPaths can restore on failure.
-func (s *Session) ensureServiceEntryPath(path string) {
+// virtual marks a synthesized entry (no package.json entryPoints.service / no
+// on-disk service entry); disk-adopted Ensure leaves virtual=false so sibling
+// Specs may treat the entry as declared.
+func (s *Session) ensureServiceEntryPath(path string, virtual bool) {
 	path = strings.TrimSpace(path)
 	if s == nil || path == "" || s.ctx.Module == nil {
 		return
@@ -162,8 +169,28 @@ func (s *Session) ensureServiceEntryPath(path string) {
 	if !s.ensuredServiceEntry {
 		s.priorServiceEntry = s.ctx.Module.ServiceEntryPoint
 		s.ensuredServiceEntry = true
+		s.ensuredVirtual = virtual
+	} else if virtual {
+		// Once virtual, stay virtual for this build even if a later Ensure
+		// rewrites the path (should not unlock FieldDefault / AppSetting).
+		s.ensuredVirtual = true
 	}
 	s.ctx.Module.ServiceEntryPoint = path
+}
+
+// declaredServiceEntry returns the package.json / Module service entry that
+// Specs without EnsureServiceEntry should honor. A virtual TranslationTerm
+// Ensure must not unlock FieldDefault / AppSetting for modules that only have
+// entryPoints.web (e.g. modules/web today).
+func (s *Session) declaredServiceEntry(spec *Spec) string {
+	if s == nil || s.ctx.Module == nil {
+		return ""
+	}
+	entry := strings.TrimSpace(s.ctx.Module.ServiceEntryPoint)
+	if spec != nil && !spec.EnsureServiceEntry && s.ensuredServiceEntry && s.ensuredVirtual {
+		return strings.TrimSpace(s.priorServiceEntry)
+	}
+	return entry
 }
 
 // revertEnsuredServiceEntry restores Module.ServiceEntryPoint when Ensure mutated
@@ -182,6 +209,7 @@ func (s *Session) revertEnsuredServiceEntry() {
 	}
 	s.ensuredServiceEntry = false
 	s.priorServiceEntry = ""
+	s.ensuredVirtual = false
 }
 
 func (s *Session) allInjectPaths() []string {
