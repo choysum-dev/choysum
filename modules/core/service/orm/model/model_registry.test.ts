@@ -80,3 +80,39 @@ test('resolveModelConstructor fuzzy scan skips null ctors and tolerates bad meta
     else delete (globalThis as any).pool;
   }
 });
+
+test('resolveModelConstructor prefers exact fullModelName over earlier alias collisions', () => {
+  const storage = MetadataStorage.instance as any;
+  const savedModels = storage.models;
+  const savedPool = (globalThis as any).pool;
+
+  class AliasCollisionModel extends BaseModel {}
+  class ExactFullNameModel extends BaseModel {}
+  const aliasCtor = AliasCollisionModel as any;
+  const exactCtor = ExactFullNameModel as any;
+
+  try {
+    delete (globalThis as any).pool;
+    const models = new Map();
+    // Earlier entry aliases the later model's full name.
+    models.set(aliasCtor, {
+      fullModelName: 'test.AliasOwner',
+      modelName: 'test.ExactTarget',
+      name: 'AliasOwner',
+    });
+    models.set(exactCtor, {
+      fullModelName: 'test.ExactTarget',
+      modelName: 'ExactTarget',
+      name: 'ExactTargetShort',
+    });
+    storage.models = models;
+
+    expect(resolveModelConstructor('test.ExactTarget')).toBe(exactCtor);
+    expect(resolveModelConstructor('ExactTarget')).toBe(exactCtor);
+    expect(resolveModelConstructor('AliasOwner')).toBe(aliasCtor);
+  } finally {
+    storage.models = savedModels;
+    if (savedPool !== undefined) (globalThis as any).pool = savedPool;
+    else delete (globalThis as any).pool;
+  }
+});

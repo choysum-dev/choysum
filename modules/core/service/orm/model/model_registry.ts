@@ -29,18 +29,23 @@ export function resolveModelConstructor(identifier: string): typeof BaseModel | 
   const models = (MetadataStorage.instance as any)?.models as Map<typeof BaseModel, any> | undefined;
   if (!models || typeof models.entries !== 'function') return undefined;
 
+  // Exact fullModelName wins over earlier alias hits (modelName / name / className).
+  let aliasMatch: typeof BaseModel | undefined;
   for (const [ctor, meta] of models.entries()) {
     if (!ctor) continue;
     const fullModelName = String(meta?.fullModelName || '').trim();
+    if (key === fullModelName) return ctor;
+
+    if (aliasMatch) continue;
     const modelName = String(meta?.modelName || '').trim();
     const name = String(meta?.name || '').trim();
     const className = String(ctor.name || '').trim();
-    if (key === fullModelName || key === modelName || key === name || key === className) {
-      return ctor;
+    if (key === modelName || key === name || key === className) {
+      aliasMatch = ctor;
     }
   }
 
-  return undefined;
+  return aliasMatch;
 }
 
 /**

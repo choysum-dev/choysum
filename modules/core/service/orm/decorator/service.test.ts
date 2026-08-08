@@ -373,7 +373,6 @@ test('service decorator model-ctor selection drives deny-read stripping by thisA
       getDenyReadFields: async () => ({ denyReadFields: ['SecretNote'] }),
     } as any
   );
-  RepositoryFactory.setRepository(BaseModel as any, { browse: async () => null } as any);
 
   const req: any = { context: { req: { kind: 'grpc', depth: 0 } } };
   const restore = setRequest(req);
@@ -390,7 +389,8 @@ test('service decorator model-ctor selection drives deny-read stripping by thisA
   };
 
   try {
-    // BaseModel thisArg → isModelCtorLike true → strip against BaseModel (no deny fields).
+    // BaseModel thisArg → isModelCtorLike true → strip against BaseModel (empty deny-read).
+    // Do not stub RepositoryFactory for BaseModel: it is the shared root and would leak.
     const viaBase: any = await (ServiceDecoratorParent as any).Echo.call(BaseModel, markedPlain());
     expect(viaBase.SecretNote).toBe('hide');
     expect(viaBase.Keep).toBe('visible');
