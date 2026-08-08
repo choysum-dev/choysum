@@ -273,26 +273,39 @@ export default class RoleMethodAccess extends BaseModel {
     options?: any
   ): Promise<Partial<T>[]> {
     let previousLogicalModelName: string | null | undefined;
+    let updateCondition: QueryCondition<T> = condition;
     if (RoleMethodAccess._needsPreviousLogicalModelName(values as any)) {
       const next = String((values as any).LogicalModelName || '').trim();
       // Prove every matched row already has LogicalModelName === next (no sampling).
       // Null/empty/other names fail Count equality → fail closed (null whitelist = all methods).
-      const matched = Number(await (this as any).Count(condition as any)) || 0;
+      // Pass the same options as super.Update so withDeleted/onlyDeleted stay aligned.
+      const matched = Number(await (this as any).Count(condition as any, options as any)) || 0;
       if (matched > 0) {
         const alreadyAtNext =
           Number(
-            await (this as any).Count({
-              And: [condition as any, ['LogicalModelName', '=', next] as any],
-            } as any)
+            await (this as any).Count(
+              {
+                And: [condition as any, ['LogicalModelName', '=', next] as any],
+              } as any,
+              options as any
+            )
           ) || 0;
-        previousLogicalModelName = alreadyAtNext === matched ? next : null;
+        if (alreadyAtNext === matched) {
+          previousLogicalModelName = next;
+          // Couple the write to the proof: rows that race away from `next` are skipped, not renamed.
+          updateCondition = {
+            And: [condition as any, ['LogicalModelName', '=', next] as any],
+          } as any;
+        } else {
+          previousLogicalModelName = null;
+        }
       } else {
         previousLogicalModelName = null;
       }
     }
     RoleMethodAccess._prepareValues(values as any, 'update', previousLogicalModelName);
     return mutateThenInvalidateAllAuthzCaches(async () => {
-      const out = await super.Update(condition as any, values as any, returnFields as any, options as any);
+      const out = await super.Update(updateCondition as any, values as any, returnFields as any, options as any);
       return out as unknown as Partial<T>[];
     });
   }
