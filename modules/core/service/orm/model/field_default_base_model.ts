@@ -10,7 +10,7 @@ import { deleteReqStateKeysByPrefix, memoizeInReqState } from '../../runtime/con
 import {
   getOrInitRepositoryReqServiceState,
   getRepositoryCurrentReq,
-  withRepositoryAuthzRuleBypass,
+  withRecordRuleAndFieldRuleBypass,
 } from '../repository/authz';
 import BaseModel from './model';
 import { resolveEffectiveFieldDefaults } from './field_default_resolve';
@@ -210,7 +210,7 @@ async function findExactRow(
   companyId: string | null
 ): Promise<FieldDefaultBaseModel | undefined> {
   // Store lookup is not RecordRule-scoped (design §6.3); Method ACL gates Get/Set/Unset.
-  const rows = await withRepositoryAuthzRuleBypass(async () =>
+  const rows = await withRecordRuleAndFieldRuleBypass(async () =>
     (ctor as any).Search(
       {
         And: [['Model', '=', model], ['Field', '=', field], scopeCondition('UserId', userId), scopeCondition('CompanyId', companyId)],
@@ -263,7 +263,7 @@ export default class FieldDefaultBaseModel extends BaseModel {
 
     // Method ACL gates Set; store rows are not RecordRule-scoped (design §6.3).
     try {
-      await withRepositoryAuthzRuleBypass(async () => {
+      await withRecordRuleAndFieldRuleBypass(async () => {
         await (this as any).withSavepoint(async () => {
           const existing = await findExactRow(this, modelShort, fieldName, userId, companyId);
           if (existing?.Id) {
@@ -333,8 +333,8 @@ export default class FieldDefaultBaseModel extends BaseModel {
         and.push(scopeCondition('CompanyId', null));
       }
 
-      // Authz bypass without Model.sudo audit noise (pipeline/internal read channel, §7.3).
-      const rows = await withRepositoryAuthzRuleBypass(async () =>
+      // Silent RR+FR bypass (no Model.sudo audit); pipeline/internal read channel, §7.3.
+      const rows = await withRecordRuleAndFieldRuleBypass(async () =>
         (this as any).Search(
           { And: and } as any,
           { fields: ['Id', 'Field', 'UserId', 'CompanyId', 'Value'] as any } as any
@@ -373,7 +373,7 @@ export default class FieldDefaultBaseModel extends BaseModel {
     const row = await findExactRow(this, modelShort, String(field).trim(), userId, companyId);
     if (row?.Id) {
       // Method ACL gates Unset when exposed; store delete is not RecordRule-scoped (§6.3).
-      await withRepositoryAuthzRuleBypass(async () => {
+      await withRecordRuleAndFieldRuleBypass(async () => {
         await (this as any).DeleteById(row.Id);
       });
       invalidateFieldDefaultMemo(resolveFieldDefaultApplication(this, targetMeta), modelShort);

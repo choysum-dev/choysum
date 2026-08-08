@@ -5,7 +5,7 @@ import { getRuntimeComputeAuditBucketValue, getRuntimeEnvBoolean, setRuntimeComp
 import { asObjectRecord } from '@/core/utils/object';
 import type { ObjectRecord } from '../../../utils/types';
 import { getCurrentReq, getOrInitReqServiceState } from '../../runtime/context';
-import { withRepositoryAuthzRuleBypass } from '../repository/authz';
+import { withRecordRuleAndFieldRuleBypass } from '../repository/authz';
 
 type SudoAuditEntry = {
   version: 1;
@@ -63,5 +63,5 @@ export function recordSudoEnterAudit(hint?: string): void {
  */
 export function withModelSudo<R>(fn: () => R, opts?: { hint?: string }): R {
   recordSudoEnterAudit(opts?.hint);
-  return withRepositoryAuthzRuleBypass(fn);
+  return withRecordRuleAndFieldRuleBypass(fn);
 }

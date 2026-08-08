@@ -4,7 +4,7 @@
 import { Field } from '../decorator/field';
 import { MetadataStorage } from '../metadata/storage';
 import { raiseDomainError } from '@/core/service/error';
-import { withRepositoryAuthzRuleBypass } from '../repository/authz';
+import { withRecordRuleAndFieldRuleBypass } from '../repository/authz';
 import BaseModel from './model';
 import type { InstantiableModelCtor } from './types';
 import { registerLogicalModelName } from './logical_model_registry';
@@ -356,7 +356,7 @@ export default class TranslationTermBaseModel extends BaseModel {
     // terms — same pattern as FieldDefault.GetEffective (§7.3). RecordRule-aware
     // CRUD remains on Search/Create/Write; gateway internal identity without
     // bypass would otherwise get an empty read set on non-meta hosts.
-    const rows = (await withRepositoryAuthzRuleBypass(async () =>
+    const rows = (await withRecordRuleAndFieldRuleBypass(async () =>
       (this as any).Search(
         { And: [['Lang', '=', lang]] },
         {

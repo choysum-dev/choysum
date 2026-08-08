@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getCurrentReq, getOrInitReqServiceState } from '../../runtime/context';
-import { getRepositoryFieldRuleBypassDepth, getRepositoryRecordRuleBypassDepth } from '../repository/authz';
+import { getFieldRuleBypassDepth, getRecordRuleBypassDepth } from '../repository/authz';
 import { withModelSudo } from './model_sudo';
 
 async function withPatchedChoysum<T>(value: unknown, fn: () => Promise<T> | T): Promise<T> {
@@ -34,18 +34,18 @@ test('withModelSudo elevates RR+FR sync and records sudo audit enter', async () 
       },
     },
     () => {
-      expect(getRepositoryRecordRuleBypassDepth()).toBe(0);
-      expect(getRepositoryFieldRuleBypassDepth()).toBe(0);
+      expect(getRecordRuleBypassDepth()).toBe(0);
+      expect(getFieldRuleBypassDepth()).toBe(0);
 
       const value = withModelSudo(() => {
-        expect(getRepositoryRecordRuleBypassDepth()).toBe(1);
-        expect(getRepositoryFieldRuleBypassDepth()).toBe(1);
+        expect(getRecordRuleBypassDepth()).toBe(1);
+        expect(getFieldRuleBypassDepth()).toBe(1);
         return 'elevated';
       });
 
       expect(value).toBe('elevated');
-      expect(getRepositoryRecordRuleBypassDepth()).toBe(0);
-      expect(getRepositoryFieldRuleBypassDepth()).toBe(0);
+      expect(getRecordRuleBypassDepth()).toBe(0);
+      expect(getFieldRuleBypassDepth()).toBe(0);
 
       const hits = readSudoHits();
       expect(hits.length).toBe(1);
@@ -67,19 +67,19 @@ test('withModelSudo nests and supports async fn', async () => {
     },
     async () => {
       await withModelSudo(async () => {
-        expect(getRepositoryRecordRuleBypassDepth()).toBe(1);
-        expect(getRepositoryFieldRuleBypassDepth()).toBe(1);
+        expect(getRecordRuleBypassDepth()).toBe(1);
+        expect(getFieldRuleBypassDepth()).toBe(1);
         await withModelSudo(async () => {
-          expect(getRepositoryRecordRuleBypassDepth()).toBe(2);
-          expect(getRepositoryFieldRuleBypassDepth()).toBe(2);
+          expect(getRecordRuleBypassDepth()).toBe(2);
+          expect(getFieldRuleBypassDepth()).toBe(2);
           return undefined;
         });
-        expect(getRepositoryRecordRuleBypassDepth()).toBe(1);
-        expect(getRepositoryFieldRuleBypassDepth()).toBe(1);
+        expect(getRecordRuleBypassDepth()).toBe(1);
+        expect(getFieldRuleBypassDepth()).toBe(1);
         return undefined;
       });
-      expect(getRepositoryRecordRuleBypassDepth()).toBe(0);
-      expect(getRepositoryFieldRuleBypassDepth()).toBe(0);
+      expect(getRecordRuleBypassDepth()).toBe(0);
+      expect(getFieldRuleBypassDepth()).toBe(0);
 
       const hits = readSudoHits();
       expect(hits.length).toBe(2);

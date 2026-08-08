@@ -7,7 +7,7 @@ import type { ModelCtor } from '../../metadata/field';
 import type { Entity } from '../types';
 import { RepositoryFactory } from '../repository_factory';
 import { AuthUserService, isAuthServiceNotPresent, isAuthServiceUnavailable } from './auth_user_service';
-import { getRepositoryCurrentReq, getRepositoryFieldRuleBypassDepth } from './authz_runtime';
+import { getRepositoryCurrentReq, getFieldRuleBypassDepth } from './authz_runtime';
 import type { SelectionNode } from '../projection';
 import type { RepositoryPermissionDeniedFn } from './types';
 import { getRuntimeEnvFlag } from '@/core/utils/env';
@@ -189,7 +189,7 @@ export async function assertRepositoryFieldRuleWriteAllowed(params: RepositoryFi
   if (!repositoryFieldRuleEnabled()) return;
   if (params.isControlPlaneMetaModel()) return;
   if (params.isFieldRuleControlPlaneModel()) return;
-  if (getRepositoryFieldRuleBypassDepth() > 0) return;
+  if (getFieldRuleBypassDepth() > 0) return;
 
   const { payload } = params;
   if (!payload || typeof payload !== 'object') return;

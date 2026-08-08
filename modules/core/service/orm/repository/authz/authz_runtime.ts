@@ -160,7 +160,7 @@ export function getRepositoryCompanyScopeFacts(requestContext: unknown, enabledC
   };
 }
 
-export function getRepositoryRecordRuleBypassDepth(): number {
+export function getRecordRuleBypassDepth(): number {
   const req = getRepositoryCurrentReq();
   const state = getOrInitRepositoryReqServiceState(req);
   const value = state?.recordRuleBypassDepth;
@@ -197,17 +197,17 @@ function runWithBypassRestore<T>(fn: () => T, restore: () => void): T {
  * Increments RecordRule bypass depth for the duration of `fn`.
  * Sync and async `fn` are both supported (aligned with withContext / Model.sudo).
  */
-export function withRepositoryRecordRuleBypass<T>(fn: () => T): T {
+export function withRecordRuleBypass<T>(fn: () => T): T {
   const req = getRepositoryCurrentReq();
   const state = getOrInitRepositoryReqServiceState(req);
   if (!state) return fn();
 
-  const previousDepth = getRepositoryRecordRuleBypassDepth();
+  const previousDepth = getRecordRuleBypassDepth();
   state.recordRuleBypassDepth = previousDepth + 1;
   return runWithBypassRestore(fn, () => restoreBypassDepth(state, 'recordRuleBypassDepth'));
 }
 
-export function getRepositoryFieldRuleBypassDepth(): number {
+export function getFieldRuleBypassDepth(): number {
   const req = getRepositoryCurrentReq();
   const state = getOrInitRepositoryReqServiceState(req);
   const value = state?.fieldRuleBypassDepth;
@@ -218,12 +218,12 @@ export function getRepositoryFieldRuleBypassDepth(): number {
  * Increments FieldRule bypass depth for the duration of `fn`.
  * Sync and async `fn` are both supported (aligned with withContext / Model.sudo).
  */
-export function withRepositoryFieldRuleBypass<T>(fn: () => T): T {
+export function withFieldRuleBypass<T>(fn: () => T): T {
   const req = getRepositoryCurrentReq();
   const state = getOrInitRepositoryReqServiceState(req);
   if (!state) return fn();
 
-  const previousDepth = getRepositoryFieldRuleBypassDepth();
+  const previousDepth = getFieldRuleBypassDepth();
   state.fieldRuleBypassDepth = previousDepth + 1;
   return runWithBypassRestore(fn, () => restoreBypassDepth(state, 'fieldRuleBypassDepth'));
 }
@@ -231,14 +231,17 @@ export function withRepositoryFieldRuleBypass<T>(fn: () => T): T {
 /**
  * Elevates for the duration of `fn` by bypassing both RecordRule and FieldRule.
  * Company scope remains in effect. Sync and async `fn` are both supported.
+ *
+ * Platform/internal channel only (no sudo audit). Business authors must use
+ * `BaseModel.sudo` instead — see `.dev/docs/core/service/orm/authz-bypass-design.md` (B1–B2).
  */
-export function withRepositoryAuthzRuleBypass<T>(fn: () => T): T {
+export function withRecordRuleAndFieldRuleBypass<T>(fn: () => T): T {
   const req = getRepositoryCurrentReq();
   const state = getOrInitRepositoryReqServiceState(req);
   if (!state) return fn();
 
-  const previousRecordDepth = getRepositoryRecordRuleBypassDepth();
-  const previousFieldDepth = getRepositoryFieldRuleBypassDepth();
+  const previousRecordDepth = getRecordRuleBypassDepth();
+  const previousFieldDepth = getFieldRuleBypassDepth();
   state.recordRuleBypassDepth = previousRecordDepth + 1;
   state.fieldRuleBypassDepth = previousFieldDepth + 1;
 
@@ -248,7 +251,7 @@ export function withRepositoryAuthzRuleBypass<T>(fn: () => T): T {
   });
 }
 
-export function getRepositoryValidationBypassState(): RepositoryReqServiceState {
+export function getValidationBypassState(): RepositoryReqServiceState {
   const req = getRepositoryCurrentReq();
   const reqState = getOrInitRepositoryReqServiceState(req);
   if (reqState) return reqState;
@@ -263,15 +266,15 @@ export function getRepositoryValidationBypassState(): RepositoryReqServiceState 
   return created;
 }
 
-export function getRepositoryValidationBypassDepth(): number {
-  const state = getRepositoryValidationBypassState();
+export function getValidationBypassDepth(): number {
+  const state = getValidationBypassState();
   const value = state?.validationBypassDepth;
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
 }
 
-export async function withRepositoryValidationBypass<T>(fn: () => Promise<T>): Promise<T> {
-  const state = getRepositoryValidationBypassState();
-  const previousDepth = getRepositoryValidationBypassDepth();
+export async function withValidationBypass<T>(fn: () => Promise<T>): Promise<T> {
+  const state = getValidationBypassState();
+  const previousDepth = getValidationBypassDepth();
   state.validationBypassDepth = previousDepth + 1;
   try {
     return await fn();

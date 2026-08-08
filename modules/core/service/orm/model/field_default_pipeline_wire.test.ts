@@ -11,8 +11,8 @@ import { MetadataStorage } from '../metadata/storage';
 import {
   getOrInitRepositoryReqServiceState,
   getRepositoryCurrentReq,
-  getRepositoryFieldRuleBypassDepth,
-  getRepositoryRecordRuleBypassDepth,
+  getFieldRuleBypassDepth,
+  getRecordRuleBypassDepth,
 } from '../repository/authz';
 
 @Model('Widget', { application: 'fd3wire' })
@@ -74,8 +74,8 @@ function installSearchStore(rows: any[]) {
   Fd3FieldDefault.Search = (async (condition: any) => {
     searchCalls += 1;
     lastCondition = condition;
-    // GetEffective uses withRepositoryAuthzRuleBypass (sudo-equivalent, no audit).
-    if (getRepositoryRecordRuleBypassDepth() > 0 && getRepositoryFieldRuleBypassDepth() > 0) {
+    // GetEffective uses withRecordRuleAndFieldRuleBypass (sudo-equivalent, no audit).
+    if (getRecordRuleBypassDepth() > 0 && getFieldRuleBypassDepth() > 0) {
       sawSudo = true;
     }
     const and = condition?.And || [];

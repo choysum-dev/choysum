@@ -88,10 +88,10 @@ import {
   getRepositoryCurrentReq,
   getRepositoryCurrentReqWrapper,
   getRepositoryFieldRuleSpec,
-  getRepositoryRecordRuleBypassDepth,
+  getRecordRuleBypassDepth as readRecordRuleBypassDepth,
   getRepositoryRecordRuleEnvelope,
   getRepositoryReqMethodMeta,
-  getRepositoryValidationBypassDepth,
+  getValidationBypassDepth as readValidationBypassDepth,
   isRepositoryTopLevelGrpcCall,
   normalizeRepositoryCompanyIdForWrite,
   normalizeRepositoryCompanyIds,
@@ -104,9 +104,9 @@ import {
   repositoryCompanyFieldEnabled,
   repositoryFieldRuleEnabled,
   validateRepositoryCompanyIdInScope,
-  withRepositoryFieldRuleBypass,
-  withRepositoryRecordRuleBypass,
-  withRepositoryValidationBypass,
+  withFieldRuleBypass as runWithFieldRuleBypass,
+  withRecordRuleBypass as runWithRecordRuleBypass,
+  withValidationBypass as runWithValidationBypass,
 } from './authz';
 import type { RepositoryAuthzDecisionSummary } from './authz';
 import {
@@ -211,11 +211,11 @@ export class Repository {
   }
 
   private getRecordRuleBypassDepth(): number {
-    return getRepositoryRecordRuleBypassDepth();
+    return readRecordRuleBypassDepth();
   }
 
   private async withRecordRuleBypass<T>(fn: () => Promise<T>): Promise<T> {
-    return await withRepositoryRecordRuleBypass(fn);
+    return await runWithRecordRuleBypass(fn);
   }
 
   private getTopLevelCompanyMode(): string {
@@ -283,15 +283,15 @@ export class Repository {
   /* ----------------------------- FieldRule（P4） ----------------------------- */
 
   private getValidationBypassDepth(): number {
-    return getRepositoryValidationBypassDepth();
+    return readValidationBypassDepth();
   }
 
   public async withValidationBypass<T>(fn: () => Promise<T>): Promise<T> {
-    return await withRepositoryValidationBypass(fn);
+    return await runWithValidationBypass(fn);
   }
 
   private async withFieldRuleBypass<T>(fn: () => Promise<T>): Promise<T> {
-    return await withRepositoryFieldRuleBypass(fn);
+    return await runWithFieldRuleBypass(fn);
   }
 
   /**
