@@ -257,6 +257,17 @@ test('RoleMethodAccess: LogicalMethods normalize, reject non-logical, clear on n
     // Private helper no-ops on nullish values.
     expect(() => (RoleMethodAccess as any)._normalizeLogicalMethodsPayload(null, 'update')).not.toThrow();
     expect(() => (RoleMethodAccess as any)._normalizeLogicalMethodsPayload(undefined, 'create')).not.toThrow();
+    expect((RoleMethodAccess as any)._needsPreviousLogicalModelName(null)).toBe(false);
+    expect((RoleMethodAccess as any)._needsPreviousLogicalModelName(undefined)).toBe(false);
+    expect((RoleMethodAccess as any)._needsPreviousLogicalModelName({ LogicalModelName: null })).toBe(false);
+    expect((RoleMethodAccess as any)._needsPreviousLogicalModelName({ LogicalModelName: '   ' })).toBe(false);
+    expect(
+      (RoleMethodAccess as any)._needsPreviousLogicalModelName({
+        LogicalModelName: 'FieldDefault',
+        LogicalMethods: ['Get'],
+      })
+    ).toBe(false);
+    expect((RoleMethodAccess as any)._needsPreviousLogicalModelName({ LogicalModelName: 'FieldDefault' })).toBe(true);
 
     // Bulk Update: mixed logical + non-logical rows must fail closed without LogicalMethods.
     const logical2 = await RoleMethodAccess.Create(
@@ -350,6 +361,87 @@ test('RoleMethodAccess: LogicalMethods normalize, reject non-logical, clear on n
     expect(String((sameById.get(logical3Id) as any)?.Mode || '')).toBe('deny');
     expect((sameById.get(logical2Id) as any)?.LogicalMethods).toEqual(['Get']);
     expect((sameById.get(logical3Id) as any)?.LogicalMethods).toEqual(['Set']);
+
+    // Bulk Update: Count=0 (no matched rows) still fail-closes without LogicalMethods.
+    let rejectedEmpty = false;
+    try {
+      await RoleMethodAccess.Update(
+        ['Id', '=', `missing_${uid('RMA')}`] as any,
+        {
+          MetaServiceId: null,
+          MetaModelId: null,
+          MetaApplicationId: null,
+          LogicalModelName: 'FieldDefault',
+          Mode: 'allow',
+        } as any
+      );
+    } catch (e: any) {
+      rejectedEmpty = true;
+      expect(String(e?.message || e).includes('LogicalMethods must be provided when LogicalModelName is updated')).toBe(true);
+    }
+    expect(rejectedEmpty).toBe(true);
+
+    // Bulk Update: matched>0 but none already at next (non-logical rows only).
+    const service2 = await RoleMethodAccess.Create(
+      {
+        RoleId: { Id: role.id } as any,
+        MetaServiceId: browse.id,
+        MetaModelId: null,
+        MetaApplicationId: null,
+        LogicalModelName: null,
+        Mode: 'allow',
+      } as any,
+      ['Id'] as any
+    );
+    const service2Id = String((service2 as any)?.Id || '').trim();
+    let rejectedNonLogical = false;
+    try {
+      await RoleMethodAccess.Update(
+        { Or: [['Id', '=', serviceId], ['Id', '=', service2Id]] } as any,
+        {
+          MetaServiceId: null,
+          MetaModelId: null,
+          MetaApplicationId: null,
+          LogicalModelName: 'AppSetting',
+          Mode: 'deny',
+        } as any
+      );
+    } catch (e: any) {
+      rejectedNonLogical = true;
+      expect(String(e?.message || e).includes('LogicalMethods must be provided when LogicalModelName is updated')).toBe(true);
+    }
+    expect(rejectedNonLogical).toBe(true);
+
+    // UpdateById on missing Id: empty Search → previous null → same fail-closed rename guard.
+    let rejectedMissingId = false;
+    try {
+      await RoleMethodAccess.UpdateById(`missing_${uid('RMA')}`, {
+        MetaServiceId: null,
+        MetaModelId: null,
+        MetaApplicationId: null,
+        LogicalModelName: 'FieldDefault',
+      } as any);
+    } catch (e: any) {
+      rejectedMissingId = true;
+      expect(String(e?.message || e).includes('LogicalMethods must be provided when LogicalModelName is updated')).toBe(true);
+    }
+    expect(rejectedMissingId).toBe(true);
+
+    // Omit Mode/Source so Field default factories run (deny / manual).
+    const defaultsRow = await RoleMethodAccess.Create(
+      {
+        RoleId: { Id: role.id } as any,
+        MetaServiceId: null,
+        MetaModelId: null,
+        MetaApplicationId: null,
+        LogicalModelName: 'TranslationTerm',
+        LogicalMethods: ['Get'],
+      } as any,
+      ['Id', 'Mode', 'Source', 'LogicalModelName'] as any
+    );
+    expect(String((defaultsRow as any)?.Mode || '')).toBe('deny');
+    expect(String((defaultsRow as any)?.Source || '')).toBe('manual');
+    expect(String((defaultsRow as any)?.LogicalModelName || '')).toBe('TranslationTerm');
   });
 });
 

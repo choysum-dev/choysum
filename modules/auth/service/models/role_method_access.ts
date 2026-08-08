@@ -154,10 +154,11 @@ export default class RoleMethodAccess extends BaseModel {
   /**
    * UI-Option-A: never persist Source=ui (runtime ui-derived ACL replaces materialization).
    */
-  private static _coerceSourceManual(values: Record<string, any>, mode: 'create' | 'update'): void {
+  private static _coerceSourceManual(values: Record<string, any>, _mode: 'create' | 'update'): void {
     if (!values) return;
-    const touchesSource = Object.prototype.hasOwnProperty.call(values, 'Source');
-    if (!touchesSource && mode !== 'create') return;
+    // Only coerce when Source is present in the payload (ui → manual). Create without Source
+    // keeps the Field default factory (`manual`) so defaults stay reachable.
+    if (!Object.prototype.hasOwnProperty.call(values, 'Source')) return;
     (values as any).Source = 'manual';
   }
 
@@ -275,7 +276,8 @@ export default class RoleMethodAccess extends BaseModel {
     let previousLogicalModelName: string | null | undefined;
     let updateCondition: QueryCondition<T> = condition;
     if (RoleMethodAccess._needsPreviousLogicalModelName(values as any)) {
-      const next = String((values as any).LogicalModelName || '').trim();
+      // Guard already proved LogicalModelName is a non-empty string after trim.
+      const next = String((values as any).LogicalModelName).trim();
       // Prove every matched row already has LogicalModelName === next (no sampling).
       // Null/empty/other names fail Count equality → fail closed (null whitelist = all methods).
       // Pass the same options as super.Update so withDeleted/onlyDeleted stay aligned.
