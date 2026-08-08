@@ -303,13 +303,15 @@ test('RoleMethodAccess: LogicalMethods normalize, reject non-logical, clear on n
     expect(rejectedMixed).toBe(true);
     const mixedAfter = await RoleMethodAccess.Search(
       { Or: [['Id', '=', logical2Id], ['Id', '=', serviceId]] } as any,
-      { fields: ['Id', 'LogicalModelName', 'MetaServiceId', 'LogicalMethods'], limit: 10 } as any
+      { fields: ['Id', 'LogicalModelName', 'MetaServiceId', 'LogicalMethods', 'Mode'], limit: 10 } as any
     );
     const byId = new Map((mixedAfter || []).map((r: any) => [String(r?.Id || ''), r]));
     expect(String((byId.get(logical2Id) as any)?.LogicalModelName || '')).toBe('FieldDefault');
     expect((byId.get(logical2Id) as any)?.LogicalMethods).toEqual(['Get']);
+    expect(String((byId.get(logical2Id) as any)?.Mode || '')).toBe('allow');
     expect(String((byId.get(serviceId) as any)?.LogicalModelName || '')).toBe('');
     expect(String((byId.get(serviceId) as any)?.MetaServiceId || '')).toBe(browse.id);
+    expect(String((byId.get(serviceId) as any)?.Mode || '')).toBe('allow');
 
     // Bulk Update: same logical name reaffirm across rows is allowed.
     const logical3 = await RoleMethodAccess.Create(
