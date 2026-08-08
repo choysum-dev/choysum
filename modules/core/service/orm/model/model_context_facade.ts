@@ -28,7 +28,7 @@ type ModelContextFacadeCtor = {
   withContext<R>(ctx: Partial<Context> | (() => Partial<Context>), fn: () => R, opts?: { merge?: boolean }): R;
   withUser<R>(userId: string, fn: () => R): R;
   withCompany<R>(company: WithCompanyTarget, fn: () => R): R;
-  sudo<R>(fn: () => R): R;
+  sudo<R>(fn: () => R, opts?: { hint?: string }): R;
 };
 
 type ModelInstanceLike = {
