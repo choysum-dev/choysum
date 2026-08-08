@@ -119,7 +119,7 @@ export default class MetaModel extends BaseModel {
     const pagination = normalizePagination(options);
     const priorityRange = normalizePriorityRange(options);
 
-    const effective = ctor.EffectiveConstraints() as EffectiveConstraintMeta[];
+    const effective = ctor.getEffectiveConstraints() as EffectiveConstraintMeta[];
     const filtered = effective.filter(item => {
       if (hasPreviewFilter && item.preview !== Boolean(options?.preview)) return false;
       if (hasAlwaysOnCreateFilter && item.alwaysOnCreate !== Boolean(options?.alwaysOnCreate)) return false;
@@ -151,7 +151,7 @@ export default class MetaModel extends BaseModel {
     const pagination = normalizePagination(options);
     const priorityRange = normalizePriorityRange(options);
 
-    const effective = ctor.EffectiveOnchange() as EffectiveOnchangeMeta[];
+    const effective = ctor.getEffectiveOnchange() as EffectiveOnchangeMeta[];
     const filtered = effective.filter(item => {
       if (!priorityInRange(item, priorityRange)) return false;
       if (!matchesMethodPrefix(item, options?.methodPrefix)) return false;

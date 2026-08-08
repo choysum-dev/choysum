@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { getCurrentReq, getOrInitReqServiceState } from '../../runtime/context';
 import { Field } from '../decorator';
 import { MetadataStorage } from '../metadata/storage';
 import { RepositoryFactory } from '../repository/repository_factory';
@@ -99,7 +100,7 @@ test('model static getRepository and withSavepoint delegate to repository layer'
   }
 });
 
-test('model serialization helpers and Hydrate return expected values', () => {
+test('model serialization helpers and hydrate return expected values', () => {
   const instance = makeInstance({ Id: 'M-1', Name: 'name-1' }, ['Id', 'Name']);
 
   const transport = instance.toTransportObject();
@@ -110,7 +111,7 @@ test('model serialization helpers and Hydrate return expected values', () => {
   expect(plain.Id).toBe('M-1');
   expect(entity).toEqual({ Id: 'M-1', Name: 'name-1' });
 
-  const hydrated = ModelSurfaceHarness.Hydrate({ Id: 'M-2', Name: 'name-2' } as any, ['Id', 'Name'] as any) as any;
+  const hydrated = ModelSurfaceHarness.hydrate({ Id: 'M-2', Name: 'name-2' } as any, ['Id', 'Name'] as any) as any;
   expect(hydrated.Id).toBe('M-2');
   expect(hydrated.Name).toBe('name-2');
 });
@@ -163,11 +164,15 @@ test('model withUser and sudo static/instance wrappers invoke context facades', 
     expect(instanceUser).toBe('U-INSTANCE');
     expect(ModelSurfaceHarness.userId).toBe('U-ROOT');
 
-    const staticSudo = ModelSurfaceHarness.sudo(() => 'static-sudo');
+    const staticSudo = ModelSurfaceHarness.sudo(() => 'static-sudo', { hint: 'static-hint' });
     expect(staticSudo).toBe('static-sudo');
 
-    const instanceSudo = instance.sudo(() => 'instance-sudo');
+    const instanceSudo = instance.sudo(() => 'instance-sudo', { hint: 'instance-hint' });
     expect(instanceSudo).toBe('instance-sudo');
+
+    const hits = ((getOrInitReqServiceState(getCurrentReq()) as { sudoHits?: any[] } | undefined)?.sudoHits ||
+      []) as any[];
+    expect(hits.map(h => h?.hint)).toEqual(['static-hint', 'instance-hint']);
   } finally {
     if (hadPrev) globalAny.$choysum = prev;
     else delete globalAny.$choysum;
@@ -418,6 +423,41 @@ test('model read APIs apply default arguments when omitted', async () => {
     ReadOperations.Count = originalCount;
     ReadOperations.ReadGroup = originalReadGroup;
     ReadOperations.ReadGroupCount = originalReadGroupCount;
+  }
+});
+
+test('baseModel ensureCompanyId returns active company or throws when missing', () => {
+  const globalAny = globalThis as any;
+  const hadPrev = Object.prototype.hasOwnProperty.call(globalAny, '$choysum');
+  const prev = globalAny.$choysum;
+
+  try {
+    globalAny.$choysum = {
+      request: {
+        context: {
+          ctx: {
+            activeCompanyId: 'C-1',
+            enabledCompanyIds: ['C-1'],
+          },
+        },
+      },
+    };
+    expect(BaseModel.ensureCompanyId()).toBe('C-1');
+
+    globalAny.$choysum = {
+      request: {
+        context: {
+          ctx: {
+            activeCompanyId: '',
+            enabledCompanyIds: [],
+          },
+        },
+      },
+    };
+    expect(() => BaseModel.ensureCompanyId()).toThrow(/current company is required/);
+  } finally {
+    if (hadPrev) globalAny.$choysum = prev;
+    else delete globalAny.$choysum;
   }
 });
 

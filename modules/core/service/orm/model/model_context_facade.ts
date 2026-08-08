@@ -79,8 +79,8 @@ export function withModelCompany<R>(company: WithCompanyTarget, fn: () => R): R 
   return withCompany(company, fn);
 }
 
-export function withModelElevate<R>(fn: () => R): R {
-  return withModelSudo(fn);
+export function withModelElevate<R>(fn: () => R, opts?: { hint?: string }): R {
+  return withModelSudo(fn, opts);
 }
 
 export function getInstanceModelContext(instance: ModelInstanceLike): Context {
@@ -128,6 +128,6 @@ export function withInstanceModelCompany<R>(instance: ModelInstanceLike, company
   return getModelContextFacadeCtor(instance).withCompany(company, fn);
 }
 
-export function withInstanceModelElevate<R>(instance: ModelInstanceLike, fn: () => R): R {
-  return getModelContextFacadeCtor(instance).sudo(fn);
+export function withInstanceModelElevate<R>(instance: ModelInstanceLike, fn: () => R, opts?: { hint?: string }): R {
+  return getModelContextFacadeCtor(instance).sudo(fn, opts);
 }
