@@ -485,8 +485,8 @@ export default class MetaModuleIndex extends BaseModel {
       readGroupOptions.orderBy = sortPlan.orderBy;
     }
     applySoftDeleteOptions(readGroupOptions, rawOptions);
-
-    const groupedRows = await getModelRepository(this as any).readGroup({
+    const repository = getModelRepository(this as any);
+    const groupedRows = await repository.readGroup({
       ...readGroupOptions,
       condition: normalized,
     } as any);
@@ -580,7 +580,8 @@ export default class MetaModuleIndex extends BaseModel {
       condition: normalized,
     };
     applySoftDeleteOptions(readGroupCountOptions, { ...(options || {}) });
-    return await getModelRepository(this as any).readGroupCount(readGroupCountOptions as any);
+    const repository = getModelRepository(this as any);
+    return repository.readGroupCount(readGroupCountOptions as any);
   }
 
   static async RequestSync(params: RequestSyncParams = {}): Promise<string> {

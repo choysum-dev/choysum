@@ -186,14 +186,24 @@ function mockMetaModuleIndexRepo(rows: Array<Record<string, any>>): () => void {
   };
 }
 
+type MetaModuleIndexGroupedRepoStub = {
+  readGroup?: () => Promise<Array<Record<string, any>>>;
+  readGroupCount?: () => Promise<number>;
+};
+
 /**
  * Replaces MetaModuleIndex repository grouped-read methods for Search/Count tests.
  */
-function mockMetaModuleIndexGroupedRepo(groupRows: Array<Record<string, any>>, groupCount?: number): () => void {
+function mockMetaModuleIndexGroupedRepo(
+  groupRows: Array<Record<string, any>>,
+  groupCount?: number,
+  overrides?: MetaModuleIndexGroupedRepoStub
+): () => void {
   const original = RepositoryFactory.getRepository(MetaModuleIndex as any);
   RepositoryFactory.setRepository(MetaModuleIndex as any, {
     readGroup: async () => groupRows,
     readGroupCount: async () => (typeof groupCount === 'number' ? groupCount : groupRows.length),
+    ...(overrides || {}),
   } as any);
   return () => {
     RepositoryFactory.setRepository(MetaModuleIndex as any, original);
@@ -909,6 +919,41 @@ test('meta.MetaModuleIndex Count uses grouped module count', async () => {
   try {
     const total = await (MetaModuleIndex as any).Count([], {});
     expect(total).toBe(7);
+    // Omit options so `options || {}` false branch is covered for patch coverage.
+    const totalDefaultOpts = await (MetaModuleIndex as any).Count([]);
+    expect(totalDefaultOpts).toBe(7);
+  } finally {
+    restoreGroupedRepo();
+  }
+});
+
+test('meta.MetaModuleIndex Search hydrates with no field filter and empty aggregate rows', async () => {
+  resetRequestContext();
+
+  const restoreGroupedRepo = mockMetaModuleIndexGroupedRepo([{ ModuleName: 'ghost' }]);
+  const restoreBaseSearch = mockMetaModuleIndexBaseSearch([]);
+
+  try {
+    const rows = await (MetaModuleIndex as any).Search([], { limit: 10 });
+    expect(Array.isArray(rows)).toBe(true);
+    expect(rows.length).toBe(0);
+  } finally {
+    restoreGroupedRepo();
+    restoreBaseSearch();
+  }
+});
+
+test('meta.MetaModuleIndex Count propagates readGroupCount failures', async () => {
+  resetRequestContext();
+
+  const restoreGroupedRepo = mockMetaModuleIndexGroupedRepo([], 0, {
+    readGroupCount: async () => {
+      throw new Error('readGroupCount boom');
+    },
+  });
+
+  try {
+    await expectAsyncErrorContains(() => (MetaModuleIndex as any).Count([], {}), 'readGroupCount boom');
   } finally {
     restoreGroupedRepo();
   }
