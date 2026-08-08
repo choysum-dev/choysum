@@ -198,6 +198,32 @@ test('RoleMethodAccess: LogicalMethods normalize, reject non-logical, clear on n
       expect(String(e?.message || e).includes('LogicalMethods must be provided when LogicalModelName is updated')).toBe(true);
     }
     expect(rejectedRename).toBe(true);
+    const afterReject = await RoleMethodAccess.Search(
+      ['Id', '=', id] as any,
+      { fields: ['Id', 'LogicalModelName', 'LogicalMethods'], limit: 1 } as any
+    );
+    expect(String((afterReject[0] as any)?.LogicalModelName || '')).toBe('FieldDefault');
+    expect((afterReject[0] as any)?.LogicalMethods).toEqual(['Get', 'Set']);
+
+    // Re-echo same LogicalModelName without methods (e.g. Mode toggle) is allowed.
+    await RoleMethodAccess.UpdateById(
+      id,
+      {
+        MetaServiceId: null,
+        MetaModelId: null,
+        MetaApplicationId: null,
+        LogicalModelName: 'FieldDefault',
+        Mode: 'deny',
+      } as any,
+      ['Id', 'LogicalModelName', 'LogicalMethods', 'Mode'] as any
+    );
+    const afterEcho = await RoleMethodAccess.Search(
+      ['Id', '=', id] as any,
+      { fields: ['Id', 'LogicalModelName', 'LogicalMethods', 'Mode'], limit: 1 } as any
+    );
+    expect(String((afterEcho[0] as any)?.LogicalModelName || '')).toBe('FieldDefault');
+    expect((afterEcho[0] as any)?.LogicalMethods).toEqual(['Get', 'Set']);
+    expect(String((afterEcho[0] as any)?.Mode || '')).toBe('deny');
 
     // Rename with explicit whitelist in the same payload.
     await RoleMethodAccess.UpdateById(
@@ -208,6 +234,7 @@ test('RoleMethodAccess: LogicalMethods normalize, reject non-logical, clear on n
         MetaApplicationId: null,
         LogicalModelName: 'AppSetting',
         LogicalMethods: ['Get'],
+        Mode: 'allow',
       } as any,
       ['Id', 'LogicalModelName', 'LogicalMethods'] as any
     );
@@ -222,8 +249,9 @@ test('RoleMethodAccess: LogicalMethods normalize, reject non-logical, clear on n
     await RoleMethodAccess.UpdateById(id, { LogicalMethods: ['Set'] } as any, ['Id', 'LogicalMethods'] as any);
     const methodsOnly = await RoleMethodAccess.Search(
       ['Id', '=', id] as any,
-      { fields: ['Id', 'LogicalMethods'], limit: 1 } as any
+      { fields: ['Id', 'LogicalModelName', 'LogicalMethods'], limit: 1 } as any
     );
+    expect(String((methodsOnly[0] as any)?.LogicalModelName || '')).toBe('AppSetting');
     expect((methodsOnly[0] as any)?.LogicalMethods).toEqual(['Set']);
 
     // Private helper no-ops on nullish values.

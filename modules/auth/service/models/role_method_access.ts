@@ -164,8 +164,15 @@ export default class RoleMethodAccess extends BaseModel {
   /**
    * Normalize LogicalMethods; clear them unless scope is LogicalModel.
    * Call after assertExclusiveScope so LogicalModelName is already normalized.
+   *
+   * @param previousLogicalModelName Persisted LogicalModelName for update rename checks.
+   *   When omitted on an update that touches LogicalModelName without LogicalMethods, treat as a rename.
    */
-  private static _normalizeLogicalMethodsPayload(values: Record<string, any>, mode: 'create' | 'update'): void {
+  private static _normalizeLogicalMethodsPayload(
+    values: Record<string, any>,
+    mode: 'create' | 'update',
+    previousLogicalModelName?: string | null
+  ): void {
     if (!values) return;
     const touchesMethods = Object.prototype.hasOwnProperty.call(values, 'LogicalMethods');
     const touchesLogicalName = Object.prototype.hasOwnProperty.call(values, 'LogicalModelName');
@@ -189,18 +196,37 @@ export default class RoleMethodAccess extends BaseModel {
         }
         (values as any).LogicalMethods = null;
       } else if (mode === 'update' && !touchesMethods) {
-        // Fail closed: clearing whitelist to null would mean "all methods" and can widen an allow.
-        throw new Error('invalid RoleMethodAccess: LogicalMethods must be provided when LogicalModelName is updated');
+        const previous = String(previousLogicalModelName ?? '').trim();
+        // Re-echoing the same logical name (e.g. Mode toggle with full scope payload) is fine.
+        // A real rename without an explicit whitelist must fail closed — null would mean all methods.
+        if (previous !== name) {
+          throw new Error('invalid RoleMethodAccess: LogicalMethods must be provided when LogicalModelName is updated');
+        }
       }
     }
     // Methods-only update (no LogicalModelName in payload): normalize and persist.
     // Eval ignores LogicalMethods unless the persisted row is Logical scope.
   }
 
-  private static _prepareValues(values: Record<string, any>, mode: 'create' | 'update'): void {
+  private static _prepareValues(
+    values: Record<string, any>,
+    mode: 'create' | 'update',
+    previousLogicalModelName?: string | null
+  ): void {
     assertExclusiveScope(values, mode, 'method');
-    RoleMethodAccess._normalizeLogicalMethodsPayload(values, mode);
+    RoleMethodAccess._normalizeLogicalMethodsPayload(values, mode, previousLogicalModelName);
     RoleMethodAccess._coerceSourceManual(values, mode);
+  }
+
+  /**
+   * Whether this update payload needs the persisted LogicalModelName for rename checks.
+   */
+  private static _needsPreviousLogicalModelName(values: Record<string, any>): boolean {
+    if (!values) return false;
+    const touchesMethods = Object.prototype.hasOwnProperty.call(values, 'LogicalMethods');
+    const touchesLogicalName = Object.prototype.hasOwnProperty.call(values, 'LogicalModelName');
+    if (!touchesLogicalName || touchesMethods) return false;
+    return Boolean(String((values as any).LogicalModelName || '').trim());
   }
 
   /**
@@ -246,7 +272,24 @@ export default class RoleMethodAccess extends BaseModel {
     returnFields?: FieldSelection<T>,
     options?: any
   ): Promise<Partial<T>[]> {
-    RoleMethodAccess._prepareValues(values as any, 'update');
+    let previousLogicalModelName: string | null | undefined;
+    if (RoleMethodAccess._needsPreviousLogicalModelName(values as any)) {
+      const existing = await (this as any).Search(condition as any, {
+        fields: ['LogicalModelName'],
+        limit: 5000,
+      } as any);
+      const names = new Set(
+        (existing || []).map((r: any) => String(r?.LogicalModelName || '').trim()).filter(Boolean)
+      );
+      const next = String((values as any).LogicalModelName || '').trim();
+      // Mixed persisted names under one condition cannot safely reaffirm without methods.
+      if (names.size > 1 || (names.size === 1 && !names.has(next)) || names.size === 0) {
+        previousLogicalModelName = null;
+      } else {
+        previousLogicalModelName = next;
+      }
+    }
+    RoleMethodAccess._prepareValues(values as any, 'update', previousLogicalModelName);
     return mutateThenInvalidateAllAuthzCaches(async () => {
       const out = await super.Update(condition as any, values as any, returnFields as any, options as any);
       return out as unknown as Partial<T>[];
@@ -263,7 +306,15 @@ export default class RoleMethodAccess extends BaseModel {
     returnFields?: FieldSelection<T>,
     options?: any
   ): Promise<Partial<T>> {
-    RoleMethodAccess._prepareValues(values as any, 'update');
+    let previousLogicalModelName: string | null | undefined;
+    if (RoleMethodAccess._needsPreviousLogicalModelName(values as any)) {
+      const existing = await (this as any).Search(['Id', '=', id] as any, {
+        fields: ['LogicalModelName'],
+        limit: 1,
+      } as any);
+      previousLogicalModelName = String((existing?.[0] as any)?.LogicalModelName || '').trim() || null;
+    }
+    RoleMethodAccess._prepareValues(values as any, 'update', previousLogicalModelName);
     return mutateThenInvalidateAllAuthzCaches(async () => {
       const out = await super.UpdateById(id as any, values as any, returnFields as any, options as any);
       return out as unknown as Partial<T>;
