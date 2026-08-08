@@ -189,8 +189,8 @@ export default class RoleMethodAccess extends BaseModel {
         }
         (values as any).LogicalMethods = null;
       } else if (mode === 'update' && !touchesMethods) {
-        // Logical name changed/re-set without a new whitelist → drop stale methods for the prior model.
-        (values as any).LogicalMethods = null;
+        // Fail closed: clearing whitelist to null would mean "all methods" and can widen an allow.
+        throw new Error('invalid RoleMethodAccess: LogicalMethods must be provided when LogicalModelName is updated');
       }
     }
     // Methods-only update (no LogicalModelName in payload): normalize and persist.

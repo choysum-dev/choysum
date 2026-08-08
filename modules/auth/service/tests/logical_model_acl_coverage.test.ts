@@ -184,7 +184,22 @@ test('RoleMethodAccess: LogicalMethods normalize, reject non-logical, clear on n
     }
     expect(rejected).toBe(true);
 
-    // Change LogicalModelName without LogicalMethods → clear stale whitelist.
+    // Change LogicalModelName without LogicalMethods → reject (null whitelist would widen allow).
+    let rejectedRename = false;
+    try {
+      await RoleMethodAccess.UpdateById(id, {
+        MetaServiceId: null,
+        MetaModelId: null,
+        MetaApplicationId: null,
+        LogicalModelName: 'AppSetting',
+      } as any);
+    } catch (e: any) {
+      rejectedRename = true;
+      expect(String(e?.message || e).includes('LogicalMethods must be provided when LogicalModelName is updated')).toBe(true);
+    }
+    expect(rejectedRename).toBe(true);
+
+    // Rename with explicit whitelist in the same payload.
     await RoleMethodAccess.UpdateById(
       id,
       {
@@ -192,6 +207,7 @@ test('RoleMethodAccess: LogicalMethods normalize, reject non-logical, clear on n
         MetaModelId: null,
         MetaApplicationId: null,
         LogicalModelName: 'AppSetting',
+        LogicalMethods: ['Get'],
       } as any,
       ['Id', 'LogicalModelName', 'LogicalMethods'] as any
     );
@@ -200,16 +216,15 @@ test('RoleMethodAccess: LogicalMethods normalize, reject non-logical, clear on n
       { fields: ['Id', 'LogicalModelName', 'LogicalMethods'], limit: 1 } as any
     );
     expect(String((after[0] as any)?.LogicalModelName || '')).toBe('AppSetting');
-    const clearedMethods = (after[0] as any)?.LogicalMethods;
-    expect(clearedMethods == null || (typeof clearedMethods === 'object' && !Array.isArray(clearedMethods) && Object.keys(clearedMethods).length === 0)).toBe(true);
+    expect((after[0] as any)?.LogicalMethods).toEqual(['Get']);
 
     // Methods-only update on existing logical row.
-    await RoleMethodAccess.UpdateById(id, { LogicalMethods: ['Get'] } as any, ['Id', 'LogicalMethods'] as any);
+    await RoleMethodAccess.UpdateById(id, { LogicalMethods: ['Set'] } as any, ['Id', 'LogicalMethods'] as any);
     const methodsOnly = await RoleMethodAccess.Search(
       ['Id', '=', id] as any,
       { fields: ['Id', 'LogicalMethods'], limit: 1 } as any
     );
-    expect((methodsOnly[0] as any)?.LogicalMethods).toEqual(['Get']);
+    expect((methodsOnly[0] as any)?.LogicalMethods).toEqual(['Set']);
 
     // Private helper no-ops on nullish values.
     expect(() => (RoleMethodAccess as any)._normalizeLogicalMethodsPayload(null, 'update')).not.toThrow();
@@ -364,7 +379,9 @@ test('evaluateFieldRules applies LogicalModel field rules and skips mismatched l
       modelFullName: 'auth.',
       roleIds: ['r1'],
     });
-    expect(Array.isArray(outEmptyName.denyReadFields)).toBe(true);
+    // Empty logical match name + no rules → deny-default for stubbed business fields.
+    expect(outEmptyName.denyReadFields).toEqual(['Model', 'Value']);
+    expect(outEmptyName.denyWriteFields).toEqual(['Model', 'Value']);
   } finally {
     (MetaModel as any).Search = origModel;
     (MetaApplication as any).Search = origApp;

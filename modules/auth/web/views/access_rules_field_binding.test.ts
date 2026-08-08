@@ -39,9 +39,11 @@ describe('Access Rules admin field binding (PR-C-5)', () => {
     expect(methodForm).toContain('prop="LogicalModelName"');
     expect(methodForm).toContain('prop="LogicalMethods"');
     expect(methodForm).toContain(':allow-array="true"');
+    expect(methodForm).toContain('Logical Model (all host apps sharing that short name)');
 
     const fieldForm = viewSource('RoleFieldRuleFormView.vue');
     expect(fieldForm).toContain('prop="LogicalModelName"');
+    expect(fieldForm).toContain('Logical Model (all host apps / all business fields on that short name)');
 
     expect(viewSource('RoleMethodAccessListView.vue')).toContain('prop="LogicalModelName"');
     expect(viewSource('RoleFieldRuleListView.vue')).toContain('prop="LogicalModelName"');
