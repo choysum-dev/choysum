@@ -1,10 +1,12 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { getCurrentReq, getOrInitReqServiceState } from '../../runtime/context';
 import { Field } from '../decorator';
 import { MetadataStorage } from '../metadata/storage';
 import { RepositoryFactory } from '../repository/repository_factory';
 import BaseModel from './model';
+import { getModelRepository } from './model_internal_facade';
 import { CreateOperations } from './model_create';
 import { DeleteOperations } from './model_delete';
 import { OnchangeOperations } from './model_onchange';
@@ -75,7 +77,7 @@ test('model static CreateMany handles empty payload fast path', async () => {
   expect(out).toEqual([]);
 });
 
-test('model static getRepository and withSavepoint delegate to repository layer', async () => {
+test('getModelRepository and withSavepoint delegate to repository layer', async () => {
   const originalGetRepository = RepositoryFactory.getRepository;
   const calls: Array<{ name: string; arg?: any }> = [];
   const repository = {
@@ -88,7 +90,7 @@ test('model static getRepository and withSavepoint delegate to repository layer'
   try {
     RepositoryFactory.getRepository = (() => repository as any) as any;
 
-    const repo = ModelSurfaceHarness.getRepository();
+    const repo = getModelRepository(ModelSurfaceHarness as any);
     expect(repo).toBe(repository as any);
 
     const value = await ModelSurfaceHarness.withSavepoint(async () => 'ok', 'sp1');
@@ -99,7 +101,7 @@ test('model static getRepository and withSavepoint delegate to repository layer'
   }
 });
 
-test('model serialization helpers and Hydrate return expected values', () => {
+test('model serialization helpers and hydrate return expected values', () => {
   const instance = makeInstance({ Id: 'M-1', Name: 'name-1' }, ['Id', 'Name']);
 
   const transport = instance.toTransportObject();
@@ -110,9 +112,16 @@ test('model serialization helpers and Hydrate return expected values', () => {
   expect(plain.Id).toBe('M-1');
   expect(entity).toEqual({ Id: 'M-1', Name: 'name-1' });
 
-  const hydrated = ModelSurfaceHarness.Hydrate({ Id: 'M-2', Name: 'name-2' } as any, ['Id', 'Name'] as any) as any;
+  const hydrated = ModelSurfaceHarness.hydrate({ Id: 'M-2', Name: 'name-2' } as any, ['Id', 'Name'] as any) as any;
   expect(hydrated.Id).toBe('M-2');
   expect(hydrated.Name).toBe('name-2');
+});
+
+test('model getEffectiveConstraints and getEffectiveOnchange delegate to metadata helpers', () => {
+  const constraints = ModelSurfaceHarness.getEffectiveConstraints();
+  const onchanges = ModelSurfaceHarness.getEffectiveOnchange();
+  expect(Array.isArray(constraints)).toBe(true);
+  expect(Array.isArray(onchanges)).toBe(true);
 });
 
 test('model context accessors are available on static and instance surfaces', () => {
@@ -163,11 +172,15 @@ test('model withUser and sudo static/instance wrappers invoke context facades', 
     expect(instanceUser).toBe('U-INSTANCE');
     expect(ModelSurfaceHarness.userId).toBe('U-ROOT');
 
-    const staticSudo = ModelSurfaceHarness.sudo(() => 'static-sudo');
+    const staticSudo = ModelSurfaceHarness.sudo(() => 'static-sudo', { hint: 'static-hint' });
     expect(staticSudo).toBe('static-sudo');
 
-    const instanceSudo = instance.sudo(() => 'instance-sudo');
+    const instanceSudo = instance.sudo(() => 'instance-sudo', { hint: 'instance-hint' });
     expect(instanceSudo).toBe('instance-sudo');
+
+    const hits = ((getOrInitReqServiceState(getCurrentReq()) as { sudoHits?: any[] } | undefined)?.sudoHits ||
+      []) as any[];
+    expect(hits.map(h => h?.hint)).toEqual(['static-hint', 'instance-hint']);
   } finally {
     if (hadPrev) globalAny.$choysum = prev;
     else delete globalAny.$choysum;
@@ -421,33 +434,37 @@ test('model read APIs apply default arguments when omitted', async () => {
   }
 });
 
-test('baseModel resolveModelConstructor returns undefined for empty or unknown keys', () => {
-  expect(BaseModel.resolveModelConstructor('')).toBe(undefined);
-  expect(BaseModel.resolveModelConstructor('   ')).toBe(undefined);
-  expect(BaseModel.resolveModelConstructor('__completely_unknown_model__')).toBe(undefined);
-});
-
-test('baseModel resolveModelConstructor resolves by fullModelName, modelName, name, and className', () => {
-  const storage = MetadataStorage.instance as any;
-  const savedModels = storage.models;
-
-  class ResolveTestModel extends BaseModel {}
-  const testCtor = ResolveTestModel as any;
+test('baseModel ensureCompanyId returns active company or throws when missing', () => {
+  const globalAny = globalThis as any;
+  const hadPrev = Object.prototype.hasOwnProperty.call(globalAny, '$choysum');
+  const prev = globalAny.$choysum;
 
   try {
-    const models = new Map();
-    models.set(testCtor, {
-      fullModelName: 'test.ResolveModel',
-      modelName: 'ResolveModel',
-      name: 'TestResolveModelShort',
-    });
-    storage.models = models;
+    globalAny.$choysum = {
+      request: {
+        context: {
+          ctx: {
+            activeCompanyId: 'C-1',
+            enabledCompanyIds: ['C-1'],
+          },
+        },
+      },
+    };
+    expect(BaseModel.ensureCompanyId()).toBe('C-1');
 
-    expect(BaseModel.resolveModelConstructor('test.ResolveModel')).toBe(testCtor);
-    expect(BaseModel.resolveModelConstructor('ResolveModel')).toBe(testCtor);
-    expect(BaseModel.resolveModelConstructor('TestResolveModelShort')).toBe(testCtor);
-    expect(BaseModel.resolveModelConstructor('ResolveTestModel')).toBe(testCtor); // className
+    globalAny.$choysum = {
+      request: {
+        context: {
+          ctx: {
+            activeCompanyId: '',
+            enabledCompanyIds: [],
+          },
+        },
+      },
+    };
+    expect(() => BaseModel.ensureCompanyId()).toThrow(/current company is required/);
   } finally {
-    storage.models = savedModels;
+    if (hadPrev) globalAny.$choysum = prev;
+    else delete globalAny.$choysum;
   }
 });

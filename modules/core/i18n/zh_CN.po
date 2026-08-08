@@ -1,17 +1,17 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
-#: service/orm/model/model.ts:431
+#: service/orm/model/model.ts:429
 msgctxt "core.model.BaseModel.fields"
 msgid "Created At"
 msgstr "创建时间"
 
-#: service/orm/model/model.ts:453
+#: service/orm/model/model.ts:451
 msgctxt "core.model.BaseModel.fields"
 msgid "Deleted At"
 msgstr "删除时间"
 
-#: service/orm/model/model.ts:409
+#: service/orm/model/model.ts:407
 msgctxt "core.model.BaseModel.fields"
 msgid "Display Name"
 msgstr "显示名称"
@@ -21,10 +21,15 @@ msgctxt "core.model.BaseModel.fields"
 msgid "Parent Path"
 msgstr "父级路径"
 
-#: service/orm/model/model.ts:442
+#: service/orm/model/model.ts:440
 msgctxt "core.model.BaseModel.fields"
 msgid "Updated At"
 msgstr "更新时间"
+
+#: service/orm/model/model.ts:286
+msgctxt "service/orm/model/model"
+msgid "current company is required"
+msgstr "需要当前公司"
 
 #: service/orm/model/model.ts:275
 msgctxt "service/orm/model/model"
@@ -211,17 +216,17 @@ msgctxt "service/runtime/validation/engine"
 msgid "model \"%s\" is readonly and cannot be written"
 msgstr "模型 \"%s\" 为只读，不能写入"
 
-#: service/runtime/validation/engine.ts:373
+#: service/runtime/validation/engine.ts:382
 msgctxt "service/runtime/validation/engine"
 msgid "reference \"%s\" belongs to company \"%s\", which is incompatible with parent company \"%s\""
 msgstr "引用 \"%s\" 属于公司 \"%s\"，与父记录公司 \"%s\" 不兼容"
 
-#: service/runtime/validation/engine.ts:274 service/runtime/validation/engine.ts:298 service/runtime/validation/engine.ts:354
+#: service/runtime/validation/engine.ts:283 service/runtime/validation/engine.ts:307 service/runtime/validation/engine.ts:363
 msgctxt "service/runtime/validation/engine"
 msgid "reference \"%s\" points to company \"%s\", which is outside ctx.enabledCompanyIds"
 msgstr "引用 \"%s\" 指向公司 \"%s\"，不在 ctx.enabledCompanyIds 中"
 
-#: service/runtime/validation/engine.ts:330
+#: service/runtime/validation/engine.ts:339
 msgctxt "service/runtime/validation/engine"
 msgid "reference \"%s\" with id \"%s\" is not visible in current company scope"
 msgstr "引用 \"%s\"（id \"%s\"）在当前公司范围内不可见"
@@ -265,4 +270,3 @@ msgstr "意外错误"
 msgctxt "web/rpc/errors"
 msgid "Unknown API error"
 msgstr "未知 API 错误"
-

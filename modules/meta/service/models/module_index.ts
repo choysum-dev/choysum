@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model, SqlCompute } from '@/core/service';
+import { getModelRepository } from '@/core/service/orm/model';
 import { sql } from 'kysely';
 import Job from '@/task/service/models/job';
 import { getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
@@ -484,8 +485,8 @@ export default class MetaModuleIndex extends BaseModel {
       readGroupOptions.orderBy = sortPlan.orderBy;
     }
     applySoftDeleteOptions(readGroupOptions, rawOptions);
-
-    const groupedRows = await this.getRepository().readGroup({
+    const repository = getModelRepository(this as any);
+    const groupedRows = await repository.readGroup({
       ...readGroupOptions,
       condition: normalized,
     } as any);
@@ -565,7 +566,7 @@ export default class MetaModuleIndex extends BaseModel {
 
     const projected = projectFields(finalRows, requestedFields);
     const hydrateFields = requestedFields.length > 0 ? (requestedFields as any) : undefined;
-    return projected.map(row => this.Hydrate(row as any, hydrateFields)) as unknown as T[];
+    return projected.map(row => this.hydrate(row as any, hydrateFields)) as unknown as T[];
   }
 
   static async Count<T extends BaseModel>(
@@ -579,7 +580,8 @@ export default class MetaModuleIndex extends BaseModel {
       condition: normalized,
     };
     applySoftDeleteOptions(readGroupCountOptions, { ...(options || {}) });
-    return await this.getRepository().readGroupCount(readGroupCountOptions as any);
+    const repository = getModelRepository(this as any);
+    return repository.readGroupCount(readGroupCountOptions as any);
   }
 
   static async RequestSync(params: RequestSyncParams = {}): Promise<string> {
@@ -603,7 +605,7 @@ export default class MetaModuleIndex extends BaseModel {
       if (runningJobId) return runningJobId;
     }
     if (ifStale && !force) {
-      const repo = this.getRepository();
+      const repo = getModelRepository(this as any);
       const isOriginStale = async (target: ModuleOriginType): Promise<boolean> => {
         let query = repo
           .selectQueryBuilder()

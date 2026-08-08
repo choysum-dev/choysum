@@ -6,6 +6,7 @@ import { ChoysumError } from '@/core/service/error';
 import AppSettingBaseModel, { type AppSettingModelCtor } from './app_setting_base_model';
 import BaseModel from './model';
 import { dial, pool } from './model_pool';
+import { resolveModelConstructor } from './model_registry';
 import { createServiceByModel, registerServiceFactory } from '../../rpc/service_factory';
 
 @Model('Partner', { application: 'as1partner' })
@@ -265,7 +266,7 @@ test('pool does not use global short-name scan for Ambiguous short names', () =>
 
   // resolveModelConstructor may still find *some* AppSetting via short-name scan;
   // pool must stay app-scoped and not follow that path.
-  const scanned = BaseModel.resolveModelConstructor('AppSetting');
+  const scanned = resolveModelConstructor('AppSetting');
   expect(scanned === As1AppSetting || scanned === As1AuthAppSetting).toBe(true);
   expect(As1Partner.pool('AppSetting')).toBe(As1AppSetting);
 });

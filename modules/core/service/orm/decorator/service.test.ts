@@ -366,6 +366,71 @@ test('service decorator strips key candidates for plain payload in top-level grp
   restore();
 });
 
+test('service decorator model-ctor selection drives deny-read stripping by thisArg', async () => {
+  RepositoryFactory.setRepository(
+    ServiceDecoratorParent as any,
+    {
+      getDenyReadFields: async () => ({ denyReadFields: ['SecretNote'] }),
+    } as any
+  );
+
+  const req: any = { context: { req: { kind: 'grpc', depth: 0 } } };
+  const restore = setRequest(req);
+
+  const markedPlain = () => {
+    const out: any = { SecretNote: 'hide', Keep: 'visible' };
+    Object.defineProperty(out, '__choysum_plain', {
+      value: true,
+      enumerable: false,
+      configurable: false,
+      writable: false,
+    });
+    return out;
+  };
+
+  try {
+    // BaseModel thisArg → isModelCtorLike true → strip against BaseModel (empty deny-read).
+    // Do not stub RepositoryFactory for BaseModel: it is the shared root and would leak.
+    const viaBase: any = await (ServiceDecoratorParent as any).Echo.call(BaseModel, markedPlain());
+    expect(viaBase.SecretNote).toBe('hide');
+    expect(viaBase.Keep).toBe('visible');
+
+    // Non-model thisArg → fall back to wrapped ServiceDecoratorParent → SecretNote stripped.
+    const viaNonFn: any = await (ServiceDecoratorParent as any).Echo.call('not-a-ctor' as any, markedPlain());
+    expect(viaNonFn.SecretNote).toBeUndefined();
+    expect(viaNonFn.Keep).toBe('visible');
+
+    function ForeignCtor() {}
+    const viaForeign: any = await (ServiceDecoratorParent as any).Echo.call(ForeignCtor as any, markedPlain());
+    expect(viaForeign.SecretNote).toBeUndefined();
+    expect(viaForeign.Keep).toBe('visible');
+  } finally {
+    restore();
+  }
+});
+
+test('service decorator deny-read resolveRepo tolerates missing helpers and factory throws', async () => {
+  const originalGetRepository = RepositoryFactory.getRepository;
+  const req: any = { context: { req: { kind: 'grpc', depth: 0 } } };
+  const restore = setRequest(req);
+
+  try {
+    RepositoryFactory.setRepository(ServiceDecoratorResultModel as any, { browse: async () => null } as any);
+    const one: any = await (ServiceDecoratorResultModel as any).ReadModelForGrpc();
+    // No getDenyReadFields on stub → resolveRepo returns undefined; Secret remains.
+    expect(one.Secret).toBe('hide');
+
+    RepositoryFactory.getRepository = (() => {
+      throw new Error('repo factory boom');
+    }) as any;
+    const many: any[] = await (ServiceDecoratorResultModel as any).ReadModelArrayForGrpc();
+    expect(many[0]?.Secret).toBe('hide2');
+  } finally {
+    RepositoryFactory.getRepository = originalGetRepository;
+    restore();
+  }
+});
+
 test('service decorator top-level detection returns false when request accessor throws', () => {
   const previousDesc = Object.getOwnPropertyDescriptor(globalThis as any, '$choysum');
 

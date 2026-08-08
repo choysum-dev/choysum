@@ -7,17 +7,17 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: service/orm/model/model.ts:431
+#: service/orm/model/model.ts:429
 msgctxt "core.model.BaseModel.fields"
 msgid "Created At"
 msgstr ""
 
-#: service/orm/model/model.ts:453
+#: service/orm/model/model.ts:451
 msgctxt "core.model.BaseModel.fields"
 msgid "Deleted At"
 msgstr ""
 
-#: service/orm/model/model.ts:409
+#: service/orm/model/model.ts:407
 msgctxt "core.model.BaseModel.fields"
 msgid "Display Name"
 msgstr ""
@@ -27,9 +27,14 @@ msgctxt "core.model.BaseModel.fields"
 msgid "Parent Path"
 msgstr ""
 
-#: service/orm/model/model.ts:442
+#: service/orm/model/model.ts:440
 msgctxt "core.model.BaseModel.fields"
 msgid "Updated At"
+msgstr ""
+
+#: service/orm/model/model.ts:286
+msgctxt "service/orm/model/model"
+msgid "current company is required"
 msgstr ""
 
 #: service/orm/model/model.ts:275
@@ -222,19 +227,19 @@ msgctxt "service/runtime/validation/engine"
 msgid "model \"%s\" is readonly and cannot be written"
 msgstr ""
 
-#: service/runtime/validation/engine.ts:373
+#: service/runtime/validation/engine.ts:382
 msgctxt "service/runtime/validation/engine"
 msgid "reference \"%s\" belongs to company \"%s\", which is incompatible with parent company \"%s\""
 msgstr ""
 
-#: service/runtime/validation/engine.ts:274
-#: service/runtime/validation/engine.ts:298
-#: service/runtime/validation/engine.ts:354
+#: service/runtime/validation/engine.ts:283
+#: service/runtime/validation/engine.ts:307
+#: service/runtime/validation/engine.ts:363
 msgctxt "service/runtime/validation/engine"
 msgid "reference \"%s\" points to company \"%s\", which is outside ctx.enabledCompanyIds"
 msgstr ""
 
-#: service/runtime/validation/engine.ts:330
+#: service/runtime/validation/engine.ts:339
 msgctxt "service/runtime/validation/engine"
 msgid "reference \"%s\" with id \"%s\" is not visible in current company scope"
 msgstr ""

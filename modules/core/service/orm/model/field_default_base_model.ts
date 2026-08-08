@@ -14,6 +14,7 @@ import {
 } from '../repository/authz';
 import BaseModel from './model';
 import { resolveEffectiveFieldDefaults } from './field_default_resolve';
+import { resolveModelConstructor } from './model_registry';
 import type { InstantiableModelCtor } from './types';
 import { registerLogicalModelName } from './logical_model_registry';
 
@@ -127,7 +128,7 @@ function resolveTargetModel(
   }
 
   const fullName = `${application}.${short}`;
-  const Target = BaseModel.resolveModelConstructor(fullName) || BaseModel.resolveModelConstructor(short);
+  const Target = resolveModelConstructor(fullName) || resolveModelConstructor(short);
   if (!Target) {
     fail('FIELD_DEFAULT_CROSS_APP_MODEL', `Model ${short} is not registered`);
   }

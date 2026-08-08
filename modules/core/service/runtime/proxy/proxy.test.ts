@@ -89,12 +89,12 @@ function createProxyWithFactory<T extends BaseModel>(ModelCtor: { new (...args: 
   return { proxy: factory.create(), factory };
 }
 
-test('proxy preloaded many2one hydration does not call public Model.Hydrate', () => {
-  const originalHydrate = ProxyHydratedUser.Hydrate;
+test('proxy preloaded many2one hydration does not call public Model.hydrate', () => {
+  const originalHydrate = ProxyHydratedUser.hydrate;
   let hydrateCalls = 0;
 
   try {
-    ProxyHydratedUser.Hydrate = ((_entity: Record<string, any>) => {
+    ProxyHydratedUser.hydrate = ((_entity: Record<string, any>) => {
       hydrateCalls += 1;
       throw new Error('public hydrate should not be called');
     }) as any;
@@ -110,16 +110,16 @@ test('proxy preloaded many2one hydration does not call public Model.Hydrate', ()
     expect(owner?.Id).toBe('USER-1');
     expect(owner?.Name).toBe('Alice');
   } finally {
-    ProxyHydratedUser.Hydrate = originalHydrate;
+    ProxyHydratedUser.hydrate = originalHydrate;
   }
 });
 
-test('proxy preloaded to-many hydration does not call public Model.Hydrate', () => {
-  const originalHydrate = ProxyHydratedTag.Hydrate;
+test('proxy preloaded to-many hydration does not call public Model.hydrate', () => {
+  const originalHydrate = ProxyHydratedTag.hydrate;
   let hydrateCalls = 0;
 
   try {
-    ProxyHydratedTag.Hydrate = ((_entity: Record<string, any>) => {
+    ProxyHydratedTag.hydrate = ((_entity: Record<string, any>) => {
       hydrateCalls += 1;
       throw new Error('public hydrate should not be called');
     }) as any;
@@ -139,7 +139,7 @@ test('proxy preloaded to-many hydration does not call public Model.Hydrate', () 
     expect(tags[0]?.Id).toBe('TAG-1');
     expect(tags[1]?.Name).toBe('beta');
   } finally {
-    ProxyHydratedTag.Hydrate = originalHydrate;
+    ProxyHydratedTag.hydrate = originalHydrate;
   }
 });
 

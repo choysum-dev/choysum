@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Entity } from '../repository';
-import type { Repository } from '../repository';
 import { Field, SqlCompute } from '../decorator';
 import {
   QueryCondition,
@@ -65,7 +64,6 @@ import {
 } from './model_instance';
 import { browseModel, browseManyModels, searchModels, countModels, readGroupedModels, countGroupedModels } from './model_read_facade';
 import { withModelSavepoint, hydrateModelFacade, toPlainObject as toPlainObjectExternal, toEntity as toEntityExternal } from './model_edge_facade';
-import { getModelRepository } from './model_internal_facade';
 import { runModelOnchange } from './model_runtime_service_facade';
 import { pool as poolModel, dial as dialService } from './model_pool';
 import { runDefaultGetPipeline } from './model_default_get_pipeline';
@@ -280,43 +278,14 @@ class BaseModel {
   }
 
   /**
-   * Resolve a model constructor by its identifier.
-   *
-   * The identifier can be a full model name (e.g. "meta.MetaModule"),
-   * a short model name ("MetaModule"), the metadata name, or the
-   * constructor class name.
-   *
-   * Prefer {@link BaseModel.pool} for same-app short names (typed, no global
-   * short-name scan) and {@link BaseModel.dial} for cross-app **services**.
-   * This helper remains for framework / dynamic full-name ctor lookup.
+   * Returns the active company Id, throwing when no company is in scope.
    */
-  static resolveModelConstructor(identifier: string): typeof BaseModel | undefined {
-    const key = String(identifier || '').trim();
-    if (!key) return undefined;
-
-    const pool = (globalThis as any)?.pool;
-    if (pool && typeof pool.get === 'function') {
-      const ctor = pool.get(key);
-      if (ctor && typeof ctor === 'function') {
-        return ctor as typeof BaseModel;
-      }
+  static ensureCompanyId(): string {
+    const id = String(this.companyId || '').trim();
+    if (!id) {
+      throw new Error(_t('current company is required', { scope: 'service/orm/model/model' }));
     }
-
-    const models = (MetadataStorage.instance as any)?.models as Map<typeof BaseModel, any> | undefined;
-    if (!models || typeof models.entries !== 'function') return undefined;
-
-    for (const [ctor, meta] of models.entries()) {
-      if (!ctor) continue;
-      const fullModelName = String(meta?.fullModelName || '').trim();
-      const modelName = String(meta?.modelName || '').trim();
-      const name = String(meta?.name || '').trim();
-      const className = String(ctor.name || '').trim();
-      if (key === fullModelName || key === modelName || key === name || key === className) {
-        return ctor;
-      }
-    }
-
-    return undefined;
+    return id;
   }
 
   /**
@@ -341,14 +310,14 @@ class BaseModel {
   /**
    * Returns the resolved effective constraints for the calling model constructor.
    */
-  static EffectiveConstraints<T extends BaseModel>(this: { new (...args: any[]): T } & typeof BaseModel): EffectiveConstraintMeta[] {
+  static getEffectiveConstraints<T extends BaseModel>(this: { new (...args: any[]): T } & typeof BaseModel): EffectiveConstraintMeta[] {
     return getEffectiveConstraints(this as any);
   }
 
   /**
    * Returns the resolved effective onchange handlers for the calling model constructor.
    */
-  static EffectiveOnchange<T extends BaseModel>(this: { new (...args: any[]): T } & typeof BaseModel): EffectiveOnchangeMeta[] {
+  static getEffectiveOnchange<T extends BaseModel>(this: { new (...args: any[]): T } & typeof BaseModel): EffectiveOnchangeMeta[] {
     return getEffectiveOnchange(this as any);
   }
 
@@ -363,7 +332,7 @@ class BaseModel {
   }
 
   /**
-   * Runs a function with additional context bound to this model instance.
+   * Same as {@link BaseModel.withContext} (static); instance form is convenience sugar.
    */
   withContext<R>(ctx: Partial<Context> | (() => Partial<Context>), fn: () => R, opts?: { merge?: boolean }): R {
     return withInstanceModelContext(this, ctx, fn, opts);
@@ -378,7 +347,7 @@ class BaseModel {
   }
 
   /**
-   * Runs a function with a temporary userId override bound to this model instance.
+   * Same as {@link BaseModel.withUser} (static); instance form is convenience sugar.
    */
   withUser<R>(userId: string, fn: () => R): R {
     return withInstanceModelUser(this, userId, fn);
@@ -397,25 +366,29 @@ class BaseModel {
   }
 
   /**
-   * Runs a function with a temporary company view bound to this model instance.
+   * Same as {@link BaseModel.withCompany} (static); instance form is convenience sugar.
    */
   withCompany<R>(company: WithCompanyTarget, fn: () => R): R {
     return withInstanceModelCompany(this, company, fn);
   }
 
   /**
-   * Runs a function with RecordRule + FieldRule bypass (company scope retained).
-   * Sync and async `fn` are both supported (required for virtual compute reads).
+   * Runs `fn` with RecordRule + FieldRule bypass while retaining company scope.
+   *
+   * Records a sudo audit enter (optional `opts.hint`). Does **not** bypass
+   * Method ACL or company-layer checks. Sync and async `fn` are both supported
+   * (required for virtual compute reads). Prefer this over silent authz bypass
+   * helpers, which are engine-only and never belong on BaseModel.
    */
-  static sudo<R>(fn: () => R): R {
-    return withModelElevate(fn);
+  static sudo<R>(fn: () => R, opts?: { hint?: string }): R {
+    return withModelElevate(fn, opts);
   }
 
   /**
-   * Runs a function with RecordRule + FieldRule bypass bound to this model instance.
+   * Same as {@link BaseModel.sudo} (static); instance form is convenience sugar.
    */
-  sudo<R>(fn: () => R): R {
-    return withInstanceModelElevate(this, fn);
+  sudo<R>(fn: () => R, opts?: { hint?: string }): R {
+    return withInstanceModelElevate(this, fn, opts);
   }
 
   /**
@@ -499,13 +472,6 @@ class BaseModel {
       throw new Error('Models cannot be directly instantiated. Use factory methods like Create(), Browse(), or Search() instead.');
     }
     EntityConverter.entityToModel(this, entity);
-  }
-
-  /**
-   * Returns the repository bound to the current model constructor.
-   */
-  static getRepository<T extends BaseModel>(this: BaseModelCtor<T>): Repository {
-    return getModelRepository(this as unknown as RuntimeModelCtor<T>);
   }
 
   /**
@@ -800,7 +766,7 @@ class BaseModel {
   }
 
   /**
-   * Transport serialization for top-level gRPC responses:
+   * Preferred serialization for top-level gRPC responses:
    * - Uses the EntityConverter plan path over entity plus fields with only the required normalization.
    * - Marks the return value with __choysum_plain so the shared service-runtime finalize step can short-circuit.
    */
@@ -809,7 +775,7 @@ class BaseModel {
   }
 
   /**
-   * Converts the model instance into a plain object.
+   * Converts the model instance into a plain object for in-process use.
    */
   public toPlainObject(): ObjectRecord {
     return toPlainObjectExternal(this);
@@ -817,6 +783,9 @@ class BaseModel {
 
   /**
    * Converts the model instance into an entity-shaped object.
+   *
+   * Prefer {@link BaseModel.toTransportObject} for outbound RPC and
+   * {@link BaseModel.toPlainObject} for in-process plain data.
    */
   public toEntity(): ObjectRecord {
     return toEntityExternal(this);
@@ -825,7 +794,7 @@ class BaseModel {
   /**
    * Hydrates a model instance from an entity payload.
    */
-  static Hydrate<T extends BaseModel>(this: BaseModelCtor<T>, entity: ObjectRecord, fields?: FieldSelection<T>): T {
+  static hydrate<T extends BaseModel>(this: BaseModelCtor<T>, entity: ObjectRecord, fields?: FieldSelection<T>): T {
     return hydrateModelFacade<T>(this as unknown as RuntimeModelCtor<T>, entity, fields);
   }
 }

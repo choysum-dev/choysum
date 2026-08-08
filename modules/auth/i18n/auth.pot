@@ -107,57 +107,67 @@ msgctxt "auth.model.Role.fields"
 msgid "Users"
 msgstr ""
 
-#: service/models/role_field_rule.ts:113
-#: service/models/role_field_rule.ts:96
+#: service/models/role_field_rule.ts:117
+#: service/models/role_field_rule.ts:134
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Allow"
 msgstr ""
 
-#: service/models/role_field_rule.ts:42
+#: service/models/role_field_rule.ts:43
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Application"
 msgstr ""
 
-#: service/models/role_field_rule.ts:114
-#: service/models/role_field_rule.ts:97
+#: service/models/role_field_rule.ts:118
+#: service/models/role_field_rule.ts:135
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Deny"
 msgstr ""
 
-#: service/models/role_field_rule.ts:83
+#: service/models/role_field_rule.ts:85
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Field"
 msgstr ""
 
-#: service/models/role_field_rule.ts:43
-#: service/models/role_field_rule.ts:59
-#: service/models/role_field_rule.ts:84
+#: service/models/role_field_rule.ts:44
+#: service/models/role_field_rule.ts:60
+#: service/models/role_field_rule.ts:86
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Leave all scopes empty for global; otherwise pick one level (field scope also needs a model)."
 msgstr ""
 
-#: service/models/role_field_rule.ts:58
+#: service/models/role_field_rule.ts:103
+msgctxt "auth.model.RoleFieldRule.fields"
+msgid "Logical Model"
+msgstr ""
+
+#: service/models/role_field_rule.ts:59
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Model"
 msgstr ""
 
-#: service/models/role_field_rule.ts:101
-#: service/models/role_field_rule.ts:118
+#: service/models/role_field_rule.ts:122
+#: service/models/role_field_rule.ts:139
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Override field visibility or editability; at least one of Read/Write must be set."
 msgstr ""
 
-#: service/models/role_field_rule.ts:100
+#: service/models/role_field_rule.ts:121
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Read"
 msgstr ""
 
-#: service/models/role_field_rule.ts:29
+#: service/models/role_field_rule.ts:104
+msgctxt "auth.model.RoleFieldRule.fields"
+msgid "Registered short name covering all installed host applications that inject the same model. Applies to all business fields on that logical model. Mutually exclusive with Application / Model / Field."
+msgstr ""
+
+#: service/models/role_field_rule.ts:30
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Role"
 msgstr ""
 
-#: service/models/role_field_rule.ts:117
+#: service/models/role_field_rule.ts:138
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Write"
 msgstr ""
@@ -172,62 +182,82 @@ msgctxt "auth.model.RoleInheritance.fields"
 msgid "Parent Role"
 msgstr ""
 
-#: service/models/role_method_access.ts:86
+#: service/models/role_method_access.ts:123
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Allow"
 msgstr ""
 
-#: service/models/role_method_access.ts:91
+#: service/models/role_method_access.ts:128
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Any matching deny overrides allow across scopes; default is deny."
 msgstr ""
 
-#: service/models/role_method_access.ts:41
+#: service/models/role_method_access.ts:43
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Application"
 msgstr ""
 
-#: service/models/role_method_access.ts:87
+#: service/models/role_method_access.ts:124
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Deny"
 msgstr ""
 
-#: service/models/role_method_access.ts:74
+#: service/models/role_method_access.ts:77
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Leave all scopes empty for a global rule; matching scopes are OR-ed and any deny wins."
 msgstr ""
 
-#: service/models/role_method_access.ts:107
+#: service/models/role_method_access.ts:109
+msgctxt "auth.model.RoleMethodAccess.fields"
+msgid "Logical Methods"
+msgstr ""
+
+#: service/models/role_method_access.ts:94
+msgctxt "auth.model.RoleMethodAccess.fields"
+msgid "Logical Model"
+msgstr ""
+
+#: service/models/role_method_access.ts:144
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Manual"
 msgstr ""
 
-#: service/models/role_method_access.ts:90
+#: service/models/role_method_access.ts:127
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Mode"
 msgstr ""
 
-#: service/models/role_method_access.ts:54
+#: service/models/role_method_access.ts:56
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Model"
 msgstr ""
 
-#: service/models/role_method_access.ts:28
+#: service/models/role_method_access.ts:110
+msgctxt "auth.model.RoleMethodAccess.fields"
+msgid "Optional method names for logical-model scope (JSON string array). Leave empty to allow or deny all methods on that logical model."
+msgstr ""
+
+#: service/models/role_method_access.ts:95
+msgctxt "auth.model.RoleMethodAccess.fields"
+msgid "Registered short name covering all installed host applications that inject the same model (e.g. TranslationTerm). Mutually exclusive with Application / Model / Service."
+msgstr ""
+
+#: service/models/role_method_access.ts:30
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Role"
 msgstr ""
 
-#: service/models/role_method_access.ts:73
+#: service/models/role_method_access.ts:76
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Service"
 msgstr ""
 
-#: service/models/role_method_access.ts:113
+#: service/models/role_method_access.ts:150
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Source"
 msgstr ""
 
-#: service/models/role_method_access.ts:108
+#: service/models/role_method_access.ts:145
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "UI (legacy)"
 msgstr ""
@@ -552,65 +582,65 @@ msgctxt "auth.model.UserRole.fields"
 msgid "User"
 msgstr ""
 
-#: service/models/_user_field_rule_eval.ts:145
+#: service/models/_user_field_rule_eval.ts:111
 msgctxt "service/models/_user_field_rule_eval"
 msgid "Model does not exist"
 msgstr ""
 
-#: service/models/_user_lifecycle_auth.ts:240
-#: service/models/_user_lifecycle_auth.ts:330
+#: service/models/_user_lifecycle_auth.ts:269
+#: service/models/_user_lifecycle_auth.ts:359
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "Account is disabled"
 msgstr ""
 
-#: service/models/_user_lifecycle_auth.ts:123
+#: service/models/_user_lifecycle_auth.ts:152
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "Email is already registered"
 msgstr ""
 
-#: service/models/_user_lifecycle_auth.ts:316
-#: service/models/_user_lifecycle_auth.ts:350
+#: service/models/_user_lifecycle_auth.ts:345
+#: service/models/_user_lifecycle_auth.ts:379
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "Invalid token payload: missing user id"
 msgstr ""
 
-#: service/models/_user_lifecycle_auth.ts:161
+#: service/models/_user_lifecycle_auth.ts:190
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "Registration failed: Main Company (Code=MAIN) was not found"
 msgstr ""
 
-#: service/models/_user_lifecycle_auth.ts:186
+#: service/models/_user_lifecycle_auth.ts:215
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "Registration failed: base.user role is not initialized; load auth bootstrap data first"
 msgstr ""
 
-#: service/models/_user_lifecycle_auth.ts:324
+#: service/models/_user_lifecycle_auth.ts:353
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "User not found"
 msgstr ""
 
-#: service/models/_user_lifecycle_auth.ts:224
-#: service/models/_user_lifecycle_auth.ts:231
+#: service/models/_user_lifecycle_auth.ts:253
+#: service/models/_user_lifecycle_auth.ts:260
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "User not found or password is incorrect"
 msgstr ""
 
-#: service/models/_user_lifecycle_auth.ts:139
+#: service/models/_user_lifecycle_auth.ts:168
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "User registration failed: missing user id"
 msgstr ""
 
-#: service/models/_user_lifecycle_auth.ts:84
+#: service/models/_user_lifecycle_auth.ts:113
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "Username and password are required"
 msgstr ""
 
-#: service/models/_user_lifecycle_auth.ts:111
+#: service/models/_user_lifecycle_auth.ts:140
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "Username is already in use"
 msgstr ""
 
-#: service/models/_user_lifecycle_auth.ts:104
+#: service/models/_user_lifecycle_auth.ts:133
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "Username is required"
 msgstr ""
@@ -1431,17 +1461,17 @@ msgctxt "web/views/RoleFieldRuleFormView"
 msgid "Field Rule"
 msgstr ""
 
-#: web/views/RoleFieldRuleFormView.vue:10
+#: web/views/RoleFieldRuleFormView.vue:11
 msgctxt "web/views/RoleFieldRuleFormView"
-msgid "Role is required. Leave Application/Model/Field empty for wider scopes (global / app / model)."
+msgid "Role is required. Pick exactly one scope: Field (+ Model), Model, Application, Logical Model (all host apps / all business fields on that short name), or leave all empty for Global."
 msgstr ""
 
-#: web/views/RoleFieldRuleFormView.vue:13
+#: web/views/RoleFieldRuleFormView.vue:17
 msgctxt "web/views/RoleFieldRuleFormView"
 msgid "Select Role"
 msgstr ""
 
-#: web/views/RoleFieldRuleFormView.vue:34
+#: web/views/RoleFieldRuleFormView.vue:41
 msgctxt "web/views/RoleFieldRuleFormView"
 msgid "System Information"
 msgstr ""
@@ -1659,12 +1689,12 @@ msgctxt "web/views/RoleListView"
 msgid "Role"
 msgstr ""
 
-#: web/views/RoleMethodAccessFormView.vue:40
+#: web/views/RoleMethodAccessFormView.vue:41
 msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Copy Method Access"
 msgstr ""
 
-#: web/views/RoleMethodAccessFormView.vue:40
+#: web/views/RoleMethodAccessFormView.vue:41
 msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Create Method Access"
 msgstr ""
@@ -1674,17 +1704,17 @@ msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Cross-role method access editor"
 msgstr ""
 
-#: web/views/RoleMethodAccessFormView.vue:40
+#: web/views/RoleMethodAccessFormView.vue:41
 msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Delete Method Access"
 msgstr ""
 
-#: web/views/RoleMethodAccessFormView.vue:40
+#: web/views/RoleMethodAccessFormView.vue:41
 msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Edit Method Access"
 msgstr ""
 
-#: web/views/RoleMethodAccessFormView.vue:40
+#: web/views/RoleMethodAccessFormView.vue:41
 #: web/views/RoleMethodAccessFormView.vue:9
 msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Method Access"
@@ -1692,7 +1722,7 @@ msgstr ""
 
 #: web/views/RoleMethodAccessFormView.vue:11
 msgctxt "web/views/RoleMethodAccessFormView"
-msgid "Role is required. New rows default to Mode=deny on the model; prefer allow for grants and deny as an explicit brake. Source is always manual under UI-Option-A (UI grants live in RoleUiResource; do not materialize Method)."
+msgid "Role is required. Pick exactly one scope: Service, Model, Application, Logical Model (all host apps sharing that short name), or leave all empty for Global. New rows default to Mode=deny; prefer allow for grants. Source is always manual under UI-Option-A."
 msgstr ""
 
 #: web/views/RoleMethodAccessFormView.vue:17
@@ -1700,7 +1730,7 @@ msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Select Role"
 msgstr ""
 
-#: web/views/RoleMethodAccessFormView.vue:38
+#: web/views/RoleMethodAccessFormView.vue:44
 msgctxt "web/views/RoleMethodAccessFormView"
 msgid "System Information"
 msgstr ""

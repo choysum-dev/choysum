@@ -45,7 +45,7 @@ export const DRAFT_FORBIDDEN_PERSISTENCE_METHODS = new Set(
     'Delete',
     'DeleteById',
     'Count',
-    'Hydrate',
+    'hydrate',
     // Common Odoo / ORM persistence aliases (may appear as helpers on models).
     'save',
     'upsert',

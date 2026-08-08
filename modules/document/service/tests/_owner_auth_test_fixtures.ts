@@ -9,6 +9,7 @@ import User from '@/auth/service/models/user';
 import UserRole from '@/auth/service/models/user_role';
 import { withPermissionGraphBypass } from '@/auth/service/models/_user_authz_shared';
 import { invalidateAuthzCachesForUsers } from '@/auth/service/models/_request_cache_invalidation';
+import { getTestRepository } from '@/core/service/testing';
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -194,7 +195,7 @@ async function ensureFixtureFrRole(): Promise<string> {
   const existingId = String(existing?.Id || '').trim();
   if (existingId) {
     if (existing?.DeletedAt != null) {
-      const repo = Role.getRepository().withDeleted();
+      const repo = getTestRepository(Role as any).withDeleted();
       await repo.update({ DeletedAt: null, IsActive: true } as any, ['Id', '=', existingId] as any);
     }
     resolvedOwnerFrRoleId = existingId;
@@ -237,7 +238,7 @@ async function ensureFixtureFrRule(roleId: string): Promise<void> {
   const existingId = String(existing?.Id || '').trim();
   if (existingId) {
     if (existing?.DeletedAt != null) {
-      const repo = RoleFieldRule.getRepository().withDeleted();
+      const repo = getTestRepository(RoleFieldRule as any).withDeleted();
       await repo.update({ DeletedAt: null } as any, ['Id', '=', existingId] as any);
     }
     // Pre-existing / revived rule; leave teardown alone.
@@ -270,7 +271,7 @@ async function ensureFixtureUser(userId: string): Promise<void> {
   const row = (existing as any)?.[0];
   if (row) {
     if (row.DeletedAt != null) {
-      const repo = User.getRepository().withDeleted();
+      const repo = getTestRepository(User as any).withDeleted();
       await repo.update({ DeletedAt: null, IsActive: true } as any, ['Id', '=', userId] as any);
     }
     return;

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { withContext as withModelContext } from '@/core/service/api/context';
+import { getTestRepository } from '@/core/service/testing';
 import User from '@/auth/service/models/user';
 import Role from '@/auth/service/models/role';
 import UserRole from '@/auth/service/models/user_role';
@@ -594,7 +595,7 @@ test('RoleMethodAccess db check: deleted rows bypass scope xor', async () => {
 
     await RoleMethodAccess.DeleteById(id);
 
-    const repo = RoleMethodAccess.getRepository().withDeleted();
+    const repo = getTestRepository(RoleMethodAccess as any).withDeleted();
     const updated = await repo.update(
       {
         MetaServiceId: browse.id,

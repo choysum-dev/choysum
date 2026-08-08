@@ -35,12 +35,12 @@ function createModelInstance<T extends BaseModel>(ModelCtor: { new (...args: any
   return new ModelCtor(factoryToken, entity, undefined as any);
 }
 
-test('EntityConverter direct many2one relation hydration does not call public Model.Hydrate', () => {
-  const originalHydrate = EntityConverterHydratedUser.Hydrate;
+test('EntityConverter direct many2one relation hydration does not call public Model.hydrate', () => {
+  const originalHydrate = EntityConverterHydratedUser.hydrate;
   let hydrateCalls = 0;
 
   try {
-    EntityConverterHydratedUser.Hydrate = ((_entity: Record<string, any>) => {
+    EntityConverterHydratedUser.hydrate = ((_entity: Record<string, any>) => {
       hydrateCalls += 1;
       throw new Error('public hydrate should not be called');
     }) as any;
@@ -55,16 +55,16 @@ test('EntityConverter direct many2one relation hydration does not call public Mo
     expect(team.Owner?.Id).toBe('USER-1');
     expect(team.Owner?.Name).toBe('Alice');
   } finally {
-    EntityConverterHydratedUser.Hydrate = originalHydrate;
+    EntityConverterHydratedUser.hydrate = originalHydrate;
   }
 });
 
-test('EntityConverter preloaded to-many relation hydration does not call public Model.Hydrate', () => {
-  const originalHydrate = EntityConverterHydratedMember.Hydrate;
+test('EntityConverter preloaded to-many relation hydration does not call public Model.hydrate', () => {
+  const originalHydrate = EntityConverterHydratedMember.hydrate;
   let hydrateCalls = 0;
 
   try {
-    EntityConverterHydratedMember.Hydrate = ((_entity: Record<string, any>) => {
+    EntityConverterHydratedMember.hydrate = ((_entity: Record<string, any>) => {
       hydrateCalls += 1;
       throw new Error('public hydrate should not be called');
     }) as any;
@@ -84,6 +84,6 @@ test('EntityConverter preloaded to-many relation hydration does not call public 
     expect(team.Members?.[0]?.Id).toBe('MEM-1');
     expect(team.Members?.[1]?.Name).toBe('beta');
   } finally {
-    EntityConverterHydratedMember.Hydrate = originalHydrate;
+    EntityConverterHydratedMember.hydrate = originalHydrate;
   }
 });

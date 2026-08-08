@@ -4,13 +4,14 @@
 import { raiseDomainError } from '@/core/service/error';
 import { createServiceByModel } from '../../rpc/service_factory';
 import { MetadataStorage } from '../metadata/storage';
+import { lookupModelCtorByFullName } from './model_ctor_lookup';
 import type BaseModel from './model';
 
 /**
  * Same-app typed resolve by short model name.
  *
  * Resolves only `${application}.${shortName}` — never scans the global short-name
- * registry (unlike {@link BaseModel.resolveModelConstructor}).
+ * registry (unlike `resolveModelConstructor` in `model_registry`).
  *
  * Not an alias of `globalThis.pool` (ApplicationModelPool registration table).
  */
@@ -58,23 +59,5 @@ function isValidFullModelName(key: string): boolean {
 
 /** Resolve only by exact fullModelName (pool table + metadata), no short-name fallback. */
 function resolveSameAppModelConstructor(fullName: string): typeof BaseModel | undefined {
-  const globalPool = (globalThis as { pool?: { get?: (name: string) => unknown } }).pool;
-  if (globalPool && typeof globalPool.get === 'function') {
-    const ctor = globalPool.get(fullName);
-    if (ctor && typeof ctor === 'function') {
-      return ctor as typeof BaseModel;
-    }
-  }
-
-  // models is private on MetadataStorage; same access pattern as resolveModelConstructor.
-  const models = (MetadataStorage.instance as any)?.models as Map<typeof BaseModel, { fullModelName?: string }> | undefined;
-  if (!models || typeof models.entries !== 'function') return undefined;
-
-  for (const [ctor, meta] of models.entries()) {
-    if (!ctor) continue;
-    if (String(meta?.fullModelName || '').trim() === fullName) {
-      return ctor;
-    }
-  }
-  return undefined;
+  return lookupModelCtorByFullName(fullName);
 }
