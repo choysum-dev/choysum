@@ -41,6 +41,10 @@ test('resolveModelConstructor test override is honored and cleared', () => {
   __setResolveModelConstructorForTest(() => OverrideModel as typeof BaseModel);
   try {
     expect(resolveModelConstructor('anything')).toBe(OverrideModel);
+    expect(resolveModelConstructor('  anything  ')).toBe(OverrideModel);
+    // Empty keys still short-circuit before the override (same as production).
+    expect(resolveModelConstructor('')).toBe(undefined);
+    expect(resolveModelConstructor('   ')).toBe(undefined);
   } finally {
     __setResolveModelConstructorForTest(undefined);
   }

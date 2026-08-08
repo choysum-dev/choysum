@@ -339,10 +339,13 @@ function isBaseModelLike(input: unknown): input is BaseModel {
 }
 
 function isModelCtorLike(input: unknown): boolean {
-  if (!(typeof input === 'function' || typeof input === 'object') || !input) return false;
-  // Duck-type via author-surface markers (getRepository was removed from BaseModel).
-  const candidate = input as { hydrate?: unknown; Search?: unknown; Browse?: unknown };
-  return typeof candidate.hydrate === 'function' || typeof candidate.Search === 'function' || typeof candidate.Browse === 'function';
+  if (typeof input !== 'function') return false;
+  // Prefer constructor ancestry over author-surface duck-typing so a foreign
+  // `this` that happens to expose Search/Browse/hydrate cannot steal deny-read
+  // filtering away from the wrapped model ctor.
+  if (input === BaseModel) return true;
+  const prototype = (input as { prototype?: unknown }).prototype;
+  return Boolean(prototype && typeof prototype === 'object' && BaseModel.prototype.isPrototypeOf(prototype));
 }
 
 function isChoysumPlainPayload(input: unknown): boolean {
