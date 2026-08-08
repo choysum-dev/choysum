@@ -441,15 +441,12 @@ async function handleCreate() {
   }
 }
 
-// Search and pagination
+// Search and pagination — apply first-frame defaults (do not swallow OSearchView emit).
 function onSearch(payload: QueryUpdatePayload<T>) {
   emit('search-change');
-  if (!firstApplied.value) {
-    firstApplied.value = true;
-    return;
-  }
   lastSearchPayload.value = payload;
   if (payload) {
+    if (!firstApplied.value) firstApplied.value = true;
     awaitFieldSelection(store, { requireNonEmpty: true }).then(() => {
       controller
         .apply({

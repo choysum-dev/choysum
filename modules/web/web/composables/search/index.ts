@@ -9,3 +9,5 @@ export * from './useGroupingOptions';
 export * from './useFilterEditorBindings';
 export * from './useSearchFieldOptions';
 export * from './useSearchGrouping';
+export * from './useSavedFilters';
+export * from './savedFilterDefaults';

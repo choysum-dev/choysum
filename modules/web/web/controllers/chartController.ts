@@ -28,6 +28,7 @@ export interface IChartController {
   vm: ChartControllerVM;
   apply(overrides?: {
     forcedCondition?: QueryCondition<any> | QueryCondition<any>[];
+    appliedFilters?: any[];
     appliedGroups?: Array<GroupBySpec<any>>;
     // defaultGroups only fill the gap when appliedGroups are absent.
     defaultGroups?: Array<GroupBySpec<any>>;
@@ -53,6 +54,7 @@ export function createChartController(store: WebModelStore<any>): IChartControll
 
   async function run(overrides?: {
     forcedCondition?: QueryCondition<any> | QueryCondition<any>[];
+    appliedFilters?: any[];
     appliedGroups?: Array<GroupBySpec<any>>;
     defaultGroups?: Array<GroupBySpec<any>>;
     keyword?: string;
@@ -62,6 +64,7 @@ export function createChartController(store: WebModelStore<any>): IChartControll
     const qs: any = (store.state as any)?.queryState || {};
     // Merge overrides into store.state.queryState (write only necessary fields)
     if (overrides?.appliedGroups) qs.appliedGroups = overrides.appliedGroups as any;
+    if (overrides?.appliedFilters !== undefined) qs.appliedFilters = overrides.appliedFilters as any;
     if (overrides?.orderBy) qs.orderBy = overrides.orderBy as any;
     if (overrides?.keyword !== undefined) qs.keyword = overrides.keyword;
     if (overrides?.keywordFields !== undefined) qs.keywordFields = overrides.keywordFields;

@@ -89,6 +89,26 @@ SPDX-License-Identifier: Apache-2.0
                 </el-button>
               </div>
               <el-divider class="o-search__menu-divider" />
+              <div class="o-search__menu-subtitle">{{ _t('Favorites') }}</div>
+              <div class="o-search__menu-list">
+                <el-button
+                  v-for="it in favoriteMenuItems"
+                  :key="'fav:' + it.id"
+                  class="o-search__menu-item"
+                  text
+                  @click="onApplyFavorite(it)"
+                >
+                  <el-icon v-if="it.name && appliedFilterNameSet.has(it.name)" class="o-search__menu-icon o-search__menu-icon--applied">
+                    <Check />
+                  </el-icon>
+                  <span class="o-search__menu-item-label">
+                    {{ it.name }}{{ it.shared ? ` (${_t('Shared')})` : '' }}
+                  </span>
+                </el-button>
+                <div v-if="!favoriteMenuItems.length" class="o-search__empty">{{ _t('No favorites yet') }}</div>
+              </div>
+              <el-button class="o-search__menu-action" text @click="onOpenSaveFavorite">{{ _t('Save current filters…') }}</el-button>
+              <el-divider class="o-search__menu-divider" />
               <el-button class="o-search__menu-action" text @click="onAddFilterClickAndClose">{{ _t('Custom filter…') }}</el-button>
             </section>
 
@@ -153,11 +173,29 @@ SPDX-License-Identifier: Apache-2.0
         @confirm="onConfirmDraft"
       />
     </el-dialog>
+
+    <el-dialog v-model="saveFavoriteOpen" :title="_t('Save current filters')" append-to-body destroy-on-close width="420px">
+      <el-form label-position="top" @submit.prevent>
+        <el-form-item :label="_t('Name')">
+          <el-input v-model="saveFavoriteName" :placeholder="_t('Favorite name')" @keydown.enter.prevent="onConfirmSaveFavorite" />
+        </el-form-item>
+        <el-form-item>
+          <el-checkbox v-model="saveFavoriteIsDefault">{{ _t('Use by default') }}</el-checkbox>
+        </el-form-item>
+        <el-form-item>
+          <el-checkbox v-model="saveFavoriteShared">{{ _t('Share with all users') }}</el-checkbox>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="saveFavoriteOpen = false">{{ _t('Cancel') }}</el-button>
+        <el-button type="primary" :loading="saveFavoriteSaving" @click="onConfirmSaveFavorite">{{ _t('Save') }}</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel">
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import { Search as SearchIcon, ArrowDown, Check } from '@element-plus/icons-vue';
 import type { BaseModel } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
@@ -165,7 +203,21 @@ import { useSearch } from '@/web/web/composables/search';
 import { normalizeFilters } from '@/web/web/query/utils/filter/structures';
 import { filtersSignature, shouldApplyControlledFilters } from '@/web/web/query/utils/search/controlledFilters';
 import OSearchFilter from './OSearchFilter.vue';
-import { ElButton, ElTag, ElTooltip, ElDialog, ElDivider, ElIcon, ElPopover, ElTreeSelect, ElMessage } from 'element-plus';
+import {
+  ElButton,
+  ElTag,
+  ElTooltip,
+  ElDialog,
+  ElDivider,
+  ElIcon,
+  ElPopover,
+  ElTreeSelect,
+  ElMessage,
+  ElForm,
+  ElFormItem,
+  ElInput,
+  ElCheckbox,
+} from 'element-plus';
 import { useDebouncedFnCancelable } from '@/web/web/composables/useDebouncedFnCancelable';
 import type { GroupBySpec } from '@/core/service/api/query';
 import type { ConditionGroup, QueryUpdatePayload, NamedFilter } from '@/web/web/query/types';
@@ -173,6 +225,7 @@ import { formatGroupItemForDisplay } from '@/web/web/query/utils/grouping/format
 import { normalizeGroupby } from '@/web/web/query/utils/grouping/normalize';
 import { buildQueryUpdatePayload } from '@/web/web/query/utils/search/payload';
 import { useFilterPresets } from '@/web/web/composables/search/useFilterPresets';
+import { useSavedFilters } from '@/web/web/composables/search/useSavedFilters';
 import { useFilterableSearchFields } from '@/web/web/composables/search/useSearchFieldOptions';
 import { useSearchGrouping, type SearchGroupByItem } from '@/web/web/composables/search/useSearchGrouping';
 import { createTranslate } from '@/web/web/i18n';
@@ -203,6 +256,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'query-update', payload: QueryUpdatePayload): void;
+  (e: 'defaults-ready', defaults: NamedFilter[]): void;
 }>();
 const store = props.store;
 const groupingSummary = computed(() => {
@@ -264,6 +318,71 @@ const { defaultFilterItems, appliedFilterNameSet, toggleDefaultFilter } = useFil
     if (!df) return undefined;
     return Array.isArray(df) ? df : [df];
   },
+});
+
+const {
+  favoriteMenuItems,
+  load: loadFavorites,
+  apply: applyFavorite,
+  saveCurrent: saveFavoriteCurrent,
+  defaultsForOpen,
+} = useSavedFilters({
+  store,
+  filtersRef: filters as any,
+  keywordRef: keyword as any,
+  applyNamedFilter,
+  codeDefaults: () => {
+    const df = props.defaultFilters as any;
+    if (!df) return undefined;
+    return Array.isArray(df) ? df : [df];
+  },
+});
+
+const saveFavoriteOpen = ref(false);
+const saveFavoriteName = ref('');
+const saveFavoriteIsDefault = ref(false);
+const saveFavoriteShared = ref(false);
+const saveFavoriteSaving = ref(false);
+
+function onApplyFavorite(it: { name: string; filter: any }) {
+  applyFavorite(it);
+  emitQueryUpdate();
+  menuVisible.value = false;
+}
+
+function onOpenSaveFavorite() {
+  menuVisible.value = false;
+  saveFavoriteName.value = '';
+  saveFavoriteIsDefault.value = false;
+  saveFavoriteShared.value = false;
+  saveFavoriteOpen.value = true;
+}
+
+async function onConfirmSaveFavorite() {
+  const name = saveFavoriteName.value.trim();
+  if (!name) {
+    ElMessage.warning(_t('Enter a favorite name'));
+    return;
+  }
+  saveFavoriteSaving.value = true;
+  try {
+    await saveFavoriteCurrent({
+      name,
+      isDefault: saveFavoriteIsDefault.value,
+      shared: saveFavoriteShared.value,
+    });
+    saveFavoriteOpen.value = false;
+    ElMessage.success(_t('Favorite saved'));
+  } catch (e: any) {
+    ElMessage.error(e instanceof Error ? e.message : String(e));
+  } finally {
+    saveFavoriteSaving.value = false;
+  }
+}
+
+onMounted(async () => {
+  await loadFavorites();
+  emit('defaults-ready', defaultsForOpen.value as NamedFilter[]);
 });
 
 /* Debounced query emission. */

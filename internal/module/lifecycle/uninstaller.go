@@ -107,6 +107,55 @@ func (m *moduleUninstaller) cleanModels() error {
 		}
 	}
 
+	// SF7: hard-delete web.SavedFilter rows only when a logical model has no remaining
+	// live meta_model after this module's declarations were removed (IMD-safe).
+	if err := purgeSavedFiltersForGoneModels(db.DB, keys); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+const webSavedFilterTable = "web_saved_filter"
+
+// purgeSavedFiltersForGoneModels deletes Favorites for logical models that no longer
+// have any live effective meta_model row. No-op when the table is missing. Never
+// deletes by Application alone.
+func purgeSavedFiltersForGoneModels(db *gorm.DB, keys []modmeta.LogicalKey) error {
+	if db == nil || len(keys) == 0 {
+		return nil
+	}
+	if !db.Migrator().HasTable(webSavedFilterTable) {
+		return nil
+	}
+	seen := map[string]struct{}{}
+	for _, key := range keys {
+		k := key.Normalized()
+		if !k.Valid() {
+			continue
+		}
+		id := k.Application + "\x00" + k.Name
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+
+		var remaining int64
+		if err := db.Model(&meta.Model{}).
+			Where("application = ? AND name = ?", k.Application, k.Name).
+			Count(&remaining).Error; err != nil {
+			return xfmt.Errorf("error counting surviving meta models for saved filter purge: %w", err)
+		}
+		if remaining > 0 {
+			continue
+		}
+		if err := db.Exec(
+			"DELETE FROM "+webSavedFilterTable+" WHERE application = ? AND model_name = ?",
+			k.Application, k.Name,
+		).Error; err != nil {
+			return xfmt.Errorf("error deleting web saved filters for %s.%s: %w", k.Application, k.Name, err)
+		}
+	}
 	return nil
 }
 

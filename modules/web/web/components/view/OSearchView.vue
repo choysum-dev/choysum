@@ -10,8 +10,9 @@ SPDX-License-Identifier: Apache-2.0
     :current-keyword="keywordForChild"
     :current-applied-filters="appliedFiltersForChild"
     :current-applied-groups="appliedGroupsForChild"
-    :default-filters="defaultFiltersForChild"
+    :default-filters="mergedDefaultFilters"
     @query-update="onQueryUpdate"
+    @defaults-ready="onDefaultsReady"
   />
 </template>
 
@@ -19,10 +20,12 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, onMounted, ref } from 'vue';
 import type { BaseModel } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
-import type { ConditionGroup, GroupBySpec, NamedFilter, NamedGrouping, QueryUpdatePayload } from '@/web/web/query/types';
+import type { ConditionGroup, GroupBySpec, NamedFilter, QueryUpdatePayload } from '@/web/web/query/types';
 import OSearch from '@/web/web/components/view/search/OSearch.vue';
 import { computeInitialAppliedFilters, computeAppliedGroups } from '@/web/web/query/utils/search/initialQueryState';
 import { buildQueryUpdatePayload } from '@/web/web/query/utils/search/payload';
+import { createStoreByModel } from '@/web/web/stores/registry';
+import { mergeSavedFilterDefaults, type SavedFilterRow } from '@/web/web/composables/search/savedFilterDefaults';
 import { createTranslate } from '@/web/web/i18n';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/OSearchView' });
@@ -59,13 +62,19 @@ const keywordForChild = computed<string | undefined>(() => {
   return typeof qs?.keyword === 'string' && qs.keyword.length > 0 ? (qs.keyword as string) : undefined;
 });
 
-const defaultFiltersForChild = computed<NamedFilter<T>[]>(() => {
+const codeDefaultFilters = computed<NamedFilter<T>[]>(() => {
   const pf = props.defaultFilters;
   if (pf && Array.isArray(pf)) return pf as NamedFilter<T>[];
   if (pf) return [pf as NamedFilter<T>];
   const qs: any = (props.store.state as any)?.queryState;
   const defs = (qs?.defaultFilters || []) as NamedFilter<T>[];
   return Array.isArray(defs) ? defs : [];
+});
+
+const serverMergedDefaults = ref<NamedFilter<T>[] | null>(null);
+const mergedDefaultFilters = computed(() => {
+  if (serverMergedDefaults.value) return serverMergedDefaults.value as NamedFilter<T>[];
+  return codeDefaultFilters.value as NamedFilter<T>[];
 });
 
 const mounted = ref(false);
@@ -76,7 +85,7 @@ const appliedFiltersForChild = computed<ConditionGroup[]>(() => {
     mounted: mounted.value,
     initialEmit: props.initialEmit!,
     explicitFilters: props.appliedFilters as any,
-    defaultFilters: defaultFiltersForChild.value,
+    defaultFilters: mergedDefaultFilters.value,
   });
 });
 
@@ -93,8 +102,66 @@ function onQueryUpdate(payload: QueryUpdatePayload<T>) {
   emit('query-update', payload);
 }
 
-// Let the adapter own first-frame emission to avoid duplicate emits inside OSearch.
-onMounted(() => {
+function onDefaultsReady(defaults: NamedFilter[]) {
+  if (!serverMergedDefaults.value && Array.isArray(defaults) && defaults.length) {
+    serverMergedDefaults.value = defaults as NamedFilter<T>[];
+  }
+}
+
+function actorUserId(): string {
+  try {
+    return String((globalThis as any)?.$choysum?.request?.context?.identity?.userId || '').trim();
+  } catch {
+    return '';
+  }
+}
+
+async function loadServerDefaults(): Promise<NamedFilter<T>[]> {
+  const app = String((props.store as any)?.application || '').trim();
+  const model = String((props.store as any)?.modelName || '').trim();
+  if (!app || !model) {
+    return mergeSavedFilterDefaults({ codeDefaults: codeDefaultFilters.value as any }) as any;
+  }
+
+  try {
+    const me = actorUserId();
+    const sf = createStoreByModel('web.SavedFilter') as any;
+    const rows = (await sf.Search(
+      {
+        And: [
+          ['Application', '=', app],
+          ['ModelName', '=', model],
+          ['Active', '=', true],
+          ['IsDefault', '=', true],
+          {
+            Or: me
+              ? [
+                  ['UserId', '=', me],
+                  ['UserId', '=', null],
+                ]
+              : [['UserId', '=', null]],
+          },
+        ],
+      },
+      { fields: ['Id', 'Name', 'Condition', 'IsDefault', 'UserId'] }
+    )) as SavedFilterRow[];
+
+    const privateDefault = (rows || []).find(r => r.IsDefault && r.UserId != null && r.UserId !== '') || null;
+    const sharedDefault = (rows || []).find(r => r.IsDefault && (r.UserId == null || r.UserId === '')) || null;
+    return mergeSavedFilterDefaults({
+      privateDefault,
+      sharedDefault,
+      codeDefaults: codeDefaultFilters.value as any,
+    }) as any;
+  } catch {
+    // Store may be unavailable before module codegen; fall back to code defaults.
+    return mergeSavedFilterDefaults({ codeDefaults: codeDefaultFilters.value as any }) as any;
+  }
+}
+
+// First-frame emit waits for SavedFilter defaults so private/shared IsDefault can win.
+onMounted(async () => {
+  serverMergedDefaults.value = await loadServerDefaults();
   if (!props.initialEmit) {
     mounted.value = true;
     return;

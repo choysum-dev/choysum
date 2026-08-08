@@ -586,8 +586,9 @@ func RunOneAppBackendTests(
 		}
 
 		// Auth backend tests rely on meta gRPC services (Model/Application).
+		// Web SavedFilter tests dial meta.MetaModel for effective ModelId (SF12).
 		// Ensure meta is installed so bundle/app dist assets include meta services.
-		if strings.EqualFold(strings.TrimSpace(app), "auth") {
+		if strings.EqualFold(strings.TrimSpace(app), "auth") || strings.EqualFold(strings.TrimSpace(app), "web") {
 			if err := moduleLifecycle.Install(ctx, lifecycle.InstallRequest{Name: "meta"}); err != nil {
 				return false, err
 			}
