@@ -3,7 +3,30 @@
 
 import { MetadataStorage } from '../metadata/storage';
 import BaseModel from './model';
-import { lookupModelCtorByFullName } from './model_ctor_lookup';
+import { getModelCtorFromGlobalPool, lookupModelCtorByFullName } from './model_ctor_lookup';
+
+test('getModelCtorFromGlobalPool returns undefined for empty keys and missing pool entries', () => {
+  expect(getModelCtorFromGlobalPool('')).toBe(undefined);
+  expect(getModelCtorFromGlobalPool('   ')).toBe(undefined);
+
+  const savedPool = (globalThis as any).pool;
+  try {
+    delete (globalThis as any).pool;
+    expect(getModelCtorFromGlobalPool('pool.Missing')).toBe(undefined);
+
+    class PoolHit extends BaseModel {}
+    (globalThis as any).pool = {
+      get(name: string) {
+        return name === 'pool.Hit' ? PoolHit : undefined;
+      },
+    };
+    expect(getModelCtorFromGlobalPool('pool.Hit')).toBe(PoolHit);
+    expect(getModelCtorFromGlobalPool('pool.Miss')).toBe(undefined);
+  } finally {
+    if (savedPool !== undefined) (globalThis as any).pool = savedPool;
+    else delete (globalThis as any).pool;
+  }
+});
 
 test('lookupModelCtorByFullName returns undefined for empty or nullish keys', () => {
   expect(lookupModelCtorByFullName('')).toBe(undefined);

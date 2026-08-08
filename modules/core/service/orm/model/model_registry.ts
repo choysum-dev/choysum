@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { MetadataStorage } from '../metadata/storage';
-import { lookupModelCtorByFullName } from './model_ctor_lookup';
+import { getModelCtorFromGlobalPool } from './model_ctor_lookup';
 import type BaseModel from './model';
 
 type ModelCtorResolver = (identifier: string) => typeof BaseModel | undefined;
@@ -21,18 +21,21 @@ export function resolveModelConstructor(identifier: string): typeof BaseModel | 
   if (!key) return undefined;
   if (testResolver) return testResolver(key);
 
-  const byFullName = lookupModelCtorByFullName(key);
-  if (byFullName) return byFullName;
+  // Share pool lookup with full-name helper; scan metadata once for full name
+  // and short-name / metadata-name / className aliases.
+  const fromPool = getModelCtorFromGlobalPool(key);
+  if (fromPool) return fromPool;
 
   const models = (MetadataStorage.instance as any)?.models as Map<typeof BaseModel, any> | undefined;
   if (!models || typeof models.entries !== 'function') return undefined;
 
   for (const [ctor, meta] of models.entries()) {
     if (!ctor) continue;
+    const fullModelName = String(meta?.fullModelName || '').trim();
     const modelName = String(meta?.modelName || '').trim();
     const name = String(meta?.name || '').trim();
     const className = String(ctor.name || '').trim();
-    if (key === modelName || key === name || key === className) {
+    if (key === fullModelName || key === modelName || key === name || key === className) {
       return ctor;
     }
   }

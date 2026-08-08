@@ -366,20 +366,44 @@ test('service decorator strips key candidates for plain payload in top-level grp
   restore();
 });
 
-test('service decorator model-ctor checks cover BaseModel thisArg and non-function thisArg', async () => {
+test('service decorator model-ctor selection drives deny-read stripping by thisArg', async () => {
+  RepositoryFactory.setRepository(
+    ServiceDecoratorParent as any,
+    {
+      getDenyReadFields: async () => ({ denyReadFields: ['SecretNote'] }),
+    } as any
+  );
+  RepositoryFactory.setRepository(BaseModel as any, { browse: async () => null } as any);
+
   const req: any = { context: { req: { kind: 'grpc', depth: 0 } } };
   const restore = setRequest(req);
 
-  try {
-    const viaBase = await (ServiceDecoratorParent as any).Echo.call(BaseModel, { Keep: 'via-base' });
-    expect(viaBase.Keep).toBe('via-base');
+  const markedPlain = () => {
+    const out: any = { SecretNote: 'hide', Keep: 'visible' };
+    Object.defineProperty(out, '__choysum_plain', {
+      value: true,
+      enumerable: false,
+      configurable: false,
+      writable: false,
+    });
+    return out;
+  };
 
-    const viaNonFn = await (ServiceDecoratorParent as any).Echo.call('not-a-ctor' as any, { Keep: 'via-string' });
-    expect(viaNonFn.Keep).toBe('via-string');
+  try {
+    // BaseModel thisArg → isModelCtorLike true → strip against BaseModel (no deny fields).
+    const viaBase: any = await (ServiceDecoratorParent as any).Echo.call(BaseModel, markedPlain());
+    expect(viaBase.SecretNote).toBe('hide');
+    expect(viaBase.Keep).toBe('visible');
+
+    // Non-model thisArg → fall back to wrapped ServiceDecoratorParent → SecretNote stripped.
+    const viaNonFn: any = await (ServiceDecoratorParent as any).Echo.call('not-a-ctor' as any, markedPlain());
+    expect(viaNonFn.SecretNote).toBeUndefined();
+    expect(viaNonFn.Keep).toBe('visible');
 
     function ForeignCtor() {}
-    const viaForeign = await (ServiceDecoratorParent as any).Echo.call(ForeignCtor as any, { Keep: 'via-foreign' });
-    expect(viaForeign.Keep).toBe('via-foreign');
+    const viaForeign: any = await (ServiceDecoratorParent as any).Echo.call(ForeignCtor as any, markedPlain());
+    expect(viaForeign.SecretNote).toBeUndefined();
+    expect(viaForeign.Keep).toBe('visible');
   } finally {
     restore();
   }
