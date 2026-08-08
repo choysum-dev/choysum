@@ -185,8 +185,9 @@ var (
 )
 
 // DefaultSpecs returns builtin C2 Spec definitions without registering them.
-// TranslationTerm is first so EnsureServiceEntry runs before FieldDefault /
-// AppSetting Decide in the same InjectAppModels loop.
+// TranslationTerm is first so EnsureServiceEntry can synthesize a virtual
+// service entry for i18n-only apps. FieldDefault / AppSetting still require a
+// declared entryPoints.service (virtual Ensure must not unlock them).
 func DefaultSpecs() []Spec {
 	return []Spec{
 		{
@@ -202,7 +203,7 @@ func DefaultSpecs() []Spec {
 			GeneratedRelPath: "service/models/__generated__/field_default.ts",
 			DuplicateCode:    "FIELD_DEFAULT_DUPLICATE",
 			BaseModelFile:    "core/service/orm/model/field_default_base_model.ts",
-			// EnsureServiceEntry: false — empty ServiceEntryPoint skips inject.
+			// EnsureServiceEntry: false — skip when package.json has no service entry.
 		},
 		{
 			ModelName:        "AppSetting",
@@ -210,7 +211,7 @@ func DefaultSpecs() []Spec {
 			DuplicateCode:    "APP_SETTING_DUPLICATE",
 			BaseModelFile:    "core/service/orm/model/app_setting_base_model.ts",
 			SoftDeleteFalse:  true,
-			// EnsureServiceEntry: false — empty ServiceEntryPoint skips inject.
+			// EnsureServiceEntry: false — skip when package.json has no service entry.
 		},
 	}
 }

@@ -231,26 +231,29 @@ func TestResolveServiceEntryPathAndCanEnsure(t *testing.T) {
 func TestEnsureServiceEntryPath_Guards(t *testing.T) {
 	mod := &meta.Module{Name: "web", Path: "/v/web", ApplicationStr: "web", ServiceEntryPoint: ""}
 	sess, _ := newTestSession(t, mod)
-	sess.ensureServiceEntryPath("")
+	sess.ensureServiceEntryPath("", true)
 	if mod.ServiceEntryPoint != "" || sess.ensuredServiceEntry {
 		t.Fatal("empty path must not ensure")
 	}
 	sess.Context().Module = nil
-	sess.ensureServiceEntryPath("/v/web/service/index.ts")
+	sess.ensureServiceEntryPath("/v/web/service/index.ts", true)
 	sess.Context().Module = mod
-	sess.ensureServiceEntryPath("/v/web/service/index.ts")
-	if mod.ServiceEntryPoint != "/v/web/service/index.ts" || !sess.ensuredServiceEntry {
-		t.Fatal("expected ensure to set entry")
+	sess.ensureServiceEntryPath("/v/web/service/index.ts", true)
+	if mod.ServiceEntryPoint != "/v/web/service/index.ts" || !sess.ensuredServiceEntry || !sess.ensuredVirtual {
+		t.Fatal("expected ensure to set virtual entry")
 	}
 	prior := mod.ServiceEntryPoint
-	sess.ensureServiceEntryPath("/other")
+	sess.ensureServiceEntryPath("/other", false)
 	if sess.priorServiceEntry != "" && sess.priorServiceEntry != prior {
 		// prior remembered only once — first prior was empty
 	}
 	if mod.ServiceEntryPoint != "/other" {
 		t.Fatalf("second ensure should update path, got %q", mod.ServiceEntryPoint)
 	}
-	(*Session)(nil).ensureServiceEntryPath("/x")
+	if !sess.ensuredVirtual {
+		t.Fatal("virtual flag must stick once set for this build")
+	}
+	(*Session)(nil).ensureServiceEntryPath("/x", true)
 }
 
 func TestDecide_EmptyModulePathAndEnsureDenied(t *testing.T) {
@@ -436,11 +439,12 @@ func TestInject_WebEmptyEntry_EnsureThenSiblingSpecs(t *testing.T) {
 	if !tt.NeedInject || tt.ScheduledApp != "web" {
 		t.Fatalf("TranslationTerm should Ensure+NeedInject, got %+v", tt)
 	}
-	// After TranslationTerm Ensure, FieldDefault/AppSetting see non-empty entry.
+	// Virtual Ensure must not unlock FieldDefault / AppSetting (package.json
+	// has only entryPoints.web — see per-app-platform-store.md §1).
 	for _, name := range []string{"FieldDefault", "AppSetting"} {
 		plan := sess.Plan(name)
-		if !plan.NeedInject || plan.ScheduledApp != "web" {
-			t.Fatalf("%s should NeedInject after Ensure, got %+v", name, plan)
+		if plan.NeedInject || plan.SupersedeInject {
+			t.Fatalf("%s must skip after virtual Ensure, got %+v", name, plan)
 		}
 	}
 	wantEntry := virtualServiceEntryPath(mod.Path)
@@ -461,8 +465,102 @@ func TestInject_WebEmptyEntry_EnsureThenSiblingSpecs(t *testing.T) {
 	if !strings.Contains(generatedSource(specByNameOrPanic("TranslationTerm"), "/virtual/modules", "web"), "softDelete: false") {
 		t.Fatal("TranslationTerm thin class should softDelete: false")
 	}
-	if len(fx.Imports) != 3 {
-		t.Fatalf("Imports = %#v, want TranslationTerm+FieldDefault+AppSetting", fx.Imports)
+	if len(fx.Imports) != 1 {
+		t.Fatalf("Imports = %#v, want only TranslationTerm", fx.Imports)
+	}
+	wantFD := generatedPath(specByNameOrPanic("FieldDefault"), mod.Path)
+	wantAS := generatedPath(specByNameOrPanic("AppSetting"), mod.Path)
+	if _, ok := files[wantFD]; ok {
+		t.Fatalf("must not inject FieldDefault for web-only entry: %q", wantFD)
+	}
+	if _, ok := files[wantAS]; ok {
+		t.Fatalf("must not inject AppSetting for web-only entry: %q", wantAS)
+	}
+}
+
+func TestDecide_EmptyDeclaredEntry_SupersedesStaleGenerated(t *testing.T) {
+	mod := &meta.Module{
+		Name: "web", Path: "/virtual/modules/web",
+		ApplicationStr: "web", ServiceEntryPoint: "",
+	}
+	sess, db := newTestSession(t, mod)
+	virt := generatedPath(specByNameOrPanic("FieldDefault"), mod.Path)
+	seedDeclaration(t, db, "FieldDefault", "stale-fd", virt, "web")
+
+	plan, err := DecideOne(sess, "FieldDefault", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !plan.SupersedeInject || plan.NeedInject {
+		t.Fatalf("expected SupersedeInject for stale C2 without declared service entry, got %+v", plan)
+	}
+}
+
+func TestDecide_EmptyDeclaredEntry_EarlyReturnsAndLoadError(t *testing.T) {
+	spec := specByNameOrPanic("FieldDefault")
+
+	for _, tc := range []struct {
+		name string
+		mod  *meta.Module
+	}{
+		{"empty-app", &meta.Module{Name: "x", Path: "/p", ApplicationStr: "", ServiceEntryPoint: ""}},
+		{"core-app", &meta.Module{Name: "x", Path: "/p", ApplicationStr: "core", ServiceEntryPoint: ""}},
+		{"empty-path", &meta.Module{Name: "web", Path: "", ApplicationStr: "web", ServiceEntryPoint: ""}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			sess, _ := newTestSession(t, tc.mod)
+			plan, err := decidePlan(spec, sess, nil)
+			if err != nil || plan.NeedInject || plan.SupersedeInject {
+				t.Fatalf("expected empty plan, got %+v err=%v", plan, err)
+			}
+		})
+	}
+
+	mod := &meta.Module{
+		Name: "web", Path: "/virtual/modules/web",
+		ApplicationStr: "web", ServiceEntryPoint: "",
+	}
+	sess, db := newTestSession(t, mod)
+	if err := db.Migrator().DropTable("meta_raw_model"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := DecideOne(sess, "FieldDefault", nil); err == nil {
+		t.Fatal("expected load error when purging stale C2 without declared service entry")
+	}
+}
+
+func TestDeclaredServiceEntry_GuardsAndVirtualMask(t *testing.T) {
+	if (*Session)(nil).declaredServiceEntry(specByNameOrPanic("FieldDefault")) != "" {
+		t.Fatal("nil session must return empty")
+	}
+	sess := &Session{}
+	if sess.declaredServiceEntry(specByNameOrPanic("FieldDefault")) != "" {
+		t.Fatal("nil module must return empty")
+	}
+
+	mod := &meta.Module{
+		Name: "web", Path: "/virtual/modules/web",
+		ApplicationStr: "web", ServiceEntryPoint: "",
+	}
+	sess, _ = newTestSession(t, mod)
+	// Disk-adopt first, then a virtual rewrite must stick ensuredVirtual so
+	// FieldDefault still sees the prior (empty) declared entry.
+	sess.ensureServiceEntryPath("/virtual/modules/web/service/index.ts", false)
+	if sess.ensuredVirtual {
+		t.Fatal("disk adopt must not mark virtual")
+	}
+	sess.ensureServiceEntryPath("/virtual/modules/web/service/index.ts", true)
+	if !sess.ensuredVirtual {
+		t.Fatal("later virtual Ensure must set ensuredVirtual")
+	}
+	if got := sess.declaredServiceEntry(specByNameOrPanic("FieldDefault")); got != "" {
+		t.Fatalf("FieldDefault declared entry = %q, want empty prior", got)
+	}
+	if got := sess.declaredServiceEntry(specByNameOrPanic("TranslationTerm")); got == "" {
+		t.Fatal("Ensure Spec should still see the mutated Module entry")
+	}
+	if got := sess.declaredServiceEntry(nil); got == "" {
+		t.Fatal("nil Spec should return Module entry")
 	}
 }
 
