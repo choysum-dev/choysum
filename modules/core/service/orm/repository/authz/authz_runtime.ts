@@ -233,7 +233,7 @@ export function withFieldRuleBypass<T>(fn: () => T): T {
  * Company scope remains in effect. Sync and async `fn` are both supported.
  *
  * Platform/internal channel only (no sudo audit). Business authors must use
- * `BaseModel.sudo` instead — see `.dev/docs/core/service/orm/authz-bypass-design.md` (B1–B2).
+ * `BaseModel.sudo` instead.
  */
 export function withRecordRuleAndFieldRuleBypass<T>(fn: () => T): T {
   const req = getRepositoryCurrentReq();
