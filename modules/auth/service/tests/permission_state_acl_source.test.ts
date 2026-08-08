@@ -239,3 +239,140 @@ test('buildAclAggregation dedupe tolerates null MetaModel Search and multi-app m
     (MetaApplication as any).Search = origApp;
   }
 });
+
+test('buildAclAggregation treats LogicalModelName as logical scope not global', async () => {
+  const origAccess = (RoleMethodAccess as any).Search;
+  const origService = (MetaService as any).Search;
+  const origModel = (MetaModel as any).Search;
+  const origApp = (MetaApplication as any).Search;
+
+  try {
+    (RoleMethodAccess as any).Search = async () => [
+      {
+        RoleId: 'role_1',
+        MetaServiceId: null,
+        MetaModelId: null,
+        MetaApplicationId: null,
+        LogicalModelName: 'FieldDefault',
+        LogicalMethods: ['Get', 'Set'],
+        Mode: 'allow',
+        Source: 'manual',
+      },
+    ];
+    (MetaService as any).Search = async () => [];
+    (MetaApplication as any).Search = async () => [];
+    (MetaModel as any).Search = async () => [
+      { Application: 'auth', Name: 'FieldDefault', UpdatedAt: '2026-01-02' },
+      { Application: 'base', Name: 'FieldDefault', UpdatedAt: '2026-01-01' },
+      { Application: 'auth', Name: 'User', UpdatedAt: '2026-01-03' },
+    ];
+
+    const agg = await buildAclAggregation(['role_1'], { role_1: { global: true, companies: [] } });
+    expect(agg.companyGlobalAllow.has('*')).toBe(false);
+    const allows = agg.requiresAllowKeysByCompany.get('*') || new Set();
+    expect(allows.has('rpc:/auth.FieldDefault/Get')).toBe(true);
+    expect(allows.has('rpc:/auth.FieldDefault/Set')).toBe(true);
+    expect(allows.has('rpc:/base.FieldDefault/Get')).toBe(true);
+    expect(allows.has('rpc:/auth.FieldDefault/*')).toBe(false);
+    expect(allows.has('rpc:/auth.User/*')).toBe(false);
+
+    (RoleMethodAccess as any).Search = async () => [
+      {
+        RoleId: 'role_1',
+        MetaServiceId: null,
+        MetaModelId: null,
+        MetaApplicationId: null,
+        LogicalModelName: 'FieldDefault',
+        LogicalMethods: null,
+        Mode: 'allow',
+        Source: 'manual',
+      },
+    ];
+    const aggAll = await buildAclAggregation(['role_1'], { role_1: { global: true, companies: [] } });
+    const allowsAll = aggAll.requiresAllowKeysByCompany.get('*') || new Set();
+    expect(allowsAll.has('rpc:/auth.FieldDefault/*')).toBe(true);
+    expect(allowsAll.has('rpc:/base.FieldDefault/*')).toBe(true);
+    expect(aggAll.companyGlobalAllow.has('*')).toBe(false);
+
+    // Malformed LogicalMethods: deny → model-wide; allow → skipped.
+    (RoleMethodAccess as any).Search = async () => [
+      {
+        RoleId: 'role_1',
+        MetaServiceId: null,
+        MetaModelId: null,
+        MetaApplicationId: null,
+        LogicalModelName: 'FieldDefault',
+        LogicalMethods: '{bad',
+        Mode: 'deny',
+        Source: 'manual',
+      },
+      {
+        RoleId: 'role_1',
+        MetaServiceId: null,
+        MetaModelId: null,
+        MetaApplicationId: null,
+        LogicalModelName: 'TranslationTerm',
+        LogicalMethods: 123,
+        Mode: 'allow',
+        Source: 'manual',
+      },
+      {
+        RoleId: 'role_1',
+        MetaServiceId: null,
+        MetaModelId: null,
+        MetaApplicationId: null,
+        LogicalModelName: 'NoSuchLogical',
+        LogicalMethods: null,
+        Mode: 'allow',
+        Source: 'manual',
+      },
+    ];
+    (MetaModel as any).Search = async () => [
+      { Application: 'auth', Name: 'FieldDefault', UpdatedAt: '2026-01-02' },
+      { Application: 'auth', Name: 'TranslationTerm', UpdatedAt: '2026-01-01' },
+    ];
+    const aggMalformed = await buildAclAggregation(['role_1'], { role_1: { global: true, companies: [] } });
+    const denies = aggMalformed.requiresDenyKeysByCompany?.get('*') || new Set();
+    // Fail-closed deny treats malformed methods as model-wide deny.
+    expect([...denies].some((k: string) => String(k).includes('FieldDefault'))).toBe(true);
+    const allowsMalformed = aggMalformed.requiresAllowKeysByCompany.get('*') || new Set();
+    expect([...allowsMalformed].some((k: string) => String(k).includes('TranslationTerm'))).toBe(false);
+
+    // Logical denyAll + method-restricted deny.
+    (RoleMethodAccess as any).Search = async () => [
+      {
+        RoleId: 'role_1',
+        MetaServiceId: null,
+        MetaModelId: null,
+        MetaApplicationId: null,
+        LogicalModelName: 'FieldDefault',
+        LogicalMethods: null,
+        Mode: 'deny',
+        Source: 'manual',
+      },
+      {
+        RoleId: 'role_1',
+        MetaServiceId: null,
+        MetaModelId: null,
+        MetaApplicationId: null,
+        LogicalModelName: 'TranslationTerm',
+        LogicalMethods: ['Get'],
+        Mode: 'deny',
+        Source: 'manual',
+      },
+    ];
+    (MetaModel as any).Search = async () => [
+      { Application: 'auth', Name: 'FieldDefault', UpdatedAt: '2026-01-02' },
+      { Application: 'auth', Name: 'TranslationTerm', UpdatedAt: '2026-01-01' },
+    ];
+    const aggDeny = await buildAclAggregation(['role_1'], { role_1: { global: true, companies: [] } });
+    const denyKeys = aggDeny.requiresDenyKeysByCompany?.get('*') || new Set();
+    expect(denyKeys.has('rpc:/auth.FieldDefault/*') || [...denyKeys].some((k: string) => k.includes('FieldDefault'))).toBe(true);
+    expect(denyKeys.has('rpc:/auth.TranslationTerm/Get') || [...denyKeys].some((k: string) => k.includes('TranslationTerm/Get'))).toBe(true);
+  } finally {
+    (RoleMethodAccess as any).Search = origAccess;
+    (MetaService as any).Search = origService;
+    (MetaModel as any).Search = origModel;
+    (MetaApplication as any).Search = origApp;
+  }
+});

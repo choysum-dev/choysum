@@ -85,6 +85,96 @@ test('evaluateRoleMethodAccess returns deny allow and empty diagnostics with hit
       hitRuleIds: [],
       reason: 'method_access_no_manual_rule',
     });
+
+    // LogicalModel + LogicalMethods: only matching methods participate.
+    (RoleMethodAccess as any).Search = async () => [
+      {
+        Id: 'ma_logical_search',
+        Mode: 'allow',
+        Source: 'manual',
+        LogicalModelName: 'TranslationTerm',
+        LogicalMethods: ['Search', 'Browse'],
+      },
+    ];
+    expect(await evaluateRoleMethodAccess(['role_1'], [[['LogicalModelName', '=', 'TranslationTerm']] as any], 'search')).toEqual({
+      denied: false,
+      allowed: true,
+      hitRuleIds: ['ma_logical_search'],
+      reason: 'method_access_allow',
+    });
+    expect(await evaluateRoleMethodAccess(['role_1'], [[['LogicalModelName', '=', 'TranslationTerm']] as any], 'update')).toEqual({
+      denied: false,
+      allowed: false,
+      hitRuleIds: [],
+      reason: 'method_access_no_manual_rule',
+    });
+
+    // Malformed LogicalMethods: deny kept (fail closed); allow dropped.
+    (RoleMethodAccess as any).Search = async () => [
+      {
+        Id: 'ma_logical_bad_deny',
+        Mode: 'deny',
+        Source: 'manual',
+        LogicalModelName: 'TranslationTerm',
+        LogicalMethods: '{not-json',
+      },
+    ];
+    expect(await evaluateRoleMethodAccess(['role_1'], [[['LogicalModelName', '=', 'TranslationTerm']] as any], 'search')).toEqual({
+      denied: true,
+      allowed: false,
+      hitRuleIds: ['ma_logical_bad_deny'],
+      reason: 'method_access_deny',
+    });
+
+    (RoleMethodAccess as any).Search = async () => [
+      {
+        Id: 'ma_logical_bad_allow',
+        Mode: 'allow',
+        Source: 'manual',
+        LogicalModelName: 'TranslationTerm',
+        LogicalMethods: '{not-json',
+      },
+    ];
+    expect(await evaluateRoleMethodAccess(['role_1'], [[['LogicalModelName', '=', 'TranslationTerm']] as any], 'search')).toEqual({
+      denied: false,
+      allowed: false,
+      hitRuleIds: [],
+      reason: 'method_access_no_manual_rule',
+    });
+
+    // Malformed + empty Mode: catch path uses Mode || '' (not deny → drop).
+    (RoleMethodAccess as any).Search = async () => [
+      {
+        Id: 'ma_logical_bad_empty_mode',
+        Mode: null,
+        Source: 'manual',
+        LogicalModelName: 'TranslationTerm',
+        LogicalMethods: '{not-json',
+      },
+    ];
+    expect(await evaluateRoleMethodAccess(['role_1'], [[['LogicalModelName', '=', 'TranslationTerm']] as any], 'search')).toEqual({
+      denied: false,
+      allowed: false,
+      hitRuleIds: [],
+      reason: 'method_access_no_manual_rule',
+    });
+
+    // Logical row without methodLower is filtered out.
+    (RoleMethodAccess as any).Search = async () => [
+      {
+        Id: 'ma_logical_no_method',
+        Mode: 'allow',
+        Source: 'manual',
+        LogicalModelName: 'TranslationTerm',
+        LogicalMethods: null,
+      },
+    ];
+    expect(await evaluateRoleMethodAccess(['role_1'], [[['LogicalModelName', '=', 'TranslationTerm']] as any])).toEqual({
+      denied: false,
+      allowed: false,
+      hitRuleIds: [],
+      reason: 'method_access_no_manual_rule',
+    });
   } finally {
     (RoleMethodAccess as any).Search = orig;
   }

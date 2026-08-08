@@ -27,7 +27,7 @@ SPDX-License-Identifier: Apache-2.0
         :title="_t('Cross-role method access editor')"
         :description="
           _t(
-            'Role is required. New rows default to Mode=deny on the model; prefer allow for grants and deny as an explicit brake. Source is always manual under UI-Option-A (UI grants live in RoleUiResource; do not materialize Method).'
+            'Role is required. Pick exactly one scope: Service, Model, Application, Logical Model (all host apps sharing that short name), or leave all empty for Global. New rows default to Mode=deny; prefer allow for grants. Source is always manual under UI-Option-A.'
           )
         "
       />
@@ -49,6 +49,12 @@ SPDX-License-Identifier: Apache-2.0
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
           <OManyToOneRefField :store="store" prop="MetaServiceId" />
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
+          <OSelectionField :store="store" prop="LogicalModelName" />
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
+          <OJsonobjectField :store="store" prop="LogicalMethods" :allow-array="true" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
           <OSelectionField :store="store" prop="Mode" />
@@ -88,6 +94,7 @@ import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
 import OSelectionField from '@/web/web/components/field/OSelectionField.vue';
 import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
 import OManyToOneRefField from '@/web/web/components/field/OManyToOneRefField.vue';
+import OJsonobjectField from '@/web/web/components/field/OJsonobjectField.vue';
 import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 import RoleListView from '@/auth/web/views/RoleListView.vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';

@@ -6,6 +6,7 @@ import { Onchange } from '@/core/service/api/onchange';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
+import { listLogicalModelSelection } from './_logical_model_registry';
 import { _lt } from '../i18n';
 import Role from './role';
 import type MetaApplication from '@/meta/service/models/application';
@@ -16,7 +17,7 @@ import { assertExclusiveScope } from './_rule_scope_helpers';
 
 /**
  * RoleFieldRule stores field-level read and write overrides for a role at
- * global, application, model, or field scope.
+ * global, application, model, field, or logical-model scope.
  */
 @Model('RoleFieldRule')
 export default class RoleFieldRule extends BaseModel {
@@ -73,10 +74,11 @@ export default class RoleFieldRule extends BaseModel {
       checkConstraint: `(
         (
           (deleted_at IS NOT NULL)
-          OR (meta_field_id IS NOT NULL AND meta_model_id IS NOT NULL AND meta_application_id IS NULL)
-          OR (meta_field_id IS NULL AND meta_model_id IS NOT NULL AND meta_application_id IS NULL)
-          OR (meta_field_id IS NULL AND meta_model_id IS NULL AND meta_application_id IS NOT NULL)
-          OR (meta_field_id IS NULL AND meta_model_id IS NULL AND meta_application_id IS NULL)
+          OR (meta_field_id IS NOT NULL AND meta_model_id IS NOT NULL AND meta_application_id IS NULL AND logical_model_name IS NULL)
+          OR (meta_field_id IS NULL AND meta_model_id IS NOT NULL AND meta_application_id IS NULL AND logical_model_name IS NULL)
+          OR (meta_field_id IS NULL AND meta_model_id IS NULL AND meta_application_id IS NOT NULL AND logical_model_name IS NULL)
+          OR (meta_field_id IS NULL AND meta_model_id IS NULL AND meta_application_id IS NULL AND logical_model_name IS NOT NULL)
+          OR (meta_field_id IS NULL AND meta_model_id IS NULL AND meta_application_id IS NULL AND logical_model_name IS NULL)
         )
         AND (perm_read IS NOT NULL OR perm_write IS NOT NULL)
       )`,
@@ -86,6 +88,25 @@ export default class RoleFieldRule extends BaseModel {
     }),
   })
   MetaFieldId?: string;
+
+  /**
+   * Logical model short name (@Model name without application prefix).
+   * Mutually exclusive with MetaFieldId / MetaModelId / MetaApplicationId.
+   * Options come from core platform-inject self-registration.
+   */
+  @Field({
+    type: 'selection',
+    selection: () => listLogicalModelSelection(),
+    notNull: false,
+    size: 128,
+    index: true,
+    string: _lt('Logical Model', { scope: 'auth.model.RoleFieldRule.fields' }),
+    help: _lt(
+      'Registered short name covering all installed host applications that inject the same model. Applies to all business fields on that logical model. Mutually exclusive with Application / Model / Field.',
+      { scope: 'auth.model.RoleFieldRule.fields' }
+    ),
+  })
+  LogicalModelName?: string | null;
 
   /**
    * Read permission override for the selected scope.
@@ -258,6 +279,9 @@ export default class RoleFieldRule extends BaseModel {
   @Onchange<RoleFieldRule>('MetaModelId')
   OnchangeMetaModelId() {
     this.MetaFieldId = null as any;
+    if (String(this.MetaModelId || '').trim() && String(this.LogicalModelName || '').trim()) {
+      this.LogicalModelName = null as any;
+    }
 
     const modelId = this.MetaModelId;
 
@@ -271,6 +295,29 @@ export default class RoleFieldRule extends BaseModel {
       return {
         condition: [{ field: 'MetaFieldId', condition: ['Id', '=', '0'] }],
       };
+    }
+  }
+
+  /**
+   * Selecting a logical model clears Meta* scopes (exclusive shapes).
+   */
+  @Onchange<RoleFieldRule>('LogicalModelName')
+  OnchangeLogicalModelName() {
+    if (!String(this.LogicalModelName || '').trim()) return;
+    this.MetaFieldId = null as any;
+    this.MetaModelId = null as any;
+    this.MetaApplicationId = null as any;
+  }
+
+  /**
+   * Selecting application or field scope clears logical-model scope.
+   */
+  @Onchange<RoleFieldRule>('MetaApplicationId', 'MetaFieldId')
+  OnchangeMetaScopeClearsLogical() {
+    const hasMeta =
+      Boolean(String(this.MetaApplicationId || '').trim()) || Boolean(String(this.MetaFieldId || '').trim());
+    if (hasMeta && String(this.LogicalModelName || '').trim()) {
+      this.LogicalModelName = null as any;
     }
   }
 }

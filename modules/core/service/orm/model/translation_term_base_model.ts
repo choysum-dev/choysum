@@ -7,6 +7,7 @@ import { raiseDomainError } from '@/core/service/error';
 import { withRepositoryAuthzRuleBypass } from '../repository/authz';
 import BaseModel from './model';
 import type { InstantiableModelCtor } from './types';
+import { registerLogicalModelName } from './logical_model_registry';
 import type {
   Insertable,
   Updateable,
@@ -541,3 +542,6 @@ export default class TranslationTermBaseModel extends BaseModel {
 function hostApplication(ctor: any): string {
   return String(storeMeta(ctor as InstantiableModelCtor<TranslationTermBaseModel>)?.application || '').trim();
 }
+
+// LogicalModel ACL eligibility (auth RoleMethodAccess / RoleFieldRule).
+registerLogicalModelName('TranslationTerm');

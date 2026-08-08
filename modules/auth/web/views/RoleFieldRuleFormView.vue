@@ -25,7 +25,11 @@ SPDX-License-Identifier: Apache-2.0
         :closable="false"
         show-icon
         :title="_t('Cross-role field rule editor')"
-        :description="_t('Role is required. Leave Application/Model/Field empty for wider scopes (global / app / model).')"
+        :description="
+          _t(
+            'Role is required. Pick exactly one scope: Field (+ Model), Model, Application, Logical Model (all host apps / all business fields on that short name), or leave all empty for Global.'
+          )
+        "
       />
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
@@ -45,6 +49,9 @@ SPDX-License-Identifier: Apache-2.0
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
           <OManyToOneRefField :store="store" prop="MetaFieldId" />
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
+          <OSelectionField :store="store" prop="LogicalModelName" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
           <OSelectionField :store="store" prop="PermRead" />

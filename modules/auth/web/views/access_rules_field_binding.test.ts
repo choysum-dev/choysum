@@ -33,4 +33,27 @@ describe('Access Rules admin field binding (PR-C-5)', () => {
       expect(form).toContain('Select Role');
     }
   });
+
+  it('exposes LogicalModel scope on Method Access and Field Rule forms (PR-LM-4)', () => {
+    const methodForm = viewSource('RoleMethodAccessFormView.vue');
+    expect(methodForm).toContain('prop="LogicalModelName"');
+    expect(methodForm).toContain('prop="LogicalMethods"');
+    expect(methodForm).toContain(':allow-array="true"');
+    expect(methodForm).toContain('Logical Model (all host apps sharing that short name)');
+
+    const fieldForm = viewSource('RoleFieldRuleFormView.vue');
+    expect(fieldForm).toContain('prop="LogicalModelName"');
+    expect(fieldForm).toContain('Logical Model (all host apps / all business fields on that short name)');
+
+    expect(viewSource('RoleMethodAccessListView.vue')).toContain('prop="LogicalModelName"');
+    expect(viewSource('RoleFieldRuleListView.vue')).toContain('prop="LogicalModelName"');
+
+    // Exclusive scope Onchange lives on the models (not the Vue templates).
+    const methodModel = readFileSync(resolve(__dirname, '../../service/models/role_method_access.ts'), 'utf8');
+    expect(methodModel).toContain("Onchange<RoleMethodAccess>('LogicalModelName')");
+    expect(methodModel).toContain("Onchange<RoleMethodAccess>('MetaServiceId', 'MetaModelId', 'MetaApplicationId')");
+    const fieldModel = readFileSync(resolve(__dirname, '../../service/models/role_field_rule.ts'), 'utf8');
+    expect(fieldModel).toContain("Onchange<RoleFieldRule>('LogicalModelName')");
+    expect(fieldModel).toContain("Onchange<RoleFieldRule>('MetaApplicationId', 'MetaFieldId')");
+  });
 });

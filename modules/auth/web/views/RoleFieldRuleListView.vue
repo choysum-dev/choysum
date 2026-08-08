@@ -20,6 +20,7 @@ SPDX-License-Identifier: Apache-2.0
     <OManyToOneRefField prop="MetaApplicationId" :store="store" :vColumnProps="{ minWidth: 140 }" />
     <OManyToOneRefField prop="MetaModelId" :store="store" :vColumnProps="{ minWidth: 160 }" />
     <OManyToOneRefField prop="MetaFieldId" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <OSelectionField prop="LogicalModelName" :store="store" :vColumnProps="{ minWidth: 140 }" />
     <OSelectionField prop="PermRead" :store="store" :vColumnProps="{ minWidth: 100 }" />
     <OSelectionField prop="PermWrite" :store="store" :vColumnProps="{ minWidth: 100 }" />
     <ODateTimeField prop="CreatedAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />

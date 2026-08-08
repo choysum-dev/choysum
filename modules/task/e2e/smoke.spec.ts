@@ -8,6 +8,7 @@ import { createClient, type Interceptor } from '@connectrpc/connect';
 import { createGrpcWebTransport } from '@connectrpc/connect-web';
 import { create } from '@bufbuild/protobuf';
 import { ValueSchema, ListValueSchema, StructSchema, NullValue, type Value } from '@bufbuild/protobuf/wkt';
+import { loginAsE2EAdmin } from '../../auth/e2e/utils/login.ts';
 
 /**
  * Runtime metadata injected by the task e2e harness.
@@ -218,19 +219,6 @@ function makeTaskClients(baseURL: string, accessToken: string, services: { Sched
     scheduleClient: createClient(services.Schedule as any, transport) as any,
     jobClient: createClient(services.Job as any, transport) as any,
   };
-}
-
-/**
- * Signs in as the e2e admin user through the browser UI.
- */
-async function loginAsE2EAdmin(page: any, baseURL: string): Promise<void> {
-  await page.goto(`${baseURL}/web/auth/users`, { waitUntil: 'domcontentloaded' });
-
-  await page.getByPlaceholder(/用户名|username/i).waitFor({ timeout: 10_000 });
-  await page.getByPlaceholder(/用户名|username/i).fill('e2e-admin');
-  await page.getByPlaceholder(/密码|password/i).fill('e2e-admin');
-  await page.locator('button[type="submit"]').click();
-  await expect(page).toHaveURL(/\/web\/auth\/users/, { timeout: 15_000 });
 }
 
 test('task: create schedule and trigger job via gRPC-web', async ({ page }) => {

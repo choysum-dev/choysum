@@ -1612,6 +1612,46 @@ test('RoleFieldRule OnchangeMetaModelId clears MetaFieldId and blocks picker whe
   expect(result.value).toEqual({ MetaFieldId: null });
 });
 
+test('RoleFieldRule OnchangeLogicalModelName clears Meta scopes', async () => {
+  const result = await RoleFieldRule.Onchange(
+    {
+      Id: 'onchange-rule-logical',
+      LogicalModelName: 'TranslationTerm',
+      MetaApplicationId: 'app-1',
+      MetaModelId: 'model-1',
+      MetaFieldId: 'field-1',
+    },
+    ['LogicalModelName']
+  );
+
+  expect(result.value).toEqual({
+    MetaApplicationId: null,
+    MetaModelId: null,
+    MetaFieldId: null,
+  });
+});
+
+test('RoleMethodAccess OnchangeLogicalModelName clears Meta scopes', async () => {
+  const RoleMethodAccess = (await import('@/auth/service/models/role_method_access')).default;
+  const result = await RoleMethodAccess.Onchange(
+    {
+      Id: 'onchange-ma-logical',
+      LogicalModelName: 'FieldDefault',
+      MetaApplicationId: 'app-1',
+      MetaModelId: 'model-1',
+      MetaServiceId: 'svc-1',
+      LogicalMethods: ['Get'],
+    },
+    ['LogicalModelName']
+  );
+
+  expect(result.value).toEqual({
+    MetaApplicationId: null,
+    MetaModelId: null,
+    MetaServiceId: null,
+  });
+});
+
 test('RoleFieldRule coverage: CreateMany, perm validation branches, and Update paths', async () => {
   resetRequestContext();
 

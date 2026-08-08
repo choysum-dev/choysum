@@ -793,7 +793,7 @@ export default class User extends BaseModel {
         const accessMeta = await resolveMethodAccessMeta(appName, modelName, methodName);
         if (!accessMeta) return deny('method_meta_not_found', []);
 
-        const accessResult = await evaluateRoleMethodAccess(roleIds, accessMeta.scopeOr);
+        const accessResult = await evaluateRoleMethodAccess(roleIds, accessMeta.scopeOr, accessMeta.methodLower);
 
         if (accessResult.denied) {
           const decision = deny(accessResult.reason, accessResult.hitRuleIds);
