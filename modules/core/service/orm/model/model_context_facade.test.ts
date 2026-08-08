@@ -21,6 +21,8 @@ import {
   withModelContext,
   withInstanceModelCompany,
   withModelCompany,
+  withInstanceModelElevate,
+  withModelElevate,
 } from './model_context_facade';
 
 function withTempChoysum<T>(root: any, fn: () => T): T {
@@ -206,5 +208,30 @@ test('Model.companyTz and Model.tz map display vs company business timezone', as
     const instance = Object.create(BaseModel.prototype);
     expect(instance.tz).toBe('America/New_York');
     expect(instance.companyTz).toBe('Asia/Shanghai');
+  });
+});
+
+test('withModelElevate and withInstanceModelElevate forward sudo opts hint', async () => {
+  const { getCurrentReq, getOrInitReqServiceState } = await import('../../runtime/context');
+  const { default: BaseModel } = await import('./model');
+  const root: any = {
+    request: {
+      context: {
+        req: {},
+      },
+    },
+  };
+
+  await withTempChoysum(root, async () => {
+    const staticOut = withModelElevate(() => 'elevated-static', { hint: 'facade-static' });
+    expect(staticOut).toBe('elevated-static');
+
+    const instance = Object.create(BaseModel.prototype);
+    const instanceOut = withInstanceModelElevate(instance, () => 'elevated-instance', { hint: 'facade-instance' });
+    expect(instanceOut).toBe('elevated-instance');
+
+    const hits = ((getOrInitReqServiceState(getCurrentReq()) as { sudoHits?: Array<{ hint?: string }> } | undefined)?.sudoHits ||
+      []) as Array<{ hint?: string }>;
+    expect(hits.map(hit => hit?.hint)).toEqual(['facade-static', 'facade-instance']);
   });
 });

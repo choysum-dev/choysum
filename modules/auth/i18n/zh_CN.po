@@ -101,52 +101,62 @@ msgctxt "auth.model.Role.fields"
 msgid "Users"
 msgstr "用户"
 
-#: service/models/role_field_rule.ts:113 service/models/role_field_rule.ts:96
+#: service/models/role_field_rule.ts:117 service/models/role_field_rule.ts:134
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Allow"
 msgstr "允许"
 
-#: service/models/role_field_rule.ts:42
+#: service/models/role_field_rule.ts:43
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Application"
 msgstr "应用"
 
-#: service/models/role_field_rule.ts:114 service/models/role_field_rule.ts:97
+#: service/models/role_field_rule.ts:118 service/models/role_field_rule.ts:135
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Deny"
 msgstr "拒绝"
 
-#: service/models/role_field_rule.ts:83
+#: service/models/role_field_rule.ts:85
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Field"
 msgstr "字段"
 
-#: service/models/role_field_rule.ts:43 service/models/role_field_rule.ts:59 service/models/role_field_rule.ts:84
+#: service/models/role_field_rule.ts:44 service/models/role_field_rule.ts:60 service/models/role_field_rule.ts:86
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Leave all scopes empty for global; otherwise pick one level (field scope also needs a model)."
 msgstr "全部留空表示全局作用域；否则只选一级（字段级还需指定模型）。"
 
-#: service/models/role_field_rule.ts:58
+#: service/models/role_field_rule.ts:103
+msgctxt "auth.model.RoleFieldRule.fields"
+msgid "Logical Model"
+msgstr "逻辑模型"
+
+#: service/models/role_field_rule.ts:59
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Model"
 msgstr "模型"
 
-#: service/models/role_field_rule.ts:101 service/models/role_field_rule.ts:118
+#: service/models/role_field_rule.ts:122 service/models/role_field_rule.ts:139
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Override field visibility or editability; at least one of Read/Write must be set."
 msgstr "覆盖字段可见性或可编辑性；读/写至少设置一项。"
 
-#: service/models/role_field_rule.ts:100
+#: service/models/role_field_rule.ts:121
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Read"
 msgstr "读"
 
-#: service/models/role_field_rule.ts:29
+#: service/models/role_field_rule.ts:104
+msgctxt "auth.model.RoleFieldRule.fields"
+msgid "Registered short name covering all installed host applications that inject the same model. Applies to all business fields on that logical model. Mutually exclusive with Application / Model / Field."
+msgstr "已注册的短名，覆盖所有注入同一模型的已安装宿主应用；作用于该逻辑模型上的全部业务字段。与应用 / 模型 / 字段互斥。"
+
+#: service/models/role_field_rule.ts:30
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Role"
 msgstr "角色"
 
-#: service/models/role_field_rule.ts:117
+#: service/models/role_field_rule.ts:138
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Write"
 msgstr "写"
@@ -161,62 +171,82 @@ msgctxt "auth.model.RoleInheritance.fields"
 msgid "Parent Role"
 msgstr "父角色"
 
-#: service/models/role_method_access.ts:86
+#: service/models/role_method_access.ts:123
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Allow"
 msgstr "允许"
 
-#: service/models/role_method_access.ts:91
+#: service/models/role_method_access.ts:128
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Any matching deny overrides allow across scopes; default is deny."
 msgstr "任一匹配的拒绝都会覆盖允许（跨作用域）；未设置时默认为拒绝。"
 
-#: service/models/role_method_access.ts:41
+#: service/models/role_method_access.ts:43
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Application"
 msgstr "应用"
 
-#: service/models/role_method_access.ts:87
+#: service/models/role_method_access.ts:124
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Deny"
 msgstr "拒绝"
 
-#: service/models/role_method_access.ts:74
+#: service/models/role_method_access.ts:77
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Leave all scopes empty for a global rule; matching scopes are OR-ed and any deny wins."
 msgstr "全部留空为全局规则；匹配的作用域按或运算，任一拒绝优先。"
 
-#: service/models/role_method_access.ts:107
+#: service/models/role_method_access.ts:109
+msgctxt "auth.model.RoleMethodAccess.fields"
+msgid "Logical Methods"
+msgstr "逻辑方法"
+
+#: service/models/role_method_access.ts:94
+msgctxt "auth.model.RoleMethodAccess.fields"
+msgid "Logical Model"
+msgstr "逻辑模型"
+
+#: service/models/role_method_access.ts:144
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Manual"
 msgstr "手动"
 
-#: service/models/role_method_access.ts:90
+#: service/models/role_method_access.ts:127
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Mode"
 msgstr "模式"
 
-#: service/models/role_method_access.ts:54
+#: service/models/role_method_access.ts:56
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Model"
 msgstr "模型"
 
-#: service/models/role_method_access.ts:28
+#: service/models/role_method_access.ts:110
+msgctxt "auth.model.RoleMethodAccess.fields"
+msgid "Optional method names for logical-model scope (JSON string array). Leave empty to allow or deny all methods on that logical model."
+msgstr "逻辑模型作用域下的可选方法名（JSON 字符串数组）。留空表示对该逻辑模型的全部方法允许或拒绝。"
+
+#: service/models/role_method_access.ts:95
+msgctxt "auth.model.RoleMethodAccess.fields"
+msgid "Registered short name covering all installed host applications that inject the same model (e.g. TranslationTerm). Mutually exclusive with Application / Model / Service."
+msgstr "已注册的短名，覆盖所有注入同一模型的已安装宿主应用（例如 TranslationTerm）。与应用 / 模型 / 服务互斥。"
+
+#: service/models/role_method_access.ts:30
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Role"
 msgstr "角色"
 
-#: service/models/role_method_access.ts:73
+#: service/models/role_method_access.ts:76
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Service"
 msgstr "服务"
 
-#: service/models/role_method_access.ts:113
+#: service/models/role_method_access.ts:150
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Source"
 msgstr "来源"
 
-#: service/models/role_method_access.ts:108
+#: service/models/role_method_access.ts:145
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "UI (legacy)"
 msgstr "界面（遗留）"
@@ -541,62 +571,62 @@ msgctxt "auth.model.UserRole.fields"
 msgid "User"
 msgstr "用户"
 
-#: service/models/_user_field_rule_eval.ts:145
+#: service/models/_user_field_rule_eval.ts:111
 msgctxt "service/models/_user_field_rule_eval"
 msgid "Model does not exist"
 msgstr "模型不存在"
 
-#: service/models/_user_lifecycle_auth.ts:240 service/models/_user_lifecycle_auth.ts:330
+#: service/models/_user_lifecycle_auth.ts:269 service/models/_user_lifecycle_auth.ts:359
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "Account is disabled"
 msgstr "账户已禁用"
 
-#: service/models/_user_lifecycle_auth.ts:123
+#: service/models/_user_lifecycle_auth.ts:152
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "Email is already registered"
 msgstr "邮箱已被注册"
 
-#: service/models/_user_lifecycle_auth.ts:316 service/models/_user_lifecycle_auth.ts:350
+#: service/models/_user_lifecycle_auth.ts:345 service/models/_user_lifecycle_auth.ts:379
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "Invalid token payload: missing user id"
 msgstr "无效的令牌载荷：缺少用户 ID"
 
-#: service/models/_user_lifecycle_auth.ts:161
+#: service/models/_user_lifecycle_auth.ts:190
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "Registration failed: Main Company (Code=MAIN) was not found"
 msgstr "注册失败：未找到主公司（Code=MAIN）"
 
-#: service/models/_user_lifecycle_auth.ts:186
+#: service/models/_user_lifecycle_auth.ts:215
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "Registration failed: base.user role is not initialized; load auth bootstrap data first"
 msgstr "注册失败：base.user 角色未初始化，请先加载 auth 引导数据"
 
-#: service/models/_user_lifecycle_auth.ts:324
+#: service/models/_user_lifecycle_auth.ts:353
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "User not found"
 msgstr "用户不存在"
 
-#: service/models/_user_lifecycle_auth.ts:224 service/models/_user_lifecycle_auth.ts:231
+#: service/models/_user_lifecycle_auth.ts:253 service/models/_user_lifecycle_auth.ts:260
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "User not found or password is incorrect"
 msgstr "用户不存在或密码错误"
 
-#: service/models/_user_lifecycle_auth.ts:139
+#: service/models/_user_lifecycle_auth.ts:168
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "User registration failed: missing user id"
 msgstr "用户注册失败：缺少用户 ID"
 
-#: service/models/_user_lifecycle_auth.ts:84
+#: service/models/_user_lifecycle_auth.ts:113
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "Username and password are required"
 msgstr "用户名和密码不能为空"
 
-#: service/models/_user_lifecycle_auth.ts:111
+#: service/models/_user_lifecycle_auth.ts:140
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "Username is already in use"
 msgstr "用户名已被占用"
 
-#: service/models/_user_lifecycle_auth.ts:104
+#: service/models/_user_lifecycle_auth.ts:133
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "Username is required"
 msgstr "用户名不能为空"
@@ -1401,17 +1431,17 @@ msgctxt "web/views/RoleFieldRuleFormView"
 msgid "Field Rule"
 msgstr "字段规则"
 
-#: web/views/RoleFieldRuleFormView.vue:10
+#: web/views/RoleFieldRuleFormView.vue:11
 msgctxt "web/views/RoleFieldRuleFormView"
-msgid "Role is required. Leave Application/Model/Field empty for wider scopes (global / app / model)."
-msgstr "角色为必填。应用/模型/字段留空表示更大作用域（全局 / 应用 / 模型）。"
+msgid "Role is required. Pick exactly one scope: Field (+ Model), Model, Application, Logical Model (all host apps / all business fields on that short name), or leave all empty for Global."
+msgstr "角色为必填。请恰好选择一个作用域：字段（需含模型）、模型、应用、逻辑模型（该短名下全部宿主应用 / 全部业务字段），或全部留空表示全局。"
 
-#: web/views/RoleFieldRuleFormView.vue:13
+#: web/views/RoleFieldRuleFormView.vue:17
 msgctxt "web/views/RoleFieldRuleFormView"
 msgid "Select Role"
 msgstr "选择角色"
 
-#: web/views/RoleFieldRuleFormView.vue:34
+#: web/views/RoleFieldRuleFormView.vue:41
 msgctxt "web/views/RoleFieldRuleFormView"
 msgid "System Information"
 msgstr "系统信息"
@@ -1626,12 +1656,12 @@ msgctxt "web/views/RoleListView"
 msgid "Role"
 msgstr "角色"
 
-#: web/views/RoleMethodAccessFormView.vue:40
+#: web/views/RoleMethodAccessFormView.vue:41
 msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Copy Method Access"
 msgstr "复制方法访问"
 
-#: web/views/RoleMethodAccessFormView.vue:40
+#: web/views/RoleMethodAccessFormView.vue:41
 msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Create Method Access"
 msgstr "创建方法访问"
@@ -1641,32 +1671,32 @@ msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Cross-role method access editor"
 msgstr "跨角色方法访问编辑"
 
-#: web/views/RoleMethodAccessFormView.vue:40
+#: web/views/RoleMethodAccessFormView.vue:41
 msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Delete Method Access"
 msgstr "删除方法访问"
 
-#: web/views/RoleMethodAccessFormView.vue:40
+#: web/views/RoleMethodAccessFormView.vue:41
 msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Edit Method Access"
 msgstr "编辑方法访问"
 
-#: web/views/RoleMethodAccessFormView.vue:40 web/views/RoleMethodAccessFormView.vue:9
+#: web/views/RoleMethodAccessFormView.vue:41 web/views/RoleMethodAccessFormView.vue:9
 msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Method Access"
 msgstr "方法访问"
 
 #: web/views/RoleMethodAccessFormView.vue:11
 msgctxt "web/views/RoleMethodAccessFormView"
-msgid "Role is required. New rows default to Mode=deny on the model; prefer allow for grants and deny as an explicit brake. Source is always manual under UI-Option-A (UI grants live in RoleUiResource; do not materialize Method)."
-msgstr "角色为必填。模型默认 Mode=deny；授权请用 allow，deny 用作显式刹车。UI-Option-A 下 Source 恒为 manual（UI 授权写在 RoleUiResource，勿物化 Method）。"
+msgid "Role is required. Pick exactly one scope: Service, Model, Application, Logical Model (all host apps sharing that short name), or leave all empty for Global. New rows default to Mode=deny; prefer allow for grants. Source is always manual under UI-Option-A."
+msgstr "角色为必填。请恰好选择一个作用域：服务、模型、应用、逻辑模型（共享该短名的全部宿主应用），或全部留空表示全局。新建行默认 Mode=deny；授权请优先用 allow。UI-Option-A 下 Source 恒为 manual。"
 
 #: web/views/RoleMethodAccessFormView.vue:17
 msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Select Role"
 msgstr "选择角色"
 
-#: web/views/RoleMethodAccessFormView.vue:38
+#: web/views/RoleMethodAccessFormView.vue:44
 msgctxt "web/views/RoleMethodAccessFormView"
 msgid "System Information"
 msgstr "系统信息"
@@ -2131,3 +2161,10 @@ msgctxt "web/views/UserSearchView"
 msgid "Active"
 msgstr "启用"
 
+#~ msgctxt "web/views/RoleFieldRuleFormView"
+#~ msgid "Role is required. Leave Application/Model/Field empty for wider scopes (global / app / model)."
+#~ msgstr "角色为必填。应用/模型/字段留空表示更大作用域（全局 / 应用 / 模型）。"
+
+#~ msgctxt "web/views/RoleMethodAccessFormView"
+#~ msgid "Role is required. New rows default to Mode=deny on the model; prefer allow for grants and deny as an explicit brake. Source is always manual under UI-Option-A (UI grants live in RoleUiResource; do not materialize Method)."
+#~ msgstr "角色为必填。模型默认 Mode=deny；授权请用 allow，deny 用作显式刹车。UI-Option-A 下 Source 恒为 manual（UI 授权写在 RoleUiResource，勿物化 Method）。"

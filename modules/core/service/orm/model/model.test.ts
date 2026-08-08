@@ -117,6 +117,13 @@ test('model serialization helpers and hydrate return expected values', () => {
   expect(hydrated.Name).toBe('name-2');
 });
 
+test('model getEffectiveConstraints and getEffectiveOnchange delegate to metadata helpers', () => {
+  const constraints = ModelSurfaceHarness.getEffectiveConstraints();
+  const onchanges = ModelSurfaceHarness.getEffectiveOnchange();
+  expect(Array.isArray(constraints)).toBe(true);
+  expect(Array.isArray(onchanges)).toBe(true);
+});
+
 test('model context accessors are available on static and instance surfaces', () => {
   const instance = makeInstance({ Id: 'CTX-1', Name: 'ctx' });
 

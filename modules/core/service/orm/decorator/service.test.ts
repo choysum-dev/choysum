@@ -366,6 +366,47 @@ test('service decorator strips key candidates for plain payload in top-level grp
   restore();
 });
 
+test('service decorator model-ctor checks cover BaseModel thisArg and non-function thisArg', async () => {
+  const req: any = { context: { req: { kind: 'grpc', depth: 0 } } };
+  const restore = setRequest(req);
+
+  try {
+    const viaBase = await (ServiceDecoratorParent as any).Echo.call(BaseModel, { Keep: 'via-base' });
+    expect(viaBase.Keep).toBe('via-base');
+
+    const viaNonFn = await (ServiceDecoratorParent as any).Echo.call('not-a-ctor' as any, { Keep: 'via-string' });
+    expect(viaNonFn.Keep).toBe('via-string');
+
+    function ForeignCtor() {}
+    const viaForeign = await (ServiceDecoratorParent as any).Echo.call(ForeignCtor as any, { Keep: 'via-foreign' });
+    expect(viaForeign.Keep).toBe('via-foreign');
+  } finally {
+    restore();
+  }
+});
+
+test('service decorator deny-read resolveRepo tolerates missing helpers and factory throws', async () => {
+  const originalGetRepository = RepositoryFactory.getRepository;
+  const req: any = { context: { req: { kind: 'grpc', depth: 0 } } };
+  const restore = setRequest(req);
+
+  try {
+    RepositoryFactory.setRepository(ServiceDecoratorResultModel as any, { browse: async () => null } as any);
+    const one: any = await (ServiceDecoratorResultModel as any).ReadModelForGrpc();
+    // No getDenyReadFields on stub → resolveRepo returns undefined; Secret remains.
+    expect(one.Secret).toBe('hide');
+
+    RepositoryFactory.getRepository = (() => {
+      throw new Error('repo factory boom');
+    }) as any;
+    const many: any[] = await (ServiceDecoratorResultModel as any).ReadModelArrayForGrpc();
+    expect(many[0]?.Secret).toBe('hide2');
+  } finally {
+    RepositoryFactory.getRepository = originalGetRepository;
+    restore();
+  }
+});
+
 test('service decorator top-level detection returns false when request accessor throws', () => {
   const previousDesc = Object.getOwnPropertyDescriptor(globalThis as any, '$choysum');
 

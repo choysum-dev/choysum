@@ -50,3 +50,33 @@ test('resolveModelConstructor test override is honored and cleared', () => {
   }
   expect(resolveModelConstructor('__completely_unknown_model__')).toBe(undefined);
 });
+
+test('resolveModelConstructor fuzzy scan skips null ctors and tolerates bad metadata maps', () => {
+  const storage = MetadataStorage.instance as any;
+  const savedModels = storage.models;
+  const savedPool = (globalThis as any).pool;
+
+  class FuzzyScanModel extends BaseModel {}
+  const ctor = FuzzyScanModel as any;
+
+  try {
+    delete (globalThis as any).pool;
+    const models = new Map();
+    models.set(null, { modelName: 'NullShort', name: 'NullName' });
+    models.set(ctor, { modelName: 'FuzzyShort', name: 'FuzzyName' });
+    storage.models = models;
+
+    expect(resolveModelConstructor('FuzzyShort')).toBe(ctor);
+    expect(resolveModelConstructor('FuzzyName')).toBe(ctor);
+
+    storage.models = undefined;
+    expect(resolveModelConstructor('FuzzyShort')).toBe(undefined);
+
+    storage.models = { notEntries: true };
+    expect(resolveModelConstructor('FuzzyShort')).toBe(undefined);
+  } finally {
+    storage.models = savedModels;
+    if (savedPool !== undefined) (globalThis as any).pool = savedPool;
+    else delete (globalThis as any).pool;
+  }
+});
