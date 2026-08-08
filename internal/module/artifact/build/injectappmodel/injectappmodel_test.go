@@ -496,6 +496,74 @@ func TestDecide_EmptyDeclaredEntry_SupersedesStaleGenerated(t *testing.T) {
 	}
 }
 
+func TestDecide_EmptyDeclaredEntry_EarlyReturnsAndLoadError(t *testing.T) {
+	spec := specByNameOrPanic("FieldDefault")
+
+	for _, tc := range []struct {
+		name string
+		mod  *meta.Module
+	}{
+		{"empty-app", &meta.Module{Name: "x", Path: "/p", ApplicationStr: "", ServiceEntryPoint: ""}},
+		{"core-app", &meta.Module{Name: "x", Path: "/p", ApplicationStr: "core", ServiceEntryPoint: ""}},
+		{"empty-path", &meta.Module{Name: "web", Path: "", ApplicationStr: "web", ServiceEntryPoint: ""}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			sess, _ := newTestSession(t, tc.mod)
+			plan, err := decidePlan(spec, sess, nil)
+			if err != nil || plan.NeedInject || plan.SupersedeInject {
+				t.Fatalf("expected empty plan, got %+v err=%v", plan, err)
+			}
+		})
+	}
+
+	mod := &meta.Module{
+		Name: "web", Path: "/virtual/modules/web",
+		ApplicationStr: "web", ServiceEntryPoint: "",
+	}
+	sess, db := newTestSession(t, mod)
+	if err := db.Migrator().DropTable("meta_raw_model"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := DecideOne(sess, "FieldDefault", nil); err == nil {
+		t.Fatal("expected load error when purging stale C2 without declared service entry")
+	}
+}
+
+func TestDeclaredServiceEntry_GuardsAndVirtualMask(t *testing.T) {
+	if (*Session)(nil).declaredServiceEntry(specByNameOrPanic("FieldDefault")) != "" {
+		t.Fatal("nil session must return empty")
+	}
+	sess := &Session{}
+	if sess.declaredServiceEntry(specByNameOrPanic("FieldDefault")) != "" {
+		t.Fatal("nil module must return empty")
+	}
+
+	mod := &meta.Module{
+		Name: "web", Path: "/virtual/modules/web",
+		ApplicationStr: "web", ServiceEntryPoint: "",
+	}
+	sess, _ = newTestSession(t, mod)
+	// Disk-adopt first, then a virtual rewrite must stick ensuredVirtual so
+	// FieldDefault still sees the prior (empty) declared entry.
+	sess.ensureServiceEntryPath("/virtual/modules/web/service/index.ts", false)
+	if sess.ensuredVirtual {
+		t.Fatal("disk adopt must not mark virtual")
+	}
+	sess.ensureServiceEntryPath("/virtual/modules/web/service/index.ts", true)
+	if !sess.ensuredVirtual {
+		t.Fatal("later virtual Ensure must set ensuredVirtual")
+	}
+	if got := sess.declaredServiceEntry(specByNameOrPanic("FieldDefault")); got != "" {
+		t.Fatalf("FieldDefault declared entry = %q, want empty prior", got)
+	}
+	if got := sess.declaredServiceEntry(specByNameOrPanic("TranslationTerm")); got == "" {
+		t.Fatal("Ensure Spec should still see the mutated Module entry")
+	}
+	if got := sess.declaredServiceEntry(nil); got == "" {
+		t.Fatal("nil Spec should return Module entry")
+	}
+}
+
 func TestDecide_EnsureServiceEntry_EmptyEntryAllowsNeedInject(t *testing.T) {
 	mod := &meta.Module{
 		Name: "web", Path: "/virtual/modules/web",
