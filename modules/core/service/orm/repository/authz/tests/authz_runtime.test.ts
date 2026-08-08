@@ -7,17 +7,17 @@ import {
   getRepositoryAuthzDecisionLogMode,
   getRepositoryCompanyScopeFacts,
   getRepositoryCurrentReq,
-  getRepositoryValidationBypassState,
-  getRepositoryFieldRuleBypassDepth,
-  getRepositoryRecordRuleBypassDepth,
+  getValidationBypassState,
+  getFieldRuleBypassDepth,
+  getRecordRuleBypassDepth,
   getRepositoryReqMethodMeta,
   repositoryAuthzDecisionAuditEnabled,
-  getRepositoryValidationBypassDepth,
+  getValidationBypassDepth,
   isRepositoryTopLevelGrpcCall,
-  withRepositoryFieldRuleBypass,
-  withRepositoryRecordRuleBypass,
-  withRepositoryAuthzRuleBypass,
-  withRepositoryValidationBypass,
+  withFieldRuleBypass,
+  withRecordRuleBypass,
+  withRecordRuleAndFieldRuleBypass,
+  withValidationBypass,
 } from '..';
 
 async function withPatchedChoysum<T>(value: unknown, fn: () => Promise<T>): Promise<T> {
@@ -110,23 +110,23 @@ test('authz runtime record-rule and field-rule bypass depth are nested and resto
       const req = getRepositoryCurrentReq();
       const state = getOrInitRepositoryReqServiceState(req);
       expect(state).toBeTruthy();
-      expect(getRepositoryRecordRuleBypassDepth()).toBe(0);
-      expect(getRepositoryFieldRuleBypassDepth()).toBe(0);
+      expect(getRecordRuleBypassDepth()).toBe(0);
+      expect(getFieldRuleBypassDepth()).toBe(0);
 
-      await withRepositoryRecordRuleBypass(async () => {
-        expect(getRepositoryRecordRuleBypassDepth()).toBe(1);
-        await withRepositoryRecordRuleBypass(async () => {
-          expect(getRepositoryRecordRuleBypassDepth()).toBe(2);
+      await withRecordRuleBypass(async () => {
+        expect(getRecordRuleBypassDepth()).toBe(1);
+        await withRecordRuleBypass(async () => {
+          expect(getRecordRuleBypassDepth()).toBe(2);
         });
-        expect(getRepositoryRecordRuleBypassDepth()).toBe(1);
+        expect(getRecordRuleBypassDepth()).toBe(1);
       });
 
-      await withRepositoryFieldRuleBypass(async () => {
-        expect(getRepositoryFieldRuleBypassDepth()).toBe(1);
+      await withFieldRuleBypass(async () => {
+        expect(getFieldRuleBypassDepth()).toBe(1);
       });
 
-      expect(getRepositoryRecordRuleBypassDepth()).toBe(0);
-      expect(getRepositoryFieldRuleBypassDepth()).toBe(0);
+      expect(getRecordRuleBypassDepth()).toBe(0);
+      expect(getFieldRuleBypassDepth()).toBe(0);
     }
   );
 });
@@ -139,11 +139,11 @@ test('authz runtime validation bypass falls back to global state when req is abs
   const choysumPrev = (globalThis as Record<string, unknown>).$choysum;
   delete (globalThis as Record<string, unknown>).$choysum;
   try {
-    expect(getRepositoryValidationBypassDepth()).toBe(0);
-    await withRepositoryValidationBypass(async () => {
-      expect(getRepositoryValidationBypassDepth()).toBe(1);
+    expect(getValidationBypassDepth()).toBe(0);
+    await withValidationBypass(async () => {
+      expect(getValidationBypassDepth()).toBe(1);
     });
-    expect(getRepositoryValidationBypassDepth()).toBe(0);
+    expect(getValidationBypassDepth()).toBe(0);
   } finally {
     if (previous !== undefined) (globalThis as Record<string, unknown>)[key] = previous;
     else delete (globalThis as Record<string, unknown>)[key];
@@ -156,11 +156,11 @@ test('authz runtime bypass wrappers run without req state and return callback re
   const previous = (globalThis as Record<string, unknown>).$choysum;
   delete (globalThis as Record<string, unknown>).$choysum;
   try {
-    expect(await withRepositoryRecordRuleBypass(async () => 'rr-ok')).toBe('rr-ok');
-    expect(await withRepositoryFieldRuleBypass(async () => 'fr-ok')).toBe('fr-ok');
-    expect(withRepositoryAuthzRuleBypass(() => 'authz-ok')).toBe('authz-ok');
-    expect(withRepositoryRecordRuleBypass(() => 'rr-sync')).toBe('rr-sync');
-    expect(withRepositoryFieldRuleBypass(() => 'fr-sync')).toBe('fr-sync');
+    expect(await withRecordRuleBypass(async () => 'rr-ok')).toBe('rr-ok');
+    expect(await withFieldRuleBypass(async () => 'fr-ok')).toBe('fr-ok');
+    expect(withRecordRuleAndFieldRuleBypass(() => 'rr-fr-ok')).toBe('rr-fr-ok');
+    expect(withRecordRuleBypass(() => 'rr-sync')).toBe('rr-sync');
+    expect(withFieldRuleBypass(() => 'fr-sync')).toBe('fr-sync');
   } finally {
     if (previous !== undefined) (globalThis as Record<string, unknown>).$choysum = previous;
   }
@@ -177,20 +177,20 @@ test('authz runtime bypass restore runs on sync throw', async () => {
     },
     async () => {
       expect(() =>
-        withRepositoryAuthzRuleBypass(() => {
-          expect(getRepositoryRecordRuleBypassDepth()).toBe(1);
+        withRecordRuleAndFieldRuleBypass(() => {
+          expect(getRecordRuleBypassDepth()).toBe(1);
           throw new Error('bypass-boom');
         })
       ).toThrow('bypass-boom');
-      expect(getRepositoryRecordRuleBypassDepth()).toBe(0);
-      expect(getRepositoryFieldRuleBypassDepth()).toBe(0);
+      expect(getRecordRuleBypassDepth()).toBe(0);
+      expect(getFieldRuleBypassDepth()).toBe(0);
 
       expect(() =>
-        withRepositoryRecordRuleBypass(() => {
+        withRecordRuleBypass(() => {
           throw new Error('rr-boom');
         })
       ).toThrow('rr-boom');
-      expect(getRepositoryRecordRuleBypassDepth()).toBe(0);
+      expect(getRecordRuleBypassDepth()).toBe(0);
     }
   );
 });
@@ -205,28 +205,28 @@ test('authz runtime bypass restore treats non-finite depth as zero', async () =>
       },
     },
     async () => {
-      withRepositoryRecordRuleBypass(() => {
+      withRecordRuleBypass(() => {
         const req = getRepositoryCurrentReq();
         const state = getOrInitRepositoryReqServiceState(req)!;
         state.recordRuleBypassDepth = Number.NaN;
       });
-      expect(getRepositoryRecordRuleBypassDepth()).toBe(0);
+      expect(getRecordRuleBypassDepth()).toBe(0);
 
-      withRepositoryFieldRuleBypass(() => {
+      withFieldRuleBypass(() => {
         const req = getRepositoryCurrentReq();
         const state = getOrInitRepositoryReqServiceState(req)!;
         state.fieldRuleBypassDepth = Number.POSITIVE_INFINITY;
       });
-      expect(getRepositoryFieldRuleBypassDepth()).toBe(0);
+      expect(getFieldRuleBypassDepth()).toBe(0);
 
-      withRepositoryAuthzRuleBypass(() => {
+      withRecordRuleAndFieldRuleBypass(() => {
         const req = getRepositoryCurrentReq();
         const state = getOrInitRepositoryReqServiceState(req)!;
         state.recordRuleBypassDepth = 'x' as any;
         state.fieldRuleBypassDepth = undefined;
       });
-      expect(getRepositoryRecordRuleBypassDepth()).toBe(0);
-      expect(getRepositoryFieldRuleBypassDepth()).toBe(0);
+      expect(getRecordRuleBypassDepth()).toBe(0);
+      expect(getFieldRuleBypassDepth()).toBe(0);
     }
   );
 });
@@ -241,26 +241,26 @@ test('authz runtime combined RR+FR bypass is sync-friendly and nested', () => {
       },
     },
     async () => {
-      const syncValue = withRepositoryAuthzRuleBypass(() => {
-        expect(getRepositoryRecordRuleBypassDepth()).toBe(1);
-        expect(getRepositoryFieldRuleBypassDepth()).toBe(1);
+      const syncValue = withRecordRuleAndFieldRuleBypass(() => {
+        expect(getRecordRuleBypassDepth()).toBe(1);
+        expect(getFieldRuleBypassDepth()).toBe(1);
         return 'sync-ok';
       });
       expect(syncValue).toBe('sync-ok');
-      expect(getRepositoryRecordRuleBypassDepth()).toBe(0);
+      expect(getRecordRuleBypassDepth()).toBe(0);
 
-      await withRepositoryAuthzRuleBypass(async () => {
-        expect(getRepositoryRecordRuleBypassDepth()).toBe(1);
-        expect(getRepositoryFieldRuleBypassDepth()).toBe(1);
-        await withRepositoryAuthzRuleBypass(async () => {
-          expect(getRepositoryRecordRuleBypassDepth()).toBe(2);
-          expect(getRepositoryFieldRuleBypassDepth()).toBe(2);
+      await withRecordRuleAndFieldRuleBypass(async () => {
+        expect(getRecordRuleBypassDepth()).toBe(1);
+        expect(getFieldRuleBypassDepth()).toBe(1);
+        await withRecordRuleAndFieldRuleBypass(async () => {
+          expect(getRecordRuleBypassDepth()).toBe(2);
+          expect(getFieldRuleBypassDepth()).toBe(2);
         });
-        expect(getRepositoryRecordRuleBypassDepth()).toBe(1);
-        expect(getRepositoryFieldRuleBypassDepth()).toBe(1);
+        expect(getRecordRuleBypassDepth()).toBe(1);
+        expect(getFieldRuleBypassDepth()).toBe(1);
       });
-      expect(getRepositoryRecordRuleBypassDepth()).toBe(0);
-      expect(getRepositoryFieldRuleBypassDepth()).toBe(0);
+      expect(getRecordRuleBypassDepth()).toBe(0);
+      expect(getFieldRuleBypassDepth()).toBe(0);
     }
   );
 });
@@ -275,14 +275,14 @@ test('authz runtime field bypass nested depth restores previous value', async ()
       },
     },
     async () => {
-      await withRepositoryFieldRuleBypass(async () => {
-        expect(getRepositoryFieldRuleBypassDepth()).toBe(1);
-        await withRepositoryFieldRuleBypass(async () => {
-          expect(getRepositoryFieldRuleBypassDepth()).toBe(2);
+      await withFieldRuleBypass(async () => {
+        expect(getFieldRuleBypassDepth()).toBe(1);
+        await withFieldRuleBypass(async () => {
+          expect(getFieldRuleBypassDepth()).toBe(2);
         });
-        expect(getRepositoryFieldRuleBypassDepth()).toBe(1);
+        expect(getFieldRuleBypassDepth()).toBe(1);
       });
-      expect(getRepositoryFieldRuleBypassDepth()).toBe(0);
+      expect(getFieldRuleBypassDepth()).toBe(0);
     }
   );
 });
@@ -302,21 +302,21 @@ test('authz runtime concurrent sibling bypasses survive out-of-order completion'
         releaseSlow = resolve;
       });
 
-      const slow = withRepositoryRecordRuleBypass(async () => {
+      const slow = withRecordRuleBypass(async () => {
         await slowGate;
-        expect(getRepositoryRecordRuleBypassDepth()).toBeGreaterThanOrEqual(1);
+        expect(getRecordRuleBypassDepth()).toBeGreaterThanOrEqual(1);
       });
 
-      const fast = withRepositoryRecordRuleBypass(async () => {
-        expect(getRepositoryRecordRuleBypassDepth()).toBe(2);
+      const fast = withRecordRuleBypass(async () => {
+        expect(getRecordRuleBypassDepth()).toBe(2);
       });
 
       await fast;
       // First-started bypass must still be elevated after the second finishes.
-      expect(getRepositoryRecordRuleBypassDepth()).toBe(1);
+      expect(getRecordRuleBypassDepth()).toBe(1);
       releaseSlow?.();
       await slow;
-      expect(getRepositoryRecordRuleBypassDepth()).toBe(0);
+      expect(getRecordRuleBypassDepth()).toBe(0);
     }
   );
 });
@@ -391,9 +391,9 @@ test('authz runtime validation bypass state prefers req state when present', asy
       },
     },
     async () => {
-      const state = getRepositoryValidationBypassState();
+      const state = getValidationBypassState();
       expect(state?.validationBypassDepth).toBe(7);
-      expect(getRepositoryValidationBypassDepth()).toBe(7);
+      expect(getValidationBypassDepth()).toBe(7);
     }
   );
 });

@@ -13,7 +13,7 @@ import Session from './session';
 import Token from './token';
 import UserRole from './user_role';
 import { hashPassword, verifyPassword, withPermissionGraphBypass } from './_user_authz_shared';
-import { withRepositoryAuthzRuleBypass } from '@/core/service/orm/repository/authz';
+import { withRecordRuleAndFieldRuleBypass } from '@/core/service/orm/repository/authz';
 import { buildScopePreferences } from './_user_lifecycle_scope';
 
 const CompanyService = createServiceByModel<typeof Company>('base.Company');
@@ -53,8 +53,8 @@ async function isPersistBrowserTimezoneEnabled(isPersistEnabled?: () => Promise<
     return await isPersistEnabled();
   }
   // System/internal read: no terminal-user Logical grant for AppSetting on base.user.
-  // Narrow RR+FR bypass (Method ACL does not apply to in-process pool calls).
-  const flag = await withRepositoryAuthzRuleBypass(() =>
+  // Silent RR+FR bypass (Method ACL does not apply to in-process pool calls).
+  const flag = await withRecordRuleAndFieldRuleBypass(() =>
     pool<AppSettingModelCtor>('auth', 'AppSetting').Get(PERSIST_BROWSER_TIMEZONE_KEY, '1')
   );
   return flag === '1';

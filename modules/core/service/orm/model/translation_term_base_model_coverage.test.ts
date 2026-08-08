@@ -41,8 +41,8 @@ function installSearch(ctor: typeof TtCovTerm, rows: any[] | null | undefined) {
 test('GetTranslations Search runs under authz rule bypass (gateway internal identity)', async () => {
   __resetTranslationTermUniqueIndexTablesForTest();
   const {
-    getRepositoryFieldRuleBypassDepth,
-    getRepositoryRecordRuleBypassDepth,
+    getFieldRuleBypassDepth,
+    getRecordRuleBypassDepth,
   } = await import('../repository/authz');
   const key = '$choysum';
   const hadOwn = Object.prototype.hasOwnProperty.call(globalThis as object, key);
@@ -54,7 +54,7 @@ test('GetTranslations Search runs under authz rule bypass (gateway internal iden
   let sawBypass = false;
   const original = TtCovTerm.Search;
   TtCovTerm.Search = (async () => {
-    if (getRepositoryRecordRuleBypassDepth() > 0 && getRepositoryFieldRuleBypassDepth() > 0) {
+    if (getRecordRuleBypassDepth() > 0 && getFieldRuleBypassDepth() > 0) {
       sawBypass = true;
     }
     return [{ Module: 'auth', Scope: 'ui', Src: 'Hi', Value: '你好', Kind: 'literal', Source: 'packaged' }];
@@ -62,8 +62,8 @@ test('GetTranslations Search runs under authz rule bypass (gateway internal iden
   try {
     const out = await TtCovTerm.GetTranslations({ lang: 'zh_CN', module_names: ['auth'] });
     expect(sawBypass).toBe(true);
-    expect(getRepositoryRecordRuleBypassDepth()).toBe(0);
-    expect(getRepositoryFieldRuleBypassDepth()).toBe(0);
+    expect(getRecordRuleBypassDepth()).toBe(0);
+    expect(getFieldRuleBypassDepth()).toBe(0);
     expect(out.terms_by_module).toEqual({ auth: { ui: { Hi: '你好' } } });
   } finally {
     if (hadOwn) (globalThis as Record<string, unknown>)[key] = previous;

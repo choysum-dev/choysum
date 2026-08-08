@@ -116,10 +116,9 @@ async function resolveModelId(app: string, name: string): Promise<string> {
 
 test('RoleMethodAccess/RoleFieldRule FieldsGet exposes LogicalModelName selection', async () => {
   resetRequestContext();
-  const { withRepositoryAuthzRuleBypass } = await import('@/core/service/orm/repository/authz/authz_runtime');
 
-  // FieldsGet prunes deny-read fields; bypass so LogicalModelName stays visible without seeding FR.
-  const ma = await withRepositoryAuthzRuleBypass(() =>
+  // FieldsGet prunes deny-read fields; sudo so LogicalModelName stays visible without seeding FR.
+  const ma = await RoleMethodAccess.sudo(() =>
     RoleMethodAccess.FieldsGet(['LogicalModelName'], ['type', 'selection', 'selectionKind'])
   );
   expect(ma).toBeTruthy();
@@ -129,7 +128,7 @@ test('RoleMethodAccess/RoleFieldRule FieldsGet exposes LogicalModelName selectio
   const maSel = ma.LogicalModelName?.selection || [];
   expect(maSel.some((x: { value?: string }) => x.value === 'FieldDefault')).toBe(true);
 
-  const fr = await withRepositoryAuthzRuleBypass(() =>
+  const fr = await RoleFieldRule.sudo(() =>
     RoleFieldRule.FieldsGet(['LogicalModelName'], ['type', 'selection', 'selectionKind'])
   );
   expect(Object.keys(fr || {})).toContain('LogicalModelName');
