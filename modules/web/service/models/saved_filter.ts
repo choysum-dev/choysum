@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Model, Field } from '@/core/service';
-import type { Insertable, Updateable } from '@/core/service/api/input';
+import { Constraint, type ConstraintContext } from '@/core/service/api/constraint';
+import type { Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
 import { ChoysumError, GrpcCode } from '@/core/service/error';
@@ -25,7 +26,9 @@ function userRoleService(): any {
  * Persisted Favorites filter for OSearch (Owner Application = web).
  *
  * Identity: Application + ModelName. ModelId stores the effective meta.MetaModel id.
- * Shared rows use UserId = null; SF11 write/delete requires CreateUid == me or sys.admin.
+ * Field normalize / ModelId / uniqueness / IsDefault mutex → `@Constraint` (uses ctx.mode;
+ * Create pre-assigns Id before validation, so `!this.Id` is not a reliable create signal).
+ * Shared write/delete ACL (SF11) → Update/Delete overrides (Constraint does not run on delete).
  */
 @Model('SavedFilter', { application: 'web', softDelete: false })
 export default class SavedFilter extends BaseModel {
@@ -67,11 +70,13 @@ export default class SavedFilter extends BaseModel {
 
   /**
    * Effective meta.MetaModel id for Application + ModelName (SF12).
+   * notNull is false at the Field/kernel layer because required checks run before
+   * `@Constraint` writeback; the constraint always resolves and requires ModelId.
    */
   @Field<MetaModel>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'meta.MetaModel' },
-    notNull: true,
+    notNull: false,
     size: 20,
     index: true,
     string: _lt('Model', { scope: `${SCOPE}.fields` }),
@@ -134,11 +139,13 @@ export default class SavedFilter extends BaseModel {
   /**
    * Creator user id for SF11 shared-row write/delete ACL.
    * BaseModel does not yet expose CreateUid audit; persist on this model.
+   * notNull is false for the same kernel-before-constraint reason as ModelId;
+   * `@Constraint` always stamps CreateUid on create.
    */
   @Field({
     type: 'varchar',
     size: 20,
-    notNull: true,
+    notNull: false,
     index: true,
     copy: false,
     string: _lt('Created By', { scope: `${SCOPE}.fields` }),
@@ -175,7 +182,7 @@ export default class SavedFilter extends BaseModel {
     }
   }
 
-  private static async _assertCanMutateShared(row: { UserId?: string | null; CreateUid?: string }): Promise<void> {
+  private static async _assertCanMutate(row: { UserId?: string | null; CreateUid?: string }): Promise<void> {
     const uid = this._actorId();
     if (!uid) {
       this._fail('PermissionDenied', _t('Authentication required', { scope: SCOPE }), GrpcCode.Unauthenticated);
@@ -197,6 +204,9 @@ export default class SavedFilter extends BaseModel {
     );
   }
 
+  /**
+   * Clear other IsDefault rows. Uses BaseModel.Update to skip SF11 (mutex is not an ACL op).
+   */
   private static async _clearOtherDefaults(app: string, modelName: string, userId: string | null, exceptId?: string): Promise<void> {
     const cond: any = {
       And: [
@@ -213,7 +223,7 @@ export default class SavedFilter extends BaseModel {
     if (exceptId) {
       cond.And.push(['Id', '!=', exceptId]);
     }
-    await (super.Update as any).call(this, cond, { IsDefault: false } as any, ['Id'] as any);
+    await (BaseModel.Update as any).call(SavedFilter, cond, { IsDefault: false } as any, ['Id'] as any);
   }
 
   private static async _assertUniqueName(app: string, modelName: string, userId: string | null, name: string, exceptId?: string): Promise<void> {
@@ -232,23 +242,37 @@ export default class SavedFilter extends BaseModel {
     if (exceptId) {
       cond.And.push(['Id', '!=', exceptId]);
     }
-    const hits = await this.Search(cond as any, { fields: ['Id'], limit: 1 } as any);
+    const hits = await SavedFilter.Search(cond as any, { fields: ['Id'], limit: 1 } as any);
     if (Array.isArray(hits) && hits.length > 0) {
       this._fail('AlreadyExists', _t('A favorite with this name already exists', { scope: SCOPE }), GrpcCode.AlreadyExists);
     }
   }
 
-  private static async _prepareCreate(values: Record<string, any>): Promise<void> {
-    const actor = this._actorId();
+  private static _mergedField(self: SavedFilter, ctx: ConstraintContext<SavedFilter>, key: string): any {
+    if (Object.prototype.hasOwnProperty.call(ctx.values || {}, key)) return (ctx.values as any)[key];
+    if (Object.prototype.hasOwnProperty.call(self as any, key)) return (self as any)[key];
+    return (ctx.current as any)?.[key];
+  }
+
+  /**
+   * Normalize identity / ownership, resolve effective ModelId, enforce uniqueness and IsDefault mutex.
+   * Static so we can read `ctx.mode` (Create pre-assigns Id before validation).
+   */
+  @Constraint<SavedFilter>(['Name', 'Application', 'ModelName', 'ModelId', 'UserId', 'IsDefault', 'Condition', 'Active', 'CreateUid'])
+  static async validateSavedFilterConstraint(self: SavedFilter, ctx: ConstraintContext<SavedFilter>): Promise<void> {
+    const isCreate = ctx.mode === 'create';
+    const values = ctx.values as Record<string, any>;
+    const currentId = String((isCreate ? values.Id : SavedFilter._mergedField(self, ctx, 'Id')) || '').trim() || undefined;
+    const actor = SavedFilter._actorId();
     if (!actor) {
-      this._fail('PermissionDenied', _t('Authentication required', { scope: SCOPE }), GrpcCode.Unauthenticated);
+      SavedFilter._fail('PermissionDenied', _t('Authentication required', { scope: SCOPE }), GrpcCode.Unauthenticated);
     }
 
-    const app = String(values.Application || '').trim();
-    const modelName = String(values.ModelName || '').trim();
-    const name = String(values.Name || '').trim();
+    const app = String(SavedFilter._mergedField(self, ctx, 'Application') || '').trim();
+    const modelName = String(SavedFilter._mergedField(self, ctx, 'ModelName') || '').trim();
+    const name = String(SavedFilter._mergedField(self, ctx, 'Name') || '').trim();
     if (!app || !modelName || !name) {
-      this._fail('InvalidArgument', _t('Name, Application, and ModelName are required', { scope: SCOPE }));
+      SavedFilter._fail('InvalidArgument', _t('Name, Application, and ModelName are required', { scope: SCOPE }));
     }
     values.Application = app;
     values.ModelName = modelName;
@@ -256,7 +280,7 @@ export default class SavedFilter extends BaseModel {
 
     const effectiveId = await resolveEffectiveModelId(app, modelName);
     if (!effectiveId) {
-      this._fail(
+      SavedFilter._fail(
         'FailedPrecondition',
         _t('No effective model found for %s.%s', { scope: SCOPE }, app, modelName),
         GrpcCode.FailedPrecondition
@@ -264,123 +288,48 @@ export default class SavedFilter extends BaseModel {
     }
     values.ModelId = effectiveId;
 
-    if (Object.prototype.hasOwnProperty.call(values, 'UserId')) {
-      const raw = values.UserId;
-      if (raw == null || raw === '') {
+    if (isCreate) {
+      values.CreateUid = actor;
+      const touchedUserId = Object.prototype.hasOwnProperty.call(values, 'UserId');
+      if (!touchedUserId) {
+        values.UserId = actor;
+      } else if (values.UserId == null || values.UserId === '') {
         values.UserId = null;
       } else {
-        values.UserId = String(raw).trim();
+        values.UserId = String(values.UserId).trim();
       }
+      if (values.IsDefault == null) values.IsDefault = false;
+      if (values.Active == null) values.Active = true;
+      if (values.Condition == null) values.Condition = {};
     } else {
-      values.UserId = actor;
-    }
-
-    values.CreateUid = actor;
-    if (values.IsDefault == null) values.IsDefault = false;
-    if (values.Active == null) values.Active = true;
-    if (values.Condition == null) values.Condition = {};
-
-    await this._assertUniqueName(app, modelName, values.UserId ?? null, name);
-
-    if (values.IsDefault) {
-      await this._clearOtherDefaults(app, modelName, values.UserId ?? null);
-    }
-  }
-
-  private static async _prepareUpdate(id: string, values: Record<string, any>): Promise<void> {
-    const row = await this.Browse(id, ['Id', 'Application', 'ModelName', 'Name', 'UserId', 'CreateUid', 'IsDefault'] as any);
-    if (!row) {
-      this._fail('NotFound', _t('Favorite not found', { scope: SCOPE }), GrpcCode.NotFound);
-    }
-    await this._assertCanMutateShared(row as any);
-
-    // CreateUid is immutable.
-    if (Object.prototype.hasOwnProperty.call(values, 'CreateUid')) {
-      delete values.CreateUid;
-    }
-
-    const app = Object.prototype.hasOwnProperty.call(values, 'Application')
-      ? String(values.Application || '').trim()
-      : String((row as any).Application || '').trim();
-    const modelName = Object.prototype.hasOwnProperty.call(values, 'ModelName')
-      ? String(values.ModelName || '').trim()
-      : String((row as any).ModelName || '').trim();
-    if (!app || !modelName) {
-      this._fail('InvalidArgument', _t('Application and ModelName are required', { scope: SCOPE }));
-    }
-    if (Object.prototype.hasOwnProperty.call(values, 'Application')) values.Application = app;
-    if (Object.prototype.hasOwnProperty.call(values, 'ModelName')) values.ModelName = modelName;
-
-    const touchesIdentity =
-      Object.prototype.hasOwnProperty.call(values, 'Application') || Object.prototype.hasOwnProperty.call(values, 'ModelName');
-    if (touchesIdentity || Object.prototype.hasOwnProperty.call(values, 'ModelId')) {
-      const effectiveId = await resolveEffectiveModelId(app, modelName);
-      if (!effectiveId) {
-        this._fail(
-          'FailedPrecondition',
-          _t('No effective model found for %s.%s', { scope: SCOPE }, app, modelName),
-          GrpcCode.FailedPrecondition
-        );
+      // CreateUid is immutable.
+      values.CreateUid = String((ctx.current as any)?.CreateUid || SavedFilter._mergedField(self, ctx, 'CreateUid') || '').trim();
+      if (Object.prototype.hasOwnProperty.call(values, 'UserId')) {
+        if (values.UserId === '' || values.UserId == null) values.UserId = null;
+        else values.UserId = String(values.UserId).trim();
       }
-      values.ModelId = effectiveId;
     }
 
-    let userId: string | null = (row as any).UserId == null || (row as any).UserId === '' ? null : String((row as any).UserId).trim();
-    if (Object.prototype.hasOwnProperty.call(values, 'UserId')) {
-      const raw = values.UserId;
-      userId = raw == null || raw === '' ? null : String(raw).trim();
-      values.UserId = userId;
-    }
+    const effectiveUserId = (() => {
+      const raw = Object.prototype.hasOwnProperty.call(values, 'UserId')
+        ? values.UserId
+        : SavedFilter._mergedField(self, ctx, 'UserId');
+      if (raw == null || raw === '') return null;
+      return String(raw).trim();
+    })();
 
-    const name = Object.prototype.hasOwnProperty.call(values, 'Name')
-      ? String(values.Name || '').trim()
-      : String((row as any).Name || '').trim();
-    if (Object.prototype.hasOwnProperty.call(values, 'Name')) {
-      if (!name) this._fail('InvalidArgument', _t('Name is required', { scope: SCOPE }));
-      values.Name = name;
-    }
+    await SavedFilter._assertUniqueName(app, modelName, effectiveUserId, name, isCreate ? undefined : currentId);
 
-    const nameTouched =
-      Object.prototype.hasOwnProperty.call(values, 'Name') ||
-      Object.prototype.hasOwnProperty.call(values, 'UserId') ||
-      touchesIdentity;
-    if (nameTouched) {
-      await this._assertUniqueName(app, modelName, userId, name, String((row as any).Id));
-    }
-
-    if (values.IsDefault === true) {
-      await this._clearOtherDefaults(app, modelName, userId, String((row as any).Id));
+    const isDefault = Object.prototype.hasOwnProperty.call(values, 'IsDefault')
+      ? values.IsDefault === true
+      : SavedFilter._mergedField(self, ctx, 'IsDefault') === true;
+    if (isDefault) {
+      await SavedFilter._clearOtherDefaults(app, modelName, effectiveUserId, isCreate ? undefined : currentId);
     }
   }
 
   /**
-   * Create a SavedFilter after resolving effective ModelId and enforcing defaults/ACL.
-   */
-  static override async Create<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
-    value: Partial<Insertable<T & BaseModel>>,
-    returnFields?: FieldSelection<T>
-  ): Promise<T> {
-    await SavedFilter._prepareCreate(value as any);
-    return (await super.Create(value as any, returnFields as any)) as unknown as T;
-  }
-
-  /**
-   * Create many SavedFilter rows with the same Create validations.
-   */
-  static override async CreateMany<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
-    values: Partial<Insertable<T & BaseModel>>[],
-    returnFields?: FieldSelection<T>
-  ): Promise<T[]> {
-    const rows = values || [];
-    for (const v of rows) await SavedFilter._prepareCreate(v as any);
-    return (await super.CreateMany(rows as any, returnFields as any)) as unknown as T[];
-  }
-
-  /**
-   * Update SavedFilter rows (SF11 + identity / default exclusivity).
-   * Delegates per-row so CreateUid / default exclusivity stay correct.
+   * Update SavedFilter rows after SF11 ACL (field rules run via Constraint).
    */
   static override async Update<T extends BaseModel>(
     this: { new (...args: any[]): T } & typeof BaseModel,
@@ -389,17 +338,21 @@ export default class SavedFilter extends BaseModel {
     returnFields?: FieldSelection<T>,
     options?: any
   ): Promise<Partial<T>[]> {
-    const existing = await this.Search(condition as any, { fields: ['Id'] as any, ...(options || {}) } as any);
-    const out: Partial<T>[] = [];
+    const existing = await this.Search(condition as any, {
+      fields: ['Id', 'UserId', 'CreateUid'] as any,
+      ...(options || {}),
+    } as any);
     for (const row of existing || []) {
-      const updated = await (this as any).UpdateById(String((row as any).Id), { ...(values as any) }, returnFields as any, options as any);
-      out.push(updated as Partial<T>);
+      await SavedFilter._assertCanMutate(row as any);
     }
-    return out;
+    if (!existing || existing.length === 0) return [];
+    const patch = { ...(values as any) };
+    delete patch.CreateUid;
+    return (await super.Update(condition as any, patch as any, returnFields as any, options as any)) as unknown as Partial<T>[];
   }
 
   /**
-   * Update one SavedFilter by id.
+   * Update one SavedFilter by id after SF11 ACL.
    */
   static override async UpdateById<T extends BaseModel>(
     this: { new (...args: any[]): T } & typeof BaseModel,
@@ -408,8 +361,13 @@ export default class SavedFilter extends BaseModel {
     returnFields?: FieldSelection<T>,
     options?: any
   ): Promise<Partial<T>> {
+    const row = await this.Browse(id, ['Id', 'UserId', 'CreateUid'] as any);
+    if (!row) {
+      SavedFilter._fail('NotFound', _t('Favorite not found', { scope: SCOPE }), GrpcCode.NotFound);
+    }
+    await SavedFilter._assertCanMutate(row as any);
     const patch = { ...(values as any) };
-    await SavedFilter._prepareUpdate(String(id), patch);
+    delete patch.CreateUid;
     return (await super.UpdateById(id, patch as any, returnFields as any, options as any)) as unknown as Partial<T>;
   }
 
@@ -423,7 +381,7 @@ export default class SavedFilter extends BaseModel {
   ): Promise<number> {
     const existing = await this.Search(condition as any, { fields: ['Id', 'UserId', 'CreateUid'] as any, ...(options || {}) } as any);
     for (const row of existing || []) {
-      await SavedFilter._assertCanMutateShared(row as any);
+      await SavedFilter._assertCanMutate(row as any);
     }
     if (!existing || existing.length === 0) return 0;
     return await super.Delete(condition as any, options as any);
@@ -439,7 +397,7 @@ export default class SavedFilter extends BaseModel {
   ): Promise<number> {
     const row = await this.Browse(id, ['Id', 'UserId', 'CreateUid'] as any);
     if (!row) return 0;
-    await SavedFilter._assertCanMutateShared(row as any);
+    await SavedFilter._assertCanMutate(row as any);
     return await super.DeleteById(id, options as any);
   }
 }

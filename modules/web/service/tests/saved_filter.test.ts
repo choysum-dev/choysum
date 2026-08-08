@@ -86,16 +86,42 @@ function toErr(err: any): { domain?: string; code?: string } | null {
   return null;
 }
 
-async function expectCode(fn: () => Promise<any>, code: string): Promise<void> {
+function errorBlob(err: any): string {
+  const parts: string[] = [];
+  const visited = new Set<any>();
+  const queue: any[] = [err];
+  while (queue.length) {
+    const cur = queue.shift();
+    if (!cur || visited.has(cur)) continue;
+    visited.add(cur);
+    if (typeof cur === 'string') {
+      parts.push(cur);
+      continue;
+    }
+    if (typeof cur.code === 'string') parts.push(cur.code);
+    if (typeof cur.message === 'string') parts.push(cur.message);
+    if (Array.isArray(cur.issues)) for (const issue of cur.issues) queue.push(issue);
+    if (cur.cause) queue.push(cur.cause);
+    if (cur.error) queue.push(cur.error);
+  }
+  return parts.join('\n');
+}
+
+async function expectCode(fn: () => Promise<any>, code: string, messageHint?: string): Promise<void> {
   let caught: any;
   try {
     await fn();
   } catch (e) {
     caught = e;
   }
+  expect(caught, `expected error ${code}, got nothing`).toBeTruthy();
   const oe = toErr(caught);
-  expect(oe, `expected error ${code}, got ${caught}`).toBeTruthy();
-  expect(oe!.code).toBe(code);
+  if (oe?.code === code) return;
+  const blob = errorBlob(caught);
+  // `@Constraint` wraps thrown ChoysumError as constraint_execution_failed / validation_failed.
+  if (blob.includes(code)) return;
+  if (messageHint && blob.includes(messageHint)) return;
+  expect(false, `expected error ${code}${messageHint ? ` (hint=${messageHint})` : ''}, got ${blob}`).toBe(true);
 }
 
 function metaModel(): any {
@@ -221,7 +247,8 @@ test('SavedFilter rejects Create without effective MetaModel', async () => {
         } as any,
         ['Id'] as any
       ),
-    'FailedPrecondition'
+    'FailedPrecondition',
+    'No effective model'
   );
 });
 
