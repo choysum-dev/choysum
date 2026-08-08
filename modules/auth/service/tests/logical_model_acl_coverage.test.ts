@@ -257,6 +257,97 @@ test('RoleMethodAccess: LogicalMethods normalize, reject non-logical, clear on n
     // Private helper no-ops on nullish values.
     expect(() => (RoleMethodAccess as any)._normalizeLogicalMethodsPayload(null, 'update')).not.toThrow();
     expect(() => (RoleMethodAccess as any)._normalizeLogicalMethodsPayload(undefined, 'create')).not.toThrow();
+
+    // Bulk Update: mixed logical + non-logical rows must fail closed without LogicalMethods.
+    const logical2 = await RoleMethodAccess.Create(
+      {
+        RoleId: { Id: role.id } as any,
+        MetaServiceId: null,
+        MetaModelId: null,
+        MetaApplicationId: null,
+        LogicalModelName: 'FieldDefault',
+        LogicalMethods: ['Get'],
+        Mode: 'allow',
+      } as any,
+      ['Id'] as any
+    );
+    const logical2Id = String((logical2 as any)?.Id || '').trim();
+    const serviceRow = await RoleMethodAccess.Create(
+      {
+        RoleId: { Id: role.id } as any,
+        MetaServiceId: browse.id,
+        MetaModelId: null,
+        MetaApplicationId: null,
+        LogicalModelName: null,
+        Mode: 'allow',
+      } as any,
+      ['Id'] as any
+    );
+    const serviceId = String((serviceRow as any)?.Id || '').trim();
+    let rejectedMixed = false;
+    try {
+      await RoleMethodAccess.Update(
+        { Or: [['Id', '=', logical2Id], ['Id', '=', serviceId]] } as any,
+        {
+          MetaServiceId: null,
+          MetaModelId: null,
+          MetaApplicationId: null,
+          LogicalModelName: 'FieldDefault',
+          Mode: 'deny',
+        } as any
+      );
+    } catch (e: any) {
+      rejectedMixed = true;
+      expect(String(e?.message || e).includes('LogicalMethods must be provided when LogicalModelName is updated')).toBe(true);
+    }
+    expect(rejectedMixed).toBe(true);
+    const mixedAfter = await RoleMethodAccess.Search(
+      { Or: [['Id', '=', logical2Id], ['Id', '=', serviceId]] } as any,
+      { fields: ['Id', 'LogicalModelName', 'MetaServiceId', 'LogicalMethods'], limit: 10 } as any
+    );
+    const byId = new Map((mixedAfter || []).map((r: any) => [String(r?.Id || ''), r]));
+    expect(String((byId.get(logical2Id) as any)?.LogicalModelName || '')).toBe('FieldDefault');
+    expect((byId.get(logical2Id) as any)?.LogicalMethods).toEqual(['Get']);
+    expect(String((byId.get(serviceId) as any)?.LogicalModelName || '')).toBe('');
+    expect(String((byId.get(serviceId) as any)?.MetaServiceId || '')).toBe(browse.id);
+
+    // Bulk Update: same logical name reaffirm across rows is allowed.
+    const logical3 = await RoleMethodAccess.Create(
+      {
+        RoleId: { Id: role.id } as any,
+        MetaServiceId: null,
+        MetaModelId: null,
+        MetaApplicationId: null,
+        LogicalModelName: 'FieldDefault',
+        LogicalMethods: ['Set'],
+        Mode: 'allow',
+      } as any,
+      ['Id'] as any
+    );
+    const logical3Id = String((logical3 as any)?.Id || '').trim();
+    await RoleMethodAccess.Update(
+      { Or: [['Id', '=', logical2Id], ['Id', '=', logical3Id]] } as any,
+      {
+        MetaServiceId: null,
+        MetaModelId: null,
+        MetaApplicationId: null,
+        LogicalModelName: 'FieldDefault',
+        Mode: 'deny',
+      } as any,
+      ['Id', 'LogicalModelName', 'LogicalMethods', 'Mode'] as any
+    );
+    const sameNameAfter = await RoleMethodAccess.Search(
+      { Or: [['Id', '=', logical2Id], ['Id', '=', logical3Id]] } as any,
+      { fields: ['Id', 'LogicalModelName', 'LogicalMethods', 'Mode'], limit: 10 } as any
+    );
+    expect((sameNameAfter || []).length).toBe(2);
+    const sameById = new Map((sameNameAfter || []).map((r: any) => [String(r?.Id || ''), r]));
+    expect(String((sameById.get(logical2Id) as any)?.LogicalModelName || '')).toBe('FieldDefault');
+    expect(String((sameById.get(logical3Id) as any)?.LogicalModelName || '')).toBe('FieldDefault');
+    expect(String((sameById.get(logical2Id) as any)?.Mode || '')).toBe('deny');
+    expect(String((sameById.get(logical3Id) as any)?.Mode || '')).toBe('deny');
+    expect((sameById.get(logical2Id) as any)?.LogicalMethods).toEqual(['Get']);
+    expect((sameById.get(logical3Id) as any)?.LogicalMethods).toEqual(['Set']);
   });
 });
 

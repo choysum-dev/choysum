@@ -274,19 +274,20 @@ export default class RoleMethodAccess extends BaseModel {
   ): Promise<Partial<T>[]> {
     let previousLogicalModelName: string | null | undefined;
     if (RoleMethodAccess._needsPreviousLogicalModelName(values as any)) {
-      const existing = await (this as any).Search(condition as any, {
-        fields: ['LogicalModelName'],
-        limit: 5000,
-      } as any);
-      const names = new Set(
-        (existing || []).map((r: any) => String(r?.LogicalModelName || '').trim()).filter(Boolean)
-      );
       const next = String((values as any).LogicalModelName || '').trim();
-      // Mixed persisted names under one condition cannot safely reaffirm without methods.
-      if (names.size > 1 || (names.size === 1 && !names.has(next)) || names.size === 0) {
-        previousLogicalModelName = null;
+      // Prove every matched row already has LogicalModelName === next (no sampling).
+      // Null/empty/other names fail Count equality → fail closed (null whitelist = all methods).
+      const matched = Number(await (this as any).Count(condition as any)) || 0;
+      if (matched > 0) {
+        const alreadyAtNext =
+          Number(
+            await (this as any).Count({
+              And: [condition as any, ['LogicalModelName', '=', next] as any],
+            } as any)
+          ) || 0;
+        previousLogicalModelName = alreadyAtNext === matched ? next : null;
       } else {
-        previousLogicalModelName = next;
+        previousLogicalModelName = null;
       }
     }
     RoleMethodAccess._prepareValues(values as any, 'update', previousLogicalModelName);
