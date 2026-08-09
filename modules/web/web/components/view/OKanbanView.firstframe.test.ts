@@ -98,6 +98,7 @@ describe('OKanbanView first-frame load', () => {
     applyMock.mockClear();
     preloadLaneMock.mockClear();
     awaitFieldSelectionMock.mockClear();
+    awaitFieldSelectionMock.mockImplementation(async () => {});
     deferState.defer = false;
   });
 
@@ -109,7 +110,7 @@ describe('OKanbanView first-frame load', () => {
         return () => h('div');
       },
     });
-    mount(OKanbanView as any, {
+    const wrapper = mount(OKanbanView as any, {
       props: {
         store: makeStore(),
         searchView: SearchStub,
@@ -119,9 +120,13 @@ describe('OKanbanView first-frame load', () => {
       },
       global: { stubs },
     });
-    await flushPromises();
-    expect(awaitFieldSelectionMock).not.toHaveBeenCalled();
-    expect(applyMock).not.toHaveBeenCalled();
+    try {
+      await flushPromises();
+      expect(awaitFieldSelectionMock).not.toHaveBeenCalled();
+      expect(applyMock).not.toHaveBeenCalled();
+    } finally {
+      wrapper.unmount();
+    }
   });
 
   it('runs mount apply when first-frame should not defer', async () => {
@@ -132,7 +137,7 @@ describe('OKanbanView first-frame load', () => {
         return () => h('div', { class: 'custom-search' });
       },
     });
-    mount(OKanbanView as any, {
+    const wrapper = mount(OKanbanView as any, {
       props: {
         store: makeStore(),
         searchView: CustomSearch,
@@ -142,9 +147,13 @@ describe('OKanbanView first-frame load', () => {
       },
       global: { stubs },
     });
-    await flushPromises();
-    expect(awaitFieldSelectionMock).toHaveBeenCalled();
-    expect(applyMock).toHaveBeenCalled();
+    try {
+      await flushPromises();
+      expect(awaitFieldSelectionMock).toHaveBeenCalled();
+      expect(applyMock).toHaveBeenCalled();
+    } finally {
+      wrapper.unmount();
+    }
   });
 
   it('skips mount apply when custom search already emitted query-update', async () => {
@@ -163,7 +172,7 @@ describe('OKanbanView first-frame load', () => {
         return () => h('div', { class: 'sync-emit-search' });
       },
     });
-    mount(OKanbanView as any, {
+    const wrapper = mount(OKanbanView as any, {
       props: {
         store: makeStore(),
         searchView: SyncEmitSearch,
@@ -173,9 +182,13 @@ describe('OKanbanView first-frame load', () => {
       },
       global: { stubs },
     });
-    await flushPromises();
-    expect(awaitFieldSelectionMock).toHaveBeenCalledTimes(1);
-    expect(applyMock).not.toHaveBeenCalled();
+    try {
+      await flushPromises();
+      expect(awaitFieldSelectionMock).toHaveBeenCalledTimes(1);
+      expect(applyMock).not.toHaveBeenCalled();
+    } finally {
+      wrapper.unmount();
+    }
   });
 
   it('onSearch with falsy payload does not apply', async () => {
@@ -188,7 +201,7 @@ describe('OKanbanView first-frame load', () => {
         return () => h('div');
       },
     });
-    mount(OKanbanView as any, {
+    const wrapper = mount(OKanbanView as any, {
       props: {
         store: makeStore(),
         searchView: FalsyEmitSearch,
@@ -198,8 +211,12 @@ describe('OKanbanView first-frame load', () => {
       },
       global: { stubs },
     });
-    await flushPromises();
-    expect(awaitFieldSelectionMock).not.toHaveBeenCalled();
-    expect(applyMock).not.toHaveBeenCalled();
+    try {
+      await flushPromises();
+      expect(awaitFieldSelectionMock).not.toHaveBeenCalled();
+      expect(applyMock).not.toHaveBeenCalled();
+    } finally {
+      wrapper.unmount();
+    }
   });
 });

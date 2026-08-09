@@ -1267,7 +1267,7 @@ func TestModuleManagerUpgradeRefreshModuleIndexError(t *testing.T) {
 		WithOriginCoordinatorFactory(func(scope.Scope) OriginCoordinator { return coordinator }),
 	)
 	manager.bootstrapOnce.Do(func() {})
-	if err := os.MkdirAll(filepath.Join(modulesPath, "auth"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(modulesPath, "auth"), 0o750); err != nil {
 		t.Fatalf("mkdir auth module dir: %v", err)
 	}
 	if err := db.Create(&meta.Module{

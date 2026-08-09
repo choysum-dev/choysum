@@ -5,21 +5,56 @@ package lifecycle
 
 import (
 	"context"
+	"errors"
 	"testing"
+
+	"github.com/choysum-dev/choysum/pkg/meta"
+	"github.com/choysum-dev/choysum/pkg/scope"
 )
+
+type skipWebShellPeekOrigin struct {
+	skipWebShell bool
+	peeked       bool
+}
+
+func (o *skipWebShellPeekOrigin) Peek(ctx context.Context, _ string) (*meta.Module, error) {
+	o.peeked = true
+	o.skipWebShell = OperationOptionsFromContext(ctx).SkipWebShell
+	return nil, errors.New("stop after peek")
+}
+
+func (o *skipWebShellPeekOrigin) ResolveInstallModule(context.Context, string) (*meta.Module, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (o *skipWebShellPeekOrigin) Fetch(context.Context, string) (*meta.Module, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (o *skipWebShellPeekOrigin) Purge(context.Context, string) error {
+	return errors.New("not implemented")
+}
 
 func TestServiceUpgradeAppliesSkipWebShellOptions(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
-	svc := NewService(runtimeScope, nil)
+	origin := &skipWebShellPeekOrigin{}
+	svc := NewService(runtimeScope, nil, WithOriginCoordinatorFactory(func(scope.Scope) OriginCoordinator {
+		return origin
+	}))
 
-	// Upgrade fails while resolving the missing module, but still applies
-	// OperationOptions (SkipWebShell) onto the context first.
+	// Registry Peek runs before lease and receives the operation context.
 	err := svc.Upgrade(context.Background(), UpgradeRequest{
-		Input:        "missing_mod_for_skip_web",
+		Input:        "probe@1.0.0",
 		WithDemo:     true,
 		SkipWebShell: true,
 	})
 	if err == nil {
-		t.Fatal("expected Upgrade to fail for missing module")
+		t.Fatal("expected Upgrade to fail after Peek")
+	}
+	if !origin.peeked {
+		t.Fatal("expected OriginCoordinator.Peek to observe the upgrade context")
+	}
+	if !origin.skipWebShell {
+		t.Fatal("expected OperationOptions.SkipWebShell=true on Peek context")
 	}
 }

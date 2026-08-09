@@ -257,7 +257,7 @@ describe('OSearchView server defaults', () => {
   });
 
   it('skips clearing defaults when a newer load supersedes empty app/model', async () => {
-    sfSearch.mockResolvedValue([
+    sfSearch.mockResolvedValueOnce([
       { Id: 'p1', Name: 'Keep', Condition: {}, IsDefault: true, UserId: 'me' },
     ]);
     const store = makeStore();
@@ -272,9 +272,13 @@ describe('OSearchView server defaults', () => {
     store.application = '';
     void wrapper.find('.emit-defaults-ready').trigger('click');
     store.application = 'demo';
+    sfSearch.mockResolvedValueOnce([
+      { Id: 'p2', Name: 'Newer', Condition: {}, IsDefault: true, UserId: 'me' },
+    ]);
     await wrapper.find('.emit-defaults-ready').trigger('click');
     await flushPromises();
     await nextTick();
-    expect(JSON.parse(wrapper.find('.defaults').text())[0].name).toBe('Keep');
+    // Distinct newer row: fails if a stale empty-app clear wins after this load.
+    expect(JSON.parse(wrapper.find('.defaults').text())[0].name).toBe('Newer');
   });
 });

@@ -627,17 +627,31 @@ describe('OSearch behavior', () => {
     const saveOpen = wrapper.findAll('.el-btn').find(b => b.text().includes('Save current filters'));
     await saveOpen!.trigger('click');
     await nextTick();
-    await wrapper.find('input.fav-name').setValue('SharedDef');
-    const checks = wrapper.findAll('input[type="checkbox"]');
-    expect(checks.length).toBeGreaterThanOrEqual(2);
-    await checks[0]!.setValue(true);
-    await checks[1]!.setValue(true);
+    await wrapper.find('input.fav-name').setValue('DefaultOnly');
+    const defaultCheck = wrapper.findAll('.fav-check').find(l => l.text().includes('Use by default'));
+    expect(defaultCheck).toBeTruthy();
+    await defaultCheck!.find('input').setValue(true);
     const saveBtn = wrapper.findAll('.el-btn').find(b => b.text() === 'Save');
     await saveBtn!.trigger('click');
     await flushPromises();
     expect(savedFiltersApi.saveCurrent).toHaveBeenCalledWith({
-      name: 'SharedDef',
+      name: 'DefaultOnly',
       isDefault: true,
+      shared: false,
+    });
+
+    savedFiltersApi.saveCurrent.mockClear();
+    await saveOpen!.trigger('click');
+    await nextTick();
+    await wrapper.find('input.fav-name').setValue('SharedOnly');
+    const sharedCheck = wrapper.findAll('.fav-check').find(l => l.text().includes('Share with all users'));
+    expect(sharedCheck).toBeTruthy();
+    await sharedCheck!.find('input').setValue(true);
+    await wrapper.findAll('.el-btn').find(b => b.text() === 'Save')!.trigger('click');
+    await flushPromises();
+    expect(savedFiltersApi.saveCurrent).toHaveBeenCalledWith({
+      name: 'SharedOnly',
+      isDefault: false,
       shared: true,
     });
   });

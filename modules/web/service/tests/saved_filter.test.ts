@@ -919,15 +919,17 @@ test('SavedFilter _clearOtherDefaults covers null candidates, remaining fail, an
   const actor = uid('sf_clear_stub');
   setIdentity(actor);
   const SF = SavedFilter as any;
-  const origSudo = SF.sudo.bind(SavedFilter);
-  const origUpdate = SF.Update.bind(SavedFilter);
+  const sudoOwn = Object.prototype.hasOwnProperty.call(SF, 'sudo');
+  const updateOwn = Object.prototype.hasOwnProperty.call(SF, 'Update');
+  const origSudo = SF.sudo;
+  const origUpdate = SF.Update;
   try {
     // candidates || [] when preflight returns null; remaining non-array skips _fail.
     SF.sudo = async (_fn: any, opts: any) => {
       const hint = String(opts?.hint || '');
       if (hint.includes('preflight')) return null;
       if (hint.includes('check')) return null;
-      return origSudo(_fn, opts);
+      return origSudo.call(SavedFilter, _fn, opts);
     };
     SF.Update = async () => [];
     await SF._clearOtherDefaults('web', 'SavedFilter', null);
@@ -970,8 +972,10 @@ test('SavedFilter _clearOtherDefaults covers null candidates, remaining fail, an
       "another user's shared default"
     );
   } finally {
-    SF.sudo = origSudo;
-    SF.Update = origUpdate;
+    if (sudoOwn) SF.sudo = origSudo;
+    else delete SF.sudo;
+    if (updateOwn) SF.Update = origUpdate;
+    else delete SF.Update;
   }
 });
 
