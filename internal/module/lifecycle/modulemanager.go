@@ -577,6 +577,26 @@ func summarizeModuleOpInfoNames(values []string) []string {
 	return compact
 }
 
+// mergeUniqueModuleNames concatenates name lists in order, skipping blanks/duplicates.
+func mergeUniqueModuleNames(parts ...[]string) []string {
+	seen := map[string]struct{}{}
+	out := make([]string, 0)
+	for _, names := range parts {
+		for _, raw := range names {
+			name := strings.TrimSpace(raw)
+			if name == "" {
+				continue
+			}
+			if _, ok := seen[name]; ok {
+				continue
+			}
+			seen[name] = struct{}{}
+			out = append(out, name)
+		}
+	}
+	return out
+}
+
 func moduleOperationPlanInfoAttrs(opPlan plan.Plan) []any {
 	attrs := []any{
 		"modules_count", len(opPlan.ModuleOrder),
@@ -1602,7 +1622,10 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 			return rollbackUpgradeOrigin(err)
 		}
 		clearSpinnerState()
-		for _, moduleName := range plan.ModuleOrder {
+		// Include EnsureOrder so newly installed shell deps (e.g. web) also run
+		// phase-end hooks and receive module-index refresh after upgrade.
+		finalizeModules := mergeUniqueModuleNames(plan.EnsureOrder, plan.ModuleOrder)
+		for _, moduleName := range finalizeModules {
 			mod, err := m.Load(moduleName)
 			if err != nil {
 				return rollbackUpgradeOrigin(err)
@@ -1628,7 +1651,7 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 				)
 			}
 		}
-		if err := m.refreshModuleIndexForLocalModules(ctx, plan.ModuleOrder); err != nil {
+		if err := m.refreshModuleIndexForLocalModules(ctx, finalizeModules); err != nil {
 			return rollbackUpgradeOrigin(err)
 		}
 		if originSwitch != nil {

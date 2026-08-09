@@ -231,6 +231,8 @@ func normalizeRecordOwnership(rules *moduleRules, filePath string, recordIndex i
 	app := strings.TrimSpace(rec.Application)
 	if app == "" {
 		rec.Application = rules.OwnerApp
+	} else {
+		rec.Application = app
 	}
 	return nil
 }

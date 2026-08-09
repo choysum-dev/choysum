@@ -128,7 +128,8 @@ func moduleOrderContains(order []string, name string) bool {
 
 func mergeModuleOrder(prefix, suffix []string) []string {
 	seen := map[string]bool{}
-	out := make([]string, 0, len(prefix)+len(suffix))
+	// Cap separately to avoid CodeQL size-overflow on len(a)+len(b) for make().
+	out := make([]string, 0, len(prefix))
 	appendUnique := func(names []string) {
 		for _, name := range names {
 			name = strings.TrimSpace(name)

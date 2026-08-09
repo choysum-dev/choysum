@@ -565,21 +565,29 @@ export class ValidationEngine {
         try {
           await executor(self, ctx);
         } catch (error) {
-          // Preserve domain/status-bearing errors from constraints (e.g. AlreadyExists).
-          if (error instanceof ChoysumError) throw error;
           if (error instanceof ValidationPipelineError) {
             issues.push(...error.issues);
             continue;
           }
 
           const message = error instanceof Error ? error.message : String(error);
-          issues.push({
+          const issue: ValidationIssue = {
             scope: 'constraint',
             method: handler.method,
             code: 'constraint_execution_failed',
             message,
             severity: 'error',
-          });
+          };
+          // Keep repository wrap as validation_failed, but retain the original
+          // ChoysumError code/gRPC status in issue meta for API clients/tests.
+          if (error instanceof ChoysumError) {
+            issue.meta = {
+              causeCode: error.code,
+              causeDomain: error.domain,
+              grpcCode: error.grpcCode,
+            };
+          }
+          issues.push(issue);
         }
         continue;
       }
@@ -616,21 +624,29 @@ export class ValidationEngine {
           }
         }
       } catch (error) {
-        // Preserve domain/status-bearing errors from constraints (e.g. AlreadyExists).
-        if (error instanceof ChoysumError) throw error;
         if (error instanceof ValidationPipelineError) {
           issues.push(...error.issues);
           continue;
         }
 
         const message = error instanceof Error ? error.message : String(error);
-        issues.push({
+        const issue: ValidationIssue = {
           scope: 'constraint',
           method: handler.method,
           code: 'constraint_execution_failed',
           message,
           severity: 'error',
-        });
+        };
+        // Keep repository wrap as validation_failed, but retain the original
+        // ChoysumError code/gRPC status in issue meta for API clients/tests.
+        if (error instanceof ChoysumError) {
+          issue.meta = {
+            causeCode: error.code,
+            causeDomain: error.domain,
+            grpcCode: error.grpcCode,
+          };
+        }
+        issues.push(issue);
       }
     }
 

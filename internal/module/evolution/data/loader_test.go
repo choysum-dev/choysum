@@ -3299,6 +3299,18 @@ func TestNormalizeRecordOwnership_CrossAppApplicationPreserved(t *testing.T) {
 	}
 }
 
+func TestNormalizeRecordOwnership_TrimsExplicitApplication(t *testing.T) {
+	t.Parallel()
+	rules := &moduleRules{OwnerName: "web", OwnerApp: "web"}
+	rec := record{Name: "rrr_x", Application: " auth ", Model: "RoleRecordRule", Values: map[string]any{}}
+	if err := normalizeRecordOwnership(rules, "/tmp/data.json", 0, &rec); err != nil {
+		t.Fatalf("normalizeRecordOwnership() error = %v", err)
+	}
+	if rec.Application != "auth" {
+		t.Fatalf("expected trimmed application=auth, got %q", rec.Application)
+	}
+}
+
 func TestLoadErrorModelDisplayAndErrorFormatting(t *testing.T) {
 	t.Parallel()
 	if got := loadErrorModelDisplay("auth", "User"); got != "auth.User" {

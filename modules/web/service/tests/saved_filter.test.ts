@@ -128,6 +128,12 @@ function collectErrorCodes(err: any): string[] {
     if (!cur || visited.has(cur)) continue;
     visited.add(cur);
     if (typeof cur.code === 'string' && cur.code) codes.push(cur.code);
+    if (typeof cur?.metadata?.causeCode === 'string' && cur.metadata.causeCode) {
+      codes.push(cur.metadata.causeCode);
+    }
+    if (typeof cur?.meta?.causeCode === 'string' && cur.meta.causeCode) {
+      codes.push(cur.meta.causeCode);
+    }
     if (Array.isArray(cur.issues)) for (const issue of cur.issues) queue.push(issue);
     if (cur.cause) queue.push(cur.cause);
     if (cur.error) queue.push(cur.error);

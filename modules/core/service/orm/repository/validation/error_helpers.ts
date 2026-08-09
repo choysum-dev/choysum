@@ -9,6 +9,10 @@ import type { ObjectRecord } from '../../../../utils/types';
 export function wrapRepositoryValidationError(meta: ModelMetadata, error: ValidationPipelineError, mode: ConstraintMode): ChoysumError {
   const primaryIssue = error.issues.find(issue => issue.severity === 'error') || error.issues[0];
   const message = primaryIssue?.message || error.message || 'validation failed';
+  const primaryMeta = (primaryIssue?.meta || {}) as ObjectRecord;
+  const grpcFromMeta = primaryMeta.grpcCode;
+  const grpcCode =
+    typeof grpcFromMeta === 'number' && Number.isFinite(grpcFromMeta) ? (grpcFromMeta as GrpcCode) : GrpcCode.InvalidArgument;
   const wrapped = ChoysumError.wrap(
     error,
     {
@@ -17,7 +21,7 @@ export function wrapRepositoryValidationError(meta: ModelMetadata, error: Valida
       message,
     },
     true
-  ).withGrpcCode(GrpcCode.InvalidArgument);
+  ).withGrpcCode(grpcCode);
 
   const metadata: Record<string, string> = {
     mode,
@@ -75,6 +79,10 @@ export function wrapRepositoryValidationError(meta: ModelMetadata, error: Valida
   if (primaryIssue?.field) metadata.field = primaryIssue.field;
   if (primaryIssue?.method) metadata.method = primaryIssue.method;
   if (primaryIssue?.code) metadata.issueCode = primaryIssue.code;
+  const causeCode = String(primaryMeta.causeCode || '').trim();
+  const causeDomain = String(primaryMeta.causeDomain || '').trim();
+  if (causeCode) metadata.causeCode = causeCode;
+  if (causeDomain) metadata.causeDomain = causeDomain;
   if (primaryIssue?.scope === 'sql') {
     if (primaryIssue?.code) metadata.sqlCode = primaryIssue.code;
     const sqlMeta = (primaryIssue?.meta || {}) as ObjectRecord;
