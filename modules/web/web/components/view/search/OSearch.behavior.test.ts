@@ -542,6 +542,39 @@ describe('OSearch behavior', () => {
     expect(ElMessage.error).toHaveBeenCalledWith('save blew up');
   });
 
+  it('stringifies non-Error remove failures and Error save failures', async () => {
+    const { ElMessage, ElMessageBox } = await import('element-plus');
+    (ElMessageBox.confirm as any).mockResolvedValue(true);
+    (ElMessage.error as any).mockClear?.();
+    savedFiltersApi.remove.mockRejectedValueOnce('delete-string');
+    savedFiltersApi.state!.favoriteMenuItems = [
+      {
+        id: 'fav-str',
+        name: 'Str',
+        shared: false,
+        isDefault: false,
+        canDelete: true,
+        filter: {},
+      },
+    ];
+    const wrapper = mountSearch();
+    await flushPromises();
+    await wrapper.find('.o-search__menu-item-delete').trigger('click');
+    await flushPromises();
+    expect(ElMessage.error).toHaveBeenCalledWith('delete-string');
+
+    (ElMessage.error as any).mockClear?.();
+    savedFiltersApi.saveCurrent.mockRejectedValueOnce(new Error('save failed'));
+    const saveOpen = wrapper.findAll('.el-btn').find(b => b.text().includes('Save current filters'));
+    await saveOpen!.trigger('click');
+    await nextTick();
+    await wrapper.find('input.fav-name').setValue('ErrFav');
+    const saveBtn = wrapper.findAll('.el-btn').find(b => b.text() === 'Save');
+    await saveBtn!.trigger('click');
+    await flushPromises();
+    expect(ElMessage.error).toHaveBeenCalledWith('save failed');
+  });
+
   it('guards re-entrant save while saveFavoriteSaving is true', async () => {
     let resolveSave!: (v: any) => void;
     savedFiltersApi.saveCurrent.mockImplementationOnce(

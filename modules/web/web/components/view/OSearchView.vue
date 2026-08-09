@@ -120,6 +120,8 @@ async function loadServerDefaults(): Promise<void> {
   const app = String((props.store as any)?.application || '').trim();
   const model = String((props.store as any)?.modelName || '').trim();
   if (!app || !model) {
+    // Yield so a newer loadServerDefaults can bump the gen before we clear.
+    await Promise.resolve();
     if (gen === serverDefaultsLoadGen) {
       serverPrivateDefault.value = null;
       serverSharedDefault.value = null;

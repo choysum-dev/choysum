@@ -830,3 +830,205 @@ test('SavedFilter Update rename collision uses exceptId uniqueness', async () =>
   await SavedFilter.DeleteById(String((a as any).Id));
   await SavedFilter.DeleteById(String((b as any).Id));
 });
+
+test('SavedFilter Create accepts explicit self UserId', async () => {
+  resetRequestContext();
+  const actor = uid('sf_self');
+  setIdentity(actor);
+  const created = await SavedFilter.Create(
+    {
+      Name: uid('self_uid'),
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      UserId: actor,
+      Condition: {},
+    } as any,
+    ['Id', 'UserId'] as any
+  );
+  expect(String((created as any).UserId)).toBe(actor);
+  await SavedFilter.DeleteById(String((created as any).Id));
+});
+
+test('SavedFilter constraint fills null IsDefault/Active/Condition on create', async () => {
+  resetRequestContext();
+  const actor = uid('sf_null_defs');
+  setIdentity(actor);
+  const SF = SavedFilter as any;
+  const values: Record<string, any> = {
+    Id: uid('null_defs'),
+    Name: uid('null_defs_name'),
+    Application: 'web',
+    ModelName: 'SavedFilter',
+    UserId: actor,
+    IsDefault: null,
+    Active: null,
+    Condition: null,
+  };
+  await SF.validateSavedFilterConstraint({}, { mode: 'create', values, current: undefined });
+  expect(values.IsDefault).toBe(false);
+  expect(values.Active).toBe(true);
+  expect(values.Condition).toEqual({});
+  expect(values.UserId).toBe(actor);
+});
+
+test('SavedFilter rejects null Application/ModelName via mergedField empty trim', async () => {
+  resetRequestContext();
+  setIdentity(uid('sf_null_app'));
+  await expectCode(
+    async () =>
+      SavedFilter.Create(
+        {
+          Name: uid('null_app'),
+          Application: null,
+          ModelName: 'SavedFilter',
+          Condition: {},
+        } as any,
+        ['Id'] as any
+      ),
+    'InvalidArgument',
+    'required'
+  );
+  await expectCode(
+    async () =>
+      SavedFilter.Create(
+        {
+          Name: uid('null_model'),
+          Application: 'web',
+          ModelName: null,
+          Condition: {},
+        } as any,
+        ['Id'] as any
+      ),
+    'InvalidArgument',
+    'required'
+  );
+});
+
+test('SavedFilter _mergedField falls through values/self/current', () => {
+  const SF = SavedFilter as any;
+  expect(SF._mergedField({}, { values: undefined, current: {} }, 'Name')).toBeUndefined();
+  expect(SF._mergedField({ Name: 'FromSelf' }, { values: undefined, current: {} }, 'Name')).toBe('FromSelf');
+  expect(SF._mergedField({}, { values: {}, current: { Name: 'FromCurrent' } }, 'Name')).toBe('FromCurrent');
+  expect(SF._mergedField({ Name: 'Self' }, { values: { Name: 'Values' }, current: { Name: 'Current' } }, 'Name')).toBe(
+    'Values'
+  );
+});
+
+test('SavedFilter _clearOtherDefaults covers null candidates, remaining fail, and canWrite edges', async () => {
+  resetRequestContext();
+  const actor = uid('sf_clear_stub');
+  setIdentity(actor);
+  const SF = SavedFilter as any;
+  const origSudo = SF.sudo.bind(SavedFilter);
+  const origUpdate = SF.Update.bind(SavedFilter);
+  try {
+    // candidates || [] when preflight returns null; remaining non-array skips _fail.
+    SF.sudo = async (_fn: any, opts: any) => {
+      const hint = String(opts?.hint || '');
+      if (hint.includes('preflight')) return null;
+      if (hint.includes('check')) return null;
+      return origSudo(_fn, opts);
+    };
+    SF.Update = async () => [];
+    await SF._clearOtherDefaults('web', 'SavedFilter', null);
+
+    // Shared row missing CreateUid → !canWrite → PermissionDenied (CreateUid || '').
+    SF.sudo = async (_fn: any, opts: any) => {
+      const hint = String(opts?.hint || '');
+      if (hint.includes('preflight')) return [{ Id: 'x', UserId: null }];
+      return [];
+    };
+    await expectCode(
+      async () => SF._clearOtherDefaults('web', 'SavedFilter', null),
+      'PermissionDenied',
+      "another user's shared default"
+    );
+
+    // Private-ish row with falsy UserId 0 → UserId || '' → !canWrite.
+    SF.sudo = async (_fn: any, opts: any) => {
+      const hint = String(opts?.hint || '');
+      if (hint.includes('preflight')) return [{ Id: 'y', UserId: 0 }];
+      return [];
+    };
+    await expectCode(
+      async () => SF._clearOtherDefaults('web', 'SavedFilter', actor),
+      'PermissionDenied',
+      "another user's shared default"
+    );
+
+    // Writable preflight + stuck remaining after Update → post-check _fail.
+    SF.sudo = async (_fn: any, opts: any) => {
+      const hint = String(opts?.hint || '');
+      if (hint.includes('preflight')) return [{ Id: 'z', UserId: null, CreateUid: actor }];
+      if (hint.includes('check')) return [{ Id: 'stuck' }];
+      return [];
+    };
+    SF.Update = async () => [];
+    await expectCode(
+      async () => SF._clearOtherDefaults('web', 'SavedFilter', null),
+      'PermissionDenied',
+      "another user's shared default"
+    );
+  } finally {
+    SF.sudo = origSudo;
+    SF.Update = origUpdate;
+  }
+});
+
+test('SavedFilter validateSavedFilterConstraint covers empty create Id and CreateUid fallbacks', async () => {
+  resetRequestContext();
+  const actor = uid('sf_validate');
+  setIdentity(actor);
+  const SF = SavedFilter as any;
+  const modelId = await resolveEffectiveModelId('web', 'SavedFilter');
+  if (!modelId) {
+    throw new Error('expected effective MetaModel for web.SavedFilter');
+  }
+
+  // Create with whitespace Id → trim || undefined (exceptId omitted on unique check).
+  const valuesCreate: Record<string, any> = {
+    Id: '   ',
+    Name: uid('empty_id'),
+    Application: 'web',
+    ModelName: 'SavedFilter',
+    Condition: {},
+    IsDefault: false,
+    Active: true,
+  };
+  await SF.validateSavedFilterConstraint({}, { mode: 'create', values: valuesCreate, current: undefined });
+  expect(valuesCreate.UserId).toBe(actor);
+  expect(valuesCreate.ModelId).toBe(modelId);
+
+  // Update CreateUid chain: empty current → self → final ''.
+  const valuesUpd: Record<string, any> = {
+    Name: uid('cuid_fb'),
+    Application: 'web',
+    ModelName: 'SavedFilter',
+    IsDefault: false,
+  };
+  await SF.validateSavedFilterConstraint(
+    { CreateUid: 'fromSelf', UserId: actor, ModelId: modelId, Id: uid('row') },
+    {
+      mode: 'update',
+      values: valuesUpd,
+      current: { CreateUid: '', UserId: actor, Application: 'web', ModelName: 'SavedFilter', Name: valuesUpd.Name },
+    }
+  );
+  expect(valuesUpd.CreateUid).toBe('fromSelf');
+
+  const valuesEmpty: Record<string, any> = {
+    Name: uid('cuid_empty'),
+    Application: 'web',
+    ModelName: 'SavedFilter',
+    IsDefault: false,
+  };
+  await SF.validateSavedFilterConstraint(
+    { UserId: actor, ModelId: modelId, Id: uid('row2') },
+    {
+      mode: 'update',
+      values: valuesEmpty,
+      current: { UserId: actor, Application: 'web', ModelName: 'SavedFilter', Name: valuesEmpty.Name },
+    }
+  );
+  expect(valuesEmpty.CreateUid).toBe('');
+});

@@ -217,4 +217,64 @@ describe('OSearchView server defaults', () => {
     await nextTick();
     expect(JSON.parse(wrapper.find('.defaults').text())[0].name).toBe('FastPrivate');
   });
+
+  it('treats null Search rows as empty server defaults', async () => {
+    sfSearch.mockResolvedValueOnce(null as any);
+    const wrapper = mount(OSearchView as any, {
+      props: {
+        store: makeStore(),
+        defaultFilters: [{ name: 'Code', query: ['C', '=', 1], selected: true }],
+        initialEmit: false,
+      },
+      global: { stubs: { OSearch: OSearchStub } },
+    });
+    await flushPromises();
+    expect(JSON.parse(wrapper.find('.defaults').text())[0]).toMatchObject({ name: 'Code', selected: true });
+  });
+
+  it('ignores stale Search rejections in catch', async () => {
+    let rejectSlow!: (err: Error) => void;
+    const slow = new Promise<any[]>((_resolve, reject) => {
+      rejectSlow = reject;
+    });
+    sfSearch.mockImplementationOnce(() => slow);
+    sfSearch.mockResolvedValueOnce([
+      { Id: 'p-fast', Name: 'KeepFast', Condition: {}, IsDefault: true, UserId: 'me' },
+    ]);
+    const wrapper = mount(OSearchView as any, {
+      props: { store: makeStore(), initialEmit: false },
+      global: { stubs: { OSearch: OSearchStub } },
+    });
+    await wrapper.find('.emit-defaults-ready').trigger('click');
+    await flushPromises();
+    await nextTick();
+    expect(JSON.parse(wrapper.find('.defaults').text())[0].name).toBe('KeepFast');
+
+    rejectSlow(new Error('stale fail'));
+    await flushPromises();
+    await nextTick();
+    expect(JSON.parse(wrapper.find('.defaults').text())[0].name).toBe('KeepFast');
+  });
+
+  it('skips clearing defaults when a newer load supersedes empty app/model', async () => {
+    sfSearch.mockResolvedValue([
+      { Id: 'p1', Name: 'Keep', Condition: {}, IsDefault: true, UserId: 'me' },
+    ]);
+    const store = makeStore();
+    const wrapper = mount(OSearchView as any, {
+      props: { store, initialEmit: false },
+      global: { stubs: { OSearch: OSearchStub } },
+    });
+    await flushPromises();
+    expect(JSON.parse(wrapper.find('.defaults').text())[0].name).toBe('Keep');
+
+    store.application = '';
+    await wrapper.find('.emit-defaults-ready').trigger('click');
+    // Before the empty-app clear yields, restore app and start a newer load.
+    store.application = 'demo';
+    await wrapper.find('.emit-defaults-ready').trigger('click');
+    await flushPromises();
+    await nextTick();
+    expect(JSON.parse(wrapper.find('.defaults').text())[0].name).toBe('Keep');
+  });
 });

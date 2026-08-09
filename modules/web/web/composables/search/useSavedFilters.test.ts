@@ -349,4 +349,63 @@ describe('useSavedFilters', () => {
     expect(sfMocks.DeleteById).toHaveBeenCalledWith('fav-1');
     expect(sfMocks.Search).toHaveBeenCalled();
   });
+
+  it('load maps missing CreateUid and private canDelete when actor empty', async () => {
+    sfMocks.Search.mockResolvedValue([
+      { Id: 's1', Name: 'NoCreateUid', IsDefault: false, UserId: null },
+      { Id: 'p1', Name: 'Priv', IsDefault: false, UserId: 'other' },
+    ]);
+    const withMe = runInSetup(() =>
+      useSavedFilters({
+        store: { application: 'demo', modelName: 'Widget' },
+        filtersRef: ref([]),
+        applyNamedFilter: vi.fn(),
+      })
+    );
+    await withMe.load();
+    expect(withMe.favorites.value[0]).toMatchObject({ createUid: '', canDelete: false });
+    expect(withMe.favorites.value[1]).toMatchObject({ shared: false, canDelete: false });
+
+    actorState.id = '';
+    sfMocks.Search.mockResolvedValue([
+      { Id: 'p2', Name: 'PrivNoMe', IsDefault: false, UserId: 'someone', CreateUid: 'someone' },
+    ]);
+    const noMe = runInSetup(() =>
+      useSavedFilters({
+        store: { application: 'demo', modelName: 'Widget' },
+        filtersRef: ref([]),
+        applyNamedFilter: vi.fn(),
+      })
+    );
+    await noMe.load();
+    expect(noMe.favorites.value[0].canDelete).toBe(false);
+  });
+
+  it('saveCurrent null name and empty CreateUid/Name fallbacks', async () => {
+    const api = runInSetup(() =>
+      useSavedFilters({
+        store: { application: 'demo', modelName: 'Widget', fieldsMetadata: {}, state: { queryState: {} } },
+        filtersRef: ref([]),
+        applyNamedFilter: vi.fn(),
+      })
+    );
+    expect(await api.saveCurrent({ name: null as any })).toBeNull();
+    expect(await api.saveCurrent({ name: undefined as any })).toBeNull();
+    expect(sfMocks.Create).not.toHaveBeenCalled();
+
+    actorState.id = '';
+    sfMocks.Create.mockResolvedValueOnce({
+      Id: 'created-2',
+      Name: '',
+      Condition: {},
+      IsDefault: false,
+      UserId: null,
+    });
+    const created = await api.saveCurrent({ name: 'FallbackName', shared: true });
+    expect(created).toMatchObject({
+      Name: 'FallbackName',
+      createUid: '',
+      shared: true,
+    });
+  });
 });

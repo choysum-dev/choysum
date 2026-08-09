@@ -21,6 +21,12 @@ describe('savedFilterToNamedFilter', () => {
     expect(nf.query).toEqual({});
     expect(nf.selected).toBe(false);
   });
+
+  it('maps falsy Name to empty string', () => {
+    expect(savedFilterToNamedFilter({ Name: null as any }).name).toBe('');
+    expect(savedFilterToNamedFilter({ Name: undefined }).name).toBe('');
+    expect(savedFilterToNamedFilter({}).name).toBe('');
+  });
 });
 
 describe('mergeSavedFilterDefaults', () => {

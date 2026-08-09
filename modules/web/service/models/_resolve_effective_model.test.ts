@@ -168,3 +168,25 @@ test('resolveEffectiveModelRow merges custom fields into Search selection', asyn
     restore();
   }
 });
+
+test('rowUpdatedAt treats missing UpdatedAt/updated_at as zero during pick', async () => {
+  const restore = withMockedMetaSearch(async () => [
+    { Id: 'mm_nots', ModuleId: '' },
+    { Id: 'mm_ts', ModuleId: '', UpdatedAt: 10 },
+  ]);
+  try {
+    expect(await resolveEffectiveModelId('demo', 'Widget')).toBe('mm_ts');
+  } finally {
+    restore();
+  }
+});
+
+test('resolveEffectiveModelRow tolerates null Search pages', async () => {
+  const restore = withMockedMetaSearch(async () => null as any);
+  try {
+    expect(await resolveEffectiveModelRow('demo', 'Widget')).toBeUndefined();
+    expect(await resolveEffectiveModelId('demo', 'Widget')).toBe('');
+  } finally {
+    restore();
+  }
+});
