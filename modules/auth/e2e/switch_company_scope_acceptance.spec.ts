@@ -289,7 +289,8 @@ async function switchCompanyViaUI(page: any): Promise<void> {
   }
 
   const applyButton = page.getByTestId('company-switch-apply');
-  await expect(applyButton).toBeEnabled();
+  await expect.poll(async () => await applyButton.isEnabled(), { timeout: 15_000 }).toBe(true);
+  await expect(page.getByTestId('company-switch-hint')).toHaveCount(0);
   await applyButton.click();
 }
 

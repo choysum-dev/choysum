@@ -76,17 +76,21 @@ test('auth: switch company → new TokenPair → refresh PermissionState → hea
   await expect.poll(async () => await options.count(), { timeout: 10_000 }).toBeGreaterThan(1);
   const count = await options.count();
   expect(count, 'need at least 2 companies in selector').toBeGreaterThan(1);
+  let picked = false;
   for (let i = 0; i < count; i++) {
     const opt = options.nth(i);
     const selected = await opt.getAttribute('aria-selected');
     if (selected === 'true') continue;
     await opt.click();
+    picked = true;
     break;
   }
+  expect(picked, 'expected an unselected company option to click').toBe(true);
 
-  // Apply
+  // Apply (poll so a late open-sync refresh cannot race past a one-shot toBeEnabled).
   const applyButton = page.getByTestId('company-switch-apply');
-  await expect(applyButton).toBeEnabled();
+  await expect.poll(async () => await applyButton.isEnabled(), { timeout: 15_000 }).toBe(true);
+  await expect(page.getByTestId('company-switch-hint')).toHaveCount(0);
 
   // Hard assertions: switching should call the RPC(s) successfully.
   const switchOk = waitForGrpcWebUnaryOk(page, '/auth.User/SwitchCompanyScope', { timeoutMs: 30_000 });
