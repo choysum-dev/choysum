@@ -91,21 +91,30 @@ SPDX-License-Identifier: Apache-2.0
               <el-divider class="o-search__menu-divider" />
               <div class="o-search__menu-subtitle">{{ _t('Favorites') }}</div>
               <div class="o-search__menu-list">
-                <el-button
-                  v-for="it in favoriteMenuItems"
-                  :key="'fav:' + it.id"
-                  class="o-search__menu-item"
-                  text
-                  @click="onApplyFavorite(it)"
-                >
-                  <el-icon v-if="it.name && appliedFilterNameSet.has(it.name)" class="o-search__menu-icon o-search__menu-icon--applied">
-                    <Check />
-                  </el-icon>
-                  <span class="o-search__menu-item-label">
-                    {{ it.name }}{{ it.shared ? ` (${_t('Shared')})` : '' }}
-                  </span>
-                </el-button>
-                <div v-if="!favoriteMenuItems.length" class="o-search__empty">{{ _t('No favorites yet') }}</div>
+                <div v-for="it in favoriteMenuItems" :key="'fav:' + it.id" class="o-search__menu-row">
+                  <el-button class="o-search__menu-item" text @click="onApplyFavorite(it)">
+                    <el-icon v-if="it.name && appliedFilterNameSet.has(it.name)" class="o-search__menu-icon o-search__menu-icon--applied">
+                      <Check />
+                    </el-icon>
+                    <span class="o-search__menu-item-label">
+                      {{ it.name }}{{ it.shared ? ` (${_t('Shared')})` : '' }}
+                    </span>
+                  </el-button>
+                  <el-button
+                    class="o-search__menu-item-delete"
+                    text
+                    size="small"
+                    :aria-label="_t('Delete favorite')"
+                    @click.stop="onRemoveFavorite(it)"
+                  >
+                    ×
+                  </el-button>
+                </div>
+                <div v-if="favoritesLoadError" class="o-search__empty">
+                  {{ _t('Failed to load favorites') }}
+                  <el-button class="o-search__menu-action" text @click="onRetryFavorites">{{ _t('Retry') }}</el-button>
+                </div>
+                <div v-else-if="!favoriteMenuItems.length && !favoritesLoading" class="o-search__empty">{{ _t('No favorites yet') }}</div>
               </div>
               <el-button class="o-search__menu-action" text @click="onOpenSaveFavorite">{{ _t('Save current filters…') }}</el-button>
               <el-divider class="o-search__menu-divider" />
@@ -322,9 +331,12 @@ const { defaultFilterItems, appliedFilterNameSet, toggleDefaultFilter } = useFil
 
 const {
   favoriteMenuItems,
+  loading: favoritesLoading,
+  loadError: favoritesLoadError,
   load: loadFavorites,
   apply: applyFavorite,
   saveCurrent: saveFavoriteCurrent,
+  remove: removeFavorite,
   defaultsForOpen,
 } = useSavedFilters({
   store,
@@ -345,9 +357,25 @@ const saveFavoriteShared = ref(false);
 const saveFavoriteSaving = ref(false);
 
 function onApplyFavorite(it: { name: string; filter: any }) {
+  const before = filters.value.length;
   applyFavorite(it);
-  emitQueryUpdate();
+  if (filters.value.length !== before) {
+    emitQueryUpdate();
+  }
   menuVisible.value = false;
+}
+
+async function onRemoveFavorite(it: { id: string; name: string }) {
+  try {
+    await removeFavorite(it.id);
+    ElMessage.success(_t('Favorite deleted'));
+  } catch (e: any) {
+    ElMessage.error(e instanceof Error ? e.message : String(e));
+  }
+}
+
+function onRetryFavorites() {
+  void loadFavorites();
 }
 
 function onOpenSaveFavorite() {
@@ -359,6 +387,7 @@ function onOpenSaveFavorite() {
 }
 
 async function onConfirmSaveFavorite() {
+  if (saveFavoriteSaving.value) return;
   const name = saveFavoriteName.value.trim();
   if (!name) {
     ElMessage.warning(_t('Enter a favorite name'));
@@ -645,6 +674,24 @@ watch(
 .o-search__menu-list {
   display: flex;
   flex-direction: column;
+}
+.o-search__menu-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.o-search__menu-row .o-search__menu-item {
+  flex: 1;
+  min-width: 0;
+}
+.o-search__menu-item-delete {
+  flex: 0 0 auto;
+  opacity: 0.55;
+  padding: 0 4px !important;
+}
+.o-search__menu-item-delete:hover {
+  opacity: 1;
+  color: var(--el-color-danger);
 }
 .o-search__menu-item {
   justify-content: flex-start;

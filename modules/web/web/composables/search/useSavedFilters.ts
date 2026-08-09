@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, ref, type Ref } from 'vue';
+import { useAuthStore } from '@/auth/web/stores/auth';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import type { NamedFilter } from '@/web/web/query/types';
 import { filtersToQuery } from '@/web/web/query/utils/condition/builder';
@@ -14,6 +15,14 @@ export type SavedFavoriteItem = SavedFilterRow & {
 };
 
 function actorUserId(): string {
+  try {
+    // Browser SPA: identity lives on the auth store, not $choysum.request.context.
+    const auth = useAuthStore();
+    const fromStore = String((auth.currentUser as any)?.Id || (auth.identity as any)?.userId || '').trim();
+    if (fromStore) return fromStore;
+  } catch {
+    // Auth store unavailable (unit harness / early boot).
+  }
   try {
     const id = (globalThis as any)?.$choysum?.request?.context?.identity?.userId;
     return String(id || '').trim();
@@ -127,22 +136,28 @@ export function useSavedFilters(params: {
 
     const conditionGroups = Array.isArray(filtersRef.value) ? filtersRef.value : [];
     const keyword = keywordRef?.value?.trim() || undefined;
-    const condition = filtersToQuery(conditionGroups as any, keyword) ?? {};
+    const fieldsMeta = (store as any)?.fieldsMetadata as Record<string, any> | undefined;
+    const keywordFields = ((store as any)?.state?.queryState?.keywordFields || undefined) as string[] | undefined;
+    const condition = filtersToQuery(conditionGroups as any, keyword, keywordFields, fieldsMeta) ?? {};
 
     const me = actorUserId();
     const sf = savedFilterStore() as any;
-    const created = await sf.Create(
-      {
-        Name: name,
-        Application: app,
-        ModelName: model,
-        Condition: condition,
-        IsDefault: !!opts.isDefault,
-        UserId: opts.shared ? null : me || null,
-        Active: true,
-      },
-      ['Id', 'Name', 'Condition', 'IsDefault', 'UserId', 'CreateUid']
-    );
+    // Private: omit UserId so the service defaults to the actor (avoids empty→shared).
+    // Shared: explicit null.
+    const values: Record<string, any> = {
+      Name: name,
+      Application: app,
+      ModelName: model,
+      Condition: condition,
+      IsDefault: !!opts.isDefault,
+      Active: true,
+    };
+    if (opts.shared) {
+      values.UserId = null;
+    } else if (me) {
+      values.UserId = me;
+    }
+    const created = await sf.Create(values, ['Id', 'Name', 'Condition', 'IsDefault', 'UserId', 'CreateUid']);
     await load();
     return {
       ...(created as any),

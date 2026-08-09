@@ -21,6 +21,7 @@ import { getRuntimeRepository } from '../runtime_repository_facade';
 import { markProxyKind } from '../proxy/brand';
 import { createForbiddenPersistenceMethodStub, isDraftForbiddenPersistenceMethod } from '../proxy/draftPersistenceGuards';
 import type { ObjectRecord } from '../../../utils/types';
+import { ChoysumError } from '@/core/service/error';
 import { _t } from '@/core/service/i18n_binder';
 
 type ReferenceModelMeta = Pick<FieldMetadata, 'relation'>;
@@ -564,6 +565,8 @@ export class ValidationEngine {
         try {
           await executor(self, ctx);
         } catch (error) {
+          // Preserve domain/status-bearing errors from constraints (e.g. AlreadyExists).
+          if (error instanceof ChoysumError) throw error;
           if (error instanceof ValidationPipelineError) {
             issues.push(...error.issues);
             continue;
@@ -613,6 +616,8 @@ export class ValidationEngine {
           }
         }
       } catch (error) {
+        // Preserve domain/status-bearing errors from constraints (e.g. AlreadyExists).
+        if (error instanceof ChoysumError) throw error;
         if (error instanceof ValidationPipelineError) {
           issues.push(...error.issues);
           continue;

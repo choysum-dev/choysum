@@ -57,12 +57,14 @@ test('case1 starts with default identity then clears it', () => {
   if (jsCtx.ctx.activeCompanyId !== 'co-1') throw new Error('missing default company');
   jsCtx.identity = {};
   jsCtx.ctx = {};
+  jsCtx.req.depth = 7;
 });
 
 test('case2 restores default identity after prior clear', () => {
   const jsCtx = globalThis.$choysum.request.context;
   if (jsCtx.identity.userId !== 'admin-1') throw new Error('userId not restored');
   if (jsCtx.ctx.activeCompanyId !== 'co-1') throw new Error('company not restored');
+  if (jsCtx.req.depth !== 0) throw new Error('depth not reset, got ' + jsCtx.req.depth);
 });
 
 (async () => {

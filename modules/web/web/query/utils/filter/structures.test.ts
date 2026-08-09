@@ -62,6 +62,16 @@ describe('filter structures helpers', () => {
     expect(named[0].name).toBe('Active');
     expect((named[0].children[0] as any).field).toBe('Active');
 
+    const nested = toFilters({
+      name: 'Multi',
+      query: { And: [['Active', '=', true], { Or: [['Name', 'ilike', '%a%'], ['Code', '=', 'x']] }] },
+    } as any);
+    expect(nested).toHaveLength(1);
+    expect(nested[0].name).toBe('Multi');
+    expect(nested[0].logic).toBe('And');
+    expect(nested[0].children).toHaveLength(2);
+    expect(isGroup(nested[0].children[1])).toBe(true);
+
     const group = createFilter('Or', [createCondition('Code', '=', 'x')]);
     expect(toFilters(group)[0]).toBe(group);
     expect(toFilters({ name: '', query: ['A', '=', 1] } as any)).toEqual([]);

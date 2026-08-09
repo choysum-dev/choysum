@@ -150,6 +150,17 @@ export default class SavedFilter extends BaseModel {
   }
 
   /**
+   * Owner may be null (shared) or the current actor. Other user ids are rejected.
+   */
+  private static _normalizeOwnerUserId(raw: unknown, actor: string): string | null {
+    if (raw == null || raw === '') return null;
+    const id = String(raw).trim();
+    if (!id) return null;
+    if (id === actor) return actor;
+    this._fail('PermissionDenied', _t('Cannot assign a favorite to another user', { scope: SCOPE }), GrpcCode.PermissionDenied);
+  }
+
+  /**
    * Clear other IsDefault rows under sudo so Record rules do not block the mutex.
    */
   private static async _clearOtherDefaults(app: string, modelName: string, userId: string | null, exceptId?: string): Promise<void> {
@@ -241,10 +252,8 @@ export default class SavedFilter extends BaseModel {
       const touchedUserId = Object.prototype.hasOwnProperty.call(values, 'UserId');
       if (!touchedUserId) {
         values.UserId = actor;
-      } else if (values.UserId == null || values.UserId === '') {
-        values.UserId = null;
       } else {
-        values.UserId = String(values.UserId).trim();
+        values.UserId = SavedFilter._normalizeOwnerUserId(values.UserId, actor);
       }
       if (values.IsDefault == null) values.IsDefault = false;
       if (values.Active == null) values.Active = true;
@@ -253,8 +262,7 @@ export default class SavedFilter extends BaseModel {
       // CreateUid is immutable.
       values.CreateUid = String((ctx.current as any)?.CreateUid || SavedFilter._mergedField(self, ctx, 'CreateUid') || '').trim();
       if (Object.prototype.hasOwnProperty.call(values, 'UserId')) {
-        if (values.UserId === '' || values.UserId == null) values.UserId = null;
-        else values.UserId = String(values.UserId).trim();
+        values.UserId = SavedFilter._normalizeOwnerUserId(values.UserId, actor);
       }
     }
 

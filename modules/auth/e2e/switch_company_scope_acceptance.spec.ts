@@ -310,7 +310,9 @@ async function discoverTwoCompanyIdsByUISwitch(page: any): Promise<{ a: string; 
     .poll(
       async () => {
         const after = await readAuthTokens(page);
-        return extractCompanyScopeFromToken(after.accessToken).activeCompanyId;
+        const next = extractCompanyScopeFromToken(after.accessToken).activeCompanyId;
+        // Ignore empty IDs from mid-refresh token reads.
+        return next && next !== scopeA.activeCompanyId ? next : scopeA.activeCompanyId;
       },
       { timeout: 30_000 }
     )

@@ -70,7 +70,7 @@ function pickEffectiveAmong(rows: any[]): any {
  */
 export async function resolveEffectiveModelId(appName: string, modelName: string): Promise<string> {
   const hit = await resolveEffectiveModelRow(appName, modelName, ['Id', 'ModuleId', 'UpdatedAt']);
-  return String(hit?.Id || '').trim();
+  return rowId(hit);
 }
 
 /**
@@ -94,7 +94,10 @@ export async function resolveEffectiveModelRow(
       } as any,
       {
         fields: selectedFields,
-        orderBy: { field: 'UpdatedAt', order: 'desc' },
+        orderBy: [
+          { field: 'UpdatedAt', order: 'desc' },
+          { field: 'Id', order: 'desc' },
+        ],
         limit: pageSize,
         offset,
       } as any

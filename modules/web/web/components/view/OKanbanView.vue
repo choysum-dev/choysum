@@ -441,12 +441,11 @@ async function handleCreate() {
   }
 }
 
-// Search and pagination — apply first-frame defaults (do not swallow OSearchView emit).
+// Search and pagination — first-frame load comes from OSearchView query-update when searchView is set.
 function onSearch(payload: QueryUpdatePayload<T>) {
   emit('search-change');
   lastSearchPayload.value = payload;
   if (payload) {
-    if (!firstApplied.value) firstApplied.value = true;
     awaitFieldSelection(store, { requireNonEmpty: true }).then(() => {
       controller
         .apply({
@@ -488,11 +487,14 @@ function emitCardClick(rr: RecordRow) {
 // Normalize and merge forced conditions
 // Merge helpers and debug output were removed; the view layer now passes only the forced condition
 
-// First-frame load
+// First-frame load: when searchView is present, wait for its query-update (includes SavedFilter defaults).
 onMounted(async () => {
   await nextTick();
   if (props.orderBy !== undefined) {
     (store.state as any).orderBy = props.orderBy as any;
+  }
+  if (props.searchView) {
+    return;
   }
   // laneLoadLimit injection has been removed; queryState.pagination controls loading consistently
   await awaitFieldSelection(store, { requireNonEmpty: true });
@@ -505,7 +507,6 @@ onMounted(async () => {
   });
   await nextTick();
   await preloadInitialLanes();
-  firstApplied.value = true;
 });
 
 // Watch dynamic forcedCondition changes
@@ -531,8 +532,6 @@ watch(
 );
 
 const boardWrapRef = ref<HTMLElement | null>(null);
-// Avoid running apply twice from initial mounted plus the initial OSearch trigger
-const firstApplied = ref(false);
 
 // Latest search payload (keyword / appliedFilters / appliedGroups)
 const lastSearchPayload = ref<QueryUpdatePayload<T> | null>(null);

@@ -119,25 +119,20 @@ function toErr(err: any): { domain?: string; code?: string } | null {
   return null;
 }
 
-function errorBlob(err: any): string {
-  const parts: string[] = [];
+function collectErrorCodes(err: any): string[] {
+  const codes: string[] = [];
   const visited = new Set<any>();
   const queue: any[] = [err];
   while (queue.length) {
     const cur = queue.shift();
     if (!cur || visited.has(cur)) continue;
     visited.add(cur);
-    if (typeof cur === 'string') {
-      parts.push(cur);
-      continue;
-    }
-    if (typeof cur.code === 'string') parts.push(cur.code);
-    if (typeof cur.message === 'string') parts.push(cur.message);
+    if (typeof cur.code === 'string' && cur.code) codes.push(cur.code);
     if (Array.isArray(cur.issues)) for (const issue of cur.issues) queue.push(issue);
     if (cur.cause) queue.push(cur.cause);
     if (cur.error) queue.push(cur.error);
   }
-  return parts.join('\n');
+  return codes;
 }
 
 async function expectCode(fn: () => Promise<any>, code: string, messageHint?: string): Promise<void> {
@@ -150,10 +145,13 @@ async function expectCode(fn: () => Promise<any>, code: string, messageHint?: st
   expect(caught, `expected error ${code}, got nothing`).toBeTruthy();
   const oe = toErr(caught);
   if (oe?.code === code) return;
-  const blob = errorBlob(caught);
-  if (blob.includes(code)) return;
-  if (messageHint && blob.includes(messageHint)) return;
-  expect(false, `expected error ${code}${messageHint ? ` (hint=${messageHint})` : ''}, got ${blob}`).toBe(true);
+  const codes = collectErrorCodes(caught);
+  if (codes.includes(code)) return;
+  if (messageHint) {
+    const msg = String((caught as any)?.message || '');
+    if (msg.includes(messageHint)) return;
+  }
+  expect(false, `expected error ${code}${messageHint ? ` (hint=${messageHint})` : ''}, got codes=${codes.join(',')}`).toBe(true);
 }
 
 function metaModel(): any {
@@ -328,6 +326,63 @@ test('SavedFilter rejects Create without effective MetaModel', async () => {
     'FailedPrecondition',
     'No effective model'
   );
+});
+
+test('SavedFilter rejects foreign UserId on Create', async () => {
+  resetRequestContext();
+  const actor = uid('sf_owner');
+  const other = uid('sf_victim');
+  setIdentity(actor);
+  await expectCode(
+    async () =>
+      SavedFilter.Create(
+        {
+          Name: uid('steal'),
+          Application: 'web',
+          ModelName: 'SavedFilter',
+          Condition: {},
+          UserId: other,
+        } as any,
+        ['Id'] as any
+      ),
+    'PermissionDenied',
+    'another user'
+  );
+});
+
+test('SavedFilter private and shared IsDefault can coexist', async () => {
+  resetRequestContext();
+  const actor = uid('sf_bucket');
+  setIdentity(actor);
+  const privateName = uid('priv_def');
+  const sharedName = uid('shared_def');
+  const priv = await SavedFilter.Create(
+    {
+      Name: privateName,
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      Condition: {},
+      IsDefault: true,
+    } as any,
+    ['Id', 'IsDefault', 'UserId'] as any
+  );
+  const shared = await SavedFilter.Create(
+    {
+      Name: sharedName,
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      Condition: {},
+      UserId: null,
+      IsDefault: true,
+    } as any,
+    ['Id', 'IsDefault', 'UserId'] as any
+  );
+  expect((priv as any).IsDefault).toBe(true);
+  expect((shared as any).IsDefault).toBe(true);
+  const privAgain = await SavedFilter.Browse(String((priv as any).Id), ['IsDefault'] as any);
+  expect((privAgain as any).IsDefault).toBe(true);
+  await SavedFilter.DeleteById(String((priv as any).Id));
+  await SavedFilter.DeleteById(String((shared as any).Id));
 });
 
 test('web bootstrap seeds SavedFilter Record rules', async () => {

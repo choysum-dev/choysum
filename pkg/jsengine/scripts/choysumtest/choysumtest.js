@@ -461,7 +461,7 @@
     jsCtx.identity.userId = defaults.userId;
     jsCtx.ctx.activeCompanyId = defaults.companyId;
     jsCtx.ctx.enabledCompanyIds = [defaults.companyId];
-    if (typeof jsCtx.req.depth !== 'number') jsCtx.req.depth = 0;
+    jsCtx.req.depth = 0;
     try {
       delete jsCtx[CTX_FROZEN_KEY];
       delete jsCtx[CTX_OVERRIDE_KEY];
