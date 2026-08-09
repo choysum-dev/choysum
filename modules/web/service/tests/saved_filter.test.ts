@@ -450,3 +450,236 @@ test('SF11: shared write/delete only for creator via Record rules', async () => 
   const deleted = await SavedFilter.DeleteById(String((shared as any).Id));
   expect(deleted).toBe(1);
 });
+
+test('SavedFilter rejects Create without authentication', async () => {
+  resetRequestContext();
+  setIdentity(undefined);
+  await expectCode(
+    async () =>
+      SavedFilter.Create(
+        {
+          Name: uid('anon'),
+          Application: 'web',
+          ModelName: 'SavedFilter',
+          Condition: {},
+        } as any,
+        ['Id'] as any
+      ),
+    'PermissionDenied',
+    'Authentication required'
+  );
+});
+
+test('SavedFilter rejects duplicate Name in the same ownership bucket', async () => {
+  resetRequestContext();
+  const actor = uid('sf_dup');
+  setIdentity(actor);
+  const name = uid('same_name');
+  const first = await SavedFilter.Create(
+    {
+      Name: name,
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      Condition: {},
+    } as any,
+    ['Id'] as any
+  );
+  await expectCode(
+    async () =>
+      SavedFilter.Create(
+        {
+          Name: name,
+          Application: 'web',
+          ModelName: 'SavedFilter',
+          Condition: {},
+        } as any,
+        ['Id'] as any
+      ),
+    'AlreadyExists',
+    'already exists'
+  );
+  await SavedFilter.DeleteById(String((first as any).Id));
+});
+
+test('SavedFilter fills Create defaults (UserId/IsDefault/Active/Condition)', async () => {
+  resetRequestContext();
+  const actor = uid('sf_defaults');
+  setIdentity(actor);
+  const created = await SavedFilter.Create(
+    {
+      Name: uid('fills'),
+      Application: 'web',
+      ModelName: 'SavedFilter',
+    } as any,
+    ['Id', 'UserId', 'IsDefault', 'Active', 'Condition', 'CreateUid'] as any
+  );
+  expect(String((created as any).UserId)).toBe(actor);
+  expect((created as any).IsDefault).toBe(false);
+  expect((created as any).Active).toBe(true);
+  expect((created as any).Condition || {}).toEqual({});
+  expect(String((created as any).CreateUid)).toBe(actor);
+  await SavedFilter.DeleteById(String((created as any).Id));
+});
+
+test('SavedFilter Update keeps CreateUid immutable and normalizes UserId', async () => {
+  resetRequestContext();
+  const actor = uid('sf_upd');
+  setIdentity(actor);
+  const created = await SavedFilter.Create(
+    {
+      Name: uid('upd'),
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      Condition: {},
+    } as any,
+    ['Id', 'CreateUid', 'UserId'] as any
+  );
+  const createUid = String((created as any).CreateUid);
+  const updated = await SavedFilter.UpdateById(
+    String((created as any).Id),
+    { CreateUid: uid('hijack_uid'), UserId: '' } as any,
+    ['Id', 'CreateUid', 'UserId'] as any
+  );
+  expect(String((updated as any).CreateUid)).toBe(createUid);
+  expect((updated as any).UserId == null || (updated as any).UserId === '').toBe(true);
+
+  await expectCode(
+    async () =>
+      SavedFilter.UpdateById(String((created as any).Id), { UserId: uid('other') } as any, ['Id'] as any),
+    'PermissionDenied',
+    'another user'
+  );
+  await SavedFilter.DeleteById(String((created as any).Id));
+});
+
+test('SavedFilter private IsDefault update clears other defaults with exceptId', async () => {
+  resetRequestContext();
+  const actor = uid('sf_except');
+  setIdentity(actor);
+  const a = await SavedFilter.Create(
+    {
+      Name: uid('def_a'),
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      Condition: {},
+      IsDefault: true,
+    } as any,
+    ['Id', 'IsDefault'] as any
+  );
+  const b = await SavedFilter.Create(
+    {
+      Name: uid('def_b'),
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      Condition: {},
+      IsDefault: false,
+    } as any,
+    ['Id', 'IsDefault'] as any
+  );
+  await SavedFilter.UpdateById(String((b as any).Id), { IsDefault: true } as any, ['Id', 'IsDefault'] as any);
+  const aAgain = await SavedFilter.Browse(String((a as any).Id), ['IsDefault'] as any);
+  expect((aAgain as any).IsDefault).toBe(false);
+  await SavedFilter.DeleteById(String((a as any).Id));
+  await SavedFilter.DeleteById(String((b as any).Id));
+});
+
+test('SavedFilter rejects Create missing Name/Application/ModelName', async () => {
+  resetRequestContext();
+  setIdentity(uid('sf_req'));
+  await expectCode(
+    async () =>
+      SavedFilter.Create(
+        {
+          Name: '',
+          Application: 'web',
+          ModelName: 'SavedFilter',
+          Condition: {},
+        } as any,
+        ['Id'] as any
+      ),
+    'InvalidArgument',
+    'required'
+  );
+});
+
+test('SavedFilter Update reads unchanged fields from current via mergedField', async () => {
+  resetRequestContext();
+  const actor = uid('sf_merged');
+  setIdentity(actor);
+  const created = await SavedFilter.Create(
+    {
+      Name: uid('merged'),
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      Condition: { And: [['A', '=', 1]] },
+      Active: true,
+    } as any,
+    ['Id', 'Name', 'Condition'] as any
+  );
+  // Touch only Active so Name/Application/ModelName resolve from current.
+  const updated = await SavedFilter.UpdateById(
+    String((created as any).Id),
+    { Active: false } as any,
+    ['Id', 'Name', 'Active', 'Application', 'ModelName'] as any
+  );
+  expect(String((updated as any).Name)).toBe(String((created as any).Name));
+  expect((updated as any).Active).toBe(false);
+  await SavedFilter.DeleteById(String((created as any).Id));
+});
+
+test('SavedFilter shared-default clear PermissionDenied when stranger cannot replace', async () => {
+  resetRequestContext();
+  const companyId = await resolveAdminCompanyId();
+  const creator = await createBaseUser(companyId);
+  const stranger = await createBaseUser(companyId);
+
+  setIdentity(creator);
+  const shared = await SavedFilter.Create(
+    {
+      Name: uid('shared_def_owner'),
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      Condition: {},
+      UserId: null,
+      IsDefault: true,
+    } as any,
+    ['Id', 'CreateUid', 'IsDefault'] as any
+  );
+  expect((shared as any).IsDefault).toBe(true);
+
+  disableAllowlist();
+  delete (ensureRequestContext() as any)[RR_CACHE_KEY];
+
+  setIdentity(stranger);
+  let caught: any;
+  try {
+    await SavedFilter.Create(
+      {
+        Name: uid('shared_def_stranger'),
+        Application: 'web',
+        ModelName: 'SavedFilter',
+        Condition: {},
+        UserId: null,
+        IsDefault: true,
+      } as any,
+      ['Id'] as any
+    );
+  } catch (e) {
+    caught = e;
+  }
+  expect(caught, 'expected shared-default replacement to fail').toBeTruthy();
+  const codes = collectErrorCodes(caught);
+  const msg = String((caught as any)?.message || '');
+  const ok =
+    codes.includes('PermissionDenied') ||
+    codes.includes('record_rule_violation') ||
+    msg.includes("another user's shared default") ||
+    msg.includes('record_rule');
+  expect(ok, `expected PermissionDenied or record-rule denial, got codes=${codes.join(',')} msg=${msg}`).toBe(true);
+
+  // Creator's shared default must remain the sole default.
+  setIdentity(creator);
+  const again = await SavedFilter.Browse(String((shared as any).Id), ['IsDefault'] as any);
+  expect((again as any).IsDefault).toBe(true);
+  await SavedFilter.DeleteById(String((shared as any).Id));
+});

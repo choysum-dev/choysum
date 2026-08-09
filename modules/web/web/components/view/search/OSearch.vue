@@ -184,7 +184,13 @@ SPDX-License-Identifier: Apache-2.0
       />
     </el-dialog>
 
-    <el-dialog v-model="saveFavoriteOpen" :title="_t('Save current filters')" append-to-body destroy-on-close width="420px">
+    <el-dialog
+      v-model="saveFavoriteOpen"
+      :title="saveFavoriteDialogTitle"
+      append-to-body
+      destroy-on-close
+      width="420px"
+    >
       <el-form label-position="top" @submit.prevent>
         <el-form-item :label="_t('Name')">
           <el-input v-model="saveFavoriteName" :placeholder="_t('Favorite name')" @keydown.enter.prevent="onConfirmSaveFavorite" />
@@ -357,6 +363,7 @@ const saveFavoriteName = ref('');
 const saveFavoriteIsDefault = ref(false);
 const saveFavoriteShared = ref(false);
 const saveFavoriteSaving = ref(false);
+const saveFavoriteDialogTitle = computed(() => _t('Save current filters'));
 
 function onApplyFavorite(it: { name: string; filter: any }) {
   const before = filters.value.length;

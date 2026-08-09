@@ -1,0 +1,149 @@
+// @vitest-environment happy-dom
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+import { defineComponent, h, reactive, ref } from 'vue';
+import { mount, flushPromises } from '@vue/test-utils';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const { applyMock, preloadLaneMock, awaitFieldSelectionMock, deferState } = vi.hoisted(() => ({
+  applyMock: vi.fn(async () => {}),
+  preloadLaneMock: vi.fn(async () => {}),
+  awaitFieldSelectionMock: vi.fn(async () => {}),
+  deferState: { defer: false },
+}));
+
+vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }));
+
+vi.mock('@/web/web/controllers/kanbanController', () => ({
+  createKanbanController: vi.fn(() => ({
+    vm: reactive({
+      result: { kind: 'search', total: 0, rows: [] },
+    }),
+    lanes: ref([]),
+    laneRecords: ref({}),
+    apply: applyMock,
+    paginate: vi.fn(async () => {}),
+    getLaneField: () => null,
+    getLaneRemain: () => 0,
+    preloadLane: preloadLaneMock,
+    loadMoreLane: vi.fn(async () => {}),
+  })),
+}));
+
+vi.mock('@/web/web/query/utils/registry/fieldReady', () => ({
+  awaitFieldSelection: (...args: any[]) => awaitFieldSelectionMock(...args),
+}));
+
+vi.mock('@/web/web/components/view/kanbanFirstFrame', () => ({
+  shouldDeferKanbanFirstFrame: () => deferState.defer,
+}));
+
+vi.mock('@/web/web/i18n', async () => {
+  const actual = await vi.importActual<typeof import('@/web/web/i18n')>('@/web/web/i18n');
+  return {
+    ...actual,
+    createTranslate: () => ({ _t: (msg: string) => msg }),
+  };
+});
+
+vi.mock('element-plus', async () => {
+  const actual = await vi.importActual<any>('element-plus');
+  return {
+    ...actual,
+    ElMessage: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
+  };
+});
+
+vi.mock('vuedraggable', () => ({
+  default: defineComponent({
+    name: 'DraggableStub',
+    setup(_, { slots }) {
+      return () => h('div', { class: 'draggable-stub' }, slots.item?.({ element: { key: '1', payload: { Id: '1' } }, index: 0 }));
+    },
+  }),
+}));
+
+import OKanbanView from './OKanbanView.vue';
+
+function makeStore() {
+  return {
+    fieldsMetadata: {},
+    state: {
+      queryState: {
+        keyword: '',
+        appliedFilters: [],
+        appliedGroups: [],
+        keywordFields: [],
+        pagination: { limit: 20, offset: 0 },
+      },
+      result: { total: 0 },
+      orderBy: undefined,
+    },
+  } as any;
+}
+
+const stubs = {
+  OViewContainer: {
+    template: `<div class="ovc"><slot name="header" /><slot /><slot name="fields" /></div>`,
+  },
+  OPagination: true,
+  'el-button': true,
+  'el-icon': true,
+  OSearchView: true,
+};
+
+describe('OKanbanView first-frame load', () => {
+  beforeEach(() => {
+    applyMock.mockClear();
+    preloadLaneMock.mockClear();
+    awaitFieldSelectionMock.mockClear();
+    deferState.defer = false;
+  });
+
+  it('skips mount apply when first-frame should defer to OSearchView', async () => {
+    deferState.defer = true;
+    const SearchStub = defineComponent({
+      name: 'SearchStub',
+      setup() {
+        return () => h('div');
+      },
+    });
+    mount(OKanbanView as any, {
+      props: {
+        store: makeStore(),
+        searchView: SearchStub,
+        showHeader: true,
+        showActions: false,
+        showPaginate: false,
+      },
+      global: { stubs },
+    });
+    await flushPromises();
+    expect(awaitFieldSelectionMock).not.toHaveBeenCalled();
+    expect(applyMock).not.toHaveBeenCalled();
+  });
+
+  it('runs mount apply when first-frame should not defer', async () => {
+    deferState.defer = false;
+    const CustomSearch = defineComponent({
+      name: 'CustomSearch',
+      setup() {
+        return () => h('div', { class: 'custom-search' });
+      },
+    });
+    mount(OKanbanView as any, {
+      props: {
+        store: makeStore(),
+        searchView: CustomSearch,
+        showHeader: true,
+        showActions: false,
+        showPaginate: false,
+      },
+      global: { stubs },
+    });
+    await flushPromises();
+    expect(awaitFieldSelectionMock).toHaveBeenCalled();
+    expect(applyMock).toHaveBeenCalled();
+  });
+});

@@ -631,6 +631,50 @@ func moduleOperationCompletedInfoAttrs(opPlan plan.Plan, duration time.Duration)
 	return attrs
 }
 
+// handleUpgradeEnsureProgress maps ensure/upgrade module progress events to spinner stages.
+// Returns true when the event was handled (caller should skip shared pipeline progress).
+func handleUpgradeEnsureProgress(
+	event pipeline.ProgressEvent,
+	setSpinnerStage func(stage, message string),
+) bool {
+	moduleName := strings.TrimSpace(event.Module)
+	if moduleName == "" {
+		moduleName = "unknown"
+	}
+	switch event.Stage {
+	case pipeline.ProgressStageModuleInstallStarted:
+		if event.Total > 0 && event.Current > 0 {
+			setSpinnerStage("upgrading.ensure", fmt.Sprintf("%s: ensuring modules (%d/%d)", moduleName, event.Current, event.Total))
+			return true
+		}
+		setSpinnerStage("upgrading.ensure", fmt.Sprintf("%s: ensuring module", moduleName))
+		return true
+	case pipeline.ProgressStageModuleInstallFailed:
+		if event.Total > 0 && event.Current > 0 {
+			setSpinnerStage("upgrading.ensure", fmt.Sprintf("%s: failed ensuring module (%d/%d)", moduleName, event.Current, event.Total))
+			return true
+		}
+		setSpinnerStage("upgrading.ensure", fmt.Sprintf("%s: failed ensuring module", moduleName))
+		return true
+	case pipeline.ProgressStageModuleUpgradeStarted:
+		if event.Total > 0 && event.Current > 0 {
+			setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: upgrading modules (%d/%d)", moduleName, event.Current, event.Total))
+			return true
+		}
+		setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: upgrading module", moduleName))
+		return true
+	case pipeline.ProgressStageModuleUpgradeFailed:
+		if event.Total > 0 && event.Current > 0 {
+			setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: failed upgrading module (%d/%d)", moduleName, event.Current, event.Total))
+			return true
+		}
+		setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: failed upgrading module", moduleName))
+		return true
+	default:
+		return false
+	}
+}
+
 func handlePipelineSharedProgress(
 	event pipeline.ProgressEvent,
 	rootModuleName string,
@@ -1543,38 +1587,10 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 		err = pipeline.Execute(stageCtx, plan, mod, pipeline.Callbacks{
 			Logger: logger,
 			OnProgress: func(event pipeline.ProgressEvent) {
-				moduleName := strings.TrimSpace(event.Module)
-				if moduleName == "" {
-					moduleName = "unknown"
+				if handleUpgradeEnsureProgress(event, setSpinnerStage) {
+					return
 				}
-				switch event.Stage {
-				case pipeline.ProgressStageModuleInstallStarted:
-					if event.Total > 0 && event.Current > 0 {
-						setSpinnerStage("upgrading.ensure", fmt.Sprintf("%s: ensuring modules (%d/%d)", moduleName, event.Current, event.Total))
-						return
-					}
-					setSpinnerStage("upgrading.ensure", fmt.Sprintf("%s: ensuring module", moduleName))
-				case pipeline.ProgressStageModuleInstallFailed:
-					if event.Total > 0 && event.Current > 0 {
-						setSpinnerStage("upgrading.ensure", fmt.Sprintf("%s: failed ensuring module (%d/%d)", moduleName, event.Current, event.Total))
-						return
-					}
-					setSpinnerStage("upgrading.ensure", fmt.Sprintf("%s: failed ensuring module", moduleName))
-				case pipeline.ProgressStageModuleUpgradeStarted:
-					if event.Total > 0 && event.Current > 0 {
-						setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: upgrading modules (%d/%d)", moduleName, event.Current, event.Total))
-						return
-					}
-					setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: upgrading module", moduleName))
-				case pipeline.ProgressStageModuleUpgradeFailed:
-					if event.Total > 0 && event.Current > 0 {
-						setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: failed upgrading module (%d/%d)", moduleName, event.Current, event.Total))
-						return
-					}
-					setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: failed upgrading module", moduleName))
-				default:
-					_ = handlePipelineSharedProgress(event, rootModuleName, len(plan.AffectedApps), setSpinnerStage)
-				}
+				_ = handlePipelineSharedProgress(event, rootModuleName, len(plan.AffectedApps), setSpinnerStage)
 			},
 			ResolveInstallModuleFromOrigin: m.resolveInstallModuleFromOrigin,
 			ResolveInstalledModule:         m.Load,

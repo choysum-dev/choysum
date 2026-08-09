@@ -5,6 +5,7 @@ package lifecycle
 
 import (
 	"database/sql"
+	"strings"
 	"testing"
 
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
@@ -200,5 +201,78 @@ func TestModuleUninstallerSavedFilterMissingTableNoOp(t *testing.T) {
 	}
 	if err := uninstaller.cleanModels(); err != nil {
 		t.Fatalf("cleanModels() with missing web_saved_filter should no-op, got %v", err)
+	}
+}
+
+func TestPurgeSavedFiltersForGoneModelsGuards(t *testing.T) {
+	if err := purgeSavedFiltersForGoneModels(nil, []modmeta.LogicalKey{{Application: "a", Name: "B"}}); err != nil {
+		t.Fatalf("nil db: %v", err)
+	}
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := purgeSavedFiltersForGoneModels(db, nil); err != nil {
+		t.Fatalf("empty keys: %v", err)
+	}
+	ensureWebSavedFilterTable(t, db)
+	if err := purgeSavedFiltersForGoneModels(db, []modmeta.LogicalKey{
+		{},
+		{Application: " ", Name: "Item"},
+		{Application: "demo", Name: " "},
+		{Application: "demo", Name: "Item"},
+		{Application: "demo", Name: "Item"}, // duplicate
+	}); err != nil {
+		t.Fatalf("invalid/dup keys: %v", err)
+	}
+}
+
+func TestPurgeSavedFiltersCountError(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	ensureWebSavedFilterTable(t, db)
+	// Keep web_saved_filter visible to HasTable, but break meta_model Count.
+	if err := db.Migrator().DropTable(&meta.Model{}); err != nil {
+		t.Fatalf("drop meta_model: %v", err)
+	}
+	err := purgeSavedFiltersForGoneModels(db, []modmeta.LogicalKey{{Application: "demo", Name: "Item"}})
+	if err == nil || !strings.Contains(err.Error(), "error counting surviving meta models for saved filter purge") {
+		t.Fatalf("error=%v", err)
+	}
+}
+
+func TestPurgeSavedFiltersDeleteError(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
+		t.Fatalf("AutoMigrate: %v", err)
+	}
+	ensureWebSavedFilterTable(t, db)
+	if err := db.Exec(`INSERT INTO web_saved_filter(id, application, model_name, name) VALUES ('1','demo','Item','x')`).Error; err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+	if err := db.Exec(`CREATE TRIGGER deny_sf_delete BEFORE DELETE ON web_saved_filter BEGIN SELECT RAISE(ABORT, 'deny delete'); END`).Error; err != nil {
+		t.Fatalf("create trigger: %v", err)
+	}
+	err := purgeSavedFiltersForGoneModels(db, []modmeta.LogicalKey{{Application: "demo", Name: "Item"}})
+	if err == nil || !strings.Contains(err.Error(), "error deleting web saved filters") {
+		t.Fatalf("error=%v, want delete wrap", err)
+	}
+}
+
+func TestApplySavedFilterPurgePropagatesError(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	ensureWebSavedFilterTable(t, db)
+	if err := db.Migrator().DropTable(&meta.Model{}); err != nil {
+		t.Fatalf("drop meta_model: %v", err)
+	}
+	err := applySavedFilterPurge(db, []modmeta.LogicalKey{{Application: "demo", Name: "Item"}})
+	if err == nil || !strings.Contains(err.Error(), "error counting surviving meta models for saved filter purge") {
+		t.Fatalf("error=%v", err)
+	}
+}
+
+func TestApplySavedFilterPurgeOK(t *testing.T) {
+	if err := applySavedFilterPurge(nil, nil); err != nil {
+		t.Fatalf("nil args: %v", err)
 	}
 }

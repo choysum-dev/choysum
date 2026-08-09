@@ -155,6 +155,7 @@ import { ElMessage } from 'element-plus';
 import draggable from 'vuedraggable';
 import { provide, defineComponent, reactive } from 'vue';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
+import { shouldDeferKanbanFirstFrame } from '@/web/web/components/view/kanbanFirstFrame';
 import { createTranslate } from '@/web/web/i18n';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/OKanbanView' });
@@ -495,7 +496,7 @@ onMounted(async () => {
   }
   // Only OSearchView guarantees a mount-time query-update with SavedFilter defaults.
   // Custom SearchViewComponent implementations may never emit; keep the mount apply.
-  if (props.searchView === OSearchView) {
+  if (shouldDeferKanbanFirstFrame(props.searchView, OSearchView)) {
     return;
   }
   // laneLoadLimit injection has been removed; queryState.pagination controls loading consistently

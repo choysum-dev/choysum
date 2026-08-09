@@ -128,6 +128,19 @@ func moduleOrderContains(order []string, name string) bool {
 	return false
 }
 
+// filterEnsureModuleNames trims and drops blank entries before EnsureOrder Load checks.
+func filterEnsureModuleNames(names []string) []string {
+	out := make([]string, 0, len(names))
+	for _, name := range names {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		out = append(out, name)
+	}
+	return out
+}
+
 func mergeModuleOrder(prefix, suffix []string) []string {
 	seen := map[string]bool{}
 	// Cap separately to avoid CodeQL size-overflow on len(a)+len(b) for make().
@@ -207,11 +220,7 @@ func ensureWebShell(ctx context.Context, op OpType, plan *Plan, r Resolver, addA
 			return fmt.Errorf("resolve web shell dependencies: %w", err)
 		}
 		ensure := make([]string, 0, len(webOrder))
-		for _, name := range webOrder {
-			name = strings.TrimSpace(name)
-			if name == "" {
-				continue
-			}
+		for _, name := range filterEnsureModuleNames(webOrder) {
 			mod, loadErr := r.Load(name)
 			if loadErr != nil {
 				return fmt.Errorf("load module %s for web shell ensure: %w", name, loadErr)

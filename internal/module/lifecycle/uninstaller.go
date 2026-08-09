@@ -109,10 +109,14 @@ func (m *moduleUninstaller) cleanModels() error {
 
 	// SF7: hard-delete web.SavedFilter rows only when a logical model has no remaining
 	// live meta_model after this module's declarations were removed (IMD-safe).
-	if err := purgeSavedFiltersForGoneModels(db.DB, keys); err != nil {
+	return applySavedFilterPurge(db.DB, keys)
+}
+
+// applySavedFilterPurge wraps purgeSavedFiltersForGoneModels so uninstall can surface purge errors.
+func applySavedFilterPurge(db *gorm.DB, keys []modmeta.LogicalKey) error {
+	if err := purgeSavedFiltersForGoneModels(db, keys); err != nil {
 		return err
 	}
-
 	return nil
 }
 

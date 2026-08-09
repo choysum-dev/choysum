@@ -2302,3 +2302,183 @@ func TestSummarizeInfoNames(t *testing.T) {
 		}
 	})
 }
+
+func TestExecuteUpgradeRequiresResolveInstalledModule(t *testing.T) {
+	root := &meta.Module{Name: "partner"}
+	ctx := staging.WithTmpRoot(context.Background(), t.TempDir())
+	err := Execute(ctx, planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"partner"}}, root, Callbacks{
+		Upgrade: func(module *meta.Module) error { return nil },
+	})
+	if err == nil || err.Error() != "ResolveInstalledModule callback is required for upgrade" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestExecuteUpgradeEnsureOrderRequiresCallbacks(t *testing.T) {
+	root := &meta.Module{Name: "partner"}
+	plan := planner.Plan{
+		Op:          planner.OpUpgrade,
+		ModuleOrder: []string{"partner"},
+		EnsureOrder: []string{"web"},
+	}
+	ctx := staging.WithTmpRoot(context.Background(), t.TempDir())
+	resolveInstalled := func(name string) (*meta.Module, error) { return &meta.Module{Name: name}, nil }
+
+	if err := Execute(ctx, plan, root, Callbacks{
+		ResolveInstalledModule: resolveInstalled,
+		Upgrade:                func(module *meta.Module) error { return nil },
+	}); err == nil || err.Error() != "ResolveInstallModuleFromOrigin callback is required when plan.EnsureOrder is non-empty" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if err := Execute(ctx, plan, root, Callbacks{
+		ResolveInstalledModule:         resolveInstalled,
+		Upgrade:                        func(module *meta.Module) error { return nil },
+		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) { return &meta.Module{Name: name}, nil },
+	}); err == nil || err.Error() != "Install callback is required when plan.EnsureOrder is non-empty" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestExecuteUpgradeEnsureOrderInstallsThenUpgrades(t *testing.T) {
+	root := &meta.Module{Name: "partner"}
+	plan := planner.Plan{
+		Op:          planner.OpUpgrade,
+		ModuleOrder: []string{"partner"},
+		EnsureOrder: []string{"auth", "web", "skip-nil"},
+	}
+	var installed []string
+	var upgraded []string
+	var stages []string
+
+	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
+		OnProgress: func(event ProgressEvent) {
+			stages = append(stages, string(event.Stage)+":"+event.Module)
+		},
+		ResolveInstalledModule: func(name string) (*meta.Module, error) { return &meta.Module{Name: name}, nil },
+		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) {
+			if name == "skip-nil" {
+				return nil, nil
+			}
+			if name == "web" {
+				return &meta.Module{Name: ""}, nil // empty Name falls back to ensure key
+			}
+			return &meta.Module{Name: name}, nil
+		},
+		Install: func(module *meta.Module) error {
+			name := strings.TrimSpace(module.Name)
+			if name == "" {
+				name = "web"
+			}
+			installed = append(installed, name)
+			return nil
+		},
+		Upgrade: func(module *meta.Module) error {
+			upgraded = append(upgraded, module.Name)
+			return nil
+		},
+	})
+	if err != nil {
+		t.Fatalf("Execute error: %v", err)
+	}
+	if len(installed) != 2 || installed[0] != "auth" || installed[1] != "web" {
+		t.Fatalf("installed=%v, want [auth web]", installed)
+	}
+	if len(upgraded) != 1 || upgraded[0] != "partner" {
+		t.Fatalf("upgraded=%v, want [partner]", upgraded)
+	}
+	joined := strings.Join(stages, ",")
+	if !strings.Contains(joined, string(ProgressStageModuleInstallStarted)+":ensure") {
+		t.Fatalf("expected ensure install started stage, got %v", stages)
+	}
+	if !strings.Contains(joined, string(ProgressStageModuleInstallCompleted)+":auth") {
+		t.Fatalf("expected auth install completed, got %v", stages)
+	}
+}
+
+func TestExecuteUpgradeEnsureOrderResolveAndInstallErrors(t *testing.T) {
+	root := &meta.Module{Name: "partner"}
+	plan := planner.Plan{
+		Op:          planner.OpUpgrade,
+		ModuleOrder: []string{"partner"},
+		EnsureOrder: []string{"web"},
+	}
+	ctx := staging.WithTmpRoot(context.Background(), t.TempDir())
+
+	if err := Execute(ctx, plan, root, Callbacks{
+		ResolveInstalledModule: func(name string) (*meta.Module, error) { return &meta.Module{Name: name}, nil },
+		Upgrade:                func(module *meta.Module) error { return nil },
+		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) {
+			return nil, errors.New("resolve failed")
+		},
+		Install: func(module *meta.Module) error { return nil },
+	}); err == nil || !strings.Contains(err.Error(), "resolve ensure module from origin web") {
+		t.Fatalf("unexpected resolve error: %v", err)
+	}
+
+	var sawFailed bool
+	if err := Execute(ctx, plan, root, Callbacks{
+		OnProgress: func(event ProgressEvent) {
+			if event.Stage == ProgressStageModuleInstallFailed {
+				sawFailed = true
+			}
+		},
+		ResolveInstalledModule: func(name string) (*meta.Module, error) { return &meta.Module{Name: name}, nil },
+		Upgrade:                func(module *meta.Module) error { return nil },
+		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) {
+			return &meta.Module{Name: name}, nil
+		},
+		Install: func(module *meta.Module) error { return errors.New("install failed") },
+	}); err == nil || err.Error() != "install failed" {
+		t.Fatalf("unexpected install error: %v", err)
+	}
+	if !sawFailed {
+		t.Fatal("expected ProgressStageModuleInstallFailed")
+	}
+}
+
+func TestExecuteUpgradeEnsureOrderCanceled(t *testing.T) {
+	root := &meta.Module{Name: "partner"}
+	plan := planner.Plan{
+		Op:          planner.OpUpgrade,
+		ModuleOrder: []string{"partner"},
+		EnsureOrder: []string{"web"},
+	}
+	ctx, cancel := context.WithCancel(staging.WithTmpRoot(context.Background(), t.TempDir()))
+	cancel()
+	err := Execute(ctx, plan, root, Callbacks{
+		ResolveInstalledModule: func(name string) (*meta.Module, error) { return &meta.Module{Name: name}, nil },
+		Upgrade:                func(module *meta.Module) error { return nil },
+		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) {
+			return &meta.Module{Name: name}, nil
+		},
+		Install: func(module *meta.Module) error { return nil },
+	})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected canceled, got %v", err)
+	}
+}
+
+func TestExecuteUpgradeCanceledAfterEnsureOrder(t *testing.T) {
+	root := &meta.Module{Name: "partner"}
+	plan := planner.Plan{
+		Op:          planner.OpUpgrade,
+		ModuleOrder: []string{"partner"},
+		EnsureOrder: []string{"web"},
+	}
+	ctx, cancel := context.WithCancel(staging.WithTmpRoot(context.Background(), t.TempDir()))
+	err := Execute(ctx, plan, root, Callbacks{
+		ResolveInstalledModule: func(name string) (*meta.Module, error) { return &meta.Module{Name: name}, nil },
+		Upgrade:                func(module *meta.Module) error { return nil },
+		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) {
+			return &meta.Module{Name: name}, nil
+		},
+		Install: func(module *meta.Module) error {
+			cancel() // cancel after ensure install, before ModuleOrder upgrade loop
+			return nil
+		},
+	})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected canceled after ensure, got %v", err)
+	}
+}

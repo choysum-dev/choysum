@@ -580,3 +580,303 @@ func TestReportBuildPlanProgress_WithReporter(t *testing.T) {
 		t.Fatalf("steps = %v, want [resolve_dependencies, topological_sort]", steps)
 	}
 }
+
+func TestWithSkipWebShellAndApplyBuildOptions(t *testing.T) {
+	WithSkipWebShell(true)(nil) // nil receiver is a no-op
+
+	opts := applyBuildOptions([]BuildOption{nil, WithSkipWebShell(true), WithSkipWebShell(false)})
+	if opts.SkipWebShell {
+		t.Fatal("last WithSkipWebShell(false) should win")
+	}
+	opts = applyBuildOptions([]BuildOption{WithSkipWebShell(true)})
+	if !opts.SkipWebShell {
+		t.Fatal("expected SkipWebShell=true")
+	}
+}
+
+func TestModuleNeedsWebShellHelpers(t *testing.T) {
+	if moduleNeedsWebShell(nil) {
+		t.Fatal("nil module should not need web shell")
+	}
+	if moduleNeedsWebShell(&meta.Module{Name: "partner"}) {
+		t.Fatal("plain module should not need web shell")
+	}
+	if !moduleNeedsWebShell(&meta.Module{Name: "Web"}) {
+		t.Fatal("name web should need shell")
+	}
+	if !moduleNeedsWebShell(&meta.Module{Name: "x", WebEntryPoint: "web/index.ts"}) {
+		t.Fatal("WebEntryPoint should need shell")
+	}
+}
+
+func TestModuleOrderContainsAndMerge(t *testing.T) {
+	if moduleOrderContains(nil, "") || moduleOrderContains([]string{" a "}, "  ") {
+		t.Fatal("empty name should not match")
+	}
+	if !moduleOrderContains([]string{"core", " web "}, "web") {
+		t.Fatal("expected trimmed match")
+	}
+	got := mergeModuleOrder([]string{"", "web", "auth", "web"}, []string{"auth", "partner", " "})
+	want := []string{"web", "auth", "partner"}
+	if len(got) != len(want) {
+		t.Fatalf("got %v want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("got %v want %v", got, want)
+		}
+	}
+}
+
+func TestEnsureWebShellNilPlan(t *testing.T) {
+	err := ensureWebShell(context.Background(), OpInstall, nil, fakeResolver{}, nil)
+	if err == nil || err.Error() != "plan is nil" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestEnsureWebShellPropagatesResolveWebModuleError(t *testing.T) {
+	err := ensureWebShell(context.Background(), OpInstall, &Plan{}, fakeResolver{
+		load: func(name string) (*meta.Module, error) { return nil, errors.New("boom") },
+	}, nil)
+	if err == nil || !strings.Contains(err.Error(), "load web module for shell plan") {
+		t.Fatalf("error=%v", err)
+	}
+}
+
+func TestResolveWebModuleErrors(t *testing.T) {
+	t.Run("load_error", func(t *testing.T) {
+		_, err := resolveWebModule(context.Background(), fakeResolver{
+			load: func(name string) (*meta.Module, error) { return nil, errors.New("boom") },
+		})
+		if err == nil || !strings.Contains(err.Error(), "load web module for shell plan") {
+			t.Fatalf("error=%v", err)
+		}
+	})
+	t.Run("peek_error", func(t *testing.T) {
+		_, err := resolveWebModule(context.Background(), fakeResolver{
+			load: func(name string) (*meta.Module, error) { return nil, nil },
+			peek: func(ctx context.Context, name string) (*meta.Module, error) {
+				return nil, errors.New("peek boom")
+			},
+		})
+		if err == nil || !strings.Contains(err.Error(), "peek web module for shell plan") {
+			t.Fatalf("error=%v", err)
+		}
+	})
+	t.Run("not_found", func(t *testing.T) {
+		_, err := resolveWebModule(context.Background(), fakeResolver{
+			load: func(name string) (*meta.Module, error) { return nil, nil },
+			peek: func(ctx context.Context, name string) (*meta.Module, error) {
+				return &meta.Module{Name: "  "}, nil
+			},
+		})
+		if err == nil || !strings.Contains(err.Error(), "web shell required") {
+			t.Fatalf("error=%v", err)
+		}
+	})
+	t.Run("load_hit", func(t *testing.T) {
+		got, err := resolveWebModule(context.Background(), fakeResolver{
+			load: func(name string) (*meta.Module, error) {
+				return &meta.Module{Name: "web", Status: meta.Installed}, nil
+			},
+		})
+		if err != nil || got == nil || got.Name != "web" {
+			t.Fatalf("got=%v err=%v", got, err)
+		}
+	})
+}
+
+func TestBuildPlanInstallWebAlreadyInOrder(t *testing.T) {
+	root := &meta.Module{
+		Name:           "web",
+		ApplicationStr: "web",
+		WebEntryPoint:  "web/index.ts",
+		DependsStr:     []byte(`["core"]`),
+	}
+	r := fakeResolver{
+		peek: func(ctx context.Context, name string) (*meta.Module, error) {
+			if name == "core" {
+				return &meta.Module{Name: "core"}, nil
+			}
+			return nil, nil
+		},
+		load: func(name string) (*meta.Module, error) {
+			if name == "web" {
+				return root, nil
+			}
+			return nil, nil
+		},
+	}
+	plan, err := BuildPlan(context.Background(), OpInstall, root, r)
+	if err != nil {
+		t.Fatalf("BuildPlan: %v", err)
+	}
+	if !moduleOrderContains(plan.ModuleOrder, "web") {
+		t.Fatalf("expected web in order: %v", plan.ModuleOrder)
+	}
+}
+
+func TestBuildPlanInstallAlreadyInstalledWebShell(t *testing.T) {
+	root := &meta.Module{
+		Name:           "partner",
+		ApplicationStr: "partner",
+		WebEntryPoint:  "web/index.ts",
+	}
+	r := fakeResolver{
+		peek: func(ctx context.Context, name string) (*meta.Module, error) {
+			if name == "web" {
+				return &meta.Module{Name: "web", WebEntryPoint: "web/index.ts"}, nil
+			}
+			return nil, nil
+		},
+		load: func(name string) (*meta.Module, error) {
+			if name == "web" {
+				return &meta.Module{Name: "web", Status: meta.Installed, WebEntryPoint: "web/index.ts"}, nil
+			}
+			return nil, nil
+		},
+	}
+	plan, err := BuildPlan(context.Background(), OpInstall, root, r)
+	if err != nil {
+		t.Fatalf("BuildPlan: %v", err)
+	}
+	if moduleOrderContains(plan.ModuleOrder, "web") {
+		t.Fatalf("installed web should not be merged into ModuleOrder, got %v", plan.ModuleOrder)
+	}
+	if !plan.NeedsGlobalWebBuild {
+		t.Fatal("expected NeedsGlobalWebBuild")
+	}
+}
+
+func TestBuildPlanInstallWebShellDependencyError(t *testing.T) {
+	root := &meta.Module{
+		Name:           "partner",
+		ApplicationStr: "partner",
+		WebEntryPoint:  "web/index.ts",
+	}
+	r := fakeResolver{
+		peek: func(ctx context.Context, name string) (*meta.Module, error) {
+			if name == "web" {
+				return &meta.Module{Name: "web", DependsStr: []byte(`["auth"]`), WebEntryPoint: "web/index.ts"}, nil
+			}
+			if name == "auth" {
+				return nil, errors.New("peek auth failed")
+			}
+			return nil, nil
+		},
+		load: func(name string) (*meta.Module, error) { return nil, nil },
+	}
+	_, err := BuildPlan(context.Background(), OpInstall, root, r)
+	if err == nil || !strings.Contains(err.Error(), "resolve web shell dependencies") {
+		t.Fatalf("error=%v", err)
+	}
+}
+
+func TestBuildPlanUpgradeAlreadyInstalledWebShell(t *testing.T) {
+	root := &meta.Module{
+		Name:           "partner",
+		ApplicationStr: "partner",
+		WebEntryPoint:  "web/index.ts",
+	}
+	r := fakeResolver{
+		load: func(name string) (*meta.Module, error) {
+			if name == "web" {
+				return &meta.Module{Name: "web", Status: meta.Installed, WebEntryPoint: "web/index.ts"}, nil
+			}
+			return nil, nil
+		},
+	}
+	plan, err := BuildPlan(context.Background(), OpUpgrade, root, r)
+	if err != nil {
+		t.Fatalf("BuildPlan: %v", err)
+	}
+	if len(plan.EnsureOrder) != 0 {
+		t.Fatalf("EnsureOrder=%v, want empty", plan.EnsureOrder)
+	}
+	if !plan.NeedsGlobalWebBuild {
+		t.Fatal("expected NeedsGlobalWebBuild")
+	}
+}
+
+func TestBuildPlanUpgradeEnsureOrderSkipsEmptyNamesAndLoadError(t *testing.T) {
+	root := &meta.Module{
+		Name:           "partner",
+		ApplicationStr: "partner",
+		WebEntryPoint:  "web/index.ts",
+	}
+	t.Run("load_ensure_error", func(t *testing.T) {
+		webLoadCalls := 0
+		r := fakeResolver{
+			peek: func(ctx context.Context, name string) (*meta.Module, error) {
+				if name == "web" {
+					return &meta.Module{Name: "web", WebEntryPoint: "web/index.ts", DependsStr: []byte(`["", "auth"]`)}, nil
+				}
+				if name == "auth" {
+					return &meta.Module{Name: "auth"}, nil
+				}
+				return nil, nil
+			},
+			load: func(name string) (*meta.Module, error) {
+				if name == "web" {
+					webLoadCalls++
+					// Call 1: resolveWebModule (needsGlobalWebBuild Load is skipped when
+					// the root already declares WebEntryPoint). Call 2+: ensure loop.
+					if webLoadCalls >= 2 {
+						return nil, errors.New("load web failed")
+					}
+					return nil, nil
+				}
+				// topo uses Load→nil then Peek for auth; ensure Load(auth) succeeds as installed skip.
+				if name == "auth" {
+					return &meta.Module{Name: "auth", Status: meta.Installed}, nil
+				}
+				return nil, nil
+			},
+		}
+		_, err := BuildPlan(context.Background(), OpUpgrade, root, r)
+		if err == nil || !strings.Contains(err.Error(), "load module web for web shell ensure") {
+			t.Fatalf("error=%v", err)
+		}
+	})
+	t.Run("topo_error", func(t *testing.T) {
+		r := fakeResolver{
+			peek: func(ctx context.Context, name string) (*meta.Module, error) {
+				if name == "web" {
+					return &meta.Module{Name: "web", DependsStr: []byte(`["auth"]`), WebEntryPoint: "web/index.ts"}, nil
+				}
+				return nil, errors.New("peek failed")
+			},
+			load: func(name string) (*meta.Module, error) { return nil, nil },
+		}
+		_, err := BuildPlan(context.Background(), OpUpgrade, root, r)
+		if err == nil || !strings.Contains(err.Error(), "resolve web shell dependencies") {
+			t.Fatalf("error=%v", err)
+		}
+	})
+}
+
+func TestFilterEnsureModuleNames(t *testing.T) {
+	got := filterEnsureModuleNames([]string{"", "  ", "auth", " auth ", "web"})
+	want := []string{"auth", "auth", "web"}
+	if len(got) != len(want) {
+		t.Fatalf("got %v want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("got %v want %v", got, want)
+		}
+	}
+}
+
+func TestEnsureWebShellDefaultOpNoOp(t *testing.T) {
+	plan := &Plan{ModuleOrder: []string{"partner"}}
+	err := ensureWebShell(context.Background(), OpUninstall, plan, fakeResolver{
+		load: func(name string) (*meta.Module, error) {
+			return &meta.Module{Name: "web"}, nil
+		},
+	}, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}

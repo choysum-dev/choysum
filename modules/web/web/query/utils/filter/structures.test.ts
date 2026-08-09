@@ -120,4 +120,34 @@ describe('filter structures helpers', () => {
     expect(arr).toHaveLength(2);
     expect(arr[0].name).toBe('A');
   });
+
+  it('toFilters converts Choysum And/Or trees and skips invalid query shapes', () => {
+    expect(toFilters({ name: 'NullQ', query: null } as any)).toEqual([]);
+    expect(toFilters({ name: 'BadArr', query: ['only', 'two'] } as any)).toEqual([]);
+    expect(toFilters({ name: 'Str', query: 'nope' } as any)).toEqual([]);
+    expect(toFilters({ name: 'EmptyAnd', query: { And: [] } } as any)).toEqual([]);
+    expect(toFilters({ name: 'EmptyOr', query: { Or: [] } } as any)).toEqual([]);
+    expect(toFilters({ name: 'JunkParts', query: { And: [null, 'x', { foo: 1 }] } } as any)).toEqual([]);
+
+    const groupShaped = toFilters({
+      name: 'AlreadyGroup',
+      query: { id: 'g', logic: 'Or', children: [{ id: 'c', field: 'Name', operator: '=', value: 'a' }] },
+    } as any);
+    expect(groupShaped).toHaveLength(1);
+    expect(groupShaped[0].name).toBe('AlreadyGroup');
+    expect(groupShaped[0].logic).toBe('Or');
+
+    const orTree = toFilters({
+      name: 'OrTree',
+      query: { Or: [['A', '=', 1], ['B', '=', 2]] },
+    } as any);
+    expect(orTree[0].logic).toBe('Or');
+    expect(orTree[0].children).toHaveLength(2);
+
+    const nestedMulti = toFilters({
+      name: 'KeepSub',
+      query: { And: [{ And: [['X', '=', 1], ['Y', '=', 2]] }] },
+    } as any);
+    expect(isGroup(nestedMulti[0].children[0])).toBe(true);
+  });
 });

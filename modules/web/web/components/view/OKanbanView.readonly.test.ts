@@ -19,4 +19,12 @@ describe('OKanbanView laneFieldReadonly (T5.4)', () => {
     expect(src).not.toMatch(/laneFieldReadonly[\s\S]{0,200}getFieldMeta/);
     expect(src).not.toMatch(/laneFieldReadonly[\s\S]{0,200}ensureFieldsGet/);
   });
+
+  it('waits for OSearchView first-frame query-update instead of mount apply', () => {
+    expect(src).toContain('shouldDeferKanbanFirstFrame(props.searchView, OSearchView)');
+    expect(src).toContain('First-frame load: when searchView is present, wait for its query-update');
+    expect(src).not.toContain('const firstApplied = ref(false)');
+    expect(src).toMatch(/function onSearch\(payload[\s\S]*?lastSearchPayload\.value = payload/);
+    expect(src).not.toMatch(/function onSearch\(payload[\s\S]*?if \(!firstApplied\.value\)/);
+  });
 });
