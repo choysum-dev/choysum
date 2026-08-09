@@ -493,7 +493,9 @@ onMounted(async () => {
   if (props.orderBy !== undefined) {
     (store.state as any).orderBy = props.orderBy as any;
   }
-  if (props.searchView) {
+  // Only OSearchView guarantees a mount-time query-update with SavedFilter defaults.
+  // Custom SearchViewComponent implementations may never emit; keep the mount apply.
+  if (props.searchView === OSearchView) {
     return;
   }
   // laneLoadLimit injection has been removed; queryState.pagination controls loading consistently

@@ -2,34 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, ref, type Ref } from 'vue';
-import { useAuthStore } from '@/auth/web/stores/auth';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import type { NamedFilter } from '@/web/web/query/types';
 import { filtersToQuery } from '@/web/web/query/utils/condition/builder';
+import { actorUserId } from './actorUserId';
 import { mergeSavedFilterDefaults, savedFilterToNamedFilter, type SavedFilterRow } from './savedFilterDefaults';
 
 export type SavedFavoriteItem = SavedFilterRow & {
   Id: string;
   Name: string;
   shared: boolean;
+  createUid: string;
+  canDelete: boolean;
 };
-
-function actorUserId(): string {
-  try {
-    // Browser SPA: identity lives on the auth store, not $choysum.request.context.
-    const auth = useAuthStore();
-    const fromStore = String((auth.currentUser as any)?.Id || (auth.identity as any)?.userId || '').trim();
-    if (fromStore) return fromStore;
-  } catch {
-    // Auth store unavailable (unit harness / early boot).
-  }
-  try {
-    const id = (globalThis as any)?.$choysum?.request?.context?.identity?.userId;
-    return String(id || '').trim();
-  } catch {
-    return '';
-  }
-}
 
 /**
  * Load / apply / save / remove web.SavedFilter favorites for the given view store.
@@ -89,12 +74,19 @@ export function useSavedFilters(params: {
 
       favorites.value = (rows || [])
         .filter(r => r && r.Id && r.Name)
-        .map(r => ({
-          ...(r as any),
-          Id: String(r.Id),
-          Name: String(r.Name),
-          shared: r.UserId == null || r.UserId === '',
-        }));
+        .map(r => {
+          const createUid = String((r as any).CreateUid || '').trim();
+          const shared = r.UserId == null || r.UserId === '';
+          return {
+            ...(r as any),
+            Id: String(r.Id),
+            Name: String(r.Name),
+            shared,
+            createUid,
+            // Private: owner; shared: SF11 creator only.
+            canDelete: shared ? !!me && createUid === me : !!me && String(r.UserId || '').trim() === me,
+          };
+        });
     } catch (e: any) {
       loadError.value = e instanceof Error ? e.message : String(e);
       favorites.value = [];
@@ -120,6 +112,7 @@ export function useSavedFilters(params: {
       name: f.Name,
       shared: f.shared,
       isDefault: !!f.IsDefault,
+      canDelete: !!f.canDelete,
       filter: f.Condition ?? {},
     }))
   );
@@ -159,11 +152,15 @@ export function useSavedFilters(params: {
     }
     const created = await sf.Create(values, ['Id', 'Name', 'Condition', 'IsDefault', 'UserId', 'CreateUid']);
     await load();
+    const createUid = String((created as any).CreateUid || me || '').trim();
+    const shared = (created as any).UserId == null || (created as any).UserId === '';
     return {
       ...(created as any),
       Id: String((created as any).Id),
       Name: String((created as any).Name || name),
-      shared: (created as any).UserId == null || (created as any).UserId === '',
+      shared,
+      createUid,
+      canDelete: true,
     };
   }
 

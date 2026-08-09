@@ -736,7 +736,11 @@ func RunOneAppBackendTests(
 		}
 
 		jsCtx := map[string]interface{}{}
-		if identity, ok := resolveUnitTestDefaultIdentity(ctx, testScope); ok {
+		identity, ok, idErr := resolveUnitTestDefaultIdentity(ctx, testScope)
+		if idErr != nil {
+			return false, xfmt.Errorf("resolve unit test default identity: %w", idErr)
+		}
+		if ok {
 			// When auth is in the install closure, seed bootstrap admin so domain
 			// fixtures are not anonymous-denied by record rules. choysumtest
 			// re-applies this before each case (tests may clear identity).

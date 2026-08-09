@@ -6,6 +6,7 @@ package plan
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -206,6 +207,34 @@ func TestBuildPlanSkipWebShell(t *testing.T) {
 	}
 	if len(plan.EnsureOrder) != 0 {
 		t.Fatalf("expected empty EnsureOrder, got %v", plan.EnsureOrder)
+	}
+}
+
+func TestBuildPlanUninstallDoesNotRequireWebShellOrigin(t *testing.T) {
+	root := &meta.Module{
+		Name:           "partner",
+		ApplicationStr: "partner",
+		WebEntryPoint:  "web/index.ts",
+		Status:         meta.Installed,
+	}
+	r := fakeResolver{
+		load: func(name string) (*meta.Module, error) {
+			if name == "partner" {
+				return root, nil
+			}
+			// web origin intentionally unavailable (e.g. installed with --no-web).
+			return nil, nil
+		},
+		peek: func(ctx context.Context, name string) (*meta.Module, error) {
+			return nil, fmt.Errorf("web shell origin unavailable")
+		},
+	}
+	plan, err := BuildPlan(context.Background(), OpUninstall, root, r)
+	if err != nil {
+		t.Fatalf("BuildPlan(uninstall) should not require web shell, got: %v", err)
+	}
+	if len(plan.EnsureOrder) != 0 {
+		t.Fatalf("expected empty EnsureOrder on uninstall, got %v", plan.EnsureOrder)
 	}
 }
 

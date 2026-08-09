@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/choysum-dev/choysum/internal/module/evolution/hooks"
@@ -126,18 +125,9 @@ func purgeSavedFiltersForGoneModels(db *gorm.DB, keys []modmeta.LogicalKey) erro
 	if db == nil || len(keys) == 0 {
 		return nil
 	}
-	tables, err := db.Migrator().GetTables()
-	if err != nil {
-		return xfmt.Errorf("error listing tables for saved filter purge: %w", err)
-	}
-	hasSavedFilterTable := false
-	for _, name := range tables {
-		if strings.EqualFold(strings.TrimSpace(name), webSavedFilterTable) {
-			hasSavedFilterTable = true
-			break
-		}
-	}
-	if !hasSavedFilterTable {
+	// Prefer HasTable so views (MySQL GetTables) and case-aliased relations are not
+	// mistaken for the concrete web_saved_filter base table used by the DELETE below.
+	if !db.Migrator().HasTable(webSavedFilterTable) {
 		return nil
 	}
 	seen := map[string]struct{}{}

@@ -19,14 +19,14 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts" generic="T extends BaseModel">
 import { computed, onMounted, ref } from 'vue';
 import type { BaseModel } from '@/core/rpc';
-import { useAuthStore } from '@/auth/web/stores/auth';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { ConditionGroup, GroupBySpec, NamedFilter, QueryUpdatePayload } from '@/web/web/query/types';
 import OSearch from '@/web/web/components/view/search/OSearch.vue';
 import { computeInitialAppliedFilters, computeAppliedGroups } from '@/web/web/query/utils/search/initialQueryState';
 import { buildQueryUpdatePayload } from '@/web/web/query/utils/search/payload';
 import { createStoreByModel } from '@/web/web/stores/registry';
-import { mergeSavedFilterDefaults, type SavedFilterRow } from '@/web/web/composables/search/savedFilterDefaults';
+import { actorUserId } from '@/web/web/composables/search/actorUserId';
+import { savedFilterToNamedFilter, type SavedFilterRow } from '@/web/web/composables/search/savedFilterDefaults';
 import { createTranslate } from '@/web/web/i18n';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/OSearchView' });
@@ -72,7 +72,7 @@ const codeDefaultFilters = computed<NamedFilter<T>[]>(() => {
   return Array.isArray(defs) ? defs : [];
 });
 
-/** Server IsDefault winner; re-merged with live code defaults so prop updates stay reactive. */
+/** Server IsDefault winner only (never a code preset); re-merged with live code defaults. */
 const serverDefaultWinner = ref<NamedFilter<T> | null>(null);
 const mergedDefaultFilters = computed(() => {
   const code = codeDefaultFilters.value as NamedFilter<T>[];
@@ -109,36 +109,18 @@ function onQueryUpdate(payload: QueryUpdatePayload<T>) {
   emit('query-update', payload);
 }
 
-function pickServerWinner(defaults: NamedFilter[]): NamedFilter<T> | null {
-  const selected = (defaults || []).find(d => d && (d as any).selected === true);
-  return (selected as NamedFilter<T>) || null;
-}
-
-function onDefaultsReady(defaults: NamedFilter[]) {
-  if (!serverDefaultWinner.value) {
-    serverDefaultWinner.value = pickServerWinner(defaults);
-  }
-}
-
-function actorUserId(): string {
-  try {
-    const auth = useAuthStore();
-    const fromStore = String((auth.currentUser as any)?.Id || (auth.identity as any)?.userId || '').trim();
-    if (fromStore) return fromStore;
-  } catch {
-    // ignore
-  }
-  try {
-    return String((globalThis as any)?.$choysum?.request?.context?.identity?.userId || '').trim();
-  } catch {
-    return '';
-  }
+async function onDefaultsReady(_defaults: NamedFilter[]) {
+  // Refresh after favorite save/delete (and ignore code-only selected presets).
+  await loadServerDefaults();
 }
 
 async function loadServerDefaults(): Promise<void> {
   const app = String((props.store as any)?.application || '').trim();
   const model = String((props.store as any)?.modelName || '').trim();
-  if (!app || !model) return;
+  if (!app || !model) {
+    serverDefaultWinner.value = null;
+    return;
+  }
 
   try {
     const me = actorUserId();
@@ -165,14 +147,11 @@ async function loadServerDefaults(): Promise<void> {
 
     const privateDefault = (rows || []).find(r => r.IsDefault && r.UserId != null && r.UserId !== '') || null;
     const sharedDefault = (rows || []).find(r => r.IsDefault && (r.UserId == null || r.UserId === '')) || null;
-    const merged = mergeSavedFilterDefaults({
-      privateDefault,
-      sharedDefault,
-      codeDefaults: codeDefaultFilters.value as any,
-    });
-    serverDefaultWinner.value = pickServerWinner(merged);
+    const serverRow = privateDefault || sharedDefault;
+    serverDefaultWinner.value = serverRow ? (savedFilterToNamedFilter(serverRow, true) as NamedFilter<T>) : null;
   } catch {
     // Store may be unavailable before module codegen; fall back to code defaults.
+    serverDefaultWinner.value = null;
   }
 }
 

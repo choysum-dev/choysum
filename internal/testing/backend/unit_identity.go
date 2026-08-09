@@ -11,6 +11,7 @@ import (
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
+	xfmt "golang.org/x/exp/errors/fmt"
 	"gorm.io/gorm"
 )
 
@@ -23,10 +24,11 @@ type unitTestDefaultIdentity struct {
 
 // resolveUnitTestDefaultIdentity returns auth.user_admin (+ company) when auth
 // is installed in the test DB. Missing auth / seeds yield ok=false (no inject).
-func resolveUnitTestDefaultIdentity(ctx context.Context, runtimeScope scope.Scope) (unitTestDefaultIdentity, bool) {
+// Operational DB errors are returned so callers do not run anonymously by accident.
+func resolveUnitTestDefaultIdentity(ctx context.Context, runtimeScope scope.Scope) (unitTestDefaultIdentity, bool, error) {
 	var out unitTestDefaultIdentity
 	if runtimeScope == nil {
-		return out, false
+		return out, false, nil
 	}
 	if ctx == nil {
 		ctx = context.Background()
@@ -50,7 +52,7 @@ func resolveUnitTestDefaultIdentity(ctx context.Context, runtimeScope scope.Scop
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return nil
 			}
-			return err
+			return xfmt.Errorf("load auth module for unit identity: %w", err)
 		}
 		if authMod.Status != meta.Installed {
 			return nil
@@ -64,29 +66,43 @@ func resolveUnitTestDefaultIdentity(ctx context.Context, runtimeScope scope.Scop
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return nil
 			}
-			return err
+			return xfmt.Errorf("load auth.user_admin mapping for unit identity: %w", err)
 		}
 		userID := strings.TrimSpace(userData.ResID)
 		if userID == "" {
 			return nil
 		}
 
-		companyID := ""
 		userModel, lookupErr := modmeta.LookupEffectiveModel(session.DB, "auth", "User")
-		if lookupErr == nil && userModel != nil && strings.TrimSpace(userModel.ModelTable) != "" {
-			var row struct {
-				CompanyID string `gorm:"column:company_id"`
-			}
-			qErr := session.Table(userModel.ModelTable).Select("company_id").Where("id = ?", userID).Take(&row).Error
-			if qErr == nil {
-				companyID = strings.TrimSpace(row.CompanyID)
-			}
+		if lookupErr != nil {
+			return xfmt.Errorf("lookup auth.User for unit identity: %w", lookupErr)
 		}
+		if userModel == nil || strings.TrimSpace(userModel.ModelTable) == "" {
+			return nil
+		}
+
+		var row struct {
+			CompanyID string `gorm:"column:company_id"`
+		}
+		qErr := session.Table(userModel.ModelTable).Select("company_id").Where("id = ?", userID).Take(&row).Error
+		if qErr != nil {
+			if errors.Is(qErr, gorm.ErrRecordNotFound) {
+				// Mapping exists but the user row does not — fail closed (no phantom admin).
+				return nil
+			}
+			return xfmt.Errorf("load auth.user_admin row for unit identity: %w", qErr)
+		}
+
+		companyID := strings.TrimSpace(row.CompanyID)
 		if companyID == "" {
 			var companyData modmeta.ModelData
-			if err := session.Select("res_id").Where("module = ? AND name = ?", "base", "company_main").Take(&companyData).Error; err == nil {
-				companyID = strings.TrimSpace(companyData.ResID)
+			if err := session.Select("res_id").Where("module = ? AND name = ?", "base", "company_main").Take(&companyData).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return nil
+				}
+				return xfmt.Errorf("load base.company_main mapping for unit identity: %w", err)
 			}
+			companyID = strings.TrimSpace(companyData.ResID)
 		}
 		if companyID == "" {
 			return nil
@@ -96,9 +112,9 @@ func resolveUnitTestDefaultIdentity(ctx context.Context, runtimeScope scope.Scop
 		return nil
 	})
 	if err != nil {
-		return unitTestDefaultIdentity{}, false
+		return unitTestDefaultIdentity{}, false, err
 	}
-	return out, out.UserID != "" && out.CompanyID != ""
+	return out, out.UserID != "" && out.CompanyID != "", nil
 }
 
 func unitTestJsRequestContext(identity unitTestDefaultIdentity) map[string]interface{} {

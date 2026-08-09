@@ -391,14 +391,16 @@ test('SavedFilter private and shared IsDefault can coexist', async () => {
   await SavedFilter.DeleteById(String((shared as any).Id));
 });
 
-test('web bootstrap seeds SavedFilter Record rules', async () => {
+test('web bootstrap seeds SavedFilter authz packs (RMA/RFR/RR)', async () => {
   resetRequestContext();
-  const expected = [
-    'rrr_base_user_web_saved_filter_rc',
-    'rrr_base_user_web_saved_filter_wd_private',
-    'rrr_base_user_web_saved_filter_wd_shared',
+  const expected: Array<{ name: string; model: string }> = [
+    { name: 'rma_base_user_web_saved_filter_allow', model: 'RoleMethodAccess' },
+    { name: 'rfr_base_user_web_saved_filter_rw', model: 'RoleFieldRule' },
+    { name: 'rrr_base_user_web_saved_filter_rc', model: 'RoleRecordRule' },
+    { name: 'rrr_base_user_web_saved_filter_wd_private', model: 'RoleRecordRule' },
+    { name: 'rrr_base_user_web_saved_filter_wd_shared', model: 'RoleRecordRule' },
   ];
-  for (const name of expected) {
+  for (const { name, model } of expected) {
     const rows = await MetaModelData.Search(
       {
         And: [
@@ -410,7 +412,7 @@ test('web bootstrap seeds SavedFilter Record rules', async () => {
     );
     expect(Array.isArray(rows) && rows.length === 1, `missing web.${name}`).toBe(true);
     expect(String((rows as any)[0].Application)).toBe('auth');
-    expect(String((rows as any)[0].ModelName)).toBe('RoleRecordRule');
+    expect(String((rows as any)[0].ModelName)).toBe(model);
   }
 });
 

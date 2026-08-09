@@ -101,10 +101,11 @@ SPDX-License-Identifier: Apache-2.0
                     </span>
                   </el-button>
                   <el-button
+                    v-if="it.canDelete"
                     class="o-search__menu-item-delete"
                     text
                     size="small"
-                    :aria-label="_t('Delete favorite')"
+                    :aria-label="_t('Delete favorite %s', it.name)"
                     @click.stop="onRemoveFavorite(it)"
                   >
                     ×
@@ -222,6 +223,7 @@ import {
   ElPopover,
   ElTreeSelect,
   ElMessage,
+  ElMessageBox,
   ElForm,
   ElFormItem,
   ElInput,
@@ -367,7 +369,17 @@ function onApplyFavorite(it: { name: string; filter: any }) {
 
 async function onRemoveFavorite(it: { id: string; name: string }) {
   try {
+    await ElMessageBox.confirm(
+      _t('Delete favorite "%s"? This cannot be undone.', it.name),
+      _t('Confirm delete'),
+      { type: 'warning', confirmButtonText: _t('Delete'), cancelButtonText: _t('Cancel') }
+    );
+  } catch {
+    return;
+  }
+  try {
     await removeFavorite(it.id);
+    emit('defaults-ready', defaultsForOpen.value as NamedFilter[]);
     ElMessage.success(_t('Favorite deleted'));
   } catch (e: any) {
     ElMessage.error(e instanceof Error ? e.message : String(e));
@@ -401,6 +413,7 @@ async function onConfirmSaveFavorite() {
       shared: saveFavoriteShared.value,
     });
     saveFavoriteOpen.value = false;
+    emit('defaults-ready', defaultsForOpen.value as NamedFilter[]);
     ElMessage.success(_t('Favorite saved'));
   } catch (e: any) {
     ElMessage.error(e instanceof Error ? e.message : String(e));

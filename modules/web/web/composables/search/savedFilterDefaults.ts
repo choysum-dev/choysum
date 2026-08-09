@@ -38,16 +38,14 @@ export function mergeSavedFilterDefaults(opts: {
       ? opts.codeDefaults
       : [opts.codeDefaults];
 
-  if (opts.privateDefault && opts.privateDefault.IsDefault) {
-    const winner = savedFilterToNamedFilter(opts.privateDefault, true);
-    const rest = codeList
-      .filter(nf => nf && typeof nf.name === 'string' && nf.name.length > 0 && nf.name !== winner.name)
-      .map(nf => ({ ...nf, selected: false }));
-    return [winner, ...rest];
-  }
-
-  if (opts.sharedDefault && opts.sharedDefault.IsDefault) {
-    const winner = savedFilterToNamedFilter(opts.sharedDefault, true);
+  const serverRow =
+    opts.privateDefault && opts.privateDefault.IsDefault
+      ? opts.privateDefault
+      : opts.sharedDefault && opts.sharedDefault.IsDefault
+        ? opts.sharedDefault
+        : null;
+  if (serverRow) {
+    const winner = savedFilterToNamedFilter(serverRow, true);
     const rest = codeList
       .filter(nf => nf && typeof nf.name === 'string' && nf.name.length > 0 && nf.name !== winner.name)
       .map(nf => ({ ...nf, selected: false }));

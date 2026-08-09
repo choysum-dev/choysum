@@ -9,7 +9,10 @@ import (
 )
 
 func TestResolveUnitTestDefaultIdentityNilScope(t *testing.T) {
-	_, ok := resolveUnitTestDefaultIdentity(context.Background(), nil)
+	_, ok, err := resolveUnitTestDefaultIdentity(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if ok {
 		t.Fatal("expected ok=false for nil scope")
 	}

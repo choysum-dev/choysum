@@ -161,7 +161,8 @@ export default class SavedFilter extends BaseModel {
   }
 
   /**
-   * Clear other IsDefault rows under sudo so Record rules do not block the mutex.
+   * Clear other IsDefault rows the actor may write (SF11). Shared defaults owned by
+   * someone else remain; fail so we never leave two shared defaults silently.
    */
   private static async _clearOtherDefaults(app: string, modelName: string, userId: string | null, exceptId?: string): Promise<void> {
     const cond: any = {
@@ -179,10 +180,19 @@ export default class SavedFilter extends BaseModel {
     if (exceptId) {
       cond.And.push(['Id', '!=', exceptId]);
     }
-    await SavedFilter.sudo(
-      () => SavedFilter.Update(cond as any, { IsDefault: false } as any, ['Id'] as any),
-      { hint: 'web.SavedFilter.clearOtherDefaults' }
+    // No sudo: Record rules must authorize clearing another creator's shared default.
+    await SavedFilter.Update(cond as any, { IsDefault: false } as any, ['Id'] as any);
+    const remaining = await SavedFilter.sudo(
+      () => SavedFilter.Search(cond as any, { fields: ['Id'], limit: 1 } as any),
+      { hint: 'web.SavedFilter.clearOtherDefaults.check' }
     );
+    if (Array.isArray(remaining) && remaining.length > 0) {
+      this._fail(
+        'PermissionDenied',
+        _t('Cannot replace another user\'s shared default favorite', { scope: SCOPE }),
+        GrpcCode.PermissionDenied
+      );
+    }
   }
 
   private static async _assertUniqueName(app: string, modelName: string, userId: string | null, name: string, exceptId?: string): Promise<void> {

@@ -581,7 +581,7 @@ func (c *coordinator) classifyModuleInstallError(progress *logger.ProgressLine, 
 		return newBootstrapError(
 			bootstrapErrCodeModuleInstallTimeout,
 			"module installation timed out after "+installTimeout.String()+". "+
-				"Check your network connection or place the required modules (meta and its dependencies) in ModulesPath.",
+				"Check your network connection or place the required modules (meta, the web shell, and their dependencies) in ModulesPath.",
 			installErr,
 		)
 	}

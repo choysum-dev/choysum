@@ -40,8 +40,8 @@ Gotchas:
   `scope factory not registered`. The built-in default is already `default`, so
   running with no config works too; `config.yaml` here just enables `hotReload`.
 - Bootstrap seeds (roles + `admin` + `base.company_main`) apply without
-  `--with-demo`. Demo data such as `base.company_demo` is optional via
-  `--with-demo`.
+  `--with-demo`. Avoid `--with-demo` for `base`: `base.company_demo` currently
+  omits required `CurrencyId` and aborts the install.
 - Default DB is embedded SQLite at `.choysum/choysum.sqlite`; no external DB
   needed. Postgres/MySQL and S3 document storage are optional.
 

@@ -92,7 +92,9 @@ func BuildPlan(ctx context.Context, op OpType, root *meta.Module, r Resolver, op
 	}
 	plan.NeedsGlobalWebBuild = needsGlobalWebBuild
 
-	if !buildOpts.SkipWebShell && needsWebShell {
+	// Shell ensuring peeks/loads the web origin; only install/upgrade need it.
+	// Uninstall (and --no-web installs) must not fail when the shell is absent.
+	if !buildOpts.SkipWebShell && needsWebShell && (op == OpInstall || op == OpUpgrade) {
 		if err := ensureWebShell(ctx, op, &plan, r, addApp); err != nil {
 			return Plan{}, err
 		}

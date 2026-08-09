@@ -1,6 +1,40 @@
 {
   "records": [
     {
+      "name": "rma_base_user_web_saved_filter_allow",
+      "application": "auth",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": {
+          "modelRef": "web.SavedFilter"
+        },
+        "MetaServiceId": null,
+        "LogicalModelName": null,
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rfr_base_user_web_saved_filter_rw",
+      "application": "auth",
+      "model": "RoleFieldRule",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": {
+          "modelRef": "web.SavedFilter"
+        },
+        "MetaFieldId": null,
+        "PermRead": "allow",
+        "PermWrite": "allow"
+      }
+    },
+    {
       "name": "rrr_base_user_web_saved_filter_rc",
       "application": "auth",
       "model": "RoleRecordRule",
