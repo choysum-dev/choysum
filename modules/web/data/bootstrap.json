@@ -1,0 +1,98 @@
+{
+  "records": [
+    {
+      "name": "rrr_base_user_web_saved_filter_rc",
+      "application": "auth",
+      "model": "RoleRecordRule",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "Kind": "grant",
+        "MetaApplicationId": null,
+        "MetaModelId": {
+          "modelRef": "web.SavedFilter"
+        },
+        "Condition": {
+          "Or": [
+            [
+              "UserId",
+              "=",
+              "$userId"
+            ],
+            [
+              "UserId",
+              "is",
+              null
+            ]
+          ]
+        },
+        "PermRead": true,
+        "PermWrite": false,
+        "PermCreate": true,
+        "PermDelete": false
+      }
+    },
+    {
+      "name": "rrr_base_user_web_saved_filter_wd_private",
+      "application": "auth",
+      "model": "RoleRecordRule",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "Kind": "grant",
+        "MetaApplicationId": null,
+        "MetaModelId": {
+          "modelRef": "web.SavedFilter"
+        },
+        "Condition": {
+          "And": [
+            [
+              "UserId",
+              "=",
+              "$userId"
+            ]
+          ]
+        },
+        "PermRead": false,
+        "PermWrite": true,
+        "PermCreate": false,
+        "PermDelete": true
+      }
+    },
+    {
+      "name": "rrr_base_user_web_saved_filter_wd_shared",
+      "application": "auth",
+      "model": "RoleRecordRule",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "Kind": "grant",
+        "MetaApplicationId": null,
+        "MetaModelId": {
+          "modelRef": "web.SavedFilter"
+        },
+        "Condition": {
+          "And": [
+            [
+              "UserId",
+              "is",
+              null
+            ],
+            [
+              "CreateUid",
+              "=",
+              "$userId"
+            ]
+          ]
+        },
+        "PermRead": false,
+        "PermWrite": true,
+        "PermCreate": false,
+        "PermDelete": true
+      }
+    }
+  ]
+}

@@ -527,7 +527,7 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 	installCtx = origincontract.WithFetchProgressReporter(installCtx, func(stage origincontract.FetchProgressStage, moduleName string) {
 		moduleName = strings.TrimSpace(moduleName)
 		if moduleName == "" {
-			moduleName = "core module"
+			moduleName = "module"
 		}
 		switch stage {
 		case origincontract.FetchProgressStageDownload:
@@ -544,8 +544,8 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 		}
 	})
 
-	c.store.markStageDetail(operationID, "resolving core module installation plan...")
-	spinnerTicker.SetMessage("document: preparing metadata tables")
+	c.store.markStageDetail(operationID, "resolving meta module installation plan...")
+	spinnerTicker.SetMessage("meta: preparing module installation...")
 
 	installScope := c.runtimeScope.WithContext(installCtx)
 	if installScope == nil {
@@ -561,27 +561,27 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 	defer executor.Stop()
 
 	installErr := lifecycle.InstallModule(installCtx, installScope, executor, lifecycle.InstallModuleRequest{
-		Input:    "document",
+		Input:    "meta",
 		WithDemo: false,
 	})
 	if installErr != nil {
 		return c.classifyModuleInstallError(progress, installTimeout, installErr)
 	}
 
-	c.store.markStageDetail(operationID, "core module installation completed")
+	c.store.markStageDetail(operationID, "meta module installation completed")
 
 	return nil
 }
 
 func (c *coordinator) classifyModuleInstallError(progress *logger.ProgressLine, installTimeout time.Duration, installErr error) error {
 	if progress != nil {
-		progress.Done("✗", "core module installation failed")
+		progress.Done("✗", "meta module installation failed")
 	}
 	if errors.Is(installErr, context.DeadlineExceeded) {
 		return newBootstrapError(
 			bootstrapErrCodeModuleInstallTimeout,
 			"module installation timed out after "+installTimeout.String()+". "+
-				"Check your network connection or place the required modules (document and its dependencies) in ModulesPath.",
+				"Check your network connection or place the required modules (meta and its dependencies) in ModulesPath.",
 			installErr,
 		)
 	}

@@ -122,8 +122,8 @@ function extractCompanyScopeFromToken(accessToken: string): { activeCompanyId: s
       return { active: (node as any).activeCompanyId, enabled: (node as any).enabledCompanyIds };
     }
 
-    // Common nesting patterns
-    for (const key of ['metadata', 'identity', 'claims', 'data']) {
+    // Common nesting patterns. Access tokens use `meta` (see auth store extractIdentity).
+    for (const key of ['meta', 'metadata', 'identity', 'claims', 'data']) {
       if (node && typeof node[key] === 'object') {
         const hit = search(node[key]);
         if (hit.active !== undefined || hit.enabled !== undefined) return hit;
@@ -304,15 +304,17 @@ async function discoverTwoCompanyIdsByUISwitch(page: any): Promise<{ a: string; 
 
   await switchCompanyViaUI(page);
 
+  // Opening the switcher refreshes the access token; wait for active company change,
+  // not merely a new token string.
   await expect
     .poll(
       async () => {
         const after = await readAuthTokens(page);
-        return after.accessToken;
+        return extractCompanyScopeFromToken(after.accessToken).activeCompanyId;
       },
       { timeout: 30_000 }
     )
-    .not.toBe(before.accessToken);
+    .not.toBe(scopeA.activeCompanyId);
 
   const after = await readAuthTokens(page);
   if (!after.accessToken) return null;

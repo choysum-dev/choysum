@@ -14,8 +14,7 @@
     "application": "task",
     "category": "System/Task",
     "depends": [
-      "core",
-      "base"
+      "core"
     ],
     "cli": ">=0.0.0-0 <0.0.0",
     "entryPoints": {

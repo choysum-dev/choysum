@@ -100,7 +100,7 @@ func (m *ModuleManager) PrefetchInstallModules(ctx context.Context, input string
 		return nil, xfmt.Errorf("resolved module name is empty")
 	}
 
-	opPlan, err := plan.BuildPlan(ctx, plan.OpInstall, root, m)
+	opPlan, err := plan.BuildPlan(ctx, plan.OpInstall, root, m, planBuildOptionsFromContext(ctx)...)
 	if err != nil {
 		return nil, xfmt.Errorf("build install plan for prefetch: %w", err)
 	}

@@ -9,9 +9,11 @@ import RoleRecordRule from '@/auth/service/models/role_record_rule';
 import RoleFieldRule from '@/auth/service/models/role_field_rule';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaFieldModel from '@/meta/service/models/field';
+import type MetaModelDataModel from '@/meta/service/models/model_data';
 import { resolveEffectiveApplicationId, resolveEffectiveModelId } from '../models/_resolve_effective_model';
 
 const MetaField = createServiceByModel<typeof MetaFieldModel>('meta.MetaField');
+const MetaModelData = createServiceByModel<typeof MetaModelDataModel>('meta.MetaModelData');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -156,6 +158,30 @@ async function createBareUser(companyId: string): Promise<string> {
   );
   return String((created as any)?.Id || '').trim();
 }
+
+test('auth bootstrap seeds platform FieldDefault/AppSetting logical packs', async () => {
+  resetRequestContext();
+  const expected: Array<{ name: string; model: string }> = [
+    { name: 'rma_base_user_field_default_logical', model: 'RoleMethodAccess' },
+    { name: 'rfr_base_user_field_default_logical', model: 'RoleFieldRule' },
+    { name: 'rma_sys_admin_app_setting_logical', model: 'RoleMethodAccess' },
+    { name: 'rfr_sys_admin_app_setting_logical', model: 'RoleFieldRule' },
+  ];
+  for (const { name, model } of expected) {
+    const rows = await MetaModelData.Search(
+      {
+        And: [
+          ['Module', '=', 'auth'],
+          ['Name', '=', name],
+        ],
+      } as any,
+      { fields: ['Id', 'Application', 'ModelName'], limit: 1 } as any
+    );
+    expect(Array.isArray(rows) && rows.length === 1, `missing auth.${name}`).toBe(true);
+    expect(String((rows as any)[0].Application)).toBe('auth');
+    expect(String((rows as any)[0].ModelName)).toBe(model);
+  }
+});
 
 test('PR-C-2 gift pack: bootstrap seeds sys.admin global RR+FR and base.user app packs', async () => {
   resetRequestContext();

@@ -9,7 +9,8 @@
           "en_US": "Demo Company",
           "zh_CN": "演示公司"
         },
-        "Code": "DEMO"
+        "Code": "DEMO",
+        "Timezone": "Asia/Shanghai"
       }
     }
   ]

@@ -20,7 +20,7 @@ type Resolver interface {
 	Load(name string) (*meta.Module, error)
 }
 
-func BuildPlan(ctx context.Context, op OpType, root *meta.Module, r Resolver) (Plan, error) {
+func BuildPlan(ctx context.Context, op OpType, root *meta.Module, r Resolver, opts ...BuildOption) (Plan, error) {
 	if root == nil {
 		return Plan{}, fmt.Errorf("root module is nil")
 	}
@@ -30,18 +30,19 @@ func BuildPlan(ctx context.Context, op OpType, root *meta.Module, r Resolver) (P
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	buildOpts := applyBuildOptions(opts)
 
 	plan := Plan{Op: op}
 
 	apps := map[string]bool{}
-	needsGlobalWebBuild := false
+	needsWebShell := false
 	addApp := func(mod *meta.Module) {
 		if mod == nil {
 			return
 		}
 
-		if strings.EqualFold(strings.TrimSpace(mod.Name), "web") || strings.TrimSpace(mod.WebEntryPoint) != "" {
-			needsGlobalWebBuild = true
+		if moduleNeedsWebShell(mod) {
+			needsWebShell = true
 		}
 
 		name := strings.TrimSpace(mod.ApplicationStr)
@@ -79,6 +80,7 @@ func BuildPlan(ctx context.Context, op OpType, root *meta.Module, r Resolver) (P
 	// If a web module is currently installed, keep global web build enabled.
 	// This is intentionally conservative because dist/web aggregates imports across modules/apps.
 	reportBuildPlanProgress(ctx, BuildPlanProgress{Step: "resolve_web_build"})
+	needsGlobalWebBuild := needsWebShell
 	if !needsGlobalWebBuild {
 		webMod, err := r.Load("web")
 		if err != nil {
@@ -90,12 +92,138 @@ func BuildPlan(ctx context.Context, op OpType, root *meta.Module, r Resolver) (P
 	}
 	plan.NeedsGlobalWebBuild = needsGlobalWebBuild
 
+	if !buildOpts.SkipWebShell && needsWebShell {
+		if err := ensureWebShell(ctx, op, &plan, r, addApp); err != nil {
+			return Plan{}, err
+		}
+	}
+
 	for app := range apps {
 		plan.AffectedApps = append(plan.AffectedApps, app)
 	}
 	sort.Strings(plan.AffectedApps)
 
 	return plan, nil
+}
+
+func moduleNeedsWebShell(mod *meta.Module) bool {
+	if mod == nil {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(mod.Name), "web") || strings.TrimSpace(mod.WebEntryPoint) != ""
+}
+
+func moduleOrderContains(order []string, name string) bool {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return false
+	}
+	for _, item := range order {
+		if strings.TrimSpace(item) == name {
+			return true
+		}
+	}
+	return false
+}
+
+func mergeModuleOrder(prefix, suffix []string) []string {
+	seen := map[string]bool{}
+	out := make([]string, 0, len(prefix)+len(suffix))
+	appendUnique := func(names []string) {
+		for _, name := range names {
+			name = strings.TrimSpace(name)
+			if name == "" || seen[name] {
+				continue
+			}
+			seen[name] = true
+			out = append(out, name)
+		}
+	}
+	appendUnique(prefix)
+	appendUnique(suffix)
+	return out
+}
+
+func resolveWebModule(ctx context.Context, r Resolver) (*meta.Module, error) {
+	webMod, err := r.Load("web")
+	if err != nil {
+		return nil, fmt.Errorf("load web module for shell plan: %w", err)
+	}
+	if webMod != nil {
+		return webMod, nil
+	}
+	webMod, err = r.Peek(ctx, "web")
+	if err != nil {
+		return nil, fmt.Errorf("peek web module for shell plan: %w", err)
+	}
+	if webMod == nil || strings.TrimSpace(webMod.Name) == "" {
+		return nil, fmt.Errorf("web shell required (entryPoints.web) but module web was not found")
+	}
+	return webMod, nil
+}
+
+// ensureWebShell pulls the web SPA shell into the plan when a domain module
+// declares entryPoints.web. Install merges web into ModuleOrder; upgrade only
+// installs a missing shell via EnsureOrder (does not upgrade web).
+func ensureWebShell(ctx context.Context, op OpType, plan *Plan, r Resolver, addApp func(*meta.Module)) error {
+	if plan == nil {
+		return fmt.Errorf("plan is nil")
+	}
+	reportBuildPlanProgress(ctx, BuildPlanProgress{Step: "resolve_web_shell", CurrentModule: "web"})
+
+	webMod, err := resolveWebModule(ctx, r)
+	if err != nil {
+		return err
+	}
+	webInstalled := webMod.Status == meta.Installed
+
+	switch op {
+	case OpInstall:
+		if moduleOrderContains(plan.ModuleOrder, "web") {
+			return nil
+		}
+		if webInstalled {
+			// Shell already present; app-stage rebuild is enough.
+			plan.NeedsGlobalWebBuild = true
+			return nil
+		}
+		webOrder, err := topoByDependsStr(ctx, webMod, r, addApp)
+		if err != nil {
+			return fmt.Errorf("resolve web shell dependencies: %w", err)
+		}
+		plan.ModuleOrder = mergeModuleOrder(webOrder, plan.ModuleOrder)
+		plan.NeedsGlobalWebBuild = true
+		return nil
+	case OpUpgrade:
+		if webInstalled {
+			plan.NeedsGlobalWebBuild = true
+			return nil
+		}
+		webOrder, err := topoByDependsStr(ctx, webMod, r, addApp)
+		if err != nil {
+			return fmt.Errorf("resolve web shell dependencies: %w", err)
+		}
+		ensure := make([]string, 0, len(webOrder))
+		for _, name := range webOrder {
+			name = strings.TrimSpace(name)
+			if name == "" {
+				continue
+			}
+			mod, loadErr := r.Load(name)
+			if loadErr != nil {
+				return fmt.Errorf("load module %s for web shell ensure: %w", name, loadErr)
+			}
+			if mod != nil && mod.Status == meta.Installed {
+				continue
+			}
+			ensure = append(ensure, name)
+		}
+		plan.EnsureOrder = ensure
+		plan.NeedsGlobalWebBuild = true
+		return nil
+	default:
+		return nil
+	}
 }
 
 func topoByDependsStr(ctx context.Context, root *meta.Module, r Resolver, addApp func(*meta.Module)) ([]string, error) {

@@ -78,7 +78,7 @@ func TestBuildPlanInstallErrorsAndAppCollection(t *testing.T) {
 		},
 	}
 
-	plan, err := BuildPlan(context.Background(), OpInstall, root, r)
+	plan, err := BuildPlan(context.Background(), OpInstall, root, r, WithSkipWebShell(true))
 	if err != nil {
 		t.Fatalf("BuildPlan() error: %v", err)
 	}
@@ -96,6 +96,116 @@ func TestBuildPlanInstallErrorsAndAppCollection(t *testing.T) {
 	}
 	if loadCalls != 2 {
 		t.Fatalf("expected load to be called for dep and webmod, got %d", loadCalls)
+	}
+}
+
+func TestBuildPlanInstallAutoIncludesWebShell(t *testing.T) {
+	root := &meta.Module{
+		Name:           "partner",
+		ApplicationStr: "partner",
+		WebEntryPoint:  "web/index.ts",
+		DependsStr:     []byte(`["core"]`),
+	}
+	r := fakeResolver{
+		peek: func(ctx context.Context, name string) (*meta.Module, error) {
+			switch name {
+			case "core":
+				return &meta.Module{Name: "core", ApplicationStr: "core"}, nil
+			case "auth":
+				return &meta.Module{Name: "auth", ApplicationStr: "auth", DependsStr: []byte(`["core"]`)}, nil
+			case "web":
+				return &meta.Module{Name: "web", ApplicationStr: "web", WebEntryPoint: "web/index.ts", DependsStr: []byte(`["core","auth"]`)}, nil
+			default:
+				return nil, nil
+			}
+		},
+		load: func(name string) (*meta.Module, error) { return nil, nil },
+	}
+
+	plan, err := BuildPlan(context.Background(), OpInstall, root, r)
+	if err != nil {
+		t.Fatalf("BuildPlan() error: %v", err)
+	}
+	if !plan.NeedsGlobalWebBuild {
+		t.Fatal("expected NeedsGlobalWebBuild")
+	}
+	want := []string{"core", "auth", "web", "partner"}
+	if len(plan.ModuleOrder) != len(want) {
+		t.Fatalf("module order=%v, want %v", plan.ModuleOrder, want)
+	}
+	for i, name := range want {
+		if plan.ModuleOrder[i] != name {
+			t.Fatalf("module order=%v, want %v", plan.ModuleOrder, want)
+		}
+	}
+}
+
+func TestBuildPlanUpgradeEnsureOrderInstallsMissingWebShell(t *testing.T) {
+	root := &meta.Module{
+		Name:           "partner",
+		ApplicationStr: "partner",
+		WebEntryPoint:  "web/index.ts",
+	}
+	r := fakeResolver{
+		peek: func(ctx context.Context, name string) (*meta.Module, error) {
+			switch name {
+			case "core":
+				return &meta.Module{Name: "core", ApplicationStr: "core"}, nil
+			case "auth":
+				return &meta.Module{Name: "auth", ApplicationStr: "auth", DependsStr: []byte(`["core"]`)}, nil
+			case "web":
+				return &meta.Module{Name: "web", ApplicationStr: "web", WebEntryPoint: "web/index.ts", DependsStr: []byte(`["core","auth"]`)}, nil
+			default:
+				return nil, nil
+			}
+		},
+		load: func(name string) (*meta.Module, error) {
+			if name == "core" {
+				return &meta.Module{Name: "core", Status: meta.Installed, ApplicationStr: "core"}, nil
+			}
+			return nil, nil
+		},
+	}
+
+	plan, err := BuildPlan(context.Background(), OpUpgrade, root, r)
+	if err != nil {
+		t.Fatalf("BuildPlan() error: %v", err)
+	}
+	if len(plan.ModuleOrder) != 1 || plan.ModuleOrder[0] != "partner" {
+		t.Fatalf("ModuleOrder=%v, want [partner]", plan.ModuleOrder)
+	}
+	wantEnsure := []string{"auth", "web"}
+	if len(plan.EnsureOrder) != len(wantEnsure) {
+		t.Fatalf("EnsureOrder=%v, want %v", plan.EnsureOrder, wantEnsure)
+	}
+	for i, name := range wantEnsure {
+		if plan.EnsureOrder[i] != name {
+			t.Fatalf("EnsureOrder=%v, want %v", plan.EnsureOrder, wantEnsure)
+		}
+	}
+	if !plan.NeedsGlobalWebBuild {
+		t.Fatal("expected NeedsGlobalWebBuild")
+	}
+}
+
+func TestBuildPlanSkipWebShell(t *testing.T) {
+	root := &meta.Module{
+		Name:           "partner",
+		ApplicationStr: "partner",
+		WebEntryPoint:  "web/index.ts",
+	}
+	r := fakeResolver{
+		load: func(name string) (*meta.Module, error) { return nil, nil },
+	}
+	plan, err := BuildPlan(context.Background(), OpInstall, root, r, WithSkipWebShell(true))
+	if err != nil {
+		t.Fatalf("BuildPlan() error: %v", err)
+	}
+	if moduleOrderContains(plan.ModuleOrder, "web") {
+		t.Fatalf("expected no web in ModuleOrder with SkipWebShell, got %v", plan.ModuleOrder)
+	}
+	if len(plan.EnsureOrder) != 0 {
+		t.Fatalf("expected empty EnsureOrder, got %v", plan.EnsureOrder)
 	}
 }
 
@@ -361,7 +471,7 @@ func TestBuildPlan_AffectedAppsSortedForStableLogs(t *testing.T) {
 		load: func(name string) (*meta.Module, error) { return nil, nil },
 	}
 
-	plan, err := BuildPlan(context.Background(), OpInstall, root, r)
+	plan, err := BuildPlan(context.Background(), OpInstall, root, r, WithSkipWebShell(true))
 	if err != nil {
 		t.Fatalf("BuildPlan error: %v", err)
 	}

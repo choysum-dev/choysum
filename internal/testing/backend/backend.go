@@ -580,8 +580,14 @@ func RunOneAppBackendTests(
 
 		// Let module installation manage its own transactional/lease lifecycle.
 		// The outer test transaction is only needed for bundle/test execution state.
+		//
+		// Skip the SPA shell for most domain shards: entryPoints.web would otherwise
+		// pull web→document→auth into e.g. base. Auth is the exception — its BE
+		// suite needs global web build to persist declared MetaUiResource rows
+		// (PermissionState smoke uses auth.route.token_list, etc.).
 		moduleLifecycle := lifecycle.NewService(testScope, jsExec)
-		if err := moduleLifecycle.Install(ctx, lifecycle.InstallRequest{Name: app}); err != nil {
+		skipWebShell := !strings.EqualFold(strings.TrimSpace(app), "auth")
+		if err := moduleLifecycle.Install(ctx, lifecycle.InstallRequest{Name: app, SkipWebShell: skipWebShell}); err != nil {
 			return false, err
 		}
 
@@ -589,7 +595,7 @@ func RunOneAppBackendTests(
 		// Web SavedFilter tests dial meta.MetaModel for effective ModelId (SF12).
 		// Ensure meta is installed so bundle/app dist assets include meta services.
 		if strings.EqualFold(strings.TrimSpace(app), "auth") || strings.EqualFold(strings.TrimSpace(app), "web") {
-			if err := moduleLifecycle.Install(ctx, lifecycle.InstallRequest{Name: "meta"}); err != nil {
+			if err := moduleLifecycle.Install(ctx, lifecycle.InstallRequest{Name: "meta", SkipWebShell: true}); err != nil {
 				return false, err
 			}
 		}
@@ -729,6 +735,13 @@ func RunOneAppBackendTests(
 			return true, err
 		}
 
+		jsCtx := map[string]interface{}{}
+		if identity, ok := resolveUnitTestDefaultIdentity(ctx, testScope); ok {
+			// When auth is in the install closure, seed bootstrap admin so domain
+			// fixtures are not anonymous-denied by record rules. choysumtest
+			// re-applies this before each case (tests may clear identity).
+			jsCtx = unitTestJsRequestContext(identity)
+		}
 		req := &jsengine.JsRequest{
 			Id:      fmt.Sprintf("test-%s-%d", app, time.Now().UnixNano()),
 			Service: "__tests__.Run",
@@ -736,7 +749,7 @@ func RunOneAppBackendTests(
 				"pattern":  pattern,
 				"failFast": failFast,
 			}},
-			Context: map[string]interface{}{},
+			Context: jsCtx,
 		}
 
 		// Execute tests within a DB session context so $choysum.db bridges work.

@@ -3,24 +3,13 @@
 
 import { BaseModel, Model, Field } from '@/core/service';
 import { Constraint, type ConstraintContext } from '@/core/service/api/constraint';
-import type { Updateable } from '@/core/service/api/input';
-import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
 import { ChoysumError, GrpcCode } from '@/core/service/error';
-import { createServiceByModel } from '@/core/service/rpc';
 import type MetaModel from '@/meta/service/models/model';
 import { _lt, _t } from '../i18n';
 import { resolveEffectiveModelId } from './_resolve_effective_model';
 
 const SCOPE = 'web.model.SavedFilter';
-
-/** Lazy dial so web service can load without auth already registered. */
-function roleService(): any {
-  return createServiceByModel('auth.Role');
-}
-function userRoleService(): any {
-  return createServiceByModel('auth.UserRole');
-}
 
 /**
  * Persisted Favorites filter for OSearch (Owner Application = web).
@@ -28,7 +17,7 @@ function userRoleService(): any {
  * Identity: Application + ModelName. ModelId stores the effective meta.MetaModel id.
  * Field normalize / ModelId / uniqueness / IsDefault mutex → `@Constraint` (uses ctx.mode;
  * Create pre-assigns Id before validation, so `!this.Id` is not a reliable create signal).
- * Shared write/delete ACL (SF11) → Update/Delete overrides (Constraint does not run on delete).
+ * Shared write/delete ACL (SF11) → auth.RoleRecordRule seeds in modules/web/data/bootstrap.json.
  */
 @Model('SavedFilter', { application: 'web', softDelete: false })
 export default class SavedFilter extends BaseModel {
@@ -137,7 +126,7 @@ export default class SavedFilter extends BaseModel {
   Active: boolean;
 
   /**
-   * Creator user id for SF11 shared-row write/delete ACL.
+   * Creator user id for SF11 shared-row write/delete Record rules.
    * BaseModel does not yet expose CreateUid audit; persist on this model.
    * notNull is false for the same kernel-before-constraint reason as ModelId;
    * `@Constraint` always stamps CreateUid on create.
@@ -160,52 +149,8 @@ export default class SavedFilter extends BaseModel {
     return String(this.userId || '').trim();
   }
 
-  private static async _isSysAdmin(userId: string): Promise<boolean> {
-    if (!userId) return false;
-    try {
-      const roles = await roleService().Search(['Code', '=', 'sys.admin'] as any, { fields: ['Id'], limit: 1 } as any);
-      const roleId = String((roles as any)?.[0]?.Id || '').trim();
-      if (!roleId) return false;
-      const links = await userRoleService().Search(
-        {
-          And: [
-            ['UserId', '=', userId],
-            ['RoleId', '=', roleId],
-          ],
-        } as any,
-        { fields: ['Id'], limit: 1 } as any
-      );
-      return Array.isArray(links) && links.length > 0;
-    } catch {
-      // Fail closed when auth is not loaded (web does not depend on auth).
-      return false;
-    }
-  }
-
-  private static async _assertCanMutate(row: { UserId?: string | null; CreateUid?: string }): Promise<void> {
-    const uid = this._actorId();
-    if (!uid) {
-      this._fail('PermissionDenied', _t('Authentication required', { scope: SCOPE }), GrpcCode.Unauthenticated);
-    }
-    const owner = row.UserId == null || row.UserId === '' ? null : String(row.UserId).trim();
-    if (owner != null) {
-      if (owner !== uid) {
-        this._fail('PermissionDenied', _t('You can only modify your own private favorites', { scope: SCOPE }), GrpcCode.PermissionDenied);
-      }
-      return;
-    }
-    const createUid = String(row.CreateUid || '').trim();
-    if (createUid === uid) return;
-    if (await this._isSysAdmin(uid)) return;
-    this._fail(
-      'PermissionDenied',
-      _t('Only the creator or a system administrator can modify shared favorites', { scope: SCOPE }),
-      GrpcCode.PermissionDenied
-    );
-  }
-
   /**
-   * Clear other IsDefault rows. Uses BaseModel.Update to skip SF11 (mutex is not an ACL op).
+   * Clear other IsDefault rows under sudo so Record rules do not block the mutex.
    */
   private static async _clearOtherDefaults(app: string, modelName: string, userId: string | null, exceptId?: string): Promise<void> {
     const cond: any = {
@@ -223,7 +168,10 @@ export default class SavedFilter extends BaseModel {
     if (exceptId) {
       cond.And.push(['Id', '!=', exceptId]);
     }
-    await (BaseModel.Update as any).call(SavedFilter, cond, { IsDefault: false } as any, ['Id'] as any);
+    await SavedFilter.sudo(
+      () => SavedFilter.Update(cond as any, { IsDefault: false } as any, ['Id'] as any),
+      { hint: 'web.SavedFilter.clearOtherDefaults' }
+    );
   }
 
   private static async _assertUniqueName(app: string, modelName: string, userId: string | null, name: string, exceptId?: string): Promise<void> {
@@ -326,78 +274,5 @@ export default class SavedFilter extends BaseModel {
     if (isDefault) {
       await SavedFilter._clearOtherDefaults(app, modelName, effectiveUserId, isCreate ? undefined : currentId);
     }
-  }
-
-  /**
-   * Update SavedFilter rows after SF11 ACL (field rules run via Constraint).
-   */
-  static override async Update<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
-    condition: QueryCondition<T>,
-    values: Partial<Updateable<T & BaseModel>>,
-    returnFields?: FieldSelection<T>,
-    options?: any
-  ): Promise<Partial<T>[]> {
-    const existing = await this.Search(condition as any, {
-      fields: ['Id', 'UserId', 'CreateUid'] as any,
-      ...(options || {}),
-    } as any);
-    for (const row of existing || []) {
-      await SavedFilter._assertCanMutate(row as any);
-    }
-    if (!existing || existing.length === 0) return [];
-    const patch = { ...(values as any) };
-    delete patch.CreateUid;
-    return (await super.Update(condition as any, patch as any, returnFields as any, options as any)) as unknown as Partial<T>[];
-  }
-
-  /**
-   * Update one SavedFilter by id after SF11 ACL.
-   */
-  static override async UpdateById<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
-    id: string,
-    values: Partial<Updateable<T & BaseModel>>,
-    returnFields?: FieldSelection<T>,
-    options?: any
-  ): Promise<Partial<T>> {
-    const row = await this.Browse(id, ['Id', 'UserId', 'CreateUid'] as any);
-    if (!row) {
-      SavedFilter._fail('NotFound', _t('Favorite not found', { scope: SCOPE }), GrpcCode.NotFound);
-    }
-    await SavedFilter._assertCanMutate(row as any);
-    const patch = { ...(values as any) };
-    delete patch.CreateUid;
-    return (await super.UpdateById(id, patch as any, returnFields as any, options as any)) as unknown as Partial<T>;
-  }
-
-  /**
-   * Delete SavedFilter rows matching a condition (SF11).
-   */
-  static override async Delete<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
-    condition: QueryCondition<T>,
-    options?: any
-  ): Promise<number> {
-    const existing = await this.Search(condition as any, { fields: ['Id', 'UserId', 'CreateUid'] as any, ...(options || {}) } as any);
-    for (const row of existing || []) {
-      await SavedFilter._assertCanMutate(row as any);
-    }
-    if (!existing || existing.length === 0) return 0;
-    return await super.Delete(condition as any, options as any);
-  }
-
-  /**
-   * Delete one SavedFilter by id (SF11).
-   */
-  static override async DeleteById<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
-    id: string,
-    options?: any
-  ): Promise<number> {
-    const row = await this.Browse(id, ['Id', 'UserId', 'CreateUid'] as any);
-    if (!row) return 0;
-    await SavedFilter._assertCanMutate(row as any);
-    return await super.DeleteById(id, options as any);
   }
 }

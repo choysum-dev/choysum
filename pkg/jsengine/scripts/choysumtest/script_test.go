@@ -36,6 +36,43 @@ func TestChoysumTestScriptExportsExpectRejects(t *testing.T) {
 	}
 }
 
+func TestChoysumTestScriptReappliesDefaultUnitIdentity(t *testing.T) {
+	if !strings.Contains(ChoysumTestScript, "applyDefaultUnitIdentity") {
+		t.Fatalf("expected script to re-apply default unit identity before each case")
+	}
+	script := ChoysumTestScript + `
+globalThis.$choysum = {
+  request: {
+    context: {
+      identity: { userId: 'admin-1' },
+      ctx: { activeCompanyId: 'co-1', enabledCompanyIds: ['co-1'] },
+      req: { depth: 0 },
+    },
+  },
+};
+
+test('case1 starts with default identity then clears it', () => {
+  const jsCtx = globalThis.$choysum.request.context;
+  if (jsCtx.identity.userId !== 'admin-1') throw new Error('missing default userId');
+  if (jsCtx.ctx.activeCompanyId !== 'co-1') throw new Error('missing default company');
+  jsCtx.identity = {};
+  jsCtx.ctx = {};
+});
+
+test('case2 restores default identity after prior clear', () => {
+  const jsCtx = globalThis.$choysum.request.context;
+  if (jsCtx.identity.userId !== 'admin-1') throw new Error('userId not restored');
+  if (jsCtx.ctx.activeCompanyId !== 'co-1') throw new Error('company not restored');
+});
+
+(async () => {
+  const report = await globalThis.__choysum_test_run__();
+  if (!report || report.failed !== 0) throw new Error('cases failed: ' + JSON.stringify(report));
+})();
+`
+	runNodeWithScript(t, script)
+}
+
 func TestChoysumTestScriptMatchersAndExpectRejectsRuntime(t *testing.T) {
 	script := ChoysumTestScript + `
 function assert(cond, msg) {

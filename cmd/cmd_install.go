@@ -26,6 +26,7 @@ import (
 
 func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 	var withDemo bool
+	var noWeb bool
 	var cliCompatVersion string
 	cmd := &cobra.Command{
 		Use:   "install <module|module@version> [<module|module@version>...]",
@@ -119,8 +120,9 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 
 					installScope.Logger().Debug("module install started", "input", rootInput)
 					if installErr := lifecycle.InstallModule(ctx, installScope, compilerExecutor, lifecycle.InstallModuleRequest{
-						Input:    rootInput,
-						WithDemo: withDemo,
+						Input:        rootInput,
+						WithDemo:     withDemo,
+						SkipWebShell: noWeb,
 					}); installErr != nil {
 						return xfmt.Errorf("error installing module %s: %w", rootInput, installErr)
 					}
@@ -141,6 +143,7 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&withDemo, "with-demo", false, "Load demo data declared by package.json")
+	cmd.Flags().BoolVar(&noWeb, "no-web", false, "Skip auto-installing the web SPA shell when a module declares entryPoints.web")
 	cmd.Flags().StringVar(&cliCompatVersion, "cli-compat-version", "", "override CLI compatibility version for module compatibility checks")
 	return cmd
 }

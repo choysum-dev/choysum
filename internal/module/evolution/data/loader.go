@@ -210,7 +210,8 @@ func dependencyClosure(tx *gorm.DB, ownerID string, idToName map[string]string) 
 
 // normalizeRecordOwnership applies E12 defaults and ownership rules in place.
 // - Empty module → applying owner module; non-empty must equal owner (no foreign xml_id namespace).
-// - Empty application → owner's application; non-empty must equal owner app (no cross-app seeding).
+// - Empty application → owner's application; non-empty may target another app's model
+//   (cross-app seeding; xml_id stays under the applying module).
 func normalizeRecordOwnership(rules *moduleRules, filePath string, recordIndex int, rec *record) error {
 	if rules == nil || rec == nil {
 		return xfmt.Errorf("nil module rules or record")
@@ -230,13 +231,6 @@ func normalizeRecordOwnership(rules *moduleRules, filePath string, recordIndex i
 	app := strings.TrimSpace(rec.Application)
 	if app == "" {
 		rec.Application = rules.OwnerApp
-	} else if app != rules.OwnerApp {
-		return &LoadError{
-			Kind: LoadErrorKindValidation, Code: LoadErrorCodeApplicationMismatch,
-			FilePath: filePath, RecordIndex: recordIndex, Module: strings.TrimSpace(rec.Module), Name: localName,
-			Application: app, Model: strings.TrimSpace(rec.Model),
-			Message: "record.application must equal applying module application (or be omitted); cross-app seeding is forbidden",
-		}
 	}
 	return nil
 }
@@ -325,7 +319,6 @@ const (
 	LoadErrorCodeMissingModel               = "missing_model"
 	LoadErrorCodeInvalidModel               = "invalid_model"
 	LoadErrorCodeModuleNotOwner             = "module_not_owner"
-	LoadErrorCodeApplicationMismatch        = "application_mismatch"
 	LoadErrorCodeMissingValues              = "missing_values"
 	LoadErrorCodeDuplicateNameInInput       = "duplicate_name_in_input"
 	LoadErrorCodeInvalidRef                 = "invalid_ref"

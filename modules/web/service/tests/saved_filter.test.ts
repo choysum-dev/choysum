@@ -1,8 +1,13 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import Role from '@/auth/service/models/role';
+import User from '@/auth/service/models/user';
+import UserRole from '@/auth/service/models/user_role';
+import { withContext as withModelContext } from '@/core/service/api/context';
 import { ChoysumError } from '@/core/service/error';
 import { createServiceByModel } from '@/core/service/rpc';
+import MetaModelData from '@/meta/service/models/model_data';
 import SavedFilter from '@/web/service/models/saved_filter';
 import { resolveEffectiveModelId } from '@/web/service/models/_resolve_effective_model';
 
@@ -38,10 +43,28 @@ function resetRequestContext(): void {
       'SavedFilter:delete',
       'meta.MetaModel:read',
       'MetaModel:read',
+      'meta.MetaModelData:read',
+      'MetaModelData:read',
       'web.FieldDefault:read',
       'FieldDefault:read',
       'web.AppSetting:read',
       'AppSetting:read',
+      'auth.User:read',
+      'auth.User:write',
+      'auth.User:create',
+      'User:read',
+      'User:write',
+      'User:create',
+      'auth.Role:read',
+      'Role:read',
+      'auth.UserRole:read',
+      'auth.UserRole:write',
+      'auth.UserRole:create',
+      'UserRole:read',
+      'UserRole:write',
+      'UserRole:create',
+      'auth.RoleRecordRule:read',
+      'RoleRecordRule:read',
     ],
     fieldRuleMode: 'skip',
   };
@@ -63,6 +86,16 @@ function setIdentity(userId?: string): void {
   if (!jsCtx.identity) jsCtx.identity = {};
   if (userId) jsCtx.identity.userId = userId;
   else delete jsCtx.identity.userId;
+}
+
+function setReq(patch: Record<string, any>): void {
+  const jsCtx = ensureRequestContext();
+  if (!jsCtx.req) jsCtx.req = {};
+  Object.assign(jsCtx.req, patch);
+}
+
+function disableAllowlist(): void {
+  setReq({ recordRuleMode: '', recordRuleAllow: [] });
 }
 
 function toErr(err: any): { domain?: string; code?: string } | null {
@@ -118,7 +151,6 @@ async function expectCode(fn: () => Promise<any>, code: string, messageHint?: st
   const oe = toErr(caught);
   if (oe?.code === code) return;
   const blob = errorBlob(caught);
-  // `@Constraint` wraps thrown ChoysumError as constraint_execution_failed / validation_failed.
   if (blob.includes(code)) return;
   if (messageHint && blob.includes(messageHint)) return;
   expect(false, `expected error ${code}${messageHint ? ` (hint=${messageHint})` : ''}, got ${blob}`).toBe(true);
@@ -126,6 +158,52 @@ async function expectCode(fn: () => Promise<any>, code: string, messageHint?: st
 
 function metaModel(): any {
   return createServiceByModel('meta.MetaModel');
+}
+
+async function resolveRoleByCode(code: string): Promise<string> {
+  const rows = await Role.Search({ And: [['Code', '=', code]] } as any, { fields: ['Id'], limit: 1 } as any);
+  const id = String((rows as any)?.[0]?.Id || '').trim();
+  if (!id) throw new Error(`bootstrap role not found: ${code}`);
+  return id;
+}
+
+async function resolveAdminCompanyId(): Promise<string> {
+  const rows = await User.Search({ And: [['Username', '=', 'admin']] } as any, { fields: ['CompanyId'], limit: 1 } as any);
+  const companyId = String((rows as any)?.[0]?.CompanyId || '').trim();
+  if (!companyId) throw new Error('bootstrap admin company not found');
+  return companyId;
+}
+
+async function createBaseUser(companyId: string): Promise<string> {
+  return await withModelContext(
+    { activeCompanyId: companyId, enabledCompanyIds: [companyId] } as any,
+    async () => {
+      const created = await User.Create(
+        {
+          Username: uid('sf_u'),
+          PasswordHash: 'test',
+          FirstName: 'SF',
+          LastName: 'User',
+          CompanyId: companyId,
+          CompanyIds: [companyId],
+          IsActive: true,
+        } as any,
+        ['Id'] as any
+      );
+      const userId = String((created as any).Id || '').trim();
+      const roleId = await resolveRoleByCode('base.user');
+      await UserRole.Create(
+        {
+          UserId: { Id: userId } as any,
+          RoleId: { Id: roleId } as any,
+          CompanyId: null as any,
+        } as any,
+        ['Id'] as any
+      );
+      return userId;
+    },
+    { merge: false }
+  );
 }
 
 test('SF13: web FieldDefault and AppSetting models exist after declared service', async () => {
@@ -252,9 +330,35 @@ test('SavedFilter rejects Create without effective MetaModel', async () => {
   );
 });
 
-test('SF11: shared write/delete only for creator (sys.admin needs auth)', async () => {
+test('web bootstrap seeds SavedFilter Record rules', async () => {
   resetRequestContext();
-  const creator = uid('sf_creator');
+  const expected = [
+    'rrr_base_user_web_saved_filter_rc',
+    'rrr_base_user_web_saved_filter_wd_private',
+    'rrr_base_user_web_saved_filter_wd_shared',
+  ];
+  for (const name of expected) {
+    const rows = await MetaModelData.Search(
+      {
+        And: [
+          ['Module', '=', 'web'],
+          ['Name', '=', name],
+        ],
+      } as any,
+      { fields: ['Id', 'Application', 'ModelName'], limit: 1 } as any
+    );
+    expect(Array.isArray(rows) && rows.length === 1, `missing web.${name}`).toBe(true);
+    expect(String((rows as any)[0].Application)).toBe('auth');
+    expect(String((rows as any)[0].ModelName)).toBe('RoleRecordRule');
+  }
+});
+
+test('SF11: shared write/delete only for creator via Record rules', async () => {
+  resetRequestContext();
+  const companyId = await resolveAdminCompanyId();
+  const creator = await createBaseUser(companyId);
+  const stranger = await createBaseUser(companyId);
+
   setIdentity(creator);
   const shared = await SavedFilter.Create(
     {
@@ -267,13 +371,16 @@ test('SF11: shared write/delete only for creator (sys.admin needs auth)', async 
     ['Id', 'CreateUid'] as any
   );
 
-  const stranger = uid('sf_stranger');
+  disableAllowlist();
+  delete (ensureRequestContext() as any)[RR_CACHE_KEY];
+
   setIdentity(stranger);
   await expectCode(
     async () => SavedFilter.UpdateById(String((shared as any).Id), { Name: uid('hijack') } as any, ['Id'] as any),
-    'PermissionDenied'
+    'record_rule_violation',
+    'record_rule_denied'
   );
-  await expectCode(async () => SavedFilter.DeleteById(String((shared as any).Id)), 'PermissionDenied');
+  await expectCode(async () => SavedFilter.DeleteById(String((shared as any).Id)), 'record_rule_violation', 'record_rule_denied');
 
   setIdentity(creator);
   await SavedFilter.UpdateById(String((shared as any).Id), { Name: uid('ok') } as any, ['Id'] as any);

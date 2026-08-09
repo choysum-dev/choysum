@@ -742,7 +742,6 @@ func TestPlanRecordOrder_GuardsAndValidationErrors(t *testing.T) {
 	}{
 		{name: "missing name", rec: record{Module: "auth", Application: "auth", Model: "User", Values: map[string]any{}}, code: LoadErrorCodeMissingName},
 		{name: "module not owner", rec: record{Module: "base", Name: "x", Model: "User", Values: map[string]any{}}, code: LoadErrorCodeModuleNotOwner},
-		{name: "application mismatch", rec: record{Name: "x", Application: "base", Model: "User", Values: map[string]any{}}, code: LoadErrorCodeApplicationMismatch},
 		{name: "missing model", rec: record{Module: "auth", Name: "x", Application: "auth", Values: map[string]any{}}, code: LoadErrorCodeMissingModel},
 		{name: "missing values", rec: record{Module: "auth", Name: "x", Application: "auth", Model: "User"}, code: LoadErrorCodeMissingValues},
 		{name: "invalid model full name", rec: record{Module: "auth", Name: "x", Application: "auth", Model: "auth.User", Values: map[string]any{}}, code: LoadErrorCodeInvalidModel},
@@ -1428,32 +1427,27 @@ func TestApplyModule_ForeignModuleNamespaceIsRejected(t *testing.T) {
 	}
 }
 
-func TestApplyModule_CrossAppApplicationIsRejected(t *testing.T) {
-	l, _ := newTestLoader(t)
+func TestApplyModule_CrossAppApplicationIsAllowed(t *testing.T) {
+	l, db := newTestLoader(t)
 	dir := t.TempDir()
 	writeDataFile(t, dir, map[string]any{
 		"records": []any{
-			map[string]any{"name": "x", "application": "base", "model": "User", "values": map[string]any{}},
+			// web-owned xml_id seeding into auth.User (cross-app application).
+			map[string]any{"name": "cross_app_user", "application": "auth", "model": "User", "values": map[string]any{}},
 		},
 	})
-	mod := moduleWithDataFile(t, dir)
+	mod := moduleWithDataFileNamed(t, dir, "web")
+	mod.ApplicationStr = "web"
 
-	err := l.ApplyModule(context.Background(), mod, ApplyOptions{})
-	if err == nil {
-		t.Fatalf("expected error")
+	if err := l.ApplyModule(context.Background(), mod, ApplyOptions{}); err != nil {
+		t.Fatalf("ApplyModule() error = %v", err)
 	}
-	var le *LoadError
-	if !errors.As(err, &le) {
-		t.Fatalf("expected LoadError, got %T: %v", err, err)
+	var mapping modmeta.ModelData
+	if err := db.Where("module = ? AND name = ?", "web", "cross_app_user").First(&mapping).Error; err != nil {
+		t.Fatalf("lookup model_data: %v", err)
 	}
-	if le.Kind != LoadErrorKindValidation {
-		t.Fatalf("expected Kind=%q, got %q", LoadErrorKindValidation, le.Kind)
-	}
-	if le.Code != LoadErrorCodeApplicationMismatch {
-		t.Fatalf("expected Code=%q, got %q", LoadErrorCodeApplicationMismatch, le.Code)
-	}
-	if le.RecordIndex != 0 {
-		t.Fatalf("expected RecordIndex=0, got %d", le.RecordIndex)
+	if mapping.Application != "auth" || mapping.ModelName != "User" {
+		t.Fatalf("expected application=auth model=User, got application=%q model=%q", mapping.Application, mapping.ModelName)
 	}
 }
 
@@ -3293,6 +3287,18 @@ func TestNormalizeRecordOwnership_NilGuardsAndDefaults(t *testing.T) {
 	}
 }
 
+func TestNormalizeRecordOwnership_CrossAppApplicationPreserved(t *testing.T) {
+	t.Parallel()
+	rules := &moduleRules{OwnerName: "web", OwnerApp: "web"}
+	rec := record{Name: "rrr_x", Application: "auth", Model: "RoleRecordRule", Values: map[string]any{}}
+	if err := normalizeRecordOwnership(rules, "/tmp/data.json", 0, &rec); err != nil {
+		t.Fatalf("normalizeRecordOwnership() error = %v", err)
+	}
+	if rec.Module != "web" || rec.Application != "auth" {
+		t.Fatalf("expected module=web application=auth, got module=%q application=%q", rec.Module, rec.Application)
+	}
+}
+
 func TestLoadErrorModelDisplayAndErrorFormatting(t *testing.T) {
 	t.Parallel()
 	if got := loadErrorModelDisplay("auth", "User"); got != "auth.User" {
@@ -3394,7 +3400,6 @@ func TestPlanBatchRecordOrder_ValidationAndRefErrors(t *testing.T) {
 	}{
 		{name: "missing name", rec: record{Module: "auth", Application: "auth", Model: "User", Values: map[string]any{}}, code: LoadErrorCodeMissingName},
 		{name: "module not owner", rec: record{Module: "base", Name: "x", Model: "User", Values: map[string]any{}}, code: LoadErrorCodeModuleNotOwner},
-		{name: "application mismatch", rec: record{Name: "x", Application: "base", Model: "User", Values: map[string]any{}}, code: LoadErrorCodeApplicationMismatch},
 		{name: "missing model", rec: record{Module: "auth", Name: "x", Application: "auth", Values: map[string]any{}}, code: LoadErrorCodeMissingModel},
 		{name: "missing values", rec: record{Module: "auth", Name: "x", Application: "auth", Model: "User"}, code: LoadErrorCodeMissingValues},
 		{name: "invalid model full name", rec: record{Module: "auth", Name: "x", Application: "auth", Model: "auth.User", Values: map[string]any{}}, code: LoadErrorCodeInvalidModel},

@@ -580,11 +580,15 @@ func summarizeModuleOpInfoNames(values []string) []string {
 func moduleOperationPlanInfoAttrs(opPlan plan.Plan) []any {
 	attrs := []any{
 		"modules_count", len(opPlan.ModuleOrder),
+		"ensure_count", len(opPlan.EnsureOrder),
 		"apps_count", len(opPlan.AffectedApps),
 		"needs_global_web_build", opPlan.NeedsGlobalWebBuild,
 	}
 	if modules := summarizeModuleOpInfoNames(opPlan.ModuleOrder); len(modules) > 0 {
 		attrs = append(attrs, "modules", modules)
+	}
+	if ensure := summarizeModuleOpInfoNames(opPlan.EnsureOrder); len(ensure) > 0 {
+		attrs = append(attrs, "ensure", ensure)
 	}
 	if apps := summarizeModuleOpInfoNames(opPlan.AffectedApps); len(apps) > 0 {
 		attrs = append(attrs, "apps", apps)
@@ -1031,7 +1035,7 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			installSpinnerState.mu.Unlock()
 			setSpinnerMessage(planningSpinnerMessage(progress))
 		})
-		opPlan, err := plan.BuildPlan(planningCtx, plan.OpInstall, rootModule, m)
+		opPlan, err := plan.BuildPlan(planningCtx, plan.OpInstall, rootModule, m, planBuildOptionsFromContext(ctx)...)
 		clearSpinnerState()
 		if err != nil {
 			return err
@@ -1252,7 +1256,7 @@ func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
 			return err
 		}
 		planningStarted := time.Now()
-		plan, err := plan.BuildPlan(ctx, plan.OpUninstall, mod, m)
+		plan, err := plan.BuildPlan(ctx, plan.OpUninstall, mod, m, planBuildOptionsFromContext(ctx)...)
 		if err != nil {
 			return err
 		}
@@ -1454,7 +1458,7 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 			return rollbackUpgradeOrigin(err)
 		}
 		planningStarted := time.Now()
-		plan, err := plan.BuildPlan(ctx, plan.OpUpgrade, mod, m)
+		plan, err := plan.BuildPlan(ctx, plan.OpUpgrade, mod, m, planBuildOptionsFromContext(ctx)...)
 		if err != nil {
 			return rollbackUpgradeOrigin(err)
 		}
@@ -1515,6 +1519,7 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 			}
 		}
 		started := time.Now()
+		moduleOps := moduleOpCtxBinder{m: m, opCtx: opCtx}
 		err = pipeline.Execute(stageCtx, plan, mod, pipeline.Callbacks{
 			Logger: logger,
 			OnProgress: func(event pipeline.ProgressEvent) {
@@ -1523,6 +1528,18 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 					moduleName = "unknown"
 				}
 				switch event.Stage {
+				case pipeline.ProgressStageModuleInstallStarted:
+					if event.Total > 0 && event.Current > 0 {
+						setSpinnerStage("upgrading.ensure", fmt.Sprintf("%s: ensuring modules (%d/%d)", moduleName, event.Current, event.Total))
+						return
+					}
+					setSpinnerStage("upgrading.ensure", fmt.Sprintf("%s: ensuring module", moduleName))
+				case pipeline.ProgressStageModuleInstallFailed:
+					if event.Total > 0 && event.Current > 0 {
+						setSpinnerStage("upgrading.ensure", fmt.Sprintf("%s: failed ensuring module (%d/%d)", moduleName, event.Current, event.Total))
+						return
+					}
+					setSpinnerStage("upgrading.ensure", fmt.Sprintf("%s: failed ensuring module", moduleName))
 				case pipeline.ProgressStageModuleUpgradeStarted:
 					if event.Total > 0 && event.Current > 0 {
 						setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: upgrading modules (%d/%d)", moduleName, event.Current, event.Total))
@@ -1539,8 +1556,10 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 					_ = handlePipelineSharedProgress(event, rootModuleName, len(plan.AffectedApps), setSpinnerStage)
 				}
 			},
-			ResolveInstalledModule: m.Load,
-			Upgrade:                moduleOpCtxBinder{m: m, opCtx: opCtx}.upgrade,
+			ResolveInstallModuleFromOrigin: m.resolveInstallModuleFromOrigin,
+			ResolveInstalledModule:         m.Load,
+			Install:                        moduleOps.install,
+			Upgrade:                        moduleOps.upgrade,
 			AppTargets: func(appName string) (string, pipeline.ModulesAppTargets, error) {
 				distAppDir := ""
 				if !isBundleMode {

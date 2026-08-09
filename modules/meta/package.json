@@ -20,7 +20,6 @@
     "category": "Platform/Metadata",
     "depends": [
       "core",
-      "web",
       "task"
     ],
     "cli": ">=0.0.0-0 <0.0.0",

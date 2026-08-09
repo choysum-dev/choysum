@@ -430,12 +430,56 @@
     }
   }
 
+  const CTX_FROZEN_KEY = Symbol.for('choysum.ctx.frozen');
+  const CTX_OVERRIDE_KEY = Symbol.for('choysum.ctx.override');
+  const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
+  const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
+
+  function readDefaultUnitIdentity() {
+    try {
+      const jsCtx = globalThis.$choysum && globalThis.$choysum.request && globalThis.$choysum.request.context;
+      if (!jsCtx || typeof jsCtx !== 'object') return null;
+      const userId = jsCtx.identity && typeof jsCtx.identity.userId === 'string' ? String(jsCtx.identity.userId).trim() : '';
+      const companyId =
+        jsCtx.ctx && typeof jsCtx.ctx.activeCompanyId === 'string' ? String(jsCtx.ctx.activeCompanyId).trim() : '';
+      if (!userId || !companyId) return null;
+      return { userId, companyId };
+    } catch {
+      return null;
+    }
+  }
+
+  function applyDefaultUnitIdentity(defaults) {
+    if (!defaults) return;
+    const root = (globalThis.$choysum = globalThis.$choysum || {});
+    if (!root.request) root.request = {};
+    if (!root.request.context) root.request.context = {};
+    const jsCtx = root.request.context;
+    if (!jsCtx.identity || typeof jsCtx.identity !== 'object') jsCtx.identity = {};
+    if (!jsCtx.ctx || typeof jsCtx.ctx !== 'object') jsCtx.ctx = {};
+    if (!jsCtx.req || typeof jsCtx.req !== 'object') jsCtx.req = {};
+    jsCtx.identity.userId = defaults.userId;
+    jsCtx.ctx.activeCompanyId = defaults.companyId;
+    jsCtx.ctx.enabledCompanyIds = [defaults.companyId];
+    if (typeof jsCtx.req.depth !== 'number') jsCtx.req.depth = 0;
+    try {
+      delete jsCtx[CTX_FROZEN_KEY];
+      delete jsCtx[CTX_OVERRIDE_KEY];
+      delete jsCtx[RR_CACHE_KEY];
+      delete jsCtx[FR_CACHE_KEY];
+    } catch {
+      // ignore
+    }
+  }
+
   async function runAll(options) {
     const opts = options || {};
     const re = compilePattern(opts.pattern);
     const failFast = !!opts.failFast;
 
     const selected = re ? registry.filter(t => re.test(t.name)) : registry.slice();
+    // Capture once: Go injects bootstrap admin when auth is installed; empty means no-op.
+    const defaultIdentity = readDefaultUnitIdentity();
 
     const cases = [];
     let passed = 0;
@@ -443,6 +487,7 @@
 
     for (let i = 0; i < selected.length; i++) {
       const t = selected[i];
+      applyDefaultUnitIdentity(defaultIdentity);
       const start = nowMs();
       let ok = true;
       let errInfo = null;

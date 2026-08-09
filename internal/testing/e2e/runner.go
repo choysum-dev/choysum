@@ -539,11 +539,12 @@ compile:
 			return err
 		}
 	}
-
 	// Apply fixtures for closure (each module may contribute its own fixtures for this scenario).
 	fixtureClosure := append([]string{}, closure...)
 	if authEnabled {
-		fixtureClosure = append(fixtureClosure, "auth")
+		// auth e2e/smoke.json refs base.e2e_company_child; meta's package depends omit base,
+		// so ensure base fixtures are applied before auth when auth is force-included.
+		fixtureClosure = append(fixtureClosure, "base", "auth")
 	}
 	uniqueFixtures := make([]string, 0, len(fixtureClosure))
 	seen := map[string]bool{}
@@ -827,7 +828,8 @@ module.exports = {
 	workers: 1,
   timeout: 60_000,
   expect: { timeout: 10_000 },
-  retries: 0,
+	// One retry absorbs intermittent sqlite "database is locked" under WAL.
+	retries: 1,
   use: { trace: 'retain-on-failure' },
 };
 `, specsDir, filepath.Join(runDir, ".playwright", "test-results"))

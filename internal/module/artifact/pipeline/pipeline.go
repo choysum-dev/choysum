@@ -1062,6 +1062,45 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.Module, cb Callb
 		if cb.Upgrade == nil {
 			return fmt.Errorf("Upgrade callback is required for upgrade")
 		}
+		// EnsureOrder installs missing prerequisites (e.g. web shell) before upgrade.
+		if len(plan.EnsureOrder) > 0 {
+			if cb.ResolveInstallModuleFromOrigin == nil {
+				return fmt.Errorf("ResolveInstallModuleFromOrigin callback is required when plan.EnsureOrder is non-empty")
+			}
+			if cb.Install == nil {
+				return fmt.Errorf("Install callback is required when plan.EnsureOrder is non-empty")
+			}
+			ensureStarted := time.Now()
+			emitProgress(ProgressEvent{Stage: ProgressStageModuleInstallStarted, Module: "ensure", Total: len(plan.EnsureOrder)})
+			for index, name := range plan.EnsureOrder {
+				if err := checkCtx(); err != nil {
+					return err
+				}
+				mod, err := cb.ResolveInstallModuleFromOrigin(ctx, name)
+				if err != nil {
+					return fmt.Errorf("resolve ensure module from origin %s: %w", name, err)
+				}
+				if mod == nil {
+					continue
+				}
+				moduleName := strings.TrimSpace(mod.Name)
+				if moduleName == "" {
+					moduleName = strings.TrimSpace(name)
+				}
+				installStarted := time.Now()
+				emitProgress(ProgressEvent{Stage: ProgressStageModuleInstallStarted, Current: index + 1, Total: len(plan.EnsureOrder), Module: moduleName})
+				if err := cb.Install(mod); err != nil {
+					emitProgress(ProgressEvent{Stage: ProgressStageModuleInstallFailed, Current: index + 1, Total: len(plan.EnsureOrder), Module: moduleName, Duration: time.Since(installStarted), Err: err})
+					return err
+				}
+				emitProgress(ProgressEvent{Stage: ProgressStageModuleInstallCompleted, Current: index + 1, Total: len(plan.EnsureOrder), Module: moduleName, Duration: time.Since(installStarted)})
+				logStep(slog.LevelInfo, "ensure module installed",
+					"installed_module", mod.Name,
+					"duration_ms", time.Since(installStarted).Milliseconds(),
+				)
+			}
+			logStep(slog.LevelInfo, "upgrade ensure order completed", "duration_ms", time.Since(ensureStarted).Milliseconds(), "count", len(plan.EnsureOrder))
+		}
 		moduleStageStarted := logModuleStageStarted()
 		totalModules := len(plan.ModuleOrder)
 		for index, name := range plan.ModuleOrder {
