@@ -145,10 +145,6 @@ export default class SavedFilter extends BaseModel {
     throw new ChoysumError({ domain: 'web', code, message }).withGrpcCode(grpc);
   }
 
-  private static _actorId(): string {
-    return String(this.userId || '').trim();
-  }
-
   /**
    * Owner may be null (shared) or the current actor. Other user ids are rejected.
    */
@@ -182,7 +178,7 @@ export default class SavedFilter extends BaseModel {
     }
     // Preflight under sudo so a foreign shared default surfaces PermissionDenied
     // instead of a generic record_rule_violation from Update.
-    const actor = SavedFilter._actorId();
+    const actor = String(this.userId || '').trim();
     const candidates = await SavedFilter.sudo(
       () => SavedFilter.Search(cond as any, { fields: ['Id', 'UserId', 'CreateUid'], limit: 50 } as any),
       { hint: 'web.SavedFilter.clearOtherDefaults.preflight' }
@@ -252,7 +248,7 @@ export default class SavedFilter extends BaseModel {
     const isCreate = ctx.mode === 'create';
     const values = ctx.values as Record<string, any>;
     const currentId = String((isCreate ? values.Id : SavedFilter._mergedField(self, ctx, 'Id')) || '').trim() || undefined;
-    const actor = SavedFilter._actorId();
+    const actor = String(this.userId || '').trim();
     if (!actor) {
       SavedFilter._fail('PermissionDenied', _t('Authentication required', { scope: SCOPE }), GrpcCode.Unauthenticated);
     }
