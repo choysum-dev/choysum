@@ -148,14 +148,21 @@ async function expectCode(fn: () => Promise<any>, code: string, messageHint?: st
   } catch (e) {
     caught = e;
   }
-  expect(caught, `expected error ${code}, got nothing`).toBeTruthy();
+  if (!caught) {
+    throw new Error(`expected error ${code}, got nothing`);
+  }
   const oe = toErr(caught);
   const codes = collectErrorCodes(caught);
   const hasCode = oe?.code === code || codes.includes(code);
-  expect(hasCode, `expected error ${code}${messageHint ? ` (hint=${messageHint})` : ''}, got codes=${codes.join(',')}`).toBe(true);
+  if (!hasCode) {
+    throw new Error(`expected error ${code}, got codes=${codes.join(',') || '(none)'} msg=${String((caught as any)?.message || caught)}`);
+  }
+  // messageHint is an additional assertion after the code matches (not an alternative).
   if (messageHint) {
     const msg = String((caught as any)?.message || '');
-    expect(msg.includes(messageHint), `expected message hint=${messageHint}, got ${msg}`).toBe(true);
+    if (!msg.includes(messageHint)) {
+      throw new Error(`expected message hint=${messageHint}, got ${msg}`);
+    }
   }
 }
 
@@ -443,12 +450,17 @@ test('SF11: shared write/delete only for creator via Record rules', async () => 
   delete (ensureRequestContext() as any)[RR_CACHE_KEY];
 
   setIdentity(stranger);
+  // Write/delete on another user's shared row: targets fail the WD record-rule expr → violation.
   await expectCode(
     async () => SavedFilter.UpdateById(String((shared as any).Id), { Name: uid('hijack') } as any, ['Id'] as any),
     'record_rule_violation',
-    'record_rule_denied'
+    'violates record rule'
   );
-  await expectCode(async () => SavedFilter.DeleteById(String((shared as any).Id)), 'record_rule_violation', 'record_rule_denied');
+  await expectCode(
+    async () => SavedFilter.DeleteById(String((shared as any).Id)),
+    'record_rule_violation',
+    'violates record rule'
+  );
 
   setIdentity(creator);
   await SavedFilter.UpdateById(String((shared as any).Id), { Name: uid('ok') } as any, ['Id'] as any);
@@ -672,13 +684,14 @@ test('SavedFilter shared-default clear PermissionDenied when stranger cannot rep
   } catch (e) {
     caught = e;
   }
-  expect(caught, 'expected shared-default replacement to fail').toBeTruthy();
+  if (!caught) {
+    throw new Error('expected shared-default replacement to fail');
+  }
   const codes = collectErrorCodes(caught);
   const msg = String((caught as any)?.message || '');
-  expect(
-    codes.includes('PermissionDenied') && msg.includes("another user's shared default"),
-    `expected PermissionDenied with shared-default message, got codes=${codes.join(',')} msg=${msg}`
-  ).toBe(true);
+  if (!codes.includes('PermissionDenied') || !msg.includes("another user's shared default")) {
+    throw new Error(`expected PermissionDenied with shared-default message, got codes=${codes.join(',')} msg=${msg}`);
+  }
 
   // Creator's shared default must remain the sole default.
   setIdentity(creator);
