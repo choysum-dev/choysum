@@ -10,7 +10,7 @@ import RoleFieldRule from '@/auth/service/models/role_field_rule';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaFieldModel from '@/meta/service/models/field';
 import type MetaModelDataModel from '@/meta/service/models/model_data';
-import { resolveEffectiveApplicationId, resolveEffectiveModelId } from '../models/_resolve_effective_model';
+import { metaApplicationId, metaModelId } from './_meta_ids';
 
 const MetaField = createServiceByModel<typeof MetaFieldModel>('meta.MetaField');
 const MetaModelData = createServiceByModel<typeof MetaModelDataModel>('meta.MetaModelData');
@@ -138,7 +138,7 @@ async function resolveUserByUsername(username: string): Promise<{ id: string; co
 }
 
 async function resolveApplicationId(name: string): Promise<string> {
-  const id = await resolveEffectiveApplicationId(name);
+  const id = await metaApplicationId(name);
   if (!id) throw new Error(`MetaApplication not found: ${name}`);
   return id;
 }
@@ -229,7 +229,7 @@ test('PR-C-2 gift pack: bootstrap seeds sys.admin global RR+FR and base.user app
       );
       expect((sysAdminFr || []).length > 0).toBe(true);
 
-      const userModelId = await resolveEffectiveModelId('auth', 'User');
+      const userModelId = await metaModelId('auth', 'User');
       expect(Boolean(userModelId)).toBe(true);
       const passwordFieldRows = await MetaField.Search(
         {
@@ -291,7 +291,7 @@ test('PR-C-2 gift pack: bootstrap seeds sys.admin global RR+FR and base.user app
 
       // Token/Session self-service grants must be owner-scoped (not TRUE).
       for (const modelName of ['Token', 'Session']) {
-        const modelId = await resolveEffectiveModelId('auth', modelName);
+        const modelId = await metaModelId('auth', modelName);
         expect(Boolean(modelId)).toBe(true);
         const ownerRr = await RoleRecordRule.Search(
           {

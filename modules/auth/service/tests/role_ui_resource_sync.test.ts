@@ -9,7 +9,7 @@ import RoleUiResource from '@/auth/service/models/role_ui_resource';
 import MetaUiResource from '@/meta/service/models/ui_resource';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaServiceModel from '@/meta/service/models/service';
-import { resolveEffectiveApplicationId, resolveEffectiveModelId } from '../models/_resolve_effective_model';
+import { metaApplicationId, metaModelId } from './_meta_ids';
 const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
@@ -105,13 +105,13 @@ function setupAllowlistForFixtures(): void {
 }
 
 async function resolveApplicationId(applicationName: string): Promise<string> {
-  const id = await resolveEffectiveApplicationId(applicationName);
+  const id = await metaApplicationId(applicationName);
   if (!id) throw new Error(`meta application not found: ${applicationName}`);
   return id;
 }
 
 async function resolveModelId(appName: string, modelName: string): Promise<string> {
-  const id = await resolveEffectiveModelId(appName, modelName);
+  const id = await metaModelId(appName, modelName);
   if (!id) throw new Error(`meta model not found: ${appName}.${modelName}`);
   return id;
 }

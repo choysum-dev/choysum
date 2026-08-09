@@ -73,15 +73,15 @@ func resolveUnitTestDefaultIdentity(ctx context.Context, runtimeScope scope.Scop
 			return nil
 		}
 
-		userModel, lookupErr := modmeta.LookupEffectiveModel(session.DB, "auth", "User")
-		if lookupErr != nil {
-			if modmeta.IsEffectiveModelNotFound(lookupErr) {
+		var userModel meta.Model
+		if lookupErr := session.DB.Where("application = ? AND name = ?", "auth", "User").First(&userModel).Error; lookupErr != nil {
+			if errors.Is(lookupErr, gorm.ErrRecordNotFound) {
 				// Auth installed but User seed/projection missing — treat as no inject.
 				return nil
 			}
 			return xfmt.Errorf("lookup auth.User for unit identity: %w", lookupErr)
 		}
-		if userModel == nil || strings.TrimSpace(userModel.ModelTable) == "" {
+		if strings.TrimSpace(userModel.ModelTable) == "" {
 			return nil
 		}
 

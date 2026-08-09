@@ -10,9 +10,16 @@ import { createServiceByModel } from '@/core/service/rpc';
 import type MetaModel from '@/meta/service/models/model';
 import MetaModelData from '@/meta/service/models/model_data';
 import SavedFilter from '@/web/service/models/saved_filter';
-import { resolveEffectiveModelId } from '@/web/service/models/_resolve_effective_model';
 
 const MetaModelService = createServiceByModel<typeof MetaModel>('meta.MetaModel');
+
+async function metaModelId(app: string, name: string): Promise<string> {
+  const rows = await MetaModelService.Search(
+    { And: [['Application', '=', app], ['Name', '=', name]] } as any,
+    { fields: ['Id'], limit: 1 } as any
+  );
+  return String(rows?.[0]?.Id || '').trim();
+}
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -244,7 +251,7 @@ test('SavedFilter CRUD + IsDefault exclusivity + visibility', async () => {
   const actor = uid('sf_actor');
   setIdentity(actor);
 
-  const modelId = await resolveEffectiveModelId('web', 'SavedFilter');
+  const modelId = await metaModelId('web', 'SavedFilter');
   expect(modelId).toBeTruthy();
 
   const nameA = uid('fav_a');
@@ -983,9 +990,9 @@ test('SavedFilter validateSavedFilterConstraint covers empty create Id and Creat
   const actor = uid('sf_validate');
   setIdentity(actor);
   const SF = SavedFilter as any;
-  const modelId = await resolveEffectiveModelId('web', 'SavedFilter');
+  const modelId = await metaModelId('web', 'SavedFilter');
   if (!modelId) {
-    throw new Error('expected effective MetaModel for web.SavedFilter');
+    throw new Error('expected MetaModel for web.SavedFilter');
   }
 
   // Create with whitespace Id → trim || undefined (exceptId omitted on unique check).

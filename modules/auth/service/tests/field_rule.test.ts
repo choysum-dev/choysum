@@ -10,7 +10,7 @@ import Role from '@/auth/service/models/role';
 import UserRole from '@/auth/service/models/user_role';
 import RoleFieldRule from '@/auth/service/models/role_field_rule';
 import { evaluateFieldRules } from '@/auth/service/models/_user_field_rule_eval';
-import { resolveEffectiveApplicationId, resolveEffectiveModelId } from '../models/_resolve_effective_model';
+import { metaApplicationId, metaModelId } from './_meta_ids';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaFieldModel from '@/meta/service/models/field';
 const MetaField = createServiceByModel<typeof MetaFieldModel>('meta.MetaField');
@@ -205,13 +205,13 @@ function toChoysumErrorLike(err: any): { domain?: string; code?: string; message
 }
 
 async function resolveModelId(appName: string, modelName: string): Promise<string> {
-  const id = await resolveEffectiveModelId(appName, modelName);
+  const id = await metaModelId(appName, modelName);
   if (!id) throw new Error(`meta model not found: app=${appName} model=${modelName}`);
   return id;
 }
 
 async function resolveApplicationId(appName: string): Promise<string> {
-  const id = await resolveEffectiveApplicationId(appName);
+  const id = await metaApplicationId(appName);
   if (!id) throw new Error(`meta application not found: name=${appName}`);
   return id;
 }

@@ -5,16 +5,17 @@ import { BaseModel, Model, Field } from '@/core/service';
 import { Constraint, type ConstraintContext } from '@/core/service/api/constraint';
 import type { QueryCondition } from '@/core/service/api/query';
 import { ChoysumError, GrpcCode } from '@/core/service/error';
+import { createServiceByModel } from '@/core/service/rpc';
 import type MetaModel from '@/meta/service/models/model';
 import { _lt, _t } from '../i18n';
-import { resolveEffectiveModelId } from './_resolve_effective_model';
 
 const SCOPE = 'web.model.SavedFilter';
+const MetaModelService = createServiceByModel<typeof MetaModel>('meta.MetaModel');
 
 /**
  * Persisted Favorites filter for OSearch (Owner Application = web).
  *
- * Identity: Application + ModelName. ModelId stores the effective meta.MetaModel id.
+ * Identity: Application + ModelName. ModelId stores the unique live meta.MetaModel id.
  * Field normalize / ModelId / uniqueness / IsDefault mutex → `@Constraint` (uses ctx.mode;
  * Create pre-assigns Id before validation, so `!this.Id` is not a reliable create signal).
  * Shared write/delete ACL (SF11) → auth.RoleRecordRule seeds in modules/web/data/bootstrap.json.
@@ -240,7 +241,7 @@ export default class SavedFilter extends BaseModel {
   }
 
   /**
-   * Normalize identity / ownership, resolve effective ModelId, enforce uniqueness and IsDefault mutex.
+   * Normalize identity / ownership, resolve ModelId, enforce uniqueness and IsDefault mutex.
    * Static so we can read `ctx.mode` (Create pre-assigns Id before validation).
    */
   @Constraint<SavedFilter>(['Name', 'Application', 'ModelName', 'ModelId', 'UserId', 'IsDefault', 'Condition', 'Active', 'CreateUid'])
@@ -263,15 +264,19 @@ export default class SavedFilter extends BaseModel {
     values.ModelName = modelName;
     values.Name = name;
 
-    const effectiveId = await resolveEffectiveModelId(app, modelName);
-    if (!effectiveId) {
+    const modelRows = await MetaModelService.Search(
+      { And: [['Application', '=', app], ['Name', '=', modelName]] } as any,
+      { fields: ['Id'], limit: 1 } as any
+    );
+    const modelId = String(modelRows?.[0]?.Id || '').trim();
+    if (!modelId) {
       SavedFilter._fail(
         'FailedPrecondition',
         _t('No effective model found for %s.%s', { scope: SCOPE }, app, modelName),
         GrpcCode.FailedPrecondition
       );
     }
-    values.ModelId = effectiveId;
+    values.ModelId = modelId;
 
     if (isCreate) {
       values.CreateUid = actor;

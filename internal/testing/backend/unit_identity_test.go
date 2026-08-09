@@ -287,7 +287,7 @@ func TestResolveUnitTestDefaultIdentityEmptyResID(t *testing.T) {
 	}
 }
 
-func TestResolveUnitTestDefaultIdentityLookupEffectiveMissing(t *testing.T) {
+func TestResolveUnitTestDefaultIdentityMetaModelMissing(t *testing.T) {
 	db := openIdentityTestDB(t)
 	migrateIdentityTables(t, db)
 	seedAuthInstalled(t, db)
@@ -467,7 +467,7 @@ func TestResolveUnitTestDefaultIdentityOperationalDBErrors(t *testing.T) {
 		seedAuthInstalled(t, db)
 		userID := xid.New().String()
 		seedUserAdminMapping(t, db, userID)
-		// Break meta_model Find so LookupEffectiveModel returns a non-NotFound error.
+		// Break meta_model so First returns a non-NotFound error.
 		if err := db.Exec(`ALTER TABLE meta_model RENAME TO meta_model_hidden`).Error; err != nil {
 			t.Fatalf("rename meta_model: %v", err)
 		}

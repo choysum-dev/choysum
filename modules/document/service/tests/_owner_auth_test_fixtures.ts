@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import Role from '@/auth/service/models/role';
-import { resolveEffectiveModelId } from '@/auth/service/models/_resolve_effective_model';
+import { createServiceByModel } from '@/core/service/rpc';
+import type MetaModelModel from '@/meta/service/models/model';
 import RoleFieldRule from '@/auth/service/models/role_field_rule';
 import RoleRecordRule from '@/auth/service/models/role_record_rule';
 import User from '@/auth/service/models/user';
@@ -10,6 +11,8 @@ import UserRole from '@/auth/service/models/user_role';
 import { withPermissionGraphBypass } from '@/auth/service/models/_user_authz_shared';
 import { invalidateAuthzCachesForUsers } from '@/auth/service/models/_request_cache_invalidation';
 import { getTestRepository } from '@/core/service/testing';
+
+const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -105,7 +108,11 @@ export async function ensureAuthUserOwnerRecordRuleGrants(): Promise<void> {
   if (authUserOwnerGrantsSeeded) return;
 
   await withPermissionGraphBypass(async () => {
-    const modelId = await resolveEffectiveModelId('auth', 'User');
+    const modelRows = await MetaModel.Search(
+      { And: [['Application', '=', 'auth'], ['Name', '=', 'User']] } as any,
+      { fields: ['Id'], limit: 1 } as any
+    );
+    const modelId = String(modelRows?.[0]?.Id || '').trim();
     if (!modelId) {
       throw new Error('meta model auth.User not found for document owner RR fixture');
     }

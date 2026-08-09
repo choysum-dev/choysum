@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"strings"
 
-	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"gorm.io/gorm"
 )
@@ -67,9 +66,9 @@ func (l *Loader) languageCodeExists(tx *gorm.DB, code string) (bool, error) {
 	if code == "" {
 		return false, nil
 	}
-	model, err := modmeta.LookupEffectiveModel(tx, "base", "Language")
-	if err != nil {
-		if modmeta.IsEffectiveModelNotFound(err) {
+	var model meta.Model
+	if err := tx.Where("application = ? AND name = ?", "base", "Language").First(&model).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return false, nil
 		}
 		return false, err

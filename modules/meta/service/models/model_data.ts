@@ -57,7 +57,7 @@ export default class MetaModelData extends BaseModel {
   @Field({ type: 'varchar', size: 255, notNull: true, index: true, string: _lt('Name', { scope: 'meta.model.MetaModelData.fields' }) })
   Name!: string;
 
-  /** Effective meta_model.id written by the host loader (LookupEffectiveModel). */
+  /** meta_model.id written by the host loader (unique per application+name). */
   @Field({ type: 'ManyToOne', relation: { targetModel: () => MetaModel }, string: _lt('Model', { scope: 'meta.model.MetaModelData.fields' }) })
   ModelId?: MetaModel;
 
