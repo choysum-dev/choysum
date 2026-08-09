@@ -699,3 +699,134 @@ test('SavedFilter shared-default clear PermissionDenied when stranger cannot rep
   expect((again as any).IsDefault).toBe(true);
   await SavedFilter.DeleteById(String((shared as any).Id));
 });
+
+test('SavedFilter whitespace UserId normalizes to shared null', async () => {
+  resetRequestContext();
+  const actor = uid('sf_ws');
+  setIdentity(actor);
+  const created = await SavedFilter.Create(
+    {
+      Name: uid('ws_uid'),
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      Condition: {},
+      UserId: '   ',
+      IsDefault: true,
+    } as any,
+    ['Id', 'UserId', 'IsDefault'] as any
+  );
+  expect((created as any).UserId == null || (created as any).UserId === '').toBe(true);
+  expect((created as any).IsDefault).toBe(true);
+  await SavedFilter.DeleteById(String((created as any).Id));
+});
+
+test('SavedFilter creator can replace own shared default', async () => {
+  resetRequestContext();
+  const actor = uid('sf_shared_ok');
+  setIdentity(actor);
+  const first = await SavedFilter.Create(
+    {
+      Name: uid('shared_a'),
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      Condition: {},
+      UserId: null,
+      IsDefault: true,
+    } as any,
+    ['Id', 'IsDefault', 'CreateUid'] as any
+  );
+  expect((first as any).IsDefault).toBe(true);
+  const second = await SavedFilter.Create(
+    {
+      Name: uid('shared_b'),
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      Condition: {},
+      UserId: null,
+      IsDefault: true,
+    } as any,
+    ['Id', 'IsDefault'] as any
+  );
+  expect((second as any).IsDefault).toBe(true);
+  const firstAgain = await SavedFilter.Browse(String((first as any).Id), ['IsDefault'] as any);
+  expect((firstAgain as any).IsDefault).toBe(false);
+  await SavedFilter.DeleteById(String((first as any).Id));
+  await SavedFilter.DeleteById(String((second as any).Id));
+});
+
+test('SavedFilter Update without IsDefault still clears peers when row is default', async () => {
+  resetRequestContext();
+  const actor = uid('sf_upd_def');
+  setIdentity(actor);
+  const a = await SavedFilter.Create(
+    {
+      Name: uid('upd_def_a'),
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      Condition: {},
+      IsDefault: true,
+    } as any,
+    ['Id', 'IsDefault', 'Name'] as any
+  );
+  const b = await SavedFilter.Create(
+    {
+      Name: uid('upd_def_b'),
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      Condition: {},
+      IsDefault: false,
+    } as any,
+    ['Id', 'IsDefault'] as any
+  );
+  // Promote b via Update; a should clear. Then rename a while it is no longer default
+  // and rename the still-default b without sending IsDefault (mergedField path).
+  await SavedFilter.UpdateById(String((b as any).Id), { IsDefault: true } as any, ['Id', 'IsDefault'] as any);
+  const newName = uid('renamed_def');
+  await SavedFilter.UpdateById(String((b as any).Id), { Name: newName } as any, ['Id', 'Name', 'IsDefault'] as any);
+  const bAgain = await SavedFilter.Browse(String((b as any).Id), ['Name', 'IsDefault'] as any);
+  expect(String((bAgain as any).Name)).toBe(newName);
+  expect((bAgain as any).IsDefault).toBe(true);
+  const aAgain = await SavedFilter.Browse(String((a as any).Id), ['IsDefault'] as any);
+  expect((aAgain as any).IsDefault).toBe(false);
+  await SavedFilter.DeleteById(String((a as any).Id));
+  await SavedFilter.DeleteById(String((b as any).Id));
+});
+
+test('SavedFilter Update rename collision uses exceptId uniqueness', async () => {
+  resetRequestContext();
+  const actor = uid('sf_rename');
+  setIdentity(actor);
+  const nameA = uid('rename_a');
+  const nameB = uid('rename_b');
+  const a = await SavedFilter.Create(
+    {
+      Name: nameA,
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      Condition: {},
+    } as any,
+    ['Id', 'Name'] as any
+  );
+  const b = await SavedFilter.Create(
+    {
+      Name: nameB,
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      Condition: {},
+    } as any,
+    ['Id', 'Name'] as any
+  );
+  await expectCode(
+    async () => SavedFilter.UpdateById(String((b as any).Id), { Name: nameA } as any, ['Id'] as any),
+    'AlreadyExists',
+    'already exists'
+  );
+  // Same-name update on self must succeed (exceptId excludes current).
+  const self = await SavedFilter.UpdateById(String((a as any).Id), { Name: nameA, Active: true } as any, [
+    'Id',
+    'Name',
+  ] as any);
+  expect(String((self as any).Name)).toBe(nameA);
+  await SavedFilter.DeleteById(String((a as any).Id));
+  await SavedFilter.DeleteById(String((b as any).Id));
+});

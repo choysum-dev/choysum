@@ -564,4 +564,48 @@ describe('OSearch behavior', () => {
     resolveSave!({ Id: '1' });
     await flushPromises();
   });
+
+  it('does not emit query-update when applying a favorite leaves filter length unchanged', async () => {
+    savedFiltersApi.apply.mockImplementationOnce(() => {
+      /* no-op: filters length stays the same */
+    });
+    savedFiltersApi.state!.favoriteMenuItems = [
+      {
+        id: 'fav-noop',
+        name: 'Noop',
+        shared: false,
+        isDefault: false,
+        canDelete: true,
+        filter: { And: [['Active', '=', true]] },
+      },
+    ];
+    const wrapper = mountSearch();
+    await flushPromises();
+    const beforeEmit = wrapper.emitted('query-update')?.length ?? 0;
+    const applyBtn = wrapper.findAll('.el-btn').find(b => b.text().includes('Noop'));
+    await applyBtn!.trigger('click');
+    expect(savedFiltersApi.apply).toHaveBeenCalled();
+    expect(wrapper.emitted('query-update')?.length ?? 0).toBe(beforeEmit);
+  });
+
+  it('saves with isDefault and shared checkboxes enabled', async () => {
+    const wrapper = mountSearch();
+    await flushPromises();
+    const saveOpen = wrapper.findAll('.el-btn').find(b => b.text().includes('Save current filters'));
+    await saveOpen!.trigger('click');
+    await nextTick();
+    await wrapper.find('input.fav-name').setValue('SharedDef');
+    const checks = wrapper.findAll('input[type="checkbox"]');
+    expect(checks.length).toBeGreaterThanOrEqual(2);
+    await checks[0]!.setValue(true);
+    await checks[1]!.setValue(true);
+    const saveBtn = wrapper.findAll('.el-btn').find(b => b.text() === 'Save');
+    await saveBtn!.trigger('click');
+    await flushPromises();
+    expect(savedFiltersApi.saveCurrent).toHaveBeenCalledWith({
+      name: 'SharedDef',
+      isDefault: true,
+      shared: true,
+    });
+  });
 });

@@ -146,4 +146,60 @@ describe('OKanbanView first-frame load', () => {
     expect(awaitFieldSelectionMock).toHaveBeenCalled();
     expect(applyMock).toHaveBeenCalled();
   });
+
+  it('skips mount apply when custom search already emitted query-update', async () => {
+    deferState.defer = false;
+    // Hang field selection so onSearch never reaches apply; mount must still skip.
+    awaitFieldSelectionMock.mockImplementationOnce(() => new Promise(() => {}));
+    const SyncEmitSearch = defineComponent({
+      name: 'SyncEmitSearch',
+      emits: ['query-update'],
+      setup(_, { emit }) {
+        emit('query-update', {
+          keyword: 'pre',
+          appliedFilters: [],
+          appliedGroups: [],
+        });
+        return () => h('div', { class: 'sync-emit-search' });
+      },
+    });
+    mount(OKanbanView as any, {
+      props: {
+        store: makeStore(),
+        searchView: SyncEmitSearch,
+        showHeader: true,
+        showActions: false,
+        showPaginate: false,
+      },
+      global: { stubs },
+    });
+    await flushPromises();
+    expect(awaitFieldSelectionMock).toHaveBeenCalledTimes(1);
+    expect(applyMock).not.toHaveBeenCalled();
+  });
+
+  it('onSearch with falsy payload does not apply', async () => {
+    deferState.defer = true;
+    const FalsyEmitSearch = defineComponent({
+      name: 'FalsyEmitSearch',
+      emits: ['query-update'],
+      setup(_, { emit }) {
+        emit('query-update', null as any);
+        return () => h('div');
+      },
+    });
+    mount(OKanbanView as any, {
+      props: {
+        store: makeStore(),
+        searchView: FalsyEmitSearch,
+        showHeader: true,
+        showActions: false,
+        showPaginate: false,
+      },
+      global: { stubs },
+    });
+    await flushPromises();
+    expect(awaitFieldSelectionMock).not.toHaveBeenCalled();
+    expect(applyMock).not.toHaveBeenCalled();
+  });
 });

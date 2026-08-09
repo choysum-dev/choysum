@@ -85,6 +85,18 @@ describe('useSavedFilters', () => {
     await api.load();
     expect(api.favorites.value).toEqual([]);
     expect(sfMocks.Search).not.toHaveBeenCalled();
+
+    const apiModel = runInSetup(() =>
+      useSavedFilters({
+        store: { application: 'demo', modelName: '' },
+        filtersRef: ref([]),
+        applyNamedFilter: vi.fn(),
+      })
+    );
+    apiModel.favorites.value = [{ Id: 'x', Name: 'Y' } as any];
+    await apiModel.load();
+    expect(apiModel.favorites.value).toEqual([]);
+    expect(sfMocks.Search).not.toHaveBeenCalled();
   });
 
   it('load maps shared/private canDelete and exposes defaults', async () => {
@@ -198,6 +210,37 @@ describe('useSavedFilters', () => {
     );
     expect(await api.saveCurrent({ name: '  ' })).toBeNull();
     expect(sfMocks.Create).not.toHaveBeenCalled();
+
+    const noApp = runInSetup(() =>
+      useSavedFilters({
+        store: { application: '', modelName: 'Widget' },
+        filtersRef: ref([]),
+        applyNamedFilter: vi.fn(),
+      })
+    );
+    expect(await noApp.saveCurrent({ name: 'X' })).toBeNull();
+  });
+
+  it('load tolerates null Search rows and missing Condition', async () => {
+    sfMocks.Search.mockResolvedValue(null as any);
+    const api = runInSetup(() =>
+      useSavedFilters({
+        store: { application: 'demo', modelName: 'Widget' },
+        filtersRef: ref([]),
+        applyNamedFilter: vi.fn(),
+      })
+    );
+    await api.load();
+    expect(api.favorites.value).toEqual([]);
+
+    sfMocks.Search.mockResolvedValue([
+      { Id: 'p1', Name: 'NoCond', IsDefault: false, UserId: 'me', CreateUid: 'me' },
+      { Id: 'p2', Name: 'OtherPriv', IsDefault: false, UserId: 'other', CreateUid: 'other' },
+    ]);
+    await api.load();
+    expect(api.favoriteMenuItems.value[0]).toMatchObject({ id: 'p1', filter: {}, canDelete: true });
+    expect(api.favoriteMenuItems.value[1]).toMatchObject({ id: 'p2', canDelete: false });
+    expect(api.defaultsForOpen.value).toEqual([]);
   });
 
   it('saveCurrent creates private and shared favorites', async () => {
@@ -247,6 +290,47 @@ describe('useSavedFilters', () => {
     const values = sfMocks.Create.mock.calls[0]![0] as Record<string, unknown>;
     expect(values).toMatchObject({ Name: 'NoActor', Application: 'demo', ModelName: 'Widget' });
     expect(values).not.toHaveProperty('UserId');
+  });
+
+  it('saveCurrent uses empty Condition when filtersToQuery returns null', async () => {
+    (filtersToQuery as any).mockReturnValueOnce(null);
+    const api = runInSetup(() =>
+      useSavedFilters({
+        store: { application: 'demo', modelName: 'Widget', fieldsMetadata: {}, state: { queryState: {} } },
+        filtersRef: ref(null as any),
+        applyNamedFilter: vi.fn(),
+      })
+    );
+    await api.saveCurrent({ name: 'NullCond' });
+    expect(sfMocks.Create.mock.calls[0]![0]).toMatchObject({
+      Name: 'NullCond',
+      Condition: {},
+      UserId: 'me',
+    });
+  });
+
+  it('saveCurrent treats empty UserId as shared and falls back createUid to actor', async () => {
+    sfMocks.Create.mockResolvedValueOnce({
+      Id: 'created-shared',
+      Name: 'SharedEmpty',
+      Condition: {},
+      IsDefault: false,
+      UserId: '',
+    });
+    const api = runInSetup(() =>
+      useSavedFilters({
+        store: { application: 'demo', modelName: 'Widget', fieldsMetadata: {}, state: { queryState: {} } },
+        filtersRef: ref([]),
+        applyNamedFilter: vi.fn(),
+      })
+    );
+    const created = await api.saveCurrent({ name: 'SharedEmpty', shared: true });
+    expect(created).toMatchObject({
+      Id: 'created-shared',
+      shared: true,
+      createUid: 'me',
+      canDelete: true,
+    });
   });
 
   it('apply and remove delegate to helpers/store', async () => {

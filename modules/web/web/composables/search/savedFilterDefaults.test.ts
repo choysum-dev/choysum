@@ -84,4 +84,18 @@ describe('mergeSavedFilterDefaults', () => {
     expect(mergeSavedFilterDefaults({ codeDefaults: null })).toEqual([]);
     expect(mergeSavedFilterDefaults({})).toEqual([]);
   });
+
+  it('drops invalid code presets when shared IsDefault wins over non-default private', () => {
+    const merged = mergeSavedFilterDefaults({
+      privateDefault: { Name: 'PrivOff', Condition: { And: [['P', '=', 1]] }, IsDefault: false, UserId: 'u1' },
+      sharedDefault: { Name: 'Team', Condition: { And: [['T', '=', 1]] }, IsDefault: true, UserId: null },
+      codeDefaults: [
+        null as any,
+        { name: 1 as any, query: ['Bad', '=', 1] },
+        { name: 'Keep', query: ['K', '=', 1], selected: true },
+      ],
+    });
+    expect(merged[0]).toMatchObject({ name: 'Team', selected: true, query: { And: [['T', '=', 1]] } });
+    expect(merged.slice(1)).toEqual([{ name: 'Keep', query: ['K', '=', 1], selected: false }]);
+  });
 });

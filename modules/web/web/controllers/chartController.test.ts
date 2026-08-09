@@ -32,4 +32,61 @@ describe('createChartController appliedFilters clear flag', () => {
     await ctrl.apply({ appliedFilters: [] });
     expect(store.state.queryState.userClearedDefaultFilters).toBeUndefined();
   });
+
+  it('does not set the clear flag when appliedFilters is omitted', async () => {
+    const store = {
+      state: {
+        queryState: {
+          appliedFilters: [{ id: 'f1', logic: 'And', children: [] }],
+        },
+      },
+    } as any;
+    const ctrl = createChartController(store);
+    await ctrl.apply({});
+    expect(store.state.queryState.userClearedDefaultFilters).toBeUndefined();
+    expect(store.state.queryState.appliedFilters).toEqual([{ id: 'f1', logic: 'And', children: [] }]);
+  });
+
+  it('treats non-array prior appliedFilters as empty when clearing', async () => {
+    const store = {
+      state: {
+        queryState: {
+          appliedFilters: null,
+        },
+      },
+    } as any;
+    const ctrl = createChartController(store);
+    await ctrl.apply({ appliedFilters: [] });
+    expect(store.state.queryState.appliedFilters).toEqual([]);
+    expect(store.state.queryState.userClearedDefaultFilters).toBeUndefined();
+  });
+
+  it('does not set the clear flag when replacing with a non-empty filter set', async () => {
+    const store = {
+      state: {
+        queryState: {
+          appliedFilters: [{ id: 'f1', logic: 'And', children: [] }],
+        },
+      },
+    } as any;
+    const ctrl = createChartController(store);
+    const next = [{ id: 'f2', logic: 'Or', children: [] }];
+    await ctrl.apply({ appliedFilters: next });
+    expect(store.state.queryState.appliedFilters).toEqual(next);
+    expect(store.state.queryState.userClearedDefaultFilters).toBeUndefined();
+  });
+
+  it('does not set the clear flag when appliedFilters override is non-array', async () => {
+    const store = {
+      state: {
+        queryState: {
+          appliedFilters: [{ id: 'f1', logic: 'And', children: [] }],
+        },
+      },
+    } as any;
+    const ctrl = createChartController(store);
+    await ctrl.apply({ appliedFilters: null as any });
+    expect(store.state.queryState.appliedFilters).toBeNull();
+    expect(store.state.queryState.userClearedDefaultFilters).toBeUndefined();
+  });
 });

@@ -108,3 +108,63 @@ test('rows without Id are filtered out', async () => {
     restore();
   }
 });
+
+test('ModuleID key and object ModuleId with null/missing id count as empty', async () => {
+  const restore = withMockedMetaSearch(async () => [
+    { Id: 'mm_shell', ModuleID: 'mod1', UpdatedAt: 100 },
+    { Id: 'mm_obj_null', ModuleId: { id: null }, UpdatedAt: 10 },
+    { Id: 'mm_obj_empty', ModuleId: {}, UpdatedAt: 20 },
+  ]);
+  try {
+    // Newest empty ModuleId wins among empty candidates (mm_obj_empty @20).
+    expect(await resolveEffectiveModelId('demo', 'Widget')).toBe('mm_obj_empty');
+  } finally {
+    restore();
+  }
+});
+
+test('pickEffectiveAmong keeps best empty when later shell is newer', async () => {
+  const restore = withMockedMetaSearch(async () => [
+    { Id: 'mm_e2', ModuleId: '', UpdatedAt: 1 },
+    { Id: 'mm_shell', ModuleId: 'mod1', UpdatedAt: 999 },
+  ]);
+  try {
+    expect(await resolveEffectiveModelId('demo', 'Widget')).toBe('mm_e2');
+  } finally {
+    restore();
+  }
+});
+
+test('pickEffectiveAmong keeps newer UpdatedAt and larger Id on ties', async () => {
+  const restore = withMockedMetaSearch(async () => [
+    { Id: 'mm_new', ModuleId: '', UpdatedAt: 100 },
+    { Id: 'mm_old', ModuleId: '', UpdatedAt: 50 },
+    { Id: 'mm_a', ModuleId: '', UpdatedAt: 100 },
+    { Id: 'mm_z', ModuleId: '', UpdatedAt: 100 },
+  ]);
+  try {
+    // Same ts → larger Id wins (mm_z > mm_new > mm_a).
+    expect(await resolveEffectiveModelId('demo', 'Widget')).toBe('mm_z');
+  } finally {
+    restore();
+  }
+});
+
+test('resolveEffectiveModelRow merges custom fields into Search selection', async () => {
+  let seenFields: string[] | undefined;
+  const restore = withMockedMetaSearch(async (_c, opts) => {
+    seenFields = opts?.fields as string[];
+    return [{ Id: 'mm_custom', ModuleId: '', UpdatedAt: 1, Name: 'Widget' }];
+  });
+  try {
+    const row = await resolveEffectiveModelRow('demo', 'Widget', ['Name']);
+    expect(row?.Name).toBe('Widget');
+    for (const f of ['Id', 'ModuleId', 'UpdatedAt', 'Name']) {
+      if (!seenFields || !seenFields.includes(f)) {
+        throw new Error(`expected Search fields to include ${f}, got ${JSON.stringify(seenFields)}`);
+      }
+    }
+  } finally {
+    restore();
+  }
+});

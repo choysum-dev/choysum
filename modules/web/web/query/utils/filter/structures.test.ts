@@ -128,6 +128,8 @@ describe('filter structures helpers', () => {
     expect(toFilters({ name: 'EmptyAnd', query: { And: [] } } as any)).toEqual([]);
     expect(toFilters({ name: 'EmptyOr', query: { Or: [] } } as any)).toEqual([]);
     expect(toFilters({ name: 'JunkParts', query: { And: [null, 'x', { foo: 1 }] } } as any)).toEqual([]);
+    expect(toFilters({ name: 'NonStringLeaf', query: [1, '=', 2] } as any)).toEqual([]);
+    expect(toFilters({ name: 'NonStringOp', query: ['A', 1, 2] } as any)).toEqual([]);
 
     const groupShaped = toFilters({
       name: 'AlreadyGroup',
@@ -149,5 +151,31 @@ describe('filter structures helpers', () => {
       query: { And: [{ And: [['X', '=', 1], ['Y', '=', 2]] }] },
     } as any);
     expect(isGroup(nestedMulti[0].children[0])).toBe(true);
+
+    // Parts prefer And when both keys exist; logic still follows orParts presence.
+    const bothKeys = toFilters({
+      name: 'Both',
+      query: { And: [['A', '=', 1]], Or: [['B', '=', 2]] },
+    } as any);
+    expect(bothKeys[0].children).toHaveLength(1);
+    expect((bothKeys[0].children[0] as any).field).toBe('A');
+    expect(bothKeys[0].logic).toBe('Or');
+
+    // Named single-child subgroup is not flattened.
+    const namedChild = toFilters({
+      name: 'Outer',
+      query: {
+        And: [
+          {
+            id: 'g',
+            logic: 'And',
+            name: 'Keep',
+            children: [{ id: 'c', field: 'X', operator: '=', value: 1 }],
+          },
+        ],
+      },
+    } as any);
+    expect(isGroup(namedChild[0].children[0])).toBe(true);
+    expect((namedChild[0].children[0] as any).name).toBe('Keep');
   });
 });
