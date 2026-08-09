@@ -264,12 +264,9 @@ func TestResolveUnitTestDefaultIdentityLookupEffectiveMissing(t *testing.T) {
 	seedAuthInstalled(t, db)
 	seedUserAdminMapping(t, db, xid.New().String())
 	_, ok, err := resolveUnitTestDefaultIdentity(context.Background(), newIdentityTestScope(t, db))
-	// LookupEffectiveModel returns ErrRecordNotFound → wrapped operational error.
-	if err == nil || !strings.Contains(err.Error(), "lookup auth.User for unit identity") {
-		t.Fatalf("error=%v, want lookup auth.User wrap", err)
-	}
-	if ok {
-		t.Fatal("expected ok=false on lookup error")
+	// Missing auth.User projection is a seed gap (ok=false), not an operational abort.
+	if err != nil || ok {
+		t.Fatalf("ok=%v err=%v, want ok=false nil err when auth.User missing", ok, err)
 	}
 }
 

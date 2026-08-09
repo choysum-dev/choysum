@@ -204,6 +204,21 @@ func TestModuleUninstallerSavedFilterMissingTableNoOp(t *testing.T) {
 	}
 }
 
+func TestWebSavedFilterTableExists(t *testing.T) {
+	if ok, err := webSavedFilterTableExists(nil); err != nil || ok {
+		t.Fatalf("nil db: ok=%v err=%v", ok, err)
+	}
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	if ok, err := webSavedFilterTableExists(db); err != nil || ok {
+		t.Fatalf("missing table: ok=%v err=%v", ok, err)
+	}
+	ensureWebSavedFilterTable(t, db)
+	if ok, err := webSavedFilterTableExists(db); err != nil || !ok {
+		t.Fatalf("present table: ok=%v err=%v", ok, err)
+	}
+}
+
 func TestPurgeSavedFiltersForGoneModelsGuards(t *testing.T) {
 	if err := purgeSavedFiltersForGoneModels(nil, []modmeta.LogicalKey{{Application: "a", Name: "B"}}); err != nil {
 		t.Fatalf("nil db: %v", err)

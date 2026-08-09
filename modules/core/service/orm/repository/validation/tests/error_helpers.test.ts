@@ -132,6 +132,48 @@ test('selectPrimaryValidationIssue falls back to first error when no grpc meta i
   expect(primary?.code).toBe('required');
 });
 
+test('selectPrimaryValidationIssue ignores OK, non-integer, and out-of-range grpcCode as status-bearing', () => {
+  const issues = [
+    {
+      scope: 'constraint',
+      code: 'bad_ok',
+      message: 'ok code',
+      severity: 'error',
+      meta: { grpcCode: 0 },
+    },
+    {
+      scope: 'constraint',
+      code: 'bad_frac',
+      message: 'fraction',
+      severity: 'error',
+      meta: { grpcCode: 7.5 },
+    },
+    {
+      scope: 'constraint',
+      code: 'bad_range',
+      message: 'range',
+      severity: 'error',
+      meta: { grpcCode: 99 },
+    },
+    {
+      scope: 'kernel',
+      code: 'required',
+      message: 'fallback',
+      severity: 'error',
+    },
+  ] as any;
+  // Invalid grpcCode values are not status-bearing, so selection falls back to the first error.
+  expect(selectPrimaryValidationIssue(issues)?.code).toBe('bad_ok');
+
+  const wrapped = wrapRepositoryValidationError(
+    { fullModelName: 'demo.Model', modelName: 'Model', name: '' } as any,
+    new ValidationPipelineError('pipeline failed', issues),
+    'create'
+  );
+  expect(wrapped.grpcCode).toBe(GrpcCode.InvalidArgument);
+  expect(wrapped.message).toBe('ok code');
+});
+
 test('repository validation error helper falls back message and keeps minimal metadata when issues are empty', () => {
   const wrapped = wrapRepositoryValidationError(
     {

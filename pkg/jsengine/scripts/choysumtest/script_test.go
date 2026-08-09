@@ -81,6 +81,43 @@ test('case2 rebuilds a fresh context without prior leaks', () => {
 	runNodeWithScript(t, script)
 }
 
+func TestChoysumTestScriptRebuildsEmptyContextWithoutDefaults(t *testing.T) {
+	script := ChoysumTestScript + `
+globalThis.$choysum = {
+  request: {
+    context: {
+      identity: { userId: 'anon' },
+      ctx: { lang: 'zh_CN' },
+      req: { depth: 9, recordRuleMode: 'allowlist' },
+    },
+  },
+};
+
+test('case1 mutates when no bootstrap defaults were injected', () => {
+  const jsCtx = globalThis.$choysum.request.context;
+  // No admin identity in context → readDefaultUnitIdentity returns null.
+  jsCtx.identity = {};
+  jsCtx.ctx = { lang: 'zh_CN' };
+  jsCtx.req = { depth: 9, recordRuleMode: 'allowlist' };
+  jsCtx.ctx.lang = 'mutated';
+});
+
+test('case2 still gets a fresh empty baseline', () => {
+  const jsCtx = globalThis.$choysum.request.context;
+  if (jsCtx.ctx.lang !== undefined) throw new Error('ctx leak without defaults: ' + jsCtx.ctx.lang);
+  if (jsCtx.req.depth !== 0) throw new Error('depth not reset without defaults, got ' + jsCtx.req.depth);
+  if (jsCtx.req.recordRuleMode !== undefined) throw new Error('req leak without defaults');
+  if (jsCtx.identity.userId !== undefined) throw new Error('unexpected userId without defaults');
+});
+
+(async () => {
+  const report = await globalThis.__choysum_test_run__();
+  if (!report || report.failed !== 0) throw new Error('cases failed: ' + JSON.stringify(report));
+})();
+`
+	runNodeWithScript(t, script)
+}
+
 func TestChoysumTestScriptMatchersAndExpectRejectsRuntime(t *testing.T) {
 	script := ChoysumTestScript + `
 function assert(cond, msg) {

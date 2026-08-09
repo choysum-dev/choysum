@@ -180,7 +180,27 @@ export default class SavedFilter extends BaseModel {
     if (exceptId) {
       cond.And.push(['Id', '!=', exceptId]);
     }
-    // No sudo: Record rules must authorize clearing another creator's shared default.
+    // Preflight under sudo so a foreign shared default surfaces PermissionDenied
+    // instead of a generic record_rule_violation from Update.
+    const actor = SavedFilter._actorId();
+    const candidates = await SavedFilter.sudo(
+      () => SavedFilter.Search(cond as any, { fields: ['Id', 'UserId', 'CreateUid'], limit: 50 } as any),
+      { hint: 'web.SavedFilter.clearOtherDefaults.preflight' }
+    );
+    for (const row of candidates || []) {
+      const shared = (row as any).UserId == null || (row as any).UserId === '';
+      const canWrite = shared
+        ? String((row as any).CreateUid || '').trim() === actor
+        : String((row as any).UserId || '').trim() === actor;
+      if (!canWrite) {
+        this._fail(
+          'PermissionDenied',
+          _t('Cannot replace another user\'s shared default favorite', { scope: SCOPE }),
+          GrpcCode.PermissionDenied
+        );
+      }
+    }
+    // No sudo: Record rules must still authorize the clear for rows we expect to write.
     await SavedFilter.Update(cond as any, { IsDefault: false } as any, ['Id'] as any);
     const remaining = await SavedFilter.sudo(
       () => SavedFilter.Search(cond as any, { fields: ['Id'], limit: 1 } as any),

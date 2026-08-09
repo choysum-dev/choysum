@@ -499,6 +499,11 @@ onMounted(async () => {
   if (shouldDeferKanbanFirstFrame(props.searchView, OSearchView)) {
     return;
   }
+  // Custom search views that already emitted query-update (onSearch sets lastSearchPayload
+  // synchronously) must not run a second fallback apply that can race/supersede it.
+  if (lastSearchPayload.value) {
+    return;
+  }
   // laneLoadLimit injection has been removed; queryState.pagination controls loading consistently
   await awaitFieldSelection(store, { requireNonEmpty: true });
   await controller.apply({

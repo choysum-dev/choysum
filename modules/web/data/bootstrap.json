@@ -1,7 +1,7 @@
 {
   "records": [
     {
-      "name": "rma_base_user_web_saved_filter_allow",
+      "name": "rma_base_user_web_saved_filter_search",
       "application": "auth",
       "model": "RoleMethodAccess",
       "values": {
@@ -9,10 +9,112 @@
           "ref": "auth.role_base_user"
         },
         "MetaApplicationId": null,
-        "MetaModelId": {
-          "modelRef": "web.SavedFilter"
+        "MetaModelId": null,
+        "MetaServiceId": {
+          "serviceRef": "web.SavedFilter/Search"
         },
-        "MetaServiceId": null,
+        "LogicalModelName": null,
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rma_base_user_web_saved_filter_browse",
+      "application": "auth",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": {
+          "serviceRef": "web.SavedFilter/Browse"
+        },
+        "LogicalModelName": null,
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rma_base_user_web_saved_filter_create",
+      "application": "auth",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": {
+          "serviceRef": "web.SavedFilter/Create"
+        },
+        "LogicalModelName": null,
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rma_base_user_web_saved_filter_update",
+      "application": "auth",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": {
+          "serviceRef": "web.SavedFilter/Update"
+        },
+        "LogicalModelName": null,
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rma_base_user_web_saved_filter_update_by_id",
+      "application": "auth",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": {
+          "serviceRef": "web.SavedFilter/UpdateById"
+        },
+        "LogicalModelName": null,
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rma_base_user_web_saved_filter_delete",
+      "application": "auth",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": {
+          "serviceRef": "web.SavedFilter/Delete"
+        },
+        "LogicalModelName": null,
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rma_base_user_web_saved_filter_delete_by_id",
+      "application": "auth",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": {
+          "serviceRef": "web.SavedFilter/DeleteById"
+        },
         "LogicalModelName": null,
         "Mode": "allow"
       }

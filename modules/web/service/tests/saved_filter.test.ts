@@ -394,7 +394,13 @@ test('SavedFilter private and shared IsDefault can coexist', async () => {
 test('web bootstrap seeds SavedFilter authz packs (RMA/RFR/RR)', async () => {
   resetRequestContext();
   const expected: Array<{ name: string; model: string }> = [
-    { name: 'rma_base_user_web_saved_filter_allow', model: 'RoleMethodAccess' },
+    { name: 'rma_base_user_web_saved_filter_search', model: 'RoleMethodAccess' },
+    { name: 'rma_base_user_web_saved_filter_browse', model: 'RoleMethodAccess' },
+    { name: 'rma_base_user_web_saved_filter_create', model: 'RoleMethodAccess' },
+    { name: 'rma_base_user_web_saved_filter_update', model: 'RoleMethodAccess' },
+    { name: 'rma_base_user_web_saved_filter_update_by_id', model: 'RoleMethodAccess' },
+    { name: 'rma_base_user_web_saved_filter_delete', model: 'RoleMethodAccess' },
+    { name: 'rma_base_user_web_saved_filter_delete_by_id', model: 'RoleMethodAccess' },
     { name: 'rfr_base_user_web_saved_filter_rw', model: 'RoleFieldRule' },
     { name: 'rrr_base_user_web_saved_filter_rc', model: 'RoleRecordRule' },
     { name: 'rrr_base_user_web_saved_filter_wd_private', model: 'RoleRecordRule' },
@@ -670,12 +676,10 @@ test('SavedFilter shared-default clear PermissionDenied when stranger cannot rep
   expect(caught, 'expected shared-default replacement to fail').toBeTruthy();
   const codes = collectErrorCodes(caught);
   const msg = String((caught as any)?.message || '');
-  const ok =
-    codes.includes('PermissionDenied') ||
-    codes.includes('record_rule_violation') ||
-    msg.includes("another user's shared default") ||
-    msg.includes('record_rule');
-  expect(ok, `expected PermissionDenied or record-rule denial, got codes=${codes.join(',')} msg=${msg}`).toBe(true);
+  expect(
+    codes.includes('PermissionDenied') && msg.includes("another user's shared default"),
+    `expected PermissionDenied with shared-default message, got codes=${codes.join(',')} msg=${msg}`
+  ).toBe(true);
 
   // Creator's shared default must remain the sole default.
   setIdentity(creator);

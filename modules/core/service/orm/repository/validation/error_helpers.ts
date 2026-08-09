@@ -6,9 +6,15 @@ import { ValidationPipelineError, type ConstraintMode } from '../../metadata';
 import { GrpcCode, ChoysumError } from '@/core/service/error';
 import type { ObjectRecord } from '../../../../utils/types';
 
+/** Canonical non-OK gRPC status codes (connect/gRPC: 1..16). */
 function issueGrpcCode(issue: ValidationIssue | undefined): number | undefined {
   const raw = (issue?.meta || {}).grpcCode;
-  return typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined;
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) return undefined;
+  // Reject fractions (avoid Number.isInteger for QuickJS portability).
+  if (Math.floor(raw) !== raw) return undefined;
+  // OK (0) is not status-bearing for errors; reject out-of-range values.
+  if (raw < 1 || raw > 16) return undefined;
+  return raw;
 }
 
 /**

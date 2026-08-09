@@ -430,11 +430,6 @@
     }
   }
 
-  const CTX_FROZEN_KEY = Symbol.for('choysum.ctx.frozen');
-  const CTX_OVERRIDE_KEY = Symbol.for('choysum.ctx.override');
-  const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
-  const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
-
   function readDefaultUnitIdentity() {
     try {
       const jsCtx = globalThis.$choysum && globalThis.$choysum.request && globalThis.$choysum.request.context;
@@ -450,25 +445,18 @@
   }
 
   function applyDefaultUnitIdentity(defaults) {
-    if (!defaults) return;
     const root = (globalThis.$choysum = globalThis.$choysum || {});
     if (!root.request) root.request = {};
-    // Rebuild identity/ctx/req each case so prior allowlists, lang, depth, etc. cannot leak.
+    // Always rebuild identity/ctx/req so prior allowlists/lang/depth cannot leak —
+    // including auth-free suites where defaults is null.
     const jsCtx = (root.request.context = {});
-    jsCtx.identity = { userId: defaults.userId };
-    jsCtx.ctx = {
-      activeCompanyId: defaults.companyId,
-      enabledCompanyIds: [defaults.companyId],
-    };
+    jsCtx.identity = {};
+    jsCtx.ctx = {};
     jsCtx.req = { depth: 0 };
-    try {
-      delete jsCtx[CTX_FROZEN_KEY];
-      delete jsCtx[CTX_OVERRIDE_KEY];
-      delete jsCtx[RR_CACHE_KEY];
-      delete jsCtx[FR_CACHE_KEY];
-    } catch {
-      // ignore
-    }
+    if (!defaults) return;
+    jsCtx.identity.userId = defaults.userId;
+    jsCtx.ctx.activeCompanyId = defaults.companyId;
+    jsCtx.ctx.enabledCompanyIds = [defaults.companyId];
   }
 
   async function runAll(options) {

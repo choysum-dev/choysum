@@ -379,7 +379,12 @@ async function onRemoveFavorite(it: { id: string; name: string }) {
     await ElMessageBox.confirm(
       _t('Delete favorite "%s"? This cannot be undone.', it.name),
       _t('Confirm delete'),
-      { type: 'warning', confirmButtonText: _t('Delete'), cancelButtonText: _t('Cancel') }
+      {
+        type: 'warning',
+        confirmButtonText: _t('Delete'),
+        cancelButtonText: _t('Cancel'),
+        confirmButtonClass: 'el-button--danger',
+      }
     );
   } catch {
     return;

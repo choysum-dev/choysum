@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/choysum-dev/choysum/internal/module/evolution/hooks"
@@ -122,6 +123,27 @@ func applySavedFilterPurge(db *gorm.DB, keys []modmeta.LogicalKey) error {
 
 const webSavedFilterTable = "web_saved_filter"
 
+// webSavedFilterTableExists reports whether the concrete favorites table is present.
+// Missing-table errors are ok=false; other probe failures are returned.
+func webSavedFilterTableExists(db *gorm.DB) (bool, error) {
+	if db == nil {
+		return false, nil
+	}
+	var n int64
+	err := db.Raw("SELECT COUNT(1) FROM "+webSavedFilterTable+" WHERE 0").Scan(&n).Error
+	if err == nil {
+		return true, nil
+	}
+	msg := strings.ToLower(err.Error())
+	if strings.Contains(msg, "no such table") ||
+		strings.Contains(msg, "doesn't exist") ||
+		strings.Contains(msg, "does not exist") ||
+		strings.Contains(msg, "unknown table") {
+		return false, nil
+	}
+	return false, xfmt.Errorf("error checking %s existence: %w", webSavedFilterTable, err)
+}
+
 // purgeSavedFiltersForGoneModels deletes Favorites for logical models that no longer
 // have any live effective meta_model row. No-op when the table is missing. Never
 // deletes by Application alone.
@@ -129,9 +151,13 @@ func purgeSavedFiltersForGoneModels(db *gorm.DB, keys []modmeta.LogicalKey) erro
 	if db == nil || len(keys) == 0 {
 		return nil
 	}
-	// Prefer HasTable so views (MySQL GetTables) and case-aliased relations are not
-	// mistaken for the concrete web_saved_filter base table used by the DELETE below.
-	if !db.Migrator().HasTable(webSavedFilterTable) {
+	// Probe the concrete base table: missing table is a no-op; other DB errors must fail
+	// uninstall (HasTable alone discards lookup failures and would leave orphan favorites).
+	exists, err := webSavedFilterTableExists(db)
+	if err != nil {
+		return err
+	}
+	if !exists {
 		return nil
 	}
 	seen := map[string]struct{}{}

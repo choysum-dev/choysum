@@ -26,7 +26,7 @@ import { computeInitialAppliedFilters, computeAppliedGroups } from '@/web/web/qu
 import { buildQueryUpdatePayload } from '@/web/web/query/utils/search/payload';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import { actorUserId } from '@/web/web/composables/search/actorUserId';
-import { savedFilterToNamedFilter, type SavedFilterRow } from '@/web/web/composables/search/savedFilterDefaults';
+import { mergeSavedFilterDefaults, type SavedFilterRow } from '@/web/web/composables/search/savedFilterDefaults';
 import { createTranslate } from '@/web/web/i18n';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/OSearchView' });
@@ -72,17 +72,18 @@ const codeDefaultFilters = computed<NamedFilter<T>[]>(() => {
   return Array.isArray(defs) ? defs : [];
 });
 
-/** Server IsDefault winner only (never a code preset); re-merged with live code defaults. */
-const serverDefaultWinner = ref<NamedFilter<T> | null>(null);
-const mergedDefaultFilters = computed(() => {
-  const code = codeDefaultFilters.value as NamedFilter<T>[];
-  const winner = serverDefaultWinner.value;
-  if (!winner?.name) return code;
-  const rest = code
-    .filter(nf => nf && typeof nf.name === 'string' && nf.name.length > 0 && nf.name !== winner.name)
-    .map(nf => ({ ...nf, selected: false }));
-  return [{ ...winner, selected: true }, ...rest] as NamedFilter<T>[];
-});
+/** Server IsDefault rows; merge order shared with useSavedFilters via mergeSavedFilterDefaults. */
+const serverPrivateDefault = ref<SavedFilterRow | null>(null);
+const serverSharedDefault = ref<SavedFilterRow | null>(null);
+let serverDefaultsLoadGen = 0;
+const mergedDefaultFilters = computed(
+  () =>
+    mergeSavedFilterDefaults({
+      privateDefault: serverPrivateDefault.value,
+      sharedDefault: serverSharedDefault.value,
+      codeDefaults: codeDefaultFilters.value as any,
+    }) as NamedFilter<T>[]
+);
 
 const mounted = ref(false);
 const appliedFiltersForChild = computed<ConditionGroup[]>(() => {
@@ -115,10 +116,14 @@ async function onDefaultsReady(_defaults: NamedFilter[]) {
 }
 
 async function loadServerDefaults(): Promise<void> {
+  const gen = ++serverDefaultsLoadGen;
   const app = String((props.store as any)?.application || '').trim();
   const model = String((props.store as any)?.modelName || '').trim();
   if (!app || !model) {
-    serverDefaultWinner.value = null;
+    if (gen === serverDefaultsLoadGen) {
+      serverPrivateDefault.value = null;
+      serverSharedDefault.value = null;
+    }
     return;
   }
 
@@ -145,13 +150,15 @@ async function loadServerDefaults(): Promise<void> {
       { fields: ['Id', 'Name', 'Condition', 'IsDefault', 'UserId'] }
     )) as SavedFilterRow[];
 
-    const privateDefault = (rows || []).find(r => r.IsDefault && r.UserId != null && r.UserId !== '') || null;
-    const sharedDefault = (rows || []).find(r => r.IsDefault && (r.UserId == null || r.UserId === '')) || null;
-    const serverRow = privateDefault || sharedDefault;
-    serverDefaultWinner.value = serverRow ? (savedFilterToNamedFilter(serverRow, true) as NamedFilter<T>) : null;
+    if (gen !== serverDefaultsLoadGen) return;
+    serverPrivateDefault.value = (rows || []).find(r => r.IsDefault && r.UserId != null && r.UserId !== '') || null;
+    serverSharedDefault.value = (rows || []).find(r => r.IsDefault && (r.UserId == null || r.UserId === '')) || null;
   } catch {
     // Store may be unavailable before module codegen; fall back to code defaults.
-    serverDefaultWinner.value = null;
+    if (gen === serverDefaultsLoadGen) {
+      serverPrivateDefault.value = null;
+      serverSharedDefault.value = null;
+    }
   }
 }
 
