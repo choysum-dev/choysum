@@ -268,9 +268,9 @@ describe('OSearchView server defaults', () => {
     await flushPromises();
     expect(JSON.parse(wrapper.find('.defaults').text())[0].name).toBe('Keep');
 
+    // Do not await the first click: VTU would wait past the yield and miss the race.
     store.application = '';
-    await wrapper.find('.emit-defaults-ready').trigger('click');
-    // Before the empty-app clear yields, restore app and start a newer load.
+    void wrapper.find('.emit-defaults-ready').trigger('click');
     store.application = 'demo';
     await wrapper.find('.emit-defaults-ready').trigger('click');
     await flushPromises();

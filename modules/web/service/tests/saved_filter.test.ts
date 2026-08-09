@@ -999,6 +999,30 @@ test('SavedFilter validateSavedFilterConstraint covers empty create Id and Creat
   expect(valuesCreate.UserId).toBe(actor);
   expect(valuesCreate.ModelId).toBe(modelId);
 
+  // Falsy Id hits `(values.Id || '')` then `trim() || undefined`.
+  const valuesNullId: Record<string, any> = {
+    Id: null,
+    Name: uid('null_id'),
+    Application: 'web',
+    ModelName: 'SavedFilter',
+    Condition: {},
+    IsDefault: false,
+    Active: true,
+  };
+  await SF.validateSavedFilterConstraint({}, { mode: 'create', values: valuesNullId, current: undefined });
+  expect(valuesNullId.ModelId).toBe(modelId);
+
+  const valuesUndefId: Record<string, any> = {
+    Name: uid('undef_id'),
+    Application: 'web',
+    ModelName: 'SavedFilter',
+    Condition: {},
+    IsDefault: false,
+    Active: true,
+  };
+  await SF.validateSavedFilterConstraint({}, { mode: 'create', values: valuesUndefId, current: undefined });
+  expect(valuesUndefId.ModelId).toBe(modelId);
+
   // Update CreateUid chain: empty current → self → final ''.
   const valuesUpd: Record<string, any> = {
     Name: uid('cuid_fb'),

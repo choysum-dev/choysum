@@ -354,6 +354,8 @@ describe('useSavedFilters', () => {
     sfMocks.Search.mockResolvedValue([
       { Id: 's1', Name: 'NoCreateUid', IsDefault: false, UserId: null },
       { Id: 'p1', Name: 'Priv', IsDefault: false, UserId: 'other' },
+      // Falsy non-null UserId stays private and hits `UserId || ''` in canDelete.
+      { Id: 'p0', Name: 'ZeroUid', IsDefault: false, UserId: 0 as any, CreateUid: 'me' },
     ]);
     const withMe = runInSetup(() =>
       useSavedFilters({
@@ -365,6 +367,7 @@ describe('useSavedFilters', () => {
     await withMe.load();
     expect(withMe.favorites.value[0]).toMatchObject({ createUid: '', canDelete: false });
     expect(withMe.favorites.value[1]).toMatchObject({ shared: false, canDelete: false });
+    expect(withMe.favorites.value[2]).toMatchObject({ shared: false, canDelete: false });
 
     actorState.id = '';
     sfMocks.Search.mockResolvedValue([
