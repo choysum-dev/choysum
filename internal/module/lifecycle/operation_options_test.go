@@ -9,6 +9,7 @@ import (
 )
 
 func TestOperationOptionsContextAndPlanBuildOptions(t *testing.T) {
+	// Intentionally pass nil: production helpers must treat a missing Context as empty options.
 	if got := OperationOptionsFromContext(nil); got.WithDemo || got.SkipWebShell {
 		t.Fatalf("nil ctx options = %#v", got)
 	}
@@ -16,7 +17,7 @@ func TestOperationOptionsContextAndPlanBuildOptions(t *testing.T) {
 		t.Fatalf("empty ctx SkipWebShell = %v", got.SkipWebShell)
 	}
 
-	ctx := WithOperationOptions(nil, OperationOptions{WithDemo: true, SkipWebShell: true})
+	ctx := WithOperationOptions(context.Background(), OperationOptions{WithDemo: true, SkipWebShell: true})
 	got := OperationOptionsFromContext(ctx)
 	if !got.WithDemo || !got.SkipWebShell {
 		t.Fatalf("stored options = %#v", got)

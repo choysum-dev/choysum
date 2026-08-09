@@ -2307,7 +2307,7 @@ func TestExecuteUpgradeRequiresResolveInstalledModule(t *testing.T) {
 	root := &meta.Module{Name: "partner"}
 	ctx := staging.WithTmpRoot(context.Background(), t.TempDir())
 	err := Execute(ctx, planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"partner"}}, root, Callbacks{
-		Upgrade: func(module *meta.Module) error { return nil },
+		Upgrade: func(_ *meta.Module) error { return nil },
 	})
 	if err == nil || err.Error() != "ResolveInstalledModule callback is required for upgrade" {
 		t.Fatalf("unexpected error: %v", err)
@@ -2326,15 +2326,15 @@ func TestExecuteUpgradeEnsureOrderRequiresCallbacks(t *testing.T) {
 
 	if err := Execute(ctx, plan, root, Callbacks{
 		ResolveInstalledModule: resolveInstalled,
-		Upgrade:                func(module *meta.Module) error { return nil },
+		Upgrade:                func(_ *meta.Module) error { return nil },
 	}); err == nil || err.Error() != "ResolveInstallModuleFromOrigin callback is required when plan.EnsureOrder is non-empty" {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	if err := Execute(ctx, plan, root, Callbacks{
 		ResolveInstalledModule:         resolveInstalled,
-		Upgrade:                        func(module *meta.Module) error { return nil },
-		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) { return &meta.Module{Name: name}, nil },
+		Upgrade:                        func(_ *meta.Module) error { return nil },
+		ResolveInstallModuleFromOrigin: func(_ context.Context, name string) (*meta.Module, error) { return &meta.Module{Name: name}, nil },
 	}); err == nil || err.Error() != "Install callback is required when plan.EnsureOrder is non-empty" {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -2356,7 +2356,7 @@ func TestExecuteUpgradeEnsureOrderInstallsThenUpgrades(t *testing.T) {
 			stages = append(stages, string(event.Stage)+":"+event.Module)
 		},
 		ResolveInstalledModule: func(name string) (*meta.Module, error) { return &meta.Module{Name: name}, nil },
-		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) {
+		ResolveInstallModuleFromOrigin: func(_ context.Context, name string) (*meta.Module, error) {
 			if name == "skip-nil" {
 				return nil, nil
 			}
@@ -2407,11 +2407,11 @@ func TestExecuteUpgradeEnsureOrderResolveAndInstallErrors(t *testing.T) {
 
 	if err := Execute(ctx, plan, root, Callbacks{
 		ResolveInstalledModule: func(name string) (*meta.Module, error) { return &meta.Module{Name: name}, nil },
-		Upgrade:                func(module *meta.Module) error { return nil },
-		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) {
+		Upgrade:                func(_ *meta.Module) error { return nil },
+		ResolveInstallModuleFromOrigin: func(_ context.Context, _ string) (*meta.Module, error) {
 			return nil, errors.New("resolve failed")
 		},
-		Install: func(module *meta.Module) error { return nil },
+		Install: func(_ *meta.Module) error { return nil },
 	}); err == nil || !strings.Contains(err.Error(), "resolve ensure module from origin web") {
 		t.Fatalf("unexpected resolve error: %v", err)
 	}
@@ -2424,11 +2424,11 @@ func TestExecuteUpgradeEnsureOrderResolveAndInstallErrors(t *testing.T) {
 			}
 		},
 		ResolveInstalledModule: func(name string) (*meta.Module, error) { return &meta.Module{Name: name}, nil },
-		Upgrade:                func(module *meta.Module) error { return nil },
-		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) {
+		Upgrade:                func(_ *meta.Module) error { return nil },
+		ResolveInstallModuleFromOrigin: func(_ context.Context, name string) (*meta.Module, error) {
 			return &meta.Module{Name: name}, nil
 		},
-		Install: func(module *meta.Module) error { return errors.New("install failed") },
+		Install: func(_ *meta.Module) error { return errors.New("install failed") },
 	}); err == nil || err.Error() != "install failed" {
 		t.Fatalf("unexpected install error: %v", err)
 	}
@@ -2448,11 +2448,11 @@ func TestExecuteUpgradeEnsureOrderCanceled(t *testing.T) {
 	cancel()
 	err := Execute(ctx, plan, root, Callbacks{
 		ResolveInstalledModule: func(name string) (*meta.Module, error) { return &meta.Module{Name: name}, nil },
-		Upgrade:                func(module *meta.Module) error { return nil },
-		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) {
+		Upgrade:                func(_ *meta.Module) error { return nil },
+		ResolveInstallModuleFromOrigin: func(_ context.Context, name string) (*meta.Module, error) {
 			return &meta.Module{Name: name}, nil
 		},
-		Install: func(module *meta.Module) error { return nil },
+		Install: func(_ *meta.Module) error { return nil },
 	})
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected canceled, got %v", err)
@@ -2469,11 +2469,11 @@ func TestExecuteUpgradeCanceledAfterEnsureOrder(t *testing.T) {
 	ctx, cancel := context.WithCancel(staging.WithTmpRoot(context.Background(), t.TempDir()))
 	err := Execute(ctx, plan, root, Callbacks{
 		ResolveInstalledModule: func(name string) (*meta.Module, error) { return &meta.Module{Name: name}, nil },
-		Upgrade:                func(module *meta.Module) error { return nil },
-		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) {
+		Upgrade:                func(_ *meta.Module) error { return nil },
+		ResolveInstallModuleFromOrigin: func(_ context.Context, name string) (*meta.Module, error) {
 			return &meta.Module{Name: name}, nil
 		},
-		Install: func(module *meta.Module) error {
+		Install: func(_ *meta.Module) error {
 			cancel() // cancel after ensure install, before ModuleOrder upgrade loop
 			return nil
 		},

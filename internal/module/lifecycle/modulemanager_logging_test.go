@@ -512,14 +512,14 @@ func TestHandleUpgradeEnsureProgress(t *testing.T) {
 	setSpinnerStage := func(stage, message string) {
 		stages[stage] = message
 	}
-	clear := func() {
+	clearStages := func() {
 		for k := range stages {
 			delete(stages, k)
 		}
 	}
 
 	t.Run("ensure started with progress", func(t *testing.T) {
-		clear()
+		clearStages()
 		ok := handleUpgradeEnsureProgress(pipeline.ProgressEvent{
 			Stage:   pipeline.ProgressStageModuleInstallStarted,
 			Module:  "web",
@@ -535,7 +535,7 @@ func TestHandleUpgradeEnsureProgress(t *testing.T) {
 	})
 
 	t.Run("ensure started without progress uses unknown module", func(t *testing.T) {
-		clear()
+		clearStages()
 		ok := handleUpgradeEnsureProgress(pipeline.ProgressEvent{
 			Stage: pipeline.ProgressStageModuleInstallStarted,
 		}, setSpinnerStage)
@@ -548,7 +548,7 @@ func TestHandleUpgradeEnsureProgress(t *testing.T) {
 	})
 
 	t.Run("ensure failed with and without progress", func(t *testing.T) {
-		clear()
+		clearStages()
 		ok := handleUpgradeEnsureProgress(pipeline.ProgressEvent{
 			Stage:   pipeline.ProgressStageModuleInstallFailed,
 			Module:  "auth",
@@ -558,7 +558,7 @@ func TestHandleUpgradeEnsureProgress(t *testing.T) {
 		if !ok || stages["upgrading.ensure"] != "auth: failed ensuring module (2/3)" {
 			t.Fatalf("ok=%v msg=%q", ok, stages["upgrading.ensure"])
 		}
-		clear()
+		clearStages()
 		ok = handleUpgradeEnsureProgress(pipeline.ProgressEvent{
 			Stage:  pipeline.ProgressStageModuleInstallFailed,
 			Module: "auth",
@@ -569,7 +569,7 @@ func TestHandleUpgradeEnsureProgress(t *testing.T) {
 	})
 
 	t.Run("upgrade started/failed branches", func(t *testing.T) {
-		clear()
+		clearStages()
 		_ = handleUpgradeEnsureProgress(pipeline.ProgressEvent{
 			Stage:   pipeline.ProgressStageModuleUpgradeStarted,
 			Module:  "partner",
@@ -579,7 +579,7 @@ func TestHandleUpgradeEnsureProgress(t *testing.T) {
 		if stages["upgrading.modules"] != "partner: upgrading modules (1/1)" {
 			t.Fatalf("message=%q", stages["upgrading.modules"])
 		}
-		clear()
+		clearStages()
 		_ = handleUpgradeEnsureProgress(pipeline.ProgressEvent{
 			Stage:  pipeline.ProgressStageModuleUpgradeStarted,
 			Module: "partner",
@@ -587,7 +587,7 @@ func TestHandleUpgradeEnsureProgress(t *testing.T) {
 		if stages["upgrading.modules"] != "partner: upgrading module" {
 			t.Fatalf("message=%q", stages["upgrading.modules"])
 		}
-		clear()
+		clearStages()
 		_ = handleUpgradeEnsureProgress(pipeline.ProgressEvent{
 			Stage:   pipeline.ProgressStageModuleUpgradeFailed,
 			Module:  "partner",
@@ -597,7 +597,7 @@ func TestHandleUpgradeEnsureProgress(t *testing.T) {
 		if stages["upgrading.modules"] != "partner: failed upgrading module (1/2)" {
 			t.Fatalf("message=%q", stages["upgrading.modules"])
 		}
-		clear()
+		clearStages()
 		_ = handleUpgradeEnsureProgress(pipeline.ProgressEvent{
 			Stage:  pipeline.ProgressStageModuleUpgradeFailed,
 			Module: "partner",
@@ -608,7 +608,7 @@ func TestHandleUpgradeEnsureProgress(t *testing.T) {
 	})
 
 	t.Run("unknown stage returns false", func(t *testing.T) {
-		clear()
+		clearStages()
 		ok := handleUpgradeEnsureProgress(pipeline.ProgressEvent{
 			Stage: pipeline.ProgressStageWebBuildStarted,
 		}, setSpinnerStage)
