@@ -453,15 +453,14 @@
     if (!defaults) return;
     const root = (globalThis.$choysum = globalThis.$choysum || {});
     if (!root.request) root.request = {};
-    if (!root.request.context) root.request.context = {};
-    const jsCtx = root.request.context;
-    if (!jsCtx.identity || typeof jsCtx.identity !== 'object') jsCtx.identity = {};
-    if (!jsCtx.ctx || typeof jsCtx.ctx !== 'object') jsCtx.ctx = {};
-    if (!jsCtx.req || typeof jsCtx.req !== 'object') jsCtx.req = {};
-    jsCtx.identity.userId = defaults.userId;
-    jsCtx.ctx.activeCompanyId = defaults.companyId;
-    jsCtx.ctx.enabledCompanyIds = [defaults.companyId];
-    jsCtx.req.depth = 0;
+    // Rebuild identity/ctx/req each case so prior allowlists, lang, depth, etc. cannot leak.
+    const jsCtx = (root.request.context = {});
+    jsCtx.identity = { userId: defaults.userId };
+    jsCtx.ctx = {
+      activeCompanyId: defaults.companyId,
+      enabledCompanyIds: [defaults.companyId],
+    };
+    jsCtx.req = { depth: 0 };
     try {
       delete jsCtx[CTX_FROZEN_KEY];
       delete jsCtx[CTX_OVERRIDE_KEY];
