@@ -23,15 +23,15 @@ func (o *skipWebShellPeekOrigin) Peek(ctx context.Context, _ string) (*meta.Modu
 	return nil, errors.New("stop after peek")
 }
 
-func (o *skipWebShellPeekOrigin) ResolveInstallModule(context.Context, string) (*meta.Module, error) {
+func (*skipWebShellPeekOrigin) ResolveInstallModule(context.Context, string) (*meta.Module, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (o *skipWebShellPeekOrigin) Fetch(context.Context, string) (*meta.Module, error) {
+func (*skipWebShellPeekOrigin) Fetch(context.Context, string) (*meta.Module, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (o *skipWebShellPeekOrigin) Purge(context.Context, string) error {
+func (*skipWebShellPeekOrigin) Purge(context.Context, string) error {
 	return errors.New("not implemented")
 }
 
