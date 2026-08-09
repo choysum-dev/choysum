@@ -2,11 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { createServiceByModel } from '@/core/service/rpc';
+import type MetaModel from '@/meta/service/models/model';
 
-/** Lazy dial so web service can load before meta is registered. */
-function metaModelService(): any {
-  return createServiceByModel('meta.MetaModel');
-}
+const MetaModelService = createServiceByModel<typeof MetaModel>('meta.MetaModel');
 
 function moduleIdEmpty(row: any): boolean {
   const raw = row.ModuleId ?? row.module_id ?? row.ModuleID;
@@ -85,7 +83,7 @@ export async function resolveEffectiveModelRow(
   const pageSize = 500;
   const models: any[] = [];
   for (let offset = 0; ; offset += pageSize) {
-    const page = await metaModelService().Search(
+    const page = await MetaModelService.Search(
       {
         And: [
           ['Name', '=', modelName],

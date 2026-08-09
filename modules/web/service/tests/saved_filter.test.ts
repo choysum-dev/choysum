@@ -7,9 +7,12 @@ import UserRole from '@/auth/service/models/user_role';
 import { withContext as withModelContext } from '@/core/service/api/context';
 import { ChoysumError } from '@/core/service/error';
 import { createServiceByModel } from '@/core/service/rpc';
+import type MetaModel from '@/meta/service/models/model';
 import MetaModelData from '@/meta/service/models/model_data';
 import SavedFilter from '@/web/service/models/saved_filter';
 import { resolveEffectiveModelId } from '@/web/service/models/_resolve_effective_model';
+
+const MetaModelService = createServiceByModel<typeof MetaModel>('meta.MetaModel');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -166,10 +169,6 @@ async function expectCode(fn: () => Promise<any>, code: string, messageHint?: st
   }
 }
 
-function metaModel(): any {
-  return createServiceByModel('meta.MetaModel');
-}
-
 async function resolveRoleByCode(code: string): Promise<string> {
   const rows = await Role.Search({ And: [['Code', '=', code]] } as any, { fields: ['Id'], limit: 1 } as any);
   const id = String((rows as any)?.[0]?.Id || '').trim();
@@ -218,7 +217,7 @@ async function createBaseUser(companyId: string): Promise<string> {
 
 test('SF13: web FieldDefault and AppSetting models exist after declared service', async () => {
   resetRequestContext();
-  const fd = await metaModel().Search(
+  const fd = await MetaModelService.Search(
     {
       And: [
         ['Application', '=', 'web'],
@@ -227,7 +226,7 @@ test('SF13: web FieldDefault and AppSetting models exist after declared service'
     } as any,
     { fields: ['Id'], limit: 1 } as any
   );
-  const as = await metaModel().Search(
+  const as = await MetaModelService.Search(
     {
       And: [
         ['Application', '=', 'web'],
