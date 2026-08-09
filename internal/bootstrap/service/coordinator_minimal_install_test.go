@@ -47,9 +47,22 @@ func TestDefaultInstallMinimalModulesMarksMetaStage(t *testing.T) {
 	opID := "op-meta-install"
 	store.beginOperation(opID, "", 0)
 
+	prevExec := newMinimalInstallExecutor
+	prevInstall := installMinimalModulesFn
+	t.Cleanup(func() {
+		newMinimalInstallExecutor = prevExec
+		installMinimalModulesFn = prevInstall
+	})
+	newMinimalInstallExecutor = func(runtimeScope scope.Scope, opts ...jsexecutor.Option) (jsexecutor.JsExecutor, error) {
+		return &noopMinimalInstallExecutor{}, nil
+	}
+	installMinimalModulesFn = func(ctx context.Context, runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, req lifecycle.InstallModuleRequest, opts ...lifecycle.Option) error {
+		return errors.New("forced meta install failure")
+	}
+
 	err := c.defaultInstallMinimalModules(context.Background(), opID)
 	if err == nil {
-		t.Fatal("expected install failure in test harness")
+		t.Fatal("expected install failure from stub")
 	}
 	snap, ok := store.getOperation(opID)
 	if !ok {

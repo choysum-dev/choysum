@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { getServiceFactory, registerServiceFactory } from '@/core/service/rpc';
+import { getServiceFactory, registerServiceFactory, unregisterServiceFactory } from '@/core/service/rpc';
 import { resolveEffectiveModelId, resolveEffectiveModelRow } from './_resolve_effective_model';
 
 function withMockedMetaSearch(search: (cond: any, opts: any) => Promise<any[]>): () => void {
@@ -9,6 +9,7 @@ function withMockedMetaSearch(search: (cond: any, opts: any) => Promise<any[]>):
   registerServiceFactory('meta.MetaModel', () => ({ Search: search }));
   return () => {
     if (original) registerServiceFactory('meta.MetaModel', original);
+    else unregisterServiceFactory('meta.MetaModel');
   };
 }
 

@@ -86,13 +86,21 @@ func TestInstallModulePropagatesSkipWebShell(t *testing.T) {
 		WithOriginCoordinatorFactory(func(scope.Scope) OriginCoordinator { return origin }),
 	}
 
-	// PrepareInstall succeeds; Install fails later without a JS executor — SkipWebShell
-	// wiring on InstallModuleRequest / InstallRequest still executes.
+	// PrepareInstall runs BuildPlan with SkipWebShell; web must not be resolved.
+	// Install then fails without a JS executor (expected harness limit).
 	err = InstallModule(context.Background(), runtimeScope, nil, InstallModuleRequest{
 		Input:        "solo_skip_web",
 		SkipWebShell: true,
 	}, opts...)
 	if err == nil {
 		t.Fatal("expected InstallModule to fail without executor/full install")
+	}
+	for _, name := range origin.fetches {
+		if name == "web" {
+			t.Fatalf("SkipWebShell should not resolve web shell, fetches=%v", origin.fetches)
+		}
+	}
+	if len(origin.fetches) == 0 || origin.fetches[0] != "solo_skip_web" {
+		t.Fatalf("fetches=%v, want solo_skip_web first", origin.fetches)
 	}
 }

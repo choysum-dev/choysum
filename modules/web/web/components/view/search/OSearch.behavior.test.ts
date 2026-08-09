@@ -20,6 +20,7 @@ const { savedFiltersApi } = vi.hoisted(() => ({
     apply: vi.fn(),
     saveCurrent: vi.fn(async () => ({ Id: '1' })),
     remove: vi.fn(async () => {}),
+    lastCodeDefaults: undefined as unknown,
   },
 }));
 
@@ -43,8 +44,7 @@ vi.mock('@/web/web/composables/search/useSavedFilters', async () => {
   });
   return {
     useSavedFilters: (params: { applyNamedFilter: (nf: any) => void; codeDefaults?: () => any }) => {
-      // Exercise codeDefaults branches (undefined / array / singleton).
-      params.codeDefaults?.();
+      savedFiltersApi.lastCodeDefaults = params.codeDefaults?.();
       savedFiltersApi.apply.mockImplementation((fav: { name: string; filter: any }) => {
         params.applyNamedFilter({ name: fav.name, query: fav.filter });
       });
@@ -399,8 +399,11 @@ describe('OSearch behavior', () => {
   it('covers codeDefaults singleton/undefined branches', async () => {
     mountSearch({ defaultFilters: undefined as any });
     await flushPromises();
+    expect(savedFiltersApi.lastCodeDefaults).toBeUndefined();
+
     mountSearch({ defaultFilters: { name: 'Solo', query: ['X', '=', 1] } as any });
     await flushPromises();
+    expect(savedFiltersApi.lastCodeDefaults).toEqual([{ name: 'Solo', query: ['X', '=', 1] }]);
   });
 
   it('shows Check icon for applied favorite names', async () => {

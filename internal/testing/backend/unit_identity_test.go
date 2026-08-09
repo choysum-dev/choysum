@@ -22,8 +22,37 @@ import (
 	"github.com/rs/xid"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	gormlogger "gorm.io/gorm/logger"
 )
+
+// gormWhereVarsContain reports whether any WHERE clause expression var equals want.
+// Statement.Vars is still empty in Before("gorm:query"); values live on clause.Expr.
+func gormWhereVarsContain(tx *gorm.DB, want string) bool {
+	if tx == nil || tx.Statement == nil {
+		return false
+	}
+	where, ok := tx.Statement.Clauses["WHERE"]
+	if !ok {
+		return false
+	}
+	w, ok := where.Expression.(clause.Where)
+	if !ok {
+		return false
+	}
+	for _, expr := range w.Exprs {
+		e, ok := expr.(clause.Expr)
+		if !ok {
+			continue
+		}
+		for _, v := range e.Vars {
+			if v == want {
+				return true
+			}
+		}
+	}
+	return false
+}
 
 type identityTestScope struct {
 	ctx     context.Context
@@ -471,8 +500,7 @@ func TestResolveUnitTestDefaultIdentityOperationalDBErrors(t *testing.T) {
 		}).Error; err != nil {
 			t.Fatalf("create company_main: %v", err)
 		}
-		// Fail only the company_main Select("res_id") query (after user_admin mapping succeeded).
-		var modelDataSelects int
+		// Fail only the company_main mapping Select (keyed by WHERE clause vars, not ordinal).
 		if err := db.Callback().Query().Before("gorm:query").Register("identity_fail_company_main", func(tx *gorm.DB) {
 			if tx.Statement == nil || tx.Statement.Schema == nil {
 				return
@@ -480,11 +508,10 @@ func TestResolveUnitTestDefaultIdentityOperationalDBErrors(t *testing.T) {
 			if tx.Statement.Schema.Table != (&modmeta.ModelData{}).TableName() {
 				return
 			}
-			modelDataSelects++
-			// 1: user_admin mapping, 2: company_main mapping
-			if modelDataSelects >= 2 {
-				_ = tx.AddError(errors.New("forced company_main query failure"))
+			if !gormWhereVarsContain(tx, "company_main") {
+				return
 			}
+			_ = tx.AddError(errors.New("forced company_main query failure"))
 		}); err != nil {
 			t.Fatalf("register callback: %v", err)
 		}

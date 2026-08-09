@@ -150,14 +150,13 @@ async function expectCode(fn: () => Promise<any>, code: string, messageHint?: st
   }
   expect(caught, `expected error ${code}, got nothing`).toBeTruthy();
   const oe = toErr(caught);
-  if (oe?.code === code) return;
   const codes = collectErrorCodes(caught);
-  if (codes.includes(code)) return;
+  const hasCode = oe?.code === code || codes.includes(code);
+  expect(hasCode, `expected error ${code}${messageHint ? ` (hint=${messageHint})` : ''}, got codes=${codes.join(',')}`).toBe(true);
   if (messageHint) {
     const msg = String((caught as any)?.message || '');
-    if (msg.includes(messageHint)) return;
+    expect(msg.includes(messageHint), `expected message hint=${messageHint}, got ${msg}`).toBe(true);
   }
-  expect(false, `expected error ${code}${messageHint ? ` (hint=${messageHint})` : ''}, got codes=${codes.join(',')}`).toBe(true);
 }
 
 function metaModel(): any {

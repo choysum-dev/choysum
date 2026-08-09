@@ -806,10 +806,12 @@ func TestBuildPlanUpgradeEnsureOrderSkipsEmptyNamesAndLoadError(t *testing.T) {
 		WebEntryPoint:  "web/index.ts",
 	}
 	t.Run("load_ensure_error", func(t *testing.T) {
-		webLoadCalls := 0
+		// resolveWebModule: Load(nil) → Peek(web). Ensure loop: Load(web) after Peek.
+		webPeeked := false
 		r := fakeResolver{
 			peek: func(ctx context.Context, name string) (*meta.Module, error) {
 				if name == "web" {
+					webPeeked = true
 					return &meta.Module{Name: "web", WebEntryPoint: "web/index.ts", DependsStr: []byte(`["", "auth"]`)}, nil
 				}
 				if name == "auth" {
@@ -819,10 +821,7 @@ func TestBuildPlanUpgradeEnsureOrderSkipsEmptyNamesAndLoadError(t *testing.T) {
 			},
 			load: func(name string) (*meta.Module, error) {
 				if name == "web" {
-					webLoadCalls++
-					// Call 1: resolveWebModule (needsGlobalWebBuild Load is skipped when
-					// the root already declares WebEntryPoint). Call 2+: ensure loop.
-					if webLoadCalls >= 2 {
+					if webPeeked {
 						return nil, errors.New("load web failed")
 					}
 					return nil, nil
