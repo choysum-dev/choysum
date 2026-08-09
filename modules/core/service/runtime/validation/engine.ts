@@ -586,6 +586,9 @@ export class ValidationEngine {
               causeDomain: error.domain,
               grpcCode: error.grpcCode,
             };
+            issues.push(issue);
+            // Domain auth/status failures must not run later handlers (side effects).
+            break;
           }
           issues.push(issue);
         }
@@ -645,6 +648,9 @@ export class ValidationEngine {
             causeDomain: error.domain,
             grpcCode: error.grpcCode,
           };
+          issues.push(issue);
+          // Domain auth/status failures must not run later handlers (side effects).
+          break;
         }
         issues.push(issue);
       }

@@ -3,7 +3,7 @@
 
 import { GrpcCode, ChoysumError } from '@/core/service/error';
 import { ValidationPipelineError } from '../../../metadata';
-import { wrapRepositoryValidationError } from '..';
+import { selectPrimaryValidationIssue, wrapRepositoryValidationError } from '..';
 
 test('repository validation error helper builds rich metadata for sql/kernel/global issues', () => {
   const error = new ValidationPipelineError('pipeline failed', [
@@ -84,6 +84,52 @@ test('repository validation error helper builds rich metadata for sql/kernel/glo
   expect(issues[0].field).toBe('Name');
   expect(issues[1].field).toBe('Age');
   expect(issues[2].field).toBe(undefined);
+});
+
+test('repository validation error helper prefers status-bearing constraint issue over earlier kernel errors', () => {
+  const wrapped = wrapRepositoryValidationError(
+    {
+      fullModelName: 'web.SavedFilter',
+      modelName: 'SavedFilter',
+      name: '',
+    } as any,
+    new ValidationPipelineError('pipeline failed', [
+      {
+        scope: 'kernel',
+        field: 'Name',
+        code: 'required',
+        message: 'Name is required',
+        severity: 'error',
+      },
+      {
+        scope: 'constraint',
+        method: 'validateSavedFilterConstraint',
+        code: 'constraint_execution_failed',
+        message: 'Authentication required',
+        severity: 'error',
+        meta: {
+          causeCode: 'PermissionDenied',
+          causeDomain: 'web',
+          grpcCode: GrpcCode.Unauthenticated,
+        },
+      },
+    ] as any),
+    'create'
+  );
+
+  expect(wrapped.grpcCode).toBe(GrpcCode.Unauthenticated);
+  expect(wrapped.message).toBe('Authentication required');
+  expect(wrapped.metadata.causeCode).toBe('PermissionDenied');
+  expect(wrapped.metadata.causeDomain).toBe('web');
+  expect(wrapped.metadata.issueCode).toBe('constraint_execution_failed');
+});
+
+test('selectPrimaryValidationIssue falls back to first error when no grpc meta is present', () => {
+  const primary = selectPrimaryValidationIssue([
+    { scope: 'kernel', code: 'required', message: 'a', severity: 'error' },
+    { scope: 'platform', code: 'platform_x', message: 'b', severity: 'error' },
+  ] as any);
+  expect(primary?.code).toBe('required');
 });
 
 test('repository validation error helper falls back message and keeps minimal metadata when issues are empty', () => {

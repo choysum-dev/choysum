@@ -1,18 +1,32 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import type { ModelMetadata } from '../../metadata';
+import type { ModelMetadata, ValidationIssue } from '../../metadata';
 import { ValidationPipelineError, type ConstraintMode } from '../../metadata';
 import { GrpcCode, ChoysumError } from '@/core/service/error';
 import type { ObjectRecord } from '../../../../utils/types';
 
+function issueGrpcCode(issue: ValidationIssue | undefined): number | undefined {
+  const raw = (issue?.meta || {}).grpcCode;
+  return typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined;
+}
+
+/**
+ * Prefer a status-bearing constraint issue (meta.grpcCode) so Unauthenticated /
+ * PermissionDenied are not masked by an earlier kernel/platform InvalidArgument.
+ */
+export function selectPrimaryValidationIssue(issues: ValidationIssue[]): ValidationIssue | undefined {
+  const errors = issues.filter(issue => issue.severity === 'error');
+  const statusBearing = errors.find(issue => issueGrpcCode(issue) !== undefined);
+  return statusBearing || errors[0] || issues[0];
+}
+
 export function wrapRepositoryValidationError(meta: ModelMetadata, error: ValidationPipelineError, mode: ConstraintMode): ChoysumError {
-  const primaryIssue = error.issues.find(issue => issue.severity === 'error') || error.issues[0];
+  const primaryIssue = selectPrimaryValidationIssue(error.issues);
   const message = primaryIssue?.message || error.message || 'validation failed';
   const primaryMeta = (primaryIssue?.meta || {}) as ObjectRecord;
-  const grpcFromMeta = primaryMeta.grpcCode;
-  const grpcCode =
-    typeof grpcFromMeta === 'number' && Number.isFinite(grpcFromMeta) ? (grpcFromMeta as GrpcCode) : GrpcCode.InvalidArgument;
+  const grpcFromMeta = issueGrpcCode(primaryIssue);
+  const grpcCode = grpcFromMeta !== undefined ? (grpcFromMeta as GrpcCode) : GrpcCode.InvalidArgument;
   const wrapped = ChoysumError.wrap(
     error,
     {
