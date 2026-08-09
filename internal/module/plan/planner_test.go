@@ -268,7 +268,7 @@ func TestBuildPlanInstallDependencyErrors(t *testing.T) {
 			name: "load dependency error",
 			root: &meta.Module{Name: "auth", DependsStr: []byte(` ["dep"] `)},
 			res: fakeResolver{
-				load: func(name string) (*meta.Module, error) { return nil, errors.New("load dep failed") },
+				load: func(_ string) (*meta.Module, error) { return nil, errors.New("load dep failed") },
 			},
 			want: "load dependency dep: load dep failed",
 		},
@@ -276,7 +276,7 @@ func TestBuildPlanInstallDependencyErrors(t *testing.T) {
 			name: "peek dependency error",
 			root: &meta.Module{Name: "auth", DependsStr: []byte(` ["dep"] `)},
 			res: fakeResolver{
-				peek: func(_ context.Context, name string) (*meta.Module, error) {
+				peek: func(_ context.Context, _ string) (*meta.Module, error) {
 					return nil, errors.New("peek dep failed")
 				},
 			},
@@ -426,7 +426,7 @@ func TestBuildPlan_UninstallOrdersDependentsFirst(t *testing.T) {
 		"auth_addon": {Name: "auth_addon", ApplicationStr: "auth"},
 	}
 	r := fakeResolver{
-		peek: func(_ context.Context, name string) (*meta.Module, error) { return nil, nil },
+		peek: func(_ context.Context, _ string) (*meta.Module, error) { return nil, nil },
 		load: func(name string) (*meta.Module, error) { return modules[name], nil },
 	}
 
@@ -445,7 +445,7 @@ func TestBuildPlan_UninstallOrdersDependentsFirst(t *testing.T) {
 func TestBuildPlan_UninstallTreatsMissingModuleAsNoOp(t *testing.T) {
 	root := &meta.Module{Name: "missing", ApplicationStr: "auth"}
 	r := fakeResolver{
-		peek: func(_ context.Context, name string) (*meta.Module, error) { return nil, nil },
+		peek: func(_ context.Context, _ string) (*meta.Module, error) { return nil, nil },
 		load: func(_ string) (*meta.Module, error) { return nil, nil },
 	}
 
@@ -468,7 +468,7 @@ func TestBuildPlan_UninstallDetectsDependentCycle(t *testing.T) {
 		"auth": {Name: "auth", ApplicationStr: "auth", Dependents: []*meta.Module{{Name: "base"}}},
 	}
 	r := fakeResolver{
-		peek: func(_ context.Context, name string) (*meta.Module, error) { return nil, nil },
+		peek: func(_ context.Context, _ string) (*meta.Module, error) { return nil, nil },
 		load: func(name string) (*meta.Module, error) { return modules[name], nil },
 	}
 
