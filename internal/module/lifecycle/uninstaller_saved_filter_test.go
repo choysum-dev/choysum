@@ -219,6 +219,28 @@ func TestWebSavedFilterTableExists(t *testing.T) {
 	}
 }
 
+func TestWebSavedFilterTableExistsProbeError(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	ensureWebSavedFilterTable(t, db)
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("db.DB(): %v", err)
+	}
+	if err := sqlDB.Close(); err != nil {
+		t.Fatalf("close sql DB: %v", err)
+	}
+
+	ok, probeErr := webSavedFilterTableExists(db)
+	if ok || probeErr == nil || !strings.Contains(probeErr.Error(), "error checking web_saved_filter existence") {
+		t.Fatalf("ok=%v err=%v, want probe wrap", ok, probeErr)
+	}
+	if purgeErr := purgeSavedFiltersForGoneModels(db, []modmeta.LogicalKey{{Application: "demo", Name: "Item"}}); purgeErr == nil ||
+		!strings.Contains(purgeErr.Error(), "error checking web_saved_filter existence") {
+		t.Fatalf("purge error=%v, want probe failure propagated", purgeErr)
+	}
+}
+
 func TestPurgeSavedFiltersForGoneModelsGuards(t *testing.T) {
 	if err := purgeSavedFiltersForGoneModels(nil, []modmeta.LogicalKey{{Application: "a", Name: "B"}}); err != nil {
 		t.Fatalf("nil db: %v", err)

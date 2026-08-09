@@ -461,6 +461,28 @@ func TestResolveUnitTestDefaultIdentityOperationalDBErrors(t *testing.T) {
 		}
 	})
 
+	t.Run("user_model_lookup_query", func(t *testing.T) {
+		db := openIdentityTestDB(t)
+		migrateIdentityTables(t, db)
+		seedAuthInstalled(t, db)
+		userID := xid.New().String()
+		seedUserAdminMapping(t, db, userID)
+		// Break meta_model Find so LookupEffectiveModel returns a non-NotFound error.
+		if err := db.Exec(`ALTER TABLE meta_model RENAME TO meta_model_hidden`).Error; err != nil {
+			t.Fatalf("rename meta_model: %v", err)
+		}
+		if err := db.Exec(`CREATE TABLE meta_model (broken INTEGER)`).Error; err != nil {
+			t.Fatalf("create broken meta_model: %v", err)
+		}
+		_, ok, err := resolveUnitTestDefaultIdentity(context.Background(), newIdentityTestScope(t, db))
+		if err == nil || !strings.Contains(err.Error(), "lookup auth.User for unit identity") {
+			t.Fatalf("error=%v, want auth.User lookup wrap", err)
+		}
+		if ok {
+			t.Fatal("expected ok=false")
+		}
+	})
+
 	t.Run("user_row_query", func(t *testing.T) {
 		db := openIdentityTestDB(t)
 		migrateIdentityTables(t, db)

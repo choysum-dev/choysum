@@ -1236,6 +1236,70 @@ func TestModuleManagerUpgradeRunsAppStageCallbacks(t *testing.T) {
 	}
 }
 
+func TestModuleManagerUpgradeRefreshModuleIndexError(t *testing.T) {
+	modulesPath := t.TempDir()
+	distPath := filepath.Join(t.TempDir(), "dist")
+	tmpPath := filepath.Join(t.TempDir(), "tmp")
+	defaultChoysumPath := filepath.Join(t.TempDir(), ".choysum")
+
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
+		t.Fatalf("auto migrate meta entities: %v", err)
+	}
+
+	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	runtimeScope.cfg.DistPath = distPath
+	runtimeScope.cfg.TmpPath = tmpPath
+	runtimeScope.cfg.DefaultChoysumPath = defaultChoysumPath
+	runtimeScope.cfg.Compile = &config.CompileConfig{BundleMode: string(config.BundleModeApplication)}
+
+	locker := &moduleIndexSyncTestLocker{}
+	coordinator := &moduleManagerInstallOriginCoordinator{module: &meta.Module{
+		Name:           "auth",
+		ApplicationStr: "crm",
+		Version:        "v1.2.0",
+		Path:           filepath.Join(modulesPath, "auth"),
+	}}
+	manager := NewModuleManager(
+		runtimeScope,
+		&moduleManagerNoopScriptExecutor{},
+		WithLockerFactory(func(scope.Scope) statepkg.Locker { return locker }),
+		WithOriginCoordinatorFactory(func(scope.Scope) OriginCoordinator { return coordinator }),
+	)
+	manager.bootstrapOnce.Do(func() {})
+	if err := os.MkdirAll(filepath.Join(modulesPath, "auth"), 0o755); err != nil {
+		t.Fatalf("mkdir auth module dir: %v", err)
+	}
+	if err := db.Create(&meta.Module{
+		Name:           "auth",
+		Status:         meta.Installed,
+		Version:        "v1.0.0",
+		ApplicationStr: "crm",
+		Path:           filepath.Join(modulesPath, "auth"),
+	}).Error; err != nil {
+		t.Fatalf("seed installed module: %v", err)
+	}
+
+	// Fail only finalize refreshModuleIndexForLocalModules Creates.
+	if err := db.Callback().Create().Before("gorm:create").Register("deny_module_index_refresh", func(tx *gorm.DB) {
+		if tx.Statement == nil || tx.Statement.Schema == nil {
+			return
+		}
+		if tx.Statement.Schema.Table != (&modmeta.ModuleIndex{}).TableName() {
+			return
+		}
+		_ = tx.AddError(errors.New("forced module index refresh failure"))
+	}); err != nil {
+		t.Fatalf("register callback: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Callback().Create().Remove("deny_module_index_refresh") })
+
+	err := manager.Upgrade(context.Background(), "auth")
+	if err == nil || !strings.Contains(err.Error(), "refresh module index for auth") {
+		t.Fatalf("Upgrade() error = %v, want module index refresh failure", err)
+	}
+}
+
 func TestModuleManagerUpgradeCoreUsesListInstalledApps(t *testing.T) {
 	modulesPath := t.TempDir()
 	distPath := filepath.Join(t.TempDir(), "dist")
