@@ -142,22 +142,6 @@ export default class SavedFilter extends BaseModel {
   })
   Active: boolean;
 
-  /**
-   * Creator user id for SF11 shared-row write/delete Record rules.
-   * BaseModel does not yet expose CreateUid audit; persist on this model.
-   * notNull is false for the same kernel-before-constraint reason as ModelId;
-   * `@Constraint` always stamps CreateUid on create.
-   */
-  @Field({
-    type: 'varchar',
-    size: 20,
-    notNull: false,
-    index: true,
-    copy: false,
-    string: _lt('Created By', { scope: `${SCOPE}.fields` }),
-  })
-  CreateUid: string;
-
   private static _fail(code: string, message: string, grpc: GrpcCode = GrpcCode.InvalidArgument): never {
     throw new ChoysumError({ domain: 'web', code, message }).withGrpcCode(grpc);
   }
@@ -204,13 +188,13 @@ export default class SavedFilter extends BaseModel {
     // instead of a generic record_rule_violation from Update.
     const actor = String(this.userId || '').trim();
     const candidates = await SavedFilter.sudo(
-      () => SavedFilter.Search(cond as any, { fields: ['Id', 'UserId', 'CreateUid'], limit: 50 } as any),
+      () => SavedFilter.Search(cond as any, { fields: ['Id', 'UserId', 'CreatedUid'], limit: 50 } as any),
       { hint: 'web.SavedFilter.clearOtherDefaults.preflight' }
     );
     for (const row of candidates || []) {
       const shared = (row as any).UserId == null || (row as any).UserId === '';
       const canWrite = shared
-        ? String((row as any).CreateUid || '').trim() === actor
+        ? String((row as any).CreatedUid || '').trim() === actor
         : String((row as any).UserId || '').trim() === actor;
       if (!canWrite) {
         this._fail(
@@ -275,7 +259,7 @@ export default class SavedFilter extends BaseModel {
    * Normalize identity / ownership, resolve ModelId, enforce uniqueness and IsDefault mutex.
    * Static so we can read `ctx.mode` (Create pre-assigns Id before validation).
    */
-  @Constraint<SavedFilter>(['Name', 'ScopeKey', 'Application', 'ModelName', 'ModelId', 'UserId', 'IsDefault', 'Condition', 'Active', 'CreateUid'])
+  @Constraint<SavedFilter>(['Name', 'ScopeKey', 'Application', 'ModelName', 'ModelId', 'UserId', 'IsDefault', 'Condition', 'Active'])
   static async validateSavedFilterConstraint(self: SavedFilter, ctx: ConstraintContext<SavedFilter>): Promise<void> {
     const isCreate = ctx.mode === 'create';
     const values = ctx.values as Record<string, any>;
@@ -311,7 +295,7 @@ export default class SavedFilter extends BaseModel {
     values.ModelId = modelId;
 
     if (isCreate) {
-      values.CreateUid = actor;
+      // CreatedUid is stamped by repository write prepare (AuditUidUtils) from the request actor.
       const touchedUserId = Object.prototype.hasOwnProperty.call(values, 'UserId');
       if (!touchedUserId) {
         values.UserId = actor;
@@ -321,12 +305,8 @@ export default class SavedFilter extends BaseModel {
       if (values.IsDefault == null) values.IsDefault = false;
       if (values.Active == null) values.Active = true;
       if (values.Condition == null) values.Condition = {};
-    } else {
-      // CreateUid is immutable.
-      values.CreateUid = String((ctx.current as any)?.CreateUid || SavedFilter._mergedField(self, ctx, 'CreateUid') || '').trim();
-      if (Object.prototype.hasOwnProperty.call(values, 'UserId')) {
-        values.UserId = SavedFilter._normalizeOwnerUserId(values.UserId, actor);
-      }
+    } else if (Object.prototype.hasOwnProperty.call(values, 'UserId')) {
+      values.UserId = SavedFilter._normalizeOwnerUserId(values.UserId, actor);
     }
 
     const effectiveUserId = (() => {

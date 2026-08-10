@@ -35,7 +35,16 @@ export type RepositoryFieldRuleDeps = {
 };
 
 /** System fields kept readable/writable when fail-closed deny-all is applied (align auth deny-default). */
-const FIELD_RULE_SYSTEM_FIELDS = new Set(['Id', 'CreatedAt', 'UpdatedAt', 'DeletedAt', 'DisplayName']);
+const FIELD_RULE_SYSTEM_FIELDS = new Set([
+  'Id',
+  'CreatedAt',
+  'UpdatedAt',
+  'DeletedAt',
+  'CreatedUid',
+  'UpdatedUid',
+  'DeletedUid',
+  'DisplayName',
+]);
 
 /**
  * Build a deny-all (non-system) field-rule spec for fail-closed fallbacks.

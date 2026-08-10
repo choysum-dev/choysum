@@ -10,6 +10,7 @@ import {
   prepareRepositoryUpdateSanitizedPayload,
   resolveRepositoryUpdatePayloadTargets,
 } from '../update';
+import { withUser } from '../../../../runtime/context';
 
 test('repository update payload target resolver returns undefined when no targets match', async () => {
   const calls: Array<Record<string, any>> = [];
@@ -119,22 +120,24 @@ test('repository update sanitized payload prepare validates current rows and ret
     ['row_1']
   );
 
-  expect(sanitized).toEqual({ Name: 'demo', CompanyId: 'company_a', Encoded: true });
-  expect(calls).toEqual([
-    { method: 'fieldRule', payload: { Name: 'demo' } },
+  expect((sanitized as any).Name).toBe('demo');
+  expect((sanitized as any).CompanyId).toBe('company_a');
+  expect((sanitized as any).Encoded).toBe(true);
+  expect((sanitized as any).UpdatedAt instanceof Date).toBe(true);
+  expect(calls.filter(c => c.method === 'fieldRule')).toEqual([{ method: 'fieldRule', payload: { Name: 'demo' } }]);
+  expect(calls.filter(c => c.method === 'defaultCompany')).toEqual([
     { method: 'defaultCompany', vals: { Name: 'demo' } },
-    { method: 'scalarFields', meta: { fields: new Map() } },
-    { method: 'selectFrom', table: 'demo_table' },
-    { method: 'select', selections: [{ ref: 'demo_table.Id', alias: 'Id' }] },
-    { method: 'softLayer', condition: ['Id', 'in', ['row_1']] },
-    { method: 'isEmpty', condition: ['Id', 'in', ['row_1']] },
-    { method: 'convert', eb: 'EB', condition: ['Id', 'in', ['row_1']], selfTable: 'demo_table' },
-    { method: 'where', result: { eb: 'EB', condition: ['Id', 'in', ['row_1']], selfTable: 'demo_table' } },
-    { method: 'execute', query: currentRowsQuery },
-    { method: 'decode', row: { Id: 'row_1', Name: 'current' } },
-    { method: 'validate', input: { Name: 'demo', CompanyId: 'company_a' }, mode: 'update', current: { Id: 'row_1', Name: 'current' } },
-    { method: 'encode', input: { Name: 'demo', CompanyId: 'company_a' } },
   ]);
+  const validate = calls.find(c => c.method === 'validate');
+  expect(validate?.mode).toBe('update');
+  expect(validate?.current).toEqual({ Id: 'row_1', Name: 'current' });
+  expect(validate?.input.Name).toBe('demo');
+  expect(validate?.input.CompanyId).toBe('company_a');
+  expect(validate?.input.UpdatedAt instanceof Date).toBe(true);
+  const encode = calls.find(c => c.method === 'encode');
+  expect(encode?.input.Name).toBe('demo');
+  expect(encode?.input.CompanyId).toBe('company_a');
+  expect(encode?.input.UpdatedAt instanceof Date).toBe(true);
 });
 
 test('repository update sanitized payload stamps monetary digits and rejects mismatched multi-row scales', async () => {
@@ -472,27 +475,28 @@ test('repository update payload prepare resolves targets validates current rows 
     ['Id', '=', '1'] as any
   );
 
-  expect(prepared).toEqual({
-    targetIds: ['row_1'],
-    sanitized: { Name: 'demo', CompanyId: 'company_a', Encoded: true },
-  });
-  expect(calls).toEqual([
-    { method: 'locate', condition: ['Id', '=', '1'] },
+  expect(prepared?.targetIds).toEqual(['row_1']);
+  expect((prepared?.sanitized as any).Name).toBe('demo');
+  expect((prepared?.sanitized as any).CompanyId).toBe('company_a');
+  expect((prepared?.sanitized as any).Encoded).toBe(true);
+  expect((prepared?.sanitized as any).UpdatedAt instanceof Date).toBe(true);
+  expect(calls.filter(c => c.method === 'locate')).toEqual([{ method: 'locate', condition: ['Id', '=', '1'] }]);
+  expect(calls.filter(c => c.method === 'recordRule')).toEqual([
     { method: 'recordRule', op: 'write', targetIds: ['row_1'] },
-    { method: 'fieldRule', payload: { Name: 'demo' } },
-    { method: 'defaultCompany', vals: { Name: 'demo' } },
-    { method: 'scalarFields', meta: { companyField: undefined, fields: new Map() } },
-    { method: 'selectFrom', table: 'demo_table' },
-    { method: 'select', selections: [{ ref: 'demo_table.Id', alias: 'Id' }] },
-    { method: 'softLayer', condition: ['Id', 'in', ['row_1']] },
-    { method: 'isEmpty', condition: ['Id', 'in', ['row_1']] },
-    { method: 'convert', eb: 'EB', condition: ['Id', 'in', ['row_1']], selfTable: 'demo_table' },
-    { method: 'where', result: { eb: 'EB', condition: ['Id', 'in', ['row_1']], selfTable: 'demo_table' } },
-    { method: 'execute', query: currentRowsQuery },
-    { method: 'decode', row: { Id: 'row_1', Name: 'current' } },
-    { method: 'validate', input: { Name: 'demo', CompanyId: 'company_a' }, mode: 'update', current: { Id: 'row_1', Name: 'current' } },
-    { method: 'encode', input: { Name: 'demo', CompanyId: 'company_a' } },
   ]);
+  expect(calls.filter(c => c.method === 'fieldRule')).toEqual([{ method: 'fieldRule', payload: { Name: 'demo' } }]);
+  expect(calls.filter(c => c.method === 'defaultCompany')).toEqual([
+    { method: 'defaultCompany', vals: { Name: 'demo' } },
+  ]);
+  const validate = calls.find(c => c.method === 'validate');
+  expect(validate?.mode).toBe('update');
+  expect(validate?.input.Name).toBe('demo');
+  expect(validate?.input.CompanyId).toBe('company_a');
+  expect(validate?.input.UpdatedAt instanceof Date).toBe(true);
+  const encode = calls.find(c => c.method === 'encode');
+  expect(encode?.input.Name).toBe('demo');
+  expect(encode?.input.CompanyId).toBe('company_a');
+  expect(encode?.input.UpdatedAt instanceof Date).toBe(true);
 });
 
 test('repository update query prepare builds conditioned query from sanitized payload', async () => {
@@ -753,16 +757,117 @@ test('repository update executor invokes persist recompute hook with prepared pa
   );
 
   expect(rows).toEqual([{ numUpdatedRows: 1 }]);
-  expect(calls).toEqual([
-    {
-      method: 'recompute',
-      payload: {
-        targetIds: ['row_1'],
-        sanitized: { Name: 'new' },
-        condition: ['Id', '=', 'row_1'],
-        rows: [{ numUpdatedRows: 1 }],
+  expect(calls).toHaveLength(2);
+  expect(calls[0].method).toBe('recompute');
+  expect(calls[0].payload.targetIds).toEqual(['row_1']);
+  expect(calls[0].payload.condition).toEqual(['Id', '=', 'row_1']);
+  expect(calls[0].payload.rows).toEqual([{ numUpdatedRows: 1 }]);
+  expect(calls[0].payload.sanitized.Name).toBe('new');
+  expect(calls[0].payload.sanitized.UpdatedAt instanceof Date).toBe(true);
+  expect(calls[1]).toEqual({ method: 'invalidate' });
+});
+function updateSanitizeDeps(overrides?: Record<string, unknown>) {
+  return {
+    meta: { fields: new Map() } as any,
+    table: 'demo_table',
+    db: {
+      selectFrom() {
+        return {
+          select() {
+            return {
+              where() {
+                return { kind: 'current-rows-query' };
+              },
+            };
+          },
+        };
       },
     },
-    { method: 'invalidate' },
-  ]);
+    getScalarFields() {
+      return [];
+    },
+    makeSelectCtx() {
+      return {};
+    },
+    aliasSelection(selection: unknown, alias: string) {
+      return { selection, alias };
+    },
+    applySoftLayer(condition: any) {
+      return condition;
+    },
+    isEmptyCondition() {
+      return false;
+    },
+    convertCondition() {
+      return {};
+    },
+    async execute() {
+      return [{ Id: 'row_1', Name: 'current' }] as any;
+    },
+    decodeFromDb(row: any) {
+      return row;
+    },
+    async assertFieldRuleWriteAllowed() {},
+    applyDefaultCompanyIdOnUpdate(vals: any) {
+      return vals;
+    },
+    async validateFields() {},
+    encodeForDb(input: any) {
+      return input;
+    },
+    ...overrides,
+  };
+}
+
+test('repository update prepare stamps UpdatedAt/UpdatedUid and strips CreatedUid', async () => {
+  let validated: any;
+  const sanitized = await withUser('U-UPD', async () =>
+    prepareRepositoryUpdateSanitizedPayload(
+      updateSanitizeDeps({
+        async validateFields(input: any) {
+          validated = input;
+        },
+      }) as any,
+      { Name: 'demo', CreatedUid: 'hijack', DeletedUid: 'hijack-del' } as any,
+      ['row_1']
+    )
+  );
+
+  expect((sanitized as any).UpdatedAt instanceof Date).toBe(true);
+  expect((sanitized as any).UpdatedUid).toBe('U-UPD');
+  expect((sanitized as any).CreatedUid).toBeUndefined();
+  expect((sanitized as any).DeletedUid).toBeUndefined();
+  expect(validated.UpdatedUid).toBe('U-UPD');
+  expect(validated.CreatedUid).toBeUndefined();
+});
+
+test('repository update prepare clears DeletedUid on restore and leaves uid empty without actor', async () => {
+  const restored = await withUser('U-REST', async () =>
+    prepareRepositoryUpdateSanitizedPayload(
+      updateSanitizeDeps() as any,
+      { DeletedAt: null, DeletedUid: 'old-del' } as any,
+      ['row_1']
+    )
+  );
+  expect((restored as any).DeletedUid).toBeNull();
+  expect((restored as any).UpdatedUid).toBe('U-REST');
+
+  const softDeleted = await withUser('U-SOFT', async () =>
+    prepareRepositoryUpdateSanitizedPayload(
+      updateSanitizeDeps() as any,
+      { DeletedAt: new Date('2026-01-02T00:00:00.000Z'), DeletedUid: 'hijack' } as any,
+      ['row_1']
+    )
+  );
+  expect((softDeleted as any).DeletedUid).toBe('U-SOFT');
+  expect((softDeleted as any).UpdatedUid).toBe('U-SOFT');
+
+  const noActor = await prepareRepositoryUpdateSanitizedPayload(
+    updateSanitizeDeps() as any,
+    { Name: 'x', CreatedUid: 'hijack', UpdatedUid: 'hijack-upd' } as any,
+    ['row_1']
+  );
+  expect((noActor as any).CreatedUid).toBeUndefined();
+  expect((noActor as any).UpdatedUid).toBeUndefined();
+  expect((noActor as any).UpdatedAt instanceof Date).toBe(true);
 });

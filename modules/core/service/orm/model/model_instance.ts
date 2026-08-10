@@ -96,9 +96,7 @@ export async function updateModelInstance<T extends BaseModel>(instance: T, opti
       RelationFactory.prepareRelationChanges(instance.constructor as RuntimeModelCtor, instance, relationChanges, relations);
     }
 
-    const now = new Date();
-    processedValue.UpdatedAt = now;
-
+    // Optimistic lock uses the previously read UpdatedAt; repository prepare stamps the new UpdatedAt/UpdatedUid.
     const condition = LockUtils.buildOptimisticLockCondition(instance.Id, currentUpdatedAt);
     const result = await updateWithValidationBypass(processedValue, condition);
     if (result.length === 0) {
@@ -131,14 +129,13 @@ export async function updateModelInstance<T extends BaseModel>(instance: T, opti
             }
           }
           if (Object.keys(followUp).length) {
-            followUp.UpdatedAt = new Date();
             await updateWithValidationBypass(followUp, ['Id', '=', instance.Id]);
           }
         }
       }
     }
 
-    instance.UpdatedAt = now;
+    instance.UpdatedAt = new Date();
     resetModelChanges(instance);
 
     const allChangedFields = Object.keys(updateObj);

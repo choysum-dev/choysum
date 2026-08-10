@@ -9,6 +9,7 @@ export type SavedFilterRow = {
   Condition?: any;
   IsDefault?: boolean;
   UserId?: string | null;
+  CreatedUid?: string | null;
 };
 
 /**

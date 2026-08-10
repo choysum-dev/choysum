@@ -218,7 +218,7 @@
               null
             ],
             [
-              "CreateUid",
+              "CreatedUid",
               "=",
               "$userId"
             ]

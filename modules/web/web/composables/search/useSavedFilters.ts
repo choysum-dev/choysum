@@ -76,7 +76,7 @@ export function useSavedFilters(params: {
           ],
         },
         {
-          fields: ['Id', 'Name', 'ScopeKey', 'Condition', 'IsDefault', 'UserId', 'CreateUid', 'Sort'],
+          fields: ['Id', 'Name', 'ScopeKey', 'Condition', 'IsDefault', 'UserId', 'CreatedUid', 'Sort'],
           orderBy: { field: 'Name', order: 'asc' },
         }
       )) as SavedFilterRow[];
@@ -84,10 +84,10 @@ export function useSavedFilters(params: {
       favorites.value = (rows || [])
         .filter(r => r && r.Id && r.Name)
         .map(r => {
-          const createUid = String((r as any).CreateUid || '').trim();
+          const createUid = String(r.CreatedUid || '').trim();
           const shared = r.UserId == null || r.UserId === '';
           return {
-            ...(r as any),
+            ...r,
             Id: String(r.Id),
             Name: String(r.Name),
             shared,
@@ -160,9 +160,9 @@ export function useSavedFilters(params: {
     } else if (me) {
       values.UserId = me;
     }
-    const created = await sf.Create(values, ['Id', 'Name', 'ScopeKey', 'Condition', 'IsDefault', 'UserId', 'CreateUid']);
+    const created = await sf.Create(values, ['Id', 'Name', 'ScopeKey', 'Condition', 'IsDefault', 'UserId', 'CreatedUid']);
     await load();
-    const createUid = String((created as any).CreateUid || me || '').trim();
+    const createUid = String((created as SavedFilterRow)?.CreatedUid || me || '').trim();
     const shared = (created as any).UserId == null || (created as any).UserId === '';
     return {
       ...(created as any),

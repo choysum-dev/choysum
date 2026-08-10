@@ -475,9 +475,8 @@ export class UpdateOperations {
       // Include scale-field companions for scalar updates.
       addScaleForUpdates(new Set(baseChangedInitial), entityObj, scalarUpdate);
 
-      scalarUpdate.UpdatedAt = new Date();
-
-      const didScalarUpdate = Object.keys(scalarUpdate).length > 1;
+      // UpdatedAt / audit uids stamped in repository prepare.
+      const didScalarUpdate = Object.keys(scalarUpdate).length > 0;
       if (didScalarUpdate) {
         await repository.update(scalarUpdate, ['Id', '=', entityId]);
       }
@@ -584,7 +583,8 @@ export class UpdateOperations {
 
         if (touchedAttachment && !didScalarUpdate) {
           await runWithValidationBypass(repository, async () => {
-            await repository.update({ UpdatedAt: new Date() }, ['Id', '=', entityId]);
+            // Touch row so repository prepare refreshes UpdatedAt / UpdatedUid.
+            await repository.update({}, ['Id', '=', entityId]);
           });
         }
       }

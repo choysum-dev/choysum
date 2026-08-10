@@ -10,7 +10,9 @@ function readOwnField(input: unknown, key: string): unknown {
 }
 
 /**
- * Timestamp helpers for model create and update flows.
+ * Timestamp helpers for repository write prepare (*At columns only).
+ * Called from create/update repository pipelines — not from the model layer.
+ * Actor audit uids live in {@link AuditUidUtils}.
  */
 export class TimestampUtils {
   /**

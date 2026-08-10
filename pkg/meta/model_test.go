@@ -6,6 +6,7 @@ package meta
 import (
 	"database/sql"
 	"reflect"
+	"strings"
 	"testing"
 
 	"gorm.io/gorm"
@@ -27,6 +28,23 @@ func TestBaseModelBeforeCreate(t *testing.T) {
 	}
 	if model.Id != existing {
 		t.Fatalf("expected preset id to remain unchanged, got %#v", model.Id)
+	}
+}
+
+func TestBaseModelAuditUidColumns(t *testing.T) {
+	typ := reflect.TypeOf(BaseModel{})
+	for _, name := range []string{"CreatedUid", "UpdatedUid", "DeletedUid"} {
+		field, ok := typ.FieldByName(name)
+		if !ok {
+			t.Fatalf("BaseModel missing field %s", name)
+		}
+		if field.Type != reflect.TypeOf(sql.NullString{}) {
+			t.Fatalf("%s type = %v, want sql.NullString", name, field.Type)
+		}
+		tag := field.Tag.Get("gorm")
+		if !strings.Contains(tag, "size:20") || !strings.Contains(tag, "index") {
+			t.Fatalf("%s gorm tag = %q, want size:20;index", name, tag)
+		}
 	}
 }
 

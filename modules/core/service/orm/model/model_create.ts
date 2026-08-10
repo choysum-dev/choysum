@@ -3,7 +3,6 @@
 
 import { RelationFactory } from '../relation';
 import type { ExtractedRelations } from '../relation/types';
-import { TimestampUtils } from '../utils/timestamp';
 import type { Insertable, FieldSelection } from '../repository/types';
 import type BaseModel from './model';
 import { getModelRepository } from './model_internal_facade';
@@ -254,13 +253,10 @@ export class CreateOperations {
       processedRecord.Id = $choysum.xid.New();
     }
 
-    // 4) Timestamps.
-    const valueWithTimestamps = TimestampUtils.addTimestamps(processedValue);
-
-    // 5) Insert.
+    // 4) Insert (CreatedAt/UpdatedAt + CreatedUid/UpdatedUid stamped in repository prepare).
     const repository = getModelRepository(ModelCtor);
     const ids = await runWithValidationBypass(repository, async () => {
-      return await repository.create([valueWithTimestamps]);
+      return await repository.create([processedValue]);
     });
     const parentId = ids[0];
 
@@ -379,7 +375,6 @@ export class CreateOperations {
                 });
 
                 if (changed) {
-                  updates.UpdatedAt = new Date();
                   await runWithValidationBypass(parentRepo, async () => {
                     await parentRepo.update(updates, ['Id', '=', parentId]);
                   });
@@ -421,7 +416,7 @@ export class CreateOperations {
         operation: 'create',
         changedFields: Object.keys(processedValue),
         afterEntity: {
-          ...(valueWithTimestamps as UnknownRecord),
+          ...(processedValue as UnknownRecord),
           Id: parentId,
         },
       });
@@ -460,12 +455,11 @@ export class CreateOperations {
     const processedValues: Array<Partial<Insertable<T>>> = [];
     const allRelations: ExtractedRelations[] = [];
 
-    // 3) Preprocess values and add timestamps.
+    // 3) Preprocess values (CreatedAt/UpdatedAt + audit uids stamped in repository prepare).
     for (const value of preProcessed) {
       const { processedValue, relations } = await RelationFactory.prepareForCreate(ModelCtor, value);
 
-      const valueWithTimestamps = TimestampUtils.addTimestamps(processedValue);
-      processedValues.push(valueWithTimestamps);
+      processedValues.push(processedValue as Partial<Insertable<T>>);
       allRelations.push(relations);
     }
 

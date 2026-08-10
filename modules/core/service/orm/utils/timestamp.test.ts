@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { withUser } from '../../runtime/context';
 import { TimestampUtils } from './timestamp';
 
 test('timestamp utils addTimestamps fills CreatedAt and UpdatedAt when missing', () => {
@@ -15,6 +16,8 @@ test('timestamp utils addTimestamps fills CreatedAt and UpdatedAt when missing',
   expect(out.CreatedAt.getTime() <= after).toBe(true);
   expect(out.UpdatedAt.getTime() >= before).toBe(true);
   expect(out.UpdatedAt.getTime() <= after).toBe(true);
+  expect(out.CreatedUid).toBeUndefined();
+  expect(out.UpdatedUid).toBeUndefined();
 });
 
 test('timestamp utils preserves explicit timestamps for create and update payloads', () => {
@@ -46,4 +49,10 @@ test('timestamp utils addUpdateTimestamp adds UpdatedAt when absent', () => {
   expect(updated.UpdatedAt instanceof Date).toBe(true);
   expect(updated.UpdatedAt.getTime() >= before).toBe(true);
   expect(updated.UpdatedAt.getTime() <= after).toBe(true);
+});
+
+test('timestamp utils does not stamp audit uids (owned by AuditUidUtils)', () => {
+  const out = withUser('U-ACTOR', () => TimestampUtils.addTimestamps<{ Name: string }>({ Name: 'demo' } as any)) as any;
+  expect(out.CreatedUid).toBeUndefined();
+  expect(out.UpdatedUid).toBeUndefined();
 });
