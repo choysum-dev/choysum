@@ -2,7 +2,45 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from 'vitest';
-import { mergeUserFilterDefaults, pickLatestIsDefault, userFilterToNamedFilter } from './userFilterDefaults';
+import {
+  isNewerUserFilter,
+  isSharedUserFilterUserId,
+  mergeUserFilterDefaults,
+  pickLatestIsDefault,
+  resolveUserFilterUserId,
+  userFilterToNamedFilter,
+} from './userFilterDefaults';
+
+describe('resolveUserFilterUserId', () => {
+  it('treats null, undefined, and empty string as missing', () => {
+    expect(resolveUserFilterUserId(null)).toBe('');
+    expect(resolveUserFilterUserId(undefined)).toBe('');
+    expect(resolveUserFilterUserId('')).toBe('');
+  });
+
+  it('unwraps ManyToOneRef { Id } including null/empty nested Id', () => {
+    expect(resolveUserFilterUserId({ Id: 'u1' })).toBe('u1');
+    expect(resolveUserFilterUserId({ Id: '  u2  ' })).toBe('u2');
+    expect(resolveUserFilterUserId({ Id: null })).toBe('');
+    expect(resolveUserFilterUserId({ Id: '' })).toBe('');
+    expect(resolveUserFilterUserId({ Id: undefined })).toBe('');
+  });
+
+  it('stringifies bare ids and non-Id objects/arrays', () => {
+    expect(resolveUserFilterUserId('  me  ')).toBe('me');
+    expect(resolveUserFilterUserId({ Name: 'x' } as any)).toBe('[object Object]');
+    expect(resolveUserFilterUserId(['u1'] as any)).toBe('u1');
+  });
+});
+
+describe('isSharedUserFilterUserId', () => {
+  it('is true only when resolved owner id is empty', () => {
+    expect(isSharedUserFilterUserId(null)).toBe(true);
+    expect(isSharedUserFilterUserId({ Id: null })).toBe(true);
+    expect(isSharedUserFilterUserId('me')).toBe(false);
+    expect(isSharedUserFilterUserId({ Id: 'me' })).toBe(false);
+  });
+});
 
 describe('userFilterToNamedFilter', () => {
   it('maps Condition to query and optional selected', () => {
@@ -29,6 +67,41 @@ describe('userFilterToNamedFilter', () => {
   });
 });
 
+describe('isNewerUserFilter', () => {
+  it('compares UpdatedAt via Date instances and invalid dates as 0', () => {
+    const newer = { Id: 'n', UpdatedAt: new Date('2026-06-01T00:00:00.000Z') };
+    const older = { Id: 'o', UpdatedAt: new Date('2026-01-01T00:00:00.000Z') };
+    expect(isNewerUserFilter(newer, older)).toBe(true);
+    expect(isNewerUserFilter(older, newer)).toBe(false);
+
+    const invalid = { Id: 'i', UpdatedAt: new Date('not-a-date') };
+    const missing = { Id: 'm', UpdatedAt: null };
+    // Both resolve to 0 → fall through to Id tie-break.
+    expect(isNewerUserFilter(invalid, missing)).toBe(false);
+    expect(isNewerUserFilter({ Id: 'z', UpdatedAt: 'nope' }, { Id: 'a', UpdatedAt: '' })).toBe(true);
+  });
+
+  it('uses CreatedAt when UpdatedAt ties, then Id (including missing Id)', () => {
+    const a = {
+      Id: 'a',
+      UpdatedAt: '2026-01-01T00:00:00.000Z',
+      CreatedAt: '2026-06-01T00:00:00.000Z',
+    };
+    const b = {
+      Id: 'b',
+      UpdatedAt: '2026-01-01T00:00:00.000Z',
+      CreatedAt: '2026-03-01T00:00:00.000Z',
+    };
+    expect(isNewerUserFilter(a, b)).toBe(true);
+    expect(isNewerUserFilter(b, a)).toBe(false);
+
+    const noId = { UpdatedAt: '2026-01-01T00:00:00.000Z', CreatedAt: '2026-01-01T00:00:00.000Z' };
+    const withId = { Id: 'z', UpdatedAt: '2026-01-01T00:00:00.000Z', CreatedAt: '2026-01-01T00:00:00.000Z' };
+    expect(isNewerUserFilter(withId, noId)).toBe(true);
+    expect(isNewerUserFilter(noId, withId)).toBe(false);
+  });
+});
+
 describe('pickLatestIsDefault', () => {
   it('picks newest private by UpdatedAt then Id', () => {
     const rows = [
@@ -49,9 +122,20 @@ describe('pickLatestIsDefault', () => {
     expect(pickLatestIsDefault(rows, 'private')?.Id).toBe('id9');
   });
 
-  it('returns null when no matching IsDefault', () => {
+  it('keeps an already-newer first row when later rows are older', () => {
+    const rows = [
+      { Id: 'new', IsDefault: true, UserId: 'me', UpdatedAt: '2026-06-01T00:00:00.000Z' },
+      { Id: 'old', IsDefault: true, UserId: 'me', UpdatedAt: '2026-01-01T00:00:00.000Z' },
+    ];
+    expect(pickLatestIsDefault(rows, 'private')?.Id).toBe('new');
+  });
+
+  it('returns null when no matching IsDefault or rows are nullish', () => {
     expect(pickLatestIsDefault([], 'private')).toBeNull();
+    expect(pickLatestIsDefault(null, 'shared')).toBeNull();
+    expect(pickLatestIsDefault(undefined, 'private')).toBeNull();
     expect(pickLatestIsDefault([{ Id: 'x', IsDefault: false, UserId: 'me' }], 'private')).toBeNull();
+    expect(pickLatestIsDefault([{ Id: 'x', IsDefault: true, UserId: '' }], 'private')).toBeNull();
   });
 });
 
