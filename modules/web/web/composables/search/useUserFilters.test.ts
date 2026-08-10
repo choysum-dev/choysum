@@ -168,6 +168,46 @@ describe('useUserFilters', () => {
     expect(api.loading.value).toBe(false);
   });
 
+  it('load ignores stale responses when a newer load started', async () => {
+    let resolveFirst!: (rows: any[]) => void;
+    const first = new Promise<any[]>(resolve => {
+      resolveFirst = resolve;
+    });
+    sfMocks.Search.mockImplementationOnce(() => first).mockResolvedValueOnce([
+      {
+        Id: 'new',
+        Name: 'Newer',
+        Condition: {},
+        IsDefault: false,
+        UserId: 'me',
+        CreatedUid: 'me',
+      },
+    ]);
+    const api = runInSetup(() =>
+      useUserFilters({
+        store: { application: 'demo', modelName: 'Widget' },
+        filtersRef: ref([]),
+        applyNamedFilter: vi.fn(),
+      })
+    );
+    const p1 = api.load();
+    const p2 = api.load();
+    resolveFirst([
+      {
+        Id: 'old',
+        Name: 'Stale',
+        Condition: {},
+        IsDefault: true,
+        UserId: 'me',
+        CreatedUid: 'me',
+      },
+    ]);
+    await Promise.all([p1, p2]);
+    expect(api.favorites.value).toHaveLength(1);
+    expect(api.favorites.value[0].Id).toBe('new');
+    expect(api.loading.value).toBe(false);
+  });
+
   it('load stringifies non-Error throws', async () => {
     sfMocks.Search.mockRejectedValue('plain-string-fail');
     const api = runInSetup(() =>

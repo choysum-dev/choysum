@@ -3,8 +3,11 @@
 
 /**
  * OSearchView emits a mount-time query-update (including UserFilter defaults).
- * When that component is the searchView, Kanban should wait instead of applying on mount.
+ * When that component is the searchView, List/Kanban should wait instead of applying on mount.
  */
-export function shouldDeferKanbanFirstFrame(searchView: unknown, oSearchView: unknown): boolean {
+export function shouldDeferViewFirstFrame(searchView: unknown, oSearchView: unknown): boolean {
   return searchView === oSearchView;
 }
+
+/** @deprecated Prefer {@link shouldDeferViewFirstFrame}. */
+export const shouldDeferKanbanFirstFrame = shouldDeferViewFirstFrame;

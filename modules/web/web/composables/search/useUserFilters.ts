@@ -39,6 +39,7 @@ export function useUserFilters(params: {
   const favorites = ref<UserFavoriteItem[]>([]);
   const loading = ref(false);
   const loadError = ref<string | null>(null);
+  let loadGeneration = 0;
 
   const application = computed(() => String((store as any)?.application || '').trim());
   const modelName = computed(() => String((store as any)?.modelName || '').trim());
@@ -52,10 +53,13 @@ export function useUserFilters(params: {
   }
 
   async function load(): Promise<void> {
+    const gen = ++loadGeneration;
     const app = application.value;
     const model = modelName.value;
     if (!app || !model) {
-      favorites.value = [];
+      if (gen === loadGeneration) {
+        favorites.value = [];
+      }
       return;
     }
     loading.value = true;
@@ -86,6 +90,8 @@ export function useUserFilters(params: {
         }
       )) as UserFilterRow[];
 
+      if (gen !== loadGeneration) return;
+
       favorites.value = (rows || [])
         .filter(r => r && r.Id && r.Name)
         .map(r => {
@@ -103,10 +109,13 @@ export function useUserFilters(params: {
           };
         });
     } catch (e: any) {
+      if (gen !== loadGeneration) return;
       loadError.value = e instanceof Error ? e.message : String(e);
       favorites.value = [];
     } finally {
-      loading.value = false;
+      if (gen === loadGeneration) {
+        loading.value = false;
+      }
     }
   }
 

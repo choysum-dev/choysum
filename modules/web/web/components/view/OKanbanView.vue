@@ -155,7 +155,7 @@ import { ElMessage } from 'element-plus';
 import draggable from 'vuedraggable';
 import { provide, defineComponent, reactive } from 'vue';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
-import { shouldDeferKanbanFirstFrame } from '@/web/web/components/view/kanbanFirstFrame';
+import { shouldDeferViewFirstFrame } from '@/web/web/components/view/kanbanFirstFrame';
 import { createTranslate } from '@/web/web/i18n';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/OKanbanView' });
@@ -496,7 +496,7 @@ onMounted(async () => {
   }
   // Only OSearchView guarantees a mount-time query-update with UserFilter defaults.
   // Custom SearchViewComponent implementations may never emit; keep the mount apply.
-  if (shouldDeferKanbanFirstFrame(props.searchView, OSearchView)) {
+  if (shouldDeferViewFirstFrame(props.searchView, OSearchView)) {
     return;
   }
   // Custom search views that already emitted query-update (onSearch sets lastSearchPayload

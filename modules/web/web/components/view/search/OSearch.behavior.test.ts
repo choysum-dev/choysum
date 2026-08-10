@@ -418,11 +418,11 @@ describe('OSearch behavior', () => {
     expect(focus).toHaveBeenCalled();
   });
 
-  it('loads favorites on mount and shows empty / error / retry states', async () => {
+  it('loads favorites on mount without emitting defaults-ready (OSearchView owns first-frame IsDefault)', async () => {
     const wrapper = mountSearch();
     await flushPromises();
     expect(savedFiltersApi.load).toHaveBeenCalled();
-    expect(wrapper.emitted('defaults-ready')?.[0]?.[0]).toEqual([{ name: 'CodeDefault', query: ['A', '=', 1] }]);
+    expect(wrapper.emitted('defaults-ready')).toBeUndefined();
     expect(wrapper.text()).toContain('No favorites yet');
 
     savedFiltersApi.state!.loadError = 'boom';
@@ -523,7 +523,7 @@ describe('OSearch behavior', () => {
       isDefault: false,
       shared: false,
     });
-    expect(wrapper.emitted('defaults-ready')?.length).toBeGreaterThan(1);
+    expect(wrapper.emitted('defaults-ready')?.length).toBe(2);
   });
 
   it('cancels favorite delete when ElMessageBox rejects', async () => {

@@ -36,6 +36,7 @@ vi.mock('@/web/web/query/utils/registry/fieldReady', () => ({
 }));
 
 vi.mock('@/web/web/components/view/kanbanFirstFrame', () => ({
+  shouldDeferViewFirstFrame: () => deferState.defer,
   shouldDeferKanbanFirstFrame: () => deferState.defer,
 }));
 
