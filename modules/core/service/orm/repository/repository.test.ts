@@ -971,16 +971,24 @@ test('repository root create orchestrates record-rule/company/write-guards and p
 
   expect(ids).toEqual(['id_1']);
   expect(calls.fieldRulePayload).toEqual({ Id: 'id_1', Name: 'demo' });
-  expect(calls.validate).toEqual({
-    input: { Id: 'id_1', Name: 'demo', CompanyId: 'company_a' },
-    mode: 'create',
-  });
+  expect(calls.validate?.mode).toBe('create');
+  expect(calls.validate?.input?.Id).toBe('id_1');
+  expect(calls.validate?.input?.Name).toBe('demo');
+  expect(calls.validate?.input?.CompanyId).toBe('company_a');
+  expect(calls.validate?.input?.CreatedAt instanceof Date).toBe(true);
+  expect(calls.validate?.input?.UpdatedAt instanceof Date).toBe(true);
   expect(calls.postWrite).toEqual({
     ids: ['id_1'],
     env: { kind: 'expr', expr: ['Id', '!=', '0'], reason: 'rr_expr' },
   });
   expect(queries[0]?.kind).toBe('insert');
-  expect(queries[0]?.valuesArg).toEqual([{ Id: 'id_1', Name: 'demo', CompanyId: 'company_a', Encoded: true }]);
+  expect(queries[0]?.valuesArg).toHaveLength(1);
+  expect(queries[0]?.valuesArg[0].Id).toBe('id_1');
+  expect(queries[0]?.valuesArg[0].Name).toBe('demo');
+  expect(queries[0]?.valuesArg[0].CompanyId).toBe('company_a');
+  expect(queries[0]?.valuesArg[0].Encoded).toBe(true);
+  expect(queries[0]?.valuesArg[0].CreatedAt instanceof Date).toBe(true);
+  expect(queries[0]?.valuesArg[0].UpdatedAt instanceof Date).toBe(true);
 });
 
 test('repository root create denies when record-rule envelope is false and skips runtime write', async () => {
@@ -1603,14 +1611,17 @@ test('repository root update combines company-scope target resolve, record-rule 
   expect(calls.rrTargets).toEqual({ op: 'write', ids: ['id_1'] });
   expect(calls.rrCondition).toEqual({ condition: ['Id', '=', 'id_1'], op: 'write' });
   expect(calls.fieldRulePayload).toEqual({ Name: 'new' });
-  expect(calls.validate).toEqual({
-    input: { Name: 'new', CompanyId: 'company_a' },
-    mode: 'update',
-    current: { Id: 'id_1', Name: 'old' },
-  });
+  expect(calls.validate?.mode).toBe('update');
+  expect(calls.validate?.current).toEqual({ Id: 'id_1', Name: 'old' });
+  expect(calls.validate?.input?.Name).toBe('new');
+  expect(calls.validate?.input?.CompanyId).toBe('company_a');
+  expect(calls.validate?.input?.UpdatedAt instanceof Date).toBe(true);
   expect(calls.invalidated).toBe(true);
   const updateQuery = queries.find(item => item.kind === 'update');
-  expect(updateQuery?.setArg).toEqual({ Name: 'new', CompanyId: 'company_a', Encoded: true });
+  expect(updateQuery?.setArg?.Name).toBe('new');
+  expect(updateQuery?.setArg?.CompanyId).toBe('company_a');
+  expect(updateQuery?.setArg?.Encoded).toBe(true);
+  expect(updateQuery?.setArg?.UpdatedAt instanceof Date).toBe(true);
 });
 
 test('repository root delete combines company-scope target resolve, record-rule guard and default-layer delete condition', async () => {
