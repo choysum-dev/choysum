@@ -23,13 +23,12 @@ jobs:
         uses: the-pr-agent/pr-agent@main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GOOGLE_AI_STUDIO.GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          # Specify the Gemini model to replace the default OpenAI configuration
-          config.model: "gemini/gemini-3.6-flash"
-          config.fallback_models: '["gemini/gemini-3.5-flash"]'
+          DEEPSEEK.KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          # DeepSeek V4 via litellm (see https://docs.pr-agent.ai/usage-guide/changing_a_model/)
+          config.model: "deepseek/deepseek-v4-pro"
+          config.fallback_models: '["deepseek/deepseek-v4-flash"]'
           # Required for models not yet listed in PR-Agent's built-in MAX_TOKENS table
           config.custom_model_max_tokens: "1000000"
-          # Increase token limit to properly process large diffs
           config.max_model_tokens: "1000000"
           # Optional: Enable automatic review, describe, and improve on PR events
           # Project-specific review/describe/improve instructions live in .pr_agent.toml
