@@ -16,6 +16,7 @@ function resolveActorUid(): string {
 
 /**
  * Audit-uid helpers for BaseModel CreatedUid / UpdatedUid / DeletedUid (AU6–AU8).
+ * Called from repository write prepare (create/update) and soft-delete SET — not from the model layer.
  * Wall-clock *At columns stay in {@link TimestampUtils}.
  */
 export class AuditUidUtils {

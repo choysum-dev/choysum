@@ -23,6 +23,7 @@ import {
   validateRepositoryMutationPayload,
 } from './mutation_payload_helpers';
 import { stampMonetaryScalesForWriteMany } from '../projection/monetary_scale';
+import { AuditUidUtils } from '../../utils/audit_uid';
 import {
   applyRepositoryUpdateCondition,
   loadRepositoryUpdateValidationCurrentRows,
@@ -110,12 +111,17 @@ export async function prepareRepositoryUpdateSanitizedPayload(
     },
     [vals]
   )[0] as Entity;
+  // System UpdatedAt / *Uid: stamp before validate (strip CreatedUid; restore clears DeletedUid).
+  const auditStamped = { ...(preparedVals as ObjectRecord), UpdatedAt: new Date() };
+  AuditUidUtils.applyOnUpdate(auditStamped);
+  const preparedWithAudit = auditStamped as Entity;
+
   const currentRows = await loadRepositoryUpdateValidationCurrentRows(params, targetIds);
   // Stamp monetary scales per target (one batched Currency browse across all targets).
   const stampedList = await stampMonetaryScalesForWriteMany(
     params.meta,
     targetIds.map(id => ({
-      input: { ...preparedVals } as Entity,
+      input: { ...preparedWithAudit } as Entity,
       current: currentRows.get(id) ?? null,
     }))
   );
@@ -134,12 +140,12 @@ export async function prepareRepositoryUpdateSanitizedPayload(
     );
   }
 
-  if (payloadHasTranslatedFieldWrite(params.meta, preparedVals) && targetIds.length > 1) {
+  if (payloadHasTranslatedFieldWrite(params.meta, preparedWithAudit) && targetIds.length > 1) {
     throw new Error(
       'Updating translated fields on multiple rows in one call is not supported yet; update one record at a time'
     );
   }
-  if (payloadHasCompanyDependentFieldWrite(params.meta, preparedVals) && targetIds.length > 1) {
+  if (payloadHasCompanyDependentFieldWrite(params.meta, preparedWithAudit) && targetIds.length > 1) {
     throw new Error(
       'Updating company-dependent fields on multiple rows in one call is not supported yet; update one record at a time'
     );

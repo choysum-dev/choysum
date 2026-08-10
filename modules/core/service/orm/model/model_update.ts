@@ -22,7 +22,6 @@ import { asObjectRecord } from '../../../utils/object';
 import { getCurrencyFieldName } from '../metadata/decimal_like';
 import { createServiceByModel } from '../../rpc';
 import { applyInverseWriteback } from '../../runtime/compute/inverse_writeback';
-import { AuditUidUtils } from '../utils/audit_uid';
 import { _t } from '@/core/service/i18n_binder';
 
 type AttachmentDownloadDisposition = 'inline' | 'attachment';
@@ -476,10 +475,8 @@ export class UpdateOperations {
       // Include scale-field companions for scalar updates.
       addScaleForUpdates(new Set(baseChangedInitial), entityObj, scalarUpdate);
 
-      scalarUpdate.UpdatedAt = new Date();
-      AuditUidUtils.applyOnUpdate(scalarUpdate as UnknownRecord);
-
-      const didScalarUpdate = Object.keys(scalarUpdate).length > 1;
+      // UpdatedAt / audit uids stamped in repository prepare.
+      const didScalarUpdate = Object.keys(scalarUpdate).length > 0;
       if (didScalarUpdate) {
         await repository.update(scalarUpdate, ['Id', '=', entityId]);
       }
@@ -586,9 +583,8 @@ export class UpdateOperations {
 
         if (touchedAttachment && !didScalarUpdate) {
           await runWithValidationBypass(repository, async () => {
-            const stamp: UnknownRecord = { UpdatedAt: new Date() };
-            AuditUidUtils.applyOnUpdate(stamp);
-            await repository.update(stamp, ['Id', '=', entityId]);
+            // Touch row so repository prepare refreshes UpdatedAt / UpdatedUid.
+            await repository.update({}, ['Id', '=', entityId]);
           });
         }
       }

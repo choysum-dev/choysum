@@ -21,6 +21,9 @@ import { _t } from '@/core/service/i18n_binder';
 import { applyTranslatedFieldsForWrite } from '../projection/translated_field_codec';
 import { applyCompanyDependentFieldsForWrite } from '../projection/company_dependent_field_codec';
 import { stampMonetaryScalesForWriteMany } from '../projection/monetary_scale';
+import { AuditUidUtils } from '../../utils/audit_uid';
+import { TimestampUtils } from '../../utils/timestamp';
+import type { ObjectRecord } from '@/core/utils/types';
 
 export type RepositoryCreateWriteAuthzDeps = {
   meta: ModelMetadata;
@@ -71,7 +74,12 @@ export async function prepareRepositoryCreateEntities(params: RepositoryCreateWr
     params.meta,
     preparedEntities.map(entity => ({ input: entity }))
   );
-  for (const entity of stampedEntities) {
+  // System *At / *Uid columns: stamp before validate so constraints see CreatedUid.
+  const entitiesWithAudit = stampedEntities.map(entity => {
+    const withAt = TimestampUtils.addTimestamps(entity as ObjectRecord) as Entity;
+    return AuditUidUtils.addCreateUids(withAt as ObjectRecord) as Entity;
+  });
+  for (const entity of entitiesWithAudit) {
     await validateRepositoryMutationPayload(
       {
         validateFields: (input, mode) => params.validateFields(input, mode),
@@ -81,7 +89,7 @@ export async function prepareRepositoryCreateEntities(params: RepositoryCreateWr
     );
   }
 
-  const entitiesForEncode = stampedEntities.map(entity => {
+  const entitiesForEncode = entitiesWithAudit.map(entity => {
     const withTranslate = applyTranslatedFieldsForWrite(params.meta, entity, { mode: 'create' });
     return applyCompanyDependentFieldsForWrite(params.meta, withTranslate, { mode: 'create' });
   });

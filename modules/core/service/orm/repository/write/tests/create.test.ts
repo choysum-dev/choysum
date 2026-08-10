@@ -193,17 +193,33 @@ test('repository create executor composes authz prepare runtime and post-write h
   );
 
   expect(ids).toEqual(['generated_id']);
-  expect(calls).toEqual([
-    { method: 'recordRuleEnvelope', op: 'create' },
-    { method: 'fieldRule', payload: { Name: 'first' } },
-    { method: 'generateId' },
+  expect(calls.filter(c => c.method === 'recordRuleEnvelope')).toEqual([{ method: 'recordRuleEnvelope', op: 'create' }]);
+  expect(calls.filter(c => c.method === 'fieldRule')).toEqual([{ method: 'fieldRule', payload: { Name: 'first' } }]);
+  expect(calls.filter(c => c.method === 'generateId')).toEqual([{ method: 'generateId' }]);
+  expect(calls.filter(c => c.method === 'defaultCompany')).toEqual([
     { method: 'defaultCompany', entity: { Id: 'generated_id', Name: 'first' } },
-    { method: 'validate', input: { Id: 'generated_id', Name: 'first', CompanyId: 'company_a' }, mode: 'create' },
-    { method: 'encode', input: { Id: 'generated_id', Name: 'first', CompanyId: 'company_a' } },
-    { method: 'insertInto', table: 'demo_table' },
-    { method: 'values', input: [{ Id: 'generated_id', Name: 'first', CompanyId: 'company_a', Encoded: true }] },
-    { method: 'returning', field: 'Id' },
-    { method: 'execute', query: { kind: 'insert-query' } },
+  ]);
+  const validate = calls.find(c => c.method === 'validate');
+  expect(validate?.mode).toBe('create');
+  expect(validate?.input.Id).toBe('generated_id');
+  expect(validate?.input.Name).toBe('first');
+  expect(validate?.input.CompanyId).toBe('company_a');
+  expect(validate?.input.CreatedAt instanceof Date).toBe(true);
+  expect(validate?.input.UpdatedAt instanceof Date).toBe(true);
+  const encode = calls.find(c => c.method === 'encode');
+  expect(encode?.input.Id).toBe('generated_id');
+  expect(encode?.input.CreatedAt instanceof Date).toBe(true);
+  expect(calls.filter(c => c.method === 'insertInto')).toEqual([{ method: 'insertInto', table: 'demo_table' }]);
+  const values = calls.find(c => c.method === 'values');
+  expect(values?.input).toHaveLength(1);
+  expect(values?.input[0].Id).toBe('generated_id');
+  expect(values?.input[0].Name).toBe('first');
+  expect(values?.input[0].CompanyId).toBe('company_a');
+  expect(values?.input[0].Encoded).toBe(true);
+  expect(values?.input[0].CreatedAt instanceof Date).toBe(true);
+  expect(calls.filter(c => c.method === 'returning')).toEqual([{ method: 'returning', field: 'Id' }]);
+  expect(calls.filter(c => c.method === 'execute')).toEqual([{ method: 'execute', query: { kind: 'insert-query' } }]);
+  expect(calls.filter(c => c.method === 'recordRuleCreated')).toEqual([
     {
       method: 'recordRuleCreated',
       createdIds: ['generated_id'],
@@ -266,12 +282,13 @@ test('repository create executor invokes persist recompute hook after post-write
   );
 
   expect(ids).toEqual(['generated_id']);
-  expect(calls).toEqual([
-    { method: 'postWrite', createdIds: ['generated_id'] },
-    {
-      method: 'recompute',
-      createdIds: ['generated_id'],
-      sanitizedEntities: [{ Id: 'generated_id', Name: 'first' }],
-    },
-  ]);
+  expect(calls).toHaveLength(2);
+  expect(calls[0]).toEqual({ method: 'postWrite', createdIds: ['generated_id'] });
+  expect(calls[1].method).toBe('recompute');
+  expect(calls[1].createdIds).toEqual(['generated_id']);
+  expect(calls[1].sanitizedEntities).toHaveLength(1);
+  expect(calls[1].sanitizedEntities[0].Id).toBe('generated_id');
+  expect(calls[1].sanitizedEntities[0].Name).toBe('first');
+  expect(calls[1].sanitizedEntities[0].CreatedAt instanceof Date).toBe(true);
+  expect(calls[1].sanitizedEntities[0].UpdatedAt instanceof Date).toBe(true);
 });

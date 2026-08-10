@@ -14,7 +14,6 @@ import { toTransportObject as toTransportObjectImpl } from './model_runtime';
 import { collectModelUpstreamInverseFields, getModelRuntimeMetadata, recomputeModelMetadata, triggerModelUpstream } from './model_runtime_service_facade';
 import { getRuntimeErrorMessage, runWithValidationBypass } from './model_write_helpers';
 import type { ValidationBypassCapable } from './model_write_helpers';
-import { AuditUidUtils } from '../utils/audit_uid';
 import type { UnknownRecord } from '../../../utils/types';
 import { _t } from '@/core/service/i18n_binder';
 
@@ -97,10 +96,7 @@ export async function updateModelInstance<T extends BaseModel>(instance: T, opti
       RelationFactory.prepareRelationChanges(instance.constructor as RuntimeModelCtor, instance, relationChanges, relations);
     }
 
-    const now = new Date();
-    processedValue.UpdatedAt = now;
-    AuditUidUtils.applyOnUpdate(processedValue as UnknownRecord);
-
+    // Optimistic lock uses the previously read UpdatedAt; repository prepare stamps the new UpdatedAt/UpdatedUid.
     const condition = LockUtils.buildOptimisticLockCondition(instance.Id, currentUpdatedAt);
     const result = await updateWithValidationBypass(processedValue, condition);
     if (result.length === 0) {
@@ -133,15 +129,13 @@ export async function updateModelInstance<T extends BaseModel>(instance: T, opti
             }
           }
           if (Object.keys(followUp).length) {
-            followUp.UpdatedAt = new Date();
-            AuditUidUtils.applyOnUpdate(followUp);
             await updateWithValidationBypass(followUp, ['Id', '=', instance.Id]);
           }
         }
       }
     }
 
-    instance.UpdatedAt = now;
+    instance.UpdatedAt = new Date();
     resetModelChanges(instance);
 
     const allChangedFields = Object.keys(updateObj);

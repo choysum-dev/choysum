@@ -295,7 +295,7 @@ export default class SavedFilter extends BaseModel {
     values.ModelId = modelId;
 
     if (isCreate) {
-      // CreatedUid is stamped by BaseModel AuditUidUtils from the request actor.
+      // CreatedUid is stamped by repository write prepare (AuditUidUtils) from the request actor.
       const touchedUserId = Object.prototype.hasOwnProperty.call(values, 'UserId');
       if (!touchedUserId) {
         values.UserId = actor;
