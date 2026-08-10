@@ -22,7 +22,7 @@ vi.mock('@/web/web/i18n', async () => {
 
 vi.mock('@/web/web/stores/registry', () => ({
   createStoreByModel: (model: string) => {
-    if (model === 'web.SavedFilter') return { Search: (...args: any[]) => sfSearch(...args) };
+    if (model === 'web.UserFilter') return { Search: (...args: any[]) => sfSearch(...args) };
     return {};
   },
 }));
@@ -58,7 +58,7 @@ describe('OSearchView ScopeKey from route', () => {
     sfSearch.mockResolvedValue([]);
   });
 
-  it('passes normalized ScopeKey into SavedFilter Search', async () => {
+  it('passes normalized ScopeKey into UserFilter Search', async () => {
     mount(OSearchView as any, {
       props: {
         store: { application: 'demo', modelName: 'Widget', state: { queryState: {} } },

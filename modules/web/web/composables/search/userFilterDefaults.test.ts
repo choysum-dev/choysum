@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from 'vitest';
-import { mergeSavedFilterDefaults, pickLatestIsDefault, savedFilterToNamedFilter } from './savedFilterDefaults';
+import { mergeUserFilterDefaults, pickLatestIsDefault, userFilterToNamedFilter } from './userFilterDefaults';
 
-describe('savedFilterToNamedFilter', () => {
+describe('userFilterToNamedFilter', () => {
   it('maps Condition to query and optional selected', () => {
-    const nf = savedFilterToNamedFilter(
+    const nf = userFilterToNamedFilter(
       { Name: 'Active', Condition: { And: [['IsActive', '=', true]] }, IsDefault: true },
       true
     );
@@ -16,16 +16,16 @@ describe('savedFilterToNamedFilter', () => {
   });
 
   it('trims Name and defaults missing Condition to {}', () => {
-    const nf = savedFilterToNamedFilter({ Name: '  Trimmed  ' });
+    const nf = userFilterToNamedFilter({ Name: '  Trimmed  ' });
     expect(nf.name).toBe('Trimmed');
     expect(nf.query).toEqual({});
     expect(nf.selected).toBe(false);
   });
 
   it('maps falsy Name to empty string', () => {
-    expect(savedFilterToNamedFilter({ Name: null as any }).name).toBe('');
-    expect(savedFilterToNamedFilter({ Name: undefined }).name).toBe('');
-    expect(savedFilterToNamedFilter({}).name).toBe('');
+    expect(userFilterToNamedFilter({ Name: null as any }).name).toBe('');
+    expect(userFilterToNamedFilter({ Name: undefined }).name).toBe('');
+    expect(userFilterToNamedFilter({}).name).toBe('');
   });
 });
 
@@ -55,14 +55,14 @@ describe('pickLatestIsDefault', () => {
   });
 });
 
-describe('mergeSavedFilterDefaults', () => {
+describe('mergeUserFilterDefaults', () => {
   const code = [
     { name: 'CodeA', query: { And: [['A', '=', 1]] }, selected: true },
     { name: 'CodeB', query: { And: [['B', '=', 2]] }, selected: false },
   ];
 
   it('prefers private IsDefault over shared and code selected', () => {
-    const merged = mergeSavedFilterDefaults({
+    const merged = mergeUserFilterDefaults({
       privateDefault: { Name: 'Mine', Condition: { And: [['X', '=', 1]] }, IsDefault: true, UserId: 'u1' },
       sharedDefault: { Name: 'Team', Condition: { And: [['Y', '=', 1]] }, IsDefault: true, UserId: null },
       codeDefaults: code,
@@ -72,7 +72,7 @@ describe('mergeSavedFilterDefaults', () => {
   });
 
   it('uses shared IsDefault when no private default', () => {
-    const merged = mergeSavedFilterDefaults({
+    const merged = mergeUserFilterDefaults({
       privateDefault: null,
       sharedDefault: { Name: 'Team', Condition: {}, IsDefault: true, UserId: null },
       codeDefaults: code,
@@ -82,7 +82,7 @@ describe('mergeSavedFilterDefaults', () => {
   });
 
   it('falls back to code defaults when no server default', () => {
-    const merged = mergeSavedFilterDefaults({
+    const merged = mergeUserFilterDefaults({
       privateDefault: null,
       sharedDefault: null,
       codeDefaults: code,
@@ -91,7 +91,7 @@ describe('mergeSavedFilterDefaults', () => {
   });
 
   it('ignores private/shared rows that are not IsDefault and accepts a single code default', () => {
-    const merged = mergeSavedFilterDefaults({
+    const merged = mergeUserFilterDefaults({
       privateDefault: { Name: 'NotDefault', IsDefault: false, UserId: 'u1' },
       sharedDefault: { Name: 'AlsoNot', IsDefault: false, UserId: null },
       codeDefaults: { name: 'Solo', query: ['A', '=', 1], selected: true },
@@ -100,7 +100,7 @@ describe('mergeSavedFilterDefaults', () => {
   });
 
   it('drops empty-name code presets when a server default wins', () => {
-    const merged = mergeSavedFilterDefaults({
+    const merged = mergeUserFilterDefaults({
       privateDefault: { Name: 'Mine', Condition: {}, IsDefault: true, UserId: 'u1' },
       codeDefaults: [
         { name: '', query: ['X', '=', 1] } as any,
@@ -113,12 +113,12 @@ describe('mergeSavedFilterDefaults', () => {
   });
 
   it('returns [] when codeDefaults is null/undefined', () => {
-    expect(mergeSavedFilterDefaults({ codeDefaults: null })).toEqual([]);
-    expect(mergeSavedFilterDefaults({})).toEqual([]);
+    expect(mergeUserFilterDefaults({ codeDefaults: null })).toEqual([]);
+    expect(mergeUserFilterDefaults({})).toEqual([]);
   });
 
   it('drops invalid code presets when shared IsDefault wins over non-default private', () => {
-    const merged = mergeSavedFilterDefaults({
+    const merged = mergeUserFilterDefaults({
       privateDefault: { Name: 'PrivOff', Condition: { And: [['P', '=', 1]] }, IsDefault: false, UserId: 'u1' },
       sharedDefault: { Name: 'Team', Condition: { And: [['T', '=', 1]] }, IsDefault: true, UserId: null },
       codeDefaults: [

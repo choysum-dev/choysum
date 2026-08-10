@@ -9,7 +9,7 @@ import { ChoysumError } from '@/core/service/error';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaModel from '@/meta/service/models/model';
 import MetaModelData from '@/meta/service/models/model_data';
-import SavedFilter from '@/web/service/models/saved_filter';
+import UserFilter from '@/web/service/models/user_filter';
 
 const MetaModelService = createServiceByModel<typeof MetaModel>('meta.MetaModel');
 
@@ -43,14 +43,14 @@ function resetRequestContext(): void {
     depth: 0,
     recordRuleMode: 'allowlist',
     recordRuleAllow: [
-      'web.SavedFilter:read',
-      'web.SavedFilter:write',
-      'web.SavedFilter:create',
-      'web.SavedFilter:delete',
-      'SavedFilter:read',
-      'SavedFilter:write',
-      'SavedFilter:create',
-      'SavedFilter:delete',
+      'web.UserFilter:read',
+      'web.UserFilter:write',
+      'web.UserFilter:create',
+      'web.UserFilter:delete',
+      'UserFilter:read',
+      'UserFilter:write',
+      'UserFilter:create',
+      'UserFilter:delete',
       'meta.MetaModel:read',
       'MetaModel:read',
       'meta.MetaModelData:read',
@@ -246,20 +246,20 @@ test('SF13: web FieldDefault and AppSetting models exist after declared service'
   expect(Array.isArray(as) && as.length > 0).toBe(true);
 });
 
-test('SavedFilter CRUD + IsDefault + visibility', async () => {
+test('UserFilter CRUD + IsDefault + visibility', async () => {
   resetRequestContext();
   const actor = uid('sf_actor');
   setIdentity(actor);
 
-  const modelId = await metaModelId('web', 'SavedFilter');
+  const modelId = await metaModelId('web', 'UserFilter');
   expect(modelId).toBeTruthy();
 
   const nameA = uid('fav_a');
-  const privateFav = await SavedFilter.Create(
+  const privateFav = await UserFilter.Create(
     {
       Name: nameA,
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: { And: [['Active', '=', true]] },
       IsDefault: true,
     } as any,
@@ -271,11 +271,11 @@ test('SavedFilter CRUD + IsDefault + visibility', async () => {
   expect((privateFav as any).IsDefault).toBe(true);
 
   const nameB = uid('fav_b');
-  const second = await SavedFilter.Create(
+  const second = await UserFilter.Create(
     {
       Name: nameB,
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: {},
       IsDefault: true,
     } as any,
@@ -283,15 +283,15 @@ test('SavedFilter CRUD + IsDefault + visibility', async () => {
   );
   expect((second as any).IsDefault).toBe(true);
   // Multiple IsDefault rows are allowed; FE picks newest.
-  const firstAgain = await SavedFilter.Browse(String((privateFav as any).Id), ['IsDefault'] as any);
+  const firstAgain = await UserFilter.Browse(String((privateFav as any).Id), ['IsDefault'] as any);
   expect((firstAgain as any).IsDefault).toBe(true);
 
   const sharedName = uid('shared');
-  const shared = await SavedFilter.Create(
+  const shared = await UserFilter.Create(
     {
       Name: sharedName,
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: {},
       UserId: null,
       IsDefault: false,
@@ -302,11 +302,11 @@ test('SavedFilter CRUD + IsDefault + visibility', async () => {
 
   const other = uid('sf_other');
   setIdentity(other);
-  const visible = await SavedFilter.Search(
+  const visible = await UserFilter.Search(
     {
       And: [
         ['Application', '=', 'web'],
-        ['ModelName', '=', 'SavedFilter'],
+        ['ModelName', '=', 'UserFilter'],
         {
           Or: [
             ['UserId', '=', other],
@@ -322,18 +322,18 @@ test('SavedFilter CRUD + IsDefault + visibility', async () => {
   expect(ids.has(String((privateFav as any).Id))).toBe(false);
 
   setIdentity(actor);
-  await SavedFilter.DeleteById(String((privateFav as any).Id));
-  await SavedFilter.DeleteById(String((second as any).Id));
-  await SavedFilter.DeleteById(String((shared as any).Id));
+  await UserFilter.DeleteById(String((privateFav as any).Id));
+  await UserFilter.DeleteById(String((second as any).Id));
+  await UserFilter.DeleteById(String((shared as any).Id));
 });
 
-test('SavedFilter rejects Create without effective MetaModel', async () => {
+test('UserFilter rejects Create without effective MetaModel', async () => {
   resetRequestContext();
   const actor = uid('sf_noeff');
   setIdentity(actor);
   await expectCode(
     async () =>
-      SavedFilter.Create(
+      UserFilter.Create(
         {
           Name: uid('gone'),
           Application: 'no_such_app',
@@ -347,18 +347,18 @@ test('SavedFilter rejects Create without effective MetaModel', async () => {
   );
 });
 
-test('SavedFilter rejects foreign UserId on Create', async () => {
+test('UserFilter rejects foreign UserId on Create', async () => {
   resetRequestContext();
   const actor = uid('sf_owner');
   const other = uid('sf_victim');
   setIdentity(actor);
   await expectCode(
     async () =>
-      SavedFilter.Create(
+      UserFilter.Create(
         {
           Name: uid('steal'),
           Application: 'web',
-          ModelName: 'SavedFilter',
+          ModelName: 'UserFilter',
           Condition: {},
           UserId: other,
         } as any,
@@ -369,27 +369,27 @@ test('SavedFilter rejects foreign UserId on Create', async () => {
   );
 });
 
-test('SavedFilter private and shared IsDefault can coexist', async () => {
+test('UserFilter private and shared IsDefault can coexist', async () => {
   resetRequestContext();
   const actor = uid('sf_bucket');
   setIdentity(actor);
   const privateName = uid('priv_def');
   const sharedName = uid('shared_def');
-  const priv = await SavedFilter.Create(
+  const priv = await UserFilter.Create(
     {
       Name: privateName,
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: {},
       IsDefault: true,
     } as any,
     ['Id', 'IsDefault', 'UserId'] as any
   );
-  const shared = await SavedFilter.Create(
+  const shared = await UserFilter.Create(
     {
       Name: sharedName,
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: {},
       UserId: null,
       IsDefault: true,
@@ -398,26 +398,26 @@ test('SavedFilter private and shared IsDefault can coexist', async () => {
   );
   expect((priv as any).IsDefault).toBe(true);
   expect((shared as any).IsDefault).toBe(true);
-  const privAgain = await SavedFilter.Browse(String((priv as any).Id), ['IsDefault'] as any);
+  const privAgain = await UserFilter.Browse(String((priv as any).Id), ['IsDefault'] as any);
   expect((privAgain as any).IsDefault).toBe(true);
-  await SavedFilter.DeleteById(String((priv as any).Id));
-  await SavedFilter.DeleteById(String((shared as any).Id));
+  await UserFilter.DeleteById(String((priv as any).Id));
+  await UserFilter.DeleteById(String((shared as any).Id));
 });
 
-test('web bootstrap seeds SavedFilter authz packs (RMA/RFR/RR)', async () => {
+test('web bootstrap seeds UserFilter authz packs (RMA/RFR/RR)', async () => {
   resetRequestContext();
   const expected: Array<{ name: string; model: string }> = [
-    { name: 'rma_base_user_web_saved_filter_search', model: 'RoleMethodAccess' },
-    { name: 'rma_base_user_web_saved_filter_browse', model: 'RoleMethodAccess' },
-    { name: 'rma_base_user_web_saved_filter_create', model: 'RoleMethodAccess' },
-    { name: 'rma_base_user_web_saved_filter_update', model: 'RoleMethodAccess' },
-    { name: 'rma_base_user_web_saved_filter_update_by_id', model: 'RoleMethodAccess' },
-    { name: 'rma_base_user_web_saved_filter_delete', model: 'RoleMethodAccess' },
-    { name: 'rma_base_user_web_saved_filter_delete_by_id', model: 'RoleMethodAccess' },
-    { name: 'rfr_base_user_web_saved_filter_rw', model: 'RoleFieldRule' },
-    { name: 'rrr_base_user_web_saved_filter_rc', model: 'RoleRecordRule' },
-    { name: 'rrr_base_user_web_saved_filter_wd_private', model: 'RoleRecordRule' },
-    { name: 'rrr_base_user_web_saved_filter_wd_shared', model: 'RoleRecordRule' },
+    { name: 'rma_base_user_web_user_filter_search', model: 'RoleMethodAccess' },
+    { name: 'rma_base_user_web_user_filter_browse', model: 'RoleMethodAccess' },
+    { name: 'rma_base_user_web_user_filter_create', model: 'RoleMethodAccess' },
+    { name: 'rma_base_user_web_user_filter_update', model: 'RoleMethodAccess' },
+    { name: 'rma_base_user_web_user_filter_update_by_id', model: 'RoleMethodAccess' },
+    { name: 'rma_base_user_web_user_filter_delete', model: 'RoleMethodAccess' },
+    { name: 'rma_base_user_web_user_filter_delete_by_id', model: 'RoleMethodAccess' },
+    { name: 'rfr_base_user_web_user_filter_rw', model: 'RoleFieldRule' },
+    { name: 'rrr_base_user_web_user_filter_rc', model: 'RoleRecordRule' },
+    { name: 'rrr_base_user_web_user_filter_wd_private', model: 'RoleRecordRule' },
+    { name: 'rrr_base_user_web_user_filter_wd_shared', model: 'RoleRecordRule' },
   ];
   for (const { name, model } of expected) {
     const rows = await MetaModelData.Search(
@@ -429,7 +429,9 @@ test('web bootstrap seeds SavedFilter authz packs (RMA/RFR/RR)', async () => {
       } as any,
       { fields: ['Id', 'Application', 'ModelName'], limit: 1 } as any
     );
-    expect(Array.isArray(rows) && rows.length === 1, `missing web.${name}`).toBe(true);
+    if (!Array.isArray(rows) || rows.length !== 1) {
+      throw new Error(`missing web.${name}`);
+    }
     expect(String((rows as any)[0].Application)).toBe('auth');
     expect(String((rows as any)[0].ModelName)).toBe(model);
   }
@@ -442,11 +444,11 @@ test('SF11: shared write/delete only for creator via Record rules', async () => 
   const stranger = await createBaseUser(companyId);
 
   setIdentity(creator);
-  const shared = await SavedFilter.Create(
+  const shared = await UserFilter.Create(
     {
       Name: uid('sf11'),
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: {},
       UserId: null,
     } as any,
@@ -459,60 +461,60 @@ test('SF11: shared write/delete only for creator via Record rules', async () => 
   setIdentity(stranger);
   // Write/delete on another user's shared row: targets fail the WD record-rule expr → violation.
   await expectCode(
-    async () => SavedFilter.UpdateById(String((shared as any).Id), { Name: uid('hijack') } as any, ['Id'] as any),
+    async () => UserFilter.UpdateById(String((shared as any).Id), { Name: uid('hijack') } as any, ['Id'] as any),
     'record_rule_violation',
     'violates record rule'
   );
   await expectCode(
-    async () => SavedFilter.DeleteById(String((shared as any).Id)),
+    async () => UserFilter.DeleteById(String((shared as any).Id)),
     'record_rule_violation',
     'violates record rule'
   );
 
   setIdentity(creator);
-  await SavedFilter.UpdateById(String((shared as any).Id), { Name: uid('ok') } as any, ['Id'] as any);
-  const deleted = await SavedFilter.DeleteById(String((shared as any).Id));
+  await UserFilter.UpdateById(String((shared as any).Id), { Name: uid('ok') } as any, ['Id'] as any);
+  const deleted = await UserFilter.DeleteById(String((shared as any).Id));
   expect(deleted).toBe(1);
 });
 
-test('SavedFilter Create without identity does not enforce login in Constraint', async () => {
+test('UserFilter Create without identity does not enforce login in Constraint', async () => {
   // Production gRPC AuthN + Method ACL gate anonymous writes; model Constraint no longer duplicates that.
   resetRequestContext();
   setIdentity(undefined);
-  const created = await SavedFilter.Create(
+  const created = await UserFilter.Create(
     {
       Name: uid('anon'),
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: {},
     } as any,
     ['Id', 'UserId'] as any
   );
   expect((created as any).UserId == null || (created as any).UserId === '').toBe(true);
-  await SavedFilter.sudo(() => SavedFilter.DeleteById(String((created as any).Id)), {
-    hint: 'web.SavedFilter.test.cleanupAnonCreate',
+  await UserFilter.sudo(() => UserFilter.DeleteById(String((created as any).Id)), {
+    hint: 'web.UserFilter.test.cleanupAnonCreate',
   });
 });
 
-test('SavedFilter allows duplicate Name in the same ownership bucket', async () => {
+test('UserFilter allows duplicate Name in the same ownership bucket', async () => {
   resetRequestContext();
   const actor = uid('sf_dup');
   setIdentity(actor);
   const name = uid('same_name');
-  const first = await SavedFilter.Create(
+  const first = await UserFilter.Create(
     {
       Name: name,
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: {},
     } as any,
     ['Id', 'Name'] as any
   );
-  const second = await SavedFilter.Create(
+  const second = await UserFilter.Create(
     {
       Name: name,
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: {},
     } as any,
     ['Id', 'Name'] as any
@@ -520,21 +522,21 @@ test('SavedFilter allows duplicate Name in the same ownership bucket', async () 
   expect(String((first as any).Id)).not.toBe(String((second as any).Id));
   expect(String((first as any).Name)).toBe(name);
   expect(String((second as any).Name)).toBe(name);
-  await SavedFilter.DeleteById(String((first as any).Id));
-  await SavedFilter.DeleteById(String((second as any).Id));
+  await UserFilter.DeleteById(String((first as any).Id));
+  await UserFilter.DeleteById(String((second as any).Id));
 });
 
-test('SavedFilter ScopeKey scopes lists; IsDefault may repeat (Name may repeat)', async () => {
+test('UserFilter ScopeKey scopes lists; IsDefault may repeat (Name may repeat)', async () => {
   resetRequestContext();
   const actor = uid('sf_scope');
   setIdentity(actor);
   const name = uid('scoped_name');
-  const a = await SavedFilter.Create(
+  const a = await UserFilter.Create(
     {
       Name: name,
-      ScopeKey: '/web/partners/1',
+      ScopeKey: '/web/partners/:id',
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: {},
       IsDefault: true,
     } as any,
@@ -543,12 +545,12 @@ test('SavedFilter ScopeKey scopes lists; IsDefault may repeat (Name may repeat)'
   expect((a as any).ScopeKey).toBe('/web/partners/:id');
   expect((a as any).IsDefault).toBe(true);
 
-  const b = await SavedFilter.Create(
+  const b = await UserFilter.Create(
     {
       Name: name,
-      ScopeKey: '/web/companies/2',
+      ScopeKey: '/web/companies/:id',
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: {},
       IsDefault: true,
     } as any,
@@ -556,16 +558,17 @@ test('SavedFilter ScopeKey scopes lists; IsDefault may repeat (Name may repeat)'
   );
   expect((b as any).ScopeKey).toBe('/web/companies/:id');
   expect((b as any).IsDefault).toBe(true);
-  const aStill = await SavedFilter.Browse(String((a as any).Id), ['IsDefault'] as any);
+  const aStill = await UserFilter.Browse(String((a as any).Id), ['IsDefault'] as any);
   expect((aStill as any).IsDefault).toBe(true);
 
   // Same ScopeKey + Name is allowed; multiple IsDefault in one scope are allowed.
-  const sameScope = await SavedFilter.Create(
+  // ScopeKey is pass-through (FE normalizes before write).
+  const sameScope = await UserFilter.Create(
     {
       Name: name,
-      ScopeKey: '/web/partners/99',
+      ScopeKey: '/web/partners/:id',
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: {},
       IsDefault: true,
     } as any,
@@ -574,70 +577,69 @@ test('SavedFilter ScopeKey scopes lists; IsDefault may repeat (Name may repeat)'
   expect((sameScope as any).ScopeKey).toBe('/web/partners/:id');
   expect(String((sameScope as any).Name)).toBe(name);
   expect((sameScope as any).IsDefault).toBe(true);
-  const aStillDefault = await SavedFilter.Browse(String((a as any).Id), ['IsDefault'] as any);
+  const aStillDefault = await UserFilter.Browse(String((a as any).Id), ['IsDefault'] as any);
   expect((aStillDefault as any).IsDefault).toBe(true);
 
-  await SavedFilter.DeleteById(String((a as any).Id));
-  await SavedFilter.DeleteById(String((b as any).Id));
-  await SavedFilter.DeleteById(String((sameScope as any).Id));
+  await UserFilter.DeleteById(String((a as any).Id));
+  await UserFilter.DeleteById(String((b as any).Id));
+  await UserFilter.DeleteById(String((sameScope as any).Id));
 });
 
-test('SavedFilter normalizes ScopeKey query/hash/opaque on Create', async () => {
+test('UserFilter stores ScopeKey as written (no BE normalize)', async () => {
   resetRequestContext();
-  const actor = uid('sf_scope_norm');
+  const actor = uid('sf_scope_passthrough');
   setIdentity(actor);
-  const created = await SavedFilter.Create(
+  const raw = '\\web\\partners\\abc123def456ghi7\\edit?x=1#y';
+  const created = await UserFilter.Create(
     {
-      Name: uid('scoped_norm'),
-      ScopeKey: '\\web\\partners\\abc123def456ghi7\\edit?x=1#y',
+      Name: uid('scoped_raw'),
+      ScopeKey: raw,
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: {},
     } as any,
     ['Id', 'ScopeKey'] as any
   );
-  expect((created as any).ScopeKey).toBe('/web/partners/:id/edit');
-  await SavedFilter.DeleteById(String((created as any).Id));
+  expect((created as any).ScopeKey).toBe(raw);
+  await UserFilter.DeleteById(String((created as any).Id));
 });
 
-test('SavedFilter fills Create defaults (UserId/IsDefault/Active/Condition)', async () => {
+test('UserFilter fills Create defaults (UserId/IsDefault/Condition)', async () => {
   resetRequestContext();
   const actor = uid('sf_defaults');
   setIdentity(actor);
-  const created = await SavedFilter.Create(
+  const created = await UserFilter.Create(
     {
       Name: uid('fills'),
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
     } as any,
-    ['Id', 'UserId', 'IsDefault', 'Active', 'Condition', 'CreatedUid', 'ScopeKey'] as any
+    ['Id', 'UserId', 'IsDefault', 'Condition', 'CreatedUid', 'ScopeKey'] as any
   );
   expect(String((created as any).UserId)).toBe(actor);
-  expect((created as any).IsDefault).toBe(false);
-  expect((created as any).Active).toBe(true);
-  expect((created as any).Condition || {}).toEqual({});
+  expect((created as any).IsDefault).toBe(false);  expect((created as any).Condition || {}).toEqual({});
   expect(String((created as any).CreatedUid)).toBe(actor);
   expect((created as any).ScopeKey).toBe('');
-  await SavedFilter.DeleteById(String((created as any).Id));
+  await UserFilter.DeleteById(String((created as any).Id));
 });
 
-test('SavedFilter Update keeps CreatedUid immutable and normalizes UserId', async () => {
+test('UserFilter Update keeps CreatedUid immutable and normalizes UserId', async () => {
   resetRequestContext();
   const actor = uid('sf_upd');
   setIdentity(actor);
-  const created = await SavedFilter.Create(
+  const created = await UserFilter.Create(
     {
       Name: uid('upd'),
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: {},
     } as any,
     ['Id', 'CreatedUid', 'UserId'] as any
   );
   const createUid = String((created as any).CreatedUid);
-  const updated = await SavedFilter.UpdateById(
+  const updated = await UserFilter.UpdateById(
     String((created as any).Id),
-    { CreatedUid: uid('hijack_uid'), UserId: '' } as any,
+    { CreatedUid: uid('hijack_uid'), UserId: null } as any,
     ['Id', 'CreatedUid', 'UserId'] as any
   );
   expect(String((updated as any).CreatedUid)).toBe(createUid);
@@ -645,56 +647,56 @@ test('SavedFilter Update keeps CreatedUid immutable and normalizes UserId', asyn
 
   await expectCode(
     async () =>
-      SavedFilter.UpdateById(String((created as any).Id), { UserId: uid('other') } as any, ['Id'] as any),
+      UserFilter.UpdateById(String((created as any).Id), { UserId: uid('other') } as any, ['Id'] as any),
     'PermissionDenied',
     'another user'
   );
-  await SavedFilter.DeleteById(String((created as any).Id));
+  await UserFilter.DeleteById(String((created as any).Id));
 });
 
-test('SavedFilter private IsDefault update leaves other defaults intact', async () => {
+test('UserFilter private IsDefault update leaves other defaults intact', async () => {
   resetRequestContext();
   const actor = uid('sf_except');
   setIdentity(actor);
-  const a = await SavedFilter.Create(
+  const a = await UserFilter.Create(
     {
       Name: uid('def_a'),
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: {},
       IsDefault: true,
     } as any,
     ['Id', 'IsDefault'] as any
   );
-  const b = await SavedFilter.Create(
+  const b = await UserFilter.Create(
     {
       Name: uid('def_b'),
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: {},
       IsDefault: false,
     } as any,
     ['Id', 'IsDefault'] as any
   );
-  await SavedFilter.UpdateById(String((b as any).Id), { IsDefault: true } as any, ['Id', 'IsDefault'] as any);
-  const aAgain = await SavedFilter.Browse(String((a as any).Id), ['IsDefault'] as any);
+  await UserFilter.UpdateById(String((b as any).Id), { IsDefault: true } as any, ['Id', 'IsDefault'] as any);
+  const aAgain = await UserFilter.Browse(String((a as any).Id), ['IsDefault'] as any);
   expect((aAgain as any).IsDefault).toBe(true);
-  const bAgain = await SavedFilter.Browse(String((b as any).Id), ['IsDefault'] as any);
+  const bAgain = await UserFilter.Browse(String((b as any).Id), ['IsDefault'] as any);
   expect((bAgain as any).IsDefault).toBe(true);
-  await SavedFilter.DeleteById(String((a as any).Id));
-  await SavedFilter.DeleteById(String((b as any).Id));
+  await UserFilter.DeleteById(String((a as any).Id));
+  await UserFilter.DeleteById(String((b as any).Id));
 });
 
-test('SavedFilter rejects Create missing Name/Application/ModelName', async () => {
+test('UserFilter rejects Create missing Name/Application/ModelName', async () => {
   resetRequestContext();
   setIdentity(uid('sf_req'));
   await expectCode(
     async () =>
-      SavedFilter.Create(
+      UserFilter.Create(
         {
           Name: '',
           Application: 'web',
-          ModelName: 'SavedFilter',
+          ModelName: 'UserFilter',
           Condition: {},
         } as any,
         ['Id'] as any
@@ -704,43 +706,42 @@ test('SavedFilter rejects Create missing Name/Application/ModelName', async () =
   );
 });
 
-test('SavedFilter Update reads unchanged fields from current via mergedField', async () => {
+test('UserFilter Update reads unchanged fields from current via mergedField', async () => {
   resetRequestContext();
   const actor = uid('sf_merged');
   setIdentity(actor);
-  const created = await SavedFilter.Create(
+  const created = await UserFilter.Create(
     {
       Name: uid('merged'),
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: { And: [['A', '=', 1]] },
-      Active: true,
     } as any,
     ['Id', 'Name', 'Condition'] as any
   );
-  // Touch only Active so Name/Application/ModelName resolve from current.
-  const updated = await SavedFilter.UpdateById(
+  // Touch only IsDefault so Name/Application/ModelName resolve from current.
+  const updated = await UserFilter.UpdateById(
     String((created as any).Id),
-    { Active: false } as any,
-    ['Id', 'Name', 'Active', 'Application', 'ModelName'] as any
+    { IsDefault: true } as any,
+    ['Id', 'Name', 'Application', 'ModelName', 'IsDefault'] as any
   );
   expect(String((updated as any).Name)).toBe(String((created as any).Name));
-  expect((updated as any).Active).toBe(false);
-  await SavedFilter.DeleteById(String((created as any).Id));
+  expect((updated as any).IsDefault).toBe(true);
+  await UserFilter.DeleteById(String((created as any).Id));
 });
 
-test('SavedFilter allows multiple shared IsDefault from different users', async () => {
+test('UserFilter allows multiple shared IsDefault from different users', async () => {
   resetRequestContext();
   const companyId = await resolveAdminCompanyId();
   const creator = await createBaseUser(companyId);
   const stranger = await createBaseUser(companyId);
 
   setIdentity(creator);
-  const shared = await SavedFilter.Create(
+  const shared = await UserFilter.Create(
     {
       Name: uid('shared_def_owner'),
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: {},
       UserId: null,
       IsDefault: true,
@@ -753,11 +754,11 @@ test('SavedFilter allows multiple shared IsDefault from different users', async 
   delete (ensureRequestContext() as any)[RR_CACHE_KEY];
 
   setIdentity(stranger);
-  const strangerShared = await SavedFilter.Create(
+  const strangerShared = await UserFilter.Create(
     {
       Name: uid('shared_def_stranger'),
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: {},
       UserId: null,
       IsDefault: true,
@@ -767,42 +768,42 @@ test('SavedFilter allows multiple shared IsDefault from different users', async 
   expect((strangerShared as any).IsDefault).toBe(true);
 
   setIdentity(creator);
-  const again = await SavedFilter.Browse(String((shared as any).Id), ['IsDefault'] as any);
+  const again = await UserFilter.Browse(String((shared as any).Id), ['IsDefault'] as any);
   expect((again as any).IsDefault).toBe(true);
-  await SavedFilter.DeleteById(String((shared as any).Id));
+  await UserFilter.DeleteById(String((shared as any).Id));
   setIdentity(stranger);
-  await SavedFilter.DeleteById(String((strangerShared as any).Id));
+  await UserFilter.DeleteById(String((strangerShared as any).Id));
 });
 
-test('SavedFilter whitespace UserId normalizes to shared null', async () => {
+test('UserFilter Create with null UserId is shared', async () => {
   resetRequestContext();
   const actor = uid('sf_ws');
   setIdentity(actor);
-  const created = await SavedFilter.Create(
+  const created = await UserFilter.Create(
     {
       Name: uid('ws_uid'),
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: {},
-      UserId: '   ',
+      UserId: null,
       IsDefault: true,
     } as any,
     ['Id', 'UserId', 'IsDefault'] as any
   );
   expect((created as any).UserId == null || (created as any).UserId === '').toBe(true);
   expect((created as any).IsDefault).toBe(true);
-  await SavedFilter.DeleteById(String((created as any).Id));
+  await UserFilter.DeleteById(String((created as any).Id));
 });
 
-test('SavedFilter creator can set multiple shared IsDefault', async () => {
+test('UserFilter creator can set multiple shared IsDefault', async () => {
   resetRequestContext();
   const actor = uid('sf_shared_ok');
   setIdentity(actor);
-  const first = await SavedFilter.Create(
+  const first = await UserFilter.Create(
     {
       Name: uid('shared_a'),
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: {},
       UserId: null,
       IsDefault: true,
@@ -810,11 +811,11 @@ test('SavedFilter creator can set multiple shared IsDefault', async () => {
     ['Id', 'IsDefault', 'CreatedUid'] as any
   );
   expect((first as any).IsDefault).toBe(true);
-  const second = await SavedFilter.Create(
+  const second = await UserFilter.Create(
     {
       Name: uid('shared_b'),
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: {},
       UserId: null,
       IsDefault: true,
@@ -822,31 +823,31 @@ test('SavedFilter creator can set multiple shared IsDefault', async () => {
     ['Id', 'IsDefault'] as any
   );
   expect((second as any).IsDefault).toBe(true);
-  const firstAgain = await SavedFilter.Browse(String((first as any).Id), ['IsDefault'] as any);
+  const firstAgain = await UserFilter.Browse(String((first as any).Id), ['IsDefault'] as any);
   expect((firstAgain as any).IsDefault).toBe(true);
-  await SavedFilter.DeleteById(String((first as any).Id));
-  await SavedFilter.DeleteById(String((second as any).Id));
+  await UserFilter.DeleteById(String((first as any).Id));
+  await UserFilter.DeleteById(String((second as any).Id));
 });
 
-test('SavedFilter Update without IsDefault keeps existing defaults', async () => {
+test('UserFilter Update without IsDefault keeps existing defaults', async () => {
   resetRequestContext();
   const actor = uid('sf_upd_def');
   setIdentity(actor);
-  const a = await SavedFilter.Create(
+  const a = await UserFilter.Create(
     {
       Name: uid('upd_def_a'),
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: {},
       IsDefault: true,
     } as any,
     ['Id', 'IsDefault', 'Name'] as any
   );
-  const b = await SavedFilter.Create(
+  const b = await UserFilter.Create(
     {
       Name: uid('upd_def_b'),
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: {},
       IsDefault: false,
     } as any,
@@ -854,103 +855,101 @@ test('SavedFilter Update without IsDefault keeps existing defaults', async () =>
   );
   // Promote b via Update; a should clear. Then rename a while it is no longer default
   // and rename the still-default b without sending IsDefault (mergedField path).
-  await SavedFilter.UpdateById(String((b as any).Id), { IsDefault: true } as any, ['Id', 'IsDefault'] as any);
+  await UserFilter.UpdateById(String((b as any).Id), { IsDefault: true } as any, ['Id', 'IsDefault'] as any);
   const newName = uid('renamed_def');
-  await SavedFilter.UpdateById(String((b as any).Id), { Name: newName } as any, ['Id', 'Name', 'IsDefault'] as any);
-  const bAgain = await SavedFilter.Browse(String((b as any).Id), ['Name', 'IsDefault'] as any);
+  await UserFilter.UpdateById(String((b as any).Id), { Name: newName } as any, ['Id', 'Name', 'IsDefault'] as any);
+  const bAgain = await UserFilter.Browse(String((b as any).Id), ['Name', 'IsDefault'] as any);
   expect(String((bAgain as any).Name)).toBe(newName);
   expect((bAgain as any).IsDefault).toBe(true);
-  const aAgain = await SavedFilter.Browse(String((a as any).Id), ['IsDefault'] as any);
+  const aAgain = await UserFilter.Browse(String((a as any).Id), ['IsDefault'] as any);
   expect((aAgain as any).IsDefault).toBe(true);
-  await SavedFilter.DeleteById(String((a as any).Id));
-  await SavedFilter.DeleteById(String((b as any).Id));
+  await UserFilter.DeleteById(String((a as any).Id));
+  await UserFilter.DeleteById(String((b as any).Id));
 });
 
-test('SavedFilter Update allows renaming onto another row Name', async () => {
+test('UserFilter Update allows renaming onto another row Name', async () => {
   resetRequestContext();
   const actor = uid('sf_rename');
   setIdentity(actor);
   const nameA = uid('rename_a');
   const nameB = uid('rename_b');
-  const a = await SavedFilter.Create(
+  const a = await UserFilter.Create(
     {
       Name: nameA,
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: {},
     } as any,
     ['Id', 'Name'] as any
   );
-  const b = await SavedFilter.Create(
+  const b = await UserFilter.Create(
     {
       Name: nameB,
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: {},
     } as any,
     ['Id', 'Name'] as any
   );
-  const renamed = await SavedFilter.UpdateById(String((b as any).Id), { Name: nameA } as any, ['Id', 'Name'] as any);
+  const renamed = await UserFilter.UpdateById(String((b as any).Id), { Name: nameA } as any, ['Id', 'Name'] as any);
   expect(String((renamed as any).Name)).toBe(nameA);
-  const self = await SavedFilter.UpdateById(String((a as any).Id), { Name: nameA, Active: true } as any, [
+  const self = await UserFilter.UpdateById(String((a as any).Id), { Name: nameA } as any, [
     'Id',
     'Name',
   ] as any);
   expect(String((self as any).Name)).toBe(nameA);
-  await SavedFilter.DeleteById(String((a as any).Id));
-  await SavedFilter.DeleteById(String((b as any).Id));
+  await UserFilter.DeleteById(String((a as any).Id));
+  await UserFilter.DeleteById(String((b as any).Id));
 });
 
-test('SavedFilter Create accepts explicit self UserId', async () => {
+test('UserFilter Create accepts explicit self UserId', async () => {
   resetRequestContext();
   const actor = uid('sf_self');
   setIdentity(actor);
-  const created = await SavedFilter.Create(
+  const created = await UserFilter.Create(
     {
       Name: uid('self_uid'),
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       UserId: actor,
       Condition: {},
     } as any,
     ['Id', 'UserId'] as any
   );
   expect(String((created as any).UserId)).toBe(actor);
-  await SavedFilter.DeleteById(String((created as any).Id));
+  await UserFilter.DeleteById(String((created as any).Id));
 });
 
-test('SavedFilter constraint fills null IsDefault/Active/Condition on create', async () => {
+test('UserFilter constraint fills null IsDefault/Condition on create', async () => {
   resetRequestContext();
   const actor = uid('sf_null_defs');
   setIdentity(actor);
-  const SF = SavedFilter as any;
+  const SF = UserFilter as any;
   const values: Record<string, any> = {
     Id: uid('null_defs'),
     Name: uid('null_defs_name'),
     Application: 'web',
-    ModelName: 'SavedFilter',
+    ModelName: 'UserFilter',
     UserId: actor,
     IsDefault: null,
-    Active: null,
     Condition: null,
   };
-  await SF.validateSavedFilterConstraint({}, { mode: 'create', values, current: undefined });
+  await SF.validateUserFilterConstraint({}, { mode: 'create', values, current: undefined });
   expect(values.IsDefault).toBe(false);
-  expect(values.Active).toBe(true);
   expect(values.Condition).toEqual({});
   expect(values.UserId).toBe(actor);
 });
 
-test('SavedFilter rejects null Application/ModelName via mergedField empty trim', async () => {
+test('UserFilter rejects null Application/ModelName via mergedField empty trim', async () => {
   resetRequestContext();
   setIdentity(uid('sf_null_app'));
   await expectCode(
     async () =>
-      SavedFilter.Create(
+      UserFilter.Create(
         {
           Name: uid('null_app'),
           Application: null,
-          ModelName: 'SavedFilter',
+          ModelName: 'UserFilter',
           Condition: {},
         } as any,
         ['Id'] as any
@@ -960,7 +959,7 @@ test('SavedFilter rejects null Application/ModelName via mergedField empty trim'
   );
   await expectCode(
     async () =>
-      SavedFilter.Create(
+      UserFilter.Create(
         {
           Name: uid('null_model'),
           Application: 'web',
@@ -974,8 +973,8 @@ test('SavedFilter rejects null Application/ModelName via mergedField empty trim'
   );
 });
 
-test('SavedFilter _mergedField falls through values/self/current', () => {
-  const SF = SavedFilter as any;
+test('UserFilter _mergedField falls through values/self/current', () => {
+  const SF = UserFilter as any;
   expect(SF._mergedField({}, { values: undefined, current: {} }, 'Name')).toBeUndefined();
   expect(SF._mergedField({ Name: 'FromSelf' }, { values: undefined, current: {} }, 'Name')).toBe('FromSelf');
   expect(SF._mergedField({}, { values: {}, current: { Name: 'FromCurrent' } }, 'Name')).toBe('FromCurrent');
@@ -985,47 +984,47 @@ test('SavedFilter _mergedField falls through values/self/current', () => {
 });
 
 
-test('SavedFilter allows duplicate shared Name for null and empty-string UserId', async () => {
+test('UserFilter allows duplicate shared Name for null UserId', async () => {
   resetRequestContext();
   const actor = uid('sf_assert_empty');
   setIdentity(actor);
   const name = uid('assert_empty_name');
-  const shared = await SavedFilter.Create(
+  const shared = await UserFilter.Create(
     {
       Name: name,
       ScopeKey: '/assert',
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       UserId: null,
       Condition: {},
     } as any,
     ['Id', 'Name'] as any
   );
-  const shared2 = await SavedFilter.Create(
+  const shared2 = await UserFilter.Create(
     {
       Name: name,
       ScopeKey: '/assert',
       Application: 'web',
-      ModelName: 'SavedFilter',
-      UserId: '',
+      ModelName: 'UserFilter',
+      UserId: null,
       Condition: {},
     } as any,
     ['Id', 'Name', 'UserId'] as any
   );
   expect(String((shared as any).Id)).not.toBe(String((shared2 as any).Id));
   expect((shared2 as any).UserId == null || (shared2 as any).UserId === '').toBe(true);
-  await SavedFilter.DeleteById(String((shared as any).Id));
-  await SavedFilter.DeleteById(String((shared2 as any).Id));
+  await UserFilter.DeleteById(String((shared as any).Id));
+  await UserFilter.DeleteById(String((shared2 as any).Id));
 });
 
-test('SavedFilter validateSavedFilterConstraint covers empty create Id fallbacks', async () => {
+test('UserFilter validateUserFilterConstraint covers empty create Id fallbacks', async () => {
   resetRequestContext();
   const actor = uid('sf_validate');
   setIdentity(actor);
-  const SF = SavedFilter as any;
-  const modelId = await metaModelId('web', 'SavedFilter');
+  const SF = UserFilter as any;
+  const modelId = await metaModelId('web', 'UserFilter');
   if (!modelId) {
-    throw new Error('expected MetaModel for web.SavedFilter');
+    throw new Error('expected MetaModel for web.UserFilter');
   }
 
   // Create with whitespace Id → trim || undefined (exceptId omitted on unique check).
@@ -1033,12 +1032,11 @@ test('SavedFilter validateSavedFilterConstraint covers empty create Id fallbacks
     Id: '   ',
     Name: uid('empty_id'),
     Application: 'web',
-    ModelName: 'SavedFilter',
+    ModelName: 'UserFilter',
     Condition: {},
     IsDefault: false,
-    Active: true,
   };
-  await SF.validateSavedFilterConstraint({}, { mode: 'create', values: valuesCreate, current: undefined });
+  await SF.validateUserFilterConstraint({}, { mode: 'create', values: valuesCreate, current: undefined });
   expect(valuesCreate.UserId).toBe(actor);
   expect(valuesCreate.ModelId).toBe(modelId);
   // CreatedUid is stamped by BaseModel, not this constraint.
@@ -1049,94 +1047,52 @@ test('SavedFilter validateSavedFilterConstraint covers empty create Id fallbacks
     Id: null,
     Name: uid('null_id'),
     Application: 'web',
-    ModelName: 'SavedFilter',
+    ModelName: 'UserFilter',
     Condition: {},
     IsDefault: false,
-    Active: true,
   };
-  await SF.validateSavedFilterConstraint({}, { mode: 'create', values: valuesNullId, current: undefined });
+  await SF.validateUserFilterConstraint({}, { mode: 'create', values: valuesNullId, current: undefined });
   expect(valuesNullId.ModelId).toBe(modelId);
 
   const valuesUndefId: Record<string, any> = {
     Name: uid('undef_id'),
     Application: 'web',
-    ModelName: 'SavedFilter',
+    ModelName: 'UserFilter',
     Condition: {},
     IsDefault: false,
-    Active: true,
   };
-  await SF.validateSavedFilterConstraint({}, { mode: 'create', values: valuesUndefId, current: undefined });
+  await SF.validateUserFilterConstraint({}, { mode: 'create', values: valuesUndefId, current: undefined });
   expect(valuesUndefId.ModelId).toBe(modelId);
 
   // Update path no longer rewrites CreatedUid (BaseModel strips client writes).
   const valuesUpd: Record<string, any> = {
     Name: uid('cuid_fb'),
     Application: 'web',
-    ModelName: 'SavedFilter',
+    ModelName: 'UserFilter',
     IsDefault: false,
   };
-  await SF.validateSavedFilterConstraint(
+  await SF.validateUserFilterConstraint(
     { CreatedUid: 'fromSelf', UserId: actor, ModelId: modelId, Id: uid('row') },
     {
       mode: 'update',
       values: valuesUpd,
-      current: { CreatedUid: 'fromSelf', UserId: actor, Application: 'web', ModelName: 'SavedFilter', Name: valuesUpd.Name },
+      current: { CreatedUid: 'fromSelf', UserId: actor, Application: 'web', ModelName: 'UserFilter', Name: valuesUpd.Name },
     }
   );
   expect(valuesUpd.CreatedUid).toBeUndefined();
 });
 
-test('SavedFilter validate merges ScopeKey from current on update', async () => {
-  resetRequestContext();
-  const actor = uid('sf_scope_merge');
-  setIdentity(actor);
-  const SF = SavedFilter as any;
-  const modelId = await metaModelId('web', 'SavedFilter');
-  if (!modelId) {
-    throw new Error('expected MetaModel for web.SavedFilter');
-  }
-  const values: Record<string, any> = {
-    Name: uid('scope_merge'),
-    IsDefault: false,
-  };
-  await SF.validateSavedFilterConstraint(
-    {
-      UserId: actor,
-      ModelId: modelId,
-      Id: uid('row_scope'),
-      Application: 'web',
-      ModelName: 'SavedFilter',
-      ScopeKey: '/web/from-current/1',
-      Name: values.Name,
-      CreatedUid: actor,
-    },
-    {
-      mode: 'update',
-      values,
-      current: {
-        UserId: actor,
-        Application: 'web',
-        ModelName: 'SavedFilter',
-        Name: values.Name,
-        ScopeKey: '/web/from-current/1',
-        CreatedUid: actor,
-      },
-    }
-  );
-  expect(values.ScopeKey).toBe('/web/from-current/:id');
-});
-
-test('AU9: deleting auth.User does not cascade SavedFilter rows with CreatedUid', async () => {
+test('AU9: deleting auth.User does not cascade UserFilter rows with CreatedUid', async () => {
   resetRequestContext();
   const companyId = await resolveAdminCompanyId();
   const creator = await createBaseUser(companyId);
 
   setIdentity(creator);
-  const fav = await SavedFilter.Create(
+  const fav = await UserFilter.Create(
     {
       Name: uid('au9'),
       Application: 'web',
-      ModelName: 'SavedFilter',
+      ModelName: 'UserFilter',
       Condition: {},
       UserId: null,
     } as any,
@@ -1149,17 +1105,17 @@ test('AU9: deleting auth.User does not cascade SavedFilter rows with CreatedUid'
   await withModelContext(
     { activeCompanyId: companyId, enabledCompanyIds: [companyId] } as any,
     async () => {
-      await User.sudo(() => User.DeleteById(creator), { hint: 'web.SavedFilter.au9.deleteUser' });
+      await User.sudo(() => User.DeleteById(creator), { hint: 'web.UserFilter.au9.deleteUser' });
     },
     { merge: false }
   );
 
-  const still = await SavedFilter.sudo(
-    () => SavedFilter.Browse(favId, ['Id', 'CreatedUid'] as any),
-    { hint: 'web.SavedFilter.au9.browse' }
+  const still = await UserFilter.sudo(
+    () => UserFilter.Browse(favId, ['Id', 'CreatedUid'] as any),
+    { hint: 'web.UserFilter.au9.browse' }
   );
   expect(String((still as any).Id)).toBe(favId);
   expect(String((still as any).CreatedUid)).toBe(creator);
 
-  await SavedFilter.sudo(() => SavedFilter.DeleteById(favId), { hint: 'web.SavedFilter.au9.cleanup' });
+  await UserFilter.sudo(() => UserFilter.DeleteById(favId), { hint: 'web.UserFilter.au9.cleanup' });
 });

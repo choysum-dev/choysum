@@ -14,27 +14,27 @@ import (
 	"gorm.io/gorm"
 )
 
-func ensureWebSavedFilterTable(t *testing.T, db *gorm.DB) {
+func ensureWebUserFilterTable(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	stmt := `
-CREATE TABLE IF NOT EXISTS web_saved_filter (
+CREATE TABLE IF NOT EXISTS web_user_filter (
   id TEXT PRIMARY KEY,
   application TEXT NOT NULL,
   model_name TEXT NOT NULL,
   name TEXT NOT NULL
 )`
 	if err := db.Exec(stmt).Error; err != nil {
-		t.Fatalf("create web_saved_filter: %v", err)
+		t.Fatalf("create web_user_filter: %v", err)
 	}
 }
 
-func TestModuleUninstallerPurgesSavedFilterWhenLastMetaModelGone(t *testing.T) {
+func TestModuleUninstallerPurgesUserFilterWhenLastMetaModelGone(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("AutoMigrate CatalogEntities: %v", err)
 	}
-	ensureWebSavedFilterTable(t, db)
+	ensureWebUserFilterTable(t, db)
 
 	mod := &meta.Module{Name: "demo_sf", Status: meta.Installed, Version: "1.0.0"}
 	mod.Id = sql.NullString{String: xid.New().String(), Valid: true}
@@ -59,17 +59,17 @@ func TestModuleUninstallerPurgesSavedFilterWhenLastMetaModelGone(t *testing.T) {
 
 	favID := xid.New().String()
 	if err := db.Exec(
-		`INSERT INTO web_saved_filter(id, application, model_name, name) VALUES (?, ?, ?, ?)`,
+		`INSERT INTO web_user_filter(id, application, model_name, name) VALUES (?, ?, ?, ?)`,
 		favID, "demo", "Item", "Active",
 	).Error; err != nil {
-		t.Fatalf("insert saved filter: %v", err)
+		t.Fatalf("insert user filter: %v", err)
 	}
 	otherID := xid.New().String()
 	if err := db.Exec(
-		`INSERT INTO web_saved_filter(id, application, model_name, name) VALUES (?, ?, ?, ?)`,
+		`INSERT INTO web_user_filter(id, application, model_name, name) VALUES (?, ?, ?, ?)`,
 		otherID, "demo", "Other", "Keep",
 	).Error; err != nil {
-		t.Fatalf("insert other saved filter: %v", err)
+		t.Fatalf("insert other user filter: %v", err)
 	}
 
 	uninstaller := &moduleUninstaller{
@@ -83,28 +83,28 @@ func TestModuleUninstallerPurgesSavedFilterWhenLastMetaModelGone(t *testing.T) {
 	}
 
 	var remaining int64
-	if err := db.Raw(`SELECT COUNT(*) FROM web_saved_filter WHERE id = ?`, favID).Scan(&remaining).Error; err != nil {
+	if err := db.Raw(`SELECT COUNT(*) FROM web_user_filter WHERE id = ?`, favID).Scan(&remaining).Error; err != nil {
 		t.Fatalf("count purged filter: %v", err)
 	}
 	if remaining != 0 {
-		t.Fatalf("saved filter for gone model remaining = %d, want 0", remaining)
+		t.Fatalf("user filter for gone model remaining = %d, want 0", remaining)
 	}
 	var otherRemaining int64
-	if err := db.Raw(`SELECT COUNT(*) FROM web_saved_filter WHERE id = ?`, otherID).Scan(&otherRemaining).Error; err != nil {
+	if err := db.Raw(`SELECT COUNT(*) FROM web_user_filter WHERE id = ?`, otherID).Scan(&otherRemaining).Error; err != nil {
 		t.Fatalf("count other filter: %v", err)
 	}
 	if otherRemaining != 1 {
-		t.Fatalf("unrelated saved filter remaining = %d, want 1", otherRemaining)
+		t.Fatalf("unrelated user filter remaining = %d, want 1", otherRemaining)
 	}
 }
 
-func TestModuleUninstallerKeepsSavedFilterWhenIMDSurvivorRemains(t *testing.T) {
+func TestModuleUninstallerKeepsUserFilterWhenIMDSurvivorRemains(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("AutoMigrate CatalogEntities: %v", err)
 	}
-	ensureWebSavedFilterTable(t, db)
+	ensureWebUserFilterTable(t, db)
 
 	baseMod := &meta.Module{Name: "partner", Status: meta.Installed, Version: "1.0.0"}
 	baseMod.Id = sql.NullString{String: xid.New().String(), Valid: true}
@@ -145,10 +145,10 @@ func TestModuleUninstallerKeepsSavedFilterWhenIMDSurvivorRemains(t *testing.T) {
 
 	favID := xid.New().String()
 	if err := db.Exec(
-		`INSERT INTO web_saved_filter(id, application, model_name, name) VALUES (?, ?, ?, ?)`,
+		`INSERT INTO web_user_filter(id, application, model_name, name) VALUES (?, ?, ?, ?)`,
 		favID, "partner", "Partner", "Customers",
 	).Error; err != nil {
-		t.Fatalf("insert saved filter: %v", err)
+		t.Fatalf("insert user filter: %v", err)
 	}
 
 	uninstaller := &moduleUninstaller{
@@ -162,15 +162,15 @@ func TestModuleUninstallerKeepsSavedFilterWhenIMDSurvivorRemains(t *testing.T) {
 	}
 
 	var remaining int64
-	if err := db.Raw(`SELECT COUNT(*) FROM web_saved_filter WHERE id = ?`, favID).Scan(&remaining).Error; err != nil {
-		t.Fatalf("count saved filter: %v", err)
+	if err := db.Raw(`SELECT COUNT(*) FROM web_user_filter WHERE id = ?`, favID).Scan(&remaining).Error; err != nil {
+		t.Fatalf("count user filter: %v", err)
 	}
 	if remaining != 1 {
-		t.Fatalf("IMD survivor should keep saved filter, remaining = %d, want 1", remaining)
+		t.Fatalf("IMD survivor should keep user filter, remaining = %d, want 1", remaining)
 	}
 }
 
-func TestModuleUninstallerSavedFilterMissingTableNoOp(t *testing.T) {
+func TestModuleUninstallerUserFilterMissingTableNoOp(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
@@ -200,29 +200,29 @@ func TestModuleUninstallerSavedFilterMissingTableNoOp(t *testing.T) {
 		ctx:           newOpContext(),
 	}
 	if err := uninstaller.cleanModels(); err != nil {
-		t.Fatalf("cleanModels() with missing web_saved_filter should no-op, got %v", err)
+		t.Fatalf("cleanModels() with missing web_user_filter should no-op, got %v", err)
 	}
 }
 
-func TestWebSavedFilterTableExists(t *testing.T) {
-	if ok, err := webSavedFilterTableExists(nil); err != nil || ok {
+func TestWebUserFilterTableExists(t *testing.T) {
+	if ok, err := webUserFilterTableExists(nil); err != nil || ok {
 		t.Fatalf("nil db: ok=%v err=%v", ok, err)
 	}
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
-	if ok, err := webSavedFilterTableExists(db); err != nil || ok {
+	if ok, err := webUserFilterTableExists(db); err != nil || ok {
 		t.Fatalf("missing table: ok=%v err=%v", ok, err)
 	}
-	ensureWebSavedFilterTable(t, db)
-	if ok, err := webSavedFilterTableExists(db); err != nil || !ok {
+	ensureWebUserFilterTable(t, db)
+	if ok, err := webUserFilterTableExists(db); err != nil || !ok {
 		t.Fatalf("present table: ok=%v err=%v", ok, err)
 	}
 }
 
-func TestWebSavedFilterTableExistsProbeError(t *testing.T) {
+func TestWebUserFilterTableExistsProbeError(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
-	ensureWebSavedFilterTable(t, db)
+	ensureWebUserFilterTable(t, db)
 	sqlDB, err := db.DB()
 	if err != nil {
 		t.Fatalf("db.DB(): %v", err)
@@ -231,27 +231,27 @@ func TestWebSavedFilterTableExistsProbeError(t *testing.T) {
 		t.Fatalf("close sql DB: %v", err)
 	}
 
-	ok, probeErr := webSavedFilterTableExists(db)
-	if ok || probeErr == nil || !strings.Contains(probeErr.Error(), "error checking web_saved_filter existence") {
+	ok, probeErr := webUserFilterTableExists(db)
+	if ok || probeErr == nil || !strings.Contains(probeErr.Error(), "error checking web_user_filter existence") {
 		t.Fatalf("ok=%v err=%v, want probe wrap", ok, probeErr)
 	}
-	if purgeErr := purgeSavedFiltersForGoneModels(db, []modmeta.LogicalKey{{Application: "demo", Name: "Item"}}); purgeErr == nil ||
-		!strings.Contains(purgeErr.Error(), "error checking web_saved_filter existence") {
+	if purgeErr := purgeUserFiltersForGoneModels(db, []modmeta.LogicalKey{{Application: "demo", Name: "Item"}}); purgeErr == nil ||
+		!strings.Contains(purgeErr.Error(), "error checking web_user_filter existence") {
 		t.Fatalf("purge error=%v, want probe failure propagated", purgeErr)
 	}
 }
 
-func TestPurgeSavedFiltersForGoneModelsGuards(t *testing.T) {
-	if err := purgeSavedFiltersForGoneModels(nil, []modmeta.LogicalKey{{Application: "a", Name: "B"}}); err != nil {
+func TestPurgeUserFiltersForGoneModelsGuards(t *testing.T) {
+	if err := purgeUserFiltersForGoneModels(nil, []modmeta.LogicalKey{{Application: "a", Name: "B"}}); err != nil {
 		t.Fatalf("nil db: %v", err)
 	}
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
-	if err := purgeSavedFiltersForGoneModels(db, nil); err != nil {
+	if err := purgeUserFiltersForGoneModels(db, nil); err != nil {
 		t.Fatalf("empty keys: %v", err)
 	}
-	ensureWebSavedFilterTable(t, db)
-	if err := purgeSavedFiltersForGoneModels(db, []modmeta.LogicalKey{
+	ensureWebUserFilterTable(t, db)
+	if err := purgeUserFiltersForGoneModels(db, []modmeta.LogicalKey{
 		{},
 		{Application: " ", Name: "Item"},
 		{Application: "demo", Name: " "},
@@ -262,54 +262,54 @@ func TestPurgeSavedFiltersForGoneModelsGuards(t *testing.T) {
 	}
 }
 
-func TestPurgeSavedFiltersCountError(t *testing.T) {
+func TestPurgeUserFiltersCountError(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
-	ensureWebSavedFilterTable(t, db)
-	// Keep web_saved_filter visible to HasTable, but break meta_model Count.
+	ensureWebUserFilterTable(t, db)
+	// Keep web_user_filter visible to HasTable, but break meta_model Count.
 	if err := db.Migrator().DropTable(&meta.Model{}); err != nil {
 		t.Fatalf("drop meta_model: %v", err)
 	}
-	err := purgeSavedFiltersForGoneModels(db, []modmeta.LogicalKey{{Application: "demo", Name: "Item"}})
-	if err == nil || !strings.Contains(err.Error(), "error counting surviving meta models for saved filter purge") {
+	err := purgeUserFiltersForGoneModels(db, []modmeta.LogicalKey{{Application: "demo", Name: "Item"}})
+	if err == nil || !strings.Contains(err.Error(), "error counting surviving meta models for user filter purge") {
 		t.Fatalf("error=%v", err)
 	}
 }
 
-func TestPurgeSavedFiltersDeleteError(t *testing.T) {
+func TestPurgeUserFiltersDeleteError(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("AutoMigrate: %v", err)
 	}
-	ensureWebSavedFilterTable(t, db)
-	if err := db.Exec(`INSERT INTO web_saved_filter(id, application, model_name, name) VALUES ('1','demo','Item','x')`).Error; err != nil {
+	ensureWebUserFilterTable(t, db)
+	if err := db.Exec(`INSERT INTO web_user_filter(id, application, model_name, name) VALUES ('1','demo','Item','x')`).Error; err != nil {
 		t.Fatalf("insert: %v", err)
 	}
-	if err := db.Exec(`CREATE TRIGGER deny_sf_delete BEFORE DELETE ON web_saved_filter BEGIN SELECT RAISE(ABORT, 'deny delete'); END`).Error; err != nil {
+	if err := db.Exec(`CREATE TRIGGER deny_uf_delete BEFORE DELETE ON web_user_filter BEGIN SELECT RAISE(ABORT, 'deny delete'); END`).Error; err != nil {
 		t.Fatalf("create trigger: %v", err)
 	}
-	err := purgeSavedFiltersForGoneModels(db, []modmeta.LogicalKey{{Application: "demo", Name: "Item"}})
-	if err == nil || !strings.Contains(err.Error(), "error deleting web saved filters") {
+	err := purgeUserFiltersForGoneModels(db, []modmeta.LogicalKey{{Application: "demo", Name: "Item"}})
+	if err == nil || !strings.Contains(err.Error(), "error deleting web user filters") {
 		t.Fatalf("error=%v, want delete wrap", err)
 	}
 }
 
-func TestApplySavedFilterPurgePropagatesError(t *testing.T) {
+func TestApplyUserFilterPurgePropagatesError(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
-	ensureWebSavedFilterTable(t, db)
+	ensureWebUserFilterTable(t, db)
 	if err := db.Migrator().DropTable(&meta.Model{}); err != nil {
 		t.Fatalf("drop meta_model: %v", err)
 	}
-	err := applySavedFilterPurge(db, []modmeta.LogicalKey{{Application: "demo", Name: "Item"}})
-	if err == nil || !strings.Contains(err.Error(), "error counting surviving meta models for saved filter purge") {
+	err := applyUserFilterPurge(db, []modmeta.LogicalKey{{Application: "demo", Name: "Item"}})
+	if err == nil || !strings.Contains(err.Error(), "error counting surviving meta models for user filter purge") {
 		t.Fatalf("error=%v", err)
 	}
 }
 
-func TestApplySavedFilterPurgeOK(t *testing.T) {
-	if err := applySavedFilterPurge(nil, nil); err != nil {
+func TestApplyUserFilterPurgeOK(t *testing.T) {
+	if err := applyUserFilterPurge(nil, nil); err != nil {
 		t.Fatalf("nil args: %v", err)
 	}
 }

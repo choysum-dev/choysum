@@ -3,21 +3,30 @@
 
 import type { NamedFilter } from '@/web/web/query/types';
 
-export type SavedFilterRow = {
+export type UserFilterRow = {
   Id?: string;
   Name?: string;
   Condition?: any;
   IsDefault?: boolean;
-  UserId?: string | null;
+  UserId?: string | null | { Id?: string | null };
   CreatedUid?: string | null;
   UpdatedAt?: string | Date | null;
   CreatedAt?: string | Date | null;
 };
 
+/** Normalize ManyToOneRef nested `{ Id }` or bare id to a trimmed string (empty if shared/missing). */
+export function resolveUserFilterUserId(userId: unknown): string {
+  if (userId == null || userId === '') return '';
+  if (typeof userId === 'object' && !Array.isArray(userId) && userId !== null && 'Id' in (userId as object)) {
+    return String((userId as { Id?: unknown }).Id ?? '').trim();
+  }
+  return String(userId).trim();
+}
+
 /**
- * Convert a SavedFilter row into a NamedFilter for OSearch menus / first-frame defaults.
+ * Convert a UserFilter row into a NamedFilter for OSearch menus / first-frame defaults.
  */
-export function savedFilterToNamedFilter(row: SavedFilterRow, selected = false): NamedFilter {
+export function userFilterToNamedFilter(row: UserFilterRow, selected = false): NamedFilter {
   return {
     name: String(row.Name || '').trim(),
     query: (row.Condition ?? {}) as any,
@@ -25,8 +34,8 @@ export function savedFilterToNamedFilter(row: SavedFilterRow, selected = false):
   };
 }
 
-export function isSharedSavedFilterUserId(userId: unknown): boolean {
-  return userId == null || userId === '';
+export function isSharedUserFilterUserId(userId: unknown): boolean {
+  return !resolveUserFilterUserId(userId);
 }
 
 function toMillis(raw: unknown): number {
@@ -40,7 +49,7 @@ function toMillis(raw: unknown): number {
 }
 
 /** True when `a` should win over `b` as the effective default (newest first). */
-export function isNewerSavedFilter(a: SavedFilterRow, b: SavedFilterRow): boolean {
+export function isNewerUserFilter(a: UserFilterRow, b: UserFilterRow): boolean {
   const ua = toMillis(a.UpdatedAt);
   const ub = toMillis(b.UpdatedAt);
   if (ua !== ub) return ua > ub;
@@ -54,30 +63,30 @@ export function isNewerSavedFilter(a: SavedFilterRow, b: SavedFilterRow): boolea
  * Among IsDefault rows, pick the newest private or shared favorite (Odoo-aligned: no server mutex).
  */
 export function pickLatestIsDefault(
-  rows: SavedFilterRow[] | null | undefined,
+  rows: UserFilterRow[] | null | undefined,
   kind: 'private' | 'shared'
-): SavedFilterRow | null {
+): UserFilterRow | null {
   const list = (rows || []).filter(r => {
     if (!r?.IsDefault) return false;
-    const shared = isSharedSavedFilterUserId(r.UserId);
+    const shared = isSharedUserFilterUserId(r.UserId);
     return kind === 'shared' ? shared : !shared;
   });
   if (!list.length) return null;
   let best = list[0];
   for (let i = 1; i < list.length; i++) {
-    if (isNewerSavedFilter(list[i], best)) best = list[i];
+    if (isNewerUserFilter(list[i], best)) best = list[i];
   }
   return best;
 }
 
 /**
- * Merge order (SF): newest private IsDefault > newest shared IsDefault > code defaultFilters.selected.
+ * Merge order: newest private IsDefault > newest shared IsDefault > code defaultFilters.selected.
  * Multiple server IsDefault rows are allowed; callers should pass the latest per bucket
  * (see {@link pickLatestIsDefault}).
  */
-export function mergeSavedFilterDefaults(opts: {
-  privateDefault?: SavedFilterRow | null;
-  sharedDefault?: SavedFilterRow | null;
+export function mergeUserFilterDefaults(opts: {
+  privateDefault?: UserFilterRow | null;
+  sharedDefault?: UserFilterRow | null;
   codeDefaults?: NamedFilter[] | NamedFilter | null;
 }): NamedFilter[] {
   const codeList: NamedFilter[] = !opts.codeDefaults
@@ -93,7 +102,7 @@ export function mergeSavedFilterDefaults(opts: {
         ? opts.sharedDefault
         : null;
   if (serverRow) {
-    const winner = savedFilterToNamedFilter(serverRow, true);
+    const winner = userFilterToNamedFilter(serverRow, true);
     const rest = codeList
       .filter(nf => nf && typeof nf.name === 'string' && nf.name.length > 0 && nf.name !== winner.name)
       .map(nf => ({ ...nf, selected: false }));

@@ -242,7 +242,7 @@ import { formatGroupItemForDisplay } from '@/web/web/query/utils/grouping/format
 import { normalizeGroupby } from '@/web/web/query/utils/grouping/normalize';
 import { buildQueryUpdatePayload } from '@/web/web/query/utils/search/payload';
 import { useFilterPresets } from '@/web/web/composables/search/useFilterPresets';
-import { useSavedFilters } from '@/web/web/composables/search/useSavedFilters';
+import { useUserFilters } from '@/web/web/composables/search/useUserFilters';
 import {
   modelIdentityFromStore,
   pickDefaultFavoriteName,
@@ -376,7 +376,7 @@ const {
   saveCurrent: saveFavoriteCurrent,
   remove: removeFavorite,
   defaultsForOpen,
-} = useSavedFilters({
+} = useUserFilters({
   store,
   filtersRef: filters as any,
   keywordRef: keyword as any,

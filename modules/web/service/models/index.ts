@@ -4,4 +4,4 @@
 /**
  * Web service model exports.
  */
-export { default as SavedFilter } from './saved_filter';
+export { default as UserFilter } from './user_filter';

@@ -488,13 +488,13 @@ function emitCardClick(rr: RecordRow) {
 // Normalize and merge forced conditions
 // Merge helpers and debug output were removed; the view layer now passes only the forced condition
 
-// First-frame load: when searchView is present, wait for its query-update (includes SavedFilter defaults).
+// First-frame load: when searchView is present, wait for its query-update (includes UserFilter defaults).
 onMounted(async () => {
   await nextTick();
   if (props.orderBy !== undefined) {
     (store.state as any).orderBy = props.orderBy as any;
   }
-  // Only OSearchView guarantees a mount-time query-update with SavedFilter defaults.
+  // Only OSearchView guarantees a mount-time query-update with UserFilter defaults.
   // Custom SearchViewComponent implementations may never emit; keep the mount apply.
   if (shouldDeferKanbanFirstFrame(props.searchView, OSearchView)) {
     return;

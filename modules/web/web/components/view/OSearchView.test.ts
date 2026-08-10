@@ -21,7 +21,7 @@ vi.mock('@/web/web/i18n', async () => {
 
 vi.mock('@/web/web/stores/registry', () => ({
   createStoreByModel: (model: string) => {
-    if (model === 'web.SavedFilter') return { Search: (...args: any[]) => sfSearch(...args) };
+    if (model === 'web.UserFilter') return { Search: (...args: any[]) => sfSearch(...args) };
     return {};
   },
 }));
@@ -222,7 +222,6 @@ describe('OSearchView server defaults', () => {
         ['Application', '=', 'demo'],
         ['ModelName', '=', 'Widget'],
         ['ScopeKey', '=', ''],
-        ['Active', '=', true],
         ['IsDefault', '=', true],
         { Or: [['UserId', '=', null]] },
       ])

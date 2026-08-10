@@ -108,29 +108,29 @@ func (m *moduleUninstaller) cleanModels() error {
 		}
 	}
 
-	// SF7: hard-delete web.SavedFilter rows only when a logical model has no remaining
+	// SF7: hard-delete web.UserFilter rows only when a logical model has no remaining
 	// live meta_model after this module's declarations were removed (IMD-safe).
-	return applySavedFilterPurge(db.DB, keys)
+	return applyUserFilterPurge(db.DB, keys)
 }
 
-// applySavedFilterPurge wraps purgeSavedFiltersForGoneModels so uninstall can surface purge errors.
-func applySavedFilterPurge(db *gorm.DB, keys []modmeta.LogicalKey) error {
-	if err := purgeSavedFiltersForGoneModels(db, keys); err != nil {
+// applyUserFilterPurge wraps purgeUserFiltersForGoneModels so uninstall can surface purge errors.
+func applyUserFilterPurge(db *gorm.DB, keys []modmeta.LogicalKey) error {
+	if err := purgeUserFiltersForGoneModels(db, keys); err != nil {
 		return err
 	}
 	return nil
 }
 
-const webSavedFilterTable = "web_saved_filter"
+const webUserFilterTable = "web_user_filter"
 
-// webSavedFilterTableExists reports whether the concrete favorites table is present.
+// webUserFilterTableExists reports whether the concrete favorites table is present.
 // Missing-table errors are ok=false; other probe failures are returned.
-func webSavedFilterTableExists(db *gorm.DB) (bool, error) {
+func webUserFilterTableExists(db *gorm.DB) (bool, error) {
 	if db == nil {
 		return false, nil
 	}
 	var n int64
-	err := db.Raw("SELECT COUNT(1) FROM "+webSavedFilterTable+" WHERE 0").Scan(&n).Error
+	err := db.Raw("SELECT COUNT(1) FROM "+webUserFilterTable+" WHERE 0").Scan(&n).Error
 	if err == nil {
 		return true, nil
 	}
@@ -141,19 +141,19 @@ func webSavedFilterTableExists(db *gorm.DB) (bool, error) {
 		strings.Contains(msg, "unknown table") {
 		return false, nil
 	}
-	return false, xfmt.Errorf("error checking %s existence: %w", webSavedFilterTable, err)
+	return false, xfmt.Errorf("error checking %s existence: %w", webUserFilterTable, err)
 }
 
-// purgeSavedFiltersForGoneModels deletes Favorites for logical models that no longer
+// purgeUserFiltersForGoneModels deletes Favorites for logical models that no longer
 // have any live effective meta_model row. No-op when the table is missing. Never
 // deletes by Application alone.
-func purgeSavedFiltersForGoneModels(db *gorm.DB, keys []modmeta.LogicalKey) error {
+func purgeUserFiltersForGoneModels(db *gorm.DB, keys []modmeta.LogicalKey) error {
 	if db == nil || len(keys) == 0 {
 		return nil
 	}
 	// Probe the concrete base table: missing table is a no-op; other DB errors must fail
 	// uninstall (HasTable alone discards lookup failures and would leave orphan favorites).
-	exists, err := webSavedFilterTableExists(db)
+	exists, err := webUserFilterTableExists(db)
 	if err != nil {
 		return err
 	}
@@ -176,16 +176,16 @@ func purgeSavedFiltersForGoneModels(db *gorm.DB, keys []modmeta.LogicalKey) erro
 		if err := db.Model(&meta.Model{}).
 			Where("application = ? AND name = ?", k.Application, k.Name).
 			Count(&remaining).Error; err != nil {
-			return xfmt.Errorf("error counting surviving meta models for saved filter purge: %w", err)
+			return xfmt.Errorf("error counting surviving meta models for user filter purge: %w", err)
 		}
 		if remaining > 0 {
 			continue
 		}
 		if err := db.Exec(
-			"DELETE FROM "+webSavedFilterTable+" WHERE application = ? AND model_name = ?",
+			"DELETE FROM "+webUserFilterTable+" WHERE application = ? AND model_name = ?",
 			k.Application, k.Name,
 		).Error; err != nil {
-			return xfmt.Errorf("error deleting web saved filters for %s.%s: %w", k.Application, k.Name, err)
+			return xfmt.Errorf("error deleting web user filters for %s.%s: %w", k.Application, k.Name, err)
 		}
 	}
 	return nil

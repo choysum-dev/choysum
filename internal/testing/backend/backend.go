@@ -503,7 +503,7 @@ func shouldSkipWebShellForUnitApp(app string) bool {
 	return !strings.EqualFold(strings.TrimSpace(app), "auth")
 }
 
-// shouldInstallMetaForUnitApp installs meta for auth (gRPC) and web (SavedFilter ModelId).
+// shouldInstallMetaForUnitApp installs meta for auth (gRPC) and web (UserFilter ModelId).
 func shouldInstallMetaForUnitApp(app string) bool {
 	app = strings.TrimSpace(app)
 	return strings.EqualFold(app, "auth") || strings.EqualFold(app, "web")
@@ -649,7 +649,7 @@ func RunOneAppBackendTests(
 		// (PermissionState smoke uses auth.route.token_list, etc.).
 		moduleLifecycle := lifecycle.NewService(testScope, jsExec)
 		// Auth backend tests rely on meta gRPC services (Model/Application).
-		// Web SavedFilter tests dial meta.MetaModel for effective ModelId (SF12).
+		// Web UserFilter tests dial meta.MetaModel for effective ModelId (SF12).
 		if err := installUnitAppModules(ctx, moduleLifecycle, app); err != nil {
 			return false, err
 		}
