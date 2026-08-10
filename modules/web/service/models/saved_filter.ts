@@ -17,15 +17,16 @@ const MetaModelService = createServiceByModel<typeof MetaModel>('meta.MetaModel'
  * Persisted Favorites filter for OSearch (Owner Application = web).
  *
  * Identity: Application + ModelName. ModelId stores the unique live meta.MetaModel id.
- * Uniqueness / IsDefault mutex are scoped by ScopeKey (normalized route path) + UserId + Name.
- * Field normalize / ModelId / uniqueness / IsDefault mutex → `@Constraint` (uses ctx.mode;
+ * IsDefault mutex is scoped by ScopeKey (normalized route path) + UserId.
+ * Name is not unique (align modern Odoo ir.filters); Favorites distinguish rows by Id.
+ * Field normalize / ModelId / IsDefault mutex → `@Constraint` (uses ctx.mode;
  * Create pre-assigns Id before validation, so `!this.Id` is not a reliable create signal).
  * Shared write/delete ACL (SF11) → auth.RoleRecordRule seeds in modules/web/data/bootstrap.json.
  */
 @Model('SavedFilter', { application: 'web', softDelete: false })
 export default class SavedFilter extends BaseModel {
   /**
-   * Display name of the favorite (unique per Application/ModelName/ScopeKey/UserId).
+   * Display name of the favorite (not unique; duplicates allowed in the same scope/owner).
    */
   @Field({
     type: 'varchar',
@@ -37,7 +38,7 @@ export default class SavedFilter extends BaseModel {
   Name: string;
 
   /**
-   * Normalized route path that scopes Name uniqueness and IsDefault (not shown in Favorites UI).
+   * Normalized route path that scopes IsDefault mutex (not shown in Favorites UI).
    */
   @Field({
     type: 'varchar',
@@ -219,36 +220,6 @@ export default class SavedFilter extends BaseModel {
     }
   }
 
-  private static async _assertUniqueName(
-    app: string,
-    modelName: string,
-    scopeKey: string,
-    userId: string | null,
-    name: string,
-    exceptId?: string
-  ): Promise<void> {
-    const cond: any = {
-      And: [
-        ['Application', '=', app],
-        ['ModelName', '=', modelName],
-        ['ScopeKey', '=', scopeKey],
-        ['Name', '=', name],
-      ],
-    };
-    if (userId == null || userId === '') {
-      cond.And.push(['UserId', '=', null]);
-    } else {
-      cond.And.push(['UserId', '=', userId]);
-    }
-    if (exceptId) {
-      cond.And.push(['Id', '!=', exceptId]);
-    }
-    const hits = await SavedFilter.Search(cond as any, { fields: ['Id'], limit: 1 } as any);
-    if (Array.isArray(hits) && hits.length > 0) {
-      this._fail('AlreadyExists', _t('A favorite with this name already exists', { scope: SCOPE }), GrpcCode.AlreadyExists);
-    }
-  }
-
   private static _mergedField(self: SavedFilter, ctx: ConstraintContext<SavedFilter>, key: string): any {
     if (Object.prototype.hasOwnProperty.call(ctx.values || {}, key)) return (ctx.values as any)[key];
     if (Object.prototype.hasOwnProperty.call(self as any, key)) return (self as any)[key];
@@ -256,9 +227,9 @@ export default class SavedFilter extends BaseModel {
   }
 
   /**
-   * Normalize ownership, resolve ModelId, enforce uniqueness and IsDefault mutex.
-   * Login is enforced by gRPC AuthN + Method ACL (not here). Static so we can read `ctx.mode`
-   * (Create pre-assigns Id before validation).
+   * Normalize ownership, resolve ModelId, and enforce IsDefault mutex.
+   * Name is not unique (modern Odoo-aligned). Login is enforced by gRPC AuthN + Method ACL.
+   * Static so we can read `ctx.mode` (Create pre-assigns Id before validation).
    */
   @Constraint<SavedFilter>(['Name', 'ScopeKey', 'Application', 'ModelName', 'ModelId', 'UserId', 'IsDefault', 'Condition', 'Active'])
   static async validateSavedFilterConstraint(self: SavedFilter, ctx: ConstraintContext<SavedFilter>): Promise<void> {
@@ -315,8 +286,6 @@ export default class SavedFilter extends BaseModel {
       if (raw == null || raw === '') return null;
       return String(raw).trim();
     })();
-
-    await SavedFilter._assertUniqueName(app, modelName, values.ScopeKey, effectiveUserId, name, isCreate ? undefined : currentId);
 
     const isDefault = Object.prototype.hasOwnProperty.call(values, 'IsDefault')
       ? values.IsDefault === true

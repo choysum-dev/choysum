@@ -493,7 +493,7 @@ test('SavedFilter Create without identity does not enforce login in Constraint',
   });
 });
 
-test('SavedFilter rejects duplicate Name in the same ownership bucket', async () => {
+test('SavedFilter allows duplicate Name in the same ownership bucket', async () => {
   resetRequestContext();
   const actor = uid('sf_dup');
   setIdentity(actor);
@@ -505,26 +505,25 @@ test('SavedFilter rejects duplicate Name in the same ownership bucket', async ()
       ModelName: 'SavedFilter',
       Condition: {},
     } as any,
-    ['Id'] as any
+    ['Id', 'Name'] as any
   );
-  await expectCode(
-    async () =>
-      SavedFilter.Create(
-        {
-          Name: name,
-          Application: 'web',
-          ModelName: 'SavedFilter',
-          Condition: {},
-        } as any,
-        ['Id'] as any
-      ),
-    'AlreadyExists',
-    'already exists'
+  const second = await SavedFilter.Create(
+    {
+      Name: name,
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      Condition: {},
+    } as any,
+    ['Id', 'Name'] as any
   );
+  expect(String((first as any).Id)).not.toBe(String((second as any).Id));
+  expect(String((first as any).Name)).toBe(name);
+  expect(String((second as any).Name)).toBe(name);
   await SavedFilter.DeleteById(String((first as any).Id));
+  await SavedFilter.DeleteById(String((second as any).Id));
 });
 
-test('SavedFilter ScopeKey scopes Name uniqueness and IsDefault mutex', async () => {
+test('SavedFilter ScopeKey scopes IsDefault mutex (Name may repeat across scopes)', async () => {
   resetRequestContext();
   const actor = uid('sf_scope');
   setIdentity(actor);
@@ -559,21 +558,19 @@ test('SavedFilter ScopeKey scopes Name uniqueness and IsDefault mutex', async ()
   const aStill = await SavedFilter.Browse(String((a as any).Id), ['IsDefault'] as any);
   expect((aStill as any).IsDefault).toBe(true);
 
-  await expectCode(
-    async () =>
-      SavedFilter.Create(
-        {
-          Name: name,
-          ScopeKey: '/web/partners/99',
-          Application: 'web',
-          ModelName: 'SavedFilter',
-          Condition: {},
-        } as any,
-        ['Id'] as any
-      ),
-    'AlreadyExists',
-    'already exists'
+  // Same ScopeKey + Name is allowed (no Name uniqueness); IsDefault mutex still clears peers in-scope.
+  const sameScope = await SavedFilter.Create(
+    {
+      Name: name,
+      ScopeKey: '/web/partners/99',
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      Condition: {},
+    } as any,
+    ['Id', 'ScopeKey', 'Name'] as any
   );
+  expect((sameScope as any).ScopeKey).toBe('/web/partners/:id');
+  expect(String((sameScope as any).Name)).toBe(name);
 
   const a2 = await SavedFilter.Create(
     {
@@ -594,6 +591,7 @@ test('SavedFilter ScopeKey scopes Name uniqueness and IsDefault mutex', async ()
 
   await SavedFilter.DeleteById(String((a as any).Id));
   await SavedFilter.DeleteById(String((b as any).Id));
+  await SavedFilter.DeleteById(String((sameScope as any).Id));
   await SavedFilter.DeleteById(String((a2 as any).Id));
 });
 
@@ -890,7 +888,7 @@ test('SavedFilter Update without IsDefault still clears peers when row is defaul
   await SavedFilter.DeleteById(String((b as any).Id));
 });
 
-test('SavedFilter Update rename collision uses exceptId uniqueness', async () => {
+test('SavedFilter Update allows renaming onto another row Name', async () => {
   resetRequestContext();
   const actor = uid('sf_rename');
   setIdentity(actor);
@@ -914,12 +912,8 @@ test('SavedFilter Update rename collision uses exceptId uniqueness', async () =>
     } as any,
     ['Id', 'Name'] as any
   );
-  await expectCode(
-    async () => SavedFilter.UpdateById(String((b as any).Id), { Name: nameA } as any, ['Id'] as any),
-    'AlreadyExists',
-    'already exists'
-  );
-  // Same-name update on self must succeed (exceptId excludes current).
+  const renamed = await SavedFilter.UpdateById(String((b as any).Id), { Name: nameA } as any, ['Id', 'Name'] as any);
+  expect(String((renamed as any).Name)).toBe(nameA);
   const self = await SavedFilter.UpdateById(String((a as any).Id), { Name: nameA, Active: true } as any, [
     'Id',
     'Name',
@@ -1100,11 +1094,10 @@ test('SavedFilter _clearOtherDefaults reads empty actor when identity has no use
   }
 });
 
-test('SavedFilter _assertUniqueName treats empty-string UserId as shared bucket', async () => {
+test('SavedFilter allows duplicate shared Name for null and empty-string UserId', async () => {
   resetRequestContext();
   const actor = uid('sf_assert_empty');
   setIdentity(actor);
-  const SF = SavedFilter as any;
   const name = uid('assert_empty_name');
   const shared = await SavedFilter.Create(
     {
@@ -1115,16 +1108,23 @@ test('SavedFilter _assertUniqueName treats empty-string UserId as shared bucket'
       UserId: null,
       Condition: {},
     } as any,
-    ['Id'] as any
+    ['Id', 'Name'] as any
   );
-  await expectCode(
-    async () => SF._assertUniqueName('web', 'SavedFilter', '/assert', '', name),
-    'AlreadyExists',
-    'already exists'
+  const shared2 = await SavedFilter.Create(
+    {
+      Name: name,
+      ScopeKey: '/assert',
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      UserId: '',
+      Condition: {},
+    } as any,
+    ['Id', 'Name', 'UserId'] as any
   );
-  // exceptId skips the existing row (update rename path).
-  await SF._assertUniqueName('web', 'SavedFilter', '/assert', '', name, String((shared as any).Id));
+  expect(String((shared as any).Id)).not.toBe(String((shared2 as any).Id));
+  expect((shared2 as any).UserId == null || (shared2 as any).UserId === '').toBe(true);
   await SavedFilter.DeleteById(String((shared as any).Id));
+  await SavedFilter.DeleteById(String((shared2 as any).Id));
 });
 
 test('SavedFilter validateSavedFilterConstraint covers empty create Id fallbacks', async () => {
