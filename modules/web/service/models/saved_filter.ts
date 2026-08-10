@@ -17,10 +17,10 @@ const MetaModelService = createServiceByModel<typeof MetaModel>('meta.MetaModel'
  * Persisted Favorites filter for OSearch (Owner Application = web).
  *
  * Identity: Application + ModelName. ModelId stores the unique live meta.MetaModel id.
- * IsDefault mutex is scoped by ScopeKey (normalized route path) + UserId.
- * Name is not unique (align modern Odoo ir.filters); Favorites distinguish rows by Id.
- * Field normalize / ModelId / IsDefault mutex → `@Constraint` (uses ctx.mode;
- * Create pre-assigns Id before validation, so `!this.Id` is not a reliable create signal).
+ * Name is not unique (align modern Odoo ir.filters). Multiple IsDefault rows are allowed;
+ * the client picks the newest (UpdatedAt/Id) per private vs shared bucket.
+ * Field normalize / ModelId → `@Constraint` (uses ctx.mode; Create pre-assigns Id before
+ * validation, so `!this.Id` is not a reliable create signal).
  * Shared write/delete ACL (SF11) → auth.RoleRecordRule seeds in modules/web/data/bootstrap.json.
  */
 @Model('SavedFilter', { application: 'web', softDelete: false })
@@ -38,7 +38,7 @@ export default class SavedFilter extends BaseModel {
   Name: string;
 
   /**
-   * Normalized route path that scopes IsDefault mutex (not shown in Favorites UI).
+   * Normalized route path that scopes Favorites lists (not shown in Favorites UI).
    */
   @Field({
     type: 'varchar',
@@ -124,7 +124,8 @@ export default class SavedFilter extends BaseModel {
   UserId?: string | null;
 
   /**
-   * Whether this favorite is applied when the search view opens.
+   * Whether this favorite is a candidate default when the search view opens.
+   * Multiple defaults are allowed; FE picks the newest (Odoo-aligned).
    */
   @Field({
     type: 'boolean',
@@ -158,68 +159,6 @@ export default class SavedFilter extends BaseModel {
     this._fail('PermissionDenied', _t('Cannot assign a favorite to another user', { scope: SCOPE }), GrpcCode.PermissionDenied);
   }
 
-  /**
-   * Clear other IsDefault rows the actor may write (SF11). Shared defaults owned by
-   * someone else remain; fail so we never leave two shared defaults silently.
-   */
-  private static async _clearOtherDefaults(
-    app: string,
-    modelName: string,
-    scopeKey: string,
-    userId: string | null,
-    exceptId?: string
-  ): Promise<void> {
-    const cond: any = {
-      And: [
-        ['Application', '=', app],
-        ['ModelName', '=', modelName],
-        ['ScopeKey', '=', scopeKey],
-        ['IsDefault', '=', true],
-      ],
-    };
-    if (userId == null || userId === '') {
-      cond.And.push(['UserId', '=', null]);
-    } else {
-      cond.And.push(['UserId', '=', userId]);
-    }
-    if (exceptId) {
-      cond.And.push(['Id', '!=', exceptId]);
-    }
-    // Preflight under sudo so a foreign shared default surfaces PermissionDenied
-    // instead of a generic record_rule_violation from Update.
-    const actor = String(this.userId || '').trim();
-    const candidates = await SavedFilter.sudo(
-      () => SavedFilter.Search(cond as any, { fields: ['Id', 'UserId', 'CreatedUid'], limit: 50 } as any),
-      { hint: 'web.SavedFilter.clearOtherDefaults.preflight' }
-    );
-    for (const row of candidates || []) {
-      const shared = (row as any).UserId == null || (row as any).UserId === '';
-      const canWrite = shared
-        ? String((row as any).CreatedUid || '').trim() === actor
-        : String((row as any).UserId || '').trim() === actor;
-      if (!canWrite) {
-        this._fail(
-          'PermissionDenied',
-          _t('Cannot replace another user\'s shared default favorite', { scope: SCOPE }),
-          GrpcCode.PermissionDenied
-        );
-      }
-    }
-    // No sudo: Record rules must still authorize the clear for rows we expect to write.
-    await SavedFilter.Update(cond as any, { IsDefault: false } as any, ['Id'] as any);
-    const remaining = await SavedFilter.sudo(
-      () => SavedFilter.Search(cond as any, { fields: ['Id'], limit: 1 } as any),
-      { hint: 'web.SavedFilter.clearOtherDefaults.check' }
-    );
-    if (Array.isArray(remaining) && remaining.length > 0) {
-      this._fail(
-        'PermissionDenied',
-        _t('Cannot replace another user\'s shared default favorite', { scope: SCOPE }),
-        GrpcCode.PermissionDenied
-      );
-    }
-  }
-
   private static _mergedField(self: SavedFilter, ctx: ConstraintContext<SavedFilter>, key: string): any {
     if (Object.prototype.hasOwnProperty.call(ctx.values || {}, key)) return (ctx.values as any)[key];
     if (Object.prototype.hasOwnProperty.call(self as any, key)) return (self as any)[key];
@@ -227,15 +166,14 @@ export default class SavedFilter extends BaseModel {
   }
 
   /**
-   * Normalize ownership, resolve ModelId, and enforce IsDefault mutex.
-   * Name is not unique (modern Odoo-aligned). Login is enforced by gRPC AuthN + Method ACL.
+   * Normalize ownership and resolve ModelId. Name is not unique; IsDefault is not mutexed
+   * (FE picks newest). Login is enforced by gRPC AuthN + Method ACL.
    * Static so we can read `ctx.mode` (Create pre-assigns Id before validation).
    */
   @Constraint<SavedFilter>(['Name', 'ScopeKey', 'Application', 'ModelName', 'ModelId', 'UserId', 'IsDefault', 'Condition', 'Active'])
   static async validateSavedFilterConstraint(self: SavedFilter, ctx: ConstraintContext<SavedFilter>): Promise<void> {
     const isCreate = ctx.mode === 'create';
     const values = ctx.values as Record<string, any>;
-    const currentId = String((isCreate ? values.Id : SavedFilter._mergedField(self, ctx, 'Id')) || '').trim() || undefined;
     const actor = String(this.userId || '').trim();
 
     const app = String(SavedFilter._mergedField(self, ctx, 'Application') || '').trim();
@@ -277,21 +215,6 @@ export default class SavedFilter extends BaseModel {
       if (values.Condition == null) values.Condition = {};
     } else if (Object.prototype.hasOwnProperty.call(values, 'UserId')) {
       values.UserId = SavedFilter._normalizeOwnerUserId(values.UserId, actor);
-    }
-
-    const effectiveUserId = (() => {
-      const raw = Object.prototype.hasOwnProperty.call(values, 'UserId')
-        ? values.UserId
-        : SavedFilter._mergedField(self, ctx, 'UserId');
-      if (raw == null || raw === '') return null;
-      return String(raw).trim();
-    })();
-
-    const isDefault = Object.prototype.hasOwnProperty.call(values, 'IsDefault')
-      ? values.IsDefault === true
-      : SavedFilter._mergedField(self, ctx, 'IsDefault') === true;
-    if (isDefault) {
-      await SavedFilter._clearOtherDefaults(app, modelName, values.ScopeKey, effectiveUserId, isCreate ? undefined : currentId);
     }
   }
 }

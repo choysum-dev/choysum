@@ -6,7 +6,7 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import type { NamedFilter } from '@/web/web/query/types';
 import { filtersToQuery } from '@/web/web/query/utils/condition/builder';
 import { actorUserId } from './actorUserId';
-import { mergeSavedFilterDefaults, savedFilterToNamedFilter, type SavedFilterRow } from './savedFilterDefaults';
+import { mergeSavedFilterDefaults, pickLatestIsDefault, savedFilterToNamedFilter, type SavedFilterRow } from './savedFilterDefaults';
 import { normalizeScopeKey } from './scopeKey';
 
 export type SavedFavoriteItem = SavedFilterRow & {
@@ -76,7 +76,7 @@ export function useSavedFilters(params: {
           ],
         },
         {
-          fields: ['Id', 'Name', 'ScopeKey', 'Condition', 'IsDefault', 'UserId', 'CreatedUid', 'Sort'],
+          fields: ['Id', 'Name', 'ScopeKey', 'Condition', 'IsDefault', 'UserId', 'CreatedUid', 'UpdatedAt', 'CreatedAt', 'Sort'],
           orderBy: { field: 'Name', order: 'asc' },
         }
       )) as SavedFilterRow[];
@@ -104,8 +104,8 @@ export function useSavedFilters(params: {
     }
   }
 
-  const privateDefault = computed(() => favorites.value.find(f => f.IsDefault && !f.shared) || null);
-  const sharedDefault = computed(() => favorites.value.find(f => f.IsDefault && f.shared) || null);
+  const privateDefault = computed(() => pickLatestIsDefault(favorites.value, 'private'));
+  const sharedDefault = computed(() => pickLatestIsDefault(favorites.value, 'shared'));
 
   const defaultsForOpen = computed<NamedFilter[]>(() =>
     mergeSavedFilterDefaults({

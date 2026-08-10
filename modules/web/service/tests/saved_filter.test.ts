@@ -246,7 +246,7 @@ test('SF13: web FieldDefault and AppSetting models exist after declared service'
   expect(Array.isArray(as) && as.length > 0).toBe(true);
 });
 
-test('SavedFilter CRUD + IsDefault exclusivity + visibility', async () => {
+test('SavedFilter CRUD + IsDefault + visibility', async () => {
   resetRequestContext();
   const actor = uid('sf_actor');
   setIdentity(actor);
@@ -282,8 +282,9 @@ test('SavedFilter CRUD + IsDefault exclusivity + visibility', async () => {
     ['Id', 'IsDefault'] as any
   );
   expect((second as any).IsDefault).toBe(true);
+  // Multiple IsDefault rows are allowed; FE picks newest.
   const firstAgain = await SavedFilter.Browse(String((privateFav as any).Id), ['IsDefault'] as any);
-  expect((firstAgain as any).IsDefault).toBe(false);
+  expect((firstAgain as any).IsDefault).toBe(true);
 
   const sharedName = uid('shared');
   const shared = await SavedFilter.Create(
@@ -523,7 +524,7 @@ test('SavedFilter allows duplicate Name in the same ownership bucket', async () 
   await SavedFilter.DeleteById(String((second as any).Id));
 });
 
-test('SavedFilter ScopeKey scopes IsDefault mutex (Name may repeat across scopes)', async () => {
+test('SavedFilter ScopeKey scopes lists; IsDefault may repeat (Name may repeat)', async () => {
   resetRequestContext();
   const actor = uid('sf_scope');
   setIdentity(actor);
@@ -558,7 +559,7 @@ test('SavedFilter ScopeKey scopes IsDefault mutex (Name may repeat across scopes
   const aStill = await SavedFilter.Browse(String((a as any).Id), ['IsDefault'] as any);
   expect((aStill as any).IsDefault).toBe(true);
 
-  // Same ScopeKey + Name is allowed (no Name uniqueness); IsDefault mutex still clears peers in-scope.
+  // Same ScopeKey + Name is allowed; multiple IsDefault in one scope are allowed.
   const sameScope = await SavedFilter.Create(
     {
       Name: name,
@@ -566,33 +567,19 @@ test('SavedFilter ScopeKey scopes IsDefault mutex (Name may repeat across scopes
       Application: 'web',
       ModelName: 'SavedFilter',
       Condition: {},
+      IsDefault: true,
     } as any,
-    ['Id', 'ScopeKey', 'Name'] as any
+    ['Id', 'ScopeKey', 'Name', 'IsDefault'] as any
   );
   expect((sameScope as any).ScopeKey).toBe('/web/partners/:id');
   expect(String((sameScope as any).Name)).toBe(name);
-
-  const a2 = await SavedFilter.Create(
-    {
-      Name: uid('scoped_other'),
-      ScopeKey: '/web/partners/3',
-      Application: 'web',
-      ModelName: 'SavedFilter',
-      Condition: {},
-      IsDefault: true,
-    } as any,
-    ['Id', 'IsDefault'] as any
-  );
-  expect((a2 as any).IsDefault).toBe(true);
-  const aCleared = await SavedFilter.Browse(String((a as any).Id), ['IsDefault'] as any);
-  const bStill = await SavedFilter.Browse(String((b as any).Id), ['IsDefault'] as any);
-  expect((aCleared as any).IsDefault).toBe(false);
-  expect((bStill as any).IsDefault).toBe(true);
+  expect((sameScope as any).IsDefault).toBe(true);
+  const aStillDefault = await SavedFilter.Browse(String((a as any).Id), ['IsDefault'] as any);
+  expect((aStillDefault as any).IsDefault).toBe(true);
 
   await SavedFilter.DeleteById(String((a as any).Id));
   await SavedFilter.DeleteById(String((b as any).Id));
   await SavedFilter.DeleteById(String((sameScope as any).Id));
-  await SavedFilter.DeleteById(String((a2 as any).Id));
 });
 
 test('SavedFilter normalizes ScopeKey query/hash/opaque on Create', async () => {
@@ -665,7 +652,7 @@ test('SavedFilter Update keeps CreatedUid immutable and normalizes UserId', asyn
   await SavedFilter.DeleteById(String((created as any).Id));
 });
 
-test('SavedFilter private IsDefault update clears other defaults with exceptId', async () => {
+test('SavedFilter private IsDefault update leaves other defaults intact', async () => {
   resetRequestContext();
   const actor = uid('sf_except');
   setIdentity(actor);
@@ -691,7 +678,9 @@ test('SavedFilter private IsDefault update clears other defaults with exceptId',
   );
   await SavedFilter.UpdateById(String((b as any).Id), { IsDefault: true } as any, ['Id', 'IsDefault'] as any);
   const aAgain = await SavedFilter.Browse(String((a as any).Id), ['IsDefault'] as any);
-  expect((aAgain as any).IsDefault).toBe(false);
+  expect((aAgain as any).IsDefault).toBe(true);
+  const bAgain = await SavedFilter.Browse(String((b as any).Id), ['IsDefault'] as any);
+  expect((bAgain as any).IsDefault).toBe(true);
   await SavedFilter.DeleteById(String((a as any).Id));
   await SavedFilter.DeleteById(String((b as any).Id));
 });
@@ -740,7 +729,7 @@ test('SavedFilter Update reads unchanged fields from current via mergedField', a
   await SavedFilter.DeleteById(String((created as any).Id));
 });
 
-test('SavedFilter shared-default clear PermissionDenied when stranger cannot replace', async () => {
+test('SavedFilter allows multiple shared IsDefault from different users', async () => {
   resetRequestContext();
   const companyId = await resolveAdminCompanyId();
   const creator = await createBaseUser(companyId);
@@ -764,36 +753,25 @@ test('SavedFilter shared-default clear PermissionDenied when stranger cannot rep
   delete (ensureRequestContext() as any)[RR_CACHE_KEY];
 
   setIdentity(stranger);
-  let caught: any;
-  try {
-    await SavedFilter.Create(
-      {
-        Name: uid('shared_def_stranger'),
-        Application: 'web',
-        ModelName: 'SavedFilter',
-        Condition: {},
-        UserId: null,
-        IsDefault: true,
-      } as any,
-      ['Id'] as any
-    );
-  } catch (e) {
-    caught = e;
-  }
-  if (!caught) {
-    throw new Error('expected shared-default replacement to fail');
-  }
-  const codes = collectErrorCodes(caught);
-  const msg = String((caught as any)?.message || '');
-  if (!codes.includes('PermissionDenied') || !msg.includes("another user's shared default")) {
-    throw new Error(`expected PermissionDenied with shared-default message, got codes=${codes.join(',')} msg=${msg}`);
-  }
+  const strangerShared = await SavedFilter.Create(
+    {
+      Name: uid('shared_def_stranger'),
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      Condition: {},
+      UserId: null,
+      IsDefault: true,
+    } as any,
+    ['Id', 'IsDefault'] as any
+  );
+  expect((strangerShared as any).IsDefault).toBe(true);
 
-  // Creator's shared default must remain the sole default.
   setIdentity(creator);
   const again = await SavedFilter.Browse(String((shared as any).Id), ['IsDefault'] as any);
   expect((again as any).IsDefault).toBe(true);
   await SavedFilter.DeleteById(String((shared as any).Id));
+  setIdentity(stranger);
+  await SavedFilter.DeleteById(String((strangerShared as any).Id));
 });
 
 test('SavedFilter whitespace UserId normalizes to shared null', async () => {
@@ -816,7 +794,7 @@ test('SavedFilter whitespace UserId normalizes to shared null', async () => {
   await SavedFilter.DeleteById(String((created as any).Id));
 });
 
-test('SavedFilter creator can replace own shared default', async () => {
+test('SavedFilter creator can set multiple shared IsDefault', async () => {
   resetRequestContext();
   const actor = uid('sf_shared_ok');
   setIdentity(actor);
@@ -845,12 +823,12 @@ test('SavedFilter creator can replace own shared default', async () => {
   );
   expect((second as any).IsDefault).toBe(true);
   const firstAgain = await SavedFilter.Browse(String((first as any).Id), ['IsDefault'] as any);
-  expect((firstAgain as any).IsDefault).toBe(false);
+  expect((firstAgain as any).IsDefault).toBe(true);
   await SavedFilter.DeleteById(String((first as any).Id));
   await SavedFilter.DeleteById(String((second as any).Id));
 });
 
-test('SavedFilter Update without IsDefault still clears peers when row is default', async () => {
+test('SavedFilter Update without IsDefault keeps existing defaults', async () => {
   resetRequestContext();
   const actor = uid('sf_upd_def');
   setIdentity(actor);
@@ -883,7 +861,7 @@ test('SavedFilter Update without IsDefault still clears peers when row is defaul
   expect(String((bAgain as any).Name)).toBe(newName);
   expect((bAgain as any).IsDefault).toBe(true);
   const aAgain = await SavedFilter.Browse(String((a as any).Id), ['IsDefault'] as any);
-  expect((aAgain as any).IsDefault).toBe(false);
+  expect((aAgain as any).IsDefault).toBe(true);
   await SavedFilter.DeleteById(String((a as any).Id));
   await SavedFilter.DeleteById(String((b as any).Id));
 });
@@ -1006,93 +984,6 @@ test('SavedFilter _mergedField falls through values/self/current', () => {
   );
 });
 
-test('SavedFilter _clearOtherDefaults covers null candidates, remaining fail, and canWrite edges', async () => {
-  resetRequestContext();
-  const actor = uid('sf_clear_stub');
-  setIdentity(actor);
-  const SF = SavedFilter as any;
-  const sudoOwn = Object.prototype.hasOwnProperty.call(SF, 'sudo');
-  const updateOwn = Object.prototype.hasOwnProperty.call(SF, 'Update');
-  const origSudo = SF.sudo;
-  const origUpdate = SF.Update;
-  try {
-    // candidates || [] when preflight returns null; remaining non-array skips _fail.
-    SF.sudo = async (_fn: any, opts: any) => {
-      const hint = String(opts?.hint || '');
-      if (hint.includes('preflight')) return null;
-      if (hint.includes('check')) return null;
-      return origSudo.call(SavedFilter, _fn, opts);
-    };
-    SF.Update = async () => [];
-    await SF._clearOtherDefaults('web', 'SavedFilter', '', null);
-    // Empty-string userId uses the same shared-bucket branch as null.
-    await SF._clearOtherDefaults('web', 'SavedFilter', '/scope', '');
-
-    // Shared row missing CreatedUid → !canWrite → PermissionDenied (CreatedUid || '').
-    SF.sudo = async (_fn: any, opts: any) => {
-      const hint = String(opts?.hint || '');
-      if (hint.includes('preflight')) return [{ Id: 'x', UserId: null }];
-      return [];
-    };
-    await expectCode(
-      async () => SF._clearOtherDefaults('web', 'SavedFilter', '', null),
-      'PermissionDenied',
-      "another user's shared default"
-    );
-
-    // Private-ish row with falsy UserId 0 → UserId || '' → !canWrite.
-    SF.sudo = async (_fn: any, opts: any) => {
-      const hint = String(opts?.hint || '');
-      if (hint.includes('preflight')) return [{ Id: 'y', UserId: 0 }];
-      return [];
-    };
-    await expectCode(
-      async () => SF._clearOtherDefaults('web', 'SavedFilter', '', actor),
-      'PermissionDenied',
-      "another user's shared default"
-    );
-
-    // Writable preflight + stuck remaining after Update → post-check _fail.
-    SF.sudo = async (_fn: any, opts: any) => {
-      const hint = String(opts?.hint || '');
-      if (hint.includes('preflight')) return [{ Id: 'z', UserId: null, CreatedUid: actor }];
-      if (hint.includes('check')) return [{ Id: 'stuck' }];
-      return [];
-    };
-    SF.Update = async () => [];
-    await expectCode(
-      async () => SF._clearOtherDefaults('web', 'SavedFilter', '', null),
-      'PermissionDenied',
-      "another user's shared default"
-    );
-  } finally {
-    if (sudoOwn) SF.sudo = origSudo;
-    else delete SF.sudo;
-    if (updateOwn) SF.Update = origUpdate;
-    else delete SF.Update;
-  }
-});
-
-test('SavedFilter _clearOtherDefaults reads empty actor when identity has no userId', async () => {
-  resetRequestContext();
-  setIdentity(undefined);
-  const SF = SavedFilter as any;
-  const sudoOwn = Object.prototype.hasOwnProperty.call(SF, 'sudo');
-  const updateOwn = Object.prototype.hasOwnProperty.call(SF, 'Update');
-  const origSudo = SF.sudo;
-  const origUpdate = SF.Update;
-  try {
-    SF.sudo = async () => [];
-    SF.Update = async () => [];
-    // Hits `String(this.userId || '').trim()` with falsy BaseModel.userId.
-    await SF._clearOtherDefaults('web', 'SavedFilter', '', null);
-  } finally {
-    if (sudoOwn) SF.sudo = origSudo;
-    else delete SF.sudo;
-    if (updateOwn) SF.Update = origUpdate;
-    else delete SF.Update;
-  }
-});
 
 test('SavedFilter allows duplicate shared Name for null and empty-string UserId', async () => {
   resetRequestContext();

@@ -27,7 +27,7 @@ import { computeInitialAppliedFilters, computeAppliedGroups } from '@/web/web/qu
 import { buildQueryUpdatePayload } from '@/web/web/query/utils/search/payload';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import { actorUserId } from '@/web/web/composables/search/actorUserId';
-import { mergeSavedFilterDefaults, type SavedFilterRow } from '@/web/web/composables/search/savedFilterDefaults';
+import { mergeSavedFilterDefaults, pickLatestIsDefault, type SavedFilterRow } from '@/web/web/composables/search/savedFilterDefaults';
 import { normalizeScopeKey } from '@/web/web/composables/search/scopeKey';
 import { trySetupHook } from '@/web/web/composables/search/trySetupHook';
 import { createTranslate } from '@/web/web/i18n';
@@ -156,12 +156,12 @@ async function loadServerDefaults(): Promise<void> {
           },
         ],
       },
-      { fields: ['Id', 'Name', 'ScopeKey', 'Condition', 'IsDefault', 'UserId'] }
+      { fields: ['Id', 'Name', 'ScopeKey', 'Condition', 'IsDefault', 'UserId', 'UpdatedAt', 'CreatedAt'] }
     )) as SavedFilterRow[];
 
     if (gen !== serverDefaultsLoadGen) return;
-    serverPrivateDefault.value = (rows || []).find(r => r.IsDefault && r.UserId != null && r.UserId !== '') || null;
-    serverSharedDefault.value = (rows || []).find(r => r.IsDefault && (r.UserId == null || r.UserId === '')) || null;
+    serverPrivateDefault.value = pickLatestIsDefault(rows, 'private');
+    serverSharedDefault.value = pickLatestIsDefault(rows, 'shared');
   } catch {
     // Store may be unavailable before module codegen; fall back to code defaults.
     if (gen === serverDefaultsLoadGen) {

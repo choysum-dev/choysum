@@ -10,6 +10,8 @@ export type SavedFilterRow = {
   IsDefault?: boolean;
   UserId?: string | null;
   CreatedUid?: string | null;
+  UpdatedAt?: string | Date | null;
+  CreatedAt?: string | Date | null;
 };
 
 /**
@@ -23,10 +25,55 @@ export function savedFilterToNamedFilter(row: SavedFilterRow, selected = false):
   };
 }
 
+export function isSharedSavedFilterUserId(userId: unknown): boolean {
+  return userId == null || userId === '';
+}
+
+function toMillis(raw: unknown): number {
+  if (raw == null || raw === '') return 0;
+  if (raw instanceof Date) {
+    const t = raw.getTime();
+    return Number.isFinite(t) ? t : 0;
+  }
+  const t = Date.parse(String(raw));
+  return Number.isFinite(t) ? t : 0;
+}
+
+/** True when `a` should win over `b` as the effective default (newest first). */
+export function isNewerSavedFilter(a: SavedFilterRow, b: SavedFilterRow): boolean {
+  const ua = toMillis(a.UpdatedAt);
+  const ub = toMillis(b.UpdatedAt);
+  if (ua !== ub) return ua > ub;
+  const ca = toMillis(a.CreatedAt);
+  const cb = toMillis(b.CreatedAt);
+  if (ca !== cb) return ca > cb;
+  return String(a.Id || '') > String(b.Id || '');
+}
+
 /**
- * Merge order (SF): private IsDefault > shared IsDefault > code defaultFilters.selected.
- * At most one selected server default is promoted; code selected presets are kept only
- * when no server default wins.
+ * Among IsDefault rows, pick the newest private or shared favorite (Odoo-aligned: no server mutex).
+ */
+export function pickLatestIsDefault(
+  rows: SavedFilterRow[] | null | undefined,
+  kind: 'private' | 'shared'
+): SavedFilterRow | null {
+  const list = (rows || []).filter(r => {
+    if (!r?.IsDefault) return false;
+    const shared = isSharedSavedFilterUserId(r.UserId);
+    return kind === 'shared' ? shared : !shared;
+  });
+  if (!list.length) return null;
+  let best = list[0];
+  for (let i = 1; i < list.length; i++) {
+    if (isNewerSavedFilter(list[i], best)) best = list[i];
+  }
+  return best;
+}
+
+/**
+ * Merge order (SF): newest private IsDefault > newest shared IsDefault > code defaultFilters.selected.
+ * Multiple server IsDefault rows are allowed; callers should pass the latest per bucket
+ * (see {@link pickLatestIsDefault}).
  */
 export function mergeSavedFilterDefaults(opts: {
   privateDefault?: SavedFilterRow | null;

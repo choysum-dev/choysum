@@ -101,6 +101,33 @@ describe('OSearchView server defaults', () => {
     expect(defaults.find((d: any) => d.name === 'Code')?.selected).toBe(false);
   });
 
+  it('picks the newest private IsDefault when several exist', async () => {
+    sfSearch.mockResolvedValue([
+      {
+        Id: 'p-old',
+        Name: 'OlderPrivate',
+        Condition: {},
+        IsDefault: true,
+        UserId: 'me',
+        UpdatedAt: '2026-01-01T00:00:00.000Z',
+      },
+      {
+        Id: 'p-new',
+        Name: 'NewerPrivate',
+        Condition: {},
+        IsDefault: true,
+        UserId: 'me',
+        UpdatedAt: '2026-08-01T00:00:00.000Z',
+      },
+    ]);
+    const wrapper = mount(OSearchView as any, {
+      props: { store: makeStore() },
+      global: { stubs: { OSearch: OSearchStub } },
+    });
+    await flushPromises();
+    expect(JSON.parse(wrapper.find('.defaults').text())[0].name).toBe('NewerPrivate');
+  });
+
   it('skips Search when application or modelName is missing', async () => {
     const wrapper = mount(OSearchView as any, {
       props: { store: makeStore({ application: '', modelName: 'Widget' }) },

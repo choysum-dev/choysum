@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from 'vitest';
-import { mergeSavedFilterDefaults, savedFilterToNamedFilter } from './savedFilterDefaults';
+import { mergeSavedFilterDefaults, pickLatestIsDefault, savedFilterToNamedFilter } from './savedFilterDefaults';
 
 describe('savedFilterToNamedFilter', () => {
   it('maps Condition to query and optional selected', () => {
@@ -26,6 +26,32 @@ describe('savedFilterToNamedFilter', () => {
     expect(savedFilterToNamedFilter({ Name: null as any }).name).toBe('');
     expect(savedFilterToNamedFilter({ Name: undefined }).name).toBe('');
     expect(savedFilterToNamedFilter({}).name).toBe('');
+  });
+});
+
+describe('pickLatestIsDefault', () => {
+  it('picks newest private by UpdatedAt then Id', () => {
+    const rows = [
+      { Id: 'a', Name: 'Old', IsDefault: true, UserId: 'me', UpdatedAt: '2026-01-01T00:00:00.000Z' },
+      { Id: 'b', Name: 'New', IsDefault: true, UserId: 'me', UpdatedAt: '2026-06-01T00:00:00.000Z' },
+      { Id: 'c', Name: 'Shared', IsDefault: true, UserId: null, UpdatedAt: '2026-12-01T00:00:00.000Z' },
+      { Id: 'd', Name: 'Off', IsDefault: false, UserId: 'me', UpdatedAt: '2026-12-01T00:00:00.000Z' },
+    ];
+    expect(pickLatestIsDefault(rows, 'private')?.Id).toBe('b');
+    expect(pickLatestIsDefault(rows, 'shared')?.Id).toBe('c');
+  });
+
+  it('falls back to Id when timestamps tie or missing', () => {
+    const rows = [
+      { Id: 'id1', Name: 'A', IsDefault: true, UserId: 'me' },
+      { Id: 'id9', Name: 'B', IsDefault: true, UserId: 'me' },
+    ];
+    expect(pickLatestIsDefault(rows, 'private')?.Id).toBe('id9');
+  });
+
+  it('returns null when no matching IsDefault', () => {
+    expect(pickLatestIsDefault([], 'private')).toBeNull();
+    expect(pickLatestIsDefault([{ Id: 'x', IsDefault: false, UserId: 'me' }], 'private')).toBeNull();
   });
 });
 
