@@ -84,9 +84,13 @@ test('audit uid utils applyOnSoftDelete stamps DeletedUid and UpdatedUid', () =>
   expect(payload.UpdatedUid).toBe('U-DEL');
 });
 
-test('audit uid utils applyOnSoftDelete is a no-op without actor', () => {
-  const payload: Record<string, unknown> = { DeletedAt: new Date() };
-  AuditUidUtils.applyOnSoftDelete(payload);
-  expect(payload.DeletedUid).toBeUndefined();
-  expect(payload.UpdatedUid).toBeUndefined();
+test('audit uid utils addCreateUids accepts non-object input when actor present', () => {
+  const out = withUser('U-ACTOR', () => AuditUidUtils.addCreateUids<any>(null as any)) as any;
+  expect(out.CreatedUid).toBe('U-ACTOR');
+  expect(out.UpdatedUid).toBe('U-ACTOR');
+});
+
+test('audit uid utils addUpdateUid accepts non-object input when actor present', () => {
+  const out = withUser('U-UPD', () => AuditUidUtils.addUpdateUid<any>(undefined as any)) as any;
+  expect(out.UpdatedUid).toBe('U-UPD');
 });

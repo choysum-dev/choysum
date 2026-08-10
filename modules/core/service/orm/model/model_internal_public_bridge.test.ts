@@ -12,6 +12,7 @@ import { ReadOperations } from './model_read';
 import { ComputeCascadeEngine } from '../../runtime/compute/cascade';
 import { ComputeEngine } from '../../runtime/compute/engine';
 import { MetadataStorage } from '../metadata/storage';
+import { registerServiceFactory, unregisterServiceFactory } from '../../rpc/service_factory';
 
 @Model('test.ModelInternalPublicBridge')
 class ModelInternalPublicBridge extends BaseModel {
@@ -3057,5 +3058,63 @@ test('CreateOperations.Create delegates create without model-level persist recom
     RepositoryFactory.getRepository = originalGetRepository;
     ComputeEngine.recompute = originalRecompute;
     ReadOperations.Browse = originalBrowse;
+  }
+});
+
+test('UpdateOperations.Update attachment-only clear touches row via empty repository.update', async () => {
+  const originalPrepareForUpdate = RelationFactory.prepareForUpdate;
+  const originalResolveRepository = (UpdateOperations as any).resolveRepository;
+  const originalTriggerUpstream = ComputeCascadeEngine.triggerUpstream;
+  const originalTriggerDownstream = ComputeCascadeEngine.triggerDownstream;
+
+  const meta = MetadataStorage.instance.getModelMetadata(ModelInternalPublicBridge as any) as any;
+  const snapshotFields = new Map(meta.fields);
+  const updateCalls: any[] = [];
+  const unbindCalls: any[] = [];
+
+  try {
+    meta.fields.set('Avatar', { type: 'binary' });
+
+    RelationFactory.prepareForUpdate = (async () => ({
+      // Attachment rewrite leaves Avatar:null, but prepare may drop it; empty scalars force the touch path.
+      processedValue: {},
+      relations: emptyToManyRelations(),
+    })) as any;
+
+    (UpdateOperations as any).resolveRepository = (() => ({
+      search: async () => [{ Id: 'ROW-ATT', UpdatedAt: new Date('2024-01-01T00:00:00.000Z'), Avatar: 'bind-old' }],
+      update: async (vals: any, cond: any) => {
+        updateCalls.push({ vals, cond });
+      },
+      withValidationBypass: async (fn: () => Promise<any>) => await fn(),
+    })) as any;
+
+    registerServiceFactory('document.AttachmentBinding', () => ({
+      Bind: async () => ({ attachmentBindingId: 'unused' }),
+      Unbind: async (req: any) => {
+        unbindCalls.push(req);
+      },
+      Search: async () => [],
+    }));
+
+    ComputeCascadeEngine.triggerUpstream = (async () => {}) as any;
+    ComputeCascadeEngine.triggerDownstream = (async () => {}) as any;
+
+    const result = await UpdateOperations.Update(
+      ModelInternalPublicBridge as any,
+      ['Id', '=', 'ROW-ATT'] as any,
+      { Avatar: null } as any
+    );
+
+    expect(result).toEqual([{ Id: 'ROW-ATT' }]);
+    expect(unbindCalls.length).toBe(1);
+    expect(updateCalls.some(c => c.vals && Object.keys(c.vals).length === 0)).toBe(true);
+  } finally {
+    meta.fields = snapshotFields;
+    RelationFactory.prepareForUpdate = originalPrepareForUpdate;
+    (UpdateOperations as any).resolveRepository = originalResolveRepository;
+    ComputeCascadeEngine.triggerUpstream = originalTriggerUpstream;
+    ComputeCascadeEngine.triggerDownstream = originalTriggerDownstream;
+    unregisterServiceFactory('document.AttachmentBinding');
   }
 });
