@@ -102,6 +102,16 @@ SPDX-License-Identifier: Apache-2.0
                   </el-button>
                   <el-button
                     v-if="it.canDelete"
+                    class="o-search__menu-item-edit"
+                    text
+                    size="small"
+                    :aria-label="_t('Edit favorite %s', it.name)"
+                    @click.stop="onEditFavorite(it)"
+                  >
+                    <el-icon><EditPen /></el-icon>
+                  </el-button>
+                  <el-button
+                    v-if="it.canDelete"
                     class="o-search__menu-item-delete"
                     text
                     size="small"
@@ -212,7 +222,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts" generic="T extends BaseModel">
 import { ref, computed, watch, nextTick, onMounted } from 'vue';
-import { Search as SearchIcon, ArrowDown, Check } from '@element-plus/icons-vue';
+import { Search as SearchIcon, ArrowDown, Check, EditPen } from '@element-plus/icons-vue';
 import type { BaseModel } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { useSearch } from '@/web/web/composables/search';
@@ -374,6 +384,7 @@ const {
   load: loadFavorites,
   apply: applyFavorite,
   saveCurrent: saveFavoriteCurrent,
+  updateMeta: updateFavoriteMeta,
   remove: removeFavorite,
   defaultsForOpen,
 } = useUserFilters({
@@ -390,11 +401,14 @@ const {
 });
 
 const saveFavoriteOpen = ref(false);
+const editingFavoriteId = ref<string | null>(null);
 const saveFavoriteName = ref('');
 const saveFavoriteIsDefault = ref(false);
 const saveFavoriteShared = ref(false);
 const saveFavoriteSaving = ref(false);
-const saveFavoriteDialogTitle = computed(() => _t('Save current filters'));
+const saveFavoriteDialogTitle = computed(() =>
+  editingFavoriteId.value ? _t('Edit favorite') : _t('Save current filters')
+);
 
 function onApplyFavorite(it: { name: string; filter: any }) {
   const before = filters.value.length;
@@ -435,10 +449,20 @@ function onRetryFavorites() {
 
 function onOpenSaveFavorite() {
   menuVisible.value = false;
+  editingFavoriteId.value = null;
   // Align with Odoo CustomFavoriteItem seeding, but keep Name language-stable (term src / model id).
   saveFavoriteName.value = resolveDefaultFavoriteName(store);
   saveFavoriteIsDefault.value = false;
   saveFavoriteShared.value = false;
+  saveFavoriteOpen.value = true;
+}
+
+function onEditFavorite(it: { id: string; name: string; isDefault: boolean; shared: boolean }) {
+  menuVisible.value = false;
+  editingFavoriteId.value = it.id;
+  saveFavoriteName.value = it.name;
+  saveFavoriteIsDefault.value = !!it.isDefault;
+  saveFavoriteShared.value = !!it.shared;
   saveFavoriteOpen.value = true;
 }
 
@@ -451,14 +475,25 @@ async function onConfirmSaveFavorite() {
   }
   saveFavoriteSaving.value = true;
   try {
-    await saveFavoriteCurrent({
-      name,
-      isDefault: saveFavoriteIsDefault.value,
-      shared: saveFavoriteShared.value,
-    });
+    const editId = editingFavoriteId.value;
+    if (editId) {
+      await updateFavoriteMeta(editId, {
+        name,
+        isDefault: saveFavoriteIsDefault.value,
+        shared: saveFavoriteShared.value,
+      });
+      ElMessage.success(_t('Favorite updated'));
+    } else {
+      await saveFavoriteCurrent({
+        name,
+        isDefault: saveFavoriteIsDefault.value,
+        shared: saveFavoriteShared.value,
+      });
+      ElMessage.success(_t('Favorite saved'));
+    }
     saveFavoriteOpen.value = false;
+    editingFavoriteId.value = null;
     emit('defaults-ready', defaultsForOpen.value as NamedFilter[]);
-    ElMessage.success(_t('Favorite saved'));
   } catch (e: any) {
     ElMessage.error(e instanceof Error ? e.message : String(e));
   } finally {
@@ -751,6 +786,15 @@ watch(
 .o-search__menu-item-delete:hover {
   opacity: 1;
   color: var(--el-color-danger);
+}
+.o-search__menu-item-edit {
+  flex: 0 0 auto;
+  opacity: 0.55;
+  padding: 0 4px !important;
+}
+.o-search__menu-item-edit:hover {
+  opacity: 1;
+  color: var(--el-color-primary);
 }
 .o-search__menu-item {
   justify-content: flex-start;

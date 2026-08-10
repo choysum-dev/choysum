@@ -16,6 +16,7 @@ const { sfMocks, actorState } = vi.hoisted(() => ({
       UserId: values.UserId,
       CreatedUid: 'me',
     })),
+    UpdateById: vi.fn(async () => ({})),
     DeleteById: vi.fn(async () => 1),
   },
   actorState: { id: 'me' as string },
@@ -59,6 +60,7 @@ describe('useUserFilters', () => {
     actorState.id = 'me';
     sfMocks.Search.mockReset();
     sfMocks.Create.mockReset();
+    sfMocks.UpdateById.mockReset();
     sfMocks.DeleteById.mockReset();
     sfMocks.Search.mockResolvedValue([]);
     sfMocks.Create.mockImplementation(async (values: any) => ({
@@ -69,6 +71,7 @@ describe('useUserFilters', () => {
       UserId: values.UserId,
       CreatedUid: 'me',
     }));
+    sfMocks.UpdateById.mockResolvedValue({});
     sfMocks.DeleteById.mockResolvedValue(1);
     (filtersToQuery as any).mockClear?.();
   });
@@ -417,6 +420,62 @@ describe('useUserFilters', () => {
     await api.remove('fav-1');
     expect(sfMocks.DeleteById).toHaveBeenCalledWith('fav-1');
     expect(sfMocks.Search).toHaveBeenCalled();
+  });
+
+  it('updateMeta writes Name/IsDefault/UserId only and reloads', async () => {
+    const api = runInSetup(() =>
+      useUserFilters({
+        store: { application: 'demo', modelName: 'Widget' },
+        filtersRef: ref([{ id: 'g1' }]),
+        applyNamedFilter: vi.fn(),
+      })
+    );
+    sfMocks.Search.mockClear();
+    await api.updateMeta('fav-9', { name: 'Renamed', isDefault: true, shared: false });
+    expect(sfMocks.UpdateById).toHaveBeenCalledWith('fav-9', {
+      Name: 'Renamed',
+      IsDefault: true,
+      UserId: 'me',
+    });
+    const payload = sfMocks.UpdateById.mock.calls[0]![1] as Record<string, unknown>;
+    expect(payload).not.toHaveProperty('Condition');
+    expect(sfMocks.Search).toHaveBeenCalled();
+
+    sfMocks.UpdateById.mockClear();
+    await api.updateMeta('fav-9', { name: 'SharedNow', shared: true });
+    expect(sfMocks.UpdateById).toHaveBeenCalledWith('fav-9', {
+      Name: 'SharedNow',
+      IsDefault: false,
+      UserId: null,
+    });
+  });
+
+  it('updateMeta no-ops when id or name missing', async () => {
+    const api = runInSetup(() =>
+      useUserFilters({
+        store: { application: 'demo', modelName: 'Widget' },
+        filtersRef: ref([]),
+        applyNamedFilter: vi.fn(),
+      })
+    );
+    await api.updateMeta('', { name: 'X' });
+    await api.updateMeta('fav-1', { name: '  ' });
+    expect(sfMocks.UpdateById).not.toHaveBeenCalled();
+  });
+
+  it('updateMeta omits UserId when actor empty and private', async () => {
+    actorState.id = '';
+    const api = runInSetup(() =>
+      useUserFilters({
+        store: { application: 'demo', modelName: 'Widget' },
+        filtersRef: ref([]),
+        applyNamedFilter: vi.fn(),
+      })
+    );
+    await api.updateMeta('fav-1', { name: 'NoActor', shared: false });
+    const values = sfMocks.UpdateById.mock.calls[0]![1] as Record<string, unknown>;
+    expect(values).toMatchObject({ Name: 'NoActor', IsDefault: false });
+    expect(values).not.toHaveProperty('UserId');
   });
 
   it('load maps missing CreatedUid and private canDelete when actor empty', async () => {

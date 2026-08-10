@@ -19,6 +19,7 @@ const { savedFiltersApi } = vi.hoisted(() => ({
     load: vi.fn(async () => {}),
     apply: vi.fn(),
     saveCurrent: vi.fn(async () => ({ Id: '1' })),
+    updateMeta: vi.fn(async () => {}),
     remove: vi.fn(async () => {}),
     lastCodeDefaults: undefined as unknown,
     lastScopeKey: undefined as unknown,
@@ -87,6 +88,7 @@ vi.mock('@/web/web/composables/search/useUserFilters', async () => {
         load: savedFiltersApi.load,
         apply: savedFiltersApi.apply,
         saveCurrent: savedFiltersApi.saveCurrent,
+        updateMeta: savedFiltersApi.updateMeta,
         remove: savedFiltersApi.remove,
       };
     },
@@ -177,9 +179,11 @@ describe('OSearch behavior', () => {
     savedFiltersApi.load.mockClear();
     savedFiltersApi.apply.mockClear();
     savedFiltersApi.saveCurrent.mockClear();
+    savedFiltersApi.updateMeta.mockClear();
     savedFiltersApi.remove.mockClear();
     savedFiltersApi.load.mockResolvedValue(undefined);
     savedFiltersApi.saveCurrent.mockResolvedValue({ Id: '1' });
+    savedFiltersApi.updateMeta.mockResolvedValue(undefined);
     savedFiltersApi.remove.mockResolvedValue(undefined);
     savedFiltersApi.lastScopeKey = undefined;
     savedFiltersApi.lastCodeDefaults = undefined;
@@ -695,5 +699,56 @@ describe('OSearch behavior', () => {
       isDefault: false,
       shared: true,
     });
+  });
+
+  it('edits favorite metadata via dialog without create', async () => {
+    const { ElMessage } = await import('element-plus');
+    savedFiltersApi.state!.favoriteMenuItems = [
+      {
+        id: 'fav-edit',
+        name: 'Company Management',
+        shared: true,
+        isDefault: true,
+        canDelete: true,
+        filter: { And: [['X', '=', 1]] },
+      },
+      {
+        id: 'fav-readonly',
+        name: 'Others',
+        shared: true,
+        isDefault: false,
+        canDelete: false,
+        filter: {},
+      },
+    ];
+    const wrapper = mountSearch();
+    await flushPromises();
+    expect(wrapper.findAll('.o-search__menu-item-edit')).toHaveLength(1);
+    expect(wrapper.findAll('.o-search__menu-item-delete')).toHaveLength(1);
+
+    await wrapper.find('.o-search__menu-item-edit').trigger('click');
+    await nextTick();
+    const dialog = wrapper.find('.el-dialog');
+    expect(dialog.exists()).toBe(true);
+    expect(dialog.attributes('data-title')).toBe('Edit favorite');
+    expect((wrapper.find('input.fav-name').element as HTMLInputElement).value).toBe('Company Management');
+    const defaultCheck = wrapper.findAll('.fav-check').find(l => l.text().includes('Use by default'));
+    const sharedCheck = wrapper.findAll('.fav-check').find(l => l.text().includes('Share with all users'));
+    expect((defaultCheck!.find('input').element as HTMLInputElement).checked).toBe(true);
+    expect((sharedCheck!.find('input').element as HTMLInputElement).checked).toBe(true);
+
+    await wrapper.find('input.fav-name').setValue('Renamed Fav');
+    await sharedCheck!.find('input').setValue(false);
+    const beforeReady = wrapper.emitted('defaults-ready')?.length ?? 0;
+    await wrapper.findAll('.el-btn').find(b => b.text() === 'Save')!.trigger('click');
+    await flushPromises();
+    expect(savedFiltersApi.updateMeta).toHaveBeenCalledWith('fav-edit', {
+      name: 'Renamed Fav',
+      isDefault: true,
+      shared: false,
+    });
+    expect(savedFiltersApi.saveCurrent).not.toHaveBeenCalled();
+    expect(ElMessage.success).toHaveBeenCalledWith('Favorite updated');
+    expect((wrapper.emitted('defaults-ready')?.length ?? 0)).toBe(beforeReady + 1);
   });
 });

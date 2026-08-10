@@ -194,6 +194,30 @@ export function useUserFilters(params: {
     await load();
   }
 
+  /** Update Name / IsDefault / shared only; leave Condition unchanged. */
+  async function updateMeta(
+    id: string,
+    opts: { name: string; isDefault?: boolean; shared?: boolean }
+  ): Promise<void> {
+    const name = String(opts.name || '').trim();
+    const favId = String(id || '').trim();
+    if (!favId || !name) return;
+
+    const me = actorUserId();
+    const uf = userFilterStore() as any;
+    const values: Record<string, any> = {
+      Name: name,
+      IsDefault: !!opts.isDefault,
+    };
+    if (opts.shared) {
+      values.UserId = null;
+    } else if (me) {
+      values.UserId = me;
+    }
+    await uf.UpdateById(favId, values);
+    await load();
+  }
+
   return {
     favorites,
     favoriteMenuItems,
@@ -202,6 +226,7 @@ export function useUserFilters(params: {
     load,
     apply,
     saveCurrent,
+    updateMeta,
     remove,
     defaultsForOpen,
     privateDefault,
