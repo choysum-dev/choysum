@@ -3,6 +3,7 @@
 
 import { RelationFactory } from '../relation';
 import type { ExtractedRelations } from '../relation/types';
+import { AuditUidUtils } from '../utils/audit_uid';
 import { TimestampUtils } from '../utils/timestamp';
 import type { Insertable, FieldSelection } from '../repository/types';
 import type BaseModel from './model';
@@ -255,7 +256,7 @@ export class CreateOperations {
     }
 
     // 4) Timestamps.
-    const valueWithTimestamps = TimestampUtils.addTimestamps(processedValue);
+    const valueWithTimestamps = AuditUidUtils.addCreateUids(TimestampUtils.addTimestamps(processedValue));
 
     // 5) Insert.
     const repository = getModelRepository(ModelCtor);
@@ -464,7 +465,7 @@ export class CreateOperations {
     for (const value of preProcessed) {
       const { processedValue, relations } = await RelationFactory.prepareForCreate(ModelCtor, value);
 
-      const valueWithTimestamps = TimestampUtils.addTimestamps(processedValue);
+      const valueWithTimestamps = AuditUidUtils.addCreateUids(TimestampUtils.addTimestamps(processedValue));
       processedValues.push(valueWithTimestamps);
       allRelations.push(relations);
     }
