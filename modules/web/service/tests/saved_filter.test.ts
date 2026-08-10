@@ -597,6 +597,24 @@ test('SavedFilter ScopeKey scopes Name uniqueness and IsDefault mutex', async ()
   await SavedFilter.DeleteById(String((a2 as any).Id));
 });
 
+test('SavedFilter normalizes ScopeKey query/hash/opaque on Create', async () => {
+  resetRequestContext();
+  const actor = uid('sf_scope_norm');
+  setIdentity(actor);
+  const created = await SavedFilter.Create(
+    {
+      Name: uid('scoped_norm'),
+      ScopeKey: '\\web\\partners\\abc123def456ghi7\\edit?x=1#y',
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      Condition: {},
+    } as any,
+    ['Id', 'ScopeKey'] as any
+  );
+  expect((created as any).ScopeKey).toBe('/web/partners/:id/edit');
+  await SavedFilter.DeleteById(String((created as any).Id));
+});
+
 test('SavedFilter fills Create defaults (UserId/IsDefault/Active/Condition)', async () => {
   resetRequestContext();
   const actor = uid('sf_defaults');

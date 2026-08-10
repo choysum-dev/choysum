@@ -40,9 +40,23 @@ describe('stableTitleSource', () => {
     expect(stableTitleSource('fallback', term)).toBe('Users');
     expect(stableTitleSource('Plain')).toBe('Plain');
   });
+
+  it('falls back to title when TermReference.src is empty', () => {
+    const term = createTermReference('web', '', { scope: 'web/pages' });
+    expect(stableTitleSource('Fallback', term)).toBe('Fallback');
+  });
+
+  it('ignores non-TermReference titleText', () => {
+    expect(stableTitleSource('Plain', { not: 'a term' } as any)).toBe('Plain');
+  });
 });
 
 describe('routeTitleFromLocation', () => {
+  it('returns empty when route is missing', () => {
+    expect(routeTitleFromLocation(null)).toBe('');
+    expect(routeTitleFromLocation(undefined)).toBe('');
+  });
+
   it('reads pageTitle string and function', () => {
     expect(routeTitleFromLocation({ meta: { pageTitle: 'Contacts' } })).toBe('Contacts');
     expect(
@@ -51,6 +65,23 @@ describe('routeTitleFromLocation', () => {
         name: 'World',
       })
     ).toBe('Hi World');
+  });
+
+  it('swallows pageTitle function errors', () => {
+    expect(
+      routeTitleFromLocation({
+        meta: {
+          pageTitle: () => {
+            throw new Error('boom');
+          },
+        },
+      })
+    ).toBe('');
+  });
+
+  it('skips blank pageTitle and falls back to meta.title', () => {
+    expect(routeTitleFromLocation({ meta: { pageTitle: '  ', title: 'Legacy' } })).toBe('Legacy');
+    expect(routeTitleFromLocation({ meta: { title: '  ' } })).toBe('');
   });
 
   it('falls back to meta.title and ignores technical route.name', () => {
@@ -73,6 +104,9 @@ describe('modelIdentityFromStore', () => {
   it('joins application and modelName', () => {
     expect(modelIdentityFromStore({ application: 'auth', modelName: 'User' })).toBe('auth.User');
     expect(modelIdentityFromStore({ application: 'auth' })).toBe('auth');
+    expect(modelIdentityFromStore({ modelName: 'User' })).toBe('User');
+    expect(modelIdentityFromStore({ application: '  ', modelName: '  ' })).toBe('');
     expect(modelIdentityFromStore(null)).toBe('');
+    expect(modelIdentityFromStore(undefined)).toBe('');
   });
 });

@@ -21,6 +21,7 @@ const { savedFiltersApi } = vi.hoisted(() => ({
     saveCurrent: vi.fn(async () => ({ Id: '1' })),
     remove: vi.fn(async () => {}),
     lastCodeDefaults: undefined as unknown,
+    lastScopeKey: undefined as unknown,
   },
 }));
 
@@ -67,7 +68,13 @@ vi.mock('@/web/web/composables/search/useSavedFilters', async () => {
     defaultsForOpen: [] as any[],
   });
   return {
-    useSavedFilters: (params: { applyNamedFilter: (nf: any) => void; codeDefaults?: () => any }) => {
+    useSavedFilters: (params: {
+      applyNamedFilter: (nf: any) => void;
+      codeDefaults?: () => any;
+      scopeKey?: () => string;
+    }) => {
+      // Exercise OSearch scopeKey wiring even though Search is mocked.
+      savedFiltersApi.lastScopeKey = params.scopeKey?.();
       savedFiltersApi.lastCodeDefaults = params.codeDefaults?.();
       savedFiltersApi.apply.mockImplementation((fav: { name: string; filter: any }) => {
         params.applyNamedFilter({ name: fav.name, query: fav.filter });
@@ -174,6 +181,8 @@ describe('OSearch behavior', () => {
     savedFiltersApi.load.mockResolvedValue(undefined);
     savedFiltersApi.saveCurrent.mockResolvedValue({ Id: '1' });
     savedFiltersApi.remove.mockResolvedValue(undefined);
+    savedFiltersApi.lastScopeKey = undefined;
+    savedFiltersApi.lastCodeDefaults = undefined;
   });
 
   function mountSearch(props: Record<string, any> = {}) {
@@ -187,6 +196,12 @@ describe('OSearch behavior', () => {
       global: { stubs: elementStubs },
     });
   }
+
+  it('wires empty scopeKey when route inject is unavailable', async () => {
+    mountSearch();
+    await flushPromises();
+    expect(savedFiltersApi.lastScopeKey).toBe('');
+  });
 
   it('emits query-update on enter / search icon and syncs controlled keyword', async () => {
     const wrapper = mountSearch({ currentKeyword: 'hello' });

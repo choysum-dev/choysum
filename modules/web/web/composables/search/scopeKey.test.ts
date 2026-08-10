@@ -15,6 +15,8 @@ describe('normalizeScopeKey', () => {
 
   it('strips query and hash, collapses slashes, trims trailing slash', () => {
     expect(normalizeScopeKey('/web/users/?q=1#hash')).toBe('/web/users');
+    expect(normalizeScopeKey('/web/users?q=1')).toBe('/web/users');
+    expect(normalizeScopeKey('/web/users#hash')).toBe('/web/users');
     expect(normalizeScopeKey('web/users///')).toBe('/web/users');
     expect(normalizeScopeKey('\\web\\users\\')).toBe('/web/users');
     expect(normalizeScopeKey('/')).toBe('/');
@@ -23,6 +25,7 @@ describe('normalizeScopeKey', () => {
   it('replaces numeric and opaque id segments with :id', () => {
     expect(normalizeScopeKey('/web/partners/42/edit')).toBe('/web/partners/:id/edit');
     expect(normalizeScopeKey('/web/partners/abc123def456ghi7/form')).toBe('/web/partners/:id/form');
+    expect(normalizeScopeKey('/web/partners/AbC_def-0123456789/x')).toBe('/web/partners/:id/x');
     expect(normalizeScopeKey('/web/partners/short/form')).toBe('/web/partners/short/form');
   });
 });
