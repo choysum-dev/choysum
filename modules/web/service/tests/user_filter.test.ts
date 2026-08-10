@@ -13,14 +13,6 @@ import UserFilter from '@/web/service/models/user_filter';
 
 const MetaModelService = createServiceByModel<typeof MetaModel>('meta.MetaModel');
 
-async function metaModelId(app: string, name: string): Promise<string> {
-  const rows = await MetaModelService.Search(
-    { And: [['Application', '=', app], ['Name', '=', name]] } as any,
-    { fields: ['Id'], limit: 1 } as any
-  );
-  return String(rows?.[0]?.Id || '').trim();
-}
-
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
 
@@ -251,9 +243,6 @@ test('UserFilter CRUD + IsDefault + visibility', async () => {
   const actor = uid('sf_actor');
   setIdentity(actor);
 
-  const modelId = await metaModelId('web', 'UserFilter');
-  expect(modelId).toBeTruthy();
-
   const nameA = uid('fav_a');
   const privateFav = await UserFilter.Create(
     {
@@ -263,10 +252,9 @@ test('UserFilter CRUD + IsDefault + visibility', async () => {
       Condition: { And: [['Active', '=', true]] },
       IsDefault: true,
     } as any,
-    ['Id', 'UserId', 'ModelId', 'CreatedUid', 'IsDefault'] as any
+    ['Id', 'UserId', 'CreatedUid', 'IsDefault'] as any
   );
   expect(String((privateFav as any).UserId)).toBe(actor);
-  expect(String((privateFav as any).ModelId)).toBe(modelId);
   expect(String((privateFav as any).CreatedUid)).toBe(actor);
   expect((privateFav as any).IsDefault).toBe(true);
 
@@ -327,24 +315,22 @@ test('UserFilter CRUD + IsDefault + visibility', async () => {
   await UserFilter.DeleteById(String((shared as any).Id));
 });
 
-test('UserFilter rejects Create without effective MetaModel', async () => {
+test('UserFilter allows Create without an installed MetaModel for Application/ModelName', async () => {
   resetRequestContext();
   const actor = uid('sf_noeff');
   setIdentity(actor);
-  await expectCode(
-    async () =>
-      UserFilter.Create(
-        {
-          Name: uid('gone'),
-          Application: 'no_such_app',
-          ModelName: 'NoSuchModel',
-          Condition: {},
-        } as any,
-        ['Id'] as any
-      ),
-    'FailedPrecondition',
-    'No effective model'
+  const created = await UserFilter.Create(
+    {
+      Name: uid('gone'),
+      Application: 'no_such_app',
+      ModelName: 'NoSuchModel',
+      Condition: {},
+    } as any,
+    ['Id', 'Application', 'ModelName'] as any
   );
+  expect(String((created as any).Application)).toBe('no_such_app');
+  expect(String((created as any).ModelName)).toBe('NoSuchModel');
+  await UserFilter.DeleteById(String((created as any).Id));
 });
 
 test('UserFilter rejects foreign UserId on Create', async () => {
@@ -1022,10 +1008,6 @@ test('UserFilter validateUserFilterConstraint covers empty create Id fallbacks',
   const actor = uid('sf_validate');
   setIdentity(actor);
   const SF = UserFilter as any;
-  const modelId = await metaModelId('web', 'UserFilter');
-  if (!modelId) {
-    throw new Error('expected MetaModel for web.UserFilter');
-  }
 
   // Create with whitespace Id → trim || undefined (exceptId omitted on unique check).
   const valuesCreate: Record<string, any> = {
@@ -1038,7 +1020,6 @@ test('UserFilter validateUserFilterConstraint covers empty create Id fallbacks',
   };
   await SF.validateUserFilterConstraint({}, { mode: 'create', values: valuesCreate, current: undefined });
   expect(valuesCreate.UserId).toBe(actor);
-  expect(valuesCreate.ModelId).toBe(modelId);
   // CreatedUid is stamped by BaseModel, not this constraint.
   expect(valuesCreate.CreatedUid).toBeUndefined();
 
@@ -1052,7 +1033,7 @@ test('UserFilter validateUserFilterConstraint covers empty create Id fallbacks',
     IsDefault: false,
   };
   await SF.validateUserFilterConstraint({}, { mode: 'create', values: valuesNullId, current: undefined });
-  expect(valuesNullId.ModelId).toBe(modelId);
+  expect(valuesNullId.UserId).toBe(actor);
 
   const valuesUndefId: Record<string, any> = {
     Name: uid('undef_id'),
@@ -1062,7 +1043,7 @@ test('UserFilter validateUserFilterConstraint covers empty create Id fallbacks',
     IsDefault: false,
   };
   await SF.validateUserFilterConstraint({}, { mode: 'create', values: valuesUndefId, current: undefined });
-  expect(valuesUndefId.ModelId).toBe(modelId);
+  expect(valuesUndefId.UserId).toBe(actor);
 
   // Update path no longer rewrites CreatedUid (BaseModel strips client writes).
   const valuesUpd: Record<string, any> = {
@@ -1072,7 +1053,7 @@ test('UserFilter validateUserFilterConstraint covers empty create Id fallbacks',
     IsDefault: false,
   };
   await SF.validateUserFilterConstraint(
-    { CreatedUid: 'fromSelf', UserId: actor, ModelId: modelId, Id: uid('row') },
+    { CreatedUid: 'fromSelf', UserId: actor, Id: uid('row') },
     {
       mode: 'update',
       values: valuesUpd,

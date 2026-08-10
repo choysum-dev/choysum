@@ -6,22 +6,16 @@ import { Constraint, type ConstraintContext } from '@/core/service/api/constrain
 import type { QueryCondition } from '@/core/service/api/query';
 import { ChoysumError, GrpcCode } from '@/core/service/error';
 import { createTranslate } from '@/core/service/i18n';
-import { createServiceByModel } from '@/core/service/rpc';
-import type MetaModel from '@/meta/service/models/model';
 
 const { _lt } = createTranslate('web', { scope: 'web.model.UserFilter.fields' });
 const { _t } = createTranslate('web', { scope: 'web.model.UserFilter' });
-const MetaModelService = createServiceByModel<typeof MetaModel>('meta.MetaModel');
 
 /**
  * Persisted Favorites filter for OSearch (Owner Application = web).
  *
- * Identity: Application + ModelName. ModelId stores the unique live meta.MetaModel id.
- * Name is not unique (align modern Odoo ir.filters). Multiple IsDefault rows are allowed;
- * the client picks the newest (UpdatedAt/Id) per private vs shared bucket.
+ * Identity: Application + ModelName (+ ScopeKey). Align modern Odoo ir.filters:
+ * Name is not unique; multiple IsDefault rows are allowed (FE picks newest).
  * ScopeKey is stored as written (FE normalizes route paths before write/query).
- * ModelId → `@Constraint` (uses ctx.mode; Create pre-assigns Id before
- * validation, so `!this.Id` is not a reliable create signal).
  * Shared write/delete ACL → auth.RoleRecordRule seeds in modules/web/data/bootstrap.json.
  */
 @Model('UserFilter', { application: 'web', softDelete: false })
@@ -78,21 +72,6 @@ export default class UserFilter extends BaseModel {
   ModelName: string;
 
   /**
-   * Effective meta.MetaModel id for Application + ModelName (SF12).
-   * notNull is false at the Field/kernel layer because required checks run before
-   * `@Constraint` writeback; the constraint always resolves and requires ModelId.
-   */
-  @Field<MetaModel>({
-    type: 'ManyToOneRef',
-    relation: { targetModel: 'meta.MetaModel' },
-    notNull: false,
-    size: 20,
-    index: true,
-    string: _lt('Model'),
-  })
-  ModelId: string;
-
-  /**
    * QueryCondition JSON applied via store.Search (Choysum Condition, not Odoo domain).
    */
   @Field({
@@ -104,18 +83,7 @@ export default class UserFilter extends BaseModel {
   Condition: QueryCondition<any>;
 
   /**
-   * Optional sort specification JSON.
-   */
-  @Field({
-    type: 'jsonobject',
-    notNull: false,
-    string: _lt('Sort'),
-  })
-  Sort?: any;
-
-  /**
    * Owner user; null means shared with all logged-in users.
-   * Cascades when the owner user is deleted.
    */
   @Field({
     type: 'ManyToOneRef',
@@ -170,11 +138,11 @@ export default class UserFilter extends BaseModel {
   }
 
   /**
-   * Normalize ownership and resolve ModelId. Name is not unique; IsDefault is not mutexed
+   * Normalize ownership and required string fields. Name is not unique; IsDefault is not mutexed
    * (FE picks newest). ScopeKey is pass-through. Login is enforced by gRPC AuthN + Method ACL.
    * Static so we can read `ctx.mode` (Create pre-assigns Id before validation).
    */
-  @Constraint<UserFilter>(['Name', 'Application', 'ModelName', 'ModelId', 'UserId', 'IsDefault', 'Condition'])
+  @Constraint<UserFilter>(['Name', 'Application', 'ModelName', 'UserId', 'IsDefault', 'Condition'])
   static async validateUserFilterConstraint(self: UserFilter, ctx: ConstraintContext<UserFilter>): Promise<void> {
     const isCreate = ctx.mode === 'create';
     const values = ctx.values as Record<string, any>;
@@ -189,20 +157,6 @@ export default class UserFilter extends BaseModel {
     values.Application = app;
     values.ModelName = modelName;
     values.Name = name;
-
-    const modelRows = await MetaModelService.Search(
-      { And: [['Application', '=', app], ['Name', '=', modelName]] } as any,
-      { fields: ['Id'], limit: 1 } as any
-    );
-    const modelId = String(modelRows?.[0]?.Id || '').trim();
-    if (!modelId) {
-      UserFilter._fail(
-        'FailedPrecondition',
-        _t('No effective model found for %s.%s', app, modelName),
-        GrpcCode.FailedPrecondition
-      );
-    }
-    values.ModelId = modelId;
 
     if (isCreate) {
       // CreatedUid is stamped by repository write prepare (AuditUidUtils) from the request actor.

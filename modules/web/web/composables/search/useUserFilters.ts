@@ -81,7 +81,7 @@ export function useUserFilters(params: {
           ],
         },
         {
-          fields: ['Id', 'Name', 'ScopeKey', 'Condition', 'IsDefault', 'UserId', 'CreatedUid', 'UpdatedAt', 'CreatedAt', 'Sort'],
+          fields: ['Id', 'Name', 'ScopeKey', 'Condition', 'IsDefault', 'UserId', 'CreatedUid', 'UpdatedAt', 'CreatedAt'],
           orderBy: { field: 'Name', order: 'asc' },
         }
       )) as UserFilterRow[];
