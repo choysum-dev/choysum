@@ -50,7 +50,9 @@ export class AuditUidUtils {
    * Apply audit-uid rules for a scalar update payload (AU7 / AU8):
    * - strip client CreatedUid writes
    * - strip client UpdatedUid, then refresh from actor when present
-   * - on restore (DeletedAt cleared): clear DeletedUid; otherwise strip client DeletedUid
+   * - DeletedAt cleared (restore): clear DeletedUid
+   * - DeletedAt set (soft-delete via Update): stamp DeletedUid from actor
+   * - otherwise strip client DeletedUid
    *
    * Mutates `value` in place and returns it.
    */
@@ -58,14 +60,20 @@ export class AuditUidUtils {
     delete value.CreatedUid;
     delete value.UpdatedUid;
 
-    const restoring = Object.prototype.hasOwnProperty.call(value, 'DeletedAt') && value.DeletedAt == null;
-    if (restoring) {
-      value.DeletedUid = null;
+    const actor = resolveActorUid();
+    const hasDeletedAt = Object.prototype.hasOwnProperty.call(value, 'DeletedAt');
+    if (hasDeletedAt) {
+      if (value.DeletedAt == null) {
+        value.DeletedUid = null;
+      } else if (actor) {
+        value.DeletedUid = actor;
+      } else {
+        delete value.DeletedUid;
+      }
     } else {
       delete value.DeletedUid;
     }
 
-    const actor = resolveActorUid();
     if (actor) {
       value.UpdatedUid = actor;
     }

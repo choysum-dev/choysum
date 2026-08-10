@@ -852,6 +852,16 @@ test('repository update prepare clears DeletedUid on restore and leaves uid empt
   expect((restored as any).DeletedUid).toBeNull();
   expect((restored as any).UpdatedUid).toBe('U-REST');
 
+  const softDeleted = await withUser('U-SOFT', async () =>
+    prepareRepositoryUpdateSanitizedPayload(
+      updateSanitizeDeps() as any,
+      { DeletedAt: new Date('2026-01-02T00:00:00.000Z'), DeletedUid: 'hijack' } as any,
+      ['row_1']
+    )
+  );
+  expect((softDeleted as any).DeletedUid).toBe('U-SOFT');
+  expect((softDeleted as any).UpdatedUid).toBe('U-SOFT');
+
   const noActor = await prepareRepositoryUpdateSanitizedPayload(
     updateSanitizeDeps() as any,
     { Name: 'x', CreatedUid: 'hijack', UpdatedUid: 'hijack-upd' } as any,
