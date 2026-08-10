@@ -619,6 +619,55 @@ func TestRunOneAppBackendTestsWithInjectedHooks(t *testing.T) {
 		}
 	})
 
+	t.Run("default execute branch surfaces unit identity context errors", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		distRoot := filepath.Join(t.TempDir(), "dist")
+		appDistDir := filepath.Join(distRoot, "apps", "auth")
+		if err := os.MkdirAll(appDistDir, 0o755); err != nil {
+			t.Fatalf("mkdir app dist dir: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(appDistDir, "index.js"), []byte("// app"), 0o644); err != nil {
+			t.Fatalf("write app index: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(appDistDir, "tests.js"), []byte("// tests"), 0o644); err != nil {
+			t.Fatalf("write app tests: %v", err)
+		}
+
+		engineName := testEngineName(t, "default-execute-identity-err")
+		registerTestJsEngineFactory(engineName, func() (jsengine.JsEngine, error) {
+			return &testReportJsEngine{result: map[string]any{"total": 0, "passed": 0, "failed": 0, "cases": []any{}}}, nil
+		})
+
+		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
+			ModulesPath: t.TempDir(),
+			DistPath:    distRoot,
+			Compile:     &config.CompileConfig{BundleMode: "application"},
+			Server:      &config.ServerConfig{JsEngineFactory: engineName},
+		}}
+		makeTestScopeHook = func(ctx context.Context, base scope.Scope, app string, dbDialect string, dbFile string, dbDSN string, keep bool) (scope.Scope, func(), error) {
+			return runtimeScope, func() {}, nil
+		}
+		newCompilerExecutorHook = func(runtimeScope scope.Scope) (jsexecutor.JsExecutor, error) { return nil, nil }
+		prepareBackendHook = func(ctx context.Context, testRuntimeScope scope.Scope, repoRoot string, app string, coverage bool, jsExec jsexecutor.JsExecutor) (func(), error) {
+			return func() {}, nil
+		}
+		executeBackendHook = nil
+		startInProcessGrpcHarnessHook = func(ctx context.Context, runtimeScope scope.Scope) (*inProcessGrpcHarness, error) {
+			return &inProcessGrpcHarness{}, nil
+		}
+		prevIdentity := unitTestIdentityContextFn
+		t.Cleanup(func() { unitTestIdentityContextFn = prevIdentity })
+		unitTestIdentityContextFn = func(ctx context.Context, testScope scope.Scope) (map[string]interface{}, error) {
+			return nil, errors.New("identity context boom")
+		}
+
+		failed, err := RunOneAppBackendTests(context.Background(), runtimeScope, "auth", repoRoot, "sqlite", "", "", false, "", "", false, false)
+		// loadUnitAppTestContext failures return (false, err) before the test run is marked failed.
+		if failed || err == nil || !strings.Contains(err.Error(), "identity context boom") {
+			t.Fatalf("expected identity context failure, failed=%v err=%v", failed, err)
+		}
+	})
+
 	t.Run("default execute branch wraps harness startup and execute errors", func(t *testing.T) {
 		repoRoot := t.TempDir()
 		distRoot := filepath.Join(t.TempDir(), "dist")

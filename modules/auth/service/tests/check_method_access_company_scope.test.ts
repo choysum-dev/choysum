@@ -9,7 +9,7 @@ import UserRole from '@/auth/service/models/user_role';
 import RoleMethodAccess from '@/auth/service/models/role_method_access';
 import RoleUiResource from '@/auth/service/models/role_ui_resource';
 import { evaluateUiDerivedMethodDecision } from '@/auth/service/models/_user_method_access';
-import { resolveEffectiveApplicationId, resolveEffectiveModelId } from '../models/_resolve_effective_model';
+import { metaApplicationId, metaModelId } from './_meta_ids';
 import MetaUiResource from '@/meta/service/models/ui_resource';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaServiceModel from '@/meta/service/models/service';
@@ -139,7 +139,7 @@ function disableAllowlist(): void {
 }
 
 async function resolveModelId(app: string, name: string): Promise<string> {
-  const id = await resolveEffectiveModelId(app, name);
+  const id = await metaModelId(app, name);
   if (!id) throw new Error(`meta model not found: ${app}.${name}`);
   return id;
 }
@@ -171,7 +171,7 @@ async function resolveService(modelId: string, serviceName: string): Promise<{ i
 }
 
 async function resolveApplicationId(appName: string): Promise<string> {
-  const id = await resolveEffectiveApplicationId(appName);
+  const id = await metaApplicationId(appName);
   if (!id) throw new Error(`meta application not found: ${appName}`);
   return id;
 }

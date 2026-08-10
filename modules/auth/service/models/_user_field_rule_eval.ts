@@ -6,11 +6,14 @@ import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/co
 import { newAuthError, AuthErrCode, GrpcCode } from '../error';
 import { _t } from '../i18n';
 import RoleFieldRule from './role_field_rule';
+import type MetaApplicationModel from '@/meta/service/models/application';
 import type MetaFieldModel from '@/meta/service/models/field';
+import type MetaModelModel from '@/meta/service/models/model';
 import { normalizeRefId } from '@/core/service/utils/normalization';
-import { resolveEffectiveApplicationId, resolveEffectiveModelId } from './_resolve_effective_model';
 
+const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
 const MetaField = createServiceByModel<typeof MetaFieldModel>('meta.MetaField');
+const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
 
 function normalizeFieldPerm(v: any): 'allow' | 'deny' | null {
   if (v == null) return null;
@@ -71,21 +74,33 @@ function buildFieldRuleMetaCacheKey(type: 'app' | 'model', appName: string, mode
 }
 
 /**
- * Resolve meta application id by name (single effective row).
+ * Resolve meta application id by name (unique live row).
  */
 async function resolveApplicationId(appName: string): Promise<string> {
   const state = getFieldRuleReqState();
   const key = buildFieldRuleMetaCacheKey('app', appName);
-  return await memoizeInReqState(state, key, async () => resolveEffectiveApplicationId(appName));
+  return await memoizeInReqState(state, key, async () => {
+    const rows = await MetaApplication.Search(['Name', '=', appName] as any, {
+      fields: ['Id'],
+      limit: 1,
+    } as any);
+    return String(rows?.[0]?.Id || '').trim();
+  });
 }
 
 /**
- * Resolve the single effective meta model id for (application, name).
+ * Resolve the unique live meta model id for (application, name).
  */
 async function resolveModelId(appName: string, modelName: string): Promise<string> {
   const state = getFieldRuleReqState();
   const key = buildFieldRuleMetaCacheKey('model', appName, modelName);
-  return await memoizeInReqState(state, key, async () => resolveEffectiveModelId(appName, modelName));
+  return await memoizeInReqState(state, key, async () => {
+    const rows = await MetaModel.Search(
+      { And: [['Application', '=', appName], ['Name', '=', modelName]] } as any,
+      { fields: ['Id'], limit: 1 } as any
+    );
+    return String(rows?.[0]?.Id || '').trim();
+  });
 }
 
 function denyAllNonSystemFields(fieldNames: string[], reason: string, hitRuleIds?: string[]): FieldRuleEvalResult {

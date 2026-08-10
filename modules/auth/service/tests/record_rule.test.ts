@@ -9,7 +9,7 @@ import User from '@/auth/service/models/user';
 import Role from '@/auth/service/models/role';
 import UserRole from '@/auth/service/models/user_role';
 import RoleRecordRule from '@/auth/service/models/role_record_rule';
-import { resolveEffectiveApplicationId, resolveEffectiveModelId } from '../models/_resolve_effective_model';
+import { metaApplicationId, metaModelId } from './_meta_ids';
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -136,13 +136,13 @@ function toChoysumErrorLike(err: any): { domain?: string; code?: string; message
 }
 
 async function resolveModelId(appName: string, modelName: string): Promise<string> {
-  const id = await resolveEffectiveModelId(appName, modelName);
+  const id = await metaModelId(appName, modelName);
   if (!id) throw new Error(`meta model not found: ${appName}.${modelName}`);
   return id;
 }
 
 async function resolveApplicationId(appName: string): Promise<string> {
-  const id = await resolveEffectiveApplicationId(appName);
+  const id = await metaApplicationId(appName);
   if (!id) throw new Error(`meta application not found: ${appName}`);
   return id;
 }

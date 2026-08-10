@@ -23,6 +23,7 @@ import (
 
 func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 	var withDemo bool
+	var noWeb bool
 	var cliCompatVersion string
 	cmd := &cobra.Command{
 		Use:   "upgrade <module|module@version> [<module|module@version>...]",
@@ -163,7 +164,7 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 			for _, plan := range plans {
 				currentInput = plan.requestedInput
 				upgradeScope.Logger().Debug("module upgrade started", "input", plan.resolvedInput)
-				if err := moduleLifecycle.Upgrade(ctx, lifecycle.UpgradeRequest{Input: plan.resolvedInput, WithDemo: withDemo}); err != nil {
+				if err := moduleLifecycle.Upgrade(ctx, lifecycle.UpgradeRequest{Input: plan.resolvedInput, WithDemo: withDemo, SkipWebShell: noWeb}); err != nil {
 					_ = compilerExecutor.Stop()
 					exitUpgradeError(currentInput, xfmt.Errorf("error upgrading module %s: %w", plan.requestedInput, err))
 				}
@@ -172,6 +173,7 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&withDemo, "with-demo", false, "Load demo data declared by package.json")
+	cmd.Flags().BoolVar(&noWeb, "no-web", false, "Skip auto-installing a missing web SPA shell when upgrading a module with entryPoints.web")
 	cmd.Flags().StringVar(&cliCompatVersion, "cli-compat-version", "", "override CLI compatibility version for module compatibility checks")
 	return cmd
 }

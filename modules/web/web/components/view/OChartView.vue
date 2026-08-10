@@ -746,6 +746,7 @@ function onSearch(payload: QueryUpdatePayload<T>) {
       keyword: payload.keyword,
       keywordFields: props.keywordFields,
       forcedCondition: props.forcedCondition,
+      appliedFilters: payload.appliedFilters as any,
       orderBy: props.orderBy,
     })
     .then(() => {

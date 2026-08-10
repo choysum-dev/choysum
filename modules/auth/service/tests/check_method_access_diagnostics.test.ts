@@ -9,7 +9,7 @@ import RoleMethodAccess from '@/auth/service/models/role_method_access';
 import RoleUiResource from '@/auth/service/models/role_ui_resource';
 import { evaluateUiDerivedMethodDecision } from '@/auth/service/models/_user_method_access';
 import { buildMethodAccessCacheKey } from '@/auth/service/models/_request_cache_invalidation';
-import { resolveEffectiveModelId } from '../models/_resolve_effective_model';
+import { metaModelId } from './_meta_ids';
 import MetaUiResource from '@/meta/service/models/ui_resource';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaServiceModel from '@/meta/service/models/service';
@@ -155,7 +155,7 @@ async function createRole(): Promise<string> {
 }
 
 async function resolveBrowse(): Promise<{ name: string; modelId: string; serviceId: string }> {
-  const modelId = await resolveEffectiveModelId('auth', 'User');
+  const modelId = await metaModelId('auth', 'User');
   const services = await MetaService.Search({ And: [['ModelId', '=', modelId]] } as any, {
     fields: ['Id', 'Name'],
     limit: 5000,

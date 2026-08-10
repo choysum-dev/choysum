@@ -210,7 +210,8 @@ func dependencyClosure(tx *gorm.DB, ownerID string, idToName map[string]string) 
 
 // normalizeRecordOwnership applies E12 defaults and ownership rules in place.
 // - Empty module → applying owner module; non-empty must equal owner (no foreign xml_id namespace).
-// - Empty application → owner's application; non-empty must equal owner app (no cross-app seeding).
+// - Empty application → owner's application; non-empty may target another app's model
+//   (cross-app seeding; xml_id stays under the applying module).
 func normalizeRecordOwnership(rules *moduleRules, filePath string, recordIndex int, rec *record) error {
 	if rules == nil || rec == nil {
 		return xfmt.Errorf("nil module rules or record")
@@ -230,13 +231,8 @@ func normalizeRecordOwnership(rules *moduleRules, filePath string, recordIndex i
 	app := strings.TrimSpace(rec.Application)
 	if app == "" {
 		rec.Application = rules.OwnerApp
-	} else if app != rules.OwnerApp {
-		return &LoadError{
-			Kind: LoadErrorKindValidation, Code: LoadErrorCodeApplicationMismatch,
-			FilePath: filePath, RecordIndex: recordIndex, Module: strings.TrimSpace(rec.Module), Name: localName,
-			Application: app, Model: strings.TrimSpace(rec.Model),
-			Message: "record.application must equal applying module application (or be omitted); cross-app seeding is forbidden",
-		}
+	} else {
+		rec.Application = app
 	}
 	return nil
 }
@@ -325,7 +321,6 @@ const (
 	LoadErrorCodeMissingModel               = "missing_model"
 	LoadErrorCodeInvalidModel               = "invalid_model"
 	LoadErrorCodeModuleNotOwner             = "module_not_owner"
-	LoadErrorCodeApplicationMismatch        = "application_mismatch"
 	LoadErrorCodeMissingValues              = "missing_values"
 	LoadErrorCodeDuplicateNameInInput       = "duplicate_name_in_input"
 	LoadErrorCodeInvalidRef                 = "invalid_ref"
@@ -1231,8 +1226,8 @@ func (l *Loader) applyRecord(tx *gorm.DB, filePath string, recordIndex int, rec 
 		return err
 	}
 	modelFull := app + "." + modelName
-	model, err := modmeta.LookupEffectiveModel(tx, app, modelName)
-	if err != nil {
+	model := &meta.Model{}
+	if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
 		return wrapLoadErrorWithCode(xfmt.Errorf("resolve model %s: %w", modelFull, err), filePath, recordIndex, rec, LoadErrorKindDB, LoadErrorCodeDBResolveModel, "resolve model")
 	}
 	if strings.TrimSpace(model.ModelTable) == "" {
@@ -1875,8 +1870,8 @@ func resolveSearchModel(tx *gorm.DB, modelFull string) (*meta.Model, string, err
 	if err != nil {
 		return nil, "", xfmt.Errorf("resolve search model %s: %w", modelFull, err)
 	}
-	model, err := modmeta.LookupEffectiveModel(tx, app, modelName)
-	if err != nil {
+	model := &meta.Model{}
+	if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
 		return nil, "", xfmt.Errorf("resolve search model %s: %w", modelFull, err)
 	}
 	tableName := strings.TrimSpace(model.ModelTable)
@@ -2130,8 +2125,8 @@ func (l *Loader) detectFieldCardinality(tx *gorm.DB, modelFull string, fieldName
 	l.mu.RUnlock()
 
 	if !ok {
-		model, err := modmeta.LookupEffectiveModel(tx, app, modelName)
-		if err != nil {
+		var model meta.Model
+		if err := tx.Where("application = ? AND name = ?", app, modelName).First(&model).Error; err != nil {
 			l.mu.Lock()
 			l.fieldCardinalityCache[cacheKey] = refCardinalityManyToOne
 			l.mu.Unlock()
@@ -2207,8 +2202,8 @@ func (l *Loader) resolveModelRef(tx *gorm.DB, modelRef string) (string, error) {
 	if err != nil {
 		return "", xfmt.Errorf("resolve modelRef %s: %w", modelRef, err)
 	}
-	model, err := modmeta.LookupEffectiveModel(tx, app, modelName)
-	if err != nil {
+	var model meta.Model
+	if err := tx.Where("application = ? AND name = ?", app, modelName).First(&model).Error; err != nil {
 		return "", xfmt.Errorf("resolve modelRef %s: %w", modelRef, err)
 	}
 	id := strings.TrimSpace(model.Id.String)

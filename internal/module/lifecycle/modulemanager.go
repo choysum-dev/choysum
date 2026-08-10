@@ -577,14 +577,38 @@ func summarizeModuleOpInfoNames(values []string) []string {
 	return compact
 }
 
+// mergeUniqueModuleNames concatenates name lists in order, skipping blanks/duplicates.
+func mergeUniqueModuleNames(parts ...[]string) []string {
+	seen := map[string]struct{}{}
+	out := make([]string, 0)
+	for _, names := range parts {
+		for _, raw := range names {
+			name := strings.TrimSpace(raw)
+			if name == "" {
+				continue
+			}
+			if _, ok := seen[name]; ok {
+				continue
+			}
+			seen[name] = struct{}{}
+			out = append(out, name)
+		}
+	}
+	return out
+}
+
 func moduleOperationPlanInfoAttrs(opPlan plan.Plan) []any {
 	attrs := []any{
 		"modules_count", len(opPlan.ModuleOrder),
+		"ensure_count", len(opPlan.EnsureOrder),
 		"apps_count", len(opPlan.AffectedApps),
 		"needs_global_web_build", opPlan.NeedsGlobalWebBuild,
 	}
 	if modules := summarizeModuleOpInfoNames(opPlan.ModuleOrder); len(modules) > 0 {
 		attrs = append(attrs, "modules", modules)
+	}
+	if ensure := summarizeModuleOpInfoNames(opPlan.EnsureOrder); len(ensure) > 0 {
+		attrs = append(attrs, "ensure", ensure)
 	}
 	if apps := summarizeModuleOpInfoNames(opPlan.AffectedApps); len(apps) > 0 {
 		attrs = append(attrs, "apps", apps)
@@ -605,6 +629,50 @@ func moduleOperationCompletedInfoAttrs(opPlan plan.Plan, duration time.Duration)
 		attrs = append(attrs, "apps", apps)
 	}
 	return attrs
+}
+
+// handleUpgradeEnsureProgress maps ensure/upgrade module progress events to spinner stages.
+// Returns true when the event was handled (caller should skip shared pipeline progress).
+func handleUpgradeEnsureProgress(
+	event pipeline.ProgressEvent,
+	setSpinnerStage func(stage, message string),
+) bool {
+	moduleName := strings.TrimSpace(event.Module)
+	if moduleName == "" {
+		moduleName = "unknown"
+	}
+	switch event.Stage {
+	case pipeline.ProgressStageModuleInstallStarted:
+		if event.Total > 0 && event.Current > 0 {
+			setSpinnerStage("upgrading.ensure", fmt.Sprintf("%s: ensuring modules (%d/%d)", moduleName, event.Current, event.Total))
+			return true
+		}
+		setSpinnerStage("upgrading.ensure", fmt.Sprintf("%s: ensuring module", moduleName))
+		return true
+	case pipeline.ProgressStageModuleInstallFailed:
+		if event.Total > 0 && event.Current > 0 {
+			setSpinnerStage("upgrading.ensure", fmt.Sprintf("%s: failed ensuring module (%d/%d)", moduleName, event.Current, event.Total))
+			return true
+		}
+		setSpinnerStage("upgrading.ensure", fmt.Sprintf("%s: failed ensuring module", moduleName))
+		return true
+	case pipeline.ProgressStageModuleUpgradeStarted:
+		if event.Total > 0 && event.Current > 0 {
+			setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: upgrading modules (%d/%d)", moduleName, event.Current, event.Total))
+			return true
+		}
+		setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: upgrading module", moduleName))
+		return true
+	case pipeline.ProgressStageModuleUpgradeFailed:
+		if event.Total > 0 && event.Current > 0 {
+			setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: failed upgrading module (%d/%d)", moduleName, event.Current, event.Total))
+			return true
+		}
+		setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: failed upgrading module", moduleName))
+		return true
+	default:
+		return false
+	}
 }
 
 func handlePipelineSharedProgress(
@@ -1031,7 +1099,7 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			installSpinnerState.mu.Unlock()
 			setSpinnerMessage(planningSpinnerMessage(progress))
 		})
-		opPlan, err := plan.BuildPlan(planningCtx, plan.OpInstall, rootModule, m)
+		opPlan, err := plan.BuildPlan(planningCtx, plan.OpInstall, rootModule, m, planBuildOptionsFromContext(ctx)...)
 		clearSpinnerState()
 		if err != nil {
 			return err
@@ -1252,7 +1320,7 @@ func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
 			return err
 		}
 		planningStarted := time.Now()
-		plan, err := plan.BuildPlan(ctx, plan.OpUninstall, mod, m)
+		plan, err := plan.BuildPlan(ctx, plan.OpUninstall, mod, m, planBuildOptionsFromContext(ctx)...)
 		if err != nil {
 			return err
 		}
@@ -1454,7 +1522,7 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 			return rollbackUpgradeOrigin(err)
 		}
 		planningStarted := time.Now()
-		plan, err := plan.BuildPlan(ctx, plan.OpUpgrade, mod, m)
+		plan, err := plan.BuildPlan(ctx, plan.OpUpgrade, mod, m, planBuildOptionsFromContext(ctx)...)
 		if err != nil {
 			return rollbackUpgradeOrigin(err)
 		}
@@ -1515,32 +1583,19 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 			}
 		}
 		started := time.Now()
+		moduleOps := moduleOpCtxBinder{m: m, opCtx: opCtx}
 		err = pipeline.Execute(stageCtx, plan, mod, pipeline.Callbacks{
 			Logger: logger,
 			OnProgress: func(event pipeline.ProgressEvent) {
-				moduleName := strings.TrimSpace(event.Module)
-				if moduleName == "" {
-					moduleName = "unknown"
+				if handleUpgradeEnsureProgress(event, setSpinnerStage) {
+					return
 				}
-				switch event.Stage {
-				case pipeline.ProgressStageModuleUpgradeStarted:
-					if event.Total > 0 && event.Current > 0 {
-						setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: upgrading modules (%d/%d)", moduleName, event.Current, event.Total))
-						return
-					}
-					setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: upgrading module", moduleName))
-				case pipeline.ProgressStageModuleUpgradeFailed:
-					if event.Total > 0 && event.Current > 0 {
-						setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: failed upgrading module (%d/%d)", moduleName, event.Current, event.Total))
-						return
-					}
-					setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: failed upgrading module", moduleName))
-				default:
-					_ = handlePipelineSharedProgress(event, rootModuleName, len(plan.AffectedApps), setSpinnerStage)
-				}
+				_ = handlePipelineSharedProgress(event, rootModuleName, len(plan.AffectedApps), setSpinnerStage)
 			},
-			ResolveInstalledModule: m.Load,
-			Upgrade:                moduleOpCtxBinder{m: m, opCtx: opCtx}.upgrade,
+			ResolveInstallModuleFromOrigin: m.resolveInstallModuleFromOrigin,
+			ResolveInstalledModule:         m.Load,
+			Install:                        moduleOps.install,
+			Upgrade:                        moduleOps.upgrade,
 			AppTargets: func(appName string) (string, pipeline.ModulesAppTargets, error) {
 				distAppDir := ""
 				if !isBundleMode {
@@ -1583,7 +1638,10 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 			return rollbackUpgradeOrigin(err)
 		}
 		clearSpinnerState()
-		for _, moduleName := range plan.ModuleOrder {
+		// Include EnsureOrder so newly installed shell deps (e.g. web) also run
+		// phase-end hooks and receive module-index refresh after upgrade.
+		finalizeModules := mergeUniqueModuleNames(plan.EnsureOrder, plan.ModuleOrder)
+		for _, moduleName := range finalizeModules {
 			mod, err := m.Load(moduleName)
 			if err != nil {
 				return rollbackUpgradeOrigin(err)
@@ -1609,7 +1667,7 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 				)
 			}
 		}
-		if err := m.refreshModuleIndexForLocalModules(ctx, plan.ModuleOrder); err != nil {
+		if err := m.refreshModuleIndexForLocalModules(ctx, finalizeModules); err != nil {
 			return rollbackUpgradeOrigin(err)
 		}
 		if originSwitch != nil {

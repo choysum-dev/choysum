@@ -89,6 +89,36 @@ SPDX-License-Identifier: Apache-2.0
                 </el-button>
               </div>
               <el-divider class="o-search__menu-divider" />
+              <div class="o-search__menu-subtitle">{{ _t('Favorites') }}</div>
+              <div class="o-search__menu-list">
+                <div v-for="it in favoriteMenuItems" :key="'fav:' + it.id" class="o-search__menu-row">
+                  <el-button class="o-search__menu-item" text @click="onApplyFavorite(it)">
+                    <el-icon v-if="it.name && appliedFilterNameSet.has(it.name)" class="o-search__menu-icon o-search__menu-icon--applied">
+                      <Check />
+                    </el-icon>
+                    <span class="o-search__menu-item-label">
+                      {{ it.name }}{{ it.shared ? ` (${_t('Shared')})` : '' }}
+                    </span>
+                  </el-button>
+                  <el-button
+                    v-if="it.canDelete"
+                    class="o-search__menu-item-delete"
+                    text
+                    size="small"
+                    :aria-label="_t('Delete favorite %s', it.name)"
+                    @click.stop="onRemoveFavorite(it)"
+                  >
+                    ×
+                  </el-button>
+                </div>
+                <div v-if="favoritesLoadError" class="o-search__empty">
+                  {{ _t('Failed to load favorites') }}
+                  <el-button class="o-search__menu-action" text @click="onRetryFavorites">{{ _t('Retry') }}</el-button>
+                </div>
+                <div v-else-if="!favoriteMenuItems.length && !favoritesLoading" class="o-search__empty">{{ _t('No favorites yet') }}</div>
+              </div>
+              <el-button class="o-search__menu-action" text @click="onOpenSaveFavorite">{{ _t('Save current filters…') }}</el-button>
+              <el-divider class="o-search__menu-divider" />
               <el-button class="o-search__menu-action" text @click="onAddFilterClickAndClose">{{ _t('Custom filter…') }}</el-button>
             </section>
 
@@ -153,11 +183,35 @@ SPDX-License-Identifier: Apache-2.0
         @confirm="onConfirmDraft"
       />
     </el-dialog>
+
+    <el-dialog
+      v-model="saveFavoriteOpen"
+      :title="saveFavoriteDialogTitle"
+      append-to-body
+      destroy-on-close
+      width="420px"
+    >
+      <el-form label-position="top" @submit.prevent>
+        <el-form-item :label="_t('Name')">
+          <el-input v-model="saveFavoriteName" :placeholder="_t('Favorite name')" @keydown.enter.prevent="onConfirmSaveFavorite" />
+        </el-form-item>
+        <el-form-item>
+          <el-checkbox v-model="saveFavoriteIsDefault">{{ _t('Use by default') }}</el-checkbox>
+        </el-form-item>
+        <el-form-item>
+          <el-checkbox v-model="saveFavoriteShared">{{ _t('Share with all users') }}</el-checkbox>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="saveFavoriteOpen = false">{{ _t('Cancel') }}</el-button>
+        <el-button type="primary" :loading="saveFavoriteSaving" @click="onConfirmSaveFavorite">{{ _t('Save') }}</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel">
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import { Search as SearchIcon, ArrowDown, Check } from '@element-plus/icons-vue';
 import type { BaseModel } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
@@ -165,7 +219,22 @@ import { useSearch } from '@/web/web/composables/search';
 import { normalizeFilters } from '@/web/web/query/utils/filter/structures';
 import { filtersSignature, shouldApplyControlledFilters } from '@/web/web/query/utils/search/controlledFilters';
 import OSearchFilter from './OSearchFilter.vue';
-import { ElButton, ElTag, ElTooltip, ElDialog, ElDivider, ElIcon, ElPopover, ElTreeSelect, ElMessage } from 'element-plus';
+import {
+  ElButton,
+  ElTag,
+  ElTooltip,
+  ElDialog,
+  ElDivider,
+  ElIcon,
+  ElPopover,
+  ElTreeSelect,
+  ElMessage,
+  ElMessageBox,
+  ElForm,
+  ElFormItem,
+  ElInput,
+  ElCheckbox,
+} from 'element-plus';
 import { useDebouncedFnCancelable } from '@/web/web/composables/useDebouncedFnCancelable';
 import type { GroupBySpec } from '@/core/service/api/query';
 import type { ConditionGroup, QueryUpdatePayload, NamedFilter } from '@/web/web/query/types';
@@ -173,11 +242,42 @@ import { formatGroupItemForDisplay } from '@/web/web/query/utils/grouping/format
 import { normalizeGroupby } from '@/web/web/query/utils/grouping/normalize';
 import { buildQueryUpdatePayload } from '@/web/web/query/utils/search/payload';
 import { useFilterPresets } from '@/web/web/composables/search/useFilterPresets';
+import { useSavedFilters } from '@/web/web/composables/search/useSavedFilters';
+import {
+  modelIdentityFromStore,
+  pickDefaultFavoriteName,
+  routeTitleFromLocation,
+  stableTitleSource,
+} from '@/web/web/composables/search/defaultFavoriteName';
+import { trySetupHook } from '@/web/web/composables/search/trySetupHook';
 import { useFilterableSearchFields } from '@/web/web/composables/search/useSearchFieldOptions';
 import { useSearchGrouping, type SearchGroupByItem } from '@/web/web/composables/search/useSearchGrouping';
 import { createTranslate } from '@/web/web/i18n';
+import { useBreadcrumbStore } from '@/web/web/stores/breadcrumbStore';
+import { useMenuStore } from '@/web/web/stores/menuStore';
+import { useRoute } from 'vue-router';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/search/OSearch' });
+
+/** Captured in setup so click handlers never call inject()-based APIs. */
+const breadcrumbStore = trySetupHook(() => useBreadcrumbStore());
+const menuStore = trySetupHook(() => useMenuStore());
+const currentRoute = trySetupHook(() => useRoute());
+
+function resolveDefaultFavoriteName(viewStore: { application?: unknown; modelName?: unknown }): string {
+  const stack = breadcrumbStore?.breadcrumbStack as Array<{ title?: string; titleText?: any }> | undefined;
+  const tip = Array.isArray(stack) && stack.length ? stack[stack.length - 1] : undefined;
+  const breadcrumbTip = tip ? stableTitleSource(tip.title, tip.titleText) : '';
+  const routeTitle = currentRoute ? routeTitleFromLocation(currentRoute) : '';
+  const menu = menuStore?.activeMenu as { title?: string; titleText?: any } | null | undefined;
+  const menuTitle = menu ? stableTitleSource(menu.title, menu.titleText) : '';
+  return pickDefaultFavoriteName({
+    breadcrumbTip,
+    routeTitle,
+    menuTitle,
+    modelIdentity: modelIdentityFromStore(viewStore),
+  });
+}
 
 /* Grouping summary labels. */
 const granLabelMap = computed(() => ({
@@ -203,6 +303,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'query-update', payload: QueryUpdatePayload): void;
+  (e: 'defaults-ready', defaults: NamedFilter[]): void;
 }>();
 const store = props.store;
 const groupingSummary = computed(() => {
@@ -264,6 +365,110 @@ const { defaultFilterItems, appliedFilterNameSet, toggleDefaultFilter } = useFil
     if (!df) return undefined;
     return Array.isArray(df) ? df : [df];
   },
+});
+
+const {
+  favoriteMenuItems,
+  loading: favoritesLoading,
+  loadError: favoritesLoadError,
+  load: loadFavorites,
+  apply: applyFavorite,
+  saveCurrent: saveFavoriteCurrent,
+  remove: removeFavorite,
+  defaultsForOpen,
+} = useSavedFilters({
+  store,
+  filtersRef: filters as any,
+  keywordRef: keyword as any,
+  applyNamedFilter,
+  codeDefaults: () => {
+    const df = props.defaultFilters as any;
+    if (!df) return undefined;
+    return Array.isArray(df) ? df : [df];
+  },
+  scopeKey: () => String(currentRoute?.path ?? ''),
+});
+
+const saveFavoriteOpen = ref(false);
+const saveFavoriteName = ref('');
+const saveFavoriteIsDefault = ref(false);
+const saveFavoriteShared = ref(false);
+const saveFavoriteSaving = ref(false);
+const saveFavoriteDialogTitle = computed(() => _t('Save current filters'));
+
+function onApplyFavorite(it: { name: string; filter: any }) {
+  const before = filters.value.length;
+  applyFavorite(it);
+  if (filters.value.length !== before) {
+    emitQueryUpdate();
+  }
+  menuVisible.value = false;
+}
+
+async function onRemoveFavorite(it: { id: string; name: string }) {
+  try {
+    await ElMessageBox.confirm(
+      _t('Delete favorite "%s"? This cannot be undone.', it.name),
+      _t('Confirm delete'),
+      {
+        type: 'warning',
+        confirmButtonText: _t('Delete'),
+        cancelButtonText: _t('Cancel'),
+        confirmButtonClass: 'el-button--danger',
+      }
+    );
+  } catch {
+    return;
+  }
+  try {
+    await removeFavorite(it.id);
+    emit('defaults-ready', defaultsForOpen.value as NamedFilter[]);
+    ElMessage.success(_t('Favorite deleted'));
+  } catch (e: any) {
+    ElMessage.error(e instanceof Error ? e.message : String(e));
+  }
+}
+
+function onRetryFavorites() {
+  void loadFavorites();
+}
+
+function onOpenSaveFavorite() {
+  menuVisible.value = false;
+  // Align with Odoo CustomFavoriteItem seeding, but keep Name language-stable (term src / model id).
+  saveFavoriteName.value = resolveDefaultFavoriteName(store);
+  saveFavoriteIsDefault.value = false;
+  saveFavoriteShared.value = false;
+  saveFavoriteOpen.value = true;
+}
+
+async function onConfirmSaveFavorite() {
+  if (saveFavoriteSaving.value) return;
+  const name = saveFavoriteName.value.trim();
+  if (!name) {
+    ElMessage.warning(_t('Enter a favorite name'));
+    return;
+  }
+  saveFavoriteSaving.value = true;
+  try {
+    await saveFavoriteCurrent({
+      name,
+      isDefault: saveFavoriteIsDefault.value,
+      shared: saveFavoriteShared.value,
+    });
+    saveFavoriteOpen.value = false;
+    emit('defaults-ready', defaultsForOpen.value as NamedFilter[]);
+    ElMessage.success(_t('Favorite saved'));
+  } catch (e: any) {
+    ElMessage.error(e instanceof Error ? e.message : String(e));
+  } finally {
+    saveFavoriteSaving.value = false;
+  }
+}
+
+onMounted(async () => {
+  await loadFavorites();
+  emit('defaults-ready', defaultsForOpen.value as NamedFilter[]);
 });
 
 /* Debounced query emission. */
@@ -526,6 +731,24 @@ watch(
 .o-search__menu-list {
   display: flex;
   flex-direction: column;
+}
+.o-search__menu-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.o-search__menu-row .o-search__menu-item {
+  flex: 1;
+  min-width: 0;
+}
+.o-search__menu-item-delete {
+  flex: 0 0 auto;
+  opacity: 0.55;
+  padding: 0 4px !important;
+}
+.o-search__menu-item-delete:hover {
+  opacity: 1;
+  color: var(--el-color-danger);
 }
 .o-search__menu-item {
   justify-content: flex-start;

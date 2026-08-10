@@ -1,7 +1,12 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { createServiceByModel, registerServiceFactory } from './service_factory';
+import {
+  createServiceByModel,
+  getServiceFactory,
+  registerServiceFactory,
+  unregisterServiceFactory,
+} from './service_factory';
 
 test('registerServiceFactory + createServiceByModel should create service instance', () => {
   const modelName = `test.Model.${Date.now()}`;
@@ -12,6 +17,8 @@ test('registerServiceFactory + createServiceByModel should create service instan
 
   expect(created).toBe(serviceInstance);
   expect(created.Ping()).toBe('pong');
+  unregisterServiceFactory(modelName);
+  expect(getServiceFactory(modelName)).toBeUndefined();
 });
 
 test('createServiceByModel should throw when service factory missing', () => {

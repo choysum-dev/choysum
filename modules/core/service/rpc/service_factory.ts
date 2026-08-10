@@ -26,6 +26,13 @@ export function getServiceFactory(modelName: string): ServiceFactory | undefined
 }
 
 /**
+ * Removes a registered service factory (test helpers / hot reload cleanup).
+ */
+export function unregisterServiceFactory(modelName: string): void {
+  serviceFactoryRegistry.delete(modelName);
+}
+
+/**
  * Creates a service instance from the factory registered for the model name.
  */
 export function createServiceByModel(modelName: string): UntypedModelService;

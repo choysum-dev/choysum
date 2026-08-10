@@ -12,7 +12,7 @@ import RoleFieldRule from '@/auth/service/models/role_field_rule';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaServiceModel from '@/meta/service/models/service';
 import type MetaFieldModel from '@/meta/service/models/field';
-import { resolveEffectiveModelId } from '../models/_resolve_effective_model';
+import { metaModelId } from './_meta_ids';
 import { ensureRequestContext, resetRequestContext, uid } from '@/auth/service/tests/_request_context_fixtures';
 
 const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
@@ -133,7 +133,7 @@ async function createRole(codePrefix: string): Promise<{ id: string }> {
 }
 
 async function resolveModelId(app: string, name: string): Promise<string> {
-  const id = await resolveEffectiveModelId(app, name);
+  const id = await metaModelId(app, name);
   if (!id) throw new Error(`meta model not found: ${app}.${name}`);
   return id;
 }

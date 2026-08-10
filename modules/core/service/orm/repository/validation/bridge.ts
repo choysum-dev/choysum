@@ -17,7 +17,7 @@ import {
   resolveRepositoryPlatformRejectUnknownFields,
 } from './platform_helpers';
 
-export { wrapRepositoryValidationError } from './error_helpers';
+export { selectPrimaryValidationIssue, wrapRepositoryValidationError } from './error_helpers';
 export { throwRepositorySqlWriteError } from './sql_helpers';
 export {
   recordRepositoryPlatformCreateWhitelistAudit,

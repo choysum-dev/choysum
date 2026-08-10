@@ -4,9 +4,26 @@
 
 import { mount, flushPromises } from '@vue/test-utils';
 import { nextTick } from 'vue';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import OSearch from './OSearch.vue';
+
+const { savedFiltersApi } = vi.hoisted(() => ({
+  savedFiltersApi: {
+    state: null as null | {
+      favoriteMenuItems: any[];
+      loading: boolean;
+      loadError: string | null;
+      defaultsForOpen: any[];
+    },
+    load: vi.fn(async () => {}),
+    apply: vi.fn(),
+    saveCurrent: vi.fn(async () => ({ Id: '1' })),
+    remove: vi.fn(async () => {}),
+    lastCodeDefaults: undefined as unknown,
+    lastScopeKey: undefined as unknown,
+  },
+}));
 
 vi.mock('@/web/web/i18n', async () => {
   const actual = await vi.importActual<typeof import('@/web/web/i18n')>('@/web/web/i18n');
@@ -14,7 +31,65 @@ vi.mock('@/web/web/i18n', async () => {
     ...actual,
     createTranslate: () => ({
       _t: (msg: string, ...args: unknown[]) => (args.length ? `${msg}:${args.join(',')}` : msg),
+      // breadcrumbStore evaluates _lt('Page') at import time when OSearch loads stores.
+      _lt: (msg: string) => msg,
     }),
+  };
+});
+
+vi.mock('@/web/web/stores/breadcrumbStore', () => ({
+  useBreadcrumbStore: () => {
+    throw new Error('breadcrumb store unavailable in OSearch unit harness');
+  },
+}));
+
+vi.mock('@/web/web/stores/menuStore', () => ({
+  useMenuStore: () => {
+    throw new Error('menu store unavailable in OSearch unit harness');
+  },
+}));
+
+vi.mock('vue-router', async () => {
+  const actual = await vi.importActual<any>('vue-router');
+  return {
+    ...actual,
+    useRoute: () => {
+      throw new Error('vue-router unavailable in OSearch unit harness');
+    },
+  };
+});
+
+vi.mock('@/web/web/composables/search/useSavedFilters', async () => {
+  const { reactive, toRef } = await import('vue');
+  savedFiltersApi.state = reactive({
+    favoriteMenuItems: [] as any[],
+    loading: false,
+    loadError: null as string | null,
+    defaultsForOpen: [] as any[],
+  });
+  return {
+    useSavedFilters: (params: {
+      applyNamedFilter: (nf: any) => void;
+      codeDefaults?: () => any;
+      scopeKey?: () => string;
+    }) => {
+      // Exercise OSearch scopeKey wiring even though Search is mocked.
+      savedFiltersApi.lastScopeKey = params.scopeKey?.();
+      savedFiltersApi.lastCodeDefaults = params.codeDefaults?.();
+      savedFiltersApi.apply.mockImplementation((fav: { name: string; filter: any }) => {
+        params.applyNamedFilter({ name: fav.name, query: fav.filter });
+      });
+      return {
+        favoriteMenuItems: toRef(savedFiltersApi.state!, 'favoriteMenuItems'),
+        loading: toRef(savedFiltersApi.state!, 'loading'),
+        loadError: toRef(savedFiltersApi.state!, 'loadError'),
+        defaultsForOpen: toRef(savedFiltersApi.state!, 'defaultsForOpen'),
+        load: savedFiltersApi.load,
+        apply: savedFiltersApi.apply,
+        saveCurrent: savedFiltersApi.saveCurrent,
+        remove: savedFiltersApi.remove,
+      };
+    },
   };
 });
 
@@ -22,7 +97,8 @@ vi.mock('element-plus', async () => {
   const actual = await vi.importActual<any>('element-plus');
   return {
     ...actual,
-    ElMessage: { warning: vi.fn() },
+    ElMessage: { warning: vi.fn(), success: vi.fn(), error: vi.fn() },
+    ElMessageBox: { confirm: vi.fn(async () => true) },
   };
 });
 
@@ -59,12 +135,24 @@ const elementStubs = {
     template: `<div class="el-popover"><slot name="reference" /><div class="pop"><slot /></div></div>`,
   },
   'el-dialog': {
-    props: ['modelValue'],
+    props: ['modelValue', 'title'],
     emits: ['update:modelValue', 'close'],
-    template: `<div v-if="modelValue" class="el-dialog"><slot /></div>`,
+    template: `<div v-if="modelValue" class="el-dialog" :data-title="title"><slot /><slot name="footer" /></div>`,
   },
   'el-divider': true,
   'el-icon': { template: `<i><slot /></i>` },
+  'el-form': { template: `<form><slot /></form>` },
+  'el-form-item': { template: `<div class="form-item"><slot /></div>` },
+  'el-input': {
+    props: ['modelValue'],
+    emits: ['update:modelValue'],
+    template: `<input class="fav-name" :value="modelValue" @input="$emit('update:modelValue', $event.target.value)" />`,
+  },
+  'el-checkbox': {
+    props: ['modelValue'],
+    emits: ['update:modelValue'],
+    template: `<label class="fav-check"><input type="checkbox" :checked="modelValue" @change="$emit('update:modelValue', $event.target.checked)" /><slot /></label>`,
+  },
   'el-tree-select': {
     emits: ['change', 'update:modelValue'],
     template: `<button type="button" class="tree" @click="$emit('change', 'f:Status')" />`,
@@ -80,6 +168,23 @@ const elementStubs = {
 };
 
 describe('OSearch behavior', () => {
+  beforeEach(() => {
+    const st = savedFiltersApi.state!;
+    st.favoriteMenuItems = [];
+    st.loading = false;
+    st.loadError = null;
+    st.defaultsForOpen = [{ name: 'CodeDefault', query: ['A', '=', 1] }];
+    savedFiltersApi.load.mockClear();
+    savedFiltersApi.apply.mockClear();
+    savedFiltersApi.saveCurrent.mockClear();
+    savedFiltersApi.remove.mockClear();
+    savedFiltersApi.load.mockResolvedValue(undefined);
+    savedFiltersApi.saveCurrent.mockResolvedValue({ Id: '1' });
+    savedFiltersApi.remove.mockResolvedValue(undefined);
+    savedFiltersApi.lastScopeKey = undefined;
+    savedFiltersApi.lastCodeDefaults = undefined;
+  });
+
   function mountSearch(props: Record<string, any> = {}) {
     return mount(OSearch as any, {
       props: {
@@ -91,6 +196,12 @@ describe('OSearch behavior', () => {
       global: { stubs: elementStubs },
     });
   }
+
+  it('wires empty scopeKey when route inject is unavailable', async () => {
+    mountSearch();
+    await flushPromises();
+    expect(savedFiltersApi.lastScopeKey).toBe('');
+  });
 
   it('emits query-update on enter / search icon and syncs controlled keyword', async () => {
     const wrapper = mountSearch({ currentKeyword: 'hello' });
@@ -305,5 +416,284 @@ describe('OSearch behavior', () => {
     const focus = vi.spyOn(input.element as HTMLInputElement, 'focus');
     await wrapper.find('.o-search__main').trigger('click');
     expect(focus).toHaveBeenCalled();
+  });
+
+  it('loads favorites on mount and shows empty / error / retry states', async () => {
+    const wrapper = mountSearch();
+    await flushPromises();
+    expect(savedFiltersApi.load).toHaveBeenCalled();
+    expect(wrapper.emitted('defaults-ready')?.[0]?.[0]).toEqual([{ name: 'CodeDefault', query: ['A', '=', 1] }]);
+    expect(wrapper.text()).toContain('No favorites yet');
+
+    savedFiltersApi.state!.loadError = 'boom';
+    await nextTick();
+    expect(wrapper.text()).toContain('Failed to load favorites');
+    const before = savedFiltersApi.load.mock.calls.length;
+    const retry = wrapper.findAll('.el-btn').find(b => b.text().includes('Retry'));
+    expect(retry).toBeTruthy();
+    await retry!.trigger('click');
+    expect(savedFiltersApi.load.mock.calls.length).toBeGreaterThan(before);
+  });
+
+  it('covers codeDefaults singleton/undefined branches', async () => {
+    mountSearch({ defaultFilters: undefined as any });
+    await flushPromises();
+    expect(savedFiltersApi.lastCodeDefaults).toBeUndefined();
+
+    mountSearch({ defaultFilters: { name: 'Solo', query: ['X', '=', 1] } as any });
+    await flushPromises();
+    expect(savedFiltersApi.lastCodeDefaults).toEqual([{ name: 'Solo', query: ['X', '=', 1] }]);
+  });
+
+  it('shows Check icon for applied favorite names', async () => {
+    savedFiltersApi.state!.favoriteMenuItems = [
+      {
+        id: 'fav-check',
+        name: 'Mine',
+        shared: true,
+        isDefault: false,
+        canDelete: false,
+        filter: {},
+      },
+    ];
+    const wrapper = mountSearch({
+      currentAppliedFilters: [
+        {
+          id: 'f-mine',
+          name: 'Mine',
+          logic: 'And',
+          children: [{ id: 'c1', field: 'Active', operator: '=', value: true }],
+        },
+      ],
+    });
+    await flushPromises();
+    expect(wrapper.find('.o-search__menu-icon--applied').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Shared');
+  });
+
+  it('applies and removes favorites (confirm), and saves with empty-name warning', async () => {
+    const { ElMessage, ElMessageBox } = await import('element-plus');
+    (ElMessageBox.confirm as any).mockResolvedValue(true);
+    savedFiltersApi.state!.favoriteMenuItems = [
+      {
+        id: 'fav-1',
+        name: 'Mine',
+        shared: false,
+        isDefault: false,
+        canDelete: true,
+        filter: { And: [['Active', '=', true]] },
+      },
+    ];
+    const wrapper = mountSearch();
+    await flushPromises();
+
+    const applyBtn = wrapper.findAll('.el-btn').find(b => b.text().includes('Mine'));
+    expect(applyBtn).toBeTruthy();
+    const beforeEmit = wrapper.emitted('query-update')?.length ?? 0;
+    await applyBtn!.trigger('click');
+    expect(savedFiltersApi.apply).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Mine', filter: { And: [['Active', '=', true]] } })
+    );
+    expect((wrapper.emitted('query-update')?.length ?? 0)).toBeGreaterThan(beforeEmit);
+
+    const del = wrapper.find('.o-search__menu-item-delete');
+    await del.trigger('click');
+    await flushPromises();
+    expect(ElMessageBox.confirm).toHaveBeenCalled();
+    expect(savedFiltersApi.remove).toHaveBeenCalledWith('fav-1');
+    expect(ElMessage.success).toHaveBeenCalled();
+
+    const saveOpen = wrapper.findAll('.el-btn').find(b => b.text().includes('Save current filters'));
+    await saveOpen!.trigger('click');
+    await nextTick();
+    expect(wrapper.find('.el-dialog').exists()).toBe(true);
+
+    const saveBtn = wrapper.findAll('.el-btn').find(b => b.text() === 'Save');
+    // Clear any Odoo-style default title so empty-name validation is exercised.
+    await wrapper.find('input.fav-name').setValue('');
+    await saveBtn!.trigger('click');
+    expect(ElMessage.warning).toHaveBeenCalled();
+    expect(savedFiltersApi.saveCurrent).not.toHaveBeenCalled();
+
+    await wrapper.find('input.fav-name').setValue('NewFav');
+    await saveBtn!.trigger('click');
+    await flushPromises();
+    expect(savedFiltersApi.saveCurrent).toHaveBeenCalledWith({
+      name: 'NewFav',
+      isDefault: false,
+      shared: false,
+    });
+    expect(wrapper.emitted('defaults-ready')?.length).toBeGreaterThan(1);
+  });
+
+  it('cancels favorite delete when ElMessageBox rejects', async () => {
+    const { ElMessage, ElMessageBox } = await import('element-plus');
+    (ElMessageBox.confirm as any).mockRejectedValueOnce('cancel');
+    (ElMessage.error as any).mockClear?.();
+    (ElMessage.success as any).mockClear?.();
+    savedFiltersApi.state!.favoriteMenuItems = [
+      {
+        id: 'fav-cancel',
+        name: 'KeepMe',
+        shared: false,
+        isDefault: false,
+        canDelete: true,
+        filter: {},
+      },
+    ];
+    const wrapper = mountSearch();
+    await flushPromises();
+    await wrapper.find('.o-search__menu-item-delete').trigger('click');
+    await flushPromises();
+    expect(savedFiltersApi.remove).not.toHaveBeenCalled();
+    expect(ElMessage.success).not.toHaveBeenCalled();
+    expect(ElMessage.error).not.toHaveBeenCalled();
+  });
+
+  it('shows ElMessage.error when remove or save fails', async () => {
+    const { ElMessage, ElMessageBox } = await import('element-plus');
+    (ElMessageBox.confirm as any).mockResolvedValue(true);
+    (ElMessage.error as any).mockClear?.();
+    savedFiltersApi.remove.mockRejectedValueOnce(new Error('delete failed'));
+    savedFiltersApi.state!.favoriteMenuItems = [
+      {
+        id: 'fav-err',
+        name: 'Bad',
+        shared: false,
+        isDefault: false,
+        canDelete: true,
+        filter: {},
+      },
+    ];
+    const wrapper = mountSearch();
+    await flushPromises();
+    await wrapper.find('.o-search__menu-item-delete').trigger('click');
+    await flushPromises();
+    expect(ElMessage.error).toHaveBeenCalledWith('delete failed');
+
+    (ElMessage.error as any).mockClear?.();
+    savedFiltersApi.saveCurrent.mockRejectedValueOnce('save blew up');
+    const saveOpen = wrapper.findAll('.el-btn').find(b => b.text().includes('Save current filters'));
+    await saveOpen!.trigger('click');
+    await nextTick();
+    await wrapper.find('input.fav-name').setValue('FailFav');
+    const saveBtn = wrapper.findAll('.el-btn').find(b => b.text() === 'Save');
+    await saveBtn!.trigger('click');
+    await flushPromises();
+    expect(ElMessage.error).toHaveBeenCalledWith('save blew up');
+  });
+
+  it('stringifies non-Error remove failures and Error save failures', async () => {
+    const { ElMessage, ElMessageBox } = await import('element-plus');
+    (ElMessageBox.confirm as any).mockResolvedValue(true);
+    (ElMessage.error as any).mockClear?.();
+    savedFiltersApi.remove.mockRejectedValueOnce('delete-string');
+    savedFiltersApi.state!.favoriteMenuItems = [
+      {
+        id: 'fav-str',
+        name: 'Str',
+        shared: false,
+        isDefault: false,
+        canDelete: true,
+        filter: {},
+      },
+    ];
+    const wrapper = mountSearch();
+    await flushPromises();
+    await wrapper.find('.o-search__menu-item-delete').trigger('click');
+    await flushPromises();
+    expect(ElMessage.error).toHaveBeenCalledWith('delete-string');
+
+    (ElMessage.error as any).mockClear?.();
+    savedFiltersApi.saveCurrent.mockRejectedValueOnce(new Error('save failed'));
+    const saveOpen = wrapper.findAll('.el-btn').find(b => b.text().includes('Save current filters'));
+    await saveOpen!.trigger('click');
+    await nextTick();
+    await wrapper.find('input.fav-name').setValue('ErrFav');
+    const saveBtn = wrapper.findAll('.el-btn').find(b => b.text() === 'Save');
+    await saveBtn!.trigger('click');
+    await flushPromises();
+    expect(ElMessage.error).toHaveBeenCalledWith('save failed');
+  });
+
+  it('guards re-entrant save while saveFavoriteSaving is true', async () => {
+    let resolveSave!: (v: any) => void;
+    savedFiltersApi.saveCurrent.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveSave = resolve;
+        })
+    );
+    const wrapper = mountSearch();
+    await flushPromises();
+    const saveOpen = wrapper.findAll('.el-btn').find(b => b.text().includes('Save current filters'));
+    await saveOpen!.trigger('click');
+    await nextTick();
+    await wrapper.find('input.fav-name').setValue('Once');
+    const saveBtn = wrapper.findAll('.el-btn').find(b => b.text() === 'Save');
+    await saveBtn!.trigger('click');
+    await saveBtn!.trigger('click');
+    await nextTick();
+    expect(savedFiltersApi.saveCurrent).toHaveBeenCalledTimes(1);
+    resolveSave!({ Id: '1' });
+    await flushPromises();
+  });
+
+  it('does not emit query-update when applying a favorite leaves filter length unchanged', async () => {
+    savedFiltersApi.apply.mockImplementationOnce(() => {
+      /* no-op: filters length stays the same */
+    });
+    savedFiltersApi.state!.favoriteMenuItems = [
+      {
+        id: 'fav-noop',
+        name: 'Noop',
+        shared: false,
+        isDefault: false,
+        canDelete: true,
+        filter: { And: [['Active', '=', true]] },
+      },
+    ];
+    const wrapper = mountSearch();
+    await flushPromises();
+    const beforeEmit = wrapper.emitted('query-update')?.length ?? 0;
+    const applyBtn = wrapper.findAll('.el-btn').find(b => b.text().includes('Noop'));
+    await applyBtn!.trigger('click');
+    expect(savedFiltersApi.apply).toHaveBeenCalled();
+    expect(wrapper.emitted('query-update')?.length ?? 0).toBe(beforeEmit);
+  });
+
+  it('saves with isDefault and shared checkboxes enabled', async () => {
+    const wrapper = mountSearch();
+    await flushPromises();
+    const saveOpen = wrapper.findAll('.el-btn').find(b => b.text().includes('Save current filters'));
+    await saveOpen!.trigger('click');
+    await nextTick();
+    await wrapper.find('input.fav-name').setValue('DefaultOnly');
+    const defaultCheck = wrapper.findAll('.fav-check').find(l => l.text().includes('Use by default'));
+    expect(defaultCheck).toBeTruthy();
+    await defaultCheck!.find('input').setValue(true);
+    const saveBtn = wrapper.findAll('.el-btn').find(b => b.text() === 'Save');
+    await saveBtn!.trigger('click');
+    await flushPromises();
+    expect(savedFiltersApi.saveCurrent).toHaveBeenCalledWith({
+      name: 'DefaultOnly',
+      isDefault: true,
+      shared: false,
+    });
+
+    savedFiltersApi.saveCurrent.mockClear();
+    await saveOpen!.trigger('click');
+    await nextTick();
+    await wrapper.find('input.fav-name').setValue('SharedOnly');
+    const sharedCheck = wrapper.findAll('.fav-check').find(l => l.text().includes('Share with all users'));
+    expect(sharedCheck).toBeTruthy();
+    await sharedCheck!.find('input').setValue(true);
+    await wrapper.findAll('.el-btn').find(b => b.text() === 'Save')!.trigger('click');
+    await flushPromises();
+    expect(savedFiltersApi.saveCurrent).toHaveBeenCalledWith({
+      name: 'SharedOnly',
+      isDefault: false,
+      shared: true,
+    });
   });
 });

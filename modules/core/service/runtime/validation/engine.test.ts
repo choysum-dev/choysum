@@ -5,10 +5,12 @@ import { BaseModel, Compute, Field } from '@/core/service';
 import { Constraint, ValidationPipelineError } from '@/core/service/api/constraint';
 import { MetadataStorage } from '@/core/service/api/metadata';
 import { ValidationEngine } from '@/core/service/api/validation';
+import { GrpcCode, ChoysumError } from '@/core/service/error';
 import { Model } from '../../orm/decorator/model';
 import { RepositoryFactory } from '../../orm/repository/repository_factory';
 
 const engineCallLog: Array<Record<string, unknown>> = [];
+const shortCircuitCallLog: string[] = [];
 type ObjectRecord = Record<string, unknown>;
 
 class ConstraintEngineModel extends BaseModel {
@@ -61,6 +63,27 @@ class ConstraintEngineEdgeModel extends BaseModel {
         severity: 'error',
       },
     ] as any);
+  }
+}
+
+class ChoysumErrorShortCircuitModel extends BaseModel {
+  Name?: string;
+
+  static resetLog() {
+    shortCircuitCallLog.length = 0;
+  }
+
+  static checkAuth(_self: ChoysumErrorShortCircuitModel) {
+    shortCircuitCallLog.push('checkAuth');
+    throw new ChoysumError({
+      domain: 'web',
+      code: 'PermissionDenied',
+      message: 'Authentication required',
+    }).withGrpcCode(GrpcCode.Unauthenticated);
+  }
+
+  static checkLater(_self: ChoysumErrorShortCircuitModel) {
+    shortCircuitCallLog.push('checkLater');
   }
 }
 
@@ -188,6 +211,8 @@ Constraint<ConstraintEngineModel>('Status', { priority: 2 })(ConstraintEngineMod
 Constraint<ConstraintEngineModel>('Name', { priority: 3, preview: true })(ConstraintEngineModel, 'checkPreview', undefined as any);
 Constraint<ConstraintEngineEdgeModel>('Name', { priority: 1 })(ConstraintEngineEdgeModel, 'checkRaisesPipeline', undefined as any);
 Constraint<ConstraintEngineEdgeModel>('Name', { priority: 2 })(ConstraintEngineEdgeModel, 'checkMissingMethod', undefined as any);
+Constraint<ChoysumErrorShortCircuitModel>('Name', { priority: 1 })(ChoysumErrorShortCircuitModel, 'checkAuth', undefined as any);
+Constraint<ChoysumErrorShortCircuitModel>('Name', { priority: 2 })(ChoysumErrorShortCircuitModel, 'checkLater', undefined as any);
 
 test('validation engine merges current and incoming values for constraint self', async () => {
   ConstraintEngineModel.resetLog();
@@ -269,6 +294,35 @@ test('validation engine unwraps nested ValidationPipelineError from constraint m
 
   expect(issues.some(issue => issue.code === 'nested_constraint_error')).toBe(true);
   expect(issues.some(issue => issue.code === 'constraint_method_missing')).toBe(true);
+});
+
+test('validation engine stops later handlers after domain ChoysumError', async () => {
+  ChoysumErrorShortCircuitModel.resetLog();
+  const metadata = MetadataStorage.instance.getModelMetadata(ChoysumErrorShortCircuitModel as any);
+
+  const issues = await ValidationEngine.validate(
+    {
+      mode: 'update',
+      model: ChoysumErrorShortCircuitModel as any,
+      metadata,
+      current: { Id: '1', Name: 'old' },
+      values: { Name: 'next' },
+      changedFields: new Set(['Name']),
+      repository: {} as any,
+      requestContext: {},
+    },
+    {
+      includeKernel: false,
+      includePlatform: false,
+      includeConstraints: true,
+    }
+  );
+
+  expect(shortCircuitCallLog).toEqual(['checkAuth']);
+  expect(issues.length).toBe(1);
+  expect(issues[0]?.code).toBe('constraint_execution_failed');
+  expect(issues[0]?.meta?.causeCode).toBe('PermissionDenied');
+  expect(issues[0]?.meta?.grpcCode).toBe(GrpcCode.Unauthenticated);
 });
 
 test('validation engine only runs preview constraints in preview mode', async () => {

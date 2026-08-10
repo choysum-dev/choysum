@@ -21,6 +21,7 @@ import { getRuntimeRepository } from '../runtime_repository_facade';
 import { markProxyKind } from '../proxy/brand';
 import { createForbiddenPersistenceMethodStub, isDraftForbiddenPersistenceMethod } from '../proxy/draftPersistenceGuards';
 import type { ObjectRecord } from '../../../utils/types';
+import { ChoysumError } from '@/core/service/error';
 import { _t } from '@/core/service/i18n_binder';
 
 type ReferenceModelMeta = Pick<FieldMetadata, 'relation'>;
@@ -570,13 +571,26 @@ export class ValidationEngine {
           }
 
           const message = error instanceof Error ? error.message : String(error);
-          issues.push({
+          const issue: ValidationIssue = {
             scope: 'constraint',
             method: handler.method,
             code: 'constraint_execution_failed',
             message,
             severity: 'error',
-          });
+          };
+          // Keep repository wrap as validation_failed, but retain the original
+          // ChoysumError code/gRPC status in issue meta for API clients/tests.
+          if (error instanceof ChoysumError) {
+            issue.meta = {
+              causeCode: error.code,
+              causeDomain: error.domain,
+              grpcCode: error.grpcCode,
+            };
+            issues.push(issue);
+            // Domain auth/status failures must not run later handlers (side effects).
+            break;
+          }
+          issues.push(issue);
         }
         continue;
       }
@@ -619,13 +633,26 @@ export class ValidationEngine {
         }
 
         const message = error instanceof Error ? error.message : String(error);
-        issues.push({
+        const issue: ValidationIssue = {
           scope: 'constraint',
           method: handler.method,
           code: 'constraint_execution_failed',
           message,
           severity: 'error',
-        });
+        };
+        // Keep repository wrap as validation_failed, but retain the original
+        // ChoysumError code/gRPC status in issue meta for API clients/tests.
+        if (error instanceof ChoysumError) {
+          issue.meta = {
+            causeCode: error.code,
+            causeDomain: error.domain,
+            grpcCode: error.grpcCode,
+          };
+          issues.push(issue);
+          // Domain auth/status failures must not run later handlers (side effects).
+          break;
+        }
+        issues.push(issue);
       }
     }
 

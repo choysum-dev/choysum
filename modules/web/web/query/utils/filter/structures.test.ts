@@ -62,6 +62,16 @@ describe('filter structures helpers', () => {
     expect(named[0].name).toBe('Active');
     expect((named[0].children[0] as any).field).toBe('Active');
 
+    const nested = toFilters({
+      name: 'Multi',
+      query: { And: [['Active', '=', true], { Or: [['Name', 'ilike', '%a%'], ['Code', '=', 'x']] }] },
+    } as any);
+    expect(nested).toHaveLength(1);
+    expect(nested[0].name).toBe('Multi');
+    expect(nested[0].logic).toBe('And');
+    expect(nested[0].children).toHaveLength(2);
+    expect(isGroup(nested[0].children[1])).toBe(true);
+
     const group = createFilter('Or', [createCondition('Code', '=', 'x')]);
     expect(toFilters(group)[0]).toBe(group);
     expect(toFilters({ name: '', query: ['A', '=', 1] } as any)).toEqual([]);
@@ -109,5 +119,63 @@ describe('filter structures helpers', () => {
     ]);
     expect(arr).toHaveLength(2);
     expect(arr[0].name).toBe('A');
+  });
+
+  it('toFilters converts Choysum And/Or trees and skips invalid query shapes', () => {
+    expect(toFilters({ name: 'NullQ', query: null } as any)).toEqual([]);
+    expect(toFilters({ name: 'BadArr', query: ['only', 'two'] } as any)).toEqual([]);
+    expect(toFilters({ name: 'Str', query: 'nope' } as any)).toEqual([]);
+    expect(toFilters({ name: 'EmptyAnd', query: { And: [] } } as any)).toEqual([]);
+    expect(toFilters({ name: 'EmptyOr', query: { Or: [] } } as any)).toEqual([]);
+    expect(toFilters({ name: 'JunkParts', query: { And: [null, 'x', { foo: 1 }] } } as any)).toEqual([]);
+    expect(toFilters({ name: 'NonStringLeaf', query: [1, '=', 2] } as any)).toEqual([]);
+    expect(toFilters({ name: 'NonStringOp', query: ['A', 1, 2] } as any)).toEqual([]);
+
+    const groupShaped = toFilters({
+      name: 'AlreadyGroup',
+      query: { id: 'g', logic: 'Or', children: [{ id: 'c', field: 'Name', operator: '=', value: 'a' }] },
+    } as any);
+    expect(groupShaped).toHaveLength(1);
+    expect(groupShaped[0].name).toBe('AlreadyGroup');
+    expect(groupShaped[0].logic).toBe('Or');
+
+    const orTree = toFilters({
+      name: 'OrTree',
+      query: { Or: [['A', '=', 1], ['B', '=', 2]] },
+    } as any);
+    expect(orTree[0].logic).toBe('Or');
+    expect(orTree[0].children).toHaveLength(2);
+
+    const nestedMulti = toFilters({
+      name: 'KeepSub',
+      query: { And: [{ And: [['X', '=', 1], ['Y', '=', 2]] }] },
+    } as any);
+    expect(isGroup(nestedMulti[0].children[0])).toBe(true);
+
+    // Parts prefer And when both keys exist; logic still follows orParts presence.
+    const bothKeys = toFilters({
+      name: 'Both',
+      query: { And: [['A', '=', 1]], Or: [['B', '=', 2]] },
+    } as any);
+    expect(bothKeys[0].children).toHaveLength(1);
+    expect((bothKeys[0].children[0] as any).field).toBe('A');
+    expect(bothKeys[0].logic).toBe('Or');
+
+    // Named single-child subgroup is not flattened.
+    const namedChild = toFilters({
+      name: 'Outer',
+      query: {
+        And: [
+          {
+            id: 'g',
+            logic: 'And',
+            name: 'Keep',
+            children: [{ id: 'c', field: 'X', operator: '=', value: 1 }],
+          },
+        ],
+      },
+    } as any);
+    expect(isGroup(namedChild[0].children[0])).toBe(true);
+    expect((namedChild[0].children[0] as any).name).toBe('Keep');
   });
 });

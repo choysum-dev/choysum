@@ -155,6 +155,7 @@ import { ElMessage } from 'element-plus';
 import draggable from 'vuedraggable';
 import { provide, defineComponent, reactive } from 'vue';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
+import { shouldDeferKanbanFirstFrame } from '@/web/web/components/view/kanbanFirstFrame';
 import { createTranslate } from '@/web/web/i18n';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/OKanbanView' });
@@ -441,13 +442,9 @@ async function handleCreate() {
   }
 }
 
-// Search and pagination
+// Search and pagination — first-frame load comes from OSearchView query-update when searchView is set.
 function onSearch(payload: QueryUpdatePayload<T>) {
   emit('search-change');
-  if (!firstApplied.value) {
-    firstApplied.value = true;
-    return;
-  }
   lastSearchPayload.value = payload;
   if (payload) {
     awaitFieldSelection(store, { requireNonEmpty: true }).then(() => {
@@ -491,11 +488,21 @@ function emitCardClick(rr: RecordRow) {
 // Normalize and merge forced conditions
 // Merge helpers and debug output were removed; the view layer now passes only the forced condition
 
-// First-frame load
+// First-frame load: when searchView is present, wait for its query-update (includes SavedFilter defaults).
 onMounted(async () => {
   await nextTick();
   if (props.orderBy !== undefined) {
     (store.state as any).orderBy = props.orderBy as any;
+  }
+  // Only OSearchView guarantees a mount-time query-update with SavedFilter defaults.
+  // Custom SearchViewComponent implementations may never emit; keep the mount apply.
+  if (shouldDeferKanbanFirstFrame(props.searchView, OSearchView)) {
+    return;
+  }
+  // Custom search views that already emitted query-update (onSearch sets lastSearchPayload
+  // synchronously) must not run a second fallback apply that can race/supersede it.
+  if (lastSearchPayload.value) {
+    return;
   }
   // laneLoadLimit injection has been removed; queryState.pagination controls loading consistently
   await awaitFieldSelection(store, { requireNonEmpty: true });
@@ -508,7 +515,6 @@ onMounted(async () => {
   });
   await nextTick();
   await preloadInitialLanes();
-  firstApplied.value = true;
 });
 
 // Watch dynamic forcedCondition changes
@@ -534,8 +540,6 @@ watch(
 );
 
 const boardWrapRef = ref<HTMLElement | null>(null);
-// Avoid running apply twice from initial mounted plus the initial OSearch trigger
-const firstApplied = ref(false);
 
 // Latest search payload (keyword / appliedFilters / appliedGroups)
 const lastSearchPayload = ref<QueryUpdatePayload<T> | null>(null);
