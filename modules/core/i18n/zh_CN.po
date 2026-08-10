@@ -6,10 +6,20 @@ msgctxt "core.model.BaseModel.fields"
 msgid "Created At"
 msgstr "创建时间"
 
+#: service/orm/model/model.ts:465
+msgctxt "core.model.BaseModel.fields"
+msgid "Created By"
+msgstr "创建人"
+
 #: service/orm/model/model.ts:451
 msgctxt "core.model.BaseModel.fields"
 msgid "Deleted At"
 msgstr "删除时间"
+
+#: service/orm/model/model.ts:493
+msgctxt "core.model.BaseModel.fields"
+msgid "Deleted By"
+msgstr "删除人"
 
 #: service/orm/model/model.ts:407
 msgctxt "core.model.BaseModel.fields"
@@ -26,6 +36,11 @@ msgctxt "core.model.BaseModel.fields"
 msgid "Updated At"
 msgstr "更新时间"
 
+#: service/orm/model/model.ts:479
+msgctxt "core.model.BaseModel.fields"
+msgid "Updated By"
+msgstr "更新人"
+
 #: service/orm/model/model.ts:286
 msgctxt "service/orm/model/model"
 msgid "current company is required"
@@ -36,12 +51,12 @@ msgctxt "service/orm/model/model"
 msgid "current user is required"
 msgstr "需要当前用户"
 
-#: service/orm/model/model_instance.ts:192
+#: service/orm/model/model_instance.ts:189
 msgctxt "service/orm/model/model_instance"
 msgid "Delete failed: Record with Id %s not found or could not be deleted"
 msgstr "删除失败：未找到 Id 为 %s 的记录，或无法删除"
 
-#: service/orm/model/model_instance.ts:229 service/orm/model/model_instance.ts:89
+#: service/orm/model/model_instance.ts:226 service/orm/model/model_instance.ts:89
 msgctxt "service/orm/model/model_instance"
 msgid "Record with Id %s no longer exists"
 msgstr "Id 为 %s 的记录已不存在"
@@ -91,12 +106,12 @@ msgctxt "service/orm/repository/authz/company_scope"
 msgid "ownership field cannot be null on private company-isolated model"
 msgstr "私有公司隔离模型上 ownership 字段不能为空"
 
-#: service/orm/repository/authz/field_rule_helpers.ts:177
+#: service/orm/repository/authz/field_rule_helpers.ts:186
 msgctxt "service/orm/repository/authz/field_rule_helpers"
 msgid "failed to fetch field rule spec"
 msgstr "获取字段规则规格失败"
 
-#: service/orm/repository/authz/field_rule_helpers.ts:222
+#: service/orm/repository/authz/field_rule_helpers.ts:231
 msgctxt "service/orm/repository/authz/field_rule_helpers"
 msgid "field rule readonly violation"
 msgstr "字段规则只读约束冲突"
@@ -186,52 +201,52 @@ msgctxt "service/orm/repository/validation/kernel"
 msgid "Field \"%s\" must be a valid decimal that satisfies the precision and scale limits"
 msgstr "字段 \"%s\" 必须是满足精度与小数位限制的有效小数"
 
-#: service/orm/repository/write/create_helpers.ts:46
+#: service/orm/repository/write/create_helpers.ts:49
 msgctxt "service/orm/repository/write/create_helpers"
 msgid "record rule denied"
 msgstr "记录规则拒绝"
 
-#: service/runtime/validation/engine.ts:209
+#: service/runtime/validation/engine.ts:210
 msgctxt "service/runtime/validation/engine"
 msgid "field \"%s\" does not exist on model metadata and cannot be written"
 msgstr "字段 \"%s\" 在模型元数据中不存在，无法写入"
 
-#: service/runtime/validation/engine.ts:242
+#: service/runtime/validation/engine.ts:243
 msgctxt "service/runtime/validation/engine"
 msgid "field \"%s\" is computed and cannot be written directly"
 msgstr "字段 \"%s\" 为计算字段，不能直接写入"
 
-#: service/runtime/validation/engine.ts:250
+#: service/runtime/validation/engine.ts:251
 msgctxt "service/runtime/validation/engine"
 msgid "field \"%s\" is readonly and cannot be written"
 msgstr "字段 \"%s\" 为只读，不能写入"
 
-#: service/runtime/validation/engine.ts:196 service/runtime/validation/engine.ts:231
+#: service/runtime/validation/engine.ts:197 service/runtime/validation/engine.ts:232
 msgctxt "service/runtime/validation/engine"
 msgid "field \"%s\" is select-only and cannot be written"
 msgstr "字段 \"%s\" 为只读选择字段，不能写入"
 
-#: service/runtime/validation/engine.ts:154
+#: service/runtime/validation/engine.ts:155
 msgctxt "service/runtime/validation/engine"
 msgid "model \"%s\" is readonly and cannot be written"
 msgstr "模型 \"%s\" 为只读，不能写入"
 
-#: service/runtime/validation/engine.ts:382
+#: service/runtime/validation/engine.ts:383
 msgctxt "service/runtime/validation/engine"
 msgid "reference \"%s\" belongs to company \"%s\", which is incompatible with parent company \"%s\""
 msgstr "引用 \"%s\" 属于公司 \"%s\"，与父记录公司 \"%s\" 不兼容"
 
-#: service/runtime/validation/engine.ts:283 service/runtime/validation/engine.ts:307 service/runtime/validation/engine.ts:363
+#: service/runtime/validation/engine.ts:284 service/runtime/validation/engine.ts:308 service/runtime/validation/engine.ts:364
 msgctxt "service/runtime/validation/engine"
 msgid "reference \"%s\" points to company \"%s\", which is outside ctx.enabledCompanyIds"
 msgstr "引用 \"%s\" 指向公司 \"%s\"，不在 ctx.enabledCompanyIds 中"
 
-#: service/runtime/validation/engine.ts:339
+#: service/runtime/validation/engine.ts:340
 msgctxt "service/runtime/validation/engine"
 msgid "reference \"%s\" with id \"%s\" is not visible in current company scope"
 msgstr "引用 \"%s\"（id \"%s\"）在当前公司范围内不可见"
 
-#: service/runtime/validation/engine.ts:94
+#: service/runtime/validation/engine.ts:95
 msgctxt "service/runtime/validation/engine"
 msgid "validation pipeline failed"
 msgstr "校验流水线失败"
