@@ -256,8 +256,9 @@ export default class SavedFilter extends BaseModel {
   }
 
   /**
-   * Normalize identity / ownership, resolve ModelId, enforce uniqueness and IsDefault mutex.
-   * Static so we can read `ctx.mode` (Create pre-assigns Id before validation).
+   * Normalize ownership, resolve ModelId, enforce uniqueness and IsDefault mutex.
+   * Login is enforced by gRPC AuthN + Method ACL (not here). Static so we can read `ctx.mode`
+   * (Create pre-assigns Id before validation).
    */
   @Constraint<SavedFilter>(['Name', 'ScopeKey', 'Application', 'ModelName', 'ModelId', 'UserId', 'IsDefault', 'Condition', 'Active'])
   static async validateSavedFilterConstraint(self: SavedFilter, ctx: ConstraintContext<SavedFilter>): Promise<void> {
@@ -265,9 +266,6 @@ export default class SavedFilter extends BaseModel {
     const values = ctx.values as Record<string, any>;
     const currentId = String((isCreate ? values.Id : SavedFilter._mergedField(self, ctx, 'Id')) || '').trim() || undefined;
     const actor = String(this.userId || '').trim();
-    if (!actor) {
-      SavedFilter._fail('PermissionDenied', _t('Authentication required', { scope: SCOPE }), GrpcCode.Unauthenticated);
-    }
 
     const app = String(SavedFilter._mergedField(self, ctx, 'Application') || '').trim();
     const modelName = String(SavedFilter._mergedField(self, ctx, 'ModelName') || '').trim();
@@ -298,7 +296,8 @@ export default class SavedFilter extends BaseModel {
       // CreatedUid is stamped by repository write prepare (AuditUidUtils) from the request actor.
       const touchedUserId = Object.prototype.hasOwnProperty.call(values, 'UserId');
       if (!touchedUserId) {
-        values.UserId = actor;
+        // Only setdefault private ownership when an actor is present; empty actor leaves shared (null).
+        if (actor) values.UserId = actor;
       } else {
         values.UserId = SavedFilter._normalizeOwnerUserId(values.UserId, actor);
       }

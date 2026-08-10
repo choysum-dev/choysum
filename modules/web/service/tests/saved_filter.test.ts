@@ -474,23 +474,23 @@ test('SF11: shared write/delete only for creator via Record rules', async () => 
   expect(deleted).toBe(1);
 });
 
-test('SavedFilter rejects Create without authentication', async () => {
+test('SavedFilter Create without identity does not enforce login in Constraint', async () => {
+  // Production gRPC AuthN + Method ACL gate anonymous writes; model Constraint no longer duplicates that.
   resetRequestContext();
   setIdentity(undefined);
-  await expectCode(
-    async () =>
-      SavedFilter.Create(
-        {
-          Name: uid('anon'),
-          Application: 'web',
-          ModelName: 'SavedFilter',
-          Condition: {},
-        } as any,
-        ['Id'] as any
-      ),
-    'PermissionDenied',
-    'Authentication required'
+  const created = await SavedFilter.Create(
+    {
+      Name: uid('anon'),
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      Condition: {},
+    } as any,
+    ['Id', 'UserId'] as any
   );
+  expect((created as any).UserId == null || (created as any).UserId === '').toBe(true);
+  await SavedFilter.sudo(() => SavedFilter.DeleteById(String((created as any).Id)), {
+    hint: 'web.SavedFilter.test.cleanupAnonCreate',
+  });
 });
 
 test('SavedFilter rejects duplicate Name in the same ownership bucket', async () => {
