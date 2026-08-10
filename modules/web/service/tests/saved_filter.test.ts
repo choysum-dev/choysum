@@ -1079,6 +1079,27 @@ test('SavedFilter _clearOtherDefaults covers null candidates, remaining fail, an
   }
 });
 
+test('SavedFilter _clearOtherDefaults reads empty actor when identity has no userId', async () => {
+  resetRequestContext();
+  setIdentity(undefined);
+  const SF = SavedFilter as any;
+  const sudoOwn = Object.prototype.hasOwnProperty.call(SF, 'sudo');
+  const updateOwn = Object.prototype.hasOwnProperty.call(SF, 'Update');
+  const origSudo = SF.sudo;
+  const origUpdate = SF.Update;
+  try {
+    SF.sudo = async () => [];
+    SF.Update = async () => [];
+    // Hits `String(this.userId || '').trim()` with falsy BaseModel.userId.
+    await SF._clearOtherDefaults('web', 'SavedFilter', '', null);
+  } finally {
+    if (sudoOwn) SF.sudo = origSudo;
+    else delete SF.sudo;
+    if (updateOwn) SF.Update = origUpdate;
+    else delete SF.Update;
+  }
+});
+
 test('SavedFilter _assertUniqueName treats empty-string UserId as shared bucket', async () => {
   resetRequestContext();
   const actor = uid('sf_assert_empty');
