@@ -1479,7 +1479,8 @@ test('CreateOperations.Create handles post-relations compute prefetch forks and 
     expect(parentUpdates[0]?.condition).toEqual(['Id', '=', 'CRT-1']);
     expect(parentUpdates[0]?.values?.Total).toBe('8.88');
     expect(parentUpdates[0]?.values?.TotalScale).toBe(undefined);
-    expect(parentUpdates[0]?.values?.UpdatedAt instanceof Date).toBe(true);
+    // UpdatedAt / audit uids are stamped in repository update prepare, not at the model layer.
+    expect(parentUpdates[0]?.values?.UpdatedAt).toBeUndefined();
     expect(bypassCalls).toBe(2);
     expect(warnings.some(msg => msg.includes('MissingTarget'))).toBe(true);
     expect(warnings.some(msg => msg.includes('MissingInverse'))).toBe(true);

@@ -2401,7 +2401,7 @@ func TestPersist_IntegratesUiResourcesComponentsAndWarnings(t *testing.T) {
 		t.Fatalf("automigrate failed: %v", err)
 	}
 	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role (id TEXT PRIMARY KEY, code TEXT)`)
-	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role_ui_resource (id TEXT, role_id TEXT, mode TEXT, meta_application_id TEXT, meta_ui_resource_id TEXT, created_at DATETIME, updated_at DATETIME, deleted_at DATETIME)`)
+	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role_ui_resource (id TEXT, role_id TEXT, mode TEXT, meta_application_id TEXT, meta_ui_resource_id TEXT, created_at DATETIME, updated_at DATETIME, deleted_at DATETIME, created_uid TEXT, updated_uid TEXT, deleted_uid TEXT)`)
 	mustExec(t, testRuntimeScope.db, `CREATE UNIQUE INDEX idx_auth_role_ui_resource_pair ON auth_role_ui_resource(role_id, meta_ui_resource_id)`)
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
@@ -3863,7 +3863,7 @@ func TestReplaceUiResourceRelationsReplacesAndDedupesRows(t *testing.T) {
 func TestPersistUiResourceDefaultRolesInsertsAndDedupes(t *testing.T) {
 	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
 	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role (id TEXT PRIMARY KEY, code TEXT)`)
-	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role_ui_resource (id TEXT, role_id TEXT, mode TEXT, meta_application_id TEXT, meta_ui_resource_id TEXT, created_at DATETIME, updated_at DATETIME, deleted_at DATETIME)`)
+	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role_ui_resource (id TEXT, role_id TEXT, mode TEXT, meta_application_id TEXT, meta_ui_resource_id TEXT, created_at DATETIME, updated_at DATETIME, deleted_at DATETIME, created_uid TEXT, updated_uid TEXT, deleted_uid TEXT)`)
 	mustExec(t, testRuntimeScope.db, `CREATE UNIQUE INDEX idx_auth_role_ui_resource_pair ON auth_role_ui_resource(role_id, meta_ui_resource_id)`)
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
