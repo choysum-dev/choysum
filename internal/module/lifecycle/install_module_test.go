@@ -55,3 +55,52 @@ func TestPrepareInstallAliasesPrefetchInstallModules(t *testing.T) {
 		t.Fatal("expected solo in prepared modules")
 	}
 }
+
+func TestInstallModulePropagatesSkipWebShell(t *testing.T) {
+	modulesPath := t.TempDir()
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
+		t.Fatalf("auto migrate: %v", err)
+	}
+
+	dependsRaw, err := json.Marshal([]string{})
+	if err != nil {
+		t.Fatalf("marshal depends: %v", err)
+	}
+	mod := &meta.Module{
+		Name:           "solo_skip_web",
+		Version:        "1.0.0",
+		Path:           filepath.Join(modulesPath, "solo_skip_web"),
+		DependsStr:     dependsRaw,
+		WebEntryPoint:  "web/index.ts",
+		ApplicationStr: "solo",
+	}
+	origin := &countingPrefetchOriginCoordinator{
+		modules: map[string]*meta.Module{"solo_skip_web": mod},
+	}
+
+	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	locker := &moduleIndexSyncTestLocker{}
+	opts := []Option{
+		WithLockerFactory(func(scope.Scope) statepkg.Locker { return locker }),
+		WithOriginCoordinatorFactory(func(scope.Scope) OriginCoordinator { return origin }),
+	}
+
+	// PrepareInstall runs BuildPlan with SkipWebShell; web must not be resolved.
+	// Install then fails without a JS executor (expected harness limit).
+	err = InstallModule(context.Background(), runtimeScope, nil, InstallModuleRequest{
+		Input:        "solo_skip_web",
+		SkipWebShell: true,
+	}, opts...)
+	if err == nil {
+		t.Fatal("expected InstallModule to fail without executor/full install")
+	}
+	for _, name := range origin.fetches {
+		if name == "web" {
+			t.Fatalf("SkipWebShell should not resolve web shell, fetches=%v", origin.fetches)
+		}
+	}
+	if len(origin.fetches) == 0 || origin.fetches[0] != "solo_skip_web" {
+		t.Fatalf("fetches=%v, want solo_skip_web first", origin.fetches)
+	}
+}

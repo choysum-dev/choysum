@@ -498,6 +498,49 @@ func (c *coordinator) withInstallTransaction(
 	return err
 }
 
+// applyMinimalInstallFetchProgress updates bootstrap stage detail/spinner for registry fetch.
+// Empty moduleName becomes "module" so messages stay readable when origin omits the name.
+func applyMinimalInstallFetchProgress(
+	markDetail func(detail string),
+	setMessage func(message string),
+	stage origincontract.FetchProgressStage,
+	moduleName string,
+) {
+	moduleName = strings.TrimSpace(moduleName)
+	if moduleName == "" {
+		moduleName = "module"
+	}
+	switch stage {
+	case origincontract.FetchProgressStageDownload:
+		markDetail("downloading module package: " + moduleName + "...")
+		setMessage(fmt.Sprintf("%s: downloading from registry...", moduleName))
+	case origincontract.FetchProgressStageVerify:
+		markDetail("verifying module package integrity: " + moduleName + "...")
+		setMessage(fmt.Sprintf("%s: verifying package...", moduleName))
+	case origincontract.FetchProgressStageExtract:
+		markDetail("extracting module package: " + moduleName + "...")
+		setMessage(fmt.Sprintf("%s: extracting package...", moduleName))
+	default:
+		// Keep existing stage detail if unknown progress stage is received.
+	}
+}
+
+// bindMinimalInstallFetchProgressReporter adapts stage detail/spinner setters to an origin fetch reporter.
+func bindMinimalInstallFetchProgressReporter(
+	markDetail func(detail string),
+	setMessage func(message string),
+) func(stage origincontract.FetchProgressStage, moduleName string) {
+	return func(stage origincontract.FetchProgressStage, moduleName string) {
+		applyMinimalInstallFetchProgress(markDetail, setMessage, stage, moduleName)
+	}
+}
+
+// installMinimalModulesFn is the InstallModule entry used by bootstrap minimal install (overridable in tests).
+var installMinimalModulesFn = lifecycle.InstallModule
+
+// newMinimalInstallExecutor builds the JS executor for bootstrap minimal install (overridable in tests).
+var newMinimalInstallExecutor = jsexecutor.NewCompilerExecutor
+
 func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operationID string) error {
 	if c.runtimeScope == nil {
 		return newBootstrapError(bootstrapErrCodeRuntimePrepare, "scope is not available", nil)
@@ -523,35 +566,21 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 	updateFetchProgressMessage := func(message string) {
 		spinnerTicker.SetMessage(message)
 	}
+	markFetchDetail := c.minimalInstallFetchDetailMarker(operationID)
 
-	installCtx = origincontract.WithFetchProgressReporter(installCtx, func(stage origincontract.FetchProgressStage, moduleName string) {
-		moduleName = strings.TrimSpace(moduleName)
-		if moduleName == "" {
-			moduleName = "core module"
-		}
-		switch stage {
-		case origincontract.FetchProgressStageDownload:
-			c.store.markStageDetail(operationID, "downloading module package: "+moduleName+"...")
-			updateFetchProgressMessage(fmt.Sprintf("%s: downloading from registry...", moduleName))
-		case origincontract.FetchProgressStageVerify:
-			c.store.markStageDetail(operationID, "verifying module package integrity: "+moduleName+"...")
-			updateFetchProgressMessage(fmt.Sprintf("%s: verifying package...", moduleName))
-		case origincontract.FetchProgressStageExtract:
-			c.store.markStageDetail(operationID, "extracting module package: "+moduleName+"...")
-			updateFetchProgressMessage(fmt.Sprintf("%s: extracting package...", moduleName))
-		default:
-			// Keep existing stage detail if unknown progress stage is received.
-		}
-	})
+	installCtx = origincontract.WithFetchProgressReporter(
+		installCtx,
+		bindMinimalInstallFetchProgressReporter(markFetchDetail, updateFetchProgressMessage),
+	)
 
-	c.store.markStageDetail(operationID, "resolving core module installation plan...")
-	spinnerTicker.SetMessage("document: preparing metadata tables")
+	c.store.markStageDetail(operationID, "resolving meta module installation plan...")
+	spinnerTicker.SetMessage("meta: preparing module installation...")
 
 	installScope := c.runtimeScope.WithContext(installCtx)
 	if installScope == nil {
 		installScope = c.runtimeScope
 	}
-	executor, err := jsexecutor.NewCompilerExecutor(installScope)
+	executor, err := newMinimalInstallExecutor(installScope)
 	if err != nil {
 		return c.classifyModuleInstallError(progress, installTimeout, err)
 	}
@@ -560,28 +589,54 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 	}
 	defer executor.Stop()
 
-	installErr := lifecycle.InstallModule(installCtx, installScope, executor, lifecycle.InstallModuleRequest{
-		Input:    "document",
+	return runMinimalMetaModuleInstall(
+		installCtx,
+		installScope,
+		executor,
+		installMinimalModulesFn,
+		func() { c.store.markStageDetail(operationID, "meta module installation completed") },
+		func(installErr error) error {
+			return c.classifyModuleInstallError(progress, installTimeout, installErr)
+		},
+	)
+}
+
+// minimalInstallFetchDetailMarker returns the stage-detail setter used by fetch progress reporting.
+func (c *coordinator) minimalInstallFetchDetailMarker(operationID string) func(detail string) {
+	return func(detail string) {
+		c.store.markStageDetail(operationID, detail)
+	}
+}
+
+// runMinimalMetaModuleInstall installs meta and marks the completed stage (testable without full bootstrap).
+func runMinimalMetaModuleInstall(
+	installCtx context.Context,
+	installScope scope.Scope,
+	executor jsexecutor.ScriptExecutor,
+	installFn func(context.Context, scope.Scope, jsexecutor.ScriptExecutor, lifecycle.InstallModuleRequest, ...lifecycle.Option) error,
+	markCompleted func(),
+	classify func(error) error,
+) error {
+	installErr := installFn(installCtx, installScope, executor, lifecycle.InstallModuleRequest{
+		Input:    "meta",
 		WithDemo: false,
 	})
 	if installErr != nil {
-		return c.classifyModuleInstallError(progress, installTimeout, installErr)
+		return classify(installErr)
 	}
-
-	c.store.markStageDetail(operationID, "core module installation completed")
-
+	markCompleted()
 	return nil
 }
 
 func (c *coordinator) classifyModuleInstallError(progress *logger.ProgressLine, installTimeout time.Duration, installErr error) error {
 	if progress != nil {
-		progress.Done("✗", "core module installation failed")
+		progress.Done("✗", "meta module installation failed")
 	}
 	if errors.Is(installErr, context.DeadlineExceeded) {
 		return newBootstrapError(
 			bootstrapErrCodeModuleInstallTimeout,
 			"module installation timed out after "+installTimeout.String()+". "+
-				"Check your network connection or place the required modules (document and its dependencies) in ModulesPath.",
+				"Check your network connection or place the required modules (meta, the web shell, and their dependencies) in ModulesPath.",
 			installErr,
 		)
 	}
@@ -649,14 +704,12 @@ func (c *coordinator) defaultUpdateAdminAndMarker(ctx context.Context, input ini
 		}
 
 		var model meta.Model
-		lookedUp, err := modmeta.LookupEffectiveModel(txScope.Session().DB, "auth", "User")
-		if err != nil {
-			if modmeta.IsEffectiveModelNotFound(err) || errors.Is(err, gorm.ErrRecordNotFound) {
+		if err := txScope.Session().DB.Where("application = ? AND name = ?", "auth", "User").First(&model).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return errBootstrapAdminModelNotFound
 			}
 			return err
 		}
-		model = *lookedUp
 
 		if strings.TrimSpace(model.ModelTable) == "" {
 			return errBootstrapAdminModelTableMissing

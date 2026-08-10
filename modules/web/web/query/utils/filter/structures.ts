@@ -86,6 +86,43 @@ export function isCondition(node: Condition | ConditionGroup): node is Condition
 }
 
 /**
+ * Convert a backend QueryCondition (leaf tuple or And/Or tree) into a UI ConditionGroup.
+ */
+function queryConditionToGroup(query: any, name?: string): ConditionGroup | null {
+  if (query == null) return null;
+  if (Array.isArray(query) && query.length === 3 && typeof query[0] === 'string' && typeof query[1] === 'string') {
+    return {
+      id: genId(),
+      logic: 'And',
+      ...(name ? { name } : {}),
+      children: [{ id: genId(), field: query[0], operator: query[1], value: query[2] }],
+    } as ConditionGroup;
+  }
+  if (typeof query !== 'object' || Array.isArray(query)) return null;
+  if (query.logic && Array.isArray(query.children)) {
+    return { ...(query as ConditionGroup), ...(name ? { name } : {}) };
+  }
+  const andParts = Array.isArray(query.And) ? query.And : null;
+  const orParts = Array.isArray(query.Or) ? query.Or : null;
+  const parts = andParts || orParts;
+  if (!parts || parts.length === 0) return null;
+  const children: Array<Condition | ConditionGroup> = [];
+  for (const part of parts) {
+    const sub = queryConditionToGroup(part);
+    if (!sub) continue;
+    if (sub.children.length === 1 && !sub.name) children.push(sub.children[0]);
+    else children.push(sub);
+  }
+  if (children.length === 0) return null;
+  return {
+    id: genId(),
+    logic: orParts ? 'Or' : 'And',
+    ...(name ? { name } : {}),
+    children,
+  } as ConditionGroup;
+}
+
+/**
  * Normalizes named filters or groups into a ConditionGroup array.
  */
 export function toFilters(input?: NamedFilter | NamedFilter[] | ConditionGroup | ConditionGroup[] | null): ConditionGroup[] {
@@ -97,10 +134,8 @@ export function toFilters(input?: NamedFilter | NamedFilter[] | ConditionGroup |
     if ((it as any).query) {
       const nf = it as NamedFilter;
       if (!nf.name) continue;
-      const q = nf.query as any;
-      if (Array.isArray(q) && q.length === 3) {
-        out.push({ id: genId(), logic: 'And', name: nf.name, children: [{ id: genId(), field: q[0], operator: q[1], value: q[2] }] } as any);
-      }
+      const group = queryConditionToGroup(nf.query, nf.name);
+      if (group) out.push(group);
     } else if (isGroup(it as any)) out.push(it as ConditionGroup);
   }
   return out;

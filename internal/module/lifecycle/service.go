@@ -9,13 +9,15 @@ import (
 )
 
 type InstallRequest struct {
-	Name     string
-	WithDemo bool
+	Name         string
+	WithDemo     bool
+	SkipWebShell bool
 }
 
 type UpgradeRequest struct {
-	Input    string
-	WithDemo bool
+	Input        string
+	WithDemo     bool
+	SkipWebShell bool
 }
 
 type UninstallRequest struct {
@@ -37,12 +39,12 @@ func NewService(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, 
 }
 
 func (s *service) Install(ctx context.Context, req InstallRequest) error {
-	ctx = WithOperationOptions(ctx, OperationOptions{WithDemo: req.WithDemo})
+	ctx = WithOperationOptions(ctx, OperationOptions{WithDemo: req.WithDemo, SkipWebShell: req.SkipWebShell})
 	return s.manager.Install(ctx, strings.TrimSpace(req.Name))
 }
 
 func (s *service) Upgrade(ctx context.Context, req UpgradeRequest) error {
-	ctx = WithOperationOptions(ctx, OperationOptions{WithDemo: req.WithDemo})
+	ctx = WithOperationOptions(ctx, OperationOptions{WithDemo: req.WithDemo, SkipWebShell: req.SkipWebShell})
 	return s.manager.Upgrade(ctx, strings.TrimSpace(req.Input))
 }
 

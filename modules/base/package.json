@@ -17,8 +17,7 @@
     "application": "base",
     "category": "Base",
     "depends": [
-      "core",
-      "web"
+      "core"
     ],
     "cli": ">=0.0.0-0 <0.0.0",
     "entryPoints": {

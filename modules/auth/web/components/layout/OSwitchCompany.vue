@@ -135,6 +135,10 @@ function setEq(a: string[], b: string[]): boolean {
 watch(
   [currentActiveCompanyId, currentEnabledCompanyIds],
   ([active, enabled]) => {
+    // Panel-open drafts are user-owned (seeded in the visible watcher). A token
+    // refresh while the popover is open must not clobber an in-progress selection,
+    // or isDirty/canApply flip back to "No changes to apply".
+    if (visible.value) return;
     draftActiveCompanyId.value = active;
     draftEnabledCompanyIds.value = uniq(enabled);
     ensureActiveInEnabled();

@@ -3,6 +3,8 @@
 
 import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
 import { createServiceByModel } from '@/core/service/rpc';
+import type MetaApplicationModel from '@/meta/service/models/application';
+import type MetaModelModel from '@/meta/service/models/model';
 import type MetaServiceModel from '@/meta/service/models/service';
 import MetaUiResource from '@/meta/service/models/ui_resource';
 import { uniqStrings } from '@/core/service/utils/normalization';
@@ -11,9 +13,26 @@ import RoleMethodAccess from './role_method_access';
 import RoleUiResource from './role_ui_resource';
 import { normalizeScopeRefId, normalizeUiResourceId, parseJsonStringArray, requireMatchesMethod, sortStrings } from './_user_authz_shared';
 import { logicalMethodsAllow } from './_logical_model_registry';
-import { resolveEffectiveApplicationId, resolveEffectiveModelId } from './_resolve_effective_model';
 
+const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
+const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
 const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
+
+async function metaModelId(appName: string, modelName: string): Promise<string> {
+  const rows = await MetaModel.Search(
+    { And: [['Application', '=', appName], ['Name', '=', modelName]] } as any,
+    { fields: ['Id'], limit: 1 } as any
+  );
+  return String(rows?.[0]?.Id || '').trim();
+}
+
+async function metaApplicationId(appName: string): Promise<string> {
+  const rows = await MetaApplication.Search(['Name', '=', appName] as any, {
+    fields: ['Id'],
+    limit: 1,
+  } as any);
+  return String(rows?.[0]?.Id || '').trim();
+}
 
 export type UiGrantExpansion = {
   resources: any[];
@@ -64,7 +83,7 @@ export async function resolveMethodAccessMeta(
   const state = getMethodAccessReqState();
   const key = buildMethodAccessMetaCacheKey(appName, modelName, methodName);
   return await memoizeInReqState(state, key, async () => {
-    const modelId = await resolveEffectiveModelId(appName, modelName);
+    const modelId = await metaModelId(appName, modelName);
     if (!modelId) return undefined;
 
     const serviceRows = await MetaService.Search({ And: [['ModelId', '=', modelId]] } as any, { fields: ['Id', 'Name'], limit: 5000 } as any);
@@ -80,7 +99,7 @@ export async function resolveMethodAccessMeta(
     const irServiceId = String(matched?.Id || '').trim();
     if (!irServiceId) return undefined;
 
-    const irApplicationId = await resolveEffectiveApplicationId(appName);
+    const irApplicationId = await metaApplicationId(appName);
     const scopeOr: any[] = [
       {
         And: [

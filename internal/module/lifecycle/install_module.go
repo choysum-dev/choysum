@@ -14,9 +14,10 @@ import (
 
 // InstallModuleRequest is the unified bootstrap / CLI install entry input.
 type InstallModuleRequest struct {
-	// Input is a local module name or registry ref (for example "document" or "pkg@1.2.3").
-	Input    string
-	WithDemo bool
+	// Input is a local module name or registry ref (for example "meta" or "pkg@1.2.3").
+	Input        string
+	WithDemo     bool
+	SkipWebShell bool
 }
 
 // PrepareInstall materializes the install closure outside any install commit TX.
@@ -38,7 +39,8 @@ func InstallModule(ctx context.Context, runtimeScope scope.Scope, jsExecutor jse
 		return xfmt.Errorf("module name is empty")
 	}
 
-	prepared, err := PrepareInstall(ctx, runtimeScope, input, opts...)
+	opCtx := WithOperationOptions(ctx, OperationOptions{WithDemo: req.WithDemo, SkipWebShell: req.SkipWebShell})
+	prepared, err := PrepareInstall(opCtx, runtimeScope, input, opts...)
 	if err != nil {
 		return err
 	}
@@ -46,13 +48,14 @@ func InstallModule(ctx context.Context, runtimeScope scope.Scope, jsExecutor jse
 		return xfmt.Errorf("prepared install root is empty")
 	}
 
-	installCtx := WithPrefetchedInstallModules(ctx, prepared.Modules)
+	installCtx := WithPrefetchedInstallModules(opCtx, prepared.Modules)
 	installScope := runtimeScope.WithContext(installCtx)
 	if installScope == nil {
 		installScope = runtimeScope
 	}
 	return NewService(installScope, jsExecutor, opts...).Install(installCtx, InstallRequest{
-		Name:     prepared.RootName,
-		WithDemo: req.WithDemo,
+		Name:         prepared.RootName,
+		WithDemo:     req.WithDemo,
+		SkipWebShell: req.SkipWebShell,
 	})
 }

@@ -18,7 +18,9 @@ type Plan struct {
 	// For install: topo order; for uninstall: reverse topo.
 	ModuleOrder []string
 
-	// EnsureOrder is reserved for future dependency resolution (currently unused).
+	// EnsureOrder lists modules that must be installed (if missing) before the
+	// primary ModuleOrder runs. Used by upgrade to pull in the web shell without
+	// upgrading web itself.
 	EnsureOrder []string
 
 	// AffectedApps contains application names impacted by the operation.

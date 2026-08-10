@@ -32,12 +32,19 @@
     "moduleName": "web",
     "application": "web",
     "depends": [
-      "core"
+      "core",
+      "auth",
+      "meta",
+      "document"
     ],
     "cli": ">=0.0.0-0 <0.0.0",
     "entryPoints": {
-      "web": "./web/index.ts"
-    }
+      "web": "./web/index.ts",
+      "service": "./service/index.ts"
+    },
+    "data": [
+      "data/bootstrap.json"
+    ]
   },
   "publishConfig": {
     "access": "public"

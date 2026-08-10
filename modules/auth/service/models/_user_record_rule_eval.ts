@@ -4,13 +4,16 @@
 import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
 import { createServiceByModel } from '@/core/service/rpc';
 import type { ConditionEnvelope, RecordRuleOp } from '@/core/service/api/authz';
+import type MetaApplicationModel from '@/meta/service/models/application';
 import type MetaFieldModel from '@/meta/service/models/field';
+import type MetaModelModel from '@/meta/service/models/model';
 import RoleRecordRule from './role_record_rule';
 import type { RoleRecordRuleKind } from './role_record_rule';
 import { maybeId, withPermissionGraphBypass } from './_user_authz_shared';
-import { resolveEffectiveApplicationId, resolveEffectiveModelRow } from './_resolve_effective_model';
 
+const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
 const MetaField = createServiceByModel<typeof MetaFieldModel>('meta.MetaField');
+const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
 
 type RoleScope = { global: boolean; companies: string[] };
 
@@ -43,10 +46,15 @@ async function resolveRecordRuleMetaCached(appName: string, modelName: string): 
   const state = getRecordRuleReqState();
   const key = buildRecordRuleMetaCacheKey(appName, modelName);
   return await memoizeInReqState(state, key, async () => {
-    const [irApplicationId, modelHit] = await Promise.all([
-      resolveEffectiveApplicationId(appName),
-      resolveEffectiveModelRow(appName, modelName, ['Id', 'CompanyField', 'ModuleId', 'UpdatedAt']),
+    const [appRows, modelRows] = await Promise.all([
+      MetaApplication.Search(['Name', '=', appName] as any, { fields: ['Id'], limit: 1 } as any),
+      MetaModel.Search(
+        { And: [['Application', '=', appName], ['Name', '=', modelName]] } as any,
+        { fields: ['Id', 'CompanyField'], limit: 1 } as any
+      ),
     ]);
+    const irApplicationId = String(appRows?.[0]?.Id || '').trim();
+    const modelHit = modelRows?.[0];
     const modelId = String(modelHit?.Id || '').trim();
     return { irApplicationId, modelHit, modelId };
   });

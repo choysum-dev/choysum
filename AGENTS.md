@@ -30,7 +30,7 @@ Modules live in the local `./modules` dir (auto-detected because cwd contains
 `modules/`). Install them before running; install is idempotent:
 
 ```bash
-./choysum install core web base auth meta task partner
+./choysum install core base task meta auth document web partner
 ./choysum run --config config.yaml   # serves http://localhost:9527 ( / redirects to /web/ )
 ```
 
@@ -39,10 +39,9 @@ Gotchas:
   registered. Using `development`/`production` fails with
   `scope factory not registered`. The built-in default is already `default`, so
   running with no config works too; `config.yaml` here just enables `hotReload`.
-- Do **not** use `--with-demo` for `base`: its demo record hits
-  `NOT NULL constraint failed: base_company.timezone` and aborts the install.
-  Install without `--with-demo`; the non-demo bootstrap seed (roles + `admin`
-  user + `base.company_main`) is applied regardless.
+- Bootstrap seeds (roles + `admin` + `base.company_main`) apply without
+  `--with-demo`. Avoid `--with-demo` for `base`: `base.company_demo` currently
+  omits required `CurrencyId` and aborts the install.
 - Default DB is embedded SQLite at `.choysum/choysum.sqlite`; no external DB
   needed. Postgres/MySQL and S3 document storage are optional.
 

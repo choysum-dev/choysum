@@ -3,7 +3,7 @@
 
 import { GrpcCode, ChoysumError } from '@/core/service/error';
 import { ValidationPipelineError } from '../../../metadata';
-import { wrapRepositoryValidationError } from '..';
+import { selectPrimaryValidationIssue, wrapRepositoryValidationError } from '..';
 
 test('repository validation error helper builds rich metadata for sql/kernel/global issues', () => {
   const error = new ValidationPipelineError('pipeline failed', [
@@ -84,6 +84,94 @@ test('repository validation error helper builds rich metadata for sql/kernel/glo
   expect(issues[0].field).toBe('Name');
   expect(issues[1].field).toBe('Age');
   expect(issues[2].field).toBe(undefined);
+});
+
+test('repository validation error helper prefers status-bearing constraint issue over earlier kernel errors', () => {
+  const wrapped = wrapRepositoryValidationError(
+    {
+      fullModelName: 'web.SavedFilter',
+      modelName: 'SavedFilter',
+      name: '',
+    } as any,
+    new ValidationPipelineError('pipeline failed', [
+      {
+        scope: 'kernel',
+        field: 'Name',
+        code: 'required',
+        message: 'Name is required',
+        severity: 'error',
+      },
+      {
+        scope: 'constraint',
+        method: 'validateSavedFilterConstraint',
+        code: 'constraint_execution_failed',
+        message: 'Authentication required',
+        severity: 'error',
+        meta: {
+          causeCode: 'PermissionDenied',
+          causeDomain: 'web',
+          grpcCode: GrpcCode.Unauthenticated,
+        },
+      },
+    ] as any),
+    'create'
+  );
+
+  expect(wrapped.grpcCode).toBe(GrpcCode.Unauthenticated);
+  expect(wrapped.message).toBe('Authentication required');
+  expect(wrapped.metadata.causeCode).toBe('PermissionDenied');
+  expect(wrapped.metadata.causeDomain).toBe('web');
+  expect(wrapped.metadata.issueCode).toBe('constraint_execution_failed');
+});
+
+test('selectPrimaryValidationIssue falls back to first error when no grpc meta is present', () => {
+  const primary = selectPrimaryValidationIssue([
+    { scope: 'kernel', code: 'required', message: 'a', severity: 'error' },
+    { scope: 'platform', code: 'platform_x', message: 'b', severity: 'error' },
+  ] as any);
+  expect(primary?.code).toBe('required');
+});
+
+test('selectPrimaryValidationIssue ignores OK, non-integer, and out-of-range grpcCode as status-bearing', () => {
+  const issues = [
+    {
+      scope: 'constraint',
+      code: 'bad_ok',
+      message: 'ok code',
+      severity: 'error',
+      meta: { grpcCode: 0 },
+    },
+    {
+      scope: 'constraint',
+      code: 'bad_frac',
+      message: 'fraction',
+      severity: 'error',
+      meta: { grpcCode: 7.5 },
+    },
+    {
+      scope: 'constraint',
+      code: 'bad_range',
+      message: 'range',
+      severity: 'error',
+      meta: { grpcCode: 99 },
+    },
+    {
+      scope: 'kernel',
+      code: 'required',
+      message: 'fallback',
+      severity: 'error',
+    },
+  ] as any;
+  // Invalid grpcCode values are not status-bearing, so selection falls back to the first error.
+  expect(selectPrimaryValidationIssue(issues)?.code).toBe('bad_ok');
+
+  const wrapped = wrapRepositoryValidationError(
+    { fullModelName: 'demo.Model', modelName: 'Model', name: '' } as any,
+    new ValidationPipelineError('pipeline failed', issues),
+    'create'
+  );
+  expect(wrapped.grpcCode).toBe(GrpcCode.InvalidArgument);
+  expect(wrapped.message).toBe('ok code');
 });
 
 test('repository validation error helper falls back message and keeps minimal metadata when issues are empty', () => {

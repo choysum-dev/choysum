@@ -498,6 +498,68 @@ type junitFailure struct {
 	Body    string `xml:",chardata"`
 }
 
+// shouldSkipWebShellForUnitApp skips SPA shell install for non-auth unit shards.
+func shouldSkipWebShellForUnitApp(app string) bool {
+	return !strings.EqualFold(strings.TrimSpace(app), "auth")
+}
+
+// shouldInstallMetaForUnitApp installs meta for auth (gRPC) and web (SavedFilter ModelId).
+func shouldInstallMetaForUnitApp(app string) bool {
+	app = strings.TrimSpace(app)
+	return strings.EqualFold(app, "auth") || strings.EqualFold(app, "web")
+}
+
+type unitAppInstaller interface {
+	Install(ctx context.Context, req lifecycle.InstallRequest) error
+}
+
+// installUnitAppModules installs the unit shard (optionally skipping the web shell) then meta when needed.
+func installUnitAppModules(ctx context.Context, installer unitAppInstaller, app string) error {
+	if err := installer.Install(ctx, lifecycle.InstallRequest{
+		Name:         app,
+		SkipWebShell: shouldSkipWebShellForUnitApp(app),
+	}); err != nil {
+		return err
+	}
+	return ensureMetaInstalledForUnitApp(ctx, installer, app)
+}
+
+// ensureMetaInstalledForUnitApp installs meta when the shard needs MetaModel/gRPC services.
+func ensureMetaInstalledForUnitApp(ctx context.Context, installer unitAppInstaller, app string) error {
+	if !shouldInstallMetaForUnitApp(app) {
+		return nil
+	}
+	return installer.Install(ctx, lifecycle.InstallRequest{Name: "meta", SkipWebShell: true})
+}
+
+// jsContextWithUnitTestIdentity seeds bootstrap admin into JsRequest.Context when auth is installed.
+func jsContextWithUnitTestIdentity(ctx context.Context, testScope scope.Scope) (map[string]interface{}, error) {
+	jsCtx := map[string]interface{}{}
+	identity, ok, idErr := resolveUnitTestDefaultIdentity(ctx, testScope)
+	if idErr != nil {
+		return nil, xfmt.Errorf("resolve unit test default identity: %w", idErr)
+	}
+	if ok {
+		// When auth is in the install closure, seed bootstrap admin so domain
+		// fixtures are not anonymous-denied by record rules. choysumtest
+		// re-applies this before each case (tests may clear identity).
+		jsCtx = unitTestJsRequestContext(identity)
+	}
+	return jsCtx, nil
+}
+
+// unitTestIdentityContextFn resolves JsRequest.Context for backend unit runs (overridable in tests).
+var unitTestIdentityContextFn = jsContextWithUnitTestIdentity
+
+// loadUnitAppTestContext resolves JsRequest.Context, surfacing identity resolution failures.
+func loadUnitAppTestContext(ctx context.Context, testScope scope.Scope) (map[string]interface{}, error) {
+	jsCtx, idErr := unitTestIdentityContextFn(ctx, testScope)
+	if idErr != nil {
+		return nil, idErr
+	}
+	return jsCtx, nil
+}
+
 func RunOneAppBackendTests(
 	ctx context.Context,
 	baseScope scope.Scope,
@@ -580,17 +642,16 @@ func RunOneAppBackendTests(
 
 		// Let module installation manage its own transactional/lease lifecycle.
 		// The outer test transaction is only needed for bundle/test execution state.
+		//
+		// Skip the SPA shell for most domain shards: entryPoints.web would otherwise
+		// pull web→document→auth into e.g. base. Auth is the exception — its BE
+		// suite needs global web build to persist declared MetaUiResource rows
+		// (PermissionState smoke uses auth.route.token_list, etc.).
 		moduleLifecycle := lifecycle.NewService(testScope, jsExec)
-		if err := moduleLifecycle.Install(ctx, lifecycle.InstallRequest{Name: app}); err != nil {
-			return false, err
-		}
-
 		// Auth backend tests rely on meta gRPC services (Model/Application).
-		// Ensure meta is installed so bundle/app dist assets include meta services.
-		if strings.EqualFold(strings.TrimSpace(app), "auth") {
-			if err := moduleLifecycle.Install(ctx, lifecycle.InstallRequest{Name: "meta"}); err != nil {
-				return false, err
-			}
+		// Web SavedFilter tests dial meta.MetaModel for effective ModelId (SF12).
+		if err := installUnitAppModules(ctx, moduleLifecycle, app); err != nil {
+			return false, err
 		}
 
 		txCtx := testScope.Context()
@@ -728,6 +789,10 @@ func RunOneAppBackendTests(
 			return true, err
 		}
 
+		jsCtx, err := loadUnitAppTestContext(ctx, testScope)
+		if err != nil {
+			return false, err
+		}
 		req := &jsengine.JsRequest{
 			Id:      fmt.Sprintf("test-%s-%d", app, time.Now().UnixNano()),
 			Service: "__tests__.Run",
@@ -735,7 +800,7 @@ func RunOneAppBackendTests(
 				"pattern":  pattern,
 				"failFast": failFast,
 			}},
-			Context: map[string]interface{}{},
+			Context: jsCtx,
 		}
 
 		// Execute tests within a DB session context so $choysum.db bridges work.

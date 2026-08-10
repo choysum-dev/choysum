@@ -14,7 +14,7 @@ import MetaUiResourceMenuRoute from '@/meta/service/models/ui_resource_menu_rout
 import MetaUiResourceRouteAction from '@/meta/service/models/ui_resource_route_action';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaServiceModel from '@/meta/service/models/service';
-import { resolveEffectiveApplicationId, resolveEffectiveModelId } from '../models/_resolve_effective_model';
+import { metaApplicationId, metaModelId } from './_meta_ids';
 const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
@@ -148,7 +148,7 @@ function busyWait(ms: number): void {
 }
 
 async function resolveModelId(appName: string, modelName: string): Promise<string> {
-  const id = await resolveEffectiveModelId(appName, modelName);
+  const id = await metaModelId(appName, modelName);
   if (!id) throw new Error(`meta model not found: ${appName}.${modelName}`);
   return id;
 }
@@ -200,7 +200,7 @@ async function resolveService(modelId: string, serviceName: string): Promise<{ i
 }
 
 async function resolveApplicationId(appName: string): Promise<string> {
-  const id = await resolveEffectiveApplicationId(appName);
+  const id = await metaApplicationId(appName);
   if (!id) throw new Error(`meta application not found: ${appName}`);
   return id;
 }
