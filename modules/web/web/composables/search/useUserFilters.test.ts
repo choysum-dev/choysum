@@ -23,7 +23,7 @@ const { sfMocks, actorState } = vi.hoisted(() => ({
 
 vi.mock('@/web/web/stores/registry', () => ({
   createStoreByModel: (model: string) => {
-    if (model === 'web.SavedFilter') return sfMocks;
+    if (model === 'web.UserFilter') return sfMocks;
     return {};
   },
 }));
@@ -37,7 +37,7 @@ vi.mock('@/web/web/query/utils/condition/builder', () => ({
 }));
 
 import { filtersToQuery } from '@/web/web/query/utils/condition/builder';
-import { useSavedFilters } from './useSavedFilters';
+import { useUserFilters } from './useUserFilters';
 
 function runInSetup<T>(fn: () => T): T {
   let result!: T;
@@ -54,7 +54,7 @@ function runInSetup<T>(fn: () => T): T {
   return result;
 }
 
-describe('useSavedFilters', () => {
+describe('useUserFilters', () => {
   beforeEach(() => {
     actorState.id = 'me';
     sfMocks.Search.mockReset();
@@ -75,7 +75,7 @@ describe('useSavedFilters', () => {
 
   it('load clears favorites when app or model is missing', async () => {
     const api = runInSetup(() =>
-      useSavedFilters({
+      useUserFilters({
         store: { application: '', modelName: 'Widget' },
         filtersRef: ref([]),
         applyNamedFilter: vi.fn(),
@@ -87,7 +87,7 @@ describe('useSavedFilters', () => {
     expect(sfMocks.Search).not.toHaveBeenCalled();
 
     const apiModel = runInSetup(() =>
-      useSavedFilters({
+      useUserFilters({
         store: { application: 'demo', modelName: '' },
         filtersRef: ref([]),
         applyNamedFilter: vi.fn(),
@@ -129,7 +129,7 @@ describe('useSavedFilters', () => {
     ]);
     const applyNamedFilter = vi.fn();
     const api = runInSetup(() =>
-      useSavedFilters({
+      useUserFilters({
         store: { application: 'demo', modelName: 'Widget' },
         filtersRef: ref([]),
         applyNamedFilter,
@@ -156,7 +156,7 @@ describe('useSavedFilters', () => {
   it('load records error and clears favorites', async () => {
     sfMocks.Search.mockRejectedValue(new Error('network'));
     const api = runInSetup(() =>
-      useSavedFilters({
+      useUserFilters({
         store: { application: 'demo', modelName: 'Widget' },
         filtersRef: ref([]),
         applyNamedFilter: vi.fn(),
@@ -171,7 +171,7 @@ describe('useSavedFilters', () => {
   it('load stringifies non-Error throws', async () => {
     sfMocks.Search.mockRejectedValue('plain-string-fail');
     const api = runInSetup(() =>
-      useSavedFilters({
+      useUserFilters({
         store: { application: 'demo', modelName: 'Widget' },
         filtersRef: ref([]),
         applyNamedFilter: vi.fn(),
@@ -188,7 +188,7 @@ describe('useSavedFilters', () => {
       { Id: 's1', Name: 'Shared', UserId: null, CreatedUid: 'x', IsDefault: false, Condition: {} },
     ]);
     const api = runInSetup(() =>
-      useSavedFilters({
+      useUserFilters({
         store: { application: 'demo', modelName: 'Widget' },
         filtersRef: ref([]),
         applyNamedFilter: vi.fn(),
@@ -201,7 +201,6 @@ describe('useSavedFilters', () => {
         ['Application', '=', 'demo'],
         ['ModelName', '=', 'Widget'],
         ['ScopeKey', '=', ''],
-        ['Active', '=', true],
         { Or: [['UserId', '=', null]] },
       ])
     );
@@ -211,7 +210,7 @@ describe('useSavedFilters', () => {
   it('load and saveCurrent filter/write ScopeKey from scopeKey()', async () => {
     sfMocks.Search.mockResolvedValue([]);
     const api = runInSetup(() =>
-      useSavedFilters({
+      useUserFilters({
         store: { application: 'demo', modelName: 'Widget', fieldsMetadata: {}, state: { queryState: {} } },
         filtersRef: ref([]),
         applyNamedFilter: vi.fn(),
@@ -231,7 +230,7 @@ describe('useSavedFilters', () => {
 
   it('saveCurrent returns null when name/app/model missing', async () => {
     const api = runInSetup(() =>
-      useSavedFilters({
+      useUserFilters({
         store: { application: 'demo', modelName: 'Widget' },
         filtersRef: ref([]),
         applyNamedFilter: vi.fn(),
@@ -241,7 +240,7 @@ describe('useSavedFilters', () => {
     expect(sfMocks.Create).not.toHaveBeenCalled();
 
     const noApp = runInSetup(() =>
-      useSavedFilters({
+      useUserFilters({
         store: { application: '', modelName: 'Widget' },
         filtersRef: ref([]),
         applyNamedFilter: vi.fn(),
@@ -253,7 +252,7 @@ describe('useSavedFilters', () => {
   it('load tolerates null Search rows and missing Condition', async () => {
     sfMocks.Search.mockResolvedValue(null as any);
     const api = runInSetup(() =>
-      useSavedFilters({
+      useUserFilters({
         store: { application: 'demo', modelName: 'Widget' },
         filtersRef: ref([]),
         applyNamedFilter: vi.fn(),
@@ -276,7 +275,7 @@ describe('useSavedFilters', () => {
     const groups = [{ id: 'g', logic: 'And', children: [] }];
     const fieldsMeta = { Name: { type: 'varchar' } };
     const api = runInSetup(() =>
-      useSavedFilters({
+      useUserFilters({
         store: {
           application: 'demo',
           modelName: 'Widget',
@@ -310,7 +309,7 @@ describe('useSavedFilters', () => {
   it('saveCurrent omits UserId when actor is empty (private)', async () => {
     actorState.id = '';
     const api = runInSetup(() =>
-      useSavedFilters({
+      useUserFilters({
         store: { application: 'demo', modelName: 'Widget', fieldsMetadata: {}, state: { queryState: {} } },
         filtersRef: ref([]),
         applyNamedFilter: vi.fn(),
@@ -325,7 +324,7 @@ describe('useSavedFilters', () => {
   it('saveCurrent uses empty Condition when filtersToQuery returns null', async () => {
     (filtersToQuery as any).mockReturnValueOnce(null);
     const api = runInSetup(() =>
-      useSavedFilters({
+      useUserFilters({
         store: { application: 'demo', modelName: 'Widget', fieldsMetadata: {}, state: { queryState: {} } },
         filtersRef: ref(null as any),
         applyNamedFilter: vi.fn(),
@@ -348,7 +347,7 @@ describe('useSavedFilters', () => {
       UserId: '',
     });
     const api = runInSetup(() =>
-      useSavedFilters({
+      useUserFilters({
         store: { application: 'demo', modelName: 'Widget', fieldsMetadata: {}, state: { queryState: {} } },
         filtersRef: ref([]),
         applyNamedFilter: vi.fn(),
@@ -366,7 +365,7 @@ describe('useSavedFilters', () => {
   it('apply and remove delegate to helpers/store', async () => {
     const applyNamedFilter = vi.fn();
     const api = runInSetup(() =>
-      useSavedFilters({
+      useUserFilters({
         store: { application: 'demo', modelName: 'Widget' },
         filtersRef: ref([]),
         applyNamedFilter,
@@ -388,7 +387,7 @@ describe('useSavedFilters', () => {
       { Id: 'p0', Name: 'ZeroUid', IsDefault: false, UserId: 0 as any, CreatedUid: 'me' },
     ]);
     const withMe = runInSetup(() =>
-      useSavedFilters({
+      useUserFilters({
         store: { application: 'demo', modelName: 'Widget' },
         filtersRef: ref([]),
         applyNamedFilter: vi.fn(),
@@ -404,7 +403,7 @@ describe('useSavedFilters', () => {
       { Id: 'p2', Name: 'PrivNoMe', IsDefault: false, UserId: 'someone', CreatedUid: 'someone' },
     ]);
     const noMe = runInSetup(() =>
-      useSavedFilters({
+      useUserFilters({
         store: { application: 'demo', modelName: 'Widget' },
         filtersRef: ref([]),
         applyNamedFilter: vi.fn(),
@@ -416,7 +415,7 @@ describe('useSavedFilters', () => {
 
   it('saveCurrent null name and empty CreatedUid/Name fallbacks', async () => {
     const api = runInSetup(() =>
-      useSavedFilters({
+      useUserFilters({
         store: { application: 'demo', modelName: 'Widget', fieldsMetadata: {}, state: { queryState: {} } },
         filtersRef: ref([]),
         applyNamedFilter: vi.fn(),

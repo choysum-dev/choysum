@@ -27,7 +27,7 @@ import { computeInitialAppliedFilters, computeAppliedGroups } from '@/web/web/qu
 import { buildQueryUpdatePayload } from '@/web/web/query/utils/search/payload';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import { actorUserId } from '@/web/web/composables/search/actorUserId';
-import { mergeSavedFilterDefaults, type SavedFilterRow } from '@/web/web/composables/search/savedFilterDefaults';
+import { mergeUserFilterDefaults, pickLatestIsDefault, type UserFilterRow } from '@/web/web/composables/search/userFilterDefaults';
 import { normalizeScopeKey } from '@/web/web/composables/search/scopeKey';
 import { trySetupHook } from '@/web/web/composables/search/trySetupHook';
 import { createTranslate } from '@/web/web/i18n';
@@ -77,13 +77,13 @@ const codeDefaultFilters = computed<NamedFilter<T>[]>(() => {
   return Array.isArray(defs) ? defs : [];
 });
 
-/** Server IsDefault rows; merge order shared with useSavedFilters via mergeSavedFilterDefaults. */
-const serverPrivateDefault = ref<SavedFilterRow | null>(null);
-const serverSharedDefault = ref<SavedFilterRow | null>(null);
+/** Server IsDefault rows; merge order shared with useUserFilters via mergeUserFilterDefaults. */
+const serverPrivateDefault = ref<UserFilterRow | null>(null);
+const serverSharedDefault = ref<UserFilterRow | null>(null);
 let serverDefaultsLoadGen = 0;
 const mergedDefaultFilters = computed(
   () =>
-    mergeSavedFilterDefaults({
+    mergeUserFilterDefaults({
       privateDefault: serverPrivateDefault.value,
       sharedDefault: serverSharedDefault.value,
       codeDefaults: codeDefaultFilters.value as any,
@@ -137,14 +137,13 @@ async function loadServerDefaults(): Promise<void> {
   try {
     const me = actorUserId();
     const scope = normalizeScopeKey(currentRoute?.path ?? '');
-    const sf = createStoreByModel('web.SavedFilter') as any;
-    const rows = (await sf.Search(
+    const uf = createStoreByModel('web.UserFilter') as any;
+    const rows = (await uf.Search(
       {
         And: [
           ['Application', '=', app],
           ['ModelName', '=', model],
           ['ScopeKey', '=', scope],
-          ['Active', '=', true],
           ['IsDefault', '=', true],
           {
             Or: me
@@ -156,12 +155,12 @@ async function loadServerDefaults(): Promise<void> {
           },
         ],
       },
-      { fields: ['Id', 'Name', 'ScopeKey', 'Condition', 'IsDefault', 'UserId'] }
-    )) as SavedFilterRow[];
+      { fields: ['Id', 'Name', 'ScopeKey', 'Condition', 'IsDefault', 'UserId', 'UpdatedAt', 'CreatedAt'] }
+    )) as UserFilterRow[];
 
     if (gen !== serverDefaultsLoadGen) return;
-    serverPrivateDefault.value = (rows || []).find(r => r.IsDefault && r.UserId != null && r.UserId !== '') || null;
-    serverSharedDefault.value = (rows || []).find(r => r.IsDefault && (r.UserId == null || r.UserId === '')) || null;
+    serverPrivateDefault.value = pickLatestIsDefault(rows, 'private');
+    serverSharedDefault.value = pickLatestIsDefault(rows, 'shared');
   } catch {
     // Store may be unavailable before module codegen; fall back to code defaults.
     if (gen === serverDefaultsLoadGen) {
@@ -171,7 +170,7 @@ async function loadServerDefaults(): Promise<void> {
   }
 }
 
-// First-frame emit waits for SavedFilter defaults so private/shared IsDefault can win.
+// First-frame emit waits for UserFilter defaults so private/shared IsDefault can win.
 onMounted(async () => {
   await loadServerDefaults();
   if (!props.initialEmit) {

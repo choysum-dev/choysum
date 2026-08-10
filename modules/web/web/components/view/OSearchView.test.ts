@@ -21,7 +21,7 @@ vi.mock('@/web/web/i18n', async () => {
 
 vi.mock('@/web/web/stores/registry', () => ({
   createStoreByModel: (model: string) => {
-    if (model === 'web.SavedFilter') return { Search: (...args: any[]) => sfSearch(...args) };
+    if (model === 'web.UserFilter') return { Search: (...args: any[]) => sfSearch(...args) };
     return {};
   },
 }));
@@ -99,6 +99,33 @@ describe('OSearchView server defaults', () => {
     const defaults = JSON.parse(defaultsText);
     expect(defaults[0]).toMatchObject({ name: 'PrivateDef', selected: true });
     expect(defaults.find((d: any) => d.name === 'Code')?.selected).toBe(false);
+  });
+
+  it('picks the newest private IsDefault when several exist', async () => {
+    sfSearch.mockResolvedValue([
+      {
+        Id: 'p-old',
+        Name: 'OlderPrivate',
+        Condition: {},
+        IsDefault: true,
+        UserId: 'me',
+        UpdatedAt: '2026-01-01T00:00:00.000Z',
+      },
+      {
+        Id: 'p-new',
+        Name: 'NewerPrivate',
+        Condition: {},
+        IsDefault: true,
+        UserId: 'me',
+        UpdatedAt: '2026-08-01T00:00:00.000Z',
+      },
+    ]);
+    const wrapper = mount(OSearchView as any, {
+      props: { store: makeStore() },
+      global: { stubs: { OSearch: OSearchStub } },
+    });
+    await flushPromises();
+    expect(JSON.parse(wrapper.find('.defaults').text())[0].name).toBe('NewerPrivate');
   });
 
   it('skips Search when application or modelName is missing', async () => {
@@ -195,7 +222,6 @@ describe('OSearchView server defaults', () => {
         ['Application', '=', 'demo'],
         ['ModelName', '=', 'Widget'],
         ['ScopeKey', '=', ''],
-        ['Active', '=', true],
         ['IsDefault', '=', true],
         { Or: [['UserId', '=', null]] },
       ])

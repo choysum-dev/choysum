@@ -89,8 +89,8 @@ test('repository validation error helper builds rich metadata for sql/kernel/glo
 test('repository validation error helper prefers status-bearing constraint issue over earlier kernel errors', () => {
   const wrapped = wrapRepositoryValidationError(
     {
-      fullModelName: 'web.SavedFilter',
-      modelName: 'SavedFilter',
+      fullModelName: 'web.UserFilter',
+      modelName: 'UserFilter',
       name: '',
     } as any,
     new ValidationPipelineError('pipeline failed', [
@@ -103,7 +103,7 @@ test('repository validation error helper prefers status-bearing constraint issue
       },
       {
         scope: 'constraint',
-        method: 'validateSavedFilterConstraint',
+        method: 'validateUserFilterConstraint',
         code: 'constraint_execution_failed',
         message: 'Authentication required',
         severity: 'error',

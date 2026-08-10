@@ -59,7 +59,7 @@ test('case1 starts with default identity then mutates shared context', () => {
   jsCtx.ctx.lang = 'zh_CN';
   jsCtx.req.depth = 7;
   jsCtx.req.recordRuleMode = 'allowlist';
-  jsCtx.req.recordRuleAllow = ['web.SavedFilter:read'];
+  jsCtx.req.recordRuleAllow = ['web.UserFilter:read'];
 });
 
 test('case2 rebuilds a fresh context without prior leaks', () => {

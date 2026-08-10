@@ -6,10 +6,16 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import type { NamedFilter } from '@/web/web/query/types';
 import { filtersToQuery } from '@/web/web/query/utils/condition/builder';
 import { actorUserId } from './actorUserId';
-import { mergeSavedFilterDefaults, savedFilterToNamedFilter, type SavedFilterRow } from './savedFilterDefaults';
+import {
+  mergeUserFilterDefaults,
+  pickLatestIsDefault,
+  resolveUserFilterUserId,
+  userFilterToNamedFilter,
+  type UserFilterRow,
+} from './userFilterDefaults';
 import { normalizeScopeKey } from './scopeKey';
 
-export type SavedFavoriteItem = SavedFilterRow & {
+export type UserFavoriteItem = UserFilterRow & {
   Id: string;
   Name: string;
   shared: boolean;
@@ -18,9 +24,9 @@ export type SavedFavoriteItem = SavedFilterRow & {
 };
 
 /**
- * Load / apply / save / remove web.SavedFilter favorites for the given view store.
+ * Load / apply / save / remove web.UserFilter favorites for the given view store.
  */
-export function useSavedFilters(params: {
+export function useUserFilters(params: {
   store: any;
   filtersRef: Ref<any[]>;
   keywordRef?: Ref<string>;
@@ -30,7 +36,7 @@ export function useSavedFilters(params: {
   scopeKey?: () => string;
 }) {
   const { store, filtersRef, keywordRef, applyNamedFilter, codeDefaults } = params;
-  const favorites = ref<SavedFavoriteItem[]>([]);
+  const favorites = ref<UserFavoriteItem[]>([]);
   const loading = ref(false);
   const loadError = ref<string | null>(null);
 
@@ -41,8 +47,8 @@ export function useSavedFilters(params: {
     return normalizeScopeKey(params.scopeKey?.() ?? '');
   }
 
-  function savedFilterStore() {
-    return createStoreByModel('web.SavedFilter');
+  function userFilterStore() {
+    return createStoreByModel('web.UserFilter');
   }
 
   async function load(): Promise<void> {
@@ -57,14 +63,13 @@ export function useSavedFilters(params: {
     try {
       const me = actorUserId();
       const scope = currentScopeKey();
-      const sf = savedFilterStore() as any;
-      const rows = (await sf.Search(
+      const uf = userFilterStore() as any;
+      const rows = (await uf.Search(
         {
           And: [
             ['Application', '=', app],
             ['ModelName', '=', model],
             ['ScopeKey', '=', scope],
-            ['Active', '=', true],
             {
               Or: me
                 ? [
@@ -76,24 +81,25 @@ export function useSavedFilters(params: {
           ],
         },
         {
-          fields: ['Id', 'Name', 'ScopeKey', 'Condition', 'IsDefault', 'UserId', 'CreatedUid', 'Sort'],
+          fields: ['Id', 'Name', 'ScopeKey', 'Condition', 'IsDefault', 'UserId', 'CreatedUid', 'UpdatedAt', 'CreatedAt'],
           orderBy: { field: 'Name', order: 'asc' },
         }
-      )) as SavedFilterRow[];
+      )) as UserFilterRow[];
 
       favorites.value = (rows || [])
         .filter(r => r && r.Id && r.Name)
         .map(r => {
           const createUid = String(r.CreatedUid || '').trim();
-          const shared = r.UserId == null || r.UserId === '';
+          const ownerId = resolveUserFilterUserId(r.UserId);
+          const shared = !ownerId;
           return {
             ...r,
             Id: String(r.Id),
             Name: String(r.Name),
             shared,
             createUid,
-            // Private: owner; shared: SF11 creator only.
-            canDelete: shared ? !!me && createUid === me : !!me && String(r.UserId || '').trim() === me,
+            // Private: owner; shared: creator only.
+            canDelete: shared ? !!me && createUid === me : !!me && ownerId === me,
           };
         });
     } catch (e: any) {
@@ -104,11 +110,11 @@ export function useSavedFilters(params: {
     }
   }
 
-  const privateDefault = computed(() => favorites.value.find(f => f.IsDefault && !f.shared) || null);
-  const sharedDefault = computed(() => favorites.value.find(f => f.IsDefault && f.shared) || null);
+  const privateDefault = computed(() => pickLatestIsDefault(favorites.value, 'private'));
+  const sharedDefault = computed(() => pickLatestIsDefault(favorites.value, 'shared'));
 
   const defaultsForOpen = computed<NamedFilter[]>(() =>
-    mergeSavedFilterDefaults({
+    mergeUserFilterDefaults({
       privateDefault: privateDefault.value,
       sharedDefault: sharedDefault.value,
       codeDefaults: codeDefaults ? codeDefaults() : undefined,
@@ -130,7 +136,7 @@ export function useSavedFilters(params: {
     applyNamedFilter({ name: fav.name, query: fav.filter } as NamedFilter);
   }
 
-  async function saveCurrent(opts: { name: string; isDefault?: boolean; shared?: boolean }): Promise<SavedFavoriteItem | null> {
+  async function saveCurrent(opts: { name: string; isDefault?: boolean; shared?: boolean }): Promise<UserFavoriteItem | null> {
     const app = application.value;
     const model = modelName.value;
     const name = String(opts.name || '').trim();
@@ -143,7 +149,7 @@ export function useSavedFilters(params: {
     const condition = filtersToQuery(conditionGroups as any, keyword, keywordFields, fieldsMeta) ?? {};
 
     const me = actorUserId();
-    const sf = savedFilterStore() as any;
+    const uf = userFilterStore() as any;
     // Private: omit UserId so the service defaults to the actor (avoids empty→shared).
     // Shared: explicit null.
     const values: Record<string, any> = {
@@ -153,17 +159,16 @@ export function useSavedFilters(params: {
       ModelName: model,
       Condition: condition,
       IsDefault: !!opts.isDefault,
-      Active: true,
     };
     if (opts.shared) {
       values.UserId = null;
     } else if (me) {
       values.UserId = me;
     }
-    const created = await sf.Create(values, ['Id', 'Name', 'ScopeKey', 'Condition', 'IsDefault', 'UserId', 'CreatedUid']);
+    const created = await uf.Create(values, ['Id', 'Name', 'ScopeKey', 'Condition', 'IsDefault', 'UserId', 'CreatedUid']);
     await load();
-    const createUid = String((created as SavedFilterRow)?.CreatedUid || me || '').trim();
-    const shared = (created as any).UserId == null || (created as any).UserId === '';
+    const createUid = String((created as UserFilterRow)?.CreatedUid || me || '').trim();
+    const shared = !resolveUserFilterUserId((created as any).UserId);
     return {
       ...(created as any),
       Id: String((created as any).Id),
@@ -175,8 +180,8 @@ export function useSavedFilters(params: {
   }
 
   async function remove(id: string): Promise<void> {
-    const sf = savedFilterStore() as any;
-    await sf.DeleteById(String(id));
+    const uf = userFilterStore() as any;
+    await uf.DeleteById(String(id));
     await load();
   }
 
@@ -192,6 +197,6 @@ export function useSavedFilters(params: {
     defaultsForOpen,
     privateDefault,
     sharedDefault,
-    toNamedFilter: savedFilterToNamedFilter,
+    toNamedFilter: userFilterToNamedFilter,
   } as const;
 }

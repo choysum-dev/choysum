@@ -59,7 +59,7 @@ vi.mock('vue-router', async () => {
   };
 });
 
-vi.mock('@/web/web/composables/search/useSavedFilters', async () => {
+vi.mock('@/web/web/composables/search/useUserFilters', async () => {
   const { reactive, toRef } = await import('vue');
   savedFiltersApi.state = reactive({
     favoriteMenuItems: [] as any[],
@@ -68,7 +68,7 @@ vi.mock('@/web/web/composables/search/useSavedFilters', async () => {
     defaultsForOpen: [] as any[],
   });
   return {
-    useSavedFilters: (params: {
+    useUserFilters: (params: {
       applyNamedFilter: (nf: any) => void;
       codeDefaults?: () => any;
       scopeKey?: () => string;

@@ -15,7 +15,7 @@ export type DefaultFavoriteNameSources = {
 };
 
 /**
- * Pick the first non-empty stable default for a new SavedFilter name.
+ * Pick the first non-empty stable default for a new UserFilter name.
  * Prefer human titles' canonical src over route path/name; never use live i18n.
  */
 export function pickDefaultFavoriteName(sources: DefaultFavoriteNameSources): string {
@@ -27,7 +27,7 @@ export function pickDefaultFavoriteName(sources: DefaultFavoriteNameSources): st
 }
 
 /**
- * Canonical label for SavedFilter Name defaults: TermReference.src (or plain title).
+ * Canonical label for UserFilter Name defaults: TermReference.src (or plain title).
  * Do not call translateTerm / $t — Name must stay language-stable across UI locale switches.
  */
 export function stableTitleSource(title?: string, titleText?: TermReference): string {

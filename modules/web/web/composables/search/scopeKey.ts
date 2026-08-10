@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Normalize a route path into SavedFilter.ScopeKey.
+ * Normalize a route path into UserFilter.ScopeKey.
  * - Drops query/hash
  * - Collapses slashes and trailing slash (except `/`)
  * - Replaces numeric / long opaque id segments with `:id` so form URLs stay stable

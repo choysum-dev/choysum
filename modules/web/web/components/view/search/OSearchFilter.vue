@@ -71,7 +71,7 @@ const emit = defineEmits<{
   (e: 'remove-condition', id: string): void;
   (e: 'update-condition', id: string, patch: Partial<Condition>): void;
   (e: 'cancel'): void;
-  /** Apply draft into search tags (not persist SavedFilter). */
+  /** Apply draft into search tags (not persist UserFilter). */
   (e: 'confirm'): void;
 }>();
 

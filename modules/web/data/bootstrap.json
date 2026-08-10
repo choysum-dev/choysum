@@ -1,7 +1,7 @@
 {
   "records": [
     {
-      "name": "rma_base_user_web_saved_filter_search",
+      "name": "rma_base_user_web_user_filter_search",
       "application": "auth",
       "model": "RoleMethodAccess",
       "values": {
@@ -11,14 +11,14 @@
         "MetaApplicationId": null,
         "MetaModelId": null,
         "MetaServiceId": {
-          "serviceRef": "web.SavedFilter/Search"
+          "serviceRef": "web.UserFilter/Search"
         },
         "LogicalModelName": null,
         "Mode": "allow"
       }
     },
     {
-      "name": "rma_base_user_web_saved_filter_browse",
+      "name": "rma_base_user_web_user_filter_browse",
       "application": "auth",
       "model": "RoleMethodAccess",
       "values": {
@@ -28,14 +28,14 @@
         "MetaApplicationId": null,
         "MetaModelId": null,
         "MetaServiceId": {
-          "serviceRef": "web.SavedFilter/Browse"
+          "serviceRef": "web.UserFilter/Browse"
         },
         "LogicalModelName": null,
         "Mode": "allow"
       }
     },
     {
-      "name": "rma_base_user_web_saved_filter_create",
+      "name": "rma_base_user_web_user_filter_create",
       "application": "auth",
       "model": "RoleMethodAccess",
       "values": {
@@ -45,14 +45,14 @@
         "MetaApplicationId": null,
         "MetaModelId": null,
         "MetaServiceId": {
-          "serviceRef": "web.SavedFilter/Create"
+          "serviceRef": "web.UserFilter/Create"
         },
         "LogicalModelName": null,
         "Mode": "allow"
       }
     },
     {
-      "name": "rma_base_user_web_saved_filter_update",
+      "name": "rma_base_user_web_user_filter_update",
       "application": "auth",
       "model": "RoleMethodAccess",
       "values": {
@@ -62,14 +62,14 @@
         "MetaApplicationId": null,
         "MetaModelId": null,
         "MetaServiceId": {
-          "serviceRef": "web.SavedFilter/Update"
+          "serviceRef": "web.UserFilter/Update"
         },
         "LogicalModelName": null,
         "Mode": "allow"
       }
     },
     {
-      "name": "rma_base_user_web_saved_filter_update_by_id",
+      "name": "rma_base_user_web_user_filter_update_by_id",
       "application": "auth",
       "model": "RoleMethodAccess",
       "values": {
@@ -79,14 +79,14 @@
         "MetaApplicationId": null,
         "MetaModelId": null,
         "MetaServiceId": {
-          "serviceRef": "web.SavedFilter/UpdateById"
+          "serviceRef": "web.UserFilter/UpdateById"
         },
         "LogicalModelName": null,
         "Mode": "allow"
       }
     },
     {
-      "name": "rma_base_user_web_saved_filter_delete",
+      "name": "rma_base_user_web_user_filter_delete",
       "application": "auth",
       "model": "RoleMethodAccess",
       "values": {
@@ -96,14 +96,14 @@
         "MetaApplicationId": null,
         "MetaModelId": null,
         "MetaServiceId": {
-          "serviceRef": "web.SavedFilter/Delete"
+          "serviceRef": "web.UserFilter/Delete"
         },
         "LogicalModelName": null,
         "Mode": "allow"
       }
     },
     {
-      "name": "rma_base_user_web_saved_filter_delete_by_id",
+      "name": "rma_base_user_web_user_filter_delete_by_id",
       "application": "auth",
       "model": "RoleMethodAccess",
       "values": {
@@ -113,14 +113,14 @@
         "MetaApplicationId": null,
         "MetaModelId": null,
         "MetaServiceId": {
-          "serviceRef": "web.SavedFilter/DeleteById"
+          "serviceRef": "web.UserFilter/DeleteById"
         },
         "LogicalModelName": null,
         "Mode": "allow"
       }
     },
     {
-      "name": "rfr_base_user_web_saved_filter_rw",
+      "name": "rfr_base_user_web_user_filter_rw",
       "application": "auth",
       "model": "RoleFieldRule",
       "values": {
@@ -129,7 +129,7 @@
         },
         "MetaApplicationId": null,
         "MetaModelId": {
-          "modelRef": "web.SavedFilter"
+          "modelRef": "web.UserFilter"
         },
         "MetaFieldId": null,
         "PermRead": "allow",
@@ -137,7 +137,7 @@
       }
     },
     {
-      "name": "rrr_base_user_web_saved_filter_rc",
+      "name": "rrr_base_user_web_user_filter_rc",
       "application": "auth",
       "model": "RoleRecordRule",
       "values": {
@@ -147,7 +147,7 @@
         "Kind": "grant",
         "MetaApplicationId": null,
         "MetaModelId": {
-          "modelRef": "web.SavedFilter"
+          "modelRef": "web.UserFilter"
         },
         "Condition": {
           "Or": [
@@ -170,7 +170,7 @@
       }
     },
     {
-      "name": "rrr_base_user_web_saved_filter_wd_private",
+      "name": "rrr_base_user_web_user_filter_wd_private",
       "application": "auth",
       "model": "RoleRecordRule",
       "values": {
@@ -180,7 +180,7 @@
         "Kind": "grant",
         "MetaApplicationId": null,
         "MetaModelId": {
-          "modelRef": "web.SavedFilter"
+          "modelRef": "web.UserFilter"
         },
         "Condition": {
           "And": [
@@ -198,7 +198,7 @@
       }
     },
     {
-      "name": "rrr_base_user_web_saved_filter_wd_shared",
+      "name": "rrr_base_user_web_user_filter_wd_shared",
       "application": "auth",
       "model": "RoleRecordRule",
       "values": {
@@ -208,7 +208,7 @@
         "Kind": "grant",
         "MetaApplicationId": null,
         "MetaModelId": {
-          "modelRef": "web.SavedFilter"
+          "modelRef": "web.UserFilter"
         },
         "Condition": {
           "And": [

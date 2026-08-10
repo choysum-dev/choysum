@@ -4,7 +4,7 @@
 import { useAuthStore } from '@/auth/web/stores/auth';
 
 /**
- * Resolve the current actor user id for SavedFilter queries/creates.
+ * Resolve the current actor user id for UserFilter queries/creates.
  * Browser SPA identity lives on the auth store; unit harness may use request context.
  */
 export function actorUserId(): string {
