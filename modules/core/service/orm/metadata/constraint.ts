@@ -61,14 +61,19 @@ export interface ValidationIssue {
 
 /**
  * Execution context passed to runtime constraint handlers.
+ *
+ * `values` / `current` are typed as {@link Partial}<TModel> so named field
+ * access (e.g. `ctx.values.UserId`) resolves to the model field type.
+ * Intersecting {@link ObjectRecord} keeps string-key dynamic access usable in
+ * the validation engine without casts at every call site.
  */
 export interface ConstraintContext<TModel extends BaseModel = BaseModel> {
   mode: ConstraintMode;
   model: ModelCtor<TModel> & typeof BaseModel;
   metadata: ModelMetadata;
   self?: TModel;
-  current?: ObjectRecord;
-  values: ObjectRecord;
+  current?: Partial<TModel> & ObjectRecord;
+  values: Partial<TModel> & ObjectRecord;
   changedFields: Set<string>;
   repository: Repository;
   requestContext?: unknown;

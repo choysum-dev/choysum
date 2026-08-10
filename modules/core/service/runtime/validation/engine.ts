@@ -618,7 +618,7 @@ export class ValidationEngine {
           instanceTouched.add(field);
           // Flush to ctx.values immediately so the next handler's draft
           // (which reads ctx.values as a fallback) can observe the update.
-          ctx.values[field] = changes[field];
+          (ctx.values as ObjectRecord)[field] = changes[field];
           // When ctx.self is explicitly provided (e.g. preview mode),
           // buildConstraintSelf returns it directly.  Write back so that
           // subsequent static handlers see the mutation through `self`.
