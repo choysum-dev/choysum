@@ -249,6 +249,7 @@ import {
   routeTitleFromLocation,
   stableTitleSource,
 } from '@/web/web/composables/search/defaultFavoriteName';
+import { trySetupHook } from '@/web/web/composables/search/trySetupHook';
 import { useFilterableSearchFields } from '@/web/web/composables/search/useSearchFieldOptions';
 import { useSearchGrouping, type SearchGroupByItem } from '@/web/web/composables/search/useSearchGrouping';
 import { createTranslate } from '@/web/web/i18n';
@@ -257,14 +258,6 @@ import { useMenuStore } from '@/web/web/stores/menuStore';
 import { useRoute } from 'vue-router';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/search/OSearch' });
-
-function trySetupHook<T>(fn: () => T): T | null {
-  try {
-    return fn();
-  } catch {
-    return null;
-  }
-}
 
 /** Captured in setup so click handlers never call inject()-based APIs. */
 const breadcrumbStore = trySetupHook(() => useBreadcrumbStore());

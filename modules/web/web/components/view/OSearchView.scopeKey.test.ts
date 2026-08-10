@@ -71,4 +71,17 @@ describe('OSearchView ScopeKey from route', () => {
       expect.arrayContaining([['ScopeKey', '=', '/web/widgets/:id/edit']])
     );
   });
+
+  it('uses empty ScopeKey when route.path is missing', async () => {
+    routeState.path = undefined as any;
+    mount(OSearchView as any, {
+      props: {
+        store: { application: 'demo', modelName: 'Widget', state: { queryState: {} } },
+        initialEmit: false,
+      },
+      global: { stubs: { OSearch: OSearchStub } },
+    });
+    await flushPromises();
+    expect(sfSearch.mock.calls[0]![0].And).toEqual(expect.arrayContaining([['ScopeKey', '=', '']]));
+  });
 });

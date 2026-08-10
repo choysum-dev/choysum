@@ -29,15 +29,8 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import { actorUserId } from '@/web/web/composables/search/actorUserId';
 import { mergeSavedFilterDefaults, type SavedFilterRow } from '@/web/web/composables/search/savedFilterDefaults';
 import { normalizeScopeKey } from '@/web/web/composables/search/scopeKey';
+import { trySetupHook } from '@/web/web/composables/search/trySetupHook';
 import { createTranslate } from '@/web/web/i18n';
-
-function trySetupHook<T>(fn: () => T): T | null {
-  try {
-    return fn();
-  } catch {
-    return null;
-  }
-}
 
 const currentRoute = trySetupHook(() => useRoute());
 

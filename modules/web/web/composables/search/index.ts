@@ -13,3 +13,4 @@ export * from './useSavedFilters';
 export * from './savedFilterDefaults';
 export * from './defaultFavoriteName';
 export * from './scopeKey';
+export * from './trySetupHook';

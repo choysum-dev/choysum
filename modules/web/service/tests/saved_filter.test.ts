@@ -1031,6 +1031,8 @@ test('SavedFilter _clearOtherDefaults covers null candidates, remaining fail, an
     };
     SF.Update = async () => [];
     await SF._clearOtherDefaults('web', 'SavedFilter', '', null);
+    // Empty-string userId uses the same shared-bucket branch as null.
+    await SF._clearOtherDefaults('web', 'SavedFilter', '/scope', '');
 
     // Shared row missing CreateUid → !canWrite → PermissionDenied (CreateUid || '').
     SF.sudo = async (_fn: any, opts: any) => {
@@ -1075,6 +1077,33 @@ test('SavedFilter _clearOtherDefaults covers null candidates, remaining fail, an
     if (updateOwn) SF.Update = origUpdate;
     else delete SF.Update;
   }
+});
+
+test('SavedFilter _assertUniqueName treats empty-string UserId as shared bucket', async () => {
+  resetRequestContext();
+  const actor = uid('sf_assert_empty');
+  setIdentity(actor);
+  const SF = SavedFilter as any;
+  const name = uid('assert_empty_name');
+  const shared = await SavedFilter.Create(
+    {
+      Name: name,
+      ScopeKey: '/assert',
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      UserId: null,
+      Condition: {},
+    } as any,
+    ['Id'] as any
+  );
+  await expectCode(
+    async () => SF._assertUniqueName('web', 'SavedFilter', '/assert', '', name),
+    'AlreadyExists',
+    'already exists'
+  );
+  // exceptId skips the existing row (update rename path).
+  await SF._assertUniqueName('web', 'SavedFilter', '/assert', '', name, String((shared as any).Id));
+  await SavedFilter.DeleteById(String((shared as any).Id));
 });
 
 test('SavedFilter validateSavedFilterConstraint covers empty create Id and CreateUid fallbacks', async () => {
@@ -1157,4 +1186,44 @@ test('SavedFilter validateSavedFilterConstraint covers empty create Id and Creat
     }
   );
   expect(valuesEmpty.CreateUid).toBe('');
+});
+
+test('SavedFilter validate merges ScopeKey from current on update', async () => {
+  resetRequestContext();
+  const actor = uid('sf_scope_merge');
+  setIdentity(actor);
+  const SF = SavedFilter as any;
+  const modelId = await metaModelId('web', 'SavedFilter');
+  if (!modelId) {
+    throw new Error('expected MetaModel for web.SavedFilter');
+  }
+  const values: Record<string, any> = {
+    Name: uid('scope_merge'),
+    IsDefault: false,
+  };
+  await SF.validateSavedFilterConstraint(
+    {
+      UserId: actor,
+      ModelId: modelId,
+      Id: uid('row_scope'),
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      ScopeKey: '/web/from-current/1',
+      Name: values.Name,
+      CreateUid: actor,
+    },
+    {
+      mode: 'update',
+      values,
+      current: {
+        UserId: actor,
+        Application: 'web',
+        ModelName: 'SavedFilter',
+        Name: values.Name,
+        ScopeKey: '/web/from-current/1',
+        CreateUid: actor,
+      },
+    }
+  );
+  expect(values.ScopeKey).toBe('/web/from-current/:id');
 });

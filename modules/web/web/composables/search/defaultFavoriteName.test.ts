@@ -46,8 +46,15 @@ describe('stableTitleSource', () => {
     expect(stableTitleSource('Fallback', term)).toBe('Fallback');
   });
 
+  it('returns empty when TermReference.src and title are both empty', () => {
+    const term = createTermReference('web', '', { scope: 'web/pages' });
+    expect(stableTitleSource('', term)).toBe('');
+    expect(stableTitleSource(undefined, term)).toBe('');
+  });
+
   it('ignores non-TermReference titleText', () => {
     expect(stableTitleSource('Plain', { not: 'a term' } as any)).toBe('Plain');
+    expect(stableTitleSource(undefined)).toBe('');
   });
 });
 
@@ -55,6 +62,11 @@ describe('routeTitleFromLocation', () => {
   it('returns empty when route is missing', () => {
     expect(routeTitleFromLocation(null)).toBe('');
     expect(routeTitleFromLocation(undefined)).toBe('');
+  });
+
+  it('treats missing meta as empty object', () => {
+    expect(routeTitleFromLocation({})).toBe('');
+    expect(routeTitleFromLocation({ meta: null })).toBe('');
   });
 
   it('reads pageTitle string and function', () => {
@@ -65,6 +77,12 @@ describe('routeTitleFromLocation', () => {
         name: 'World',
       })
     ).toBe('Hi World');
+  });
+
+  it('treats falsy pageTitle function results as empty', () => {
+    expect(routeTitleFromLocation({ meta: { pageTitle: () => null } })).toBe('');
+    expect(routeTitleFromLocation({ meta: { pageTitle: () => undefined } })).toBe('');
+    expect(routeTitleFromLocation({ meta: { pageTitle: () => '  ' } })).toBe('');
   });
 
   it('swallows pageTitle function errors', () => {
@@ -82,6 +100,7 @@ describe('routeTitleFromLocation', () => {
   it('skips blank pageTitle and falls back to meta.title', () => {
     expect(routeTitleFromLocation({ meta: { pageTitle: '  ', title: 'Legacy' } })).toBe('Legacy');
     expect(routeTitleFromLocation({ meta: { title: '  ' } })).toBe('');
+    expect(routeTitleFromLocation({ meta: { title: null } })).toBe('');
   });
 
   it('falls back to meta.title and ignores technical route.name', () => {
@@ -106,7 +125,21 @@ describe('modelIdentityFromStore', () => {
     expect(modelIdentityFromStore({ application: 'auth' })).toBe('auth');
     expect(modelIdentityFromStore({ modelName: 'User' })).toBe('User');
     expect(modelIdentityFromStore({ application: '  ', modelName: '  ' })).toBe('');
+    expect(modelIdentityFromStore({ application: null, modelName: null })).toBe('');
     expect(modelIdentityFromStore(null)).toBe('');
     expect(modelIdentityFromStore(undefined)).toBe('');
+  });
+});
+
+describe('pickDefaultFavoriteName nullish sources', () => {
+  it('skips null and undefined entries in the preference chain', () => {
+    expect(
+      pickDefaultFavoriteName({
+        breadcrumbTip: null,
+        routeTitle: undefined,
+        menuTitle: null,
+        modelIdentity: 'demo.Widget',
+      })
+    ).toBe('demo.Widget');
   });
 });
