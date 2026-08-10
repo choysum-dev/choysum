@@ -26,10 +26,10 @@ describe('resolveUserFilterUserId', () => {
     expect(resolveUserFilterUserId({ Id: undefined })).toBe('');
   });
 
-  it('stringifies bare ids and non-Id objects/arrays', () => {
+  it('stringifies bare ids; non-Id objects/arrays count as missing', () => {
     expect(resolveUserFilterUserId('  me  ')).toBe('me');
-    expect(resolveUserFilterUserId({ Name: 'x' } as any)).toBe('[object Object]');
-    expect(resolveUserFilterUserId(['u1'] as any)).toBe('u1');
+    expect(resolveUserFilterUserId({ Name: 'x' } as any)).toBe('');
+    expect(resolveUserFilterUserId(['u1'] as any)).toBe('');
   });
 });
 

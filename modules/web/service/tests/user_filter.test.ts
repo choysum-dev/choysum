@@ -855,8 +855,8 @@ test('UserFilter Update without IsDefault keeps existing defaults', async () => 
     } as any,
     ['Id', 'IsDefault'] as any
   );
-  // Promote b via Update; a should clear. Then rename a while it is no longer default
-  // and rename the still-default b without sending IsDefault (mergedField path).
+  // Promote b via Update; a stays default (no server-side IsDefault mutex). Then rename b
+  // without sending IsDefault so untouched fields remain intact.
   await UserFilter.UpdateById(String((b as any).Id), { IsDefault: true } as any, ['Id', 'IsDefault'] as any);
   const newName = uid('renamed_def');
   await UserFilter.UpdateById(String((b as any).Id), { Name: newName } as any, ['Id', 'Name', 'IsDefault'] as any);
