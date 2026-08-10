@@ -354,7 +354,7 @@ test('repository create prepare preserves explicit CreatedUid and leaves uids em
     ])
   );
   expect((withPreset[0] as any).CreatedUid).toBe('U-PRESET');
-  expect((withPreset[0] as any).UpdatedUid).toBe('U-PRESET-U');
+  expect((withPreset[0] as any).UpdatedUid).toBe('U-ACTOR');
 
   const noActor = await prepareRepositoryCreateEntities(createPrepareDeps() as any, [{ Name: 'anon' } as any]);
   expect((noActor[0] as any).CreatedUid).toBeUndefined();

@@ -854,7 +854,7 @@ test('repository update prepare clears DeletedUid on restore and leaves uid empt
 
   const noActor = await prepareRepositoryUpdateSanitizedPayload(
     updateSanitizeDeps() as any,
-    { Name: 'x', CreatedUid: 'hijack' } as any,
+    { Name: 'x', CreatedUid: 'hijack', UpdatedUid: 'hijack-upd' } as any,
     ['row_1']
   );
   expect((noActor as any).CreatedUid).toBeUndefined();

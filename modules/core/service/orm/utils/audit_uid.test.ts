@@ -12,7 +12,7 @@ test('audit uid utils stamps CreatedUid/UpdatedUid from actor on create', () => 
   expect(out.DeletedUid).toBeUndefined();
 });
 
-test('audit uid utils preserves explicit CreatedUid/UpdatedUid on create', () => {
+test('audit uid utils preserves explicit CreatedUid and overwrites UpdatedUid on create', () => {
   const out = withUser('U-ACTOR', () =>
     AuditUidUtils.addCreateUids<{ Name: string }>({
       Name: 'demo',
@@ -21,7 +21,7 @@ test('audit uid utils preserves explicit CreatedUid/UpdatedUid on create', () =>
     } as any)
   ) as any;
   expect(out.CreatedUid).toBe('U-PRESET');
-  expect(out.UpdatedUid).toBe('U-PRESET-U');
+  expect(out.UpdatedUid).toBe('U-ACTOR');
 });
 
 test('audit uid utils addCreateUids is a no-op without actor', () => {
@@ -31,9 +31,17 @@ test('audit uid utils addCreateUids is a no-op without actor', () => {
   expect(out.CreatedUid).toBeUndefined();
 });
 
-test('audit uid utils addUpdateUid stamps UpdatedUid from actor', () => {
-  const out = withUser('U-UPD', () => AuditUidUtils.addUpdateUid<{ Name: string }>({ Name: 'demo' } as any)) as any;
+test('audit uid utils addUpdateUid stamps UpdatedUid from actor and strips client value', () => {
+  const out = withUser('U-UPD', () =>
+    AuditUidUtils.addUpdateUid<{ Name: string }>({ Name: 'demo', UpdatedUid: 'hijack' } as any)
+  ) as any;
   expect(out.UpdatedUid).toBe('U-UPD');
+});
+
+test('audit uid utils addUpdateUid strips client UpdatedUid without actor', () => {
+  const out = AuditUidUtils.addUpdateUid<{ Name: string }>({ Name: 'demo', UpdatedUid: 'hijack' } as any) as any;
+  expect(out.UpdatedUid).toBeUndefined();
+  expect(out.Name).toBe('demo');
 });
 
 test('audit uid utils applyOnUpdate strips CreatedUid and client DeletedUid; stamps UpdatedUid', () => {
@@ -63,7 +71,7 @@ test('audit uid utils applyOnUpdate clears DeletedUid on restore (DeletedAt null
 });
 
 test('audit uid utils applyOnUpdate leaves uid null when no actor', () => {
-  const payload: Record<string, unknown> = { Name: 'x', CreatedUid: 'hijack' };
+  const payload: Record<string, unknown> = { Name: 'x', CreatedUid: 'hijack', UpdatedUid: 'hijack-upd' };
   AuditUidUtils.applyOnUpdate(payload);
   expect(payload.CreatedUid).toBeUndefined();
   expect(payload.UpdatedUid).toBeUndefined();

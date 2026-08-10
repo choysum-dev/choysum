@@ -21,41 +21,42 @@ function resolveActorUid(): string {
  */
 export class AuditUidUtils {
   /**
-   * Default CreatedUid / UpdatedUid on create when a request actor is present.
-   * Preserves explicit client values (setdefault semantics).
+   * Stamp CreatedUid / UpdatedUid on create when a request actor is present.
+   * CreatedUid uses setdefault (keeps explicit values for trusted/seed paths).
+   * UpdatedUid always refreshes from actor when present.
    */
   static addCreateUids<T>(value: Partial<Insertable<T>>): Partial<Insertable<T>> {
     const actor = resolveActorUid();
     if (!actor) return value;
     const out: Record<string, unknown> = { ...(asObjectRecord(value) || {}) };
     if (!readOwnField(value, 'CreatedUid')) out.CreatedUid = actor;
-    if (!readOwnField(value, 'UpdatedUid')) out.UpdatedUid = actor;
+    out.UpdatedUid = actor;
     return out as Partial<Insertable<T>>;
   }
 
   /**
-   * Default UpdatedUid on update when a request actor is present and the caller
-   * did not provide one.
+   * Stamp UpdatedUid on update when a request actor is present.
+   * Always strips client UpdatedUid first so untrusted input cannot persist without an actor.
    */
   static addUpdateUid<T>(value: Partial<Updateable<T>>): Partial<Updateable<T>> {
+    const out: Record<string, unknown> = { ...(asObjectRecord(value) || {}) };
+    delete out.UpdatedUid;
     const actor = resolveActorUid();
-    if (!actor || readOwnField(value, 'UpdatedUid')) return value;
-    return {
-      ...(asObjectRecord(value) || {}),
-      UpdatedUid: actor,
-    } as Partial<Updateable<T>>;
+    if (actor) out.UpdatedUid = actor;
+    return out as Partial<Updateable<T>>;
   }
 
   /**
    * Apply audit-uid rules for a scalar update payload (AU7 / AU8):
    * - strip client CreatedUid writes
-   * - refresh UpdatedUid when actor present
+   * - strip client UpdatedUid, then refresh from actor when present
    * - on restore (DeletedAt cleared): clear DeletedUid; otherwise strip client DeletedUid
    *
    * Mutates `value` in place and returns it.
    */
   static applyOnUpdate(value: Record<string, unknown>): Record<string, unknown> {
     delete value.CreatedUid;
+    delete value.UpdatedUid;
 
     const restoring = Object.prototype.hasOwnProperty.call(value, 'DeletedAt') && value.DeletedAt == null;
     if (restoring) {
