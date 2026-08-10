@@ -176,7 +176,7 @@ test('buildFailClosedFieldRuleSpec skips system fields and tolerates missing fie
     denyWriteFields: ['Secret'],
     reason: 'auth_service_unavailable',
   });
-  // Skip blank / whitespace-only keys and remaining system fields.
+  // Skip blank / whitespace-only keys and remaining system fields (incl. audit uids).
   expect(
     buildFailClosedFieldRuleSpec(
       {
@@ -188,6 +188,9 @@ test('buildFailClosedFieldRuleSpec skips system fields and tolerates missing fie
           ['CreatedAt', {}],
           ['UpdatedAt', {}],
           ['DeletedAt', {}],
+          ['CreatedUid', {}],
+          ['UpdatedUid', {}],
+          ['DeletedUid', {}],
           ['DisplayName', {}],
           ['Body', {}],
         ]),

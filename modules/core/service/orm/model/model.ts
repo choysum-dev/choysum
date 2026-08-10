@@ -452,6 +452,48 @@ class BaseModel {
   })
   public DeletedAt: Date;
 
+  /**
+   * User who created the record (`auth.User` id). String ManyToOneRef — no core→auth depends.
+   */
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'auth.User' },
+    size: 20,
+    index: true,
+    notNull: false,
+    copy: false,
+    string: _lt('Created By', { scope: 'core.model.BaseModel.fields' }),
+  })
+  public CreatedUid: string | null;
+
+  /**
+   * User who last updated the record (`auth.User` id).
+   */
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'auth.User' },
+    size: 20,
+    index: true,
+    notNull: false,
+    copy: false,
+    string: _lt('Updated By', { scope: 'core.model.BaseModel.fields' }),
+  })
+  public UpdatedUid: string | null;
+
+  /**
+   * User who soft-deleted the record (`auth.User` id). Paired with DeletedAt.
+   */
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'auth.User' },
+    size: 20,
+    index: true,
+    notNull: false,
+    copy: false,
+    string: _lt('Deleted By', { scope: 'core.model.BaseModel.fields' }),
+  })
+  public DeletedUid: string | null;
+
   // The model_runtime layer stores the metadata cache on the constructor static.
   private static metadata: unknown;
 

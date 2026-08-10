@@ -113,6 +113,9 @@ test('BaseModel system fields are copy:false', () => {
   expect(meta.fields.get('CreatedAt')?.copy).toBe(false);
   expect(meta.fields.get('UpdatedAt')?.copy).toBe(false);
   expect(meta.fields.get('DeletedAt')?.copy).toBe(false);
+  expect(meta.fields.get('CreatedUid')?.copy).toBe(false);
+  expect(meta.fields.get('UpdatedUid')?.copy).toBe(false);
+  expect(meta.fields.get('DeletedUid')?.copy).toBe(false);
 });
 
 test('Field decorator persists copy:false and FieldsGet exposes it', async () => {

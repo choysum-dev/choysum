@@ -263,11 +263,11 @@ test('SavedFilter CRUD + IsDefault exclusivity + visibility', async () => {
       Condition: { And: [['Active', '=', true]] },
       IsDefault: true,
     } as any,
-    ['Id', 'UserId', 'ModelId', 'CreateUid', 'IsDefault'] as any
+    ['Id', 'UserId', 'ModelId', 'CreatedUid', 'IsDefault'] as any
   );
   expect(String((privateFav as any).UserId)).toBe(actor);
   expect(String((privateFav as any).ModelId)).toBe(modelId);
-  expect(String((privateFav as any).CreateUid)).toBe(actor);
+  expect(String((privateFav as any).CreatedUid)).toBe(actor);
   expect((privateFav as any).IsDefault).toBe(true);
 
   const nameB = uid('fav_b');
@@ -295,7 +295,7 @@ test('SavedFilter CRUD + IsDefault exclusivity + visibility', async () => {
       UserId: null,
       IsDefault: false,
     } as any,
-    ['Id', 'UserId', 'CreateUid'] as any
+    ['Id', 'UserId', 'CreatedUid'] as any
   );
   expect((shared as any).UserId == null || (shared as any).UserId === '').toBe(true);
 
@@ -449,7 +449,7 @@ test('SF11: shared write/delete only for creator via Record rules', async () => 
       Condition: {},
       UserId: null,
     } as any,
-    ['Id', 'CreateUid'] as any
+    ['Id', 'CreatedUid'] as any
   );
 
   disableAllowlist();
@@ -625,18 +625,18 @@ test('SavedFilter fills Create defaults (UserId/IsDefault/Active/Condition)', as
       Application: 'web',
       ModelName: 'SavedFilter',
     } as any,
-    ['Id', 'UserId', 'IsDefault', 'Active', 'Condition', 'CreateUid', 'ScopeKey'] as any
+    ['Id', 'UserId', 'IsDefault', 'Active', 'Condition', 'CreatedUid', 'ScopeKey'] as any
   );
   expect(String((created as any).UserId)).toBe(actor);
   expect((created as any).IsDefault).toBe(false);
   expect((created as any).Active).toBe(true);
   expect((created as any).Condition || {}).toEqual({});
-  expect(String((created as any).CreateUid)).toBe(actor);
+  expect(String((created as any).CreatedUid)).toBe(actor);
   expect((created as any).ScopeKey).toBe('');
   await SavedFilter.DeleteById(String((created as any).Id));
 });
 
-test('SavedFilter Update keeps CreateUid immutable and normalizes UserId', async () => {
+test('SavedFilter Update keeps CreatedUid immutable and normalizes UserId', async () => {
   resetRequestContext();
   const actor = uid('sf_upd');
   setIdentity(actor);
@@ -647,15 +647,15 @@ test('SavedFilter Update keeps CreateUid immutable and normalizes UserId', async
       ModelName: 'SavedFilter',
       Condition: {},
     } as any,
-    ['Id', 'CreateUid', 'UserId'] as any
+    ['Id', 'CreatedUid', 'UserId'] as any
   );
-  const createUid = String((created as any).CreateUid);
+  const createUid = String((created as any).CreatedUid);
   const updated = await SavedFilter.UpdateById(
     String((created as any).Id),
-    { CreateUid: uid('hijack_uid'), UserId: '' } as any,
-    ['Id', 'CreateUid', 'UserId'] as any
+    { CreatedUid: uid('hijack_uid'), UserId: '' } as any,
+    ['Id', 'CreatedUid', 'UserId'] as any
   );
-  expect(String((updated as any).CreateUid)).toBe(createUid);
+  expect(String((updated as any).CreatedUid)).toBe(createUid);
   expect((updated as any).UserId == null || (updated as any).UserId === '').toBe(true);
 
   await expectCode(
@@ -758,7 +758,7 @@ test('SavedFilter shared-default clear PermissionDenied when stranger cannot rep
       UserId: null,
       IsDefault: true,
     } as any,
-    ['Id', 'CreateUid', 'IsDefault'] as any
+    ['Id', 'CreatedUid', 'IsDefault'] as any
   );
   expect((shared as any).IsDefault).toBe(true);
 
@@ -831,7 +831,7 @@ test('SavedFilter creator can replace own shared default', async () => {
       UserId: null,
       IsDefault: true,
     } as any,
-    ['Id', 'IsDefault', 'CreateUid'] as any
+    ['Id', 'IsDefault', 'CreatedUid'] as any
   );
   expect((first as any).IsDefault).toBe(true);
   const second = await SavedFilter.Create(
@@ -1034,7 +1034,7 @@ test('SavedFilter _clearOtherDefaults covers null candidates, remaining fail, an
     // Empty-string userId uses the same shared-bucket branch as null.
     await SF._clearOtherDefaults('web', 'SavedFilter', '/scope', '');
 
-    // Shared row missing CreateUid → !canWrite → PermissionDenied (CreateUid || '').
+    // Shared row missing CreatedUid → !canWrite → PermissionDenied (CreatedUid || '').
     SF.sudo = async (_fn: any, opts: any) => {
       const hint = String(opts?.hint || '');
       if (hint.includes('preflight')) return [{ Id: 'x', UserId: null }];
@@ -1061,7 +1061,7 @@ test('SavedFilter _clearOtherDefaults covers null candidates, remaining fail, an
     // Writable preflight + stuck remaining after Update → post-check _fail.
     SF.sudo = async (_fn: any, opts: any) => {
       const hint = String(opts?.hint || '');
-      if (hint.includes('preflight')) return [{ Id: 'z', UserId: null, CreateUid: actor }];
+      if (hint.includes('preflight')) return [{ Id: 'z', UserId: null, CreatedUid: actor }];
       if (hint.includes('check')) return [{ Id: 'stuck' }];
       return [];
     };
@@ -1127,7 +1127,7 @@ test('SavedFilter _assertUniqueName treats empty-string UserId as shared bucket'
   await SavedFilter.DeleteById(String((shared as any).Id));
 });
 
-test('SavedFilter validateSavedFilterConstraint covers empty create Id and CreateUid fallbacks', async () => {
+test('SavedFilter validateSavedFilterConstraint covers empty create Id fallbacks', async () => {
   resetRequestContext();
   const actor = uid('sf_validate');
   setIdentity(actor);
@@ -1150,6 +1150,8 @@ test('SavedFilter validateSavedFilterConstraint covers empty create Id and Creat
   await SF.validateSavedFilterConstraint({}, { mode: 'create', values: valuesCreate, current: undefined });
   expect(valuesCreate.UserId).toBe(actor);
   expect(valuesCreate.ModelId).toBe(modelId);
+  // CreatedUid is stamped by BaseModel, not this constraint.
+  expect(valuesCreate.CreatedUid).toBeUndefined();
 
   // Falsy Id hits `(values.Id || '')` then `trim() || undefined`.
   const valuesNullId: Record<string, any> = {
@@ -1175,7 +1177,7 @@ test('SavedFilter validateSavedFilterConstraint covers empty create Id and Creat
   await SF.validateSavedFilterConstraint({}, { mode: 'create', values: valuesUndefId, current: undefined });
   expect(valuesUndefId.ModelId).toBe(modelId);
 
-  // Update CreateUid chain: empty current → self → final ''.
+  // Update path no longer rewrites CreatedUid (BaseModel strips client writes).
   const valuesUpd: Record<string, any> = {
     Name: uid('cuid_fb'),
     Application: 'web',
@@ -1183,30 +1185,14 @@ test('SavedFilter validateSavedFilterConstraint covers empty create Id and Creat
     IsDefault: false,
   };
   await SF.validateSavedFilterConstraint(
-    { CreateUid: 'fromSelf', UserId: actor, ModelId: modelId, Id: uid('row') },
+    { CreatedUid: 'fromSelf', UserId: actor, ModelId: modelId, Id: uid('row') },
     {
       mode: 'update',
       values: valuesUpd,
-      current: { CreateUid: '', UserId: actor, Application: 'web', ModelName: 'SavedFilter', Name: valuesUpd.Name },
+      current: { CreatedUid: 'fromSelf', UserId: actor, Application: 'web', ModelName: 'SavedFilter', Name: valuesUpd.Name },
     }
   );
-  expect(valuesUpd.CreateUid).toBe('fromSelf');
-
-  const valuesEmpty: Record<string, any> = {
-    Name: uid('cuid_empty'),
-    Application: 'web',
-    ModelName: 'SavedFilter',
-    IsDefault: false,
-  };
-  await SF.validateSavedFilterConstraint(
-    { UserId: actor, ModelId: modelId, Id: uid('row2') },
-    {
-      mode: 'update',
-      values: valuesEmpty,
-      current: { UserId: actor, Application: 'web', ModelName: 'SavedFilter', Name: valuesEmpty.Name },
-    }
-  );
-  expect(valuesEmpty.CreateUid).toBe('');
+  expect(valuesUpd.CreatedUid).toBeUndefined();
 });
 
 test('SavedFilter validate merges ScopeKey from current on update', async () => {
@@ -1231,7 +1217,7 @@ test('SavedFilter validate merges ScopeKey from current on update', async () => 
       ModelName: 'SavedFilter',
       ScopeKey: '/web/from-current/1',
       Name: values.Name,
-      CreateUid: actor,
+      CreatedUid: actor,
     },
     {
       mode: 'update',
@@ -1242,9 +1228,47 @@ test('SavedFilter validate merges ScopeKey from current on update', async () => 
         ModelName: 'SavedFilter',
         Name: values.Name,
         ScopeKey: '/web/from-current/1',
-        CreateUid: actor,
+        CreatedUid: actor,
       },
     }
   );
   expect(values.ScopeKey).toBe('/web/from-current/:id');
+});
+
+test('AU9: deleting auth.User does not cascade SavedFilter rows with CreatedUid', async () => {
+  resetRequestContext();
+  const companyId = await resolveAdminCompanyId();
+  const creator = await createBaseUser(companyId);
+
+  setIdentity(creator);
+  const fav = await SavedFilter.Create(
+    {
+      Name: uid('au9'),
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      Condition: {},
+      UserId: null,
+    } as any,
+    ['Id', 'CreatedUid'] as any
+  );
+  const favId = String((fav as any).Id);
+  expect(String((fav as any).CreatedUid)).toBe(creator);
+
+  // Soft-delete the creator. ManyToOneRef audit uids have no DB FK / CASCADE.
+  await withModelContext(
+    { activeCompanyId: companyId, enabledCompanyIds: [companyId] } as any,
+    async () => {
+      await User.sudo(() => User.DeleteById(creator), { hint: 'web.SavedFilter.au9.deleteUser' });
+    },
+    { merge: false }
+  );
+
+  const still = await SavedFilter.sudo(
+    () => SavedFilter.Browse(favId, ['Id', 'CreatedUid'] as any),
+    { hint: 'web.SavedFilter.au9.browse' }
+  );
+  expect(String((still as any).Id)).toBe(favId);
+  expect(String((still as any).CreatedUid)).toBe(creator);
+
+  await SavedFilter.sudo(() => SavedFilter.DeleteById(favId), { hint: 'web.SavedFilter.au9.cleanup' });
 });

@@ -22,6 +22,7 @@ import { asObjectRecord } from '../../../utils/object';
 import { getCurrencyFieldName } from '../metadata/decimal_like';
 import { createServiceByModel } from '../../rpc';
 import { applyInverseWriteback } from '../../runtime/compute/inverse_writeback';
+import { TimestampUtils } from '../utils/timestamp';
 import { _t } from '@/core/service/i18n_binder';
 
 type AttachmentDownloadDisposition = 'inline' | 'attachment';
@@ -476,6 +477,7 @@ export class UpdateOperations {
       addScaleForUpdates(new Set(baseChangedInitial), entityObj, scalarUpdate);
 
       scalarUpdate.UpdatedAt = new Date();
+      TimestampUtils.applyAuditUidOnUpdate(scalarUpdate as UnknownRecord);
 
       const didScalarUpdate = Object.keys(scalarUpdate).length > 1;
       if (didScalarUpdate) {
@@ -584,7 +586,9 @@ export class UpdateOperations {
 
         if (touchedAttachment && !didScalarUpdate) {
           await runWithValidationBypass(repository, async () => {
-            await repository.update({ UpdatedAt: new Date() }, ['Id', '=', entityId]);
+            const stamp: UnknownRecord = { UpdatedAt: new Date() };
+            TimestampUtils.applyAuditUidOnUpdate(stamp);
+            await repository.update(stamp, ['Id', '=', entityId]);
           });
         }
       }

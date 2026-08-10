@@ -21,6 +21,7 @@ import {
   type RepositoryDeleteWriteConditionDeps,
   type RepositoryDeleteWriteTargetDeps,
 } from './delete_helpers';
+import { getUserId } from '../../../runtime/context';
 import { asObjectRecord } from '../../../../utils/object';
 import type { ObjectRecord } from '../../../../utils/types';
 
@@ -71,7 +72,13 @@ export async function prepareRepositorySoftDeleteWrite(params: RepositoryDeleteS
   await handleRepositorySoftDeleteCascade(params, ids);
 
   const now = new Date();
-  let query = db.updateTable(params.table).set({ [params.softField]: now, UpdatedAt: now });
+  const softSet: ObjectRecord = { [params.softField]: now, UpdatedAt: now };
+  const actor = String(getUserId() || '').trim();
+  if (actor) {
+    softSet.UpdatedUid = actor;
+    softSet.DeletedUid = actor;
+  }
+  let query = db.updateTable(params.table).set(softSet);
   const softCond: BaseQueryCondition = params.applySoftLayer(['Id', 'in', ids]);
   if (!params.isEmptyCondition(softCond)) {
     query = query.where(({ eb }) => params.convertCondition(eb, softCond, params.table));

@@ -14,7 +14,7 @@ const { sfMocks, actorState } = vi.hoisted(() => ({
       Condition: values.Condition,
       IsDefault: values.IsDefault,
       UserId: values.UserId,
-      CreateUid: 'me',
+      CreatedUid: 'me',
     })),
     DeleteById: vi.fn(async () => 1),
   },
@@ -67,7 +67,7 @@ describe('useSavedFilters', () => {
       Condition: values.Condition,
       IsDefault: values.IsDefault,
       UserId: values.UserId,
-      CreateUid: 'me',
+      CreatedUid: 'me',
     }));
     sfMocks.DeleteById.mockResolvedValue(1);
     (filtersToQuery as any).mockClear?.();
@@ -107,7 +107,7 @@ describe('useSavedFilters', () => {
         Condition: { And: [['A', '=', 1]] },
         IsDefault: true,
         UserId: 'me',
-        CreateUid: 'me',
+        CreatedUid: 'me',
       },
       {
         Id: 's1',
@@ -115,7 +115,7 @@ describe('useSavedFilters', () => {
         Condition: {},
         IsDefault: true,
         UserId: null,
-        CreateUid: 'me',
+        CreatedUid: 'me',
       },
       {
         Id: 's2',
@@ -123,7 +123,7 @@ describe('useSavedFilters', () => {
         Condition: {},
         IsDefault: false,
         UserId: '',
-        CreateUid: 'other',
+        CreatedUid: 'other',
       },
       { Id: '', Name: 'skip' },
     ]);
@@ -185,7 +185,7 @@ describe('useSavedFilters', () => {
   it('load without me only requests shared favorites', async () => {
     actorState.id = '';
     sfMocks.Search.mockResolvedValue([
-      { Id: 's1', Name: 'Shared', UserId: null, CreateUid: 'x', IsDefault: false, Condition: {} },
+      { Id: 's1', Name: 'Shared', UserId: null, CreatedUid: 'x', IsDefault: false, Condition: {} },
     ]);
     const api = runInSetup(() =>
       useSavedFilters({
@@ -263,8 +263,8 @@ describe('useSavedFilters', () => {
     expect(api.favorites.value).toEqual([]);
 
     sfMocks.Search.mockResolvedValue([
-      { Id: 'p1', Name: 'NoCond', IsDefault: false, UserId: 'me', CreateUid: 'me' },
-      { Id: 'p2', Name: 'OtherPriv', IsDefault: false, UserId: 'other', CreateUid: 'other' },
+      { Id: 'p1', Name: 'NoCond', IsDefault: false, UserId: 'me', CreatedUid: 'me' },
+      { Id: 'p2', Name: 'OtherPriv', IsDefault: false, UserId: 'other', CreatedUid: 'other' },
     ]);
     await api.load();
     expect(api.favoriteMenuItems.value[0]).toMatchObject({ id: 'p1', filter: {}, canDelete: true });
@@ -380,12 +380,12 @@ describe('useSavedFilters', () => {
     expect(sfMocks.Search).toHaveBeenCalled();
   });
 
-  it('load maps missing CreateUid and private canDelete when actor empty', async () => {
+  it('load maps missing CreatedUid and private canDelete when actor empty', async () => {
     sfMocks.Search.mockResolvedValue([
-      { Id: 's1', Name: 'NoCreateUid', IsDefault: false, UserId: null },
+      { Id: 's1', Name: 'NoCreatedUid', IsDefault: false, UserId: null },
       { Id: 'p1', Name: 'Priv', IsDefault: false, UserId: 'other' },
       // Falsy non-null UserId stays private and hits `UserId || ''` in canDelete.
-      { Id: 'p0', Name: 'ZeroUid', IsDefault: false, UserId: 0 as any, CreateUid: 'me' },
+      { Id: 'p0', Name: 'ZeroUid', IsDefault: false, UserId: 0 as any, CreatedUid: 'me' },
     ]);
     const withMe = runInSetup(() =>
       useSavedFilters({
@@ -401,7 +401,7 @@ describe('useSavedFilters', () => {
 
     actorState.id = '';
     sfMocks.Search.mockResolvedValue([
-      { Id: 'p2', Name: 'PrivNoMe', IsDefault: false, UserId: 'someone', CreateUid: 'someone' },
+      { Id: 'p2', Name: 'PrivNoMe', IsDefault: false, UserId: 'someone', CreatedUid: 'someone' },
     ]);
     const noMe = runInSetup(() =>
       useSavedFilters({
@@ -414,7 +414,7 @@ describe('useSavedFilters', () => {
     expect(noMe.favorites.value[0].canDelete).toBe(false);
   });
 
-  it('saveCurrent null name and empty CreateUid/Name fallbacks', async () => {
+  it('saveCurrent null name and empty CreatedUid/Name fallbacks', async () => {
     const api = runInSetup(() =>
       useSavedFilters({
         store: { application: 'demo', modelName: 'Widget', fieldsMetadata: {}, state: { queryState: {} } },

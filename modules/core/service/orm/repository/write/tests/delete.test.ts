@@ -10,6 +10,7 @@ import {
   prepareRepositorySoftDeleteWrite,
 } from '../delete';
 import { MetadataStorage } from '../../../metadata/storage';
+import { withUser } from '../../../../runtime/context';
 
 function withFakeMetadata<T>(metas: Map<Function, any>, fn: () => Promise<T> | T): Promise<T> | T {
   const storage = MetadataStorage.instance as any;
@@ -96,6 +97,58 @@ test('repository delete soft-delete pre-write builds local soft-delete query fro
     { method: 'convert', eb: 'EB', condition: ['Id', 'in', ['row_1']], selfTable: 'demo_table' },
     { method: 'where', result: { eb: 'EB', condition: ['Id', 'in', ['row_1']], selfTable: 'demo_table' } },
   ]);
+});
+
+test('repository delete soft-delete pre-write stamps DeletedUid/UpdatedUid when actor present', async () => {
+  const calls: Array<Record<string, any>> = [];
+
+  await withUser('U-DEL', async () => {
+    await prepareRepositorySoftDeleteWrite(
+      {
+        meta: { fields: new Map() } as any,
+        db: {
+          updateTable() {
+            return {
+              set(input: Record<string, unknown>) {
+                calls.push({ method: 'set', keys: Object.keys(input).sort(), input });
+                return {
+                  where() {
+                    return { kind: 'soft-delete-query' };
+                  },
+                };
+              },
+            };
+          },
+        },
+        table: 'demo_table',
+        softField: 'DeletedAt',
+        createRepository() {
+          return {
+            softDeleteEnabled: () => true,
+            delete: async () => [],
+            hardDelete: async () => [],
+            count: async () => 0,
+            withFieldRuleBypass: async (fn: () => Promise<unknown>) => await fn(),
+            update: async () => [],
+          } as any;
+        },
+        applySoftLayer(condition) {
+          return condition;
+        },
+        isEmptyCondition() {
+          return true;
+        },
+        convertCondition(eb, condition, selfTable) {
+          return { eb, condition, selfTable };
+        },
+      },
+      ['row_1']
+    );
+  });
+
+  expect(calls[0].keys).toEqual(['DeletedAt', 'DeletedUid', 'UpdatedAt', 'UpdatedUid']);
+  expect(calls[0].input.DeletedUid).toBe('U-DEL');
+  expect(calls[0].input.UpdatedUid).toBe('U-DEL');
 });
 
 test('repository delete query prepare builds conditioned delete query', async () => {

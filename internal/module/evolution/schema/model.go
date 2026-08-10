@@ -344,7 +344,15 @@ func (m *modelMigrator) applyTableCheckConstraints(tableName string, model *meta
 }
 
 func (m *modelMigrator) MigrateSchema() error {
+	// Rename SavedFilter CreateUid → CreatedUid before AutoMigrate adds the new column.
+	if err := ensureSavedFilterCreateUidRename(m.runtimeScope); err != nil {
+		return err
+	}
 	if err := m.migrateTableSchema(m.models); err != nil {
+		return err
+	}
+	// Handle partial upgrades where AutoMigrate already added created_uid beside create_uid.
+	if err := ensureSavedFilterCreateUidRename(m.runtimeScope); err != nil {
 		return err
 	}
 	if err := ensureTaskJobExecutionTable(m.runtimeScope); err != nil {

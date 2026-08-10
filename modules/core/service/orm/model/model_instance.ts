@@ -14,6 +14,7 @@ import { toTransportObject as toTransportObjectImpl } from './model_runtime';
 import { collectModelUpstreamInverseFields, getModelRuntimeMetadata, recomputeModelMetadata, triggerModelUpstream } from './model_runtime_service_facade';
 import { getRuntimeErrorMessage, runWithValidationBypass } from './model_write_helpers';
 import type { ValidationBypassCapable } from './model_write_helpers';
+import { TimestampUtils } from '../utils/timestamp';
 import type { UnknownRecord } from '../../../utils/types';
 import { _t } from '@/core/service/i18n_binder';
 
@@ -98,6 +99,7 @@ export async function updateModelInstance<T extends BaseModel>(instance: T, opti
 
     const now = new Date();
     processedValue.UpdatedAt = now;
+    TimestampUtils.applyAuditUidOnUpdate(processedValue as UnknownRecord);
 
     const condition = LockUtils.buildOptimisticLockCondition(instance.Id, currentUpdatedAt);
     const result = await updateWithValidationBypass(processedValue, condition);
@@ -132,6 +134,7 @@ export async function updateModelInstance<T extends BaseModel>(instance: T, opti
           }
           if (Object.keys(followUp).length) {
             followUp.UpdatedAt = new Date();
+            TimestampUtils.applyAuditUidOnUpdate(followUp);
             await updateWithValidationBypass(followUp, ['Id', '=', instance.Id]);
           }
         }
