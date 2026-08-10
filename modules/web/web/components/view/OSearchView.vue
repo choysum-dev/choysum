@@ -10,29 +10,22 @@ SPDX-License-Identifier: Apache-2.0
     :current-keyword="keywordForChild"
     :current-applied-filters="appliedFiltersForChild"
     :current-applied-groups="appliedGroupsForChild"
-    :default-filters="mergedDefaultFilters"
+    :default-filters="codeDefaultFilters"
     @query-update="onQueryUpdate"
     @defaults-ready="onDefaultsReady"
   />
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel">
-import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { computed, onMounted, ref, nextTick } from 'vue';
 import type { BaseModel } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { ConditionGroup, GroupBySpec, NamedFilter, QueryUpdatePayload } from '@/web/web/query/types';
 import OSearch from '@/web/web/components/view/search/OSearch.vue';
 import { computeInitialAppliedFilters, computeAppliedGroups } from '@/web/web/query/utils/search/initialQueryState';
 import { buildQueryUpdatePayload } from '@/web/web/query/utils/search/payload';
-import { createStoreByModel } from '@/web/web/stores/registry';
-import { actorUserId } from '@/web/web/composables/search/actorUserId';
-import { mergeUserFilterDefaults, pickLatestIsDefault, type UserFilterRow } from '@/web/web/composables/search/userFilterDefaults';
-import { normalizeScopeKey } from '@/web/web/composables/search/scopeKey';
-import { trySetupHook } from '@/web/web/composables/search/trySetupHook';
+import { mergeUserFilterDefaults } from '@/web/web/composables/search/userFilterDefaults';
 import { createTranslate } from '@/web/web/i18n';
-
-const currentRoute = trySetupHook(() => useRoute());
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/OSearchView' });
 
@@ -77,17 +70,17 @@ const codeDefaultFilters = computed<NamedFilter<T>[]>(() => {
   return Array.isArray(defs) ? defs : [];
 });
 
-/** Server IsDefault rows; merge order shared with useUserFilters via mergeUserFilterDefaults. */
-const serverPrivateDefault = ref<UserFilterRow | null>(null);
-const serverSharedDefault = ref<UserFilterRow | null>(null);
-let serverDefaultsLoadGen = 0;
+/**
+ * Authoritative Favorites/IsDefault merge comes from OSearch (single UserFilter Search).
+ * Until the first defaults-ready, fall back to code-only defaults for the tag UI.
+ */
+const favoritesDefaults = ref<NamedFilter<T>[] | null>(null);
 const mergedDefaultFilters = computed(
   () =>
-    mergeUserFilterDefaults({
-      privateDefault: serverPrivateDefault.value,
-      sharedDefault: serverSharedDefault.value,
-      codeDefaults: codeDefaultFilters.value as any,
-    }) as NamedFilter<T>[]
+    (favoritesDefaults.value ??
+      mergeUserFilterDefaults({
+        codeDefaults: codeDefaultFilters.value as any,
+      })) as NamedFilter<T>[]
 );
 
 const mounted = ref(false);
@@ -115,72 +108,28 @@ function onQueryUpdate(payload: QueryUpdatePayload<T>) {
   emit('query-update', payload);
 }
 
-async function onDefaultsReady(_defaults: NamedFilter[]) {
-  // Refresh after favorite save/delete (and ignore code-only selected presets).
-  await loadServerDefaults();
-}
-
-async function loadServerDefaults(): Promise<void> {
-  const gen = ++serverDefaultsLoadGen;
-  const app = String((props.store as any)?.application || '').trim();
-  const model = String((props.store as any)?.modelName || '').trim();
-  if (!app || !model) {
-    // Yield so a newer loadServerDefaults can bump the gen before we clear.
-    await Promise.resolve();
-    if (gen === serverDefaultsLoadGen) {
-      serverPrivateDefault.value = null;
-      serverSharedDefault.value = null;
-    }
-    return;
-  }
-
-  try {
-    const me = actorUserId();
-    const scope = normalizeScopeKey(currentRoute?.path ?? '');
-    const uf = createStoreByModel('web.UserFilter') as any;
-    const rows = (await uf.Search(
-      {
-        And: [
-          ['Application', '=', app],
-          ['ModelName', '=', model],
-          ['ScopeKey', '=', scope],
-          ['IsDefault', '=', true],
-          {
-            Or: me
-              ? [
-                  ['UserId', '=', me],
-                  ['UserId', '=', null],
-                ]
-              : [['UserId', '=', null]],
-          },
-        ],
-      },
-      { fields: ['Id', 'Name', 'ScopeKey', 'Condition', 'IsDefault', 'UserId', 'UpdatedAt', 'CreatedAt'] }
-    )) as UserFilterRow[];
-
-    if (gen !== serverDefaultsLoadGen) return;
-    serverPrivateDefault.value = pickLatestIsDefault(rows, 'private');
-    serverSharedDefault.value = pickLatestIsDefault(rows, 'shared');
-  } catch {
-    // Store may be unavailable before module codegen; fall back to code defaults.
-    if (gen === serverDefaultsLoadGen) {
-      serverPrivateDefault.value = null;
-      serverSharedDefault.value = null;
-    }
-  }
-}
-
-// First-frame emit waits for UserFilter defaults so private/shared IsDefault can win.
-onMounted(async () => {
-  await loadServerDefaults();
-  if (!props.initialEmit) {
-    mounted.value = true;
-    return;
-  }
+async function emitFirstFrameIfNeeded(): Promise<void> {
+  if (mounted.value || !props.initialEmit) return;
+  await nextTick();
   const filtersAtFirstEmit = appliedFiltersForChild.value || [];
   const groupsAtFirstEmit = appliedGroupsForChild.value || [];
-  const payload = buildQueryUpdatePayload<T>(keywordForChild.value, filtersAtFirstEmit, groupsAtFirstEmit, { explicitGroups: false });
+  const payload = buildQueryUpdatePayload<T>(keywordForChild.value, filtersAtFirstEmit, groupsAtFirstEmit, {
+    explicitGroups: false,
+  });
   emit('query-update', payload);
   mounted.value = true;
+}
+
+async function onDefaultsReady(defaults: NamedFilter[]): Promise<void> {
+  // OSearch already merged private/shared IsDefault with code defaults after one Search.
+  favoritesDefaults.value = (Array.isArray(defaults) ? defaults : []) as NamedFilter<T>[];
+  await emitFirstFrameIfNeeded();
+}
+
+// First-frame emit waits for OSearch defaults-ready (Favorites load) so IsDefault can win.
+onMounted(() => {
+  if (!props.initialEmit) {
+    mounted.value = true;
+  }
 });
 </script>

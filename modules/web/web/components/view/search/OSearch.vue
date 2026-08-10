@@ -467,9 +467,10 @@ async function onConfirmSaveFavorite() {
 }
 
 onMounted(async () => {
-  // Load Favorites menu only. Do not emit defaults-ready here: OSearchView already
-  // loads IsDefault on mount; a second load bumps its gen and can drop first-frame defaults.
+  // Single UserFilter Search for the Favorites menu; emit defaults so OSearchView can
+  // apply IsDefault on the first frame without a second Search.
   await loadFavorites();
+  emit('defaults-ready', defaultsForOpen.value as NamedFilter[]);
 });
 
 /* Debounced query emission. */

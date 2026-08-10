@@ -4,12 +4,7 @@
 
 import { mount, flushPromises } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, nextTick } from 'vue';
-
-const { sfSearch, actorState } = vi.hoisted(() => ({
-  sfSearch: vi.fn(async () => [] as any[]),
-  actorState: { id: 'me' as string },
-}));
+import { defineComponent, h, nextTick, onMounted } from 'vue';
 
 vi.mock('@/web/web/i18n', async () => {
   const actual = await vi.importActual<typeof import('@/web/web/i18n')>('@/web/web/i18n');
@@ -19,33 +14,31 @@ vi.mock('@/web/web/i18n', async () => {
   };
 });
 
-vi.mock('@/web/web/stores/registry', () => ({
-  createStoreByModel: (model: string) => {
-    if (model === 'web.UserFilter') return { Search: (...args: any[]) => sfSearch(...args) };
-    return {};
-  },
-}));
-
-vi.mock('@/web/web/composables/search/actorUserId', () => ({
-  actorUserId: () => actorState.id,
-}));
-
 import OSearchView from './OSearchView.vue';
+
+const stubState = vi.hoisted(() => ({
+  /** Defaults OSearch would emit after its single UserFilter load. */
+  mountDefaults: [] as any[],
+}));
 
 const OSearchStub = defineComponent({
   name: 'OSearch',
   props: ['store', 'placeholder', 'currentKeyword', 'currentAppliedFilters', 'currentAppliedGroups', 'defaultFilters'],
   emits: ['query-update', 'defaults-ready'],
   setup(props, { emit }) {
+    onMounted(() => {
+      emit('defaults-ready', stubState.mountDefaults.slice());
+    });
     return () =>
       h('div', { class: 'o-search-stub' }, [
-        h('pre', { class: 'defaults' }, JSON.stringify(props.defaultFilters || [])),
+        h('pre', { class: 'code-defaults' }, JSON.stringify(props.defaultFilters || [])),
+        h('pre', { class: 'applied' }, JSON.stringify(props.currentAppliedFilters || [])),
         h(
           'button',
           {
             type: 'button',
             class: 'emit-defaults-ready',
-            onClick: () => emit('defaults-ready', []),
+            onClick: () => emit('defaults-ready', stubState.mountDefaults.slice()),
           },
           'defaults-ready'
         ),
@@ -62,30 +55,16 @@ function makeStore(patch: Record<string, any> = {}) {
   } as any;
 }
 
-describe('OSearchView server defaults', () => {
+describe('OSearchView favorites defaults (single child load)', () => {
   beforeEach(() => {
-    actorState.id = 'me';
-    sfSearch.mockReset();
-    sfSearch.mockResolvedValue([]);
+    stubState.mountDefaults = [];
   });
 
-  it('prefers private IsDefault over shared and emits first query-update after load', async () => {
-    sfSearch.mockResolvedValue([
-      {
-        Id: 's1',
-        Name: 'SharedDef',
-        Condition: { And: [['S', '=', 1]] },
-        IsDefault: true,
-        UserId: null,
-      },
-      {
-        Id: 'p1',
-        Name: 'PrivateDef',
-        Condition: { And: [['P', '=', 1]] },
-        IsDefault: true,
-        UserId: 'me',
-      },
-    ]);
+  it('waits for defaults-ready before first query-update and applies emitted IsDefault', async () => {
+    stubState.mountDefaults = [
+      { name: 'PrivateDef', query: { And: [['P', '=', 1]] }, selected: true },
+      { name: 'Code', query: ['C', '=', 1], selected: false },
+    ];
     const wrapper = mount(OSearchView as any, {
       props: {
         store: makeStore(),
@@ -95,225 +74,84 @@ describe('OSearchView server defaults', () => {
     });
     await flushPromises();
     expect(wrapper.emitted('query-update')?.length).toBe(1);
-    const defaultsText = wrapper.find('.defaults').text();
-    const defaults = JSON.parse(defaultsText);
-    expect(defaults[0]).toMatchObject({ name: 'PrivateDef', selected: true });
-    expect(defaults.find((d: any) => d.name === 'Code')?.selected).toBe(false);
-  });
-
-  it('picks the newest private IsDefault when several exist', async () => {
-    sfSearch.mockResolvedValue([
-      {
-        Id: 'p-old',
-        Name: 'OlderPrivate',
-        Condition: {},
-        IsDefault: true,
-        UserId: 'me',
-        UpdatedAt: '2026-01-01T00:00:00.000Z',
-      },
-      {
-        Id: 'p-new',
-        Name: 'NewerPrivate',
-        Condition: {},
-        IsDefault: true,
-        UserId: 'me',
-        UpdatedAt: '2026-08-01T00:00:00.000Z',
-      },
-    ]);
-    const wrapper = mount(OSearchView as any, {
-      props: { store: makeStore() },
-      global: { stubs: { OSearch: OSearchStub } },
+    // Parent passes code-only defaults to OSearch (child owns IsDefault merge).
+    expect(JSON.parse(wrapper.find('.code-defaults').text())[0]).toMatchObject({
+      name: 'Code',
+      selected: true,
     });
-    await flushPromises();
-    expect(JSON.parse(wrapper.find('.defaults').text())[0].name).toBe('NewerPrivate');
+    const applied = JSON.parse(wrapper.find('.applied').text());
+    expect(applied[0]).toMatchObject({ name: 'PrivateDef' });
   });
 
-  it('skips Search when application or modelName is missing', async () => {
-    const wrapper = mount(OSearchView as any, {
-      props: { store: makeStore({ application: '', modelName: 'Widget' }) },
-      global: { stubs: { OSearch: OSearchStub } },
-    });
-    await flushPromises();
-    expect(sfSearch).not.toHaveBeenCalled();
-    expect(wrapper.emitted('query-update')?.length).toBe(1);
-  });
-
-  it('falls back to code defaults when Search throws', async () => {
-    sfSearch.mockRejectedValue(new Error('unavailable'));
-    const wrapper = mount(OSearchView as any, {
-      props: {
-        store: makeStore(),
-        defaultFilters: [{ name: 'Code', query: ['C', '=', 1], selected: true }],
-      },
-      global: { stubs: { OSearch: OSearchStub } },
-    });
-    await flushPromises();
-    const defaults = JSON.parse(wrapper.find('.defaults').text());
-    expect(defaults[0]).toMatchObject({ name: 'Code', selected: true });
-  });
-
-  it('reloads server defaults on defaults-ready and supports initialEmit=false', async () => {
-    sfSearch.mockResolvedValue([
-      { Id: 's1', Name: 'SharedOnly', Condition: {}, IsDefault: true, UserId: '' },
-    ]);
+  it('supports initialEmit=false (no query-update) and refresh via defaults-ready', async () => {
+    stubState.mountDefaults = [{ name: 'SharedOnly', query: ['S', '=', 1], selected: true }];
     const wrapper = mount(OSearchView as any, {
       props: { store: makeStore(), initialEmit: false },
       global: { stubs: { OSearch: OSearchStub } },
     });
     await flushPromises();
     expect(wrapper.emitted('query-update')).toBeUndefined();
-    expect(JSON.parse(wrapper.find('.defaults').text())[0].name).toBe('SharedOnly');
+    expect(JSON.parse(wrapper.find('.applied').text())[0]).toMatchObject({ name: 'SharedOnly' });
 
-    sfSearch.mockResolvedValue([
-      { Id: 'p2', Name: 'LaterPrivate', Condition: {}, IsDefault: true, UserId: 'me' },
-    ]);
+    stubState.mountDefaults = [{ name: 'LaterPrivate', query: ['L', '=', 1], selected: true }];
     await wrapper.find('.emit-defaults-ready').trigger('click');
     await flushPromises();
     await nextTick();
-    expect(JSON.parse(wrapper.find('.defaults').text())[0].name).toBe('LaterPrivate');
+    expect(wrapper.emitted('query-update')).toBeUndefined();
+    expect(JSON.parse(wrapper.find('.applied').text())[0]).toMatchObject({ name: 'LaterPrivate' });
+  });
+
+  it('falls back to code defaults when child emits empty favorites defaults', async () => {
+    stubState.mountDefaults = [{ name: 'Code', query: ['C', '=', 1], selected: true }];
+    const wrapper = mount(OSearchView as any, {
+      props: {
+        store: makeStore(),
+        defaultFilters: [{ name: 'Code', query: ['C', '=', 1], selected: true }],
+      },
+      global: { stubs: { OSearch: OSearchStub } },
+    });
+    await flushPromises();
+    expect(JSON.parse(wrapper.find('.applied').text())[0]).toMatchObject({ name: 'Code' });
   });
 
   it('accepts singleton defaultFilters and queryState.defaultFilters', async () => {
+    stubState.mountDefaults = [{ name: 'Solo', query: ['S', '=', 1], selected: true }];
     const wrapper = mount(OSearchView as any, {
       props: {
-        store: makeStore({ application: '', modelName: 'Widget' }),
+        store: makeStore(),
         defaultFilters: { name: 'Solo', query: ['S', '=', 1], selected: true },
       },
       global: { stubs: { OSearch: OSearchStub } },
     });
     await flushPromises();
-    expect(JSON.parse(wrapper.find('.defaults').text())[0]).toMatchObject({ name: 'Solo', selected: true });
+    expect(JSON.parse(wrapper.find('.code-defaults').text())[0]).toMatchObject({ name: 'Solo', selected: true });
 
+    stubState.mountDefaults = [{ name: 'FromQs', query: ['Q', '=', 1], selected: true }];
     const qsWrapper = mount(OSearchView as any, {
       props: {
         store: makeStore({
-          application: '',
-          modelName: 'Widget',
           state: { queryState: { defaultFilters: [{ name: 'FromQs', query: ['Q', '=', 1], selected: true }] } },
         }),
       },
       global: { stubs: { OSearch: OSearchStub } },
     });
     await flushPromises();
-    expect(JSON.parse(qsWrapper.find('.defaults').text())[0].name).toBe('FromQs');
+    expect(JSON.parse(qsWrapper.find('.code-defaults').text())[0].name).toBe('FromQs');
   });
 
-  it('skips Search when modelName is missing', async () => {
+  it('emits first query-update only once across repeated defaults-ready', async () => {
+    stubState.mountDefaults = [{ name: 'A', query: ['A', '=', 1], selected: true }];
     const wrapper = mount(OSearchView as any, {
-      props: { store: makeStore({ application: 'demo', modelName: '' }) },
-      global: { stubs: { OSearch: OSearchStub } },
-    });
-    await flushPromises();
-    expect(sfSearch).not.toHaveBeenCalled();
-    expect(wrapper.emitted('query-update')?.length).toBe(1);
-  });
-
-  it('requests shared-only defaults when actor is empty', async () => {
-    actorState.id = '';
-    sfSearch.mockResolvedValue([{ Id: 's1', Name: 'Shared', Condition: {}, IsDefault: true, UserId: null }]);
-    mount(OSearchView as any, {
       props: { store: makeStore() },
       global: { stubs: { OSearch: OSearchStub } },
     });
     await flushPromises();
-    const cond = sfSearch.mock.calls[0]![0] as any;
-    expect(cond.And).toEqual(
-      expect.arrayContaining([
-        ['Application', '=', 'demo'],
-        ['ModelName', '=', 'Widget'],
-        ['ScopeKey', '=', ''],
-        ['IsDefault', '=', true],
-        { Or: [['UserId', '=', null]] },
-      ])
-    );
-  });
+    expect(wrapper.emitted('query-update')?.length).toBe(1);
 
-  it('ignores stale server-default responses', async () => {
-    let resolveSlow!: (rows: any[]) => void;
-    const slow = new Promise<any[]>(resolve => {
-      resolveSlow = resolve;
-    });
-    sfSearch.mockImplementationOnce(() => slow);
-    sfSearch.mockResolvedValueOnce([
-      { Id: 'p-fast', Name: 'FastPrivate', Condition: {}, IsDefault: true, UserId: 'me' },
-    ]);
-    const wrapper = mount(OSearchView as any, {
-      props: { store: makeStore(), initialEmit: false },
-      global: { stubs: { OSearch: OSearchStub } },
-    });
-    // First load is slow; trigger a second load that finishes first.
+    stubState.mountDefaults = [{ name: 'B', query: ['B', '=', 1], selected: true }];
     await wrapper.find('.emit-defaults-ready').trigger('click');
     await flushPromises();
-    await nextTick();
-    expect(JSON.parse(wrapper.find('.defaults').text())[0].name).toBe('FastPrivate');
-
-    resolveSlow([{ Id: 'p-slow', Name: 'SlowPrivate', Condition: {}, IsDefault: true, UserId: 'me' }]);
-    await flushPromises();
-    await nextTick();
-    expect(JSON.parse(wrapper.find('.defaults').text())[0].name).toBe('FastPrivate');
-  });
-
-  it('treats null Search rows as empty server defaults', async () => {
-    sfSearch.mockResolvedValueOnce(null as any);
-    const wrapper = mount(OSearchView as any, {
-      props: {
-        store: makeStore(),
-        defaultFilters: [{ name: 'Code', query: ['C', '=', 1], selected: true }],
-        initialEmit: false,
-      },
-      global: { stubs: { OSearch: OSearchStub } },
-    });
-    await flushPromises();
-    expect(JSON.parse(wrapper.find('.defaults').text())[0]).toMatchObject({ name: 'Code', selected: true });
-  });
-
-  it('ignores stale Search rejections in catch', async () => {
-    let rejectSlow!: (err: Error) => void;
-    const slow = new Promise<any[]>((_resolve, reject) => {
-      rejectSlow = reject;
-    });
-    sfSearch.mockImplementationOnce(() => slow);
-    sfSearch.mockResolvedValueOnce([
-      { Id: 'p-fast', Name: 'KeepFast', Condition: {}, IsDefault: true, UserId: 'me' },
-    ]);
-    const wrapper = mount(OSearchView as any, {
-      props: { store: makeStore(), initialEmit: false },
-      global: { stubs: { OSearch: OSearchStub } },
-    });
-    await wrapper.find('.emit-defaults-ready').trigger('click');
-    await flushPromises();
-    await nextTick();
-    expect(JSON.parse(wrapper.find('.defaults').text())[0].name).toBe('KeepFast');
-
-    rejectSlow(new Error('stale fail'));
-    await flushPromises();
-    await nextTick();
-    expect(JSON.parse(wrapper.find('.defaults').text())[0].name).toBe('KeepFast');
-  });
-
-  it('skips clearing defaults when a newer load supersedes empty app/model', async () => {
-    sfSearch.mockResolvedValueOnce([
-      { Id: 'p1', Name: 'Keep', Condition: {}, IsDefault: true, UserId: 'me' },
-    ]);
-    const store = makeStore();
-    const wrapper = mount(OSearchView as any, {
-      props: { store, initialEmit: false },
-      global: { stubs: { OSearch: OSearchStub } },
-    });
-    await flushPromises();
-    expect(JSON.parse(wrapper.find('.defaults').text())[0].name).toBe('Keep');
-
-    // Do not await the first click: VTU would wait past the yield and miss the race.
-    store.application = '';
-    void wrapper.find('.emit-defaults-ready').trigger('click');
-    store.application = 'demo';
-    sfSearch.mockResolvedValueOnce([
-      { Id: 'p2', Name: 'Newer', Condition: {}, IsDefault: true, UserId: 'me' },
-    ]);
-    await wrapper.find('.emit-defaults-ready').trigger('click');
-    await flushPromises();
-    await nextTick();
-    // Distinct newer row: fails if a stale empty-app clear wins after this load.
-    expect(JSON.parse(wrapper.find('.defaults').text())[0].name).toBe('Newer');
+    expect(wrapper.emitted('query-update')?.length).toBe(1);
+    expect(JSON.parse(wrapper.find('.applied').text())[0].name).toBe('B');
   });
 });
