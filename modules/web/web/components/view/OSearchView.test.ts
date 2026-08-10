@@ -15,7 +15,7 @@ vi.mock('@/web/web/i18n', async () => {
   const actual = await vi.importActual<typeof import('@/web/web/i18n')>('@/web/web/i18n');
   return {
     ...actual,
-    createTranslate: () => ({ _t: (msg: string) => msg }),
+    createTranslate: () => ({ _t: (msg: string) => msg, _lt: (msg: string) => msg }),
   };
 });
 
@@ -190,7 +190,16 @@ describe('OSearchView server defaults', () => {
     });
     await flushPromises();
     const cond = sfSearch.mock.calls[0]![0] as any;
-    expect(cond.And.at(-1)).toEqual({ Or: [['UserId', '=', null]] });
+    expect(cond.And).toEqual(
+      expect.arrayContaining([
+        ['Application', '=', 'demo'],
+        ['ModelName', '=', 'Widget'],
+        ['ScopeKey', '=', ''],
+        ['Active', '=', true],
+        ['IsDefault', '=', true],
+        { Or: [['UserId', '=', null]] },
+      ])
+    );
   });
 
   it('ignores stale server-default responses', async () => {

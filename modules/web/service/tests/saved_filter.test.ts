@@ -524,6 +524,79 @@ test('SavedFilter rejects duplicate Name in the same ownership bucket', async ()
   await SavedFilter.DeleteById(String((first as any).Id));
 });
 
+test('SavedFilter ScopeKey scopes Name uniqueness and IsDefault mutex', async () => {
+  resetRequestContext();
+  const actor = uid('sf_scope');
+  setIdentity(actor);
+  const name = uid('scoped_name');
+  const a = await SavedFilter.Create(
+    {
+      Name: name,
+      ScopeKey: '/web/partners/1',
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      Condition: {},
+      IsDefault: true,
+    } as any,
+    ['Id', 'ScopeKey', 'IsDefault'] as any
+  );
+  expect((a as any).ScopeKey).toBe('/web/partners/:id');
+  expect((a as any).IsDefault).toBe(true);
+
+  const b = await SavedFilter.Create(
+    {
+      Name: name,
+      ScopeKey: '/web/companies/2',
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      Condition: {},
+      IsDefault: true,
+    } as any,
+    ['Id', 'ScopeKey', 'IsDefault'] as any
+  );
+  expect((b as any).ScopeKey).toBe('/web/companies/:id');
+  expect((b as any).IsDefault).toBe(true);
+  const aStill = await SavedFilter.Browse(String((a as any).Id), ['IsDefault'] as any);
+  expect((aStill as any).IsDefault).toBe(true);
+
+  await expectCode(
+    async () =>
+      SavedFilter.Create(
+        {
+          Name: name,
+          ScopeKey: '/web/partners/99',
+          Application: 'web',
+          ModelName: 'SavedFilter',
+          Condition: {},
+        } as any,
+        ['Id'] as any
+      ),
+    'AlreadyExists',
+    'already exists'
+  );
+
+  const a2 = await SavedFilter.Create(
+    {
+      Name: uid('scoped_other'),
+      ScopeKey: '/web/partners/3',
+      Application: 'web',
+      ModelName: 'SavedFilter',
+      Condition: {},
+      IsDefault: true,
+    } as any,
+    ['Id', 'IsDefault'] as any
+  );
+  expect((a2 as any).IsDefault).toBe(true);
+  const aCleared = await SavedFilter.Browse(String((a as any).Id), ['IsDefault'] as any);
+  const bStill = await SavedFilter.Browse(String((b as any).Id), ['IsDefault'] as any);
+  expect((aCleared as any).IsDefault).toBe(false);
+  expect((bStill as any).IsDefault).toBe(true);
+
+  await SavedFilter.DeleteById(String((a as any).Id));
+  await SavedFilter.DeleteById(String((b as any).Id));
+  await SavedFilter.DeleteById(String((a2 as any).Id));
+});
+
 test('SavedFilter fills Create defaults (UserId/IsDefault/Active/Condition)', async () => {
   resetRequestContext();
   const actor = uid('sf_defaults');
@@ -534,13 +607,14 @@ test('SavedFilter fills Create defaults (UserId/IsDefault/Active/Condition)', as
       Application: 'web',
       ModelName: 'SavedFilter',
     } as any,
-    ['Id', 'UserId', 'IsDefault', 'Active', 'Condition', 'CreateUid'] as any
+    ['Id', 'UserId', 'IsDefault', 'Active', 'Condition', 'CreateUid', 'ScopeKey'] as any
   );
   expect(String((created as any).UserId)).toBe(actor);
   expect((created as any).IsDefault).toBe(false);
   expect((created as any).Active).toBe(true);
   expect((created as any).Condition || {}).toEqual({});
   expect(String((created as any).CreateUid)).toBe(actor);
+  expect((created as any).ScopeKey).toBe('');
   await SavedFilter.DeleteById(String((created as any).Id));
 });
 
@@ -938,7 +1012,7 @@ test('SavedFilter _clearOtherDefaults covers null candidates, remaining fail, an
       return origSudo.call(SavedFilter, _fn, opts);
     };
     SF.Update = async () => [];
-    await SF._clearOtherDefaults('web', 'SavedFilter', null);
+    await SF._clearOtherDefaults('web', 'SavedFilter', '', null);
 
     // Shared row missing CreateUid → !canWrite → PermissionDenied (CreateUid || '').
     SF.sudo = async (_fn: any, opts: any) => {
@@ -947,7 +1021,7 @@ test('SavedFilter _clearOtherDefaults covers null candidates, remaining fail, an
       return [];
     };
     await expectCode(
-      async () => SF._clearOtherDefaults('web', 'SavedFilter', null),
+      async () => SF._clearOtherDefaults('web', 'SavedFilter', '', null),
       'PermissionDenied',
       "another user's shared default"
     );
@@ -959,7 +1033,7 @@ test('SavedFilter _clearOtherDefaults covers null candidates, remaining fail, an
       return [];
     };
     await expectCode(
-      async () => SF._clearOtherDefaults('web', 'SavedFilter', actor),
+      async () => SF._clearOtherDefaults('web', 'SavedFilter', '', actor),
       'PermissionDenied',
       "another user's shared default"
     );
@@ -973,7 +1047,7 @@ test('SavedFilter _clearOtherDefaults covers null candidates, remaining fail, an
     };
     SF.Update = async () => [];
     await expectCode(
-      async () => SF._clearOtherDefaults('web', 'SavedFilter', null),
+      async () => SF._clearOtherDefaults('web', 'SavedFilter', '', null),
       'PermissionDenied',
       "another user's shared default"
     );

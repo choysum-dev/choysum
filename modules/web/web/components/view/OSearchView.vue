@@ -18,6 +18,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts" generic="T extends BaseModel">
 import { computed, onMounted, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import type { BaseModel } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { ConditionGroup, GroupBySpec, NamedFilter, QueryUpdatePayload } from '@/web/web/query/types';
@@ -27,7 +28,18 @@ import { buildQueryUpdatePayload } from '@/web/web/query/utils/search/payload';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import { actorUserId } from '@/web/web/composables/search/actorUserId';
 import { mergeSavedFilterDefaults, type SavedFilterRow } from '@/web/web/composables/search/savedFilterDefaults';
+import { normalizeScopeKey } from '@/web/web/composables/search/scopeKey';
 import { createTranslate } from '@/web/web/i18n';
+
+function trySetupHook<T>(fn: () => T): T | null {
+  try {
+    return fn();
+  } catch {
+    return null;
+  }
+}
+
+const currentRoute = trySetupHook(() => useRoute());
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/OSearchView' });
 
@@ -131,12 +143,14 @@ async function loadServerDefaults(): Promise<void> {
 
   try {
     const me = actorUserId();
+    const scope = normalizeScopeKey(currentRoute?.path ?? '');
     const sf = createStoreByModel('web.SavedFilter') as any;
     const rows = (await sf.Search(
       {
         And: [
           ['Application', '=', app],
           ['ModelName', '=', model],
+          ['ScopeKey', '=', scope],
           ['Active', '=', true],
           ['IsDefault', '=', true],
           {
@@ -149,7 +163,7 @@ async function loadServerDefaults(): Promise<void> {
           },
         ],
       },
-      { fields: ['Id', 'Name', 'Condition', 'IsDefault', 'UserId'] }
+      { fields: ['Id', 'Name', 'ScopeKey', 'Condition', 'IsDefault', 'UserId'] }
     )) as SavedFilterRow[];
 
     if (gen !== serverDefaultsLoadGen) return;

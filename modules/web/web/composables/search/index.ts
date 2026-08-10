@@ -11,3 +11,5 @@ export * from './useSearchFieldOptions';
 export * from './useSearchGrouping';
 export * from './useSavedFilters';
 export * from './savedFilterDefaults';
+export * from './defaultFavoriteName';
+export * from './scopeKey';

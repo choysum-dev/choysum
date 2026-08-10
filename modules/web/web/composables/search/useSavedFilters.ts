@@ -7,6 +7,7 @@ import type { NamedFilter } from '@/web/web/query/types';
 import { filtersToQuery } from '@/web/web/query/utils/condition/builder';
 import { actorUserId } from './actorUserId';
 import { mergeSavedFilterDefaults, savedFilterToNamedFilter, type SavedFilterRow } from './savedFilterDefaults';
+import { normalizeScopeKey } from './scopeKey';
 
 export type SavedFavoriteItem = SavedFilterRow & {
   Id: string;
@@ -25,6 +26,8 @@ export function useSavedFilters(params: {
   keywordRef?: Ref<string>;
   applyNamedFilter: (nf: NamedFilter) => void;
   codeDefaults?: () => NamedFilter[] | NamedFilter | undefined;
+  /** Current route path (normalized to ScopeKey). */
+  scopeKey?: () => string;
 }) {
   const { store, filtersRef, keywordRef, applyNamedFilter, codeDefaults } = params;
   const favorites = ref<SavedFavoriteItem[]>([]);
@@ -33,6 +36,10 @@ export function useSavedFilters(params: {
 
   const application = computed(() => String((store as any)?.application || '').trim());
   const modelName = computed(() => String((store as any)?.modelName || '').trim());
+
+  function currentScopeKey(): string {
+    return normalizeScopeKey(params.scopeKey?.() ?? '');
+  }
 
   function savedFilterStore() {
     return createStoreByModel('web.SavedFilter');
@@ -49,12 +56,14 @@ export function useSavedFilters(params: {
     loadError.value = null;
     try {
       const me = actorUserId();
+      const scope = currentScopeKey();
       const sf = savedFilterStore() as any;
       const rows = (await sf.Search(
         {
           And: [
             ['Application', '=', app],
             ['ModelName', '=', model],
+            ['ScopeKey', '=', scope],
             ['Active', '=', true],
             {
               Or: me
@@ -67,7 +76,7 @@ export function useSavedFilters(params: {
           ],
         },
         {
-          fields: ['Id', 'Name', 'Condition', 'IsDefault', 'UserId', 'CreateUid', 'Sort'],
+          fields: ['Id', 'Name', 'ScopeKey', 'Condition', 'IsDefault', 'UserId', 'CreateUid', 'Sort'],
           orderBy: { field: 'Name', order: 'asc' },
         }
       )) as SavedFilterRow[];
@@ -139,6 +148,7 @@ export function useSavedFilters(params: {
     // Shared: explicit null.
     const values: Record<string, any> = {
       Name: name,
+      ScopeKey: currentScopeKey(),
       Application: app,
       ModelName: model,
       Condition: condition,
@@ -150,7 +160,7 @@ export function useSavedFilters(params: {
     } else if (me) {
       values.UserId = me;
     }
-    const created = await sf.Create(values, ['Id', 'Name', 'Condition', 'IsDefault', 'UserId', 'CreateUid']);
+    const created = await sf.Create(values, ['Id', 'Name', 'ScopeKey', 'Condition', 'IsDefault', 'UserId', 'CreateUid']);
     await load();
     const createUid = String((created as any).CreateUid || me || '').trim();
     const shared = (created as any).UserId == null || (created as any).UserId === '';

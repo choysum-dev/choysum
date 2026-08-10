@@ -43,7 +43,7 @@ vi.mock('@/web/web/i18n', async () => {
   const actual = await vi.importActual<typeof import('@/web/web/i18n')>('@/web/web/i18n');
   return {
     ...actual,
-    createTranslate: () => ({ _t: (msg: string) => msg }),
+    createTranslate: () => ({ _t: (msg: string) => msg, _lt: (msg: string) => msg }),
   };
 });
 

@@ -196,8 +196,37 @@ describe('useSavedFilters', () => {
     );
     await api.load();
     const cond = sfMocks.Search.mock.calls[0]![0] as any;
-    expect(cond.And.at(-1)).toEqual({ Or: [['UserId', '=', null]] });
+    expect(cond.And).toEqual(
+      expect.arrayContaining([
+        ['Application', '=', 'demo'],
+        ['ModelName', '=', 'Widget'],
+        ['ScopeKey', '=', ''],
+        ['Active', '=', true],
+        { Or: [['UserId', '=', null]] },
+      ])
+    );
     expect(api.favorites.value[0].canDelete).toBe(false);
+  });
+
+  it('load and saveCurrent filter/write ScopeKey from scopeKey()', async () => {
+    sfMocks.Search.mockResolvedValue([]);
+    const api = runInSetup(() =>
+      useSavedFilters({
+        store: { application: 'demo', modelName: 'Widget', fieldsMetadata: {}, state: { queryState: {} } },
+        filtersRef: ref([]),
+        applyNamedFilter: vi.fn(),
+        scopeKey: () => '/web/partners/42/edit?x=1',
+      })
+    );
+    await api.load();
+    expect(sfMocks.Search.mock.calls[0]![0].And).toEqual(
+      expect.arrayContaining([['ScopeKey', '=', '/web/partners/:id/edit']])
+    );
+    await api.saveCurrent({ name: 'Scoped' });
+    expect(sfMocks.Create.mock.calls[0]![0]).toMatchObject({
+      Name: 'Scoped',
+      ScopeKey: '/web/partners/:id/edit',
+    });
   });
 
   it('saveCurrent returns null when name/app/model missing', async () => {
@@ -263,6 +292,7 @@ describe('useSavedFilters', () => {
     expect(filtersToQuery).toHaveBeenCalledWith(groups, 'find-me', ['Name', 'Code'], fieldsMeta);
     expect(sfMocks.Create.mock.calls[0]![0]).toMatchObject({
       Name: 'Priv',
+      ScopeKey: '',
       UserId: 'me',
       IsDefault: true,
       Condition: { And: [['Name', '=', 'x']] },

@@ -30,7 +30,31 @@ vi.mock('@/web/web/i18n', async () => {
     ...actual,
     createTranslate: () => ({
       _t: (msg: string, ...args: unknown[]) => (args.length ? `${msg}:${args.join(',')}` : msg),
+      // breadcrumbStore evaluates _lt('Page') at import time when OSearch loads stores.
+      _lt: (msg: string) => msg,
     }),
+  };
+});
+
+vi.mock('@/web/web/stores/breadcrumbStore', () => ({
+  useBreadcrumbStore: () => {
+    throw new Error('breadcrumb store unavailable in OSearch unit harness');
+  },
+}));
+
+vi.mock('@/web/web/stores/menuStore', () => ({
+  useMenuStore: () => {
+    throw new Error('menu store unavailable in OSearch unit harness');
+  },
+}));
+
+vi.mock('vue-router', async () => {
+  const actual = await vi.importActual<any>('vue-router');
+  return {
+    ...actual,
+    useRoute: () => {
+      throw new Error('vue-router unavailable in OSearch unit harness');
+    },
   };
 });
 
@@ -470,6 +494,8 @@ describe('OSearch behavior', () => {
     expect(wrapper.find('.el-dialog').exists()).toBe(true);
 
     const saveBtn = wrapper.findAll('.el-btn').find(b => b.text() === 'Save');
+    // Clear any Odoo-style default title so empty-name validation is exercised.
+    await wrapper.find('input.fav-name').setValue('');
     await saveBtn!.trigger('click');
     expect(ElMessage.warning).toHaveBeenCalled();
     expect(savedFiltersApi.saveCurrent).not.toHaveBeenCalled();

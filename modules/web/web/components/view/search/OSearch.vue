@@ -243,11 +243,48 @@ import { normalizeGroupby } from '@/web/web/query/utils/grouping/normalize';
 import { buildQueryUpdatePayload } from '@/web/web/query/utils/search/payload';
 import { useFilterPresets } from '@/web/web/composables/search/useFilterPresets';
 import { useSavedFilters } from '@/web/web/composables/search/useSavedFilters';
+import {
+  modelIdentityFromStore,
+  pickDefaultFavoriteName,
+  routeTitleFromLocation,
+  stableTitleSource,
+} from '@/web/web/composables/search/defaultFavoriteName';
 import { useFilterableSearchFields } from '@/web/web/composables/search/useSearchFieldOptions';
 import { useSearchGrouping, type SearchGroupByItem } from '@/web/web/composables/search/useSearchGrouping';
 import { createTranslate } from '@/web/web/i18n';
+import { useBreadcrumbStore } from '@/web/web/stores/breadcrumbStore';
+import { useMenuStore } from '@/web/web/stores/menuStore';
+import { useRoute } from 'vue-router';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/search/OSearch' });
+
+function trySetupHook<T>(fn: () => T): T | null {
+  try {
+    return fn();
+  } catch {
+    return null;
+  }
+}
+
+/** Captured in setup so click handlers never call inject()-based APIs. */
+const breadcrumbStore = trySetupHook(() => useBreadcrumbStore());
+const menuStore = trySetupHook(() => useMenuStore());
+const currentRoute = trySetupHook(() => useRoute());
+
+function resolveDefaultFavoriteName(viewStore: { application?: unknown; modelName?: unknown }): string {
+  const stack = breadcrumbStore?.breadcrumbStack as Array<{ title?: string; titleText?: any }> | undefined;
+  const tip = Array.isArray(stack) && stack.length ? stack[stack.length - 1] : undefined;
+  const breadcrumbTip = tip ? stableTitleSource(tip.title, tip.titleText) : '';
+  const routeTitle = currentRoute ? routeTitleFromLocation(currentRoute) : '';
+  const menu = menuStore?.activeMenu as { title?: string; titleText?: any } | null | undefined;
+  const menuTitle = menu ? stableTitleSource(menu.title, menu.titleText) : '';
+  return pickDefaultFavoriteName({
+    breadcrumbTip,
+    routeTitle,
+    menuTitle,
+    modelIdentity: modelIdentityFromStore(viewStore),
+  });
+}
 
 /* Grouping summary labels. */
 const granLabelMap = computed(() => ({
@@ -356,6 +393,7 @@ const {
     if (!df) return undefined;
     return Array.isArray(df) ? df : [df];
   },
+  scopeKey: () => String(currentRoute?.path ?? ''),
 });
 
 const saveFavoriteOpen = ref(false);
@@ -404,7 +442,8 @@ function onRetryFavorites() {
 
 function onOpenSaveFavorite() {
   menuVisible.value = false;
-  saveFavoriteName.value = '';
+  // Align with Odoo CustomFavoriteItem seeding, but keep Name language-stable (term src / model id).
+  saveFavoriteName.value = resolveDefaultFavoriteName(store);
   saveFavoriteIsDefault.value = false;
   saveFavoriteShared.value = false;
   saveFavoriteOpen.value = true;

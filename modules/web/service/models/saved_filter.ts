@@ -8,6 +8,7 @@ import { ChoysumError, GrpcCode } from '@/core/service/error';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaModel from '@/meta/service/models/model';
 import { _lt, _t } from '../i18n';
+import { normalizeScopeKey } from './_scope_key';
 
 const SCOPE = 'web.model.SavedFilter';
 const MetaModelService = createServiceByModel<typeof MetaModel>('meta.MetaModel');
@@ -16,6 +17,7 @@ const MetaModelService = createServiceByModel<typeof MetaModel>('meta.MetaModel'
  * Persisted Favorites filter for OSearch (Owner Application = web).
  *
  * Identity: Application + ModelName. ModelId stores the unique live meta.MetaModel id.
+ * Uniqueness / IsDefault mutex are scoped by ScopeKey (normalized route path) + UserId + Name.
  * Field normalize / ModelId / uniqueness / IsDefault mutex → `@Constraint` (uses ctx.mode;
  * Create pre-assigns Id before validation, so `!this.Id` is not a reliable create signal).
  * Shared write/delete ACL (SF11) → auth.RoleRecordRule seeds in modules/web/data/bootstrap.json.
@@ -23,7 +25,7 @@ const MetaModelService = createServiceByModel<typeof MetaModel>('meta.MetaModel'
 @Model('SavedFilter', { application: 'web', softDelete: false })
 export default class SavedFilter extends BaseModel {
   /**
-   * Display name of the favorite (unique per Application/ModelName/UserId).
+   * Display name of the favorite (unique per Application/ModelName/ScopeKey/UserId).
    */
   @Field({
     type: 'varchar',
@@ -33,6 +35,20 @@ export default class SavedFilter extends BaseModel {
     string: _lt('Name', { scope: `${SCOPE}.fields` }),
   })
   Name: string;
+
+  /**
+   * Normalized route path that scopes Name uniqueness and IsDefault (not shown in Favorites UI).
+   */
+  @Field({
+    type: 'varchar',
+    size: 512,
+    notNull: true,
+    index: true,
+    default: () => '',
+    string: _lt('Scope Key', { scope: `${SCOPE}.fields` }),
+    help: _lt('Normalized route path; Favorites UI shows Name only.', { scope: `${SCOPE}.fields` }),
+  })
+  ScopeKey: string;
 
   /**
    * Target application short name (store.application).
@@ -161,11 +177,18 @@ export default class SavedFilter extends BaseModel {
    * Clear other IsDefault rows the actor may write (SF11). Shared defaults owned by
    * someone else remain; fail so we never leave two shared defaults silently.
    */
-  private static async _clearOtherDefaults(app: string, modelName: string, userId: string | null, exceptId?: string): Promise<void> {
+  private static async _clearOtherDefaults(
+    app: string,
+    modelName: string,
+    scopeKey: string,
+    userId: string | null,
+    exceptId?: string
+  ): Promise<void> {
     const cond: any = {
       And: [
         ['Application', '=', app],
         ['ModelName', '=', modelName],
+        ['ScopeKey', '=', scopeKey],
         ['IsDefault', '=', true],
       ],
     };
@@ -212,11 +235,19 @@ export default class SavedFilter extends BaseModel {
     }
   }
 
-  private static async _assertUniqueName(app: string, modelName: string, userId: string | null, name: string, exceptId?: string): Promise<void> {
+  private static async _assertUniqueName(
+    app: string,
+    modelName: string,
+    scopeKey: string,
+    userId: string | null,
+    name: string,
+    exceptId?: string
+  ): Promise<void> {
     const cond: any = {
       And: [
         ['Application', '=', app],
         ['ModelName', '=', modelName],
+        ['ScopeKey', '=', scopeKey],
         ['Name', '=', name],
       ],
     };
@@ -244,7 +275,7 @@ export default class SavedFilter extends BaseModel {
    * Normalize identity / ownership, resolve ModelId, enforce uniqueness and IsDefault mutex.
    * Static so we can read `ctx.mode` (Create pre-assigns Id before validation).
    */
-  @Constraint<SavedFilter>(['Name', 'Application', 'ModelName', 'ModelId', 'UserId', 'IsDefault', 'Condition', 'Active', 'CreateUid'])
+  @Constraint<SavedFilter>(['Name', 'ScopeKey', 'Application', 'ModelName', 'ModelId', 'UserId', 'IsDefault', 'Condition', 'Active', 'CreateUid'])
   static async validateSavedFilterConstraint(self: SavedFilter, ctx: ConstraintContext<SavedFilter>): Promise<void> {
     const isCreate = ctx.mode === 'create';
     const values = ctx.values as Record<string, any>;
@@ -263,6 +294,7 @@ export default class SavedFilter extends BaseModel {
     values.Application = app;
     values.ModelName = modelName;
     values.Name = name;
+    values.ScopeKey = normalizeScopeKey(SavedFilter._mergedField(self, ctx, 'ScopeKey'));
 
     const modelRows = await MetaModelService.Search(
       { And: [['Application', '=', app], ['Name', '=', modelName]] } as any,
@@ -305,13 +337,13 @@ export default class SavedFilter extends BaseModel {
       return String(raw).trim();
     })();
 
-    await SavedFilter._assertUniqueName(app, modelName, effectiveUserId, name, isCreate ? undefined : currentId);
+    await SavedFilter._assertUniqueName(app, modelName, values.ScopeKey, effectiveUserId, name, isCreate ? undefined : currentId);
 
     const isDefault = Object.prototype.hasOwnProperty.call(values, 'IsDefault')
       ? values.IsDefault === true
       : SavedFilter._mergedField(self, ctx, 'IsDefault') === true;
     if (isDefault) {
-      await SavedFilter._clearOtherDefaults(app, modelName, effectiveUserId, isCreate ? undefined : currentId);
+      await SavedFilter._clearOtherDefaults(app, modelName, values.ScopeKey, effectiveUserId, isCreate ? undefined : currentId);
     }
   }
 }
