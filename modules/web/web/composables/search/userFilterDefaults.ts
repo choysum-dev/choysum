@@ -17,7 +17,7 @@ export type UserFilterRow = {
 /** Normalize ManyToOneRef nested `{ Id }` or bare id to a trimmed string (empty if shared/missing). */
 export function resolveUserFilterUserId(userId: unknown): string {
   if (userId == null || userId === '') return '';
-  if (typeof userId === 'object' && !Array.isArray(userId) && userId !== null && 'Id' in (userId as object)) {
+  if (typeof userId === 'object' && !Array.isArray(userId) && 'Id' in (userId as object)) {
     return String((userId as { Id?: unknown }).Id ?? '').trim();
   }
   return String(userId).trim();
