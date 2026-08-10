@@ -13,9 +13,9 @@ const { _t } = createTranslate('web', { scope: 'web.model.UserFilter' });
 /**
  * Persisted Favorites filter for OSearch (Owner Application = web).
  *
- * Identity: Application + ModelName (+ ScopeKey). Align modern Odoo ir.filters:
- * Name is not unique; multiple IsDefault rows are allowed (FE picks newest).
- * ScopeKey is stored as written (FE normalizes route paths before write/query).
+ * Align modern Odoo ir.filters: Name is not unique; multiple IsDefault rows are
+ * allowed (FE picks newest). ScopeKey is stored as written (FE normalizes routes).
+ * UserId default comes from Field metadata; Constraint only rejects foreign owners.
  * Shared write/delete ACL → auth.RoleRecordRule seeds in modules/web/data/bootstrap.json.
  */
 @Model('UserFilter', { application: 'web', softDelete: false })
@@ -84,6 +84,7 @@ export default class UserFilter extends BaseModel {
 
   /**
    * Owner user; null means shared with all logged-in users.
+   * Create omit → current actor (Field default); explicit null stays shared.
    */
   @Field({
     type: 'ManyToOneRef',
@@ -91,6 +92,7 @@ export default class UserFilter extends BaseModel {
     notNull: false,
     size: 20,
     index: true,
+    default: () => UserFilter.userId || null,
     string: _lt('User'),
   })
   UserId?: string | null;
@@ -106,71 +108,19 @@ export default class UserFilter extends BaseModel {
   })
   IsDefault: boolean;
 
-  private static _fail(code: string, message: string, grpc: GrpcCode = GrpcCode.InvalidArgument): never {
-    throw new ChoysumError({ domain: 'web', code, message }).withGrpcCode(grpc);
-  }
-
-  /** Unwrap ManyToOneRef nested `{ Id }` or bare id; blank → null. */
-  private static _rawUserId(raw: unknown): string | null {
-    if (raw == null || raw === '') return null;
-    if (typeof raw === 'object' && !Array.isArray(raw) && raw !== null && 'Id' in (raw as object)) {
-      raw = (raw as { Id?: unknown }).Id;
-    }
-    if (raw == null || raw === '') return null;
-    const id = String(raw).trim();
-    return id || null;
-  }
-
   /**
-   * Owner may be null (shared) or the current actor. Other user ids are rejected.
+   * Reject foreign UserId owners. Does not assign (defaults → Field `default`).
+   * Allowed: null (shared), undefined (omitted / untouched), or the current actor.
    */
-  private static _normalizeOwnerUserId(raw: unknown, actor: string): string | null {
-    const id = UserFilter._rawUserId(raw);
-    if (!id) return null;
-    if (id === actor) return actor;
-    this._fail('PermissionDenied', _t('Cannot assign a favorite to another user'), GrpcCode.PermissionDenied);
-  }
-
-  private static _mergedField(self: UserFilter, ctx: ConstraintContext<UserFilter>, key: string): any {
-    if (Object.prototype.hasOwnProperty.call(ctx.values || {}, key)) return (ctx.values as any)[key];
-    if (Object.prototype.hasOwnProperty.call(self as any, key)) return (self as any)[key];
-    return (ctx.current as any)?.[key];
-  }
-
-  /**
-   * Normalize ownership and required string fields. Name is not unique; IsDefault is not mutexed
-   * (FE picks newest). ScopeKey is pass-through. Login is enforced by gRPC AuthN + Method ACL.
-   * Static so we can read `ctx.mode` (Create pre-assigns Id before validation).
-   */
-  @Constraint<UserFilter>(['Name', 'Application', 'ModelName', 'UserId', 'IsDefault', 'Condition'])
-  static async validateUserFilterConstraint(self: UserFilter, ctx: ConstraintContext<UserFilter>): Promise<void> {
-    const isCreate = ctx.mode === 'create';
-    const values = ctx.values as Record<string, any>;
-    const actor = String(this.userId || '').trim();
-
-    const app = String(UserFilter._mergedField(self, ctx, 'Application') || '').trim();
-    const modelName = String(UserFilter._mergedField(self, ctx, 'ModelName') || '').trim();
-    const name = String(UserFilter._mergedField(self, ctx, 'Name') || '').trim();
-    if (!app || !modelName || !name) {
-      UserFilter._fail('InvalidArgument', _t('Name, Application, and ModelName are required'));
-    }
-    values.Application = app;
-    values.ModelName = modelName;
-    values.Name = name;
-
-    if (isCreate) {
-      // CreatedUid is stamped by repository write prepare (AuditUidUtils) from the request actor.
-      const touchedUserId = Object.prototype.hasOwnProperty.call(values, 'UserId');
-      if (!touchedUserId) {
-        // Only setdefault private ownership when an actor is present; empty actor leaves shared (null).
-        if (actor) values.UserId = actor;
-      } else {
-        values.UserId = UserFilter._normalizeOwnerUserId(values.UserId, actor);
-      }
-      if (values.IsDefault == null) values.IsDefault = false;
-      if (values.Condition == null) values.Condition = {};
-    } else if (Object.prototype.hasOwnProperty.call(values, 'UserId')) {
-      values.UserId = UserFilter._normalizeOwnerUserId(values.UserId, actor);
+  @Constraint<UserFilter>(['UserId'])
+  static async validateUserFilterConstraint(_self: UserFilter, ctx: ConstraintContext<UserFilter>): Promise<void> {
+    const userId = ctx.values.UserId;
+    if (userId !== null && userId !== undefined && userId !== this.userId) {
+      throw new ChoysumError({
+        domain: 'web',
+        code: 'PermissionDenied',
+        message: _t('Cannot assign a favorite to another user'),
+      }).withGrpcCode(GrpcCode.PermissionDenied);
     }
   }
 }

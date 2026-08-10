@@ -609,7 +609,7 @@ test('UserFilter fills Create defaults (UserId/IsDefault/Condition)', async () =
   await UserFilter.DeleteById(String((created as any).Id));
 });
 
-test('UserFilter Update keeps CreatedUid immutable and normalizes UserId', async () => {
+test('UserFilter Update keeps CreatedUid immutable and rejects foreign UserId', async () => {
   resetRequestContext();
   const actor = uid('sf_upd');
   setIdentity(actor);
@@ -673,26 +673,43 @@ test('UserFilter private IsDefault update leaves other defaults intact', async (
   await UserFilter.DeleteById(String((b as any).Id));
 });
 
-test('UserFilter rejects Create missing Name/Application/ModelName', async () => {
+test('UserFilter rejects Create with null Application/ModelName via Field notNull', async () => {
   resetRequestContext();
-  setIdentity(uid('sf_req'));
-  await expectCode(
-    async () =>
-      UserFilter.Create(
-        {
-          Name: '',
-          Application: 'web',
-          ModelName: 'UserFilter',
-          Condition: {},
-        } as any,
-        ['Id'] as any
-      ),
-    'InvalidArgument',
-    'required'
-  );
+  setIdentity(uid('sf_null_app'));
+  let caughtApp: any;
+  try {
+    await UserFilter.Create(
+      {
+        Name: uid('null_app'),
+        Application: null,
+        ModelName: 'UserFilter',
+        Condition: {},
+      } as any,
+      ['Id'] as any
+    );
+  } catch (e) {
+    caughtApp = e;
+  }
+  expect(!!caughtApp).toBe(true);
+
+  let caughtModel: any;
+  try {
+    await UserFilter.Create(
+      {
+        Name: uid('null_model'),
+        Application: 'web',
+        ModelName: null,
+        Condition: {},
+      } as any,
+      ['Id'] as any
+    );
+  } catch (e) {
+    caughtModel = e;
+  }
+  expect(!!caughtModel).toBe(true);
 });
 
-test('UserFilter Update reads unchanged fields from current via mergedField', async () => {
+test('UserFilter Update leaves untouched fields intact', async () => {
   resetRequestContext();
   const actor = uid('sf_merged');
   setIdentity(actor);
@@ -705,7 +722,6 @@ test('UserFilter Update reads unchanged fields from current via mergedField', as
     } as any,
     ['Id', 'Name', 'Condition'] as any
   );
-  // Touch only IsDefault so Name/Application/ModelName resolve from current.
   const updated = await UserFilter.UpdateById(
     String((created as any).Id),
     { IsDefault: true } as any,
@@ -906,7 +922,7 @@ test('UserFilter Create accepts explicit self UserId', async () => {
   await UserFilter.DeleteById(String((created as any).Id));
 });
 
-test('UserFilter constraint fills null IsDefault/Condition on create', async () => {
+test('UserFilter constraint does not assign UserId or touch other fields', async () => {
   resetRequestContext();
   const actor = uid('sf_null_defs');
   setIdentity(actor);
@@ -916,59 +932,14 @@ test('UserFilter constraint fills null IsDefault/Condition on create', async () 
     Name: uid('null_defs_name'),
     Application: 'web',
     ModelName: 'UserFilter',
-    UserId: actor,
     IsDefault: null,
     Condition: null,
   };
   await SF.validateUserFilterConstraint({}, { mode: 'create', values, current: undefined });
-  expect(values.IsDefault).toBe(false);
-  expect(values.Condition).toEqual({});
-  expect(values.UserId).toBe(actor);
+  expect(values.UserId).toBeUndefined();
+  expect(values.IsDefault).toBeNull();
+  expect(values.Condition).toBeNull();
 });
-
-test('UserFilter rejects null Application/ModelName via mergedField empty trim', async () => {
-  resetRequestContext();
-  setIdentity(uid('sf_null_app'));
-  await expectCode(
-    async () =>
-      UserFilter.Create(
-        {
-          Name: uid('null_app'),
-          Application: null,
-          ModelName: 'UserFilter',
-          Condition: {},
-        } as any,
-        ['Id'] as any
-      ),
-    'InvalidArgument',
-    'required'
-  );
-  await expectCode(
-    async () =>
-      UserFilter.Create(
-        {
-          Name: uid('null_model'),
-          Application: 'web',
-          ModelName: null,
-          Condition: {},
-        } as any,
-        ['Id'] as any
-      ),
-    'InvalidArgument',
-    'required'
-  );
-});
-
-test('UserFilter _mergedField falls through values/self/current', () => {
-  const SF = UserFilter as any;
-  expect(SF._mergedField({}, { values: undefined, current: {} }, 'Name')).toBeUndefined();
-  expect(SF._mergedField({ Name: 'FromSelf' }, { values: undefined, current: {} }, 'Name')).toBe('FromSelf');
-  expect(SF._mergedField({}, { values: {}, current: { Name: 'FromCurrent' } }, 'Name')).toBe('FromCurrent');
-  expect(SF._mergedField({ Name: 'Self' }, { values: { Name: 'Values' }, current: { Name: 'Current' } }, 'Name')).toBe(
-    'Values'
-  );
-});
-
 
 test('UserFilter allows duplicate shared Name for null UserId', async () => {
   resetRequestContext();
@@ -1003,54 +974,46 @@ test('UserFilter allows duplicate shared Name for null UserId', async () => {
   await UserFilter.DeleteById(String((shared2 as any).Id));
 });
 
-test('UserFilter validateUserFilterConstraint covers empty create Id fallbacks', async () => {
+test('UserFilter validateUserFilterConstraint only rejects foreign UserId', async () => {
   resetRequestContext();
   const actor = uid('sf_validate');
   setIdentity(actor);
   const SF = UserFilter as any;
 
-  // Create with whitespace Id → trim || undefined (exceptId omitted on unique check).
-  const valuesCreate: Record<string, any> = {
-    Id: '   ',
+  // Omit UserId: no assign (Field default applies on Create/DefaultGet, not here).
+  const valuesOmit: Record<string, any> = {
     Name: uid('empty_id'),
     Application: 'web',
     ModelName: 'UserFilter',
-    Condition: {},
-    IsDefault: false,
   };
-  await SF.validateUserFilterConstraint({}, { mode: 'create', values: valuesCreate, current: undefined });
-  expect(valuesCreate.UserId).toBe(actor);
-  // CreatedUid is stamped by BaseModel, not this constraint.
-  expect(valuesCreate.CreatedUid).toBeUndefined();
+  await SF.validateUserFilterConstraint({}, { mode: 'create', values: valuesOmit, current: undefined });
+  expect(valuesOmit.UserId).toBeUndefined();
 
-  // Falsy Id hits `(values.Id || '')` then `trim() || undefined`.
-  const valuesNullId: Record<string, any> = {
-    Id: null,
-    Name: uid('null_id'),
+  const valuesShared: Record<string, any> = {
+    Name: uid('shared_id'),
     Application: 'web',
     ModelName: 'UserFilter',
-    Condition: {},
-    IsDefault: false,
+    UserId: null,
   };
-  await SF.validateUserFilterConstraint({}, { mode: 'create', values: valuesNullId, current: undefined });
-  expect(valuesNullId.UserId).toBe(actor);
+  await SF.validateUserFilterConstraint({}, { mode: 'create', values: valuesShared, current: undefined });
+  expect(valuesShared.UserId).toBeNull();
 
-  const valuesUndefId: Record<string, any> = {
-    Name: uid('undef_id'),
-    Application: 'web',
-    ModelName: 'UserFilter',
-    Condition: {},
-    IsDefault: false,
-  };
-  await SF.validateUserFilterConstraint({}, { mode: 'create', values: valuesUndefId, current: undefined });
-  expect(valuesUndefId.UserId).toBe(actor);
+  const valuesSelf: Record<string, any> = { UserId: actor };
+  await SF.validateUserFilterConstraint({}, { mode: 'create', values: valuesSelf, current: undefined });
+  expect(valuesSelf.UserId).toBe(actor);
 
-  // Update path no longer rewrites CreatedUid (BaseModel strips client writes).
+  const other = uid('other');
+  const valuesForeign: Record<string, any> = { UserId: other };
+  await expectCode(
+    async () => SF.validateUserFilterConstraint({}, { mode: 'create', values: valuesForeign, current: undefined }),
+    'PermissionDenied',
+    'another user'
+  );
+  expect(valuesForeign.UserId).toBe(other);
+
+  // Update without UserId leaves values untouched.
   const valuesUpd: Record<string, any> = {
     Name: uid('cuid_fb'),
-    Application: 'web',
-    ModelName: 'UserFilter',
-    IsDefault: false,
   };
   await SF.validateUserFilterConstraint(
     { CreatedUid: 'fromSelf', UserId: actor, Id: uid('row') },
@@ -1060,7 +1023,7 @@ test('UserFilter validateUserFilterConstraint covers empty create Id fallbacks',
       current: { CreatedUid: 'fromSelf', UserId: actor, Application: 'web', ModelName: 'UserFilter', Name: valuesUpd.Name },
     }
   );
-  expect(valuesUpd.CreatedUid).toBeUndefined();
+  expect(valuesUpd.UserId).toBeUndefined();
 });
 
 test('AU9: deleting auth.User does not cascade UserFilter rows with CreatedUid', async () => {
