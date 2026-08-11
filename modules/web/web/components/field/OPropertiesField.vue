@@ -152,6 +152,7 @@ import {
   countSchemaMapIntersection,
   filterRenderablePropertyItems,
   normalizeSelectionOptions,
+  propertiesFieldKey,
   propertyDatetimeFromPicker,
   propertyDatetimeToPicker,
   writePropertyValue,
@@ -232,8 +233,7 @@ function itemLabel(item: ResolvedPropertyItem): string {
 }
 
 function controlId(item: ResolvedPropertyItem): string {
-  const field = String(binding.prop || props.prop || 'properties');
-  return `o-properties-${field}-${item.name}`;
+  return `o-properties-${propertiesFieldKey(binding.prop, props.prop)}-${item.name}`;
 }
 
 function selectionOptions(item: ResolvedPropertyItem) {
@@ -299,9 +299,10 @@ function onDatetimeWrite(
 async function reloadResolved() {
   const generation = ++resolveGeneration;
   const store = (binding.store ?? props.store) as WebModelStore<T> | undefined;
-  const fieldName = String(binding.prop || props.prop || '');
+  const fieldName = propertiesFieldKey(binding.prop, props.prop, '');
   if (!store || !fieldName || typeof (store as any).ResolveProperties !== 'function') {
-    if (generation === resolveGeneration) resolvedItems.value = [];
+    // Sync bail-out: generation cannot advance between ++ and here.
+    resolvedItems.value = [];
     return;
   }
   const record = binding.recordRef?.()?.value ?? {};

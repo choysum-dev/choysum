@@ -122,6 +122,11 @@ test('properties resolve: App-level merges schema ⊕ value', async () => {
     expect(items[0]?.value).toBe('T1');
     expect(items[1]?.name).toBe('vip');
     expect(items[1]?.value).toBeUndefined();
+
+    // BaseModel.ResolveProperties is the FE RPC surface; must delegate to resolveProperties.
+    const viaModel = await (Pp1Partner as any).ResolveProperties({ PartnerProperties: { tax_id: 'T2' } }, 'PartnerProperties');
+    expect(viaModel[0]?.name).toBe('tax_id');
+    expect(viaModel[0]?.value).toBe('T2');
   } finally {
     __clearLookupPropertyDefinitionModelForTest();
   }

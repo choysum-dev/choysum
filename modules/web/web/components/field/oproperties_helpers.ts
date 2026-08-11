@@ -20,6 +20,15 @@ export type PropertySelectionOption = { value: string; label: string };
 
 export const PROPERTY_DATETIME_STORAGE_FORMAT = 'YYYY-MM-DD[T]HH:mm:ss.SSSZ';
 
+/** Resolve the properties field name for RPC / DOM ids (empty fallback when resolving). */
+export function propertiesFieldKey(
+  bindingProp: unknown,
+  propsProp: unknown,
+  fallback: string = 'properties'
+): string {
+  return String(bindingProp || propsProp || fallback);
+}
+
 /** Convert stored UTC datetime to a picker Date (user wall-clock carrier). */
 export function propertyDatetimeToPicker(
   raw: unknown,
