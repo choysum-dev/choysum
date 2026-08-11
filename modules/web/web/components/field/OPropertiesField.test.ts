@@ -13,6 +13,8 @@ import {
   countSchemaMapIntersection,
   filterRenderablePropertyItems,
   normalizeSelectionOptions,
+  propertyDatetimeFromPicker,
+  propertyDatetimeToPicker,
   writePropertyValue,
 } from './oproperties_helpers';
 
@@ -40,6 +42,7 @@ vi.mock('element-plus', async () => {
         controls: Boolean,
         autosize: [Boolean, Object],
         valueFormat: String,
+        id: String,
       },
       emits: ['update:modelValue'],
       setup(props, { emit, slots }) {
@@ -50,6 +53,7 @@ vi.mock('element-plus', async () => {
             [
               h(tag, {
                 class: `ctrl-${name}`,
+                id: props.id,
                 value: props.modelValue == null ? '' : String(props.modelValue),
                 disabled: props.disabled || undefined,
                 onInput: (e: Event) => {
@@ -75,7 +79,35 @@ vi.mock('element-plus', async () => {
       props: { label: String, value: [String, Number] },
       setup: () => () => null,
     }),
-    ElDatePicker: Control('ElDatePicker'),
+    ElDatePicker: defineComponent({
+      name: 'ElDatePicker',
+      props: {
+        modelValue: { type: [String, Number, Boolean, Object, Date], default: undefined },
+        disabled: Boolean,
+        type: String,
+        valueFormat: String,
+        id: String,
+      },
+      emits: ['update:modelValue'],
+      setup(props, { emit }) {
+        return () =>
+          h('input', {
+            class: 'ctrl-ElDatePicker',
+            id: props.id,
+            value: props.modelValue instanceof Date ? props.modelValue.toISOString() : props.modelValue == null ? '' : String(props.modelValue),
+            disabled: props.disabled || undefined,
+            'data-type': props.type,
+            onInput: (e: Event) => {
+              const raw = (e.target as HTMLInputElement).value;
+              if (props.type === 'datetime') {
+                emit('update:modelValue', raw ? new Date(raw) : null);
+              } else {
+                emit('update:modelValue', raw || null);
+              }
+            },
+          });
+      },
+    }),
   };
 });
 
@@ -180,6 +212,17 @@ describe('oproperties_helpers', () => {
       qty: 2,
     });
     expect(writePropertyValue(schemaItems, map, 'html_x', '<x/>')).toEqual(map);
+  });
+
+  it('converts datetime through the UTC wall-clock codec', () => {
+    const wall = propertyDatetimeToPicker('2024-06-30T16:00:00.000Z', 'America/New_York');
+    expect(wall).toBeInstanceOf(Date);
+    expect(wall!.getFullYear()).toBe(2024);
+    expect(wall!.getMonth()).toBe(5);
+    expect(wall!.getDate()).toBe(30);
+    expect(wall!.getHours()).toBe(12);
+    expect(propertyDatetimeFromPicker(wall, 'America/New_York')).toBe('2024-06-30T16:00:00.000Z');
+    expect(propertyDatetimeFromPicker(null)).toBeNull();
   });
 });
 
@@ -290,6 +333,69 @@ describe('OPropertiesField', () => {
       expect(wrapper.find('[data-name="b"]').exists()).toBe(true);
       // PP4 B1: memory map is not clipped on re-resolve.
       expect(binding.__value.value).toEqual({ a: '1', orphan: 'keep' });
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it('discards stale ResolveProperties responses', async () => {
+    let resolveOlder!: (v: ResolvedPropertyItem[]) => void;
+    let resolveNewer!: (v: ResolvedPropertyItem[]) => void;
+    const ResolveProperties = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<ResolvedPropertyItem[]>(resolve => {
+            resolveOlder = resolve;
+          })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise<ResolvedPropertyItem[]>(resolve => {
+            resolveNewer = resolve;
+          })
+      );
+    const binding = makeBinding({ map: {}, ResolveProperties });
+    const wrapper = mount(OPropertiesField as any, {
+      props: { binding, renderMode: 'form', containerId: 'c1' },
+      global: { stubs: { OFieldBase: fieldBaseStub } },
+    });
+    try {
+      await flushPromises();
+      await wrapper.setProps({ containerId: 'c2' });
+      await flushPromises();
+
+      resolveNewer([{ name: 'newer', type: 'char', string: 'Newer' }]);
+      await flushPromises();
+      expect(wrapper.find('[data-name="newer"]').exists()).toBe(true);
+
+      resolveOlder([{ name: 'older', type: 'char', string: 'Older' }]);
+      await flushPromises();
+      expect(wrapper.find('[data-name="newer"]').exists()).toBe(true);
+      expect(wrapper.find('[data-name="older"]').exists()).toBe(false);
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it('associates labels with control ids', async () => {
+    const ResolveProperties = vi.fn(async () => [
+      { name: 'code', type: 'char', string: 'Code', value: 'A' },
+    ] as ResolvedPropertyItem[]);
+    const binding = makeBinding({
+      map: { code: 'A' },
+      ResolveProperties,
+    });
+    const wrapper = mount(OPropertiesField as any, {
+      props: { binding, renderMode: 'form' },
+      global: { stubs: { OFieldBase: fieldBaseStub } },
+    });
+    try {
+      await flushPromises();
+      const label = wrapper.find('label.o-properties-item__label');
+      const control = wrapper.find('#o-properties-Properties-code');
+      expect(label.attributes('for')).toBe('o-properties-Properties-code');
+      expect(control.exists()).toBe(true);
     } finally {
       wrapper.unmount();
     }

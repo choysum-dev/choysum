@@ -7,9 +7,40 @@ import {
   type ResolvedPropertyItem,
 } from '@/core/service/orm/model/properties_types';
 
+import {
+  formatUtcIso,
+  getUserTimeZone,
+  userWallDateToUtc,
+  utcToUserWallDate,
+} from '@/web/web/utils/datetime';
+
 export type PropertiesMap = Record<string, unknown>;
 
 export type PropertySelectionOption = { value: string; label: string };
+
+export const PROPERTY_DATETIME_STORAGE_FORMAT = 'YYYY-MM-DD[T]HH:mm:ss.SSSZ';
+
+/** Convert stored UTC datetime to a picker Date (user wall-clock carrier). */
+export function propertyDatetimeToPicker(
+  raw: unknown,
+  tz: string = getUserTimeZone()
+): Date | null {
+  if (raw == null || raw === '') return null;
+  if (raw instanceof Date) return utcToUserWallDate(raw, tz);
+  if (typeof raw === 'string' || typeof raw === 'number') return utcToUserWallDate(raw, tz);
+  return null;
+}
+
+/** Convert picker Date/value to stored UTC ISO string. */
+export function propertyDatetimeFromPicker(
+  value: unknown,
+  tz: string = getUserTimeZone()
+): string | null {
+  if (value == null || value === '') return null;
+  const wall = value instanceof Date ? value : new Date(value as any);
+  const utc = userWallDateToUtc(wall, tz);
+  return utc ? formatUtcIso(utc, PROPERTY_DATETIME_STORAGE_FORMAT) : null;
+}
 
 /** Keep only V1-renderable items; unknown types are skipped (caller may warn). */
 export function filterRenderablePropertyItems(items: ResolvedPropertyItem[]): {

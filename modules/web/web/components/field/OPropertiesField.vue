@@ -33,10 +33,11 @@ SPDX-License-Identifier: Apache-2.0
           :data-name="item.name"
           :data-type="item.type"
         >
-          <label class="o-properties-item__label">{{ itemLabel(item) }}</label>
+          <label class="o-properties-item__label" :for="controlId(item)">{{ itemLabel(item) }}</label>
           <el-switch
             v-if="item.type === 'boolean'"
             class="o-properties-control"
+            :id="controlId(item)"
             :model-value="asBoolean(itemValue(fieldValue().value, item))"
             :disabled="!!item.readonly"
             @update:model-value="(v: any) => onItemWrite(fieldValue, item.name, v)"
@@ -44,6 +45,7 @@ SPDX-License-Identifier: Apache-2.0
           <el-input-number
             v-else-if="item.type === 'integer' || item.type === 'float'"
             class="o-properties-control"
+            :id="controlId(item)"
             :model-value="asNumber(itemValue(fieldValue().value, item))"
             :disabled="!!item.readonly"
             :controls="false"
@@ -53,6 +55,7 @@ SPDX-License-Identifier: Apache-2.0
           <el-input
             v-else-if="item.type === 'text'"
             class="o-properties-control"
+            :id="controlId(item)"
             type="textarea"
             :autosize="{ minRows: 2, maxRows: 6 }"
             :model-value="asString(itemValue(fieldValue().value, item))"
@@ -60,17 +63,28 @@ SPDX-License-Identifier: Apache-2.0
             @update:model-value="(v: any) => onItemWrite(fieldValue, item.name, v)"
           />
           <el-date-picker
-            v-else-if="item.type === 'date' || item.type === 'datetime'"
+            v-else-if="item.type === 'date'"
             class="o-properties-control"
-            :type="item.type === 'datetime' ? 'datetime' : 'date'"
+            :id="controlId(item)"
+            type="date"
             :model-value="asString(itemValue(fieldValue().value, item))"
             :disabled="!!item.readonly"
-            :value-format="item.type === 'datetime' ? 'YYYY-MM-DD[T]HH:mm:ss[Z]' : 'YYYY-MM-DD[T]00:00:00[Z]'"
+            value-format="YYYY-MM-DD[T]00:00:00[Z]"
             @update:model-value="(v: any) => onItemWrite(fieldValue, item.name, v)"
+          />
+          <el-date-picker
+            v-else-if="item.type === 'datetime'"
+            class="o-properties-control"
+            :id="controlId(item)"
+            type="datetime"
+            :model-value="datetimePickerValue(itemValue(fieldValue().value, item))"
+            :disabled="!!item.readonly"
+            @update:model-value="(v: any) => onDatetimeWrite(fieldValue, item.name, v)"
           />
           <el-select
             v-else-if="item.type === 'selection'"
             class="o-properties-control"
+            :id="controlId(item)"
             :model-value="asString(itemValue(fieldValue().value, item))"
             :disabled="!!item.readonly"
             clearable
@@ -86,6 +100,7 @@ SPDX-License-Identifier: Apache-2.0
           <el-input
             v-else
             class="o-properties-control"
+            :id="controlId(item)"
             :model-value="asString(itemValue(fieldValue().value, item))"
             :disabled="!!item.readonly"
             @update:model-value="(v: any) => onItemWrite(fieldValue, item.name, v)"
@@ -137,6 +152,8 @@ import {
   countSchemaMapIntersection,
   filterRenderablePropertyItems,
   normalizeSelectionOptions,
+  propertyDatetimeFromPicker,
+  propertyDatetimeToPicker,
   writePropertyValue,
   type PropertiesMap,
 } from './oproperties_helpers';
@@ -208,9 +225,15 @@ const fromView = (v: PropertiesMap) => v as unknown as V;
 const resolvedItems = ref<ResolvedPropertyItem[]>([]);
 const schemaNames = computed(() => resolvedItems.value.map(i => i.name).filter(Boolean));
 const renderableItems = computed(() => filterRenderablePropertyItems(resolvedItems.value).renderable);
+let resolveGeneration = 0;
 
 function itemLabel(item: ResolvedPropertyItem): string {
   return String(item.string || item.name);
+}
+
+function controlId(item: ResolvedPropertyItem): string {
+  const field = String(binding.prop || props.prop || 'properties');
+  return `o-properties-${field}-${item.name}`;
 }
 
 function selectionOptions(item: ResolvedPropertyItem) {
@@ -234,6 +257,10 @@ function asNumber(v: unknown): number | undefined {
 function asString(v: unknown): string {
   if (v == null) return '';
   return String(v);
+}
+
+function datetimePickerValue(raw: unknown): Date | null {
+  return propertyDatetimeToPicker(raw);
 }
 
 function displayItemValue(map: unknown, item: ResolvedPropertyItem): string {
@@ -261,11 +288,20 @@ function onItemWrite(
   fieldValue().value = writePropertyValue(resolvedItems.value, cur, name, value);
 }
 
+function onDatetimeWrite(
+  fieldValue: () => WritableComputedRef<any> | { value: any },
+  name: string,
+  value: unknown
+) {
+  onItemWrite(fieldValue, name, propertyDatetimeFromPicker(value));
+}
+
 async function reloadResolved() {
+  const generation = ++resolveGeneration;
   const store = (binding.store ?? props.store) as WebModelStore<T> | undefined;
   const fieldName = String(binding.prop || props.prop || '');
   if (!store || !fieldName || typeof (store as any).ResolveProperties !== 'function') {
-    resolvedItems.value = [];
+    if (generation === resolveGeneration) resolvedItems.value = [];
     return;
   }
   const record = binding.recordRef?.()?.value ?? {};
@@ -275,6 +311,7 @@ async function reloadResolved() {
     props.containerId !== undefined ? { containerId: props.containerId } : undefined;
   try {
     const items = await (store as any).ResolveProperties(payload, fieldName, opts);
+    if (generation !== resolveGeneration) return;
     const list = Array.isArray(items) ? (items as ResolvedPropertyItem[]) : [];
     const { skipped } = filterRenderablePropertyItems(list);
     for (const item of skipped) {
@@ -283,6 +320,7 @@ async function reloadResolved() {
     }
     resolvedItems.value = list;
   } catch (e) {
+    if (generation !== resolveGeneration) return;
     console.warn('[OPropertiesField] ResolveProperties failed', e);
     resolvedItems.value = [];
   }
