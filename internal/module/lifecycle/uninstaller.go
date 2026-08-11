@@ -16,6 +16,7 @@ import (
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
+	"github.com/ettle/strcase"
 	xfmt "golang.org/x/exp/errors/fmt"
 	"gorm.io/gorm"
 )
@@ -110,12 +111,25 @@ func (m *moduleUninstaller) cleanModels() error {
 
 	// SF7: hard-delete web.UserFilter rows only when a logical model has no remaining
 	// live meta_model after this module's declarations were removed (IMD-safe).
-	return applyUserFilterPurge(db.DB, keys)
+	if err := applyUserFilterPurge(db.DB, keys); err != nil {
+		return err
+	}
+	// PP5: hard-delete PropertyDefinition rows for gone TargetModel / ContainerModel.
+	return applyPropertyDefinitionPurge(db.DB, keys)
 }
 
 // applyUserFilterPurge wraps purgeUserFiltersForGoneModels so uninstall can surface purge errors.
 func applyUserFilterPurge(db *gorm.DB, keys []modmeta.LogicalKey) error {
 	if err := purgeUserFiltersForGoneModels(db, keys); err != nil {
+		return err
+	}
+	return nil
+}
+
+// applyPropertyDefinitionPurge wraps purgePropertyDefinitionsForGoneModels so uninstall can
+// surface purge errors.
+func applyPropertyDefinitionPurge(db *gorm.DB, keys []modmeta.LogicalKey) error {
+	if err := purgePropertyDefinitionsForGoneModels(db, keys); err != nil {
 		return err
 	}
 	return nil
@@ -186,6 +200,81 @@ func purgeUserFiltersForGoneModels(db *gorm.DB, keys []modmeta.LogicalKey) error
 			k.Application, k.Name,
 		).Error; err != nil {
 			return xfmt.Errorf("error deleting web user filters for %s.%s: %w", k.Application, k.Name, err)
+		}
+	}
+	return nil
+}
+
+func propertyDefinitionTableName(application string) string {
+	return strcase.ToSnake(strings.TrimSpace(application)) + "_property_definition"
+}
+
+// propertyDefinitionTableExists reports whether the app-scoped definition table is present.
+// Missing-table errors are ok=false; other probe failures are returned.
+func propertyDefinitionTableExists(db *gorm.DB, table string) (bool, error) {
+	if db == nil || strings.TrimSpace(table) == "" {
+		return false, nil
+	}
+	var n int64
+	err := db.Raw("SELECT COUNT(1) FROM "+table+" WHERE 1 = 0").Scan(&n).Error
+	if err == nil {
+		return true, nil
+	}
+	msg := strings.ToLower(err.Error())
+	if strings.Contains(msg, "no such table") ||
+		strings.Contains(msg, "doesn't exist") ||
+		strings.Contains(msg, "does not exist") ||
+		strings.Contains(msg, "unknown table") {
+		return false, nil
+	}
+	return false, xfmt.Errorf("error checking %s existence: %w", table, err)
+}
+
+// purgePropertyDefinitionsForGoneModels deletes PropertyDefinition rows whose
+// TargetModel or ContainerModel matches a logical model that no longer has any
+// live effective meta_model row. Missing per-app tables are a no-op. Never wipes
+// a whole application table and never scrubs business properties JSON.
+func purgePropertyDefinitionsForGoneModels(db *gorm.DB, keys []modmeta.LogicalKey) error {
+	if db == nil || len(keys) == 0 {
+		return nil
+	}
+	seen := map[string]struct{}{}
+	for _, key := range keys {
+		k := key.Normalized()
+		if !k.Valid() {
+			continue
+		}
+		id := k.Application + "\x00" + k.Name
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+
+		table := propertyDefinitionTableName(k.Application)
+		// Probe the concrete app table: missing table is a no-op; other DB errors must
+		// fail uninstall (HasTable alone discards lookup failures and would leave orphans).
+		exists, err := propertyDefinitionTableExists(db, table)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			continue
+		}
+
+		var remaining int64
+		if err := db.Model(&meta.Model{}).
+			Where("application = ? AND name = ?", k.Application, k.Name).
+			Count(&remaining).Error; err != nil {
+			return xfmt.Errorf("error counting surviving meta models for property definition purge: %w", err)
+		}
+		if remaining > 0 {
+			continue
+		}
+		if err := db.Exec(
+			"DELETE FROM "+table+" WHERE target_model = ? OR container_model = ?",
+			k.Name, k.Name,
+		).Error; err != nil {
+			return xfmt.Errorf("error deleting property definitions for %s.%s: %w", k.Application, k.Name, err)
 		}
 	}
 	return nil

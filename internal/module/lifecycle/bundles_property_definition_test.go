@@ -5,7 +5,6 @@ package lifecycle
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,10 +12,9 @@ import (
 
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
-
 )
 
-func TestPickAppSettingOwnerModule_LastEligible(t *testing.T) {
+func TestPickPropertyDefinitionOwnerModule_LastEligible(t *testing.T) {
 	mods := []*meta.Module{
 		nil,
 		{Name: "partner", Path: "/virtual/modules/partner", ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts"},
@@ -24,82 +22,27 @@ func TestPickAppSettingOwnerModule_LastEligible(t *testing.T) {
 		{Name: "skip_entry", Path: "/virtual/modules/x", ApplicationStr: "partner", ServiceEntryPoint: ""},
 		{Name: "partner_bank", Path: "/virtual/modules/partner_bank", ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts"},
 	}
-	owner := pickAppSettingOwnerModule("partner", mods)
+	owner := pickPropertyDefinitionOwnerModule("partner", mods)
 	if owner == nil || owner.Name != "partner_bank" {
 		t.Fatalf("expected last eligible owner partner_bank, got %#v", owner)
 	}
-	if pickAppSettingOwnerModule("core", mods) != nil {
+	if pickPropertyDefinitionOwnerModule("core", mods) != nil {
 		t.Fatal("core must not pick an owner")
 	}
-	if pickAppSettingOwnerModule("", mods) != nil {
+	if pickPropertyDefinitionOwnerModule("", mods) != nil {
 		t.Fatal("empty app must return nil")
 	}
-	if pickAppSettingOwnerModule("partner", nil) != nil {
+	if pickPropertyDefinitionOwnerModule("partner", nil) != nil {
 		t.Fatal("empty mods must return nil")
 	}
-	if pickAppSettingOwnerModule("partner", []*meta.Module{
+	if pickPropertyDefinitionOwnerModule("partner", []*meta.Module{
 		{Name: "no", Path: "", ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts"},
 	}) != nil {
 		t.Fatal("no eligible module must return nil")
 	}
 }
 
-type stubBundleC2Injector struct {
-	err error
-	n   int
-	got []*meta.Module
-}
-
-func (s *stubBundleC2Injector) BundleInjectAppModels(mods []*meta.Module) error {
-	s.n++
-	s.got = append([]*meta.Module(nil), mods...)
-	return s.err
-}
-
-func TestEnsureBundleC2VirtualImports_BundleInject(t *testing.T) {
-	owners := []*meta.Module{{Name: "crm_partner", Path: "/m", ApplicationStr: "crm", ServiceEntryPoint: "service/main.ts"}}
-	asOwners := []*meta.Module{
-		{Name: "crm_partner", Path: "/m", ApplicationStr: "crm", ServiceEntryPoint: "service/main.ts"},
-		{Name: "crm_extra", Path: "/m2", ApplicationStr: "crm", ServiceEntryPoint: "service/main.ts"},
-	}
-
-	okStub := &stubBundleC2Injector{}
-	if err := ensureBundleC2VirtualImports(okStub, owners, asOwners, owners, owners); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if okStub.n != 1 {
-		t.Fatalf("expected BundleInjectAppModels once, got %d", okStub.n)
-	}
-	if len(okStub.got) != 2 {
-		t.Fatalf("expected merged unique owners, got %#v", okStub.got)
-	}
-
-	// Cover appendUnique skips: nil module and empty name+path key.
-	skipStub := &stubBundleC2Injector{}
-	if err := ensureBundleC2VirtualImports(skipStub, []*meta.Module{
-		nil,
-		{Name: "", Path: "", ApplicationStr: "crm"},
-		{Name: "  ", Path: "  ", ApplicationStr: "crm"},
-		{Name: "keep", Path: "/keep", ApplicationStr: "crm"},
-	}, nil, nil, nil); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(skipStub.got) != 1 || skipStub.got[0].Name != "keep" {
-		t.Fatalf("expected only keep owner, got %#v", skipStub.got)
-	}
-
-	fail := &stubBundleC2Injector{err: errors.New("boom")}
-	err := ensureBundleC2VirtualImports(fail, owners, owners, owners, nil)
-	if err == nil || !strings.Contains(err.Error(), "inject app models for bundles") {
-		t.Fatalf("expected wrap, got %v", err)
-	}
-
-	if err := ensureBundleC2VirtualImports(struct{}{}, owners, owners, owners, nil); err != nil {
-		t.Fatalf("unexpected error for bare builder: %v", err)
-	}
-}
-
-func TestBuildBackendBundlesToDir_AppSettingOwnerAndEnsureError(t *testing.T) {
+func TestBuildBackendBundlesToDir_PropertyDefinitionOwnerAndEnsureError(t *testing.T) {
 	modulesPath := t.TempDir()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {

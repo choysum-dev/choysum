@@ -247,7 +247,7 @@ func TestRegistryNilAndLookup(t *testing.T) {
 		t.Fatalf("Lookup: %+v ok=%v", spec, ok)
 	}
 	reg.ReleaseClaim("FieldDefault", "") // empty app no-op
-	if specs := DefaultSpecs(); len(specs) != 3 {
+	if specs := DefaultSpecs(); len(specs) != 4 {
 		t.Fatalf("DefaultSpecs=%d", len(specs))
 	}
 
@@ -271,7 +271,7 @@ func TestRegistryNilAndLookup(t *testing.T) {
 
 func TestPackageSpecsList(t *testing.T) {
 	list := specsList()
-	if len(list) != 3 || list[0].ModelName != "TranslationTerm" {
+	if len(list) != 4 || list[0].ModelName != "TranslationTerm" || list[3].ModelName != "PropertyDefinition" {
 		t.Fatalf("package specsList: %#v", list)
 	}
 }

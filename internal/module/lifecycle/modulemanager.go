@@ -205,7 +205,7 @@ func (m *ModuleManager) buildBackendAppToDir(ctx context.Context, appName string
 	for i := range mods {
 		ptrs = append(ptrs, &mods[i])
 	}
-	if err := ensureBundleC2VirtualImports(builder, nil, nil, ptrs); err != nil {
+	if err := ensureBundleC2VirtualImports(builder, nil, nil, nil, ptrs); err != nil {
 		return err
 	}
 	bundlerToDir, ok := builder.(module.BundlerToDir)

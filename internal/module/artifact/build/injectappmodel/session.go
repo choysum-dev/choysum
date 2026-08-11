@@ -172,7 +172,7 @@ func (s *Session) ensureServiceEntryPath(path string, virtual bool) {
 		s.ensuredVirtual = virtual
 	} else if virtual {
 		// Once virtual, stay virtual for this build even if a later Ensure
-		// rewrites the path (should not unlock FieldDefault / AppSetting).
+		// rewrites the path (should not unlock FieldDefault / AppSetting / PropertyDefinition).
 		s.ensuredVirtual = true
 	}
 	s.ctx.Module.ServiceEntryPoint = path
@@ -180,7 +180,7 @@ func (s *Session) ensureServiceEntryPath(path string, virtual bool) {
 
 // declaredServiceEntry returns the package.json / Module service entry that
 // Specs without EnsureServiceEntry should honor. A virtual TranslationTerm
-// Ensure must not unlock FieldDefault / AppSetting for modules that only have
+// Ensure must not unlock FieldDefault / AppSetting / PropertyDefinition for modules that only have
 // entryPoints.web (e.g. modules/web today).
 func (s *Session) declaredServiceEntry(spec *Spec) string {
 	if s == nil || s.ctx.Module == nil {
