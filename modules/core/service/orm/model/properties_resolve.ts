@@ -68,17 +68,13 @@ async function loadDefinitionItems(
     console.warn(`PROPERTY_DEFINITION_MODEL_MISSING app=${application}`);
     return [];
   }
-  let rows: any[] = [];
-  try {
-    rows = await Ctor.Search(buildDefinitionSearchCondition(targetModel, propertiesField, mode, containerModel, containerId), {
-      fields: ['Id', 'Definition', 'TargetModel', 'PropertiesField', 'ContainerModel', 'ContainerId'] as any,
-      limit: 1,
-    } as any);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.warn(`PROPERTY_DEFINITION_SEARCH_FAILED app=${application} error=${message}`);
-    return [];
-  }
+  // Propagate Search failures (do not mask as empty schema → PROPERTIES_WRITE_NO_SCHEMA).
+  // Stable orderBy keeps limit:1 deterministic when duplicates exist before uniqueness DDL lands.
+  const rows = await Ctor.Search(buildDefinitionSearchCondition(targetModel, propertiesField, mode, containerModel, containerId), {
+    fields: ['Id', 'Definition', 'TargetModel', 'PropertiesField', 'ContainerModel', 'ContainerId'] as any,
+    orderBy: [{ field: 'Id', order: 'asc' }],
+    limit: 1,
+  } as any);
   const row = rows && rows[0];
   if (!row) return [];
   return filterReadablePropertyDefinitionItems(row.Definition, item => {

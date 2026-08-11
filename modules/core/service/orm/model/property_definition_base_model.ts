@@ -3,9 +3,11 @@
 
 import { Field } from '../decorator/field';
 import { raiseDomainError } from '@/core/service/error';
+import { MetadataStorage } from '../metadata/storage';
 import BaseModel from './model';
 import { registerLogicalModelName } from './logical_model_registry';
 import { assertValidPropertyDefinitionItems } from './properties_types';
+import type { InstantiableModelCtor } from './types';
 import type { Insertable, Updateable, FieldSelection, QueryCondition, UpdateOptions } from '../repository/types';
 
 function fail(code: string, message: string): never {
@@ -19,6 +21,41 @@ function normalizeDefinitionOnVals(vals: Record<string, unknown> | undefined): v
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     fail('PROPERTY_DEFINITION_INVALID', message);
+  }
+}
+
+const ensuredUniqueIndexTables = new Set<string>();
+
+function storeMeta(ctor: InstantiableModelCtor<PropertyDefinitionBaseModel>) {
+  return MetadataStorage.instance.getModelMetadata(ctor as any);
+}
+
+/**
+ * Best-effort composite uniqueness for (TargetModel, PropertiesField, ContainerModel, ContainerId).
+ * Mirrors FieldDefault scope uniqueness (SQLite NULL coalescing / Postgres NULLS NOT DISTINCT).
+ */
+async function ensureDefinitionUniqueIndex(ctor: InstantiableModelCtor<PropertyDefinitionBaseModel>): Promise<void> {
+  const meta = storeMeta(ctor);
+  const table = typeof meta.tableName === 'function' ? String(meta.tableName()) : String(meta.tableName || '');
+  if (!table || ensuredUniqueIndexTables.has(table)) return;
+
+  const dialect = String(($choysum as any)?.db?.dialectName || 'sqlite').toLowerCase();
+  const indexName = `uidx_${table}_definition_scope`;
+  let ddl = '';
+  if (dialect === 'postgres' || dialect === 'postgresql') {
+    ddl = `CREATE UNIQUE INDEX IF NOT EXISTS ${indexName} ON ${table} (target_model, properties_field, container_model, container_id) NULLS NOT DISTINCT`;
+  } else {
+    ddl = `CREATE UNIQUE INDEX IF NOT EXISTS ${indexName} ON ${table} (target_model, properties_field, coalesce(container_model, ''), coalesce(container_id, ''))`;
+  }
+
+  try {
+    const exec = ($choysum as any)?.db?.execute;
+    if (typeof exec === 'function') {
+      await exec.call(($choysum as any).db, ddl, '[]');
+      ensuredUniqueIndexTables.add(table);
+    }
+  } catch {
+    // Best-effort: resolve still applies orderBy Id before limit:1.
   }
 }
 
@@ -52,6 +89,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     value: Partial<Insertable<T & BaseModel>>,
     returnFields?: FieldSelection<T>
   ): Promise<T> {
+    await ensureDefinitionUniqueIndex(this as any);
     normalizeDefinitionOnVals(value as Record<string, unknown>);
     return super.Create(value as any, returnFields as any) as Promise<T>;
   }
@@ -61,6 +99,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     values: Partial<Insertable<T & BaseModel>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
+    await ensureDefinitionUniqueIndex(this as any);
     for (const row of values || []) {
       normalizeDefinitionOnVals(row as Record<string, unknown>);
     }
@@ -74,6 +113,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     returnFields?: FieldSelection<T>,
     options?: UpdateOptions
   ): Promise<Partial<T>[]> {
+    await ensureDefinitionUniqueIndex(this as any);
     normalizeDefinitionOnVals(values as Record<string, unknown>);
     return super.Update(condition as any, values as any, returnFields as any, options as any) as Promise<Partial<T>[]>;
   }
@@ -85,6 +125,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     returnFields?: FieldSelection<T>,
     options?: UpdateOptions
   ): Promise<Partial<T>> {
+    await ensureDefinitionUniqueIndex(this as any);
     normalizeDefinitionOnVals(values as Record<string, unknown>);
     return super.UpdateById(id, values as any, returnFields as any, options as any) as Promise<Partial<T>>;
   }

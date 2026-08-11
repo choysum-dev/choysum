@@ -2,44 +2,34 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { MetadataStorage } from '../metadata/storage';
-import { raiseDomainError } from '@/core/service/error';
+import { ValidationPipelineError } from '../metadata';
 import type { ObjectRecord } from '../../../utils/types';
 import type BaseModel from './model';
 import type { RuntimeModelCtor } from './types';
 import { loadEffectivePropertySchema } from './properties_resolve';
-import { isPlainPropertiesMap, type PropertyItemDefinition } from './properties_types';
+import { isPlainPropertiesMap, normalizePropertiesMap, propertyValueMatchesType } from './properties_types';
 
-function fail(code: string, message: string): never {
-  raiseDomainError('core', code, message);
-}
-
-function coarseTypeOk(item: PropertyItemDefinition, value: unknown): boolean {
-  if (value === null || value === undefined) return true;
-  switch (item.type) {
-    case 'boolean':
-      return typeof value === 'boolean';
-    case 'integer':
-      return typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value);
-    case 'float':
-      return typeof value === 'number' && Number.isFinite(value);
-    case 'char':
-    case 'text':
-    case 'date':
-    case 'datetime':
-    case 'selection':
-      return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
-    default:
-      return true;
-  }
+function fail(fieldName: string, code: string, message: string): never {
+  throw new ValidationPipelineError(message, [
+    {
+      scope: 'platform',
+      field: fieldName,
+      code,
+      message,
+      severity: 'error',
+    },
+  ]);
 }
 
 /**
  * Validate and normalize a properties field write payload (PP3 / PP4).
+ * - `undefined` → skip (caller must not assign)
+ * - `null` → clear column
  * - Rejects arrays / non-maps
  * - Empty effective schema + non-empty map → fail (PP2)
  * - Unknown names → fail (not strip)
- * - Readonly keys ignored
- * - Returns the replace map
+ * - Readonly keys from submission ignored; existing readonly values preserved from `currentMap`
+ * - Returns the replace map (writable submitted keys ⊕ preserved readonly)
  *
  * Callers should assign the returned map onto the write payload (whole-column replace).
  */
@@ -47,13 +37,18 @@ export async function validatePropertiesWrite(
   ModelCtor: RuntimeModelCtor<BaseModel>,
   fieldName: string,
   value: unknown,
-  rowCtx: ObjectRecord
-): Promise<Record<string, unknown>> {
+  rowCtx: ObjectRecord,
+  currentMap: Record<string, unknown> = {}
+): Promise<Record<string, unknown> | null | undefined> {
   if (value === undefined) {
-    return {};
+    return undefined;
+  }
+  if (value === null) {
+    return null;
   }
   if (Array.isArray(value) || !isPlainPropertiesMap(value)) {
     fail(
+      fieldName,
       'PROPERTIES_WRITE_SHAPE',
       `Field "${fieldName}" properties write must be a plain object map (arrays are rejected)`
     );
@@ -67,6 +62,7 @@ export async function validatePropertiesWrite(
   if (schema.length === 0) {
     if (keys.length === 0) return {};
     fail(
+      fieldName,
       'PROPERTIES_WRITE_NO_SCHEMA',
       `Field "${fieldName}" has empty effective schema; non-empty properties write is not allowed`
     );
@@ -76,20 +72,30 @@ export async function validatePropertiesWrite(
   for (const key of keys) {
     const item = byName.get(key);
     if (!item) {
-      fail('PROPERTIES_WRITE_UNKNOWN_NAME', `Field "${fieldName}" properties write has unknown name "${key}"`);
+      fail(fieldName, 'PROPERTIES_WRITE_UNKNOWN_NAME', `Field "${fieldName}" properties write has unknown name "${key}"`);
     }
     if (item.readonly) {
       continue;
     }
     const v = submitted[key];
-    if (!coarseTypeOk(item, v)) {
+    if (!propertyValueMatchesType(item, v)) {
       fail(
+        fieldName,
         'PROPERTIES_WRITE_TYPE',
         `Field "${fieldName}" property "${key}" value does not match type "${item.type}"`
       );
     }
     out[key] = v;
   }
+
+  // Preserve readonly values from the current column (PP3 ignore on submit; do not wipe).
+  for (const item of schema) {
+    if (!item.readonly) continue;
+    if (Object.prototype.hasOwnProperty.call(currentMap, item.name)) {
+      out[item.name] = currentMap[item.name];
+    }
+  }
+
   return out;
 }
 
@@ -111,7 +117,12 @@ export async function validatePropertiesFieldsOnWrite(params: {
   for (const [fieldName, fm] of meta.fields) {
     if (!fm || fm.type !== 'properties') continue;
     if (!Object.prototype.hasOwnProperty.call(input, fieldName)) continue;
-    const normalized = await validatePropertiesWrite(ModelCtor, fieldName, input[fieldName], rowCtx);
+    const currentMap = normalizePropertiesMap(current?.[fieldName]);
+    const normalized = await validatePropertiesWrite(ModelCtor, fieldName, input[fieldName], rowCtx, currentMap);
+    if (normalized === undefined) {
+      delete input[fieldName];
+      continue;
+    }
     input[fieldName] = normalized;
   }
 }

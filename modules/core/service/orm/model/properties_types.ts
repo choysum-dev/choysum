@@ -28,14 +28,60 @@ export type ResolvedPropertyItem = PropertyItemDefinition & {
   value?: unknown;
 };
 
+/** True only for plain Object maps (rejects Date / Map / arrays / class instances). */
 export function isPlainPropertiesMap(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
+  return !!value && typeof value === 'object' && Object.prototype.toString.call(value) === '[object Object]';
 }
 
 export function normalizePropertiesMap(value: unknown): Record<string, unknown> {
   if (value == null) return {};
   if (isPlainPropertiesMap(value)) return { ...value };
   return {};
+}
+
+function selectionOptionValues(selection: unknown): string[] {
+  if (!Array.isArray(selection)) return [];
+  const out: string[] = [];
+  for (const opt of selection) {
+    if (Array.isArray(opt) && typeof opt[0] === 'string') {
+      out.push(opt[0]);
+      continue;
+    }
+    if (opt && typeof opt === 'object' && !Array.isArray(opt) && typeof (opt as { value?: unknown }).value === 'string') {
+      out.push(String((opt as { value: string }).value));
+      continue;
+    }
+  }
+  return out;
+}
+
+/**
+ * Coarse type check for property values / Definition defaults (PP7).
+ * `null` / `undefined` are always allowed (cleared / unset).
+ */
+export function propertyValueMatchesType(item: Pick<PropertyItemDefinition, 'type' | 'selection'>, value: unknown): boolean {
+  if (value === null || value === undefined) return true;
+  switch (item.type) {
+    case 'boolean':
+      return typeof value === 'boolean';
+    case 'integer':
+      return typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value);
+    case 'float':
+      return typeof value === 'number' && Number.isFinite(value);
+    case 'char':
+    case 'text':
+    case 'date':
+    case 'datetime':
+      return typeof value === 'string';
+    case 'selection': {
+      if (typeof value !== 'string') return false;
+      const allowed = selectionOptionValues(item.selection);
+      if (allowed.length === 0) return true;
+      return allowed.includes(value);
+    }
+    default:
+      return true;
+  }
 }
 
 export function parsePropertyDefinitionItems(raw: unknown): PropertyItemDefinition[] {
@@ -85,7 +131,21 @@ export function assertValidPropertyDefinitionItems(raw: unknown): PropertyItemDe
         `PropertyDefinition.Definition item "${name}" has unsupported type "${type}" (V1 allows: ${[...PROPERTIES_V1_TYPES].join(', ')})`
       );
     }
-    out.push({ ...rec, name, type } as PropertyItemDefinition);
+    const normalized = { ...rec, name, type } as PropertyItemDefinition;
+    if (type === 'selection') {
+      const values = selectionOptionValues(rec.selection);
+      if (values.length === 0) {
+        throw new Error(`PropertyDefinition.Definition item "${name}" of type selection requires a non-empty selection`);
+      }
+      if (!Array.isArray(rec.selection) || values.length !== rec.selection.length) {
+        throw new Error(`PropertyDefinition.Definition item "${name}" selection options are invalid`);
+      }
+      normalized.selection = rec.selection as PropertyItemDefinition['selection'];
+    }
+    if (Object.prototype.hasOwnProperty.call(rec, 'default') && !propertyValueMatchesType(normalized, rec.default)) {
+      throw new Error(`PropertyDefinition.Definition item "${name}" default does not match type "${type}"`);
+    }
+    out.push(normalized);
   }
   return out;
 }

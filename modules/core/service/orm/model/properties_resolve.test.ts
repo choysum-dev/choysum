@@ -11,11 +11,11 @@ import {
 } from './properties_lookup';
 import { resolveProperties } from './properties_resolve';
 import { validatePropertiesWrite } from './properties_write';
-import { assertValidPropertyDefinitionItems, filterReadablePropertyDefinitionItems } from './properties_types';
+import { assertValidPropertyDefinitionItems, filterReadablePropertyDefinitionItems, isPlainPropertiesMap } from './properties_types';
 import { validateModelPropertiesDefinitionFields } from '../metadata/properties_definition';
 import { MetadataStorage } from '../metadata/storage';
+import { ValidationPipelineError } from '../metadata';
 import { isRegisteredLogicalModelName } from './logical_model_registry';
-import { ChoysumError } from '@/core/service/error';
 
 @Model('Pp1Project', { application: 'pp1test' })
 class Pp1Project extends BaseModel {
@@ -85,8 +85,8 @@ async function expectRejects(promise: Promise<unknown>, codeOrMsg: string | RegE
       expect(codeOrMsg.test(msg)).toBe(true);
       return;
     }
-    expect(err instanceof ChoysumError).toBe(true);
-    expect((err as ChoysumError).code).toBe(codeOrMsg);
+    expect(err instanceof ValidationPipelineError).toBe(true);
+    expect((err as ValidationPipelineError).issues?.[0]?.code).toBe(codeOrMsg);
   }
 }
 
@@ -163,6 +163,19 @@ test('properties resolve: empty parent id → [] without App-level fallback (PP2
   }
 });
 
+test('properties resolve: Search failure propagates (not empty schema)', async () => {
+  __setLookupPropertyDefinitionModelForTest('pp1test', {
+    Search: async () => {
+      throw new Error('db down');
+    },
+  });
+  try {
+    await expectRejects(resolveProperties(Pp1Partner as any, { PartnerProperties: {} }, 'PartnerProperties'), /db down/);
+  } finally {
+    __clearLookupPropertyDefinitionModelForTest();
+  }
+});
+
 test('properties write: reject array / unknown name / empty schema non-empty (PP3)', async () => {
   installDefinitionRows([
     {
@@ -184,14 +197,19 @@ test('properties write: reject array / unknown name / empty schema non-empty (PP
       validatePropertiesWrite(Pp1Partner as any, 'PartnerProperties', { unknown: 1 }, {}),
       'PROPERTIES_WRITE_UNKNOWN_NAME'
     );
+    await expectRejects(
+      validatePropertiesWrite(Pp1Partner as any, 'PartnerProperties', new Date() as any, {}),
+      'PROPERTIES_WRITE_SHAPE'
+    );
 
     const normalized = await validatePropertiesWrite(
       Pp1Partner as any,
       'PartnerProperties',
       { tax_id: 'A', note: 'ignored' },
-      {}
+      {},
+      { note: 'keep-me' }
     );
-    expect(normalized).toEqual({ tax_id: 'A' });
+    expect(normalized).toEqual({ tax_id: 'A', note: 'keep-me' });
 
     await expectRejects(
       validatePropertiesWrite(Pp1Task as any, 'TaskProperties', { acceptance: 'x' }, { ProjectId: null }),
@@ -199,12 +217,15 @@ test('properties write: reject array / unknown name / empty schema non-empty (PP
     );
     const emptyOk = await validatePropertiesWrite(Pp1Task as any, 'TaskProperties', {}, { ProjectId: null });
     expect(emptyOk).toEqual({});
+
+    expect(await validatePropertiesWrite(Pp1Partner as any, 'PartnerProperties', null, {})).toBeNull();
+    expect(await validatePropertiesWrite(Pp1Partner as any, 'PartnerProperties', undefined, {})).toBeUndefined();
   } finally {
     __clearLookupPropertyDefinitionModelForTest();
   }
 });
 
-test('properties write: replace map does not keep unsubmitted keys (PP4)', async () => {
+test('properties write: date/datetime reject non-string; replace omits unsubmitted writable (PP4)', async () => {
   installDefinitionRows([
     {
       TargetModel: 'Pp1Partner',
@@ -213,6 +234,7 @@ test('properties write: replace map does not keep unsubmitted keys (PP4)', async
       Definition: [
         { name: 'a', type: 'char' },
         { name: 'b', type: 'char' },
+        { name: 'due', type: 'date' },
       ],
     },
   ]);
@@ -220,15 +242,37 @@ test('properties write: replace map does not keep unsubmitted keys (PP4)', async
     const next = await validatePropertiesWrite(Pp1Partner as any, 'PartnerProperties', { a: '1' }, {});
     expect(next).toEqual({ a: '1' });
     expect(Object.prototype.hasOwnProperty.call(next, 'b')).toBe(false);
+
+    await expectRejects(
+      validatePropertiesWrite(Pp1Partner as any, 'PartnerProperties', { due: true }, {}),
+      'PROPERTIES_WRITE_TYPE'
+    );
+    const okDate = await validatePropertiesWrite(Pp1Partner as any, 'PartnerProperties', { due: '2026-01-01' }, {});
+    expect(okDate).toEqual({ due: '2026-01-01' });
   } finally {
     __clearLookupPropertyDefinitionModelForTest();
   }
 });
 
+test('isPlainPropertiesMap rejects Date/Map', () => {
+  expect(isPlainPropertiesMap({})).toBe(true);
+  expect(isPlainPropertiesMap(new Date())).toBe(false);
+  expect(isPlainPropertiesMap(new Map())).toBe(false);
+  expect(isPlainPropertiesMap([])).toBe(false);
+});
+
 test('PropertyDefinition Definition rejects PP7-outside types; dirty read skips', () => {
   expect(() => assertValidPropertyDefinitionItems([{ name: 'rel', type: 'many2one' }])).toThrow(/unsupported type/);
-  const ok = assertValidPropertyDefinitionItems([{ name: 'n', type: 'char', default: 'x' }]);
+  expect(() => assertValidPropertyDefinitionItems([{ name: 's', type: 'selection' }])).toThrow(/non-empty selection/);
+  expect(() =>
+    assertValidPropertyDefinitionItems([{ name: 'n', type: 'integer', default: 'x' }])
+  ).toThrow(/default does not match type/);
+  const ok = assertValidPropertyDefinitionItems([
+    { name: 'n', type: 'char', default: 'x' },
+    { name: 's', type: 'selection', selection: [{ value: 'a', label: 'A' }], default: 'a' },
+  ]);
   expect(ok[0]?.name).toBe('n');
+  expect(ok[1]?.name).toBe('s');
 
   const skipped: string[] = [];
   const readable = filterReadablePropertyDefinitionItems(
