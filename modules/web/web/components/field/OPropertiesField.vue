@@ -39,7 +39,7 @@ SPDX-License-Identifier: Apache-2.0
             class="o-properties-control"
             :model-value="asBoolean(itemValue(fieldValue().value, item))"
             :disabled="!!item.readonly"
-            @update:model-value="(v: boolean) => onItemWrite(fieldValue, item.name, v)"
+            @update:model-value="(v: any) => onItemWrite(fieldValue, item.name, v)"
           />
           <el-input-number
             v-else-if="item.type === 'integer' || item.type === 'float'"
@@ -48,7 +48,7 @@ SPDX-License-Identifier: Apache-2.0
             :disabled="!!item.readonly"
             :controls="false"
             :precision="item.type === 'integer' ? 0 : undefined"
-            @update:model-value="(v: number | undefined) => onItemWrite(fieldValue, item.name, v)"
+            @update:model-value="(v: any) => onItemWrite(fieldValue, item.name, v)"
           />
           <el-input
             v-else-if="item.type === 'text'"
@@ -57,7 +57,7 @@ SPDX-License-Identifier: Apache-2.0
             :autosize="{ minRows: 2, maxRows: 6 }"
             :model-value="asString(itemValue(fieldValue().value, item))"
             :disabled="!!item.readonly"
-            @update:model-value="(v: string) => onItemWrite(fieldValue, item.name, v)"
+            @update:model-value="(v: any) => onItemWrite(fieldValue, item.name, v)"
           />
           <el-date-picker
             v-else-if="item.type === 'date' || item.type === 'datetime'"
@@ -66,7 +66,7 @@ SPDX-License-Identifier: Apache-2.0
             :model-value="asString(itemValue(fieldValue().value, item))"
             :disabled="!!item.readonly"
             :value-format="item.type === 'datetime' ? 'YYYY-MM-DD[T]HH:mm:ss[Z]' : 'YYYY-MM-DD[T]00:00:00[Z]'"
-            @update:model-value="(v: string | null) => onItemWrite(fieldValue, item.name, v)"
+            @update:model-value="(v: any) => onItemWrite(fieldValue, item.name, v)"
           />
           <el-select
             v-else-if="item.type === 'selection'"
@@ -74,7 +74,7 @@ SPDX-License-Identifier: Apache-2.0
             :model-value="asString(itemValue(fieldValue().value, item))"
             :disabled="!!item.readonly"
             clearable
-            @update:model-value="(v: string | null | undefined) => onItemWrite(fieldValue, item.name, v)"
+            @update:model-value="(v: any) => onItemWrite(fieldValue, item.name, v)"
           >
             <el-option
               v-for="opt in selectionOptions(item)"
@@ -88,7 +88,7 @@ SPDX-License-Identifier: Apache-2.0
             class="o-properties-control"
             :model-value="asString(itemValue(fieldValue().value, item))"
             :disabled="!!item.readonly"
-            @update:model-value="(v: string) => onItemWrite(fieldValue, item.name, v)"
+            @update:model-value="(v: any) => onItemWrite(fieldValue, item.name, v)"
           />
         </div>
       </div>
