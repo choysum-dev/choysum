@@ -5,6 +5,7 @@ package lifecycle
 
 import (
 	"database/sql"
+	"errors"
 	"strings"
 	"testing"
 
@@ -234,6 +235,25 @@ func TestPropertyDefinitionTableName(t *testing.T) {
 	}
 }
 
+func TestIsMissingSQLTableError(t *testing.T) {
+	if isMissingSQLTableError(nil) {
+		t.Fatal("nil must be false")
+	}
+	for _, msg := range []string{
+		"no such table: demo_property_definition",
+		"Table 'db.demo' doesn't exist",
+		"relation \"demo\" does not exist",
+		"Unknown table 'demo'",
+	} {
+		if !isMissingSQLTableError(errors.New(msg)) {
+			t.Fatalf("expected missing-table for %q", msg)
+		}
+	}
+	if isMissingSQLTableError(errors.New("database is locked")) {
+		t.Fatal("unrelated errors must be false")
+	}
+}
+
 func TestPropertyDefinitionTableExists(t *testing.T) {
 	if ok, err := propertyDefinitionTableExists(nil, "demo_property_definition"); err != nil || ok {
 		t.Fatalf("nil db: ok=%v err=%v", ok, err)
@@ -343,5 +363,53 @@ func TestApplyPropertyDefinitionPurgePropagatesError(t *testing.T) {
 func TestApplyPropertyDefinitionPurgeOK(t *testing.T) {
 	if err := applyPropertyDefinitionPurge(nil, nil); err != nil {
 		t.Fatalf("nil args: %v", err)
+	}
+}
+
+func TestModuleUninstallerCleanModelsPropagatesPropertyDefinitionPurgeError(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
+		t.Fatalf("AutoMigrate CatalogEntities: %v", err)
+	}
+	ensureDemoPropertyDefinitionTable(t, db)
+
+	mod := &meta.Module{Name: "demo_pd_purge_err", Status: meta.Installed, Version: "1.0.0"}
+	mod.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := db.Create(mod).Error; err != nil {
+		t.Fatalf("create module: %v", err)
+	}
+	if _, err := modmeta.ReplaceModuleDeclarations(db, mod.Id.String, []*meta.Model{{
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: xid.New().String(), Valid: true}},
+		Name:        "Item",
+		Path:        "@/demo_pd_purge_err/service/models/item.ts",
+		Application: "demo",
+		ModelTable:  "demo_item",
+		ModuleId:    mod.Id,
+	}}); err != nil {
+		t.Fatalf("create raw model: %v", err)
+	}
+	if err := modmeta.FlushEffective(db, []modmeta.LogicalKey{{Application: "demo", Name: "Item"}}); err != nil {
+		t.Fatalf("flush effective: %v", err)
+	}
+	if err := db.Exec(
+		`INSERT INTO demo_property_definition(id, target_model, container_model, properties_field) VALUES (?, ?, ?, ?)`,
+		xid.New().String(), "Item", nil, "Properties",
+	).Error; err != nil {
+		t.Fatalf("insert definition: %v", err)
+	}
+	if err := db.Exec(`CREATE TRIGGER deny_pd_clean_delete BEFORE DELETE ON demo_property_definition BEGIN SELECT RAISE(ABORT, 'deny delete'); END`).Error; err != nil {
+		t.Fatalf("create trigger: %v", err)
+	}
+
+	uninstaller := &moduleUninstaller{
+		runtimeScope:  runtimeScope,
+		module:        mod,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope},
+		ctx:           newOpContext(),
+	}
+	err := uninstaller.cleanModels()
+	if err == nil || !strings.Contains(err.Error(), "error deleting property definitions") {
+		t.Fatalf("cleanModels() error=%v, want property definition purge failure", err)
 	}
 }

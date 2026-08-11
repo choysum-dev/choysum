@@ -148,11 +148,7 @@ func webUserFilterTableExists(db *gorm.DB) (bool, error) {
 	if err == nil {
 		return true, nil
 	}
-	msg := strings.ToLower(err.Error())
-	if strings.Contains(msg, "no such table") ||
-		strings.Contains(msg, "doesn't exist") ||
-		strings.Contains(msg, "does not exist") ||
-		strings.Contains(msg, "unknown table") {
+	if isMissingSQLTableError(err) {
 		return false, nil
 	}
 	return false, xfmt.Errorf("error checking %s existence: %w", webUserFilterTable, err)
@@ -220,14 +216,22 @@ func propertyDefinitionTableExists(db *gorm.DB, table string) (bool, error) {
 	if err == nil {
 		return true, nil
 	}
-	msg := strings.ToLower(err.Error())
-	if strings.Contains(msg, "no such table") ||
-		strings.Contains(msg, "doesn't exist") ||
-		strings.Contains(msg, "does not exist") ||
-		strings.Contains(msg, "unknown table") {
+	if isMissingSQLTableError(err) {
 		return false, nil
 	}
 	return false, xfmt.Errorf("error checking %s existence: %w", table, err)
+}
+
+// isMissingSQLTableError reports dialect-specific "table does not exist" probe failures.
+func isMissingSQLTableError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "no such table") ||
+		strings.Contains(msg, "doesn't exist") ||
+		strings.Contains(msg, "does not exist") ||
+		strings.Contains(msg, "unknown table")
 }
 
 // purgePropertyDefinitionsForGoneModels deletes PropertyDefinition rows whose
