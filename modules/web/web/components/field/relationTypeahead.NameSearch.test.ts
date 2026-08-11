@@ -229,15 +229,27 @@ describe('relation typeahead NameSearch wiring', () => {
     });
 
     NameSearch.mockClear();
-    const withoutStore = mount(OManyToOneRefField as any, {
-      props: {
-        binding: makeM2OBinding(undefined),
-        renderMode: 'form',
-      },
-      global: { stubs: fieldStubs },
-    });
-    await clickRemote(withoutStore);
-    expect(NameSearch).not.toHaveBeenCalled();
+    // RefField falls back to createStoreByModel(relationModel); silence expected warn when factory is absent.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const withoutStore = mount(OManyToOneRefField as any, {
+        props: {
+          binding: makeM2OBinding(undefined),
+          renderMode: 'form',
+        },
+        global: { stubs: fieldStubs },
+      });
+      await clickRemote(withoutStore);
+      expect(NameSearch).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("Failed to create store for model 'demo.Partner'"),
+        expect.any(Error)
+      );
+      withoutStore.unmount();
+    } finally {
+      warn.mockRestore();
+    }
+    withStore.unmount();
   });
 
   it('OManyToManyTagsField remote search calls NameSearch with effective conditions', async () => {
