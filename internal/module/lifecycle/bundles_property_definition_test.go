@@ -85,3 +85,60 @@ func TestBuildBackendBundlesToDir_PropertyDefinitionOwnerAndEnsureError(t *testi
 		t.Fatalf("unexpected entry contents: %s", entryRaw)
 	}
 }
+
+func TestBuildBackendAppToDir_C2OwnersAppendAndEnsureError(t *testing.T) {
+	modulesPath := t.TempDir()
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
+		t.Fatalf("auto migrate: %v", err)
+	}
+	firstPath := filepath.Join(modulesPath, "crm_first")
+	lastPath := filepath.Join(modulesPath, "crm_last")
+	for _, modPath := range []string{firstPath, lastPath} {
+		if err := os.MkdirAll(filepath.Join(modPath, "service"), 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", modPath, err)
+		}
+	}
+	if err := db.Create(&meta.Module{
+		Name:              "crm_first",
+		ApplicationStr:    "crm",
+		Status:            meta.Installed,
+		ServiceEntryPoint: "service/main.ts",
+		Path:              firstPath,
+	}).Error; err != nil {
+		t.Fatalf("seed first module: %v", err)
+	}
+	if err := db.Create(&meta.Module{
+		Name:              "crm_last",
+		ApplicationStr:    "crm",
+		Status:            meta.Installed,
+		ServiceEntryPoint: "service/main.ts",
+		Path:              lastPath,
+	}).Error; err != nil {
+		t.Fatalf("seed last module: %v", err)
+	}
+
+	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	manager := NewModuleManager(runtimeScope, nil)
+	manager.bootstrapOnce.Do(func() {})
+	distAppDir := t.TempDir()
+
+	// Drop meta_raw_model after owners would be picked so FD/AS/PD append branches run.
+	if err := db.Migrator().DropTable("meta_raw_model"); err != nil {
+		t.Fatalf("drop meta_raw_model: %v", err)
+	}
+	err := manager.buildBackendAppToDir(context.Background(), "crm", distAppDir)
+	if err == nil || !strings.Contains(err.Error(), "inject app models for bundles") {
+		t.Fatalf("expected BundleInject error, got %v", err)
+	}
+
+	entryRaw, readErr := os.ReadFile(filepath.Join(distAppDir, "__choysum_app_entry.ts"))
+	if readErr != nil {
+		t.Fatalf("entry should be written before Ensure: %v", readErr)
+	}
+	entryText := string(entryRaw)
+	if !strings.Contains(entryText, filepath.Join(modulesPath, "crm_first", "service/main.ts")) ||
+		!strings.Contains(entryText, filepath.Join(modulesPath, "crm_last", "service/main.ts")) {
+		t.Fatalf("unexpected entry contents: %s", entryText)
+	}
+}
