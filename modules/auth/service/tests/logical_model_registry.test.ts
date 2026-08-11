@@ -11,8 +11,9 @@ import {
 } from '@/auth/service/models/_logical_model_registry';
 
 test('logical model names come from core platform-inject self-registration', () => {
-  expect(listLogicalModelNames()).toEqual(['AppSetting', 'FieldDefault', 'TranslationTerm']);
+  expect(listLogicalModelNames()).toEqual(['AppSetting', 'FieldDefault', 'PropertyDefinition', 'TranslationTerm']);
   expect(isRegisteredLogicalModelName('TranslationTerm')).toBe(true);
+  expect(isRegisteredLogicalModelName('PropertyDefinition')).toBe(true);
   expect(isRegisteredLogicalModelName('Partner')).toBe(false);
   expect(isRegisteredLogicalModelName('')).toBe(false);
 });
@@ -56,6 +57,7 @@ test('listLogicalModelSelection is re-exported for admin FieldsGet', async () =>
   expect(listLogicalModelSelection()).toEqual([
     { value: 'AppSetting', label: 'AppSetting' },
     { value: 'FieldDefault', label: 'FieldDefault' },
+    { value: 'PropertyDefinition', label: 'PropertyDefinition' },
     { value: 'TranslationTerm', label: 'TranslationTerm' },
   ]);
 });

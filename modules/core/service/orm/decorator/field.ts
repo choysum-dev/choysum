@@ -40,6 +40,7 @@ const scalarTypes = new Set<FieldType>([
   'date',
   'time',
   'jsonobject',
+  'properties',
   'selection',
   'ManyToOneRef',
   'ManyToManyRef',
@@ -68,6 +69,8 @@ type FieldDecoratorOptionBag = {
   scale?: unknown;
   scaleField?: unknown;
   currencyField?: unknown;
+  /** Properties parent container field name (PP6); omit = App-level. */
+  definition?: unknown;
   primaryKey?: unknown;
   unique?: unknown;
   uniqueIndex?: unknown;
@@ -574,6 +577,22 @@ export function Field(
       throw new Error(`@Field(${name}) currencyField is only supported on monetary fields`);
     }
 
+    if (optionBag.definition !== undefined && type !== 'properties') {
+      throw new Error(`@Field(${name}) definition is only supported on properties fields`);
+    }
+
+    if (type === 'properties') {
+      const definition = optionBag.definition;
+      if (definition !== undefined) {
+        if (typeof definition !== 'string' || !definition.trim()) {
+          throw new Error(`@Field(${name}) definition must be a non-empty string when provided`);
+        }
+        if (definition !== definition.trim()) {
+          throw new Error(`@Field(${name}) definition must not contain leading or trailing whitespace`);
+        }
+      }
+    }
+
     if (type === 'monetary') {
       const currencyField = optionBag.currencyField;
       if (typeof currencyField !== 'string' || !currencyField.trim()) {
@@ -677,6 +696,9 @@ export function Field(
     else if (copyFlag === true) meta.copy = true;
     if (readonlyFlag) meta.readonly = true;
     if (checkCompany) meta.checkCompany = true;
+    if (type === 'properties' && typeof optionBag.definition === 'string' && optionBag.definition.trim()) {
+      meta.definition = optionBag.definition.trim();
+    }
     if (uploadLimits.maxUploadBytes !== undefined) meta.maxUploadBytes = uploadLimits.maxUploadBytes;
     if (uploadLimits.maxWidth !== undefined) meta.maxWidth = uploadLimits.maxWidth;
     if (uploadLimits.maxHeight !== undefined) meta.maxHeight = uploadLimits.maxHeight;

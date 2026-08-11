@@ -139,6 +139,7 @@ type FlatNoSelectionOption = { selection?: never };
 type FlatNoSizeOption = { size?: never };
 type FlatNoDecimalOptions = { precision?: never; scale?: never; round?: never; scaleField?: never };
 type FlatNoMonetaryOptions = { currencyField?: never };
+type FlatNoPropertiesDefinitionOption = { definition?: never };
 /** Prevents `condition` from inferring as `unknown` on non-relational FieldOptions union arms. */
 type FlatNoConditionOption = { condition?: never };
 
@@ -193,6 +194,7 @@ type FlatCharOrVarcharFieldOptions<T extends BaseModel> = {
   FlatNoSelectionOption &
   FlatNoDecimalOptions &
   FlatNoMonetaryOptions &
+  FlatNoPropertiesDefinitionOption &
   FlatNoConditionOption;
 
 type FlatBinaryOrImageUploadLimitOptions = {
@@ -213,6 +215,7 @@ type FlatBinaryOrImageFieldOptions<T extends BaseModel> = {
   FlatNoSizeOption &
   FlatNoDecimalOptions &
   FlatNoMonetaryOptions &
+  FlatNoPropertiesDefinitionOption &
   FlatNoConditionOption;
 
 type FlatScalarFieldOptions<T extends BaseModel> = {
@@ -222,6 +225,7 @@ type FlatScalarFieldOptions<T extends BaseModel> = {
     | 'varchar'
     | 'decimal'
     | 'monetary'
+    | 'properties'
     | 'selection'
     | 'ManyToOneRef'
     | 'ManyToManyRef'
@@ -237,6 +241,7 @@ type FlatScalarFieldOptions<T extends BaseModel> = {
   FlatNoSizeOption &
   FlatNoDecimalOptions &
   FlatNoMonetaryOptions &
+  FlatNoPropertiesDefinitionOption &
   FlatNoConditionOption;
 
 type FlatDecimalFieldOptions<T extends BaseModel> = {
@@ -250,6 +255,7 @@ type FlatDecimalFieldOptions<T extends BaseModel> = {
   FlatNoSelectionOption &
   FlatNoSizeOption &
   FlatNoMonetaryOptions &
+  FlatNoPropertiesDefinitionOption &
   FlatNoConditionOption;
 
 /** Keys that may reference a currency relation (C3 when typed as Currency; else keyof T for Ref-as-string). */
@@ -269,6 +275,26 @@ type FlatMonetaryFieldOptions<T extends BaseModel> = {
   FlatNoSelectionOption &
   FlatNoSizeOption &
   FlatNoDecimalOptions &
+  FlatNoPropertiesDefinitionOption &
+  FlatNoConditionOption;
+
+/** Host-model field key used as Properties parent container (ManyToOne / ManyToOneRef at runtime). */
+export type PropertiesContainerFieldKey<T extends BaseModel> = Extract<keyof T, string>;
+
+/**
+ * Properties value field (PP6): omit `definition` = App-level container;
+ * `definition: 'ProjectId'` = parent-record container (runtime must be M2O / M2ORef).
+ */
+export type FlatPropertiesFieldOptions<T extends BaseModel> = {
+  type: 'properties';
+  /** Omit = App-level; write = parent-record container field on this model. */
+  definition?: PropertiesContainerFieldKey<T>;
+} & FlatCommonOptions &
+  FlatNoRelationOption &
+  FlatNoSelectionOption &
+  FlatNoSizeOption &
+  FlatNoDecimalOptions &
+  FlatNoMonetaryOptions &
   FlatNoConditionOption;
 
 type FlatSelectionFieldOptions<T extends BaseModel> = {
@@ -288,6 +314,7 @@ type FlatSelectionFieldOptions<T extends BaseModel> = {
 } & FlatCommonOptions &
   FlatNoRelationOption &
   FlatNoDecimalOptions &
+  FlatNoPropertiesDefinitionOption &
   FlatNoConditionOption;
 
 /**
@@ -337,7 +364,8 @@ export type FlatManyToOneRefFieldOptions<TTarget extends BaseModel | undefined =
     : RefRelationalConditionDeclaration;
 } & FlatCommonOptions &
   FlatNoSelectionOption &
-  FlatNoDecimalOptions;
+  FlatNoDecimalOptions &
+  FlatNoPropertiesDefinitionOption;
 
 /** ManyToManyRef flat options (string targetModel). Optional TTarget tightens `condition`. */
 export type FlatManyToManyRefFieldOptions<TTarget extends BaseModel | undefined = undefined> = {
@@ -354,7 +382,8 @@ export type FlatManyToManyRefFieldOptions<TTarget extends BaseModel | undefined 
 } & FlatCommonOptions &
   FlatNoSelectionOption &
   FlatNoSizeOption &
-  FlatNoDecimalOptions;
+  FlatNoDecimalOptions &
+  FlatNoPropertiesDefinitionOption;
 
 /** ManyToOne flat options (ctor targetModel; condition typed against target field names). */
 export type FlatManyToOneFieldOptions<TTarget extends BaseModel = BaseModel> = {
@@ -368,7 +397,8 @@ export type FlatManyToOneFieldOptions<TTarget extends BaseModel = BaseModel> = {
 } & FlatCommonOptions &
   FlatNoSelectionOption &
   FlatNoSizeOption &
-  FlatNoDecimalOptions;
+  FlatNoDecimalOptions &
+  FlatNoPropertiesDefinitionOption;
 
 /** OneToMany flat options (ctor targetModel; condition typed against target field names). */
 export type FlatOneToManyFieldOptions<TTarget extends BaseModel = BaseModel> = {
@@ -382,7 +412,8 @@ export type FlatOneToManyFieldOptions<TTarget extends BaseModel = BaseModel> = {
 } & FlatCommonOptions &
   FlatNoSelectionOption &
   FlatNoSizeOption &
-  FlatNoDecimalOptions;
+  FlatNoDecimalOptions &
+  FlatNoPropertiesDefinitionOption;
 
 /** ManyToMany flat options (ctor targetModel; condition typed against target field names). */
 export type FlatManyToManyFieldOptions<TJoin extends BaseModel = BaseModel, TTarget extends BaseModel = BaseModel> = {
@@ -396,7 +427,8 @@ export type FlatManyToManyFieldOptions<TJoin extends BaseModel = BaseModel, TTar
 } & FlatCommonOptions &
   FlatNoSelectionOption &
   FlatNoSizeOption &
-  FlatNoDecimalOptions;
+  FlatNoDecimalOptions &
+  FlatNoPropertiesDefinitionOption;
 
 export type FlatFieldOptions<T extends BaseModel = BaseModel, TJoin extends BaseModel = BaseModel, TTarget extends BaseModel = BaseModel> =
   | FlatCharOrVarcharFieldOptions<T>
@@ -404,6 +436,7 @@ export type FlatFieldOptions<T extends BaseModel = BaseModel, TJoin extends Base
   | FlatScalarFieldOptions<T>
   | FlatDecimalFieldOptions<T>
   | FlatMonetaryFieldOptions<T>
+  | FlatPropertiesFieldOptions<T>
   | FlatSelectionFieldOptions<T>
   | FlatManyToOneRefFieldOptions
   | FlatManyToManyRefFieldOptions
@@ -460,6 +493,8 @@ export type FieldType =
   | 'date'
   | 'time'
   | 'jsonobject'
+  /** Parent-defined schema / child values map (Properties); physical ≈ jsonobject. */
+  | 'properties'
   | 'ManyToOneRef'
   | 'ManyToManyRef'
   | 'selection'
@@ -713,6 +748,11 @@ export interface FieldMetadata {
    * Related shared rows (NULL) pass.
    */
   checkCompany?: boolean;
+  /**
+   * Properties container declaration (PP6): omit = App-level; relation field name =
+   * parent-record container. Not a physical companion column.
+   */
+  definition?: string;
   /** Per-field upload byte cap (image/binary). */
   maxUploadBytes?: number;
   /** Pixel width cap (image only). */

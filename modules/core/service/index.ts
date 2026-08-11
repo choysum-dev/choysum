@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Side-effect: register FieldDefaultBaseModel / AppSettingBaseModel /
-// TranslationTermBaseModel fields for materialize/merge into thin subclasses.
+// TranslationTermBaseModel / PropertyDefinitionBaseModel fields for materialize/merge into thin subclasses.
 import './orm/model/field_default_base_model';
 import './orm/model/app_setting_base_model';
 import './orm/model/translation_term_base_model';
+import './orm/model/property_definition_base_model';
 
 export { default as BaseModel } from './orm/model/model';
 export { Field } from './orm/decorator/field';

@@ -4,6 +4,7 @@
 import { MetadataStorage } from '../metadata';
 import { validateModelCompanyField } from '../metadata/company_field';
 import { validateModelMonetaryCurrencyFields } from '../metadata/monetary_currency';
+import { validateModelPropertiesDefinitionFields } from '../metadata/properties_definition';
 import BaseModel from '../model/model';
 import type { InstantiableModelCtor } from '../model/types';
 import type { OrderBy } from '../repository/types';
@@ -154,6 +155,7 @@ export function Model(name: string, options?: ModelOptions) {
     const registered = MetadataStorage.instance.getModelMetadata(target);
     validateModelCompanyField(registered);
     validateModelMonetaryCurrencyFields(registered);
+    validateModelPropertiesDefinitionFields(registered);
 
     registerLoadedModelForGeneratedServiceMetadata(fullModelName, target);
     installConventionalServiceRuntimeWrappers(target);

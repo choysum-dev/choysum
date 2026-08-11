@@ -5,13 +5,16 @@ import { MetadataStorage } from '../metadata/storage';
 import { getReadonlyCtx } from '../../runtime/context/scope';
 import { applyFieldColumnDefaults } from './model_default';
 import { lookupFieldDefaultModel } from './field_default_lookup';
+import { loadEffectivePropertySchema } from './properties_resolve';
+import { normalizePropertiesMap } from './properties_types';
 import type BaseModel from './model';
 import type { RuntimeModelCtor } from './types';
 import type { Insertable } from '../repository/types';
 import type { ObjectRecord } from '../../../utils/types';
 
 /**
- * Merge defaults for DefaultGet: payload → context `default_<Field>` → FieldDefault → `@Field({ default })`.
+ * Merge defaults for DefaultGet: payload → context `default_<Field>` → FieldDefault → `@Field({ default })`
+ * → properties item defaults (PP3).
  * Only fills keys that are still `undefined` (explicit `null` is preserved).
  */
 export async function runDefaultGetPipeline<T extends BaseModel>(
@@ -55,5 +58,33 @@ export async function runDefaultGetPipeline<T extends BaseModel>(
     }
   }
 
-  return applyFieldColumnDefaults(ModelCtor, result as Partial<Insertable<T & BaseModel>>);
+  const withColumnDefaults = (await applyFieldColumnDefaults(
+    ModelCtor,
+    result as Partial<Insertable<T & BaseModel>>
+  )) as ObjectRecord;
+
+  for (const [fieldName, fm] of meta.fields) {
+    if (!fm || fm.type !== 'properties') continue;
+    try {
+      const schema = await loadEffectivePropertySchema(ModelCtor, fieldName, withColumnDefaults);
+      if (!schema.length) continue;
+      const existing = normalizePropertiesMap(withColumnDefaults[fieldName]);
+      let changed = false;
+      const next = { ...existing };
+      for (const item of schema) {
+        if (next[item.name] !== undefined) continue;
+        if (item.default === undefined) continue;
+        next[item.name] = item.default;
+        changed = true;
+      }
+      if (changed || withColumnDefaults[fieldName] === undefined) {
+        withColumnDefaults[fieldName] = next;
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn(`PROPERTIES_DEFAULT_GET_FAILED field=${fieldName} error=${message}`);
+    }
+  }
+
+  return withColumnDefaults as Partial<Insertable<T & BaseModel>>;
 }

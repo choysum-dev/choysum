@@ -31,7 +31,7 @@ import { buildCompanyDependentFieldUnwrapExpr } from './company_dependent_field_
 
 function supportsContainsFieldType(fieldMeta: FieldMetadata | undefined): boolean {
   const fieldType = fieldMeta?.type;
-  return fieldType === 'jsonobject' || fieldType === 'ManyToManyRef';
+  return fieldType === 'jsonobject' || fieldType === 'properties' || fieldType === 'ManyToManyRef';
 }
 
 /** Prefer explicit column.name when present (ManyToOne FK remap); else logical field name. */
@@ -242,7 +242,7 @@ export function convertCondition(
           const fieldMeta = meta.fields.get(fieldName);
           if (fieldMeta && !supportsContainsFieldType(fieldMeta) && !fieldMeta.companyDependent) {
             console.warn(
-              `[Query] contains is recommended only for JSON container fields (currently jsonobject, ManyToManyRef, or expressions selectable as JSON), but field "${fieldName}" has type "${fieldMeta.type}"`
+              `[Query] contains is recommended only for JSON container fields (currently jsonobject, properties, ManyToManyRef, or expressions selectable as JSON), but field "${fieldName}" has type "${fieldMeta.type}"`
             );
           }
         }

@@ -13,6 +13,7 @@
 import '@/core/service/orm/model/app_setting_base_model';
 import '@/core/service/orm/model/field_default_base_model';
 import '@/core/service/orm/model/translation_term_base_model';
+import '@/core/service/orm/model/property_definition_base_model';
 import {
   isRegisteredLogicalModelName,
   listLogicalModelNames,
