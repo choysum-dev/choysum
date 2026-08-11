@@ -59,6 +59,8 @@ export function useUserFilters(params: {
     if (!app || !model) {
       if (gen === loadGeneration) {
         favorites.value = [];
+        loading.value = false;
+        loadError.value = null;
       }
       return;
     }

@@ -6,12 +6,16 @@ import { defineComponent, h, reactive, ref } from 'vue';
 import { mount, flushPromises } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { applyMock, preloadLaneMock, awaitFieldSelectionMock, deferState } = vi.hoisted(() => ({
-  applyMock: vi.fn(async () => {}),
-  preloadLaneMock: vi.fn(async () => {}),
-  awaitFieldSelectionMock: vi.fn(async () => {}),
-  deferState: { defer: false },
-}));
+const { applyMock, preloadLaneMock, awaitFieldSelectionMock, deferState, oSearchViewSentinel } = vi.hoisted(() => {
+  const { markRaw } = require('vue') as typeof import('vue');
+  return {
+    applyMock: vi.fn(async () => {}),
+    preloadLaneMock: vi.fn(async () => {}),
+    awaitFieldSelectionMock: vi.fn(async () => {}),
+    deferState: { defer: false },
+    oSearchViewSentinel: markRaw({ name: 'OSearchViewSentinel' }),
+  };
+});
 
 vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
@@ -35,9 +39,15 @@ vi.mock('@/web/web/query/utils/registry/fieldReady', () => ({
   awaitFieldSelection: (...args: any[]) => awaitFieldSelectionMock(...args),
 }));
 
+vi.mock('@/web/web/components/view/OSearchView.vue', () => ({
+  default: oSearchViewSentinel,
+}));
+
 vi.mock('@/web/web/components/view/kanbanFirstFrame', () => ({
-  shouldDeferViewFirstFrame: () => deferState.defer,
-  shouldDeferKanbanFirstFrame: () => deferState.defer,
+  shouldDeferViewFirstFrame: (searchView: unknown, oSearchView: unknown) =>
+    deferState.defer && searchView === oSearchView,
+  shouldDeferKanbanFirstFrame: (searchView: unknown, oSearchView: unknown) =>
+    deferState.defer && searchView === oSearchView,
 }));
 
 vi.mock('@/web/web/i18n', async () => {
@@ -105,6 +115,27 @@ describe('OKanbanView first-frame load', () => {
 
   it('skips mount apply when first-frame should defer to OSearchView', async () => {
     deferState.defer = true;
+    const wrapper = mount(OKanbanView as any, {
+      props: {
+        store: makeStore(),
+        searchView: oSearchViewSentinel,
+        showHeader: true,
+        showActions: false,
+        showPaginate: false,
+      },
+      global: { stubs },
+    });
+    try {
+      await flushPromises();
+      expect(awaitFieldSelectionMock).not.toHaveBeenCalled();
+      expect(applyMock).not.toHaveBeenCalled();
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it('still mounts apply for a custom searchView even when defer flag is set', async () => {
+    deferState.defer = true;
     const SearchStub = defineComponent({
       name: 'SearchStub',
       setup() {
@@ -123,8 +154,7 @@ describe('OKanbanView first-frame load', () => {
     });
     try {
       await flushPromises();
-      expect(awaitFieldSelectionMock).not.toHaveBeenCalled();
-      expect(applyMock).not.toHaveBeenCalled();
+      expect(applyMock).toHaveBeenCalled();
     } finally {
       wrapper.unmount();
     }
@@ -192,8 +222,8 @@ describe('OKanbanView first-frame load', () => {
     }
   });
 
-  it('onSearch with falsy payload does not apply', async () => {
-    deferState.defer = true;
+  it('onSearch with falsy payload does not apply and does not block mount fallback', async () => {
+    deferState.defer = false;
     const FalsyEmitSearch = defineComponent({
       name: 'FalsyEmitSearch',
       emits: ['query-update'],
@@ -214,8 +244,8 @@ describe('OKanbanView first-frame load', () => {
     });
     try {
       await flushPromises();
-      expect(awaitFieldSelectionMock).not.toHaveBeenCalled();
-      expect(applyMock).not.toHaveBeenCalled();
+      // null payload is ignored by onSearch, so mount still runs the fallback apply once.
+      expect(applyMock).toHaveBeenCalledTimes(1);
     } finally {
       wrapper.unmount();
     }

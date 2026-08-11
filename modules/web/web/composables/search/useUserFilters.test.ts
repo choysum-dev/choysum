@@ -450,6 +450,31 @@ describe('useUserFilters', () => {
     });
   });
 
+  it('load clears loading when a newer load invalidates app/model', async () => {
+    let resolveSlow!: (rows: any[]) => void;
+    const slow = new Promise<any[]>(resolve => {
+      resolveSlow = resolve;
+    });
+    sfMocks.Search.mockImplementationOnce(() => slow);
+    const store = { application: 'demo', modelName: 'Widget' };
+    const api = runInSetup(() =>
+      useUserFilters({
+        store,
+        filtersRef: ref([]),
+        applyNamedFilter: vi.fn(),
+      })
+    );
+    const p1 = api.load();
+    expect(api.loading.value).toBe(true);
+    store.application = '';
+    const p2 = api.load();
+    resolveSlow([{ Id: 'stale', Name: 'Stale', UserId: 'me', CreatedUid: 'me' }]);
+    await Promise.all([p1, p2]);
+    expect(api.favorites.value).toEqual([]);
+    expect(api.loading.value).toBe(false);
+    expect(api.loadError.value).toBeNull();
+  });
+
   it('updateMeta no-ops when id or name missing', async () => {
     const api = runInSetup(() =>
       useUserFilters({

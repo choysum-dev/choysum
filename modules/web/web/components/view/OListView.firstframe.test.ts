@@ -6,11 +6,16 @@ import { defineComponent, h, reactive, ref } from 'vue';
 import { mount, flushPromises } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { applyMock, awaitFieldSelectionMock, deferState } = vi.hoisted(() => ({
-  applyMock: vi.fn(async () => {}),
-  awaitFieldSelectionMock: vi.fn(async () => {}),
-  deferState: { defer: false },
-}));
+const { applyMock, awaitFieldSelectionMock, deferState, oSearchViewSentinel } = vi.hoisted(() => {
+  // Plain objects passed as searchView get proxied; markRaw keeps === stable with the SFC import.
+  const { markRaw } = require('vue') as typeof import('vue');
+  return {
+    applyMock: vi.fn(async () => {}),
+    awaitFieldSelectionMock: vi.fn(async () => {}),
+    deferState: { defer: false },
+    oSearchViewSentinel: markRaw({ name: 'OSearchViewSentinel' }),
+  };
+});
 
 vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
@@ -42,9 +47,15 @@ vi.mock('@/web/web/query/utils/registry/fieldReady', () => ({
   awaitFieldSelection: (...args: any[]) => awaitFieldSelectionMock(...args),
 }));
 
+vi.mock('@/web/web/components/view/OSearchView.vue', () => ({
+  default: oSearchViewSentinel,
+}));
+
 vi.mock('@/web/web/components/view/kanbanFirstFrame', () => ({
-  shouldDeferViewFirstFrame: () => deferState.defer,
-  shouldDeferKanbanFirstFrame: () => deferState.defer,
+  shouldDeferViewFirstFrame: (searchView: unknown, oSearchView: unknown) =>
+    deferState.defer && searchView === oSearchView,
+  shouldDeferKanbanFirstFrame: (searchView: unknown, oSearchView: unknown) =>
+    deferState.defer && searchView === oSearchView,
 }));
 
 vi.mock('@/web/web/i18n', async () => {
@@ -114,6 +125,25 @@ describe('OListView first-frame load', () => {
 
   it('skips mount apply when first-frame should defer to OSearchView', async () => {
     deferState.defer = true;
+    const wrapper = mount(OListView as any, {
+      props: {
+        store: makeStore(),
+        // Same sentinel OListView imports as OSearchView (mocked above).
+        searchView: oSearchViewSentinel,
+        showPaginate: false,
+        refreshAction: false,
+        deleteAction: false,
+      },
+      global: { stubs },
+    });
+    await flushPromises();
+    expect(applyMock).not.toHaveBeenCalled();
+    expect(awaitFieldSelectionMock).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it('still mounts apply for a custom searchView even when defer flag is set', async () => {
+    deferState.defer = true;
     const SearchStub = defineComponent({
       name: 'SearchStub',
       setup() {
@@ -131,8 +161,8 @@ describe('OListView first-frame load', () => {
       global: { stubs },
     });
     await flushPromises();
-    expect(applyMock).not.toHaveBeenCalled();
-    expect(awaitFieldSelectionMock).not.toHaveBeenCalled();
+    expect(awaitFieldSelectionMock).toHaveBeenCalled();
+    expect(applyMock).toHaveBeenCalled();
     wrapper.unmount();
   });
 

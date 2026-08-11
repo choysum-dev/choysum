@@ -154,4 +154,18 @@ describe('OSearchView favorites defaults (single child load)', () => {
     expect(wrapper.emitted('query-update')?.length).toBe(1);
     expect(JSON.parse(wrapper.find('.applied').text())[0].name).toBe('B');
   });
+
+  it('emits only one query-update when defaults-ready races before nextTick settles', async () => {
+    stubState.mountDefaults = [{ name: 'Race', query: ['R', '=', 1], selected: true }];
+    const wrapper = mount(OSearchView as any, {
+      props: { store: makeStore() },
+      global: { stubs: { OSearch: OSearchStub } },
+    });
+    // Fire a second defaults-ready in the same turn as mount emit, before flush.
+    void wrapper.find('.emit-defaults-ready').trigger('click');
+    void wrapper.find('.emit-defaults-ready').trigger('click');
+    await flushPromises();
+    await nextTick();
+    expect(wrapper.emitted('query-update')?.length).toBe(1);
+  });
 });
