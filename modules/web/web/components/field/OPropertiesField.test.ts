@@ -142,7 +142,7 @@ function makeBinding(opts: {
   const value = ref(opts.map === undefined ? {} : opts.map);
   const recordRef = ref(opts.record ?? { Id: '1', Properties: value.value });
   let store: any;
-  if (opts.store !== undefined) {
+  if (Object.prototype.hasOwnProperty.call(opts, 'store')) {
     store = opts.store;
   } else if (opts.ResolveProperties === false) {
     store = {};
@@ -301,6 +301,16 @@ describe('oproperties_helpers', () => {
         '<x/>'
       )
     ).toEqual({ fromPrev: 'P' });
+
+    // "__proto__" must become an own data key (align with BE properties write).
+    const protoPrev = JSON.parse('{"__proto__":"from-prev"}');
+    const protoMap = buildFullPropertiesMap([{ name: '__proto__', type: 'char' }], protoPrev);
+    expect(Object.prototype.hasOwnProperty.call(protoMap, '__proto__')).toBe(true);
+    expect(protoMap['__proto__']).toBe('from-prev');
+    expect(Object.getPrototypeOf(protoMap)).toBe(null);
+    const written = writePropertyValue([{ name: '__proto__', type: 'char' }], {}, '__proto__', 'safe');
+    expect(Object.prototype.hasOwnProperty.call(written, '__proto__')).toBe(true);
+    expect(written['__proto__']).toBe('safe');
   });
 
   it('converts datetime through the UTC wall-clock codec', () => {

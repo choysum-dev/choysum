@@ -95,7 +95,8 @@ export function countSchemaMapIntersection(schemaNames: string[], map: unknown):
 
 export function buildFullPropertiesMap(items: ResolvedPropertyItem[], previous: unknown): PropertiesMap {
   const prev = normalizePropertiesMap(previous);
-  const next: PropertiesMap = {};
+  // null-prototype so schema names like "__proto__" become own data keys (matches BE write).
+  const next: PropertiesMap = Object.create(null);
   for (const item of items) {
     if (!item?.name) continue;
     if (!PROPERTIES_V1_TYPES.has(String(item.type))) continue;

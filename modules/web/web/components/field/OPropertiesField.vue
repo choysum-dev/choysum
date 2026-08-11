@@ -217,9 +217,13 @@ const isTableLike = computed(() => {
 });
 
 const toView = (raw: any): PropertiesMap => {
-  if (raw == null) return {};
-  if (raw && typeof raw === 'object' && !Array.isArray(raw)) return { ...(raw as PropertiesMap) };
-  return {};
+  if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) return Object.create(null);
+  // Copy own keys onto a null-prototype object so names like "__proto__" survive.
+  const out: PropertiesMap = Object.create(null);
+  for (const key of Object.keys(raw as object)) {
+    out[key] = (raw as Record<string, unknown>)[key];
+  }
+  return out;
 };
 const fromView = (v: PropertiesMap) => v as unknown as V;
 
