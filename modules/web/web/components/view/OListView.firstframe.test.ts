@@ -13,7 +13,10 @@ const { applyMock, awaitFieldSelectionMock, deferState, oSearchViewSentinel } = 
     applyMock: vi.fn(async () => {}),
     awaitFieldSelectionMock: vi.fn(async () => {}),
     deferState: { defer: false },
-    oSearchViewSentinel: markRaw({ name: 'OSearchViewSentinel' }),
+    oSearchViewSentinel: markRaw({
+      name: 'OSearchViewSentinel',
+      setup: () => () => null,
+    }),
   };
 });
 
@@ -120,7 +123,7 @@ describe('OListView first-frame load', () => {
   it('waits for OSearchView first-frame query-update instead of mount apply', () => {
     const dir = dirname(fileURLToPath(import.meta.url));
     const src = readFileSync(join(dir, 'OListView.vue'), 'utf8');
-    expect(src).toContain('shouldDeferViewFirstFrame(props.searchView, OSearchView)');
+    expect(src).toContain('shouldDeferViewFirstFrame(resolvedSearchView.value, OSearchView)');
   });
 
   it('skips mount apply when first-frame should defer to OSearchView', async () => {

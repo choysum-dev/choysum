@@ -28,8 +28,8 @@ SPDX-License-Identifier: Apache-2.0
         </div>
 
         <!-- Centered search: render only when searchView is provided -->
-        <div class="o-kanban__search" v-if="searchView">
-          <component :is="searchView" :store="store" @query-update="onSearch" />
+        <div class="o-kanban__search" v-if="resolvedSearchView">
+          <component :is="resolvedSearchView" :store="store" @query-update="onSearch" />
         </div>
 
         <div class="o-kanban__header-right">
@@ -133,7 +133,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel">
-import { computed, onMounted, ref, watch, nextTick, useSlots, DefineComponent } from 'vue';
+import { computed, onMounted, ref, watch, nextTick, useSlots, markRaw, toRaw, DefineComponent } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 import { useRouter } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
@@ -211,6 +211,11 @@ const { emitCancelable } = useCancelableEmit(emit as any);
 
 const router = useRouter();
 const store = props.store;
+// Avoid Vue "component made reactive" warn when a Component is passed as searchView prop.
+const resolvedSearchView = computed(() => {
+  const view = props.searchView;
+  return view ? markRaw(toRaw(view as object)) : null;
+});
 const controller = createKanbanController(store as any);
 
 // Prefer the named #fields slot when present; otherwise fall back to the default slot
@@ -496,7 +501,7 @@ onMounted(async () => {
   }
   // Only OSearchView guarantees a mount-time query-update with UserFilter defaults.
   // Custom SearchViewComponent implementations may never emit; keep the mount apply.
-  if (shouldDeferViewFirstFrame(props.searchView, OSearchView)) {
+  if (shouldDeferViewFirstFrame(resolvedSearchView.value, OSearchView)) {
     return;
   }
   // Custom search views that already emitted query-update (onSearch sets lastSearchPayload

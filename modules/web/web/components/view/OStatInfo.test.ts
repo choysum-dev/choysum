@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { mount, flushPromises } from '@vue/test-utils';
-import { computed, defineComponent, h, nextTick, ref } from 'vue';
+import { computed, defineComponent, h, markRaw, nextTick, ref } from 'vue';
 import { Comment, Fragment, Text } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -103,10 +103,12 @@ describe('OStatInfo', () => {
   });
 
   it('renders icon when icon prop is set', () => {
-    const IconStub = defineComponent({
-      name: 'IconStub',
-      template: '<span class="icon-stub" />',
-    });
+    const IconStub = markRaw(
+      defineComponent({
+        name: 'IconStub',
+        template: '<span class="icon-stub" />',
+      })
+    );
     const wrapper = mount(OStatInfo as any, {
       props: { value: 1, label: 'Users', icon: IconStub },
       global: {

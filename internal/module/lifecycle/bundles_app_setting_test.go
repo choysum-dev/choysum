@@ -64,7 +64,7 @@ func TestEnsureBundleC2VirtualImports_BundleInject(t *testing.T) {
 	}
 
 	okStub := &stubBundleC2Injector{}
-	if err := ensureBundleC2VirtualImports(okStub, owners, asOwners, owners); err != nil {
+	if err := ensureBundleC2VirtualImports(okStub, owners, asOwners, owners, owners); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if okStub.n != 1 {
@@ -81,7 +81,7 @@ func TestEnsureBundleC2VirtualImports_BundleInject(t *testing.T) {
 		{Name: "", Path: "", ApplicationStr: "crm"},
 		{Name: "  ", Path: "  ", ApplicationStr: "crm"},
 		{Name: "keep", Path: "/keep", ApplicationStr: "crm"},
-	}, nil, nil); err != nil {
+	}, nil, nil, nil); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(skipStub.got) != 1 || skipStub.got[0].Name != "keep" {
@@ -89,12 +89,12 @@ func TestEnsureBundleC2VirtualImports_BundleInject(t *testing.T) {
 	}
 
 	fail := &stubBundleC2Injector{err: errors.New("boom")}
-	err := ensureBundleC2VirtualImports(fail, owners, owners, nil)
+	err := ensureBundleC2VirtualImports(fail, owners, owners, owners, nil)
 	if err == nil || !strings.Contains(err.Error(), "inject app models for bundles") {
 		t.Fatalf("expected wrap, got %v", err)
 	}
 
-	if err := ensureBundleC2VirtualImports(struct{}{}, owners, owners, nil); err != nil {
+	if err := ensureBundleC2VirtualImports(struct{}{}, owners, owners, owners, nil); err != nil {
 		t.Fatalf("unexpected error for bare builder: %v", err)
 	}
 }

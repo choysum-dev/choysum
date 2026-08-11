@@ -26,8 +26,8 @@ SPDX-License-Identifier: Apache-2.0
             </slot>
           </div>
         </div>
-        <div class="o-chart__search" v-if="searchView">
-          <component :is="searchView" :store="store" @query-update="onSearch" />
+        <div class="o-chart__search" v-if="resolvedSearchView">
+          <component :is="resolvedSearchView" :store="store" @query-update="onSearch" />
         </div>
         <div class="o-chart__header-right">
           <slot name="header-right" />
@@ -124,7 +124,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel">
-import { ref, computed, watch, onMounted, nextTick } from 'vue';
+import { ref, computed, watch, onMounted, nextTick, markRaw, toRaw } from 'vue';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { BaseModel } from '@/core/rpc';
 import type { GroupBySpec, QueryCondition } from '@/core/service/api/query';
@@ -229,6 +229,10 @@ interface ChartItemClickPayload {
 
 // Controller
 const store = props.store;
+const resolvedSearchView = computed(() => {
+  const view = props.searchView;
+  return view ? markRaw(toRaw(view as object)) : null;
+});
 const controller = createChartController(store as any);
 
 // Reactive state

@@ -82,17 +82,20 @@ func effectsFileMap(fx Effects) map[string]string {
 
 func TestSpecs_BuiltinsRegistered(t *testing.T) {
 	specs := Specs()
-	if len(specs) != 3 {
-		t.Fatalf("expected 3 builtins, got %d", len(specs))
+	if len(specs) != 4 {
+		t.Fatalf("expected 4 builtins, got %d", len(specs))
 	}
-	if specs[0].ModelName != "TranslationTerm" || specs[1].ModelName != "FieldDefault" || specs[2].ModelName != "AppSetting" {
+	if specs[0].ModelName != "TranslationTerm" ||
+		specs[1].ModelName != "FieldDefault" ||
+		specs[2].ModelName != "AppSetting" ||
+		specs[3].ModelName != "PropertyDefinition" {
 		t.Fatalf("unexpected order/names: %#v", specs)
 	}
 	if !specs[0].EnsureServiceEntry {
 		t.Fatal("TranslationTerm must EnsureServiceEntry")
 	}
-	if specs[1].EnsureServiceEntry || specs[2].EnsureServiceEntry {
-		t.Fatal("FieldDefault/AppSetting must leave EnsureServiceEntry false")
+	if specs[1].EnsureServiceEntry || specs[2].EnsureServiceEntry || specs[3].EnsureServiceEntry {
+		t.Fatal("FieldDefault/AppSetting/PropertyDefinition must leave EnsureServiceEntry false")
 	}
 }
 
@@ -131,31 +134,34 @@ func TestDecideAppSetting_SupersedeInject(t *testing.T) {
 }
 
 func TestDecide_OwnerReinjectForeignClaim_NoScheduledApp(t *testing.T) {
-	// FieldDefault and AppSetting share the same claim semantics after P1.
-	for _, modelName := range []string{"FieldDefault", "AppSetting"} {
-		t.Run(modelName, func(t *testing.T) {
+	// FieldDefault / AppSetting / PropertyDefinition share the same claim semantics after P1.
+	for _, tc := range []struct {
+		modelName string
+		rel       string
+	}{
+		{"FieldDefault", "field_default"},
+		{"AppSetting", "app_setting"},
+		{"PropertyDefinition", "property_definition"},
+	} {
+		t.Run(tc.modelName, func(t *testing.T) {
 			mod := &meta.Module{
 				Name: "partner", Path: "/virtual/modules/partner",
 				ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
 			}
 			sess, db := newTestSession(t, mod)
-			rel := "field_default"
-			if modelName == "AppSetting" {
-				rel = "app_setting"
-			}
-			virt := "/virtual/modules/partner/service/models/__generated__/" + rel + ".ts"
-			seedDeclaration(t, db, modelName, "virt1", virt, "partner")
+			virt := "/virtual/modules/partner/service/models/__generated__/" + tc.rel + ".ts"
+			seedDeclaration(t, db, tc.modelName, "virt1", virt, "partner")
 
-			sess.Registry().TryClaim(modelName, "partner", "other_builder")
+			sess.Registry().TryClaim(tc.modelName, "partner", "other_builder")
 
 			if _, err := InjectAppModels(sess, nil); err != nil {
 				t.Fatalf("inject: %v", err)
 			}
-			plan := sess.Plan(modelName)
+			plan := sess.Plan(tc.modelName)
 			if !plan.NeedInject || plan.ScheduledApp != "" {
 				t.Fatalf("expected NeedInject without adopting foreign claim, got %+v", plan)
 			}
-			if owner, ok := sess.Registry().ClaimOwner(modelName, "partner"); !ok || owner != "other_builder" {
+			if owner, ok := sess.Registry().ClaimOwner(tc.modelName, "partner"); !ok || owner != "other_builder" {
 				t.Fatalf("foreign claim must remain, got %#v ok=%v", owner, ok)
 			}
 		})
@@ -439,9 +445,9 @@ func TestInject_WebEmptyEntry_EnsureThenSiblingSpecs(t *testing.T) {
 	if !tt.NeedInject || tt.ScheduledApp != "web" {
 		t.Fatalf("TranslationTerm should Ensure+NeedInject, got %+v", tt)
 	}
-	// Virtual Ensure must not unlock FieldDefault / AppSetting (package.json
-	// has only entryPoints.web — see per-app-platform-store.md §1).
-	for _, name := range []string{"FieldDefault", "AppSetting"} {
+	// Virtual Ensure must not unlock FieldDefault / AppSetting / PropertyDefinition
+	// (package.json has only entryPoints.web — see per-app-platform-store.md §1).
+	for _, name := range []string{"FieldDefault", "AppSetting", "PropertyDefinition"} {
 		plan := sess.Plan(name)
 		if plan.NeedInject || plan.SupersedeInject {
 			t.Fatalf("%s must skip after virtual Ensure, got %+v", name, plan)
@@ -470,11 +476,15 @@ func TestInject_WebEmptyEntry_EnsureThenSiblingSpecs(t *testing.T) {
 	}
 	wantFD := generatedPath(specByNameOrPanic("FieldDefault"), mod.Path)
 	wantAS := generatedPath(specByNameOrPanic("AppSetting"), mod.Path)
+	wantPD := generatedPath(specByNameOrPanic("PropertyDefinition"), mod.Path)
 	if _, ok := files[wantFD]; ok {
 		t.Fatalf("must not inject FieldDefault for web-only entry: %q", wantFD)
 	}
 	if _, ok := files[wantAS]; ok {
 		t.Fatalf("must not inject AppSetting for web-only entry: %q", wantAS)
+	}
+	if _, ok := files[wantPD]; ok {
+		t.Fatalf("must not inject PropertyDefinition for web-only entry: %q", wantPD)
 	}
 }
 
@@ -740,8 +750,9 @@ func TestInjectRegistersVirtualSource(t *testing.T) {
 	wantTT := generatedPath(specByNameOrPanic("TranslationTerm"), mod.Path)
 	wantFD := generatedPath(specByNameOrPanic("FieldDefault"), mod.Path)
 	wantAS := generatedPath(specByNameOrPanic("AppSetting"), mod.Path)
+	wantPD := generatedPath(specByNameOrPanic("PropertyDefinition"), mod.Path)
 	files := effectsFileMap(fx)
-	for _, want := range []string{wantTT, wantFD, wantAS} {
+	for _, want := range []string{wantTT, wantFD, wantAS, wantPD} {
 		if _, ok := files[want]; !ok {
 			t.Fatalf("expected virtual source at %q, got keys %#v", want, files)
 		}
@@ -749,15 +760,15 @@ func TestInjectRegistersVirtualSource(t *testing.T) {
 	if sess.LastInjectPath("TranslationTerm") != wantTT {
 		t.Fatalf("LastInjectPath TranslationTerm = %q want %q", sess.LastInjectPath("TranslationTerm"), wantTT)
 	}
-	if len(fx.Imports) != 3 {
-		t.Fatalf("Imports = %#v, want unique [TranslationTerm, FieldDefault, AppSetting] paths", fx.Imports)
+	if len(fx.Imports) != 4 {
+		t.Fatalf("Imports = %#v, want unique [TranslationTerm, FieldDefault, AppSetting, PropertyDefinition] paths", fx.Imports)
 	}
 	seen := map[string]int{}
 	for _, p := range fx.Imports {
 		seen[p]++
 	}
-	if seen[wantTT] != 1 || seen[wantFD] != 1 || seen[wantAS] != 1 {
-		t.Fatalf("Imports = %#v, want one each of %q, %q, %q", fx.Imports, wantTT, wantFD, wantAS)
+	if seen[wantTT] != 1 || seen[wantFD] != 1 || seen[wantAS] != 1 || seen[wantPD] != 1 {
+		t.Fatalf("Imports = %#v, want one each of %q, %q, %q, %q", fx.Imports, wantTT, wantFD, wantAS, wantPD)
 	}
 }
 
@@ -774,6 +785,23 @@ func TestValidateInjectAppModels_Duplicate(t *testing.T) {
 		{Path: b, Model: &meta.Model{Name: "FieldDefault", Path: b}},
 	})
 	if err == nil || !strings.Contains(err.Error(), "FIELD_DEFAULT_DUPLICATE") {
+		t.Fatalf("expected duplicate error, got %v", err)
+	}
+}
+
+func TestValidateInjectAppModels_PropertyDefinitionDuplicate(t *testing.T) {
+	mod := &meta.Module{
+		Name: "partner", Path: "/virtual/modules/partner",
+		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
+	}
+	sess, _ := newTestSession(t, mod)
+	a := "/virtual/modules/partner/service/models/pd_a.ts"
+	b := "/virtual/modules/partner/service/models/pd_b.ts"
+	err := ValidateInjectAppModels(sess, []*parser.ParserResult{
+		{Path: a, Model: &meta.Model{Name: "PropertyDefinition", Path: a}},
+		{Path: b, Model: &meta.Model{Name: "PropertyDefinition", Path: b}},
+	})
+	if err == nil || !strings.Contains(err.Error(), "PROPERTY_DEFINITION_DUPLICATE") {
 		t.Fatalf("expected duplicate error, got %v", err)
 	}
 }
@@ -811,7 +839,7 @@ func TestDecideSkipsCore(t *testing.T) {
 	if _, err := InjectAppModels(sess, nil); err != nil {
 		t.Fatalf("inject: %v", err)
 	}
-	for _, name := range []string{"TranslationTerm", "FieldDefault", "AppSetting"} {
+	for _, name := range []string{"TranslationTerm", "FieldDefault", "AppSetting", "PropertyDefinition"} {
 		if plan := sess.Plan(name); plan.NeedInject || plan.SupersedeInject {
 			t.Fatalf("%s should skip core, got %+v", name, plan)
 		}
@@ -928,5 +956,32 @@ func TestBundlePrefersExistingGeneratedPath(t *testing.T) {
 	}
 	if _, ok := effectsFileMap(fx)[canon]; !ok {
 		t.Fatal("expected virtual source at canonical meta path")
+	}
+}
+
+func TestBundleInjectAppModels_PropertyDefinitionUsesLastEligibleModule(t *testing.T) {
+	first := &meta.Module{
+		Name: "crm_first", Path: "/virtual/modules/crm_first",
+		ApplicationStr: "crm", ServiceEntryPoint: "service/main.ts",
+	}
+	last := &meta.Module{
+		Name: "crm_last", Path: "/virtual/modules/crm_last",
+		ApplicationStr: "crm", ServiceEntryPoint: "service/main.ts",
+	}
+	sess, _ := newTestSession(t, first)
+	fx, err := BundleInjectAppModels(sess, []*meta.Module{first, last})
+	if err != nil {
+		t.Fatalf("bundle: %v", err)
+	}
+	want := generatedPath(specByNameOrPanic("PropertyDefinition"), last.Path)
+	if got := sess.LastInjectPath("PropertyDefinition"); got != want {
+		t.Fatalf("PropertyDefinition path = %q, want last-eligible %q", got, want)
+	}
+	if _, ok := effectsFileMap(fx)[want]; !ok {
+		t.Fatalf("expected virtual source at %q, got %#v", want, effectsFileMap(fx))
+	}
+	firstPath := generatedPath(specByNameOrPanic("PropertyDefinition"), first.Path)
+	if _, ok := effectsFileMap(fx)[firstPath]; ok {
+		t.Fatalf("must not host PropertyDefinition under first-eligible %q", firstPath)
 	}
 }

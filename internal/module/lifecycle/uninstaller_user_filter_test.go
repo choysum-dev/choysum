@@ -308,6 +308,54 @@ func TestApplyUserFilterPurgePropagatesError(t *testing.T) {
 	}
 }
 
+func TestModuleUninstallerCleanModelsPropagatesUserFilterPurgeError(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
+		t.Fatalf("AutoMigrate CatalogEntities: %v", err)
+	}
+	ensureWebUserFilterTable(t, db)
+
+	mod := &meta.Module{Name: "demo_uf_purge_err", Status: meta.Installed, Version: "1.0.0"}
+	mod.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := db.Create(mod).Error; err != nil {
+		t.Fatalf("create module: %v", err)
+	}
+	if _, err := modmeta.ReplaceModuleDeclarations(db, mod.Id.String, []*meta.Model{{
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: xid.New().String(), Valid: true}},
+		Name:        "Item",
+		Path:        "@/demo_uf_purge_err/service/models/item.ts",
+		Application: "demo",
+		ModelTable:  "demo_item",
+		ModuleId:    mod.Id,
+	}}); err != nil {
+		t.Fatalf("create raw model: %v", err)
+	}
+	if err := modmeta.FlushEffective(db, []modmeta.LogicalKey{{Application: "demo", Name: "Item"}}); err != nil {
+		t.Fatalf("flush effective: %v", err)
+	}
+	if err := db.Exec(
+		`INSERT INTO web_user_filter(id, application, model_name, name) VALUES (?, ?, ?, ?)`,
+		xid.New().String(), "demo", "Item", "Active",
+	).Error; err != nil {
+		t.Fatalf("insert user filter: %v", err)
+	}
+	if err := db.Exec(`CREATE TRIGGER deny_uf_clean_delete BEFORE DELETE ON web_user_filter BEGIN SELECT RAISE(ABORT, 'deny delete'); END`).Error; err != nil {
+		t.Fatalf("create trigger: %v", err)
+	}
+
+	uninstaller := &moduleUninstaller{
+		runtimeScope:  runtimeScope,
+		module:        mod,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope},
+		ctx:           newOpContext(),
+	}
+	err := uninstaller.cleanModels()
+	if err == nil || !strings.Contains(err.Error(), "error deleting web user filters") {
+		t.Fatalf("cleanModels() error=%v, want user filter purge failure", err)
+	}
+}
+
 func TestApplyUserFilterPurgeOK(t *testing.T) {
 	if err := applyUserFilterPurge(nil, nil); err != nil {
 		t.Fatalf("nil args: %v", err)

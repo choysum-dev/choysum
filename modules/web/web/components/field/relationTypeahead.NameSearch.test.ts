@@ -215,29 +215,43 @@ describe('relation typeahead NameSearch wiring', () => {
 
   it('OManyToOneRefField covers nullish query and missing relationStore branches', async () => {
     const NameSearch = vi.fn(async () => undefined);
-    const withStore = mount(OManyToOneRefField as any, {
-      props: {
-        binding: makeM2OBinding({ NameSearch }),
-        renderMode: 'form',
-      },
-      global: { stubs: fieldStubs },
-    });
-    await clickRemote(withStore, '.trigger-remote-null');
-    expect(NameSearch).toHaveBeenCalledWith('', [], {
-      fields: ['Id', 'DisplayName'],
-      limit: 20,
-    });
+    let withStore: ReturnType<typeof mount> | undefined;
+    let withoutStore: ReturnType<typeof mount> | undefined;
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      withStore = mount(OManyToOneRefField as any, {
+        props: {
+          binding: makeM2OBinding({ NameSearch }),
+          renderMode: 'form',
+        },
+        global: { stubs: fieldStubs },
+      });
+      await clickRemote(withStore, '.trigger-remote-null');
+      expect(NameSearch).toHaveBeenCalledWith('', [], {
+        fields: ['Id', 'DisplayName'],
+        limit: 20,
+      });
 
-    NameSearch.mockClear();
-    const withoutStore = mount(OManyToOneRefField as any, {
-      props: {
-        binding: makeM2OBinding(undefined),
-        renderMode: 'form',
-      },
-      global: { stubs: fieldStubs },
-    });
-    await clickRemote(withoutStore);
-    expect(NameSearch).not.toHaveBeenCalled();
+      NameSearch.mockClear();
+      // RefField falls back to createStoreByModel(relationModel); silence expected warn when factory is absent.
+      withoutStore = mount(OManyToOneRefField as any, {
+        props: {
+          binding: makeM2OBinding(undefined),
+          renderMode: 'form',
+        },
+        global: { stubs: fieldStubs },
+      });
+      await clickRemote(withoutStore);
+      expect(NameSearch).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("Failed to create store for model 'demo.Partner'"),
+        expect.any(Error)
+      );
+    } finally {
+      withoutStore?.unmount();
+      withStore?.unmount();
+      warn.mockRestore();
+    }
   });
 
   it('OManyToManyTagsField remote search calls NameSearch with effective conditions', async () => {

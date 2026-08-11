@@ -186,8 +186,8 @@ var (
 
 // DefaultSpecs returns builtin C2 Spec definitions without registering them.
 // TranslationTerm is first so EnsureServiceEntry can synthesize a virtual
-// service entry for i18n-only apps. FieldDefault / AppSetting still require a
-// declared entryPoints.service (virtual Ensure must not unlock them).
+// service entry for i18n-only apps. FieldDefault / AppSetting / PropertyDefinition
+// still require a declared entryPoints.service (virtual Ensure must not unlock them).
 func DefaultSpecs() []Spec {
 	return []Spec{
 		{
@@ -211,6 +211,13 @@ func DefaultSpecs() []Spec {
 			DuplicateCode:    "APP_SETTING_DUPLICATE",
 			BaseModelFile:    "core/service/orm/model/app_setting_base_model.ts",
 			SoftDeleteFalse:  true,
+			// EnsureServiceEntry: false — skip when package.json has no service entry.
+		},
+		{
+			ModelName:        "PropertyDefinition",
+			GeneratedRelPath: "service/models/__generated__/property_definition.ts",
+			DuplicateCode:    "PROPERTY_DEFINITION_DUPLICATE",
+			BaseModelFile:    "core/service/orm/model/property_definition_base_model.ts",
 			// EnsureServiceEntry: false — skip when package.json has no service entry.
 		},
 	}

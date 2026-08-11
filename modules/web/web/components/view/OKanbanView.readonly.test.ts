@@ -21,7 +21,7 @@ describe('OKanbanView laneFieldReadonly (T5.4)', () => {
   });
 
   it('waits for OSearchView first-frame query-update instead of mount apply', () => {
-    expect(src).toContain('shouldDeferViewFirstFrame(props.searchView, OSearchView)');
+    expect(src).toContain('shouldDeferViewFirstFrame(resolvedSearchView.value, OSearchView)');
     expect(src).toContain('First-frame load: when searchView is present, wait for its query-update');
     expect(src).not.toContain('const firstApplied = ref(false)');
     expect(src).toMatch(/function onSearch\(payload[\s\S]*?lastSearchPayload\.value = payload/);

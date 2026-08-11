@@ -98,7 +98,7 @@ func decidePlan(spec *Spec, sess *Session, prebuildResults []*parser.ParserResul
 	}
 	// Honor the declared package.json entry for Specs that do not Ensure.
 	// TranslationTerm may synthesize a virtual service entry in-memory; that
-	// must not unlock FieldDefault / AppSetting for web-only modules.
+	// must not unlock FieldDefault / AppSetting / PropertyDefinition for web-only modules.
 	hasServiceEntry := sess.declaredServiceEntry(spec) != ""
 	if !hasServiceEntry && !spec.EnsureServiceEntry {
 		app := strings.TrimSpace(mod.ApplicationStr)

@@ -2,7 +2,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { nextTick, ref } from 'vue';
+import { nextTick, ref, defineComponent, provide } from 'vue';
+import { mount, flushPromises } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import { disposeOnchange, getOnchangeController } from '@/web/web/composables/useOnchange';
 
@@ -210,6 +211,57 @@ describe('getOnchangeController rebindOptions', () => {
       disposeOnchange(store);
     } finally {
       vi.useRealTimers();
+    }
+  });
+});
+
+describe('getOnchangeController view-mode inject gating', () => {
+  it('skips inject outside setup and still creates a usable controller', async () => {
+    const onchange = vi.fn(async () => ({ value: {}, messages: [] }));
+    const store = makeStore(onchange);
+    const draft = ref({ Id: '1', Name: 'A' });
+    // Call site is a plain test body (no currentInstance) — must not Vue-warn on inject.
+    const ctrl = getOnchangeController(store, 'OutsideSetup', {
+      getRoot: () => draft.value,
+    });
+    draft.value = { Id: '1', Name: 'B' };
+    await ctrl.markChanged('Name', { flush: true });
+    expect(onchange).toHaveBeenCalled();
+    disposeOnchange(store);
+  });
+
+  it('honors injected view-mode when created inside setup', async () => {
+    const onchange = vi.fn(async () => ({ value: {}, messages: [] }));
+    const store = makeStore(onchange);
+    const draft = ref({ Id: '1', Name: 'A' });
+    const viewMode = ref<'display' | 'edit'>('display');
+    let ctrl: ReturnType<typeof getOnchangeController> | undefined;
+
+    const Host = defineComponent({
+      setup() {
+        provide('view-mode', viewMode);
+        ctrl = getOnchangeController(store, 'InsideSetup', {
+          getRoot: () => draft.value,
+        });
+        return () => null;
+      },
+    });
+    const wrapper = mount(Host);
+    try {
+      expect(ctrl).toBeTruthy();
+      // Immediate display watch pauses auto-flush.
+      draft.value = { Id: '1', Name: 'B' };
+      await ctrl!.markChanged('Name');
+      expect(ctrl!.hasPending()).toBe(true);
+      expect(onchange).not.toHaveBeenCalled();
+
+      viewMode.value = 'edit';
+      await nextTick();
+      await flushPromises();
+      await vi.waitFor(() => expect(onchange).toHaveBeenCalled());
+    } finally {
+      wrapper.unmount();
+      disposeOnchange(store);
     }
   });
 });

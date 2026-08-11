@@ -47,7 +47,10 @@ func BundleOne(sess *Session, modelName string, modules []*meta.Module) (Effects
 func bundleSpec(sess *Session, spec *Spec, modules []*meta.Module) (Effects, error) {
 	var out Effects
 	modulesPath := strings.TrimSpace(sess.ctx.ModulesPath)
-	seenApp := make(map[string]struct{})
+	// Last eligible module per application wins (aligned with
+	// pickFieldDefaultOwnerModule / pickPropertyDefinitionOwnerModule).
+	hosts := make(map[string]*meta.Module)
+	order := make([]string, 0)
 	for _, mod := range modules {
 		if mod == nil {
 			continue
@@ -59,10 +62,6 @@ func bundleSpec(sess *Session, spec *Spec, modules []*meta.Module) (Effects, err
 		if strings.TrimSpace(mod.Path) == "" {
 			continue
 		}
-		if _, ok := seenApp[app]; ok {
-			continue
-		}
-
 		entry := strings.TrimSpace(mod.ServiceEntryPoint)
 		if entry == "" {
 			if !spec.EnsureServiceEntry {
@@ -71,6 +70,17 @@ func bundleSpec(sess *Session, spec *Spec, modules []*meta.Module) (Effects, err
 			if !canEnsureServiceEntry(sess, spec, mod.Path) {
 				continue
 			}
+		}
+		if _, ok := hosts[app]; !ok {
+			order = append(order, app)
+		}
+		hosts[app] = mod
+	}
+
+	for _, app := range order {
+		mod := hosts[app]
+		entry := strings.TrimSpace(mod.ServiceEntryPoint)
+		if entry == "" {
 			// Emit a virtual service entry for this Spec only. Do not mutate
 			// mod.ServiceEntryPoint — otherwise later Specs (FieldDefault /
 			// AppSetting) would incorrectly see a non-empty entry in the same
@@ -93,8 +103,6 @@ func bundleSpec(sess *Session, spec *Spec, modules []*meta.Module) (Effects, err
 				})
 			}
 		}
-
-		seenApp[app] = struct{}{}
 
 		existing, err := dbLoadModels(spec, sess.ctx.DB, app)
 		if err != nil {

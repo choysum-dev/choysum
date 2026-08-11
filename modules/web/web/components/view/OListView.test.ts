@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { defineComponent, h, inject, nextTick, reactive, ref } from 'vue';
+import { defineComponent, h, inject, markRaw, nextTick, reactive, ref } from 'vue';
 import { mount, flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import OListView from '@/web/web/components/view/OListView.vue';
@@ -482,13 +482,15 @@ describe('OListView editable / handle', () => {
   it('scopes form-root and edit view-mode to the table, not the header search', async () => {
     let headerFormRoot: any = 'unset';
     let headerViewMode: any = 'unset';
-    const HeaderSearchProbe = defineComponent({
-      setup() {
-        headerFormRoot = inject('form-root', null);
-        headerViewMode = inject('view-mode', null);
-        return () => h('span', { class: 'header-search-probe' });
-      },
-    });
+    const HeaderSearchProbe = markRaw(
+      defineComponent({
+        setup() {
+          headerFormRoot = inject('form-root', null);
+          headerViewMode = inject('view-mode', null);
+          return () => h('span', { class: 'header-search-probe' });
+        },
+      })
+    );
 
     const { wrapper } = await mountList({ searchView: HeaderSearchProbe });
     expect(wrapper.find('.header-search-probe').exists()).toBe(true);

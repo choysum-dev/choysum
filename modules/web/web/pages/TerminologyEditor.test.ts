@@ -89,10 +89,18 @@ vi.mock('@/web/web/components/view/OListView.vue', () => ({
   }),
 }));
 
-vi.mock('@/web/web/components/view/OSearchView.vue', () => ({ default: {} }));
-vi.mock('@/web/web/components/vtable/OVColumn.vue', () => ({ default: true }));
-vi.mock('@/web/web/components/field/OVarCharField.vue', () => ({ default: true }));
-vi.mock('@/web/web/components/field/OTextField.vue', () => ({ default: true }));
+vi.mock('@/web/web/components/view/OSearchView.vue', () => ({
+  default: { name: 'OSearchView', setup: () => () => null },
+}));
+vi.mock('@/web/web/components/vtable/OVColumn.vue', () => ({
+  default: { name: 'OVColumn', setup: () => () => null },
+}));
+vi.mock('@/web/web/components/field/OVarCharField.vue', () => ({
+  default: { name: 'OVarCharField', setup: () => () => null },
+}));
+vi.mock('@/web/web/components/field/OTextField.vue', () => ({
+  default: { name: 'OTextField', setup: () => () => null },
+}));
 
 import TerminologyEditor from './TerminologyEditor.vue';
 

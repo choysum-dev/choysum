@@ -5,7 +5,8 @@ package injectappmodel
 
 import "sync"
 
-// Spec describes one injectable app-scoped model (FieldDefault, AppSetting, …).
+// Spec describes one injectable app-scoped model (FieldDefault, AppSetting,
+// PropertyDefinition, …).
 type Spec struct {
 	ModelName        string
 	GeneratedRelPath string
@@ -14,9 +15,9 @@ type Spec struct {
 	SoftDeleteFalse  bool   // AppSetting: emit softDelete: false in @Model options
 	// EnsureServiceEntry: when true, Decide may proceed without ServiceEntryPoint
 	// and Materialize emits a virtual service/index.ts (no package.json / disk
-	// pollution). FieldDefault / AppSetting leave this false so a virtual Ensure
-	// for TranslationTerm does not unlock them — they require a declared
-	// entryPoints.service on the module.
+	// pollution). FieldDefault / AppSetting / PropertyDefinition leave this false
+	// so a virtual Ensure for TranslationTerm does not unlock them — they require
+	// a declared entryPoints.service on the module.
 	EnsureServiceEntry bool
 }
 

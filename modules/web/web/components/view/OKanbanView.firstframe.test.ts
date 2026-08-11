@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { defineComponent, h, reactive, ref } from 'vue';
+import { defineComponent, h, markRaw, reactive, ref } from 'vue';
 import { mount, flushPromises } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -13,7 +13,10 @@ const { applyMock, preloadLaneMock, awaitFieldSelectionMock, deferState, oSearch
     preloadLaneMock: vi.fn(async () => {}),
     awaitFieldSelectionMock: vi.fn(async () => {}),
     deferState: { defer: false },
-    oSearchViewSentinel: markRaw({ name: 'OSearchViewSentinel' }),
+    oSearchViewSentinel: markRaw({
+      name: 'OSearchViewSentinel',
+      setup: () => () => null,
+    }),
   };
 });
 
@@ -136,12 +139,14 @@ describe('OKanbanView first-frame load', () => {
 
   it('still mounts apply for a custom searchView even when defer flag is set', async () => {
     deferState.defer = true;
-    const SearchStub = defineComponent({
-      name: 'SearchStub',
-      setup() {
-        return () => h('div');
-      },
-    });
+    const SearchStub = markRaw(
+      defineComponent({
+        name: 'SearchStub',
+        setup() {
+          return () => h('div');
+        },
+      })
+    );
     const wrapper = mount(OKanbanView as any, {
       props: {
         store: makeStore(),
@@ -162,12 +167,14 @@ describe('OKanbanView first-frame load', () => {
 
   it('runs mount apply when first-frame should not defer', async () => {
     deferState.defer = false;
-    const CustomSearch = defineComponent({
-      name: 'CustomSearch',
-      setup() {
-        return () => h('div', { class: 'custom-search' });
-      },
-    });
+    const CustomSearch = markRaw(
+      defineComponent({
+        name: 'CustomSearch',
+        setup() {
+          return () => h('div', { class: 'custom-search' });
+        },
+      })
+    );
     const wrapper = mount(OKanbanView as any, {
       props: {
         store: makeStore(),
@@ -187,22 +194,45 @@ describe('OKanbanView first-frame load', () => {
     }
   });
 
+  it('covers resolvedSearchView null branch when searchView is omitted', async () => {
+    deferState.defer = false;
+    const wrapper = mount(OKanbanView as any, {
+      props: {
+        store: makeStore(),
+        showHeader: true,
+        showActions: false,
+        showPaginate: false,
+      },
+      global: { stubs },
+    });
+    try {
+      await flushPromises();
+      expect(wrapper.find('.o-kanban__search').exists()).toBe(false);
+      expect(awaitFieldSelectionMock).toHaveBeenCalled();
+      expect(applyMock).toHaveBeenCalled();
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
   it('skips mount apply when custom search already emitted query-update', async () => {
     deferState.defer = false;
     // Hang field selection so onSearch never reaches apply; mount must still skip.
     awaitFieldSelectionMock.mockImplementationOnce(() => new Promise(() => {}));
-    const SyncEmitSearch = defineComponent({
-      name: 'SyncEmitSearch',
-      emits: ['query-update'],
-      setup(_, { emit }) {
-        emit('query-update', {
-          keyword: 'pre',
-          appliedFilters: [],
-          appliedGroups: [],
-        });
-        return () => h('div', { class: 'sync-emit-search' });
-      },
-    });
+    const SyncEmitSearch = markRaw(
+      defineComponent({
+        name: 'SyncEmitSearch',
+        emits: ['query-update'],
+        setup(_, { emit }) {
+          emit('query-update', {
+            keyword: 'pre',
+            appliedFilters: [],
+            appliedGroups: [],
+          });
+          return () => h('div', { class: 'sync-emit-search' });
+        },
+      })
+    );
     const wrapper = mount(OKanbanView as any, {
       props: {
         store: makeStore(),
@@ -224,14 +254,16 @@ describe('OKanbanView first-frame load', () => {
 
   it('onSearch with falsy payload does not apply and does not block mount fallback', async () => {
     deferState.defer = false;
-    const FalsyEmitSearch = defineComponent({
-      name: 'FalsyEmitSearch',
-      emits: ['query-update'],
-      setup(_, { emit }) {
-        emit('query-update', null as any);
-        return () => h('div');
-      },
-    });
+    const FalsyEmitSearch = markRaw(
+      defineComponent({
+        name: 'FalsyEmitSearch',
+        emits: ['query-update'],
+        setup(_, { emit }) {
+          emit('query-update', null as any);
+          return () => h('div');
+        },
+      })
+    );
     const wrapper = mount(OKanbanView as any, {
       props: {
         store: makeStore(),
