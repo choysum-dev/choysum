@@ -7,8 +7,15 @@ export { getModelRepository } from './model_internal_facade';
 export { default as AppSettingBaseModel, type AppSettingModelCtor } from './app_setting_base_model';
 export { default as FieldDefaultBaseModel } from './field_default_base_model';
 export { default as PropertyDefinitionBaseModel } from './property_definition_base_model';
-export { resolveProperties, loadEffectivePropertySchema } from './properties_resolve';
+export { resolveProperties, loadEffectivePropertySchema, type ResolvePropertiesOptions } from './properties_resolve';
 export { validatePropertiesWrite, validatePropertiesFieldsOnWrite } from './properties_write';
+export {
+  PROPERTIES_V1_TYPES,
+  normalizePropertiesMap,
+  isPlainPropertiesMap,
+  type PropertyItemDefinition,
+  type ResolvedPropertyItem,
+} from './properties_types';
 export {
   lookupPropertyDefinitionModel,
   __setLookupPropertyDefinitionModelForTest,

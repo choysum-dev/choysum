@@ -162,6 +162,7 @@ export interface WebModelStore<TModel extends BaseModel> extends ScopedStore {
   UpdateFieldTranslations: ClientModelService<typeof BaseModel.UpdateFieldTranslations>;
   GetFieldCompanyValues: ClientModelService<typeof BaseModel.GetFieldCompanyValues>;
   UpdateFieldCompanyValues: ClientModelService<typeof BaseModel.UpdateFieldCompanyValues>;
+  ResolveProperties: ClientModelService<typeof BaseModel.ResolveProperties<TModel>>;
 
   /**
    * Fetch (or reuse cached) FieldsGet presentation overlay for the active terminology lang.
