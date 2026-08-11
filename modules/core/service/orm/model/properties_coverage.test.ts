@@ -469,18 +469,49 @@ test('PropertyDefinitionBaseModel Create/Update validate Definition and unique i
   const origCreateMany = BaseModel.CreateMany;
   const origUpdate = BaseModel.Update;
   const origUpdateById = BaseModel.UpdateById;
+  const origSearch = PpCovPropertyDefinition.Search;
+  const scopeStore: any[] = [];
   (BaseModel as any).Create = async function (this: any, value: any) {
-    return { Id: 'PD-1', ...value };
+    const row = { Id: `PD-${scopeStore.length + 1}`, ...value };
+    scopeStore.push(row);
+    return row;
   };
   (BaseModel as any).CreateMany = async function (this: any, values: any[]) {
-    return (values || []).map((v: any, i: number) => ({ Id: `PD-m${i}`, ...v }));
+    return (values || []).map((v: any) => {
+      const row = { Id: `PD-${scopeStore.length + 1}`, ...v };
+      scopeStore.push(row);
+      return row;
+    });
   };
   (BaseModel as any).Update = async function (this: any, _c: any, values: any) {
     return [{ Id: 'PD-u', ...values }];
   };
   (BaseModel as any).UpdateById = async function (this: any, id: string, values: any) {
-    return { Id: id, ...values };
+    const row = scopeStore.find(r => r.Id === id) || { Id: id };
+    Object.assign(row, values);
+    return row;
   };
+  PpCovPropertyDefinition.Search = (async (condition: any) => {
+    const and = condition?.And as unknown[] | undefined;
+    if (!Array.isArray(and)) return [...scopeStore];
+    return scopeStore.filter(row => {
+      for (const clause of and) {
+        if (!Array.isArray(clause) || clause.length < 3) continue;
+        const [field, op, expected] = clause;
+        const actual = (row as any)[field as string];
+        if (op === '!=') {
+          if (String(actual) === String(expected)) return false;
+          continue;
+        }
+        if (expected === null || expected === undefined) {
+          if (actual != null && actual !== '') return false;
+        } else if (String(actual) !== String(expected)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }) as any;
 
   const storeMeta = MetadataStorage.instance.getModelMetadata(PpCovPropertyDefinition as any) as any;
   const prevTable = storeMeta.tableName;
@@ -497,7 +528,8 @@ test('PropertyDefinitionBaseModel Create/Update validate Definition and unique i
       },
     };
     await __ensureDefinitionUniqueIndexForTest(PpCovPropertyDefinition as any);
-    expect(ddls.some(d => d.includes('NULLS NOT DISTINCT'))).toBe(true);
+    expect(ddls.some(d => d.includes('coalesce(container_model'))).toBe(true);
+    expect(ddls.some(d => d.includes('NULLS NOT DISTINCT'))).toBe(false);
     const before = ddls.length;
     await __ensureDefinitionUniqueIndexForTest(PpCovPropertyDefinition as any);
     expect(ddls.length).toBe(before);
@@ -509,13 +541,45 @@ test('PropertyDefinitionBaseModel Create/Update validate Definition and unique i
     } as any);
     expect((created as any).Definition?.[0]?.name).toBe('tax');
 
+    // Duplicate scope must fail (app-level uniqueness).
+    try {
+      await PropertyDefinitionBaseModel.Create.call(PpCovPropertyDefinition, {
+        TargetModel: 'PpCovPartner',
+        PropertiesField: 'PartnerProperties',
+        Definition: [{ name: 'other', type: 'char' }],
+      } as any);
+      expect(false).toBe(true);
+    } catch (err) {
+      expect(err instanceof ChoysumError).toBe(true);
+      expect((err as ChoysumError).code).toBe('PROPERTY_DEFINITION_DUPLICATE_SCOPE');
+    }
+
     await PropertyDefinitionBaseModel.CreateMany.call(PpCovPropertyDefinition, [
       {
         TargetModel: 'PpCovPartner',
-        PropertiesField: 'PartnerProperties',
+        PropertiesField: 'OtherProperties',
         Definition: [{ name: 'a', type: 'char' }],
       },
     ] as any);
+
+    try {
+      await PropertyDefinitionBaseModel.CreateMany.call(PpCovPropertyDefinition, [
+        {
+          TargetModel: 'Batch',
+          PropertiesField: 'P',
+          Definition: [{ name: 'a', type: 'char' }],
+        },
+        {
+          TargetModel: 'Batch',
+          PropertiesField: 'P',
+          Definition: [{ name: 'b', type: 'char' }],
+        },
+      ] as any);
+      expect(false).toBe(true);
+    } catch (err) {
+      expect(err instanceof ChoysumError).toBe(true);
+      expect((err as ChoysumError).code).toBe('PROPERTY_DEFINITION_DUPLICATE_SCOPE');
+    }
 
     await PropertyDefinitionBaseModel.Update.call(
       PpCovPropertyDefinition,
@@ -526,9 +590,9 @@ test('PropertyDefinitionBaseModel Create/Update validate Definition and unique i
       Definition: [{ name: 'c', type: 'boolean', default: false }],
     } as any);
 
-    await PropertyDefinitionBaseModel.Create.call(PpCovPropertyDefinition, {
-      TargetModel: 'PpCovPartner',
-      PropertiesField: 'PartnerProperties',
+    // Scope change on UpdateById checks uniqueness excluding self.
+    await PropertyDefinitionBaseModel.UpdateById.call(PpCovPropertyDefinition, 'PD-1', {
+      ContainerId: 'parent-1',
     } as any);
 
     __resetPropertyDefinitionUniqueIndexTablesForTest();
@@ -552,7 +616,13 @@ test('PropertyDefinitionBaseModel Create/Update validate Definition and unique i
         },
       },
     };
-    await __ensureDefinitionUniqueIndexForTest(PpCovPropertyDefinition as any);
+    try {
+      await __ensureDefinitionUniqueIndexForTest(PpCovPropertyDefinition as any);
+      expect(false).toBe(true);
+    } catch (err) {
+      expect(err instanceof ChoysumError).toBe(true);
+      expect((err as ChoysumError).code).toBe('PROPERTY_DEFINITION_INDEX');
+    }
 
     __resetPropertyDefinitionUniqueIndexTablesForTest();
     (globalThis as any).$choysum = { db: { dialectName: 'sqlite' } };
@@ -569,7 +639,7 @@ test('PropertyDefinitionBaseModel Create/Update validate Definition and unique i
       },
     };
     await __ensureDefinitionUniqueIndexForTest(PpCovPropertyDefinition as any);
-    expect(ddls.some(d => d.includes('NULLS NOT DISTINCT'))).toBe(true);
+    expect(ddls.some(d => d.includes('coalesce(container_model'))).toBe(true);
 
     storeMeta.tableName = '';
     __resetPropertyDefinitionUniqueIndexTablesForTest();
@@ -596,7 +666,29 @@ test('PropertyDefinitionBaseModel Create/Update validate Definition and unique i
     (BaseModel as any).CreateMany = origCreateMany;
     (BaseModel as any).Update = origUpdate;
     (BaseModel as any).UpdateById = origUpdateById;
+    PpCovPropertyDefinition.Search = origSearch;
     __resetPropertyDefinitionUniqueIndexTablesForTest();
+  }
+});
+
+test('properties write stores __proto__ as own data key', async () => {
+  installRows([
+    {
+      TargetModel: 'PpCovPartner',
+      PropertiesField: 'PartnerProperties',
+      ContainerId: null,
+      Definition: [{ name: '__proto__', type: 'char' }],
+    },
+  ]);
+  try {
+    const submitted = JSON.parse('{"__proto__":"safe"}');
+    const out = await validatePropertiesWrite(PpCovPartner as any, 'PartnerProperties', submitted, {});
+    expect(out).toBeTruthy();
+    expect(Object.prototype.hasOwnProperty.call(out, '__proto__')).toBe(true);
+    expect((out as Record<string, unknown>)['__proto__']).toBe('safe');
+    expect(Object.getPrototypeOf(out)).toBe(null);
+  } finally {
+    __clearLookupPropertyDefinitionModelForTest();
   }
 });
 

@@ -68,7 +68,7 @@ export async function validatePropertiesWrite(
     );
   }
 
-  const out: Record<string, unknown> = {};
+  const out: Record<string, unknown> = Object.create(null);
   for (const key of keys) {
     const item = byName.get(key);
     if (!item) {
