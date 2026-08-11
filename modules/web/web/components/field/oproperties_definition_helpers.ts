@@ -44,7 +44,7 @@ export function definitionItemsToDrafts(items: unknown): DefinitionEditorDraftIt
     }
     out.push({
       name,
-      type: PROPERTIES_V1_TYPES.has(type) ? type : type,
+      type,
       string: item.string == null ? '' : String(item.string),
       default: item.default == null ? '' : String(item.default),
       readonly: item.readonly === true,
@@ -55,7 +55,7 @@ export function definitionItemsToDrafts(items: unknown): DefinitionEditorDraftIt
 }
 
 /** Build Definition payload for Create/Update. Invalid selection JSON → throws. */
-export function draftsToDefinitionItems(drafts: DefinitionEditorDraftItem[]): PropertyItemDefinition[] {
+export function draftsToDefinitionItems(drafts: DefinitionEditorDraftItem[] | null | undefined): PropertyItemDefinition[] {
   const out: PropertyItemDefinition[] = [];
   for (const draft of drafts || []) {
     const name = String(draft.name || '').trim();

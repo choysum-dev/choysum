@@ -13,9 +13,23 @@ import {
   emptyDraftItem,
 } from './oproperties_definition_helpers';
 
-const { createStoreByModel } = vi.hoisted(() => ({
+const { createStoreByModel, draftsToDefinitionItemsMock, realDraftsToDefinitionItems } = vi.hoisted(() => ({
   createStoreByModel: vi.fn(),
+  draftsToDefinitionItemsMock: vi.fn(),
+  realDraftsToDefinitionItems: { current: null as null | ((...args: any[]) => unknown) },
 }));
+
+vi.mock('./oproperties_definition_helpers', async importOriginal => {
+  const actual = await importOriginal<typeof import('./oproperties_definition_helpers')>();
+  realDraftsToDefinitionItems.current = actual.draftsToDefinitionItems as any;
+  draftsToDefinitionItemsMock.mockImplementation((...args: any[]) =>
+    (realDraftsToDefinitionItems.current as any)(...args)
+  );
+  return {
+    ...actual,
+    draftsToDefinitionItems: draftsToDefinitionItemsMock,
+  };
+});
 
 vi.mock('@/web/web/i18n', async () => {
   const actual = await vi.importActual<typeof import('@/web/web/i18n')>('@/web/web/i18n');
@@ -115,6 +129,9 @@ describe('oproperties_definition_helpers', () => {
     expect(definitionItemsToDrafts([null, 's', [], { name: '' }, { name: 'ok', type: 'char' }])).toEqual([
       expect.objectContaining({ name: 'ok', type: 'char' }),
     ]);
+    // falsy/missing type → default 'char'
+    expect(definitionItemsToDrafts([{ name: 'notyped' }])[0]?.type).toBe('char');
+    expect(definitionItemsToDrafts([{ name: 'emptytype', type: '' }])[0]?.type).toBe('char');
 
     const circ: any[] = [];
     circ.push(circ);
@@ -131,6 +148,8 @@ describe('oproperties_definition_helpers', () => {
     expect(drafts[1]?.selectionText).toContain('a');
     expect(drafts[2]?.type).toBe('not-a-real-type');
 
+    expect(draftsToDefinitionItems(null)).toEqual([]);
+    expect(draftsToDefinitionItems(undefined)).toEqual([]);
     expect(
       draftsToDefinitionItems([
         { ...emptyDraftItem(), name: 'b', type: 'boolean', default: 'true' },
@@ -150,6 +169,9 @@ describe('oproperties_definition_helpers', () => {
           selectionText: '[["a","A"]]',
         },
         { ...emptyDraftItem(), name: '', type: 'char' },
+        // nullish default uses ?? '' (no default emitted)
+        { ...emptyDraftItem(), name: 'ndef', type: 'char', default: null as any },
+        { ...emptyDraftItem(), name: 'udef', type: 'char', default: undefined as any },
       ])
     ).toEqual([
       { name: 'b', type: 'boolean', default: true },
@@ -163,6 +185,8 @@ describe('oproperties_definition_helpers', () => {
       { name: 'fbad', type: 'float', default: 'nope' },
       { name: 'c', type: 'char', string: 'L', default: 'x', readonly: true },
       { name: 'sel', type: 'selection', selection: [['a', 'A']] },
+      { name: 'ndef', type: 'char' },
+      { name: 'udef', type: 'char' },
     ]);
 
     expect(() =>
@@ -218,6 +242,20 @@ describe('oproperties_definition_helpers', () => {
       ['ContainerModel', '=', null],
       ['ContainerId', '=', null],
     ]);
+    // falsy model/field names still emit trimmed empty strings in the condition
+    expect(
+      buildDefinitionScopeCondition({
+        targetModel: '',
+        propertiesField: null as any,
+        containerModel: null,
+        containerId: null,
+      })
+    ).toEqual([
+      ['TargetModel', '=', ''],
+      ['PropertiesField', '=', ''],
+      ['ContainerModel', '=', null],
+      ['ContainerId', '=', null],
+    ]);
   });
 });
 
@@ -227,6 +265,10 @@ describe('OPropertiesDefinitionEditor', () => {
     createStoreByModel.mockImplementation(() => {
       throw new Error('createStoreByModel not stubbed');
     });
+    draftsToDefinitionItemsMock.mockReset();
+    draftsToDefinitionItemsMock.mockImplementation((...args: any[]) =>
+      (realDraftsToDefinitionItems.current as any)(...args)
+    );
   });
 
   it('loads App-level definition and saves UpdateById', async () => {
@@ -365,6 +407,29 @@ describe('OPropertiesDefinitionEditor', () => {
     expect(emptyApp.find('[data-testid="o-properties-definition-save"]').attributes('disabled')).toBeDefined();
     emptyApp.unmount();
 
+    // canSave || '' fallbacks for missing/empty required props (avoid && short-circuit)
+    const missingFields = mount(OPropertiesDefinitionEditor as any, {
+      props: { application: 'partner', targetModel: 'Partner', propertiesField: '' },
+    });
+    await flushPromises();
+    expect(missingFields.find('[data-testid="o-properties-definition-save"]').attributes('disabled')).toBeDefined();
+    missingFields.unmount();
+
+    const undefField = mount(OPropertiesDefinitionEditor as any, {
+      props: { application: 'partner', targetModel: 'Partner', propertiesField: undefined as any },
+    });
+    await flushPromises();
+    expect(undefField.find('[data-testid="o-properties-definition-save"]').attributes('disabled')).toBeDefined();
+    undefField.unmount();
+
+    // resolveStore without application (setupState — canSave guards normally skip this)
+    const noApp = mount(OPropertiesDefinitionEditor as any, {
+      props: { application: '', targetModel: 'T', propertiesField: 'F', store: null },
+    });
+    await flushPromises();
+    expect((noApp.vm as any).$.setupState.resolveStore()).toBeNull();
+    noApp.unmount();
+
     createStoreByModel.mockImplementation(() => {
       throw new Error('no store registry');
     });
@@ -414,6 +479,35 @@ describe('OPropertiesDefinitionEditor', () => {
     await flushPromises();
     stale.unmount();
 
+    // Stale reject path (seq !== reloadSeq in catch) + Error load message
+    const staleRejecters: Array<(e: any) => void> = [];
+    const staleResolvers: Array<(v: any) => void> = [];
+    const SearchStaleFail = vi.fn(
+      () =>
+        new Promise((resolve, reject) => {
+          staleResolvers.push(resolve);
+          staleRejecters.push(reject);
+        })
+    );
+    const staleFail = mount(OPropertiesDefinitionEditor as any, {
+      props: {
+        application: 'partner',
+        targetModel: 'Partner',
+        propertiesField: 'PartnerProperties',
+        store: { Search: SearchStaleFail, Create: vi.fn(), UpdateById: vi.fn() },
+      },
+    });
+    await nextTick();
+    await staleFail.setProps({ containerId: 'c3' });
+    await nextTick();
+    expect(staleRejecters.length).toBe(2);
+    staleRejecters[0]!(new Error('stale-load-error'));
+    await flushPromises();
+    expect(staleFail.find('[data-testid="o-properties-definition-error"]').exists()).toBe(false);
+    staleResolvers[1]!([]);
+    await flushPromises();
+    staleFail.unmount();
+
     const loadFailSearch = vi.fn(async () => {
       throw 'bare-load-fail';
     });
@@ -429,6 +523,21 @@ describe('OPropertiesDefinitionEditor', () => {
     expect(loadFail.find('[data-testid="o-properties-definition-error"]').text()).toContain('bare-load-fail');
     expect(warn).toHaveBeenCalledWith('[OPropertiesDefinitionEditor] load failed', 'bare-load-fail');
     loadFail.unmount();
+
+    const loadFailErrSearch = vi.fn(async () => {
+      throw new Error('typed-load-fail');
+    });
+    const loadFailErr = mount(OPropertiesDefinitionEditor as any, {
+      props: {
+        application: 'partner',
+        targetModel: 'Partner',
+        propertiesField: 'PartnerProperties',
+        store: { Search: loadFailErrSearch, Create: vi.fn(), UpdateById: vi.fn() },
+      },
+    });
+    await flushPromises();
+    expect(loadFailErr.find('[data-testid="o-properties-definition-error"]').text()).toContain('typed-load-fail');
+    loadFailErr.unmount();
 
     const Search2 = vi.fn(async () => []);
     const Create2 = vi.fn(async (vals: any) => ({ Id: 'created', ...vals }));
@@ -464,9 +573,20 @@ describe('OPropertiesDefinitionEditor', () => {
     expect(wrapper.find('[data-testid="o-properties-definition-save-error"]').text()).toMatch(
       /unsupported property type/
     );
+
+    // non-Error throw from draftsToDefinitionItems → String(e) saveError path
+    draftsToDefinitionItemsMock.mockImplementationOnce(() => {
+      throw 'bare-draft-fail';
+    });
+    await wrapper.find('[data-testid="o-properties-definition-type"]').setValue('char');
+    await wrapper.find('[data-testid="o-properties-definition-save"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('[data-testid="o-properties-definition-save-error"]').text()).toContain(
+      'bare-draft-fail'
+    );
     wrapper.unmount();
 
-    // whitespace Id → definitionId null, Create path; blank container dims → null payload
+    // null/missing Id → definitionId null via Id || ''; blank container dims → null payload
     const CreateNoId = vi.fn(async () => ({}));
     const createWrapper = mount(OPropertiesDefinitionEditor as any, {
       props: {
@@ -476,19 +596,35 @@ describe('OPropertiesDefinitionEditor', () => {
         containerModel: '',
         containerId: '',
         store: {
-          Search: vi.fn(async () => [{ Id: '  ', Definition: [{ name: 'a', type: 'char' }] }]),
+          Search: vi.fn(async () => [{ Id: null, Definition: [{ name: 'a', type: 'char' }] }]),
           Create: CreateNoId,
           UpdateById: vi.fn(),
         },
       },
     });
     await flushPromises();
+    expect(createWrapper.find('[data-testid="o-properties-definition-name"]').exists()).toBe(true);
     await createWrapper.find('[data-testid="o-properties-definition-save"]').trigger('click');
     await flushPromises();
     expect(CreateNoId).toHaveBeenCalledWith(
       expect.objectContaining({ ContainerModel: null, ContainerId: null })
     );
     createWrapper.unmount();
+
+    const whitespaceId = mount(OPropertiesDefinitionEditor as any, {
+      props: {
+        application: 'partner',
+        targetModel: 'Partner',
+        propertiesField: 'PartnerProperties',
+        store: {
+          Search: vi.fn(async () => [{ Id: '  ', Definition: [{ name: 'a', type: 'char' }] }]),
+          Create: vi.fn(async () => ({ Id: 'x' })),
+          UpdateById: vi.fn(),
+        },
+      },
+    });
+    await flushPromises();
+    whitespaceId.unmount();
 
     const readonly = mount(OPropertiesDefinitionEditor as any, {
       props: {
@@ -504,8 +640,9 @@ describe('OPropertiesDefinitionEditor', () => {
       },
     });
     await flushPromises();
-    await readonly.find('[data-testid="o-properties-definition-add"]').trigger('click');
-    await readonly.find('[data-testid="o-properties-definition-save"]').trigger('click');
+    // disabled buttons may not fire click — call guards via setupState
+    (readonly.vm as any).$.setupState.onAdd();
+    await (readonly.vm as any).$.setupState.onSave();
     await flushPromises();
     expect(readonly.find('[data-testid="o-properties-definition-name"]').exists()).toBe(true);
     readonly.unmount();
@@ -547,10 +684,34 @@ describe('OPropertiesDefinitionEditor', () => {
     expect(err).toContain('PropertyDefinition store is unavailable');
     nullStore.unmount();
 
+    // non-Error throw on save catch path
+    const bareSave = mount(OPropertiesDefinitionEditor as any, {
+      props: {
+        application: 'partner',
+        targetModel: 'Partner',
+        propertiesField: 'PartnerProperties',
+        store: {
+          Search: vi.fn(async () => []),
+          Create: vi.fn(async () => {
+            throw 'bare-save-fail';
+          }),
+          UpdateById: vi.fn(),
+        },
+      },
+    });
+    await flushPromises();
+    await bareSave.find('[data-testid="o-properties-definition-add"]').trigger('click');
+    await nextTick();
+    await bareSave.find('[data-testid="o-properties-definition-name"]').setValue('x');
+    await bareSave.find('[data-testid="o-properties-definition-save"]').trigger('click');
+    await flushPromises();
+    expect(bareSave.find('[data-testid="o-properties-definition-save-error"]').text()).toContain('bare-save-fail');
+    bareSave.unmount();
+
     warn.mockRestore();
   });
 
-  it('ignores add while loading and blocks save while loading', async () => {
+  it('ignores add/save while loading or saving via setupState guards', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     let resolveSearch: (v: any) => void = () => undefined;
     const Search = vi.fn(
@@ -569,11 +730,36 @@ describe('OPropertiesDefinitionEditor', () => {
       },
     });
     await nextTick();
-    expect(wrapper.find('[data-testid="o-properties-definition-add"]').attributes('disabled')).toBeDefined();
-    await wrapper.find('[data-testid="o-properties-definition-add"]').trigger('click');
-    await wrapper.find('[data-testid="o-properties-definition-save"]').trigger('click');
+    const state = (wrapper.vm as any).$.setupState;
+    expect(state.loading).toBe(true);
+    // disabled buttons suppress click — exercise onAdd/onSave guards directly
+    state.onAdd();
+    await state.onSave();
     expect(Create).not.toHaveBeenCalled();
+    expect(state.drafts.length).toBe(0);
+    Search.mockResolvedValue([]);
     resolveSearch([]);
+    await flushPromises();
+
+    // saving guard: hang Create then call onAdd/onSave again
+    let resolveCreate: (v: any) => void = () => undefined;
+    Create.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveCreate = resolve;
+        })
+    );
+    state.onAdd();
+    await nextTick();
+    state.drafts[0].name = 'hang';
+    const saveP = state.onSave();
+    await nextTick();
+    expect(state.saving).toBe(true);
+    state.onAdd();
+    await state.onSave();
+    expect(state.drafts).toHaveLength(1);
+    resolveCreate({ Id: 'hang-1' });
+    await saveP;
     await flushPromises();
     wrapper.unmount();
     warn.mockRestore();

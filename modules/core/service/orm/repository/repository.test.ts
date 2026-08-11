@@ -3636,7 +3636,9 @@ test('repository assertCompanyWriteAccessForIds and assertRecordRuleTargetsAllow
   };
 
   await repository.assertCompanyWriteAccessForIds([]);
-  await repository.assertCompanyWriteAccessForIds(['', '  ']);
+  await repository.assertCompanyWriteAccessForIds(null as any);
+  await repository.assertCompanyWriteAccessForIds(undefined as any);
+  await repository.assertCompanyWriteAccessForIds(['', '  ', null as any, undefined as any]);
   expect(calls.company.length).toBe(0);
 
   await repository.assertCompanyWriteAccessForIds(['a', ' b ', '']);
