@@ -30,6 +30,7 @@ import { MetadataStorage } from '../metadata/storage';
 import { ValidationPipelineError } from '../metadata';
 import { ChoysumError } from '@/core/service/error';
 import { resolveModelConstructor } from './model_registry';
+import { __setParentWritableProbeForTest } from './properties_definition_acl';
 
 @Model('PpCovProject', { application: 'ppcov' })
 class PpCovProject extends BaseModel {
@@ -590,10 +591,13 @@ test('PropertyDefinitionBaseModel Create/Update validate Definition and unique i
       Definition: [{ name: 'c', type: 'boolean', default: false }],
     } as any);
 
-    // Scope change on UpdateById checks uniqueness excluding self.
+    // Scope change on UpdateById checks uniqueness excluding self (PP8 parent write allowed via probe).
+    __setParentWritableProbeForTest(async () => undefined);
     await PropertyDefinitionBaseModel.UpdateById.call(PpCovPropertyDefinition, 'PD-1', {
+      ContainerModel: 'PpCovProject',
       ContainerId: 'parent-1',
     } as any);
+    __setParentWritableProbeForTest(undefined);
 
     __resetPropertyDefinitionUniqueIndexTablesForTest();
     (globalThis as any).$choysum = {
@@ -668,6 +672,7 @@ test('PropertyDefinitionBaseModel Create/Update validate Definition and unique i
     (BaseModel as any).UpdateById = origUpdateById;
     PpCovPropertyDefinition.Search = origSearch;
     __resetPropertyDefinitionUniqueIndexTablesForTest();
+    __setParentWritableProbeForTest(undefined);
   }
 });
 
@@ -898,6 +903,7 @@ test('properties coverage: remaining branch edges for 100% patch', async () => {
   PpCovPropertyDefinition.Search = (async () => []) as any;
 
   const originalChoysum = (globalThis as any).$choysum;
+  __setParentWritableProbeForTest(async () => undefined);
   try {
     (globalThis as any).$choysum = undefined;
     await PropertyDefinitionBaseModel.Create.call(PpCovPropertyDefinition, {
@@ -936,6 +942,7 @@ test('properties coverage: remaining branch edges for 100% patch', async () => {
     ] as any);
 
     await PropertyDefinitionBaseModel.UpdateById.call(PpCovPropertyDefinition, 'missing', {
+      ContainerModel: 'ParentModel',
       ContainerId: 'c1',
       TargetModel: 'T',
       PropertiesField: 'F',
@@ -973,5 +980,6 @@ test('properties coverage: remaining branch edges for 100% patch', async () => {
     (BaseModel as any).UpdateById = origUpdateById;
     PpCovPropertyDefinition.Search = origSearch;
     __resetPropertyDefinitionUniqueIndexTablesForTest();
+    __setParentWritableProbeForTest(undefined);
   }
 });

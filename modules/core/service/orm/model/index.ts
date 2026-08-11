@@ -21,3 +21,12 @@ export {
   __setLookupPropertyDefinitionModelForTest,
   __clearLookupPropertyDefinitionModelForTest,
 } from './properties_lookup';
+export {
+  assertPropertyDefinitionParentWritable,
+  __setParentWritableProbeForTest,
+  withPropertyDefinitionParentAclBypass,
+} from './properties_definition_acl';
+export {
+  purgePropertyDefinitionsForContainers,
+  purgePropertyDefinitionsAfterParentDelete,
+} from './properties_definition_purge';

@@ -7,6 +7,7 @@ import { resolveRepositoryWithSoftDeleteOptions } from './model_soft_delete_scop
 import { collectModelUpstreamInverseFields, triggerModelUpstream } from './model_runtime_service_facade';
 import type { RuntimeModelCtor } from './types';
 import type { ObjectRecord } from '../../../utils/types';
+import { purgePropertyDefinitionsAfterParentDelete } from './properties_definition_purge';
 
 type DeleteRepositoryLike = {
   search(condition: unknown, options?: { fields?: unknown }): Promise<Array<ObjectRecord>>;
@@ -34,6 +35,11 @@ export class DeleteOperations {
     });
 
     const result = await repository.delete(condition as unknown);
+
+    const deletedIds = (oldRows || []).map(row => String((row as any)?.Id || '').trim()).filter(Boolean);
+    if (deletedIds.length) {
+      await purgePropertyDefinitionsAfterParentDelete(ModelCtor, deletedIds);
+    }
 
     for (const row of oldRows || []) {
       try {
