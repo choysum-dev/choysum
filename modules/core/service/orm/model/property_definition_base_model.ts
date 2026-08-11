@@ -14,13 +14,16 @@ function fail(code: string, message: string): never {
   raiseDomainError('core', code, message);
 }
 
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 function normalizeDefinitionOnVals(vals: Record<string, unknown> | undefined): void {
   if (!vals || !Object.prototype.hasOwnProperty.call(vals, 'Definition')) return;
   try {
     vals.Definition = assertValidPropertyDefinitionItems(vals.Definition);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    fail('PROPERTY_DEFINITION_INVALID', message);
+    fail('PROPERTY_DEFINITION_INVALID', errorMessage(err));
   }
 }
 
@@ -41,6 +44,16 @@ export async function __ensureDefinitionUniqueIndexForTest(
 /** Test-only: run Definition normalize/validate on a vals bag. */
 export function __normalizeDefinitionOnValsForTest(vals: Record<string, unknown> | undefined): void {
   normalizeDefinitionOnVals(vals);
+}
+
+/** Test-only: expose error message coercion used by Definition/index failures. */
+export function __errorMessageForTest(err: unknown): string {
+  return errorMessage(err);
+}
+
+/** Test-only: expose scope-touch predicate used by UpdateById. */
+export function __touchesDefinitionScopeForTest(vals: Record<string, unknown> | undefined): boolean {
+  return touchesDefinitionScope(vals);
 }
 
 function storeMeta(ctor: InstantiableModelCtor<PropertyDefinitionBaseModel>) {
@@ -128,8 +141,7 @@ async function ensureDefinitionUniqueIndex(ctor: InstantiableModelCtor<PropertyD
     await exec.call(($choysum as any).db, ddl, '[]');
     ensuredUniqueIndexTables.add(table);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    fail('PROPERTY_DEFINITION_INDEX', `Failed to ensure PropertyDefinition unique index on ${table}: ${message}`);
+    fail('PROPERTY_DEFINITION_INDEX', `Failed to ensure PropertyDefinition unique index on ${table}: ${errorMessage(err)}`);
   }
 }
 

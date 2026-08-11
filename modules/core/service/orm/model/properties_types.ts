@@ -137,7 +137,8 @@ export function assertValidPropertyDefinitionItems(raw: unknown): PropertyItemDe
       if (values.length === 0) {
         throw new Error(`PropertyDefinition.Definition item "${name}" of type selection requires a non-empty selection`);
       }
-      if (!Array.isArray(rec.selection) || values.length !== rec.selection.length) {
+      // values.length > 0 implies selection was an array with at least one valid option.
+      if (values.length !== (rec.selection as unknown[]).length) {
         throw new Error(`PropertyDefinition.Definition item "${name}" selection options are invalid`);
       }
       normalized.selection = rec.selection as PropertyItemDefinition['selection'];

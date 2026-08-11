@@ -729,4 +729,249 @@ test('properties_definition metadata PP6 edges', () => {
       ['Skip', null],
     ]),
   } as any);
+
+  // sibling.type falsy → `type || ''` branch + error message coercion
+  expect(isPropertiesContainerRelationField({ type: undefined } as any)).toBe(false);
+  expect(isPropertiesContainerRelationField({ type: '' } as any)).toBe(false);
+  expect(() =>
+    validateModelPropertiesDefinitionFields({
+      fields: new Map([
+        ['ParentId', { name: 'ParentId', type: undefined as any }],
+        ['Props', { name: 'Props', type: 'properties', definition: 'ParentId' }],
+      ]),
+    } as any)
+  ).toThrow(/got /);
+
+  // non-string definition meta falls through to App-level (empty after typeof check)
+  validateModelPropertiesDefinitionFields({
+    fields: new Map([
+      ['Props', { name: 'Props', type: 'properties', definition: 42 as any }],
+    ]),
+  } as any);
+});
+
+test('properties coverage: remaining branch edges for 100% patch', async () => {
+  const {
+    __errorMessageForTest,
+    __touchesDefinitionScopeForTest,
+    __ensureDefinitionUniqueIndexForTest,
+  } = await import('./property_definition_base_model');
+
+  expect(__errorMessageForTest(new Error('e1'))).toBe('e1');
+  expect(__errorMessageForTest('bare')).toBe('bare');
+  expect(__touchesDefinitionScopeForTest(undefined)).toBe(false);
+  expect(__touchesDefinitionScopeForTest({})).toBe(false);
+  expect(__touchesDefinitionScopeForTest({ ContainerModel: null })).toBe(true);
+
+  // assertValid: non-string name/type ternary else-branches + selection length mismatch
+  expect(() => assertValidPropertyDefinitionItems([{ name: 1 as any, type: 'char' }])).toThrow(/non-empty name/);
+  expect(() => assertValidPropertyDefinitionItems([{ name: 'x', type: 1 as any }])).toThrow(/requires type/);
+  expect(() =>
+    assertValidPropertyDefinitionItems([
+      { name: 's', type: 'selection', selection: [{ value: 'ok' }, { value: 1 as any }, null as any] },
+    ])
+  ).toThrow(/selection options are invalid/);
+  // selectionOptionValues non-array early return
+  expect(propertyValueMatchesType({ type: 'selection', selection: null as any }, 'x')).toBe(true);
+  expect(propertyValueMatchesType({ type: 'selection', selection: 'nope' as any }, 'x')).toBe(true);
+
+  // resolve: null/undefined record (hits `record || {}`)
+  installRows([
+    {
+      TargetModel: 'PpCovPartner',
+      PropertiesField: 'PartnerProperties',
+      ContainerId: null,
+      Definition: [{ name: 'a', type: 'char' }],
+    },
+  ]);
+  try {
+    const a = await resolveProperties(PpCovPartner as any, null, 'PartnerProperties');
+    const b = await resolveProperties(PpCovPartner as any, undefined, 'PartnerProperties');
+    expect(a.length).toBe(1);
+    expect(b.length).toBe(1);
+  } finally {
+    __clearLookupPropertyDefinitionModelForTest();
+  }
+
+  // ManyToOneRef targetModel "app." → empty last segment falls back to trimmed
+  const taskMeta = MetadataStorage.instance.getModelMetadata(PpCovTask as any);
+  const refFm = taskMeta.fields.get('ProjectRef')!;
+  const prevRelation = refFm.relation;
+  (refFm as any).relation = { targetModel: 'ppcov.' };
+  installRows([
+    {
+      TargetModel: 'PpCovTask',
+      PropertiesField: 'RefProperties',
+      ContainerModel: 'ppcov.',
+      ContainerId: 'p1',
+      Definition: [{ name: 'r', type: 'char' }],
+    },
+  ]);
+  try {
+    const items = await resolveProperties(PpCovTask as any, { ProjectRef: 'p1' }, 'RefProperties');
+    expect(items.length).toBe(1);
+  } finally {
+    (refFm as any).relation = prevRelation;
+    __clearLookupPropertyDefinitionModelForTest();
+  }
+
+  // function targetModel + null metadata → meta?.modelName optional-chain undefined branch
+  const projectFm = taskMeta.fields.get('ProjectId')!;
+  const prevM2O = projectFm.relation;
+  const origGet = MetadataStorage.instance.getModelMetadata.bind(MetadataStorage.instance);
+  class NullMetaCtor {}
+  (projectFm as any).relation = { targetModel: () => NullMetaCtor };
+  MetadataStorage.instance.getModelMetadata = ((ctor: any) => {
+    if (ctor === NullMetaCtor) return null as any;
+    return origGet(ctor);
+  }) as any;
+  installRows([
+    {
+      TargetModel: 'PpCovTask',
+      PropertiesField: 'TaskProperties',
+      ContainerId: 'pz',
+      Definition: [{ name: 'z', type: 'char' }],
+    },
+  ]);
+  try {
+    const items = await resolveProperties(PpCovTask as any, { ProjectId: 'pz' }, 'TaskProperties');
+    expect(items.length).toBe(1);
+  } finally {
+    MetadataStorage.instance.getModelMetadata = origGet as any;
+    (projectFm as any).relation = prevM2O;
+    __clearLookupPropertyDefinitionModelForTest();
+  }
+
+  // write FieldsOnWrite: null field meta + non-properties field meta
+  installRows([
+    {
+      TargetModel: 'PpCovPartner',
+      PropertiesField: 'PartnerProperties',
+      ContainerId: null,
+      Definition: [{ name: 'a', type: 'char' }],
+    },
+  ]);
+  const partnerMeta = MetadataStorage.instance.getModelMetadata(PpCovPartner as any);
+  partnerMeta.fields.set('GhostProps', null as any);
+  partnerMeta.fields.set('NotProps', { name: 'NotProps', type: 'varchar' } as any);
+  try {
+    const input: any = { PartnerProperties: { a: '1' }, GhostProps: { x: 1 }, NotProps: 'y' };
+    await validatePropertiesFieldsOnWrite({
+      ModelCtor: PpCovPartner as any,
+      input,
+      mode: 'update',
+    });
+    expect(input.PartnerProperties.a).toBe('1');
+    expect(input.NotProps).toBe('y');
+    expect(input.GhostProps).toEqual({ x: 1 });
+
+    // properties field present on model but omitted from input → hasOwnProperty false continue
+    await validatePropertiesFieldsOnWrite({
+      ModelCtor: PpCovPartner as any,
+      input: { Name: 'only-name' },
+      mode: 'create',
+    });
+  } finally {
+    partnerMeta.fields.delete('GhostProps');
+    partnerMeta.fields.delete('NotProps');
+    __clearLookupPropertyDefinitionModelForTest();
+  }
+
+  // PropertyDefinition remaining branch edges
+  __resetPropertyDefinitionUniqueIndexTablesForTest();
+  const origCreate = BaseModel.Create;
+  const origCreateMany = BaseModel.CreateMany;
+  const origUpdateById = BaseModel.UpdateById;
+  const origSearch = PpCovPropertyDefinition.Search;
+  const scopeStore: any[] = [];
+  (BaseModel as any).Create = async function (this: any, value: any) {
+    const row = { Id: `PD-b${scopeStore.length + 1}`, ...value };
+    scopeStore.push(row);
+    return row;
+  };
+  (BaseModel as any).CreateMany = async function (this: any, values: any[]) {
+    return (values || []).map((v: any, i: number) => ({ Id: `PD-bm${i}`, ...v }));
+  };
+  (BaseModel as any).UpdateById = async function (this: any, id: string, values: any) {
+    return { Id: id, ...values };
+  };
+  PpCovPropertyDefinition.Search = (async () => []) as any;
+
+  const originalChoysum = (globalThis as any).$choysum;
+  try {
+    (globalThis as any).$choysum = undefined;
+    await PropertyDefinitionBaseModel.Create.call(PpCovPropertyDefinition, {
+      TargetModel: '',
+      PropertiesField: 'P',
+      Definition: [],
+    } as any);
+    // nullScope falsy-after-trim (s || null) requires TargetModel+PropertiesField set so assertUnique reaches nullScope
+    await PropertyDefinitionBaseModel.Create.call(PpCovPropertyDefinition, {
+      TargetModel: 'WhitespaceScope',
+      PropertiesField: 'Props',
+      ContainerModel: '   ',
+      ContainerId: '   ',
+      Definition: [],
+    } as any);
+    // nullScope truthy path + PropertiesField nullish ??
+    await PropertyDefinitionBaseModel.Create.call(PpCovPropertyDefinition, {
+      TargetModel: 'Scoped',
+      PropertiesField: undefined,
+      ContainerModel: 'ParentModel',
+      ContainerId: 'cid-1',
+      Definition: [],
+    } as any);
+    await PropertyDefinitionBaseModel.Create.call(PpCovPropertyDefinition, {
+      TargetModel: undefined,
+      PropertiesField: 'P2',
+      ContainerModel: '   ',
+      ContainerId: '   ',
+      Definition: [],
+    } as any);
+    await PropertyDefinitionBaseModel.CreateMany.call(PpCovPropertyDefinition, null as any);
+    // CreateMany ?? branches for undefined TargetModel / null+undefined PropertiesField
+    await PropertyDefinitionBaseModel.CreateMany.call(PpCovPropertyDefinition, [
+      { PropertiesField: undefined, ContainerModel: null, Definition: [] },
+      { TargetModel: 'BatchT', PropertiesField: 'BatchF', ContainerModel: 'CM', Definition: [] },
+    ] as any);
+
+    await PropertyDefinitionBaseModel.UpdateById.call(PpCovPropertyDefinition, 'missing', {
+      ContainerId: 'c1',
+      TargetModel: 'T',
+      PropertiesField: 'F',
+    } as any);
+
+    __resetPropertyDefinitionUniqueIndexTablesForTest();
+    (globalThis as any).$choysum = {
+      db: {
+        dialectName: 'sqlite',
+        execute: async () => {
+          throw 'bare-ddl-fail';
+        },
+      },
+    };
+    try {
+      await __ensureDefinitionUniqueIndexForTest(PpCovPropertyDefinition as any);
+      expect(false).toBe(true);
+    } catch (err) {
+      expect(err instanceof ChoysumError).toBe(true);
+      expect((err as ChoysumError).code).toBe('PROPERTY_DEFINITION_INDEX');
+      expect(String((err as ChoysumError).message || err)).toContain('bare-ddl-fail');
+    }
+
+    (globalThis as any).$choysum = undefined;
+    __resetPropertyDefinitionUniqueIndexTablesForTest();
+    await PropertyDefinitionBaseModel.Create.call(PpCovPropertyDefinition, {
+      TargetModel: 'OnlyTarget',
+      PropertiesField: '',
+      Definition: [],
+    } as any);
+  } finally {
+    (globalThis as any).$choysum = originalChoysum;
+    (BaseModel as any).Create = origCreate;
+    (BaseModel as any).CreateMany = origCreateMany;
+    (BaseModel as any).UpdateById = origUpdateById;
+    PpCovPropertyDefinition.Search = origSearch;
+    __resetPropertyDefinitionUniqueIndexTablesForTest();
+  }
 });
