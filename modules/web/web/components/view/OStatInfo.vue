@@ -13,8 +13,8 @@ SPDX-License-Identifier: Apache-2.0
     v-bind="$attrs"
     @click="onClick"
   >
-    <el-icon v-if="icon" class="o-stat-info__icon">
-      <component :is="icon" />
+    <el-icon v-if="resolvedIcon" class="o-stat-info__icon">
+      <component :is="resolvedIcon" />
     </el-icon>
     <span class="o-stat-info__body">
       <span class="o-stat-info__value">{{ displayValue }}</span>
@@ -24,7 +24,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, any>">
-import { computed, type Component } from 'vue';
+import { computed, markRaw, toRaw, type Component } from 'vue';
 import { useRouter, type RouteLocationRaw } from 'vue-router';
 import { ElIcon } from 'element-plus';
 import type { BaseModel, FieldPath } from '@/core/rpc';
@@ -65,6 +65,12 @@ const emit = defineEmits<{
 }>();
 
 const router = useRouter();
+
+// Avoid Vue "component made reactive" warn when a Component is passed as icon prop.
+const resolvedIcon = computed(() => {
+  const icon = props.icon;
+  return icon ? markRaw(toRaw(icon as object)) : null;
+});
 
 // Optional relation binding for Array.length; never auto-registers into form fields (D7).
 const relationBinding =

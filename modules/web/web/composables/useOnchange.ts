@@ -12,7 +12,7 @@
  * 5. Uses a single parent Onchange RPC and merges returned collection patches in one pass.
  */
 
-import { ref, watch, nextTick, provide, inject, type Ref } from 'vue';
+import { ref, watch, nextTick, provide, inject, getCurrentInstance, type Ref } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { getFieldMetadataView, isRelationFieldType, type WebModelStore, type WebFieldMetadata } from '@/web/web/stores/modelStore';
 import { collectChangedPaths } from '@/core/utils/diff';
@@ -510,7 +510,10 @@ function createAutoOnchangeController(store: WebModelStore<any>, opts?: CreateOn
   }
 
   // Pause in display mode and resume in edit/create mode while resetting tracked state.
-  const injectedViewMode = inject<Ref<ViewMode> | null>('view-mode', null as any);
+  // Only inject when called from setup(); getOnchangeController is also used outside components.
+  const injectedViewMode = getCurrentInstance()
+    ? inject<Ref<ViewMode> | null>('view-mode', null as any)
+    : null;
   if (injectedViewMode) {
     watch(
       injectedViewMode,

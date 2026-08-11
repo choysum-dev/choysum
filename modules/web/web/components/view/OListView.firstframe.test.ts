@@ -13,7 +13,10 @@ const { applyMock, awaitFieldSelectionMock, deferState, oSearchViewSentinel } = 
     applyMock: vi.fn(async () => {}),
     awaitFieldSelectionMock: vi.fn(async () => {}),
     deferState: { defer: false },
-    oSearchViewSentinel: markRaw({ name: 'OSearchViewSentinel' }),
+    oSearchViewSentinel: markRaw({
+      name: 'OSearchViewSentinel',
+      setup: () => () => null,
+    }),
   };
 });
 

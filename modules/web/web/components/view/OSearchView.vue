@@ -39,7 +39,7 @@ const props = withDefaults(
     appliedGroups?: Array<GroupBySpec<T>>;
     // One-shot default groups apply only on the first frame, then control is released.
     defaultGroups?: Array<GroupBySpec<T>>;
-    defaultFilters?: NamedFilter<T>[]; // Reserved; OSearch still reads store.queryState.defaultFilters.
+    defaultFilters?: NamedFilter<T> | NamedFilter<T>[]; // Singleton or array; normalized in codeDefaultFilters.
     keywordFields?: string[]; // Preserve only for aggregation and do not pass to OSearch.
     initialEmit?: boolean; // Control whether the first-frame emit happens here.
   }>(),
