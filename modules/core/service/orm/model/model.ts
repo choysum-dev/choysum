@@ -84,6 +84,8 @@ import {
   updateModelFieldCompanyValues,
   type FieldCompanyValuesMap,
 } from './model_field_company_values';
+import { resolveProperties, type ResolvePropertiesOptions } from './properties_resolve';
+import type { ResolvedPropertyItem } from './properties_types';
 import { currentBridgeFrame } from '../../runtime/compute/bridge';
 
 // Delegated implementation.
@@ -625,6 +627,19 @@ class BaseModel {
     values: Record<string, unknown | false>
   ): Promise<boolean> {
     return await updateModelFieldCompanyValues(this as unknown as RuntimeModelCtor<T>, id, fieldName, values);
+  }
+
+  /**
+   * Merges the effective PropertyDefinition schema with the record's properties map.
+   * Browse/Search keep the field value as a map; Form UIs call this for the item list.
+   */
+  static async ResolveProperties<T extends BaseModel>(
+    this: BaseModelCtor<T>,
+    record: Partial<T> | Record<string, unknown> | null | undefined,
+    fieldName: string,
+    opts?: ResolvePropertiesOptions
+  ): Promise<ResolvedPropertyItem[]> {
+    return await resolveProperties(this as unknown as RuntimeModelCtor<T>, record as any, fieldName, opts);
   }
 
   /**
