@@ -37,17 +37,41 @@ type ParentAclState = {
 };
 
 let parentWritableProbeOverride: ParentWritableProbe | undefined;
-/** Fallback when no request service state exists (unit harness / scripts). */
-const processParentAclState: ParentAclState = {};
+/** Test-only: force the no-request local-stack bypass path even when a req exists. */
+let forceNoReqParentAclStateForTest = false;
 
-function getParentAclState(): ParentAclState {
-  const reqState = getOrInitReqServiceState(getCurrentReq()) as ParentAclState | undefined | null;
-  return reqState || processParentAclState;
+/**
+ * Operation-local bypass frames when no request service state exists (unit harness).
+ * Each withPropertyDefinitionParentAclBypass call owns its own state object — never a
+ * process-global singleton shared across concurrent awaits.
+ * Concurrent sibling async scopes without a request remain unsupported (same as withContext).
+ */
+const noReqParentAclStateStack: ParentAclState[] = [];
+
+function getRequestParentAclState(): ParentAclState | undefined {
+  if (forceNoReqParentAclStateForTest) return undefined;
+  return (getOrInitReqServiceState(getCurrentReq()) as ParentAclState | undefined | null) || undefined;
+}
+
+function getActiveParentAclState(): ParentAclState | undefined {
+  return getRequestParentAclState() || noReqParentAclStateStack[noReqParentAclStateStack.length - 1];
 }
 
 function getParentAclBypassDepth(): number {
-  const value = getParentAclState().propertyDefinitionParentAclBypassDepth;
+  const state = getActiveParentAclState();
+  const value = state?.propertyDefinitionParentAclBypassDepth;
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+/** Test-only: observe bypass depth (request state or top no-req frame). */
+export function __getPropertyDefinitionParentAclBypassDepthForTest(): number {
+  return getParentAclBypassDepth();
+}
+
+/** Test-only: force per-call no-req stack instead of request service state. */
+export function __forceNoReqParentAclStateForTest(enabled: boolean): void {
+  forceNoReqParentAclStateForTest = enabled;
+  if (!enabled) noReqParentAclStateStack.length = 0;
 }
 
 function restoreParentAclBypassDepth(state: ParentAclState): void {
@@ -64,12 +88,16 @@ function isPromiseLike<T = unknown>(value: unknown): value is Promise<T> {
   return !!value && typeof (value as { then?: unknown }).then === 'function';
 }
 
-/** Skip PP8 parent-write gate (used by system purge). Supports sync and async `fn`. */
-export function withPropertyDefinitionParentAclBypass<T>(fn: () => T): T {
-  const state = getParentAclState();
-  const previous = getParentAclBypassDepth();
+function runWithParentAclState<T>(state: ParentAclState, fn: () => T, onExit?: () => void): T {
+  const previous = typeof state.propertyDefinitionParentAclBypassDepth === 'number' &&
+    Number.isFinite(state.propertyDefinitionParentAclBypassDepth)
+      ? state.propertyDefinitionParentAclBypassDepth
+      : 0;
   state.propertyDefinitionParentAclBypassDepth = previous + 1;
-  const restore = () => restoreParentAclBypassDepth(state);
+  const restore = () => {
+    restoreParentAclBypassDepth(state);
+    onExit?.();
+  };
   try {
     const out = fn();
     if (isPromiseLike(out)) {
@@ -81,6 +109,22 @@ export function withPropertyDefinitionParentAclBypass<T>(fn: () => T): T {
     restore();
     throw e;
   }
+}
+
+/** Skip PP8 parent-write gate (used by system purge). Supports sync and async `fn`. */
+export function withPropertyDefinitionParentAclBypass<T>(fn: () => T): T {
+  const reqState = getRequestParentAclState();
+  if (reqState) {
+    return runWithParentAclState(reqState, fn);
+  }
+
+  // No request: per-call local state (not a process-wide shared depth).
+  const local: ParentAclState = {};
+  noReqParentAclStateStack.push(local);
+  return runWithParentAclState(local, fn, () => {
+    const idx = noReqParentAclStateStack.lastIndexOf(local);
+    if (idx >= 0) noReqParentAclStateStack.splice(idx, 1);
+  });
 }
 
 /** Test-only: replace the parent writable probe. Pass undefined to clear. */

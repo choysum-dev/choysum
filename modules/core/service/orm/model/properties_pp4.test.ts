@@ -10,8 +10,11 @@ import {
   __setLookupPropertyDefinitionModelForTest,
 } from './properties_lookup';
 import {
+  __forceNoReqParentAclStateForTest,
+  __getPropertyDefinitionParentAclBypassDepthForTest,
   __setParentWritableProbeForTest,
   assertPropertyDefinitionParentWritable,
+  withPropertyDefinitionParentAclBypass,
 } from './properties_definition_acl';
 import { purgePropertyDefinitionsForContainers } from './properties_definition_purge';
 import { resolveProperties } from './properties_resolve';
@@ -225,6 +228,34 @@ test('PP4: parent writable probe required fields and missing parent model', asyn
     );
   } finally {
     __setParentWritableProbeForTest(undefined);
+  }
+});
+
+test('PP4: no-request parent ACL bypass is per-call (concurrent depths do not accumulate)', async () => {
+  __forceNoReqParentAclStateForTest(true);
+  try {
+    const seen: number[] = [];
+    const yieldTick = () => Promise.resolve();
+
+    await Promise.all([
+      withPropertyDefinitionParentAclBypass(async () => {
+        seen.push(__getPropertyDefinitionParentAclBypassDepthForTest());
+        await yieldTick();
+        seen.push(__getPropertyDefinitionParentAclBypassDepthForTest());
+      }),
+      withPropertyDefinitionParentAclBypass(async () => {
+        seen.push(__getPropertyDefinitionParentAclBypassDepthForTest());
+        await yieldTick();
+        seen.push(__getPropertyDefinitionParentAclBypassDepthForTest());
+      }),
+    ]);
+
+    // Shared process-global depth would climb to 2 once both entered.
+    expect(seen.length).toBe(4);
+    expect(seen.every(d => d === 1)).toBe(true);
+    expect(__getPropertyDefinitionParentAclBypassDepthForTest()).toBe(0);
+  } finally {
+    __forceNoReqParentAclStateForTest(false);
   }
 });
 
