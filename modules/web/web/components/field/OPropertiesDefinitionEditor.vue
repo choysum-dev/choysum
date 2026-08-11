@@ -171,7 +171,7 @@ async function reload() {
 
   const store = resolveStore();
   if (!store || typeof (store as any).Search !== 'function') {
-    if (seq === reloadSeq) {
+    if (seq === reloadSeq && !loadError.value) {
       loadError.value = _t('PropertyDefinition store is unavailable');
     }
     return;

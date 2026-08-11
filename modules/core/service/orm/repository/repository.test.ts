@@ -3621,3 +3621,27 @@ test('repository wrappers delegate query and validation bridges through reposito
     // line coverage only: validate runtime bridge may reject in partial harness.
   }
 });
+
+test('repository assertCompanyWriteAccessForIds and assertRecordRuleTargetsAllowed', async () => {
+  const repository = createRepositoryHarness();
+  const calls = {
+    company: [] as any[],
+    record: [] as any[],
+  };
+  repository.assertCompanyWriteAccessForCondition = async (condition: any) => {
+    calls.company.push(condition);
+  };
+  repository.assertRecordRuleAllTargetsAllowed = async (op: any, ids: string[]) => {
+    calls.record.push({ op, ids });
+  };
+
+  await repository.assertCompanyWriteAccessForIds([]);
+  await repository.assertCompanyWriteAccessForIds(['', '  ']);
+  expect(calls.company.length).toBe(0);
+
+  await repository.assertCompanyWriteAccessForIds(['a', ' b ', '']);
+  expect(calls.company).toEqual([{ And: [['Id', 'in', ['a', 'b']]] }]);
+
+  await repository.assertRecordRuleTargetsAllowed('write', ['r1']);
+  expect(calls.record).toEqual([{ op: 'write', ids: ['r1'] }]);
+});

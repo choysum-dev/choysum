@@ -7,14 +7,6 @@ import { lookupPropertyDefinitionModel } from './properties_lookup';
 import { withPropertyDefinitionParentAclBypass } from './properties_definition_acl';
 import type { RuntimeModelCtor } from './types';
 
-function containerModelMatchValues(application: string, containerModel: string): string[] {
-  const model = String(containerModel || '').trim();
-  const app = String(application || '').trim();
-  if (!model) return [];
-  const qualified = app ? `${app}.${model}` : '';
-  return qualified && qualified !== model ? [model, qualified] : [model];
-}
-
 /**
  * Delete PropertyDefinition rows scoped to the given parent containers.
  * Used when parent records are deleted (§3.4). Does not scrub child properties JSON.
@@ -37,12 +29,11 @@ export async function purgePropertyDefinitionsForContainers(
   const canDeleteById = typeof (Ctor as any).DeleteById === 'function';
   if (!canBulkDelete && !canDeleteById) return 0;
 
-  const modelNames = containerModelMatchValues(app, model);
+  // Match both short and application-qualified ContainerModel spellings.
+  const modelNames = [...new Set([model, `${app}.${model}`])];
   const condition = {
     And: [
-      modelNames.length === 1
-        ? ['ContainerModel', '=', modelNames[0]]
-        : ['ContainerModel', 'in', modelNames],
+      ['ContainerModel', 'in', modelNames],
       ['ContainerId', 'in', ids],
     ],
   };
