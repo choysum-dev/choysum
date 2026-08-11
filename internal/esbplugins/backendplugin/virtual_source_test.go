@@ -5,6 +5,7 @@ package backendplugin
 
 import (
 	"path/filepath"
+	"regexp"
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/esbplugins"
@@ -112,5 +113,26 @@ func TestFirstNonEmptyPath(t *testing.T) {
 	}
 	if got := firstNonEmptyPath("", "  "); got != "" {
 		t.Fatalf("got %q", got)
+	}
+}
+
+func TestVirtualC2SourceOnResolveFilter(t *testing.T) {
+	re, err := regexp.Compile(virtualC2SourceOnResolveFilter)
+	if err != nil {
+		t.Fatalf("compile filter: %v", err)
+	}
+	for _, path := range []string{
+		"/m/service/models/__generated__/field_default.ts",
+		"/m/service/models/__generated__/app_setting.ts",
+		"/m/service/models/__generated__/translation_term.ts",
+		"/m/service/models/__generated__/property_definition.ts",
+		"/m/service/index.ts",
+	} {
+		if !re.MatchString(path) {
+			t.Fatalf("filter must match %q", path)
+		}
+	}
+	if re.MatchString("/m/service/models/company.ts") {
+		t.Fatal("filter must not match ordinary model paths")
 	}
 }

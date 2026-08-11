@@ -30,6 +30,11 @@ type BackendPlugin struct {
 	virtualSources    map[string]string
 }
 
+// virtualC2SourceOnResolveFilter matches C2 inject thin-class paths (and the
+// Ensure'd virtual service/index.ts) so OnResolve can claim in-memory sources
+// that are not on disk. Keep in sync with injectappmodel.DefaultSpecs filenames.
+const virtualC2SourceOnResolveFilter = `(field_default|app_setting|translation_term|property_definition)\.ts$|service/index\.ts$`
+
 // RegisterVirtualSource registers in-memory TS contents served by OnLoad before disk reads.
 // Paths are normalized the same way as other backend plugin path lookups.
 func (p *BackendPlugin) RegisterVirtualSource(path string, contents string) {
@@ -1144,15 +1149,16 @@ func (p *BackendPlugin) DefinePlugins(runtimeScope scope.Scope, jsExecutor jsexe
 	return []api.Plugin{{
 		Name: "choysum-backend-inherit",
 		Setup: func(build api.PluginBuild) {
-			// Virtual TS sources (e.g. C2 FieldDefault / AppSetting) are not on disk; claim
-			// them in OnResolve so esbuild reaches OnLoad instead of failing path resolution.
+			// Virtual TS sources (e.g. C2 FieldDefault / AppSetting / PropertyDefinition)
+			// are not on disk; claim them in OnResolve so esbuild reaches OnLoad instead
+			// of failing path resolution.
 			resolveVirtual := func(args api.OnResolveArgs) (api.OnResolveResult, error) {
 				if resolved, ok := p.resolveVirtualSourcePath(args.Path, args.ResolveDir); ok {
 					return api.OnResolveResult{Path: resolved}, nil
 				}
 				return api.OnResolveResult{}, nil
 			}
-			build.OnResolve(api.OnResolveOptions{Filter: `(field_default|app_setting|translation_term)\.ts$|service/index\.ts$`}, resolveVirtual)
+			build.OnResolve(api.OnResolveOptions{Filter: virtualC2SourceOnResolveFilter}, resolveVirtual)
 			build.OnLoad(api.OnLoadOptions{Filter: `\.ts$`}, func(args api.OnLoadArgs) (api.OnLoadResult, error) {
 				p.Mu.Lock()
 				defer p.Mu.Unlock()
