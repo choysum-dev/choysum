@@ -469,6 +469,7 @@ const showTranslateAction = computed(() => {
   if (effectiveRenderMode.value !== 'form') return false;
   if (!binding.env.isEditMode) return false;
   if (!panelRecordId.value) return false;
+  if (!binding.store) return false;
   const meta = effectiveFieldMeta.value as { translate?: boolean } | undefined;
   return meta?.translate === true;
 });
@@ -477,6 +478,7 @@ const showCompanyValuesAction = computed(() => {
   if (effectiveRenderMode.value !== 'form') return false;
   if (!binding.env.isEditMode) return false;
   if (!panelRecordId.value) return false;
+  if (!binding.store) return false;
   const meta = effectiveFieldMeta.value as { companyDependent?: boolean } | undefined;
   return Boolean(meta && meta.companyDependent === true);
 });

@@ -37,7 +37,8 @@ function makeBinding(
     fieldRefOf: () => value as any,
     recordRef: () => computed(() => record.value) as any,
     registerFields: () => {},
-    store: undefined,
+    // Dialogs require an Object store prop; a minimal stub avoids Vue prop warnings.
+    store: {} as any,
     asView: () => ({ fieldValue: () => value }) as any,
   } as UseField;
 }
@@ -392,6 +393,22 @@ describe('OFieldBase translate action', () => {
     const btn = wrapper.find('.o-field-base__translate-btn');
     expect(btn.exists()).toBe(true);
     expect(btn.attributes('aria-label')).toContain('Translate');
+  });
+
+  it('hides translate icon when binding.store is missing', () => {
+    const binding = makeBinding({ string: 'Name', translate: true });
+    (binding as any).store = undefined;
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding,
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: { stubs: fieldBaseStubs },
+    });
+    expect(wrapper.find('.o-field-base__translate-btn').exists()).toBe(false);
   });
 
   it('hides translate icon when meta.translate is missing', () => {
@@ -766,6 +783,22 @@ describe('OFieldBase company values action', () => {
     const btn = wrapper.find('.o-field-base__company-values-btn');
     expect(btn.exists()).toBe(true);
     expect(btn.attributes('aria-label')).toContain('Company values');
+  });
+
+  it('hides company-values icon when binding.store is missing', () => {
+    const binding = makeBinding({ string: 'Cost', companyDependent: true });
+    (binding as any).store = undefined;
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding,
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: { stubs: fieldBaseStubs },
+    });
+    expect(wrapper.find('.o-field-base__company-values-btn').exists()).toBe(false);
   });
 
   it('hides company-values icon when meta.companyDependent is missing', () => {
