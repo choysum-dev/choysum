@@ -12,11 +12,13 @@ import {
 // Side-effect: platform inject bases self-register on import.
 import './app_setting_base_model';
 import './field_default_base_model';
+import './property_definition_base_model';
 import './translation_term_base_model';
 
 test('platform inject bases self-register logical model short names', () => {
-  expect(listLogicalModelNames()).toEqual(['AppSetting', 'FieldDefault', 'TranslationTerm']);
+  expect(listLogicalModelNames()).toEqual(['AppSetting', 'FieldDefault', 'PropertyDefinition', 'TranslationTerm']);
   expect(isRegisteredLogicalModelName('TranslationTerm')).toBe(true);
+  expect(isRegisteredLogicalModelName('PropertyDefinition')).toBe(true);
   expect(isRegisteredLogicalModelName('Partner')).toBe(false);
   expect(isRegisteredLogicalModelName('')).toBe(false);
 });
@@ -25,6 +27,7 @@ test('listLogicalModelSelection mirrors registered names for FieldsGet', () => {
   expect(listLogicalModelSelection()).toEqual([
     { value: 'AppSetting', label: 'AppSetting' },
     { value: 'FieldDefault', label: 'FieldDefault' },
+    { value: 'PropertyDefinition', label: 'PropertyDefinition' },
     { value: 'TranslationTerm', label: 'TranslationTerm' },
   ]);
 });
@@ -34,7 +37,7 @@ test('registerLogicalModelName is idempotent and ignores blanks', () => {
   registerLogicalModelName(null as any);
   registerLogicalModelName(undefined as any);
   registerLogicalModelName('AppSetting');
-  expect(listLogicalModelNames()).toEqual(['AppSetting', 'FieldDefault', 'TranslationTerm']);
+  expect(listLogicalModelNames()).toEqual(['AppSetting', 'FieldDefault', 'PropertyDefinition', 'TranslationTerm']);
   expect(isRegisteredLogicalModelName(null)).toBe(false);
   expect(isRegisteredLogicalModelName(undefined)).toBe(false);
 });
@@ -48,6 +51,7 @@ test('__resetLogicalModelNamesForTest clears registry for isolation', () => {
   __resetLogicalModelNamesForTest();
   registerLogicalModelName('AppSetting');
   registerLogicalModelName('FieldDefault');
+  registerLogicalModelName('PropertyDefinition');
   registerLogicalModelName('TranslationTerm');
-  expect(listLogicalModelNames()).toEqual(['AppSetting', 'FieldDefault', 'TranslationTerm']);
+  expect(listLogicalModelNames()).toEqual(['AppSetting', 'FieldDefault', 'PropertyDefinition', 'TranslationTerm']);
 });

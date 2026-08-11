@@ -36,7 +36,7 @@ export function decodeRowWithTree(meta: ModelMetadata, node: SelectionNode, row:
       continue;
     }
 
-    if (fieldType === 'jsonobject') {
+    if (fieldType === 'jsonobject' || fieldType === 'properties') {
       rowRecord[col] = parseJsonObjectFieldValue(rowRecord[col]);
       continue;
     }

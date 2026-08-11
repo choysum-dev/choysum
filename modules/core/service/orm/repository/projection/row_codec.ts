@@ -247,7 +247,7 @@ export function encodeForDb(meta: ModelMetadata, input: Entity): Entity {
       continue;
     }
 
-    if (fm?.type === 'jsonobject' && fm.column) {
+    if ((fm?.type === 'jsonobject' || fm?.type === 'properties') && fm.column) {
       if (v == null) {
         out[k] = null;
       } else {
@@ -342,7 +342,7 @@ export function decodeFromDb(meta: ModelMetadata, row: Entity): Entity {
       return;
     }
 
-    if (t === 'jsonobject') {
+    if (t === 'jsonobject' || t === 'properties') {
       out[k] = parseJsonObjectFieldValue(cur);
       return;
     }

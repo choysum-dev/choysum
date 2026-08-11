@@ -16,6 +16,8 @@ import {
   resolveRepositoryPlatformCreateWriteWhitelist,
   resolveRepositoryPlatformRejectUnknownFields,
 } from './platform_helpers';
+import { validatePropertiesFieldsOnWrite } from '../../model/properties_write';
+import type { RuntimeModelCtor } from '../../model/types';
 
 export { selectPrimaryValidationIssue, wrapRepositoryValidationError } from './error_helpers';
 export { throwRepositorySqlWriteError } from './sql_helpers';
@@ -58,6 +60,12 @@ export async function validateRepositoryWrite(params: {
         onPlatformCreateWhitelistHit: (fields: string[]) => recordRepositoryPlatformCreateWhitelistAudit(meta, requestContext, mode, fields),
       }
     );
+    await validatePropertiesFieldsOnWrite({
+      ModelCtor: meta.type as RuntimeModelCtor<BaseModel>,
+      input: input as ObjectRecord,
+      current: current as ObjectRecord | undefined,
+      mode,
+    });
   } catch (error) {
     if (error instanceof ValidationPipelineError) {
       throw wrapRepositoryValidationError(meta, error, mode);

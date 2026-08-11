@@ -181,6 +181,10 @@ func (m *modelMigrator) getResolvedFieldColumnMeta(field *meta.Field, modelCtx .
 	if typeStr == "ManyToManyRef" {
 		metaMap["type"] = "jsonobject"
 	}
+	if typeStr == "properties" {
+		// Properties values are a JSON map; reuse jsonobject physical mapping.
+		metaMap["type"] = "jsonobject"
+	}
 	if typeStr == "selection" {
 		metaMap["type"] = "varchar"
 		if _, ok := metaMap["size"]; !ok {
