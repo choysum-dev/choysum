@@ -542,7 +542,7 @@ onMounted(async () => {
 
   // Only OSearchView guarantees a mount-time query-update with UserFilter defaults.
   // Custom SearchViewComponent implementations may never emit; keep the mount apply.
-  if (shouldDeferViewFirstFrame(props.searchView, OSearchView)) {
+  if (shouldDeferViewFirstFrame(resolvedSearchView.value, OSearchView)) {
     return;
   }
 

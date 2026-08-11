@@ -123,7 +123,25 @@ func TestBuildBackendAppToDir_C2OwnersAppendAndEnsureError(t *testing.T) {
 	manager.bootstrapOnce.Do(func() {})
 	distAppDir := t.TempDir()
 
+	// Mirror buildBackendAppToDir owner selection: last eligible module hosts C2 inject.
+	var mods []meta.Module
+	if err := db.Where("application_str = ? AND status = ?", "crm", meta.Installed).Order("id ASC").Find(&mods).Error; err != nil {
+		t.Fatalf("load mods: %v", err)
+	}
+	ptrs := make([]*meta.Module, 0, len(mods))
+	for i := range mods {
+		ptrs = append(ptrs, &mods[i])
+	}
+	if owner := pickPropertyDefinitionOwnerModule("crm", ptrs); owner == nil || owner.Name != "crm_last" {
+		t.Fatalf("expected PropertyDefinition owner crm_last, got %#v", owner)
+	}
+	if owner := pickFieldDefaultOwnerModule("crm", ptrs); owner == nil || owner.Name != "crm_last" {
+		t.Fatalf("expected FieldDefault owner crm_last, got %#v", owner)
+	}
+
 	// Drop meta_raw_model after owners would be picked so FD/AS/PD append branches run.
+	// (Inject fails in dbLoadModels before virtual sources are registered, so ownership
+	// cannot be observed via RegisterVirtualSource under this failure mode.)
 	if err := db.Migrator().DropTable("meta_raw_model"); err != nil {
 		t.Fatalf("drop meta_raw_model: %v", err)
 	}
