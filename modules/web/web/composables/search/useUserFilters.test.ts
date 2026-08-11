@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { createApp, defineComponent, h, ref } from 'vue';
+import { createApp, defineComponent, h, reactive, ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { sfMocks, actorState } = vi.hoisted(() => ({
@@ -307,10 +307,12 @@ describe('useUserFilters', () => {
     sfMocks.Search.mockResolvedValue([
       { Id: 'p1', Name: 'NoCond', IsDefault: false, UserId: 'me', CreatedUid: 'me' },
       { Id: 'p2', Name: 'OtherPriv', IsDefault: false, UserId: 'other', CreatedUid: 'other' },
+      { Id: 'p3', Name: 'NullCond', IsDefault: false, UserId: 'me', CreatedUid: 'me', Condition: null },
     ]);
     await api.load();
     expect(api.favoriteMenuItems.value[0]).toMatchObject({ id: 'p1', filter: {}, canDelete: true });
     expect(api.favoriteMenuItems.value[1]).toMatchObject({ id: 'p2', canDelete: false });
+    expect(api.favoriteMenuItems.value[2]).toMatchObject({ id: 'p3', filter: {} });
     expect(api.defaultsForOpen.value).toEqual([]);
   });
 
@@ -456,7 +458,7 @@ describe('useUserFilters', () => {
       resolveSlow = resolve;
     });
     sfMocks.Search.mockImplementationOnce(() => slow);
-    const store = { application: 'demo', modelName: 'Widget' };
+    const store = reactive({ application: 'demo', modelName: 'Widget' });
     const api = runInSetup(() =>
       useUserFilters({
         store,
@@ -475,6 +477,47 @@ describe('useUserFilters', () => {
     expect(api.loadError.value).toBeNull();
   });
 
+  it('load ignores stale empty-context clear when a newer load started', async () => {
+    const api = runInSetup(() =>
+      useUserFilters({
+        store: { application: '', modelName: 'Widget' },
+        filtersRef: ref([]),
+        applyNamedFilter: vi.fn(),
+      })
+    );
+    api.favorites.value = [{ Id: 'keep', Name: 'Keep' } as any];
+    const p1 = api.load();
+    const p2 = api.load();
+    await Promise.all([p1, p2]);
+    // Newer empty load wins the clear; older gen skips after yield.
+    expect(api.favorites.value).toEqual([]);
+    expect(sfMocks.Search).not.toHaveBeenCalled();
+  });
+
+  it('load ignores stale Search rejection after a newer load', async () => {
+    let rejectSlow!: (err: Error) => void;
+    const slow = new Promise<any[]>((_resolve, reject) => {
+      rejectSlow = reject;
+    });
+    sfMocks.Search.mockImplementationOnce(() => slow).mockResolvedValueOnce([
+      { Id: 'ok', Name: 'Ok', UserId: 'me', CreatedUid: 'me' },
+    ]);
+    const api = runInSetup(() =>
+      useUserFilters({
+        store: { application: 'demo', modelName: 'Widget' },
+        filtersRef: ref([]),
+        applyNamedFilter: vi.fn(),
+      })
+    );
+    const p1 = api.load();
+    const p2 = api.load();
+    rejectSlow(new Error('stale network'));
+    await Promise.all([p1, p2]);
+    expect(api.loadError.value).toBeNull();
+    expect(api.favorites.value[0].Id).toBe('ok');
+    expect(api.loading.value).toBe(false);
+  });
+
   it('updateMeta no-ops when id or name missing', async () => {
     const api = runInSetup(() =>
       useUserFilters({
@@ -485,6 +528,9 @@ describe('useUserFilters', () => {
     );
     await api.updateMeta('', { name: 'X' });
     await api.updateMeta('fav-1', { name: '  ' });
+    await api.updateMeta(null as any, { name: 'X' });
+    await api.updateMeta('fav-1', { name: null as any });
+    await api.updateMeta('fav-1', { name: undefined as any });
     expect(sfMocks.UpdateById).not.toHaveBeenCalled();
   });
 

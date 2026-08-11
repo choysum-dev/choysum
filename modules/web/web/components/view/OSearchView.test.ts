@@ -33,6 +33,7 @@ const OSearchStub = defineComponent({
       h('div', { class: 'o-search-stub' }, [
         h('pre', { class: 'code-defaults' }, JSON.stringify(props.defaultFilters || [])),
         h('pre', { class: 'applied' }, JSON.stringify(props.currentAppliedFilters || [])),
+        h('pre', { class: 'keyword' }, String(props.currentKeyword ?? '')),
         h(
           'button',
           {
@@ -41,6 +42,29 @@ const OSearchStub = defineComponent({
             onClick: () => emit('defaults-ready', stubState.mountDefaults.slice()),
           },
           'defaults-ready'
+        ),
+        h(
+          'button',
+          {
+            type: 'button',
+            class: 'emit-defaults-ready-nonarray',
+            onClick: () => emit('defaults-ready', { name: 'NotArray' } as any),
+          },
+          'defaults-ready-nonarray'
+        ),
+        h(
+          'button',
+          {
+            type: 'button',
+            class: 'emit-query-update',
+            onClick: () =>
+              emit('query-update', {
+                keyword: 'from-child',
+                appliedFilters: [],
+                appliedGroups: [],
+              }),
+          },
+          'query-update'
         ),
       ]);
   },
@@ -167,5 +191,97 @@ describe('OSearchView favorites defaults (single child load)', () => {
     await flushPromises();
     await nextTick();
     expect(wrapper.emitted('query-update')?.length).toBe(1);
+  });
+
+  it('forwards child query-update and covers keyword / non-array defaults branches', async () => {
+    stubState.mountDefaults = [];
+    const wrapper = mount(OSearchView as any, {
+      props: {
+        store: makeStore({
+          state: { queryState: { keyword: 'from-store' } },
+        }),
+        keyword: 'from-prop',
+        initialEmit: false,
+      },
+      global: { stubs: { OSearch: OSearchStub } },
+    });
+    await flushPromises();
+    expect(wrapper.find('.keyword').text()).toBe('from-prop');
+
+    const before = wrapper.emitted('query-update')?.length ?? 0;
+    await wrapper.find('.emit-query-update').trigger('click');
+    expect((wrapper.emitted('query-update')?.length ?? 0)).toBe(before + 1);
+    expect(wrapper.emitted('query-update')?.at(-1)?.[0]).toMatchObject({ keyword: 'from-child' });
+
+    await wrapper.find('.emit-defaults-ready-nonarray').trigger('click');
+    await flushPromises();
+    await nextTick();
+    // Non-array payload becomes []; with initialEmit=false no extra query-update.
+    expect(wrapper.emitted('query-update')?.length ?? 0).toBe(before + 1);
+  });
+
+  it('reads store keyword when prop keyword is absent', async () => {
+    stubState.mountDefaults = [];
+    const wrapper = mount(OSearchView as any, {
+      props: {
+        store: makeStore({
+          state: { queryState: { keyword: 'qs-only' } },
+        }),
+        initialEmit: false,
+      },
+      global: { stubs: { OSearch: OSearchStub } },
+    });
+    await flushPromises();
+    expect(wrapper.find('.keyword').text()).toBe('qs-only');
+  });
+
+  it('treats empty or non-string store keyword as absent', async () => {
+    stubState.mountDefaults = [];
+    const emptyKw = mount(OSearchView as any, {
+      props: {
+        store: makeStore({ state: { queryState: { keyword: '' } } }),
+        initialEmit: false,
+      },
+      global: { stubs: { OSearch: OSearchStub } },
+    });
+    await flushPromises();
+    expect(emptyKw.find('.keyword').text()).toBe('');
+
+    const numKw = mount(OSearchView as any, {
+      props: {
+        store: makeStore({ state: { queryState: { keyword: 12 as any } } }),
+        initialEmit: false,
+      },
+      global: { stubs: { OSearch: OSearchStub } },
+    });
+    await flushPromises();
+    expect(numKw.find('.keyword').text()).toBe('');
+  });
+
+  it('ignores non-array queryState.defaultFilters', async () => {
+    stubState.mountDefaults = [];
+    const wrapper = mount(OSearchView as any, {
+      props: {
+        store: makeStore({
+          state: { queryState: { defaultFilters: { name: 'Bad' } as any } },
+        }),
+        initialEmit: false,
+      },
+      global: { stubs: { OSearch: OSearchStub } },
+    });
+    await flushPromises();
+    expect(JSON.parse(wrapper.find('.code-defaults').text())).toEqual([]);
+  });
+
+  it('skips first-frame emit when initialEmit flips false during nextTick', async () => {
+    stubState.mountDefaults = [{ name: 'Flip', query: ['F', '=', 1], selected: true }];
+    const wrapper = mount(OSearchView as any, {
+      props: { store: makeStore(), initialEmit: true },
+      global: { stubs: { OSearch: OSearchStub } },
+    });
+    await wrapper.setProps({ initialEmit: false });
+    await flushPromises();
+    await nextTick();
+    expect(wrapper.emitted('query-update')).toBeUndefined();
   });
 });

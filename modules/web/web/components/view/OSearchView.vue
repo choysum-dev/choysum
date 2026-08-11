@@ -113,8 +113,8 @@ async function emitFirstFrameIfNeeded(): Promise<void> {
   await nextTick();
   // Recheck after yield: concurrent defaults-ready handlers may both have passed the guard.
   if (mounted.value || !props.initialEmit) return;
-  const filtersAtFirstEmit = appliedFiltersForChild.value || [];
-  const groupsAtFirstEmit = appliedGroupsForChild.value || [];
+  const filtersAtFirstEmit = appliedFiltersForChild.value;
+  const groupsAtFirstEmit = appliedGroupsForChild.value;
   const payload = buildQueryUpdatePayload<T>(keywordForChild.value, filtersAtFirstEmit, groupsAtFirstEmit, {
     explicitGroups: false,
   });

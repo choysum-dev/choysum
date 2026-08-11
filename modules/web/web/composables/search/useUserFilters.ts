@@ -57,6 +57,8 @@ export function useUserFilters(params: {
     const app = application.value;
     const model = modelName.value;
     if (!app || !model) {
+      // Yield so a newer load() can bump gen before we clear (stale empty-context guard).
+      await Promise.resolve();
       if (gen === loadGeneration) {
         favorites.value = [];
         loading.value = false;
