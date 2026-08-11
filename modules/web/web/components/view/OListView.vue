@@ -162,6 +162,7 @@ import OViewContainer from '@/web/web/components/view/OViewContainer.vue';
 import { useVirtualizationAdapter } from '@/web/web/composables/virtualizationAdapter';
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
+import { shouldDeferViewFirstFrame } from '@/web/web/components/view/kanbanFirstFrame';
 import { canShowAction, type ActionIdMap } from '@/web/web/components/view/actionVisibility';
 import { createTranslate } from '@/web/web/i18n';
 import type { SelectionExpose, RowEventPayload } from '@/web/web/components/view/listViewTypes';
@@ -533,6 +534,12 @@ onMounted(async () => {
 
   // Initial height sync
   recomputeTableHeight();
+
+  // Only OSearchView guarantees a mount-time query-update with UserFilter defaults.
+  // Custom SearchViewComponent implementations may never emit; keep the mount apply.
+  if (shouldDeferViewFirstFrame(props.searchView, OSearchView)) {
+    return;
+  }
 
   // Wait for field registration; if the search component already triggered the initial apply, do not repeat it
   await awaitFieldSelection(store, { requireNonEmpty: true });

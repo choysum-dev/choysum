@@ -1,6 +1,51 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
+#: service/models/user_filter.ts:122
+msgctxt "web.model.UserFilter"
+msgid "Cannot assign a favorite to another user"
+msgstr "不能将收藏筛选分配给其他用户"
+
+#: service/models/user_filter.ts:58
+msgctxt "web.model.UserFilter.fields"
+msgid "Application"
+msgstr "应用"
+
+#: service/models/user_filter.ts:81
+msgctxt "web.model.UserFilter.fields"
+msgid "Condition"
+msgstr "条件"
+
+#: service/models/user_filter.ts:107
+msgctxt "web.model.UserFilter.fields"
+msgid "Is Default"
+msgstr "默认"
+
+#: service/models/user_filter.ts:70
+msgctxt "web.model.UserFilter.fields"
+msgid "Model Name"
+msgstr "模型名称"
+
+#: service/models/user_filter.ts:31
+msgctxt "web.model.UserFilter.fields"
+msgid "Name"
+msgstr "名称"
+
+#: service/models/user_filter.ts:46
+msgctxt "web.model.UserFilter.fields"
+msgid "Normalized route path; Favorites UI shows Name only."
+msgstr "归一化路由路径；收藏界面仅显示名称。"
+
+#: service/models/user_filter.ts:45
+msgctxt "web.model.UserFilter.fields"
+msgid "Scope Key"
+msgstr "作用域键"
+
+#: service/models/user_filter.ts:96
+msgctxt "web.model.UserFilter.fields"
+msgid "User"
+msgstr "用户"
+
 #: web/components/field/OBigintField.vue:254
 msgctxt "web/components/field/OBigintField"
 msgid "Cannot be empty"
@@ -951,12 +996,12 @@ msgctxt "web/components/view/OFormView"
 msgid "Saving..."
 msgstr "保存中..."
 
-#: web/components/view/OKanbanView.vue:130
+#: web/components/view/OKanbanView.vue:131
 msgctxt "web/components/view/OKanbanView"
 msgid "All"
 msgstr "全部"
 
-#: web/components/view/OKanbanView.vue:296
+#: web/components/view/OKanbanView.vue:297
 msgctxt "web/components/view/OKanbanView"
 msgid "Kanban refresh failed"
 msgstr "看板刷新失败"
@@ -966,7 +1011,7 @@ msgctxt "web/components/view/OKanbanView"
 msgid "Load more (%s remaining)"
 msgstr "加载更多（剩余 %s 条）"
 
-#: web/components/view/OKanbanView.vue:251
+#: web/components/view/OKanbanView.vue:252
 msgctxt "web/components/view/OKanbanView"
 msgid "Move failed; refreshed to recover"
 msgstr "移动失败，已刷新以恢复"
@@ -991,12 +1036,12 @@ msgctxt "web/components/view/OKanbanView"
 msgid "Refresh"
 msgstr "刷新"
 
-#: web/components/view/OListView.vue:550
+#: web/components/view/OListView.vue:557
 msgctxt "web/components/view/OListView"
 msgid "Are you sure you want to delete the selected %s record(s)? This action cannot be undone."
 msgstr "确定要删除选中的 %s 条记录吗？此操作无法撤销。"
 
-#: web/components/view/OListView.vue:552
+#: web/components/view/OListView.vue:559
 msgctxt "web/components/view/OListView"
 msgid "Cancel"
 msgstr "取消"
@@ -1006,12 +1051,12 @@ msgctxt "web/components/view/OListView"
 msgid "Click to load more (%s remaining)"
 msgstr "点击加载更多（剩余 %s 条）"
 
-#: web/components/view/OListView.vue:550
+#: web/components/view/OListView.vue:557
 msgctxt "web/components/view/OListView"
 msgid "Confirm delete"
 msgstr "确认删除"
 
-#: web/components/view/OListView.vue:551
+#: web/components/view/OListView.vue:558
 msgctxt "web/components/view/OListView"
 msgid "Delete"
 msgstr "删除"
@@ -1021,7 +1066,7 @@ msgctxt "web/components/view/OListView"
 msgid "Delete (%s)"
 msgstr "删除（%s）"
 
-#: web/components/view/OListView.vue:585
+#: web/components/view/OListView.vue:592
 msgctxt "web/components/view/OListView"
 msgid "Delete failed"
 msgstr "删除失败"
@@ -1031,32 +1076,32 @@ msgctxt "web/components/view/OListView"
 msgid "Discard"
 msgstr "放弃"
 
-#: web/components/view/OListView.vue:193
+#: web/components/view/OListView.vue:194
 msgctxt "web/components/view/OListView"
 msgid "Editing was discarded because the row is no longer visible."
 msgstr "该行已不可见，编辑已放弃。"
 
-#: web/components/view/OListView.vue:448
+#: web/components/view/OListView.vue:455
 msgctxt "web/components/view/OListView"
 msgid "Failed to load list"
 msgstr "列表加载失败"
 
-#: web/components/view/OListView.vue:262
+#: web/components/view/OListView.vue:263
 msgctxt "web/components/view/OListView"
 msgid "Failed to refresh after reorder"
 msgstr "重排后刷新失败"
 
-#: web/components/view/OListView.vue:531
+#: web/components/view/OListView.vue:538
 msgctxt "web/components/view/OListView"
 msgid "Failed to refresh list"
 msgstr "列表刷新失败"
 
-#: web/components/view/OListView.vue:262
+#: web/components/view/OListView.vue:263
 msgctxt "web/components/view/OListView"
 msgid "Failed to reorder rows"
 msgstr "行重排失败"
 
-#: web/components/view/OListView.vue:523
+#: web/components/view/OListView.vue:530
 msgctxt "web/components/view/OListView"
 msgid "List data refreshed"
 msgstr "列表数据已刷新"
@@ -1081,12 +1126,12 @@ msgctxt "web/components/view/OListView"
 msgid "Save"
 msgstr "保存"
 
-#: web/components/view/OListView.vue:571
+#: web/components/view/OListView.vue:578
 msgctxt "web/components/view/OListView"
 msgid "Selected records are missing valid IDs"
 msgstr "所选记录缺少有效 ID"
 
-#: web/components/view/OListView.vue:576
+#: web/components/view/OListView.vue:583
 msgctxt "web/components/view/OListView"
 msgid "Successfully deleted %s record(s)"
 msgstr "已成功删除 %s 条记录"
@@ -1101,42 +1146,112 @@ msgctxt "web/components/view/OPagination"
 msgid "of %s"
 msgstr "共 %s 条"
 
-#: web/components/view/OSearchView.vue:32
+#: web/components/view/OSearchView.vue:33
 msgctxt "web/components/view/OSearchView"
 msgid "Search..."
 msgstr "搜索…"
 
-#: web/components/view/search/OSearch.vue:245
+#: web/components/view/search/OSearch.vue:423
 msgctxt "web/components/view/search/OSearch"
 msgid "Add at least one complete condition before confirming"
 msgstr "确认前请至少添加一条完整条件"
 
-#: web/components/view/search/OSearch.vue:40
+#: web/components/view/search/OSearch.vue:111 web/components/view/search/OSearch.vue:208
+msgctxt "web/components/view/search/OSearch"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/components/view/search/OSearch.vue:203
+msgctxt "web/components/view/search/OSearch"
+msgid "Confirm delete"
+msgstr "确认删除"
+
+#: web/components/view/search/OSearch.vue:66
 msgctxt "web/components/view/search/OSearch"
 msgid "Custom filter…"
 msgstr "自定义筛选…"
 
-#: web/components/view/search/OSearch.vue:58
+#: web/components/view/search/OSearch.vue:84
 msgctxt "web/components/view/search/OSearch"
 msgid "Custom group by"
 msgstr "自定义分组"
 
-#: web/components/view/search/OSearch.vue:30
+#: web/components/view/search/OSearch.vue:76
 msgctxt "web/components/view/search/OSearch"
 msgid "Day"
 msgstr "日"
 
-#: web/components/view/search/OSearch.vue:64
+#: web/components/view/search/OSearch.vue:207
+msgctxt "web/components/view/search/OSearch"
+msgid "Delete"
+msgstr "删除"
+
+#: web/components/view/search/OSearch.vue:202
+msgctxt "web/components/view/search/OSearch"
+msgid "Delete favorite \"%s\"? This cannot be undone."
+msgstr "删除收藏「%s」？此操作无法撤销。"
+
+#: web/components/view/search/OSearch.vue:54
+msgctxt "web/components/view/search/OSearch"
+msgid "Delete favorite %s"
+msgstr "删除收藏 %s"
+
+#: web/components/view/search/OSearch.vue:188
+msgctxt "web/components/view/search/OSearch"
+msgid "Edit favorite"
+msgstr "编辑收藏"
+
+#: web/components/view/search/OSearch.vue:51
+msgctxt "web/components/view/search/OSearch"
+msgid "Edit favorite %s"
+msgstr "编辑收藏 %s"
+
+#: web/components/view/search/OSearch.vue:111
 msgctxt "web/components/view/search/OSearch"
 msgid "Edit filter"
 msgstr "编辑过滤器"
+
+#: web/components/view/search/OSearch.vue:251
+msgctxt "web/components/view/search/OSearch"
+msgid "Enter a favorite name"
+msgstr "请输入收藏名称"
+
+#: web/components/view/search/OSearch.vue:59
+msgctxt "web/components/view/search/OSearch"
+msgid "Failed to load favorites"
+msgstr "加载收藏失败"
+
+#: web/components/view/search/OSearch.vue:218
+msgctxt "web/components/view/search/OSearch"
+msgid "Favorite deleted"
+msgstr "收藏已删除"
+
+#: web/components/view/search/OSearch.vue:101
+msgctxt "web/components/view/search/OSearch"
+msgid "Favorite name"
+msgstr "收藏名称"
+
+#: web/components/view/search/OSearch.vue:270
+msgctxt "web/components/view/search/OSearch"
+msgid "Favorite saved"
+msgstr "收藏已保存"
+
+#: web/components/view/search/OSearch.vue:263
+msgctxt "web/components/view/search/OSearch"
+msgid "Favorite updated"
+msgstr "收藏已更新"
+
+#: web/components/view/search/OSearch.vue:40
+msgctxt "web/components/view/search/OSearch"
+msgid "Favorites"
+msgstr "收藏"
 
 #: web/components/view/search/OSearch.vue:28
 msgctxt "web/components/view/search/OSearch"
 msgid "Filters"
 msgstr "筛选"
 
-#: web/components/view/search/OSearch.vue:44
+#: web/components/view/search/OSearch.vue:70
 msgctxt "web/components/view/search/OSearch"
 msgid "Group by"
 msgstr "分组"
@@ -1146,17 +1261,27 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Group: %s"
 msgstr "分组：%s"
 
-#: web/components/view/search/OSearch.vue:28
+#: web/components/view/search/OSearch.vue:74
 msgctxt "web/components/view/search/OSearch"
 msgid "Month"
 msgstr "月"
 
-#: web/components/view/search/OSearch.vue:64
+#: web/components/view/search/OSearch.vue:100
+msgctxt "web/components/view/search/OSearch"
+msgid "Name"
+msgstr "名称"
+
+#: web/components/view/search/OSearch.vue:111
 msgctxt "web/components/view/search/OSearch"
 msgid "New filter"
 msgstr "新建过滤器"
 
-#: web/components/view/search/OSearch.vue:54
+#: web/components/view/search/OSearch.vue:62
+msgctxt "web/components/view/search/OSearch"
+msgid "No favorites yet"
+msgstr "暂无收藏"
+
+#: web/components/view/search/OSearch.vue:80
 msgctxt "web/components/view/search/OSearch"
 msgid "Not set"
 msgstr "未设置"
@@ -1166,37 +1291,72 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Open search menu"
 msgstr "打开搜索菜单"
 
-#: web/components/view/search/OSearch.vue:27
+#: web/components/view/search/OSearch.vue:73
 msgctxt "web/components/view/search/OSearch"
 msgid "Quarter"
 msgstr "季度"
+
+#: web/components/view/search/OSearch.vue:60
+msgctxt "web/components/view/search/OSearch"
+msgid "Retry"
+msgstr "重试"
 
 #: web/components/view/search/OSearch.vue:5
 msgctxt "web/components/view/search/OSearch"
 msgid "Run search"
 msgstr "执行搜索"
 
+#: web/components/view/search/OSearch.vue:112
+msgctxt "web/components/view/search/OSearch"
+msgid "Save"
+msgstr "保存"
+
+#: web/components/view/search/OSearch.vue:188
+msgctxt "web/components/view/search/OSearch"
+msgid "Save current filters"
+msgstr "保存当前筛选"
+
+#: web/components/view/search/OSearch.vue:64
+msgctxt "web/components/view/search/OSearch"
+msgid "Save current filters…"
+msgstr "保存当前筛选…"
+
 #: web/components/view/search/OSearch.vue:4
 msgctxt "web/components/view/search/OSearch"
 msgid "Search"
 msgstr "搜索"
 
-#: web/components/view/search/OSearch.vue:91
+#: web/components/view/search/OSearch.vue:138
 msgctxt "web/components/view/search/OSearch"
 msgid "Search..."
 msgstr "搜索…"
 
-#: web/components/view/search/OSearch.vue:60
+#: web/components/view/search/OSearch.vue:86
 msgctxt "web/components/view/search/OSearch"
 msgid "Select field or date granularity"
 msgstr "选择字段或日期粒度"
 
-#: web/components/view/search/OSearch.vue:29
+#: web/components/view/search/OSearch.vue:107
+msgctxt "web/components/view/search/OSearch"
+msgid "Share with all users"
+msgstr "与所有用户共享"
+
+#: web/components/view/search/OSearch.vue:48
+msgctxt "web/components/view/search/OSearch"
+msgid "Shared"
+msgstr "共享"
+
+#: web/components/view/search/OSearch.vue:104
+msgctxt "web/components/view/search/OSearch"
+msgid "Use by default"
+msgstr "设为默认"
+
+#: web/components/view/search/OSearch.vue:75
 msgctxt "web/components/view/search/OSearch"
 msgid "Week"
 msgstr "周"
 
-#: web/components/view/search/OSearch.vue:26
+#: web/components/view/search/OSearch.vue:72
 msgctxt "web/components/view/search/OSearch"
 msgid "Year"
 msgstr "年"
@@ -1501,7 +1661,7 @@ msgctxt "web/pages/TerminologyEditor"
 msgid "Module (required for PO)"
 msgstr "模块（下载 PO 必填）"
 
-#: web/pages/TerminologyEditor.vue:103
+#: web/pages/TerminologyEditor.vue:105
 msgctxt "web/pages/TerminologyEditor"
 msgid "PO download failed"
 msgstr "PO 下载失败"
@@ -1511,7 +1671,7 @@ msgctxt "web/pages/TerminologyEditor"
 msgid "Select an application to edit terminology"
 msgstr "请选择应用以编辑术语"
 
-#: web/pages/TerminologyEditor.vue:82
+#: web/pages/TerminologyEditor.vue:83
 msgctxt "web/pages/TerminologyEditor"
 msgid "TranslationTerm store is not available for this application"
 msgstr "该应用不可用 TranslationTerm 存储"

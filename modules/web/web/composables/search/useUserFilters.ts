@@ -39,6 +39,7 @@ export function useUserFilters(params: {
   const favorites = ref<UserFavoriteItem[]>([]);
   const loading = ref(false);
   const loadError = ref<string | null>(null);
+  let loadGeneration = 0;
 
   const application = computed(() => String((store as any)?.application || '').trim());
   const modelName = computed(() => String((store as any)?.modelName || '').trim());
@@ -52,10 +53,17 @@ export function useUserFilters(params: {
   }
 
   async function load(): Promise<void> {
+    const gen = ++loadGeneration;
     const app = application.value;
     const model = modelName.value;
     if (!app || !model) {
-      favorites.value = [];
+      // Yield so a newer load() can bump gen before we clear (stale empty-context guard).
+      await Promise.resolve();
+      if (gen === loadGeneration) {
+        favorites.value = [];
+        loading.value = false;
+        loadError.value = null;
+      }
       return;
     }
     loading.value = true;
@@ -86,6 +94,8 @@ export function useUserFilters(params: {
         }
       )) as UserFilterRow[];
 
+      if (gen !== loadGeneration) return;
+
       favorites.value = (rows || [])
         .filter(r => r && r.Id && r.Name)
         .map(r => {
@@ -103,10 +113,13 @@ export function useUserFilters(params: {
           };
         });
     } catch (e: any) {
+      if (gen !== loadGeneration) return;
       loadError.value = e instanceof Error ? e.message : String(e);
       favorites.value = [];
     } finally {
-      loading.value = false;
+      if (gen === loadGeneration) {
+        loading.value = false;
+      }
     }
   }
 
@@ -185,6 +198,30 @@ export function useUserFilters(params: {
     await load();
   }
 
+  /** Update Name / IsDefault / shared only; leave Condition unchanged. */
+  async function updateMeta(
+    id: string,
+    opts: { name: string; isDefault?: boolean; shared?: boolean }
+  ): Promise<void> {
+    const name = String(opts.name || '').trim();
+    const favId = String(id || '').trim();
+    if (!favId || !name) return;
+
+    const me = actorUserId();
+    const uf = userFilterStore() as any;
+    const values: Record<string, any> = {
+      Name: name,
+      IsDefault: !!opts.isDefault,
+    };
+    if (opts.shared) {
+      values.UserId = null;
+    } else if (me) {
+      values.UserId = me;
+    }
+    await uf.UpdateById(favId, values);
+    await load();
+  }
+
   return {
     favorites,
     favoriteMenuItems,
@@ -193,6 +230,7 @@ export function useUserFilters(params: {
     load,
     apply,
     saveCurrent,
+    updateMeta,
     remove,
     defaultsForOpen,
     privateDefault,

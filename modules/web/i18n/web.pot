@@ -7,6 +7,51 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
+#: service/models/user_filter.ts:122
+msgctxt "web.model.UserFilter"
+msgid "Cannot assign a favorite to another user"
+msgstr ""
+
+#: service/models/user_filter.ts:58
+msgctxt "web.model.UserFilter.fields"
+msgid "Application"
+msgstr ""
+
+#: service/models/user_filter.ts:81
+msgctxt "web.model.UserFilter.fields"
+msgid "Condition"
+msgstr ""
+
+#: service/models/user_filter.ts:107
+msgctxt "web.model.UserFilter.fields"
+msgid "Is Default"
+msgstr ""
+
+#: service/models/user_filter.ts:70
+msgctxt "web.model.UserFilter.fields"
+msgid "Model Name"
+msgstr ""
+
+#: service/models/user_filter.ts:31
+msgctxt "web.model.UserFilter.fields"
+msgid "Name"
+msgstr ""
+
+#: service/models/user_filter.ts:46
+msgctxt "web.model.UserFilter.fields"
+msgid "Normalized route path; Favorites UI shows Name only."
+msgstr ""
+
+#: service/models/user_filter.ts:45
+msgctxt "web.model.UserFilter.fields"
+msgid "Scope Key"
+msgstr ""
+
+#: service/models/user_filter.ts:96
+msgctxt "web.model.UserFilter.fields"
+msgid "User"
+msgstr ""
+
 #: web/components/field/OBigintField.vue:254
 msgctxt "web/components/field/OBigintField"
 msgid "Cannot be empty"
@@ -975,12 +1020,12 @@ msgctxt "web/components/view/OFormView"
 msgid "Saving..."
 msgstr ""
 
-#: web/components/view/OKanbanView.vue:130
+#: web/components/view/OKanbanView.vue:131
 msgctxt "web/components/view/OKanbanView"
 msgid "All"
 msgstr ""
 
-#: web/components/view/OKanbanView.vue:296
+#: web/components/view/OKanbanView.vue:297
 msgctxt "web/components/view/OKanbanView"
 msgid "Kanban refresh failed"
 msgstr ""
@@ -990,7 +1035,7 @@ msgctxt "web/components/view/OKanbanView"
 msgid "Load more (%s remaining)"
 msgstr ""
 
-#: web/components/view/OKanbanView.vue:251
+#: web/components/view/OKanbanView.vue:252
 msgctxt "web/components/view/OKanbanView"
 msgid "Move failed; refreshed to recover"
 msgstr ""
@@ -1015,12 +1060,12 @@ msgctxt "web/components/view/OKanbanView"
 msgid "Refresh"
 msgstr ""
 
-#: web/components/view/OListView.vue:550
+#: web/components/view/OListView.vue:557
 msgctxt "web/components/view/OListView"
 msgid "Are you sure you want to delete the selected %s record(s)? This action cannot be undone."
 msgstr ""
 
-#: web/components/view/OListView.vue:552
+#: web/components/view/OListView.vue:559
 msgctxt "web/components/view/OListView"
 msgid "Cancel"
 msgstr ""
@@ -1030,12 +1075,12 @@ msgctxt "web/components/view/OListView"
 msgid "Click to load more (%s remaining)"
 msgstr ""
 
-#: web/components/view/OListView.vue:550
+#: web/components/view/OListView.vue:557
 msgctxt "web/components/view/OListView"
 msgid "Confirm delete"
 msgstr ""
 
-#: web/components/view/OListView.vue:551
+#: web/components/view/OListView.vue:558
 msgctxt "web/components/view/OListView"
 msgid "Delete"
 msgstr ""
@@ -1045,7 +1090,7 @@ msgctxt "web/components/view/OListView"
 msgid "Delete (%s)"
 msgstr ""
 
-#: web/components/view/OListView.vue:585
+#: web/components/view/OListView.vue:592
 msgctxt "web/components/view/OListView"
 msgid "Delete failed"
 msgstr ""
@@ -1055,32 +1100,32 @@ msgctxt "web/components/view/OListView"
 msgid "Discard"
 msgstr ""
 
-#: web/components/view/OListView.vue:193
+#: web/components/view/OListView.vue:194
 msgctxt "web/components/view/OListView"
 msgid "Editing was discarded because the row is no longer visible."
 msgstr ""
 
-#: web/components/view/OListView.vue:448
+#: web/components/view/OListView.vue:455
 msgctxt "web/components/view/OListView"
 msgid "Failed to load list"
 msgstr ""
 
-#: web/components/view/OListView.vue:262
+#: web/components/view/OListView.vue:263
 msgctxt "web/components/view/OListView"
 msgid "Failed to refresh after reorder"
 msgstr ""
 
-#: web/components/view/OListView.vue:531
+#: web/components/view/OListView.vue:538
 msgctxt "web/components/view/OListView"
 msgid "Failed to refresh list"
 msgstr ""
 
-#: web/components/view/OListView.vue:262
+#: web/components/view/OListView.vue:263
 msgctxt "web/components/view/OListView"
 msgid "Failed to reorder rows"
 msgstr ""
 
-#: web/components/view/OListView.vue:523
+#: web/components/view/OListView.vue:530
 msgctxt "web/components/view/OListView"
 msgid "List data refreshed"
 msgstr ""
@@ -1105,12 +1150,12 @@ msgctxt "web/components/view/OListView"
 msgid "Save"
 msgstr ""
 
-#: web/components/view/OListView.vue:571
+#: web/components/view/OListView.vue:578
 msgctxt "web/components/view/OListView"
 msgid "Selected records are missing valid IDs"
 msgstr ""
 
-#: web/components/view/OListView.vue:576
+#: web/components/view/OListView.vue:583
 msgctxt "web/components/view/OListView"
 msgid "Successfully deleted %s record(s)"
 msgstr ""
@@ -1125,34 +1170,105 @@ msgctxt "web/components/view/OPagination"
 msgid "of %s"
 msgstr ""
 
-#: web/components/view/OSearchView.vue:32
+#: web/components/view/OSearchView.vue:33
 msgctxt "web/components/view/OSearchView"
 msgid "Search..."
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:245
+#: web/components/view/search/OSearch.vue:423
 msgctxt "web/components/view/search/OSearch"
 msgid "Add at least one complete condition before confirming"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:40
+#: web/components/view/search/OSearch.vue:111
+#: web/components/view/search/OSearch.vue:208
+msgctxt "web/components/view/search/OSearch"
+msgid "Cancel"
+msgstr ""
+
+#: web/components/view/search/OSearch.vue:203
+msgctxt "web/components/view/search/OSearch"
+msgid "Confirm delete"
+msgstr ""
+
+#: web/components/view/search/OSearch.vue:66
 msgctxt "web/components/view/search/OSearch"
 msgid "Custom filter…"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:58
+#: web/components/view/search/OSearch.vue:84
 msgctxt "web/components/view/search/OSearch"
 msgid "Custom group by"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:30
+#: web/components/view/search/OSearch.vue:76
 msgctxt "web/components/view/search/OSearch"
 msgid "Day"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:64
+#: web/components/view/search/OSearch.vue:207
+msgctxt "web/components/view/search/OSearch"
+msgid "Delete"
+msgstr ""
+
+#: web/components/view/search/OSearch.vue:202
+msgctxt "web/components/view/search/OSearch"
+msgid "Delete favorite \"%s\"? This cannot be undone."
+msgstr ""
+
+#: web/components/view/search/OSearch.vue:54
+msgctxt "web/components/view/search/OSearch"
+msgid "Delete favorite %s"
+msgstr ""
+
+#: web/components/view/search/OSearch.vue:188
+msgctxt "web/components/view/search/OSearch"
+msgid "Edit favorite"
+msgstr ""
+
+#: web/components/view/search/OSearch.vue:51
+msgctxt "web/components/view/search/OSearch"
+msgid "Edit favorite %s"
+msgstr ""
+
+#: web/components/view/search/OSearch.vue:111
 msgctxt "web/components/view/search/OSearch"
 msgid "Edit filter"
+msgstr ""
+
+#: web/components/view/search/OSearch.vue:251
+msgctxt "web/components/view/search/OSearch"
+msgid "Enter a favorite name"
+msgstr ""
+
+#: web/components/view/search/OSearch.vue:59
+msgctxt "web/components/view/search/OSearch"
+msgid "Failed to load favorites"
+msgstr ""
+
+#: web/components/view/search/OSearch.vue:218
+msgctxt "web/components/view/search/OSearch"
+msgid "Favorite deleted"
+msgstr ""
+
+#: web/components/view/search/OSearch.vue:101
+msgctxt "web/components/view/search/OSearch"
+msgid "Favorite name"
+msgstr ""
+
+#: web/components/view/search/OSearch.vue:270
+msgctxt "web/components/view/search/OSearch"
+msgid "Favorite saved"
+msgstr ""
+
+#: web/components/view/search/OSearch.vue:263
+msgctxt "web/components/view/search/OSearch"
+msgid "Favorite updated"
+msgstr ""
+
+#: web/components/view/search/OSearch.vue:40
+msgctxt "web/components/view/search/OSearch"
+msgid "Favorites"
 msgstr ""
 
 #: web/components/view/search/OSearch.vue:28
@@ -1160,7 +1276,7 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Filters"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:44
+#: web/components/view/search/OSearch.vue:70
 msgctxt "web/components/view/search/OSearch"
 msgid "Group by"
 msgstr ""
@@ -1170,17 +1286,27 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Group: %s"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:28
+#: web/components/view/search/OSearch.vue:74
 msgctxt "web/components/view/search/OSearch"
 msgid "Month"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:64
+#: web/components/view/search/OSearch.vue:100
+msgctxt "web/components/view/search/OSearch"
+msgid "Name"
+msgstr ""
+
+#: web/components/view/search/OSearch.vue:111
 msgctxt "web/components/view/search/OSearch"
 msgid "New filter"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:54
+#: web/components/view/search/OSearch.vue:62
+msgctxt "web/components/view/search/OSearch"
+msgid "No favorites yet"
+msgstr ""
+
+#: web/components/view/search/OSearch.vue:80
 msgctxt "web/components/view/search/OSearch"
 msgid "Not set"
 msgstr ""
@@ -1190,9 +1316,14 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Open search menu"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:27
+#: web/components/view/search/OSearch.vue:73
 msgctxt "web/components/view/search/OSearch"
 msgid "Quarter"
+msgstr ""
+
+#: web/components/view/search/OSearch.vue:60
+msgctxt "web/components/view/search/OSearch"
+msgid "Retry"
 msgstr ""
 
 #: web/components/view/search/OSearch.vue:5
@@ -1200,27 +1331,57 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Run search"
 msgstr ""
 
+#: web/components/view/search/OSearch.vue:112
+msgctxt "web/components/view/search/OSearch"
+msgid "Save"
+msgstr ""
+
+#: web/components/view/search/OSearch.vue:188
+msgctxt "web/components/view/search/OSearch"
+msgid "Save current filters"
+msgstr ""
+
+#: web/components/view/search/OSearch.vue:64
+msgctxt "web/components/view/search/OSearch"
+msgid "Save current filters…"
+msgstr ""
+
 #: web/components/view/search/OSearch.vue:4
 msgctxt "web/components/view/search/OSearch"
 msgid "Search"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:91
+#: web/components/view/search/OSearch.vue:138
 msgctxt "web/components/view/search/OSearch"
 msgid "Search..."
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:60
+#: web/components/view/search/OSearch.vue:86
 msgctxt "web/components/view/search/OSearch"
 msgid "Select field or date granularity"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:29
+#: web/components/view/search/OSearch.vue:107
+msgctxt "web/components/view/search/OSearch"
+msgid "Share with all users"
+msgstr ""
+
+#: web/components/view/search/OSearch.vue:48
+msgctxt "web/components/view/search/OSearch"
+msgid "Shared"
+msgstr ""
+
+#: web/components/view/search/OSearch.vue:104
+msgctxt "web/components/view/search/OSearch"
+msgid "Use by default"
+msgstr ""
+
+#: web/components/view/search/OSearch.vue:75
 msgctxt "web/components/view/search/OSearch"
 msgid "Week"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:26
+#: web/components/view/search/OSearch.vue:72
 msgctxt "web/components/view/search/OSearch"
 msgid "Year"
 msgstr ""
@@ -1536,7 +1697,7 @@ msgctxt "web/pages/TerminologyEditor"
 msgid "Module (required for PO)"
 msgstr ""
 
-#: web/pages/TerminologyEditor.vue:103
+#: web/pages/TerminologyEditor.vue:105
 msgctxt "web/pages/TerminologyEditor"
 msgid "PO download failed"
 msgstr ""
@@ -1546,7 +1707,7 @@ msgctxt "web/pages/TerminologyEditor"
 msgid "Select an application to edit terminology"
 msgstr ""
 
-#: web/pages/TerminologyEditor.vue:82
+#: web/pages/TerminologyEditor.vue:83
 msgctxt "web/pages/TerminologyEditor"
 msgid "TranslationTerm store is not available for this application"
 msgstr ""
