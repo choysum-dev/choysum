@@ -64,8 +64,8 @@ SPDX-License-Identifier: Apache-2.0
         </div>
 
         <!-- Centered search: render only when searchView is provided -->
-        <div class="o-list__search" v-if="searchView">
-          <component :is="searchView" :store="store" @query-update="onSearch" />
+        <div class="o-list__search" v-if="resolvedSearchView">
+          <component :is="resolvedSearchView" :store="store" @query-update="onSearch" />
         </div>
 
         <div class="o-list__header-right">
@@ -127,7 +127,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts" generic="T extends BaseModel">
 import type { ConditionGroup, QueryUpdatePayload } from '@/web/web/query/types';
 import type { RowEventHandlerParams } from 'element-plus';
-import { computed, onMounted, onBeforeUnmount, provide, ref, nextTick, watch, DefineComponent } from 'vue';
+import { computed, onMounted, onBeforeUnmount, provide, ref, nextTick, watch, markRaw, DefineComponent } from 'vue';
 import { useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
 import type { ClientModel, BaseModel, QueryCondition, OrderBy } from '@/core/rpc';
@@ -267,6 +267,11 @@ provide('view-mode', listViewMode);
 
 const router = useRouter();
 const store = props.store; // WebModelStore<T>
+// Avoid Vue "component made reactive" warn when a Component is passed as searchView prop.
+const resolvedSearchView = computed(() => {
+  const view = props.searchView;
+  return view ? markRaw(view as object) : null;
+});
 const canCreate = computed(() => canShowAction(props.actionIds?.create, props.hasAction));
 const canRefresh = computed(() => canShowAction(props.actionIds?.refresh, props.hasAction));
 const canDelete = computed(() => canShowAction(props.actionIds?.delete, props.hasAction));
