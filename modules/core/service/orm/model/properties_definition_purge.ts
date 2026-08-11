@@ -7,6 +7,14 @@ import { lookupPropertyDefinitionModel } from './properties_lookup';
 import { withPropertyDefinitionParentAclBypass } from './properties_definition_acl';
 import type { RuntimeModelCtor } from './types';
 
+function containerModelMatchValues(application: string, containerModel: string): string[] {
+  const model = String(containerModel || '').trim();
+  const app = String(application || '').trim();
+  if (!model) return [];
+  const qualified = app ? `${app}.${model}` : '';
+  return qualified && qualified !== model ? [model, qualified] : [model];
+}
+
 /**
  * Delete PropertyDefinition rows scoped to the given parent containers.
  * Used when parent records are deleted (§3.4). Does not scrub child properties JSON.
@@ -22,21 +30,29 @@ export async function purgePropertyDefinitionsForContainers(
   if (!app || !model || !ids.length) return 0;
 
   const Ctor = lookupPropertyDefinitionModel(app);
-  if (!Ctor || typeof (Ctor as any).Search !== 'function' || typeof (Ctor as any).DeleteById !== 'function') {
+  if (!Ctor || typeof (Ctor as any).Search !== 'function') {
     return 0;
   }
+  const canBulkDelete = typeof (Ctor as any).Delete === 'function';
+  const canDeleteById = typeof (Ctor as any).DeleteById === 'function';
+  if (!canBulkDelete && !canDeleteById) return 0;
+
+  const modelNames = containerModelMatchValues(app, model);
+  const condition = {
+    And: [
+      modelNames.length === 1
+        ? ['ContainerModel', '=', modelNames[0]]
+        : ['ContainerModel', 'in', modelNames],
+      ['ContainerId', 'in', ids],
+    ],
+  };
 
   return await withModelSudo(async () => {
     return await withPropertyDefinitionParentAclBypass(async () => {
-      const rows = await (Ctor as any).Search(
-        {
-          And: [
-            ['ContainerModel', '=', model],
-            ['ContainerId', 'in', ids],
-          ],
-        } as any,
-        { fields: ['Id'] as any } as any
-      );
+      if (canBulkDelete) {
+        return Number(await (Ctor as any).Delete(condition as any)) || 0;
+      }
+      const rows = await (Ctor as any).Search(condition as any, { fields: ['Id'] as any } as any);
       let n = 0;
       for (const row of rows || []) {
         const id = String((row as any)?.Id || '').trim();
@@ -67,12 +83,5 @@ export async function purgePropertyDefinitionsAfterParentDelete(
   // Never recurse into PropertyDefinition self-deletes as a "parent".
   if (containerModel === 'PropertyDefinition') return;
 
-  try {
-    await purgePropertyDefinitionsForContainers(application, containerModel, ids);
-  } catch (e) {
-    if (typeof console !== 'undefined') {
-      console.warn('[Delete] PropertyDefinition container purge failed:', e);
-    }
-    throw e;
-  }
+  await purgePropertyDefinitionsForContainers(application, containerModel, ids);
 }

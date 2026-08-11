@@ -83,6 +83,15 @@ function installDefinitionStore(rows: DefRow[]) {
         return true;
       });
     },
+    Delete: async (condition: any) => {
+      const matched = await store.Search(condition);
+      const ids = new Set(matched.map((r: any) => String(r.Id)));
+      const before = rows.length;
+      const next = rows.filter(r => !ids.has(String(r.Id)));
+      rows.length = 0;
+      rows.push(...next);
+      return before - rows.length;
+    },
     DeleteById: async (id: string) => {
       const before = rows.length;
       const next = rows.filter(r => String(r.Id) !== String(id));
@@ -108,6 +117,10 @@ async function expectRejects(promise: Promise<unknown>, codeOrMsg: string | RegE
 }
 
 test('PP4: App-level definition edit updates resolve; deleting a key does not scrub child JSON', async () => {
+  const childRecord = {
+    Id: 'partner-1',
+    PartnerProperties: { tax_id: 'T1', vip: true, orphan: 'keep' } as Record<string, unknown>,
+  };
   const { rows } = installDefinitionStore([
     {
       Id: 'app-1',
@@ -124,7 +137,7 @@ test('PP4: App-level definition edit updates resolve; deleting a key does not sc
   try {
     const before = await resolveProperties(
       Pp4Partner as any,
-      { PartnerProperties: { tax_id: 'T1', vip: true, orphan: 'keep' } },
+      childRecord,
       'PartnerProperties'
     );
     expect(before.map(i => i.name)).toEqual(['tax_id', 'vip']);
@@ -134,14 +147,14 @@ test('PP4: App-level definition edit updates resolve; deleting a key does not sc
 
     const after = await resolveProperties(
       Pp4Partner as any,
-      { PartnerProperties: { tax_id: 'T1', vip: true, orphan: 'keep' } },
+      childRecord,
       'PartnerProperties'
     );
     expect(after.map(i => i.name)).toEqual(['tax_id']);
 
-    const map = { tax_id: 'T1', vip: true, orphan: 'keep' };
-    expect(map).toHaveProperty('vip');
-    expect(map).toHaveProperty('orphan');
+    // Child JSON is untouched by definition edits (resolve only filters for display).
+    expect(childRecord.PartnerProperties).toHaveProperty('vip');
+    expect(childRecord.PartnerProperties).toHaveProperty('orphan');
 
     const written = await validatePropertiesWrite(Pp4Partner as any, 'PartnerProperties', { tax_id: 'T2' }, {});
     expect(written).toEqual({ tax_id: 'T2' });
@@ -197,6 +210,14 @@ test('PP4: parent writable probe required fields and missing parent model', asyn
 
     await expectRejects(
       assertPropertyDefinitionParentWritable(Pp4PropertyDefinition as any, {
+        ContainerId: null,
+        ContainerModel: 'Pp4Project',
+      }),
+      'PROPERTY_DEFINITION_PARENT_SCOPE'
+    );
+
+    await expectRejects(
+      assertPropertyDefinitionParentWritable(Pp4PropertyDefinition as any, {
         ContainerId: 'x',
         ContainerModel: 'DoesNotExistModel',
       }),
@@ -207,7 +228,7 @@ test('PP4: parent writable probe required fields and missing parent model', asyn
   }
 });
 
-test('PP4: purge container definitions leaves App-level and other parents; child map untouched', async () => {
+test('PP4: purge container definitions leaves App-level and other parents', async () => {
   const { rows } = installDefinitionStore([
     {
       Id: 'p1',
@@ -226,6 +247,14 @@ test('PP4: purge container definitions leaves App-level and other parents; child
       Definition: [{ name: 'b', type: 'char' }],
     },
     {
+      Id: 'p2q',
+      TargetModel: 'Pp4Task',
+      PropertiesField: 'TaskProperties',
+      ContainerModel: 'pp4test.Pp4Project',
+      ContainerId: 'proj-gone',
+      Definition: [{ name: 'bq', type: 'char' }],
+    },
+    {
       Id: 'app',
       TargetModel: 'Pp4Partner',
       PropertiesField: 'PartnerProperties',
@@ -235,11 +264,9 @@ test('PP4: purge container definitions leaves App-level and other parents; child
     },
   ]);
   try {
-    const childMap = { b: 'keep-me' };
     const n = await purgePropertyDefinitionsForContainers('pp4test', 'Pp4Project', ['proj-gone']);
-    expect(n).toBe(1);
+    expect(n).toBe(2);
     expect(rows.map(r => r.Id).sort()).toEqual(['app', 'p1']);
-    expect(childMap).toEqual({ b: 'keep-me' });
   } finally {
     __clearLookupPropertyDefinitionModelForTest();
     __setParentWritableProbeForTest(undefined);

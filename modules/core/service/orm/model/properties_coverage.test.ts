@@ -593,11 +593,14 @@ test('PropertyDefinitionBaseModel Create/Update validate Definition and unique i
 
     // Scope change on UpdateById checks uniqueness excluding self (PP8 parent write allowed via probe).
     __setParentWritableProbeForTest(async () => undefined);
-    await PropertyDefinitionBaseModel.UpdateById.call(PpCovPropertyDefinition, 'PD-1', {
-      ContainerModel: 'PpCovProject',
-      ContainerId: 'parent-1',
-    } as any);
-    __setParentWritableProbeForTest(undefined);
+    try {
+      await PropertyDefinitionBaseModel.UpdateById.call(PpCovPropertyDefinition, 'PD-1', {
+        ContainerModel: 'PpCovProject',
+        ContainerId: 'parent-1',
+      } as any);
+    } finally {
+      __setParentWritableProbeForTest(undefined);
+    }
 
     __resetPropertyDefinitionUniqueIndexTablesForTest();
     (globalThis as any).$choysum = {
@@ -938,7 +941,13 @@ test('properties coverage: remaining branch edges for 100% patch', async () => {
     // CreateMany ?? branches for undefined TargetModel / null+undefined PropertiesField
     await PropertyDefinitionBaseModel.CreateMany.call(PpCovPropertyDefinition, [
       { PropertiesField: undefined, ContainerModel: null, Definition: [] },
-      { TargetModel: 'BatchT', PropertiesField: 'BatchF', ContainerModel: 'CM', Definition: [] },
+      {
+        TargetModel: 'BatchT',
+        PropertiesField: 'BatchF',
+        ContainerModel: 'CM',
+        ContainerId: 'cid-batch',
+        Definition: [],
+      },
     ] as any);
 
     await PropertyDefinitionBaseModel.UpdateById.call(PpCovPropertyDefinition, 'missing', {

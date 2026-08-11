@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { raiseDomainError } from '@/core/service/error';
+import { getCurrentReq, getOrInitReqServiceState } from '../../runtime/context';
 import { MetadataStorage } from '../metadata/storage';
 import { RepositoryFactory } from '../repository/repository_factory';
 import { resolveModelConstructor } from './model_registry';
@@ -18,28 +19,66 @@ function nullScope(value: unknown): string | null {
   return s || null;
 }
 
+/** Canonical short model name for ContainerModel (strip optional `app.` prefix). */
+export function normalizeContainerModelName(value: unknown): string | null {
+  const raw = nullScope(value);
+  if (!raw) return null;
+  const dot = raw.lastIndexOf('.');
+  return dot >= 0 ? raw.slice(dot + 1) || null : raw;
+}
+
 type ParentWritableProbe = (
   parentCtor: { Search: (...args: any[]) => Promise<any[]>; new (...args: any[]): unknown },
   containerId: string
 ) => Promise<void>;
 
-let parentAclBypassDepth = 0;
+type ParentAclState = {
+  propertyDefinitionParentAclBypassDepth?: number;
+};
+
 let parentWritableProbeOverride: ParentWritableProbe | undefined;
+/** Fallback when no request service state exists (unit harness / scripts). */
+const processParentAclState: ParentAclState = {};
+
+function getParentAclState(): ParentAclState {
+  const reqState = getOrInitReqServiceState(getCurrentReq()) as ParentAclState | undefined | null;
+  return reqState || processParentAclState;
+}
+
+function getParentAclBypassDepth(): number {
+  const value = getParentAclState().propertyDefinitionParentAclBypassDepth;
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function restoreParentAclBypassDepth(state: ParentAclState): void {
+  const current =
+    typeof state.propertyDefinitionParentAclBypassDepth === 'number' &&
+    Number.isFinite(state.propertyDefinitionParentAclBypassDepth)
+      ? state.propertyDefinitionParentAclBypassDepth
+      : 0;
+  if (current > 1) state.propertyDefinitionParentAclBypassDepth = current - 1;
+  else delete state.propertyDefinitionParentAclBypassDepth;
+}
+
+function isPromiseLike<T = unknown>(value: unknown): value is Promise<T> {
+  return !!value && typeof (value as { then?: unknown }).then === 'function';
+}
 
 /** Skip PP8 parent-write gate (used by system purge). Supports sync and async `fn`. */
 export function withPropertyDefinitionParentAclBypass<T>(fn: () => T): T {
-  parentAclBypassDepth += 1;
+  const state = getParentAclState();
+  const previous = getParentAclBypassDepth();
+  state.propertyDefinitionParentAclBypassDepth = previous + 1;
+  const restore = () => restoreParentAclBypassDepth(state);
   try {
     const out = fn();
-    if (out && typeof (out as any).then === 'function') {
-      return Promise.resolve(out).finally(() => {
-        parentAclBypassDepth -= 1;
-      }) as T;
+    if (isPromiseLike(out)) {
+      return Promise.resolve(out).finally(restore) as T;
     }
-    parentAclBypassDepth -= 1;
+    restore();
     return out;
   } catch (e) {
-    parentAclBypassDepth -= 1;
+    restore();
     throw e;
   }
 }
@@ -70,26 +109,50 @@ async function defaultParentWritableProbe(
   await repo.assertRecordRuleTargetsAllowed('write', [containerId]);
 }
 
+function remapParentProbeError(err: any, containerModel: string, containerId: string): never {
+  const code = String(err?.code || err?.errorCode || '');
+  if (code.startsWith('PROPERTY_DEFINITION_PARENT_')) throw err;
+  const msg = err instanceof Error ? err.message : String(err);
+  if (
+    code.includes('record_rule') ||
+    code.includes('company') ||
+    /permission|denied|record rule/i.test(msg)
+  ) {
+    fail(
+      'PROPERTY_DEFINITION_PARENT_WRITE_DENIED',
+      `PropertyDefinition write requires write access on parent ${containerModel}/${containerId}: ${msg}`
+    );
+  }
+  throw err;
+}
+
 /**
  * PP8: parent-record containers require write access on the parent row.
- * App-level rows (empty ContainerId) skip this probe — Method ACL alone applies.
+ * App-level rows (both container dims empty) skip this probe — Method ACL alone applies.
  */
 export async function assertPropertyDefinitionParentWritable(
   defCtor: InstantiableModelCtor<PropertyDefinitionBaseModel>,
   vals: Record<string, unknown>
 ): Promise<void> {
-  if (parentAclBypassDepth > 0) return;
+  if (getParentAclBypassDepth() > 0) return;
 
   const containerId = nullScope(vals.ContainerId);
-  const containerModel = nullScope(vals.ContainerModel);
-  if (!containerId) return; // App-level
+  const containerModel = normalizeContainerModelName(vals.ContainerModel);
 
-  if (!containerModel) {
+  // Reject half-populated parent scopes in both directions.
+  if (containerId && !containerModel) {
     fail(
       'PROPERTY_DEFINITION_PARENT_SCOPE',
       'PropertyDefinition parent-container rows require ContainerModel when ContainerId is set'
     );
   }
+  if (containerModel && !containerId) {
+    fail(
+      'PROPERTY_DEFINITION_PARENT_SCOPE',
+      'PropertyDefinition parent-container rows require ContainerId when ContainerModel is set'
+    );
+  }
+  if (!containerId) return; // App-level
 
   // Test override short-circuits before model pool lookup.
   if (parentWritableProbeOverride) {
@@ -99,13 +162,7 @@ export async function assertPropertyDefinitionParentWritable(
         containerId
       );
     } catch (err: any) {
-      const code = String(err?.code || err?.errorCode || '');
-      const msg = err instanceof Error ? err.message : String(err);
-      if (code.startsWith('PROPERTY_DEFINITION_PARENT_')) throw err;
-      fail(
-        'PROPERTY_DEFINITION_PARENT_WRITE_DENIED',
-        `PropertyDefinition write requires write access on parent ${containerModel}/${containerId}: ${msg}`
-      );
+      remapParentProbeError(err, containerModel!, containerId);
     }
     return;
   }
@@ -114,7 +171,7 @@ export async function assertPropertyDefinitionParentWritable(
   const application = String((meta as any)?.application || '').trim();
   const parentCtor =
     (application ? resolveModelConstructor(`${application}.${containerModel}`) : undefined) ||
-    resolveModelConstructor(containerModel);
+    resolveModelConstructor(containerModel!);
 
   if (!parentCtor || typeof (parentCtor as any).Search !== 'function') {
     fail(
@@ -126,21 +183,7 @@ export async function assertPropertyDefinitionParentWritable(
   try {
     await defaultParentWritableProbe(parentCtor as any, containerId);
   } catch (err: any) {
-    const code = String(err?.code || err?.errorCode || '');
-    const msg = err instanceof Error ? err.message : String(err);
-    if (
-      code.includes('PROPERTY_DEFINITION_PARENT_') ||
-      code.includes('record_rule') ||
-      code.includes('company') ||
-      /permission|denied|record rule/i.test(msg)
-    ) {
-      if (code.startsWith('PROPERTY_DEFINITION_PARENT_')) throw err;
-      fail(
-        'PROPERTY_DEFINITION_PARENT_WRITE_DENIED',
-        `PropertyDefinition write requires write access on parent ${containerModel}/${containerId}: ${msg}`
-      );
-    }
-    throw err;
+    remapParentProbeError(err, containerModel!, containerId);
   }
 }
 
@@ -150,7 +193,44 @@ export function definitionScopeFromVals(vals: Record<string, unknown>): {
   containerId: string | null;
 } {
   return {
-    containerModel: nullScope(vals.ContainerModel),
+    containerModel: normalizeContainerModelName(vals.ContainerModel),
     containerId: nullScope(vals.ContainerId),
   };
+}
+
+export function parentScopeKey(vals: Record<string, unknown>): string {
+  const { containerModel, containerId } = definitionScopeFromVals(vals);
+  return `${containerModel ?? ''}\0${containerId ?? ''}`;
+}
+
+/** Normalize ContainerModel on write vals to the canonical short name. */
+export function normalizeDefinitionContainerScopeOnVals(vals: Record<string, unknown> | undefined): void {
+  if (!vals || !Object.prototype.hasOwnProperty.call(vals, 'ContainerModel')) return;
+  vals.ContainerModel = normalizeContainerModelName(vals.ContainerModel);
+}
+
+/** Collect unique parent scopes to probe (current + merged when reparenting). */
+export function collectParentScopesToProbe(
+  current: Record<string, unknown> | undefined,
+  values: Record<string, unknown> | undefined
+): Record<string, unknown>[] {
+  const merged = { ...(current || {}), ...(values || {}) } as Record<string, unknown>;
+  const out: Record<string, unknown>[] = [];
+  const seen = new Set<string>();
+  const push = (row: Record<string, unknown>) => {
+    const key = parentScopeKey(row);
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(row);
+  };
+  push(merged);
+  if (
+    current &&
+    values &&
+    (Object.prototype.hasOwnProperty.call(values, 'ContainerModel') ||
+      Object.prototype.hasOwnProperty.call(values, 'ContainerId'))
+  ) {
+    push(current);
+  }
+  return out;
 }

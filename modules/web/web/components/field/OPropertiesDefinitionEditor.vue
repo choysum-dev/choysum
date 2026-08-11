@@ -9,14 +9,14 @@ SPDX-License-Identifier: Apache-2.0
       <el-button
         type="primary"
         size="small"
-        :disabled="readonly || saving || !canSave"
+        :disabled="readonly || saving || loading || !canSave"
         :loading="saving"
         data-testid="o-properties-definition-save"
         @click="onSave"
       >
         {{ _t('Save') }}
       </el-button>
-      <el-button size="small" :disabled="readonly || saving" data-testid="o-properties-definition-add" @click="onAdd">
+      <el-button size="small" :disabled="readonly || saving || loading" data-testid="o-properties-definition-add" @click="onAdd">
         {{ _t('Add property') }}
       </el-button>
       <span v-if="loadError" class="o-properties-definition-editor__error" data-testid="o-properties-definition-error">
@@ -140,6 +140,7 @@ const loading = ref(false);
 const saving = ref(false);
 const loadError = ref('');
 const saveError = ref('');
+let reloadSeq = 0;
 
 const canSave = computed(
   () =>
@@ -161,6 +162,7 @@ function resolveStore(): WebModelStore<any> | null {
 }
 
 async function reload() {
+  const seq = ++reloadSeq;
   loadError.value = '';
   saveError.value = '';
   definitionId.value = null;
@@ -169,7 +171,9 @@ async function reload() {
 
   const store = resolveStore();
   if (!store || typeof (store as any).Search !== 'function') {
-    loadError.value = _t('PropertyDefinition store is unavailable');
+    if (seq === reloadSeq) {
+      loadError.value = _t('PropertyDefinition store is unavailable');
+    }
     return;
   }
 
@@ -185,6 +189,7 @@ async function reload() {
       { And },
       { fields: ['Id', 'Definition', 'TargetModel', 'PropertiesField', 'ContainerModel', 'ContainerId'], limit: 1 }
     );
+    if (seq !== reloadSeq) return;
     const row = Array.isArray(rows) && rows[0] ? rows[0] : null;
     if (row) {
       definitionId.value = String(row.Id || '').trim() || null;
@@ -194,14 +199,18 @@ async function reload() {
       drafts.value = [];
     }
   } catch (e) {
+    if (seq !== reloadSeq) return;
     loadError.value = e instanceof Error ? e.message : String(e);
     console.warn('[OPropertiesDefinitionEditor] load failed', e);
   } finally {
-    loading.value = false;
+    if (seq === reloadSeq) {
+      loading.value = false;
+    }
   }
 }
 
 function onAdd() {
+  if (loading.value || saving.value || props.readonly) return;
   drafts.value = [...drafts.value, emptyDraftItem()];
 }
 
@@ -211,7 +220,7 @@ function onRemove(index: number) {
 
 async function onSave() {
   saveError.value = '';
-  if (props.readonly || !canSave.value) return;
+  if (props.readonly || loading.value || saving.value || !canSave.value) return;
   const store = resolveStore();
   if (!store) {
     saveError.value = _t('PropertyDefinition store is unavailable');

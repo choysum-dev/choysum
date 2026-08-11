@@ -159,7 +159,7 @@
         "MetaFieldId": null,
         "LogicalModelName": "PropertyDefinition",
         "PermRead": "allow",
-        "PermWrite": "deny"
+        "PermWrite": null
       }
     },
     {
@@ -173,7 +173,7 @@
         "MetaModelId": null,
         "MetaServiceId": null,
         "LogicalModelName": "PropertyDefinition",
-        "LogicalMethods": ["Create", "Update", "UpdateById", "Delete", "DeleteById", "Search", "Browse", "Count"],
+        "LogicalMethods": ["Create", "CreateMany", "Update", "UpdateById", "Delete", "DeleteById", "Search", "Browse", "Count"],
         "Mode": "allow"
       }
     },

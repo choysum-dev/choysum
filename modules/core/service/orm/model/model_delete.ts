@@ -36,9 +36,16 @@ export class DeleteOperations {
 
     const result = await repository.delete(condition as unknown);
 
+    // DeleteResult reports affected counts, not IDs — purge uses the pre-delete Id snapshot.
     const deletedIds = (oldRows || []).map(row => String((row as any)?.Id || '').trim()).filter(Boolean);
     if (deletedIds.length) {
-      await purgePropertyDefinitionsAfterParentDelete(ModelCtor, deletedIds);
+      try {
+        await purgePropertyDefinitionsAfterParentDelete(ModelCtor, deletedIds);
+      } catch (e) {
+        if (typeof console !== 'undefined') {
+          console.warn('[Delete] PropertyDefinition container purge failed:', e);
+        }
+      }
     }
 
     for (const row of oldRows || []) {
