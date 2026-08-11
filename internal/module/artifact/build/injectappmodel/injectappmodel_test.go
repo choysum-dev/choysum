@@ -958,3 +958,30 @@ func TestBundlePrefersExistingGeneratedPath(t *testing.T) {
 		t.Fatal("expected virtual source at canonical meta path")
 	}
 }
+
+func TestBundleInjectAppModels_PropertyDefinitionUsesLastEligibleModule(t *testing.T) {
+	first := &meta.Module{
+		Name: "crm_first", Path: "/virtual/modules/crm_first",
+		ApplicationStr: "crm", ServiceEntryPoint: "service/main.ts",
+	}
+	last := &meta.Module{
+		Name: "crm_last", Path: "/virtual/modules/crm_last",
+		ApplicationStr: "crm", ServiceEntryPoint: "service/main.ts",
+	}
+	sess, _ := newTestSession(t, first)
+	fx, err := BundleInjectAppModels(sess, []*meta.Module{first, last})
+	if err != nil {
+		t.Fatalf("bundle: %v", err)
+	}
+	want := generatedPath(specByNameOrPanic("PropertyDefinition"), last.Path)
+	if got := sess.LastInjectPath("PropertyDefinition"); got != want {
+		t.Fatalf("PropertyDefinition path = %q, want last-eligible %q", got, want)
+	}
+	if _, ok := effectsFileMap(fx)[want]; !ok {
+		t.Fatalf("expected virtual source at %q, got %#v", want, effectsFileMap(fx))
+	}
+	firstPath := generatedPath(specByNameOrPanic("PropertyDefinition"), first.Path)
+	if _, ok := effectsFileMap(fx)[firstPath]; ok {
+		t.Fatalf("must not host PropertyDefinition under first-eligible %q", firstPath)
+	}
+}

@@ -858,6 +858,45 @@ func TestBackendPluginDefinePluginsOnLoad_ServesVirtualSource(t *testing.T) {
 	}
 }
 
+func TestBackendPluginDefinePluginsOnLoad_ServesPropertyDefinitionVirtualSource(t *testing.T) {
+	testRuntimeScope := newPluginTestScope()
+	moduleDir := filepath.Join(t.TempDir(), "partner")
+	virtualPath := filepath.Join(moduleDir, "service", "models", "__generated__", "property_definition.ts")
+	template := "export default class PropertyDefinition {}\n"
+
+	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
+		Env:              testRuntimeScope,
+		Module:           &meta.Module{Path: moduleDir, ApplicationStr: "partner"},
+		EntryPoint:       "./service/index.ts",
+		ParserResultChan: make(chan *parser.ParserResult, 1),
+		TsExports:        make(map[string]map[string]*parser.Export),
+		ParserResults:    make([]*parser.ParserResult, 0),
+	}}
+	plugin.RegisterVirtualSource(virtualPath, template)
+	plugin.Parser = fakeParser{parseFn: func(_ map[string]string, gotPath string, content string) (*parser.ParserResult, error) {
+		return &parser.ParserResult{Path: gotPath, RawContent: content}, nil
+	}}
+
+	defined := plugin.DefinePlugins(testRuntimeScope, nil, plugin.Module)[0]
+	onResolve := captureBackendOnResolve(t, defined, &api.BuildOptions{})
+	resolved, err := onResolve(api.OnResolveArgs{Path: virtualPath})
+	if err != nil {
+		t.Fatalf("onResolve returned error: %v", err)
+	}
+	if resolved.Path == "" {
+		t.Fatal("expected onResolve to claim property_definition virtual path")
+	}
+
+	onLoad := captureBackendOnLoad(t, defined, &api.BuildOptions{})
+	result, err := onLoad(api.OnLoadArgs{Path: resolved.Path})
+	if err != nil {
+		t.Fatalf("onLoad returned error: %v", err)
+	}
+	if result.Contents == nil || *result.Contents != template {
+		t.Fatalf("expected property_definition virtual contents, got %#v", result.Contents)
+	}
+}
+
 func TestBackendPluginDefinePluginsOnLoad_AppendsEntryPointImports_WhenEntryPathResolvesSymlink(t *testing.T) {
 	testRuntimeScope := newPluginTestScope()
 	rootDir := t.TempDir()

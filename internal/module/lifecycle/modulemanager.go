@@ -205,7 +205,24 @@ func (m *ModuleManager) buildBackendAppToDir(ctx context.Context, appName string
 	for i := range mods {
 		ptrs = append(ptrs, &mods[i])
 	}
-	if err := ensureBundleC2VirtualImports(builder, nil, nil, nil, ptrs); err != nil {
+	// Match multi-app bundles: pass last-eligible owners per Spec (not the full
+	// module list). BundleInjectAppModels also last-wins, but explicit owners keep
+	// FieldDefault / AppSetting / PropertyDefinition / TranslationTerm aligned
+	// with pick*OwnerModule.
+	var fieldDefaultOwners, appSettingOwners, propertyDefinitionOwners, translationTermOwners []*meta.Module
+	if owner := pickFieldDefaultOwnerModule(appName, ptrs); owner != nil {
+		fieldDefaultOwners = append(fieldDefaultOwners, owner)
+	}
+	if owner := pickAppSettingOwnerModule(appName, ptrs); owner != nil {
+		appSettingOwners = append(appSettingOwners, owner)
+	}
+	if owner := pickPropertyDefinitionOwnerModule(appName, ptrs); owner != nil {
+		propertyDefinitionOwners = append(propertyDefinitionOwners, owner)
+	}
+	if owner := pickTranslationTermOwnerModule(appName, ptrs); owner != nil {
+		translationTermOwners = append(translationTermOwners, owner)
+	}
+	if err := ensureBundleC2VirtualImports(builder, fieldDefaultOwners, appSettingOwners, propertyDefinitionOwners, translationTermOwners); err != nil {
 		return err
 	}
 	bundlerToDir, ok := builder.(module.BundlerToDir)
