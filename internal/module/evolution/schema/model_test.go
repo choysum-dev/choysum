@@ -219,6 +219,15 @@ func TestModelMigratorFieldParsingAndStructTags(t *testing.T) {
 		t.Fatalf("unexpected ManyToManyRef meta: %#v", manyRefMeta)
 	}
 
+	propertiesField := newFieldWithOptions(t, "ExtraProps", `{"type":"properties"}`)
+	propertiesMeta, err := migrator.getResolvedFieldColumnMeta(propertiesField)
+	if err != nil {
+		t.Fatalf("getResolvedFieldColumnMeta(properties) error = %v", err)
+	}
+	if propertiesMeta["type"] != "jsonobject" {
+		t.Fatalf("unexpected properties meta: %#v", propertiesMeta)
+	}
+
 	binaryField := newFieldWithOptions(t, "Payload", `{"type":"binary"}`)
 	binaryMeta, err := migrator.getResolvedFieldColumnMeta(binaryField)
 	if err != nil {

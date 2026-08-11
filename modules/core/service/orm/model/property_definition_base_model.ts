@@ -26,6 +26,23 @@ function normalizeDefinitionOnVals(vals: Record<string, unknown> | undefined): v
 
 const ensuredUniqueIndexTables = new Set<string>();
 
+/** Test-only: clear ensured unique-index table cache. */
+export function __resetPropertyDefinitionUniqueIndexTablesForTest(): void {
+  ensuredUniqueIndexTables.clear();
+}
+
+/** Test-only: run unique-index ensure for a PropertyDefinition ctor. */
+export async function __ensureDefinitionUniqueIndexForTest(
+  ctor: InstantiableModelCtor<PropertyDefinitionBaseModel>
+): Promise<void> {
+  await ensureDefinitionUniqueIndex(ctor);
+}
+
+/** Test-only: run Definition normalize/validate on a vals bag. */
+export function __normalizeDefinitionOnValsForTest(vals: Record<string, unknown> | undefined): void {
+  normalizeDefinitionOnVals(vals);
+}
+
 function storeMeta(ctor: InstantiableModelCtor<PropertyDefinitionBaseModel>) {
   return MetadataStorage.instance.getModelMetadata(ctor as any);
 }

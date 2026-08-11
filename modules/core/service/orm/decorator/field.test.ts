@@ -1084,6 +1084,57 @@ test('Field decorator stores monetary currencyField and rejects scale options', 
   }).toThrow('monetary requires a non-empty currencyField');
 });
 
+test('Field decorator validates properties definition option (PP6)', () => {
+  expect(() => {
+    class DefinitionOnVarchar extends BaseModel {
+      @Field({ type: 'varchar', definition: 'ParentId' } as any)
+      Name!: string;
+    }
+    return DefinitionOnVarchar;
+  }).toThrow('definition is only supported on properties fields');
+
+  expect(() => {
+    class EmptyDefinition extends BaseModel {
+      @Field({ type: 'properties', definition: '' } as any)
+      Props!: Record<string, unknown>;
+    }
+    return EmptyDefinition;
+  }).toThrow('definition must be a non-empty string when provided');
+
+  expect(() => {
+    class WhitespaceDefinition extends BaseModel {
+      @Field({ type: 'properties', definition: '  ' } as any)
+      Props!: Record<string, unknown>;
+    }
+    return WhitespaceDefinition;
+  }).toThrow('definition must be a non-empty string when provided');
+
+  expect(() => {
+    class PaddedDefinition extends BaseModel {
+      @Field({ type: 'properties', definition: ' ParentId ' } as any)
+      Props!: Record<string, unknown>;
+    }
+    return PaddedDefinition;
+  }).toThrow('definition must not contain leading or trailing whitespace');
+
+  class AppLevelProperties extends BaseModel {
+    @Field({ type: 'properties' } as any)
+    Props!: Record<string, unknown>;
+  }
+  expect(MetadataStorage.instance.getModelMetadata(AppLevelProperties as any).fields.get('Props')?.definition).toBeUndefined();
+
+  class ParentProperties extends BaseModel {
+    @Field({ type: 'ManyToOne', relation: { targetModel: () => FieldTargetModel } } as any)
+    ParentId!: FieldTargetModel;
+
+    @Field({ type: 'properties', definition: 'ParentId' } as any)
+    Props!: Record<string, unknown>;
+  }
+  const props = MetadataStorage.instance.getModelMetadata(ParentProperties as any).fields.get('Props');
+  expect(props?.type).toBe('properties');
+  expect(props?.definition).toBe('ParentId');
+});
+
 test('Field decorator accepts html and rejects translate on html', () => {
   class HtmlOkModel extends BaseModel {
     @Field({ type: 'html' } as any)

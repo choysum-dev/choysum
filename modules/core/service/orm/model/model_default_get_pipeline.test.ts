@@ -309,3 +309,110 @@ test('runDefaultGetPipeline stringifies non-Error GetEffective failures', async 
     restoreLookup('partner');
   }
 });
+
+@Model('PipelinePropsPartner', { application: 'partner' })
+class PipelinePropsPartner extends BaseModel {
+  @Field({ type: 'varchar', size: 64, default: 'from-column' })
+  Name!: string;
+
+  @Field({ type: 'properties' })
+  PartnerProperties!: Record<string, unknown>;
+}
+
+test('runDefaultGetPipeline fills properties item defaults (PP3)', async () => {
+  const { __setLookupPropertyDefinitionModelForTest, __clearLookupPropertyDefinitionModelForTest } = await import(
+    './properties_lookup'
+  );
+  __setLookupFieldDefaultModelForTest('partner', {
+    async GetEffective() {
+      return {};
+    },
+  });
+  __setLookupPropertyDefinitionModelForTest('partner', {
+    Search: async () => [
+      {
+        TargetModel: 'PipelinePropsPartner',
+        PropertiesField: 'PartnerProperties',
+        ContainerId: null,
+        Definition: [
+          { name: 'tax_id', type: 'char', default: 'T-DEFAULT' },
+          { name: 'vip', type: 'boolean', default: false },
+          { name: 'note', type: 'text' },
+        ],
+      },
+    ],
+  });
+  try {
+    const out = await runDefaultGetPipeline(PipelinePropsPartner as any, {} as any);
+    expect((out as any).PartnerProperties).toEqual({ tax_id: 'T-DEFAULT', vip: false });
+
+    const withExisting = await runDefaultGetPipeline(PipelinePropsPartner as any, {
+      PartnerProperties: { tax_id: 'KEEP', note: 'n' },
+    } as any);
+    expect((withExisting as any).PartnerProperties).toEqual({ tax_id: 'KEEP', note: 'n', vip: false });
+
+    const emptySchema = await (async () => {
+      __setLookupPropertyDefinitionModelForTest('partner', { Search: async () => [] });
+      return runDefaultGetPipeline(PipelinePropsPartner as any, {} as any);
+    })();
+    expect((emptySchema as any).PartnerProperties).toBeUndefined();
+  } finally {
+    __clearLookupPropertyDefinitionModelForTest();
+    restoreLookup('partner');
+  }
+});
+
+test('runDefaultGetPipeline warns when properties defaults resolution fails', async () => {
+  const { __setLookupPropertyDefinitionModelForTest, __clearLookupPropertyDefinitionModelForTest } = await import(
+    './properties_lookup'
+  );
+  __setLookupFieldDefaultModelForTest('partner', {
+    async GetEffective() {
+      return {};
+    },
+  });
+  __setLookupPropertyDefinitionModelForTest('partner', {
+    Search: async () => {
+      throw new Error('props-schema-down');
+    },
+  });
+  const originalWarn = console.warn;
+  const warnings: string[] = [];
+  console.warn = (...args: any[]) => {
+    warnings.push(args.map(x => String(x)).join(' '));
+  };
+  try {
+    const out = await runDefaultGetPipeline(PipelinePropsPartner as any, {} as any);
+    expect(warnings.some(msg => msg.includes('PROPERTIES_DEFAULT_GET_FAILED') && msg.includes('props-schema-down'))).toBe(
+      true
+    );
+    expect((out as any).Name).toBe('from-column');
+
+    warnings.length = 0;
+    __setLookupPropertyDefinitionModelForTest('partner', {
+      Search: async () => {
+        throw 'bare-props-fail';
+      },
+    });
+    await runDefaultGetPipeline(PipelinePropsPartner as any, {} as any);
+    expect(warnings.some(msg => msg.includes('PROPERTIES_DEFAULT_GET_FAILED') && msg.includes('bare-props-fail'))).toBe(true);
+
+    // Schema items without defaults still materialize an empty map when field is undefined.
+    __setLookupPropertyDefinitionModelForTest('partner', {
+      Search: async () => [
+        {
+          TargetModel: 'PipelinePropsPartner',
+          PropertiesField: 'PartnerProperties',
+          ContainerId: null,
+          Definition: [{ name: 'only', type: 'char' }],
+        },
+      ],
+    });
+    const emptyDefaults = await runDefaultGetPipeline(PipelinePropsPartner as any, {} as any);
+    expect((emptyDefaults as any).PartnerProperties).toEqual({});
+  } finally {
+    console.warn = originalWarn;
+    __clearLookupPropertyDefinitionModelForTest();
+    restoreLookup('partner');
+  }
+});
