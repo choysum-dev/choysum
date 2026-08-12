@@ -5,6 +5,7 @@ import { Model } from '../decorator/model';
 import { Field } from '../decorator/field';
 import BaseModel from './model';
 import PropertyDefinitionBaseModel, {
+  __normalizeDefinitionOnValsForTest,
   __resetPropertyDefinitionUniqueIndexTablesForTest,
 } from './property_definition_base_model';
 import {
@@ -71,7 +72,7 @@ test('PP4 coverage: normalize helpers and collectParentScopesToProbe', () => {
     containerModel: 'B',
     containerId: '1',
   });
-  expect(parentScopeKey({ ContainerModel: 'B', ContainerId: '1' })).toContain('B');
+  expect(parentScopeKey({ ContainerModel: 'B', ContainerId: '1' })).toBe(`B\0${'1'}`);
 
   const scopes = collectParentScopesToProbe(
     { ContainerModel: 'Old', ContainerId: 'o1' },
@@ -119,14 +120,13 @@ test('PP4 coverage: ACL bypass sync/nested/request and default parent probe', as
   });
   expect(__getPropertyDefinitionParentAclBypassDepthForTest()).toBe(0);
 
-  // Non-finite depth restore path.
+  // No-request fallback path: depth tracking uses module state instead of request state.
   __forceNoReqParentAclStateForTest(true);
   try {
     await withPropertyDefinitionParentAclBypass(async () => {
-      const top = (globalThis as any);
-      void top;
       expect(__getPropertyDefinitionParentAclBypassDepthForTest()).toBe(1);
     });
+    expect(__getPropertyDefinitionParentAclBypassDepthForTest()).toBe(0);
   } finally {
     __forceNoReqParentAclStateForTest(false);
   }
@@ -220,16 +220,19 @@ test('PP4 coverage: ACL bypass sync/nested/request and default parent probe', as
     // Empty application on definition model → resolve short name only.
     const defMeta = MetadataStorage.instance.getModelMetadata(Pp4cPropertyDefinition as any);
     const prevApp = (defMeta as any).application;
-    (defMeta as any).application = '';
-    RepositoryFactory.getRepository = (() => ({
-      assertCompanyWriteAccessForIds: async () => undefined,
-      assertRecordRuleTargetsAllowed: async () => undefined,
-    })) as any;
-    await assertPropertyDefinitionParentWritable(Pp4cPropertyDefinition as any, {
-      ContainerModel: 'Pp4cProject',
-      ContainerId: 'p1',
-    });
-    (defMeta as any).application = prevApp;
+    try {
+      (defMeta as any).application = '';
+      RepositoryFactory.getRepository = (() => ({
+        assertCompanyWriteAccessForIds: async () => undefined,
+        assertRecordRuleTargetsAllowed: async () => undefined,
+      })) as any;
+      await assertPropertyDefinitionParentWritable(Pp4cPropertyDefinition as any, {
+        ContainerModel: 'Pp4cProject',
+        ContainerId: 'p1',
+      });
+    } finally {
+      (defMeta as any).application = prevApp;
+    }
 
     __setParentWritableProbeForTest(async () => {
       throw Object.assign(new Error('keep'), { code: 'PROPERTY_DEFINITION_PARENT_MISSING' });
@@ -256,13 +259,21 @@ test('PP4 coverage: purge early returns, DeleteById fallback, AfterParentDelete'
   expect(await purgePropertyDefinitionsForContainers('pp4cov', 'M', null as any)).toBe(0);
   await purgePropertyDefinitionsAfterParentDelete(Pp4cProject as any, null as any);
 
-  __setLookupPropertyDefinitionModelForTest('pp4cov', {} as any);
-  expect(await purgePropertyDefinitionsForContainers('pp4cov', 'Pp4cProject', ['p1'])).toBe(0);
+  try {
+    __setLookupPropertyDefinitionModelForTest('pp4cov', {} as any);
+    expect(await purgePropertyDefinitionsForContainers('pp4cov', 'Pp4cProject', ['p1'])).toBe(0);
+  } finally {
+    __clearLookupPropertyDefinitionModelForTest();
+  }
 
-  __setLookupPropertyDefinitionModelForTest('pp4cov', {
-    Search: async () => [{ Id: 'a' }],
-  } as any);
-  expect(await purgePropertyDefinitionsForContainers('pp4cov', 'Pp4cProject', ['p1'])).toBe(0);
+  try {
+    __setLookupPropertyDefinitionModelForTest('pp4cov', {
+      Search: async () => [{ Id: 'a' }],
+    } as any);
+    expect(await purgePropertyDefinitionsForContainers('pp4cov', 'Pp4cProject', ['p1'])).toBe(0);
+  } finally {
+    __clearLookupPropertyDefinitionModelForTest();
+  }
 
   const rows: any[] = [
     { Id: 'keep', ContainerModel: 'Pp4cProject', ContainerId: 'other' },
@@ -310,7 +321,8 @@ test('PP4 coverage: purge early returns, DeleteById fallback, AfterParentDelete'
 
   const meta = MetadataStorage.instance.getModelMetadata(Pp4cProject as any);
   const prevApp = (meta as any).application;
-  const prevName = (meta as any).modelName;
+  const prevModelName = (meta as any).modelName;
+  const prevName = (meta as any).name;
   try {
     (meta as any).application = '';
     await purgePropertyDefinitionsAfterParentDelete(Pp4cProject as any, ['p1']);
@@ -320,7 +332,8 @@ test('PP4 coverage: purge early returns, DeleteById fallback, AfterParentDelete'
     await purgePropertyDefinitionsAfterParentDelete(Pp4cProject as any, ['p1']);
   } finally {
     (meta as any).application = prevApp;
-    (meta as any).modelName = prevName;
+    (meta as any).modelName = prevModelName;
+    (meta as any).name = prevName;
   }
 
   __setLookupPropertyDefinitionModelForTest('pp4cov', {
@@ -358,9 +371,6 @@ test('PP4 coverage: purge early returns, DeleteById fallback, AfterParentDelete'
 });
 
 test('PP4 coverage: PropertyDefinition Delete/Update parent probe dedupe', async () => {
-  const {
-    __normalizeDefinitionOnValsForTest,
-  } = await import('./property_definition_base_model');
   try {
     __normalizeDefinitionOnValsForTest({ Definition: [{ name: 'x', type: 'bad' }] });
     expect(false).toBe(true);
@@ -370,7 +380,10 @@ test('PP4 coverage: PropertyDefinition Delete/Update parent probe dedupe', async
   __normalizeDefinitionOnValsForTest(undefined);
   __normalizeDefinitionOnValsForTest({});
 
-  __setParentWritableProbeForTest(async () => undefined);
+  const probeScopes: string[] = [];
+  __setParentWritableProbeForTest(async (_ctor: any, id: string) => {
+    probeScopes.push(String(id));
+  });
   const origSearch = Pp4cPropertyDefinition.Search;
   const origDelete = (BaseModel as any).Delete;
   const origDeleteById = (BaseModel as any).DeleteById;
@@ -380,6 +393,8 @@ test('PP4 coverage: PropertyDefinition Delete/Update parent probe dedupe', async
   const originalChoysum = (globalThis as any).$choysum;
   let deleteCalls = 0;
   let deleteByIdCalls = 0;
+  const meta = MetadataStorage.instance.getModelMetadata(Pp4cPropertyDefinition as any);
+  const prevTable = (meta as any).tableName;
   try {
     (globalThis as any).$choysum = {
       db: {
@@ -418,7 +433,9 @@ test('PP4 coverage: PropertyDefinition Delete/Update parent probe dedupe', async
 
     expect(await PropertyDefinitionBaseModel.Delete.call(Pp4cPropertyDefinition, { Id: 'x' } as any)).toBe(2);
     expect(deleteCalls).toBe(1);
+    expect(probeScopes).toEqual(['p1']);
 
+    probeScopes.length = 0;
     Pp4cPropertyDefinition.Search = (async () => [
       {
         Id: 'd1',
@@ -430,7 +447,9 @@ test('PP4 coverage: PropertyDefinition Delete/Update parent probe dedupe', async
     ]) as any;
     expect(await PropertyDefinitionBaseModel.DeleteById.call(Pp4cPropertyDefinition, 'd1')).toBe(1);
     expect(deleteByIdCalls).toBe(1);
+    expect(probeScopes).toEqual([]);
 
+    probeScopes.length = 0;
     Pp4cPropertyDefinition.Search = (async () => [
       {
         Id: 'd1',
@@ -452,6 +471,7 @@ test('PP4 coverage: PropertyDefinition Delete/Update parent probe dedupe', async
       { TargetModel: 'T' } as any,
       { ContainerId: 'new', ContainerModel: 'Pp4cProject' } as any
     );
+    expect(probeScopes).toEqual(['new', 'old']);
 
     // Update/Delete with nullish Search rows (|| [] / || {} branches).
     Pp4cPropertyDefinition.Search = (async () => null) as any;
@@ -464,23 +484,24 @@ test('PP4 coverage: PropertyDefinition Delete/Update parent probe dedupe', async
     await PropertyDefinitionBaseModel.DeleteById.call(Pp4cPropertyDefinition, 'missing');
 
     // tableName as function + empty tableName early return in ensure index.
-    const meta = MetadataStorage.instance.getModelMetadata(Pp4cPropertyDefinition as any);
-    const prevTable = (meta as any).tableName;
-    (meta as any).tableName = () => 'pp4cov_property_definition';
-    __resetPropertyDefinitionUniqueIndexTablesForTest();
-    await PropertyDefinitionBaseModel.Create.call(Pp4cPropertyDefinition, {
-      TargetModel: 'IdxT',
-      PropertiesField: 'IdxF',
-      Definition: [],
-    } as any);
-    (meta as any).tableName = '';
-    __resetPropertyDefinitionUniqueIndexTablesForTest();
-    await PropertyDefinitionBaseModel.Create.call(Pp4cPropertyDefinition, {
-      TargetModel: 'IdxT2',
-      PropertiesField: 'IdxF2',
-      Definition: [],
-    } as any);
-    (meta as any).tableName = prevTable;
+    try {
+      (meta as any).tableName = () => 'pp4cov_property_definition';
+      __resetPropertyDefinitionUniqueIndexTablesForTest();
+      await PropertyDefinitionBaseModel.Create.call(Pp4cPropertyDefinition, {
+        TargetModel: 'IdxT',
+        PropertiesField: 'IdxF',
+        Definition: [],
+      } as any);
+      (meta as any).tableName = '';
+      __resetPropertyDefinitionUniqueIndexTablesForTest();
+      await PropertyDefinitionBaseModel.Create.call(Pp4cPropertyDefinition, {
+        TargetModel: 'IdxT2',
+        PropertiesField: 'IdxF2',
+        Definition: [],
+      } as any);
+    } finally {
+      (meta as any).tableName = prevTable;
+    }
 
     // Duplicate scope uniqueness fail (assertUnique + CreateMany seen set).
     Pp4cPropertyDefinition.Search = (async () => [{ Id: 'dup' }]) as any;
@@ -501,6 +522,7 @@ test('PP4 coverage: PropertyDefinition Delete/Update parent probe dedupe', async
       'PROPERTY_DEFINITION_DUPLICATE_SCOPE'
     );
   } finally {
+    (meta as any).tableName = prevTable;
     Pp4cPropertyDefinition.Search = origSearch;
     (BaseModel as any).Delete = origDelete;
     (BaseModel as any).DeleteById = origDeleteById;
