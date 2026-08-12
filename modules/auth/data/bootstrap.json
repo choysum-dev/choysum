@@ -133,6 +133,66 @@
       }
     },
     {
+      "name": "rma_base_user_property_definition_logical",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": null,
+        "LogicalModelName": "PropertyDefinition",
+        "LogicalMethods": ["Search", "Browse", "Count"],
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rfr_base_user_property_definition_logical",
+      "model": "RoleFieldRule",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaFieldId": null,
+        "LogicalModelName": "PropertyDefinition",
+        "PermRead": "allow",
+        "PermWrite": null
+      }
+    },
+    {
+      "name": "rma_sys_admin_property_definition_logical",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_sys_admin"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": null,
+        "LogicalModelName": "PropertyDefinition",
+        "LogicalMethods": ["Create", "CreateMany", "Update", "UpdateById", "Delete", "DeleteById", "Search", "Browse", "Count"],
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rfr_sys_admin_property_definition_logical",
+      "model": "RoleFieldRule",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_sys_admin"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaFieldId": null,
+        "LogicalModelName": "PropertyDefinition",
+        "PermRead": "allow",
+        "PermWrite": "allow"
+      }
+    },
+    {
       "name": "user_admin",
       "model": "User",
       "values": {

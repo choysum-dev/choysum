@@ -171,3 +171,70 @@ test('model delete by id delegates with canonical id condition', async () => {
     DeleteOperations.Delete = originalDelete;
   }
 });
+
+test('model delete purges PropertyDefinitions and swallows purge failures', async () => {
+  const { Model } = await import('../decorator/model');
+  const { Field } = await import('../decorator/field');
+  const {
+    __clearLookupPropertyDefinitionModelForTest,
+    __setLookupPropertyDefinitionModelForTest,
+  } = await import('./properties_lookup');
+
+  @Model('DeletePurgeParent', { application: 'delpurge' })
+  class DeletePurgeParent extends BaseModel {
+    @Field({ type: 'varchar', size: 32 })
+    Name!: string;
+  }
+
+  const originalCollect = ComputeCascadeEngine.collectUpstreamInverseFields;
+  const originalTrigger = ComputeCascadeEngine.triggerUpstream;
+  const originalWarn = console.warn;
+  const warnCalls: any[] = [];
+
+  const repository = {
+    async search() {
+      return [{ Id: 'parent-1' }, { Id: '  ' }, { Name: 'no-id' }];
+    },
+    async delete() {
+      return [{ numDeletedRows: 1 }];
+    },
+  };
+
+  try {
+    ComputeCascadeEngine.collectUpstreamInverseFields = (() => []) as any;
+    ComputeCascadeEngine.triggerUpstream = (async () => undefined) as any;
+    (console as any).warn = (...args: any[]) => warnCalls.push(args);
+    RepositoryFactory.setRepository(DeletePurgeParent as any, repository as any);
+
+    __setLookupPropertyDefinitionModelForTest('delpurge', {
+      Search: async () => [{ Id: 'def-1' }],
+      Delete: async () => {
+        throw new Error('purge boom');
+      },
+    } as any);
+
+    const count = await DeleteOperations.Delete(DeletePurgeParent as any, ['Id', '=', 'parent-1'] as any);
+    expect(count).toBe(1);
+    expect(warnCalls.some(args => String(args?.[0] || '').includes('PropertyDefinition container purge'))).toBe(
+      true
+    );
+
+    warnCalls.length = 0;
+    const emptyIdRepo = {
+      async search() {
+        return [{ Id: '' }, { Name: 'x' }];
+      },
+      async delete() {
+        return [];
+      },
+    };
+    RepositoryFactory.setRepository(DeletePurgeParent as any, emptyIdRepo as any);
+    await DeleteOperations.Delete(DeletePurgeParent as any, ['Id', '=', 'x'] as any);
+    expect(warnCalls.length).toBe(0);
+  } finally {
+    ComputeCascadeEngine.collectUpstreamInverseFields = originalCollect;
+    ComputeCascadeEngine.triggerUpstream = originalTrigger;
+    (console as any).warn = originalWarn;
+    __clearLookupPropertyDefinitionModelForTest();
+  }
+});

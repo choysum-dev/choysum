@@ -688,6 +688,24 @@ export class Repository {
     return await assertRepositoryCompanyWriteAccessForCondition(this.createCompanyScopeQueryDeps(), condition);
   }
 
+  /**
+   * Assert the current principal may write the given row ids (company scope).
+   * Empty id list is a no-op.
+   */
+  public async assertCompanyWriteAccessForIds(targetIds: string[]): Promise<void> {
+    const ids = (targetIds || []).map(id => String(id || '').trim()).filter(Boolean);
+    if (!ids.length) return;
+    await this.assertCompanyWriteAccessForCondition({ And: [['Id', 'in', ids]] } as BaseQueryCondition);
+  }
+
+  /**
+   * Assert RecordRule allows the given op on all target ids.
+   * Empty id list is a no-op. When record rules are disabled, this is a no-op.
+   */
+  public async assertRecordRuleTargetsAllowed(op: Extract<RecordRuleOp, 'write' | 'delete'>, targetIds: string[]): Promise<void> {
+    await this.assertRecordRuleAllTargetsAllowed(op, targetIds);
+  }
+
   // Build the soft-delete filter layer shared by search, count, and update.
   private applySoftLayer(condition: BaseQueryCondition): BaseQueryCondition {
     return applyRepositorySoftDeleteLayer(

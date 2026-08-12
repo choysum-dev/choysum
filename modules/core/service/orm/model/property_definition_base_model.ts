@@ -8,7 +8,13 @@ import BaseModel from './model';
 import { registerLogicalModelName } from './logical_model_registry';
 import { assertValidPropertyDefinitionItems } from './properties_types';
 import type { InstantiableModelCtor } from './types';
-import type { Insertable, Updateable, FieldSelection, QueryCondition, UpdateOptions } from '../repository/types';
+import type { Insertable, Updateable, FieldSelection, QueryCondition, UpdateOptions, DeleteOptions } from '../repository/types';
+import {
+  assertPropertyDefinitionParentWritable,
+  collectParentScopesToProbe,
+  normalizeDefinitionContainerScopeOnVals,
+  parentScopeKey,
+} from './properties_definition_acl';
 
 function fail(code: string, message: string): never {
   raiseDomainError('core', code, message);
@@ -117,6 +123,19 @@ function touchesDefinitionScope(vals: Record<string, unknown> | undefined): bool
   );
 }
 
+async function assertParentsWritableDeduped(
+  ctor: InstantiableModelCtor<PropertyDefinitionBaseModel>,
+  scopes: Record<string, unknown>[]
+): Promise<void> {
+  const seen = new Set<string>();
+  for (const scope of scopes) {
+    const key = parentScopeKey(scope);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    await assertPropertyDefinitionParentWritable(ctor, scope);
+  }
+}
+
 /**
  * Composite uniqueness for (TargetModel, PropertiesField, ContainerModel, ContainerId).
  * Uses COALESCE for all dialects so PostgreSQL 14 and older remain compatible
@@ -176,7 +195,9 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     returnFields?: FieldSelection<T>
   ): Promise<T> {
     await ensureDefinitionUniqueIndex(this as any);
+    normalizeDefinitionContainerScopeOnVals(value as Record<string, unknown>);
     normalizeDefinitionOnVals(value as Record<string, unknown>);
+    await assertPropertyDefinitionParentWritable(this as any, value as Record<string, unknown>);
     await assertUniqueDefinitionScope(this as any, value as Record<string, unknown>);
     return super.Create(value as any, returnFields as any) as Promise<T>;
   }
@@ -188,9 +209,16 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
   ): Promise<T[]> {
     await ensureDefinitionUniqueIndex(this as any);
     const seen = new Set<string>();
+    const probed = new Set<string>();
     for (const row of values || []) {
+      normalizeDefinitionContainerScopeOnVals(row as Record<string, unknown>);
       normalizeDefinitionOnVals(row as Record<string, unknown>);
       const rec = row as Record<string, unknown>;
+      const scopeKey = parentScopeKey(rec);
+      if (!probed.has(scopeKey)) {
+        await assertPropertyDefinitionParentWritable(this as any, rec);
+        probed.add(scopeKey);
+      }
       const key = [
         String(rec.TargetModel ?? '').trim(),
         String(rec.PropertiesField ?? '').trim(),
@@ -214,8 +242,18 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     options?: UpdateOptions
   ): Promise<Partial<T>[]> {
     await ensureDefinitionUniqueIndex(this as any);
+    normalizeDefinitionContainerScopeOnVals(values as Record<string, unknown>);
     normalizeDefinitionOnVals(values as Record<string, unknown>);
-    // Bulk Update cannot cheaply merge per-row scope; DB unique index is the backstop.
+    // Always re-check parent write for matching rows (any field mutation requires parent write).
+    const currentRows = await (this as any).Search(condition as any, {
+      fields: ['Id', 'TargetModel', 'PropertiesField', 'ContainerModel', 'ContainerId'] as any,
+    } as any);
+    const scopes: Record<string, unknown>[] = [];
+    for (const current of currentRows || []) {
+      scopes.push(...collectParentScopesToProbe(current as Record<string, unknown>, values as Record<string, unknown>));
+    }
+    await assertParentsWritableDeduped(this as any, scopes);
+    // Bulk Update cannot cheaply merge per-row scope uniqueness; DB unique index is the backstop.
     return super.Update(condition as any, values as any, returnFields as any, options as any) as Promise<Partial<T>[]>;
   }
 
@@ -227,16 +265,48 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     options?: UpdateOptions
   ): Promise<Partial<T>> {
     await ensureDefinitionUniqueIndex(this as any);
+    normalizeDefinitionContainerScopeOnVals(values as Record<string, unknown>);
     normalizeDefinitionOnVals(values as Record<string, unknown>);
+    const currentRows = await (this as any).Search(
+      { And: [['Id', '=', id]] } as any,
+      { fields: ['Id', 'TargetModel', 'PropertiesField', 'ContainerModel', 'ContainerId'] as any, limit: 1 } as any
+    );
+    const current = (currentRows && currentRows[0]) || {};
+    const merged = { ...current, ...(values as object) } as Record<string, unknown>;
+    await assertParentsWritableDeduped(
+      this as any,
+      collectParentScopesToProbe(current as Record<string, unknown>, values as Record<string, unknown>)
+    );
     if (touchesDefinitionScope(values as Record<string, unknown>)) {
-      const currentRows = await (this as any).Search(
-        { And: [['Id', '=', id]] } as any,
-        { fields: ['Id', 'TargetModel', 'PropertiesField', 'ContainerModel', 'ContainerId'] as any, limit: 1 } as any
-      );
-      const current = (currentRows && currentRows[0]) || {};
-      await assertUniqueDefinitionScope(this as any, { ...current, ...(values as object) }, id);
+      await assertUniqueDefinitionScope(this as any, merged, id);
     }
     return super.UpdateById(id, values as any, returnFields as any, options as any) as Promise<Partial<T>>;
+  }
+
+  static override async Delete<T extends BaseModel>(
+    this: { new (...args: any[]): T } & typeof BaseModel,
+    condition: QueryCondition<T>,
+    options?: DeleteOptions
+  ): Promise<number> {
+    const rows = await (this as any).Search(condition as any, {
+      fields: ['Id', 'TargetModel', 'PropertiesField', 'ContainerModel', 'ContainerId'] as any,
+    } as any);
+    await assertParentsWritableDeduped(this as any, (rows || []) as Record<string, unknown>[]);
+    return super.Delete(condition as any, options as any);
+  }
+
+  static override async DeleteById<T extends BaseModel>(
+    this: { new (...args: any[]): T } & typeof BaseModel,
+    id: string,
+    options?: DeleteOptions
+  ): Promise<number> {
+    const currentRows = await (this as any).Search(
+      { And: [['Id', '=', id]] } as any,
+      { fields: ['Id', 'TargetModel', 'PropertiesField', 'ContainerModel', 'ContainerId'] as any, limit: 1 } as any
+    );
+    const current = (currentRows && currentRows[0]) || {};
+    await assertPropertyDefinitionParentWritable(this as any, current as Record<string, unknown>);
+    return super.DeleteById(id, options as any);
   }
 }
 
