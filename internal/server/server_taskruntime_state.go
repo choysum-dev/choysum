@@ -5,6 +5,7 @@ package server
 
 import (
 	"github.com/choysum-dev/choysum/internal/task"
+	"github.com/choysum-dev/choysum/pkg/bus"
 	grpcclient "github.com/choysum-dev/choysum/pkg/grpc/client"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	taskcontract "github.com/choysum-dev/choysum/pkg/task"
@@ -12,6 +13,7 @@ import (
 
 type taskRuntimeState struct {
 	hostRuntimeProvider taskcontract.HostRuntimeProvider
+	events              bus.EventBus
 	dispatcher          *task.Dispatcher
 	scheduler           *task.Scheduler
 	garbageCollector    taskcontract.GarbageCollector
@@ -37,6 +39,10 @@ func (s *taskRuntimeState) start(runtimeScope scope.Scope, dialer grpcclient.Ser
 	}
 
 	runtime := taskcontract.ResolveHostRuntime(s.hostRuntimeProvider, runtimeScope)
+	if runtime.Events == nil {
+		runtime.Events = bus.NewBus(runtimeScope)
+	}
+	s.events = runtime.Events
 	result := taskRuntimeStartResult{}
 
 	dispatcher := task.NewDispatcherWithRuntime(runtimeScope, dialer, runtime)

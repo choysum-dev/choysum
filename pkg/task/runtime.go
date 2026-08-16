@@ -3,7 +3,10 @@
 
 package task
 
-import "github.com/choysum-dev/choysum/pkg/scope"
+import (
+	"github.com/choysum-dev/choysum/pkg/bus"
+	"github.com/choysum-dev/choysum/pkg/scope"
+)
 
 // Runtime bundles the task runtime contracts used by the default task runtime
 // wiring.
@@ -14,7 +17,7 @@ import "github.com/choysum-dev/choysum/pkg/scope"
 type Runtime struct {
 	Queue     TaskQueue
 	Store     ScheduleStore
-	Events    EventBus
+	Events    bus.EventBus
 	Collector GarbageCollector
 }
 

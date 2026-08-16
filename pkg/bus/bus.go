@@ -1,16 +1,15 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-package task
+package bus
 
 import (
 	"context"
 	"time"
 )
 
-const EventTopicDispatchWakeup = "task.dispatch.wakeup"
-
-// Event carries async notifications through a stable event bus seam.
+// Event carries best-effort tip / wakeup notifications through the platform
+// event bus. Payload must stay thin; authoritative state lives in tables.
 type Event struct {
 	Topic   string
 	Source  string

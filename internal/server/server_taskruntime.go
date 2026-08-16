@@ -5,8 +5,9 @@ package server
 
 import (
 	"context"
+	"time"
 
-	"github.com/choysum-dev/choysum/internal/task"
+	"github.com/choysum-dev/choysum/pkg/bus"
 	grpcclient "github.com/choysum-dev/choysum/pkg/grpc/client"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	taskcontract "github.com/choysum-dev/choysum/pkg/task"
@@ -68,12 +69,27 @@ func (s *GRPCWebServer) taskRuntimeWakeInterceptor() grpc.UnaryServerInterceptor
 		}
 		switch info.FullMethod {
 		case "/task.Job/EnqueueJob":
-			task.WakeDispatch("enqueue")
+			s.publishTaskDispatchWakeup("enqueue")
 		case "/task.Schedule/TriggerSchedule":
-			task.WakeDispatch("trigger_schedule")
+			s.publishTaskDispatchWakeup("trigger_schedule")
 		}
 		return resp, err
 	}
+}
+
+func (s *GRPCWebServer) publishTaskDispatchWakeup(source string) {
+	if s == nil {
+		return
+	}
+	events := s.taskRuntime.events
+	if events == nil {
+		return
+	}
+	_ = events.Publish(context.Background(), bus.Event{
+		Topic:  bus.TopicDispatchWakeup,
+		Source: source,
+		At:     time.Now().UTC(),
+	})
 }
 
 func (s *GRPCWebServer) taskRuntimeUnaryInterceptors() []grpc.UnaryServerInterceptor {

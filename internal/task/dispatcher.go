@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/choysum-dev/choysum/internal/jobtoken"
+	"github.com/choysum-dev/choysum/pkg/bus"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/grpc/client"
 	"github.com/choysum-dev/choysum/pkg/grpc/converter"
@@ -33,12 +34,12 @@ type Dispatcher struct {
 	runtimeOpts  runtimeOptions
 	dialer       client.ServiceDialer
 	queue        taskcontract.TaskQueue
-	events       taskcontract.EventBus
+	events       bus.EventBus
 	stopCh       chan struct{}
 	wakeCh       chan struct{}
 	wg           sync.WaitGroup
 	stopOnce     sync.Once
-	wakeSub      taskcontract.Subscription
+	wakeSub      bus.Subscription
 	sema         chan struct{}
 	interval     time.Duration
 	appMu        sync.Mutex
@@ -98,12 +99,27 @@ func (d *Dispatcher) resolvedRuntimeOptions() runtimeOptions {
 }
 
 func (d *Dispatcher) Start() {
-	if sub, err := subscribeDispatchWakeup(d.Wakeup); err == nil {
-		d.wakeSub = sub
+	if d.events != nil {
+		if sub, err := d.events.Subscribe(bus.TopicDispatchWakeup, func(ctx context.Context, event bus.Event) {
+			d.Wakeup(event.Source)
+		}); err == nil {
+			d.wakeSub = sub
+		}
 	}
 	d.wg.Add(1)
 	go d.loop()
 	go d.pollOnce("startup")
+}
+
+func (d *Dispatcher) publishWakeup(source string) {
+	if d == nil || d.events == nil {
+		return
+	}
+	_ = d.events.Publish(context.Background(), bus.Event{
+		Topic:  bus.TopicDispatchWakeup,
+		Source: source,
+		At:     time.Now().UTC(),
+	})
 }
 
 func (d *Dispatcher) Stop() {
@@ -666,7 +682,7 @@ func (d *Dispatcher) retryJob(db *gorm.DB, job *Job, retryAfterMs int64, errObj 
 		ErrorTruncated: errSan.Truncated,
 	})
 	if d.interval > 0 && retryAfterMs <= d.interval.Milliseconds() {
-		WakeDispatch("run_after")
+		d.publishWakeup("run_after")
 	}
 }
 

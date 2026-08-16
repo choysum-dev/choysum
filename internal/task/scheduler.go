@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/choysum-dev/choysum/pkg/bus"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	taskcontract "github.com/choysum-dev/choysum/pkg/task"
 	"github.com/rs/xid"
@@ -23,7 +24,7 @@ type Scheduler struct {
 	runtimeOpts  runtimeOptions
 	queue        taskcontract.TaskQueue
 	store        taskcontract.ScheduleStore
-	events       taskcontract.EventBus
+	events       bus.EventBus
 	stopCh       chan struct{}
 	wg           sync.WaitGroup
 	interval     time.Duration
@@ -245,8 +246,8 @@ func (s *Scheduler) publishDispatchWakeup(ctx context.Context, source string) {
 	if s.events == nil {
 		return
 	}
-	_ = s.events.Publish(ctx, taskcontract.Event{
-		Topic:  taskcontract.EventTopicDispatchWakeup,
+	_ = s.events.Publish(ctx, bus.Event{
+		Topic:  bus.TopicDispatchWakeup,
 		Source: source,
 		At:     time.Now().UTC(),
 	})

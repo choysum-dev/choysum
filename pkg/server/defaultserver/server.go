@@ -5,6 +5,7 @@ package defaultserver
 
 import (
 	internalserver "github.com/choysum-dev/choysum/internal/server"
+	"github.com/choysum-dev/choysum/pkg/bus"
 	"github.com/choysum-dev/choysum/pkg/registry"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/choysum-dev/choysum/pkg/server"
@@ -53,7 +54,7 @@ func TaskHostRuntimeWithStore(store taskcontract.ScheduleStore) TaskHostRuntimeO
 	}
 }
 
-func TaskHostRuntimeWithEvents(events taskcontract.EventBus) TaskHostRuntimeOption {
+func TaskHostRuntimeWithEvents(events bus.EventBus) TaskHostRuntimeOption {
 	return func(runtime *taskcontract.Runtime) {
 		runtime.Events = events
 	}
