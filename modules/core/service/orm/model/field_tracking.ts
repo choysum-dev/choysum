@@ -1,0 +1,212 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+/**
+ * Field tracking → audit.FieldChange (AU3 / PR-P3-A2).
+ *
+ * Failure policy (frozen): audit Append failures **block** the business write
+ * (fail-closed) so compliance history is not silently dropped. Skip quietly when
+ * the model is audit.FieldChange itself (avoid recursion) or when no tracked
+ * fields participate in the write.
+ */
+
+import { dial } from './model_pool';
+import { MetadataStorage } from '../metadata';
+import type { FieldMetadata } from '../metadata/field';
+import type BaseModel from './model';
+import type { RuntimeModelCtor } from './types';
+import type { ObjectRecord } from '../../../utils/types';
+import { getActiveCompanyId } from '../../runtime/context';
+
+const AUDIT_FIELD_CHANGE = 'audit.FieldChange';
+
+type AppendFn = (req: {
+  Model: string;
+  ResId: string;
+  Field?: string | null;
+  Kind: string;
+  OldValue?: string | null;
+  NewValue?: string | null;
+  CompanyId?: string | null;
+}) => Promise<unknown>;
+
+type DialFn = <T = Record<string, (...args: unknown[]) => unknown>>(fullModelName: string) => T;
+type ActiveCompanyIdFn = () => string | undefined;
+
+/** Test seam: undefined = live dial; null = force missing; function = stub Append. */
+let appendOverride: AppendFn | null | undefined;
+let dialOverride: DialFn | undefined;
+let activeCompanyIdOverride: ActiveCompanyIdFn | undefined;
+
+/**
+ * Test-only override for audit Append resolution.
+ */
+export function __setFieldTrackingAppendForTest(fn: AppendFn | null | undefined): void {
+  appendOverride = fn;
+}
+
+/**
+ * Test-only override for cross-app dial used when Append override is unset.
+ */
+export function __setFieldTrackingDialForTest(fn: DialFn | undefined): void {
+  dialOverride = fn;
+}
+
+/**
+ * Test-only override for active-company fallback used in FieldChange.CompanyId.
+ */
+export function __setFieldTrackingActiveCompanyIdForTest(fn: ActiveCompanyIdFn | undefined): void {
+  activeCompanyIdOverride = fn;
+}
+
+export type FieldTrackingWriteEvent = {
+  childCtor: RuntimeModelCtor;
+  operation: 'create' | 'update' | 'delete';
+  changedFields?: string[];
+  beforeEntity?: ObjectRecord;
+  afterEntity?: ObjectRecord;
+};
+
+function fullModelName(ModelCtor: RuntimeModelCtor): string {
+  const meta = MetadataStorage.instance.getModelMetadata(ModelCtor as any);
+  const app = String(meta?.application || '').trim();
+  const name = String(meta?.name || ModelCtor?.name || '').trim();
+  return app && name ? `${app}.${name}` : name;
+}
+
+function isTrackableScalar(fm: FieldMetadata | undefined): boolean {
+  if (!fm || fm.tracking !== true) return false;
+  const t = String(fm.type || '');
+  if (t === 'OneToMany' || t === 'ManyToMany' || t === 'properties') return false;
+  return true;
+}
+
+/** Exported for unit coverage of value serialization branches. */
+export function serializeTrackedValue(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+    return String(value);
+  }
+  try {
+    // JSON.stringify can return undefined for functions/symbols/custom toJSON.
+    return JSON.stringify(value) ?? null;
+  } catch {
+    return String(value);
+  }
+}
+
+/** Resolves the model company ownership field used for FieldChange.CompanyId. */
+export function resolveTrackingCompanyField(meta: { companyField?: string } | undefined | null): string {
+  const configured = String(meta?.companyField ?? '').trim();
+  return configured || 'CompanyId';
+}
+
+function valuesEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a == null && b == null) return true;
+  if (a instanceof Date && b instanceof Date) return a.getTime() === b.getTime();
+  return serializeTrackedValue(a) === serializeTrackedValue(b);
+}
+
+/** Test-only export for valuesEqual branch coverage. */
+export function __valuesEqualForTest(a: unknown, b: unknown): boolean {
+  return valuesEqual(a, b);
+}
+
+function resolveAppend(): AppendFn | null {
+  if (appendOverride !== undefined) return appendOverride;
+  try {
+    const dialFn = dialOverride || dial;
+    const svc = dialFn<{ Append?: AppendFn }>(AUDIT_FIELD_CHANGE);
+    if (typeof svc?.Append !== 'function') return null;
+    return svc.Append.bind(svc);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * After a successful scalar write, append FieldChange rows for tracked fields.
+ * Fail-closed: Append errors propagate to the caller.
+ */
+export async function recordFieldTrackingEvents(event: FieldTrackingWriteEvent): Promise<void> {
+  const ModelCtor = event.childCtor;
+  if (!ModelCtor) return;
+
+  const trackedModel = fullModelName(ModelCtor);
+  if (!trackedModel || trackedModel === AUDIT_FIELD_CHANGE) return;
+
+  const meta = MetadataStorage.instance.getModelMetadata(ModelCtor as any);
+  const fields = meta?.fields;
+  if (!fields?.size) return;
+
+  const hasAnyTracking = Array.from(fields.values()).some(fm => isTrackableScalar(fm));
+  if (!hasAnyTracking) return;
+
+  const resId = String(event.afterEntity?.Id ?? event.beforeEntity?.Id ?? '').trim();
+  if (!resId) return;
+
+  const companyField = resolveTrackingCompanyField(meta);
+  const companyId = (() => {
+    const fromRow = event.afterEntity?.[companyField] ?? event.beforeEntity?.[companyField];
+    if (fromRow != null && String(fromRow).trim()) return String(fromRow).trim();
+    try {
+      const resolveActive = activeCompanyIdOverride || getActiveCompanyId;
+      const active = String(resolveActive() || '').trim();
+      return active || null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const append = resolveAppend();
+  if (!append) {
+    throw new Error(`[FieldTracking] ${AUDIT_FIELD_CHANGE} is not available but ${trackedModel} has tracking fields`);
+  }
+
+  if (event.operation === 'create') {
+    await append({
+      Model: trackedModel,
+      ResId: resId,
+      Field: null,
+      Kind: 'create',
+      OldValue: null,
+      NewValue: null,
+      CompanyId: companyId,
+    });
+    return;
+  }
+
+  if (event.operation === 'delete') {
+    await append({
+      Model: trackedModel,
+      ResId: resId,
+      Field: null,
+      Kind: 'unlink',
+      OldValue: null,
+      NewValue: null,
+      CompanyId: companyId,
+    });
+    return;
+  }
+
+  // update
+  const changed = event.changedFields || [];
+  for (const name of changed) {
+    const fm = fields.get(name);
+    if (!isTrackableScalar(fm)) continue;
+    const before = event.beforeEntity?.[name];
+    const after = event.afterEntity?.[name];
+    if (valuesEqual(before, after)) continue;
+    await append({
+      Model: trackedModel,
+      ResId: resId,
+      Field: name,
+      Kind: 'field',
+      OldValue: serializeTrackedValue(before),
+      NewValue: serializeTrackedValue(after),
+      CompanyId: companyId,
+    });
+  }
+}

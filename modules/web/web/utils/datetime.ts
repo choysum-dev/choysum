@@ -61,15 +61,34 @@ export function getUserTimeZone(): string {
 
 function asUtcDayjs(input: Date | string | number): TzDayjs {
   if (input instanceof Date) {
+    // Invalid Date#toISOString throws RangeError — never call it blindly.
+    if (Number.isNaN(input.getTime())) return tzDayjs.utc(NaN);
     return tzDayjs.utc(input.toISOString());
   }
   if (typeof input === 'number') {
+    if (!Number.isFinite(input)) return tzDayjs.utc(NaN);
     return tzDayjs.utc(input);
   }
   const raw = String(input).trim();
+  if (!raw) return tzDayjs.utc(NaN);
   const parsed = tzDayjs.utc(raw);
   if (parsed.isValid()) return parsed;
   return tzDayjs(raw).utc();
+}
+
+/**
+ * Convert a UTC instant into a zoned dayjs wall clock.
+ * dayjs.tz throws RangeError on invalid instants in some Node/ICU builds — never let that escape.
+ */
+function utcInstantInZone(input: Date | string | number, tz: string): TzDayjs | null {
+  const utc = asUtcDayjs(input);
+  if (!utc.isValid()) return null;
+  try {
+    const wall = utc.tz(tz);
+    return wall.isValid() ? wall : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -78,8 +97,8 @@ function asUtcDayjs(input: Date | string | number): TzDayjs {
  */
 export function utcToUserWallDate(input: Date | string | number | null | undefined, tz: string = getUserTimeZone()): Date | null {
   if (input == null || input === '') return null;
-  const wall = asUtcDayjs(input).tz(tz);
-  if (!wall.isValid()) return null;
+  const wall = utcInstantInZone(input, tz);
+  if (!wall) return null;
   return new Date(wall.year(), wall.month(), wall.date(), wall.hour(), wall.minute(), wall.second(), wall.millisecond());
 }
 
@@ -101,9 +120,13 @@ export function userWallDateToUtc(wallLocal: Date | null | undefined, tz: string
     String(wallLocal.getSeconds()).padStart(2, '0'),
   ].join(':');
   const ms = String(wallLocal.getMilliseconds()).padStart(3, '0');
-  const wall = tzDayjs.tz(`${stamp} ${time}.${ms}`, 'YYYY-MM-DD HH:mm:ss.SSS', tz);
-  if (!wall.isValid()) return null;
-  return wall.utc().toDate();
+  try {
+    const wall = tzDayjs.tz(`${stamp} ${time}.${ms}`, 'YYYY-MM-DD HH:mm:ss.SSS', tz);
+    if (!wall.isValid()) return null;
+    return wall.utc().toDate();
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -115,8 +138,8 @@ export function formatUtcInTimeZone(
   tz: string = getUserTimeZone()
 ): string {
   if (input == null || input === '') return '';
-  const wall = asUtcDayjs(input).tz(tz);
-  return wall.isValid() ? wall.format(format) : '';
+  const wall = utcInstantInZone(input, tz);
+  return wall ? wall.format(format) : '';
 }
 
 /**
@@ -157,7 +180,11 @@ export function dayRange(date: string | Date, tz: string = getUserTimeZone()): {
     if (Number.isNaN(date.getTime())) {
       throw new Error('Invalid date');
     }
-    day = asUtcDayjs(date).tz(zone).format('YYYY-MM-DD');
+    const wall = utcInstantInZone(date, zone);
+    if (!wall) {
+      throw new Error('Invalid date');
+    }
+    day = wall.format('YYYY-MM-DD');
   } else {
     day = String(date ?? '')
       .trim()
@@ -167,15 +194,20 @@ export function dayRange(date: string | Date, tz: string = getUserTimeZone()): {
     }
   }
   // Keep wall midnight explicit; advance by calendar day (not +24h) for DST.
-  const startLocal = tzDayjs.tz(`${day} 00:00:00`, zone) as TzDayjs;
-  const endLocal = tzDayjs.tz(`${addCalendarDay(day)} 00:00:00`, zone) as TzDayjs;
-  if (!startLocal.isValid() || !endLocal.isValid()) {
+  try {
+    const startLocal = tzDayjs.tz(`${day} 00:00:00`, zone) as TzDayjs;
+    const endLocal = tzDayjs.tz(`${addCalendarDay(day)} 00:00:00`, zone) as TzDayjs;
+    if (!startLocal.isValid() || !endLocal.isValid()) {
+      throw new Error(`Invalid date: ${day}`);
+    }
+    return {
+      start: startLocal.utc().toDate(),
+      end: endLocal.utc().toDate(),
+    };
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith('Invalid date')) throw e;
     throw new Error(`Invalid date: ${day}`);
   }
-  return {
-    start: startLocal.utc().toDate(),
-    end: endLocal.utc().toDate(),
-  };
 }
 
 export { tzDayjs as hubDayjs };

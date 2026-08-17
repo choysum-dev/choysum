@@ -85,6 +85,8 @@ type FieldDecoratorOptionBag = {
   copy?: unknown;
   /** Declarative field readonly (PR-P2-F2); wire still uses isReadonly. */
   readonly?: unknown;
+  /** When true, Write path dials audit.FieldChange (AU3 / PR-P3-A2). */
+  tracking?: unknown;
   /**
    * Odoo-style check_company for ManyToOne / ManyToOneRef (parent↔related CompanyId).
    */
@@ -260,6 +262,13 @@ export function Field(
       throw new Error(`@Field(${name}) readonly must be a boolean`);
     }
     const readonlyFlag = optionBag.readonly === true;
+    if (optionBag.tracking !== undefined && typeof optionBag.tracking !== 'boolean') {
+      throw new Error(`@Field(${name}) tracking must be a boolean`);
+    }
+    if (optionBag.tracking === true && (type === 'OneToMany' || type === 'ManyToMany' || type === 'properties')) {
+      throw new Error(`@Field(${name}) tracking is not supported on ${type} fields`);
+    }
+    const trackingFlag = optionBag.tracking === true;
     if (optionBag.checkCompany !== undefined && typeof optionBag.checkCompany !== 'boolean') {
       throw new Error(`@Field(${name}) checkCompany must be a boolean`);
     }
@@ -695,6 +704,7 @@ export function Field(
     if (copyFlag === false) meta.copy = false;
     else if (copyFlag === true) meta.copy = true;
     if (readonlyFlag) meta.readonly = true;
+    if (trackingFlag) meta.tracking = true;
     if (checkCompany) meta.checkCompany = true;
     if (type === 'properties' && typeof optionBag.definition === 'string' && optionBag.definition.trim()) {
       meta.definition = optionBag.definition.trim();

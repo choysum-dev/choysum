@@ -127,6 +127,11 @@ type FlatCommonOptions = {
    */
   readonly?: boolean;
   /**
+   * When true, scalar Create/Update/Delete writes append `audit.FieldChange`
+   * rows via dial (AU3 / PR-P3-A2). Omit / false = not tracked.
+   */
+  tracking?: boolean;
+  /**
    * Odoo-style check_company: when true on ManyToOne / ManyToOneRef, related-row
    * ownership must match the parent row. Each side uses its model `companyField`
    * (falls back to `CompanyId` only for non-isolated parents). Related shared/NULL passes.
@@ -742,6 +747,10 @@ export interface FieldMetadata {
    * Wire still exposes `isReadonly` only (merged with compute / ACL deny-write).
    */
   readonly?: boolean;
+  /**
+   * When true, Write path dials `audit.FieldChange` for this scalar field (AU3).
+   */
+  tracking?: boolean;
   /**
    * When true on ManyToOne / ManyToOneRef, enforce parent↔related ownership
    * compatibility via each side's `companyField` (PR-D-1 / Odoo check_company).

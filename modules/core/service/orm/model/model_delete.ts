@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { QueryCondition, DeleteOptions } from '../repository/types';
+import { MetadataStorage } from '../metadata';
 import type BaseModel from './model';
 import { resolveRepositoryWithSoftDeleteOptions } from './model_soft_delete_scope';
 import { collectModelUpstreamInverseFields, triggerModelUpstream } from './model_runtime_service_facade';
+import { recordFieldTrackingEvents, resolveTrackingCompanyField } from './field_tracking';
 import type { RuntimeModelCtor } from './types';
 import type { ObjectRecord } from '../../../utils/types';
 import { purgePropertyDefinitionsAfterParentDelete } from './properties_definition_purge';
@@ -29,7 +31,12 @@ export class DeleteOperations {
   static async Delete<T extends BaseModel>(ModelCtor: RuntimeModelCtor, condition: QueryCondition<T>, options?: DeleteOptions): Promise<number> {
     const repository = DeleteOperations.resolveRepository(ModelCtor, options);
     const upstreamInverseFields = collectModelUpstreamInverseFields(ModelCtor);
+    const companyField = resolveTrackingCompanyField(MetadataStorage.instance.getModelMetadata(ModelCtor as any));
     const snapshotFields = Array.from(new Set<string>(['Id', ...upstreamInverseFields]));
+    const metaFields = MetadataStorage.instance.getModelMetadata(ModelCtor as any)?.fields;
+    if (metaFields?.has(companyField)) {
+      snapshotFields.push(companyField);
+    }
     const oldRows = await repository.search(condition as unknown, {
       fields: snapshotFields as unknown,
     });
@@ -46,6 +53,15 @@ export class DeleteOperations {
           console.warn('[Delete] PropertyDefinition container purge failed:', e);
         }
       }
+    }
+
+    // Field tracking → audit.FieldChange (fail-closed; AU3). Uses pre-delete snapshot.
+    for (const row of oldRows || []) {
+      await recordFieldTrackingEvents({
+        childCtor: ModelCtor,
+        operation: 'delete',
+        beforeEntity: row,
+      });
     }
 
     for (const row of oldRows || []) {
