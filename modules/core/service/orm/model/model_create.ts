@@ -15,6 +15,7 @@ import {
   triggerModelUpstreamCreateBatch,
 } from './model_runtime_service_facade';
 import { getRuntimeErrorMessage, runWithValidationBypass } from './model_write_helpers';
+import { recordFieldTrackingEvents } from './field_tracking';
 import type { UnknownRecord } from '../../../utils/types';
 import { asObjectRecord } from '../../../utils/object';
 import { createServiceByModel } from '../../rpc';
@@ -409,7 +410,17 @@ export class CreateOperations {
       }
     }
 
-    // 8) Child-to-parent upstream propagation through the shared model-layer entry point.
+    // 8) Field tracking → audit.FieldChange (fail-closed; AU3).
+    await recordFieldTrackingEvents({
+      childCtor: ModelCtor,
+      operation: 'create',
+      afterEntity: {
+        ...(processedValue as UnknownRecord),
+        Id: parentId,
+      },
+    });
+
+    // 9) Child-to-parent upstream propagation through the shared model-layer entry point.
     try {
       await triggerModelUpstream({
         childCtor: ModelCtor,
@@ -481,12 +492,21 @@ export class CreateOperations {
       }
     }
 
-    // 6) Child-to-parent upstream propagation in batch form.
+    // 6) Field tracking → audit.FieldChange (fail-closed; AU3).
+    const createdRows = parentIds.map((id: string, i: number) => ({
+      ...((processedValues[i] as UnknownRecord) || {}),
+      Id: id,
+    }));
+    for (const row of createdRows) {
+      await recordFieldTrackingEvents({
+        childCtor: ModelCtor,
+        operation: 'create',
+        afterEntity: row,
+      });
+    }
+
+    // 7) Child-to-parent upstream propagation in batch form.
     try {
-      const createdRows = parentIds.map((id: string, i: number) => ({
-        ...((processedValues[i] as UnknownRecord) || {}),
-        Id: id,
-      }));
       await triggerModelUpstreamCreateBatch(ModelCtor, createdRows);
     } catch (e) {
       if (typeof console !== 'undefined') {

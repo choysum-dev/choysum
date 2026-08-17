@@ -5,6 +5,7 @@ import type { QueryCondition, DeleteOptions } from '../repository/types';
 import type BaseModel from './model';
 import { resolveRepositoryWithSoftDeleteOptions } from './model_soft_delete_scope';
 import { collectModelUpstreamInverseFields, triggerModelUpstream } from './model_runtime_service_facade';
+import { recordFieldTrackingEvents } from './field_tracking';
 import type { RuntimeModelCtor } from './types';
 import type { ObjectRecord } from '../../../utils/types';
 import { purgePropertyDefinitionsAfterParentDelete } from './properties_definition_purge';
@@ -46,6 +47,15 @@ export class DeleteOperations {
           console.warn('[Delete] PropertyDefinition container purge failed:', e);
         }
       }
+    }
+
+    // Field tracking → audit.FieldChange (fail-closed; AU3). Uses pre-delete snapshot.
+    for (const row of oldRows || []) {
+      await recordFieldTrackingEvents({
+        childCtor: ModelCtor,
+        operation: 'delete',
+        beforeEntity: row,
+      });
     }
 
     for (const row of oldRows || []) {

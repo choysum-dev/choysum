@@ -17,6 +17,7 @@ import {
   triggerModelUpstream,
 } from './model_runtime_service_facade';
 import { getRuntimeErrorMessage, runWithValidationBypass } from './model_write_helpers';
+import { recordFieldTrackingEvents } from './field_tracking';
 import type { UnknownRecord } from '../../../utils/types';
 import { asObjectRecord } from '../../../utils/object';
 import { getCurrencyFieldName } from '../metadata/decimal_like';
@@ -589,7 +590,16 @@ export class UpdateOperations {
         }
       }
 
-      // 5.5) Trigger cascade hooks without blocking the update result.
+      // 5.5) Field tracking → audit.FieldChange (fail-closed; AU3).
+      await recordFieldTrackingEvents({
+        childCtor: ModelCtor,
+        operation: 'update',
+        changedFields: baseChangedInitial,
+        beforeEntity: beforeEntityForUpstream,
+        afterEntity: entityObj,
+      });
+
+      // 5.6) Trigger cascade hooks without blocking the update result.
       try {
         if (baseChangedInitial.length) {
           await triggerModelUpstream({

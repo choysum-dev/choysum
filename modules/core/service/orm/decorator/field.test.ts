@@ -958,6 +958,31 @@ test('Field decorator accepts readonly:true and rejects non-boolean readonly', (
   }).toThrow('readonly must be a boolean');
 });
 
+test('Field decorator accepts tracking:true and rejects non-boolean tracking', () => {
+  class TrackingFlagModel extends BaseModel {
+    @Field({ type: 'varchar', size: 32, tracking: true } as any)
+    Name!: string;
+
+    @Field({ type: 'varchar', size: 32, tracking: false } as any)
+    Code!: string;
+
+    @Field({ type: 'varchar', size: 32 } as any)
+    Note!: string;
+  }
+  const fields = MetadataStorage.instance.getModelMetadata(TrackingFlagModel as any).fields;
+  expect(fields.get('Name')?.tracking).toBe(true);
+  expect(fields.get('Code')?.tracking).toBeUndefined();
+  expect(fields.get('Note')?.tracking).toBeUndefined();
+
+  expect(() => {
+    class BadTracking extends BaseModel {
+      @Field({ type: 'varchar', tracking: 'yes' as any } as any)
+      Name!: string;
+    }
+    return BadTracking;
+  }).toThrow('tracking must be a boolean');
+});
+
 test('Field decorator accepts checkCompany on ManyToOne and rejects elsewhere', () => {
   class CheckCompanyOkModel extends BaseModel {
     @Field({
