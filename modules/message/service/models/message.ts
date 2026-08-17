@@ -44,9 +44,11 @@ type BindAttachmentFn = (req: {
 }) => Promise<unknown>;
 
 type DialFn = <T = Record<string, (...args: unknown[]) => unknown>>(fullModelName: string) => T;
+type XidNewFn = () => string | null | undefined;
 
 let bindAttachmentOverride: BindAttachmentFn | null | undefined;
 let dialOverride: DialFn | undefined;
+let xidNewOverride: XidNewFn | undefined;
 
 /**
  * Test-only override for document AttachmentBinding.Bind.
@@ -61,6 +63,13 @@ export function __setMessageAttachmentBindForTest(fn: BindAttachmentFn | null | 
  */
 export function __setMessageDialForTest(fn: DialFn | undefined): void {
   dialOverride = fn;
+}
+
+/**
+ * Test-only override for mutation-id xid source (does not affect ORM Id generation).
+ */
+export function __setMessageXidNewForTest(fn: XidNewFn | undefined): void {
+  xidNewOverride = fn;
 }
 
 /**
@@ -84,12 +93,17 @@ type MessageInsert = Partial<Insertable<Message>>;
 
 function prepareCreatePayload(value: MessageInsert): MessageInsert {
   const uid = getUserId();
-  const typeInput = value.Type == null || String(value.Type).trim() === '' ? 'comment' : String(value.Type);
-  return {
+  const payload: MessageInsert = {
     ...value,
-    Type: assertMessageType(typeInput),
     AuthorUid: uid == null || String(uid).trim() === '' ? null : String(uid).trim(),
   };
+  if (value.Type == null || String(value.Type).trim() === '') {
+    // Omit Type so the field default (`comment`) applies.
+    delete payload.Type;
+  } else {
+    payload.Type = assertMessageType(String(value.Type));
+  }
+  return payload;
 }
 
 /**
@@ -97,7 +111,10 @@ function prepareCreatePayload(value: MessageInsert): MessageInsert {
  * Prefer host xid as-is (already ≤20 chars); do not prefix+truncate, which drops sequence entropy.
  */
 function newMutationId(): string {
-  const xid = (globalThis as { $choysum?: { xid?: { New?: () => string } } }).$choysum?.xid?.New?.();
+  const xid =
+    xidNewOverride !== undefined
+      ? xidNewOverride()
+      : (globalThis as { $choysum?: { xid?: { New?: () => string } } }).$choysum?.xid?.New?.();
   if (typeof xid === 'string' && xid.trim()) {
     return xid.trim().slice(0, 20);
   }

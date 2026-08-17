@@ -6,6 +6,7 @@ import Message, {
   MESSAGE_ATTACHMENT_FIELD,
   __setMessageAttachmentBindForTest,
   __setMessageDialForTest,
+  __setMessageXidNewForTest,
 } from '../models/message';
 import { MessageErrCode, isMessageError } from '../error';
 import { dial } from '@/core/service/orm/model/model_pool';
@@ -65,6 +66,7 @@ function resetRequestContext(): void {
 function resetMessageTestSeams(): void {
   __setMessageAttachmentBindForTest(undefined);
   __setMessageDialForTest(undefined);
+  __setMessageXidNewForTest(undefined);
 }
 
 async function withMessageScope<T>(fn: () => Promise<T>): Promise<T> {
@@ -147,6 +149,30 @@ test('message.Message: Post validates inputs and stamps AuthorUid via Create', a
     }
     expect((emptyBodyErr as any).code).toBe(MessageErrCode.INVALID_ARGUMENT);
 
+    let nullBodyErr: unknown;
+    try {
+      await Message.Post({ Model: 'partner.Partner', ResId: uid('res'), Body: null as any });
+    } catch (e) {
+      nullBodyErr = e;
+    }
+    expect((nullBodyErr as any).code).toBe(MessageErrCode.INVALID_ARGUMENT);
+
+    let nullModelErr: unknown;
+    try {
+      await Message.Post({ Model: null as any, ResId: uid('res'), Body: 'x' });
+    } catch (e) {
+      nullModelErr = e;
+    }
+    expect((nullModelErr as any).code).toBe(MessageErrCode.INVALID_ARGUMENT);
+
+    let nullResErr: unknown;
+    try {
+      await Message.Post({ Model: 'partner.Partner', ResId: null as any, Body: 'x' });
+    } catch (e) {
+      nullResErr = e;
+    }
+    expect((nullResErr as any).code).toBe(MessageErrCode.INVALID_ARGUMENT);
+
     let typeErr: unknown;
     try {
       await Message.Post({ Model: 'partner.Partner', ResId: uid('res'), Body: 'x', Type: 'login' });
@@ -204,6 +230,21 @@ test('message.Message: Post binds attachment via document Binding dial seam', as
     expect(binds[0].ownerRecordId).toBe(String((row as any).Id));
     expect(binds[0].fieldName).toBe(MESSAGE_ATTACHMENT_FIELD);
     expect(binds[0].mutationId).toBe('mut_fixture________');
+
+    // Whitespace mutation id falls back to generated id; fields already include Id.
+    binds.length = 0;
+    await Message.Post(
+      {
+        Model: 'partner.Partner',
+        ResId: uid('res'),
+        Body: 'blank mutation',
+        AttachmentObjectId: 'att_obj_blankmut______',
+        AttachmentMutationId: '   ',
+      },
+      ['Id', 'Body']
+    );
+    expect(binds.length).toBe(1);
+    expect(String(binds[0].mutationId || '').trim()).not.toBe('');
 
     // Custom fields omitting Id must still resolve ownerRecordId for Bind.
     binds.length = 0;
@@ -295,5 +336,194 @@ test('message.Message: dial message.Message exposes Post for cross-app callers',
     });
     expect(String((row as any).Body)).toBe('via dial');
     expect(String((row as any).AuthorUid)).toBe(TEST_USER_ID);
+  });
+});
+
+test('message.Message: CreateMany, dial seams, and Post edge branches', async () => {
+  await withMessageScope(async () => {
+    const many = await Message.CreateMany(
+      [
+        {
+          Model: 'partner.Partner',
+          ResId: uid('res'),
+          Body: 'many-1',
+          Type: '  note  ',
+          CompanyId: null,
+          AuthorUid: 'usr_forged____________',
+        },
+        {
+          Model: 'partner.Partner',
+          ResId: uid('res'),
+          Body: 'many-2',
+          Type: '   ',
+          CompanyId: null,
+        },
+      ] as any,
+      ['Id', 'Type', 'Body', 'AuthorUid'] as any
+    );
+    expect(many.length).toBe(2);
+    expect(String((many[0] as any).Type)).toBe('note');
+    expect(String((many[0] as any).AuthorUid)).toBe(TEST_USER_ID);
+    expect(String((many[1] as any).Type)).toBe('comment');
+
+    const emptyMany = await Message.CreateMany(null as any, ['Id'] as any);
+    expect(emptyMany).toEqual([]);
+
+    // CompanyId / '*' selection / generated mutation id via dialOverride Bind.
+    const companyId = 'cmp_message_fixture_';
+    const jsCtx = ensureRequestContext();
+    jsCtx.ctx = { activeCompanyId: companyId, enabledCompanyIds: [companyId] };
+    delete (jsCtx as any)[Symbol.for('choysum.ctx.frozen')];
+    delete (jsCtx as any)[Symbol.for('choysum.ctx.override')];
+    const dialBinds: any[] = [];
+    __setMessageAttachmentBindForTest(undefined);
+    __setMessageDialForTest(() => ({
+      Bind: async (req: any) => {
+        dialBinds.push(req);
+        return { status: 'active' };
+      },
+    }));
+    const withCompany = await Message.Post(
+      {
+        Model: 'partner.Partner',
+        ResId: uid('res'),
+        Body: 'company+star',
+        CompanyId: companyId,
+        AttachmentObjectId: 'att_star_____________',
+      },
+      ['*']
+    );
+    expect(String((withCompany as any).CompanyId)).toBe(companyId);
+    expect(dialBinds.length).toBe(1);
+    expect(String(dialBinds[0].mutationId || '')).not.toBe('');
+    // Restore skip-company harness for remaining cases.
+    resetRequestContext();
+    __setMessageAttachmentBindForTest(undefined);
+    __setMessageDialForTest(() => ({} as any));
+    let noBindErr: unknown;
+    try {
+      await Message.Post({
+        Model: 'partner.Partner',
+        ResId: uid('res'),
+        Body: 'x',
+        AttachmentObjectId: 'att_nobind___________',
+      });
+    } catch (e) {
+      noBindErr = e;
+    }
+    expect((noBindErr as any).code).toBe(MessageErrCode.ATTACHMENT_BIND_FAILED);
+
+    // dial throws → resolveBind catch → same fail-closed code.
+    __setMessageDialForTest(() => {
+      throw new Error('dial boom');
+    });
+    let dialThrowErr: unknown;
+    try {
+      await Message.Post({
+        Model: 'partner.Partner',
+        ResId: uid('res'),
+        Body: 'x',
+        AttachmentObjectId: 'att_dialthrow________',
+      });
+    } catch (e) {
+      dialThrowErr = e;
+    }
+    expect((dialThrowErr as any).code).toBe(MessageErrCode.ATTACHMENT_BIND_FAILED);
+
+    // Non-Error Bind throw + DeleteById compensate failure still surfaces ATTACHMENT_BIND_FAILED.
+    __setMessageDialForTest(undefined);
+    __setMessageAttachmentBindForTest(async () => {
+      throw 'bind string boom';
+    });
+    const origDeleteById = Message.DeleteById;
+    (Message as any).DeleteById = async () => {
+      throw new Error('delete boom');
+    };
+    let nonErrorBindErr: unknown;
+    try {
+      await Message.Post({
+        Model: 'partner.Partner',
+        ResId: uid('res'),
+        Body: 'x',
+        AttachmentObjectId: 'att_nonerr____________',
+      });
+    } catch (e) {
+      nonErrorBindErr = e;
+    } finally {
+      (Message as any).DeleteById = origDeleteById;
+    }
+    expect(isMessageError(nonErrorBindErr)).toBe(true);
+    expect((nonErrorBindErr as any).code).toBe(MessageErrCode.ATTACHMENT_BIND_FAILED);
+    expect(String((nonErrorBindErr as any).message || '')).toMatch(/Attachment bind failed|bind string/i);
+
+    // Create returns without Id → Bind refused.
+    __setMessageAttachmentBindForTest(async () => ({ status: 'active' }));
+    const origCreate = Message.Create;
+    (Message as any).Create = async function (this: any, value: any, fields?: any) {
+      const row = await origCreate.call(this, value, fields);
+      try {
+        delete (row as any).Id;
+      } catch {
+        (row as any).Id = '';
+      }
+      if ((row as any).Id != null && String((row as any).Id) !== '') {
+        (row as any).Id = '';
+      }
+      return row;
+    };
+    let missingIdErr: unknown;
+    try {
+      await Message.Post({
+        Model: 'partner.Partner',
+        ResId: uid('res'),
+        Body: 'x',
+        AttachmentObjectId: 'att_noid______________',
+      });
+    } catch (e) {
+      missingIdErr = e;
+    } finally {
+      (Message as any).Create = origCreate;
+    }
+    expect((missingIdErr as any).code).toBe(MessageErrCode.ATTACHMENT_BIND_FAILED);
+    expect(String((missingIdErr as any).message || '')).toMatch(/Id is required/i);
+
+    // newMutationId fallback when mutation-id xid source is unavailable / blank.
+    __setMessageXidNewForTest(() => undefined);
+    __setMessageAttachmentBindForTest(async req => {
+      expect(String(req.mutationId || '').length).toBeGreaterThan(0);
+      expect(String(req.mutationId).length).toBeLessThanOrEqual(20);
+      return { status: 'active' };
+    });
+    await Message.Post({
+      Model: 'partner.Partner',
+      ResId: uid('res'),
+      Body: 'no-xid',
+      AttachmentObjectId: 'att_noxid_____________',
+    });
+
+    __setMessageXidNewForTest(() => '   ');
+    __setMessageAttachmentBindForTest(async req => {
+      expect(String(req.mutationId || '').length).toBeGreaterThan(0);
+      return { status: 'active' };
+    });
+    await Message.Post({
+      Model: 'partner.Partner',
+      ResId: uid('res'),
+      Body: 'blank-xid',
+      AttachmentObjectId: 'att_blankxid__________',
+    });
+    __setMessageXidNewForTest(undefined);
+
+    // Whitespace identity → AuthorUid null; empty CompanyId normalizes to null.
+    resetRequestContext();
+    ensureRequestContext().identity = { userId: '   ' };
+    const blankAuthor = await Message.Post({
+      Model: 'partner.Partner',
+      ResId: uid('res'),
+      Body: 'blank author',
+      CompanyId: '',
+    });
+    expect((blankAuthor as any).AuthorUid == null || (blankAuthor as any).AuthorUid === '').toBe(true);
+    expect((blankAuthor as any).CompanyId == null || (blankAuthor as any).CompanyId === '').toBe(true);
   });
 });
