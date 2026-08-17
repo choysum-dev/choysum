@@ -8,18 +8,20 @@ import (
 	"testing"
 	"time"
 
-	taskcontract "github.com/choysum-dev/choysum/pkg/task"
+	"github.com/choysum-dev/choysum/pkg/bus"
 )
 
-func TestDispatchWakeupPublishesToDefaultEventBus(t *testing.T) {
-	bus := DispatchEventBus()
-	if bus == nil {
-		t.Fatal("expected default dispatch event bus")
+func TestDispatchWakeupPublishesOnInjectedEventBus(t *testing.T) {
+	events := bus.NewBus(nil)
+	if events == nil {
+		t.Fatal("expected inprocess event bus")
 	}
+
+	d := &Dispatcher{events: events}
 
 	called := 0
 	lastSource := ""
-	sub, err := bus.Subscribe(taskcontract.EventTopicDispatchWakeup, func(ctx context.Context, event taskcontract.Event) {
+	sub, err := events.Subscribe(bus.TopicDispatchWakeup, func(ctx context.Context, event bus.Event) {
 		called++
 		lastSource = event.Source
 	})
@@ -30,7 +32,7 @@ func TestDispatchWakeupPublishesToDefaultEventBus(t *testing.T) {
 		_ = sub.Close()
 	})
 
-	WakeDispatch("enqueue")
+	d.publishWakeup("enqueue")
 	if called != 1 {
 		t.Fatalf("wakeup call count = %d, want 1", called)
 	}
@@ -43,9 +45,17 @@ func TestDispatchWakeupPublishesToDefaultEventBus(t *testing.T) {
 	}
 	lastSource = ""
 	called = 0
-	WakeDispatch("ignored")
+	d.publishWakeup("ignored")
 	time.Sleep(10 * time.Millisecond)
 	if called != 0 {
 		t.Fatalf("wakeup call count after close = %d, want 0", called)
 	}
+}
+
+func TestPublishWakeupNilDispatcherOrEventsIsNoop(t *testing.T) {
+	var d *Dispatcher
+	d.publishWakeup("noop")
+
+	d = &Dispatcher{}
+	d.publishWakeup("noop")
 }
