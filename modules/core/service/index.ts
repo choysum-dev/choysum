@@ -9,6 +9,7 @@ import './orm/model/translation_term_base_model';
 import './orm/model/property_definition_base_model';
 
 export { default as BaseModel } from './orm/model/model';
+export type { BaseModelCtor } from './orm/model/types';
 export { Field } from './orm/decorator/field';
 export { Compute } from './orm/decorator/compute';
 export { SqlCompute } from './orm/decorator/sqlcompute';

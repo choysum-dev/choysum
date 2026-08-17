@@ -1,0 +1,25 @@
+{
+  "name": "@choysum-dev/audit",
+  "version": "0.0.0-20260817000000",
+  "description": "Compliance audit facts (FieldChange and later security/admin events)",
+  "license": "Apache-2.0",
+  "author": "Choysum Team",
+  "type": "module",
+  "choysum": {
+    "moduleName": "audit",
+    "application": "audit",
+    "category": "Platform/Audit",
+    "depends": [
+      "core",
+      "base",
+      "auth"
+    ],
+    "cli": ">=0.0.0-0 <0.0.0",
+    "entryPoints": {
+      "service": "./service/index.ts"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

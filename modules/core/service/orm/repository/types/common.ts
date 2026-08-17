@@ -34,7 +34,17 @@ type InputSupportedTypes = StandardFields | BaseModel | ObjectRecord | ReadonlyA
 /** Drop private `_` / ambient `$` props (`$sql`, `$search`, …). `$` counts as "uppercase" for `Uppercase<>`. */
 type ExcludePrivateOrAmbientProps<K extends string> = K extends `_${string}` | `$${string}` ? never : K;
 type OnlyUppercaseProps<K extends string> = K extends `${infer F}${infer R}` ? (F extends Uppercase<F> ? `${F}${R}` : never) : never;
-type ValidInputPropertyType<T, K extends keyof T> = T[K] extends Function ? never : T[K] extends InputSupportedTypes ? K : never;
+/**
+ * Nullable columns (`string | null`, etc.) must remain insertable/updateable.
+ * Match query filtering: strip null|undefined before testing supported value shapes.
+ */
+type ValidInputPropertyType<T, K extends keyof T> = T[K] extends Function
+  ? never
+  : [NonNil<T[K]>] extends [never]
+    ? never
+    : [NonNil<T[K]>] extends [InputSupportedTypes]
+      ? K
+      : never;
 
 export type FilteredQueryProperties<T> = {
   [K in keyof T as ExcludePrivateOrAmbientProps<string & K> extends never
