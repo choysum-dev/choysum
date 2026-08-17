@@ -10,7 +10,7 @@ import { dial } from '@/core/service/orm/model/model_pool';
 import { MessageErrCode, newMessageError, wrapMessageError } from '../error';
 import { _lt } from '../i18n';
 
-/** V1 Message.Type values (MS3). `email` / `note` are placeholders. */
+/** V1 Message.Type values. `email` / `note` are placeholders. */
 export const MESSAGE_TYPES = ['comment', 'email', 'note'] as const;
 export type MessageTypeLiteral = (typeof MESSAGE_TYPES)[number];
 
@@ -21,7 +21,7 @@ export const MESSAGE_ATTACHMENT_FIELD = 'Attachment';
  * Post payload for Message (Unary Post API).
  *
  * AuthorUid is always taken from trusted request identity (`getUserId`), not from
- * the caller payload. Tip Publish is intentionally out of scope for PR-P3-M1.
+ * the caller payload. Tip Publish is intentionally out of scope for this skeleton.
  */
 export type PostMessageReq = {
   Model: string;
@@ -29,7 +29,7 @@ export type PostMessageReq = {
   Body: string;
   Type?: string | null;
   CompanyId?: string | null;
-  /** Optional document.AttachmentContent id to bind after create (MS5). */
+  /** Optional document.AttachmentContent id to bind after create. */
   AttachmentObjectId?: string | null;
   /** Idempotent bind mutation id; generated when AttachmentObjectId is set and omitted. */
   AttachmentMutationId?: string | null;
@@ -152,10 +152,10 @@ const DEFAULT_POST_FIELDS = [
 ] as const satisfies FieldSelection<Message>;
 
 /**
- * Collaboration post on a business record (MS1 / MS3 / PR-P3-M1).
+ * Collaboration post on a business record.
  * Table: message_message.
  *
- * Tip Publish is deferred to PR-BUS-2a.
+ * Tip Publish on the write path is deferred to a later change.
  */
 @Model('Message', {
   application: 'message',
@@ -221,7 +221,7 @@ export default class Message extends BaseModel {
   CompanyId: string | null;
 
   /**
-   * Binary placeholder so document.AttachmentBinding can own Attachment content (MS5).
+   * Binary placeholder so document.AttachmentBinding can own Attachment content.
    * Values are not stored on this column; Bind links AttachmentContent after Post.
    */
   @Field({
@@ -233,7 +233,7 @@ export default class Message extends BaseModel {
   /**
    * Creates one collaboration Message (Unary). Stamps AuthorUid from request identity.
    * Optional AttachmentObjectId dials document.AttachmentBinding.Bind after create.
-   * Does not Publish tip (PR-BUS-2a).
+   * Does not Publish tip.
    */
   public static async Post(req: PostMessageReq, fields?: FieldSelection<Message>): Promise<Message> {
     if (!req || typeof req !== 'object') {
