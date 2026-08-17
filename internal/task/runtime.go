@@ -4,6 +4,7 @@
 package task
 
 import (
+	"github.com/choysum-dev/choysum/pkg/bus"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	taskcontract "github.com/choysum-dev/choysum/pkg/task"
 )
@@ -19,7 +20,7 @@ func runtimeWithDefaultTaskRuntimeDeps(runtimeScope scope.Scope, runtime taskcon
 		runtime.Store = newTaskRuntimeScheduleStore(runtimeScope)
 	}
 	if runtime.Events == nil {
-		runtime.Events = DispatchEventBus()
+		runtime.Events = bus.NewBus(runtimeScope)
 	}
 	return runtime
 }

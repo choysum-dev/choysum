@@ -4,6 +4,7 @@
 package initialize
 
 import (
+	_ "github.com/choysum-dev/choysum/internal/bus/inprocess"
 	_ "github.com/choysum-dev/choysum/internal/defaultengine"
 	_ "github.com/choysum-dev/choysum/internal/defaultjsexecutor"
 	_ "github.com/choysum-dev/choysum/internal/defaultscope"

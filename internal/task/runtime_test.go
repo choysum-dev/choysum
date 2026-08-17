@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/choysum-dev/choysum/pkg/bus"
 	"github.com/choysum-dev/choysum/pkg/config"
 	taskcontract "github.com/choysum-dev/choysum/pkg/task"
 )
@@ -54,8 +55,8 @@ func (stubSubscription) Close() error { return nil }
 
 type stubEventBus struct{}
 
-func (stubEventBus) Publish(context.Context, taskcontract.Event) error { return nil }
-func (stubEventBus) Subscribe(string, taskcontract.EventHandler) (taskcontract.Subscription, error) {
+func (stubEventBus) Publish(context.Context, bus.Event) error { return nil }
+func (stubEventBus) Subscribe(string, bus.EventHandler) (bus.Subscription, error) {
 	return stubSubscription{}, nil
 }
 

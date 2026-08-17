@@ -18,9 +18,11 @@ import (
 	"github.com/choysum-dev/choysum/internal/jobtoken"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/auth"
+	"github.com/choysum-dev/choysum/pkg/bus"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/grpc/client"
 	"github.com/choysum-dev/choysum/pkg/scope"
+	taskcontract "github.com/choysum-dev/choysum/pkg/task"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -689,6 +691,7 @@ func TestDispatcherWakeupTriggersPoll(t *testing.T) {
 	}
 
 	cfg := &config.Config{Task: config.NewDefaultTaskConfig()}
+	// Long poll interval so only an event wakeup can claim the job in this test.
 	cfg.Task.Dispatch.PollIntervalMs = int64(time.Hour / time.Millisecond)
 
 	runtimeScope := &testScope{
@@ -698,6 +701,8 @@ func TestDispatcherWakeupTriggersPoll(t *testing.T) {
 		cfg:    cfg,
 	}
 
+	// Not due yet: Start()'s async pollOnce("startup") must not claim this job,
+	// otherwise the test can pass even when wakeup subscription is broken.
 	job := Job{
 		Id:                "job-wakeup",
 		TargetApp:         "auth",
@@ -705,7 +710,7 @@ func TestDispatcherWakeupTriggersPoll(t *testing.T) {
 		SchedulerUserId:   "admin",
 		TriggeredByUserId: "admin",
 		Status:            "queued",
-		RunAfter:          time.Now().UTC().Add(-time.Second),
+		RunAfter:          time.Now().UTC().Add(time.Hour),
 		Attempt:           0,
 		MaxAttempts:       1,
 		TimeoutMs:         0,
@@ -720,7 +725,36 @@ func TestDispatcherWakeupTriggersPoll(t *testing.T) {
 	d.Start()
 	t.Cleanup(d.Stop)
 
-	WakeDispatch("enqueue")
+	if d.events == nil {
+		t.Fatal("expected dispatcher event bus")
+	}
+
+	// Let pollOnce("startup") finish while the job is still not due.
+	time.Sleep(50 * time.Millisecond)
+
+	dueAt := time.Now().UTC().Add(-time.Second)
+	if err := db.Model(&Job{}).Where("id = ?", job.Id).Updates(map[string]any{
+		"run_after":  dueAt,
+		"updated_at": time.Now().UTC(),
+	}).Error; err != nil {
+		t.Fatalf("make job due: %v", err)
+	}
+
+	var before Job
+	if err := db.Where("id = ?", job.Id).First(&before).Error; err != nil {
+		t.Fatalf("load job before wakeup: %v", err)
+	}
+	if before.Status != "queued" {
+		t.Fatalf("status before wakeup = %s, want queued", before.Status)
+	}
+
+	if err := d.events.Publish(context.Background(), bus.Event{
+		Topic:  bus.TopicDispatchWakeup,
+		Source: "enqueue",
+		At:     time.Now().UTC(),
+	}); err != nil {
+		t.Fatalf("Publish wakeup: %v", err)
+	}
 
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
@@ -822,14 +856,21 @@ func TestDispatcherRetryAfterWakeupOnShortDelay(t *testing.T) {
 	}
 
 	var wakeups atomic.Int32
-	registerDispatchWakeup(func(source string) {
-		if source == "run_after" {
+	events := bus.NewBus(nil)
+	if events == nil {
+		t.Fatal("expected inprocess event bus")
+	}
+	sub, err := events.Subscribe(bus.TopicDispatchWakeup, func(ctx context.Context, event bus.Event) {
+		if event.Source == "run_after" {
 			wakeups.Add(1)
 		}
 	})
-	defer clearDispatchWakeup()
+	if err != nil {
+		t.Fatalf("Subscribe: %v", err)
+	}
+	t.Cleanup(func() { _ = sub.Close() })
 
-	d := NewDispatcher(runtimeScope, nil)
+	d := NewDispatcherWithRuntime(runtimeScope, nil, taskcontract.Runtime{Events: events})
 	d.retryJob(db, &job, 500, map[string]any{"message": "retry soon"}, "retry_after")
 
 	if wakeups.Load() != 1 {

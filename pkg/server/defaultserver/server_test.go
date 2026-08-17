@@ -12,6 +12,7 @@ import (
 
 	internalserver "github.com/choysum-dev/choysum/internal/server"
 	"github.com/choysum-dev/choysum/internal/testing/jsexecutortest"
+	"github.com/choysum-dev/choysum/pkg/bus"
 	"github.com/choysum-dev/choysum/pkg/registry"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	taskcontract "github.com/choysum-dev/choysum/pkg/task"
@@ -252,9 +253,9 @@ func (*fakeScheduleStore) Disable(context.Context, string, time.Time) error { re
 
 type fakeTaskEventBus struct{}
 
-func (*fakeTaskEventBus) Publish(context.Context, taskcontract.Event) error { return nil }
+func (*fakeTaskEventBus) Publish(context.Context, bus.Event) error { return nil }
 
-func (*fakeTaskEventBus) Subscribe(string, taskcontract.EventHandler) (taskcontract.Subscription, error) {
+func (*fakeTaskEventBus) Subscribe(string, bus.EventHandler) (bus.Subscription, error) {
 	return fakeTaskSubscription{}, nil
 }
 
