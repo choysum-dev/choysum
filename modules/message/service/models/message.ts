@@ -84,17 +84,31 @@ type MessageInsert = Partial<Insertable<Message>>;
 
 function prepareCreatePayload(value: MessageInsert): MessageInsert {
   const uid = getUserId();
+  const typeInput = value.Type == null || String(value.Type).trim() === '' ? 'comment' : String(value.Type);
   return {
     ...value,
-    Type: assertMessageType(value.Type == null ? '' : String(value.Type)),
+    Type: assertMessageType(typeInput),
     AuthorUid: uid == null || String(uid).trim() === '' ? null : String(uid).trim(),
   };
 }
 
+/**
+ * Idempotency key for document.AttachmentBinding.Bind.
+ * Prefer host xid as-is (already ≤20 chars); do not prefix+truncate, which drops sequence entropy.
+ */
 function newMutationId(): string {
   const xid = (globalThis as { $choysum?: { xid?: { New?: () => string } } }).$choysum?.xid?.New?.();
-  const token = typeof xid === 'string' && xid.trim() ? xid.trim() : `${Date.now()}${Math.random()}`;
-  return `msg_mut_${token}`.slice(0, 20);
+  if (typeof xid === 'string' && xid.trim()) {
+    return xid.trim().slice(0, 20);
+  }
+  // Non-crypto fallback uniqueness only (not a secret).
+  const token = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+  return `m${token}`.slice(0, 20);
+}
+
+function ensureIdInFields(fields: FieldSelection<Message>): FieldSelection<Message> {
+  if (fields.includes('*') || fields.includes('Id')) return fields;
+  return ['Id', ...fields];
 }
 
 function resolveBind(): BindAttachmentFn | null {
@@ -221,7 +235,21 @@ export default class Message extends BaseModel {
     const type = assertMessageType(req.Type == null || req.Type === '' ? 'comment' : String(req.Type));
     const companyId = req.CompanyId == null || req.CompanyId === '' ? null : String(req.CompanyId);
     const returnFields: FieldSelection<Message> = fields ?? [...DEFAULT_POST_FIELDS];
+    const attachmentObjectId = String(req.AttachmentObjectId || '').trim();
 
+    // Resolve Bind before Create so a missing binder does not leave an unbound Message.
+    let bind: BindAttachmentFn | null = null;
+    if (attachmentObjectId) {
+      bind = resolveBind();
+      if (!bind) {
+        throw newMessageError({
+          code: MessageErrCode.ATTACHMENT_BIND_FAILED,
+          message: 'document.AttachmentBinding.Bind is not available',
+        });
+      }
+    }
+
+    const createFields = attachmentObjectId ? ensureIdInFields(returnFields) : returnFields;
     const created = await this.Create(
       {
         Type: type,
@@ -230,16 +258,15 @@ export default class Message extends BaseModel {
         ResId: resId,
         CompanyId: companyId,
       } as MessageInsert,
-      returnFields
+      createFields
     );
 
-    const attachmentObjectId = String(req.AttachmentObjectId || '').trim();
-    if (attachmentObjectId) {
-      const bind = resolveBind();
-      if (!bind) {
+    if (attachmentObjectId && bind) {
+      const ownerRecordId = String((created as Message).Id || '').trim();
+      if (!ownerRecordId) {
         throw newMessageError({
           code: MessageErrCode.ATTACHMENT_BIND_FAILED,
-          message: 'document.AttachmentBinding.Bind is not available',
+          message: 'Message Id is required to bind an attachment',
         });
       }
       const mutationId = String(req.AttachmentMutationId || '').trim() || newMutationId();
@@ -247,11 +274,17 @@ export default class Message extends BaseModel {
         await bind({
           attachmentObjectId,
           ownerModel: 'message.Message',
-          ownerRecordId: String((created as Message).Id || '').trim(),
+          ownerRecordId,
           fieldName: MESSAGE_ATTACHMENT_FIELD,
           mutationId,
         });
       } catch (err) {
+        // Compensate unbound Message when Bind fails outside a rolled-back ambient TX.
+        try {
+          await this.DeleteById(ownerRecordId);
+        } catch {
+          // Best-effort; surface the Bind failure as the primary error.
+        }
         throw wrapMessageError(err, {
           code: MessageErrCode.ATTACHMENT_BIND_FAILED,
           message: err instanceof Error ? err.message : 'Attachment bind failed',

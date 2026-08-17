@@ -16,7 +16,11 @@ const TEST_USER_ID = 'usr_message_test';
 
 function uid(prefix: string): string {
   const xid = (globalThis as any).$choysum?.xid?.New?.();
-  const token = typeof xid === 'string' && xid.trim() ? xid.trim() : `${Date.now()}${Math.random()}`;
+  // Prefer full xid uniqueness; prefix+slice drops trailing sequence entropy.
+  if (typeof xid === 'string' && xid.trim()) {
+    return xid.trim().slice(0, 20);
+  }
+  const token = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
   return `${prefix}_${token}`.slice(0, 20);
 }
 
@@ -151,6 +155,14 @@ test('message.Message: Post validates inputs and stamps AuthorUid via Create', a
     }
     expect((typeErr as any).code).toBe(MessageErrCode.INVALID_TYPE);
 
+    const defaultType = await Message.Create({
+      Model: 'partner.Partner',
+      ResId: uid('res'),
+      Body: 'via Create',
+      CompanyId: null,
+    } as any);
+    expect(String((defaultType as any).Type)).toBe('comment');
+
     let searchErr: unknown;
     try {
       await Message.SearchByRecord('', '');
@@ -192,17 +204,33 @@ test('message.Message: Post binds attachment via document Binding dial seam', as
     expect(binds[0].ownerRecordId).toBe(String((row as any).Id));
     expect(binds[0].fieldName).toBe(MESSAGE_ATTACHMENT_FIELD);
     expect(binds[0].mutationId).toBe('mut_fixture________');
+
+    // Custom fields omitting Id must still resolve ownerRecordId for Bind.
+    binds.length = 0;
+    const slim = await Message.Post(
+      {
+        Model: 'partner.Partner',
+        ResId: uid('res'),
+        Body: 'slim fields',
+        AttachmentObjectId: 'att_obj_slim________',
+      },
+      ['Body', 'Type']
+    );
+    expect(binds.length).toBe(1);
+    expect(String(binds[0].ownerRecordId || '')).not.toBe('');
+    expect(String((slim as any).Id || '')).toBe(String(binds[0].ownerRecordId));
   });
 });
 
 test('message.Message: Post fails closed when attachment Bind is unavailable or throws', async () => {
   await withMessageScope(async () => {
+    const resMissing = uid('res');
     __setMessageAttachmentBindForTest(null);
     let missingErr: unknown;
     try {
       await Message.Post({
         Model: 'partner.Partner',
-        ResId: uid('res'),
+        ResId: resMissing,
         Body: 'x',
         AttachmentObjectId: 'att_missing_________',
       });
@@ -211,7 +239,10 @@ test('message.Message: Post fails closed when attachment Bind is unavailable or 
     }
     expect(isMessageError(missingErr)).toBe(true);
     expect((missingErr as any).code).toBe(MessageErrCode.ATTACHMENT_BIND_FAILED);
+    // Bind resolved before Create — no orphan Message.
+    expect((await Message.SearchByRecord('partner.Partner', resMissing, ['Id'])).length).toBe(0);
 
+    const resBoom = uid('res');
     __setMessageAttachmentBindForTest(async () => {
       throw new Error('bind boom');
     });
@@ -219,7 +250,7 @@ test('message.Message: Post fails closed when attachment Bind is unavailable or 
     try {
       await Message.Post({
         Model: 'partner.Partner',
-        ResId: uid('res'),
+        ResId: resBoom,
         Body: 'x',
         AttachmentObjectId: 'att_boom____________',
       });
@@ -228,16 +259,19 @@ test('message.Message: Post fails closed when attachment Bind is unavailable or 
     }
     expect(isMessageError(boomErr)).toBe(true);
     expect((boomErr as any).code).toBe(MessageErrCode.ATTACHMENT_BIND_FAILED);
+    // Bind failure compensates by deleting the created Message.
+    expect((await Message.SearchByRecord('partner.Partner', resBoom, ['Id'])).length).toBe(0);
 
     // Live dial path (no overrides): document.AttachmentBinding.Bind exists but fails
     // without company context — Post must still fail closed as ATTACHMENT_BIND_FAILED.
+    const resLive = uid('res');
     __setMessageAttachmentBindForTest(undefined);
     __setMessageDialForTest(undefined);
     let liveErr: unknown;
     try {
       await Message.Post({
         Model: 'partner.Partner',
-        ResId: uid('res'),
+        ResId: resLive,
         Body: 'x',
         AttachmentObjectId: 'att_live_____________',
       });
@@ -246,6 +280,7 @@ test('message.Message: Post fails closed when attachment Bind is unavailable or 
     }
     expect(isMessageError(liveErr)).toBe(true);
     expect((liveErr as any).code).toBe(MessageErrCode.ATTACHMENT_BIND_FAILED);
+    expect((await Message.SearchByRecord('partner.Partner', resLive, ['Id'])).length).toBe(0);
   });
 });
 
