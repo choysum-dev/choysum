@@ -691,6 +691,7 @@ func TestDispatcherWakeupTriggersPoll(t *testing.T) {
 	}
 
 	cfg := &config.Config{Task: config.NewDefaultTaskConfig()}
+	// Long poll interval so only an event wakeup can claim the job in this test.
 	cfg.Task.Dispatch.PollIntervalMs = int64(time.Hour / time.Millisecond)
 
 	runtimeScope := &testScope{
@@ -700,6 +701,8 @@ func TestDispatcherWakeupTriggersPoll(t *testing.T) {
 		cfg:    cfg,
 	}
 
+	// Not due yet: Start()'s async pollOnce("startup") must not claim this job,
+	// otherwise the test can pass even when wakeup subscription is broken.
 	job := Job{
 		Id:                "job-wakeup",
 		TargetApp:         "auth",
@@ -707,7 +710,7 @@ func TestDispatcherWakeupTriggersPoll(t *testing.T) {
 		SchedulerUserId:   "admin",
 		TriggeredByUserId: "admin",
 		Status:            "queued",
-		RunAfter:          time.Now().UTC().Add(-time.Second),
+		RunAfter:          time.Now().UTC().Add(time.Hour),
 		Attempt:           0,
 		MaxAttempts:       1,
 		TimeoutMs:         0,
@@ -725,6 +728,26 @@ func TestDispatcherWakeupTriggersPoll(t *testing.T) {
 	if d.events == nil {
 		t.Fatal("expected dispatcher event bus")
 	}
+
+	// Let pollOnce("startup") finish while the job is still not due.
+	time.Sleep(50 * time.Millisecond)
+
+	dueAt := time.Now().UTC().Add(-time.Second)
+	if err := db.Model(&Job{}).Where("id = ?", job.Id).Updates(map[string]any{
+		"run_after":  dueAt,
+		"updated_at": time.Now().UTC(),
+	}).Error; err != nil {
+		t.Fatalf("make job due: %v", err)
+	}
+
+	var before Job
+	if err := db.Where("id = ?", job.Id).First(&before).Error; err != nil {
+		t.Fatalf("load job before wakeup: %v", err)
+	}
+	if before.Status != "queued" {
+		t.Fatalf("status before wakeup = %s, want queued", before.Status)
+	}
+
 	if err := d.events.Publish(context.Background(), bus.Event{
 		Topic:  bus.TopicDispatchWakeup,
 		Source: "enqueue",
