@@ -34,14 +34,15 @@ export type AppendFieldChangeReq = {
 
 /**
  * Asserts Kind is data-family only: field | create | unlink | action:*.
+ * Returns the trimmed canonical Kind.
  */
-export function assertFieldChangeKind(kind: string): void {
+export function assertFieldChangeKind(kind: string): string {
   const normalized = String(kind || '').trim();
   if (!normalized) {
     throw newAuditError({ code: AuditErrCode.INVALID_KIND, message: 'FieldChange.Kind is required' });
   }
-  if ((FIELD_CHANGE_KINDS as readonly string[]).includes(normalized)) return;
-  if (normalized.startsWith('action:')) return;
+  if ((FIELD_CHANGE_KINDS as readonly string[]).includes(normalized)) return normalized;
+  if (normalized.startsWith('action:')) return normalized;
   throw newAuditError({
     code: AuditErrCode.INVALID_KIND,
     message: `FieldChange.Kind must be field|create|unlink|action:*, got ${normalized}`,
@@ -64,8 +65,14 @@ function resolveCorrelation(): { requestId?: string; traceId?: string } {
   return { requestId, traceId };
 }
 
-function assertCreateKind(value: { Kind?: unknown } | null | undefined): void {
-  assertFieldChangeKind(String(value?.Kind ?? ''));
+/**
+ * Normalize Kind and force ActorUid from trusted request identity for every create path.
+ */
+function prepareCreatePayload<T extends Record<string, unknown>>(value: T): T {
+  const payload = { ...value } as T & { Kind?: unknown; ActorUid?: unknown };
+  payload.Kind = assertFieldChangeKind(String(payload.Kind ?? ''));
+  payload.ActorUid = String(getUserId() ?? '').trim() || null;
+  return payload;
 }
 
 /**
@@ -243,29 +250,27 @@ export default class FieldChange extends BaseModel {
   }
 
   /**
-   * Create validates Kind so direct Create cannot bypass Append's AU6 check.
+   * Create validates Kind, persists the trimmed Kind, and stamps ActorUid from request identity.
    */
   static override async Create<T extends BaseModel>(
     this: { new (...args: any[]): T } & typeof BaseModel,
     value: Partial<Insertable<T & BaseModel>>,
     returnFields?: FieldSelection<T>
   ): Promise<T> {
-    assertCreateKind(value as { Kind?: unknown });
-    return (await super.Create(value as any, returnFields as any)) as unknown as T;
+    const payload = prepareCreatePayload({ ...(value as Record<string, unknown>) });
+    return (await super.Create(payload as any, returnFields as any)) as unknown as T;
   }
 
   /**
-   * CreateMany validates Kind on every row (AU6).
+   * CreateMany validates Kind, persists trimmed Kind, and stamps ActorUid on every row.
    */
   static override async CreateMany<T extends BaseModel>(
     this: { new (...args: any[]): T } & typeof BaseModel,
     values: Partial<Insertable<T & BaseModel>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
-    for (const row of values || []) {
-      assertCreateKind(row as { Kind?: unknown });
-    }
-    return (await super.CreateMany(values as any, returnFields as any)) as unknown as T[];
+    const rows = (values || []).map(row => prepareCreatePayload({ ...(row as Record<string, unknown>) }));
+    return (await super.CreateMany(rows as any, returnFields as any)) as unknown as T[];
   }
 
   /** FieldChange is append-only (AU2). */

@@ -142,6 +142,40 @@ test('audit.FieldChange: direct Create rejects invalid Kind', async () => {
   });
 });
 
+test('audit.FieldChange: Create/CreateMany stamp ActorUid and canonicalize Kind', async () => {
+  await withAuditScope(async () => {
+    const created = await FieldChange.Create({
+      Model: 'base.UoM',
+      ResId: uid('uom'),
+      Kind: '  field  ',
+      Field: 'Name',
+      OldValue: 'a',
+      NewValue: 'b',
+      ActorUid: 'usr_forged_actor____',
+      At: new Date(),
+    } as any, ['Id', 'Kind', 'ActorUid'] as any);
+
+    expect(String((created as any).Kind)).toBe('field');
+    expect(String((created as any).ActorUid)).toBe(TEST_USER_ID);
+
+    const many = await FieldChange.CreateMany(
+      [
+        {
+          Model: 'base.UoM',
+          ResId: uid('uom'),
+          Kind: ' create ',
+          At: new Date(),
+          ActorUid: 'usr_forged_many_____',
+        },
+      ] as any,
+      ['Id', 'Kind', 'ActorUid'] as any
+    );
+    expect(many.length).toBe(1);
+    expect(String((many[0] as any).Kind)).toBe('create');
+    expect(String((many[0] as any).ActorUid)).toBe(TEST_USER_ID);
+  });
+});
+
 test('audit.FieldChange: Update/Delete are rejected (append-only)', async () => {
   await withAuditScope(async () => {
     const created = await FieldChange.Append({
