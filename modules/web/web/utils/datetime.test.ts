@@ -74,8 +74,19 @@ describe('utc ↔ user wall', () => {
     expect(utcToUserWallDate(null, 'UTC')).toBeNull();
     expect(utcToUserWallDate('', 'UTC')).toBeNull();
     expect(utcToUserWallDate('not-a-date', 'UTC')).toBeNull();
+    expect(utcToUserWallDate(new Date('invalid'), 'UTC')).toBeNull();
+    expect(utcToUserWallDate(Number.NaN, 'UTC')).toBeNull();
     expect(userWallDateToUtc(null, 'UTC')).toBeNull();
     expect(userWallDateToUtc(new Date('invalid'), 'UTC')).toBeNull();
+  });
+
+  it('does not throw when timezone conversion rejects an invalid instant', () => {
+    // Some Node/ICU builds make dayjs.tz throw RangeError instead of returning invalid.
+    expect(() => utcToUserWallDate('2024-01-01T99:99:99Z', 'UTC')).not.toThrow();
+    expect(utcToUserWallDate('2024-01-01T99:99:99Z', 'UTC')).toBeNull();
+    expect(() => formatUtcInTimeZone('2024-01-01T99:99:99Z', 'YYYY-MM-DD HH:mm:ss', 'UTC')).not.toThrow();
+    expect(formatUtcInTimeZone('2024-01-01T99:99:99Z', 'YYYY-MM-DD HH:mm:ss', 'UTC')).toBe('');
+    expect(() => formatUtcInTimeZone('bogus-instant', 'YYYY-MM-DD', 'UTC')).not.toThrow();
   });
 
   it('formats UTC in user timezone for display', () => {
