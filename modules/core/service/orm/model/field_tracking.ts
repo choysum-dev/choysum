@@ -30,14 +30,33 @@ type AppendFn = (req: {
   CompanyId?: string | null;
 }) => Promise<unknown>;
 
+type DialFn = <T = Record<string, (...args: unknown[]) => unknown>>(fullModelName: string) => T;
+type ActiveCompanyIdFn = () => string | undefined;
+
 /** Test seam: undefined = live dial; null = force missing; function = stub Append. */
 let appendOverride: AppendFn | null | undefined;
+let dialOverride: DialFn | undefined;
+let activeCompanyIdOverride: ActiveCompanyIdFn | undefined;
 
 /**
  * Test-only override for audit Append resolution.
  */
 export function __setFieldTrackingAppendForTest(fn: AppendFn | null | undefined): void {
   appendOverride = fn;
+}
+
+/**
+ * Test-only override for cross-app dial used when Append override is unset.
+ */
+export function __setFieldTrackingDialForTest(fn: DialFn | undefined): void {
+  dialOverride = fn;
+}
+
+/**
+ * Test-only override for active-company fallback used in FieldChange.CompanyId.
+ */
+export function __setFieldTrackingActiveCompanyIdForTest(fn: ActiveCompanyIdFn | undefined): void {
+  activeCompanyIdOverride = fn;
 }
 
 export type FieldTrackingWriteEvent = {
@@ -62,7 +81,8 @@ function isTrackableScalar(fm: FieldMetadata | undefined): boolean {
   return true;
 }
 
-function serializeTrackedValue(value: unknown): string | null {
+/** Exported for unit coverage of value serialization branches. */
+export function serializeTrackedValue(value: unknown): string | null {
   if (value === undefined || value === null) return null;
   if (value instanceof Date) return value.toISOString();
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
@@ -89,10 +109,16 @@ function valuesEqual(a: unknown, b: unknown): boolean {
   return serializeTrackedValue(a) === serializeTrackedValue(b);
 }
 
+/** Test-only export for valuesEqual branch coverage. */
+export function __valuesEqualForTest(a: unknown, b: unknown): boolean {
+  return valuesEqual(a, b);
+}
+
 function resolveAppend(): AppendFn | null {
   if (appendOverride !== undefined) return appendOverride;
   try {
-    const svc = dial<{ Append?: AppendFn }>(AUDIT_FIELD_CHANGE);
+    const dialFn = dialOverride || dial;
+    const svc = dialFn<{ Append?: AppendFn }>(AUDIT_FIELD_CHANGE);
     if (typeof svc?.Append !== 'function') return null;
     return svc.Append.bind(svc);
   } catch {
@@ -126,7 +152,8 @@ export async function recordFieldTrackingEvents(event: FieldTrackingWriteEvent):
     const fromRow = event.afterEntity?.[companyField] ?? event.beforeEntity?.[companyField];
     if (fromRow != null && String(fromRow).trim()) return String(fromRow).trim();
     try {
-      const active = String(getActiveCompanyId() || '').trim();
+      const resolveActive = activeCompanyIdOverride || getActiveCompanyId;
+      const active = String(resolveActive() || '').trim();
       return active || null;
     } catch {
       return null;

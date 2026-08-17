@@ -41,6 +41,12 @@ export function assertFieldChangeKind(kind: string): string {
   if (!normalized) {
     throw newAuditError({ code: AuditErrCode.INVALID_KIND, message: 'FieldChange.Kind is required' });
   }
+  if (normalized.length > 64) {
+    throw newAuditError({
+      code: AuditErrCode.INVALID_KIND,
+      message: 'FieldChange.Kind must not exceed 64 characters',
+    });
+  }
   if ((FIELD_CHANGE_KINDS as readonly string[]).includes(normalized)) return normalized;
   if (normalized.startsWith('action:')) return normalized;
   throw newAuditError({
@@ -49,10 +55,24 @@ export function assertFieldChangeKind(kind: string): string {
   });
 }
 
+type ReqReader = () => unknown;
+let correlationReqReader: ReqReader = getCurrentReq;
+
+/**
+ * Test-only override for correlation req resolution (does not affect ORM ACL).
+ */
+export function __setFieldChangeCorrelationReqReaderForTest(reader: ReqReader | undefined): void {
+  correlationReqReader = reader || getCurrentReq;
+}
+
 function resolveCorrelation(): { requestId?: string; traceId?: string } {
   // Read live req (not getReqMeta): getReqMeta deep-freezes a shallow snapshot and shared
   // nested objects, which can freeze request-scoped service state used by Create.
-  const req = (getCurrentReq() || {}) as {
+  const current = correlationReqReader();
+  if (!current || typeof current !== 'object') {
+    return {};
+  }
+  const req = current as {
     requestId?: unknown;
     RequestId?: unknown;
     traceId?: unknown;
@@ -69,10 +89,12 @@ function resolveCorrelation(): { requestId?: string; traceId?: string } {
  * Normalize Kind and force ActorUid from trusted request identity for every create path.
  */
 function prepareCreatePayload<T extends Record<string, unknown>>(value: T): T {
-  const payload = { ...value } as T & { Kind?: unknown; ActorUid?: unknown };
-  payload.Kind = assertFieldChangeKind(String(payload.Kind ?? ''));
-  payload.ActorUid = String(getUserId() ?? '').trim() || null;
-  return payload;
+  const payload: Record<string, unknown> = { ...value };
+  const rawKind = payload.Kind;
+  payload.Kind = assertFieldChangeKind(rawKind == null ? '' : String(rawKind));
+  const uid = getUserId();
+  payload.ActorUid = uid == null || String(uid).trim() === '' ? null : String(uid).trim();
+  return payload as T;
 }
 
 /**
@@ -191,12 +213,13 @@ export default class FieldChange extends BaseModel {
       throw newAuditError({ code: AuditErrCode.INVALID_ARGUMENT, message: 'Append At must be a valid datetime' });
     }
 
+    const kind = String(req.Kind).trim();
     return (await this.Create(
       {
         Model: model,
         ResId: resId,
         Field: req.Field == null || req.Field === '' ? null : String(req.Field),
-        Kind: String(req.Kind).trim(),
+        Kind: kind,
         OldValue: req.OldValue == null ? null : String(req.OldValue),
         NewValue: req.NewValue == null ? null : String(req.NewValue),
         ActorUid: actor,

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import FieldChange, { assertFieldChangeKind } from '../models/field_change';
+import FieldChange, { assertFieldChangeKind, __setFieldChangeCorrelationReqReaderForTest } from '../models/field_change';
 import { AuditErrCode, isAuditError } from '../error';
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
@@ -57,13 +57,27 @@ async function withAuditScope<T>(fn: () => Promise<T>): Promise<T> {
   return fn();
 }
 
+const OVERSIZED_ACTION_KIND = `action:${'x'.repeat(64)}`; // > 64 chars
+
+async function expectInvalidKind(fn: () => Promise<unknown>): Promise<void> {
+  let err: unknown;
+  try {
+    await fn();
+  } catch (e) {
+    err = e;
+  }
+  expect(isAuditError(err)).toBe(true);
+  expect((err as any).code).toBe(AuditErrCode.INVALID_KIND);
+}
+
 test('audit.FieldChange: assertFieldChangeKind accepts data family and rejects others', () => {
-  assertFieldChangeKind('field');
-  assertFieldChangeKind('create');
-  assertFieldChangeKind('unlink');
-  assertFieldChangeKind('action:confirm');
+  expect(assertFieldChangeKind('field')).toBe('field');
+  expect(assertFieldChangeKind('create')).toBe('create');
+  expect(assertFieldChangeKind('unlink')).toBe('unlink');
+  expect(assertFieldChangeKind('action:confirm')).toBe('action:confirm');
   expect(() => assertFieldChangeKind('login')).toThrow(/field\|create\|unlink\|action:\*/);
   expect(() => assertFieldChangeKind('')).toThrow(/required/);
+  expect(() => assertFieldChangeKind(OVERSIZED_ACTION_KIND)).toThrow(/64 characters/);
 });
 
 test('audit.FieldChange: Append field/create and SearchByRecord ordered by At', async () => {
@@ -124,6 +138,212 @@ test('audit.FieldChange: Append field/create and SearchByRecord ordered by At', 
   });
 });
 
+test('audit.FieldChange: Append/SearchByRecord validate inputs and correlation metadata', async () => {
+  await withAuditScope(async () => {
+    let nullErr: unknown;
+    try {
+      await FieldChange.Append(null as any);
+    } catch (e) {
+      nullErr = e;
+    }
+    expect(isAuditError(nullErr)).toBe(true);
+    expect((nullErr as any).code).toBe(AuditErrCode.INVALID_ARGUMENT);
+
+    let missingErr: unknown;
+    try {
+      await FieldChange.Append({ Model: '', ResId: '', Kind: 'field' } as any);
+    } catch (e) {
+      missingErr = e;
+    }
+    expect(isAuditError(missingErr)).toBe(true);
+    expect((missingErr as any).code).toBe(AuditErrCode.INVALID_ARGUMENT);
+
+    let modelOnlyErr: unknown;
+    try {
+      await FieldChange.Append({ Model: 'base.UoM', ResId: '  ', Kind: 'field' } as any);
+    } catch (e) {
+      modelOnlyErr = e;
+    }
+    expect((modelOnlyErr as any).code).toBe(AuditErrCode.INVALID_ARGUMENT);
+
+    let atErr: unknown;
+    try {
+      await FieldChange.Append({
+        Model: 'base.UoM',
+        ResId: uid('uom'),
+        Kind: 'field',
+        At: 'not-a-date',
+      } as any);
+    } catch (e) {
+      atErr = e;
+    }
+    expect(isAuditError(atErr)).toBe(true);
+    expect((atErr as any).code).toBe(AuditErrCode.INVALID_ARGUMENT);
+
+    let searchErr: unknown;
+    try {
+      await FieldChange.SearchByRecord('', '');
+    } catch (e) {
+      searchErr = e;
+    }
+    expect(isAuditError(searchErr)).toBe(true);
+    expect((searchErr as any).code).toBe(AuditErrCode.INVALID_ARGUMENT);
+
+    let searchModelErr: unknown;
+    try {
+      await FieldChange.SearchByRecord('base.UoM', '  ');
+    } catch (e) {
+      searchModelErr = e;
+    }
+    expect((searchModelErr as any).code).toBe(AuditErrCode.INVALID_ARGUMENT);
+
+    const jsCtx = ensureRequestContext();
+    jsCtx.req.requestId = 'req_from_camel';
+    jsCtx.req.traceId = 'tr_from_camel';
+    const withCamel = await FieldChange.Append({
+      Model: 'base.UoM',
+      ResId: uid('uom'),
+      Kind: 'action:ok',
+      Field: '',
+      CompanyId: '',
+    } as any, ['Id', 'Field', 'CompanyId', 'RequestId', 'TraceId', 'Kind'] as any);
+    expect((withCamel as any).Field).toBeNull();
+    expect((withCamel as any).CompanyId).toBeNull();
+    expect(String((withCamel as any).RequestId)).toBe('req_from_camel');
+    expect(String((withCamel as any).TraceId)).toBe('tr_from_camel');
+    expect(String((withCamel as any).Kind)).toBe('action:ok');
+
+    jsCtx.req = {
+      ...jsCtx.req,
+      requestId: undefined,
+      traceId: undefined,
+      RequestId: 'REQ_PASCAL',
+      TraceId: 'TR_PASCAL',
+    };
+    const withPascal = await FieldChange.Append({
+      Model: 'base.UoM',
+      ResId: uid('uom'),
+      Kind: 'unlink',
+    } as any, ['RequestId', 'TraceId'] as any);
+    expect(String((withPascal as any).RequestId)).toBe('REQ_PASCAL');
+    expect(String((withPascal as any).TraceId)).toBe('TR_PASCAL');
+
+    jsCtx.req = {
+      ...jsCtx.req,
+      RequestId: undefined,
+      TraceId: undefined,
+      requestId: undefined,
+      traceId: undefined,
+      trace: { requestId: 'req_nested', traceId: 'tr_nested' },
+    };
+    const withNested = await FieldChange.Append({
+      Model: 'base.UoM',
+      ResId: uid('uom'),
+      Kind: 'create',
+      RequestId: 'req_explicit',
+      TraceId: 'tr_explicit',
+      CompanyId: 'co_main____________',
+      Field: 'Code',
+      OldValue: 1 as any,
+      NewValue: 2 as any,
+    } as any, ['RequestId', 'TraceId', 'CompanyId', 'OldValue', 'NewValue'] as any);
+    expect(String((withNested as any).RequestId)).toBe('req_explicit');
+    expect(String((withNested as any).TraceId)).toBe('tr_explicit');
+    expect(String((withNested as any).CompanyId)).toBe('co_main____________');
+    expect(String((withNested as any).OldValue)).toBe('1');
+    expect(String((withNested as any).NewValue)).toBe('2');
+
+    // Default At path + nested correlation only.
+    resetRequestContext();
+    {
+      const fresh = ensureRequestContext();
+      fresh.req.trace = { requestId: 'req_only_nested', traceId: 'tr_only_nested' };
+    }
+    const withDefaultAt = await FieldChange.Append({
+      Model: 'base.UoM',
+      ResId: uid('uom'),
+      Kind: 'field',
+      Field: null,
+      OldValue: null,
+      NewValue: null,
+    } as any, ['Id', 'At', 'RequestId', 'TraceId', 'Field'] as any);
+    expect((withDefaultAt as any).At).toBeTruthy();
+    expect(String((withDefaultAt as any).RequestId)).toBe('req_only_nested');
+    expect(String((withDefaultAt as any).TraceId)).toBe('tr_only_nested');
+    expect((withDefaultAt as any).Field).toBeNull();
+
+    // ActorUid null when request identity is absent.
+    resetRequestContext();
+    ensureRequestContext().identity = {};
+    const noActor = await FieldChange.Append({
+      Model: 'base.UoM',
+      ResId: uid('uom'),
+      Kind: 'create',
+    } as any, ['ActorUid'] as any);
+    expect((noActor as any).ActorUid == null || (noActor as any).ActorUid === '').toBe(true);
+
+    // Create without Kind hits prepareCreatePayload Kind fallback.
+    resetRequestContext();
+    let missingKindErr: unknown;
+    try {
+      await FieldChange.Create({
+        Model: 'base.UoM',
+        ResId: uid('uom'),
+        At: new Date(),
+      } as any);
+    } catch (e) {
+      missingKindErr = e;
+    }
+    expect(isAuditError(missingKindErr)).toBe(true);
+    expect((missingKindErr as any).code).toBe(AuditErrCode.INVALID_KIND);
+
+    // Empty correlation req reader returns {} (ACL still uses live request context).
+    resetRequestContext();
+    __setFieldChangeCorrelationReqReaderForTest(() => null);
+    try {
+      const row = await FieldChange.Append({
+        Model: 'base.UoM',
+        ResId: uid('uom'),
+        Kind: 'create',
+      } as any, ['RequestId', 'TraceId'] as any);
+      expect((row as any).RequestId == null || (row as any).RequestId === '').toBe(true);
+      expect((row as any).TraceId == null || (row as any).TraceId === '').toBe(true);
+    } finally {
+      __setFieldChangeCorrelationReqReaderForTest(undefined);
+    }
+  });
+});
+
+test('audit.FieldChange: oversized Kind rejected on Append/Create/CreateMany', async () => {
+  await withAuditScope(async () => {
+    await expectInvalidKind(() =>
+      FieldChange.Append({
+        Model: 'base.UoM',
+        ResId: uid('uom'),
+        Kind: OVERSIZED_ACTION_KIND,
+      } as any)
+    );
+    await expectInvalidKind(() =>
+      FieldChange.Create({
+        Model: 'base.UoM',
+        ResId: uid('uom'),
+        Kind: OVERSIZED_ACTION_KIND,
+        At: new Date(),
+      } as any)
+    );
+    await expectInvalidKind(() =>
+      FieldChange.CreateMany([
+        {
+          Model: 'base.UoM',
+          ResId: uid('uom'),
+          Kind: OVERSIZED_ACTION_KIND,
+          At: new Date(),
+        },
+      ] as any)
+    );
+  });
+});
+
 test('audit.FieldChange: direct Create rejects invalid Kind', async () => {
   await withAuditScope(async () => {
     let err: unknown;
@@ -173,6 +393,9 @@ test('audit.FieldChange: Create/CreateMany stamp ActorUid and canonicalize Kind'
     expect(many.length).toBe(1);
     expect(String((many[0] as any).Kind)).toBe('create');
     expect(String((many[0] as any).ActorUid)).toBe(TEST_USER_ID);
+
+    const emptyMany = await FieldChange.CreateMany(null as any, ['Id'] as any);
+    expect(emptyMany).toEqual([]);
   });
 });
 
