@@ -194,8 +194,9 @@ export default class FieldChange extends BaseModel {
   /**
    * Appends one FieldChange row (Unary). Rejects non-data-family Kind (AU6).
    * ActorUid always comes from trusted request identity.
+   * Optional `fields` is forwarded to Create (same FieldSelection contract).
    */
-  public static async Append(req: AppendFieldChangeReq): Promise<FieldChange> {
+  public static async Append(req: AppendFieldChangeReq, fields?: FieldSelection): Promise<FieldChange> {
     if (!req || typeof req !== 'object') {
       throw newAuditError({ code: AuditErrCode.INVALID_ARGUMENT, message: 'Append requires a payload' });
     }
@@ -214,6 +215,22 @@ export default class FieldChange extends BaseModel {
     }
 
     const kind = String(req.Kind).trim();
+    const returnFields =
+      fields ??
+      ([
+        'Id',
+        'Model',
+        'ResId',
+        'Field',
+        'Kind',
+        'OldValue',
+        'NewValue',
+        'ActorUid',
+        'At',
+        'CompanyId',
+        'RequestId',
+        'TraceId',
+      ] as FieldSelection);
     return (await this.Create(
       {
         Model: model,
@@ -228,20 +245,7 @@ export default class FieldChange extends BaseModel {
         RequestId: req.RequestId ?? correlation.requestId ?? null,
         TraceId: req.TraceId ?? correlation.traceId ?? null,
       } as any,
-      [
-        'Id',
-        'Model',
-        'ResId',
-        'Field',
-        'Kind',
-        'OldValue',
-        'NewValue',
-        'ActorUid',
-        'At',
-        'CompanyId',
-        'RequestId',
-        'TraceId',
-      ] as any
+      returnFields as any
     )) as FieldChange;
   }
 

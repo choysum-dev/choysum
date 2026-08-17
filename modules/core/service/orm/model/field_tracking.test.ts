@@ -380,9 +380,9 @@ test('resolveAppend uses dial override, missing Append, and dial errors', async 
     }
     expect(String((dialErr as Error)?.message || '')).toMatch(/not available/);
 
-    // Live dial path (no overrides) — expect fail-closed in core unit harness.
+    // Dial returns undefined — fail-closed regardless of installed modules.
     __setFieldTrackingAppendForTest(undefined);
-    __setFieldTrackingDialForTest(undefined);
+    __setFieldTrackingDialForTest(() => undefined as any);
     let liveDialErr: unknown;
     try {
       await recordFieldTrackingEvents({
