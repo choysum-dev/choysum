@@ -121,14 +121,14 @@ type FlatCommonOptions = {
    */
   copy?: boolean;
   /**
-   * Declarative field readonly (PR-P2-F2). When true, FieldsGet/codegen expose
+   * Declarative field readonly. When true, FieldsGet/codegen expose
    * `isReadonly` and Create/Update reject writes (OR with compute/ACL).
    * Omit / false = writable.
    */
   readonly?: boolean;
   /**
    * When true, scalar Create/Update/Delete writes append `audit.FieldChange`
-   * rows via dial (AU3 / PR-P3-A2). Omit / false = not tracked.
+   * rows via dial. Omit / false = not tracked.
    */
   tracking?: boolean;
   /**
@@ -743,17 +743,17 @@ export interface FieldMetadata {
    */
   copy?: boolean;
   /**
-   * Declarative field readonly from `@Field({ readonly: true })` (PR-P2-F2).
+   * Declarative field readonly from `@Field({ readonly: true })`.
    * Wire still exposes `isReadonly` only (merged with compute / ACL deny-write).
    */
   readonly?: boolean;
   /**
-   * When true, Write path dials `audit.FieldChange` for this scalar field (AU3).
+   * When true, Write path dials `audit.FieldChange` for this scalar field.
    */
   tracking?: boolean;
   /**
    * When true on ManyToOne / ManyToOneRef, enforce parent↔related ownership
-   * compatibility via each side's `companyField` (PR-D-1 / Odoo check_company).
+   * compatibility via each side's `companyField` (Odoo check_company).
    * Related shared rows (NULL) pass.
    */
   checkCompany?: boolean;

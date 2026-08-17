@@ -596,7 +596,7 @@ export class UpdateOperations {
         }
       }
 
-      // 5.5) Field tracking → audit.FieldChange (fail-closed; AU3).
+      // 5.5) Field tracking → audit.FieldChange (fail-closed).
       await recordFieldTrackingEvents({
         childCtor: ModelCtor,
         operation: 'update',

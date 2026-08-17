@@ -15,7 +15,7 @@ function resolveActorUid(): string {
 }
 
 /**
- * Audit-uid helpers for BaseModel CreatedUid / UpdatedUid / DeletedUid (AU6–AU8).
+ * Audit-uid helpers for BaseModel CreatedUid / UpdatedUid / DeletedUid.
  * Called from repository write prepare (create/update) and soft-delete SET — not from the model layer.
  * Wall-clock *At columns stay in {@link TimestampUtils}.
  */
@@ -47,7 +47,7 @@ export class AuditUidUtils {
   }
 
   /**
-   * Apply audit-uid rules for a scalar update payload (AU7 / AU8):
+   * Apply audit-uid rules for a scalar update payload:
    * - strip client CreatedUid writes
    * - strip client UpdatedUid, then refresh from actor when present
    * - DeletedAt cleared (restore): clear DeletedUid

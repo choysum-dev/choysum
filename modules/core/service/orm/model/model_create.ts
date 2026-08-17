@@ -410,7 +410,7 @@ export class CreateOperations {
       }
     }
 
-    // 8) Field tracking → audit.FieldChange (fail-closed; AU3).
+    // 8) Field tracking → audit.FieldChange (fail-closed).
     await recordFieldTrackingEvents({
       childCtor: ModelCtor,
       operation: 'create',
@@ -492,7 +492,7 @@ export class CreateOperations {
       }
     }
 
-    // 6) Field tracking → audit.FieldChange (fail-closed; AU3).
+    // 6) Field tracking → audit.FieldChange (fail-closed).
     const createdRows = parentIds.map((id: string, i: number) => ({
       ...((processedValues[i] as UnknownRecord) || {}),
       Id: id,

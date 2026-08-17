@@ -46,7 +46,7 @@ test('BaseModel audit uid fields are ManyToOneRef to auth.User with copy:false',
     expect(field?.type).toBe('ManyToOneRef');
     expect((field as any)?.relation?.targetModel).toBe('auth.User');
     expect(field?.copy).toBe(false);
-    // ManyToOneRef forbids onDelete — orphan ids are kept (AU9).
+    // ManyToOneRef forbids onDelete — orphan ids are kept.
     expect((field as any)?.relation?.onDelete).toBeUndefined();
   }
 });

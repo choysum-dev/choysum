@@ -1026,7 +1026,7 @@ test('UserFilter validateUserFilterConstraint only rejects foreign UserId', asyn
   expect(valuesUpd.UserId).toBeUndefined();
 });
 
-test('AU9: deleting auth.User does not cascade UserFilter rows with CreatedUid', async () => {
+test('deleting auth.User does not cascade UserFilter rows with CreatedUid', async () => {
   resetRequestContext();
   const companyId = await resolveAdminCompanyId();
   const creator = await createBaseUser(companyId);
