@@ -69,10 +69,17 @@ function serializeTrackedValue(value: unknown): string | null {
     return String(value);
   }
   try {
-    return JSON.stringify(value);
+    // JSON.stringify can return undefined for functions/symbols/custom toJSON.
+    return JSON.stringify(value) ?? null;
   } catch {
     return String(value);
   }
+}
+
+/** Resolves the model company ownership field used for FieldChange.CompanyId. */
+export function resolveTrackingCompanyField(meta: { companyField?: string } | undefined | null): string {
+  const configured = String(meta?.companyField ?? '').trim();
+  return configured || 'CompanyId';
 }
 
 function valuesEqual(a: unknown, b: unknown): boolean {
@@ -114,8 +121,9 @@ export async function recordFieldTrackingEvents(event: FieldTrackingWriteEvent):
   const resId = String(event.afterEntity?.Id ?? event.beforeEntity?.Id ?? '').trim();
   if (!resId) return;
 
+  const companyField = resolveTrackingCompanyField(meta);
   const companyId = (() => {
-    const fromRow = event.afterEntity?.CompanyId ?? event.beforeEntity?.CompanyId;
+    const fromRow = event.afterEntity?.[companyField] ?? event.beforeEntity?.[companyField];
     if (fromRow != null && String(fromRow).trim()) return String(fromRow).trim();
     try {
       const active = String(getActiveCompanyId() || '').trim();

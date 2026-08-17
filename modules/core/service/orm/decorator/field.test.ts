@@ -981,6 +981,18 @@ test('Field decorator accepts tracking:true and rejects non-boolean tracking', (
     }
     return BadTracking;
   }).toThrow('tracking must be a boolean');
+
+  expect(() => {
+    class BadTrackingRelation extends BaseModel {
+      @Field({
+        type: 'OneToMany',
+        tracking: true,
+        relation: { targetModel: () => FieldTargetModel, inverseField: 'ParentId' },
+      } as any)
+      Children!: FieldTargetModel[];
+    }
+    return BadTrackingRelation;
+  }).toThrow('tracking is not supported on OneToMany fields');
 });
 
 test('Field decorator accepts checkCompany on ManyToOne and rejects elsewhere', () => {

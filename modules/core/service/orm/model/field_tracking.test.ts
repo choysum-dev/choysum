@@ -4,7 +4,11 @@
 import { Field, Model } from '../decorator';
 import { MetadataStorage } from '../metadata';
 import BaseModel from './model';
-import { __setFieldTrackingAppendForTest, recordFieldTrackingEvents } from './field_tracking';
+import {
+  __setFieldTrackingAppendForTest,
+  recordFieldTrackingEvents,
+  resolveTrackingCompanyField,
+} from './field_tracking';
 
 test('recordFieldTrackingEvents appends field/create/unlink and skips untracked fields', async () => {
   @Model('TrackingProbe', { application: 'core', softDelete: false })
@@ -97,6 +101,68 @@ test('recordFieldTrackingEvents fails closed when Append is unavailable for trac
       err = e;
     }
     expect(String((err as Error)?.message || '')).toMatch(/audit\.FieldChange is not available/);
+  } finally {
+    __setFieldTrackingAppendForTest(undefined);
+  }
+});
+
+test('recordFieldTrackingEvents uses model companyField for CompanyId attribution', async () => {
+  @Model('TrackingCompanyProbe', {
+    application: 'core',
+    softDelete: false,
+    companyField: 'OwningCompanyId',
+  })
+  class TrackingCompanyProbe extends BaseModel {
+    @Field({ type: 'char', size: 20 } as any)
+    OwningCompanyId!: string;
+
+    @Field({ type: 'varchar', size: 32, tracking: true } as any)
+    Name!: string;
+  }
+
+  expect(resolveTrackingCompanyField(MetadataStorage.instance.getModelMetadata(TrackingCompanyProbe as any))).toBe(
+    'OwningCompanyId'
+  );
+
+  const appended: any[] = [];
+  __setFieldTrackingAppendForTest(async req => {
+    appended.push(req);
+    return req;
+  });
+  try {
+    await recordFieldTrackingEvents({
+      childCtor: TrackingCompanyProbe as any,
+      operation: 'create',
+      afterEntity: { Id: 'row1', Name: 'n1', OwningCompanyId: 'co_custom' },
+    });
+    expect(appended[0].CompanyId).toBe('co_custom');
+  } finally {
+    __setFieldTrackingAppendForTest(undefined);
+  }
+});
+
+test('serializeTrackedValue contract: JSON.stringify undefined becomes null via append Old/NewValue', async () => {
+  @Model('TrackingJsonProbe', { application: 'core', softDelete: false })
+  class TrackingJsonProbe extends BaseModel {
+    @Field({ type: 'varchar', size: 32, tracking: true } as any)
+    Payload!: string;
+  }
+
+  const appended: any[] = [];
+  __setFieldTrackingAppendForTest(async req => {
+    appended.push(req);
+    return req;
+  });
+  try {
+    await recordFieldTrackingEvents({
+      childCtor: TrackingJsonProbe as any,
+      operation: 'update',
+      changedFields: ['Payload'],
+      beforeEntity: { Id: 'row1', Payload: { toJSON: () => undefined } as any },
+      afterEntity: { Id: 'row1', Payload: 'ok' },
+    });
+    expect(appended[0].OldValue).toBeNull();
+    expect(appended[0].NewValue).toBe('ok');
   } finally {
     __setFieldTrackingAppendForTest(undefined);
   }

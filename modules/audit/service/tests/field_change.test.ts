@@ -124,6 +124,24 @@ test('audit.FieldChange: Append field/create and SearchByRecord ordered by At', 
   });
 });
 
+test('audit.FieldChange: direct Create rejects invalid Kind', async () => {
+  await withAuditScope(async () => {
+    let err: unknown;
+    try {
+      await FieldChange.Create({
+        Model: 'base.UoM',
+        ResId: uid('uom'),
+        Kind: 'login',
+        At: new Date(),
+      } as any);
+    } catch (e) {
+      err = e;
+    }
+    expect(isAuditError(err)).toBe(true);
+    expect((err as any).code).toBe(AuditErrCode.INVALID_KIND);
+  });
+});
+
 test('audit.FieldChange: Update/Delete are rejected (append-only)', async () => {
   await withAuditScope(async () => {
     const created = await FieldChange.Append({

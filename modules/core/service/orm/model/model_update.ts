@@ -17,7 +17,7 @@ import {
   triggerModelUpstream,
 } from './model_runtime_service_facade';
 import { getRuntimeErrorMessage, runWithValidationBypass } from './model_write_helpers';
-import { recordFieldTrackingEvents } from './field_tracking';
+import { recordFieldTrackingEvents, resolveTrackingCompanyField } from './field_tracking';
 import type { UnknownRecord } from '../../../utils/types';
 import { asObjectRecord } from '../../../utils/object';
 import { getCurrencyFieldName } from '../metadata/decimal_like';
@@ -413,6 +413,12 @@ export class UpdateOperations {
 
     baseChangedInitial.forEach(f => addFieldWithScale(f, queryFields));
     upstreamInverseFields.forEach(f => queryFields.add(f));
+    {
+      const companyField = resolveTrackingCompanyField(meta);
+      if (meta.fields?.has(companyField)) {
+        queryFields.add(companyField);
+      }
+    }
     if (g && affectedCompute.size) {
       affectedCompute.forEach(cf => {
         // The compute field itself.

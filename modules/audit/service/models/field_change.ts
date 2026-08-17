@@ -3,7 +3,9 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { getCurrentReq, getUserId } from '@/core/service/api/context';
+import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
+import type { QueryCondition, DeleteOptions, UpdateOptions } from '@/core/service/api/query';
 import { AuditErrCode, newAuditError } from '../error';
 import { _lt } from '../i18n';
 
@@ -13,6 +15,9 @@ export type FieldChangeKindLiteral = (typeof FIELD_CHANGE_KINDS)[number];
 
 /**
  * Append payload for FieldChange (Unary Append API).
+ *
+ * ActorUid is always taken from trusted request identity (`getUserId`), not from
+ * the caller payload.
  */
 export type AppendFieldChangeReq = {
   Model: string;
@@ -21,7 +26,6 @@ export type AppendFieldChangeReq = {
   Kind: string;
   OldValue?: string | null;
   NewValue?: string | null;
-  ActorUid?: string | null;
   At?: Date | string | null;
   CompanyId?: string | null;
   RequestId?: string | null;
@@ -58,6 +62,10 @@ function resolveCorrelation(): { requestId?: string; traceId?: string } {
     String(req.requestId ?? req.RequestId ?? req.trace?.requestId ?? '').trim() || undefined;
   const traceId = String(req.traceId ?? req.TraceId ?? req.trace?.traceId ?? '').trim() || undefined;
   return { requestId, traceId };
+}
+
+function assertCreateKind(value: { Kind?: unknown } | null | undefined): void {
+  assertFieldChangeKind(String(value?.Kind ?? ''));
 }
 
 /**
@@ -156,6 +164,7 @@ export default class FieldChange extends BaseModel {
 
   /**
    * Appends one FieldChange row (Unary). Rejects non-data-family Kind (AU6).
+   * ActorUid always comes from trusted request identity.
    */
   public static async Append(req: AppendFieldChangeReq): Promise<FieldChange> {
     if (!req || typeof req !== 'object') {
@@ -169,7 +178,7 @@ export default class FieldChange extends BaseModel {
     assertFieldChangeKind(req.Kind);
 
     const correlation = resolveCorrelation();
-    const actor = String(req.ActorUid ?? getUserId() ?? '').trim() || null;
+    const actor = String(getUserId() ?? '').trim() || null;
     const at = req.At ? new Date(req.At as string | Date) : new Date();
     if (Number.isNaN(at.getTime())) {
       throw newAuditError({ code: AuditErrCode.INVALID_ARGUMENT, message: 'Append At must be a valid datetime' });
@@ -233,23 +242,69 @@ export default class FieldChange extends BaseModel {
     )) as Partial<FieldChange>[];
   }
 
+  /**
+   * Create validates Kind so direct Create cannot bypass Append's AU6 check.
+   */
+  static override async Create<T extends BaseModel>(
+    this: { new (...args: any[]): T } & typeof BaseModel,
+    value: Partial<Insertable<T & BaseModel>>,
+    returnFields?: FieldSelection<T>
+  ): Promise<T> {
+    assertCreateKind(value as { Kind?: unknown });
+    return (await super.Create(value as any, returnFields as any)) as unknown as T;
+  }
+
+  /**
+   * CreateMany validates Kind on every row (AU6).
+   */
+  static override async CreateMany<T extends BaseModel>(
+    this: { new (...args: any[]): T } & typeof BaseModel,
+    values: Partial<Insertable<T & BaseModel>>[],
+    returnFields?: FieldSelection<T>
+  ): Promise<T[]> {
+    for (const row of values || []) {
+      assertCreateKind(row as { Kind?: unknown });
+    }
+    return (await super.CreateMany(values as any, returnFields as any)) as unknown as T[];
+  }
+
   /** FieldChange is append-only (AU2). */
-  static async Update(): Promise<never> {
+  static override async Update<T extends BaseModel>(
+    this: { new (...args: any[]): T } & typeof BaseModel,
+    _condition: QueryCondition<T>,
+    _values: Partial<Updateable<T & BaseModel>>,
+    _returnFields?: FieldSelection<T>,
+    _options?: UpdateOptions
+  ): Promise<never> {
     throw newAuditError({ code: AuditErrCode.APPEND_ONLY, message: 'FieldChange does not support Update' });
   }
 
   /** FieldChange is append-only (AU2). */
-  static async UpdateById(): Promise<never> {
+  static override async UpdateById<T extends BaseModel>(
+    this: { new (...args: any[]): T } & typeof BaseModel,
+    _id: string,
+    _values: Partial<Updateable<T & BaseModel>>,
+    _returnFields?: FieldSelection<T>,
+    _options?: UpdateOptions
+  ): Promise<never> {
     throw newAuditError({ code: AuditErrCode.APPEND_ONLY, message: 'FieldChange does not support UpdateById' });
   }
 
   /** FieldChange is append-only (AU2). */
-  static async Delete(): Promise<never> {
+  static override async Delete<T extends BaseModel>(
+    this: { new (...args: any[]): T } & typeof BaseModel,
+    _condition: QueryCondition<T>,
+    _options?: DeleteOptions
+  ): Promise<never> {
     throw newAuditError({ code: AuditErrCode.APPEND_ONLY, message: 'FieldChange does not support Delete' });
   }
 
   /** FieldChange is append-only (AU2). */
-  static async DeleteById(): Promise<never> {
+  static override async DeleteById<T extends BaseModel>(
+    this: { new (...args: any[]): T } & typeof BaseModel,
+    _id: string,
+    _options?: DeleteOptions
+  ): Promise<never> {
     throw newAuditError({ code: AuditErrCode.APPEND_ONLY, message: 'FieldChange does not support DeleteById' });
   }
 }

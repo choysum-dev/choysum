@@ -265,6 +265,9 @@ export function Field(
     if (optionBag.tracking !== undefined && typeof optionBag.tracking !== 'boolean') {
       throw new Error(`@Field(${name}) tracking must be a boolean`);
     }
+    if (optionBag.tracking === true && (type === 'OneToMany' || type === 'ManyToMany' || type === 'properties')) {
+      throw new Error(`@Field(${name}) tracking is not supported on ${type} fields`);
+    }
     const trackingFlag = optionBag.tracking === true;
     if (optionBag.checkCompany !== undefined && typeof optionBag.checkCompany !== 'boolean') {
       throw new Error(`@Field(${name}) checkCompany must be a boolean`);
