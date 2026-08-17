@@ -52,7 +52,7 @@ func TestPublishTaskDispatchWakeupPublishesWhenEventsConfigured(t *testing.T) {
 	if events.published[0].Topic != bus.TopicDispatchWakeup || events.published[0].Source != "enqueue" {
 		t.Fatalf("first event = %#v", events.published[0])
 	}
-	if events.published[1].Source != "trigger_schedule" {
-		t.Fatalf("second event source = %q", events.published[1].Source)
+	if events.published[1].Topic != bus.TopicDispatchWakeup || events.published[1].Source != "trigger_schedule" {
+		t.Fatalf("second event = %#v", events.published[1])
 	}
 }
