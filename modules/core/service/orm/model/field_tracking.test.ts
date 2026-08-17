@@ -383,12 +383,26 @@ test('resolveAppend uses dial override, missing Append, and dial errors', async 
     // Dial returns undefined — fail-closed regardless of installed modules.
     __setFieldTrackingAppendForTest(undefined);
     __setFieldTrackingDialForTest(() => undefined as any);
-    let liveDialErr: unknown;
+    let missingSvcErr: unknown;
     try {
       await recordFieldTrackingEvents({
         childCtor: TrackingDialProbe as any,
         operation: 'create',
         afterEntity: { Id: 'dial4', Name: 'n' },
+      });
+    } catch (e) {
+      missingSvcErr = e;
+    }
+    expect(String((missingSvcErr as Error)?.message || '')).toMatch(/not available/);
+
+    // Clear dial override so resolveAppend uses the live `dial` fallback branch.
+    __setFieldTrackingDialForTest(undefined);
+    let liveDialErr: unknown;
+    try {
+      await recordFieldTrackingEvents({
+        childCtor: TrackingDialProbe as any,
+        operation: 'create',
+        afterEntity: { Id: 'dial5', Name: 'n' },
       });
     } catch (e) {
       liveDialErr = e;
