@@ -339,7 +339,7 @@ test('message.Message: dial message.Message exposes Post for cross-app callers',
   });
 });
 
-test('message.Message: CreateMany, dial seams, and Post edge branches', async () => {
+test('message.Message: CreateMany stamps Type/AuthorUid and accepts empty input', async () => {
   await withMessageScope(async () => {
     const many = await Message.CreateMany(
       [
@@ -368,13 +368,17 @@ test('message.Message: CreateMany, dial seams, and Post edge branches', async ()
 
     const emptyMany = await Message.CreateMany(null as any, ['Id'] as any);
     expect(emptyMany).toEqual([]);
+  });
+});
 
-    // CompanyId / '*' selection / generated mutation id via dialOverride Bind.
+test('message.Message: Post via dialOverride Bind with CompanyId and star fields', async () => {
+  await withMessageScope(async () => {
     const companyId = 'cmp_message_fixture_';
     const jsCtx = ensureRequestContext();
     jsCtx.ctx = { activeCompanyId: companyId, enabledCompanyIds: [companyId] };
     delete (jsCtx as any)[Symbol.for('choysum.ctx.frozen')];
     delete (jsCtx as any)[Symbol.for('choysum.ctx.override')];
+
     const dialBinds: any[] = [];
     __setMessageAttachmentBindForTest(undefined);
     __setMessageDialForTest(() => ({
@@ -396,8 +400,11 @@ test('message.Message: CreateMany, dial seams, and Post edge branches', async ()
     expect(String((withCompany as any).CompanyId)).toBe(companyId);
     expect(dialBinds.length).toBe(1);
     expect(String(dialBinds[0].mutationId || '')).not.toBe('');
-    // Restore skip-company harness for remaining cases.
-    resetRequestContext();
+  });
+});
+
+test('message.Message: Post fails closed when dial Bind is missing or dial throws', async () => {
+  await withMessageScope(async () => {
     __setMessageAttachmentBindForTest(undefined);
     __setMessageDialForTest(() => ({} as any));
     let noBindErr: unknown;
@@ -413,7 +420,6 @@ test('message.Message: CreateMany, dial seams, and Post edge branches', async ()
     }
     expect((noBindErr as any).code).toBe(MessageErrCode.ATTACHMENT_BIND_FAILED);
 
-    // dial throws → resolveBind catch → same fail-closed code.
     __setMessageDialForTest(() => {
       throw new Error('dial boom');
     });
@@ -429,9 +435,11 @@ test('message.Message: CreateMany, dial seams, and Post edge branches', async ()
       dialThrowErr = e;
     }
     expect((dialThrowErr as any).code).toBe(MessageErrCode.ATTACHMENT_BIND_FAILED);
+  });
+});
 
-    // Non-Error Bind throw + DeleteById compensate failure still surfaces ATTACHMENT_BIND_FAILED.
-    __setMessageDialForTest(undefined);
+test('message.Message: Post surfaces ATTACHMENT_BIND_FAILED when Bind throw is non-Error and Delete fails', async () => {
+  await withMessageScope(async () => {
     __setMessageAttachmentBindForTest(async () => {
       throw 'bind string boom';
     });
@@ -455,20 +463,16 @@ test('message.Message: CreateMany, dial seams, and Post edge branches', async ()
     expect(isMessageError(nonErrorBindErr)).toBe(true);
     expect((nonErrorBindErr as any).code).toBe(MessageErrCode.ATTACHMENT_BIND_FAILED);
     expect(String((nonErrorBindErr as any).message || '')).toMatch(/Attachment bind failed|bind string/i);
+  });
+});
 
-    // Create returns without Id → Bind refused.
+test('message.Message: Post refuses Bind when Create returns without Id', async () => {
+  await withMessageScope(async () => {
     __setMessageAttachmentBindForTest(async () => ({ status: 'active' }));
     const origCreate = Message.Create;
     (Message as any).Create = async function (this: any, value: any, fields?: any) {
       const row = await origCreate.call(this, value, fields);
-      try {
-        delete (row as any).Id;
-      } catch {
-        (row as any).Id = '';
-      }
-      if ((row as any).Id != null && String((row as any).Id) !== '') {
-        (row as any).Id = '';
-      }
+      (row as any).Id = '';
       return row;
     };
     let missingIdErr: unknown;
@@ -486,12 +490,15 @@ test('message.Message: CreateMany, dial seams, and Post edge branches', async ()
     }
     expect((missingIdErr as any).code).toBe(MessageErrCode.ATTACHMENT_BIND_FAILED);
     expect(String((missingIdErr as any).message || '')).toMatch(/Id is required/i);
+  });
+});
 
-    // newMutationId fallback when mutation-id xid source is unavailable / blank.
+test('message.Message: Post generates mutationId when xid seam is unavailable or blank', async () => {
+  await withMessageScope(async () => {
+    const noXidBinds: any[] = [];
     __setMessageXidNewForTest(() => undefined);
     __setMessageAttachmentBindForTest(async req => {
-      expect(String(req.mutationId || '').length).toBeGreaterThan(0);
-      expect(String(req.mutationId).length).toBeLessThanOrEqual(20);
+      noXidBinds.push(req);
       return { status: 'active' };
     });
     await Message.Post({
@@ -500,10 +507,13 @@ test('message.Message: CreateMany, dial seams, and Post edge branches', async ()
       Body: 'no-xid',
       AttachmentObjectId: 'att_noxid_____________',
     });
+    expect(String(noXidBinds[0].mutationId || '').length).toBeGreaterThan(0);
+    expect(String(noXidBinds[0].mutationId).length).toBeLessThanOrEqual(20);
 
+    const blankXidBinds: any[] = [];
     __setMessageXidNewForTest(() => '   ');
     __setMessageAttachmentBindForTest(async req => {
-      expect(String(req.mutationId || '').length).toBeGreaterThan(0);
+      blankXidBinds.push(req);
       return { status: 'active' };
     });
     await Message.Post({
@@ -512,10 +522,13 @@ test('message.Message: CreateMany, dial seams, and Post edge branches', async ()
       Body: 'blank-xid',
       AttachmentObjectId: 'att_blankxid__________',
     });
-    __setMessageXidNewForTest(undefined);
+    expect(String(blankXidBinds[0].mutationId || '').length).toBeGreaterThan(0);
+    expect(String(blankXidBinds[0].mutationId).length).toBeLessThanOrEqual(20);
+  });
+});
 
-    // Whitespace identity → AuthorUid null; empty CompanyId normalizes to null.
-    resetRequestContext();
+test('message.Message: Post normalizes blank AuthorUid and empty CompanyId', async () => {
+  await withMessageScope(async () => {
     ensureRequestContext().identity = { userId: '   ' };
     const blankAuthor = await Message.Post({
       Model: 'partner.Partner',
