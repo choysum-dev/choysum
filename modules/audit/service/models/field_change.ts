@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model } from '@/core/service';
+import { BaseModel, Field, Model, type BaseModelCtor } from '@/core/service';
 import { getCurrentReq, getUserId } from '@/core/service/api/context';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
-import type { QueryCondition, DeleteOptions, UpdateOptions } from '@/core/service/api/query';
+import type { QueryCondition, DeleteOptions, UpdateOptions, SearchOptions } from '@/core/service/api/query';
 import { AuditErrCode, newAuditError } from '../error';
 import { _lt } from '../i18n';
 
@@ -85,17 +85,34 @@ function resolveCorrelation(): { requestId?: string; traceId?: string } {
   return { requestId, traceId };
 }
 
+type FieldChangeInsert = Partial<Insertable<FieldChange>>;
+
 /**
  * Normalize Kind and force ActorUid from trusted request identity for every create path.
  */
-function prepareCreatePayload<T extends Record<string, unknown>>(value: T): T {
-  const payload: Record<string, unknown> = { ...value };
-  const rawKind = payload.Kind;
-  payload.Kind = assertFieldChangeKind(rawKind == null ? '' : String(rawKind));
+function prepareCreatePayload(value: FieldChangeInsert): FieldChangeInsert {
   const uid = getUserId();
-  payload.ActorUid = uid == null || String(uid).trim() === '' ? null : String(uid).trim();
-  return payload as T;
+  return {
+    ...value,
+    Kind: assertFieldChangeKind(value.Kind == null ? '' : String(value.Kind)),
+    ActorUid: uid == null || String(uid).trim() === '' ? null : String(uid).trim(),
+  };
 }
+
+const DEFAULT_APPEND_FIELDS = [
+  'Id',
+  'Model',
+  'ResId',
+  'Field',
+  'Kind',
+  'OldValue',
+  'NewValue',
+  'ActorUid',
+  'At',
+  'CompanyId',
+  'RequestId',
+  'TraceId',
+] as const satisfies FieldSelection<FieldChange>;
 
 /**
  * Append-only compliance field-change history (AU6 / P3-A1).
@@ -218,38 +235,21 @@ export default class FieldChange extends BaseModel {
     }
 
     const kind = String(req.Kind).trim();
-    const returnFields =
-      fields ??
-      ([
-        'Id',
-        'Model',
-        'ResId',
-        'Field',
-        'Kind',
-        'OldValue',
-        'NewValue',
-        'ActorUid',
-        'At',
-        'CompanyId',
-        'RequestId',
-        'TraceId',
-      ] as FieldSelection<FieldChange>);
-    return (await this.Create(
-      {
-        Model: model,
-        ResId: resId,
-        Field: req.Field == null || req.Field === '' ? null : String(req.Field),
-        Kind: kind,
-        OldValue: req.OldValue == null ? null : String(req.OldValue),
-        NewValue: req.NewValue == null ? null : String(req.NewValue),
-        ActorUid: actor,
-        At: at,
-        CompanyId: req.CompanyId == null || req.CompanyId === '' ? null : String(req.CompanyId),
-        RequestId: req.RequestId ?? correlation.requestId ?? null,
-        TraceId: req.TraceId ?? correlation.traceId ?? null,
-      } as any,
-      returnFields as any
-    )) as FieldChange;
+    const createValue: FieldChangeInsert = {
+      Model: model,
+      ResId: resId,
+      Field: req.Field == null || req.Field === '' ? null : String(req.Field),
+      Kind: kind,
+      OldValue: req.OldValue == null ? null : String(req.OldValue),
+      NewValue: req.NewValue == null ? null : String(req.NewValue),
+      ActorUid: actor,
+      At: at,
+      CompanyId: req.CompanyId == null || req.CompanyId === '' ? null : String(req.CompanyId),
+      RequestId: req.RequestId ?? correlation.requestId ?? null,
+      TraceId: req.TraceId ?? correlation.traceId ?? null,
+    };
+    const returnFields: FieldSelection<FieldChange> = fields ?? [...DEFAULT_APPEND_FIELDS];
+    return await this.Create(createValue, returnFields);
   }
 
   /**
@@ -265,47 +265,50 @@ export default class FieldChange extends BaseModel {
     if (!m || !id) {
       throw newAuditError({ code: AuditErrCode.INVALID_ARGUMENT, message: 'SearchByRecord requires Model and ResId' });
     }
-    return (await this.Search(
-      {
-        And: [
-          ['Model', '=', m],
-          ['ResId', '=', id],
-        ],
-      } as any,
-      {
-        fields: fields as any,
-        orderBy: { field: 'At', order: 'asc' } as any,
-      } as any
-    )) as Partial<FieldChange>[];
+    const condition: QueryCondition<FieldChange> = {
+      And: [
+        ['Model', '=', m],
+        ['ResId', '=', id],
+      ],
+    };
+    const options: SearchOptions<FieldChange> = {
+      fields,
+      orderBy: { field: 'At', order: 'asc' },
+    };
+    return await this.Search(condition, options);
   }
 
   /**
    * Create validates Kind, persists the trimmed Kind, and stamps ActorUid from request identity.
    */
   static override async Create<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
+    this: BaseModelCtor<T>,
     value: Partial<Insertable<T & BaseModel>>,
     returnFields?: FieldSelection<T>
   ): Promise<T> {
-    const payload = prepareCreatePayload({ ...(value as Record<string, unknown>) });
-    return (await super.Create(payload as any, returnFields as any)) as unknown as T;
+    const payload = prepareCreatePayload(value as FieldChangeInsert);
+    return (await super.Create.call(this, payload as Partial<Insertable<T & BaseModel>>, returnFields)) as T;
   }
 
   /**
    * CreateMany validates Kind, persists trimmed Kind, and stamps ActorUid on every row.
    */
   static override async CreateMany<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
+    this: BaseModelCtor<T>,
     values: Partial<Insertable<T & BaseModel>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
-    const rows = (values || []).map(row => prepareCreatePayload({ ...(row as Record<string, unknown>) }));
-    return (await super.CreateMany(rows as any, returnFields as any)) as unknown as T[];
+    const rows = (values || []).map(row => prepareCreatePayload(row as FieldChangeInsert));
+    return (await super.CreateMany.call(
+      this,
+      rows as Partial<Insertable<T & BaseModel>>[],
+      returnFields
+    )) as T[];
   }
 
   /** FieldChange is append-only (AU2). */
   static override async Update<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
+    this: BaseModelCtor<T>,
     _condition: QueryCondition<T>,
     _values: Partial<Updateable<T & BaseModel>>,
     _returnFields?: FieldSelection<T>,
@@ -316,7 +319,7 @@ export default class FieldChange extends BaseModel {
 
   /** FieldChange is append-only (AU2). */
   static override async UpdateById<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
+    this: BaseModelCtor<T>,
     _id: string,
     _values: Partial<Updateable<T & BaseModel>>,
     _returnFields?: FieldSelection<T>,
@@ -327,7 +330,7 @@ export default class FieldChange extends BaseModel {
 
   /** FieldChange is append-only (AU2). */
   static override async Delete<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
+    this: BaseModelCtor<T>,
     _condition: QueryCondition<T>,
     _options?: DeleteOptions
   ): Promise<never> {
@@ -336,7 +339,7 @@ export default class FieldChange extends BaseModel {
 
   /** FieldChange is append-only (AU2). */
   static override async DeleteById<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
+    this: BaseModelCtor<T>,
     _id: string,
     _options?: DeleteOptions
   ): Promise<never> {

@@ -23,7 +23,7 @@ import {
 } from '../repository/types';
 import { EntityConverter } from '../utils/converter';
 import type { ModelCtor, OnchangeTrigger, SelectExpressionAtom, SelectExpressionValue, SelectSubqueryBuilder } from '../metadata/field';
-import type { RuntimeModelCtor } from './types';
+import type { BaseModelCtor, RuntimeModelCtor } from './types';
 import type { OnchangeDraft, OnchangeResult } from '../../runtime/onchange/types';
 import type { Context } from '../../runtime/context';
 import type { ObjectRecord } from '../../../utils/types';
@@ -90,7 +90,6 @@ import { currentBridgeFrame } from '../../runtime/compute/bridge';
 
 // Delegated implementation.
 
-type BaseModelCtor<T extends BaseModel> = { new (factoryToken: Symbol, entity: Entity, fields?: unknown): T };
 type ModelLoadFieldSelection = FieldSelection<ObjectRecord>;
 
 export type SqlComputeCtx<TModel extends BaseModel = BaseModel> = {
