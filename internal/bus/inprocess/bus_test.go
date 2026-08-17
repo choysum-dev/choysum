@@ -123,3 +123,32 @@ func TestInProcessBusSubscribeDuringHandler(t *testing.T) {
 		t.Fatal("handler did not complete")
 	}
 }
+
+func TestInProcessBusNilContextNilHandlerAndNilClose(t *testing.T) {
+	b := NewInProcessBus()
+
+	called := false
+	if _, err := b.Subscribe("t", func(ctx context.Context, event bus.Event) {
+		if ctx == nil {
+			t.Error("expected non-nil context after nil Publish ctx")
+		}
+		called = true
+	}); err != nil {
+		t.Fatalf("Subscribe: %v", err)
+	}
+	if _, err := b.Subscribe("t", nil); err != nil {
+		t.Fatalf("Subscribe(nil handler): %v", err)
+	}
+
+	if err := b.Publish(nil, bus.Event{Topic: "t", Source: "nil-ctx"}); err != nil {
+		t.Fatalf("Publish(nil ctx): %v", err)
+	}
+	if !called {
+		t.Fatal("expected non-nil handler to run")
+	}
+
+	var sub *subscription
+	if err := sub.Close(); err != nil {
+		t.Fatalf("nil Close: %v", err)
+	}
+}

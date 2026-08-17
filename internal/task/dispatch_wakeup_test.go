@@ -51,3 +51,11 @@ func TestDispatchWakeupPublishesOnInjectedEventBus(t *testing.T) {
 		t.Fatalf("wakeup call count after close = %d, want 0", called)
 	}
 }
+
+func TestPublishWakeupNilDispatcherOrEventsIsNoop(t *testing.T) {
+	var d *Dispatcher
+	d.publishWakeup("noop")
+
+	d = &Dispatcher{}
+	d.publishWakeup("noop")
+}
