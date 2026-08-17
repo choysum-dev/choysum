@@ -196,7 +196,10 @@ export default class FieldChange extends BaseModel {
    * ActorUid always comes from trusted request identity.
    * Optional `fields` is forwarded to Create (same FieldSelection contract).
    */
-  public static async Append(req: AppendFieldChangeReq, fields?: FieldSelection): Promise<FieldChange> {
+  public static async Append(
+    req: AppendFieldChangeReq,
+    fields?: FieldSelection<FieldChange>
+  ): Promise<FieldChange> {
     if (!req || typeof req !== 'object') {
       throw newAuditError({ code: AuditErrCode.INVALID_ARGUMENT, message: 'Append requires a payload' });
     }
@@ -230,7 +233,7 @@ export default class FieldChange extends BaseModel {
         'CompanyId',
         'RequestId',
         'TraceId',
-      ] as FieldSelection);
+      ] as FieldSelection<FieldChange>);
     return (await this.Create(
       {
         Model: model,
