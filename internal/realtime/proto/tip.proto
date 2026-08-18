@@ -1,0 +1,32 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+syntax = "proto3";
+
+package choysum.realtime.v1;
+
+option go_package = "github.com/choysum-dev/choysum/internal/realtime/proto/tippb;tippb";
+
+// Tip is a best-effort lean signal. Authoritative state lives in tables;
+// clients re-read via unary RPCs after receiving a tip.
+message Tip {
+  string topic = 1;
+  int64 at_unix_ms = 2;
+  string source = 3;
+  string model = 4;
+  string res_id = 5;
+  string message_id = 6;
+  string user_id = 7;
+}
+
+message SubscribeThreadReq {
+  string model = 1;
+  string res_id = 2;
+}
+
+message SubscribeNotificationsReq {}
+
+service TipHub {
+  rpc SubscribeThread(SubscribeThreadReq) returns (stream Tip);
+  rpc SubscribeNotifications(SubscribeNotificationsReq) returns (stream Tip);
+}

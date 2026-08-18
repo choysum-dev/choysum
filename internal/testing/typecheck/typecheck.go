@@ -873,8 +873,11 @@ declare module "@bufbuild/protobuf/codegenv2" {
   export type Message = any;
   export type GenFile = any;
   export type GenMessage<T = any> = any;
+  export type GenService<T = any> = any;
   export const fileDesc: any;
   export const messageDesc: any;
+  export const enumDesc: any;
+  export const serviceDesc: any;
 }
 
 declare module "@bufbuild/protobuf/wkt" {

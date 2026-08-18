@@ -73,11 +73,8 @@ func NewProtocolRouter(opts ProtocolRouterOptions) http.Handler {
 			w.Header().Add("Access-Control-Expose-Headers", "server-timing, grpc-status, grpc-message, grpc-status-details-bin, traceparent")
 			opts.GRPCWebProxy.ServeHTTP(w, r)
 		})
-		if opts.EnableGzip {
-			gzipHandler := gzipmiddleware.NewGzipHandler(opts.RuntimeScope)
-			grpcWebHandler = gzipHandler.Handler(grpcWebHandler)
-			opts.RuntimeScope.Logger().Debug("grpc-web gzip enabled")
-		}
+		// Do not gzip grpc-web: gzip buffers until the handler returns, which
+		// stalls long-lived server streams. Regular HTTP gzip remains above.
 	}
 
 	grpcHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
