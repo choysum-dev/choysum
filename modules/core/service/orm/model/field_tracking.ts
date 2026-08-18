@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Field tracking → audit.FieldChange (AU3 / PR-P3-A2).
+ * Field tracking → audit.FieldChange.
  *
  * Failure policy (frozen): audit Append failures **block** the business write
  * (fail-closed) so compliance history is not silently dropped. Skip quietly when

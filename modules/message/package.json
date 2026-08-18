@@ -1,0 +1,26 @@
+{
+  "name": "@choysum-dev/message",
+  "version": "0.0.0-20260817000000",
+  "description": "Collaboration messages, followers, and notification dispatch (Message V1)",
+  "license": "Apache-2.0",
+  "author": "Choysum Team",
+  "type": "module",
+  "choysum": {
+    "moduleName": "message",
+    "application": "message",
+    "category": "Messaging",
+    "depends": [
+      "core",
+      "base",
+      "auth",
+      "document"
+    ],
+    "cli": ">=0.0.0-0 <0.0.0",
+    "entryPoints": {
+      "service": "./service/index.ts"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

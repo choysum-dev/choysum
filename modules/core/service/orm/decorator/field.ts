@@ -83,9 +83,9 @@ type FieldDecoratorOptionBag = {
   companyDependent?: unknown;
   /** Whether the field participates in Model.Copy (default true when omitted). */
   copy?: unknown;
-  /** Declarative field readonly (PR-P2-F2); wire still uses isReadonly. */
+  /** Declarative field readonly; wire still uses isReadonly. */
   readonly?: unknown;
-  /** When true, Write path dials audit.FieldChange (AU3 / PR-P3-A2). */
+  /** When true, Write path dials audit.FieldChange. */
   tracking?: unknown;
   /**
    * Odoo-style check_company for ManyToOne / ManyToOneRef (parent↔related CompanyId).

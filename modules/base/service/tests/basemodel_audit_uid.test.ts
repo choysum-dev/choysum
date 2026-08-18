@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * BaseModel CreatedUid / UpdatedUid / DeletedUid stamp matrix (AU7 / AU8).
+ * BaseModel CreatedUid / UpdatedUid / DeletedUid stamp matrix.
  */
 
 import UoMCategory from '@/base/service/models/uom_category';

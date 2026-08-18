@@ -9,7 +9,7 @@ import type { QueryCondition, DeleteOptions, UpdateOptions, SearchOptions } from
 import { AuditErrCode, newAuditError } from '../error';
 import { _lt } from '../i18n';
 
-/** Data-family Kind values allowed on FieldChange (AU6). */
+/** Data-family Kind values allowed on FieldChange. */
 export const FIELD_CHANGE_KINDS = ['field', 'create', 'unlink'] as const;
 export type FieldChangeKindLiteral = (typeof FIELD_CHANGE_KINDS)[number];
 
@@ -115,7 +115,7 @@ const DEFAULT_APPEND_FIELDS = [
 ] as const satisfies FieldSelection<FieldChange>;
 
 /**
- * Append-only compliance field-change history (AU6 / P3-A1).
+ * Append-only compliance field-change history.
  * Table: audit_field_change.
  */
 @Model('FieldChange', {
@@ -209,7 +209,7 @@ export default class FieldChange extends BaseModel {
   TraceId: string | null;
 
   /**
-   * Appends one FieldChange row (Unary). Rejects non-data-family Kind (AU6).
+   * Appends one FieldChange row (Unary). Rejects non-data-family Kind.
    * ActorUid always comes from trusted request identity.
    * Optional `fields` is forwarded to Create (same FieldSelection contract).
    */
@@ -306,7 +306,7 @@ export default class FieldChange extends BaseModel {
     )) as T[];
   }
 
-  /** FieldChange is append-only (AU2). */
+  /** FieldChange is append-only. */
   static override async Update<T extends BaseModel>(
     this: BaseModelCtor<T>,
     _condition: QueryCondition<T>,
@@ -317,7 +317,7 @@ export default class FieldChange extends BaseModel {
     throw newAuditError({ code: AuditErrCode.APPEND_ONLY, message: 'FieldChange does not support Update' });
   }
 
-  /** FieldChange is append-only (AU2). */
+  /** FieldChange is append-only. */
   static override async UpdateById<T extends BaseModel>(
     this: BaseModelCtor<T>,
     _id: string,
@@ -328,7 +328,7 @@ export default class FieldChange extends BaseModel {
     throw newAuditError({ code: AuditErrCode.APPEND_ONLY, message: 'FieldChange does not support UpdateById' });
   }
 
-  /** FieldChange is append-only (AU2). */
+  /** FieldChange is append-only. */
   static override async Delete<T extends BaseModel>(
     this: BaseModelCtor<T>,
     _condition: QueryCondition<T>,
@@ -337,7 +337,7 @@ export default class FieldChange extends BaseModel {
     throw newAuditError({ code: AuditErrCode.APPEND_ONLY, message: 'FieldChange does not support Delete' });
   }
 
-  /** FieldChange is append-only (AU2). */
+  /** FieldChange is append-only. */
   static override async DeleteById<T extends BaseModel>(
     this: BaseModelCtor<T>,
     _id: string,

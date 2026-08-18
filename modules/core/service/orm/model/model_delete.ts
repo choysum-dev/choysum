@@ -55,7 +55,7 @@ export class DeleteOperations {
       }
     }
 
-    // Field tracking → audit.FieldChange (fail-closed; AU3). Uses pre-delete snapshot.
+    // Field tracking → audit.FieldChange (fail-closed). Uses pre-delete snapshot.
     for (const row of oldRows || []) {
       await recordFieldTrackingEvents({
         childCtor: ModelCtor,
