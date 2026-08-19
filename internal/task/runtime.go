@@ -19,7 +19,9 @@ func runtimeWithDefaultTaskRuntimeDeps(runtimeScope scope.Scope, runtime taskcon
 	if runtime.Store == nil {
 		runtime.Store = newTaskRuntimeScheduleStore(runtimeScope)
 	}
-	if !bus.IsUsable(runtime.Events) {
+	if bus.IsUsable(runtime.Events) {
+		bus.SetHost(runtime.Events)
+	} else {
 		runtime.Events = bus.EnsureHost(runtimeScope)
 	}
 	return runtime

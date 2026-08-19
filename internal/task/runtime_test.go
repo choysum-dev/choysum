@@ -138,6 +138,29 @@ func TestRuntimeWithDefaultTaskRuntimeDepsReplacesTypedNilEvents(t *testing.T) {
 	}
 }
 
+func TestRuntimeWithDefaultTaskRuntimeDepsBindsInjectedEventsAsHost(t *testing.T) {
+	bus.ClearHostForTest()
+	t.Cleanup(bus.ClearHostForTest)
+
+	runtimeScope := &testScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{Task: config.NewDefaultTaskConfig()},
+	}
+	events := &recordingNilEventBus{}
+	got := runtimeWithDefaultTaskRuntimeDeps(runtimeScope, taskcontract.Runtime{
+		Queue:  stubTaskQueue{},
+		Store:  stubScheduleStore{},
+		Events: events,
+	})
+	if got.Events != events {
+		t.Fatal("expected injected Events to be preserved")
+	}
+	if bus.Host() != events {
+		t.Fatal("expected injected Events to bind pkg/bus host")
+	}
+}
+
 type recordingNilEventBus struct{}
 
 func (*recordingNilEventBus) Publish(context.Context, bus.Event) error { return nil }
