@@ -20,7 +20,7 @@ vi.mock('../rpc/client_factory', () => {
 
 import { onTips, subscribeNotifications, subscribeThread } from './client';
 
-describe('core/web realtime TipHub client', () => {
+describe('core/web tip TipHub client', () => {
   it('subscribes through CreateWebClient and yields tips', async () => {
     const tips: Array<{ topic: string; resId?: string; userId?: string }> = [];
     await onTips(subscribeThread('message.thread', '42'), async (tip) => {

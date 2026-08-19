@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	_ "github.com/choysum-dev/choysum/internal/bus/inprocess"
-	"github.com/choysum-dev/choysum/internal/realtime/proto/tippb"
+	"github.com/choysum-dev/choysum/internal/tip/proto/tippb"
 	taskcontract "github.com/choysum-dev/choysum/pkg/task"
 	"google.golang.org/grpc"
 )

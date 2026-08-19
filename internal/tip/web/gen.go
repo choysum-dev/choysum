@@ -5,7 +5,7 @@
 
 // gen.go generates TipHub TypeScript stubs via gots.
 //
-// Invoke via: go generate ./internal/realtime/web/...
+// Invoke via: go generate ./internal/tip/web/...
 
 package main
 
@@ -26,19 +26,19 @@ import (
 func main() {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
-		fmt.Fprintf(os.Stderr, "realtime_web_generate: cannot resolve caller path\n")
+		fmt.Fprintf(os.Stderr, "tip_web_generate: cannot resolve caller path\n")
 		os.Exit(1)
 	}
 	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", ".."))
 	if err := generateTipProto(repoRoot); err != nil {
-		fmt.Fprintf(os.Stderr, "realtime_web_generate: %v\n", err)
+		fmt.Fprintf(os.Stderr, "tip_web_generate: %v\n", err)
 		os.Exit(1)
 	}
 }
 
 func generateTipProto(repoRoot string) error {
-	protoRelPath := filepath.ToSlash(filepath.Join("internal", "realtime", "proto", "tip.proto"))
-	protoDir := filepath.Join(repoRoot, "internal", "realtime", "proto")
+	protoRelPath := filepath.ToSlash(filepath.Join("internal", "tip", "proto", "tip.proto"))
+	protoDir := filepath.Join(repoRoot, "internal", "tip", "proto")
 
 	compiler := protocompile.Compiler{
 		Resolver: protocompile.WithStandardImports(&protocompile.SourceResolver{
@@ -65,7 +65,7 @@ func generateTipProto(repoRoot string) error {
 		return fmt.Errorf("gots generate: %w", err)
 	}
 
-	outDir := filepath.Join(repoRoot, "modules", "core", "web", "realtime", "pb")
+	outDir := filepath.Join(repoRoot, "modules", "core", "web", "tip", "pb")
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return fmt.Errorf("mkdir %s: %w", outDir, err)
 	}
@@ -85,7 +85,7 @@ func generateTipProto(repoRoot string) error {
 		if err := os.WriteFile(outPath, []byte(content), 0o644); err != nil {
 			return fmt.Errorf("write %s: %w", outPath, err)
 		}
-		fmt.Printf("realtime_web_generate: wrote %s\n", outPath)
+		fmt.Printf("tip_web_generate: wrote %s\n", outPath)
 		wrote++
 	}
 	if wrote == 0 {

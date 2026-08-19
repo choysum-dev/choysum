@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/choysum-dev/choysum/internal/realtime/proto/tippb"
+	"github.com/choysum-dev/choysum/internal/tip/proto/tippb"
 	"github.com/choysum-dev/choysum/pkg/auth"
 	"github.com/choysum-dev/choysum/pkg/bus"
 	"google.golang.org/grpc"

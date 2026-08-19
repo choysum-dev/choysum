@@ -4,8 +4,8 @@
 package server
 
 import (
-	"github.com/choysum-dev/choysum/internal/realtime/hub"
-	"github.com/choysum-dev/choysum/internal/realtime/proto/tippb"
+	"github.com/choysum-dev/choysum/internal/tip/hub"
+	"github.com/choysum-dev/choysum/internal/tip/proto/tippb"
 )
 
 func (s *GRPCWebServer) registerTipHubService() {

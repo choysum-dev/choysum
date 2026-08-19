@@ -210,7 +210,7 @@ var File_tip_proto protoreflect.FileDescriptor
 
 const file_tip_proto_rawDesc = "" +
 	"\n" +
-	"\ttip.proto\x12\x13choysum.realtime.v1\"\xb6\x01\n" +
+	"\ttip.proto\x12\x0echoysum.tip.v1\"\xb6\x01\n" +
 	"\x03Tip\x12\x14\n" +
 	"\x05topic\x18\x01 \x01(\tR\x05topic\x12\x1c\n" +
 	"\n" +
@@ -224,10 +224,10 @@ const file_tip_proto_rawDesc = "" +
 	"\x12SubscribeThreadReq\x12\x14\n" +
 	"\x05model\x18\x01 \x01(\tR\x05model\x12\x15\n" +
 	"\x06res_id\x18\x02 \x01(\tR\x05resId\"\x1b\n" +
-	"\x19SubscribeNotificationsReq2\xc6\x01\n" +
-	"\x06TipHub\x12V\n" +
-	"\x0fSubscribeThread\x12'.choysum.realtime.v1.SubscribeThreadReq\x1a\x18.choysum.realtime.v1.Tip0\x01\x12d\n" +
-	"\x16SubscribeNotifications\x12..choysum.realtime.v1.SubscribeNotificationsReq\x1a\x18.choysum.realtime.v1.Tip0\x01BDZBgithub.com/choysum-dev/choysum/internal/realtime/proto/tippb;tippbb\x06proto3"
+	"\x19SubscribeNotificationsReq2\xb2\x01\n" +
+	"\x06TipHub\x12L\n" +
+	"\x0fSubscribeThread\x12\".choysum.tip.v1.SubscribeThreadReq\x1a\x13.choysum.tip.v1.Tip0\x01\x12Z\n" +
+	"\x16SubscribeNotifications\x12).choysum.tip.v1.SubscribeNotificationsReq\x1a\x13.choysum.tip.v1.Tip0\x01B?Z=github.com/choysum-dev/choysum/internal/tip/proto/tippb;tippbb\x06proto3"
 
 var (
 	file_tip_proto_rawDescOnce sync.Once
@@ -243,15 +243,15 @@ func file_tip_proto_rawDescGZIP() []byte {
 
 var file_tip_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_tip_proto_goTypes = []any{
-	(*Tip)(nil),                       // 0: choysum.realtime.v1.Tip
-	(*SubscribeThreadReq)(nil),        // 1: choysum.realtime.v1.SubscribeThreadReq
-	(*SubscribeNotificationsReq)(nil), // 2: choysum.realtime.v1.SubscribeNotificationsReq
+	(*Tip)(nil),                       // 0: choysum.tip.v1.Tip
+	(*SubscribeThreadReq)(nil),        // 1: choysum.tip.v1.SubscribeThreadReq
+	(*SubscribeNotificationsReq)(nil), // 2: choysum.tip.v1.SubscribeNotificationsReq
 }
 var file_tip_proto_depIdxs = []int32{
-	1, // 0: choysum.realtime.v1.TipHub.SubscribeThread:input_type -> choysum.realtime.v1.SubscribeThreadReq
-	2, // 1: choysum.realtime.v1.TipHub.SubscribeNotifications:input_type -> choysum.realtime.v1.SubscribeNotificationsReq
-	0, // 2: choysum.realtime.v1.TipHub.SubscribeThread:output_type -> choysum.realtime.v1.Tip
-	0, // 3: choysum.realtime.v1.TipHub.SubscribeNotifications:output_type -> choysum.realtime.v1.Tip
+	1, // 0: choysum.tip.v1.TipHub.SubscribeThread:input_type -> choysum.tip.v1.SubscribeThreadReq
+	2, // 1: choysum.tip.v1.TipHub.SubscribeNotifications:input_type -> choysum.tip.v1.SubscribeNotificationsReq
+	0, // 2: choysum.tip.v1.TipHub.SubscribeThread:output_type -> choysum.tip.v1.Tip
+	0, // 3: choysum.tip.v1.TipHub.SubscribeNotifications:output_type -> choysum.tip.v1.Tip
 	2, // [2:4] is the sub-list for method output_type
 	0, // [0:2] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name

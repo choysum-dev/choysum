@@ -22,8 +22,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	TipHub_SubscribeThread_FullMethodName        = "/choysum.realtime.v1.TipHub/SubscribeThread"
-	TipHub_SubscribeNotifications_FullMethodName = "/choysum.realtime.v1.TipHub/SubscribeNotifications"
+	TipHub_SubscribeThread_FullMethodName        = "/choysum.tip.v1.TipHub/SubscribeThread"
+	TipHub_SubscribeNotifications_FullMethodName = "/choysum.tip.v1.TipHub/SubscribeNotifications"
 )
 
 // TipHubClient is the client API for TipHub service.
@@ -149,7 +149,7 @@ type TipHub_SubscribeNotificationsServer = grpc.ServerStreamingServer[Tip]
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var TipHub_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "choysum.realtime.v1.TipHub",
+	ServiceName: "choysum.tip.v1.TipHub",
 	HandlerType: (*TipHubServer)(nil),
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{

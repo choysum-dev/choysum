@@ -3,9 +3,9 @@
 
 syntax = "proto3";
 
-package choysum.realtime.v1;
+package choysum.tip.v1;
 
-option go_package = "github.com/choysum-dev/choysum/internal/realtime/proto/tippb;tippb";
+option go_package = "github.com/choysum-dev/choysum/internal/tip/proto/tippb;tippb";
 
 // Tip is a best-effort lean signal. Authoritative state lives in tables;
 // clients re-read via unary RPCs after receiving a tip.
