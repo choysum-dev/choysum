@@ -4,8 +4,11 @@
 import Message, {
   assertMessageType,
   MESSAGE_ATTACHMENT_FIELD,
+  MESSAGE_POST_TIP_SOURCE,
+  TOPIC_MESSAGE_THREAD_CHANGED,
   __setMessageAttachmentBindForTest,
   __setMessageDialForTest,
+  __setMessagePublishTipForTest,
   __setMessageXidNewForTest,
 } from '../models/message';
 import { MessageErrCode, isMessageError } from '../error';
@@ -66,6 +69,7 @@ function resetRequestContext(): void {
 function resetMessageTestSeams(): void {
   __setMessageAttachmentBindForTest(undefined);
   __setMessageDialForTest(undefined);
+  __setMessagePublishTipForTest(undefined);
   __setMessageXidNewForTest(undefined);
 }
 
@@ -538,5 +542,82 @@ test('message.Message: Post normalizes blank AuthorUid and empty CompanyId', asy
     });
     expect((blankAuthor as any).AuthorUid == null || (blankAuthor as any).AuthorUid === '').toBe(true);
     expect((blankAuthor as any).CompanyId == null || (blankAuthor as any).CompanyId === '').toBe(true);
+  });
+});
+
+test('message.Message: Post publishes message.thread.changed tip after create', async () => {
+  await withMessageScope(async () => {
+    const published: any[] = [];
+    __setMessagePublishTipForTest(event => {
+      published.push(event);
+    });
+
+    const model = 'partner.Partner';
+    const resId = uid('res');
+    const created = await Message.Post({
+      Model: model,
+      ResId: resId,
+      Body: 'tip me',
+    });
+
+    expect(published).toHaveLength(1);
+    expect(published[0].topic).toBe(TOPIC_MESSAGE_THREAD_CHANGED);
+    expect(published[0].source).toBe(MESSAGE_POST_TIP_SOURCE);
+    expect(published[0].payload).toEqual({
+      model,
+      resId,
+      messageId: String((created as any).Id),
+    });
+    expect(String(published[0].payload.body || '')).toBe('');
+  });
+});
+
+test('message.Message: Post succeeds when tip Publish fails or bus is missing', async () => {
+  await withMessageScope(async () => {
+    __setMessagePublishTipForTest(() => {
+      throw new Error('bus down');
+    });
+    const created = await Message.Post({
+      Model: 'partner.Partner',
+      ResId: uid('res'),
+      Body: 'still saved',
+    });
+    expect(String((created as any).Id || '')).not.toBe('');
+    expect((created as any).Body).toBe('still saved');
+
+    __setMessagePublishTipForTest(null);
+    const withoutBus = await Message.Post({
+      Model: 'partner.Partner',
+      ResId: uid('res'),
+      Body: 'no bus',
+    });
+    expect(String((withoutBus as any).Id || '')).not.toBe('');
+  });
+});
+
+test('message.Message: Post does not publish tip when attachment bind fails', async () => {
+  await withMessageScope(async () => {
+    const published: any[] = [];
+    __setMessagePublishTipForTest(event => {
+      published.push(event);
+    });
+    __setMessageAttachmentBindForTest(async () => {
+      throw new Error('bind failed');
+    });
+
+    let err: unknown;
+    try {
+      await Message.Post({
+        Model: 'partner.Partner',
+        ResId: uid('res'),
+        Body: 'with attach',
+        AttachmentObjectId: 'att_fail________________',
+      });
+    } catch (e) {
+      err = e;
+    }
+    expect(isMessageError(err)).toBe(true);
+    expect((err as any).code).toBe(MessageErrCode.ATTACHMENT_BIND_FAILED);
+    expect(published).toHaveLength(0);
   });
 });

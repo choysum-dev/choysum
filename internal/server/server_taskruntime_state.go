@@ -45,13 +45,16 @@ func (s *taskRuntimeState) ensureEvents(runtimeScope scope.Scope) bus.EventBus {
 func (s *taskRuntimeState) applyEvents(runtimeScope scope.Scope, runtime *taskcontract.Runtime) {
 	if s.events != nil {
 		runtime.Events = s.events
+		bus.SetHost(s.events)
 		return
 	}
 	if runtime.Events != nil {
 		s.events = runtime.Events
+		bus.SetHost(s.events)
+		runtime.Events = s.events
 		return
 	}
-	s.events = bus.NewBus(runtimeScope)
+	s.events = bus.EnsureHost(runtimeScope)
 	runtime.Events = s.events
 }
 

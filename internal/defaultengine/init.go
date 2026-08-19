@@ -44,6 +44,9 @@ func defaultQuickjsReplaceableRuntimePlugins() []jsengine.RuntimePlugin {
 		jsengine.NewRuntimePlugin(quickjsengine.RuntimePluginGRPC, func(runtimeScope scope.Scope, authenticator auth.Authenticator) []jsengine.JsEngineOption {
 			return []jsengine.JsEngineOption{quickjsbridge.WithGrpc(runtimeScope)}
 		}),
+		jsengine.NewRuntimePluginWithProvider(quickjsengine.RuntimePluginBus, func(scopeProvider jsengine.ScopeProvider, authenticator auth.Authenticator) []jsengine.JsEngineOption {
+			return []jsengine.JsEngineOption{quickjsbridge.WithBusProvider(scopeProvider)}
+		}),
 		jsengine.NewRuntimePluginWithProvider(quickjsengine.RuntimePluginDocumentStorage, func(scopeProvider jsengine.ScopeProvider, authenticator auth.Authenticator) []jsengine.JsEngineOption {
 			return []jsengine.JsEngineOption{quickjsruntime.WithDocumentStorageProvider(scopeProvider)}
 		}),
