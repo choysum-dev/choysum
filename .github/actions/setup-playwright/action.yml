@@ -10,6 +10,10 @@ inputs:
     description: 'Browser to install'
     required: false
     default: 'chromium'
+  warm-cache-only:
+    description: 'Only download browser binaries into Actions cache; skip install-deps (each consumer runner installs OS packages itself)'
+    required: false
+    default: 'false'
 
 runs:
   using: composite
@@ -61,9 +65,17 @@ runs:
     - name: Install Playwright browser
       if: steps.playwright-cache.outputs.cache-hit != 'true'
       shell: bash
-      run: npx playwright install --with-deps ${{ inputs.browser }}
+      run: |
+        if [ "${{ inputs.warm-cache-only }}" = "true" ]; then
+          npx playwright install ${{ inputs.browser }}
+        else
+          npx playwright install --with-deps ${{ inputs.browser }}
+        fi
 
     - name: Install Playwright system dependencies
-      if: steps.playwright-cache.outputs.cache-hit == 'true' && runner.os == 'Linux'
+      if: >-
+        inputs.warm-cache-only != 'true' &&
+        steps.playwright-cache.outputs.cache-hit == 'true' &&
+        runner.os == 'Linux'
       shell: bash
       run: npx playwright install-deps ${{ inputs.browser }}
