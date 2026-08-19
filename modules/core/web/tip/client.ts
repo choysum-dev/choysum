@@ -39,7 +39,7 @@ export async function onTips(
 ): Promise<void> {
   const iterator = tips[Symbol.asyncIterator]();
   const cancelIterator = () => {
-    void iterator.return?.();
+    void Promise.resolve(iterator.return?.()).catch(() => undefined);
   };
   signal?.addEventListener('abort', cancelIterator, { once: true });
   try {

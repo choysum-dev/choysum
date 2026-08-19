@@ -112,6 +112,18 @@ func waitSubscribed(t *testing.T, subscribed <-chan struct{}) {
 	}
 }
 
+func waitStreamErr(t *testing.T, errCh <-chan error, want codes.Code) {
+	t.Helper()
+	select {
+	case err := <-errCh:
+		if status.Code(err) != want {
+			t.Fatalf("stream error = %v, want %s", err, want)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for stream error")
+	}
+}
+
 func TestSubscribeThreadFiltersAndCancels(t *testing.T) {
 	inner := inprocess.NewInProcessBus()
 	subscribed := make(chan struct{}, 1)
@@ -239,7 +251,7 @@ func TestSubscribeNotificationsFiltersByIdentityUser(t *testing.T) {
 		t.Fatalf("tips = %#v, want one tip for user-1", got)
 	}
 	cancel()
-	<-errCh
+	waitStreamErr(t, errCh, codes.Canceled)
 }
 
 func TestSubscribeThreadUnauthenticated(t *testing.T) {
@@ -308,14 +320,10 @@ func TestSubscribeThreadPerUserCap(t *testing.T) {
 	}()
 	waitSubscribed(t, subscribed)
 	otherCancel()
-	if err := <-otherErrCh; status.Code(err) != codes.Canceled {
-		t.Fatalf("other user subscribe: %v", err)
-	}
+	waitStreamErr(t, otherErrCh, codes.Canceled)
 
 	cancel()
-	if err := <-errCh; status.Code(err) != codes.Canceled {
-		t.Fatalf("first subscribe: %v", err)
-	}
+	waitStreamErr(t, errCh, codes.Canceled)
 }
 
 func TestPublishDoesNotBlockWhenSendIsSlow(t *testing.T) {
@@ -349,7 +357,7 @@ func TestPublishDoesNotBlockWhenSendIsSlow(t *testing.T) {
 		t.Fatalf("Publish blocked for %s; bus handlers must not Send", elapsed)
 	}
 	cancel()
-	<-errCh
+	waitStreamErr(t, errCh, codes.Canceled)
 }
 
 func TestSubscribeThreadBufconn(t *testing.T) {
@@ -462,7 +470,7 @@ func TestServeNilMatchForwardsAllTopicEvents(t *testing.T) {
 		t.Fatal("timed out waiting for unfiltered tip")
 	}
 	cancel()
-	<-errCh
+	waitStreamErr(t, errCh, codes.Canceled)
 }
 
 func TestServeReturnsSendError(t *testing.T) {
@@ -519,9 +527,7 @@ func TestReleaseStreamKeepsRemainingCount(t *testing.T) {
 	waitSubscribed(t, subscribed)
 
 	firstCancel()
-	if err := <-firstErr; status.Code(err) != codes.Canceled {
-		t.Fatalf("first subscribe: %v", err)
-	}
+	waitStreamErr(t, firstErr, codes.Canceled)
 
 	thirdCtx, thirdCancel := context.WithCancel(identityCtx("user-1"))
 	defer thirdCancel()
@@ -532,12 +538,8 @@ func TestReleaseStreamKeepsRemainingCount(t *testing.T) {
 	waitSubscribed(t, subscribed)
 	thirdCancel()
 	secondCancel()
-	if err := <-thirdErr; status.Code(err) != codes.Canceled {
-		t.Fatalf("third subscribe: %v", err)
-	}
-	if err := <-secondErr; status.Code(err) != codes.Canceled {
-		t.Fatalf("second subscribe: %v", err)
-	}
+	waitStreamErr(t, thirdErr, codes.Canceled)
+	waitStreamErr(t, secondErr, codes.Canceled)
 }
 
 func TestPayloadStringAndEventToTip(t *testing.T) {

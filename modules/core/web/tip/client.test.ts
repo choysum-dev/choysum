@@ -42,6 +42,14 @@ describe('core/web tip TipHub client', () => {
     expect(tips[1]?.userId).toBe('u1');
   });
 
+  it('omits CallOptions when no abort signal is provided', async () => {
+    await onTips(subscribeThread('message.thread', '7'), async () => {});
+    await onTips(subscribeNotifications(), async () => {});
+
+    expect(mocks.subscribeThread).toHaveBeenLastCalledWith({ model: 'message.thread', resId: '7' }, undefined);
+    expect(mocks.subscribeNotifications).toHaveBeenLastCalledWith({}, undefined);
+  });
+
   it('stops onTips when the abort signal is already aborted', async () => {
     const refresh = vi.fn();
     const controller = new AbortController();
@@ -85,6 +93,85 @@ describe('core/web tip TipHub client', () => {
     await done;
 
     expect(returned).toBe(true);
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('cancels cleanup when iterator.return is missing', async () => {
+    const refresh = vi.fn();
+    const controller = new AbortController();
+    controller.abort();
+    const tips: AsyncIterable<{ topic: string }> = {
+      [Symbol.asyncIterator]() {
+        return {
+          next: async () => ({ done: false, value: { topic: 'message.thread.changed' } }),
+        };
+      },
+    };
+
+    await onTips(tips as never, refresh, controller.signal);
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('ignores rejected iterator cleanup on abort', async () => {
+    const refresh = vi.fn();
+    const controller = new AbortController();
+    let settleNext: ((result: IteratorResult<{ topic: string }>) => void) | undefined;
+    const tips: AsyncIterable<{ topic: string }> = {
+      [Symbol.asyncIterator]() {
+        return {
+          next: () =>
+            new Promise((resolve) => {
+              settleNext = resolve;
+            }),
+          return: () => {
+            settleNext?.({ done: true, value: undefined });
+            return Promise.reject(new Error('close failed'));
+          },
+        };
+      },
+    };
+
+    const done = onTips(tips as never, refresh, controller.signal);
+    await Promise.resolve();
+    controller.abort();
+    await done;
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('stops after a received tip when aborted during refresh', async () => {
+    const controller = new AbortController();
+    const refresh = vi.fn(async () => {
+      controller.abort();
+    });
+
+    await onTips(
+      (async function* () {
+        yield { topic: 'message.thread.changed' } as never;
+        yield { topic: 'should-not-refresh' } as never;
+      })(),
+      refresh,
+      controller.signal,
+    );
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips refresh when aborted after a tip arrives', async () => {
+    const refresh = vi.fn();
+    const controller = new AbortController();
+    const tips: AsyncIterable<{ topic: string }> = {
+      [Symbol.asyncIterator]() {
+        return {
+          next: async () => {
+            controller.abort();
+            return { done: false, value: { topic: 'message.thread.changed' } };
+          },
+          return: () => Promise.resolve({ done: true, value: undefined }),
+        };
+      },
+    };
+
+    await onTips(tips as never, refresh, controller.signal);
     expect(refresh).not.toHaveBeenCalled();
   });
 

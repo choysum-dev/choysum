@@ -67,10 +67,11 @@ func TestRegisterTipHubServiceNilReceiver(t *testing.T) {
 
 func TestRegisterTipHubServiceRegistryFailure(t *testing.T) {
 	events := &recordingEventBus{}
+	reg := &trackingRegistry{registerErr: errors.New("register failed")}
 	srv := &GRPCWebServer{
 		runtimeScope: newRichServerTestScope(t),
 		server:       grpc.NewServer(),
-		registry:     &trackingRegistry{registerErr: errors.New("register failed")},
+		registry:     reg,
 	}
 	srv.taskRuntime.events = events
 	srv.registerTipHubService()
@@ -79,12 +80,19 @@ func TestRegisterTipHubServiceRegistryFailure(t *testing.T) {
 	if _, ok := info[tippb.TipHub_ServiceDesc.ServiceName]; !ok {
 		t.Fatalf("registered services = %#v, want %s", info, tippb.TipHub_ServiceDesc.ServiceName)
 	}
+	if len(reg.registerCalls) != 1 || reg.registerCalls[0] != tippb.TipHub_ServiceDesc.ServiceName {
+		t.Fatalf("registry calls = %#v, want [%s]", reg.registerCalls, tippb.TipHub_ServiceDesc.ServiceName)
+	}
 }
 
 func TestRegisterTipHubServiceRegistryFailureWithoutScope(t *testing.T) {
+	reg := &trackingRegistry{registerErr: errors.New("register failed")}
 	srv := &GRPCWebServer{
 		server:   grpc.NewServer(),
-		registry: &trackingRegistry{registerErr: errors.New("register failed")},
+		registry: reg,
 	}
 	srv.registerTipHubService()
+	if len(reg.registerCalls) != 1 || reg.registerCalls[0] != tippb.TipHub_ServiceDesc.ServiceName {
+		t.Fatalf("registry calls = %#v, want [%s]", reg.registerCalls, tippb.TipHub_ServiceDesc.ServiceName)
+	}
 }
