@@ -69,9 +69,11 @@ func UnregisterFactoryForTest(name string) (restore func()) {
 	mu.Unlock()
 	return func() {
 		mu.Lock()
-		if ok {
-			factories[name] = old
+		defer mu.Unlock()
+		if !ok {
+			delete(factories, name)
+			return
 		}
-		mu.Unlock()
+		factories[name] = old
 	}
 }
