@@ -13,6 +13,6 @@ export {
   type MessageTypeLiteral,
   type PostMessageReq,
 } from './message';
-export { default as Follower, __setMessageFollowTargetAuthForTest, type FollowRecordReq, type UnfollowRecordReq } from './follower';
+export { default as Follower, __setMessageFollowTargetAuthForTest, __setMessageFollowDialForTest, type FollowRecordReq, type UnfollowRecordReq } from './follower';
 export { default as Notification, __setNotificationMarkAllReadBatchSizeForTest, type SearchInboxOptions } from './notification';
 export { default as MessageSubtype, MESSAGE_SUBTYPE_DISCUSSIONS } from './message_subtype';

@@ -25,8 +25,10 @@ export type UnfollowRecordReq = {
 };
 
 type TargetRecordAuthFn = (model: string, resId: string) => Promise<void>;
+type FollowDialFn = <T = Record<string, (...args: unknown[]) => unknown>>(fullModelName: string) => T;
 
 let targetRecordAuthOverride: TargetRecordAuthFn | null | undefined;
+let followDialOverride: FollowDialFn | undefined;
 
 /**
  * Test-only override for Follow target-record read checks.
@@ -34,6 +36,13 @@ let targetRecordAuthOverride: TargetRecordAuthFn | null | undefined;
  */
 export function __setMessageFollowTargetAuthForTest(fn: TargetRecordAuthFn | null | undefined): void {
   targetRecordAuthOverride = fn;
+}
+
+/**
+ * Test-only override for the live Follow target dial used when auth override is unset.
+ */
+export function __setMessageFollowDialForTest(fn: FollowDialFn | undefined): void {
+  followDialOverride = fn;
 }
 
 function resolveActorUserId(explicit?: string | null): string | null {
@@ -68,7 +77,8 @@ async function assertTargetRecordReadable(model: string, resId: string): Promise
   }
 
   try {
-    const svc = dial<{ Search?: (condition: unknown, options?: unknown) => Promise<unknown> }>(model);
+    const dialFn = followDialOverride || dial;
+    const svc = dialFn<{ Search?: (condition: unknown, options?: unknown) => Promise<unknown> }>(model);
     if (typeof svc?.Search !== 'function') {
       throw permissionDenied('Follow is not allowed for this record');
     }
