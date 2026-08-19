@@ -126,7 +126,7 @@ export default class Notification extends BaseModel {
   @Field({
     type: 'boolean',
     notNull: true,
-    default: () => false,
+    default: false,
     index: true,
     string: _lt('Read', { scope: 'message.model.Notification.fields' }),
   })

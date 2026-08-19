@@ -770,6 +770,13 @@ test('message.Notification: MarkRead/SearchInbox/FanOut cover remaining branches
         missingIdsErr = e;
       }
       expect((missingIdsErr as any).code).toBe(MessageErrCode.INVALID_ARGUMENT);
+      let nullIdErr: unknown;
+      try {
+        await Notification.MarkRead([null as any, '']);
+      } catch (e) {
+        nullIdErr = e;
+      }
+      expect((nullIdErr as any).code).toBe(MessageErrCode.INVALID_ARGUMENT);
 
       const origMarkSearch = Notification.Search;
       (Notification as any).Search = async () => [{ Id: '', IsRead: false }, { Id: '  ', IsRead: false }];
@@ -853,7 +860,25 @@ test('message.Notification: MarkRead/SearchInbox/FanOut cover remaining branches
           Model: model,
           ResId: resId,
           AuthorUid: AUTHOR_USER_ID,
-          CompanyId: 'cmp_fanout________',
+          CompanyId: 'cmp_empty_uid_____',
+        } as any);
+      } finally {
+        (Follower as any).SearchByRecord = origFollowSearch;
+      }
+
+      (Follower as any).SearchByRecord = async () => [{ UserId: FOLLOWER_USER_ID, SubtypeId: '' }];
+      const companyId = 'cmp_fanout________';
+      const jsCtx = ensureRequestContext();
+      jsCtx.ctx = { ...(jsCtx.ctx || {}), activeCompanyId: companyId, enabledCompanyIds: [companyId] };
+      delete (jsCtx as any)[Symbol.for('choysum.ctx.frozen')];
+      delete (jsCtx as any)[Symbol.for('choysum.ctx.override')];
+      try {
+        await Notification.FanOutForMessage({
+          Id: uid('msg'),
+          Model: model,
+          ResId: resId,
+          AuthorUid: AUTHOR_USER_ID,
+          CompanyId: companyId,
         } as any);
       } finally {
         (Follower as any).SearchByRecord = origFollowSearch;
