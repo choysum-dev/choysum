@@ -83,12 +83,15 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 22
+          package-manager: npm@10.9.4
 
       - name: Install root test toolchain dependencies
         if: ${{ inputs.docs_only != 'true' && steps.nm-cache.outputs.cache-hit != 'true' }}
         run: |
           set -euo pipefail
-          xargs npm install --include=dev --no-package-lock --no-save < "${{ steps.deps.outputs.deps_file }}"
+          python3 scripts/ci/install_root_node_modules_deps.py \
+            --deps-file "${{ steps.deps.outputs.deps_file }}" \
+            --workspace "$PWD"
 
       - name: Pack root node_modules
         if: ${{ inputs.docs_only != 'true' && steps.nm-cache.outputs.cache-hit != 'true' }}
