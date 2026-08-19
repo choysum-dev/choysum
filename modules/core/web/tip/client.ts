@@ -4,9 +4,11 @@
 import { CreateWebClient } from '../rpc/client_factory';
 import { TipHub, type Tip } from './pb/tip_pb';
 
+type TipCallOptions = { signal?: AbortSignal };
+
 type TipHubClient = {
-  subscribeThread(req: { model: string; resId: string }): AsyncIterable<Tip>;
-  subscribeNotifications(req?: object): AsyncIterable<Tip>;
+  subscribeThread(req: { model: string; resId: string }, options?: TipCallOptions): AsyncIterable<Tip>;
+  subscribeNotifications(req?: object, options?: TipCallOptions): AsyncIterable<Tip>;
 };
 
 const tipHubClient = CreateWebClient(TipHub);
@@ -15,12 +17,19 @@ function tipHub(): TipHubClient {
   return tipHubClient() as unknown as TipHubClient;
 }
 
-export function subscribeThread(model: string, resId: string): AsyncIterable<Tip> {
-  return tipHub().subscribeThread({ model, resId });
+function callOptions(signal?: AbortSignal): TipCallOptions | undefined {
+  if (signal == null) {
+    return undefined;
+  }
+  return { signal };
 }
 
-export function subscribeNotifications(): AsyncIterable<Tip> {
-  return tipHub().subscribeNotifications({});
+export function subscribeThread(model: string, resId: string, signal?: AbortSignal): AsyncIterable<Tip> {
+  return tipHub().subscribeThread({ model, resId }, callOptions(signal));
+}
+
+export function subscribeNotifications(signal?: AbortSignal): AsyncIterable<Tip> {
+  return tipHub().subscribeNotifications({}, callOptions(signal));
 }
 
 export async function onTips(
@@ -28,11 +37,33 @@ export async function onTips(
   refresh: (tip: Tip) => void | Promise<void>,
   signal?: AbortSignal,
 ): Promise<void> {
-  for await (const tip of tips) {
+  const iterator = tips[Symbol.asyncIterator]();
+  const cancelIterator = () => {
+    void iterator.return?.();
+  };
+  signal?.addEventListener('abort', cancelIterator, { once: true });
+  try {
+    if (signal?.aborted) {
+      cancelIterator();
+      return;
+    }
+    while (true) {
+      const next = await iterator.next();
+      if (next.done) {
+        return;
+      }
+      if (signal?.aborted) {
+        return;
+      }
+      await refresh(next.value);
+    }
+  } catch (err) {
     if (signal?.aborted) {
       return;
     }
-    await refresh(tip);
+    throw err;
+  } finally {
+    signal?.removeEventListener('abort', cancelIterator);
   }
 }
 

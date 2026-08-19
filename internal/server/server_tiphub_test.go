@@ -4,6 +4,7 @@
 package server
 
 import (
+	"errors"
 	"testing"
 
 	_ "github.com/choysum-dev/choysum/internal/bus/inprocess"
@@ -57,4 +58,33 @@ func TestRegisterTipHubService(t *testing.T) {
 	if srv.taskRuntime.events != events {
 		t.Fatal("registerTipHubService replaced the host event bus")
 	}
+}
+
+func TestRegisterTipHubServiceNilReceiver(t *testing.T) {
+	(*GRPCWebServer)(nil).registerTipHubService()
+	(&GRPCWebServer{}).registerTipHubService()
+}
+
+func TestRegisterTipHubServiceRegistryFailure(t *testing.T) {
+	events := &recordingEventBus{}
+	srv := &GRPCWebServer{
+		runtimeScope: newRichServerTestScope(t),
+		server:       grpc.NewServer(),
+		registry:     &trackingRegistry{registerErr: errors.New("register failed")},
+	}
+	srv.taskRuntime.events = events
+	srv.registerTipHubService()
+
+	info := srv.server.GetServiceInfo()
+	if _, ok := info[tippb.TipHub_ServiceDesc.ServiceName]; !ok {
+		t.Fatalf("registered services = %#v, want %s", info, tippb.TipHub_ServiceDesc.ServiceName)
+	}
+}
+
+func TestRegisterTipHubServiceRegistryFailureWithoutScope(t *testing.T) {
+	srv := &GRPCWebServer{
+		server:   grpc.NewServer(),
+		registry: &trackingRegistry{registerErr: errors.New("register failed")},
+	}
+	srv.registerTipHubService()
 }

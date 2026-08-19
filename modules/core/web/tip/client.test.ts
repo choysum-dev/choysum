@@ -6,30 +6,37 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../rpc/client_factory', () => {
-  const subscribeThread = vi.fn(async function* () {
+const mocks = vi.hoisted(() => ({
+  subscribeThread: vi.fn(async function* () {
     yield { topic: 'message.thread.changed', model: 'message.thread', resId: '42' };
-  });
-  const subscribeNotifications = vi.fn(async function* () {
+  }),
+  subscribeNotifications: vi.fn(async function* () {
     yield { topic: 'message.notification.user', userId: 'u1' };
-  });
-  return {
-    CreateWebClient: () => () => ({ subscribeThread, subscribeNotifications }),
-  };
-});
+  }),
+}));
+
+vi.mock('../rpc/client_factory', () => ({
+  CreateWebClient: () => () => ({
+    subscribeThread: mocks.subscribeThread,
+    subscribeNotifications: mocks.subscribeNotifications,
+  }),
+}));
 
 import { onTips, subscribeNotifications, subscribeThread } from './client';
 
 describe('core/web tip TipHub client', () => {
   it('subscribes through CreateWebClient and yields tips', async () => {
     const tips: Array<{ topic: string; resId?: string; userId?: string }> = [];
-    await onTips(subscribeThread('message.thread', '42'), async (tip) => {
+    const signal = new AbortController().signal;
+    await onTips(subscribeThread('message.thread', '42', signal), async (tip) => {
       tips.push(tip);
     });
-    await onTips(subscribeNotifications(), async (tip) => {
+    await onTips(subscribeNotifications(signal), async (tip) => {
       tips.push(tip);
     });
 
+    expect(mocks.subscribeThread).toHaveBeenCalledWith({ model: 'message.thread', resId: '42' }, { signal });
+    expect(mocks.subscribeNotifications).toHaveBeenCalledWith({}, { signal });
     expect(tips.map((tip) => tip.topic)).toEqual(['message.thread.changed', 'message.notification.user']);
     expect(tips[0]?.resId).toBe('42');
     expect(tips[1]?.userId).toBe('u1');
@@ -49,6 +56,69 @@ describe('core/web tip TipHub client', () => {
     );
 
     expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('cancels an idle iterator when the abort signal fires', async () => {
+    const refresh = vi.fn();
+    const controller = new AbortController();
+    let returned = false;
+    let settleNext: ((result: IteratorResult<{ topic: string }>) => void) | undefined;
+    const tips: AsyncIterable<{ topic: string }> = {
+      [Symbol.asyncIterator]() {
+        return {
+          next: () =>
+            new Promise((resolve) => {
+              settleNext = resolve;
+            }),
+          return: () => {
+            returned = true;
+            settleNext?.({ done: true, value: undefined });
+            return Promise.resolve({ done: true, value: undefined });
+          },
+        };
+      },
+    };
+
+    const done = onTips(tips as never, refresh, controller.signal);
+    await Promise.resolve();
+    controller.abort();
+    await done;
+
+    expect(returned).toBe(true);
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('swallows iterator errors after abort', async () => {
+    const refresh = vi.fn();
+    const controller = new AbortController();
+    const tips: AsyncIterable<{ topic: string }> = {
+      [Symbol.asyncIterator]() {
+        return {
+          next: () =>
+            new Promise((_, reject) => {
+              controller.signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+            }),
+          return: () => Promise.resolve({ done: true, value: undefined }),
+        };
+      },
+    };
+
+    const done = onTips(tips as never, refresh, controller.signal);
+    await Promise.resolve();
+    controller.abort();
+    await done;
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('rethrows iterator failures when not aborted', async () => {
+    await expect(
+      onTips(
+        (async function* () {
+          throw new Error('boom');
+        })(),
+        async () => {},
+      ),
+    ).rejects.toThrow('boom');
   });
 
   it('does not use CreateWebApiService', () => {

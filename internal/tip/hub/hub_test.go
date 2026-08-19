@@ -412,3 +412,146 @@ type ctxServerStream struct {
 }
 
 func (s *ctxServerStream) Context() context.Context { return s.ctx }
+
+func TestSubscribeNotificationsUnauthenticated(t *testing.T) {
+	h := New(inprocess.NewInProcessBus())
+	err := h.SubscribeNotifications(&tippb.SubscribeNotificationsReq{}, &testStream{ctx: context.Background()})
+	if status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("unauthenticated code = %v err=%v", status.Code(err), err)
+	}
+}
+
+func TestNewTreatsNonPositiveCapAsDefault(t *testing.T) {
+	h := New(inprocess.NewInProcessBus(), nil, WithMaxStreamsPerUser(0))
+	if h.maxPerUser != defaultMaxStreamsPerUser {
+		t.Fatalf("maxPerUser = %d, want %d", h.maxPerUser, defaultMaxStreamsPerUser)
+	}
+}
+
+func TestServeNilHubUnavailable(t *testing.T) {
+	err := (*Hub)(nil).serve(&testStream{ctx: identityCtx("u1")}, hubTestIdentity{userID: "u1", valid: true}, bus.TopicMessageThreadChanged, nil)
+	if status.Code(err) != codes.Unavailable {
+		t.Fatalf("nil hub code = %v err=%v", status.Code(err), err)
+	}
+}
+
+func TestServeNilMatchForwardsAllTopicEvents(t *testing.T) {
+	inner := inprocess.NewInProcessBus()
+	subscribed := make(chan struct{}, 1)
+	events := &subscribedBus{inner: inner, subscribed: subscribed}
+	h := New(events)
+
+	ctx, cancel := context.WithCancel(identityCtx("user-1"))
+	defer cancel()
+	stream := &testStream{ctx: ctx, sent: make(chan struct{}, 1)}
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- h.serve(stream, hubTestIdentity{userID: "user-1", valid: true}, bus.TopicMessageThreadChanged, nil)
+	}()
+	waitSubscribed(t, subscribed)
+
+	if err := inner.Publish(context.Background(), bus.Event{
+		Topic:  bus.TopicMessageThreadChanged,
+		Source: "unfiltered",
+	}); err != nil {
+		t.Fatalf("Publish: %v", err)
+	}
+	select {
+	case <-stream.sent:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for unfiltered tip")
+	}
+	cancel()
+	<-errCh
+}
+
+func TestServeReturnsSendError(t *testing.T) {
+	inner := inprocess.NewInProcessBus()
+	subscribed := make(chan struct{}, 1)
+	events := &subscribedBus{inner: inner, subscribed: subscribed}
+	h := New(events)
+
+	stream := &testStream{ctx: identityCtx("user-1"), sendErr: errors.New("send failed")}
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- h.SubscribeThread(&tippb.SubscribeThreadReq{Model: "message.thread", ResId: "1"}, stream)
+	}()
+	waitSubscribed(t, subscribed)
+
+	if err := inner.Publish(context.Background(), bus.Event{
+		Topic: bus.TopicMessageThreadChanged,
+		Payload: map[string]any{
+			"model": "message.thread",
+			"resId": "1",
+		},
+	}); err != nil {
+		t.Fatalf("Publish: %v", err)
+	}
+	select {
+	case err := <-errCh:
+		if err == nil || err.Error() != "send failed" {
+			t.Fatalf("Send error = %v, want send failed", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for Send error")
+	}
+}
+
+func TestReleaseStreamKeepsRemainingCount(t *testing.T) {
+	inner := inprocess.NewInProcessBus()
+	subscribed := make(chan struct{}, 3)
+	events := &subscribedBus{inner: inner, subscribed: subscribed}
+	h := New(events, WithMaxStreamsPerUser(2))
+
+	firstCtx, firstCancel := context.WithCancel(identityCtx("user-1"))
+	defer firstCancel()
+	secondCtx, secondCancel := context.WithCancel(identityCtx("user-1"))
+	defer secondCancel()
+	firstErr := make(chan error, 1)
+	secondErr := make(chan error, 1)
+	go func() {
+		firstErr <- h.SubscribeThread(&tippb.SubscribeThreadReq{Model: "message.thread", ResId: "1"}, &testStream{ctx: firstCtx})
+	}()
+	waitSubscribed(t, subscribed)
+	go func() {
+		secondErr <- h.SubscribeThread(&tippb.SubscribeThreadReq{Model: "message.thread", ResId: "2"}, &testStream{ctx: secondCtx})
+	}()
+	waitSubscribed(t, subscribed)
+
+	firstCancel()
+	if err := <-firstErr; status.Code(err) != codes.Canceled {
+		t.Fatalf("first subscribe: %v", err)
+	}
+
+	thirdCtx, thirdCancel := context.WithCancel(identityCtx("user-1"))
+	defer thirdCancel()
+	thirdErr := make(chan error, 1)
+	go func() {
+		thirdErr <- h.SubscribeThread(&tippb.SubscribeThreadReq{Model: "message.thread", ResId: "3"}, &testStream{ctx: thirdCtx})
+	}()
+	waitSubscribed(t, subscribed)
+	thirdCancel()
+	secondCancel()
+	if err := <-thirdErr; status.Code(err) != codes.Canceled {
+		t.Fatalf("third subscribe: %v", err)
+	}
+	if err := <-secondErr; status.Code(err) != codes.Canceled {
+		t.Fatalf("second subscribe: %v", err)
+	}
+}
+
+func TestPayloadStringAndEventToTip(t *testing.T) {
+	empty := eventToTip(bus.Event{})
+	if empty.GetModel() != "" || empty.GetAtUnixMs() != 0 {
+		t.Fatalf("empty event tip = %#v", empty)
+	}
+	if payloadString(bus.Event{Payload: map[string]any{}}, payloadKeyModel) != "" {
+		t.Fatal("missing payload key should be empty")
+	}
+	if payloadString(bus.Event{Payload: map[string]any{payloadKeyModel: nil}}, payloadKeyModel) != "" {
+		t.Fatal("nil payload value should be empty")
+	}
+	if payloadString(bus.Event{Payload: map[string]any{payloadKeyModel: 42}}, payloadKeyModel) != "" {
+		t.Fatal("non-string payload value should be empty")
+	}
+}
