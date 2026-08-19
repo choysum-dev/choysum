@@ -3,10 +3,6 @@ name: Build Choysum CLI
 on:
   workflow_call:
     inputs:
-      run_ref:
-        description: "Branch, tag, or SHA to checkout"
-        required: true
-        type: string
       embedded_assets_artifact_name:
         description: "Embedded assets artifact name to download"
         required: true
@@ -40,7 +36,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.run_ref }}
+          persist-credentials: false
 
       - name: Download and extract embedded assets
         uses: ./.github/actions/download-extract-embedded-assets

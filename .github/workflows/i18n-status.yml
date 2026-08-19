@@ -35,7 +35,6 @@ jobs:
     name: i18n / prepare-embedded-assets
     uses: ./.github/workflows/prepare-embedded-assets.yml
     with:
-      run_ref: ${{ github.ref }}
       artifact_name: i18n-embedded-assets
       archive_path: .choysum/tmp/i18n-embedded-assets.tar.gz
       retention_days: 1

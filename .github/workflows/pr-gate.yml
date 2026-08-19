@@ -8,17 +8,12 @@ on:
     types:
       - checks_requested
   workflow_dispatch:
-    inputs:
-      ref:
-        description: Branch, tag, or SHA to run PR Gate against
-        required: false
-        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: pr-gate-${{ inputs.ref || github.event.pull_request.number || github.ref }}
+  group: pr-gate-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -41,7 +36,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref || github.ref }}
           fetch-depth: 0
 
       - name: Discover PR impact
@@ -60,7 +54,6 @@ jobs:
       - discover-impact
     uses: ./.github/workflows/prepare-embedded-assets.yml
     with:
-      run_ref: ${{ inputs.ref || github.ref }}
       artifact_name: pr-embedded-assets
       archive_path: .choysum/tmp/pr-embedded-assets.tar.gz
       retention_days: 1
@@ -72,7 +65,6 @@ jobs:
       - discover-impact
     uses: ./.github/workflows/prepare-root-node-modules.yml
     with:
-      run_ref: ${{ inputs.ref || github.ref }}
       artifact_name: pr-root-node-modules
       archive_path: .choysum/tmp/pr-root-node-modules.tar.gz
       retention_days: 1
@@ -87,7 +79,6 @@ jobs:
       - prepare-root-node-modules
     uses: ./.github/workflows/prepare-playwright-cache.yml
     with:
-      run_ref: ${{ inputs.ref || github.ref }}
       artifact_name: pr-root-node-modules
 
   build-choysum-cli:
@@ -102,7 +93,6 @@ jobs:
       - prepare-embedded-assets
     uses: ./.github/workflows/build-choysum-cli.yml
     with:
-      run_ref: ${{ inputs.ref || github.ref }}
       embedded_assets_artifact_name: pr-embedded-assets
       embedded_assets_archive_path: .choysum/tmp/pr-embedded-assets.tar.gz
       choysum_artifact_name: pr-choysum-cli
@@ -132,7 +122,7 @@ jobs:
         if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
 
       - name: Download and extract embedded assets
         if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
@@ -202,7 +192,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
 
       - name: Download and extract embedded assets
         uses: ./.github/actions/download-extract-embedded-assets
@@ -285,7 +275,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
 
       - name: Download and extract embedded assets
         uses: ./.github/actions/download-extract-embedded-assets
@@ -444,7 +434,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
 
       - name: Download and extract embedded assets
         uses: ./.github/actions/download-extract-embedded-assets
@@ -503,7 +493,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
 
       - name: Download and extract embedded assets
         uses: ./.github/actions/download-extract-embedded-assets
@@ -582,5 +572,4 @@ jobs:
       - discover-impact
     uses: ./.github/workflows/bootstrap-verify.yml
     with:
-      run_ref: ${{ inputs.ref || github.ref }}
       run_bootstrap_verify: ${{ needs.discover-impact.outputs.run_bootstrap_verify }}

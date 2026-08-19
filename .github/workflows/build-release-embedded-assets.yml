@@ -5,17 +5,12 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
-    inputs:
-      ref:
-        description: Branch, tag, or SHA to build embedded assets from
-        required: false
-        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-embedded-assets-${{ inputs.ref || github.ref || github.run_id }}
+  group: release-embedded-assets-${{ github.ref || github.run_id }}
   cancel-in-progress: false
 
 jobs:
@@ -26,8 +21,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref || github.ref }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Go
         uses: actions/setup-go@v7

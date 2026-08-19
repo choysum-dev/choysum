@@ -162,22 +162,22 @@ msgctxt "web/components/field/ODecimalField"
 msgid "Total digits must not exceed %s"
 msgstr ""
 
-#: web/components/field/OFieldBase.vue:171
+#: web/components/field/OFieldBase.vue:173
 msgctxt "web/components/field/OFieldBase"
 msgid "Company values"
 msgstr ""
 
-#: web/components/field/OFieldBase.vue:171
+#: web/components/field/OFieldBase.vue:173
 msgctxt "web/components/field/OFieldBase"
 msgid "Company values: %s"
 msgstr ""
 
-#: web/components/field/OFieldBase.vue:164
+#: web/components/field/OFieldBase.vue:166
 msgctxt "web/components/field/OFieldBase"
 msgid "Translate field"
 msgstr ""
 
-#: web/components/field/OFieldBase.vue:164
+#: web/components/field/OFieldBase.vue:166
 msgctxt "web/components/field/OFieldBase"
 msgid "Translate: %s"
 msgstr ""
@@ -708,6 +708,67 @@ msgctxt "web/components/field/OOneToManyKanbanField"
 msgid "View record"
 msgstr ""
 
+#: web/components/field/OPropertiesDefinitionEditor.vue:8
+msgctxt "web/components/field/OPropertiesDefinitionEditor"
+msgid "Add property"
+msgstr ""
+
+#: web/components/field/OPropertiesDefinitionEditor.vue:28
+msgctxt "web/components/field/OPropertiesDefinitionEditor"
+msgid "Default"
+msgstr ""
+
+#: web/components/field/OPropertiesDefinitionEditor.vue:27
+msgctxt "web/components/field/OPropertiesDefinitionEditor"
+msgid "Label"
+msgstr ""
+
+#: web/components/field/OPropertiesDefinitionEditor.vue:23
+msgctxt "web/components/field/OPropertiesDefinitionEditor"
+msgid "Name"
+msgstr ""
+
+#: web/components/field/OPropertiesDefinitionEditor.vue:19
+msgctxt "web/components/field/OPropertiesDefinitionEditor"
+msgid "No properties defined"
+msgstr ""
+
+#: web/components/field/OPropertiesDefinitionEditor.vue:133
+#: web/components/field/OPropertiesDefinitionEditor.vue:82
+msgctxt "web/components/field/OPropertiesDefinitionEditor"
+msgid "PropertyDefinition store is unavailable"
+msgstr ""
+
+#: web/components/field/OPropertiesDefinitionEditor.vue:32
+msgctxt "web/components/field/OPropertiesDefinitionEditor"
+msgid "Remove"
+msgstr ""
+
+#: web/components/field/OPropertiesDefinitionEditor.vue:5
+msgctxt "web/components/field/OPropertiesDefinitionEditor"
+msgid "Save"
+msgstr ""
+
+#: web/components/field/OPropertiesDefinitionEditor.vue:30
+msgctxt "web/components/field/OPropertiesDefinitionEditor"
+msgid "Selection JSON"
+msgstr ""
+
+#: web/components/field/OPropertiesField.vue:152
+msgctxt "web/components/field/OPropertiesField"
+msgid "%s properties"
+msgstr ""
+
+#: web/components/field/OPropertiesField.vue:142
+msgctxt "web/components/field/OPropertiesField"
+msgid "No"
+msgstr ""
+
+#: web/components/field/OPropertiesField.vue:142
+msgctxt "web/components/field/OPropertiesField"
+msgid "Yes"
+msgstr ""
+
 #: web/components/field/OSelectionField.vue:334
 msgctxt "web/components/field/OSelectionField"
 msgid "Invalid option value: %s"
@@ -858,7 +919,7 @@ msgctxt "web/components/view/OChartView"
 msgid "Ascending"
 msgstr ""
 
-#: web/components/view/OChartView.vue:597
+#: web/components/view/OChartView.vue:601
 msgctxt "web/components/view/OChartView"
 msgid "Chart refresh failed"
 msgstr ""
@@ -1020,12 +1081,12 @@ msgctxt "web/components/view/OFormView"
 msgid "Saving..."
 msgstr ""
 
-#: web/components/view/OKanbanView.vue:131
+#: web/components/view/OKanbanView.vue:136
 msgctxt "web/components/view/OKanbanView"
 msgid "All"
 msgstr ""
 
-#: web/components/view/OKanbanView.vue:297
+#: web/components/view/OKanbanView.vue:302
 msgctxt "web/components/view/OKanbanView"
 msgid "Kanban refresh failed"
 msgstr ""
@@ -1035,7 +1096,7 @@ msgctxt "web/components/view/OKanbanView"
 msgid "Load more (%s remaining)"
 msgstr ""
 
-#: web/components/view/OKanbanView.vue:252
+#: web/components/view/OKanbanView.vue:257
 msgctxt "web/components/view/OKanbanView"
 msgid "Move failed; refreshed to recover"
 msgstr ""
@@ -1060,12 +1121,12 @@ msgctxt "web/components/view/OKanbanView"
 msgid "Refresh"
 msgstr ""
 
-#: web/components/view/OListView.vue:557
+#: web/components/view/OListView.vue:562
 msgctxt "web/components/view/OListView"
 msgid "Are you sure you want to delete the selected %s record(s)? This action cannot be undone."
 msgstr ""
 
-#: web/components/view/OListView.vue:559
+#: web/components/view/OListView.vue:564
 msgctxt "web/components/view/OListView"
 msgid "Cancel"
 msgstr ""
@@ -1075,12 +1136,12 @@ msgctxt "web/components/view/OListView"
 msgid "Click to load more (%s remaining)"
 msgstr ""
 
-#: web/components/view/OListView.vue:557
+#: web/components/view/OListView.vue:562
 msgctxt "web/components/view/OListView"
 msgid "Confirm delete"
 msgstr ""
 
-#: web/components/view/OListView.vue:558
+#: web/components/view/OListView.vue:563
 msgctxt "web/components/view/OListView"
 msgid "Delete"
 msgstr ""
@@ -1090,7 +1151,7 @@ msgctxt "web/components/view/OListView"
 msgid "Delete (%s)"
 msgstr ""
 
-#: web/components/view/OListView.vue:592
+#: web/components/view/OListView.vue:597
 msgctxt "web/components/view/OListView"
 msgid "Delete failed"
 msgstr ""
@@ -1100,32 +1161,32 @@ msgctxt "web/components/view/OListView"
 msgid "Discard"
 msgstr ""
 
-#: web/components/view/OListView.vue:194
+#: web/components/view/OListView.vue:199
 msgctxt "web/components/view/OListView"
 msgid "Editing was discarded because the row is no longer visible."
 msgstr ""
 
-#: web/components/view/OListView.vue:455
+#: web/components/view/OListView.vue:460
 msgctxt "web/components/view/OListView"
 msgid "Failed to load list"
 msgstr ""
 
-#: web/components/view/OListView.vue:263
+#: web/components/view/OListView.vue:268
 msgctxt "web/components/view/OListView"
 msgid "Failed to refresh after reorder"
 msgstr ""
 
-#: web/components/view/OListView.vue:538
+#: web/components/view/OListView.vue:543
 msgctxt "web/components/view/OListView"
 msgid "Failed to refresh list"
 msgstr ""
 
-#: web/components/view/OListView.vue:263
+#: web/components/view/OListView.vue:268
 msgctxt "web/components/view/OListView"
 msgid "Failed to reorder rows"
 msgstr ""
 
-#: web/components/view/OListView.vue:530
+#: web/components/view/OListView.vue:535
 msgctxt "web/components/view/OListView"
 msgid "List data refreshed"
 msgstr ""
@@ -1150,12 +1211,12 @@ msgctxt "web/components/view/OListView"
 msgid "Save"
 msgstr ""
 
-#: web/components/view/OListView.vue:578
+#: web/components/view/OListView.vue:583
 msgctxt "web/components/view/OListView"
 msgid "Selected records are missing valid IDs"
 msgstr ""
 
-#: web/components/view/OListView.vue:583
+#: web/components/view/OListView.vue:588
 msgctxt "web/components/view/OListView"
 msgid "Successfully deleted %s record(s)"
 msgstr ""

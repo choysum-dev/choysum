@@ -4,17 +4,12 @@ on:
   schedule:
     - cron: '17 2 * * *'
   workflow_dispatch:
-    inputs:
-      ref:
-        description: Branch, tag, or SHA to run Nightly Audit against
-        required: false
-        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: nightly-audit-${{ inputs.ref || github.ref }}
+  group: nightly-audit-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -22,7 +17,6 @@ jobs:
     name: nightly / prepare-embedded-assets
     uses: ./.github/workflows/prepare-embedded-assets.yml
     with:
-      run_ref: ${{ inputs.ref || github.ref }}
       artifact_name: nightly-embedded-assets
       archive_path: .choysum/tmp/nightly-embedded-assets.tar.gz
       retention_days: 1
@@ -33,7 +27,6 @@ jobs:
       - discover-modules
     uses: ./.github/workflows/prepare-root-node-modules.yml
     with:
-      run_ref: ${{ inputs.ref || github.ref }}
       artifact_name: nightly-root-node-modules
       archive_path: .choysum/tmp/nightly-root-node-modules.tar.gz
       retention_days: 1
@@ -47,7 +40,6 @@ jobs:
       - prepare-root-node-modules
     uses: ./.github/workflows/prepare-playwright-cache.yml
     with:
-      run_ref: ${{ inputs.ref || github.ref }}
       artifact_name: nightly-root-node-modules
 
   discover-modules:
@@ -60,7 +52,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
 
       - name: Discover runnable E2E modules
         id: discover
@@ -74,7 +66,6 @@ jobs:
       - prepare-embedded-assets
     uses: ./.github/workflows/build-choysum-cli.yml
     with:
-      run_ref: ${{ inputs.ref || github.ref }}
       embedded_assets_artifact_name: nightly-embedded-assets
       embedded_assets_archive_path: .choysum/tmp/nightly-embedded-assets.tar.gz
       choysum_artifact_name: nightly-choysum-cli
@@ -100,7 +91,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
 
       - name: Download and extract embedded assets
         uses: ./.github/actions/download-extract-embedded-assets
@@ -163,5 +154,3 @@ jobs:
   bootstrap-verify:
     name: nightly / bootstrap-verify
     uses: ./.github/workflows/bootstrap-verify.yml
-    with:
-      run_ref: ${{ inputs.ref || github.ref }}
