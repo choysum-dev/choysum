@@ -582,7 +582,7 @@ msgctxt "auth.model.UserRole.fields"
 msgid "User"
 msgstr ""
 
-#: service/models/_user_field_rule_eval.ts:111
+#: service/models/_user_field_rule_eval.ts:126
 msgctxt "service/models/_user_field_rule_eval"
 msgid "Model does not exist"
 msgstr ""
@@ -835,13 +835,13 @@ msgctxt "web/components/layout/OSwitchCompany"
 msgid "Available Companies"
 msgstr ""
 
-#: web/components/layout/OSwitchCompany.vue:278
+#: web/components/layout/OSwitchCompany.vue:282
 msgctxt "web/components/layout/OSwitchCompany"
 msgid "Available companies must include the current company"
 msgstr ""
 
-#: web/components/layout/OSwitchCompany.vue:243
-#: web/components/layout/OSwitchCompany.vue:248
+#: web/components/layout/OSwitchCompany.vue:247
+#: web/components/layout/OSwitchCompany.vue:252
 msgctxt "web/components/layout/OSwitchCompany"
 msgid "Company"
 msgstr ""
@@ -851,17 +851,17 @@ msgctxt "web/components/layout/OSwitchCompany"
 msgid "Current Company"
 msgstr ""
 
-#: web/components/layout/OSwitchCompany.vue:283
+#: web/components/layout/OSwitchCompany.vue:287
 msgctxt "web/components/layout/OSwitchCompany"
 msgid "No changes to apply"
 msgstr ""
 
-#: web/components/layout/OSwitchCompany.vue:281
+#: web/components/layout/OSwitchCompany.vue:285
 msgctxt "web/components/layout/OSwitchCompany"
 msgid "Only one company is available; nothing to apply"
 msgstr ""
 
-#: web/components/layout/OSwitchCompany.vue:276
+#: web/components/layout/OSwitchCompany.vue:280
 msgctxt "web/components/layout/OSwitchCompany"
 msgid "Select a current company"
 msgstr ""

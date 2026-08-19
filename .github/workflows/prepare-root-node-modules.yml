@@ -83,7 +83,13 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 22
-          package-manager: npm@10.9.4
+
+      - name: Pin npm for root node_modules install
+        if: ${{ inputs.docs_only != 'true' && steps.nm-cache.outputs.cache-hit != 'true' }}
+        run: |
+          set -euo pipefail
+          npm install -g npm@10.9.4
+          npm --version
 
       - name: Install root test toolchain dependencies
         if: ${{ inputs.docs_only != 'true' && steps.nm-cache.outputs.cache-hit != 'true' }}
