@@ -7,7 +7,10 @@ import Message, {
   __setMessagePublishTipForTest,
 } from '../models/message';
 import Follower, { __setMessageFollowTargetAuthForTest, __setMessageFollowDialForTest } from '../models/follower';
-import Notification, { __setNotificationMarkAllReadBatchSizeForTest } from '../models/notification';
+import Notification, {
+  __setNotificationMarkAllReadBatchSizeForTest,
+  __setNotificationMarkAllReadMaxIterationsForTest,
+} from '../models/notification';
 import MessageSubtype, { MESSAGE_SUBTYPE_DISCUSSIONS } from '../models/message_subtype';
 import { MessageErrCode, isMessageError } from '../error';
 
@@ -98,6 +101,7 @@ async function withMessageScope<T>(userId: string, fn: () => Promise<T>): Promis
     __setMessageFollowTargetAuthForTest(undefined);
     __setMessageFollowDialForTest(undefined);
     __setNotificationMarkAllReadBatchSizeForTest(undefined);
+    __setNotificationMarkAllReadMaxIterationsForTest(undefined);
   }
 }
 
@@ -140,6 +144,8 @@ test('message.Follower: Follow is idempotent and Unfollow removes the row', asyn
     const again = await Follower.Follow({ Model: model, ResId: resId, SubtypeId: subtypeId }, ['Id', 'SubtypeId']);
     expect(String((again as any).Id)).toBe(String((first as any).Id));
     expect(String((again as any).SubtypeId)).toBe(subtypeId);
+    const star = await Follower.Follow({ Model: model, ResId: resId, SubtypeId: subtypeId }, ['*']);
+    expect(String((star as any).Id)).toBe(String((first as any).Id));
   });
 });
 
@@ -588,6 +594,16 @@ test('message.Follower: Follow recovers unique conflicts and skips blank Unfollo
     }
     expect((blankIdErr as any).code).toBe(MessageErrCode.INVALID_ARGUMENT);
 
+    (Follower as any).Search = async () => [
+      { Id: String((created as any).Id), SubtypeId: '', CompanyId: '  ', DeletedAt: null },
+    ];
+    try {
+      const blankSubtype = await Follower.Follow({ Model: model, ResId: resId });
+      expect(String((blankSubtype as any).Id)).toBe(String((created as any).Id));
+    } finally {
+      (Follower as any).Search = origSearch;
+    }
+
     const origUnfollowSearch = Follower.Search;
     (Follower as any).Search = async () => [{ Id: '  ' }, { Id: '' }];
     try {
@@ -753,9 +769,18 @@ test('message.Notification: MarkRead/SearchInbox/FanOut cover remaining branches
 
       __setNotificationMarkAllReadBatchSizeForTest(0);
       expect(await Notification.MarkAllRead()).toBeGreaterThanOrEqual(0);
+      __setNotificationMarkAllReadBatchSizeForTest(-1);
+      expect(await Notification.MarkAllRead()).toBeGreaterThanOrEqual(0);
 
       const origSearch = Notification.Search;
       (Notification as any).Search = async () => [{ Id: '' }, { Id: '   ' }];
+      try {
+        expect(await Notification.MarkAllRead()).toBe(0);
+      } finally {
+        (Notification as any).Search = origSearch;
+      }
+
+      (Notification as any).Search = async () => [{ Id: '' }];
       try {
         expect(await Notification.MarkAllRead()).toBe(0);
       } finally {
@@ -770,6 +795,27 @@ test('message.Notification: MarkRead/SearchInbox/FanOut cover remaining branches
       } finally {
         (Notification as any).Search = origSearch;
         (Notification as any).UpdateById = origUpdate;
+      }
+
+      let searchSeq = 0;
+      (Notification as any).Search = async () => [{ Id: `n_cap_${searchSeq++}_________`.slice(0, 20) }];
+      (Notification as any).UpdateById = async (id: string) => ({ Id: id, IsRead: true });
+      __setNotificationMarkAllReadMaxIterationsForTest(1);
+      try {
+        expect(await Notification.MarkAllRead()).toBe(1);
+      } finally {
+        (Notification as any).Search = origSearch;
+        (Notification as any).UpdateById = origUpdate;
+        __setNotificationMarkAllReadMaxIterationsForTest(undefined);
+      }
+
+      __setNotificationMarkAllReadMaxIterationsForTest(0);
+      (Notification as any).Search = async () => [{ Id: 'n_never_read_________' }];
+      try {
+        expect(await Notification.MarkAllRead()).toBe(0);
+      } finally {
+        (Notification as any).Search = origSearch;
+        __setNotificationMarkAllReadMaxIterationsForTest(-1);
       }
     });
 

@@ -20,12 +20,20 @@ export type SearchInboxOptions = {
 };
 
 let markAllReadBatchSize = 500;
+let markAllReadMaxIterations = 1000;
 
 /**
  * Test-only override for MarkAllRead Search batch size.
  */
 export function __setNotificationMarkAllReadBatchSizeForTest(size: number | undefined): void {
   markAllReadBatchSize = size && size > 0 ? size : 500;
+}
+
+/**
+ * Test-only override for MarkAllRead loop cap. 0 runs no batches (hits the cap return).
+ */
+export function __setNotificationMarkAllReadMaxIterationsForTest(size: number | undefined): void {
+  markAllReadMaxIterations = size == null || size < 0 ? 1000 : size;
 }
 
 async function resolveDiscussionsSubtypeId(): Promise<string | null> {
@@ -189,8 +197,7 @@ export default class Notification extends BaseModel {
     const userId = resolveInboxUserId();
     let updated = 0;
     let previousKey = '';
-    const maxIterations = 1000;
-    for (let iteration = 0; iteration < maxIterations; iteration += 1) {
+    for (let iteration = 0; iteration < markAllReadMaxIterations; iteration += 1) {
       const rows = await this.Search(
         {
           And: [
