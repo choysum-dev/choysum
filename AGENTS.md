@@ -69,7 +69,9 @@ PATH. Populate it (matches CI) and prepend its bin dir:
 mkdir -p .choysum/tmp
 python3 scripts/ci/compute_root_node_modules_deps.py --modules-path modules \
   --target-modules-json '[]' --output .choysum/tmp/root-node-modules-deps.txt
-xargs npm install --include=dev --no-package-lock --no-save < .choysum/tmp/root-node-modules-deps.txt
+python3 scripts/ci/install_root_node_modules_deps.py \
+  --deps-file .choysum/tmp/root-node-modules-deps.txt \
+  --workspace "$PWD"
 export PATH="$PWD/node_modules/.bin:$PATH"
 ```
 

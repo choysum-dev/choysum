@@ -13,11 +13,6 @@ on:
         required: false
         default: ""
         type: string
-      target_ref:
-        description: "Branch, tag, or SHA to run against"
-        required: false
-        default: ""
-        type: string
   push:
     branches:
       - main
@@ -30,7 +25,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: modules-publish-${{ inputs.target_ref || github.ref }}
+  group: modules-publish-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -39,19 +34,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
-      run_ref: ${{ steps.resolve-ref.outputs.run_ref }}
       dry_run: ${{ steps.resolve-flags.outputs.dry_run }}
     steps:
-      - name: Resolve run ref
-        id: resolve-ref
-        run: |
-          set -euo pipefail
-          if [[ -n "${{ inputs.target_ref }}" ]]; then
-            echo "run_ref=${{ inputs.target_ref }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "run_ref=${{ github.ref }}" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Resolve dry_run flag
         id: resolve-flags
         run: |
@@ -80,7 +64,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ steps.resolve-ref.outputs.run_ref }}
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Validate module metadata schema baseline
@@ -102,7 +86,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ needs.preflight.outputs.run_ref }}
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Discover target modules
@@ -112,7 +96,7 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           EVENT_BEFORE: ${{ github.event.before }}
           EVENT_SHA: ${{ github.sha }}
-          RUN_REF: ${{ needs.preflight.outputs.run_ref }}
+          RUN_REF: ${{ github.ref }}
         run: |
           set -euo pipefail
           python3 scripts/ci/modules_publish_preflight.py discover-target-modules
@@ -137,7 +121,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ needs.preflight.outputs.run_ref }}
+          persist-credentials: false
 
       - name: Verify module metadata consistency
         env:
@@ -155,7 +139,6 @@ jobs:
     if: ${{ needs.discover-module-updates.outputs.has_modules == 'true' }}
     uses: ./.github/workflows/modules-publish-shard.yml
     with:
-      run_ref: ${{ needs.preflight.outputs.run_ref }}
       dry_run: ${{ needs.preflight.outputs.dry_run }}
       modules_json: ${{ needs.discover-module-updates.outputs.modules_json }}
     secrets:
@@ -171,7 +154,6 @@ jobs:
     if: ${{ always() && needs.discover-module-updates.outputs.has_modules == 'true' }}
     uses: ./.github/workflows/modules-publish-aggregate.yml
     with:
-      run_ref: ${{ needs.preflight.outputs.run_ref }}
       expected_modules_json: ${{ needs.discover-module-updates.outputs.modules_json }}
 
   sync-catalog-directory-pr:
@@ -182,10 +164,9 @@ jobs:
     if: ${{ always() && needs.publish-npm-registry.result == 'success' }}
     uses: ./.github/workflows/modules-publish-sync.yml
     with:
-      run_ref: ${{ needs.preflight.outputs.run_ref }}
       dry_run: ${{ needs.preflight.outputs.dry_run }}
       source_run_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-      source_run_ref: ${{ needs.preflight.outputs.run_ref }}
+      source_run_ref: ${{ github.ref }}
       source_sha: ${{ github.sha }}
     secrets:
       MODULES_DIRECTORY_SYNC_TOKEN: ${{ secrets.MODULES_DIRECTORY_SYNC_TOKEN }}

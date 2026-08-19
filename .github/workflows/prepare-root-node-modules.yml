@@ -3,10 +3,6 @@ name: Prepare Root Node Modules
 on:
   workflow_call:
     inputs:
-      run_ref:
-        description: "Branch, tag, or SHA to checkout"
-        required: true
-        type: string
       artifact_name:
         description: "Artifact name to upload"
         required: true
@@ -47,7 +43,7 @@ jobs:
         if: ${{ inputs.docs_only != 'true' }}
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.run_ref }}
+          persist-credentials: false
 
       - name: Compute root node_modules dependencies
         id: deps
@@ -80,7 +76,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ inputs.archive_path }}
-          key: ${{ runner.os }}-root-nm-v2-node22-${{ steps.deps.outputs.deps_hash }}
+          key: ${{ runner.os }}-root-nm-v3-node22-npm10.9.4-${{ steps.deps.outputs.deps_hash }}
 
       - name: Setup Node
         if: ${{ inputs.docs_only != 'true' && steps.nm-cache.outputs.cache-hit != 'true' }}
@@ -88,11 +84,20 @@ jobs:
         with:
           node-version: 22
 
+      - name: Pin npm for root node_modules install
+        if: ${{ inputs.docs_only != 'true' && steps.nm-cache.outputs.cache-hit != 'true' }}
+        run: |
+          set -euo pipefail
+          npm install -g npm@10.9.4
+          npm --version
+
       - name: Install root test toolchain dependencies
         if: ${{ inputs.docs_only != 'true' && steps.nm-cache.outputs.cache-hit != 'true' }}
         run: |
           set -euo pipefail
-          xargs npm install --include=dev --no-package-lock --no-save < "${{ steps.deps.outputs.deps_file }}"
+          python3 scripts/ci/install_root_node_modules_deps.py \
+            --deps-file "${{ steps.deps.outputs.deps_file }}" \
+            --workspace "$PWD"
 
       - name: Pack root node_modules
         if: ${{ inputs.docs_only != 'true' && steps.nm-cache.outputs.cache-hit != 'true' }}

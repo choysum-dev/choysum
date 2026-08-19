@@ -3,10 +3,6 @@ name: Modules Publish / Sync
 on:
   workflow_call:
     inputs:
-      run_ref:
-        description: "Branch, tag, or SHA to checkout"
-        required: true
-        type: string
       dry_run:
         description: "Run publish flow without pushing npm packages"
         required: true
@@ -39,7 +35,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.run_ref }}
+          persist-credentials: false
 
       - name: Download published modules artifact
         uses: actions/download-artifact@v8

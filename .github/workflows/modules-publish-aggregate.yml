@@ -3,10 +3,6 @@ name: Modules Publish / Aggregate
 on:
   workflow_call:
     inputs:
-      run_ref:
-        description: "Branch, tag, or SHA to checkout"
-        required: true
-        type: string
       expected_modules_json:
         description: "JSON array of expected modules"
         required: true
@@ -24,7 +20,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.run_ref }}
+          persist-credentials: false
 
       - name: Download shard publish artifacts
         if: ${{ always() }}
