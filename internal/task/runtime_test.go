@@ -67,6 +67,9 @@ func (stubGarbageCollector) Start() {}
 func (stubGarbageCollector) Stop()  {}
 
 func TestNewDispatcherWithRuntimeUsesInjectedComponents(t *testing.T) {
+	bus.ClearHostForTest()
+	t.Cleanup(bus.ClearHostForTest)
+
 	runtimeScope := &testScope{
 		ctx:    context.Background(),
 		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
@@ -86,9 +89,15 @@ func TestNewDispatcherWithRuntimeUsesInjectedComponents(t *testing.T) {
 	if dispatcher.events != events {
 		t.Fatal("expected injected event bus")
 	}
+	if bus.Host() != events {
+		t.Fatal("expected injected event bus to bind pkg/bus host")
+	}
 }
 
 func TestNewSchedulerWithRuntimeUsesInjectedComponents(t *testing.T) {
+	bus.ClearHostForTest()
+	t.Cleanup(bus.ClearHostForTest)
+
 	runtimeScope := &testScope{
 		ctx:    context.Background(),
 		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
@@ -112,6 +121,9 @@ func TestNewSchedulerWithRuntimeUsesInjectedComponents(t *testing.T) {
 	}
 	if scheduler.events != events {
 		t.Fatal("expected injected event bus")
+	}
+	if bus.Host() != events {
+		t.Fatal("expected injected event bus to bind pkg/bus host")
 	}
 }
 
