@@ -9,28 +9,15 @@ import type { QueryCondition, SearchOptions } from '@/core/service/api/query';
 import { dial } from '@/core/service/orm/model/model_pool';
 import { MessageErrCode, newMessageError, wrapMessageError } from '../error';
 import { _lt } from '../i18n';
+import { publishThreadChangedTip } from '../tips';
+import Notification from './notification';
 
-/** V1 Message.Type values. `email` / `note` are placeholders. */
-export const MESSAGE_TYPES = ['comment', 'email', 'note'] as const;
-export type MessageTypeLiteral = (typeof MESSAGE_TYPES)[number];
-
-/** Owner field name used when Post binds an attachment via document.AttachmentBinding. */
-export const MESSAGE_ATTACHMENT_FIELD = 'Attachment';
-
-/** Frozen tip topic for Form / Chatter thread refresh (matches pkg/bus). */
-export const TOPIC_MESSAGE_THREAD_CHANGED = 'message.thread.changed';
-
-/** Tip source stamped on Message.Post publishes. */
-export const MESSAGE_POST_TIP_SOURCE = 'message.Post';
-
-type PublishTipFn = (event: {
-  topic: string;
-  source: string;
-  at?: number;
-  payload?: Record<string, string>;
-}) => void | Promise<void>;
-
-let publishTipOverride: PublishTipFn | null | undefined;
+export {
+  TOPIC_MESSAGE_THREAD_CHANGED,
+  TOPIC_MESSAGE_NOTIFICATION_USER,
+  MESSAGE_POST_TIP_SOURCE,
+  __setMessagePublishTipForTest,
+} from '../tips';
 
 /**
  * Post payload for Message (Unary Post API).
@@ -66,13 +53,12 @@ let bindAttachmentOverride: BindAttachmentFn | null | undefined;
 let dialOverride: DialFn | undefined;
 let xidNewOverride: XidNewFn | undefined;
 
-/**
- * Test-only override for tip Publish.
- * undefined = live $choysum.bus.publish; null = force missing bus; function = stub.
- */
-export function __setMessagePublishTipForTest(fn: PublishTipFn | null | undefined): void {
-  publishTipOverride = fn;
-}
+/** V1 Message.Type values. `email` / `note` are placeholders. */
+export const MESSAGE_TYPES = ['comment', 'email', 'note'] as const;
+export type MessageTypeLiteral = (typeof MESSAGE_TYPES)[number];
+
+/** Owner field name used when Post binds an attachment via document.AttachmentBinding. */
+export const MESSAGE_ATTACHMENT_FIELD = 'Attachment';
 
 /**
  * Test-only override for document AttachmentBinding.Bind.
@@ -178,44 +164,6 @@ function resolveBind(): BindAttachmentFn | null {
   }
 }
 
-function resolvePublishTip(): PublishTipFn | null {
-  if (publishTipOverride !== undefined) return publishTipOverride;
-  const publish = (globalThis as { $choysum?: { bus?: { publish?: PublishTipFn } } }).$choysum?.bus?.publish;
-  return typeof publish === 'function' ? publish.bind((globalThis as any).$choysum.bus) : null;
-}
-
-/**
- * Best-effort thread tip after a successful write. Never throws; tip is not authoritative.
- */
-async function publishThreadChangedTip(created: Message): Promise<void> {
-  const publish = resolvePublishTip();
-  if (!publish) return;
-  const messageId = String((created as Message).Id || '').trim();
-  const model = String((created as Message).Model || '').trim();
-  const resId = String((created as Message).ResId || '').trim();
-  if (!messageId || !model || !resId) return;
-  const createdAt = (created as Message & { CreatedAt?: Date | string | number | null }).CreatedAt;
-  let at: number | undefined;
-  if (createdAt instanceof Date && !Number.isNaN(createdAt.getTime())) {
-    at = createdAt.getTime();
-  } else if (typeof createdAt === 'number' && Number.isFinite(createdAt)) {
-    at = createdAt;
-  } else if (typeof createdAt === 'string' && createdAt.trim()) {
-    const parsed = Date.parse(createdAt);
-    if (!Number.isNaN(parsed)) at = parsed;
-  }
-  try {
-    await publish({
-      topic: TOPIC_MESSAGE_THREAD_CHANGED,
-      source: MESSAGE_POST_TIP_SOURCE,
-      ...(at != null ? { at } : {}),
-      payload: { model, resId, messageId },
-    });
-  } catch {
-    // Tip is best-effort; authoritative state remains the Message row.
-  }
-}
-
 const DEFAULT_POST_FIELDS = [
   'Id',
   'Type',
@@ -309,7 +257,7 @@ export default class Message extends BaseModel {
   /**
    * Creates one collaboration Message (Unary). Stamps AuthorUid from request identity.
    * Optional AttachmentObjectId dials document.AttachmentBinding.Bind after create.
-   * On success, best-effort Publishes `message.thread.changed` (tip failure never rolls back).
+   * On success, fans out follower Notifications and best-effort Publishes thread/inbox tips.
    */
   public static async Post(req: PostMessageReq, fields?: FieldSelection<Message>): Promise<Message> {
     if (!req || typeof req !== 'object') {
@@ -386,6 +334,7 @@ export default class Message extends BaseModel {
       }
     }
 
+    await Notification.FanOutForMessage(created as Message);
     await publishThreadChangedTip(created as Message);
     return created;
   }
