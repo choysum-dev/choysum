@@ -76,7 +76,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ inputs.archive_path }}
-          key: ${{ runner.os }}-root-nm-v2-node22-${{ steps.deps.outputs.deps_hash }}
+          key: ${{ runner.os }}-root-nm-v3-node22-${{ steps.deps.outputs.deps_hash }}
 
       - name: Setup Node
         if: ${{ inputs.docs_only != 'true' && steps.nm-cache.outputs.cache-hit != 'true' }}
