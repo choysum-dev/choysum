@@ -33,16 +33,35 @@ func (s *taskRuntimeState) shouldStart(dialer grpcclient.ServiceDialer, servesTa
 	return !s.started() && dialer != nil && servesTaskRuntime
 }
 
+func (s *taskRuntimeState) ensureEvents(runtimeScope scope.Scope) bus.EventBus {
+	if s.events != nil {
+		return s.events
+	}
+	runtime := taskcontract.ResolveHostRuntime(s.hostRuntimeProvider, runtimeScope)
+	s.applyEvents(runtimeScope, &runtime)
+	return s.events
+}
+
+func (s *taskRuntimeState) applyEvents(runtimeScope scope.Scope, runtime *taskcontract.Runtime) {
+	if s.events != nil {
+		runtime.Events = s.events
+		return
+	}
+	if runtime.Events != nil {
+		s.events = runtime.Events
+		return
+	}
+	s.events = bus.NewBus(runtimeScope)
+	runtime.Events = s.events
+}
+
 func (s *taskRuntimeState) start(runtimeScope scope.Scope, dialer grpcclient.ServiceDialer) taskRuntimeStartResult {
 	if s.started() {
 		return taskRuntimeStartResult{}
 	}
 
 	runtime := taskcontract.ResolveHostRuntime(s.hostRuntimeProvider, runtimeScope)
-	if runtime.Events == nil {
-		runtime.Events = bus.NewBus(runtimeScope)
-	}
-	s.events = runtime.Events
+	s.applyEvents(runtimeScope, &runtime)
 	result := taskRuntimeStartResult{}
 
 	dispatcher := task.NewDispatcherWithRuntime(runtimeScope, dialer, runtime)
