@@ -121,6 +121,25 @@ test('message.Follower: Follow is idempotent and Unfollow removes the row', asyn
     const restored = await Follower.Follow({ Model: model, ResId: resId });
     expect(String((restored as any).Id)).toBe(String((first as any).Id));
     expect(await Follower.SearchByRecord(model, resId, ['Id'])).toHaveLength(1);
+
+    const other = await MessageSubtype.Create(
+      {
+        InternalName: `follow_${uid('st')}`,
+        Name: 'Follow subtype',
+        Description: null,
+      } as any,
+      ['Id'] as any
+    );
+    const subtypeId = String((other as any).Id);
+    const retargeted = await Follower.Follow({ Model: model, ResId: resId, SubtypeId: subtypeId }, [
+      'Id',
+      'SubtypeId',
+    ]);
+    expect(String((retargeted as any).Id)).toBe(String((first as any).Id));
+    expect(String((retargeted as any).SubtypeId)).toBe(subtypeId);
+    const again = await Follower.Follow({ Model: model, ResId: resId, SubtypeId: subtypeId }, ['Id', 'SubtypeId']);
+    expect(String((again as any).Id)).toBe(String((first as any).Id));
+    expect(String((again as any).SubtypeId)).toBe(subtypeId);
   });
 });
 
@@ -541,6 +560,34 @@ test('message.Follower: Follow recovers unique conflicts and skips blank Unfollo
     }
     expect(String(missingRaceErr || '')).toMatch(/UNIQUE constraint failed/);
 
+    searchCalls = 0;
+    (Follower as any).Search = async function (this: any, ...args: any[]) {
+      searchCalls += 1;
+      if (searchCalls === 1) return [];
+      return origSearch.apply(this, args);
+    };
+    (Follower as any).Create = async () => {
+      throw new Error("Duplicate entry 'x' for key 'uidx_message_follower_record_user'");
+    };
+    try {
+      const mysqlRaced = await Follower.Follow({ Model: model, ResId: resId });
+      expect(String((mysqlRaced as any).Id)).toBe(String((created as any).Id));
+    } finally {
+      (Follower as any).Search = origSearch;
+      (Follower as any).Create = origCreate;
+    }
+
+    (Follower as any).Search = async () => [{ Id: '', DeletedAt: new Date() }];
+    let blankIdErr: unknown;
+    try {
+      await Follower.Follow({ Model: model, ResId: uid('resBlank') }, ['UserId']);
+    } catch (e) {
+      blankIdErr = e;
+    } finally {
+      (Follower as any).Search = origSearch;
+    }
+    expect((blankIdErr as any).code).toBe(MessageErrCode.INVALID_ARGUMENT);
+
     const origUnfollowSearch = Follower.Search;
     (Follower as any).Search = async () => [{ Id: '  ' }, { Id: '' }];
     try {
@@ -558,6 +605,79 @@ test('message.Follower: Follow recovers unique conflicts and skips blank Unfollo
     } finally {
       (Follower as any).Search = origUnfollowSearch;
     }
+
+    (Follower as any).Search = async () => [{ Id: String((created as any).Id), DeletedAt: '' }];
+    try {
+      const emptyDeleted = await Follower.Follow({ Model: model, ResId: resId });
+      expect(String((emptyDeleted as any).Id)).toBe(String((created as any).Id));
+    } finally {
+      (Follower as any).Search = origUnfollowSearch;
+    }
+
+    (Follower as any).Search = async () => [{ Id: String((created as any).Id), DeletedAt: Date.now() }];
+    try {
+      const numericDeleted = await Follower.Follow({ Model: model, ResId: resId });
+      expect(String((numericDeleted as any).Id)).toBe(String((created as any).Id));
+    } finally {
+      (Follower as any).Search = origUnfollowSearch;
+    }
+
+    searchCalls = 0;
+    (Follower as any).Search = async () => {
+      searchCalls += 1;
+      if (searchCalls === 1) return [];
+      return [{ Id: String((created as any).Id), DeletedAt: new Date() }];
+    };
+    (Follower as any).Create = async () => {
+      throw { message: 'duplicate key' };
+    };
+    try {
+      const racedDeleted = await Follower.Follow({ Model: model, ResId: resId });
+      expect(String((racedDeleted as any).Id)).toBe(String((created as any).Id));
+    } finally {
+      (Follower as any).Search = origSearch;
+      (Follower as any).Create = origCreate;
+    }
+
+    (Follower as any).Search = async () => [];
+    (Follower as any).Create = async () => {
+      throw { code: 'x' };
+    };
+    let objectNoMessageErr: unknown;
+    try {
+      await Follower.Follow({ Model: model, ResId: uid('res4') });
+    } catch (e) {
+      objectNoMessageErr = e;
+    } finally {
+      (Follower as any).Search = origSearch;
+      (Follower as any).Create = origCreate;
+    }
+    expect((objectNoMessageErr as any).code).toBe('x');
+
+    (Follower as any).Search = async () => [];
+    (Follower as any).Create = async () => {
+      throw null;
+    };
+    let nullUniqueErr: unknown;
+    try {
+      await Follower.Follow({ Model: model, ResId: uid('res5') });
+    } catch (e) {
+      nullUniqueErr = e;
+    } finally {
+      (Follower as any).Search = origSearch;
+      (Follower as any).Create = origCreate;
+    }
+    expect(nullUniqueErr).toBeNull();
+
+    __setMessageFollowTargetAuthForTest(undefined);
+    __setMessageFollowDialForTest(() => null as any);
+    let nullDialErr: unknown;
+    try {
+      await Follower.Follow({ Model: 'partner.Partner', ResId: uid('res6') });
+    } catch (e) {
+      nullDialErr = e;
+    }
+    expect((nullDialErr as any).code).toBe(MessageErrCode.PERMISSION_DENIED);
   });
 });
 
@@ -566,6 +686,7 @@ test('message.Notification: MarkRead/SearchInbox/FanOut cover remaining branches
   try {
     await Notification.FanOutForMessage({});
     await Notification.FanOutForMessage({ Id: 'm1', Model: '', ResId: 'r1' } as any);
+    await Notification.FanOutForMessage({ Id: 'm1', Model: 'partner.Partner', ResId: '' } as any);
 
     const model = 'partner.Partner';
     const resId = uid('res');
@@ -590,6 +711,8 @@ test('message.Notification: MarkRead/SearchInbox/FanOut cover remaining branches
       expect(limited).toHaveLength(1);
       const unlimitedZero = await Notification.SearchInbox({ limit: 0 });
       expect(unlimitedZero.length).toBeGreaterThanOrEqual(2);
+      const unreadFalse = await Notification.SearchInbox({ unreadOnly: false });
+      expect(unreadFalse.length).toBeGreaterThanOrEqual(2);
       const all = await Notification.SearchInbox();
       expect(all.length).toBeGreaterThanOrEqual(2);
 
@@ -608,6 +731,21 @@ test('message.Notification: MarkRead/SearchInbox/FanOut cover remaining branches
       }
       expect((blankMarkErr as any).code).toBe(MessageErrCode.INVALID_ARGUMENT);
       expect(await Notification.MarkRead(['no_such_notification_'])).toBe(0);
+      let missingIdsErr: unknown;
+      try {
+        await Notification.MarkRead(undefined as any);
+      } catch (e) {
+        missingIdsErr = e;
+      }
+      expect((missingIdsErr as any).code).toBe(MessageErrCode.INVALID_ARGUMENT);
+
+      const origMarkSearch = Notification.Search;
+      (Notification as any).Search = async () => [{ Id: '', IsRead: false }, { Id: '  ', IsRead: false }];
+      try {
+        expect(await Notification.MarkRead(['x'])).toBe(0);
+      } finally {
+        (Notification as any).Search = origMarkSearch;
+      }
 
       const firstId = String(all[0].Id);
       expect(await Notification.MarkRead([firstId])).toBe(1);
@@ -623,6 +761,16 @@ test('message.Notification: MarkRead/SearchInbox/FanOut cover remaining branches
       } finally {
         (Notification as any).Search = origSearch;
       }
+
+      const origUpdate = Notification.UpdateById;
+      (Notification as any).Search = async () => [{ Id: 'n_stuck_unread______' }];
+      (Notification as any).UpdateById = async () => ({ Id: 'n_stuck_unread______', IsRead: true });
+      try {
+        expect(await Notification.MarkAllRead()).toBe(1);
+      } finally {
+        (Notification as any).Search = origSearch;
+        (Notification as any).UpdateById = origUpdate;
+      }
     });
 
     await withMessageScope(AUTHOR_USER_ID, async () => {
@@ -634,6 +782,50 @@ test('message.Notification: MarkRead/SearchInbox/FanOut cover remaining branches
         AuthorUid: '   ',
         CompanyId: '',
       } as any);
+
+      const origFollowSearch = Follower.SearchByRecord;
+      (Follower as any).SearchByRecord = async () => [{ UserId: '' }, { UserId: '  ', SubtypeId: 'x' }];
+      try {
+        await Notification.FanOutForMessage({
+          Id: uid('msg'),
+          Model: model,
+          ResId: resId,
+          AuthorUid: AUTHOR_USER_ID,
+          CompanyId: 'cmp_fanout________',
+        } as any);
+      } finally {
+        (Follower as any).SearchByRecord = origFollowSearch;
+      }
+
+      const origSubtypeSearch = MessageSubtype.Search;
+      (MessageSubtype as any).Search = async () => [];
+      (Follower as any).SearchByRecord = async () => [{ UserId: FOLLOWER_USER_ID, SubtypeId: 'st_missing_________' }];
+      try {
+        await Notification.FanOutForMessage({
+          Id: uid('msg'),
+          Model: model,
+          ResId: resId,
+          AuthorUid: AUTHOR_USER_ID,
+          CompanyId: null,
+        } as any);
+      } finally {
+        (Follower as any).SearchByRecord = origFollowSearch;
+        (MessageSubtype as any).Search = origSubtypeSearch;
+      }
+
+      (MessageSubtype as any).Search = async () => [{ Id: '   ' }];
+      (Follower as any).SearchByRecord = async () => [{ UserId: FOLLOWER_USER_ID, SubtypeId: 'st_blankid_________' }];
+      try {
+        await Notification.FanOutForMessage({
+          Id: uid('msg'),
+          Model: model,
+          ResId: resId,
+          AuthorUid: AUTHOR_USER_ID,
+        } as any);
+      } finally {
+        (Follower as any).SearchByRecord = origFollowSearch;
+        (MessageSubtype as any).Search = origSubtypeSearch;
+      }
     });
   } finally {
     __setMessagePublishTipForTest(undefined);

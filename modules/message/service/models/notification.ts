@@ -188,7 +188,9 @@ export default class Notification extends BaseModel {
   public static async MarkAllRead(): Promise<number> {
     const userId = resolveInboxUserId();
     let updated = 0;
-    for (;;) {
+    let previousKey = '';
+    const maxIterations = 1000;
+    for (let iteration = 0; iteration < maxIterations; iteration += 1) {
       const rows = await this.Search(
         {
           And: [
@@ -199,6 +201,9 @@ export default class Notification extends BaseModel {
         { fields: ['Id'], limit: markAllReadBatchSize }
       );
       if (rows.length === 0) return updated;
+      const key = rows.map(row => String((row as Notification).Id || '').trim()).join('\0');
+      if (key === previousKey) return updated;
+      previousKey = key;
       let batchUpdated = 0;
       for (const row of rows) {
         const id = String((row as Notification).Id || '').trim();
@@ -209,6 +214,7 @@ export default class Notification extends BaseModel {
       }
       if (batchUpdated === 0) return updated;
     }
+    return updated;
   }
 
   /**

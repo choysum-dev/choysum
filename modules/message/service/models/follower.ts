@@ -60,7 +60,7 @@ function isUniqueConstraintError(err: unknown): boolean {
       : typeof err === 'object' && err !== null && 'message' in err
         ? String((err as { message: unknown }).message)
         : String(err);
-  return /unique constraint|unique index|duplicate key|UNIQUE constraint failed/i.test(msg);
+  return /unique constraint|unique index|duplicate key|duplicate entry|UNIQUE constraint failed/i.test(msg);
 }
 
 function permissionDenied(message: string) {
@@ -98,12 +98,31 @@ function followReturnFields(fields?: FieldSelection<Follower>): FieldSelection<F
   return fields ?? DEFAULT_FOLLOW_FIELDS;
 }
 
+function withFollowLookupFields(fields: FieldSelection<Follower>): FieldSelection<Follower> {
+  const next = [...(fields as string[])];
+  for (const extra of ['Id', 'SubtypeId', 'CompanyId', 'DeletedAt']) {
+    if (!next.includes('*') && !next.includes(extra)) next.push(extra);
+  }
+  return next as FieldSelection<Follower>;
+}
+
+function stripDeletedAt(row: Follower): Follower {
+  const { DeletedAt: _deletedAt, ...next } = row as Follower & { DeletedAt?: unknown };
+  void _deletedAt;
+  return next as Follower;
+}
+
+function nullableId(value: unknown): string | null {
+  if (value == null || value === '') return null;
+  const normalized = String(value).trim();
+  return normalized ? normalized : null;
+}
+
 async function findFollowRow(
   model: string,
   resId: string,
   userId: string,
-  fields: FieldSelection<Follower>,
-  withDeleted = false
+  fields: FieldSelection<Follower>
 ): Promise<Follower | null> {
   const rows = await Follower.Search(
     {
@@ -113,7 +132,7 @@ async function findFollowRow(
         ['UserId', '=', userId],
       ],
     },
-    { fields: withDeleted ? [...fields, 'DeletedAt'] : fields, limit: 1, ...(withDeleted ? { withDeleted: true } : {}) }
+    { fields: withFollowLookupFields(fields), limit: 1, withDeleted: true }
   );
   return rows.length > 0 ? (rows[0] as Follower) : null;
 }
@@ -125,20 +144,26 @@ function isDeletedFollower(row: Follower): boolean {
   return true;
 }
 
-async function restoreFollowRow(
+async function syncFollowRow(
   row: Follower,
   subtypeId: string | null,
   companyId: string | null,
-  fields: FieldSelection<Follower>
+  fields: FieldSelection<Follower>,
+  restoreDeleted: boolean
 ): Promise<Follower> {
   const id = String(row.Id || '').trim();
-  const restored = await Follower.UpdateById(
-    id,
-    { DeletedAt: null, SubtypeId: subtypeId, CompanyId: companyId } as any,
-    fields,
-    { withDeleted: true }
-  );
-  return restored as Follower;
+  if (!id) {
+    throw newMessageError({ code: MessageErrCode.INVALID_ARGUMENT, message: 'Follow requires a follower id' });
+  }
+  const currentSubtype = nullableId((row as Follower).SubtypeId);
+  const currentCompany = nullableId((row as Follower).CompanyId);
+  if (!restoreDeleted && currentSubtype === subtypeId && currentCompany === companyId) {
+    return stripDeletedAt(row);
+  }
+  const values: Record<string, unknown> = { SubtypeId: subtypeId, CompanyId: companyId };
+  if (restoreDeleted) values.DeletedAt = null;
+  const updated = await Follower.UpdateById(id, values as any, fields, restoreDeleted ? { withDeleted: true } : undefined);
+  return stripDeletedAt(updated as Follower);
 }
 
 /**
@@ -224,12 +249,9 @@ export default class Follower extends BaseModel {
     const subtypeId = req.SubtypeId == null || req.SubtypeId === '' ? null : String(req.SubtypeId);
     const companyId = req.CompanyId == null || req.CompanyId === '' ? null : String(req.CompanyId);
 
-    const existing = await findFollowRow(model, resId, userId, returnFields, true);
+    const existing = await findFollowRow(model, resId, userId, returnFields);
     if (existing) {
-      if (isDeletedFollower(existing)) {
-        return await restoreFollowRow(existing, subtypeId, companyId, returnFields);
-      }
-      return existing;
+      return await syncFollowRow(existing, subtypeId, companyId, returnFields, isDeletedFollower(existing));
     }
 
     try {
@@ -245,12 +267,9 @@ export default class Follower extends BaseModel {
       );
     } catch (err) {
       if (!isUniqueConstraintError(err)) throw err;
-      const raced = await findFollowRow(model, resId, userId, returnFields, true);
+      const raced = await findFollowRow(model, resId, userId, returnFields);
       if (!raced) throw err;
-      if (isDeletedFollower(raced)) {
-        return await restoreFollowRow(raced, subtypeId, companyId, returnFields);
-      }
-      return raced;
+      return await syncFollowRow(raced, subtypeId, companyId, returnFields, isDeletedFollower(raced));
     }
   }
 

@@ -46,124 +46,133 @@ test('message.tips: resolvePublishTip uses live bus, override, and missing publi
 });
 
 test('message.tips: publishThreadChangedTip covers skip, timestamps, and best-effort catch', async () => {
-  __setMessagePublishTipForTest(null);
-  await publishThreadChangedTip({ Id: 'm1', Model: 'partner.Partner', ResId: 'r1' });
+  try {
+    __setMessagePublishTipForTest(null);
+    await publishThreadChangedTip({ Id: 'm1', Model: 'partner.Partner', ResId: 'r1' });
 
-  const published: any[] = [];
-  __setMessagePublishTipForTest(event => {
-    published.push(event);
-  });
-  await publishThreadChangedTip({ Id: '', Model: 'partner.Partner', ResId: 'r1' });
-  await publishThreadChangedTip({ Id: 'm1', Model: '', ResId: 'r1' });
-  await publishThreadChangedTip({ Id: 'm1', Model: 'partner.Partner', ResId: '' });
-  expect(published).toHaveLength(0);
+    const published: any[] = [];
+    __setMessagePublishTipForTest(event => {
+      published.push(event);
+    });
+    await publishThreadChangedTip({ Id: '', Model: 'partner.Partner', ResId: 'r1' });
+    await publishThreadChangedTip({ Id: 'm1', Model: '', ResId: 'r1' });
+    await publishThreadChangedTip({ Id: 'm1', Model: 'partner.Partner', ResId: '' });
+    expect(published).toHaveLength(0);
 
-  const ts = Date.UTC(2024, 0, 2, 3, 4, 5);
-  await publishThreadChangedTip({
-    Id: 'm1',
-    Model: 'partner.Partner',
-    ResId: 'r1',
-    CreatedAt: new Date(ts),
-  });
-  expect(published[0].topic).toBe(TOPIC_MESSAGE_THREAD_CHANGED);
-  expect(published[0].source).toBe(MESSAGE_POST_TIP_SOURCE);
-  expect(published[0].at).toBe(ts);
+    const ts = Date.UTC(2024, 0, 2, 3, 4, 5);
+    await publishThreadChangedTip({
+      Id: 'm1',
+      Model: 'partner.Partner',
+      ResId: 'r1',
+      CreatedAt: new Date(ts),
+    });
+    expect(published[0].topic).toBe(TOPIC_MESSAGE_THREAD_CHANGED);
+    expect(published[0].source).toBe(MESSAGE_POST_TIP_SOURCE);
+    expect(published[0].at).toBe(ts);
 
-  published.length = 0;
-  await publishThreadChangedTip({
-    Id: 'm1',
-    Model: 'partner.Partner',
-    ResId: 'r1',
-    CreatedAt: ts + 1,
-  });
-  expect(published[0].at).toBe(ts + 1);
+    published.length = 0;
+    await publishThreadChangedTip({
+      Id: 'm1',
+      Model: 'partner.Partner',
+      ResId: 'r1',
+      CreatedAt: ts + 1,
+    });
+    expect(published[0].at).toBe(ts + 1);
 
-  published.length = 0;
-  await publishThreadChangedTip({
-    Id: 'm1',
-    Model: 'partner.Partner',
-    ResId: 'r1',
-    CreatedAt: new Date(ts + 2).toISOString(),
-  });
-  expect(published[0].at).toBe(ts + 2);
+    published.length = 0;
+    await publishThreadChangedTip({
+      Id: 'm1',
+      Model: 'partner.Partner',
+      ResId: 'r1',
+      CreatedAt: new Date(ts + 2).toISOString(),
+    });
+    expect(published[0].at).toBe(ts + 2);
 
-  published.length = 0;
-  await publishThreadChangedTip({
-    Id: 'm1',
-    Model: 'partner.Partner',
-    ResId: 'r1',
-    CreatedAt: new Date('not-a-date'),
-  });
-  expect(published[0].at).toBeUndefined();
+    published.length = 0;
+    await publishThreadChangedTip({
+      Id: 'm1',
+      Model: 'partner.Partner',
+      ResId: 'r1',
+      CreatedAt: new Date('not-a-date'),
+    });
+    expect(published[0].at).toBeUndefined();
 
-  published.length = 0;
-  await publishThreadChangedTip({
-    Id: 'm1',
-    Model: 'partner.Partner',
-    ResId: 'r1',
-    CreatedAt: Number.NaN,
-  });
-  expect(published[0].at).toBeUndefined();
+    published.length = 0;
+    await publishThreadChangedTip({
+      Id: 'm1',
+      Model: 'partner.Partner',
+      ResId: 'r1',
+      CreatedAt: Number.NaN,
+    });
+    expect(published[0].at).toBeUndefined();
 
-  published.length = 0;
-  await publishThreadChangedTip({
-    Id: 'm1',
-    Model: 'partner.Partner',
-    ResId: 'r1',
-    CreatedAt: '   ',
-  });
-  expect(published[0].at).toBeUndefined();
+    published.length = 0;
+    await publishThreadChangedTip({
+      Id: 'm1',
+      Model: 'partner.Partner',
+      ResId: 'r1',
+      CreatedAt: '   ',
+    });
+    expect(published[0].at).toBeUndefined();
 
-  published.length = 0;
-  await publishThreadChangedTip({
-    Id: 'm1',
-    Model: 'partner.Partner',
-    ResId: 'r1',
-    CreatedAt: 'not-parseable',
-  });
-  expect(published[0].at).toBeUndefined();
+    published.length = 0;
+    await publishThreadChangedTip({
+      Id: 'm1',
+      Model: 'partner.Partner',
+      ResId: 'r1',
+      CreatedAt: 'not-parseable',
+    });
+    expect(published[0].at).toBeUndefined();
 
-  __setMessagePublishTipForTest(() => {
-    throw new Error('bus down');
-  });
-  await publishThreadChangedTip({ Id: 'm1', Model: 'partner.Partner', ResId: 'r1' });
-  __setMessagePublishTipForTest(undefined);
+    __setMessagePublishTipForTest(() => {
+      throw new Error('bus down');
+    });
+    await publishThreadChangedTip({ Id: 'm1', Model: 'partner.Partner', ResId: 'r1' });
+  } finally {
+    __setMessagePublishTipForTest(undefined);
+  }
 });
 
 test('message.tips: publishNotificationUserTip skips and swallows errors', async () => {
-  __setMessagePublishTipForTest(null);
-  await publishNotificationUserTip('usr_a');
+  try {
+    __setMessagePublishTipForTest(null);
+    await publishNotificationUserTip('usr_a');
 
-  const published: any[] = [];
-  __setMessagePublishTipForTest(event => {
-    published.push(event);
-  });
-  await publishNotificationUserTip('   ');
-  await publishNotificationUserTip('');
-  expect(published).toHaveLength(0);
+    const published: any[] = [];
+    __setMessagePublishTipForTest(event => {
+      published.push(event);
+    });
+    await publishNotificationUserTip('   ');
+    await publishNotificationUserTip('');
+    expect(published).toHaveLength(0);
 
-  const ts = Date.UTC(2025, 5, 1);
-  await publishNotificationUserTip('usr_a', ts);
-  expect(published[0].topic).toBe(TOPIC_MESSAGE_NOTIFICATION_USER);
-  expect(published[0].source).toBe(MESSAGE_NOTIFICATION_TIP_SOURCE);
-  expect(published[0].payload.userId).toBe('usr_a');
-  expect(published[0].at).toBe(ts);
+    const ts = Date.UTC(2025, 5, 1);
+    await publishNotificationUserTip('usr_a', ts);
+    expect(published[0].topic).toBe(TOPIC_MESSAGE_NOTIFICATION_USER);
+    expect(published[0].source).toBe(MESSAGE_NOTIFICATION_TIP_SOURCE);
+    expect(published[0].payload.userId).toBe('usr_a');
+    expect(published[0].at).toBe(ts);
 
-  __setMessagePublishTipForTest(() => {
-    throw 'bus string boom';
-  });
-  await publishNotificationUserTip('usr_a', new Date(ts));
-  __setMessagePublishTipForTest(undefined);
+    __setMessagePublishTipForTest(() => {
+      throw 'bus string boom';
+    });
+    await publishNotificationUserTip('usr_a', new Date(ts));
+  } finally {
+    __setMessagePublishTipForTest(undefined);
+  }
 });
 
 test('message.tips: publishNotificationUserTips dedupes blank and duplicate user ids', async () => {
-  const published: any[] = [];
-  __setMessagePublishTipForTest(event => {
-    published.push(event);
-  });
-  await publishNotificationUserTips(['usr_a', '', '  ', 'usr_a', 'usr_b'], '2024-01-15T00:00:00.000Z');
-  expect(published).toHaveLength(2);
-  expect(published.map(item => item.payload.userId).sort()).toEqual(['usr_a', 'usr_b']);
-  expect(typeof published[0].at).toBe('number');
-  __setMessagePublishTipForTest(undefined);
+  try {
+    const published: any[] = [];
+    __setMessagePublishTipForTest(event => {
+      published.push(event);
+    });
+    await publishNotificationUserTips(['usr_a', '', '  ', 'usr_a', 'usr_b'], '2024-01-15T00:00:00.000Z');
+    expect(published).toHaveLength(2);
+    expect(published.map(item => item.payload.userId).sort()).toEqual(['usr_a', 'usr_b']);
+    expect(typeof published[0].at).toBe('number');
+  } finally {
+    __setMessagePublishTipForTest(undefined);
+  }
 });
