@@ -4,8 +4,11 @@
 import Message, {
   assertMessageType,
   MESSAGE_ATTACHMENT_FIELD,
+  MESSAGE_POST_TIP_SOURCE,
+  TOPIC_MESSAGE_THREAD_CHANGED,
   __setMessageAttachmentBindForTest,
   __setMessageDialForTest,
+  __setMessagePublishTipForTest,
   __setMessageXidNewForTest,
 } from '../models/message';
 import { MessageErrCode, isMessageError } from '../error';
@@ -66,6 +69,7 @@ function resetRequestContext(): void {
 function resetMessageTestSeams(): void {
   __setMessageAttachmentBindForTest(undefined);
   __setMessageDialForTest(undefined);
+  __setMessagePublishTipForTest(undefined);
   __setMessageXidNewForTest(undefined);
 }
 
@@ -538,5 +542,325 @@ test('message.Message: Post normalizes blank AuthorUid and empty CompanyId', asy
     });
     expect((blankAuthor as any).AuthorUid == null || (blankAuthor as any).AuthorUid === '').toBe(true);
     expect((blankAuthor as any).CompanyId == null || (blankAuthor as any).CompanyId === '').toBe(true);
+  });
+});
+
+test('message.Message: Post publishes message.thread.changed tip after create', async () => {
+  await withMessageScope(async () => {
+    const published: any[] = [];
+    __setMessagePublishTipForTest(event => {
+      published.push(event);
+    });
+
+    const model = 'partner.Partner';
+    const resId = uid('res');
+    const created = await Message.Post({
+      Model: model,
+      ResId: resId,
+      Body: 'tip me',
+    });
+
+    expect(published).toHaveLength(1);
+    expect(published[0].topic).toBe(TOPIC_MESSAGE_THREAD_CHANGED);
+    expect(published[0].source).toBe(MESSAGE_POST_TIP_SOURCE);
+    expect(published[0].payload).toEqual({
+      model,
+      resId,
+      messageId: String((created as any).Id),
+    });
+    expect(String(published[0].payload.body || '')).toBe('');
+  });
+});
+
+test('message.Message: Post tip keeps CreatedAt when return fields omit it', async () => {
+  await withMessageScope(async () => {
+    const published: any[] = [];
+    __setMessagePublishTipForTest(event => {
+      published.push(event);
+    });
+
+    const created = await Message.Post(
+      {
+        Model: 'partner.Partner',
+        ResId: uid('res'),
+        Body: 'narrow fields',
+      },
+      ['Id', 'Body']
+    );
+
+    expect(published).toHaveLength(1);
+    expect(typeof published[0].at).toBe('number');
+    expect(Number.isFinite(published[0].at)).toBe(true);
+    expect(published[0].payload.messageId).toBe(String((created as any).Id));
+    expect(published[0].payload.model).toBe('partner.Partner');
+  });
+});
+
+test('message.Message: Post succeeds when tip Publish fails or bus is missing', async () => {
+  await withMessageScope(async () => {
+    __setMessagePublishTipForTest(() => {
+      throw new Error('bus down');
+    });
+    const created = await Message.Post({
+      Model: 'partner.Partner',
+      ResId: uid('res'),
+      Body: 'still saved',
+    });
+    expect(String((created as any).Id || '')).not.toBe('');
+    expect((created as any).Body).toBe('still saved');
+
+    __setMessagePublishTipForTest(null);
+    const withoutBus = await Message.Post({
+      Model: 'partner.Partner',
+      ResId: uid('res'),
+      Body: 'no bus',
+    });
+    expect(String((withoutBus as any).Id || '')).not.toBe('');
+  });
+});
+
+test('message.Message: Post does not publish tip when attachment bind fails', async () => {
+  await withMessageScope(async () => {
+    const published: any[] = [];
+    __setMessagePublishTipForTest(event => {
+      published.push(event);
+    });
+    __setMessageAttachmentBindForTest(async () => {
+      throw new Error('bind failed');
+    });
+
+    let err: unknown;
+    try {
+      await Message.Post({
+        Model: 'partner.Partner',
+        ResId: uid('res'),
+        Body: 'with attach',
+        AttachmentObjectId: 'att_fail________________',
+      });
+    } catch (e) {
+      err = e;
+    }
+    expect(isMessageError(err)).toBe(true);
+    expect((err as any).code).toBe(MessageErrCode.ATTACHMENT_BIND_FAILED);
+    expect(published).toHaveLength(0);
+  });
+});
+
+test('message.Message: Post skips tip when live bus.publish is missing or non-function', async () => {
+  await withMessageScope(async () => {
+    const published: any[] = [];
+    __setMessagePublishTipForTest(event => {
+      published.push(event);
+    });
+
+    const root: any = (globalThis as any).$choysum ?? {};
+    (globalThis as any).$choysum = root;
+    const priorBus = root.bus;
+    try {
+      root.bus = {};
+      __setMessagePublishTipForTest(undefined);
+
+      const noPublish = await Message.Post({
+        Model: 'partner.Partner',
+        ResId: uid('res'),
+        Body: 'no publish fn',
+      });
+      expect(String((noPublish as any).Id || '')).not.toBe('');
+      expect(published).toHaveLength(0);
+
+      root.bus = { publish: 'not-a-function' };
+      const nonFn = await Message.Post({
+        Model: 'partner.Partner',
+        ResId: uid('res2'),
+        Body: 'bad publish fn',
+      });
+      expect(String((nonFn as any).Id || '')).not.toBe('');
+      expect(published).toHaveLength(0);
+    } finally {
+      if (priorBus === undefined) {
+        delete root.bus;
+      } else {
+        root.bus = priorBus;
+      }
+    }
+  });
+});
+
+test('message.Message: Post publishes via live $choysum.bus.publish seam', async () => {
+  await withMessageScope(async () => {
+    const published: any[] = [];
+    const root: any = (globalThis as any).$choysum ?? {};
+    (globalThis as any).$choysum = root;
+    const priorBus = root.bus;
+    try {
+      root.bus = {
+        publish: (event: unknown) => {
+          published.push(event);
+        },
+      };
+      __setMessagePublishTipForTest(undefined);
+
+      const model = 'partner.Partner';
+      const resId = uid('res');
+      const created = await Message.Post({ Model: model, ResId: resId, Body: 'live bus' });
+
+      expect(published).toHaveLength(1);
+      expect(published[0].topic).toBe(TOPIC_MESSAGE_THREAD_CHANGED);
+      expect(published[0].source).toBe(MESSAGE_POST_TIP_SOURCE);
+      expect(published[0].payload.messageId).toBe(String((created as any).Id));
+    } finally {
+      if (priorBus === undefined) {
+        delete root.bus;
+      } else {
+        root.bus = priorBus;
+      }
+    }
+  });
+});
+
+test('message.Message: Post tip resolves CreatedAt from Date, number, and string', async () => {
+  await withMessageScope(async () => {
+    const published: any[] = [];
+    __setMessagePublishTipForTest(event => {
+      published.push(event);
+    });
+
+    const origCreate = Message.Create;
+    const ts = Date.UTC(2024, 0, 15, 12, 0, 0);
+    try {
+      (Message as any).Create = async function (this: any, value: any, fields?: any) {
+        const row = await origCreate.call(this, value, fields);
+        (row as any).CreatedAt = new Date(ts);
+        return row;
+      };
+      await Message.Post({ Model: 'partner.Partner', ResId: uid('res1'), Body: 'date-at' }, ['Body']);
+      expect(published[0].at).toBe(ts);
+
+      published.length = 0;
+      (Message as any).Create = async function (this: any, value: any, fields?: any) {
+        const row = await origCreate.call(this, value, fields);
+        (row as any).CreatedAt = ts + 1;
+        return row;
+      };
+      await Message.Post({ Model: 'partner.Partner', ResId: uid('res2'), Body: 'number-at' }, ['Body']);
+      expect(published[0].at).toBe(ts + 1);
+
+      published.length = 0;
+      (Message as any).Create = async function (this: any, value: any, fields?: any) {
+        const row = await origCreate.call(this, value, fields);
+        (row as any).CreatedAt = new Date(ts + 2).toISOString();
+        return row;
+      };
+      await Message.Post({ Model: 'partner.Partner', ResId: uid('res3'), Body: 'string-at' }, ['Body']);
+      expect(published[0].at).toBe(ts + 2);
+    } finally {
+      (Message as any).Create = origCreate;
+    }
+  });
+});
+
+test('message.Message: Post tip omits at for invalid CreatedAt and skips incomplete rows', async () => {
+  await withMessageScope(async () => {
+    const published: any[] = [];
+    __setMessagePublishTipForTest(event => {
+      published.push(event);
+    });
+
+    const origCreate = Message.Create;
+    try {
+      (Message as any).Create = async function (this: any, value: any, fields?: any) {
+        const row = await origCreate.call(this, value, fields);
+        (row as any).CreatedAt = new Date('not-a-date');
+        return row;
+      };
+      await Message.Post({ Model: 'partner.Partner', ResId: uid('res'), Body: 'bad date' }, ['Body']);
+      expect(published[0].at).toBeUndefined();
+
+      published.length = 0;
+      (Message as any).Create = async function (this: any, value: any, fields?: any) {
+        const row = await origCreate.call(this, value, fields);
+        (row as any).CreatedAt = '   ';
+        return row;
+      };
+      await Message.Post({ Model: 'partner.Partner', ResId: uid('res1b'), Body: 'blank date' }, ['Body']);
+      expect(published[0].at).toBeUndefined();
+
+      published.length = 0;
+      (Message as any).Create = async function (this: any, value: any, fields?: any) {
+        const row = await origCreate.call(this, value, fields);
+        (row as any).CreatedAt = 'not-parseable';
+        return row;
+      };
+      await Message.Post({ Model: 'partner.Partner', ResId: uid('res1c'), Body: 'bad string date' }, ['Body']);
+      expect(published[0].at).toBeUndefined();
+
+      published.length = 0;
+      (Message as any).Create = async function (this: any, value: any, fields?: any) {
+        const row = await origCreate.call(this, value, fields);
+        (row as any).Model = '';
+        return row;
+      };
+      await Message.Post({ Model: 'partner.Partner', ResId: uid('res2'), Body: 'no model' }, ['Body']);
+      expect(published).toHaveLength(0);
+    } finally {
+      (Message as any).Create = origCreate;
+    }
+  });
+});
+
+test('message.Message: Post tip awaits async publish', async () => {
+  await withMessageScope(async () => {
+    const published: any[] = [];
+    __setMessagePublishTipForTest(async event => {
+      await Promise.resolve();
+      published.push(event);
+    });
+
+    await Message.Post({ Model: 'partner.Partner', ResId: uid('res'), Body: 'async tip' });
+    expect(published).toHaveLength(1);
+  });
+});
+
+test('message.Message: Post ensureTipFields keeps explicit Model/ResId/CreatedAt selections', async () => {
+  await withMessageScope(async () => {
+    const published: any[] = [];
+    __setMessagePublishTipForTest(event => {
+      published.push(event);
+    });
+
+    const star = await Message.Post(
+      { Model: 'partner.Partner', ResId: uid('res'), Body: 'star fields' },
+      ['*']
+    );
+    expect(published).toHaveLength(1);
+    expect(published[0].payload.messageId).toBe(String((star as any).Id));
+
+    published.length = 0;
+    const explicit = await Message.Post(
+      { Model: 'partner.Partner', ResId: uid('res2'), Body: 'explicit tip fields' },
+      ['Model', 'ResId', 'CreatedAt', 'Body']
+    );
+    expect(published).toHaveLength(1);
+    expect(published[0].payload.messageId).toBe(String((explicit as any).Id));
+    expect(typeof published[0].at).toBe('number');
+  });
+});
+
+test('message.Message: Post ensureTipFields adds only missing columns for narrow selection', async () => {
+  await withMessageScope(async () => {
+    const published: any[] = [];
+    __setMessagePublishTipForTest(event => {
+      published.push(event);
+    });
+
+    const created = await Message.Post(
+      { Model: 'partner.Partner', ResId: uid('res'), Body: 'partial tip fields' },
+      ['Model', 'Body']
+    );
+
+    expect(published).toHaveLength(1);
+    expect(published[0].payload.messageId).toBe(String((created as any).Id));
+    expect(published[0].payload.model).toBe('partner.Partner');
+    expect(typeof published[0].at).toBe('number');
   });
 });

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	_ "github.com/choysum-dev/choysum/internal/bus/inprocess"
 	"github.com/choysum-dev/choysum/pkg/bus"
 	"github.com/choysum-dev/choysum/pkg/config"
 	taskcontract "github.com/choysum-dev/choysum/pkg/task"
@@ -66,6 +67,9 @@ func (stubGarbageCollector) Start() {}
 func (stubGarbageCollector) Stop()  {}
 
 func TestNewDispatcherWithRuntimeUsesInjectedComponents(t *testing.T) {
+	bus.ClearHostForTest()
+	t.Cleanup(bus.ClearHostForTest)
+
 	runtimeScope := &testScope{
 		ctx:    context.Background(),
 		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
@@ -85,9 +89,15 @@ func TestNewDispatcherWithRuntimeUsesInjectedComponents(t *testing.T) {
 	if dispatcher.events != events {
 		t.Fatal("expected injected event bus")
 	}
+	if bus.Host() != events {
+		t.Fatal("expected injected event bus to bind pkg/bus host")
+	}
 }
 
 func TestNewSchedulerWithRuntimeUsesInjectedComponents(t *testing.T) {
+	bus.ClearHostForTest()
+	t.Cleanup(bus.ClearHostForTest)
+
 	runtimeScope := &testScope{
 		ctx:    context.Background(),
 		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
@@ -112,4 +122,60 @@ func TestNewSchedulerWithRuntimeUsesInjectedComponents(t *testing.T) {
 	if scheduler.events != events {
 		t.Fatal("expected injected event bus")
 	}
+	if bus.Host() != events {
+		t.Fatal("expected injected event bus to bind pkg/bus host")
+	}
+}
+
+func TestRuntimeWithDefaultTaskRuntimeDepsReplacesTypedNilEvents(t *testing.T) {
+	bus.ClearHostForTest()
+	t.Cleanup(bus.ClearHostForTest)
+
+	runtimeScope := &testScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{Task: config.NewDefaultTaskConfig()},
+	}
+	var typedNil *recordingNilEventBus
+	got := runtimeWithDefaultTaskRuntimeDeps(runtimeScope, taskcontract.Runtime{
+		Queue:  stubTaskQueue{},
+		Store:  stubScheduleStore{},
+		Events: typedNil,
+	})
+	if !bus.IsUsable(got.Events) {
+		t.Fatal("expected typed-nil Events to be replaced")
+	}
+	if bus.Host() != got.Events {
+		t.Fatal("expected replacement Events to bind pkg/bus host")
+	}
+}
+
+func TestRuntimeWithDefaultTaskRuntimeDepsBindsInjectedEventsAsHost(t *testing.T) {
+	bus.ClearHostForTest()
+	t.Cleanup(bus.ClearHostForTest)
+
+	runtimeScope := &testScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{Task: config.NewDefaultTaskConfig()},
+	}
+	events := &recordingNilEventBus{}
+	got := runtimeWithDefaultTaskRuntimeDeps(runtimeScope, taskcontract.Runtime{
+		Queue:  stubTaskQueue{},
+		Store:  stubScheduleStore{},
+		Events: events,
+	})
+	if got.Events != events {
+		t.Fatal("expected injected Events to be preserved")
+	}
+	if bus.Host() != events {
+		t.Fatal("expected injected Events to bind pkg/bus host")
+	}
+}
+
+type recordingNilEventBus struct{}
+
+func (*recordingNilEventBus) Publish(context.Context, bus.Event) error { return nil }
+func (*recordingNilEventBus) Subscribe(string, bus.EventHandler) (bus.Subscription, error) {
+	return stubSubscription{}, nil
 }

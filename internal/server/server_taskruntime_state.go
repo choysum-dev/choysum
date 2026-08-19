@@ -34,7 +34,7 @@ func (s *taskRuntimeState) shouldStart(dialer grpcclient.ServiceDialer, servesTa
 }
 
 func (s *taskRuntimeState) ensureEvents(runtimeScope scope.Scope) bus.EventBus {
-	if s.events != nil {
+	if bus.IsUsable(s.events) {
 		return s.events
 	}
 	runtime := taskcontract.ResolveHostRuntime(s.hostRuntimeProvider, runtimeScope)
@@ -43,15 +43,18 @@ func (s *taskRuntimeState) ensureEvents(runtimeScope scope.Scope) bus.EventBus {
 }
 
 func (s *taskRuntimeState) applyEvents(runtimeScope scope.Scope, runtime *taskcontract.Runtime) {
-	if s.events != nil {
+	if bus.IsUsable(s.events) {
+		runtime.Events = s.events
+		bus.SetHost(s.events)
+		return
+	}
+	if bus.IsUsable(runtime.Events) {
+		s.events = runtime.Events
+		bus.SetHost(s.events)
 		runtime.Events = s.events
 		return
 	}
-	if runtime.Events != nil {
-		s.events = runtime.Events
-		return
-	}
-	s.events = bus.NewBus(runtimeScope)
+	s.events = bus.EnsureHost(runtimeScope)
 	runtime.Events = s.events
 }
 

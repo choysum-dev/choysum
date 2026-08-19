@@ -9,11 +9,15 @@ import (
 
 	_ "github.com/choysum-dev/choysum/internal/bus/inprocess"
 	"github.com/choysum-dev/choysum/internal/tip/proto/tippb"
+	"github.com/choysum-dev/choysum/pkg/bus"
 	taskcontract "github.com/choysum-dev/choysum/pkg/task"
 	"google.golang.org/grpc"
 )
 
 func TestEnsureEventsReusesHostRuntimeBus(t *testing.T) {
+	bus.ClearHostForTest()
+	t.Cleanup(bus.ClearHostForTest)
+
 	events := &recordingEventBus{}
 	state := taskRuntimeState{
 		hostRuntimeProvider: taskcontract.StaticHostRuntimeProvider(taskcontract.Runtime{Events: events}),
@@ -25,9 +29,15 @@ func TestEnsureEventsReusesHostRuntimeBus(t *testing.T) {
 	if again := state.ensureEvents(nil); again != events {
 		t.Fatalf("ensureEvents() second call = %p, want same bus", again)
 	}
+	if bus.Host() != events {
+		t.Fatal("ensureEvents() did not bind injected Events as pkg/bus host")
+	}
 }
 
 func TestEnsureEventsCreatesSingleton(t *testing.T) {
+	bus.ClearHostForTest()
+	t.Cleanup(bus.ClearHostForTest)
+
 	state := taskRuntimeState{}
 	first := state.ensureEvents(nil)
 	if first == nil {
@@ -36,10 +46,30 @@ func TestEnsureEventsCreatesSingleton(t *testing.T) {
 	if second := state.ensureEvents(nil); second != first {
 		t.Fatalf("ensureEvents() did not reuse the host singleton")
 	}
+	if bus.Host() != first {
+		t.Fatal("ensureEvents() did not bind pkg/bus host singleton")
+	}
 	runtime := taskcontract.Runtime{}
 	state.applyEvents(nil, &runtime)
 	if runtime.Events != first {
 		t.Fatal("applyEvents() did not reuse the already-hoisted event bus")
+	}
+}
+
+func TestEnsureEventsReplacesTypedNilInjectedBus(t *testing.T) {
+	bus.ClearHostForTest()
+	t.Cleanup(bus.ClearHostForTest)
+
+	var typedNil *recordingEventBus
+	state := taskRuntimeState{
+		hostRuntimeProvider: taskcontract.StaticHostRuntimeProvider(taskcontract.Runtime{Events: typedNil}),
+	}
+	got := state.ensureEvents(nil)
+	if !bus.IsUsable(got) {
+		t.Fatal("ensureEvents() should replace typed-nil injected Events")
+	}
+	if bus.Host() != got {
+		t.Fatal("ensureEvents() should bind the replacement host")
 	}
 }
 

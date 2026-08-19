@@ -17,11 +17,27 @@ export type MessageTypeLiteral = (typeof MESSAGE_TYPES)[number];
 /** Owner field name used when Post binds an attachment via document.AttachmentBinding. */
 export const MESSAGE_ATTACHMENT_FIELD = 'Attachment';
 
+/** Frozen tip topic for Form / Chatter thread refresh (matches pkg/bus). */
+export const TOPIC_MESSAGE_THREAD_CHANGED = 'message.thread.changed';
+
+/** Tip source stamped on Message.Post publishes. */
+export const MESSAGE_POST_TIP_SOURCE = 'message.Post';
+
+type PublishTipFn = (event: {
+  topic: string;
+  source: string;
+  at?: number;
+  payload?: Record<string, string>;
+}) => void | Promise<void>;
+
+let publishTipOverride: PublishTipFn | null | undefined;
+
 /**
  * Post payload for Message (Unary Post API).
  *
  * AuthorUid is always taken from trusted request identity (`getUserId`), not from
- * the caller payload. Tip Publish is intentionally out of scope for this skeleton.
+ * the caller payload. After a successful write, Post best-effort Publishes a
+ * `message.thread.changed` tip via the host EventBus.
  */
 export type PostMessageReq = {
   Model: string;
@@ -49,6 +65,14 @@ type XidNewFn = () => string | null | undefined;
 let bindAttachmentOverride: BindAttachmentFn | null | undefined;
 let dialOverride: DialFn | undefined;
 let xidNewOverride: XidNewFn | undefined;
+
+/**
+ * Test-only override for tip Publish.
+ * undefined = live $choysum.bus.publish; null = force missing bus; function = stub.
+ */
+export function __setMessagePublishTipForTest(fn: PublishTipFn | null | undefined): void {
+  publishTipOverride = fn;
+}
 
 /**
  * Test-only override for document AttachmentBinding.Bind.
@@ -128,6 +152,20 @@ function ensureIdInFields(fields: FieldSelection<Message>): FieldSelection<Messa
   return ['Id', ...fields];
 }
 
+function ensureTipFields(fields: FieldSelection<Message>): FieldSelection<Message> {
+  let next = ensureIdInFields(fields);
+  if (!next.includes('*') && !next.includes('Model')) {
+    next = ['Model', ...next];
+  }
+  if (!next.includes('*') && !next.includes('ResId')) {
+    next = ['ResId', ...next];
+  }
+  if (!next.includes('*') && !next.includes('CreatedAt')) {
+    next = ['CreatedAt', ...next];
+  }
+  return next;
+}
+
 function resolveBind(): BindAttachmentFn | null {
   if (bindAttachmentOverride !== undefined) return bindAttachmentOverride;
   try {
@@ -137,6 +175,44 @@ function resolveBind(): BindAttachmentFn | null {
     return svc.Bind.bind(svc);
   } catch {
     return null;
+  }
+}
+
+function resolvePublishTip(): PublishTipFn | null {
+  if (publishTipOverride !== undefined) return publishTipOverride;
+  const publish = (globalThis as { $choysum?: { bus?: { publish?: PublishTipFn } } }).$choysum?.bus?.publish;
+  return typeof publish === 'function' ? publish.bind((globalThis as any).$choysum.bus) : null;
+}
+
+/**
+ * Best-effort thread tip after a successful write. Never throws; tip is not authoritative.
+ */
+async function publishThreadChangedTip(created: Message): Promise<void> {
+  const publish = resolvePublishTip();
+  if (!publish) return;
+  const messageId = String((created as Message).Id || '').trim();
+  const model = String((created as Message).Model || '').trim();
+  const resId = String((created as Message).ResId || '').trim();
+  if (!messageId || !model || !resId) return;
+  const createdAt = (created as Message & { CreatedAt?: Date | string | number | null }).CreatedAt;
+  let at: number | undefined;
+  if (createdAt instanceof Date && !Number.isNaN(createdAt.getTime())) {
+    at = createdAt.getTime();
+  } else if (typeof createdAt === 'number' && Number.isFinite(createdAt)) {
+    at = createdAt;
+  } else if (typeof createdAt === 'string' && createdAt.trim()) {
+    const parsed = Date.parse(createdAt);
+    if (!Number.isNaN(parsed)) at = parsed;
+  }
+  try {
+    await publish({
+      topic: TOPIC_MESSAGE_THREAD_CHANGED,
+      source: MESSAGE_POST_TIP_SOURCE,
+      ...(at != null ? { at } : {}),
+      payload: { model, resId, messageId },
+    });
+  } catch {
+    // Tip is best-effort; authoritative state remains the Message row.
   }
 }
 
@@ -155,7 +231,7 @@ const DEFAULT_POST_FIELDS = [
  * Collaboration post on a business record.
  * Table: message_message.
  *
- * Tip Publish on the write path is deferred to a later change.
+ * Successful Post Publishes a best-effort `message.thread.changed` tip.
  */
 @Model('Message', {
   application: 'message',
@@ -233,7 +309,7 @@ export default class Message extends BaseModel {
   /**
    * Creates one collaboration Message (Unary). Stamps AuthorUid from request identity.
    * Optional AttachmentObjectId dials document.AttachmentBinding.Bind after create.
-   * Does not Publish tip.
+   * On success, best-effort Publishes `message.thread.changed` (tip failure never rolls back).
    */
   public static async Post(req: PostMessageReq, fields?: FieldSelection<Message>): Promise<Message> {
     if (!req || typeof req !== 'object') {
@@ -266,7 +342,8 @@ export default class Message extends BaseModel {
       }
     }
 
-    const createFields = attachmentObjectId ? ensureIdInFields(returnFields) : returnFields;
+    // Tip needs Id/Model/ResId even when the caller asks for a narrow field set.
+    const createFields = ensureTipFields(returnFields);
     const created = await this.Create(
       {
         Type: type,
@@ -309,6 +386,7 @@ export default class Message extends BaseModel {
       }
     }
 
+    await publishThreadChangedTip(created as Message);
     return created;
   }
 

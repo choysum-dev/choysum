@@ -119,3 +119,26 @@ func TestNewBusDefaultsToInprocess(t *testing.T) {
 		t.Fatal("expected nil bus when default driver is unregistered")
 	}
 }
+
+func TestUnregisterFactoryForTest(t *testing.T) {
+	snapshot := snapshotFactories()
+	t.Cleanup(func() { restoreFactories(snapshot) })
+	factories = make(map[string]Factory)
+
+	Register("temp", func() EventBus { return &stubBus{name: "temp"} })
+	restore := UnregisterFactoryForTest("temp")
+	if Exists("temp") {
+		t.Fatal("expected temp factory to be unregistered")
+	}
+	restore()
+	if !Exists("temp") {
+		t.Fatal("expected restore to re-register temp factory")
+	}
+
+	restoreAbsent := UnregisterFactoryForTest("never")
+	Register("never", func() EventBus { return &stubBus{name: "never"} })
+	restoreAbsent()
+	if Exists("never") {
+		t.Fatal("expected restore to delete factory registered after absent unregister")
+	}
+}

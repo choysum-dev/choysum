@@ -58,3 +58,22 @@ func NewByName(name string) EventBus {
 func NewBus(runtimeScope scope.Scope) EventBus {
 	return NewByName(runtimeOptionsFromScope(runtimeScope).driver)
 }
+
+// UnregisterFactoryForTest removes a registered factory until restore runs. Tests only.
+func UnregisterFactoryForTest(name string) (restore func()) {
+	mu.Lock()
+	old, ok := factories[name]
+	if ok {
+		delete(factories, name)
+	}
+	mu.Unlock()
+	return func() {
+		mu.Lock()
+		defer mu.Unlock()
+		if !ok {
+			delete(factories, name)
+			return
+		}
+		factories[name] = old
+	}
+}

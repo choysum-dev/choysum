@@ -50,6 +50,7 @@ func TestRuntimePluginNamePolicies(t *testing.T) {
 		RuntimePluginFS,
 		RuntimePluginI18n,
 		RuntimePluginGRPC,
+		RuntimePluginBus,
 		RuntimePluginDocumentStorage,
 		RuntimePluginModuleManagement,
 		RuntimePluginScriptVueSFC,
@@ -68,6 +69,7 @@ func TestRuntimePluginNamePolicies(t *testing.T) {
 		RuntimePluginFS,
 		RuntimePluginI18n,
 		RuntimePluginGRPC,
+		RuntimePluginBus,
 		RuntimePluginDocumentStorage,
 		RuntimePluginModuleManagement,
 	}) {
