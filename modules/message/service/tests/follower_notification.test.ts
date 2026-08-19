@@ -113,6 +113,11 @@ test('message.Follower: Follow is idempotent and Unfollow removes the row', asyn
     const first = await Follower.Follow({ Model: model, ResId: resId });
     const second = await Follower.Follow({ Model: model, ResId: resId });
     expect(String((first as any).Id)).toBe(String((second as any).Id));
+    const userOnly = await Follower.Follow({ Model: model, ResId: resId }, ['UserId']);
+    expect(String((userOnly as any).UserId)).toBe(AUTHOR_USER_ID);
+    expect((userOnly as any).Id).toBeUndefined();
+    expect((userOnly as any).SubtypeId).toBeUndefined();
+    expect((userOnly as any).CompanyId).toBeUndefined();
 
     const rows = await Follower.SearchByRecord(model, resId, ['UserId']);
     expect(rows).toHaveLength(1);
@@ -604,6 +609,15 @@ test('message.Follower: Follow recovers unique conflicts and skips blank Unfollo
       (Follower as any).Search = origSearch;
     }
 
+    (Follower as any).Search = async () => [{ Id: String((created as any).Id), UserId: AUTHOR_USER_ID }];
+    try {
+      const projected = await Follower.Follow({ Model: model, ResId: resId }, ['SubtypeId']);
+      expect((projected as any).SubtypeId).toBeUndefined();
+      expect((projected as any).Id).toBeUndefined();
+    } finally {
+      (Follower as any).Search = origSearch;
+    }
+
     const origUnfollowSearch = Follower.Search;
     (Follower as any).Search = async () => [{ Id: '  ' }, { Id: '' }];
     try {
@@ -692,6 +706,8 @@ test('message.Follower: Follow recovers unique conflicts and skips blank Unfollo
       await Follower.Follow({ Model: 'partner.Partner', ResId: uid('res6') });
     } catch (e) {
       nullDialErr = e;
+    } finally {
+      __setMessageFollowDialForTest(undefined);
     }
     expect((nullDialErr as any).code).toBe(MessageErrCode.PERMISSION_DENIED);
   });

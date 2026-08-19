@@ -106,10 +106,19 @@ function withFollowLookupFields(fields: FieldSelection<Follower>): FieldSelectio
   return next as FieldSelection<Follower>;
 }
 
-function stripDeletedAt(row: Follower): Follower {
-  const { DeletedAt: _deletedAt, ...next } = row as Follower & { DeletedAt?: unknown };
-  void _deletedAt;
-  return next as Follower;
+function projectFollowRow(row: Follower, fields: FieldSelection<Follower>): Follower {
+  const requested = fields as string[];
+  if (requested.includes('*')) {
+    const { DeletedAt: _deletedAt, ...next } = row as Follower & { DeletedAt?: unknown };
+    void _deletedAt;
+    return next as Follower;
+  }
+  const source = row as unknown as Record<string, unknown>;
+  const next: Record<string, unknown> = {};
+  for (const key of requested) {
+    if (key in source) next[key] = source[key];
+  }
+  return next as unknown as Follower;
 }
 
 function nullableId(value: unknown): string | null {
@@ -158,12 +167,12 @@ async function syncFollowRow(
   const currentSubtype = nullableId((row as Follower).SubtypeId);
   const currentCompany = nullableId((row as Follower).CompanyId);
   if (!restoreDeleted && currentSubtype === subtypeId && currentCompany === companyId) {
-    return stripDeletedAt(row);
+    return projectFollowRow(row, fields);
   }
   const values: Record<string, unknown> = { SubtypeId: subtypeId, CompanyId: companyId };
   if (restoreDeleted) values.DeletedAt = null;
   const updated = await Follower.UpdateById(id, values as any, fields, restoreDeleted ? { withDeleted: true } : undefined);
-  return stripDeletedAt(updated as Follower);
+  return projectFollowRow(updated as Follower, fields);
 }
 
 /**
