@@ -3,10 +3,6 @@ name: Prepare Root Node Modules
 on:
   workflow_call:
     inputs:
-      run_ref:
-        description: "Branch, tag, or SHA to checkout"
-        required: true
-        type: string
       artifact_name:
         description: "Artifact name to upload"
         required: true
@@ -47,7 +43,7 @@ jobs:
         if: ${{ inputs.docs_only != 'true' }}
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.run_ref }}
+          persist-credentials: false
 
       - name: Compute root node_modules dependencies
         id: deps

@@ -3,10 +3,6 @@ name: Prepare Playwright Cache
 on:
   workflow_call:
     inputs:
-      run_ref:
-        description: "Branch, tag, or SHA to checkout"
-        required: true
-        type: string
       artifact_name:
         description: "Artifact name of the root node_modules tarball (without .tar.gz extension)"
         required: true
@@ -24,7 +20,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.run_ref }}
           persist-credentials: false
 
       - name: Download root node_modules

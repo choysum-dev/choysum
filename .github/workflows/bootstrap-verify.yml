@@ -3,10 +3,6 @@ name: Bootstrap Verify
 on:
   workflow_call:
     inputs:
-      run_ref:
-        description: "Branch, tag, or SHA to checkout"
-        required: true
-        type: string
       run_bootstrap_verify:
         description: "Whether bootstrap verify should run"
         required: false
@@ -26,7 +22,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.run_ref }}
+          persist-credentials: false
 
       - name: Setup Go
         uses: actions/setup-go@v7
