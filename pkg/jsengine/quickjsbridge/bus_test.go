@@ -78,6 +78,79 @@ func newBusBridgeTestScope() *busBridgeTestScope {
 	}
 }
 
+func TestWithBusPublishReturnsNullWhenHostUnavailable(t *testing.T) {
+	bus.ClearHostForTest()
+	t.Cleanup(bus.ClearHostForTest)
+	t.Cleanup(bus.UnregisterFactoryForTest("inprocess"))
+
+	engine := newTestQuickjsEngine(t, WithBus(newBusBridgeTestScope()))
+	result := engine.Ctx.Eval(`$choysum.bus.publish({ topic: 't', source: 's' })`)
+	defer result.Free()
+	if result.IsException() {
+		t.Fatalf("publish threw: %v", engine.Ctx.Exception())
+	}
+	if !result.IsNull() {
+		t.Fatalf("publish = %q, want null when host bus is unavailable", result.String())
+	}
+}
+
+func TestWithBusPublishValidatesArgsAndPayload(t *testing.T) {
+	bus.ClearHostForTest()
+	t.Cleanup(bus.ClearHostForTest)
+	bus.SetHost(&recordingBus{})
+
+	engine := newTestQuickjsEngine(t, WithBus(newBusBridgeTestScope()))
+
+	noArg := engine.Ctx.Eval(`(() => { try { $choysum.bus.publish(); return ''; } catch (e) { return String(e); } })()`)
+	defer noArg.Free()
+	if noArg.IsException() {
+		t.Fatalf("eval threw: %v", engine.Ctx.Exception())
+	}
+	if got := noArg.String(); !strings.Contains(got, "need 1 arg") {
+		t.Fatalf("error = %q, want need 1 arg", got)
+	}
+
+	badPayload := engine.Ctx.Eval(`(() => { try { $choysum.bus.publish(123); return ''; } catch (e) { return String(e); } })()`)
+	defer badPayload.Free()
+	if badPayload.IsException() {
+		t.Fatalf("eval threw: %v", engine.Ctx.Exception())
+	}
+	if got := badPayload.String(); !strings.Contains(got, "invalid bus.publish payload") {
+		t.Fatalf("error = %q, want invalid bus.publish payload", got)
+	}
+}
+
+func TestWithBusExposesTopicConstants(t *testing.T) {
+	engine := newTestQuickjsEngine(t, WithBus(newBusBridgeTestScope()))
+	if got := evalString(t, engine, `$choysum.bus.topicMessageNotificationUser`); got != bus.TopicMessageNotificationUser {
+		t.Fatalf("topicMessageNotificationUser = %q, want %q", got, bus.TopicMessageNotificationUser)
+	}
+	if got := evalString(t, engine, `$choysum.bus.topicDispatchWakeup`); got != bus.TopicDispatchWakeup {
+		t.Fatalf("topicDispatchWakeup = %q, want %q", got, bus.TopicDispatchWakeup)
+	}
+}
+
+func TestWithBusPublishTrimsTopicAndSource(t *testing.T) {
+	bus.ClearHostForTest()
+	t.Cleanup(bus.ClearHostForTest)
+	events := &recordingBus{}
+	bus.SetHost(events)
+
+	engine := newTestQuickjsEngine(t, WithBus(newBusBridgeTestScope()))
+	result := engine.Ctx.Eval(`$choysum.bus.publish({ topic: '  spaced  ', source: '  src  ', at: 0 })`)
+	defer result.Free()
+	if result.IsException() {
+		t.Fatalf("publish threw: %v", engine.Ctx.Exception())
+	}
+	got := events.snapshot()
+	if len(got) != 1 {
+		t.Fatalf("published = %#v", got)
+	}
+	if got[0].Topic != "spaced" || got[0].Source != "src" {
+		t.Fatalf("event = %#v", got[0])
+	}
+}
+
 func TestWithBusPublishUsesHostSingleton(t *testing.T) {
 	bus.ClearHostForTest()
 	t.Cleanup(bus.ClearHostForTest)

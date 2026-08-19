@@ -4,10 +4,19 @@
 package bus
 
 import (
+	"context"
 	"testing"
 
 	"github.com/choysum-dev/choysum/pkg/config"
 )
+
+type valueStubBus struct{ name string }
+
+func (valueStubBus) Publish(context.Context, Event) error { return nil }
+
+func (valueStubBus) Subscribe(string, EventHandler) (Subscription, error) {
+	return stubSub{}, nil
+}
 
 func TestEnsureHostReusesSingleton(t *testing.T) {
 	ClearHostForTest()
@@ -69,6 +78,13 @@ func TestIsUsableRejectsTypedNilEventBus(t *testing.T) {
 	}
 	if !IsUsable(&stubBus{name: "ok"}) {
 		t.Fatal("concrete EventBus should be usable")
+	}
+}
+
+func TestIsUsableAcceptsStructBackedEventBus(t *testing.T) {
+	var events EventBus = valueStubBus{name: "struct"}
+	if !IsUsable(events) {
+		t.Fatal("struct-backed EventBus should be usable")
 	}
 }
 

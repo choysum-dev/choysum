@@ -4,7 +4,6 @@
 package quickjsbridge
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -67,9 +66,6 @@ func busPublishFactory(scopeProvider jsengine.ScopeProvider, engine *quickjsengi
 		}
 
 		execCtx := engine.ExecContext()
-		if execCtx == nil {
-			execCtx = context.Background()
-		}
 		runtimeScope := jsengine.ResolveScope(scopeProvider, execCtx)
 		events := bus.EnsureHost(runtimeScope)
 		if events == nil {
