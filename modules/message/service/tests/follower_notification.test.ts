@@ -6,8 +6,9 @@ import Message, {
   TOPIC_MESSAGE_THREAD_CHANGED,
   __setMessagePublishTipForTest,
 } from '../models/message';
-import Follower from '../models/follower';
-import Notification from '../models/notification';
+import Follower, { __setMessageFollowTargetAuthForTest } from '../models/follower';
+import Notification, { __setNotificationMarkAllReadBatchSizeForTest } from '../models/notification';
+import MessageSubtype, { MESSAGE_SUBTYPE_DISCUSSIONS } from '../models/message_subtype';
 import { MessageErrCode, isMessageError } from '../error';
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
@@ -61,6 +62,14 @@ const MESSAGE_RECORD_RULES = [
   'Notification:write',
   'Notification:create',
   'Notification:delete',
+  'message.MessageSubtype:read',
+  'message.MessageSubtype:write',
+  'message.MessageSubtype:create',
+  'message.MessageSubtype:delete',
+  'MessageSubtype:read',
+  'MessageSubtype:write',
+  'MessageSubtype:create',
+  'MessageSubtype:delete',
 ];
 
 function resetRequestContext(userId: string): void {
@@ -82,7 +91,13 @@ function resetRequestContext(userId: string): void {
 
 async function withMessageScope<T>(userId: string, fn: () => Promise<T>): Promise<T> {
   resetRequestContext(userId);
-  return await fn();
+  __setMessageFollowTargetAuthForTest(async () => undefined);
+  try {
+    return await fn();
+  } finally {
+    __setMessageFollowTargetAuthForTest(undefined);
+    __setNotificationMarkAllReadBatchSizeForTest(undefined);
+  }
 }
 
 test('message.Follower: Follow is idempotent and Unfollow removes the row', async () => {
@@ -101,6 +116,24 @@ test('message.Follower: Follow is idempotent and Unfollow removes the row', asyn
     const deleted = await Follower.Unfollow({ Model: model, ResId: resId });
     expect(deleted).toBe(1);
     expect(await Follower.SearchByRecord(model, resId, ['Id'])).toHaveLength(0);
+
+    const restored = await Follower.Follow({ Model: model, ResId: resId });
+    expect(String((restored as any).Id)).toBe(String((first as any).Id));
+    expect(await Follower.SearchByRecord(model, resId, ['Id'])).toHaveLength(1);
+  });
+});
+
+test('message.Follower: Follow denies when target record is unreadable', async () => {
+  await withMessageScope(AUTHOR_USER_ID, async () => {
+    __setMessageFollowTargetAuthForTest(null);
+    let err: unknown;
+    try {
+      await Follower.Follow({ Model: 'partner.Partner', ResId: uid('res') });
+    } catch (e) {
+      err = e;
+    }
+    expect(isMessageError(err)).toBe(true);
+    expect((err as any).code).toBe(MessageErrCode.PERMISSION_DENIED);
   });
 });
 
@@ -209,3 +242,91 @@ test('message.Notification: SearchInbox requires identity', async () => {
     expect((err as any).code).toBe(MessageErrCode.INVALID_ARGUMENT);
   });
 });
+
+test('message.Notification: MarkAllRead continues past the first Search batch', async () => {
+  __setMessagePublishTipForTest(() => undefined);
+  try {
+    const model = 'partner.Partner';
+    const resId = uid('res');
+    const readerId = 'usr_msg_batch________';
+
+    await withMessageScope(readerId, async () => {
+      await Follower.Follow({ Model: model, ResId: resId });
+    });
+
+    await withMessageScope(AUTHOR_USER_ID, async () => {
+      await Message.Post({ Model: model, ResId: resId, Body: 'batch-1' });
+      await Message.Post({ Model: model, ResId: resId, Body: 'batch-2' });
+      await Message.Post({ Model: model, ResId: resId, Body: 'batch-3' });
+    });
+
+    await withMessageScope(readerId, async () => {
+      __setNotificationMarkAllReadBatchSizeForTest(2);
+      expect(await Notification.SearchInbox({ unreadOnly: true })).toHaveLength(3);
+      expect(await Notification.MarkAllRead()).toBe(3);
+      expect(await Notification.SearchInbox({ unreadOnly: true })).toHaveLength(0);
+    });
+  } finally {
+    __setMessagePublishTipForTest(undefined);
+  }
+});
+
+test('message.Notification: fan-out skips followers subscribed to a non-discussions subtype', async () => {
+  __setMessagePublishTipForTest(() => undefined);
+  try {
+    const model = 'partner.Partner';
+    const resId = uid('res');
+    const skippedId = 'usr_msg_skipped_____';
+    const includedId = 'usr_msg_included____';
+
+    let otherSubtypeId = '';
+    await withMessageScope(AUTHOR_USER_ID, async () => {
+      const other = await MessageSubtype.Create(
+        {
+          InternalName: `other_${uid('st')}`,
+          Name: 'Other',
+          Description: null,
+        } as any,
+        ['Id'] as any
+      );
+      otherSubtypeId = String((other as any).Id);
+    });
+
+    await withMessageScope(skippedId, async () => {
+      await Follower.Follow({ Model: model, ResId: resId, SubtypeId: otherSubtypeId });
+    });
+    await withMessageScope(includedId, async () => {
+      await Follower.Follow({ Model: model, ResId: resId });
+    });
+
+    await withMessageScope(AUTHOR_USER_ID, async () => {
+      const discussions = await MessageSubtype.Search(['InternalName', '=', MESSAGE_SUBTYPE_DISCUSSIONS], {
+        fields: ['Id'],
+        limit: 1,
+      });
+      if (discussions.length === 0) {
+        await MessageSubtype.Create(
+          {
+            InternalName: MESSAGE_SUBTYPE_DISCUSSIONS,
+            Name: 'Discussions',
+            Description: null,
+          } as any,
+          ['Id'] as any
+        );
+      }
+      await Message.Post({ Model: model, ResId: resId, Body: 'subtype filter' }, ['Body']);
+    });
+
+    await withMessageScope(skippedId, async () => {
+      expect(await Notification.SearchInbox()).toHaveLength(0);
+    });
+    await withMessageScope(includedId, async () => {
+      const inbox = await Notification.SearchInbox();
+      expect(inbox).toHaveLength(1);
+      expect(String(inbox[0].AuthorUid)).toBe(AUTHOR_USER_ID);
+    });
+  } finally {
+    __setMessagePublishTipForTest(undefined);
+  }
+});
+

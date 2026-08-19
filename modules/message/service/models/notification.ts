@@ -10,6 +10,7 @@ import { MessageErrCode, newMessageError } from '../error';
 import { publishNotificationUserTips } from '../tips';
 import { _lt } from '../i18n';
 import Follower from './follower';
+import MessageSubtype, { MESSAGE_SUBTYPE_DISCUSSIONS } from './message_subtype';
 import type Message from './message';
 
 export type SearchInboxOptions = {
@@ -17,6 +18,35 @@ export type SearchInboxOptions = {
   limit?: number;
   fields?: FieldSelection<Notification>;
 };
+
+let markAllReadBatchSize = 500;
+
+/**
+ * Test-only override for MarkAllRead Search batch size.
+ */
+export function __setNotificationMarkAllReadBatchSizeForTest(size: number | undefined): void {
+  markAllReadBatchSize = size && size > 0 ? size : 500;
+}
+
+async function resolveDiscussionsSubtypeId(): Promise<string | null> {
+  const rows = await MessageSubtype.sudo(
+    () =>
+      MessageSubtype.Search(['InternalName', '=', MESSAGE_SUBTYPE_DISCUSSIONS], {
+        fields: ['Id'],
+        limit: 1,
+      }),
+    { hint: 'message.Notification.fanOut.discussionsSubtype' }
+  );
+  const id = String((rows[0] as MessageSubtype | undefined)?.Id || '').trim();
+  return id || null;
+}
+
+function followerMatchesDiscussions(row: Follower, discussionsId: string | null): boolean {
+  const subtypeId = String(row.SubtypeId || '').trim();
+  if (!subtypeId) return true;
+  if (!discussionsId) return true;
+  return subtypeId === discussionsId;
+}
 
 function resolveInboxUserId(): string {
   const uid = getUserId();
@@ -157,23 +187,28 @@ export default class Notification extends BaseModel {
    */
   public static async MarkAllRead(): Promise<number> {
     const userId = resolveInboxUserId();
-    const rows = await this.Search(
-      {
-        And: [
-          ['UserId', '=', userId],
-          ['IsRead', '=', false],
-        ],
-      },
-      { fields: ['Id'], limit: 500 }
-    );
     let updated = 0;
-    for (const row of rows) {
-      const id = String((row as Notification).Id || '').trim();
-      if (!id) continue;
-      await this.UpdateById(id, { IsRead: true } as Partial<Insertable<Notification>>, ['Id', 'IsRead']);
-      updated += 1;
+    for (;;) {
+      const rows = await this.Search(
+        {
+          And: [
+            ['UserId', '=', userId],
+            ['IsRead', '=', false],
+          ],
+        },
+        { fields: ['Id'], limit: markAllReadBatchSize }
+      );
+      if (rows.length === 0) return updated;
+      let batchUpdated = 0;
+      for (const row of rows) {
+        const id = String((row as Notification).Id || '').trim();
+        if (!id) continue;
+        await this.UpdateById(id, { IsRead: true } as Partial<Insertable<Notification>>, ['Id', 'IsRead']);
+        updated += 1;
+        batchUpdated += 1;
+      }
+      if (batchUpdated === 0) return updated;
     }
-    return updated;
   }
 
   /**
@@ -188,13 +223,16 @@ export default class Notification extends BaseModel {
     if (!messageId || !model || !resId) return;
 
     const followers = await Follower.sudo(
-      () => Follower.SearchByRecord(model, resId, ['UserId']),
+      () => Follower.SearchByRecord(model, resId, ['UserId', 'SubtypeId']),
       { hint: 'message.Notification.fanOut.searchFollowers' }
     );
+    const discussionsId = await resolveDiscussionsSubtypeId();
     const recipientIds = new Set<string>();
     for (const row of followers) {
       const uid = String((row as Follower).UserId || '').trim();
-      if (uid && uid !== authorUid) recipientIds.add(uid);
+      if (!uid || uid === authorUid) continue;
+      if (!followerMatchesDiscussions(row as Follower, discussionsId)) continue;
+      recipientIds.add(uid);
     }
     if (recipientIds.size === 0) return;
 

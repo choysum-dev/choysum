@@ -140,14 +140,10 @@ function ensureIdInFields(fields: FieldSelection<Message>): FieldSelection<Messa
 
 function ensureTipFields(fields: FieldSelection<Message>): FieldSelection<Message> {
   let next = ensureIdInFields(fields);
-  if (!next.includes('*') && !next.includes('Model')) {
-    next = ['Model', ...next];
-  }
-  if (!next.includes('*') && !next.includes('ResId')) {
-    next = ['ResId', ...next];
-  }
-  if (!next.includes('*') && !next.includes('CreatedAt')) {
-    next = ['CreatedAt', ...next];
+  for (const field of ['Model', 'ResId', 'CreatedAt', 'AuthorUid', 'CompanyId'] as const) {
+    if (!next.includes('*') && !next.includes(field)) {
+      next = [field, ...next];
+    }
   }
   return next;
 }

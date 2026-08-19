@@ -5,7 +5,8 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { getUserId } from '@/core/service/api/context';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition, SearchOptions } from '@/core/service/api/query';
-import { MessageErrCode, newMessageError } from '../error';
+import { dial } from '@/core/service/orm/model/model_pool';
+import { GrpcCode, MessageErrCode, newMessageError } from '../error';
 import { _lt } from '../i18n';
 import type MessageSubtype from './message_subtype';
 
@@ -23,12 +24,111 @@ export type UnfollowRecordReq = {
   UserId?: string | null;
 };
 
+type TargetRecordAuthFn = (model: string, resId: string) => Promise<void>;
+
+let targetRecordAuthOverride: TargetRecordAuthFn | null | undefined;
+
+/**
+ * Test-only override for Follow target-record read checks.
+ * undefined = live dial Search; null = force deny; function = stub.
+ */
+export function __setMessageFollowTargetAuthForTest(fn: TargetRecordAuthFn | null | undefined): void {
+  targetRecordAuthOverride = fn;
+}
+
 function resolveActorUserId(explicit?: string | null): string | null {
   const fromReq = explicit == null || explicit === '' ? null : String(explicit).trim();
   if (fromReq) return fromReq;
   const uid = getUserId();
   if (uid == null || String(uid).trim() === '') return null;
   return String(uid).trim();
+}
+
+function isUniqueConstraintError(err: unknown): boolean {
+  const msg =
+    err instanceof Error
+      ? err.message
+      : typeof err === 'object' && err !== null && 'message' in err
+        ? String((err as { message: unknown }).message)
+        : String(err);
+  return /unique constraint|unique index|duplicate key|UNIQUE constraint failed/i.test(msg);
+}
+
+function permissionDenied(message: string) {
+  return newMessageError({ code: MessageErrCode.PERMISSION_DENIED, message }).withGrpcCode(GrpcCode.PermissionDenied);
+}
+
+async function assertTargetRecordReadable(model: string, resId: string): Promise<void> {
+  if (targetRecordAuthOverride !== undefined) {
+    if (targetRecordAuthOverride === null) {
+      throw permissionDenied('Follow is not allowed for this record');
+    }
+    await targetRecordAuthOverride(model, resId);
+    return;
+  }
+
+  try {
+    const svc = dial<{ Search?: (condition: unknown, options?: unknown) => Promise<unknown> }>(model);
+    if (typeof svc?.Search !== 'function') {
+      throw permissionDenied('Follow is not allowed for this record');
+    }
+    const rows = await svc.Search(['Id', '=', resId], { fields: ['Id'], limit: 1 });
+    if (Array.isArray(rows) && rows.length > 0) return;
+  } catch (err) {
+    if (err && typeof err === 'object' && (err as { code?: string }).code === MessageErrCode.PERMISSION_DENIED) {
+      throw err;
+    }
+  }
+  throw permissionDenied('Follow is not allowed for this record');
+}
+
+const DEFAULT_FOLLOW_FIELDS: FieldSelection<Follower> = ['Id', 'Model', 'ResId', 'UserId', 'SubtypeId', 'CompanyId'];
+
+function followReturnFields(fields?: FieldSelection<Follower>): FieldSelection<Follower> {
+  return fields ?? DEFAULT_FOLLOW_FIELDS;
+}
+
+async function findFollowRow(
+  model: string,
+  resId: string,
+  userId: string,
+  fields: FieldSelection<Follower>,
+  withDeleted = false
+): Promise<Follower | null> {
+  const rows = await Follower.Search(
+    {
+      And: [
+        ['Model', '=', model],
+        ['ResId', '=', resId],
+        ['UserId', '=', userId],
+      ],
+    },
+    { fields: withDeleted ? [...fields, 'DeletedAt'] : fields, limit: 1, ...(withDeleted ? { withDeleted: true } : {}) }
+  );
+  return rows.length > 0 ? (rows[0] as Follower) : null;
+}
+
+function isDeletedFollower(row: Follower): boolean {
+  const deletedAt = (row as Follower & { DeletedAt?: Date | string | number | null }).DeletedAt;
+  if (deletedAt == null || deletedAt === '') return false;
+  if (deletedAt instanceof Date) return !Number.isNaN(deletedAt.getTime());
+  return true;
+}
+
+async function restoreFollowRow(
+  row: Follower,
+  subtypeId: string | null,
+  companyId: string | null,
+  fields: FieldSelection<Follower>
+): Promise<Follower> {
+  const id = String(row.Id || '').trim();
+  const restored = await Follower.UpdateById(
+    id,
+    { DeletedAt: null, SubtypeId: subtypeId, CompanyId: companyId } as any,
+    fields,
+    { withDeleted: true }
+  );
+  return restored as Follower;
 }
 
 /**
@@ -92,7 +192,8 @@ export default class Follower extends BaseModel {
 
   /**
    * Subscribe the current (or explicit) user to one business record thread.
-   * Idempotent when the same (Model, ResId, UserId) row already exists.
+   * Idempotent when the same (Model, ResId, UserId) row already exists, including
+   * restoring a soft-deleted follower when the unique index is still occupied.
    */
   public static async Follow(req: FollowRecordReq, fields?: FieldSelection<Follower>): Promise<Follower> {
     if (!req || typeof req !== 'object') {
@@ -107,33 +208,40 @@ export default class Follower extends BaseModel {
     if (!userId) {
       throw newMessageError({ code: MessageErrCode.INVALID_ARGUMENT, message: 'Follow requires a user identity' });
     }
+    await assertTargetRecordReadable(model, resId);
 
-    const existing = await this.Search(
-      {
-        And: [
-          ['Model', '=', model],
-          ['ResId', '=', resId],
-          ['UserId', '=', userId],
-        ],
-      },
-      { fields: fields ?? ['Id', 'Model', 'ResId', 'UserId', 'SubtypeId', 'CompanyId'], limit: 1 }
-    );
-    if (existing.length > 0) {
-      return existing[0] as Follower;
-    }
-
+    const returnFields = followReturnFields(fields);
     const subtypeId = req.SubtypeId == null || req.SubtypeId === '' ? null : String(req.SubtypeId);
     const companyId = req.CompanyId == null || req.CompanyId === '' ? null : String(req.CompanyId);
-    return await this.Create(
-      {
-        Model: model,
-        ResId: resId,
-        UserId: userId,
-        SubtypeId: subtypeId,
-        CompanyId: companyId,
-      },
-      fields ?? ['Id', 'Model', 'ResId', 'UserId', 'SubtypeId', 'CompanyId']
-    );
+
+    const existing = await findFollowRow(model, resId, userId, returnFields, true);
+    if (existing) {
+      if (isDeletedFollower(existing)) {
+        return await restoreFollowRow(existing, subtypeId, companyId, returnFields);
+      }
+      return existing;
+    }
+
+    try {
+      return await this.Create(
+        {
+          Model: model,
+          ResId: resId,
+          UserId: userId,
+          SubtypeId: subtypeId,
+          CompanyId: companyId,
+        },
+        returnFields
+      );
+    } catch (err) {
+      if (!isUniqueConstraintError(err)) throw err;
+      const raced = await findFollowRow(model, resId, userId, returnFields, true);
+      if (!raced) throw err;
+      if (isDeletedFollower(raced)) {
+        return await restoreFollowRow(raced, subtypeId, companyId, returnFields);
+      }
+      return raced;
+    }
   }
 
   /**
