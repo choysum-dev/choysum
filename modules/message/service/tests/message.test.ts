@@ -572,6 +572,30 @@ test('message.Message: Post publishes message.thread.changed tip after create', 
   });
 });
 
+test('message.Message: Post tip keeps CreatedAt when return fields omit it', async () => {
+  await withMessageScope(async () => {
+    const published: any[] = [];
+    __setMessagePublishTipForTest(event => {
+      published.push(event);
+    });
+
+    const created = await Message.Post(
+      {
+        Model: 'partner.Partner',
+        ResId: uid('res'),
+        Body: 'narrow fields',
+      },
+      ['Id', 'Body']
+    );
+
+    expect(published).toHaveLength(1);
+    expect(typeof published[0].at).toBe('number');
+    expect(Number.isFinite(published[0].at)).toBe(true);
+    expect(published[0].payload.messageId).toBe(String((created as any).Id));
+    expect(published[0].payload.model).toBe('partner.Partner');
+  });
+});
+
 test('message.Message: Post succeeds when tip Publish fails or bus is missing', async () => {
   await withMessageScope(async () => {
     __setMessagePublishTipForTest(() => {

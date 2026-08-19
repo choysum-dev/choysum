@@ -160,6 +160,9 @@ function ensureTipFields(fields: FieldSelection<Message>): FieldSelection<Messag
   if (!next.includes('*') && !next.includes('ResId')) {
     next = ['ResId', ...next];
   }
+  if (!next.includes('*') && !next.includes('CreatedAt')) {
+    next = ['CreatedAt', ...next];
+  }
   return next;
 }
 

@@ -4,6 +4,7 @@
 package bus
 
 import (
+	"reflect"
 	"sync"
 
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -14,10 +15,26 @@ var (
 	host   EventBus
 )
 
-// SetHost installs the process-wide host EventBus singleton shared by task,
-// TipHub, and JS-module Publish. Nil is ignored.
-func SetHost(events EventBus) {
+// IsUsable reports whether events can safely receive Publish/Subscribe calls.
+// It rejects both untyped nil and typed-nil interface values (nil pointers
+// stored in EventBus), which pass `== nil` checks but panic on method calls.
+func IsUsable(events EventBus) bool {
 	if events == nil {
+		return false
+	}
+	value := reflect.ValueOf(events)
+	switch value.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return !value.IsNil()
+	default:
+		return true
+	}
+}
+
+// SetHost installs the process-wide host EventBus singleton shared by task,
+// TipHub, and JS-module Publish. Nil and typed-nil values are ignored.
+func SetHost(events EventBus) {
+	if !IsUsable(events) {
 		return
 	}
 	hostMu.Lock()
@@ -32,12 +49,12 @@ func Host() EventBus {
 	return host
 }
 
-// EnsureHost returns the host EventBus, creating one from scope when unset.
-// Concurrent callers share the first created instance.
+// EnsureHost returns the host EventBus, creating one from scope when unset or
+// unusable. Concurrent callers share the first created instance.
 func EnsureHost(runtimeScope scope.Scope) EventBus {
 	hostMu.Lock()
 	defer hostMu.Unlock()
-	if host != nil {
+	if IsUsable(host) {
 		return host
 	}
 	host = NewBus(runtimeScope)

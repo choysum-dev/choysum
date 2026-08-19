@@ -56,6 +56,23 @@ func TestEnsureEventsCreatesSingleton(t *testing.T) {
 	}
 }
 
+func TestEnsureEventsReplacesTypedNilInjectedBus(t *testing.T) {
+	bus.ClearHostForTest()
+	t.Cleanup(bus.ClearHostForTest)
+
+	var typedNil *recordingEventBus
+	state := taskRuntimeState{
+		hostRuntimeProvider: taskcontract.StaticHostRuntimeProvider(taskcontract.Runtime{Events: typedNil}),
+	}
+	got := state.ensureEvents(nil)
+	if !bus.IsUsable(got) {
+		t.Fatal("ensureEvents() should replace typed-nil injected Events")
+	}
+	if bus.Host() != got {
+		t.Fatal("ensureEvents() should bind the replacement host")
+	}
+}
+
 func TestRegisterTipHubService(t *testing.T) {
 	events := &recordingEventBus{}
 	srv := &GRPCWebServer{

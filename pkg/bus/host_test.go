@@ -57,3 +57,49 @@ func TestSetHostOverridesEnsureHost(t *testing.T) {
 		t.Fatalf("EnsureHost = %p, want injected %p", got, injected)
 	}
 }
+
+func TestIsUsableRejectsTypedNilEventBus(t *testing.T) {
+	var typedNil *stubBus
+	var events EventBus = typedNil
+	if IsUsable(events) {
+		t.Fatal("typed-nil EventBus should not be usable")
+	}
+	if IsUsable(nil) {
+		t.Fatal("nil EventBus should not be usable")
+	}
+	if !IsUsable(&stubBus{name: "ok"}) {
+		t.Fatal("concrete EventBus should be usable")
+	}
+}
+
+func TestSetHostAndEnsureHostRejectTypedNil(t *testing.T) {
+	ClearHostForTest()
+	t.Cleanup(ClearHostForTest)
+
+	var typedNil *stubBus
+	var events EventBus = typedNil
+	SetHost(events)
+	if Host() != nil {
+		t.Fatal("SetHost(typed-nil) should leave host unset")
+	}
+
+	Register("inprocess", func() EventBus { return &stubBus{name: "fallback"} })
+	t.Cleanup(func() {
+		mu.Lock()
+		delete(factories, "inprocess")
+		mu.Unlock()
+	})
+
+	// Simulate a stale typed-nil host slot and ensure EnsureHost replaces it.
+	hostMu.Lock()
+	host = events
+	hostMu.Unlock()
+
+	got := EnsureHost(&stubScope{cfg: &config.Config{}})
+	if !IsUsable(got) {
+		t.Fatal("EnsureHost should replace typed-nil host")
+	}
+	if Host() != got {
+		t.Fatal("EnsureHost should bind the replacement host")
+	}
+}
