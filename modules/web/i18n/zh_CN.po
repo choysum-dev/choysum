@@ -46,6 +46,86 @@ msgctxt "web.model.UserFilter.fields"
 msgid "User"
 msgstr "用户"
 
+#: web/components/chatter/OChatter.vue:5
+msgctxt "web/components/chatter/OChatter"
+msgid "Activity"
+msgstr "动态"
+
+#: web/components/chatter/OChatter.vue:40
+msgctxt "web/components/chatter/OChatter"
+msgid "System"
+msgstr "系统"
+
+#: web/components/chatter/OChatter.vue:44
+msgctxt "web/components/chatter/OChatter"
+msgid "You"
+msgstr "你"
+
+#: web/components/chatter/OChatterComposer.vue:39
+msgctxt "web/components/chatter/OChatterComposer"
+msgid "Failed to post comment"
+msgstr "发布评论失败"
+
+#: web/components/chatter/OChatterComposer.vue:6
+msgctxt "web/components/chatter/OChatterComposer"
+msgid "Post"
+msgstr "发布"
+
+#: web/components/chatter/OChatterComposer.vue:3
+msgctxt "web/components/chatter/OChatterComposer"
+msgid "Write a comment..."
+msgstr "写评论..."
+
+#: web/components/chatter/OChatterFieldChangeItem.vue:21
+msgctxt "web/components/chatter/OChatterFieldChangeItem"
+msgid "%s changed from %s to %s"
+msgstr "%s 从 %s 变更为 %s"
+
+#: web/components/chatter/OChatterFieldChangeItem.vue:22
+msgctxt "web/components/chatter/OChatterFieldChangeItem"
+msgid "Action: %s"
+msgstr "操作：%s"
+
+#: web/components/chatter/OChatterFieldChangeItem.vue:23
+msgctxt "web/components/chatter/OChatterFieldChangeItem"
+msgid "Field"
+msgstr "字段"
+
+#: web/components/chatter/OChatterFieldChangeItem.vue:19
+msgctxt "web/components/chatter/OChatterFieldChangeItem"
+msgid "Record created"
+msgstr "记录已创建"
+
+#: web/components/chatter/OChatterFieldChangeItem.vue:20
+msgctxt "web/components/chatter/OChatterFieldChangeItem"
+msgid "Record removed"
+msgstr "记录已删除"
+
+#: web/components/chatter/OChatterFollowerBar.vue:7
+msgctxt "web/components/chatter/OChatterFollowerBar"
+msgid "%d followers"
+msgstr "%d 位关注者"
+
+#: web/components/chatter/OChatterFollowerBar.vue:4
+msgctxt "web/components/chatter/OChatterFollowerBar"
+msgid "Follow"
+msgstr "关注"
+
+#: web/components/chatter/OChatterFollowerBar.vue:4
+msgctxt "web/components/chatter/OChatterFollowerBar"
+msgid "Unfollow"
+msgstr "取消关注"
+
+#: web/components/chatter/OChatterTimeline.vue:3
+msgctxt "web/components/chatter/OChatterTimeline"
+msgid "Loading activity..."
+msgstr "正在加载动态..."
+
+#: web/components/chatter/OChatterTimeline.vue:5
+msgctxt "web/components/chatter/OChatterTimeline"
+msgid "No activity yet"
+msgstr "暂无动态"
+
 #: web/components/field/OBigintField.vue:254
 msgctxt "web/components/field/OBigintField"
 msgid "Cannot be empty"
@@ -156,22 +236,22 @@ msgctxt "web/components/field/ODecimalField"
 msgid "Total digits must not exceed %s"
 msgstr "总位数不得超过 %s"
 
-#: web/components/field/OFieldBase.vue:171
+#: web/components/field/OFieldBase.vue:173
 msgctxt "web/components/field/OFieldBase"
 msgid "Company values"
 msgstr "公司值"
 
-#: web/components/field/OFieldBase.vue:171
+#: web/components/field/OFieldBase.vue:173
 msgctxt "web/components/field/OFieldBase"
 msgid "Company values: %s"
 msgstr "公司值：%s"
 
-#: web/components/field/OFieldBase.vue:164
+#: web/components/field/OFieldBase.vue:166
 msgctxt "web/components/field/OFieldBase"
 msgid "Translate field"
 msgstr "翻译字段"
 
-#: web/components/field/OFieldBase.vue:164
+#: web/components/field/OFieldBase.vue:166
 msgctxt "web/components/field/OFieldBase"
 msgid "Translate: %s"
 msgstr "翻译：%s"
@@ -691,6 +771,66 @@ msgctxt "web/components/field/OOneToManyKanbanField"
 msgid "View record"
 msgstr "查看记录"
 
+#: web/components/field/OPropertiesDefinitionEditor.vue:8
+msgctxt "web/components/field/OPropertiesDefinitionEditor"
+msgid "Add property"
+msgstr "添加属性"
+
+#: web/components/field/OPropertiesDefinitionEditor.vue:28
+msgctxt "web/components/field/OPropertiesDefinitionEditor"
+msgid "Default"
+msgstr "默认"
+
+#: web/components/field/OPropertiesDefinitionEditor.vue:27
+msgctxt "web/components/field/OPropertiesDefinitionEditor"
+msgid "Label"
+msgstr "标签"
+
+#: web/components/field/OPropertiesDefinitionEditor.vue:23
+msgctxt "web/components/field/OPropertiesDefinitionEditor"
+msgid "Name"
+msgstr "名称"
+
+#: web/components/field/OPropertiesDefinitionEditor.vue:19
+msgctxt "web/components/field/OPropertiesDefinitionEditor"
+msgid "No properties defined"
+msgstr "未定义属性"
+
+#: web/components/field/OPropertiesDefinitionEditor.vue:133 web/components/field/OPropertiesDefinitionEditor.vue:82
+msgctxt "web/components/field/OPropertiesDefinitionEditor"
+msgid "PropertyDefinition store is unavailable"
+msgstr "PropertyDefinition 存储不可用"
+
+#: web/components/field/OPropertiesDefinitionEditor.vue:32
+msgctxt "web/components/field/OPropertiesDefinitionEditor"
+msgid "Remove"
+msgstr "移除"
+
+#: web/components/field/OPropertiesDefinitionEditor.vue:5
+msgctxt "web/components/field/OPropertiesDefinitionEditor"
+msgid "Save"
+msgstr "保存"
+
+#: web/components/field/OPropertiesDefinitionEditor.vue:30
+msgctxt "web/components/field/OPropertiesDefinitionEditor"
+msgid "Selection JSON"
+msgstr "选择项 JSON"
+
+#: web/components/field/OPropertiesField.vue:152
+msgctxt "web/components/field/OPropertiesField"
+msgid "%s properties"
+msgstr "%s 个属性"
+
+#: web/components/field/OPropertiesField.vue:142
+msgctxt "web/components/field/OPropertiesField"
+msgid "No"
+msgstr "否"
+
+#: web/components/field/OPropertiesField.vue:142
+msgctxt "web/components/field/OPropertiesField"
+msgid "Yes"
+msgstr "是"
+
 #: web/components/field/OSelectionField.vue:334
 msgctxt "web/components/field/OSelectionField"
 msgid "Invalid option value: %s"
@@ -776,17 +916,17 @@ msgctxt "web/components/layout/OFooter"
 msgid "View terms of use"
 msgstr "查看使用条款"
 
-#: web/components/layout/OHeader.vue:21
+#: web/components/layout/OHeader.vue:22
 msgctxt "web/components/layout/OHeader"
 msgid "%s - Home"
 msgstr "%s - 首页"
 
-#: web/components/layout/OHeader.vue:118
+#: web/components/layout/OHeader.vue:120
 msgctxt "web/components/layout/OHeader"
 msgid "App navigation"
 msgstr "应用导航"
 
-#: web/components/layout/OHeader.vue:16
+#: web/components/layout/OHeader.vue:17
 msgctxt "web/components/layout/OHeader"
 msgid "Collapse menu"
 msgstr "折叠菜单"
@@ -796,12 +936,12 @@ msgctxt "web/components/layout/OHeader"
 msgid "Contact support"
 msgstr "联系支持"
 
-#: web/components/layout/OHeader.vue:15
+#: web/components/layout/OHeader.vue:16
 msgctxt "web/components/layout/OHeader"
 msgid "Expand menu"
 msgstr "展开菜单"
 
-#: web/components/layout/OHeader.vue:19
+#: web/components/layout/OHeader.vue:20
 msgctxt "web/components/layout/OHeader"
 msgid "Get help"
 msgstr "获取帮助"
@@ -811,12 +951,12 @@ msgctxt "web/components/layout/OHeader"
 msgid "Help documentation"
 msgstr "帮助文档"
 
-#: web/components/layout/OHeader.vue:17
+#: web/components/layout/OHeader.vue:18
 msgctxt "web/components/layout/OHeader"
 msgid "Select an app"
 msgstr "选择应用"
 
-#: web/components/layout/OHeader.vue:18
+#: web/components/layout/OHeader.vue:19
 msgctxt "web/components/layout/OHeader"
 msgid "Switch language"
 msgstr "切换语言"
@@ -825,6 +965,36 @@ msgstr "切换语言"
 msgctxt "web/components/layout/OHeader"
 msgid "Video tutorials"
 msgstr "视频教程"
+
+#: web/components/layout/ONotificationBell.vue:18
+msgctxt "web/components/layout/ONotificationBell"
+msgid "Loading..."
+msgstr "加载中..."
+
+#: web/components/layout/ONotificationBell.vue:15
+msgctxt "web/components/layout/ONotificationBell"
+msgid "Mark all read"
+msgstr "全部标为已读"
+
+#: web/components/layout/ONotificationBell.vue:68
+msgctxt "web/components/layout/ONotificationBell"
+msgid "New notification"
+msgstr "新通知"
+
+#: web/components/layout/ONotificationBell.vue:20
+msgctxt "web/components/layout/ONotificationBell"
+msgid "No notifications"
+msgstr "暂无通知"
+
+#: web/components/layout/ONotificationBell.vue:13 web/components/layout/ONotificationBell.vue:4
+msgctxt "web/components/layout/ONotificationBell"
+msgid "Notifications"
+msgstr "通知"
+
+#: web/components/layout/ONotificationBell.vue:66
+msgctxt "web/components/layout/ONotificationBell"
+msgid "Update on %s (%s)"
+msgstr "%s (%s) 有更新"
 
 #: web/components/layout/OSidebar.vue:2
 msgctxt "web/components/layout/OSidebar"
@@ -841,7 +1011,7 @@ msgctxt "web/components/view/OChartView"
 msgid "Ascending"
 msgstr "升序"
 
-#: web/components/view/OChartView.vue:597
+#: web/components/view/OChartView.vue:601
 msgctxt "web/components/view/OChartView"
 msgid "Chart refresh failed"
 msgstr "图表刷新失败"
@@ -996,12 +1166,12 @@ msgctxt "web/components/view/OFormView"
 msgid "Saving..."
 msgstr "保存中..."
 
-#: web/components/view/OKanbanView.vue:131
+#: web/components/view/OKanbanView.vue:136
 msgctxt "web/components/view/OKanbanView"
 msgid "All"
 msgstr "全部"
 
-#: web/components/view/OKanbanView.vue:297
+#: web/components/view/OKanbanView.vue:302
 msgctxt "web/components/view/OKanbanView"
 msgid "Kanban refresh failed"
 msgstr "看板刷新失败"
@@ -1011,7 +1181,7 @@ msgctxt "web/components/view/OKanbanView"
 msgid "Load more (%s remaining)"
 msgstr "加载更多（剩余 %s 条）"
 
-#: web/components/view/OKanbanView.vue:252
+#: web/components/view/OKanbanView.vue:257
 msgctxt "web/components/view/OKanbanView"
 msgid "Move failed; refreshed to recover"
 msgstr "移动失败，已刷新以恢复"
@@ -1036,12 +1206,12 @@ msgctxt "web/components/view/OKanbanView"
 msgid "Refresh"
 msgstr "刷新"
 
-#: web/components/view/OListView.vue:557
+#: web/components/view/OListView.vue:562
 msgctxt "web/components/view/OListView"
 msgid "Are you sure you want to delete the selected %s record(s)? This action cannot be undone."
 msgstr "确定要删除选中的 %s 条记录吗？此操作无法撤销。"
 
-#: web/components/view/OListView.vue:559
+#: web/components/view/OListView.vue:564
 msgctxt "web/components/view/OListView"
 msgid "Cancel"
 msgstr "取消"
@@ -1051,12 +1221,12 @@ msgctxt "web/components/view/OListView"
 msgid "Click to load more (%s remaining)"
 msgstr "点击加载更多（剩余 %s 条）"
 
-#: web/components/view/OListView.vue:557
+#: web/components/view/OListView.vue:562
 msgctxt "web/components/view/OListView"
 msgid "Confirm delete"
 msgstr "确认删除"
 
-#: web/components/view/OListView.vue:558
+#: web/components/view/OListView.vue:563
 msgctxt "web/components/view/OListView"
 msgid "Delete"
 msgstr "删除"
@@ -1066,7 +1236,7 @@ msgctxt "web/components/view/OListView"
 msgid "Delete (%s)"
 msgstr "删除（%s）"
 
-#: web/components/view/OListView.vue:592
+#: web/components/view/OListView.vue:597
 msgctxt "web/components/view/OListView"
 msgid "Delete failed"
 msgstr "删除失败"
@@ -1076,32 +1246,32 @@ msgctxt "web/components/view/OListView"
 msgid "Discard"
 msgstr "放弃"
 
-#: web/components/view/OListView.vue:194
+#: web/components/view/OListView.vue:199
 msgctxt "web/components/view/OListView"
 msgid "Editing was discarded because the row is no longer visible."
 msgstr "该行已不可见，编辑已放弃。"
 
-#: web/components/view/OListView.vue:455
+#: web/components/view/OListView.vue:460
 msgctxt "web/components/view/OListView"
 msgid "Failed to load list"
 msgstr "列表加载失败"
 
-#: web/components/view/OListView.vue:263
+#: web/components/view/OListView.vue:268
 msgctxt "web/components/view/OListView"
 msgid "Failed to refresh after reorder"
 msgstr "重排后刷新失败"
 
-#: web/components/view/OListView.vue:538
+#: web/components/view/OListView.vue:543
 msgctxt "web/components/view/OListView"
 msgid "Failed to refresh list"
 msgstr "列表刷新失败"
 
-#: web/components/view/OListView.vue:263
+#: web/components/view/OListView.vue:268
 msgctxt "web/components/view/OListView"
 msgid "Failed to reorder rows"
 msgstr "行重排失败"
 
-#: web/components/view/OListView.vue:530
+#: web/components/view/OListView.vue:535
 msgctxt "web/components/view/OListView"
 msgid "List data refreshed"
 msgstr "列表数据已刷新"
@@ -1126,12 +1296,12 @@ msgctxt "web/components/view/OListView"
 msgid "Save"
 msgstr "保存"
 
-#: web/components/view/OListView.vue:578
+#: web/components/view/OListView.vue:583
 msgctxt "web/components/view/OListView"
 msgid "Selected records are missing valid IDs"
 msgstr "所选记录缺少有效 ID"
 
-#: web/components/view/OListView.vue:583
+#: web/components/view/OListView.vue:588
 msgctxt "web/components/view/OListView"
 msgid "Successfully deleted %s record(s)"
 msgstr "已成功删除 %s 条记录"
