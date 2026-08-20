@@ -12,3 +12,7 @@ const TopicMessageThreadChanged = "message.thread.changed"
 
 // TopicMessageNotificationUser notifies one user's inbox that notifications changed.
 const TopicMessageNotificationUser = "message.notification.user"
+
+// TopicAuditFieldChangeAppended notifies a Form Chatter thread that field-change
+// history was appended for a business record (best-effort; Unary remains authoritative).
+const TopicAuditFieldChangeAppended = "audit.field_change.appended"

@@ -66,6 +66,8 @@ func New(events bus.EventBus, opts ...Option) *Hub {
 }
 
 // SubscribeThread streams tips for one (model, res_id) thread.
+// It fans in message.thread.changed and audit.field_change.appended so Chatter
+// refreshes on both new comments and field-change history.
 func (h *Hub) SubscribeThread(req *tippb.SubscribeThreadReq, stream grpc.ServerStreamingServer[tippb.Tip]) error {
 	identity, err := requireIdentity(stream.Context())
 	if err != nil {
@@ -76,9 +78,13 @@ func (h *Hub) SubscribeThread(req *tippb.SubscribeThreadReq, stream grpc.ServerS
 	if model == "" || resID == "" {
 		return status.Error(codes.InvalidArgument, "model and res_id are required")
 	}
-	return h.serve(stream, identity, bus.TopicMessageThreadChanged, func(event bus.Event) bool {
+	match := func(event bus.Event) bool {
 		return payloadString(event, payloadKeyModel) == model && payloadString(event, payloadKeyResID) == resID
-	})
+	}
+	return h.serve(stream, identity, []string{
+		bus.TopicMessageThreadChanged,
+		bus.TopicAuditFieldChangeAppended,
+	}, match)
 }
 
 // SubscribeNotifications streams inbox tips for the authenticated user.
@@ -88,15 +94,18 @@ func (h *Hub) SubscribeNotifications(_ *tippb.SubscribeNotificationsReq, stream 
 		return err
 	}
 	userID := strings.TrimSpace(identity.GetUserID())
-	return h.serve(stream, identity, bus.TopicMessageNotificationUser, func(event bus.Event) bool {
+	return h.serve(stream, identity, []string{bus.TopicMessageNotificationUser}, func(event bus.Event) bool {
 		payloadUser := payloadString(event, payloadKeyUserID)
 		return payloadUser != "" && payloadUser == userID
 	})
 }
 
-func (h *Hub) serve(stream grpc.ServerStreamingServer[tippb.Tip], identity auth.Identity, topic string, match func(bus.Event) bool) error {
+func (h *Hub) serve(stream grpc.ServerStreamingServer[tippb.Tip], identity auth.Identity, topics []string, match func(bus.Event) bool) error {
 	if h == nil || h.events == nil {
 		return status.Error(codes.Unavailable, "event bus unavailable")
+	}
+	if len(topics) == 0 {
+		return status.Error(codes.Internal, "tip topics required")
 	}
 	userID := strings.TrimSpace(identity.GetUserID())
 	if !h.acquireStream(userID) {
@@ -105,19 +114,27 @@ func (h *Hub) serve(stream grpc.ServerStreamingServer[tippb.Tip], identity auth.
 	defer h.releaseStream(userID)
 
 	tips := make(chan *tippb.Tip, tipBufferSize)
-	sub, err := h.events.Subscribe(topic, func(_ context.Context, event bus.Event) {
-		if match != nil && !match(event) {
-			return
+	subs := make([]bus.Subscription, 0, len(topics))
+	defer func() {
+		for _, sub := range subs {
+			_ = sub.Close()
 		}
-		select {
-		case tips <- eventToTip(event):
-		default:
+	}()
+	for _, topic := range topics {
+		sub, err := h.events.Subscribe(topic, func(_ context.Context, event bus.Event) {
+			if match != nil && !match(event) {
+				return
+			}
+			select {
+			case tips <- eventToTip(event):
+			default:
+			}
+		})
+		if err != nil {
+			return status.Errorf(codes.Unavailable, "subscribe failed: %v", err)
 		}
-	})
-	if err != nil {
-		return status.Errorf(codes.Unavailable, "subscribe failed: %v", err)
+		subs = append(subs, sub)
 	}
-	defer func() { _ = sub.Close() }()
 
 	for {
 		select {
