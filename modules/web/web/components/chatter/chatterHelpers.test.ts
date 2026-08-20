@@ -14,7 +14,7 @@ describe('formatFieldChangeSummary', () => {
   };
 
   it('formats create, unlink, field, and action kinds', () => {
-    expect(formatFieldChangeSummary({ kind: 'fieldChange', id: '1', at: 1, field: null, changeKind: 'create', oldValue: null, newValue: null, actorUid: null }, labels)).toBe('Record created');
+    expect(formatFieldChangeSummary({ kind: 'fieldChange', id: '1', at: 1, field: null, changeKind: ' create ', oldValue: null, newValue: null, actorUid: null }, labels)).toBe('Record created');
     expect(formatFieldChangeSummary({ kind: 'fieldChange', id: '2', at: 1, field: null, changeKind: 'unlink', oldValue: null, newValue: null, actorUid: null }, labels)).toBe('Record removed');
     expect(
       formatFieldChangeSummary(
@@ -37,5 +37,20 @@ describe('formatFieldChangeSummary', () => {
         { ...labels, fieldFallback: '字段' }
       )
     ).toBe('字段:A->B');
+  });
+
+  it('normalizes empty values and bare action kinds', () => {
+    expect(
+      formatFieldChangeSummary(
+        { kind: 'fieldChange', id: '6', at: 1, field: 'Name', changeKind: 'field', oldValue: '', newValue: null, actorUid: null },
+        labels
+      )
+    ).toBe('Name:—->—');
+    expect(
+      formatFieldChangeSummary(
+        { kind: 'fieldChange', id: '7', at: 1, field: null, changeKind: 'action:', oldValue: null, newValue: null, actorUid: null },
+        labels
+      )
+    ).toBe('Action:action:');
   });
 });

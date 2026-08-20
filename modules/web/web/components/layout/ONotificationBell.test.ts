@@ -55,11 +55,16 @@ describe('ONotificationBell', () => {
     loading.value = false;
     error.value = null;
     unreadCount.value = 0;
-    refresh.mockClear();
-    markRead.mockClear();
-    markAllRead.mockClear();
-    activate.mockClear();
-    deactivate.mockClear();
+    refresh.mockReset();
+    markRead.mockReset();
+    markAllRead.mockReset();
+    activate.mockReset();
+    deactivate.mockReset();
+    refresh.mockResolvedValue(undefined);
+    markRead.mockResolvedValue(undefined);
+    markAllRead.mockResolvedValue(undefined);
+    activate.mockResolvedValue(undefined);
+    deactivate.mockReturnValue(undefined);
     authStore.isAuthenticated = true;
     authStore.$subscribe.mockClear();
     authStore._listener = null;
@@ -99,6 +104,7 @@ describe('ONotificationBell', () => {
             },
           }),
           ElDropdown: defineComponent({
+            name: 'ElDropdown',
             emits: ['visible-change'],
             setup(_, { slots, emit }) {
               return () =>
@@ -111,6 +117,14 @@ describe('ONotificationBell', () => {
                       onClick: () => emit('visible-change', true),
                     },
                     'open'
+                  ),
+                  h(
+                    'button',
+                    {
+                      class: 'close-dropdown',
+                      onClick: () => emit('visible-change', false),
+                    },
+                    'close'
                   ),
                   slots.dropdown?.(),
                 ]);
@@ -230,6 +244,49 @@ describe('ONotificationBell', () => {
     settleActivate?.();
     await flushPromises();
     expect(deactivate.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('ignores auth subscription updates when the auth state is unchanged', async () => {
+    const wrapper = mountBell();
+    await flushPromises();
+    activate.mockClear();
+    authStore._listener?.();
+    expect(activate).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it('ignores auth listener updates after unmount', async () => {
+    const wrapper = mountBell();
+    await flushPromises();
+    wrapper.unmount();
+    deactivate.mockClear();
+    authStore._listener?.();
+    expect(deactivate).not.toHaveBeenCalled();
+  });
+
+  it('ignores notification clicks without an id', async () => {
+    rows.value = [{ IsRead: false }];
+    const wrapper = mountBell();
+    await flushPromises();
+    await wrapper.find('.el-dropdown-item').trigger('click');
+    expect(markRead).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it('does not refresh when the dropdown closes or the user is logged out', async () => {
+    const wrapper = mountBell();
+    await flushPromises();
+    refresh.mockClear();
+    await wrapper.find('.close-dropdown').trigger('click');
+    await flushPromises();
+    expect(refresh).not.toHaveBeenCalled();
+
+    authStore.isAuthenticated = false;
+    const loggedOut = mountBell();
+    await flushPromises();
+    expect(loggedOut.find('.el-dropdown').exists()).toBe(false);
+    loggedOut.unmount();
+    wrapper.unmount();
   });
 
   it('handles auth initialization failures', async () => {

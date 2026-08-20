@@ -50,4 +50,19 @@ describe('partner view _lt setup coverage', () => {
       expect(wrapper.exists()).toBe(true);
     });
   }
+
+  it('mounts PartnerFormView chatter when recordId is present', () => {
+    const PartnerFormView = viewModules['../views/PartnerFormView.vue'].default;
+    const wrapper = shallowMount(PartnerFormView as any, {
+      props: { store: fakeStore as any, recordId: 'partner_1' },
+      global: {
+        plugins: [i18n],
+        stubs: {
+          OFormView: { template: '<div><slot /></div>' },
+          OChatter: { template: '<div data-test="chatter-stub" />' },
+        },
+      },
+    });
+    expect(wrapper.find('[data-test="chatter-stub"]').exists()).toBe(true);
+  });
 });

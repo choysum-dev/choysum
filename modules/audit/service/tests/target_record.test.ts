@@ -13,8 +13,11 @@ function resetSeams(): void {
   __setFieldChangeTargetDialForTest(undefined);
 }
 
-test('audit target_record: denies when the test override is null', async () => {
+afterEach(() => {
   resetSeams();
+});
+
+test('audit target_record: denies when the test override is null', async () => {
   __setFieldChangeTargetAuthForTest(null);
   let err: unknown;
   try {
@@ -23,18 +26,14 @@ test('audit target_record: denies when the test override is null', async () => {
     err = e;
   }
   expect((err as any).code).toBe(AuditErrCode.PERMISSION_DENIED);
-  resetSeams();
 });
 
 test('audit target_record: allows when the test override succeeds', async () => {
-  resetSeams();
   __setFieldChangeTargetAuthForTest(async () => undefined);
   await assertTargetRecordReadable('base.UoM', 'r1', 'denied');
-  resetSeams();
 });
 
 test('audit target_record: denies when dial Search is missing', async () => {
-  resetSeams();
   __setFieldChangeTargetDialForTest(() => ({}));
   let err: unknown;
   try {
@@ -44,11 +43,9 @@ test('audit target_record: denies when dial Search is missing', async () => {
   }
   expect(isAuditError(err)).toBe(true);
   expect((err as any).code).toBe(AuditErrCode.PERMISSION_DENIED);
-  resetSeams();
 });
 
 test('audit target_record: allows when dial Search finds the record', async () => {
-  resetSeams();
   __setFieldChangeTargetDialForTest(
     () =>
       ({
@@ -56,11 +53,9 @@ test('audit target_record: allows when dial Search finds the record', async () =
       }) as any
   );
   await assertTargetRecordReadable('base.UoM', 'r1', 'denied');
-  resetSeams();
 });
 
 test('audit target_record: denies when dial Search returns no rows', async () => {
-  resetSeams();
   __setFieldChangeTargetDialForTest(
     () =>
       ({
@@ -74,16 +69,15 @@ test('audit target_record: denies when dial Search returns no rows', async () =>
     err = e;
   }
   expect((err as any).code).toBe(AuditErrCode.PERMISSION_DENIED);
-  resetSeams();
 });
 
 test('audit target_record: rethrows permission denied errors from dial Search', async () => {
-  resetSeams();
+  const denied = { code: AuditErrCode.PERMISSION_DENIED, message: 'blocked' };
   __setFieldChangeTargetDialForTest(
     () =>
       ({
         Search: async () => {
-          throw { code: AuditErrCode.PERMISSION_DENIED, message: 'blocked' };
+          throw denied;
         },
       }) as any
   );
@@ -93,12 +87,10 @@ test('audit target_record: rethrows permission denied errors from dial Search', 
   } catch (e) {
     err = e;
   }
-  expect((err as any).code).toBe(AuditErrCode.PERMISSION_DENIED);
-  resetSeams();
+  expect(err).toBe(denied);
 });
 
 test('audit target_record: maps other dial failures to permission denied', async () => {
-  resetSeams();
   __setFieldChangeTargetDialForTest(
     () =>
       ({
@@ -114,5 +106,4 @@ test('audit target_record: maps other dial failures to permission denied', async
     err = e;
   }
   expect((err as any).code).toBe(AuditErrCode.PERMISSION_DENIED);
-  resetSeams();
 });

@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { flushPromises, mount } from '@vue/test-utils';
-import { defineComponent, h, ref } from 'vue';
+import { defineComponent, h } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const Post = vi.fn();
@@ -100,8 +100,9 @@ describe('OChatterComposer', () => {
     expect(wrapper.find('[role="alert"]').text()).toBe('Failed to post comment');
   });
 
-  it('ignores empty, disabled, and duplicate submits', async () => {
+  it('ignores empty submits and blocks posting while disabled', async () => {
     const wrapper = mountComposer({ disabled: true });
+    expect(wrapper.find('button').attributes('disabled')).toBeDefined();
     await wrapper.find('textarea').setValue('hello');
     await wrapper.find('button').trigger('click');
     expect(Post).not.toHaveBeenCalled();
@@ -110,6 +111,15 @@ describe('OChatterComposer', () => {
     await wrapper.find('textarea').setValue('   ');
     await wrapper.find('button').trigger('click');
     expect(Post).not.toHaveBeenCalled();
+  });
+
+  it('uses the fallback error message for blank Error messages', async () => {
+    Post.mockRejectedValue(new Error('   '));
+    const wrapper = mountComposer();
+    await wrapper.find('textarea').setValue('hello');
+    await wrapper.find('button').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('[role="alert"]').text()).toBe('Failed to post comment');
   });
 
   it('submits on ctrl+enter', async () => {

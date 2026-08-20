@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { defineComponent, effectScope, h, onMounted, ref } from 'vue';
+import { defineComponent, effectScope, h, onMounted } from 'vue';
 import { mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -88,26 +88,6 @@ describe('useNotificationInbox', () => {
     await first;
     expect(inbox.rows.value.map(row => row.Id)).toEqual(['n2']);
     expect(inbox.loading.value).toBe(false);
-    scope.stop();
-  });
-
-  it('does not start tips after deactivate during activate', async () => {
-    let resolveInbox: ((rows: unknown[]) => void) | undefined;
-    SearchInbox.mockImplementationOnce(
-      () =>
-        new Promise(resolve => {
-          resolveInbox = resolve;
-        })
-    );
-    const scope = effectScope();
-    const inbox = scope.run(() => useNotificationInbox(() => true));
-    if (!inbox) throw new Error('inbox missing');
-    const pending = inbox.activate();
-    await Promise.resolve();
-    inbox.deactivate();
-    resolveInbox?.([]);
-    await pending;
-    expect(onTips).not.toHaveBeenCalled();
     scope.stop();
   });
 
@@ -201,5 +181,68 @@ describe('useNotificationInbox', () => {
     await vi.advanceTimersByTimeAsync(30_000);
     expect(SearchInbox).not.toHaveBeenCalled();
     expect(inbox?.rows.value).toEqual([]);
+  });
+
+  it('ignores stale refresh results after inbox becomes disabled', async () => {
+    let enabled = true;
+    let resolveFirst: ((rows: unknown[]) => void) | undefined;
+    SearchInbox.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveFirst = resolve;
+        })
+    );
+    const scope = effectScope();
+    const inbox = scope.run(() => useNotificationInbox(() => enabled));
+    if (!inbox) throw new Error('inbox missing');
+    const first = inbox.refresh();
+    enabled = false;
+    await inbox.refresh();
+    expect(inbox.rows.value).toEqual([]);
+    resolveFirst?.([{ Id: 'n1', IsRead: false }]);
+    await first;
+    expect(inbox.rows.value).toEqual([]);
+    scope.stop();
+  });
+
+  it('skips tip subscription when refresh completes after deactivate', async () => {
+    let resolveInbox: ((rows: unknown[]) => void) | undefined;
+    SearchInbox.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveInbox = resolve;
+        })
+    );
+    const scope = effectScope();
+    const inbox = scope.run(() => useNotificationInbox(() => true));
+    if (!inbox) throw new Error('inbox missing');
+    const pending = inbox.activate();
+    inbox.deactivate();
+    resolveInbox?.([]);
+    await pending;
+    expect(onTips).not.toHaveBeenCalled();
+    scope.stop();
+  });
+
+  it('maps mark-all-read failures to strings', async () => {
+    MarkAllRead.mockRejectedValue('mark all down');
+    const scope = effectScope();
+    const inbox = scope.run(() => useNotificationInbox(() => true));
+    if (!inbox) throw new Error('inbox missing');
+    await inbox.markAllRead();
+    expect(inbox.error.value).toBe('mark all down');
+    scope.stop();
+  });
+
+  it('does not start tips or poll fallback when the inbox is disabled', async () => {
+    const scope = effectScope();
+    const inbox = scope.run(() => useNotificationInbox(() => false));
+    if (!inbox) throw new Error('inbox missing');
+    await inbox.activate();
+    expect(onTips).not.toHaveBeenCalled();
+    SearchInbox.mockClear();
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(SearchInbox).not.toHaveBeenCalled();
+    scope.stop();
   });
 });

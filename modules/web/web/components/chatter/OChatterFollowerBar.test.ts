@@ -101,13 +101,13 @@ describe('OChatterFollowerBar', () => {
     authState.currentUser = null;
     const wrapper = mountBar();
     await flushPromises();
-    await wrapper.find('button').trigger('click');
+    expect(wrapper.find('button').attributes('disabled')).toBeDefined();
     expect(Follow).not.toHaveBeenCalled();
 
     authState.currentUser = { Id: 'usr_1' };
     await wrapper.setProps({ disabled: true });
     await flushPromises();
-    await wrapper.find('button').trigger('click');
+    expect(wrapper.find('button').attributes('disabled')).toBeDefined();
     expect(Follow).not.toHaveBeenCalled();
   });
 

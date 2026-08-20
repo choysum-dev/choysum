@@ -1,7 +1,8 @@
+// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -42,5 +43,6 @@ describe('partner resource wiring', () => {
     expect(form).toContain('copy: partnerActions.copy');
     expect(form).toContain('delete: partnerActions.delete');
     expect(form).toContain(':has-action="hasAction"');
+    expect(form).toContain('<OChatter v-if="recordId" model="partner.Partner" :res-id="recordId" />');
   });
 });

@@ -13,8 +13,11 @@ function resetSeams(): void {
   __setMessageTargetRecordDialForTest(undefined);
 }
 
-test('message target_record: denies when the test override is null', async () => {
+afterEach(() => {
   resetSeams();
+});
+
+test('message target_record: denies when the test override is null', async () => {
   __setMessageTargetRecordAuthForTest(null);
   let err: unknown;
   try {
@@ -23,18 +26,14 @@ test('message target_record: denies when the test override is null', async () =>
     err = e;
   }
   expect((err as any).code).toBe(MessageErrCode.PERMISSION_DENIED);
-  resetSeams();
 });
 
 test('message target_record: allows when the test override succeeds', async () => {
-  resetSeams();
   __setMessageTargetRecordAuthForTest(async () => undefined);
   await assertTargetRecordReadable('partner.Partner', 'r1', 'denied');
-  resetSeams();
 });
 
 test('message target_record: denies when dial Search is missing', async () => {
-  resetSeams();
   __setMessageTargetRecordDialForTest(() => ({}));
   let err: unknown;
   try {
@@ -44,11 +43,9 @@ test('message target_record: denies when dial Search is missing', async () => {
   }
   expect(isMessageError(err)).toBe(true);
   expect((err as any).code).toBe(MessageErrCode.PERMISSION_DENIED);
-  resetSeams();
 });
 
 test('message target_record: allows when dial Search finds the record', async () => {
-  resetSeams();
   __setMessageTargetRecordDialForTest(
     () =>
       ({
@@ -56,11 +53,9 @@ test('message target_record: allows when dial Search finds the record', async ()
       }) as any
   );
   await assertTargetRecordReadable('partner.Partner', 'r1', 'denied');
-  resetSeams();
 });
 
 test('message target_record: denies when dial Search returns no rows', async () => {
-  resetSeams();
   __setMessageTargetRecordDialForTest(
     () =>
       ({
@@ -74,16 +69,15 @@ test('message target_record: denies when dial Search returns no rows', async () 
     err = e;
   }
   expect((err as any).code).toBe(MessageErrCode.PERMISSION_DENIED);
-  resetSeams();
 });
 
 test('message target_record: rethrows permission denied errors from dial Search', async () => {
-  resetSeams();
+  const denied = { code: MessageErrCode.PERMISSION_DENIED, message: 'blocked' };
   __setMessageTargetRecordDialForTest(
     () =>
       ({
         Search: async () => {
-          throw { code: MessageErrCode.PERMISSION_DENIED, message: 'blocked' };
+          throw denied;
         },
       }) as any
   );
@@ -93,12 +87,10 @@ test('message target_record: rethrows permission denied errors from dial Search'
   } catch (e) {
     err = e;
   }
-  expect((err as any).code).toBe(MessageErrCode.PERMISSION_DENIED);
-  resetSeams();
+  expect(err).toBe(denied);
 });
 
 test('message target_record: maps other dial failures to permission denied', async () => {
-  resetSeams();
   __setMessageTargetRecordDialForTest(
     () =>
       ({
@@ -114,5 +106,4 @@ test('message target_record: maps other dial failures to permission denied', asy
     err = e;
   }
   expect((err as any).code).toBe(MessageErrCode.PERMISSION_DENIED);
-  resetSeams();
 });

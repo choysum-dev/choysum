@@ -111,4 +111,26 @@ describe('mergeChatterTimeline', () => {
     );
     expect(entries.map(entry => entry.id)).toEqual(['m-a', 'm-b']);
   });
+
+  it('normalizes actor and field metadata on field-change rows', () => {
+    const entries = mergeChatterTimeline(
+      [],
+      [
+        {
+          Id: 'f1',
+          Field: '  ',
+          Kind: '  ',
+          OldValue: 'A',
+          NewValue: 'B',
+          ActorUid: ' actor ',
+          At: '2024-01-01T00:00:00.000Z',
+        },
+      ]
+    );
+    expect(entries[0]).toMatchObject({
+      field: null,
+      changeKind: 'field',
+      actorUid: 'actor',
+    });
+  });
 });
