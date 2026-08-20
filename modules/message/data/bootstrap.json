@@ -1,0 +1,133 @@
+{
+  "records": [
+    {
+      "name": "message_subtype_discussions",
+      "model": "MessageSubtype",
+      "values": {
+        "InternalName": "discussions",
+        "Name": "Discussions",
+        "Description": "Comments and general discussion on a record"
+      }
+    },
+    {
+      "name": "rma_base_user_message_follower_follow",
+      "application": "auth",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "MetaServiceId": { "serviceRef": "message.Follower/Follow" },
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rma_base_user_message_follower_unfollow",
+      "application": "auth",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "MetaServiceId": { "serviceRef": "message.Follower/Unfollow" },
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rma_base_user_message_follower_search_by_record",
+      "application": "auth",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "MetaServiceId": { "serviceRef": "message.Follower/SearchByRecord" },
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rma_base_user_message_notification_search_inbox",
+      "application": "auth",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "MetaServiceId": { "serviceRef": "message.Notification/SearchInbox" },
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rma_base_user_message_notification_mark_read",
+      "application": "auth",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "MetaServiceId": { "serviceRef": "message.Notification/MarkRead" },
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rma_base_user_message_notification_mark_all_read",
+      "application": "auth",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "MetaServiceId": { "serviceRef": "message.Notification/MarkAllRead" },
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rrr_base_user_message_follower_rc",
+      "application": "auth",
+      "model": "RoleRecordRule",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "Kind": "grant",
+        "MetaModelId": { "modelRef": "message.Follower" },
+        "Condition": [["UserId", "=", "$userId"]],
+        "PermRead": true,
+        "PermWrite": false,
+        "PermCreate": true,
+        "PermDelete": false
+      }
+    },
+    {
+      "name": "rrr_base_user_message_follower_wd",
+      "application": "auth",
+      "model": "RoleRecordRule",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "Kind": "grant",
+        "MetaModelId": { "modelRef": "message.Follower" },
+        "Condition": [["UserId", "=", "$userId"]],
+        "PermRead": false,
+        "PermWrite": true,
+        "PermCreate": false,
+        "PermDelete": true
+      }
+    },
+    {
+      "name": "rrr_base_user_message_notification_rc",
+      "application": "auth",
+      "model": "RoleRecordRule",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "Kind": "grant",
+        "MetaModelId": { "modelRef": "message.Notification" },
+        "Condition": [["UserId", "=", "$userId"]],
+        "PermRead": true,
+        "PermWrite": false,
+        "PermCreate": false,
+        "PermDelete": false
+      }
+    },
+    {
+      "name": "rrr_base_user_message_notification_wd",
+      "application": "auth",
+      "model": "RoleRecordRule",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "Kind": "grant",
+        "MetaModelId": { "modelRef": "message.Notification" },
+        "Condition": [["UserId", "=", "$userId"]],
+        "PermRead": false,
+        "PermWrite": true,
+        "PermCreate": false,
+        "PermDelete": false
+      }
+    }
+  ]
+}

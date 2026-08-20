@@ -18,6 +18,7 @@ export namespace MessageErrCode {
   export const INVALID_ARGUMENT = 'INVALID_ARGUMENT';
   export const INVALID_TYPE = 'INVALID_TYPE';
   export const ATTACHMENT_BIND_FAILED = 'ATTACHMENT_BIND_FAILED';
+  export const PERMISSION_DENIED = 'PERMISSION_DENIED';
 }
 
 /**
