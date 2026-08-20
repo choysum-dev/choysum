@@ -35,7 +35,9 @@
       "core",
       "auth",
       "meta",
-      "document"
+      "document",
+      "message",
+      "audit"
     ],
     "cli": ">=0.0.0-0 <0.0.0",
     "entryPoints": {

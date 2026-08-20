@@ -18,7 +18,10 @@
     "cli": ">=0.0.0-0 <0.0.0",
     "entryPoints": {
       "service": "./service/index.ts"
-    }
+    },
+    "data": [
+      "data/bootstrap.json"
+    ]
   },
   "publishConfig": {
     "access": "public"

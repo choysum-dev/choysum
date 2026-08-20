@@ -40,6 +40,26 @@
       }
     },
     {
+      "name": "rma_base_user_message_post",
+      "application": "auth",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "MetaServiceId": { "serviceRef": "message.Message/Post" },
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rma_base_user_message_search_by_record",
+      "application": "auth",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "MetaServiceId": { "serviceRef": "message.Message/SearchByRecord" },
+        "Mode": "allow"
+      }
+    },
+    {
       "name": "rma_base_user_message_notification_search_inbox",
       "application": "auth",
       "model": "RoleMethodAccess",
@@ -111,6 +131,21 @@
         "PermRead": true,
         "PermWrite": false,
         "PermCreate": false,
+        "PermDelete": false
+      }
+    },
+    {
+      "name": "rrr_base_user_message_read",
+      "application": "auth",
+      "model": "RoleRecordRule",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "Kind": "grant",
+        "MetaModelId": { "modelRef": "message.Message" },
+        "Condition": { "And": [] },
+        "PermRead": true,
+        "PermWrite": false,
+        "PermCreate": true,
         "PermDelete": false
       }
     },
