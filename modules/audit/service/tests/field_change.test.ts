@@ -453,6 +453,34 @@ test('audit.FieldChange: Update/Delete are rejected (append-only)', async () => 
   });
 });
 
+test('audit.FieldChange: Append publishes tip even with restricted return fields', async () => {
+  await withAuditScope(async () => {
+    const published: any[] = [];
+    __setAuditPublishTipForTest(event => {
+      published.push(event);
+    });
+
+    const resId = uid('uom');
+    const created = await FieldChange.Append(
+      {
+        Model: 'base.UoM',
+        ResId: resId,
+        Kind: 'field',
+        Field: 'Name',
+        OldValue: 'a',
+        NewValue: 'b',
+      },
+      ['Kind'] as any
+    );
+    expect(String((created as any).Kind)).toBe('field');
+    expect(published).toHaveLength(1);
+    expect(published[0].topic).toBe(TOPIC_AUDIT_FIELD_CHANGE_APPENDED);
+    expect(published[0].payload.model).toBe('base.UoM');
+    expect(published[0].payload.resId).toBe(resId);
+    expect(String(published[0].payload.fieldChangeId || '')).toBeTruthy();
+  });
+});
+
 test('audit.FieldChange: Append publishes best-effort field-change tip', async () => {
   await withAuditScope(async () => {
     const published: any[] = [];

@@ -522,6 +522,31 @@ func TestNewTreatsNonPositiveCapAsDefault(t *testing.T) {
 	}
 }
 
+func TestServeEmptyTopicsInternal(t *testing.T) {
+	h := New(inprocess.NewInProcessBus())
+	err := h.serve(&testStream{ctx: identityCtx("u1")}, hubTestIdentity{userID: "u1", valid: true}, nil, nil)
+	if status.Code(err) != codes.Internal {
+		t.Fatalf("nil topics code = %v err=%v", status.Code(err), err)
+	}
+	err = h.serve(&testStream{ctx: identityCtx("u1")}, hubTestIdentity{userID: "u1", valid: true}, []string{}, nil)
+	if status.Code(err) != codes.Internal {
+		t.Fatalf("empty topics code = %v err=%v", status.Code(err), err)
+	}
+}
+
+func TestServeNilEventsUnavailable(t *testing.T) {
+	h := New(nil)
+	err := h.serve(
+		&testStream{ctx: identityCtx("u1")},
+		hubTestIdentity{userID: "u1", valid: true},
+		[]string{bus.TopicMessageThreadChanged},
+		nil,
+	)
+	if status.Code(err) != codes.Unavailable {
+		t.Fatalf("nil events code = %v err=%v", status.Code(err), err)
+	}
+}
+
 func TestServeNilHubUnavailable(t *testing.T) {
 	err := (*Hub)(nil).serve(&testStream{ctx: identityCtx("u1")}, hubTestIdentity{userID: "u1", valid: true}, []string{bus.TopicMessageThreadChanged}, nil)
 	if status.Code(err) != codes.Unavailable {

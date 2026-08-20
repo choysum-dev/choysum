@@ -116,6 +116,11 @@ const DEFAULT_APPEND_FIELDS = [
   'TraceId',
 ] as const satisfies FieldSelection<FieldChange>;
 
+function fieldSelectionWithId(fields: FieldSelection<FieldChange>): FieldSelection<FieldChange> {
+  if (fields.includes('*') || fields.includes('Id')) return fields;
+  return ['Id', ...fields];
+}
+
 /**
  * Append-only compliance field-change history.
  * Table: audit_field_change.
@@ -251,8 +256,15 @@ export default class FieldChange extends BaseModel {
       TraceId: req.TraceId ?? correlation.traceId ?? null,
     };
     const returnFields: FieldSelection<FieldChange> = fields ?? [...DEFAULT_APPEND_FIELDS];
-    const created = await this.Create(createValue, returnFields);
-    await publishFieldChangeAppendedTip(created);
+    // Always request Id so tip publish does not depend on the caller's projection.
+    const createFields = fieldSelectionWithId(returnFields);
+    const created = await this.Create(createValue, createFields);
+    await publishFieldChangeAppendedTip({
+      Id: created.Id,
+      Model: model,
+      ResId: resId,
+      At: at,
+    });
     return created;
   }
 
