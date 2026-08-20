@@ -157,3 +157,16 @@ test('audit target_record: denies when dial returns a null service', async () =>
     expect((err as any).code).toBe(AuditErrCode.PERMISSION_DENIED);
   });
 });
+
+test('audit target_record: falls back to live dial when dial override is unset', async () => {
+  await withSeams(async () => {
+    // Both seams stay undefined so dialFn resolves via `targetRecordDialOverride || dial`.
+    let err: unknown;
+    try {
+      await assertTargetRecordReadable('base.UoM', 'r1', 'denied');
+    } catch (e) {
+      err = e;
+    }
+    expect((err as any).code).toBe(AuditErrCode.PERMISSION_DENIED);
+  });
+});
