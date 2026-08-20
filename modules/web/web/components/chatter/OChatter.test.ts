@@ -116,8 +116,17 @@ describe('OChatter', () => {
     const unnamed = mountChatter();
     expect(unnamed.find('.you-label').text()).toBe('You');
 
+    authState.currentUser = { Id: 'usr_test' };
+    const missingName = mountChatter();
+    expect(missingName.find('.you-label').text()).toBe('You');
+
     authState.currentUser = { Id: '  ', Name: 'Tester' };
     const noCurrentId = mountChatter();
     expect(noCurrentId.find('.you-label').text()).toBe('usr_test');
+
+    authState.currentUser = null;
+    const loggedOut = mountChatter();
+    expect(loggedOut.find('.you-label').text()).toBe('usr_test');
+    expect(loggedOut.find('.system-label').text()).toBe('System');
   });
 });

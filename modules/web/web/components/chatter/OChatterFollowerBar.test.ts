@@ -95,6 +95,25 @@ describe('OChatterFollowerBar', () => {
     await flushPromises();
     expect(SearchByRecord).not.toHaveBeenCalled();
     expect(wrapper.find('button').attributes('disabled')).toBeDefined();
+
+    SearchByRecord.mockClear();
+    const missingModel = mountBar({ model: '', resId: 'res1' });
+    await flushPromises();
+    expect(SearchByRecord).not.toHaveBeenCalled();
+    expect(missingModel.find('button').attributes('disabled')).toBeDefined();
+
+    const missingResId = mountBar({ model: 'partner.Partner', resId: '' });
+    await flushPromises();
+    expect(SearchByRecord).not.toHaveBeenCalled();
+    expect(missingResId.find('button').attributes('disabled')).toBeDefined();
+  });
+
+  it('treats follower rows without UserId as not the current user', async () => {
+    SearchByRecord.mockResolvedValue([{ UserId: null }, { UserId: '  ' }, {}]);
+    const wrapper = mountBar();
+    await flushPromises();
+    expect(wrapper.text()).toContain('Follow');
+    expect(wrapper.text()).toContain('%d followers:3');
   });
 
   it('does not toggle when disabled or unauthenticated', async () => {

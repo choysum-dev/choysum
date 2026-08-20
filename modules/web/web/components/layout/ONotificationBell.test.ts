@@ -30,17 +30,21 @@ vi.mock('@/web/web/i18n', () => ({
 }));
 
 vi.mock('@/web/web/composables/chatter/useNotificationInbox', () => ({
-  useNotificationInbox: () => ({
-    rows,
-    loading,
-    error,
-    unreadCount,
-    refresh,
-    markRead,
-    markAllRead,
-    activate,
-    deactivate,
-  }),
+  useNotificationInbox: (enabled: () => boolean) => {
+    // Exercise the caller's enabled callback so the arrow is covered.
+    void enabled();
+    return {
+      rows,
+      loading,
+      error,
+      unreadCount,
+      refresh,
+      markRead,
+      markAllRead,
+      activate,
+      deactivate,
+    };
+  },
 }));
 
 vi.mock('@/auth/web/stores/auth', () => ({
@@ -296,5 +300,20 @@ describe('ONotificationBell', () => {
     const wrapper = mountBell();
     await flushPromises();
     expect(wrapper.find('.el-dropdown').exists()).toBe(false);
+  });
+
+  it('swallows auth failures after unmount during activate', async () => {
+    let rejectActivate: ((err: unknown) => void) | undefined;
+    activate.mockReturnValue(
+      new Promise<void>((_resolve, reject) => {
+        rejectActivate = reject;
+      })
+    );
+    const wrapper = mountBell();
+    await vi.waitFor(() => expect(activate).toHaveBeenCalled());
+    wrapper.unmount();
+    rejectActivate?.(new Error('activate failed'));
+    await flushPromises();
+    expect(deactivate).toHaveBeenCalled();
   });
 });

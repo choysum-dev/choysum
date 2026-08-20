@@ -116,4 +116,34 @@ describe('useChatterTimeline', () => {
     expect(timeline.error.value).toBe('boom');
     scope.stop();
   });
+
+  it('ignores stale refresh failures after the record changes', async () => {
+    let rejectFirst: ((err: unknown) => void) | undefined;
+    messageSearch
+      .mockImplementationOnce(
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectFirst = reject;
+          })
+      )
+      .mockResolvedValueOnce([
+        { Id: 'm2', Type: 'comment', Body: 'new', AuthorUid: 'u1', CreatedAt: '2024-01-02T00:00:00.000Z' },
+      ]);
+
+    const model = ref('partner.Partner');
+    const resId = ref<string | undefined>('r1');
+    const scope = effectScope();
+    const timeline = scope.run(() => useChatterTimeline(model, resId));
+    if (!timeline) throw new Error('timeline missing');
+
+    await flush();
+    resId.value = 'r2';
+    await flush();
+    expect(timeline.entries.value.map(entry => entry.id)).toEqual(['m2']);
+    rejectFirst?.(new Error('stale'));
+    await flush();
+    expect(timeline.error.value).toBeNull();
+    expect(timeline.entries.value.map(entry => entry.id)).toEqual(['m2']);
+    scope.stop();
+  });
 });

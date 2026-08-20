@@ -126,3 +126,34 @@ test('audit target_record: maps other dial failures to permission denied', async
     expect((err as any).code).toBe(AuditErrCode.PERMISSION_DENIED);
   });
 });
+
+test('audit target_record: denies when dial Search returns a non-array payload', async () => {
+  await withSeams(async () => {
+    __setFieldChangeTargetDialForTest(
+      () =>
+        ({
+          Search: async () => ({ Id: 'r1' }),
+        }) as any
+    );
+    let err: unknown;
+    try {
+      await assertTargetRecordReadable('base.UoM', 'r1', 'denied');
+    } catch (e) {
+      err = e;
+    }
+    expect((err as any).code).toBe(AuditErrCode.PERMISSION_DENIED);
+  });
+});
+
+test('audit target_record: denies when dial returns a null service', async () => {
+  await withSeams(async () => {
+    __setFieldChangeTargetDialForTest(() => null as any);
+    let err: unknown;
+    try {
+      await assertTargetRecordReadable('base.UoM', 'r1', 'denied');
+    } catch (e) {
+      err = e;
+    }
+    expect((err as any).code).toBe(AuditErrCode.PERMISSION_DENIED);
+  });
+});

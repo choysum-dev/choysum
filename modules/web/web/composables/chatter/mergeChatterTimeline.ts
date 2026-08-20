@@ -58,10 +58,15 @@ export function mergeChatterTimeline(
     });
   }
 
-  entries.sort((left, right) => {
-    if (left.at !== right.at) return left.at - right.at;
-    if (left.kind !== right.kind) return left.kind === 'fieldChange' ? -1 : 1;
-    return left.id.localeCompare(right.id);
-  });
+  entries.sort(compareChatterTimelineEntries);
   return entries;
+}
+
+export function compareChatterTimelineEntries(
+  left: ChatterTimelineEntry,
+  right: ChatterTimelineEntry
+): number {
+  if (left.at !== right.at) return left.at - right.at;
+  if (left.kind !== right.kind) return left.kind === 'fieldChange' ? -1 : 1;
+  return left.id.localeCompare(right.id);
 }

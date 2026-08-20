@@ -114,7 +114,13 @@ describe('useNotificationInbox', () => {
     await inbox.refresh();
     expect(inbox.error.value).toBe('inbox down');
 
+    SearchInbox.mockRejectedValueOnce(new Error('inbox error'));
+    await inbox.refresh();
+    expect(inbox.error.value).toBe('inbox error');
+
     await inbox.markRead('  ');
+    expect(MarkRead).not.toHaveBeenCalled();
+    await inbox.markRead('');
     expect(MarkRead).not.toHaveBeenCalled();
     scope.stop();
   });
@@ -234,6 +240,102 @@ describe('useNotificationInbox', () => {
     scope.stop();
   });
 
+  it('maps mark-read non-Error failures to strings', async () => {
+    MarkRead.mockRejectedValue('mark down');
+    const scope = effectScope();
+    const inbox = scope.run(() => useNotificationInbox(() => true));
+    if (!inbox) throw new Error('inbox missing');
+    await inbox.markRead('n1');
+    expect(inbox.error.value).toBe('mark down');
+    scope.stop();
+  });
+
+  it('ignores stale SearchInbox failures after a later refresh', async () => {
+    let rejectFirst: ((err: unknown) => void) | undefined;
+    SearchInbox.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectFirst = reject;
+        })
+    ).mockResolvedValueOnce([{ Id: 'n2', IsRead: true }]);
+
+    const scope = effectScope();
+    const inbox = scope.run(() => useNotificationInbox(() => true));
+    if (!inbox) throw new Error('inbox missing');
+    const first = inbox.refresh();
+    await Promise.resolve();
+    await inbox.refresh();
+    expect(inbox.rows.value.map(row => row.Id)).toEqual(['n2']);
+    rejectFirst?.(new Error('stale'));
+    await first;
+    expect(inbox.error.value).toBeNull();
+    expect(inbox.rows.value.map(row => row.Id)).toEqual(['n2']);
+    scope.stop();
+  });
+
+  it('ignores stale disabled refresh generations', async () => {
+    const scope = effectScope();
+    const inbox = scope.run(() => useNotificationInbox(() => false));
+    if (!inbox) throw new Error('inbox missing');
+    const first = inbox.refresh();
+    await inbox.refresh();
+    await first;
+    expect(inbox.rows.value).toEqual([]);
+    expect(inbox.loading.value).toBe(false);
+    scope.stop();
+  });
+
+  it('counts unread rows and ignores already-read entries', async () => {
+    const scope = effectScope();
+    const inbox = scope.run(() => useNotificationInbox(() => true));
+    if (!inbox) throw new Error('inbox missing');
+    SearchInbox.mockResolvedValueOnce([
+      { Id: 'n1', IsRead: false },
+      { Id: 'n2', IsRead: true },
+      { Id: 'n3' },
+      null,
+    ]);
+    await inbox.refresh();
+    expect(inbox.unreadCount.value).toBe(3);
+    scope.stop();
+  });
+
+  it('does not start poll fallback when tip subscription is aborted', async () => {
+    let resolveTips: (() => void) | undefined;
+    onTips.mockImplementation(
+      () =>
+        new Promise<void>(resolve => {
+          resolveTips = resolve;
+        })
+    );
+    const scope = effectScope();
+    const inbox = scope.run(() => useNotificationInbox(() => true));
+    if (!inbox) throw new Error('inbox missing');
+    await inbox.activate();
+    await Promise.resolve();
+    inbox.deactivate();
+    resolveTips?.();
+    await Promise.resolve();
+    SearchInbox.mockClear();
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(SearchInbox).not.toHaveBeenCalled();
+    scope.stop();
+  });
+
+  it('starts poll fallback when the tip stream rejects while still subscribed', async () => {
+    onTips.mockRejectedValue(new Error('stream down'));
+    const scope = effectScope();
+    const inbox = scope.run(() => useNotificationInbox(() => true));
+    if (!inbox) throw new Error('inbox missing');
+    await inbox.activate();
+    await Promise.resolve();
+    await Promise.resolve();
+    SearchInbox.mockClear();
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(SearchInbox).toHaveBeenCalled();
+    scope.stop();
+  });
+
   it('does not start tips or poll fallback when the inbox is disabled', async () => {
     const scope = effectScope();
     const inbox = scope.run(() => useNotificationInbox(() => false));
@@ -243,6 +345,37 @@ describe('useNotificationInbox', () => {
     SearchInbox.mockClear();
     await vi.advanceTimersByTimeAsync(30_000);
     expect(SearchInbox).not.toHaveBeenCalled();
+    scope.stop();
+  });
+
+  it('returns early from a disabled refresh when deactivate races inside enabled()', async () => {
+    const scope = effectScope();
+    let inbox: ReturnType<typeof useNotificationInbox> | undefined;
+    let armed = false;
+    inbox = scope.run(() =>
+      useNotificationInbox(() => {
+        if (armed && inbox) {
+          inbox.deactivate();
+          return false;
+        }
+        return false;
+      })
+    );
+    if (!inbox) throw new Error('inbox missing');
+    armed = true;
+    inbox.rows.value = [{ Id: 'n1', IsRead: false }];
+    await inbox.refresh();
+    expect(inbox.rows.value).toEqual([]);
+    scope.stop();
+  });
+
+  it('skips startTips when enabled flips false after activate refresh', async () => {
+    const scope = effectScope();
+    let calls = 0;
+    const inbox = scope.run(() => useNotificationInbox(() => ++calls < 3));
+    if (!inbox) throw new Error('inbox missing');
+    await inbox.activate();
+    expect(onTips).not.toHaveBeenCalled();
     scope.stop();
   });
 });

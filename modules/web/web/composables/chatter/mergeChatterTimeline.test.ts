@@ -2,7 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from 'vitest';
-import { mergeChatterTimeline, parseChatterTimestamp } from './mergeChatterTimeline';
+import {
+  compareChatterTimelineEntries,
+  mergeChatterTimeline,
+  parseChatterTimestamp,
+} from './mergeChatterTimeline';
 
 describe('parseChatterTimestamp', () => {
   it('parses Date, number, and ISO strings', () => {
@@ -132,5 +136,52 @@ describe('mergeChatterTimeline', () => {
       changeKind: 'field',
       actorUid: 'actor',
     });
+  });
+
+  it('accepts null timelines and defaults blank kinds', () => {
+    expect(mergeChatterTimeline(null, null)).toEqual([]);
+    expect(mergeChatterTimeline(undefined, undefined)).toEqual([]);
+    const at = '2024-01-01T00:00:00.000Z';
+    const entries = mergeChatterTimeline(
+      [null as any, { Id: 'm1', Body: 'x', CreatedAt: at }],
+      [null as any, { Id: 'f1', At: at } as any, { Id: 'f2', Kind: undefined as any, Field: 'Name', At: at }]
+    );
+    expect(entries.some(entry => entry.kind === 'fieldChange' && entry.id === 'f1')).toBe(true);
+    expect(entries.some(entry => entry.kind === 'fieldChange' && entry.id === 'f2' && entry.changeKind === 'field')).toBe(
+      true
+    );
+    expect(entries.some(entry => entry.kind === 'message' && entry.id === 'm1')).toBe(true);
+  });
+
+  it('orders same-timestamp field changes before messages in either compare direction', () => {
+    const at = '2024-03-01T00:00:00.000Z';
+    const entries = mergeChatterTimeline(
+      [
+        { Id: 'm-z', Body: 'z', CreatedAt: at },
+        { Id: 'm-a', Body: 'a', CreatedAt: at },
+      ],
+      [
+        { Id: 'f-z', Kind: 'create', At: at },
+        { Id: 'f-a', Kind: 'create', At: at },
+      ]
+    );
+    expect(entries.map(entry => `${entry.kind}:${entry.id}`)).toEqual([
+      'fieldChange:f-a',
+      'fieldChange:f-z',
+      'message:m-a',
+      'message:m-z',
+    ]);
+
+    const fieldChange = entries[0]!;
+    const message = entries[2]!;
+    expect(compareChatterTimelineEntries(fieldChange, message)).toBeLessThan(0);
+    expect(compareChatterTimelineEntries(message, fieldChange)).toBeGreaterThan(0);
+    expect(compareChatterTimelineEntries(message, { ...message, at: message.at + 1 })).toBeLessThan(0);
+    expect(compareChatterTimelineEntries(message, { ...message, id: 'm-b' })).toBeLessThan(0);
+  });
+
+  it('rejects non-finite numeric timestamps', () => {
+    expect(parseChatterTimestamp(Number.POSITIVE_INFINITY)).toBeNull();
+    expect(parseChatterTimestamp(undefined)).toBeNull();
   });
 });

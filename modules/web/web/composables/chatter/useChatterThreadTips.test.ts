@@ -120,4 +120,32 @@ describe('useChatterThreadTips', () => {
     await vi.advanceTimersByTimeAsync(30_000);
     expect(refresh).not.toHaveBeenCalled();
   });
+
+  it('does not start poll fallback when a tip stream is aborted by a newer subscription', async () => {
+    let resolveFirst: (() => void) | undefined;
+    onTips
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>(resolve => {
+            resolveFirst = resolve;
+          })
+      )
+      .mockResolvedValue(undefined);
+    const refresh = vi.fn(async () => undefined);
+    const model = ref('partner.Partner');
+    const resId = ref<string | undefined>('r1');
+    const scope = effectScope();
+    scope.run(() => useChatterThreadTips(model, resId, refresh));
+    await Promise.resolve();
+    resId.value = 'r2';
+    await Promise.resolve();
+    await Promise.resolve();
+    resolveFirst?.();
+    await Promise.resolve();
+    refresh.mockClear();
+    await vi.advanceTimersByTimeAsync(30_000);
+    // Only the second (non-aborted) subscription should poll.
+    expect(refresh).toHaveBeenCalled();
+    scope.stop();
+  });
 });
