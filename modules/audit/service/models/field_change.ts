@@ -9,6 +9,7 @@ import type { QueryCondition, DeleteOptions, UpdateOptions, SearchOptions } from
 import { AuditErrCode, newAuditError } from '../error';
 import { _lt } from '../i18n';
 import { assertTargetRecordReadable } from '../target_record';
+import { publishFieldChangeAppendedTip } from '../tips';
 
 /** Data-family Kind values allowed on FieldChange. */
 export const FIELD_CHANGE_KINDS = ['field', 'create', 'unlink'] as const;
@@ -114,6 +115,11 @@ const DEFAULT_APPEND_FIELDS = [
   'RequestId',
   'TraceId',
 ] as const satisfies FieldSelection<FieldChange>;
+
+function fieldSelectionWithId(fields: FieldSelection<FieldChange>): FieldSelection<FieldChange> {
+  if (fields.includes('*') || fields.includes('Id')) return fields;
+  return ['Id', ...fields];
+}
 
 /**
  * Append-only compliance field-change history.
@@ -250,7 +256,16 @@ export default class FieldChange extends BaseModel {
       TraceId: req.TraceId ?? correlation.traceId ?? null,
     };
     const returnFields: FieldSelection<FieldChange> = fields ?? [...DEFAULT_APPEND_FIELDS];
-    return await this.Create(createValue, returnFields);
+    // Always request Id so tip publish does not depend on the caller's projection.
+    const createFields = fieldSelectionWithId(returnFields);
+    const created = await this.Create(createValue, createFields);
+    await publishFieldChangeAppendedTip({
+      Id: created.Id,
+      Model: model,
+      ResId: resId,
+      At: at,
+    });
+    return created;
   }
 
   /**

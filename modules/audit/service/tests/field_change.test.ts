@@ -4,6 +4,11 @@
 import FieldChange, { assertFieldChangeKind, __setFieldChangeCorrelationReqReaderForTest } from '../models/field_change';
 import { AuditErrCode, isAuditError } from '../error';
 import { __setFieldChangeTargetAuthForTest } from '../target_record';
+import {
+  TOPIC_AUDIT_FIELD_CHANGE_APPENDED,
+  AUDIT_FIELD_CHANGE_TIP_SOURCE,
+  __setAuditPublishTipForTest,
+} from '../tips';
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -56,11 +61,13 @@ function resetRequestContext(): void {
 async function withAuditScope<T>(fn: () => Promise<T>): Promise<T> {
   resetRequestContext();
   __setFieldChangeTargetAuthForTest(async () => undefined);
+  __setAuditPublishTipForTest(undefined);
   try {
     return await fn();
   } finally {
     __setFieldChangeTargetAuthForTest(undefined);
     __setFieldChangeCorrelationReqReaderForTest(undefined);
+    __setAuditPublishTipForTest(undefined);
   }
 }
 
@@ -443,5 +450,72 @@ test('audit.FieldChange: Update/Delete are rejected (append-only)', async () => 
     await expectAppendOnly(() => FieldChange.UpdateById(created.Id, { NewValue: 'z' } as any));
     await expectAppendOnly(() => FieldChange.Delete(['Id', '=', created.Id] as any));
     await expectAppendOnly(() => FieldChange.DeleteById(created.Id));
+  });
+});
+
+test('audit.FieldChange: Append publishes tip even with restricted return fields', async () => {
+  await withAuditScope(async () => {
+    const published: any[] = [];
+    __setAuditPublishTipForTest(event => {
+      published.push(event);
+    });
+
+    const resId = uid('uom');
+    const created = await FieldChange.Append(
+      {
+        Model: 'base.UoM',
+        ResId: resId,
+        Kind: 'field',
+        Field: 'Name',
+        OldValue: 'a',
+        NewValue: 'b',
+      },
+      ['Kind'] as any
+    );
+    expect(String((created as any).Kind)).toBe('field');
+    expect(published).toHaveLength(1);
+    expect(published[0].topic).toBe(TOPIC_AUDIT_FIELD_CHANGE_APPENDED);
+    expect(published[0].payload.model).toBe('base.UoM');
+    expect(published[0].payload.resId).toBe(resId);
+    expect(String(published[0].payload.fieldChangeId || '')).toBeTruthy();
+  });
+});
+
+test('audit.FieldChange: Append publishes best-effort field-change tip', async () => {
+  await withAuditScope(async () => {
+    const published: any[] = [];
+    __setAuditPublishTipForTest(event => {
+      published.push(event);
+    });
+
+    const created = await FieldChange.Append({
+      Model: 'base.UoM',
+      ResId: uid('uom'),
+      Kind: 'field',
+      Field: 'Name',
+      OldValue: 'a',
+      NewValue: 'b',
+    });
+    expect(published).toHaveLength(1);
+    expect(published[0].topic).toBe(TOPIC_AUDIT_FIELD_CHANGE_APPENDED);
+    expect(published[0].source).toBe(AUDIT_FIELD_CHANGE_TIP_SOURCE);
+    expect(published[0].payload.model).toBe('base.UoM');
+    expect(published[0].payload.resId).toBe(created.ResId);
+    expect(published[0].payload.fieldChangeId).toBe(created.Id);
+
+    published.length = 0;
+    __setAuditPublishTipForTest(() => {
+      throw new Error('tip boom');
+    });
+    const stillOk = await FieldChange.Append({
+      Model: 'base.UoM',
+      ResId: uid('uom'),
+      Kind: 'field',
+      Field: 'Name',
+      OldValue: 'c',
+      NewValue: 'd',
+    });
+    expect(String(stillOk.Id || '')).toBeTruthy();
+    expect(published).toHaveLength(0);
   });
 });

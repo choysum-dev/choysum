@@ -112,6 +112,13 @@ func waitSubscribed(t *testing.T, subscribed <-chan struct{}) {
 	}
 }
 
+func waitSubscribedN(t *testing.T, subscribed <-chan struct{}, n int) {
+	t.Helper()
+	for i := 0; i < n; i++ {
+		waitSubscribed(t, subscribed)
+	}
+}
+
 func waitStreamErr(t *testing.T, errCh <-chan error, want codes.Code) {
 	t.Helper()
 	select {
@@ -126,7 +133,7 @@ func waitStreamErr(t *testing.T, errCh <-chan error, want codes.Code) {
 
 func TestSubscribeThreadFiltersAndCancels(t *testing.T) {
 	inner := inprocess.NewInProcessBus()
-	subscribed := make(chan struct{}, 1)
+	subscribed := make(chan struct{}, 2)
 	events := &subscribedBus{inner: inner, subscribed: subscribed}
 	h := New(events)
 
@@ -137,7 +144,7 @@ func TestSubscribeThreadFiltersAndCancels(t *testing.T) {
 	go func() {
 		errCh <- h.SubscribeThread(&tippb.SubscribeThreadReq{Model: "message.thread", ResId: "42"}, stream)
 	}()
-	waitSubscribed(t, subscribed)
+	waitSubscribedN(t, subscribed, 2)
 
 	if err := inner.Publish(context.Background(), bus.Event{
 		Topic:  bus.TopicMessageThreadChanged,
@@ -204,6 +211,85 @@ func TestSubscribeThreadFiltersAndCancels(t *testing.T) {
 	if got := stream.snapshot(); len(got) != 1 {
 		t.Fatalf("tips after cancel = %#v, want no further Send", got)
 	}
+}
+
+func TestSubscribeThreadFansInAuditFieldChangeTips(t *testing.T) {
+	inner := inprocess.NewInProcessBus()
+	subscribed := make(chan struct{}, 2)
+	events := &subscribedBus{inner: inner, subscribed: subscribed}
+	h := New(events)
+
+	ctx, cancel := context.WithCancel(identityCtx("user-1"))
+	defer cancel()
+	stream := &testStream{ctx: ctx, sent: make(chan struct{}, 8)}
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- h.SubscribeThread(&tippb.SubscribeThreadReq{Model: "partner.Partner", ResId: "p1"}, stream)
+	}()
+	waitSubscribedN(t, subscribed, 2)
+
+	if err := inner.Publish(context.Background(), bus.Event{
+		Topic:  bus.TopicAuditFieldChangeAppended,
+		Source: "audit.mismatch",
+		Payload: map[string]any{
+			"model": "partner.Partner",
+			"resId": "other",
+		},
+	}); err != nil {
+		t.Fatalf("Publish audit mismatch: %v", err)
+	}
+	if err := inner.Publish(context.Background(), bus.Event{
+		Topic:  bus.TopicAuditFieldChangeAppended,
+		Source: "audit.FieldChange",
+		Payload: map[string]any{
+			"model":         "partner.Partner",
+			"resId":         "p1",
+			"fieldChangeId": "fc-1",
+		},
+	}); err != nil {
+		t.Fatalf("Publish audit match: %v", err)
+	}
+
+	select {
+	case <-stream.sent:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for audit tip")
+	}
+
+	got := stream.snapshot()
+	if len(got) != 1 {
+		t.Fatalf("tips = %#v, want 1 audit tip", got)
+	}
+	if got[0].GetTopic() != bus.TopicAuditFieldChangeAppended || got[0].GetSource() != "audit.FieldChange" {
+		t.Fatalf("unexpected tip metadata: %#v", got[0])
+	}
+	if got[0].GetModel() != "partner.Partner" || got[0].GetResId() != "p1" {
+		t.Fatalf("unexpected tip locators: %#v", got[0])
+	}
+
+	if err := inner.Publish(context.Background(), bus.Event{
+		Topic:  bus.TopicMessageThreadChanged,
+		Source: "message.Post",
+		Payload: map[string]any{
+			"model":     "partner.Partner",
+			"resId":     "p1",
+			"messageId": "m-9",
+		},
+	}); err != nil {
+		t.Fatalf("Publish message tip: %v", err)
+	}
+	select {
+	case <-stream.sent:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for message tip")
+	}
+	got = stream.snapshot()
+	if len(got) != 2 {
+		t.Fatalf("tips = %#v, want audit + message", got)
+	}
+
+	cancel()
+	waitStreamErr(t, errCh, codes.Canceled)
 }
 
 func TestSubscribeNotificationsFiltersByIdentityUser(t *testing.T) {
@@ -295,7 +381,7 @@ func TestSubscribeThreadSubscribeFailureUnavailable(t *testing.T) {
 
 func TestSubscribeThreadPerUserCap(t *testing.T) {
 	inner := inprocess.NewInProcessBus()
-	subscribed := make(chan struct{}, 2)
+	subscribed := make(chan struct{}, 4)
 	events := &subscribedBus{inner: inner, subscribed: subscribed}
 	h := New(events, WithMaxStreamsPerUser(1))
 
@@ -305,7 +391,7 @@ func TestSubscribeThreadPerUserCap(t *testing.T) {
 	go func() {
 		errCh <- h.SubscribeThread(&tippb.SubscribeThreadReq{Model: "message.thread", ResId: "1"}, &testStream{ctx: ctx})
 	}()
-	waitSubscribed(t, subscribed)
+	waitSubscribedN(t, subscribed, 2)
 
 	err := h.SubscribeThread(&tippb.SubscribeThreadReq{Model: "message.thread", ResId: "2"}, &testStream{ctx: identityCtx("user-1")})
 	if status.Code(err) != codes.ResourceExhausted {
@@ -318,7 +404,7 @@ func TestSubscribeThreadPerUserCap(t *testing.T) {
 	go func() {
 		otherErrCh <- h.SubscribeThread(&tippb.SubscribeThreadReq{Model: "message.thread", ResId: "1"}, &testStream{ctx: otherCtx})
 	}()
-	waitSubscribed(t, subscribed)
+	waitSubscribedN(t, subscribed, 2)
 	otherCancel()
 	waitStreamErr(t, otherErrCh, codes.Canceled)
 
@@ -328,7 +414,7 @@ func TestSubscribeThreadPerUserCap(t *testing.T) {
 
 func TestPublishDoesNotBlockWhenSendIsSlow(t *testing.T) {
 	inner := inprocess.NewInProcessBus()
-	subscribed := make(chan struct{}, 1)
+	subscribed := make(chan struct{}, 2)
 	events := &subscribedBus{inner: inner, subscribed: subscribed}
 	h := New(events)
 
@@ -339,7 +425,7 @@ func TestPublishDoesNotBlockWhenSendIsSlow(t *testing.T) {
 	go func() {
 		errCh <- h.SubscribeThread(&tippb.SubscribeThreadReq{Model: "message.thread", ResId: "1"}, stream)
 	}()
-	waitSubscribed(t, subscribed)
+	waitSubscribedN(t, subscribed, 2)
 
 	start := time.Now()
 	for i := 0; i < 32; i++ {
@@ -362,7 +448,7 @@ func TestPublishDoesNotBlockWhenSendIsSlow(t *testing.T) {
 
 func TestSubscribeThreadBufconn(t *testing.T) {
 	inner := inprocess.NewInProcessBus()
-	subscribed := make(chan struct{}, 1)
+	subscribed := make(chan struct{}, 2)
 	events := &subscribedBus{inner: inner, subscribed: subscribed}
 	h := New(events)
 	lis := bufconn.Listen(1024 * 1024)
@@ -392,7 +478,7 @@ func TestSubscribeThreadBufconn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SubscribeThread: %v", err)
 	}
-	waitSubscribed(t, subscribed)
+	waitSubscribedN(t, subscribed, 2)
 
 	if err := inner.Publish(context.Background(), bus.Event{
 		Topic:  bus.TopicMessageThreadChanged,
@@ -436,8 +522,33 @@ func TestNewTreatsNonPositiveCapAsDefault(t *testing.T) {
 	}
 }
 
+func TestServeEmptyTopicsInternal(t *testing.T) {
+	h := New(inprocess.NewInProcessBus())
+	err := h.serve(&testStream{ctx: identityCtx("u1")}, hubTestIdentity{userID: "u1", valid: true}, nil, nil)
+	if status.Code(err) != codes.Internal {
+		t.Fatalf("nil topics code = %v err=%v", status.Code(err), err)
+	}
+	err = h.serve(&testStream{ctx: identityCtx("u1")}, hubTestIdentity{userID: "u1", valid: true}, []string{}, nil)
+	if status.Code(err) != codes.Internal {
+		t.Fatalf("empty topics code = %v err=%v", status.Code(err), err)
+	}
+}
+
+func TestServeNilEventsUnavailable(t *testing.T) {
+	h := New(nil)
+	err := h.serve(
+		&testStream{ctx: identityCtx("u1")},
+		hubTestIdentity{userID: "u1", valid: true},
+		[]string{bus.TopicMessageThreadChanged},
+		nil,
+	)
+	if status.Code(err) != codes.Unavailable {
+		t.Fatalf("nil events code = %v err=%v", status.Code(err), err)
+	}
+}
+
 func TestServeNilHubUnavailable(t *testing.T) {
-	err := (*Hub)(nil).serve(&testStream{ctx: identityCtx("u1")}, hubTestIdentity{userID: "u1", valid: true}, bus.TopicMessageThreadChanged, nil)
+	err := (*Hub)(nil).serve(&testStream{ctx: identityCtx("u1")}, hubTestIdentity{userID: "u1", valid: true}, []string{bus.TopicMessageThreadChanged}, nil)
 	if status.Code(err) != codes.Unavailable {
 		t.Fatalf("nil hub code = %v err=%v", status.Code(err), err)
 	}
@@ -454,7 +565,7 @@ func TestServeNilMatchForwardsAllTopicEvents(t *testing.T) {
 	stream := &testStream{ctx: ctx, sent: make(chan struct{}, 1)}
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- h.serve(stream, hubTestIdentity{userID: "user-1", valid: true}, bus.TopicMessageThreadChanged, nil)
+		errCh <- h.serve(stream, hubTestIdentity{userID: "user-1", valid: true}, []string{bus.TopicMessageThreadChanged}, nil)
 	}()
 	waitSubscribed(t, subscribed)
 
@@ -475,7 +586,7 @@ func TestServeNilMatchForwardsAllTopicEvents(t *testing.T) {
 
 func TestServeReturnsSendError(t *testing.T) {
 	inner := inprocess.NewInProcessBus()
-	subscribed := make(chan struct{}, 1)
+	subscribed := make(chan struct{}, 2)
 	events := &subscribedBus{inner: inner, subscribed: subscribed}
 	h := New(events)
 
@@ -484,7 +595,7 @@ func TestServeReturnsSendError(t *testing.T) {
 	go func() {
 		errCh <- h.SubscribeThread(&tippb.SubscribeThreadReq{Model: "message.thread", ResId: "1"}, stream)
 	}()
-	waitSubscribed(t, subscribed)
+	waitSubscribedN(t, subscribed, 2)
 
 	if err := inner.Publish(context.Background(), bus.Event{
 		Topic: bus.TopicMessageThreadChanged,
@@ -507,7 +618,7 @@ func TestServeReturnsSendError(t *testing.T) {
 
 func TestReleaseStreamKeepsRemainingCount(t *testing.T) {
 	inner := inprocess.NewInProcessBus()
-	subscribed := make(chan struct{}, 3)
+	subscribed := make(chan struct{}, 6)
 	events := &subscribedBus{inner: inner, subscribed: subscribed}
 	h := New(events, WithMaxStreamsPerUser(2))
 
@@ -520,11 +631,11 @@ func TestReleaseStreamKeepsRemainingCount(t *testing.T) {
 	go func() {
 		firstErr <- h.SubscribeThread(&tippb.SubscribeThreadReq{Model: "message.thread", ResId: "1"}, &testStream{ctx: firstCtx})
 	}()
-	waitSubscribed(t, subscribed)
+	waitSubscribedN(t, subscribed, 2)
 	go func() {
 		secondErr <- h.SubscribeThread(&tippb.SubscribeThreadReq{Model: "message.thread", ResId: "2"}, &testStream{ctx: secondCtx})
 	}()
-	waitSubscribed(t, subscribed)
+	waitSubscribedN(t, subscribed, 2)
 
 	firstCancel()
 	waitStreamErr(t, firstErr, codes.Canceled)
@@ -535,7 +646,7 @@ func TestReleaseStreamKeepsRemainingCount(t *testing.T) {
 	go func() {
 		thirdErr <- h.SubscribeThread(&tippb.SubscribeThreadReq{Model: "message.thread", ResId: "3"}, &testStream{ctx: thirdCtx})
 	}()
-	waitSubscribed(t, subscribed)
+	waitSubscribedN(t, subscribed, 2)
 	thirdCancel()
 	secondCancel()
 	waitStreamErr(t, thirdErr, codes.Canceled)
