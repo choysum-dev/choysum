@@ -9,6 +9,7 @@ import type { InboxNotificationRow } from './chatterTypes';
 export type { InboxNotificationRow } from './chatterTypes';
 
 const INBOX_FIELDS = ['Id', 'MessageId', 'Model', 'ResId', 'AuthorUid', 'IsRead', 'CreatedAt'] as const;
+const POLL_FALLBACK_MS = 30_000;
 
 export function useNotificationInbox(enabled: () => boolean) {
   const rows = ref<InboxNotificationRow[]>([]);
@@ -16,6 +17,7 @@ export function useNotificationInbox(enabled: () => boolean) {
   const error = ref<string | null>(null);
   const notificationStore = getNotificationStore();
   let tipController: AbortController | null = null;
+  let pollTimer: ReturnType<typeof setInterval> | undefined;
 
   const unreadCount = computed(() => rows.value.filter(row => row?.IsRead !== true).length);
 
@@ -40,18 +42,41 @@ export function useNotificationInbox(enabled: () => boolean) {
   async function markRead(notificationId: string): Promise<void> {
     const id = String(notificationId || '').trim();
     if (!id) return;
-    await notificationStore.MarkRead([id]);
-    await refresh();
+    try {
+      await notificationStore.MarkRead([id]);
+      await refresh();
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : String(err);
+    }
   }
 
   async function markAllRead(): Promise<void> {
-    await notificationStore.MarkAllRead();
-    await refresh();
+    try {
+      await notificationStore.MarkAllRead();
+      await refresh();
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : String(err);
+    }
+  }
+
+  function stopPollFallback(): void {
+    if (pollTimer != null) {
+      clearInterval(pollTimer);
+      pollTimer = undefined;
+    }
+  }
+
+  function startPollFallback(): void {
+    stopPollFallback();
+    pollTimer = setInterval(() => {
+      void refresh();
+    }, POLL_FALLBACK_MS);
   }
 
   function stopTips(): void {
     tipController?.abort();
     tipController = null;
+    stopPollFallback();
   }
 
   async function startTips(): Promise<void> {
@@ -64,7 +89,11 @@ export function useNotificationInbox(enabled: () => boolean) {
         await refresh();
       }, signal);
     } catch {
-      // Best-effort; inbox can still be opened manually.
+      // Stream error; fall through to poll fallback when still subscribed.
+    } finally {
+      if (!signal.aborted) {
+        startPollFallback();
+      }
     }
   }
 

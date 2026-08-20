@@ -35,7 +35,9 @@ const followerCount = ref(0);
 const loading = ref(false);
 
 const currentUserId = computed(() => String((authStore.currentUser as any)?.Id || '').trim());
-const canToggle = computed(() => !!currentUserId.value);
+const canToggle = computed(
+  () => !!currentUserId.value && !!String(props.model || '').trim() && !!String(props.resId || '').trim()
+);
 
 async function refresh(): Promise<void> {
   const threadModel = String(props.model || '').trim();

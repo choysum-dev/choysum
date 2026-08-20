@@ -35,6 +35,7 @@ const summary = computed(() =>
     unlinked: _t('Record removed'),
     changed: (field, oldValue, newValue) => _t('%s changed from %s to %s', field, oldValue, newValue),
     action: name => _t('Action: %s', name),
+    fieldFallback: _t('Field'),
   })
 );
 </script>

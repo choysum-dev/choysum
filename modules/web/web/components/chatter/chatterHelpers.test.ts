@@ -10,6 +10,7 @@ describe('formatFieldChangeSummary', () => {
     unlinked: 'Record removed',
     changed: (field: string, oldValue: string, newValue: string) => `${field}:${oldValue}->${newValue}`,
     action: (name: string) => `Action:${name}`,
+    fieldFallback: 'Field',
   };
 
   it('formats create, unlink, field, and action kinds', () => {
@@ -27,5 +28,14 @@ describe('formatFieldChangeSummary', () => {
         labels
       )
     ).toBe('Action:confirm');
+  });
+
+  it('uses the localized field fallback when the audit row has no field name', () => {
+    expect(
+      formatFieldChangeSummary(
+        { kind: 'fieldChange', id: '5', at: 1, field: null, changeKind: 'field', oldValue: 'A', newValue: 'B', actorUid: null },
+        { ...labels, fieldFallback: '字段' }
+      )
+    ).toBe('字段:A->B');
   });
 });

@@ -10,6 +10,7 @@ export function formatFieldChangeSummary(
     unlinked: string;
     changed: (field: string, oldValue: string, newValue: string) => string;
     action: (name: string) => string;
+    fieldFallback: string;
   }
 ): string {
   const kind = String(entry.changeKind || '').trim();
@@ -18,7 +19,7 @@ export function formatFieldChangeSummary(
   if (kind.startsWith('action:')) {
     return labels.action(kind.slice('action:'.length) || kind);
   }
-  const field = entry.field || 'Field';
+  const field = entry.field || labels.fieldFallback;
   const oldValue = entry.oldValue == null || entry.oldValue === '' ? '—' : entry.oldValue;
   const newValue = entry.newValue == null || entry.newValue === '' ? '—' : entry.newValue;
   return labels.changed(field, oldValue, newValue);

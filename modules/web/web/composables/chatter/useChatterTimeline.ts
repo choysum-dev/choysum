@@ -13,16 +13,19 @@ export function useChatterTimeline(model: Ref<string>, resId: Ref<string | undef
   const entries = ref<ChatterTimelineEntry[]>([]);
   const loading = ref(false);
   const error = ref<string | null>(null);
+  let refreshGeneration = 0;
 
   const messageStore = getMessageStore();
   const fieldChangeStore = getFieldChangeStore();
 
   async function refresh(): Promise<void> {
+    const generation = ++refreshGeneration;
     const threadModel = String(model.value || '').trim();
     const threadResId = String(resId.value || '').trim();
     if (!threadModel || !threadResId) {
       entries.value = [];
       error.value = null;
+      loading.value = false;
       return;
     }
 
@@ -33,12 +36,14 @@ export function useChatterTimeline(model: Ref<string>, resId: Ref<string | undef
         messageStore.SearchByRecord(threadModel, threadResId, [...MESSAGE_FIELDS]),
         fieldChangeStore.SearchByRecord(threadModel, threadResId, [...FIELD_CHANGE_FIELDS]),
       ]);
+      if (generation !== refreshGeneration) return;
       entries.value = mergeChatterTimeline(messages, fieldChanges);
     } catch (err) {
+      if (generation !== refreshGeneration) return;
       entries.value = [];
       error.value = err instanceof Error ? err.message : String(err);
     } finally {
-      loading.value = false;
+      if (generation === refreshGeneration) loading.value = false;
     }
   }
 

@@ -93,6 +93,7 @@ const messages: TranslationMessages = {
     recordRemoved: '记录已删除',
     fieldChanged: '%s 从 %s 变更为 %s',
     actionLabel: '操作：%s',
+    field: '字段',
     system: '系统',
     you: '你',
     notifications: '通知',
@@ -100,6 +101,7 @@ const messages: TranslationMessages = {
     noNotifications: '暂无通知',
     newNotification: '新通知',
     updateOnRecord: '%s (%s) 有更新',
+    postFailed: '发布评论失败',
   },
   form: {
     validation: {

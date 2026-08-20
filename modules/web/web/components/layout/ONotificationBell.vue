@@ -46,7 +46,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 import { Bell } from '@element-plus/icons-vue';
 import { ElBadge, ElButton, ElDropdown, ElDropdownItem, ElDropdownMenu, ElIcon } from 'element-plus';
 import { useNotificationInbox, type InboxNotificationRow } from '@/web/web/composables/chatter/useNotificationInbox';
@@ -56,6 +56,7 @@ import { createTranslate } from '@/web/web/i18n';
 const { _t } = createTranslate('web', { scope: 'web/components/layout/ONotificationBell' });
 const isAuthenticated = ref(false);
 let stopAuthSubscribe: (() => void) | undefined;
+let disposed = false;
 
 const inbox = useNotificationInbox(() => isAuthenticated.value);
 const { rows, loading, error, unreadCount, markRead, markAllRead, activate, deactivate } = inbox;
@@ -63,9 +64,11 @@ const { rows, loading, error, unreadCount, markRead, markAllRead, activate, deac
 onMounted(async () => {
   try {
     const { useAuthStore } = await import('@/auth/web/stores/auth');
+    if (disposed) return;
     const authStore = useAuthStore();
     isAuthenticated.value = !!authStore.isAuthenticated;
     stopAuthSubscribe = (authStore as any).$subscribe?.(() => {
+      if (disposed) return;
       const next = !!authStore.isAuthenticated;
       if (next === isAuthenticated.value) return;
       isAuthenticated.value = next;
@@ -78,12 +81,20 @@ onMounted(async () => {
     if (isAuthenticated.value) {
       await activate();
     }
+    if (disposed) {
+      stopAuthSubscribe?.();
+      stopAuthSubscribe = undefined;
+      deactivate();
+    }
   } catch {
-    isAuthenticated.value = false;
+    if (!disposed) {
+      isAuthenticated.value = false;
+    }
   }
 });
 
 onUnmounted(() => {
+  disposed = true;
   stopAuthSubscribe?.();
   stopAuthSubscribe = undefined;
   deactivate();

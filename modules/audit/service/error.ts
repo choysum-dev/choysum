@@ -18,6 +18,7 @@ export namespace AuditErrCode {
   export const INVALID_ARGUMENT = 'INVALID_ARGUMENT';
   export const APPEND_ONLY = 'APPEND_ONLY';
   export const INVALID_KIND = 'INVALID_KIND';
+  export const PERMISSION_DENIED = 'PERMISSION_DENIED';
 }
 
 /**

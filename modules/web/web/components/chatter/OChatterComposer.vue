@@ -19,6 +19,7 @@ SPDX-License-Identifier: Apache-2.0
         {{ _t('Post') }}
       </el-button>
     </div>
+    <p v-if="error" class="o-chatter-composer__error" role="alert">{{ error }}</p>
   </div>
 </template>
 
@@ -42,6 +43,7 @@ const { _t } = createTranslate('web', { scope: 'web/components/chatter/OChatterC
 const messageStore = getMessageStore();
 const body = ref('');
 const posting = ref(false);
+const error = ref<string | null>(null);
 
 const canSubmit = computed(() => body.value.trim().length > 0);
 
@@ -49,6 +51,7 @@ async function submit(): Promise<void> {
   const text = body.value.trim();
   if (!text || posting.value || props.disabled) return;
   posting.value = true;
+  error.value = null;
   try {
     await messageStore.Post({
       Model: props.model,
@@ -57,6 +60,8 @@ async function submit(): Promise<void> {
     });
     body.value = '';
     emit('posted');
+  } catch (err) {
+    error.value = err instanceof Error && err.message.trim() ? err.message : _t('Failed to post comment');
   } finally {
     posting.value = false;
   }
@@ -73,5 +78,11 @@ async function submit(): Promise<void> {
 .o-chatter-composer__actions {
   display: flex;
   justify-content: flex-end;
+}
+
+.o-chatter-composer__error {
+  margin: 0;
+  font-size: 12px;
+  color: var(--el-color-danger);
 }
 </style>

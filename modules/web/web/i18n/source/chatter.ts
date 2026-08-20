@@ -17,6 +17,7 @@ export default {
   recordRemoved: 'Record removed',
   fieldChanged: '%s changed from %s to %s',
   actionLabel: 'Action: %s',
+  field: 'Field',
   system: 'System',
   you: 'You',
   notifications: 'Notifications',
@@ -24,4 +25,5 @@ export default {
   noNotifications: 'No notifications',
   newNotification: 'New notification',
   updateOnRecord: 'Update on %s (%s)',
+  postFailed: 'Failed to post comment',
 } as const;

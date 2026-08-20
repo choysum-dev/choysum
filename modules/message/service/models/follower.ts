@@ -5,10 +5,15 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { getUserId } from '@/core/service/api/context';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition, SearchOptions } from '@/core/service/api/query';
-import { dial } from '@/core/service/orm/model/model_pool';
-import { GrpcCode, MessageErrCode, newMessageError } from '../error';
+import { MessageErrCode, newMessageError } from '../error';
 import { _lt } from '../i18n';
+import { assertTargetRecordReadable } from '../target_record';
 import type MessageSubtype from './message_subtype';
+
+export {
+  __setMessageFollowDialForTest,
+  __setMessageFollowTargetAuthForTest,
+} from '../target_record';
 
 export type FollowRecordReq = {
   Model: string;
@@ -23,27 +28,6 @@ export type UnfollowRecordReq = {
   ResId: string;
   UserId?: string | null;
 };
-
-type TargetRecordAuthFn = (model: string, resId: string) => Promise<void>;
-type FollowDialFn = <T = Record<string, (...args: unknown[]) => unknown>>(fullModelName: string) => T;
-
-let targetRecordAuthOverride: TargetRecordAuthFn | null | undefined;
-let followDialOverride: FollowDialFn | undefined;
-
-/**
- * Test-only override for Follow target-record read checks.
- * undefined = live dial Search; null = force deny; function = stub.
- */
-export function __setMessageFollowTargetAuthForTest(fn: TargetRecordAuthFn | null | undefined): void {
-  targetRecordAuthOverride = fn;
-}
-
-/**
- * Test-only override for the live Follow target dial used when auth override is unset.
- */
-export function __setMessageFollowDialForTest(fn: FollowDialFn | undefined): void {
-  followDialOverride = fn;
-}
 
 function resolveActorUserId(explicit?: string | null): string | null {
   const fromReq = explicit == null || explicit === '' ? null : String(explicit).trim();
@@ -61,35 +45,6 @@ function isUniqueConstraintError(err: unknown): boolean {
         ? String((err as { message: unknown }).message)
         : String(err);
   return /unique constraint|unique index|duplicate key|duplicate entry|UNIQUE constraint failed/i.test(msg);
-}
-
-function permissionDenied(message: string) {
-  return newMessageError({ code: MessageErrCode.PERMISSION_DENIED, message }).withGrpcCode(GrpcCode.PermissionDenied);
-}
-
-async function assertTargetRecordReadable(model: string, resId: string): Promise<void> {
-  if (targetRecordAuthOverride !== undefined) {
-    if (targetRecordAuthOverride === null) {
-      throw permissionDenied('Follow is not allowed for this record');
-    }
-    await targetRecordAuthOverride(model, resId);
-    return;
-  }
-
-  try {
-    const dialFn = followDialOverride || dial;
-    const svc = dialFn<{ Search?: (condition: unknown, options?: unknown) => Promise<unknown> }>(model);
-    if (typeof svc?.Search !== 'function') {
-      throw permissionDenied('Follow is not allowed for this record');
-    }
-    const rows = await svc.Search(['Id', '=', resId], { fields: ['Id'], limit: 1 });
-    if (Array.isArray(rows) && rows.length > 0) return;
-  } catch (err) {
-    if (err && typeof err === 'object' && (err as { code?: string }).code === MessageErrCode.PERMISSION_DENIED) {
-      throw err;
-    }
-  }
-  throw permissionDenied('Follow is not allowed for this record');
 }
 
 const DEFAULT_FOLLOW_FIELDS: FieldSelection<Follower> = ['Id', 'Model', 'ResId', 'UserId', 'SubtypeId', 'CompanyId'];
@@ -252,7 +207,7 @@ export default class Follower extends BaseModel {
     if (!userId) {
       throw newMessageError({ code: MessageErrCode.INVALID_ARGUMENT, message: 'Follow requires a user identity' });
     }
-    await assertTargetRecordReadable(model, resId);
+    await assertTargetRecordReadable(model, resId, 'Follow is not allowed for this record');
 
     const returnFields = followReturnFields(fields);
     const subtypeId = req.SubtypeId == null || req.SubtypeId === '' ? null : String(req.SubtypeId);

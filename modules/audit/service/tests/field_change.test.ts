@@ -3,6 +3,7 @@
 
 import FieldChange, { assertFieldChangeKind, __setFieldChangeCorrelationReqReaderForTest } from '../models/field_change';
 import { AuditErrCode, isAuditError } from '../error';
+import { __setFieldChangeTargetAuthForTest } from '../target_record';
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -54,7 +55,13 @@ function resetRequestContext(): void {
 
 async function withAuditScope<T>(fn: () => Promise<T>): Promise<T> {
   resetRequestContext();
-  return fn();
+  __setFieldChangeTargetAuthForTest(async () => undefined);
+  try {
+    return await fn();
+  } finally {
+    __setFieldChangeTargetAuthForTest(undefined);
+    __setFieldChangeCorrelationReqReaderForTest(undefined);
+  }
 }
 
 const OVERSIZED_ACTION_KIND = `action:${'x'.repeat(64)}`; // > 64 chars
@@ -196,6 +203,17 @@ test('audit.FieldChange: Append/SearchByRecord validate inputs and correlation m
       searchModelErr = e;
     }
     expect((searchModelErr as any).code).toBe(AuditErrCode.INVALID_ARGUMENT);
+
+    __setFieldChangeTargetAuthForTest(null);
+    let deniedErr: unknown;
+    try {
+      await FieldChange.SearchByRecord('base.UoM', uid('uom'), ['Id']);
+    } catch (e) {
+      deniedErr = e;
+    }
+    expect(isAuditError(deniedErr)).toBe(true);
+    expect((deniedErr as any).code).toBe(AuditErrCode.PERMISSION_DENIED);
+    __setFieldChangeTargetAuthForTest(async () => undefined);
 
     const jsCtx = ensureRequestContext();
     jsCtx.req.requestId = 'req_from_camel';

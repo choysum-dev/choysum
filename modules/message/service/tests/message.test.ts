@@ -12,6 +12,7 @@ import Message, {
   __setMessageXidNewForTest,
 } from '../models/message';
 import { MessageErrCode, isMessageError } from '../error';
+import { __setMessageTargetRecordAuthForTest } from '../target_record';
 import { dial } from '@/core/service/orm/model/model_pool';
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
@@ -71,11 +72,13 @@ function resetMessageTestSeams(): void {
   __setMessageDialForTest(undefined);
   __setMessagePublishTipForTest(undefined);
   __setMessageXidNewForTest(undefined);
+  __setMessageTargetRecordAuthForTest(undefined);
 }
 
 async function withMessageScope<T>(fn: () => Promise<T>): Promise<T> {
   resetRequestContext();
   resetMessageTestSeams();
+  __setMessageTargetRecordAuthForTest(async () => undefined);
   try {
     return await fn();
   } finally {
@@ -209,6 +212,31 @@ test('message.Message: Post validates inputs and stamps AuthorUid via Create', a
       Body: 'anon',
     });
     expect((noAuthor as any).AuthorUid == null || (noAuthor as any).AuthorUid === '').toBe(true);
+  });
+});
+
+test('message.Message: Post and SearchByRecord deny when the target record is unreadable', async () => {
+  await withMessageScope(async () => {
+    __setMessageTargetRecordAuthForTest(null);
+    const model = 'partner.Partner';
+    const resId = uid('res');
+    let postErr: unknown;
+    try {
+      await Message.Post({ Model: model, ResId: resId, Body: 'secret' });
+    } catch (e) {
+      postErr = e;
+    }
+    expect(isMessageError(postErr)).toBe(true);
+    expect((postErr as any).code).toBe(MessageErrCode.PERMISSION_DENIED);
+
+    let searchErr: unknown;
+    try {
+      await Message.SearchByRecord(model, resId, ['Id']);
+    } catch (e) {
+      searchErr = e;
+    }
+    expect(isMessageError(searchErr)).toBe(true);
+    expect((searchErr as any).code).toBe(MessageErrCode.PERMISSION_DENIED);
   });
 });
 

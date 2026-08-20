@@ -10,6 +10,7 @@ import { dial } from '@/core/service/orm/model/model_pool';
 import { MessageErrCode, newMessageError, wrapMessageError } from '../error';
 import { _lt } from '../i18n';
 import { publishThreadChangedTip } from '../tips';
+import { assertTargetRecordReadable } from '../target_record';
 import Notification from './notification';
 
 export {
@@ -268,6 +269,7 @@ export default class Message extends BaseModel {
     if (!body.trim()) {
       throw newMessageError({ code: MessageErrCode.INVALID_ARGUMENT, message: 'Post requires a non-empty Body' });
     }
+    await assertTargetRecordReadable(model, resId, 'Message is not allowed for this record');
 
     const type = assertMessageType(req.Type == null || req.Type === '' ? 'comment' : String(req.Type));
     const companyId = req.CompanyId == null || req.CompanyId === '' ? null : String(req.CompanyId);
@@ -351,6 +353,7 @@ export default class Message extends BaseModel {
         message: 'SearchByRecord requires Model and ResId',
       });
     }
+    await assertTargetRecordReadable(m, id, 'Message is not allowed for this record');
     const condition: QueryCondition<Message> = {
       And: [
         ['Model', '=', m],

@@ -51,6 +51,8 @@ export function useChatterThreadTips(
         signal
       );
     } catch {
+      // Stream error; fall through to poll fallback when still subscribed.
+    } finally {
       if (!signal.aborted) {
         startPollFallback();
       }
