@@ -290,6 +290,7 @@ export default class Follower extends BaseModel {
         message: 'SearchByRecord requires Model and ResId',
       });
     }
+    await assertTargetRecordReadable(m, id, 'Follower listing is not allowed for this record');
     const condition: QueryCondition<Follower> = {
       And: [
         ['Model', '=', m],

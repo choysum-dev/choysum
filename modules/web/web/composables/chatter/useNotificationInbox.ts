@@ -18,24 +18,32 @@ export function useNotificationInbox(enabled: () => boolean) {
   const notificationStore = getNotificationStore();
   let tipController: AbortController | null = null;
   let pollTimer: ReturnType<typeof setInterval> | undefined;
+  let refreshGeneration = 0;
+  let sessionGeneration = 0;
 
   const unreadCount = computed(() => rows.value.filter(row => row?.IsRead !== true).length);
 
   async function refresh(): Promise<void> {
+    const generation = ++refreshGeneration;
     if (!enabled()) {
+      if (generation !== refreshGeneration) return;
       rows.value = [];
       error.value = null;
+      loading.value = false;
       return;
     }
     loading.value = true;
     error.value = null;
     try {
-      rows.value = await notificationStore.SearchInbox({ fields: [...INBOX_FIELDS], limit: 20 });
+      const nextRows = await notificationStore.SearchInbox({ fields: [...INBOX_FIELDS], limit: 20 });
+      if (generation !== refreshGeneration) return;
+      rows.value = nextRows;
     } catch (err) {
+      if (generation !== refreshGeneration) return;
       rows.value = [];
       error.value = err instanceof Error ? err.message : String(err);
     } finally {
-      loading.value = false;
+      if (generation === refreshGeneration) loading.value = false;
     }
   }
 
@@ -98,14 +106,19 @@ export function useNotificationInbox(enabled: () => boolean) {
   }
 
   async function activate(): Promise<void> {
+    const session = sessionGeneration;
     await refresh();
+    if (session !== sessionGeneration || !enabled()) return;
     void startTips();
   }
 
   function deactivate(): void {
+    sessionGeneration += 1;
+    refreshGeneration += 1;
     stopTips();
     rows.value = [];
     error.value = null;
+    loading.value = false;
   }
 
   onBeforeUnmount(() => {

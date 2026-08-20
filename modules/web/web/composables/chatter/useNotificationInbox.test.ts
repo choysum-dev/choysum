@@ -65,4 +65,47 @@ describe('useNotificationInbox', () => {
     expect(inbox.error.value).toBe('mark all failed');
     scope.stop();
   });
+
+  it('ignores stale SearchInbox results after a later refresh', async () => {
+    let resolveFirst: ((rows: unknown[]) => void) | undefined;
+    SearchInbox.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveFirst = resolve;
+        })
+    ).mockResolvedValueOnce([{ Id: 'n2', IsRead: true }]);
+
+    const scope = effectScope();
+    const inbox = scope.run(() => useNotificationInbox(() => true));
+    if (!inbox) throw new Error('inbox missing');
+    const first = inbox.refresh();
+    await Promise.resolve();
+    await inbox.refresh();
+    expect(inbox.rows.value.map(row => row.Id)).toEqual(['n2']);
+    resolveFirst?.([{ Id: 'n1', IsRead: false }]);
+    await first;
+    expect(inbox.rows.value.map(row => row.Id)).toEqual(['n2']);
+    expect(inbox.loading.value).toBe(false);
+    scope.stop();
+  });
+
+  it('does not start tips after deactivate during activate', async () => {
+    let resolveInbox: ((rows: unknown[]) => void) | undefined;
+    SearchInbox.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveInbox = resolve;
+        })
+    );
+    const scope = effectScope();
+    const inbox = scope.run(() => useNotificationInbox(() => true));
+    if (!inbox) throw new Error('inbox missing');
+    const pending = inbox.activate();
+    await Promise.resolve();
+    inbox.deactivate();
+    resolveInbox?.([]);
+    await pending;
+    expect(onTips).not.toHaveBeenCalled();
+    scope.stop();
+  });
 });
