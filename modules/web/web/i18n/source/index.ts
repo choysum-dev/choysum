@@ -4,6 +4,7 @@
 import common from './common';
 import layout from './layout';
 import form from './form';
+import chatter from './chatter';
 
 /**
  * English source locale pack used as the baseline and default locale.
@@ -12,6 +13,7 @@ const sourceMessages = {
   common,
   layout,
   form,
+  chatter,
 };
 
 export default sourceMessages;

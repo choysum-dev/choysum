@@ -176,6 +176,8 @@ SPDX-License-Identifier: Apache-2.0
           </el-tab-pane>
         </el-tabs>
       </el-card>
+
+      <OChatter v-if="recordId" model="partner.Partner" :res-id="recordId" />
     </div>
   </OFormView>
 </template>
@@ -199,6 +201,7 @@ import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/
 import OManyToOneRefField from '@/web/web/components/field/OManyToOneRefField.vue';
 import type { ValueClickPayload as ManyToOneRefValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 import OOneToManyKanbanField from '@/web/web/components/field/OOneToManyKanbanField.vue';
+import OChatter from '@/web/web/components/chatter/OChatter.vue';
 import CompanyListView from '@/base/web/views/CompanyListView.vue';
 import LanguageListView from '@/base/web/views/LanguageListView.vue';
 import CurrencyListView from '@/base/web/views/CurrencyListView.vue';

@@ -52,6 +52,86 @@ msgctxt "web.model.UserFilter.fields"
 msgid "User"
 msgstr ""
 
+#: web/components/chatter/OChatter.vue:5
+msgctxt "web/components/chatter/OChatter"
+msgid "Activity"
+msgstr ""
+
+#: web/components/chatter/OChatter.vue:40
+msgctxt "web/components/chatter/OChatter"
+msgid "System"
+msgstr ""
+
+#: web/components/chatter/OChatter.vue:44
+msgctxt "web/components/chatter/OChatter"
+msgid "You"
+msgstr ""
+
+#: web/components/chatter/OChatterComposer.vue:39
+msgctxt "web/components/chatter/OChatterComposer"
+msgid "Failed to post comment"
+msgstr ""
+
+#: web/components/chatter/OChatterComposer.vue:6
+msgctxt "web/components/chatter/OChatterComposer"
+msgid "Post"
+msgstr ""
+
+#: web/components/chatter/OChatterComposer.vue:3
+msgctxt "web/components/chatter/OChatterComposer"
+msgid "Write a comment..."
+msgstr ""
+
+#: web/components/chatter/OChatterFieldChangeItem.vue:21
+msgctxt "web/components/chatter/OChatterFieldChangeItem"
+msgid "%s changed from %s to %s"
+msgstr ""
+
+#: web/components/chatter/OChatterFieldChangeItem.vue:22
+msgctxt "web/components/chatter/OChatterFieldChangeItem"
+msgid "Action: %s"
+msgstr ""
+
+#: web/components/chatter/OChatterFieldChangeItem.vue:23
+msgctxt "web/components/chatter/OChatterFieldChangeItem"
+msgid "Field"
+msgstr ""
+
+#: web/components/chatter/OChatterFieldChangeItem.vue:19
+msgctxt "web/components/chatter/OChatterFieldChangeItem"
+msgid "Record created"
+msgstr ""
+
+#: web/components/chatter/OChatterFieldChangeItem.vue:20
+msgctxt "web/components/chatter/OChatterFieldChangeItem"
+msgid "Record removed"
+msgstr ""
+
+#: web/components/chatter/OChatterFollowerBar.vue:7
+msgctxt "web/components/chatter/OChatterFollowerBar"
+msgid "%d followers"
+msgstr ""
+
+#: web/components/chatter/OChatterFollowerBar.vue:4
+msgctxt "web/components/chatter/OChatterFollowerBar"
+msgid "Follow"
+msgstr ""
+
+#: web/components/chatter/OChatterFollowerBar.vue:4
+msgctxt "web/components/chatter/OChatterFollowerBar"
+msgid "Unfollow"
+msgstr ""
+
+#: web/components/chatter/OChatterTimeline.vue:3
+msgctxt "web/components/chatter/OChatterTimeline"
+msgid "Loading activity..."
+msgstr ""
+
+#: web/components/chatter/OChatterTimeline.vue:5
+msgctxt "web/components/chatter/OChatterTimeline"
+msgid "No activity yet"
+msgstr ""
+
 #: web/components/field/OBigintField.vue:254
 msgctxt "web/components/field/OBigintField"
 msgid "Cannot be empty"
@@ -854,17 +934,17 @@ msgctxt "web/components/layout/OFooter"
 msgid "View terms of use"
 msgstr ""
 
-#: web/components/layout/OHeader.vue:21
+#: web/components/layout/OHeader.vue:22
 msgctxt "web/components/layout/OHeader"
 msgid "%s - Home"
 msgstr ""
 
-#: web/components/layout/OHeader.vue:118
+#: web/components/layout/OHeader.vue:120
 msgctxt "web/components/layout/OHeader"
 msgid "App navigation"
 msgstr ""
 
-#: web/components/layout/OHeader.vue:16
+#: web/components/layout/OHeader.vue:17
 msgctxt "web/components/layout/OHeader"
 msgid "Collapse menu"
 msgstr ""
@@ -874,12 +954,12 @@ msgctxt "web/components/layout/OHeader"
 msgid "Contact support"
 msgstr ""
 
-#: web/components/layout/OHeader.vue:15
+#: web/components/layout/OHeader.vue:16
 msgctxt "web/components/layout/OHeader"
 msgid "Expand menu"
 msgstr ""
 
-#: web/components/layout/OHeader.vue:19
+#: web/components/layout/OHeader.vue:20
 msgctxt "web/components/layout/OHeader"
 msgid "Get help"
 msgstr ""
@@ -889,12 +969,12 @@ msgctxt "web/components/layout/OHeader"
 msgid "Help documentation"
 msgstr ""
 
-#: web/components/layout/OHeader.vue:17
+#: web/components/layout/OHeader.vue:18
 msgctxt "web/components/layout/OHeader"
 msgid "Select an app"
 msgstr ""
 
-#: web/components/layout/OHeader.vue:18
+#: web/components/layout/OHeader.vue:19
 msgctxt "web/components/layout/OHeader"
 msgid "Switch language"
 msgstr ""
@@ -902,6 +982,37 @@ msgstr ""
 #: web/components/layout/OHeader.vue:102
 msgctxt "web/components/layout/OHeader"
 msgid "Video tutorials"
+msgstr ""
+
+#: web/components/layout/ONotificationBell.vue:18
+msgctxt "web/components/layout/ONotificationBell"
+msgid "Loading..."
+msgstr ""
+
+#: web/components/layout/ONotificationBell.vue:15
+msgctxt "web/components/layout/ONotificationBell"
+msgid "Mark all read"
+msgstr ""
+
+#: web/components/layout/ONotificationBell.vue:68
+msgctxt "web/components/layout/ONotificationBell"
+msgid "New notification"
+msgstr ""
+
+#: web/components/layout/ONotificationBell.vue:20
+msgctxt "web/components/layout/ONotificationBell"
+msgid "No notifications"
+msgstr ""
+
+#: web/components/layout/ONotificationBell.vue:13
+#: web/components/layout/ONotificationBell.vue:4
+msgctxt "web/components/layout/ONotificationBell"
+msgid "Notifications"
+msgstr ""
+
+#: web/components/layout/ONotificationBell.vue:66
+msgctxt "web/components/layout/ONotificationBell"
+msgid "Update on %s (%s)"
 msgstr ""
 
 #: web/components/layout/OSidebar.vue:2

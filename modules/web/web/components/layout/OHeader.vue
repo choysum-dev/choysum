@@ -128,7 +128,9 @@ SPDX-License-Identifier: Apache-2.0
         </div>
 
         <!-- Primary actions. -->
-        <div class="o-header__actions-primary"></div>
+        <div class="o-header__actions-primary">
+          <ONotificationBell />
+        </div>
       </div>
     </div>
 
@@ -168,6 +170,7 @@ import { ElButton, ElDrawer, ElIcon, ElHeader, ElDropdown, ElDropdownMenu, ElDro
 import { QuestionFilled } from '@element-plus/icons-vue';
 import { MenuOutlined, AppsOutlined, TranslateOutlined, ArrowDropDownOutlined } from '@vicons/material';
 import defaultLogo from '@/web/web/assets/logo.svg';
+import ONotificationBell from '@/web/web/components/layout/ONotificationBell.vue';
 import { createTranslate } from '@/web/web/i18n';
 
 const { _t } = createTranslate('web', { scope: 'web/components/layout/OHeader' });

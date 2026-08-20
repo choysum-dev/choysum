@@ -165,6 +165,15 @@ test('message.Follower: Follow denies when target record is unreadable', async (
     }
     expect(isMessageError(err)).toBe(true);
     expect((err as any).code).toBe(MessageErrCode.PERMISSION_DENIED);
+
+    let searchErr: unknown;
+    try {
+      await Follower.SearchByRecord('partner.Partner', uid('res'), ['UserId']);
+    } catch (e) {
+      searchErr = e;
+    }
+    expect(isMessageError(searchErr)).toBe(true);
+    expect((searchErr as any).code).toBe(MessageErrCode.PERMISSION_DENIED);
   });
 });
 

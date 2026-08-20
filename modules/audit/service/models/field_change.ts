@@ -8,6 +8,7 @@ import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition, DeleteOptions, UpdateOptions, SearchOptions } from '@/core/service/api/query';
 import { AuditErrCode, newAuditError } from '../error';
 import { _lt } from '../i18n';
+import { assertTargetRecordReadable } from '../target_record';
 
 /** Data-family Kind values allowed on FieldChange. */
 export const FIELD_CHANGE_KINDS = ['field', 'create', 'unlink'] as const;
@@ -265,6 +266,7 @@ export default class FieldChange extends BaseModel {
     if (!m || !id) {
       throw newAuditError({ code: AuditErrCode.INVALID_ARGUMENT, message: 'SearchByRecord requires Model and ResId' });
     }
+    await assertTargetRecordReadable(m, id, 'FieldChange is not allowed for this record');
     const condition: QueryCondition<FieldChange> = {
       And: [
         ['Model', '=', m],
