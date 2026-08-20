@@ -1,7 +1,9 @@
+// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { effectScope } from 'vue';
+import { defineComponent, effectScope, h, onMounted, ref } from 'vue';
+import { mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const SearchInbox = vi.fn();
@@ -107,5 +109,97 @@ describe('useNotificationInbox', () => {
     await pending;
     expect(onTips).not.toHaveBeenCalled();
     scope.stop();
+  });
+
+  it('clears inbox state when refresh is disabled', async () => {
+    const scope = effectScope();
+    const inbox = scope.run(() => useNotificationInbox(() => false));
+    if (!inbox) throw new Error('inbox missing');
+    inbox.rows.value = [{ Id: 'n1', IsRead: false }];
+    inbox.error.value = 'old';
+    inbox.loading.value = true;
+    await inbox.refresh();
+    expect(inbox.rows.value).toEqual([]);
+    expect(inbox.error.value).toBeNull();
+    expect(inbox.loading.value).toBe(false);
+    expect(SearchInbox).not.toHaveBeenCalled();
+    scope.stop();
+  });
+
+  it('stores SearchInbox failures and ignores markRead without an id', async () => {
+    const scope = effectScope();
+    const inbox = scope.run(() => useNotificationInbox(() => true));
+    if (!inbox) throw new Error('inbox missing');
+    SearchInbox.mockRejectedValueOnce('inbox down');
+    await inbox.refresh();
+    expect(inbox.error.value).toBe('inbox down');
+
+    await inbox.markRead('  ');
+    expect(MarkRead).not.toHaveBeenCalled();
+    scope.stop();
+  });
+
+  it('refreshes when notification tips fire', async () => {
+    onTips.mockImplementation(async (_stream, callback: () => Promise<void>) => {
+      await callback();
+    });
+    const scope = effectScope();
+    const inbox = scope.run(() => useNotificationInbox(() => true));
+    if (!inbox) throw new Error('inbox missing');
+    SearchInbox.mockClear();
+    await inbox.activate();
+    await Promise.resolve();
+    expect(SearchInbox.mock.calls.length).toBeGreaterThanOrEqual(2);
+    scope.stop();
+  });
+
+  it('refreshes after markRead and markAllRead succeed', async () => {
+    const scope = effectScope();
+    const inbox = scope.run(() => useNotificationInbox(() => true));
+    if (!inbox) throw new Error('inbox missing');
+    SearchInbox.mockClear();
+    await inbox.markRead('n1');
+    expect(MarkRead).toHaveBeenCalledWith(['n1']);
+    expect(SearchInbox).toHaveBeenCalled();
+
+    SearchInbox.mockClear();
+    await inbox.markAllRead();
+    expect(MarkAllRead).toHaveBeenCalled();
+    expect(SearchInbox).toHaveBeenCalled();
+    scope.stop();
+  });
+
+  it('deactivates and stops polling', async () => {
+    const scope = effectScope();
+    const inbox = scope.run(() => useNotificationInbox(() => true));
+    if (!inbox) throw new Error('inbox missing');
+    await inbox.activate();
+    SearchInbox.mockClear();
+    inbox.deactivate();
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(SearchInbox).not.toHaveBeenCalled();
+    scope.stop();
+  });
+
+  it('deactivates when the host component unmounts', async () => {
+    const scope = effectScope();
+    let inbox: ReturnType<typeof useNotificationInbox> | undefined;
+    const Host = defineComponent({
+      setup() {
+        inbox = useNotificationInbox(() => true);
+        onMounted(() => {
+          void inbox?.activate();
+        });
+        return () => h('div');
+      },
+    });
+    const wrapper = mount(Host);
+    await Promise.resolve();
+    SearchInbox.mockClear();
+    wrapper.unmount();
+    scope.stop();
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(SearchInbox).not.toHaveBeenCalled();
+    expect(inbox?.rows.value).toEqual([]);
   });
 });

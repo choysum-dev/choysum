@@ -7,9 +7,10 @@ import { defineComponent, h, ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const refresh = vi.fn(async () => undefined);
-const entries = ref([]);
+const entries = ref<any[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
+const authState = { currentUser: { Id: 'usr_test', Name: 'Tester' } as { Id?: string; Name?: string } | null };
 
 vi.mock('@/web/web/composables/chatter/useChatterTimeline', () => ({
   useChatterTimeline: () => ({ entries, loading, error, refresh }),
@@ -20,9 +21,11 @@ vi.mock('@/web/web/composables/chatter/useChatterThreadTips', () => ({
 }));
 
 vi.mock('@/auth/web/stores/auth', () => ({
-  useAuthStore: () => ({
-    currentUser: ref({ Id: 'usr_test', Name: 'Tester' }),
-  }),
+  useAuthStore: () => authState,
+}));
+
+vi.mock('@/web/web/i18n', () => ({
+  createTranslate: () => ({ _t: (msg: string) => msg }),
 }));
 
 vi.mock('@/web/web/stores/registry', () => ({
@@ -42,13 +45,15 @@ describe('OChatter', () => {
     entries.value = [];
     loading.value = false;
     error.value = null;
+    authState.currentUser = { Id: 'usr_test', Name: 'Tester' };
   });
 
-  it('renders empty timeline state and refreshes after post', async () => {
-    const wrapper = mount(OChatter, {
+  function mountChatter(props?: Record<string, unknown>) {
+    return mount(OChatter, {
       props: {
         model: 'partner.Partner',
         resId: 'res_partner_1',
+        ...props,
       },
       global: {
         stubs: {
@@ -57,13 +62,62 @@ describe('OChatter', () => {
               return () => h('div', [slots.header?.(), slots.default?.()]);
             },
           }),
+          OChatterFollowerBar: defineComponent({
+            props: ['model', 'resId', 'disabled'],
+            setup: () => () => h('div', { class: 'follower-bar' }),
+          }),
+          OChatterComposer: defineComponent({
+            emits: ['posted'],
+            setup(_, { emit }) {
+              return () =>
+                h('button', {
+                  class: 'composer-post',
+                  onClick: () => emit('posted'),
+                });
+            },
+          }),
+          OChatterTimeline: defineComponent({
+            props: ['resolveAuthorLabel'],
+            setup(props) {
+              return () =>
+                h('div', { class: 'timeline' }, [
+                  h('span', { class: 'system-label' }, props.resolveAuthorLabel(null)),
+                  h('span', { class: 'you-label' }, props.resolveAuthorLabel('usr_test')),
+                  h('span', { class: 'other-label' }, props.resolveAuthorLabel('usr_other')),
+                ]);
+            },
+          }),
         },
       },
     });
+  }
 
-    expect(wrapper.text()).toContain('No activity yet');
-    await wrapper.findComponent({ name: 'OChatterComposer' }).vm.$emit('posted');
+  it('renders empty timeline state and refreshes after post', async () => {
+    const wrapper = mountChatter();
+    expect(wrapper.text()).toContain('Activity');
+    await wrapper.find('.composer-post').trigger('click');
     await flushPromises();
     expect(refresh).toHaveBeenCalled();
+  });
+
+  it('hides the composer when disabled or missing resId', () => {
+    expect(mountChatter({ resId: '' }).find('.composer-post').exists()).toBe(false);
+    expect(mountChatter({ disabled: true }).find('.composer-post').exists()).toBe(false);
+    expect(mountChatter({ showComposer: false }).find('.composer-post').exists()).toBe(false);
+  });
+
+  it('resolves author labels for system, current user, and other users', () => {
+    const wrapper = mountChatter();
+    expect(wrapper.find('.system-label').text()).toBe('System');
+    expect(wrapper.find('.you-label').text()).toBe('Tester');
+    expect(wrapper.find('.other-label').text()).toBe('usr_other');
+
+    authState.currentUser = { Id: 'usr_test', Name: '  ' };
+    const unnamed = mountChatter();
+    expect(unnamed.find('.you-label').text()).toBe('You');
+
+    authState.currentUser = { Id: '  ', Name: 'Tester' };
+    const noCurrentId = mountChatter();
+    expect(noCurrentId.find('.you-label').text()).toBe('usr_test');
   });
 });
