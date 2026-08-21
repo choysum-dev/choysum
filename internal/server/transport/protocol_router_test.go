@@ -54,7 +54,7 @@ func TestProtocolRouterDoesNotGzipGRPCWeb(t *testing.T) {
 		EnableGzip:   true,
 	})
 
-	grpcWebReq := httptest.NewRequest(http.MethodPost, "/choysum.tip.v1.TipHub/SubscribeThread", nil)
+	grpcWebReq := httptest.NewRequest(http.MethodPost, "/tip.TipHub/SubscribeThread", nil)
 	grpcWebReq.Header.Set("Content-Type", "application/grpc-web+proto")
 	grpcWebReq.Header.Set("Accept-Encoding", "gzip")
 	grpcWebRR := httptest.NewRecorder()
