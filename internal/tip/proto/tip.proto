@@ -3,7 +3,7 @@
 
 syntax = "proto3";
 
-package choysum.tip.v1;
+package tip;
 
 option go_package = "github.com/choysum-dev/choysum/internal/tip/proto/tippb;tippb";
 

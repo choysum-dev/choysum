@@ -8,10 +8,10 @@ import type { GenFile, GenMessage } from '@bufbuild/protobuf/codegenv2';
 import { fileDesc, messageDesc, serviceDesc } from '@bufbuild/protobuf/codegenv2';
 
 // File descriptor for internal/tip/proto/tip.proto
-export const file_internal_tip_proto_tip: GenFile = fileDesc('ChxpbnRlcm5hbC90aXAvcHJvdG8vdGlwLnByb3RvEg5jaG95c3VtLnRpcC52MSK2AQoDVGlwEhQKBXRvcGljGAEgASgJUgV0b3BpYxIcCgphdF91bml4X21zGAIgASgDUghhdFVuaXhNcxIWCgZzb3VyY2UYAyABKAlSBnNvdXJjZRIUCgVtb2RlbBgEIAEoCVIFbW9kZWwSFQoGcmVzX2lkGAUgASgJUgVyZXNJZBIdCgptZXNzYWdlX2lkGAYgASgJUgltZXNzYWdlSWQSFwoHdXNlcl9pZBgHIAEoCVIGdXNlcklkIkEKElN1YnNjcmliZVRocmVhZFJlcRIUCgVtb2RlbBgBIAEoCVIFbW9kZWwSFQoGcmVzX2lkGAIgASgJUgVyZXNJZCIbChlTdWJzY3JpYmVOb3RpZmljYXRpb25zUmVxMrIBCgZUaXBIdWISTAoPU3Vic2NyaWJlVGhyZWFkEiIuY2hveXN1bS50aXAudjEuU3Vic2NyaWJlVGhyZWFkUmVxGhMuY2hveXN1bS50aXAudjEuVGlwMAESWgoWU3Vic2NyaWJlTm90aWZpY2F0aW9ucxIpLmNob3lzdW0udGlwLnYxLlN1YnNjcmliZU5vdGlmaWNhdGlvbnNSZXEaEy5jaG95c3VtLnRpcC52MS5UaXAwAUI/Wj1naXRodWIuY29tL2Nob3lzdW0tZGV2L2Nob3lzdW0vaW50ZXJuYWwvdGlwL3Byb3RvL3RpcHBiO3RpcHBiYgZwcm90bzM=');
+export const file_internal_tip_proto_tip: GenFile = fileDesc('ChxpbnRlcm5hbC90aXAvcHJvdG8vdGlwLnByb3RvEgN0aXAitgEKA1RpcBIUCgV0b3BpYxgBIAEoCVIFdG9waWMSHAoKYXRfdW5peF9tcxgCIAEoA1IIYXRVbml4TXMSFgoGc291cmNlGAMgASgJUgZzb3VyY2USFAoFbW9kZWwYBCABKAlSBW1vZGVsEhUKBnJlc19pZBgFIAEoCVIFcmVzSWQSHQoKbWVzc2FnZV9pZBgGIAEoCVIJbWVzc2FnZUlkEhcKB3VzZXJfaWQYByABKAlSBnVzZXJJZCJBChJTdWJzY3JpYmVUaHJlYWRSZXESFAoFbW9kZWwYASABKAlSBW1vZGVsEhUKBnJlc19pZBgCIAEoCVIFcmVzSWQiGwoZU3Vic2NyaWJlTm90aWZpY2F0aW9uc1JlcTKGAQoGVGlwSHViEjYKD1N1YnNjcmliZVRocmVhZBIXLnRpcC5TdWJzY3JpYmVUaHJlYWRSZXEaCC50aXAuVGlwMAESRAoWU3Vic2NyaWJlTm90aWZpY2F0aW9ucxIeLnRpcC5TdWJzY3JpYmVOb3RpZmljYXRpb25zUmVxGggudGlwLlRpcDABQj9aPWdpdGh1Yi5jb20vY2hveXN1bS1kZXYvY2hveXN1bS9pbnRlcm5hbC90aXAvcHJvdG8vdGlwcGI7dGlwcGJiBnByb3RvMw==');
 
 // Message Tip
-export type Tip = Message<'choysum.tip.v1.Tip'> & {
+export type Tip = Message<'tip.Tip'> & {
   topic: string;
   atUnixMs: bigint;
   source: string;
@@ -24,7 +24,7 @@ export type Tip = Message<'choysum.tip.v1.Tip'> & {
 export const TipSchema: GenMessage<Tip> = messageDesc(file_internal_tip_proto_tip, 0);
 
 // Message SubscribeThreadReq
-export type SubscribeThreadReq = Message<'choysum.tip.v1.SubscribeThreadReq'> & {
+export type SubscribeThreadReq = Message<'tip.SubscribeThreadReq'> & {
   model: string;
   resId: string;
 };
@@ -32,7 +32,7 @@ export type SubscribeThreadReq = Message<'choysum.tip.v1.SubscribeThreadReq'> & 
 export const SubscribeThreadReqSchema: GenMessage<SubscribeThreadReq> = messageDesc(file_internal_tip_proto_tip, 1);
 
 // Message SubscribeNotificationsReq
-export type SubscribeNotificationsReq = Message<'choysum.tip.v1.SubscribeNotificationsReq'> & {
+export type SubscribeNotificationsReq = Message<'tip.SubscribeNotificationsReq'> & {
 };
 
 export const SubscribeNotificationsReqSchema: GenMessage<SubscribeNotificationsReq> = messageDesc(file_internal_tip_proto_tip, 2);
