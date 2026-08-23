@@ -16,6 +16,8 @@ const (
 	CodePlanBuilderNotFound  = "plan_builder_not_found"
 	CodeInvalidFormat        = "invalid_format"
 	CodeModelNotFound        = "model_not_found"
+	CodeRunnerNotRegistered  = "runner_not_registered"
+	CodeAsyncNotSupported    = "async_not_supported"
 )
 
 var (
@@ -24,6 +26,7 @@ var (
 	ErrDryRunRequiresAtomic = &Error{Code: CodeDryRunRequiresAtomic, Text: "dry run requires atomic policy"}
 	ErrWriterNotRegistered  = &Error{Code: CodeWriterNotRegistered, Text: "writer is not registered for profile"}
 	ErrPlanBuilderNotFound  = &Error{Code: CodePlanBuilderNotFound, Text: "plan builder is not registered for source format"}
+	ErrAsyncNotSupported    = &Error{Code: CodeAsyncNotSupported, Text: "async import is not supported by Run; use the task job path"}
 )
 
 // Error is a structured import platform error with an appendix-D code.
@@ -33,6 +36,7 @@ type Error struct {
 	Row       int
 	Field     string
 	RecordRef string
+	cause     error
 }
 
 func (e *Error) Error() string {
@@ -43,6 +47,14 @@ func (e *Error) Error() string {
 		return e.Text
 	}
 	return e.Code
+}
+
+// Unwrap returns the wrapped cause for errors.Is / errors.As.
+func (e *Error) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.cause
 }
 
 // Message converts the error to a report message.
@@ -79,5 +91,5 @@ func ErrorfWrap(code, text string, cause error) *Error {
 	if cause == nil {
 		return Errorf(code, text)
 	}
-	return &Error{Code: code, Text: fmt.Sprintf("%s: %v", text, cause)}
+	return &Error{Code: code, Text: fmt.Sprintf("%s: %v", text, cause), cause: cause}
 }

@@ -27,6 +27,9 @@ func TestRun_StopKeep_PartialCommit(t *testing.T) {
 	if report.Stats.Ok != 1 {
 		t.Fatalf("stats ok = %d, want 1", report.Stats.Ok)
 	}
+	if report.Stats.Skip != 1 {
+		t.Fatalf("stats skip = %d, want 1", report.Stats.Skip)
+	}
 	if count := countStubRows(t, runtimeScope); count != 1 {
 		t.Fatalf("row count = %d, want 1 after stop_keep", count)
 	}
@@ -68,5 +71,41 @@ func TestRun_StubFormatRegistered(t *testing.T) {
 	}
 	if spec.Source.Format != stubadapter.Format {
 		t.Fatalf("unexpected format %q", spec.Source.Format)
+	}
+}
+
+func TestRun_DryRun_StopKeep_CommitsNothing(t *testing.T) {
+	runtimeScope := testRuntimeScope(t)
+	spec := testRecordSpec(importpkg.Options{StubUnitCount: 2})
+	spec.Policy = importpkg.PolicyStopKeep
+	spec.DryRun = true
+
+	report, err := runner.Run(context.Background(), runtimeScope, spec)
+	if err != nil {
+		t.Fatalf("Run dry-run stop_keep: %v", err)
+	}
+	if report.Stats.Ok != 2 {
+		t.Fatalf("stats ok = %d, want 2", report.Stats.Ok)
+	}
+	if count := countStubRows(t, runtimeScope); count != 0 {
+		t.Fatalf("row count = %d, want 0 after dry-run stop_keep", count)
+	}
+}
+
+func TestRun_DryRun_BestEffort_CommitsNothing(t *testing.T) {
+	runtimeScope := testRuntimeScope(t)
+	spec := testRecordSpec(importpkg.Options{StubUnitCount: 2})
+	spec.Policy = importpkg.PolicyBestEffort
+	spec.DryRun = true
+
+	report, err := runner.Run(context.Background(), runtimeScope, spec)
+	if err != nil {
+		t.Fatalf("Run dry-run best_effort: %v", err)
+	}
+	if report.Stats.Ok != 2 {
+		t.Fatalf("stats ok = %d, want 2", report.Stats.Ok)
+	}
+	if count := countStubRows(t, runtimeScope); count != 0 {
+		t.Fatalf("row count = %d, want 0 after dry-run best_effort", count)
 	}
 }

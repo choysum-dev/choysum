@@ -32,6 +32,20 @@ func executePlan(ctx context.Context, runtimeScope scope.Scope, spec importpkg.S
 	}
 }
 
+func writeUnit(ctx context.Context, txScope scope.Scope, spec importpkg.Spec, writer registry.Writer, unit plan.Unit) error {
+	if err := writer.Write(ctx, txScope, []plan.Unit{unit}); err != nil {
+		return err
+	}
+	if spec.DryRun {
+		return errDryRunRollback
+	}
+	return nil
+}
+
+func isDryRunRollback(err error) bool {
+	return errors.Is(err, errDryRunRollback)
+}
+
 func runAtomic(ctx context.Context, runtimeScope scope.Scope, spec importpkg.Spec, p plan.Plan, writer registry.Writer) (importpkg.Report, error) {
 	collector := newMessageCollector(p.Len())
 	var runErr error
@@ -47,11 +61,11 @@ func runAtomic(ctx context.Context, runtimeScope scope.Scope, spec importpkg.Spe
 			}
 			collector.addOK(1)
 		}
-		if spec.DryRun {
-			return errDryRunRollback
-		}
 		if collector.hasHardError() {
 			return collector.firstErr
+		}
+		if spec.DryRun {
+			return errDryRunRollback
 		}
 		return nil
 	})
@@ -64,20 +78,22 @@ func runAtomic(ctx context.Context, runtimeScope scope.Scope, spec importpkg.Spe
 	if err != nil && !errors.Is(err, errDryRunRollback) {
 		runErr = err
 	}
-	if collector.hasHardError() && runErr == nil {
-		runErr = collector.firstErr
-	}
 	return report, runErr
 }
 
 func runStopKeep(ctx context.Context, runtimeScope scope.Scope, spec importpkg.Spec, p plan.Plan, writer registry.Writer) (importpkg.Report, error) {
 	collector := newMessageCollector(p.Len())
-	for _, unit := range p.Units {
+	for i, unit := range p.Units {
 		unitErr := runtimeScope.Transactor().RequiresNew(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
-			return writer.Write(txScope.Context(), txScope, []plan.Unit{unit})
+			return writeUnit(txScope.Context(), txScope, spec, writer, unit)
 		})
 		if unitErr != nil {
+			if isDryRunRollback(unitErr) {
+				collector.addOK(1)
+				continue
+			}
 			collector.addError(unitErr, unit)
+			collector.addSkip(len(p.Units) - i - 1)
 			break
 		}
 		collector.addOK(1)
@@ -93,9 +109,13 @@ func runBestEffort(ctx context.Context, runtimeScope scope.Scope, spec importpkg
 	collector := newMessageCollector(p.Len())
 	for _, unit := range p.Units {
 		unitErr := runtimeScope.Transactor().RequiresNew(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
-			return writer.Write(txScope.Context(), txScope, []plan.Unit{unit})
+			return writeUnit(txScope.Context(), txScope, spec, writer, unit)
 		})
 		if unitErr != nil {
+			if isDryRunRollback(unitErr) {
+				collector.addOK(1)
+				continue
+			}
 			collector.addError(unitErr, unit)
 			continue
 		}

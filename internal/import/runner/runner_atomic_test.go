@@ -100,6 +100,23 @@ func TestRun_DryRun_CommitsNothing(t *testing.T) {
 	}
 }
 
+func TestRun_Atomic_DryRun_ReturnsErrorOnUnitFailure(t *testing.T) {
+	runtimeScope := testRuntimeScope(t)
+	spec := testRecordSpec(importpkg.Options{
+		StubUnitCount:     2,
+		StubFailUnitIndex: 1,
+	})
+	spec.DryRun = true
+
+	_, err := runner.Run(context.Background(), runtimeScope, spec)
+	if err == nil {
+		t.Fatal("expected dry-run atomic error when unit fails")
+	}
+	if count := countStubRows(t, runtimeScope); count != 0 {
+		t.Fatalf("row count = %d, want 0", count)
+	}
+}
+
 func TestValidateSpec_CallerProfileMatrix(t *testing.T) {
 	cases := []struct {
 		profile importpkg.Profile

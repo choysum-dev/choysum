@@ -28,6 +28,13 @@ func (c *messageCollector) addOK(n int) {
 	c.ok += n
 }
 
+func (c *messageCollector) addSkip(n int) {
+	if n <= 0 {
+		return
+	}
+	c.skip += n
+}
+
 func (c *messageCollector) addError(err error, unit plan.Unit) {
 	c.errors++
 	if c.firstErr == nil {

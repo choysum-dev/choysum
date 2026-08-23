@@ -15,7 +15,7 @@ type RunFunc func(context.Context, scope.Scope, Spec) (Report, error)
 var runFn RunFunc = unregisteredRun
 
 func unregisteredRun(context.Context, scope.Scope, Spec) (Report, error) {
-	return Report{}, Errorf("runner_not_registered", "import runner is not linked; import the runner package")
+	return Report{}, Errorf(CodeRunnerNotRegistered, "import runner is not linked; import the runner package")
 }
 
 // SetRun wires the default runner implementation. Called from internal/import/runner init.
@@ -31,6 +31,9 @@ func SetRun(fn RunFunc) {
 func Run(ctx context.Context, runtimeScope scope.Scope, spec Spec) (Report, error) {
 	if err := ValidateSpec(spec); err != nil {
 		return Report{}, err
+	}
+	if spec.Async {
+		return Report{}, ErrAsyncNotSupported
 	}
 	return runFn(ctx, runtimeScope, spec)
 }
