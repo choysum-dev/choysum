@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Module Init Data Ownership
 
-When adding or moving records in `modules/*/data/*.json` or `modules/*/demo/*.json` (manifest `choysum.data` / `choysum.demo`, files such as `bootstrap.json`):
+When editing `modules/**/package.json` (`choysum.data` / `choysum.demo`) or adding or moving records in `modules/**/data/**/*.json` or `modules/**/demo/**/*.json` (files such as `bootstrap.json`):
 
 1. **Master / business rows** belong in the module that owns the model (e.g. `base.Company` → `modules/base/data`).
 2. **Domain-targeted authz** (`RoleRecordRule` / `RoleFieldRule` / `RoleMethodAccess` scoped to a **domain model** via `MetaModelId` / `modelRef`, or a **domain-owned** logical name) belongs in that **domain module**. Use `application: "auth"`; `module` / xml_id stay under the applying module (example: `web/data/bootstrap.json` → `web.rrr_…` for `web.SavedFilter`).
