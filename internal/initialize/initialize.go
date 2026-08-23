@@ -8,6 +8,7 @@ import (
 	_ "github.com/choysum-dev/choysum/internal/defaultengine"
 	_ "github.com/choysum-dev/choysum/internal/defaultjsexecutor"
 	_ "github.com/choysum-dev/choysum/internal/defaultscope"
+	_ "github.com/choysum-dev/choysum/internal/import/runner"
 	_ "github.com/choysum-dev/choysum/internal/document/storage/db"
 	_ "github.com/choysum-dev/choysum/internal/document/storage/s3"
 	_ "github.com/choysum-dev/choysum/internal/jwtauth"
