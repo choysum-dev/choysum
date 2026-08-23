@@ -1,17 +1,17 @@
 ---
-description: Ownership rules for module bootstrap/demo data seeds (xml_id, cross-app RR)
+description: Ownership rules for module bootstrap/demo init data (xml_id, cross-app RR)
 globs: modules/**/data/**/*.json,modules/**/demo/**/*.json,modules/**/package.json
 alwaysApply: false
 ---
 
-# Module Data Seed Ownership
+# Module Init Data Ownership
 
-When adding or moving records in `modules/*/data/*.json` or `modules/*/demo/*.json`:
+When adding or moving records in `modules/*/data/*.json` or `modules/*/demo/*.json` (manifest `choysum.data` / `choysum.demo`, files such as `bootstrap.json`):
 
 1. **Master / business rows** belong in the module that owns the model (e.g. `base.Company` → `modules/base/data`).
 2. **Domain-targeted authz** (`RoleRecordRule` / `RoleFieldRule` / `RoleMethodAccess` scoped to a **domain model** via `MetaModelId` / `modelRef`, or a **domain-owned** logical name) belongs in that **domain module**. Use `application: "auth"`; `module` / xml_id stay under the applying module (example: `web/data/bootstrap.json` → `web.rrr_…` for `web.SavedFilter`).
 3. **Platform roles, global break-glass, and platform LogicalModel default packs** stay in `modules/auth/data`: `base.user` / `sys.admin` / terminology role, global RR/FR/RMA/RUI, auth User/Token/Session packs, and cross-app logical defaults for `FieldDefault` / `AppSetting` / `TranslationTerm` (same registry as core’s `registerLogicalModelName`).
-4. Rule (2) requires the seeding module to install **after** auth: it must `depends` on `auth`, and `auth` must **not** depend on it. Modules that auth already depends on (`base`, `meta`) cannot own authz seeds without a cycle — leave those app-level gift packs in auth (or use a future late-apply mechanism).
+4. Rule (2) requires the applying module to install **after** auth: it must `depends` on `auth`, and `auth` must **not** depend on it. Modules that auth already depends on (`base`, `meta`) cannot own domain authz init data without a cycle — leave those app-level gift packs in auth (or use a future late-apply mechanism).
 5. **Do not** pile new **domain-model** RR/RFR/RMA into `auth/data`. Prefer the SavedFilter pattern under the domain module’s `data/bootstrap.json`. Platform logical defaults (rule 3) are the exception and belong in auth.
 
 Do **not** add `web` to domain `depends`. The install/upgrade planner auto-includes the web SPA shell when a module declares `entryPoints.web` (opt out with CLI `--no-web`).
@@ -19,6 +19,6 @@ Do **not** add `web` to domain `depends`. The install/upgrade planner auto-inclu
 ## Shape reminders
 
 - `record.module` must equal the applying module (or be omitted).
-- `record.application` may target another app’s model (cross-app seeding); omit to default to the owner app.
+- `record.application` may target another app’s model (cross-app init data); omit to default to the owner app.
 - `record.model` is the **short** name only (not `app.Model`).
 - Prefer `modelRef` / `ref` / `refBy` for stable links; do not hardcode row ids.
