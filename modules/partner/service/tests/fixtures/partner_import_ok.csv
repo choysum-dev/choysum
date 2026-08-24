@@ -1,0 +1,3 @@
+Name,Code,IsActive,CustomerRank,SupplierRank
+Import Partner One,IMP-P001,true,1,0
+Import Partner Two,IMP-P002,true,0,2

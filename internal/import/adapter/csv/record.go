@@ -6,7 +6,6 @@ package csv
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/choysum-dev/choysum/internal/import/adapter"
@@ -36,15 +35,15 @@ func (Builder) Build(ctx context.Context, spec importpkg.Spec) (plan.Plan, error
 	if model == "" {
 		return plan.Plan{}, importpkg.Errorf(importpkg.CodeModelNotFound, "model is required for record CSV import")
 	}
-	path := strings.TrimSpace(spec.Source.Path)
-	if path == "" {
-		return plan.Plan{}, importpkg.Errorf(importpkg.CodeInvalidFormat, "source path is required for record CSV import")
-	}
-	raw, err := os.ReadFile(path)
+	raw, err := readSourceBytes(ctx, spec)
 	if err != nil {
-		return plan.Plan{}, importpkg.ErrorfWrap(importpkg.CodeInvalidFormat, "read CSV source", err)
+		return plan.Plan{}, err
 	}
-	return BuildRecordPlan(model, raw, spec.Options.ColumnMapping)
+	p, err := BuildRecordPlan(model, raw, spec.Options.ColumnMapping)
+	if err != nil {
+		return plan.Plan{}, err
+	}
+	return injectCompanyID(p, spec.Options.CompanyID), nil
 }
 
 // BuildRecordPlan parses CSV bytes into record units for one target model.

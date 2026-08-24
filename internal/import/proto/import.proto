@@ -1,0 +1,94 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+syntax = "proto3";
+
+package import;
+
+option go_package = "github.com/choysum-dev/choysum/internal/import/proto/importpb;importpb";
+
+enum ImportPolicy {
+  IMPORT_POLICY_UNSPECIFIED = 0;
+  IMPORT_POLICY_ATOMIC = 1;
+  IMPORT_POLICY_STOP_KEEP = 2;
+  IMPORT_POLICY_BEST_EFFORT = 3;
+}
+
+enum ImportMessageType {
+  IMPORT_MESSAGE_TYPE_UNSPECIFIED = 0;
+  IMPORT_MESSAGE_TYPE_ERROR = 1;
+  IMPORT_MESSAGE_TYPE_WARNING = 2;
+  IMPORT_MESSAGE_TYPE_SKIP = 3;
+}
+
+message ImportStats {
+  int32 total = 1;
+  int32 ok = 2;
+  int32 error = 3;
+  int32 skip = 4;
+  int32 warning = 5;
+}
+
+message ImportMessage {
+  ImportMessageType type = 1;
+  int32 row = 2;
+  string field = 3;
+  string code = 4;
+  string text = 5;
+  string record_ref = 6;
+}
+
+message ImportReportMeta {
+  string lang = 1;
+  string source_ref = 2;
+  string target_model = 3;
+}
+
+message ImportReport {
+  string profile = 1;
+  ImportPolicy policy = 2;
+  bool dry_run = 3;
+  ImportStats stats = 4;
+  repeated ImportMessage messages = 5;
+  string artifact_ref = 6;
+  ImportReportMeta meta = 7;
+}
+
+message ParseHeadersRequest {
+  string source_ref = 1;
+}
+
+message ParseHeadersResponse {
+  repeated string headers = 1;
+  string delimiter = 2;
+  int32 header_row = 3;
+}
+
+message ImportRunRequest {
+  string target_model = 1;
+  string source_ref = 2;
+  map<string, string> column_mapping = 3;
+  ImportPolicy policy = 4;
+  string company_id = 5;
+}
+
+message ImportRunResponse {
+  ImportReport report = 1;
+}
+
+message ImportRunAsyncRequest {
+  ImportRunRequest run = 1;
+}
+
+message ImportRunAsyncResponse {
+  string import_job_id = 1;
+  string task_job_id = 2;
+  ImportReport report = 3;
+}
+
+service ImportHub {
+  rpc ParseHeaders(ParseHeadersRequest) returns (ParseHeadersResponse);
+  rpc Preview(ImportRunRequest) returns (ImportRunResponse);
+  rpc Run(ImportRunRequest) returns (ImportRunResponse);
+  rpc RunAsync(ImportRunAsyncRequest) returns (ImportRunAsyncResponse);
+}

@@ -10,6 +10,10 @@ export interface SelectionExpose<T = any> {
   selectedItem: ComputedRef<T | null>;
 }
 
+export interface ListViewLoadExpose {
+  load?: () => Promise<void>;
+}
+
 export type RowEventPayload<T = any> = {
   row: ClientModel<T>;
   rowIndex: number;
