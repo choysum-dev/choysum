@@ -4,6 +4,7 @@
 package record
 
 import (
+	"errors"
 	"strings"
 
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
@@ -48,10 +49,16 @@ func AssertExternalIDWritable(tx *gorm.DB, key MetaModelDataKey, row int) error 
 	if tx == nil {
 		return importpkg.Errorf(importpkg.CodeInvalidFormat, "database session is required")
 	}
+	// Always enforce installed-module namespace protection, even when no mapping exists yet
+	// (otherwise the first import of base.new_id would succeed and create a module-owned id).
+	if err := assertModuleNamespaceWritable(tx, key, row); err != nil {
+		return err
+	}
+
 	var mapping modmeta.ModelData
 	err := tx.Where("module = ? AND name = ?", key.Module, key.Name).First(&mapping).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil
 		}
 		return importpkg.ErrorfWrap(importpkg.CodeConstraint, "lookup external id mapping", err)
@@ -65,7 +72,18 @@ func AssertExternalIDWritable(tx *gorm.DB, key MetaModelDataKey, row int) error 
 			RecordRef: key.Module + "." + key.Name,
 		}
 	}
-	if key.Module != importNamespace && isInstalledModuleNamespace(tx, key.Module) {
+	return nil
+}
+
+func assertModuleNamespaceWritable(tx *gorm.DB, key MetaModelDataKey, row int) error {
+	if key.Module == importNamespace {
+		return nil
+	}
+	installed, err := isInstalledModuleNamespace(tx, key.Module)
+	if err != nil {
+		return importpkg.ErrorfWrap(importpkg.CodeConstraint, "lookup module namespace", err)
+	}
+	if installed {
 		return &importpkg.Error{
 			Code:      importpkg.CodeExternalIDProtected,
 			Text:      "external id belongs to an installed module namespace",
@@ -77,23 +95,23 @@ func AssertExternalIDWritable(tx *gorm.DB, key MetaModelDataKey, row int) error 
 	return nil
 }
 
-func isInstalledModuleNamespace(tx *gorm.DB, moduleName string) bool {
+func isInstalledModuleNamespace(tx *gorm.DB, moduleName string) (bool, error) {
 	moduleName = strings.TrimSpace(moduleName)
 	if moduleName == "" {
-		return false
+		return false, nil
 	}
 	var count int64
 	if err := tx.Model(&meta.Module{}).Where("name = ?", moduleName).Count(&count).Error; err != nil {
-		return false
+		return false, err
 	}
-	return count > 0
+	return count > 0, nil
 }
 
 func lookupExternalID(tx *gorm.DB, key MetaModelDataKey) (*modmeta.ModelData, error) {
 	var mapping modmeta.ModelData
 	err := tx.Where("module = ? AND name = ?", key.Module, key.Name).First(&mapping).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, err

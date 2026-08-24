@@ -151,14 +151,21 @@ func upsertCountryByExternalID(
 		return importpkg.ErrorfWrap(importpkg.CodeConstraint, "lookup external id mapping", err)
 	}
 	if mapping != nil {
-		if _, err := caller.Call(ctx, ormbridge.CallRequest{
-			Model:  countryModelFull,
-			Method: "UpdateById",
-			Args:   []any{mapping.ResID, vals, []string{"Id", "Code"}},
-		}); err != nil {
-			return mapORMError(unit, "", err)
+		exists, err := countryExistsByID(ctx, caller, unit, mapping.ResID)
+		if err != nil {
+			return err
 		}
-		return upsertExternalIDMapping(db, key, model, mapping.ResID)
+		if exists {
+			if _, err := caller.Call(ctx, ormbridge.CallRequest{
+				Model:  countryModelFull,
+				Method: "UpdateById",
+				Args:   []any{mapping.ResID, vals, []string{"Id", "Code"}},
+			}); err != nil {
+				return mapORMError(unit, "", err)
+			}
+			return upsertExternalIDMapping(db, key, model, mapping.ResID)
+		}
+		// Mapping points at a deleted row — recreate and remap.
 	}
 
 	created, err := caller.Call(ctx, ormbridge.CallRequest{
@@ -174,6 +181,25 @@ func upsertCountryByExternalID(
 		return rowError(unit, "", importpkg.CodeConstraint, "Create did not return Id")
 	}
 	return upsertExternalIDMapping(db, key, model, resID)
+}
+
+func countryExistsByID(ctx context.Context, caller ormbridge.Caller, unit recordplan.Unit, id string) (bool, error) {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return false, nil
+	}
+	result, err := caller.Call(ctx, ormbridge.CallRequest{
+		Model:  countryModelFull,
+		Method: "Search",
+		Args: []any{
+			map[string]any{"And": []any{[]any{"Id", "=", id}}},
+			map[string]any{"fields": []string{"Id"}, "limit": 1},
+		},
+	})
+	if err != nil {
+		return false, mapORMError(unit, "", err)
+	}
+	return firstRecordID(result) != "", nil
 }
 
 func upsertCountryByCode(ctx context.Context, caller ormbridge.Caller, unit recordplan.Unit, vals map[string]any) error {

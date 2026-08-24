@@ -5,6 +5,7 @@ package csv
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 
@@ -83,9 +84,13 @@ func BuildRecordPlan(model string, raw []byte, columnMapping map[string]string) 
 			}
 			values[fieldPath] = cell
 		}
+		rowNumber := i + 2
+		if i < len(table.RowNumbers) {
+			rowNumber = table.RowNumbers[i]
+		}
 		units = append(units, recordplan.Unit{
 			Index:      i + 1,
-			RowNumber:  i + 2,
+			RowNumber:  rowNumber,
 			Model:      model,
 			ExternalID: externalID,
 			Values:     values,
@@ -96,10 +101,14 @@ func BuildRecordPlan(model string, raw []byte, columnMapping map[string]string) 
 
 func mapHeaders(headers []string, columnMapping map[string]string) (map[string]string, error) {
 	out := make(map[string]string, len(headers))
+	headerByField := make(map[string]string, len(headers))
 	for _, header := range headers {
 		header = strings.TrimSpace(header)
 		if header == "" {
 			return nil, importpkg.Errorf(importpkg.CodeInvalidFormat, "CSV header must not be empty")
+		}
+		if _, dup := out[header]; dup {
+			return nil, importpkg.Errorf(importpkg.CodeInvalidFormat, fmt.Sprintf("duplicate CSV header %q", header))
 		}
 		fieldPath := header
 		if columnMapping != nil {
@@ -111,6 +120,12 @@ func mapHeaders(headers []string, columnMapping map[string]string) (map[string]s
 				fieldPath = mapped
 			}
 		}
+		if previousHeader, exists := headerByField[fieldPath]; exists {
+			return nil, importpkg.Errorf(importpkg.CodeInvalidFormat, fmt.Sprintf(
+				"CSV headers %q and %q map to the same field %q",
+				previousHeader, header, fieldPath))
+		}
+		headerByField[fieldPath] = header
 		out[header] = fieldPath
 	}
 	return out, nil

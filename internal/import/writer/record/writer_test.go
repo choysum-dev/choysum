@@ -5,6 +5,7 @@ package record_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/import/plan"
@@ -14,10 +15,14 @@ import (
 )
 
 func TestWriter_WriteUnexpectedUnitType(t *testing.T) {
-	err := recordwriter.Writer{}.Write(context.Background(), nil, []plan.Unit{planstub.Unit{Index: 1}})
+	runtimeScope := newExternalIDTestScope(t)
+	err := recordwriter.Writer{}.Write(context.Background(), runtimeScope, []plan.Unit{planstub.Unit{Index: 1}})
 	impErr, ok := importpkg.AsError(err)
 	if !ok || impErr.Code != importpkg.CodeInvalidFormat {
 		t.Fatalf("Write() error = %v, want CodeInvalidFormat", err)
+	}
+	if !strings.Contains(err.Error(), "unexpected unit type") {
+		t.Fatalf("Write() error = %v, want unexpected unit type", err)
 	}
 }
 

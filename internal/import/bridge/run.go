@@ -74,7 +74,10 @@ func performImportRun(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, sc
 	if runtimeScope == nil {
 		return ctx.NewError(fmt.Errorf("import.run: scope unavailable"))
 	}
-	spec = resolveRecordSourcePath(runtimeScope, spec)
+	spec, err = resolveRecordSourcePath(runtimeScope, spec)
+	if err != nil {
+		return ctx.NewError(fmt.Errorf("resolve import source path: %w", err))
+	}
 	runCtx := ormbridge.ContextWithCaller(execCtx, ormbridge.EngineCaller{Engine: jse})
 	report, err := runner.Run(runCtx, runtimeScope, spec)
 	if err != nil {
@@ -96,7 +99,10 @@ func resolveImportScope(scopeProvider jsengine.ScopeProvider, execCtx context.Co
 
 // Run executes import.Run with an explicit scope (non-JS callers).
 func Run(ctx context.Context, runtimeScope scope.Scope, spec importpkg.Spec) (importpkg.Report, error) {
-	spec = resolveRecordSourcePath(runtimeScope, spec)
+	spec, err := resolveRecordSourcePath(runtimeScope, spec)
+	if err != nil {
+		return importpkg.Report{}, err
+	}
 	return runner.Run(ctx, runtimeScope, spec)
 }
 
@@ -115,16 +121,32 @@ func decodeImportSpec(arg *quickjs.Value) (importpkg.Spec, error) {
 	return spec, nil
 }
 
-func resolveRecordSourcePath(runtimeScope scope.Scope, spec importpkg.Spec) importpkg.Spec {
+func resolveRecordSourcePath(runtimeScope scope.Scope, spec importpkg.Spec) (importpkg.Spec, error) {
 	path := strings.TrimSpace(spec.Source.Path)
-	if path == "" || filepath.IsAbs(path) || runtimeScope == nil {
-		return spec
+	if path == "" || runtimeScope == nil {
+		return spec, nil
 	}
-	if paths, ok := scope.PathsRuntimeOptionsFromScope(runtimeScope); ok {
-		modulesPath := strings.TrimSpace(paths.ModulesPath)
-		if modulesPath != "" {
-			spec.Source.Path = filepath.Join(filepath.Dir(modulesPath), path)
-		}
+	// Absolute paths must not come through the JS bridge (callers use runner.Run directly).
+	if filepath.IsAbs(path) {
+		return spec, importpkg.Errorf(importpkg.CodeInvalidFormat, "import source path must be relative")
 	}
-	return spec
+	if strings.Contains(path, "\x00") {
+		return spec, importpkg.Errorf(importpkg.CodeInvalidFormat, "import source path is invalid")
+	}
+	paths, ok := scope.PathsRuntimeOptionsFromScope(runtimeScope)
+	if !ok {
+		return spec, nil
+	}
+	modulesPath := strings.TrimSpace(paths.ModulesPath)
+	if modulesPath == "" {
+		return spec, nil
+	}
+	baseDir := filepath.Clean(filepath.Dir(modulesPath))
+	resolved := filepath.Clean(filepath.Join(baseDir, path))
+	rel, err := filepath.Rel(baseDir, resolved)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return spec, importpkg.Errorf(importpkg.CodeInvalidFormat, "import source path escapes modules root")
+	}
+	spec.Source.Path = resolved
+	return spec, nil
 }

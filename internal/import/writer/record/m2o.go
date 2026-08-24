@@ -27,6 +27,10 @@ func ResolveM2O(ctx context.Context, caller ormbridge.Caller, unit recordplan.Un
 	if lookupField == "id" {
 		lookupField = "Id"
 	}
+	if !isAllowedM2OLookupField(lookupField) {
+		return "", rowError(unit, fieldPath, importpkg.CodeInvalidFormat,
+			fmt.Sprintf("unsupported M2O lookup field %q (allowed: Id, Code)", lookupField))
+	}
 
 	targetModel, err := resolveM2OTargetModel(fieldName)
 	if err != nil {
@@ -57,5 +61,14 @@ func resolveM2OTargetModel(fieldName string) (string, error) {
 		return currencyModelFull, nil
 	default:
 		return "", fmt.Errorf("unsupported M2O field %s for V1 record import", fieldName)
+	}
+}
+
+func isAllowedM2OLookupField(lookupField string) bool {
+	switch lookupField {
+	case "Id", "Code":
+		return true
+	default:
+		return false
 	}
 }

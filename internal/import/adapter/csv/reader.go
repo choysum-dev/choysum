@@ -15,8 +15,9 @@ import (
 
 // Table holds parsed CSV headers and rows.
 type Table struct {
-	Headers []string
-	Rows    [][]string
+	Headers    []string
+	Rows       [][]string
+	RowNumbers []int // 1-based source line numbers for each data row
 }
 
 // ReadTable parses CSV bytes with comma delimiter and a single header row.
@@ -28,6 +29,9 @@ func ReadTable(data []byte) (Table, error) {
 	reader := csv.NewReader(bytes.NewReader(data))
 	reader.ReuseRecord = true
 	reader.TrimLeadingSpace = true
+	// Allow variable field counts so whitespace-only rows reach isBlankRow
+	// before the explicit header-length check (encoding/csv rejects "   \n" otherwise).
+	reader.FieldsPerRecord = -1
 
 	headers, err := reader.Read()
 	if err != nil {
@@ -42,6 +46,7 @@ func ReadTable(data []byte) (Table, error) {
 	}
 
 	rows := make([][]string, 0, 8)
+	rowNumbers := make([]int, 0, 8)
 	lineNumber := 2
 	for {
 		record, err := reader.Read()
@@ -63,9 +68,10 @@ func ReadTable(data []byte) (Table, error) {
 			return Table{}, importpkg.Errorf(importpkg.CodeInvalidFormat, fmt.Sprintf("CSV row %d has %d columns, want %d", lineNumber, len(row), len(headers)))
 		}
 		rows = append(rows, row)
+		rowNumbers = append(rowNumbers, lineNumber)
 		lineNumber++
 	}
-	return Table{Headers: headers, Rows: rows}, nil
+	return Table{Headers: headers, Rows: rows, RowNumbers: rowNumbers}, nil
 }
 
 func isBlankRow(row []string) bool {

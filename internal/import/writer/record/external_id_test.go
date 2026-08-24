@@ -46,6 +46,23 @@ func TestAssertExternalIDProtected_InitdataNamespace(t *testing.T) {
 	}
 }
 
+func TestAssertExternalIDProtected_InstalledNamespaceWithoutMapping(t *testing.T) {
+	runtimeScope := newExternalIDTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.Create(&meta.Module{Name: "base", ApplicationStr: "base", Path: "/tmp"}).Error; err != nil {
+		t.Fatalf("seed module: %v", err)
+	}
+
+	err := recordwriter.AssertExternalIDWritable(db, recordwriter.MetaModelDataKey{
+		Module: "base",
+		Name:   "new_id",
+	}, 1)
+	impErr, ok := importpkg.AsError(err)
+	if !ok || impErr.Code != importpkg.CodeExternalIDProtected {
+		t.Fatalf("error = %v, want external_id_protected for first import under installed module", err)
+	}
+}
+
 func TestParseMetaModelDataKey_DefaultImportNamespace(t *testing.T) {
 	key, err := recordwriter.ParseMetaModelDataKey("country_demo")
 	if err != nil {

@@ -18,6 +18,7 @@ function importBridge(): { run: (spec: Record<string, unknown>) => Promise<Impor
 }
 
 const okFixturePath = 'modules/base/service/tests/fixtures/country_import_ok.csv';
+const dryRunFixturePath = 'modules/base/service/tests/fixtures/country_import_dryrun.csv';
 const errorFixturePath = 'modules/base/service/tests/fixtures/country_import_errors.csv';
 
 test('Country CSV import: bridge exposes run', () => {
@@ -50,10 +51,16 @@ test('Country CSV import: dry-run returns report without committing', async () =
     policy: 'atomic',
     dry_run: true,
     model: 'base.Country',
-    source: { format: 'csv', path: okFixturePath },
+    source: { format: 'csv', path: dryRunFixturePath },
   });
   expect(report.dry_run).toBe(true);
   expect(Number(report?.stats?.ok || 0)).toBe(2);
+
+  const rows = await Country.Search(
+    { And: [['Code', 'in', ['DRY001', 'DRY002']]] } as any,
+    { fields: ['Id', 'Code'] } as any
+  );
+  expect(rows.length).toBe(0);
 });
 
 test('Country CSV import: rolls back on protected external id', async () => {
