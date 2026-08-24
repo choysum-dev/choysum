@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"io"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -21,7 +22,6 @@ import (
 	"github.com/choysum-dev/choysum/pkg/config"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/scope"
-	"gorm.io/gorm"
 )
 
 func init() {
@@ -32,17 +32,20 @@ func TestCLI_BestEffort_PartialOk(t *testing.T) {
 	runtimeScope := newImportCLITestScope(t)
 	envGetter := func() scope.Scope { return runtimeScope }
 
-	cmd := newImportRecordCmd(envGetter)
+	sourcePath := filepath.Join(t.TempDir(), "base_Country.csv")
+	if err := os.WriteFile(sourcePath, []byte("unused\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	cmd := newImportCmd(envGetter)
 	var stdout bytes.Buffer
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&bytes.Buffer{})
 	cmd.SetContext(context.Background())
 	cmd.SetArgs([]string{
-		"--model", "base.Country",
-		"--source", filepath.Join(t.TempDir(), "unused.csv"),
+		sourcePath,
 		"--format", "stub",
 		"--policy", "best_effort",
-		"--company-id", "cmp-cli-1",
 		"--stub-unit-count", "3",
 		"--stub-fail-unit-index", "2",
 	})
@@ -68,6 +71,25 @@ func TestCLI_BestEffort_PartialOk(t *testing.T) {
 	}
 	if count != 2 {
 		t.Fatalf("row count = %d, want 2", count)
+	}
+}
+
+func TestCLI_ImportRejectsUninferableModelFilename(t *testing.T) {
+	runtimeScope := newImportCLITestScope(t)
+	sourcePath := filepath.Join(t.TempDir(), "country_import_ok.csv")
+	if err := os.WriteFile(sourcePath, []byte("Name\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	cmd := newImportCmd(func() scope.Scope { return runtimeScope })
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetContext(context.Background())
+	cmd.SetArgs([]string{sourcePath})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected model inference error")
 	}
 }
 
@@ -102,33 +124,5 @@ func newImportCLITestScope(t *testing.T) scope.Scope {
 	if err := runtimeScope.Session().AutoMigrate(&stubwriter.Row{}); err != nil {
 		t.Fatalf("AutoMigrate: %v", err)
 	}
-	ensureImportCLIDocumentTables(t, runtimeScope.Session().DB)
 	return runtimeScope
-}
-
-func ensureImportCLIDocumentTables(t *testing.T, db *gorm.DB) {
-	t.Helper()
-	if err := db.Exec(`CREATE TABLE IF NOT EXISTS document_stored_content (
-		id TEXT PRIMARY KEY,
-		provider TEXT,
-		locator_json TEXT,
-		blob_data BLOB,
-		status TEXT,
-		company_id TEXT,
-		created_at DATETIME,
-		updated_at DATETIME
-	)`).Error; err != nil {
-		t.Fatalf("create stored content table: %v", err)
-	}
-	if err := db.Exec(`CREATE TABLE IF NOT EXISTS document_attachment_content (
-		id TEXT PRIMARY KEY,
-		stored_content_id TEXT NOT NULL,
-		company_id TEXT NOT NULL,
-		status TEXT NOT NULL,
-		mime_type TEXT,
-		size_bytes INTEGER,
-		checksum_sha256 TEXT
-	)`).Error; err != nil {
-		t.Fatalf("create attachment content table: %v", err)
-	}
 }

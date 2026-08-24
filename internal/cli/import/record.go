@@ -19,7 +19,6 @@ type RecordOptions struct {
 	SourcePath        string
 	Format            string
 	Policy            importpkg.Policy
-	CompanyID         string
 	DryRun            bool
 	ColumnMapping     map[string]string
 	StubUnitCount     int
@@ -72,7 +71,6 @@ func recordSpecFromOptions(opts RecordOptions) (importpkg.Spec, error) {
 		},
 		Options: importpkg.Options{
 			ColumnMapping:     columnMapping,
-			CompanyID:         strings.TrimSpace(opts.CompanyID),
 			StubUnitCount:     opts.StubUnitCount,
 			StubFailUnitIndex: opts.StubFailUnitIndex,
 		},

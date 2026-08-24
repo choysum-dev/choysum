@@ -17,37 +17,39 @@ import (
 )
 
 func newImportCmd(envGetter func() scope.Scope) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "import",
-		Short: "Import data into Choysum models",
-	}
-	cmd.AddCommand(newImportRecordCmd(envGetter))
-	return cmd
-}
-
-func newImportRecordCmd(envGetter func() scope.Scope) *cobra.Command {
 	var (
-		model             string
-		sourcePath        string
+		modelOverride     string
 		format            string
 		policy            string
-		companyID         string
 		dryRun            bool
 		stubUnitCount     int
 		stubFailUnitIndex int
 	)
 
 	cmd := &cobra.Command{
-		Use:   "record",
+		Use:   "import <file.csv>",
 		Short: "Import CSV records into a model",
-		Long: `Run a synchronous record import from a local file path.
+		Long: `Run a synchronous record import from a local CSV file.
+
+The target model is inferred from the filename (base.Country.csv, base_Country.csv, or base-Country.csv).
+Company-scoped models must declare CompanyId in the CSV; there is no --company-id flag on CLI.
 
 Policy stop_keep and best_effort commit successful units independently; atomic rolls back on hard errors.
 Output is a JSON ImportReport on stdout.`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			runtimeScope, err := requireCommandScope(envGetter)
 			if err != nil {
 				return err
+			}
+
+			sourcePath := strings.TrimSpace(args[0])
+			model := strings.TrimSpace(modelOverride)
+			if model == "" {
+				model, err = importcli.ModelFromFilename(sourcePath)
+				if err != nil {
+					return err
+				}
 			}
 
 			parsedPolicy, err := parseImportPolicy(policy)
@@ -61,11 +63,10 @@ Output is a JSON ImportReport on stdout.`,
 			}
 
 			report, err := importcli.RunRecord(ctx, runtimeScope, importcli.RecordOptions{
-				Model:             strings.TrimSpace(model),
-				SourcePath:        strings.TrimSpace(sourcePath),
+				Model:             model,
+				SourcePath:        sourcePath,
 				Format:            strings.TrimSpace(format),
 				Policy:            parsedPolicy,
-				CompanyID:         strings.TrimSpace(companyID),
 				DryRun:            dryRun,
 				StubUnitCount:     stubUnitCount,
 				StubFailUnitIndex: stubFailUnitIndex,
@@ -88,17 +89,12 @@ Output is a JSON ImportReport on stdout.`,
 		},
 	}
 
-	cmd.Flags().StringVarP(&model, "model", "m", "", "target model full name (e.g. base.Country)")
-	cmd.Flags().StringVarP(&sourcePath, "source", "s", "", "path to the import source file")
+	cmd.Flags().StringVar(&modelOverride, "model", "", "override target model when filename cannot be inferred")
 	cmd.Flags().StringVar(&format, "format", "csv", "source format adapter (csv or stub)")
 	cmd.Flags().StringVar(&policy, "policy", string(importpkg.PolicyAtomic), "import policy: atomic, stop_keep, or best_effort")
-	cmd.Flags().StringVar(&companyID, "company-id", "", "company id for company-scoped models and error artifacts")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "validate and simulate without committing (requires atomic policy)")
 	cmd.Flags().IntVar(&stubUnitCount, "stub-unit-count", 0, "stub adapter only: number of units to generate")
 	cmd.Flags().IntVar(&stubFailUnitIndex, "stub-fail-unit-index", 0, "stub adapter only: 1-based unit index that fails")
-
-	_ = cmd.MarkFlagRequired("model")
-	_ = cmd.MarkFlagRequired("source")
 
 	return cmd
 }
