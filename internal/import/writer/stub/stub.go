@@ -9,15 +9,9 @@ import (
 
 	"github.com/choysum-dev/choysum/internal/import/plan"
 	planstub "github.com/choysum-dev/choysum/internal/import/plan/stub"
-	"github.com/choysum-dev/choysum/internal/import/registry"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/scope"
 )
-
-func init() {
-	registry.RegisterWriter(importpkg.ProfileRecord, Writer{})
-	registry.RegisterWriter(importpkg.ProfileTerminology, Writer{})
-}
 
 // Writer is a no-op persistence stub that can inject per-unit failures.
 type Writer struct{}

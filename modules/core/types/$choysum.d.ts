@@ -265,4 +265,17 @@ declare var $choysum: {
       lang: string;
     }>;
   };
+
+  /**
+   * Unified import bridge (Go import.Run).
+   */
+  import?: {
+    run: (spec: Record<string, unknown> | string) => Promise<{
+      profile?: string;
+      policy?: string;
+      dry_run?: boolean;
+      stats?: { total?: number; ok?: number; error?: number; skip?: number; warning?: number };
+      messages?: Array<{ type?: string; row?: number; field?: string; code?: string; text?: string; record_ref?: string }>;
+    }>;
+  };
 };

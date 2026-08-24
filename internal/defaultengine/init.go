@@ -6,6 +6,7 @@ package defaultengine
 import (
 	"github.com/choysum-dev/choysum/internal/defaultengine/quickjsruntime"
 	i18nbridge "github.com/choysum-dev/choysum/internal/i18n/bridge"
+	importbridge "github.com/choysum-dev/choysum/internal/import/bridge"
 	"github.com/choysum-dev/choysum/pkg/auth"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsengine/quickjsbridge"
@@ -40,6 +41,9 @@ func defaultQuickjsReplaceableRuntimePlugins() []jsengine.RuntimePlugin {
 		}),
 		jsengine.NewRuntimePluginWithProvider(quickjsengine.RuntimePluginI18n, func(scopeProvider jsengine.ScopeProvider, authenticator auth.Authenticator) []jsengine.JsEngineOption {
 			return []jsengine.JsEngineOption{i18nbridge.WithTerminologyProvider(scopeProvider)}
+		}),
+		jsengine.NewRuntimePluginWithProvider(quickjsengine.RuntimePluginImport, func(scopeProvider jsengine.ScopeProvider, authenticator auth.Authenticator) []jsengine.JsEngineOption {
+			return []jsengine.JsEngineOption{importbridge.WithImportProvider(scopeProvider)}
 		}),
 		jsengine.NewRuntimePlugin(quickjsengine.RuntimePluginGRPC, func(runtimeScope scope.Scope, authenticator auth.Authenticator) []jsengine.JsEngineOption {
 			return []jsengine.JsEngineOption{quickjsbridge.WithGrpc(runtimeScope)}
