@@ -30,9 +30,13 @@ const partnerImportCompanyID = "cmp-partner-import"
 
 func TestPartnerImport_CompanyScopedUpsert(t *testing.T) {
 	runtimeScope := newPartnerImportScope(t)
+	otherCompanyID := "cmp-partner-other"
+	seedPartnerRow(t, runtimeScope, partnerImportCompanyID, "pt-existing", "Existing Partner", "IMP-P001", 0, 0)
+	seedPartnerRow(t, runtimeScope, otherCompanyID, "pt-other", "Other Co Partner", "IMP-P001", 5, 5)
+
 	path := writePartnerCSV(t, ""+
 		"Name,Code,IsActive,CustomerRank,SupplierRank\n"+
-		"Import Partner One,IMP-P001,true,1,0\n"+
+		"Updated Partner,IMP-P001,true,1,0\n"+
 		"Import Partner Two,IMP-P002,true,0,2\n")
 	spec := partnerImportSpec(path, partnerImportCompanyID)
 
@@ -45,6 +49,20 @@ func TestPartnerImport_CompanyScopedUpsert(t *testing.T) {
 	}
 	if count := countPartners(t, runtimeScope, partnerImportCompanyID); count != 2 {
 		t.Fatalf("partner count = %d, want 2", count)
+	}
+	var updatedName string
+	if err := runtimeScope.Session().DB.Table("partner_partner").Select("name").Where("id = ?", "pt-existing").Scan(&updatedName).Error; err != nil {
+		t.Fatalf("scan updated name: %v", err)
+	}
+	if updatedName != "Updated Partner" {
+		t.Fatalf("updated name = %q, want Updated Partner", updatedName)
+	}
+	var otherName string
+	if err := runtimeScope.Session().DB.Table("partner_partner").Select("name").Where("id = ?", "pt-other").Scan(&otherName).Error; err != nil {
+		t.Fatalf("scan other company name: %v", err)
+	}
+	if otherName != "Other Co Partner" {
+		t.Fatalf("other company name = %q, want unchanged Other Co Partner", otherName)
 	}
 }
 
@@ -189,6 +207,24 @@ func countPartners(t *testing.T, runtimeScope scope.Scope, companyID string) int
 	return int(count)
 }
 
+func seedPartnerRow(t *testing.T, runtimeScope scope.Scope, companyID, id, name, code string, customerRank, supplierRank int) {
+	t.Helper()
+	row := map[string]any{
+		"id":            id,
+		"name":          name,
+		"code":          code,
+		"company_id":    companyID,
+		"is_active":     true,
+		"customer_rank": customerRank,
+		"supplier_rank": supplierRank,
+		"created_at":    time.Now().UTC(),
+		"updated_at":    time.Now().UTC(),
+	}
+	if err := runtimeScope.Session().DB.Table("partner_partner").Create(row).Error; err != nil {
+		t.Fatalf("seed partner row: %v", err)
+	}
+}
+
 type partnerORMCaller struct {
 	scope     scope.Scope
 	companyID string
@@ -235,6 +271,8 @@ func (c partnerORMCaller) Call(ctx context.Context, req importcaller.CallRequest
 				updates["customer_rank"] = v
 			case "SupplierRank":
 				updates["supplier_rank"] = v
+			case "CompanyId":
+				updates["company_id"] = v
 			default:
 				col := strings.ToLower(k[:1]) + k[1:]
 				updates[col] = v
@@ -247,7 +285,7 @@ func (c partnerORMCaller) Call(ctx context.Context, req importcaller.CallRequest
 	case "partner.Partner.Search":
 		cond, _ := req.Args[0].(map[string]any)
 		and, _ := cond["And"].([]any)
-		query := db.Table("partner_partner")
+		query := db.Table("partner_partner").Where("company_id = ?", c.companyID)
 		for _, clause := range and {
 			tuple, _ := clause.([]any)
 			if len(tuple) < 3 {

@@ -4,7 +4,16 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <el-dialog v-model="visible" :title="title" width="720px" destroy-on-close @closed="resetState">
+  <el-dialog
+    v-model="visible"
+    :title="title"
+    width="720px"
+    destroy-on-close
+    :close-on-click-modal="!busy"
+    :close-on-press-escape="!busy"
+    :before-close="handleBeforeClose"
+    @closed="resetState"
+  >
     <div class="partner-import-wizard">
       <el-steps :active="step" finish-status="success" align-center>
         <el-step :title="uploadStepTitle" />
@@ -39,7 +48,7 @@ SPDX-License-Identifier: Apache-2.0
     </div>
 
     <template #footer>
-      <el-button @click="visible = false">{{ cancelLabel }}</el-button>
+      <el-button :disabled="busy" @click="visible = false">{{ cancelLabel }}</el-button>
       <el-button v-if="step === 0" type="primary" :loading="busy" :disabled="!selectedFile" @click="uploadAndPreview">
         {{ previewActionLabel }}
       </el-button>
@@ -99,6 +108,9 @@ const previewReport = ref<ImportReport | null>(null);
 const importDone = ref(false);
 const importError = ref('');
 
+let sessionToken = 0;
+let previewAbort: AbortController | null = null;
+
 const previewMessages = computed(() => previewReport.value?.messages ?? []);
 const previewAlertType = computed(() => ((previewReport.value?.stats?.error ?? 0) > 0 ? 'warning' : 'success'));
 const previewSummary = computed(() => {
@@ -107,6 +119,16 @@ const previewSummary = computed(() => {
   return `Preview: ${stats.ok ?? 0} ok, ${stats.error ?? 0} errors, ${stats.total ?? 0} total`;
 });
 const canImport = computed(() => !!sourceRef.value && (previewReport.value?.stats?.error ?? 0) === 0);
+
+function isActiveSession(token: number): boolean {
+  return token === sessionToken;
+}
+
+function invalidateSession() {
+  sessionToken += 1;
+  previewAbort?.abort();
+  previewAbort = null;
+}
 
 function onFileSelected(uploadFile: UploadFile) {
   selectedFile.value = uploadFile.raw ?? null;
@@ -117,6 +139,7 @@ function onFileRemoved() {
 }
 
 function resetState() {
+  invalidateSession();
   step.value = 0;
   busy.value = false;
   selectedFile.value = null;
@@ -127,52 +150,88 @@ function resetState() {
   importError.value = '';
 }
 
+function handleBeforeClose(done: () => void) {
+  if (busy.value) {
+    return;
+  }
+  done();
+}
+
 async function uploadAndPreview() {
   if (!selectedFile.value) return;
+  const token = sessionToken;
   busy.value = true;
   importError.value = '';
+  previewAbort?.abort();
+  previewAbort = new AbortController();
+  const signal = previewAbort.signal;
   try {
-    sourceRef.value = await uploadImportCsv({
+    const ref = await uploadImportCsv({
       ownerModel: 'partner.Partner',
       file: selectedFile.value,
     });
-    const headerResp = await parseHeaders(sourceRef.value);
+    if (!isActiveSession(token)) return;
+    sourceRef.value = ref;
+    const headerResp = await parseHeaders(ref, signal);
+    if (!isActiveSession(token)) return;
     headers.value = headerResp.headers ?? [];
-    const previewResp = await previewImport({
-      targetModel: 'partner.Partner',
-      sourceRef: sourceRef.value,
-      companyId: props.companyId ?? '',
-      columnMapping: {},
-    });
+    const previewResp = await previewImport(
+      {
+        targetModel: 'partner.Partner',
+        sourceRef: ref,
+        companyId: props.companyId ?? '',
+        columnMapping: {},
+      },
+      signal,
+    );
+    if (!isActiveSession(token)) return;
     previewReport.value = previewResp.report ?? null;
     step.value = 1;
   } catch (err) {
+    if (!isActiveSession(token)) return;
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      return;
+    }
     importError.value = err instanceof Error ? err.message : String(err);
     step.value = 2;
   } finally {
-    busy.value = false;
+    if (isActiveSession(token)) {
+      busy.value = false;
+    }
   }
 }
 
 async function commitImport() {
   if (!sourceRef.value) return;
+  const token = sessionToken;
   busy.value = true;
   importError.value = '';
   try {
-    await runImport({
+    const res = await runImport({
       targetModel: 'partner.Partner',
       sourceRef: sourceRef.value,
       companyId: props.companyId ?? '',
       columnMapping: {},
     });
+    if (!isActiveSession(token)) return;
+    const errCount = res.report?.stats?.error ?? 0;
+    if (errCount > 0) {
+      const firstMsg = res.report?.messages?.find(m => m?.text)?.text;
+      importError.value = firstMsg || `Import failed with ${errCount} error(s).`;
+      step.value = 2;
+      return;
+    }
     importDone.value = true;
     step.value = 2;
     emit('imported');
   } catch (err) {
+    if (!isActiveSession(token)) return;
     importError.value = err instanceof Error ? err.message : String(err);
     step.value = 2;
   } finally {
-    busy.value = false;
+    if (isActiveSession(token)) {
+      busy.value = false;
+    }
   }
 }
 

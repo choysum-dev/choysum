@@ -30,7 +30,7 @@ func checkModelImportAccess(ctx context.Context, runtimeScope scope.Scope, targe
 	}
 
 	companyID = strings.TrimSpace(companyID)
-	if companyFieldRequired(runtimeScope, targetModel) && companyID == "" {
+	if companyFieldRequired(ctx, runtimeScope, targetModel) && companyID == "" {
 		return status.Error(codes.InvalidArgument, "company_id is required for company-scoped models")
 	}
 
@@ -47,11 +47,11 @@ func checkModelImportAccess(ctx context.Context, runtimeScope scope.Scope, targe
 	return nil
 }
 
-func companyFieldRequired(runtimeScope scope.Scope, targetModel string) bool {
+func companyFieldRequired(ctx context.Context, runtimeScope scope.Scope, targetModel string) bool {
 	if runtimeScope == nil {
 		return false
 	}
-	session, ok := scope.SessionForScope(context.Background(), runtimeScope)
+	session, ok := scope.SessionForScope(ctx, runtimeScope)
 	if !ok || session == nil || session.DB == nil {
 		return false
 	}

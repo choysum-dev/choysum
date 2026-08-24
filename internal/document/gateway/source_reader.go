@@ -13,6 +13,8 @@ import (
 	documentpayload "github.com/choysum-dev/choysum/internal/document/payload"
 	"github.com/choysum-dev/choysum/pkg/auth"
 	"github.com/choysum-dev/choysum/pkg/scope"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // ReadSourceRefBytes loads import source bytes for an attachment binding id or attachment content id.
@@ -125,8 +127,12 @@ func isSourceNotFound(err error) bool {
 	if err == nil {
 		return false
 	}
+	if st, ok := status.FromError(err); ok && st.Code() == codes.NotFound {
+		return true
+	}
+	if code, ok := documentpayload.CodeOf(err); ok && code == documentpayload.CodeNotFound {
+		return true
+	}
 	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "not found") ||
-		strings.Contains(msg, "record not found") ||
-		strings.Contains(msg, "attachment binding")
+	return strings.Contains(msg, "not found") || strings.Contains(msg, "record not found")
 }

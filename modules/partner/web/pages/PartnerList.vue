@@ -9,8 +9,8 @@ SPDX-License-Identifier: Apache-2.0
       <div class="partner-list-toolbar">
         <el-button type="primary" plain @click="importWizardOpen = true">{{ importLabel }}</el-button>
       </div>
-      <PartnerListView :store="partnerStore" createAction="/partner/partners/new" />
-      <PartnerImportWizard v-model="importWizardOpen" :company-id="activeCompanyId" />
+      <PartnerListView ref="listViewRef" :store="partnerStore" createAction="/partner/partners/new" />
+      <PartnerImportWizard v-model="importWizardOpen" :company-id="activeCompanyId" @imported="onImported" />
     </div>
   </OPage>
 </template>
@@ -34,6 +34,11 @@ const importLabel = _lt('Import CSV');
 
 const route = useRoute();
 const importWizardOpen = ref(false);
+const listViewRef = ref<{ refresh?: () => Promise<void> | void } | null>(null);
+
+function onImported() {
+  void listViewRef.value?.refresh?.();
+}
 
 const partnerStore = createStoreByModel<typeof Partner>('partner.Partner', {
   storeId: `Partner_${route.fullPath}`,

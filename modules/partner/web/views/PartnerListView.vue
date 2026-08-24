@@ -77,5 +77,8 @@ function onRowClick(payload: RowEventPayload<Partner>) {
 }
 
 const { listRef, expose } = useListViewExpose<Partner>();
-defineExpose(expose);
+defineExpose({
+  ...expose,
+  refresh: () => listRef.value?.load?.(),
+});
 </script>
