@@ -160,6 +160,36 @@ func TestReadBindingSourceBytes_ReadAllError(t *testing.T) {
 	}
 }
 
+func TestReadAttachmentContentSourceBytes_EmptyBodyAndMarshalError(t *testing.T) {
+	db := newAttachmentContentTestDB(t)
+	if err := db.Exec(`INSERT INTO document_attachment_content (id, stored_content_id, company_id, status) VALUES (?, ?, ?, ?)`,
+		"att-empty-body", "stored-1", "c1", "active").Error; err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	runtimeScope := &gatewayTestScope{
+		ctx:     context.Background(),
+		session: &scope.Session{DB: db},
+		cfg:     &config.Config{Document: config.NewDefaultDocumentConfig()},
+	}
+	identity := gatewayFakeIdentity{userID: "u1", tokenID: "tok", metadata: map[string]any{"activeCompanyId": "c1"}}
+
+	prevOpen := openAttachmentContentBody
+	openAttachmentContentBody = func(context.Context, scope.Scope, string, string) (io.ReadCloser, error) {
+		return nil, nil
+	}
+	t.Cleanup(func() { openAttachmentContentBody = prevOpen })
+	if _, err := readAttachmentContentSourceBytes(context.Background(), runtimeScope, "att-empty-body", identity); err == nil {
+		t.Fatal("expected empty body error")
+	}
+
+	prevMarshal := jsonMarshal
+	jsonMarshal = func(any) ([]byte, error) { return nil, errors.New("marshal failed") }
+	t.Cleanup(func() { jsonMarshal = prevMarshal })
+	if _, err := readAttachmentContentSourceBytes(context.Background(), runtimeScope, "att-empty-body", identity); err == nil {
+		t.Fatal("expected marshal error")
+	}
+}
+
 type errReader struct{}
 
 func (errReader) Read([]byte) (int, error) { return 0, errors.New("read failed") }

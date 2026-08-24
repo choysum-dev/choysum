@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { config, mount } from '@vue/test-utils';
 import { createI18n } from 'vue-i18n';
 
@@ -17,7 +17,7 @@ vi.mock('vue-router', () => ({
 }));
 
 vi.mock('@/core/rpc/context', () => ({
-  getCurrentRequestContext: () => ({ activeCompanyId: 'cmp-1' }),
+  getCurrentRequestContext: vi.fn(() => ({ activeCompanyId: 'cmp-1' })),
 }));
 
 vi.mock('@/web/web/stores/storeScopeManager', () => ({
@@ -57,6 +57,12 @@ const i18n = createI18n({
 });
 
 describe('PartnerList page', () => {
+  beforeEach(async () => {
+    const ctx = await import('@/core/rpc/context');
+    (ctx.getCurrentRequestContext as any).mockReset();
+    (ctx.getCurrentRequestContext as any).mockReturnValue({ activeCompanyId: 'cmp-1' });
+  });
+
   it('refreshes list after import completes', async () => {
     const PartnerList = (await import('./PartnerList.vue')).default;
     const wrapper = mount(PartnerList, {
@@ -69,5 +75,19 @@ describe('PartnerList page', () => {
     await wrapper.find('button').trigger('click');
     await wrapper.find('[data-test="emit-imported"]').trigger('click');
     expect(refresh).toHaveBeenCalled();
+  });
+
+  it('passes company id from request context fallback', async () => {
+    const ctx = await import('@/core/rpc/context');
+    (ctx.getCurrentRequestContext as any).mockReturnValue({ companyId: 'cmp-fallback' });
+    const PartnerList = (await import('./PartnerList.vue')).default;
+    const wrapper = mount(PartnerList, {
+      global: {
+        plugins: [i18n],
+        stubs: { OPage: { template: '<div><slot /></div>' } },
+      },
+    });
+    const wizard = wrapper.findComponent({ name: 'PartnerImportWizardStub' });
+    expect(wizard.props('companyId')).toBe('cmp-fallback');
   });
 });

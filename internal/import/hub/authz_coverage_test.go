@@ -6,6 +6,8 @@ package hub
 import (
 	"context"
 	"errors"
+	"io"
+	"log/slog"
 	"net"
 	"testing"
 
@@ -135,22 +137,118 @@ func TestRunImportJSExecutorPath(t *testing.T) {
 	}
 }
 
+func TestRunImportToRecordSpecError(t *testing.T) {
+	ctx := authCtx(t)
+	_, err := runImport(ctx, Deps{
+		RuntimeScope: newHubTestScope(t),
+		Run: func(context.Context, scope.Scope, importpkg.Spec) (importpkg.Report, error) {
+			return importpkg.Report{}, nil
+		},
+	}, nil, false)
+	if err == nil || status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("err = %v", err)
+	}
+}
+
 func TestRunImportValidateSpecFailure(t *testing.T) {
 	runtimeScope := newHubTestScope(t)
 	seedCountryModelMeta(t, runtimeScope.Session().DB)
 	ctx := authCtx(t)
+	prev := validateImportSpec
+	validateImportSpec = func(importpkg.Spec) error { return errors.New("bad spec") }
+	t.Cleanup(func() { validateImportSpec = prev })
 	_, err := runImport(ctx, Deps{
 		RuntimeScope: runtimeScope,
+		SourceReader: StubSourceReader{"src-bad-spec": []byte("Name,Code,IsActive,ZipRequired,StateRequired\nX,1,true,true,false\n")},
 		Run: func(context.Context, scope.Scope, importpkg.Spec) (importpkg.Report, error) {
 			return importpkg.Report{}, nil
 		},
-	}, &importpb.ImportRunRequest{
-		TargetModel: "base.Country",
-		SourceRef:   "src-1",
-		Policy:      importpb.ImportPolicy_IMPORT_POLICY_BEST_EFFORT,
-	}, false)
+	}, &importpb.ImportRunRequest{TargetModel: "base.Country", SourceRef: "src-bad-spec"}, false)
 	if err == nil || status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("ValidateSpec err = %v", err)
+	}
+}
+
+func TestRunImportCheckAccessDenied(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	seedPartnerModelMeta(t, runtimeScope.Session().DB)
+	ctx := authCtxWithServer(t, denyAuthServer{})
+	_, err := runImport(ctx, Deps{
+		RuntimeScope: runtimeScope,
+		SourceReader: StubSourceReader{"src-denied": []byte("Name,Code\nA,1\n")},
+		Run: func(context.Context, scope.Scope, importpkg.Spec) (importpkg.Report, error) {
+			return importpkg.Report{}, nil
+		},
+	}, &importpb.ImportRunRequest{TargetModel: "partner.Partner", SourceRef: "src-denied", CompanyId: "cmp-1"}, false)
+	if err == nil || status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestRunImportUsesDefaultSourceReader(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	seedCountryModelMeta(t, runtimeScope.Session().DB)
+	ctx := authCtx(t)
+	resp, err := runImport(ctx, Deps{
+		RuntimeScope: runtimeScope,
+		SourceReader: nil,
+		Run: func(_ context.Context, _ scope.Scope, spec importpkg.Spec) (importpkg.Report, error) {
+			if spec.Source.DocumentRef != "src-default-reader" {
+				t.Fatalf("source ref = %q", spec.Source.DocumentRef)
+			}
+			return importpkg.Report{Stats: importpkg.Stats{Ok: 1}}, nil
+		},
+	}, &importpb.ImportRunRequest{TargetModel: "base.Country", SourceRef: "src-default-reader"}, false)
+	if err != nil {
+		t.Fatalf("runImport: %v", err)
+	}
+	if resp.GetReport().GetStats().GetOk() != 1 {
+		t.Fatalf("report = %#v", resp.GetReport())
+	}
+}
+
+func TestCompanyFieldRequiredNilDBSession(t *testing.T) {
+	ctx := context.Background()
+	stubScope := nilDBScope{ctx: ctx}
+	if companyFieldRequired(ctx, stubScope, "partner.Partner") {
+		t.Fatal("expected false when session DB is nil")
+	}
+}
+
+type nilDBScope struct {
+	ctx context.Context
+}
+
+func (s nilDBScope) Run(fn func(scope.Scope) error) error { return fn(s) }
+func (s nilDBScope) Session() *scope.Session              { return &scope.Session{DB: nil} }
+func (s nilDBScope) Transactor() scope.Transactor         { return nil }
+func (s nilDBScope) WithContext(ctx context.Context) scope.Scope {
+	next := s
+	next.ctx = ctx
+	return next
+}
+func (s nilDBScope) Context() context.Context {
+	if s.ctx != nil {
+		return s.ctx
+	}
+	return context.Background()
+}
+func (s nilDBScope) Logger() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
+
+func TestEnsureIdentityNilContext(t *testing.T) {
+	if err := ensureIdentity(context.Background()); err == nil {
+		t.Fatal("expected unauthenticated without identity")
+	}
+}
+
+func TestCheckModelImportAccessExplicitDeniedMessage(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	ctx := authCtxWithServer(t, denyAuthServer{})
+	err := checkModelImportAccess(ctx, runtimeScope, "base.Country", "")
+	if err == nil || err.Error() != "rpc error: code = PermissionDenied desc = import access denied" {
+		if status.Code(err) != codes.PermissionDenied {
+			t.Fatalf("err = %v", err)
+		}
 	}
 }
 

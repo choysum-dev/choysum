@@ -113,6 +113,10 @@ func TestInjectCompanyIDSkipsNonRecordUnits(t *testing.T) {
 	if u0.Values["CompanyId"] != "cmp-1" {
 		t.Fatalf("company id = %q", u0.Values["CompanyId"])
 	}
+	u1, ok := got.Units[1].(stubplan.Unit)
+	if !ok || u1.Index != 2 || u1.Fail {
+		t.Fatalf("non-record unit changed: %#v", got.Units[1])
+	}
 }
 
 func TestContextWithSourceBytes_NilLoader(t *testing.T) {
@@ -121,6 +125,20 @@ func TestContextWithSourceBytes_NilLoader(t *testing.T) {
 	}
 	if got := ContextWithSourceBytes(context.Background(), nil); got != context.Background() {
 		t.Fatal("nil loader returns original ctx")
+	}
+}
+
+func TestBuilder_BuildRecordPlanError(t *testing.T) {
+	ctx := ContextWithSourceBytes(context.Background(), func(_ context.Context, _ string) ([]byte, error) {
+		return []byte{0xff}, nil
+	})
+	builder := Builder{}
+	if _, err := builder.Build(ctx, importpkg.Spec{
+		Profile: importpkg.ProfileRecord,
+		Model:   "base.Country",
+		Source:  importpkg.Source{Format: "csv", DocumentRef: "doc-bad"},
+	}); err == nil {
+		t.Fatal("expected BuildRecordPlan error")
 	}
 }
 

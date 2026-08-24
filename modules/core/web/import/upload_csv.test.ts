@@ -247,6 +247,135 @@ describe('uploadImportCsv', () => {
     expect(headers.has('baggage')).toBe(false);
   });
 
+  it('computes sha256 checksum when crypto.subtle works', async () => {
+    const digest = vi.fn(async () => new Uint8Array([0xab, 0xcd]).buffer);
+    const originalCrypto = globalThis.crypto;
+    try {
+      Object.defineProperty(globalThis, 'crypto', {
+        value: { subtle: { digest }, randomUUID: () => 'uuid-fixed' },
+        configurable: true,
+      });
+      prepareUpload.mockResolvedValue({
+        uploadId: 'upl-12',
+        uploadTarget: { method: 'PUT', url: 'https://example/upload', headers: { '': 'skip', ' ': 'skip2' } },
+      });
+      finalizeUpload.mockResolvedValue({ attachmentObjectId: 'att-obj-12' });
+      const { uploadImportCsv } = await import('./upload_csv');
+      const file = new File([''], '', { type: '' });
+      await uploadImportCsv({ ownerModel: 'partner.Partner', file });
+      expect(digest).toHaveBeenCalled();
+      expect(prepareUpload.mock.calls[0][0].proposedFileName).toBe('import.csv');
+      expect(prepareUpload.mock.calls[0][0].proposedContentType).toBe('text/csv');
+    } finally {
+      if (originalCrypto === undefined) {
+        Reflect.deleteProperty(globalThis, 'crypto');
+      } else {
+        Object.defineProperty(globalThis, 'crypto', { value: originalCrypto, configurable: true });
+      }
+    }
+  });
+
+  it('uses fallback business request id and skips missing auth providers', async () => {
+    getCSRFProvider.mockReturnValue(undefined);
+    getTokenProvider.mockReturnValue(undefined);
+    prepareUpload.mockResolvedValue({
+      uploadId: 'upl-13',
+      uploadTarget: { method: '', url: '/_document/uploads/upl-13', headers: {} },
+    });
+    finalizeUpload.mockResolvedValue({ attachmentObjectId: 'att-obj-13' });
+    const ctx = await import('@/core/rpc/context');
+    (ctx.getCurrentRequestContext as any).mockReturnValueOnce({});
+    const { uploadImportCsv } = await import('./upload_csv');
+    const file = new File(['x'], 'partners.csv', { type: 'text/csv' });
+    await uploadImportCsv({ ownerModel: 'partner.Partner', file });
+    const fetchCall = (fetch as any).mock.calls[0];
+    expect(fetchCall[1].method).toBe('PUT');
+    expect(fetchCall[1].credentials).toBe('include');
+  });
+
+  it('skips baggage when all context values are empty', async () => {
+    const ctx = await import('@/core/rpc/context');
+    (ctx.getCurrentRequestContext as any).mockReturnValueOnce(null);
+    prepareUpload.mockResolvedValue({
+      uploadId: 'upl-15',
+      uploadTarget: { method: 'PUT', url: '/_document/uploads/upl-15', headers: { '': 'x', 'valid': '   ' } },
+    });
+    finalizeUpload.mockResolvedValue({ attachmentObjectId: 'att-obj-15' });
+    const { uploadImportCsv } = await import('./upload_csv');
+    const file = new File(['x'], 'partners.csv', { type: 'text/csv' });
+    await uploadImportCsv({ ownerModel: 'partner.Partner', file });
+    const headers = (fetch as any).mock.calls[0][1].headers as Headers;
+    expect(headers.has('baggage')).toBe(false);
+  });
+
+  it('uses randomUUID for business request id when available', async () => {
+    const originalCrypto = globalThis.crypto;
+    try {
+      Object.defineProperty(globalThis, 'crypto', {
+        value: { randomUUID: () => 'req-uuid-1', subtle: { digest: vi.fn(async () => new ArrayBuffer(1)) } },
+        configurable: true,
+      });
+      prepareUpload.mockResolvedValue({
+        uploadId: 'upl-16',
+        uploadTarget: { method: 'PUT', url: 'https://example/upload', headers: undefined },
+      });
+      finalizeUpload.mockResolvedValue({ attachmentObjectId: 'att-obj-16' });
+      const { uploadImportCsv } = await import('./upload_csv');
+      const file = new File(['x'], 'partners.csv', { type: 'text/csv' });
+      await uploadImportCsv({ ownerModel: 'partner.Partner', file });
+      expect(prepareUpload.mock.calls[0][0].businessRequestId).toBe('import.csv.req-uuid-1');
+    } finally {
+      if (originalCrypto === undefined) {
+        Reflect.deleteProperty(globalThis, 'crypto');
+      } else {
+        Object.defineProperty(globalThis, 'crypto', { value: originalCrypto, configurable: true });
+      }
+    }
+  });
+
+  it('falls back when randomUUID returns empty', async () => {
+    const originalCrypto = globalThis.crypto;
+    try {
+      Object.defineProperty(globalThis, 'crypto', {
+        value: { randomUUID: () => '', subtle: { digest: vi.fn(async () => new ArrayBuffer(1)) } },
+        configurable: true,
+      });
+      prepareUpload.mockResolvedValue({
+        uploadId: 'upl-17',
+        uploadTarget: { method: 'PUT', url: 'https://example/upload', headers: {} },
+      });
+      finalizeUpload.mockResolvedValue({ attachmentObjectId: 'att-obj-17' });
+      const { uploadImportCsv } = await import('./upload_csv');
+      const file = new File(['x'], 'partners.csv', { type: 'text/csv' });
+      await uploadImportCsv({ ownerModel: 'partner.Partner', file });
+      expect(String(prepareUpload.mock.calls[0][0].businessRequestId).startsWith('import.csv.')).toBe(true);
+    } finally {
+      if (originalCrypto === undefined) {
+        Reflect.deleteProperty(globalThis, 'crypto');
+      } else {
+        Object.defineProperty(globalThis, 'crypto', { value: originalCrypto, configurable: true });
+      }
+    }
+  });
+
+  it('ignores empty csrf and token values', async () => {
+    getCSRFProvider.mockReturnValue({ getCSRFToken: vi.fn(async () => '   ') });
+    getTokenProvider.mockReturnValue({
+      getToken: vi.fn(async () => '   '),
+    });
+    prepareUpload.mockResolvedValue({
+      uploadId: 'upl-14',
+      uploadTarget: { method: 'PUT', url: '/_document/uploads/upl-14', headers: {} },
+    });
+    finalizeUpload.mockResolvedValue({ attachmentObjectId: 'att-obj-14' });
+    const { uploadImportCsv } = await import('./upload_csv');
+    const file = new File(['x'], 'partners.csv', { type: 'text/csv' });
+    await uploadImportCsv({ ownerModel: 'partner.Partner', file });
+    const headers = (fetch as any).mock.calls[0][1].headers as Headers;
+    expect(headers.has('Authorization')).toBe(false);
+    expect(headers.has('X-XSRF-TOKEN')).toBe(false);
+  });
+
   it('fails when upload HTTP response is not ok', async () => {
     prepareUpload.mockResolvedValue({
       uploadId: 'upl-6',

@@ -37,7 +37,19 @@ async function mountWizard(open = true) {
   const { default: PartnerImportWizard } = await import('./PartnerImportWizard.vue');
   return mount(PartnerImportWizard, {
     props: { companyId: 'cmp-1', modelValue: open },
-    global: { plugins: [i18n], stubs: { ElDialog: false } },
+    global: {
+      plugins: [i18n],
+      stubs: {
+        ElDialog: {
+          props: ['modelValue'],
+          emits: ['update:modelValue', 'close'],
+          template: '<div class="dialog-stub"><slot /><slot name="footer" /></div>',
+        },
+        ElAlert: {
+          template: '<div class="el-alert-stub"><slot name="title" /></div>',
+        },
+      },
+    },
   });
 }
 
@@ -212,5 +224,163 @@ describe('PartnerImportWizard', () => {
     await pending;
     await flushPromises();
     expect((wrapper.vm as any).importDone).toBe(false);
+  });
+
+  it('renders upload, preview, and success template states', async () => {
+    const wrapper = await mountWizard();
+    expect((wrapper.vm as any).step).toBe(0);
+    expect(wrapper.find('.partner-import-section').exists()).toBe(true);
+    const file = new File(['Name,Code\nA,1\n'], 'partners.csv', { type: 'text/csv' });
+    (wrapper.vm as any).onFileSelected({ raw: file });
+    await (wrapper.vm as any).uploadAndPreview();
+    await flushPromises();
+    expect((wrapper.vm as any).step).toBe(1);
+    expect((wrapper.vm as any).headers).toEqual(['Name', 'Code']);
+    expect(wrapper.find('.partner-import-table').exists()).toBe(true);
+    await (wrapper.vm as any).commitImport();
+    await flushPromises();
+    expect((wrapper.vm as any).importDone).toBe(true);
+    expect((wrapper.vm as any).step).toBe(2);
+    await (wrapper.vm as any).finish();
+    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([false]);
+  });
+
+  it('renders import error alert and disables import when preview has errors', async () => {
+    uploadImportCsv.mockRejectedValueOnce(new Error('preview failed'));
+    const wrapper = await mountWizard();
+    (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
+    await (wrapper.vm as any).uploadAndPreview();
+    await flushPromises();
+    expect((wrapper.vm as any).step).toBe(2);
+    expect((wrapper.vm as any).importError).toBe('preview failed');
+
+    previewImport.mockResolvedValue({
+      report: { stats: { total: 1, ok: 0, error: 1 }, messages: [{ row: 2, text: 'bad row' }] },
+    });
+    uploadImportCsv.mockResolvedValue('att-src-2');
+    const wrapper2 = await mountWizard();
+    (wrapper2.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
+    await (wrapper2.vm as any).uploadAndPreview();
+    await flushPromises();
+    expect((wrapper2.vm as any).canImport).toBe(false);
+  });
+
+  it('handles missing upload raw file and stale intermediate preview steps', async () => {
+    const wrapper = await mountWizard(false);
+    (wrapper.vm as any).onFileSelected({});
+    expect((wrapper.vm as any).selectedFile).toBeNull();
+
+    let resolveUpload: (value: string) => void = () => {};
+    uploadImportCsv.mockImplementation(
+      () =>
+        new Promise<string>(resolve => {
+          resolveUpload = resolve;
+        }),
+    );
+    const file = new File(['x'], 'partners.csv', { type: 'text/csv' });
+    (wrapper.vm as any).onFileSelected({ raw: file });
+    const pending = (wrapper.vm as any).uploadAndPreview();
+    resolveUpload('att-mid');
+    let resolveHeaders: (value: { headers: string[] }) => void = () => {};
+    parseHeaders.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          resolveHeaders = resolve;
+        }),
+    );
+    await Promise.resolve();
+    (wrapper.vm as any).resetState();
+    resolveHeaders({ headers: ['Name'] });
+    await pending;
+    await flushPromises();
+    expect((wrapper.vm as any).step).toBe(0);
+  });
+
+  it('ignores stale preview after headers resolve and keeps busy when session ends early', async () => {
+    let resolveUpload: (value: string) => void = () => {};
+    uploadImportCsv.mockImplementation(
+      () =>
+        new Promise<string>(resolve => {
+          resolveUpload = resolve;
+        }),
+    );
+    let resolveHeaders: (value: { headers: string[] }) => void = () => {};
+    parseHeaders.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          resolveHeaders = resolve;
+        }),
+    );
+    const wrapper = await mountWizard();
+    (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
+    const pending = (wrapper.vm as any).uploadAndPreview();
+    resolveUpload('att-headers');
+    await flushPromises();
+    (wrapper.vm as any).resetState();
+    resolveHeaders({ headers: ['Name'] });
+    previewImport.mockResolvedValue({ report: { stats: { ok: 1, error: 0 } } });
+    await pending;
+    await flushPromises();
+    expect((wrapper.vm as any).step).toBe(0);
+    expect((wrapper.vm as any).busy).toBe(false);
+  });
+
+  it('supports cancel visibility and success preview summary branches', async () => {
+    previewImport.mockResolvedValue({ report: { stats: { total: 2, ok: 2, error: 0 }, messages: [] } });
+    const wrapper = await mountWizard();
+    (wrapper.vm as any).visible = false;
+    await flushPromises();
+    expect((wrapper.vm as any).step).toBe(0);
+    await wrapper.setProps({ modelValue: true });
+    (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
+    await (wrapper.vm as any).uploadAndPreview();
+    await flushPromises();
+    expect((wrapper.vm as any).previewAlertType).toBe('success');
+    expect((wrapper.vm as any).previewSummary).toContain('2 ok');
+    (wrapper.vm as any).previewReport = null;
+    expect((wrapper.vm as any).previewSummary).toBe('');
+  });
+
+  it('renders dialog bindings and preview alert title', async () => {
+    const { default: PartnerImportWizard } = await import('./PartnerImportWizard.vue');
+    const wrapper = mount(PartnerImportWizard, {
+      props: { companyId: 'cmp-1', modelValue: true },
+      attachTo: document.body,
+      global: {
+        plugins: [i18n],
+        stubs: {
+          ElDialog: false,
+          ElAlert: false,
+        },
+      },
+    });
+    (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
+    await (wrapper.vm as any).uploadAndPreview();
+    await flushPromises();
+    expect((wrapper.vm as any).step).toBe(1);
+    expect((wrapper.vm as any).previewSummary).toContain('Preview:');
+    wrapper.unmount();
+  });
+
+  it('handles commitImport string errors and omits company id prop', async () => {
+    runImport.mockRejectedValue('commit failed');
+    const { default: PartnerImportWizard } = await import('./PartnerImportWizard.vue');
+    const wrapper = mount(PartnerImportWizard, {
+      props: { modelValue: true },
+      global: {
+        plugins: [i18n],
+        stubs: {
+          ElDialog: {
+            template: '<div class="dialog-stub"><slot /><slot name="footer" /></div>',
+          },
+        },
+      },
+    });
+    (wrapper.vm as any).sourceRef = 'att-src-1';
+    (wrapper.vm as any).previewReport = { stats: { error: 0 } };
+    await (wrapper.vm as any).commitImport();
+    await flushPromises();
+    expect((wrapper.vm as any).importError).toBe('commit failed');
+    expect(runImport).toHaveBeenCalledWith(expect.objectContaining({ companyId: '' }));
   });
 });

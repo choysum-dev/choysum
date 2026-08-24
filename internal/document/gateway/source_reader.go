@@ -98,7 +98,7 @@ func readAttachmentContentSourceBytes(ctx context.Context, runtimeScope scope.Sc
 		return nil, fmt.Errorf("attachment content missing stored content id")
 	}
 
-	ticket, err := json.Marshal(map[string]string{
+	ticket, err := jsonMarshal(map[string]string{
 		"attachmentBindingId": attachmentContentID,
 		"attachmentContentId": attachmentContentID,
 		"storedContentId":     storedContentID,
@@ -107,20 +107,32 @@ func readAttachmentContentSourceBytes(ctx context.Context, runtimeScope scope.Sc
 		return nil, fmt.Errorf("build payload read ticket: %w", err)
 	}
 
+	body, err := openAttachmentContentBody(ctx, runtimeScope, attachmentContentID, string(ticket))
+	if err != nil {
+		return nil, err
+	}
+	if body == nil {
+		return nil, fmt.Errorf("stored content body is empty")
+	}
+	defer body.Close()
+
+	return io.ReadAll(body)
+}
+
+var jsonMarshal = json.Marshal
+
+var openAttachmentContentBody = defaultOpenAttachmentContentBody
+
+func defaultOpenAttachmentContentBody(ctx context.Context, runtimeScope scope.Scope, attachmentContentID, ticket string) (io.ReadCloser, error) {
 	adapter := documentpayload.NewAdapter(runtimeScope, documentpayload.Options{})
 	opened, err := adapter.Open(ctx, documentpayload.OpenRequest{
 		BindingID:         attachmentContentID,
-		PayloadReadTicket: string(ticket),
+		PayloadReadTicket: ticket,
 	})
 	if err != nil {
 		return nil, err
 	}
-	if opened.Body == nil {
-		return nil, fmt.Errorf("stored content body is empty")
-	}
-	defer opened.Body.Close()
-
-	return io.ReadAll(opened.Body)
+	return opened.Body, nil
 }
 
 func isSourceNotFound(err error) bool {

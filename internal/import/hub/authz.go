@@ -137,7 +137,7 @@ func runImport(
 	if err := checkModelImportAccess(ctx, deps.RuntimeScope, spec.Model, companyID); err != nil {
 		return nil, err
 	}
-	if err := importpkg.ValidateSpec(spec); err != nil {
+	if err := validateImportSpec(spec); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid import spec: %v", err)
 	}
 
@@ -172,3 +172,6 @@ func (a jsExecutorAdapter) Execute(ctx context.Context, req *jsengine.JsRequest)
 }
 
 func (a jsExecutorAdapter) Close() error { return nil }
+
+// validateImportSpec is swappable in tests to cover defensive validation failures.
+var validateImportSpec = importpkg.ValidateSpec
