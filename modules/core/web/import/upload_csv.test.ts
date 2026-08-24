@@ -122,28 +122,129 @@ describe('uploadImportCsv', () => {
   });
 
   it('continues when sha256 digest fails', async () => {
-    const originalSubtle = globalThis.crypto?.subtle;
-    Object.defineProperty(globalThis, 'crypto', {
-      value: {
-        subtle: {
-          digest: vi.fn(async () => {
-            throw new Error('digest failed');
-          }),
+    const originalCrypto = globalThis.crypto;
+    try {
+      Object.defineProperty(globalThis, 'crypto', {
+        value: {
+          subtle: {
+            digest: vi.fn(async () => {
+              throw new Error('digest failed');
+            }),
+          },
         },
-      },
-      configurable: true,
+        configurable: true,
+      });
+      prepareUpload.mockResolvedValue({
+        uploadId: 'upl-7',
+        uploadTarget: { method: 'PUT', url: 'https://example/upload', headers: {} },
+      });
+      finalizeUpload.mockResolvedValue({ attachmentObjectId: 'att-obj-7' });
+      const { uploadImportCsv } = await import('./upload_csv');
+      const file = new File(['x'], 'partners.csv', { type: 'text/csv' });
+      await expect(uploadImportCsv({ ownerModel: 'partner.Partner', file })).resolves.toBe('att-obj-7');
+    } finally {
+      if (originalCrypto === undefined) {
+        Reflect.deleteProperty(globalThis, 'crypto');
+      } else {
+        Object.defineProperty(globalThis, 'crypto', { value: originalCrypto, configurable: true });
+      }
+    }
+  });
+
+  it('uploads without crypto.subtle and without randomUUID', async () => {
+    const originalCrypto = globalThis.crypto;
+    try {
+      Object.defineProperty(globalThis, 'crypto', { value: {}, configurable: true });
+      prepareUpload.mockResolvedValue({
+        uploadId: 'upl-8',
+        uploadTarget: { method: 'PUT', url: 'https://example/upload', headers: {} },
+      });
+      finalizeUpload.mockResolvedValue({ attachmentObjectId: 'att-obj-8' });
+      const { uploadImportCsv } = await import('./upload_csv');
+      const file = new File(['x'], 'partners.csv', { type: 'text/csv' });
+      await expect(uploadImportCsv({ ownerModel: 'partner.Partner', file, fieldName: ' CustomField ' })).resolves.toBe('att-obj-8');
+      expect(prepareUpload.mock.calls[0][0].fieldName).toBe('CustomField');
+    } finally {
+      if (originalCrypto === undefined) {
+        Reflect.deleteProperty(globalThis, 'crypto');
+      } else {
+        Object.defineProperty(globalThis, 'crypto', { value: originalCrypto, configurable: true });
+      }
+    }
+  });
+
+  it('ignores auth provider failures and skips duplicate headers', async () => {
+    getCSRFProvider.mockReturnValue({
+      getCSRFToken: vi.fn(async () => {
+        throw new Error('csrf failed');
+      }),
+    });
+    getTokenProvider.mockReturnValue({
+      shouldRefreshToken: vi.fn(async () => {
+        throw new Error('refresh failed');
+      }),
+      refreshToken: vi.fn(async () => {}),
+      getToken: vi.fn(async () => {
+        throw new Error('token failed');
+      }),
     });
     prepareUpload.mockResolvedValue({
-      uploadId: 'upl-7',
-      uploadTarget: { method: 'PUT', url: 'https://example/upload', headers: {} },
+      uploadId: 'upl-9',
+      uploadTarget: {
+        method: 'PUT',
+        url: '/_document/uploads/upl-9',
+        headers: { Authorization: 'Bearer preset', 'X-XSRF-TOKEN': 'preset', baggage: 'preset' },
+      },
     });
-    finalizeUpload.mockResolvedValue({ attachmentObjectId: 'att-obj-7' });
+    finalizeUpload.mockResolvedValue({ attachmentObjectId: 'att-obj-9' });
+    const ctx = await import('@/core/rpc/context');
+    (ctx.getCurrentRequestContext as any).mockReturnValueOnce({
+      activeCompanyId: 'cmp-1',
+      emptyKey: '',
+      'ctx.already': 'value',
+    });
     const { uploadImportCsv } = await import('./upload_csv');
     const file = new File(['x'], 'partners.csv', { type: 'text/csv' });
-    await expect(uploadImportCsv({ ownerModel: 'partner.Partner', file })).resolves.toBe('att-obj-7');
-    if (originalSubtle) {
-      Object.defineProperty(globalThis, 'crypto', { value: globalThis.crypto, configurable: true });
-    }
+    await uploadImportCsv({ ownerModel: 'partner.Partner', file });
+    const fetchCall = (fetch as any).mock.calls[0];
+    const headers = fetchCall[1].headers as Headers;
+    expect(headers.get('Authorization')).toBe('Bearer preset');
+    expect(headers.get('baggage')).toBe('preset');
+  });
+
+  it('refreshes token when provider says so', async () => {
+    const refreshToken = vi.fn(async () => {});
+    getTokenProvider.mockReturnValue({
+      shouldRefreshToken: vi.fn(async () => true),
+      refreshToken,
+      getToken: vi.fn(async () => 'fresh-token'),
+    });
+    prepareUpload.mockResolvedValue({
+      uploadId: 'upl-10',
+      uploadTarget: { method: 'PUT', url: '/_document/uploads/upl-10', headers: {} },
+    });
+    finalizeUpload.mockResolvedValue({ attachmentObjectId: 'att-obj-10' });
+    const { uploadImportCsv } = await import('./upload_csv');
+    const file = new File(['x'], 'partners.csv', { type: 'text/csv' });
+    await uploadImportCsv({ ownerModel: 'partner.Partner', file });
+    expect(refreshToken).toHaveBeenCalled();
+  });
+
+  it('skips baggage when request context lookup fails', async () => {
+    const ctx = await import('@/core/rpc/context');
+    (ctx.getCurrentRequestContext as any).mockImplementationOnce(() => {
+      throw new Error('ctx unavailable');
+    });
+    prepareUpload.mockResolvedValue({
+      uploadId: 'upl-11',
+      uploadTarget: { method: 'PUT', url: '/_document/uploads/upl-11', headers: {} },
+    });
+    finalizeUpload.mockResolvedValue({ attachmentObjectId: 'att-obj-11' });
+    const { uploadImportCsv } = await import('./upload_csv');
+    const file = new File(['x'], 'partners.csv', { type: 'text/csv' });
+    await uploadImportCsv({ ownerModel: 'partner.Partner', file });
+    const headers = (fetch as any).mock.calls[0][1].headers as Headers;
+    expect(headers.has('baggage')).toBe(false);
   });
 
   it('fails when upload HTTP response is not ok', async () => {

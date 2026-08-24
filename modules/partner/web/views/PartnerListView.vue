@@ -76,9 +76,6 @@ function onRowClick(payload: RowEventPayload<Partner>) {
   router.push(`/partner/partners/${payload.row.Id}`);
 }
 
-const { listRef, expose } = useListViewExpose<Partner>();
-defineExpose({
-  ...expose,
-  refresh: () => listRef.value?.load?.(),
-});
+const { expose } = useListViewExpose<Partner>();
+defineExpose(expose);
 </script>

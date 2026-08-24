@@ -5,12 +5,14 @@ package csv
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/import/plan"
 	recordplan "github.com/choysum-dev/choysum/internal/import/plan/record"
+	stubplan "github.com/choysum-dev/choysum/internal/import/plan/stub"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
 )
 
@@ -84,11 +86,71 @@ func TestInjectCompanyID(t *testing.T) {
 	}
 }
 
+func TestReadSourceBytes_LoaderError(t *testing.T) {
+	ctx := ContextWithSourceBytes(context.Background(), func(_ context.Context, _ string) ([]byte, error) {
+		return nil, errors.New("loader failed")
+	})
+	if _, err := readSourceBytes(ctx, importpkg.Spec{Source: importpkg.Source{DocumentRef: "doc-1"}}); err == nil {
+		t.Fatal("expected loader error")
+	}
+}
+
+func TestSourceBytesFromContextNilCtx(t *testing.T) {
+	if _, ok := sourceBytesFromContext(nil); ok {
+		t.Fatal("nil ctx should not have loader")
+	}
+}
+
+func TestInjectCompanyIDSkipsNonRecordUnits(t *testing.T) {
+	p := plan.Plan{
+		Units: []plan.Unit{
+			recordplan.Unit{Model: "partner.Partner", Values: map[string]string{"Name": "A"}},
+			stubplan.Unit{Index: 2},
+		},
+	}
+	got := injectCompanyID(p, "cmp-1")
+	u0 := got.Units[0].(recordplan.Unit)
+	if u0.Values["CompanyId"] != "cmp-1" {
+		t.Fatalf("company id = %q", u0.Values["CompanyId"])
+	}
+}
+
 func TestContextWithSourceBytes_NilLoader(t *testing.T) {
 	if got := ContextWithSourceBytes(nil, nil); got == nil {
 		t.Fatal("expected background context")
 	}
 	if got := ContextWithSourceBytes(context.Background(), nil); got != context.Background() {
 		t.Fatal("nil loader returns original ctx")
+	}
+}
+
+func TestBuilder_BuildFromDocumentRef(t *testing.T) {
+	ctx := ContextWithSourceBytes(context.Background(), func(_ context.Context, documentRef string) ([]byte, error) {
+		return []byte("Name,Code\nA,C1\n"), nil
+	})
+	builder := Builder{}
+	plan, err := builder.Build(ctx, importpkg.Spec{
+		Profile: importpkg.ProfileRecord,
+		Model:   "base.Country",
+		Source:  importpkg.Source{Format: "csv", DocumentRef: "doc-1"},
+		Options: importpkg.Options{CompanyID: "cmp-1"},
+	})
+	if err != nil || len(plan.Units) != 1 {
+		t.Fatalf("Build: %#v %v", plan, err)
+	}
+	unit := plan.Units[0].(recordplan.Unit)
+	if unit.Values["CompanyId"] != "cmp-1" {
+		t.Fatalf("company id = %q", unit.Values["CompanyId"])
+	}
+}
+
+func TestBuildRecordPlan_DefaultRowNumber(t *testing.T) {
+	plan, err := BuildRecordPlan("base.Country", []byte("Name\nA\n"), nil)
+	if err != nil || len(plan.Units) != 1 {
+		t.Fatalf("BuildRecordPlan: %v %#v", err, plan)
+	}
+	unit := plan.Units[0].(recordplan.Unit)
+	if unit.RowNumber != 2 {
+		t.Fatalf("row number = %d", unit.RowNumber)
 	}
 }
