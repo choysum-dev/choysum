@@ -81,6 +81,30 @@ func TestLoadErrorToMessage_suffixOnly(t *testing.T) {
 	}
 }
 
+func TestLoadErrorToMessage_messageAndCause(t *testing.T) {
+	err := &dataloader.LoadError{
+		Code:    dataloader.LoadErrorCodeDBError,
+		Message: "apply failed",
+		Cause:   errors.New("constraint violation"),
+	}
+	msg := LoadErrorToMessage(err)
+	if !strings.Contains(msg.Text, "apply failed: constraint violation") {
+		t.Fatalf("text = %q, want message and cause joined", msg.Text)
+	}
+}
+
+func TestLoadErrorToMessage_fileSuffixOnly(t *testing.T) {
+	err := &dataloader.LoadError{
+		Code:     dataloader.LoadErrorCodeMissingName,
+		FilePath: "/tmp/data.json",
+		Name:     "role_demo",
+	}
+	msg := LoadErrorToMessage(err)
+	if !strings.Contains(msg.Text, "file=/tmp/data.json") || !strings.Contains(msg.Text, "name=role_demo") {
+		t.Fatalf("text = %q, want file and name suffixes", msg.Text)
+	}
+}
+
 func TestLoadErrorToMessage_negativeRecordIndex(t *testing.T) {
 	msg := LoadErrorToMessage(&dataloader.LoadError{RecordIndex: -1, Message: "bad"})
 	if msg.Row != 0 {

@@ -72,3 +72,31 @@ func TestApplyInitdata_invalidDemoManifestJSON(t *testing.T) {
 		t.Fatal("expected demo manifest decode error")
 	}
 }
+
+func TestApplyInitdata_ignoresMalformedDemoWhenWithDemoFalse(t *testing.T) {
+	t.Cleanup(func() { importpkg.SetRun(runner.Run) })
+
+	var got importpkg.Spec
+	importpkg.SetRun(func(_ context.Context, _ scope.Scope, spec importpkg.Spec) (importpkg.Report, error) {
+		got = spec
+		return importpkg.Report{Profile: importpkg.ProfileInitdata}, nil
+	})
+
+	dataJSON, err := json.Marshal([]string{"data/bootstrap.json"})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	mod := &meta.Module{
+		Name:           "auth",
+		Path:           "/modules/auth",
+		ApplicationStr: "auth",
+		DataStr:        dataJSON,
+		DemoStr:        []byte("{"),
+	}
+	if err := applyInitdata(context.Background(), nil, mod, importpkg.CallerLifecycle, false); err != nil {
+		t.Fatalf("applyInitdata with malformed demo and withDemo=false: %v", err)
+	}
+	if got.Options.WithDemo || len(got.Options.DemoFiles) != 0 {
+		t.Fatalf("demo options should be omitted when withDemo=false, got %+v", got.Options)
+	}
+}

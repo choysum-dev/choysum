@@ -15,7 +15,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/choysum-dev/choysum/internal/defaultscope"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/config"
@@ -375,26 +374,7 @@ func newLoaderTestDB(t *testing.T) *gorm.DB {
 
 func newDefaultLoaderScope(t *testing.T) scope.Scope {
 	t.Helper()
-	cfg := &config.Config{
-		Db: &config.DbConfig{
-			Dialect:         "sqlite",
-			DSN:             filepath.Join(t.TempDir(), "dataloader.db"),
-			MaxIdleConns:    1,
-			MaxOpenConns:    1,
-			ConnMaxLifetime: 60,
-		},
-		Log: config.NewDefaultLogConfig(),
-	}
-	runtimeScope := defaultscope.NewDefaultScope(
-		context.Background(),
-		scopetest.FactoryInputFromConfig(cfg),
-		slog.New(slog.NewTextHandler(io.Discard, nil)),
-	)
-	seedLoaderTestSchema(t, runtimeScope.Session().DB)
-	if sqlDB, err := runtimeScope.Session().DB.DB(); err == nil {
-		t.Cleanup(func() { _ = sqlDB.Close() })
-	}
-	return runtimeScope
+	return BootstrapTestScope(t)
 }
 
 func seedLoaderTestSchema(t *testing.T, db *gorm.DB) {

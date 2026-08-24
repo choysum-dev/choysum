@@ -20,9 +20,12 @@ func applyInitdata(ctx context.Context, runtimeScope scope.Scope, mod *meta.Modu
 	if err != nil {
 		return err
 	}
-	demoFiles, err := dataloader.ManifestDemoFiles(mod)
-	if err != nil {
-		return err
+	var demoFiles []string
+	if withDemo {
+		demoFiles, err = dataloader.ManifestDemoFiles(mod)
+		if err != nil {
+			return err
+		}
 	}
 	spec := importpkg.Spec{
 		Profile:     importpkg.ProfileInitdata,
