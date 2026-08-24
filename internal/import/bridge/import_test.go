@@ -27,13 +27,13 @@ func TestWithImportProvider_ExposesRun(t *testing.T) {
 	engine := engineIface.(*quickjsengine.QuickjsEngine)
 	t.Cleanup(func() { _ = engine.Close() })
 
-	got := engine.Ctx.Eval(`typeof $choysum.import.run === "function" && typeof $choysum.orm.call === "function"`)
+	got := engine.Ctx.Eval(`typeof $choysum.import.run === "function"`)
 	defer got.Free()
 	if got.IsException() {
 		t.Fatalf("Eval: %v", engine.Ctx.Exception())
 	}
 	if !got.ToBool() {
-		t.Fatal("expected $choysum.import.run and $choysum.orm.call to be functions")
+		t.Fatal("expected $choysum.import.run to be a function")
 	}
 
 	promise := engine.Ctx.Eval(`$choysum.import.run({profile:"record",caller:"user",policy:"atomic",model:"base.Country",source:{format:"csv",path:"missing.csv"}})`)

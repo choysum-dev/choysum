@@ -36,10 +36,10 @@ func TestMarshalImportReport_Error(t *testing.T) {
 	}
 }
 
-func TestWithImportProvider_RegisterError(t *testing.T) {
+func TestWithImportProvider_NilEngine(t *testing.T) {
 	err := WithImportProvider(nil)(&quickjsengine.QuickjsEngine{})
 	if err == nil {
-		t.Fatal("expected Register error for nil Ctx")
+		t.Fatal("expected error for nil Ctx")
 	}
 }
 

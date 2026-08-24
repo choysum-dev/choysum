@@ -11,7 +11,7 @@ import (
 	"github.com/rs/xid"
 )
 
-// CallRequest is the stable ORM invoke shape used by RecordWriter and $choysum.orm.call.
+// CallRequest is the stable ORM invoke shape used by RecordWriter (EngineCaller / ExecutorCaller).
 type CallRequest struct {
 	Model   string         `json:"model"`
 	Method  string         `json:"method"`

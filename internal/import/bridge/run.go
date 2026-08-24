@@ -19,16 +19,19 @@ import (
 	"github.com/choysum-dev/choysum/pkg/scope"
 )
 
-// WithImportProvider registers $choysum.import.run and $choysum.orm.call.
+// WithImportProvider registers $choysum.import.run.
 func WithImportProvider(scopeProvider jsengine.ScopeProvider) jsengine.JsEngineOption {
 	return func(jsEngine jsengine.JsEngine) error {
 		jse := jsEngine.(*quickjsengine.QuickjsEngine)
-		if err := orm.Register(jse); err != nil {
-			return err
+		if jse == nil || jse.Ctx == nil {
+			return fmt.Errorf("import: engine is required")
 		}
 		globalsObj := jse.Ctx.Globals()
 		choysumObj := globalsObj.Get("$choysum")
-		// Register always installs $choysum; attach import.run alongside orm.call.
+		if !choysumObj.IsObject() {
+			choysumObj.Free()
+			choysumObj = jse.Ctx.Object()
+		}
 		importObj := jse.Ctx.Object()
 		importObj.Set("run", jse.Ctx.NewFunction(runImportAsyncFactory(jse, scopeProvider)))
 		choysumObj.Set("import", importObj)
