@@ -17,7 +17,7 @@ func init() {
 	registry.RegisterWriter(importpkg.ProfileRecord, Writer{})
 }
 
-// Writer persists record import units through the TS ORM write path (internal/import/orm).
+// Writer persists record import units through the TS ORM write path (internal/import/caller).
 // Target model comes from each unit's Model (Spec.Model); field/M2O handling uses meta.
 type Writer struct{}
 

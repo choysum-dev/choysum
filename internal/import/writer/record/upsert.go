@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/choysum-dev/choysum/internal/import/orm"
+	importcaller "github.com/choysum-dev/choysum/internal/import/caller"
 	recordplan "github.com/choysum-dev/choysum/internal/import/plan/record"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -18,9 +18,9 @@ import (
 
 // UpsertRecord writes one CSV row for unit.Model through TS ORM Create / UpdateById.
 func UpsertRecord(ctx context.Context, txScope scope.Scope, unit recordplan.Unit) error {
-	caller, ok := orm.CallerFromContext(ctx)
+	caller, ok := importcaller.CallerFromContext(ctx)
 	if !ok {
-		return importpkg.Errorf(importpkg.CodeInvalidFormat, "orm caller is required for record writer")
+		return importpkg.Errorf(importpkg.CodeInvalidFormat, "import caller is required for record writer")
 	}
 	if txScope == nil || txScope.Session() == nil || txScope.Session().DB == nil {
 		return importpkg.Errorf(importpkg.CodeInvalidFormat, "database session is required")
@@ -85,7 +85,7 @@ func parseUnitExternalID(unit recordplan.Unit) (MetaModelDataKey, bool, error) {
 func buildRecordVals(
 	ctx context.Context,
 	db *gorm.DB,
-	caller orm.Caller,
+	caller importcaller.Caller,
 	unit recordplan.Unit,
 	fieldByName map[string]*meta.Field,
 ) (map[string]any, error) {
@@ -154,7 +154,7 @@ func parseBool(raw string) (bool, bool) {
 
 func upsertByExternalID(
 	ctx context.Context,
-	caller orm.Caller,
+	caller importcaller.Caller,
 	db *gorm.DB,
 	model *meta.Model,
 	modelFull string,
@@ -172,7 +172,7 @@ func upsertByExternalID(
 			return err
 		}
 		if exists {
-			if _, err := caller.Call(ctx, orm.CallRequest{
+			if _, err := caller.Call(ctx, importcaller.CallRequest{
 				Model:  modelFull,
 				Method: "UpdateById",
 				Args:   []any{mapping.ResID, vals, []string{"Id"}},
@@ -183,7 +183,7 @@ func upsertByExternalID(
 		}
 	}
 
-	created, err := caller.Call(ctx, orm.CallRequest{
+	created, err := caller.Call(ctx, importcaller.CallRequest{
 		Model:  modelFull,
 		Method: "Create",
 		Args:   []any{vals, []string{"Id"}},
@@ -198,12 +198,12 @@ func upsertByExternalID(
 	return upsertExternalIDMapping(db, key, model, resID)
 }
 
-func recordExistsByID(ctx context.Context, caller orm.Caller, unit recordplan.Unit, modelFull, id string) (bool, error) {
+func recordExistsByID(ctx context.Context, caller importcaller.Caller, unit recordplan.Unit, modelFull, id string) (bool, error) {
 	id = strings.TrimSpace(id)
 	if id == "" {
 		return false, nil
 	}
-	result, err := caller.Call(ctx, orm.CallRequest{
+	result, err := caller.Call(ctx, importcaller.CallRequest{
 		Model:  modelFull,
 		Method: "Search",
 		Args: []any{
@@ -219,7 +219,7 @@ func recordExistsByID(ctx context.Context, caller orm.Caller, unit recordplan.Un
 
 func upsertByUniqueKeys(
 	ctx context.Context,
-	caller orm.Caller,
+	caller importcaller.Caller,
 	unit recordplan.Unit,
 	modelFull string,
 	fieldByName map[string]*meta.Field,
@@ -245,7 +245,7 @@ func upsertByUniqueKeys(
 		return err
 	}
 	if existingID != "" {
-		if _, err := caller.Call(ctx, orm.CallRequest{
+		if _, err := caller.Call(ctx, importcaller.CallRequest{
 			Model:  modelFull,
 			Method: "UpdateById",
 			Args:   []any{existingID, vals, []string{"Id"}},
@@ -255,7 +255,7 @@ func upsertByUniqueKeys(
 		return nil
 	}
 
-	if _, err := caller.Call(ctx, orm.CallRequest{
+	if _, err := caller.Call(ctx, importcaller.CallRequest{
 		Model:  modelFull,
 		Method: "Create",
 		Args:   []any{vals, []string{"Id"}},
@@ -265,8 +265,8 @@ func upsertByUniqueKeys(
 	return nil
 }
 
-func searchRecordID(ctx context.Context, caller orm.Caller, unit recordplan.Unit, modelFull string, domain []any) (string, error) {
-	result, err := caller.Call(ctx, orm.CallRequest{
+func searchRecordID(ctx context.Context, caller importcaller.Caller, unit recordplan.Unit, modelFull string, domain []any) (string, error) {
+	result, err := caller.Call(ctx, importcaller.CallRequest{
 		Model:  modelFull,
 		Method: "Search",
 		Args: []any{

@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/defaultscope"
-	"github.com/choysum-dev/choysum/internal/import/orm"
+	importcaller "github.com/choysum-dev/choysum/internal/import/caller"
 	recordplan "github.com/choysum-dev/choysum/internal/import/plan/record"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
@@ -210,7 +210,7 @@ func TestUpsertRecord_BuildValsBranches(t *testing.T) {
 	db := openWBDB(t)
 	seedCountryWithM2OMeta(t, db)
 	scope := &wbScope{db: db}
-	ctx := orm.ContextWithCaller(context.Background(), &wbCaller{
+	ctx := importcaller.ContextWithCaller(context.Background(), &wbCaller{
 		byKey: map[string]any{
 			"base.Currency.Search": []any{map[string]any{"Id": "cur-1"}},
 			"base.Country.Search":  []any{},
@@ -250,7 +250,7 @@ func TestUpsertRecord_BuildValsBranches(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := UpsertRecord(
-		orm.ContextWithCaller(context.Background(), &wbCaller{}),
+		importcaller.ContextWithCaller(context.Background(), &wbCaller{}),
 		&wbScope{db: db2},
 		recordplan.Unit{Index: 1, Model: "base.Country", Values: map[string]string{"Code": "X"}},
 	); err == nil {
@@ -444,7 +444,7 @@ func TestAssertExternalIDWritable_DBErrors(t *testing.T) {
 func TestUpsertRecord_ModelNotFound(t *testing.T) {
 	db := openWBDB(t)
 	scope := &wbScope{db: db}
-	ctx := orm.ContextWithCaller(context.Background(), &wbCaller{})
+	ctx := importcaller.ContextWithCaller(context.Background(), &wbCaller{})
 	if err := UpsertRecord(ctx, scope, recordplan.Unit{Index: 1, Model: "base.Country", Values: map[string]string{"Code": "X"}}); err == nil {
 		t.Fatal("expected model not found")
 	}
@@ -506,7 +506,7 @@ type wbCaller struct {
 	errOn  map[string]error
 }
 
-func (c *wbCaller) Call(_ context.Context, req orm.CallRequest) (any, error) {
+func (c *wbCaller) Call(_ context.Context, req importcaller.CallRequest) (any, error) {
 	key := req.Model + "." + req.Method
 	if c.errOn != nil {
 		if e, ok := c.errOn[key]; ok {

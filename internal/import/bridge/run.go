@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/buke/quickjs-go"
-	"github.com/choysum-dev/choysum/internal/import/orm"
+	"github.com/choysum-dev/choysum/internal/import/caller"
 	"github.com/choysum-dev/choysum/internal/import/runner"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
@@ -75,7 +75,7 @@ func performImportRun(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, sc
 	if err != nil {
 		return ctx.NewError(fmt.Errorf("resolve import source path: %w", err))
 	}
-	runCtx := orm.ContextWithCaller(execCtx, orm.EngineCaller{Engine: jse})
+	runCtx := caller.ContextWithCaller(execCtx, caller.EngineCaller{Engine: jse})
 	report, err := runner.Run(runCtx, runtimeScope, spec)
 	if err != nil {
 		return ctx.NewError(err)

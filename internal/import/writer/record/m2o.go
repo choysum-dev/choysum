@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/choysum-dev/choysum/internal/import/orm"
+	importcaller "github.com/choysum-dev/choysum/internal/import/caller"
 	recordplan "github.com/choysum-dev/choysum/internal/import/plan/record"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"gorm.io/gorm"
@@ -17,7 +17,7 @@ import (
 // ResolveM2O resolves a Many2One CSV field path such as DefaultCurrencyId/Code via ORM Search.
 // The comodel comes from meta.Field.RelationModel on unit.Model; lookup fields are validated
 // against the target model's field metadata (Id is always allowed).
-func ResolveM2O(ctx context.Context, db *gorm.DB, caller orm.Caller, unit recordplan.Unit, fieldPath, raw string) (string, error) {
+func ResolveM2O(ctx context.Context, db *gorm.DB, modelCaller importcaller.Caller, unit recordplan.Unit, fieldPath, raw string) (string, error) {
 	parts := strings.Split(fieldPath, "/")
 	if len(parts) != 2 {
 		return "", rowError(unit, fieldPath, importpkg.CodeInvalidFormat, "invalid M2O field path")
@@ -58,7 +58,7 @@ func ResolveM2O(ctx context.Context, db *gorm.DB, caller orm.Caller, unit record
 		}
 	}
 
-	result, err := caller.Call(ctx, orm.CallRequest{
+	result, err := modelCaller.Call(ctx, importcaller.CallRequest{
 		Model:  targetModel,
 		Method: "Search",
 		Args: []any{

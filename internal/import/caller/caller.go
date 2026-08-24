@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-package orm
+// Package caller provides Go-side clients that invoke TS Model methods via $choysum.__rpc__ during import.
+package caller
 
 import (
 	"context"
@@ -72,5 +73,5 @@ func MergeImportContext(extra map[string]any) map[string]any {
 
 // NewRequestID returns a unique JsRequest id for ORM calls.
 func NewRequestID() string {
-	return "import-orm-" + xid.New().String()
+	return "import-caller-" + xid.New().String()
 }

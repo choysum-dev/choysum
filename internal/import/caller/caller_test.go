@@ -1,38 +1,38 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-package orm_test
+package caller_test
 
 import (
 	"context"
 	"strings"
 	"testing"
 
-	"github.com/choysum-dev/choysum/internal/import/orm"
+	importcaller "github.com/choysum-dev/choysum/internal/import/caller"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsengine/quickjsengine"
 )
 
 func TestServiceName(t *testing.T) {
 	t.Parallel()
-	got, err := orm.ServiceName("base.Country", "Create")
+	got, err := importcaller.ServiceName("base.Country", "Create")
 	if err != nil || got != "base.Country.Create" {
 		t.Fatalf("ServiceName = %q %v", got, err)
 	}
-	if _, err := orm.ServiceName("Country", "Create"); err == nil {
+	if _, err := importcaller.ServiceName("Country", "Create"); err == nil {
 		t.Fatal("expected error for short model name")
 	}
-	if _, err := orm.ServiceName("", "Create"); err == nil {
+	if _, err := importcaller.ServiceName("", "Create"); err == nil {
 		t.Fatal("expected error for empty model")
 	}
-	if _, err := orm.ServiceName("base.Country", "  "); err == nil {
+	if _, err := importcaller.ServiceName("base.Country", "  "); err == nil {
 		t.Fatal("expected error for empty method")
 	}
 }
 
 func TestMergeImportContext_ReservedImportFile(t *testing.T) {
 	t.Parallel()
-	got := orm.MergeImportContext(map[string]any{
+	got := importcaller.MergeImportContext(map[string]any{
 		"lang":        "zh_CN",
 		"import_file": false,
 		"":            "skip",
@@ -52,23 +52,23 @@ func TestMergeImportContext_ReservedImportFile(t *testing.T) {
 func TestCallerContextRoundTrip(t *testing.T) {
 	t.Parallel()
 	caller := stubCaller{}
-	ctx := orm.ContextWithCaller(nil, caller)
-	got, ok := orm.CallerFromContext(ctx)
+	ctx := importcaller.ContextWithCaller(nil, caller)
+	got, ok := importcaller.CallerFromContext(ctx)
 	if !ok || got != caller {
 		t.Fatalf("CallerFromContext = %#v %v", got, ok)
 	}
-	if _, ok := orm.CallerFromContext(nil); ok {
+	if _, ok := importcaller.CallerFromContext(nil); ok {
 		t.Fatal("expected false for nil context")
 	}
-	if _, ok := orm.CallerFromContext(context.Background()); ok {
+	if _, ok := importcaller.CallerFromContext(context.Background()); ok {
 		t.Fatal("expected false when caller missing")
 	}
 }
 
 func TestNewRequestID(t *testing.T) {
 	t.Parallel()
-	id := orm.NewRequestID()
-	if !strings.HasPrefix(id, "import-orm-") || len(id) <= len("import-orm-") {
+	id := importcaller.NewRequestID()
+	if !strings.HasPrefix(id, "import-caller-") || len(id) <= len("import-caller-") {
 		t.Fatalf("NewRequestID = %q", id)
 	}
 }
@@ -89,11 +89,11 @@ func TestEngineCaller_CallPropagatesExecContext(t *testing.T) {
 	`)
 	defer stub.Free()
 
-	caller := orm.EngineCaller{Engine: engine}
+	engCaller := importcaller.EngineCaller{Engine: engine}
 	restoreOuter := engine.SwapExecContext(context.WithValue(context.Background(), markerKey{}, "outer"))
 	defer restoreOuter()
 
-	got, err := caller.Call(marker, orm.CallRequest{
+	got, err := engCaller.Call(marker, importcaller.CallRequest{
 		Model:  "base.Country",
 		Method: "Search",
 		Args:   []any{},
@@ -111,7 +111,7 @@ func TestEngineCaller_CallPropagatesExecContext(t *testing.T) {
 }
 
 func TestEngineCaller_Errors(t *testing.T) {
-	if _, err := (orm.EngineCaller{}).Call(context.Background(), orm.CallRequest{Model: "base.Country", Method: "Create"}); err == nil {
+	if _, err := (importcaller.EngineCaller{}).Call(context.Background(), importcaller.CallRequest{Model: "base.Country", Method: "Create"}); err == nil {
 		t.Fatal("expected nil engine error")
 	}
 
@@ -122,14 +122,14 @@ func TestEngineCaller_Errors(t *testing.T) {
 	engine := engineIface.(*quickjsengine.QuickjsEngine)
 	t.Cleanup(func() { _ = engine.Close() })
 
-	caller := orm.EngineCaller{Engine: engine}
-	if _, err := caller.Call(context.Background(), orm.CallRequest{Model: "Country", Method: "Create"}); err == nil {
+	engCaller := importcaller.EngineCaller{Engine: engine}
+	if _, err := engCaller.Call(context.Background(), importcaller.CallRequest{Model: "Country", Method: "Create"}); err == nil {
 		t.Fatal("expected ServiceName error")
 	}
 
 	clear := engine.Ctx.Eval(`globalThis.$choysum = {}; true`)
 	defer clear.Free()
-	if _, err := caller.Call(context.Background(), orm.CallRequest{Model: "base.Country", Method: "Create"}); err == nil {
+	if _, err := engCaller.Call(context.Background(), importcaller.CallRequest{Model: "base.Country", Method: "Create"}); err == nil {
 		t.Fatal("expected missing __rpc__ error")
 	}
 
@@ -138,15 +138,15 @@ func TestEngineCaller_Errors(t *testing.T) {
 		true
 	`)
 	defer errStub.Free()
-	if _, err := caller.Call(context.Background(), orm.CallRequest{Model: "base.Country", Method: "Create"}); err == nil {
+	if _, err := engCaller.Call(context.Background(), importcaller.CallRequest{Model: "base.Country", Method: "Create"}); err == nil {
 		t.Fatal("expected boom error")
 	}
 }
 
 func TestExecutorCaller(t *testing.T) {
 	stub := &stubJsEngine{resp: &jsengine.JsResponse{Result: map[string]any{"Id": "1"}}}
-	caller := orm.ExecutorCaller{Engine: stub}
-	got, err := caller.Call(context.WithValue(context.Background(), markerKey{}, "x"), orm.CallRequest{
+	execCaller := importcaller.ExecutorCaller{Engine: stub}
+	got, err := execCaller.Call(context.WithValue(context.Background(), markerKey{}, "x"), importcaller.CallRequest{
 		Model:   "base.Country",
 		Method:  "Create",
 		Args:    []any{map[string]any{"Code": "A"}},
@@ -165,19 +165,19 @@ func TestExecutorCaller(t *testing.T) {
 		t.Fatalf("result = %#v", got)
 	}
 
-	if _, err := (orm.ExecutorCaller{}).Call(context.Background(), orm.CallRequest{Model: "base.Country", Method: "Create"}); err == nil {
+	if _, err := (importcaller.ExecutorCaller{}).Call(context.Background(), importcaller.CallRequest{Model: "base.Country", Method: "Create"}); err == nil {
 		t.Fatal("expected nil engine error")
 	}
-	if _, err := (orm.ExecutorCaller{Engine: stub}).Call(context.Background(), orm.CallRequest{Model: "Country", Method: "Create"}); err == nil {
+	if _, err := (importcaller.ExecutorCaller{Engine: stub}).Call(context.Background(), importcaller.CallRequest{Model: "Country", Method: "Create"}); err == nil {
 		t.Fatal("expected ServiceName error")
 	}
 	stub.err = context.Canceled
-	if _, err := (orm.ExecutorCaller{Engine: stub}).Call(context.Background(), orm.CallRequest{Model: "base.Country", Method: "Create"}); err == nil {
+	if _, err := (importcaller.ExecutorCaller{Engine: stub}).Call(context.Background(), importcaller.CallRequest{Model: "base.Country", Method: "Create"}); err == nil {
 		t.Fatal("expected execute error")
 	}
 	stub.err = nil
 	stub.resp = nil
-	got, err = (orm.ExecutorCaller{Engine: stub}).Call(context.Background(), orm.CallRequest{Model: "base.Country", Method: "Create"})
+	got, err = (importcaller.ExecutorCaller{Engine: stub}).Call(context.Background(), importcaller.CallRequest{Model: "base.Country", Method: "Create"})
 	if err != nil || got != nil {
 		t.Fatalf("nil resp: got %#v err %v", got, err)
 	}
@@ -187,7 +187,7 @@ type markerKey struct{}
 
 type stubCaller struct{}
 
-func (stubCaller) Call(context.Context, orm.CallRequest) (any, error) {
+func (stubCaller) Call(context.Context, importcaller.CallRequest) (any, error) {
 	return nil, nil
 }
 
