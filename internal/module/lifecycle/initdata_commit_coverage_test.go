@@ -4,12 +4,18 @@
 package lifecycle
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/choysum-dev/choysum/internal/import/runner"
+	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/meta"
+	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/rs/xid"
 )
 
@@ -131,5 +137,64 @@ func TestCommitUpgrade_applyInitdataNilCtx(t *testing.T) {
 	}
 	if _, err := upgrader.commitUpgrade(installer, "1.0.0", nil, false); err != nil {
 		t.Fatalf("commitUpgrade with nil ctx: %v", err)
+	}
+}
+
+func TestCommitInstall_applyInitdataError(t *testing.T) {
+	t.Cleanup(func() { importpkg.SetRun(runner.Run) })
+	importpkg.SetRun(func(_ context.Context, _ scope.Scope, _ importpkg.Spec) (importpkg.Report, error) {
+		return importpkg.Report{}, errors.New("forced initdata failure")
+	})
+
+	runtimeScope := newLifecycleCommitTestScope(t)
+	mod, _ := lifecycleCommitModule(t, "demo_initdata_err")
+	installer := &moduleInstaller{
+		module:        mod,
+		runtimeScope:  runtimeScope,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
+		ctx:           newOpContext(),
+	}
+	err := installer.commitInstall(nil, false)
+	if err == nil || !strings.Contains(err.Error(), "error applying data for module") {
+		t.Fatalf("commitInstall error = %v, want apply-data failure", err)
+	}
+}
+
+func TestCommitUpgrade_applyInitdataError(t *testing.T) {
+	t.Cleanup(func() { importpkg.SetRun(runner.Run) })
+	importpkg.SetRun(func(_ context.Context, _ scope.Scope, _ importpkg.Spec) (importpkg.Report, error) {
+		return importpkg.Report{}, errors.New("forced initdata failure")
+	})
+
+	runtimeScope := newLifecycleCommitTestScope(t)
+	modulePath := t.TempDir()
+	mod := &meta.Module{
+		Name:    "demo_upgrade_initdata_err",
+		Version: "1.0.0",
+		Status:  meta.Installed,
+		Path:    modulePath,
+	}
+	mod.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := runtimeScope.Session().Create(mod).Error; err != nil {
+		t.Fatalf("create module: %v", err)
+	}
+	target := &meta.Module{Name: "demo_upgrade_initdata_err", Version: "2.0.0", Status: meta.Installed, Path: modulePath}
+	target.Id = mod.Id
+
+	upgrader := &moduleUpgrader{
+		runtimeScope:  runtimeScope,
+		module:        mod,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
+		ctx:           newOpContext(),
+	}
+	installer := &moduleInstaller{
+		module:        target,
+		runtimeScope:  runtimeScope,
+		moduleManager: upgrader.moduleManager,
+		ctx:           upgrader.ctx,
+	}
+	_, err := upgrader.commitUpgrade(installer, "1.0.0", nil, false)
+	if err == nil || !strings.Contains(err.Error(), "error applying data for module") {
+		t.Fatalf("commitUpgrade error = %v, want apply-data failure", err)
 	}
 }

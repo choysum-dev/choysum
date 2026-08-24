@@ -12,5 +12,11 @@ import (
 // NewDefaultLoaderScopeForTest exposes the loader integration test scope to external packages.
 func NewDefaultLoaderScopeForTest(t *testing.T) scope.Scope {
 	t.Helper()
-	return BootstrapTestScope(t)
+	return newDefaultLoaderScope(t)
+}
+
+// WriteDataFileForTest writes a bootstrap JSON file for loader/import equivalence tests.
+func WriteDataFileForTest(t *testing.T, dir string, df any) {
+	t.Helper()
+	writeDataFile(t, dir, df)
 }
