@@ -5,8 +5,10 @@ package runner
 
 import (
 	"context"
+	"strings"
 
 	"github.com/choysum-dev/choysum/internal/import/adapter"
+	"github.com/choysum-dev/choysum/internal/import/artifact"
 	"github.com/choysum-dev/choysum/internal/import/registry"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -28,5 +30,21 @@ func Run(ctx context.Context, runtimeScope scope.Scope, spec importpkg.Spec) (im
 		return importpkg.Report{}, err
 	}
 
-	return executePlan(ctx, runtimeScope, spec, p, writer)
+	report, err := executePlan(ctx, runtimeScope, spec, p, writer)
+	report = attachErrorArtifact(ctx, runtimeScope, spec, report)
+	return report, err
+}
+
+func attachErrorArtifact(ctx context.Context, runtimeScope scope.Scope, spec importpkg.Spec, report importpkg.Report) importpkg.Report {
+	if len(report.Messages) == 0 {
+		return report
+	}
+	companyID := strings.TrimSpace(spec.Options.CompanyID)
+	if companyID == "" {
+		return report
+	}
+	if err := artifact.WriteErrorArtifact(ctx, runtimeScope, companyID, &report); err != nil {
+		return report
+	}
+	return report
 }

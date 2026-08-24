@@ -97,6 +97,7 @@ built-in defaults or load a non-default workspace config.`,
 		newTestCmd(envGetter, cliOptionsGetter),
 		newTypeFetchCmd(envGetter),
 		newI18nCmd(envGetter),
+		newImportCmd(envGetter),
 	)
 	return c
 }
