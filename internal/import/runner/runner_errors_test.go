@@ -55,13 +55,14 @@ func TestRun_BuildFailure(t *testing.T) {
 
 func TestRun_WriterNotRegistered(t *testing.T) {
 	registry.ResetWritersForTest()
-	t.Cleanup(func() { restoreStubRegistrations(t) })
-
 	adapter.ResetPlanBuildersForTest()
 	t.Cleanup(func() {
-		adapter.ResetPlanBuildersForTest()
 		restoreStubRegistrations(t)
+		if _, err := adapter.PlanBuilderFor(stubadapter.Format); err != nil {
+			t.Errorf("stub plan builder not restored after test: %v", err)
+		}
 	})
+
 	adapter.RegisterPlanBuilder("fmt", emptyPlanBuilder{})
 
 	spec := testRecordSpec(importpkg.Options{StubUnitCount: 1})
