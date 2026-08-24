@@ -8,6 +8,7 @@ import "github.com/choysum-dev/choysum/internal/jobtoken"
 func (s *GRPCWebServer) registerInternalRPCServices(opts runtimeOptions) {
 	s.registerInternalJobTokenService(opts)
 	s.registerTipHubService()
+	s.registerImportHubService()
 }
 
 func (s *GRPCWebServer) registerInternalJobTokenService(opts runtimeOptions) {
