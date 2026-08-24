@@ -5,6 +5,7 @@ package po
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -49,6 +50,45 @@ func TestBuildTermPlan_MissingI18nDir(t *testing.T) {
 	}
 }
 
+func TestBuildTermPlan_EmptyModuleRoot(t *testing.T) {
+	_, err := BuildTermPlan("  ", "", "auth", "demo")
+	if err == nil {
+		t.Fatal("expected empty module root error")
+	}
+}
+
+func TestBuildTermPlan_ReadDirError(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "i18n"), []byte("not a dir"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := BuildTermPlan(root, "", "auth", "demo")
+	if err == nil {
+		t.Fatal("expected read i18n dir error")
+	}
+}
+
+func TestBuildTermPlan_SkipsSubdirAndEmptyLang(t *testing.T) {
+	root := t.TempDir()
+	i18nDir := filepath.Join(root, "i18n")
+	if err := os.MkdirAll(filepath.Join(i18nDir, "nested"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(i18nDir, ".po"), []byte("msgid \"\"\nmsgstr \"\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(i18nDir, "fr.po"), []byte("msgid \"\"\nmsgstr \"\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p, err := BuildTermPlan(root, "", "auth", "demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.Units) != 1 || p.Units[0].(termplan.Unit).Lang != "fr" {
+		t.Fatalf("units = %+v", p.Units)
+	}
+}
+
 func TestBuilder_BuildRequiresTerminology(t *testing.T) {
 	_, err := (Builder{}).Build(context.Background(), importpkg.Spec{
 		Profile: importpkg.ProfileInitdata,
@@ -57,6 +97,47 @@ func TestBuilder_BuildRequiresTerminology(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected profile error")
+	}
+}
+
+func TestBuilder_BuildRequiresPathModuleApplication(t *testing.T) {
+	base := importpkg.Spec{
+		Profile:     importpkg.ProfileTerminology,
+		Application: "auth",
+		Module:      "demo",
+		Source:      importpkg.Source{Format: Format, Path: t.TempDir()},
+	}
+	for _, spec := range []importpkg.Spec{
+		{Profile: base.Profile, Application: base.Application, Module: base.Module, Source: importpkg.Source{Format: Format}},
+		{Profile: base.Profile, Application: base.Application, Source: base.Source},
+		{Profile: base.Profile, Module: base.Module, Source: base.Source},
+	} {
+		if _, err := (Builder{}).Build(context.Background(), spec); err == nil {
+			t.Fatalf("expected validation error for spec %+v", spec)
+		}
+	}
+}
+
+func TestBuilder_BuildSuccess(t *testing.T) {
+	root := t.TempDir()
+	i18nDir := filepath.Join(root, "i18n")
+	if err := os.MkdirAll(i18nDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(i18nDir, "zh_CN.po"), []byte("msgid \"\"\nmsgstr \"\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p, err := (Builder{}).Build(context.Background(), importpkg.Spec{
+		Profile:     importpkg.ProfileTerminology,
+		Application: "auth",
+		Module:      "demo",
+		Source:      importpkg.Source{Format: Format, Path: root},
+	})
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	if len(p.Units) != 1 {
+		t.Fatalf("units = %d", len(p.Units))
 	}
 }
 
@@ -77,5 +158,40 @@ func TestBuildTermPlan_FilterLang(t *testing.T) {
 	}
 	if len(p.Units) != 1 || p.Units[0].(termplan.Unit).Lang != "zh_CN" {
 		t.Fatalf("units = %+v", p.Units)
+	}
+}
+
+func TestBuildTermPlan_trimsInputs(t *testing.T) {
+	root := t.TempDir()
+	i18nDir := filepath.Join(root, "i18n")
+	if err := os.MkdirAll(i18nDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(i18nDir, "de.po"), []byte("msgid \"\"\nmsgstr \"\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p, err := BuildTermPlan("  "+root+"  ", " de ", " auth ", " demo ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	u := p.Units[0].(termplan.Unit)
+	if u.Application != "auth" || u.ModuleName != "demo" || u.Lang != "de" {
+		t.Fatalf("unit = %+v", u)
+	}
+}
+
+func TestBuilder_BuildWrapsBuildTermPlanError(t *testing.T) {
+	_, err := (Builder{}).Build(context.Background(), importpkg.Spec{
+		Profile:     importpkg.ProfileTerminology,
+		Application: "auth",
+		Module:      "demo",
+		Source:      importpkg.Source{Format: Format, Path: "  "},
+	})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	var impErr *importpkg.Error
+	if !errors.As(err, &impErr) {
+		t.Fatalf("error = %T", err)
 	}
 }
