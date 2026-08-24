@@ -11,52 +11,33 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/choysum-dev/choysum/internal/defaultscope"
 	i18nmodels "github.com/choysum-dev/choysum/internal/i18n/models"
 	"github.com/choysum-dev/choysum/internal/i18n/store"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
+	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
-type i18nTestScope struct {
-	ctx     context.Context
-	logger  *slog.Logger
-	session *scope.Session
-}
-
-func (s *i18nTestScope) Run(fn func(scope.Scope) error) error { return fn(s) }
-func (s *i18nTestScope) Transactor() scope.Transactor {
-	return scopetest.NewPassthroughTransactor(s)
-}
-func (s *i18nTestScope) Session() *scope.Session { return s.session }
-func (s *i18nTestScope) WithContext(ctx context.Context) scope.Scope {
-	if ctx == nil {
-		ctx = s.ctx
-	}
-	return &i18nTestScope{ctx: ctx, logger: s.logger, session: s.session}
-}
-func (s *i18nTestScope) Context() context.Context {
-	if s.ctx != nil {
-		return s.ctx
-	}
-	return context.Background()
-}
-func (s *i18nTestScope) Logger() *slog.Logger { return s.logger }
-
-func newI18nTestScope(t *testing.T) *i18nTestScope {
+func newI18nTestScope(t *testing.T) scope.Scope {
 	t.Helper()
 	store.ResetSharedRegistryForTests()
-	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "lifecycle_i18n.db")), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
+	cfg := &config.Config{
+		Db: &config.DbConfig{
+			Dialect: "sqlite",
+			DSN:     filepath.Join(t.TempDir(), "lifecycle_i18n.db"),
+		},
 	}
-	return &i18nTestScope{
-		ctx:     context.Background(),
-		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
-		session: &scope.Session{DB: db},
+	runtimeScope := defaultscope.NewDefaultScope(
+		context.Background(),
+		scopetest.FactoryInputFromConfig(cfg),
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+	)
+	if sqlDB, err := runtimeScope.Session().DB.DB(); err == nil {
+		t.Cleanup(func() { _ = sqlDB.Close() })
 	}
+	return runtimeScope
 }
 
 func TestImportAndDeleteModuleTerminology(t *testing.T) {

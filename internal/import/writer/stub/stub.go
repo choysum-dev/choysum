@@ -16,7 +16,6 @@ import (
 
 func init() {
 	registry.RegisterWriter(importpkg.ProfileRecord, Writer{})
-	registry.RegisterWriter(importpkg.ProfileTerminology, Writer{})
 }
 
 // Writer is a no-op persistence stub that can inject per-unit failures.

@@ -5,5 +5,7 @@ package runner
 
 import (
 	_ "github.com/choysum-dev/choysum/internal/import/adapter/json"
+	_ "github.com/choysum-dev/choysum/internal/import/adapter/po"
 	_ "github.com/choysum-dev/choysum/internal/import/writer/initdata"
+	_ "github.com/choysum-dev/choysum/internal/import/writer/term"
 )
