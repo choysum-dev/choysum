@@ -13,7 +13,6 @@ import (
 
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
-
 )
 
 func TestPickAppSettingOwnerModule_LastEligible(t *testing.T) {

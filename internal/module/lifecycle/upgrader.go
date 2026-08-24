@@ -11,12 +11,12 @@ import (
 
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
-	dataloader "github.com/choysum-dev/choysum/internal/module/evolution/data"
 	"github.com/choysum-dev/choysum/internal/module/evolution/hooks"
 	"github.com/choysum-dev/choysum/internal/module/evolution/schema"
 	"github.com/choysum-dev/choysum/internal/module/evolution/scripts"
 	"github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/internal/module/policy"
+	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -220,13 +220,12 @@ func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion s
 	}
 	m.logUpgradeStep(target.Name, moduleStepSchema, schemaMigrationStarted, "from_version", fromVersion, "to_version", target.Version)
 
-	dataLoader := dataloader.New(m.runtimeScope)
 	applyCtx := m.runtimeScope.Context()
 	if applyCtx == nil {
 		applyCtx = context.Background()
 	}
 	dataApplyStarted := time.Now()
-	if err := dataLoader.ApplyModule(applyCtx, target, dataloader.ApplyOptions{WithDemo: m.ctx != nil && m.ctx.withDemo}); err != nil {
+	if err := applyInitdata(applyCtx, m.runtimeScope, target, importpkg.CallerLifecycle, m.ctx != nil && m.ctx.withDemo); err != nil {
 		return nil, xfmt.Errorf("error applying data for module %s: %w", target.Name, err)
 	}
 	m.logUpgradeStep(target.Name, moduleStepData, dataApplyStarted, "from_version", fromVersion, "to_version", target.Version)

@@ -14,7 +14,6 @@ import (
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
-
 )
 
 func TestPickTranslationTermOwnerModule_EmptyEntryAllowed(t *testing.T) {

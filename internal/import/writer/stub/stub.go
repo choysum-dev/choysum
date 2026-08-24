@@ -16,7 +16,6 @@ import (
 
 func init() {
 	registry.RegisterWriter(importpkg.ProfileRecord, Writer{})
-	registry.RegisterWriter(importpkg.ProfileInitdata, Writer{})
 	registry.RegisterWriter(importpkg.ProfileTerminology, Writer{})
 }
 
