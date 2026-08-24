@@ -5,5 +5,11 @@ package runner_test
 
 import (
 	_ "github.com/choysum-dev/choysum/internal/import/adapter/stub"
-	_ "github.com/choysum-dev/choysum/internal/import/writer/stub"
+	"github.com/choysum-dev/choysum/internal/import/registry"
+	stubwriter "github.com/choysum-dev/choysum/internal/import/writer/stub"
+	importpkg "github.com/choysum-dev/choysum/pkg/import"
 )
+
+func init() {
+	registry.RegisterWriter(importpkg.ProfileRecord, stubwriter.Writer{})
+}
