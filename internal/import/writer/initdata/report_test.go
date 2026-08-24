@@ -4,6 +4,7 @@
 package initdata
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -49,5 +50,40 @@ func TestLoadErrorToMessage_Golden(t *testing.T) {
 		if !strings.Contains(msg.Text, want) {
 			t.Fatalf("text = %q, want substring %q", msg.Text, want)
 		}
+	}
+}
+
+func TestLoadErrorToMessage_nil(t *testing.T) {
+	if (LoadErrorToMessage(nil) != importpkg.Message{}) {
+		t.Fatal("nil LoadError should return zero Message")
+	}
+}
+
+func TestLoadErrorToMessage_causeOnly(t *testing.T) {
+	err := &dataloader.LoadError{
+		Code:  dataloader.LoadErrorCodeDBError,
+		Cause: errors.New("db failed"),
+	}
+	msg := LoadErrorToMessage(err)
+	if !strings.Contains(msg.Text, "db failed") {
+		t.Fatalf("text = %q, want cause text", msg.Text)
+	}
+}
+
+func TestLoadErrorToMessage_suffixOnly(t *testing.T) {
+	err := &dataloader.LoadError{
+		Code:  dataloader.LoadErrorCodeMissingName,
+		Model: "Role",
+	}
+	msg := LoadErrorToMessage(err)
+	if !strings.Contains(msg.Text, "model=Role") {
+		t.Fatalf("text = %q, want model suffix", msg.Text)
+	}
+}
+
+func TestLoadErrorToMessage_negativeRecordIndex(t *testing.T) {
+	msg := LoadErrorToMessage(&dataloader.LoadError{RecordIndex: -1, Message: "bad"})
+	if msg.Row != 0 {
+		t.Fatalf("row = %d, want 0 for negative RecordIndex", msg.Row)
 	}
 }

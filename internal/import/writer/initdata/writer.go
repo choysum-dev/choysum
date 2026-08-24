@@ -6,6 +6,7 @@ package initdata
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/choysum-dev/choysum/internal/import/plan"
 	initdataplan "github.com/choysum-dev/choysum/internal/import/plan/initdata"
@@ -29,7 +30,7 @@ func (Writer) Write(ctx context.Context, txScope scope.Scope, units []plan.Unit)
 	for _, unit := range units {
 		u, ok := unit.(initdataplan.Unit)
 		if !ok {
-			continue
+			return importpkg.Errorf(importpkg.CodeInvalidFormat, fmt.Sprintf("unexpected unit type %T for initdata writer", unit))
 		}
 		mod := &meta.Module{
 			Name:           u.ModuleName,

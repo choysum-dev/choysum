@@ -21,7 +21,6 @@ type Spec struct {
 	EnsureServiceEntry bool
 }
 
-
 // Register adds a Spec to DefaultRegistry(). ModelName must be unique.
 func Register(spec Spec) {
 	DefaultRegistry().Register(spec)

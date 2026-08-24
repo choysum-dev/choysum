@@ -191,7 +191,7 @@ type noopMinimalInstallExecutor struct{}
 func (e *noopMinimalInstallExecutor) Execute(context.Context, *jsengine.JsRequest) (*jsengine.JsResponse, error) {
 	return &jsengine.JsResponse{}, nil
 }
-func (e *noopMinimalInstallExecutor) GetJsScripts() []*jsengine.JsScript             { return nil }
+func (e *noopMinimalInstallExecutor) GetJsScripts() []*jsengine.JsScript            { return nil }
 func (e *noopMinimalInstallExecutor) SetJsScripts(scripts []*jsengine.JsScript)     {}
 func (e *noopMinimalInstallExecutor) AppendJsScripts(scripts ...*jsengine.JsScript) {}
 func (e *noopMinimalInstallExecutor) Reload(scripts ...*jsengine.JsScript) error    { return nil }

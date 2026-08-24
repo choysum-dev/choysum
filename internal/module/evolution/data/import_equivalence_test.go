@@ -14,7 +14,6 @@ import (
 )
 
 func TestImportRun_MatchesApplyFiles(t *testing.T) {
-	t.Cleanup(func() { importpkg.SetRun(nil) })
 	importpkg.SetRun(runner.Run)
 
 	loaderScope := dataloader.NewDefaultLoaderScopeForTest(t)
