@@ -48,13 +48,14 @@ func isDryRunRollback(err error) bool {
 
 func runAtomic(ctx context.Context, runtimeScope scope.Scope, spec importpkg.Spec, p plan.Plan, writer registry.Writer) (importpkg.Report, error) {
 	collector := newMessageCollector(p.Len())
-	var runErr error
 
-	err := runtimeScope.Transactor().Required(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
+	// Use Nested for the whole atomic batch so:
+	// - standalone runs get a fresh tx (Nested without current → runFresh)
+	// - joined BE-test / request txs get a savepoint (rollback does not markRollback the outer Required)
+	// Returning errDryRunRollback from Required-joined would poison the outer test transaction.
+	err := runtimeScope.Transactor().Nested(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
 		for _, unit := range p.Units {
-			unitErr := txScope.Transactor().Nested(txScope.Context(), func(nestedScope scope.Scope, _ scope.Transaction) error {
-				return writer.Write(nestedScope.Context(), nestedScope, []plan.Unit{unit})
-			})
+			unitErr := writer.Write(txScope.Context(), txScope, []plan.Unit{unit})
 			if unitErr != nil {
 				collector.addError(unitErr, unit)
 				continue
@@ -76,9 +77,9 @@ func runAtomic(ctx context.Context, runtimeScope scope.Scope, spec importpkg.Spe
 		return report, nil
 	}
 	if err != nil && !errors.Is(err, errDryRunRollback) {
-		runErr = err
+		return report, err
 	}
-	return report, runErr
+	return report, nil
 }
 
 func runStopKeep(ctx context.Context, runtimeScope scope.Scope, spec importpkg.Spec, p plan.Plan, writer registry.Writer) (importpkg.Report, error) {

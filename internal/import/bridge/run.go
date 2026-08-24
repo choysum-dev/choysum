@@ -63,7 +63,10 @@ func performImportRun(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, sc
 	if execCtx == nil {
 		execCtx = context.Background()
 	}
-	runtimeScope := jsengine.ResolveScope(scopeProvider, execCtx)
+	// Prefer the transactional scope stored on ExecContext (same as $choysum.db).
+	// ResolveScope alone rebinds the factory base scope and can open a second SQLite
+	// connection while BE unit tests already hold a write transaction → "database is locked".
+	runtimeScope := resolveImportScope(scopeProvider, execCtx)
 	if runtimeScope == nil {
 		return ctx.NewError(fmt.Errorf("import.run: scope unavailable"))
 	}
@@ -77,6 +80,13 @@ func performImportRun(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, sc
 		return ctx.NewError(fmt.Errorf("marshal import report: %w", err))
 	}
 	return val
+}
+
+func resolveImportScope(scopeProvider jsengine.ScopeProvider, execCtx context.Context) scope.Scope {
+	if rs, ok := scope.ScopeFromContext(execCtx); ok && rs != nil {
+		return rs
+	}
+	return jsengine.ResolveScope(scopeProvider, execCtx)
 }
 
 // Run executes import.Run with an explicit scope (non-JS callers).
