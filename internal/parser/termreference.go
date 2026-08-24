@@ -12,10 +12,10 @@ import (
 )
 
 var (
-	termReferenceCallPattern = regexp.MustCompile(`(?s)^([A-Za-z_$][\w$]*)\s*\(\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)(?:\s*,\s*\{(.*?)\})?\s*\)$`)
-	referenceScopePattern    = regexp.MustCompile(`\bscope\s*:\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)`)
-	referencePathPattern     = regexp.MustCompile(`\bpath\s*:\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)`)
-	referenceLocationPattern = regexp.MustCompile(`\blocation\s*:\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)`)
+	termReferenceCallPattern     = regexp.MustCompile(`(?s)^([A-Za-z_$][\w$]*)\s*\(\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)(?:\s*,\s*\{(.*?)\})?\s*\)$`)
+	referenceScopePattern        = regexp.MustCompile(`\bscope\s*:\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)`)
+	referencePathPattern         = regexp.MustCompile(`\bpath\s*:\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)`)
+	referenceLocationPattern     = regexp.MustCompile(`\blocation\s*:\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)`)
 	createTranslateModulePattern = regexp.MustCompile(`(?s)^\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*')`)
 )
 

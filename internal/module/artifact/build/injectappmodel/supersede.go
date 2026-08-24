@@ -9,7 +9,6 @@ import (
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	xfmt "golang.org/x/exp/errors/fmt"
 	"gorm.io/gorm"
-
 )
 
 // SupersedeInjectAppModels deletes generated-path declaration trees when Decide

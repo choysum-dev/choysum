@@ -262,7 +262,7 @@ func AppendNodeOption(env []string, option string) []string {
 		}
 		// Match --localstorage-file=/path regardless of path value.
 		if i := strings.IndexByte(option, '='); i > 0 {
-			prefix := option[: i+1]
+			prefix := option[:i+1]
 			if strings.HasPrefix(part, prefix) {
 				return env
 			}

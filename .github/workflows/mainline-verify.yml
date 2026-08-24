@@ -81,6 +81,9 @@ jobs:
       - prepare-root-node-modules
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -113,11 +116,22 @@ jobs:
         with:
           node-version: 22
 
-      - name: Run go build
-        run: go build ./...
-
+      # Coverage compile already typechecks; a separate `go build ./...` only doubles wall clock.
       - name: Run go test
-        run: go test ./... -count=1
+        run: |
+          mkdir -p .choysum/coverage/main
+          go test ./... -count=1 -covermode=atomic -coverprofile=.choysum/coverage/main/go.out
+
+      - name: Upload Go coverage to Codecov
+        continue-on-error: true
+        uses: codecov/codecov-action@v7
+        with:
+          disable_search: true
+          fail_ci_if_error: false
+          files: .choysum/coverage/main/go.out
+          name: mainline-go
+          use_oidc: true
+          verbose: true
 
   typecheck-shard:
     name: main / typecheck-shard (${{ matrix.module }})
@@ -213,6 +227,9 @@ jobs:
         module: ${{ fromJson(needs.discover-modules.outputs.modules_json) }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -254,10 +271,88 @@ jobs:
         with:
           node-version: 22
 
-      - name: Run unit suite
+      - name: Run unit tests with coverage and JUnit
+        id: unit_tests
         run: |
+          coverage_root=".choysum/coverage/main/unit/${{ matrix.module }}"
+          junit_root=".choysum/test-results/main/unit"
+          backend_lcov="$coverage_root/lcov.info"
+          frontend_lcov="$coverage_root/fe/${{ matrix.module }}/lcov.info"
+          backend_junit="$junit_root/${{ matrix.module }}.backend.junit.xml"
+          frontend_junit="$junit_root/${{ matrix.module }}.frontend.junit.xml"
+
+          mkdir -p "$coverage_root" "$junit_root"
+
+          set +e
           CHOYSUM_BIN="$(pwd)/.choysum/tmp/choysum"
-          "$CHOYSUM_BIN" test unit ${{ matrix.module }}
+          "$CHOYSUM_BIN" test unit "${{ matrix.module }}" \
+            --coverage \
+            --coverage-report \
+            --fe-coverage-all \
+            --coverage-report-dir "$coverage_root" \
+            --coverage-reporters lcovonly \
+            --junit "$junit_root/${{ matrix.module }}.{scope}.junit.xml"
+          exit_code=$?
+          set -e
+
+          coverage_files=""
+          if [ -s "$backend_lcov" ]; then
+            coverage_files="$backend_lcov"
+          fi
+          if [ -s "$frontend_lcov" ]; then
+            if [ -n "$coverage_files" ]; then
+              coverage_files="$coverage_files,$frontend_lcov"
+            else
+              coverage_files="$frontend_lcov"
+            fi
+          fi
+
+          test_result_files=""
+          if [ -f "$backend_junit" ]; then
+            test_result_files="$backend_junit"
+          fi
+          if [ -f "$frontend_junit" ]; then
+            if [ -n "$test_result_files" ]; then
+              test_result_files="$test_result_files,$frontend_junit"
+            else
+              test_result_files="$frontend_junit"
+            fi
+          fi
+
+          echo "coverage_files=$coverage_files" >> "$GITHUB_OUTPUT"
+          echo "test_result_files=$test_result_files" >> "$GITHUB_OUTPUT"
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      # Coverage (BE+FE) in one upload; test_results stay separate (different report_type).
+      - name: Upload unit coverage to Codecov
+        if: ${{ !cancelled() && steps.unit_tests.outputs.coverage_files != '' }}
+        continue-on-error: true
+        uses: codecov/codecov-action@v7
+        with:
+          disable_search: true
+          fail_ci_if_error: false
+          files: ${{ steps.unit_tests.outputs.coverage_files }}
+          name: mainline-unit-${{ matrix.module }}-coverage
+          use_oidc: true
+          verbose: true
+
+      - name: Upload unit test results to Codecov
+        if: ${{ !cancelled() && steps.unit_tests.outputs.test_result_files != '' }}
+        continue-on-error: true
+        uses: codecov/codecov-action@v7
+        with:
+          disable_search: true
+          fail_ci_if_error: false
+          files: ${{ steps.unit_tests.outputs.test_result_files }}
+          name: mainline-unit-${{ matrix.module }}-tests
+          report_type: test_results
+          use_oidc: true
+          verbose: true
+
+      - name: Fail unit shard if tests failed
+        if: ${{ steps.unit_tests.outputs.exit_code != '0' }}
+        run: exit "${{ steps.unit_tests.outputs.exit_code }}"
 
   unit-all:
     name: main / unit-all

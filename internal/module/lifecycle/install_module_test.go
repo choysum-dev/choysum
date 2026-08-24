@@ -13,7 +13,6 @@ import (
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	statepkg "github.com/choysum-dev/choysum/pkg/state"
-
 )
 
 func TestPrepareInstallAliasesPrefetchInstallModules(t *testing.T) {

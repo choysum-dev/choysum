@@ -11,7 +11,6 @@ import (
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/parser"
 	"github.com/choysum-dev/choysum/pkg/meta"
-
 )
 
 func TestNilSessionGuards(t *testing.T) {

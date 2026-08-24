@@ -209,9 +209,9 @@ func dependencyClosure(tx *gorm.DB, ownerID string, idToName map[string]string) 
 }
 
 // normalizeRecordOwnership applies E12 defaults and ownership rules in place.
-// - Empty module → applying owner module; non-empty must equal owner (no foreign xml_id namespace).
-// - Empty application → owner's application; non-empty may target another app's model
-//   (cross-app seeding; xml_id stays under the applying module).
+//   - Empty module → applying owner module; non-empty must equal owner (no foreign xml_id namespace).
+//   - Empty application → owner's application; non-empty may target another app's model
+//     (cross-app seeding; xml_id stays under the applying module).
 func normalizeRecordOwnership(rules *moduleRules, filePath string, recordIndex int, rec *record) error {
 	if rules == nil || rec == nil {
 		return xfmt.Errorf("nil module rules or record")

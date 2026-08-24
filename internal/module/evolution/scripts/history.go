@@ -12,7 +12,6 @@ import (
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
-
 )
 
 type HistoryStore struct {
