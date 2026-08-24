@@ -5,6 +5,7 @@ package runner
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/choysum-dev/choysum/internal/import/adapter"
@@ -31,20 +32,21 @@ func Run(ctx context.Context, runtimeScope scope.Scope, spec importpkg.Spec) (im
 	}
 
 	report, err := executePlan(ctx, runtimeScope, spec, p, writer)
-	report = attachErrorArtifact(ctx, runtimeScope, spec, report)
+	if !spec.DryRun {
+		if artifactErr := attachErrorArtifact(ctx, runtimeScope, spec, &report); artifactErr != nil {
+			err = errors.Join(err, artifactErr)
+		}
+	}
 	return report, err
 }
 
-func attachErrorArtifact(ctx context.Context, runtimeScope scope.Scope, spec importpkg.Spec, report importpkg.Report) importpkg.Report {
+func attachErrorArtifact(ctx context.Context, runtimeScope scope.Scope, spec importpkg.Spec, report *importpkg.Report) error {
 	if len(report.Messages) == 0 {
-		return report
+		return nil
 	}
 	companyID := strings.TrimSpace(spec.Options.CompanyID)
 	if companyID == "" {
-		return report
+		return nil
 	}
-	if err := artifact.WriteErrorArtifact(ctx, runtimeScope, companyID, &report); err != nil {
-		return report
-	}
-	return report
+	return artifact.WriteErrorArtifact(ctx, runtimeScope, companyID, report)
 }

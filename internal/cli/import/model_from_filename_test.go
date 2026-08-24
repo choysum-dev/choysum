@@ -9,6 +9,18 @@ import (
 	importcli "github.com/choysum-dev/choysum/internal/cli/import"
 )
 
+func TestValidateCSVSourcePath(t *testing.T) {
+	if err := importcli.ValidateCSVSourcePath("base_Country.csv"); err != nil {
+		t.Fatalf("ValidateCSVSourcePath: %v", err)
+	}
+	if err := importcli.ValidateCSVSourcePath("input.txt"); err == nil {
+		t.Fatal("expected non-csv error")
+	}
+	if err := importcli.ValidateCSVSourcePath(" "); err == nil {
+		t.Fatal("expected empty path error")
+	}
+}
+
 func TestModelFromFilename(t *testing.T) {
 	tests := []struct {
 		path    string
@@ -18,6 +30,9 @@ func TestModelFromFilename(t *testing.T) {
 		{path: "./base.Country.csv", want: "base.Country"},
 		{path: "imports/base_Country.csv", want: "base.Country"},
 		{path: "partner-Partner.csv", want: "partner.Partner"},
+		{path: "", wantErr: true},
+		{path: ".", wantErr: true},
+		{path: "..", wantErr: true},
 		{path: "country_import_ok.csv", wantErr: true},
 		{path: "base.country.csv", wantErr: true},
 		{path: "readme.txt", wantErr: true},

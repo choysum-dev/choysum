@@ -5,6 +5,7 @@ package runner_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	stubadapter "github.com/choysum-dev/choysum/internal/import/adapter/stub"
@@ -99,7 +100,6 @@ func TestRun_BestEffort_FailsOnFirstUnit(t *testing.T) {
 		StubFailUnitIndex: 1,
 	})
 	spec.Policy = importpkg.PolicyBestEffort
-	spec.Options.CompanyID = "cmp-test-1"
 
 	report, err := runner.Run(context.Background(), runtimeScope, spec)
 	if err != nil {
@@ -123,7 +123,6 @@ func TestRun_StopKeep_FailsOnFirstUnit(t *testing.T) {
 		StubFailUnitIndex: 1,
 	})
 	spec.Policy = importpkg.PolicyStopKeep
-	spec.Options.CompanyID = "cmp-test-1"
 
 	report, err := runner.Run(context.Background(), runtimeScope, spec)
 	if err == nil {
@@ -155,6 +154,43 @@ func TestRun_BestEffort_AttachesErrorArtifact(t *testing.T) {
 	}
 	if report.ArtifactRef == "" {
 		t.Fatal("expected artifact_ref on report with messages")
+	}
+}
+
+func TestRun_DryRun_BestEffort_SkipsErrorArtifact(t *testing.T) {
+	runtimeScope := newArtifactRunnerScope(t)
+	spec := testRecordSpec(importpkg.Options{
+		StubUnitCount:     2,
+		StubFailUnitIndex: 1,
+	})
+	spec.Policy = importpkg.PolicyBestEffort
+	spec.DryRun = true
+	spec.Options.CompanyID = "cmp-artifact-runner"
+
+	report, err := runner.Run(context.Background(), runtimeScope, spec)
+	if err != nil {
+		t.Fatalf("Run dry-run best_effort: %v", err)
+	}
+	if report.ArtifactRef != "" {
+		t.Fatalf("artifact_ref = %q, want empty during dry-run", report.ArtifactRef)
+	}
+}
+
+func TestRun_BestEffort_ReturnsArtifactError(t *testing.T) {
+	runtimeScope := testRuntimeScope(t)
+	spec := testRecordSpec(importpkg.Options{
+		StubUnitCount:     2,
+		StubFailUnitIndex: 1,
+	})
+	spec.Policy = importpkg.PolicyBestEffort
+	spec.Options.CompanyID = "cmp-artifact-runner"
+
+	report, err := runner.Run(context.Background(), runtimeScope, spec)
+	if err == nil || !strings.Contains(err.Error(), "create stored content") {
+		t.Fatalf("Run() error = %v, want artifact persistence error", err)
+	}
+	if report.Stats.Error != 1 {
+		t.Fatalf("stats error = %d, want 1", report.Stats.Error)
 	}
 }
 

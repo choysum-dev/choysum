@@ -10,6 +10,7 @@ import (
 	"encoding/csv"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 	"time"
@@ -24,8 +25,15 @@ import (
 const errorCSVMimeType = "text/csv; charset=utf-8"
 
 var (
-	messagesToCSVBytes = defaultMessagesToCSVBytes
-	storeArtifact      = defaultStoreArtifact
+	messagesToCSVBytes     = defaultMessagesToCSVBytes
+	storeArtifact          = defaultStoreArtifact
+	newStoredContentDriver = documentdb.NewStoredContentDriver
+	putStoredContent       = func(driver pkgstorage.StoredContentDriver, ctx context.Context, input pkgstorage.PutPayloadInput) (pkgstorage.PayloadMutation, error) {
+		return driver.Put(ctx, input)
+	}
+	newStoredContentRepository = documentdb.NewStoredContentRepository
+	ioWriterForErrorCSV        = func(w io.Writer) io.Writer { return w }
+	writeCSVRecord             = func(w *csv.Writer, record []string) error { return w.Write(record) }
 )
 
 // WriteErrorArtifact persists report messages as a CSV document and sets report.ArtifactRef.
@@ -52,9 +60,9 @@ func WriteErrorArtifact(ctx context.Context, runtimeScope scope.Scope, companyID
 }
 
 func defaultMessagesToCSVBytes(messages []importpkg.Message) ([]byte, error) {
-	var buf bytes.Buffer
-	w := csv.NewWriter(&buf)
-	if err := w.Write([]string{"type", "row", "field", "code", "text", "record_ref"}); err != nil {
+	buf := &bytes.Buffer{}
+	w := csv.NewWriter(ioWriterForErrorCSV(buf))
+	if err := writeCSVRecord(w, []string{"type", "row", "field", "code", "text", "record_ref"}); err != nil {
 		return nil, err
 	}
 	for _, msg := range messages {
@@ -66,7 +74,7 @@ func defaultMessagesToCSVBytes(messages []importpkg.Message) ([]byte, error) {
 			msg.Text,
 			msg.RecordRef,
 		}
-		if err := w.Write(row); err != nil {
+		if err := writeCSVRecord(w, row); err != nil {
 			return nil, err
 		}
 	}
@@ -86,11 +94,11 @@ func defaultStoreArtifact(ctx context.Context, runtimeScope scope.Scope, company
 		return "", fmt.Errorf("database session is required")
 	}
 
-	driver, err := documentdb.NewStoredContentDriver(nil)
+	driver, err := newStoredContentDriver(nil)
 	if err != nil {
 		return "", fmt.Errorf("create stored content driver: %w", err)
 	}
-	mutation, err := driver.Put(ctx, pkgstorage.PutPayloadInput{
+	mutation, err := putStoredContent(driver, ctx, pkgstorage.PutPayloadInput{
 		CompanyID:      companyID,
 		ContentType:    contentType,
 		ChecksumSHA256: sha256Hex(body),
@@ -102,7 +110,7 @@ func defaultStoreArtifact(ctx context.Context, runtimeScope scope.Scope, company
 
 	storedContentID := xid.New().String()
 	now := time.Now().UTC()
-	repo := documentdb.NewStoredContentRepository(documentdb.RepositoryDeps{DB: session.DB})
+	repo := newStoredContentRepository(documentdb.RepositoryDeps{DB: session.DB})
 	if repo == nil {
 		return "", fmt.Errorf("stored content repository is unavailable")
 	}

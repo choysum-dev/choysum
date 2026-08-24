@@ -12,6 +12,19 @@ import (
 
 var importModelFilenamePattern = regexp.MustCompile(`^([a-z][a-z0-9]*)[._-]([A-Z][a-zA-Z0-9]*)$`)
 
+// ValidateCSVSourcePath ensures the import source path refers to a local .csv file.
+func ValidateCSVSourcePath(path string) error {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return fmt.Errorf("import source path is required")
+	}
+	base := filepath.Base(path)
+	if !strings.HasSuffix(strings.ToLower(base), ".csv") {
+		return fmt.Errorf("import source must be a .csv file")
+	}
+	return nil
+}
+
 // ModelFromFilename derives app.Model from names such as base.Country.csv, base_Country.csv, or base-Country.csv.
 func ModelFromFilename(path string) (string, error) {
 	path = strings.TrimSpace(path)
@@ -23,8 +36,8 @@ func ModelFromFilename(path string) (string, error) {
 	if base == "." || base == ".." || base == string(filepath.Separator) {
 		return "", fmt.Errorf("import source path is invalid")
 	}
-	if !strings.HasSuffix(strings.ToLower(base), ".csv") {
-		return "", fmt.Errorf("import source must be a .csv file")
+	if err := ValidateCSVSourcePath(path); err != nil {
+		return "", err
 	}
 
 	stem := strings.TrimSuffix(base, filepath.Ext(base))

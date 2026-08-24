@@ -16,6 +16,13 @@ import (
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
+var (
+	runImportRecord     = importcli.RunRecord
+	marshalImportReport = func(report importpkg.Report) ([]byte, error) {
+		return json.MarshalIndent(report, "", "  ")
+	}
+)
+
 func newImportCmd(envGetter func() scope.Scope) *cobra.Command {
 	var (
 		modelOverride     string
@@ -44,6 +51,10 @@ Output is a JSON ImportReport on stdout.`,
 			}
 
 			sourcePath := strings.TrimSpace(args[0])
+			if err := importcli.ValidateCSVSourcePath(sourcePath); err != nil {
+				return err
+			}
+
 			model := strings.TrimSpace(modelOverride)
 			if model == "" {
 				model, err = importcli.ModelFromFilename(sourcePath)
@@ -56,13 +67,16 @@ Output is a JSON ImportReport on stdout.`,
 			if err != nil {
 				return err
 			}
+			if dryRun && parsedPolicy != importpkg.PolicyAtomic {
+				return importpkg.ErrDryRunRequiresAtomic
+			}
 
 			ctx := cmd.Context()
 			if ctx == nil {
 				ctx = context.Background()
 			}
 
-			report, err := importcli.RunRecord(ctx, runtimeScope, importcli.RecordOptions{
+			report, runErr := runImportRecord(ctx, runtimeScope, importcli.RecordOptions{
 				Model:             model,
 				SourcePath:        sourcePath,
 				Format:            strings.TrimSpace(format),
@@ -71,16 +85,16 @@ Output is a JSON ImportReport on stdout.`,
 				StubUnitCount:     stubUnitCount,
 				StubFailUnitIndex: stubFailUnitIndex,
 			})
-			if err != nil {
-				return err
-			}
 
-			encoded, err := json.MarshalIndent(report, "", "  ")
+			encoded, err := marshalImportReport(report)
 			if err != nil {
 				return xfmt.Errorf("marshal import report: %w", err)
 			}
 			if _, err := fmt.Fprintln(cmd.OutOrStdout(), string(encoded)); err != nil {
 				return err
+			}
+			if runErr != nil {
+				return runErr
 			}
 			if report.Stats.Error > 0 && parsedPolicy != importpkg.PolicyBestEffort {
 				return xfmt.Errorf("import finished with %d error(s)", report.Stats.Error)
