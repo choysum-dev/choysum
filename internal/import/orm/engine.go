@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-package ormbridge
+package orm
 
 import (
 	"context"
@@ -21,7 +21,7 @@ type EngineCaller struct {
 // Call implements Caller.
 func (c EngineCaller) Call(ctx context.Context, req CallRequest) (any, error) {
 	if c.Engine == nil || c.Engine.Ctx == nil {
-		return nil, fmt.Errorf("ormbridge: quickjs engine is required")
+		return nil, fmt.Errorf("orm: quickjs engine is required")
 	}
 	// Propagate the runner transaction context so $choysum.db / ORM see the same tx
 	// as RecordWriter (Nested/RequiresNew), not only the outer Execute ExecContext.
@@ -46,29 +46,29 @@ func invokeRPC(qctx *quickjs.Context, req *jsengine.JsRequest) (any, error) {
 	fn := qctx.Eval("$choysum.__rpc__")
 	defer fn.Free()
 	if fn.IsException() {
-		return nil, fmt.Errorf("ormbridge: evaluate __rpc__: %w", qctx.Exception())
+		return nil, fmt.Errorf("orm: evaluate __rpc__: %w", qctx.Exception())
 	}
 	if !fn.IsFunction() {
-		return nil, fmt.Errorf("ormbridge: $choysum.__rpc__ is not a function")
+		return nil, fmt.Errorf("orm: $choysum.__rpc__ is not a function")
 	}
 	jsReq, err := qctx.Marshal(req)
 	if err != nil {
-		return nil, fmt.Errorf("ormbridge: marshal request: %w", err)
+		return nil, fmt.Errorf("orm: marshal request: %w", err)
 	}
 	defer jsReq.Free()
 
 	jsResp := fn.Execute(qctx.Null(), jsReq).Await()
 	defer jsResp.Free()
 	if jsResp.IsException() {
-		return nil, fmt.Errorf("ormbridge: call %s: %w", req.Service, qctx.Exception())
+		return nil, fmt.Errorf("orm: call %s: %w", req.Service, qctx.Exception())
 	}
 	if jsResp.IsError() {
-		return nil, fmt.Errorf("ormbridge: call %s: %v", req.Service, jsResp.ToError())
+		return nil, fmt.Errorf("orm: call %s: %v", req.Service, jsResp.ToError())
 	}
 
 	var res jsengine.JsResponse
 	if err := qctx.Unmarshal(jsResp, &res); err != nil {
-		return nil, fmt.Errorf("ormbridge: unmarshal response: %w", err)
+		return nil, fmt.Errorf("orm: unmarshal response: %w", err)
 	}
 	return res.Result, nil
 }
@@ -81,7 +81,7 @@ type ExecutorCaller struct {
 // Call implements Caller.
 func (c ExecutorCaller) Call(ctx context.Context, req CallRequest) (any, error) {
 	if c.Engine == nil {
-		return nil, fmt.Errorf("ormbridge: js engine is required")
+		return nil, fmt.Errorf("orm: js engine is required")
 	}
 	service, err := ServiceName(req.Model, req.Method)
 	if err != nil {

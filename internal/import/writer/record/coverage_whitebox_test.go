@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/defaultscope"
-	"github.com/choysum-dev/choysum/internal/import/ormbridge"
+	"github.com/choysum-dev/choysum/internal/import/orm"
 	recordplan "github.com/choysum-dev/choysum/internal/import/plan/record"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
@@ -196,7 +196,7 @@ func TestAssertExternalIDWritable_DBErrors(t *testing.T) {
 func TestUpsertCountry_ModelNotFound(t *testing.T) {
 	db := openWBDB(t)
 	scope := &wbScope{db: db}
-	ctx := ormbridge.ContextWithCaller(context.Background(), &wbCaller{})
+	ctx := orm.ContextWithCaller(context.Background(), &wbCaller{})
 	if err := UpsertCountry(ctx, scope, recordplan.Unit{Index: 1, Model: countryModelFull, Values: map[string]string{"Code": "X"}}); err == nil {
 		t.Fatal("expected model not found")
 	}
@@ -209,7 +209,7 @@ type wbCaller struct {
 	errOn  map[string]error
 }
 
-func (c *wbCaller) Call(_ context.Context, req ormbridge.CallRequest) (any, error) {
+func (c *wbCaller) Call(_ context.Context, req orm.CallRequest) (any, error) {
 	key := req.Model + "." + req.Method
 	if c.errOn != nil {
 		if e, ok := c.errOn[key]; ok {

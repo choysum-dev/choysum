@@ -1,38 +1,38 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-package ormbridge_test
+package orm_test
 
 import (
 	"context"
 	"strings"
 	"testing"
 
-	"github.com/choysum-dev/choysum/internal/import/ormbridge"
+	"github.com/choysum-dev/choysum/internal/import/orm"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsengine/quickjsengine"
 )
 
 func TestServiceName(t *testing.T) {
 	t.Parallel()
-	got, err := ormbridge.ServiceName("base.Country", "Create")
+	got, err := orm.ServiceName("base.Country", "Create")
 	if err != nil || got != "base.Country.Create" {
 		t.Fatalf("ServiceName = %q %v", got, err)
 	}
-	if _, err := ormbridge.ServiceName("Country", "Create"); err == nil {
+	if _, err := orm.ServiceName("Country", "Create"); err == nil {
 		t.Fatal("expected error for short model name")
 	}
-	if _, err := ormbridge.ServiceName("", "Create"); err == nil {
+	if _, err := orm.ServiceName("", "Create"); err == nil {
 		t.Fatal("expected error for empty model")
 	}
-	if _, err := ormbridge.ServiceName("base.Country", "  "); err == nil {
+	if _, err := orm.ServiceName("base.Country", "  "); err == nil {
 		t.Fatal("expected error for empty method")
 	}
 }
 
 func TestMergeImportContext_ReservedImportFile(t *testing.T) {
 	t.Parallel()
-	got := ormbridge.MergeImportContext(map[string]any{
+	got := orm.MergeImportContext(map[string]any{
 		"lang":        "zh_CN",
 		"import_file": false,
 		"":            "skip",
@@ -52,22 +52,22 @@ func TestMergeImportContext_ReservedImportFile(t *testing.T) {
 func TestCallerContextRoundTrip(t *testing.T) {
 	t.Parallel()
 	caller := stubCaller{}
-	ctx := ormbridge.ContextWithCaller(nil, caller)
-	got, ok := ormbridge.CallerFromContext(ctx)
+	ctx := orm.ContextWithCaller(nil, caller)
+	got, ok := orm.CallerFromContext(ctx)
 	if !ok || got != caller {
 		t.Fatalf("CallerFromContext = %#v %v", got, ok)
 	}
-	if _, ok := ormbridge.CallerFromContext(nil); ok {
+	if _, ok := orm.CallerFromContext(nil); ok {
 		t.Fatal("expected false for nil context")
 	}
-	if _, ok := ormbridge.CallerFromContext(context.Background()); ok {
+	if _, ok := orm.CallerFromContext(context.Background()); ok {
 		t.Fatal("expected false when caller missing")
 	}
 }
 
 func TestNewRequestID(t *testing.T) {
 	t.Parallel()
-	id := ormbridge.NewRequestID()
+	id := orm.NewRequestID()
 	if !strings.HasPrefix(id, "import-orm-") || len(id) <= len("import-orm-") {
 		t.Fatalf("NewRequestID = %q", id)
 	}
@@ -81,10 +81,10 @@ func TestRegisterAndOrmCall(t *testing.T) {
 	engine := engineIface.(*quickjsengine.QuickjsEngine)
 	t.Cleanup(func() { _ = engine.Close() })
 
-	if err := ormbridge.Register(engine); err != nil {
+	if err := orm.Register(engine); err != nil {
 		t.Fatalf("Register: %v", err)
 	}
-	if err := ormbridge.Register(nil); err == nil {
+	if err := orm.Register(nil); err == nil {
 		t.Fatal("expected Register(nil) error")
 	}
 
@@ -128,7 +128,7 @@ func TestRegister_CreatesChoysumWhenMissing(t *testing.T) {
 
 	cleared := engine.Ctx.Eval(`delete globalThis.$choysum; true`)
 	defer cleared.Free()
-	if err := ormbridge.Register(engine); err != nil {
+	if err := orm.Register(engine); err != nil {
 		t.Fatalf("Register: %v", err)
 	}
 	got := engine.Ctx.Eval(`typeof $choysum.orm.call === "function"`)
@@ -145,7 +145,7 @@ func TestPerformOrmCall_ValidationErrors(t *testing.T) {
 	}
 	engine := engineIface.(*quickjsengine.QuickjsEngine)
 	t.Cleanup(func() { _ = engine.Close() })
-	if err := ormbridge.Register(engine); err != nil {
+	if err := orm.Register(engine); err != nil {
 		t.Fatalf("Register: %v", err)
 	}
 
@@ -182,11 +182,11 @@ func TestEngineCaller_CallPropagatesExecContext(t *testing.T) {
 	`)
 	defer stub.Free()
 
-	caller := ormbridge.EngineCaller{Engine: engine}
+	caller := orm.EngineCaller{Engine: engine}
 	restoreOuter := engine.SwapExecContext(context.WithValue(context.Background(), markerKey{}, "outer"))
 	defer restoreOuter()
 
-	got, err := caller.Call(marker, ormbridge.CallRequest{
+	got, err := caller.Call(marker, orm.CallRequest{
 		Model:  "base.Country",
 		Method: "Search",
 		Args:   []any{},
@@ -204,7 +204,7 @@ func TestEngineCaller_CallPropagatesExecContext(t *testing.T) {
 }
 
 func TestEngineCaller_Errors(t *testing.T) {
-	if _, err := (ormbridge.EngineCaller{}).Call(context.Background(), ormbridge.CallRequest{Model: "base.Country", Method: "Create"}); err == nil {
+	if _, err := (orm.EngineCaller{}).Call(context.Background(), orm.CallRequest{Model: "base.Country", Method: "Create"}); err == nil {
 		t.Fatal("expected nil engine error")
 	}
 
@@ -215,14 +215,14 @@ func TestEngineCaller_Errors(t *testing.T) {
 	engine := engineIface.(*quickjsengine.QuickjsEngine)
 	t.Cleanup(func() { _ = engine.Close() })
 
-	caller := ormbridge.EngineCaller{Engine: engine}
-	if _, err := caller.Call(context.Background(), ormbridge.CallRequest{Model: "Country", Method: "Create"}); err == nil {
+	caller := orm.EngineCaller{Engine: engine}
+	if _, err := caller.Call(context.Background(), orm.CallRequest{Model: "Country", Method: "Create"}); err == nil {
 		t.Fatal("expected ServiceName error")
 	}
 
 	clear := engine.Ctx.Eval(`globalThis.$choysum = {}; true`)
 	defer clear.Free()
-	if _, err := caller.Call(context.Background(), ormbridge.CallRequest{Model: "base.Country", Method: "Create"}); err == nil {
+	if _, err := caller.Call(context.Background(), orm.CallRequest{Model: "base.Country", Method: "Create"}); err == nil {
 		t.Fatal("expected missing __rpc__ error")
 	}
 
@@ -231,15 +231,15 @@ func TestEngineCaller_Errors(t *testing.T) {
 		true
 	`)
 	defer errStub.Free()
-	if _, err := caller.Call(context.Background(), ormbridge.CallRequest{Model: "base.Country", Method: "Create"}); err == nil {
+	if _, err := caller.Call(context.Background(), orm.CallRequest{Model: "base.Country", Method: "Create"}); err == nil {
 		t.Fatal("expected boom error")
 	}
 }
 
 func TestExecutorCaller(t *testing.T) {
 	stub := &stubJsEngine{resp: &jsengine.JsResponse{Result: map[string]any{"Id": "1"}}}
-	caller := ormbridge.ExecutorCaller{Engine: stub}
-	got, err := caller.Call(context.WithValue(context.Background(), markerKey{}, "x"), ormbridge.CallRequest{
+	caller := orm.ExecutorCaller{Engine: stub}
+	got, err := caller.Call(context.WithValue(context.Background(), markerKey{}, "x"), orm.CallRequest{
 		Model:   "base.Country",
 		Method:  "Create",
 		Args:    []any{map[string]any{"Code": "A"}},
@@ -258,19 +258,19 @@ func TestExecutorCaller(t *testing.T) {
 		t.Fatalf("result = %#v", got)
 	}
 
-	if _, err := (ormbridge.ExecutorCaller{}).Call(context.Background(), ormbridge.CallRequest{Model: "base.Country", Method: "Create"}); err == nil {
+	if _, err := (orm.ExecutorCaller{}).Call(context.Background(), orm.CallRequest{Model: "base.Country", Method: "Create"}); err == nil {
 		t.Fatal("expected nil engine error")
 	}
-	if _, err := (ormbridge.ExecutorCaller{Engine: stub}).Call(context.Background(), ormbridge.CallRequest{Model: "Country", Method: "Create"}); err == nil {
+	if _, err := (orm.ExecutorCaller{Engine: stub}).Call(context.Background(), orm.CallRequest{Model: "Country", Method: "Create"}); err == nil {
 		t.Fatal("expected ServiceName error")
 	}
 	stub.err = context.Canceled
-	if _, err := (ormbridge.ExecutorCaller{Engine: stub}).Call(context.Background(), ormbridge.CallRequest{Model: "base.Country", Method: "Create"}); err == nil {
+	if _, err := (orm.ExecutorCaller{Engine: stub}).Call(context.Background(), orm.CallRequest{Model: "base.Country", Method: "Create"}); err == nil {
 		t.Fatal("expected execute error")
 	}
 	stub.err = nil
 	stub.resp = nil
-	got, err = (ormbridge.ExecutorCaller{Engine: stub}).Call(context.Background(), ormbridge.CallRequest{Model: "base.Country", Method: "Create"})
+	got, err = (orm.ExecutorCaller{Engine: stub}).Call(context.Background(), orm.CallRequest{Model: "base.Country", Method: "Create"})
 	if err != nil || got != nil {
 		t.Fatalf("nil resp: got %#v err %v", got, err)
 	}
@@ -280,7 +280,7 @@ type markerKey struct{}
 
 type stubCaller struct{}
 
-func (stubCaller) Call(context.Context, ormbridge.CallRequest) (any, error) {
+func (stubCaller) Call(context.Context, orm.CallRequest) (any, error) {
 	return nil, nil
 }
 

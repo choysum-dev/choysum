@@ -18,7 +18,7 @@ func init() {
 	registry.RegisterWriter(importpkg.ProfileRecord, Writer{})
 }
 
-// Writer persists record import units through the TS ORM write path (ormbridge).
+// Writer persists record import units through the TS ORM write path (internal/import/orm).
 type Writer struct{}
 
 // Write implements registry.Writer.

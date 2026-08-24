@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/choysum-dev/choysum/internal/import/ormbridge"
+	"github.com/choysum-dev/choysum/internal/import/orm"
 	"github.com/choysum-dev/choysum/internal/import/plan"
 	recordplan "github.com/choysum-dev/choysum/internal/import/plan/record"
 	recordwriter "github.com/choysum-dev/choysum/internal/import/writer/record"
@@ -58,7 +58,7 @@ func TestUpsertCountry_ErrorPaths(t *testing.T) {
 		t.Fatal("expected missing orm caller")
 	}
 
-	ctx := ormbridge.ContextWithCaller(context.Background(), &scriptedCaller{})
+	ctx := orm.ContextWithCaller(context.Background(), &scriptedCaller{})
 	if err := recordwriter.UpsertCountry(ctx, nil, unit); err == nil {
 		t.Fatal("expected missing scope")
 	}
@@ -90,7 +90,7 @@ func TestUpsertCountry_ErrorPaths(t *testing.T) {
 		"base.Country.Search": []any{},
 		"base.Country.Create": map[string]any{"Id": "n1"},
 	}}
-	ctx = ormbridge.ContextWithCaller(context.Background(), caller)
+	ctx = orm.ContextWithCaller(context.Background(), caller)
 	if err := recordwriter.UpsertCountry(ctx, runtimeScope, unit); err != nil {
 		t.Fatalf("empty field path skip: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestUpsertCountry_ErrorPaths(t *testing.T) {
 
 func TestWriter_UnsupportedModelUnit(t *testing.T) {
 	runtimeScope := newCountryImportScope(t)
-	ctx := ormbridge.ContextWithCaller(context.Background(), &scriptedCaller{})
+	ctx := orm.ContextWithCaller(context.Background(), &scriptedCaller{})
 	err := recordwriter.Writer{}.Write(ctx, runtimeScope, []plan.Unit{recordplan.Unit{
 		Index:  1,
 		Model:  "base.Partner",
@@ -130,7 +130,7 @@ type scriptedCaller struct {
 	calls     []string
 }
 
-func (c *scriptedCaller) Call(ctx context.Context, req ormbridge.CallRequest) (any, error) {
+func (c *scriptedCaller) Call(ctx context.Context, req orm.CallRequest) (any, error) {
 	key := req.Model + "." + req.Method
 	c.calls = append(c.calls, key)
 	if c.fail != nil {

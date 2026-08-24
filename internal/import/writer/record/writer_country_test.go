@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/choysum-dev/choysum/internal/defaultscope"
-	"github.com/choysum-dev/choysum/internal/import/ormbridge"
+	"github.com/choysum-dev/choysum/internal/import/orm"
 	"github.com/choysum-dev/choysum/internal/import/runner"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
@@ -174,7 +174,7 @@ func TestCountryImport_CodeUpsert(t *testing.T) {
 }
 
 func withTestORMCaller(runtimeScope scope.Scope) context.Context {
-	return ormbridge.ContextWithCaller(context.Background(), &gormORMCaller{scope: runtimeScope})
+	return orm.ContextWithCaller(context.Background(), &gormORMCaller{scope: runtimeScope})
 }
 
 // gormORMCaller is a Go-unit stand-in for TS ORM Create/UpdateById/Search.
@@ -182,7 +182,7 @@ type gormORMCaller struct {
 	scope scope.Scope
 }
 
-func (c *gormORMCaller) Call(ctx context.Context, req ormbridge.CallRequest) (any, error) {
+func (c *gormORMCaller) Call(ctx context.Context, req orm.CallRequest) (any, error) {
 	db := c.dbFromContext(ctx)
 	switch req.Model + "." + req.Method {
 	case "base.Country.Create":

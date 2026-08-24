@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-package ormbridge
+package orm
 
 import (
 	"encoding/json"
@@ -15,7 +15,7 @@ import (
 // Register mounts $choysum.orm.call on the engine (same slot as import.run).
 func Register(jse *quickjsengine.QuickjsEngine) error {
 	if jse == nil || jse.Ctx == nil {
-		return fmt.Errorf("ormbridge: engine is required")
+		return fmt.Errorf("orm: engine is required")
 	}
 	globalsObj := jse.Ctx.Globals()
 	choysumObj := globalsObj.Get("$choysum")

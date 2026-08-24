@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/buke/quickjs-go"
-	"github.com/choysum-dev/choysum/internal/import/ormbridge"
+	"github.com/choysum-dev/choysum/internal/import/orm"
 	"github.com/choysum-dev/choysum/internal/import/runner"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
@@ -23,7 +23,7 @@ import (
 func WithImportProvider(scopeProvider jsengine.ScopeProvider) jsengine.JsEngineOption {
 	return func(jsEngine jsengine.JsEngine) error {
 		jse := jsEngine.(*quickjsengine.QuickjsEngine)
-		if err := ormbridge.Register(jse); err != nil {
+		if err := orm.Register(jse); err != nil {
 			return err
 		}
 		globalsObj := jse.Ctx.Globals()
@@ -72,7 +72,7 @@ func performImportRun(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, sc
 	if err != nil {
 		return ctx.NewError(fmt.Errorf("resolve import source path: %w", err))
 	}
-	runCtx := ormbridge.ContextWithCaller(execCtx, ormbridge.EngineCaller{Engine: jse})
+	runCtx := orm.ContextWithCaller(execCtx, orm.EngineCaller{Engine: jse})
 	report, err := runner.Run(runCtx, runtimeScope, spec)
 	if err != nil {
 		return ctx.NewError(err)

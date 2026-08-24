@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/choysum-dev/choysum/internal/import/ormbridge"
+	"github.com/choysum-dev/choysum/internal/import/orm"
 	recordplan "github.com/choysum-dev/choysum/internal/import/plan/record"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -23,7 +23,7 @@ const (
 
 // UpsertCountry writes one CSV row through TS ORM Create / UpdateById.
 func UpsertCountry(ctx context.Context, txScope scope.Scope, unit recordplan.Unit) error {
-	caller, ok := ormbridge.CallerFromContext(ctx)
+	caller, ok := orm.CallerFromContext(ctx)
 	if !ok {
 		return importpkg.Errorf(importpkg.CodeInvalidFormat, "orm caller is required for record writer")
 	}
@@ -75,7 +75,7 @@ func parseUnitExternalID(unit recordplan.Unit) (MetaModelDataKey, bool, error) {
 	return key, true, nil
 }
 
-func buildCountryVals(ctx context.Context, caller ormbridge.Caller, unit recordplan.Unit) (map[string]any, error) {
+func buildCountryVals(ctx context.Context, caller orm.Caller, unit recordplan.Unit) (map[string]any, error) {
 	out := make(map[string]any, len(unit.Values))
 	for fieldPath, raw := range unit.Values {
 		fieldPath = strings.TrimSpace(fieldPath)
@@ -139,7 +139,7 @@ func parseBool(raw string) (bool, bool) {
 
 func upsertCountryByExternalID(
 	ctx context.Context,
-	caller ormbridge.Caller,
+	caller orm.Caller,
 	db *gorm.DB,
 	model *meta.Model,
 	unit recordplan.Unit,
@@ -156,7 +156,7 @@ func upsertCountryByExternalID(
 			return err
 		}
 		if exists {
-			if _, err := caller.Call(ctx, ormbridge.CallRequest{
+			if _, err := caller.Call(ctx, orm.CallRequest{
 				Model:  countryModelFull,
 				Method: "UpdateById",
 				Args:   []any{mapping.ResID, vals, []string{"Id", "Code"}},
@@ -168,7 +168,7 @@ func upsertCountryByExternalID(
 		// Mapping points at a deleted row — recreate and remap.
 	}
 
-	created, err := caller.Call(ctx, ormbridge.CallRequest{
+	created, err := caller.Call(ctx, orm.CallRequest{
 		Model:  countryModelFull,
 		Method: "Create",
 		Args:   []any{vals, []string{"Id", "Code"}},
@@ -183,12 +183,12 @@ func upsertCountryByExternalID(
 	return upsertExternalIDMapping(db, key, model, resID)
 }
 
-func countryExistsByID(ctx context.Context, caller ormbridge.Caller, unit recordplan.Unit, id string) (bool, error) {
+func countryExistsByID(ctx context.Context, caller orm.Caller, unit recordplan.Unit, id string) (bool, error) {
 	id = strings.TrimSpace(id)
 	if id == "" {
 		return false, nil
 	}
-	result, err := caller.Call(ctx, ormbridge.CallRequest{
+	result, err := caller.Call(ctx, orm.CallRequest{
 		Model:  countryModelFull,
 		Method: "Search",
 		Args: []any{
@@ -202,7 +202,7 @@ func countryExistsByID(ctx context.Context, caller ormbridge.Caller, unit record
 	return firstRecordID(result) != "", nil
 }
 
-func upsertCountryByCode(ctx context.Context, caller ormbridge.Caller, unit recordplan.Unit, vals map[string]any) error {
+func upsertCountryByCode(ctx context.Context, caller orm.Caller, unit recordplan.Unit, vals map[string]any) error {
 	code, _ := vals["Code"].(string)
 	if strings.TrimSpace(code) == "" {
 		return rowError(unit, "Code", importpkg.CodeEmptyRequired, "Code is required when id column is absent")
@@ -213,7 +213,7 @@ func upsertCountryByCode(ctx context.Context, caller ormbridge.Caller, unit reco
 		return err
 	}
 	if existingID != "" {
-		if _, err := caller.Call(ctx, ormbridge.CallRequest{
+		if _, err := caller.Call(ctx, orm.CallRequest{
 			Model:  countryModelFull,
 			Method: "UpdateById",
 			Args:   []any{existingID, vals, []string{"Id", "Code"}},
@@ -223,7 +223,7 @@ func upsertCountryByCode(ctx context.Context, caller ormbridge.Caller, unit reco
 		return nil
 	}
 
-	if _, err := caller.Call(ctx, ormbridge.CallRequest{
+	if _, err := caller.Call(ctx, orm.CallRequest{
 		Model:  countryModelFull,
 		Method: "Create",
 		Args:   []any{vals, []string{"Id", "Code"}},
@@ -233,8 +233,8 @@ func upsertCountryByCode(ctx context.Context, caller ormbridge.Caller, unit reco
 	return nil
 }
 
-func searchCountryIDByCode(ctx context.Context, caller ormbridge.Caller, unit recordplan.Unit, code string) (string, error) {
-	result, err := caller.Call(ctx, ormbridge.CallRequest{
+func searchCountryIDByCode(ctx context.Context, caller orm.Caller, unit recordplan.Unit, code string) (string, error) {
+	result, err := caller.Call(ctx, orm.CallRequest{
 		Model:  countryModelFull,
 		Method: "Search",
 		Args: []any{

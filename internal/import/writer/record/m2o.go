@@ -8,13 +8,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/choysum-dev/choysum/internal/import/ormbridge"
+	"github.com/choysum-dev/choysum/internal/import/orm"
 	recordplan "github.com/choysum-dev/choysum/internal/import/plan/record"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
 )
 
 // ResolveM2O resolves a Many2One CSV field path such as DefaultCurrencyId/Code via ORM Search.
-func ResolveM2O(ctx context.Context, caller ormbridge.Caller, unit recordplan.Unit, fieldPath, raw string) (string, error) {
+func ResolveM2O(ctx context.Context, caller orm.Caller, unit recordplan.Unit, fieldPath, raw string) (string, error) {
 	parts := strings.Split(fieldPath, "/")
 	if len(parts) != 2 {
 		return "", rowError(unit, fieldPath, importpkg.CodeInvalidFormat, "invalid M2O field path")
@@ -37,7 +37,7 @@ func ResolveM2O(ctx context.Context, caller ormbridge.Caller, unit recordplan.Un
 		return "", rowError(unit, fieldPath, importpkg.CodeInvalidFormat, err.Error())
 	}
 
-	result, err := caller.Call(ctx, ormbridge.CallRequest{
+	result, err := caller.Call(ctx, orm.CallRequest{
 		Model:  targetModel,
 		Method: "Search",
 		Args: []any{
