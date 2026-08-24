@@ -383,4 +383,144 @@ describe('PartnerImportWizard', () => {
     expect((wrapper.vm as any).importError).toBe('commit failed');
     expect(runImport).toHaveBeenCalledWith(expect.objectContaining({ companyId: '' }));
   });
+
+  it('covers nullable preview fields and explicit stats branches', async () => {
+    parseHeaders.mockResolvedValue({ headers: null });
+    previewImport.mockResolvedValue({});
+    const wrapper = await mountWizard();
+    (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
+    await (wrapper.vm as any).uploadAndPreview();
+    await flushPromises();
+    expect((wrapper.vm as any).headers).toEqual([]);
+    expect((wrapper.vm as any).previewReport).toBeNull();
+    expect((wrapper.vm as any).previewMessages).toEqual([]);
+    expect(wrapper.find('.partner-import-hint').exists()).toBe(false);
+
+    (wrapper.vm as any).previewReport = { stats: { total: 4, ok: 3, error: 1 } };
+    expect((wrapper.vm as any).previewSummary).toBe('Preview: 3 ok, 1 errors, 4 total');
+    expect((wrapper.vm as any).previewAlertType).toBe('warning');
+  });
+
+  it('uses nullish fallbacks for missing preview and import stats fields', async () => {
+    previewImport.mockResolvedValue({ report: { stats: { ok: 2, total: 2 }, messages: [] } });
+    const wrapper = await mountWizard();
+    (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
+    await (wrapper.vm as any).uploadAndPreview();
+    await flushPromises();
+    expect((wrapper.vm as any).previewAlertType).toBe('success');
+    expect((wrapper.vm as any).previewSummary).toBe('Preview: 2 ok, 0 errors, 2 total');
+
+    runImport.mockResolvedValue({ report: { stats: { ok: 1 } } });
+    (wrapper.vm as any).sourceRef = 'att-src-1';
+    (wrapper.vm as any).previewReport = { stats: { error: 0 } };
+    await (wrapper.vm as any).commitImport();
+    await flushPromises();
+    expect((wrapper.vm as any).importDone).toBe(true);
+  });
+
+  it('passes empty company id to preview when prop is omitted', async () => {
+    const { default: PartnerImportWizard } = await import('./PartnerImportWizard.vue');
+    const wrapper = mount(PartnerImportWizard, {
+      props: { modelValue: true },
+      global: {
+        plugins: [i18n],
+        stubs: {
+          ElDialog: {
+            props: ['modelValue'],
+            emits: ['update:modelValue', 'close'],
+            template: '<div class="dialog-stub"><slot /><slot name="footer" /></div>',
+          },
+          ElAlert: {
+            template: '<div class="el-alert-stub"><slot name="title" /></div>',
+          },
+        },
+      },
+    });
+    (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
+    await (wrapper.vm as any).uploadAndPreview();
+    await flushPromises();
+    expect(previewImport).toHaveBeenCalledWith(
+      expect.objectContaining({ companyId: '' }),
+      expect.any(AbortSignal),
+    );
+  });
+
+  it('passes provided company id to previewImport', async () => {
+    const wrapper = await mountWizard();
+    (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
+    await (wrapper.vm as any).uploadAndPreview();
+    await flushPromises();
+    expect(previewImport).toHaveBeenCalledWith(
+      expect.objectContaining({ companyId: 'cmp-1', sourceRef: 'att-src-1' }),
+      expect.any(AbortSignal),
+    );
+  });
+
+  it('ignores stale preview response after headers resolve', async () => {
+    let resolvePreview: (value: { report: { stats: { ok: number; error: number } } }) => void = () => {};
+    parseHeaders.mockResolvedValue({ headers: ['Name'] });
+    previewImport.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          resolvePreview = resolve;
+        }),
+    );
+    const wrapper = await mountWizard();
+    (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
+    const pending = (wrapper.vm as any).uploadAndPreview();
+    await flushPromises();
+    (wrapper.vm as any).resetState();
+    resolvePreview({ report: { stats: { ok: 1, error: 0 } } });
+    await pending;
+    await flushPromises();
+    expect((wrapper.vm as any).step).toBe(0);
+    expect((wrapper.vm as any).previewReport).toBeNull();
+  });
+
+  it('ignores stale session errors during upload and commit catch paths', async () => {
+    uploadImportCsv.mockRejectedValue(new Error('late upload failure'));
+    const wrapper = await mountWizard();
+    (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
+    const pendingUpload = (wrapper.vm as any).uploadAndPreview();
+    (wrapper.vm as any).resetState();
+    await pendingUpload;
+    await flushPromises();
+    expect((wrapper.vm as any).importError).toBe('');
+
+    let rejectCommit: (reason: string) => void = () => {};
+    runImport.mockImplementation(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectCommit = reject;
+        }),
+    );
+    (wrapper.vm as any).sourceRef = 'att-src-1';
+    (wrapper.vm as any).previewReport = { stats: { error: 0 } };
+    const pendingCommit = (wrapper.vm as any).commitImport();
+    (wrapper.vm as any).resetState();
+    rejectCommit('late commit failure');
+    await pendingCommit;
+    await flushPromises();
+    expect((wrapper.vm as any).importError).toBe('');
+  });
+
+  it('keeps state when visibility stays open', async () => {
+    const wrapper = await mountWizard(false);
+    (wrapper.vm as any).step = 1;
+    (wrapper.vm as any).headers = ['Name'];
+    await wrapper.setProps({ modelValue: true });
+    await flushPromises();
+    expect((wrapper.vm as any).step).toBe(1);
+    expect((wrapper.vm as any).headers).toEqual(['Name']);
+  });
+
+  it('renders done footer button after successful import', async () => {
+    const wrapper = await mountWizard();
+    (wrapper.vm as any).step = 2;
+    (wrapper.vm as any).importDone = true;
+    await flushPromises();
+    expect((wrapper.vm as any).importDone).toBe(true);
+    await (wrapper.vm as any).finish();
+    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([false]);
+  });
 });

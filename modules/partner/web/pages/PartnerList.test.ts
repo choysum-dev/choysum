@@ -90,4 +90,18 @@ describe('PartnerList page', () => {
     const wizard = wrapper.findComponent({ name: 'PartnerImportWizardStub' });
     expect(wizard.props('companyId')).toBe('cmp-fallback');
   });
+
+  it('uses empty company id when request context has no company', async () => {
+    const ctx = await import('@/core/rpc/context');
+    (ctx.getCurrentRequestContext as any).mockReturnValue({});
+    const PartnerList = (await import('./PartnerList.vue')).default;
+    const wrapper = mount(PartnerList, {
+      global: {
+        plugins: [i18n],
+        stubs: { OPage: { template: '<div><slot /></div>' } },
+      },
+    });
+    const wizard = wrapper.findComponent({ name: 'PartnerImportWizardStub' });
+    expect(wizard.props('companyId')).toBe('');
+  });
 });
