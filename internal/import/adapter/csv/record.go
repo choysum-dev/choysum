@@ -71,9 +71,6 @@ func BuildRecordPlan(model string, raw []byte, columnMapping map[string]string) 
 			if !ok {
 				continue
 			}
-			if colIdx >= len(row) {
-				continue
-			}
 			cell := strings.TrimSpace(row[colIdx])
 			if fieldPath == externalIDColumn {
 				externalID = cell
@@ -129,13 +126,4 @@ func mapHeaders(headers []string, columnMapping map[string]string) (map[string]s
 		out[header] = fieldPath
 	}
 	return out, nil
-}
-
-func headerIndex(headers []string, want string) int {
-	for i, header := range headers {
-		if header == want {
-			return i
-		}
-	}
-	return -1
 }

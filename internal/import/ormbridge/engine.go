@@ -20,9 +20,14 @@ type EngineCaller struct {
 
 // Call implements Caller.
 func (c EngineCaller) Call(ctx context.Context, req CallRequest) (any, error) {
-	_ = ctx
 	if c.Engine == nil || c.Engine.Ctx == nil {
 		return nil, fmt.Errorf("ormbridge: quickjs engine is required")
+	}
+	// Propagate the runner transaction context so $choysum.db / ORM see the same tx
+	// as RecordWriter (Nested/RequiresNew), not only the outer Execute ExecContext.
+	if ctx != nil {
+		restore := c.Engine.SwapExecContext(ctx)
+		defer restore()
 	}
 	service, err := ServiceName(req.Model, req.Method)
 	if err != nil {

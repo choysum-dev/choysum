@@ -32,3 +32,19 @@ func TestValidateUTF8_RejectsLatin1(t *testing.T) {
 		t.Fatalf("error = %v, want CodeInvalidEncoding", err)
 	}
 }
+
+func TestValidateUTF8_EmptyOK(t *testing.T) {
+	if err := csv.ValidateUTF8(nil); err != nil {
+		t.Fatalf("empty: %v", err)
+	}
+	if err := csv.ValidateUTF8([]byte("ok")); err != nil {
+		t.Fatalf("ascii: %v", err)
+	}
+}
+
+func TestStripUTF8BOM_NoBOM(t *testing.T) {
+	raw := []byte("Name")
+	if string(csv.StripUTF8BOM(raw)) != "Name" {
+		t.Fatal("expected unchanged")
+	}
+}

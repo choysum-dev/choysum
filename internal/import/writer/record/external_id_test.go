@@ -73,6 +73,44 @@ func TestParseMetaModelDataKey_DefaultImportNamespace(t *testing.T) {
 	}
 }
 
+func TestParseMetaModelDataKey_Errors(t *testing.T) {
+	cases := []string{"", "  ", ".", "mod.", ".name", " . "}
+	for _, raw := range cases {
+		if _, err := recordwriter.ParseMetaModelDataKey(raw); err == nil {
+			t.Fatalf("expected error for %q", raw)
+		}
+	}
+	key, err := recordwriter.ParseMetaModelDataKey("custom.item")
+	if err != nil || key.Module != "custom" || key.Name != "item" {
+		t.Fatalf("key=%#v err=%v", key, err)
+	}
+}
+
+func TestAssertExternalIDWritable_WritableMappingAndNilDB(t *testing.T) {
+	if err := recordwriter.AssertExternalIDWritable(nil, recordwriter.MetaModelDataKey{Module: "import", Name: "x"}, 1); err == nil {
+		t.Fatal("expected nil db error")
+	}
+	runtimeScope := newExternalIDTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.Create(&modmeta.ModelData{
+		Module:      "import",
+		Name:        "writable",
+		Application: "base",
+		ModelName:   "Country",
+		ModelId:     "m1",
+		ResID:       "r1",
+		NoUpdate:    false,
+	}).Error; err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if err := recordwriter.AssertExternalIDWritable(db, recordwriter.MetaModelDataKey{Module: "import", Name: "writable"}, 2); err != nil {
+		t.Fatalf("writable mapping: %v", err)
+	}
+	if err := recordwriter.AssertExternalIDWritable(db, recordwriter.MetaModelDataKey{Module: "import", Name: "missing"}, 2); err != nil {
+		t.Fatalf("missing mapping under import: %v", err)
+	}
+}
+
 func newExternalIDTestScope(t *testing.T) scope.Scope {
 	t.Helper()
 	cfg := &config.Config{Db: &config.DbConfig{Dialect: "sqlite", DSN: filepath.Join(t.TempDir(), "ext.db")}}

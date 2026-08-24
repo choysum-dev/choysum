@@ -62,6 +62,92 @@ func TestCountryImport_DryRun(t *testing.T) {
 	}
 }
 
+func TestCountryImport_CurrencyM2O(t *testing.T) {
+	runtimeScope := newCountryImportScope(t)
+	path := writeCountryCSV(t, "Name,Code,DefaultCurrencyId/Code,IsActive,ZipRequired,StateRequired\nM2O,MO001,CNY,true,true,false\n")
+	spec := countryImportSpec(path)
+	if _, err := runner.Run(withTestORMCaller(runtimeScope), runtimeScope, spec); err != nil {
+		t.Fatalf("import: %v", err)
+	}
+	var currencyID string
+	if err := runtimeScope.Session().DB.Table("base_country").Select("default_currency_id").Where("code = ?", "MO001").Scan(&currencyID).Error; err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	if currencyID != "cur-cny" {
+		t.Fatalf("default_currency_id = %q, want cur-cny", currencyID)
+	}
+}
+
+func TestCountryImport_ExternalIDCreateAndUpdate(t *testing.T) {
+	runtimeScope := newCountryImportScope(t)
+	path := writeCountryCSV(t, "id,Name,Code,IsActive,ZipRequired,StateRequired\nimport.ext1,First,EX001,true,true,false\n")
+	if _, err := runner.Run(withTestORMCaller(runtimeScope), runtimeScope, countryImportSpec(path)); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	path = writeCountryCSV(t, "id,Name,Code,IsActive,ZipRequired,StateRequired\nimport.ext1,Second,EX001,true,true,false\n")
+	if _, err := runner.Run(withTestORMCaller(runtimeScope), runtimeScope, countryImportSpec(path)); err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	if count := countCountries(t, runtimeScope); count != 1 {
+		t.Fatalf("country count = %d, want 1", count)
+	}
+	var name string
+	if err := runtimeScope.Session().DB.Table("base_country").Select("name").Where("code = ?", "EX001").Scan(&name).Error; err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	if name != "Second" {
+		t.Fatalf("name = %q", name)
+	}
+}
+
+func TestCountryImport_ExternalIDMissingMappedRowRecreates(t *testing.T) {
+	runtimeScope := newCountryImportScope(t)
+	path := writeCountryCSV(t, "id,Name,Code,IsActive,ZipRequired,StateRequired\nimport.gone,Gone,GN001,true,true,false\n")
+	if _, err := runner.Run(withTestORMCaller(runtimeScope), runtimeScope, countryImportSpec(path)); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if err := runtimeScope.Session().DB.Exec("DELETE FROM base_country").Error; err != nil {
+		t.Fatalf("delete countries: %v", err)
+	}
+	path = writeCountryCSV(t, "id,Name,Code,IsActive,ZipRequired,StateRequired\nimport.gone,Back,GN001,true,true,false\n")
+	if _, err := runner.Run(withTestORMCaller(runtimeScope), runtimeScope, countryImportSpec(path)); err != nil {
+		t.Fatalf("recreate: %v", err)
+	}
+	if count := countCountries(t, runtimeScope); count != 1 {
+		t.Fatalf("country count = %d, want 1", count)
+	}
+}
+
+func TestCountryImport_ProtectedExternalID(t *testing.T) {
+	runtimeScope := newCountryImportScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.Create(&meta.Module{Name: "base", ApplicationStr: "base", Path: "/tmp"}).Error; err != nil {
+		t.Fatalf("seed module: %v", err)
+	}
+	path := writeCountryCSV(t, "id,Name,Code,IsActive,ZipRequired,StateRequired\nbase.blocked,X,BK001,true,true,false\n")
+	if _, err := runner.Run(withTestORMCaller(runtimeScope), runtimeScope, countryImportSpec(path)); err == nil {
+		t.Fatal("expected protected external id error")
+	}
+}
+
+func TestCountryImport_M2ONotFound(t *testing.T) {
+	runtimeScope := newCountryImportScope(t)
+	path := writeCountryCSV(t, "Name,Code,DefaultCurrencyId/Code,IsActive,ZipRequired,StateRequired\nBad,BD001,ZZZ,true,true,false\n")
+	if _, err := runner.Run(withTestORMCaller(runtimeScope), runtimeScope, countryImportSpec(path)); err == nil {
+		t.Fatal("expected M2O not found error")
+	}
+}
+
+func TestCountryImport_UnsupportedModel(t *testing.T) {
+	runtimeScope := newCountryImportScope(t)
+	path := writeCountryCSV(t, "Name,Code\nX,U1\n")
+	spec := countryImportSpec(path)
+	spec.Model = "base.Partner"
+	if _, err := runner.Run(withTestORMCaller(runtimeScope), runtimeScope, spec); err == nil {
+		t.Fatal("expected unsupported model error")
+	}
+}
+
 func TestCountryImport_CodeUpsert(t *testing.T) {
 	runtimeScope := newCountryImportScope(t)
 	path := writeCountryCSV(t, "Name,Code,IsActive,ZipRequired,StateRequired\nFirst,UP001,true,true,false\n")
@@ -244,15 +330,15 @@ func seedCountryImportSchema(t *testing.T, db *gorm.DB) {
 }
 
 type testCountryRow struct {
-	ID                 string    `gorm:"column:id;primaryKey"`
-	Name               string    `gorm:"column:name"`
-	Code               string    `gorm:"column:code;uniqueIndex"`
-	IsActive           bool      `gorm:"column:is_active"`
-	ZipRequired        bool      `gorm:"column:zip_required"`
-	StateRequired      bool      `gorm:"column:state_required"`
-	DefaultCurrencyID  string    `gorm:"column:default_currency_id"`
-	CreatedAt          time.Time `gorm:"column:created_at"`
-	UpdatedAt          time.Time `gorm:"column:updated_at"`
+	ID                string    `gorm:"column:id;primaryKey"`
+	Name              string    `gorm:"column:name"`
+	Code              string    `gorm:"column:code;uniqueIndex"`
+	IsActive          bool      `gorm:"column:is_active"`
+	ZipRequired       bool      `gorm:"column:zip_required"`
+	StateRequired     bool      `gorm:"column:state_required"`
+	DefaultCurrencyID string    `gorm:"column:default_currency_id"`
+	CreatedAt         time.Time `gorm:"column:created_at"`
+	UpdatedAt         time.Time `gorm:"column:updated_at"`
 }
 
 func (testCountryRow) TableName() string { return "base_country" }

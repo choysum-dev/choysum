@@ -29,12 +29,7 @@ func ParseMetaModelDataKey(raw string) (MetaModelDataKey, error) {
 	}
 	dot := strings.Index(raw, ".")
 	if dot < 0 {
-		module := importNamespace
-		name := raw
-		if name == "" {
-			return MetaModelDataKey{}, importpkg.Errorf(importpkg.CodeInvalidFormat, "external id name must not be empty")
-		}
-		return MetaModelDataKey{Module: module, Name: name}, nil
+		return MetaModelDataKey{Module: importNamespace, Name: raw}, nil
 	}
 	module := strings.TrimSpace(raw[:dot])
 	name := strings.TrimSpace(raw[dot+1:])
@@ -55,13 +50,12 @@ func AssertExternalIDWritable(tx *gorm.DB, key MetaModelDataKey, row int) error 
 		return err
 	}
 
-	var mapping modmeta.ModelData
-	err := tx.Where("module = ? AND name = ?", key.Module, key.Name).First(&mapping).Error
+	mapping, err := lookupExternalID(tx, key)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil
-		}
 		return importpkg.ErrorfWrap(importpkg.CodeConstraint, "lookup external id mapping", err)
+	}
+	if mapping == nil {
+		return nil
 	}
 	if mapping.NoUpdate {
 		return &importpkg.Error{

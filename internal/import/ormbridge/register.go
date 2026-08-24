@@ -58,11 +58,7 @@ func performOrmCall(ctx *quickjs.Context, caller EngineCaller, args []*quickjs.V
 	if err != nil {
 		return ctx.NewError(err)
 	}
-	val, err := ctx.Marshal(result)
-	if err != nil {
-		return ctx.NewError(fmt.Errorf("marshal orm.call result: %w", err))
-	}
-	return val
+	return marshalORMResult(ctx, result)
 }
 
 func decodeCallRequest(arg *quickjs.Value) (CallRequest, error) {
@@ -78,6 +74,14 @@ func decodeCallRequest(arg *quickjs.Value) (CallRequest, error) {
 		return req, err
 	}
 	return req, nil
+}
+
+func marshalORMResult(ctx *quickjs.Context, result any) *quickjs.Value {
+	val, err := ctx.Marshal(result)
+	if err != nil {
+		return ctx.NewError(fmt.Errorf("marshal orm.call result: %w", err))
+	}
+	return val
 }
 
 // Ensure jsengine import retained for docs/links in this file.

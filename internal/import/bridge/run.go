@@ -23,19 +23,16 @@ import (
 func WithImportProvider(scopeProvider jsengine.ScopeProvider) jsengine.JsEngineOption {
 	return func(jsEngine jsengine.JsEngine) error {
 		jse := jsEngine.(*quickjsengine.QuickjsEngine)
+		if err := ormbridge.Register(jse); err != nil {
+			return err
+		}
 		globalsObj := jse.Ctx.Globals()
 		choysumObj := globalsObj.Get("$choysum")
-		if !choysumObj.IsObject() {
-			choysumObj.Free()
-			choysumObj = jse.Ctx.Object()
-		}
+		// Register always installs $choysum; attach import.run alongside orm.call.
 		importObj := jse.Ctx.Object()
 		importObj.Set("run", jse.Ctx.NewFunction(runImportAsyncFactory(jse, scopeProvider)))
 		choysumObj.Set("import", importObj)
 		globalsObj.Set("$choysum", choysumObj)
-		if err := ormbridge.Register(jse); err != nil {
-			return err
-		}
 		return nil
 	}
 }
@@ -64,9 +61,6 @@ func performImportRun(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, sc
 		return ctx.NewError(fmt.Errorf("decode import spec: %w", err))
 	}
 	execCtx := jse.ExecContext()
-	if execCtx == nil {
-		execCtx = context.Background()
-	}
 	// Prefer the transactional scope stored on ExecContext (same as $choysum.db).
 	// ResolveScope alone rebinds the factory base scope and can open a second SQLite
 	// connection while BE unit tests already hold a write transaction → "database is locked".
@@ -83,6 +77,10 @@ func performImportRun(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, sc
 	if err != nil {
 		return ctx.NewError(err)
 	}
+	return marshalImportReport(ctx, report)
+}
+
+func marshalImportReport(ctx *quickjs.Context, report any) *quickjs.Value {
 	val, err := ctx.Marshal(report)
 	if err != nil {
 		return ctx.NewError(fmt.Errorf("marshal import report: %w", err))

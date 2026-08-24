@@ -17,7 +17,7 @@ import (
 type Table struct {
 	Headers    []string
 	Rows       [][]string
-	RowNumbers []int // 1-based source line numbers for each data row
+	RowNumbers []int // 1-based physical source line numbers for each data row
 }
 
 // ReadTable parses CSV bytes with comma delimiter and a single header row.
@@ -47,31 +47,42 @@ func ReadTable(data []byte) (Table, error) {
 
 	rows := make([][]string, 0, 8)
 	rowNumbers := make([]int, 0, 8)
-	lineNumber := 2
 	for {
 		record, err := reader.Read()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			return Table{}, importpkg.ErrorfWrap(importpkg.CodeInvalidFormat, fmt.Sprintf("read CSV row %d", lineNumber), err)
+			return Table{}, importpkg.ErrorfWrap(importpkg.CodeInvalidFormat, csvReadErrorText(err), err)
 		}
+		line, _ := reader.FieldPos(0)
 		row := append([]string(nil), record...)
 		for i := range row {
 			row[i] = strings.TrimSpace(row[i])
 		}
 		if isBlankRow(row) {
-			lineNumber++
 			continue
 		}
 		if len(row) != len(headers) {
-			return Table{}, importpkg.Errorf(importpkg.CodeInvalidFormat, fmt.Sprintf("CSV row %d has %d columns, want %d", lineNumber, len(row), len(headers)))
+			return Table{}, importpkg.Errorf(importpkg.CodeInvalidFormat, fmt.Sprintf("CSV row %d has %d columns, want %d", line, len(row), len(headers)))
 		}
 		rows = append(rows, row)
-		rowNumbers = append(rowNumbers, lineNumber)
-		lineNumber++
+		rowNumbers = append(rowNumbers, line)
 	}
 	return Table{Headers: headers, Rows: rows, RowNumbers: rowNumbers}, nil
+}
+
+func csvReadErrorText(err error) string {
+	if pe, ok := err.(*csv.ParseError); ok {
+		line := pe.StartLine
+		if line == 0 {
+			line = pe.Line
+		}
+		if line > 0 {
+			return fmt.Sprintf("read CSV row %d", line)
+		}
+	}
+	return "read CSV row"
 }
 
 func isBlankRow(row []string) bool {

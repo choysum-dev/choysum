@@ -57,16 +57,16 @@ func ServiceName(model, method string) (string, error) {
 }
 
 // MergeImportContext ensures import_file=true and merges caller-provided context keys.
+// import_file is reserved and always forced true after copying extras.
 func MergeImportContext(extra map[string]any) map[string]any {
-	out := map[string]any{
-		"import_file": true,
-	}
+	out := map[string]any{}
 	for k, v := range extra {
 		if strings.TrimSpace(k) == "" {
 			continue
 		}
 		out[k] = v
 	}
+	out["import_file"] = true
 	return out
 }
 

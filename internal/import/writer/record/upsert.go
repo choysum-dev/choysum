@@ -301,10 +301,6 @@ func mapORMError(unit recordplan.Unit, field string, err error) error {
 	}
 }
 
-func mapDBError(unit recordplan.Unit, field string, err error) error {
-	return mapORMError(unit, field, err)
-}
-
 func rowError(unit recordplan.Unit, field, code, text string) *importpkg.Error {
 	return &importpkg.Error{
 		Code:  code,
