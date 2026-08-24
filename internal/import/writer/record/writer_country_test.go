@@ -321,8 +321,44 @@ func seedCountryImportSchema(t *testing.T, db *gorm.DB) {
 	if err := db.Create(currencyModel).Error; err != nil {
 		t.Fatalf("seed currency model: %v", err)
 	}
-	if err := db.Create(&meta.Field{Name: "DefaultCurrencyId", FieldType: "ManyToOne", ModelId: countryModel.Id}).Error; err != nil {
-		t.Fatalf("seed country field: %v", err)
+
+	unique := true
+	codeField := &meta.Field{Name: "Code", FieldType: "varchar", NotNull: true, ModelId: countryModel.Id}
+	if err := codeField.SetResolvedSpec(&meta.FieldResolvedSpec{
+		Structural: meta.FieldStructuralSpec{
+			Name:      "Code",
+			FieldType: "varchar",
+			StorageHints: &meta.FieldStructuralStorageHints{
+				Unique: &unique,
+			},
+		},
+	}); err != nil {
+		t.Fatalf("code unique spec: %v", err)
+	}
+	fields := []*meta.Field{
+		{Name: "Name", FieldType: "varchar", NotNull: true, ModelId: countryModel.Id},
+		codeField,
+		{Name: "IsActive", FieldType: "boolean", NotNull: true, ModelId: countryModel.Id},
+		{Name: "ZipRequired", FieldType: "boolean", NotNull: true, ModelId: countryModel.Id},
+		{Name: "StateRequired", FieldType: "boolean", NotNull: true, ModelId: countryModel.Id},
+		{Name: "DefaultCurrencyId", FieldType: "ManyToOne", Relation: "ManyToOne", RelationModel: "base.Currency", ModelId: countryModel.Id},
+		{Name: "Code", FieldType: "varchar", NotNull: true, ModelId: currencyModel.Id},
+		{Name: "Name", FieldType: "varchar", ModelId: currencyModel.Id},
+	}
+	currencyCode := fields[6]
+	if err := currencyCode.SetResolvedSpec(&meta.FieldResolvedSpec{
+		Structural: meta.FieldStructuralSpec{
+			Name:         "Code",
+			FieldType:    "varchar",
+			StorageHints: &meta.FieldStructuralStorageHints{Unique: &unique},
+		},
+	}); err != nil {
+		t.Fatalf("currency code unique: %v", err)
+	}
+	for _, f := range fields {
+		if err := db.Create(f).Error; err != nil {
+			t.Fatalf("seed field %s: %v", f.Name, err)
+		}
 	}
 	if err := db.Create(&testCurrencyRow{ID: "cur-cny", Code: "CNY", Name: "CNY", IsActive: true}).Error; err != nil {
 		t.Fatalf("seed currency row: %v", err)

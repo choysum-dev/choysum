@@ -201,7 +201,8 @@ func TestPerformImportRun_HappyPathAndPathError(t *testing.T) {
 	result := promise.Await()
 	defer result.Free()
 	if result.IsException() || result.IsError() {
-		t.Fatalf("happy path failed: %v", result.ToError())
+		errVal := result.ToError()
+		t.Fatalf("happy path failed: %v / %s", errVal, result.String())
 	}
 
 	// path traversal via performImportRun
@@ -217,7 +218,7 @@ func TestPerformImportRun_HappyPathAndPathError(t *testing.T) {
 func seedBridgeCountry(t *testing.T, runtimeScope scope.Scope) {
 	t.Helper()
 	db := runtimeScope.Session().DB
-	if err := db.AutoMigrate(&meta.Module{}, &meta.Model{}, &modmeta.ModelData{}); err != nil {
+	if err := db.AutoMigrate(&meta.Module{}, &meta.Model{}, &meta.Field{}, &modmeta.ModelData{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Exec(`CREATE TABLE IF NOT EXISTS base_country (
@@ -226,7 +227,28 @@ func seedBridgeCountry(t *testing.T, runtimeScope scope.Scope) {
 	)`).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Create(&meta.Model{Name: "Country", Application: "base", Path: "/tmp", ModelTable: "base_country"}).Error; err != nil {
+	country := &meta.Model{Name: "Country", Application: "base", Path: "/tmp", ModelTable: "base_country"}
+	if err := db.Create(country).Error; err != nil {
 		t.Fatal(err)
+	}
+	unique := true
+	code := &meta.Field{Name: "Code", FieldType: "varchar", NotNull: true, ModelId: country.Id}
+	_ = code.SetResolvedSpec(&meta.FieldResolvedSpec{
+		Structural: meta.FieldStructuralSpec{
+			Name:         "Code",
+			FieldType:    "varchar",
+			StorageHints: &meta.FieldStructuralStorageHints{Unique: &unique},
+		},
+	})
+	for _, f := range []*meta.Field{
+		{Name: "Name", FieldType: "varchar", NotNull: true, ModelId: country.Id},
+		code,
+		{Name: "IsActive", FieldType: "boolean", NotNull: true, ModelId: country.Id},
+		{Name: "ZipRequired", FieldType: "boolean", NotNull: true, ModelId: country.Id},
+		{Name: "StateRequired", FieldType: "boolean", NotNull: true, ModelId: country.Id},
+	} {
+		if err := db.Create(f).Error; err != nil {
+			t.Fatalf("seed field %s: %v", f.Name, err)
+		}
 	}
 }

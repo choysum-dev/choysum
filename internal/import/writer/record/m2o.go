@@ -11,10 +11,13 @@ import (
 	"github.com/choysum-dev/choysum/internal/import/orm"
 	recordplan "github.com/choysum-dev/choysum/internal/import/plan/record"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
+	"gorm.io/gorm"
 )
 
 // ResolveM2O resolves a Many2One CSV field path such as DefaultCurrencyId/Code via ORM Search.
-func ResolveM2O(ctx context.Context, caller orm.Caller, unit recordplan.Unit, fieldPath, raw string) (string, error) {
+// The comodel comes from meta.Field.RelationModel on unit.Model; lookup fields are validated
+// against the target model's field metadata (Id is always allowed).
+func ResolveM2O(ctx context.Context, db *gorm.DB, caller orm.Caller, unit recordplan.Unit, fieldPath, raw string) (string, error) {
 	parts := strings.Split(fieldPath, "/")
 	if len(parts) != 2 {
 		return "", rowError(unit, fieldPath, importpkg.CodeInvalidFormat, "invalid M2O field path")
@@ -27,14 +30,32 @@ func ResolveM2O(ctx context.Context, caller orm.Caller, unit recordplan.Unit, fi
 	if lookupField == "id" {
 		lookupField = "Id"
 	}
-	if !isAllowedM2OLookupField(lookupField) {
-		return "", rowError(unit, fieldPath, importpkg.CodeInvalidFormat,
-			fmt.Sprintf("unsupported M2O lookup field %q (allowed: Id, Code)", lookupField))
-	}
 
-	targetModel, err := resolveM2OTargetModel(fieldName)
+	srcModel, err := LookupModel(db, unit.Model)
+	if err != nil {
+		return "", rowError(unit, fieldPath, importpkg.CodeModelNotFound, fmt.Sprintf("model %s not found", unit.Model))
+	}
+	srcField, err := LookupField(db, srcModel, fieldName)
+	if err != nil {
+		return "", rowError(unit, fieldPath, importpkg.CodeInvalidFormat, fmt.Sprintf("unknown field %s", fieldName))
+	}
+	if !fieldIsManyToOne(srcField) {
+		return "", rowError(unit, fieldPath, importpkg.CodeInvalidFormat, fmt.Sprintf("field %s is not ManyToOne", fieldName))
+	}
+	targetModel, err := fieldRelationTarget(srcField)
 	if err != nil {
 		return "", rowError(unit, fieldPath, importpkg.CodeInvalidFormat, err.Error())
+	}
+
+	if lookupField != "Id" {
+		targetMeta, err := LookupModel(db, targetModel)
+		if err != nil {
+			return "", rowError(unit, fieldPath, importpkg.CodeModelNotFound, fmt.Sprintf("related model %s not found", targetModel))
+		}
+		if _, err := LookupField(db, targetMeta, lookupField); err != nil {
+			return "", rowError(unit, fieldPath, importpkg.CodeInvalidFormat,
+				fmt.Sprintf("lookup field %s not found on %s", lookupField, targetModel))
+		}
 	}
 
 	result, err := caller.Call(ctx, orm.CallRequest{
@@ -53,22 +74,4 @@ func ResolveM2O(ctx context.Context, caller orm.Caller, unit recordplan.Unit, fi
 		return "", rowError(unit, fieldPath, importpkg.CodeExternalIDNotFound, fmt.Sprintf("related record not found for %s=%q", lookupField, raw))
 	}
 	return resID, nil
-}
-
-func resolveM2OTargetModel(fieldName string) (string, error) {
-	switch fieldName {
-	case "DefaultCurrencyId":
-		return currencyModelFull, nil
-	default:
-		return "", fmt.Errorf("unsupported M2O field %s for V1 record import", fieldName)
-	}
-}
-
-func isAllowedM2OLookupField(lookupField string) bool {
-	switch lookupField {
-	case "Id", "Code":
-		return true
-	default:
-		return false
-	}
 }

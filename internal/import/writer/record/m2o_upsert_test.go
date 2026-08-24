@@ -17,71 +17,73 @@ import (
 )
 
 func TestResolveM2O_Validation(t *testing.T) {
+	runtimeScope := newCountryImportScope(t)
+	db := runtimeScope.Session().DB
 	caller := &scriptedCaller{responses: map[string]any{
 		"base.Currency.Search": []any{map[string]any{"Id": "cur-1"}},
 	}}
 	unit := recordplan.Unit{Index: 1, Model: "base.Country"}
 
-	if _, err := recordwriter.ResolveM2O(context.Background(), caller, unit, "DefaultCurrencyId", "CNY"); err == nil {
+	if _, err := recordwriter.ResolveM2O(context.Background(), db, caller, unit, "DefaultCurrencyId", "CNY"); err == nil {
 		t.Fatal("expected invalid path")
 	}
-	if _, err := recordwriter.ResolveM2O(context.Background(), caller, unit, "Name/Code", "CNY"); err == nil {
-		t.Fatal("expected unsupported M2O field")
+	if _, err := recordwriter.ResolveM2O(context.Background(), db, caller, unit, "Name/Code", "CNY"); err == nil {
+		t.Fatal("expected non-M2O field error")
 	}
-	if _, err := recordwriter.ResolveM2O(context.Background(), caller, unit, "DefaultCurrencyId/Name", "CNY"); err == nil {
-		t.Fatal("expected unsupported lookup field")
+	if _, err := recordwriter.ResolveM2O(context.Background(), db, caller, unit, "DefaultCurrencyId/Bogus", "CNY"); err == nil {
+		t.Fatal("expected unknown lookup field")
 	}
-	id, err := recordwriter.ResolveM2O(context.Background(), caller, unit, "DefaultCurrencyId/id", "x")
+	id, err := recordwriter.ResolveM2O(context.Background(), db, caller, unit, "DefaultCurrencyId/id", "x")
 	if err != nil || id != "cur-1" {
 		t.Fatalf("id lookup: %q %v", id, err)
 	}
 	caller.responses["base.Currency.Search"] = []any{}
-	if _, err := recordwriter.ResolveM2O(context.Background(), caller, unit, "DefaultCurrencyId/Code", "NOPE"); err == nil {
+	if _, err := recordwriter.ResolveM2O(context.Background(), db, caller, unit, "DefaultCurrencyId/Code", "NOPE"); err == nil {
 		t.Fatal("expected not found")
 	}
 	caller.fail = errors.New("unique constraint")
-	_, err = recordwriter.ResolveM2O(context.Background(), caller, unit, "DefaultCurrencyId/Code", "CNY")
+	_, err = recordwriter.ResolveM2O(context.Background(), db, caller, unit, "DefaultCurrencyId/Code", "CNY")
 	imp, ok := importpkg.AsError(err)
 	if !ok || imp.Code != importpkg.CodeDuplicateKey {
 		t.Fatalf("error = %v", err)
 	}
 }
 
-func TestUpsertCountry_ErrorPaths(t *testing.T) {
+func TestUpsertRecord_ErrorPaths(t *testing.T) {
 	runtimeScope := newCountryImportScope(t)
 	unit := recordplan.Unit{
 		Index:  1,
 		Model:  "base.Country",
 		Values: map[string]string{"Name": "X", "Code": "EP1", "IsActive": "true", "ZipRequired": "true", "StateRequired": "false"},
 	}
-	if err := recordwriter.UpsertCountry(context.Background(), runtimeScope, unit); err == nil {
+	if err := recordwriter.UpsertRecord(context.Background(), runtimeScope, unit); err == nil {
 		t.Fatal("expected missing orm caller")
 	}
 
 	ctx := orm.ContextWithCaller(context.Background(), &scriptedCaller{})
-	if err := recordwriter.UpsertCountry(ctx, nil, unit); err == nil {
+	if err := recordwriter.UpsertRecord(ctx, nil, unit); err == nil {
 		t.Fatal("expected missing scope")
 	}
 
 	unit.Values = map[string]string{}
-	if err := recordwriter.UpsertCountry(ctx, runtimeScope, unit); err == nil {
+	if err := recordwriter.UpsertRecord(ctx, runtimeScope, unit); err == nil {
 		t.Fatal("expected empty values")
 	}
 
 	unit.Values = map[string]string{"Name": "X", "Code": "EP1", "IsActive": "maybe"}
-	if err := recordwriter.UpsertCountry(ctx, runtimeScope, unit); err == nil {
+	if err := recordwriter.UpsertRecord(ctx, runtimeScope, unit); err == nil {
 		t.Fatal("expected invalid bool")
 	}
 
 	unit.ExternalID = "bad."
 	unit.Values = map[string]string{"Name": "X", "Code": "EP1", "IsActive": "true", "ZipRequired": "1", "StateRequired": "0"}
-	if err := recordwriter.UpsertCountry(ctx, runtimeScope, unit); err == nil {
+	if err := recordwriter.UpsertRecord(ctx, runtimeScope, unit); err == nil {
 		t.Fatal("expected invalid external id")
 	}
 
 	unit.ExternalID = ""
 	unit.Values = map[string]string{"Name": "X", "Partner.Name": "Y", "Code": "EP1", "IsActive": "true", "ZipRequired": "true", "StateRequired": "false"}
-	if err := recordwriter.UpsertCountry(ctx, runtimeScope, unit); err == nil {
+	if err := recordwriter.UpsertRecord(ctx, runtimeScope, unit); err == nil {
 		t.Fatal("expected O2M unsupported")
 	}
 
@@ -91,12 +93,12 @@ func TestUpsertCountry_ErrorPaths(t *testing.T) {
 		"base.Country.Create": map[string]any{"Id": "n1"},
 	}}
 	ctx = orm.ContextWithCaller(context.Background(), caller)
-	if err := recordwriter.UpsertCountry(ctx, runtimeScope, unit); err != nil {
+	if err := recordwriter.UpsertRecord(ctx, runtimeScope, unit); err != nil {
 		t.Fatalf("empty field path skip: %v", err)
 	}
 }
 
-func TestWriter_UnsupportedModelUnit(t *testing.T) {
+func TestWriter_UnknownModel(t *testing.T) {
 	runtimeScope := newCountryImportScope(t)
 	ctx := orm.ContextWithCaller(context.Background(), &scriptedCaller{})
 	err := recordwriter.Writer{}.Write(ctx, runtimeScope, []plan.Unit{recordplan.Unit{
@@ -105,7 +107,7 @@ func TestWriter_UnsupportedModelUnit(t *testing.T) {
 		Values: map[string]string{"Name": "X"},
 	}})
 	if err == nil {
-		t.Fatal("expected unsupported model")
+		t.Fatal("expected unknown model")
 	}
 }
 

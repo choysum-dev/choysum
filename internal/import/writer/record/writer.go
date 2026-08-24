@@ -5,7 +5,6 @@ package record
 
 import (
 	"context"
-	"strings"
 
 	"github.com/choysum-dev/choysum/internal/import/plan"
 	recordplan "github.com/choysum-dev/choysum/internal/import/plan/record"
@@ -19,6 +18,7 @@ func init() {
 }
 
 // Writer persists record import units through the TS ORM write path (internal/import/orm).
+// Target model comes from each unit's Model (Spec.Model); field/M2O handling uses meta.
 type Writer struct{}
 
 // Write implements registry.Writer.
@@ -31,18 +31,9 @@ func (Writer) Write(ctx context.Context, txScope scope.Scope, units []plan.Unit)
 		if !ok {
 			return importpkg.Errorf(importpkg.CodeInvalidFormat, "unexpected unit type for record writer")
 		}
-		if err := writeUnit(ctx, txScope, u); err != nil {
+		if err := UpsertRecord(ctx, txScope, u); err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-func writeUnit(ctx context.Context, txScope scope.Scope, unit recordplan.Unit) error {
-	switch strings.TrimSpace(unit.Model) {
-	case countryModelFull:
-		return UpsertCountry(ctx, txScope, unit)
-	default:
-		return rowError(unit, "", importpkg.CodeModelNotFound, "unsupported record import model")
-	}
 }

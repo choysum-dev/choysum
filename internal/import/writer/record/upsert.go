@@ -16,13 +16,8 @@ import (
 	"gorm.io/gorm"
 )
 
-const (
-	countryModelFull  = "base.Country"
-	currencyModelFull = "base.Currency"
-)
-
-// UpsertCountry writes one CSV row through TS ORM Create / UpdateById.
-func UpsertCountry(ctx context.Context, txScope scope.Scope, unit recordplan.Unit) error {
+// UpsertRecord writes one CSV row for unit.Model through TS ORM Create / UpdateById.
+func UpsertRecord(ctx context.Context, txScope scope.Scope, unit recordplan.Unit) error {
 	caller, ok := orm.CallerFromContext(ctx)
 	if !ok {
 		return importpkg.Errorf(importpkg.CodeInvalidFormat, "orm caller is required for record writer")
@@ -32,12 +27,24 @@ func UpsertCountry(ctx context.Context, txScope scope.Scope, unit recordplan.Uni
 	}
 	db := txScope.Session().DB
 
-	model := &meta.Model{}
-	if err := db.Where("application = ? AND name = ?", "base", "Country").First(model).Error; err != nil {
-		return rowError(unit, "", importpkg.CodeModelNotFound, "base.Country model metadata not found")
+	modelFull := strings.TrimSpace(unit.Model)
+	if modelFull == "" {
+		return rowError(unit, "", importpkg.CodeModelNotFound, "model is required")
+	}
+	model, err := LookupModel(db, modelFull)
+	if err != nil {
+		return rowError(unit, "", importpkg.CodeModelNotFound, fmt.Sprintf("model %s metadata not found", modelFull))
+	}
+	fields, err := ListFields(db, model)
+	if err != nil {
+		return importpkg.ErrorfWrap(importpkg.CodeConstraint, "list model fields", err)
+	}
+	fieldByName := make(map[string]*meta.Field, len(fields))
+	for i := range fields {
+		fieldByName[fields[i].Name] = &fields[i]
 	}
 
-	vals, err := buildCountryVals(ctx, caller, unit)
+	vals, err := buildRecordVals(ctx, db, caller, unit, fieldByName)
 	if err != nil {
 		return err
 	}
@@ -53,9 +60,9 @@ func UpsertCountry(ctx context.Context, txScope scope.Scope, unit recordplan.Uni
 		if err := AssertExternalIDWritable(db, externalKey, unit.UnitIndex()); err != nil {
 			return err
 		}
-		return upsertCountryByExternalID(ctx, caller, db, model, unit, externalKey, vals)
+		return upsertByExternalID(ctx, caller, db, model, modelFull, unit, externalKey, vals)
 	}
-	return upsertCountryByCode(ctx, caller, unit, vals)
+	return upsertByUniqueKeys(ctx, caller, unit, modelFull, fieldByName, vals)
 }
 
 func parseUnitExternalID(unit recordplan.Unit) (MetaModelDataKey, bool, error) {
@@ -75,7 +82,13 @@ func parseUnitExternalID(unit recordplan.Unit) (MetaModelDataKey, bool, error) {
 	return key, true, nil
 }
 
-func buildCountryVals(ctx context.Context, caller orm.Caller, unit recordplan.Unit) (map[string]any, error) {
+func buildRecordVals(
+	ctx context.Context,
+	db *gorm.DB,
+	caller orm.Caller,
+	unit recordplan.Unit,
+	fieldByName map[string]*meta.Field,
+) (map[string]any, error) {
 	out := make(map[string]any, len(unit.Values))
 	for fieldPath, raw := range unit.Values {
 		fieldPath = strings.TrimSpace(fieldPath)
@@ -83,11 +96,14 @@ func buildCountryVals(ctx context.Context, caller orm.Caller, unit recordplan.Un
 		if fieldPath == "" {
 			continue
 		}
-		if raw == "" {
-			return nil, rowError(unit, fieldPath, importpkg.CodeEmptyRequired, "required value is empty")
+		if strings.Contains(fieldPath, ".") {
+			return nil, rowError(unit, fieldPath, importpkg.CodeInvalidFormat, "O2M field paths are not supported in V1 record import")
 		}
 		if strings.Contains(fieldPath, "/") {
-			resolved, err := ResolveM2O(ctx, caller, unit, fieldPath, raw)
+			if raw == "" {
+				return nil, rowError(unit, fieldPath, importpkg.CodeEmptyRequired, "required value is empty")
+			}
+			resolved, err := ResolveM2O(ctx, db, caller, unit, fieldPath, raw)
 			if err != nil {
 				return nil, err
 			}
@@ -95,10 +111,17 @@ func buildCountryVals(ctx context.Context, caller orm.Caller, unit recordplan.Un
 			out[baseField] = resolved
 			continue
 		}
-		if strings.Contains(fieldPath, ".") {
-			return nil, rowError(unit, fieldPath, importpkg.CodeInvalidFormat, "O2M field paths are not supported in V1 record import")
+		field := fieldByName[fieldPath]
+		if field == nil {
+			return nil, rowError(unit, fieldPath, importpkg.CodeInvalidFormat, fmt.Sprintf("unknown field %s", fieldPath))
 		}
-		value, err := parseScalarValue(unit, fieldPath, raw)
+		if raw == "" {
+			if field.NotNull {
+				return nil, rowError(unit, fieldPath, importpkg.CodeEmptyRequired, "required value is empty")
+			}
+			continue
+		}
+		value, err := parseScalarValue(unit, field, raw)
 		if err != nil {
 			return nil, err
 		}
@@ -107,23 +130,15 @@ func buildCountryVals(ctx context.Context, caller orm.Caller, unit recordplan.Un
 	return out, nil
 }
 
-func parseScalarValue(unit recordplan.Unit, fieldPath, raw string) (any, error) {
-	switch fieldPath {
-	case "ZipRequired", "StateRequired", "IsActive":
+func parseScalarValue(unit recordplan.Unit, field *meta.Field, raw string) (any, error) {
+	if fieldIsBoolean(field) {
 		parsed, ok := parseBool(raw)
 		if !ok {
-			return nil, rowError(unit, fieldPath, importpkg.CodeInvalidFormat, fmt.Sprintf("invalid boolean value %q", raw))
+			return nil, rowError(unit, field.Name, importpkg.CodeInvalidFormat, fmt.Sprintf("invalid boolean value %q", raw))
 		}
 		return parsed, nil
-	case "Code":
-		return normalizeCountryCode(raw), nil
-	default:
-		return raw, nil
 	}
-}
-
-func normalizeCountryCode(raw string) string {
-	return strings.ToUpper(strings.TrimSpace(raw))
+	return raw, nil
 }
 
 func parseBool(raw string) (bool, bool) {
@@ -137,11 +152,12 @@ func parseBool(raw string) (bool, bool) {
 	}
 }
 
-func upsertCountryByExternalID(
+func upsertByExternalID(
 	ctx context.Context,
 	caller orm.Caller,
 	db *gorm.DB,
 	model *meta.Model,
+	modelFull string,
 	unit recordplan.Unit,
 	key MetaModelDataKey,
 	vals map[string]any,
@@ -151,27 +167,26 @@ func upsertCountryByExternalID(
 		return importpkg.ErrorfWrap(importpkg.CodeConstraint, "lookup external id mapping", err)
 	}
 	if mapping != nil {
-		exists, err := countryExistsByID(ctx, caller, unit, mapping.ResID)
+		exists, err := recordExistsByID(ctx, caller, unit, modelFull, mapping.ResID)
 		if err != nil {
 			return err
 		}
 		if exists {
 			if _, err := caller.Call(ctx, orm.CallRequest{
-				Model:  countryModelFull,
+				Model:  modelFull,
 				Method: "UpdateById",
-				Args:   []any{mapping.ResID, vals, []string{"Id", "Code"}},
+				Args:   []any{mapping.ResID, vals, []string{"Id"}},
 			}); err != nil {
 				return mapORMError(unit, "", err)
 			}
 			return upsertExternalIDMapping(db, key, model, mapping.ResID)
 		}
-		// Mapping points at a deleted row — recreate and remap.
 	}
 
 	created, err := caller.Call(ctx, orm.CallRequest{
-		Model:  countryModelFull,
+		Model:  modelFull,
 		Method: "Create",
-		Args:   []any{vals, []string{"Id", "Code"}},
+		Args:   []any{vals, []string{"Id"}},
 	})
 	if err != nil {
 		return mapORMError(unit, "", err)
@@ -183,13 +198,13 @@ func upsertCountryByExternalID(
 	return upsertExternalIDMapping(db, key, model, resID)
 }
 
-func countryExistsByID(ctx context.Context, caller orm.Caller, unit recordplan.Unit, id string) (bool, error) {
+func recordExistsByID(ctx context.Context, caller orm.Caller, unit recordplan.Unit, modelFull, id string) (bool, error) {
 	id = strings.TrimSpace(id)
 	if id == "" {
 		return false, nil
 	}
 	result, err := caller.Call(ctx, orm.CallRequest{
-		Model:  countryModelFull,
+		Model:  modelFull,
 		Method: "Search",
 		Args: []any{
 			map[string]any{"And": []any{[]any{"Id", "=", id}}},
@@ -202,48 +217,65 @@ func countryExistsByID(ctx context.Context, caller orm.Caller, unit recordplan.U
 	return firstRecordID(result) != "", nil
 }
 
-func upsertCountryByCode(ctx context.Context, caller orm.Caller, unit recordplan.Unit, vals map[string]any) error {
-	code, _ := vals["Code"].(string)
-	if strings.TrimSpace(code) == "" {
-		return rowError(unit, "Code", importpkg.CodeEmptyRequired, "Code is required when id column is absent")
+func upsertByUniqueKeys(
+	ctx context.Context,
+	caller orm.Caller,
+	unit recordplan.Unit,
+	modelFull string,
+	fieldByName map[string]*meta.Field,
+	vals map[string]any,
+) error {
+	domain := make([]any, 0, 4)
+	for name, field := range fieldByName {
+		if !fieldIsUnique(field) || fieldIsManyToOne(field) {
+			continue
+		}
+		v, ok := vals[name]
+		if !ok {
+			continue
+		}
+		domain = append(domain, []any{name, "=", v})
+	}
+	if len(domain) == 0 {
+		return rowError(unit, "", importpkg.CodeEmptyRequired, "id column or unique business key is required")
 	}
 
-	existingID, err := searchCountryIDByCode(ctx, caller, unit, code)
+	existingID, err := searchRecordID(ctx, caller, unit, modelFull, domain)
 	if err != nil {
 		return err
 	}
 	if existingID != "" {
 		if _, err := caller.Call(ctx, orm.CallRequest{
-			Model:  countryModelFull,
+			Model:  modelFull,
 			Method: "UpdateById",
-			Args:   []any{existingID, vals, []string{"Id", "Code"}},
+			Args:   []any{existingID, vals, []string{"Id"}},
 		}); err != nil {
-			return mapORMError(unit, "Code", err)
+			return mapORMError(unit, "", err)
 		}
 		return nil
 	}
 
 	if _, err := caller.Call(ctx, orm.CallRequest{
-		Model:  countryModelFull,
+		Model:  modelFull,
 		Method: "Create",
-		Args:   []any{vals, []string{"Id", "Code"}},
+		Args:   []any{vals, []string{"Id"}},
 	}); err != nil {
-		return mapORMError(unit, "Code", err)
+		return mapORMError(unit, "", err)
 	}
 	return nil
 }
 
-func searchCountryIDByCode(ctx context.Context, caller orm.Caller, unit recordplan.Unit, code string) (string, error) {
+func searchRecordID(ctx context.Context, caller orm.Caller, unit recordplan.Unit, modelFull string, domain []any) (string, error) {
 	result, err := caller.Call(ctx, orm.CallRequest{
-		Model:  countryModelFull,
+		Model:  modelFull,
 		Method: "Search",
 		Args: []any{
-			map[string]any{"And": []any{[]any{"Code", "=", code}}},
-			map[string]any{"fields": []string{"Id", "Code"}, "limit": 1},
+			map[string]any{"And": domain},
+			map[string]any{"fields": []string{"Id"}, "limit": 1},
 		},
 	})
 	if err != nil {
-		return "", mapORMError(unit, "Code", err)
+		return "", mapORMError(unit, "", err)
 	}
 	return firstRecordID(result), nil
 }

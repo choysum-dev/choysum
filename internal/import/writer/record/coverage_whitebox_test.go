@@ -54,13 +54,24 @@ func TestHelpers_FirstRecordIDAndMapORMError(t *testing.T) {
 }
 
 func TestResolveM2O_EmptyParts(t *testing.T) {
-	unit := recordplan.Unit{Index: 1}
+	db := openWBDB(t)
+	unit := recordplan.Unit{Index: 1, Model: "base.Country"}
 	caller := &wbCaller{result: []any{map[string]any{"Id": "1"}}}
-	if _, err := ResolveM2O(context.Background(), caller, unit, "DefaultCurrencyId/", "x"); err == nil {
+	if _, err := ResolveM2O(context.Background(), db, caller, unit, "DefaultCurrencyId/", "x"); err == nil {
 		t.Fatal("expected empty lookup field")
 	}
-	if _, err := ResolveM2O(context.Background(), caller, unit, "/Code", "x"); err == nil {
+	if _, err := ResolveM2O(context.Background(), db, caller, unit, "/Code", "x"); err == nil {
 		t.Fatal("expected empty field name")
+	}
+}
+
+func TestSplitModelFullName(t *testing.T) {
+	app, name, err := SplitModelFullName("base.Country")
+	if err != nil || app != "base" || name != "Country" {
+		t.Fatalf("%s %s %v", app, name, err)
+	}
+	if _, _, err := SplitModelFullName("Country"); err == nil {
+		t.Fatal("expected error")
 	}
 }
 
@@ -85,30 +96,33 @@ func TestWriter_WriteNilScope(t *testing.T) {
 	}
 }
 
-func TestUpsertCountryByExternalID_Branches(t *testing.T) {
-	unit := recordplan.Unit{Index: 1, Model: countryModelFull}
-	model := &meta.Model{Name: "Country", Application: "base"}
-	model.Id.String = "mid"
-	key := MetaModelDataKey{Module: "import", Name: "wb1"}
+func TestUpsertByExternalID_Branches(t *testing.T) {
 	db := openWBDB(t)
+	seedMinimalCountryMeta(t, db)
+	unit := recordplan.Unit{Index: 1, Model: "base.Country"}
+	model, err := LookupModel(db, "base.Country")
+	if err != nil {
+		t.Fatal(err)
+	}
+	key := MetaModelDataKey{Module: "import", Name: "wb1"}
 
 	caller := &wbCaller{result: map[string]any{}}
-	if err := upsertCountryByExternalID(context.Background(), caller, db, model, unit, key, map[string]any{"Code": "WB1"}); err == nil {
+	if err := upsertByExternalID(context.Background(), caller, db, model, "base.Country", unit, key, map[string]any{"Code": "WB1"}); err == nil {
 		t.Fatal("expected Create without Id")
 	}
 
 	caller = &wbCaller{err: errors.New("duplicate key")}
-	err := upsertCountryByExternalID(context.Background(), caller, db, model, unit, key, map[string]any{"Code": "WB1"})
+	err = upsertByExternalID(context.Background(), caller, db, model, "base.Country", unit, key, map[string]any{"Code": "WB1"})
 	imp, _ := importpkg.AsError(err)
 	if imp.Code != importpkg.CodeDuplicateKey {
 		t.Fatalf("create err code=%s", imp.Code)
 	}
 
-	if err := db.Create(&modmeta.ModelData{Module: "import", Name: "wb1", Application: "base", ModelName: "Country", ModelId: "mid", ResID: "gone"}).Error; err != nil {
+	if err := db.Create(&modmeta.ModelData{Module: "import", Name: "wb1", Application: "base", ModelName: "Country", ModelId: model.Id.String, ResID: "gone"}).Error; err != nil {
 		t.Fatal(err)
 	}
 	caller = &wbCaller{errOn: map[string]error{"base.Country.Search": errors.New("search failed")}}
-	if err := upsertCountryByExternalID(context.Background(), caller, db, model, unit, key, map[string]any{"Code": "WB1"}); err == nil {
+	if err := upsertByExternalID(context.Background(), caller, db, model, "base.Country", unit, key, map[string]any{"Code": "WB1"}); err == nil {
 		t.Fatal("expected search failure")
 	}
 
@@ -116,44 +130,62 @@ func TestUpsertCountryByExternalID_Branches(t *testing.T) {
 		byKey: map[string]any{"base.Country.Search": []any{map[string]any{"Id": "gone"}}},
 		errOn: map[string]error{"base.Country.UpdateById": errors.New("update failed")},
 	}
-	if err := upsertCountryByExternalID(context.Background(), caller, db, model, unit, key, map[string]any{"Code": "WB1"}); err == nil {
+	if err := upsertByExternalID(context.Background(), caller, db, model, "base.Country", unit, key, map[string]any{"Code": "WB1"}); err == nil {
 		t.Fatal("expected update failure")
 	}
 
-	if ok, _ := countryExistsByID(context.Background(), &wbCaller{}, unit, "  "); ok {
+	if ok, _ := recordExistsByID(context.Background(), &wbCaller{}, unit, "base.Country", "  "); ok {
 		t.Fatal("empty id")
 	}
 }
 
-func TestUpsertCountryByCode_Branches(t *testing.T) {
-	unit := recordplan.Unit{Index: 1}
-	if err := upsertCountryByCode(context.Background(), &wbCaller{err: errors.New("search boom")}, unit, map[string]any{"Code": "C1"}); err == nil {
+func TestUpsertByUniqueKeys_Branches(t *testing.T) {
+	db := openWBDB(t)
+	seedMinimalCountryMeta(t, db)
+	fields, err := ListFields(db, mustLookupModel(t, db, "base.Country"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fieldByName := map[string]*meta.Field{}
+	for i := range fields {
+		fieldByName[fields[i].Name] = &fields[i]
+	}
+	unit := recordplan.Unit{Index: 1, Model: "base.Country"}
+
+	if err := upsertByUniqueKeys(context.Background(), &wbCaller{err: errors.New("search boom")}, unit, "base.Country", fieldByName, map[string]any{"Code": "C1"}); err == nil {
 		t.Fatal("search error")
 	}
 	caller := &wbCaller{
 		byKey: map[string]any{"base.Country.Search": []any{map[string]any{"Id": "1"}}},
 		errOn: map[string]error{"base.Country.UpdateById": errors.New("upd")},
 	}
-	if err := upsertCountryByCode(context.Background(), caller, unit, map[string]any{"Code": "C1"}); err == nil {
+	if err := upsertByUniqueKeys(context.Background(), caller, unit, "base.Country", fieldByName, map[string]any{"Code": "C1"}); err == nil {
 		t.Fatal("update error")
 	}
 	caller = &wbCaller{
 		byKey: map[string]any{"base.Country.Search": []any{}},
 		errOn: map[string]error{"base.Country.Create": errors.New("required field")},
 	}
-	err := upsertCountryByCode(context.Background(), caller, unit, map[string]any{"Code": "C1"})
+	err = upsertByUniqueKeys(context.Background(), caller, unit, "base.Country", fieldByName, map[string]any{"Code": "C1"})
 	imp, _ := importpkg.AsError(err)
 	if imp.Code != importpkg.CodeEmptyRequired {
 		t.Fatalf("code=%s", imp.Code)
 	}
-	if err := upsertCountryByCode(context.Background(), caller, unit, map[string]any{"Code": "  "}); err == nil {
-		t.Fatal("empty code")
+	if err := upsertByUniqueKeys(context.Background(), caller, unit, "base.Country", fieldByName, map[string]any{"Name": "only"}); err == nil {
+		t.Fatal("expected missing unique key")
 	}
 }
 
-func TestBuildCountryVals_EmptyRaw(t *testing.T) {
-	unit := recordplan.Unit{Index: 1, Values: map[string]string{"Code": "  "}}
-	if _, err := buildCountryVals(context.Background(), &wbCaller{}, unit); err == nil {
+func TestBuildRecordVals_EmptyRaw(t *testing.T) {
+	db := openWBDB(t)
+	seedMinimalCountryMeta(t, db)
+	fields, _ := ListFields(db, mustLookupModel(t, db, "base.Country"))
+	fieldByName := map[string]*meta.Field{}
+	for i := range fields {
+		fieldByName[fields[i].Name] = &fields[i]
+	}
+	unit := recordplan.Unit{Index: 1, Model: "base.Country", Values: map[string]string{"Code": "  "}}
+	if _, err := buildRecordVals(context.Background(), db, &wbCaller{}, unit, fieldByName); err == nil {
 		t.Fatal("expected empty required")
 	}
 }
@@ -162,6 +194,9 @@ func TestUpsertExternalIDMapping_Update(t *testing.T) {
 	db := openWBDB(t)
 	model := &meta.Model{Name: "Country", Application: "base"}
 	model.Id.String = "mid"
+	if err := db.Create(model).Error; err != nil {
+		t.Fatal(err)
+	}
 	key := MetaModelDataKey{Module: "import", Name: "u1"}
 	if err := upsertExternalIDMapping(db, key, model, "r1"); err != nil {
 		t.Fatal(err)
@@ -193,12 +228,61 @@ func TestAssertExternalIDWritable_DBErrors(t *testing.T) {
 	}
 }
 
-func TestUpsertCountry_ModelNotFound(t *testing.T) {
+func TestUpsertRecord_ModelNotFound(t *testing.T) {
 	db := openWBDB(t)
 	scope := &wbScope{db: db}
 	ctx := orm.ContextWithCaller(context.Background(), &wbCaller{})
-	if err := UpsertCountry(ctx, scope, recordplan.Unit{Index: 1, Model: countryModelFull, Values: map[string]string{"Code": "X"}}); err == nil {
+	if err := UpsertRecord(ctx, scope, recordplan.Unit{Index: 1, Model: "base.Country", Values: map[string]string{"Code": "X"}}); err == nil {
 		t.Fatal("expected model not found")
+	}
+}
+
+func TestAssertExternalIDWritable_NoUpdateAndUninstalledNamespace(t *testing.T) {
+	db := openWBDB(t)
+	if err := db.Create(&modmeta.ModelData{
+		Module: "import", Name: "locked", Application: "base", ModelName: "Country", ModelId: "m", ResID: "r", NoUpdate: true,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	err := AssertExternalIDWritable(db, MetaModelDataKey{Module: "import", Name: "locked"}, 1)
+	imp, ok := importpkg.AsError(err)
+	if !ok || imp.Code != importpkg.CodeExternalIDProtected {
+		t.Fatalf("%v", err)
+	}
+	if err := AssertExternalIDWritable(db, MetaModelDataKey{Module: "custom", Name: "x"}, 1); err != nil {
+		t.Fatalf("uninstalled namespace: %v", err)
+	}
+}
+
+func TestUpsertExternalIDMapping_LookupError(t *testing.T) {
+	db := openWBDB(t)
+	sqlDB, _ := db.DB()
+	_ = sqlDB.Close()
+	model := &meta.Model{Name: "Country", Application: "base"}
+	model.Id.String = "m"
+	if err := upsertExternalIDMapping(db, MetaModelDataKey{Module: "import", Name: "x"}, model, "r"); err == nil {
+		t.Fatal("expected lookup error")
+	}
+}
+
+func TestUpsertByExternalID_LookupError(t *testing.T) {
+	db := openWBDB(t)
+	sqlDB, _ := db.DB()
+	_ = sqlDB.Close()
+	model := &meta.Model{Name: "Country", Application: "base"}
+	model.Id.String = "m"
+	err := upsertByExternalID(context.Background(), &wbCaller{}, db, model, "base.Country", recordplan.Unit{Index: 1}, MetaModelDataKey{Module: "import", Name: "x"}, map[string]any{"Code": "A"})
+	if err == nil {
+		t.Fatal("expected lookup wrap error")
+	}
+}
+
+func TestAssertModuleNamespaceWritable_DBError(t *testing.T) {
+	db := openWBDB(t)
+	sqlDB, _ := db.DB()
+	_ = sqlDB.Close()
+	if err := assertModuleNamespaceWritable(db, MetaModelDataKey{Module: "base", Name: "x"}, 1); err == nil {
+		t.Fatal("expected module lookup error")
 	}
 }
 
@@ -274,57 +358,40 @@ func openWBDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	cfg := &config.Config{Db: &config.DbConfig{Dialect: "sqlite", DSN: filepath.Join(t.TempDir(), "wb.db")}}
 	runtimeScope := defaultscope.NewDefaultScope(context.Background(), scopetest.FactoryInputFromConfig(cfg), nil)
-	if err := runtimeScope.Session().AutoMigrate(&meta.Module{}, &meta.Model{}, &modmeta.ModelData{}); err != nil {
+	if err := runtimeScope.Session().AutoMigrate(&meta.Module{}, &meta.Model{}, &meta.Field{}, &modmeta.ModelData{}); err != nil {
 		t.Fatalf("AutoMigrate: %v", err)
 	}
 	return runtimeScope.Session().DB
 }
 
-func TestAssertExternalIDWritable_NoUpdateAndUninstalledNamespace(t *testing.T) {
-	db := openWBDB(t)
-	if err := db.Create(&modmeta.ModelData{
-		Module: "import", Name: "locked", Application: "base", ModelName: "Country", ModelId: "m", ResID: "r", NoUpdate: true,
-	}).Error; err != nil {
+func seedMinimalCountryMeta(t *testing.T, db *gorm.DB) {
+	t.Helper()
+	country := &meta.Model{Name: "Country", Application: "base", Path: "/tmp", ModelTable: "base_country"}
+	if err := db.Create(country).Error; err != nil {
 		t.Fatal(err)
 	}
-	err := AssertExternalIDWritable(db, MetaModelDataKey{Module: "import", Name: "locked"}, 1)
-	imp, ok := importpkg.AsError(err)
-	if !ok || imp.Code != importpkg.CodeExternalIDProtected {
-		t.Fatalf("%v", err)
+	unique := true
+	code := &meta.Field{Name: "Code", FieldType: "varchar", NotNull: true, ModelId: country.Id}
+	_ = code.SetResolvedSpec(&meta.FieldResolvedSpec{
+		Structural: meta.FieldStructuralSpec{
+			Name:         "Code",
+			FieldType:    "varchar",
+			StorageHints: &meta.FieldStructuralStorageHints{Unique: &unique},
+		},
+	})
+	if err := db.Create(code).Error; err != nil {
+		t.Fatal(err)
 	}
-	if err := AssertExternalIDWritable(db, MetaModelDataKey{Module: "custom", Name: "x"}, 1); err != nil {
-		t.Fatalf("uninstalled namespace: %v", err)
-	}
-}
-
-func TestUpsertExternalIDMapping_LookupError(t *testing.T) {
-	db := openWBDB(t)
-	sqlDB, _ := db.DB()
-	_ = sqlDB.Close()
-	model := &meta.Model{Name: "Country", Application: "base"}
-	model.Id.String = "m"
-	if err := upsertExternalIDMapping(db, MetaModelDataKey{Module: "import", Name: "x"}, model, "r"); err == nil {
-		t.Fatal("expected lookup error")
+	if err := db.Create(&meta.Field{Name: "Name", FieldType: "varchar", ModelId: country.Id}).Error; err != nil {
+		t.Fatal(err)
 	}
 }
 
-func TestUpsertCountryByExternalID_LookupError(t *testing.T) {
-	db := openWBDB(t)
-	sqlDB, _ := db.DB()
-	_ = sqlDB.Close()
-	model := &meta.Model{Name: "Country", Application: "base"}
-	model.Id.String = "m"
-	err := upsertCountryByExternalID(context.Background(), &wbCaller{}, db, model, recordplan.Unit{Index: 1}, MetaModelDataKey{Module: "import", Name: "x"}, map[string]any{"Code": "A"})
-	if err == nil {
-		t.Fatal("expected lookup wrap error")
+func mustLookupModel(t *testing.T, db *gorm.DB, full string) *meta.Model {
+	t.Helper()
+	m, err := LookupModel(db, full)
+	if err != nil {
+		t.Fatal(err)
 	}
-}
-
-func TestAssertModuleNamespaceWritable_DBError(t *testing.T) {
-	db := openWBDB(t)
-	sqlDB, _ := db.DB()
-	_ = sqlDB.Close()
-	if err := assertModuleNamespaceWritable(db, MetaModelDataKey{Module: "base", Name: "x"}, 1); err == nil {
-		t.Fatal("expected module lookup error")
-	}
+	return m
 }
