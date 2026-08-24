@@ -116,8 +116,9 @@ func TestImportRun_ArgValidation(t *testing.T) {
 	defer promise2.Free()
 	result2 := promise2.Await()
 	defer result2.Free()
-	// string that is not valid JSON object for Spec may fail decode
-	_ = result2
+	if !result2.IsError() && !result2.IsException() {
+		t.Fatal("expected error for non-JSON import.run argument")
+	}
 }
 
 func TestRun_RejectsPathTraversal(t *testing.T) {

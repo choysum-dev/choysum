@@ -81,9 +81,12 @@ func TestResolveRecordSourcePath_Branches(t *testing.T) {
 	runtimeScope := defaultscope.NewDefaultScope(context.Background(), scopetest.FactoryInputFromConfig(cfg), nil)
 	spec.Source.Path = "rel.csv"
 	got, err = resolveRecordSourcePath(runtimeScope, spec)
-	// empty ModulesPath → unchanged or still relative depending on config defaults
-	_ = got
-	_ = err
+	if err != nil {
+		t.Fatalf("empty ModulesPath: %v", err)
+	}
+	if got.Source.Path != "rel.csv" {
+		t.Fatalf("path = %q, want rel.csv preserved", got.Source.Path)
+	}
 
 	// Scope without PathsRuntimeOptions
 	stub := &noPathsScope{}
