@@ -20,7 +20,7 @@ require (
 	github.com/improbable-eng/grpc-web v0.15.0
 	github.com/leonelquinteros/gotext v1.7.2
 	github.com/microcosm-cc/bluemonday v1.0.27
-	github.com/minio/minio-go/v7 v7.2.1
+	github.com/minio/minio-go/v7 v7.3.0
 	github.com/mwitkow/grpc-proxy v0.0.0-20250813121105-2866842de9a5
 	github.com/orandin/slog-gorm v1.4.0
 	github.com/otiai10/copy v1.14.1
@@ -43,7 +43,7 @@ require (
 	golang.org/x/sync v0.22.0
 	golang.org/x/term v0.45.0
 	golang.org/x/text v0.41.0
-	google.golang.org/grpc v1.83.0
+	google.golang.org/grpc v1.83.1
 	google.golang.org/protobuf v1.36.12
 	gorm.io/datatypes v1.2.7
 	gorm.io/driver/mysql v1.6.0
@@ -58,14 +58,14 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/go-json-experiment/json v0.0.0-20251027170946-4849db3c2f7e // indirect
 	github.com/gorilla/css v1.0.1 // indirect
-	github.com/klauspost/compress v1.18.6 // indirect
-	github.com/klauspost/cpuid/v2 v2.2.11 // indirect
+	github.com/klauspost/compress v1.19.2 // indirect
+	github.com/klauspost/cpuid/v2 v2.4.0 // indirect
 	github.com/klauspost/crc32 v1.3.0 // indirect
 	github.com/minio/crc64nvme v1.1.1 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
-	github.com/tinylib/msgp v1.6.1 // indirect
-	gopkg.in/ini.v1 v1.67.2 // indirect
+	github.com/tinylib/msgp v1.6.4 // indirect
+	gopkg.in/ini.v1 v1.67.3 // indirect
 )
 
 require (
@@ -98,7 +98,7 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/metric v1.45.0
-	go.yaml.in/yaml/v3 v3.0.4 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/mod v0.40.0
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/tools v0.49.0 // indirect
