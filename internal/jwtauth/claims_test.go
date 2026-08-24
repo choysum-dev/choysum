@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/choysum-dev/choysum/pkg/auth"
 	"github.com/choysum-dev/choysum/pkg/auth/autherrors"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func signedTokenForClaimsTest(t *testing.T, claims *Claims) string {

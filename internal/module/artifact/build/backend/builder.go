@@ -31,7 +31,6 @@ import (
 	"github.com/evanw/esbuild/pkg/api"
 	xfmt "golang.org/x/exp/errors/fmt"
 	"gorm.io/gorm"
-
 )
 
 type ModuleBuilder struct {

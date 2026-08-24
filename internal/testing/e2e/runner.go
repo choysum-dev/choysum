@@ -32,8 +32,8 @@ import (
 	_ "github.com/choysum-dev/choysum/internal/defaultengine"
 	_ "github.com/choysum-dev/choysum/internal/defaultjsexecutor"
 	_ "github.com/choysum-dev/choysum/internal/defaultscope"
+	_ "github.com/choysum-dev/choysum/internal/import/runner"
 	"github.com/choysum-dev/choysum/internal/logger"
-	dataloader "github.com/choysum-dev/choysum/internal/module/evolution/data"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	moddeps "github.com/choysum-dev/choysum/internal/testing/moddeps"
@@ -41,8 +41,8 @@ import (
 	testsemantics "github.com/choysum-dev/choysum/internal/testing/semantics"
 	testingpathing "github.com/choysum-dev/choysum/internal/testing/tmpdir"
 	"github.com/choysum-dev/choysum/pkg/config"
+	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
-	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
 	"gorm.io/datatypes"
@@ -659,9 +659,19 @@ func applyScenarioFixtures(
 		}
 		// Apply in its own transaction to reduce lock contention.
 		if err := runtimeScope.Transactor().Required(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
-			loader := dataloader.New(txScope)
-			owner := &meta.Module{Name: modName, Path: filepath.Join(runtimeOptions.modulesPath, sm.DirName)}
-			return loader.ApplyFiles(ctx, owner, paths)
+			spec := importpkg.Spec{
+				Profile: importpkg.ProfileInitdata,
+				Caller:  importpkg.CallerE2E,
+				Policy:  importpkg.PolicyAtomic,
+				Module:  modName,
+				Source: importpkg.Source{
+					Format: "json",
+					Path:   filepath.Join(runtimeOptions.modulesPath, sm.DirName),
+				},
+				Options: importpkg.Options{InitdataFiles: paths},
+			}
+			_, err := importpkg.Run(ctx, txScope, spec)
+			return err
 		}); err != nil {
 			return err
 		}

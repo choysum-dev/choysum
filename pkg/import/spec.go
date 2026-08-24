@@ -27,6 +27,8 @@ type Source struct {
 // Options carries profile-specific extensions.
 type Options struct {
 	WithDemo          bool              `json:"with_demo,omitempty"`
+	InitdataFiles     []string          `json:"initdata_files,omitempty"`
+	DemoFiles         []string          `json:"demo_files,omitempty"`
 	ColumnMapping     map[string]string `json:"column_mapping,omitempty"`
 	CompanyID         string            `json:"company_id,omitempty"`
 	Limit             int               `json:"limit,omitempty"`

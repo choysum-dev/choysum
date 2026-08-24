@@ -14,7 +14,6 @@ import (
 	"github.com/choysum-dev/choysum/internal/parser"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"gorm.io/gorm"
-
 )
 
 func pathWithinModuleRoot(path, root string) bool {

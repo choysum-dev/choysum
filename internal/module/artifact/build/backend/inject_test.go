@@ -20,7 +20,6 @@ import (
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-
 )
 
 func newInjectTestBuilder(t *testing.T, mod *meta.Module, results []*parser.ParserResult) (*ModuleBuilder, *stubEsbPlugin, *gorm.DB) {

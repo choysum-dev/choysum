@@ -144,7 +144,7 @@ func webUserFilterTableExists(db *gorm.DB) (bool, error) {
 		return false, nil
 	}
 	var n int64
-	err := db.Raw("SELECT COUNT(1) FROM "+webUserFilterTable+" WHERE 1 = 0").Scan(&n).Error
+	err := db.Raw("SELECT COUNT(1) FROM " + webUserFilterTable + " WHERE 1 = 0").Scan(&n).Error
 	if err == nil {
 		return true, nil
 	}
@@ -212,7 +212,7 @@ func propertyDefinitionTableExists(db *gorm.DB, table string) (bool, error) {
 		return false, nil
 	}
 	var n int64
-	err := db.Raw("SELECT COUNT(1) FROM "+table+" WHERE 1 = 0").Scan(&n).Error
+	err := db.Raw("SELECT COUNT(1) FROM " + table + " WHERE 1 = 0").Scan(&n).Error
 	if err == nil {
 		return true, nil
 	}

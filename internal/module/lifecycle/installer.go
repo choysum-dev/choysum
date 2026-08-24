@@ -13,13 +13,13 @@ import (
 
 	internalbackendbuilder "github.com/choysum-dev/choysum/internal/module/artifact/build/backend"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
-	dataloader "github.com/choysum-dev/choysum/internal/module/evolution/data"
 	"github.com/choysum-dev/choysum/internal/module/evolution/hooks"
 	"github.com/choysum-dev/choysum/internal/module/evolution/schema"
 	"github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/internal/module/policy"
 	"github.com/choysum-dev/choysum/internal/task"
 
+	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -223,13 +223,12 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepSchema, schemaStarted)
 
-	dataLoader := dataloader.New(m.runtimeScope)
 	applyCtx := m.runtimeScope.Context()
 	if applyCtx == nil {
 		applyCtx = context.Background()
 	}
 	dataStarted := time.Now()
-	if err := dataLoader.ApplyModule(applyCtx, m.module, dataloader.ApplyOptions{WithDemo: m.ctx != nil && m.ctx.withDemo}); err != nil {
+	if err := applyInitdata(applyCtx, m.runtimeScope, m.module, importpkg.CallerLifecycle, m.ctx != nil && m.ctx.withDemo); err != nil {
 		return xfmt.Errorf("error applying data for module %s: %w", m.module.Name, err)
 	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepData, dataStarted)

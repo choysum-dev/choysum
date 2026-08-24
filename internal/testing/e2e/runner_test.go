@@ -1357,10 +1357,12 @@ func TestSeedModuleIndexForE2EAutoMigrateError(t *testing.T) {
 type brokenAutoMigrateE2EScope struct{}
 
 func (s *brokenAutoMigrateE2EScope) Run(fn func(scope.Scope) error) error { return fn(s) }
-func (s *brokenAutoMigrateE2EScope) Transactor() scope.Transactor { return brokenAutoMigrateE2ETransactor{} }
+func (s *brokenAutoMigrateE2EScope) Transactor() scope.Transactor {
+	return brokenAutoMigrateE2ETransactor{}
+}
 func (s *brokenAutoMigrateE2EScope) WithContext(ctx context.Context) scope.Scope { return s }
-func (s *brokenAutoMigrateE2EScope) Context() context.Context      { return context.Background() }
-func (s *brokenAutoMigrateE2EScope) Logger() *slog.Logger            { return slog.Default() }
+func (s *brokenAutoMigrateE2EScope) Context() context.Context                    { return context.Background() }
+func (s *brokenAutoMigrateE2EScope) Logger() *slog.Logger                        { return slog.Default() }
 func (s *brokenAutoMigrateE2EScope) Session() *scope.Session {
 	db, err := gorm.Open(sqlite.Open(filepath.Join(os.TempDir(), "broken-e2e-automigrate.db")), &gorm.Config{})
 	if err != nil {
@@ -1394,8 +1396,8 @@ func (brokenAutoMigrateE2ETransactor) Nested(ctx context.Context, fn scope.TxFun
 type nilDBE2EScope struct{}
 
 func (s *nilDBE2EScope) Run(fn func(scope.Scope) error) error { return fn(s) }
-func (s *nilDBE2EScope) Transactor() scope.Transactor          { return nilDBE2ETransactor{} }
-func (s *nilDBE2EScope) Session() *scope.Session               { return &scope.Session{} }
+func (s *nilDBE2EScope) Transactor() scope.Transactor         { return nilDBE2ETransactor{} }
+func (s *nilDBE2EScope) Session() *scope.Session              { return &scope.Session{} }
 func (s *nilDBE2EScope) WithContext(ctx context.Context) scope.Scope {
 	if ctx == nil {
 		ctx = context.Background()

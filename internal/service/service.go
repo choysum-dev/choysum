@@ -27,10 +27,10 @@ import (
 )
 
 type ApplicationService struct {
-	runtimeScope     scope.Scope
-	name             string
-	runtimeOptions   runtimeOptions
-	appDistPath      string
+	runtimeScope   scope.Scope
+	name           string
+	runtimeOptions runtimeOptions
+	appDistPath    string
 	// scriptDistPath is where index.js lives for QuickJS service handlers.
 	// For application "web", static UI stays on appDistPath (dist/web) while
 	// scripts come from bundles (or dist/apps/web) so TranslationTerm RPC works.

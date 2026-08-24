@@ -30,7 +30,7 @@ func (s *basePluginTestScope) WithContext(ctx context.Context) scope.Scope {
 	return s
 }
 func (s *basePluginTestScope) Context() context.Context { return context.Background() }
-func (s *basePluginTestScope) Logger() *slog.Logger       { return slog.Default() }
+func (s *basePluginTestScope) Logger() *slog.Logger     { return slog.Default() }
 
 func TestNewBasePluginInitializesSharedState(t *testing.T) {
 	runtimeScope := &basePluginTestScope{}
