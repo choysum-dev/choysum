@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/buke/quickjs-go"
+	"github.com/choysum-dev/choysum/internal/import/ormbridge"
 	"github.com/choysum-dev/choysum/internal/import/runner"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
@@ -18,7 +19,7 @@ import (
 	"github.com/choysum-dev/choysum/pkg/scope"
 )
 
-// WithImportProvider registers $choysum.import.run for record/profile imports in tests and tooling.
+// WithImportProvider registers $choysum.import.run and $choysum.orm.call.
 func WithImportProvider(scopeProvider jsengine.ScopeProvider) jsengine.JsEngineOption {
 	return func(jsEngine jsengine.JsEngine) error {
 		jse := jsEngine.(*quickjsengine.QuickjsEngine)
@@ -32,6 +33,9 @@ func WithImportProvider(scopeProvider jsengine.ScopeProvider) jsengine.JsEngineO
 		importObj.Set("run", jse.Ctx.NewFunction(runImportAsyncFactory(jse, scopeProvider)))
 		choysumObj.Set("import", importObj)
 		globalsObj.Set("$choysum", choysumObj)
+		if err := ormbridge.Register(jse); err != nil {
+			return err
+		}
 		return nil
 	}
 }
@@ -71,7 +75,8 @@ func performImportRun(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, sc
 		return ctx.NewError(fmt.Errorf("import.run: scope unavailable"))
 	}
 	spec = resolveRecordSourcePath(runtimeScope, spec)
-	report, err := runner.Run(execCtx, runtimeScope, spec)
+	runCtx := ormbridge.ContextWithCaller(execCtx, ormbridge.EngineCaller{Engine: jse})
+	report, err := runner.Run(runCtx, runtimeScope, spec)
 	if err != nil {
 		return ctx.NewError(err)
 	}

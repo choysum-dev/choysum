@@ -18,12 +18,11 @@ func init() {
 	registry.RegisterWriter(importpkg.ProfileRecord, Writer{})
 }
 
-// Writer persists record import units through the ORM write path.
+// Writer persists record import units through the TS ORM write path (ormbridge).
 type Writer struct{}
 
 // Write implements registry.Writer.
 func (Writer) Write(ctx context.Context, txScope scope.Scope, units []plan.Unit) error {
-	_ = ctx
 	if txScope == nil || txScope.Session() == nil {
 		return importpkg.Errorf(importpkg.CodeInvalidFormat, "scope is required for record writer")
 	}
@@ -32,17 +31,17 @@ func (Writer) Write(ctx context.Context, txScope scope.Scope, units []plan.Unit)
 		if !ok {
 			return importpkg.Errorf(importpkg.CodeInvalidFormat, "unexpected unit type for record writer")
 		}
-		if err := writeUnit(txScope, u); err != nil {
+		if err := writeUnit(ctx, txScope, u); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func writeUnit(txScope scope.Scope, unit recordplan.Unit) error {
+func writeUnit(ctx context.Context, txScope scope.Scope, unit recordplan.Unit) error {
 	switch strings.TrimSpace(unit.Model) {
 	case countryModelFull:
-		return UpsertCountry(txScope, unit)
+		return UpsertCountry(ctx, txScope, unit)
 	default:
 		return rowError(unit, "", importpkg.CodeModelNotFound, "unsupported record import model")
 	}

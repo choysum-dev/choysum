@@ -49,11 +49,7 @@ func isDryRunRollback(err error) bool {
 func runAtomic(ctx context.Context, runtimeScope scope.Scope, spec importpkg.Spec, p plan.Plan, writer registry.Writer) (importpkg.Report, error) {
 	collector := newMessageCollector(p.Len())
 
-	// Use Nested for the whole atomic batch so:
-	// - standalone runs get a fresh tx (Nested without current → runFresh)
-	// - joined BE-test / request txs get a savepoint (rollback does not markRollback the outer Required)
-	// Returning errDryRunRollback from Required-joined would poison the outer test transaction.
-	err := runtimeScope.Transactor().Nested(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
+	atomicFn := func(txScope scope.Scope, _ scope.Transaction) error {
 		for _, unit := range p.Units {
 			unitErr := writer.Write(txScope.Context(), txScope, []plan.Unit{unit})
 			if unitErr != nil {
@@ -69,7 +65,16 @@ func runAtomic(ctx context.Context, runtimeScope scope.Scope, spec importpkg.Spe
 			return errDryRunRollback
 		}
 		return nil
-	})
+	}
+
+	// Prefer Nested so joined outer txs (BE unit harness) roll back via savepoint
+	// without markRollback on the outer Required (dry-run / hard errors).
+	// Lifecycle scopes often use runSessionTransactor, which returns ErrNestedUnsupported —
+	// fall back to Required (fresh or joined) for those callers.
+	err := runtimeScope.Transactor().Nested(ctx, atomicFn)
+	if errors.Is(err, scope.ErrNestedUnsupported) {
+		err = runtimeScope.Transactor().Required(ctx, atomicFn)
+	}
 
 	report := collector.buildReport(spec, p.Len())
 

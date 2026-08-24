@@ -5,14 +5,17 @@ package record_test
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/choysum-dev/choysum/internal/defaultscope"
+	"github.com/choysum-dev/choysum/internal/import/ormbridge"
 	"github.com/choysum-dev/choysum/internal/import/runner"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
@@ -20,6 +23,7 @@ import (
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
+	"github.com/rs/xid"
 	"gorm.io/gorm"
 )
 
@@ -31,7 +35,7 @@ func TestCountryImport_AtomicRollback(t *testing.T) {
 		"Bad,,true,true,false\n")
 	spec := countryImportSpec(path)
 
-	_, err := runner.Run(context.Background(), runtimeScope, spec)
+	_, err := runner.Run(withTestORMCaller(runtimeScope), runtimeScope, spec)
 	if err == nil {
 		t.Fatal("expected import error")
 	}
@@ -46,7 +50,7 @@ func TestCountryImport_DryRun(t *testing.T) {
 	spec := countryImportSpec(path)
 	spec.DryRun = true
 
-	report, err := runner.Run(context.Background(), runtimeScope, spec)
+	report, err := runner.Run(withTestORMCaller(runtimeScope), runtimeScope, spec)
 	if err != nil {
 		t.Fatalf("Run dry-run: %v", err)
 	}
@@ -62,13 +66,13 @@ func TestCountryImport_CodeUpsert(t *testing.T) {
 	runtimeScope := newCountryImportScope(t)
 	path := writeCountryCSV(t, "Name,Code,IsActive,ZipRequired,StateRequired\nFirst,UP001,true,true,false\n")
 	spec := countryImportSpec(path)
-	if _, err := runner.Run(context.Background(), runtimeScope, spec); err != nil {
+	if _, err := runner.Run(withTestORMCaller(runtimeScope), runtimeScope, spec); err != nil {
 		t.Fatalf("first import: %v", err)
 	}
 
 	path = writeCountryCSV(t, "Name,Code,IsActive,ZipRequired,StateRequired\nSecond,UP001,true,true,false\n")
 	spec = countryImportSpec(path)
-	if _, err := runner.Run(context.Background(), runtimeScope, spec); err != nil {
+	if _, err := runner.Run(withTestORMCaller(runtimeScope), runtimeScope, spec); err != nil {
 		t.Fatalf("second import: %v", err)
 	}
 	if count := countCountries(t, runtimeScope); count != 1 {
@@ -81,6 +85,111 @@ func TestCountryImport_CodeUpsert(t *testing.T) {
 	if name != "Second" {
 		t.Fatalf("name = %q, want Second", name)
 	}
+}
+
+func withTestORMCaller(runtimeScope scope.Scope) context.Context {
+	return ormbridge.ContextWithCaller(context.Background(), &gormORMCaller{scope: runtimeScope})
+}
+
+// gormORMCaller is a Go-unit stand-in for TS ORM Create/UpdateById/Search.
+type gormORMCaller struct {
+	scope scope.Scope
+}
+
+func (c *gormORMCaller) Call(ctx context.Context, req ormbridge.CallRequest) (any, error) {
+	db := c.dbFromContext(ctx)
+	switch req.Model + "." + req.Method {
+	case "base.Country.Create":
+		vals, _ := req.Args[0].(map[string]any)
+		if code, _ := vals["Code"].(string); strings.TrimSpace(code) == "" {
+			return nil, fmt.Errorf("Code is required")
+		}
+		id := xid.New().String()
+		row := map[string]any{
+			"id":             id,
+			"name":           vals["Name"],
+			"code":           vals["Code"],
+			"is_active":      vals["IsActive"],
+			"zip_required":   vals["ZipRequired"],
+			"state_required": vals["StateRequired"],
+			"created_at":     time.Now().UTC(),
+			"updated_at":     time.Now().UTC(),
+		}
+		if cur, ok := vals["DefaultCurrencyId"].(string); ok && cur != "" {
+			row["default_currency_id"] = cur
+		}
+		if err := db.Table("base_country").Create(row).Error; err != nil {
+			return nil, err
+		}
+		return map[string]any{"Id": id, "Code": vals["Code"]}, nil
+	case "base.Country.UpdateById":
+		id, _ := req.Args[0].(string)
+		vals, _ := req.Args[1].(map[string]any)
+		updates := map[string]any{"updated_at": time.Now().UTC()}
+		for k, v := range vals {
+			switch k {
+			case "Name":
+				updates["name"] = v
+			case "Code":
+				updates["code"] = v
+			case "IsActive":
+				updates["is_active"] = v
+			case "ZipRequired":
+				updates["zip_required"] = v
+			case "StateRequired":
+				updates["state_required"] = v
+			case "DefaultCurrencyId":
+				updates["default_currency_id"] = v
+			}
+		}
+		if err := db.Table("base_country").Where("id = ?", id).Updates(updates).Error; err != nil {
+			return nil, err
+		}
+		return map[string]any{"Id": id}, nil
+	case "base.Country.Search", "base.Currency.Search":
+		table := "base_country"
+		if req.Model == "base.Currency" {
+			table = "base_currency"
+		}
+		cond, _ := req.Args[0].(map[string]any)
+		and, _ := cond["And"].([]any)
+		if len(and) == 0 {
+			return []any{}, nil
+		}
+		tuple, _ := and[0].([]any)
+		if len(tuple) < 3 {
+			return []any{}, nil
+		}
+		field, _ := tuple[0].(string)
+		value := tuple[2]
+		col := strings.ToLower(field)
+		if field == "Code" {
+			col = "code"
+		}
+		if field == "Id" {
+			col = "id"
+		}
+		var id string
+		if err := db.Table(table).Select("id").Where(col+" = ?", value).Limit(1).Scan(&id).Error; err != nil {
+			return nil, err
+		}
+		if id == "" {
+			return []any{}, nil
+		}
+		return []any{map[string]any{"Id": id}}, nil
+	default:
+		return nil, fmt.Errorf("unsupported orm call %s.%s", req.Model, req.Method)
+	}
+}
+
+func (c *gormORMCaller) dbFromContext(ctx context.Context) *gorm.DB {
+	if tx, ok := scope.TransactionFromContext(ctx); ok && tx != nil && tx.Session() != nil {
+		return tx.Session().DB
+	}
+	if rs, ok := scope.ScopeFromContext(ctx); ok && rs != nil && rs.Session() != nil {
+		return rs.Session().DB
+	}
+	return c.scope.Session().DB
 }
 
 func countryImportSpec(path string) importpkg.Spec {
@@ -135,14 +244,15 @@ func seedCountryImportSchema(t *testing.T, db *gorm.DB) {
 }
 
 type testCountryRow struct {
-	ID            string    `gorm:"column:id;primaryKey"`
-	Name          string    `gorm:"column:name"`
-	Code          string    `gorm:"column:code;uniqueIndex"`
-	IsActive      bool      `gorm:"column:is_active"`
-	ZipRequired   bool      `gorm:"column:zip_required"`
-	StateRequired bool      `gorm:"column:state_required"`
-	CreatedAt     time.Time `gorm:"column:created_at"`
-	UpdatedAt     time.Time `gorm:"column:updated_at"`
+	ID                 string    `gorm:"column:id;primaryKey"`
+	Name               string    `gorm:"column:name"`
+	Code               string    `gorm:"column:code;uniqueIndex"`
+	IsActive           bool      `gorm:"column:is_active"`
+	ZipRequired        bool      `gorm:"column:zip_required"`
+	StateRequired      bool      `gorm:"column:state_required"`
+	DefaultCurrencyID  string    `gorm:"column:default_currency_id"`
+	CreatedAt          time.Time `gorm:"column:created_at"`
+	UpdatedAt          time.Time `gorm:"column:updated_at"`
 }
 
 func (testCountryRow) TableName() string { return "base_country" }

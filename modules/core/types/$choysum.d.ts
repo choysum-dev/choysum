@@ -267,7 +267,7 @@ declare var $choysum: {
   };
 
   /**
-   * Unified import bridge (Go import.Run).
+   * Unified import bridge (Go import.Run) and ORM invoke helper for RecordWriter.
    */
   import?: {
     run: (spec: Record<string, unknown> | string) => Promise<{
@@ -277,5 +277,13 @@ declare var $choysum: {
       stats?: { total?: number; ok?: number; error?: number; skip?: number; warning?: number };
       messages?: Array<{ type?: string; row?: number; field?: string; code?: string; text?: string; record_ref?: string }>;
     }>;
+  };
+  orm?: {
+    call: (req: {
+      model: string;
+      method: string;
+      args?: unknown[];
+      context?: Record<string, unknown>;
+    }) => Promise<unknown>;
   };
 };
