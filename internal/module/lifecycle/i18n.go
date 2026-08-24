@@ -4,12 +4,14 @@
 package lifecycle
 
 import (
+	"context"
 	"path/filepath"
 	"sort"
 	"strings"
 
 	i18nimport "github.com/choysum-dev/choysum/internal/i18n/import"
 	"github.com/choysum-dev/choysum/internal/i18n/store"
+	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -47,8 +49,7 @@ func importModuleTerminology(runtimeScope scope.Scope, mod *meta.Module, modules
 	}
 
 	moduleRoot := resolveModuleRoot(mod, modulesPath, moduleName)
-	reg := store.RegistryFor(runtimeScope)
-	if err := i18nimport.ImportModuleI18nDir(runtimeScope, reg, application, moduleName, moduleRoot); err != nil {
+	if err := runTerminologyImport(runtimeScope, application, moduleName, moduleRoot); err != nil {
 		return xfmt.Errorf("import terminology for module %s: %w", moduleName, err)
 	}
 	if err := importFrameworkTerminology(runtimeScope, application, modulesPath, mod); err != nil {
@@ -85,8 +86,7 @@ func importFrameworkTerminology(runtimeScope scope.Scope, hostApplication, modul
 	if coreRoot == "" {
 		return nil
 	}
-	reg := store.RegistryFor(runtimeScope)
-	if err := i18nimport.ImportModuleI18nDir(runtimeScope, reg, hostApplication, frameworkModuleName, coreRoot); err != nil {
+	if err := runTerminologyImport(runtimeScope, hostApplication, frameworkModuleName, coreRoot); err != nil {
 		return xfmt.Errorf("import framework terminology into %s: %w", hostApplication, err)
 	}
 	return nil
@@ -103,6 +103,26 @@ func importFrameworkTerminologyIntoAllApps(runtimeScope scope.Scope, modulesPath
 		}
 	}
 	return nil
+}
+
+func runTerminologyImport(runtimeScope scope.Scope, application, moduleName, moduleRoot string) error {
+	ctx := context.Background()
+	if runtimeScope != nil && runtimeScope.Context() != nil {
+		ctx = runtimeScope.Context()
+	}
+	spec := importpkg.Spec{
+		Profile:     importpkg.ProfileTerminology,
+		Caller:      importpkg.CallerLifecycle,
+		Policy:      importpkg.PolicyAtomic,
+		Module:      moduleName,
+		Application: application,
+		Source: importpkg.Source{
+			Format: "po",
+			Path:   moduleRoot,
+		},
+	}
+	_, err := importpkg.Run(ctx, runtimeScope, spec)
+	return err
 }
 
 func listHostApplications(runtimeScope scope.Scope) ([]string, error) {
