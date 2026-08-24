@@ -26,4 +26,6 @@ ignore:
   - "**/*.test.ts"
   # Test helpers/fixtures under service/tests (not product code; *.test.ts already ignored).
   - "modules/**/service/tests/**"
+  # Legacy path from addons→modules rename; exclude stale carryforward from project totals.
+  - "addons/**"
   - ".dev/**"
