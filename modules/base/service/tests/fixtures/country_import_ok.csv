@@ -1,0 +1,3 @@
+Name,Code,DefaultCurrencyId/Code,ZipRequired,StateRequired,IsActive
+Import Alpha,IMP001,CNY,true,false,true
+Import Beta,IMP002,CNY,false,true,true

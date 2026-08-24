@@ -92,3 +92,26 @@ func TestQuickjsEngine_InterruptsOnContextCancel(t *testing.T) {
 		t.Fatalf("interrupt took too long: %s", elapsed)
 	}
 }
+
+func TestSwapExecContext(t *testing.T) {
+	engineIface, err := NewFactory()()
+	if err != nil {
+		t.Fatal(err)
+	}
+	engine := engineIface.(*QuickjsEngine)
+	t.Cleanup(func() { _ = engine.Close() })
+
+	type key struct{}
+	outer := context.WithValue(context.Background(), key{}, "outer")
+	inner := context.WithValue(context.Background(), key{}, "inner")
+	restoreOuter := engine.SwapExecContext(outer)
+	restoreInner := engine.SwapExecContext(inner)
+	if engine.ExecContext().Value(key{}) != "inner" {
+		t.Fatal("inner not set")
+	}
+	restoreInner()
+	if engine.ExecContext().Value(key{}) != "outer" {
+		t.Fatal("outer not restored")
+	}
+	restoreOuter()
+}

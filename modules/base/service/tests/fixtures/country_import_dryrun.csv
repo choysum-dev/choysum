@@ -1,0 +1,3 @@
+Name,Code,DefaultCurrencyId/Code,ZipRequired,StateRequired,IsActive
+Dry Alpha,DRY001,CNY,true,false,true
+Dry Beta,DRY002,CNY,false,true,true

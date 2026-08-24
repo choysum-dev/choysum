@@ -1,0 +1,3 @@
+id,Name,Code,DefaultCurrencyId/Code,ZipRequired,StateRequired,IsActive
+base.company_main,Blocked,BLK001,CNY,true,false,true
+Valid,import.valid_country,VAL001,CNY,true,false,true

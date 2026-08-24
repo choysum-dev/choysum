@@ -51,6 +51,14 @@ func (e *QuickjsEngine) ExecContext() context.Context {
 	return e.getExecContext()
 }
 
+// SwapExecContext temporarily replaces the Go execution context used by bridges
+// ($choysum.db, ORM, …). The returned restore function puts the previous context back.
+func (e *QuickjsEngine) SwapExecContext(ctx context.Context) (restore func()) {
+	prev := e.getExecContext()
+	e.setExecContext(ctx)
+	return func() { e.setExecContext(prev) }
+}
+
 func (e *QuickjsEngine) installInterruptHandler() {
 	// Use a single interrupt handler to enforce both cancellation and per-exec deadlines.
 	// This avoids Runtime.SetExecuteTimeout(), which would override/disable the interrupt handler.

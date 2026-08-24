@@ -14,6 +14,7 @@ const (
 	RuntimePluginHtml             = "html"
 	RuntimePluginFS               = "fs"
 	RuntimePluginI18n             = "i18n"
+	RuntimePluginImport           = "import"
 	RuntimePluginGRPC             = "grpc"
 	RuntimePluginBus              = "bus"
 	RuntimePluginDocumentStorage  = "document-storage"
@@ -31,6 +32,7 @@ var defaultRuntimePluginNames = []string{
 	RuntimePluginHtml,
 	RuntimePluginFS,
 	RuntimePluginI18n,
+	RuntimePluginImport,
 	RuntimePluginGRPC,
 	RuntimePluginBus,
 	RuntimePluginDocumentStorage,
@@ -48,6 +50,7 @@ var replaceableRuntimePluginNames = []string{
 	RuntimePluginHtml,
 	RuntimePluginFS,
 	RuntimePluginI18n,
+	RuntimePluginImport,
 	RuntimePluginGRPC,
 	RuntimePluginBus,
 	RuntimePluginDocumentStorage,
@@ -68,6 +71,7 @@ var replaceableRuntimePluginNameSet = map[string]struct{}{
 	RuntimePluginHtml:             {},
 	RuntimePluginFS:               {},
 	RuntimePluginI18n:             {},
+	RuntimePluginImport:           {},
 	RuntimePluginGRPC:             {},
 	RuntimePluginBus:              {},
 	RuntimePluginDocumentStorage:  {},
