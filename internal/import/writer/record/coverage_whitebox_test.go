@@ -73,6 +73,219 @@ func TestSplitModelFullName(t *testing.T) {
 	if _, _, err := SplitModelFullName("Country"); err == nil {
 		t.Fatal("expected error")
 	}
+	for _, bad := range []string{" .Country", "base. ", "base.Foo.Bar", ".Country", "base."} {
+		if _, _, err := SplitModelFullName(bad); err == nil {
+			t.Fatalf("expected error for %q", bad)
+		}
+	}
+}
+
+func TestMetaLookupHelpers(t *testing.T) {
+	db := openWBDB(t)
+
+	if _, err := LookupModel(db, "not-a-model"); err == nil {
+		t.Fatal("LookupModel invalid name")
+	}
+	if _, err := LookupField(db, nil, "Code"); err == nil {
+		t.Fatal("LookupField nil model")
+	}
+	if _, err := LookupField(db, &meta.Model{}, "  "); err == nil {
+		t.Fatal("LookupField empty name")
+	}
+	if _, err := ListFields(db, nil); err == nil {
+		t.Fatal("ListFields nil model")
+	}
+	if fieldIsManyToOne(nil) {
+		t.Fatal("fieldIsManyToOne nil")
+	}
+	if fieldIsBoolean(nil) {
+		t.Fatal("fieldIsBoolean nil")
+	}
+	if _, err := fieldRelationTarget(nil); err == nil {
+		t.Fatal("fieldRelationTarget nil")
+	}
+	if fieldIsUnique(nil) || fieldIsUnique(&meta.Field{Name: "Id"}) {
+		t.Fatal("fieldIsUnique nil/Id")
+	}
+	if fieldIsUnique(&meta.Field{Name: "Code"}) {
+		t.Fatal("fieldIsUnique without hints")
+	}
+	if ptrString(nil) != "" {
+		t.Fatal("ptrString nil")
+	}
+	s := "idx"
+	if ptrString(&s) != "idx" {
+		t.Fatal("ptrString value")
+	}
+
+	enabled := true
+	idxName := "ux_code"
+	uniqueEnabled := &meta.Field{Name: "Code2"}
+	_ = uniqueEnabled.SetResolvedSpec(&meta.FieldResolvedSpec{
+		Structural: meta.FieldStructuralSpec{
+			StorageHints: &meta.FieldStructuralStorageHints{UniqueIndexEnabled: &enabled},
+		},
+	})
+	if !fieldIsUnique(uniqueEnabled) {
+		t.Fatal("UniqueIndexEnabled")
+	}
+	uniqueIndex := &meta.Field{Name: "Code3"}
+	_ = uniqueIndex.SetResolvedSpec(&meta.FieldResolvedSpec{
+		Structural: meta.FieldStructuralSpec{
+			StorageHints: &meta.FieldStructuralStorageHints{UniqueIndex: &idxName},
+		},
+	})
+	if !fieldIsUnique(uniqueIndex) {
+		t.Fatal("UniqueIndex string")
+	}
+	emptyHints := &meta.Field{Name: "Code4"}
+	_ = emptyHints.SetResolvedSpec(&meta.FieldResolvedSpec{
+		Structural: meta.FieldStructuralSpec{
+			StorageHints: &meta.FieldStructuralStorageHints{},
+		},
+	})
+	if fieldIsUnique(emptyHints) {
+		t.Fatal("empty storage hints")
+	}
+
+	if _, err := fieldRelationTarget(&meta.Field{Name: "F"}); err == nil {
+		t.Fatal("empty RelationModel")
+	}
+	if _, err := fieldRelationTarget(&meta.Field{Name: "F", RelationModel: "Currency"}); err == nil {
+		t.Fatal("target without app")
+	}
+	fromSpec := &meta.Field{Name: "F"}
+	_ = fromSpec.SetResolvedSpec(&meta.FieldResolvedSpec{
+		Structural: meta.FieldStructuralSpec{
+			Relation: map[string]any{"targetModel": "base.Currency"},
+		},
+	})
+	got, err := fieldRelationTarget(fromSpec)
+	if err != nil || got != "base.Currency" {
+		t.Fatalf("from spec: %q %v", got, err)
+	}
+	badSpecType := &meta.Field{Name: "F"}
+	_ = badSpecType.SetResolvedSpec(&meta.FieldResolvedSpec{
+		Structural: meta.FieldStructuralSpec{
+			Relation: map[string]any{"targetModel": 123},
+		},
+	})
+	if _, err := fieldRelationTarget(badSpecType); err == nil {
+		t.Fatal("non-string targetModel")
+	}
+
+	seedMinimalCountryMeta(t, db)
+	model := mustLookupModel(t, db, "base.Country")
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = sqlDB.Close()
+	if _, err := ListFields(db, model); err == nil {
+		t.Fatal("ListFields closed db")
+	}
+}
+
+func TestResolveM2O_MetaErrorPaths(t *testing.T) {
+	db := openWBDB(t)
+	seedCountryWithM2OMeta(t, db)
+	caller := &wbCaller{result: []any{map[string]any{"Id": "1"}}}
+	unit := recordplan.Unit{Index: 1, Model: "missing.Model"}
+	if _, err := ResolveM2O(context.Background(), db, caller, unit, "DefaultCurrencyId/Code", "CNY"); err == nil {
+		t.Fatal("source model missing")
+	}
+	unit.Model = "base.Country"
+	if _, err := ResolveM2O(context.Background(), db, caller, unit, "NoSuchField/Code", "CNY"); err == nil {
+		t.Fatal("unknown field")
+	}
+	if _, err := ResolveM2O(context.Background(), db, caller, unit, "BrokenM2O/Code", "CNY"); err == nil {
+		t.Fatal("missing RelationModel")
+	}
+	if _, err := ResolveM2O(context.Background(), db, caller, unit, "OrphanM2O/Code", "CNY"); err == nil {
+		t.Fatal("target model missing")
+	}
+}
+
+func TestUpsertRecord_BuildValsBranches(t *testing.T) {
+	db := openWBDB(t)
+	seedCountryWithM2OMeta(t, db)
+	scope := &wbScope{db: db}
+	ctx := orm.ContextWithCaller(context.Background(), &wbCaller{
+		byKey: map[string]any{
+			"base.Currency.Search": []any{map[string]any{"Id": "cur-1"}},
+			"base.Country.Search":  []any{},
+			"base.Country.Create":  map[string]any{"Id": "c1"},
+		},
+	})
+
+	if err := UpsertRecord(ctx, scope, recordplan.Unit{Index: 1, Model: "  ", Values: map[string]string{"Code": "X"}}); err == nil {
+		t.Fatal("empty model")
+	}
+	if err := UpsertRecord(ctx, scope, recordplan.Unit{
+		Index: 1, Model: "base.Country",
+		Values: map[string]string{"DefaultCurrencyId/Code": ""},
+	}); err == nil {
+		t.Fatal("empty M2O raw")
+	}
+	if err := UpsertRecord(ctx, scope, recordplan.Unit{
+		Index: 1, Model: "base.Country",
+		Values: map[string]string{"NoSuch": "x"},
+	}); err == nil {
+		t.Fatal("unknown field")
+	}
+	if err := UpsertRecord(ctx, scope, recordplan.Unit{
+		Index: 1, Model: "base.Country",
+		Values: map[string]string{"Code": "OK1", "Name": "  "},
+	}); err != nil {
+		t.Fatalf("optional empty Name: %v", err)
+	}
+
+	// LookupModel succeeds, then ListFields fails after meta_field is dropped.
+	db2 := openWBDB(t)
+	country := &meta.Model{Name: "Country", Application: "base", Path: "/tmp", ModelTable: "base_country"}
+	if err := db2.Create(country).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db2.Migrator().DropTable(&meta.Field{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := UpsertRecord(
+		orm.ContextWithCaller(context.Background(), &wbCaller{}),
+		&wbScope{db: db2},
+		recordplan.Unit{Index: 1, Model: "base.Country", Values: map[string]string{"Code": "X"}},
+	); err == nil {
+		t.Fatal("expected ListFields error")
+	}
+}
+
+func seedCountryWithM2OMeta(t *testing.T, db *gorm.DB) {
+	t.Helper()
+	seedMinimalCountryMeta(t, db)
+	country := mustLookupModel(t, db, "base.Country")
+	currency := &meta.Model{Name: "Currency", Application: "base", Path: "/tmp", ModelTable: "base_currency"}
+	if err := db.Create(currency).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&meta.Field{Name: "Code", FieldType: "varchar", ModelId: currency.Id}).Error; err != nil {
+		t.Fatal(err)
+	}
+	m2o := &meta.Field{
+		Name: "DefaultCurrencyId", FieldType: "ManyToOne", Relation: "ManyToOne",
+		RelationModel: "base.Currency", ModelId: country.Id,
+	}
+	if err := db.Create(m2o).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&meta.Field{
+		Name: "BrokenM2O", FieldType: "ManyToOne", Relation: "ManyToOne", ModelId: country.Id,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&meta.Field{
+		Name: "OrphanM2O", FieldType: "ManyToOneRef", RelationModel: "missing.Currency", ModelId: country.Id,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestIsInstalledModuleNamespace_Empty(t *testing.T) {
