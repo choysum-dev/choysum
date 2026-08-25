@@ -3500,3 +3500,113 @@ func TestPlanRecordOrder_DuplicateInvalidAndExternalRef(t *testing.T) {
 		}
 	})
 }
+
+func TestDecodeDataFileRecords_Branches(t *testing.T) {
+	t.Parallel()
+
+	recs, err := decodeDataFileRecords("/tmp/seed.csv", "auth", []byte("id,model\nauth.g1,group\n"))
+	if err != nil {
+		t.Fatalf("csv ok: %v", err)
+	}
+	if len(recs) != 1 || recs[0].Name != "g1" || recs[0].Model != "group" {
+		t.Fatalf("recs=%#v", recs)
+	}
+
+	if _, err := decodeDataFileRecords("/tmp/bad.csv", "auth", []byte("model\ngroup\n")); err == nil {
+		t.Fatal("expected csv parse error")
+	}
+
+	jsonRecs, err := decodeDataFileRecords("/tmp/seed.json", "auth", []byte(`{"records":[{"name":"n1","model":"group","values":{}}]}`))
+	if err != nil || len(jsonRecs) != 1 || jsonRecs[0].Name != "n1" {
+		t.Fatalf("json=%#v err=%v", jsonRecs, err)
+	}
+
+	// empty extension treated as JSON
+	extRecs, err := decodeDataFileRecords("/tmp/seed", "auth", []byte(`{"records":[]}`))
+	if err != nil || len(extRecs) != 0 {
+		t.Fatalf("empty ext=%#v err=%v", extRecs, err)
+	}
+
+	if _, err := decodeDataFileRecords("/tmp/seed.json", "auth", []byte("{")); err == nil {
+		t.Fatal("expected json parse error")
+	}
+	if _, err := decodeDataFileRecords("/tmp/seed.xml", "auth", []byte("<r/>")); err == nil || !strings.Contains(err.Error(), "unsupported initdata format") {
+		t.Fatalf("expected unsupported format, got %v", err)
+	}
+}
+
+func TestApplyFile_CSVAndUnsupported(t *testing.T) {
+	runtimeScope := newDefaultLoaderScope(t)
+	l := New(runtimeScope)
+	owner := &meta.Module{Name: "auth", Path: t.TempDir(), ApplicationStr: "auth"}
+
+	csvPath := filepath.Join(owner.Path, "groups.csv")
+	if err := os.WriteFile(csvPath, []byte("id,model\nauth.group_apply_csv,group\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.applyFile(context.Background(), owner, csvPath); err != nil {
+		t.Fatalf("apply csv: %v", err)
+	}
+
+	badCSV := filepath.Join(owner.Path, "bad.csv")
+	if err := os.WriteFile(badCSV, []byte("model\nx\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.applyFile(context.Background(), owner, badCSV); err == nil || !strings.Contains(err.Error(), "parse data file") {
+		t.Fatalf("expected csv parse error, got %v", err)
+	}
+
+	xmlPath := filepath.Join(owner.Path, "x.xml")
+	if err := os.WriteFile(xmlPath, []byte("<a/>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.applyFile(context.Background(), owner, xmlPath); err == nil || !strings.Contains(err.Error(), "unsupported initdata format") {
+		t.Fatalf("expected unsupported, got %v", err)
+	}
+}
+
+func TestApplyFiles_DecodeCSVErrorAndEmptyBatch(t *testing.T) {
+	runtimeScope := newDefaultLoaderScope(t)
+	l := New(runtimeScope)
+	dir := t.TempDir()
+	owner := &meta.Module{Name: "auth", Path: dir, ApplicationStr: "auth"}
+
+	bad := filepath.Join(dir, "bad.csv")
+	if err := os.WriteFile(bad, []byte("model\nx\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.ApplyFiles(context.Background(), owner, []string{"bad.csv"}); err == nil || !strings.Contains(err.Error(), "parse data file") {
+		t.Fatalf("expected decode error, got %v", err)
+	}
+
+	// empty / blank paths → empty batch early return
+	if err := l.ApplyFiles(context.Background(), owner, []string{"", " ", "."}); err != nil {
+		t.Fatalf("empty batch: %v", err)
+	}
+}
+
+func TestApplyFile_NilModuleAndRecordErrors(t *testing.T) {
+	runtimeScope := newDefaultLoaderScope(t)
+	l := New(runtimeScope)
+	dir := t.TempDir()
+
+	csvPath := filepath.Join(dir, "g.csv")
+	if err := os.WriteFile(csvPath, []byte("id,model\nauth.g_nilmod,group\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Cover applyingModule="" branch when mod is nil (decode still runs).
+	err := l.applyFile(context.Background(), nil, csvPath)
+	if err == nil {
+		t.Fatal("expected error with nil module")
+	}
+
+	owner := &meta.Module{Name: "auth", Path: dir, ApplicationStr: "auth"}
+	// Invalid model forces planRecordOrder / apply path errors after decode succeeds.
+	badModel := filepath.Join(dir, "bad_model.csv")
+	if err := os.WriteFile(badModel, []byte("id,model\nauth.bad_model,NotARealModel\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.applyFile(context.Background(), owner, badModel); err == nil {
+		t.Fatal("expected plan/apply error for unknown model")
+	}
+}
