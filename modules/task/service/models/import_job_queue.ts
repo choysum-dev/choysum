@@ -40,8 +40,8 @@ export async function getQueueStatus(importJobId: string): Promise<ImportJobQueu
     importJobId: id,
     taskJobId,
     queueStatus: String((taskJob as any)?.Status || ''),
-    progressDone: Number((row as any)?.ProgressDone ?? 0) || 0,
-    progressTotal: Number((row as any)?.ProgressTotal ?? 0) || 0,
+    progressDone: Number((row as any)?.ProgressDone ?? 0),
+    progressTotal: Number((row as any)?.ProgressTotal ?? 0),
     reportJson: ((row as any)?.ReportJson as Record<string, any>) || undefined,
     reportRef: String((row as any)?.ReportRef || '').trim() || undefined,
   };

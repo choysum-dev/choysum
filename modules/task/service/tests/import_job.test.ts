@@ -134,6 +134,16 @@ test('ImportJob.EnqueueRecordImport validation paths', async () => {
     () =>
       ImportJob.EnqueueRecordImport({
         targetModel: 'base.Country',
+        sourceRef: '',
+        specSnapshot: sampleSnapshot('doc'),
+      } as any),
+    /targetModel and sourceRef/
+  );
+
+  await expectAsyncError(
+    () =>
+      ImportJob.EnqueueRecordImport({
+        targetModel: 'base.Country',
         sourceRef: 'doc',
         specSnapshot: null as any,
       }),
@@ -174,6 +184,20 @@ test('ImportJob.EnqueueRecordImport validation paths', async () => {
   expect((row as any).Policy).toBe('atomic');
 });
 
+test('ImportJob field defaults apply on minimal Create', async () => {
+  resetRequestContext();
+  const row = await ImportJob.Create({
+    TargetModel: 'base.Country',
+    SourceRef: 'doc-field-defaults',
+    SpecSnapshotJson: sampleSnapshot('doc-field-defaults'),
+  } as Partial<ImportJob>);
+  const loaded = await ImportJob.Browse(row.Id, ['Profile', 'Policy', 'DryRun', 'Direction'] as any);
+  expect((loaded as any).Profile).toBe('record');
+  expect((loaded as any).Policy).toBe('atomic');
+  expect((loaded as any).DryRun).toBe(false);
+  expect((loaded as any).Direction).toBe('import');
+});
+
 test('getQueueStatus joins ImportJob with Job.Status', async () => {
   resetRequestContext();
   const enqueued = await ImportJob.EnqueueRecordImport({
@@ -191,6 +215,14 @@ test('getQueueStatus error paths', async () => {
   await expectAsyncError(() => getQueueStatus(''), /importJobId is required/);
   await expectAsyncError(() => getQueueStatus('missing-import-job'), /not found/i);
 
+  const browse = (ImportJob as any).Browse.bind(ImportJob);
+  (ImportJob as any).Browse = async () => null;
+  try {
+    await expectAsyncError(() => getQueueStatus('ghost-import-job'), /import job ghost-import-job not found/);
+  } finally {
+    (ImportJob as any).Browse = browse;
+  }
+
   const row = await ImportJob.Create({
     Profile: 'record',
     Policy: 'atomic',
@@ -203,6 +235,33 @@ test('getQueueStatus error paths', async () => {
     ProgressTotal: 0,
   } as Partial<ImportJob>);
   await expectAsyncError(() => getQueueStatus(row.Id), /missing task job link/);
+});
+
+test('getQueueStatus joins empty progress and report fallbacks', async () => {
+  resetRequestContext();
+  const browse = (ImportJob as any).Browse.bind(ImportJob);
+  const getJob = (Job as any).GetJob.bind(Job);
+  (ImportJob as any).Browse = async () =>
+    ({
+      Id: 'import-fallback',
+      TaskJobId: 'task-fallback',
+      ProgressDone: null,
+      ProgressTotal: undefined,
+      ReportJson: null,
+      ReportRef: '',
+    }) as any;
+  (Job as any).GetJob = async () => ({ Id: 'task-fallback', Status: '' }) as any;
+  try {
+    const status = await getQueueStatus('import-fallback');
+    expect(status.queueStatus).toBe('');
+    expect(status.progressDone).toBe(0);
+    expect(status.progressTotal).toBe(0);
+    expect(status.reportJson).toBeUndefined();
+    expect(status.reportRef).toBeUndefined();
+  } finally {
+    (ImportJob as any).Browse = browse;
+    (Job as any).GetJob = getJob;
+  }
 });
 
 test('executeImportJob writes report via import bridge', async () => {
@@ -298,6 +357,11 @@ test('executeImportJob and FinalizeReport error paths', async () => {
     const finalized = await ImportJob.Browse(nullReportJob.importJobId, ['ProgressTotal', 'ReportRef'] as any);
     expect((finalized as any).ProgressTotal).toBe(3);
     expect((finalized as any).ReportRef).toBe('art-alt');
+
+    await ImportJob.FinalizeReport(nullReportJob.importJobId, null as any);
+    const cleared = await ImportJob.Browse(nullReportJob.importJobId, ['ReportJson', 'ProgressTotal'] as any);
+    expect((cleared as any).ReportJson).toEqual({});
+    expect((cleared as any).ProgressTotal).toBe(0);
   } finally {
     if (previousImport === undefined) {
       delete root.import;
