@@ -96,6 +96,11 @@ func TestServerRestartSurfacesReplanErrors(t *testing.T) {
 	}
 
 	srvRestart, envRestart := newPlannedServer(t)
+	t.Cleanup(func() {
+		if srvRestart.httpServer != nil || srvRestart.server != nil || srvRestart.listener != nil || srvRestart.grpcClientPool != nil {
+			_ = srvRestart.stop(false)
+		}
+	})
 	corruptManifest(t, envRestart.cfg.DistPath)
 	err := srvRestart.Restart()
 	if err == nil {
