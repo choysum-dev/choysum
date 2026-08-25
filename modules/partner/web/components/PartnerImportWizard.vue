@@ -77,27 +77,27 @@ const emit = defineEmits<{
   (e: 'imported'): void;
 }>();
 
-const { _lt } = createTranslate('partner', { scope: 'web/components/PartnerImportWizard' });
+const { _t } = createTranslate('partner', { scope: 'web/components/PartnerImportWizard' });
 
 const visible = defineModel<boolean>({ default: false });
 
-const title = _lt('Import Partners');
-const uploadStepTitle = _lt('Upload CSV');
-const previewStepTitle = _lt('Preview');
-const importStepTitle = _lt('Import');
-const uploadHint = _lt('Upload a UTF-8 CSV with columns Name, Code, IsActive, CustomerRank, SupplierRank.');
-const uploadDropText = _lt('Drop CSV here or click to browse');
-const headersLabel = _lt('Detected headers');
-const rowLabel = _lt('Row');
-const fieldLabel = _lt('Field');
-const codeLabel = _lt('Code');
-const messageLabel = _lt('Message');
-const cancelLabel = _lt('Cancel');
-const previewActionLabel = _lt('Preview');
-const importActionLabel = _lt('Import');
-const doneLabel = _lt('Done');
-const importSuccessTitle = _lt('Import completed');
-const importSuccessSubtitle = _lt('Partner rows were imported successfully.');
+const title = _t('Import Partners');
+const uploadStepTitle = _t('Upload CSV');
+const previewStepTitle = _t('Preview');
+const importStepTitle = _t('Import');
+const uploadHint = _t('Upload a UTF-8 CSV with columns Name, Code, IsActive, CustomerRank, SupplierRank.');
+const uploadDropText = _t('Drop CSV here or click to browse');
+const headersLabel = _t('Detected headers');
+const rowLabel = _t('Row');
+const fieldLabel = _t('Field');
+const codeLabel = _t('Code');
+const messageLabel = _t('Message');
+const cancelLabel = _t('Cancel');
+const previewActionLabel = _t('Preview');
+const importActionLabel = _t('Import');
+const doneLabel = _t('Done');
+const importSuccessTitle = _t('Import completed');
+const importSuccessSubtitle = _t('Partner rows were imported successfully.');
 
 const step = ref(0);
 const busy = ref(false);

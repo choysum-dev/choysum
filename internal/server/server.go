@@ -57,6 +57,7 @@ func (s *GRPCWebServer) Serve(ctx context.Context, serviceNames ...string) error
 		s.runtimeScope = s.runtimeScope.WithContext(ctx)
 	}
 
+	s.runState.setServeRequestArgs(serviceNames)
 	if err := s.planServe(serviceNames); err != nil {
 		return err
 	}

@@ -16,6 +16,14 @@ type runState struct {
 	runModeReason     string
 	compileBundleMode string
 	applicationNames  []string
+	// serveRequestArgs are the original Serve(...) target args. An empty slice
+	// means "default from current dist manifest" so restarts pick up newly
+	// installed apps. Explicit args are preserved across restarts.
+	serveRequestArgs []string
+	// servePlanned is true after Serve() records a plan. Restarts only re-plan
+	// when this is set, so unit tests that call start()/Restart() directly keep
+	// their hand-built runState.
+	servePlanned bool
 }
 
 type runStateSnapshot struct {
@@ -24,6 +32,8 @@ type runStateSnapshot struct {
 	runModeReason     string
 	compileBundleMode string
 	applicationNames  []string
+	serveRequestArgs  []string
+	servePlanned      bool
 }
 
 func (r *runState) applyPlannedDecision(manifest *distmanifest.DistManifestV2, decision runplan.RunDecision) {
@@ -100,6 +110,19 @@ func (r *runState) switchToBootstrapService(name string) {
 	r.applicationNames = []string{name}
 }
 
+func (r *runState) setServeRequestArgs(serviceNames []string) {
+	r.serveRequestArgs = append([]string{}, serviceNames...)
+	r.servePlanned = true
+}
+
+func (r *runState) serveRequest() []string {
+	return append([]string{}, r.serveRequestArgs...)
+}
+
+func (r *runState) shouldReplanOnRestart() bool {
+	return r.servePlanned
+}
+
 func (r *runState) snapshot() runStateSnapshot {
 	return runStateSnapshot{
 		distManifest:      r.distManifest,
@@ -107,6 +130,8 @@ func (r *runState) snapshot() runStateSnapshot {
 		runModeReason:     r.runModeReason,
 		compileBundleMode: r.compileBundleMode,
 		applicationNames:  append([]string{}, r.applicationNames...),
+		serveRequestArgs:  append([]string{}, r.serveRequestArgs...),
+		servePlanned:      r.servePlanned,
 	}
 }
 
@@ -116,4 +141,6 @@ func (r *runState) restore(snapshot runStateSnapshot) {
 	r.runModeReason = snapshot.runModeReason
 	r.compileBundleMode = snapshot.compileBundleMode
 	r.applicationNames = append([]string{}, snapshot.applicationNames...)
+	r.serveRequestArgs = append([]string{}, snapshot.serveRequestArgs...)
+	r.servePlanned = snapshot.servePlanned
 }
