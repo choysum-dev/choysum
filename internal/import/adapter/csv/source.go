@@ -29,6 +29,17 @@ func ContextWithSourceBytes(ctx context.Context, loader SourceBytesLoader) conte
 	return context.WithValue(ctx, sourceBytesContextKey{}, loader)
 }
 
+// HasSourceBytesLoader reports whether ctx already carries a document source loader.
+func HasSourceBytesLoader(ctx context.Context) bool {
+	_, ok := sourceBytesFromContext(ctx)
+	return ok
+}
+
+// SourceBytesLoaderFromContext returns the attached document source loader, if any.
+func SourceBytesLoaderFromContext(ctx context.Context) (SourceBytesLoader, bool) {
+	return sourceBytesFromContext(ctx)
+}
+
 func sourceBytesFromContext(ctx context.Context) (SourceBytesLoader, bool) {
 	if ctx == nil {
 		return nil, false

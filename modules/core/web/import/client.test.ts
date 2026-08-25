@@ -8,10 +8,12 @@ import { ImportPolicy, ImportRunRequestSchema, ParseHeadersRequestSchema } from 
 const parseHeaders = vi.fn();
 const preview = vi.fn();
 const run = vi.fn();
+const runAsync = vi.fn();
 const createWebClient = vi.fn(() => () => ({
   parseHeaders,
   preview,
   run,
+  runAsync,
 }));
 
 vi.mock('../rpc/client_factory', () => ({
@@ -23,6 +25,7 @@ describe('core/web import client', () => {
     parseHeaders.mockReset();
     preview.mockReset();
     run.mockReset();
+    runAsync.mockReset();
     createWebClient.mockClear();
   });
 
@@ -78,5 +81,14 @@ describe('core/web import client', () => {
       }),
       undefined,
     );
+  });
+
+  it('calls runImportAsync with async request wrapper', async () => {
+    runAsync.mockResolvedValue({ importJobId: 'ij-1', taskJobId: 'tj-1' });
+    const { runImportAsync } = await import('./client');
+    const input = { targetModel: 'base.Country', sourceRef: 'src-async' };
+    const resp = await runImportAsync(input);
+    expect(resp.importJobId).toBe('ij-1');
+    expect(runAsync).toHaveBeenCalled();
   });
 });

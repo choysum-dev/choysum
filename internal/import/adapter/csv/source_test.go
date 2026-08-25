@@ -128,6 +128,26 @@ func TestContextWithSourceBytes_NilLoader(t *testing.T) {
 	}
 }
 
+func TestHasSourceBytesLoaderAndFromContext(t *testing.T) {
+	if HasSourceBytesLoader(context.Background()) {
+		t.Fatal("expected no loader")
+	}
+	if _, ok := SourceBytesLoaderFromContext(context.Background()); ok {
+		t.Fatal("expected no loader from context")
+	}
+	loader := SourceBytesLoader(func(_ context.Context, _ string) ([]byte, error) {
+		return []byte("ok"), nil
+	})
+	ctx := ContextWithSourceBytes(context.Background(), loader)
+	if !HasSourceBytesLoader(ctx) {
+		t.Fatal("expected loader")
+	}
+	got, ok := SourceBytesLoaderFromContext(ctx)
+	if !ok || got == nil {
+		t.Fatal("expected loader from context")
+	}
+}
+
 func TestBuilder_BuildRecordPlanError(t *testing.T) {
 	ctx := ContextWithSourceBytes(context.Background(), func(_ context.Context, _ string) ([]byte, error) {
 		return []byte{0xff}, nil

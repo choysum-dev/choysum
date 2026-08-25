@@ -244,10 +244,10 @@ func TestHubParseHeadersErrors(t *testing.T) {
 	}
 }
 
-func TestRunAsyncUnimplemented(t *testing.T) {
+func TestRunAsyncRequiresExecutor(t *testing.T) {
 	h := New(Deps{})
 	_, err := h.RunAsync(context.Background(), &importpb.ImportRunAsyncRequest{})
-	if err == nil || status.Code(err) != codes.Unimplemented {
+	if err == nil || status.Code(err) != codes.Unauthenticated {
 		t.Fatalf("RunAsync err = %v", err)
 	}
 }
