@@ -16,6 +16,10 @@ type runState struct {
 	runModeReason     string
 	compileBundleMode string
 	applicationNames  []string
+	// serveRequestArgs are the original Serve(...) target args. An empty slice
+	// means "default from current dist manifest" so restarts pick up newly
+	// installed apps. Explicit args are preserved across restarts.
+	serveRequestArgs []string
 }
 
 type runStateSnapshot struct {
@@ -24,6 +28,7 @@ type runStateSnapshot struct {
 	runModeReason     string
 	compileBundleMode string
 	applicationNames  []string
+	serveRequestArgs  []string
 }
 
 func (r *runState) applyPlannedDecision(manifest *distmanifest.DistManifestV2, decision runplan.RunDecision) {
@@ -100,6 +105,14 @@ func (r *runState) switchToBootstrapService(name string) {
 	r.applicationNames = []string{name}
 }
 
+func (r *runState) setServeRequestArgs(serviceNames []string) {
+	r.serveRequestArgs = append([]string{}, serviceNames...)
+}
+
+func (r *runState) serveRequest() []string {
+	return append([]string{}, r.serveRequestArgs...)
+}
+
 func (r *runState) snapshot() runStateSnapshot {
 	return runStateSnapshot{
 		distManifest:      r.distManifest,
@@ -107,6 +120,7 @@ func (r *runState) snapshot() runStateSnapshot {
 		runModeReason:     r.runModeReason,
 		compileBundleMode: r.compileBundleMode,
 		applicationNames:  append([]string{}, r.applicationNames...),
+		serveRequestArgs:  append([]string{}, r.serveRequestArgs...),
 	}
 }
 
@@ -116,4 +130,5 @@ func (r *runState) restore(snapshot runStateSnapshot) {
 	r.runModeReason = snapshot.runModeReason
 	r.compileBundleMode = snapshot.compileBundleMode
 	r.applicationNames = append([]string{}, snapshot.applicationNames...)
+	r.serveRequestArgs = append([]string{}, snapshot.serveRequestArgs...)
 }

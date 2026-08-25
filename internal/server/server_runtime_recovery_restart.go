@@ -78,6 +78,21 @@ func (s *GRPCWebServer) executeRestartPlan(plan recoveryExecutionPlan) recoveryE
 		return result
 	}
 
+	// Re-read dist after module install/hotreload so newly built apps (e.g.
+	// partner) join ServeTargets. Skip for bootstrap mode-switch restarts,
+	// which already applied an explicit RunDecision before stop/start.
+	if plan.action == recoveryActionRestart {
+		if err := s.planServe(s.runState.serveRequest()); err != nil {
+			result.startErr = err
+			result.err = err
+			if plan.wrapStartErr {
+				result.err = xfmt.Errorf("Failed to start server: %w", err)
+			}
+			s.runtimeRecovery.recordFailure(plan.action)
+			return result
+		}
+	}
+
 	result.startErr = s.start(plan.reload)
 	if result.startErr != nil {
 		result.err = result.startErr

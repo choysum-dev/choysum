@@ -29,8 +29,8 @@ import type Partner from '@/partner/service/models/partner';
 
 defineOptions({ name: 'PartnerListPage' });
 
-const { _lt } = createTranslate('partner', { scope: 'web/pages/PartnerList' });
-const importLabel = _lt('Import CSV');
+const { _t } = createTranslate('partner', { scope: 'web/pages/PartnerList' });
+const importLabel = _t('Import CSV');
 
 const route = useRoute();
 const importWizardOpen = ref(false);
