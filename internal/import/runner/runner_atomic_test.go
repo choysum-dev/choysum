@@ -40,6 +40,36 @@ func testRuntimeScope(t *testing.T) scope.Scope {
 	return runtimeScope
 }
 
+func newArtifactRunnerScope(t *testing.T) scope.Scope {
+	t.Helper()
+	runtimeScope := testRuntimeScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.Exec(`CREATE TABLE IF NOT EXISTS document_stored_content (
+		id TEXT PRIMARY KEY,
+		provider TEXT,
+		locator_json TEXT,
+		blob_data BLOB,
+		status TEXT,
+		company_id TEXT,
+		created_at DATETIME,
+		updated_at DATETIME
+	)`).Error; err != nil {
+		t.Fatalf("create stored content table: %v", err)
+	}
+	if err := db.Exec(`CREATE TABLE IF NOT EXISTS document_attachment_content (
+		id TEXT PRIMARY KEY,
+		stored_content_id TEXT NOT NULL,
+		company_id TEXT NOT NULL,
+		status TEXT NOT NULL,
+		mime_type TEXT,
+		size_bytes INTEGER,
+		checksum_sha256 TEXT
+	)`).Error; err != nil {
+		t.Fatalf("create attachment content table: %v", err)
+	}
+	return runtimeScope
+}
+
 func testRecordSpec(opts importpkg.Options) importpkg.Spec {
 	spec := importpkg.Spec{
 		Profile: importpkg.ProfileRecord,
