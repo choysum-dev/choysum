@@ -116,14 +116,19 @@ func attachImportSourceLoader(ctx context.Context, runtimeScope scope.Scope, spe
 	if strings.TrimSpace(spec.Source.DocumentRef) == "" || runtimeScope == nil {
 		return ctx
 	}
+	if csv.HasSourceBytesLoader(ctx) {
+		return ctx
+	}
 	return csv.ContextWithSourceBytes(ctx, func(ctx context.Context, documentRef string) ([]byte, error) {
 		identity := auth.IdentityFromContext(ctx)
 		if identity == nil || !identity.IsValid() {
 			return nil, fmt.Errorf("authentication is required")
 		}
-		return documentgateway.ReadSourceRefBytes(ctx, runtimeScope, documentRef, identity)
+		return readImportSourceBytes(ctx, runtimeScope, documentRef, identity)
 	})
 }
+
+var readImportSourceBytes = documentgateway.ReadSourceRefBytes
 
 func decodeImportSpec(arg *quickjs.Value) (importpkg.Spec, error) {
 	var spec importpkg.Spec

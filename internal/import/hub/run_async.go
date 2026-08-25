@@ -19,6 +19,11 @@ import (
 
 const enqueueImportJobService = "task.ImportJob.EnqueueRecordImport"
 
+var (
+	jobRecordFromSpec = importpkg.JobRecordFromSpec
+	jsonUnmarshal     = json.Unmarshal
+)
+
 type enqueueImportJobInput struct {
 	TargetModel  string         `json:"targetModel"`
 	SourceRef    string         `json:"sourceRef"`
@@ -69,14 +74,15 @@ func runImportAsync(
 	}
 
 	var specSnapshot map[string]any
-	if err := json.Unmarshal(importpkg.JobRecordFromSpec(spec).SpecSnapshotJSON, &specSnapshot); err != nil {
+	jobRecord, err := jobRecordFromSpec(spec)
+	if err != nil {
 		return nil, status.Errorf(codes.Internal, "marshal spec snapshot: %v", err)
+	}
+	if err := jsonUnmarshal(jobRecord.SpecSnapshotJSON, &specSnapshot); err != nil {
+		return nil, status.Errorf(codes.Internal, "decode spec snapshot: %v", err)
 	}
 
 	userID := schedulerUserID(ctx)
-	if userID == "" {
-		return nil, status.Error(codes.Unauthenticated, "authenticated user is required")
-	}
 
 	enqueueInput := enqueueImportJobInput{
 		TargetModel:  spec.Model,

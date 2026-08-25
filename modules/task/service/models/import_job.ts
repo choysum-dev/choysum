@@ -9,6 +9,9 @@ import { executeImportJob } from './import_job_worker';
 
 export const IMPORT_JOB_EXECUTE_FULL_METHOD = 'task.ImportJob/ExecuteImport';
 
+const ALLOWED_PROFILES = new Set(['initdata', 'terminology', 'record']);
+const ALLOWED_POLICIES = new Set(['atomic', 'stop_keep', 'best_effort']);
+
 export type EnqueueRecordImportInput = {
   targetModel: string;
   sourceRef: string;
@@ -22,6 +25,14 @@ export type EnqueueRecordImportResult = {
   importJobId: string;
   taskJobId: string;
 };
+
+function normalizeSelection(value: string | undefined, fallback: string, allowed: Set<string>, label: string): string {
+  const normalized = String(value || '').trim() || fallback;
+  if (!allowed.has(normalized)) {
+    throw new Error(`unsupported import ${label} ${JSON.stringify(normalized)}`);
+  }
+  return normalized;
+}
 
 /**
  * Lean async import domain row (queue status lives on task.Job).
@@ -160,10 +171,12 @@ export default class ImportJob extends BaseModel {
     if (!specSnapshot || typeof specSnapshot !== 'object') {
       throw new Error('specSnapshot is required');
     }
+    const profile = normalizeSelection(input?.profile, 'record', ALLOWED_PROFILES, 'profile');
+    const policy = normalizeSelection(input?.policy, 'atomic', ALLOWED_POLICIES, 'policy');
 
     const row = await this.Create({
-      Profile: String(input?.profile || 'record').trim() || 'record',
-      Policy: String(input?.policy || 'atomic').trim() || 'atomic',
+      Profile: profile,
+      Policy: policy,
       DryRun: false,
       TargetModel: targetModel,
       SourceRef: sourceRef,

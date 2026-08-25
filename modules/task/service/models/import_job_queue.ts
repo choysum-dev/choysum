@@ -28,6 +28,9 @@ export async function getQueueStatus(importJobId: string): Promise<ImportJobQueu
     'ReportJson',
     'ReportRef',
   ] as any);
+  if (!row) {
+    throw new Error(`import job ${id} not found`);
+  }
   const taskJobId = String((row as any)?.TaskJobId || '').trim();
   if (!taskJobId) {
     throw new Error('import job is missing task job link');

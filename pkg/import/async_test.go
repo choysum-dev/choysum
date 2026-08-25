@@ -25,7 +25,10 @@ func TestJobRecordFromSpec(t *testing.T) {
 			ColumnMapping: map[string]string{"Name": "Name"},
 		},
 	}
-	record := importpkg.JobRecordFromSpec(spec)
+	record, err := importpkg.JobRecordFromSpec(spec)
+	if err != nil {
+		t.Fatalf("JobRecordFromSpec: %v", err)
+	}
 	if record.Profile != importpkg.ProfileRecord || record.Policy != importpkg.PolicyBestEffort {
 		t.Fatalf("record = %+v", record)
 	}

@@ -8,10 +8,15 @@ import (
 	"strings"
 )
 
+var marshalSpecSnapshot = json.Marshal
+
 // JobRecordFromSpec builds the lean async domain DTO from a validated record Spec.
-func JobRecordFromSpec(spec Spec) JobRecord {
+func JobRecordFromSpec(spec Spec) (JobRecord, error) {
 	companyID := strings.TrimSpace(spec.Options.CompanyID)
-	snapshot, _ := SpecSnapshotJSON(spec)
+	snapshot, err := SpecSnapshotJSON(spec)
+	if err != nil {
+		return JobRecord{}, err
+	}
 	return JobRecord{
 		Profile:          spec.Profile,
 		Policy:           EffectivePolicy(spec),
@@ -21,10 +26,10 @@ func JobRecordFromSpec(spec Spec) JobRecord {
 		CompanyID:        companyID,
 		SpecSnapshotJSON: snapshot,
 		Direction:        "import",
-	}
+	}, nil
 }
 
 // SpecSnapshotJSON freezes the import Spec for async worker replay.
 func SpecSnapshotJSON(spec Spec) ([]byte, error) {
-	return json.Marshal(spec)
+	return marshalSpecSnapshot(spec)
 }
