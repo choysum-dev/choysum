@@ -76,7 +76,7 @@ func (h *Hub) Run(ctx context.Context, req *importpb.ImportRunRequest) (*importp
 	return runImport(ctx, h.deps, req, false)
 }
 
-// RunAsync is reserved for PR-import-7.
-func (h *Hub) RunAsync(_ context.Context, _ *importpb.ImportRunAsyncRequest) (*importpb.ImportRunAsyncResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "RunAsync is not implemented")
+// RunAsync enqueues a background record import via task.ImportJob + task.Job.
+func (h *Hub) RunAsync(ctx context.Context, req *importpb.ImportRunAsyncRequest) (*importpb.ImportRunAsyncResponse, error) {
+	return runImportAsync(ctx, h.deps, req)
 }

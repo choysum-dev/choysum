@@ -6,9 +6,11 @@ import { CreateWebClient } from '../rpc/client_factory';
 import {
   ImportHub,
   ImportPolicy,
+  ImportRunAsyncRequestSchema,
   ImportRunRequestSchema,
   ParseHeadersRequestSchema,
   type ImportReport,
+  type ImportRunAsyncResponse,
   type ImportRunResponse,
   type ParseHeadersResponse,
 } from './pb/import_pb';
@@ -26,6 +28,7 @@ type ImportHubClient = {
   parseHeaders(req: ReturnType<typeof create<typeof ParseHeadersRequestSchema>>, options?: ImportCallOptions): Promise<ParseHeadersResponse>;
   preview(req: ReturnType<typeof create<typeof ImportRunRequestSchema>>, options?: ImportCallOptions): Promise<ImportRunResponse>;
   run(req: ReturnType<typeof create<typeof ImportRunRequestSchema>>, options?: ImportCallOptions): Promise<ImportRunResponse>;
+  runAsync(req: ReturnType<typeof create<typeof ImportRunAsyncRequestSchema>>, options?: ImportCallOptions): Promise<ImportRunAsyncResponse>;
 };
 
 const importHubClient = CreateWebClient(ImportHub);
@@ -63,4 +66,11 @@ export function runImport(input: ImportRunInput, signal?: AbortSignal): Promise<
   return importHub().run(toRunRequest(input, ImportPolicy.ATOMIC), callOptions(signal));
 }
 
-export { ImportHub, ImportPolicy, type ImportReport, type ImportRunResponse, type ParseHeadersResponse };
+export function runImportAsync(input: ImportRunInput, signal?: AbortSignal): Promise<ImportRunAsyncResponse> {
+  return importHub().runAsync(
+    create(ImportRunAsyncRequestSchema, { run: toRunRequest(input, ImportPolicy.ATOMIC) }),
+    callOptions(signal)
+  );
+}
+
+export { ImportHub, ImportPolicy, type ImportReport, type ImportRunAsyncResponse, type ImportRunResponse, type ParseHeadersResponse };

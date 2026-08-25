@@ -11,8 +11,11 @@ import (
 	"strings"
 
 	"github.com/buke/quickjs-go"
+	documentgateway "github.com/choysum-dev/choysum/internal/document/gateway"
+	"github.com/choysum-dev/choysum/internal/import/adapter/csv"
 	"github.com/choysum-dev/choysum/internal/import/caller"
 	"github.com/choysum-dev/choysum/internal/import/runner"
+	"github.com/choysum-dev/choysum/pkg/auth"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsengine/quickjsengine"
@@ -76,6 +79,7 @@ func performImportRun(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, sc
 		return ctx.NewError(fmt.Errorf("resolve import source path: %w", err))
 	}
 	runCtx := caller.ContextWithCaller(execCtx, caller.EngineCaller{Engine: jse})
+	runCtx = attachImportSourceLoader(runCtx, runtimeScope, spec)
 	report, err := runner.Run(runCtx, runtimeScope, spec)
 	if err != nil {
 		return ctx.NewError(err)
@@ -104,7 +108,21 @@ func Run(ctx context.Context, runtimeScope scope.Scope, spec importpkg.Spec) (im
 	if err != nil {
 		return importpkg.Report{}, err
 	}
+	ctx = attachImportSourceLoader(ctx, runtimeScope, spec)
 	return runner.Run(ctx, runtimeScope, spec)
+}
+
+func attachImportSourceLoader(ctx context.Context, runtimeScope scope.Scope, spec importpkg.Spec) context.Context {
+	if strings.TrimSpace(spec.Source.DocumentRef) == "" || runtimeScope == nil {
+		return ctx
+	}
+	return csv.ContextWithSourceBytes(ctx, func(ctx context.Context, documentRef string) ([]byte, error) {
+		identity := auth.IdentityFromContext(ctx)
+		if identity == nil || !identity.IsValid() {
+			return nil, fmt.Errorf("authentication is required")
+		}
+		return documentgateway.ReadSourceRefBytes(ctx, runtimeScope, documentRef, identity)
+	})
 }
 
 func decodeImportSpec(arg *quickjs.Value) (importpkg.Spec, error) {
