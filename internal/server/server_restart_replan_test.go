@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/distmanifest"
@@ -56,6 +57,76 @@ func TestServerRestartReplansServeTargetsFromUpdatedDist(t *testing.T) {
 		t.Fatalf("Restart() error = %v", err)
 	}
 	assertRunStateTargets(t, srv, []string{"auth", "partner", "web"}, "after install restart")
+}
+
+func TestServerRestartSurfacesReplanErrors(t *testing.T) {
+	newPlannedServer := func(t *testing.T) (*GRPCWebServer, *noSessionServerScope) {
+		t.Helper()
+		runtimeScope := &noSessionServerScope{serverTestScope: newRichServerTestScope(t)}
+		runtimeScope.cfg.Auth.Enabled = false
+		runtimeScope.cfg.DistPath = t.TempDir()
+		runtimeScope.cfg.Compile.BundleMode = "bundle"
+		assignEphemeralServerPort(t, runtimeScope.cfg)
+		runtimeScope.cfg.Server.EnableGrpcWebProxy = false
+		runtimeScope.cfg.Server.HotReload = false
+
+		seedBundleModeWebReadyDist(t, runtimeScope.cfg.DistPath)
+		writeRestartReplanManifest(t, runtimeScope.cfg.DistPath, []string{"auth"}, map[string]distmanifest.DistManifestApp{
+			"auth": {},
+		})
+		seedRestartReplanAppProto(t, runtimeScope.cfg.DistPath, "auth")
+
+		srv := NewServer(runtimeScope).(*GRPCWebServer)
+		srv.runState.setServeRequestArgs(nil)
+		if err := srv.planServe(nil); err != nil {
+			t.Fatalf("planServe(nil) error = %v", err)
+		}
+		if err := srv.start(false); err != nil {
+			t.Fatalf("start(false) error = %v", err)
+		}
+		return srv, runtimeScope
+	}
+
+	corruptManifest := func(t *testing.T, distRoot string) {
+		t.Helper()
+		path := filepath.Join(distRoot, distmanifest.DistManifestFileName)
+		if err := os.WriteFile(path, []byte("{"), 0o644); err != nil {
+			t.Fatalf("corrupt dist manifest: %v", err)
+		}
+	}
+
+	srvRestart, envRestart := newPlannedServer(t)
+	corruptManifest(t, envRestart.cfg.DistPath)
+	err := srvRestart.Restart()
+	if err == nil {
+		t.Fatal("expected Restart() to fail when replan cannot parse dist manifest")
+	}
+	if strings.Contains(err.Error(), "Failed to start server") {
+		t.Fatalf("Restart() error = %v, want direct replan failure without restart() wrapper", err)
+	}
+	if !strings.Contains(err.Error(), "parse dist manifest") {
+		t.Fatalf("Restart() error = %v, want dist manifest parse failure", err)
+	}
+	assertRecoveryActionDiagnostics(t, recoveryDiagnosticsForTest(srvRestart), recoveryActionRestart, recoveryActionDiagnostics{Attempts: 1, Failures: 1}, "Restart() replan failure diagnostics")
+
+	srvRestartHelper, envRestartHelper := newPlannedServer(t)
+	t.Cleanup(func() {
+		if srvRestartHelper.httpServer != nil || srvRestartHelper.server != nil || srvRestartHelper.listener != nil || srvRestartHelper.grpcClientPool != nil {
+			_ = srvRestartHelper.stop(false)
+		}
+	})
+	corruptManifest(t, envRestartHelper.cfg.DistPath)
+	err = srvRestartHelper.restart()
+	if err == nil {
+		t.Fatal("expected restart() to fail when replan cannot parse dist manifest")
+	}
+	if !strings.Contains(err.Error(), "Failed to start server") {
+		t.Fatalf("restart() error = %v, want wrapped start failure", err)
+	}
+	if !strings.Contains(err.Error(), "parse dist manifest") {
+		t.Fatalf("restart() error = %v, want dist manifest parse failure", err)
+	}
+	assertRecoveryActionDiagnostics(t, recoveryDiagnosticsForTest(srvRestartHelper), recoveryActionRestart, recoveryActionDiagnostics{Attempts: 1, Failures: 1}, "restart() replan failure diagnostics")
 }
 
 func TestServerRestartPreservesExplicitServeTargets(t *testing.T) {
