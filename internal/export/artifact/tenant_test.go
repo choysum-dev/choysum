@@ -48,3 +48,11 @@ func TestResolveArtifactCompanyID_authenticatedWithoutCompanySkips(t *testing.T)
 		t.Fatalf("company id = %q, want empty", got)
 	}
 }
+
+func TestResolveArtifactCompanyID_invalidIdentityUsesRequested(t *testing.T) {
+	ctx := auth.ContextWithIdentity(context.Background(), testIdentity{valid: false})
+	got := exportartifact.ResolveArtifactCompanyID(ctx, " co-1 ")
+	if got != "co-1" {
+		t.Fatalf("company id = %q, want co-1", got)
+	}
+}

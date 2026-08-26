@@ -20,6 +20,42 @@ func (i tenantTestIdentity) GetTokenID() string                  { return "token
 func (i tenantTestIdentity) GetMetadata() map[string]interface{} { return i.metadata }
 func (i tenantTestIdentity) IsValid() bool                       { return i.valid }
 
+func TestActiveCompanyID_nilMetadata(t *testing.T) {
+	if got := activeCompanyID(tenantTestIdentity{metadata: nil}); got != "" {
+		t.Fatalf("activeCompanyID = %q", got)
+	}
+}
+
+func TestActiveCompanyID_skipsWhitespaceOnlyValues(t *testing.T) {
+	identity := tenantTestIdentity{
+		metadata: map[string]any{
+			"activeCompanyId": "   ",
+			"companyId":       "co-fallback",
+		},
+	}
+	if got := activeCompanyID(identity); got != "co-fallback" {
+		t.Fatalf("activeCompanyID = %q", got)
+	}
+}
+
+func TestActiveCompanyID_emptyMetadata(t *testing.T) {
+	if got := activeCompanyID(tenantTestIdentity{metadata: map[string]any{}}); got != "" {
+		t.Fatalf("activeCompanyID = %q", got)
+	}
+}
+
+func TestActiveCompanyID_allInvalidTypes(t *testing.T) {
+	identity := tenantTestIdentity{
+		metadata: map[string]any{
+			"activeCompanyId": 1,
+			"companyId":       2,
+		},
+	}
+	if got := activeCompanyID(identity); got != "" {
+		t.Fatalf("activeCompanyID = %q", got)
+	}
+}
+
 func TestActiveCompanyID_companyIdFallback(t *testing.T) {
 	identity := tenantTestIdentity{
 		metadata: map[string]any{"companyId": " co-fallback "},
