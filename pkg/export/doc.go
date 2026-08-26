@@ -10,6 +10,5 @@
 //	import exportpkg "github.com/choysum-dev/choysum/pkg/export"
 //	report, err := exportpkg.Run(ctx, scope, spec)
 //
-// Report reuses pkg/import.Report (snake_case JSON). Async domain rows map to
-// task.DataTransferJob with Direction=export (PR-export-4).
+// Report reuses pkg/import.Report (snake_case JSON).
 package exportpkg

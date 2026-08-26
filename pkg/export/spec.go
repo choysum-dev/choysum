@@ -3,7 +3,7 @@
 
 package exportpkg
 
-// Spec is the input to a single export run (ExportSpec; §3.2).
+// Spec is the input to a single export run.
 type Spec struct {
 	Profile Profile `json:"profile"`
 	Caller  Caller  `json:"caller"`
@@ -28,6 +28,6 @@ type Spec struct {
 // Options carries profile-specific extensions.
 type Options struct {
 	CompanyID         string `json:"company_id,omitempty"`
-	StubUnitCount     int    `json:"stub_unit_count,omitempty"`      // skeleton/tests only
-	StubFailUnitIndex int    `json:"stub_fail_unit_index,omitempty"` // skeleton/tests only; 1-based
+	StubUnitCount     int    `json:"stub_unit_count,omitempty"`      // test hook
+	StubFailUnitIndex int    `json:"stub_fail_unit_index,omitempty"` // test hook; 1-based
 }

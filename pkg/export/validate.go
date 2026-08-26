@@ -5,7 +5,7 @@ package exportpkg
 
 import "strings"
 
-// ValidateSpec checks caller×profile and profile-specific fields (EX9).
+// ValidateSpec checks caller×profile and profile-specific fields.
 func ValidateSpec(spec Spec) error {
 	if !spec.Profile.Valid() {
 		return ErrProfileNotApproved
@@ -62,7 +62,7 @@ func ValidateSpec(spec Spec) error {
 	return nil
 }
 
-// AllowsCallerProfile reports whether caller may run profile (EX9).
+// AllowsCallerProfile reports whether caller may run profile.
 func AllowsCallerProfile(profile Profile, caller Caller) bool {
 	switch profile {
 	case ProfileRecord:

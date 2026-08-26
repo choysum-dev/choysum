@@ -10,7 +10,6 @@ import (
 )
 
 func init() {
-	// Skeleton default: stub readers until PR-export-2 / PR-export-2t register real ones.
 	registry.Register(exportpkg.ProfileRecord, stubreader.Reader{})
 	registry.Register(exportpkg.ProfileTerminology, stubreader.Reader{})
 }

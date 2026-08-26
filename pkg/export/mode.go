@@ -3,7 +3,7 @@
 
 package exportpkg
 
-// Mode is record-only export shape (EX7).
+// Mode is record-only export shape.
 type Mode string
 
 const (

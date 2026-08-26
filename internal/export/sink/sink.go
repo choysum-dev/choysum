@@ -11,7 +11,7 @@ import (
 	"github.com/choysum-dev/choysum/pkg/scope"
 )
 
-// Sink serializes Reader results (CSV/PO). Placeholder until PR-export-2 / 2t.
+// Sink serializes Reader results (for example CSV or PO).
 type Sink interface {
 	Write(ctx context.Context, runtimeScope scope.Scope, p plan.Plan, result registry.Result) error
 }

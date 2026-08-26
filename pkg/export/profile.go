@@ -12,7 +12,7 @@ const (
 	ProfileUnspecified Profile = ""
 )
 
-// Valid reports whether p is an approved export profile (EX1: no initdata).
+// Valid reports whether p is an approved export profile (record or terminology).
 func (p Profile) Valid() bool {
 	switch p {
 	case ProfileRecord, ProfileTerminology:

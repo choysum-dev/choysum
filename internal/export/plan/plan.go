@@ -22,7 +22,7 @@ type Plan struct {
 	Lang        string
 	CompanyID   string
 
-	// StubUnitCount / StubFailUnitIndex are skeleton/test hooks (1-based fail index).
+	// StubUnitCount / StubFailUnitIndex are test hooks (1-based fail index).
 	StubUnitCount     int
 	StubFailUnitIndex int
 }

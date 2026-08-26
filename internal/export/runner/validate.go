@@ -10,12 +10,9 @@ import (
 	exportpkg "github.com/choysum-dev/choysum/pkg/export"
 )
 
-// PlanFromSpec builds the minimal Plan used by Runner/Readers.
+// PlanFromSpec builds the Plan used by Runner/Readers.
 func PlanFromSpec(spec exportpkg.Spec) (plan.Plan, error) {
 	if err := exportpkg.ValidateSpec(spec); err != nil {
-		return plan.Plan{}, err
-	}
-	if err := validatePlanInputs(spec); err != nil {
 		return plan.Plan{}, err
 	}
 
@@ -49,11 +46,4 @@ func PlanFromSpec(spec exportpkg.Spec) (plan.Plan, error) {
 		p.Mode = exportpkg.ModeUnspecified
 	}
 	return p, nil
-}
-
-func validatePlanInputs(spec exportpkg.Spec) error {
-	// Caller×Profile and Mode-only-for-record are enforced in ValidateSpec;
-	// keep this hook for runner-local plan constraints.
-	_ = spec
-	return nil
 }

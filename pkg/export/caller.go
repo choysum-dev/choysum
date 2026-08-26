@@ -12,7 +12,7 @@ const (
 	CallerE2E         Caller = "e2e"
 	CallerUnspecified Caller = ""
 
-	// CallerHTTP maps thin HTTP gateway entry points onto CallerUser (EX9).
+	// CallerHTTP maps thin HTTP gateway entry points onto CallerUser.
 	CallerHTTP = CallerUser
 )
 
