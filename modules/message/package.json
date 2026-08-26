@@ -1,6 +1,10 @@
 {
   "name": "@choysum-dev/message",
   "version": "0.0.0-20260817000000",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/choysum-dev/choysum.git"
+  },
   "description": "Collaboration messages, followers, and notification dispatch (Message V1)",
   "license": "Apache-2.0",
   "author": "Choysum Team",

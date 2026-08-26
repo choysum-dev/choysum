@@ -1,6 +1,10 @@
 {
   "name": "@choysum-dev/base",
   "version": "0.0.0-20260626031438",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/choysum-dev/choysum.git"
+  },
   "description": "Core master data such as companies and organizations",
   "license": "Apache-2.0",
   "author": "Choysum Team",
