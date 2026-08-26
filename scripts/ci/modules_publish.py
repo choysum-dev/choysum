@@ -105,6 +105,19 @@ def annotate_publish_failure(errors, stderr_text):
         )
 
 
+def is_prerelease_version(version: str) -> bool:
+    core = (version or "").split("+", 1)[0]
+    return "-" in core
+
+
+def npm_publish_argv(version: str) -> list[str]:
+    # Module versions are 0.0.0-<timestamp> prereleases; registry historically uses latest.
+    cmd = ["npm", "publish", "--access", "public"]
+    if is_prerelease_version(str(version or "")):
+        cmd.extend(["--tag", "latest"])
+    return cmd
+
+
 SEMVER_COMPARATOR_PATTERN = re.compile(
     r"^(<=|>=|<|>|=|~|\^)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$"
 )
@@ -322,8 +335,9 @@ def publish_single_module(*, raise_on_failure=True):
                         result["status"] = "validated"
                         result["note"] = "would_publish"
                     else:
+                        publish_cmd = npm_publish_argv(str(version))
                         publish = subprocess.run(
-                            ["npm", "publish", "--access", "public"],
+                            publish_cmd,
                             cwd=str(modules_root / module),
                             check=False,
                             capture_output=True,
@@ -336,7 +350,7 @@ def publish_single_module(*, raise_on_failure=True):
                                 {
                                     "module": module,
                                     "operation": "npm_publish",
-                                    "command": "npm publish --access public",
+                                    "command": " ".join(publish_cmd),
                                     "exitCode": publish.returncode,
                                     "stdout": compact(publish.stdout),
                                     "stderr": compact(publish.stderr),
