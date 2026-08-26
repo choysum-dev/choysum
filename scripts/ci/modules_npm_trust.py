@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import pathlib
 import re
 import subprocess
@@ -52,10 +53,23 @@ def run(cmd, *, cwd=None, check=False):
     )
 
 
+def interactive_env():
+    """Env for browser OTP: drop bypass-2FA CI tokens that block trust management."""
+    env = os.environ.copy()
+    env.pop("NPM_TOKEN", None)
+    env.pop("NODE_AUTH_TOKEN", None)
+    return env
+
+
 def run_interactive(cmd, *, cwd=None):
     """Run with inherited stdio so npm can open browser / OTP flows."""
     print(f"+ {' '.join(str(part) for part in cmd)}", flush=True)
-    return subprocess.run(cmd, cwd=str(cwd) if cwd else None, check=False)
+    return subprocess.run(
+        cmd,
+        cwd=str(cwd) if cwd else None,
+        check=False,
+        env=interactive_env(),
+    )
 
 
 def is_prerelease_version(version: str) -> bool:
@@ -280,7 +294,13 @@ def trust_list(name: str, *, interactive: bool = False):
         out_path = pathlib.Path(tmpdir) / "trust.json"
         print(f"+ {' '.join(str(part) for part in cmd)}", flush=True)
         with open(out_path, "w", encoding="utf-8") as out_f:
-            proc = subprocess.run(cmd, stdout=out_f, stderr=None, check=False)
+            proc = subprocess.run(
+                cmd,
+                stdout=out_f,
+                stderr=None,
+                check=False,
+                env=interactive_env(),
+            )
         raw = out_path.read_text(encoding="utf-8").strip()
         if proc.returncode != 0:
             cap = run(cmd)
@@ -459,7 +479,14 @@ def trust_matches(entry: dict, *, package_name: str) -> bool:
 
 def is_auth_challenge(text: str) -> bool:
     lowered = (text or "").lower()
-    return "eotp" in lowered or "one-time password" in lowered or "auth/cli/" in lowered
+    if "eotp" in lowered or "one-time password" in lowered or "auth/cli/" in lowered:
+        return True
+    # bypass-2FA GAT may get E403 on trust ops without an OTP URL in stderr.
+    if ("e403" in lowered or "403 forbidden" in lowered) and (
+        "bypass" in lowered or "2fa" in lowered or "two-factor" in lowered
+    ):
+        return True
+    return False
 
 
 def bind_trust(name: str, *, apply: bool, rebind: bool):
