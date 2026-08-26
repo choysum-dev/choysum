@@ -58,6 +58,31 @@ func TestAuthCtxWithServer(t *testing.T) {
 	}
 }
 
+func TestAuthCtxAllowsExportAccess(t *testing.T) {
+	ctx := authCtx(t)
+	runtimeScope := newHubTestScope(t)
+	seedCountryModelMeta(t, runtimeScope.Session().DB)
+	if err := checkModelExportAccess(ctx, runtimeScope, "base.Country", ""); err != nil {
+		t.Fatalf("checkModelExportAccess: %v", err)
+	}
+	if got := activeCompanyID(ctx); got != "cmp_test" {
+		t.Fatalf("activeCompanyID = %q", got)
+	}
+	meta := stubIdentity{}.GetMetadata()["activeCompanyId"]
+	if meta != "cmp_test" {
+		t.Fatalf("metadata = %#v", meta)
+	}
+}
+
+func TestAuthCtxWithAllowServer(t *testing.T) {
+	ctx := authCtxWithServer(t, allowAuthServer{})
+	runtimeScope := newHubTestScope(t)
+	seedCountryModelMeta(t, runtimeScope.Session().DB)
+	if err := checkModelExportAccess(ctx, runtimeScope, "base.Country", ""); err != nil {
+		t.Fatalf("checkModelExportAccess: %v", err)
+	}
+}
+
 func TestStubJSExecutorMethods(t *testing.T) {
 	var ex jsexecutor.JsExecutor = stubJSExecutor{}
 	ex.AppendJsScripts(&jsengine.JsScript{})

@@ -32,6 +32,15 @@ describe('exportReportErrorText', () => {
     expect(exportReportErrorText({ stats: { ok: 0 } })).toBe('Export failed.');
   });
 
+  it('skips blank unspecified messages when locating error text', () => {
+    expect(
+      exportReportErrorText({
+        stats: { error: 1 },
+        messages: [{ type_: ExportMessageType.UNSPECIFIED, text: '   ' }],
+      }),
+    ).toBe('Export finished with 1 error(s).');
+  });
+
   it('uses unspecified message text when present', () => {
     expect(
       exportReportErrorText({
@@ -57,6 +66,10 @@ describe('exportPreviewSummary', () => {
 
   it('returns empty summary without stats', () => {
     expect(exportPreviewSummary({ messages: [] })).toBe('');
+  });
+
+  it('shows a clean zero-error preview summary', () => {
+    expect(exportPreviewSummary({ stats: { ok: 2, error: 0, total: 2 } })).toBe('Preview: 2 ok, 0 errors, 2 total');
   });
 });
 

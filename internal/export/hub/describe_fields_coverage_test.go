@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/export/proto/exportpb"
+	exportpkg "github.com/choysum-dev/choysum/pkg/export"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -304,5 +305,70 @@ func TestExportFieldNodeUsesFieldNameWhenLabelMissing(t *testing.T) {
 	node, err := exportFieldNode(newHubTestScope(t).Session().DB, meta.Field{Name: "Code", FieldType: "varchar"})
 	if err != nil || node == nil || node.GetLabel() != "Code" {
 		t.Fatalf("node=%#v err=%v", node, err)
+	}
+}
+
+func TestDescribeFieldsDefaultExportFieldsInternalError(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	seedCountryModelMeta(t, runtimeScope.Session().DB)
+	prev := describeDefaultExportFields
+	describeDefaultExportFields = func(string) ([]string, error) {
+		return nil, exportpkg.Errorf(exportpkg.CodeInvalidSpec, "bad defaults")
+	}
+	t.Cleanup(func() { describeDefaultExportFields = prev })
+	_, err := describeFields(runtimeScope.Context(), runtimeScope, &exportpb.DescribeFieldsRequest{Model: "base.Country"})
+	if err == nil || status.Code(err) != codes.Internal {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestDescribeFieldsListFieldsError(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	seedPartnerModelMeta(t, runtimeScope.Session().DB)
+	if err := runtimeScope.Session().DB.Exec("DROP TABLE meta_field").Error; err != nil {
+		t.Fatal(err)
+	}
+	_, err := describeFields(runtimeScope.Context(), runtimeScope, &exportpb.DescribeFieldsRequest{Model: "partner.Partner"})
+	if err == nil || status.Code(err) != codes.Internal {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestExportFieldNodeListFieldsErrorOnRelation(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.AutoMigrate(&meta.Model{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&meta.Model{Name: "Company", Application: "base", Path: "/tmp", ModelTable: "base_company"}).Error; err != nil {
+		t.Fatal(err)
+	}
+	node, err := exportFieldNode(db, meta.Field{
+		Name:          "CompanyId",
+		FieldType:     "ManyToOneRef",
+		RelationModel: "base.Company",
+		FieldString:   "Company",
+	})
+	if err != nil || node == nil || len(node.GetChildren()) != 0 {
+		t.Fatalf("node=%#v err=%v", node, err)
+	}
+}
+
+func TestShouldSkipExportFieldBinaryAndMany2Many(t *testing.T) {
+	if !shouldSkipExportField(&meta.Field{Name: "Attachment", FieldType: "binary"}) {
+		t.Fatal("binary should skip")
+	}
+	if !shouldSkipExportField(&meta.Field{Name: "Tags", Relation: "Many2Many"}) {
+		t.Fatal("Many2Many relation should skip")
+	}
+}
+
+func TestImportwriterFieldRelationTargetResolvedSpecMissingTarget(t *testing.T) {
+	field := &meta.Field{Name: "CurrencyId", FieldType: "ManyToOneRef"}
+	_ = field.SetResolvedSpec(&meta.FieldResolvedSpec{
+		Structural: meta.FieldStructuralSpec{Relation: map[string]any{"targetModel": ""}},
+	})
+	if _, err := importwriterFieldRelationTarget(field); err == nil {
+		t.Fatal("expected missing target")
 	}
 }

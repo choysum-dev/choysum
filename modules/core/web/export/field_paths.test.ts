@@ -32,4 +32,8 @@ describe('normalizeExportFieldPaths', () => {
   it('leaves slash paths unchanged', () => {
     expect(normalizeExportFieldPath('CompanyId/Code')).toBe('CompanyId/Code');
   });
+
+  it('normalizes null path input', () => {
+    expect(normalizeExportFieldPath(null as unknown as string)).toBe('');
+  });
 });

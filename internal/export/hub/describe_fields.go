@@ -38,7 +38,7 @@ func describeFields(ctx context.Context, runtimeScope scope.Scope, req *exportpb
 		return nil, status.Errorf(codes.InvalidArgument, "model lookup failed: %v", err)
 	}
 
-	defaults, err := recordreader.DefaultExportFields(modelName)
+	defaults, err := describeDefaultExportFields(modelName)
 	if err != nil {
 		if expErr, ok := exportpkg.AsError(err); ok && expErr.Code == exportpkg.CodeModelNotFound {
 			return nil, status.Error(codes.FailedPrecondition, expErr.Error())
@@ -46,7 +46,7 @@ func describeFields(ctx context.Context, runtimeScope scope.Scope, req *exportpb
 		return nil, status.Errorf(codes.Internal, "default export fields: %v", err)
 	}
 
-	fields, err := importwriter.ListFields(session.DB, model)
+	fields, err := listDescribeModelFields(session.DB, model)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "list fields: %v", err)
 	}
@@ -65,6 +65,10 @@ func describeFields(ctx context.Context, runtimeScope scope.Scope, req *exportpb
 		DefaultFields: append([]string(nil), defaults...),
 	}, nil
 }
+
+var describeDefaultExportFields = recordreader.DefaultExportFields
+
+var listDescribeModelFields = importwriter.ListFields
 
 func exportFieldNode(db *gorm.DB, field meta.Field) (*exportpb.ExportFieldNode, error) {
 	if shouldSkipExportField(&field) {

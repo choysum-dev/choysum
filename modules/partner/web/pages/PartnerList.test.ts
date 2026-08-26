@@ -9,11 +9,16 @@ import { createI18n } from 'vue-i18n';
 
 config.global.renderStubDefaultSlot = true;
 
-const { refresh, exportFieldSelection, buildUnifiedQuery, listSelectedItems } = vi.hoisted(() => ({
+const { refresh, exportFieldSelection, buildUnifiedQuery, listSelectedItems, createStoreByModelMock } = vi.hoisted(() => ({
   refresh: vi.fn(),
   exportFieldSelection: vi.fn(() => ['Name', 'CompanyId.Code', 'Id']),
   buildUnifiedQuery: vi.fn(() => ({ filters: { And: [{ field: 'Name', op: 'contains', value: 'A' }] } })),
   listSelectedItems: { current: { value: [{ Id: 'p1' }, { Id: 'p2' }] } as { value?: { Id?: string }[] } | { Id?: string }[] },
+  createStoreByModelMock: vi.fn(() => ({
+    Search: vi.fn(),
+    storeId: 'Partner_/partner/partners',
+    state: { result: { total: 3 }, queryState: { appliedFilters: [] } },
+  })),
 }));
 
 vi.mock('vue-router', () => ({
@@ -29,11 +34,16 @@ vi.mock('@/web/web/stores/storeScopeManager', () => ({
 }));
 
 vi.mock('@/web/web/stores/registry', () => ({
-  createStoreByModel: vi.fn(() => ({
-    Search: vi.fn(),
-    storeId: 'Partner_/partner/partners',
-    state: { result: { total: 3 }, queryState: { appliedFilters: [] } },
-  })),
+  createStoreByModel: createStoreByModelMock,
+}));
+
+vi.mock('@/core/web/export', () => ({
+  ExportPanel: {
+    name: 'ExportPanelStub',
+    props: ['model', 'companyId', 'ids', 'domain', 'defaultFields', 'filteredCount', 'modelValue'],
+    emits: ['update:modelValue'],
+    template: '<div data-test="export-panel-stub" />',
+  },
 }));
 
 vi.mock('@/web/web/query/utils/registry/field', () => ({
@@ -67,14 +77,6 @@ vi.mock('../components/PartnerImportWizard.vue', () => ({
   },
 }));
 
-vi.mock('@/core/web/export', () => ({
-  ExportPanel: {
-    name: 'ExportPanelStub',
-    props: ['model', 'companyId', 'ids', 'domain', 'defaultFields', 'filteredCount', 'modelValue'],
-    template: '<div data-test="export-panel-stub" />',
-  },
-}));
-
 const i18n = createI18n({
   legacy: false,
   locale: 'en',
@@ -87,6 +89,12 @@ describe('PartnerList page', () => {
   beforeEach(async () => {
     listSelectedItems.current = { value: [{ Id: 'p1' }, { Id: 'p2' }] };
     exportFieldSelection.mockReturnValue(['Name', 'CompanyId.Code', 'Id']);
+    createStoreByModelMock.mockReturnValue({
+      Search: vi.fn(),
+      storeId: 'Partner_/partner/partners',
+      state: { result: { total: 3 }, queryState: { appliedFilters: [] } },
+    });
+    buildUnifiedQuery.mockReturnValue({ filters: { And: [{ field: 'Name', op: 'contains', value: 'A' }] } });
     const ctx = await import('@/core/rpc/context');
     (ctx.getCurrentRequestContext as any).mockReset();
     (ctx.getCurrentRequestContext as any).mockReturnValue({ activeCompanyId: 'cmp-1' });
@@ -205,5 +213,70 @@ describe('PartnerList page', () => {
     await nextTick();
     const panel = wrapper.findComponent({ name: 'ExportPanelStub' });
     expect(panel.props('ids')).toEqual(['p9']);
+  });
+
+  it('opens export panel from toolbar button', async () => {
+    const PartnerList = (await import('./PartnerList.vue')).default;
+    const wrapper = mount(PartnerList, {
+      global: {
+        plugins: [i18n],
+        stubs: {
+          OPage: { template: '<div><slot /></div>' },
+          ElButton: {
+            emits: ['click'],
+            template: '<button @click="$emit(\'click\')"><slot /></button>',
+          },
+        },
+      },
+    });
+    const exportButton = wrapper.findAll('button').find(button => button.text().includes('Export CSV'));
+    expect(exportButton).toBeTruthy();
+    await exportButton!.trigger('click');
+    const panel = wrapper.findComponent({ name: 'ExportPanelStub' });
+    expect(panel.props('modelValue')).toBe(true);
+  });
+
+  it('uses default domain when unified query has no filters', async () => {
+    buildUnifiedQuery.mockReturnValue({});
+    const PartnerList = (await import('./PartnerList.vue')).default;
+    const wrapper = mount(PartnerList, {
+      global: {
+        plugins: [i18n],
+        stubs: { OPage: { template: '<div><slot /></div>' } },
+      },
+    });
+    await nextTick();
+    const panel = wrapper.findComponent({ name: 'ExportPanelStub' });
+    expect(panel.props('domain')).toBe(JSON.stringify({ And: [] }));
+  });
+
+  it('uses zero filtered count when store result is missing', async () => {
+    createStoreByModelMock.mockReturnValue({
+      Search: vi.fn(),
+      storeId: 'Partner_/partner/partners',
+      state: { queryState: { appliedFilters: [] } },
+    });
+    const PartnerList = (await import('./PartnerList.vue')).default;
+    const wrapper = mount(PartnerList, {
+      global: {
+        plugins: [i18n],
+        stubs: { OPage: { template: '<div><slot /></div>' } },
+      },
+    });
+    await nextTick();
+    const panel = wrapper.findComponent({ name: 'ExportPanelStub' });
+    expect(panel.props('filteredCount')).toBe(0);
+  });
+
+  it('does not fail import refresh when list view exposes no refresh', async () => {
+    const PartnerList = (await import('./PartnerList.vue')).default;
+    const wrapper = mount(PartnerList, {
+      global: {
+        plugins: [i18n],
+        stubs: { OPage: { template: '<div><slot /></div>' } },
+      },
+    });
+    (wrapper.vm as any).listViewRef = null;
+    expect(() => (wrapper.vm as any).onImported()).not.toThrow();
   });
 });

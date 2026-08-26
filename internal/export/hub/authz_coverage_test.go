@@ -467,3 +467,76 @@ func TestToRecordSpecUnspecifiedMode(t *testing.T) {
 		t.Fatalf("spec = %#v err=%v", spec, err)
 	}
 }
+
+func TestRunExportJSExecutorOnlyReturnsReportWhenRunHasMessages(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	seedCountryModelMeta(t, runtimeScope.Session().DB)
+	ctx := authCtx(t)
+	prev := runExportWithResultFn
+	runExportWithResultFn = func(_ context.Context, _ scope.Scope, _ exportpkg.Spec) (importpkg.Report, registry.Result, error) {
+		return importpkg.Report{
+			Messages: []importpkg.Message{{Text: "partial failure"}},
+		}, registry.Result{}, errors.New("boom")
+	}
+	t.Cleanup(func() { runExportWithResultFn = prev })
+	resp, err := runExport(ctx, Deps{
+		RuntimeScope: runtimeScope,
+		JSExecutor:   stubJSExecutor{},
+	}, &exportpb.ExportRunRequest{Model: "base.Country"}, false)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if len(resp.GetReport().GetMessages()) != 1 {
+		t.Fatalf("report = %#v", resp.GetReport())
+	}
+}
+
+func TestRunExportJSExecutorOnlySkipsEmptyInlineCSV(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	seedCountryModelMeta(t, runtimeScope.Session().DB)
+	ctx := authCtx(t)
+	prev := runExportWithResultFn
+	runExportWithResultFn = func(_ context.Context, _ scope.Scope, _ exportpkg.Spec) (importpkg.Report, registry.Result, error) {
+		return importpkg.Report{Stats: importpkg.Stats{Ok: 1}}, registry.Result{}, nil
+	}
+	t.Cleanup(func() { runExportWithResultFn = prev })
+	resp, err := runExport(ctx, Deps{
+		RuntimeScope: runtimeScope,
+		JSExecutor:   stubJSExecutor{},
+	}, &exportpb.ExportRunRequest{Model: "base.Country"}, false)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if len(resp.GetCsvData()) != 0 {
+		t.Fatalf("csv_data = %q", resp.GetCsvData())
+	}
+}
+
+func TestActiveCompanyIDTrimsWhitespace(t *testing.T) {
+	ctx := auth.ContextWithIdentity(context.Background(), spacedActiveCompanyIdentity{})
+	if got := activeCompanyID(ctx); got != "cmp_trim" {
+		t.Fatalf("activeCompanyID = %q", got)
+	}
+}
+
+func TestSplitModelFullNameTrimsWhitespace(t *testing.T) {
+	app, name, err := splitModelFullName(" partner . Partner ")
+	if err != nil || app != "partner" || name != "Partner" {
+		t.Fatalf("app=%q name=%q err=%v", app, name, err)
+	}
+}
+
+func TestToRecordSpecTrimsWhitespaceFields(t *testing.T) {
+	spec, err := toRecordSpec(&exportpb.ExportRunRequest{
+		Model:     " base.Country ",
+		Domain:    "  domain-json  ",
+		CompanyId: " cmp-1 ",
+		Ids:       []string{" id-1 "},
+	}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if spec.Model != "base.Country" || spec.Domain != "domain-json" || spec.Options.CompanyID != "cmp-1" || spec.Ids[0] != " id-1 " {
+		t.Fatalf("spec = %#v", spec)
+	}
+}

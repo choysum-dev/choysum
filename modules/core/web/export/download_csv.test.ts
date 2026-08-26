@@ -60,5 +60,6 @@ describe('downloadExportCsvBytes', () => {
     vi.spyOn(document.body, 'appendChild').mockImplementation(() => undefined as unknown as Node);
     downloadExportCsvBytes(new Uint8Array([1]), '');
     expect(anchor.download).toBe('export.csv');
+    expect(anchor.rel).toBe('noopener');
   });
 });

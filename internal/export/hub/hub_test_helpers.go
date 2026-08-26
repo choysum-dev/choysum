@@ -171,6 +171,15 @@ func (companyMetaIdentity) GetMetadata() map[string]interface{} {
 }
 func (companyMetaIdentity) IsValid() bool { return true }
 
+type spacedActiveCompanyIdentity struct{}
+
+func (spacedActiveCompanyIdentity) GetUserID() string  { return "u1" }
+func (spacedActiveCompanyIdentity) GetTokenID() string { return "tok" }
+func (spacedActiveCompanyIdentity) GetMetadata() map[string]interface{} {
+	return map[string]interface{}{"activeCompanyId": "  cmp_trim  "}
+}
+func (spacedActiveCompanyIdentity) IsValid() bool { return true }
+
 func authCtxWithServer(t *testing.T, server authpb.UserServer) context.Context {
 	t.Helper()
 	lis := bufconn.Listen(1024 * 1024)

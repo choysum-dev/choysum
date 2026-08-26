@@ -50,6 +50,7 @@ async function mountPanel(props: Record<string, unknown> = {}, open = true) {
       plugins: [i18n],
       stubs: {
         ElDialog: {
+          name: 'ElDialog',
           props: ['modelValue'],
           emits: ['update:modelValue', 'open', 'closed'],
           template: '<div class="dialog-stub"><slot /><slot name="footer" /></div>',
@@ -335,5 +336,84 @@ describe('ExportPanel', () => {
     (wrapper.vm as any).selectedFieldPaths = ['Code'];
     await wrapper.setProps({ defaultFields: ['Name', 'CompanyId.Code'] });
     expect((wrapper.vm as any).selectedFieldPaths).toEqual(['Code']);
+  });
+
+  it('shows loading and empty field hints in the template', async () => {
+    let resolveDescribe: (value: unknown) => void = () => {};
+    describeExportFields.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          resolveDescribe = resolve;
+        }),
+    );
+    const wrapper = await mountPanel();
+    void (wrapper.vm as any).onOpen();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain('Loading fields');
+    resolveDescribe({ fields: [], defaultFields: [] });
+    await flushPromises();
+    expect(wrapper.text()).toContain('No exportable fields');
+  });
+
+  it('renders preview info alert and success result in the template', async () => {
+    const wrapper = await mountPanel();
+    await (wrapper.vm as any).runPreview();
+    await flushPromises();
+    expect(wrapper.find('.export-panel-alert').exists()).toBe(true);
+    expect((wrapper.vm as any).previewAlertType).toBe('info');
+    await (wrapper.vm as any).commitExport();
+    await flushPromises();
+    expect(wrapper.find('.el-result-stub').exists()).toBe(true);
+  });
+
+  it('uses default fields when tree selection is empty', async () => {
+    const wrapper = await mountPanel({ defaultFields: ['Name'] });
+    (wrapper.vm as any).selectedFieldPaths = [];
+    const input = (wrapper.vm as any).buildRunInput();
+    expect(input.fields).toEqual(['Name']);
+  });
+
+  it('exports without row stats subtitle when report omits stats', async () => {
+    runExport.mockResolvedValue({ report: {}, csvData: new Uint8Array([1]) });
+    const wrapper = await mountPanel();
+    await (wrapper.vm as any).commitExport();
+    await flushPromises();
+    expect((wrapper.vm as any).exportSuccessSubtitle).toBe('');
+    expect((wrapper.vm as any).exportDone).toBe(true);
+  });
+
+  it('ignores stale export errors after session reset', async () => {
+    let rejectRun: (reason: unknown) => void = () => {};
+    runExport.mockImplementation(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectRun = reject;
+        }),
+    );
+    const wrapper = await mountPanel();
+    const pending = (wrapper.vm as any).commitExport();
+    (wrapper.vm as any).resetState();
+    rejectRun(new Error('stale export'));
+    await pending;
+    await flushPromises();
+    expect((wrapper.vm as any).exportError).toBe('');
+  });
+
+  it('closes the dialog from cancel and done footer buttons', async () => {
+    const wrapper = await mountPanel();
+    const buttons = wrapper.findAll('button');
+    await buttons[0].trigger('click');
+    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([false]);
+    (wrapper.vm as any).exportDone = true;
+    await wrapper.vm.$nextTick();
+    await wrapper.findAll('button')[0].trigger('click');
+    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([false]);
+  });
+
+  it('resets panel state when dialog closed event fires', async () => {
+    const wrapper = await mountPanel();
+    (wrapper.vm as any).fieldTree = [{ path: 'Name', label: 'Name' }];
+    await wrapper.findComponent({ name: 'ElDialog' }).vm.$emit('closed');
+    expect((wrapper.vm as any).fieldTree).toEqual([]);
   });
 });
