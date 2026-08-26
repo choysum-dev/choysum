@@ -3,9 +3,9 @@
 
 package importpkg
 
-// JobRecord is the async import domain DTO (maps to lean task.ImportJob; §12.23).
+// DataTransferJobRecord is the async domain DTO (maps to lean task.DataTransferJob).
 // Queue status lives on task.Job, not here.
-type JobRecord struct {
+type DataTransferJobRecord struct {
 	Profile          Profile `json:"profile"`
 	Policy           Policy  `json:"policy"`
 	DryRun           bool    `json:"dry_run"`

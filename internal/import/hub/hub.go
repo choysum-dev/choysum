@@ -76,7 +76,7 @@ func (h *Hub) Run(ctx context.Context, req *importpb.ImportRunRequest) (*importp
 	return runImport(ctx, h.deps, req, false)
 }
 
-// RunAsync enqueues a background record import via task.ImportJob + task.Job.
+// RunAsync enqueues a background record import via task.DataTransferJob + task.Job.
 func (h *Hub) RunAsync(ctx context.Context, req *importpb.ImportRunAsyncRequest) (*importpb.ImportRunAsyncResponse, error) {
 	return runImportAsync(ctx, h.deps, req)
 }

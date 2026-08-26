@@ -10,14 +10,14 @@ import (
 
 var marshalSpecSnapshot = json.Marshal
 
-// JobRecordFromSpec builds the lean async domain DTO from a validated record Spec.
-func JobRecordFromSpec(spec Spec) (JobRecord, error) {
+// DataTransferJobRecordFromSpec builds the lean async domain DTO from a validated record Spec.
+func DataTransferJobRecordFromSpec(spec Spec) (DataTransferJobRecord, error) {
 	companyID := strings.TrimSpace(spec.Options.CompanyID)
 	snapshot, err := SpecSnapshotJSON(spec)
 	if err != nil {
-		return JobRecord{}, err
+		return DataTransferJobRecord{}, err
 	}
-	return JobRecord{
+	return DataTransferJobRecord{
 		Profile:          spec.Profile,
 		Policy:           EffectivePolicy(spec),
 		DryRun:           spec.DryRun,

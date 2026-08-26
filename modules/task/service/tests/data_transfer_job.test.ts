@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import ImportJob, { IMPORT_JOB_EXECUTE_FULL_METHOD } from '@/task/service/models/import_job';
-import { getQueueStatus } from '@/task/service/models/import_job_queue';
-import { executeImportJob } from '@/task/service/models/import_job_worker';
+import DataTransferJob, { DATA_TRANSFER_JOB_EXECUTE_IMPORT_FULL_METHOD } from '@/task/service/models/data_transfer_job';
+import { getQueueStatus } from '@/task/service/models/data_transfer_job_queue';
+import { executeExport, executeImport } from '@/task/service/models/data_transfer_job_worker';
 import Job from '@/task/service/models/job';
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
@@ -37,14 +37,14 @@ function resetRequestContext(): void {
       'task.Job:read',
       'task.Job:write',
       'task.Job:delete',
-      'task.ImportJob:create',
-      'task.ImportJob:read',
-      'task.ImportJob:write',
-      'task.ImportJob:delete',
-      'ImportJob:create',
-      'ImportJob:read',
-      'ImportJob:write',
-      'ImportJob:delete',
+      'task.DataTransferJob:create',
+      'task.DataTransferJob:read',
+      'task.DataTransferJob:write',
+      'task.DataTransferJob:delete',
+      'DataTransferJob:create',
+      'DataTransferJob:read',
+      'DataTransferJob:write',
+      'DataTransferJob:delete',
     ],
     fieldRuleMode: 'skip',
   };
@@ -76,42 +76,65 @@ async function expectAsyncError(run: () => Promise<unknown>, pattern: RegExp): P
   expect(String(thrown?.message || thrown)).toMatch(pattern);
 }
 
-test('ImportJob model has no State field metadata', () => {
+test('DataTransferJob model has no State field metadata', () => {
   resetRequestContext();
-  const fields = (ImportJob as any).$meta?.fields;
+  const fields = (DataTransferJob as any).$meta?.fields;
   expect(fields?.has?.('State') ?? fields?.State).toBeFalsy();
 });
 
-test('ImportJob.EnqueueRecordImport creates linked task job', async () => {
+test('DataTransferJob Direction is required and defaults to import', async () => {
   resetRequestContext();
-  const result = await ImportJob.EnqueueRecordImport({
+
+  const created = await DataTransferJob.Create({
+    TargetModel: 'base.Country',
+    SourceRef: 'doc-direction-default',
+    SpecSnapshotJson: sampleSnapshot('doc-direction-default'),
+  } as Partial<DataTransferJob>);
+  const createdRow = await DataTransferJob.Browse(created.Id, ['Direction'] as any);
+  expect((createdRow as any).Direction).toBe('import');
+
+  const enqueued = await DataTransferJob.EnqueueRecordImport({
+    targetModel: 'base.Country',
+    sourceRef: 'doc-direction-required',
+    specSnapshot: sampleSnapshot('doc-direction-required'),
+  });
+  const row = await DataTransferJob.Browse(enqueued.dataTransferJobId, ['Direction'] as any);
+  expect((row as any).Direction).toBe('import');
+
+  await expectAsyncError(() => DataTransferJob.ExecuteExport(enqueued.dataTransferJobId), /not implemented yet/);
+});
+
+test('DataTransferJob.EnqueueRecordImport creates linked task job', async () => {
+  resetRequestContext();
+  const result = await DataTransferJob.EnqueueRecordImport({
     targetModel: 'base.Country',
     sourceRef: 'doc-ref-1',
     companyId: 'cmp-1',
     policy: 'atomic',
     specSnapshot: sampleSnapshot('doc-ref-1'),
   });
-  expect(result.importJobId).toBeTruthy();
+  expect(result.dataTransferJobId).toBeTruthy();
   expect(result.taskJobId).toBeTruthy();
 
-  const row = await ImportJob.Browse(result.importJobId, ['TaskJobId', 'TargetModel', 'Policy'] as any);
+  const row = await DataTransferJob.Browse(result.dataTransferJobId, ['TaskJobId', 'TargetModel', 'Policy', 'Direction'] as any);
   expect((row as any).TaskJobId).toBe(result.taskJobId);
   expect((row as any).TargetModel).toBe('base.Country');
   expect((row as any).Policy).toBe('atomic');
+  expect((row as any).Direction).toBe('import');
 
   const taskJob = await Job.GetJob(result.taskJobId, ['FullMethod', 'PayloadJson'] as any);
-  expect((taskJob as any).FullMethod).toBe(IMPORT_JOB_EXECUTE_FULL_METHOD);
-  expect((taskJob as any).PayloadJson?.importJobId).toBe(result.importJobId);
+  expect((taskJob as any).FullMethod).toBe(DATA_TRANSFER_JOB_EXECUTE_IMPORT_FULL_METHOD);
+  expect((taskJob as any).PayloadJson?.dataTransferJobId).toBe(result.dataTransferJobId);
 });
 
-test('ImportJob.EnqueueRecordImport validation paths', async () => {
+test('DataTransferJob.EnqueueRecordImport validation paths', async () => {
   resetRequestContext();
   const jsCtx = ensureRequestContext();
   const previousUserId = jsCtx.identity.userId;
   jsCtx.identity.userId = '';
   await expectAsyncError(
     () =>
-      ImportJob.EnqueueRecordImport({
+      DataTransferJob.EnqueueRecordImport({
         targetModel: 'base.Country',
         sourceRef: 'doc',
         specSnapshot: sampleSnapshot('doc'),
@@ -122,7 +145,7 @@ test('ImportJob.EnqueueRecordImport validation paths', async () => {
 
   await expectAsyncError(
     () =>
-      ImportJob.EnqueueRecordImport({
+      DataTransferJob.EnqueueRecordImport({
         targetModel: '',
         sourceRef: 'doc',
         specSnapshot: sampleSnapshot('doc'),
@@ -132,7 +155,7 @@ test('ImportJob.EnqueueRecordImport validation paths', async () => {
 
   await expectAsyncError(
     () =>
-      ImportJob.EnqueueRecordImport({
+      DataTransferJob.EnqueueRecordImport({
         targetModel: 'base.Country',
         sourceRef: '',
         specSnapshot: sampleSnapshot('doc'),
@@ -142,7 +165,7 @@ test('ImportJob.EnqueueRecordImport validation paths', async () => {
 
   await expectAsyncError(
     () =>
-      ImportJob.EnqueueRecordImport({
+      DataTransferJob.EnqueueRecordImport({
         targetModel: 'base.Country',
         sourceRef: 'doc',
         specSnapshot: null as any,
@@ -152,78 +175,78 @@ test('ImportJob.EnqueueRecordImport validation paths', async () => {
 
   await expectAsyncError(
     () =>
-      ImportJob.EnqueueRecordImport({
+      DataTransferJob.EnqueueRecordImport({
         targetModel: 'base.Country',
         sourceRef: 'doc',
         profile: 'nope',
         specSnapshot: sampleSnapshot('doc'),
       }),
-    /unsupported import profile/
+    /unsupported data transfer profile/
   );
 
   await expectAsyncError(
     () =>
-      ImportJob.EnqueueRecordImport({
+      DataTransferJob.EnqueueRecordImport({
         targetModel: 'base.Country',
         sourceRef: 'doc',
         policy: 'nope',
         specSnapshot: sampleSnapshot('doc'),
       }),
-    /unsupported import policy/
+    /unsupported data transfer policy/
   );
 
-  const defaults = await ImportJob.EnqueueRecordImport({
+  const defaults = await DataTransferJob.EnqueueRecordImport({
     targetModel: 'base.Country',
     sourceRef: 'doc-defaults',
     profile: '  ',
     policy: '',
     specSnapshot: sampleSnapshot('doc-defaults'),
   });
-  const row = await ImportJob.Browse(defaults.importJobId, ['Profile', 'Policy'] as any);
+  const row = await DataTransferJob.Browse(defaults.dataTransferJobId, ['Profile', 'Policy'] as any);
   expect((row as any).Profile).toBe('record');
   expect((row as any).Policy).toBe('atomic');
 });
 
-test('ImportJob field defaults apply on minimal Create', async () => {
+test('DataTransferJob field defaults apply on minimal Create', async () => {
   resetRequestContext();
-  const row = await ImportJob.Create({
+  const row = await DataTransferJob.Create({
     TargetModel: 'base.Country',
     SourceRef: 'doc-field-defaults',
     SpecSnapshotJson: sampleSnapshot('doc-field-defaults'),
-  } as Partial<ImportJob>);
-  const loaded = await ImportJob.Browse(row.Id, ['Profile', 'Policy', 'DryRun', 'Direction'] as any);
+  } as Partial<DataTransferJob>);
+  const loaded = await DataTransferJob.Browse(row.Id, ['Profile', 'Policy', 'DryRun', 'Direction'] as any);
   expect((loaded as any).Profile).toBe('record');
   expect((loaded as any).Policy).toBe('atomic');
   expect((loaded as any).DryRun).toBe(false);
   expect((loaded as any).Direction).toBe('import');
 });
 
-test('getQueueStatus joins ImportJob with Job.Status', async () => {
+test('getQueueStatus joins DataTransferJob with Job.Status', async () => {
   resetRequestContext();
-  const enqueued = await ImportJob.EnqueueRecordImport({
+  const enqueued = await DataTransferJob.EnqueueRecordImport({
     targetModel: 'base.Country',
     sourceRef: 'doc-ref-2',
     specSnapshot: sampleSnapshot('doc-ref-2'),
   });
-  const status = await getQueueStatus(enqueued.importJobId);
+  const status = await getQueueStatus(enqueued.dataTransferJobId);
   expect(status.queueStatus).toBe('queued');
   expect(status.taskJobId).toBe(enqueued.taskJobId);
 });
 
 test('getQueueStatus error paths', async () => {
   resetRequestContext();
-  await expectAsyncError(() => getQueueStatus(''), /importJobId is required/);
+  await expectAsyncError(() => getQueueStatus(''), /dataTransferJobId is required/);
   await expectAsyncError(() => getQueueStatus('missing-import-job'), /not found/i);
 
-  const browse = (ImportJob as any).Browse.bind(ImportJob);
-  (ImportJob as any).Browse = async () => null;
+  const browse = (DataTransferJob as any).Browse.bind(DataTransferJob);
+  (DataTransferJob as any).Browse = async () => null;
   try {
-    await expectAsyncError(() => getQueueStatus('ghost-import-job'), /import job ghost-import-job not found/);
+    await expectAsyncError(() => getQueueStatus('ghost-import-job'), /data transfer job ghost-import-job not found/);
   } finally {
-    (ImportJob as any).Browse = browse;
+    (DataTransferJob as any).Browse = browse;
   }
 
-  const row = await ImportJob.Create({
+  const row = await DataTransferJob.Create({
     Profile: 'record',
     Policy: 'atomic',
     DryRun: false,
@@ -233,15 +256,15 @@ test('getQueueStatus error paths', async () => {
     Direction: 'import',
     ProgressDone: 0,
     ProgressTotal: 0,
-  } as Partial<ImportJob>);
+  } as Partial<DataTransferJob>);
   await expectAsyncError(() => getQueueStatus(row.Id), /missing task job link/);
 });
 
 test('getQueueStatus joins empty progress and report fallbacks', async () => {
   resetRequestContext();
-  const browse = (ImportJob as any).Browse.bind(ImportJob);
+  const browse = (DataTransferJob as any).Browse.bind(DataTransferJob);
   const getJob = (Job as any).GetJob.bind(Job);
-  (ImportJob as any).Browse = async () =>
+  (DataTransferJob as any).Browse = async () =>
     ({
       Id: 'import-fallback',
       TaskJobId: 'task-fallback',
@@ -259,12 +282,12 @@ test('getQueueStatus joins empty progress and report fallbacks', async () => {
     expect(status.reportJson).toBeUndefined();
     expect(status.reportRef).toBeUndefined();
   } finally {
-    (ImportJob as any).Browse = browse;
+    (DataTransferJob as any).Browse = browse;
     (Job as any).GetJob = getJob;
   }
 });
 
-test('executeImportJob writes report via import bridge', async () => {
+test('executeImport writes report via import bridge', async () => {
   resetRequestContext();
   const root: any = (globalThis as any).$choysum;
   const previousImport = root.import;
@@ -279,16 +302,16 @@ test('executeImportJob writes report via import bridge', async () => {
       }),
     };
 
-    const enqueued = await ImportJob.EnqueueRecordImport({
+    const enqueued = await DataTransferJob.EnqueueRecordImport({
       targetModel: 'base.Country',
       sourceRef: 'doc-ref-3',
       specSnapshot: sampleSnapshot('doc-ref-3'),
     });
 
-    const report = await ImportJob.ExecuteImport(enqueued.importJobId);
+    const report = await DataTransferJob.ExecuteImport(enqueued.dataTransferJobId);
     expect(report?.stats?.ok).toBe(2);
 
-    const row = await ImportJob.Browse(enqueued.importJobId, [
+    const row = await DataTransferJob.Browse(enqueued.dataTransferJobId, [
       'ReportJson',
       'ReportRef',
       'ProgressDone',
@@ -299,7 +322,7 @@ test('executeImportJob writes report via import bridge', async () => {
     expect((row as any).ProgressDone).toBe(2);
     expect((row as any).ProgressTotal).toBe(2);
 
-    const status = await getQueueStatus(enqueued.importJobId);
+    const status = await getQueueStatus(enqueued.dataTransferJobId);
     expect(status.reportRef).toBe('art-1');
     expect(status.reportJson?.stats?.ok).toBe(2);
   } finally {
@@ -311,15 +334,59 @@ test('executeImportJob writes report via import bridge', async () => {
   }
 });
 
-test('executeImportJob and FinalizeReport error paths', async () => {
+test('executeImport and FinalizeReport error paths', async () => {
   resetRequestContext();
   const root: any = (globalThis as any).$choysum;
   const previousImport = root.import;
   try {
-    await expectAsyncError(() => executeImportJob(''), /importJobId is required/);
-    await expectAsyncError(() => ImportJob.FinalizeReport('', {}), /importJobId is required/);
+    await expectAsyncError(() => executeImport(''), /dataTransferJobId is required/);
+    await expectAsyncError(() => executeImport('   '), /dataTransferJobId is required/);
+    await expectAsyncError(() => executeImport(null as any), /dataTransferJobId is required/);
+    await expectAsyncError(() => executeExport(''), /dataTransferJobId is required/);
+    await expectAsyncError(() => executeExport('   '), /dataTransferJobId is required/);
+    await expectAsyncError(() => executeExport(undefined as any), /dataTransferJobId is required/);
+    await expectAsyncError(() => DataTransferJob.FinalizeReport('', {}), /dataTransferJobId is required/);
 
-    const withoutSnapshot = await ImportJob.Create({
+    const exportDirection = await DataTransferJob.Create({
+      Profile: 'record',
+      Policy: 'atomic',
+      DryRun: false,
+      TargetModel: 'base.Country',
+      SourceRef: 'doc-export-direction',
+      SpecSnapshotJson: sampleSnapshot('doc-export-direction'),
+      Direction: 'export',
+    } as Partial<DataTransferJob>);
+    await expectAsyncError(
+      () => executeImport(exportDirection.Id),
+      /ExecuteImport requires Direction=import/
+    );
+
+    const missingDirection = await DataTransferJob.Create({
+      Profile: 'record',
+      Policy: 'atomic',
+      DryRun: false,
+      TargetModel: 'base.Country',
+      SourceRef: 'doc-missing-direction',
+      SpecSnapshotJson: sampleSnapshot('doc-missing-direction'),
+      Direction: 'import',
+    } as Partial<DataTransferJob>);
+    const browse = (DataTransferJob as any).Browse.bind(DataTransferJob);
+    (DataTransferJob as any).Browse = async (_id: string, fields?: any) => {
+      const row = await browse(_id, fields);
+      if (!row) return row;
+      return { ...(row as any), Direction: '' };
+    };
+    root.import = {
+      run: async () => ({ stats: { total: 0, ok: 0, error: 0, skip: 0 } }),
+    };
+    try {
+      const report = await executeImport(missingDirection.Id);
+      expect(report?.stats?.total).toBe(0);
+    } finally {
+      (DataTransferJob as any).Browse = browse;
+    }
+
+    const withoutSnapshot = await DataTransferJob.Create({
       Profile: 'record',
       Policy: 'atomic',
       DryRun: false,
@@ -327,41 +394,43 @@ test('executeImportJob and FinalizeReport error paths', async () => {
       SourceRef: 'doc-no-snapshot',
       SpecSnapshotJson: { ok: true },
       Direction: 'import',
-    } as Partial<ImportJob>);
-    await (ImportJob as any).UpdateById(withoutSnapshot.Id, { SpecSnapshotJson: 0 } as any);
-    await expectAsyncError(() => executeImportJob(withoutSnapshot.Id), /missing spec snapshot/);
+    } as Partial<DataTransferJob>);
+    await (DataTransferJob as any).UpdateById(withoutSnapshot.Id, { SpecSnapshotJson: 0 } as any);
+    await expectAsyncError(() => executeImport(withoutSnapshot.Id), /missing spec snapshot/);
 
     delete root.import;
-    const enqueued = await ImportJob.EnqueueRecordImport({
+    const enqueued = await DataTransferJob.EnqueueRecordImport({
       targetModel: 'base.Country',
       sourceRef: 'doc-no-bridge',
       specSnapshot: sampleSnapshot('doc-no-bridge'),
     });
-    await expectAsyncError(() => executeImportJob(enqueued.importJobId), /import bridge is not available/);
+    await expectAsyncError(() => executeImport(enqueued.dataTransferJobId), /import bridge is not available/);
 
     root.import = {
       run: async () => null,
     };
-    const nullReportJob = await ImportJob.EnqueueRecordImport({
+    const nullReportJob = await DataTransferJob.EnqueueRecordImport({
       targetModel: 'base.Country',
       sourceRef: 'doc-null-report',
       specSnapshot: sampleSnapshot('doc-null-report'),
     });
-    const empty = await executeImportJob(nullReportJob.importJobId);
+    const empty = await executeImport(nullReportJob.dataTransferJobId);
     expect(empty).toEqual({});
 
-    await ImportJob.FinalizeReport(nullReportJob.importJobId, {
+    await DataTransferJob.FinalizeReport(nullReportJob.dataTransferJobId, {
       Stats: { Total: 3 },
       artifactRef: 'art-alt',
     });
-    const finalized = await ImportJob.Browse(nullReportJob.importJobId, ['ProgressTotal', 'ReportRef'] as any);
+    const finalized = await DataTransferJob.Browse(nullReportJob.dataTransferJobId, ['ProgressTotal', 'ReportRef'] as any);
     expect((finalized as any).ProgressTotal).toBe(3);
     expect((finalized as any).ReportRef).toBe('art-alt');
 
-    await ImportJob.FinalizeReport(nullReportJob.importJobId, null as any);
-    const cleared = await ImportJob.Browse(nullReportJob.importJobId, ['ReportJson', 'ProgressTotal'] as any);
+    await DataTransferJob.FinalizeReport(nullReportJob.dataTransferJobId, null as any);
+    const cleared = await DataTransferJob.Browse(nullReportJob.dataTransferJobId, ['ReportJson', 'ProgressTotal'] as any);
     expect((cleared as any).ReportJson).toEqual({});
     expect((cleared as any).ProgressTotal).toBe(0);
+
+    await expectAsyncError(() => executeExport(nullReportJob.dataTransferJobId), /not implemented yet/);
   } finally {
     if (previousImport === undefined) {
       delete root.import;

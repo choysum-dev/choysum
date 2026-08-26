@@ -84,11 +84,11 @@ describe('core/web import client', () => {
   });
 
   it('calls runImportAsync with async request wrapper', async () => {
-    runAsync.mockResolvedValue({ importJobId: 'ij-1', taskJobId: 'tj-1' });
+    runAsync.mockResolvedValue({ dataTransferJobId: 'ij-1', taskJobId: 'tj-1' });
     const { runImportAsync } = await import('./client');
     const input = { targetModel: 'base.Country', sourceRef: 'src-async' };
     const resp = await runImportAsync(input);
-    expect(resp.importJobId).toBe('ij-1');
+    expect(resp.dataTransferJobId).toBe('ij-1');
     expect(runAsync).toHaveBeenCalled();
   });
 });

@@ -709,12 +709,12 @@ func (x *ImportRunAsyncRequest) GetRun() *ImportRunRequest {
 }
 
 type ImportRunAsyncResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ImportJobId   string                 `protobuf:"bytes,1,opt,name=import_job_id,json=importJobId,proto3" json:"import_job_id,omitempty"`
-	TaskJobId     string                 `protobuf:"bytes,2,opt,name=task_job_id,json=taskJobId,proto3" json:"task_job_id,omitempty"`
-	Report        *ImportReport          `protobuf:"bytes,3,opt,name=report,proto3" json:"report,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	DataTransferJobId string                 `protobuf:"bytes,1,opt,name=data_transfer_job_id,json=dataTransferJobId,proto3" json:"data_transfer_job_id,omitempty"`
+	TaskJobId         string                 `protobuf:"bytes,2,opt,name=task_job_id,json=taskJobId,proto3" json:"task_job_id,omitempty"`
+	Report            *ImportReport          `protobuf:"bytes,3,opt,name=report,proto3" json:"report,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *ImportRunAsyncResponse) Reset() {
@@ -747,9 +747,9 @@ func (*ImportRunAsyncResponse) Descriptor() ([]byte, []int) {
 	return file_import_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *ImportRunAsyncResponse) GetImportJobId() string {
+func (x *ImportRunAsyncResponse) GetDataTransferJobId() string {
 	if x != nil {
-		return x.ImportJobId
+		return x.DataTransferJobId
 	}
 	return ""
 }
@@ -822,9 +822,9 @@ const file_import_proto_rawDesc = "" +
 	"\x11ImportRunResponse\x12,\n" +
 	"\x06report\x18\x01 \x01(\v2\x14.import.ImportReportR\x06report\"C\n" +
 	"\x15ImportRunAsyncRequest\x12*\n" +
-	"\x03run\x18\x01 \x01(\v2\x18.import.ImportRunRequestR\x03run\"\x8a\x01\n" +
-	"\x16ImportRunAsyncResponse\x12\"\n" +
-	"\rimport_job_id\x18\x01 \x01(\tR\vimportJobId\x12\x1e\n" +
+	"\x03run\x18\x01 \x01(\v2\x18.import.ImportRunRequestR\x03run\"\x97\x01\n" +
+	"\x16ImportRunAsyncResponse\x12/\n" +
+	"\x14data_transfer_job_id\x18\x01 \x01(\tR\x11dataTransferJobId\x12\x1e\n" +
 	"\vtask_job_id\x18\x02 \x01(\tR\ttaskJobId\x12,\n" +
 	"\x06report\x18\x03 \x01(\v2\x14.import.ImportReportR\x06report*\x83\x01\n" +
 	"\fImportPolicy\x12\x1d\n" +

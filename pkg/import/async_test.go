@@ -10,7 +10,7 @@ import (
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
 )
 
-func TestJobRecordFromSpec(t *testing.T) {
+func TestDataTransferJobRecordFromSpec(t *testing.T) {
 	spec := importpkg.Spec{
 		Profile: importpkg.ProfileRecord,
 		Caller:  importpkg.CallerUser,
@@ -25,9 +25,9 @@ func TestJobRecordFromSpec(t *testing.T) {
 			ColumnMapping: map[string]string{"Name": "Name"},
 		},
 	}
-	record, err := importpkg.JobRecordFromSpec(spec)
+	record, err := importpkg.DataTransferJobRecordFromSpec(spec)
 	if err != nil {
-		t.Fatalf("JobRecordFromSpec: %v", err)
+		t.Fatalf("DataTransferJobRecordFromSpec: %v", err)
 	}
 	if record.Profile != importpkg.ProfileRecord || record.Policy != importpkg.PolicyBestEffort {
 		t.Fatalf("record = %+v", record)

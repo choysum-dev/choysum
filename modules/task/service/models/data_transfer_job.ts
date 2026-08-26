@@ -5,9 +5,10 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { getUserId } from '@/core/service/api/context';
 import { _lt } from '../i18n';
 import Job from './job';
-import { executeImportJob } from './import_job_worker';
+import { executeExport, executeImport } from './data_transfer_job_worker';
 
-export const IMPORT_JOB_EXECUTE_FULL_METHOD = 'task.ImportJob/ExecuteImport';
+export const DATA_TRANSFER_JOB_EXECUTE_IMPORT_FULL_METHOD = 'task.DataTransferJob/ExecuteImport';
+export const DATA_TRANSFER_JOB_EXECUTE_EXPORT_FULL_METHOD = 'task.DataTransferJob/ExecuteExport';
 
 const ALLOWED_PROFILES = new Set(['initdata', 'terminology', 'record']);
 const ALLOWED_POLICIES = new Set(['atomic', 'stop_keep', 'best_effort']);
@@ -22,23 +23,24 @@ export type EnqueueRecordImportInput = {
 };
 
 export type EnqueueRecordImportResult = {
-  importJobId: string;
+  dataTransferJobId: string;
   taskJobId: string;
 };
 
 function normalizeSelection(value: string | undefined, fallback: string, allowed: Set<string>, label: string): string {
   const normalized = String(value || '').trim() || fallback;
   if (!allowed.has(normalized)) {
-    throw new Error(`unsupported import ${label} ${JSON.stringify(normalized)}`);
+    throw new Error(`unsupported data transfer ${label} ${JSON.stringify(normalized)}`);
   }
   return normalized;
 }
 
 /**
- * Lean async import domain row (queue status lives on task.Job).
+ * Lean async data-transfer domain row (queue status lives on task.Job).
+ * Direction distinguishes import vs export; export execution lands in PR-export-4.
  */
-@Model('ImportJob', { application: 'task', tableName: 'task_import_job' })
-export default class ImportJob extends BaseModel {
+@Model('DataTransferJob', { application: 'task', tableName: 'task_data_transfer_job' })
+export default class DataTransferJob extends BaseModel {
   @Field({
     type: 'selection',
     selection: [
@@ -49,7 +51,7 @@ export default class ImportJob extends BaseModel {
     size: 32,
     notNull: true,
     default: () => 'record',
-    string: _lt('Profile', { scope: 'task.model.ImportJob.fields' }),
+    string: _lt('Profile', { scope: 'task.model.DataTransferJob.fields' }),
   })
   Profile: string;
 
@@ -63,14 +65,14 @@ export default class ImportJob extends BaseModel {
     size: 32,
     notNull: true,
     default: () => 'atomic',
-    string: _lt('Policy', { scope: 'task.model.ImportJob.fields' }),
+    string: _lt('Policy', { scope: 'task.model.DataTransferJob.fields' }),
   })
   Policy: string;
 
   @Field({
     type: 'boolean',
     default: () => false,
-    string: _lt('Dry Run', { scope: 'task.model.ImportJob.fields' }),
+    string: _lt('Dry Run', { scope: 'task.model.DataTransferJob.fields' }),
   })
   DryRun: boolean;
 
@@ -79,7 +81,7 @@ export default class ImportJob extends BaseModel {
     size: 255,
     index: true,
     notNull: true,
-    string: _lt('Target Model', { scope: 'task.model.ImportJob.fields' }),
+    string: _lt('Target Model', { scope: 'task.model.DataTransferJob.fields' }),
   })
   TargetModel: string;
 
@@ -88,7 +90,7 @@ export default class ImportJob extends BaseModel {
     size: 255,
     index: true,
     notNull: true,
-    string: _lt('Source Ref', { scope: 'task.model.ImportJob.fields' }),
+    string: _lt('Source Ref', { scope: 'task.model.DataTransferJob.fields' }),
   })
   SourceRef: string;
 
@@ -97,7 +99,7 @@ export default class ImportJob extends BaseModel {
     size: 20,
     unique: true,
     index: true,
-    string: _lt('Task Job', { scope: 'task.model.ImportJob.fields' }),
+    string: _lt('Task Job', { scope: 'task.model.DataTransferJob.fields' }),
   })
   TaskJobId: string;
 
@@ -105,41 +107,41 @@ export default class ImportJob extends BaseModel {
     type: 'varchar',
     size: 20,
     index: true,
-    string: _lt('Company', { scope: 'task.model.ImportJob.fields' }),
+    string: _lt('Company', { scope: 'task.model.DataTransferJob.fields' }),
   })
   CompanyId: string;
 
   @Field({
     type: 'int',
     default: () => 0,
-    string: _lt('Progress Done', { scope: 'task.model.ImportJob.fields' }),
+    string: _lt('Progress Done', { scope: 'task.model.DataTransferJob.fields' }),
   })
   ProgressDone: number;
 
   @Field({
     type: 'int',
     default: () => 0,
-    string: _lt('Progress Total', { scope: 'task.model.ImportJob.fields' }),
+    string: _lt('Progress Total', { scope: 'task.model.DataTransferJob.fields' }),
   })
   ProgressTotal: number;
 
   @Field({
     type: 'jsonobject',
-    string: _lt('Report', { scope: 'task.model.ImportJob.fields' }),
+    string: _lt('Report', { scope: 'task.model.DataTransferJob.fields' }),
   })
   ReportJson: Record<string, any>;
 
   @Field({
     type: 'varchar',
     size: 255,
-    string: _lt('Report Ref', { scope: 'task.model.ImportJob.fields' }),
+    string: _lt('Report Ref', { scope: 'task.model.DataTransferJob.fields' }),
   })
   ReportRef: string;
 
   @Field({
     type: 'jsonobject',
     notNull: true,
-    string: _lt('Spec Snapshot', { scope: 'task.model.ImportJob.fields' }),
+    string: _lt('Spec Snapshot', { scope: 'task.model.DataTransferJob.fields' }),
   })
   SpecSnapshotJson: Record<string, any>;
 
@@ -152,15 +154,15 @@ export default class ImportJob extends BaseModel {
     size: 16,
     notNull: true,
     default: () => 'import',
-    string: _lt('Direction', { scope: 'task.model.ImportJob.fields' }),
+    string: _lt('Direction', { scope: 'task.model.DataTransferJob.fields' }),
   })
   Direction: string;
 
-  /** Creates ImportJob + task.Job and links them 1:1. */
+  /** Creates DataTransferJob (Direction=import) + task.Job and links them 1:1. */
   static async EnqueueRecordImport(input: EnqueueRecordImportInput): Promise<EnqueueRecordImportResult> {
     const userId = String(getUserId() || '').trim();
     if (!userId) {
-      throw new Error('authenticated user is required to enqueue import job');
+      throw new Error('authenticated user is required to enqueue data transfer job');
     }
     const targetModel = String(input?.targetModel || '').trim();
     const sourceRef = String(input?.sourceRef || '').trim();
@@ -185,36 +187,41 @@ export default class ImportJob extends BaseModel {
       Direction: 'import',
       ProgressDone: 0,
       ProgressTotal: 0,
-    } as Partial<ImportJob>);
+    } as Partial<DataTransferJob>);
 
     const taskJob = await Job.EnqueueJob(
       'task',
-      IMPORT_JOB_EXECUTE_FULL_METHOD,
-      { importJobId: row.Id },
+      DATA_TRANSFER_JOB_EXECUTE_IMPORT_FULL_METHOD,
+      { dataTransferJobId: row.Id },
       userId,
       userId
     );
 
-    await (this as any).UpdateById(row.Id, { TaskJobId: taskJob.Id } as Partial<ImportJob>);
+    await (this as any).UpdateById(row.Id, { TaskJobId: taskJob.Id } as Partial<DataTransferJob>);
 
-    return { importJobId: row.Id, taskJobId: taskJob.Id };
+    return { dataTransferJobId: row.Id, taskJobId: taskJob.Id };
   }
 
   /** Task worker target for queued record imports. */
-  static async ExecuteImport(importJobId: string): Promise<Record<string, any>> {
-    return await executeImportJob(importJobId);
+  static async ExecuteImport(dataTransferJobId: string): Promise<Record<string, any>> {
+    return await executeImport(dataTransferJobId);
   }
 
-  /** Persists import report and progress on the domain row. */
-  static async FinalizeReport(importJobId: string, report: Record<string, any>): Promise<void> {
-    const id = String(importJobId || '').trim();
+  /** Task worker target for queued record exports (stub until PR-export-4). */
+  static async ExecuteExport(dataTransferJobId: string): Promise<Record<string, any>> {
+    return await executeExport(dataTransferJobId);
+  }
+
+  /** Persists transfer report and progress on the domain row. */
+  static async FinalizeReport(dataTransferJobId: string, report: Record<string, any>): Promise<void> {
+    const id = String(dataTransferJobId || '').trim();
     if (!id) {
-      throw new Error('importJobId is required');
+      throw new Error('dataTransferJobId is required');
     }
     const stats = (report?.stats ?? report?.Stats ?? {}) as Record<string, any>;
     const total = Number(stats.total ?? stats.Total ?? 0) || 0;
     const artifactRef = String(report?.artifact_ref ?? report?.artifactRef ?? '').trim();
-    const values: Partial<ImportJob> = {
+    const values: Partial<DataTransferJob> = {
       ReportJson: report ?? {},
       ProgressDone: total,
       ProgressTotal: total,
@@ -222,6 +229,6 @@ export default class ImportJob extends BaseModel {
     if (artifactRef) {
       values.ReportRef = artifactRef;
     }
-    await (this as any).UpdateById(id, values as Partial<ImportJob>);
+    await (this as any).UpdateById(id, values as Partial<DataTransferJob>);
   }
 }
