@@ -9,17 +9,14 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/choysum-dev/choysum/internal/export/runner"
 	"github.com/choysum-dev/choysum/internal/i18n/po"
+	"github.com/choysum-dev/choysum/internal/i18n/terms"
+	"github.com/choysum-dev/choysum/pkg/auth"
+	exportpkg "github.com/choysum-dev/choysum/pkg/export"
 )
 
 const poPath = "/web/i18n/po"
-
-// Tunable for tests; production defaults keep PO downloads bounded.
-var (
-	// Keep in sync with typical ORM Search page sizes so export pages stay bounded.
-	poExportPageSize = 500
-	poExportMaxItems = 10000
-)
 
 func (h *handler) servePO(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -68,142 +65,77 @@ func (h *handler) servePO(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "module does not belong to application"})
 		return
 	}
-	modules = []string{module}
 
-	items, truncated, err := h.collectAllTerms(r.Context(), accessToken, application, lang, modules)
+	ctx := auth.ContextWithAccessToken(r.Context(), accessToken)
+	if h.search != nil {
+		ctx = terms.ContextWithCollectHooks(ctx, h.gatewaySearchHook(), nil)
+	}
+
+	_, result, err := runner.RunWithResult(ctx, h.runtimeScope, exportpkg.Spec{
+		Profile:     exportpkg.ProfileTerminology,
+		Caller:      exportpkg.CallerUser,
+		Application: application,
+		Module:      module,
+		Lang:        lang,
+		Format:      "po",
+	})
 	if err != nil {
 		writeTermsRPCError(w, err)
 		return
 	}
 
-	entries := buildPOEntries(lang, items)
 	filename := fmt.Sprintf("%s-%s.po", module, lang)
 	w.Header().Set("Content-Type", "text/x-po; charset=utf-8")
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
-	if truncated {
+	if result.Truncated {
 		w.Header().Set("X-Choysum-PO-Truncated", "1")
 		h.logger().Warn("i18n po export truncated",
-			"application", application, "module", module, "lang", lang, "limit", poExportMaxItems, "exported", len(items))
+			"application", application, "module", module, "lang", lang, "limit", terms.ExportMaxItems)
 	}
 	w.WriteHeader(http.StatusOK)
-	if err := po.Write(w, entries); err != nil {
-		// Headers already sent; cannot change status — log for ops visibility.
+	if _, err := w.Write(result.POBytes); err != nil {
 		h.logger().Error("failed to write PO export", "error", err, "application", application, "module", module, "lang", lang)
-		return
 	}
 }
 
 func (h *handler) collectAllTerms(ctx context.Context, accessToken, app, lang string, modules []string) ([]termItem, bool, error) {
-	if poExportMaxItems <= 0 {
-		return nil, true, nil
-	}
-
-	var (
-		total int64
-		err   error
-	)
 	if h.search != nil {
-		// Injected search hooks historically return Total per page; ask once with limit=1.
-		probe, err := h.search(ctx, accessToken, app, lang, modules, "", 1, 0)
-		if err != nil {
-			return nil, false, err
-		}
-		if probe != nil {
-			total = probe.Total
-		}
-	} else {
-		total, err = countAppTerms(ctx, accessToken, app, lang, modules, "")
-		if err != nil {
-			return nil, false, err
-		}
+		ctx = terms.ContextWithCollectHooks(ctx, h.gatewaySearchHook(), nil)
 	}
-
-	var all []termItem
-	offset := 0
-	truncated := false
-	for {
-		remaining := poExportMaxItems - len(all)
-		page := poExportPageSize
-		if page > remaining {
-			page = remaining
-		}
-		var result *searchTermsResult
-		if h.search != nil {
-			result, err = h.search(ctx, accessToken, app, lang, modules, "", page, offset)
-		} else {
-			result, err = searchAppTermsPage(ctx, accessToken, app, lang, modules, "", total, page, offset)
-		}
-		if err != nil {
-			return nil, false, err
-		}
-		if result == nil || len(result.Items) == 0 {
-			break
-		}
-		all = append(all, result.Items...)
-		offset += len(result.Items)
-		if len(all) >= poExportMaxItems {
-			// Unknown total (hooks that omit Total): prefer signaling truncation
-			// over silently returning a capped subset.
-			if total <= 0 || total > int64(len(all)) {
-				truncated = true
-			}
-			break
-		}
-		// Hooks may omit Total on the probe; adopt a later page total when present.
-		if total <= 0 && result.Total > 0 {
-			total = result.Total
-		}
-		// When total is still unknown, keep paging until a short page.
-		if len(result.Items) < page {
-			break
-		}
-		if total > 0 && int64(offset) >= total {
-			break
-		}
+	items, truncated, err := terms.CollectAll(ctx, accessToken, app, lang, modules)
+	if err != nil {
+		return nil, false, err
 	}
-	return all, truncated, nil
+	out := make([]termItem, len(items))
+	copy(out, items)
+	return out, truncated, nil
 }
 
 func buildPOEntries(lang string, items []termItem) []po.Entry {
-	entries := make([]po.Entry, 0, len(items)+1)
-	entries = append(entries, po.Entry{
-		Msgid: "",
-		Msgstr: "Content-Type: text/plain; charset=UTF-8\n" +
-			"Content-Transfer-Encoding: 8bit\n" +
-			"Language: " + lang + "\n" +
-			"X-Generator: choysum-i18n-gateway\n",
-	})
-	for _, item := range items {
-		e := po.Entry{
-			Msgctxt: item.Scope,
-			Msgid:   item.Src,
-			Msgstr:  item.Value,
-		}
-		if item.Module != "" {
-			e.ExtractedComments = append(e.ExtractedComments, "module: "+item.Module)
-		}
-		if item.Source != "" {
-			e.TranslatorComments = append(e.TranslatorComments, "source: "+item.Source)
-		}
-		if strings.EqualFold(item.Status, "fuzzy") {
-			e.Flags = append(e.Flags, "fuzzy")
-		}
-		entries = append(entries, e)
-	}
-	po.SortEntries(entries)
-	// Keep header first after sort (SortEntries treats empty msgid as normal).
-	return moveHeaderFirst(entries)
+	typed := make([]terms.Item, len(items))
+	copy(typed, items)
+	return terms.BuildPOEntries(lang, typed)
 }
 
-func moveHeaderFirst(entries []po.Entry) []po.Entry {
-	var header []po.Entry
-	var rest []po.Entry
-	for _, e := range entries {
-		if po.IsHeader(e) {
-			header = append(header, e)
-			continue
+func (h *handler) gatewaySearchHook() terms.SearchPageFunc {
+	return func(ctx context.Context, accessToken, app, lang string, modules []string, q string, limit, offset int) (*terms.SearchResult, error) {
+		if h.search == nil {
+			return nil, fmt.Errorf("search hook is not configured")
 		}
-		rest = append(rest, e)
+		got, err := h.search(ctx, accessToken, app, lang, modules, q, limit, offset)
+		if err != nil || got == nil {
+			return nil, err
+		}
+		out := &terms.SearchResult{
+			Lang:   got.Lang,
+			Total:  got.Total,
+			Limit:  got.Limit,
+			Offset: got.Offset,
+			Items:  make([]terms.Item, len(got.Items)),
+		}
+		for i, item := range got.Items {
+			out.Items[i] = terms.Item(item)
+		}
+		return out, nil
 	}
-	return append(header, rest...)
 }

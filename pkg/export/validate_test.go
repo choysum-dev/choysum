@@ -45,6 +45,7 @@ func TestValidateSpec_CallerMatrix(t *testing.T) {
 				spec.Model = "base.Country"
 				spec.Format = "csv"
 			case exportpkg.ProfileTerminology:
+				spec.Application = "base"
 				spec.Module = "base"
 				spec.Lang = "zh_CN"
 				spec.Format = "po"
@@ -74,12 +75,13 @@ func TestValidateSpec_RecordRequiresModel(t *testing.T) {
 
 func TestValidateSpec_TerminologyRejectsModeAndFields(t *testing.T) {
 	err := exportpkg.ValidateSpec(exportpkg.Spec{
-		Profile: exportpkg.ProfileTerminology,
-		Caller:  exportpkg.CallerUser,
-		Mode:    exportpkg.ModeData,
-		Module:  "base",
-		Lang:    "en_US",
-		Format:  "po",
+		Profile:     exportpkg.ProfileTerminology,
+		Caller:      exportpkg.CallerUser,
+		Application: "base",
+		Mode:        exportpkg.ModeData,
+		Module:      "base",
+		Lang:        "en_US",
+		Format:      "po",
 	})
 	var expErr *exportpkg.Error
 	if !errors.As(err, &expErr) || expErr.Code != exportpkg.CodeInvalidMode {
@@ -87,12 +89,13 @@ func TestValidateSpec_TerminologyRejectsModeAndFields(t *testing.T) {
 	}
 
 	err = exportpkg.ValidateSpec(exportpkg.Spec{
-		Profile: exportpkg.ProfileTerminology,
-		Caller:  exportpkg.CallerUser,
-		Module:  "base",
-		Lang:    "en_US",
-		Format:  "po",
-		Fields:  []string{"Name"},
+		Profile:     exportpkg.ProfileTerminology,
+		Caller:      exportpkg.CallerUser,
+		Application: "base",
+		Module:      "base",
+		Lang:        "en_US",
+		Format:      "po",
+		Fields:      []string{"Name"},
 	})
 	if !errors.As(err, &expErr) || expErr.Code != exportpkg.CodeInvalidSpec {
 		t.Fatalf("error = %v, want CodeInvalidSpec", err)
@@ -151,12 +154,13 @@ func TestValidateSpec_RecordDefaultFormat(t *testing.T) {
 
 func TestValidateSpec_AsyncOnlyRecord(t *testing.T) {
 	err := exportpkg.ValidateSpec(exportpkg.Spec{
-		Profile: exportpkg.ProfileTerminology,
-		Caller:  exportpkg.CallerUser,
-		Module:  "base",
-		Lang:    "en_US",
-		Format:  "po",
-		Async:   true,
+		Profile:     exportpkg.ProfileTerminology,
+		Caller:      exportpkg.CallerUser,
+		Application: "base",
+		Module:      "base",
+		Lang:        "en_US",
+		Format:      "po",
+		Async:       true,
 	})
 	var expErr *exportpkg.Error
 	if !errors.As(err, &expErr) || expErr.Code != exportpkg.CodeAsyncNotSupported {
@@ -174,10 +178,16 @@ func TestValidateSpec_TerminologyRequiresModuleAndLang(t *testing.T) {
 	err := exportpkg.ValidateSpec(base)
 	var expErr *exportpkg.Error
 	if !errors.As(err, &expErr) || expErr.Code != exportpkg.CodeInvalidSpec {
-		t.Fatalf("missing module error = %v", err)
+		t.Fatalf("missing application error = %v", err)
 	}
 
 	spec := base
+	spec.Application = "base"
+	err = exportpkg.ValidateSpec(spec)
+	if !errors.As(err, &expErr) || expErr.Code != exportpkg.CodeInvalidSpec {
+		t.Fatalf("missing module error = %v", err)
+	}
+
 	spec.Module = "base"
 	err = exportpkg.ValidateSpec(spec)
 	if !errors.As(err, &expErr) || expErr.Code != exportpkg.CodeInvalidSpec {
@@ -187,11 +197,12 @@ func TestValidateSpec_TerminologyRequiresModuleAndLang(t *testing.T) {
 
 func TestValidateSpec_TerminologyInvalidFormat(t *testing.T) {
 	err := exportpkg.ValidateSpec(exportpkg.Spec{
-		Profile: exportpkg.ProfileTerminology,
-		Caller:  exportpkg.CallerUser,
-		Module:  "base",
-		Lang:    "en_US",
-		Format:  "csv",
+		Profile:     exportpkg.ProfileTerminology,
+		Caller:      exportpkg.CallerUser,
+		Application: "base",
+		Module:      "base",
+		Lang:        "en_US",
+		Format:      "csv",
 	})
 	var expErr *exportpkg.Error
 	if !errors.As(err, &expErr) || expErr.Code != exportpkg.CodeInvalidFormat {
@@ -201,12 +212,13 @@ func TestValidateSpec_TerminologyInvalidFormat(t *testing.T) {
 
 func TestValidateSpec_TerminologyRejectsIds(t *testing.T) {
 	err := exportpkg.ValidateSpec(exportpkg.Spec{
-		Profile: exportpkg.ProfileTerminology,
-		Caller:  exportpkg.CallerUser,
-		Module:  "base",
-		Lang:    "en_US",
-		Format:  "po",
-		Ids:     []string{"1"},
+		Profile:     exportpkg.ProfileTerminology,
+		Caller:      exportpkg.CallerUser,
+		Application: "base",
+		Module:      "base",
+		Lang:        "en_US",
+		Format:      "po",
+		Ids:         []string{"1"},
 	})
 	var expErr *exportpkg.Error
 	if !errors.As(err, &expErr) || expErr.Code != exportpkg.CodeInvalidSpec {
@@ -216,10 +228,11 @@ func TestValidateSpec_TerminologyRejectsIds(t *testing.T) {
 
 func TestValidateSpec_TerminologyDefaultFormat(t *testing.T) {
 	err := exportpkg.ValidateSpec(exportpkg.Spec{
-		Profile: exportpkg.ProfileTerminology,
-		Caller:  exportpkg.CallerUser,
-		Module:  "base",
-		Lang:    "en_US",
+		Profile:     exportpkg.ProfileTerminology,
+		Caller:      exportpkg.CallerUser,
+		Application: "base",
+		Module:      "base",
+		Lang:        "en_US",
 	})
 	if err != nil {
 		t.Fatalf("ValidateSpec() = %v, want nil with default po format", err)

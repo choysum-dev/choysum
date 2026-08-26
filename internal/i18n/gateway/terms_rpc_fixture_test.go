@@ -11,6 +11,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/choysum-dev/choysum/internal/i18n/terms"
 	grpcclient "github.com/choysum-dev/choysum/pkg/grpc/client"
 	"github.com/choysum-dev/choysum/pkg/grpc/converter"
 	"github.com/choysum-dev/choysum/pkg/grpc/loader"
@@ -442,13 +443,13 @@ func TestCollectAllTermsSearchPageError(t *testing.T) {
 }
 
 func TestCollectAllTermsTruncatesWhenTotalExceedsMax(t *testing.T) {
-	oldMax := poExportMaxItems
-	oldPage := poExportPageSize
-	poExportMaxItems = 2
-	poExportPageSize = 2
+	oldMax := terms.ExportMaxItems
+	oldPage := terms.ExportPageSize
+	terms.ExportMaxItems = 2
+	terms.ExportPageSize = 2
 	t.Cleanup(func() {
-		poExportMaxItems = oldMax
-		poExportPageSize = oldPage
+		terms.ExportMaxItems = oldMax
+		terms.ExportPageSize = oldPage
 	})
 
 	behavior := &translationTermRPCBehavior{

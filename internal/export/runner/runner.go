@@ -14,26 +14,36 @@ import (
 	"github.com/choysum-dev/choysum/pkg/scope"
 )
 
+// RunWithResult executes export and returns the reader/sink result for thin HTTP callers.
+func RunWithResult(ctx context.Context, runtimeScope scope.Scope, spec exportpkg.Spec) (importpkg.Report, registry.Result, error) {
+	return runExport(ctx, runtimeScope, spec)
+}
+
 // Run is the default export runner implementation.
 func Run(ctx context.Context, runtimeScope scope.Scope, spec exportpkg.Spec) (importpkg.Report, error) {
+	report, _, err := runExport(ctx, runtimeScope, spec)
+	return report, err
+}
+
+func runExport(ctx context.Context, runtimeScope scope.Scope, spec exportpkg.Spec) (importpkg.Report, registry.Result, error) {
 	p, err := PlanFromSpec(spec)
 	if err != nil {
-		return importpkg.Report{}, err
+		return importpkg.Report{}, registry.Result{}, err
 	}
 
 	reader, err := registry.ReaderFor(spec.Profile)
 	if err != nil {
-		return importpkg.Report{}, err
+		return importpkg.Report{}, registry.Result{}, err
 	}
 
 	result, readErr := reader.Read(ctx, runtimeScope, p)
-	if readErr == nil && len(result.Headers) > 0 {
+	if readErr == nil && needsSink(p, result) {
 		sink, sinkLookupErr := registry.SinkFor(p.Format)
 		if sinkLookupErr != nil {
-			return importpkg.Report{}, sinkLookupErr
+			return importpkg.Report{}, registry.Result{}, sinkLookupErr
 		}
 		if sinkErr := sink.Write(ctx, runtimeScope, p, &result); sinkErr != nil {
-			return importpkg.Report{}, sinkErr
+			return importpkg.Report{}, registry.Result{}, sinkErr
 		}
 	}
 	report := importpkg.Report{
@@ -68,11 +78,23 @@ func Run(ctx context.Context, runtimeScope scope.Scope, spec exportpkg.Spec) (im
 	if readErr == nil {
 		companyID := artifact.ResolveArtifactCompanyID(ctx, spec.Options.CompanyID)
 		if err := attachReportCSV(ctx, runtimeScope, companyID, result.CSVBytes, &report); err != nil {
-			return report, err
+			return report, result, err
 		}
-		return report, nil
+		return report, result, nil
 	}
-	return report, readErr
+	return report, result, readErr
+}
+
+func needsSink(p plan.Plan, result registry.Result) bool {
+	if p.Format == "" {
+		return false
+	}
+	switch p.Profile {
+	case exportpkg.ProfileTerminology:
+		return len(result.POEntries) > 0
+	default:
+		return len(result.Headers) > 0
+	}
 }
 
 var attachReportCSV = artifact.AttachReportCSV

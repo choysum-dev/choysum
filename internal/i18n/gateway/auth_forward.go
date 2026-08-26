@@ -5,6 +5,7 @@ package i18ngateway
 
 import (
 	"context"
+	"strconv"
 	"strings"
 
 	"github.com/choysum-dev/choysum/pkg/auth"
@@ -55,12 +56,13 @@ func outgoingContextForUserRPC(ctx context.Context, accessToken string) context.
 	if token != "" && len(md.Get("authorization")) == 0 {
 		md.Set("authorization", "Bearer "+token)
 	}
-	if len(md.Get("x-choysum-depth")) == 0 {
-		md.Set("x-choysum-depth", "1")
+	depth := 0
+	if values := md.Get("x-choysum-depth"); len(values) > 0 {
+		if parsed, err := strconv.Atoi(strings.TrimSpace(values[0])); err == nil && parsed >= 0 {
+			depth = parsed
+		}
 	}
-	if len(md) == 0 {
-		return ctx
-	}
+	md.Set("x-choysum-depth", strconv.Itoa(depth+1))
 	return metadata.NewOutgoingContext(ctx, md)
 }
 

@@ -17,6 +17,71 @@ msgctxt "service/models/_cron"
 msgid "timezone is required"
 msgstr ""
 
+#: service/models/data_transfer_job.ts:110
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Company"
+msgstr ""
+
+#: service/models/data_transfer_job.ts:157
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Direction"
+msgstr ""
+
+#: service/models/data_transfer_job.ts:75
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Dry Run"
+msgstr ""
+
+#: service/models/data_transfer_job.ts:68
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Policy"
+msgstr ""
+
+#: service/models/data_transfer_job.ts:54
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Profile"
+msgstr ""
+
+#: service/models/data_transfer_job.ts:117
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Progress Done"
+msgstr ""
+
+#: service/models/data_transfer_job.ts:124
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Progress Total"
+msgstr ""
+
+#: service/models/data_transfer_job.ts:130
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Report"
+msgstr ""
+
+#: service/models/data_transfer_job.ts:137
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Report Ref"
+msgstr ""
+
+#: service/models/data_transfer_job.ts:93
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Source Ref"
+msgstr ""
+
+#: service/models/data_transfer_job.ts:144
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Spec Snapshot"
+msgstr ""
+
+#: service/models/data_transfer_job.ts:84
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Target Model"
+msgstr ""
+
+#: service/models/data_transfer_job.ts:102
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Task Job"
+msgstr ""
+
 #: service/models/job.ts:150
 msgctxt "task.model.Job.fields"
 msgid "Attempt"
