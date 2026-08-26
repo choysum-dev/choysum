@@ -37,3 +37,17 @@ func ValidateUTF8(data []byte) error {
 	}
 	return nil
 }
+
+// SanitizeSpreadsheetCell neutralizes values that spreadsheet apps may interpret as formulas.
+func SanitizeSpreadsheetCell(s string) string {
+	if s == "" {
+		return s
+	}
+	r, _ := utf8.DecodeRuneInString(s)
+	switch r {
+	case '=', '+', '-', '@', '\t', '\r':
+		return "'" + s
+	default:
+		return s
+	}
+}

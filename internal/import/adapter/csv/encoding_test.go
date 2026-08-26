@@ -62,3 +62,26 @@ func TestPrependUTF8BOM(t *testing.T) {
 		t.Fatal("PrependUTF8BOM should be idempotent")
 	}
 }
+
+func TestSanitizeSpreadsheetCell(t *testing.T) {
+	tests := []struct {
+		in   string
+		want string
+	}{
+		{in: "Alpha", want: "Alpha"},
+		{in: "=1+1", want: "'=1+1"},
+		{in: "+123", want: "'+123"},
+		{in: "-x", want: "'-x"},
+		{in: "@SUM(A1)", want: "'@SUM(A1)"},
+		{in: "\tleading", want: "'\tleading"},
+		{in: "\rleading", want: "'\rleading"},
+	}
+	for _, tc := range tests {
+		if got := csv.SanitizeSpreadsheetCell(tc.in); got != tc.want {
+			t.Fatalf("SanitizeSpreadsheetCell(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+	if got := csv.SanitizeSpreadsheetCell(""); got != "" {
+		t.Fatalf("empty = %q", got)
+	}
+}

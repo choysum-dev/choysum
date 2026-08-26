@@ -55,3 +55,29 @@ func TestModeTemplate_HeaderOnly(t *testing.T) {
 		t.Fatalf("template table = %#v", table)
 	}
 }
+
+func TestCSV_SpreadsheetSafeCells(t *testing.T) {
+	result := &registry.Result{
+		Headers: []string{"Name"},
+		Rows: [][]string{
+			{"=1+1"},
+			{"+123"},
+			{"-x"},
+			{"@SUM(A1)"},
+		},
+	}
+	w := csvsink.Writer{}
+	if err := w.Write(context.Background(), nil, exportplan.Plan{Mode: exportpkg.ModeData}, result); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	table, err := csv.NewReader(strings.NewReader(string(importcsv.StripUTF8BOM(result.CSVBytes)))).ReadAll()
+	if err != nil {
+		t.Fatalf("ReadAll: %v", err)
+	}
+	want := []string{"'=1+1", "'+123", "'-x", "'@SUM(A1)"}
+	for i, cell := range want {
+		if table[i+1][0] != cell {
+			t.Fatalf("row %d = %q, want %q", i+1, table[i+1][0], cell)
+		}
+	}
+}

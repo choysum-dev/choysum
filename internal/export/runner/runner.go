@@ -66,7 +66,8 @@ func Run(ctx context.Context, runtimeScope scope.Scope, spec exportpkg.Spec) (im
 
 	report.Stats = buildStats(result, report.Messages, syntheticErr)
 	if readErr == nil {
-		if err := attachReportCSV(ctx, runtimeScope, spec.Options.CompanyID, result.CSVBytes, &report); err != nil {
+		companyID := artifact.ResolveArtifactCompanyID(ctx, spec.Options.CompanyID)
+		if err := attachReportCSV(ctx, runtimeScope, companyID, result.CSVBytes, &report); err != nil {
 			return report, err
 		}
 		return report, nil

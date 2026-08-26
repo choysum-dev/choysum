@@ -66,6 +66,17 @@ func TestSearchCondition_TupleDomain(t *testing.T) {
 	}
 }
 
+func TestSearchCondition_TupleListDomain(t *testing.T) {
+	cond, err := exportplan.SearchCondition(exportplan.Plan{Domain: `[["Code","=","X"],["Name","=","Y"]]`})
+	if err != nil {
+		t.Fatalf("SearchCondition: %v", err)
+	}
+	and, _ := cond["And"].([]any)
+	if len(and) != 2 {
+		t.Fatalf("cond = %#v", cond)
+	}
+}
+
 func TestSearchCondition_InvalidDomainShape(t *testing.T) {
 	_, err := exportplan.SearchCondition(exportplan.Plan{Domain: `"string"`})
 	if err == nil {

@@ -32,7 +32,12 @@ func SearchCondition(p Plan) (map[string]any, error) {
 	case map[string]any:
 		return v, nil
 	case []any:
-		return map[string]any{"And": []any{v}}, nil
+		if len(v) > 0 {
+			if _, ok := v[0].(string); ok {
+				return map[string]any{"And": []any{v}}, nil
+			}
+		}
+		return map[string]any{"And": v}, nil
 	default:
 		return nil, exportpkg.Errorf(exportpkg.CodeInvalidSpec, "domain must be an object or condition tuple")
 	}

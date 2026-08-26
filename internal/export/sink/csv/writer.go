@@ -36,7 +36,7 @@ func (Writer) Write(ctx context.Context, runtimeScope scope.Scope, p plan.Plan, 
 	}
 	if p.Mode != exportpkg.ModeTemplate {
 		for _, row := range result.Rows {
-			if err := writeCSVRecord(w, row); err != nil {
+			if err := writeCSVRecord(w, sanitizeCSVRecord(row)); err != nil {
 				return exportpkg.ErrorfWrap(exportpkg.CodeInvalidFormat, "write csv row", err)
 			}
 		}
@@ -61,3 +61,11 @@ var (
 	flushCSVWriter = func(w *csv.Writer) { w.Flush() }
 	csvWriterError = func(w *csv.Writer) error { return w.Error() }
 )
+
+func sanitizeCSVRecord(record []string) []string {
+	out := make([]string, len(record))
+	for i, cell := range record {
+		out[i] = importcsv.SanitizeSpreadsheetCell(cell)
+	}
+	return out
+}

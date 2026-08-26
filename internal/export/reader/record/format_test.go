@@ -42,6 +42,9 @@ func TestRecordRows_empty(t *testing.T) {
 }
 
 func TestParseSearchRecords_errors(t *testing.T) {
+	if rows, err := parseSearchRecords(nil); err != nil || rows != nil {
+		t.Fatalf("nil result = %#v, err = %v", rows, err)
+	}
 	if _, err := parseSearchRecords("bad"); err == nil {
 		t.Fatal("expected type error")
 	}

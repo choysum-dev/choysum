@@ -76,6 +76,9 @@ func (Reader) Read(ctx context.Context, runtimeScope scope.Scope, p exportplan.P
 }
 
 func parseSearchRecords(raw any) ([]map[string]any, error) {
+	if raw == nil {
+		return nil, nil
+	}
 	items, ok := raw.([]any)
 	if !ok {
 		return nil, exportpkg.Errorf(exportpkg.CodeInvalidSpec, "unexpected search result type")
