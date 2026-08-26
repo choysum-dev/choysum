@@ -26,6 +26,13 @@ func Run(ctx context.Context, runtimeScope scope.Scope, spec exportpkg.Spec) (im
 	}
 
 	result, readErr := reader.Read(ctx, runtimeScope, p)
+	if readErr == nil && len(result.Headers) > 0 {
+		if sink, sinkLookupErr := registry.SinkFor(p.Format); sinkLookupErr == nil {
+			if sinkErr := sink.Write(ctx, runtimeScope, p, &result); sinkErr != nil {
+				return importpkg.Report{}, sinkErr
+			}
+		}
+	}
 	report := importpkg.Report{
 		Profile:  importpkg.Profile(spec.Profile),
 		Policy:   importpkg.PolicyUnspecified,

@@ -48,3 +48,17 @@ func TestStripUTF8BOM_NoBOM(t *testing.T) {
 		t.Fatal("expected unchanged")
 	}
 }
+
+func TestPrependUTF8BOM(t *testing.T) {
+	raw := []byte("Name,Code\nA,C1\n")
+	got := csv.PrependUTF8BOM(raw)
+	if !bytes.HasPrefix(got, []byte{0xEF, 0xBB, 0xBF}) {
+		t.Fatal("expected BOM prefix")
+	}
+	if string(csv.StripUTF8BOM(got)) != string(raw) {
+		t.Fatalf("round trip failed: %q", got)
+	}
+	if len(csv.PrependUTF8BOM(got)) != len(got) {
+		t.Fatal("PrependUTF8BOM should be idempotent")
+	}
+}
