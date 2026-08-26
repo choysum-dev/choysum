@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	csvadapter "github.com/choysum-dev/choysum/internal/import/adapter/csv"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -239,6 +240,37 @@ func normalizeRecordOwnership(rules *moduleRules, filePath string, recordIndex i
 
 type dataFile struct {
 	Records []record `json:"records"`
+}
+
+func decodeDataFileRecords(absPath string, applyingModule string, raw []byte) ([]record, error) {
+	ext := strings.ToLower(filepath.Ext(absPath))
+	switch ext {
+	case ".csv":
+		parsed, err := csvadapter.BuildInitdataPlanFromCSV(raw, applyingModule)
+		if err != nil {
+			return nil, xfmt.Errorf("parse data file %s: %w", absPath, err)
+		}
+		out := make([]record, 0, len(parsed))
+		for _, rec := range parsed {
+			out = append(out, record{
+				Module:      rec.Module,
+				Name:        rec.Name,
+				Application: rec.Application,
+				Model:       rec.Model,
+				NoUpdate:    rec.NoUpdate,
+				Values:      rec.Values,
+			})
+		}
+		return out, nil
+	case ".json", "":
+		var df dataFile
+		if err := json.Unmarshal(raw, &df); err != nil {
+			return nil, xfmt.Errorf("parse data file %s: %w", absPath, err)
+		}
+		return df.Records, nil
+	default:
+		return nil, xfmt.Errorf("parse data file %s: unsupported initdata format %q", absPath, ext)
+	}
 }
 
 type batchRecord struct {
@@ -630,11 +662,11 @@ func (l *Loader) applyFiles(ctx context.Context, mod *meta.Module, relPaths []st
 		if err != nil {
 			return xfmt.Errorf("read data file %s: %w", abs, err)
 		}
-		var df dataFile
-		if err := json.Unmarshal(b, &df); err != nil {
-			return xfmt.Errorf("parse data file %s: %w", abs, err)
+		records, err := decodeDataFileRecords(abs, mod.Name, b)
+		if err != nil {
+			return err
 		}
-		for idx, rec := range df.Records {
+		for idx, rec := range records {
 			batch = append(batch, batchRecord{FileRel: rel, FilePath: abs, RecordIndex: idx, Rec: rec})
 		}
 	}
@@ -900,19 +932,23 @@ func (l *Loader) applyFile(ctx context.Context, mod *meta.Module, absPath string
 	if err != nil {
 		return xfmt.Errorf("read data file %s: %w", absPath, err)
 	}
-	var df dataFile
-	if err := json.Unmarshal(b, &df); err != nil {
-		return xfmt.Errorf("parse data file %s: %w", absPath, err)
+	applyingModule := ""
+	if mod != nil {
+		applyingModule = mod.Name
+	}
+	records, err := decodeDataFileRecords(absPath, applyingModule, b)
+	if err != nil {
+		return err
 	}
 
 	return l.withApplyTransaction(ctx, func(tx *gorm.DB) error {
-		order, err := l.planRecordOrder(tx, mod, absPath, df.Records)
+		order, err := l.planRecordOrder(tx, mod, absPath, records)
 		if err != nil {
 			return err
 		}
 		now := time.Now()
 		for _, idx := range order {
-			rec := df.Records[idx]
+			rec := records[idx]
 			if err := l.applyRecord(tx, absPath, idx, rec, now); err != nil {
 				return err
 			}

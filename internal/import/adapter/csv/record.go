@@ -22,14 +22,19 @@ func init() {
 	adapter.RegisterPlanBuilder(Format, Builder{})
 }
 
-// Builder builds record plans from CSV sources.
+// Builder builds CSV plans for record (rows) or initdata (file batches).
 type Builder struct{}
 
 // Build implements adapter.PlanBuilder.
 func (Builder) Build(ctx context.Context, spec importpkg.Spec) (plan.Plan, error) {
 	_ = ctx
-	if spec.Profile != importpkg.ProfileRecord {
-		return plan.Plan{}, importpkg.Errorf(importpkg.CodeInvalidFormat, "csv adapter requires record profile")
+	switch spec.Profile {
+	case importpkg.ProfileInitdata:
+		return buildInitdataFilePlan(spec)
+	case importpkg.ProfileRecord:
+		// continue below
+	default:
+		return plan.Plan{}, importpkg.Errorf(importpkg.CodeInvalidFormat, "csv adapter requires record or initdata profile")
 	}
 	model := strings.TrimSpace(spec.Model)
 	if model == "" {

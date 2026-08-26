@@ -170,7 +170,15 @@ func TestBuilder_BuildFromFile(t *testing.T) {
 	if err != nil || len(plan.Units) != 1 {
 		t.Fatalf("Build: %#v %v", plan, err)
 	}
-	if _, err := builder.Build(context.Background(), importpkg.Spec{Profile: importpkg.ProfileInitdata, Model: "base.Country", Source: importpkg.Source{Path: path}}); err == nil {
+	if _, err := builder.Build(context.Background(), importpkg.Spec{
+		Profile: importpkg.ProfileInitdata,
+		Module:  "auth",
+		Source:  importpkg.Source{Path: dir},
+		Options: importpkg.Options{InitdataFiles: []string{"ok.csv"}},
+	}); err != nil {
+		t.Fatalf("initdata Build: %v", err)
+	}
+	if _, err := builder.Build(context.Background(), importpkg.Spec{Profile: importpkg.ProfileTerminology, Model: "base.Country", Source: importpkg.Source{Path: path}}); err == nil {
 		t.Fatal("expected profile error")
 	}
 	if _, err := builder.Build(context.Background(), importpkg.Spec{Profile: importpkg.ProfileRecord, Source: importpkg.Source{Path: path}}); err == nil {
