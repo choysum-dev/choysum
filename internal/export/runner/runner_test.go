@@ -15,6 +15,11 @@ import (
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
 )
 
+func init() {
+	registry.Register(exportpkg.ProfileRecord, stubreader.Reader{})
+	registry.Register(exportpkg.ProfileTerminology, stubreader.Reader{})
+}
+
 func TestRun_StubReader_Ok(t *testing.T) {
 	spec := exportpkg.Spec{
 		Profile: exportpkg.ProfileRecord,

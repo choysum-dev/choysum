@@ -25,7 +25,13 @@ func (Reader) Read(ctx context.Context, runtimeScope scope.Scope, p plan.Plan) (
 	if count < 0 {
 		count = 0
 	}
-	result := registry.Result{UnitCount: count, Messages: nil}
+	result := registry.Result{
+		UnitCount: count,
+		Outcomes: registry.Outcomes{
+			Total: count,
+			Ok:    count,
+		},
+	}
 
 	failAt := p.StubFailUnitIndex
 	if failAt > 0 {
@@ -42,6 +48,15 @@ func (Reader) Read(ctx context.Context, runtimeScope scope.Scope, p plan.Plan) (
 			Text: fmt.Sprintf("stub unit %d failed", failAt),
 		}
 		result.Messages = append(result.Messages, msg)
+		ok := count - 1
+		if ok < 0 {
+			ok = 0
+		}
+		result.Outcomes = registry.Outcomes{
+			Total: count,
+			Ok:    ok,
+			Error: 1,
+		}
 		return result, &exportpkg.Error{
 			Code: msg.Code,
 			Text: msg.Text,

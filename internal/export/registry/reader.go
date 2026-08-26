@@ -14,6 +14,22 @@ import (
 type Result struct {
 	UnitCount int
 	Messages  []Message
+	// Outcomes holds per-unit aggregates when Total > 0; otherwise the runner derives stats from Messages.
+	Outcomes Outcomes
+}
+
+// Outcomes aggregates unit-level export results from a reader.
+type Outcomes struct {
+	Total   int
+	Ok      int
+	Error   int
+	Skip    int
+	Warning int
+}
+
+// HasOutcomes reports whether the reader supplied authoritative outcome counts.
+func (r Result) HasOutcomes() bool {
+	return r.Outcomes.Total > 0
 }
 
 // Message mirrors import report lines without importing importpkg into the interface surface.

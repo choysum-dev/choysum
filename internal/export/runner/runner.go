@@ -30,12 +30,13 @@ func Run(ctx context.Context, runtimeScope scope.Scope, spec exportpkg.Spec) (im
 		Profile:  importpkg.Profile(spec.Profile),
 		Policy:   importpkg.PolicyUnspecified,
 		DryRun:   false,
-		Stats:    importpkg.Stats{Total: result.UnitCount},
 		Messages: toImportMessages(result.Messages),
 		Meta:     reportMeta(p),
 	}
 
-	if readErr != nil && len(report.Messages) == 0 {
+	syntheticErr := false
+	if readErr != nil && !hasErrorClassMessage(report.Messages) {
+		syntheticErr = true
 		if expErr, ok := exportpkg.AsError(readErr); ok {
 			report.Messages = append(report.Messages, importpkg.Message{
 				Type:      importpkg.MessageError,
@@ -53,25 +54,75 @@ func Run(ctx context.Context, runtimeScope scope.Scope, spec exportpkg.Spec) (im
 		}
 	}
 
-	report.Stats = statsFromMessages(result.UnitCount, report.Messages)
+	report.Stats = buildStats(result, report.Messages, syntheticErr)
 	if readErr != nil {
 		return report, readErr
 	}
 	return report, nil
 }
 
+func buildStats(result registry.Result, messages []importpkg.Message, syntheticErr bool) importpkg.Stats {
+	if result.HasOutcomes() {
+		stats := importpkg.Stats{
+			Total:   result.Outcomes.Total,
+			Ok:      result.Outcomes.Ok,
+			Error:   result.Outcomes.Error,
+			Skip:    result.Outcomes.Skip,
+			Warning: result.Outcomes.Warning,
+		}
+		if syntheticErr && stats.Error == 0 {
+			stats.Error++
+			if stats.Ok > 0 {
+				stats.Ok--
+			}
+		}
+		return stats
+	}
+
+	total := result.UnitCount
+	if total == 0 {
+		total = len(messages)
+	}
+	return statsFromMessages(total, messages)
+}
+
 func statsFromMessages(total int, messages []importpkg.Message) importpkg.Stats {
-	var errCount, skipCount, warnCount int
+	rowOutcome := make(map[int]importpkg.MessageType)
+	var warnCount, errNoRow, skipNoRow int
+
 	for _, msg := range messages {
-		switch msg.Type {
-		case importpkg.MessageSkip:
-			skipCount++
-		case importpkg.MessageWarning:
+		typ := msg.Type
+		if typ == "" {
+			typ = importpkg.MessageError
+		}
+		if typ == importpkg.MessageWarning {
 			warnCount++
-		default:
+			continue
+		}
+		if msg.Row <= 0 {
+			if typ == importpkg.MessageSkip {
+				skipNoRow++
+			} else {
+				errNoRow++
+			}
+			continue
+		}
+		if cur, ok := rowOutcome[msg.Row]; !ok || outcomeRank(typ) > outcomeRank(cur) {
+			rowOutcome[msg.Row] = typ
+		}
+	}
+
+	var errCount, skipCount int
+	for _, typ := range rowOutcome {
+		if typ == importpkg.MessageSkip {
+			skipCount++
+		} else {
 			errCount++
 		}
 	}
+	errCount += errNoRow
+	skipCount += skipNoRow
+
 	ok := total - errCount - skipCount
 	if ok < 0 {
 		ok = 0
@@ -83,6 +134,28 @@ func statsFromMessages(total int, messages []importpkg.Message) importpkg.Stats 
 		Skip:    skipCount,
 		Warning: warnCount,
 	}
+}
+
+func outcomeRank(typ importpkg.MessageType) int {
+	switch typ {
+	case importpkg.MessageError:
+		return 3
+	case importpkg.MessageSkip:
+		return 2
+	case importpkg.MessageWarning:
+		return 1
+	default:
+		return 3
+	}
+}
+
+func hasErrorClassMessage(messages []importpkg.Message) bool {
+	for _, msg := range messages {
+		if msg.Type != importpkg.MessageSkip && msg.Type != importpkg.MessageWarning {
+			return true
+		}
+	}
+	return false
 }
 
 func reportMeta(p plan.Plan) *importpkg.ReportMeta {
