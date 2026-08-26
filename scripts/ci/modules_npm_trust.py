@@ -8,6 +8,10 @@ With --apply: for each target module, bootstrap-publish if the package name is
 missing on the registry, then bind Trusted Publishing if not already matching
 the contract. Does not bump/republish existing package versions (CI handles that).
 
+Prerelease module versions (0.0.0-<timestamp>) are published with --tag latest.
+Trust bind / publish use interactive npm CLI so browser OTP can complete;
+bypass-2FA classic tokens cannot run npm trust.
+
 Trust contract (must match Modules Publish workflow):
   repo        = choysum-dev/choysum
   file        = modules-publish.yml
@@ -23,6 +27,7 @@ import pathlib
 import re
 import subprocess
 import sys
+import tempfile
 import urllib.parse
 
 
@@ -45,6 +50,25 @@ def run(cmd, *, cwd=None, check=False):
         capture_output=True,
         text=True,
     )
+
+
+def run_interactive(cmd, *, cwd=None):
+    """Run with inherited stdio so npm can open browser / OTP flows."""
+    print(f"+ {' '.join(str(part) for part in cmd)}", flush=True)
+    return subprocess.run(cmd, cwd=str(cwd) if cwd else None, check=False)
+
+
+def is_prerelease_version(version: str) -> bool:
+    core = (version or "").split("+", 1)[0]
+    return "-" in core
+
+
+def npm_publish_argv(version: str) -> list[str]:
+    # Choysum module versions are 0.0.0-<timestamp> prereleases historically tagged latest.
+    cmd = ["npm", "publish", "--access", "public"]
+    if is_prerelease_version(str(version or "")):
+        cmd.extend(["--tag", "latest"])
+    return cmd
 
 
 def compact(text, limit=2000):
@@ -199,17 +223,23 @@ def package_exists(name: str) -> bool:
     return True
 
 
-def trust_list(name: str):
-    proc = run(["npm", "trust", "list", name, "--json"])
-    if proc.returncode != 0:
-        return None, compact(proc.stderr or proc.stdout)
-    raw = (proc.stdout or "").strip()
+def is_missing_package_error(text: str) -> bool:
+    lowered = (text or "").lower()
+    return "e404" in lowered or "404 not found" in lowered
+
+
+def is_empty_trust_list_error(text: str) -> bool:
+    lowered = (text or "").lower()
+    return "no trust configurations" in lowered
+
+
+def parse_trust_list_payload(name: str, raw: str):
+    raw = (raw or "").strip()
     if not raw:
         return [], None
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:
-        # Some CLI builds emit one JSON object per line.
         entries = []
         for line in raw.splitlines():
             line = line.strip()
@@ -232,6 +262,60 @@ def trust_list(name: str):
         return data, None
     return None, f"unexpected trust list payload type for {name}: {type(data)}"
 
+
+def trust_list(name: str, *, interactive: bool = False):
+    cmd = ["npm", "trust", "list", name, "--json"]
+
+    if not interactive:
+        proc = run(cmd)
+        if proc.returncode != 0:
+            text = compact(proc.stderr or proc.stdout)
+            if is_missing_package_error(text) or is_empty_trust_list_error(text):
+                return [], None
+            return None, text
+        return parse_trust_list_payload(name, proc.stdout or "")
+
+    # Non-TTY captured npm calls still use bypass-2FA GAT; inherit stderr for OTP.
+    with tempfile.TemporaryDirectory() as tmpdir:
+        out_path = pathlib.Path(tmpdir) / "trust.json"
+        print(f"+ {' '.join(str(part) for part in cmd)}", flush=True)
+        with open(out_path, "w", encoding="utf-8") as out_f:
+            proc = subprocess.run(cmd, stdout=out_f, stderr=None, check=False)
+        raw = out_path.read_text(encoding="utf-8").strip()
+        if proc.returncode != 0:
+            cap = run(cmd)
+            text = compact(cap.stderr or cap.stdout or raw)
+            if is_missing_package_error(text) or is_empty_trust_list_error(text):
+                return [], None
+            return None, text
+        return parse_trust_list_payload(name, raw)
+
+
+def choose_trust_auth_probe(modules) -> str:
+    for info in modules:
+        if package_exists(info["name"]):
+            return info["name"]
+    return modules[0]["name"]
+
+
+def ensure_interactive_trust_auth(probe_name: str) -> None:
+    """Complete browser OTP once if npm trust requires it."""
+    _, probe_err = trust_list(probe_name)
+    if not probe_err:
+        return
+    if not is_auth_challenge(probe_err):
+        raise SystemExit(f"npm trust list {probe_name} failed: {probe_err}")
+
+    print(
+        "npm trust requires interactive auth (bypass-2FA tokens cannot manage trust).\n"
+        "Complete the browser flow (optionally skip 2FA for 5 minutes)…",
+        flush=True,
+    )
+    proc = run_interactive(["npm", "trust", "list", probe_name])
+    if proc.returncode != 0:
+        raise SystemExit(
+            "interactive npm trust auth failed; complete browser OTP and re-run --apply"
+        )
 
 def _collect_values(obj, wanted_keys: set[str]):
     found = []
@@ -373,12 +457,21 @@ def trust_matches(entry: dict, *, package_name: str) -> bool:
     return True
 
 
-def bind_trust(name: str, *, apply: bool, rebind: bool):
-    entries, err = trust_list(name)
-    if err:
-        # Interactive auth prompts often land here; surface stderr.
-        return "error", err
+def is_auth_challenge(text: str) -> bool:
+    lowered = (text or "").lower()
+    return "eotp" in lowered or "one-time password" in lowered or "auth/cli/" in lowered
 
+
+def bind_trust(name: str, *, apply: bool, rebind: bool):
+    entries, err = trust_list(name, interactive=apply)
+    if err and apply and is_auth_challenge(err):
+        try:
+            ensure_interactive_trust_auth(name)
+        except SystemExit as exc:
+            return "error", str(exc)
+        entries, err = trust_list(name, interactive=True)
+    if err:
+        return "error", err
     matching = [e for e in (entries or []) if trust_matches(e, package_name=name)]
     others = [e for e in (entries or []) if e not in matching]
 
@@ -403,9 +496,9 @@ def bind_trust(name: str, *, apply: bool, rebind: bool):
                 trust_id = entry.get("id") or entry.get("_id") or entry.get("trustId")
             if not trust_id:
                 return "error", f"cannot revoke: missing id in {entry!r}"
-            rev = run(["npm", "trust", "revoke", name, f"--id={trust_id}", "--yes"])
+            rev = run_interactive(["npm", "trust", "revoke", name, f"--id={trust_id}", "--yes"])
             if rev.returncode != 0:
-                return "error", compact(rev.stderr or rev.stdout)
+                return "error", "npm trust revoke failed (see output above)"
 
     cmd = [
         "npm",
@@ -421,27 +514,29 @@ def bind_trust(name: str, *, apply: bool, rebind: bool):
         "--allow-publish",
         "--yes",
     ]
-    proc = run(cmd)
+    proc = run_interactive(cmd)
     if proc.returncode != 0:
-        return "error", compact(proc.stderr or proc.stdout)
+        return "error", "npm trust github failed (see output above)"
     return "bound", "trusted publisher configured"
 
 
 def bootstrap_publish(info, *, apply: bool):
     name = info["name"]
+    version = str(info.get("version") or "")
     if package_exists(name):
         return "skip", "package already on registry"
+    publish_cmd = npm_publish_argv(version)
     if not apply:
-        return "would_publish", f"would npm publish {name}@{info.get('version')} from {info['dir']}"
+        return "would_publish", f"would {' '.join(publish_cmd)} {name}@{version} from {info['dir']}"
 
     pack = run(["npm", "pack", "--dry-run"], cwd=info["dir"])
     if pack.returncode != 0:
         return "error", compact(pack.stderr or pack.stdout)
 
-    pub = run(["npm", "publish", "--access", "public"], cwd=info["dir"])
+    pub = run_interactive(publish_cmd, cwd=info["dir"])
     if pub.returncode != 0:
-        return "error", compact(pub.stderr or pub.stdout)
-    return "published", f"published {name}@{info.get('version')}"
+        return "error", "npm publish failed (see output above)"
+    return "published", f"published {name}@{version}"
 
 
 def doctor():
@@ -504,6 +599,10 @@ def main():
 
     mode = "apply" if args.apply else "preview"
     print(f"mode={mode} modules={len(modules)}")
+
+    if args.apply:
+        # Prefer an already-published package so auth probe is not a 404 after OTP.
+        ensure_interactive_trust_auth(choose_trust_auth_probe(modules))
 
     failures = 0
     for info in modules:

@@ -90,4 +90,7 @@ python3 scripts/ci/modules_npm_trust.py --module <name> --apply
 # preview: omit --apply
 ```
 
+`--apply` opens a browser OTP for `npm trust` (classic bypass-2FA tokens cannot
+bind Trusted Publishing). Prerelease `0.0.0-*` packages publish with `--tag latest`.
+
 Design notes: `.dev/docs/infra/ci/modules_publish_oidc_plan.md`.
