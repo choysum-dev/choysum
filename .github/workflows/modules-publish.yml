@@ -3,13 +3,8 @@ name: Modules Publish
 on:
   workflow_dispatch:
     inputs:
-      dry_run:
-        description: "Run publish flow without pushing npm packages"
-        required: true
-        default: true
-        type: boolean
       target_module:
-        description: "Single module name to target (empty means auto-discover changed modules)"
+        description: "Single module name to target (empty means all publishable modules)"
         required: false
         default: ""
         type: string
@@ -19,7 +14,6 @@ on:
     paths:
       - "modules/**"
       - ".github/workflows/modules-publish.yml"
-      - ".github/workflows/modules-publish-*.yml"
 
 permissions:
   contents: read
@@ -33,34 +27,7 @@ jobs:
     name: modules / preflight
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    outputs:
-      dry_run: ${{ steps.resolve-flags.outputs.dry_run }}
     steps:
-      - name: Resolve dry_run flag
-        id: resolve-flags
-        run: |
-          set -euo pipefail
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            if [[ "${{ inputs.dry_run }}" == "true" ]]; then
-              echo "dry_run=true" >> "$GITHUB_OUTPUT"
-            else
-              echo "dry_run=false" >> "$GITHUB_OUTPUT"
-            fi
-          else
-            # Safety default for push-triggered runs.
-            echo "dry_run=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Validate NPM publish secret presence
-        env:
-          NPM_PUBLISH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [[ -z "${NPM_PUBLISH_TOKEN:-}" ]]; then
-            echo "NPM_PUBLISH_TOKEN is required for module publish workflow" >&2
-            exit 1
-          fi
-
       - name: Checkout
         uses: actions/checkout@v7
         with:
@@ -72,6 +39,15 @@ jobs:
           set -euo pipefail
           python3 scripts/ci/modules_publish_preflight.py validate-schema-baseline
 
+      - name: Warn if legacy NPM_PUBLISH_TOKEN is still present
+        env:
+          NPM_PUBLISH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${NPM_PUBLISH_TOKEN:-}" ]]; then
+            echo "::warning::NPM_PUBLISH_TOKEN is still configured but unused; remove after OIDC canary (Phase 2)."
+          fi
+
   discover-module-updates:
     name: modules / discover-module-updates
     needs:
@@ -81,7 +57,6 @@ jobs:
     outputs:
       modules_json: ${{ steps.discover.outputs.modules_json }}
       has_modules: ${{ steps.discover.outputs.has_modules }}
-      artifact_name: ${{ steps.discover.outputs.artifact_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -130,46 +105,172 @@ jobs:
           set -euo pipefail
           python3 scripts/ci/modules_publish.py verify-gate
 
-  publish-npm-registry-shard:
-    name: modules / publish-npm-registry-shard
+  validate-modules:
+    name: modules / validate-modules
     needs:
       - preflight
       - discover-module-updates
       - verify-module-gate
     if: ${{ needs.discover-module-updates.outputs.has_modules == 'true' }}
-    uses: ./.github/workflows/modules-publish-shard.yml
-    with:
-      dry_run: ${{ needs.preflight.outputs.dry_run }}
-      modules_json: ${{ needs.discover-module-updates.outputs.modules_json }}
-    secrets:
-      NPM_PUBLISH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
-  publish-npm-registry:
-    name: modules / publish-npm-registry
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Ensure modern npm CLI
+        run: npm install -g npm@latest
+
+      - name: Validate modules (pack / view; no publish)
+        env:
+          MODULES_JSON: ${{ needs.discover-module-updates.outputs.modules_json }}
+          PUBLISH_MODE: validate
+        run: |
+          set -euo pipefail
+          mkdir -p .choysum/tmp
+          python3 scripts/ci/modules_publish.py process-modules
+
+      - name: Upload validate diagnostics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: validate-modules
+          path: |
+            .choysum/tmp/published-modules.json
+            .choysum/tmp/publish-errors.json
+          if-no-files-found: error
+          retention-days: 14
+
+  publish-modules:
+    name: modules / publish-modules
     needs:
       - preflight
       - discover-module-updates
       - verify-module-gate
-      - publish-npm-registry-shard
-    if: ${{ always() && needs.discover-module-updates.outputs.has_modules == 'true' }}
-    uses: ./.github/workflows/modules-publish-aggregate.yml
-    with:
-      expected_modules_json: ${{ needs.discover-module-updates.outputs.modules_json }}
+      - validate-modules
+    if: ${{ github.event_name == 'workflow_dispatch' && needs.discover-module-updates.outputs.has_modules == 'true' && needs.validate-modules.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: npm-publish
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Ensure modern npm CLI
+        run: npm install -g npm@latest
+
+      - name: Publish modules via OIDC (serial)
+        env:
+          MODULES_JSON: ${{ needs.discover-module-updates.outputs.modules_json }}
+          PUBLISH_MODE: release
+          # Intentionally no NODE_AUTH_TOKEN / NPM_PUBLISH_TOKEN — OIDC only.
+        run: |
+          set -euo pipefail
+          mkdir -p .choysum/tmp
+          python3 scripts/ci/modules_publish.py process-modules
+
+      - name: Upload published modules artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: published-modules
+          path: .choysum/tmp/published-modules.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload publish diagnostics artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: publish-diagnostics
+          path: .choysum/tmp/publish-errors.json
+          if-no-files-found: error
+          retention-days: 14
 
   sync-catalog-directory-pr:
     name: modules / sync-catalog-directory-pr
     needs:
-      - preflight
-      - publish-npm-registry
-    if: ${{ always() && needs.publish-npm-registry.result == 'success' }}
-    uses: ./.github/workflows/modules-publish-sync.yml
-    with:
-      dry_run: ${{ needs.preflight.outputs.dry_run }}
-      source_run_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-      source_run_ref: ${{ github.ref }}
-      source_sha: ${{ github.sha }}
-    secrets:
-      MODULES_DIRECTORY_SYNC_TOKEN: ${{ secrets.MODULES_DIRECTORY_SYNC_TOKEN }}
+      - publish-modules
+    if: ${{ always() && needs.publish-modules.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Download published modules artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: published-modules
+          path: .choysum/tmp
+
+      - name: Validate modules-directory API precheck
+        id: sync_precheck
+        continue-on-error: true
+        env:
+          MODULES_DIRECTORY_SYNC_TOKEN: ${{ secrets.MODULES_DIRECTORY_SYNC_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/modules_publish.py sync-precheck
+
+      - name: Sync modules-directory pointers (per-module PR)
+        id: sync_modules
+        if: ${{ steps.sync_precheck.outcome == 'success' }}
+        continue-on-error: true
+        env:
+          MODULES_DIRECTORY_SYNC_TOKEN: ${{ secrets.MODULES_DIRECTORY_SYNC_TOKEN }}
+          PUBLISH_MODE: release
+          SOURCE_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SOURCE_RUN_REF: ${{ github.ref }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/modules_publish.py sync-modules-per-module-pr
+
+      - name: Upload sync diagnostics artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: sync-diagnostics
+          path: |
+            .choysum/tmp/sync-errors.json
+            .choysum/tmp/sync-summary.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Enforce sync outcomes
+        if: ${{ always() }}
+        run: |
+          set -euo pipefail
+          if [[ "${{ steps.sync_precheck.outcome }}" != "success" ]]; then
+            echo "sync-catalog-directory-pr precheck failed" >&2
+            exit 1
+          fi
+          if [[ "${{ steps.sync_modules.outcome }}" != "success" ]]; then
+            echo "sync-catalog-directory-pr module sync failed" >&2
+            exit 1
+          fi
 
   finalize-publish:
     name: modules / finalize-publish
@@ -177,8 +278,8 @@ jobs:
       - preflight
       - discover-module-updates
       - verify-module-gate
-      - publish-npm-registry-shard
-      - publish-npm-registry
+      - validate-modules
+      - publish-modules
       - sync-catalog-directory-pr
     if: ${{ always() }}
     runs-on: ubuntu-latest
@@ -189,8 +290,8 @@ jobs:
           echo "preflight=${{ needs.preflight.result }}"
           echo "discover-module-updates=${{ needs.discover-module-updates.result }}"
           echo "verify-module-gate=${{ needs.verify-module-gate.result }}"
-          echo "publish-npm-registry-shard=${{ needs.publish-npm-registry-shard.result }}"
-          echo "publish-npm-registry=${{ needs.publish-npm-registry.result }}"
+          echo "validate-modules=${{ needs.validate-modules.result }}"
+          echo "publish-modules=${{ needs.publish-modules.result }}"
           echo "sync-catalog-directory-pr=${{ needs.sync-catalog-directory-pr.result }}"
 
       - name: Write stage result report
@@ -202,8 +303,8 @@ jobs:
             "preflight": "${{ needs.preflight.result }}",
             "discover-module-updates": "${{ needs.discover-module-updates.result }}",
             "verify-module-gate": "${{ needs.verify-module-gate.result }}",
-            "publish-npm-registry-shard": "${{ needs.publish-npm-registry-shard.result }}",
-            "publish-npm-registry": "${{ needs.publish-npm-registry.result }}",
+            "validate-modules": "${{ needs.validate-modules.result }}",
+            "publish-modules": "${{ needs.publish-modules.result }}",
             "sync-catalog-directory-pr": "${{ needs.sync-catalog-directory-pr.result }}"
           }
           JSON
@@ -224,8 +325,8 @@ jobs:
             "${{ needs.preflight.result }}" \
             "${{ needs.discover-module-updates.result }}" \
             "${{ needs.verify-module-gate.result }}" \
-            "${{ needs.publish-npm-registry-shard.result }}" \
-            "${{ needs.publish-npm-registry.result }}" \
+            "${{ needs.validate-modules.result }}" \
+            "${{ needs.publish-modules.result }}" \
             "${{ needs.sync-catalog-directory-pr.result }}"
           do
             if [[ "$job" != "success" && "$job" != "skipped" ]]; then

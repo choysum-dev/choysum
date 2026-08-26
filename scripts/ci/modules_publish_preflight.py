@@ -139,15 +139,24 @@ def discover_target_modules():
     if not github_output:
         raise SystemExit("GITHUB_OUTPUT is required")
 
+    # Only directories with package.json are publishable modules (skip fixtures/testdata).
     available_modules = sorted(
         child.name
         for child in MODULES_ROOT.iterdir()
-        if child.is_dir() and child.name not in {".choysum", "tmp"}
+        if child.is_dir()
+        and child.name not in {".choysum", "tmp"}
+        and (child / "package.json").is_file()
     )
 
     if target_module:
-        if target_module not in available_modules:
+        module_dir = MODULES_ROOT / target_module
+        if not module_dir.is_dir():
             raise SystemExit(f"target_module '{target_module}' does not exist under modules/")
+        if not (module_dir / "package.json").is_file():
+            raise SystemExit(
+                f"target_module '{target_module}' has no package.json "
+                "(only publishable modules are allowed)"
+            )
         modules = [target_module]
     elif event_name == "push":
         modules = []

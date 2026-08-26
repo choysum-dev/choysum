@@ -64,6 +64,47 @@ def env_bool(name, default=False):
     return raw.strip().lower() == "true"
 
 
+def publish_mode():
+    """Return 'validate' or 'release'. Prefer PUBLISH_MODE; fall back to DRY_RUN."""
+    raw = os.environ.get("PUBLISH_MODE", "").strip().lower()
+    if raw in {"validate", "release"}:
+        return raw
+    # Legacy: DRY_RUN=true → validate; DRY_RUN=false → release.
+    if os.environ.get("DRY_RUN") is not None:
+        return "validate" if env_bool("DRY_RUN", default=True) else "release"
+    return "validate"
+
+
+TRUST_BOOTSTRAP_HINT = (
+    "If this package is missing on the registry or Trusted Publishing is not configured, "
+    "run locally: python3 scripts/ci/modules_npm_trust.py --module <name> --apply "
+    "(see .dev/docs/infra/ci/modules_publish_oidc_plan.md)."
+)
+
+
+def annotate_publish_failure(errors, stderr_text):
+    text = (stderr_text or "").lower()
+    if any(
+        needle in text
+        for needle in (
+            "eneedauth",
+            "404 not found",
+            "e404",
+            "trusted publisher",
+            "oidc",
+            "not authorized",
+            "unable to authenticate",
+        )
+    ):
+        errors.append(
+            {
+                "operation": "publish_hint",
+                "error": "oidc_or_bootstrap_required",
+                "message": TRUST_BOOTSTRAP_HINT,
+            }
+        )
+
+
 SEMVER_COMPARATOR_PATTERN = re.compile(
     r"^(<=|>=|<|>|=|~|\^)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$"
 )
@@ -145,7 +186,7 @@ def verify_gate():
     print("verify-module-gate metadata checks passed")
 
 
-def publish_single_module():
+def publish_single_module(*, raise_on_failure=True):
     output_dir = ensure_tmp_dir()
     modules_root = REPO_ROOT / "modules"
 
@@ -153,7 +194,7 @@ def publish_single_module():
     if not module:
         raise SystemExit("MODULE_NAME env is required")
 
-    dry_run = env_bool("DRY_RUN", default=True)
+    mode = publish_mode()
     semver_pattern = re.compile(
         r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$"
     )
@@ -165,6 +206,7 @@ def publish_single_module():
     result = {
         "module": module,
         "status": "failed",
+        "mode": mode,
     }
 
     package_path = modules_root / module / "package.json"
@@ -276,9 +318,8 @@ def publish_single_module():
                                 "stderr": compact(view.stderr),
                             }
                         )
-                    elif dry_run:
-                        result["status"] = "published"
-                        result["dryRun"] = True
+                    elif mode == "validate":
+                        result["status"] = "validated"
                         result["note"] = "would_publish"
                     else:
                         publish = subprocess.run(
@@ -301,6 +342,7 @@ def publish_single_module():
                                     "stderr": compact(publish.stderr),
                                 }
                             )
+                            annotate_publish_failure(errors, publish.stderr)
 
     if errors:
         result["status"] = "failed"
@@ -316,8 +358,58 @@ def publish_single_module():
         },
     )
 
-    if result.get("status") == "failed":
-        raise SystemExit("module publish shard failed")
+    if result.get("status") == "failed" and raise_on_failure:
+        raise SystemExit("module publish failed")
+    return result, errors
+
+
+def process_modules():
+    """Serially validate or publish MODULES_JSON; write aggregate artifacts."""
+    modules = load_json_env("MODULES_JSON")
+    if not isinstance(modules, list):
+        raise SystemExit("MODULES_JSON must be a JSON array")
+
+    output_dir = ensure_tmp_dir()
+    mode = publish_mode()
+    results = []
+    all_errors = []
+    failed = False
+
+    for module in modules:
+        if not isinstance(module, str) or not module.strip():
+            all_errors.append(
+                {
+                    "operation": "process_modules",
+                    "error": "invalid_module_name",
+                    "message": repr(module),
+                }
+            )
+            failed = True
+            continue
+        os.environ["MODULE_NAME"] = module.strip()
+        os.environ["PUBLISH_MODE"] = mode
+        result, errors = publish_single_module(raise_on_failure=False)
+        results.append(result)
+        all_errors.extend(errors)
+        if result.get("status") == "failed":
+            failed = True
+            print(f"process-modules: {module} failed", file=sys.stderr)
+
+    results.sort(key=lambda item: item.get("module", ""))
+    write_json(output_dir / "published-modules.json", results)
+    write_json(
+        output_dir / "publish-errors.json",
+        {
+            "generatedAt": utc_now_iso(),
+            "mode": mode,
+            "errors": all_errors,
+        },
+    )
+
+    if failed:
+        raise SystemExit(f"One or more modules failed in PUBLISH_MODE={mode}")
+    print(f"process-modules completed mode={mode} count={len(results)}")
+
 
 
 def aggregate_publish_results():
@@ -463,7 +555,8 @@ def sync_modules_per_module_pr():
     errors_path = output_dir / "sync-errors.json"
 
     token = os.environ.get("MODULES_DIRECTORY_SYNC_TOKEN", "").strip()
-    dry_run = env_bool("DRY_RUN", default=True)
+    # Sync only applies real changes in release mode (dispatch publish path).
+    dry_run = publish_mode() != "release"
     source_run_url = os.environ.get("SOURCE_RUN_URL", "").strip()
     source_run_ref = os.environ.get("SOURCE_RUN_REF", "").strip()
     source_sha = os.environ.get("SOURCE_SHA", "").strip()
@@ -882,6 +975,7 @@ def build_parser():
 
     subparsers.add_parser("verify-gate")
     subparsers.add_parser("publish-single-module")
+    subparsers.add_parser("process-modules")
     subparsers.add_parser("aggregate-publish-results")
     subparsers.add_parser("sync-precheck")
     subparsers.add_parser("sync-modules-per-module-pr")
@@ -899,6 +993,10 @@ def main():
 
     if args.command == "publish-single-module":
         publish_single_module()
+        return
+
+    if args.command == "process-modules":
+        process_modules()
         return
 
     if args.command == "aggregate-publish-results":

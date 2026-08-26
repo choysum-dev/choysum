@@ -76,3 +76,18 @@ export PATH="$PWD/node_modules/.bin:$PATH"
 ```
 
 For E2E also run `npx playwright install --with-deps chromium` first.
+
+### Publishing npm modules (`@choysum-dev/*`)
+
+CI workflow: `.github/workflows/modules-publish.yml` (OIDC + Environment
+`npm-publish`). `push` to `main` only validates; real publish is
+`workflow_dispatch` (requires environment approval).
+
+New module first-time registry + Trusted Publishing binding (local, idempotent):
+
+```bash
+python3 scripts/ci/modules_npm_trust.py --module <name> --apply
+# preview: omit --apply
+```
+
+Design notes: `.dev/docs/infra/ci/modules_publish_oidc_plan.md`.
