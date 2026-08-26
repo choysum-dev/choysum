@@ -110,3 +110,124 @@ func TestValidateSpec_CallerRequired(t *testing.T) {
 		t.Fatalf("error = %v, want caller required", err)
 	}
 }
+
+func TestValidateSpec_RecordInvalidMode(t *testing.T) {
+	err := exportpkg.ValidateSpec(exportpkg.Spec{
+		Profile: exportpkg.ProfileRecord,
+		Caller:  exportpkg.CallerUser,
+		Model:   "base.Country",
+		Mode:    exportpkg.Mode("bogus"),
+		Format:  "csv",
+	})
+	var expErr *exportpkg.Error
+	if !errors.As(err, &expErr) || expErr.Code != exportpkg.CodeInvalidMode {
+		t.Fatalf("error = %v, want CodeInvalidMode", err)
+	}
+}
+
+func TestValidateSpec_RecordInvalidFormat(t *testing.T) {
+	err := exportpkg.ValidateSpec(exportpkg.Spec{
+		Profile: exportpkg.ProfileRecord,
+		Caller:  exportpkg.CallerUser,
+		Model:   "base.Country",
+		Format:  "json",
+	})
+	var expErr *exportpkg.Error
+	if !errors.As(err, &expErr) || expErr.Code != exportpkg.CodeInvalidFormat {
+		t.Fatalf("error = %v, want CodeInvalidFormat", err)
+	}
+}
+
+func TestValidateSpec_RecordDefaultFormat(t *testing.T) {
+	err := exportpkg.ValidateSpec(exportpkg.Spec{
+		Profile: exportpkg.ProfileRecord,
+		Caller:  exportpkg.CallerUser,
+		Model:   "base.Country",
+	})
+	if err != nil {
+		t.Fatalf("ValidateSpec() = %v, want nil with default csv format", err)
+	}
+}
+
+func TestValidateSpec_AsyncOnlyRecord(t *testing.T) {
+	err := exportpkg.ValidateSpec(exportpkg.Spec{
+		Profile: exportpkg.ProfileTerminology,
+		Caller:  exportpkg.CallerUser,
+		Module:  "base",
+		Lang:    "en_US",
+		Format:  "po",
+		Async:   true,
+	})
+	var expErr *exportpkg.Error
+	if !errors.As(err, &expErr) || expErr.Code != exportpkg.CodeAsyncNotSupported {
+		t.Fatalf("error = %v, want CodeAsyncNotSupported", err)
+	}
+}
+
+func TestValidateSpec_TerminologyRequiresModuleAndLang(t *testing.T) {
+	base := exportpkg.Spec{
+		Profile: exportpkg.ProfileTerminology,
+		Caller:  exportpkg.CallerUser,
+		Format:  "po",
+	}
+
+	err := exportpkg.ValidateSpec(base)
+	var expErr *exportpkg.Error
+	if !errors.As(err, &expErr) || expErr.Code != exportpkg.CodeInvalidSpec {
+		t.Fatalf("missing module error = %v", err)
+	}
+
+	spec := base
+	spec.Module = "base"
+	err = exportpkg.ValidateSpec(spec)
+	if !errors.As(err, &expErr) || expErr.Code != exportpkg.CodeInvalidSpec {
+		t.Fatalf("missing lang error = %v", err)
+	}
+}
+
+func TestValidateSpec_TerminologyInvalidFormat(t *testing.T) {
+	err := exportpkg.ValidateSpec(exportpkg.Spec{
+		Profile: exportpkg.ProfileTerminology,
+		Caller:  exportpkg.CallerUser,
+		Module:  "base",
+		Lang:    "en_US",
+		Format:  "csv",
+	})
+	var expErr *exportpkg.Error
+	if !errors.As(err, &expErr) || expErr.Code != exportpkg.CodeInvalidFormat {
+		t.Fatalf("error = %v, want CodeInvalidFormat", err)
+	}
+}
+
+func TestValidateSpec_TerminologyRejectsIds(t *testing.T) {
+	err := exportpkg.ValidateSpec(exportpkg.Spec{
+		Profile: exportpkg.ProfileTerminology,
+		Caller:  exportpkg.CallerUser,
+		Module:  "base",
+		Lang:    "en_US",
+		Format:  "po",
+		Ids:     []string{"1"},
+	})
+	var expErr *exportpkg.Error
+	if !errors.As(err, &expErr) || expErr.Code != exportpkg.CodeInvalidSpec {
+		t.Fatalf("error = %v, want CodeInvalidSpec", err)
+	}
+}
+
+func TestValidateSpec_TerminologyDefaultFormat(t *testing.T) {
+	err := exportpkg.ValidateSpec(exportpkg.Spec{
+		Profile: exportpkg.ProfileTerminology,
+		Caller:  exportpkg.CallerUser,
+		Module:  "base",
+		Lang:    "en_US",
+	})
+	if err != nil {
+		t.Fatalf("ValidateSpec() = %v, want nil with default po format", err)
+	}
+}
+
+func TestAllowsCallerProfile_unknownProfile(t *testing.T) {
+	if exportpkg.AllowsCallerProfile(exportpkg.Profile("initdata"), exportpkg.CallerUser) {
+		t.Fatal("unknown profile should deny all callers")
+	}
+}

@@ -6,6 +6,7 @@ package runner
 import (
 	"context"
 
+	"github.com/choysum-dev/choysum/internal/export/plan"
 	"github.com/choysum-dev/choysum/internal/export/registry"
 	exportpkg "github.com/choysum-dev/choysum/pkg/export"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
@@ -31,13 +32,7 @@ func Run(ctx context.Context, runtimeScope scope.Scope, spec exportpkg.Spec) (im
 		DryRun:   false,
 		Stats:    importpkg.Stats{Total: result.UnitCount},
 		Messages: toImportMessages(result.Messages),
-		Meta: &importpkg.ReportMeta{
-			Lang:        p.Lang,
-			TargetModel: p.Model,
-		},
-	}
-	if report.Meta.Lang == "" && report.Meta.TargetModel == "" {
-		report.Meta = nil
+		Meta:     reportMeta(p),
 	}
 
 	if readErr != nil {
@@ -58,9 +53,19 @@ func Run(ctx context.Context, runtimeScope scope.Scope, spec exportpkg.Spec) (im
 				})
 			}
 		}
-		report.Stats.Error = len(report.Messages)
+		var errCount, skipCount int
+		for _, msg := range report.Messages {
+			switch msg.Type {
+			case importpkg.MessageSkip:
+				skipCount++
+			default:
+				errCount++
+			}
+		}
+		report.Stats.Error = errCount
+		report.Stats.Skip = skipCount
 		if report.Stats.Ok == 0 && report.Stats.Total > 0 {
-			report.Stats.Ok = report.Stats.Total - report.Stats.Error
+			report.Stats.Ok = report.Stats.Total - errCount - skipCount
 			if report.Stats.Ok < 0 {
 				report.Stats.Ok = 0
 			}
@@ -70,6 +75,16 @@ func Run(ctx context.Context, runtimeScope scope.Scope, spec exportpkg.Spec) (im
 
 	report.Stats.Ok = result.UnitCount
 	return report, nil
+}
+
+func reportMeta(p plan.Plan) *importpkg.ReportMeta {
+	if p.Lang == "" && p.Model == "" {
+		return nil
+	}
+	return &importpkg.ReportMeta{
+		Lang:        p.Lang,
+		TargetModel: p.Model,
+	}
 }
 
 func toImportMessages(msgs []registry.Message) []importpkg.Message {
