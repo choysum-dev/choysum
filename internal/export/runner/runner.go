@@ -35,46 +35,54 @@ func Run(ctx context.Context, runtimeScope scope.Scope, spec exportpkg.Spec) (im
 		Meta:     reportMeta(p),
 	}
 
-	if readErr != nil {
-		if len(report.Messages) == 0 {
-			if expErr, ok := exportpkg.AsError(readErr); ok {
-				report.Messages = append(report.Messages, importpkg.Message{
-					Type:      importpkg.MessageError,
-					Row:       expErr.Row,
-					Field:     expErr.Field,
-					Code:      expErr.Code,
-					Text:      expErr.Text,
-					RecordRef: expErr.RecordRef,
-				})
-			} else {
-				report.Messages = append(report.Messages, importpkg.Message{
-					Type: importpkg.MessageError,
-					Text: readErr.Error(),
-				})
-			}
+	if readErr != nil && len(report.Messages) == 0 {
+		if expErr, ok := exportpkg.AsError(readErr); ok {
+			report.Messages = append(report.Messages, importpkg.Message{
+				Type:      importpkg.MessageError,
+				Row:       expErr.Row,
+				Field:     expErr.Field,
+				Code:      expErr.Code,
+				Text:      expErr.Text,
+				RecordRef: expErr.RecordRef,
+			})
+		} else {
+			report.Messages = append(report.Messages, importpkg.Message{
+				Type: importpkg.MessageError,
+				Text: readErr.Error(),
+			})
 		}
-		var errCount, skipCount int
-		for _, msg := range report.Messages {
-			switch msg.Type {
-			case importpkg.MessageSkip:
-				skipCount++
-			default:
-				errCount++
-			}
-		}
-		report.Stats.Error = errCount
-		report.Stats.Skip = skipCount
-		if report.Stats.Ok == 0 && report.Stats.Total > 0 {
-			report.Stats.Ok = report.Stats.Total - errCount - skipCount
-			if report.Stats.Ok < 0 {
-				report.Stats.Ok = 0
-			}
-		}
-		return report, readErr
 	}
 
-	report.Stats.Ok = result.UnitCount
+	report.Stats = statsFromMessages(result.UnitCount, report.Messages)
+	if readErr != nil {
+		return report, readErr
+	}
 	return report, nil
+}
+
+func statsFromMessages(total int, messages []importpkg.Message) importpkg.Stats {
+	var errCount, skipCount, warnCount int
+	for _, msg := range messages {
+		switch msg.Type {
+		case importpkg.MessageSkip:
+			skipCount++
+		case importpkg.MessageWarning:
+			warnCount++
+		default:
+			errCount++
+		}
+	}
+	ok := total - errCount - skipCount
+	if ok < 0 {
+		ok = 0
+	}
+	return importpkg.Stats{
+		Total:   total,
+		Ok:      ok,
+		Error:   errCount,
+		Skip:    skipCount,
+		Warning: warnCount,
+	}
 }
 
 func reportMeta(p plan.Plan) *importpkg.ReportMeta {

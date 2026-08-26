@@ -129,8 +129,73 @@ func TestRun_okWithMessages(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if report.Stats.Ok != 2 || len(report.Messages) != 1 || report.Messages[0].Type != importpkg.MessageError {
+	if report.Stats.Ok != 1 || report.Stats.Error != 1 || len(report.Messages) != 1 || report.Messages[0].Type != importpkg.MessageError {
 		t.Fatalf("report = %+v", report)
+	}
+}
+
+func TestRun_okWithWarningMessages(t *testing.T) {
+	registry.ResetForTest()
+	registry.Register(exportpkg.ProfileRecord, fakeReader{
+		result: registry.Result{
+			UnitCount: 2,
+			Messages: []registry.Message{
+				{Type: "warning", Row: 1, Code: "retired", Text: "purged row"},
+			},
+		},
+	})
+	restoreStubReaders(t)
+
+	report, err := Run(context.Background(), nil, exportpkg.Spec{
+		Profile: exportpkg.ProfileRecord,
+		Caller:  exportpkg.CallerUser,
+		Model:   "base.Country",
+		Format:  "csv",
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if report.Stats.Ok != 2 || report.Stats.Warning != 1 || report.Stats.Error != 0 {
+		t.Fatalf("stats = %+v", report.Stats)
+	}
+}
+
+func TestRun_readErrorWithWarningMessages(t *testing.T) {
+	registry.ResetForTest()
+	registry.Register(exportpkg.ProfileRecord, fakeReader{
+		result: registry.Result{
+			UnitCount: 2,
+			Messages: []registry.Message{
+				{Type: "warning", Row: 1, Code: "retired", Text: "purged row"},
+				{Type: "error", Row: 2, Code: "constraint", Text: "bad"},
+			},
+		},
+		err: errors.New("partial"),
+	})
+	restoreStubReaders(t)
+
+	report, err := Run(context.Background(), nil, exportpkg.Spec{
+		Profile: exportpkg.ProfileRecord,
+		Caller:  exportpkg.CallerUser,
+		Model:   "base.Country",
+		Format:  "csv",
+	})
+	if err == nil {
+		t.Fatal("expected read error")
+	}
+	if report.Stats.Error != 1 || report.Stats.Warning != 1 || report.Stats.Ok != 1 {
+		t.Fatalf("stats = %+v", report.Stats)
+	}
+}
+
+func TestStatsFromMessages(t *testing.T) {
+	stats := statsFromMessages(5, []importpkg.Message{
+		{Type: importpkg.MessageError},
+		{Type: importpkg.MessageSkip},
+		{Type: importpkg.MessageWarning},
+	})
+	if stats.Total != 5 || stats.Ok != 3 || stats.Error != 1 || stats.Skip != 1 || stats.Warning != 1 {
+		t.Fatalf("stats = %+v", stats)
 	}
 }
 
