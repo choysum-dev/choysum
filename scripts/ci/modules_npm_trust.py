@@ -23,6 +23,7 @@ import pathlib
 import re
 import subprocess
 import sys
+import urllib.parse
 
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -32,10 +33,8 @@ TRUST_REPO = "choysum-dev/choysum"
 TRUST_FILE = "modules-publish.yml"
 TRUST_ENVIRONMENT = "npm-publish"
 MIN_NPM_VERSION = (11, 15, 0)
-REPO_URL_MARKERS = (
-    "github.com/choysum-dev/choysum",
-    "github.com:choysum-dev/choysum",
-)
+EXPECTED_REPO_HOST = "github.com"
+EXPECTED_REPO_PATH = "choysum-dev/choysum"
 
 
 def run(cmd, *, cwd=None, check=False):
@@ -63,14 +62,54 @@ def parse_semver_tuple(value: str):
     return tuple(int(part) for part in match.groups())
 
 
+def normalize_github_repository(url: str):
+    """Return (host, owner/repo) for supported GitHub URL forms, else None."""
+    text = (url or "").strip()
+    if not text:
+        return None
+
+    lowered = text.lower()
+    if lowered.startswith("git+"):
+        text = text[4:]
+        lowered = text.lower()
+
+    # git@github.com:owner/repo(.git)
+    scp = re.match(r"^git@([^:]+):(.+)$", text)
+    if scp:
+        host = scp.group(1).lower()
+        path = scp.group(2)
+    elif "://" in text:
+        parsed = urllib.parse.urlparse(text)
+        host = (parsed.hostname or "").lower()
+        path = parsed.path or ""
+    elif lowered.startswith("github.com/"):
+        host = "github.com"
+        path = text.split("/", 1)[1]
+    else:
+        return None
+
+    path = path.strip("/")
+    if path.endswith(".git"):
+        path = path[: -len(".git")]
+    parts = [part for part in path.split("/") if part]
+    if len(parts) < 2:
+        return None
+    owner_repo = f"{parts[0]}/{parts[1]}".lower()
+    return host, owner_repo
+
+
 def repository_identifies_choysum(repository) -> bool:
     if isinstance(repository, str):
-        text = repository.lower()
+        url = repository
     elif isinstance(repository, dict):
-        text = str(repository.get("url") or "").lower()
+        url = str(repository.get("url") or "")
     else:
         return False
-    return any(marker in text for marker in REPO_URL_MARKERS)
+    normalized = normalize_github_repository(url)
+    if normalized is None:
+        return False
+    host, owner_repo = normalized
+    return host == EXPECTED_REPO_HOST and owner_repo == EXPECTED_REPO_PATH
 
 
 def load_package(module_dir: pathlib.Path):
@@ -231,22 +270,47 @@ def _allows_npm_publish(entry: dict) -> bool:
     blob = json.dumps(entry).lower()
     has_publish = False
     stage_only = False
+    publish_values = {
+        "publish",
+        "npm publish",
+        "allow-publish",
+        "allowpublish",
+        "createpackage",
+    }
+    stage_values = {
+        "stage",
+        "stage publish",
+        "npm stage publish",
+        "allow-stage-publish",
+        "allowstagepublish",
+        "createstagedpackage",
+    }
     for flag in flags:
-        text = _norm(flag)
-        if text in {"true", "1", "yes"}:
-            # Boolean near allowPublish key is handled via blob below.
+        text = _norm(flag).replace("_", "").replace("-", "")
+        # Keep hyphenated forms too via original _norm(flag).
+        raw = _norm(flag)
+        if raw in {"true", "1", "yes"}:
             continue
-        if "stage" in text and "publish" in text and "allow-publish" not in text:
-            stage_only = True
-        if text in {"publish", "npm publish", "allow-publish", "allowpublish"}:
+        if raw in publish_values or text in {"createpackage", "allowpublish"}:
             has_publish = True
+        if raw in stage_values or text in {"createstagedpackage", "allowstagepublish"}:
+            stage_only = True
+        if "stage" in raw and "publish" in raw and "allow-publish" not in raw and "createpackage" not in text:
+            stage_only = True
         if isinstance(flag, dict):
             nested = json.dumps(flag).lower()
-            if "allow-publish" in nested or '"publish"' in nested:
+            if "allow-publish" in nested or "createpackage" in nested.replace("_", "").replace("-", ""):
                 has_publish = True
-    if "allow-publish" in blob or '"allowpublish":true' in blob.replace(" ", ""):
+            if "createstagedpackage" in nested.replace("_", "").replace("-", ""):
+                stage_only = True
+    compact_blob = blob.replace(" ", "").replace("_", "").replace("-", "")
+    if "allow-publish" in blob or "createpackage" in compact_blob or '"allowpublish":true' in compact_blob:
         has_publish = True
-    if "allow-stage-publish" in blob and "allow-publish" not in blob:
+    if (
+        ("allow-stage-publish" in blob or "createstagedpackage" in compact_blob)
+        and "allow-publish" not in blob
+        and "createpackage" not in compact_blob
+    ):
         stage_only = True
     if has_publish:
         return True
