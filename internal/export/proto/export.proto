@@ -1,0 +1,98 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+syntax = "proto3";
+
+package export;
+
+option go_package = "github.com/choysum-dev/choysum/internal/export/proto/exportpb;exportpb";
+
+enum ExportMode {
+  EXPORT_MODE_UNSPECIFIED = 0;
+  EXPORT_MODE_DATA = 1;
+  EXPORT_MODE_TEMPLATE = 2;
+}
+
+enum ExportMessageType {
+  EXPORT_MESSAGE_TYPE_UNSPECIFIED = 0;
+  EXPORT_MESSAGE_TYPE_ERROR = 1;
+  EXPORT_MESSAGE_TYPE_WARNING = 2;
+  EXPORT_MESSAGE_TYPE_SKIP = 3;
+}
+
+message ExportStats {
+  int32 total = 1;
+  int32 ok = 2;
+  int32 error = 3;
+  int32 skip = 4;
+  int32 warning = 5;
+}
+
+message ExportMessage {
+  ExportMessageType type = 1;
+  int32 row = 2;
+  string field = 3;
+  string code = 4;
+  string text = 5;
+  string record_ref = 6;
+}
+
+message ExportReportMeta {
+  string lang = 1;
+  string target_model = 2;
+}
+
+message ExportReport {
+  string profile = 1;
+  bool dry_run = 2;
+  ExportStats stats = 3;
+  repeated ExportMessage messages = 4;
+  string artifact_ref = 5;
+  ExportReportMeta meta = 6;
+}
+
+message ExportFieldNode {
+  string path = 1;
+  string label = 2;
+  repeated ExportFieldNode children = 3;
+}
+
+message DescribeFieldsRequest {
+  string model = 1;
+}
+
+message DescribeFieldsResponse {
+  repeated ExportFieldNode fields = 1;
+  repeated string default_fields = 2;
+}
+
+message ExportRunRequest {
+  string model = 1;
+  ExportMode mode = 2;
+  repeated string fields = 3;
+  string domain = 4;
+  repeated string ids = 5;
+  string company_id = 6;
+}
+
+message ExportRunResponse {
+  ExportReport report = 1;
+  bytes csv_data = 2;
+}
+
+message ExportRunAsyncRequest {
+  ExportRunRequest run = 1;
+}
+
+message ExportRunAsyncResponse {
+  string data_transfer_job_id = 1;
+  string task_job_id = 2;
+  ExportReport report = 3;
+}
+
+service ExportHub {
+  rpc DescribeFields(DescribeFieldsRequest) returns (DescribeFieldsResponse);
+  rpc Preview(ExportRunRequest) returns (ExportRunResponse);
+  rpc Run(ExportRunRequest) returns (ExportRunResponse);
+  rpc RunAsync(ExportRunAsyncRequest) returns (ExportRunAsyncResponse);
+}

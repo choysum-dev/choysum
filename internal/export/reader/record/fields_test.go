@@ -25,3 +25,13 @@ func TestDefaultExportFields_UnsupportedModel(t *testing.T) {
 		t.Fatal("expected unsupported model error")
 	}
 }
+
+func TestDefaultExportFields_Partner(t *testing.T) {
+	fields, err := record.DefaultExportFields("partner.Partner")
+	if err != nil {
+		t.Fatalf("DefaultExportFields: %v", err)
+	}
+	if len(fields) < 5 || fields[0] != "Name" {
+		t.Fatalf("fields = %#v", fields)
+	}
+}

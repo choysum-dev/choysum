@@ -17,6 +17,16 @@ func DefaultExportFields(model string) ([]string, error) {
 			"StateRequired",
 			"IsActive",
 		}, nil
+	case "partner.Partner":
+		return []string{
+			"Name",
+			"Code",
+			"CompanyId/Code",
+			"CustomerRank",
+			"SupplierRank",
+			"IsActive",
+			"UpdatedAt",
+		}, nil
 	default:
 		return nil, exportpkg.Errorf(exportpkg.CodeModelNotFound, "export is not implemented for model "+model)
 	}

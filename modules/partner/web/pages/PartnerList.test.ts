@@ -25,7 +25,11 @@ vi.mock('@/web/web/stores/storeScopeManager', () => ({
 }));
 
 vi.mock('@/web/web/stores/registry', () => ({
-  createStoreByModel: vi.fn(() => ({ Search: vi.fn() })),
+  createStoreByModel: vi.fn(() => ({
+    Search: vi.fn(),
+    storeId: 'Partner_/partner/partners',
+    state: { result: { total: 3 }, queryState: { appliedFilters: [] } },
+  })),
 }));
 
 vi.mock('../views/PartnerListView.vue', () => ({
@@ -45,6 +49,14 @@ vi.mock('../components/PartnerImportWizard.vue', () => ({
     props: ['companyId', 'modelValue'],
     emits: ['update:modelValue', 'imported'],
     template: '<button data-test="emit-imported" @click="$emit(\'imported\')">import</button>',
+  },
+}));
+
+vi.mock('@/core/web/export', () => ({
+  ExportPanel: {
+    name: 'ExportPanelStub',
+    props: ['model', 'companyId', 'ids', 'domain', 'defaultFields', 'filteredCount', 'modelValue'],
+    template: '<div data-test="export-panel-stub" />',
   },
 }));
 
@@ -72,9 +84,23 @@ describe('PartnerList page', () => {
       },
     });
     expect(wrapper.text()).toContain('Import CSV');
-    await wrapper.find('button').trigger('click');
     await wrapper.find('[data-test="emit-imported"]').trigger('click');
     expect(refresh).toHaveBeenCalled();
+  });
+
+  it('renders export panel with partner model and filtered count', async () => {
+    const PartnerList = (await import('./PartnerList.vue')).default;
+    const wrapper = mount(PartnerList, {
+      global: {
+        plugins: [i18n],
+        stubs: { OPage: { template: '<div><slot /></div>' } },
+      },
+    });
+    expect(wrapper.text()).toContain('Export CSV');
+    const panel = wrapper.findComponent({ name: 'ExportPanelStub' });
+    expect(panel.props('model')).toBe('partner.Partner');
+    expect(panel.props('filteredCount')).toBe(3);
+    expect(panel.props('companyId')).toBe('cmp-1');
   });
 
   it('passes company id from request context fallback', async () => {
