@@ -45,10 +45,20 @@ describe('downloadExportCsvBytes', () => {
     const click = vi.fn();
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:export');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
-    vi.spyOn(document, 'createElement').mockReturnValue({ click, remove: vi.fn() } as unknown as HTMLAnchorElement);
+    vi.spyOn(document, 'createElement').mockReturnValue({ click, remove: vi.fn(), download: '' } as unknown as HTMLAnchorElement);
     vi.spyOn(document.body, 'appendChild').mockImplementation(() => undefined as unknown as Node);
 
     downloadExportCsvBytes(new ArrayBuffer(2), '');
     expect(click).toHaveBeenCalled();
+  });
+
+  it('defaults download file name when empty', () => {
+    const anchor = { click: vi.fn(), remove: vi.fn(), download: '', href: '', rel: '' };
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:export');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    vi.spyOn(document, 'createElement').mockReturnValue(anchor as unknown as HTMLAnchorElement);
+    vi.spyOn(document.body, 'appendChild').mockImplementation(() => undefined as unknown as Node);
+    downloadExportCsvBytes(new Uint8Array([1]), '');
+    expect(anchor.download).toBe('export.csv');
   });
 });

@@ -29,3 +29,13 @@ export function exportReportErrorText(report: ExportReport | null | undefined): 
   }
   return 'Export failed.';
 }
+
+export function exportPreviewSummary(report: ExportReport | null | undefined): string {
+  const stats = report?.stats;
+  if (!stats) {
+    return '';
+  }
+  const count = stats.error ?? 0;
+  const errors = count > 0 ? `${count} errors` : exportReportHasErrors(report) ? 'errors' : '0 errors';
+  return `Preview: ${stats.ok ?? 0} ok, ${errors}, ${stats.total ?? 0} total`;
+}

@@ -192,4 +192,18 @@ describe('PartnerList page', () => {
     const panel = wrapper.findComponent({ name: 'ExportPanelStub' });
     expect(panel.props('defaultFields')).toEqual([]);
   });
+
+  it('filters blank partner ids from export scope', async () => {
+    listSelectedItems.current = [{ Id: 'p9' }, { Id: '' }, { Id: '  ' }];
+    const PartnerList = (await import('./PartnerList.vue')).default;
+    const wrapper = mount(PartnerList, {
+      global: {
+        plugins: [i18n],
+        stubs: { OPage: { template: '<div><slot /></div>' } },
+      },
+    });
+    await nextTick();
+    const panel = wrapper.findComponent({ name: 'ExportPanelStub' });
+    expect(panel.props('ids')).toEqual(['p9']);
+  });
 });

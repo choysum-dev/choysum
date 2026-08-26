@@ -28,4 +28,8 @@ describe('normalizeExportFieldPaths', () => {
   it('skips blank normalized paths', () => {
     expect(normalizeExportFieldPaths(['', '   ', 'Name'])).toEqual(['Name']);
   });
+
+  it('leaves slash paths unchanged', () => {
+    expect(normalizeExportFieldPath('CompanyId/Code')).toBe('CompanyId/Code');
+  });
 });

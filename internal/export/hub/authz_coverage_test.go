@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/export/proto/exportpb"
+	"github.com/choysum-dev/choysum/internal/export/registry"
 	"github.com/choysum-dev/choysum/pkg/auth"
 	exportpkg "github.com/choysum-dev/choysum/pkg/export"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
@@ -406,6 +407,54 @@ func TestRunExportWithJSExecutorAndInlineCSV(t *testing.T) {
 	}, &exportpb.ExportRunRequest{Model: "base.Country"}, false)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
+	}
+}
+
+func TestRunExportUnauthenticated(t *testing.T) {
+	_, err := runExport(context.Background(), Deps{
+		RuntimeScope: newHubTestScope(t),
+		Run: func(context.Context, scope.Scope, exportpkg.Spec) (importpkg.Report, error) {
+			return importpkg.Report{}, nil
+		},
+	}, &exportpb.ExportRunRequest{Model: "base.Country"}, false)
+	if err == nil || status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestRunExportUnavailableRuntimeScope(t *testing.T) {
+	ctx := authCtx(t)
+	_, err := runExport(ctx, Deps{JSExecutor: stubJSExecutor{}}, &exportpb.ExportRunRequest{Model: "base.Country"}, false)
+	if err == nil || status.Code(err) != codes.Unavailable {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestRunExportWithJSExecutorOnlyRunPath(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	seedCountryModelMeta(t, runtimeScope.Session().DB)
+	ctx := authCtx(t)
+	prev := runExportWithResultFn
+	runExportWithResultFn = func(_ context.Context, _ scope.Scope, _ exportpkg.Spec) (importpkg.Report, registry.Result, error) {
+		return importpkg.Report{Stats: importpkg.Stats{Ok: 2}}, registry.Result{CSVBytes: []byte("Name\nA\n")}, nil
+	}
+	t.Cleanup(func() { runExportWithResultFn = prev })
+	resp, err := runExport(ctx, Deps{
+		RuntimeScope: runtimeScope,
+		JSExecutor:   stubJSExecutor{},
+	}, &exportpb.ExportRunRequest{Model: "base.Country"}, false)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if string(resp.GetCsvData()) != "Name\nA\n" {
+		t.Fatalf("csv_data = %q", resp.GetCsvData())
+	}
+}
+
+func TestToRecordSpecWhitespaceModel(t *testing.T) {
+	_, err := toRecordSpec(&exportpb.ExportRunRequest{Model: "   "}, false)
+	if err == nil || status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("err = %v", err)
 	}
 }
 

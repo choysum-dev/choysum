@@ -36,10 +36,26 @@ func TestHubTestHelperIdentities(t *testing.T) {
 	})
 	t.Run("stubIdentity", func(t *testing.T) {
 		id := stubIdentity{}
-		if id.GetTokenID() != "test-token" || !id.IsValid() {
+		if id.GetUserID() != "test-user" || id.GetTokenID() != "test-token" || !id.IsValid() {
 			t.Fatal("unexpected stubIdentity fields")
 		}
 	})
+	t.Run("companyMetaIdentity", func(t *testing.T) {
+		id := companyMetaIdentity{}
+		if id.GetUserID() != "u1" || id.GetTokenID() != "tok" || !id.IsValid() {
+			t.Fatal("unexpected companyMetaIdentity fields")
+		}
+		if id.GetMetadata()["companyId"] != "cmp-fallback" {
+			t.Fatal("expected companyId metadata")
+		}
+	})
+}
+
+func TestAuthCtxWithServer(t *testing.T) {
+	ctx := authCtxWithServer(t, denyAuthServer{})
+	if ctx == nil {
+		t.Fatal("expected auth context")
+	}
 }
 
 func TestStubJSExecutorMethods(t *testing.T) {

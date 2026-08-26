@@ -149,7 +149,7 @@ func runExport(
 
 	runFn := deps.Run
 	if runFn == nil {
-		report, result, err := runExportWithResult(runCtx, deps.RuntimeScope, spec)
+		report, result, err := runExportWithResultFn(runCtx, deps.RuntimeScope, spec)
 		if err != nil && len(report.Messages) == 0 {
 			return nil, status.Errorf(codes.Internal, "export run failed: %v", err)
 		}
@@ -179,6 +179,9 @@ func (a jsExecutorAdapter) Close() error { return nil }
 func runExportWithResult(ctx context.Context, runtimeScope scope.Scope, spec exportpkg.Spec) (importpkg.Report, registry.Result, error) {
 	return runner.RunWithResult(ctx, runtimeScope, spec)
 }
+
+// runExportWithResultFn is swappable in tests to cover the JSExecutor-only run path.
+var runExportWithResultFn = runExportWithResult
 
 // validateExportSpec is swappable in tests to cover defensive validation failures.
 var validateExportSpec = exportpkg.ValidateSpec

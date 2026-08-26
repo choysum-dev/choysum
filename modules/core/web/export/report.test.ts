@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { ExportMessageType } from './pb/export_pb';
-import { exportReportErrorText, exportReportHasErrors } from './report';
+import { exportReportErrorText, exportReportHasErrors, exportPreviewSummary } from './report';
 
 describe('exportReportHasErrors', () => {
   it('treats missing report as error', () => {
@@ -38,6 +38,25 @@ describe('exportReportErrorText', () => {
         messages: [{ type_: ExportMessageType.UNSPECIFIED, text: '  row failed  ' }],
       }),
     ).toBe('  row failed  ');
+  });
+});
+
+describe('exportPreviewSummary', () => {
+  it('uses numeric error counts when present', () => {
+    expect(exportPreviewSummary({ stats: { ok: 1, error: 2, total: 3 } })).toBe('Preview: 1 ok, 2 errors, 3 total');
+  });
+
+  it('reflects message-only errors without numeric count', () => {
+    expect(
+      exportPreviewSummary({
+        stats: { ok: 0, error: 0, total: 1 },
+        messages: [{ type_: ExportMessageType.ERROR, text: 'bad row' }],
+      }),
+    ).toBe('Preview: 0 ok, errors, 1 total');
+  });
+
+  it('returns empty summary without stats', () => {
+    expect(exportPreviewSummary({ messages: [] })).toBe('');
   });
 });
 

@@ -260,3 +260,49 @@ func TestExportFieldNodeBasicField(t *testing.T) {
 		t.Fatalf("node=%#v err=%v", node, err)
 	}
 }
+
+func TestHubDescribeFieldsUnsupportedExportModel(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.AutoMigrate(&meta.Model{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&meta.Model{Name: "Currency", Application: "base", Path: "/tmp", ModelTable: "base_currency"}).Error; err != nil {
+		t.Fatal(err)
+	}
+	h := New(Deps{RuntimeScope: runtimeScope})
+	ctx := authCtx(t)
+	_, err := h.DescribeFields(ctx, &exportpb.DescribeFieldsRequest{Model: "base.Currency"})
+	if err == nil || status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestDescribeFieldsSkipsIdFieldInTree(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	seedPartnerModelFields(t, runtimeScope.Session().DB)
+	db := runtimeScope.Session().DB
+	partnerModel := &meta.Model{}
+	if err := db.Where("application = ? AND name = ?", "partner", "Partner").First(partnerModel).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&meta.Field{Name: "Id", FieldType: "varchar", ModelId: partnerModel.Id, FieldString: "Id"}).Error; err != nil {
+		t.Fatal(err)
+	}
+	resp, err := describeFields(runtimeScope.Context(), runtimeScope, &exportpb.DescribeFieldsRequest{Model: "partner.Partner"})
+	if err != nil {
+		t.Fatalf("describeFields: %v", err)
+	}
+	for _, node := range resp.GetFields() {
+		if node.GetPath() == "Id" {
+			t.Fatal("Id field should be skipped")
+		}
+	}
+}
+
+func TestExportFieldNodeUsesFieldNameWhenLabelMissing(t *testing.T) {
+	node, err := exportFieldNode(newHubTestScope(t).Session().DB, meta.Field{Name: "Code", FieldType: "varchar"})
+	if err != nil || node == nil || node.GetLabel() != "Code" {
+		t.Fatalf("node=%#v err=%v", node, err)
+	}
+}

@@ -57,7 +57,7 @@ import type ElTree from 'element-plus/es/components/tree/src/tree.vue';
 import { describeExportFields, previewExport, runExport, ExportMode, type ExportFieldNode, type ExportReport } from './client';
 import { downloadExportCsvBytes, suggestExportFileName } from './download_csv';
 import { normalizeExportFieldPaths } from './field_paths';
-import { exportReportErrorText, exportReportHasErrors } from './report';
+import { exportReportErrorText, exportReportHasErrors, exportPreviewSummary } from './report';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'ExportPanel' });
@@ -125,12 +125,8 @@ const effectiveFields = computed(() => {
   return [...(props.defaultFields ?? [])];
 });
 
-const previewAlertType = computed(() => ((previewReport.value?.stats?.error ?? 0) > 0 ? 'warning' : 'info'));
-const previewSummary = computed(() => {
-  const stats = previewReport.value?.stats;
-  if (!stats) return '';
-  return `Preview: ${stats.ok ?? 0} ok, ${stats.error ?? 0} errors, ${stats.total ?? 0} total`;
-});
+const previewAlertType = computed(() => (exportReportHasErrors(previewReport.value) ? 'warning' : 'info'));
+const previewSummary = computed(() => exportPreviewSummary(previewReport.value));
 
 function buildRunInput() {
   const ids = (props.ids ?? []).filter(Boolean);

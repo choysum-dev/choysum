@@ -245,6 +245,17 @@ describe('ExportPanel', () => {
     expect((wrapper.vm as any).exportError).toBe('plain failure');
   });
 
+  it('shows preview warning when preview report has message-only errors', async () => {
+    previewExport.mockResolvedValue({
+      report: { stats: { total: 1, ok: 0, error: 0 }, messages: [{ type_: 1, text: 'bad row' }] },
+    });
+    const wrapper = await mountPanel();
+    await (wrapper.vm as any).runPreview();
+    await flushPromises();
+    expect((wrapper.vm as any).previewAlertType).toBe('warning');
+    expect((wrapper.vm as any).previewSummary).toContain('errors');
+  });
+
   it('shows preview warning when preview report has errors', async () => {
     previewExport.mockResolvedValue({
       report: { stats: { total: 1, ok: 0, error: 1 }, messages: [{ text: 'bad row' }] },
@@ -273,5 +284,56 @@ describe('ExportPanel', () => {
     await (wrapper.vm as any).onOpen();
     await flushPromises();
     expect((wrapper.vm as any).selectedFieldPaths).toEqual(['Name', 'Code']);
+  });
+
+  it('maps nested field nodes and label fallbacks', async () => {
+    describeExportFields.mockResolvedValue({
+      fields: [{
+        path: 'CompanyId',
+        label: '',
+        children: [{ path: 'CompanyId/Code', label: 'Code' }],
+      }],
+      defaultFields: [],
+    });
+    const wrapper = await mountPanel({ defaultFields: [] });
+    await (wrapper.vm as any).onOpen();
+    await flushPromises();
+    expect((wrapper.vm as any).fieldTree[0].label).toBe('CompanyId');
+    expect((wrapper.vm as any).fieldTree[0].children?.[0].path).toBe('CompanyId/Code');
+  });
+
+  it('ignores stale preview errors after session reset', async () => {
+    let rejectPreview: (reason: unknown) => void = () => {};
+    previewExport.mockImplementation(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectPreview = reject;
+        }),
+    );
+    const wrapper = await mountPanel();
+    const pending = (wrapper.vm as any).runPreview();
+    (wrapper.vm as any).resetState();
+    rejectPreview(new Error('stale preview'));
+    await pending;
+    await flushPromises();
+    expect((wrapper.vm as any).exportError).toBe('');
+  });
+
+  it('resets state on closed and clears busy on reopen', async () => {
+    const wrapper = await mountPanel();
+    (wrapper.vm as any).busy = true;
+    (wrapper.vm as any).previewReport = { stats: { ok: 1 } };
+    (wrapper.vm as any).resetState();
+    expect((wrapper.vm as any).busy).toBe(false);
+    expect((wrapper.vm as any).previewReport).toBeNull();
+    await (wrapper.vm as any).onOpen();
+    expect((wrapper.vm as any).busy).toBe(false);
+  });
+
+  it('does not overwrite selected fields when watch runs after selection', async () => {
+    const wrapper = await mountPanel({ defaultFields: ['Name'] });
+    (wrapper.vm as any).selectedFieldPaths = ['Code'];
+    await wrapper.setProps({ defaultFields: ['Name', 'CompanyId.Code'] });
+    expect((wrapper.vm as any).selectedFieldPaths).toEqual(['Code']);
   });
 });
