@@ -71,10 +71,12 @@ func buildStats(result registry.Result, messages []importpkg.Message, syntheticE
 			Warning: result.Outcomes.Warning,
 		}
 		if syntheticErr && stats.Error == 0 {
-			stats.Error++
 			if stats.Ok > 0 {
 				stats.Ok--
+			} else if stats.Skip > 0 {
+				stats.Skip--
 			}
+			stats.Error++
 		}
 		return stats
 	}

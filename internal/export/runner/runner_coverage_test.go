@@ -232,6 +232,17 @@ func TestBuildStats_syntheticErrorWithOutcomes(t *testing.T) {
 	}
 }
 
+func TestBuildStats_syntheticErrorConvertsSkip(t *testing.T) {
+	stats := buildStats(registry.Result{
+		Outcomes: registry.Outcomes{Total: 1, Ok: 0, Skip: 1},
+	}, []importpkg.Message{
+		{Type: importpkg.MessageSkip, Row: 1, Text: "skipped"},
+	}, true)
+	if stats.Error != 1 || stats.Skip != 0 || stats.Ok+stats.Error+stats.Skip != stats.Total {
+		t.Fatalf("stats = %+v", stats)
+	}
+}
+
 func TestBuildStats_derivesTotalFromMessages(t *testing.T) {
 	stats := buildStats(registry.Result{}, []importpkg.Message{
 		{Type: importpkg.MessageError, Row: 1},
