@@ -63,9 +63,6 @@ func outgoingContextForUserRPC(ctx context.Context, accessToken string) context.
 		}
 	}
 	md.Set("x-choysum-depth", strconv.Itoa(depth+1))
-	if len(md) == 0 {
-		return ctx
-	}
 	return metadata.NewOutgoingContext(ctx, md)
 }
 

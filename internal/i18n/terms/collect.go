@@ -25,23 +25,22 @@ func CollectAll(ctx context.Context, accessToken, app, lang string, modules []st
 		total int64
 		err   error
 	)
-	if hasHooks && hooks.search != nil {
-		probe, err := hooks.search(ctx, accessToken, app, lang, modules, "", 1, 0)
-		if err != nil {
-			return nil, false, err
+	switch {
+	case hasHooks && hooks.count != nil:
+		total, err = hooks.count(ctx, accessToken, app, lang, modules, "")
+	case hasHooks && hooks.search != nil:
+		probe, probeErr := hooks.search(ctx, accessToken, app, lang, modules, "", 1, 0)
+		if probeErr != nil {
+			return nil, false, probeErr
 		}
 		if probe != nil {
 			total = probe.Total
 		}
-	} else {
-		if hasHooks && hooks.count != nil {
-			total, err = hooks.count(ctx, accessToken, app, lang, modules, "")
-		} else {
-			total, err = CountAppTerms(ctx, accessToken, app, lang, modules, "")
-		}
-		if err != nil {
-			return nil, false, err
-		}
+	default:
+		total, err = CountAppTerms(ctx, accessToken, app, lang, modules, "")
+	}
+	if err != nil {
+		return nil, false, err
 	}
 
 	var all []Item

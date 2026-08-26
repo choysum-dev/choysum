@@ -14,6 +14,7 @@ import (
 	"github.com/choysum-dev/choysum/pkg/auth"
 	exportpkg "github.com/choysum-dev/choysum/pkg/export"
 	"github.com/choysum-dev/choysum/pkg/scope"
+	"google.golang.org/grpc/metadata"
 )
 
 // Reader exports terminology-profile units through TranslationTerm Search.
@@ -24,7 +25,7 @@ func (Reader) Read(ctx context.Context, runtimeScope scope.Scope, p exportplan.P
 	_ = runtimeScope
 
 	accessToken, _ := auth.AccessTokenFromContext(ctx)
-	if strings.TrimSpace(accessToken) == "" && !auth.IsAuthenticated(ctx) {
+	if !canForwardUserRPC(ctx, accessToken) {
 		return registry.Result{}, exportpkg.Errorf(exportpkg.CodeInvalidSpec, "authentication is required for terminology export")
 	}
 
@@ -60,4 +61,18 @@ func (Reader) Read(ctx context.Context, runtimeScope scope.Scope, p exportplan.P
 		result.Outcomes.Warning = 1
 	}
 	return result, nil
+}
+
+func canForwardUserRPC(ctx context.Context, accessToken string) bool {
+	if strings.TrimSpace(accessToken) != "" {
+		return true
+	}
+	if in, ok := metadata.FromIncomingContext(ctx); ok {
+		for _, v := range in.Get("authorization") {
+			if strings.TrimSpace(v) != "" {
+				return true
+			}
+		}
+	}
+	return false
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/i18n/terms"
 	"github.com/choysum-dev/choysum/pkg/auth"
 	exportpkg "github.com/choysum-dev/choysum/pkg/export"
+	"google.golang.org/grpc/metadata"
 )
 
 type testIdentity struct {
@@ -38,7 +39,20 @@ func TestReaderRequiresAuthentication(t *testing.T) {
 	}
 }
 
-func TestReaderAcceptsIdentityWithoutToken(t *testing.T) {
+func TestReaderRejectsIdentityWithoutTransferableCredential(t *testing.T) {
+	ctx := auth.ContextWithIdentity(context.Background(), testIdentity{userID: "user-1", valid: true})
+	_, err := term.Reader{}.Read(ctx, nil, exportplan.Plan{
+		Profile:     exportpkg.ProfileTerminology,
+		Application: "auth",
+		Module:      "auth",
+		Lang:        "zh_CN",
+	})
+	if err == nil || !strings.Contains(err.Error(), "authentication is required") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestReaderAcceptsIncomingAuthorizationMetadata(t *testing.T) {
 	search := func(_ context.Context, _, _, lang string, modules []string, _ string, _, offset int) (*terms.SearchResult, error) {
 		if offset > 0 {
 			return &terms.SearchResult{Lang: lang, Items: nil, Total: 1}, nil
@@ -49,8 +63,8 @@ func TestReaderAcceptsIdentityWithoutToken(t *testing.T) {
 			Items: []terms.Item{{Scope: "a@b", Src: "Hi", Value: "你好", Kind: "literal"}},
 		}, nil
 	}
-	ctx := terms.ContextWithCollectHooks(context.Background(), search, nil)
-	ctx = auth.ContextWithIdentity(ctx, testIdentity{userID: "user-1", valid: true})
+	base := metadata.NewIncomingContext(context.Background(), metadata.Pairs("authorization", "Bearer meta-tok"))
+	ctx := terms.ContextWithCollectHooks(base, search, nil)
 
 	result, err := term.Reader{}.Read(ctx, nil, exportplan.Plan{
 		Profile:     exportpkg.ProfileTerminology,

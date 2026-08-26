@@ -403,6 +403,43 @@ func TestCollectAllTermsMarksTruncatedWhenCapHitWithUnknownTotal(t *testing.T) {
 	}
 }
 
+func TestGatewaySearchHookUnconfigured(t *testing.T) {
+	h := &handler{}
+	hook := h.gatewaySearchHook()
+	if _, err := hook(context.Background(), "tok", "auth", "zh_CN", []string{"auth"}, "", 10, 0); err == nil || !strings.Contains(err.Error(), "search hook is not configured") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestGatewaySearchHookNilResult(t *testing.T) {
+	h := &handler{
+		search: func(context.Context, string, string, string, []string, string, int, int) (*searchTermsResult, error) {
+			return nil, nil
+		},
+	}
+	hook := h.gatewaySearchHook()
+	if _, err := hook(context.Background(), "tok", "auth", "zh_CN", []string{"auth"}, "", 10, 0); err != nil {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestGatewaySearchHookMapsItems(t *testing.T) {
+	h := &handler{
+		search: func(context.Context, string, string, string, []string, string, int, int) (*searchTermsResult, error) {
+			return &searchTermsResult{
+				Lang:  "zh_CN",
+				Total: 1,
+				Items: []termItem{{Scope: "a@b", Src: "Hi", Value: "你好", Module: "auth"}},
+			}, nil
+		},
+	}
+	hook := h.gatewaySearchHook()
+	got, err := hook(context.Background(), "tok", "auth", "zh_CN", []string{"auth"}, "", 10, 0)
+	if err != nil || got == nil || len(got.Items) != 1 || got.Items[0].Module != "auth" {
+		t.Fatalf("got=%#v err=%v", got, err)
+	}
+}
+
 type errWriter struct {
 	header http.Header
 	code   int

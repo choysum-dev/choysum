@@ -17,6 +17,8 @@ import (
 // Writer serializes terminology export entries as PO text.
 type Writer struct{}
 
+var writePOEntries = i18npo.Write
+
 // Write implements registry.Sink.
 func (Writer) Write(ctx context.Context, runtimeScope scope.Scope, p plan.Plan, result *registry.Result) error {
 	_ = ctx
@@ -30,7 +32,7 @@ func (Writer) Write(ctx context.Context, runtimeScope scope.Scope, p plan.Plan, 
 	}
 
 	var buf bytes.Buffer
-	if err := i18npo.Write(&buf, result.POEntries); err != nil {
+	if err := writePOEntries(&buf, result.POEntries); err != nil {
 		return exportpkg.ErrorfWrap(exportpkg.CodeInvalidFormat, "write po", err)
 	}
 	result.POBytes = buf.Bytes()

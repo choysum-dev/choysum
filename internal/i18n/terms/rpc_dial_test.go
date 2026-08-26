@@ -16,6 +16,7 @@ import (
 	"github.com/choysum-dev/choysum/pkg/grpc/loader"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/dynamicpb"
 )
@@ -181,9 +182,64 @@ func TestFetchAppSearchTermsDialPath(t *testing.T) {
 	}
 }
 
+func TestFetchAppSearchTermsDialFailure(t *testing.T) {
+	registerAuthTranslationTermProtoForTests()
+	ctx := grpcclient.ContextWithServiceDialer(context.Background(), func(context.Context, string) (*grpc.ClientConn, error) {
+		return nil, errors.New("dial boom")
+	})
+	if _, err := FetchAppSearchTerms(ctx, nil, "tok", "auth", "zh_CN", nil, "", 10, 0); err == nil {
+		t.Fatal("expected dial error")
+	}
+}
+
+func TestSearchAppTermsPageRequiresApplication(t *testing.T) {
+	if _, err := SearchAppTermsPage(context.Background(), "tok", " ", "zh_CN", nil, "", 1, 10, 0); err == nil || !strings.Contains(err.Error(), "application is required") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestCountAppTermsRequiresApplication(t *testing.T) {
+	if _, err := CountAppTerms(context.Background(), "tok", " ", "zh_CN", nil, ""); err == nil || !strings.Contains(err.Error(), "application is required") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestCountAppTermsForwardsAuthorizationMetadata(t *testing.T) {
+	var capturedAuth string
+	baseDialer := newTranslationTermDialer(t, &translationTermRPCBehavior{countTotal: 0})
+	ctx := grpcclient.ContextWithServiceDialer(context.Background(), func(ctx context.Context, serviceName string) (*grpc.ClientConn, error) {
+		if md, ok := metadata.FromOutgoingContext(ctx); ok {
+			if vals := md.Get("authorization"); len(vals) > 0 {
+				capturedAuth = vals[0]
+			}
+		}
+		return baseDialer(ctx, serviceName)
+	})
+	if _, err := CountAppTerms(ctx, "forward-me", "auth", "zh_CN", nil, ""); err != nil {
+		t.Fatalf("CountAppTerms: %v", err)
+	}
+	if capturedAuth != "Bearer forward-me" {
+		t.Fatalf("authorization = %q", capturedAuth)
+	}
+}
+
+func TestCollectAllDialPathWithoutHooks(t *testing.T) {
+	behavior := &translationTermRPCBehavior{
+		countTotal: 1,
+		searchItems: []map[string]any{{
+			"Module": "auth", "Scope": "a@b", "Src": "Hi", "Value": "你好",
+		}},
+	}
+	ctx := grpcclient.ContextWithServiceDialer(context.Background(), newTranslationTermDialer(t, behavior))
+	items, truncated, err := CollectAll(ctx, "tok", "auth", "zh_CN", []string{"auth"})
+	if err != nil || truncated || len(items) != 1 {
+		t.Fatalf("items=%d truncated=%v err=%v", len(items), truncated, err)
+	}
+}
+
 func TestFetchAppSearchTermsRequiresApplication(t *testing.T) {
-	if _, err := FetchAppSearchTerms(context.Background(), nil, " ", "auth", "zh_CN", nil, "", 10, 0); err == nil {
-		t.Fatal("expected application error")
+	if _, err := FetchAppSearchTerms(context.Background(), nil, "tok", " ", "zh_CN", nil, "", 10, 0); err == nil || !strings.Contains(err.Error(), "application is required") {
+		t.Fatalf("expected application error, got %v", err)
 	}
 }
 
