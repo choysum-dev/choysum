@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/i18n/po"
+	"github.com/choysum-dev/choysum/internal/i18n/terms"
 )
 
 func TestPORequiresAuth(t *testing.T) {
@@ -80,6 +81,15 @@ func TestPORejectsModuleOutsideApplication(t *testing.T) {
 }
 
 func TestPOExportAttachment(t *testing.T) {
+	testPOExportViaRunner(t)
+}
+
+func TestPOExport_HTTP_UsesExportRun(t *testing.T) {
+	testPOExportViaRunner(t)
+}
+
+func testPOExportViaRunner(t *testing.T) {
+	t.Helper()
 	h := &handler{
 		listModules: func() (map[string][]string, error) {
 			return map[string][]string{"auth": {"auth"}}, nil
@@ -134,9 +144,9 @@ func TestPOExportAttachment(t *testing.T) {
 }
 
 func TestPOExportSetsTruncatedHeader(t *testing.T) {
-	oldMax := poExportMaxItems
-	poExportMaxItems = 2
-	t.Cleanup(func() { poExportMaxItems = oldMax })
+	oldMax := terms.ExportMaxItems
+	terms.ExportMaxItems = 2
+	t.Cleanup(func() { terms.ExportMaxItems = oldMax })
 
 	h := &handler{
 		listModules: func() (map[string][]string, error) {
@@ -282,9 +292,9 @@ func TestPOCollectAllTermsErrorsAndEmpty(t *testing.T) {
 }
 
 func TestCollectAllTermsMaxItemsZeroTruncates(t *testing.T) {
-	oldMax := poExportMaxItems
-	poExportMaxItems = 0
-	t.Cleanup(func() { poExportMaxItems = oldMax })
+	oldMax := terms.ExportMaxItems
+	terms.ExportMaxItems = 0
+	t.Cleanup(func() { terms.ExportMaxItems = oldMax })
 
 	h := &handler{
 		search: func(ctx context.Context, accessToken, app, lang string, modules []string, q string, limit, offset int) (*searchTermsResult, error) {
@@ -299,9 +309,9 @@ func TestCollectAllTermsMaxItemsZeroTruncates(t *testing.T) {
 }
 
 func TestCollectAllTermsPagesWhenProbeTotalUnset(t *testing.T) {
-	oldPage := poExportPageSize
-	poExportPageSize = 2
-	t.Cleanup(func() { poExportPageSize = oldPage })
+	oldPage := terms.ExportPageSize
+	terms.ExportPageSize = 2
+	t.Cleanup(func() { terms.ExportPageSize = oldPage })
 
 	items := []termItem{
 		{Application: "auth", Module: "auth", Scope: "a@1", Src: "One", Value: "1"},
@@ -328,9 +338,9 @@ func TestCollectAllTermsPagesWhenProbeTotalUnset(t *testing.T) {
 }
 
 func TestCollectAllTermsBackfillsTotalFromPage(t *testing.T) {
-	oldPage := poExportPageSize
-	poExportPageSize = 2
-	t.Cleanup(func() { poExportPageSize = oldPage })
+	oldPage := terms.ExportPageSize
+	terms.ExportPageSize = 2
+	t.Cleanup(func() { terms.ExportPageSize = oldPage })
 
 	items := []termItem{
 		{Application: "auth", Module: "auth", Scope: "a@1", Src: "One", Value: "1"},
@@ -361,13 +371,13 @@ func TestCollectAllTermsBackfillsTotalFromPage(t *testing.T) {
 }
 
 func TestCollectAllTermsMarksTruncatedWhenCapHitWithUnknownTotal(t *testing.T) {
-	oldMax := poExportMaxItems
-	oldPage := poExportPageSize
-	poExportMaxItems = 2
-	poExportPageSize = 2
+	oldMax := terms.ExportMaxItems
+	oldPage := terms.ExportPageSize
+	terms.ExportMaxItems = 2
+	terms.ExportPageSize = 2
 	t.Cleanup(func() {
-		poExportMaxItems = oldMax
-		poExportPageSize = oldPage
+		terms.ExportMaxItems = oldMax
+		terms.ExportPageSize = oldPage
 	})
 
 	items := []termItem{

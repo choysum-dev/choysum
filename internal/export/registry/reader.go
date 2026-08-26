@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/choysum-dev/choysum/internal/export/plan"
+	i18npo "github.com/choysum-dev/choysum/internal/i18n/po"
 	"github.com/choysum-dev/choysum/pkg/scope"
 )
 
@@ -16,10 +17,13 @@ type Result struct {
 	Messages  []Message
 	// Outcomes holds per-unit aggregates when Total > 0; otherwise the runner derives stats from Messages.
 	Outcomes Outcomes
-	// Headers / Rows are populated by record readers; CSVBytes by sinks.
-	Headers  []string
-	Rows     [][]string
-	CSVBytes []byte
+	// Headers / Rows are populated by record readers; CSVBytes / PO fields by sinks.
+	Headers   []string
+	Rows      [][]string
+	CSVBytes  []byte
+	POEntries []i18npo.Entry
+	POBytes   []byte
+	Truncated bool
 }
 
 // Outcomes aggregates unit-level export results from a reader.

@@ -44,6 +44,9 @@ func ValidateSpec(spec Spec) error {
 		if len(spec.Fields) > 0 || len(spec.Ids) > 0 {
 			return Errorf(CodeInvalidSpec, "fields and ids are only allowed for record profile")
 		}
+		if strings.TrimSpace(spec.Application) == "" {
+			return Errorf(CodeInvalidSpec, "application is required for terminology profile")
+		}
 		if strings.TrimSpace(spec.Module) == "" {
 			return Errorf(CodeInvalidSpec, "module is required for terminology profile")
 		}

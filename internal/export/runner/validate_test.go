@@ -38,10 +38,11 @@ func TestPlanFromSpec_recordDefaults(t *testing.T) {
 
 func TestPlanFromSpec_terminologyDefaults(t *testing.T) {
 	p, err := PlanFromSpec(exportpkg.Spec{
-		Profile: exportpkg.ProfileTerminology,
-		Caller:  exportpkg.CallerUser,
-		Module:  "base",
-		Lang:    "zh_CN",
+		Profile:     exportpkg.ProfileTerminology,
+		Caller:      exportpkg.CallerUser,
+		Application: "base",
+		Module:      "base",
+		Lang:        "zh_CN",
 	})
 	if err != nil {
 		t.Fatalf("PlanFromSpec: %v", err)
