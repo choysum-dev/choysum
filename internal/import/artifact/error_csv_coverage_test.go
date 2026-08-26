@@ -116,6 +116,22 @@ func TestWriteErrorArtifact_StoreFailure(t *testing.T) {
 	}
 }
 
+func TestStoreContentArtifact(t *testing.T) {
+	orig := storeArtifact
+	t.Cleanup(func() { storeArtifact = orig })
+	storeArtifact = func(context.Context, scope.Scope, string, []byte, string) (string, error) {
+		return "content-1", nil
+	}
+
+	ref, err := StoreContentArtifact(context.Background(), nil, "cmp-1", []byte("a,b\n"), errorCSVMimeType)
+	if err != nil {
+		t.Fatalf("StoreContentArtifact: %v", err)
+	}
+	if ref != "content-1" {
+		t.Fatalf("ref = %q", ref)
+	}
+}
+
 func TestDefaultStoreArtifact_DriverAndPutErrors(t *testing.T) {
 	ctx := context.Background()
 	scopeWithTables := newArtifactCoverageScope(t)
@@ -168,7 +184,7 @@ func (noSessionArtifactScope) Context() context.Context { return context.Backgro
 func (noSessionArtifactScope) Logger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
-func (noSessionArtifactScope) Config() *config.Config { return nil }
+func (noSessionArtifactScope) Config() *config.Config           { return nil }
 func (noSessionArtifactScope) FactoryInput() scope.FactoryInput { return nil }
 
 func TestDefaultMessagesToCSVBytes_HeaderWriteError(t *testing.T) {

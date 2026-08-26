@@ -16,6 +16,10 @@ type Result struct {
 	Messages  []Message
 	// Outcomes holds per-unit aggregates when Total > 0; otherwise the runner derives stats from Messages.
 	Outcomes Outcomes
+	// Headers / Rows are populated by record readers; CSVBytes by sinks.
+	Headers  []string
+	Rows     [][]string
+	CSVBytes []byte
 }
 
 // Outcomes aggregates unit-level export results from a reader.

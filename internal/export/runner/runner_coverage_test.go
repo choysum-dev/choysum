@@ -11,6 +11,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/export/plan"
 	stubreader "github.com/choysum-dev/choysum/internal/export/reader/stub"
 	"github.com/choysum-dev/choysum/internal/export/registry"
+	csvsink "github.com/choysum-dev/choysum/internal/export/sink/csv"
 	exportpkg "github.com/choysum-dev/choysum/pkg/export"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -31,6 +32,14 @@ type fakeReader struct {
 
 func (f fakeReader) Read(context.Context, scope.Scope, plan.Plan) (registry.Result, error) {
 	return f.result, f.err
+}
+
+type fakeSink struct {
+	err error
+}
+
+func (f fakeSink) Write(context.Context, scope.Scope, plan.Plan, *registry.Result) error {
+	return f.err
 }
 
 func TestRun_planValidationError(t *testing.T) {
@@ -387,5 +396,175 @@ func TestRun_readErrorUsesReaderOutcomes(t *testing.T) {
 func TestToImportMessages_empty(t *testing.T) {
 	if got := toImportMessages(nil); got != nil {
 		t.Fatalf("toImportMessages(nil) = %+v, want nil", got)
+	}
+}
+
+func TestRun_sinkLookupError(t *testing.T) {
+	registry.ResetForTest()
+	registry.ResetSinksForTest()
+	registry.Register(exportpkg.ProfileRecord, fakeReader{
+		result: registry.Result{
+			Headers: []string{"Name"},
+			Rows:    [][]string{{"A"}},
+		},
+	})
+	restoreStubReaders(t)
+
+	_, err := Run(context.Background(), nil, exportpkg.Spec{
+		Profile: exportpkg.ProfileRecord,
+		Caller:  exportpkg.CallerUser,
+		Model:   "base.Country",
+		Format:  "csv",
+	})
+	if err == nil {
+		t.Fatal("expected sink lookup error")
+	}
+}
+
+func TestRun_noHeadersSkipsSink(t *testing.T) {
+	registry.ResetForTest()
+	registry.Register(exportpkg.ProfileRecord, fakeReader{
+		result: registry.Result{
+			Outcomes: registry.Outcomes{Total: 0, Ok: 0},
+		},
+	})
+	registry.RegisterSink("csv", fakeSink{err: errors.New("should not run")})
+	restoreStubReaders(t)
+
+	report, err := Run(context.Background(), nil, exportpkg.Spec{
+		Profile: exportpkg.ProfileRecord,
+		Caller:  exportpkg.CallerUser,
+		Model:   "base.Country",
+		Format:  "csv",
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if report.Stats.Total != 0 {
+		t.Fatalf("stats = %+v", report.Stats)
+	}
+}
+
+func TestRun_sinkWriteError(t *testing.T) {
+	registry.ResetForTest()
+	registry.Register(exportpkg.ProfileRecord, fakeReader{
+		result: registry.Result{
+			Headers: []string{"Name"},
+			Rows:    [][]string{{"A"}},
+		},
+	})
+	registry.RegisterSink("csv", fakeSink{err: errors.New("write failed")})
+	restoreStubReaders(t)
+
+	_, err := Run(context.Background(), nil, exportpkg.Spec{
+		Profile: exportpkg.ProfileRecord,
+		Caller:  exportpkg.CallerUser,
+		Model:   "base.Country",
+		Format:  "csv",
+	})
+	if err == nil {
+		t.Fatal("expected sink write error")
+	}
+}
+
+func TestRun_sinkSuccess(t *testing.T) {
+	registry.ResetForTest()
+	registry.Register(exportpkg.ProfileRecord, fakeReader{
+		result: registry.Result{
+			Headers: []string{"Name", "Code"},
+			Rows:    [][]string{{"Alpha", "A1"}},
+			Outcomes: registry.Outcomes{
+				Total: 1,
+				Ok:    1,
+			},
+		},
+	})
+	registry.RegisterSink("csv", csvsink.Writer{})
+	restoreStubReaders(t)
+
+	report, err := Run(context.Background(), nil, exportpkg.Spec{
+		Profile: exportpkg.ProfileRecord,
+		Caller:  exportpkg.CallerUser,
+		Model:   "base.Country",
+		Format:  "csv",
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if report.Stats.Total != 1 {
+		t.Fatalf("stats = %+v", report.Stats)
+	}
+}
+
+func TestRun_attachReportCSV(t *testing.T) {
+	orig := attachReportCSV
+	t.Cleanup(func() { attachReportCSV = orig })
+	attachReportCSV = func(_ context.Context, _ scope.Scope, companyID string, csvBytes []byte, report *importpkg.Report) error {
+		if companyID != "co-1" || len(csvBytes) == 0 {
+			t.Fatalf("companyID=%q csvBytes=%d", companyID, len(csvBytes))
+		}
+		report.ArtifactRef = "ref-1"
+		return nil
+	}
+
+	registry.ResetForTest()
+	registry.Register(exportpkg.ProfileRecord, fakeReader{
+		result: registry.Result{
+			Headers: []string{"Name"},
+			Rows:    [][]string{{"A"}},
+			Outcomes: registry.Outcomes{
+				Total: 1,
+				Ok:    1,
+			},
+		},
+	})
+	registry.RegisterSink("csv", csvsink.Writer{})
+	restoreStubReaders(t)
+
+	report, err := Run(context.Background(), nil, exportpkg.Spec{
+		Profile: exportpkg.ProfileRecord,
+		Caller:  exportpkg.CallerUser,
+		Model:   "base.Country",
+		Format:  "csv",
+		Options: exportpkg.Options{CompanyID: "co-1"},
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if report.ArtifactRef != "ref-1" {
+		t.Fatalf("ArtifactRef = %q", report.ArtifactRef)
+	}
+}
+
+func TestRun_attachReportCSV_storeError(t *testing.T) {
+	orig := attachReportCSV
+	t.Cleanup(func() { attachReportCSV = orig })
+	attachReportCSV = func(context.Context, scope.Scope, string, []byte, *importpkg.Report) error {
+		return errors.New("store failed")
+	}
+
+	registry.ResetForTest()
+	registry.Register(exportpkg.ProfileRecord, fakeReader{
+		result: registry.Result{
+			Headers: []string{"Name"},
+			Rows:    [][]string{{"A"}},
+			Outcomes: registry.Outcomes{
+				Total: 1,
+				Ok:    1,
+			},
+		},
+	})
+	registry.RegisterSink("csv", csvsink.Writer{})
+	restoreStubReaders(t)
+
+	_, err := Run(context.Background(), nil, exportpkg.Spec{
+		Profile: exportpkg.ProfileRecord,
+		Caller:  exportpkg.CallerUser,
+		Model:   "base.Country",
+		Format:  "csv",
+		Options: exportpkg.Options{CompanyID: "co-1"},
+	})
+	if err == nil {
+		t.Fatal("expected artifact store error")
 	}
 }

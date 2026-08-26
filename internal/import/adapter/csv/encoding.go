@@ -17,6 +17,16 @@ func StripUTF8BOM(data []byte) []byte {
 	return data
 }
 
+// PrependUTF8BOM adds a UTF-8 BOM prefix for consumers that expect Excel-friendly CSV.
+func PrependUTF8BOM(data []byte) []byte {
+	if len(data) >= 3 && data[0] == 0xEF && data[1] == 0xBB && data[2] == 0xBF {
+		return data
+	}
+	out := make([]byte, 0, len(data)+3)
+	out = append(out, 0xEF, 0xBB, 0xBF)
+	return append(out, data...)
+}
+
 // ValidateUTF8 returns an error when data is not valid UTF-8.
 func ValidateUTF8(data []byte) error {
 	if len(data) == 0 {
@@ -26,4 +36,18 @@ func ValidateUTF8(data []byte) error {
 		return importpkg.Errorf(importpkg.CodeInvalidEncoding, "CSV must be UTF-8 encoded")
 	}
 	return nil
+}
+
+// SanitizeSpreadsheetCell neutralizes values that spreadsheet apps may interpret as formulas.
+func SanitizeSpreadsheetCell(s string) string {
+	if s == "" {
+		return s
+	}
+	r, _ := utf8.DecodeRuneInString(s)
+	switch r {
+	case '=', '+', '-', '@', '\t', '\r':
+		return "'" + s
+	default:
+		return s
+	}
 }

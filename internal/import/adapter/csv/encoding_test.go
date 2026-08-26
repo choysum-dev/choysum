@@ -48,3 +48,40 @@ func TestStripUTF8BOM_NoBOM(t *testing.T) {
 		t.Fatal("expected unchanged")
 	}
 }
+
+func TestPrependUTF8BOM(t *testing.T) {
+	raw := []byte("Name,Code\nA,C1\n")
+	got := csv.PrependUTF8BOM(raw)
+	if !bytes.HasPrefix(got, []byte{0xEF, 0xBB, 0xBF}) {
+		t.Fatal("expected BOM prefix")
+	}
+	if string(csv.StripUTF8BOM(got)) != string(raw) {
+		t.Fatalf("round trip failed: %q", got)
+	}
+	if len(csv.PrependUTF8BOM(got)) != len(got) {
+		t.Fatal("PrependUTF8BOM should be idempotent")
+	}
+}
+
+func TestSanitizeSpreadsheetCell(t *testing.T) {
+	tests := []struct {
+		in   string
+		want string
+	}{
+		{in: "Alpha", want: "Alpha"},
+		{in: "=1+1", want: "'=1+1"},
+		{in: "+123", want: "'+123"},
+		{in: "-x", want: "'-x"},
+		{in: "@SUM(A1)", want: "'@SUM(A1)"},
+		{in: "\tleading", want: "'\tleading"},
+		{in: "\rleading", want: "'\rleading"},
+	}
+	for _, tc := range tests {
+		if got := csv.SanitizeSpreadsheetCell(tc.in); got != tc.want {
+			t.Fatalf("SanitizeSpreadsheetCell(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+	if got := csv.SanitizeSpreadsheetCell(""); got != "" {
+		t.Fatalf("empty = %q", got)
+	}
+}

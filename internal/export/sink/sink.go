@@ -3,15 +3,7 @@
 
 package sink
 
-import (
-	"context"
-
-	"github.com/choysum-dev/choysum/internal/export/plan"
-	"github.com/choysum-dev/choysum/internal/export/registry"
-	"github.com/choysum-dev/choysum/pkg/scope"
-)
+import "github.com/choysum-dev/choysum/internal/export/registry"
 
 // Sink serializes Reader results (for example CSV or PO).
-type Sink interface {
-	Write(ctx context.Context, runtimeScope scope.Scope, p plan.Plan, result registry.Result) error
-}
+type Sink = registry.Sink
