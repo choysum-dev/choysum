@@ -23,9 +23,9 @@ type Reader struct{}
 func (Reader) Read(ctx context.Context, runtimeScope scope.Scope, p exportplan.Plan) (registry.Result, error) {
 	_ = runtimeScope
 
-	accessToken, ok := auth.AccessTokenFromContext(ctx)
-	if !ok || strings.TrimSpace(accessToken) == "" {
-		return registry.Result{}, exportpkg.Errorf(exportpkg.CodeInvalidSpec, "access token is required for terminology export")
+	accessToken, _ := auth.AccessTokenFromContext(ctx)
+	if strings.TrimSpace(accessToken) == "" && !auth.IsAuthenticated(ctx) {
+		return registry.Result{}, exportpkg.Errorf(exportpkg.CodeInvalidSpec, "authentication is required for terminology export")
 	}
 
 	app := strings.TrimSpace(p.Application)

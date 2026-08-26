@@ -249,6 +249,7 @@ func parseTermItem(app string, m map[string]any) Item {
 		Value:       mapString(m, "Value", "value"),
 		Kind:        mapString(m, "Kind", "kind"),
 		Source:      mapString(m, "Source", "source"),
+		Comments:    mapString(m, "Comments", "comments"),
 	}
 	if item.Application == "" {
 		item.Application = app

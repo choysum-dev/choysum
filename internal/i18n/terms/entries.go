@@ -28,8 +28,15 @@ func BuildPOEntries(lang string, items []Item) []po.Entry {
 		if item.Module != "" {
 			e.ExtractedComments = append(e.ExtractedComments, "module: "+item.Module)
 		}
+		kind := strings.TrimSpace(item.Kind)
+		if kind != "" && !strings.EqualFold(kind, "literal") {
+			e.ExtractedComments = append(e.ExtractedComments, "kind: "+kind)
+		}
 		if item.Source != "" {
 			e.TranslatorComments = append(e.TranslatorComments, "source: "+item.Source)
+		}
+		if refs := strings.Fields(strings.TrimSpace(item.Comments)); len(refs) > 0 {
+			e.References = append(e.References, refs...)
 		}
 		if strings.EqualFold(item.Status, "fuzzy") {
 			e.Flags = append(e.Flags, "fuzzy")

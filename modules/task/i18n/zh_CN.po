@@ -11,6 +11,71 @@ msgctxt "service/models/_cron"
 msgid "timezone is required"
 msgstr "时区为必填项"
 
+#: service/models/data_transfer_job.ts:110
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Company"
+msgstr "公司"
+
+#: service/models/data_transfer_job.ts:157
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Direction"
+msgstr "方向"
+
+#: service/models/data_transfer_job.ts:75
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Dry Run"
+msgstr "试运行"
+
+#: service/models/data_transfer_job.ts:68
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Policy"
+msgstr "策略"
+
+#: service/models/data_transfer_job.ts:54
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Profile"
+msgstr "概要"
+
+#: service/models/data_transfer_job.ts:117
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Progress Done"
+msgstr "已完成数"
+
+#: service/models/data_transfer_job.ts:124
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Progress Total"
+msgstr "总数"
+
+#: service/models/data_transfer_job.ts:130
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Report"
+msgstr "报告"
+
+#: service/models/data_transfer_job.ts:137
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Report Ref"
+msgstr "报告引用"
+
+#: service/models/data_transfer_job.ts:93
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Source Ref"
+msgstr "源引用"
+
+#: service/models/data_transfer_job.ts:144
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Spec Snapshot"
+msgstr "规格快照"
+
+#: service/models/data_transfer_job.ts:84
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Target Model"
+msgstr "目标模型"
+
+#: service/models/data_transfer_job.ts:102
+msgctxt "task.model.DataTransferJob.fields"
+msgid "Task Job"
+msgstr "任务作业"
+
 #: service/models/job.ts:150
 msgctxt "task.model.Job.fields"
 msgid "Attempt"
@@ -275,4 +340,3 @@ msgstr "触发用户"
 msgctxt "task.model.Schedule.fields"
 msgid "gRPC full method path invoked when the schedule fires."
 msgstr "计划触发时调用的 gRPC 完整方法路径。"
-

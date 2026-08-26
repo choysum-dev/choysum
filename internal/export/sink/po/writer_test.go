@@ -14,6 +14,20 @@ import (
 	i18npo "github.com/choysum-dev/choysum/internal/i18n/po"
 )
 
+func TestWrite_nilResult(t *testing.T) {
+	w := posink.Writer{}
+	if err := w.Write(context.Background(), nil, exportplan.Plan{}, nil); err == nil {
+		t.Fatal("expected nil result error")
+	}
+}
+
+func TestWrite_emptyEntries(t *testing.T) {
+	w := posink.Writer{}
+	if err := w.Write(context.Background(), nil, exportplan.Plan{}, &registry.Result{}); err == nil {
+		t.Fatal("expected empty entries error")
+	}
+}
+
 func TestWrite_populatesBytes(t *testing.T) {
 	result := &registry.Result{
 		POEntries: []i18npo.Entry{{

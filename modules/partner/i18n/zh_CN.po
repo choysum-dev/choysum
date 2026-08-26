@@ -251,6 +251,81 @@ msgctxt "service/models/partner_contact"
 msgid "PartnerId is required"
 msgstr "PartnerId 为必填项"
 
+#: web/components/PartnerImportWizard.vue:33
+msgctxt "web/components/PartnerImportWizard"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/components/PartnerImportWizard.vue:31
+msgctxt "web/components/PartnerImportWizard"
+msgid "Code"
+msgstr "编码"
+
+#: web/components/PartnerImportWizard.vue:28
+msgctxt "web/components/PartnerImportWizard"
+msgid "Detected headers"
+msgstr "检测到的表头"
+
+#: web/components/PartnerImportWizard.vue:36
+msgctxt "web/components/PartnerImportWizard"
+msgid "Done"
+msgstr "完成"
+
+#: web/components/PartnerImportWizard.vue:27
+msgctxt "web/components/PartnerImportWizard"
+msgid "Drop CSV here or click to browse"
+msgstr "拖放 CSV 到此处或点击浏览"
+
+#: web/components/PartnerImportWizard.vue:30
+msgctxt "web/components/PartnerImportWizard"
+msgid "Field"
+msgstr "字段"
+
+#: web/components/PartnerImportWizard.vue:25 web/components/PartnerImportWizard.vue:35
+msgctxt "web/components/PartnerImportWizard"
+msgid "Import"
+msgstr "导入"
+
+#: web/components/PartnerImportWizard.vue:22
+msgctxt "web/components/PartnerImportWizard"
+msgid "Import Partners"
+msgstr "导入伙伴"
+
+#: web/components/PartnerImportWizard.vue:37
+msgctxt "web/components/PartnerImportWizard"
+msgid "Import completed"
+msgstr "导入完成"
+
+#: web/components/PartnerImportWizard.vue:32
+msgctxt "web/components/PartnerImportWizard"
+msgid "Message"
+msgstr "消息"
+
+#: web/components/PartnerImportWizard.vue:38
+msgctxt "web/components/PartnerImportWizard"
+msgid "Partner rows were imported successfully."
+msgstr "伙伴行已成功导入。"
+
+#: web/components/PartnerImportWizard.vue:24 web/components/PartnerImportWizard.vue:34
+msgctxt "web/components/PartnerImportWizard"
+msgid "Preview"
+msgstr "预览"
+
+#: web/components/PartnerImportWizard.vue:29
+msgctxt "web/components/PartnerImportWizard"
+msgid "Row"
+msgstr "行"
+
+#: web/components/PartnerImportWizard.vue:23
+msgctxt "web/components/PartnerImportWizard"
+msgid "Upload CSV"
+msgstr "上传 CSV"
+
+#: web/components/PartnerImportWizard.vue:26
+msgctxt "web/components/PartnerImportWizard"
+msgid "Upload a UTF-8 CSV with columns Name, Code, IsActive, CustomerRank, SupplierRank."
+msgstr "上传包含 Name、Code、IsActive、CustomerRank、SupplierRank 列的 UTF-8 CSV。"
+
 #: web/menu/menus.ts:21
 msgctxt "web/menu/menus"
 msgid "Partner List"
@@ -260,6 +335,11 @@ msgstr "伙伴列表"
 msgctxt "web/menu/menus"
 msgid "Partner Management"
 msgstr "伙伴管理"
+
+#: web/pages/PartnerList.vue:16
+msgctxt "web/pages/PartnerList"
+msgid "Import CSV"
+msgstr "导入 CSV"
 
 #: web/route/routes.ts:41
 msgctxt "web/route/routes"
@@ -296,12 +376,12 @@ msgctxt "web/views/PartnerFormView"
 msgid "Basic Information"
 msgstr "基础信息"
 
-#: web/views/PartnerFormView.vue:83
+#: web/views/PartnerFormView.vue:84
 msgctxt "web/views/PartnerFormView"
 msgid "Billing Address"
 msgstr "开票地址"
 
-#: web/views/PartnerFormView.vue:105
+#: web/views/PartnerFormView.vue:106
 msgctxt "web/views/PartnerFormView"
 msgid "Billing Contact"
 msgstr "财务联系人"
@@ -321,12 +401,12 @@ msgctxt "web/views/PartnerFormView"
 msgid "Contacts and Addresses"
 msgstr "联系人与地址"
 
-#: web/views/PartnerFormView.vue:54
+#: web/views/PartnerFormView.vue:55
 msgctxt "web/views/PartnerFormView"
 msgid "Copy Partner"
 msgstr "复制伙伴"
 
-#: web/views/PartnerFormView.vue:54
+#: web/views/PartnerFormView.vue:55
 msgctxt "web/views/PartnerFormView"
 msgid "Create Partner"
 msgstr "新建伙伴"
@@ -346,7 +426,7 @@ msgctxt "web/views/PartnerFormView"
 msgid "Delete"
 msgstr "删除"
 
-#: web/views/PartnerFormView.vue:54
+#: web/views/PartnerFormView.vue:55
 msgctxt "web/views/PartnerFormView"
 msgid "Delete Partner"
 msgstr "删除伙伴"
@@ -361,7 +441,7 @@ msgctxt "web/views/PartnerFormView"
 msgid "Edit Contact"
 msgstr "编辑联系人"
 
-#: web/views/PartnerFormView.vue:54
+#: web/views/PartnerFormView.vue:55
 msgctxt "web/views/PartnerFormView"
 msgid "Edit Partner"
 msgstr "编辑伙伴"
@@ -371,12 +451,12 @@ msgctxt "web/views/PartnerFormView"
 msgid "Email"
 msgstr "邮箱"
 
-#: web/views/PartnerFormView.vue:113
+#: web/views/PartnerFormView.vue:114
 msgctxt "web/views/PartnerFormView"
 msgid "Finance Contact"
 msgstr "财务负责人"
 
-#: web/views/PartnerFormView.vue:103
+#: web/views/PartnerFormView.vue:104
 msgctxt "web/views/PartnerFormView"
 msgid "General Contact"
 msgstr "普通联系人"
@@ -386,7 +466,7 @@ msgctxt "web/views/PartnerFormView"
 msgid "Inactive"
 msgstr "停用"
 
-#: web/views/PartnerFormView.vue:115
+#: web/views/PartnerFormView.vue:116
 msgctxt "web/views/PartnerFormView"
 msgid "Legal Contact"
 msgstr "法务联系人"
@@ -396,17 +476,17 @@ msgctxt "web/views/PartnerFormView"
 msgid "New Contact"
 msgstr "新增联系人"
 
-#: web/views/PartnerFormView.vue:87
+#: web/views/PartnerFormView.vue:88
 msgctxt "web/views/PartnerFormView"
 msgid "Office Address"
 msgstr "办公地址"
 
-#: web/views/PartnerFormView.vue:91
+#: web/views/PartnerFormView.vue:92
 msgctxt "web/views/PartnerFormView"
 msgid "Other"
 msgstr "其他"
 
-#: web/views/PartnerFormView.vue:54
+#: web/views/PartnerFormView.vue:55
 msgctxt "web/views/PartnerFormView"
 msgid "Partner"
 msgstr "伙伴"
@@ -416,12 +496,12 @@ msgctxt "web/views/PartnerFormView"
 msgid "Phone"
 msgstr "电话"
 
-#: web/views/PartnerFormView.vue:109
+#: web/views/PartnerFormView.vue:110
 msgctxt "web/views/PartnerFormView"
 msgid "Procurement Contact"
 msgstr "采购联系人"
 
-#: web/views/PartnerFormView.vue:89
+#: web/views/PartnerFormView.vue:90
 msgctxt "web/views/PartnerFormView"
 msgid "Registered Address"
 msgstr "注册地址"
@@ -431,7 +511,7 @@ msgctxt "web/views/PartnerFormView"
 msgid "Related Data"
 msgstr "关联数据"
 
-#: web/views/PartnerFormView.vue:33
+#: web/views/PartnerFormView.vue:34
 msgctxt "web/views/PartnerFormView"
 msgid "Required"
 msgstr "必填"
@@ -441,7 +521,7 @@ msgctxt "web/views/PartnerFormView"
 msgid "Role"
 msgstr "角色"
 
-#: web/views/PartnerFormView.vue:111
+#: web/views/PartnerFormView.vue:112
 msgctxt "web/views/PartnerFormView"
 msgid "Sales Contact"
 msgstr "销售联系人"
@@ -466,12 +546,12 @@ msgctxt "web/views/PartnerFormView"
 msgid "Select Language"
 msgstr "选择语言"
 
-#: web/views/PartnerFormView.vue:85
+#: web/views/PartnerFormView.vue:86
 msgctxt "web/views/PartnerFormView"
 msgid "Shipping Address"
 msgstr "收货地址"
 
-#: web/views/PartnerFormView.vue:107
+#: web/views/PartnerFormView.vue:108
 msgctxt "web/views/PartnerFormView"
 msgid "Shipping Contact"
 msgstr "收货联系人"
@@ -515,4 +595,3 @@ msgstr "打开伙伴详情"
 msgctxt "web/views/PartnerListView"
 msgid "Partner"
 msgstr "伙伴"
-

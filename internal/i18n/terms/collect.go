@@ -34,7 +34,11 @@ func CollectAll(ctx context.Context, accessToken, app, lang string, modules []st
 			total = probe.Total
 		}
 	} else {
-		total, err = CountAppTerms(ctx, accessToken, app, lang, modules, "")
+		if hasHooks && hooks.count != nil {
+			total, err = hooks.count(ctx, accessToken, app, lang, modules, "")
+		} else {
+			total, err = CountAppTerms(ctx, accessToken, app, lang, modules, "")
+		}
 		if err != nil {
 			return nil, false, err
 		}
@@ -64,7 +68,10 @@ func CollectAll(ctx context.Context, accessToken, app, lang string, modules []st
 		all = append(all, result.Items...)
 		offset += len(result.Items)
 		if len(all) >= ExportMaxItems {
-			if total <= 0 || total > int64(len(all)) {
+			switch {
+			case total > int64(len(all)):
+				truncated = true
+			case total <= 0 && len(result.Items) == page:
 				truncated = true
 			}
 			break

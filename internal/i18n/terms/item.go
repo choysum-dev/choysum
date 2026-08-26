@@ -12,6 +12,7 @@ type Item struct {
 	Value       string
 	Kind        string
 	Source      string
+	Comments    string
 	Status      string
 }
 
