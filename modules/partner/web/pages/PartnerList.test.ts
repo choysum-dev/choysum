@@ -9,10 +9,11 @@ import { createI18n } from 'vue-i18n';
 
 config.global.renderStubDefaultSlot = true;
 
-const { refresh, exportFieldSelection, buildUnifiedQuery } = vi.hoisted(() => ({
+const { refresh, exportFieldSelection, buildUnifiedQuery, listSelectedItems } = vi.hoisted(() => ({
   refresh: vi.fn(),
   exportFieldSelection: vi.fn(() => ['Name', 'CompanyId.Code', 'Id']),
   buildUnifiedQuery: vi.fn(() => ({ filters: { And: [{ field: 'Name', op: 'contains', value: 'A' }] } })),
+  listSelectedItems: { current: { value: [{ Id: 'p1' }, { Id: 'p2' }] } as { value?: { Id?: string }[] } | { Id?: string }[] },
 }));
 
 vi.mock('vue-router', () => ({
@@ -50,7 +51,7 @@ vi.mock('../views/PartnerListView.vue', () => ({
     setup(_: unknown, { expose }: { expose: (exposed: Record<string, unknown>) => void }) {
       expose({
         refresh,
-        selectedItems: { value: [{ Id: 'p1' }, { Id: 'p2' }] },
+        selectedItems: listSelectedItems.current,
       });
       return () => null;
     },
@@ -84,6 +85,8 @@ const i18n = createI18n({
 
 describe('PartnerList page', () => {
   beforeEach(async () => {
+    listSelectedItems.current = { value: [{ Id: 'p1' }, { Id: 'p2' }] };
+    exportFieldSelection.mockReturnValue(['Name', 'CompanyId.Code', 'Id']);
     const ctx = await import('@/core/rpc/context');
     (ctx.getCurrentRequestContext as any).mockReset();
     (ctx.getCurrentRequestContext as any).mockReturnValue({ activeCompanyId: 'cmp-1' });
@@ -160,5 +163,33 @@ describe('PartnerList page', () => {
     expect(panel.props('defaultFields')).toEqual(['Name', 'CompanyId/Code']);
     expect(buildUnifiedQuery).toHaveBeenCalled();
     expect(exportFieldSelection).toHaveBeenCalledWith('Partner_/partner/partners');
+  });
+
+  it('reads selected ids from a plain selectedItems array', async () => {
+    listSelectedItems.current = [{ Id: 'p9' }];
+    const PartnerList = (await import('./PartnerList.vue')).default;
+    const wrapper = mount(PartnerList, {
+      global: {
+        plugins: [i18n],
+        stubs: { OPage: { template: '<div><slot /></div>' } },
+      },
+    });
+    await nextTick();
+    const panel = wrapper.findComponent({ name: 'ExportPanelStub' });
+    expect(panel.props('ids')).toEqual(['p9']);
+  });
+
+  it('uses empty default fields when registry selection is missing', async () => {
+    exportFieldSelection.mockReturnValue(null as unknown as string[]);
+    const PartnerList = (await import('./PartnerList.vue')).default;
+    const wrapper = mount(PartnerList, {
+      global: {
+        plugins: [i18n],
+        stubs: { OPage: { template: '<div><slot /></div>' } },
+      },
+    });
+    await nextTick();
+    const panel = wrapper.findComponent({ name: 'ExportPanelStub' });
+    expect(panel.props('defaultFields')).toEqual([]);
   });
 });

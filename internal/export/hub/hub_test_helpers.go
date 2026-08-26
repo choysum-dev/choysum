@@ -162,6 +162,15 @@ func (nilMetaIdentity) GetMetadata() map[string]interface{} {
 }
 func (nilMetaIdentity) IsValid() bool { return true }
 
+type companyMetaIdentity struct{}
+
+func (companyMetaIdentity) GetUserID() string  { return "u1" }
+func (companyMetaIdentity) GetTokenID() string { return "tok" }
+func (companyMetaIdentity) GetMetadata() map[string]interface{} {
+	return map[string]interface{}{"companyId": "cmp-fallback"}
+}
+func (companyMetaIdentity) IsValid() bool { return true }
+
 func authCtxWithServer(t *testing.T, server authpb.UserServer) context.Context {
 	t.Helper()
 	lis := bufconn.Listen(1024 * 1024)

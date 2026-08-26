@@ -11,6 +11,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/export/proto/exportpb"
 	recordreader "github.com/choysum-dev/choysum/internal/export/reader/record"
 	importwriter "github.com/choysum-dev/choysum/internal/import/writer/record"
+	exportpkg "github.com/choysum-dev/choysum/pkg/export"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"google.golang.org/grpc/codes"
@@ -37,6 +38,14 @@ func describeFields(ctx context.Context, runtimeScope scope.Scope, req *exportpb
 		return nil, status.Errorf(codes.InvalidArgument, "model lookup failed: %v", err)
 	}
 
+	defaults, err := recordreader.DefaultExportFields(modelName)
+	if err != nil {
+		if expErr, ok := exportpkg.AsError(err); ok && expErr.Code == exportpkg.CodeModelNotFound {
+			return nil, status.Error(codes.FailedPrecondition, expErr.Error())
+		}
+		return nil, status.Errorf(codes.Internal, "default export fields: %v", err)
+	}
+
 	fields, err := importwriter.ListFields(session.DB, model)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "list fields: %v", err)
@@ -49,11 +58,6 @@ func describeFields(ctx context.Context, runtimeScope scope.Scope, req *exportpb
 			continue
 		}
 		nodes = append(nodes, node)
-	}
-
-	defaults, err := recordreader.DefaultExportFields(modelName)
-	if err != nil {
-		defaults = nil
 	}
 
 	return &exportpb.DescribeFieldsResponse{

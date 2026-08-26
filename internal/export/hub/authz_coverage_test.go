@@ -355,3 +355,66 @@ func TestHubDescribeFieldsEmptyModel(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestCheckModelExportAccessEmptyModel(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	ctx := authCtx(t)
+	err := checkModelExportAccess(ctx, runtimeScope, "  ", "")
+	if err == nil || status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestActiveCompanyIDCompanyIdFallback(t *testing.T) {
+	ctx := auth.ContextWithIdentity(context.Background(), companyMetaIdentity{})
+	if got := activeCompanyID(ctx); got != "cmp-fallback" {
+		t.Fatalf("companyId fallback = %q", got)
+	}
+}
+
+func TestRunExportWithExplicitCompanyID(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	seedPartnerModelMeta(t, runtimeScope.Session().DB)
+	ctx := authCtx(t)
+	var captured exportpkg.Spec
+	_, err := runExport(ctx, Deps{
+		RuntimeScope: runtimeScope,
+		JSExecutor:   stubJSExecutor{},
+		Run: func(_ context.Context, _ scope.Scope, spec exportpkg.Spec) (importpkg.Report, error) {
+			captured = spec
+			return importpkg.Report{Stats: importpkg.Stats{Ok: 1}}, nil
+		},
+	}, &exportpb.ExportRunRequest{Model: "partner.Partner", CompanyId: "cmp-explicit"}, false)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if captured.Options.CompanyID != "cmp-explicit" {
+		t.Fatalf("company_id = %q", captured.Options.CompanyID)
+	}
+}
+
+func TestRunExportWithJSExecutorAndInlineCSV(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	seedCountryModelMeta(t, runtimeScope.Session().DB)
+	ctx := authCtx(t)
+	_, err := runExport(ctx, Deps{
+		RuntimeScope: runtimeScope,
+		JSExecutor:   stubJSExecutor{},
+		Run: func(context.Context, scope.Scope, exportpkg.Spec) (importpkg.Report, error) {
+			return importpkg.Report{Stats: importpkg.Stats{Ok: 1}}, nil
+		},
+	}, &exportpb.ExportRunRequest{Model: "base.Country"}, false)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+}
+
+func TestToRecordSpecUnspecifiedMode(t *testing.T) {
+	spec, err := toRecordSpec(&exportpb.ExportRunRequest{
+		Model: "base.Country",
+		Mode:  exportpb.ExportMode_EXPORT_MODE_UNSPECIFIED,
+	}, false)
+	if err != nil || spec.Mode != exportpkg.ModeData {
+		t.Fatalf("spec = %#v err=%v", spec, err)
+	}
+}

@@ -140,13 +140,16 @@ func TestDescribeFieldsUnavailableSession(t *testing.T) {
 
 func TestDescribeFieldsDefaultFieldsUnsupportedModel(t *testing.T) {
 	runtimeScope := newHubTestScope(t)
-	seedCountryModelMeta(t, runtimeScope.Session().DB)
-	resp, err := describeFields(runtimeScope.Context(), runtimeScope, &exportpb.DescribeFieldsRequest{Model: "base.Country"})
-	if err != nil {
-		t.Fatalf("describeFields: %v", err)
+	db := runtimeScope.Session().DB
+	if err := db.AutoMigrate(&meta.Model{}); err != nil {
+		t.Fatal(err)
 	}
-	if len(resp.GetDefaultFields()) == 0 {
-		t.Fatal("expected country defaults")
+	if err := db.Create(&meta.Model{Name: "Currency", Application: "base", Path: "/tmp", ModelTable: "base_currency"}).Error; err != nil {
+		t.Fatal(err)
+	}
+	_, err := describeFields(runtimeScope.Context(), runtimeScope, &exportpb.DescribeFieldsRequest{Model: "base.Currency"})
+	if err == nil || status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("err = %v", err)
 	}
 }
 
@@ -207,5 +210,53 @@ func TestShouldSkipExportFieldEdgeCases(t *testing.T) {
 func TestImportwriterFieldIsManyToOneNil(t *testing.T) {
 	if importwriterFieldIsManyToOne(nil) {
 		t.Fatal("nil field is not m2o")
+	}
+}
+
+func TestImportwriterFieldIsManyToOneRelationName(t *testing.T) {
+	if !importwriterFieldIsManyToOne(&meta.Field{Name: "CompanyId", Relation: "ManyToOne"}) {
+		t.Fatal("expected ManyToOne relation")
+	}
+}
+
+func TestExportFieldNodeSkipsNonCodeNameChildren(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.AutoMigrate(&meta.Model{}, &meta.Field{}); err != nil {
+		t.Fatal(err)
+	}
+	company := &meta.Model{Name: "Company", Application: "base", Path: "/tmp", ModelTable: "base_company"}
+	if err := db.Create(company).Error; err != nil {
+		t.Fatal(err)
+	}
+	for _, field := range []meta.Field{
+		{Name: "Extra", FieldType: "varchar", ModelId: company.Id, FieldString: "Extra"},
+	} {
+		if err := db.Create(&field).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	node, err := exportFieldNode(db, meta.Field{
+		Name:          "CompanyId",
+		FieldType:     "ManyToOneRef",
+		RelationModel: "base.Company",
+		FieldString:   "Company",
+	})
+	if err != nil || node == nil || len(node.GetChildren()) != 0 {
+		t.Fatalf("node=%#v err=%v", node, err)
+	}
+}
+
+func TestShouldSkipExportFieldEmptyName(t *testing.T) {
+	if !shouldSkipExportField(&meta.Field{Name: "   "}) {
+		t.Fatal("expected empty name to skip")
+	}
+}
+
+func TestExportFieldNodeBasicField(t *testing.T) {
+	field := meta.Field{Name: "Name", FieldType: "varchar", FieldString: "Name"}
+	node, err := exportFieldNode(newHubTestScope(t).Session().DB, field)
+	if err != nil || node == nil || node.GetPath() != "Name" {
+		t.Fatalf("node=%#v err=%v", node, err)
 	}
 }

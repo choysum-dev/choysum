@@ -24,4 +24,8 @@ describe('normalizeExportFieldPaths', () => {
     expect(normalizeExportFieldPaths(null)).toEqual([]);
     expect(normalizeExportFieldPaths(undefined)).toEqual([]);
   });
+
+  it('skips blank normalized paths', () => {
+    expect(normalizeExportFieldPaths(['', '   ', 'Name'])).toEqual(['Name']);
+  });
 });

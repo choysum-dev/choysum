@@ -31,4 +31,18 @@ describe('exportReportErrorText', () => {
   it('returns generic failure text', () => {
     expect(exportReportErrorText({ stats: { ok: 0 } })).toBe('Export failed.');
   });
+
+  it('uses unspecified message text when present', () => {
+    expect(
+      exportReportErrorText({
+        messages: [{ type_: ExportMessageType.UNSPECIFIED, text: '  row failed  ' }],
+      }),
+    ).toBe('  row failed  ');
+  });
+});
+
+describe('exportReportHasErrors skip messages', () => {
+  it('ignores skip messages', () => {
+    expect(exportReportHasErrors({ messages: [{ type_: ExportMessageType.SKIP, text: 'skipped' }] })).toBe(false);
+  });
 });

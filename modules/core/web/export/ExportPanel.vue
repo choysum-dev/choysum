@@ -187,6 +187,7 @@ async function loadFields() {
 
 function onOpen() {
   invalidateSession();
+  busy.value = false;
   exportError.value = '';
   exportDone.value = false;
   previewReport.value = null;
@@ -209,23 +210,36 @@ function onFieldCheck() {
 }
 
 async function runPreview() {
+  const token = sessionToken;
   busy.value = true;
   exportError.value = '';
   try {
     const resp = await previewExport(buildRunInput());
+    if (!isActiveSession(token)) {
+      return;
+    }
     previewReport.value = resp.report ?? null;
   } catch (err) {
+    if (!isActiveSession(token)) {
+      return;
+    }
     exportError.value = err instanceof Error ? err.message : String(err);
   } finally {
-    busy.value = false;
+    if (isActiveSession(token)) {
+      busy.value = false;
+    }
   }
 }
 
 async function commitExport() {
+  const token = sessionToken;
   busy.value = true;
   exportError.value = '';
   try {
     const resp = await runExport(buildRunInput());
+    if (!isActiveSession(token)) {
+      return;
+    }
     const report = resp.report ?? null;
     if (exportReportHasErrors(report)) {
       exportError.value = exportReportErrorText(report);
@@ -240,9 +254,14 @@ async function commitExport() {
     }
     exportDone.value = true;
   } catch (err) {
+    if (!isActiveSession(token)) {
+      return;
+    }
     exportError.value = err instanceof Error ? err.message : String(err);
   } finally {
-    busy.value = false;
+    if (isActiveSession(token)) {
+      busy.value = false;
+    }
   }
 }
 

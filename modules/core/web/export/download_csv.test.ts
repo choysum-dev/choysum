@@ -9,6 +9,7 @@ describe('suggestExportFileName', () => {
   it('uses model segment for file name', () => {
     expect(suggestExportFileName('partner.Partner')).toBe('Partner.csv');
     expect(suggestExportFileName('')).toBe('export.csv');
+    expect(suggestExportFileName('single')).toBe('single.csv');
   });
 });
 
