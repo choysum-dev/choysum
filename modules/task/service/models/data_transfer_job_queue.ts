@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import ImportJob from './import_job';
+import DataTransferJob from './data_transfer_job';
 import Job from './job';
 
-export type ImportJobQueueStatus = {
-  importJobId: string;
+export type DataTransferJobQueueStatus = {
+  dataTransferJobId: string;
   taskJobId: string;
   queueStatus: string;
   progressDone: number;
@@ -14,13 +14,13 @@ export type ImportJobQueueStatus = {
   reportRef?: string;
 };
 
-/** Joins lean ImportJob domain fields with task.Job queue status. */
-export async function getQueueStatus(importJobId: string): Promise<ImportJobQueueStatus> {
-  const id = String(importJobId || '').trim();
+/** Joins lean DataTransferJob domain fields with task.Job queue status. */
+export async function getQueueStatus(dataTransferJobId: string): Promise<DataTransferJobQueueStatus> {
+  const id = String(dataTransferJobId || '').trim();
   if (!id) {
-    throw new Error('importJobId is required');
+    throw new Error('dataTransferJobId is required');
   }
-  const row = await ImportJob.Browse(id, [
+  const row = await DataTransferJob.Browse(id, [
     'Id',
     'TaskJobId',
     'ProgressDone',
@@ -29,15 +29,15 @@ export async function getQueueStatus(importJobId: string): Promise<ImportJobQueu
     'ReportRef',
   ] as any);
   if (!row) {
-    throw new Error(`import job ${id} not found`);
+    throw new Error(`data transfer job ${id} not found`);
   }
   const taskJobId = String((row as any)?.TaskJobId || '').trim();
   if (!taskJobId) {
-    throw new Error('import job is missing task job link');
+    throw new Error('data transfer job is missing task job link');
   }
   const taskJob = await Job.GetJob(taskJobId, ['Id', 'Status'] as any);
   return {
-    importJobId: id,
+    dataTransferJobId: id,
     taskJobId,
     queueStatus: String((taskJob as any)?.Status || ''),
     progressDone: Number((row as any)?.ProgressDone ?? 0),

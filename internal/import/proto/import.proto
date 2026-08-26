@@ -81,7 +81,7 @@ message ImportRunAsyncRequest {
 }
 
 message ImportRunAsyncResponse {
-  string import_job_id = 1;
+  string data_transfer_job_id = 1;
   string task_job_id = 2;
   ImportReport report = 3;
 }

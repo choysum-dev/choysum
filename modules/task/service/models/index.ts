@@ -7,6 +7,10 @@
 export { default as Job } from './job';
 export { default as JobExecution } from './execution';
 export { default as Schedule } from './schedule';
-export { default as ImportJob, IMPORT_JOB_EXECUTE_FULL_METHOD } from './import_job';
-export { getQueueStatus } from './import_job_queue';
-export { executeImportJob } from './import_job_worker';
+export {
+  default as DataTransferJob,
+  DATA_TRANSFER_JOB_EXECUTE_IMPORT_FULL_METHOD,
+  DATA_TRANSFER_JOB_EXECUTE_EXPORT_FULL_METHOD,
+} from './data_transfer_job';
+export { getQueueStatus } from './data_transfer_job_queue';
+export { executeImport, executeExport } from './data_transfer_job_worker';

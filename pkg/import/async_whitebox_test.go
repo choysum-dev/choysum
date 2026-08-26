@@ -9,13 +9,13 @@ import (
 	"testing"
 )
 
-func TestJobRecordFromSpec_SnapshotError(t *testing.T) {
+func TestDataTransferJobRecordFromSpec_SnapshotError(t *testing.T) {
 	orig := marshalSpecSnapshot
 	t.Cleanup(func() { marshalSpecSnapshot = orig })
 	marshalSpecSnapshot = func(any) ([]byte, error) {
 		return nil, errors.New("marshal boom")
 	}
-	_, err := JobRecordFromSpec(Spec{Profile: ProfileRecord, Model: "base.Country"})
+	_, err := DataTransferJobRecordFromSpec(Spec{Profile: ProfileRecord, Model: "base.Country"})
 	if err == nil {
 		t.Fatal("expected snapshot error")
 	}

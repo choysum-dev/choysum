@@ -17,14 +17,14 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const enqueueImportJobService = "task.ImportJob.EnqueueRecordImport"
+const enqueueDataTransferJobService = "task.DataTransferJob.EnqueueRecordImport"
 
 var (
-	jobRecordFromSpec = importpkg.JobRecordFromSpec
-	jsonUnmarshal     = json.Unmarshal
+	dataTransferJobRecordFromSpec = importpkg.DataTransferJobRecordFromSpec
+	jsonUnmarshal                 = json.Unmarshal
 )
 
-type enqueueImportJobInput struct {
+type enqueueDataTransferJobInput struct {
 	TargetModel  string         `json:"targetModel"`
 	SourceRef    string         `json:"sourceRef"`
 	CompanyID    string         `json:"companyId,omitempty"`
@@ -33,9 +33,9 @@ type enqueueImportJobInput struct {
 	SpecSnapshot map[string]any `json:"specSnapshot"`
 }
 
-type enqueueImportJobResult struct {
-	ImportJobID string `json:"importJobId"`
-	TaskJobID   string `json:"taskJobId"`
+type enqueueDataTransferJobResult struct {
+	DataTransferJobID string `json:"dataTransferJobId"`
+	TaskJobID         string `json:"taskJobId"`
 }
 
 func runImportAsync(
@@ -74,7 +74,7 @@ func runImportAsync(
 	}
 
 	var specSnapshot map[string]any
-	jobRecord, err := jobRecordFromSpec(spec)
+	jobRecord, err := dataTransferJobRecordFromSpec(spec)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "marshal spec snapshot: %v", err)
 	}
@@ -84,7 +84,7 @@ func runImportAsync(
 
 	userID := schedulerUserID(ctx)
 
-	enqueueInput := enqueueImportJobInput{
+	enqueueInput := enqueueDataTransferJobInput{
 		TargetModel:  spec.Model,
 		SourceRef:    strings.TrimSpace(spec.Source.DocumentRef),
 		CompanyID:    companyID,
@@ -92,7 +92,7 @@ func runImportAsync(
 		Profile:      string(spec.Profile),
 		SpecSnapshot: specSnapshot,
 	}
-	result, err := enqueueImportJob(ctx, deps, enqueueInput, userID)
+	result, err := enqueueDataTransferJob(ctx, deps, enqueueInput, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -107,37 +107,37 @@ func runImportAsync(
 		},
 	}
 	return &importpb.ImportRunAsyncResponse{
-		ImportJobId: result.ImportJobID,
-		TaskJobId:   result.TaskJobID,
-		Report:      importproto.ReportToProto(emptyReport),
+		DataTransferJobId: result.DataTransferJobID,
+		TaskJobId:         result.TaskJobID,
+		Report:            importproto.ReportToProto(emptyReport),
 	}, nil
 }
 
-func enqueueImportJob(ctx context.Context, deps Deps, input enqueueImportJobInput, userID string) (enqueueImportJobResult, error) {
+func enqueueDataTransferJob(ctx context.Context, deps Deps, input enqueueDataTransferJobInput, userID string) (enqueueDataTransferJobResult, error) {
 	resp, err := deps.JSExecutor.Execute(ctx, &jsengine.JsRequest{
 		Id:      "import-run-async",
-		Service: enqueueImportJobService,
+		Service: enqueueDataTransferJobService,
 		Args:    []any{input},
 		Context: map[string]any{
 			"userId": userID,
 		},
 	})
 	if err != nil {
-		return enqueueImportJobResult{}, status.Errorf(codes.Internal, "enqueue import job: %v", err)
+		return enqueueDataTransferJobResult{}, status.Errorf(codes.Internal, "enqueue data transfer job: %v", err)
 	}
 	if resp == nil || resp.Result == nil {
-		return enqueueImportJobResult{}, status.Error(codes.Internal, "enqueue import job returned empty result")
+		return enqueueDataTransferJobResult{}, status.Error(codes.Internal, "enqueue data transfer job returned empty result")
 	}
 	raw, err := json.Marshal(resp.Result)
 	if err != nil {
-		return enqueueImportJobResult{}, status.Errorf(codes.Internal, "marshal enqueue result: %v", err)
+		return enqueueDataTransferJobResult{}, status.Errorf(codes.Internal, "marshal enqueue result: %v", err)
 	}
-	var result enqueueImportJobResult
+	var result enqueueDataTransferJobResult
 	if err := json.Unmarshal(raw, &result); err != nil {
-		return enqueueImportJobResult{}, status.Errorf(codes.Internal, "decode enqueue result: %v", err)
+		return enqueueDataTransferJobResult{}, status.Errorf(codes.Internal, "decode enqueue result: %v", err)
 	}
-	if strings.TrimSpace(result.ImportJobID) == "" || strings.TrimSpace(result.TaskJobID) == "" {
-		return enqueueImportJobResult{}, status.Error(codes.Internal, "enqueue import job returned incomplete ids")
+	if strings.TrimSpace(result.DataTransferJobID) == "" || strings.TrimSpace(result.TaskJobID) == "" {
+		return enqueueDataTransferJobResult{}, status.Error(codes.Internal, "enqueue data transfer job returned incomplete ids")
 	}
 	return result, nil
 }

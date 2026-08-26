@@ -24,7 +24,7 @@ type stubEnqueueExecutor struct {
 }
 
 func (s stubEnqueueExecutor) Execute(_ context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
-	if req != nil && req.Service == enqueueImportJobService {
+	if req != nil && req.Service == enqueueDataTransferJobService {
 		if s.err != nil {
 			return nil, s.err
 		}
@@ -42,15 +42,15 @@ func (failMarshalResult) MarshalJSON() ([]byte, error) {
 	return nil, errors.New("marshal failed")
 }
 
-func TestRunAsync_CreatesImportJobAndTaskJob(t *testing.T) {
+func TestRunAsync_CreatesDataTransferJobAndTaskJob(t *testing.T) {
 	runtimeScope := newHubTestScope(t)
 	ctx := authCtx(t)
 	h := New(Deps{
 		RuntimeScope: runtimeScope,
 		JSExecutor: stubEnqueueExecutor{
 			result: map[string]any{
-				"importJobId": "ij-1",
-				"taskJobId":   "tj-1",
+				"dataTransferJobId": "ij-1",
+				"taskJobId":         "tj-1",
 			},
 		},
 	})
@@ -65,7 +65,7 @@ func TestRunAsync_CreatesImportJobAndTaskJob(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RunAsync: %v", err)
 	}
-	if resp.GetImportJobId() != "ij-1" || resp.GetTaskJobId() != "tj-1" {
+	if resp.GetDataTransferJobId() != "ij-1" || resp.GetTaskJobId() != "tj-1" {
 		t.Fatalf("response = %+v", resp)
 	}
 	if resp.GetReport() == nil || resp.GetReport().GetMeta().GetTargetModel() != "base.Country" {
@@ -152,8 +152,8 @@ func TestRunAsync_ErrorPaths(t *testing.T) {
 		h := New(Deps{
 			RuntimeScope: runtimeScope,
 			JSExecutor: stubEnqueueExecutor{result: map[string]any{
-				"importJobId": "ij-active",
-				"taskJobId":   "tj-active",
+				"dataTransferJobId": "ij-active",
+				"taskJobId":         "tj-active",
 			}},
 		})
 		resp, err := h.RunAsync(ctx, &importpb.ImportRunAsyncRequest{
@@ -166,7 +166,7 @@ func TestRunAsync_ErrorPaths(t *testing.T) {
 		if err != nil {
 			t.Fatalf("RunAsync: %v", err)
 		}
-		if resp.GetImportJobId() != "ij-active" {
+		if resp.GetDataTransferJobId() != "ij-active" {
 			t.Fatalf("resp = %+v", resp)
 		}
 	})
@@ -260,7 +260,7 @@ func TestRunAsync_ErrorPaths(t *testing.T) {
 		h := New(Deps{
 			RuntimeScope: runtimeScope,
 			JSExecutor: stubEnqueueExecutor{result: map[string]any{
-				"importJobId": "ij-only",
+				"dataTransferJobId": "ij-only",
 			}},
 		})
 		_, err := h.RunAsync(ctx, &importpb.ImportRunAsyncRequest{
@@ -285,10 +285,10 @@ func TestRunAsync_ErrorPaths(t *testing.T) {
 	})
 
 	t.Run("job record from spec error", func(t *testing.T) {
-		orig := jobRecordFromSpec
-		t.Cleanup(func() { jobRecordFromSpec = orig })
-		jobRecordFromSpec = func(importpkg.Spec) (importpkg.JobRecord, error) {
-			return importpkg.JobRecord{}, errors.New("snapshot failed")
+		orig := dataTransferJobRecordFromSpec
+		t.Cleanup(func() { dataTransferJobRecordFromSpec = orig })
+		dataTransferJobRecordFromSpec = func(importpkg.Spec) (importpkg.DataTransferJobRecord, error) {
+			return importpkg.DataTransferJobRecord{}, errors.New("snapshot failed")
 		}
 		h := New(Deps{RuntimeScope: runtimeScope, JSExecutor: stubEnqueueExecutor{}})
 		_, err := h.RunAsync(ctx, &importpb.ImportRunAsyncRequest{
@@ -318,8 +318,8 @@ func TestRunAsync_ErrorPaths(t *testing.T) {
 		h := New(Deps{
 			RuntimeScope: runtimeScope,
 			JSExecutor: stubEnqueueExecutor{result: map[string]any{
-				"importJobId": "ij-sk",
-				"taskJobId":   "tj-sk",
+				"dataTransferJobId": "ij-sk",
+				"taskJobId":         "tj-sk",
 			}},
 		})
 		resp, err := h.RunAsync(ctx, &importpb.ImportRunAsyncRequest{
@@ -352,7 +352,7 @@ type nilResponseExecutor struct {
 }
 
 func (nilResponseExecutor) Execute(_ context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
-	if req != nil && req.Service == enqueueImportJobService {
+	if req != nil && req.Service == enqueueDataTransferJobService {
 		return nil, nil
 	}
 	return &jsengine.JsResponse{}, nil
