@@ -6,6 +6,7 @@ package proto
 import (
 	"testing"
 
+	"github.com/choysum-dev/choysum/internal/export/proto/exportpb"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
 )
 
@@ -54,5 +55,63 @@ func TestExportReportProtoRoundTrip(t *testing.T) {
 func TestExportReportFromProtoNil(t *testing.T) {
 	if got := ReportFromProto(nil); got.Profile != "" || len(got.Messages) != 0 {
 		t.Fatalf("nil proto = %#v", got)
+	}
+}
+
+func TestExportMessageTypeConversionBranches(t *testing.T) {
+	cases := []struct {
+		domain importpkg.MessageType
+		pb     exportpb.ExportMessageType
+	}{
+		{importpkg.MessageError, exportpb.ExportMessageType_EXPORT_MESSAGE_TYPE_ERROR},
+		{importpkg.MessageWarning, exportpb.ExportMessageType_EXPORT_MESSAGE_TYPE_WARNING},
+		{importpkg.MessageSkip, exportpb.ExportMessageType_EXPORT_MESSAGE_TYPE_SKIP},
+		{importpkg.MessageType(""), exportpb.ExportMessageType_EXPORT_MESSAGE_TYPE_UNSPECIFIED},
+	}
+	for _, tc := range cases {
+		if got := messageTypeToProto(tc.domain); got != tc.pb {
+			t.Fatalf("messageTypeToProto(%q) = %v", tc.domain, got)
+		}
+		if got := messageTypeFromProto(tc.pb); got != tc.domain {
+			t.Fatalf("messageTypeFromProto(%v) = %q", tc.pb, got)
+		}
+	}
+	if got := messageTypeFromProto(exportpb.ExportMessageType_EXPORT_MESSAGE_TYPE_UNSPECIFIED); got != importpkg.MessageType("") {
+		t.Fatalf("unspecified = %q", got)
+	}
+}
+
+func TestExportMessagesConversionNilAndEmpty(t *testing.T) {
+	if messagesToProto(nil) != nil {
+		t.Fatal("nil messages to proto")
+	}
+	if messagesFromProto(nil) != nil {
+		t.Fatal("nil messages from proto")
+	}
+	if len(messagesFromProto([]*exportpb.ExportMessage{nil, {Type: exportpb.ExportMessageType_EXPORT_MESSAGE_TYPE_ERROR, Text: "x"}})) != 1 {
+		t.Fatal("skip nil message")
+	}
+	if statsFromProto(nil) != (importpkg.Stats{}) {
+		t.Fatal("nil stats")
+	}
+}
+
+func TestExportReportToProtoWithoutMeta(t *testing.T) {
+	pb := ReportToProto(importpkg.Report{
+		Profile: importpkg.ProfileRecord,
+		Stats:   importpkg.Stats{Total: 1},
+	})
+	if pb.GetMeta() != nil {
+		t.Fatal("expected nil meta")
+	}
+}
+
+func TestExportReportToProtoWithMeta(t *testing.T) {
+	pb := ReportToProto(importpkg.Report{
+		Profile: importpkg.ProfileRecord,
+		Meta:    &importpkg.ReportMeta{Lang: "en", TargetModel: "base.Country"},
+	})
+	if pb.GetMeta().GetLang() != "en" || pb.GetMeta().GetTargetModel() != "base.Country" {
+		t.Fatalf("meta = %#v", pb.GetMeta())
 	}
 }

@@ -56,6 +56,8 @@ import { computed, ref, watch } from 'vue';
 import type ElTree from 'element-plus/es/components/tree/src/tree.vue';
 import { describeExportFields, previewExport, runExport, ExportMode, type ExportFieldNode, type ExportReport } from './client';
 import { downloadExportCsvBytes, suggestExportFileName } from './download_csv';
+import { normalizeExportFieldPaths } from './field_paths';
+import { exportReportErrorText, exportReportHasErrors } from './report';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'ExportPanel' });
@@ -80,6 +82,7 @@ const previewActionLabel = _t('Preview');
 const exportActionLabel = _t('Export CSV');
 const doneLabel = _t('Done');
 const exportSuccessTitle = _t('Export completed');
+const exportArtifactSubtitle = _t('CSV stored as document %ref.');
 const loadingFieldsLabel = _t('Loading fields…');
 const noFieldsLabel = _t('No exportable fields were returned.');
 const selectedScopeLabel = _t('Export %count selected row(s).');
@@ -96,6 +99,8 @@ const exportDone = ref(false);
 const exportError = ref('');
 const exportSuccessSubtitle = ref('');
 const fieldTreeRef = ref<InstanceType<typeof ElTree> | null>(null);
+
+let sessionToken = 0;
 
 const treeProps = { label: 'label', children: 'children' };
 
@@ -132,7 +137,7 @@ function buildRunInput() {
   return {
     model: props.model,
     companyId: props.companyId,
-    fields: effectiveFields.value,
+    fields: normalizeExportFieldPaths(effectiveFields.value),
     ids: ids.length > 0 ? ids : [],
     domain: ids.length > 0 ? '' : props.domain ?? '',
     mode: ExportMode.DATA,
@@ -149,21 +154,39 @@ function mapFieldNodes(nodes: ExportFieldNode[]): Array<{ path: string; label: s
     }));
 }
 
+function isActiveSession(token: number): boolean {
+  return token === sessionToken;
+}
+
+function invalidateSession() {
+  sessionToken += 1;
+}
+
 async function loadFields() {
+  const token = sessionToken;
   fieldsLoading.value = true;
   try {
     const resp = await describeExportFields(props.model);
+    if (!isActiveSession(token)) {
+      return;
+    }
     fieldTree.value = mapFieldNodes(resp.fields ?? []);
     const defaults = (props.defaultFields?.length ? props.defaultFields : resp.defaultFields) ?? [];
-    selectedFieldPaths.value = defaults.filter(Boolean);
+    selectedFieldPaths.value = normalizeExportFieldPaths(defaults);
   } catch (err) {
+    if (!isActiveSession(token)) {
+      return;
+    }
     exportError.value = err instanceof Error ? err.message : String(err);
   } finally {
-    fieldsLoading.value = false;
+    if (isActiveSession(token)) {
+      fieldsLoading.value = false;
+    }
   }
 }
 
 function onOpen() {
+  invalidateSession();
   exportError.value = '';
   exportDone.value = false;
   previewReport.value = null;
@@ -172,6 +195,7 @@ function onOpen() {
 }
 
 function resetState() {
+  invalidateSession();
   busy.value = false;
   exportDone.value = false;
   exportError.value = '';
@@ -202,10 +226,17 @@ async function commitExport() {
   exportError.value = '';
   try {
     const resp = await runExport(buildRunInput());
-    const stats = resp.report?.stats;
+    const report = resp.report ?? null;
+    if (exportReportHasErrors(report)) {
+      exportError.value = exportReportErrorText(report);
+      return;
+    }
+    const stats = report?.stats;
     exportSuccessSubtitle.value = stats ? `${stats.ok ?? 0} row(s) exported.` : '';
     if (resp.csvData?.length) {
       downloadExportCsvBytes(resp.csvData, suggestExportFileName(props.model));
+    } else if (report?.artifactRef) {
+      exportSuccessSubtitle.value = exportArtifactSubtitle.replace('%ref', report.artifactRef);
     }
     exportDone.value = true;
   } catch (err) {
@@ -219,7 +250,7 @@ watch(
   () => props.defaultFields,
   value => {
     if (Array.isArray(value) && value.length > 0 && selectedFieldPaths.value.length === 0) {
-      selectedFieldPaths.value = [...value];
+      selectedFieldPaths.value = normalizeExportFieldPaths(value);
     }
   },
   { immediate: true }

@@ -5,6 +5,7 @@ package hub
 
 import (
 	"context"
+	"strings"
 
 	exportproto "github.com/choysum-dev/choysum/internal/export/proto"
 	"github.com/choysum-dev/choysum/internal/export/proto/exportpb"
@@ -43,6 +44,17 @@ func (h *Hub) DescribeFields(ctx context.Context, req *exportpb.DescribeFieldsRe
 	}
 	if h.deps.RuntimeScope == nil {
 		return nil, status.Error(codes.Unavailable, "runtime scope unavailable")
+	}
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "request is required")
+	}
+	modelName := strings.TrimSpace(req.GetModel())
+	if modelName == "" {
+		return nil, status.Error(codes.InvalidArgument, "model is required")
+	}
+	companyID := activeCompanyID(ctx)
+	if err := checkModelExportAccess(ctx, h.deps.RuntimeScope, modelName, companyID); err != nil {
+		return nil, err
 	}
 	return describeFields(ctx, h.deps.RuntimeScope, req)
 }

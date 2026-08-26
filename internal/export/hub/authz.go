@@ -24,6 +24,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+const maxInlineCSVBytes = 16 * 1024 * 1024
+
 func checkModelExportAccess(ctx context.Context, runtimeScope scope.Scope, targetModel, companyID string) error {
 	targetModel = strings.TrimSpace(targetModel)
 	if targetModel == "" {
@@ -31,7 +33,11 @@ func checkModelExportAccess(ctx context.Context, runtimeScope scope.Scope, targe
 	}
 
 	companyID = strings.TrimSpace(companyID)
-	if companyFieldRequired(ctx, runtimeScope, targetModel) && companyID == "" {
+	required, lookupErr := modelCompanyFieldRequired(ctx, runtimeScope, targetModel)
+	if lookupErr != nil {
+		return status.Errorf(codes.InvalidArgument, "model lookup failed: %v", lookupErr)
+	}
+	if required && companyID == "" {
 		return status.Error(codes.InvalidArgument, "company_id is required for company-scoped models")
 	}
 
@@ -46,23 +52,23 @@ func checkModelExportAccess(ctx context.Context, runtimeScope scope.Scope, targe
 	return nil
 }
 
-func companyFieldRequired(ctx context.Context, runtimeScope scope.Scope, targetModel string) bool {
+func modelCompanyFieldRequired(ctx context.Context, runtimeScope scope.Scope, targetModel string) (bool, error) {
 	if runtimeScope == nil {
-		return false
+		return false, nil
 	}
 	session, ok := scope.SessionForScope(ctx, runtimeScope)
 	if !ok || session == nil || session.DB == nil {
-		return false
+		return false, nil
 	}
 	app, name, err := splitModelFullName(targetModel)
 	if err != nil {
-		return false
+		return false, err
 	}
 	model := &meta.Model{}
 	if err := session.DB.Where("application = ? AND name = ?", app, name).First(model).Error; err != nil {
-		return false
+		return false, err
 	}
-	return model.CompanyField != nil && strings.TrimSpace(*model.CompanyField) != ""
+	return model.CompanyField != nil && strings.TrimSpace(*model.CompanyField) != "", nil
 }
 
 func splitModelFullName(full string) (application, name string, err error) {
@@ -148,9 +154,7 @@ func runExport(
 			return nil, status.Errorf(codes.Internal, "export run failed: %v", err)
 		}
 		resp := reportResponse(report)
-		if len(result.CSVBytes) > 0 {
-			resp.CsvData = append([]byte(nil), result.CSVBytes...)
-		}
+		attachInlineCSV(resp, result.CSVBytes)
 		return resp, nil
 	}
 	report, err := runFn(runCtx, deps.RuntimeScope, spec)
@@ -178,3 +182,12 @@ func runExportWithResult(ctx context.Context, runtimeScope scope.Scope, spec exp
 
 // validateExportSpec is swappable in tests to cover defensive validation failures.
 var validateExportSpec = exportpkg.ValidateSpec
+
+func attachInlineCSV(resp *exportpb.ExportRunResponse, csvBytes []byte) {
+	if resp == nil || len(csvBytes) == 0 {
+		return
+	}
+	if len(csvBytes) <= maxInlineCSVBytes {
+		resp.CsvData = append([]byte(nil), csvBytes...)
+	}
+}

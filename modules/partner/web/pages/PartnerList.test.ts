@@ -4,12 +4,15 @@
 
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { config, mount } from '@vue/test-utils';
+import { nextTick } from 'vue';
 import { createI18n } from 'vue-i18n';
 
 config.global.renderStubDefaultSlot = true;
 
-const { refresh } = vi.hoisted(() => ({
+const { refresh, exportFieldSelection, buildUnifiedQuery } = vi.hoisted(() => ({
   refresh: vi.fn(),
+  exportFieldSelection: vi.fn(() => ['Name', 'CompanyId.Code', 'Id']),
+  buildUnifiedQuery: vi.fn(() => ({ filters: { And: [{ field: 'Name', op: 'contains', value: 'A' }] } })),
 }));
 
 vi.mock('vue-router', () => ({
@@ -32,12 +35,23 @@ vi.mock('@/web/web/stores/registry', () => ({
   })),
 }));
 
+vi.mock('@/web/web/query/utils/registry/field', () => ({
+  exportFieldSelection,
+}));
+
+vi.mock('@/web/web/query/context', () => ({
+  buildUnifiedQuery,
+}));
+
 vi.mock('../views/PartnerListView.vue', () => ({
   default: {
     name: 'PartnerListViewStub',
     props: ['store', 'createAction'],
     setup(_: unknown, { expose }: { expose: (exposed: Record<string, unknown>) => void }) {
-      expose({ refresh });
+      expose({
+        refresh,
+        selectedItems: { value: [{ Id: 'p1' }, { Id: 'p2' }] },
+      });
       return () => null;
     },
   },
@@ -129,5 +143,22 @@ describe('PartnerList page', () => {
     });
     const wizard = wrapper.findComponent({ name: 'PartnerImportWizardStub' });
     expect(wizard.props('companyId')).toBe('');
+  });
+
+  it('passes selected ids, domain, and normalized default fields to export panel', async () => {
+    const PartnerList = (await import('./PartnerList.vue')).default;
+    const wrapper = mount(PartnerList, {
+      global: {
+        plugins: [i18n],
+        stubs: { OPage: { template: '<div><slot /></div>' } },
+      },
+    });
+    await nextTick();
+    const panel = wrapper.findComponent({ name: 'ExportPanelStub' });
+    expect(panel.props('ids')).toEqual(['p1', 'p2']);
+    expect(panel.props('domain')).toBe(JSON.stringify({ And: [{ field: 'Name', op: 'contains', value: 'A' }] }));
+    expect(panel.props('defaultFields')).toEqual(['Name', 'CompanyId/Code']);
+    expect(buildUnifiedQuery).toHaveBeenCalled();
+    expect(exportFieldSelection).toHaveBeenCalledWith('Partner_/partner/partners');
   });
 });

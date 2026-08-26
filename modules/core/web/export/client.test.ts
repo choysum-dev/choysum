@@ -59,4 +59,18 @@ describe('core/web export client', () => {
     );
     expect(run).toHaveBeenCalled();
   });
+
+  it('passes abort signal to export hub calls', async () => {
+    describeFields.mockResolvedValue({ fields: [] });
+    preview.mockResolvedValue({ report: {} });
+    run.mockResolvedValue({ report: {} });
+    const { describeExportFields, previewExport, runExport } = await import('./client');
+    const signal = new AbortController().signal;
+    await describeExportFields('base.Country', signal);
+    await previewExport({ model: 'base.Country' }, signal);
+    await runExport({ model: 'base.Country' }, signal);
+    expect(describeFields).toHaveBeenCalledWith(create(DescribeFieldsRequestSchema, { model: 'base.Country' }), { signal });
+    expect(preview).toHaveBeenCalledWith(expect.any(Object), { signal });
+    expect(run).toHaveBeenCalledWith(expect.any(Object), { signal });
+  });
 });

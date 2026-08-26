@@ -1,0 +1,31 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+import { ExportMessageType, type ExportReport } from './pb/export_pb';
+
+export function exportReportHasErrors(report: ExportReport | null | undefined): boolean {
+  if (!report) {
+    return true;
+  }
+  if ((report.stats?.error ?? 0) > 0) {
+    return true;
+  }
+  return (report.messages ?? []).some(message => {
+    const type = message.type_ ?? ExportMessageType.UNSPECIFIED;
+    return type === ExportMessageType.ERROR || type === ExportMessageType.UNSPECIFIED;
+  });
+}
+
+export function exportReportErrorText(report: ExportReport | null | undefined): string {
+  const first = report?.messages?.find(message => {
+    const type = message.type_ ?? ExportMessageType.UNSPECIFIED;
+    return type === ExportMessageType.ERROR || (type === ExportMessageType.UNSPECIFIED && String(message.text ?? '').trim());
+  });
+  if (first?.text) {
+    return first.text;
+  }
+  if ((report?.stats?.error ?? 0) > 0) {
+    return `Export finished with ${report?.stats?.error ?? 0} error(s).`;
+  }
+  return 'Export failed.';
+}

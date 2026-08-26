@@ -19,6 +19,9 @@ import (
 )
 
 func describeFields(ctx context.Context, runtimeScope scope.Scope, req *exportpb.DescribeFieldsRequest) (*exportpb.DescribeFieldsResponse, error) {
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "request is required")
+	}
 	modelName := strings.TrimSpace(req.GetModel())
 	if modelName == "" {
 		return nil, status.Error(codes.InvalidArgument, "model is required")

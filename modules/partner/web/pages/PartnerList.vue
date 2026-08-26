@@ -33,6 +33,7 @@ import OPage from '@/web/web/components/page/OPage.vue';
 import PartnerListView from '../views/PartnerListView.vue';
 import PartnerImportWizard from '../components/PartnerImportWizard.vue';
 import { ExportPanel } from '@/core/web/export';
+import { normalizeExportFieldPaths } from '@/core/web/export/field_paths';
 import { buildUnifiedQuery } from '@/web/web/query/context';
 import { exportFieldSelection } from '@/web/web/query/utils/registry/field';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
@@ -78,7 +79,7 @@ const exportDomain = computed(() => {
 
 const exportDefaultFields = computed(() => {
   const paths = exportFieldSelection(partnerStore.storeId) ?? [];
-  return paths.filter(path => path !== 'Id');
+  return normalizeExportFieldPaths(paths.filter(path => path !== 'Id'));
 });
 
 const filteredCount = computed(() => Number((partnerStore.state as { result?: { total?: number } }).result?.total ?? 0));
