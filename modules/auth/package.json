@@ -1,6 +1,10 @@
 {
   "name": "@choysum-dev/auth",
   "version": "0.0.0-20260626031438",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/choysum-dev/choysum.git"
+  },
   "description": "User authentication and management module",
   "license": "Apache-2.0",
   "author": "Choysum Team",

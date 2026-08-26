@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import json
 import pathlib
+import re
 import subprocess
 import sys
 
@@ -30,6 +31,11 @@ MODULES_ROOT = REPO_ROOT / "modules"
 TRUST_REPO = "choysum-dev/choysum"
 TRUST_FILE = "modules-publish.yml"
 TRUST_ENVIRONMENT = "npm-publish"
+MIN_NPM_VERSION = (11, 15, 0)
+REPO_URL_MARKERS = (
+    "github.com/choysum-dev/choysum",
+    "github.com:choysum-dev/choysum",
+)
 
 
 def run(cmd, *, cwd=None, check=False):
@@ -40,6 +46,31 @@ def run(cmd, *, cwd=None, check=False):
         capture_output=True,
         text=True,
     )
+
+
+def compact(text, limit=2000):
+    value = (text or "").strip()
+    if len(value) <= limit:
+        return value
+    return value[-limit:]
+
+
+def parse_semver_tuple(value: str):
+    text = (value or "").strip()
+    match = re.match(r"^(\d+)\.(\d+)\.(\d+)", text)
+    if not match:
+        return None
+    return tuple(int(part) for part in match.groups())
+
+
+def repository_identifies_choysum(repository) -> bool:
+    if isinstance(repository, str):
+        text = repository.lower()
+    elif isinstance(repository, dict):
+        text = str(repository.get("url") or "").lower()
+    else:
+        return False
+    return any(marker in text for marker in REPO_URL_MARKERS)
 
 
 def load_package(module_dir: pathlib.Path):
@@ -63,12 +94,20 @@ def load_package(module_dir: pathlib.Path):
             f"{package_path}: choysum.moduleName '{module_name}' "
             f"must equal directory '{module_dir.name}'"
         )
+    repository = data.get("repository")
+    if not repository_identifies_choysum(repository):
+        return None, (
+            f"{package_path}: repository.url must identify {TRUST_REPO} "
+            "(required for npm Trusted Publishing / provenance)"
+        )
     return {"name": name, "version": version, "path": package_path, "dir": module_dir}, None
 
 
 def discover_modules(module=None, package_json=None):
     if package_json:
         path = pathlib.Path(package_json).resolve()
+        if path.name != "package.json":
+            raise SystemExit(f"--package-json must be named package.json, got: {path.name}")
         if not path.is_file():
             raise SystemExit(f"--package-json not found: {path}")
         info, err = load_package(path.parent)
@@ -131,35 +170,143 @@ def trust_list(name: str):
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:
-        return None, f"invalid trust list JSON for {name}: {raw[:500]}"
+        # Some CLI builds emit one JSON object per line.
+        entries = []
+        for line in raw.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entries.append(json.loads(line))
+            except json.JSONDecodeError:
+                return None, f"invalid trust list JSON for {name}: {raw[:500]}"
+        return entries, None
     if data is None:
         return [], None
     if isinstance(data, dict):
-        # Some CLI versions return a single object or {configurations:[...]}.
         if "configurations" in data and isinstance(data["configurations"], list):
             return data["configurations"], None
+        if "packages" in data and isinstance(data["packages"], list):
+            return data["packages"], None
         return [data], None
     if isinstance(data, list):
         return data, None
     return None, f"unexpected trust list payload type for {name}: {type(data)}"
 
 
-def compact(text, limit=2000):
-    value = (text or "").strip()
-    if len(value) <= limit:
-        return value
-    return value[-limit:]
+def _collect_values(obj, wanted_keys: set[str]):
+    found = []
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            if str(key).lower().replace("-", "").replace("_", "") in wanted_keys:
+                if isinstance(value, (str, int, bool)):
+                    found.append(value)
+                elif isinstance(value, list):
+                    found.extend(item for item in value if isinstance(item, (str, int, bool, dict)))
+                elif isinstance(value, dict):
+                    found.append(value)
+            found.extend(_collect_values(value, wanted_keys))
+    elif isinstance(obj, list):
+        for item in obj:
+            found.extend(_collect_values(item, wanted_keys))
+    return found
 
 
-def trust_matches(entry: dict) -> bool:
+def _norm(value) -> str:
+    return str(value).strip().lower()
+
+
+def _allows_npm_publish(entry: dict) -> bool:
+    flags = _collect_values(
+        entry,
+        {
+            "allowpublish",
+            "allowstagepublish",
+            "permissions",
+            "allowedactions",
+            "actions",
+            "allowedaction",
+        },
+    )
+    blob = json.dumps(entry).lower()
+    has_publish = False
+    stage_only = False
+    for flag in flags:
+        text = _norm(flag)
+        if text in {"true", "1", "yes"}:
+            # Boolean near allowPublish key is handled via blob below.
+            continue
+        if "stage" in text and "publish" in text and "allow-publish" not in text:
+            stage_only = True
+        if text in {"publish", "npm publish", "allow-publish", "allowpublish"}:
+            has_publish = True
+        if isinstance(flag, dict):
+            nested = json.dumps(flag).lower()
+            if "allow-publish" in nested or '"publish"' in nested:
+                has_publish = True
+    if "allow-publish" in blob or '"allowpublish":true' in blob.replace(" ", ""):
+        has_publish = True
+    if "allow-stage-publish" in blob and "allow-publish" not in blob:
+        stage_only = True
+    if has_publish:
+        return True
+    if stage_only:
+        return False
+    # Unknown schema: do not treat as publish-capable.
+    return False
+
+
+def trust_matches(entry: dict, *, package_name: str) -> bool:
     if not isinstance(entry, dict):
         return False
-    # Be tolerant of nested provider payloads.
-    blob = json.dumps(entry).lower()
-    repo_ok = TRUST_REPO.lower() in blob or TRUST_REPO.replace("/", "%2f").lower() in blob
-    file_ok = TRUST_FILE.lower() in blob
-    env_ok = TRUST_ENVIRONMENT.lower() in blob
-    return repo_ok and file_ok and env_ok
+
+    repos = [_norm(v) for v in _collect_values(entry, {"repository", "repo", "repositoryname", "ownerrepo"})]
+    files = [
+        _norm(v)
+        for v in _collect_values(
+            entry,
+            {"file", "workflow", "workflowfile", "workflowfilename", "filename"},
+        )
+    ]
+    envs = [_norm(v) for v in _collect_values(entry, {"environment", "env", "environmentname"})]
+    providers = [_norm(v) for v in _collect_values(entry, {"provider", "oidcprovider", "type"})]
+    packages = [_norm(v) for v in _collect_values(entry, {"package", "pkg", "name", "packagename"})]
+
+    repo_ok = any(
+        TRUST_REPO.lower() == value
+        or value.endswith("/" + TRUST_REPO.lower())
+        or TRUST_REPO.lower() in value
+        for value in repos
+    ) or (
+        # Fallback when list payload only embeds repo in nested URL strings.
+        any(TRUST_REPO.lower() in _norm(v) for v in repos)
+    )
+    if not repo_ok:
+        return False
+
+    file_ok = any(value == TRUST_FILE.lower() or value.endswith("/" + TRUST_FILE.lower()) for value in files)
+    if not file_ok:
+        return False
+
+    env_ok = any(value == TRUST_ENVIRONMENT.lower() for value in envs)
+    if not env_ok:
+        return False
+
+    if providers:
+        provider_ok = any("github" in value for value in providers)
+        if not provider_ok:
+            return False
+
+    if packages:
+        pkg = package_name.lower()
+        package_ok = any(value == pkg or value.endswith(pkg) for value in packages)
+        if not package_ok:
+            return False
+
+    if not _allows_npm_publish(entry):
+        return False
+
+    return True
 
 
 def bind_trust(name: str, *, apply: bool, rebind: bool):
@@ -168,16 +315,16 @@ def bind_trust(name: str, *, apply: bool, rebind: bool):
         # Interactive auth prompts often land here; surface stderr.
         return "error", err
 
-    matching = [e for e in (entries or []) if trust_matches(e)]
+    matching = [e for e in (entries or []) if trust_matches(e, package_name=name)]
     others = [e for e in (entries or []) if e not in matching]
 
     if matching and not others:
-        return "skip", "trust already matches contract"
+        return "skip", "trust already matches publish-capable contract"
     if matching and others and not rebind:
         return "error", "mixed trust configs; re-run with --rebind to replace"
     if others and not matching and not rebind:
         return "error", (
-            "existing trust config does not match contract; "
+            "existing trust config does not match publish-capable contract; "
             "re-run with --rebind to revoke and recreate"
         )
 
@@ -242,10 +389,17 @@ def doctor():
         print(f"npm whoami: {who.stdout.strip()}")
 
     ver = run(["npm", "--version"])
-    print(f"npm version: {(ver.stdout or '').strip()}")
+    version_text = (ver.stdout or "").strip()
+    print(f"npm version: {version_text}")
+    parsed = parse_semver_tuple(version_text)
+    if parsed is None or parsed < MIN_NPM_VERSION:
+        required = ".".join(str(part) for part in MIN_NPM_VERSION)
+        problems.append(f"npm {required}+ required for npm trust (got {version_text or 'unknown'})")
+
     help_proc = run(["npm", "trust", "--help"])
     if help_proc.returncode != 0:
-        problems.append("npm trust unavailable; upgrade npm (>= 11.5.1 recommended)")
+        required = ".".join(str(part) for part in MIN_NPM_VERSION)
+        problems.append(f"npm trust unavailable; upgrade npm (>={required})")
 
     print(f"trust contract: repo={TRUST_REPO} file={TRUST_FILE} env={TRUST_ENVIRONMENT}")
     if problems:

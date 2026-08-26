@@ -127,7 +127,7 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       - name: Ensure modern npm CLI
-        run: npm install -g npm@latest
+        run: npm install -g npm@11.16.0
 
       - name: Validate modules (pack / view; no publish)
         env:
@@ -176,7 +176,7 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       - name: Ensure modern npm CLI
-        run: npm install -g npm@latest
+        run: npm install -g npm@11.16.0
 
       - name: Publish modules via OIDC (serial)
         env:

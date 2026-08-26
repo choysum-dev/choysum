@@ -1,6 +1,10 @@
 {
   "name": "@choysum-dev/meta",
   "version": "0.0.0-20260626031438",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/choysum-dev/choysum.git"
+  },
   "description": "Metadata and module management",
   "license": "Apache-2.0",
   "author": "Choysum Team",
