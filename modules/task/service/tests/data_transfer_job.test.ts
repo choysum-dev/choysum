@@ -3,7 +3,7 @@
 
 import DataTransferJob, { DATA_TRANSFER_JOB_EXECUTE_IMPORT_FULL_METHOD } from '@/task/service/models/data_transfer_job';
 import { getQueueStatus } from '@/task/service/models/data_transfer_job_queue';
-import { executeImport } from '@/task/service/models/data_transfer_job_worker';
+import { executeExport, executeImport } from '@/task/service/models/data_transfer_job_worker';
 import Job from '@/task/service/models/job';
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
@@ -340,7 +340,51 @@ test('executeImport and FinalizeReport error paths', async () => {
   const previousImport = root.import;
   try {
     await expectAsyncError(() => executeImport(''), /dataTransferJobId is required/);
+    await expectAsyncError(() => executeImport('   '), /dataTransferJobId is required/);
+    await expectAsyncError(() => executeImport(null as any), /dataTransferJobId is required/);
+    await expectAsyncError(() => executeExport(''), /dataTransferJobId is required/);
+    await expectAsyncError(() => executeExport('   '), /dataTransferJobId is required/);
+    await expectAsyncError(() => executeExport(undefined as any), /dataTransferJobId is required/);
     await expectAsyncError(() => DataTransferJob.FinalizeReport('', {}), /dataTransferJobId is required/);
+
+    const exportDirection = await DataTransferJob.Create({
+      Profile: 'record',
+      Policy: 'atomic',
+      DryRun: false,
+      TargetModel: 'base.Country',
+      SourceRef: 'doc-export-direction',
+      SpecSnapshotJson: sampleSnapshot('doc-export-direction'),
+      Direction: 'export',
+    } as Partial<DataTransferJob>);
+    await expectAsyncError(
+      () => executeImport(exportDirection.Id),
+      /ExecuteImport requires Direction=import/
+    );
+
+    const missingDirection = await DataTransferJob.Create({
+      Profile: 'record',
+      Policy: 'atomic',
+      DryRun: false,
+      TargetModel: 'base.Country',
+      SourceRef: 'doc-missing-direction',
+      SpecSnapshotJson: sampleSnapshot('doc-missing-direction'),
+      Direction: 'import',
+    } as Partial<DataTransferJob>);
+    const browse = (DataTransferJob as any).Browse.bind(DataTransferJob);
+    (DataTransferJob as any).Browse = async (_id: string, fields?: any) => {
+      const row = await browse(_id, fields);
+      if (!row) return row;
+      return { ...(row as any), Direction: '' };
+    };
+    root.import = {
+      run: async () => ({ stats: { total: 0, ok: 0, error: 0, skip: 0 } }),
+    };
+    try {
+      const report = await executeImport(missingDirection.Id);
+      expect(report?.stats?.total).toBe(0);
+    } finally {
+      (DataTransferJob as any).Browse = browse;
+    }
 
     const withoutSnapshot = await DataTransferJob.Create({
       Profile: 'record',
@@ -385,6 +429,8 @@ test('executeImport and FinalizeReport error paths', async () => {
     const cleared = await DataTransferJob.Browse(nullReportJob.dataTransferJobId, ['ReportJson', 'ProgressTotal'] as any);
     expect((cleared as any).ReportJson).toEqual({});
     expect((cleared as any).ProgressTotal).toBe(0);
+
+    await expectAsyncError(() => executeExport(nullReportJob.dataTransferJobId), /not implemented yet/);
   } finally {
     if (previousImport === undefined) {
       delete root.import;
