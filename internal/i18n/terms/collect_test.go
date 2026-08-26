@@ -102,6 +102,93 @@ func TestCollectAllSearchHookProbeNilTotal(t *testing.T) {
 	}
 }
 
+func TestCollectAllExactTotalNotTruncated(t *testing.T) {
+	oldMax := ExportMaxItems
+	oldPage := ExportPageSize
+	ExportMaxItems = 2
+	ExportPageSize = 2
+	t.Cleanup(func() {
+		ExportMaxItems = oldMax
+		ExportPageSize = oldPage
+	})
+
+	search := func(_ context.Context, _, _, _ string, _ []string, _ string, _, offset int) (*SearchResult, error) {
+		if offset > 0 {
+			return &SearchResult{Total: 2, Items: nil}, nil
+		}
+		return &SearchResult{
+			Total: 2,
+			Items: []Item{
+				{Scope: "a@1", Src: "One", Value: "1"},
+				{Scope: "a@2", Src: "Two", Value: "2"},
+			},
+		}, nil
+	}
+	ctx := ContextWithCollectHooks(context.Background(), search, func(context.Context, string, string, string, []string, string) (int64, error) {
+		return 0, nil
+	})
+	items, truncated, err := CollectAll(ctx, "tok", "auth", "zh_CN", []string{"auth"})
+	if err != nil || truncated || len(items) != 2 {
+		t.Fatalf("items=%d truncated=%v err=%v", len(items), truncated, err)
+	}
+}
+
+func TestCollectAllTruncatesWhenTotalUnknownAndPageFull(t *testing.T) {
+	oldMax := ExportMaxItems
+	oldPage := ExportPageSize
+	ExportMaxItems = 2
+	ExportPageSize = 2
+	t.Cleanup(func() {
+		ExportMaxItems = oldMax
+		ExportPageSize = oldPage
+	})
+
+	search := func(_ context.Context, _, _, _ string, _ []string, _ string, _, offset int) (*SearchResult, error) {
+		if offset > 0 {
+			return &SearchResult{Total: 0, Items: nil}, nil
+		}
+		return &SearchResult{
+			Total: 0,
+			Items: []Item{
+				{Scope: "a@1", Src: "One", Value: "1"},
+				{Scope: "a@2", Src: "Two", Value: "2"},
+			},
+		}, nil
+	}
+	ctx := ContextWithCollectHooks(context.Background(), search, func(context.Context, string, string, string, []string, string) (int64, error) {
+		return 0, nil
+	})
+	items, truncated, err := CollectAll(ctx, "tok", "auth", "zh_CN", []string{"auth"})
+	if err != nil || !truncated || len(items) != 2 {
+		t.Fatalf("items=%d truncated=%v err=%v", len(items), truncated, err)
+	}
+}
+
+func TestCollectAllCapsPageToRemaining(t *testing.T) {
+	oldMax := ExportMaxItems
+	oldPage := ExportPageSize
+	ExportMaxItems = 1
+	ExportPageSize = 500
+	t.Cleanup(func() {
+		ExportMaxItems = oldMax
+		ExportPageSize = oldPage
+	})
+
+	var seenLimit int
+	search := func(_ context.Context, _, _, _ string, _ []string, _ string, limit, offset int) (*SearchResult, error) {
+		seenLimit = limit
+		return &SearchResult{
+			Total: 1,
+			Items: []Item{{Scope: "a@1", Src: "One", Value: "1"}},
+		}, nil
+	}
+	ctx := ContextWithCollectHooks(context.Background(), search, nil)
+	items, truncated, err := CollectAll(ctx, "tok", "auth", "zh_CN", []string{"auth"})
+	if err != nil || truncated || len(items) != 1 || seenLimit != 1 {
+		t.Fatalf("items=%d limit=%d truncated=%v err=%v", len(items), seenLimit, truncated, err)
+	}
+}
+
 func TestCollectAllSearchHookProbeError(t *testing.T) {
 	search := func(context.Context, string, string, string, []string, string, int, int) (*SearchResult, error) {
 		return nil, errors.New("probe boom")

@@ -66,6 +66,9 @@ func CollectAll(ctx context.Context, accessToken, app, lang string, modules []st
 		}
 		all = append(all, result.Items...)
 		offset += len(result.Items)
+		if total <= 0 && result.Total > 0 {
+			total = result.Total
+		}
 		if len(all) >= ExportMaxItems {
 			switch {
 			case total > int64(len(all)):
@@ -74,9 +77,6 @@ func CollectAll(ctx context.Context, accessToken, app, lang string, modules []st
 				truncated = true
 			}
 			break
-		}
-		if total <= 0 && result.Total > 0 {
-			total = result.Total
 		}
 		if len(result.Items) < page {
 			break

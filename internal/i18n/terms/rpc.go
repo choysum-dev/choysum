@@ -26,6 +26,8 @@ const (
 	TranslationTermCount     = translationTermCount
 )
 
+var messageToMapForRPC = converter.MessageToMap
+
 // SearchPageFunc searches TranslationTerm rows for PO export (injectable in tests).
 type SearchPageFunc func(ctx context.Context, accessToken, app, lang string, modules []string, q string, limit, offset int) (*SearchResult, error)
 
@@ -150,7 +152,7 @@ func searchTranslationTermPage(ctx context.Context, conn *grpc.ClientConn, servi
 		return nil, client.ToStatusError(err)
 	}
 
-	out, err := converter.MessageToMap(respMsg)
+	out, err := messageToMapForRPC(respMsg)
 	if err != nil {
 		return nil, fmt.Errorf("decode Search response: %w", err)
 	}
@@ -212,7 +214,7 @@ func invokeTranslationTermCount(ctx context.Context, conn *grpc.ClientConn, serv
 	if err := conn.Invoke(ctx, "/"+service+"/"+translationTermCount, reqMsg, respMsg); err != nil {
 		return 0, client.ToStatusError(err)
 	}
-	out, err := converter.MessageToMap(respMsg)
+	out, err := messageToMapForRPC(respMsg)
 	if err != nil {
 		return 0, fmt.Errorf("decode Count response: %w", err)
 	}

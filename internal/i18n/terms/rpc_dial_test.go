@@ -18,6 +18,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/test/bufconn"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/dynamicpb"
 )
 
@@ -324,5 +325,34 @@ func TestFetchAppSearchTermsCountError(t *testing.T) {
 	ctx := grpcclient.ContextWithServiceDialer(context.Background(), newTranslationTermDialer(t, behavior))
 	if _, err := FetchAppSearchTerms(ctx, nil, "tok", "auth", "zh_CN", nil, "", 10, 0); err == nil {
 		t.Fatal("expected count error")
+	}
+}
+
+func TestInvokeTranslationTermCountDecodeError(t *testing.T) {
+	orig := messageToMapForRPC
+	t.Cleanup(func() { messageToMapForRPC = orig })
+	messageToMapForRPC = func(protoreflect.Message) (map[string]interface{}, error) {
+		return nil, errors.New("decode boom")
+	}
+	behavior := &translationTermRPCBehavior{countTotal: 1}
+	ctx := grpcclient.ContextWithServiceDialer(context.Background(), newTranslationTermDialer(t, behavior))
+	if _, err := CountAppTerms(ctx, "tok", "auth", "zh_CN", nil, ""); err == nil || !strings.Contains(err.Error(), "decode Count response") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestSearchTranslationTermPageDecodeError(t *testing.T) {
+	orig := messageToMapForRPC
+	t.Cleanup(func() { messageToMapForRPC = orig })
+	messageToMapForRPC = func(protoreflect.Message) (map[string]interface{}, error) {
+		return nil, errors.New("decode boom")
+	}
+	behavior := &translationTermRPCBehavior{
+		countTotal:  1,
+		searchItems: []map[string]any{{"Module": "auth", "Scope": "a", "Src": "One", "Value": "1"}},
+	}
+	ctx := grpcclient.ContextWithServiceDialer(context.Background(), newTranslationTermDialer(t, behavior))
+	if _, err := SearchAppTermsPage(ctx, "tok", "auth", "zh_CN", nil, "", 1, 10, 0); err == nil || !strings.Contains(err.Error(), "decode Search response") {
+		t.Fatalf("err = %v", err)
 	}
 }
