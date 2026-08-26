@@ -36,6 +36,11 @@ var (
 	writeCSVRecord             = func(w *csv.Writer, record []string) error { return w.Write(record) }
 )
 
+// StoreContentArtifact persists raw bytes as a document attachment and returns its content id.
+func StoreContentArtifact(ctx context.Context, runtimeScope scope.Scope, companyID string, body []byte, contentType string) (string, error) {
+	return storeArtifact(ctx, runtimeScope, companyID, body, contentType)
+}
+
 // WriteErrorArtifact persists report messages as a CSV document and sets report.ArtifactRef.
 func WriteErrorArtifact(ctx context.Context, runtimeScope scope.Scope, companyID string, report *importpkg.Report) error {
 	if report == nil || len(report.Messages) == 0 {

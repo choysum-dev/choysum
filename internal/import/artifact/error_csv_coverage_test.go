@@ -168,7 +168,7 @@ func (noSessionArtifactScope) Context() context.Context { return context.Backgro
 func (noSessionArtifactScope) Logger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
-func (noSessionArtifactScope) Config() *config.Config { return nil }
+func (noSessionArtifactScope) Config() *config.Config           { return nil }
 func (noSessionArtifactScope) FactoryInput() scope.FactoryInput { return nil }
 
 func TestDefaultMessagesToCSVBytes_HeaderWriteError(t *testing.T) {

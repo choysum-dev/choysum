@@ -22,14 +22,20 @@ func SearchCondition(p Plan) (map[string]any, error) {
 	if domain == "" {
 		return map[string]any{"And": []any{}}, nil
 	}
-	var cond map[string]any
-	if err := json.Unmarshal([]byte(domain), &cond); err != nil {
+	var decoded any
+	if err := json.Unmarshal([]byte(domain), &decoded); err != nil {
 		return nil, exportpkg.Errorf(exportpkg.CodeInvalidSpec, "domain must be valid JSON")
 	}
-	if cond == nil {
+	switch v := decoded.(type) {
+	case nil:
 		return map[string]any{"And": []any{}}, nil
+	case map[string]any:
+		return v, nil
+	case []any:
+		return map[string]any{"And": []any{v}}, nil
+	default:
+		return nil, exportpkg.Errorf(exportpkg.CodeInvalidSpec, "domain must be an object or condition tuple")
 	}
-	return cond, nil
 }
 
 // ResolveExportFields returns explicit plan fields or the model default export set.

@@ -30,26 +30,34 @@ func (Writer) Write(ctx context.Context, runtimeScope scope.Scope, p plan.Plan, 
 	}
 
 	var buf bytes.Buffer
-	w := csv.NewWriter(&buf)
-	if err := w.Write(result.Headers); err != nil {
+	w := newCSVWriter(&buf)
+	if err := writeCSVRecord(w, result.Headers); err != nil {
 		return exportpkg.ErrorfWrap(exportpkg.CodeInvalidFormat, "write csv header", err)
 	}
 	if p.Mode != exportpkg.ModeTemplate {
 		for _, row := range result.Rows {
-			if err := w.Write(row); err != nil {
+			if err := writeCSVRecord(w, row); err != nil {
 				return exportpkg.ErrorfWrap(exportpkg.CodeInvalidFormat, "write csv row", err)
 			}
 		}
 	}
-	w.Flush()
-	if err := w.Error(); err != nil {
+	flushCSVWriter(w)
+	if err := csvWriterError(w); err != nil {
 		return exportpkg.ErrorfWrap(exportpkg.CodeInvalidFormat, "flush csv", err)
 	}
 
 	raw := buf.Bytes()
-	if err := importcsv.ValidateUTF8(raw); err != nil {
+	if err := validateUTF8(raw); err != nil {
 		return err
 	}
 	result.CSVBytes = importcsv.PrependUTF8BOM(raw)
 	return nil
 }
+
+var (
+	validateUTF8   = importcsv.ValidateUTF8
+	newCSVWriter   = csv.NewWriter
+	writeCSVRecord = func(w *csv.Writer, record []string) error { return w.Write(record) }
+	flushCSVWriter = func(w *csv.Writer) { w.Flush() }
+	csvWriterError = func(w *csv.Writer) error { return w.Error() }
+)

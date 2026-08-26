@@ -6,6 +6,7 @@ package runner
 import (
 	"context"
 
+	"github.com/choysum-dev/choysum/internal/export/artifact"
 	"github.com/choysum-dev/choysum/internal/export/plan"
 	"github.com/choysum-dev/choysum/internal/export/registry"
 	exportpkg "github.com/choysum-dev/choysum/pkg/export"
@@ -27,10 +28,12 @@ func Run(ctx context.Context, runtimeScope scope.Scope, spec exportpkg.Spec) (im
 
 	result, readErr := reader.Read(ctx, runtimeScope, p)
 	if readErr == nil && len(result.Headers) > 0 {
-		if sink, sinkLookupErr := registry.SinkFor(p.Format); sinkLookupErr == nil {
-			if sinkErr := sink.Write(ctx, runtimeScope, p, &result); sinkErr != nil {
-				return importpkg.Report{}, sinkErr
-			}
+		sink, sinkLookupErr := registry.SinkFor(p.Format)
+		if sinkLookupErr != nil {
+			return importpkg.Report{}, sinkLookupErr
+		}
+		if sinkErr := sink.Write(ctx, runtimeScope, p, &result); sinkErr != nil {
+			return importpkg.Report{}, sinkErr
 		}
 	}
 	report := importpkg.Report{
@@ -62,11 +65,16 @@ func Run(ctx context.Context, runtimeScope scope.Scope, spec exportpkg.Spec) (im
 	}
 
 	report.Stats = buildStats(result, report.Messages, syntheticErr)
-	if readErr != nil {
-		return report, readErr
+	if readErr == nil {
+		if err := attachReportCSV(ctx, runtimeScope, spec.Options.CompanyID, result.CSVBytes, &report); err != nil {
+			return report, err
+		}
+		return report, nil
 	}
-	return report, nil
+	return report, readErr
 }
+
+var attachReportCSV = artifact.AttachReportCSV
 
 func buildStats(result registry.Result, messages []importpkg.Message, syntheticErr bool) importpkg.Stats {
 	if result.HasOutcomes() {
