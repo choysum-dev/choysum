@@ -111,7 +111,7 @@ describe('ExportPanel', () => {
     await (wrapper.vm as any).onOpen();
     await flushPromises();
 
-    expect(describeExportFields).toHaveBeenCalledWith('partner.Partner');
+    expect(describeExportFields).toHaveBeenCalledWith('partner.Partner', expect.any(AbortSignal));
     expect((wrapper.vm as any).fieldTree.length).toBeGreaterThan(0);
 
     await (wrapper.vm as any).runPreview();
@@ -294,20 +294,79 @@ describe('ExportPanel', () => {
 
   it('ignores stale preview results after field selection changes', async () => {
     let resolvePreview: (value: unknown) => void = () => {};
-    previewExport.mockImplementation(
-      () =>
-        new Promise(resolve => {
-          resolvePreview = resolve;
-        }),
-    );
+    let previewSignal: AbortSignal | undefined;
+    previewExport.mockImplementation((_input, signal?: AbortSignal) => {
+      previewSignal = signal;
+      return new Promise((resolve, reject) => {
+        resolvePreview = resolve;
+        signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+      });
+    });
     const wrapper = await mountPanel();
     const pending = (wrapper.vm as any).runPreview();
     (wrapper.vm as any).onFieldCheck();
-    resolvePreview({ report: { stats: { ok: 9 } } });
+    expect(previewSignal?.aborted).toBe(true);
     await pending;
     await flushPromises();
     expect((wrapper.vm as any).previewReport).toBeNull();
     expect((wrapper.vm as any).busy).toBe(false);
+  });
+
+  it('aborts in-flight preview and allows a second preview after field change', async () => {
+    const pending: Array<{
+      resolve: (value: unknown) => void;
+      reject: (reason?: unknown) => void;
+      signal?: AbortSignal;
+    }> = [];
+    previewExport.mockImplementation((_input, signal?: AbortSignal) => {
+      if (signal?.aborted) {
+        return Promise.reject(new DOMException('Aborted', 'AbortError'));
+      }
+      return new Promise((resolve, reject) => {
+        const entry = { resolve, reject, signal };
+        pending.push(entry);
+        signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+      });
+    });
+    const wrapper = await mountPanel();
+    const first = (wrapper.vm as any).runPreview();
+    expect(pending).toHaveLength(1);
+    (wrapper.vm as any).onFieldCheck();
+    await first;
+    await flushPromises();
+    expect((wrapper.vm as any).previewReport).toBeNull();
+    expect((wrapper.vm as any).exportError).toBe('');
+
+    const second = (wrapper.vm as any).runPreview();
+    expect(pending).toHaveLength(2);
+    pending[1].resolve({ report: { stats: { ok: 2 } } });
+    await second;
+    await flushPromises();
+    expect(previewExport).toHaveBeenCalledTimes(2);
+    expect((wrapper.vm as any).previewReport?.stats?.ok).toBe(2);
+    expect(runExport).not.toHaveBeenCalled();
+  });
+
+  it('aborts in-flight export when session is invalidated', async () => {
+    let exportSignal: AbortSignal | undefined;
+    runExport.mockImplementation((_input, signal?: AbortSignal) => {
+      exportSignal = signal;
+      if (signal?.aborted) {
+        return Promise.reject(new DOMException('Aborted', 'AbortError'));
+      }
+      return new Promise((_resolve, reject) => {
+        signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+      });
+    });
+    const wrapper = await mountPanel();
+    const pending = (wrapper.vm as any).commitExport();
+    (wrapper.vm as any).onFieldCheck();
+    expect(exportSignal?.aborted).toBe(true);
+    await pending;
+    await flushPromises();
+    expect((wrapper.vm as any).exportDone).toBe(false);
+    expect((wrapper.vm as any).exportError).toBe('');
+    expect(downloadExportCsvBytes).not.toHaveBeenCalled();
   });
 
   it('applies default fields from props watch', async () => {

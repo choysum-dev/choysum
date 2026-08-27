@@ -101,6 +101,35 @@ const exportSuccessSubtitle = ref('');
 const fieldTreeRef = ref<InstanceType<typeof ElTree> | null>(null);
 
 let sessionToken = 0;
+let activeRpcAbort: AbortController | null = null;
+
+function isAbortError(err: unknown): boolean {
+  if (err instanceof DOMException && err.name === 'AbortError') {
+    return true;
+  }
+  return err instanceof Error && err.name === 'AbortError';
+}
+
+function abortActiveRpc() {
+  activeRpcAbort?.abort();
+  activeRpcAbort = null;
+}
+
+function beginActiveRpc(): AbortSignal {
+  abortActiveRpc();
+  activeRpcAbort = new AbortController();
+  return activeRpcAbort.signal;
+}
+
+function endActiveRpc(signal: AbortSignal) {
+  if (activeRpcAbort?.signal === signal) {
+    activeRpcAbort = null;
+  }
+}
+
+function shouldIgnoreRpcError(token: number, err: unknown): boolean {
+  return !isActiveSession(token) || isAbortError(err);
+}
 
 const treeProps = { label: 'label', children: 'children' };
 
@@ -155,15 +184,17 @@ function isActiveSession(token: number): boolean {
 }
 
 function invalidateSession() {
+  abortActiveRpc();
   sessionToken += 1;
   busy.value = false;
 }
 
 async function loadFields() {
   const token = sessionToken;
+  const signal = beginActiveRpc();
   fieldsLoading.value = true;
   try {
-    const resp = await describeExportFields(props.model);
+    const resp = await describeExportFields(props.model, signal);
     if (!isActiveSession(token)) {
       return;
     }
@@ -171,11 +202,12 @@ async function loadFields() {
     const defaults = (props.defaultFields?.length ? props.defaultFields : resp.defaultFields) ?? [];
     selectedFieldPaths.value = normalizeExportFieldPaths(defaults);
   } catch (err) {
-    if (!isActiveSession(token)) {
+    if (shouldIgnoreRpcError(token, err)) {
       return;
     }
     exportError.value = err instanceof Error ? err.message : String(err);
   } finally {
+    endActiveRpc(signal);
     if (isActiveSession(token)) {
       fieldsLoading.value = false;
     }
@@ -209,20 +241,22 @@ function onFieldCheck() {
 
 async function runPreview() {
   const token = sessionToken;
+  const signal = beginActiveRpc();
   busy.value = true;
   exportError.value = '';
   try {
-    const resp = await previewExport(buildRunInput());
+    const resp = await previewExport(buildRunInput(), signal);
     if (!isActiveSession(token)) {
       return;
     }
     previewReport.value = resp.report ?? null;
   } catch (err) {
-    if (!isActiveSession(token)) {
+    if (shouldIgnoreRpcError(token, err)) {
       return;
     }
     exportError.value = err instanceof Error ? err.message : String(err);
   } finally {
+    endActiveRpc(signal);
     if (isActiveSession(token)) {
       busy.value = false;
     }
@@ -231,10 +265,11 @@ async function runPreview() {
 
 async function commitExport() {
   const token = sessionToken;
+  const signal = beginActiveRpc();
   busy.value = true;
   exportError.value = '';
   try {
-    const resp = await runExport(buildRunInput());
+    const resp = await runExport(buildRunInput(), signal);
     if (!isActiveSession(token)) {
       return;
     }
@@ -252,11 +287,12 @@ async function commitExport() {
     }
     exportDone.value = true;
   } catch (err) {
-    if (!isActiveSession(token)) {
+    if (shouldIgnoreRpcError(token, err)) {
       return;
     }
     exportError.value = err instanceof Error ? err.message : String(err);
   } finally {
+    endActiveRpc(signal);
     if (isActiveSession(token)) {
       busy.value = false;
     }
