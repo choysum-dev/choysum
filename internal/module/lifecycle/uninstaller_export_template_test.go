@@ -259,6 +259,54 @@ func TestApplyExportTemplatePurgePropagatesError(t *testing.T) {
 	}
 }
 
+func TestModuleUninstallerCleanModelsPropagatesExportTemplatePurgeError(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
+		t.Fatalf("AutoMigrate CatalogEntities: %v", err)
+	}
+	ensureWebExportTemplateTable(t, db)
+
+	mod := &meta.Module{Name: "demo_et_purge_err", Status: meta.Installed, Version: "1.0.0"}
+	mod.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := db.Create(mod).Error; err != nil {
+		t.Fatalf("create module: %v", err)
+	}
+	if _, err := modmeta.ReplaceModuleDeclarations(db, mod.Id.String, []*meta.Model{{
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: xid.New().String(), Valid: true}},
+		Name:        "Item",
+		Path:        "@/demo_et_purge_err/service/models/item.ts",
+		Application: "demo",
+		ModelTable:  "demo_item",
+		ModuleId:    mod.Id,
+	}}); err != nil {
+		t.Fatalf("create raw model: %v", err)
+	}
+	if err := modmeta.FlushEffective(db, []modmeta.LogicalKey{{Application: "demo", Name: "Item"}}); err != nil {
+		t.Fatalf("flush effective: %v", err)
+	}
+	if err := db.Exec(
+		`INSERT INTO web_export_template(id, application, model_name, name) VALUES (?, ?, ?, ?)`,
+		xid.New().String(), "demo", "Item", "Active",
+	).Error; err != nil {
+		t.Fatalf("insert export template: %v", err)
+	}
+	if err := db.Exec(`CREATE TRIGGER deny_et_clean_delete BEFORE DELETE ON web_export_template BEGIN SELECT RAISE(ABORT, 'deny delete'); END`).Error; err != nil {
+		t.Fatalf("create trigger: %v", err)
+	}
+
+	uninstaller := &moduleUninstaller{
+		runtimeScope:  runtimeScope,
+		module:        mod,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope},
+		ctx:           newOpContext(),
+	}
+	err := uninstaller.cleanModels()
+	if err == nil || !strings.Contains(err.Error(), "error deleting web export templates") {
+		t.Fatalf("cleanModels() error=%v, want export template purge failure", err)
+	}
+}
+
 func TestModuleUninstallerCleanModelsNoOpWhenExportTemplateTableMissing(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
