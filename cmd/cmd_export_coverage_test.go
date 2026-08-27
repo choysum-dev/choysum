@@ -384,13 +384,13 @@ func TestWriteExportPOMkdirError(t *testing.T) {
 }
 
 func TestWriteExportPOCreateTempError(t *testing.T) {
-	dir := t.TempDir()
-	if err := os.Chmod(dir, 0o555); err != nil {
-		t.Fatalf("Chmod: %v", err)
+	prev := exportPOCreateTemp
+	exportPOCreateTemp = func(string, string) (*os.File, error) {
+		return nil, errors.New("create temp failed")
 	}
-	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+	t.Cleanup(func() { exportPOCreateTemp = prev })
 
-	err := writeExportPO(filepath.Join(dir, "out.po"), []byte("x"))
+	err := writeExportPO(filepath.Join(t.TempDir(), "out.po"), []byte("x"))
 	if err == nil || !strings.Contains(err.Error(), "write PO file") {
 		t.Fatalf("writeExportPO() err = %v", err)
 	}
