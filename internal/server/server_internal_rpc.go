@@ -9,6 +9,7 @@ func (s *GRPCWebServer) registerInternalRPCServices(opts runtimeOptions) {
 	s.registerInternalJobTokenService(opts)
 	s.registerTipHubService()
 	s.registerImportHubService()
+	s.registerExportHubService()
 }
 
 func (s *GRPCWebServer) registerInternalJobTokenService(opts runtimeOptions) {
