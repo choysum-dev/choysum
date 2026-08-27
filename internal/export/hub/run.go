@@ -12,6 +12,20 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+func toSpec(req *exportpb.ExportRunRequest, preview bool) (exportpkg.Spec, error) {
+	profile := strings.TrimSpace(req.GetProfile())
+	if profile == "" || profile == string(exportpkg.ProfileRecord) {
+		return toRecordSpec(req, preview)
+	}
+	if profile == string(exportpkg.ProfileTerminology) {
+		if preview {
+			return exportpkg.Spec{}, status.Error(codes.InvalidArgument, "preview is not supported for terminology profile")
+		}
+		return toTermSpec(req)
+	}
+	return exportpkg.Spec{}, status.Errorf(codes.InvalidArgument, "unsupported export profile %q", profile)
+}
+
 func toRecordSpec(req *exportpb.ExportRunRequest, preview bool) (exportpkg.Spec, error) {
 	if req == nil {
 		return exportpkg.Spec{}, status.Error(codes.InvalidArgument, "request is required")

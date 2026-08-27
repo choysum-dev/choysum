@@ -64,7 +64,7 @@ func (h *Hub) Preview(ctx context.Context, req *exportpb.ExportRunRequest) (*exp
 	return runExport(ctx, h.deps, req, true)
 }
 
-// Run executes a synchronous record export.
+// Run executes a synchronous export (record CSV or terminology PO).
 func (h *Hub) Run(ctx context.Context, req *exportpb.ExportRunRequest) (*exportpb.ExportRunResponse, error) {
 	return runExport(ctx, h.deps, req, false)
 }

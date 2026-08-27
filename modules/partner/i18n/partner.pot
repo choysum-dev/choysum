@@ -347,7 +347,12 @@ msgctxt "web/menu/menus"
 msgid "Partner Management"
 msgstr ""
 
-#: web/pages/PartnerList.vue:16
+#: web/pages/PartnerList.vue:21
+msgctxt "web/pages/PartnerList"
+msgid "Export CSV"
+msgstr ""
+
+#: web/pages/PartnerList.vue:20
 msgctxt "web/pages/PartnerList"
 msgid "Import CSV"
 msgstr ""
