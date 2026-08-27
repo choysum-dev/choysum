@@ -22,6 +22,8 @@ var (
 	marshalExportReport  = func(report importpkg.Report) ([]byte, error) {
 		return json.MarshalIndent(report, "", "  ")
 	}
+	exportPOCreateTemp = os.CreateTemp
+	exportPOCloseTemp  = func(f *os.File) error { return f.Close() }
 )
 
 func newExportCmd(envGetter func() scope.Scope) *cobra.Command {
@@ -123,7 +125,7 @@ func writeExportPO(path string, poBytes []byte) error {
 			return xfmt.Errorf("create output directory: %w", err)
 		}
 	}
-	tmp, err := os.CreateTemp(dir, ".export-po-*.tmp")
+	tmp, err := exportPOCreateTemp(dir, ".export-po-*.tmp")
 	if err != nil {
 		return xfmt.Errorf("write PO file: %w", err)
 	}
@@ -135,10 +137,10 @@ func writeExportPO(path string, poBytes []byte) error {
 		}
 	}()
 	if _, err := tmp.Write(poBytes); err != nil {
-		_ = tmp.Close()
+		_ = exportPOCloseTemp(tmp)
 		return xfmt.Errorf("write PO file: %w", err)
 	}
-	if err := tmp.Close(); err != nil {
+	if err := exportPOCloseTemp(tmp); err != nil {
 		return xfmt.Errorf("write PO file: %w", err)
 	}
 	if err := os.Rename(tmpPath, path); err != nil {

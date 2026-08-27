@@ -383,6 +383,51 @@ func TestWriteExportPOMkdirError(t *testing.T) {
 	}
 }
 
+func TestWriteExportPOCreateTempError(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0o555); err != nil {
+		t.Fatalf("Chmod: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
+	err := writeExportPO(filepath.Join(dir, "out.po"), []byte("x"))
+	if err == nil || !strings.Contains(err.Error(), "write PO file") {
+		t.Fatalf("writeExportPO() err = %v", err)
+	}
+}
+
+func TestWriteExportPOTempWriteError(t *testing.T) {
+	prev := exportPOCreateTemp
+	exportPOCreateTemp = func(dir, pattern string) (*os.File, error) {
+		f, err := os.CreateTemp(dir, pattern)
+		if err != nil {
+			return nil, err
+		}
+		name := f.Name()
+		if err := f.Close(); err != nil {
+			return nil, err
+		}
+		return os.OpenFile(name, os.O_RDONLY, 0)
+	}
+	t.Cleanup(func() { exportPOCreateTemp = prev })
+
+	err := writeExportPO(filepath.Join(t.TempDir(), "out.po"), []byte("x"))
+	if err == nil || !strings.Contains(err.Error(), "write PO file") {
+		t.Fatalf("writeExportPO() err = %v", err)
+	}
+}
+
+func TestWriteExportPOTempCloseError(t *testing.T) {
+	prev := exportPOCloseTemp
+	exportPOCloseTemp = func(*os.File) error { return errors.New("close failed") }
+	t.Cleanup(func() { exportPOCloseTemp = prev })
+
+	err := writeExportPO(filepath.Join(t.TempDir(), "out.po"), []byte("x"))
+	if err == nil || !strings.Contains(err.Error(), "write PO file") {
+		t.Fatalf("writeExportPO() err = %v", err)
+	}
+}
+
 func TestWriteExportPOWriteError(t *testing.T) {
 	dir := t.TempDir()
 	if err := writeExportPO(dir, []byte("x")); err == nil {
