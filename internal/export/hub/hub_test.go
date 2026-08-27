@@ -147,11 +147,11 @@ func TestDefaultExportFieldsPartner(t *testing.T) {
 	}
 }
 
-func TestRunAsyncUnimplemented(t *testing.T) {
-	h := New(Deps{})
+func TestRunAsyncRequiresRunRequest(t *testing.T) {
+	h := New(Deps{RuntimeScope: newHubTestScope(t), JSExecutor: stubJSExecutor{}})
 	ctx := auth.ContextWithIdentity(context.Background(), stubIdentity{})
 	_, err := h.RunAsync(ctx, &exportpb.ExportRunAsyncRequest{})
-	if err == nil || status.Code(err) != codes.Unimplemented {
+	if err == nil || status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("RunAsync err = %v", err)
 	}
 }

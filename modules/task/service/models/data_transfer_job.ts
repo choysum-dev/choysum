@@ -11,6 +11,7 @@ export const DATA_TRANSFER_JOB_EXECUTE_IMPORT_FULL_METHOD = 'task.DataTransferJo
 export const DATA_TRANSFER_JOB_EXECUTE_EXPORT_FULL_METHOD = 'task.DataTransferJob/ExecuteExport';
 
 const ALLOWED_PROFILES = new Set(['initdata', 'terminology', 'record']);
+const ALLOWED_EXPORT_PROFILES = new Set(['record']);
 const ALLOWED_POLICIES = new Set(['atomic', 'stop_keep', 'best_effort']);
 
 export type EnqueueRecordImportInput = {
@@ -27,6 +28,19 @@ export type EnqueueRecordImportResult = {
   taskJobId: string;
 };
 
+export type EnqueueRecordExportInput = {
+  targetModel: string;
+  sourceRef: string;
+  companyId?: string;
+  profile?: string;
+  specSnapshot: Record<string, unknown>;
+};
+
+export type EnqueueRecordExportResult = {
+  dataTransferJobId: string;
+  taskJobId: string;
+};
+
 function normalizeSelection(value: string | undefined, fallback: string, allowed: Set<string>, label: string): string {
   const normalized = String(value || '').trim() || fallback;
   if (!allowed.has(normalized)) {
@@ -37,7 +51,7 @@ function normalizeSelection(value: string | undefined, fallback: string, allowed
 
 /**
  * Lean async data-transfer domain row (queue status lives on task.Job).
- * Direction distinguishes import vs export; export execution lands in PR-export-4.
+ * Direction distinguishes import vs export.
  */
 @Model('DataTransferJob', { application: 'task', tableName: 'task_data_transfer_job' })
 export default class DataTransferJob extends BaseModel {
@@ -202,12 +216,65 @@ export default class DataTransferJob extends BaseModel {
     return { dataTransferJobId: row.Id, taskJobId: taskJob.Id };
   }
 
+  /** Creates DataTransferJob (Direction=export) + task.Job and links them 1:1. */
+  static async EnqueueRecordExport(input: EnqueueRecordExportInput): Promise<EnqueueRecordExportResult> {
+    const userId = String(getUserId() || '').trim();
+    if (!userId) {
+      throw new Error('authenticated user is required to enqueue data transfer job');
+    }
+    const targetModel = String(input?.targetModel || '').trim();
+    const sourceRef = String(input?.sourceRef || '').trim();
+    if (!targetModel || !sourceRef) {
+      throw new Error('targetModel and sourceRef are required');
+    }
+    const specSnapshot = input?.specSnapshot;
+    if (!specSnapshot || typeof specSnapshot !== 'object') {
+      throw new Error('specSnapshot is required');
+    }
+    const profile = normalizeSelection(input?.profile, 'record', ALLOWED_EXPORT_PROFILES, 'profile');
+
+    const row = await this.Create({
+      Profile: profile,
+      Policy: 'atomic',
+      DryRun: false,
+      TargetModel: targetModel,
+      SourceRef: sourceRef,
+      CompanyId: String(input?.companyId || '').trim() || undefined,
+      SpecSnapshotJson: specSnapshot,
+      Direction: 'export',
+      ProgressDone: 0,
+      ProgressTotal: 0,
+    } as Partial<DataTransferJob>);
+
+    let taskJob;
+    try {
+      taskJob = await Job.EnqueueJob(
+        'task',
+        DATA_TRANSFER_JOB_EXECUTE_EXPORT_FULL_METHOD,
+        { dataTransferJobId: row.Id },
+        userId,
+        userId
+      );
+    } catch (err) {
+      try {
+        await (this as any).DeleteById(row.Id);
+      } catch {
+        // best-effort cleanup when enqueue fails after row creation
+      }
+      throw err;
+    }
+
+    await (this as any).UpdateById(row.Id, { TaskJobId: taskJob.Id } as Partial<DataTransferJob>);
+
+    return { dataTransferJobId: row.Id, taskJobId: taskJob.Id };
+  }
+
   /** Task worker target for queued record imports. */
   static async ExecuteImport(dataTransferJobId: string): Promise<Record<string, any>> {
     return await executeImport(dataTransferJobId);
   }
 
-  /** Task worker target for queued record exports (stub until PR-export-4). */
+  /** Task worker target for queued record exports. */
   static async ExecuteExport(dataTransferJobId: string): Promise<Record<string, any>> {
     return await executeExport(dataTransferJobId);
   }
