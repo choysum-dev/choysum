@@ -69,12 +69,9 @@ func (h *Hub) Run(ctx context.Context, req *exportpb.ExportRunRequest) (*exportp
 	return runExport(ctx, h.deps, req, false)
 }
 
-// RunAsync is not implemented until async export lands.
-func (h *Hub) RunAsync(ctx context.Context, _ *exportpb.ExportRunAsyncRequest) (*exportpb.ExportRunAsyncResponse, error) {
-	if err := ensureIdentity(ctx); err != nil {
-		return nil, err
-	}
-	return nil, status.Error(codes.Unimplemented, "async export is not supported yet")
+// RunAsync enqueues a background record export via task.DataTransferJob + task.Job.
+func (h *Hub) RunAsync(ctx context.Context, req *exportpb.ExportRunAsyncRequest) (*exportpb.ExportRunAsyncResponse, error) {
+	return runExportAsync(ctx, h.deps, req)
 }
 
 func reportResponse(report importpkg.Report) *exportpb.ExportRunResponse {
