@@ -37,6 +37,7 @@ export function exportPreviewSummary(report: ExportReport | null | undefined): s
     return '';
   }
   const count = stats.error ?? 0;
-  const errors = count > 0 ? `${count} errors` : exportReportHasErrors(report) ? 'errors' : '0 errors';
+  const errors =
+    count === 1 ? '1 error' : count > 1 ? `${count} errors` : exportReportHasErrors(report) ? 'errors' : '0 errors';
   return `Preview: ${stats.ok ?? 0} ok, ${errors}, ${stats.total ?? 0} total`;
 }

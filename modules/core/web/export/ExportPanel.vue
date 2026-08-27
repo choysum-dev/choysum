@@ -202,6 +202,7 @@ function resetState() {
 }
 
 function onFieldCheck() {
+  invalidateSession();
   previewReport.value = null;
 }
 

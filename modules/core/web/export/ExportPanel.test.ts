@@ -292,6 +292,23 @@ describe('ExportPanel', () => {
     expect((wrapper.vm as any).previewReport).toBeNull();
   });
 
+  it('ignores stale preview results after field selection changes', async () => {
+    let resolvePreview: (value: unknown) => void = () => {};
+    previewExport.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          resolvePreview = resolve;
+        }),
+    );
+    const wrapper = await mountPanel();
+    const pending = (wrapper.vm as any).runPreview();
+    (wrapper.vm as any).onFieldCheck();
+    resolvePreview({ report: { stats: { ok: 9 } } });
+    await pending;
+    await flushPromises();
+    expect((wrapper.vm as any).previewReport).toBeNull();
+  });
+
   it('applies default fields from props watch', async () => {
     const wrapper = await mountPanel({ defaultFields: ['CompanyId.Code'] });
     expect((wrapper.vm as any).selectedFieldPaths).toEqual(['CompanyId/Code']);

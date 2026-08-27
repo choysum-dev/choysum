@@ -6,6 +6,7 @@ package hub
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -26,6 +27,9 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 	"gorm.io/gorm"
 )
+
+// seedPartnerModelMetaDBHook is set in tests to exercise seedPartnerModelFieldsDB error paths.
+var seedPartnerModelMetaDBHook func(*gorm.DB) error
 
 type stubIdentity struct{}
 
@@ -77,11 +81,29 @@ func newHubTestScope(t *testing.T) scope.Scope {
 	)
 }
 
+// seedFatalRecorder is set in tests to capture seed failures without aborting the test run.
+var seedFatalRecorder func(action string, err error)
+
+// seedFatalHook is swappable in tests to cover seed wrapper error paths.
+var seedFatalHook = func(t *testing.T, action string, err error) {
+	t.Helper()
+	if seedFatalRecorder != nil {
+		seedFatalRecorder(action, err)
+		return
+	}
+	panic(fmt.Sprintf("%s: %v", action, err))
+}
+
+func seedOrFatal(t *testing.T, action string, err error) {
+	t.Helper()
+	if err != nil {
+		seedFatalHook(t, action, err)
+	}
+}
+
 func seedPartnerModelMeta(t *testing.T, db *gorm.DB) {
 	t.Helper()
-	if err := seedPartnerModelMetaDB(db); err != nil {
-		t.Fatalf("seed partner model: %v", err)
-	}
+	seedOrFatal(t, "seed partner model", seedPartnerModelMetaDB(db))
 }
 
 func seedPartnerModelMetaDB(db *gorm.DB) error {
@@ -96,13 +118,15 @@ func seedPartnerModelMetaDB(db *gorm.DB) error {
 
 func seedPartnerModelFields(t *testing.T, db *gorm.DB) {
 	t.Helper()
-	if err := seedPartnerModelFieldsDB(db); err != nil {
-		t.Fatalf("seed partner fields: %v", err)
-	}
+	seedOrFatal(t, "seed partner fields", seedPartnerModelFieldsDB(db))
 }
 
 func seedPartnerModelFieldsDB(db *gorm.DB) error {
-	if err := seedPartnerModelMetaDB(db); err != nil {
+	seedMeta := seedPartnerModelMetaDB
+	if seedPartnerModelMetaDBHook != nil {
+		seedMeta = seedPartnerModelMetaDBHook
+	}
+	if err := seedMeta(db); err != nil {
 		return err
 	}
 	partnerModel := &meta.Model{}
@@ -124,9 +148,7 @@ func seedPartnerModelFieldsDB(db *gorm.DB) error {
 
 func seedCountryModelMeta(t *testing.T, db *gorm.DB) {
 	t.Helper()
-	if err := seedCountryModelMetaDB(db); err != nil {
-		t.Fatalf("seed country model: %v", err)
-	}
+	seedOrFatal(t, "seed country model", seedCountryModelMetaDB(db))
 }
 
 func seedCountryModelMetaDB(db *gorm.DB) error {
@@ -217,11 +239,11 @@ func authCtxWithServer(t *testing.T, server authpb.UserServer) context.Context {
 type stubJSExecutor struct{}
 
 func (stubJSExecutor) AppendJsScripts(scripts ...*jsengine.JsScript) { _ = scripts }
-func (stubJSExecutor) Start() error                          { return nil }
-func (stubJSExecutor) Stop() error                           { return nil }
+func (stubJSExecutor) Start() error                                  { return nil }
+func (stubJSExecutor) Stop() error                                   { return nil }
 func (stubJSExecutor) Execute(context.Context, *jsengine.JsRequest) (*jsengine.JsResponse, error) {
 	return &jsengine.JsResponse{}, nil
 }
-func (stubJSExecutor) GetJsScripts() []*jsengine.JsScript { return nil }
-func (stubJSExecutor) SetJsScripts(scripts []*jsengine.JsScript)  { _ = scripts }
-func (stubJSExecutor) Reload(...*jsengine.JsScript) error { return nil }
+func (stubJSExecutor) GetJsScripts() []*jsengine.JsScript        { return nil }
+func (stubJSExecutor) SetJsScripts(scripts []*jsengine.JsScript) { _ = scripts }
+func (stubJSExecutor) Reload(...*jsengine.JsScript) error        { return nil }

@@ -155,6 +155,9 @@ func runExport(
 		}
 		resp := reportResponse(report)
 		attachInlineCSV(resp, result.CSVBytes)
+		if err := ensureExportDeliverable(resp, result.CSVBytes); err != nil {
+			return nil, err
+		}
 		return resp, nil
 	}
 	report, err := runFn(runCtx, deps.RuntimeScope, spec)
@@ -193,4 +196,17 @@ func attachInlineCSV(resp *exportpb.ExportRunResponse, csvBytes []byte) {
 	if len(csvBytes) <= maxInlineCSVBytes {
 		resp.CsvData = append([]byte(nil), csvBytes...)
 	}
+}
+
+func ensureExportDeliverable(resp *exportpb.ExportRunResponse, csvBytes []byte) error {
+	if len(csvBytes) == 0 {
+		return nil
+	}
+	if len(resp.GetCsvData()) > 0 {
+		return nil
+	}
+	if strings.TrimSpace(resp.GetReport().GetArtifactRef()) != "" {
+		return nil
+	}
+	return status.Error(codes.FailedPrecondition, "export output too large for inline transfer and no artifact reference was created")
 }

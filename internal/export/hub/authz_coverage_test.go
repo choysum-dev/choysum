@@ -211,6 +211,47 @@ func TestAttachInlineCSVOmitsOversizedPayload(t *testing.T) {
 	attachInlineCSV(nil, []byte("x"))
 }
 
+func TestEnsureExportDeliverable(t *testing.T) {
+	if err := ensureExportDeliverable(nil, []byte("x")); err == nil || status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("nil resp err = %v", err)
+	}
+	resp := &exportpb.ExportRunResponse{Report: &exportpb.ExportReport{}}
+	if err := ensureExportDeliverable(resp, nil); err != nil {
+		t.Fatalf("empty csv: %v", err)
+	}
+	resp.CsvData = []byte("inline")
+	if err := ensureExportDeliverable(resp, []byte("inline")); err != nil {
+		t.Fatalf("inline csv: %v", err)
+	}
+	resp = &exportpb.ExportRunResponse{Report: &exportpb.ExportReport{ArtifactRef: "doc-1"}}
+	if err := ensureExportDeliverable(resp, make([]byte, maxInlineCSVBytes+1)); err != nil {
+		t.Fatalf("artifact ref: %v", err)
+	}
+	resp = &exportpb.ExportRunResponse{Report: &exportpb.ExportReport{}}
+	if err := ensureExportDeliverable(resp, make([]byte, maxInlineCSVBytes+1)); err == nil || status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("oversized without artifact err = %v", err)
+	}
+}
+
+func TestRunExportLargeCSVWithoutArtifactRef(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	seedCountryModelMeta(t, runtimeScope.Session().DB)
+	ctx := authCtxWithServer(t, allowAuthServer{})
+	ctx = auth.ContextWithIdentity(ctx, nilMetaIdentity{})
+	prev := runExportWithResultFn
+	runExportWithResultFn = func(_ context.Context, _ scope.Scope, _ exportpkg.Spec) (importpkg.Report, registry.Result, error) {
+		return importpkg.Report{Stats: importpkg.Stats{Ok: 1}}, registry.Result{CSVBytes: make([]byte, maxInlineCSVBytes+1)}, nil
+	}
+	t.Cleanup(func() { runExportWithResultFn = prev })
+	_, err := runExport(ctx, Deps{
+		RuntimeScope: runtimeScope,
+		JSExecutor:   stubJSExecutor{},
+	}, &exportpb.ExportRunRequest{Model: "base.Country"}, false)
+	if err == nil || status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("err = %v", err)
+	}
+}
+
 func TestJsExecutorAdapter(t *testing.T) {
 	adapter := jsExecutorAdapter{inner: stubJSExecutor{}}
 	if err := adapter.Load(nil); err != nil {

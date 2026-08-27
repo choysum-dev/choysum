@@ -60,6 +60,7 @@ describe('exportReportErrorText', () => {
 
 describe('exportPreviewSummary', () => {
   it('uses numeric error counts when present', () => {
+    expect(exportPreviewSummary({ stats: { ok: 1, error: 1, total: 2 } })).toBe('Preview: 1 ok, 1 error, 2 total');
     expect(exportPreviewSummary({ stats: { ok: 1, error: 2, total: 3 } })).toBe('Preview: 1 ok, 2 errors, 3 total');
   });
 
