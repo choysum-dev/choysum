@@ -223,6 +223,22 @@ test('ExportTemplate CRUD + Fields round-trip', async () => {
   await ExportTemplate.DeleteById(String((created as any).Id));
 });
 
+test('ExportTemplate defaults ImportCompatible to false', async () => {
+  resetRequestContext();
+  setIdentity(uid('et_actor'));
+  const created = await ExportTemplate.Create(
+    {
+      Name: uid('tpl'),
+      Application: 'partner',
+      ModelName: 'Partner',
+      Fields: ['Name'],
+    } as any,
+    ['Id', 'ImportCompatible'] as any
+  );
+  expect((created as any).ImportCompatible).toBe(false);
+  await ExportTemplate.DeleteById(String((created as any).Id));
+});
+
 test('ExportTemplate rejects foreign UserId on Create', async () => {
   resetRequestContext();
   const actor = uid('et_owner');

@@ -795,6 +795,66 @@ describe('ExportPanel', () => {
     );
   });
 
+  it('defers template field paths until describeExportFields completes', async () => {
+    let resolveFields!: (value: unknown) => void;
+    describeExportFields.mockReturnValue(new Promise(resolve => {
+      resolveFields = resolve;
+    }));
+    exportTemplateMocks.templates.value = [
+      { Id: 'tpl-1', Name: 'Basic', Fields: ['Code'], shared: false, createUid: 'me', canDelete: true },
+    ];
+    const wrapper = await mountPanel();
+    void (wrapper.vm as any).onOpen();
+    (wrapper.vm as any).customFieldsOpen = ['fields'];
+    await flushPromises();
+    (wrapper.vm as any).selectedTemplateId = 'tpl-1';
+    (wrapper.vm as any).applySelectedTemplate();
+    expect((wrapper.vm as any).selectedFieldPaths).toEqual(['Code']);
+    resolveFields({
+      fields: [{ path: 'Name', label: 'Name' }, { path: 'Code', label: 'Code' }],
+      defaultFields: ['Name'],
+    });
+    await flushPromises();
+    expect((wrapper.vm as any).selectedFieldPaths).toEqual(['Code']);
+  });
+
+  it('surfaces template save failures on exportError', async () => {
+    exportTemplateMocks.saveCurrent.mockRejectedValueOnce(new Error('save denied'));
+    const wrapper = await mountPanel();
+    (wrapper.vm as any).templateSaveName = 'My cols';
+    await (wrapper.vm as any).saveCurrentTemplate();
+    await flushPromises();
+    expect((wrapper.vm as any).exportError).toBe('save denied');
+  });
+
+  it('deletes the selected template and clears selection', async () => {
+    exportTemplateMocks.templates.value = [
+      { Id: 'tpl-1', Name: 'Basic', Fields: ['Code'], shared: true, createUid: 'me', canDelete: true },
+    ];
+    const wrapper = await mountPanel();
+    (wrapper.vm as any).selectedTemplateId = 'tpl-1';
+    await (wrapper.vm as any).deleteSelectedTemplate();
+    await flushPromises();
+    expect(exportTemplateMocks.remove).toHaveBeenCalledWith('tpl-1');
+    expect((wrapper.vm as any).selectedTemplateId).toBe('');
+  });
+
+  it('surfaces template delete failures on exportError', async () => {
+    exportTemplateMocks.remove.mockRejectedValueOnce(new Error('delete denied'));
+    const wrapper = await mountPanel();
+    (wrapper.vm as any).selectedTemplateId = 'tpl-1';
+    await (wrapper.vm as any).deleteSelectedTemplate();
+    await flushPromises();
+    expect((wrapper.vm as any).exportError).toBe('delete denied');
+  });
+
+  it('ignores applySelectedTemplate when no template is selected', async () => {
+    const wrapper = await mountPanel();
+    (wrapper.vm as any).selectedFieldPaths = ['Name'];
+    (wrapper.vm as any).applySelectedTemplate();
+    expect((wrapper.vm as any).selectedFieldPaths).toEqual(['Name']);
+  });
+
   it('surfaces export failures from Error objects', async () => {
     runExport.mockRejectedValue(new Error('export failed'));
     const wrapper = await mountPanel();

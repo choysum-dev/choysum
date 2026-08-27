@@ -86,7 +86,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import type ElTree from 'element-plus/es/components/tree/src/tree.vue';
 import { describeExportFields, previewExport, runExport, ExportMode, type ExportFieldNode, type ExportReport } from './client';
 import { downloadExportCsvBytes, suggestExportFileName } from './download_csv';
@@ -145,6 +145,7 @@ const { templates: exportTemplateItems, loading: exportTemplatesLoading, loadErr
 const selectedTemplateId = ref('');
 const templateSaveName = ref('');
 const templateSaveShared = ref(false);
+const pendingFieldPaths = ref<string[] | null>(null);
 
 const templatesEnabled = computed(() => String(props.model || '').includes('.'));
 
@@ -259,7 +260,11 @@ async function loadFields() {
     }
     fieldTree.value = mapFieldNodes(resp.fields);
     const defaults = (props.defaultFields?.length ? props.defaultFields : resp.defaultFields) ?? [];
-    selectedFieldPaths.value = normalizeExportFieldPaths(defaults);
+    const paths = pendingFieldPaths.value ?? defaults;
+    pendingFieldPaths.value = null;
+    selectedFieldPaths.value = normalizeExportFieldPaths(paths);
+    await nextTick();
+    fieldTreeRef.value?.setCheckedKeys?.(selectedFieldPaths.value);
   } catch (err) {
     if (shouldIgnoreRpcError(token, err)) {
       return;
@@ -285,27 +290,43 @@ function applySelectedTemplate() {
   const id = String(selectedTemplateId.value || '').trim();
   const template = exportTemplateItems.value.find(item => item.Id === id);
   if (!template) return;
-  applyFieldPaths(applyExportTemplate(template));
+  const paths = applyExportTemplate(template);
+  if (fieldsLoading.value || fieldTree.value.length === 0) {
+    pendingFieldPaths.value = paths;
+    selectedFieldPaths.value = normalizeExportFieldPaths(paths);
+    return;
+  }
+  applyFieldPaths(paths);
 }
 
 async function saveCurrentTemplate() {
-  const saved = await saveExportTemplate({
-    name: templateSaveName.value,
-    shared: templateSaveShared.value,
-    fields: effectiveFields.value,
-  });
-  if (saved) {
-    selectedTemplateId.value = saved.Id;
-    templateSaveName.value = '';
-    templateSaveShared.value = false;
+  exportError.value = '';
+  try {
+    const saved = await saveExportTemplate({
+      name: templateSaveName.value,
+      shared: templateSaveShared.value,
+      fields: effectiveFields.value,
+    });
+    if (saved) {
+      selectedTemplateId.value = saved.Id;
+      templateSaveName.value = '';
+      templateSaveShared.value = false;
+    }
+  } catch (err) {
+    exportError.value = err instanceof Error ? err.message : String(err);
   }
 }
 
 async function deleteSelectedTemplate() {
   const id = String(selectedTemplateId.value || '').trim();
   if (!id) return;
-  await removeExportTemplate(id);
-  selectedTemplateId.value = '';
+  exportError.value = '';
+  try {
+    await removeExportTemplate(id);
+    selectedTemplateId.value = '';
+  } catch (err) {
+    exportError.value = err instanceof Error ? err.message : String(err);
+  }
 }
 
 function onOpen() {
@@ -318,6 +339,7 @@ function onOpen() {
   selectedTemplateId.value = '';
   templateSaveName.value = '';
   templateSaveShared.value = false;
+  pendingFieldPaths.value = null;
   void loadFields();
 }
 
@@ -342,6 +364,7 @@ function resetState() {
   selectedTemplateId.value = '';
   templateSaveName.value = '';
   templateSaveShared.value = false;
+  pendingFieldPaths.value = null;
 }
 
 function onFieldCheck() {

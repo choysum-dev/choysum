@@ -55,6 +55,8 @@ describe('parseExportModelRef', () => {
     expect(parseExportModelRef('partner.Partner')).toEqual({ application: 'partner', modelName: 'Partner' });
     expect(parseExportModelRef('')).toEqual({ application: '', modelName: '' });
     expect(parseExportModelRef('invalid')).toEqual({ application: '', modelName: '' });
+    expect(parseExportModelRef('.Partner')).toEqual({ application: '', modelName: '' });
+    expect(parseExportModelRef('partner.')).toEqual({ application: '', modelName: '' });
   });
 });
 
@@ -71,13 +73,61 @@ describe('useExportTemplates', () => {
     templateMocks.Search.mockResolvedValue([
       { Id: '1', Name: 'Basic', Fields: ['Name'], UserId: 'me', CreatedUid: 'me' },
       { Id: '2', Name: 'Shared', Fields: ['Code'], UserId: null, CreatedUid: 'other' },
+      { Id: '3', Name: '', Fields: ['Name'] },
+      { Id: '4', Fields: ['Name'] },
     ]);
     const api = runHook();
     await api.load();
     expect(templateMocks.Search).toHaveBeenCalled();
     expect(api.templates.value).toHaveLength(2);
+    expect(api.templates.value[0].canDelete).toBe(true);
     expect(api.templates.value[1].shared).toBe(true);
     expect(api.templates.value[1].canDelete).toBe(false);
+  });
+
+  it('load clears templates for invalid model refs', async () => {
+    const api = runHook('invalid');
+    await api.load();
+    expect(templateMocks.Search).not.toHaveBeenCalled();
+    expect(api.templates.value).toEqual([]);
+    expect(api.loading.value).toBe(false);
+    expect(api.loadError.value).toBeNull();
+  });
+
+  it('load without actor only queries shared templates', async () => {
+    actorState.id = '';
+    const api = runHook();
+    await api.load();
+    const query = templateMocks.Search.mock.calls[0]?.[0];
+    expect(query.And[2]).toEqual({ Or: [['UserId', '=', null]] });
+  });
+
+  it('load surfaces search failures', async () => {
+    templateMocks.Search.mockRejectedValue(new Error('search failed'));
+    const api = runHook();
+    await api.load();
+    expect(api.loadError.value).toBe('search failed');
+    expect(api.templates.value).toEqual([]);
+    expect(api.loading.value).toBe(false);
+  });
+
+  it('load ignores stale responses after a newer load starts', async () => {
+    let resolveFirst!: (rows: any[]) => void;
+    templateMocks.Search
+      .mockImplementationOnce(
+        () =>
+          new Promise<any[]>(resolve => {
+            resolveFirst = resolve;
+          })
+      )
+      .mockResolvedValueOnce([{ Id: '2', Name: 'Fresh', Fields: ['Code'], UserId: 'me', CreatedUid: 'me' }]);
+    const api = runHook();
+    const first = api.load();
+    const second = api.load();
+    resolveFirst([{ Id: '1', Name: 'Stale', Fields: ['Name'], UserId: 'me', CreatedUid: 'me' }]);
+    await first;
+    await second;
+    expect(api.templates.value.map(row => row.Id)).toEqual(['2']);
   });
 
   it('saveCurrent persists selected fields', async () => {
@@ -89,14 +139,41 @@ describe('useExportTemplates', () => {
         Application: 'partner',
         ModelName: 'Partner',
         Fields: ['Name', 'Code'],
+        UserId: 'me',
       }),
       expect.any(Array)
     );
   });
 
+  it('saveCurrent supports shared and import-compatible templates', async () => {
+    const api = runHook();
+    const saved = await api.saveCurrent({
+      name: 'Shared cols',
+      shared: true,
+      fields: ['Name'],
+      importCompatible: true,
+    });
+    expect(saved?.shared).toBe(true);
+    expect(templateMocks.Create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        UserId: null,
+        ImportCompatible: true,
+      }),
+      expect.any(Array)
+    );
+  });
+
+  it('saveCurrent returns null for invalid payloads', async () => {
+    const api = runHook('invalid');
+    expect(await api.saveCurrent({ name: 'x', fields: ['Name'] })).toBeNull();
+    expect(await api.saveCurrent({ name: '', fields: ['Name'] })).toBeNull();
+    expect(await api.saveCurrent({ name: 'x', fields: [] })).toBeNull();
+  });
+
   it('apply returns ordered field paths', () => {
     const api = runHook();
-    expect(api.apply({ Fields: ['Name', 'CompanyId/Code'] })).toEqual(['Name', 'CompanyId/Code']);
+    expect(api.apply({ Fields: ['Name', 'CompanyId/Code', '  ', null as any] })).toEqual(['Name', 'CompanyId/Code']);
+    expect(api.apply({})).toEqual([]);
   });
 
   it('remove deletes by id and reloads', async () => {
