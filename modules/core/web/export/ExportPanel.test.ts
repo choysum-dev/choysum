@@ -369,6 +369,50 @@ describe('ExportPanel', () => {
     expect(downloadExportCsvBytes).not.toHaveBeenCalled();
   });
 
+  it('ignores AbortError from superseded preview in the same session', async () => {
+    const pending: Array<{
+      resolve: (value: unknown) => void;
+      reject: (reason?: unknown) => void;
+      signal?: AbortSignal;
+    }> = [];
+    previewExport.mockImplementation((_input, signal?: AbortSignal) => {
+      if (signal?.aborted) {
+        return Promise.reject(new DOMException('Aborted', 'AbortError'));
+      }
+      return new Promise((resolve, reject) => {
+        pending.push({ resolve, reject, signal });
+        signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+      });
+    });
+    const wrapper = await mountPanel();
+    const first = (wrapper.vm as any).runPreview();
+    expect(pending).toHaveLength(1);
+    const second = (wrapper.vm as any).runPreview();
+    await first;
+    await flushPromises();
+    expect((wrapper.vm as any).exportError).toBe('');
+    pending[1].resolve({ report: { stats: { ok: 1 } } });
+    await second;
+    await flushPromises();
+    expect((wrapper.vm as any).previewReport?.stats?.ok).toBe(1);
+  });
+
+  it('ignores Error abort failures with AbortError name', async () => {
+    previewExport.mockRejectedValue(Object.assign(new Error('Aborted'), { name: 'AbortError' }));
+    const wrapper = await mountPanel();
+    await (wrapper.vm as any).runPreview();
+    await flushPromises();
+    expect((wrapper.vm as any).exportError).toBe('');
+  });
+
+  it('surfaces non-abort DOMException failures', async () => {
+    previewExport.mockRejectedValue(new DOMException('Network failed', 'NetworkError'));
+    const wrapper = await mountPanel();
+    await (wrapper.vm as any).runPreview();
+    await flushPromises();
+    expect((wrapper.vm as any).exportError).toBe('Network failed');
+  });
+
   it('applies default fields from props watch', async () => {
     const wrapper = await mountPanel({ defaultFields: ['CompanyId.Code'] });
     expect((wrapper.vm as any).selectedFieldPaths).toEqual(['CompanyId/Code']);
