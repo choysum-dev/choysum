@@ -27,7 +27,7 @@ func TestCLI_ExportUnsupportedProfile(t *testing.T) {
 	cmd.SetOut(&bytes.Buffer{})
 	cmd.SetErr(&bytes.Buffer{})
 	cmd.SetContext(context.Background())
-	cmd.SetArgs([]string{"--profile", "record", "out.po"})
+	cmd.SetArgs([]string{"--profile", "initdata", "out.csv"})
 
 	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "unsupported profile") {
 		t.Fatalf("Execute() err = %v", err)
