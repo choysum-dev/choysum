@@ -156,6 +156,7 @@ function isActiveSession(token: number): boolean {
 
 function invalidateSession() {
   sessionToken += 1;
+  busy.value = false;
 }
 
 async function loadFields() {

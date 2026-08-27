@@ -307,6 +307,7 @@ describe('ExportPanel', () => {
     await pending;
     await flushPromises();
     expect((wrapper.vm as any).previewReport).toBeNull();
+    expect((wrapper.vm as any).busy).toBe(false);
   });
 
   it('applies default fields from props watch', async () => {
