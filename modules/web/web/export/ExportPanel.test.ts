@@ -919,6 +919,66 @@ describe('ExportPanel', () => {
     expect((wrapper.vm as any).selectedTemplateId).toBe('tpl-1');
   });
 
+  it('ignores template save when saveCurrent returns null', async () => {
+    exportTemplateMocks.saveCurrent.mockResolvedValueOnce(null);
+    const wrapper = await mountPanel();
+    (wrapper.vm as any).templateSaveName = 'My cols';
+    (wrapper.vm as any).templateSaveShared = true;
+    (wrapper.vm as any).selectedTemplateId = '';
+    await (wrapper.vm as any).saveCurrentTemplate();
+    await flushPromises();
+    expect((wrapper.vm as any).templateSaveName).toBe('My cols');
+    expect((wrapper.vm as any).templateSaveShared).toBe(true);
+    expect((wrapper.vm as any).selectedTemplateId).toBe('');
+  });
+
+  it('surfaces non-error template save failures on exportError', async () => {
+    exportTemplateMocks.saveCurrent.mockRejectedValueOnce('save denied');
+    const wrapper = await mountPanel();
+    (wrapper.vm as any).templateSaveName = 'My cols';
+    await (wrapper.vm as any).saveCurrentTemplate();
+    await flushPromises();
+    expect((wrapper.vm as any).exportError).toBe('save denied');
+  });
+
+  it('surfaces non-error template delete failures on exportError', async () => {
+    exportTemplateMocks.remove.mockRejectedValueOnce('delete denied');
+    const wrapper = await mountPanel();
+    (wrapper.vm as any).selectedTemplateId = 'tpl-1';
+    await (wrapper.vm as any).deleteSelectedTemplate();
+    await flushPromises();
+    expect((wrapper.vm as any).exportError).toBe('delete denied');
+  });
+
+  it('ignores deleteSelectedTemplate when id is blank', async () => {
+    const wrapper = await mountPanel();
+    (wrapper.vm as any).selectedTemplateId = '   ';
+    await (wrapper.vm as any).deleteSelectedTemplate();
+    expect(exportTemplateMocks.remove).not.toHaveBeenCalled();
+  });
+
+  it('applySelectedTemplate clears preview when fields are already loaded', async () => {
+    exportTemplateMocks.templates.value = [
+      { Id: 'tpl-1', Name: 'Basic', Fields: ['Code'], shared: false, createUid: 'me', canDelete: true },
+    ];
+    exportTemplateMocks.apply.mockReturnValueOnce(['Code']);
+    const wrapper = await mountPanel();
+    await (wrapper.vm as any).onOpen();
+    await flushPromises();
+    (wrapper.vm as any).previewReport = { stats: { ok: 1 } };
+    (wrapper.vm as any).selectedTemplateId = 'tpl-1';
+    (wrapper.vm as any).applySelectedTemplate();
+    expect((wrapper.vm as any).selectedFieldPaths).toEqual(['Code']);
+    expect((wrapper.vm as any).previewReport).toBeNull();
+  });
+
+  it('does not load templates when customize fields stay collapsed', async () => {
+    const wrapper = await mountPanel();
+    (wrapper.vm as any).customFieldsOpen = [];
+    await flushPromises();
+    expect(exportTemplateMocks.load).not.toHaveBeenCalled();
+  });
+
   it('ignores duplicate template delete while busy', async () => {
     let resolveRemove!: () => void;
     exportTemplateMocks.remove.mockImplementationOnce(

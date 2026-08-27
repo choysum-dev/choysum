@@ -279,6 +279,34 @@ test('ExportTemplate rejects foreign UserId on Create', async () => {
   );
 });
 
+test('ExportTemplate validateExportTemplateConstraint only rejects foreign UserId', async () => {
+  resetRequestContext();
+  const actor = uid('et_validate');
+  setIdentity(actor);
+  const ET = ExportTemplate as any;
+
+  const valuesShared: Record<string, any> = { UserId: null };
+  await ET.validateExportTemplateConstraint({}, { mode: 'create', values: valuesShared, current: undefined });
+  expect(valuesShared.UserId).toBeNull();
+
+  const valuesSelf: Record<string, any> = { UserId: actor };
+  await ET.validateExportTemplateConstraint({}, { mode: 'create', values: valuesSelf, current: undefined });
+  expect(valuesSelf.UserId).toBe(actor);
+
+  const valuesSelfRef: Record<string, any> = { UserId: { Id: actor } };
+  await ET.validateExportTemplateConstraint({}, { mode: 'create', values: valuesSelfRef, current: undefined });
+  expect(valuesSelfRef.UserId).toEqual({ Id: actor });
+
+  const other = uid('et_other');
+  const valuesForeign: Record<string, any> = { UserId: other };
+  await expectCode(
+    async () => ET.validateExportTemplateConstraint({}, { mode: 'create', values: valuesForeign, current: undefined }),
+    'PermissionDenied',
+    'another user'
+  );
+  expect(valuesForeign.UserId).toBe(other);
+});
+
 test('ExportTemplate shared visibility follows UserFilter pattern', async () => {
   resetRequestContext();
   const actor = uid('et_actor');

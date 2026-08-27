@@ -150,6 +150,25 @@ func TestApplyExportTemplatePurgeOK(t *testing.T) {
 	}
 }
 
+func TestApplyExportTemplatePurgeSuccess(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	ensureWebExportTemplateTable(t, db)
+	if err := db.Exec(`INSERT INTO web_export_template(id, application, model_name, name) VALUES ('1','demo','Item','x')`).Error; err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+	if err := applyExportTemplatePurge(db, []modmeta.LogicalKey{{Application: "demo", Name: "Item"}}); err != nil {
+		t.Fatalf("applyExportTemplatePurge: %v", err)
+	}
+	var remaining int64
+	if err := db.Raw(`SELECT COUNT(1) FROM web_export_template WHERE id = '1'`).Scan(&remaining).Error; err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if remaining != 0 {
+		t.Fatalf("expected export template purge to delete row")
+	}
+}
+
 func TestWebExportTemplateTableExists(t *testing.T) {
 	if ok, err := webExportTemplateTableExists(nil); err != nil || ok {
 		t.Fatalf("nil db: ok=%v err=%v", ok, err)

@@ -75,6 +75,7 @@ describe('useExportTemplates', () => {
       { Id: '2', Name: 'Shared', Fields: ['Code'], UserId: null, CreatedUid: 'other' },
       { Id: '3', Name: '', Fields: ['Name'] },
       { Id: '4', Fields: ['Name'] },
+      null,
     ]);
     const api = runHook();
     await api.load();
@@ -83,6 +84,22 @@ describe('useExportTemplates', () => {
     expect(api.templates.value[0].canDelete).toBe(true);
     expect(api.templates.value[1].shared).toBe(true);
     expect(api.templates.value[1].canDelete).toBe(false);
+  });
+
+  it('load maps shared/private canDelete and normalizes Fields', async () => {
+    templateMocks.Search.mockResolvedValue([
+      { Id: 'p1', Name: 'Mine', Fields: ['Name'], UserId: 'me', CreatedUid: 'me' },
+      { Id: 's1', Name: 'Team', Fields: 'not-array' as any, UserId: null, CreatedUid: 'me' },
+      { Id: 's2', Name: 'OtherShared', Fields: ['Code'], UserId: '', CreatedUid: 'other' },
+      { Id: 'p2', Name: 'OtherPrivate', Fields: ['Code'], UserId: 'other', CreatedUid: 'other' },
+    ]);
+    const api = runHook();
+    await api.load();
+    expect(api.templates.value).toHaveLength(4);
+    expect(api.templates.value[0]).toMatchObject({ shared: false, canDelete: true, Fields: ['Name'] });
+    expect(api.templates.value[1]).toMatchObject({ shared: true, canDelete: true, Fields: [] });
+    expect(api.templates.value[2]).toMatchObject({ shared: true, canDelete: false });
+    expect(api.templates.value[3]).toMatchObject({ shared: false, canDelete: false });
   });
 
   it('load clears templates for invalid model refs', async () => {
@@ -109,6 +126,53 @@ describe('useExportTemplates', () => {
     expect(api.loadError.value).toBe('search failed');
     expect(api.templates.value).toEqual([]);
     expect(api.loading.value).toBe(false);
+  });
+
+  it('load stringifies non-Error throws', async () => {
+    templateMocks.Search.mockRejectedValue('plain-string-fail');
+    const api = runHook();
+    await api.load();
+    expect(api.loadError.value).toBe('plain-string-fail');
+    expect(api.templates.value).toEqual([]);
+  });
+
+  it('load without actor sets canDelete false', async () => {
+    actorState.id = '';
+    templateMocks.Search.mockResolvedValue([
+      { Id: 's1', Name: 'Shared', Fields: ['Name'], UserId: null, CreatedUid: 'me' },
+      { Id: 'p1', Name: 'Private', Fields: ['Code'], UserId: 'someone', CreatedUid: 'someone' },
+    ]);
+    const api = runHook();
+    await api.load();
+    expect(api.templates.value.every(row => row.canDelete === false)).toBe(true);
+  });
+
+  it('load ignores stale Search rejection after a newer load', async () => {
+    let rejectSlow!: (err: Error) => void;
+    const slow = new Promise<any[]>((_resolve, reject) => {
+      rejectSlow = reject;
+    });
+    templateMocks.Search
+      .mockImplementationOnce(() => slow)
+      .mockResolvedValueOnce([{ Id: '2', Name: 'Fresh', Fields: ['Code'], UserId: 'me', CreatedUid: 'me' }]);
+    const api = runHook();
+    const first = api.load();
+    const second = api.load();
+    rejectSlow(new Error('stale network'));
+    await Promise.all([first, second]);
+    expect(api.loadError.value).toBeNull();
+    expect(api.templates.value.map(row => row.Id)).toEqual(['2']);
+    expect(api.loading.value).toBe(false);
+  });
+
+  it('load ignores stale empty-context clear when a newer load starts', async () => {
+    const api = runHook('invalid');
+    api.templates.value = [{ Id: 'keep', Name: 'Keep', shared: false, createUid: 'me', canDelete: true } as any];
+    const first = api.load();
+    const second = api.load();
+    await Promise.all([first, second]);
+    expect(api.templates.value).toEqual([]);
+    expect(templateMocks.Search).not.toHaveBeenCalled();
   });
 
   it('load ignores stale responses after a newer load starts', async () => {
@@ -143,6 +207,34 @@ describe('useExportTemplates', () => {
       }),
       expect.any(Array)
     );
+  });
+
+  it('saveCurrent omits UserId when actor is empty (private)', async () => {
+    actorState.id = '';
+    const api = runHook();
+    await api.saveCurrent({ name: 'NoActor', fields: ['Name'] });
+    expect(templateMocks.Create).toHaveBeenCalledWith(
+      expect.not.objectContaining({ UserId: expect.anything() }),
+      expect.any(Array)
+    );
+  });
+
+  it('saveCurrent uses CreatedUid and Name fallbacks from actor', async () => {
+    actorState.id = 'me';
+    templateMocks.Create.mockResolvedValueOnce({
+      Id: 'tpl-2',
+      Fields: ['Name'],
+      UserId: null,
+    });
+    const api = runHook();
+    const saved = await api.saveCurrent({ name: 'Fallback', shared: true, fields: ['Name'] });
+    expect(saved).toMatchObject({
+      Id: 'tpl-2',
+      Name: 'Fallback',
+      shared: true,
+      createUid: 'me',
+      canDelete: true,
+    });
   });
 
   it('saveCurrent supports shared and import-compatible templates', async () => {
