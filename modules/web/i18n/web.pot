@@ -52,6 +52,51 @@ msgctxt "web.model.UserFilter.fields"
 msgid "User"
 msgstr ""
 
+#: service/models/export_template.ts:82
+msgctxt "web.model.ExportTemplate"
+msgid "Cannot assign an export template to another user"
+msgstr ""
+
+#: service/models/export_template.ts:36
+msgctxt "web.model.ExportTemplate.fields"
+msgid "Application"
+msgstr ""
+
+#: service/models/export_template.ts:63
+msgctxt "web.model.ExportTemplate.fields"
+msgid "Fields"
+msgstr ""
+
+#: service/models/export_template.ts:64
+msgctxt "web.model.ExportTemplate.fields"
+msgid "Ordered export field paths (slash-separated)."
+msgstr ""
+
+#: service/models/export_template.ts:71
+msgctxt "web.model.ExportTemplate.fields"
+msgid "Import Compatible"
+msgstr ""
+
+#: service/models/export_template.ts:72
+msgctxt "web.model.ExportTemplate.fields"
+msgid "When true, saved paths are intended for import round-trip workflows."
+msgstr ""
+
+#: service/models/export_template.ts:45
+msgctxt "web.model.ExportTemplate.fields"
+msgid "Model Name"
+msgstr ""
+
+#: service/models/export_template.ts:26
+msgctxt "web.model.ExportTemplate.fields"
+msgid "Name"
+msgstr ""
+
+#: service/models/export_template.ts:55
+msgctxt "web.model.ExportTemplate.fields"
+msgid "User"
+msgstr ""
+
 #: web/components/chatter/OChatter.vue:5
 msgctxt "web/components/chatter/OChatter"
 msgid "Activity"

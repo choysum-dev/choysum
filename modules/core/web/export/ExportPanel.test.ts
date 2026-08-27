@@ -8,11 +8,34 @@ import { createI18n } from 'vue-i18n';
 
 config.global.renderStubDefaultSlot = true;
 
-const { describeExportFields, previewExport, runExport, downloadExportCsvBytes } = vi.hoisted(() => ({
-  describeExportFields: vi.fn(),
-  previewExport: vi.fn(),
-  runExport: vi.fn(),
-  downloadExportCsvBytes: vi.fn(),
+const { describeExportFields, previewExport, runExport, downloadExportCsvBytes, exportTemplateMocks } = vi.hoisted(() => {
+  const { ref } = require('vue') as typeof import('vue');
+  return {
+    describeExportFields: vi.fn(),
+    previewExport: vi.fn(),
+    runExport: vi.fn(),
+    downloadExportCsvBytes: vi.fn(),
+    exportTemplateMocks: {
+      templates: ref<any[]>([]),
+      loading: ref(false),
+      loadError: ref<string | null>(null),
+      load: vi.fn(async () => undefined),
+      apply: vi.fn((row: { Fields?: string[] }) => row.Fields ?? []),
+      saveCurrent: vi.fn(async () => ({
+        Id: 'tpl-1',
+        Name: 'Saved',
+        Fields: ['Code'],
+        shared: false,
+        createUid: 'me',
+        canDelete: true,
+      })),
+      remove: vi.fn(async () => undefined),
+    },
+  };
+});
+
+vi.mock('@/web/web/composables/export/useExportTemplates', () => ({
+  useExportTemplates: () => exportTemplateMocks,
 }));
 
 vi.mock('./client', () => ({
@@ -87,6 +110,22 @@ async function mountPanel(
           emits: ['click'],
           template: '<button @click="$emit(\'click\')"><slot /></button>',
         },
+        ElSelect: {
+          props: ['modelValue'],
+          emits: ['update:modelValue'],
+          template: '<select :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><slot /></select>',
+        },
+        ElOption: { template: '<option><slot /></option>' },
+        ElInput: {
+          props: ['modelValue'],
+          emits: ['update:modelValue'],
+          template: '<input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+        },
+        ElCheckbox: {
+          props: ['modelValue'],
+          emits: ['update:modelValue'],
+          template: '<label><input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" /><slot /></label>',
+        },
       },
     },
   });
@@ -98,6 +137,11 @@ describe('ExportPanel', () => {
     previewExport.mockReset();
     runExport.mockReset();
     downloadExportCsvBytes.mockReset();
+    exportTemplateMocks.templates.value = [];
+    exportTemplateMocks.loadError.value = null;
+    exportTemplateMocks.load.mockClear();
+    exportTemplateMocks.saveCurrent.mockClear();
+    exportTemplateMocks.remove.mockClear();
     describeExportFields.mockResolvedValue({
       fields: [{ path: 'Name', label: 'Name' }, { path: 'Code', label: 'Code' }, { path: '  ', label: 'Blank' }],
       defaultFields: ['Name', 'Code'],
@@ -725,6 +769,30 @@ describe('ExportPanel', () => {
     await (wrapper.vm as any).commitExport();
     await flushPromises();
     expect((wrapper.vm as any).exportError).toBe('Export failed.');
+  });
+
+  it('loads templates when custom fields open and applies saved fields', async () => {
+    exportTemplateMocks.templates.value = [
+      { Id: 'tpl-1', Name: 'Basic', Fields: ['Code'], shared: false, createUid: 'me', canDelete: true },
+    ];
+    const wrapper = await mountPanel();
+    await (wrapper.vm as any).onOpen();
+    await flushPromises();
+    (wrapper.vm as any).customFieldsOpen = ['fields'];
+    await flushPromises();
+    expect(exportTemplateMocks.load).toHaveBeenCalled();
+    (wrapper.vm as any).selectedTemplateId = 'tpl-1';
+    (wrapper.vm as any).applySelectedTemplate();
+    expect((wrapper.vm as any).selectedFieldPaths).toEqual(['Code']);
+  });
+
+  it('saves current field selection as a template', async () => {
+    const wrapper = await mountPanel();
+    (wrapper.vm as any).templateSaveName = 'My cols';
+    await (wrapper.vm as any).saveCurrentTemplate();
+    expect(exportTemplateMocks.saveCurrent).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'My cols', fields: expect.any(Array) }),
+    );
   });
 
   it('surfaces export failures from Error objects', async () => {

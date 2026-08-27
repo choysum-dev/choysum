@@ -114,8 +114,19 @@ func (m *moduleUninstaller) cleanModels() error {
 	if err := applyUserFilterPurge(db.DB, keys); err != nil {
 		return err
 	}
+	if err := applyExportTemplatePurge(db.DB, keys); err != nil {
+		return err
+	}
 	// PP5: hard-delete PropertyDefinition rows for gone TargetModel / ContainerModel.
 	return applyPropertyDefinitionPurge(db.DB, keys)
+}
+
+// applyExportTemplatePurge wraps purgeExportTemplatesForGoneModels so uninstall can surface purge errors.
+func applyExportTemplatePurge(db *gorm.DB, keys []modmeta.LogicalKey) error {
+	if err := purgeExportTemplatesForGoneModels(db, keys); err != nil {
+		return err
+	}
+	return nil
 }
 
 // applyUserFilterPurge wraps purgeUserFiltersForGoneModels so uninstall can surface purge errors.
@@ -196,6 +207,67 @@ func purgeUserFiltersForGoneModels(db *gorm.DB, keys []modmeta.LogicalKey) error
 			k.Application, k.Name,
 		).Error; err != nil {
 			return xfmt.Errorf("error deleting web user filters for %s.%s: %w", k.Application, k.Name, err)
+		}
+	}
+	return nil
+}
+
+const webExportTemplateTable = "web_export_template"
+
+func webExportTemplateTableExists(db *gorm.DB) (bool, error) {
+	if db == nil {
+		return false, nil
+	}
+	var n int64
+	err := db.Raw("SELECT COUNT(1) FROM " + webExportTemplateTable + " WHERE 1 = 0").Scan(&n).Error
+	if err == nil {
+		return true, nil
+	}
+	if isMissingSQLTableError(err) {
+		return false, nil
+	}
+	return false, xfmt.Errorf("error checking %s existence: %w", webExportTemplateTable, err)
+}
+
+// purgeExportTemplatesForGoneModels deletes export templates for logical models that no longer
+// have any live effective meta_model row. No-op when the table is missing.
+func purgeExportTemplatesForGoneModels(db *gorm.DB, keys []modmeta.LogicalKey) error {
+	if db == nil || len(keys) == 0 {
+		return nil
+	}
+	exists, err := webExportTemplateTableExists(db)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return nil
+	}
+	seen := map[string]struct{}{}
+	for _, key := range keys {
+		k := key.Normalized()
+		if !k.Valid() {
+			continue
+		}
+		id := k.Application + "\x00" + k.Name
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+
+		var remaining int64
+		if err := db.Model(&meta.Model{}).
+			Where("application = ? AND name = ?", k.Application, k.Name).
+			Count(&remaining).Error; err != nil {
+			return xfmt.Errorf("error counting surviving meta models for export template purge: %w", err)
+		}
+		if remaining > 0 {
+			continue
+		}
+		if err := db.Exec(
+			"DELETE FROM "+webExportTemplateTable+" WHERE application = ? AND model_name = ?",
+			k.Application, k.Name,
+		).Error; err != nil {
+			return xfmt.Errorf("error deleting web export templates for %s.%s: %w", k.Application, k.Name, err)
 		}
 	}
 	return nil

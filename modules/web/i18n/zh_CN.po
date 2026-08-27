@@ -46,6 +46,51 @@ msgctxt "web.model.UserFilter.fields"
 msgid "User"
 msgstr "用户"
 
+#: service/models/export_template.ts:82
+msgctxt "web.model.ExportTemplate"
+msgid "Cannot assign an export template to another user"
+msgstr "不能将导出模板分配给其他用户"
+
+#: service/models/export_template.ts:36
+msgctxt "web.model.ExportTemplate.fields"
+msgid "Application"
+msgstr "应用"
+
+#: service/models/export_template.ts:63
+msgctxt "web.model.ExportTemplate.fields"
+msgid "Fields"
+msgstr "字段"
+
+#: service/models/export_template.ts:64
+msgctxt "web.model.ExportTemplate.fields"
+msgid "Ordered export field paths (slash-separated)."
+msgstr "有序的导出字段路径（斜杠分隔）。"
+
+#: service/models/export_template.ts:71
+msgctxt "web.model.ExportTemplate.fields"
+msgid "Import Compatible"
+msgstr "兼容导入"
+
+#: service/models/export_template.ts:72
+msgctxt "web.model.ExportTemplate.fields"
+msgid "When true, saved paths are intended for import round-trip workflows."
+msgstr "为 true 时，保存的路径用于导入往返流程。"
+
+#: service/models/export_template.ts:45
+msgctxt "web.model.ExportTemplate.fields"
+msgid "Model Name"
+msgstr "模型名称"
+
+#: service/models/export_template.ts:26
+msgctxt "web.model.ExportTemplate.fields"
+msgid "Name"
+msgstr "名称"
+
+#: service/models/export_template.ts:55
+msgctxt "web.model.ExportTemplate.fields"
+msgid "User"
+msgstr "用户"
+
 #: web/components/chatter/OChatter.vue:5
 msgctxt "web/components/chatter/OChatter"
 msgid "Activity"

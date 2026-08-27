@@ -19,6 +19,40 @@ SPDX-License-Identifier: Apache-2.0
 
       <el-collapse v-model="customFieldsOpen">
         <el-collapse-item :title="customFieldsLabel" name="fields">
+          <div v-if="templatesEnabled" class="export-panel-templates">
+            <div class="export-panel-template-row">
+              <el-select
+                v-model="selectedTemplateId"
+                clearable
+                filterable
+                :loading="exportTemplatesLoading"
+                :placeholder="templateSelectLabel"
+                class="export-panel-template-select"
+              >
+                <el-option
+                  v-for="item in exportTemplateItems"
+                  :key="item.Id"
+                  :label="item.shared ? `${item.Name} (${sharedTemplateLabel})` : item.Name"
+                  :value="item.Id"
+                />
+              </el-select>
+              <el-button :disabled="!selectedTemplateId || busy" @click="applySelectedTemplate">{{ loadTemplateLabel }}</el-button>
+              <el-button
+                :disabled="!selectedTemplateCanDelete || busy"
+                type="danger"
+                plain
+                @click="deleteSelectedTemplate"
+              >
+                {{ deleteTemplateLabel }}
+              </el-button>
+            </div>
+            <div class="export-panel-template-row">
+              <el-input v-model="templateSaveName" :placeholder="templateNameLabel" class="export-panel-template-name" />
+              <el-checkbox v-model="templateSaveShared">{{ sharedTemplateLabel }}</el-checkbox>
+              <el-button :disabled="!canSaveTemplate || busy" @click="saveCurrentTemplate">{{ saveTemplateLabel }}</el-button>
+            </div>
+            <p v-if="exportTemplatesLoadError" class="export-panel-hint">{{ exportTemplatesLoadError }}</p>
+          </div>
           <el-tree
             v-if="fieldTree.length"
             ref="fieldTreeRef"
@@ -59,6 +93,7 @@ import { downloadExportCsvBytes, suggestExportFileName } from './download_csv';
 import { normalizeExportFieldPaths } from './field_paths';
 import { exportReportErrorText, exportReportHasErrors, exportPreviewSummary } from './report';
 import { createTranslate } from '@/web/web/i18n';
+import { useExportTemplates } from '@/web/web/composables/export/useExportTemplates';
 
 defineOptions({ name: 'ExportPanel' });
 
@@ -85,6 +120,12 @@ const exportSuccessTitle = _t('Export completed');
 const exportArtifactSubtitle = _t('CSV stored as document %ref.');
 const loadingFieldsLabel = _t('Loading fields…');
 const noFieldsLabel = _t('No exportable fields were returned.');
+const templateSelectLabel = _t('Saved templates');
+const loadTemplateLabel = _t('Load template');
+const saveTemplateLabel = _t('Save template');
+const deleteTemplateLabel = _t('Delete');
+const templateNameLabel = _t('Template name');
+const sharedTemplateLabel = _t('Shared');
 const selectedScopeLabel = _t('Export %count selected row(s).');
 const filteredScopeLabel = _t('Export %count row(s) matching the current filters.');
 const filteredScopeUnknownLabel = _t('Export rows matching the current filters.');
@@ -99,6 +140,24 @@ const exportDone = ref(false);
 const exportError = ref('');
 const exportSuccessSubtitle = ref('');
 const fieldTreeRef = ref<InstanceType<typeof ElTree> | null>(null);
+const exportTemplates = useExportTemplates(() => props.model);
+const { templates: exportTemplateItems, loading: exportTemplatesLoading, loadError: exportTemplatesLoadError, load: loadExportTemplates, apply: applyExportTemplate, saveCurrent: saveExportTemplate, remove: removeExportTemplate } = exportTemplates;
+const selectedTemplateId = ref('');
+const templateSaveName = ref('');
+const templateSaveShared = ref(false);
+
+const templatesEnabled = computed(() => String(props.model || '').includes('.'));
+
+const selectedTemplateCanDelete = computed(() => {
+  const id = String(selectedTemplateId.value || '').trim();
+  if (!id) return false;
+  return exportTemplates.templates.value.some(item => item.Id === id && item.canDelete);
+});
+
+const canSaveTemplate = computed(() => {
+  const name = String(templateSaveName.value || '').trim();
+  return name.length > 0 && effectiveFields.value.length > 0;
+});
 
 let sessionToken = 0;
 let activeRpcAbort: AbortController | null = null;
@@ -214,6 +273,41 @@ async function loadFields() {
   }
 }
 
+function applyFieldPaths(paths: string[]) {
+  const normalized = normalizeExportFieldPaths(paths);
+  selectedFieldPaths.value = normalized;
+  fieldTreeRef.value?.setCheckedKeys?.(normalized);
+  invalidateSession();
+  previewReport.value = null;
+}
+
+function applySelectedTemplate() {
+  const id = String(selectedTemplateId.value || '').trim();
+  const template = exportTemplateItems.value.find(item => item.Id === id);
+  if (!template) return;
+  applyFieldPaths(applyExportTemplate(template));
+}
+
+async function saveCurrentTemplate() {
+  const saved = await saveExportTemplate({
+    name: templateSaveName.value,
+    shared: templateSaveShared.value,
+    fields: effectiveFields.value,
+  });
+  if (saved) {
+    selectedTemplateId.value = saved.Id;
+    templateSaveName.value = '';
+    templateSaveShared.value = false;
+  }
+}
+
+async function deleteSelectedTemplate() {
+  const id = String(selectedTemplateId.value || '').trim();
+  if (!id) return;
+  await removeExportTemplate(id);
+  selectedTemplateId.value = '';
+}
+
 function onOpen() {
   invalidateSession();
   busy.value = false;
@@ -221,8 +315,21 @@ function onOpen() {
   exportDone.value = false;
   previewReport.value = null;
   customFieldsOpen.value = [];
+  selectedTemplateId.value = '';
+  templateSaveName.value = '';
+  templateSaveShared.value = false;
   void loadFields();
 }
+
+watch(
+  customFieldsOpen,
+  value => {
+    if (Array.isArray(value) && value.includes('fields') && templatesEnabled.value) {
+      void loadExportTemplates();
+    }
+  },
+  { deep: true }
+);
 
 function resetState() {
   invalidateSession();
@@ -232,6 +339,9 @@ function resetState() {
   previewReport.value = null;
   fieldTree.value = [];
   selectedFieldPaths.value = [];
+  selectedTemplateId.value = '';
+  templateSaveName.value = '';
+  templateSaveShared.value = false;
 }
 
 function onFieldCheck() {
@@ -325,6 +435,30 @@ watch(
 .export-panel-hint {
   margin: 0;
   color: var(--el-text-color-secondary);
+}
+
+.export-panel-templates {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.export-panel-template-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.export-panel-template-select {
+  min-width: 220px;
+  flex: 1 1 220px;
+}
+
+.export-panel-template-name {
+  min-width: 180px;
+  flex: 1 1 180px;
 }
 
 .export-panel-alert {
