@@ -51,6 +51,16 @@ func collectHooksFromContext(ctx context.Context) (collectHooks, bool) {
 	return hooks, ok
 }
 
+func rpcContext(ctx context.Context, accessToken string) context.Context {
+	if strings.TrimSpace(accessToken) != "" {
+		return OutgoingContextForUserRPC(ctx, accessToken)
+	}
+	if HasOutgoingInternalKey(ctx) {
+		return OutgoingContextForUserRPC(ctx, "")
+	}
+	return OutgoingContextForUserRPC(ctx, accessToken)
+}
+
 // FetchAppSearchTerms dials Count then Search with the caller token.
 func FetchAppSearchTerms(ctx context.Context, runtimeScope scope.Scope, accessToken, app, lang string, modules []string, q string, limit, offset int) (*SearchResult, error) {
 	_ = runtimeScope
@@ -70,7 +80,7 @@ func FetchAppSearchTerms(ctx context.Context, runtimeScope scope.Scope, accessTo
 	service := app + "." + translationTermModelName
 	condition := buildTermSearchCondition(lang, modules, q)
 
-	rpcCtx := OutgoingContextForUserRPC(ctx, accessToken)
+	rpcCtx := rpcContext(ctx, accessToken)
 	conn, err := client.Dial(rpcCtx, service)
 	if err != nil {
 		return nil, client.ToStatusError(err)
@@ -91,7 +101,7 @@ func CountAppTerms(ctx context.Context, accessToken, app, lang string, modules [
 	}
 	service := app + "." + translationTermModelName
 	condition := buildTermSearchCondition(strings.TrimSpace(lang), modules, strings.TrimSpace(q))
-	rpcCtx := OutgoingContextForUserRPC(ctx, accessToken)
+	rpcCtx := rpcContext(ctx, accessToken)
 	conn, err := client.Dial(rpcCtx, service)
 	if err != nil {
 		return 0, client.ToStatusError(err)
@@ -116,7 +126,7 @@ func SearchAppTermsPage(ctx context.Context, accessToken, app, lang string, modu
 
 	service := app + "." + translationTermModelName
 	condition := buildTermSearchCondition(lang, modules, q)
-	rpcCtx := OutgoingContextForUserRPC(ctx, accessToken)
+	rpcCtx := rpcContext(ctx, accessToken)
 	conn, err := client.Dial(rpcCtx, service)
 	if err != nil {
 		return nil, client.ToStatusError(err)

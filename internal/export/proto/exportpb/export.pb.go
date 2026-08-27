@@ -578,13 +578,18 @@ func (x *DescribeFieldsResponse) GetDefaultFields() []string {
 }
 
 type ExportRunRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Model         string                 `protobuf:"bytes,1,opt,name=model,proto3" json:"model,omitempty"`
-	Mode          ExportMode             `protobuf:"varint,2,opt,name=mode,proto3,enum=export.ExportMode" json:"mode,omitempty"`
-	Fields        []string               `protobuf:"bytes,3,rep,name=fields,proto3" json:"fields,omitempty"`
-	Domain        string                 `protobuf:"bytes,4,opt,name=domain,proto3" json:"domain,omitempty"`
-	Ids           []string               `protobuf:"bytes,5,rep,name=ids,proto3" json:"ids,omitempty"`
-	CompanyId     string                 `protobuf:"bytes,6,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Model     string                 `protobuf:"bytes,1,opt,name=model,proto3" json:"model,omitempty"`
+	Mode      ExportMode             `protobuf:"varint,2,opt,name=mode,proto3,enum=export.ExportMode" json:"mode,omitempty"`
+	Fields    []string               `protobuf:"bytes,3,rep,name=fields,proto3" json:"fields,omitempty"`
+	Domain    string                 `protobuf:"bytes,4,opt,name=domain,proto3" json:"domain,omitempty"`
+	Ids       []string               `protobuf:"bytes,5,rep,name=ids,proto3" json:"ids,omitempty"`
+	CompanyId string                 `protobuf:"bytes,6,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	// record (default) | terminology
+	Profile       string `protobuf:"bytes,7,opt,name=profile,proto3" json:"profile,omitempty"`
+	Application   string `protobuf:"bytes,8,opt,name=application,proto3" json:"application,omitempty"`
+	Module        string `protobuf:"bytes,9,opt,name=module,proto3" json:"module,omitempty"`
+	Lang          string `protobuf:"bytes,10,opt,name=lang,proto3" json:"lang,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -661,10 +666,39 @@ func (x *ExportRunRequest) GetCompanyId() string {
 	return ""
 }
 
+func (x *ExportRunRequest) GetProfile() string {
+	if x != nil {
+		return x.Profile
+	}
+	return ""
+}
+
+func (x *ExportRunRequest) GetApplication() string {
+	if x != nil {
+		return x.Application
+	}
+	return ""
+}
+
+func (x *ExportRunRequest) GetModule() string {
+	if x != nil {
+		return x.Module
+	}
+	return ""
+}
+
+func (x *ExportRunRequest) GetLang() string {
+	if x != nil {
+		return x.Lang
+	}
+	return ""
+}
+
 type ExportRunResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Report        *ExportReport          `protobuf:"bytes,1,opt,name=report,proto3" json:"report,omitempty"`
 	CsvData       []byte                 `protobuf:"bytes,2,opt,name=csv_data,json=csvData,proto3" json:"csv_data,omitempty"`
+	PoData        []byte                 `protobuf:"bytes,3,opt,name=po_data,json=poData,proto3" json:"po_data,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -709,6 +743,13 @@ func (x *ExportRunResponse) GetReport() *ExportReport {
 func (x *ExportRunResponse) GetCsvData() []byte {
 	if x != nil {
 		return x.CsvData
+	}
+	return nil
+}
+
+func (x *ExportRunResponse) GetPoData() []byte {
+	if x != nil {
+		return x.PoData
 	}
 	return nil
 }
@@ -854,7 +895,7 @@ const file_export_proto_rawDesc = "" +
 	"\x05model\x18\x01 \x01(\tR\x05model\"p\n" +
 	"\x16DescribeFieldsResponse\x12/\n" +
 	"\x06fields\x18\x01 \x03(\v2\x17.export.ExportFieldNodeR\x06fields\x12%\n" +
-	"\x0edefault_fields\x18\x02 \x03(\tR\rdefaultFields\"\xb1\x01\n" +
+	"\x0edefault_fields\x18\x02 \x03(\tR\rdefaultFields\"\x99\x02\n" +
 	"\x10ExportRunRequest\x12\x14\n" +
 	"\x05model\x18\x01 \x01(\tR\x05model\x12&\n" +
 	"\x04mode\x18\x02 \x01(\x0e2\x12.export.ExportModeR\x04mode\x12\x16\n" +
@@ -862,10 +903,16 @@ const file_export_proto_rawDesc = "" +
 	"\x06domain\x18\x04 \x01(\tR\x06domain\x12\x10\n" +
 	"\x03ids\x18\x05 \x03(\tR\x03ids\x12\x1d\n" +
 	"\n" +
-	"company_id\x18\x06 \x01(\tR\tcompanyId\"\\\n" +
+	"company_id\x18\x06 \x01(\tR\tcompanyId\x12\x18\n" +
+	"\aprofile\x18\a \x01(\tR\aprofile\x12 \n" +
+	"\vapplication\x18\b \x01(\tR\vapplication\x12\x16\n" +
+	"\x06module\x18\t \x01(\tR\x06module\x12\x12\n" +
+	"\x04lang\x18\n" +
+	" \x01(\tR\x04lang\"u\n" +
 	"\x11ExportRunResponse\x12,\n" +
 	"\x06report\x18\x01 \x01(\v2\x14.export.ExportReportR\x06report\x12\x19\n" +
-	"\bcsv_data\x18\x02 \x01(\fR\acsvData\"C\n" +
+	"\bcsv_data\x18\x02 \x01(\fR\acsvData\x12\x17\n" +
+	"\apo_data\x18\x03 \x01(\fR\x06poData\"C\n" +
 	"\x15ExportRunAsyncRequest\x12*\n" +
 	"\x03run\x18\x01 \x01(\v2\x18.export.ExportRunRequestR\x03run\"\x97\x01\n" +
 	"\x16ExportRunAsyncResponse\x12/\n" +

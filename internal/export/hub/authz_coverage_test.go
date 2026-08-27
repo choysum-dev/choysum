@@ -212,24 +212,32 @@ func TestAttachInlineCSVOmitsOversizedPayload(t *testing.T) {
 }
 
 func TestEnsureExportDeliverable(t *testing.T) {
-	if err := ensureExportDeliverable(nil, []byte("x")); err == nil || status.Code(err) != codes.FailedPrecondition {
+	if err := ensureExportDeliverable(nil, []byte("x"), nil); err == nil || status.Code(err) != codes.FailedPrecondition {
 		t.Fatalf("nil resp err = %v", err)
 	}
 	resp := &exportpb.ExportRunResponse{Report: &exportpb.ExportReport{}}
-	if err := ensureExportDeliverable(resp, nil); err != nil {
-		t.Fatalf("empty csv: %v", err)
+	if err := ensureExportDeliverable(resp, nil, nil); err != nil {
+		t.Fatalf("empty output: %v", err)
 	}
 	resp.CsvData = []byte("inline")
-	if err := ensureExportDeliverable(resp, []byte("inline")); err != nil {
+	if err := ensureExportDeliverable(resp, []byte("inline"), nil); err != nil {
 		t.Fatalf("inline csv: %v", err)
 	}
 	resp = &exportpb.ExportRunResponse{Report: &exportpb.ExportReport{ArtifactRef: "doc-1"}}
-	if err := ensureExportDeliverable(resp, make([]byte, maxInlineCSVBytes+1)); err != nil {
+	if err := ensureExportDeliverable(resp, make([]byte, maxInlineCSVBytes+1), nil); err != nil {
 		t.Fatalf("artifact ref: %v", err)
 	}
 	resp = &exportpb.ExportRunResponse{Report: &exportpb.ExportReport{}}
-	if err := ensureExportDeliverable(resp, make([]byte, maxInlineCSVBytes+1)); err == nil || status.Code(err) != codes.FailedPrecondition {
+	if err := ensureExportDeliverable(resp, make([]byte, maxInlineCSVBytes+1), nil); err == nil || status.Code(err) != codes.FailedPrecondition {
 		t.Fatalf("oversized without artifact err = %v", err)
+	}
+	resp = &exportpb.ExportRunResponse{Report: &exportpb.ExportReport{}, PoData: []byte("msgid \"x\"\n")}
+	if err := ensureExportDeliverable(resp, nil, []byte("msgid \"x\"\n")); err != nil {
+		t.Fatalf("inline po: %v", err)
+	}
+	resp = &exportpb.ExportRunResponse{Report: &exportpb.ExportReport{}}
+	if err := ensureExportDeliverable(resp, nil, make([]byte, maxInlinePOBytes+1)); err == nil || status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("oversized po without artifact err = %v", err)
 	}
 }
 

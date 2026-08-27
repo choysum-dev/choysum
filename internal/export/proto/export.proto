@@ -73,11 +73,17 @@ message ExportRunRequest {
   string domain = 4;
   repeated string ids = 5;
   string company_id = 6;
+  // record (default) | terminology
+  string profile = 7;
+  string application = 8;
+  string module = 9;
+  string lang = 10;
 }
 
 message ExportRunResponse {
   ExportReport report = 1;
   bytes csv_data = 2;
+  bytes po_data = 3;
 }
 
 message ExportRunAsyncRequest {

@@ -25,7 +25,7 @@ func (Reader) Read(ctx context.Context, runtimeScope scope.Scope, p exportplan.P
 	_ = runtimeScope
 
 	accessToken, _ := auth.AccessTokenFromContext(ctx)
-	if !canForwardUserRPC(ctx, accessToken) {
+	if !canRunTerminologyExport(ctx, p, accessToken) {
 		return registry.Result{}, exportpkg.Errorf(exportpkg.CodeInvalidSpec, "authentication is required for terminology export")
 	}
 
@@ -61,6 +61,13 @@ func (Reader) Read(ctx context.Context, runtimeScope scope.Scope, p exportplan.P
 		result.Outcomes.Warning = 1
 	}
 	return result, nil
+}
+
+func canRunTerminologyExport(ctx context.Context, p exportplan.Plan, accessToken string) bool {
+	if canForwardUserRPC(ctx, accessToken) {
+		return true
+	}
+	return p.Caller == exportpkg.CallerCLI && terms.HasOutgoingInternalKey(ctx)
 }
 
 func canForwardUserRPC(ctx context.Context, accessToken string) bool {

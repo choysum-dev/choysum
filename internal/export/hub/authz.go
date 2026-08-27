@@ -24,7 +24,10 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const maxInlineCSVBytes = 16 * 1024 * 1024
+const (
+	maxInlineCSVBytes = 16 * 1024 * 1024
+	maxInlinePOBytes  = 16 * 1024 * 1024
+)
 
 func checkModelExportAccess(ctx context.Context, runtimeScope scope.Scope, targetModel, companyID string) error {
 	targetModel = strings.TrimSpace(targetModel)
@@ -122,21 +125,28 @@ func runExport(
 	if deps.RuntimeScope == nil {
 		return nil, status.Error(codes.Unavailable, "runtime scope unavailable")
 	}
-	if deps.Run == nil && deps.JSExecutor == nil {
-		return nil, status.Error(codes.Unavailable, "js executor unavailable")
-	}
 
-	spec, err := toRecordSpec(req, preview)
+	spec, err := toSpec(req, preview)
 	if err != nil {
 		return nil, err
 	}
-	companyID := strings.TrimSpace(req.GetCompanyId())
-	if companyID == "" {
-		companyID = activeCompanyID(ctx)
-		spec.Options.CompanyID = companyID
+	if deps.Run == nil && deps.JSExecutor == nil {
+		return nil, status.Error(codes.Unavailable, "js executor unavailable")
 	}
-	if err := checkModelExportAccess(ctx, deps.RuntimeScope, spec.Model, companyID); err != nil {
-		return nil, err
+	switch spec.Profile {
+	case exportpkg.ProfileTerminology:
+		if err := checkTerminologyExportAccess(deps.RuntimeScope, spec.Application, spec.Module, spec.Lang); err != nil {
+			return nil, err
+		}
+	default:
+		companyID := strings.TrimSpace(req.GetCompanyId())
+		if companyID == "" {
+			companyID = activeCompanyID(ctx)
+			spec.Options.CompanyID = companyID
+		}
+		if err := checkModelExportAccess(ctx, deps.RuntimeScope, spec.Model, companyID); err != nil {
+			return nil, err
+		}
 	}
 	if err := validateExportSpec(spec); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid export spec: %v", err)
@@ -155,7 +165,8 @@ func runExport(
 		}
 		resp := reportResponse(report)
 		attachInlineCSV(resp, result.CSVBytes)
-		if err := ensureExportDeliverable(resp, result.CSVBytes); err != nil {
+		attachInlinePO(resp, result.POBytes)
+		if err := ensureExportDeliverable(resp, result.CSVBytes, result.POBytes); err != nil {
 			return nil, err
 		}
 		return resp, nil
@@ -198,11 +209,29 @@ func attachInlineCSV(resp *exportpb.ExportRunResponse, csvBytes []byte) {
 	}
 }
 
-func ensureExportDeliverable(resp *exportpb.ExportRunResponse, csvBytes []byte) error {
-	if len(csvBytes) == 0 {
+func attachInlinePO(resp *exportpb.ExportRunResponse, poBytes []byte) {
+	if resp == nil || len(poBytes) == 0 {
+		return
+	}
+	if len(poBytes) <= maxInlinePOBytes {
+		resp.PoData = append([]byte(nil), poBytes...)
+	}
+}
+
+func ensureExportDeliverable(resp *exportpb.ExportRunResponse, csvBytes, poBytes []byte) error {
+	if len(csvBytes) == 0 && len(poBytes) == 0 {
 		return nil
 	}
-	if len(resp.GetCsvData()) > 0 {
+	if len(csvBytes) > 0 {
+		if len(resp.GetCsvData()) > 0 {
+			return nil
+		}
+		if strings.TrimSpace(resp.GetReport().GetArtifactRef()) != "" {
+			return nil
+		}
+		return status.Error(codes.FailedPrecondition, "export output too large for inline transfer and no artifact reference was created")
+	}
+	if len(resp.GetPoData()) > 0 {
 		return nil
 	}
 	if strings.TrimSpace(resp.GetReport().GetArtifactRef()) != "" {
