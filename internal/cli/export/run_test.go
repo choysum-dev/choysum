@@ -17,7 +17,6 @@ import (
 	"github.com/choysum-dev/choysum/internal/defaultscope"
 	"github.com/choysum-dev/choysum/internal/export/registry"
 	"github.com/choysum-dev/choysum/internal/export/runner"
-	_ "github.com/choysum-dev/choysum/internal/export/runner"
 	importcsv "github.com/choysum-dev/choysum/internal/import/adapter/csv"
 	importcaller "github.com/choysum-dev/choysum/internal/import/caller"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"

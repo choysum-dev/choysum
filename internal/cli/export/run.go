@@ -20,6 +20,7 @@ import (
 
 var (
 	runRecordExport      = runner.RunWithResult
+	validateExportSpec   = exportpkg.ValidateSpec
 	newCLIExportExecutor = func(runtimeScope scope.Scope) (jsexecutor.JsExecutor, error) {
 		return jsexecutor.NewRuntimeExecutor(runtimeScope, nil)
 	}
@@ -38,7 +39,7 @@ func RunRecord(ctx context.Context, runtimeScope scope.Scope, opts RecordOptions
 	if err != nil {
 		return importpkg.Report{}, nil, err
 	}
-	if err := exportpkg.ValidateSpec(spec); err != nil {
+	if err := validateExportSpec(spec); err != nil {
 		return importpkg.Report{}, nil, err
 	}
 

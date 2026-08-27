@@ -17,7 +17,29 @@ import (
 	exportcli "github.com/choysum-dev/choysum/internal/cli/export"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/scope"
+	"github.com/spf13/cobra"
 )
+
+func TestRunTerminologyExportCommandNilContext(t *testing.T) {
+	runtimeScope := newExportCLITestScope(t)
+	prev := runExportTerminology
+	var gotCtx context.Context
+	runExportTerminology = func(ctx context.Context, _ scope.Scope, _ exportcli.TerminologyOptions) (importpkg.Report, []byte, error) {
+		gotCtx = ctx
+		return importpkg.Report{Stats: importpkg.Stats{Ok: 1, Total: 1}}, []byte("po"), nil
+	}
+	t.Cleanup(func() { runExportTerminology = prev })
+
+	cmd := &cobra.Command{}
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	if err := runTerminologyExportCommand(cmd, func() scope.Scope { return runtimeScope }, nil, "auth", "base", "zh_CN", true); err != nil {
+		t.Fatalf("runTerminologyExportCommand: %v", err)
+	}
+	if gotCtx == nil {
+		t.Fatal("expected background context")
+	}
+}
 
 func TestCLI_ExportUnsupportedProfile(t *testing.T) {
 	runtimeScope := newExportCLITestScope(t)
