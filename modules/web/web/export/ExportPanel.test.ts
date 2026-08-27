@@ -908,6 +908,35 @@ describe('ExportPanel', () => {
     expect((wrapper.vm as any).selectedTemplateCanDelete).toBe(true);
   });
 
+  it('binds template select and name input through v-model in the template', async () => {
+    exportTemplateMocks.templates.value = [
+      { Id: 'tpl-1', Name: 'Basic', Fields: ['Code'], shared: false, createUid: 'me', canDelete: true },
+    ];
+    const wrapper = await mountPanel();
+    (wrapper.vm as any).customFieldsOpen = ['fields'];
+    await flushPromises();
+    const select = wrapper.findAll('select')[0];
+    expect(select).toBeTruthy();
+    await select.setValue('tpl-1');
+    expect((wrapper.vm as any).selectedTemplateId).toBe('tpl-1');
+    const nameInput = wrapper.findAll('input').find(w => w.attributes('type') !== 'checkbox');
+    expect(nameInput).toBeTruthy();
+    await nameInput!.setValue('My template');
+    expect((wrapper.vm as any).templateSaveName).toBe('My template');
+  });
+
+  it('treats empty model ref as template-disabled', async () => {
+    const wrapper = await mountPanel({ model: '' });
+    expect((wrapper.vm as any).templatesEnabled).toBe(false);
+  });
+
+  it('ignores deleteSelectedTemplate when selection is null', async () => {
+    const wrapper = await mountPanel();
+    (wrapper.vm as any).selectedTemplateId = null;
+    await (wrapper.vm as any).deleteSelectedTemplate();
+    expect(exportTemplateMocks.remove).not.toHaveBeenCalled();
+  });
+
   it('clears template save inputs after a successful save', async () => {
     const wrapper = await mountPanel();
     (wrapper.vm as any).templateSaveName = 'My cols';

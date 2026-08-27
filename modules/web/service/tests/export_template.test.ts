@@ -239,6 +239,22 @@ test('ExportTemplate defaults ImportCompatible to false', async () => {
   await ExportTemplate.DeleteById(String((created as any).Id));
 });
 
+test('ExportTemplate defaults Fields to empty array and UserId to null without actor', async () => {
+  resetRequestContext();
+  setIdentity(undefined);
+  const created = await ExportTemplate.Create(
+    {
+      Name: uid('tpl'),
+      Application: 'partner',
+      ModelName: 'Partner',
+    } as any,
+    ['Id', 'Fields', 'UserId'] as any
+  );
+  expect((created as any).Fields).toEqual([]);
+  expect((created as any).UserId == null || (created as any).UserId === '').toBe(true);
+  await ExportTemplate.DeleteById(String((created as any).Id));
+});
+
 test('ExportTemplate accepts UserId relation object for current actor', async () => {
   resetRequestContext();
   const actor = uid('et_actor');
@@ -284,6 +300,14 @@ test('ExportTemplate validateExportTemplateConstraint only rejects foreign UserI
   const actor = uid('et_validate');
   setIdentity(actor);
   const ET = ExportTemplate as any;
+
+  const valuesOmit: Record<string, any> = {
+    Name: uid('empty_id'),
+    Application: 'partner',
+    ModelName: 'Partner',
+  };
+  await ET.validateExportTemplateConstraint({}, { mode: 'create', values: valuesOmit, current: undefined });
+  expect(valuesOmit.UserId).toBeUndefined();
 
   const valuesShared: Record<string, any> = { UserId: null };
   await ET.validateExportTemplateConstraint({}, { mode: 'create', values: valuesShared, current: undefined });

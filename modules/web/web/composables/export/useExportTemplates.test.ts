@@ -36,11 +36,15 @@ vi.mock('@/web/web/composables/search/actorUserId', () => ({
 import { useExportTemplates } from './useExportTemplates';
 
 function runHook(model = 'partner.Partner') {
+  return runHookGetter(() => model);
+}
+
+function runHookGetter(getModel: () => string) {
   let api!: ReturnType<typeof useExportTemplates>;
   const app = createApp(
     defineComponent({
       setup() {
-        api = useExportTemplates(() => model);
+        api = useExportTemplates(getModel);
         return () => h('div');
       },
     })
@@ -57,6 +61,8 @@ describe('parseExportModelRef', () => {
     expect(parseExportModelRef('invalid')).toEqual({ application: '', modelName: '' });
     expect(parseExportModelRef('.Partner')).toEqual({ application: '', modelName: '' });
     expect(parseExportModelRef('partner.')).toEqual({ application: '', modelName: '' });
+    expect(parseExportModelRef(null as any)).toEqual({ application: '', modelName: '' });
+    expect(parseExportModelRef(undefined as any)).toEqual({ application: '', modelName: '' });
   });
 });
 
@@ -86,6 +92,38 @@ describe('useExportTemplates', () => {
     expect(api.templates.value[1].canDelete).toBe(false);
   });
 
+  it('load maps missing CreatedUid and treats null Search rows as empty', async () => {
+    templateMocks.Search.mockResolvedValue(null);
+    const api = runHook();
+    await api.load();
+    expect(api.templates.value).toEqual([]);
+
+    templateMocks.Search.mockResolvedValue([
+      { Id: 's1', Name: 'NoCreatedUid', Fields: ['Name'], UserId: null },
+    ]);
+    await api.load();
+    expect(api.templates.value[0]).toMatchObject({ createUid: '', canDelete: false });
+  });
+
+  it('load clears loading when a newer load invalidates the model ref', async () => {
+    let resolveSlow!: (rows: any[]) => void;
+    const slow = new Promise<any[]>(resolve => {
+      resolveSlow = resolve;
+    });
+    templateMocks.Search.mockImplementationOnce(() => slow);
+    let model = 'partner.Partner';
+    const api = runHookGetter(() => model);
+    const first = api.load();
+    expect(api.loading.value).toBe(true);
+    model = 'invalid';
+    const second = api.load();
+    resolveSlow([{ Id: 'stale', Name: 'Stale', Fields: ['Name'], UserId: 'me', CreatedUid: 'me' }]);
+    await Promise.all([first, second]);
+    expect(api.templates.value).toEqual([]);
+    expect(api.loading.value).toBe(false);
+    expect(api.loadError.value).toBeNull();
+  });
+
   it('load maps shared/private canDelete and normalizes Fields', async () => {
     templateMocks.Search.mockResolvedValue([
       { Id: 'p1', Name: 'Mine', Fields: ['Name'], UserId: 'me', CreatedUid: 'me' },
@@ -109,6 +147,20 @@ describe('useExportTemplates', () => {
     expect(api.templates.value).toEqual([]);
     expect(api.loading.value).toBe(false);
     expect(api.loadError.value).toBeNull();
+  });
+
+  it('load clears templates for empty model refs', async () => {
+    const api = runHook('');
+    await api.load();
+    expect(templateMocks.Search).not.toHaveBeenCalled();
+    expect(api.templates.value).toEqual([]);
+  });
+
+  it('load treats null model ref as invalid', async () => {
+    const api = runHookGetter(() => null as any);
+    await api.load();
+    expect(templateMocks.Search).not.toHaveBeenCalled();
+    expect(api.templates.value).toEqual([]);
   });
 
   it('load without actor only queries shared templates', async () => {
@@ -237,6 +289,30 @@ describe('useExportTemplates', () => {
     });
   });
 
+  it('saveCurrent treats omitted fields as empty and returns null', async () => {
+    const api = runHook();
+    expect(await api.saveCurrent({ name: 'FallbackName', fields: undefined as any })).toBeNull();
+    expect(templateMocks.Create).not.toHaveBeenCalled();
+  });
+
+  it('saveCurrent falls back createUid to empty when actor and CreatedUid are missing', async () => {
+    actorState.id = '';
+    templateMocks.Create.mockResolvedValueOnce({
+      Id: 'tpl-3',
+      Name: '',
+      Fields: ['Name'],
+      UserId: null,
+    });
+    const api = runHook();
+    const saved = await api.saveCurrent({ name: 'FallbackName', shared: true, fields: ['Name'] });
+    expect(saved).toMatchObject({
+      Id: 'tpl-3',
+      Name: 'FallbackName',
+      createUid: '',
+      shared: true,
+    });
+  });
+
   it('saveCurrent supports shared and import-compatible templates', async () => {
     const api = runHook();
     const saved = await api.saveCurrent({
@@ -278,6 +354,7 @@ describe('useExportTemplates', () => {
   it('remove ignores blank ids', async () => {
     const api = runHook();
     await api.remove('   ');
+    await api.remove(null as any);
     expect(templateMocks.DeleteById).not.toHaveBeenCalled();
   });
 });
