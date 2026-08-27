@@ -88,10 +88,10 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
 import type ElTree from 'element-plus/es/components/tree/src/tree.vue';
-import { describeExportFields, previewExport, runExport, ExportMode, type ExportFieldNode, type ExportReport } from './client';
-import { downloadExportCsvBytes, suggestExportFileName } from './download_csv';
-import { normalizeExportFieldPaths } from './field_paths';
-import { exportReportErrorText, exportReportHasErrors, exportPreviewSummary } from './report';
+import { describeExportFields, previewExport, runExport, ExportMode, type ExportFieldNode, type ExportReport } from '@/core/web/export/client';
+import { downloadExportCsvBytes, suggestExportFileName } from '@/core/web/export/download_csv';
+import { normalizeExportFieldPaths } from '@/core/web/export/field_paths';
+import { exportReportErrorText, exportReportHasErrors, exportPreviewSummary } from '@/core/web/export/report';
 import { createTranslate } from '@/web/web/i18n';
 import { useExportTemplates } from '@/web/web/composables/export/useExportTemplates';
 
@@ -106,7 +106,7 @@ const props = defineProps<{
   filteredCount?: number;
 }>();
 
-const { _t } = createTranslate('core', { scope: 'web/export/ExportPanel' });
+const { _t } = createTranslate('web', { scope: 'web/export/ExportPanel' });
 
 const visible = defineModel<boolean>({ default: false });
 

@@ -38,14 +38,14 @@ vi.mock('@/web/web/composables/export/useExportTemplates', () => ({
   useExportTemplates: () => exportTemplateMocks,
 }));
 
-vi.mock('./client', () => ({
+vi.mock('@/core/web/export/client', () => ({
   describeExportFields,
   previewExport,
   runExport,
   ExportMode: { DATA: 1 },
 }));
 
-vi.mock('./download_csv', () => ({
+vi.mock('@/core/web/export/download_csv', () => ({
   downloadExportCsvBytes,
   suggestExportFileName: (model: string) => `${model.split('.').pop() || 'export'}.csv`,
 }));
@@ -871,6 +871,67 @@ describe('ExportPanel', () => {
     (wrapper.vm as any).selectedFieldPaths = ['Name'];
     (wrapper.vm as any).applySelectedTemplate();
     expect((wrapper.vm as any).selectedFieldPaths).toEqual(['Name']);
+  });
+
+  it('ignores applySelectedTemplate when the selected id is unknown', async () => {
+    const wrapper = await mountPanel();
+    (wrapper.vm as any).selectedTemplateId = 'missing';
+    (wrapper.vm as any).selectedFieldPaths = ['Name'];
+    (wrapper.vm as any).applySelectedTemplate();
+    expect((wrapper.vm as any).selectedFieldPaths).toEqual(['Name']);
+  });
+
+  it('hides template controls when model ref is not qualified', async () => {
+    const wrapper = await mountPanel({ model: 'Partner' });
+    (wrapper.vm as any).customFieldsOpen = ['fields'];
+    await flushPromises();
+    expect(wrapper.find('.export-panel-templates').exists()).toBe(false);
+  });
+
+  it('shows template load errors and shared labels in the customize fields section', async () => {
+    exportTemplateMocks.loadError.value = 'load failed';
+    exportTemplateMocks.templates.value = [
+      { Id: 'tpl-1', Name: 'Team', Fields: ['Code'], shared: true, createUid: 'me', canDelete: true },
+      { Id: 'tpl-2', Name: 'Private', Fields: ['Name'], shared: false, createUid: 'other', canDelete: false },
+    ];
+    const wrapper = await mountPanel();
+    (wrapper.vm as any).customFieldsOpen = ['fields'];
+    await flushPromises();
+    expect(wrapper.text()).toContain('load failed');
+    expect(wrapper.text()).toContain('Team');
+    expect(wrapper.text()).toContain('Shared');
+    expect((wrapper.vm as any).selectedTemplateCanDelete).toBe(false);
+    (wrapper.vm as any).selectedTemplateId = 'tpl-1';
+    expect((wrapper.vm as any).selectedTemplateCanDelete).toBe(true);
+  });
+
+  it('clears template save inputs after a successful save', async () => {
+    const wrapper = await mountPanel();
+    (wrapper.vm as any).templateSaveName = 'My cols';
+    (wrapper.vm as any).templateSaveShared = true;
+    await (wrapper.vm as any).saveCurrentTemplate();
+    await flushPromises();
+    expect((wrapper.vm as any).templateSaveName).toBe('');
+    expect((wrapper.vm as any).templateSaveShared).toBe(false);
+    expect((wrapper.vm as any).selectedTemplateId).toBe('tpl-1');
+  });
+
+  it('ignores duplicate template delete while busy', async () => {
+    let resolveRemove!: () => void;
+    exportTemplateMocks.remove.mockImplementationOnce(
+      () =>
+        new Promise<void>(resolve => {
+          resolveRemove = resolve;
+        }),
+    );
+    const wrapper = await mountPanel();
+    (wrapper.vm as any).selectedTemplateId = 'tpl-1';
+    const first = (wrapper.vm as any).deleteSelectedTemplate();
+    await (wrapper.vm as any).deleteSelectedTemplate();
+    expect(exportTemplateMocks.remove).toHaveBeenCalledTimes(1);
+    resolveRemove();
+    await first;
+    await flushPromises();
   });
 
   it('surfaces export failures from Error objects', async () => {

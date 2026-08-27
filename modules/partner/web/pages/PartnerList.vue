@@ -32,7 +32,7 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import OPage from '@/web/web/components/page/OPage.vue';
 import PartnerListView from '../views/PartnerListView.vue';
 import PartnerImportWizard from '../components/PartnerImportWizard.vue';
-import { ExportPanel } from '@/core/web/export';
+import { ExportPanel } from '@/web/web/export';
 import { normalizeExportFieldPaths } from '@/core/web/export/field_paths';
 import { buildUnifiedQuery } from '@/web/web/query/context';
 import { exportFieldSelection } from '@/web/web/query/utils/registry/field';
