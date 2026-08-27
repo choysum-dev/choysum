@@ -115,7 +115,10 @@ async function mountPanel(
           emits: ['update:modelValue'],
           template: '<select :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><slot /></select>',
         },
-        ElOption: { template: '<option><slot /></option>' },
+        ElOption: {
+          props: ['label', 'value'],
+          template: '<option :value="value">{{ label }}</option>',
+        },
         ElInput: {
           props: ['modelValue'],
           emits: ['update:modelValue'],
