@@ -166,7 +166,7 @@ async function loadFields() {
     if (!isActiveSession(token)) {
       return;
     }
-    fieldTree.value = mapFieldNodes(resp.fields ?? []);
+    fieldTree.value = mapFieldNodes(resp.fields);
     const defaults = (props.defaultFields?.length ? props.defaultFields : resp.defaultFields) ?? [];
     selectedFieldPaths.value = normalizeExportFieldPaths(defaults);
   } catch (err) {

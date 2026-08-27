@@ -68,7 +68,10 @@ const activeCompanyId = computed(() => {
 
 const exportIds = computed(() => {
   const raw = listViewRef.value?.selectedItems;
-  const items = Array.isArray(raw) ? raw : raw?.value ?? [];
+  if (Array.isArray(raw)) {
+    return raw.map(row => String(row?.Id ?? '').trim()).filter(Boolean);
+  }
+  const items = raw?.value ?? [];
   return items.map(row => String(row?.Id ?? '').trim()).filter(Boolean);
 });
 

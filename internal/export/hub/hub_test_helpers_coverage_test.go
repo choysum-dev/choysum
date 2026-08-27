@@ -49,6 +49,15 @@ func TestHubTestHelperIdentities(t *testing.T) {
 			t.Fatal("expected companyId metadata")
 		}
 	})
+	t.Run("spacedActiveCompanyIdentity", func(t *testing.T) {
+		id := spacedActiveCompanyIdentity{}
+		if id.GetUserID() != "u1" || id.GetTokenID() != "tok" || !id.IsValid() {
+			t.Fatal("unexpected spacedActiveCompanyIdentity fields")
+		}
+		if activeCompanyID(auth.ContextWithIdentity(context.Background(), id)) != "cmp_trim" {
+			t.Fatal("expected trimmed active company id")
+		}
+	})
 }
 
 func TestAuthCtxWithServer(t *testing.T) {
@@ -83,8 +92,62 @@ func TestAuthCtxWithAllowServer(t *testing.T) {
 	}
 }
 
+func TestSeedHelpersDB(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := seedCountryModelMetaDB(db); err != nil {
+		t.Fatalf("seedCountryModelMetaDB: %v", err)
+	}
+	if err := seedPartnerModelMetaDB(db); err != nil {
+		t.Fatalf("seedPartnerModelMetaDB: %v", err)
+	}
+	if err := seedPartnerModelFieldsDB(db); err != nil {
+		t.Fatalf("seedPartnerModelFieldsDB: %v", err)
+	}
+}
+
+func TestSeedHelperWrappers(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	db := runtimeScope.Session().DB
+	seedCountryModelMeta(t, db)
+	seedPartnerModelMeta(t, db)
+	seedPartnerModelFields(t, db)
+}
+
+func TestSeedHelperDBErrors(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	db := runtimeScope.Session().DB
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := sqlDB.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := seedCountryModelMetaDB(db); err == nil {
+		t.Fatal("expected seedCountryModelMetaDB to fail on closed db")
+	}
+	if err := seedPartnerModelMetaDB(db); err == nil {
+		t.Fatal("expected seedPartnerModelMetaDB to fail on closed db")
+	}
+}
+
+func TestSeedPartnerModelFieldsDBDuplicate(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := seedPartnerModelFieldsDB(db); err != nil {
+		t.Fatalf("first seed: %v", err)
+	}
+	if err := seedPartnerModelFieldsDB(db); err == nil {
+		t.Fatal("expected duplicate seedPartnerModelFieldsDB to fail")
+	}
+}
+
 func TestStubJSExecutorMethods(t *testing.T) {
 	var ex jsexecutor.JsExecutor = stubJSExecutor{}
+	stub := stubJSExecutor{}
+	stub.AppendJsScripts(&jsengine.JsScript{})
+	stub.SetJsScripts([]*jsengine.JsScript{})
 	ex.AppendJsScripts(&jsengine.JsScript{})
 	if err := ex.Start(); err != nil {
 		t.Fatal(err)

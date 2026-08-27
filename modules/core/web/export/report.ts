@@ -24,8 +24,9 @@ export function exportReportErrorText(report: ExportReport | null | undefined): 
   if (first?.text) {
     return first.text;
   }
-  if ((report?.stats?.error ?? 0) > 0) {
-    return `Export finished with ${report?.stats?.error ?? 0} error(s).`;
+  const statsError = report?.stats?.error;
+  if (statsError != null && statsError > 0) {
+    return `Export finished with ${statsError} error(s).`;
   }
   return 'Export failed.';
 }

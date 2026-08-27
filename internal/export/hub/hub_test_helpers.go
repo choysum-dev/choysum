@@ -79,23 +79,35 @@ func newHubTestScope(t *testing.T) scope.Scope {
 
 func seedPartnerModelMeta(t *testing.T, db *gorm.DB) {
 	t.Helper()
-	if err := db.AutoMigrate(&meta.Model{}, &meta.Field{}); err != nil {
-		t.Fatalf("AutoMigrate: %v", err)
-	}
-	companyField := "CompanyId"
-	if err := db.Create(&meta.Model{
-		Name: "Partner", Application: "partner", Path: "/tmp", ModelTable: "partner_partner", CompanyField: &companyField,
-	}).Error; err != nil {
+	if err := seedPartnerModelMetaDB(db); err != nil {
 		t.Fatalf("seed partner model: %v", err)
 	}
 }
 
+func seedPartnerModelMetaDB(db *gorm.DB) error {
+	if err := db.AutoMigrate(&meta.Model{}, &meta.Field{}); err != nil {
+		return err
+	}
+	companyField := "CompanyId"
+	return db.Create(&meta.Model{
+		Name: "Partner", Application: "partner", Path: "/tmp", ModelTable: "partner_partner", CompanyField: &companyField,
+	}).Error
+}
+
 func seedPartnerModelFields(t *testing.T, db *gorm.DB) {
 	t.Helper()
-	seedPartnerModelMeta(t, db)
+	if err := seedPartnerModelFieldsDB(db); err != nil {
+		t.Fatalf("seed partner fields: %v", err)
+	}
+}
+
+func seedPartnerModelFieldsDB(db *gorm.DB) error {
+	if err := seedPartnerModelMetaDB(db); err != nil {
+		return err
+	}
 	partnerModel := &meta.Model{}
 	if err := db.Where("application = ? AND name = ?", "partner", "Partner").First(partnerModel).Error; err != nil {
-		t.Fatalf("load partner model: %v", err)
+		return err
 	}
 	modelID := partnerModel.Id
 	for _, field := range []meta.Field{
@@ -104,19 +116,24 @@ func seedPartnerModelFields(t *testing.T, db *gorm.DB) {
 		{Name: "CompanyId", FieldType: "ManyToOneRef", RelationModel: "base.Company", ModelId: modelID, FieldString: "Company"},
 	} {
 		if err := db.Create(&field).Error; err != nil {
-			t.Fatalf("seed field %s: %v", field.Name, err)
+			return err
 		}
 	}
+	return nil
 }
 
 func seedCountryModelMeta(t *testing.T, db *gorm.DB) {
 	t.Helper()
-	if err := db.AutoMigrate(&meta.Model{}, &meta.Field{}); err != nil {
-		t.Fatalf("AutoMigrate: %v", err)
-	}
-	if err := db.Create(&meta.Model{Name: "Country", Application: "base", Path: "/tmp", ModelTable: "base_country"}).Error; err != nil {
+	if err := seedCountryModelMetaDB(db); err != nil {
 		t.Fatalf("seed country model: %v", err)
 	}
+}
+
+func seedCountryModelMetaDB(db *gorm.DB) error {
+	if err := db.AutoMigrate(&meta.Model{}, &meta.Field{}); err != nil {
+		return err
+	}
+	return db.Create(&meta.Model{Name: "Country", Application: "base", Path: "/tmp", ModelTable: "base_country"}).Error
 }
 
 type denyAuthServer struct {
@@ -199,12 +216,12 @@ func authCtxWithServer(t *testing.T, server authpb.UserServer) context.Context {
 
 type stubJSExecutor struct{}
 
-func (stubJSExecutor) AppendJsScripts(...*jsengine.JsScript) {}
+func (stubJSExecutor) AppendJsScripts(scripts ...*jsengine.JsScript) { _ = scripts }
 func (stubJSExecutor) Start() error                          { return nil }
 func (stubJSExecutor) Stop() error                           { return nil }
 func (stubJSExecutor) Execute(context.Context, *jsengine.JsRequest) (*jsengine.JsResponse, error) {
 	return &jsengine.JsResponse{}, nil
 }
 func (stubJSExecutor) GetJsScripts() []*jsengine.JsScript { return nil }
-func (stubJSExecutor) SetJsScripts([]*jsengine.JsScript)  {}
+func (stubJSExecutor) SetJsScripts(scripts []*jsengine.JsScript)  { _ = scripts }
 func (stubJSExecutor) Reload(...*jsengine.JsScript) error { return nil }

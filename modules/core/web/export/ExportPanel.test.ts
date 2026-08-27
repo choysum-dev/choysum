@@ -35,15 +35,25 @@ const i18n = createI18n({
   messages: { en: {} },
 });
 
-async function mountPanel(props: Record<string, unknown> = {}, open = true) {
+async function mountPanel(
+  props: Record<string, unknown> = {},
+  open = true,
+  treeCheckedKeys: string[] = ['Name'],
+  withDefaultFields = true,
+) {
   const { default: ExportPanel } = await import('./ExportPanel.vue');
+  const baseProps: Record<string, unknown> = {
+    model: 'partner.Partner',
+    companyId: 'cmp-1',
+    filteredCount: 5,
+    modelValue: open,
+  };
+  if (withDefaultFields && !('defaultFields' in props)) {
+    baseProps.defaultFields = ['Name', 'Code'];
+  }
   return mount(ExportPanel, {
     props: {
-      model: 'partner.Partner',
-      companyId: 'cmp-1',
-      defaultFields: ['Name', 'Code'],
-      filteredCount: 5,
-      modelValue: open,
+      ...baseProps,
       ...props,
     },
     global: {
@@ -51,16 +61,23 @@ async function mountPanel(props: Record<string, unknown> = {}, open = true) {
       stubs: {
         ElDialog: {
           name: 'ElDialog',
-          props: ['modelValue'],
+          props: ['modelValue', 'title'],
           emits: ['update:modelValue', 'open', 'closed'],
-          template: '<div class="dialog-stub"><slot /><slot name="footer" /></div>',
+          template: '<div class="dialog-stub"><button data-test="dialog-close" @click="$emit(\'update:modelValue\', false)">x</button><slot /><slot name="footer" /></div>',
+          mounted() {
+            this.$emit('open');
+          },
         },
-        ElCollapse: { template: '<div><slot /></div>' },
+        ElCollapse: {
+          props: ['modelValue'],
+          emits: ['update:modelValue'],
+          template: '<div class="collapse-stub" @click="$emit(\'update:modelValue\', [\'fields\'])"><slot /></div>',
+        },
         ElCollapseItem: { template: '<div><slot /></div>' },
         ElTree: {
           props: ['data', 'defaultCheckedKeys'],
           methods: {
-            getCheckedKeys: () => ['Name'],
+            getCheckedKeys: () => treeCheckedKeys,
           },
           template: '<div class="tree-stub" />',
         },
@@ -303,6 +320,15 @@ describe('ExportPanel', () => {
     expect((wrapper.vm as any).fieldTree[0].children?.[0].path).toBe('CompanyId/Code');
   });
 
+  it('treats null describe fields payload as empty', async () => {
+    describeExportFields.mockResolvedValue({ fields: null, defaultFields: ['Name'] });
+    const wrapper = await mountPanel({ defaultFields: [] });
+    await (wrapper.vm as any).onOpen();
+    await flushPromises();
+    expect((wrapper.vm as any).fieldTree).toEqual([]);
+    expect((wrapper.vm as any).selectedFieldPaths).toEqual(['Name']);
+  });
+
   it('ignores stale preview errors after session reset', async () => {
     let rejectPreview: (reason: unknown) => void = () => {};
     previewExport.mockImplementation(
@@ -415,5 +441,176 @@ describe('ExportPanel', () => {
     (wrapper.vm as any).fieldTree = [{ path: 'Name', label: 'Name' }];
     await wrapper.findComponent({ name: 'ElDialog' }).vm.$emit('closed');
     expect((wrapper.vm as any).fieldTree).toEqual([]);
+  });
+
+  it('binds dialog visibility and collapse state from the template', async () => {
+    const wrapper = await mountPanel({ modelValue: true });
+    expect(wrapper.find('.dialog-stub').exists()).toBe(true);
+    await wrapper.find('[data-test="dialog-close"]').trigger('click');
+    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([false]);
+    await wrapper.find('.collapse-stub').trigger('click');
+    expect((wrapper.vm as any).customFieldsOpen).toEqual(['fields']);
+    await wrapper.setProps({ modelValue: false });
+    expect(wrapper.props('modelValue')).toBe(false);
+  });
+
+  it('uses checked tree keys when available', async () => {
+    const wrapper = await mountPanel();
+    await (wrapper.vm as any).onOpen();
+    await flushPromises();
+    (wrapper.vm as any).selectedFieldPaths = [];
+    const input = (wrapper.vm as any).buildRunInput();
+    expect(input.fields).toEqual(['Name']);
+  });
+
+  it('surfaces non-error field load failures', async () => {
+    describeExportFields.mockRejectedValue('plain failure');
+    const wrapper = await mountPanel();
+    await (wrapper.vm as any).onOpen();
+    await flushPromises();
+    expect((wrapper.vm as any).exportError).toBe('plain failure');
+  });
+
+  it('uses unknown scope summary when filtered count is omitted', async () => {
+    const wrapper = await mountPanel({ filteredCount: undefined });
+    expect((wrapper.vm as any).scopeSummary).toContain('matching the current filters');
+  });
+
+  it('prefers checked tree keys over stored field paths', async () => {
+    const wrapper = await mountPanel({ defaultFields: ['Code'] });
+    await (wrapper.vm as any).onOpen();
+    await flushPromises();
+    (wrapper.vm as any).selectedFieldPaths = ['Code'];
+    const input = (wrapper.vm as any).buildRunInput();
+    expect(input.fields).toEqual(['Name']);
+  });
+
+  it('falls back to stored field paths when tree selection is empty', async () => {
+    const wrapper = await mountPanel({ defaultFields: ['Code'] }, true, []);
+    (wrapper.vm as any).selectedFieldPaths = ['Code'];
+    const input = (wrapper.vm as any).buildRunInput();
+    expect(input.fields).toEqual(['Code']);
+  });
+
+  it('falls back to prop default fields when no paths are selected', async () => {
+    const wrapper = await mountPanel({ defaultFields: ['Name', 'Code'] }, true, []);
+    (wrapper.vm as any).selectedFieldPaths = [];
+    const input = (wrapper.vm as any).buildRunInput();
+    expect(input.fields).toEqual(['Name', 'Code']);
+  });
+
+  it('falls back to empty fields when defaults are omitted', async () => {
+    const wrapper = await mountPanel({}, true, [], false);
+    (wrapper.vm as any).selectedFieldPaths = [];
+    const input = (wrapper.vm as any).buildRunInput();
+    expect(input.fields).toEqual([]);
+  });
+
+  it('filters blank field nodes and leaf nodes without children', async () => {
+    describeExportFields.mockResolvedValue({
+      fields: [
+        { path: '  ', label: 'Blank' },
+        { path: null, label: 'NoPath' },
+        { label: 'MissingPath' },
+        { path: 'Name', label: 'Name', children: [] },
+      ],
+      defaultFields: ['Name'],
+    });
+    const wrapper = await mountPanel({ defaultFields: [] });
+    await (wrapper.vm as any).onOpen();
+    await flushPromises();
+    expect((wrapper.vm as any).fieldTree).toEqual([{ path: 'Name', label: 'Name', children: undefined }]);
+  });
+
+  it('uses empty defaults when server and props omit default fields', async () => {
+    describeExportFields.mockResolvedValue({
+      fields: [{ path: 'Name', label: 'Name' }],
+    });
+    const wrapper = await mountPanel({ defaultFields: [] });
+    await (wrapper.vm as any).onOpen();
+    await flushPromises();
+    expect((wrapper.vm as any).selectedFieldPaths).toEqual([]);
+  });
+
+  it('uses prop default fields during field load when provided', async () => {
+    describeExportFields.mockResolvedValue({
+      fields: [{ path: 'Name', label: 'Name' }],
+      defaultFields: ['Code'],
+    });
+    const wrapper = await mountPanel({ defaultFields: ['Name'] });
+    await (wrapper.vm as any).onOpen();
+    await flushPromises();
+    expect((wrapper.vm as any).selectedFieldPaths).toEqual(['Name']);
+  });
+
+  it('uses server default fields when prop defaults are empty', async () => {
+    describeExportFields.mockResolvedValue({
+      defaultFields: ['Code'],
+    });
+    const wrapper = await mountPanel({ defaultFields: [] });
+    await (wrapper.vm as any).onOpen();
+    await flushPromises();
+    expect((wrapper.vm as any).selectedFieldPaths).toEqual(['Code']);
+  });
+
+  it('keeps prop default fields when server defaults are also returned', async () => {
+    describeExportFields.mockResolvedValue({
+      fields: [{ path: 'Name', label: 'Name' }],
+      defaultFields: ['Code'],
+    });
+    const wrapper = await mountPanel({ defaultFields: ['Name'] });
+    await (wrapper.vm as any).onOpen();
+    await flushPromises();
+    expect((wrapper.vm as any).selectedFieldPaths).toEqual(['Name']);
+  });
+
+  it('clears preview report when preview response omits report', async () => {
+    previewExport.mockResolvedValue({});
+    const wrapper = await mountPanel();
+    await (wrapper.vm as any).runPreview();
+    await flushPromises();
+    expect((wrapper.vm as any).previewReport).toBeNull();
+  });
+
+  it('surfaces preview failures from Error objects', async () => {
+    previewExport.mockRejectedValue(new Error('preview failed'));
+    const wrapper = await mountPanel();
+    await (wrapper.vm as any).runPreview();
+    await flushPromises();
+    expect((wrapper.vm as any).exportError).toBe('preview failed');
+  });
+
+  it('completes export when response omits report and csv bytes', async () => {
+    runExport.mockResolvedValue({ report: { stats: { ok: 1 } } });
+    const wrapper = await mountPanel();
+    await (wrapper.vm as any).commitExport();
+    await flushPromises();
+    expect((wrapper.vm as any).exportDone).toBe(true);
+    expect((wrapper.vm as any).exportSuccessSubtitle).toBe('1 row(s) exported.');
+    expect(downloadExportCsvBytes).not.toHaveBeenCalled();
+  });
+
+  it('completes export when report stats omit ok count', async () => {
+    runExport.mockResolvedValue({ report: { stats: {} }, csvData: new Uint8Array([1]) });
+    const wrapper = await mountPanel();
+    await (wrapper.vm as any).commitExport();
+    await flushPromises();
+    expect((wrapper.vm as any).exportSuccessSubtitle).toBe('0 row(s) exported.');
+  });
+
+  it('treats missing report payload as null', async () => {
+    runExport.mockResolvedValue({});
+    const wrapper = await mountPanel();
+    await (wrapper.vm as any).commitExport();
+    await flushPromises();
+    expect((wrapper.vm as any).exportError).toBe('Export failed.');
+  });
+
+  it('surfaces export failures from Error objects', async () => {
+    runExport.mockRejectedValue(new Error('export failed'));
+    const wrapper = await mountPanel();
+    await (wrapper.vm as any).commitExport();
+    await flushPromises();
+    expect((wrapper.vm as any).exportError).toBe('export failed');
   });
 });

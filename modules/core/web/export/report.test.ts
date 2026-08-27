@@ -15,7 +15,9 @@ describe('exportReportHasErrors', () => {
     expect(exportReportHasErrors({ stats: { error: 1 } })).toBe(true);
     expect(exportReportHasErrors({ messages: [{ type_: ExportMessageType.ERROR, text: 'bad row' }] })).toBe(true);
     expect(exportReportHasErrors({ messages: [{ type_: ExportMessageType.UNSPECIFIED, text: '' }] })).toBe(true);
+    expect(exportReportHasErrors({ messages: [{ type_: ExportMessageType.UNSPECIFIED, text: 'message only' }] })).toBe(true);
     expect(exportReportHasErrors({ stats: { ok: 1 }, messages: [{ type_: ExportMessageType.WARNING, text: 'ok' }] })).toBe(false);
+    expect(exportReportHasErrors({ stats: { ok: 1 }, messages: [{ text: 'ok' }] })).toBe(true);
   });
 });
 
@@ -26,10 +28,16 @@ describe('exportReportErrorText', () => {
 
   it('falls back to stats error count', () => {
     expect(exportReportErrorText({ stats: { error: 2 }, messages: [{ text: '' }] })).toBe('Export finished with 2 error(s).');
+    expect(exportReportErrorText({ stats: { error: 5 } })).toBe('Export finished with 5 error(s).');
+    expect(exportReportErrorText({ stats: {}, messages: [{ type_: ExportMessageType.ERROR, text: '' }] })).toBe('Export failed.');
+    expect(
+      exportReportErrorText({ stats: { error: 1 }, messages: [{ type_: ExportMessageType.WARNING, text: 'warn' }] }),
+    ).toBe('Export finished with 1 error(s).');
   });
 
   it('returns generic failure text', () => {
     expect(exportReportErrorText({ stats: { ok: 0 } })).toBe('Export failed.');
+    expect(exportReportErrorText(null)).toBe('Export failed.');
   });
 
   it('skips blank unspecified messages when locating error text', () => {
@@ -70,6 +78,7 @@ describe('exportPreviewSummary', () => {
 
   it('shows a clean zero-error preview summary', () => {
     expect(exportPreviewSummary({ stats: { ok: 2, error: 0, total: 2 } })).toBe('Preview: 2 ok, 0 errors, 2 total');
+    expect(exportPreviewSummary({ stats: {} })).toBe('Preview: 0 ok, 0 errors, 0 total');
   });
 });
 

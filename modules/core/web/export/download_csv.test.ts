@@ -10,6 +10,8 @@ describe('suggestExportFileName', () => {
     expect(suggestExportFileName('partner.Partner')).toBe('Partner.csv');
     expect(suggestExportFileName('')).toBe('export.csv');
     expect(suggestExportFileName('single')).toBe('single.csv');
+    expect(suggestExportFileName('partner.')).toBe('export.csv');
+    expect(suggestExportFileName(undefined as unknown as string)).toBe('export.csv');
   });
 });
 

@@ -36,4 +36,8 @@ describe('normalizeExportFieldPaths', () => {
   it('normalizes null path input', () => {
     expect(normalizeExportFieldPath(null as unknown as string)).toBe('');
   });
+
+  it('skips duplicate paths after normalization', () => {
+    expect(normalizeExportFieldPaths(['CompanyId.Code', 'CompanyId/Code'])).toEqual(['CompanyId/Code']);
+  });
 });

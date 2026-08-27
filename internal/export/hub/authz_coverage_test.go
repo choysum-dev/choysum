@@ -540,3 +540,110 @@ func TestToRecordSpecTrimsWhitespaceFields(t *testing.T) {
 		t.Fatalf("spec = %#v", spec)
 	}
 }
+
+func TestToRecordSpecUnsupportedMode(t *testing.T) {
+	_, err := toRecordSpec(&exportpb.ExportRunRequest{
+		Model: "base.Country",
+		Mode:  exportpb.ExportMode(99),
+	}, false)
+	if err == nil || status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestRunExportWithResultDirect(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	_, _, err := runExportWithResult(context.Background(), runtimeScope, exportpkg.Spec{})
+	if err == nil {
+		t.Fatal("expected validation error")
+	}
+}
+
+func TestRunExportWithRunAndJSExecutorSetsCaller(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	seedCountryModelMeta(t, runtimeScope.Session().DB)
+	ctx := authCtx(t)
+	_, err := runExport(ctx, Deps{
+		RuntimeScope: runtimeScope,
+		JSExecutor:   stubJSExecutor{},
+		Run: func(context.Context, scope.Scope, exportpkg.Spec) (importpkg.Report, error) {
+			return importpkg.Report{Stats: importpkg.Stats{Ok: 1}}, nil
+		},
+	}, &exportpb.ExportRunRequest{Model: "base.Country"}, false)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+}
+
+func TestRunExportPreviewWithExplicitCompanyID(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	seedCountryModelMeta(t, runtimeScope.Session().DB)
+	ctx := authCtx(t)
+	var captured exportpkg.Spec
+	_, err := runExport(ctx, Deps{
+		RuntimeScope: runtimeScope,
+		Run: func(_ context.Context, _ scope.Scope, spec exportpkg.Spec) (importpkg.Report, error) {
+			captured = spec
+			return importpkg.Report{Stats: importpkg.Stats{Ok: 1}}, nil
+		},
+	}, &exportpb.ExportRunRequest{Model: "base.Country", CompanyId: "cmp-explicit"}, true)
+	if err != nil {
+		t.Fatalf("Preview: %v", err)
+	}
+	if captured.Options.CompanyID != "cmp-explicit" || captured.Limit != previewRowLimit {
+		t.Fatalf("spec = %#v", captured)
+	}
+}
+
+func TestRunExportUsesActiveCompanyWhenRequestCompanyEmpty(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	seedCountryModelMeta(t, runtimeScope.Session().DB)
+	ctx := authCtx(t)
+	var captured exportpkg.Spec
+	_, err := runExport(ctx, Deps{
+		RuntimeScope: runtimeScope,
+		Run: func(_ context.Context, _ scope.Scope, spec exportpkg.Spec) (importpkg.Report, error) {
+			captured = spec
+			return importpkg.Report{Stats: importpkg.Stats{Ok: 1}}, nil
+		},
+	}, &exportpb.ExportRunRequest{Model: "base.Country"}, false)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if captured.Options.CompanyID != "cmp_test" {
+		t.Fatalf("company_id = %q", captured.Options.CompanyID)
+	}
+}
+
+func TestRunExportDeniedByModelAccess(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	seedCountryModelMeta(t, runtimeScope.Session().DB)
+	ctx := authCtxWithServer(t, denyAuthServer{})
+	_, err := runExport(ctx, Deps{
+		RuntimeScope: runtimeScope,
+		Run: func(context.Context, scope.Scope, exportpkg.Spec) (importpkg.Report, error) {
+			return importpkg.Report{}, nil
+		},
+	}, &exportpb.ExportRunRequest{Model: "base.Country"}, false)
+	if err == nil || status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestRunExportJSExecutorOnlyFailsWithoutReportMessages(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	seedCountryModelMeta(t, runtimeScope.Session().DB)
+	ctx := authCtx(t)
+	prev := runExportWithResultFn
+	runExportWithResultFn = func(_ context.Context, _ scope.Scope, _ exportpkg.Spec) (importpkg.Report, registry.Result, error) {
+		return importpkg.Report{}, registry.Result{}, errors.New("boom")
+	}
+	t.Cleanup(func() { runExportWithResultFn = prev })
+	_, err := runExport(ctx, Deps{
+		RuntimeScope: runtimeScope,
+		JSExecutor:   stubJSExecutor{},
+	}, &exportpb.ExportRunRequest{Model: "base.Country"}, false)
+	if err == nil || status.Code(err) != codes.Internal {
+		t.Fatalf("err = %v", err)
+	}
+}

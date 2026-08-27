@@ -232,6 +232,7 @@ func TestExportFieldNodeSkipsNonCodeNameChildren(t *testing.T) {
 	}
 	for _, field := range []meta.Field{
 		{Name: "Extra", FieldType: "varchar", ModelId: company.Id, FieldString: "Extra"},
+		{Name: "Code", FieldType: "varchar", ModelId: company.Id, FieldString: "Code"},
 	} {
 		if err := db.Create(&field).Error; err != nil {
 			t.Fatal(err)
@@ -243,7 +244,7 @@ func TestExportFieldNodeSkipsNonCodeNameChildren(t *testing.T) {
 		RelationModel: "base.Company",
 		FieldString:   "Company",
 	})
-	if err != nil || node == nil || len(node.GetChildren()) != 0 {
+	if err != nil || node == nil || len(node.GetChildren()) != 1 || node.GetChildren()[0].GetPath() != "CompanyId/Code" {
 		t.Fatalf("node=%#v err=%v", node, err)
 	}
 }
@@ -370,5 +371,80 @@ func TestImportwriterFieldRelationTargetResolvedSpecMissingTarget(t *testing.T) 
 	})
 	if _, err := importwriterFieldRelationTarget(field); err == nil {
 		t.Fatal("expected missing target")
+	}
+}
+
+func TestExportFieldNodeManyToOneNameChild(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.AutoMigrate(&meta.Model{}, &meta.Field{}); err != nil {
+		t.Fatal(err)
+	}
+	company := &meta.Model{Name: "Company", Application: "base", Path: "/tmp", ModelTable: "base_company"}
+	if err := db.Create(company).Error; err != nil {
+		t.Fatal(err)
+	}
+	for _, field := range []meta.Field{
+		{Name: "Code", FieldType: "varchar", ModelId: company.Id, FieldString: "Code"},
+		{Name: "Name", FieldType: "varchar", ModelId: company.Id, FieldString: "Company Name"},
+	} {
+		if err := db.Create(&field).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	node, err := exportFieldNode(db, meta.Field{
+		Name:          "CompanyId",
+		FieldType:     "ManyToOne",
+		RelationModel: "base.Company",
+		FieldString:   "Company",
+	})
+	if err != nil || node == nil || len(node.GetChildren()) != 2 {
+		t.Fatalf("node=%#v err=%v", node, err)
+	}
+}
+
+func TestExportFieldNodeReturnsNodeWhenRelationTargetFails(t *testing.T) {
+	field := meta.Field{Name: "CurrencyId", FieldType: "ManyToOneRef", FieldString: "Currency"}
+	if err := field.SetResolvedSpec(&meta.FieldResolvedSpec{
+		Structural: meta.FieldStructuralSpec{
+			Relation: map[string]any{"targetModel": 123},
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	node, err := exportFieldNode(newHubTestScope(t).Session().DB, field)
+	if err != nil || node == nil || node.GetPath() != "CurrencyId" || len(node.GetChildren()) != 0 {
+		t.Fatalf("node=%#v err=%v", node, err)
+	}
+}
+
+func TestImportwriterFieldRelationTargetUsesRelationModel(t *testing.T) {
+	target, err := importwriterFieldRelationTarget(&meta.Field{
+		Name: "CompanyId", FieldType: "ManyToOneRef", RelationModel: "base.Company",
+	})
+	if err != nil || target != "base.Company" {
+		t.Fatalf("target=%q err=%v", target, err)
+	}
+}
+
+func TestDescribeFieldsSkipsBrokenFieldNodes(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	seedPartnerModelMeta(t, runtimeScope.Session().DB)
+	db := runtimeScope.Session().DB
+	partnerModel := &meta.Model{}
+	if err := db.Where("application = ? AND name = ?", "partner", "Partner").First(partnerModel).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&meta.Field{
+		Name: "Broken", FieldType: "ManyToOneRef", RelationModel: "missing.Model", ModelId: partnerModel.Id,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	resp, err := describeFields(runtimeScope.Context(), runtimeScope, &exportpb.DescribeFieldsRequest{Model: "partner.Partner"})
+	if err != nil {
+		t.Fatalf("describeFields: %v", err)
+	}
+	if len(resp.GetFields()) == 0 {
+		t.Fatal("expected at least one field node")
 	}
 }
