@@ -7,27 +7,27 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: service/orm/model/model.ts:429
+#: service/orm/model/model.ts:430
 msgctxt "core.model.BaseModel.fields"
 msgid "Created At"
 msgstr ""
 
-#: service/orm/model/model.ts:465
+#: service/orm/model/model.ts:466
 msgctxt "core.model.BaseModel.fields"
 msgid "Created By"
 msgstr ""
 
-#: service/orm/model/model.ts:451
+#: service/orm/model/model.ts:452
 msgctxt "core.model.BaseModel.fields"
 msgid "Deleted At"
 msgstr ""
 
-#: service/orm/model/model.ts:493
+#: service/orm/model/model.ts:494
 msgctxt "core.model.BaseModel.fields"
 msgid "Deleted By"
 msgstr ""
 
-#: service/orm/model/model.ts:407
+#: service/orm/model/model.ts:408
 msgctxt "core.model.BaseModel.fields"
 msgid "Display Name"
 msgstr ""
@@ -37,22 +37,22 @@ msgctxt "core.model.BaseModel.fields"
 msgid "Parent Path"
 msgstr ""
 
-#: service/orm/model/model.ts:440
+#: service/orm/model/model.ts:441
 msgctxt "core.model.BaseModel.fields"
 msgid "Updated At"
 msgstr ""
 
-#: service/orm/model/model.ts:479
+#: service/orm/model/model.ts:480
 msgctxt "core.model.BaseModel.fields"
 msgid "Updated By"
 msgstr ""
 
-#: service/orm/model/model.ts:286
+#: service/orm/model/model.ts:287
 msgctxt "service/orm/model/model"
 msgid "current company is required"
 msgstr ""
 
-#: service/orm/model/model.ts:275
+#: service/orm/model/model.ts:276
 msgctxt "service/orm/model/model"
 msgid "current user is required"
 msgstr ""
@@ -78,7 +78,7 @@ msgctxt "service/orm/model/model_soft_delete_scope"
 msgid "withDeleted and onlyDeleted cannot both be true"
 msgstr ""
 
-#: service/orm/model/model_update.ts:648
+#: service/orm/model/model_update.ts:664
 msgctxt "service/orm/model/model_update"
 msgid "Update failed: Record %s not found."
 msgstr ""
@@ -292,6 +292,71 @@ msgstr ""
 #: web/error/ui.ts:15
 msgctxt "web/error/ui"
 msgid "Unexpected error"
+msgstr ""
+
+#: web/export/ExportPanel.vue:32
+msgctxt "web/export/ExportPanel"
+msgid "CSV stored as document %ref."
+msgstr ""
+
+#: web/export/ExportPanel.vue:27
+msgctxt "web/export/ExportPanel"
+msgid "Cancel"
+msgstr ""
+
+#: web/export/ExportPanel.vue:26
+msgctxt "web/export/ExportPanel"
+msgid "Customize fields…"
+msgstr ""
+
+#: web/export/ExportPanel.vue:30
+msgctxt "web/export/ExportPanel"
+msgid "Done"
+msgstr ""
+
+#: web/export/ExportPanel.vue:25
+msgctxt "web/export/ExportPanel"
+msgid "Export"
+msgstr ""
+
+#: web/export/ExportPanel.vue:36
+msgctxt "web/export/ExportPanel"
+msgid "Export %count row(s) matching the current filters."
+msgstr ""
+
+#: web/export/ExportPanel.vue:35
+msgctxt "web/export/ExportPanel"
+msgid "Export %count selected row(s)."
+msgstr ""
+
+#: web/export/ExportPanel.vue:29
+msgctxt "web/export/ExportPanel"
+msgid "Export CSV"
+msgstr ""
+
+#: web/export/ExportPanel.vue:31
+msgctxt "web/export/ExportPanel"
+msgid "Export completed"
+msgstr ""
+
+#: web/export/ExportPanel.vue:37
+msgctxt "web/export/ExportPanel"
+msgid "Export rows matching the current filters."
+msgstr ""
+
+#: web/export/ExportPanel.vue:33
+msgctxt "web/export/ExportPanel"
+msgid "Loading fields…"
+msgstr ""
+
+#: web/export/ExportPanel.vue:34
+msgctxt "web/export/ExportPanel"
+msgid "No exportable fields were returned."
+msgstr ""
+
+#: web/export/ExportPanel.vue:28
+msgctxt "web/export/ExportPanel"
+msgid "Preview"
 msgstr ""
 
 #: web/rpc/errors.ts:30

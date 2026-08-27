@@ -84,6 +84,9 @@ func installedModulesByApp(runtimeScope scope.Scope) (map[string][]string, error
 		return out, nil
 	}
 	session := runtimeScope.Session()
+	if session.DB == nil {
+		return out, nil
+	}
 	if !session.Migrator().HasTable((&meta.Module{}).TableName()) {
 		return out, nil
 	}

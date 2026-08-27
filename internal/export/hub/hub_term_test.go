@@ -195,6 +195,24 @@ func TestRun_TerminologyUsesResultRunnerEvenWithDepsRun(t *testing.T) {
 	}
 }
 
+func TestRunExportTerminologyAccessDenied(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	seedInstalledModule(t, runtimeScope, "auth", "base")
+	ctx := authCtxWithServer(t, denyAuthServer{})
+	_, err := runExport(ctx, Deps{
+		RuntimeScope: runtimeScope,
+		JSExecutor:   stubJSExecutor{},
+	}, &exportpb.ExportRunRequest{
+		Profile:     "terminology",
+		Application: "auth",
+		Module:      "base",
+		Lang:        "zh_CN",
+	}, false)
+	if err == nil || status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("err = %v", err)
+	}
+}
+
 func TestAttachInlinePO(t *testing.T) {
 	resp := &exportpb.ExportRunResponse{}
 	large := make([]byte, maxInlinePOBytes+1)

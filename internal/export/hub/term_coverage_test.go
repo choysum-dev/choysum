@@ -149,8 +149,15 @@ func TestInstalledModulesByAppSkipsEmptyApplicationAndName(t *testing.T) {
 	if len(got["auth"]) != 2 {
 		t.Fatalf("auth modules = %#v, want base+core", got["auth"])
 	}
-	if len(got[""]) != 0 && len(got["core"]) != 0 {
+	if len(got[""]) != 0 || len(got["core"]) != 0 {
 		t.Fatalf("unexpected apps = %#v", got)
+	}
+}
+
+func TestInstalledModulesByAppNilDB(t *testing.T) {
+	got, err := installedModulesByApp(nilDBScope{})
+	if err != nil || len(got) != 0 {
+		t.Fatalf("got=%#v err=%v", got, err)
 	}
 }
 

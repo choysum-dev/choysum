@@ -123,8 +123,27 @@ func writeExportPO(path string, poBytes []byte) error {
 			return xfmt.Errorf("create output directory: %w", err)
 		}
 	}
-	if err := os.WriteFile(path, poBytes, 0o644); err != nil {
+	tmp, err := os.CreateTemp(dir, ".export-po-*.tmp")
+	if err != nil {
 		return xfmt.Errorf("write PO file: %w", err)
 	}
+	tmpPath := tmp.Name()
+	removeTmp := true
+	defer func() {
+		if removeTmp {
+			_ = os.Remove(tmpPath)
+		}
+	}()
+	if _, err := tmp.Write(poBytes); err != nil {
+		_ = tmp.Close()
+		return xfmt.Errorf("write PO file: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return xfmt.Errorf("write PO file: %w", err)
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		return xfmt.Errorf("write PO file: %w", err)
+	}
+	removeTmp = false
 	return nil
 }
