@@ -63,14 +63,21 @@ func TestRun_Terminology_AssemblesSpec(t *testing.T) {
 	ctx := auth.ContextWithAccessToken(authCtx(t), "user-token")
 
 	var captured exportpkg.Spec
+	prev := runExportWithResultFn
+	runExportWithResultFn = func(_ context.Context, _ scope.Scope, spec exportpkg.Spec) (importpkg.Report, registry.Result, error) {
+		captured = spec
+		return importpkg.Report{
+			Profile: importpkg.ProfileTerminology,
+			Stats:   importpkg.Stats{Ok: 2, Total: 2},
+		}, registry.Result{}, nil
+	}
+	t.Cleanup(func() { runExportWithResultFn = prev })
+
 	h := New(Deps{
 		RuntimeScope: runtimeScope,
 		Run: func(_ context.Context, _ scope.Scope, spec exportpkg.Spec) (importpkg.Report, error) {
-			captured = spec
-			return importpkg.Report{
-				Profile: importpkg.ProfileTerminology,
-				Stats:   importpkg.Stats{Ok: 2, Total: 2},
-			}, nil
+			t.Fatal("record Run callback must not be used for terminology exports")
+			return importpkg.Report{}, nil
 		},
 	})
 
@@ -139,7 +146,7 @@ func TestPreview_TerminologyUnsupported(t *testing.T) {
 
 func TestCheckTerminologyExportAccessUnknownApplication(t *testing.T) {
 	runtimeScope := newHubTestScope(t)
-	err := checkTerminologyExportAccess(runtimeScope, "missing", "base", "zh_CN")
+	err := checkTerminologyExportAccess(context.Background(), runtimeScope, "missing", "base", "zh_CN")
 	if err == nil || status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("err = %v", err)
 	}
@@ -148,9 +155,43 @@ func TestCheckTerminologyExportAccessUnknownApplication(t *testing.T) {
 func TestCheckTerminologyExportAccessInvalidLang(t *testing.T) {
 	runtimeScope := newHubTestScope(t)
 	seedInstalledModule(t, runtimeScope, "auth", "base")
-	err := checkTerminologyExportAccess(runtimeScope, "auth", "base", "bad lang!")
+	err := checkTerminologyExportAccess(context.Background(), runtimeScope, "auth", "base", "bad lang!")
 	if err == nil || status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestRun_TerminologyUsesResultRunnerEvenWithDepsRun(t *testing.T) {
+	runtimeScope := newHubTestScope(t)
+	seedInstalledModule(t, runtimeScope, "auth", "base")
+	ctx := auth.ContextWithAccessToken(authCtx(t), "user-token")
+	prev := runExportWithResultFn
+	runExportWithResultFn = func(_ context.Context, _ scope.Scope, _ exportpkg.Spec) (importpkg.Report, registry.Result, error) {
+		return importpkg.Report{
+			Profile: importpkg.ProfileTerminology,
+			Stats:   importpkg.Stats{Ok: 1, Total: 1},
+		}, registry.Result{POBytes: []byte("msgid \"via-result\"\n")}, nil
+	}
+	t.Cleanup(func() { runExportWithResultFn = prev })
+
+	h := New(Deps{
+		RuntimeScope: runtimeScope,
+		Run: func(_ context.Context, _ scope.Scope, _ exportpkg.Spec) (importpkg.Report, error) {
+			t.Fatal("record Run callback must not be used for terminology exports")
+			return importpkg.Report{}, nil
+		},
+	})
+	resp, err := h.Run(ctx, &exportpb.ExportRunRequest{
+		Profile:     "terminology",
+		Application: "auth",
+		Module:      "base",
+		Lang:        "zh_CN",
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if string(resp.GetPoData()) != "msgid \"via-result\"\n" {
+		t.Fatalf("po_data = %q", resp.GetPoData())
 	}
 }
 

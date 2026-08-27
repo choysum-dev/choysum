@@ -16,6 +16,8 @@ import (
 	"github.com/choysum-dev/choysum/pkg/scope"
 )
 
+var runTerminologyExport = runner.RunWithResult
+
 // TerminologyOptions configures a CLI terminology export run.
 type TerminologyOptions struct {
 	Application string
@@ -30,7 +32,7 @@ func RunTerminology(ctx context.Context, runtimeScope scope.Scope, opts Terminol
 		return importpkg.Report{}, nil, err
 	}
 	runCtx := terms.OutgoingContextForInternalRPC(ctx, runtimeScope)
-	report, result, err := runner.RunWithResult(runCtx, runtimeScope, spec)
+	report, result, err := runTerminologyExport(runCtx, runtimeScope, spec)
 	return report, result.POBytes, err
 }
 

@@ -135,7 +135,7 @@ func runExport(
 	}
 	switch spec.Profile {
 	case exportpkg.ProfileTerminology:
-		if err := checkTerminologyExportAccess(deps.RuntimeScope, spec.Application, spec.Module, spec.Lang); err != nil {
+		if err := checkTerminologyExportAccess(ctx, deps.RuntimeScope, spec.Application, spec.Module, spec.Lang); err != nil {
 			return nil, err
 		}
 	default:
@@ -158,7 +158,7 @@ func runExport(
 	}
 
 	runFn := deps.Run
-	if runFn == nil {
+	if runFn == nil || spec.Profile == exportpkg.ProfileTerminology {
 		report, result, err := runExportWithResultFn(runCtx, deps.RuntimeScope, spec)
 		if err != nil && len(report.Messages) == 0 {
 			return nil, status.Errorf(codes.Internal, "export run failed: %v", err)

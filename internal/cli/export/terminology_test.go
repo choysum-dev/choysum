@@ -4,10 +4,14 @@
 package exportcli
 
 import (
+	"context"
 	"errors"
 	"testing"
 
+	"github.com/choysum-dev/choysum/internal/export/registry"
 	exportpkg "github.com/choysum-dev/choysum/pkg/export"
+	importpkg "github.com/choysum-dev/choysum/pkg/import"
+	"github.com/choysum-dev/choysum/pkg/scope"
 )
 
 func TestTerminologySpecFromOptions(t *testing.T) {
@@ -58,5 +62,35 @@ func TestTerminologySpecRejectsE2ECallerMatrix(t *testing.T) {
 	spec.Caller = exportpkg.CallerE2E
 	if err := exportpkg.ValidateSpec(spec); !errors.Is(err, exportpkg.ErrCallerProfileDenied) {
 		t.Fatalf("ValidateSpec() err = %v, want ErrCallerProfileDenied", err)
+	}
+}
+
+func TestRunTerminologyUsesInternalRPCAndReturnsPO(t *testing.T) {
+	prev := runTerminologyExport
+	runTerminologyExport = func(_ context.Context, _ scope.Scope, spec exportpkg.Spec) (importpkg.Report, registry.Result, error) {
+		if spec.Profile != exportpkg.ProfileTerminology || spec.Caller != exportpkg.CallerCLI {
+			t.Fatalf("spec = %+v", spec)
+		}
+		return importpkg.Report{Stats: importpkg.Stats{Ok: 1, Total: 1}}, registry.Result{POBytes: []byte("po")}, nil
+	}
+	t.Cleanup(func() { runTerminologyExport = prev })
+
+	report, poBytes, err := RunTerminology(context.Background(), nil, TerminologyOptions{
+		Application: "auth",
+		Module:      "base",
+		Lang:        "zh_CN",
+	})
+	if err != nil {
+		t.Fatalf("RunTerminology: %v", err)
+	}
+	if report.Stats.Ok != 1 || string(poBytes) != "po" {
+		t.Fatalf("report=%+v po=%q", report.Stats, poBytes)
+	}
+}
+
+func TestRunTerminologySpecValidationError(t *testing.T) {
+	_, _, err := RunTerminology(context.Background(), nil, TerminologyOptions{})
+	if err == nil {
+		t.Fatal("expected spec validation error")
 	}
 }

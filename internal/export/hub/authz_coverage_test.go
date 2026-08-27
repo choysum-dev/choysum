@@ -239,6 +239,10 @@ func TestEnsureExportDeliverable(t *testing.T) {
 	if err := ensureExportDeliverable(resp, nil, make([]byte, maxInlinePOBytes+1)); err == nil || status.Code(err) != codes.FailedPrecondition {
 		t.Fatalf("oversized po without artifact err = %v", err)
 	}
+	resp = &exportpb.ExportRunResponse{Report: &exportpb.ExportReport{ArtifactRef: "doc-po"}}
+	if err := ensureExportDeliverable(resp, nil, make([]byte, maxInlinePOBytes+1)); err != nil {
+		t.Fatalf("oversized po with artifact ref: %v", err)
+	}
 }
 
 func TestRunExportLargeCSVWithoutArtifactRef(t *testing.T) {

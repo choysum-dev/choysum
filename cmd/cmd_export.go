@@ -4,7 +4,6 @@
 package cmd
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -60,15 +59,19 @@ When output path is omitted, PO bytes are written to stdout and the JSON ExportR
 			}
 
 			ctx := cmd.Context()
-			if ctx == nil {
-				ctx = context.Background()
-			}
 
 			report, poBytes, runErr := runExportTerminology(ctx, runtimeScope, exportcli.TerminologyOptions{
 				Application: application,
 				Module:      module,
 				Lang:        lang,
 			})
+
+			if runErr != nil {
+				return runErr
+			}
+			if report.Stats.Error > 0 {
+				return xfmt.Errorf("export finished with %d error(s)", report.Stats.Error)
+			}
 
 			encoded, err := marshalExportReport(report)
 			if err != nil {
@@ -96,13 +99,6 @@ When output path is omitted, PO bytes are written to stdout and the JSON ExportR
 				if _, err := fmt.Fprintln(cmd.OutOrStdout(), string(encoded)); err != nil {
 					return err
 				}
-			}
-
-			if runErr != nil {
-				return runErr
-			}
-			if report.Stats.Error > 0 {
-				return xfmt.Errorf("export finished with %d error(s)", report.Stats.Error)
 			}
 			return nil
 		},
