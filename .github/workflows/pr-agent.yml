@@ -20,7 +20,7 @@ jobs:
     steps:
       - name: PR Agent action step
         id: pragent
-        uses: the-pr-agent/pr-agent@main
+        uses: the-pr-agent/pr-agent@v0.43.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOOGLE_AI_STUDIO.GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -31,8 +31,7 @@ jobs:
           config.custom_model_max_tokens: "1000000"
           # Increase token limit to properly process large diffs
           config.max_model_tokens: "1000000"
-          # Optional: Enable automatic review, describe, and improve on PR events
-          # Project-specific review/describe/improve instructions live in .pr_agent.toml
+          # Auto review/describe/improve; project-specific instructions live in .pr_agent.toml
           github_action_config.auto_review: "true"
           github_action_config.auto_describe: "true"
           github_action_config.auto_improve: "true"
