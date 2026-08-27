@@ -197,6 +197,102 @@ test('DataTransferJob.EnqueueRecordExport validation paths', async () => {
   );
 });
 
+test('DataTransferJob.EnqueueRecordExport rejects non-record profiles', async () => {
+  resetRequestContext();
+  await expectAsyncError(
+    () =>
+      DataTransferJob.EnqueueRecordExport({
+        targetModel: 'base.Country',
+        sourceRef: 'export:base.Country',
+        profile: 'terminology',
+        specSnapshot: sampleExportSnapshot('base.Country'),
+      }),
+    /unsupported data transfer profile/
+  );
+  await expectAsyncError(
+    () =>
+      DataTransferJob.EnqueueRecordExport({
+        targetModel: 'base.Country',
+        sourceRef: 'export:base.Country',
+        profile: 'initdata',
+        specSnapshot: sampleExportSnapshot('base.Country'),
+      }),
+    /unsupported data transfer profile/
+  );
+});
+
+test('DataTransferJob.EnqueueRecordExport rolls back row when EnqueueJob fails', async () => {
+  resetRequestContext();
+  const enqueueJob = (Job as any).EnqueueJob.bind(Job);
+  let createdId = '';
+  const create = (DataTransferJob as any).Create.bind(DataTransferJob);
+  (Job as any).EnqueueJob = async () => {
+    throw new Error('enqueue boom');
+  };
+  (DataTransferJob as any).Create = async (values: Partial<DataTransferJob>) => {
+    const row = await create(values);
+    createdId = row.Id;
+    return row;
+  };
+  try {
+    await expectAsyncError(
+      () =>
+        DataTransferJob.EnqueueRecordExport({
+          targetModel: 'base.Country',
+          sourceRef: 'export:base.Country',
+          specSnapshot: sampleExportSnapshot('base.Country'),
+        }),
+      /enqueue boom/
+    );
+    await expectAsyncError(() => DataTransferJob.Browse(createdId, ['Id'] as any), /not found/i);
+  } finally {
+    (Job as any).EnqueueJob = enqueueJob;
+    (DataTransferJob as any).Create = create;
+  }
+});
+
+test('DataTransferJob.EnqueueRecordExport keeps row when UpdateById fails after enqueue', async () => {
+  resetRequestContext();
+  const updateById = (DataTransferJob as any).UpdateById.bind(DataTransferJob);
+  let createdId = '';
+  let taskJobId = '';
+  const create = (DataTransferJob as any).Create.bind(DataTransferJob);
+  const enqueueJob = (Job as any).EnqueueJob.bind(Job);
+  (DataTransferJob as any).Create = async (values: Partial<DataTransferJob>) => {
+    const row = await create(values);
+    createdId = row.Id;
+    return row;
+  };
+  (Job as any).EnqueueJob = async (...args: any[]) => {
+    const job = await enqueueJob(...args);
+    taskJobId = job.Id;
+    return job;
+  };
+  (DataTransferJob as any).UpdateById = async () => {
+    throw new Error('update boom');
+  };
+  try {
+    await expectAsyncError(
+      () =>
+        DataTransferJob.EnqueueRecordExport({
+          targetModel: 'base.Country',
+          sourceRef: 'export:base.Country',
+          specSnapshot: sampleExportSnapshot('base.Country'),
+        }),
+      /update boom/
+    );
+    const row = await DataTransferJob.Browse(createdId, ['TaskJobId'] as any);
+    expect(row).toBeTruthy();
+    expect((row as any).TaskJobId).toBeFalsy();
+    const taskJob = await Job.GetJob(taskJobId, ['FullMethod'] as any);
+    expect((taskJob as any).FullMethod).toBe(DATA_TRANSFER_JOB_EXECUTE_EXPORT_FULL_METHOD);
+  } finally {
+    (DataTransferJob as any).UpdateById = updateById;
+    (DataTransferJob as any).Create = create;
+    (Job as any).EnqueueJob = enqueueJob;
+  }
+});
+
 test('DataTransferJob.EnqueueRecordImport validation paths', async () => {
   resetRequestContext();
   const jsCtx = ensureRequestContext();
@@ -515,6 +611,30 @@ test('executeImport and FinalizeReport error paths', async () => {
     try {
       const report = await executeImport(missingDirection.Id);
       expect(report?.stats?.total).toBe(0);
+    } finally {
+      (DataTransferJob as any).Browse = browse;
+    }
+
+    const missingExportDirection = await DataTransferJob.Create({
+      Profile: 'record',
+      Policy: 'atomic',
+      DryRun: false,
+      TargetModel: 'base.Country',
+      SourceRef: 'doc-missing-export-direction',
+      SpecSnapshotJson: sampleExportSnapshot('base.Country'),
+      Direction: 'export',
+    } as Partial<DataTransferJob>);
+    (DataTransferJob as any).Browse = async (_id: string, fields?: any) => {
+      const row = await browse(_id, fields);
+      if (!row) return row;
+      return { ...(row as any), Direction: '' };
+    };
+    root.export = {
+      run: async () => ({ stats: { total: 0, ok: 0, error: 0, skip: 0 } }),
+    };
+    try {
+      const exportReport = await executeExport(missingExportDirection.Id);
+      expect(exportReport?.stats?.total).toBe(0);
     } finally {
       (DataTransferJob as any).Browse = browse;
     }

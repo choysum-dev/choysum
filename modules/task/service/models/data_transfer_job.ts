@@ -11,6 +11,7 @@ export const DATA_TRANSFER_JOB_EXECUTE_IMPORT_FULL_METHOD = 'task.DataTransferJo
 export const DATA_TRANSFER_JOB_EXECUTE_EXPORT_FULL_METHOD = 'task.DataTransferJob/ExecuteExport';
 
 const ALLOWED_PROFILES = new Set(['initdata', 'terminology', 'record']);
+const ALLOWED_EXPORT_PROFILES = new Set(['record']);
 const ALLOWED_POLICIES = new Set(['atomic', 'stop_keep', 'best_effort']);
 
 export type EnqueueRecordImportInput = {
@@ -230,7 +231,7 @@ export default class DataTransferJob extends BaseModel {
     if (!specSnapshot || typeof specSnapshot !== 'object') {
       throw new Error('specSnapshot is required');
     }
-    const profile = normalizeSelection(input?.profile, 'record', ALLOWED_PROFILES, 'profile');
+    const profile = normalizeSelection(input?.profile, 'record', ALLOWED_EXPORT_PROFILES, 'profile');
 
     const row = await this.Create({
       Profile: profile,
@@ -245,18 +246,15 @@ export default class DataTransferJob extends BaseModel {
       ProgressTotal: 0,
     } as Partial<DataTransferJob>);
 
+    let taskJob;
     try {
-      const taskJob = await Job.EnqueueJob(
+      taskJob = await Job.EnqueueJob(
         'task',
         DATA_TRANSFER_JOB_EXECUTE_EXPORT_FULL_METHOD,
         { dataTransferJobId: row.Id },
         userId,
         userId
       );
-
-      await (this as any).UpdateById(row.Id, { TaskJobId: taskJob.Id } as Partial<DataTransferJob>);
-
-      return { dataTransferJobId: row.Id, taskJobId: taskJob.Id };
     } catch (err) {
       try {
         await (this as any).DeleteById(row.Id);
@@ -265,6 +263,10 @@ export default class DataTransferJob extends BaseModel {
       }
       throw err;
     }
+
+    await (this as any).UpdateById(row.Id, { TaskJobId: taskJob.Id } as Partial<DataTransferJob>);
+
+    return { dataTransferJobId: row.Id, taskJobId: taskJob.Id };
   }
 
   /** Task worker target for queued record imports. */
