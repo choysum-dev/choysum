@@ -182,4 +182,10 @@ describe('useExportTemplates', () => {
     expect(templateMocks.DeleteById).toHaveBeenCalledWith('tpl-1');
     expect(templateMocks.Search).toHaveBeenCalled();
   });
+
+  it('remove ignores blank ids', async () => {
+    const api = runHook();
+    await api.remove('   ');
+    expect(templateMocks.DeleteById).not.toHaveBeenCalled();
+  });
 });

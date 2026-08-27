@@ -117,7 +117,7 @@ export function useExportTemplates(modelRef: () => string) {
   }
 
   function apply(template: Pick<ExportTemplateRow, 'Fields'>): string[] {
-    return (template.Fields ?? []).map(String).filter(Boolean);
+    return (template.Fields ?? []).map(v => String(v ?? '').trim()).filter(Boolean);
   }
 
   async function saveCurrent(opts: {
@@ -168,8 +168,10 @@ export function useExportTemplates(modelRef: () => string) {
   }
 
   async function remove(id: string): Promise<void> {
+    const trimmedId = String(id || '').trim();
+    if (!trimmedId) return;
     const store = exportTemplateStore() as any;
-    await store.DeleteById(String(id));
+    await store.DeleteById(trimmedId);
     await load();
   }
 

@@ -5,6 +5,7 @@ import { BaseModel, Model, Field } from '@/core/service';
 import { Constraint, type ConstraintContext } from '@/core/service/api/constraint';
 import { ChoysumError, GrpcCode } from '@/core/service/error';
 import { createTranslate } from '@/core/service/i18n';
+import { normalizeRefId } from '@/core/service/utils/normalization';
 
 const { _lt } = createTranslate('web', { scope: 'web.model.ExportTemplate.fields' });
 const { _t } = createTranslate('web', { scope: 'web.model.ExportTemplate' });
@@ -74,8 +75,8 @@ export default class ExportTemplate extends BaseModel {
 
   @Constraint<ExportTemplate>(['UserId'])
   static async validateExportTemplateConstraint(_self: ExportTemplate, ctx: ConstraintContext<ExportTemplate>): Promise<void> {
-    const userId = ctx.values.UserId;
-    if (userId !== null && userId !== undefined && userId !== this.userId) {
+    const userId = normalizeRefId(ctx.values.UserId);
+    if (userId !== null && userId !== this.userId) {
       throw new ChoysumError({
         domain: 'web',
         code: 'PermissionDenied',

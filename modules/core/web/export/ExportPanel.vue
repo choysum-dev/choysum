@@ -300,6 +300,8 @@ function applySelectedTemplate() {
 }
 
 async function saveCurrentTemplate() {
+  if (busy.value) return;
+  busy.value = true;
   exportError.value = '';
   try {
     const saved = await saveExportTemplate({
@@ -314,18 +316,23 @@ async function saveCurrentTemplate() {
     }
   } catch (err) {
     exportError.value = err instanceof Error ? err.message : String(err);
+  } finally {
+    busy.value = false;
   }
 }
 
 async function deleteSelectedTemplate() {
   const id = String(selectedTemplateId.value || '').trim();
-  if (!id) return;
+  if (!id || busy.value) return;
+  busy.value = true;
   exportError.value = '';
   try {
     await removeExportTemplate(id);
     selectedTemplateId.value = '';
   } catch (err) {
     exportError.value = err instanceof Error ? err.message : String(err);
+  } finally {
+    busy.value = false;
   }
 }
 

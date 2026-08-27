@@ -239,6 +239,24 @@ test('ExportTemplate defaults ImportCompatible to false', async () => {
   await ExportTemplate.DeleteById(String((created as any).Id));
 });
 
+test('ExportTemplate accepts UserId relation object for current actor', async () => {
+  resetRequestContext();
+  const actor = uid('et_actor');
+  setIdentity(actor);
+  const created = await ExportTemplate.Create(
+    {
+      Name: uid('tpl'),
+      Application: 'partner',
+      ModelName: 'Partner',
+      Fields: ['Name'],
+      UserId: { Id: actor },
+    } as any,
+    ['Id', 'UserId'] as any
+  );
+  expect(String((created as any).UserId)).toBe(actor);
+  await ExportTemplate.DeleteById(String((created as any).Id));
+});
+
 test('ExportTemplate rejects foreign UserId on Create', async () => {
   resetRequestContext();
   const actor = uid('et_owner');

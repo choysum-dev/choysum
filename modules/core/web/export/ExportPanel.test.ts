@@ -827,6 +827,24 @@ describe('ExportPanel', () => {
     expect((wrapper.vm as any).exportError).toBe('save denied');
   });
 
+  it('ignores duplicate template save while busy', async () => {
+    let resolveSave!: () => void;
+    exportTemplateMocks.saveCurrent.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveSave = () => resolve({ Id: 'tpl-1', Name: 'Saved', Fields: ['Name'], shared: false, createUid: 'me', canDelete: true });
+        }),
+    );
+    const wrapper = await mountPanel();
+    (wrapper.vm as any).templateSaveName = 'My cols';
+    const first = (wrapper.vm as any).saveCurrentTemplate();
+    await (wrapper.vm as any).saveCurrentTemplate();
+    expect(exportTemplateMocks.saveCurrent).toHaveBeenCalledTimes(1);
+    resolveSave();
+    await first;
+    await flushPromises();
+  });
+
   it('deletes the selected template and clears selection', async () => {
     exportTemplateMocks.templates.value = [
       { Id: 'tpl-1', Name: 'Basic', Fields: ['Code'], shared: true, createUid: 'me', canDelete: true },
