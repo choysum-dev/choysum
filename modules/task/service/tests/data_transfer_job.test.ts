@@ -168,6 +168,20 @@ test('DataTransferJob.EnqueueRecordExport creates linked export task job', async
 
 test('DataTransferJob.EnqueueRecordExport validation paths', async () => {
   resetRequestContext();
+  const jsCtx = ensureRequestContext();
+  const previousUserId = jsCtx.identity.userId;
+  jsCtx.identity.userId = '';
+  await expectAsyncError(
+    () =>
+      DataTransferJob.EnqueueRecordExport({
+        targetModel: 'base.Country',
+        sourceRef: 'export:base.Country',
+        specSnapshot: sampleExportSnapshot('base.Country'),
+      }),
+    /authenticated user/
+  );
+  jsCtx.identity.userId = previousUserId;
+
   await expectAsyncError(
     () =>
       DataTransferJob.EnqueueRecordExport({
@@ -224,6 +238,7 @@ test('DataTransferJob.EnqueueRecordExport rejects non-record profiles', async ()
 test('DataTransferJob.EnqueueRecordExport rolls back row when EnqueueJob fails', async () => {
   resetRequestContext();
   const enqueueJob = (Job as any).EnqueueJob.bind(Job);
+  const deleteById = (DataTransferJob as any).DeleteById.bind(DataTransferJob);
   let createdId = '';
   const create = (DataTransferJob as any).Create.bind(DataTransferJob);
   (Job as any).EnqueueJob = async () => {
@@ -248,7 +263,46 @@ test('DataTransferJob.EnqueueRecordExport rolls back row when EnqueueJob fails',
   } finally {
     (Job as any).EnqueueJob = enqueueJob;
     (DataTransferJob as any).Create = create;
+    (DataTransferJob as any).DeleteById = deleteById;
   }
+});
+
+test('DataTransferJob.EnqueueRecordExport throws when rollback DeleteById fails', async () => {
+  resetRequestContext();
+  const enqueueJob = (Job as any).EnqueueJob.bind(Job);
+  const deleteById = (DataTransferJob as any).DeleteById.bind(DataTransferJob);
+  (Job as any).EnqueueJob = async () => {
+    throw new Error('enqueue boom');
+  };
+  (DataTransferJob as any).DeleteById = async () => {
+    throw new Error('delete boom');
+  };
+  try {
+    await expectAsyncError(
+      () =>
+        DataTransferJob.EnqueueRecordExport({
+          targetModel: 'base.Country',
+          sourceRef: 'export:base.Country',
+          specSnapshot: sampleExportSnapshot('base.Country'),
+        }),
+      /enqueue boom/
+    );
+  } finally {
+    (Job as any).EnqueueJob = enqueueJob;
+    (DataTransferJob as any).DeleteById = deleteById;
+  }
+});
+
+test('DataTransferJob.EnqueueRecordExport omits blank companyId', async () => {
+  resetRequestContext();
+  const result = await DataTransferJob.EnqueueRecordExport({
+    targetModel: 'base.Country',
+    sourceRef: 'export:base.Country',
+    companyId: '   ',
+    specSnapshot: sampleExportSnapshot('base.Country'),
+  });
+  const row = await DataTransferJob.Browse(result.dataTransferJobId, ['CompanyId'] as any);
+  expect((row as any).CompanyId == null).toBe(true);
 });
 
 test('DataTransferJob.EnqueueRecordExport keeps row when UpdateById fails after enqueue', async () => {
@@ -651,6 +705,18 @@ test('executeImport and FinalizeReport error paths', async () => {
     await (DataTransferJob as any).UpdateById(withoutSnapshot.Id, { SpecSnapshotJson: 0 } as any);
     await expectAsyncError(() => executeImport(withoutSnapshot.Id), /missing spec snapshot/);
 
+    const withoutExportSnapshot = await DataTransferJob.Create({
+      Profile: 'record',
+      Policy: 'atomic',
+      DryRun: false,
+      TargetModel: 'base.Country',
+      SourceRef: 'doc-no-export-snapshot',
+      SpecSnapshotJson: sampleExportSnapshot('base.Country'),
+      Direction: 'export',
+    } as Partial<DataTransferJob>);
+    await (DataTransferJob as any).UpdateById(withoutExportSnapshot.Id, { SpecSnapshotJson: 0 } as any);
+    await expectAsyncError(() => executeExport(withoutExportSnapshot.Id), /missing spec snapshot/);
+
     delete root.import;
     const enqueued = await DataTransferJob.EnqueueRecordImport({
       targetModel: 'base.Country',
@@ -701,6 +767,17 @@ test('executeImport and FinalizeReport error paths', async () => {
     });
     const emptyExport = await executeExport(nullExportJob.dataTransferJobId);
     expect(emptyExport).toEqual({});
+
+    root.export = {
+      run: async () => undefined,
+    };
+    const undefinedExportJob = await DataTransferJob.EnqueueRecordExport({
+      targetModel: 'base.Country',
+      sourceRef: 'export:base.Country',
+      specSnapshot: sampleExportSnapshot('base.Country'),
+    });
+    const undefinedExport = await executeExport(undefinedExportJob.dataTransferJobId);
+    expect(undefinedExport).toEqual({});
   } finally {
     if (previousImport === undefined) {
       delete root.import;
