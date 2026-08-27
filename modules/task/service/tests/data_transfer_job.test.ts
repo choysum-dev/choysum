@@ -474,6 +474,7 @@ test('executeImport and FinalizeReport error paths', async () => {
       () => executeImport(exportDirection.Id),
       /ExecuteImport requires Direction=import/
     );
+    delete root.export;
     await expectAsyncError(
       () => executeExport(exportDirection.Id),
       /export bridge is not available/

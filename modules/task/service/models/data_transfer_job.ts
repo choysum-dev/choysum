@@ -245,17 +245,26 @@ export default class DataTransferJob extends BaseModel {
       ProgressTotal: 0,
     } as Partial<DataTransferJob>);
 
-    const taskJob = await Job.EnqueueJob(
-      'task',
-      DATA_TRANSFER_JOB_EXECUTE_EXPORT_FULL_METHOD,
-      { dataTransferJobId: row.Id },
-      userId,
-      userId
-    );
+    try {
+      const taskJob = await Job.EnqueueJob(
+        'task',
+        DATA_TRANSFER_JOB_EXECUTE_EXPORT_FULL_METHOD,
+        { dataTransferJobId: row.Id },
+        userId,
+        userId
+      );
 
-    await (this as any).UpdateById(row.Id, { TaskJobId: taskJob.Id } as Partial<DataTransferJob>);
+      await (this as any).UpdateById(row.Id, { TaskJobId: taskJob.Id } as Partial<DataTransferJob>);
 
-    return { dataTransferJobId: row.Id, taskJobId: taskJob.Id };
+      return { dataTransferJobId: row.Id, taskJobId: taskJob.Id };
+    } catch (err) {
+      try {
+        await (this as any).DeleteById(row.Id);
+      } catch {
+        // best-effort cleanup when enqueue fails after row creation
+      }
+      throw err;
+    }
   }
 
   /** Task worker target for queued record imports. */

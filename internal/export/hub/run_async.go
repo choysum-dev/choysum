@@ -144,6 +144,9 @@ func toAsyncRecordSpec(req *exportpb.ExportRunRequest) (exportpkg.Spec, error) {
 	if profile == string(exportpkg.ProfileTerminology) {
 		return exportpkg.Spec{}, status.Error(codes.InvalidArgument, "async export is only supported for record profile")
 	}
+	if profile != "" && profile != string(exportpkg.ProfileRecord) {
+		return exportpkg.Spec{}, status.Errorf(codes.InvalidArgument, "unsupported export profile %q", profile)
+	}
 	spec, err := toRecordSpec(req, false)
 	if err != nil {
 		return exportpkg.Spec{}, err
