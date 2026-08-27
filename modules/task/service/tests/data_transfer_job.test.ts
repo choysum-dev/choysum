@@ -171,16 +171,19 @@ test('DataTransferJob.EnqueueRecordExport validation paths', async () => {
   const jsCtx = ensureRequestContext();
   const previousUserId = jsCtx.identity.userId;
   jsCtx.identity.userId = '';
-  await expectAsyncError(
-    () =>
-      DataTransferJob.EnqueueRecordExport({
-        targetModel: 'base.Country',
-        sourceRef: 'export:base.Country',
-        specSnapshot: sampleExportSnapshot('base.Country'),
-      }),
-    /authenticated user/
-  );
-  jsCtx.identity.userId = previousUserId;
+  try {
+    await expectAsyncError(
+      () =>
+        DataTransferJob.EnqueueRecordExport({
+          targetModel: 'base.Country',
+          sourceRef: 'export:base.Country',
+          specSnapshot: sampleExportSnapshot('base.Country'),
+        }),
+      /authenticated user/
+    );
+  } finally {
+    jsCtx.identity.userId = previousUserId;
+  }
 
   await expectAsyncError(
     () =>
