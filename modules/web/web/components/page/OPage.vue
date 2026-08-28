@@ -199,6 +199,7 @@ const pageClass = computed(() => {
     display: flex;
     align-items: center;
     flex-shrink: 0;
+    margin-left: auto;
     gap: var(--el-gap-small, 8px);
   }
 

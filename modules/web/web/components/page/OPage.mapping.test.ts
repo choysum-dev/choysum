@@ -165,4 +165,88 @@ describe('OPage component', () => {
     expect(wrapper.find('[data-test="crumb"]').exists()).toBe(true);
     expect(wrapper.find('h1.o-page__title').text()).toBe('Partners');
   });
+
+  test('renders default breadcrumb when no breadcrumb slot is provided', () => {
+    const wrapper = mount(OPage, {
+      props: {
+        title: 'Partners',
+        showBreadcrumb: true,
+      },
+      global: { stubs: { ...pageStubs, OBreadcrumb: { template: '<nav data-test="default-crumb" />' } } },
+    });
+
+    expect(wrapper.find('[data-test="default-crumb"]').exists()).toBe(true);
+  });
+
+  test('renders breadcrumb slot even when showBreadcrumb is false', () => {
+    const wrapper = mount(OPage, {
+      props: {
+        title: 'Partners',
+        showBreadcrumb: false,
+      },
+      slots: {
+        breadcrumb: '<nav data-test="forced-crumb">Crumb</nav>',
+      },
+      global: { stubs: pageStubs },
+    });
+
+    expect(wrapper.find('[data-test="forced-crumb"]').exists()).toBe(true);
+  });
+
+  test('renders breadcrumb alone without a title row', () => {
+    const wrapper = mount(OPage, {
+      props: {
+        showBreadcrumb: true,
+      },
+      global: { stubs: { ...pageStubs, OBreadcrumb: { template: '<nav data-test="only-crumb" />' } } },
+    });
+
+    expect(wrapper.find('[data-test="only-crumb"]').exists()).toBe(true);
+    expect(wrapper.find('.o-page__title-row').exists()).toBe(false);
+  });
+
+  test('renders toolbar and footer slots', () => {
+    const wrapper = mount(OPage, {
+      props: {
+        title: 'Partners',
+        showBreadcrumb: false,
+      },
+      slots: {
+        toolbar: '<div data-test="toolbar">Tools</div>',
+        footer: '<div data-test="footer">Foot</div>',
+      },
+      global: { stubs: pageStubs },
+    });
+
+    expect(wrapper.find('[data-test="toolbar"]').exists()).toBe(true);
+    expect(wrapper.find('[data-test="footer"]').exists()).toBe(true);
+    expect(wrapper.find('.o-page__body--with-footer').exists()).toBe(true);
+  });
+
+  test('applies layout modifiers and shows the loading overlay', () => {
+    const wrapper = mount(OPage, {
+      props: {
+        title: 'Partners',
+        showBreadcrumb: false,
+        padding: false,
+        width: 'wide',
+        elevated: true,
+        loading: true,
+      },
+      global: {
+        stubs: {
+          ...pageStubs,
+          'el-icon': { template: '<span class="el-icon-stub"><slot /></span>' },
+          Loading: true,
+        },
+      },
+    });
+
+    const root = wrapper.find('.o-page');
+    expect(root.classes()).toContain('o-page--without-padding');
+    expect(root.classes()).toContain('o-page--wide');
+    expect(root.classes()).toContain('o-page--elevated');
+    expect(root.classes()).toContain('o-page--loading');
+    expect(wrapper.find('.o-page__loading-mask').exists()).toBe(true);
+  });
 });

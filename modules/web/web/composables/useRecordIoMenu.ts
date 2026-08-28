@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { computed, type ComputedRef, type Ref } from 'vue';
+import { computed, toValue, type ComputedRef, type Ref } from 'vue';
 import { createTranslate } from '@/web/web/i18n';
 import type { PageIoMenuItem, RecordIoConfig } from './recordIoTypes';
 
@@ -20,9 +20,7 @@ export function useRecordIoMenu(options: UseRecordIoMenuOptions) {
   const { _t } = createTranslate('web', { scope: 'web/composables/useRecordIoMenu' });
 
   const items = computed((): PageIoMenuItem[] => {
-    const config = typeof options.config === 'object' && 'value' in options.config
-      ? options.config.value
-      : options.config;
+    const config = toValue(options.config);
     const result: PageIoMenuItem[] = [];
     if (config.import?.enabled && options.openImport) {
       result.push({

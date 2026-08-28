@@ -61,6 +61,22 @@ describe('OPageIoMenu', () => {
     expect(wrapper.find('[data-test="dropdown"]').exists()).toBe(false);
   });
 
+  it('treats a missing items prop as an empty list', () => {
+    const wrapper = mount(OPageIoMenu, {
+      props: { items: undefined as unknown as PageIoMenuItem[] },
+      global: {
+        plugins: [i18n],
+        stubs: {
+          'el-dropdown': { template: '<div data-test="dropdown" />' },
+          'el-button': { template: '<button type="button"><slot /></button>' },
+          'el-icon': { template: '<span><slot /></span>' },
+          Setting: true,
+        },
+      },
+    });
+    expect(wrapper.find('[data-test="dropdown"]').exists()).toBe(false);
+  });
+
   it('invokes onClick for the commanded item and ignores unknown keys', async () => {
     const onImport = vi.fn();
     const wrapper = mountMenu([

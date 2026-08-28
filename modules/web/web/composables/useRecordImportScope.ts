@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { computed, type Ref } from 'vue';
+import { computed, toValue, type Ref } from 'vue';
 import { getCurrentRequestContext } from '@/core/rpc/context';
 import type { RecordIoConfig } from './recordIoTypes';
 
@@ -13,11 +13,7 @@ export type UseRecordImportScopeOptions = {
  * Resolves ImportPanel props from RecordIoConfig and request context.
  */
 export function useRecordImportScope(options: UseRecordImportScopeOptions) {
-  const config = computed(() =>
-    typeof options.config === 'object' && 'value' in options.config
-      ? options.config.value
-      : options.config
-  );
+  const config = computed(() => toValue(options.config));
 
   const model = computed(() => config.value.model);
   const companyId = computed(() => {

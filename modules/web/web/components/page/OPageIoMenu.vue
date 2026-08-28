@@ -49,7 +49,7 @@ const props = defineProps<{
 const { _t } = createTranslate('web', { scope: 'web/components/page/OPageIoMenu' });
 const menuAriaLabel = _t('Import and export');
 
-const visibleItems = computed(() => props.items.filter(item => !item.hidden));
+const visibleItems = computed(() => (props.items ?? []).filter(item => !item.hidden));
 
 function onCommand(key: string) {
   const item = props.items.find(entry => entry.key === key);

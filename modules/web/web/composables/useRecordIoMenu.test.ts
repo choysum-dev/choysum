@@ -135,20 +135,50 @@ describe('useRecordExportScope', () => {
   });
 
   it('returns empty ids when selectedItems value is not an array', () => {
-    getCurrentRequestContext.mockReturnValue({});
+    getCurrentRequestContext.mockReturnValue(null);
     const scope = useRecordExportScope({
       store: {},
-      getListRef: () => ({ selectedItems: { value: null as unknown as undefined } }),
+      getListRef: () => ({ selectedItems: { value: { unexpected: true } as any } }),
     });
     expect(scope.companyId.value).toBe('');
     expect(scope.ids.value).toEqual([]);
     expect(scope.filteredCount.value).toBe(0);
   });
 
+  it('filters blank ids from a plain selectedItems array', () => {
+    const scope = useRecordExportScope({
+      store: { storeId: 's2', state: { result: {} } },
+      getListRef: () => ({
+        selectedItems: [{ Id: 'keep' }, { Id: '' }, { Id: null as any }, null as any, {}],
+      }),
+    });
+    expect(scope.ids.value).toEqual(['keep']);
+    expect(scope.filteredCount.value).toBe(0);
+  });
+
+  it('filters nullish ids from selectedItems.value', () => {
+    const scope = useRecordExportScope({
+      store: { storeId: 's2b' },
+      getListRef: () => ({
+        selectedItems: { value: [{ Id: 'ok' }, { Id: null as any }, {}] },
+      }),
+    });
+    expect(scope.ids.value).toEqual(['ok']);
+  });
+
+  it('returns empty ids when list ref has no selectedItems', () => {
+    const scope = useRecordExportScope({
+      store: { state: { result: { total: 2 } } },
+      getListRef: () => ({}),
+    });
+    expect(scope.ids.value).toEqual([]);
+    expect(scope.filteredCount.value).toBe(2);
+  });
+
   it('returns empty default fields when selection is missing', () => {
     exportFieldSelection.mockReturnValue(null);
     const scope = useRecordExportScope({
-      store: { storeId: '' },
+      store: {},
       getListRef: () => null,
     });
     expect(scope.defaultFields.value).toEqual([]);

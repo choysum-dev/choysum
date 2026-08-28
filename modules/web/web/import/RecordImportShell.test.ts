@@ -4,7 +4,6 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
-import { nextTick } from 'vue';
 
 const { getCurrentRequestContext } = vi.hoisted(() => ({
   getCurrentRequestContext: vi.fn(() => ({ activeCompanyId: 'cmp-1' })),
@@ -20,7 +19,7 @@ vi.mock('./ImportPanel.vue', () => ({
     props: ['modelValue', 'model', 'companyId', 'columnMapping', 'uploadHint'],
     emits: ['update:modelValue', 'imported'],
     template:
-      '<div data-test="import-panel" :data-model="model" :data-company-id="companyId" :data-hint="uploadHint || \'\'" :data-mapping="JSON.stringify(columnMapping || {})" :data-open="String(modelValue)"><button data-test="emit-imported" @click="$emit(\'imported\')">done</button></div>',
+      '<div data-test="import-panel" :data-model="model" :data-company-id="companyId" :data-hint="uploadHint || \'\'" :data-mapping="JSON.stringify(columnMapping || {})" :data-open="String(modelValue)"><button data-test="emit-imported" @click="$emit(\'imported\')">done</button><button data-test="close-panel" @click="$emit(\'update:modelValue\', false)">close</button></div>',
   },
 }));
 
@@ -96,18 +95,43 @@ describe('RecordImportShell', () => {
     expect(panel.attributes('data-company-id')).toBe('');
   });
 
+  it('builds fallback scope when config is omitted and model is absent', async () => {
+    const { default: RecordImportShell } = await import('./RecordImportShell.vue');
+    const wrapper = mount(RecordImportShell, {
+      props: {
+        open: false,
+      },
+    });
+    expect(wrapper.find('[data-test="import-panel"]').attributes('data-model')).toBe('');
+    expect(wrapper.find('[data-test="import-panel"]').attributes('data-mapping')).toBe('{}');
+  });
+
+  it('uses config model when the direct model prop is blank', async () => {
+    const { default: RecordImportShell } = await import('./RecordImportShell.vue');
+    const wrapper = mount(RecordImportShell, {
+      props: {
+        model: '   ',
+        config: {
+          model: 'from.config',
+          import: { enabled: true },
+        },
+      },
+    });
+    expect(wrapper.find('[data-test="import-panel"]').attributes('data-model')).toBe('from.config');
+  });
+
   it('forwards imported and open updates', async () => {
     const { default: RecordImportShell } = await import('./RecordImportShell.vue');
     const wrapper = mount(RecordImportShell, {
       props: {
         model: 'partner.Partner',
-        open: false,
+        open: true,
       },
     });
+    expect(wrapper.find('[data-test="import-panel"]').attributes('data-open')).toBe('true');
     await wrapper.find('[data-test="emit-imported"]').trigger('click');
     expect(wrapper.emitted('imported')).toBeTruthy();
-    await wrapper.setProps({ open: true });
-    await nextTick();
-    expect(wrapper.find('[data-test="import-panel"]').attributes('data-open')).toBe('true');
+    await wrapper.find('[data-test="close-panel"]').trigger('click');
+    expect(wrapper.emitted('update:open')?.at(-1)).toEqual([false]);
   });
 });
