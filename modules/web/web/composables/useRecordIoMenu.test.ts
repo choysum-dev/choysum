@@ -100,6 +100,16 @@ describe('useRecordIoMenu', () => {
     expect(items.value).toEqual([]);
     expect(visible.value).toBe(false);
   });
+
+  it('tolerates a nullish config value', () => {
+    const { items, visible } = useRecordIoMenu({
+      config: ref(null) as any,
+      openImport: () => undefined,
+      openExport: () => undefined,
+    });
+    expect(items.value).toEqual([]);
+    expect(visible.value).toBe(false);
+  });
 });
 
 describe('useRecordExportScope', () => {
@@ -233,5 +243,12 @@ describe('useRecordImportScope', () => {
     };
     expect(scope.model.value).toBe('other.Model');
     expect(scope.uploadHint.value).toBe('next');
+  });
+
+  it('tolerates a nullish config value', () => {
+    const scope = useRecordImportScope({ config: ref(null) as any });
+    expect(scope.model.value).toBe('');
+    expect(scope.columnMapping.value).toEqual({});
+    expect(scope.uploadHint.value).toBeUndefined();
   });
 });

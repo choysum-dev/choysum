@@ -15,13 +15,13 @@ export type UseRecordImportScopeOptions = {
 export function useRecordImportScope(options: UseRecordImportScopeOptions) {
   const config = computed(() => toValue(options.config));
 
-  const model = computed(() => config.value.model);
+  const model = computed(() => config.value?.model ?? '');
   const companyId = computed(() => {
     const ctx = getCurrentRequestContext();
     return String(ctx?.activeCompanyId ?? ctx?.companyId ?? '').trim();
   });
-  const columnMapping = computed(() => config.value.import?.columnMapping ?? {});
-  const uploadHint = computed(() => config.value.import?.uploadHint);
+  const columnMapping = computed(() => config.value?.import?.columnMapping ?? {});
+  const uploadHint = computed(() => config.value?.import?.uploadHint);
 
   return { model, companyId, columnMapping, uploadHint };
 }

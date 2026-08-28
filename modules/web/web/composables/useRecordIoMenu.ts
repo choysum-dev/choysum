@@ -22,14 +22,14 @@ export function useRecordIoMenu(options: UseRecordIoMenuOptions) {
   const items = computed((): PageIoMenuItem[] => {
     const config = toValue(options.config);
     const result: PageIoMenuItem[] = [];
-    if (config.import?.enabled && options.openImport) {
+    if (config?.import?.enabled && options.openImport) {
       result.push({
         key: 'import',
         label: options.importLabel ?? _t('Import'),
         onClick: options.openImport,
       });
     }
-    if (config.export?.enabled && options.openExport) {
+    if (config?.export?.enabled && options.openExport) {
       result.push({
         key: 'export',
         label: options.exportLabel ?? _t('Export'),
