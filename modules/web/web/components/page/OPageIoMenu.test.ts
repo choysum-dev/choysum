@@ -87,4 +87,16 @@ describe('OPageIoMenu', () => {
     await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('command', 'missing');
     expect(onImport).toHaveBeenCalledTimes(1);
   });
+
+  it('does not invoke onClick for hidden items when commanded', async () => {
+    const onImport = vi.fn();
+    const onExport = vi.fn();
+    const wrapper = mountMenu([
+      { key: 'import', label: 'Import', onClick: onImport },
+      { key: 'export', label: 'Export', hidden: true, onClick: onExport },
+    ]);
+    await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('command', 'export');
+    expect(onExport).not.toHaveBeenCalled();
+    expect(onImport).not.toHaveBeenCalled();
+  });
 });

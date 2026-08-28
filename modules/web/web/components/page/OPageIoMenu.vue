@@ -52,7 +52,7 @@ const menuAriaLabel = _t('Import and export');
 const visibleItems = computed(() => (props.items ?? []).filter(item => !item.hidden));
 
 function onCommand(key: string) {
-  const item = props.items.find(entry => entry.key === key);
+  const item = visibleItems.value.find(entry => entry.key === key);
   item?.onClick();
 }
 </script>
