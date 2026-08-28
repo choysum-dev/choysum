@@ -20,9 +20,20 @@ export function installBrowserI18nBridge(): void {
   const root = globalThis as ChoysumRoot;
   root.$choysum ??= {};
   root.$choysum.i18n = {
-    t(module, _lang, scope, src, kind) {
+    t(module, lang, scope, src, kind) {
       const reference = createTermReference(module, src, { scope, kind });
-      return translateTerm(getGlobalComposer(), reference, src);
+      return translateTerm(getGlobalComposer(), reference, src, lang);
     },
   };
+}
+
+/**
+ * Expose the vue-i18n composer on `window.$i18n` and install `$choysum.i18n.t`.
+ */
+export function exposeBrowserI18nOnWindow(composer: unknown): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  (window as { $i18n?: unknown }).$i18n = composer;
+  installBrowserI18nBridge();
 }

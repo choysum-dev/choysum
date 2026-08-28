@@ -103,6 +103,26 @@ describe('createTranslate', () => {
     }).global);
 
     expect(composer.te(reference.key, 'zh-CN')).toBe(false);
+    expect(translateTerm(composer, reference, 'Legacy users', 'en_US')).toBe('People');
+  });
+
+  it('uses vue-i18n locale fallback without a te preflight when lang is omitted', () => {
+    const reference = createTermReference('base', 'Users', { scope: 'base.route.users' });
+    const composer = asTestComposer(createI18n({
+      legacy: false,
+      locale: 'zh-CN',
+      fallbackLocale: 'en',
+      missingWarn: false,
+      fallbackWarn: false,
+      messages: {
+        en: projectTerminologyMessages({
+          base: { 'base.route.users': { Users: 'People' } },
+        }),
+        'zh-CN': {},
+      },
+    }).global);
+
+    expect(composer.te(reference.key, 'zh-CN')).toBe(false);
     expect(translateTerm(composer, reference, 'Legacy users')).toBe('People');
   });
 

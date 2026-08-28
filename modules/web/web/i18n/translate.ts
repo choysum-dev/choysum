@@ -10,13 +10,14 @@ import { ref } from 'vue';
 import type { PostTranslationHandler, VueMessageType } from 'vue-i18n';
 
 import type { TermReference } from '@/core/service/i18n';
+import { langToUiKey } from '../stores/i18nStore/lang';
 
 export type TranslateOptions = import('@/core/service/i18n').TranslateOptions;
 export type CreateTranslateOptions = import('@/core/service/i18n').CreateTranslateOptions;
 export type TextSource = string | TermReference;
 
 export type ComposerLike = {
-  t: (key: string, fallback: string) => unknown;
+  t: (key: string, fallback: string, options?: { locale?: string }) => unknown;
 };
 
 const composerMessageRevision = ref(0);
@@ -63,7 +64,8 @@ export function getGlobalComposer(): ComposerLike | undefined {
 export function translateTerm(
   composer: unknown,
   reference?: TermReference,
-  fallback = ''
+  fallback = '',
+  terminologyLang?: string
 ): string {
   void composerMessageRevision.value;
   const defaultText = reference?.src || fallback;
@@ -72,7 +74,10 @@ export function translateTerm(
     return defaultText;
   }
   try {
-    const translated = bridge.t(reference.key, reference.src || fallback);
+    const locale = terminologyLang ? langToUiKey(terminologyLang) : undefined;
+    const translated = locale
+      ? bridge.t(reference.key, reference.src || fallback, { locale })
+      : bridge.t(reference.key, reference.src || fallback);
     return typeof translated === 'string' && translated !== '' ? translated : defaultText;
   } catch {
     return defaultText;
