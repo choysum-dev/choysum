@@ -12,6 +12,7 @@ import {
   withI18nScope,
 } from '@/core/service/i18n';
 import {
+  getGlobalComposer,
   installBrowserI18nBridge,
   notifyComposerMessagesChanged,
   trackComposerMessageRevision,
@@ -133,6 +134,22 @@ describe('createTranslate', () => {
     expect(translateTerm({ t: () => { throw new Error('unavailable'); } }, reference, 'Legacy title'))
       .toBe('Legacy title');
     expect(translateTerm(undefined, undefined, 'Plain title')).toBe('Plain title');
+  });
+
+  it('reads globalThis.$i18n when window.$i18n is absent', () => {
+    const composer = { t: () => 'ok' };
+    delete (globalThis as { window?: unknown }).window;
+    (globalThis as { $i18n?: ComposerLike }).$i18n = composer;
+    expect(getGlobalComposer()).toBe(composer);
+    delete (globalThis as { $i18n?: ComposerLike }).$i18n;
+  });
+
+  it('uses explicit terminology lang when composer locale differs', () => {
+    const reference = createTermReference('base', 'Users', { scope: 'base.route.users' });
+    const composer: ComposerLike = {
+      t: (key, fallback, options) => (options?.locale === 'en' ? 'People' : fallback),
+    };
+    expect(translateTerm(composer, reference, 'Legacy users', 'en_US')).toBe('People');
   });
 
   it('reacts to locale changes through the caller composer', () => {
