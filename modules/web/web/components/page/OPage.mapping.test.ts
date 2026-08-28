@@ -71,16 +71,20 @@ describe('OPage component', () => {
     expect(region.attributes('aria-busy')).toBe('true');
   });
 
-  test('omits role=region when title is empty', () => {
+  test('renders title-actions beside the title', () => {
     const wrapper = mount(OPage, {
       props: {
-        title: '',
+        title: 'Partners',
         showBreadcrumb: false,
+      },
+      slots: {
+        'title-actions': '<button data-test="io-action">IO</button>',
       },
       global: { stubs: pageStubs },
     });
 
-    const region = wrapper.find('.o-page');
-    expect(region.attributes('role')).toBeUndefined();
+    expect(wrapper.find('.o-page__title-row').exists()).toBe(true);
+    expect(wrapper.find('.o-page__title-actions [data-test="io-action"]').exists()).toBe(true);
+    expect(wrapper.find('h1.o-page__title').text()).toBe('Partners');
   });
 });

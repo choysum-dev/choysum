@@ -33,10 +33,10 @@ const i18n = createI18n({
   messages: { en: {} },
 });
 
-async function mountWizard(open = true) {
-  const { default: PartnerImportWizard } = await import('./PartnerImportWizard.vue');
-  return mount(PartnerImportWizard, {
-    props: { companyId: 'cmp-1', modelValue: open },
+async function mountPanel(open = true) {
+  const { default: ImportPanel } = await import('./ImportPanel.vue');
+  return mount(ImportPanel, {
+    props: { model: 'partner.Partner', companyId: 'cmp-1', modelValue: open },
     global: {
       plugins: [i18n],
       stubs: {
@@ -53,7 +53,7 @@ async function mountWizard(open = true) {
   });
 }
 
-describe('PartnerImportWizard', () => {
+describe('ImportPanel', () => {
   beforeEach(() => {
     parseHeaders.mockReset();
     previewImport.mockReset();
@@ -71,7 +71,7 @@ describe('PartnerImportWizard', () => {
   });
 
   it('runs upload, preview, and import flow', async () => {
-    const wrapper = await mountWizard();
+    const wrapper = await mountPanel();
     const file = new File(['Name,Code\nA,1\n'], 'partners.csv', { type: 'text/csv' });
     (wrapper.vm as any).onFileSelected({ raw: file });
     await (wrapper.vm as any).uploadAndPreview();
@@ -90,7 +90,7 @@ describe('PartnerImportWizard', () => {
 
   it('shows error when import report has errors', async () => {
     runImport.mockResolvedValue({ report: { stats: { error: 1 }, messages: [{ text: 'duplicate code' }] } });
-    const wrapper = await mountWizard();
+    const wrapper = await mountPanel();
     (wrapper.vm as any).sourceRef = 'att-src-1';
     (wrapper.vm as any).previewReport = { stats: { error: 0 } };
     await (wrapper.vm as any).commitImport();
@@ -101,7 +101,7 @@ describe('PartnerImportWizard', () => {
 
   it('uses fallback import error when report has no message text', async () => {
     runImport.mockResolvedValue({ report: { stats: { error: 2 }, messages: [{ text: '' }] } });
-    const wrapper = await mountWizard();
+    const wrapper = await mountPanel();
     (wrapper.vm as any).sourceRef = 'att-src-1';
     (wrapper.vm as any).previewReport = { stats: { error: 0 } };
     await (wrapper.vm as any).commitImport();
@@ -117,7 +117,7 @@ describe('PartnerImportWizard', () => {
           resolveUpload = resolve;
         }),
     );
-    const wrapper = await mountWizard();
+    const wrapper = await mountPanel();
     const file = new File(['x'], 'partners.csv', { type: 'text/csv' });
     (wrapper.vm as any).onFileSelected({ raw: file });
     const pending = (wrapper.vm as any).uploadAndPreview();
@@ -135,7 +135,7 @@ describe('PartnerImportWizard', () => {
     previewImport.mockResolvedValue({
       report: { stats: { total: 1, ok: 0, error: 1 }, messages: [{ row: 2, text: 'bad row' }] },
     });
-    const wrapper = await mountWizard();
+    const wrapper = await mountPanel();
     const file = new File(['Name\n'], 'partners.csv', { type: 'text/csv' });
     (wrapper.vm as any).onFileSelected({ raw: file });
     await (wrapper.vm as any).uploadAndPreview();
@@ -147,7 +147,7 @@ describe('PartnerImportWizard', () => {
 
   it('handles upload and preview errors', async () => {
     uploadImportCsv.mockRejectedValue(new Error('upload failed'));
-    const wrapper = await mountWizard();
+    const wrapper = await mountPanel();
     (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
     await (wrapper.vm as any).uploadAndPreview();
     await flushPromises();
@@ -157,7 +157,7 @@ describe('PartnerImportWizard', () => {
 
   it('handles non-error preview failures', async () => {
     uploadImportCsv.mockRejectedValue('plain failure');
-    const wrapper = await mountWizard();
+    const wrapper = await mountPanel();
     (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
     await (wrapper.vm as any).uploadAndPreview();
     await flushPromises();
@@ -166,7 +166,7 @@ describe('PartnerImportWizard', () => {
 
   it('ignores abort errors during preview', async () => {
     uploadImportCsv.mockRejectedValue(new DOMException('aborted', 'AbortError'));
-    const wrapper = await mountWizard();
+    const wrapper = await mountPanel();
     (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
     await (wrapper.vm as any).uploadAndPreview();
     await flushPromises();
@@ -175,7 +175,7 @@ describe('PartnerImportWizard', () => {
   });
 
   it('blocks close while busy and clears file on remove', async () => {
-    const wrapper = await mountWizard();
+    const wrapper = await mountPanel();
     (wrapper.vm as any).busy = true;
     const done = vi.fn();
     (wrapper.vm as any).handleBeforeClose(done);
@@ -189,7 +189,7 @@ describe('PartnerImportWizard', () => {
   });
 
   it('no-ops upload and import without required state', async () => {
-    const wrapper = await mountWizard();
+    const wrapper = await mountPanel();
     await (wrapper.vm as any).uploadAndPreview();
     await (wrapper.vm as any).commitImport();
     expect(uploadImportCsv).not.toHaveBeenCalled();
@@ -197,7 +197,7 @@ describe('PartnerImportWizard', () => {
   });
 
   it('closes dialog on finish and resets when hidden', async () => {
-    const wrapper = await mountWizard();
+    const wrapper = await mountPanel();
     (wrapper.vm as any).step = 2;
     (wrapper.vm as any).importDone = true;
     (wrapper.vm as any).finish();
@@ -209,7 +209,7 @@ describe('PartnerImportWizard', () => {
 
   it('handles import runtime errors and stale commit results', async () => {
     runImport.mockRejectedValue(new Error('run exploded'));
-    const wrapper = await mountWizard();
+    const wrapper = await mountPanel();
     (wrapper.vm as any).sourceRef = 'att-src-1';
     (wrapper.vm as any).previewReport = { stats: { error: 0 } };
     await (wrapper.vm as any).commitImport();
@@ -227,16 +227,16 @@ describe('PartnerImportWizard', () => {
   });
 
   it('renders upload, preview, and success template states', async () => {
-    const wrapper = await mountWizard();
+    const wrapper = await mountPanel();
     expect((wrapper.vm as any).step).toBe(0);
-    expect(wrapper.find('.partner-import-section').exists()).toBe(true);
+    expect(wrapper.find('.import-panel-section').exists()).toBe(true);
     const file = new File(['Name,Code\nA,1\n'], 'partners.csv', { type: 'text/csv' });
     (wrapper.vm as any).onFileSelected({ raw: file });
     await (wrapper.vm as any).uploadAndPreview();
     await flushPromises();
     expect((wrapper.vm as any).step).toBe(1);
     expect((wrapper.vm as any).headers).toEqual(['Name', 'Code']);
-    expect(wrapper.find('.partner-import-table').exists()).toBe(true);
+    expect(wrapper.find('.import-panel-table').exists()).toBe(true);
     await (wrapper.vm as any).commitImport();
     await flushPromises();
     expect((wrapper.vm as any).importDone).toBe(true);
@@ -247,7 +247,7 @@ describe('PartnerImportWizard', () => {
 
   it('renders import error alert and disables import when preview has errors', async () => {
     uploadImportCsv.mockRejectedValueOnce(new Error('preview failed'));
-    const wrapper = await mountWizard();
+    const wrapper = await mountPanel();
     (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
     await (wrapper.vm as any).uploadAndPreview();
     await flushPromises();
@@ -258,7 +258,7 @@ describe('PartnerImportWizard', () => {
       report: { stats: { total: 1, ok: 0, error: 1 }, messages: [{ row: 2, text: 'bad row' }] },
     });
     uploadImportCsv.mockResolvedValue('att-src-2');
-    const wrapper2 = await mountWizard();
+    const wrapper2 = await mountPanel();
     (wrapper2.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
     await (wrapper2.vm as any).uploadAndPreview();
     await flushPromises();
@@ -266,7 +266,7 @@ describe('PartnerImportWizard', () => {
   });
 
   it('handles missing upload raw file and stale intermediate preview steps', async () => {
-    const wrapper = await mountWizard(false);
+    const wrapper = await mountPanel(false);
     (wrapper.vm as any).onFileSelected({});
     expect((wrapper.vm as any).selectedFile).toBeNull();
 
@@ -311,7 +311,7 @@ describe('PartnerImportWizard', () => {
           resolveHeaders = resolve;
         }),
     );
-    const wrapper = await mountWizard();
+    const wrapper = await mountPanel();
     (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
     const pending = (wrapper.vm as any).uploadAndPreview();
     resolveUpload('att-headers');
@@ -327,7 +327,7 @@ describe('PartnerImportWizard', () => {
 
   it('supports cancel visibility and success preview summary branches', async () => {
     previewImport.mockResolvedValue({ report: { stats: { total: 2, ok: 2, error: 0 }, messages: [] } });
-    const wrapper = await mountWizard();
+    const wrapper = await mountPanel();
     (wrapper.vm as any).visible = false;
     await flushPromises();
     expect((wrapper.vm as any).step).toBe(0);
@@ -342,8 +342,8 @@ describe('PartnerImportWizard', () => {
   });
 
   it('renders dialog bindings and preview alert title', async () => {
-    const { default: PartnerImportWizard } = await import('./PartnerImportWizard.vue');
-    const wrapper = mount(PartnerImportWizard, {
+    const { default: ImportPanel } = await import('./ImportPanel.vue');
+    const wrapper = mount(ImportPanel, {
       props: { companyId: 'cmp-1', modelValue: true },
       attachTo: document.body,
       global: {
@@ -364,8 +364,8 @@ describe('PartnerImportWizard', () => {
 
   it('handles commitImport string errors and omits company id prop', async () => {
     runImport.mockRejectedValue('commit failed');
-    const { default: PartnerImportWizard } = await import('./PartnerImportWizard.vue');
-    const wrapper = mount(PartnerImportWizard, {
+    const { default: ImportPanel } = await import('./ImportPanel.vue');
+    const wrapper = mount(ImportPanel, {
       props: { modelValue: true },
       global: {
         plugins: [i18n],
@@ -387,14 +387,14 @@ describe('PartnerImportWizard', () => {
   it('covers nullable preview fields and explicit stats branches', async () => {
     parseHeaders.mockResolvedValue({ headers: null });
     previewImport.mockResolvedValue({});
-    const wrapper = await mountWizard();
+    const wrapper = await mountPanel();
     (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
     await (wrapper.vm as any).uploadAndPreview();
     await flushPromises();
     expect((wrapper.vm as any).headers).toEqual([]);
     expect((wrapper.vm as any).previewReport).toBeNull();
     expect((wrapper.vm as any).previewMessages).toEqual([]);
-    expect(wrapper.find('.partner-import-hint').exists()).toBe(false);
+    expect(wrapper.find('.import-panel-hint').exists()).toBe(false);
 
     (wrapper.vm as any).previewReport = { stats: { total: 4, ok: 3, error: 1 } };
     expect((wrapper.vm as any).previewSummary).toBe('Preview: 3 ok, 1 errors, 4 total');
@@ -403,7 +403,7 @@ describe('PartnerImportWizard', () => {
 
   it('uses nullish fallbacks for missing preview and import stats fields', async () => {
     previewImport.mockResolvedValue({ report: { stats: { ok: 2, total: 2 }, messages: [] } });
-    const wrapper = await mountWizard();
+    const wrapper = await mountPanel();
     (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
     await (wrapper.vm as any).uploadAndPreview();
     await flushPromises();
@@ -419,8 +419,8 @@ describe('PartnerImportWizard', () => {
   });
 
   it('passes empty company id to preview when prop is omitted', async () => {
-    const { default: PartnerImportWizard } = await import('./PartnerImportWizard.vue');
-    const wrapper = mount(PartnerImportWizard, {
+    const { default: ImportPanel } = await import('./ImportPanel.vue');
+    const wrapper = mount(ImportPanel, {
       props: { modelValue: true },
       global: {
         plugins: [i18n],
@@ -446,7 +446,7 @@ describe('PartnerImportWizard', () => {
   });
 
   it('passes provided company id to previewImport', async () => {
-    const wrapper = await mountWizard();
+    const wrapper = await mountPanel();
     (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
     await (wrapper.vm as any).uploadAndPreview();
     await flushPromises();
@@ -465,7 +465,7 @@ describe('PartnerImportWizard', () => {
           resolvePreview = resolve;
         }),
     );
-    const wrapper = await mountWizard();
+    const wrapper = await mountPanel();
     (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
     const pending = (wrapper.vm as any).uploadAndPreview();
     await flushPromises();
@@ -479,7 +479,7 @@ describe('PartnerImportWizard', () => {
 
   it('ignores stale session errors during upload and commit catch paths', async () => {
     uploadImportCsv.mockRejectedValue(new Error('late upload failure'));
-    const wrapper = await mountWizard();
+    const wrapper = await mountPanel();
     (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
     const pendingUpload = (wrapper.vm as any).uploadAndPreview();
     (wrapper.vm as any).resetState();
@@ -505,7 +505,7 @@ describe('PartnerImportWizard', () => {
   });
 
   it('keeps state when visibility stays open', async () => {
-    const wrapper = await mountWizard(false);
+    const wrapper = await mountPanel(false);
     (wrapper.vm as any).step = 1;
     (wrapper.vm as any).headers = ['Name'];
     await wrapper.setProps({ modelValue: true });
@@ -515,7 +515,7 @@ describe('PartnerImportWizard', () => {
   });
 
   it('renders done footer button after successful import', async () => {
-    const wrapper = await mountWizard();
+    const wrapper = await mountPanel();
     (wrapper.vm as any).step = 2;
     (wrapper.vm as any).importDone = true;
     await flushPromises();

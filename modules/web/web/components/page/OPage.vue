@@ -13,14 +13,19 @@ SPDX-License-Identifier: Apache-2.0
     :aria-label="title && $slots.header ? title : undefined"
   >
     <!-- Page header section. -->
-    <div v-if="$slots.header || title || showBreadcrumb || $slots.breadcrumb" class="o-page__header">
+    <div v-if="$slots.header || title || showBreadcrumb || $slots.breadcrumb || $slots['title-actions']" class="o-page__header">
       <slot name="header">
         <div v-if="showBreadcrumb || $slots.breadcrumb" class="o-page__breadcrumb">
           <slot name="breadcrumb">
             <OBreadcrumb />
           </slot>
         </div>
-        <h1 v-if="title" class="o-page__title" :id="pageTitleId">{{ title }}</h1>
+        <div v-if="title || $slots['title-actions']" class="o-page__title-row">
+          <h1 v-if="title" class="o-page__title" :id="pageTitleId">{{ title }}</h1>
+          <div v-if="$slots['title-actions']" class="o-page__title-actions">
+            <slot name="title-actions" />
+          </div>
+        </div>
       </slot>
     </div>
 
@@ -164,6 +169,21 @@ const pageClass = computed(() => {
     font-weight: var(--el-font-weight-bold, 500);
     color: var(--el-text-color-primary);
     line-height: 1.4;
+  }
+
+  &__title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--el-gap-small, 8px);
+    min-width: 0;
+  }
+
+  &__title-actions {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    gap: var(--el-gap-small, 8px);
   }
 
   &__toolbar {

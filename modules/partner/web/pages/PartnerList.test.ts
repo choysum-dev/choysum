@@ -38,11 +38,21 @@ vi.mock('@/web/web/stores/registry', () => ({
 }));
 
 vi.mock('@/web/web/export', () => ({
-  ExportPanel: {
-    name: 'ExportPanelStub',
-    props: ['model', 'companyId', 'ids', 'domain', 'defaultFields', 'filteredCount', 'modelValue'],
-    emits: ['update:modelValue'],
-    template: '<div data-test="export-panel-stub" />',
+  RecordExportShell: {
+    name: 'RecordExportShellStub',
+    props: ['model', 'store', 'listRef', 'companyId', 'open'],
+    emits: ['update:open'],
+    template: '<div data-test="export-shell-stub" :data-model="model" :data-open="String(open)" />',
+  },
+}));
+
+vi.mock('@/web/web/import', () => ({
+  RecordImportShell: {
+    name: 'RecordImportShellStub',
+    props: ['model', 'companyId', 'uploadHint', 'open'],
+    emits: ['update:open', 'imported'],
+    template:
+      '<div data-test="import-shell-stub" :data-model="model" :data-company-id="companyId" :data-open="String(open)"><button data-test="emit-imported" @click="$emit(\'imported\')">import</button></div>',
   },
 }));
 
@@ -70,13 +80,6 @@ vi.mock('../views/PartnerListView.vue', () => ({
   },
 }));
 
-const partnerImportWizardStub = {
-  name: 'PartnerImportWizardStub',
-  props: ['companyId', 'modelValue'],
-  emits: ['update:modelValue', 'imported'],
-  template: '<div :data-company-id="companyId" :data-open="String(modelValue)"><button data-test="wizard-close" @click="$emit(\'update:modelValue\', false)">close</button><button data-test="emit-imported" @click="$emit(\'imported\')">import</button></div>',
-};
-
 const i18n = createI18n({
   legacy: false,
   locale: 'en',
@@ -91,8 +94,15 @@ async function mountPartnerList(extraStubs: Record<string, unknown> = {}) {
     global: {
       plugins: [i18n],
       stubs: {
-        OPage: { template: '<div><slot /></div>' },
-        PartnerImportWizard: partnerImportWizardStub,
+        OPage: {
+          template: '<div><div class="title-actions"><slot name="title-actions" /></div><slot /></div>',
+        },
+        OPageIoMenu: {
+          name: 'OPageIoMenuStub',
+          props: ['items'],
+          template:
+            '<div data-test="io-menu"><button v-for="item in items" :key="item.key" :data-test="`io-${item.key}`" @click="item.onClick()">{{ item.label }}</button></div>',
+        },
         ...extraStubs,
       },
     },
@@ -112,174 +122,50 @@ describe('PartnerList page', () => {
     const ctx = await import('@/core/rpc/context');
     (ctx.getCurrentRequestContext as any).mockReset();
     (ctx.getCurrentRequestContext as any).mockReturnValue({ activeCompanyId: 'cmp-1' });
+    vi.resetModules();
   });
 
   it('refreshes list after import completes', async () => {
     const wrapper = await mountPartnerList();
-    expect(wrapper.text()).toContain('Import CSV');
     await wrapper.find('[data-test="emit-imported"]').trigger('click');
     expect(refresh).toHaveBeenCalled();
   });
 
-  it('renders export panel with partner model and filtered count', async () => {
+  it('renders import and export shells for partner.Partner', async () => {
     const wrapper = await mountPartnerList();
-    expect(wrapper.text()).toContain('Export CSV');
-    const panel = wrapper.findComponent({ name: 'ExportPanelStub' });
-    expect(panel.props('model')).toBe('partner.Partner');
-    expect(panel.props('filteredCount')).toBe(3);
-    expect(panel.props('companyId')).toBe('cmp-1');
+    const importShell = wrapper.find('[data-test="import-shell-stub"]');
+    const exportShell = wrapper.find('[data-test="export-shell-stub"]');
+    expect(importShell.attributes('data-model')).toBe('partner.Partner');
+    expect(exportShell.attributes('data-model')).toBe('partner.Partner');
+    expect(importShell.attributes('data-company-id')).toBe('cmp-1');
   });
 
-  it('passes company id from request context fallback', async () => {
-    const ctx = await import('@/core/rpc/context');
-    (ctx.getCurrentRequestContext as any).mockReturnValue({ companyId: 'cmp-fallback' });
+  it('opens import and export from title IO menu', async () => {
     const wrapper = await mountPartnerList();
-    const wizard = wrapper.findComponent({ name: 'PartnerImportWizardStub' });
-    expect(wizard.props('companyId')).toBe('cmp-fallback');
+    await wrapper.find('[data-test="io-import"]').trigger('click');
+    expect(wrapper.find('[data-test="import-shell-stub"]').attributes('data-open')).toBe('true');
+    await wrapper.find('[data-test="io-export"]').trigger('click');
+    expect(wrapper.find('[data-test="export-shell-stub"]').attributes('data-open')).toBe('true');
   });
 
   it('uses empty company id when request context has no company', async () => {
     const ctx = await import('@/core/rpc/context');
     (ctx.getCurrentRequestContext as any).mockReturnValue({});
     const wrapper = await mountPartnerList();
-    const wizard = wrapper.findComponent({ name: 'PartnerImportWizardStub' });
-    expect(wizard.props('companyId')).toBe('');
-  });
-
-  it('passes selected ids, domain, and normalized default fields to export panel', async () => {
-    const wrapper = await mountPartnerList();
-    await nextTick();
-    const panel = wrapper.findComponent({ name: 'ExportPanelStub' });
-    expect(panel.props('ids')).toEqual(['p1', 'p2']);
-    expect(panel.props('domain')).toBe(JSON.stringify({ And: [{ field: 'Name', op: 'contains', value: 'A' }] }));
-    expect(panel.props('defaultFields')).toEqual(['Name', 'CompanyId/Code']);
-    expect(buildUnifiedQuery).toHaveBeenCalled();
-    expect(exportFieldSelection).toHaveBeenCalledWith('Partner_/partner/partners');
-  });
-
-  it('reads selected ids from a plain selectedItems array', async () => {
-    listSelectedItems.current = [{ Id: 'p9' }];
-    const wrapper = await mountPartnerList();
-    await nextTick();
-    const panel = wrapper.findComponent({ name: 'ExportPanelStub' });
-    expect(panel.props('ids')).toEqual(['p9']);
-  });
-
-  it('uses empty default fields when registry selection is missing', async () => {
-    exportFieldSelection.mockReturnValue(null as unknown as string[]);
-    const wrapper = await mountPartnerList();
-    await nextTick();
-    const panel = wrapper.findComponent({ name: 'ExportPanelStub' });
-    expect(panel.props('defaultFields')).toEqual([]);
-  });
-
-  it('filters blank partner ids from export scope', async () => {
-    listSelectedItems.current = [{ Id: 'p9' }, {}, { Id: '' }, { Id: '  ' }];
-    const wrapper = await mountPartnerList();
-    await nextTick();
-    const panel = wrapper.findComponent({ name: 'ExportPanelStub' });
-    expect(panel.props('ids')).toEqual(['p9']);
-  });
-
-  it('filters blank partner ids from ref-backed selected items', async () => {
-    listSelectedItems.current = { value: [{ Id: 'p9' }, { Id: undefined }, {}] };
-    const wrapper = await mountPartnerList();
-    await nextTick();
-    expect((wrapper.vm as any).exportIds).toEqual(['p9']);
-  });
-
-  it('opens export panel from toolbar button', async () => {
-    const wrapper = await mountPartnerList({
-      ElButton: {
-        emits: ['click'],
-        template: '<button @click="$emit(\'click\')"><slot /></button>',
-      },
-    });
-    const exportButton = wrapper.findAll('button').find(button => button.text().includes('Export CSV'));
-    expect(exportButton).toBeTruthy();
-    await exportButton!.trigger('click');
-    const panel = wrapper.findComponent({ name: 'ExportPanelStub' });
-    expect(panel.props('modelValue')).toBe(true);
-  });
-
-  it('uses default domain when unified query has no filters', async () => {
-    buildUnifiedQuery.mockReturnValue({});
-    const wrapper = await mountPartnerList();
-    await nextTick();
-    const panel = wrapper.findComponent({ name: 'ExportPanelStub' });
-    expect(panel.props('domain')).toBe(JSON.stringify({ And: [] }));
-  });
-
-  it('uses zero filtered count when store result is missing', async () => {
-    createStoreByModelMock.mockReturnValue({
-      Search: vi.fn(),
-      storeId: 'Partner_/partner/partners',
-      state: { queryState: { appliedFilters: [] } },
-    });
-    const wrapper = await mountPartnerList();
-    await nextTick();
-    const panel = wrapper.findComponent({ name: 'ExportPanelStub' });
-    expect(panel.props('filteredCount')).toBe(0);
-  });
-
-  it('opens import wizard from toolbar button', async () => {
-    const wrapper = await mountPartnerList({
-      ElButton: {
-        emits: ['click'],
-        template: '<button @click="$emit(\'click\')"><slot /></button>',
-      },
-    });
-    const importButton = wrapper.findAll('button').find(button => button.text().includes('Import CSV'));
-    await importButton!.trigger('click');
-    const wizard = wrapper.findComponent({ name: 'PartnerImportWizardStub' });
-    expect(wizard.props('modelValue')).toBe(true);
-    expect(wizard.attributes('data-company-id')).toBe('cmp-1');
-    expect(wizard.attributes('data-open')).toBe('true');
-  });
-
-  it('syncs import wizard open state from child updates', async () => {
-    const wrapper = await mountPartnerList();
-    const wizard = wrapper.findComponent({ name: 'PartnerImportWizardStub' });
-    await wizard.find('[data-test="wizard-close"]').trigger('click');
-    expect(wizard.props('modelValue')).toBe(false);
-    expect(wizard.attributes('data-open')).toBe('false');
-  });
-
-  it('uses empty selected ids when selectedItems is null', async () => {
-    listSelectedItems.current = null;
-    const wrapper = await mountPartnerList();
-    await nextTick();
-    expect((wrapper.vm as any).exportIds).toEqual([]);
-    const panel = wrapper.findComponent({ name: 'ExportPanelStub' });
-    expect(panel.props('ids')).toEqual([]);
-  });
-
-  it('uses empty selected ids when selectedItems wrapper value is null', async () => {
-    listSelectedItems.current = { value: null };
-    const wrapper = await mountPartnerList();
-    await nextTick();
-    const panel = wrapper.findComponent({ name: 'ExportPanelStub' });
-    expect(panel.props('ids')).toEqual([]);
-  });
-
-  it('uses empty selected ids when selectedItems ref has no value', async () => {
-    listSelectedItems.current = { value: undefined };
-    const wrapper = await mountPartnerList();
-    await nextTick();
-    const panel = wrapper.findComponent({ name: 'ExportPanelStub' });
-    expect(panel.props('ids')).toEqual([]);
-  });
-
-  it('syncs export panel open state from child updates', async () => {
-    const wrapper = await mountPartnerList();
-    const panel = wrapper.findComponent({ name: 'ExportPanelStub' });
-    await panel.vm.$emit('update:modelValue', false);
-    expect(panel.props('modelValue')).toBe(false);
+    expect(wrapper.find('[data-test="import-shell-stub"]').attributes('data-company-id')).toBe('');
   });
 
   it('does not fail import refresh when list view exposes no refresh', async () => {
     const wrapper = await mountPartnerList();
     (wrapper.vm as any).listViewRef = null;
     expect(() => (wrapper.vm as any).onImported()).not.toThrow();
+  });
+
+  it('passes list view ref to export shell', async () => {
+    const wrapper = await mountPartnerList();
+    await nextTick();
+    const shell = wrapper.findComponent({ name: 'RecordExportShellStub' });
+    expect(shell.props('listRef')).toBeTruthy();
+    expect(shell.props('store')?.storeId).toBe('Partner_/partner/partners');
   });
 });
