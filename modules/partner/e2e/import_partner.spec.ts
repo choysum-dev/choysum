@@ -29,4 +29,6 @@ test('partner import: list page exposes import entry', async ({ page }) => {
   await page.goto(`${runtime.baseURL}/web/partner/partners`);
   await page.getByTestId('page-io-menu-trigger').click();
   await expect(page.getByTestId('page-io-menu-import')).toBeVisible();
+  await page.getByTestId('page-io-menu-import').click();
+  await expect(page.getByRole('dialog')).toBeVisible();
 });

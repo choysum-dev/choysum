@@ -71,6 +71,18 @@ describe('OPage component', () => {
     expect(region.attributes('aria-busy')).toBe('true');
   });
 
+  test('omits region role when title is empty', () => {
+    const wrapper = mount(OPage, {
+      props: {
+        showBreadcrumb: false,
+      },
+      global: { stubs: pageStubs },
+    });
+
+    expect(wrapper.find('.o-page').attributes('role')).toBeUndefined();
+    expect(wrapper.find('.o-page__header').exists()).toBe(false);
+  });
+
   test('renders title-actions beside the title', () => {
     const wrapper = mount(OPage, {
       props: {
@@ -85,6 +97,72 @@ describe('OPage component', () => {
 
     expect(wrapper.find('.o-page__title-row').exists()).toBe(true);
     expect(wrapper.find('.o-page__title-actions [data-test="io-action"]').exists()).toBe(true);
+    expect(wrapper.find('h1.o-page__title').text()).toBe('Partners');
+  });
+
+  test('renders title-actions without a title', () => {
+    const wrapper = mount(OPage, {
+      props: {
+        showBreadcrumb: false,
+      },
+      slots: {
+        'title-actions': '<button data-test="io-only">IO</button>',
+      },
+      global: { stubs: pageStubs },
+    });
+
+    expect(wrapper.find('.o-page__header').exists()).toBe(true);
+    expect(wrapper.find('h1.o-page__title').exists()).toBe(false);
+    expect(wrapper.find('[data-test="io-only"]').exists()).toBe(true);
+  });
+
+  test('keeps title-actions when a custom header slot is provided', () => {
+    const wrapper = mount(OPage, {
+      props: {
+        title: 'Partners',
+        showBreadcrumb: false,
+      },
+      slots: {
+        header: '<div class="custom-header">Custom</div>',
+        'title-actions': '<button data-test="io-with-header">IO</button>',
+      },
+      global: { stubs: pageStubs },
+    });
+
+    expect(wrapper.find('.custom-header').exists()).toBe(true);
+    expect(wrapper.find('.o-page__title-actions [data-test="io-with-header"]').exists()).toBe(true);
+    expect(wrapper.find('h1.o-page__title').exists()).toBe(false);
+  });
+
+  test('renders custom header alone without title-actions row', () => {
+    const wrapper = mount(OPage, {
+      props: {
+        title: 'Partners',
+        showBreadcrumb: false,
+      },
+      slots: {
+        header: '<div class="custom-header-only">Custom</div>',
+      },
+      global: { stubs: pageStubs },
+    });
+
+    expect(wrapper.find('.custom-header-only').exists()).toBe(true);
+    expect(wrapper.find('.o-page__title-row').exists()).toBe(false);
+  });
+
+  test('renders breadcrumb slot in the default header', () => {
+    const wrapper = mount(OPage, {
+      props: {
+        title: 'Partners',
+        showBreadcrumb: true,
+      },
+      slots: {
+        breadcrumb: '<nav data-test="crumb">Crumb</nav>',
+      },
+      global: { stubs: pageStubs },
+    });
+
+    expect(wrapper.find('[data-test="crumb"]').exists()).toBe(true);
     expect(wrapper.find('h1.o-page__title').text()).toBe('Partners');
   });
 });

@@ -41,7 +41,7 @@ export function useRecordIoMenu(options: UseRecordIoMenuOptions) {
     return result;
   });
 
-  const visible = computed(() => items.value.some(item => !item.hidden));
+  const visible = computed(() => items.value.length > 0);
 
   return { items, visible };
 }

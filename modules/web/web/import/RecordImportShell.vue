@@ -23,11 +23,12 @@ import type { RecordIoConfig } from '@/web/web/composables/recordIoTypes';
 defineOptions({ name: 'RecordImportShell' });
 
 const props = defineProps<{
-  model: string;
+  /** Direct model; optional when `config.model` is set. */
+  model?: string;
   companyId?: string;
   columnMapping?: Record<string, string>;
   uploadHint?: string;
-  /** Optional full config; props above override when provided. */
+  /** Optional full config; direct props override when provided. */
   config?: RecordIoConfig;
 }>();
 
@@ -38,7 +39,7 @@ const emit = defineEmits<{
 const open = defineModel<boolean>('open', { default: false });
 
 const scopeConfig = computed<RecordIoConfig>(() => props.config ?? {
-  model: props.model,
+  model: String(props.model ?? '').trim(),
   import: {
     enabled: true,
     columnMapping: props.columnMapping,
@@ -48,7 +49,10 @@ const scopeConfig = computed<RecordIoConfig>(() => props.config ?? {
 
 const scope = useRecordImportScope({ config: scopeConfig });
 
-const model = computed(() => props.model || scope.model.value);
+const model = computed(() => {
+  const direct = String(props.model ?? '').trim();
+  return direct || scope.model.value;
+});
 const companyId = computed(() => props.companyId ?? scope.companyId.value);
 const columnMapping = computed(() => props.columnMapping ?? scope.columnMapping.value);
 const uploadHint = computed(() => props.uploadHint ?? scope.uploadHint.value);

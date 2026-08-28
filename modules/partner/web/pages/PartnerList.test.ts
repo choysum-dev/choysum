@@ -156,9 +156,15 @@ describe('PartnerList page', () => {
   });
 
   it('does not fail import refresh when list view exposes no refresh', async () => {
-    const wrapper = await mountPartnerList();
-    (wrapper.vm as any).listViewRef = null;
-    expect(() => (wrapper.vm as any).onImported()).not.toThrow();
+    refresh.mockClear();
+    const wrapper = await mountPartnerList({
+      PartnerListView: {
+        name: 'PartnerListViewNoRefresh',
+        template: '<div data-test="list-no-refresh" />',
+      },
+    });
+    await wrapper.find('[data-test="emit-imported"]').trigger('click');
+    expect(refresh).not.toHaveBeenCalled();
   });
 
   it('passes list view ref to export shell', async () => {

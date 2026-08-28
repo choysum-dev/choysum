@@ -14,7 +14,18 @@ SPDX-License-Identifier: Apache-2.0
   >
     <!-- Page header section. -->
     <div v-if="$slots.header || title || showBreadcrumb || $slots.breadcrumb || $slots['title-actions']" class="o-page__header">
-      <slot name="header">
+      <template v-if="$slots.header">
+        <div v-if="$slots['title-actions']" class="o-page__title-row">
+          <div class="o-page__header-slot">
+            <slot name="header" />
+          </div>
+          <div class="o-page__title-actions">
+            <slot name="title-actions" />
+          </div>
+        </div>
+        <slot v-else name="header" />
+      </template>
+      <template v-else>
         <div v-if="showBreadcrumb || $slots.breadcrumb" class="o-page__breadcrumb">
           <slot name="breadcrumb">
             <OBreadcrumb />
@@ -26,7 +37,7 @@ SPDX-License-Identifier: Apache-2.0
             <slot name="title-actions" />
           </div>
         </div>
-      </slot>
+      </template>
     </div>
 
     <!-- Page toolbar section. -->
@@ -177,6 +188,11 @@ const pageClass = computed(() => {
     justify-content: space-between;
     gap: var(--el-gap-small, 8px);
     min-width: 0;
+  }
+
+  &__header-slot {
+    min-width: 0;
+    flex: 1;
   }
 
   &__title-actions {
