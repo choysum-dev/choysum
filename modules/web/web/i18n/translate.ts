@@ -2,31 +2,22 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Frontend terminology `_t` / `_lt` bound to vue-i18n (§7.2).
- * `_t` looks up module/scope/msgid in the active locale catalog.
- * `_lt` pins a serializable TermReference (no lookup).
+ * Vue-i18n hooks for terminology catalog reactivity and TermReference display.
+ * `createTranslate` lives in `@/core/service/i18n` and resolves via `$choysum.i18n.t`.
  */
 
 import { ref } from 'vue';
 import type { PostTranslationHandler, VueMessageType } from 'vue-i18n';
 
-import { resolveI18nScope } from '../../../core/service/i18n/scope';
-import {
-  createTermReference,
-  type CreateTranslateOptions as CoreCreateTranslateOptions,
-  type CreateTranslateResult,
-  type LazyTranslateFn,
-  type TermReference,
-  type TranslateFn,
-  type TranslateOptions as CoreTranslateOptions,
-} from '../../../core/service/i18n/translate';
+import type { TermReference } from '@/core/service/i18n';
+import { langToUiKey } from '../stores/i18nStore/lang';
 
-export type TranslateOptions = CoreTranslateOptions;
-export type CreateTranslateOptions = CoreCreateTranslateOptions;
+export type TranslateOptions = import('@/core/service/i18n').TranslateOptions;
+export type CreateTranslateOptions = import('@/core/service/i18n').CreateTranslateOptions;
 export type TextSource = string | TermReference;
 
 export type ComposerLike = {
-  t: (key: string, fallback: string) => unknown;
+  t: (key: string, fallback: string, options?: { locale?: string }) => unknown;
 };
 
 const composerMessageRevision = ref(0);
@@ -73,7 +64,8 @@ export function getGlobalComposer(): ComposerLike | undefined {
 export function translateTerm(
   composer: unknown,
   reference?: TermReference,
-  fallback = ''
+  fallback = '',
+  terminologyLang?: string
 ): string {
   void composerMessageRevision.value;
   const defaultText = reference?.src || fallback;
@@ -82,109 +74,14 @@ export function translateTerm(
     return defaultText;
   }
   try {
-    const translated = bridge.t(reference.key, reference.src || fallback);
+    const locale = terminologyLang ? langToUiKey(terminologyLang) : undefined;
+    const translated = locale
+      ? bridge.t(reference.key, reference.src || fallback, { locale })
+      : bridge.t(reference.key, reference.src || fallback);
     return typeof translated === 'string' && translated !== '' ? translated : defaultText;
   } catch {
     return defaultText;
   }
 }
 
-function interpolate(template: string, args: unknown[]): string {
-  if (!args.length) {
-    return template;
-  }
-  let i = 0;
-  return template.replace(/%s|%d|%%/g, match => {
-    if (match === '%%') {
-      return '%';
-    }
-    if (i >= args.length) {
-      return match;
-    }
-    const v = args[i++];
-    return v == null ? '' : String(v);
-  });
-}
-
-function isTranslateOptions(value: unknown): value is TranslateOptions {
-  return (
-    !!value &&
-    typeof value === 'object' &&
-    !Array.isArray(value) &&
-    ('scope' in (value as object) || 'path' in (value as object) || 'location' in (value as object) || 'kind' in (value as object))
-  );
-}
-
-function parseTranslateArgs(args: unknown[]): {
-  opts: TranslateOptions | undefined;
-  interpolation: unknown[];
-} {
-  if (args.length > 0 && isTranslateOptions(args[0])) {
-    return {
-      opts: args[0],
-      interpolation: args.slice(1),
-    };
-  }
-  return { opts: undefined, interpolation: args };
-}
-
-function translateReference(
-  reference: TermReference,
-  interpolation: unknown[]
-): string {
-  return interpolate(translateTerm(getGlobalComposer(), reference, reference.src), interpolation);
-}
-
-/**
- * Bind frontend translation helpers `_t` (text) and `_lt` (TermReference)
- * to a terminology owner module. Shape matches core `createTranslate`.
- */
-export function createTranslate(
-  module: string,
-  defaults?: CreateTranslateOptions
-): CreateTranslateResult {
-  const mod = String(module || '').trim() || 'web';
-  const defaultScope = resolveI18nScope(defaults);
-  const defaultKind = defaults?.kind;
-  const defaultReferences = new Map<string, TermReference>();
-
-  const resolveReference = (src: string, opts?: TranslateOptions): TermReference => {
-    if (!opts && defaultScope) {
-      const cached = defaultReferences.get(src);
-      if (cached) {
-        return cached;
-      }
-    }
-    const scope = resolveI18nScope(opts) || defaultScope;
-    const reference = createTermReference(mod, src, {
-      ...opts,
-      scope,
-      kind: opts?.kind ?? defaultKind,
-    });
-    if (!opts && defaultScope) {
-      defaultReferences.set(src, reference);
-    }
-    return reference;
-  };
-
-  const _t = (src: string, ...args: unknown[]): string => {
-    const { opts, interpolation } = parseTranslateArgs(args);
-    return translateReference(resolveReference(src, opts), interpolation);
-  };
-
-  const _lt = (src: string, opts?: TranslateOptions, ...rest: unknown[]): TermReference => {
-    // Accidental `_lt('… %s', 'x')` binds the primitive to `opts`, not `rest`.
-    if (
-      rest.length > 0 ||
-      (opts != null && (typeof opts !== 'object' || Array.isArray(opts)))
-    ) {
-      throw new Error('_lt does not accept interpolation arguments');
-    }
-    return resolveReference(src, opts);
-  };
-
-  return {
-    _t: _t as TranslateFn,
-    _lt: _lt as LazyTranslateFn,
-  };
-}
+export { createTranslate } from '@/core/service/i18n';

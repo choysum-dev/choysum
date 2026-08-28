@@ -3,7 +3,7 @@
 
 import { getCurrentRequestContext } from '@/core/rpc/context';
 import { getCSRFProvider, getTokenProvider } from '@/core/web/rpc/providers';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createStoreByModel } from '@/core/web/stores/registry';
 
 type PrepareUploadReq = {
   ownerModel: string;

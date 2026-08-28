@@ -7,17 +7,19 @@ import { computed, nextTick } from 'vue';
 
 import {
   createTranslate,
-  notifyComposerMessagesChanged,
-  trackComposerMessageRevision,
-  translateTerm,
-  type ComposerLike,
-} from './translate';
-import { projectTerminologyMessages } from './terminology';
-import {
   createTermReference,
   createTermReferenceKey,
   withI18nScope,
 } from '@/core/service/i18n';
+import {
+  getGlobalComposer,
+  installBrowserI18nBridge,
+  notifyComposerMessagesChanged,
+  trackComposerMessageRevision,
+  translateTerm,
+  type ComposerLike,
+} from './index';
+import { projectTerminologyMessages } from './terminology';
 
 /**
  * Erase vue-i18n Composer generics. Passing `MessageRecord` into `createI18n`
@@ -46,12 +48,14 @@ function installI18n(locale = 'zh-CN'): TestComposer {
   (globalThis as { window?: { $i18n?: unknown } }).window = {
     $i18n: composer,
   };
+  installBrowserI18nBridge();
   return composer;
 }
 
 describe('createTranslate', () => {
   afterEach(() => {
     delete (globalThis as { window?: unknown }).window;
+    delete (globalThis as { $choysum?: unknown }).$choysum;
   });
 
   it('falls back to msgid when i18n is missing', () => {
@@ -100,6 +104,26 @@ describe('createTranslate', () => {
     }).global);
 
     expect(composer.te(reference.key, 'zh-CN')).toBe(false);
+    expect(translateTerm(composer, reference, 'Legacy users', 'en_US')).toBe('People');
+  });
+
+  it('uses vue-i18n locale fallback without a te preflight when lang is omitted', () => {
+    const reference = createTermReference('base', 'Users', { scope: 'base.route.users' });
+    const composer = asTestComposer(createI18n({
+      legacy: false,
+      locale: 'zh-CN',
+      fallbackLocale: 'en',
+      missingWarn: false,
+      fallbackWarn: false,
+      messages: {
+        en: projectTerminologyMessages({
+          base: { 'base.route.users': { Users: 'People' } },
+        }),
+        'zh-CN': {},
+      },
+    }).global);
+
+    expect(composer.te(reference.key, 'zh-CN')).toBe(false);
     expect(translateTerm(composer, reference, 'Legacy users')).toBe('People');
   });
 
@@ -110,6 +134,22 @@ describe('createTranslate', () => {
     expect(translateTerm({ t: () => { throw new Error('unavailable'); } }, reference, 'Legacy title'))
       .toBe('Legacy title');
     expect(translateTerm(undefined, undefined, 'Plain title')).toBe('Plain title');
+  });
+
+  it('reads globalThis.$i18n when window.$i18n is absent', () => {
+    const composer = { t: () => 'ok' };
+    delete (globalThis as { window?: unknown }).window;
+    (globalThis as { $i18n?: ComposerLike }).$i18n = composer;
+    expect(getGlobalComposer()).toBe(composer);
+    delete (globalThis as { $i18n?: ComposerLike }).$i18n;
+  });
+
+  it('uses explicit terminology lang when composer locale differs', () => {
+    const reference = createTermReference('base', 'Users', { scope: 'base.route.users' });
+    const composer: ComposerLike = {
+      t: (key, fallback, options) => (options?.locale === 'en' ? 'People' : fallback),
+    };
+    expect(translateTerm(composer, reference, 'Legacy users', 'en_US')).toBe('People');
   });
 
   it('reacts to locale changes through the caller composer', () => {
