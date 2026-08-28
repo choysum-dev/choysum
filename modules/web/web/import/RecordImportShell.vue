@@ -53,7 +53,7 @@ const model = computed(() => {
   const direct = String(props.model ?? '').trim();
   return direct || scope.model.value;
 });
-const companyId = computed(() => props.companyId ?? scope.companyId.value);
+const companyId = computed(() => props.companyId?.trim() || scope.companyId.value);
 const columnMapping = computed(() => props.columnMapping ?? scope.columnMapping.value);
 const uploadHint = computed(() => props.uploadHint ?? scope.uploadHint.value);
 </script>

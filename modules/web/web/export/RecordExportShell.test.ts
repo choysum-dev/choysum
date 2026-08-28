@@ -88,6 +88,20 @@ describe('RecordExportShell', () => {
     expect(wrapper.find('[data-test="export-panel"]').attributes('data-company-id')).toBe('cmp-override');
   });
 
+  it('falls back to scope company when companyId prop is blank', async () => {
+    getCurrentRequestContext.mockReturnValue({ activeCompanyId: 'cmp-scope' });
+    const { default: RecordExportShell } = await import('./RecordExportShell.vue');
+    const wrapper = mount(RecordExportShell, {
+      props: {
+        model: 'partner.Partner',
+        store: { storeId: 's1' },
+        companyId: '  ',
+        open: false,
+      },
+    });
+    expect(wrapper.find('[data-test="export-panel"]').attributes('data-company-id')).toBe('cmp-scope');
+  });
+
   it('updates open binding and tolerates a missing list ref', async () => {
     const { default: RecordExportShell } = await import('./RecordExportShell.vue');
     const wrapper = mount(RecordExportShell, {

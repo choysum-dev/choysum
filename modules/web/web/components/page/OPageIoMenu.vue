@@ -53,7 +53,9 @@ const visibleItems = computed(() => (props.items ?? []).filter(item => !item.hid
 
 function onCommand(key: string) {
   const item = visibleItems.value.find(entry => entry.key === key);
-  item?.onClick();
+  if (item && !item.disabled) {
+    item.onClick();
+  }
 }
 </script>
 

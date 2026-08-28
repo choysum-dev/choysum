@@ -99,4 +99,13 @@ describe('OPageIoMenu', () => {
     expect(onExport).not.toHaveBeenCalled();
     expect(onImport).not.toHaveBeenCalled();
   });
+
+  it('does not invoke onClick for disabled items when commanded', async () => {
+    const onImport = vi.fn();
+    const wrapper = mountMenu([
+      { key: 'import', label: 'Import', disabled: true, onClick: onImport },
+    ]);
+    await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('command', 'import');
+    expect(onImport).not.toHaveBeenCalled();
+  });
 });

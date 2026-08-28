@@ -40,7 +40,7 @@ const scope = useRecordExportScope({
   getListRef: () => props.listRef ?? null,
 });
 
-const resolvedCompanyId = computed(() => props.companyId ?? scope.companyId.value);
+const resolvedCompanyId = computed(() => props.companyId?.trim() || scope.companyId.value);
 const ids = scope.ids;
 const domain = scope.domain;
 const defaultFields = scope.defaultFields;

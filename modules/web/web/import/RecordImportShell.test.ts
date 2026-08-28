@@ -95,6 +95,18 @@ describe('RecordImportShell', () => {
     expect(panel.attributes('data-company-id')).toBe('');
   });
 
+  it('falls back to scope company when companyId prop is blank', async () => {
+    getCurrentRequestContext.mockReturnValue({ activeCompanyId: 'cmp-scope' });
+    const { default: RecordImportShell } = await import('./RecordImportShell.vue');
+    const wrapper = mount(RecordImportShell, {
+      props: {
+        model: 'partner.Partner',
+        companyId: '   ',
+      },
+    });
+    expect(wrapper.find('[data-test="import-panel"]').attributes('data-company-id')).toBe('cmp-scope');
+  });
+
   it('builds fallback scope when config is omitted and model is absent', async () => {
     const { default: RecordImportShell } = await import('./RecordImportShell.vue');
     const wrapper = mount(RecordImportShell, {
