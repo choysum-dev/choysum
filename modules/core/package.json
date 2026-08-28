@@ -24,6 +24,7 @@
     "moment-timezone": "^0.5.48",
     "pinia": "^3.0.4",
     "vue": "^3.5.35",
+    "vue-i18n": "^11.4.5",
     "vue-router": "^5.1.0"
   },
   "choysum": {
