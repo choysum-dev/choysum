@@ -7,6 +7,51 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
+#: service/models/export_template.ts:83
+msgctxt "web.model.ExportTemplate"
+msgid "Cannot assign an export template to another user"
+msgstr ""
+
+#: service/models/export_template.ts:35
+msgctxt "web.model.ExportTemplate.fields"
+msgid "Application"
+msgstr ""
+
+#: service/models/export_template.ts:63
+msgctxt "web.model.ExportTemplate.fields"
+msgid "Fields"
+msgstr ""
+
+#: service/models/export_template.ts:71
+msgctxt "web.model.ExportTemplate.fields"
+msgid "Import Compatible"
+msgstr ""
+
+#: service/models/export_template.ts:44
+msgctxt "web.model.ExportTemplate.fields"
+msgid "Model Name"
+msgstr ""
+
+#: service/models/export_template.ts:26
+msgctxt "web.model.ExportTemplate.fields"
+msgid "Name"
+msgstr ""
+
+#: service/models/export_template.ts:64
+msgctxt "web.model.ExportTemplate.fields"
+msgid "Ordered export field paths (slash-separated)."
+msgstr ""
+
+#: service/models/export_template.ts:55
+msgctxt "web.model.ExportTemplate.fields"
+msgid "User"
+msgstr ""
+
+#: service/models/export_template.ts:72
+msgctxt "web.model.ExportTemplate.fields"
+msgid "When true, saved paths are intended for import round-trip workflows."
+msgstr ""
+
 #: service/models/user_filter.ts:122
 msgctxt "web.model.UserFilter"
 msgid "Cannot assign a favorite to another user"
@@ -1764,6 +1809,101 @@ msgstr ""
 #: web/composables/useOnchangeAggregation.ts:152
 msgctxt "web/composables/useOnchangeAggregation"
 msgid "Operation cancelled"
+msgstr ""
+
+#: web/export/ExportPanel.vue:33
+msgctxt "web/export/ExportPanel"
+msgid "CSV stored as document %ref."
+msgstr ""
+
+#: web/export/ExportPanel.vue:28
+msgctxt "web/export/ExportPanel"
+msgid "Cancel"
+msgstr ""
+
+#: web/export/ExportPanel.vue:27
+msgctxt "web/export/ExportPanel"
+msgid "Customize fields…"
+msgstr ""
+
+#: web/export/ExportPanel.vue:39
+msgctxt "web/export/ExportPanel"
+msgid "Delete"
+msgstr ""
+
+#: web/export/ExportPanel.vue:31
+msgctxt "web/export/ExportPanel"
+msgid "Done"
+msgstr ""
+
+#: web/export/ExportPanel.vue:26
+msgctxt "web/export/ExportPanel"
+msgid "Export"
+msgstr ""
+
+#: web/export/ExportPanel.vue:43
+msgctxt "web/export/ExportPanel"
+msgid "Export %count row(s) matching the current filters."
+msgstr ""
+
+#: web/export/ExportPanel.vue:42
+msgctxt "web/export/ExportPanel"
+msgid "Export %count selected row(s)."
+msgstr ""
+
+#: web/export/ExportPanel.vue:30
+msgctxt "web/export/ExportPanel"
+msgid "Export CSV"
+msgstr ""
+
+#: web/export/ExportPanel.vue:32
+msgctxt "web/export/ExportPanel"
+msgid "Export completed"
+msgstr ""
+
+#: web/export/ExportPanel.vue:44
+msgctxt "web/export/ExportPanel"
+msgid "Export rows matching the current filters."
+msgstr ""
+
+#: web/export/ExportPanel.vue:37
+msgctxt "web/export/ExportPanel"
+msgid "Load template"
+msgstr ""
+
+#: web/export/ExportPanel.vue:34
+msgctxt "web/export/ExportPanel"
+msgid "Loading fields…"
+msgstr ""
+
+#: web/export/ExportPanel.vue:35
+msgctxt "web/export/ExportPanel"
+msgid "No exportable fields were returned."
+msgstr ""
+
+#: web/export/ExportPanel.vue:29
+msgctxt "web/export/ExportPanel"
+msgid "Preview"
+msgstr ""
+
+#: web/export/ExportPanel.vue:38
+msgctxt "web/export/ExportPanel"
+msgid "Save template"
+msgstr ""
+
+#: web/export/ExportPanel.vue:36
+msgctxt "web/export/ExportPanel"
+msgid "Saved templates"
+msgstr ""
+
+#: web/export/ExportPanel.vue:41
+msgctxt "web/export/ExportPanel"
+msgid "Shared"
+msgstr ""
+
+#: web/export/ExportPanel.vue:40
+msgctxt "web/export/ExportPanel"
+msgid "Template name"
 msgstr ""
 
 #: web/menu/menus.ts:18

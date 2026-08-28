@@ -229,6 +229,236 @@
         "PermCreate": false,
         "PermDelete": true
       }
+    },
+    {
+      "name": "rma_base_user_web_export_template_search",
+      "application": "auth",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": {
+          "serviceRef": "web.ExportTemplate/Search"
+        },
+        "LogicalModelName": null,
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rma_base_user_web_export_template_browse",
+      "application": "auth",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": {
+          "serviceRef": "web.ExportTemplate/Browse"
+        },
+        "LogicalModelName": null,
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rma_base_user_web_export_template_create",
+      "application": "auth",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": {
+          "serviceRef": "web.ExportTemplate/Create"
+        },
+        "LogicalModelName": null,
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rma_base_user_web_export_template_update",
+      "application": "auth",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": {
+          "serviceRef": "web.ExportTemplate/Update"
+        },
+        "LogicalModelName": null,
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rma_base_user_web_export_template_update_by_id",
+      "application": "auth",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": {
+          "serviceRef": "web.ExportTemplate/UpdateById"
+        },
+        "LogicalModelName": null,
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rma_base_user_web_export_template_delete",
+      "application": "auth",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": {
+          "serviceRef": "web.ExportTemplate/Delete"
+        },
+        "LogicalModelName": null,
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rma_base_user_web_export_template_delete_by_id",
+      "application": "auth",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": {
+          "serviceRef": "web.ExportTemplate/DeleteById"
+        },
+        "LogicalModelName": null,
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rfr_base_user_web_export_template_rw",
+      "application": "auth",
+      "model": "RoleFieldRule",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": {
+          "modelRef": "web.ExportTemplate"
+        },
+        "MetaFieldId": null,
+        "PermRead": "allow",
+        "PermWrite": "allow"
+      }
+    },
+    {
+      "name": "rrr_base_user_web_export_template_rc",
+      "application": "auth",
+      "model": "RoleRecordRule",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "Kind": "grant",
+        "MetaApplicationId": null,
+        "MetaModelId": {
+          "modelRef": "web.ExportTemplate"
+        },
+        "Condition": {
+          "Or": [
+            [
+              "UserId",
+              "=",
+              "$userId"
+            ],
+            [
+              "UserId",
+              "is",
+              null
+            ]
+          ]
+        },
+        "PermRead": true,
+        "PermWrite": false,
+        "PermCreate": true,
+        "PermDelete": false
+      }
+    },
+    {
+      "name": "rrr_base_user_web_export_template_wd_private",
+      "application": "auth",
+      "model": "RoleRecordRule",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "Kind": "grant",
+        "MetaApplicationId": null,
+        "MetaModelId": {
+          "modelRef": "web.ExportTemplate"
+        },
+        "Condition": {
+          "And": [
+            [
+              "UserId",
+              "=",
+              "$userId"
+            ]
+          ]
+        },
+        "PermRead": false,
+        "PermWrite": true,
+        "PermCreate": false,
+        "PermDelete": true
+      }
+    },
+    {
+      "name": "rrr_base_user_web_export_template_wd_shared",
+      "application": "auth",
+      "model": "RoleRecordRule",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "Kind": "grant",
+        "MetaApplicationId": null,
+        "MetaModelId": {
+          "modelRef": "web.ExportTemplate"
+        },
+        "Condition": {
+          "And": [
+            [
+              "UserId",
+              "is",
+              null
+            ],
+            [
+              "CreatedUid",
+              "=",
+              "$userId"
+            ]
+          ]
+        },
+        "PermRead": false,
+        "PermWrite": true,
+        "PermCreate": false,
+        "PermDelete": true
+      }
     }
   ]
 }

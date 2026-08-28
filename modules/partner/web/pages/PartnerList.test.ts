@@ -37,7 +37,7 @@ vi.mock('@/web/web/stores/registry', () => ({
   createStoreByModel: createStoreByModelMock,
 }));
 
-vi.mock('@/core/web/export', () => ({
+vi.mock('@/web/web/export', () => ({
   ExportPanel: {
     name: 'ExportPanelStub',
     props: ['model', 'companyId', 'ids', 'domain', 'defaultFields', 'filteredCount', 'modelValue'],

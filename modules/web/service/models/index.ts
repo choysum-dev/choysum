@@ -5,3 +5,4 @@
  * Web service model exports.
  */
 export { default as UserFilter } from './user_filter';
+export { default as ExportTemplate } from './export_template';
