@@ -10,8 +10,9 @@
   Gateway dials each `{app}.TranslationTerm.GetTranslations` for module `core`
   alongside the app's own modules.
 - Service code imports `_t` / `_lt` from `modules/core/service/i18n_binder.ts`
-  (`createTranslate('core')`). Frontend fallbacks use
-  `createTranslate('core', …)` from `@/web/web/i18n` (same `{ _t, _lt }` shape).
+  (`createTranslate('core')`). Frontend fallbacks in `core/web` use
+  `createTranslate('core', …)` from `@/core/service/i18n` (browser resolves via
+  `$choysum.i18n.t` installed in `web/app.ts`).
 - Core owns the shared i18n **platform** under `service/i18n/`; keep that package
   free of module-owned `_t('…')` / `_lt('…')` literals so catalogs stay cross-cutting only.
 - Core has no domain menus/routes/views — Ir* chrome lives in `modules/meta`.

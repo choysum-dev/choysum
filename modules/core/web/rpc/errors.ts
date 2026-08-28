@@ -3,7 +3,7 @@
 
 import { Code, ConnectError } from '@connectrpc/connect';
 import { ErrorInfoSchema, ChoysumError } from '../../error';
-import { createTranslate } from '@/web/web/i18n';
+import { createTranslate } from '@/core/service/i18n';
 
 const { _t } = createTranslate('core', { scope: 'web/rpc/errors' });
 

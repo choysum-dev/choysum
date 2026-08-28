@@ -19,6 +19,7 @@ import { setGlobalRequestContextProvider } from '@/core/rpc/context';
 import { createTerminologyCatalogMerger } from './stores/i18nStore/merge';
 import { projectTerminologyMessages } from './i18n/terminology';
 import {
+  installBrowserI18nBridge,
   notifyComposerMessagesChanged,
   trackComposerMessageRevision,
 } from './i18n';
@@ -110,6 +111,7 @@ function setupApp(app: ChoysumWebApp): void {
   // Expose i18n globally for non-component callers.
   if (typeof window !== 'undefined') {
     (window as any).$i18n = i18n.global;
+    installBrowserI18nBridge();
   }
 
   // React to locale changes: Element + legacy source coexist + Gateway merge (S4-1).

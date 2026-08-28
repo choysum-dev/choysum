@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ChoysumError } from '../../error';
-import { createTranslate } from '@/web/web/i18n';
+import { createTranslate } from '@/core/service/i18n';
 
 const { _t } = createTranslate('core', { scope: 'web/error/ui' });
 

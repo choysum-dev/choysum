@@ -7,17 +7,18 @@ import { computed, nextTick } from 'vue';
 
 import {
   createTranslate,
-  notifyComposerMessagesChanged,
-  trackComposerMessageRevision,
-  translateTerm,
-  type ComposerLike,
-} from './translate';
-import { projectTerminologyMessages } from './terminology';
-import {
   createTermReference,
   createTermReferenceKey,
   withI18nScope,
 } from '@/core/service/i18n';
+import {
+  installBrowserI18nBridge,
+  notifyComposerMessagesChanged,
+  trackComposerMessageRevision,
+  translateTerm,
+  type ComposerLike,
+} from './index';
+import { projectTerminologyMessages } from './terminology';
 
 /**
  * Erase vue-i18n Composer generics. Passing `MessageRecord` into `createI18n`
@@ -46,12 +47,14 @@ function installI18n(locale = 'zh-CN'): TestComposer {
   (globalThis as { window?: { $i18n?: unknown } }).window = {
     $i18n: composer,
   };
+  installBrowserI18nBridge();
   return composer;
 }
 
 describe('createTranslate', () => {
   afterEach(() => {
     delete (globalThis as { window?: unknown }).window;
+    delete (globalThis as { $choysum?: unknown }).$choysum;
   });
 
   it('falls back to msgid when i18n is missing', () => {

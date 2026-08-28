@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const prepareUpload = vi.fn();
 const finalizeUpload = vi.fn();
 
-vi.mock('@/web/web/stores/registry', () => ({
+vi.mock('@/core/web/stores/registry', () => ({
   createStoreByModel: vi.fn(() => ({
     PrepareUpload: prepareUpload,
     FinalizeUpload: finalizeUpload,
@@ -114,7 +114,7 @@ describe('uploadImportCsv', () => {
   });
 
   it('fails when attachment service is unavailable', async () => {
-    const registry = await import('@/web/web/stores/registry');
+    const registry = await import('@/core/web/stores/registry');
     (registry.createStoreByModel as any).mockReturnValueOnce({});
     const { uploadImportCsv } = await import('./upload_csv');
     const file = new File(['x'], 'partners.csv', { type: 'text/csv' });
