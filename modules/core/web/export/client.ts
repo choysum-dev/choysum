@@ -25,6 +25,12 @@ export type ExportRunInput = {
   companyId?: string;
 };
 
+export type ExportTerminologyRunInput = {
+  application: string;
+  module: string;
+  lang: string;
+};
+
 type ExportHubClient = {
   describeFields(req: ReturnType<typeof create<typeof DescribeFieldsRequestSchema>>, options?: ExportCallOptions): Promise<DescribeFieldsResponse>;
   preview(req: ReturnType<typeof create<typeof ExportRunRequestSchema>>, options?: ExportCallOptions): Promise<ExportRunResponse>;
@@ -55,6 +61,15 @@ function toRunRequest(input: ExportRunInput) {
   });
 }
 
+function toTerminologyRunRequest(input: ExportTerminologyRunInput) {
+  return create(ExportRunRequestSchema, {
+    profile: 'terminology',
+    application: input.application,
+    module_: input.module,
+    lang: input.lang,
+  });
+}
+
 export function describeExportFields(model: string, signal?: AbortSignal): Promise<DescribeFieldsResponse> {
   return exportHub().describeFields(create(DescribeFieldsRequestSchema, { model }), callOptions(signal));
 }
@@ -65,6 +80,10 @@ export function previewExport(input: ExportRunInput, signal?: AbortSignal): Prom
 
 export function runExport(input: ExportRunInput, signal?: AbortSignal): Promise<ExportRunResponse> {
   return exportHub().run(toRunRequest(input), callOptions(signal));
+}
+
+export function runTerminologyExport(input: ExportTerminologyRunInput, signal?: AbortSignal): Promise<ExportRunResponse> {
+  return exportHub().run(toTerminologyRunRequest(input), callOptions(signal));
 }
 
 export { ExportHub, ExportMode, type DescribeFieldsResponse, type ExportFieldNode, type ExportReport, type ExportRunResponse };

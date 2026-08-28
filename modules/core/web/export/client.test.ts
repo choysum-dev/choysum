@@ -73,4 +73,19 @@ describe('core/web export client', () => {
     expect(preview).toHaveBeenCalledWith(expect.any(Object), { signal });
     expect(run).toHaveBeenCalledWith(expect.any(Object), { signal });
   });
+
+  it('calls runTerminologyExport with terminology profile fields', async () => {
+    run.mockResolvedValue({ report: { stats: { ok: 1 } }, poData: new Uint8Array([112, 111]) });
+    const { runTerminologyExport } = await import('./client');
+    await runTerminologyExport({ application: 'auth', module: 'base', lang: 'zh_CN' });
+    expect(run).toHaveBeenCalledWith(
+      create(ExportRunRequestSchema, {
+        profile: 'terminology',
+        application: 'auth',
+        module_: 'base',
+        lang: 'zh_CN',
+      }),
+      undefined
+    );
+  });
 });
