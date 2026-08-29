@@ -9,11 +9,8 @@ import { createI18n } from 'vue-i18n';
 
 config.global.renderStubDefaultSlot = true;
 
-const { refresh, exportFieldSelection, buildUnifiedQuery, listSelectedItems, createStoreByModelMock } = vi.hoisted(() => ({
+const { refresh, createStoreByModelMock } = vi.hoisted(() => ({
   refresh: vi.fn(),
-  exportFieldSelection: vi.fn(() => ['Name', 'CompanyId.Code', 'Id']),
-  buildUnifiedQuery: vi.fn(() => ({ filters: { And: [{ field: 'Name', op: 'contains', value: 'A' }] } })),
-  listSelectedItems: { current: { value: [{ Id: 'p1' }, { Id: 'p2' }] } as { value?: { Id?: string }[] } | { Id?: string }[] },
   createStoreByModelMock: vi.fn(() => ({
     Search: vi.fn(),
     storeId: 'Partner_/partner/partners',
@@ -40,28 +37,20 @@ vi.mock('@/web/web/stores/registry', () => ({
 vi.mock('@/web/web/export', () => ({
   RecordExportShell: {
     name: 'RecordExportShellStub',
-    props: ['model', 'store', 'listRef', 'companyId', 'open'],
-    emits: ['update:open'],
-    template: '<div data-test="export-shell-stub" :data-model="model" :data-open="String(open)" />',
+    props: ['model', 'store', 'listRef', 'companyId', 'open', 'modelValue'],
+    emits: ['update:open', 'update:modelValue'],
+    template: '<div data-test="export-shell-stub" :data-model="model" :data-open="String(open ?? modelValue)" />',
   },
 }));
 
 vi.mock('@/web/web/import', () => ({
   RecordImportShell: {
     name: 'RecordImportShellStub',
-    props: ['model', 'companyId', 'uploadHint', 'open'],
-    emits: ['update:open', 'imported'],
+    props: ['config', 'companyId', 'open', 'modelValue'],
+    emits: ['update:open', 'update:modelValue', 'imported'],
     template:
-      '<div data-test="import-shell-stub" :data-model="model" :data-company-id="companyId" :data-open="String(open)"><button data-test="emit-imported" @click="$emit(\'imported\')">import</button></div>',
+      '<div data-test="import-shell-stub" :data-model="config?.model" :data-company-id="companyId || \'\'" :data-open="String(open ?? modelValue)"><button data-test="emit-imported" @click="$emit(\'imported\')">import</button></div>',
   },
-}));
-
-vi.mock('@/web/web/query/utils/registry/field', () => ({
-  exportFieldSelection,
-}));
-
-vi.mock('@/web/web/query/context', () => ({
-  buildUnifiedQuery,
 }));
 
 vi.mock('../views/PartnerListView.vue', () => ({
@@ -71,9 +60,7 @@ vi.mock('../views/PartnerListView.vue', () => ({
     setup(_: unknown, { expose }: { expose: (exposed: Record<string, unknown>) => void }) {
       expose({
         refresh,
-        get selectedItems() {
-          return listSelectedItems.current;
-        },
+        selectedItems: { value: [{ Id: 'p1' }, { Id: 'p2' }] },
       });
       return () => null;
     },
@@ -97,12 +84,20 @@ async function mountPartnerList(extraStubs: Record<string, unknown> = {}) {
         OPage: {
           template: '<div><div class="title-actions"><slot name="title-actions" /></div><slot /></div>',
         },
-        OPageIoMenu: {
-          name: 'OPageIoMenuStub',
-          props: ['items'],
-          template:
-            '<div data-test="io-menu"><button v-for="item in items" :key="item.key" :data-test="`io-${item.key}`" @click="item.onClick()">{{ item.label }}</button></div>',
+        'el-dropdown': {
+          name: 'ElDropdown',
+          emits: ['command'],
+          template: '<div data-test="dropdown"><slot /><slot name="dropdown" /></div>',
         },
+        'el-dropdown-menu': { template: '<div><slot /></div>' },
+        'el-dropdown-item': {
+          props: ['command', 'disabled'],
+          template:
+            '<button type="button" :data-test="`page-io-menu-${command}`" :disabled="disabled"><slot /></button>',
+        },
+        'el-button': { template: '<button type="button"><slot /></button>' },
+        'el-icon': { template: '<span><slot /></span>' },
+        Setting: true,
         ...extraStubs,
       },
     },
@@ -111,48 +106,41 @@ async function mountPartnerList(extraStubs: Record<string, unknown> = {}) {
 
 describe('PartnerList page', () => {
   beforeEach(async () => {
-    listSelectedItems.current = { value: [{ Id: 'p1' }, { Id: 'p2' }] };
-    exportFieldSelection.mockReturnValue(['Name', 'CompanyId.Code', 'Id']);
     createStoreByModelMock.mockReturnValue({
       Search: vi.fn(),
       storeId: 'Partner_/partner/partners',
       state: { result: { total: 3 }, queryState: { appliedFilters: [] } },
     });
-    buildUnifiedQuery.mockReturnValue({ filters: { And: [{ field: 'Name', op: 'contains', value: 'A' }] } });
     const ctx = await import('@/core/rpc/context');
     (ctx.getCurrentRequestContext as any).mockReset();
     (ctx.getCurrentRequestContext as any).mockReturnValue({ activeCompanyId: 'cmp-1' });
+    refresh.mockClear();
     vi.resetModules();
+  });
+
+  it('wires IO menu with partner config store and list ref', async () => {
+    const wrapper = await mountPartnerList();
+    await nextTick();
+    const menu = wrapper.findComponent({ name: 'OPageIoMenu' });
+    expect(menu.props('config')).toMatchObject({ model: 'partner.Partner' });
+    expect(menu.props('store')?.storeId).toBe('Partner_/partner/partners');
+    expect(menu.props('listRef')).toBeTruthy();
+    expect(wrapper.find('[data-test="import-shell-stub"]').attributes('data-model')).toBe('partner.Partner');
+    expect(wrapper.find('[data-test="export-shell-stub"]').attributes('data-model')).toBe('partner.Partner');
+  });
+
+  it('opens import and export from title IO menu', async () => {
+    const wrapper = await mountPartnerList();
+    await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('command', 'import');
+    expect(wrapper.find('[data-test="import-shell-stub"]').attributes('data-open')).toBe('true');
+    await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('command', 'export');
+    expect(wrapper.find('[data-test="export-shell-stub"]').attributes('data-open')).toBe('true');
   });
 
   it('refreshes list after import completes', async () => {
     const wrapper = await mountPartnerList();
     await wrapper.find('[data-test="emit-imported"]').trigger('click');
     expect(refresh).toHaveBeenCalled();
-  });
-
-  it('renders import and export shells for partner.Partner', async () => {
-    const wrapper = await mountPartnerList();
-    const importShell = wrapper.find('[data-test="import-shell-stub"]');
-    const exportShell = wrapper.find('[data-test="export-shell-stub"]');
-    expect(importShell.attributes('data-model')).toBe('partner.Partner');
-    expect(exportShell.attributes('data-model')).toBe('partner.Partner');
-    expect(importShell.attributes('data-company-id')).toBe('cmp-1');
-  });
-
-  it('opens import and export from title IO menu', async () => {
-    const wrapper = await mountPartnerList();
-    await wrapper.find('[data-test="io-import"]').trigger('click');
-    expect(wrapper.find('[data-test="import-shell-stub"]').attributes('data-open')).toBe('true');
-    await wrapper.find('[data-test="io-export"]').trigger('click');
-    expect(wrapper.find('[data-test="export-shell-stub"]').attributes('data-open')).toBe('true');
-  });
-
-  it('uses empty company id when request context has no company', async () => {
-    const ctx = await import('@/core/rpc/context');
-    (ctx.getCurrentRequestContext as any).mockReturnValue({});
-    const wrapper = await mountPartnerList();
-    expect(wrapper.find('[data-test="import-shell-stub"]').attributes('data-company-id')).toBe('');
   });
 
   it('does not fail import refresh when list view exposes no refresh', async () => {
@@ -165,13 +153,5 @@ describe('PartnerList page', () => {
     });
     await wrapper.find('[data-test="emit-imported"]').trigger('click');
     expect(refresh).not.toHaveBeenCalled();
-  });
-
-  it('passes list view ref to export shell', async () => {
-    const wrapper = await mountPartnerList();
-    await nextTick();
-    const shell = wrapper.findComponent({ name: 'RecordExportShellStub' });
-    expect(shell.props('listRef')).toBeTruthy();
-    expect(shell.props('store')?.storeId).toBe('Partner_/partner/partners');
   });
 });
