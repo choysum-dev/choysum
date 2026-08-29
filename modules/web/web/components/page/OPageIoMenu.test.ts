@@ -19,10 +19,10 @@ const i18n = createI18n({
 vi.mock('@/web/web/import', () => ({
   RecordImportShell: {
     name: 'RecordImportShellStub',
-    props: ['modelValue', 'config', 'companyId', 'open'],
+    props: ['modelValue', 'model', 'config', 'companyId', 'open'],
     emits: ['update:open', 'update:modelValue', 'imported'],
     template:
-      '<div data-test="import-shell-stub" :data-model="config?.model" :data-company-id="companyId || \'\'" :data-open="String(open ?? modelValue)"><button data-test="emit-imported" @click="$emit(\'imported\')">import</button></div>',
+      '<div data-test="import-shell-stub" :data-model="model || \'\'" :data-company-id="companyId || \'\'" :data-open="String(open ?? modelValue)"><button data-test="emit-imported" @click="$emit(\'imported\')">import</button></div>',
   },
 }));
 
@@ -132,10 +132,9 @@ describe('OPageIoMenu', () => {
 
   it('derives menu and panels from config', async () => {
     const refresh = vi.fn();
-    const store = { storeId: 's1', state: { result: { total: 2 } } };
+    const store = { storeId: 's1', fullModelName: 'partner.Partner', state: { result: { total: 2 } } };
     const wrapper = await mountMenu({
       config: {
-        model: 'partner.Partner',
         import: { enabled: true, uploadHint: 'hint' },
         export: { enabled: true },
       },
@@ -155,20 +154,37 @@ describe('OPageIoMenu', () => {
     expect(wrapper.emitted('imported')).toBeTruthy();
   });
 
-  it('skips export panel when store is missing', async () => {
+  it('skips panels when store is missing', async () => {
     const wrapper = await mountMenu({
       config: {
-        model: 'partner.Partner',
         import: { enabled: true },
         export: { enabled: true },
       },
     });
-    expect(wrapper.find('[data-test="import-shell-stub"]').exists()).toBe(true);
+    expect(wrapper.find('[data-test="import-shell-stub"]').exists()).toBe(false);
+    expect(wrapper.find('[data-test="export-shell-stub"]').exists()).toBe(false);
+    expect(wrapper.find('[data-test="page-io-menu-import"]').exists()).toBe(false);
+    expect(wrapper.find('[data-test="page-io-menu-export"]').exists()).toBe(false);
+  });
+
+  it('skips panels when store lacks fullModelName', async () => {
+    const wrapper = await mountMenu({
+      config: {
+        import: { enabled: true },
+        export: { enabled: true },
+      },
+      store: { storeId: 's1', state: { result: { total: 1 } } },
+    });
+    expect(wrapper.find('[data-test="import-shell-stub"]').exists()).toBe(false);
     expect(wrapper.find('[data-test="export-shell-stub"]').exists()).toBe(false);
   });
 
   it('resolves store from OPage context when prop is omitted', async () => {
-    const pageStore = { storeId: 'from-page', state: { result: { total: 1 } } };
+    const pageStore = {
+      storeId: 'from-page',
+      fullModelName: 'partner.Partner',
+      state: { result: { total: 1 } },
+    };
     const { default: OPageIoMenu } = await import('./OPageIoMenu.vue');
     const { provideOPageContext } = await import('@/web/web/composables/usePageContext');
     const Host = defineComponent({
@@ -182,7 +198,6 @@ describe('OPageIoMenu', () => {
         default: () =>
           h(OPageIoMenu, {
             config: {
-              model: 'partner.Partner',
               export: { enabled: true },
             },
           }),
@@ -195,5 +210,6 @@ describe('OPageIoMenu', () => {
     const shell = wrapper.findComponent({ name: 'RecordExportShellStub' });
     expect(shell.exists()).toBe(true);
     expect(shell.props('store')).toBe(pageStore);
+    expect(shell.props('model')).toBe('partner.Partner');
   });
 });

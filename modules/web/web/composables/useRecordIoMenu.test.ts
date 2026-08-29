@@ -36,7 +36,6 @@ describe('useRecordIoMenu', () => {
     const openExport = vi.fn();
     const { items, visible } = useRecordIoMenu({
       config: {
-        model: 'partner.Partner',
         import: { enabled: true },
         export: { enabled: true },
       },
@@ -53,7 +52,7 @@ describe('useRecordIoMenu', () => {
 
   it('hides menu when neither import nor export is enabled', () => {
     const { visible, items } = useRecordIoMenu({
-      config: { model: 'partner.Partner' },
+      config: {},
     });
     expect(visible.value).toBe(false);
     expect(items.value).toEqual([]);
@@ -63,7 +62,6 @@ describe('useRecordIoMenu', () => {
     const openImport = vi.fn();
     const openExport = vi.fn();
     const config = ref({
-      model: 'partner.Partner',
       import: { enabled: true },
       export: { enabled: true },
     });
@@ -80,7 +78,6 @@ describe('useRecordIoMenu', () => {
       { key: 'export', label: 'Ship out' },
     ]);
     config.value = {
-      model: 'partner.Partner',
       export: { enabled: true },
     };
     expect(menu.items.value.map(i => ({ key: i.key, label: i.label }))).toEqual([
@@ -92,7 +89,6 @@ describe('useRecordIoMenu', () => {
   it('skips items when open callbacks are missing', () => {
     const { items, visible } = useRecordIoMenu({
       config: {
-        model: 'partner.Partner',
         import: { enabled: true },
         export: { enabled: true },
       },
@@ -210,10 +206,10 @@ describe('useRecordImportScope', () => {
     getCurrentRequestContext.mockReturnValue({ activeCompanyId: 'cmp-1' });
   });
 
-  it('resolves model mapping hint and company from plain config', () => {
+  it('resolves model mapping hint and company', () => {
     const scope = useRecordImportScope({
+      model: 'partner.Partner',
       config: {
-        model: 'partner.Partner',
         import: {
           enabled: true,
           columnMapping: { Name: 'name' },
@@ -229,16 +225,16 @@ describe('useRecordImportScope', () => {
 
   it('reads config from a ref and defaults mapping', () => {
     getCurrentRequestContext.mockReturnValue({ companyId: 'from-company' });
+    const model = ref('partner.Partner');
     const config = ref({
-      model: 'partner.Partner',
       import: { enabled: true },
     });
-    const scope = useRecordImportScope({ config });
+    const scope = useRecordImportScope({ model, config });
     expect(scope.companyId.value).toBe('from-company');
     expect(scope.columnMapping.value).toEqual({});
     expect(scope.uploadHint.value).toBeUndefined();
+    model.value = 'other.Model';
     config.value = {
-      model: 'other.Model',
       import: { enabled: true, uploadHint: 'next' },
     };
     expect(scope.model.value).toBe('other.Model');
@@ -246,8 +242,8 @@ describe('useRecordImportScope', () => {
   });
 
   it('tolerates a nullish config value', () => {
-    const scope = useRecordImportScope({ config: ref(null) as any });
-    expect(scope.model.value).toBe('');
+    const scope = useRecordImportScope({ model: 'partner.Partner', config: ref(null) as any });
+    expect(scope.model.value).toBe('partner.Partner');
     expect(scope.columnMapping.value).toEqual({});
     expect(scope.uploadHint.value).toBeUndefined();
   });

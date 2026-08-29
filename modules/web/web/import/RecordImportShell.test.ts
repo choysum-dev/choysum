@@ -48,12 +48,12 @@ describe('RecordImportShell', () => {
     expect(panel.attributes('data-open')).toBe('true');
   });
 
-  it('resolves model and defaults from config when direct model is omitted', async () => {
+  it('resolves hint and mapping from config when direct props are omitted', async () => {
     const { default: RecordImportShell } = await import('./RecordImportShell.vue');
     const wrapper = mount(RecordImportShell, {
       props: {
+        model: 'from.store',
         config: {
-          model: 'from.config',
           import: {
             enabled: true,
             uploadHint: 'from-config',
@@ -64,7 +64,7 @@ describe('RecordImportShell', () => {
       },
     });
     const panel = wrapper.find('[data-test="import-panel"]');
-    expect(panel.attributes('data-model')).toBe('from.config');
+    expect(panel.attributes('data-model')).toBe('from.store');
     expect(panel.attributes('data-company-id')).toBe('cmp-1');
     expect(panel.attributes('data-hint')).toBe('from-config');
     expect(panel.attributes('data-mapping')).toBe(JSON.stringify({ Code: 'code' }));
@@ -79,7 +79,6 @@ describe('RecordImportShell', () => {
         uploadHint: 'direct-hint',
         columnMapping: { A: 'a' },
         config: {
-          model: 'config.Model',
           import: {
             enabled: true,
             uploadHint: 'config-hint',
@@ -116,20 +115,6 @@ describe('RecordImportShell', () => {
     });
     expect(wrapper.find('[data-test="import-panel"]').attributes('data-model')).toBe('');
     expect(wrapper.find('[data-test="import-panel"]').attributes('data-mapping')).toBe('{}');
-  });
-
-  it('uses config model when the direct model prop is blank', async () => {
-    const { default: RecordImportShell } = await import('./RecordImportShell.vue');
-    const wrapper = mount(RecordImportShell, {
-      props: {
-        model: '   ',
-        config: {
-          model: 'from.config',
-          import: { enabled: true },
-        },
-      },
-    });
-    expect(wrapper.find('[data-test="import-panel"]').attributes('data-model')).toBe('from.config');
   });
 
   it('forwards imported and open updates', async () => {

@@ -36,6 +36,7 @@ SPDX-License-Identifier: Apache-2.0
   <RecordImportShell
     v-if="importEnabled"
     v-model:open="importOpen"
+    :model="resolvedModel"
     :config="config"
     :company-id="companyId"
     @imported="onImported"
@@ -43,7 +44,7 @@ SPDX-License-Identifier: Apache-2.0
   <RecordExportShell
     v-if="exportEnabled"
     v-model:open="exportOpen"
-    :model="config!.model"
+    :model="resolvedModel"
     :store="resolvedStore!"
     :list-ref="listRef"
     :company-id="companyId"
@@ -67,7 +68,11 @@ export type OPageIoMenuListRef = RecordExportListRef & {
   refresh?: () => Promise<void> | void;
 };
 
-type PageIoStore = { storeId?: string; state?: { result?: { total?: number } } };
+type PageIoStore = {
+  storeId?: string;
+  fullModelName?: string;
+  state?: { result?: { total?: number } };
+};
 
 const props = defineProps<{
   /** Low-level menu entries. When omitted, items are derived from `config`. */
@@ -93,16 +98,23 @@ const importOpen = ref(false);
 const exportOpen = ref(false);
 
 const resolvedStore = useResolvedOptionalPageStore<PageIoStore>(() => props.store);
+const resolvedModel = computed(() => String(resolvedStore.value?.fullModelName ?? '').trim());
 
-const importEnabled = computed(() => !!props.config?.import?.enabled);
-const exportEnabled = computed(() => !!props.config?.export?.enabled && !!resolvedStore.value);
+const importEnabled = computed(() => !!props.config?.import?.enabled && !!resolvedModel.value);
+const exportEnabled = computed(
+  () => !!props.config?.export?.enabled && !!resolvedStore.value && !!resolvedModel.value,
+);
 
 const menuConfig = computed<RecordIoConfig>(() => {
-  const base = props.config ?? { model: '' };
-  if (base.export?.enabled && !resolvedStore.value) {
-    return { ...base, export: { ...base.export, enabled: false } };
+  const base = props.config ?? {};
+  let next = base;
+  if (base.export?.enabled && (!resolvedStore.value || !resolvedModel.value)) {
+    next = { ...next, export: { ...base.export, enabled: false } };
   }
-  return base;
+  if (base.import?.enabled && !resolvedModel.value) {
+    next = { ...next, import: { ...base.import, enabled: false } };
+  }
+  return next;
 });
 
 const { items: configItems } = useRecordIoMenu({

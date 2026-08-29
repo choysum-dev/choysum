@@ -9,9 +9,8 @@ export type PageIoMenuItem = {
   onClick: () => void;
 };
 
-/** List/kanban page IO capability declaration. */
+/** List/kanban page IO capability declaration. Model comes from the page/list store. */
 export type RecordIoConfig = {
-  model: string;
   import?: {
     enabled: boolean;
     uploadHint?: string;

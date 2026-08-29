@@ -15,6 +15,7 @@ const { refresh, createStoreByModelMock } = vi.hoisted(() => ({
   createStoreByModelMock: vi.fn(() => ({
     Search: vi.fn(),
     storeId: 'Partner_/partner/partners',
+    fullModelName: 'partner.Partner',
     state: { result: { total: 3 }, queryState: { appliedFilters: [] } },
   })),
 }));
@@ -47,10 +48,10 @@ vi.mock('@/web/web/export', () => ({
 vi.mock('@/web/web/import', () => ({
   RecordImportShell: {
     name: 'RecordImportShellStub',
-    props: ['config', 'companyId', 'open', 'modelValue'],
+    props: ['config', 'model', 'companyId', 'open', 'modelValue'],
     emits: ['update:open', 'update:modelValue', 'imported'],
     template:
-      '<div data-test="import-shell-stub" :data-model="config?.model" :data-company-id="companyId || \'\'" :data-open="String(open ?? modelValue)"><button data-test="emit-imported" @click="$emit(\'imported\')">import</button></div>',
+      '<div data-test="import-shell-stub" :data-model="model || \'\'" :data-company-id="companyId || \'\'" :data-open="String(open ?? modelValue)"><button data-test="emit-imported" @click="$emit(\'imported\')">import</button></div>',
   },
 }));
 
@@ -124,6 +125,7 @@ describe('PartnerList page', () => {
     createStoreByModelMock.mockReturnValue({
       Search: vi.fn(),
       storeId: 'Partner_/partner/partners',
+      fullModelName: 'partner.Partner',
       state: { result: { total: 3 }, queryState: { appliedFilters: [] } },
     });
     const ctx = await import('@/core/rpc/context');
@@ -137,12 +139,16 @@ describe('PartnerList page', () => {
     const wrapper = await mountPartnerList();
     await nextTick();
     const menu = wrapper.findComponent({ name: 'OPageIoMenu' });
-    expect(menu.props('config')).toMatchObject({ model: 'partner.Partner' });
+    expect(menu.props('config')).toMatchObject({
+      import: { enabled: true },
+      export: { enabled: true },
+    });
     expect(menu.props('store')).toBeUndefined();
     expect(menu.props('listRef')).toBeTruthy();
     expect(wrapper.find('[data-test="export-shell-stub"]').attributes('data-model')).toBe('partner.Partner');
     const exportShell = wrapper.findComponent({ name: 'RecordExportShellStub' });
     expect(exportShell.props('store')?.storeId).toBe('Partner_/partner/partners');
+    expect(exportShell.props('store')?.fullModelName).toBe('partner.Partner');
   });
 
   it('opens import and export from title IO menu', async () => {

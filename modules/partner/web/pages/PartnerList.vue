@@ -34,7 +34,6 @@ const route = useRoute();
 const listViewRef = ref<(RecordExportListRef & { refresh?: () => Promise<void> | void }) | null>(null);
 
 const ioConfig: RecordIoConfig = {
-  model: 'partner.Partner',
   import: {
     enabled: true,
     uploadHint: _t('Upload a UTF-8 CSV with columns Name, Code, IsActive, CustomerRank, SupplierRank.'),
