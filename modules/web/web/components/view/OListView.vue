@@ -166,7 +166,7 @@ import { shouldDeferViewFirstFrame } from '@/web/web/components/view/kanbanFirst
 import { canShowAction, type ActionIdMap } from '@/web/web/components/view/actionVisibility';
 import { createTranslate } from '@/web/web/i18n';
 import type { SelectionExpose, RowEventPayload } from '@/web/web/components/view/listViewTypes';
-import { resolvePageStore } from '@/web/web/composables/usePageContext';
+import { resolvePageStore, useRegisterPageActionTarget } from '@/web/web/composables/usePageContext';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/OListView' });
 
@@ -209,6 +209,8 @@ const props = withDefaults(
     handleField?: string;
     /** Show handle column when editable and metadata has handleField. */
     showHandle?: boolean;
+    /** Opt out of page IO action-target registration (embedded lists). */
+    registerActionTarget?: boolean;
   }>(),
   {
     showHeader: true,
@@ -823,6 +825,17 @@ defineExpose<
   load: loadData,
   inlineEdit,
   flatRows,
+});
+
+useRegisterPageActionTarget({
+  store,
+  enabled: () => props.registerActionTarget,
+  target: {
+    get selectedItems() {
+      return selectedItems.value;
+    },
+    refresh: () => loadData(),
+  },
 });
 
 // =============================

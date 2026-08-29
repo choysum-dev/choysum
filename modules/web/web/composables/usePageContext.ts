@@ -4,16 +4,29 @@
 import {
   computed,
   inject,
+  onBeforeUnmount,
+  onMounted,
   provide,
+  shallowRef,
+  toValue,
   type ComputedRef,
   type InjectionKey,
   type MaybeRefOrGetter,
-  toValue,
+  type ShallowRef,
 } from 'vue';
 
-/** Default screen-level store provided by `OPage`. */
+/** List/kanban surface used by page title Import/Export actions. */
+export type OPageActionTarget = {
+  selectedItems?: { value?: Array<{ Id?: string }> } | Array<{ Id?: string }> | null;
+  refresh?: () => Promise<void> | void;
+};
+
+/** Default screen-level store and optional primary view action target from `OPage`. */
 export type OPageContext = {
   store: ComputedRef<unknown | null>;
+  actionTarget: ShallowRef<OPageActionTarget | null>;
+  registerActionTarget: (target: OPageActionTarget) => void;
+  unregisterActionTarget: (target: OPageActionTarget) => void;
 };
 
 /** Stable across `vi.resetModules()` so provide/inject still match in unit tests. */
@@ -21,7 +34,24 @@ export const OPageContextKey: InjectionKey<OPageContext> = Symbol.for('choysum.o
 
 export function provideOPageContext(options: { store: MaybeRefOrGetter<unknown | null | undefined> }) {
   const store = computed(() => (toValue(options.store) ?? null) as unknown | null);
-  const ctx: OPageContext = { store };
+  const actionTarget = shallowRef<OPageActionTarget | null>(null);
+
+  function registerActionTarget(target: OPageActionTarget) {
+    actionTarget.value = target;
+  }
+
+  function unregisterActionTarget(target: OPageActionTarget) {
+    if (actionTarget.value === target) {
+      actionTarget.value = null;
+    }
+  }
+
+  const ctx: OPageContext = {
+    store,
+    actionTarget,
+    registerActionTarget,
+    unregisterActionTarget,
+  };
   provide(OPageContextKey, ctx);
   return ctx;
 }
@@ -65,5 +95,40 @@ export function useResolvedOptionalPageStore<T>(
       return fromProp;
     }
     return pageStore.value;
+  });
+}
+
+/**
+ * Register a list/kanban as the page IO action target when it shares the page store.
+ * Pass `enabled: false` to opt out (embedded views); `enabled: true` forces registration.
+ */
+export function useRegisterPageActionTarget(options: {
+  store: unknown;
+  target: OPageActionTarget;
+  enabled?: MaybeRefOrGetter<boolean | undefined>;
+}) {
+  const ctx = inject(OPageContextKey, null);
+  let registered = false;
+
+  onMounted(() => {
+    if (!ctx) {
+      return;
+    }
+    const flag = toValue(options.enabled);
+    const pageStore = ctx.store.value;
+    const matches = pageStore != null && options.store === pageStore;
+    const should = flag === true || (flag !== false && matches);
+    if (!should) {
+      return;
+    }
+    ctx.registerActionTarget(options.target);
+    registered = true;
+  });
+
+  onBeforeUnmount(() => {
+    if (registered && ctx) {
+      ctx.unregisterActionTarget(options.target);
+      registered = false;
+    }
   });
 }

@@ -177,7 +177,8 @@ describe('OPageIoMenu', () => {
     expect(wrapper.find('[data-test="export-shell-stub"]').exists()).toBe(false);
   });
 
-  it('resolves store from OPage context when prop is omitted', async () => {
+  it('resolves list ref from the page-registered action target', async () => {
+    const refresh = vi.fn();
     const pageStore = {
       storeId: 'from-page',
       fullModelName: 'partner.Partner',
@@ -187,7 +188,11 @@ describe('OPageIoMenu', () => {
     const { provideOPageContext } = await import('@/web/web/composables/usePageContext');
     const Host = defineComponent({
       setup(_, { slots }) {
-        provideOPageContext({ store: pageStore });
+        const ctx = provideOPageContext({ store: pageStore });
+        ctx.registerActionTarget({
+          refresh,
+          selectedItems: { value: [{ Id: 'a' }] },
+        });
         return () => slots.default?.();
       },
     });
@@ -195,6 +200,7 @@ describe('OPageIoMenu', () => {
       slots: {
         default: () =>
           h(OPageIoMenu, {
+            actionImport: true,
             actionExport: true,
           }),
       },
@@ -203,9 +209,9 @@ describe('OPageIoMenu', () => {
         stubs: menuStubs,
       },
     });
-    const shell = wrapper.findComponent({ name: 'RecordExportShellStub' });
-    expect(shell.exists()).toBe(true);
-    expect(shell.props('store')).toBe(pageStore);
-    expect(shell.props('model')).toBe('partner.Partner');
+    const exportShell = wrapper.findComponent({ name: 'RecordExportShellStub' });
+    expect(exportShell.props('listRef')?.selectedItems?.value).toEqual([{ Id: 'a' }]);
+    await wrapper.find('[data-test="emit-imported"]').trigger('click');
+    expect(refresh).toHaveBeenCalled();
   });
 });

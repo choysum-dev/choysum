@@ -46,7 +46,7 @@ SPDX-License-Identifier: Apache-2.0
     v-model:open="exportOpen"
     :model="resolvedModel"
     :store="resolvedStore!"
-    :list-ref="actionListRef"
+    :list-ref="resolvedListRef"
     :company-id="actionCompanyId"
   />
 </template>
@@ -58,7 +58,7 @@ import { createTranslate } from '@/web/web/i18n';
 import { useRecordIoMenu } from '@/web/web/composables/useRecordIoMenu';
 import type { PageIoMenuItem, RecordIoConfig } from '@/web/web/composables/recordIoTypes';
 import type { RecordExportListRef } from '@/web/web/composables/useRecordExportScope';
-import { useResolvedOptionalPageStore } from '@/web/web/composables/usePageContext';
+import { useResolvedOptionalPageStore, useOPageContext } from '@/web/web/composables/usePageContext';
 import { RecordImportShell } from '@/web/web/import';
 import { RecordExportShell } from '@/web/web/export';
 
@@ -87,7 +87,7 @@ const props = defineProps<{
   actionImportColumnMapping?: Record<string, string>;
   /** List/kanban store; falls back to OPage provided store when omitted. */
   store?: PageIoStore;
-  /** Current list/kanban view instance (template ref value). */
+  /** Explicit list/kanban target; falls back to the page-registered main view. */
   actionListRef?: OPageIoMenuListRef | null;
   /** Optional company override for import/export panels. */
   actionCompanyId?: string;
@@ -103,8 +103,12 @@ const menuAriaLabel = _t('Import and export');
 const importOpen = ref(false);
 const exportOpen = ref(false);
 
+const pageCtx = useOPageContext();
 const resolvedStore = useResolvedOptionalPageStore<PageIoStore>(() => props.store);
 const resolvedModel = computed(() => String(resolvedStore.value?.fullModelName ?? '').trim());
+const resolvedListRef = computed(
+  () => props.actionListRef ?? pageCtx?.actionTarget.value ?? null,
+);
 
 const requestedConfig = computed<RecordIoConfig>(() => {
   const config: RecordIoConfig = {};
@@ -170,7 +174,7 @@ function onCommand(key: string) {
 }
 
 function onImported() {
-  void props.actionListRef?.refresh?.();
+  void resolvedListRef.value?.refresh?.();
   emit('imported');
 }
 </script>

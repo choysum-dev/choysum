@@ -3,12 +3,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from 'vitest';
-import { computed, defineComponent, h, provide } from 'vue';
+import { defineComponent, h } from 'vue';
 import { mount } from '@vue/test-utils';
 import {
-  OPageContextKey,
   provideOPageContext,
   resolvePageStore,
+  useRegisterPageActionTarget,
   useResolvedOptionalPageStore,
 } from './usePageContext';
 
@@ -67,11 +67,74 @@ describe('usePageContext', () => {
     });
     const Parent = defineComponent({
       setup() {
-        provide(OPageContextKey, { store: computed(() => pageStore) });
+        provideOPageContext({ store: pageStore });
         return () => h(Child);
       },
     });
     mount(Parent);
     expect(resolved!.value).toBe(pageStore);
+  });
+
+  it('registers and unregisters a page action target', async () => {
+    const store = { storeId: 'page' };
+    const target = { refresh: () => undefined, selectedItems: [] as Array<{ Id?: string }> };
+    let ctx: ReturnType<typeof provideOPageContext> | null = null;
+    const Child = defineComponent({
+      setup() {
+        useRegisterPageActionTarget({ store, target });
+        return () => h('div');
+      },
+    });
+    const Parent = defineComponent({
+      setup() {
+        ctx = provideOPageContext({ store });
+        return () => h(Child);
+      },
+    });
+    const wrapper = mount(Parent);
+    expect(ctx!.actionTarget.value).toBe(target);
+    wrapper.unmount();
+    expect(ctx!.actionTarget.value).toBeNull();
+  });
+
+  it('skips auto-register when the view store differs from the page store', () => {
+    const pageStore = { storeId: 'page' };
+    const viewStore = { storeId: 'other' };
+    const target = { refresh: () => undefined };
+    let ctx: ReturnType<typeof provideOPageContext> | null = null;
+    const Child = defineComponent({
+      setup() {
+        useRegisterPageActionTarget({ store: viewStore, target });
+        return () => h('div');
+      },
+    });
+    const Parent = defineComponent({
+      setup() {
+        ctx = provideOPageContext({ store: pageStore });
+        return () => h(Child);
+      },
+    });
+    mount(Parent);
+    expect(ctx!.actionTarget.value).toBeNull();
+  });
+
+  it('respects enabled false to opt out of registration', () => {
+    const store = { storeId: 'page' };
+    const target = { refresh: () => undefined };
+    let ctx: ReturnType<typeof provideOPageContext> | null = null;
+    const Child = defineComponent({
+      setup() {
+        useRegisterPageActionTarget({ store, target, enabled: false });
+        return () => h('div');
+      },
+    });
+    const Parent = defineComponent({
+      setup() {
+        ctx = provideOPageContext({ store });
+        return () => h(Child);
+      },
+    });
+    mount(Parent);
+    expect(ctx!.actionTarget.value).toBeNull();
   });
 });

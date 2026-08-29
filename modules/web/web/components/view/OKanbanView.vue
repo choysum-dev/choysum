@@ -157,7 +157,7 @@ import { provide, defineComponent, reactive } from 'vue';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { shouldDeferViewFirstFrame } from '@/web/web/components/view/kanbanFirstFrame';
 import { createTranslate } from '@/web/web/i18n';
-import { resolvePageStore } from '@/web/web/composables/usePageContext';
+import { resolvePageStore, useRegisterPageActionTarget } from '@/web/web/composables/usePageContext';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/OKanbanView' });
 
@@ -184,6 +184,8 @@ const props = withDefaults(
      */
     preloadLaneLimit?: number | null;
     // laneLoadLimit has been removed; the controller drives in-lane loading via queryState.pagination
+    /** Opt out of page IO action-target registration (embedded kanbans). */
+    registerActionTarget?: boolean;
   }>(),
   {
     showHeader: true,
@@ -438,6 +440,15 @@ async function handleRefresh() {
     ElMessage.error(_t('Kanban refresh failed'));
   }
 }
+
+useRegisterPageActionTarget({
+  store,
+  enabled: () => props.registerActionTarget,
+  target: {
+    selectedItems: [],
+    refresh: () => handleRefresh(),
+  },
+});
 
 async function handleCreate() {
   if (!props.createAction) return;

@@ -4,9 +4,9 @@
 
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { config, mount } from '@vue/test-utils';
-import { defineComponent, h, nextTick } from 'vue';
+import { defineComponent, h, inject, nextTick, onBeforeUnmount, onMounted } from 'vue';
 import { createI18n } from 'vue-i18n';
-import { provideOPageContext } from '@/web/web/composables/usePageContext';
+import { OPageContextKey, provideOPageContext } from '@/web/web/composables/usePageContext';
 import OPageIoMenu from '@/web/web/components/page/OPageIoMenu.vue';
 
 config.global.renderStubDefaultSlot = true;
@@ -61,10 +61,14 @@ vi.mock('../views/PartnerListView.vue', () => ({
     name: 'PartnerListViewStub',
     props: ['store', 'createAction'],
     setup(_: unknown, { expose }: { expose: (exposed: Record<string, unknown>) => void }) {
-      expose({
+      const target = {
         refresh,
         selectedItems: { value: [{ Id: 'p1' }, { Id: 'p2' }] },
-      });
+      };
+      expose(target);
+      const ctx = inject(OPageContextKey, null);
+      onMounted(() => ctx?.registerActionTarget(target));
+      onBeforeUnmount(() => ctx?.unregisterActionTarget(target));
       return () => null;
     },
   },
@@ -162,18 +166,19 @@ describe('PartnerList page', () => {
     const page = wrapper.findComponent({ name: 'OPageStub' });
     expect(page.props('actionImport')).toBe(true);
     expect(page.props('actionExport')).toBe(true);
-    expect(page.props('actionListRef')).toBeTruthy();
+    expect(page.props('actionListRef')).toBeUndefined();
     expect(String(page.props('actionImportUploadHint') || '')).toContain('UTF-8 CSV');
 
     const menu = wrapper.findComponent({ name: 'OPageIoMenu' });
     expect(menu.props('actionImport')).toBe(true);
     expect(menu.props('actionExport')).toBe(true);
     expect(menu.props('store')).toBeUndefined();
-    expect(menu.props('actionListRef')).toBeTruthy();
+    expect(menu.props('actionListRef')).toBeUndefined();
     expect(wrapper.find('[data-test="export-shell-stub"]').attributes('data-model')).toBe('partner.Partner');
     const exportShell = wrapper.findComponent({ name: 'RecordExportShellStub' });
     expect(exportShell.props('store')?.storeId).toBe('Partner_/partner/partners');
     expect(exportShell.props('store')?.fullModelName).toBe('partner.Partner');
+    expect(exportShell.props('listRef')?.selectedItems?.value).toEqual([{ Id: 'p1' }, { Id: 'p2' }]);
   });
 
   it('opens import and export from title IO menu', async () => {
