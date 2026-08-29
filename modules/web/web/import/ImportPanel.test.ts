@@ -907,6 +907,34 @@ describe('ImportPanel', () => {
     expect(previewBtn!.attributes('disabled')).toBeDefined();
   });
 
+  it('covers whitespace labels and empty leaf paths in catalog helpers', async () => {
+    const wrapper = await mountPanel();
+    await flushPromises();
+    expect(wrapper.find('[data-test="dialog-title"]').text()).toBeTruthy();
+    (wrapper.vm as any).catalogFields = [
+      { path: 'Name', label: '   ', children: [] },
+      {
+        path: 'CompanyId',
+        label: 'Company',
+        children: [{ path: 'CompanyId/Code', label: '   ' }],
+      },
+      { path: '  ', label: 'Blank', children: [] },
+    ];
+    expect((wrapper.vm as any).catalogOptions).toEqual([
+      { path: 'Name', label: 'Name (Name)' },
+      { path: 'CompanyId/Code', label: 'CompanyId/Code (CompanyId/Code)' },
+    ]);
+    expect((wrapper.vm as any).flattenPaths(null)).toEqual([]);
+    expect((wrapper.vm as any).flattenPaths([])).toEqual([]);
+    expect((wrapper.vm as any).flattenPaths([
+      { path: '  ', children: [] },
+      { path: null, children: [] },
+      { path: undefined, children: undefined },
+      { path: 'Keep', children: [] },
+      { path: 'Parent', children: [{ path: '  ' }, { path: null }, { path: 'Parent/Child' }] },
+    ])).toEqual(['Keep', 'Parent/Child']);
+  });
+
   it('uses custom upload hint when provided', async () => {
     const { default: ImportPanel } = await import('./ImportPanel.vue');
     const wrapper = mount(ImportPanel, {
@@ -915,13 +943,14 @@ describe('ImportPanel', () => {
         plugins: [i18n],
         stubs: {
           ElDialog: {
-            props: ['modelValue'],
+            props: ['modelValue', 'title'],
             emits: ['update:modelValue', 'close'],
-            template: '<div class="dialog-stub"><slot /><slot name="footer" /></div>',
+            template: '<div class="dialog-stub"><span data-test="dialog-title">{{ title }}</span><slot /><slot name="footer" /></div>',
           },
         },
       },
     });
     expect((wrapper.vm as any).resolvedUploadHint).toBe('Custom hint');
+    expect(wrapper.find('[data-test="dialog-title"]').text()).toBeTruthy();
   });
 });

@@ -239,14 +239,22 @@ function onFileRemoved() {
 function flattenPaths(nodes: ImportFieldNode[]): string[] {
   const out: string[] = [];
   const walk = (list: ImportFieldNode[] | null | undefined) => {
-    for (const node of list || []) {
-      const path = String(node.path || '').trim();
+    if (list == null) {
+      return;
+    }
+    for (let i = 0; i < list.length; i += 1) {
+      const node = list[i];
+      const rawPath = node.path;
+      const path = String(rawPath == null ? '' : rawPath).trim();
       const children = node.children;
-      if (!children || children.length === 0) {
-        if (path) out.push(path);
-      } else {
+      if (children != null && children.length > 0) {
         walk(children);
+        continue;
       }
+      if (path === '') {
+        continue;
+      }
+      out.push(path);
     }
   };
   walk(nodes);
