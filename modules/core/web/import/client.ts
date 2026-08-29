@@ -4,11 +4,14 @@
 import { create } from '@bufbuild/protobuf';
 import { CreateWebClient } from '../rpc/client_factory';
 import {
+  DescribeImportFieldsRequestSchema,
   ImportHub,
   ImportPolicy,
   ImportRunAsyncRequestSchema,
   ImportRunRequestSchema,
   ParseHeadersRequestSchema,
+  type DescribeImportFieldsResponse,
+  type ImportFieldNode,
   type ImportReport,
   type ImportRunAsyncResponse,
   type ImportRunResponse,
@@ -25,6 +28,10 @@ export type ImportRunInput = {
 };
 
 type ImportHubClient = {
+  describeImportFields(
+    req: ReturnType<typeof create<typeof DescribeImportFieldsRequestSchema>>,
+    options?: ImportCallOptions,
+  ): Promise<DescribeImportFieldsResponse>;
   parseHeaders(req: ReturnType<typeof create<typeof ParseHeadersRequestSchema>>, options?: ImportCallOptions): Promise<ParseHeadersResponse>;
   preview(req: ReturnType<typeof create<typeof ImportRunRequestSchema>>, options?: ImportCallOptions): Promise<ImportRunResponse>;
   run(req: ReturnType<typeof create<typeof ImportRunRequestSchema>>, options?: ImportCallOptions): Promise<ImportRunResponse>;
@@ -54,6 +61,10 @@ function toRunRequest(input: ImportRunInput, dryRunPolicy: ImportPolicy) {
   });
 }
 
+export function describeImportFields(model: string, signal?: AbortSignal): Promise<DescribeImportFieldsResponse> {
+  return importHub().describeImportFields(create(DescribeImportFieldsRequestSchema, { model }), callOptions(signal));
+}
+
 export function parseHeaders(sourceRef: string, signal?: AbortSignal): Promise<ParseHeadersResponse> {
   return importHub().parseHeaders(create(ParseHeadersRequestSchema, { sourceRef }), callOptions(signal));
 }
@@ -73,4 +84,13 @@ export function runImportAsync(input: ImportRunInput, signal?: AbortSignal): Pro
   );
 }
 
-export { ImportHub, ImportPolicy, type ImportReport, type ImportRunAsyncResponse, type ImportRunResponse, type ParseHeadersResponse };
+export {
+  ImportHub,
+  ImportPolicy,
+  type DescribeImportFieldsResponse,
+  type ImportFieldNode,
+  type ImportReport,
+  type ImportRunAsyncResponse,
+  type ImportRunResponse,
+  type ParseHeadersResponse,
+};

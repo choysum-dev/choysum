@@ -8,7 +8,8 @@ import { createI18n } from 'vue-i18n';
 
 config.global.renderStubDefaultSlot = true;
 
-const { parseHeaders, previewImport, runImport, uploadImportCsv } = vi.hoisted(() => ({
+const { describeImportFields, parseHeaders, previewImport, runImport, uploadImportCsv } = vi.hoisted(() => ({
+  describeImportFields: vi.fn(),
   parseHeaders: vi.fn(),
   previewImport: vi.fn(),
   runImport: vi.fn(),
@@ -16,6 +17,7 @@ const { parseHeaders, previewImport, runImport, uploadImportCsv } = vi.hoisted((
 }));
 
 vi.mock('@/core/web/import', () => ({
+  describeImportFields,
   parseHeaders,
   previewImport,
   runImport,
@@ -55,11 +57,24 @@ async function mountPanel(open = true) {
 
 describe('ImportPanel', () => {
   beforeEach(() => {
+    describeImportFields.mockReset();
     parseHeaders.mockReset();
     previewImport.mockReset();
     runImport.mockReset();
     uploadImportCsv.mockReset();
     uploadImportCsv.mockResolvedValue('att-src-1');
+    describeImportFields.mockResolvedValue({
+      fields: [
+        { path: 'Name', label: 'Name', children: [] },
+        { path: 'Code', label: 'Code', children: [] },
+        {
+          path: 'CompanyId',
+          label: 'Company',
+          children: [{ path: 'CompanyId/Code', label: 'Company / Code', children: [] }],
+        },
+      ],
+      defaultFields: ['Name', 'Code', 'CompanyId/Code'],
+    });
     parseHeaders.mockResolvedValue({ headers: ['Name', 'Code'] });
     previewImport.mockResolvedValue({
       report: {
@@ -77,15 +92,34 @@ describe('ImportPanel', () => {
     await (wrapper.vm as any).uploadAndPreview();
     await flushPromises();
 
+    expect(describeImportFields).toHaveBeenCalledWith('partner.Partner', expect.any(AbortSignal));
     expect(uploadImportCsv).toHaveBeenCalled();
     expect(parseHeaders).toHaveBeenCalledWith('att-src-1', expect.any(AbortSignal));
-    expect(previewImport).toHaveBeenCalled();
+    expect(previewImport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        columnMapping: { Name: 'Name', Code: 'Code' },
+      }),
+      expect.any(AbortSignal),
+    );
+    expect((wrapper.vm as any).mappingRows).toEqual([
+      { header: 'Name', fieldPath: 'Name' },
+      { header: 'Code', fieldPath: 'Code' },
+    ]);
     expect((wrapper.vm as any).step).toBe(1);
 
     await (wrapper.vm as any).commitImport();
     await flushPromises();
     expect(runImport).toHaveBeenCalled();
     expect((wrapper.vm as any).importDone).toBe(true);
+  });
+
+  it('loads import field catalog on open', async () => {
+    const wrapper = await mountPanel();
+    await (wrapper.vm as any).loadCatalog();
+    await flushPromises();
+    expect(describeImportFields).toHaveBeenCalledWith('partner.Partner', expect.any(AbortSignal));
+    expect((wrapper.vm as any).catalogDefaults).toEqual(['Name', 'Code', 'CompanyId/Code']);
+    expect((wrapper.vm as any).catalogOptions.map((o: { path: string }) => o.path)).toContain('CompanyId/Code');
   });
 
   it('shows error when import report has errors', async () => {
@@ -236,7 +270,7 @@ describe('ImportPanel', () => {
     await flushPromises();
     expect((wrapper.vm as any).step).toBe(1);
     expect((wrapper.vm as any).headers).toEqual(['Name', 'Code']);
-    expect(wrapper.find('.import-panel-table').exists()).toBe(true);
+    expect(wrapper.find('[data-test="import-mapping-table"]').exists()).toBe(true);
     await (wrapper.vm as any).commitImport();
     await flushPromises();
     expect((wrapper.vm as any).importDone).toBe(true);
@@ -312,6 +346,8 @@ describe('ImportPanel', () => {
         }),
     );
     const wrapper = await mountPanel();
+    await (wrapper.vm as any).loadCatalog();
+    await flushPromises();
     (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
     const pending = (wrapper.vm as any).uploadAndPreview();
     resolveUpload('att-headers');
@@ -394,7 +430,8 @@ describe('ImportPanel', () => {
     expect((wrapper.vm as any).headers).toEqual([]);
     expect((wrapper.vm as any).previewReport).toBeNull();
     expect((wrapper.vm as any).previewMessages).toEqual([]);
-    expect(wrapper.find('.import-panel-hint').exists()).toBe(false);
+    expect((wrapper.vm as any).step).toBe(1);
+    expect(wrapper.find('.import-panel-hint').exists()).toBe(true);
 
     (wrapper.vm as any).previewReport = { stats: { total: 4, ok: 3, error: 1 } };
     expect((wrapper.vm as any).previewSummary).toBe('Preview: 3 ok, 1 errors, 4 total');

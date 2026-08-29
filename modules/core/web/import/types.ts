@@ -12,6 +12,8 @@ import {
   type ImportMessage,
   type ImportStats,
   ImportMessageType,
+  type DescribeImportFieldsResponse,
+  type ImportFieldNode,
 } from './pb/import_pb';
 
 export {
@@ -25,6 +27,8 @@ export {
   type ImportMessage,
   type ImportStats,
   ImportMessageType,
+  type DescribeImportFieldsResponse,
+  type ImportFieldNode,
 };
 
 export type { ImportRunInput } from './client';
@@ -33,4 +37,4 @@ export type CoreImportHub = typeof ImportHub;
 /** V1 web wizard: column mapping keyed by CSV header */
 export type ColumnMapping = Record<string, string>;
 
-export { parseHeaders, previewImport, runImport } from './client';
+export { describeImportFields, parseHeaders, previewImport, runImport } from './client';

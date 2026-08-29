@@ -768,6 +768,162 @@ func (x *ImportRunAsyncResponse) GetReport() *ImportReport {
 	return nil
 }
 
+type ImportFieldNode struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Path          string                 `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	Label         string                 `protobuf:"bytes,2,opt,name=label,proto3" json:"label,omitempty"`
+	Children      []*ImportFieldNode     `protobuf:"bytes,3,rep,name=children,proto3" json:"children,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ImportFieldNode) Reset() {
+	*x = ImportFieldNode{}
+	mi := &file_import_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ImportFieldNode) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ImportFieldNode) ProtoMessage() {}
+
+func (x *ImportFieldNode) ProtoReflect() protoreflect.Message {
+	mi := &file_import_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ImportFieldNode.ProtoReflect.Descriptor instead.
+func (*ImportFieldNode) Descriptor() ([]byte, []int) {
+	return file_import_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ImportFieldNode) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *ImportFieldNode) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+func (x *ImportFieldNode) GetChildren() []*ImportFieldNode {
+	if x != nil {
+		return x.Children
+	}
+	return nil
+}
+
+type DescribeImportFieldsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Model         string                 `protobuf:"bytes,1,opt,name=model,proto3" json:"model,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DescribeImportFieldsRequest) Reset() {
+	*x = DescribeImportFieldsRequest{}
+	mi := &file_import_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DescribeImportFieldsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DescribeImportFieldsRequest) ProtoMessage() {}
+
+func (x *DescribeImportFieldsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_import_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DescribeImportFieldsRequest.ProtoReflect.Descriptor instead.
+func (*DescribeImportFieldsRequest) Descriptor() ([]byte, []int) {
+	return file_import_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *DescribeImportFieldsRequest) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+type DescribeImportFieldsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Fields        []*ImportFieldNode     `protobuf:"bytes,1,rep,name=fields,proto3" json:"fields,omitempty"`
+	DefaultFields []string               `protobuf:"bytes,2,rep,name=default_fields,json=defaultFields,proto3" json:"default_fields,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DescribeImportFieldsResponse) Reset() {
+	*x = DescribeImportFieldsResponse{}
+	mi := &file_import_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DescribeImportFieldsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DescribeImportFieldsResponse) ProtoMessage() {}
+
+func (x *DescribeImportFieldsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_import_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DescribeImportFieldsResponse.ProtoReflect.Descriptor instead.
+func (*DescribeImportFieldsResponse) Descriptor() ([]byte, []int) {
+	return file_import_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *DescribeImportFieldsResponse) GetFields() []*ImportFieldNode {
+	if x != nil {
+		return x.Fields
+	}
+	return nil
+}
+
+func (x *DescribeImportFieldsResponse) GetDefaultFields() []string {
+	if x != nil {
+		return x.DefaultFields
+	}
+	return nil
+}
+
 var File_import_proto protoreflect.FileDescriptor
 
 const file_import_proto_rawDesc = "" +
@@ -826,7 +982,16 @@ const file_import_proto_rawDesc = "" +
 	"\x16ImportRunAsyncResponse\x12/\n" +
 	"\x14data_transfer_job_id\x18\x01 \x01(\tR\x11dataTransferJobId\x12\x1e\n" +
 	"\vtask_job_id\x18\x02 \x01(\tR\ttaskJobId\x12,\n" +
-	"\x06report\x18\x03 \x01(\v2\x14.import.ImportReportR\x06report*\x83\x01\n" +
+	"\x06report\x18\x03 \x01(\v2\x14.import.ImportReportR\x06report\"p\n" +
+	"\x0fImportFieldNode\x12\x12\n" +
+	"\x04path\x18\x01 \x01(\tR\x04path\x12\x14\n" +
+	"\x05label\x18\x02 \x01(\tR\x05label\x123\n" +
+	"\bchildren\x18\x03 \x03(\v2\x17.import.ImportFieldNodeR\bchildren\"3\n" +
+	"\x1bDescribeImportFieldsRequest\x12\x14\n" +
+	"\x05model\x18\x01 \x01(\tR\x05model\"v\n" +
+	"\x1cDescribeImportFieldsResponse\x12/\n" +
+	"\x06fields\x18\x01 \x03(\v2\x17.import.ImportFieldNodeR\x06fields\x12%\n" +
+	"\x0edefault_fields\x18\x02 \x03(\tR\rdefaultFields*\x83\x01\n" +
 	"\fImportPolicy\x12\x1d\n" +
 	"\x19IMPORT_POLICY_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14IMPORT_POLICY_ATOMIC\x10\x01\x12\x1b\n" +
@@ -836,8 +1001,9 @@ const file_import_proto_rawDesc = "" +
 	"\x1fIMPORT_MESSAGE_TYPE_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19IMPORT_MESSAGE_TYPE_ERROR\x10\x01\x12\x1f\n" +
 	"\x1bIMPORT_MESSAGE_TYPE_WARNING\x10\x02\x12\x1c\n" +
-	"\x18IMPORT_MESSAGE_TYPE_SKIP\x10\x032\x9d\x02\n" +
-	"\tImportHub\x12I\n" +
+	"\x18IMPORT_MESSAGE_TYPE_SKIP\x10\x032\x80\x03\n" +
+	"\tImportHub\x12a\n" +
+	"\x14DescribeImportFields\x12#.import.DescribeImportFieldsRequest\x1a$.import.DescribeImportFieldsResponse\x12I\n" +
 	"\fParseHeaders\x12\x1b.import.ParseHeadersRequest\x1a\x1c.import.ParseHeadersResponse\x12>\n" +
 	"\aPreview\x12\x18.import.ImportRunRequest\x1a\x19.import.ImportRunResponse\x12:\n" +
 	"\x03Run\x12\x18.import.ImportRunRequest\x1a\x19.import.ImportRunResponse\x12I\n" +
@@ -856,21 +1022,24 @@ func file_import_proto_rawDescGZIP() []byte {
 }
 
 var file_import_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_import_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_import_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_import_proto_goTypes = []any{
-	(ImportPolicy)(0),              // 0: import.ImportPolicy
-	(ImportMessageType)(0),         // 1: import.ImportMessageType
-	(*ImportStats)(nil),            // 2: import.ImportStats
-	(*ImportMessage)(nil),          // 3: import.ImportMessage
-	(*ImportReportMeta)(nil),       // 4: import.ImportReportMeta
-	(*ImportReport)(nil),           // 5: import.ImportReport
-	(*ParseHeadersRequest)(nil),    // 6: import.ParseHeadersRequest
-	(*ParseHeadersResponse)(nil),   // 7: import.ParseHeadersResponse
-	(*ImportRunRequest)(nil),       // 8: import.ImportRunRequest
-	(*ImportRunResponse)(nil),      // 9: import.ImportRunResponse
-	(*ImportRunAsyncRequest)(nil),  // 10: import.ImportRunAsyncRequest
-	(*ImportRunAsyncResponse)(nil), // 11: import.ImportRunAsyncResponse
-	nil,                            // 12: import.ImportRunRequest.ColumnMappingEntry
+	(ImportPolicy)(0),                    // 0: import.ImportPolicy
+	(ImportMessageType)(0),               // 1: import.ImportMessageType
+	(*ImportStats)(nil),                  // 2: import.ImportStats
+	(*ImportMessage)(nil),                // 3: import.ImportMessage
+	(*ImportReportMeta)(nil),             // 4: import.ImportReportMeta
+	(*ImportReport)(nil),                 // 5: import.ImportReport
+	(*ParseHeadersRequest)(nil),          // 6: import.ParseHeadersRequest
+	(*ParseHeadersResponse)(nil),         // 7: import.ParseHeadersResponse
+	(*ImportRunRequest)(nil),             // 8: import.ImportRunRequest
+	(*ImportRunResponse)(nil),            // 9: import.ImportRunResponse
+	(*ImportRunAsyncRequest)(nil),        // 10: import.ImportRunAsyncRequest
+	(*ImportRunAsyncResponse)(nil),       // 11: import.ImportRunAsyncResponse
+	(*ImportFieldNode)(nil),              // 12: import.ImportFieldNode
+	(*DescribeImportFieldsRequest)(nil),  // 13: import.DescribeImportFieldsRequest
+	(*DescribeImportFieldsResponse)(nil), // 14: import.DescribeImportFieldsResponse
+	nil,                                  // 15: import.ImportRunRequest.ColumnMappingEntry
 }
 var file_import_proto_depIdxs = []int32{
 	1,  // 0: import.ImportMessage.type:type_name -> import.ImportMessageType
@@ -878,24 +1047,28 @@ var file_import_proto_depIdxs = []int32{
 	2,  // 2: import.ImportReport.stats:type_name -> import.ImportStats
 	3,  // 3: import.ImportReport.messages:type_name -> import.ImportMessage
 	4,  // 4: import.ImportReport.meta:type_name -> import.ImportReportMeta
-	12, // 5: import.ImportRunRequest.column_mapping:type_name -> import.ImportRunRequest.ColumnMappingEntry
+	15, // 5: import.ImportRunRequest.column_mapping:type_name -> import.ImportRunRequest.ColumnMappingEntry
 	0,  // 6: import.ImportRunRequest.policy:type_name -> import.ImportPolicy
 	5,  // 7: import.ImportRunResponse.report:type_name -> import.ImportReport
 	8,  // 8: import.ImportRunAsyncRequest.run:type_name -> import.ImportRunRequest
 	5,  // 9: import.ImportRunAsyncResponse.report:type_name -> import.ImportReport
-	6,  // 10: import.ImportHub.ParseHeaders:input_type -> import.ParseHeadersRequest
-	8,  // 11: import.ImportHub.Preview:input_type -> import.ImportRunRequest
-	8,  // 12: import.ImportHub.Run:input_type -> import.ImportRunRequest
-	10, // 13: import.ImportHub.RunAsync:input_type -> import.ImportRunAsyncRequest
-	7,  // 14: import.ImportHub.ParseHeaders:output_type -> import.ParseHeadersResponse
-	9,  // 15: import.ImportHub.Preview:output_type -> import.ImportRunResponse
-	9,  // 16: import.ImportHub.Run:output_type -> import.ImportRunResponse
-	11, // 17: import.ImportHub.RunAsync:output_type -> import.ImportRunAsyncResponse
-	14, // [14:18] is the sub-list for method output_type
-	10, // [10:14] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	12, // 10: import.ImportFieldNode.children:type_name -> import.ImportFieldNode
+	12, // 11: import.DescribeImportFieldsResponse.fields:type_name -> import.ImportFieldNode
+	13, // 12: import.ImportHub.DescribeImportFields:input_type -> import.DescribeImportFieldsRequest
+	6,  // 13: import.ImportHub.ParseHeaders:input_type -> import.ParseHeadersRequest
+	8,  // 14: import.ImportHub.Preview:input_type -> import.ImportRunRequest
+	8,  // 15: import.ImportHub.Run:input_type -> import.ImportRunRequest
+	10, // 16: import.ImportHub.RunAsync:input_type -> import.ImportRunAsyncRequest
+	14, // 17: import.ImportHub.DescribeImportFields:output_type -> import.DescribeImportFieldsResponse
+	7,  // 18: import.ImportHub.ParseHeaders:output_type -> import.ParseHeadersResponse
+	9,  // 19: import.ImportHub.Preview:output_type -> import.ImportRunResponse
+	9,  // 20: import.ImportHub.Run:output_type -> import.ImportRunResponse
+	11, // 21: import.ImportHub.RunAsync:output_type -> import.ImportRunAsyncResponse
+	17, // [17:22] is the sub-list for method output_type
+	12, // [12:17] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_import_proto_init() }
@@ -909,7 +1082,7 @@ func file_import_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_import_proto_rawDesc), len(file_import_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   11,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
