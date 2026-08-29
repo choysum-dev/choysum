@@ -323,6 +323,25 @@ describe('OPage component', () => {
     expect(wrapper.find('[data-test="extra-action"]').exists()).toBe(true);
   });
 
+  test('mounts OPageIoMenu beside a custom header when action-import is set', () => {
+    const wrapper = mount(OPage, {
+      props: {
+        title: 'Partners',
+        showBreadcrumb: false,
+        actionImport: true,
+        actionExport: true,
+      },
+      slots: {
+        header: '<div class="custom-header-io">Custom</div>',
+      },
+      global: { stubs: pageStubs },
+    });
+    expect(wrapper.find('.custom-header-io').exists()).toBe(true);
+    expect(wrapper.find('.o-page__title-row [data-test="page-io-menu-stub"]').exists()).toBe(true);
+    expect(wrapper.find('[data-test="page-io-menu-stub"]').attributes('data-import')).toBe('true');
+    expect(wrapper.find('[data-test="page-io-menu-stub"]').attributes('data-export')).toBe('true');
+  });
+
   test('does not mount OPageIoMenu when action-import/export are unset', () => {
     const wrapper = mount(OPage, {
       props: {

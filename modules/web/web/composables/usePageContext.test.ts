@@ -8,6 +8,7 @@ import { mount } from '@vue/test-utils';
 import {
   provideOPageContext,
   resolvePageStore,
+  useOptionalPageStore,
   useRegisterPageActionTarget,
   useResolvedOptionalPageStore,
 } from './usePageContext';
@@ -136,5 +137,73 @@ describe('usePageContext', () => {
     });
     mount(Parent);
     expect(ctx!.actionTarget.value).toBeNull();
+  });
+
+  it('forces registration when enabled is true even if stores differ', () => {
+    const pageStore = { storeId: 'page' };
+    const viewStore = { storeId: 'other' };
+    const target = { refresh: () => undefined };
+    let ctx: ReturnType<typeof provideOPageContext> | null = null;
+    const Child = defineComponent({
+      setup() {
+        useRegisterPageActionTarget({ store: viewStore, target, enabled: true });
+        return () => h('div');
+      },
+    });
+    const Parent = defineComponent({
+      setup() {
+        ctx = provideOPageContext({ store: pageStore });
+        return () => h(Child);
+      },
+    });
+    mount(Parent);
+    expect(ctx!.actionTarget.value).toBe(target);
+  });
+
+  it('no-ops unregister when the target is not the current action target', () => {
+    const store = { storeId: 'page' };
+    const kept = { refresh: () => undefined };
+    const other = { refresh: () => undefined };
+    let ctx: ReturnType<typeof provideOPageContext> | null = null;
+    const Parent = defineComponent({
+      setup() {
+        ctx = provideOPageContext({ store });
+        return () => h('div');
+      },
+    });
+    mount(Parent);
+    ctx!.registerActionTarget(kept);
+    ctx!.unregisterActionTarget(other);
+    expect(ctx!.actionTarget.value).toBe(kept);
+  });
+
+  it('treats a nullish page store getter as null', () => {
+    let seen: unknown = 'unset';
+    const Child = defineComponent({
+      setup() {
+        seen = useOptionalPageStore().value;
+        return () => h('div');
+      },
+    });
+    const Parent = defineComponent({
+      setup() {
+        provideOPageContext({ store: () => undefined });
+        return () => h(Child);
+      },
+    });
+    mount(Parent);
+    expect(seen).toBeNull();
+  });
+
+  it('skips registration when no page context is provided', () => {
+    const store = { storeId: 'orphan' };
+    const target = { refresh: () => undefined };
+    const Orphan = defineComponent({
+      setup() {
+        useRegisterPageActionTarget({ store, target, enabled: true });
+        return () => h('div');
+      },
+    });
+    expect(() => mount(Orphan)).not.toThrow();
   });
 });

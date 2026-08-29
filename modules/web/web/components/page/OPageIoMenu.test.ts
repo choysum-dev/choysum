@@ -214,4 +214,37 @@ describe('OPageIoMenu', () => {
     await wrapper.find('[data-test="emit-imported"]').trigger('click');
     expect(refresh).toHaveBeenCalled();
   });
+
+  it('opens export from the derived menu command', async () => {
+    const store = { storeId: 's1', fullModelName: 'partner.Partner', state: { result: { total: 1 } } };
+    const wrapper = await mountMenu({
+      actionExport: true,
+      store,
+    });
+    expect(wrapper.find('[data-test="page-io-menu-export"]').exists()).toBe(true);
+    expect(wrapper.find('[data-test="page-io-menu-import"]').exists()).toBe(false);
+    await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('command', 'export');
+    expect(wrapper.find('[data-test="export-shell-stub"]').attributes('data-open')).toBe('true');
+  });
+
+  it('derives import-only menu without export panels', async () => {
+    const store = { storeId: 's1', fullModelName: 'partner.Partner', state: { result: { total: 1 } } };
+    const wrapper = await mountMenu({
+      actionImport: true,
+      store,
+    });
+    expect(wrapper.find('[data-test="page-io-menu-import"]').exists()).toBe(true);
+    expect(wrapper.find('[data-test="page-io-menu-export"]').exists()).toBe(false);
+    expect(wrapper.find('[data-test="export-shell-stub"]').exists()).toBe(false);
+  });
+
+  it('emits imported without refresh when no list ref is available', async () => {
+    const store = { storeId: 's1', fullModelName: 'partner.Partner', state: { result: { total: 1 } } };
+    const wrapper = await mountMenu({
+      actionImport: true,
+      store,
+    });
+    await wrapper.find('[data-test="emit-imported"]').trigger('click');
+    expect(wrapper.emitted('imported')).toBeTruthy();
+  });
 });

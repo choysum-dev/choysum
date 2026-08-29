@@ -163,7 +163,7 @@ const { items: configItems } = useRecordIoMenu({
 const visibleItems = computed(() => {
   const useDerived = props.actionImport || props.actionExport;
   const source = props.items ?? (useDerived ? configItems.value : []);
-  return (source ?? []).filter(item => !item.hidden);
+  return source.filter(item => !item.hidden);
 });
 
 function onCommand(key: string) {

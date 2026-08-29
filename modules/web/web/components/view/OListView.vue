@@ -235,6 +235,8 @@ const props = withDefaults(
     editable: false,
     handleField: 'Sequence',
     showHandle: true,
+    // Keep omitted as undefined (not false) so matching page-store views auto-register.
+    registerActionTarget: undefined,
   }
 );
 

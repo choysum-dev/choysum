@@ -195,6 +195,8 @@ const props = withDefaults(
     showPaginate: true,
     forcedCondition: undefined,
     preloadLaneLimit: undefined,
+    // Keep omitted as undefined (not false) so matching page-store views auto-register.
+    registerActionTarget: undefined,
   }
 );
 
