@@ -6,7 +6,12 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <OPage :title="pageTitle" :store="partnerStore">
     <template #title-actions>
-      <OPageIoMenu :config="ioConfig" :list-ref="listViewRef" />
+      <OPageIoMenu
+        import
+        export
+        :import-upload-hint="_t('Upload a UTF-8 CSV with columns Name, Code, IsActive, CustomerRank, SupplierRank.')"
+        :list-ref="listViewRef"
+      />
     </template>
     <PartnerListView ref="listViewRef" createAction="/partner/partners/new" />
   </OPage>
@@ -19,7 +24,6 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import OPage from '@/web/web/components/page/OPage.vue';
 import OPageIoMenu from '@/web/web/components/page/OPageIoMenu.vue';
 import PartnerListView from '../views/PartnerListView.vue';
-import type { RecordIoConfig } from '@/web/web/composables/recordIoTypes';
 import type { RecordExportListRef } from '@/web/web/composables/useRecordExportScope';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
@@ -32,14 +36,6 @@ const pageTitle = _t('Partner List');
 
 const route = useRoute();
 const listViewRef = ref<(RecordExportListRef & { refresh?: () => Promise<void> | void }) | null>(null);
-
-const ioConfig: RecordIoConfig = {
-  import: {
-    enabled: true,
-    uploadHint: _t('Upload a UTF-8 CSV with columns Name, Code, IsActive, CustomerRank, SupplierRank.'),
-  },
-  export: { enabled: true },
-};
 
 const partnerStore = createStoreByModel<typeof Partner>('partner.Partner', {
   storeId: `Partner_${route.fullPath}`,

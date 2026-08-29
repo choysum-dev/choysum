@@ -139,16 +139,15 @@ describe('PartnerList page', () => {
     const wrapper = await mountPartnerList();
     await nextTick();
     const menu = wrapper.findComponent({ name: 'OPageIoMenu' });
-    expect(menu.props('config')).toMatchObject({
-      import: { enabled: true },
-      export: { enabled: true },
-    });
+    expect(menu.props('import')).toBe(true);
+    expect(menu.props('export')).toBe(true);
     expect(menu.props('store')).toBeUndefined();
     expect(menu.props('listRef')).toBeTruthy();
     expect(wrapper.find('[data-test="export-shell-stub"]').attributes('data-model')).toBe('partner.Partner');
     const exportShell = wrapper.findComponent({ name: 'RecordExportShellStub' });
     expect(exportShell.props('store')?.storeId).toBe('Partner_/partner/partners');
     expect(exportShell.props('store')?.fullModelName).toBe('partner.Partner');
+    expect(String(menu.props('importUploadHint') || '')).toContain('UTF-8 CSV');
   });
 
   it('opens import and export from title IO menu', async () => {

@@ -37,7 +37,7 @@ SPDX-License-Identifier: Apache-2.0
     v-if="importEnabled"
     v-model:open="importOpen"
     :model="resolvedModel"
-    :config="config"
+    :config="importShellConfig"
     :company-id="companyId"
     @imported="onImported"
   />
@@ -75,10 +75,16 @@ type PageIoStore = {
 };
 
 const props = defineProps<{
-  /** Low-level menu entries. When omitted, items are derived from `config`. */
+  /** Low-level menu entries. When omitted, items are derived from import/export flags. */
   items?: PageIoMenuItem[];
-  /** Page IO capability declaration; enables Import/Export panels. */
-  config?: RecordIoConfig;
+  /** Enable Import panel and menu item. */
+  import?: boolean;
+  /** Enable Export panel and menu item. */
+  export?: boolean;
+  /** Optional CSV upload hint for ImportPanel. */
+  importUploadHint?: string;
+  /** Optional default column mapping for ImportPanel. */
+  importColumnMapping?: Record<string, string>;
   /** List/kanban store; falls back to OPage provided store when omitted. */
   store?: PageIoStore;
   /** Current list/kanban view instance (template ref value). */
@@ -100,13 +106,28 @@ const exportOpen = ref(false);
 const resolvedStore = useResolvedOptionalPageStore<PageIoStore>(() => props.store);
 const resolvedModel = computed(() => String(resolvedStore.value?.fullModelName ?? '').trim());
 
-const importEnabled = computed(() => !!props.config?.import?.enabled && !!resolvedModel.value);
+const requestedConfig = computed<RecordIoConfig>(() => {
+  const config: RecordIoConfig = {};
+  if (props.import) {
+    config.import = {
+      enabled: true,
+      uploadHint: props.importUploadHint,
+      columnMapping: props.importColumnMapping,
+    };
+  }
+  if (props.export) {
+    config.export = { enabled: true };
+  }
+  return config;
+});
+
+const importEnabled = computed(() => !!props.import && !!resolvedModel.value);
 const exportEnabled = computed(
-  () => !!props.config?.export?.enabled && !!resolvedStore.value && !!resolvedModel.value,
+  () => !!props.export && !!resolvedStore.value && !!resolvedModel.value,
 );
 
 const menuConfig = computed<RecordIoConfig>(() => {
-  const base = props.config ?? {};
+  const base = requestedConfig.value;
   let next = base;
   if (base.export?.enabled && (!resolvedStore.value || !resolvedModel.value)) {
     next = { ...next, export: { ...base.export, enabled: false } };
@@ -116,6 +137,14 @@ const menuConfig = computed<RecordIoConfig>(() => {
   }
   return next;
 });
+
+const importShellConfig = computed<RecordIoConfig>(() => ({
+  import: {
+    enabled: true,
+    uploadHint: props.importUploadHint,
+    columnMapping: props.importColumnMapping,
+  },
+}));
 
 const { items: configItems } = useRecordIoMenu({
   config: menuConfig,
@@ -128,7 +157,8 @@ const { items: configItems } = useRecordIoMenu({
 });
 
 const visibleItems = computed(() => {
-  const source = props.items ?? (props.config ? configItems.value : []);
+  const useDerived = props.import || props.export;
+  const source = props.items ?? (useDerived ? configItems.value : []);
   return (source ?? []).filter(item => !item.hidden);
 });
 
