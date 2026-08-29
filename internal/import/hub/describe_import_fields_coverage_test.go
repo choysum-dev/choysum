@@ -50,10 +50,6 @@ func TestDescribeImportFieldsDefaultFieldsUnsupportedModelDirect(t *testing.T) {
 	runtimeScope := newHubTestScope(t)
 	seedCountryModelMeta(t, runtimeScope.Session().DB)
 	db := runtimeScope.Session().DB
-	if err := db.Create(&meta.Model{Name: "Currency", Application: "base", Path: "/tmp", ModelTable: "base_currency"}).Error; err != nil {
-		// Currency may already exist from other tests; ignore duplicate.
-		_ = err
-	}
 	if err := db.Where("application = ? AND name = ?", "base", "Currency").FirstOrCreate(&meta.Model{
 		Name: "Currency", Application: "base", Path: "/tmp", ModelTable: "base_currency",
 	}).Error; err != nil {

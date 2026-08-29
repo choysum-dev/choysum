@@ -49,7 +49,9 @@ async function mountPanel(open = true, props: Record<string, unknown> = {}) {
           template:
             '<div class="dialog-stub"><div data-test="dialog-title">{{ title }}</div><button data-test="dialog-close" @click="$emit(\'update:modelValue\', false)">x</button><slot /><slot name="footer" /></div>',
           mounted() {
-            this.$emit('open');
+            if (this.modelValue) {
+              this.$emit('open');
+            }
           },
         },
         ElAlert: {
@@ -824,6 +826,85 @@ describe('ImportPanel', () => {
     await cancel!.trigger('click');
     await flushPromises();
     expect((wrapper.vm as any).visible).toBe(false);
+  });
+
+  it('ignores stale catalog success and errors after reset or newer request', async () => {
+    let resolveFirst: (value: { fields: unknown[]; defaultFields: string[] }) => void = () => {};
+    describeImportFields.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveFirst = resolve;
+        }),
+    );
+    const wrapper = await mountPanel(false);
+    const pendingFirst = (wrapper.vm as any).loadCatalog();
+    await flushPromises();
+    (wrapper.vm as any).resetState();
+    resolveFirst({ fields: [{ path: 'Stale', label: 'Stale', children: [] }], defaultFields: ['Stale'] });
+    await pendingFirst;
+    await flushPromises();
+    expect((wrapper.vm as any).catalogFields).toEqual([]);
+    expect((wrapper.vm as any).catalogDefaults).toEqual([]);
+
+    let rejectFirst: (reason: unknown) => void = () => {};
+    describeImportFields.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectFirst = reject;
+        }),
+    );
+    const pendingError = (wrapper.vm as any).loadCatalog();
+    await flushPromises();
+    (wrapper.vm as any).resetState();
+    rejectFirst(new Error('stale catalog error'));
+    await pendingError;
+    await flushPromises();
+    expect((wrapper.vm as any).catalogError).toBe('');
+
+    let resolveOld: (value: { fields: unknown[]; defaultFields: string[] }) => void = () => {};
+    let resolveNew: (value: { fields: unknown[]; defaultFields: string[] }) => void = () => {};
+    describeImportFields
+      .mockImplementationOnce(
+        () =>
+          new Promise(resolve => {
+            resolveOld = resolve;
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise(resolve => {
+            resolveNew = resolve;
+          }),
+      );
+    const pendingOld = (wrapper.vm as any).loadCatalog();
+    await flushPromises();
+    const pendingNew = (wrapper.vm as any).loadCatalog();
+    await flushPromises();
+    resolveNew({ fields: [{ path: 'New', label: 'New', children: [] }], defaultFields: ['New'] });
+    await pendingNew;
+    await flushPromises();
+    resolveOld({ fields: [{ path: 'Old', label: 'Old', children: [] }], defaultFields: ['Old'] });
+    await pendingOld;
+    await flushPromises();
+    expect((wrapper.vm as any).catalogFields.map((f: { path: string }) => f.path)).toEqual(['New']);
+    expect((wrapper.vm as any).catalogDefaults).toEqual(['New']);
+  });
+
+  it('shows re-preview footer on step 1 after mapping edit', async () => {
+    const wrapper = await mountPanel();
+    await flushPromises();
+    (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
+    await (wrapper.vm as any).uploadAndPreview();
+    await flushPromises();
+    (wrapper.vm as any).onMappingChange();
+    await flushPromises();
+    expect((wrapper.vm as any).canImport).toBe(false);
+    const previewBtn = wrapper.findAll('button').find(b => (b.text() || '').includes('Preview'));
+    expect(previewBtn).toBeTruthy();
+    expect(previewBtn!.attributes('disabled')).toBeUndefined();
+    (wrapper.vm as any).busy = true;
+    await flushPromises();
+    expect(previewBtn!.attributes('disabled')).toBeDefined();
   });
 
   it('uses custom upload hint when provided', async () => {

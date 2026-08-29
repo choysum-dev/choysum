@@ -183,18 +183,19 @@ const defaultFieldsHint = computed(() => catalogDefaults.value.filter(Boolean).j
 
 const catalogOptions = computed(() => {
   const out: Array<{ path: string; label: string }> = [];
-  const walk = (nodes: ImportFieldNode[]) => {
-    for (const node of nodes ?? []) {
-      const path = String(node.path ?? '').trim();
+  const walk = (nodes: ImportFieldNode[] | null | undefined) => {
+    for (const node of nodes || []) {
+      const path = String(node.path || '').trim();
       if (!path) continue;
-      const label = String(node.label ?? path).trim() || path;
-      if (!node.children?.length) {
+      const label = String(node.label || path).trim() || path;
+      const children = node.children;
+      if (!children || children.length === 0) {
         out.push({ path, label: `${label} (${path})` });
       } else {
-        for (const child of node.children) {
-          const childPath = String(child.path ?? '').trim();
+        for (const child of children) {
+          const childPath = String(child.path || '').trim();
           if (!childPath) continue;
-          const childLabel = String(child.label ?? childPath).trim() || childPath;
+          const childLabel = String(child.label || childPath).trim() || childPath;
           out.push({ path: childPath, label: `${childLabel} (${childPath})` });
         }
       }
@@ -237,13 +238,14 @@ function onFileRemoved() {
 
 function flattenPaths(nodes: ImportFieldNode[]): string[] {
   const out: string[] = [];
-  const walk = (list: ImportFieldNode[]) => {
-    for (const node of list ?? []) {
-      const path = String(node.path ?? '').trim();
-      if (!node.children?.length) {
+  const walk = (list: ImportFieldNode[] | null | undefined) => {
+    for (const node of list || []) {
+      const path = String(node.path || '').trim();
+      const children = node.children;
+      if (!children || children.length === 0) {
         if (path) out.push(path);
       } else {
-        walk(node.children);
+        walk(children);
       }
     }
   };
@@ -278,13 +280,21 @@ async function loadCatalog() {
   if (!String(props.model || '').trim()) {
     return;
   }
+  const token = sessionToken;
   catalogAbort?.abort();
-  catalogAbort = new AbortController();
+  const request = new AbortController();
+  catalogAbort = request;
   try {
-    const resp = await describeImportFields(props.model, catalogAbort.signal);
+    const resp = await describeImportFields(props.model, request.signal);
+    if (!isActiveSession(token) || catalogAbort !== request) {
+      return;
+    }
     catalogFields.value = resp.fields ?? [];
     catalogDefaults.value = resp.defaultFields ?? [];
   } catch (err) {
+    if (!isActiveSession(token) || catalogAbort !== request) {
+      return;
+    }
     if (err instanceof DOMException && err.name === 'AbortError') {
       return;
     }
