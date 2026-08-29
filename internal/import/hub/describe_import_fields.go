@@ -147,7 +147,7 @@ func fieldIsManyToOne(field *meta.Field) bool {
 		return false
 	}
 	ft := strings.TrimSpace(field.FieldType)
-	return ft == "ManyToOne" || ft == "ManyToOneRef" || strings.EqualFold(field.Relation, "ManyToOne")
+	return strings.EqualFold(ft, "ManyToOne") || strings.EqualFold(ft, "ManyToOneRef") || strings.EqualFold(field.Relation, "ManyToOne")
 }
 
 func fieldRelationTarget(field *meta.Field) (string, error) {

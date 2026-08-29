@@ -249,6 +249,36 @@ describe('ImportPanel', () => {
     expect((wrapper.vm as any).selectedFile).toBeNull();
   });
 
+  it('clears prior upload state when file is replaced or removed', async () => {
+    parseHeaders.mockResolvedValue({ headers: ['Name'] });
+    const wrapper = await mountPanel();
+    (wrapper.vm as any).onFileSelected({ raw: new File(['Name\na\n'], 'a.csv', { type: 'text/csv' }) });
+    await (wrapper.vm as any).uploadAndPreview();
+    await flushPromises();
+    expect(uploadImportCsv).toHaveBeenCalledTimes(1);
+    expect((wrapper.vm as any).sourceRef).toBe('att-src-1');
+    expect((wrapper.vm as any).mappingRows.length).toBeGreaterThan(0);
+
+    (wrapper.vm as any).step = 0;
+    (wrapper.vm as any).onFileSelected({ raw: new File(['Name\nb\n'], 'b.csv', { type: 'text/csv' }) });
+    expect((wrapper.vm as any).sourceRef).toBe('');
+    expect((wrapper.vm as any).headers).toEqual([]);
+    expect((wrapper.vm as any).mappingRows).toEqual([]);
+    expect((wrapper.vm as any).previewReport).toBeNull();
+
+    uploadImportCsv.mockResolvedValue('att-src-2');
+    await (wrapper.vm as any).uploadAndPreview();
+    await flushPromises();
+    expect(uploadImportCsv).toHaveBeenCalledTimes(2);
+    expect((wrapper.vm as any).sourceRef).toBe('att-src-2');
+
+    (wrapper.vm as any).onFileRemoved();
+    expect((wrapper.vm as any).selectedFile).toBeNull();
+    expect((wrapper.vm as any).sourceRef).toBe('');
+    expect((wrapper.vm as any).mappingRows).toEqual([]);
+    expect((wrapper.vm as any).previewReport).toBeNull();
+  });
+
   it('no-ops upload and import without required state', async () => {
     const wrapper = await mountPanel();
     await (wrapper.vm as any).uploadAndPreview();

@@ -240,6 +240,9 @@ func TestFieldIsManyToOneVariants(t *testing.T) {
 	if !fieldIsManyToOne(&meta.Field{FieldType: "ManyToOne"}) {
 		t.Fatal("ManyToOne")
 	}
+	if !fieldIsManyToOne(&meta.Field{FieldType: "manytooneref"}) {
+		t.Fatal("ManyToOneRef case-insensitive")
+	}
 	if !fieldIsManyToOne(&meta.Field{Relation: "ManyToOne"}) {
 		t.Fatal("Relation ManyToOne")
 	}

@@ -228,12 +228,22 @@ function invalidateSession() {
   catalogAbort = null;
 }
 
+function clearUploadDerivedState() {
+  // New or cleared file must not reuse a prior upload sourceRef / mapping / preview.
+  sourceRef.value = '';
+  headers.value = [];
+  mappingRows.value = [];
+  previewReport.value = null;
+}
+
 function onFileSelected(uploadFile: UploadFile) {
   selectedFile.value = uploadFile.raw ?? null;
+  clearUploadDerivedState();
 }
 
 function onFileRemoved() {
   selectedFile.value = null;
+  clearUploadDerivedState();
 }
 
 function flattenPaths(nodes: ImportFieldNode[]): string[] {
