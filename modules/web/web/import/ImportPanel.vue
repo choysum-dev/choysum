@@ -78,7 +78,13 @@ SPDX-License-Identifier: Apache-2.0
 
     <template #footer>
       <el-button :disabled="busy" @click="visible = false">{{ cancelLabel }}</el-button>
-      <el-button v-if="step === 0" type="primary" :loading="busy" :disabled="!selectedFile" @click="uploadAndPreview">
+      <el-button
+        v-if="step === 0 || (step === 1 && !canImport && !!sourceRef)"
+        type="primary"
+        :loading="busy"
+        :disabled="step === 0 ? !selectedFile : busy"
+        @click="uploadAndPreview"
+      >
         {{ previewActionLabel }}
       </el-button>
       <el-button v-else-if="step === 1" type="primary" :loading="busy" :disabled="!canImport" @click="commitImport">
@@ -170,7 +176,9 @@ const previewSummary = computed(() => {
   if (!stats) return '';
   return `Preview: ${stats.ok ?? 0} ok, ${stats.error ?? 0} errors, ${stats.total ?? 0} total`;
 });
-const canImport = computed(() => !!sourceRef.value && (previewReport.value?.stats?.error ?? 0) === 0);
+const canImport = computed(
+  () => !!sourceRef.value && previewReport.value != null && (previewReport.value.stats?.error ?? 0) === 0,
+);
 const defaultFieldsHint = computed(() => catalogDefaults.value.filter(Boolean).join(', '));
 
 const catalogOptions = computed(() => {
@@ -232,8 +240,11 @@ function flattenPaths(nodes: ImportFieldNode[]): string[] {
   const walk = (list: ImportFieldNode[]) => {
     for (const node of list ?? []) {
       const path = String(node.path ?? '').trim();
-      if (path) out.push(path);
-      if (node.children?.length) walk(node.children);
+      if (!node.children?.length) {
+        if (path) out.push(path);
+      } else {
+        walk(node.children);
+      }
     }
   };
   walk(nodes);
@@ -256,7 +267,8 @@ function buildMappingRows(csvHeaders: string[]): MappingRow[] {
 }
 
 function onMappingChange() {
-  // Mapping edits are applied on the next Import; preview stays as last dry-run.
+  // Mapping edits invalidate the last dry-run; Import stays disabled until Preview again.
+  previewReport.value = null;
 }
 
 async function loadCatalog() {

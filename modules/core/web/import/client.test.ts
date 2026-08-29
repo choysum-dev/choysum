@@ -3,13 +3,20 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { create } from '@bufbuild/protobuf';
-import { ImportPolicy, ImportRunRequestSchema, ParseHeadersRequestSchema } from './pb/import_pb';
+import {
+  DescribeImportFieldsRequestSchema,
+  ImportPolicy,
+  ImportRunRequestSchema,
+  ParseHeadersRequestSchema,
+} from './pb/import_pb';
 
+const describeImportFields = vi.fn();
 const parseHeaders = vi.fn();
 const preview = vi.fn();
 const run = vi.fn();
 const runAsync = vi.fn();
 const createWebClient = vi.fn(() => () => ({
+  describeImportFields,
   parseHeaders,
   preview,
   run,
@@ -22,11 +29,34 @@ vi.mock('../rpc/client_factory', () => ({
 
 describe('core/web import client', () => {
   beforeEach(() => {
+    describeImportFields.mockReset();
     parseHeaders.mockReset();
     preview.mockReset();
     run.mockReset();
     runAsync.mockReset();
     createWebClient.mockClear();
+  });
+
+  it('calls ImportHub describeImportFields with model', async () => {
+    describeImportFields.mockResolvedValue({ fields: [], defaultFields: ['Name'] });
+    const { describeImportFields: describeFn } = await import('./client');
+    const resp = await describeFn('partner.Partner');
+    expect(resp.defaultFields).toEqual(['Name']);
+    expect(describeImportFields).toHaveBeenCalledWith(
+      create(DescribeImportFieldsRequestSchema, { model: 'partner.Partner' }),
+      undefined,
+    );
+  });
+
+  it('passes abort signal to describeImportFields', async () => {
+    describeImportFields.mockResolvedValue({ fields: [] });
+    const { describeImportFields: describeFn } = await import('./client');
+    const controller = new AbortController();
+    await describeFn('base.Country', controller.signal);
+    expect(describeImportFields).toHaveBeenCalledWith(
+      create(DescribeImportFieldsRequestSchema, { model: 'base.Country' }),
+      { signal: controller.signal },
+    );
   });
 
   it('calls ImportHub parseHeaders with source ref', async () => {

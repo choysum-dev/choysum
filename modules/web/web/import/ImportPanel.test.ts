@@ -35,21 +35,46 @@ const i18n = createI18n({
   messages: { en: {} },
 });
 
-async function mountPanel(open = true) {
+async function mountPanel(open = true, props: Record<string, unknown> = {}) {
   const { default: ImportPanel } = await import('./ImportPanel.vue');
   return mount(ImportPanel, {
-    props: { model: 'partner.Partner', companyId: 'cmp-1', modelValue: open },
+    props: { model: 'partner.Partner', companyId: 'cmp-1', modelValue: open, ...props },
     global: {
       plugins: [i18n],
       stubs: {
         ElDialog: {
-          props: ['modelValue'],
-          emits: ['update:modelValue', 'close'],
-          template: '<div class="dialog-stub"><slot /><slot name="footer" /></div>',
+          name: 'ElDialog',
+          props: ['modelValue', 'title'],
+          emits: ['update:modelValue', 'close', 'open', 'closed'],
+          template:
+            '<div class="dialog-stub"><div data-test="dialog-title">{{ title }}</div><button data-test="dialog-close" @click="$emit(\'update:modelValue\', false)">x</button><slot /><slot name="footer" /></div>',
+          mounted() {
+            this.$emit('open');
+          },
         },
         ElAlert: {
           template: '<div class="el-alert-stub"><slot name="title" /></div>',
         },
+        ElButton: {
+          emits: ['click'],
+          template: '<button @click="$emit(\'click\')"><slot /></button>',
+        },
+        ElSelect: {
+          props: ['modelValue'],
+          emits: ['update:modelValue', 'change'],
+          template:
+            '<select data-test="import-field-select" :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value); $emit(\'change\', $event.target.value)"><slot /></select>',
+        },
+        ElOption: {
+          props: ['label', 'value'],
+          template: '<option :value="value">{{ label }}</option>',
+        },
+        ElUpload: { template: '<div class="upload-stub"><slot /></div>' },
+        ElSteps: { template: '<div class="steps-stub"><slot /></div>' },
+        ElStep: { template: '<div class="step-stub" />' },
+        ElTable: { template: '<div class="table-stub"><slot /></div>' },
+        ElTableColumn: { template: '<div />' },
+        ElResult: { template: '<div class="el-result-stub" />' },
       },
     },
   });
@@ -559,5 +584,263 @@ describe('ImportPanel', () => {
     expect((wrapper.vm as any).importDone).toBe(true);
     await (wrapper.vm as any).finish();
     expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([false]);
+  });
+
+  it('invalidates preview when mapping changes and requires re-preview', async () => {
+    const wrapper = await mountPanel();
+    (wrapper.vm as any).onFileSelected({ raw: new File(['Name\n'], 'partners.csv', { type: 'text/csv' }) });
+    await (wrapper.vm as any).uploadAndPreview();
+    await flushPromises();
+    expect((wrapper.vm as any).canImport).toBe(true);
+    (wrapper.vm as any).mappingRows = [{ header: 'Name', fieldPath: 'Code' }];
+    (wrapper.vm as any).onMappingChange();
+    expect((wrapper.vm as any).previewReport).toBeNull();
+    expect((wrapper.vm as any).canImport).toBe(false);
+    expect((wrapper.vm as any).resolvedMapping).toEqual({ Name: 'Code' });
+  });
+
+  it('auto-matches only leaf catalog paths and prefers columnMapping prop', async () => {
+    parseHeaders.mockResolvedValue({ headers: ['Name', 'CompanyId', 'CompanyId/Code', 'Extra'] });
+    const { default: ImportPanel } = await import('./ImportPanel.vue');
+    const wrapper = mount(ImportPanel, {
+      props: {
+        model: 'partner.Partner',
+        modelValue: true,
+        columnMapping: { Extra: 'Name' },
+      },
+      global: {
+        plugins: [i18n],
+        stubs: {
+          ElDialog: {
+            props: ['modelValue'],
+            emits: ['update:modelValue', 'close'],
+            template: '<div class="dialog-stub"><slot /><slot name="footer" /></div>',
+          },
+          ElAlert: { template: '<div class="el-alert-stub"><slot name="title" /></div>' },
+        },
+      },
+    });
+    await (wrapper.vm as any).loadCatalog();
+    await flushPromises();
+    (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
+    await (wrapper.vm as any).uploadAndPreview();
+    await flushPromises();
+    expect((wrapper.vm as any).catalogOptions.map((o: { path: string }) => o.path)).toEqual([
+      'Name',
+      'Code',
+      'CompanyId/Code',
+    ]);
+    expect((wrapper.vm as any).mappingRows).toEqual([
+      { header: 'Name', fieldPath: 'Name' },
+      { header: 'CompanyId', fieldPath: '' },
+      { header: 'CompanyId/Code', fieldPath: 'CompanyId/Code' },
+      { header: 'Extra', fieldPath: 'Name' },
+    ]);
+  });
+
+  it('covers catalog option and flatten edge cases for blank nodes', async () => {
+    const wrapper = await mountPanel();
+    (wrapper.vm as any).catalogFields = [
+      { path: '  ', label: 'Blank' },
+      { path: 'Leaf', label: '', children: [] },
+      {
+        path: 'Parent',
+        label: 'Parent',
+        children: [
+          { path: '  ', label: 'Skip' },
+          { path: 'Parent/Child', label: '', children: [] },
+        ],
+      },
+    ];
+    expect((wrapper.vm as any).catalogOptions).toEqual([
+      { path: 'Leaf', label: 'Leaf (Leaf)' },
+      { path: 'Parent/Child', label: 'Parent/Child (Parent/Child)' },
+    ]);
+    expect((wrapper.vm as any).flattenPaths((wrapper.vm as any).catalogFields)).toEqual(['Leaf', 'Parent/Child']);
+  });
+
+  it('handles catalog load errors, abort, empty model, and null field lists', async () => {
+    const wrapper = await mountPanel();
+    await flushPromises();
+
+    describeImportFields.mockRejectedValueOnce(new Error('catalog down'));
+    await (wrapper.vm as any).loadCatalog();
+    await flushPromises();
+    expect((wrapper.vm as any).catalogError).toBe('catalog down');
+
+    describeImportFields.mockRejectedValueOnce('plain catalog fail');
+    await (wrapper.vm as any).loadCatalog();
+    await flushPromises();
+    expect((wrapper.vm as any).catalogError).toBe('plain catalog fail');
+
+    describeImportFields.mockRejectedValueOnce(new DOMException('aborted', 'AbortError'));
+    (wrapper.vm as any).catalogError = 'keep';
+    await (wrapper.vm as any).loadCatalog();
+    await flushPromises();
+    expect((wrapper.vm as any).catalogError).toBe('');
+
+    describeImportFields.mockResolvedValueOnce({ fields: null, defaultFields: null });
+    await (wrapper.vm as any).loadCatalog();
+    await flushPromises();
+    expect((wrapper.vm as any).catalogFields).toEqual([]);
+    expect((wrapper.vm as any).catalogDefaults).toEqual([]);
+    expect((wrapper.vm as any).defaultFieldsHint).toBe('');
+
+    await wrapper.setProps({ model: '   ' });
+    const callsBefore = describeImportFields.mock.calls.length;
+    await (wrapper.vm as any).loadCatalog();
+    expect(describeImportFields.mock.calls.length).toBe(callsBefore);
+  });
+
+  it('skips catalog reload when fields or catalog error already present', async () => {
+    const wrapper = await mountPanel();
+    await (wrapper.vm as any).loadCatalog();
+    await flushPromises();
+    describeImportFields.mockClear();
+    (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
+    await (wrapper.vm as any).uploadAndPreview();
+    await flushPromises();
+    expect(describeImportFields).not.toHaveBeenCalled();
+
+    (wrapper.vm as any).catalogFields = [];
+    (wrapper.vm as any).catalogError = 'stale';
+    describeImportFields.mockClear();
+    await (wrapper.vm as any).uploadAndPreview();
+    await flushPromises();
+    expect(describeImportFields).not.toHaveBeenCalled();
+  });
+
+  it('shows default fields hint and keeps re-preview available after mapping edit', async () => {
+    const wrapper = await mountPanel();
+    await flushPromises();
+    expect(wrapper.find('[data-test="dialog-title"]').text().length).toBeGreaterThan(0);
+    expect(wrapper.find('[data-test="import-default-fields"]').exists()).toBe(true);
+    (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
+    await (wrapper.vm as any).uploadAndPreview();
+    await flushPromises();
+    (wrapper.vm as any).onMappingChange();
+    await flushPromises();
+    expect((wrapper.vm as any).canImport).toBe(false);
+    expect((wrapper.vm as any).step).toBe(1);
+    expect((wrapper.vm as any).sourceRef).toBeTruthy();
+  });
+
+  it('ignores stale session right after upload resolves and in preview catch', async () => {
+    let resolveCatalog: (value: { fields: unknown[]; defaultFields: string[] }) => void = () => {};
+    describeImportFields.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          resolveCatalog = resolve;
+        }),
+    );
+    const wrapper = await mountPanel(false);
+    (wrapper.vm as any).catalogFields = [];
+    (wrapper.vm as any).catalogError = '';
+    (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
+    const pendingCatalog = (wrapper.vm as any).uploadAndPreview();
+    await flushPromises();
+    (wrapper.vm as any).resetState();
+    resolveCatalog({ fields: [], defaultFields: [] });
+    await pendingCatalog;
+    await flushPromises();
+    expect((wrapper.vm as any).sourceRef).toBe('');
+
+    describeImportFields.mockResolvedValue({
+      fields: [
+        { path: 'Name', label: 'Name', children: [] },
+        { path: 'Code', label: 'Code', children: [] },
+      ],
+      defaultFields: ['Name', 'Code'],
+    });
+    let resolveUpload: (value: string) => void = () => {};
+    uploadImportCsv.mockImplementation(
+      () =>
+        new Promise<string>(resolve => {
+          resolveUpload = resolve;
+        }),
+    );
+    (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
+    const pendingUpload = (wrapper.vm as any).uploadAndPreview();
+    await flushPromises();
+    resolveUpload('att-after-upload');
+    (wrapper.vm as any).resetState();
+    await pendingUpload;
+    await flushPromises();
+    expect((wrapper.vm as any).sourceRef).toBe('');
+
+    let rejectUpload: (reason: Error) => void = () => {};
+    uploadImportCsv.mockImplementation(
+      () =>
+        new Promise<string>((_resolve, reject) => {
+          rejectUpload = reject;
+        }),
+    );
+    (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
+    const pendingFail = (wrapper.vm as any).uploadAndPreview();
+    await flushPromises();
+    (wrapper.vm as any).resetState();
+    rejectUpload(new Error('late fail'));
+    await pendingFail;
+    await flushPromises();
+    expect((wrapper.vm as any).importError).toBe('');
+  });
+
+  it('covers nullish catalog/mapping branches and cancel path', async () => {
+    const wrapper = await mountPanel();
+    await flushPromises();
+    (wrapper.vm as any).catalogFields = null;
+    expect((wrapper.vm as any).catalogOptions).toEqual([]);
+    expect((wrapper.vm as any).flattenPaths(null)).toEqual([]);
+    (wrapper.vm as any).catalogFields = [
+      { path: null, label: null, children: null },
+      { path: 'Name', label: null, children: undefined },
+      {
+        path: 'CompanyId',
+        label: null,
+        children: [{ path: null, label: null }, { path: 'CompanyId/Code', label: null }],
+      },
+    ];
+    expect((wrapper.vm as any).catalogOptions.map((o: { path: string }) => o.path)).toEqual(['Name', 'CompanyId/Code']);
+    (wrapper.vm as any).mappingRows = [
+      { header: null, fieldPath: 'Name' },
+      { header: 'Code', fieldPath: null },
+      { header: 'Name', fieldPath: 'Name' },
+    ];
+    expect((wrapper.vm as any).resolvedMapping).toEqual({ Name: 'Name' });
+
+    await (wrapper.vm as any).loadCatalog();
+    await flushPromises();
+    (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
+    await (wrapper.vm as any).uploadAndPreview();
+    await flushPromises();
+    const select = wrapper.find('[data-test="import-field-select"]');
+    expect(select.exists()).toBe(true);
+    await select.setValue('Code');
+    await flushPromises();
+    expect((wrapper.vm as any).previewReport).toBeNull();
+
+    const cancel = wrapper.findAll('button').find(b => (b.text() || '').includes('Cancel'));
+    expect(cancel).toBeTruthy();
+    await cancel!.trigger('click');
+    await flushPromises();
+    expect((wrapper.vm as any).visible).toBe(false);
+  });
+
+  it('uses custom upload hint when provided', async () => {
+    const { default: ImportPanel } = await import('./ImportPanel.vue');
+    const wrapper = mount(ImportPanel, {
+      props: { model: 'partner.Partner', modelValue: true, uploadHint: 'Custom hint' },
+      global: {
+        plugins: [i18n],
+        stubs: {
+          ElDialog: {
+            props: ['modelValue'],
+            emits: ['update:modelValue', 'close'],
+            template: '<div class="dialog-stub"><slot /><slot name="footer" /></div>',
+          },
+        },
+      },
+    });
+    expect((wrapper.vm as any).resolvedUploadHint).toBe('Custom hint');
   });
 });
