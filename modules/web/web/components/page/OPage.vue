@@ -13,13 +13,17 @@ SPDX-License-Identifier: Apache-2.0
     :aria-label="title && $slots.header ? title : undefined"
   >
     <!-- Page header section. -->
-    <div v-if="$slots.header || title || showBreadcrumb || $slots.breadcrumb || $slots['title-actions']" class="o-page__header">
+    <div
+      v-if="$slots.header || title || showBreadcrumb || $slots.breadcrumb || showTitleActions"
+      class="o-page__header"
+    >
       <template v-if="$slots.header">
-        <div v-if="$slots['title-actions']" class="o-page__title-row">
+        <div v-if="showTitleActions" class="o-page__title-row">
           <div class="o-page__header-slot">
             <slot name="header" />
           </div>
           <div class="o-page__title-actions">
+            <OPageIoMenu v-if="hasIoMenu" v-bind="ioMenuBind" />
             <slot name="title-actions" />
           </div>
         </div>
@@ -31,9 +35,10 @@ SPDX-License-Identifier: Apache-2.0
             <OBreadcrumb />
           </slot>
         </div>
-        <div v-if="title || $slots['title-actions']" class="o-page__title-row">
+        <div v-if="title || showTitleActions" class="o-page__title-row">
           <h1 v-if="title" class="o-page__title" :id="pageTitleId">{{ title }}</h1>
-          <div v-if="$slots['title-actions']" class="o-page__title-actions">
+          <div v-if="showTitleActions" class="o-page__title-actions">
+            <OPageIoMenu v-if="hasIoMenu" v-bind="ioMenuBind" />
             <slot name="title-actions" />
           </div>
         </div>
@@ -65,9 +70,10 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, useId } from 'vue';
+import { computed, useId, useSlots } from 'vue';
 import { Loading } from '@element-plus/icons-vue';
 import OBreadcrumb from '@/web/web/components/view/OBreadcrumb.vue';
+import OPageIoMenu, { type OPageIoMenuListRef } from '@/web/web/components/page/OPageIoMenu.vue';
 import { createTranslate } from '@/web/web/i18n';
 import { provideOPageContext } from '@/web/web/composables/usePageContext';
 
@@ -106,11 +112,54 @@ const props = defineProps({
     type: Object,
     default: undefined,
   },
+  /** Enable default title Import action via OPageIoMenu. */
+  actionImport: {
+    type: Boolean,
+    default: false,
+  },
+  /** Enable default title Export action via OPageIoMenu. */
+  actionExport: {
+    type: Boolean,
+    default: false,
+  },
+  /** Optional CSV upload hint forwarded to OPageIoMenu. */
+  actionImportUploadHint: {
+    type: String,
+    default: undefined,
+  },
+  /** Optional import column mapping forwarded to OPageIoMenu. */
+  actionImportColumnMapping: {
+    type: Object as () => Record<string, string>,
+    default: undefined,
+  },
+  /** List/kanban view ref for export scope and import refresh. */
+  actionListRef: {
+    type: Object as () => OPageIoMenuListRef | null,
+    default: undefined,
+  },
+  /** Optional company override for import/export panels. */
+  actionCompanyId: {
+    type: String,
+    default: undefined,
+  },
 });
 
 provideOPageContext({ store: () => props.store });
 
+const slots = useSlots();
 const pageTitleId = useId();
+
+const hasIoMenu = computed(() => !!props.actionImport || !!props.actionExport);
+const showTitleActions = computed(() => hasIoMenu.value || !!slots['title-actions']);
+
+const ioMenuBind = computed(() => ({
+  actionImport: !!props.actionImport,
+  actionExport: !!props.actionExport,
+  actionImportUploadHint: props.actionImportUploadHint,
+  actionImportColumnMapping: props.actionImportColumnMapping,
+  actionListRef: props.actionListRef,
+  actionCompanyId: props.actionCompanyId,
+}));
 
 const pageClass = computed(() => {
   return [

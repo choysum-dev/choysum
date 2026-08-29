@@ -7,10 +7,32 @@
 
 import { describe, expect, test } from 'vitest';
 import { mount } from '@vue/test-utils';
+import { defineComponent, h } from 'vue';
 import OPage from './OPage.vue';
 
 const pageStubs = {
   OBreadcrumb: true,
+  OPageIoMenu: defineComponent({
+    name: 'OPageIoMenu',
+    props: {
+      actionImport: { type: Boolean, default: false },
+      actionExport: { type: Boolean, default: false },
+      actionImportUploadHint: { type: String, default: undefined },
+      actionImportColumnMapping: { type: Object, default: undefined },
+      actionListRef: { type: Object, default: undefined },
+      actionCompanyId: { type: String, default: undefined },
+      store: { type: Object, default: undefined },
+    },
+    setup(props) {
+      return () =>
+        h('div', {
+          'data-test': 'page-io-menu-stub',
+          'data-import': String(!!props.actionImport),
+          'data-export': String(!!props.actionExport),
+          'data-hint': props.actionImportUploadHint || '',
+        });
+    },
+  }),
   // Loading spinner; Element Plus is not registered in this unit suite.
   'el-icon': true,
 };
@@ -262,5 +284,53 @@ describe('OPage component', () => {
     });
     expect(wrapper.find('h1.o-page__title').text()).toBe('With Store');
     expect(wrapper.props('store')).toEqual(store);
+  });
+
+  test('mounts default OPageIoMenu from action-import/export props', () => {
+    const listRef = { refresh: () => undefined };
+    const wrapper = mount(OPage, {
+      props: {
+        title: 'Partners',
+        showBreadcrumb: false,
+        actionImport: true,
+        actionExport: true,
+        actionImportUploadHint: 'hint',
+        actionListRef: listRef,
+      },
+      global: { stubs: pageStubs },
+    });
+    const menu = wrapper.find('[data-test="page-io-menu-stub"]');
+    expect(menu.exists()).toBe(true);
+    expect(menu.attributes('data-import')).toBe('true');
+    expect(menu.attributes('data-export')).toBe('true');
+    expect(menu.attributes('data-hint')).toBe('hint');
+    expect(wrapper.findComponent({ name: 'OPageIoMenu' }).props('actionListRef')).toEqual(listRef);
+  });
+
+  test('keeps title-actions slot additive beside the default IO menu', () => {
+    const wrapper = mount(OPage, {
+      props: {
+        title: 'Partners',
+        showBreadcrumb: false,
+        actionImport: true,
+      },
+      slots: {
+        'title-actions': '<button data-test="extra-action">Extra</button>',
+      },
+      global: { stubs: pageStubs },
+    });
+    expect(wrapper.find('[data-test="page-io-menu-stub"]').exists()).toBe(true);
+    expect(wrapper.find('[data-test="extra-action"]').exists()).toBe(true);
+  });
+
+  test('does not mount OPageIoMenu when action-import/export are unset', () => {
+    const wrapper = mount(OPage, {
+      props: {
+        title: 'Partners',
+        showBreadcrumb: false,
+      },
+      global: { stubs: pageStubs },
+    });
+    expect(wrapper.find('[data-test="page-io-menu-stub"]').exists()).toBe(false);
   });
 });

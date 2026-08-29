@@ -4,15 +4,14 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage :title="pageTitle" :store="partnerStore">
-    <template #title-actions>
-      <OPageIoMenu
-        import
-        export
-        :import-upload-hint="_t('Upload a UTF-8 CSV with columns Name, Code, IsActive, CustomerRank, SupplierRank.')"
-        :list-ref="listViewRef"
-      />
-    </template>
+  <OPage
+    :title="pageTitle"
+    :store="partnerStore"
+    action-import
+    action-export
+    :action-import-upload-hint="_t('Upload a UTF-8 CSV with columns Name, Code, IsActive, CustomerRank, SupplierRank.')"
+    :action-list-ref="listViewRef"
+  >
     <PartnerListView ref="listViewRef" createAction="/partner/partners/new" />
   </OPage>
 </template>
@@ -22,7 +21,6 @@ import { ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import OPage from '@/web/web/components/page/OPage.vue';
-import OPageIoMenu from '@/web/web/components/page/OPageIoMenu.vue';
 import PartnerListView from '../views/PartnerListView.vue';
 import type { RecordExportListRef } from '@/web/web/composables/useRecordExportScope';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';

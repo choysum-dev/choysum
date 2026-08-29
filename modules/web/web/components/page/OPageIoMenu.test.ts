@@ -130,15 +130,15 @@ describe('OPageIoMenu', () => {
     expect(onImport).not.toHaveBeenCalled();
   });
 
-  it('derives menu and panels from import/export flags', async () => {
+  it('derives menu and panels from action-import/export flags', async () => {
     const refresh = vi.fn();
     const store = { storeId: 's1', fullModelName: 'partner.Partner', state: { result: { total: 2 } } };
     const wrapper = await mountMenu({
-      import: true,
-      export: true,
-      importUploadHint: 'hint',
+      actionImport: true,
+      actionExport: true,
+      actionImportUploadHint: 'hint',
       store,
-      listRef: { refresh, selectedItems: { value: [{ Id: '1' }] } },
+      actionListRef: { refresh, selectedItems: { value: [{ Id: '1' }] } },
     });
     expect(wrapper.find('[data-test="page-io-menu-import"]').exists()).toBe(true);
     expect(wrapper.find('[data-test="page-io-menu-export"]').exists()).toBe(true);
@@ -158,8 +158,8 @@ describe('OPageIoMenu', () => {
 
   it('skips panels when store is missing', async () => {
     const wrapper = await mountMenu({
-      import: true,
-      export: true,
+      actionImport: true,
+      actionExport: true,
     });
     expect(wrapper.find('[data-test="import-shell-stub"]').exists()).toBe(false);
     expect(wrapper.find('[data-test="export-shell-stub"]').exists()).toBe(false);
@@ -169,8 +169,8 @@ describe('OPageIoMenu', () => {
 
   it('skips panels when store lacks fullModelName', async () => {
     const wrapper = await mountMenu({
-      import: true,
-      export: true,
+      actionImport: true,
+      actionExport: true,
       store: { storeId: 's1', state: { result: { total: 1 } } },
     });
     expect(wrapper.find('[data-test="import-shell-stub"]').exists()).toBe(false);
@@ -195,7 +195,7 @@ describe('OPageIoMenu', () => {
       slots: {
         default: () =>
           h(OPageIoMenu, {
-            export: true,
+            actionExport: true,
           }),
       },
       global: {

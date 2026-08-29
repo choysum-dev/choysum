@@ -7,6 +7,7 @@ import { config, mount } from '@vue/test-utils';
 import { defineComponent, h, nextTick } from 'vue';
 import { createI18n } from 'vue-i18n';
 import { provideOPageContext } from '@/web/web/composables/usePageContext';
+import OPageIoMenu from '@/web/web/components/page/OPageIoMenu.vue';
 
 config.global.renderStubDefaultSlot = true;
 
@@ -82,12 +83,32 @@ const OPageStub = defineComponent({
   props: {
     title: { type: String, default: '' },
     store: { type: Object, default: undefined },
+    actionImport: { type: Boolean, default: false },
+    actionExport: { type: Boolean, default: false },
+    actionImportUploadHint: { type: String, default: undefined },
+    actionImportColumnMapping: { type: Object, default: undefined },
+    actionListRef: { type: Object, default: undefined },
+    actionCompanyId: { type: String, default: undefined },
   },
   setup(props, { slots }) {
     provideOPageContext({ store: () => props.store });
     return () =>
       h('div', [
-        h('div', { class: 'title-actions' }, slots['title-actions']?.()),
+        h('div', { class: 'title-actions' }, [
+          props.actionImport || props.actionExport
+            ? h(OPageIoMenu, {
+                actionImport: props.actionImport,
+                actionExport: props.actionExport,
+                actionImportUploadHint: props.actionImportUploadHint,
+                actionImportColumnMapping: props.actionImportColumnMapping as
+                  | Record<string, string>
+                  | undefined,
+                actionListRef: props.actionListRef as any,
+                actionCompanyId: props.actionCompanyId,
+              })
+            : null,
+          slots['title-actions']?.(),
+        ]),
         slots.default?.(),
       ]);
   },
@@ -135,19 +156,24 @@ describe('PartnerList page', () => {
     vi.resetModules();
   });
 
-  it('provides page store to IO menu without an explicit menu store prop', async () => {
+  it('wires page action-* props into the default title IO menu', async () => {
     const wrapper = await mountPartnerList();
     await nextTick();
+    const page = wrapper.findComponent({ name: 'OPageStub' });
+    expect(page.props('actionImport')).toBe(true);
+    expect(page.props('actionExport')).toBe(true);
+    expect(page.props('actionListRef')).toBeTruthy();
+    expect(String(page.props('actionImportUploadHint') || '')).toContain('UTF-8 CSV');
+
     const menu = wrapper.findComponent({ name: 'OPageIoMenu' });
-    expect(menu.props('import')).toBe(true);
-    expect(menu.props('export')).toBe(true);
+    expect(menu.props('actionImport')).toBe(true);
+    expect(menu.props('actionExport')).toBe(true);
     expect(menu.props('store')).toBeUndefined();
-    expect(menu.props('listRef')).toBeTruthy();
+    expect(menu.props('actionListRef')).toBeTruthy();
     expect(wrapper.find('[data-test="export-shell-stub"]').attributes('data-model')).toBe('partner.Partner');
     const exportShell = wrapper.findComponent({ name: 'RecordExportShellStub' });
     expect(exportShell.props('store')?.storeId).toBe('Partner_/partner/partners');
     expect(exportShell.props('store')?.fullModelName).toBe('partner.Partner');
-    expect(String(menu.props('importUploadHint') || '')).toContain('UTF-8 CSV');
   });
 
   it('opens import and export from title IO menu', async () => {
