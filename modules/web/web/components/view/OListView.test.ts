@@ -7,6 +7,7 @@ import { mount, flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import OListView from '@/web/web/components/view/OListView.vue';
 import { LIST_HANDLE_API_KEY } from '@/web/web/composables/useListHandleReorder';
+import { provideOPageContext } from '@/web/web/composables/usePageContext';
 
 const visibleNodes = ref<any[]>([
   { kind: 'record', key: '1', payload: { Id: '1', Name: 'A', Sequence: 1 } },
@@ -679,5 +680,57 @@ describe('OListView editable / handle', () => {
     await wrapper.find('.row-click-custom').trigger('click');
     await flushPromises();
     expect(loadMoreGroupChildrenMock).toHaveBeenCalledWith('g1');
+  });
+});
+
+describe('OListView page action target', () => {
+  afterEach(() => {
+    while (mountedWrappers.length) {
+      mountedWrappers.pop()?.unmount();
+    }
+  });
+
+  it('auto-registers selectedItems and refresh when omitted registerActionTarget stays undefined', async () => {
+    const store = makeStore();
+    let ctx: ReturnType<typeof provideOPageContext> | null = null;
+    const Host = defineComponent({
+      setup(_, { slots }) {
+        ctx = provideOPageContext({ store });
+        return () => h('div', slots.default?.());
+      },
+    });
+    const wrapper = mount(Host, {
+      slots: {
+        default: () =>
+          h(OListView as any, {
+            editable: false,
+            showPaginate: false,
+            refreshAction: false,
+            deleteAction: false,
+          }),
+      },
+      global: {
+        stubs: {
+          OViewContainer: { template: '<div><slot name="header" /><slot /></div>' },
+          OVTable: OVTableStub,
+          OVColumn: OVColumnStub,
+          OPagination: true,
+          ElButton: { template: '<button v-bind="$attrs"><slot /></button>' },
+          ElIcon: true,
+        },
+      },
+    });
+    mountedWrappers.push(wrapper);
+    await flushPromises();
+    await nextTick();
+
+    const list = wrapper.findComponent(OListView);
+    expect(list.props('registerActionTarget')).toBeUndefined();
+    const target = ctx!.actionTarget.value;
+    expect(target).toBeTruthy();
+    expect(Array.isArray(target!.selectedItems)).toBe(true);
+    applyMock.mockClear();
+    await target!.refresh?.();
+    expect(applyMock).toHaveBeenCalled();
   });
 });

@@ -153,13 +153,14 @@ import {
 import { ElMessage, ElButton, ElTooltip, ElButtonGroup, ElSelect, ElOption, ElIcon } from 'element-plus';
 import VChart from 'vue-echarts';
 import { createTranslate } from '@/web/web/i18n';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/OChartView' });
 ensureEChartsRegistered();
 
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<T>;
+    store?: WebModelStore<T>;
     searchView: SearchViewComponent<T> | typeof OSearchView;
     defaultGroups?: GroupBySpec<T> | GroupBySpec<T>[];
     defaultMetricAlias?: string;
@@ -193,6 +194,8 @@ const props = withDefaults(
     showChartControls: true,
   }
 );
+
+const store = resolvePageStore(props.store, 'OChartView');
 
 const emit = defineEmits<{
   (e: 'action-error', payload: { action: 'load' | 'refresh' | 'search' | 'sort' | 'metric' | 'chart-type'; error: Error }): void;
@@ -228,7 +231,6 @@ interface ChartItemClickPayload {
 }
 
 // Controller
-const store = props.store;
 const resolvedSearchView = computed(() => {
   const view = props.searchView;
   return view ? markRaw(toRaw(view as object)) : null;

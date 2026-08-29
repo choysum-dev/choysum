@@ -251,81 +251,6 @@ msgctxt "service/models/partner_contact"
 msgid "PartnerId is required"
 msgstr "PartnerId 为必填项"
 
-#: web/components/PartnerImportWizard.vue:33
-msgctxt "web/components/PartnerImportWizard"
-msgid "Cancel"
-msgstr "取消"
-
-#: web/components/PartnerImportWizard.vue:31
-msgctxt "web/components/PartnerImportWizard"
-msgid "Code"
-msgstr "编码"
-
-#: web/components/PartnerImportWizard.vue:28
-msgctxt "web/components/PartnerImportWizard"
-msgid "Detected headers"
-msgstr "检测到的表头"
-
-#: web/components/PartnerImportWizard.vue:36
-msgctxt "web/components/PartnerImportWizard"
-msgid "Done"
-msgstr "完成"
-
-#: web/components/PartnerImportWizard.vue:27
-msgctxt "web/components/PartnerImportWizard"
-msgid "Drop CSV here or click to browse"
-msgstr "拖放 CSV 到此处或点击浏览"
-
-#: web/components/PartnerImportWizard.vue:30
-msgctxt "web/components/PartnerImportWizard"
-msgid "Field"
-msgstr "字段"
-
-#: web/components/PartnerImportWizard.vue:25 web/components/PartnerImportWizard.vue:35
-msgctxt "web/components/PartnerImportWizard"
-msgid "Import"
-msgstr "导入"
-
-#: web/components/PartnerImportWizard.vue:22
-msgctxt "web/components/PartnerImportWizard"
-msgid "Import Partners"
-msgstr "导入伙伴"
-
-#: web/components/PartnerImportWizard.vue:37
-msgctxt "web/components/PartnerImportWizard"
-msgid "Import completed"
-msgstr "导入完成"
-
-#: web/components/PartnerImportWizard.vue:32
-msgctxt "web/components/PartnerImportWizard"
-msgid "Message"
-msgstr "消息"
-
-#: web/components/PartnerImportWizard.vue:38
-msgctxt "web/components/PartnerImportWizard"
-msgid "Partner rows were imported successfully."
-msgstr "伙伴行已成功导入。"
-
-#: web/components/PartnerImportWizard.vue:24 web/components/PartnerImportWizard.vue:34
-msgctxt "web/components/PartnerImportWizard"
-msgid "Preview"
-msgstr "预览"
-
-#: web/components/PartnerImportWizard.vue:29
-msgctxt "web/components/PartnerImportWizard"
-msgid "Row"
-msgstr "行"
-
-#: web/components/PartnerImportWizard.vue:23
-msgctxt "web/components/PartnerImportWizard"
-msgid "Upload CSV"
-msgstr "上传 CSV"
-
-#: web/components/PartnerImportWizard.vue:26
-msgctxt "web/components/PartnerImportWizard"
-msgid "Upload a UTF-8 CSV with columns Name, Code, IsActive, CustomerRank, SupplierRank."
-msgstr "上传包含 Name、Code、IsActive、CustomerRank、SupplierRank 列的 UTF-8 CSV。"
-
 #: web/menu/menus.ts:21
 msgctxt "web/menu/menus"
 msgid "Partner List"
@@ -336,10 +261,15 @@ msgctxt "web/menu/menus"
 msgid "Partner Management"
 msgstr "伙伴管理"
 
-#: web/pages/PartnerList.vue:16
+#: web/pages/PartnerList.vue:20
 msgctxt "web/pages/PartnerList"
-msgid "Import CSV"
-msgstr "导入 CSV"
+msgid "Partner List"
+msgstr "伙伴列表"
+
+#: web/pages/PartnerList.vue:31
+msgctxt "web/pages/PartnerList"
+msgid "Upload a UTF-8 CSV with columns Name, Code, IsActive, CustomerRank, SupplierRank."
+msgstr "上传包含 Name、Code、IsActive、CustomerRank、SupplierRank 列的 UTF-8 CSV。"
 
 #: web/route/routes.ts:41
 msgctxt "web/route/routes"
@@ -595,3 +525,67 @@ msgstr "打开伙伴详情"
 msgctxt "web/views/PartnerListView"
 msgid "Partner"
 msgstr "伙伴"
+
+#~ msgctxt "web/components/PartnerImportWizard"
+#~ msgid "Cancel"
+#~ msgstr "取消"
+
+#~ msgctxt "web/components/PartnerImportWizard"
+#~ msgid "Code"
+#~ msgstr "编码"
+
+#~ msgctxt "web/components/PartnerImportWizard"
+#~ msgid "Detected headers"
+#~ msgstr "检测到的表头"
+
+#~ msgctxt "web/components/PartnerImportWizard"
+#~ msgid "Done"
+#~ msgstr "完成"
+
+#~ msgctxt "web/components/PartnerImportWizard"
+#~ msgid "Drop CSV here or click to browse"
+#~ msgstr "拖放 CSV 到此处或点击浏览"
+
+#~ msgctxt "web/components/PartnerImportWizard"
+#~ msgid "Field"
+#~ msgstr "字段"
+
+#~ msgctxt "web/components/PartnerImportWizard"
+#~ msgid "Import"
+#~ msgstr "导入"
+
+#~ msgctxt "web/components/PartnerImportWizard"
+#~ msgid "Import Partners"
+#~ msgstr "导入伙伴"
+
+#~ msgctxt "web/components/PartnerImportWizard"
+#~ msgid "Import completed"
+#~ msgstr "导入完成"
+
+#~ msgctxt "web/components/PartnerImportWizard"
+#~ msgid "Message"
+#~ msgstr "消息"
+
+#~ msgctxt "web/components/PartnerImportWizard"
+#~ msgid "Partner rows were imported successfully."
+#~ msgstr "伙伴行已成功导入。"
+
+#~ msgctxt "web/components/PartnerImportWizard"
+#~ msgid "Preview"
+#~ msgstr "预览"
+
+#~ msgctxt "web/components/PartnerImportWizard"
+#~ msgid "Row"
+#~ msgstr "行"
+
+#~ msgctxt "web/components/PartnerImportWizard"
+#~ msgid "Upload CSV"
+#~ msgstr "上传 CSV"
+
+#~ msgctxt "web/components/PartnerImportWizard"
+#~ msgid "Upload a UTF-8 CSV with columns Name, Code, IsActive, CustomerRank, SupplierRank."
+#~ msgstr "上传包含 Name、Code、IsActive、CustomerRank、SupplierRank 列的 UTF-8 CSV。"
+
+#~ msgctxt "web/pages/PartnerList"
+#~ msgid "Import CSV"
+#~ msgstr "导入 CSV"

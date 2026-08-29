@@ -1,6 +1,51 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
+#: service/models/export_template.ts:83
+msgctxt "web.model.ExportTemplate"
+msgid "Cannot assign an export template to another user"
+msgstr "不能将导出模板分配给其他用户"
+
+#: service/models/export_template.ts:35
+msgctxt "web.model.ExportTemplate.fields"
+msgid "Application"
+msgstr "应用"
+
+#: service/models/export_template.ts:63
+msgctxt "web.model.ExportTemplate.fields"
+msgid "Fields"
+msgstr "字段"
+
+#: service/models/export_template.ts:71
+msgctxt "web.model.ExportTemplate.fields"
+msgid "Import Compatible"
+msgstr "兼容导入"
+
+#: service/models/export_template.ts:44
+msgctxt "web.model.ExportTemplate.fields"
+msgid "Model Name"
+msgstr "模型名称"
+
+#: service/models/export_template.ts:26
+msgctxt "web.model.ExportTemplate.fields"
+msgid "Name"
+msgstr "名称"
+
+#: service/models/export_template.ts:64
+msgctxt "web.model.ExportTemplate.fields"
+msgid "Ordered export field paths (slash-separated)."
+msgstr "有序的导出字段路径（斜杠分隔）。"
+
+#: service/models/export_template.ts:55
+msgctxt "web.model.ExportTemplate.fields"
+msgid "User"
+msgstr "用户"
+
+#: service/models/export_template.ts:72
+msgctxt "web.model.ExportTemplate.fields"
+msgid "When true, saved paths are intended for import round-trip workflows."
+msgstr "为 true 时，保存的路径用于导入往返流程。"
+
 #: service/models/user_filter.ts:122
 msgctxt "web.model.UserFilter"
 msgid "Cannot assign a favorite to another user"
@@ -43,51 +88,6 @@ msgstr "作用域键"
 
 #: service/models/user_filter.ts:96
 msgctxt "web.model.UserFilter.fields"
-msgid "User"
-msgstr "用户"
-
-#: service/models/export_template.ts:82
-msgctxt "web.model.ExportTemplate"
-msgid "Cannot assign an export template to another user"
-msgstr "不能将导出模板分配给其他用户"
-
-#: service/models/export_template.ts:36
-msgctxt "web.model.ExportTemplate.fields"
-msgid "Application"
-msgstr "应用"
-
-#: service/models/export_template.ts:63
-msgctxt "web.model.ExportTemplate.fields"
-msgid "Fields"
-msgstr "字段"
-
-#: service/models/export_template.ts:64
-msgctxt "web.model.ExportTemplate.fields"
-msgid "Ordered export field paths (slash-separated)."
-msgstr "有序的导出字段路径（斜杠分隔）。"
-
-#: service/models/export_template.ts:71
-msgctxt "web.model.ExportTemplate.fields"
-msgid "Import Compatible"
-msgstr "兼容导入"
-
-#: service/models/export_template.ts:72
-msgctxt "web.model.ExportTemplate.fields"
-msgid "When true, saved paths are intended for import round-trip workflows."
-msgstr "为 true 时，保存的路径用于导入往返流程。"
-
-#: service/models/export_template.ts:45
-msgctxt "web.model.ExportTemplate.fields"
-msgid "Model Name"
-msgstr "模型名称"
-
-#: service/models/export_template.ts:26
-msgctxt "web.model.ExportTemplate.fields"
-msgid "Name"
-msgstr "名称"
-
-#: service/models/export_template.ts:55
-msgctxt "web.model.ExportTemplate.fields"
 msgid "User"
 msgstr "用户"
 
@@ -1046,10 +1046,15 @@ msgctxt "web/components/layout/OSidebar"
 msgid "Main navigation"
 msgstr "主导航"
 
-#: web/components/page/OPage.vue:32
+#: web/components/page/OPage.vue:37
 msgctxt "web/components/page/OPage"
 msgid "Page loading"
 msgstr "页面加载中"
+
+#: web/components/page/OPageIoMenu.vue:14
+msgctxt "web/components/page/OPageIoMenu"
+msgid "Import and export"
+msgstr "导入与导出"
 
 #: web/components/view/OChartView.vue:58
 msgctxt "web/components/view/OChartView"
@@ -1775,6 +1780,181 @@ msgstr "提示"
 msgctxt "web/composables/useOnchangeAggregation"
 msgid "Operation cancelled"
 msgstr "操作已取消"
+
+#: web/composables/useRecordIoMenu.ts:37
+msgctxt "web/composables/useRecordIoMenu"
+msgid "Export"
+msgstr "导出"
+
+#: web/composables/useRecordIoMenu.ts:30
+msgctxt "web/composables/useRecordIoMenu"
+msgid "Import"
+msgstr "导入"
+
+#: web/export/ExportPanel.vue:33
+msgctxt "web/export/ExportPanel"
+msgid "CSV stored as document %ref."
+msgstr "CSV 已存为文档 %ref。"
+
+#: web/export/ExportPanel.vue:28
+msgctxt "web/export/ExportPanel"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/export/ExportPanel.vue:27
+msgctxt "web/export/ExportPanel"
+msgid "Customize fields…"
+msgstr "自定义字段…"
+
+#: web/export/ExportPanel.vue:39
+msgctxt "web/export/ExportPanel"
+msgid "Delete"
+msgstr "删除"
+
+#: web/export/ExportPanel.vue:31
+msgctxt "web/export/ExportPanel"
+msgid "Done"
+msgstr "完成"
+
+#: web/export/ExportPanel.vue:26
+msgctxt "web/export/ExportPanel"
+msgid "Export"
+msgstr "导出"
+
+#: web/export/ExportPanel.vue:43
+msgctxt "web/export/ExportPanel"
+msgid "Export %count row(s) matching the current filters."
+msgstr "导出当前筛选匹配的 %count 行。"
+
+#: web/export/ExportPanel.vue:42
+msgctxt "web/export/ExportPanel"
+msgid "Export %count selected row(s)."
+msgstr "导出已选中的 %count 行。"
+
+#: web/export/ExportPanel.vue:30
+msgctxt "web/export/ExportPanel"
+msgid "Export CSV"
+msgstr "导出 CSV"
+
+#: web/export/ExportPanel.vue:32
+msgctxt "web/export/ExportPanel"
+msgid "Export completed"
+msgstr "导出完成"
+
+#: web/export/ExportPanel.vue:44
+msgctxt "web/export/ExportPanel"
+msgid "Export rows matching the current filters."
+msgstr "导出当前筛选匹配的行。"
+
+#: web/export/ExportPanel.vue:37
+msgctxt "web/export/ExportPanel"
+msgid "Load template"
+msgstr "加载模板"
+
+#: web/export/ExportPanel.vue:34
+msgctxt "web/export/ExportPanel"
+msgid "Loading fields…"
+msgstr "正在加载字段…"
+
+#: web/export/ExportPanel.vue:35
+msgctxt "web/export/ExportPanel"
+msgid "No exportable fields were returned."
+msgstr "未返回可导出字段。"
+
+#: web/export/ExportPanel.vue:29
+msgctxt "web/export/ExportPanel"
+msgid "Preview"
+msgstr "预览"
+
+#: web/export/ExportPanel.vue:38
+msgctxt "web/export/ExportPanel"
+msgid "Save template"
+msgstr "保存模板"
+
+#: web/export/ExportPanel.vue:36
+msgctxt "web/export/ExportPanel"
+msgid "Saved templates"
+msgstr "已保存模板"
+
+#: web/export/ExportPanel.vue:41
+msgctxt "web/export/ExportPanel"
+msgid "Shared"
+msgstr "共享"
+
+#: web/export/ExportPanel.vue:40
+msgctxt "web/export/ExportPanel"
+msgid "Template name"
+msgstr "模板名称"
+
+#: web/import/ImportPanel.vue:36
+msgctxt "web/import/ImportPanel"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/import/ImportPanel.vue:34
+msgctxt "web/import/ImportPanel"
+msgid "Code"
+msgstr "编码"
+
+#: web/import/ImportPanel.vue:31
+msgctxt "web/import/ImportPanel"
+msgid "Detected headers"
+msgstr "检测到的表头"
+
+#: web/import/ImportPanel.vue:39
+msgctxt "web/import/ImportPanel"
+msgid "Done"
+msgstr "完成"
+
+#: web/import/ImportPanel.vue:30
+msgctxt "web/import/ImportPanel"
+msgid "Drop CSV here or click to browse"
+msgstr "拖放 CSV 到此处或点击浏览"
+
+#: web/import/ImportPanel.vue:33
+msgctxt "web/import/ImportPanel"
+msgid "Field"
+msgstr "字段"
+
+#: web/import/ImportPanel.vue:25 web/import/ImportPanel.vue:28 web/import/ImportPanel.vue:38
+msgctxt "web/import/ImportPanel"
+msgid "Import"
+msgstr "导入"
+
+#: web/import/ImportPanel.vue:40
+msgctxt "web/import/ImportPanel"
+msgid "Import completed"
+msgstr "导入完成"
+
+#: web/import/ImportPanel.vue:35
+msgctxt "web/import/ImportPanel"
+msgid "Message"
+msgstr "消息"
+
+#: web/import/ImportPanel.vue:27 web/import/ImportPanel.vue:37
+msgctxt "web/import/ImportPanel"
+msgid "Preview"
+msgstr "预览"
+
+#: web/import/ImportPanel.vue:32
+msgctxt "web/import/ImportPanel"
+msgid "Row"
+msgstr "行"
+
+#: web/import/ImportPanel.vue:41
+msgctxt "web/import/ImportPanel"
+msgid "Rows were imported successfully."
+msgstr "行已成功导入。"
+
+#: web/import/ImportPanel.vue:26
+msgctxt "web/import/ImportPanel"
+msgid "Upload CSV"
+msgstr "上传 CSV"
+
+#: web/import/ImportPanel.vue:29
+msgctxt "web/import/ImportPanel"
+msgid "Upload a UTF-8 CSV. Column headers should match field names when no mapping is set."
+msgstr "上传 UTF-8 CSV。未设置映射时，表头应与字段名一致。"
 
 #: web/menu/menus.ts:18
 msgctxt "web/menu/menus"

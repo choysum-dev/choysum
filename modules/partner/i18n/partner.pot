@@ -260,83 +260,6 @@ msgctxt "service/models/partner_contact"
 msgid "PartnerId is required"
 msgstr ""
 
-#: web/components/PartnerImportWizard.vue:33
-msgctxt "web/components/PartnerImportWizard"
-msgid "Cancel"
-msgstr ""
-
-#: web/components/PartnerImportWizard.vue:31
-msgctxt "web/components/PartnerImportWizard"
-msgid "Code"
-msgstr ""
-
-#: web/components/PartnerImportWizard.vue:28
-msgctxt "web/components/PartnerImportWizard"
-msgid "Detected headers"
-msgstr ""
-
-#: web/components/PartnerImportWizard.vue:36
-msgctxt "web/components/PartnerImportWizard"
-msgid "Done"
-msgstr ""
-
-#: web/components/PartnerImportWizard.vue:27
-msgctxt "web/components/PartnerImportWizard"
-msgid "Drop CSV here or click to browse"
-msgstr ""
-
-#: web/components/PartnerImportWizard.vue:30
-msgctxt "web/components/PartnerImportWizard"
-msgid "Field"
-msgstr ""
-
-#: web/components/PartnerImportWizard.vue:25
-#: web/components/PartnerImportWizard.vue:35
-msgctxt "web/components/PartnerImportWizard"
-msgid "Import"
-msgstr ""
-
-#: web/components/PartnerImportWizard.vue:22
-msgctxt "web/components/PartnerImportWizard"
-msgid "Import Partners"
-msgstr ""
-
-#: web/components/PartnerImportWizard.vue:37
-msgctxt "web/components/PartnerImportWizard"
-msgid "Import completed"
-msgstr ""
-
-#: web/components/PartnerImportWizard.vue:32
-msgctxt "web/components/PartnerImportWizard"
-msgid "Message"
-msgstr ""
-
-#: web/components/PartnerImportWizard.vue:38
-msgctxt "web/components/PartnerImportWizard"
-msgid "Partner rows were imported successfully."
-msgstr ""
-
-#: web/components/PartnerImportWizard.vue:24
-#: web/components/PartnerImportWizard.vue:34
-msgctxt "web/components/PartnerImportWizard"
-msgid "Preview"
-msgstr ""
-
-#: web/components/PartnerImportWizard.vue:29
-msgctxt "web/components/PartnerImportWizard"
-msgid "Row"
-msgstr ""
-
-#: web/components/PartnerImportWizard.vue:23
-msgctxt "web/components/PartnerImportWizard"
-msgid "Upload CSV"
-msgstr ""
-
-#: web/components/PartnerImportWizard.vue:26
-msgctxt "web/components/PartnerImportWizard"
-msgid "Upload a UTF-8 CSV with columns Name, Code, IsActive, CustomerRank, SupplierRank."
-msgstr ""
-
 #: web/menu/menus.ts:21
 msgctxt "web/menu/menus"
 msgid "Partner List"
@@ -347,14 +270,14 @@ msgctxt "web/menu/menus"
 msgid "Partner Management"
 msgstr ""
 
-#: web/pages/PartnerList.vue:21
-msgctxt "web/pages/PartnerList"
-msgid "Export CSV"
-msgstr ""
-
 #: web/pages/PartnerList.vue:20
 msgctxt "web/pages/PartnerList"
-msgid "Import CSV"
+msgid "Partner List"
+msgstr ""
+
+#: web/pages/PartnerList.vue:31
+msgctxt "web/pages/PartnerList"
+msgid "Upload a UTF-8 CSV with columns Name, Code, IsActive, CustomerRank, SupplierRank."
 msgstr ""
 
 #: web/route/routes.ts:41

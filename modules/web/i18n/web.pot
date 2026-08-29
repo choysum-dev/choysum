@@ -1065,9 +1065,14 @@ msgctxt "web/components/layout/OSidebar"
 msgid "Main navigation"
 msgstr ""
 
-#: web/components/page/OPage.vue:32
+#: web/components/page/OPage.vue:37
 msgctxt "web/components/page/OPage"
 msgid "Page loading"
+msgstr ""
+
+#: web/components/page/OPageIoMenu.vue:14
+msgctxt "web/components/page/OPageIoMenu"
+msgid "Import and export"
 msgstr ""
 
 #: web/components/view/OChartView.vue:58
@@ -1811,6 +1816,16 @@ msgctxt "web/composables/useOnchangeAggregation"
 msgid "Operation cancelled"
 msgstr ""
 
+#: web/composables/useRecordIoMenu.ts:37
+msgctxt "web/composables/useRecordIoMenu"
+msgid "Export"
+msgstr ""
+
+#: web/composables/useRecordIoMenu.ts:30
+msgctxt "web/composables/useRecordIoMenu"
+msgid "Import"
+msgstr ""
+
 #: web/export/ExportPanel.vue:33
 msgctxt "web/export/ExportPanel"
 msgid "CSV stored as document %ref."
@@ -1904,6 +1919,79 @@ msgstr ""
 #: web/export/ExportPanel.vue:40
 msgctxt "web/export/ExportPanel"
 msgid "Template name"
+msgstr ""
+
+#: web/import/ImportPanel.vue:36
+msgctxt "web/import/ImportPanel"
+msgid "Cancel"
+msgstr ""
+
+#: web/import/ImportPanel.vue:34
+msgctxt "web/import/ImportPanel"
+msgid "Code"
+msgstr ""
+
+#: web/import/ImportPanel.vue:31
+msgctxt "web/import/ImportPanel"
+msgid "Detected headers"
+msgstr ""
+
+#: web/import/ImportPanel.vue:39
+msgctxt "web/import/ImportPanel"
+msgid "Done"
+msgstr ""
+
+#: web/import/ImportPanel.vue:30
+msgctxt "web/import/ImportPanel"
+msgid "Drop CSV here or click to browse"
+msgstr ""
+
+#: web/import/ImportPanel.vue:33
+msgctxt "web/import/ImportPanel"
+msgid "Field"
+msgstr ""
+
+#: web/import/ImportPanel.vue:25
+#: web/import/ImportPanel.vue:28
+#: web/import/ImportPanel.vue:38
+msgctxt "web/import/ImportPanel"
+msgid "Import"
+msgstr ""
+
+#: web/import/ImportPanel.vue:40
+msgctxt "web/import/ImportPanel"
+msgid "Import completed"
+msgstr ""
+
+#: web/import/ImportPanel.vue:35
+msgctxt "web/import/ImportPanel"
+msgid "Message"
+msgstr ""
+
+#: web/import/ImportPanel.vue:27
+#: web/import/ImportPanel.vue:37
+msgctxt "web/import/ImportPanel"
+msgid "Preview"
+msgstr ""
+
+#: web/import/ImportPanel.vue:32
+msgctxt "web/import/ImportPanel"
+msgid "Row"
+msgstr ""
+
+#: web/import/ImportPanel.vue:41
+msgctxt "web/import/ImportPanel"
+msgid "Rows were imported successfully."
+msgstr ""
+
+#: web/import/ImportPanel.vue:26
+msgctxt "web/import/ImportPanel"
+msgid "Upload CSV"
+msgstr ""
+
+#: web/import/ImportPanel.vue:29
+msgctxt "web/import/ImportPanel"
+msgid "Upload a UTF-8 CSV. Column headers should match field names when no mapping is set."
 msgstr ""
 
 #: web/menu/menus.ts:18

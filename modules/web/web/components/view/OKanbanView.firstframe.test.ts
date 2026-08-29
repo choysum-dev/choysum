@@ -5,6 +5,7 @@
 import { defineComponent, h, markRaw, reactive, ref } from 'vue';
 import { mount, flushPromises } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { provideOPageContext } from '@/web/web/composables/usePageContext';
 
 const { applyMock, preloadLaneMock, awaitFieldSelectionMock, deferState, oSearchViewSentinel } = vi.hoisted(() => {
   const { markRaw } = require('vue') as typeof import('vue');
@@ -278,6 +279,51 @@ describe('OKanbanView first-frame load', () => {
       await flushPromises();
       // null payload is ignored by onSearch, so mount still runs the fallback apply once.
       expect(applyMock).toHaveBeenCalledTimes(1);
+    } finally {
+      wrapper.unmount();
+    }
+  });
+});
+
+describe('OKanbanView page action target', () => {
+  beforeEach(() => {
+    applyMock.mockClear();
+    preloadLaneMock.mockClear();
+    awaitFieldSelectionMock.mockClear();
+    awaitFieldSelectionMock.mockImplementation(async () => {});
+    deferState.defer = false;
+  });
+
+  it('auto-registers refresh when omitted registerActionTarget stays undefined', async () => {
+    const store = makeStore();
+    let ctx: ReturnType<typeof provideOPageContext> | null = null;
+    const Host = defineComponent({
+      setup(_, { slots }) {
+        ctx = provideOPageContext({ store });
+        return () => h('div', slots.default?.());
+      },
+    });
+    const wrapper = mount(Host, {
+      slots: {
+        default: () =>
+          h(OKanbanView as any, {
+            showHeader: false,
+            showActions: false,
+            showPaginate: false,
+          }),
+      },
+      global: { stubs },
+    });
+    try {
+      await flushPromises();
+      const kanban = wrapper.findComponent(OKanbanView as any);
+      expect(kanban.props('registerActionTarget')).toBeUndefined();
+      const target = ctx!.actionTarget.value;
+      expect(target).toBeTruthy();
+      expect(target!.selectedItems).toEqual([]);
+      applyMock.mockClear();
+      await target!.refresh?.();
+      expect(applyMock).toHaveBeenCalled();
     } finally {
       wrapper.unmount();
     }

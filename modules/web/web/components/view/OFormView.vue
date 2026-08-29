@@ -97,6 +97,7 @@ import type { RouteLocationRaw } from 'vue-router';
 import { useRouter } from 'vue-router';
 import { deepClonePreserve } from '@/core/utils/clone';
 import { canShowAction, type ActionIdMap } from '@/web/web/components/view/actionVisibility';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 
 import { provideOnchange } from '@/web/web/composables/useOnchange';
 import type { ViewMode, ViewContainer } from '@/web/web/components/view/OViewScope.vue';
@@ -135,7 +136,7 @@ const router = useRouter();
 // =============================
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<T>;
+    store?: WebModelStore<T>;
     recordId?: string;
     initialValues?: Partial<T>;
     viewMode?: ViewMode;
@@ -160,6 +161,8 @@ const props = withDefaults(
     submitHandler: undefined,
   }
 );
+
+const store = resolvePageStore(props.store, 'OFormView');
 
 const rawPropKeys = new Set(Object.keys(((getCurrentInstance()?.vnode.props as Record<string, unknown> | null) || {}) as Record<string, unknown>));
 const hasExplicitProp = (...keys: string[]) => keys.some(key => rawPropKeys.has(key));
@@ -215,7 +218,6 @@ const { emitCancelable } = useCancelableEmit(emit as any);
 // =============================
 // Section 8: Controller & view context provisioning
 // =============================
-const store = props.store;
 const formRef = ref<InstanceType<typeof ElForm>>();
 const viewContainer = ref<ViewContainer>('Form');
 const canCreate = computed(() => canShowAction(props.actionIds?.create, props.hasAction));

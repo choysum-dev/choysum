@@ -166,12 +166,13 @@ import { shouldDeferViewFirstFrame } from '@/web/web/components/view/kanbanFirst
 import { canShowAction, type ActionIdMap } from '@/web/web/components/view/actionVisibility';
 import { createTranslate } from '@/web/web/i18n';
 import type { SelectionExpose, RowEventPayload } from '@/web/web/components/view/listViewTypes';
+import { resolvePageStore, useRegisterPageActionTarget } from '@/web/web/composables/usePageContext';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/OListView' });
 
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<T>;
+    store?: WebModelStore<T>;
     keywordFields?: string[];
     showHeader?: boolean;
     showActions?: boolean;
@@ -208,6 +209,8 @@ const props = withDefaults(
     handleField?: string;
     /** Show handle column when editable and metadata has handleField. */
     showHandle?: boolean;
+    /** Opt out of page IO action-target registration (embedded lists). */
+    registerActionTarget?: boolean;
   }>(),
   {
     showHeader: true,
@@ -232,8 +235,12 @@ const props = withDefaults(
     editable: false,
     handleField: 'Sequence',
     showHandle: true,
+    // Keep omitted as undefined (not false) so matching page-store views auto-register.
+    registerActionTarget: undefined,
   }
 );
+
+const store = resolvePageStore(props.store, 'OListView');
 
 const emit = defineEmits<{
   (e: 'before-load', payload: { query: QueryCondition<T>; page: number; pageSize: number; confirm: () => void; cancel: () => void }): void;
@@ -266,7 +273,6 @@ const listViewMode = ref<ViewMode>('display');
 provide('view-mode', listViewMode);
 
 const router = useRouter();
-const store = props.store; // WebModelStore<T>
 // Avoid Vue "component made reactive" warn when a Component is passed as searchView prop.
 const resolvedSearchView = computed(() => {
   const view = props.searchView;
@@ -821,6 +827,17 @@ defineExpose<
   load: loadData,
   inlineEdit,
   flatRows,
+});
+
+useRegisterPageActionTarget({
+  store,
+  enabled: () => props.registerActionTarget,
+  target: {
+    get selectedItems() {
+      return selectedItems.value;
+    },
+    refresh: () => loadData(),
+  },
 });
 
 // =============================

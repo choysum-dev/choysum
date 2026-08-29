@@ -14,26 +14,26 @@ SPDX-License-Identifier: Apache-2.0
     :before-close="handleBeforeClose"
     @closed="resetState"
   >
-    <div class="partner-import-wizard">
+    <div class="import-panel">
       <el-steps :active="step" finish-status="success" align-center>
         <el-step :title="uploadStepTitle" />
         <el-step :title="previewStepTitle" />
         <el-step :title="importStepTitle" />
       </el-steps>
 
-      <section v-if="step === 0" class="partner-import-section">
-        <p class="partner-import-hint">{{ uploadHint }}</p>
+      <section v-if="step === 0" class="import-panel-section">
+        <p class="import-panel-hint">{{ resolvedUploadHint }}</p>
         <el-upload drag accept=".csv,text/csv" :auto-upload="false" :limit="1" :on-change="onFileSelected" :on-remove="onFileRemoved">
           <div class="el-upload__text">{{ uploadDropText }}</div>
         </el-upload>
       </section>
 
-      <section v-else-if="step === 1" class="partner-import-section">
-        <p v-if="headers.length" class="partner-import-hint">{{ headersLabel }}: {{ headers.join(', ') }}</p>
+      <section v-else-if="step === 1" class="import-panel-section">
+        <p v-if="headers.length" class="import-panel-hint">{{ headersLabel }}: {{ headers.join(', ') }}</p>
         <el-alert v-if="previewReport" :type="previewAlertType" :closable="false" show-icon>
           <template #title>{{ previewSummary }}</template>
         </el-alert>
-        <el-table v-if="previewMessages.length" :data="previewMessages" size="small" max-height="240" class="partner-import-table">
+        <el-table v-if="previewMessages.length" :data="previewMessages" size="small" max-height="240" class="import-panel-table">
           <el-table-column prop="row" :label="rowLabel" width="72" />
           <el-table-column prop="field" :label="fieldLabel" width="120" />
           <el-table-column prop="code" :label="codeLabel" width="140" />
@@ -41,7 +41,7 @@ SPDX-License-Identifier: Apache-2.0
         </el-table>
       </section>
 
-      <section v-else class="partner-import-section">
+      <section v-else class="import-panel-section">
         <el-result v-if="importDone" icon="success" :title="importSuccessTitle" :sub-title="importSuccessSubtitle" />
         <el-alert v-else-if="importError" type="error" :title="importError" show-icon :closable="false" />
       </section>
@@ -67,25 +67,28 @@ import { parseHeaders, previewImport, runImport, type ImportReport } from '@/cor
 import { uploadImportCsv } from '@/core/web/import/upload_csv';
 import { createTranslate } from '@/web/web/i18n';
 
-defineOptions({ name: 'PartnerImportWizard' });
+defineOptions({ name: 'ImportPanel' });
 
 const props = defineProps<{
+  model: string;
   companyId?: string;
+  columnMapping?: Record<string, string>;
+  uploadHint?: string;
 }>();
 
 const emit = defineEmits<{
   (e: 'imported'): void;
 }>();
 
-const { _t } = createTranslate('partner', { scope: 'web/components/PartnerImportWizard' });
+const { _t } = createTranslate('web', { scope: 'web/import/ImportPanel' });
 
 const visible = defineModel<boolean>({ default: false });
 
-const title = _t('Import Partners');
+const title = _t('Import');
 const uploadStepTitle = _t('Upload CSV');
 const previewStepTitle = _t('Preview');
 const importStepTitle = _t('Import');
-const uploadHint = _t('Upload a UTF-8 CSV with columns Name, Code, IsActive, CustomerRank, SupplierRank.');
+const defaultUploadHint = _t('Upload a UTF-8 CSV. Column headers should match field names when no mapping is set.');
 const uploadDropText = _t('Drop CSV here or click to browse');
 const headersLabel = _t('Detected headers');
 const rowLabel = _t('Row');
@@ -97,7 +100,9 @@ const previewActionLabel = _t('Preview');
 const importActionLabel = _t('Import');
 const doneLabel = _t('Done');
 const importSuccessTitle = _t('Import completed');
-const importSuccessSubtitle = _t('Partner rows were imported successfully.');
+const importSuccessSubtitle = _t('Rows were imported successfully.');
+
+const resolvedUploadHint = computed(() => String(props.uploadHint || '').trim() || defaultUploadHint);
 
 const step = ref(0);
 const busy = ref(false);
@@ -119,6 +124,7 @@ const previewSummary = computed(() => {
   return `Preview: ${stats.ok ?? 0} ok, ${stats.error ?? 0} errors, ${stats.total ?? 0} total`;
 });
 const canImport = computed(() => !!sourceRef.value && (previewReport.value?.stats?.error ?? 0) === 0);
+const resolvedMapping = computed(() => props.columnMapping ?? {});
 
 function isActiveSession(token: number): boolean {
   return token === sessionToken;
@@ -167,7 +173,7 @@ async function uploadAndPreview() {
   const signal = previewAbort.signal;
   try {
     const ref = await uploadImportCsv({
-      ownerModel: 'partner.Partner',
+      ownerModel: props.model,
       file: selectedFile.value,
     });
     if (!isActiveSession(token)) return;
@@ -177,10 +183,10 @@ async function uploadAndPreview() {
     headers.value = headerResp.headers ?? [];
     const previewResp = await previewImport(
       {
-        targetModel: 'partner.Partner',
+        targetModel: props.model,
         sourceRef: ref,
         companyId: props.companyId ?? '',
-        columnMapping: {},
+        columnMapping: resolvedMapping.value,
       },
       signal,
     );
@@ -208,10 +214,10 @@ async function commitImport() {
   importError.value = '';
   try {
     const res = await runImport({
-      targetModel: 'partner.Partner',
+      targetModel: props.model,
       sourceRef: sourceRef.value,
       companyId: props.companyId ?? '',
-      columnMapping: {},
+      columnMapping: resolvedMapping.value,
     });
     if (!isActiveSession(token)) return;
     const errCount = res.report?.stats?.error ?? 0;
@@ -247,23 +253,23 @@ watch(visible, value => {
 </script>
 
 <style scoped>
-.partner-import-wizard {
+.import-panel {
   display: flex;
   flex-direction: column;
   gap: 16px;
   margin-top: 8px;
 }
 
-.partner-import-section {
+.import-panel-section {
   min-height: 180px;
 }
 
-.partner-import-hint {
+.import-panel-hint {
   margin: 0 0 12px;
   color: var(--el-text-color-secondary);
 }
 
-.partner-import-table {
+.import-panel-table {
   margin-top: 12px;
 }
 </style>

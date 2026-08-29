@@ -27,5 +27,8 @@ test('partner import: list page exposes import entry', async ({ page }) => {
   await loginAsE2EAdmin(page, runtime.baseURL);
 
   await page.goto(`${runtime.baseURL}/web/partner/partners`);
-  await expect(page.getByRole('button', { name: /Import CSV/i })).toBeVisible();
+  await page.getByTestId('page-io-menu-trigger').click();
+  await expect(page.getByTestId('page-io-menu-import')).toBeVisible();
+  await page.getByTestId('page-io-menu-import').click();
+  await expect(page.getByRole('dialog')).toBeVisible();
 });
