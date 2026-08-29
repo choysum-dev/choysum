@@ -601,6 +601,37 @@ describe('ImportPanel', () => {
     expect((wrapper.vm as any).resolvedMapping).toEqual({ Name: 'Code' });
   });
 
+  it('preserves mapping edits on re-preview without re-uploading', async () => {
+    parseHeaders.mockResolvedValue({ headers: ['Name', 'Code'] });
+    const wrapper = await mountPanel();
+    (wrapper.vm as any).onFileSelected({ raw: new File(['Name,Code\n'], 'partners.csv', { type: 'text/csv' }) });
+    await (wrapper.vm as any).uploadAndPreview();
+    await flushPromises();
+    expect(uploadImportCsv).toHaveBeenCalledTimes(1);
+    (wrapper.vm as any).mappingRows = [
+      { header: 'Name', fieldPath: 'Code' },
+      { header: 'Code', fieldPath: 'Name' },
+    ];
+    (wrapper.vm as any).onMappingChange();
+    previewImport.mockClear();
+    await (wrapper.vm as any).uploadAndPreview();
+    await flushPromises();
+    expect(uploadImportCsv).toHaveBeenCalledTimes(1);
+    expect(parseHeaders).toHaveBeenCalledTimes(1);
+    expect((wrapper.vm as any).mappingRows).toEqual([
+      { header: 'Name', fieldPath: 'Code' },
+      { header: 'Code', fieldPath: 'Name' },
+    ]);
+    expect(previewImport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceRef: 'att-src-1',
+        columnMapping: { Name: 'Code', Code: 'Name' },
+      }),
+      expect.any(AbortSignal),
+    );
+    expect((wrapper.vm as any).canImport).toBe(true);
+  });
+
   it('auto-matches only leaf catalog paths and prefers columnMapping prop', async () => {
     parseHeaders.mockResolvedValue({ headers: ['Name', 'CompanyId', 'CompanyId/Code', 'Extra'] });
     const { default: ImportPanel } = await import('./ImportPanel.vue');

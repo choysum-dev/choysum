@@ -40,7 +40,7 @@ SPDX-License-Identifier: Apache-2.0
             <div>{{ csvColumnLabel }}</div>
             <div>{{ importFieldLabel }}</div>
           </div>
-          <div v-for="row in mappingRows" :key="row.header" class="import-mapping__row">
+          <div v-for="(row, idx) in mappingRows" :key="`${row.header}-${idx}`" class="import-mapping__row">
             <div class="import-mapping__header">{{ row.header }}</div>
             <el-select
               v-model="row.fieldPath"
@@ -343,16 +343,20 @@ async function uploadAndPreview() {
       await loadCatalog();
       if (!isActiveSession(token)) return;
     }
-    const ref = await uploadImportCsv({
-      ownerModel: props.model,
-      file: selectedFile.value,
-    });
-    if (!isActiveSession(token)) return;
-    sourceRef.value = ref;
-    const headerResp = await parseHeaders(ref, signal);
-    if (!isActiveSession(token)) return;
-    headers.value = headerResp.headers ?? [];
-    mappingRows.value = buildMappingRows(headers.value);
+    // Re-preview after mapping edits reuses the uploaded source and keeps user row edits.
+    let ref = sourceRef.value;
+    if (!ref) {
+      ref = await uploadImportCsv({
+        ownerModel: props.model,
+        file: selectedFile.value,
+      });
+      if (!isActiveSession(token)) return;
+      sourceRef.value = ref;
+      const headerResp = await parseHeaders(ref, signal);
+      if (!isActiveSession(token)) return;
+      headers.value = headerResp.headers ?? [];
+      mappingRows.value = buildMappingRows(headers.value);
+    }
     const previewResp = await previewImport(
       {
         targetModel: props.model,
