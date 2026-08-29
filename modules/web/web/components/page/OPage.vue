@@ -69,6 +69,7 @@ import { computed, useId } from 'vue';
 import { Loading } from '@element-plus/icons-vue';
 import OBreadcrumb from '@/web/web/components/view/OBreadcrumb.vue';
 import { createTranslate } from '@/web/web/i18n';
+import { provideOPageContext } from '@/web/web/composables/usePageContext';
 
 const { _t } = createTranslate('web', { scope: 'web/components/page/OPage' });
 
@@ -100,7 +101,14 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  /** Optional default screen store for descendants (IO menu, views). */
+  store: {
+    type: Object,
+    default: undefined,
+  },
 });
+
+provideOPageContext({ store: () => props.store });
 
 const pageTitleId = useId();
 

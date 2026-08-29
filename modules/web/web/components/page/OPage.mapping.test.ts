@@ -249,4 +249,18 @@ describe('OPage component', () => {
     expect(root.classes()).toContain('o-page--loading');
     expect(wrapper.find('.o-page__loading-mask').exists()).toBe(true);
   });
+
+  test('accepts an optional store prop without changing chrome', () => {
+    const store = { storeId: 's1' };
+    const wrapper = mount(OPage, {
+      props: {
+        title: 'With Store',
+        showBreadcrumb: false,
+        store,
+      },
+      global: { stubs: pageStubs },
+    });
+    expect(wrapper.find('h1.o-page__title').text()).toBe('With Store');
+    expect(wrapper.props('store')).toEqual(store);
+  });
 });

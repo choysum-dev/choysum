@@ -4,15 +4,11 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage :title="pageTitle">
+  <OPage :title="pageTitle" :store="partnerStore">
     <template #title-actions>
-      <OPageIoMenu
-        :config="ioConfig"
-        :store="partnerStore"
-        :list-ref="listViewRef"
-      />
+      <OPageIoMenu :config="ioConfig" :list-ref="listViewRef" />
     </template>
-    <PartnerListView ref="listViewRef" :store="partnerStore" createAction="/partner/partners/new" />
+    <PartnerListView ref="listViewRef" createAction="/partner/partners/new" />
   </OPage>
 </template>
 

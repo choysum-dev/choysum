@@ -166,12 +166,13 @@ import { shouldDeferViewFirstFrame } from '@/web/web/components/view/kanbanFirst
 import { canShowAction, type ActionIdMap } from '@/web/web/components/view/actionVisibility';
 import { createTranslate } from '@/web/web/i18n';
 import type { SelectionExpose, RowEventPayload } from '@/web/web/components/view/listViewTypes';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/OListView' });
 
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<T>;
+    store?: WebModelStore<T>;
     keywordFields?: string[];
     showHeader?: boolean;
     showActions?: boolean;
@@ -235,6 +236,8 @@ const props = withDefaults(
   }
 );
 
+const store = resolvePageStore(props.store, 'OListView');
+
 const emit = defineEmits<{
   (e: 'before-load', payload: { query: QueryCondition<T>; page: number; pageSize: number; confirm: () => void; cancel: () => void }): void;
   (e: 'before-refresh', payload: { confirm: () => void; cancel: () => void }): void;
@@ -266,7 +269,6 @@ const listViewMode = ref<ViewMode>('display');
 provide('view-mode', listViewMode);
 
 const router = useRouter();
-const store = props.store; // WebModelStore<T>
 // Avoid Vue "component made reactive" warn when a Component is passed as searchView prop.
 const resolvedSearchView = computed(() => {
   const view = props.searchView;

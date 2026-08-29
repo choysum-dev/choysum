@@ -40,6 +40,7 @@ import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
 import OManyToOneRefField from '@/web/web/components/field/OManyToOneRefField.vue';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineAction, defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
@@ -49,10 +50,13 @@ const { _t, _lt } = createTranslate('partner', { scope: 'web/views/PartnerListVi
 
 /**
  * Props consumed by the partner list view.
+ * `store` falls back to OPage provided store when omitted.
  */
-defineProps<{
-  store: WebModelStore<Partner>;
+const props = defineProps<{
+  store?: WebModelStore<Partner>;
 }>();
+
+const store = resolvePageStore(props.store, 'PartnerListView');
 
 const router = useRouter();
 

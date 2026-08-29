@@ -157,6 +157,7 @@ import { provide, defineComponent, reactive } from 'vue';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { shouldDeferViewFirstFrame } from '@/web/web/components/view/kanbanFirstFrame';
 import { createTranslate } from '@/web/web/i18n';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/OKanbanView' });
 
@@ -164,7 +165,7 @@ const { _t } = createTranslate('web', { scope: 'web/components/view/OKanbanView'
 
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<T>;
+    store?: WebModelStore<T>;
     keywordFields?: string[];
     showHeader?: boolean;
     showActions?: boolean;
@@ -195,6 +196,8 @@ const props = withDefaults(
   }
 );
 
+const store = resolvePageStore(props.store, 'OKanbanView');
+
 // Emits, simplified and renamed from row-click to card-click, with card-move added
 const emit = defineEmits<{
   (e: 'before-load', payload: { query: any; page: number; pageSize: number; confirm: () => void; cancel: () => void }): void;
@@ -210,7 +213,6 @@ const emit = defineEmits<{
 const { emitCancelable } = useCancelableEmit(emit as any);
 
 const router = useRouter();
-const store = props.store;
 // Avoid Vue "component made reactive" warn when a Component is passed as searchView prop.
 const resolvedSearchView = computed(() => {
   const view = props.searchView;

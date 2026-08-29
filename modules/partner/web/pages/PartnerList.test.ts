@@ -4,8 +4,9 @@
 
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { config, mount } from '@vue/test-utils';
-import { nextTick } from 'vue';
+import { defineComponent, h, nextTick } from 'vue';
 import { createI18n } from 'vue-i18n';
+import { provideOPageContext } from '@/web/web/composables/usePageContext';
 
 config.global.renderStubDefaultSlot = true;
 
@@ -75,15 +76,29 @@ const i18n = createI18n({
   messages: { en: {} },
 });
 
+const OPageStub = defineComponent({
+  name: 'OPageStub',
+  props: {
+    title: { type: String, default: '' },
+    store: { type: Object, default: undefined },
+  },
+  setup(props, { slots }) {
+    provideOPageContext({ store: () => props.store });
+    return () =>
+      h('div', [
+        h('div', { class: 'title-actions' }, slots['title-actions']?.()),
+        slots.default?.(),
+      ]);
+  },
+});
+
 async function mountPartnerList(extraStubs: Record<string, unknown> = {}) {
   const PartnerList = (await import('./PartnerList.vue')).default;
   return mount(PartnerList, {
     global: {
       plugins: [i18n],
       stubs: {
-        OPage: {
-          template: '<div><div class="title-actions"><slot name="title-actions" /></div><slot /></div>',
-        },
+        OPage: OPageStub,
         'el-dropdown': {
           name: 'ElDropdown',
           emits: ['command'],
@@ -118,15 +133,16 @@ describe('PartnerList page', () => {
     vi.resetModules();
   });
 
-  it('wires IO menu with partner config store and list ref', async () => {
+  it('provides page store to IO menu without an explicit menu store prop', async () => {
     const wrapper = await mountPartnerList();
     await nextTick();
     const menu = wrapper.findComponent({ name: 'OPageIoMenu' });
     expect(menu.props('config')).toMatchObject({ model: 'partner.Partner' });
-    expect(menu.props('store')?.storeId).toBe('Partner_/partner/partners');
+    expect(menu.props('store')).toBeUndefined();
     expect(menu.props('listRef')).toBeTruthy();
-    expect(wrapper.find('[data-test="import-shell-stub"]').attributes('data-model')).toBe('partner.Partner');
     expect(wrapper.find('[data-test="export-shell-stub"]').attributes('data-model')).toBe('partner.Partner');
+    const exportShell = wrapper.findComponent({ name: 'RecordExportShellStub' });
+    expect(exportShell.props('store')?.storeId).toBe('Partner_/partner/partners');
   });
 
   it('opens import and export from title IO menu', async () => {

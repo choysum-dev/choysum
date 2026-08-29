@@ -44,7 +44,7 @@ SPDX-License-Identifier: Apache-2.0
     v-if="exportEnabled"
     v-model:open="exportOpen"
     :model="config!.model"
-    :store="store!"
+    :store="resolvedStore!"
     :list-ref="listRef"
     :company-id="companyId"
   />
@@ -57,6 +57,7 @@ import { createTranslate } from '@/web/web/i18n';
 import { useRecordIoMenu } from '@/web/web/composables/useRecordIoMenu';
 import type { PageIoMenuItem, RecordIoConfig } from '@/web/web/composables/recordIoTypes';
 import type { RecordExportListRef } from '@/web/web/composables/useRecordExportScope';
+import { useResolvedOptionalPageStore } from '@/web/web/composables/usePageContext';
 import { RecordImportShell } from '@/web/web/import';
 import { RecordExportShell } from '@/web/web/export';
 
@@ -66,13 +67,15 @@ export type OPageIoMenuListRef = RecordExportListRef & {
   refresh?: () => Promise<void> | void;
 };
 
+type PageIoStore = { storeId?: string; state?: { result?: { total?: number } } };
+
 const props = defineProps<{
   /** Low-level menu entries. When omitted, items are derived from `config`. */
   items?: PageIoMenuItem[];
   /** Page IO capability declaration; enables Import/Export panels. */
   config?: RecordIoConfig;
-  /** List/kanban store; required when export is enabled via `config`. */
-  store?: { storeId?: string; state?: { result?: { total?: number } } };
+  /** List/kanban store; falls back to OPage provided store when omitted. */
+  store?: PageIoStore;
   /** Current list/kanban view instance (template ref value). */
   listRef?: OPageIoMenuListRef | null;
   /** Optional company override for import/export panels. */
@@ -89,12 +92,14 @@ const menuAriaLabel = _t('Import and export');
 const importOpen = ref(false);
 const exportOpen = ref(false);
 
+const resolvedStore = useResolvedOptionalPageStore<PageIoStore>(() => props.store);
+
 const importEnabled = computed(() => !!props.config?.import?.enabled);
-const exportEnabled = computed(() => !!props.config?.export?.enabled && !!props.store);
+const exportEnabled = computed(() => !!props.config?.export?.enabled && !!resolvedStore.value);
 
 const menuConfig = computed<RecordIoConfig>(() => {
   const base = props.config ?? { model: '' };
-  if (base.export?.enabled && !props.store) {
+  if (base.export?.enabled && !resolvedStore.value) {
     return { ...base, export: { ...base.export, enabled: false } };
   }
   return base;

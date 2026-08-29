@@ -5,6 +5,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createI18n } from 'vue-i18n';
+import { defineComponent, h } from 'vue';
 import type { PageIoMenuItem } from '@/web/web/composables/recordIoTypes';
 
 const i18n = createI18n({
@@ -164,5 +165,35 @@ describe('OPageIoMenu', () => {
     });
     expect(wrapper.find('[data-test="import-shell-stub"]').exists()).toBe(true);
     expect(wrapper.find('[data-test="export-shell-stub"]').exists()).toBe(false);
+  });
+
+  it('resolves store from OPage context when prop is omitted', async () => {
+    const pageStore = { storeId: 'from-page', state: { result: { total: 1 } } };
+    const { default: OPageIoMenu } = await import('./OPageIoMenu.vue');
+    const { provideOPageContext } = await import('@/web/web/composables/usePageContext');
+    const Host = defineComponent({
+      setup(_, { slots }) {
+        provideOPageContext({ store: pageStore });
+        return () => slots.default?.();
+      },
+    });
+    const wrapper = mount(Host, {
+      slots: {
+        default: () =>
+          h(OPageIoMenu, {
+            config: {
+              model: 'partner.Partner',
+              export: { enabled: true },
+            },
+          }),
+      },
+      global: {
+        plugins: [i18n],
+        stubs: menuStubs,
+      },
+    });
+    const shell = wrapper.findComponent({ name: 'RecordExportShellStub' });
+    expect(shell.exists()).toBe(true);
+    expect(shell.props('store')).toBe(pageStore);
   });
 });
