@@ -339,25 +339,37 @@ func isValidTsconfigPathsMappingKey(pkg string) bool {
 	if pkg == "" {
 		return false
 	}
-	if strings.Contains(pkg, "://") {
-		return false
-	}
-	lower := strings.ToLower(pkg)
-	if strings.Contains(lower, ".d.ts") || strings.Contains(lower, ".d.mts") || strings.Contains(lower, ".d.cts") {
+	if isStaleGeneratedTsconfigPathsKey(pkg) {
 		return false
 	}
 	if strings.HasPrefix(pkg, "@") {
-		// Reject versioned scoped keys like @scope/pkg@1.2.3/...
-		rest := pkg[1:]
-		if strings.Contains(rest, "@") {
-			return false
-		}
-		parts := strings.Split(rest, "/")
+		parts := strings.Split(pkg[1:], "/")
 		return len(parts) >= 2 && parts[0] != "" && parts[1] != ""
 	}
-	// Reject versioned unscoped keys like vue@3.5.35/...
-	if strings.Contains(pkg, "@") {
+	return true
+}
+
+// isStaleGeneratedTsconfigPathsKey reports path keys that older type-fetch
+// runs wrote for every cached .d.ts (versioned specifiers and declaration
+// filenames). Those entries make the IDE open thousands of cache files.
+// Aliases such as "@/*" and bare packages such as "@vicons/material" stay.
+func isStaleGeneratedTsconfigPathsKey(pkg string) bool {
+	pkg = strings.TrimSpace(pkg)
+	if pkg == "" {
 		return false
 	}
-	return true
+	if strings.Contains(pkg, "://") {
+		return true
+	}
+	lower := strings.ToLower(pkg)
+	// Match generated per-file keys that end in a declaration filename
+	// (e.g. "@vicons/material@0.13.0/es/AbcFilled.d.ts"). Do not treat
+	// package names that merely embed ".d.ts" (e.g. "foo.d.ts-utils") as stale.
+	if strings.HasSuffix(lower, ".d.ts") || strings.HasSuffix(lower, ".d.mts") || strings.HasSuffix(lower, ".d.cts") {
+		return true
+	}
+	if strings.HasPrefix(pkg, "@") {
+		return strings.Contains(pkg[1:], "@")
+	}
+	return strings.Contains(pkg, "@")
 }
