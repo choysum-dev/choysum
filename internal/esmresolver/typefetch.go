@@ -27,8 +27,10 @@ import (
 	logutil "github.com/choysum-dev/choysum/internal/logger"
 )
 
-// Test seam for filepath.Abs (overridden in unit tests to force error branches).
+// Test seams (overridden in unit tests to force error branches).
 var filepathAbs = filepath.Abs
+var filepathRel = filepath.Rel
+var osGetwd = os.Getwd
 
 // TypeFetchResult holds the outcome of a type fetch operation.
 type TypeFetchResult struct {
@@ -1774,13 +1776,13 @@ func UpdateTsconfigPaths(tsconfigPath string, results []TypeFetchResult) error {
 	applied := 0
 	if len(results) > 0 {
 		tsconfigDir := filepath.Dir(tsconfigPath)
-		absDir, err := filepath.Abs(tsconfigDir)
+		absDir, err := filepathAbs(tsconfigDir)
 		if err != nil {
 			return fmt.Errorf("absolute tsconfig dir: %w", err)
 		}
 		tsconfigDir = absDir
 
-		wd, err := os.Getwd()
+		wd, err := osGetwd()
 		if err != nil {
 			return fmt.Errorf("get working directory: %w", err)
 		}
@@ -1796,12 +1798,16 @@ func UpdateTsconfigPaths(tsconfigPath string, results []TypeFetchResult) error {
 			if !filepath.IsAbs(cachedPath) {
 				cachedPath = filepath.Join(wd, cachedPath)
 			}
-			relPath, err := filepath.Rel(tsconfigDir, cachedPath)
+			relPath, err := filepathRel(tsconfigDir, cachedPath)
 			if err != nil {
 				continue
 			}
 			relPath = filepath.ToSlash(relPath)
-			paths[r.Package] = []string{relPath}
+			want := []string{relPath}
+			if tsconfigPathMappingEquals(paths[r.Package], want) {
+				continue
+			}
+			paths[r.Package] = want
 			applied++
 		}
 	}
@@ -1820,6 +1826,37 @@ func UpdateTsconfigPaths(tsconfigPath string, results []TypeFetchResult) error {
 		return fmt.Errorf("write tsconfig: %w", err)
 	}
 	return nil
+}
+
+// tsconfigPathMappingEquals reports whether an existing compilerOptions.paths
+// value already matches want. JSON unmarshal yields []interface{}, while this
+// package writes []string; accept both shapes.
+func tsconfigPathMappingEquals(existing interface{}, want []string) bool {
+	switch v := existing.(type) {
+	case []string:
+		if len(v) != len(want) {
+			return false
+		}
+		for i := range want {
+			if v[i] != want[i] {
+				return false
+			}
+		}
+		return true
+	case []interface{}:
+		if len(v) != len(want) {
+			return false
+		}
+		for i := range want {
+			s, ok := v[i].(string)
+			if !ok || s != want[i] {
+				return false
+			}
+		}
+		return true
+	default:
+		return false
+	}
 }
 
 // EnsureTsconfigCompilerTypeRoots writes typeRoots bridges for compilerOptions.types

@@ -362,7 +362,10 @@ func isStaleGeneratedTsconfigPathsKey(pkg string) bool {
 		return true
 	}
 	lower := strings.ToLower(pkg)
-	if strings.Contains(lower, ".d.ts") || strings.Contains(lower, ".d.mts") || strings.Contains(lower, ".d.cts") {
+	// Match generated per-file keys that end in a declaration filename
+	// (e.g. "@vicons/material@0.13.0/es/AbcFilled.d.ts"). Do not treat
+	// package names that merely embed ".d.ts" (e.g. "foo.d.ts-utils") as stale.
+	if strings.HasSuffix(lower, ".d.ts") || strings.HasSuffix(lower, ".d.mts") || strings.HasSuffix(lower, ".d.cts") {
 		return true
 	}
 	if strings.HasPrefix(pkg, "@") {

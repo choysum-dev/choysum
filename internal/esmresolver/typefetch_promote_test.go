@@ -4,6 +4,8 @@
 package esmresolver
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -258,12 +260,16 @@ func TestIsStaleGeneratedTsconfigPathsKey(t *testing.T) {
 		in   string
 		want bool
 	}{
+		{in: "", want: false},
 		{in: "@/*", want: false},
 		{in: "vue", want: false},
 		{in: "@vicons/material", want: false},
 		{in: "echarts/core", want: false},
+		{in: "foo.d.ts-utils", want: false},
+		{in: "@scope/foo.d.ts-utils", want: false},
 		{in: "@vicons/material@0.13.0/es/AbcFilled.d.ts", want: true},
 		{in: "vue@3.5.40/dist/vue.d.mts", want: true},
+		{in: "pkg@1.0.0/index.d.cts", want: true},
 		{in: "https://esm.sh/vue", want: true},
 	}
 	for _, tt := range tests {
@@ -422,6 +428,294 @@ func TestUpdateTsconfigPaths_PrunesStaleVersionedKeys(t *testing.T) {
 	}
 	if strings.Contains(content, "vue@3.5.40") {
 		t.Fatalf("expected versioned vue path key to be pruned, got %s", content)
+	}
+}
+
+func TestUpdateTsconfigPaths_PreservesEmbeddedDtsPackageNames(t *testing.T) {
+	dir := t.TempDir()
+	tsconfigPath := filepath.Join(dir, "tsconfig.json")
+	initial := `{
+  "compilerOptions": {
+    "paths": {
+      "foo.d.ts-utils": ["types/foo.d.ts"],
+      "@scope/foo.d.ts-utils": ["types/scope-foo.d.ts"],
+      "@vicons/material@0.13.0/es/AbcFilled.d.ts": ["types/AbcFilled.d.ts"]
+    }
+  }
+}`
+	if err := os.WriteFile(tsconfigPath, []byte(initial), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := UpdateTsconfigPaths(tsconfigPath, nil); err != nil {
+		t.Fatalf("UpdateTsconfigPaths: %v", err)
+	}
+	data, err := os.ReadFile(tsconfigPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	if !strings.Contains(content, `"foo.d.ts-utils"`) {
+		t.Fatalf("expected foo.d.ts-utils mapping to remain, got %s", content)
+	}
+	if !strings.Contains(content, `"@scope/foo.d.ts-utils"`) {
+		t.Fatalf("expected @scope/foo.d.ts-utils mapping to remain, got %s", content)
+	}
+	if strings.Contains(content, "AbcFilled.d.ts") {
+		t.Fatalf("expected generated declaration key to be pruned, got %s", content)
+	}
+}
+
+func TestUpdateTsconfigPaths_SkipsUnchangedMappings(t *testing.T) {
+	dir := t.TempDir()
+	tsconfigPath := filepath.Join(dir, "tsconfig.json")
+	typesDir := filepath.Join(dir, "types")
+	if err := os.MkdirAll(typesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cached := filepath.Join(typesDir, "vue.d.ts")
+	if err := os.WriteFile(cached, []byte("export {};\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	rel := "types/vue.d.ts"
+	initial := fmt.Sprintf(`{
+  "compilerOptions": {
+    "paths": {
+      "vue": [%q]
+    }
+  }
+}`, rel)
+	if err := os.WriteFile(tsconfigPath, []byte(initial), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.Stat(tsconfigPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := UpdateTsconfigPaths(tsconfigPath, []TypeFetchResult{
+		{Package: "vue", Version: "3.4.29", CachedPath: cached},
+		{Package: "skip-empty", Version: "1.0.0", CachedPath: ""},
+		{Package: "vue@3.4.29/dist/vue.d.mts", Version: "", CachedPath: cached},
+	}); err != nil {
+		t.Fatalf("UpdateTsconfigPaths: %v", err)
+	}
+	after, err := os.Stat(tsconfigPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !after.ModTime().Equal(before.ModTime()) {
+		t.Fatalf("expected unchanged mappings to skip rewrite; mtime changed")
+	}
+}
+
+func TestUpdateTsconfigPaths_CreatesMissingCompilerOptionsAndPaths(t *testing.T) {
+	dir := t.TempDir()
+	tsconfigPath := filepath.Join(dir, "tsconfig.json")
+	if err := os.WriteFile(tsconfigPath, []byte(`{}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	typesDir := filepath.Join(dir, "types")
+	if err := os.MkdirAll(typesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cached := filepath.Join(typesDir, "vue.d.ts")
+	if err := os.WriteFile(cached, []byte("export {};\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := UpdateTsconfigPaths(tsconfigPath, []TypeFetchResult{
+		{Package: "vue", Version: "3.4.29", CachedPath: cached},
+	}); err != nil {
+		t.Fatalf("UpdateTsconfigPaths: %v", err)
+	}
+	data, err := os.ReadFile(tsconfigPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `"vue"`) {
+		t.Fatalf("expected vue mapping, got %s", data)
+	}
+}
+
+func TestUpdateTsconfigPaths_EmptyFileAndInvalidPathsShape(t *testing.T) {
+	dir := t.TempDir()
+	emptyPath := filepath.Join(dir, "empty.json")
+	if err := os.WriteFile(emptyPath, []byte("   \n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := UpdateTsconfigPaths(emptyPath, nil); err != nil {
+		t.Fatalf("empty tsconfig: %v", err)
+	}
+
+	badPaths := filepath.Join(dir, "bad-paths.json")
+	if err := os.WriteFile(badPaths, []byte(`{"compilerOptions":{"paths":"nope"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	typesDir := filepath.Join(dir, "types")
+	if err := os.MkdirAll(typesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cached := filepath.Join(typesDir, "vue.d.ts")
+	if err := os.WriteFile(cached, []byte("export {};\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := UpdateTsconfigPaths(badPaths, []TypeFetchResult{
+		{Package: "vue", Version: "3.4.29", CachedPath: cached},
+	}); err != nil {
+		t.Fatalf("bad paths shape: %v", err)
+	}
+}
+
+func TestUpdateTsconfigPaths_WriteError(t *testing.T) {
+	dir := t.TempDir()
+	tsconfigPath := filepath.Join(dir, "tsconfig.json")
+	if err := os.Mkdir(tsconfigPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// ensureModulesTsconfig sees an existing path that is a directory.
+	err := UpdateTsconfigPaths(tsconfigPath, nil)
+	if err == nil {
+		t.Fatal("expected error when tsconfig path is a directory")
+	}
+}
+
+func TestUpdateTsconfigPaths_AbsGetwdRelErrors(t *testing.T) {
+	dir := t.TempDir()
+	tsconfigPath := filepath.Join(dir, "tsconfig.json")
+	if err := os.WriteFile(tsconfigPath, []byte(`{"compilerOptions":{"paths":{}}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	typesDir := filepath.Join(dir, "types")
+	if err := os.MkdirAll(typesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cached := filepath.Join(typesDir, "vue.d.ts")
+	if err := os.WriteFile(cached, []byte("export {};\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	results := []TypeFetchResult{{Package: "vue", Version: "3.4.29", CachedPath: cached}}
+
+	t.Run("abs", func(t *testing.T) {
+		old := filepathAbs
+		t.Cleanup(func() { filepathAbs = old })
+		filepathAbs = func(string) (string, error) { return "", errors.New("abs boom") }
+		if err := UpdateTsconfigPaths(tsconfigPath, results); err == nil {
+			t.Fatal("expected abs error")
+		}
+	})
+	t.Run("getwd", func(t *testing.T) {
+		old := osGetwd
+		t.Cleanup(func() { osGetwd = old })
+		osGetwd = func() (string, error) { return "", errors.New("getwd boom") }
+		if err := UpdateTsconfigPaths(tsconfigPath, results); err == nil {
+			t.Fatal("expected getwd error")
+		}
+	})
+	t.Run("rel", func(t *testing.T) {
+		old := filepathRel
+		t.Cleanup(func() { filepathRel = old })
+		filepathRel = func(string, string) (string, error) { return "", errors.New("rel boom") }
+		if err := UpdateTsconfigPaths(tsconfigPath, results); err != nil {
+			t.Fatalf("rel failure should skip mapping, not fail: %v", err)
+		}
+		data, err := os.ReadFile(tsconfigPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(data), `"vue"`) {
+			t.Fatalf("expected vue mapping skipped on Rel error, got %s", data)
+		}
+	})
+}
+
+func TestUpdateTsconfigPaths_ReadNullAndWriteErrors(t *testing.T) {
+	t.Run("unreadable", func(t *testing.T) {
+		dir := t.TempDir()
+		tsconfigPath := filepath.Join(dir, "tsconfig.json")
+		if err := os.WriteFile(tsconfigPath, []byte(`{}`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(tsconfigPath, 0); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(tsconfigPath, 0o644) })
+		if err := UpdateTsconfigPaths(tsconfigPath, nil); err == nil {
+			t.Fatal("expected read error")
+		}
+	})
+	t.Run("json_null", func(t *testing.T) {
+		dir := t.TempDir()
+		tsconfigPath := filepath.Join(dir, "tsconfig.json")
+		if err := os.WriteFile(tsconfigPath, []byte("null\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		typesDir := filepath.Join(dir, "types")
+		if err := os.MkdirAll(typesDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		cached := filepath.Join(typesDir, "vue.d.ts")
+		if err := os.WriteFile(cached, []byte("export {};\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := UpdateTsconfigPaths(tsconfigPath, []TypeFetchResult{
+			{Package: "vue", Version: "3.4.29", CachedPath: cached},
+		}); err != nil {
+			t.Fatalf("null tsconfig: %v", err)
+		}
+		data, err := os.ReadFile(tsconfigPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(data), `"vue"`) {
+			t.Fatalf("expected vue mapping after null root, got %s", data)
+		}
+	})
+	t.Run("write_denied", func(t *testing.T) {
+		dir := t.TempDir()
+		tsconfigPath := filepath.Join(dir, "tsconfig.json")
+		initial := `{
+  "compilerOptions": {
+    "paths": {
+      "bad@1.0.0/x.d.ts": ["x"]
+    }
+  }
+}`
+		if err := os.WriteFile(tsconfigPath, []byte(initial), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(dir, 0o555); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+		if err := UpdateTsconfigPaths(tsconfigPath, nil); err == nil {
+			t.Fatal("expected write error")
+		}
+	})
+}
+
+func TestTsconfigPathMappingEquals(t *testing.T) {
+	want := []string{"types/vue.d.ts"}
+	if !tsconfigPathMappingEquals([]string{"types/vue.d.ts"}, want) {
+		t.Fatal("[]string equal")
+	}
+	if !tsconfigPathMappingEquals([]interface{}{"types/vue.d.ts"}, want) {
+		t.Fatal("[]interface{} equal")
+	}
+	if tsconfigPathMappingEquals([]string{"other"}, want) {
+		t.Fatal("[]string different")
+	}
+	if tsconfigPathMappingEquals([]interface{}{"other"}, want) {
+		t.Fatal("[]interface{} different")
+	}
+	if tsconfigPathMappingEquals([]interface{}{1}, want) {
+		t.Fatal("non-string element")
+	}
+	if tsconfigPathMappingEquals("nope", want) {
+		t.Fatal("wrong type")
+	}
+	if tsconfigPathMappingEquals([]string{"a", "b"}, want) {
+		t.Fatal("length mismatch []string")
+	}
+	if tsconfigPathMappingEquals([]interface{}{"a", "b"}, want) {
+		t.Fatal("length mismatch []interface{}")
 	}
 }
 
