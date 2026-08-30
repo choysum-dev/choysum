@@ -253,6 +253,26 @@ func TestShouldSkipTypeFetchSubpathSpecifier(t *testing.T) {
 	}
 }
 
+func TestIsStaleGeneratedTsconfigPathsKey(t *testing.T) {
+	tests := []struct {
+		in   string
+		want bool
+	}{
+		{in: "@/*", want: false},
+		{in: "vue", want: false},
+		{in: "@vicons/material", want: false},
+		{in: "echarts/core", want: false},
+		{in: "@vicons/material@0.13.0/es/AbcFilled.d.ts", want: true},
+		{in: "vue@3.5.40/dist/vue.d.mts", want: true},
+		{in: "https://esm.sh/vue", want: true},
+	}
+	for _, tt := range tests {
+		if got := isStaleGeneratedTsconfigPathsKey(tt.in); got != tt.want {
+			t.Fatalf("isStaleGeneratedTsconfigPathsKey(%q) = %v, want %v", tt.in, got, tt.want)
+		}
+	}
+}
+
 func TestIsValidTsconfigPathsMappingKey(t *testing.T) {
 	tests := []struct {
 		in   string
@@ -364,6 +384,44 @@ func TestUpdateTsconfigPaths_SkipsVersionedTransitiveKeys(t *testing.T) {
 	}
 	if strings.Contains(content, "echarts@6.0.0/core.d.ts") {
 		t.Fatalf("did not expect versioned transitive path key, got %s", content)
+	}
+}
+
+func TestUpdateTsconfigPaths_PrunesStaleVersionedKeys(t *testing.T) {
+	dir := t.TempDir()
+	tsconfigPath := filepath.Join(dir, "tsconfig.json")
+	initial := `{
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./*"],
+      "@vicons/material": ["types/vicons-index.d.ts"],
+      "@vicons/material@0.13.0/es/AbcFilled.d.ts": ["types/AbcFilled.d.ts"],
+      "vue@3.5.40/dist/vue.d.mts": ["types/vue.d.mts"]
+    }
+  }
+}`
+	if err := os.WriteFile(tsconfigPath, []byte(initial), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := UpdateTsconfigPaths(tsconfigPath, nil); err != nil {
+		t.Fatalf("UpdateTsconfigPaths: %v", err)
+	}
+	data, err := os.ReadFile(tsconfigPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	if !strings.Contains(content, `"@/*"`) {
+		t.Fatalf("expected @/* alias to remain, got %s", content)
+	}
+	if !strings.Contains(content, `"@vicons/material"`) {
+		t.Fatalf("expected bare @vicons/material to remain, got %s", content)
+	}
+	if strings.Contains(content, "AbcFilled.d.ts") {
+		t.Fatalf("expected per-icon path key to be pruned, got %s", content)
+	}
+	if strings.Contains(content, "vue@3.5.40") {
+		t.Fatalf("expected versioned vue path key to be pruned, got %s", content)
 	}
 }
 

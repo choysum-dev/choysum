@@ -1725,22 +1725,19 @@ func hasMissingLocalCachedImports(typesDir string, cacheFile string, imports []s
 // "paths" entries for each fetched type definition, and writes it back.
 // The paths map package names (e.g. "vue") to their cached .d.ts file,
 // relative to the directory containing the tsconfig.
+//
+// Versioned declaration keys from older type-fetch runs are removed so the
+// IDE does not open every cached .d.ts as a path-mapping target.
 func UpdateTsconfigPaths(tsconfigPath string, results []TypeFetchResult) error {
 	if err := ensureModulesTsconfig(tsconfigPath); err != nil {
 		return fmt.Errorf("ensure tsconfig: %w", err)
 	}
 
-	if len(results) == 0 {
-		return nil
-	}
-
-	// Read existing tsconfig.
 	data, err := os.ReadFile(tsconfigPath)
 	if err != nil {
 		return fmt.Errorf("read tsconfig: %w", err)
 	}
 
-	// Parse into a flexible map to preserve unknown fields.
 	var tsconfig map[string]interface{}
 	if len(data) == 0 || strings.TrimSpace(string(data)) == "" {
 		tsconfig = make(map[string]interface{})
@@ -1751,7 +1748,6 @@ func UpdateTsconfigPaths(tsconfigPath string, results []TypeFetchResult) error {
 		tsconfig = make(map[string]interface{})
 	}
 
-	// Navigate to compilerOptions.paths.
 	compilerOptions, ok := tsconfig["compilerOptions"].(map[string]interface{})
 	if !ok {
 		compilerOptions = make(map[string]interface{})
@@ -1764,44 +1760,53 @@ func UpdateTsconfigPaths(tsconfigPath string, results []TypeFetchResult) error {
 		compilerOptions["paths"] = paths
 	}
 
-	tsconfigDir := filepath.Dir(tsconfigPath)
-	absDir, err := filepath.Abs(tsconfigDir)
-	if err != nil {
-		return fmt.Errorf("absolute tsconfig dir: %w", err)
-	}
-	tsconfigDir = absDir
-
-	// Resolve the working directory once so that relative CachedPath
-	// values can be absolutised without a per-item os.Getwd syscall.
-	wd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("get working directory: %w", err)
+	pruned := 0
+	for key := range paths {
+		if isStaleGeneratedTsconfigPathsKey(key) {
+			delete(paths, key)
+			pruned++
+		}
 	}
 
-	for _, r := range results {
-		if r.CachedPath == "" {
-			continue
-		}
-		if !isValidTsconfigPathsMappingKey(r.Package) {
-			continue
-		}
-		cachedPath := r.CachedPath
-		if !filepath.IsAbs(cachedPath) {
-			cachedPath = filepath.Join(wd, cachedPath)
-		}
-		// Compute relative path from tsconfig dir to the cached .d.ts file.
-		relPath, err := filepath.Rel(tsconfigDir, cachedPath)
+	applied := 0
+	if len(results) > 0 {
+		tsconfigDir := filepath.Dir(tsconfigPath)
+		absDir, err := filepath.Abs(tsconfigDir)
 		if err != nil {
-			continue
+			return fmt.Errorf("absolute tsconfig dir: %w", err)
 		}
-		relPath = filepath.ToSlash(relPath)
+		tsconfigDir = absDir
 
-		// Add a paths entry for the bare specifier to cached type.
-		key := r.Package
-		paths[key] = []string{relPath}
+		wd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("get working directory: %w", err)
+		}
+
+		for _, r := range results {
+			if r.CachedPath == "" {
+				continue
+			}
+			if !isValidTsconfigPathsMappingKey(r.Package) {
+				continue
+			}
+			cachedPath := r.CachedPath
+			if !filepath.IsAbs(cachedPath) {
+				cachedPath = filepath.Join(wd, cachedPath)
+			}
+			relPath, err := filepath.Rel(tsconfigDir, cachedPath)
+			if err != nil {
+				continue
+			}
+			relPath = filepath.ToSlash(relPath)
+			paths[r.Package] = []string{relPath}
+			applied++
+		}
 	}
 
-	// Write back with indentation.
+	if pruned == 0 && applied == 0 {
+		return nil
+	}
+
 	out, err := json.MarshalIndent(tsconfig, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal tsconfig: %w", err)
