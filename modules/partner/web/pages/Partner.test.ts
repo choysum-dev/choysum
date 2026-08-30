@@ -59,7 +59,7 @@ const routeGlobal = {
 describe('Partner page OPage store coverage', () => {
   it('mounts Partner form page with store on OPage', () => {
     const wrapper = shallowMount(PartnerPage as any, {
-      props: { recordId: 'p1', viewMode: 'display' },
+      props: { recordId: 'p1' },
       global: {
         plugins: [i18n, routeGlobal],
         stubs: {

@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="addressStore">
-    <AddressFormView :key="$route.fullPath" createAction="/base/addresses/new" :record-id="recordId" :view-mode="viewMode" />
+    <AddressFormView :key="$route.fullPath" createAction="/base/addresses/new" :record-id="recordId" />
   </OPage>
 </template>
 
@@ -15,14 +15,12 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import OPage from '@/web/web/components/page/OPage.vue';
 import AddressFormView from '../views/AddressFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import type Address from '@/base/service/models/address';
 
 defineOptions({ name: 'AddressPage' });
 
 withDefaults(
   defineProps<{
-    viewMode?: ViewMode;
     recordId?: string;
   }>(),
   {}

@@ -66,7 +66,7 @@ describe('auth page OPage store / title coverage', () => {
     it(`mounts ${path}`, () => {
       const isList = /List|Kanban/.test(path);
       const wrapper = shallowMount(mod.default as any, {
-        props: isList ? {} : { recordId: 'id-1', viewMode: 'display' },
+        props: isList ? {} : { recordId: 'id-1' },
         global: {
           plugins: [i18n, routeGlobal],
           stubs: {

@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="sequenceStore">
-    <SequenceFormView :key="$route.fullPath" createAction="/base/sequences/new" :record-id="recordId" :view-mode="viewMode" />
+    <SequenceFormView :key="$route.fullPath" createAction="/base/sequences/new" :record-id="recordId" />
   </OPage>
 </template>
 
@@ -15,14 +15,12 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import OPage from '@/web/web/components/page/OPage.vue';
 import SequenceFormView from '../views/SequenceFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import type Sequence from '@/base/service/models/sequence';
 
 defineOptions({ name: 'SequencePage' });
 
 withDefaults(
   defineProps<{
-    viewMode?: ViewMode;
     recordId?: string;
   }>(),
   {}

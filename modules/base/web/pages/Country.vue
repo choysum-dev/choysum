@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="countryStore">
-    <CountryFormView :key="$route.fullPath" createAction="/base/countries/new" :record-id="recordId" :view-mode="viewMode" />
+    <CountryFormView :key="$route.fullPath" createAction="/base/countries/new" :record-id="recordId" />
   </OPage>
 </template>
 
@@ -15,14 +15,12 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import OPage from '@/web/web/components/page/OPage.vue';
 import CountryFormView from '../views/CountryFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import type Country from '@/base/service/models/country';
 
 defineOptions({ name: 'CountryPage' });
 
 withDefaults(
   defineProps<{
-    viewMode?: ViewMode;
     recordId?: string;
   }>(),
   {}

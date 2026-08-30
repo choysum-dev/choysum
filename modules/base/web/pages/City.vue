@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="cityStore">
-    <CityFormView :key="$route.fullPath" createAction="/base/cities/new" :record-id="recordId" :view-mode="viewMode" />
+    <CityFormView :key="$route.fullPath" createAction="/base/cities/new" :record-id="recordId" />
   </OPage>
 </template>
 
@@ -15,14 +15,12 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import OPage from '@/web/web/components/page/OPage.vue';
 import CityFormView from '../views/CityFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import type City from '@/base/service/models/city';
 
 defineOptions({ name: 'CityPage' });
 
 withDefaults(
   defineProps<{
-    viewMode?: ViewMode;
     recordId?: string;
   }>(),
   {}

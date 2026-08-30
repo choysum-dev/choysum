@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="sessionStore">
-    <SessionFormView :key="$route.fullPath" createAction="/auth/sessions/new" :record-id="recordId" :view-mode="viewMode" />
+    <SessionFormView :key="$route.fullPath" createAction="/auth/sessions/new" :record-id="recordId" />
   </OPage>
 </template>
 
@@ -15,12 +15,10 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import OPage from '@/web/web/components/page/OPage.vue';
 import SessionFormView from '@/auth/web/views/SessionFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import type Session from '@/auth/service/models/session';
 
 const props = withDefaults(
   defineProps<{
-    viewMode?: ViewMode;
     recordId?: string | undefined;
   }>(),
   {}

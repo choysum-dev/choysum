@@ -104,7 +104,7 @@ describe('Access Rules admin coverage (PR-C-5)', () => {
 
       if (typeof route.props === 'function') {
         const resolved = route.props({ params: { id: 'x-1' } } as any);
-        expect(resolved).toEqual({ recordId: 'x-1', viewMode: 'display' });
+        expect(resolved).toEqual({ recordId: 'x-1' });
       }
     }
   });
@@ -115,7 +115,7 @@ describe('Access Rules admin coverage (PR-C-5)', () => {
 
     for (const [path, mod] of Object.entries(pageModules)) {
       const wrapper = shallowMount(mod.default as any, {
-        props: path.includes('List') ? {} : { recordId: 'id-1', viewMode: 'display' },
+        props: path.includes('List') ? {} : { recordId: 'id-1' },
         global: {
           plugins: [i18n, routeGlobal],
           stubs: {

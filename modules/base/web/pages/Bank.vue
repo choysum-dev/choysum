@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="bankStore">
-    <BankFormView :key="$route.fullPath" createAction="/base/banks/new" :record-id="recordId" :view-mode="viewMode" />
+    <BankFormView :key="$route.fullPath" createAction="/base/banks/new" :record-id="recordId" />
   </OPage>
 </template>
 
@@ -15,14 +15,12 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import OPage from '@/web/web/components/page/OPage.vue';
 import BankFormView from '../views/BankFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import type Bank from '@/base/service/models/bank';
 
 defineOptions({ name: 'BankPage' });
 
 withDefaults(
   defineProps<{
-    viewMode?: ViewMode;
     recordId?: string;
   }>(),
   {}

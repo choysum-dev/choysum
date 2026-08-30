@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="moduleStore">
-    <ModuleDetailView :key="$route.fullPath" :record-id="recordId" :view-mode="viewMode" />
+    <ModuleDetailView :key="$route.fullPath" :record-id="recordId" />
   </OPage>
 </template>
 
@@ -15,12 +15,10 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import OPage from '@/web/web/components/page/OPage.vue';
 import ModuleDetailView from '../views/ModuleDetailView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import type MetaModuleIndex from '@/meta/service/models/module_index';
 
 withDefaults(
   defineProps<{
-    viewMode?: ViewMode;
     recordId?: string | undefined;
   }>(),
   {}
