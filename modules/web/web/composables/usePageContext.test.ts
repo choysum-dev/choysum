@@ -33,6 +33,31 @@ describe('usePageContext', () => {
     expect(seen).toBe(store);
   });
 
+  it('provides store to default-slot content (OPage page pattern)', () => {
+    const store = { storeId: 'slot-store' };
+    let seen: unknown = null;
+    const Child = defineComponent({
+      setup() {
+        seen = resolvePageStore(undefined, 'SlotChild');
+        return () => h('div');
+      },
+    });
+    // Mirrors OPage: provide in setup, render children via <slot />.
+    const PageShell = defineComponent({
+      setup(_, { slots }) {
+        provideOPageContext({ store });
+        return () => h('div', slots.default?.());
+      },
+    });
+    const Page = defineComponent({
+      setup() {
+        return () => h(PageShell, null, { default: () => h(Child) });
+      },
+    });
+    mount(Page);
+    expect(seen).toBe(store);
+  });
+
   it('prefers an explicit prop store over the page store', () => {
     const pageStore = { storeId: 'page' };
     const propStore = { storeId: 'prop' };
