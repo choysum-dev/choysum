@@ -66,6 +66,28 @@ func (h *Hub) ParseHeaders(ctx context.Context, req *importpb.ParseHeadersReques
 	}, nil
 }
 
+// DescribeImportFields returns importable field metadata for a record model.
+func (h *Hub) DescribeImportFields(ctx context.Context, req *importpb.DescribeImportFieldsRequest) (*importpb.DescribeImportFieldsResponse, error) {
+	if err := ensureIdentity(ctx); err != nil {
+		return nil, err
+	}
+	if h.deps.RuntimeScope == nil {
+		return nil, status.Error(codes.Unavailable, "runtime scope unavailable")
+	}
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "request is required")
+	}
+	modelName := strings.TrimSpace(req.GetModel())
+	if modelName == "" {
+		return nil, status.Error(codes.InvalidArgument, "model is required")
+	}
+	companyID := activeCompanyID(ctx)
+	if err := checkModelImportAccess(ctx, h.deps.RuntimeScope, modelName, companyID); err != nil {
+		return nil, err
+	}
+	return describeImportFields(ctx, h.deps.RuntimeScope, req)
+}
+
 // Preview runs a dry-run import with atomic policy.
 func (h *Hub) Preview(ctx context.Context, req *importpb.ImportRunRequest) (*importpb.ImportRunResponse, error) {
 	return runImport(ctx, h.deps, req, true)

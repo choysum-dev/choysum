@@ -7,12 +7,13 @@ SPDX-License-Identifier: Apache-2.0
   <el-dialog
     v-model="visible"
     :title="title"
-    width="720px"
+    width="780px"
     destroy-on-close
     :close-on-click-modal="!busy"
     :close-on-press-escape="!busy"
     :before-close="handleBeforeClose"
     @closed="resetState"
+    @open="loadCatalog"
   >
     <div class="import-panel">
       <el-steps :active="step" finish-status="success" align-center>
@@ -23,17 +24,45 @@ SPDX-License-Identifier: Apache-2.0
 
       <section v-if="step === 0" class="import-panel-section">
         <p class="import-panel-hint">{{ resolvedUploadHint }}</p>
+        <p v-if="defaultFieldsHint" class="import-panel-hint" data-test="import-default-fields">
+          {{ defaultFieldsLabel }}: {{ defaultFieldsHint }}
+        </p>
+        <el-alert v-if="catalogError" type="warning" :title="catalogError" show-icon :closable="false" class="import-panel-alert" />
         <el-upload drag accept=".csv,text/csv" :auto-upload="false" :limit="1" :on-change="onFileSelected" :on-remove="onFileRemoved">
           <div class="el-upload__text">{{ uploadDropText }}</div>
         </el-upload>
       </section>
 
       <section v-else-if="step === 1" class="import-panel-section">
-        <p v-if="headers.length" class="import-panel-hint">{{ headersLabel }}: {{ headers.join(', ') }}</p>
-        <el-alert v-if="previewReport" :type="previewAlertType" :closable="false" show-icon>
+        <p class="import-panel-hint">{{ mappingHint }}</p>
+        <div v-if="mappingRows.length" class="import-mapping" data-test="import-mapping-table">
+          <div class="import-mapping__row import-mapping__row--head">
+            <div>{{ csvColumnLabel }}</div>
+            <div>{{ importFieldLabel }}</div>
+          </div>
+          <div v-for="(row, idx) in mappingRows" :key="`${row.header}-${idx}`" class="import-mapping__row">
+            <div class="import-mapping__header">{{ row.header }}</div>
+            <el-select
+              v-model="row.fieldPath"
+              filterable
+              clearable
+              :placeholder="sameAsHeaderLabel"
+              class="import-mapping__select"
+              @change="onMappingChange"
+            >
+              <el-option
+                v-for="opt in catalogOptions"
+                :key="opt.path"
+                :label="opt.label"
+                :value="opt.path"
+              />
+            </el-select>
+          </div>
+        </div>
+        <el-alert v-if="previewReport" :type="previewAlertType" :closable="false" show-icon class="import-panel-alert">
           <template #title>{{ previewSummary }}</template>
         </el-alert>
-        <el-table v-if="previewMessages.length" :data="previewMessages" size="small" max-height="240" class="import-panel-table">
+        <el-table v-if="previewMessages.length" :data="previewMessages" size="small" max-height="200" class="import-panel-table">
           <el-table-column prop="row" :label="rowLabel" width="72" />
           <el-table-column prop="field" :label="fieldLabel" width="120" />
           <el-table-column prop="code" :label="codeLabel" width="140" />
@@ -49,7 +78,13 @@ SPDX-License-Identifier: Apache-2.0
 
     <template #footer>
       <el-button :disabled="busy" @click="visible = false">{{ cancelLabel }}</el-button>
-      <el-button v-if="step === 0" type="primary" :loading="busy" :disabled="!selectedFile" @click="uploadAndPreview">
+      <el-button
+        v-if="step === 0 || (step === 1 && !canImport && !!sourceRef)"
+        type="primary"
+        :loading="busy"
+        :disabled="step === 0 ? !selectedFile : busy"
+        @click="uploadAndPreview"
+      >
         {{ previewActionLabel }}
       </el-button>
       <el-button v-else-if="step === 1" type="primary" :loading="busy" :disabled="!canImport" @click="commitImport">
@@ -63,11 +98,20 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import type { UploadFile } from 'element-plus';
-import { parseHeaders, previewImport, runImport, type ImportReport } from '@/core/web/import';
+import {
+  describeImportFields,
+  parseHeaders,
+  previewImport,
+  runImport,
+  type ImportFieldNode,
+  type ImportReport,
+} from '@/core/web/import';
 import { uploadImportCsv } from '@/core/web/import/upload_csv';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'ImportPanel' });
+
+type MappingRow = { header: string; fieldPath: string };
 
 const props = defineProps<{
   model: string;
@@ -88,9 +132,13 @@ const title = _t('Import');
 const uploadStepTitle = _t('Upload CSV');
 const previewStepTitle = _t('Preview');
 const importStepTitle = _t('Import');
-const defaultUploadHint = _t('Upload a UTF-8 CSV. Column headers should match field names when no mapping is set.');
+const defaultUploadHint = _t('Upload a UTF-8 CSV. Map columns to importable fields from the catalog.');
 const uploadDropText = _t('Drop CSV here or click to browse');
-const headersLabel = _t('Detected headers');
+const defaultFieldsLabel = _t('Suggested columns');
+const mappingHint = _t('Map each CSV column to an importable field. Leave blank to use the header as the field path.');
+const csvColumnLabel = _t('CSV column');
+const importFieldLabel = _t('Import field');
+const sameAsHeaderLabel = _t('Same as header');
 const rowLabel = _t('Row');
 const fieldLabel = _t('Field');
 const codeLabel = _t('Code');
@@ -109,12 +157,17 @@ const busy = ref(false);
 const selectedFile = ref<File | null>(null);
 const sourceRef = ref('');
 const headers = ref<string[]>([]);
+const mappingRows = ref<MappingRow[]>([]);
+const catalogFields = ref<ImportFieldNode[]>([]);
+const catalogDefaults = ref<string[]>([]);
+const catalogError = ref('');
 const previewReport = ref<ImportReport | null>(null);
 const importDone = ref(false);
 const importError = ref('');
 
 let sessionToken = 0;
 let previewAbort: AbortController | null = null;
+let catalogAbort: AbortController | null = null;
 
 const previewMessages = computed(() => previewReport.value?.messages ?? []);
 const previewAlertType = computed(() => ((previewReport.value?.stats?.error ?? 0) > 0 ? 'warning' : 'success'));
@@ -123,8 +176,43 @@ const previewSummary = computed(() => {
   if (!stats) return '';
   return `Preview: ${stats.ok ?? 0} ok, ${stats.error ?? 0} errors, ${stats.total ?? 0} total`;
 });
-const canImport = computed(() => !!sourceRef.value && (previewReport.value?.stats?.error ?? 0) === 0);
-const resolvedMapping = computed(() => props.columnMapping ?? {});
+const canImport = computed(
+  () => !!sourceRef.value && previewReport.value != null && (previewReport.value.stats?.error ?? 0) === 0,
+);
+const defaultFieldsHint = computed(() => catalogDefaults.value.filter(Boolean).join(', '));
+
+const catalogOptions = computed(() => {
+  const out: Array<{ path: string; label: string }> = [];
+  const walk = (nodes: ImportFieldNode[] | null | undefined) => {
+    if (nodes == null) {
+      return;
+    }
+    for (const node of nodes) {
+      const path = String(node.path == null ? '' : node.path).trim();
+      const children = node.children;
+      if (children != null && children.length > 0) {
+        walk(children);
+        continue;
+      }
+      if (!path) continue;
+      const label = String(node.label || path).trim() || path;
+      out.push({ path, label: `${label} (${path})` });
+    }
+  };
+  walk(catalogFields.value);
+  return out;
+});
+
+const resolvedMapping = computed(() => {
+  const mapping: Record<string, string> = {};
+  for (const row of mappingRows.value) {
+    const header = String(row.header ?? '').trim();
+    const fieldPath = String(row.fieldPath ?? '').trim();
+    if (!header || !fieldPath) continue;
+    mapping[header] = fieldPath;
+  }
+  return mapping;
+});
 
 function isActiveSession(token: number): boolean {
   return token === sessionToken;
@@ -134,14 +222,110 @@ function invalidateSession() {
   sessionToken += 1;
   previewAbort?.abort();
   previewAbort = null;
+  catalogAbort?.abort();
+  catalogAbort = null;
+}
+
+function clearUploadDerivedState() {
+  // New or cleared file must not reuse a prior upload sourceRef / mapping / preview.
+  sourceRef.value = '';
+  headers.value = [];
+  mappingRows.value = [];
+  previewReport.value = null;
 }
 
 function onFileSelected(uploadFile: UploadFile) {
   selectedFile.value = uploadFile.raw ?? null;
+  // Drop in-flight upload/preview so a pending completion cannot write a stale sourceRef.
+  // Only invalidate while busy: a first select must not abort the dialog-open catalog load.
+  if (busy.value) {
+    invalidateSession();
+    busy.value = false;
+  }
+  clearUploadDerivedState();
 }
 
 function onFileRemoved() {
   selectedFile.value = null;
+  if (busy.value) {
+    invalidateSession();
+    busy.value = false;
+  }
+  clearUploadDerivedState();
+}
+
+function flattenPaths(nodes: ImportFieldNode[]): string[] {
+  const out: string[] = [];
+  const walk = (list: ImportFieldNode[] | null | undefined) => {
+    if (list == null) {
+      return;
+    }
+    for (let i = 0; i < list.length; i += 1) {
+      const node = list[i];
+      const rawPath = node.path;
+      const path = String(rawPath == null ? '' : rawPath).trim();
+      const children = node.children;
+      if (children != null && children.length > 0) {
+        walk(children);
+        continue;
+      }
+      if (path === '') {
+        continue;
+      }
+      out.push(path);
+    }
+  };
+  walk(nodes);
+  return out;
+}
+
+function buildMappingRows(csvHeaders: string[]): MappingRow[] {
+  const propMap = props.columnMapping ?? {};
+  const paths = new Set(flattenPaths(catalogFields.value));
+  return csvHeaders.map(header => {
+    const fromProp = String(propMap[header] ?? '').trim();
+    if (fromProp) {
+      return { header, fieldPath: fromProp };
+    }
+    if (paths.has(header)) {
+      return { header, fieldPath: header };
+    }
+    return { header, fieldPath: '' };
+  });
+}
+
+function onMappingChange() {
+  // Mapping edits invalidate the last dry-run; Import stays disabled until Preview again.
+  previewReport.value = null;
+}
+
+async function loadCatalog() {
+  catalogError.value = '';
+  catalogFields.value = [];
+  catalogDefaults.value = [];
+  if (!String(props.model || '').trim()) {
+    return;
+  }
+  const token = sessionToken;
+  catalogAbort?.abort();
+  const request = new AbortController();
+  catalogAbort = request;
+  try {
+    const resp = await describeImportFields(props.model, request.signal);
+    if (!isActiveSession(token) || catalogAbort !== request) {
+      return;
+    }
+    catalogFields.value = resp.fields ?? [];
+    catalogDefaults.value = resp.defaultFields ?? [];
+  } catch (err) {
+    if (!isActiveSession(token) || catalogAbort !== request) {
+      return;
+    }
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      return;
+    }
+    catalogError.value = err instanceof Error ? err.message : String(err);
+  }
 }
 
 function resetState() {
@@ -151,6 +335,7 @@ function resetState() {
   selectedFile.value = null;
   sourceRef.value = '';
   headers.value = [];
+  mappingRows.value = [];
   previewReport.value = null;
   importDone.value = false;
   importError.value = '';
@@ -172,15 +357,24 @@ async function uploadAndPreview() {
   previewAbort = new AbortController();
   const signal = previewAbort.signal;
   try {
-    const ref = await uploadImportCsv({
-      ownerModel: props.model,
-      file: selectedFile.value,
-    });
-    if (!isActiveSession(token)) return;
-    sourceRef.value = ref;
-    const headerResp = await parseHeaders(ref, signal);
-    if (!isActiveSession(token)) return;
-    headers.value = headerResp.headers ?? [];
+    if (!catalogFields.value.length && !catalogError.value) {
+      await loadCatalog();
+      if (!isActiveSession(token)) return;
+    }
+    // Re-preview after mapping edits reuses the uploaded source and keeps user row edits.
+    let ref = sourceRef.value;
+    if (!ref) {
+      ref = await uploadImportCsv({
+        ownerModel: props.model,
+        file: selectedFile.value,
+      });
+      if (!isActiveSession(token)) return;
+      sourceRef.value = ref;
+      const headerResp = await parseHeaders(ref, signal);
+      if (!isActiveSession(token)) return;
+      headers.value = headerResp.headers ?? [];
+      mappingRows.value = buildMappingRows(headers.value);
+    }
     const previewResp = await previewImport(
       {
         targetModel: props.model,
@@ -271,5 +465,32 @@ watch(visible, value => {
 
 .import-panel-table {
   margin-top: 12px;
+}
+
+.import-panel-alert {
+  margin-top: 12px;
+}
+
+.import-mapping {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.import-mapping__row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(180px, 1.4fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.import-mapping__header {
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.import-mapping__select {
+  width: 100%;
 }
 </style>

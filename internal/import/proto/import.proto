@@ -86,7 +86,23 @@ message ImportRunAsyncResponse {
   ImportReport report = 3;
 }
 
+message ImportFieldNode {
+  string path = 1;
+  string label = 2;
+  repeated ImportFieldNode children = 3;
+}
+
+message DescribeImportFieldsRequest {
+  string model = 1;
+}
+
+message DescribeImportFieldsResponse {
+  repeated ImportFieldNode fields = 1;
+  repeated string default_fields = 2;
+}
+
 service ImportHub {
+  rpc DescribeImportFields(DescribeImportFieldsRequest) returns (DescribeImportFieldsResponse);
   rpc ParseHeaders(ParseHeadersRequest) returns (ParseHeadersResponse);
   rpc Preview(ImportRunRequest) returns (ImportRunResponse);
   rpc Run(ImportRunRequest) returns (ImportRunResponse);

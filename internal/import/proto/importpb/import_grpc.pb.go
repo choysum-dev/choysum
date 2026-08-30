@@ -22,16 +22,18 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ImportHub_ParseHeaders_FullMethodName = "/import.ImportHub/ParseHeaders"
-	ImportHub_Preview_FullMethodName      = "/import.ImportHub/Preview"
-	ImportHub_Run_FullMethodName          = "/import.ImportHub/Run"
-	ImportHub_RunAsync_FullMethodName     = "/import.ImportHub/RunAsync"
+	ImportHub_DescribeImportFields_FullMethodName = "/import.ImportHub/DescribeImportFields"
+	ImportHub_ParseHeaders_FullMethodName         = "/import.ImportHub/ParseHeaders"
+	ImportHub_Preview_FullMethodName              = "/import.ImportHub/Preview"
+	ImportHub_Run_FullMethodName                  = "/import.ImportHub/Run"
+	ImportHub_RunAsync_FullMethodName             = "/import.ImportHub/RunAsync"
 )
 
 // ImportHubClient is the client API for ImportHub service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ImportHubClient interface {
+	DescribeImportFields(ctx context.Context, in *DescribeImportFieldsRequest, opts ...grpc.CallOption) (*DescribeImportFieldsResponse, error)
 	ParseHeaders(ctx context.Context, in *ParseHeadersRequest, opts ...grpc.CallOption) (*ParseHeadersResponse, error)
 	Preview(ctx context.Context, in *ImportRunRequest, opts ...grpc.CallOption) (*ImportRunResponse, error)
 	Run(ctx context.Context, in *ImportRunRequest, opts ...grpc.CallOption) (*ImportRunResponse, error)
@@ -44,6 +46,16 @@ type importHubClient struct {
 
 func NewImportHubClient(cc grpc.ClientConnInterface) ImportHubClient {
 	return &importHubClient{cc}
+}
+
+func (c *importHubClient) DescribeImportFields(ctx context.Context, in *DescribeImportFieldsRequest, opts ...grpc.CallOption) (*DescribeImportFieldsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DescribeImportFieldsResponse)
+	err := c.cc.Invoke(ctx, ImportHub_DescribeImportFields_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *importHubClient) ParseHeaders(ctx context.Context, in *ParseHeadersRequest, opts ...grpc.CallOption) (*ParseHeadersResponse, error) {
@@ -90,6 +102,7 @@ func (c *importHubClient) RunAsync(ctx context.Context, in *ImportRunAsyncReques
 // All implementations must embed UnimplementedImportHubServer
 // for forward compatibility.
 type ImportHubServer interface {
+	DescribeImportFields(context.Context, *DescribeImportFieldsRequest) (*DescribeImportFieldsResponse, error)
 	ParseHeaders(context.Context, *ParseHeadersRequest) (*ParseHeadersResponse, error)
 	Preview(context.Context, *ImportRunRequest) (*ImportRunResponse, error)
 	Run(context.Context, *ImportRunRequest) (*ImportRunResponse, error)
@@ -104,6 +117,9 @@ type ImportHubServer interface {
 // pointer dereference when methods are called.
 type UnimplementedImportHubServer struct{}
 
+func (UnimplementedImportHubServer) DescribeImportFields(context.Context, *DescribeImportFieldsRequest) (*DescribeImportFieldsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DescribeImportFields not implemented")
+}
 func (UnimplementedImportHubServer) ParseHeaders(context.Context, *ParseHeadersRequest) (*ParseHeadersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ParseHeaders not implemented")
 }
@@ -135,6 +151,24 @@ func RegisterImportHubServer(s grpc.ServiceRegistrar, srv ImportHubServer) {
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&ImportHub_ServiceDesc, srv)
+}
+
+func _ImportHub_DescribeImportFields_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DescribeImportFieldsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ImportHubServer).DescribeImportFields(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ImportHub_DescribeImportFields_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ImportHubServer).DescribeImportFields(ctx, req.(*DescribeImportFieldsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _ImportHub_ParseHeaders_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -216,6 +250,10 @@ var ImportHub_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "import.ImportHub",
 	HandlerType: (*ImportHubServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "DescribeImportFields",
+			Handler:    _ImportHub_DescribeImportFields_Handler,
+		},
 		{
 			MethodName: "ParseHeaders",
 			Handler:    _ImportHub_ParseHeaders_Handler,
