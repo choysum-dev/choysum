@@ -4,8 +4,11 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage>
-    <ModuleListView :store="moduleStore" />
+  <OPage
+    :title="pageTitle"
+    :store="moduleStore"
+  >
+    <ModuleListView />
   </OPage>
 </template>
 
@@ -14,9 +17,13 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import OPage from '@/web/web/components/page/OPage.vue';
 import ModuleListView from '../views/ModuleListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
+import { createTranslate } from '@/web/web/i18n';
 import type MetaModuleIndex from '@/meta/service/models/module_index';
 
 defineOptions({ name: 'MetaModuleListTablePage' });
+
+const { _t } = createTranslate('meta', { scope: 'web/pages/ModuleListTable' });
+const pageTitle = _t('Module List');
 
 const moduleStore = createStoreByModel<typeof MetaModuleIndex>('meta.MetaModuleIndex', {
   storeId: 'MetaModuleIndex_ListTable',

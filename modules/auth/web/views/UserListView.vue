@@ -39,6 +39,7 @@ import OManyToOneRefField from '@/web/web/components/field/OManyToOneRefField.vu
 import type { RowEventPayload } from '@/web/web/components/view/listViewTypes';
 import { useRouter } from 'vue-router';
 import { useListViewExpose } from '@/web/web/composables/useListView';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
@@ -50,13 +51,14 @@ const { _t, _lt } = createTranslate('auth', { scope: 'web/views/UserListView' })
 
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<User>;
+    store?: WebModelStore<User>;
     showHeader?: boolean;
   }>(),
   { showHeader: true }
 );
 
-const { store, showHeader } = props;
+const store = resolvePageStore(props.store, 'UserListView');
+const { showHeader } = props;
 const userActions = defineModelActions('auth.User', { entityTitle: _lt('User') });
 const { hasAction } = usePermission();
 

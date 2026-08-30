@@ -4,8 +4,14 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage>
-    <SequenceListView :store="sequenceStore" createAction="/base/sequences/new" />
+  <OPage
+    :title="pageTitle"
+    :store="sequenceStore"
+    action-import
+    action-export
+    :action-import-upload-hint="_t('Upload a UTF-8 CSV with columns Name, Code, Prefix, Suffix, Padding, NextNumber, IsActive.')"
+  >
+    <SequenceListView createAction="/base/sequences/new" />
   </OPage>
 </template>
 
@@ -15,9 +21,13 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import OPage from '@/web/web/components/page/OPage.vue';
 import SequenceListView from '../views/SequenceListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
+import { createTranslate } from '@/web/web/i18n';
 import type Sequence from '@/base/service/models/sequence';
 
 defineOptions({ name: 'SequenceListPage' });
+
+const { _t } = createTranslate('base', { scope: 'web/pages/SequenceList' });
+const pageTitle = _t('Sequence List');
 
 const route = useRoute();
 const sequenceStore = createStoreByModel<typeof Sequence>('base.Sequence', {

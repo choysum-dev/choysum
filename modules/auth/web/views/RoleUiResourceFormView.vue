@@ -87,6 +87,7 @@ import RoleListView from '@/auth/web/views/RoleListView.vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
 import { roleIdFromValueClick } from '@/auth/web/views/role_value_click';
 
@@ -95,7 +96,7 @@ const { _t, _lt } = createTranslate('auth', { scope: 'web/views/RoleUiResourceFo
 
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<RoleUiResource>;
+    store?: WebModelStore<RoleUiResource>;
     recordId?: string;
     viewMode?: ViewMode;
     showHeader?: boolean;
@@ -107,7 +108,8 @@ const props = withDefaults(
   }
 );
 
-const { store, recordId, viewMode, showHeader, createAction } = props;
+const store = resolvePageStore(props.store, 'RoleUiResourceFormView');
+const { recordId, viewMode, showHeader, createAction } = props;
 const uiResourceGrantActions = defineModelActions('auth.RoleUiResource', { entityTitle: _lt('UI Resource Grant') });
 const { hasAction } = usePermission();
 const router = useRouter();

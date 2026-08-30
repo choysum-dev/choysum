@@ -32,13 +32,15 @@ import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
 import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'UoMCategoryListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/UoMCategoryListView' });
-const props = defineProps<{ store: WebModelStore<UoMCategory> }>();
+const props = defineProps<{ store?: WebModelStore<UoMCategory> }>();
+const store = resolvePageStore(props.store, 'UoMCategoryListView');
 const uomCategoryActions = defineModelActions('base.UoMCategory', { entityTitle: _lt('Unit of Measure Category') });
 const { hasAction } = usePermission();
 const router = useRouter();

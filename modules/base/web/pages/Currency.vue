@@ -4,8 +4,8 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage>
-    <CurrencyFormView :key="$route.fullPath" createAction="/base/currencies/new" :store="currencyStore" :record-id="recordId" :view-mode="viewMode" />
+  <OPage :store="currencyStore">
+    <CurrencyFormView :key="$route.fullPath" createAction="/base/currencies/new" :record-id="recordId" :view-mode="viewMode" />
   </OPage>
 </template>
 

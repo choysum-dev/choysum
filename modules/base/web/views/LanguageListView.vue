@@ -36,13 +36,15 @@ import OSelectionField from '@/web/web/components/field/OSelectionField.vue';
 import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'LanguageListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/LanguageListView' });
-const props = defineProps<{ store: WebModelStore<Language> }>();
+const props = defineProps<{ store?: WebModelStore<Language> }>();
+const store = resolvePageStore(props.store, 'LanguageListView');
 const languageActions = defineModelActions('base.Language', { entityTitle: _lt('Language') });
 const { hasAction } = usePermission();
 const router = useRouter();

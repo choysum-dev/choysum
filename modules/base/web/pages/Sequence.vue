@@ -4,8 +4,8 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage>
-    <SequenceFormView :key="$route.fullPath" createAction="/base/sequences/new" :store="sequenceStore" :record-id="recordId" :view-mode="viewMode" />
+  <OPage :store="sequenceStore">
+    <SequenceFormView :key="$route.fullPath" createAction="/base/sequences/new" :record-id="recordId" :view-mode="viewMode" />
   </OPage>
 </template>
 

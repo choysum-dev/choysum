@@ -144,6 +144,7 @@ import type { TagClickPayload as RefTagClickPayload } from '@/web/web/components
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'UserFormView', inheritAttrs: true });
@@ -152,7 +153,7 @@ const requiredRules = computed(() => [{ required: true, message: _t('Required') 
 
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<User>;
+    store?: WebModelStore<User>;
     recordId?: string;
     viewMode?: ViewMode;
     showHeader?: boolean;
@@ -164,7 +165,8 @@ const props = withDefaults(
   }
 );
 
-const { store, recordId, viewMode, showHeader, createAction } = props;
+const store = resolvePageStore(props.store, 'UserFormView');
+const { recordId, viewMode, showHeader, createAction } = props;
 const userActions = defineModelActions('auth.User', { entityTitle: _lt('User') });
 const { hasAction } = usePermission();
 

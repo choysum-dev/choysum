@@ -85,6 +85,7 @@ import type User from '@/auth/service/models/user';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'TokenFormView', inheritAttrs: true });
@@ -92,7 +93,7 @@ const { _t, _lt } = createTranslate('auth', { scope: 'web/views/TokenFormView' }
 
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<Token>;
+    store?: WebModelStore<Token>;
     recordId?: string;
     viewMode?: ViewMode;
     showHeader?: boolean;
@@ -104,7 +105,8 @@ const props = withDefaults(
   }
 );
 
-const { store, recordId, viewMode, showHeader, createAction } = props;
+const store = resolvePageStore(props.store, 'TokenFormView');
+const { recordId, viewMode, showHeader, createAction } = props;
 const tokenActions = defineModelActions('auth.Token', { entityTitle: _lt('Token') });
 const { hasAction } = usePermission();
 const router = useRouter();

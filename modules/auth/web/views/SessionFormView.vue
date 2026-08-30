@@ -79,6 +79,7 @@ import UserListView from '@/auth/web/views/UserListView.vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'SessionFormView', inheritAttrs: true });
@@ -86,7 +87,7 @@ const { _t, _lt } = createTranslate('auth', { scope: 'web/views/SessionFormView'
 
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<Session>;
+    store?: WebModelStore<Session>;
     recordId?: string;
     viewMode?: ViewMode;
     showHeader?: boolean;
@@ -98,7 +99,8 @@ const props = withDefaults(
   }
 );
 
-const { store, recordId, viewMode, showHeader, createAction } = props;
+const store = resolvePageStore(props.store, 'SessionFormView');
+const { recordId, viewMode, showHeader, createAction } = props;
 const sessionActions = defineModelActions('auth.Session', { entityTitle: _lt('Session') });
 const { hasAction } = usePermission();
 const router = useRouter();

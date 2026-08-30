@@ -4,8 +4,8 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage>
-    <CityFormView :key="$route.fullPath" createAction="/base/cities/new" :store="cityStore" :record-id="recordId" :view-mode="viewMode" />
+  <OPage :store="cityStore">
+    <CityFormView :key="$route.fullPath" createAction="/base/cities/new" :record-id="recordId" :view-mode="viewMode" />
   </OPage>
 </template>
 

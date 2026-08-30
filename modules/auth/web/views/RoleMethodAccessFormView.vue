@@ -100,6 +100,7 @@ import RoleListView from '@/auth/web/views/RoleListView.vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
 import { roleIdFromValueClick } from '@/auth/web/views/role_value_click';
 
@@ -108,7 +109,7 @@ const { _t, _lt } = createTranslate('auth', { scope: 'web/views/RoleMethodAccess
 
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<RoleMethodAccess>;
+    store?: WebModelStore<RoleMethodAccess>;
     recordId?: string;
     viewMode?: ViewMode;
     showHeader?: boolean;
@@ -120,7 +121,8 @@ const props = withDefaults(
   }
 );
 
-const { store, recordId, viewMode, showHeader, createAction } = props;
+const store = resolvePageStore(props.store, 'RoleMethodAccessFormView');
+const { recordId, viewMode, showHeader, createAction } = props;
 const methodAccessActions = defineModelActions('auth.RoleMethodAccess', { entityTitle: _lt('Method Access') });
 const { hasAction } = usePermission();
 const router = useRouter();

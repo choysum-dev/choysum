@@ -61,6 +61,7 @@ import OIntField from '@/web/web/components/field/OIntField.vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
 
@@ -68,12 +69,13 @@ defineOptions({ name: 'LanguageFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/LanguageFormView' });
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 const props = withDefaults(
-  defineProps<{ store: WebModelStore<Language>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
+  defineProps<{ store?: WebModelStore<Language>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
   { showHeader: true, createAction: undefined }
 );
 const languageActions = defineModelActions('base.Language', { entityTitle: _lt('Language') });
 const { hasAction } = usePermission();
-const { store, recordId, viewMode, showHeader, createAction } = props;
+const store = resolvePageStore(props.store, 'LanguageFormView');
+const { recordId, viewMode, showHeader, createAction } = props;
 
 /** Refresh FE format overlays so list/number displays pick up Language field changes. */
 async function onLanguageSaved() {

@@ -37,13 +37,15 @@ import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
 import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'AddressListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/AddressListView' });
-const props = defineProps<{ store: WebModelStore<Address> }>();
+const props = defineProps<{ store?: WebModelStore<Address> }>();
+const store = resolvePageStore(props.store, 'AddressListView');
 const addressActions = defineModelActions('base.Address', { entityTitle: _lt('Address') });
 const { hasAction } = usePermission();
 const router = useRouter();

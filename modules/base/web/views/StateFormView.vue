@@ -42,18 +42,20 @@ import CountryListView from './CountryListView.vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'StateFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/StateFormView' });
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 const props = withDefaults(
-  defineProps<{ store: WebModelStore<State>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
+  defineProps<{ store?: WebModelStore<State>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
   { showHeader: true, createAction: undefined }
 );
 const stateActions = defineModelActions('base.State', { entityTitle: _lt('State') });
 const { hasAction } = usePermission();
-const { store, recordId, viewMode, showHeader, createAction } = props;
+const store = resolvePageStore(props.store, 'StateFormView');
+const { recordId, viewMode, showHeader, createAction } = props;
 </script>
 
 <style scoped>

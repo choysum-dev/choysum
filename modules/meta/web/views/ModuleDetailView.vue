@@ -103,6 +103,7 @@ import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'ModuleDetailView', inheritAttrs: true });
@@ -111,7 +112,7 @@ const { _t, _lt } = createTranslate('meta', { scope: 'web/views/ModuleDetailView
 
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<MetaModuleIndex>;
+    store?: WebModelStore<MetaModuleIndex>;
     recordId?: string;
     viewMode?: ViewMode;
     showHeader?: boolean;
@@ -119,7 +120,8 @@ const props = withDefaults(
   { showHeader: true }
 );
 
-const { store, recordId, viewMode, showHeader } = props;
+const store = resolvePageStore(props.store, 'ModuleDetailView');
+const { recordId, viewMode, showHeader } = props;
 const moduleIndexActions = defineModelActions('meta.MetaModuleIndex', {
   entityTitle: _lt('Module Index'),
 });

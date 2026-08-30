@@ -94,6 +94,7 @@ import RoleRecordRuleAudienceHints from '@/auth/web/views/RoleRecordRuleAudience
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
 import { roleIdFromValueClick } from '@/auth/web/views/role_value_click';
 
@@ -102,7 +103,7 @@ const { _t, _lt } = createTranslate('auth', { scope: 'web/views/RoleRecordRuleFo
 
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<RoleRecordRule>;
+    store?: WebModelStore<RoleRecordRule>;
     recordId?: string;
     viewMode?: ViewMode;
     showHeader?: boolean;
@@ -114,7 +115,8 @@ const props = withDefaults(
   }
 );
 
-const { store, recordId, viewMode, showHeader, createAction } = props;
+const store = resolvePageStore(props.store, 'RoleRecordRuleFormView');
+const { recordId, viewMode, showHeader, createAction } = props;
 const recordRuleActions = defineModelActions('auth.RoleRecordRule', { entityTitle: _lt('Record Rule') });
 const { hasAction } = usePermission();
 const router = useRouter();

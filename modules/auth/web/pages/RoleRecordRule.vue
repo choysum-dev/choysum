@@ -4,11 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage>
+  <OPage :store="recordRuleStore">
     <RoleRecordRuleFormView
       :key="$route.fullPath"
       createAction="/auth/record-rules/new"
-      :store="recordRuleStore"
       :record-id="recordId"
       :view-mode="viewMode"
     />

@@ -40,6 +40,7 @@ import OJsonobjectField from '@/web/web/components/field/OJsonobjectField.vue';
 import OIntField from '@/web/web/components/field/OIntField.vue';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
@@ -50,7 +51,7 @@ const { _t, _lt } = createTranslate('meta', { scope: 'web/views/ModuleLogListVie
 
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<ModuleManagementLog>;
+    store?: WebModelStore<ModuleManagementLog>;
     showHeader?: boolean;
   }>(),
   {
@@ -58,7 +59,8 @@ const props = withDefaults(
   }
 );
 
-const { store, showHeader } = props;
+const store = resolvePageStore(props.store, 'ModuleLogListView');
+const { showHeader } = props;
 const moduleLogActions = defineModelActions('meta.ModuleManagementLog', {
   entityTitle: _lt('Module Operation History'),
 });

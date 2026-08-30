@@ -253,6 +253,7 @@ import RoleListView from './RoleListView.vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { useI18n } from 'vue-i18n';
 import { createTranslate, translateTerm } from '@/web/web/i18n';
 import type { TermReference } from '@/core/service/i18n';
@@ -264,7 +265,7 @@ const requiredRules = computed(() => [{ required: true, message: _t('Required') 
 
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<Role>;
+    store?: WebModelStore<Role>;
     recordId?: string;
     viewMode?: ViewMode;
     showHeader?: boolean;
@@ -276,7 +277,8 @@ const props = withDefaults(
   }
 );
 
-const { store, recordId, viewMode, showHeader, createAction } = props;
+const store = resolvePageStore(props.store, 'RoleFormView');
+const { recordId, viewMode, showHeader, createAction } = props;
 const roleActions = defineModelActions('auth.Role', { entityTitle: _lt('Role') });
 const { hasAction } = usePermission();
 const composer = useI18n({ useScope: 'global' });

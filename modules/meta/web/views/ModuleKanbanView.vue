@@ -217,6 +217,7 @@ import { FormatListBulletedOutlined, GridViewSharp, HistoryOutlined } from '@vic
 import { Refresh } from '@element-plus/icons-vue';
 import { defineAction } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'ModuleKanbanView' });
@@ -226,10 +227,11 @@ const { _t, _lt } = createTranslate('meta', { scope: 'web/views/ModuleKanbanView
 /**
  * Props consumed by the module kanban view and its backing stores.
  */
-const props = withDefaults(defineProps<{ store: WebModelStore<MetaModuleIndex>; moduleStore: WebModelStore<MetaModule>; showHeader?: boolean }>(), {
+const props = withDefaults(defineProps<{ store?: WebModelStore<MetaModuleIndex>; moduleStore: WebModelStore<MetaModule>; showHeader?: boolean }>(), {
   showHeader: true,
 });
-const { store, showHeader } = props;
+const store = resolvePageStore(props.store, 'ModuleKanbanView');
+const { showHeader } = props;
 const moduleStore = props.moduleStore;
 
 // Keep keyword search on persisted fields only; computed/derived fields require

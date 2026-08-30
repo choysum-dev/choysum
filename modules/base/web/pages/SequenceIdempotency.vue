@@ -4,11 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage>
+  <OPage :store="sequenceIdempotencyStore">
     <SequenceIdempotencyFormView
       :key="$route.fullPath"
       createAction="/base/sequence-idempotencies/new"
-      :store="sequenceIdempotencyStore"
       :record-id="recordId"
       :view-mode="viewMode"
     />

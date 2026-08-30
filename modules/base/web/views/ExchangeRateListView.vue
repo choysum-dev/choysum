@@ -37,13 +37,15 @@ import ODateField from '@/web/web/components/field/ODateField.vue';
 import ODecimalField from '@/web/web/components/field/ODecimalField.vue';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'ExchangeRateListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/ExchangeRateListView' });
-const props = defineProps<{ store: WebModelStore<ExchangeRate> }>();
+const props = defineProps<{ store?: WebModelStore<ExchangeRate> }>();
+const store = resolvePageStore(props.store, 'ExchangeRateListView');
 const exchangeRateActions = defineModelActions('base.ExchangeRate', { entityTitle: _lt('Exchange Rate') });
 const { hasAction } = usePermission();
 const router = useRouter();

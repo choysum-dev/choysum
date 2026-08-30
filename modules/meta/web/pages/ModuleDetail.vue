@@ -4,8 +4,8 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage>
-    <ModuleDetailView :key="$route.fullPath" :store="moduleStore" :record-id="recordId" :view-mode="viewMode" />
+  <OPage :store="moduleStore">
+    <ModuleDetailView :key="$route.fullPath" :record-id="recordId" :view-mode="viewMode" />
   </OPage>
 </template>
 

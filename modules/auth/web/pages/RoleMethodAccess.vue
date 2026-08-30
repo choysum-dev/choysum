@@ -4,11 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage>
+  <OPage :store="methodAccessStore">
     <RoleMethodAccessFormView
       :key="$route.fullPath"
       createAction="/auth/method-accesses/new"
-      :store="methodAccessStore"
       :record-id="recordId"
       :view-mode="viewMode"
     />
