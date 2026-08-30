@@ -34,13 +34,15 @@ import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
 import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'StateListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/StateListView' });
-const props = defineProps<{ store: WebModelStore<State> }>();
+const props = defineProps<{ store?: WebModelStore<State> }>();
+const store = resolvePageStore(props.store, 'StateListView');
 const stateActions = defineModelActions('base.State', { entityTitle: _lt('State') });
 const { hasAction } = usePermission();
 const router = useRouter();

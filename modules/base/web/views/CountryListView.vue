@@ -39,13 +39,15 @@ import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
 import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'CountryListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/CountryListView' });
-const props = defineProps<{ store: WebModelStore<Country> }>();
+const props = defineProps<{ store?: WebModelStore<Country> }>();
+const store = resolvePageStore(props.store, 'CountryListView');
 const countryActions = defineModelActions('base.Country', { entityTitle: _lt('Country') });
 const { hasAction } = usePermission();
 const router = useRouter();

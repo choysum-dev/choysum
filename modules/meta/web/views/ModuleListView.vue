@@ -61,6 +61,7 @@ import { FormatListBulletedOutlined, GridViewSharp, HistoryOutlined } from '@vic
 import { Refresh } from '@element-plus/icons-vue';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineAction, defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
@@ -73,7 +74,7 @@ const router = useRouter();
 
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<MetaModuleIndex>;
+    store?: WebModelStore<MetaModuleIndex>;
     showHeader?: boolean;
   }>(),
   {
@@ -81,7 +82,8 @@ const props = withDefaults(
   }
 );
 
-const { store, showHeader } = props;
+const store = resolvePageStore(props.store, 'ModuleListView');
+const { showHeader } = props;
 const moduleSyncIndexAction = defineAction('meta.action.module_sync_index', {
   title: _lt('Sync Module Index'),
   requires: [{ model: 'meta.MetaModuleIndex', method: 'RequestSync' }],

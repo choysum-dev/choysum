@@ -66,13 +66,14 @@ import CompanyListView from './CompanyListView.vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'SequenceIdempotencyFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/SequenceIdempotencyFormView' });
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<SequenceIdempotency>;
+    store?: WebModelStore<SequenceIdempotency>;
     recordId?: string;
     viewMode?: ViewMode;
     showHeader?: boolean;
@@ -82,7 +83,8 @@ const props = withDefaults(
 );
 const sequenceIdempotencyActions = defineModelActions('base.SequenceIdempotency', { entityTitle: _lt('Sequence Idempotency Record') });
 const { hasAction } = usePermission();
-const { store, recordId, viewMode, showHeader, createAction } = props;
+const store = resolvePageStore(props.store, 'SequenceIdempotencyFormView');
+const { recordId, viewMode, showHeader, createAction } = props;
 </script>
 
 <style scoped>

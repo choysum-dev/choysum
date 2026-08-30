@@ -46,18 +46,20 @@ import UoMCategoryListView from './UoMCategoryListView.vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'UoMFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/UoMFormView' });
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 const props = withDefaults(
-  defineProps<{ store: WebModelStore<UoM>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
+  defineProps<{ store?: WebModelStore<UoM>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
   { showHeader: true, createAction: undefined }
 );
 const uomActions = defineModelActions('base.UoM', { entityTitle: _lt('Unit of Measure') });
 const { hasAction } = usePermission();
-const { store, recordId, viewMode, showHeader, createAction } = props;
+const store = resolvePageStore(props.store, 'UoMFormView');
+const { recordId, viewMode, showHeader, createAction } = props;
 </script>
 
 <style scoped>

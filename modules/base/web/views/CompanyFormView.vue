@@ -84,6 +84,7 @@ import CurrencyListView from './CurrencyListView.vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'CompanyFormView', inheritAttrs: true });
@@ -92,7 +93,7 @@ const requiredRules = computed(() => [{ required: true, message: _t('Required') 
 
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<Company>;
+    store?: WebModelStore<Company>;
     recordId?: string;
     initialValues?: Partial<Company>;
     viewMode?: ViewMode;
@@ -107,7 +108,8 @@ const props = withDefaults(
 
 const companyActions = defineModelActions('base.Company', { entityTitle: _lt('Company') });
 const { hasAction } = usePermission();
-const { store, recordId, viewMode, showHeader, createAction } = props;
+const store = resolvePageStore(props.store, 'CompanyFormView');
+const { recordId, viewMode, showHeader, createAction } = props;
 const { initialValues } = props;
 const router = useRouter();
 

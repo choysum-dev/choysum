@@ -4,11 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage>
+  <OPage :store="uiResourceGrantStore">
     <RoleUiResourceFormView
       :key="$route.fullPath"
       createAction="/auth/ui-resource-grants/new"
-      :store="uiResourceGrantStore"
       :record-id="recordId"
       :view-mode="viewMode"
     />

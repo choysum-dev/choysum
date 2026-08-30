@@ -4,8 +4,14 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage>
-    <TokenListView :store="tokenStore" createAction="/auth/tokens/new" selection-mode="multiple" />
+  <OPage
+    :title="pageTitle"
+    :store="tokenStore"
+    action-import
+    action-export
+    :action-import-upload-hint="_t('Upload a UTF-8 CSV with columns TokenType, Revoked.')"
+  >
+    <TokenListView createAction="/auth/tokens/new" selection-mode="multiple" />
   </OPage>
 </template>
 
@@ -15,7 +21,11 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import OPage from '@/web/web/components/page/OPage.vue';
 import TokenListView from '@/auth/web/views/TokenListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
+import { createTranslate } from '@/web/web/i18n';
 import type Token from '@/auth/service/models/token';
+
+const { _t } = createTranslate('auth', { scope: 'web/pages/TokenList' });
+const pageTitle = _t('Token List');
 
 const route = useRoute();
 

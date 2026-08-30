@@ -211,6 +211,7 @@ import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { ElButton, ElTag } from 'element-plus';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'PartnerFormView', inheritAttrs: true });
@@ -222,7 +223,7 @@ const requiredRules = computed(() => [{ required: true, message: _t('Required') 
  */
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<Partner>;
+    store?: WebModelStore<Partner>;
     recordId?: string;
     initialValues?: Partial<Partner>;
     viewMode?: ViewMode;
@@ -235,7 +236,8 @@ const props = withDefaults(
   }
 );
 
-const { store, recordId, initialValues, viewMode, showHeader, createAction } = props;
+const store = resolvePageStore(props.store, 'PartnerFormView');
+const { recordId, initialValues, viewMode, showHeader, createAction } = props;
 const partnerActions = defineModelActions('partner.Partner', { entityTitle: _lt('Partner') });
 const { hasAction } = usePermission();
 const router = useRouter();

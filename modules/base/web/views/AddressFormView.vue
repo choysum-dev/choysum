@@ -72,6 +72,7 @@ import CityListView from './CityListView.vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'AddressFormView', inheritAttrs: true });
@@ -79,7 +80,7 @@ const { _t, _lt } = createTranslate('base', { scope: 'web/views/AddressFormView'
 
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<Address>;
+    store?: WebModelStore<Address>;
     recordId?: string;
     viewMode?: ViewMode;
     showHeader?: boolean;
@@ -90,7 +91,8 @@ const props = withDefaults(
 
 const addressActions = defineModelActions('base.Address', { entityTitle: _lt('Address') });
 const { hasAction } = usePermission();
-const { store, recordId, viewMode, showHeader, createAction } = props;
+const store = resolvePageStore(props.store, 'AddressFormView');
+const { recordId, viewMode, showHeader, createAction } = props;
 const router = useRouter();
 
 function onCountryValueClick(payload: ManyToOneValueClickPayload<Country>) {

@@ -40,6 +40,7 @@ import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
 import type { RowEventPayload } from '@/web/web/components/view/listViewTypes';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
@@ -51,7 +52,7 @@ const router = useRouter();
 
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<RoleFieldRule>;
+    store?: WebModelStore<RoleFieldRule>;
     showHeader?: boolean;
   }>(),
   {
@@ -59,7 +60,8 @@ const props = withDefaults(
   }
 );
 
-const { store, showHeader } = props;
+const store = resolvePageStore(props.store, 'RoleFieldRuleListView');
+const { showHeader } = props;
 const fieldRuleActions = defineModelActions('auth.RoleFieldRule', { entityTitle: _lt('Field Rule') });
 const { hasAction } = usePermission();
 

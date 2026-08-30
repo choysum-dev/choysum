@@ -42,13 +42,15 @@ import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
 import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'SequenceIdempotencyListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/SequenceIdempotencyListView' });
-const props = defineProps<{ store: WebModelStore<SequenceIdempotency> }>();
+const props = defineProps<{ store?: WebModelStore<SequenceIdempotency> }>();
+const store = resolvePageStore(props.store, 'SequenceIdempotencyListView');
 const sequenceIdempotencyActions = defineModelActions('base.SequenceIdempotency', { entityTitle: _lt('Sequence Idempotency Record') });
 const { hasAction } = usePermission();
 const router = useRouter();

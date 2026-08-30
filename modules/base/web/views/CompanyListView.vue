@@ -39,6 +39,7 @@ import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
 import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
@@ -47,8 +48,9 @@ defineOptions({ name: 'CompanyListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/CompanyListView' });
 
 const props = defineProps<{
-  store: WebModelStore<Company>;
+  store?: WebModelStore<Company>;
 }>();
+const store = resolvePageStore(props.store, 'CompanyListView');
 
 const companyActions = defineModelActions('base.Company', { entityTitle: _lt('Company') });
 const { hasAction } = usePermission();

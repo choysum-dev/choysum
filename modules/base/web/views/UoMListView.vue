@@ -40,13 +40,15 @@ import ODecimalField from '@/web/web/components/field/ODecimalField.vue';
 import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'UoMListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/UoMListView' });
-const props = defineProps<{ store: WebModelStore<UoM> }>();
+const props = defineProps<{ store?: WebModelStore<UoM> }>();
+const store = resolvePageStore(props.store, 'UoMListView');
 const uomActions = defineModelActions('base.UoM', { entityTitle: _lt('Unit of Measure') });
 const { hasAction } = usePermission();
 const router = useRouter();

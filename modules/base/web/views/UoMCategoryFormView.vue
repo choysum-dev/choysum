@@ -35,6 +35,7 @@ import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'UoMCategoryFormView', inheritAttrs: true });
@@ -42,7 +43,7 @@ const { _t, _lt } = createTranslate('base', { scope: 'web/views/UoMCategoryFormV
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<UoMCategory>;
+    store?: WebModelStore<UoMCategory>;
     recordId?: string;
     viewMode?: ViewMode;
     showHeader?: boolean;
@@ -52,7 +53,8 @@ const props = withDefaults(
 );
 const uomCategoryActions = defineModelActions('base.UoMCategory', { entityTitle: _lt('Unit of Measure Category') });
 const { hasAction } = usePermission();
-const { store, recordId, viewMode, showHeader, createAction } = props;
+const store = resolvePageStore(props.store, 'UoMCategoryFormView');
+const { recordId, viewMode, showHeader, createAction } = props;
 </script>
 
 <style scoped>

@@ -52,6 +52,7 @@ import { ElButton, ElTooltip, ElButtonGroup } from 'element-plus';
 import { FormatListBulletedOutlined, GridViewSharp, BarChartOutlined } from '@vicons/material';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
@@ -63,7 +64,7 @@ const router = useRouter();
 
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<Token>;
+    store?: WebModelStore<Token>;
     showHeader?: boolean;
   }>(),
   {
@@ -71,7 +72,8 @@ const props = withDefaults(
   }
 );
 
-const { store, showHeader } = props;
+const store = resolvePageStore(props.store, 'TokenListView');
+const { showHeader } = props;
 const tokenActions = defineModelActions('auth.Token', { entityTitle: _lt('Token') });
 const { hasAction } = usePermission();
 

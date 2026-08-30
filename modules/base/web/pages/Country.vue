@@ -4,8 +4,8 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage>
-    <CountryFormView :key="$route.fullPath" createAction="/base/countries/new" :store="countryStore" :record-id="recordId" :view-mode="viewMode" />
+  <OPage :store="countryStore">
+    <CountryFormView :key="$route.fullPath" createAction="/base/countries/new" :record-id="recordId" :view-mode="viewMode" />
   </OPage>
 </template>
 

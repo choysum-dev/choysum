@@ -68,13 +68,15 @@ import type { ClientModelProps } from '@/core/rpc/types';
 import OVirtualField from '@/web/web/components/field/OVirtualField.vue';
 import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'TokenKanbanView' });
 const { _t } = createTranslate('auth', { scope: 'web/views/TokenKanbanView' });
 
-const props = withDefaults(defineProps<{ store: WebModelStore<Token>; showHeader?: boolean }>(), { showHeader: true });
-const { store, showHeader } = props;
+const props = withDefaults(defineProps<{ store?: WebModelStore<Token>; showHeader?: boolean }>(), { showHeader: true });
+const store = resolvePageStore(props.store, 'TokenKanbanView');
+const { showHeader } = props;
 
 const router = useRouter();
 

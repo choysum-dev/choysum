@@ -37,13 +37,15 @@ import ODecimalField from '@/web/web/components/field/ODecimalField.vue';
 import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'CurrencyListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/CurrencyListView' });
-const props = defineProps<{ store: WebModelStore<Currency> }>();
+const props = defineProps<{ store?: WebModelStore<Currency> }>();
+const store = resolvePageStore(props.store, 'CurrencyListView');
 const currencyActions = defineModelActions('base.Currency', { entityTitle: _lt('Currency') });
 const { hasAction } = usePermission();
 const router = useRouter();

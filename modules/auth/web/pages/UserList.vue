@@ -4,8 +4,14 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage>
-    <UserListView :store="userStore" createAction="/auth/users/new" selection-mode="multiple" />
+  <OPage
+    :title="pageTitle"
+    :store="userStore"
+    action-import
+    action-export
+    :action-import-upload-hint="_t('Upload a UTF-8 CSV with columns Username, Email, Phone, FullName.')"
+  >
+    <UserListView createAction="/auth/users/new" selection-mode="multiple" />
   </OPage>
 </template>
 
@@ -15,7 +21,11 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import UserListView from '@/auth/web/views/UserListView.vue';
 import OPage from '@/web/web/components/page/OPage.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
+import { createTranslate } from '@/web/web/i18n';
 import type User from '@/auth/service/models/user';
+
+const { _t } = createTranslate('auth', { scope: 'web/pages/UserList' });
+const pageTitle = _t('User List');
 
 const route = useRoute();
 

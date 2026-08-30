@@ -4,8 +4,8 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage>
-    <BankFormView :key="$route.fullPath" createAction="/base/banks/new" :store="bankStore" :record-id="recordId" :view-mode="viewMode" />
+  <OPage :store="bankStore">
+    <BankFormView :key="$route.fullPath" createAction="/base/banks/new" :record-id="recordId" :view-mode="viewMode" />
   </OPage>
 </template>
 
