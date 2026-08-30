@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="roleStore">
-    <RoleFormView :key="$route.fullPath" />
+    <RoleFormView />
   </OPage>
 </template>
 

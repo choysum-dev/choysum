@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="tokenStore">
-    <TokenFormView :key="$route.fullPath" />
+    <TokenFormView />
   </OPage>
 </template>
 

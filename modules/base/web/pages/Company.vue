@@ -6,7 +6,6 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <OPage :store="companyStore">
     <CompanyFormView
-      :key="$route.fullPath"
       :initial-values="initialValues"
     />
   </OPage>

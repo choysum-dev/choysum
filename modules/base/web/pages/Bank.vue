@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="bankStore">
-    <BankFormView :key="$route.fullPath" />
+    <BankFormView />
   </OPage>
 </template>
 

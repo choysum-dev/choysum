@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="uomCategoryStore">
-    <UoMCategoryFormView :key="$route.fullPath" />
+    <UoMCategoryFormView />
   </OPage>
 </template>
 

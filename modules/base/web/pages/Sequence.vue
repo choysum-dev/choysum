@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="sequenceStore">
-    <SequenceFormView :key="$route.fullPath" />
+    <SequenceFormView />
   </OPage>
 </template>
 

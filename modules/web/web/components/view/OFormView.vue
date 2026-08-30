@@ -94,7 +94,7 @@ import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { Edit, Check, Close, Plus, Refresh, Delete } from '@element-plus/icons-vue';
 import { ContentCopyFilled, RestoreOutlined } from '@vicons/material';
 import type { RouteLocationRaw } from 'vue-router';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { deepClonePreserve } from '@/core/utils/clone';
 import { canShowAction, type ActionIdMap } from '@/web/web/components/view/actionVisibility';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
@@ -131,6 +131,7 @@ const O_FORM_EMBEDDED_CONTEXT_KEY = 'o-form-embedded-context';
 // Section 2: Router & basic utilities
 // =============================
 const router = useRouter();
+const route = useRoute();
 
 // =============================
 // Section 3: Props & defaults
@@ -324,6 +325,22 @@ const exposedFormData = computed<Partial<ClientModel<T>>>(() => (controller.vm.d
 // =============================
 // Section 15: Initialization & mode switching
 // =============================
+function normalizeRecordId(raw: unknown): string | undefined {
+  const s = String(raw ?? '').trim();
+  if (!s || s === 'undefined' || s === 'null') return undefined;
+  return s;
+}
+
+/** Route param/query id used when resolveRecordIdFromRoute is enabled. */
+function peekRouteRecordId(): string | undefined {
+  if (!resolvedResolveRecordIdFromRoute.value) {
+    return undefined;
+  }
+  return normalizeRecordId(
+    route.params.recordId ?? route.params.id ?? route.params.Id ?? route.query.recordId ?? route.query.id ?? route.query.Id
+  );
+}
+
 async function initializeForm() {
   try {
     const ok = await emitCancelable('before-load');
@@ -331,16 +348,7 @@ async function initializeForm() {
     onchangeCtrl.reset();
     resetOnchangeAgg();
     // Resolve the effective record id from props first, then from common route keys.
-    const route = router.currentRoute.value;
-    const routeRecordId = resolvedResolveRecordIdFromRoute.value
-      ? (route.params.recordId ?? route.params.id ?? route.params.Id ?? route.query.recordId ?? route.query.id ?? route.query.Id)
-      : undefined;
-    const rawId: any = props.recordId ?? routeRecordId;
-    const normId = (() => {
-      const s = String(rawId ?? '').trim();
-      if (!s || s === 'undefined' || s === 'null') return undefined;
-      return s;
-    })();
+    const normId = normalizeRecordId(props.recordId) ?? peekRouteRecordId();
     if (normId) {
       await controller.beginDisplay(normId);
       emit('mode-change', { mode: controller.vm.mode as ViewMode });
@@ -688,11 +696,18 @@ function handleDelete() {
 watch(exposedFormData, v => emit('change', { formData: toRaw(v) as any }), { deep: true, flush: 'post' });
 
 // =============================
-// Section 21: Watchers (recordId/viewMode/session)
+// Section 21: Watchers (recordId/viewMode/session/route identity)
 // =============================
-/* Watch props.recordId, viewMode, and sessionId changes. */
+/* Re-init when prop identity or (non-embedded) route name/id changes. */
 watch(
-  () => [props.recordId, props.viewMode, props.onchangeSessionId] as const,
+  () =>
+    [
+      props.recordId,
+      props.viewMode,
+      props.onchangeSessionId,
+      resolvedResolveRecordIdFromRoute.value ? String(route.name ?? '') : '',
+      resolvedResolveRecordIdFromRoute.value ? peekRouteRecordId() ?? '' : '',
+    ] as const,
   async () => {
     await nextTick();
     await initializeForm();

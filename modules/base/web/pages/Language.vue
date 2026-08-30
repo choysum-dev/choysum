@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="languageStore">
-    <LanguageFormView :key="$route.fullPath" />
+    <LanguageFormView />
   </OPage>
 </template>
 
