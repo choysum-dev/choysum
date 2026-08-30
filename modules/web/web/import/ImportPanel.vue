@@ -184,21 +184,19 @@ const defaultFieldsHint = computed(() => catalogDefaults.value.filter(Boolean).j
 const catalogOptions = computed(() => {
   const out: Array<{ path: string; label: string }> = [];
   const walk = (nodes: ImportFieldNode[] | null | undefined) => {
-    for (const node of nodes || []) {
-      const path = String(node.path || '').trim();
+    if (nodes == null) {
+      return;
+    }
+    for (const node of nodes) {
+      const path = String(node.path == null ? '' : node.path).trim();
+      const children = node.children;
+      if (children != null && children.length > 0) {
+        walk(children);
+        continue;
+      }
       if (!path) continue;
       const label = String(node.label || path).trim() || path;
-      const children = node.children;
-      if (!children || children.length === 0) {
-        out.push({ path, label: `${label} (${path})` });
-      } else {
-        for (const child of children) {
-          const childPath = String(child.path || '').trim();
-          if (!childPath) continue;
-          const childLabel = String(child.label || childPath).trim() || childPath;
-          out.push({ path: childPath, label: `${childLabel} (${childPath})` });
-        }
-      }
+      out.push({ path, label: `${label} (${path})` });
     }
   };
   walk(catalogFields.value);
@@ -238,11 +236,21 @@ function clearUploadDerivedState() {
 
 function onFileSelected(uploadFile: UploadFile) {
   selectedFile.value = uploadFile.raw ?? null;
+  // Drop in-flight upload/preview so a pending completion cannot write a stale sourceRef.
+  // Only invalidate while busy: a first select must not abort the dialog-open catalog load.
+  if (busy.value) {
+    invalidateSession();
+    busy.value = false;
+  }
   clearUploadDerivedState();
 }
 
 function onFileRemoved() {
   selectedFile.value = null;
+  if (busy.value) {
+    invalidateSession();
+    busy.value = false;
+  }
   clearUploadDerivedState();
 }
 

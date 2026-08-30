@@ -279,6 +279,32 @@ describe('ImportPanel', () => {
     expect((wrapper.vm as any).previewReport).toBeNull();
   });
 
+  it('ignores stale upload completion after file is replaced while pending', async () => {
+    let resolveUpload: (value: string) => void = () => {};
+    uploadImportCsv.mockImplementation(
+      () =>
+        new Promise<string>(resolve => {
+          resolveUpload = resolve;
+        }),
+    );
+    const wrapper = await mountPanel();
+    await flushPromises();
+    (wrapper.vm as any).onFileSelected({ raw: new File(['a'], 'a.csv', { type: 'text/csv' }) });
+    const pending = (wrapper.vm as any).uploadAndPreview();
+    await flushPromises();
+    expect((wrapper.vm as any).busy).toBe(true);
+
+    (wrapper.vm as any).onFileSelected({ raw: new File(['b'], 'b.csv', { type: 'text/csv' }) });
+    expect((wrapper.vm as any).sourceRef).toBe('');
+    expect((wrapper.vm as any).busy).toBe(false);
+
+    resolveUpload('att-stale');
+    await pending;
+    await flushPromises();
+    expect((wrapper.vm as any).sourceRef).toBe('');
+    expect((wrapper.vm as any).step).toBe(0);
+  });
+
   it('no-ops upload and import without required state', async () => {
     const wrapper = await mountPanel();
     await (wrapper.vm as any).uploadAndPreview();
@@ -720,6 +746,32 @@ describe('ImportPanel', () => {
       { path: 'Parent/Child', label: 'Parent/Child (Parent/Child)' },
     ]);
     expect((wrapper.vm as any).flattenPaths((wrapper.vm as any).catalogFields)).toEqual(['Leaf', 'Parent/Child']);
+  });
+
+  it('includes only deepest leaf paths for three-level catalog trees', async () => {
+    const wrapper = await mountPanel();
+    (wrapper.vm as any).catalogFields = [
+      {
+        path: 'CompanyId',
+        label: 'Company',
+        children: [
+          {
+            path: 'CompanyId/CountryId',
+            label: 'Company / Country',
+            children: [{ path: 'CompanyId/CountryId/Code', label: 'Company / Country / Code', children: [] }],
+          },
+        ],
+      },
+      { path: 'Name', label: 'Name', children: [] },
+    ];
+    expect((wrapper.vm as any).catalogOptions.map((o: { path: string }) => o.path)).toEqual([
+      'CompanyId/CountryId/Code',
+      'Name',
+    ]);
+    expect((wrapper.vm as any).flattenPaths((wrapper.vm as any).catalogFields)).toEqual([
+      'CompanyId/CountryId/Code',
+      'Name',
+    ]);
   });
 
   it('handles catalog load errors, abort, empty model, and null field lists', async () => {
