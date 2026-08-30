@@ -536,6 +536,9 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 	if strings.TrimSpace(rootVersion) != "" {
 		rewritten = promoteAmbientModuleForPathsTarget(rewritten)
 	}
+	// Icon packages barrel thousands of leaf .d.ts files; collapse before the
+	// IDE follows every relative re-export and exhausts file descriptors.
+	rewritten = collapseLargeDefaultAsReexportBarrel(rewritten)
 	if rewritten != string(content) {
 		content = []byte(rewritten)
 		if err := writeTypeCacheFile(typesDir, cacheFile, content); err != nil {
