@@ -305,6 +305,33 @@ describe('ImportPanel', () => {
     expect((wrapper.vm as any).step).toBe(0);
   });
 
+  it('ignores stale upload completion after file is removed while pending', async () => {
+    let resolveUpload: (value: string) => void = () => {};
+    uploadImportCsv.mockImplementation(
+      () =>
+        new Promise<string>(resolve => {
+          resolveUpload = resolve;
+        }),
+    );
+    const wrapper = await mountPanel();
+    await flushPromises();
+    (wrapper.vm as any).onFileSelected({ raw: new File(['a'], 'a.csv', { type: 'text/csv' }) });
+    const pending = (wrapper.vm as any).uploadAndPreview();
+    await flushPromises();
+    expect((wrapper.vm as any).busy).toBe(true);
+
+    (wrapper.vm as any).onFileRemoved();
+    expect((wrapper.vm as any).selectedFile).toBeNull();
+    expect((wrapper.vm as any).sourceRef).toBe('');
+    expect((wrapper.vm as any).busy).toBe(false);
+
+    resolveUpload('att-stale-removed');
+    await pending;
+    await flushPromises();
+    expect((wrapper.vm as any).sourceRef).toBe('');
+    expect((wrapper.vm as any).selectedFile).toBeNull();
+  });
+
   it('no-ops upload and import without required state', async () => {
     const wrapper = await mountPanel();
     await (wrapper.vm as any).uploadAndPreview();
