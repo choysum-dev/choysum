@@ -3,14 +3,27 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { config, flushPromises, shallowMount } from '@vue/test-utils';
+import { config, flushPromises, mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
-import { reactive } from 'vue';
+import { defineComponent, reactive } from 'vue';
+
+const ElFormStub = defineComponent({
+  name: 'ElFormStub',
+  setup(_, { slots, expose }) {
+    expose({
+      clearValidate: () => {},
+      validate: async () => true,
+    });
+    return () => slots.default?.();
+  },
+});
 
 config.global.renderStubDefaultSlot = true;
 
 const beginCreate = vi.fn(async (_seed?: any) => {});
 const beginDisplay = vi.fn(async (id?: string) => ({ Id: id ?? '1', Name: 'row' }));
+const beginEdit = vi.fn();
+let displayLoadSeq = 0;
 
 const controllerVm = reactive({
   mode: 'display' as string,
@@ -21,6 +34,18 @@ const controllerVm = reactive({
   result: null as unknown,
 });
 
+async function applyDisplay(id?: string) {
+  const seq = ++displayLoadSeq;
+  const row = { Id: id ?? '1', Name: 'row' };
+  // Match formController: only commit when this load is still current.
+  await Promise.resolve();
+  if (seq !== displayLoadSeq) return row;
+  controllerVm.mode = 'display';
+  controllerVm.original = row;
+  controllerVm.draft = { ...row };
+  return row;
+}
+
 const routeState = reactive({
   name: 'WidgetDetail' as string | undefined,
   path: '/demo/widgets/1',
@@ -30,11 +55,18 @@ const routeState = reactive({
   meta: {},
 });
 
+const routerPush = vi.fn(async () => undefined);
+const routerBack = vi.fn();
+
 vi.mock('vue-router', () => ({
   useRouter: () => ({
-    push: vi.fn(),
+    push: routerPush,
     replace: vi.fn(),
-    resolve: vi.fn((loc: { name?: string }) => ({ name: loc?.name, matched: [] })),
+    back: routerBack,
+    resolve: vi.fn((loc: { name?: string }) => ({
+      name: loc?.name,
+      matched: loc?.name === 'WidgetCreate' ? [{ path: '/demo/widgets/new' }] : [],
+    })),
     currentRoute: { value: routeState },
   }),
   useRoute: () => routeState,
@@ -45,7 +77,7 @@ vi.mock('@/web/web/controllers/formController', () => ({
     vm: controllerVm,
     beginCreate,
     beginDisplay,
-    beginEdit: vi.fn(),
+    beginEdit,
     reset: vi.fn(),
     validate: vi.fn(async () => ({ valid: true, errors: [] })),
     submit: vi.fn(async () => null),
@@ -67,7 +99,7 @@ vi.mock('@/web/web/composables/useOnchange', () => ({
 vi.mock('@/web/web/composables/useOnchangeAggregation', () => ({
   useOnchangeAggregation: () => ({
     lastOnchangeResult: { value: null },
-    fieldErrors: { value: {} },
+    fieldErrors: { value: new Map() },
     afterFlushHandler: vi.fn(),
     reset: vi.fn(),
   }),
@@ -117,13 +149,11 @@ describe('OFormView reloads when route identity changes', () => {
     routeState.params = { id: '1' };
     routeState.query = {};
     controllerVm.mode = 'display';
-    beginDisplay.mockImplementation(async (id?: string) => {
-      const row = { Id: id ?? '1', Name: 'row' };
-      controllerVm.original = row;
-      controllerVm.draft = { ...row };
-      return row;
-    });
+    displayLoadSeq = 0;
+    routerPush.mockImplementation(async () => undefined);
+    beginDisplay.mockImplementation(async (id?: string) => applyDisplay(id));
     beginCreate.mockImplementation(async (seed?: any) => {
+      displayLoadSeq += 1;
       controllerVm.mode = 'create';
       controllerVm.original = null;
       controllerVm.draft = { ...(seed || {}) };
@@ -131,7 +161,7 @@ describe('OFormView reloads when route identity changes', () => {
   });
 
   function mountForm(props: Record<string, unknown> = {}) {
-    return shallowMount(OFormView as any, {
+    return mount(OFormView as any, {
       props: {
         store: fakeStore(),
         showHeader: true,
@@ -141,12 +171,12 @@ describe('OFormView reloads when route identity changes', () => {
       },
       global: {
         stubs: {
-          OViewContainer: true,
+          OViewContainer: { template: '<div><slot name="header" /><slot /></div>' },
           OPage: true,
           OBreadcrumb: true,
-          'el-button': true,
+          'el-button': { template: '<button type="button" v-bind="$attrs"><slot /></button>' },
           'el-icon': true,
-          'el-form': true,
+          'el-form': ElFormStub,
         },
         directives: {
           loading: {
@@ -202,6 +232,138 @@ describe('OFormView reloads when route identity changes', () => {
     await flushPromises();
 
     expect(beginDisplay).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  test('discards stale initializeForm results after rapid route changes', async () => {
+    let releaseFirst!: () => void;
+    const firstGate = new Promise<void>(resolve => {
+      releaseFirst = resolve;
+    });
+    beginDisplay.mockImplementationOnce(async (id?: string) => {
+      const seq = ++displayLoadSeq;
+      await firstGate;
+      const row = { Id: id ?? '1', Name: 'stale' };
+      if (seq !== displayLoadSeq) return row;
+      controllerVm.original = row;
+      controllerVm.draft = { ...row };
+      return row;
+    });
+
+    const wrapper = mountForm();
+    await flushPromises();
+    expect(beginDisplay).toHaveBeenCalledTimes(1);
+
+    routeState.params = { id: '2' };
+    routeState.fullPath = '/demo/widgets/2';
+    await flushPromises();
+    expect(beginDisplay).toHaveBeenCalledWith('2');
+
+    releaseFirst();
+    await flushPromises();
+
+    expect(controllerVm.original).toMatchObject({ Id: '2' });
+    // Stale run must not emit a second load-success for id 1 after id 2 won.
+    const loadSuccessIds = (wrapper.emitted('load-success') || []).map(
+      ([payload]: any[]) => payload?.record?.Id ?? null
+    );
+    expect(loadSuccessIds.filter(id => id === '1').length).toBeLessThanOrEqual(1);
+    expect(loadSuccessIds[loadSuccessIds.length - 1]).toBe('2');
+    wrapper.unmount();
+  });
+
+  test('shows New and refreshes using route-resolved effective record id', async () => {
+    const wrapper = mountForm({ createAction: '/demo/widgets/new' });
+    await flushPromises();
+
+    const newBtn = wrapper.findAll('button').find(b => b.text().includes('New'));
+    expect(newBtn).toBeTruthy();
+
+    beginDisplay.mockClear();
+    await (wrapper.vm as any).refresh();
+    await flushPromises();
+    expect(beginDisplay).toHaveBeenCalledWith('1');
+
+    routerPush.mockClear();
+    await newBtn!.trigger('click');
+    await flushPromises();
+    expect(routerPush).toHaveBeenCalledWith('/demo/widgets/new');
+    wrapper.unmount();
+  });
+
+  test('create navigation swallows push failures', async () => {
+    routerPush.mockRejectedValueOnce(new Error('nav failed'));
+    const wrapper = mountForm({ createAction: '/demo/widgets/new' });
+    await flushPromises();
+
+    const newBtn = wrapper.findAll('button').find(b => b.text().includes('New'));
+    expect(newBtn).toBeTruthy();
+    await newBtn!.trigger('click');
+    await flushPromises();
+    expect(routerPush).toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  test('cancel from edit reloads effective route record id', async () => {
+    const wrapper = mountForm();
+    await flushPromises();
+
+    const editBtn = wrapper.findAll('button').find(b => b.text().includes('Edit'));
+    expect(editBtn).toBeTruthy();
+    await editBtn!.trigger('click');
+    controllerVm.mode = 'edit';
+    await flushPromises();
+
+    beginDisplay.mockClear();
+    const cancelBtn = wrapper.findAll('button').find(b => b.text().includes('Cancel'));
+    expect(cancelBtn).toBeTruthy();
+    await cancelBtn!.trigger('click');
+    await flushPromises();
+    expect(beginDisplay).toHaveBeenCalledWith('1');
+    wrapper.unmount();
+  });
+
+  test('create-mode cancel goes back', async () => {
+    routeState.name = 'WidgetCreate';
+    routeState.params = {};
+    routeState.path = '/demo/widgets/new';
+    routeState.fullPath = '/demo/widgets/new';
+    const wrapper = mountForm();
+    await flushPromises();
+    expect(controllerVm.mode).toBe('create');
+
+    const cancelBtn = wrapper.findAll('button').find(b => b.text().includes('Cancel'));
+    expect(cancelBtn).toBeTruthy();
+    await cancelBtn!.trigger('click');
+    expect(routerBack).toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  test('refresh without effective id emits null record', async () => {
+    routeState.params = {};
+    routeState.name = 'WidgetCreate';
+    const wrapper = mountForm({ resolveRecordIdFromRoute: false });
+    await flushPromises();
+
+    await (wrapper.vm as any).refresh();
+    await flushPromises();
+    expect(wrapper.emitted('refresh-success')?.[0]?.[0]).toEqual({ record: null });
+    wrapper.unmount();
+  });
+
+  test('normalizeRecordId ignores blank sentinel strings from route', async () => {
+    routeState.params = { id: 'null' };
+    const wrapper = mountForm();
+    await flushPromises();
+    expect(beginCreate).toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  test('normalizeRecordId ignores undefined sentinel from route', async () => {
+    routeState.params = { id: 'undefined' };
+    const wrapper = mountForm();
+    await flushPromises();
+    expect(beginCreate).toHaveBeenCalled();
     wrapper.unmount();
   });
 });

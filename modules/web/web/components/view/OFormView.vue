@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
         <div class="form-view__actions" v-if="resolvedShowActions">
           <div class="form-view__system-actions">
             <slot name="system-actions">
-              <template v-if="viewMode === 'display' && recordId">
+              <template v-if="viewMode === 'display' && effectiveRecordId">
                 <el-button v-if="resolvedCreateAction && canCreate" size="small" plain type="primary" @click="handleCreate">
                   <el-icon><Plus /></el-icon>
                   {{ _t('New') }}
@@ -341,20 +341,30 @@ function peekRouteRecordId(): string | undefined {
   );
 }
 
+/** Prop record id when set; otherwise the route-resolved detail id. */
+const effectiveRecordId = computed(() => normalizeRecordId(props.recordId) ?? peekRouteRecordId());
+
+/** Monotonic token so overlapping initializeForm runs discard stale completions. */
+let initializeSeq = 0;
+
 async function initializeForm() {
+  const seq = ++initializeSeq;
+  const isStale = () => seq !== initializeSeq;
   try {
     const ok = await emitCancelable('before-load');
-    if (!ok) return;
+    if (!ok || isStale()) return;
     onchangeCtrl.reset();
     resetOnchangeAgg();
     // Resolve the effective record id from props first, then from common route keys.
-    const normId = normalizeRecordId(props.recordId) ?? peekRouteRecordId();
+    const normId = effectiveRecordId.value;
     if (normId) {
       await controller.beginDisplay(normId);
+      if (isStale()) return;
       emit('mode-change', { mode: controller.vm.mode as ViewMode });
       emit('load-success', { record: (controller.vm.original as any) || null });
     } else {
       await controller.beginCreate(deepClonePreserve((props.initialValues || {}) as any));
+      if (isStale()) return;
       if ((props.viewMode as any) === 'display') {
         // Support read-only preview flows driven only by initialValues in nested forms.
         (controller.vm as any).mode = 'display';
@@ -362,8 +372,10 @@ async function initializeForm() {
       emit('mode-change', { mode: controller.vm.mode as ViewMode });
       emit('load-success', { record: null as any });
     }
+    if (isStale()) return;
     emit('change', { formData: toRaw(exposedFormData.value) as any });
   } catch (e: any) {
+    if (isStale()) return;
     const err = e instanceof Error ? e : new Error(String(e));
     emit('action-error', { action: 'load', error: err });
   }
@@ -412,7 +424,8 @@ function handleCancel() {
   if (viewMode.value === 'create') {
     router.back();
   } else {
-    if (props.recordId) controller.beginDisplay(props.recordId);
+    const id = effectiveRecordId.value;
+    if (id) controller.beginDisplay(id);
     emit('mode-change', { mode: 'display' });
   }
 }
@@ -608,12 +621,13 @@ async function handleRefresh() {
   const ok = await emitCancelable('before-refresh');
   if (!ok) return;
 
-  if (!props.recordId) {
+  const id = effectiveRecordId.value;
+  if (!id) {
     emit('refresh-success', { record: null });
     return;
   }
   try {
-    await controller.beginDisplay(props.recordId);
+    await controller.beginDisplay(id);
     if (resolvedShowMessages.value) ElMessage.success(_t('Refreshed'));
     emit('refresh-success', { record: (controller.vm.original || null) as any });
   } catch (e: any) {

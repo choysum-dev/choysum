@@ -22,7 +22,7 @@ export function deriveCreateRouteName(routeName: unknown): string | undefined {
     return undefined;
   }
   const createName = routeName.replace(SURFACE_SUFFIX, 'Create');
-  return createName.endsWith('Create') ? createName : undefined;
+  return createName;
 }
 
 /**
