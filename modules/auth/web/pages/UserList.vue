@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     action-export
     :action-import-upload-hint="_t('Upload a UTF-8 CSV with columns Username, Email, Phone, FullName.')"
   >
-    <UserListView createAction="/auth/users/new" selection-mode="multiple" />
+    <UserListView selection-mode="multiple" />
   </OPage>
 </template>
 

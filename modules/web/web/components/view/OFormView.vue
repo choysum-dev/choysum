@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
           <div class="form-view__system-actions">
             <slot name="system-actions">
               <template v-if="viewMode === 'display' && recordId">
-                <el-button v-if="createAction && canCreate" size="small" plain type="primary" @click="handleCreate">
+                <el-button v-if="resolvedCreateAction && canCreate" size="small" plain type="primary" @click="handleCreate">
                   <el-icon><Plus /></el-icon>
                   {{ _t('New') }}
                 </el-button>
@@ -98,6 +98,7 @@ import { useRouter } from 'vue-router';
 import { deepClonePreserve } from '@/core/utils/clone';
 import { canShowAction, type ActionIdMap } from '@/web/web/components/view/actionVisibility';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
+import { useResolvedCreateAction } from '@/web/web/composables/resolveCreateRoute';
 
 import { provideOnchange } from '@/web/web/composables/useOnchange';
 import type { ViewMode, ViewContainer } from '@/web/web/components/view/OViewScope.vue';
@@ -246,6 +247,9 @@ const resolvedShowMessages = computed<boolean>(() => (hasShowMessagesProp ? prop
 const resolvedResolveRecordIdFromRoute = computed<boolean>(() =>
   hasResolveRecordIdFromRouteProp ? props.resolveRecordIdFromRoute === true : !isEmbedded.value
 );
+const resolvedCreateAction = useResolvedCreateAction(() => props.createAction, {
+  enabled: () => !isEmbedded.value,
+});
 
 // Guard the current submit channel from being captured by deeper nested OFormView instances.
 // Deeper nesting should re-provide its own registration entry from the nearest container.
@@ -586,9 +590,9 @@ async function handleSubmit(): Promise<OFormSubmitOutcome<T>> {
 // Section 19: Ancillary operations (create/refresh/copy/delete)
 // =============================
 async function handleCreate() {
-  if (!props.createAction) return;
+  if (!resolvedCreateAction.value) return;
   try {
-    await router.push(props.createAction);
+    await router.push(resolvedCreateAction.value);
   } catch {}
 }
 

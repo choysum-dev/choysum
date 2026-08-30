@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
   <OPage :store="uiResourceGrantStore">
     <RoleUiResourceFormView
       :key="$route.fullPath"
-      createAction="/auth/ui-resource-grants/new"
     />
   </OPage>
 </template>

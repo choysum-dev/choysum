@@ -21,7 +21,16 @@ const { applyMock, preloadLaneMock, awaitFieldSelectionMock, deferState, oSearch
   };
 });
 
-vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock('vue-router', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    resolve: vi.fn((loc: { name?: string }) => ({
+      name: loc?.name,
+      matched: [],
+    })),
+  }),
+  useRoute: () => ({ name: undefined, fullPath: '/', params: {}, query: {} }),
+}));
 
 vi.mock('@/web/web/controllers/kanbanController', () => ({
   createKanbanController: vi.fn(() => ({

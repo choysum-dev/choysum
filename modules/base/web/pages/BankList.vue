@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     action-export
     :action-import-upload-hint="_t('Upload a UTF-8 CSV with columns Name, Code, BIC, IsActive.')"
   >
-    <BankListView createAction="/base/banks/new" />
+    <BankListView />
   </OPage>
 </template>
 

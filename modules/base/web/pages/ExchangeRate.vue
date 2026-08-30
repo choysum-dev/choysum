@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
   <OPage :store="exchangeRateStore">
     <ExchangeRateFormView
       :key="$route.fullPath"
-      createAction="/base/exchange-rates/new"
     />
   </OPage>
 </template>

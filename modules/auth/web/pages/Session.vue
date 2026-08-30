@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="sessionStore">
-    <SessionFormView :key="$route.fullPath" createAction="/auth/sessions/new" />
+    <SessionFormView :key="$route.fullPath" />
   </OPage>
 </template>
 

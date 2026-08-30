@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
   <OPage :store="fieldRuleStore">
     <RoleFieldRuleFormView
       :key="$route.fullPath"
-      createAction="/auth/field-rules/new"
     />
   </OPage>
 </template>

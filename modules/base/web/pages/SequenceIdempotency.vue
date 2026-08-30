@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
   <OPage :store="sequenceIdempotencyStore">
     <SequenceIdempotencyFormView
       :key="$route.fullPath"
-      createAction="/base/sequence-idempotencies/new"
     />
   </OPage>
 </template>

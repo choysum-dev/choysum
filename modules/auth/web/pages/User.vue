@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="userStore">
-    <UserFormView :key="$route.fullPath" createAction="/auth/users/new" />
+    <UserFormView :key="$route.fullPath" />
   </OPage>
 </template>
 
