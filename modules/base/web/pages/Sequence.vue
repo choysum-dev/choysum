@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="sequenceStore">
-    <SequenceFormView :key="$route.fullPath" createAction="/base/sequences/new" :record-id="recordId" />
+    <SequenceFormView :key="$route.fullPath" createAction="/base/sequences/new" />
   </OPage>
 </template>
 
@@ -18,13 +18,6 @@ import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type Sequence from '@/base/service/models/sequence';
 
 defineOptions({ name: 'SequencePage' });
-
-withDefaults(
-  defineProps<{
-    recordId?: string;
-  }>(),
-  {}
-);
 
 const route = useRoute();
 const sequenceStore = createStoreByModel<typeof Sequence>('base.Sequence', {

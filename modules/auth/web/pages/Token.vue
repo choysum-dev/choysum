@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="tokenStore">
-    <TokenFormView :key="$route.fullPath" createAction="/auth/tokens/new" :record-id="recordId" />
+    <TokenFormView :key="$route.fullPath" createAction="/auth/tokens/new" />
   </OPage>
 </template>
 
@@ -16,13 +16,6 @@ import OPage from '@/web/web/components/page/OPage.vue';
 import TokenFormView from '@/auth/web/views/TokenFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type Token from '@/auth/service/models/token';
-
-const props = withDefaults(
-  defineProps<{
-    recordId?: string | undefined;
-  }>(),
-  {}
-);
 
 const route = useRoute();
 const tokenStore = createStoreByModel<typeof Token>('auth.Token', {

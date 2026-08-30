@@ -8,7 +8,6 @@ SPDX-License-Identifier: Apache-2.0
     <SequenceIdempotencyFormView
       :key="$route.fullPath"
       createAction="/base/sequence-idempotencies/new"
-      :record-id="recordId"
     />
   </OPage>
 </template>
@@ -22,13 +21,6 @@ import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type SequenceIdempotency from '@/base/service/models/sequence_idempotency';
 
 defineOptions({ name: 'SequenceIdempotencyPage' });
-
-withDefaults(
-  defineProps<{
-    recordId?: string;
-  }>(),
-  {}
-);
 
 const route = useRoute();
 const sequenceIdempotencyStore = createStoreByModel<typeof SequenceIdempotency>('base.SequenceIdempotency', {

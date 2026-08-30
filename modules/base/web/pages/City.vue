@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="cityStore">
-    <CityFormView :key="$route.fullPath" createAction="/base/cities/new" :record-id="recordId" />
+    <CityFormView :key="$route.fullPath" createAction="/base/cities/new" />
   </OPage>
 </template>
 
@@ -18,13 +18,6 @@ import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type City from '@/base/service/models/city';
 
 defineOptions({ name: 'CityPage' });
-
-withDefaults(
-  defineProps<{
-    recordId?: string;
-  }>(),
-  {}
-);
 
 const route = useRoute();
 const cityStore = createStoreByModel<typeof City>('base.City', {

@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="addressStore">
-    <AddressFormView :key="$route.fullPath" createAction="/base/addresses/new" :record-id="recordId" />
+    <AddressFormView :key="$route.fullPath" createAction="/base/addresses/new" />
   </OPage>
 </template>
 
@@ -18,13 +18,6 @@ import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type Address from '@/base/service/models/address';
 
 defineOptions({ name: 'AddressPage' });
-
-withDefaults(
-  defineProps<{
-    recordId?: string;
-  }>(),
-  {}
-);
 
 const route = useRoute();
 const addressStore = createStoreByModel<typeof Address>('base.Address', {

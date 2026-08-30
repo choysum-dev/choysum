@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="stateStore">
-    <StateFormView :key="$route.fullPath" createAction="/base/states/new" :record-id="recordId" />
+    <StateFormView :key="$route.fullPath" createAction="/base/states/new" />
   </OPage>
 </template>
 
@@ -18,13 +18,6 @@ import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type State from '@/base/service/models/state';
 
 defineOptions({ name: 'StatePage' });
-
-withDefaults(
-  defineProps<{
-    recordId?: string;
-  }>(),
-  {}
-);
 
 const route = useRoute();
 const stateStore = createStoreByModel<typeof State>('base.State', {

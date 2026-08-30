@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="countryStore">
-    <CountryFormView :key="$route.fullPath" createAction="/base/countries/new" :record-id="recordId" />
+    <CountryFormView :key="$route.fullPath" createAction="/base/countries/new" />
   </OPage>
 </template>
 
@@ -18,13 +18,6 @@ import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type Country from '@/base/service/models/country';
 
 defineOptions({ name: 'CountryPage' });
-
-withDefaults(
-  defineProps<{
-    recordId?: string;
-  }>(),
-  {}
-);
 
 const route = useRoute();
 const countryStore = createStoreByModel<typeof Country>('base.Country', {

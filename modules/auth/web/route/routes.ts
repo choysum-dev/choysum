@@ -55,7 +55,6 @@ export const appRoutes: RouteRecordRaw[] = [
     path: 'auth/users/:id',
     name: 'UserDetail',
     component: () => import('../pages/User.vue'),
-    props: route => ({ recordId: route.params.id }),
     actions: ['auth.action.user_create', 'auth.action.user_edit', 'auth.action.user_delete', 'auth.action.user_copy'],
     meta: { requiresAuth: true },
   }),
@@ -85,7 +84,6 @@ export const appRoutes: RouteRecordRaw[] = [
     path: 'auth/roles/:id',
     name: 'RoleDetail',
     component: () => import('../pages/Role.vue'),
-    props: route => ({ recordId: route.params.id }),
     actions: ['auth.action.role_create', 'auth.action.role_edit', 'auth.action.role_delete', 'auth.action.role_copy'],
     meta: { requiresAuth: true },
   }),
@@ -113,7 +111,6 @@ export const appRoutes: RouteRecordRaw[] = [
     path: 'auth/sessions/:id',
     name: 'SessionDetail',
     component: () => import('../pages/Session.vue'),
-    props: route => ({ recordId: route.params.id }),
     actions: ['auth.action.session_create', 'auth.action.session_edit', 'auth.action.session_delete', 'auth.action.session_copy'],
     meta: { requiresAuth: true },
   }),
@@ -143,7 +140,6 @@ export const appRoutes: RouteRecordRaw[] = [
     path: 'auth/tokens/:id',
     name: 'TokenDetail',
     component: () => import('../pages/Token.vue'),
-    props: route => ({ recordId: route.params.id }),
     actions: ['auth.action.token_create', 'auth.action.token_edit', 'auth.action.token_delete', 'auth.action.token_copy'],
     meta: { requiresAuth: true },
   }),
@@ -187,7 +183,6 @@ export const appRoutes: RouteRecordRaw[] = [
     path: 'auth/record-rules/:id',
     name: 'RecordRuleDetail',
     component: () => import('../pages/RoleRecordRule.vue'),
-    props: route => ({ recordId: route.params.id }),
     actions: [
       'auth.action.role_record_rule_create',
       'auth.action.role_record_rule_edit',
@@ -231,7 +226,6 @@ export const appRoutes: RouteRecordRaw[] = [
     path: 'auth/field-rules/:id',
     name: 'FieldRuleDetail',
     component: () => import('../pages/RoleFieldRule.vue'),
-    props: route => ({ recordId: route.params.id }),
     actions: [
       'auth.action.role_field_rule_create',
       'auth.action.role_field_rule_edit',
@@ -275,7 +269,6 @@ export const appRoutes: RouteRecordRaw[] = [
     path: 'auth/method-accesses/:id',
     name: 'MethodAccessDetail',
     component: () => import('../pages/RoleMethodAccess.vue'),
-    props: route => ({ recordId: route.params.id }),
     actions: [
       'auth.action.role_method_access_create',
       'auth.action.role_method_access_edit',
@@ -319,7 +312,6 @@ export const appRoutes: RouteRecordRaw[] = [
     path: 'auth/ui-resource-grants/:id',
     name: 'UiResourceGrantDetail',
     component: () => import('../pages/RoleUiResource.vue'),
-    props: route => ({ recordId: route.params.id }),
     actions: [
       'auth.action.role_ui_resource_create',
       'auth.action.role_ui_resource_edit',

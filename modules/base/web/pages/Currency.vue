@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="currencyStore">
-    <CurrencyFormView :key="$route.fullPath" createAction="/base/currencies/new" :record-id="recordId" />
+    <CurrencyFormView :key="$route.fullPath" createAction="/base/currencies/new" />
   </OPage>
 </template>
 
@@ -18,13 +18,6 @@ import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type Currency from '@/base/service/models/currency';
 
 defineOptions({ name: 'CurrencyPage' });
-
-withDefaults(
-  defineProps<{
-    recordId?: string;
-  }>(),
-  {}
-);
 
 const route = useRoute();
 const currencyStore = createStoreByModel<typeof Currency>('base.Currency', {

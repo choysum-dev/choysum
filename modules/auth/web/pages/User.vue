@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="userStore">
-    <UserFormView :key="$route.fullPath" createAction="/auth/users/new" :record-id="recordId" />
+    <UserFormView :key="$route.fullPath" createAction="/auth/users/new" />
   </OPage>
 </template>
 
@@ -16,13 +16,6 @@ import OPage from '@/web/web/components/page/OPage.vue';
 import UserFormView from '@/auth/web/views/UserFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type User from '@/auth/service/models/user';
-
-const props = withDefaults(
-  defineProps<{
-    recordId?: string | undefined;
-  }>(),
-  {}
-);
 
 const route = useRoute();
 const userStore = createStoreByModel<typeof User>('auth.User', {

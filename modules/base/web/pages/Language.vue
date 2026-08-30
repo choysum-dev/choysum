@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="languageStore">
-    <LanguageFormView :key="$route.fullPath" createAction="/base/languages/new" :record-id="recordId" />
+    <LanguageFormView :key="$route.fullPath" createAction="/base/languages/new" />
   </OPage>
 </template>
 
@@ -18,13 +18,6 @@ import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type Language from '@/base/service/models/language';
 
 defineOptions({ name: 'LanguagePage' });
-
-withDefaults(
-  defineProps<{
-    recordId?: string;
-  }>(),
-  {}
-);
 
 const route = useRoute();
 const languageStore = createStoreByModel<typeof Language>('base.Language', {

@@ -8,7 +8,6 @@ SPDX-License-Identifier: Apache-2.0
     <ExchangeRateFormView
       :key="$route.fullPath"
       createAction="/base/exchange-rates/new"
-      :record-id="recordId"
     />
   </OPage>
 </template>
@@ -22,13 +21,6 @@ import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type ExchangeRate from '@/base/service/models/exchange_rate';
 
 defineOptions({ name: 'ExchangeRatePage' });
-
-withDefaults(
-  defineProps<{
-    recordId?: string;
-  }>(),
-  {}
-);
 
 const route = useRoute();
 const exchangeRateStore = createStoreByModel<typeof ExchangeRate>('base.ExchangeRate', {

@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="bankStore">
-    <BankFormView :key="$route.fullPath" createAction="/base/banks/new" :record-id="recordId" />
+    <BankFormView :key="$route.fullPath" createAction="/base/banks/new" />
   </OPage>
 </template>
 
@@ -18,13 +18,6 @@ import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type Bank from '@/base/service/models/bank';
 
 defineOptions({ name: 'BankPage' });
-
-withDefaults(
-  defineProps<{
-    recordId?: string;
-  }>(),
-  {}
-);
 
 const route = useRoute();
 const bankStore = createStoreByModel<typeof Bank>('base.Bank', {

@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="roleStore">
-    <RoleFormView :key="$route.fullPath" createAction="/auth/roles/new" :record-id="recordId" />
+    <RoleFormView :key="$route.fullPath" createAction="/auth/roles/new" />
   </OPage>
 </template>
 
@@ -16,13 +16,6 @@ import OPage from '@/web/web/components/page/OPage.vue';
 import RoleFormView from '@/auth/web/views/RoleFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type Role from '@/auth/service/models/role';
-
-const props = withDefaults(
-  defineProps<{
-    recordId?: string | undefined;
-  }>(),
-  {}
-);
 
 const route = useRoute();
 const roleStore = createStoreByModel<typeof Role>('auth.Role', {

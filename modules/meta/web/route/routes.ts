@@ -47,7 +47,6 @@ export const metaRoutes: RouteRecordRaw[] = [
     path: 'meta/modules/:id',
     name: 'MetaModuleDetail',
     component: () => import('../pages/ModuleDetail.vue'),
-    props: route => ({ recordId: route.params.id }),
     actions: ['meta.action.module_index_edit', 'meta.action.module_index_delete', 'meta.action.module_index_copy'],
     requires: [{ model: 'meta.MetaModuleIndex' }, { model: 'meta.MetaModule' }],
     meta: { requiresAuth: true },

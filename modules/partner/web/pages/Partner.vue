@@ -8,7 +8,6 @@ SPDX-License-Identifier: Apache-2.0
     <PartnerFormView
       :key="$route.fullPath"
       createAction="/partner/partners/new"
-      :record-id="recordId"
       :initial-values="initialValues"
     />
   </OPage>
@@ -24,16 +23,6 @@ import type Partner from '@/partner/service/models/partner';
 import { useAuthStore } from '@/auth/web/stores/auth';
 
 defineOptions({ name: 'PartnerPage' });
-
-/**
- * Props consumed by the partner detail page.
- */
-withDefaults(
-  defineProps<{
-    recordId?: string;
-  }>(),
-  {}
-);
 
 const route = useRoute();
 const authStore = useAuthStore();

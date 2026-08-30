@@ -8,7 +8,6 @@ SPDX-License-Identifier: Apache-2.0
     <RoleUiResourceFormView
       :key="$route.fullPath"
       createAction="/auth/ui-resource-grants/new"
-      :record-id="recordId"
     />
   </OPage>
 </template>
@@ -20,13 +19,6 @@ import OPage from '@/web/web/components/page/OPage.vue';
 import RoleUiResourceFormView from '@/auth/web/views/RoleUiResourceFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type RoleUiResource from '@/auth/service/models/role_ui_resource';
-
-const props = withDefaults(
-  defineProps<{
-    recordId?: string | undefined;
-  }>(),
-  {}
-);
 
 const route = useRoute();
 const uiResourceGrantStore = createStoreByModel<typeof RoleUiResource>('auth.RoleUiResource', {

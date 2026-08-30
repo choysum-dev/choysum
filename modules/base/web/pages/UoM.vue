@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="uomStore">
-    <UoMFormView :key="$route.fullPath" createAction="/base/uoms/new" :record-id="recordId" />
+    <UoMFormView :key="$route.fullPath" createAction="/base/uoms/new" />
   </OPage>
 </template>
 
@@ -18,13 +18,6 @@ import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type UoM from '@/base/service/models/uom';
 
 defineOptions({ name: 'UoMPage' });
-
-withDefaults(
-  defineProps<{
-    recordId?: string;
-  }>(),
-  {}
-);
 
 const route = useRoute();
 const uomStore = createStoreByModel<typeof UoM>('base.UoM', {

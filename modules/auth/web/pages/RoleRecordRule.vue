@@ -8,7 +8,6 @@ SPDX-License-Identifier: Apache-2.0
     <RoleRecordRuleFormView
       :key="$route.fullPath"
       createAction="/auth/record-rules/new"
-      :record-id="recordId"
     />
   </OPage>
 </template>
@@ -20,13 +19,6 @@ import OPage from '@/web/web/components/page/OPage.vue';
 import RoleRecordRuleFormView from '@/auth/web/views/RoleRecordRuleFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type RoleRecordRule from '@/auth/service/models/role_record_rule';
-
-const props = withDefaults(
-  defineProps<{
-    recordId?: string | undefined;
-  }>(),
-  {}
-);
 
 const route = useRoute();
 const recordRuleStore = createStoreByModel<typeof RoleRecordRule>('auth.RoleRecordRule', {

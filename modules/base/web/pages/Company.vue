@@ -8,7 +8,6 @@ SPDX-License-Identifier: Apache-2.0
     <CompanyFormView
       :key="$route.fullPath"
       createAction="/base/companies/new"
-      :record-id="recordId"
       :initial-values="initialValues"
     />
   </OPage>
@@ -23,13 +22,6 @@ import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type Company from '@/base/service/models/company';
 
 defineOptions({ name: 'CompanyPage' });
-
-withDefaults(
-  defineProps<{
-    recordId?: string;
-  }>(),
-  {}
-);
 
 const route = useRoute();
 const companyStore = createStoreByModel<typeof Company>('base.Company', {

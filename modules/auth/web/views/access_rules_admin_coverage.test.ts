@@ -92,7 +92,7 @@ describe('Access Rules admin coverage (PR-C-5)', () => {
     push.mockReset();
   });
 
-  it('exercises Access Rules route component and props factories', async () => {
+  it('exercises Access Rules route components without page prop injection', async () => {
     const accessRoutes = appRoutes.filter(r => ACCESS_RULE_ROUTE_NAMES.has(String(r.name)));
     expect(accessRoutes.length).toBe(12);
 
@@ -102,10 +102,8 @@ describe('Access Rules admin coverage (PR-C-5)', () => {
       const loaded = await (comp as () => Promise<{ default: unknown }>)();
       expect(loaded?.default).toBeTruthy();
 
-      if (typeof route.props === 'function') {
-        const resolved = route.props({ params: { id: 'x-1' } } as any);
-        expect(resolved).toEqual({ recordId: 'x-1' });
-      }
+      // Detail/create pages resolve record id from the route inside OFormView.
+      expect(route.props == null || route.props === false).toBe(true);
     }
   });
 
@@ -115,7 +113,7 @@ describe('Access Rules admin coverage (PR-C-5)', () => {
 
     for (const [path, mod] of Object.entries(pageModules)) {
       const wrapper = shallowMount(mod.default as any, {
-        props: path.includes('List') ? {} : { recordId: 'id-1' },
+        props: {},
         global: {
           plugins: [i18n, routeGlobal],
           stubs: {
