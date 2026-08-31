@@ -4,6 +4,14 @@
 export { default as BaseModel } from './model';
 export type { BaseModelCtor, InstantiableModelCtor, RuntimeModelCtor } from './types';
 export { pool, dial } from './model_pool';
+export {
+  assertRecordReadable,
+  isRecordNotReadableError,
+  RECORD_NOT_READABLE,
+  RECORD_PROBE_DOMAIN,
+  type AssertRecordReadableOptions,
+  type RecordProbeDialFn,
+} from './record_probe';
 export { getModelRepository } from './model_internal_facade';
 export { default as AppSettingBaseModel, type AppSettingModelCtor } from './app_setting_base_model';
 export { default as FieldDefaultBaseModel } from './field_default_base_model';
