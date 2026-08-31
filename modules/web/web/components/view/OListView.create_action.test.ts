@@ -68,7 +68,7 @@ function makeStore() {
     storeId: 's',
     fieldsMetadata: {},
     state: {
-      queryState: { pagination: { page: 1, pageSize: 20, limit: 0, limit: 20 } },
+      queryState: { pagination: { limit: 20, offset: 0 } },
       result: { total: 0 },
       selection: [],
       planCache: new Map(),
@@ -138,7 +138,7 @@ describe('OListView create action', () => {
     await newBtn!.trigger('click');
     await flushPromises();
     expect(wrapper.emitted('action-error')?.[0]?.[0]).toMatchObject({
-      action: 'paginate',
+      action: 'create',
       error: expect.objectContaining({ message: 'nav failed' }),
     });
     wrapper.unmount();

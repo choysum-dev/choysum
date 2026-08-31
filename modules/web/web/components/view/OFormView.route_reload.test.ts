@@ -272,6 +272,38 @@ describe('OFormView reloads when route identity changes', () => {
     wrapper.unmount();
   });
 
+  test('invalidates in-flight init before nextTick when route changes same turn', async () => {
+    let releaseFirst!: () => void;
+    const firstGate = new Promise<void>(resolve => {
+      releaseFirst = resolve;
+    });
+    beginDisplay.mockImplementationOnce(async (id?: string) => {
+      const seq = ++displayLoadSeq;
+      await firstGate;
+      const row = { Id: id ?? '1', Name: 'stale-pre-tick' };
+      if (seq !== displayLoadSeq) return row;
+      controllerVm.original = row;
+      controllerVm.draft = { ...row };
+      return row;
+    });
+
+    const wrapper = mountForm();
+    // Change route in the same turn as mount, before the first initializeForm
+    // finishes — watcher must bump initializeSeq before awaiting nextTick.
+    routeState.params = { id: '2' };
+    routeState.fullPath = '/demo/widgets/2';
+    releaseFirst();
+    await flushPromises();
+
+    expect(beginDisplay.mock.calls.map(c => c[0])).toContain('2');
+    expect(controllerVm.original).toMatchObject({ Id: '2' });
+    const loadSuccessIds = (wrapper.emitted('load-success') || []).map(
+      ([payload]: any[]) => payload?.record?.Id ?? null
+    );
+    expect(loadSuccessIds[loadSuccessIds.length - 1]).toBe('2');
+    wrapper.unmount();
+  });
+
   test('shows New and refreshes using route-resolved effective record id', async () => {
     const wrapper = mountForm({ createAction: '/demo/widgets/new' });
     await flushPromises();

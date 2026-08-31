@@ -145,7 +145,7 @@ describe('OKanbanView create action', () => {
     await newBtn!.trigger('click');
     await flushPromises();
     expect(wrapper.emitted('action-error')?.[0]?.[0]).toMatchObject({
-      action: 'paginate',
+      action: 'create',
       error: expect.objectContaining({ message: 'boom' }),
     });
     wrapper.unmount();

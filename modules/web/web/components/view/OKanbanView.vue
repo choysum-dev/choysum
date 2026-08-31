@@ -214,7 +214,7 @@ const emit = defineEmits<{
   (e: 'paginate', payload: { page: number; pageSize: number }): void;
   (e: 'card-click', payload: { row: ClientModel<T> }): void;
   (e: 'card-move', payload: { cardId: string; fromLane: string; toLane: string; index: number }): void;
-  (e: 'action-error', payload: { action: 'load' | 'refresh' | 'search' | 'paginate' | 'move'; error: Error }): void;
+  (e: 'action-error', payload: { action: 'load' | 'refresh' | 'search' | 'paginate' | 'move' | 'create'; error: Error }): void;
 }>();
 const { emitCancelable } = useCancelableEmit(emit as any);
 
@@ -460,7 +460,7 @@ async function handleCreate() {
     await router.push(resolvedCreateAction.value);
   } catch (e) {
     const err = e instanceof Error ? e : new Error(String(e));
-    emit('action-error', { action: 'paginate', error: err });
+    emit('action-error', { action: 'create', error: err });
   }
 }
 

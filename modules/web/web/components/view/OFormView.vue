@@ -723,6 +723,9 @@ watch(
       resolvedResolveRecordIdFromRoute.value ? peekRouteRecordId() ?? '' : '',
     ] as const,
   async () => {
+    // Invalidate in-flight initializeForm before awaiting nextTick so a prior
+    // beginDisplay cannot emit load-success for the superseded identity.
+    initializeSeq += 1;
     await nextTick();
     await initializeForm();
     // Enter edit mode when requested by the external viewMode prop.

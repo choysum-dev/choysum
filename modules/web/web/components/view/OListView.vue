@@ -258,7 +258,7 @@ const emit = defineEmits<{
   (e: 'paginate', payload: { page: number; pageSize: number }): void;
   (e: 'sort-change', payload: { orderBy: OrderBy<T> | Array<OrderBy<T>> | undefined }): void;
 
-  (e: 'action-error', payload: { action: 'load' | 'delete' | 'refresh' | 'search' | 'sort' | 'paginate'; error: Error }): void;
+  (e: 'action-error', payload: { action: 'load' | 'delete' | 'refresh' | 'search' | 'sort' | 'paginate' | 'create'; error: Error }): void;
 }>();
 const { emitCancelable } = useCancelableEmit(emit as any);
 
@@ -684,7 +684,7 @@ async function handleCreate() {
     await router.push(resolvedCreateAction.value);
   } catch (e) {
     const err = e instanceof Error ? e : new Error(String(e));
-    emit('action-error', { action: 'paginate', error: err });
+    emit('action-error', { action: 'create', error: err });
   }
 }
 
