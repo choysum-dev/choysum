@@ -59,7 +59,7 @@ vi.mock('@/web/web/import', () => ({
 vi.mock('../views/PartnerListView.vue', () => ({
   default: {
     name: 'PartnerListViewStub',
-    props: ['store', 'createAction'],
+    props: ['store'],
     setup(_: unknown, { expose }: { expose: (exposed: Record<string, unknown>) => void }) {
       const target = {
         refresh,

@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     action-export
     :action-import-upload-hint="_t('Upload a UTF-8 CSV with columns LogicalModelName, Mode, Source.')"
   >
-    <RoleMethodAccessListView createAction="/auth/method-accesses/new" selection-mode="multiple" />
+    <RoleMethodAccessListView selection-mode="multiple" />
   </OPage>
 </template>
 

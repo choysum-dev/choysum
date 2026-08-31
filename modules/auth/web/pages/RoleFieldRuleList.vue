@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     action-export
     :action-import-upload-hint="_t('Upload a UTF-8 CSV with columns LogicalModelName, PermRead, PermWrite.')"
   >
-    <RoleFieldRuleListView createAction="/auth/field-rules/new" selection-mode="multiple" />
+    <RoleFieldRuleListView selection-mode="multiple" />
   </OPage>
 </template>
 

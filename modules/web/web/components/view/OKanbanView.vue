@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
         <div class="o-kanban__actions">
           <div class="o-kanban__system-actions" v-if="showActions">
             <slot name="system-actions" :selected-items="emptySelection">
-              <el-button v-if="createAction" size="small" plain type="primary" @click="handleCreate">
+              <el-button v-if="resolvedCreateAction" size="small" plain type="primary" @click="handleCreate">
                 <el-icon><Plus /></el-icon>
                 {{ _t('New') }}
               </el-button>
@@ -158,6 +158,7 @@ import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { shouldDeferViewFirstFrame } from '@/web/web/components/view/kanbanFirstFrame';
 import { createTranslate } from '@/web/web/i18n';
 import { resolvePageStore, useRegisterPageActionTarget } from '@/web/web/composables/usePageContext';
+import { useResolvedCreateAction } from '@/web/web/composables/resolveCreateRoute';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/OKanbanView' });
 
@@ -201,6 +202,7 @@ const props = withDefaults(
 );
 
 const store = resolvePageStore(props.store, 'OKanbanView');
+const resolvedCreateAction = useResolvedCreateAction(() => props.createAction);
 
 // Emits, simplified and renamed from row-click to card-click, with card-move added
 const emit = defineEmits<{
@@ -212,7 +214,7 @@ const emit = defineEmits<{
   (e: 'paginate', payload: { page: number; pageSize: number }): void;
   (e: 'card-click', payload: { row: ClientModel<T> }): void;
   (e: 'card-move', payload: { cardId: string; fromLane: string; toLane: string; index: number }): void;
-  (e: 'action-error', payload: { action: 'load' | 'refresh' | 'search' | 'paginate' | 'move'; error: Error }): void;
+  (e: 'action-error', payload: { action: 'load' | 'refresh' | 'search' | 'paginate' | 'move' | 'create'; error: Error }): void;
 }>();
 const { emitCancelable } = useCancelableEmit(emit as any);
 
@@ -453,12 +455,12 @@ useRegisterPageActionTarget({
 });
 
 async function handleCreate() {
-  if (!props.createAction) return;
+  if (!resolvedCreateAction.value) return;
   try {
-    await router.push(props.createAction);
+    await router.push(resolvedCreateAction.value);
   } catch (e) {
     const err = e instanceof Error ? e : new Error(String(e));
-    emit('action-error', { action: 'paginate', error: err });
+    emit('action-error', { action: 'create', error: err });
   }
 }
 

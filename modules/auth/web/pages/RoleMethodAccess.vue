@@ -6,10 +6,6 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <OPage :store="methodAccessStore">
     <RoleMethodAccessFormView
-      :key="$route.fullPath"
-      createAction="/auth/method-accesses/new"
-      :record-id="recordId"
-      :view-mode="viewMode"
     />
   </OPage>
 </template>
@@ -20,16 +16,7 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import OPage from '@/web/web/components/page/OPage.vue';
 import RoleMethodAccessFormView from '@/auth/web/views/RoleMethodAccessFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import type RoleMethodAccess from '@/auth/service/models/role_method_access';
-
-const props = withDefaults(
-  defineProps<{
-    viewMode?: ViewMode;
-    recordId?: string | undefined;
-  }>(),
-  {}
-);
 
 const route = useRoute();
 const methodAccessStore = createStoreByModel<typeof RoleMethodAccess>('auth.RoleMethodAccess', {

@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="languageStore">
-    <LanguageFormView :key="$route.fullPath" createAction="/base/languages/new" :record-id="recordId" :view-mode="viewMode" />
+    <LanguageFormView />
   </OPage>
 </template>
 
@@ -15,18 +15,9 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import OPage from '@/web/web/components/page/OPage.vue';
 import LanguageFormView from '../views/LanguageFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import type Language from '@/base/service/models/language';
 
 defineOptions({ name: 'LanguagePage' });
-
-withDefaults(
-  defineProps<{
-    viewMode?: ViewMode;
-    recordId?: string;
-  }>(),
-  {}
-);
 
 const route = useRoute();
 const languageStore = createStoreByModel<typeof Language>('base.Language', {

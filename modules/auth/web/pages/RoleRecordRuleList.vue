@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     action-export
     :action-import-upload-hint="_t('Upload a UTF-8 CSV with columns Kind, PermRead, PermWrite, PermCreate, PermDelete.')"
   >
-    <RoleRecordRuleListView createAction="/auth/record-rules/new" selection-mode="multiple" />
+    <RoleRecordRuleListView selection-mode="multiple" />
   </OPage>
 </template>
 

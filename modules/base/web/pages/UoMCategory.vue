@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="uomCategoryStore">
-    <UoMCategoryFormView :key="$route.fullPath" createAction="/base/uom-categories/new" :record-id="recordId" :view-mode="viewMode" />
+    <UoMCategoryFormView />
   </OPage>
 </template>
 
@@ -15,18 +15,9 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import OPage from '@/web/web/components/page/OPage.vue';
 import UoMCategoryFormView from '../views/UoMCategoryFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import type UoMCategory from '@/base/service/models/uom_category';
 
 defineOptions({ name: 'UoMCategoryPage' });
-
-withDefaults(
-  defineProps<{
-    viewMode?: ViewMode;
-    recordId?: string;
-  }>(),
-  {}
-);
 
 const route = useRoute();
 const uomCategoryStore = createStoreByModel<typeof UoMCategory>('base.UoMCategory', {
