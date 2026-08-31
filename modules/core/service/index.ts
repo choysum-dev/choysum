@@ -18,12 +18,4 @@ export { Inverse } from './orm/decorator/inverse';
 export { Model } from './orm/decorator/model';
 export { default as Decimal } from '../utils/decimal';
 export { pool, dial } from './orm/model/model_pool';
-export {
-  assertRecordReadable,
-  isRecordNotReadableError,
-  RECORD_NOT_READABLE,
-  RECORD_PROBE_DOMAIN,
-  type AssertRecordReadableOptions,
-  type RecordProbeDialFn,
-} from './orm/model/record_probe';
 export { default as AppSettingBaseModel, type AppSettingModelCtor } from './orm/model/app_setting_base_model';
