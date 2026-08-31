@@ -1,11 +1,14 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { dial } from '@/core/service/orm/model/model_pool';
+import {
+  assertRecordReadable,
+  type RecordProbeDialFn,
+} from '@/core/service/orm/model';
 import { GrpcCode, MessageErrCode, newMessageError } from './error';
 
 export type TargetRecordAuthFn = (model: string, resId: string) => Promise<void>;
-export type TargetRecordDialFn = <T = Record<string, (...args: unknown[]) => unknown>>(fullModelName: string) => T;
+export type TargetRecordDialFn = RecordProbeDialFn;
 
 let targetRecordAuthOverride: TargetRecordAuthFn | null | undefined;
 let targetRecordDialOverride: TargetRecordDialFn | undefined;
@@ -35,6 +38,7 @@ function permissionDenied(message: string) {
 
 /**
  * Confirms the caller can Search the underlying business record identified by Model/ResId.
+ * Delegates the dial Search probe to core {@link assertRecordReadable}; wraps failures as message PERMISSION_DENIED.
  */
 export async function assertTargetRecordReadable(model: string, resId: string, deniedMessage: string): Promise<void> {
   if (targetRecordAuthOverride !== undefined) {
@@ -46,17 +50,11 @@ export async function assertTargetRecordReadable(model: string, resId: string, d
   }
 
   try {
-    const dialFn = targetRecordDialOverride || dial;
-    const svc = dialFn<{ Search?: (condition: unknown, options?: unknown) => Promise<unknown> }>(model);
-    if (typeof svc?.Search !== 'function') {
-      throw permissionDenied(deniedMessage);
-    }
-    const rows = await svc.Search(['Id', '=', resId], { fields: ['Id'], limit: 1 });
-    if (Array.isArray(rows) && rows.length > 0) return;
-  } catch (err) {
-    if (err && typeof err === 'object' && (err as { code?: string }).code === MessageErrCode.PERMISSION_DENIED) {
-      throw err;
-    }
+    await assertRecordReadable(model, resId, {
+      dial: targetRecordDialOverride,
+      message: deniedMessage,
+    });
+  } catch {
+    throw permissionDenied(deniedMessage);
   }
-  throw permissionDenied(deniedMessage);
 }

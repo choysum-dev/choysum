@@ -86,7 +86,7 @@ test('audit target_record: denies when dial Search returns no rows', async () =>
   });
 });
 
-test('audit target_record: rethrows permission denied errors from dial Search', async () => {
+test('audit target_record: maps dial Search failures (including permission-shaped) to domain permission denied', async () => {
   await withSeams(async () => {
     const denied = { code: AuditErrCode.PERMISSION_DENIED, message: 'blocked' };
     __setFieldChangeTargetDialForTest(
@@ -103,7 +103,9 @@ test('audit target_record: rethrows permission denied errors from dial Search', 
     } catch (e) {
       err = e;
     }
-    expect(err).toBe(denied);
+    expect(isAuditError(err)).toBe(true);
+    expect((err as any).code).toBe(AuditErrCode.PERMISSION_DENIED);
+    expect((err as any).message).toBe('denied');
   });
 });
 
