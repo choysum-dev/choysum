@@ -60,7 +60,7 @@ describe('meta page OPage store / title coverage', () => {
     it(`mounts ${path}`, () => {
       const isDetail = path.includes('Detail');
       const wrapper = shallowMount(mod.default as any, {
-        props: isDetail ? { recordId: 'id-1', viewMode: 'display' } : {},
+        props: {},
         global: {
           plugins: [i18n, routeGlobal],
           stubs: {

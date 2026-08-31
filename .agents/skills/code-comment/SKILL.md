@@ -1,7 +1,6 @@
 ---
 name: code-comment
 description: 'Clean up or review source code comments, doc comments, JSDoc, Vue SFC comments, and public API documentation in Choysum. Defaults to hybrid mode unless the user clearly asks for findings only or direct cleanup only. Use when asked to do code-comment-cleanup, code-comment-review, translate code comments to English, remove noisy comments, fill missing Go or TypeScript API comments, fill missing Vue SFC component or props/emits/slots comments, fill missing Go interface method docs or exported const-group docs, or audit comment quality in a file or directory.'
-argument-hint: 'Target files or directories, plus optional mode override: cleanup, review, or hybrid (default)'
 ---
 
 # Code Comment

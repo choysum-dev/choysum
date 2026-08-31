@@ -10,8 +10,8 @@ SPDX-License-Identifier: Apache-2.0
         <div class="form-view__actions" v-if="resolvedShowActions">
           <div class="form-view__system-actions">
             <slot name="system-actions">
-              <template v-if="viewMode === 'display' && recordId">
-                <el-button v-if="createAction && canCreate" size="small" plain type="primary" @click="handleCreate">
+              <template v-if="viewMode === 'display' && effectiveRecordId">
+                <el-button v-if="resolvedCreateAction && canCreate" size="small" plain type="primary" @click="handleCreate">
                   <el-icon><Plus /></el-icon>
                   {{ _t('New') }}
                 </el-button>
@@ -94,10 +94,11 @@ import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { Edit, Check, Close, Plus, Refresh, Delete } from '@element-plus/icons-vue';
 import { ContentCopyFilled, RestoreOutlined } from '@vicons/material';
 import type { RouteLocationRaw } from 'vue-router';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { deepClonePreserve } from '@/core/utils/clone';
 import { canShowAction, type ActionIdMap } from '@/web/web/components/view/actionVisibility';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
+import { useResolvedCreateAction } from '@/web/web/composables/resolveCreateRoute';
 
 import { provideOnchange } from '@/web/web/composables/useOnchange';
 import type { ViewMode, ViewContainer } from '@/web/web/components/view/OViewScope.vue';
@@ -130,6 +131,7 @@ const O_FORM_EMBEDDED_CONTEXT_KEY = 'o-form-embedded-context';
 // Section 2: Router & basic utilities
 // =============================
 const router = useRouter();
+const route = useRoute();
 
 // =============================
 // Section 3: Props & defaults
@@ -246,6 +248,9 @@ const resolvedShowMessages = computed<boolean>(() => (hasShowMessagesProp ? prop
 const resolvedResolveRecordIdFromRoute = computed<boolean>(() =>
   hasResolveRecordIdFromRouteProp ? props.resolveRecordIdFromRoute === true : !isEmbedded.value
 );
+const resolvedCreateAction = useResolvedCreateAction(() => props.createAction, {
+  enabled: () => !isEmbedded.value,
+});
 
 // Guard the current submit channel from being captured by deeper nested OFormView instances.
 // Deeper nesting should re-provide its own registration entry from the nearest container.
@@ -320,29 +325,46 @@ const exposedFormData = computed<Partial<ClientModel<T>>>(() => (controller.vm.d
 // =============================
 // Section 15: Initialization & mode switching
 // =============================
+function normalizeRecordId(raw: unknown): string | undefined {
+  const s = String(raw ?? '').trim();
+  if (!s || s === 'undefined' || s === 'null') return undefined;
+  return s;
+}
+
+/** Route param/query id used when resolveRecordIdFromRoute is enabled. */
+function peekRouteRecordId(): string | undefined {
+  if (!resolvedResolveRecordIdFromRoute.value) {
+    return undefined;
+  }
+  return normalizeRecordId(
+    route.params.recordId ?? route.params.id ?? route.params.Id ?? route.query.recordId ?? route.query.id ?? route.query.Id
+  );
+}
+
+/** Prop record id when set; otherwise the route-resolved detail id. */
+const effectiveRecordId = computed(() => normalizeRecordId(props.recordId) ?? peekRouteRecordId());
+
+/** Monotonic token so overlapping initializeForm runs discard stale completions. */
+let initializeSeq = 0;
+
 async function initializeForm() {
+  const seq = ++initializeSeq;
+  const isStale = () => seq !== initializeSeq;
   try {
     const ok = await emitCancelable('before-load');
-    if (!ok) return;
+    if (!ok || isStale()) return;
     onchangeCtrl.reset();
     resetOnchangeAgg();
     // Resolve the effective record id from props first, then from common route keys.
-    const route = router.currentRoute.value;
-    const routeRecordId = resolvedResolveRecordIdFromRoute.value
-      ? (route.params.recordId ?? route.params.id ?? route.params.Id ?? route.query.recordId ?? route.query.id ?? route.query.Id)
-      : undefined;
-    const rawId: any = props.recordId ?? routeRecordId;
-    const normId = (() => {
-      const s = String(rawId ?? '').trim();
-      if (!s || s === 'undefined' || s === 'null') return undefined;
-      return s;
-    })();
+    const normId = effectiveRecordId.value;
     if (normId) {
       await controller.beginDisplay(normId);
+      if (isStale()) return;
       emit('mode-change', { mode: controller.vm.mode as ViewMode });
       emit('load-success', { record: (controller.vm.original as any) || null });
     } else {
       await controller.beginCreate(deepClonePreserve((props.initialValues || {}) as any));
+      if (isStale()) return;
       if ((props.viewMode as any) === 'display') {
         // Support read-only preview flows driven only by initialValues in nested forms.
         (controller.vm as any).mode = 'display';
@@ -350,8 +372,10 @@ async function initializeForm() {
       emit('mode-change', { mode: controller.vm.mode as ViewMode });
       emit('load-success', { record: null as any });
     }
+    if (isStale()) return;
     emit('change', { formData: toRaw(exposedFormData.value) as any });
   } catch (e: any) {
+    if (isStale()) return;
     const err = e instanceof Error ? e : new Error(String(e));
     emit('action-error', { action: 'load', error: err });
   }
@@ -400,7 +424,8 @@ function handleCancel() {
   if (viewMode.value === 'create') {
     router.back();
   } else {
-    if (props.recordId) controller.beginDisplay(props.recordId);
+    const id = effectiveRecordId.value;
+    if (id) controller.beginDisplay(id);
     emit('mode-change', { mode: 'display' });
   }
 }
@@ -586,9 +611,9 @@ async function handleSubmit(): Promise<OFormSubmitOutcome<T>> {
 // Section 19: Ancillary operations (create/refresh/copy/delete)
 // =============================
 async function handleCreate() {
-  if (!props.createAction) return;
+  if (!resolvedCreateAction.value) return;
   try {
-    await router.push(props.createAction);
+    await router.push(resolvedCreateAction.value);
   } catch {}
 }
 
@@ -596,12 +621,13 @@ async function handleRefresh() {
   const ok = await emitCancelable('before-refresh');
   if (!ok) return;
 
-  if (!props.recordId) {
+  const id = effectiveRecordId.value;
+  if (!id) {
     emit('refresh-success', { record: null });
     return;
   }
   try {
-    await controller.beginDisplay(props.recordId);
+    await controller.beginDisplay(id);
     if (resolvedShowMessages.value) ElMessage.success(_t('Refreshed'));
     emit('refresh-success', { record: (controller.vm.original || null) as any });
   } catch (e: any) {
@@ -684,18 +710,28 @@ function handleDelete() {
 watch(exposedFormData, v => emit('change', { formData: toRaw(v) as any }), { deep: true, flush: 'post' });
 
 // =============================
-// Section 21: Watchers (recordId/viewMode/session)
+// Section 21: Watchers (recordId/viewMode/session/route identity)
 // =============================
-/* Watch props.recordId, viewMode, and sessionId changes. */
+/* Re-init when prop identity or (non-embedded) route name/id changes. */
 watch(
-  () => [props.recordId, props.viewMode, props.onchangeSessionId] as const,
+  () =>
+    [
+      props.recordId,
+      props.viewMode,
+      props.onchangeSessionId,
+      resolvedResolveRecordIdFromRoute.value ? String(route.name ?? '') : '',
+      resolvedResolveRecordIdFromRoute.value ? peekRouteRecordId() ?? '' : '',
+    ] as const,
   async () => {
+    // Invalidate in-flight initializeForm before awaiting nextTick so a prior
+    // beginDisplay cannot emit load-success for the superseded identity.
+    initializeSeq += 1;
     await nextTick();
     await initializeForm();
     // Enter edit mode when requested by the external viewMode prop.
     if ((props.viewMode as any) === 'edit') controller.beginEdit();
   },
-  { immediate: true }
+  { immediate: true, flush: 'sync' }
 );
 
 defineExpose({

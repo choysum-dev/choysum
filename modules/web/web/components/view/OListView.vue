@@ -33,7 +33,7 @@ SPDX-License-Identifier: Apache-2.0
               :save="handleInlineSave"
               :discard="handleInlineDiscard"
             >
-              <el-button v-if="createAction && canCreate" size="small" plain type="primary" @click="handleCreate">
+              <el-button v-if="resolvedCreateAction && canCreate" size="small" plain type="primary" @click="handleCreate">
                 <el-icon><Plus /></el-icon>
                 {{ _t('New') }}
               </el-button>
@@ -167,6 +167,7 @@ import { canShowAction, type ActionIdMap } from '@/web/web/components/view/actio
 import { createTranslate } from '@/web/web/i18n';
 import type { SelectionExpose, RowEventPayload } from '@/web/web/components/view/listViewTypes';
 import { resolvePageStore, useRegisterPageActionTarget } from '@/web/web/composables/usePageContext';
+import { useResolvedCreateAction } from '@/web/web/composables/resolveCreateRoute';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/OListView' });
 
@@ -241,6 +242,7 @@ const props = withDefaults(
 );
 
 const store = resolvePageStore(props.store, 'OListView');
+const resolvedCreateAction = useResolvedCreateAction(() => props.createAction);
 
 const emit = defineEmits<{
   (e: 'before-load', payload: { query: QueryCondition<T>; page: number; pageSize: number; confirm: () => void; cancel: () => void }): void;
@@ -256,7 +258,7 @@ const emit = defineEmits<{
   (e: 'paginate', payload: { page: number; pageSize: number }): void;
   (e: 'sort-change', payload: { orderBy: OrderBy<T> | Array<OrderBy<T>> | undefined }): void;
 
-  (e: 'action-error', payload: { action: 'load' | 'delete' | 'refresh' | 'search' | 'sort' | 'paginate'; error: Error }): void;
+  (e: 'action-error', payload: { action: 'load' | 'delete' | 'refresh' | 'search' | 'sort' | 'paginate' | 'create'; error: Error }): void;
 }>();
 const { emitCancelable } = useCancelableEmit(emit as any);
 
@@ -677,12 +679,12 @@ async function handleRefresh() {
 }
 
 async function handleCreate() {
-  if (!props.createAction) return;
+  if (!resolvedCreateAction.value) return;
   try {
-    await router.push(props.createAction);
+    await router.push(resolvedCreateAction.value);
   } catch (e) {
     const err = e instanceof Error ? e : new Error(String(e));
-    emit('action-error', { action: 'paginate', error: err });
+    emit('action-error', { action: 'create', error: err });
   }
 }
 

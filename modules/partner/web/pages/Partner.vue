@@ -6,10 +6,6 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <OPage :store="partnerStore">
     <PartnerFormView
-      :key="$route.fullPath"
-      createAction="/partner/partners/new"
-      :record-id="recordId"
-      :view-mode="viewMode"
       :initial-values="initialValues"
     />
   </OPage>
@@ -21,22 +17,10 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import OPage from '@/web/web/components/page/OPage.vue';
 import PartnerFormView from '../views/PartnerFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import type Partner from '@/partner/service/models/partner';
 import { useAuthStore } from '@/auth/web/stores/auth';
 
 defineOptions({ name: 'PartnerPage' });
-
-/**
- * Props consumed by the partner detail page.
- */
-withDefaults(
-  defineProps<{
-    viewMode?: ViewMode;
-    recordId?: string;
-  }>(),
-  {}
-);
 
 const route = useRoute();
 const authStore = useAuthStore();

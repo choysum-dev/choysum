@@ -27,9 +27,10 @@ vi.mock('vue-router', () => ({
   useRouter: () => ({
     push: vi.fn(),
     replace: vi.fn(),
+    resolve: vi.fn((loc: { name?: string }) => ({ name: loc?.name, matched: [] })),
     currentRoute: { value: { path: '/demo/widget/1', params: { recordId: '1' }, query: {}, meta: {} } },
   }),
-  useRoute: () => ({ path: '/demo/widget/1', params: { recordId: '1' }, query: {}, meta: {} }),
+  useRoute: () => ({ name: undefined, path: '/demo/widget/1', params: { recordId: '1' }, query: {}, meta: {} }),
 }));
 
 vi.mock('@/web/web/controllers/formController', () => ({

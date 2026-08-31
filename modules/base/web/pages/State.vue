@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OPage :store="stateStore">
-    <StateFormView :key="$route.fullPath" createAction="/base/states/new" :record-id="recordId" :view-mode="viewMode" />
+    <StateFormView />
   </OPage>
 </template>
 
@@ -15,18 +15,9 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import OPage from '@/web/web/components/page/OPage.vue';
 import StateFormView from '../views/StateFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import type State from '@/base/service/models/state';
 
 defineOptions({ name: 'StatePage' });
-
-withDefaults(
-  defineProps<{
-    viewMode?: ViewMode;
-    recordId?: string;
-  }>(),
-  {}
-);
 
 const route = useRoute();
 const stateStore = createStoreByModel<typeof State>('base.State', {

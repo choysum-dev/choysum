@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     action-export
     :action-import-upload-hint="_t('Upload a UTF-8 CSV with columns IpAddress, Status.')"
   >
-    <SessionListView createAction="/auth/sessions/new" selection-mode="multiple" />
+    <SessionListView selection-mode="multiple" />
   </OPage>
 </template>
 

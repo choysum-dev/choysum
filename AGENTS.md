@@ -1,6 +1,17 @@
 # AGENTS.md
 
-## Cursor Cloud specific instructions
+## Agent skills
+
+On-demand procedures and repository policies live under [`.agents/skills/`](.agents/skills/)
+([Agent Skills](https://agentskills.io/specification) open format). Notable skills:
+
+| Skill | Use when |
+| --- | --- |
+| [`git-commit`](.agents/skills/git-commit/SKILL.md) | Creating commits with conventional message format |
+| [`code-comment`](.agents/skills/code-comment/SKILL.md) | Reviewing or cleaning up source comments |
+| [`module-initdata`](.agents/skills/module-initdata/SKILL.md) | Adding or moving module bootstrap/demo init data |
+
+## Cloud and local agent setup
 
 Choysum is a single product: a Go binary (`choysum`) that embeds a QuickJS
 TypeScript runtime and serves the ERP platform (gRPC + gRPC-Web + Vue web UI)
