@@ -6,14 +6,14 @@ Use this playbook when the skill did not auto-trigger cleanly, the request was i
 
 Retry in this order:
 
-1. Use the slash command directly.
+1. Use the slash command when the host supports skill slash commands (for example Cursor or Copilot agent mode).
 
 ```text
 /code-comment pkg/auth
 /code-comment modules/auth/web/pages
 ```
 
-2. Name the skill explicitly in natural language.
+2. Name the skill explicitly in natural language (portable fallback on any host).
 
 ```text
 Use the code-comment skill on pkg/auth comments.
@@ -67,24 +67,30 @@ Examples:
 
 ## If the Request Mixed Multiple Intents
 
-Split the request into separate passes:
+Default to `hybrid`: one pass that reviews the scoped surface, applies concrete fixes, then validates.
 
-1. review pass
-2. cleanup pass
-3. optional follow-up validation request
+Use separate review and cleanup passes only when:
 
-Example:
+- the host cannot execute `hybrid` in one turn, or
+- the user explicitly asks for findings first and edits later.
+
+Example (hybrid — default):
 
 ```text
-/code-comment review modules/web/web/router
+Use the code-comment skill in hybrid mode on modules/web/web/router.
+/code-comment hybrid modules/web/web/router
+```
+
+Example (separate passes — when requested or host-limited):
+
+```text
+/code-comment review modules/web/web/router without editing
 /code-comment cleanup modules/web/web/router
-/code-comment review modules/auth/web/pages
-/code-comment cleanup modules/auth/web/pages
 ```
 
 ## If the Skill Still Feels Inconsistent
 
-- Prefer explicit slash invocation over free-form prose.
+- Prefer explicit natural-language skill naming; slash invocation (for example `/code-comment`) works only on hosts that expose skill slash commands.
 - Mention the language and surface: `Go public APIs`, `TypeScript JSDoc`, `Vue SFC comments`, `router comments`, `auth package comments`.
 - Ask for a narrow validation target when needed: `review pkg/auth and focus on exported Go docs only`.
 - If auto-trigger quality remains poor, update `SKILL.md` `description` with the exact wording users naturally keep trying.
