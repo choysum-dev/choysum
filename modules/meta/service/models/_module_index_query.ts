@@ -248,13 +248,9 @@ export function aggregateRows(rows: ModuleIndexRecord[]): ModuleIndexRecord[] {
     const registry = bucket.find(row => toText(row?.OriginType) === 'registry');
     const base = local || registry || bucket[0];
 
+    // Only local|registry remain after the filter; put local first.
     const originTypes = Array.from(new Set(bucket.map(row => toText(row?.OriginType)).filter(value => value === 'local' || value === 'registry'))).sort(
-      (a, b) => {
-        if (a === b) return 0;
-        if (a === 'local') return -1;
-        if (b === 'local') return 1;
-        return a.localeCompare(b);
-      }
+      (a, b) => Number(b === 'local') - Number(a === 'local')
     );
 
     const localVersion = String(local?.Version || '').trim();
@@ -263,13 +259,14 @@ export function aggregateRows(rows: ModuleIndexRecord[]): ModuleIndexRecord[] {
       String(local?.InstalledStatus || '').trim() || String(registry?.InstalledStatus || '').trim() || String(base?.InstalledStatus || '').trim();
     const installedVersion =
       String(local?.InstalledVersion || '').trim() || String(registry?.InstalledVersion || '').trim() || String(base?.InstalledVersion || '').trim();
+    const rawOriginType = String(base.OriginType ?? '').trim();
 
     merged.push({
       ...base,
       Id: String(base?.Id || '').trim() || String(local?.Id || '').trim() || String(registry?.Id || '').trim(),
       ModuleName: moduleName,
-      OriginType: String(base?.OriginType || '').trim() || (originTypes[0] as string) || 'local',
-      OriginTypes: originTypes.length ? originTypes.join(', ') : String(base?.OriginType || '').trim(),
+      OriginType: rawOriginType || 'local',
+      OriginTypes: originTypes.length > 0 ? originTypes.join(', ') : rawOriginType,
       OriginRef: String(local?.OriginRef || '').trim() || String(registry?.OriginRef || '').trim() || String(base?.OriginRef || '').trim(),
       Available: bucket.some(row => row?.Available !== false),
       Version: registryVersion || localVersion || String(base?.Version || '').trim(),

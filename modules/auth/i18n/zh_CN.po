@@ -571,7 +571,7 @@ msgctxt "auth.model.UserRole.fields"
 msgid "User"
 msgstr "用户"
 
-#: service/models/_user_field_rule_eval.ts:111
+#: service/models/_user_field_rule_eval.ts:126
 msgctxt "service/models/_user_field_rule_eval"
 msgid "Model does not exist"
 msgstr "模型不存在"
@@ -816,12 +816,12 @@ msgctxt "web/components/layout/OSwitchCompany"
 msgid "Available Companies"
 msgstr "可用公司"
 
-#: web/components/layout/OSwitchCompany.vue:278
+#: web/components/layout/OSwitchCompany.vue:282
 msgctxt "web/components/layout/OSwitchCompany"
 msgid "Available companies must include the current company"
 msgstr "可选公司必须包含当前公司"
 
-#: web/components/layout/OSwitchCompany.vue:243 web/components/layout/OSwitchCompany.vue:248
+#: web/components/layout/OSwitchCompany.vue:247 web/components/layout/OSwitchCompany.vue:252
 msgctxt "web/components/layout/OSwitchCompany"
 msgid "Company"
 msgstr "公司"
@@ -831,17 +831,17 @@ msgctxt "web/components/layout/OSwitchCompany"
 msgid "Current Company"
 msgstr "当前公司"
 
-#: web/components/layout/OSwitchCompany.vue:283
+#: web/components/layout/OSwitchCompany.vue:287
 msgctxt "web/components/layout/OSwitchCompany"
 msgid "No changes to apply"
 msgstr "没有可应用的更改"
 
-#: web/components/layout/OSwitchCompany.vue:281
+#: web/components/layout/OSwitchCompany.vue:285
 msgctxt "web/components/layout/OSwitchCompany"
 msgid "Only one company is available; nothing to apply"
 msgstr "仅有一家可选公司，无需应用"
 
-#: web/components/layout/OSwitchCompany.vue:276
+#: web/components/layout/OSwitchCompany.vue:280
 msgctxt "web/components/layout/OSwitchCompany"
 msgid "Select a current company"
 msgstr "请选择当前公司"
@@ -1186,52 +1186,142 @@ msgctxt "web/pages/Register"
 msgid "and"
 msgstr "和"
 
-#: web/route/routes.ts:250
+#: web/pages/RoleFieldRuleList.vue:11
+msgctxt "web/pages/RoleFieldRuleList"
+msgid "Field Rule List"
+msgstr "字段规则列表"
+
+#: web/pages/RoleFieldRuleList.vue:2
+msgctxt "web/pages/RoleFieldRuleList"
+msgid "Upload a UTF-8 CSV with columns LogicalModelName, PermRead, PermWrite."
+msgstr "上传 UTF-8 CSV，列包括 LogicalModelName、PermRead、PermWrite。"
+
+#: web/pages/RoleList.vue:11
+msgctxt "web/pages/RoleList"
+msgid "Role List"
+msgstr "角色列表"
+
+#: web/pages/RoleList.vue:2
+msgctxt "web/pages/RoleList"
+msgid "Upload a UTF-8 CSV with columns Name, Code, Description, IsActive, IsSystem."
+msgstr "上传 UTF-8 CSV，列包括 Name、Code、Description、IsActive、IsSystem。"
+
+#: web/pages/RoleMethodAccessList.vue:11
+msgctxt "web/pages/RoleMethodAccessList"
+msgid "Method Access List"
+msgstr "方法访问列表"
+
+#: web/pages/RoleMethodAccessList.vue:2
+msgctxt "web/pages/RoleMethodAccessList"
+msgid "Upload a UTF-8 CSV with columns LogicalModelName, Mode, Source."
+msgstr "上传 UTF-8 CSV，列包括 LogicalModelName、Mode、Source。"
+
+#: web/pages/RoleRecordRuleList.vue:11
+msgctxt "web/pages/RoleRecordRuleList"
+msgid "Record Rule List"
+msgstr "记录规则列表"
+
+#: web/pages/RoleRecordRuleList.vue:2
+msgctxt "web/pages/RoleRecordRuleList"
+msgid "Upload a UTF-8 CSV with columns Kind, PermRead, PermWrite, PermCreate, PermDelete."
+msgstr "上传 UTF-8 CSV，列包括 Kind、PermRead、PermWrite、PermCreate、PermDelete。"
+
+#: web/pages/RoleUiResourceList.vue:11
+msgctxt "web/pages/RoleUiResourceList"
+msgid "UI Resource Grant List"
+msgstr "UI 资源授权列表"
+
+#: web/pages/RoleUiResourceList.vue:2
+msgctxt "web/pages/RoleUiResourceList"
+msgid "Upload a UTF-8 CSV with columns Mode."
+msgstr "上传 UTF-8 CSV，列包括 Mode。"
+
+#: web/pages/SessionList.vue:11
+msgctxt "web/pages/SessionList"
+msgid "Session List"
+msgstr "会话列表"
+
+#: web/pages/SessionList.vue:2
+msgctxt "web/pages/SessionList"
+msgid "Upload a UTF-8 CSV with columns IpAddress, Status."
+msgstr "上传 UTF-8 CSV，列包括 IpAddress、Status。"
+
+#: web/pages/TokenKanban.vue:10
+msgctxt "web/pages/TokenKanban"
+msgid "Token Kanban"
+msgstr "令牌看板"
+
+#: web/pages/TokenKanban.vue:2
+msgctxt "web/pages/TokenKanban"
+msgid "Upload a UTF-8 CSV with columns TokenType, Revoked."
+msgstr "上传 UTF-8 CSV，列包括 TokenType、Revoked。"
+
+#: web/pages/TokenList.vue:11
+msgctxt "web/pages/TokenList"
+msgid "Token List"
+msgstr "令牌列表"
+
+#: web/pages/TokenList.vue:2
+msgctxt "web/pages/TokenList"
+msgid "Upload a UTF-8 CSV with columns TokenType, Revoked."
+msgstr "上传 UTF-8 CSV，列包括 TokenType、Revoked。"
+
+#: web/pages/UserList.vue:2
+msgctxt "web/pages/UserList"
+msgid "Upload a UTF-8 CSV with columns Username, Email, Phone, FullName."
+msgstr "上传 UTF-8 CSV，列包括 Username、Email、Phone、FullName。"
+
+#: web/pages/UserList.vue:11
+msgctxt "web/pages/UserList"
+msgid "User List"
+msgstr "用户列表"
+
+#: web/route/routes.ts:239
 msgctxt "web/route/routes"
 msgid "Create Field Rule"
 msgstr "创建字段规则"
 
-#: web/route/routes.ts:295
+#: web/route/routes.ts:282
 msgctxt "web/route/routes"
 msgid "Create Method Access"
 msgstr "创建方法访问"
 
-#: web/route/routes.ts:205
+#: web/route/routes.ts:196
 msgctxt "web/route/routes"
 msgid "Create Record Rule"
 msgstr "创建记录规则"
 
-#: web/route/routes.ts:95
+#: web/route/routes.ts:92
 msgctxt "web/route/routes"
 msgid "Create Role"
 msgstr "新建角色"
 
-#: web/route/routes.ts:124
+#: web/route/routes.ts:119
 msgctxt "web/route/routes"
 msgid "Create Session"
 msgstr "新建会话"
 
-#: web/route/routes.ts:155
+#: web/route/routes.ts:148
 msgctxt "web/route/routes"
 msgid "Create Token"
 msgstr "新建令牌"
 
-#: web/route/routes.ts:340
+#: web/route/routes.ts:325
 msgctxt "web/route/routes"
 msgid "Create UI Resource Grant"
 msgstr "创建 UI 资源授权"
 
-#: web/route/routes.ts:64
+#: web/route/routes.ts:63
 msgctxt "web/route/routes"
 msgid "Create User"
 msgstr "新建用户"
 
-#: web/route/routes.ts:235
+#: web/route/routes.ts:225
 msgctxt "web/route/routes"
 msgid "Field Rule Details"
 msgstr "字段规则详情"
 
-#: web/route/routes.ts:221
+#: web/route/routes.ts:211
 msgctxt "web/route/routes"
 msgid "Field Rule List"
 msgstr "字段规则列表"
@@ -1246,72 +1336,72 @@ msgctxt "web/route/routes"
 msgid "Logout"
 msgstr "退出登录"
 
-#: web/route/routes.ts:280
+#: web/route/routes.ts:268
 msgctxt "web/route/routes"
 msgid "Method Access Details"
 msgstr "方法访问详情"
 
-#: web/route/routes.ts:266
+#: web/route/routes.ts:254
 msgctxt "web/route/routes"
 msgid "Method Access List"
 msgstr "方法访问列表"
 
-#: web/route/routes.ts:190
+#: web/route/routes.ts:182
 msgctxt "web/route/routes"
 msgid "Record Rule Details"
 msgstr "记录规则详情"
 
-#: web/route/routes.ts:176
+#: web/route/routes.ts:168
 msgctxt "web/route/routes"
 msgid "Record Rule List"
 msgstr "记录规则列表"
 
-#: web/route/routes.ts:359
+#: web/route/routes.ts:343
 msgctxt "web/route/routes"
 msgid "Register"
 msgstr "注册"
 
-#: web/route/routes.ts:85
+#: web/route/routes.ts:83
 msgctxt "web/route/routes"
 msgid "Role Details"
 msgstr "角色详情"
 
-#: web/route/routes.ts:76
+#: web/route/routes.ts:74
 msgctxt "web/route/routes"
 msgid "Role Management"
 msgstr "角色管理"
 
-#: web/route/routes.ts:114
+#: web/route/routes.ts:110
 msgctxt "web/route/routes"
 msgid "Session Details"
 msgstr "会话详情"
 
-#: web/route/routes.ts:105
+#: web/route/routes.ts:101
 msgctxt "web/route/routes"
 msgid "Session Management"
 msgstr "会话管理"
 
-#: web/route/routes.ts:165
+#: web/route/routes.ts:157
 msgctxt "web/route/routes"
 msgid "Token Board"
 msgstr "令牌看板"
 
-#: web/route/routes.ts:145
+#: web/route/routes.ts:139
 msgctxt "web/route/routes"
 msgid "Token Details"
 msgstr "令牌详情"
 
-#: web/route/routes.ts:136
+#: web/route/routes.ts:130
 msgctxt "web/route/routes"
 msgid "Token Management"
 msgstr "令牌管理"
 
-#: web/route/routes.ts:325
+#: web/route/routes.ts:311
 msgctxt "web/route/routes"
 msgid "UI Resource Grant Details"
 msgstr "UI 资源授权详情"
 
-#: web/route/routes.ts:311
+#: web/route/routes.ts:297
 msgctxt "web/route/routes"
 msgid "UI Resource Grant List"
 msgstr "UI 资源授权列表"
@@ -1401,12 +1491,12 @@ msgctxt "web/stores/auth/actions"
 msgid "SwitchCompanyScope returned an invalid response"
 msgstr "切换公司范围返回了无效响应"
 
-#: web/views/RoleFieldRuleFormView.vue:40
+#: web/views/RoleFieldRuleFormView.vue:42
 msgctxt "web/views/RoleFieldRuleFormView"
 msgid "Copy Field Rule"
 msgstr "复制字段规则"
 
-#: web/views/RoleFieldRuleFormView.vue:40
+#: web/views/RoleFieldRuleFormView.vue:42
 msgctxt "web/views/RoleFieldRuleFormView"
 msgid "Create Field Rule"
 msgstr "创建字段规则"
@@ -1416,17 +1506,17 @@ msgctxt "web/views/RoleFieldRuleFormView"
 msgid "Cross-role field rule editor"
 msgstr "跨角色字段规则编辑"
 
-#: web/views/RoleFieldRuleFormView.vue:40
+#: web/views/RoleFieldRuleFormView.vue:42
 msgctxt "web/views/RoleFieldRuleFormView"
 msgid "Delete Field Rule"
 msgstr "删除字段规则"
 
-#: web/views/RoleFieldRuleFormView.vue:40
+#: web/views/RoleFieldRuleFormView.vue:42
 msgctxt "web/views/RoleFieldRuleFormView"
 msgid "Edit Field Rule"
 msgstr "编辑字段规则"
 
-#: web/views/RoleFieldRuleFormView.vue:40 web/views/RoleFieldRuleFormView.vue:9
+#: web/views/RoleFieldRuleFormView.vue:42 web/views/RoleFieldRuleFormView.vue:9
 msgctxt "web/views/RoleFieldRuleFormView"
 msgid "Field Rule"
 msgstr "字段规则"
@@ -1446,27 +1536,27 @@ msgctxt "web/views/RoleFieldRuleFormView"
 msgid "System Information"
 msgstr "系统信息"
 
-#: web/views/RoleFieldRuleListView.vue:34
+#: web/views/RoleFieldRuleListView.vue:36
 msgctxt "web/views/RoleFieldRuleListView"
 msgid "Copy Field Rule"
 msgstr "复制字段规则"
 
-#: web/views/RoleFieldRuleListView.vue:34
+#: web/views/RoleFieldRuleListView.vue:36
 msgctxt "web/views/RoleFieldRuleListView"
 msgid "Create Field Rule"
 msgstr "创建字段规则"
 
-#: web/views/RoleFieldRuleListView.vue:34
+#: web/views/RoleFieldRuleListView.vue:36
 msgctxt "web/views/RoleFieldRuleListView"
 msgid "Delete Field Rule"
 msgstr "删除字段规则"
 
-#: web/views/RoleFieldRuleListView.vue:34
+#: web/views/RoleFieldRuleListView.vue:36
 msgctxt "web/views/RoleFieldRuleListView"
 msgid "Edit Field Rule"
 msgstr "编辑字段规则"
 
-#: web/views/RoleFieldRuleListView.vue:34
+#: web/views/RoleFieldRuleListView.vue:36
 msgctxt "web/views/RoleFieldRuleListView"
 msgid "Field Rule"
 msgstr "字段规则"
@@ -1496,22 +1586,22 @@ msgctxt "web/views/RoleFormView"
 msgid "Configure record/field/RPC grants under deny-default. The UI resource tree does not derive Record or Field rules; Advanced is the main place for data and method access."
 msgstr "在 deny-default 下配置记录/字段/RPC 授权。UI 资源树不会派生 Record/Field 规则；高级模式是数据权与方法权的主配置面。"
 
-#: web/views/RoleFormView.vue:52
+#: web/views/RoleFormView.vue:54
 msgctxt "web/views/RoleFormView"
 msgid "Copy Role"
 msgstr "复制角色"
 
-#: web/views/RoleFormView.vue:52
+#: web/views/RoleFormView.vue:54
 msgctxt "web/views/RoleFormView"
 msgid "Create Role"
 msgstr "新建角色"
 
-#: web/views/RoleFormView.vue:52
+#: web/views/RoleFormView.vue:54
 msgctxt "web/views/RoleFormView"
 msgid "Delete Role"
 msgstr "删除角色"
 
-#: web/views/RoleFormView.vue:52
+#: web/views/RoleFormView.vue:54
 msgctxt "web/views/RoleFormView"
 msgid "Edit Role"
 msgstr "编辑角色"
@@ -1566,7 +1656,7 @@ msgctxt "web/views/RoleFormView"
 msgid "Related Data"
 msgstr "关联数据"
 
-#: web/views/RoleFormView.vue:35
+#: web/views/RoleFormView.vue:36
 msgctxt "web/views/RoleFormView"
 msgid "Required"
 msgstr "必填"
@@ -1576,7 +1666,7 @@ msgctxt "web/views/RoleFormView"
 msgid "Requires → derived Method RPCs"
 msgstr "Requires → 派生 Method RPC"
 
-#: web/views/RoleFormView.vue:52
+#: web/views/RoleFormView.vue:54
 msgctxt "web/views/RoleFormView"
 msgid "Role"
 msgstr "角色"
@@ -1631,37 +1721,37 @@ msgctxt "web/views/RoleFormView"
 msgid "Without a matching grant, records are invisible or not writable (deny-default)."
 msgstr "没有 matching grant 时，记录不可见或不可写（deny-default）。"
 
-#: web/views/RoleListView.vue:33
+#: web/views/RoleListView.vue:35
 msgctxt "web/views/RoleListView"
 msgid "Copy Role"
 msgstr "复制角色"
 
-#: web/views/RoleListView.vue:33
+#: web/views/RoleListView.vue:35
 msgctxt "web/views/RoleListView"
 msgid "Create Role"
 msgstr "新建角色"
 
-#: web/views/RoleListView.vue:33
+#: web/views/RoleListView.vue:35
 msgctxt "web/views/RoleListView"
 msgid "Delete Role"
 msgstr "删除角色"
 
-#: web/views/RoleListView.vue:33
+#: web/views/RoleListView.vue:35
 msgctxt "web/views/RoleListView"
 msgid "Edit Role"
 msgstr "编辑角色"
 
-#: web/views/RoleListView.vue:33
+#: web/views/RoleListView.vue:35
 msgctxt "web/views/RoleListView"
 msgid "Role"
 msgstr "角色"
 
-#: web/views/RoleMethodAccessFormView.vue:41
+#: web/views/RoleMethodAccessFormView.vue:43
 msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Copy Method Access"
 msgstr "复制方法访问"
 
-#: web/views/RoleMethodAccessFormView.vue:41
+#: web/views/RoleMethodAccessFormView.vue:43
 msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Create Method Access"
 msgstr "创建方法访问"
@@ -1671,17 +1761,17 @@ msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Cross-role method access editor"
 msgstr "跨角色方法访问编辑"
 
-#: web/views/RoleMethodAccessFormView.vue:41
+#: web/views/RoleMethodAccessFormView.vue:43
 msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Delete Method Access"
 msgstr "删除方法访问"
 
-#: web/views/RoleMethodAccessFormView.vue:41
+#: web/views/RoleMethodAccessFormView.vue:43
 msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Edit Method Access"
 msgstr "编辑方法访问"
 
-#: web/views/RoleMethodAccessFormView.vue:41 web/views/RoleMethodAccessFormView.vue:9
+#: web/views/RoleMethodAccessFormView.vue:43 web/views/RoleMethodAccessFormView.vue:9
 msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Method Access"
 msgstr "方法访问"
@@ -1701,27 +1791,27 @@ msgctxt "web/views/RoleMethodAccessFormView"
 msgid "System Information"
 msgstr "系统信息"
 
-#: web/views/RoleMethodAccessListView.vue:34
+#: web/views/RoleMethodAccessListView.vue:36
 msgctxt "web/views/RoleMethodAccessListView"
 msgid "Copy Method Access"
 msgstr "复制方法访问"
 
-#: web/views/RoleMethodAccessListView.vue:34
+#: web/views/RoleMethodAccessListView.vue:36
 msgctxt "web/views/RoleMethodAccessListView"
 msgid "Create Method Access"
 msgstr "创建方法访问"
 
-#: web/views/RoleMethodAccessListView.vue:34
+#: web/views/RoleMethodAccessListView.vue:36
 msgctxt "web/views/RoleMethodAccessListView"
 msgid "Delete Method Access"
 msgstr "删除方法访问"
 
-#: web/views/RoleMethodAccessListView.vue:34
+#: web/views/RoleMethodAccessListView.vue:36
 msgctxt "web/views/RoleMethodAccessListView"
 msgid "Edit Method Access"
 msgstr "编辑方法访问"
 
-#: web/views/RoleMethodAccessListView.vue:34
+#: web/views/RoleMethodAccessListView.vue:36
 msgctxt "web/views/RoleMethodAccessListView"
 msgid "Method Access"
 msgstr "方法访问"
@@ -1746,27 +1836,27 @@ msgctxt "web/views/RoleRecordRuleAudienceHints"
 msgid "Wide-open grant for all users"
 msgstr "面向全体用户的宽开授权"
 
-#: web/views/RoleRecordRuleFormView.vue:43
+#: web/views/RoleRecordRuleFormView.vue:45
 msgctxt "web/views/RoleRecordRuleFormView"
 msgid "Copy Record Rule"
 msgstr "复制记录规则"
 
-#: web/views/RoleRecordRuleFormView.vue:43
+#: web/views/RoleRecordRuleFormView.vue:45
 msgctxt "web/views/RoleRecordRuleFormView"
 msgid "Create Record Rule"
 msgstr "创建记录规则"
 
-#: web/views/RoleRecordRuleFormView.vue:43
+#: web/views/RoleRecordRuleFormView.vue:45
 msgctxt "web/views/RoleRecordRuleFormView"
 msgid "Delete Record Rule"
 msgstr "删除记录规则"
 
-#: web/views/RoleRecordRuleFormView.vue:43
+#: web/views/RoleRecordRuleFormView.vue:45
 msgctxt "web/views/RoleRecordRuleFormView"
 msgid "Edit Record Rule"
 msgstr "编辑记录规则"
 
-#: web/views/RoleRecordRuleFormView.vue:43 web/views/RoleRecordRuleFormView.vue:9
+#: web/views/RoleRecordRuleFormView.vue:45 web/views/RoleRecordRuleFormView.vue:9
 msgctxt "web/views/RoleRecordRuleFormView"
 msgid "Record Rule"
 msgstr "记录规则"
@@ -1781,37 +1871,37 @@ msgctxt "web/views/RoleRecordRuleFormView"
 msgid "System Information"
 msgstr "系统信息"
 
-#: web/views/RoleRecordRuleListView.vue:35
+#: web/views/RoleRecordRuleListView.vue:37
 msgctxt "web/views/RoleRecordRuleListView"
 msgid "Copy Record Rule"
 msgstr "复制记录规则"
 
-#: web/views/RoleRecordRuleListView.vue:35
+#: web/views/RoleRecordRuleListView.vue:37
 msgctxt "web/views/RoleRecordRuleListView"
 msgid "Create Record Rule"
 msgstr "创建记录规则"
 
-#: web/views/RoleRecordRuleListView.vue:35
+#: web/views/RoleRecordRuleListView.vue:37
 msgctxt "web/views/RoleRecordRuleListView"
 msgid "Delete Record Rule"
 msgstr "删除记录规则"
 
-#: web/views/RoleRecordRuleListView.vue:35
+#: web/views/RoleRecordRuleListView.vue:37
 msgctxt "web/views/RoleRecordRuleListView"
 msgid "Edit Record Rule"
 msgstr "编辑记录规则"
 
-#: web/views/RoleRecordRuleListView.vue:35
+#: web/views/RoleRecordRuleListView.vue:37
 msgctxt "web/views/RoleRecordRuleListView"
 msgid "Record Rule"
 msgstr "记录规则"
 
-#: web/views/RoleUiResourceFormView.vue:40
+#: web/views/RoleUiResourceFormView.vue:42
 msgctxt "web/views/RoleUiResourceFormView"
 msgid "Copy UI Resource Grant"
 msgstr "复制 UI 资源授权"
 
-#: web/views/RoleUiResourceFormView.vue:40
+#: web/views/RoleUiResourceFormView.vue:42
 msgctxt "web/views/RoleUiResourceFormView"
 msgid "Create UI Resource Grant"
 msgstr "创建 UI 资源授权"
@@ -1821,12 +1911,12 @@ msgctxt "web/views/RoleUiResourceFormView"
 msgid "Cross-role UI resource grant editor"
 msgstr "跨角色 UI 资源授权编辑"
 
-#: web/views/RoleUiResourceFormView.vue:40
+#: web/views/RoleUiResourceFormView.vue:42
 msgctxt "web/views/RoleUiResourceFormView"
 msgid "Delete UI Resource Grant"
 msgstr "删除 UI 资源授权"
 
-#: web/views/RoleUiResourceFormView.vue:40
+#: web/views/RoleUiResourceFormView.vue:42
 msgctxt "web/views/RoleUiResourceFormView"
 msgid "Edit UI Resource Grant"
 msgstr "编辑 UI 资源授权"
@@ -1846,52 +1936,52 @@ msgctxt "web/views/RoleUiResourceFormView"
 msgid "System Information"
 msgstr "系统信息"
 
-#: web/views/RoleUiResourceFormView.vue:40 web/views/RoleUiResourceFormView.vue:9
+#: web/views/RoleUiResourceFormView.vue:42 web/views/RoleUiResourceFormView.vue:9
 msgctxt "web/views/RoleUiResourceFormView"
 msgid "UI Resource Grant"
 msgstr "UI 资源授权"
 
-#: web/views/RoleUiResourceListView.vue:34
+#: web/views/RoleUiResourceListView.vue:36
 msgctxt "web/views/RoleUiResourceListView"
 msgid "Copy UI Resource Grant"
 msgstr "复制 UI 资源授权"
 
-#: web/views/RoleUiResourceListView.vue:34
+#: web/views/RoleUiResourceListView.vue:36
 msgctxt "web/views/RoleUiResourceListView"
 msgid "Create UI Resource Grant"
 msgstr "创建 UI 资源授权"
 
-#: web/views/RoleUiResourceListView.vue:34
+#: web/views/RoleUiResourceListView.vue:36
 msgctxt "web/views/RoleUiResourceListView"
 msgid "Delete UI Resource Grant"
 msgstr "删除 UI 资源授权"
 
-#: web/views/RoleUiResourceListView.vue:34
+#: web/views/RoleUiResourceListView.vue:36
 msgctxt "web/views/RoleUiResourceListView"
 msgid "Edit UI Resource Grant"
 msgstr "编辑 UI 资源授权"
 
-#: web/views/RoleUiResourceListView.vue:34
+#: web/views/RoleUiResourceListView.vue:36
 msgctxt "web/views/RoleUiResourceListView"
 msgid "UI Resource Grant"
 msgstr "UI 资源授权"
 
-#: web/views/SessionFormView.vue:39
+#: web/views/SessionFormView.vue:41
 msgctxt "web/views/SessionFormView"
 msgid "Copy Session"
 msgstr "复制会话"
 
-#: web/views/SessionFormView.vue:39
+#: web/views/SessionFormView.vue:41
 msgctxt "web/views/SessionFormView"
 msgid "Create Session"
 msgstr "新建会话"
 
-#: web/views/SessionFormView.vue:39
+#: web/views/SessionFormView.vue:41
 msgctxt "web/views/SessionFormView"
 msgid "Delete Session"
 msgstr "删除会话"
 
-#: web/views/SessionFormView.vue:39
+#: web/views/SessionFormView.vue:41
 msgctxt "web/views/SessionFormView"
 msgid "Edit Session"
 msgstr "编辑会话"
@@ -1901,7 +1991,7 @@ msgctxt "web/views/SessionFormView"
 msgid "Select User"
 msgstr "选择用户"
 
-#: web/views/SessionFormView.vue:39
+#: web/views/SessionFormView.vue:41
 msgctxt "web/views/SessionFormView"
 msgid "Session"
 msgstr "会话"
@@ -1916,47 +2006,47 @@ msgctxt "web/views/SessionFormView"
 msgid "System Information"
 msgstr "系统信息"
 
-#: web/views/SessionListView.vue:32
+#: web/views/SessionListView.vue:34
 msgctxt "web/views/SessionListView"
 msgid "Copy Session"
 msgstr "复制会话"
 
-#: web/views/SessionListView.vue:32
+#: web/views/SessionListView.vue:34
 msgctxt "web/views/SessionListView"
 msgid "Create Session"
 msgstr "新建会话"
 
-#: web/views/SessionListView.vue:32
+#: web/views/SessionListView.vue:34
 msgctxt "web/views/SessionListView"
 msgid "Delete Session"
 msgstr "删除会话"
 
-#: web/views/SessionListView.vue:32
+#: web/views/SessionListView.vue:34
 msgctxt "web/views/SessionListView"
 msgid "Edit Session"
 msgstr "编辑会话"
 
-#: web/views/SessionListView.vue:32
+#: web/views/SessionListView.vue:34
 msgctxt "web/views/SessionListView"
 msgid "Session"
 msgstr "会话"
 
-#: web/views/TokenFormView.vue:42
+#: web/views/TokenFormView.vue:44
 msgctxt "web/views/TokenFormView"
 msgid "Copy Token"
 msgstr "复制令牌"
 
-#: web/views/TokenFormView.vue:42
+#: web/views/TokenFormView.vue:44
 msgctxt "web/views/TokenFormView"
 msgid "Create Token"
 msgstr "新建令牌"
 
-#: web/views/TokenFormView.vue:42
+#: web/views/TokenFormView.vue:44
 msgctxt "web/views/TokenFormView"
 msgid "Delete Token"
 msgstr "删除令牌"
 
-#: web/views/TokenFormView.vue:42
+#: web/views/TokenFormView.vue:44
 msgctxt "web/views/TokenFormView"
 msgid "Edit Token"
 msgstr "编辑令牌"
@@ -1971,7 +2061,7 @@ msgctxt "web/views/TokenFormView"
 msgid "System Information"
 msgstr "系统信息"
 
-#: web/views/TokenFormView.vue:42
+#: web/views/TokenFormView.vue:44
 msgctxt "web/views/TokenFormView"
 msgid "Token"
 msgstr "令牌"
@@ -2006,12 +2096,12 @@ msgctxt "web/views/TokenKanbanView"
 msgid "No tokens in this lane"
 msgstr "此列暂无令牌"
 
-#: web/views/TokenKanbanView.vue:65 web/views/TokenKanbanView.vue:68
+#: web/views/TokenKanbanView.vue:67 web/views/TokenKanbanView.vue:70
 msgctxt "web/views/TokenKanbanView"
 msgid "Not Revoked"
 msgstr "未撤销"
 
-#: web/views/TokenKanbanView.vue:64 web/views/TokenKanbanView.vue:67
+#: web/views/TokenKanbanView.vue:66 web/views/TokenKanbanView.vue:69
 msgctxt "web/views/TokenKanbanView"
 msgid "Revoked"
 msgstr "已撤销"
@@ -2021,22 +2111,22 @@ msgctxt "web/views/TokenKanbanView"
 msgid "Revoked At"
 msgstr "撤销时间"
 
-#: web/views/TokenListView.vue:35
+#: web/views/TokenListView.vue:37
 msgctxt "web/views/TokenListView"
 msgid "Copy Token"
 msgstr "复制令牌"
 
-#: web/views/TokenListView.vue:35
+#: web/views/TokenListView.vue:37
 msgctxt "web/views/TokenListView"
 msgid "Create Token"
 msgstr "新建令牌"
 
-#: web/views/TokenListView.vue:35
+#: web/views/TokenListView.vue:37
 msgctxt "web/views/TokenListView"
 msgid "Delete Token"
 msgstr "删除令牌"
 
-#: web/views/TokenListView.vue:35
+#: web/views/TokenListView.vue:37
 msgctxt "web/views/TokenListView"
 msgid "Edit Token"
 msgstr "编辑令牌"
@@ -2056,7 +2146,7 @@ msgctxt "web/views/TokenListView"
 msgid "List View"
 msgstr "列表视图"
 
-#: web/views/TokenListView.vue:35
+#: web/views/TokenListView.vue:37
 msgctxt "web/views/TokenListView"
 msgid "Token"
 msgstr "令牌"
@@ -2071,27 +2161,27 @@ msgctxt "web/views/UserFormView"
 msgid "Account Information"
 msgstr "账户信息"
 
-#: web/views/UserFormView.vue:52
+#: web/views/UserFormView.vue:54
 msgctxt "web/views/UserFormView"
 msgid "Copy User"
 msgstr "复制用户"
 
-#: web/views/UserFormView.vue:52
+#: web/views/UserFormView.vue:54
 msgctxt "web/views/UserFormView"
 msgid "Create User"
 msgstr "新建用户"
 
-#: web/views/UserFormView.vue:52
+#: web/views/UserFormView.vue:54
 msgctxt "web/views/UserFormView"
 msgid "Delete User"
 msgstr "删除用户"
 
-#: web/views/UserFormView.vue:52
+#: web/views/UserFormView.vue:54
 msgctxt "web/views/UserFormView"
 msgid "Edit User"
 msgstr "编辑用户"
 
-#: web/views/UserFormView.vue:35
+#: web/views/UserFormView.vue:36
 msgctxt "web/views/UserFormView"
 msgid "Required"
 msgstr "必填"
@@ -2126,32 +2216,32 @@ msgctxt "web/views/UserFormView"
 msgid "Tokens"
 msgstr "令牌"
 
-#: web/views/UserFormView.vue:52
+#: web/views/UserFormView.vue:54
 msgctxt "web/views/UserFormView"
 msgid "User"
 msgstr "用户"
 
-#: web/views/UserListView.vue:32
+#: web/views/UserListView.vue:34
 msgctxt "web/views/UserListView"
 msgid "Copy User"
 msgstr "复制用户"
 
-#: web/views/UserListView.vue:32
+#: web/views/UserListView.vue:34
 msgctxt "web/views/UserListView"
 msgid "Create User"
 msgstr "新建用户"
 
-#: web/views/UserListView.vue:32
+#: web/views/UserListView.vue:34
 msgctxt "web/views/UserListView"
 msgid "Delete User"
 msgstr "删除用户"
 
-#: web/views/UserListView.vue:32
+#: web/views/UserListView.vue:34
 msgctxt "web/views/UserListView"
 msgid "Edit User"
 msgstr "编辑用户"
 
-#: web/views/UserListView.vue:32
+#: web/views/UserListView.vue:34
 msgctxt "web/views/UserListView"
 msgid "User"
 msgstr "用户"

@@ -1065,12 +1065,12 @@ msgctxt "web/components/layout/OSidebar"
 msgid "Main navigation"
 msgstr ""
 
-#: web/components/page/OPage.vue:37
+#: web/components/page/OPage.vue:50
 msgctxt "web/components/page/OPage"
 msgid "Page loading"
 msgstr ""
 
-#: web/components/page/OPageIoMenu.vue:14
+#: web/components/page/OPageIoMenu.vue:48
 msgctxt "web/components/page/OPageIoMenu"
 msgid "Import and export"
 msgstr ""
@@ -1080,7 +1080,7 @@ msgctxt "web/components/view/OChartView"
 msgid "Ascending"
 msgstr ""
 
-#: web/components/view/OChartView.vue:601
+#: web/components/view/OChartView.vue:603
 msgctxt "web/components/view/OChartView"
 msgid "Chart refresh failed"
 msgstr ""
@@ -1135,19 +1135,19 @@ msgctxt "web/components/view/OChartView"
 msgid "Stack"
 msgstr ""
 
-#: web/components/view/OFormView.vue:541
+#: web/components/view/OFormView.vue:569
 msgctxt "web/components/view/OFormView"
 msgid "Are you sure you want to delete the current record? This action cannot be undone."
 msgstr ""
 
 #: web/components/view/OFormView.vue:37
 #: web/components/view/OFormView.vue:51
-#: web/components/view/OFormView.vue:543
+#: web/components/view/OFormView.vue:571
 msgctxt "web/components/view/OFormView"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/view/OFormView.vue:541
+#: web/components/view/OFormView.vue:569
 msgctxt "web/components/view/OFormView"
 msgid "Confirm delete"
 msgstr ""
@@ -1157,24 +1157,24 @@ msgctxt "web/components/view/OFormView"
 msgid "Copy"
 msgstr ""
 
-#: web/components/view/OFormView.vue:409
-#: web/components/view/OFormView.vue:458
+#: web/components/view/OFormView.vue:436
+#: web/components/view/OFormView.vue:485
 msgctxt "web/components/view/OFormView"
 msgid "Created successfully"
 msgstr ""
 
 #: web/components/view/OFormView.vue:27
-#: web/components/view/OFormView.vue:542
+#: web/components/view/OFormView.vue:570
 msgctxt "web/components/view/OFormView"
 msgid "Delete"
 msgstr ""
 
-#: web/components/view/OFormView.vue:587
+#: web/components/view/OFormView.vue:615
 msgctxt "web/components/view/OFormView"
 msgid "Delete failed"
 msgstr ""
 
-#: web/components/view/OFormView.vue:38
+#: web/components/view/OFormView.vue:40
 msgctxt "web/components/view/OFormView"
 msgid "Details"
 msgstr ""
@@ -1189,18 +1189,18 @@ msgctxt "web/components/view/OFormView"
 msgid "New"
 msgstr ""
 
-#: web/components/view/OFormView.vue:479
+#: web/components/view/OFormView.vue:506
 msgctxt "web/components/view/OFormView"
 msgid "Operation failed"
 msgstr ""
 
-#: web/components/view/OFormView.vue:281
-#: web/components/view/OFormView.vue:290
+#: web/components/view/OFormView.vue:307
+#: web/components/view/OFormView.vue:316
 msgctxt "web/components/view/OFormView"
 msgid "Please fix the errors in the form first"
 msgstr ""
 
-#: web/components/view/OFormView.vue:554
+#: web/components/view/OFormView.vue:582
 msgctxt "web/components/view/OFormView"
 msgid "Record deleted"
 msgstr ""
@@ -1210,12 +1210,12 @@ msgctxt "web/components/view/OFormView"
 msgid "Refresh"
 msgstr ""
 
-#: web/components/view/OFormView.vue:521
+#: web/components/view/OFormView.vue:549
 msgctxt "web/components/view/OFormView"
 msgid "Refresh failed"
 msgstr ""
 
-#: web/components/view/OFormView.vue:518
+#: web/components/view/OFormView.vue:546
 msgctxt "web/components/view/OFormView"
 msgid "Refreshed"
 msgstr ""
@@ -1226,28 +1226,28 @@ msgctxt "web/components/view/OFormView"
 msgid "Reset"
 msgstr ""
 
-#: web/components/view/OFormView.vue:146
+#: web/components/view/OFormView.vue:150
 msgctxt "web/components/view/OFormView"
 msgid "Save"
 msgstr ""
 
-#: web/components/view/OFormView.vue:409
-#: web/components/view/OFormView.vue:458
+#: web/components/view/OFormView.vue:436
+#: web/components/view/OFormView.vue:485
 msgctxt "web/components/view/OFormView"
 msgid "Saved successfully"
 msgstr ""
 
-#: web/components/view/OFormView.vue:146
+#: web/components/view/OFormView.vue:150
 msgctxt "web/components/view/OFormView"
 msgid "Saving..."
 msgstr ""
 
-#: web/components/view/OKanbanView.vue:136
+#: web/components/view/OKanbanView.vue:144
 msgctxt "web/components/view/OKanbanView"
 msgid "All"
 msgstr ""
 
-#: web/components/view/OKanbanView.vue:302
+#: web/components/view/OKanbanView.vue:310
 msgctxt "web/components/view/OKanbanView"
 msgid "Kanban refresh failed"
 msgstr ""
@@ -1257,7 +1257,7 @@ msgctxt "web/components/view/OKanbanView"
 msgid "Load more (%s remaining)"
 msgstr ""
 
-#: web/components/view/OKanbanView.vue:257
+#: web/components/view/OKanbanView.vue:265
 msgctxt "web/components/view/OKanbanView"
 msgid "Move failed; refreshed to recover"
 msgstr ""
@@ -1282,12 +1282,12 @@ msgctxt "web/components/view/OKanbanView"
 msgid "Refresh"
 msgstr ""
 
-#: web/components/view/OListView.vue:562
+#: web/components/view/OListView.vue:570
 msgctxt "web/components/view/OListView"
 msgid "Are you sure you want to delete the selected %s record(s)? This action cannot be undone."
 msgstr ""
 
-#: web/components/view/OListView.vue:564
+#: web/components/view/OListView.vue:572
 msgctxt "web/components/view/OListView"
 msgid "Cancel"
 msgstr ""
@@ -1297,12 +1297,12 @@ msgctxt "web/components/view/OListView"
 msgid "Click to load more (%s remaining)"
 msgstr ""
 
-#: web/components/view/OListView.vue:562
+#: web/components/view/OListView.vue:570
 msgctxt "web/components/view/OListView"
 msgid "Confirm delete"
 msgstr ""
 
-#: web/components/view/OListView.vue:563
+#: web/components/view/OListView.vue:571
 msgctxt "web/components/view/OListView"
 msgid "Delete"
 msgstr ""
@@ -1312,7 +1312,7 @@ msgctxt "web/components/view/OListView"
 msgid "Delete (%s)"
 msgstr ""
 
-#: web/components/view/OListView.vue:597
+#: web/components/view/OListView.vue:605
 msgctxt "web/components/view/OListView"
 msgid "Delete failed"
 msgstr ""
@@ -1322,32 +1322,32 @@ msgctxt "web/components/view/OListView"
 msgid "Discard"
 msgstr ""
 
-#: web/components/view/OListView.vue:199
+#: web/components/view/OListView.vue:207
 msgctxt "web/components/view/OListView"
 msgid "Editing was discarded because the row is no longer visible."
 msgstr ""
 
-#: web/components/view/OListView.vue:460
+#: web/components/view/OListView.vue:468
 msgctxt "web/components/view/OListView"
 msgid "Failed to load list"
 msgstr ""
 
-#: web/components/view/OListView.vue:268
+#: web/components/view/OListView.vue:276
 msgctxt "web/components/view/OListView"
 msgid "Failed to refresh after reorder"
 msgstr ""
 
-#: web/components/view/OListView.vue:543
+#: web/components/view/OListView.vue:551
 msgctxt "web/components/view/OListView"
 msgid "Failed to refresh list"
 msgstr ""
 
-#: web/components/view/OListView.vue:268
+#: web/components/view/OListView.vue:276
 msgctxt "web/components/view/OListView"
 msgid "Failed to reorder rows"
 msgstr ""
 
-#: web/components/view/OListView.vue:535
+#: web/components/view/OListView.vue:543
 msgctxt "web/components/view/OListView"
 msgid "List data refreshed"
 msgstr ""
@@ -1372,12 +1372,12 @@ msgctxt "web/components/view/OListView"
 msgid "Save"
 msgstr ""
 
-#: web/components/view/OListView.vue:583
+#: web/components/view/OListView.vue:591
 msgctxt "web/components/view/OListView"
 msgid "Selected records are missing valid IDs"
 msgstr ""
 
-#: web/components/view/OListView.vue:588
+#: web/components/view/OListView.vue:596
 msgctxt "web/components/view/OListView"
 msgid "Successfully deleted %s record(s)"
 msgstr ""
@@ -1816,12 +1816,12 @@ msgctxt "web/composables/useOnchangeAggregation"
 msgid "Operation cancelled"
 msgstr ""
 
-#: web/composables/useRecordIoMenu.ts:37
+#: web/composables/useRecordIoMenu.ts:35
 msgctxt "web/composables/useRecordIoMenu"
 msgid "Export"
 msgstr ""
 
-#: web/composables/useRecordIoMenu.ts:30
+#: web/composables/useRecordIoMenu.ts:28
 msgctxt "web/composables/useRecordIoMenu"
 msgid "Import"
 msgstr ""
@@ -1921,77 +1921,97 @@ msgctxt "web/export/ExportPanel"
 msgid "Template name"
 msgstr ""
 
-#: web/import/ImportPanel.vue:36
+#: web/import/ImportPanel.vue:42
+msgctxt "web/import/ImportPanel"
+msgid "CSV column"
+msgstr ""
+
+#: web/import/ImportPanel.vue:49
 msgctxt "web/import/ImportPanel"
 msgid "Cancel"
 msgstr ""
 
-#: web/import/ImportPanel.vue:34
+#: web/import/ImportPanel.vue:47
 msgctxt "web/import/ImportPanel"
 msgid "Code"
 msgstr ""
 
-#: web/import/ImportPanel.vue:31
-msgctxt "web/import/ImportPanel"
-msgid "Detected headers"
-msgstr ""
-
-#: web/import/ImportPanel.vue:39
+#: web/import/ImportPanel.vue:52
 msgctxt "web/import/ImportPanel"
 msgid "Done"
 msgstr ""
 
-#: web/import/ImportPanel.vue:30
+#: web/import/ImportPanel.vue:39
 msgctxt "web/import/ImportPanel"
 msgid "Drop CSV here or click to browse"
 msgstr ""
 
-#: web/import/ImportPanel.vue:33
+#: web/import/ImportPanel.vue:46
 msgctxt "web/import/ImportPanel"
 msgid "Field"
 msgstr ""
 
-#: web/import/ImportPanel.vue:25
-#: web/import/ImportPanel.vue:28
-#: web/import/ImportPanel.vue:38
+#: web/import/ImportPanel.vue:34
+#: web/import/ImportPanel.vue:37
+#: web/import/ImportPanel.vue:51
 msgctxt "web/import/ImportPanel"
 msgid "Import"
 msgstr ""
 
-#: web/import/ImportPanel.vue:40
+#: web/import/ImportPanel.vue:53
 msgctxt "web/import/ImportPanel"
 msgid "Import completed"
 msgstr ""
 
-#: web/import/ImportPanel.vue:35
+#: web/import/ImportPanel.vue:43
 msgctxt "web/import/ImportPanel"
-msgid "Message"
-msgstr ""
-
-#: web/import/ImportPanel.vue:27
-#: web/import/ImportPanel.vue:37
-msgctxt "web/import/ImportPanel"
-msgid "Preview"
-msgstr ""
-
-#: web/import/ImportPanel.vue:32
-msgctxt "web/import/ImportPanel"
-msgid "Row"
+msgid "Import field"
 msgstr ""
 
 #: web/import/ImportPanel.vue:41
 msgctxt "web/import/ImportPanel"
+msgid "Map each CSV column to an importable field. Leave blank to use the header as the field path."
+msgstr ""
+
+#: web/import/ImportPanel.vue:48
+msgctxt "web/import/ImportPanel"
+msgid "Message"
+msgstr ""
+
+#: web/import/ImportPanel.vue:36
+#: web/import/ImportPanel.vue:50
+msgctxt "web/import/ImportPanel"
+msgid "Preview"
+msgstr ""
+
+#: web/import/ImportPanel.vue:45
+msgctxt "web/import/ImportPanel"
+msgid "Row"
+msgstr ""
+
+#: web/import/ImportPanel.vue:54
+msgctxt "web/import/ImportPanel"
 msgid "Rows were imported successfully."
 msgstr ""
 
-#: web/import/ImportPanel.vue:26
+#: web/import/ImportPanel.vue:44
+msgctxt "web/import/ImportPanel"
+msgid "Same as header"
+msgstr ""
+
+#: web/import/ImportPanel.vue:40
+msgctxt "web/import/ImportPanel"
+msgid "Suggested columns"
+msgstr ""
+
+#: web/import/ImportPanel.vue:35
 msgctxt "web/import/ImportPanel"
 msgid "Upload CSV"
 msgstr ""
 
-#: web/import/ImportPanel.vue:29
+#: web/import/ImportPanel.vue:38
 msgctxt "web/import/ImportPanel"
-msgid "Upload a UTF-8 CSV. Column headers should match field names when no mapping is set."
+msgid "Upload a UTF-8 CSV. Map columns to importable fields from the catalog."
 msgstr ""
 
 #: web/menu/menus.ts:18
