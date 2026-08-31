@@ -659,7 +659,7 @@ msgstr "可用"
 #: service/models/module_index.ts:96
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Batch Synced At"
-msgstr "批次同步"
+msgstr "批次同步时间"
 
 #: service/models/module_index.ts:102
 msgctxt "meta.model.MetaModuleIndex.fields"
@@ -679,7 +679,7 @@ msgstr "已装版本"
 #: service/models/module_index.ts:93
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Last Synced At"
-msgstr "最近同步"
+msgstr "最近同步时间"
 
 #: service/models/module_index.ts:90
 msgctxt "meta.model.MetaModuleIndex.fields"

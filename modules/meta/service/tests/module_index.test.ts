@@ -17,27 +17,8 @@ import {
   aggregateRows,
   normalizeOriginType,
   canReuseRunningSync,
+  type ModuleIndexRecord,
 } from '../models/_module_index_query';
-
-type ModuleIndexRecord = {
-  Id?: string;
-  ModuleName?: string;
-  OriginType?: string;
-  OriginRef?: string;
-  Available?: boolean;
-  Version?: string;
-  ManifestJson?: Record<string, unknown> | null;
-  LocalPath?: string;
-  LastSyncAt?: Date | string | null;
-  LastBatchSyncAt?: Date | string | null;
-  SyncRevision?: string;
-  LastErrorMessage?: string;
-  InstalledStatus?: string;
-  InstalledVersion?: string;
-  OriginTypes?: string;
-  LocalVersion?: string;
-  RegistryVersion?: string;
-};
 
 const describe = (_name: string, fn: () => void) => fn();
 const it = (name: string, fn: () => void) => test(name, fn);
@@ -351,6 +332,13 @@ describe('toPlainRecord', () => {
   });
   it('falls back to enumerable keys', () => {
     expect(toPlainRecord({ ModuleName: 'test' }).ModuleName).toBe('test');
+  });
+  it('skips dangerous keys when copying enumerable fields', () => {
+    const input = JSON.parse('{"ModuleName":"safe","__proto__":{"polluted":true}}');
+    const result = toPlainRecord(input);
+    expect(result.ModuleName).toBe('safe');
+    expect(Object.prototype.hasOwnProperty.call(result, '__proto__')).toBe(false);
+    expect((result as any).polluted).toBeUndefined();
   });
   it('returns empty for non-object values', () => {
     expect(toPlainRecord('x')).toEqual({});

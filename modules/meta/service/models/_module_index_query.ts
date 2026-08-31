@@ -207,8 +207,10 @@ export function toPlainRecord(input: any): ModuleIndexRecord {
       // fall back to enumerable keys
     }
   }
+  const blockedKeys = new Set(['__proto__', 'constructor', 'prototype']);
   const out: Record<string, unknown> = {};
   for (const key of Object.keys(input)) {
+    if (blockedKeys.has(key)) continue;
     out[key] = input[key];
   }
   return out as ModuleIndexRecord;
