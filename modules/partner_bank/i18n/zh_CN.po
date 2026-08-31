@@ -141,8 +141,8 @@ msgctxt "partner_bank.model.Partner.fields"
 msgid "Default Outbound Bank Account"
 msgstr "默认付款账户"
 
-#: service/models/_helpers.ts:37
-msgctxt "service/models/_helpers"
+#: service/models/_bank_account_defaults.ts:37
+msgctxt "service/models/_bank_account_defaults"
 msgid "AccountType must be one of checking, savings, corporate, other"
 msgstr "AccountType 必须是 checking、savings、corporate 或 other"
 

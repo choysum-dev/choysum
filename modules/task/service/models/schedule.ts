@@ -9,7 +9,7 @@ import { normalizeOffset } from '@/core/service/utils/normalization';
 import { toDate, listIanaTimezoneSelection } from '@/core/service/utils/datetime';
 import { _lt } from '../i18n';
 import Job from './job';
-import { clampLimit } from './_helpers';
+import { clampLimit } from './_limit';
 import { computeNextRunAt, normalizeTimezone, applyNextRunPreview } from './_cron';
 
 /**

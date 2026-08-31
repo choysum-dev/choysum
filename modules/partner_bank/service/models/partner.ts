@@ -4,7 +4,7 @@
 import { Compute, Field, Model } from '@/core/service';
 import PartnerBase from '@/partner/service/models/partner';
 import { _lt } from '../i18n';
-import { pickDefaultBankAccountId } from './_helpers';
+import { pickDefaultBankAccountId } from './_bank_account_defaults';
 import BankAccount from './bank_account';
 
 /**

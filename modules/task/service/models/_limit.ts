@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Shared pure helpers for task service models.
+ * Page-size clamp for task Job/Schedule listing.
  */
 
 /**

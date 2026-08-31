@@ -34,7 +34,7 @@ export function normalizeAccountType(value: unknown): string | null | undefined 
   const normalized = normalizeOptionalText(value);
   if (normalized == null) return normalized;
   if (!ACCOUNT_TYPES.has(normalized)) {
-    fail(_t('AccountType must be one of checking, savings, corporate, other', { scope: 'service/models/_helpers' }));
+    fail(_t('AccountType must be one of checking, savings, corporate, other', { scope: 'service/models/_bank_account_defaults' }));
   }
   return normalized;
 }
