@@ -5,10 +5,10 @@ import { BaseModel, Field, Model, type BaseModelCtor } from '@/core/service';
 import { getUserId } from '@/core/service/api/context';
 import type { Insertable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
-import type { QueryCondition, SearchOptions } from '@/core/service/api/query';
 import { dial } from '@/core/service/orm/model/model_pool';
 import { MessageErrCode, newMessageError, wrapMessageError } from '../error';
 import { _lt } from '../i18n';
+import PolymorphicRecordModel from '../mixins/polymorphic_record_model';
 import { publishThreadChangedTip } from '../tips';
 import { assertTargetRecordReadable } from '../target_record';
 import Notification from './notification';
@@ -184,7 +184,23 @@ const DEFAULT_POST_FIELDS = [
   companyField: 'CompanyId',
   orderBy: { field: 'CreatedAt', order: 'asc' },
 })
-export default class Message extends BaseModel {
+export default class Message extends PolymorphicRecordModel {
+  protected static override polymorphicOrderByField(): string {
+    return 'CreatedAt';
+  }
+
+  protected static override polymorphicDeniedMessage(): string {
+    return 'Message is not allowed for this record';
+  }
+
+  protected static override raisePolymorphicInvalidArgument(message: string): never {
+    throw newMessageError({ code: MessageErrCode.INVALID_ARGUMENT, message });
+  }
+
+  protected static override async assertPolymorphicTargetReadable(model: string, resId: string): Promise<void> {
+    await assertTargetRecordReadable(model, resId, this.polymorphicDeniedMessage());
+  }
+
   @Field({
     type: 'selection',
     selection: [
@@ -335,36 +351,6 @@ export default class Message extends BaseModel {
     await Notification.FanOutForMessage(created as Message);
     await publishThreadChangedTip(created as Message);
     return created;
-  }
-
-  /**
-   * Searches Message rows for one target record, ordered by CreatedAt ascending.
-   */
-  public static async SearchByRecord(
-    model: string,
-    resId: string,
-    fields?: FieldSelection<Message>
-  ): Promise<Partial<Message>[]> {
-    const m = String(model || '').trim();
-    const id = String(resId || '').trim();
-    if (!m || !id) {
-      throw newMessageError({
-        code: MessageErrCode.INVALID_ARGUMENT,
-        message: 'SearchByRecord requires Model and ResId',
-      });
-    }
-    await assertTargetRecordReadable(m, id, 'Message is not allowed for this record');
-    const condition: QueryCondition<Message> = {
-      And: [
-        ['Model', '=', m],
-        ['ResId', '=', id],
-      ],
-    };
-    const options: SearchOptions<Message> = {
-      fields,
-      orderBy: { field: 'CreatedAt', order: 'asc' },
-    };
-    return await this.Search(condition, options);
   }
 
   /**

@@ -1,12 +1,12 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model } from '@/core/service';
+import { Field, Model } from '@/core/service';
 import { getUserId } from '@/core/service/api/context';
 import type { FieldSelection } from '@/core/service/api/selection';
-import type { QueryCondition, SearchOptions } from '@/core/service/api/query';
 import { MessageErrCode, newMessageError } from '../error';
 import { _lt } from '../i18n';
+import PolymorphicRecordModel from '../mixins/polymorphic_record_model';
 import { assertTargetRecordReadable } from '../target_record';
 import type MessageSubtype from './message_subtype';
 
@@ -140,7 +140,23 @@ async function syncFollowRow(
   companyField: 'CompanyId',
   orderBy: { field: 'CreatedAt', order: 'asc' },
 })
-export default class Follower extends BaseModel {
+export default class Follower extends PolymorphicRecordModel {
+  protected static override polymorphicOrderByField(): string {
+    return 'CreatedAt';
+  }
+
+  protected static override polymorphicDeniedMessage(): string {
+    return 'Follower listing is not allowed for this record';
+  }
+
+  protected static override raisePolymorphicInvalidArgument(message: string): never {
+    throw newMessageError({ code: MessageErrCode.INVALID_ARGUMENT, message });
+  }
+
+  protected static override async assertPolymorphicTargetReadable(model: string, resId: string): Promise<void> {
+    await assertTargetRecordReadable(model, resId, this.polymorphicDeniedMessage());
+  }
+
   @Field({
     type: 'varchar',
     size: 120,
@@ -272,35 +288,5 @@ export default class Follower extends BaseModel {
       deleted += 1;
     }
     return deleted;
-  }
-
-  /**
-   * Lists followers for one target record.
-   */
-  public static async SearchByRecord(
-    model: string,
-    resId: string,
-    fields?: FieldSelection<Follower>
-  ): Promise<Partial<Follower>[]> {
-    const m = String(model || '').trim();
-    const id = String(resId || '').trim();
-    if (!m || !id) {
-      throw newMessageError({
-        code: MessageErrCode.INVALID_ARGUMENT,
-        message: 'SearchByRecord requires Model and ResId',
-      });
-    }
-    await assertTargetRecordReadable(m, id, 'Follower listing is not allowed for this record');
-    const condition: QueryCondition<Follower> = {
-      And: [
-        ['Model', '=', m],
-        ['ResId', '=', id],
-      ],
-    };
-    const options: SearchOptions<Follower> = {
-      fields,
-      orderBy: { field: 'CreatedAt', order: 'asc' },
-    };
-    return await this.Search(condition, options);
   }
 }

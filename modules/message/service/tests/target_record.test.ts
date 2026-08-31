@@ -86,7 +86,7 @@ test('message target_record: denies when dial Search returns no rows', async () 
   });
 });
 
-test('message target_record: rethrows permission denied errors from dial Search', async () => {
+test('message target_record: maps dial Search failures (including permission-shaped) to domain permission denied', async () => {
   await withSeams(async () => {
     const denied = { code: MessageErrCode.PERMISSION_DENIED, message: 'blocked' };
     __setMessageTargetRecordDialForTest(
@@ -103,7 +103,9 @@ test('message target_record: rethrows permission denied errors from dial Search'
     } catch (e) {
       err = e;
     }
-    expect(err).toBe(denied);
+    expect(isMessageError(err)).toBe(true);
+    expect((err as any).code).toBe(MessageErrCode.PERMISSION_DENIED);
+    expect((err as any).message).toBe('denied');
   });
 });
 

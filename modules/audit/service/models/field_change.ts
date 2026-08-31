@@ -5,9 +5,10 @@ import { BaseModel, Field, Model, type BaseModelCtor } from '@/core/service';
 import { getCurrentReq, getUserId } from '@/core/service/api/context';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
-import type { QueryCondition, DeleteOptions, UpdateOptions, SearchOptions } from '@/core/service/api/query';
+import type { QueryCondition, DeleteOptions, UpdateOptions } from '@/core/service/api/query';
 import { AuditErrCode, newAuditError } from '../error';
 import { _lt } from '../i18n';
+import PolymorphicRecordModel from '../mixins/polymorphic_record_model';
 import { assertTargetRecordReadable } from '../target_record';
 import { publishFieldChangeAppendedTip } from '../tips';
 
@@ -130,7 +131,23 @@ function fieldSelectionWithId(fields: FieldSelection<FieldChange>): FieldSelecti
   softDelete: false,
   orderBy: { field: 'At', order: 'asc' },
 })
-export default class FieldChange extends BaseModel {
+export default class FieldChange extends PolymorphicRecordModel {
+  protected static override polymorphicOrderByField(): string {
+    return 'At';
+  }
+
+  protected static override polymorphicDeniedMessage(): string {
+    return 'FieldChange is not allowed for this record';
+  }
+
+  protected static override raisePolymorphicInvalidArgument(message: string): never {
+    throw newAuditError({ code: AuditErrCode.INVALID_ARGUMENT, message });
+  }
+
+  protected static override async assertPolymorphicTargetReadable(model: string, resId: string): Promise<void> {
+    await assertTargetRecordReadable(model, resId, this.polymorphicDeniedMessage());
+  }
+
   @Field({
     type: 'varchar',
     size: 120,
@@ -266,33 +283,6 @@ export default class FieldChange extends BaseModel {
       At: at,
     });
     return created;
-  }
-
-  /**
-   * Searches FieldChange rows for one tracked record, ordered by At ascending.
-   */
-  public static async SearchByRecord(
-    model: string,
-    resId: string,
-    fields?: FieldSelection<FieldChange>
-  ): Promise<Partial<FieldChange>[]> {
-    const m = String(model || '').trim();
-    const id = String(resId || '').trim();
-    if (!m || !id) {
-      throw newAuditError({ code: AuditErrCode.INVALID_ARGUMENT, message: 'SearchByRecord requires Model and ResId' });
-    }
-    await assertTargetRecordReadable(m, id, 'FieldChange is not allowed for this record');
-    const condition: QueryCondition<FieldChange> = {
-      And: [
-        ['Model', '=', m],
-        ['ResId', '=', id],
-      ],
-    };
-    const options: SearchOptions<FieldChange> = {
-      fields,
-      orderBy: { field: 'At', order: 'asc' },
-    };
-    return await this.Search(condition, options);
   }
 
   /**
