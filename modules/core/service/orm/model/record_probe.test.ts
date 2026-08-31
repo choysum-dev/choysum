@@ -38,6 +38,11 @@ test('assertRecordReadable: allows when dial Search finds the record', async () 
   });
 });
 
+test('assertRecordReadable: uses default dial when opts.dial is omitted', async () => {
+  // Live dial for an unregistered / invalid target fails closed as RECORD_NOT_READABLE.
+  await expectNotReadable(assertRecordReadable('partner.Partner', 'r1'));
+});
+
 test('assertRecordReadable: denies when dial Search returns no rows', async () => {
   await expectNotReadable(
     assertRecordReadable('partner.Partner', 'r1', {
@@ -78,6 +83,31 @@ test('assertRecordReadable: denies empty model or id', async () => {
   await expectNotReadable(assertRecordReadable('  ', '', { dial: dialWithSearch(async () => [{ Id: 'x' }]) }));
 });
 
+test('assertRecordReadable: coerces nullish model/id and builds default message', async () => {
+  await expectNotReadable(
+    assertRecordReadable(null as unknown as string, 'r1', {
+      dial: dialWithSearch(async () => [{ Id: 'r1' }]),
+    }),
+    'record (empty)/r1 is not readable'
+  );
+  await expectNotReadable(
+    assertRecordReadable('partner.Partner', undefined as unknown as string, {
+      dial: dialWithSearch(async () => [{ Id: 'r1' }]),
+    }),
+    'record partner.Partner/(empty) is not readable'
+  );
+});
+
+test('assertRecordReadable: blank opts.message falls back to default message', async () => {
+  await expectNotReadable(
+    assertRecordReadable('partner.Partner', 'r1', {
+      dial: dialWithSearch(async () => []),
+      message: '   ',
+    }),
+    'record partner.Partner/r1 is not readable'
+  );
+});
+
 test('assertRecordReadable: maps dial Search failures to RECORD_NOT_READABLE', async () => {
   await expectNotReadable(
     assertRecordReadable('partner.Partner', 'r1', {
@@ -88,6 +118,25 @@ test('assertRecordReadable: maps dial Search failures to RECORD_NOT_READABLE', a
     }),
     'wrapped'
   );
+});
+
+test('assertRecordReadable: wraps non-Error Search throw as cause', async () => {
+  let err: unknown;
+  try {
+    await assertRecordReadable('partner.Partner', 'r1', {
+      dial: dialWithSearch(async () => {
+        throw 42;
+      }),
+      message: 'non-error-cause',
+    });
+  } catch (e) {
+    err = e;
+  }
+  expect(isRecordNotReadableError(err)).toBe(true);
+  const e = err as ChoysumError;
+  expect(e.message).toBe('non-error-cause');
+  expect(e.cause instanceof Error).toBe(true);
+  expect((e.cause as Error).message).toBe('42');
 });
 
 test('assertRecordReadable: maps dial factory failures to RECORD_NOT_READABLE', async () => {
@@ -132,4 +181,13 @@ test('isRecordNotReadableError: false for other errors', () => {
       new ChoysumError({ domain: 'message', code: 'PERMISSION_DENIED', message: 'x' })
     )
   ).toBe(false);
+});
+
+test('isRecordNotReadableError: true for RECORD_NOT_READABLE', () => {
+  const err = new ChoysumError({
+    domain: RECORD_PROBE_DOMAIN,
+    code: RECORD_NOT_READABLE,
+    message: 'x',
+  });
+  expect(isRecordNotReadableError(err)).toBe(true);
 });
