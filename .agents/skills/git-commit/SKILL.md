@@ -137,7 +137,7 @@ Use these prompts when you want a fast, copy-ready trigger in day-to-day chat.
 /git-commit
 /git-commit staged changes
 /git-commit current diff
-/git-commit .github/skills
+/git-commit .agents/skills
 ```
 
 ### Natural-Language Triggers
@@ -146,7 +146,7 @@ Use these prompts when you want a fast, copy-ready trigger in day-to-day chat.
 Use git-commit for the current changes.
 Use git-commit for staged files only.
 Use git-commit and suggest a conventional commit message.
-Use git-commit for .github/skills with scope copilot.
+Use git-commit for .agents/skills with scope agents.
 ```
 
 ### Prompt Shaping Tips

@@ -1,7 +1,6 @@
 ---
-description: Ownership rules for module bootstrap/demo init data (xml_id, cross-app RR)
-globs: modules/**/data/**/*.json,modules/**/demo/**/*.json,modules/**/package.json
-alwaysApply: false
+name: module-initdata
+description: 'Review or advise on module bootstrap and demo init data placement in Choysum. Use when editing modules/**/data/**/*.json, modules/**/demo/**/*.json, or choysum.data/choysum.demo in package.json; when adding RoleRecordRule, RoleFieldRule, or RoleMethodAccess for a domain model; or when asked where bootstrap records belong (auth vs domain module, xml_id, cross-app application).'
 ---
 
 # Module Init Data Ownership
@@ -22,3 +21,11 @@ Do **not** add `web` to domain `depends`. The install/upgrade planner auto-inclu
 - `record.application` may target another app’s model (cross-app init data); omit to default to the owner app.
 - `record.model` is the **short** name only (not `app.Model`).
 - Prefer `modelRef` / `ref` / `refBy` for stable links; do not hardcode row ids.
+
+## Review output
+
+When reviewing a change, report:
+
+- Which ownership rule applies to each record or authz row.
+- Violations with the rule number and the recommended target module/path.
+- Dependency issues (missing `depends` on `auth`, or cycles via `base`/`meta`).
