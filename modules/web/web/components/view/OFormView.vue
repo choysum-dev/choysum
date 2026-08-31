@@ -731,7 +731,7 @@ watch(
     // Enter edit mode when requested by the external viewMode prop.
     if ((props.viewMode as any) === 'edit') controller.beginEdit();
   },
-  { immediate: true }
+  { immediate: true, flush: 'sync' }
 );
 
 defineExpose({
