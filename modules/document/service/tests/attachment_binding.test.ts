@@ -5,7 +5,7 @@ import { withContext } from '@/core/service/api/context';
 import { ChoysumError } from '@/core/service/error';
 import Role from '@/auth/service/models/role';
 import RoleFieldRule from '@/auth/service/models/role_field_rule';
-import User from '@/auth/service/models/user';
+import User from '@/auth/service/models/user/user';
 import UserRole from '@/auth/service/models/user_role';
 import MetaField from '@/meta/service/models/field';
 import MetaModel from '@/meta/service/models/model';

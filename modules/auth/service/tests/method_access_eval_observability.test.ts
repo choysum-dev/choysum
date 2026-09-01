@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { evaluateRoleMethodAccess } from '@/auth/service/models/_user_method_access';
+import { evaluateRoleMethodAccess } from '@/auth/service/models/user/_method_access';
 import RoleMethodAccess from '@/auth/service/models/role_method_access';
 
 test('evaluateRoleMethodAccess returns deny allow and empty diagnostics with hitRuleIds', async () => {
@@ -181,7 +181,7 @@ test('evaluateRoleMethodAccess returns deny allow and empty diagnostics with hit
 });
 
 test('evaluateUiDerivedMethodDecision returns reason and hitRuleIds', async () => {
-  const { evaluateUiDerivedMethodDecision } = await import('@/auth/service/models/_user_method_access');
+  const { evaluateUiDerivedMethodDecision } = await import('@/auth/service/models/user/_method_access');
   const RoleUiResource = (await import('@/auth/service/models/role_ui_resource')).default;
   const MetaUiResource = (await import('@/meta/service/models/ui_resource')).default;
 

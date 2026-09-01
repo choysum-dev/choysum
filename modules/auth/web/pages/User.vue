@@ -15,7 +15,7 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import OPage from '@/web/web/components/page/OPage.vue';
 import UserFormView from '@/auth/web/views/UserFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
-import type User from '@/auth/service/models/user';
+import type User from '@/auth/service/models/user/user';
 
 const route = useRoute();
 const userStore = createStoreByModel<typeof User>('auth.User', {

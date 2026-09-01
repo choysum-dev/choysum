@@ -7,9 +7,9 @@ import type { ConditionEnvelope, RecordRuleOp } from '@/core/service/api/authz';
 import type MetaApplicationModel from '@/meta/service/models/application';
 import type MetaFieldModel from '@/meta/service/models/field';
 import type MetaModelModel from '@/meta/service/models/model';
-import RoleRecordRule from './role_record_rule';
-import type { RoleRecordRuleKind } from './role_record_rule';
-import { maybeId, withPermissionGraphBypass } from './_user_authz_shared';
+import RoleRecordRule from '../role_record_rule';
+import type { RoleRecordRuleKind } from '../role_record_rule';
+import { maybeId, withPermissionGraphBypass } from './_authz_shared';
 
 const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
 const MetaField = createServiceByModel<typeof MetaFieldModel>('meta.MetaField');

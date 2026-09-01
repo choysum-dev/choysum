@@ -5,9 +5,9 @@ import { createServiceByModel } from '@/core/service/rpc';
 import type MetaApplicationModel from '@/meta/service/models/application';
 import type MetaModelModel from '@/meta/service/models/model';
 import type MetaServiceModel from '@/meta/service/models/service';
-import RoleMethodAccess from './role_method_access';
-import { maybeId } from './_user_authz_shared';
-import { normalizeLogicalMethods } from './_logical_model_registry';
+import RoleMethodAccess from '../role_method_access';
+import { maybeId } from './_authz_shared';
+import { normalizeLogicalMethods } from '../_logical_model_registry';
 
 const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
 const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');

@@ -28,7 +28,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import type { WebModelStore } from '@/web/web/stores/modelStore';
-import type User from '@/auth/service/models/user';
+import type User from '@/auth/service/models/user/user';
 import OListView from '@/web/web/components/view/OListView.vue';
 import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
 import OImageField from '@/web/web/components/field/OImageField.vue';

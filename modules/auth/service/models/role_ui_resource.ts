@@ -9,7 +9,7 @@ import { _lt } from '../i18n';
 import Role from './role';
 import type MetaApplication from '@/meta/service/models/application';
 import type MetaUiResource from '@/meta/service/models/ui_resource';
-import { mutateThenInvalidateAllAuthzCaches } from './_authz_mutation_helpers';
+import AuthzMutationModel from '../mixins/authz_mutation_model';
 import { assertExclusiveScope } from './_rule_scope_helpers';
 
 /**
@@ -22,7 +22,7 @@ export type RoleUiResourceMode = 'allow' | 'deny';
  * application, or concrete UI-resource scope.
  */
 @Model('RoleUiResource')
-export default class RoleUiResource extends BaseModel {
+export default class RoleUiResource extends AuthzMutationModel {
   /**
    * Role that owns this UI permission override.
    */
@@ -105,6 +105,14 @@ export default class RoleUiResource extends BaseModel {
   }
 
   /**
+   * Run scope and mode validation before mutating RoleUiResource rows.
+   */
+  private static _prepareValues(values: Record<string, any>, mode: 'create' | 'update'): void {
+    assertExclusiveScope(values, mode, 'ui');
+    this._validateMode(values, mode);
+  }
+
+  /**
    * Create one RoleUiResource row and invalidate request-scoped auth caches.
    */
   static override async Create<T extends BaseModel>(
@@ -112,12 +120,8 @@ export default class RoleUiResource extends BaseModel {
     value: Partial<Insertable<T & BaseModel>>,
     returnFields?: FieldSelection<T>
   ): Promise<T> {
-    assertExclusiveScope(value as any, 'create', 'ui');
-    RoleUiResource._validateMode(value as any, 'create');
-    return mutateThenInvalidateAllAuthzCaches(async () => {
-      const out = await super.Create(value as any, returnFields as any);
-      return out as unknown as T;
-    });
+    RoleUiResource._prepareValues(value as any, 'create');
+    return (await super.Create(value as any, returnFields as any)) as unknown as T;
   }
 
   /**
@@ -129,14 +133,8 @@ export default class RoleUiResource extends BaseModel {
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
     const rows = values || [];
-    for (const v of rows) {
-      assertExclusiveScope(v as any, 'create', 'ui');
-      RoleUiResource._validateMode(v as any, 'create');
-    }
-    return mutateThenInvalidateAllAuthzCaches(async () => {
-      const out = await super.CreateMany(rows as any, returnFields as any);
-      return out as unknown as T[];
-    });
+    for (const v of rows) RoleUiResource._prepareValues(v as any, 'create');
+    return (await super.CreateMany(rows as any, returnFields as any)) as unknown as T[];
   }
 
   /**
@@ -149,12 +147,8 @@ export default class RoleUiResource extends BaseModel {
     returnFields?: FieldSelection<T>,
     options?: any
   ): Promise<Partial<T>[]> {
-    assertExclusiveScope(values as any, 'update', 'ui');
-    RoleUiResource._validateMode(values as any, 'update');
-    return mutateThenInvalidateAllAuthzCaches(async () => {
-      const out = await super.Update(condition as any, values as any, returnFields as any, options as any);
-      return out as unknown as Partial<T>[];
-    });
+    RoleUiResource._prepareValues(values as any, 'update');
+    return (await super.Update(condition as any, values as any, returnFields as any, options as any)) as unknown as Partial<T>[];
   }
 
   /**
@@ -167,29 +161,7 @@ export default class RoleUiResource extends BaseModel {
     returnFields?: FieldSelection<T>,
     options?: any
   ): Promise<Partial<T>> {
-    assertExclusiveScope(values as any, 'update', 'ui');
-    RoleUiResource._validateMode(values as any, 'update');
-    return mutateThenInvalidateAllAuthzCaches(async () => {
-      const out = await super.UpdateById(id as any, values as any, returnFields as any, options as any);
-      return out as unknown as Partial<T>;
-    });
-  }
-
-  /**
-   * Delete matching RoleUiResource rows and invalidate request-scoped auth caches.
-   */
-  static override async Delete<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
-    condition: QueryCondition<T>,
-    options?: any
-  ): Promise<number> {
-    return mutateThenInvalidateAllAuthzCaches(() => super.Delete(condition as any, options as any));
-  }
-
-  /**
-   * Delete one RoleUiResource row by Id and invalidate request-scoped auth caches.
-   */
-  static override async DeleteById<T extends BaseModel>(this: { new (...args: any[]): T } & typeof BaseModel, id: string, options?: any): Promise<number> {
-    return mutateThenInvalidateAllAuthzCaches(() => super.DeleteById(id as any, options as any));
+    RoleUiResource._prepareValues(values as any, 'update');
+    return (await super.UpdateById(id as any, values as any, returnFields as any, options as any)) as unknown as Partial<T>;
   }
 }

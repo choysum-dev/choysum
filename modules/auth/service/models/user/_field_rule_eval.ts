@@ -3,9 +3,9 @@
 
 import { createServiceByModel } from '@/core/service/rpc';
 import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
-import { newAuthError, AuthErrCode, GrpcCode } from '../error';
-import { _t } from '../i18n';
-import RoleFieldRule from './role_field_rule';
+import { newAuthError, AuthErrCode, GrpcCode } from '../../error';
+import { _t } from '../../i18n';
+import RoleFieldRule from '../role_field_rule';
 import type MetaApplicationModel from '@/meta/service/models/application';
 import type MetaFieldModel from '@/meta/service/models/field';
 import type MetaModelModel from '@/meta/service/models/model';
@@ -123,7 +123,7 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
   if (!modelId) {
     throw newAuthError({
       code: AuthErrCode.VALIDATION_FAILED,
-      message: _t('Model does not exist', { scope: 'service/models/_user_field_rule_eval' }),
+      message: _t('Model does not exist', { scope: 'service/models/user/_field_rule_eval' }),
     })
       .withGrpcCode(GrpcCode.InvalidArgument)
       .withMetadata({ model: input.modelFullName });

@@ -3,12 +3,12 @@
 
 import { withContext as withModelContext } from '@/core/service/api/context';
 import type { AppSettingModelCtor } from '@/core/service';
-import User from '@/auth/service/models/user';
+import User from '@/auth/service/models/user/user';
 import {
   PERSIST_BROWSER_TIMEZONE_KEY,
   persistBrowserTimezoneIfEmpty,
-} from '@/auth/service/models/_user_lifecycle_auth';
-import { withPermissionGraphBypass } from '@/auth/service/models/_user_authz_shared';
+} from '@/auth/service/models/user/_lifecycle_auth';
+import { withPermissionGraphBypass } from '@/auth/service/models/user/_authz_shared';
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');

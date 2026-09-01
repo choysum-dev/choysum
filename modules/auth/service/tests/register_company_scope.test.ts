@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { withContext as withModelContext } from '@/core/service/api/context';
-import User from '@/auth/service/models/user';
+import User from '@/auth/service/models/user/user';
 import Role from '@/auth/service/models/role';
 import UserRole from '@/auth/service/models/user_role';
 import { createServiceByModel } from '@/core/service/rpc';

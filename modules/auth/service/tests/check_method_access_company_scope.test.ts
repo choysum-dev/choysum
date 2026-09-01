@@ -3,12 +3,12 @@
 
 import { withContext as withModelContext } from '@/core/service/api/context';
 import { getTestRepository } from '@/core/service/testing';
-import User from '@/auth/service/models/user';
+import User from '@/auth/service/models/user/user';
 import Role from '@/auth/service/models/role';
 import UserRole from '@/auth/service/models/user_role';
 import RoleMethodAccess from '@/auth/service/models/role_method_access';
 import RoleUiResource from '@/auth/service/models/role_ui_resource';
-import { evaluateUiDerivedMethodDecision } from '@/auth/service/models/_user_method_access';
+import { evaluateUiDerivedMethodDecision } from '@/auth/service/models/user/_method_access';
 import { metaApplicationId, metaModelId } from './_meta_ids';
 import MetaUiResource from '@/meta/service/models/ui_resource';
 import { createServiceByModel } from '@/core/service/rpc';

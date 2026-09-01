@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getCurrentReq, getOrInitReqServiceState, withContext as withModelContext } from '@/core/service/api/context';
-import User from '@/auth/service/models/user';
+import User from '@/auth/service/models/user/user';
 import Role from '@/auth/service/models/role';
 import UserRole from '@/auth/service/models/user_role';
 import RoleMethodAccess from '@/auth/service/models/role_method_access';
 import RoleUiResource from '@/auth/service/models/role_ui_resource';
-import { evaluateUiDerivedMethodDecision } from '@/auth/service/models/_user_method_access';
+import { evaluateUiDerivedMethodDecision } from '@/auth/service/models/user/_method_access';
 import { buildMethodAccessCacheKey } from '@/auth/service/models/_request_cache_invalidation';
 import { metaModelId } from './_meta_ids';
 import MetaUiResource from '@/meta/service/models/ui_resource';

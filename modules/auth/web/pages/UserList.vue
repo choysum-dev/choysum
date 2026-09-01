@@ -22,7 +22,7 @@ import UserListView from '@/auth/web/views/UserListView.vue';
 import OPage from '@/web/web/components/page/OPage.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
-import type User from '@/auth/service/models/user';
+import type User from '@/auth/service/models/user/user';
 
 const { _t } = createTranslate('auth', { scope: 'web/pages/UserList' });
 const pageTitle = _t('User List');

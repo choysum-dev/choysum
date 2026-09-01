@@ -11,7 +11,7 @@ import Role from './role';
 import type MetaApplication from '@/meta/service/models/application';
 import type MetaModel from '@/meta/service/models/model';
 import type MetaService from '@/meta/service/models/service';
-import { mutateThenInvalidateAllAuthzCaches } from './_authz_mutation_helpers';
+import AuthzMutationModel from '../mixins/authz_mutation_model';
 import { listLogicalModelSelection, normalizeLogicalMethods } from './_logical_model_registry';
 import { assertExclusiveScope } from './_rule_scope_helpers';
 
@@ -20,7 +20,7 @@ import { assertExclusiveScope } from './_rule_scope_helpers';
  * application, model, service, or logical-model scope.
  */
 @Model('RoleMethodAccess')
-export default class RoleMethodAccess extends BaseModel {
+export default class RoleMethodAccess extends AuthzMutationModel {
   /**
    * Role that owns this method-access entry.
    */
@@ -239,10 +239,7 @@ export default class RoleMethodAccess extends BaseModel {
     returnFields?: FieldSelection<T>
   ): Promise<T> {
     RoleMethodAccess._prepareValues(value as any, 'create');
-    return mutateThenInvalidateAllAuthzCaches(async () => {
-      const out = await super.Create(value as any, returnFields as any);
-      return out as unknown as T;
-    });
+    return (await super.Create(value as any, returnFields as any)) as unknown as T;
   }
 
   /**
@@ -257,10 +254,7 @@ export default class RoleMethodAccess extends BaseModel {
     for (const v of rows) {
       RoleMethodAccess._prepareValues(v as any, 'create');
     }
-    return mutateThenInvalidateAllAuthzCaches(async () => {
-      const out = await super.CreateMany(rows as any, returnFields as any);
-      return out as unknown as T[];
-    });
+    return (await super.CreateMany(rows as any, returnFields as any)) as unknown as T[];
   }
 
   /**
@@ -306,10 +300,7 @@ export default class RoleMethodAccess extends BaseModel {
       }
     }
     RoleMethodAccess._prepareValues(values as any, 'update', previousLogicalModelName);
-    return mutateThenInvalidateAllAuthzCaches(async () => {
-      const out = await super.Update(updateCondition as any, values as any, returnFields as any, options as any);
-      return out as unknown as Partial<T>[];
-    });
+    return (await super.Update(updateCondition as any, values as any, returnFields as any, options as any)) as unknown as Partial<T>[];
   }
 
   /**
@@ -331,28 +322,7 @@ export default class RoleMethodAccess extends BaseModel {
       previousLogicalModelName = String((existing?.[0] as any)?.LogicalModelName || '').trim() || null;
     }
     RoleMethodAccess._prepareValues(values as any, 'update', previousLogicalModelName);
-    return mutateThenInvalidateAllAuthzCaches(async () => {
-      const out = await super.UpdateById(id as any, values as any, returnFields as any, options as any);
-      return out as unknown as Partial<T>;
-    });
-  }
-
-  /**
-   * Delete matching RoleMethodAccess rows and invalidate request-scoped auth caches.
-   */
-  static override async Delete<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
-    condition: QueryCondition<T>,
-    options?: any
-  ): Promise<number> {
-    return mutateThenInvalidateAllAuthzCaches(() => super.Delete(condition as any, options as any));
-  }
-
-  /**
-   * Delete one RoleMethodAccess row by Id and invalidate request-scoped auth caches.
-   */
-  static override async DeleteById<T extends BaseModel>(this: { new (...args: any[]): T } & typeof BaseModel, id: string, options?: any): Promise<number> {
-    return mutateThenInvalidateAllAuthzCaches(() => super.DeleteById(id as any, options as any));
+    return (await super.UpdateById(id as any, values as any, returnFields as any, options as any)) as unknown as Partial<T>;
   }
 
   /**

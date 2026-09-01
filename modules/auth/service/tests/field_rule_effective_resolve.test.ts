@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ChoysumError } from '@/core/service/error';
-import { evaluateFieldRules } from '@/auth/service/models/_user_field_rule_eval';
+import { evaluateFieldRules } from '@/auth/service/models/user/_field_rule_eval';
 import RoleFieldRule from '@/auth/service/models/role_field_rule';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaApplicationModel from '@/meta/service/models/application';

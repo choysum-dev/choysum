@@ -66,7 +66,7 @@ import { useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type Session from '@/auth/service/models/session';
-import type User from '@/auth/service/models/user';
+import type User from '@/auth/service/models/user/user';
 import { ElCard, ElRow, ElCol } from 'element-plus';
 
 import OFormView from '@/web/web/components/view/OFormView.vue';

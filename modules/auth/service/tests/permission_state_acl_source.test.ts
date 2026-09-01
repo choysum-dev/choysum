@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { buildAclAggregation } from '@/auth/service/models/_user_permission_state_acl';
+import { buildAclAggregation } from '@/auth/service/models/user/_permission_state_acl';
 import RoleMethodAccess from '@/auth/service/models/role_method_access';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaApplicationModel from '@/meta/service/models/application';

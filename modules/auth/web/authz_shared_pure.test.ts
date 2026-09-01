@@ -3,7 +3,7 @@
 
 import { describe, test, expect } from 'vitest';
 
-// Inlined from _user_authz_shared.ts and normalization.ts to avoid backend imports.
+// Inlined from user/_authz_shared.ts and normalization.ts to avoid backend imports.
 function normalizeRpcRequireKey(key: string): string {
   const k = String(key || '').trim();
   if (!k) return '';

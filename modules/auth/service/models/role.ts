@@ -6,7 +6,7 @@ import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition, SearchOptions } from '@/core/service/api/query';
 import { _lt } from '../i18n';
-import User from './user';
+import User from './user/user';
 import UserRole from './user_role';
 import RoleInheritance from './role_inheritance';
 import RoleRecordRule from './role_record_rule';

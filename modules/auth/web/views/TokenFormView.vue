@@ -81,7 +81,7 @@ import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
 import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
 import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 import UserListView from '@/auth/web/views/UserListView.vue';
-import type User from '@/auth/service/models/user';
+import type User from '@/auth/service/models/user/user';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';

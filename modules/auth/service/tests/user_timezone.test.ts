@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import User from '@/auth/service/models/user';
+import User from '@/auth/service/models/user/user';
 import { ChoysumError } from '@/core/service/error';
-import { persistBrowserTimezoneIfEmpty, resolveTimezoneToPersist } from '@/auth/service/models/_user_lifecycle_auth';
+import { persistBrowserTimezoneIfEmpty, resolveTimezoneToPersist } from '@/auth/service/models/user/_lifecycle_auth';
 import { withContext } from '@/core/service/api/context';
 
 function hostWithTimezone(timezone: string | null | undefined): User {

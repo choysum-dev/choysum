@@ -3,7 +3,7 @@
 
 import { describe, test, expect } from 'vitest';
 
-// Inlined from _user_lifecycle_scope.ts
+// Inlined from user/_lifecycle_scope.ts
 export type SwitchScopeValidationErrorCode = 'active_empty' | 'enabled_type' | 'enabled_unauthorized' | 'active_outside_allowed' | 'active_not_in_enabled';
 
 export type SwitchScopeValidationResult =
@@ -15,7 +15,7 @@ function createSwitchCompanyScopeAuditEmitter(eventName: string) {
 
   const emit = (payload: Record<string, any>) => {
     try {
-      void { event: eventName, traceId: '', ...payload };
+      void { ...payload, event: eventName, traceId: '' };
       // In test, suppress actual console output.
     } catch {
       // ignore

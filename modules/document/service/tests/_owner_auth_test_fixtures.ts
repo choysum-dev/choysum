@@ -6,9 +6,9 @@ import { createServiceByModel } from '@/core/service/rpc';
 import type MetaModelModel from '@/meta/service/models/model';
 import RoleFieldRule from '@/auth/service/models/role_field_rule';
 import RoleRecordRule from '@/auth/service/models/role_record_rule';
-import User from '@/auth/service/models/user';
+import User from '@/auth/service/models/user/user';
 import UserRole from '@/auth/service/models/user_role';
-import { withPermissionGraphBypass } from '@/auth/service/models/_user_authz_shared';
+import { withPermissionGraphBypass } from '@/auth/service/models/user/_authz_shared';
 import { invalidateAuthzCachesForUsers } from '@/auth/service/models/_request_cache_invalidation';
 import { getTestRepository } from '@/core/service/testing';
 
