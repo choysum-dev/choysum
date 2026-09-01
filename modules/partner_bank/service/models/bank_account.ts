@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model } from '@/core/service';
+import { Field, Model } from '@/core/service';
+import MessageThreadModel from '@/core/service/mixins/message_thread_model';
 import { Constraint } from '@/core/service/api/constraint';
 import { _t, _lt } from '../i18n';
 import { fail, normalizeOptionalText, normalizeRequiredText } from './_normalization_bridge';
@@ -15,9 +16,12 @@ import type Partner from '@/partner/service/models/partner';
 
 /**
  * Company-scoped partner bank account record.
+ *
+ * Extends {@link MessageThreadModel} for collaboration entry points (dial
+ * `message.*`; not on BaseModel).
  */
 @Model('BankAccount', { application: 'partner', companyField: 'CompanyId' })
-export default class BankAccount extends BaseModel {
+export default class BankAccount extends MessageThreadModel {
   /** Owning partner reference. */
   @Field<Partner>({
     type: 'ManyToOneRef',

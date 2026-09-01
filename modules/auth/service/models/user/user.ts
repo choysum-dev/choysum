@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Model, Field, Compute } from '@/core/service';
+import { Model, Field, Compute } from '@/core/service';
+import AttachmentOwnerMixin from '@/core/service/mixins/attachment_owner_model';
 import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
 import type { Insertable } from '@/core/service/api/input';
 import type { ConditionEnvelope, RecordRuleOp } from '@/core/service/api/authz';
@@ -57,9 +58,12 @@ import { buildAuthzContext, computePermStateVersion } from './_authz_context';
  * adjacent `user/_lifecycle_*` / `user/_authz_*` / eval helpers. Other modules
  * extend via `@Model('User') export default class User extends UserBase` (import UserBase
  * from `@/auth/service/models` or `@/auth/service/models/user/user`).
+ *
+ * Extends {@link AttachmentOwnerMixin} for Avatar bind/unbind entry points (dial
+ * `document.AttachmentBinding`; not on BaseModel).
  */
 @Model('User')
-export default class User extends BaseModel {
+export default class User extends AttachmentOwnerMixin {
   /**
    * Unique username used for sign-in.
    */

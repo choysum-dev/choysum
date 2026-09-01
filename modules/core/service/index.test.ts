@@ -6,12 +6,15 @@ import * as serviceApi from './index';
 test('core/service entrypoint export surface stays limited to modeling DSL primitives', () => {
   expect(Object.keys(serviceApi).sort()).toEqual([
     'AppSettingBaseModel',
+    'AttachmentOwnerMixin',
     'BaseModel',
     'Compute',
     'Decimal',
     'Field',
     'Inverse',
+    'MessageThreadModel',
     'Model',
+    'PolymorphicRecordModel',
     'Search',
     'SqlCompute',
     'dial',

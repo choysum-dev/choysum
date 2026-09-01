@@ -5,6 +5,7 @@ import PartnerCollaborationModel from '../mixins/partner_collaboration_model';
 import MessageThreadModel from '@/core/service/mixins/message_thread_model';
 import { getServiceFactory, registerServiceFactory, unregisterServiceFactory } from '@/core/service/rpc';
 import Partner from '../models/partner';
+import PartnerContact from '../models/partner_contact';
 
 function withServiceFactory<T>(modelName: string, factory: () => unknown, fn: () => Promise<T> | T): Promise<T> | T {
   const previous = getServiceFactory(modelName);
@@ -132,4 +133,11 @@ test('Partner: AttachmentBind / AttachmentUnbind dial document.AttachmentBinding
       });
     }
   );
+});
+
+test('PartnerContact: extends MessageThreadModel and exposes thread entry points', () => {
+  expect(PartnerContact.prototype instanceof MessageThreadModel).toBe(true);
+  expect(typeof PartnerContact.MessagePost).toBe('function');
+  expect(typeof PartnerContact.MessageFollow).toBe('function');
+  expect(typeof PartnerContact.MessageUnfollow).toBe('function');
 });

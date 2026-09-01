@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model } from '@/core/service';
+import { Field, Model } from '@/core/service';
+import MessageThreadModel from '@/core/service/mixins/message_thread_model';
 import { Constraint } from '@/core/service/api/constraint';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { _t, _lt } from '../i18n';
@@ -17,9 +18,12 @@ const ADDRESS_TYPES = new Set(['billing', 'shipping', 'office', 'registered', 'o
 
 /**
  * Company-scoped partner contact and address row.
+ *
+ * Extends {@link MessageThreadModel} for collaboration entry points (dial
+ * `message.*`; not on BaseModel).
  */
 @Model('PartnerContact', { companyField: 'CompanyId' })
-export default class PartnerContact extends BaseModel {
+export default class PartnerContact extends MessageThreadModel {
   /** Owning partner relation. */
   @Field({
     type: 'ManyToOne',

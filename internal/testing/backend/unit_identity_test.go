@@ -626,6 +626,24 @@ func TestEnsureMetaInstalledForUnitApp(t *testing.T) {
 	})
 }
 
+func TestShouldInstallAuthPeerForUnitApp(t *testing.T) {
+	cases := []struct {
+		app  string
+		want bool
+	}{
+		{"document", true},
+		{" Document ", true},
+		{"auth", false},
+		{"base", false},
+		{"", false},
+	}
+	for _, tc := range cases {
+		if got := shouldInstallAuthPeerForUnitApp(tc.app); got != tc.want {
+			t.Fatalf("shouldInstallAuthPeerForUnitApp(%q)=%v, want %v", tc.app, got, tc.want)
+		}
+	}
+}
+
 func TestInstallUnitAppModules(t *testing.T) {
 	t.Run("base_skips_meta", func(t *testing.T) {
 		inst := &recordingInstaller{}
@@ -642,6 +660,17 @@ func TestInstallUnitAppModules(t *testing.T) {
 			t.Fatalf("err=%v", err)
 		}
 		if len(inst.calls) != 2 || inst.calls[0].Name != "auth" || inst.calls[0].SkipWebShell || inst.calls[1].Name != "meta" {
+			t.Fatalf("calls=%+v", inst.calls)
+		}
+	})
+	t.Run("document_installs_auth_peer", func(t *testing.T) {
+		inst := &recordingInstaller{}
+		if err := installUnitAppModules(context.Background(), inst, "document"); err != nil {
+			t.Fatalf("err=%v", err)
+		}
+		if len(inst.calls) != 2 ||
+			inst.calls[0].Name != "document" || !inst.calls[0].SkipWebShell ||
+			inst.calls[1].Name != "auth" || !inst.calls[1].SkipWebShell {
 			t.Fatalf("calls=%+v", inst.calls)
 		}
 	})

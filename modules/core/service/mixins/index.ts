@@ -2,14 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Cross-Application dial facades (opt-in abstract bases).
+ * Opt-in abstract bases for business / platform apps.
  *
  * Business apps may value-import these under the hard rule that non-core
- * cross-Application value imports are forbidden. Implementations dial platform
- * services; they must not import message/document model classes.
+ * cross-Application value imports are forbidden.
+ *
+ * - Dial facades (`MessageThreadModel`, `AttachmentOwnerMixin`): runtime dials
+ *   platform services; they must not import message/document model classes.
+ * - Templates (`PolymorphicRecordModel`): shared SearchByRecord skeleton with
+ *   protected hooks; no dial.
  */
 export { default as AttachmentOwnerMixin } from './attachment_owner_model';
 export { default as MessageThreadModel } from './message_thread_model';
+export { default as PolymorphicRecordModel } from './polymorphic_record_model';
 export type {
   AttachmentOwnerBindReq,
   AttachmentOwnerBindResp,

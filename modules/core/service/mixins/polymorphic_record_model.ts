@@ -1,18 +1,22 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel } from '@/core/service';
-import type { FieldSelection } from '@/core/service/api/selection';
+import type { FieldSelection } from '../api/selection';
+import BaseModel from '../orm/model/model';
 
 /**
- * Audit-local isomorphic copy of message PolymorphicRecordModel.
- * Kept in-module so audit does not depend on the message package.
- * Must be the module default export so `@Model` classes can `extends` it.
+ * Shared SearchByRecord skeleton for models keyed by polymorphic Model + ResId
+ * (message.Message / message.Follower, audit.FieldChange, …).
+ *
+ * Lives in core so platform apps may `extends` it without cross-Application
+ * coupling between message and audit. Subclasses override the protected static
+ * hooks for domain errors, probe, and order. Must be the module default export
+ * so `@Model` classes can `extends` it.
  */
 export default abstract class PolymorphicRecordModel extends BaseModel {
-  /** Order field for SearchByRecord (FieldChange uses At). */
+  /** Order field for SearchByRecord (message uses CreatedAt; audit uses At). */
   protected static polymorphicOrderByField(): string {
-    return 'At';
+    return 'CreatedAt';
   }
 
   /** Denied message passed to the module target-record probe. */

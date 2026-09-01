@@ -22,6 +22,7 @@ export { default as AppSettingBaseModel, type AppSettingModelCtor } from './orm/
 export {
   AttachmentOwnerMixin,
   MessageThreadModel,
+  PolymorphicRecordModel,
   type AttachmentOwnerBindReq,
   type AttachmentOwnerBindResp,
   type AttachmentOwnerUnbindReq,

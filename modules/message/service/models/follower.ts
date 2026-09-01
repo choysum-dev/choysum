@@ -6,7 +6,7 @@ import { getUserId } from '@/core/service/api/context';
 import type { FieldSelection } from '@/core/service/api/selection';
 import { MessageErrCode, newMessageError } from '../error';
 import { _lt } from '../i18n';
-import PolymorphicRecordModel from '../mixins/polymorphic_record_model';
+import PolymorphicRecordModel from '@/core/service/mixins/polymorphic_record_model';
 import { assertTargetRecordReadable } from '../target_record';
 import type MessageSubtype from './message_subtype';
 

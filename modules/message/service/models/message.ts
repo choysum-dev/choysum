@@ -8,7 +8,7 @@ import type { FieldSelection } from '@/core/service/api/selection';
 import { dial } from '@/core/service/orm/model/model_pool';
 import { MessageErrCode, newMessageError, wrapMessageError } from '../error';
 import { _lt } from '../i18n';
-import PolymorphicRecordModel from '../mixins/polymorphic_record_model';
+import PolymorphicRecordModel from '@/core/service/mixins/polymorphic_record_model';
 import { publishThreadChangedTip } from '../tips';
 import { assertTargetRecordReadable } from '../target_record';
 import Notification from './notification';
