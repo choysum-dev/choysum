@@ -19,3 +19,17 @@ export { Model } from './orm/decorator/model';
 export { default as Decimal } from '../utils/decimal';
 export { pool, dial } from './orm/model/model_pool';
 export { default as AppSettingBaseModel, type AppSettingModelCtor } from './orm/model/app_setting_base_model';
+export {
+  AttachmentOwnerMixin,
+  MessageThreadModel,
+  PolymorphicRecordModel,
+  type AttachmentOwnerBindReq,
+  type AttachmentOwnerBindResp,
+  type AttachmentOwnerDownloadDisposition,
+  type AttachmentOwnerUnbindReason,
+  type AttachmentOwnerUnbindReq,
+  type AttachmentOwnerUnbindResp,
+  type MessageThreadFollowReq,
+  type MessageThreadPostReq,
+  type MessageThreadUnfollowReq,
+} from './mixins';

@@ -501,6 +501,92 @@ test('P3-1: same request UserRole.CreateMany invalidates authz context', async (
   expect(out.after?.allowed).toBe(true);
 });
 
+test('P3-1: same request Role.UpdateById invalidates authz context memo', async () => {
+  resetRequestContext();
+  const c1 = { Id: uid('C1') };
+
+  setupAllowlistForFixtures();
+
+  let userRoleSearchCalls = 0;
+  const origUserRoleSearch = UserRole.Search;
+  (UserRole as any).Search = async (...args: any[]) => {
+    userRoleSearchCalls++;
+    return await origUserRoleSearch.apply(UserRole, args);
+  };
+
+  try {
+    const out = await withModelContext(
+      { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
+      async () => {
+        const userId = await createUser(c1.Id);
+        setIdentity(userId);
+
+        const r = await createRole('ROLE_UPD_INV');
+
+        await UserRole.Create(
+          {
+            UserId: { Id: userId } as any,
+            RoleId: { Id: r.id } as any,
+            CompanyId: c1.Id,
+          } as any,
+          ['Id'] as any
+        );
+
+        const userModelId = await resolveModelId('auth', 'User');
+        const browse = await resolveService(userModelId, 'browse');
+
+        await RoleMethodAccess.Create(
+          {
+            RoleId: { Id: r.id } as any,
+            MetaServiceId: browse.id,
+            MetaModelId: null,
+            MetaApplicationId: null,
+            Mode: 'allow',
+          } as any,
+          ['Id'] as any
+        );
+
+        disableAllowlist();
+
+        const fullMethod = `/auth.User/${browse.name}`;
+        const beforeCalls = userRoleSearchCalls;
+
+        // Warm request-scoped authz context.
+        const a1 = await User.CheckMethodAccess(c1.Id, fullMethod);
+        const afterWarm = userRoleSearchCalls;
+        expect(afterWarm).toBeGreaterThan(beforeCalls);
+
+        // Same request without Role write: memoized context must not re-Search UserRole.
+        const a1b = await User.CheckMethodAccess(c1.Id, fullMethod);
+        expect(userRoleSearchCalls).toBe(afterWarm);
+
+        // Role row mutation (no RoleUiResource touch) must invalidate caches.
+        setupAllowlistForFixtures();
+        await Role.UpdateById(r.id, { IsActive: false } as any, ['Id', 'IsActive'] as any);
+        disableAllowlist();
+
+        const a2 = await User.CheckMethodAccess(c1.Id, fullMethod);
+        return {
+          a1,
+          a1b,
+          a2,
+          afterWarm,
+          afterRoleUpdate: userRoleSearchCalls,
+        };
+      },
+      { merge: false }
+    );
+
+    expect(out.a1?.allowed).toBe(true);
+    expect(out.a1b?.allowed).toBe(true);
+    // Permission outcome may still be allowed today (authz does not filter Role.IsActive);
+    // the contract under test is request-cache invalidation after Role writes.
+    expect(out.afterRoleUpdate).toBeGreaterThan(out.afterWarm);
+  } finally {
+    (UserRole as any).Search = origUserRoleSearch;
+  }
+});
+
 test('P3-2: memoizeInReqState caches undefined values to avoid repeated factory calls', async () => {
   let callCount = 0;
   const state: Record<string, unknown> = {};

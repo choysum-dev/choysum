@@ -509,11 +509,18 @@ func shouldInstallMetaForUnitApp(app string) bool {
 	return strings.EqualFold(app, "auth") || strings.EqualFold(app, "web")
 }
 
+// shouldInstallAuthPeerForUnitApp installs auth when the shard dials auth.User for
+// owner authorization but no longer declares depends: auth (document).
+func shouldInstallAuthPeerForUnitApp(app string) bool {
+	return strings.EqualFold(strings.TrimSpace(app), "document")
+}
+
 type unitAppInstaller interface {
 	Install(ctx context.Context, req lifecycle.InstallRequest) error
 }
 
-// installUnitAppModules installs the unit shard (optionally skipping the web shell) then meta when needed.
+// installUnitAppModules installs the unit shard (optionally skipping the web shell),
+// then soft peers / meta when needed.
 func installUnitAppModules(ctx context.Context, installer unitAppInstaller, app string) error {
 	if err := installer.Install(ctx, lifecycle.InstallRequest{
 		Name:         app,
@@ -521,7 +528,19 @@ func installUnitAppModules(ctx context.Context, installer unitAppInstaller, app 
 	}); err != nil {
 		return err
 	}
+	if err := ensureAuthPeerInstalledForUnitApp(ctx, installer, app); err != nil {
+		return err
+	}
 	return ensureMetaInstalledForUnitApp(ctx, installer, app)
+}
+
+// ensureAuthPeerInstalledForUnitApp installs auth for document unit shards so
+// owner-authorization dials and fixtures resolve without a depends cycle.
+func ensureAuthPeerInstalledForUnitApp(ctx context.Context, installer unitAppInstaller, app string) error {
+	if !shouldInstallAuthPeerForUnitApp(app) {
+		return nil
+	}
+	return installer.Install(ctx, lifecycle.InstallRequest{Name: "auth", SkipWebShell: true})
 }
 
 // ensureMetaInstalledForUnitApp installs meta when the shard needs MetaModel/gRPC services.

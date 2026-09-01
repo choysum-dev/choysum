@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { createServiceByModel } from '@/core/service/rpc/service_factory';
+import { dial } from '@/core/service';
 import { assertRecordReadable } from '@/core/service/orm/model';
 import { normalizeConditionEnvelope, normalizeFieldRuleSpec, replaceConditionExprTokens } from '@/core/service/api/authz';
 import type { ConditionEnvelope, ConditionExpr, FieldRuleSpec, RecordRuleOp } from '@/core/service/api/authz';
@@ -196,7 +196,7 @@ async function fetchFieldRuleSpec(ownerModel: string, stage: OwnerPermissionStag
 
 function getAuthUserService(stage: OwnerPermissionStage): AuthUserServiceLike {
   try {
-    return createServiceByModel(AUTH_USER_MODEL) as AuthUserServiceLike;
+    return dial<AuthUserServiceLike>(AUTH_USER_MODEL);
   } catch (err) {
     throw permissionDenied(stage, _t('auth service is unavailable for owner authorization check', { scope: 'service/models/_owner_authorization' }), {
       model: AUTH_USER_MODEL,
@@ -224,7 +224,7 @@ async function probeOwnerRecord(
 
   let ownerService: OwnerModelServiceLike;
   try {
-    ownerService = createServiceByModel(ownerModel) as OwnerModelServiceLike;
+    ownerService = dial<OwnerModelServiceLike>(ownerModel);
   } catch {
     return false;
   }

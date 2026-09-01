@@ -5,3 +5,4 @@
  * Partner service model exports.
  */
 export * from './models';
+export * from './mixins';

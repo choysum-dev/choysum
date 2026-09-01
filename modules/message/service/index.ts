@@ -3,7 +3,7 @@
 
 export * from './models';
 export * from './error';
-export { PolymorphicRecordModel, MessageThreadModel } from './mixins';
+export { default as PolymorphicRecordModel } from '@/core/service/mixins/polymorphic_record_model';
 export {
   TOPIC_MESSAGE_THREAD_CHANGED,
   TOPIC_MESSAGE_NOTIFICATION_USER,

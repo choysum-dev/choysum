@@ -16,7 +16,6 @@
     "depends": [
       "core",
       "base",
-      "auth",
       "task"
     ],
     "cli": ">=0.0.0-0 <0.0.0",
