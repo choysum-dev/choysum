@@ -6,6 +6,7 @@ import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition, SearchOptions } from '@/core/service/api/query';
 import { _lt } from '../i18n';
+import AuthzMutationModel from '../mixins/authz_mutation_model';
 import User from './user/user';
 import UserRole from './user_role';
 import RoleInheritance from './role_inheritance';
@@ -25,9 +26,13 @@ import {
 
 /**
  * Role defines one reusable permission bundle and its derived UI/resource mappings.
+ *
+ * Extends {@link AuthzMutationModel} so Create/Update/Delete* clear request-scoped
+ * authz caches (IsActive / delete change the permission graph even when UI grants
+ * are untouched). Browse/Search still hydrate AccessUiResourceIds here.
  */
 @Model('Role')
-export default class Role extends BaseModel {
+export default class Role extends AuthzMutationModel {
   /**
    * Display name derived from the stable role code.
    */

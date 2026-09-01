@@ -9,6 +9,7 @@ import AuthzMutationModel, {
   userIdsFromUserRolePayloads,
 } from '../mixins/authz_mutation_model';
 import RoleInheritance from '../models/role_inheritance';
+import Role from '../models/role';
 import User from '../models/user/user';
 import UserRole from '../models/user_role';
 import { getServiceFactory, registerServiceFactory, unregisterServiceFactory } from '@/core/service/rpc';
@@ -39,10 +40,12 @@ function withServiceFactory<T>(modelName: string, factory: () => unknown, fn: ()
   }
 }
 
-test('AuthzMutationModel: RoleInheritance and UserRole extend the mixin', () => {
+test('AuthzMutationModel: RoleInheritance, UserRole, and Role extend the mixin', () => {
   expect(Object.prototype.isPrototypeOf.call(AuthzMutationModel, RoleInheritance)).toBe(true);
   expect(Object.prototype.isPrototypeOf.call(AuthzMutationModel, UserRole)).toBe(true);
+  expect(Object.prototype.isPrototypeOf.call(AuthzMutationModel, Role)).toBe(true);
   expect(Object.prototype.isPrototypeOf.call(AuthzMutationModel, AuthzMutationHarness)).toBe(true);
+  expect(Role.prototype instanceof AuthzMutationModel).toBe(true);
 });
 
 test('AuthzMutationModel helpers: userIdsFromUserRolePayloads extracts UserId refs', () => {
