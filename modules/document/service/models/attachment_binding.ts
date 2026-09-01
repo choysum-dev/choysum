@@ -635,7 +635,7 @@ async function bindAttachment(req: BindReq): Promise<BindResp> {
     'bind',
     normalized.mutationId,
     companyId,
-    (req as unknown as Record<string, unknown>) ?? {},
+    req as unknown as Record<string, unknown>,
     response as unknown as Record<string, unknown>
   );
   return response;
@@ -693,10 +693,40 @@ async function unbindAttachment(req: UnbindReq): Promise<UnbindResp> {
     'unbind',
     normalized.mutationId,
     companyId,
-    (req as unknown as Record<string, unknown>) ?? {},
+    req as unknown as Record<string, unknown>,
     response as unknown as Record<string, unknown>
   );
   return response;
+}
+
+function indexAttachmentContentsById(attachmentContents: unknown[]): Map<string, AttachmentContent> {
+  const attachmentContentById = new Map<string, AttachmentContent>();
+  for (const attachmentContent of attachmentContents) {
+    const attachmentContentId = normalizeOptionalString((attachmentContent as any)?.Id);
+    if (!attachmentContentId) {
+      continue;
+    }
+    attachmentContentById.set(attachmentContentId, attachmentContent as AttachmentContent);
+  }
+  return attachmentContentById;
+}
+
+function collectBindingsForDescribe(bindings: unknown[]): {
+  bindingById: Map<string, AttachmentBinding>;
+  attachmentContentIds: string[];
+} {
+  const bindingById = new Map<string, AttachmentBinding>();
+  const attachmentContentIds: string[] = [];
+  for (const binding of bindings) {
+    const bindingId = normalizeOptionalString((binding as any)?.Id);
+    const attachmentContentId = normalizeOptionalString((binding as any)?.AttachmentContentId);
+    if (!bindingId || !attachmentContentId) {
+      continue;
+    }
+    bindingById.set(bindingId, binding as AttachmentBinding);
+    attachmentContentIds.push(attachmentContentId);
+  }
+  return { bindingById, attachmentContentIds };
 }
 
 async function batchDescribeAttachments(req: BatchDescribeReq): Promise<BatchDescribeResp> {
@@ -721,17 +751,7 @@ async function batchDescribeAttachments(req: BatchDescribeReq): Promise<BatchDes
     { limit: normalized.attachmentBindingIds.length } as any
   );
 
-  const bindingById = new Map<string, AttachmentBinding>();
-  const attachmentContentIds: string[] = [];
-  for (const binding of bindings) {
-    const bindingId = normalizeOptionalString((binding as any).Id);
-    const attachmentContentId = normalizeOptionalString((binding as any).AttachmentContentId);
-    if (!bindingId || !attachmentContentId) {
-      continue;
-    }
-    bindingById.set(bindingId, binding as AttachmentBinding);
-    attachmentContentIds.push(attachmentContentId);
-  }
+  const { bindingById, attachmentContentIds } = collectBindingsForDescribe(bindings);
 
   if (attachmentContentIds.length === 0) {
     return { items: [] };
@@ -749,14 +769,7 @@ async function batchDescribeAttachments(req: BatchDescribeReq): Promise<BatchDes
     { limit: dedupedAttachmentContentIds.length } as any
   );
 
-  const attachmentContentById = new Map<string, AttachmentContent>();
-  for (const attachmentContent of attachmentContents) {
-    const attachmentContentId = normalizeOptionalString((attachmentContent as any).Id);
-    if (!attachmentContentId) {
-      continue;
-    }
-    attachmentContentById.set(attachmentContentId, attachmentContent as AttachmentContent);
-  }
+  const attachmentContentById = indexAttachmentContentsById(attachmentContents);
 
   const itemPromises = normalized.attachmentBindingIds.map(async bindingId => {
     const binding = bindingById.get(bindingId);
@@ -880,4 +893,43 @@ async function buildDescriptorForBinding(bindingId: string): Promise<AttachmentD
 /** Test seam for binding hard-delete cleanup when db.execute is unavailable. */
 export async function documentHardDeleteBindingForTest(bindingId: string, companyId: string): Promise<void> {
   return hardDeleteBindingById(bindingId, companyId);
+}
+
+/** Test seam for purge keep-id skip and hard-delete paths during conflict cleanup. */
+export async function documentPurgeConflictingUnboundBindingsForTest(
+  ownerModel: string,
+  ownerRecordId: string,
+  fieldName: string,
+  companyId: string,
+  keepBindingId: string
+): Promise<void> {
+  return purgeConflictingUnboundBindings(ownerModel, ownerRecordId, fieldName, companyId, keepBindingId);
+}
+
+/** Test seam for mutation-ledger Create failure with successful replay. */
+export async function documentRecordMutationSuccessForTest(
+  action: 'bind' | 'unbind',
+  mutationId: string,
+  companyId: string,
+  requestJson: Record<string, unknown>,
+  responseJson: Record<string, unknown>
+): Promise<void> {
+  return recordMutationSuccess(action, mutationId, companyId, requestJson, responseJson);
+}
+
+/** Test seam for BatchDescribe content indexing when rows lack Id. */
+export function documentIndexAttachmentContentsByIdForTest(rows: unknown[]): Map<string, unknown> {
+  return indexAttachmentContentsById(rows);
+}
+
+/** Test seam for BatchDescribe binding collection when rows lack Id/content Id. */
+export function documentCollectBindingsForDescribeForTest(rows: unknown[]): {
+  bindingIds: string[];
+  attachmentContentIds: string[];
+} {
+  const collected = collectBindingsForDescribe(rows);
+  return {
+    bindingIds: Array.from(collected.bindingById.keys()),
+    attachmentContentIds: collected.attachmentContentIds,
+  };
 }

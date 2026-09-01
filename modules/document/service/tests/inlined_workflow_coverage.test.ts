@@ -376,6 +376,417 @@ test('inlined upload coverage: finalize expires stale uploaded session', async (
   });
 });
 
+test('inlined upload coverage: finalize rejects stored-content company drift and commit rejects unknown status', async () => {
+  resetRequestContext();
+  await withDocumentScope(async () => {
+    const biz = uid('biz_cov_stored_company');
+    const prepared = await AttachmentObject.PrepareUpload({
+      ownerModel: 'auth.User',
+      ownerRecordId: uid('owner_cov_stored_company'),
+      fieldName: 'Avatar',
+      operation: 'update',
+      businessRequestId: biz,
+    });
+
+    // Create visible stored content, then rewrite CompanyId so load succeeds but company check fails.
+    const storedContentId = await createStoredContent(TEST_COMPANY_ID);
+    const root: any = (globalThis as any).$choysum ?? {};
+    const execute = root.db?.execute?.bind(root.db);
+    expect(typeof execute).toBe('function');
+    await execute(
+      'update document_stored_content set company_id = ? where id = ?',
+      JSON.stringify(['cmp_cov_foreign', storedContentId])
+    );
+    await UploadSession.UpdateById(
+      prepared.uploadId,
+      {
+        Status: 'uploaded',
+        UploadedPayloadRef: { kind: 'stored_content', storedContentId },
+        UploadedSizeBytes: 1,
+        UploadedChecksumSha256: EMPTY_SHA256,
+        UploadedContentType: 'text/plain',
+      } as any,
+      ['Id'] as any
+    );
+    try {
+      await withContext(
+        { activeCompanyId: TEST_COMPANY_ID, enabledCompanyIds: [TEST_COMPANY_ID, 'cmp_cov_foreign'] } as any,
+        async () => {
+          await AttachmentObject.FinalizeUpload({ uploadId: prepared.uploadId, businessRequestId: biz });
+        },
+        { merge: false }
+      );
+      throw new Error('expected stored content company mismatch');
+    } catch (err) {
+      expect((err as ChoysumError).code).toBe('PERMISSION_DENIED');
+    }
+
+    const commitBiz = uid('biz_cov_unknown_status');
+    const commitPrepared = await AttachmentObject.PrepareUpload({
+      ownerModel: 'auth.User',
+      ownerRecordId: uid('owner_cov_unknown_status'),
+      fieldName: 'Doc',
+      operation: 'update',
+      businessRequestId: commitBiz,
+      proposedContentType: 'text/plain',
+    });
+    await execute(
+      'update document_attachment_upload_session set status = ? where id = ?',
+      JSON.stringify(['', commitPrepared.uploadId])
+    );
+    try {
+      await AttachmentObject.CommitUploadPut({
+        uploadId: commitPrepared.uploadId,
+        principal: buildPrincipal(),
+        payloadReceipt: {
+          payloadId: `sc:${await createStoredContent(TEST_COMPANY_ID)}`,
+          sizeBytes: 1,
+          checksumSha256: EMPTY_SHA256,
+          contentType: 'text/plain',
+        },
+      });
+      throw new Error('expected commit unknown status rejection');
+    } catch (err) {
+      expect((err as ChoysumError).code).toBe('FAILED_PRECONDITION');
+    }
+  });
+});
+
+test('inlined upload coverage: authorize short-circuits when session status is already expired', async () => {
+  resetRequestContext();
+  await withDocumentScope(async () => {
+    const prepared = await AttachmentObject.PrepareUpload({
+      ownerModel: 'auth.User',
+      ownerRecordId: uid('owner_cov_already_expired'),
+      fieldName: 'Avatar',
+      operation: 'update',
+      businessRequestId: uid('biz_cov_already_expired'),
+    });
+    await UploadSession.UpdateById(prepared.uploadId, { Status: 'expired' } as any, ['Id'] as any);
+    try {
+      await AttachmentObject.AuthorizeUploadPut({
+        uploadId: prepared.uploadId,
+        principal: buildPrincipal(),
+      });
+      throw new Error('expected already-expired authorize reject');
+    } catch (err) {
+      expect((err as ChoysumError).code).toBe('UPLOAD_SESSION_EXPIRED');
+    }
+  });
+});
+
+test('inlined upload coverage: branch fallbacks for create op, defaults, and finalize metadata', async () => {
+  resetRequestContext();
+  await withDocumentScope(async () => {
+    let createGrantRuleId = '';
+    let createGrantOriginal: Record<string, unknown> | null = null;
+    await withPermissionGraphBypass(async () => {
+      const modelRows = await MetaModel.Search({ And: [['Application', '=', 'auth'], ['Name', '=', 'User']] } as any, {
+        fields: ['Id'],
+        limit: 1,
+      } as any);
+      const modelId = String((modelRows[0] as any)?.Id || '').trim();
+      const existing = await RoleRecordRule.Search(
+        {
+          And: [
+            ['RoleId', 'is', null],
+            ['Kind', '=', 'grant'],
+            ['MetaModelId', '=', modelId],
+            ['PermRead', '=', true],
+            ['PermWrite', '=', true],
+          ],
+        } as any,
+        { fields: ['Id', 'PermCreate', 'PermDelete'], limit: 1 } as any
+      );
+      const grant = (existing || [])[0] as any;
+      createGrantRuleId = String(grant?.Id || '').trim();
+      createGrantOriginal = { PermCreate: grant?.PermCreate, PermDelete: grant?.PermDelete };
+      if (createGrantRuleId) {
+        await RoleRecordRule.UpdateById(createGrantRuleId, { PermCreate: true } as any, ['Id'] as any);
+      }
+    });
+    delete (ensureRequestContext() as any)[RR_CACHE_KEY];
+
+    try {
+      const createPrepared = await AttachmentObject.PrepareUpload({
+        ownerModel: 'auth.User',
+        ownerRecordId: uid('owner_cov_create_op'),
+        fieldName: 'Avatar',
+        operation: 'create',
+        businessRequestId: uid('biz_cov_create_op'),
+        proposedContentType: 'text/plain',
+      });
+      const authorized = await AttachmentObject.AuthorizeUploadPut({
+        uploadId: createPrepared.uploadId,
+        principal: buildPrincipal(),
+      } as any);
+      expect(authorized.uploadId).toBe(createPrepared.uploadId);
+      expect(authorized.allowedMimeTypes).toBeUndefined();
+
+      await UploadSession.UpdateById(createPrepared.uploadId, { AllowedMimeTypes: ['image/png'] } as any, ['Id'] as any);
+      const root: any = (globalThis as any).$choysum ?? {};
+      // DB forbids NULL on max_upload_bytes; negative values normalize to undefined → DEFAULT_MAX_UPLOAD_BYTES.
+      await root.db.execute(
+        'update document_attachment_upload_session set max_upload_bytes = ? where id = ?',
+        JSON.stringify([-1, createPrepared.uploadId])
+      );
+      const withAllowList = await AttachmentObject.AuthorizeUploadPut({
+        uploadId: createPrepared.uploadId,
+        principal: buildPrincipal(),
+        requestMeta: { contentType: 'image/png', contentLength: 1 },
+      } as any);
+      expect(withAllowList.allowedMimeTypes).toEqual(['image/png']);
+      expect(withAllowList.maxUploadBytes).toBeGreaterThan(0);
+
+      try {
+        await AttachmentObject.AuthorizeUploadPut({
+          uploadId: createPrepared.uploadId,
+          principal: buildPrincipal(),
+          requestMeta: { contentType: 'text/plain', contentLength: 1 },
+        } as any);
+        throw new Error('expected mime deny');
+      } catch (err) {
+        expect((err as ChoysumError).code).toBe('MIME_TYPE_NOT_ALLOWED');
+      }
+
+      // Missing contentLength exercises `(normalized.requestMeta.contentLength ?? 0)`.
+      await AttachmentObject.AuthorizeUploadPut({
+        uploadId: createPrepared.uploadId,
+        principal: buildPrincipal(),
+        requestMeta: { contentType: 'image/png' },
+      } as any);
+
+      const commitPrepared = await AttachmentObject.PrepareUpload({
+        ownerModel: 'auth.User',
+        ownerRecordId: uid('owner_cov_commit_defaults'),
+        fieldName: 'Doc',
+        operation: 'create',
+        businessRequestId: uid('biz_cov_commit_defaults'),
+        proposedContentType: 'text/plain',
+      });
+      await UploadSession.UpdateById(commitPrepared.uploadId, { AllowedMimeTypes: ['text/plain'] } as any, ['Id'] as any);
+      await root.db.execute(
+        'update document_attachment_upload_session set max_upload_bytes = ? where id = ?',
+        JSON.stringify([-1, commitPrepared.uploadId])
+      );
+      const storedForCommit = await createStoredContent(TEST_COMPANY_ID);
+      await AttachmentObject.CommitUploadPut({
+        uploadId: commitPrepared.uploadId,
+        principal: buildPrincipal(),
+        payloadReceipt: {
+          payloadId: `sc:${storedForCommit}`,
+          sizeBytes: 1,
+          checksumSha256: EMPTY_SHA256,
+        } as any,
+      });
+
+      const finalizeBiz = uid('biz_cov_finalize_fallbacks');
+      const finalizePrepared = await AttachmentObject.PrepareUpload({
+        ownerModel: 'auth.User',
+        ownerRecordId: uid('owner_cov_finalize_fallbacks'),
+        fieldName: 'Doc2',
+        operation: 'update',
+        businessRequestId: finalizeBiz,
+        proposedContentType: 'application/pdf',
+      });
+      const storedId = await createStoredContent(TEST_COMPANY_ID);
+      await UploadSession.UpdateById(
+        finalizePrepared.uploadId,
+        {
+          Status: 'uploaded',
+          UploadedPayloadRef: { kind: 'stored_content', storedContentId: storedId },
+          UploadedSizeBytes: null,
+          UploadedChecksumSha256: null,
+          ChecksumSha256: 'a'.repeat(64),
+          UploadedContentType: null,
+        } as any,
+        ['Id'] as any
+      );
+      const finalized = await AttachmentObject.FinalizeUpload({
+        uploadId: finalizePrepared.uploadId,
+        businessRequestId: finalizeBiz,
+      });
+      expect(finalized.mimeType).toBe('application/pdf');
+      expect(finalized.sizeBytes).toBe(0);
+      expect(finalized.checksumSha256).toBe('a'.repeat(64));
+
+      const emptyMetaBiz = uid('biz_cov_finalize_empty_meta');
+      const emptyMetaPrepared = await AttachmentObject.PrepareUpload({
+        ownerModel: 'auth.User',
+        ownerRecordId: uid('owner_cov_finalize_empty_meta'),
+        fieldName: 'Doc3',
+        operation: 'update',
+        businessRequestId: emptyMetaBiz,
+      });
+      const storedId2 = await createStoredContent(TEST_COMPANY_ID);
+      await UploadSession.UpdateById(
+        emptyMetaPrepared.uploadId,
+        {
+          Status: 'uploaded',
+          UploadedPayloadRef: { kind: 'stored_content', storedContentId: storedId2 },
+          UploadedSizeBytes: null,
+          UploadedChecksumSha256: null,
+          ChecksumSha256: null,
+          UploadedContentType: null,
+          ProposedContentType: null,
+        } as any,
+        ['Id'] as any
+      );
+      const finalizedEmpty = await AttachmentObject.FinalizeUpload({
+        uploadId: emptyMetaPrepared.uploadId,
+        businessRequestId: emptyMetaBiz,
+      });
+      expect(finalizedEmpty.mimeType).toBe('application/octet-stream');
+      expect(finalizedEmpty.checksumSha256).toBe(EMPTY_SHA256);
+
+      const blankStatusBiz = uid('biz_cov_finalize_blank_status');
+      const blankStatusPrepared = await AttachmentObject.PrepareUpload({
+        ownerModel: 'auth.User',
+        ownerRecordId: uid('owner_cov_finalize_blank_status'),
+        fieldName: 'Doc4',
+        operation: 'update',
+        businessRequestId: blankStatusBiz,
+      });
+      await root.db.execute(
+        'update document_attachment_upload_session set status = ? where id = ?',
+        JSON.stringify(['', blankStatusPrepared.uploadId])
+      );
+      try {
+        await AttachmentObject.FinalizeUpload({
+          uploadId: blankStatusPrepared.uploadId,
+          businessRequestId: blankStatusBiz,
+        });
+        throw new Error('expected blank status finalize rejection');
+      } catch (err) {
+        expect((err as ChoysumError).code).toBe('FAILED_PRECONDITION');
+      }
+
+      const mismatchBiz = uid('biz_cov_finalize_blank_biz');
+      const mismatchPrepared = await AttachmentObject.PrepareUpload({
+        ownerModel: 'auth.User',
+        ownerRecordId: uid('owner_cov_finalize_blank_biz'),
+        fieldName: 'Doc5',
+        operation: 'update',
+        businessRequestId: mismatchBiz,
+      });
+      await markUploaded(mismatchPrepared.uploadId);
+      await root.db.execute(
+        'update document_attachment_upload_session set business_request_id = ? where id = ?',
+        JSON.stringify(['', mismatchPrepared.uploadId])
+      );
+      try {
+        await AttachmentObject.FinalizeUpload({
+          uploadId: mismatchPrepared.uploadId,
+          businessRequestId: uid('biz_cov_finalize_blank_biz_other'),
+        });
+        throw new Error('expected blank businessRequestId mismatch');
+      } catch (err) {
+        expect((err as ChoysumError).code).toBe('IDEMPOTENCY_KEY_REUSED');
+      }
+
+      const inactiveStoredBiz = uid('biz_cov_inactive_status_empty');
+      const inactivePrepared = await AttachmentObject.PrepareUpload({
+        ownerModel: 'auth.User',
+        ownerRecordId: uid('owner_cov_inactive_status_empty'),
+        fieldName: 'Doc6',
+        operation: 'update',
+        businessRequestId: inactiveStoredBiz,
+      });
+      const inactiveStored = await createStoredContent(TEST_COMPANY_ID, 'deleted');
+      await UploadSession.UpdateById(
+        inactivePrepared.uploadId,
+        {
+          Status: 'uploaded',
+          UploadedPayloadRef: { kind: 'stored_content', storedContentId: inactiveStored },
+          UploadedSizeBytes: 1,
+          UploadedChecksumSha256: EMPTY_SHA256,
+          UploadedContentType: 'text/plain',
+        } as any,
+        ['Id'] as any
+      );
+      await root.db.execute(
+        'update document_stored_content set status = ? where id = ?',
+        JSON.stringify(['', inactiveStored])
+      );
+      try {
+        await AttachmentObject.FinalizeUpload({
+          uploadId: inactivePrepared.uploadId,
+          businessRequestId: inactiveStoredBiz,
+        });
+        throw new Error('expected empty stored status rejection');
+      } catch (err) {
+        expect((err as ChoysumError).code).toBe('FAILED_PRECONDITION');
+      }
+
+      // Empty contentType fallback: clear proposed type so authorize/commit see falsy contentType.
+      await root.db.execute(
+        'update document_attachment_upload_session set proposed_content_type = ? where id = ?',
+        JSON.stringify(['', createPrepared.uploadId])
+      );
+      try {
+        await AttachmentObject.AuthorizeUploadPut({
+          uploadId: createPrepared.uploadId,
+          principal: buildPrincipal(),
+          requestMeta: { contentLength: 1 },
+        } as any);
+        throw new Error('expected empty contentType mime deny on authorize');
+      } catch (err) {
+        expect((err as ChoysumError).code).toBe('MIME_TYPE_NOT_ALLOWED');
+      }
+
+      try {
+        await AttachmentObject.CommitUploadPut({
+          uploadId: createPrepared.uploadId,
+          principal: buildPrincipal(),
+          payloadReceipt: {
+            payloadId: `sc:${await createStoredContent(TEST_COMPANY_ID)}`,
+            sizeBytes: 1,
+            checksumSha256: EMPTY_SHA256,
+          } as any,
+        });
+        throw new Error('expected empty contentType mime reject on commit');
+      } catch (err) {
+        expect((err as ChoysumError).code).toBe('MIME_TYPE_NOT_ALLOWED');
+      }
+
+      // Finalize with operation=create covers the create ternary in finalizeUpload.
+      const createFinalizeBiz = uid('biz_cov_finalize_create_op');
+      const createFinalizePrepared = await AttachmentObject.PrepareUpload({
+        ownerModel: 'auth.User',
+        ownerRecordId: uid('owner_cov_finalize_create_op'),
+        fieldName: 'Avatar',
+        operation: 'create',
+        businessRequestId: createFinalizeBiz,
+        proposedContentType: 'text/plain',
+      });
+      const createFinalizeStored = await createStoredContent(TEST_COMPANY_ID);
+      await UploadSession.UpdateById(
+        createFinalizePrepared.uploadId,
+        {
+          Status: 'uploaded',
+          UploadedPayloadRef: { kind: 'stored_content', storedContentId: createFinalizeStored },
+          UploadedSizeBytes: 1,
+          UploadedChecksumSha256: EMPTY_SHA256,
+          UploadedContentType: 'text/plain',
+        } as any,
+        ['Id'] as any
+      );
+      const createFinalized = await AttachmentObject.FinalizeUpload({
+        uploadId: createFinalizePrepared.uploadId,
+        businessRequestId: createFinalizeBiz,
+      });
+      expect(createFinalized.mimeType).toBe('text/plain');
+    } finally {
+      if (createGrantRuleId && createGrantOriginal) {
+        await withPermissionGraphBypass(async () => {
+          await RoleRecordRule.UpdateById(createGrantRuleId, createGrantOriginal as any, ['Id'] as any);
+        });
+        delete (ensureRequestContext() as any)[RR_CACHE_KEY];
+      }
+    }
+  });
+});
+
 test('inlined owner auth coverage: probe and expr scope denials', async () => {
   resetRequestContext();
   await withDocumentScope(async () => {
@@ -418,41 +829,43 @@ test('inlined owner auth coverage: probe and expr scope denials', async () => {
     delete (ensureRequestContext() as any)[RR_CACHE_KEY];
 
     try {
-      await assertOwnerWriteAuthorization({
-        stage: 'bind',
-        ownerModel: 'auth.User',
-        ownerRecordId: TEST_USER_ID,
-        fieldName: 'Avatar',
-        operation: 'update',
-        companyId: TEST_COMPANY_ID,
-        companyIds: [TEST_COMPANY_ID],
-        userId: TEST_USER_ID,
-      });
-      throw new Error('expected expr write scope deny');
-    } catch (err) {
-      expect((err as ChoysumError).code).toBe('PERMISSION_DENIED');
-    }
+      try {
+        await assertOwnerWriteAuthorization({
+          stage: 'bind',
+          ownerModel: 'auth.User',
+          ownerRecordId: TEST_USER_ID,
+          fieldName: 'Avatar',
+          operation: 'update',
+          companyId: TEST_COMPANY_ID,
+          companyIds: [TEST_COMPANY_ID],
+          userId: TEST_USER_ID,
+        });
+        throw new Error('expected expr write scope deny');
+      } catch (err) {
+        expect((err as ChoysumError).code).toBe('PERMISSION_DENIED');
+      }
 
-    try {
-      await assertOwnerReadAuthorization({
-        stage: 'descriptor',
-        ownerModel: 'auth.User',
-        ownerRecordId: TEST_USER_ID,
-        fieldName: 'Avatar',
-        companyId: TEST_COMPANY_ID,
-        companyIds: [TEST_COMPANY_ID],
-        userId: TEST_USER_ID,
-      });
-      throw new Error('expected expr read scope deny');
-    } catch (err) {
-      expect((err as ChoysumError).code).toBe('PERMISSION_DENIED');
-    }
-
-    if (grantRuleId) {
-      await withPermissionGraphBypass(async () => {
-        await RoleRecordRule.UpdateById(grantRuleId, { Condition: originalCondition as any } as any, ['Id'] as any);
-      });
-      delete (ensureRequestContext() as any)[RR_CACHE_KEY];
+      try {
+        await assertOwnerReadAuthorization({
+          stage: 'descriptor',
+          ownerModel: 'auth.User',
+          ownerRecordId: TEST_USER_ID,
+          fieldName: 'Avatar',
+          companyId: TEST_COMPANY_ID,
+          companyIds: [TEST_COMPANY_ID],
+          userId: TEST_USER_ID,
+        });
+        throw new Error('expected expr read scope deny');
+      } catch (err) {
+        expect((err as ChoysumError).code).toBe('PERMISSION_DENIED');
+      }
+    } finally {
+      if (grantRuleId) {
+        await withPermissionGraphBypass(async () => {
+          await RoleRecordRule.UpdateById(grantRuleId, { Condition: originalCondition as any } as any, ['Id'] as any);
+        });
+        delete (ensureRequestContext() as any)[RR_CACHE_KEY];
+      }
     }
   });
 });

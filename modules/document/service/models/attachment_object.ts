@@ -644,6 +644,9 @@ async function finalizeUploadInternal(uploadId: string): Promise<FinalizeUploadR
         ['StoredContentId', '=', storedContentId],
         ['CompanyId', '=', companyId],
         ['Status', '=', 'active'],
+        ['MimeType', '=', mimeType],
+        ['SizeBytes', '=', sizeBytes],
+        ['ChecksumSha256', '=', checksumSha256],
       ],
     } as any,
     { limit: 1 } as any
