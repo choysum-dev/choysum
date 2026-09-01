@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { createServiceByModel } from '@/core/service/rpc/service_factory';
+import { assertRecordReadable } from '@/core/service/orm/model';
 import { normalizeConditionEnvelope, normalizeFieldRuleSpec, replaceConditionExprTokens } from '@/core/service/api/authz';
 import type { ConditionEnvelope, ConditionExpr, FieldRuleSpec, RecordRuleOp } from '@/core/service/api/authz';
 import { normalizeOptionalString } from '@/core/service/utils/normalization';
@@ -103,7 +104,7 @@ export async function assertOwnerWriteAuthorization(input: OwnerWriteAuthorizati
 
   if (ownerRecordId && envelope.kind === 'expr') {
     const recordRuleExpr = replaceTokensForOwnerRecordRule(envelope.expr, stage, userId, companyId, companyIds);
-    const ok = await probeOwnerRecord(ownerModel, ownerRecordId, recordRuleExpr);
+    const ok = await probeOwnerRecord(stage, ownerModel, ownerRecordId, recordRuleExpr);
     if (!ok) {
       throw permissionDenied(stage, _t('owner write target is not allowed by record rule scope', { scope: 'service/models/_owner_authorization' }), {
         ownerModel,
@@ -153,7 +154,7 @@ export async function assertOwnerReadAuthorization(input: OwnerReadAuthorization
 
   if (envelope.kind === 'expr') {
     const recordRuleExpr = replaceTokensForOwnerRecordRule(envelope.expr, stage, userId, companyId, companyIds);
-    const ok = await probeOwnerRecord(ownerModel, ownerRecordId, recordRuleExpr);
+    const ok = await probeOwnerRecord(stage, ownerModel, ownerRecordId, recordRuleExpr);
     if (!ok) {
       throw permissionDenied(stage, _t('owner read target is not allowed by record rule scope', { scope: 'service/models/_owner_authorization' }), {
         ownerModel,
@@ -204,7 +205,23 @@ function getAuthUserService(stage: OwnerPermissionStage): AuthUserServiceLike {
   }
 }
 
-async function probeOwnerRecord(ownerModel: string, ownerRecordId: string, recordRuleExpr?: ConditionExpr): Promise<boolean> {
+async function probeOwnerRecord(
+  stage: OwnerPermissionStage,
+  ownerModel: string,
+  ownerRecordId: string,
+  recordRuleExpr?: ConditionExpr
+): Promise<boolean> {
+  if (!recordRuleExpr) {
+    try {
+      await assertRecordReadable(ownerModel, ownerRecordId, {
+        message: _t('owner target is not readable', { scope: 'service/models/_owner_authorization' }),
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   let ownerService: OwnerModelServiceLike;
   try {
     ownerService = createServiceByModel(ownerModel) as OwnerModelServiceLike;
@@ -304,4 +321,14 @@ function errorMessage(err: unknown): string {
     return normalizeOptionalText(err.message) ?? 'unknown_error';
   }
   return normalizeOptionalText(err) ?? 'unknown_error';
+}
+
+/** Test seam for owner record probe branches (Id-only and expr-augmented). */
+export async function documentProbeOwnerRecordForTest(
+  stage: OwnerPermissionStage,
+  ownerModel: string,
+  ownerRecordId: string,
+  recordRuleExpr?: ConditionExpr
+): Promise<boolean> {
+  return probeOwnerRecord(stage, ownerModel, ownerRecordId, recordRuleExpr);
 }
