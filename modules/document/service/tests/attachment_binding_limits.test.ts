@@ -7,7 +7,7 @@ import { Model } from '@/core/service/orm/decorator/model';
 import { MetadataStorage } from '@/core/service/orm/metadata/storage';
 import { ChoysumError } from '@/core/service/error';
 import { DEFAULT_GLOBAL_MAX_UPLOAD_BYTES } from '@/core/service/orm/upload_limits';
-import { validateAttachmentContentFieldLimits } from '../models/_attachment_binding_ops';
+import { validateAttachmentContentFieldLimits } from '../models/_binding_field_limits';
 
 @Model('BindLimitPilot', { application: 'demo' })
 class BindLimitPilot extends BaseModel {

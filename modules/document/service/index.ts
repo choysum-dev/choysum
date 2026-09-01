@@ -4,5 +4,6 @@
 import './hook/post_init';
 
 export * from './models';
+export * from './mixins';
 export * from './contracts';
 export * from './error';

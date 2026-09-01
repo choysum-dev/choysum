@@ -7,97 +7,97 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: service/models/attachment_binding.ts:84
+#: service/models/attachment_binding.ts:87
 msgctxt "document.model.AttachmentBinding.fields"
 msgid "Attachment Content"
 msgstr ""
 
-#: service/models/attachment_binding.ts:151
+#: service/models/attachment_binding.ts:154
 msgctxt "document.model.AttachmentBinding.fields"
 msgid "Company"
 msgstr ""
 
-#: service/models/attachment_binding.ts:94
+#: service/models/attachment_binding.ts:97
 msgctxt "document.model.AttachmentBinding.fields"
 msgid "Display File Name"
 msgstr ""
 
-#: service/models/attachment_binding.ts:110
+#: service/models/attachment_binding.ts:113
 msgctxt "document.model.AttachmentBinding.fields"
 msgid "Download Disposition"
 msgstr ""
 
-#: service/models/attachment_binding.ts:70
+#: service/models/attachment_binding.ts:73
 msgctxt "document.model.AttachmentBinding.fields"
 msgid "Field Name"
 msgstr ""
 
-#: service/models/attachment_binding.ts:44
+#: service/models/attachment_binding.ts:47
 msgctxt "document.model.AttachmentBinding.fields"
 msgid "Owner Model"
 msgstr ""
 
-#: service/models/attachment_binding.ts:57
+#: service/models/attachment_binding.ts:60
 msgctxt "document.model.AttachmentBinding.fields"
 msgid "Owner Record"
 msgstr ""
 
-#: service/models/attachment_binding.ts:128
+#: service/models/attachment_binding.ts:131
 msgctxt "document.model.AttachmentBinding.fields"
 msgid "Status"
 msgstr ""
 
-#: service/models/attachment_binding.ts:138
+#: service/models/attachment_binding.ts:141
 msgctxt "document.model.AttachmentBinding.fields"
 msgid "Unbound At"
 msgstr ""
 
-#: service/models/attachment_object.ts:80
+#: service/models/attachment_object.ts:85
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Checksum SHA-256"
 msgstr ""
 
-#: service/models/attachment_object.ts:151
+#: service/models/attachment_object.ts:156
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Company"
 msgstr ""
 
-#: service/models/attachment_object.ts:111
+#: service/models/attachment_object.ts:116
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Image Format"
 msgstr ""
 
-#: service/models/attachment_object.ts:100
+#: service/models/attachment_object.ts:105
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Image Height"
 msgstr ""
 
-#: service/models/attachment_object.ts:90
+#: service/models/attachment_object.ts:95
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Image Width"
 msgstr ""
 
-#: service/models/attachment_object.ts:68
+#: service/models/attachment_object.ts:73
 msgctxt "document.model.AttachmentContent.fields"
 msgid "MIME Type"
 msgstr ""
 
-#: service/models/attachment_object.ts:120
+#: service/models/attachment_object.ts:125
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Metadata"
 msgstr ""
 
-#: service/models/attachment_object.ts:56
+#: service/models/attachment_object.ts:61
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Size Bytes"
 msgstr ""
 
-#: service/models/attachment_object.ts:138
+#: service/models/attachment_object.ts:143
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Status"
 msgstr ""
 
-#: service/models/attachment_object.ts:45
+#: service/models/attachment_object.ts:50
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Stored Content"
 msgstr ""
@@ -287,81 +287,6 @@ msgctxt "service/models/_attachment_binding_codec"
 msgid "downloadDisposition must be inline or attachment"
 msgstr ""
 
-#: service/models/_attachment_binding_ops.ts:390
-msgctxt "service/models/_attachment_binding_ops"
-msgid "Active attachment binding not found"
-msgstr ""
-
-#: service/models/_attachment_binding_ops.ts:250
-msgctxt "service/models/_attachment_binding_ops"
-msgid "Active attachment content not found"
-msgstr ""
-
-#: service/models/_attachment_binding_ops.ts:222
-msgctxt "service/models/_attachment_binding_ops"
-msgid "Active attachment content not found in company scope"
-msgstr ""
-
-#: service/models/_attachment_binding_ops.ts:274
-msgctxt "service/models/_attachment_binding_ops"
-msgid "Active stored content not found"
-msgstr ""
-
-#: service/models/_attachment_binding_ops.ts:366
-msgctxt "service/models/_attachment_binding_ops"
-msgid "Attachment binding not found"
-msgstr ""
-
-#: service/models/_attachment_binding_ops.ts:450
-msgctxt "service/models/_attachment_binding_ops"
-msgid "bind mutationId exists but previous attempt did not succeed"
-msgstr ""
-
-#: service/models/_attachment_binding_ops.ts:464
-msgctxt "service/models/_attachment_binding_ops"
-msgid "bind replay snapshot is invalid"
-msgstr ""
-
-#: service/models/_attachment_binding_ops.ts:310
-msgctxt "service/models/_attachment_binding_ops"
-msgid "database execute bridge is unavailable"
-msgstr ""
-
-#: service/models/_attachment_binding_ops.ts:195
-msgctxt "service/models/_attachment_binding_ops"
-msgid "principal activeCompanyId does not match runtime context"
-msgstr ""
-
-#: service/models/_attachment_binding_ops.ts:182
-msgctxt "service/models/_attachment_binding_ops"
-msgid "principal userId does not match runtime identity"
-msgstr ""
-
-#: service/models/_attachment_binding_ops.ts:479
-msgctxt "service/models/_attachment_binding_ops"
-msgid "unbind mutationId exists but previous attempt did not succeed"
-msgstr ""
-
-#: service/models/_attachment_binding_ops.ts:493
-msgctxt "service/models/_attachment_binding_ops"
-msgid "unbind replay snapshot is invalid"
-msgstr ""
-
-#: service/models/_attachment_binding_ops.ts:128
-msgctxt "service/models/_attachment_binding_ops"
-msgid "upload exceeds field maxHeight"
-msgstr ""
-
-#: service/models/_attachment_binding_ops.ts:91
-msgctxt "service/models/_attachment_binding_ops"
-msgid "upload exceeds field maxUploadBytes"
-msgstr ""
-
-#: service/models/_attachment_binding_ops.ts:115
-msgctxt "service/models/_attachment_binding_ops"
-msgid "upload exceeds field maxWidth"
-msgstr ""
-
 #: service/models/_attachment_upload_codec.ts:38
 msgctxt "service/models/_attachment_upload_codec"
 msgid "Upload session has already been finalized"
@@ -382,62 +307,19 @@ msgctxt "service/models/_attachment_upload_codec"
 msgid "payloadReceipt.payloadId must be an opaque handle, inline byte payload is forbidden"
 msgstr ""
 
-#: service/models/_attachment_upload_ops.ts:194
-msgctxt "service/models/_attachment_upload_ops"
-msgid "Attachment content not found"
+#: service/models/_binding_field_limits.ts:92
+msgctxt "service/models/_binding_field_limits"
+msgid "upload exceeds field maxHeight"
 msgstr ""
 
-#: service/models/_attachment_upload_ops.ts:240
-msgctxt "service/models/_attachment_upload_ops"
-msgid "FinalizeUpload businessRequestId does not match the existing upload session"
+#: service/models/_binding_field_limits.ts:56
+msgctxt "service/models/_binding_field_limits"
+msgid "upload exceeds field maxUploadBytes"
 msgstr ""
 
-#: service/models/_attachment_upload_ops.ts:162
-msgctxt "service/models/_attachment_upload_ops"
-msgid "Stored content company does not match upload session company"
-msgstr ""
-
-#: service/models/_attachment_upload_ops.ts:176
-msgctxt "service/models/_attachment_upload_ops"
-msgid "Stored content must be active before finalize"
-msgstr ""
-
-#: service/models/_attachment_upload_ops.ts:146
-msgctxt "service/models/_attachment_upload_ops"
-msgid "Upload session is missing uploaded payload reference"
-msgstr ""
-
-#: service/models/_attachment_upload_ops.ts:351
-msgctxt "service/models/_attachment_upload_ops"
-msgid "Upload session must be prepared before commit"
-msgstr ""
-
-#: service/models/_attachment_upload_ops.ts:486
-msgctxt "service/models/_attachment_upload_ops"
-msgid "Upload session must be uploaded before finalize"
-msgstr ""
-
-#: service/models/_attachment_upload_ops.ts:114
-msgctxt "service/models/_attachment_upload_ops"
-msgid "Upload session not found"
-msgstr ""
-
-#: service/models/_attachment_upload_ops.ts:309
-#: service/models/_attachment_upload_ops.ts:391
-msgctxt "service/models/_attachment_upload_ops"
-msgid "checksum mismatch"
-msgstr ""
-
-#: service/models/_attachment_upload_ops.ts:296
-#: service/models/_attachment_upload_ops.ts:378
-msgctxt "service/models/_attachment_upload_ops"
-msgid "content type is not allowed"
-msgstr ""
-
-#: service/models/_attachment_upload_ops.ts:282
-#: service/models/_attachment_upload_ops.ts:364
-msgctxt "service/models/_attachment_upload_ops"
-msgid "upload body exceeds maxUploadBytes"
+#: service/models/_binding_field_limits.ts:79
+msgctxt "service/models/_binding_field_limits"
+msgid "upload exceeds field maxWidth"
 msgstr ""
 
 #: service/models/_normalizers.ts:19
@@ -455,62 +337,67 @@ msgctxt "service/models/_normalizers"
 msgid "activeCompanyId is required for document operations"
 msgstr ""
 
-#: service/models/_owner_authorization.ts:290
+#: service/models/_owner_authorization.ts:307
 msgctxt "service/models/_owner_authorization"
 msgid "%s is required"
 msgstr ""
 
-#: service/models/_owner_authorization.ts:200
+#: service/models/_owner_authorization.ts:201
 msgctxt "service/models/_owner_authorization"
 msgid "auth service is unavailable for owner authorization check"
 msgstr ""
 
-#: service/models/_owner_authorization.ts:189
+#: service/models/_owner_authorization.ts:190
 msgctxt "service/models/_owner_authorization"
 msgid "failed to fetch owner field rule spec"
 msgstr ""
 
-#: service/models/_owner_authorization.ts:175
+#: service/models/_owner_authorization.ts:176
 msgctxt "service/models/_owner_authorization"
 msgid "failed to fetch owner record rule condition"
 msgstr ""
 
-#: service/models/_owner_authorization.ts:146
+#: service/models/_owner_authorization.ts:147
 msgctxt "service/models/_owner_authorization"
 msgid "owner field read is denied by field rule"
 msgstr ""
 
-#: service/models/_owner_authorization.ts:86
+#: service/models/_owner_authorization.ts:87
 msgctxt "service/models/_owner_authorization"
 msgid "owner field write is denied by field rule"
 msgstr ""
 
-#: service/models/_owner_authorization.ts:134
+#: service/models/_owner_authorization.ts:135
 msgctxt "service/models/_owner_authorization"
 msgid "owner read is denied by record rule"
 msgstr ""
 
-#: service/models/_owner_authorization.ts:158
+#: service/models/_owner_authorization.ts:159
 msgctxt "service/models/_owner_authorization"
 msgid "owner read target is not allowed by record rule scope"
 msgstr ""
 
-#: service/models/_owner_authorization.ts:244
+#: service/models/_owner_authorization.ts:261
 msgctxt "service/models/_owner_authorization"
 msgid "owner record rule contains invalid token mapping"
 msgstr ""
 
-#: service/models/_owner_authorization.ts:75
+#: service/models/_owner_authorization.ts:217
+msgctxt "service/models/_owner_authorization"
+msgid "owner target is not readable"
+msgstr ""
+
+#: service/models/_owner_authorization.ts:76
 msgctxt "service/models/_owner_authorization"
 msgid "owner write is denied by record rule"
 msgstr ""
 
-#: service/models/_owner_authorization.ts:108
+#: service/models/_owner_authorization.ts:109
 msgctxt "service/models/_owner_authorization"
 msgid "owner write target is not allowed by record rule scope"
 msgstr ""
 
-#: service/models/_owner_authorization.ts:96
+#: service/models/_owner_authorization.ts:97
 msgctxt "service/models/_owner_authorization"
 msgid "ownerRecordId is required for owner write check"
 msgstr ""
@@ -554,6 +441,124 @@ msgstr ""
 #: service/models/_upload.ts:223
 msgctxt "service/models/_upload"
 msgid "userId does not match upload session issuer"
+msgstr ""
+
+#: service/models/attachment_binding.ts:421
+msgctxt "service/models/attachment_binding"
+msgid "Active attachment binding not found"
+msgstr ""
+
+#: service/models/attachment_binding.ts:285
+msgctxt "service/models/attachment_binding"
+msgid "Active attachment content not found"
+msgstr ""
+
+#: service/models/attachment_binding.ts:257
+msgctxt "service/models/attachment_binding"
+msgid "Active attachment content not found in company scope"
+msgstr ""
+
+#: service/models/attachment_binding.ts:309
+msgctxt "service/models/attachment_binding"
+msgid "Active stored content not found"
+msgstr ""
+
+#: service/models/attachment_binding.ts:397
+msgctxt "service/models/attachment_binding"
+msgid "Attachment binding not found"
+msgstr ""
+
+#: service/models/attachment_binding.ts:479
+msgctxt "service/models/attachment_binding"
+msgid "bind mutationId exists but previous attempt did not succeed"
+msgstr ""
+
+#: service/models/attachment_binding.ts:493
+msgctxt "service/models/attachment_binding"
+msgid "bind replay snapshot is invalid"
+msgstr ""
+
+#: service/models/attachment_binding.ts:343
+msgctxt "service/models/attachment_binding"
+msgid "database execute bridge is unavailable"
+msgstr ""
+
+#: service/models/attachment_binding.ts:230
+msgctxt "service/models/attachment_binding"
+msgid "principal activeCompanyId does not match runtime context"
+msgstr ""
+
+#: service/models/attachment_binding.ts:217
+msgctxt "service/models/attachment_binding"
+msgid "principal userId does not match runtime identity"
+msgstr ""
+
+#: service/models/attachment_binding.ts:508
+msgctxt "service/models/attachment_binding"
+msgid "unbind mutationId exists but previous attempt did not succeed"
+msgstr ""
+
+#: service/models/attachment_binding.ts:522
+msgctxt "service/models/attachment_binding"
+msgid "unbind replay snapshot is invalid"
+msgstr ""
+
+#: service/models/attachment_object.ts:331
+msgctxt "service/models/attachment_object"
+msgid "Attachment content not found"
+msgstr ""
+
+#: service/models/attachment_object.ts:377
+msgctxt "service/models/attachment_object"
+msgid "FinalizeUpload businessRequestId does not match the existing upload session"
+msgstr ""
+
+#: service/models/attachment_object.ts:299
+msgctxt "service/models/attachment_object"
+msgid "Stored content company does not match upload session company"
+msgstr ""
+
+#: service/models/attachment_object.ts:313
+msgctxt "service/models/attachment_object"
+msgid "Stored content must be active before finalize"
+msgstr ""
+
+#: service/models/attachment_object.ts:283
+msgctxt "service/models/attachment_object"
+msgid "Upload session is missing uploaded payload reference"
+msgstr ""
+
+#: service/models/attachment_object.ts:488
+msgctxt "service/models/attachment_object"
+msgid "Upload session must be prepared before commit"
+msgstr ""
+
+#: service/models/attachment_object.ts:623
+msgctxt "service/models/attachment_object"
+msgid "Upload session must be uploaded before finalize"
+msgstr ""
+
+#: service/models/attachment_object.ts:251
+msgctxt "service/models/attachment_object"
+msgid "Upload session not found"
+msgstr ""
+
+#: service/models/attachment_object.ts:446
+#: service/models/attachment_object.ts:528
+msgctxt "service/models/attachment_object"
+msgid "checksum mismatch"
+msgstr ""
+
+#: service/models/attachment_object.ts:433
+#: service/models/attachment_object.ts:515
+msgctxt "service/models/attachment_object"
+msgid "content type is not allowed"
+msgstr ""
+
+#: service/models/attachment_object.ts:419
+#: service/models/attachment_object.ts:501
+msgctxt "service/models/attachment_object"
+msgid "upload body exceeds maxUploadBytes"
 msgstr ""
 
 #: service/models/stored_content.ts:92
