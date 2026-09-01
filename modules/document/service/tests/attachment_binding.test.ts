@@ -9,8 +9,9 @@ import User from '@/auth/service/models/user/user';
 import UserRole from '@/auth/service/models/user_role';
 import MetaField from '@/meta/service/models/field';
 import MetaModel from '@/meta/service/models/model';
-import AttachmentBinding from '../models/attachment_binding';
+import AttachmentBinding, { documentHardDeleteBindingForTest } from '../models/attachment_binding';
 import AttachmentObject from '../models/attachment_object';
+import AttachmentMutationLedger from '../models/attachment_mutation_ledger';
 import UploadSession from '../models/upload_session';
 import StoredContent from '../models/stored_content';
 import { normalizeBatchDescribeReq } from '../models/_attachment_binding_codec';
@@ -1175,6 +1176,186 @@ test('document.attachment_binding: BatchDescribe rejects when attachmentBindingI
   expect(caught!.domain).toBe('document');
   expect(caught!.code).toBe('INVALID_ARGUMENT');
   expect(caught!.metadata?.field).toBe('attachmentBindingIds');
+});
+
+test('document.attachment_binding: BatchDescribe returns empty list for empty attachmentBindingIds', async () => {
+  resetRequestContext();
+  await withDocumentScope(async () => {
+    const response = await AttachmentBinding.BatchDescribe({ attachmentBindingIds: [] });
+    expect(response.items).toEqual([]);
+  });
+});
+
+test('document.attachment_binding: Bind patches presentation when rebinding same content', async () => {
+  resetRequestContext();
+  await withDocumentScope(async () => {
+    const ownerRecordId = uid('owner_bind_presentation');
+    const fieldName = 'AttachmentField';
+    const attachmentObjectId = await createActiveObject(ownerRecordId, fieldName);
+
+    const first = await AttachmentBinding.Bind({
+      attachmentObjectId,
+      ownerModel: 'auth.User',
+      ownerRecordId,
+      fieldName,
+      displayFileName: 'a.txt',
+      downloadDisposition: 'attachment',
+      mutationId: uid('mutation_bind_presentation_1'),
+    });
+    const second = await AttachmentBinding.Bind({
+      attachmentObjectId,
+      ownerModel: 'auth.User',
+      ownerRecordId,
+      fieldName,
+      displayFileName: 'b.txt',
+      downloadDisposition: 'inline',
+      mutationId: uid('mutation_bind_presentation_2'),
+    });
+
+    expect(second.attachmentBindingId).toBe(first.attachmentBindingId);
+    expect(second.descriptor.fileName).toBe('b.txt');
+  });
+});
+
+test('document.attachment_binding: Bind rejects failed and invalid succeeded mutation ledger rows', async () => {
+  resetRequestContext();
+  await withDocumentScope(async () => {
+    const attachmentObjectId = await createActiveObject(uid('owner_bind_ledger'), 'AttachmentField');
+
+    const failedMutationId = uid('mutation_bind_ledger_failed');
+    await AttachmentMutationLedger.Create(
+      {
+        Action: 'bind',
+        MutationId: failedMutationId,
+        RequestJson: {},
+        ResponseJson: {},
+        Status: 'failed',
+        CompanyId: TEST_COMPANY_ID,
+      } as any,
+      ['Id'] as any
+    );
+    try {
+      await AttachmentBinding.Bind({
+        attachmentObjectId,
+        ownerModel: 'auth.User',
+        ownerRecordId: uid('owner_bind_ledger_failed'),
+        fieldName: 'Doc',
+        mutationId: failedMutationId,
+      });
+      throw new Error('expected bind ledger failed rejection');
+    } catch (err) {
+      expect(err instanceof ChoysumError).toBe(true);
+      expect((err as ChoysumError).code).toBe('FAILED_PRECONDITION');
+    }
+
+    const badSnapshotId = uid('mutation_bind_ledger_bad_snapshot');
+    await AttachmentMutationLedger.Create(
+      {
+        Action: 'bind',
+        MutationId: badSnapshotId,
+        RequestJson: {},
+        ResponseJson: { status: 'broken' },
+        Status: 'succeeded',
+        CompanyId: TEST_COMPANY_ID,
+      } as any,
+      ['Id'] as any
+    );
+    try {
+      await AttachmentBinding.Bind({
+        attachmentObjectId,
+        ownerModel: 'auth.User',
+        ownerRecordId: uid('owner_bind_ledger_bad_snapshot'),
+        fieldName: 'Doc2',
+        mutationId: badSnapshotId,
+      });
+      throw new Error('expected invalid bind ledger snapshot rejection');
+    } catch (err) {
+      expect(err instanceof ChoysumError).toBe(true);
+      expect((err as ChoysumError).code).toBe('FAILED_PRECONDITION');
+    }
+  });
+});
+
+test('document.attachment_binding: hard delete cleanup rejects when db.execute is unavailable', async () => {
+  resetRequestContext();
+  await withDocumentScope(async () => {
+    const root: any = (globalThis as any).$choysum ?? {};
+    const savedDb = root.db;
+    root.db = {};
+    try {
+      await documentHardDeleteBindingForTest(uid('binding_hard_delete'), TEST_COMPANY_ID);
+      throw new Error('expected db execute guard rejection');
+    } catch (err) {
+      expect(err instanceof ChoysumError).toBe(true);
+      expect((err as ChoysumError).code).toBe('SKELETON_NOT_IMPLEMENTED');
+    } finally {
+      root.db = savedDb;
+    }
+  });
+});
+
+test('document.attachment_binding: Unbind rejects failed and invalid succeeded mutation ledger rows', async () => {
+  resetRequestContext();
+  await withDocumentScope(async () => {
+    const ownerRecordId = uid('owner_unbind_ledger');
+    const fieldName = 'AttachmentField';
+    const attachmentObjectId = await createActiveObject(ownerRecordId, fieldName);
+    const bound = await AttachmentBinding.Bind({
+      attachmentObjectId,
+      ownerModel: 'auth.User',
+      ownerRecordId,
+      fieldName,
+      mutationId: uid('mutation_unbind_ledger_ok'),
+    });
+
+    const failedMutationId = uid('mutation_unbind_ledger_failed');
+    await AttachmentMutationLedger.Create(
+      {
+        Action: 'unbind',
+        MutationId: failedMutationId,
+        RequestJson: {},
+        ResponseJson: {},
+        Status: 'failed',
+        CompanyId: TEST_COMPANY_ID,
+      } as any,
+      ['Id'] as any
+    );
+    try {
+      await AttachmentBinding.Unbind({
+        attachmentBindingId: bound.attachmentBindingId,
+        mutationId: failedMutationId,
+        reason: 'test',
+      });
+      throw new Error('expected unbind ledger failed rejection');
+    } catch (err) {
+      expect(err instanceof ChoysumError).toBe(true);
+      expect((err as ChoysumError).code).toBe('FAILED_PRECONDITION');
+    }
+
+    const badSnapshotId = uid('mutation_unbind_ledger_bad_snapshot');
+    await AttachmentMutationLedger.Create(
+      {
+        Action: 'unbind',
+        MutationId: badSnapshotId,
+        RequestJson: {},
+        ResponseJson: { status: 'broken' },
+        Status: 'succeeded',
+        CompanyId: TEST_COMPANY_ID,
+      } as any,
+      ['Id'] as any
+    );
+    try {
+      await AttachmentBinding.Unbind({
+        attachmentBindingId: bound.attachmentBindingId,
+        mutationId: badSnapshotId,
+        reason: 'test',
+      });
+      throw new Error('expected invalid unbind ledger snapshot rejection');
+    } catch (err) {
+      expect(err instanceof ChoysumError).toBe(true);
+      expect((err as ChoysumError).code).toBe('FAILED_PRECONDITION');
+    }
+  });
 });
 
 test('document owner auth fixtures: restore env and suite-owned RR/FR fixtures (binding suite)', async () => {

@@ -322,3 +322,13 @@ function errorMessage(err: unknown): string {
   }
   return normalizeOptionalText(err) ?? 'unknown_error';
 }
+
+/** Test seam for owner record probe branches (Id-only and expr-augmented). */
+export async function documentProbeOwnerRecordForTest(
+  stage: OwnerPermissionStage,
+  ownerModel: string,
+  ownerRecordId: string,
+  recordRuleExpr?: ConditionExpr
+): Promise<boolean> {
+  return probeOwnerRecord(stage, ownerModel, ownerRecordId, recordRuleExpr);
+}

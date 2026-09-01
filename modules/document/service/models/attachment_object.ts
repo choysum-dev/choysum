@@ -638,17 +638,31 @@ async function finalizeUploadInternal(uploadId: string): Promise<FinalizeUploadR
   const companyId = requireText(session.CompanyId, 'companyId');
   const storedContentId = await resolveStoredContentIdForFinalize(uploadedPayloadRef, normalizedUploadId, companyId);
 
-  const created = await AttachmentContent.Create(
+  const existingContentRows = await AttachmentContent.Search(
     {
-      StoredContentId: storedContentId,
-      SizeBytes: sizeBytes,
-      MimeType: mimeType,
-      ChecksumSha256: checksumSha256,
-      Status: 'active',
-      CompanyId: companyId,
+      And: [
+        ['StoredContentId', '=', storedContentId],
+        ['CompanyId', '=', companyId],
+        ['Status', '=', 'active'],
+      ],
     } as any,
-    ['Id', 'StoredContentId', 'SizeBytes', 'MimeType', 'ChecksumSha256', 'Status', 'ImageWidth', 'ImageHeight', 'ImageFormat'] as any
+    { limit: 1 } as any
   );
+  const reusableContent = (existingContentRows[0] as AttachmentContent | undefined) ?? null;
+
+  const created =
+    reusableContent ??
+    ((await AttachmentContent.Create(
+      {
+        StoredContentId: storedContentId,
+        SizeBytes: sizeBytes,
+        MimeType: mimeType,
+        ChecksumSha256: checksumSha256,
+        Status: 'active',
+        CompanyId: companyId,
+      } as any,
+      ['Id', 'StoredContentId', 'SizeBytes', 'MimeType', 'ChecksumSha256', 'Status', 'ImageWidth', 'ImageHeight', 'ImageFormat'] as any
+    )) as AttachmentContent);
 
   const attachmentContentId = requireText((created as any)?.Id, 'attachmentContentId');
   const AttachmentUploadSessionModel = getAttachmentUploadSessionModel();

@@ -876,3 +876,8 @@ async function buildDescriptorForBinding(bindingId: string): Promise<AttachmentD
 
   return buildDescriptor(binding, attachmentContent);
 }
+
+/** Test seam for binding hard-delete cleanup when db.execute is unavailable. */
+export async function documentHardDeleteBindingForTest(bindingId: string, companyId: string): Promise<void> {
+  return hardDeleteBindingById(bindingId, companyId);
+}
