@@ -17,27 +17,8 @@ import {
   aggregateRows,
   normalizeOriginType,
   canReuseRunningSync,
-} from '../models/module_index';
-
-type ModuleIndexRecord = {
-  Id?: string;
-  ModuleName?: string;
-  OriginType?: string;
-  OriginRef?: string;
-  Available?: boolean;
-  Version?: string;
-  ManifestJson?: Record<string, unknown> | null;
-  LocalPath?: string;
-  LastSyncAt?: Date | string | null;
-  LastBatchSyncAt?: Date | string | null;
-  SyncRevision?: string;
-  LastErrorMessage?: string;
-  InstalledStatus?: string;
-  InstalledVersion?: string;
-  OriginTypes?: string;
-  LocalVersion?: string;
-  RegistryVersion?: string;
-};
+  type ModuleIndexRecord,
+} from '../models/_module_index_query';
 
 const describe = (_name: string, fn: () => void) => fn();
 const it = (name: string, fn: () => void) => test(name, fn);
@@ -98,6 +79,9 @@ describe('toComparableValue', () => {
   it('returns numbers unchanged', () => {
     expect(toComparableValue(42)).toBe(42);
   });
+  it('returns bigint unchanged', () => {
+    expect(toComparableValue(10n)).toBe(10n);
+  });
   it('parses date-like strings to timestamps', () => {
     const v = toComparableValue('2024-01-15');
     expect(typeof v).toBe('number');
@@ -107,6 +91,9 @@ describe('toComparableValue', () => {
   });
   it('returns  empty string for blank input', () => {
     expect(toComparableValue('   ')).toBe('');
+  });
+  it('stringifies other values', () => {
+    expect(toComparableValue({ x: 1 })).toBe('[object object]');
   });
 });
 
@@ -131,8 +118,14 @@ describe('parseSortSpecs', () => {
   it('skips items without field', () => {
     expect(parseSortSpecs([{ x: 1 }])).toEqual([]);
   });
+  it('skips falsy and non-object items', () => {
+    expect(parseSortSpecs([null, undefined, 42, false])).toEqual([]);
+  });
   it('parses Field/Order aliases', () => {
     expect(parseSortSpecs([{ Field: 'Name', Order: 'DESC' }])).toEqual([{ field: 'Name', desc: true }]);
+  });
+  it('defaults order to asc when omitted', () => {
+    expect(parseSortSpecs([{ field: 'Name' }])).toEqual([{ field: 'Name', desc: false }]);
   });
 });
 
@@ -154,9 +147,37 @@ describe('compareBySpecs', () => {
     expect(compareBySpecs(record({ Version: undefined }), record({ Version: '1' }), specs)).toBeLessThan(0);
     expect(compareBySpecs(record({ Version: '1' }), record({ Version: undefined }), specs)).toBeGreaterThan(0);
   });
+  it('handles null values descending', () => {
+    const specs = [{ field: 'Version', desc: true }];
+    expect(compareBySpecs(record({ Version: undefined }), record({ Version: '1' }), specs)).toBeGreaterThan(0);
+    expect(compareBySpecs(record({ Version: '1' }), record({ Version: undefined }), specs)).toBeLessThan(0);
+  });
+  it('skips when both sides are null and continues', () => {
+    const specs = [
+      { field: 'Version', desc: false },
+      { field: 'ModuleName', desc: false },
+    ];
+    expect(compareBySpecs(record({ ModuleName: 'A' }), record({ ModuleName: 'B' }), specs)).toBeLessThan(0);
+  });
   it('falls back to ModuleName tiebreaker', () => {
     const specs: any[] = [];
     expect(compareBySpecs(record({ ModuleName: 'A' }), record({ ModuleName: 'B' }), specs)).toBeLessThan(0);
+    expect(compareBySpecs(record({ ModuleName: 'B' }), record({ ModuleName: 'A' }), specs)).toBeGreaterThan(0);
+  });
+  it('returns 0 when ModuleName tiebreaker is equal', () => {
+    expect(compareBySpecs(record({ ModuleName: 'same' }), record({ ModuleName: 'same' }), [])).toBe(0);
+  });
+  it('uses descending compare when av is greater', () => {
+    const specs = [{ field: 'Version', desc: true }];
+    expect(compareBySpecs(record({ Version: '2' }), record({ Version: '1' }), specs)).toBeLessThan(0);
+    expect(compareBySpecs(record({ Version: '1' }), record({ Version: '2' }), specs)).toBeGreaterThan(0);
+  });
+  it('continues when field values are equal', () => {
+    const specs = [
+      { field: 'Version', desc: false },
+      { field: 'ModuleName', desc: false },
+    ];
+    expect(compareBySpecs(record({ Version: '1', ModuleName: 'A' }), record({ Version: '1', ModuleName: 'B' }), specs)).toBeLessThan(0);
   });
 });
 
@@ -201,6 +222,20 @@ describe('buildSortPushdownPlan', () => {
     expect(plan.orderBy).toHaveLength(2); // Available + fallback ModuleName
     expect(plan.orderBy[1].field).toBe('ModuleName');
   });
+  it('reuses aggregate alias when the same field appears twice', () => {
+    const plan = buildSortPushdownPlan([
+      { field: 'Available', desc: false },
+      { field: 'Available', desc: true },
+    ]);
+    expect(plan.supported).toBe(true);
+    expect(plan.aggregateFields).toHaveLength(1);
+    expect(plan.orderBy[0].field).toBe(plan.orderBy[1].field);
+  });
+  it('supports empty sort specs with ModuleName fallback', () => {
+    const plan = buildSortPushdownPlan([]);
+    expect(plan.supported).toBe(true);
+    expect(plan.orderBy).toEqual([{ field: 'ModuleName', order: 'asc' }]);
+  });
 });
 
 // --------------- extractGroupedModuleNames ---------------
@@ -214,6 +249,16 @@ describe('extractGroupedModuleNames', () => {
   });
   it('skips empty names', () => {
     expect(extractGroupedModuleNames([{ ModuleName: '' }, { ModuleName: '  ' }])).toEqual([]);
+  });
+  it('handles null/undefined rows list', () => {
+    expect(extractGroupedModuleNames(null as any)).toEqual([]);
+    expect(extractGroupedModuleNames(undefined as any)).toEqual([]);
+  });
+  it('prefers ModuleName over module_name when both exist', () => {
+    expect(extractGroupedModuleNames([{ ModuleName: 'auth', module_name: 'ignored' }])).toEqual(['auth']);
+  });
+  it('skips null rows and nullish names', () => {
+    expect(extractGroupedModuleNames([null, { ModuleName: null }, { module_name: undefined }])).toEqual([]);
   });
 });
 
@@ -237,6 +282,10 @@ describe('buildModuleNamesCondition', () => {
       ],
     });
   });
+  it('treats null and empty-object base as only IN condition', () => {
+    expect(buildModuleNamesCondition(null, ['auth'])).toEqual(['ModuleName', 'in', ['auth']]);
+    expect(buildModuleNamesCondition({}, ['auth'])).toEqual(['ModuleName', 'in', ['auth']]);
+  });
 });
 
 // --------------- projectFields ---------------
@@ -256,6 +305,9 @@ describe('projectFields', () => {
     const result = projectFields(rows, ['ModuleName', 'ModuleName', '__proto__']);
     expect(result[0]).toEqual({ ModuleName: 'auth' });
   });
+  it('returns rows unchanged when all requested fields are blocked or blank', () => {
+    expect(projectFields(rows, ['__proto__', 'constructor', 'prototype', '  ', ''])).toBe(rows);
+  });
 });
 
 // --------------- toPlainRecord ---------------
@@ -269,8 +321,28 @@ describe('toPlainRecord', () => {
     const input = { toPlainObject: () => ({ ModuleName: 'test' }), extra: 'ignored' };
     expect(toPlainRecord(input).ModuleName).toBe('test');
   });
+  it('falls back when toPlainObject throws', () => {
+    const input = {
+      ModuleName: 'fallback',
+      toPlainObject: () => {
+        throw new Error('boom');
+      },
+    };
+    expect(toPlainRecord(input).ModuleName).toBe('fallback');
+  });
   it('falls back to enumerable keys', () => {
     expect(toPlainRecord({ ModuleName: 'test' }).ModuleName).toBe('test');
+  });
+  it('skips dangerous keys when copying enumerable fields', () => {
+    const input = JSON.parse('{"ModuleName":"safe","__proto__":{"polluted":true}}');
+    const result = toPlainRecord(input);
+    expect(result.ModuleName).toBe('safe');
+    expect(Object.prototype.hasOwnProperty.call(result, '__proto__')).toBe(false);
+    expect((result as any).polluted).toBeUndefined();
+  });
+  it('returns empty for non-object values', () => {
+    expect(toPlainRecord('x')).toEqual({});
+    expect(toPlainRecord(42)).toEqual({});
   });
 });
 
@@ -291,6 +363,10 @@ describe('pickNewestTimestamp', () => {
   it('returns first value when all are unparseable', () => {
     const result = pickNewestTimestamp(['not-a-date', 'also-not']);
     expect(result).toBe('not-a-date');
+  });
+  it('keeps prior pick when later value is unparseable', () => {
+    const result = pickNewestTimestamp([new Date('2024-01-01'), 'not-a-date']);
+    expect(result).toEqual(new Date('2024-01-01'));
   });
 });
 
@@ -329,6 +405,86 @@ describe('aggregateRows', () => {
     expect(result[0].ModuleName).toBe('solo');
     expect(result[0].OriginType).toBe('local');
     expect(result[0].InstalledStatus).toBe('uninstalled');
+  });
+
+  it('prefers registry-first bucket then local for OriginTypes order', () => {
+    const rows = [
+      record({ ModuleName: 'auth', OriginType: 'registry', Version: '2.0', Available: true }),
+      record({ ModuleName: 'auth', OriginType: 'local', Version: '1.0', Available: true }),
+    ];
+    const result = aggregateRows(rows);
+    expect(result[0].OriginTypes).toBe('local, registry');
+    expect(result[0].LocalVersion).toBe('1.0');
+    expect(result[0].RegistryVersion).toBe('2.0');
+  });
+
+  it('aggregates registry-only and unknown origin rows', () => {
+    const rows = [
+      record({
+        ModuleName: 'r',
+        OriginType: 'registry',
+        Version: '3',
+        InstalledStatus: 'installed',
+        InstalledVersion: '3',
+        LastErrorMessage: 'e',
+        SyncRevision: 'rev',
+      }),
+      record({ ModuleName: 'r', OriginType: 'other', Version: '9' }),
+    ];
+    const result = aggregateRows(rows);
+    expect(result[0].OriginType).toBe('registry');
+    expect(result[0].OriginTypes).toBe('registry');
+    expect(result[0].InstalledStatus).toBe('installed');
+    expect(result[0].InstalledVersion).toBe('3');
+    expect(result[0].LastErrorMessage).toBe('e');
+    expect(result[0].SyncRevision).toBe('rev');
+  });
+
+  it('falls back to bucket[0] and empty OriginTypes for unknown origins', () => {
+    const rows = [record({ ModuleName: 'x', OriginType: 'mirror', Version: '1', Id: 'id-1' })];
+    const result = aggregateRows(rows);
+    expect(result[0].Id).toBe('id-1');
+    expect(result[0].OriginType).toBe('mirror');
+    expect(result[0].OriginTypes).toBe('mirror');
+  });
+
+  it('defaults OriginType to local when base origin is blank', () => {
+    const rows = [record({ ModuleName: 'blank', OriginType: '   ', Id: '' })];
+    const result = aggregateRows(rows);
+    expect(result[0].OriginType).toBe('local');
+    expect(result[0].OriginTypes).toBe('');
+  });
+
+  it('defaults OriginType to local when OriginType is nullish', () => {
+    const rows = [record({ ModuleName: 'nullish', OriginType: undefined, Id: 'n1' })];
+    const result = aggregateRows(rows);
+    expect(result[0].OriginType).toBe('local');
+    expect(result[0].OriginTypes).toBe('');
+  });
+
+  it('fills Id from registry when local Id is empty', () => {
+    const rows = [
+      record({ ModuleName: 'x', OriginType: 'local', Id: '', Version: '1' }),
+      record({ ModuleName: 'x', OriginType: 'registry', Id: 'reg-1', Version: '2' }),
+    ];
+    expect(aggregateRows(rows)[0].Id).toBe('reg-1');
+  });
+
+  it('fills OriginRef and ManifestJson from registry when local is empty', () => {
+    const rows = [
+      record({ ModuleName: 'x', OriginType: 'local', OriginRef: '', ManifestJson: null }),
+      record({
+        ModuleName: 'x',
+        OriginType: 'registry',
+        OriginRef: 'npm:x',
+        ManifestJson: { name: 'x' },
+        LastErrorMessage: 'oops',
+      }),
+    ];
+    const result = aggregateRows(rows)[0];
+    expect(result.OriginRef).toBe('npm:x');
+    expect(result.ManifestJson).toEqual({ name: 'x' });
+    expect(result.LastErrorMessage).toBe('oops');
   });
 });
 

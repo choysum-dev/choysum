@@ -1046,12 +1046,12 @@ msgctxt "web/components/layout/OSidebar"
 msgid "Main navigation"
 msgstr "主导航"
 
-#: web/components/page/OPage.vue:37
+#: web/components/page/OPage.vue:50
 msgctxt "web/components/page/OPage"
 msgid "Page loading"
 msgstr "页面加载中"
 
-#: web/components/page/OPageIoMenu.vue:14
+#: web/components/page/OPageIoMenu.vue:48
 msgctxt "web/components/page/OPageIoMenu"
 msgid "Import and export"
 msgstr "导入与导出"
@@ -1061,7 +1061,7 @@ msgctxt "web/components/view/OChartView"
 msgid "Ascending"
 msgstr "升序"
 
-#: web/components/view/OChartView.vue:601
+#: web/components/view/OChartView.vue:603
 msgctxt "web/components/view/OChartView"
 msgid "Chart refresh failed"
 msgstr "图表刷新失败"
@@ -1116,17 +1116,17 @@ msgctxt "web/components/view/OChartView"
 msgid "Stack"
 msgstr "堆叠"
 
-#: web/components/view/OFormView.vue:541
+#: web/components/view/OFormView.vue:569
 msgctxt "web/components/view/OFormView"
 msgid "Are you sure you want to delete the current record? This action cannot be undone."
 msgstr "确定要删除当前记录吗？此操作无法撤销。"
 
-#: web/components/view/OFormView.vue:37 web/components/view/OFormView.vue:51 web/components/view/OFormView.vue:543
+#: web/components/view/OFormView.vue:37 web/components/view/OFormView.vue:51 web/components/view/OFormView.vue:571
 msgctxt "web/components/view/OFormView"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/view/OFormView.vue:541
+#: web/components/view/OFormView.vue:569
 msgctxt "web/components/view/OFormView"
 msgid "Confirm delete"
 msgstr "确认删除"
@@ -1136,22 +1136,22 @@ msgctxt "web/components/view/OFormView"
 msgid "Copy"
 msgstr "复制"
 
-#: web/components/view/OFormView.vue:409 web/components/view/OFormView.vue:458
+#: web/components/view/OFormView.vue:436 web/components/view/OFormView.vue:485
 msgctxt "web/components/view/OFormView"
 msgid "Created successfully"
 msgstr "创建成功"
 
-#: web/components/view/OFormView.vue:27 web/components/view/OFormView.vue:542
+#: web/components/view/OFormView.vue:27 web/components/view/OFormView.vue:570
 msgctxt "web/components/view/OFormView"
 msgid "Delete"
 msgstr "删除"
 
-#: web/components/view/OFormView.vue:587
+#: web/components/view/OFormView.vue:615
 msgctxt "web/components/view/OFormView"
 msgid "Delete failed"
 msgstr "删除失败"
 
-#: web/components/view/OFormView.vue:38
+#: web/components/view/OFormView.vue:40
 msgctxt "web/components/view/OFormView"
 msgid "Details"
 msgstr "详情"
@@ -1166,17 +1166,17 @@ msgctxt "web/components/view/OFormView"
 msgid "New"
 msgstr "新建"
 
-#: web/components/view/OFormView.vue:479
+#: web/components/view/OFormView.vue:506
 msgctxt "web/components/view/OFormView"
 msgid "Operation failed"
 msgstr "操作失败"
 
-#: web/components/view/OFormView.vue:281 web/components/view/OFormView.vue:290
+#: web/components/view/OFormView.vue:307 web/components/view/OFormView.vue:316
 msgctxt "web/components/view/OFormView"
 msgid "Please fix the errors in the form first"
 msgstr "请先修正表单中的错误"
 
-#: web/components/view/OFormView.vue:554
+#: web/components/view/OFormView.vue:582
 msgctxt "web/components/view/OFormView"
 msgid "Record deleted"
 msgstr "记录已删除"
@@ -1186,12 +1186,12 @@ msgctxt "web/components/view/OFormView"
 msgid "Refresh"
 msgstr "刷新"
 
-#: web/components/view/OFormView.vue:521
+#: web/components/view/OFormView.vue:549
 msgctxt "web/components/view/OFormView"
 msgid "Refresh failed"
 msgstr "刷新失败"
 
-#: web/components/view/OFormView.vue:518
+#: web/components/view/OFormView.vue:546
 msgctxt "web/components/view/OFormView"
 msgid "Refreshed"
 msgstr "已刷新"
@@ -1201,27 +1201,27 @@ msgctxt "web/components/view/OFormView"
 msgid "Reset"
 msgstr "重置"
 
-#: web/components/view/OFormView.vue:146
+#: web/components/view/OFormView.vue:150
 msgctxt "web/components/view/OFormView"
 msgid "Save"
 msgstr "保存"
 
-#: web/components/view/OFormView.vue:409 web/components/view/OFormView.vue:458
+#: web/components/view/OFormView.vue:436 web/components/view/OFormView.vue:485
 msgctxt "web/components/view/OFormView"
 msgid "Saved successfully"
 msgstr "保存成功"
 
-#: web/components/view/OFormView.vue:146
+#: web/components/view/OFormView.vue:150
 msgctxt "web/components/view/OFormView"
 msgid "Saving..."
 msgstr "保存中..."
 
-#: web/components/view/OKanbanView.vue:136
+#: web/components/view/OKanbanView.vue:144
 msgctxt "web/components/view/OKanbanView"
 msgid "All"
 msgstr "全部"
 
-#: web/components/view/OKanbanView.vue:302
+#: web/components/view/OKanbanView.vue:310
 msgctxt "web/components/view/OKanbanView"
 msgid "Kanban refresh failed"
 msgstr "看板刷新失败"
@@ -1231,7 +1231,7 @@ msgctxt "web/components/view/OKanbanView"
 msgid "Load more (%s remaining)"
 msgstr "加载更多（剩余 %s 条）"
 
-#: web/components/view/OKanbanView.vue:257
+#: web/components/view/OKanbanView.vue:265
 msgctxt "web/components/view/OKanbanView"
 msgid "Move failed; refreshed to recover"
 msgstr "移动失败，已刷新以恢复"
@@ -1256,12 +1256,12 @@ msgctxt "web/components/view/OKanbanView"
 msgid "Refresh"
 msgstr "刷新"
 
-#: web/components/view/OListView.vue:562
+#: web/components/view/OListView.vue:570
 msgctxt "web/components/view/OListView"
 msgid "Are you sure you want to delete the selected %s record(s)? This action cannot be undone."
 msgstr "确定要删除选中的 %s 条记录吗？此操作无法撤销。"
 
-#: web/components/view/OListView.vue:564
+#: web/components/view/OListView.vue:572
 msgctxt "web/components/view/OListView"
 msgid "Cancel"
 msgstr "取消"
@@ -1271,12 +1271,12 @@ msgctxt "web/components/view/OListView"
 msgid "Click to load more (%s remaining)"
 msgstr "点击加载更多（剩余 %s 条）"
 
-#: web/components/view/OListView.vue:562
+#: web/components/view/OListView.vue:570
 msgctxt "web/components/view/OListView"
 msgid "Confirm delete"
 msgstr "确认删除"
 
-#: web/components/view/OListView.vue:563
+#: web/components/view/OListView.vue:571
 msgctxt "web/components/view/OListView"
 msgid "Delete"
 msgstr "删除"
@@ -1286,7 +1286,7 @@ msgctxt "web/components/view/OListView"
 msgid "Delete (%s)"
 msgstr "删除（%s）"
 
-#: web/components/view/OListView.vue:597
+#: web/components/view/OListView.vue:605
 msgctxt "web/components/view/OListView"
 msgid "Delete failed"
 msgstr "删除失败"
@@ -1296,32 +1296,32 @@ msgctxt "web/components/view/OListView"
 msgid "Discard"
 msgstr "放弃"
 
-#: web/components/view/OListView.vue:199
+#: web/components/view/OListView.vue:207
 msgctxt "web/components/view/OListView"
 msgid "Editing was discarded because the row is no longer visible."
 msgstr "该行已不可见，编辑已放弃。"
 
-#: web/components/view/OListView.vue:460
+#: web/components/view/OListView.vue:468
 msgctxt "web/components/view/OListView"
 msgid "Failed to load list"
 msgstr "列表加载失败"
 
-#: web/components/view/OListView.vue:268
+#: web/components/view/OListView.vue:276
 msgctxt "web/components/view/OListView"
 msgid "Failed to refresh after reorder"
 msgstr "重排后刷新失败"
 
-#: web/components/view/OListView.vue:543
+#: web/components/view/OListView.vue:551
 msgctxt "web/components/view/OListView"
 msgid "Failed to refresh list"
 msgstr "列表刷新失败"
 
-#: web/components/view/OListView.vue:268
+#: web/components/view/OListView.vue:276
 msgctxt "web/components/view/OListView"
 msgid "Failed to reorder rows"
 msgstr "行重排失败"
 
-#: web/components/view/OListView.vue:535
+#: web/components/view/OListView.vue:543
 msgctxt "web/components/view/OListView"
 msgid "List data refreshed"
 msgstr "列表数据已刷新"
@@ -1346,12 +1346,12 @@ msgctxt "web/components/view/OListView"
 msgid "Save"
 msgstr "保存"
 
-#: web/components/view/OListView.vue:583
+#: web/components/view/OListView.vue:591
 msgctxt "web/components/view/OListView"
 msgid "Selected records are missing valid IDs"
 msgstr "所选记录缺少有效 ID"
 
-#: web/components/view/OListView.vue:588
+#: web/components/view/OListView.vue:596
 msgctxt "web/components/view/OListView"
 msgid "Successfully deleted %s record(s)"
 msgstr "已成功删除 %s 条记录"
@@ -1781,12 +1781,12 @@ msgctxt "web/composables/useOnchangeAggregation"
 msgid "Operation cancelled"
 msgstr "操作已取消"
 
-#: web/composables/useRecordIoMenu.ts:37
+#: web/composables/useRecordIoMenu.ts:35
 msgctxt "web/composables/useRecordIoMenu"
 msgid "Export"
 msgstr "导出"
 
-#: web/composables/useRecordIoMenu.ts:30
+#: web/composables/useRecordIoMenu.ts:28
 msgctxt "web/composables/useRecordIoMenu"
 msgid "Import"
 msgstr "导入"
@@ -1886,75 +1886,95 @@ msgctxt "web/export/ExportPanel"
 msgid "Template name"
 msgstr "模板名称"
 
-#: web/import/ImportPanel.vue:36
+#: web/import/ImportPanel.vue:42
+msgctxt "web/import/ImportPanel"
+msgid "CSV column"
+msgstr "CSV 列"
+
+#: web/import/ImportPanel.vue:49
 msgctxt "web/import/ImportPanel"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/import/ImportPanel.vue:34
+#: web/import/ImportPanel.vue:47
 msgctxt "web/import/ImportPanel"
 msgid "Code"
 msgstr "编码"
 
-#: web/import/ImportPanel.vue:31
-msgctxt "web/import/ImportPanel"
-msgid "Detected headers"
-msgstr "检测到的表头"
-
-#: web/import/ImportPanel.vue:39
+#: web/import/ImportPanel.vue:52
 msgctxt "web/import/ImportPanel"
 msgid "Done"
 msgstr "完成"
 
-#: web/import/ImportPanel.vue:30
+#: web/import/ImportPanel.vue:39
 msgctxt "web/import/ImportPanel"
 msgid "Drop CSV here or click to browse"
 msgstr "拖放 CSV 到此处或点击浏览"
 
-#: web/import/ImportPanel.vue:33
+#: web/import/ImportPanel.vue:46
 msgctxt "web/import/ImportPanel"
 msgid "Field"
 msgstr "字段"
 
-#: web/import/ImportPanel.vue:25 web/import/ImportPanel.vue:28 web/import/ImportPanel.vue:38
+#: web/import/ImportPanel.vue:34 web/import/ImportPanel.vue:37 web/import/ImportPanel.vue:51
 msgctxt "web/import/ImportPanel"
 msgid "Import"
 msgstr "导入"
 
-#: web/import/ImportPanel.vue:40
+#: web/import/ImportPanel.vue:53
 msgctxt "web/import/ImportPanel"
 msgid "Import completed"
 msgstr "导入完成"
 
-#: web/import/ImportPanel.vue:35
+#: web/import/ImportPanel.vue:43
+msgctxt "web/import/ImportPanel"
+msgid "Import field"
+msgstr "导入字段"
+
+#: web/import/ImportPanel.vue:41
+msgctxt "web/import/ImportPanel"
+msgid "Map each CSV column to an importable field. Leave blank to use the header as the field path."
+msgstr "将每个 CSV 列映射到可导入字段。留空则使用表头作为字段路径。"
+
+#: web/import/ImportPanel.vue:48
 msgctxt "web/import/ImportPanel"
 msgid "Message"
 msgstr "消息"
 
-#: web/import/ImportPanel.vue:27 web/import/ImportPanel.vue:37
+#: web/import/ImportPanel.vue:36 web/import/ImportPanel.vue:50
 msgctxt "web/import/ImportPanel"
 msgid "Preview"
 msgstr "预览"
 
-#: web/import/ImportPanel.vue:32
+#: web/import/ImportPanel.vue:45
 msgctxt "web/import/ImportPanel"
 msgid "Row"
 msgstr "行"
 
-#: web/import/ImportPanel.vue:41
+#: web/import/ImportPanel.vue:54
 msgctxt "web/import/ImportPanel"
 msgid "Rows were imported successfully."
 msgstr "行已成功导入。"
 
-#: web/import/ImportPanel.vue:26
+#: web/import/ImportPanel.vue:44
+msgctxt "web/import/ImportPanel"
+msgid "Same as header"
+msgstr "与表头相同"
+
+#: web/import/ImportPanel.vue:40
+msgctxt "web/import/ImportPanel"
+msgid "Suggested columns"
+msgstr "建议列"
+
+#: web/import/ImportPanel.vue:35
 msgctxt "web/import/ImportPanel"
 msgid "Upload CSV"
 msgstr "上传 CSV"
 
-#: web/import/ImportPanel.vue:29
+#: web/import/ImportPanel.vue:38
 msgctxt "web/import/ImportPanel"
-msgid "Upload a UTF-8 CSV. Column headers should match field names when no mapping is set."
-msgstr "上传 UTF-8 CSV。未设置映射时，表头应与字段名一致。"
+msgid "Upload a UTF-8 CSV. Map columns to importable fields from the catalog."
+msgstr "上传 UTF-8 CSV。将列映射到目录中的可导入字段。"
 
 #: web/menu/menus.ts:18
 msgctxt "web/menu/menus"
@@ -2155,6 +2175,14 @@ msgstr "详情"
 msgctxt "web/stores/breadcrumbStore"
 msgid "Page"
 msgstr "页面"
+
+#~ msgctxt "web/import/ImportPanel"
+#~ msgid "Detected headers"
+#~ msgstr "检测到的表头"
+
+#~ msgctxt "web/import/ImportPanel"
+#~ msgid "Upload a UTF-8 CSV. Column headers should match field names when no mapping is set."
+#~ msgstr "上传 UTF-8 CSV。未设置映射时，表头应与字段名一致。"
 
 #~ msgctxt "web/pages/TerminologyEditor"
 #~ msgid "Failed to load applications"

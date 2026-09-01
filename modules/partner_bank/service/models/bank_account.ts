@@ -6,7 +6,7 @@ import { Constraint } from '@/core/service/api/constraint';
 import { _t, _lt } from '../i18n';
 import { fail, normalizeOptionalText, normalizeRequiredText } from './_normalization_bridge';
 import { normalizeRefId } from '@/core/service/utils/normalization';
-import { maskAccountNo, normalizeAccountType } from './_helpers';
+import { maskAccountNo, normalizeAccountType } from './_bank_account_defaults';
 import Bank from '@/base/service/models/bank';
 import type Company from '@/base/service/models/company';
 import type Country from '@/base/service/models/country';

@@ -8,7 +8,7 @@ import { normalizeOffset } from '@/core/service/utils/normalization';
 import { toDate } from '@/core/service/utils/datetime';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
 import { _lt } from '../i18n';
-import { clampLimit } from './_helpers';
+import { clampLimit } from './_limit';
 import { sanitizePayload } from './_payload';
 
 /**
