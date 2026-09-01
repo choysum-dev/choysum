@@ -69,10 +69,12 @@ test('AttachmentOwnerMixin: harness exposes bind/unbind and dials document.Attac
   );
 });
 
-test('MessageThreadModel: MessagePost / Follow dial message services', async () => {
+test('MessageThreadModel: MessagePost / Follow / Search dial message services', async () => {
   expect(MessageThreadHarness.prototype instanceof MessageThreadModel).toBe(true);
 
   let posted: unknown;
+  let messageSearch: unknown;
+  let followerSearch: unknown;
   await withServiceFactory(
     'message.Message',
     () => ({
@@ -80,7 +82,10 @@ test('MessageThreadModel: MessagePost / Follow dial message services', async () 
         posted = { req, fields };
         return { Id: 'm1' };
       },
-      SearchByRecord: async () => [],
+      SearchByRecord: async (model: string, resId: string, fields?: any) => {
+        messageSearch = { model, resId, fields };
+        return [{ Id: 'm1', Model: model, ResId: resId }];
+      },
     }),
     async () => {
       await withServiceFactory(
@@ -88,7 +93,10 @@ test('MessageThreadModel: MessagePost / Follow dial message services', async () 
         () => ({
           Follow: async (req: any) => ({ Id: 'f1', ...req }),
           Unfollow: async () => 1,
-          SearchByRecord: async (model: string, resId: string) => [{ Model: model, ResId: resId }],
+          SearchByRecord: async (model: string, resId: string, fields?: any) => {
+            followerSearch = { model, resId, fields };
+            return [{ Model: model, ResId: resId }];
+          },
         }),
         async () => {
           const out = await MessageThreadHarness.MessagePost(
@@ -108,6 +116,26 @@ test('MessageThreadModel: MessagePost / Follow dial message services', async () 
           });
           expect((followed as any).Id).toBe('f1');
           expect(await MessageThreadHarness.MessageUnfollow({ Model: 'partner.Partner', ResId: 'r1', UserId: 'u1' })).toBe(1);
+
+          const messages = await MessageThreadHarness.MessageSearchByRecord(
+            'partner.Partner',
+            'r1',
+            ['Id'] as any
+          );
+          expect(messages).toEqual([{ Id: 'm1', Model: 'partner.Partner', ResId: 'r1' }]);
+          expect(messageSearch).toEqual({ model: 'partner.Partner', resId: 'r1', fields: ['Id'] });
+
+          const followers = await MessageThreadHarness.MessageSearchFollowersByRecord(
+            'partner.Partner',
+            'r1',
+            ['UserId'] as any
+          );
+          expect(followers).toEqual([{ Model: 'partner.Partner', ResId: 'r1' }]);
+          expect(followerSearch).toEqual({
+            model: 'partner.Partner',
+            resId: 'r1',
+            fields: ['UserId'],
+          });
         }
       );
     }

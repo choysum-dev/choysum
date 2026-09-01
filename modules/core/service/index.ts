@@ -25,6 +25,8 @@ export {
   PolymorphicRecordModel,
   type AttachmentOwnerBindReq,
   type AttachmentOwnerBindResp,
+  type AttachmentOwnerDownloadDisposition,
+  type AttachmentOwnerUnbindReason,
   type AttachmentOwnerUnbindReq,
   type AttachmentOwnerUnbindResp,
   type MessageThreadFollowReq,
