@@ -4,7 +4,7 @@
 import { BaseModel, Model, Field, SqlCompute } from '@/core/service';
 import { newAuthError, wrapAuthError, GrpcCode, AuthErrCode } from '../error';
 import { _t, _lt } from '../i18n';
-import User from './user';
+import User from './user/user';
 
 /**
  * Token persists access and refresh token metadata for revocation and audit flows.

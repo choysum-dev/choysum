@@ -3,7 +3,7 @@
 
 import { ref, computed, reactive, ComputedRef } from 'vue';
 import { createStoreByModel } from '@/web/web/stores/registry';
-import type User from '@/auth/service/models/user';
+import type User from '@/auth/service/models/user/user';
 import type { ClientModel } from '@/core/rpc';
 import { AuthOptions, DEFAULT_AUTH_OPTIONS, createAuthOptions } from './options';
 import type { PermissionState } from '@/auth/web/permission';

@@ -20,7 +20,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import type User from '@/auth/service/models/user';
+import type User from '@/auth/service/models/user/user';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { GroupBySpec, QueryUpdatePayload } from '@/web/web/query/types';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';

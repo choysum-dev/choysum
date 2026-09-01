@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import Role from '@/auth/service/models/role';
-import User from '@/auth/service/models/user';
+import User from '@/auth/service/models/user/user';
 import UserRole from '@/auth/service/models/user_role';
 import { withContext as withModelContext } from '@/core/service/api/context';
 import { ChoysumError } from '@/core/service/error';

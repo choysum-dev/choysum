@@ -10,7 +10,7 @@ import Role from './role';
 import type MetaApplication from '@/meta/service/models/application';
 import type MetaModel from '@/meta/service/models/model';
 import { normalizeRefId } from '@/core/service/utils/normalization';
-import { mutateThenInvalidateAllAuthzCaches } from './_authz_mutation_helpers';
+import AuthzMutationModel from '../mixins/authz_mutation_model';
 import { assertExclusiveScope } from './_rule_scope_helpers';
 
 /**
@@ -30,7 +30,7 @@ export type RoleRecordRuleKind = 'grant' | 'restrict';
  * model/app/global scope.
  */
 @Model('RoleRecordRule')
-export default class RoleRecordRule extends BaseModel {
+export default class RoleRecordRule extends AuthzMutationModel {
   /**
    * Role that owns this record-rule entry.
    *
@@ -241,10 +241,7 @@ export default class RoleRecordRule extends BaseModel {
     returnFields?: FieldSelection<T>
   ): Promise<T> {
     RoleRecordRule._prepareValues(value as any, 'create');
-    return mutateThenInvalidateAllAuthzCaches(async () => {
-      const out = await super.Create(value as any, returnFields as any);
-      return out as unknown as T;
-    });
+    return (await super.Create(value as any, returnFields as any)) as unknown as T;
   }
 
   /**
@@ -257,10 +254,7 @@ export default class RoleRecordRule extends BaseModel {
   ): Promise<T[]> {
     const rows = values || [];
     for (const v of rows) RoleRecordRule._prepareValues(v as any, 'create');
-    return mutateThenInvalidateAllAuthzCaches(async () => {
-      const out = await super.CreateMany(rows as any, returnFields as any);
-      return out as unknown as T[];
-    });
+    return (await super.CreateMany(rows as any, returnFields as any)) as unknown as T[];
   }
 
   /**
@@ -274,10 +268,7 @@ export default class RoleRecordRule extends BaseModel {
     options?: any
   ): Promise<Partial<T>[]> {
     RoleRecordRule._prepareValues(values as any, 'update');
-    return mutateThenInvalidateAllAuthzCaches(async () => {
-      const out = await super.Update(condition as any, values as any, returnFields as any, options as any);
-      return out as unknown as Partial<T>[];
-    });
+    return (await super.Update(condition as any, values as any, returnFields as any, options as any)) as unknown as Partial<T>[];
   }
 
   /**
@@ -291,27 +282,6 @@ export default class RoleRecordRule extends BaseModel {
     options?: any
   ): Promise<Partial<T>> {
     RoleRecordRule._prepareValues(values as any, 'update');
-    return mutateThenInvalidateAllAuthzCaches(async () => {
-      const out = await super.UpdateById(id as any, values as any, returnFields as any, options as any);
-      return out as unknown as Partial<T>;
-    });
-  }
-
-  /**
-   * Delete matching RoleRecordRule rows and invalidate request-scoped auth caches.
-   */
-  static override async Delete<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
-    condition: QueryCondition<T>,
-    options?: any
-  ): Promise<number> {
-    return mutateThenInvalidateAllAuthzCaches(() => super.Delete(condition as any, options as any));
-  }
-
-  /**
-   * Delete one RoleRecordRule row by Id and invalidate request-scoped auth caches.
-   */
-  static override async DeleteById<T extends BaseModel>(this: { new (...args: any[]): T } & typeof BaseModel, id: string, options?: any): Promise<number> {
-    return mutateThenInvalidateAllAuthzCaches(() => super.DeleteById(id as any, options as any));
+    return (await super.UpdateById(id as any, values as any, returnFields as any, options as any)) as unknown as Partial<T>;
   }
 }

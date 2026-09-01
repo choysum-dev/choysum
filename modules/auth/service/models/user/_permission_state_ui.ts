@@ -4,10 +4,10 @@
 import MetaUiResource from '@/meta/service/models/ui_resource';
 import MetaUiResourceMenuRoute from '@/meta/service/models/ui_resource_menu_route';
 import MetaUiResourceRouteAction from '@/meta/service/models/ui_resource_route_action';
-import RoleUiResource from './role_ui_resource';
-import { isUiResourceAllowed, maybeId, normalizeScopeRefId, normalizeUiResourceId, parseJsonStringArray, sortStrings } from './_user_authz_shared';
+import RoleUiResource from '../role_ui_resource';
+import { isUiResourceAllowed, maybeId, normalizeScopeRefId, normalizeUiResourceId, parseJsonStringArray, sortStrings } from './_authz_shared';
 import { normalizeRpcRequireKey } from '@/core/service/utils/normalization';
-import { applyToScope, type AclAggregationResult } from './_user_permission_state_acl';
+import { applyToScope, type AclAggregationResult } from './_permission_state_acl';
 
 type UiResourceMeta = {
   dbId: string;

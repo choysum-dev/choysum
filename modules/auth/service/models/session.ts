@@ -4,7 +4,7 @@
 import { BaseModel, Model, Field } from '@/core/service';
 import { wrapAuthError, AuthErrCode } from '../error';
 import { _t, _lt } from '../i18n';
-import User from './user';
+import User from './user/user';
 
 /**
  * Session tracks one authenticated browser or device session for a user.

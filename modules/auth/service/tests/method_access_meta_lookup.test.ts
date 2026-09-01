@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { resolveMethodAccessMeta } from '@/auth/service/models/_user_method_access';
+import { resolveMethodAccessMeta } from '@/auth/service/models/user/_method_access';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaApplicationModel from '@/meta/service/models/application';
 import type MetaModelModel from '@/meta/service/models/model';

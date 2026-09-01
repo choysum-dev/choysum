@@ -3,7 +3,7 @@
 
 import { ChoysumError } from '@/core/service/error';
 import { withContext as withModelContext } from '@/core/service/api/context';
-import User from '@/auth/service/models/user';
+import User from '@/auth/service/models/user/user';
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');

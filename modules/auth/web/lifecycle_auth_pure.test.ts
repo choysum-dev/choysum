@@ -45,7 +45,7 @@ function newAuthError(opts: { code: string; message: string }): FakeAuthError {
   return new FakeAuthError(opts.code, opts.message);
 }
 
-// Inlined from _user_lifecycle_auth.ts
+// Inlined from user/_lifecycle_auth.ts
 function validateAndHashRegistrationInput(userData: { Username?: string }, password: string): string {
   if (!userData?.Username || !password) {
     throw newAuthError({

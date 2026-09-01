@@ -1,7 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-export { default as User } from './user';
+// User layout exemplar: primary class at models/user/user.ts; other apps extend with
+// `@Model('User') export default class User extends UserBase` (like partner_bank Partner).
+export { default as User } from './user/user';
 export { default as Session } from './session';
 export { default as Token } from './token';
 export { default as Role } from './role';

@@ -5,7 +5,7 @@ import { ChoysumError } from '@/core/service/error';
 import { withContext as withModelContext } from '@/core/service/api/context';
 import { getTestRepository } from '@/core/service/testing';
 import CompanyScopedResource from '@/auth/service/models/company_scoped_resource';
-import User from '@/auth/service/models/user';
+import User from '@/auth/service/models/user/user';
 import Role from '@/auth/service/models/role';
 import UserRole from '@/auth/service/models/user_role';
 import RoleRecordRule from '@/auth/service/models/role_record_rule';

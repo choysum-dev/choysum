@@ -5,7 +5,7 @@ import {
   mutateThenInvalidateAllAuthzCaches,
   mutateThenInvalidateAuthzCachesForUsers,
   userIdsFromUserRolePayloads,
-} from '@/auth/service/models/_authz_mutation_helpers';
+} from '@/auth/service/mixins/authz_mutation_model';
 import {
   buildAuthzContextCacheKey,
   buildMethodAccessCacheKey,

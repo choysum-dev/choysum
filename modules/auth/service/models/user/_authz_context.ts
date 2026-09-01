@@ -3,14 +3,14 @@
 
 import { memoizeInReqState } from '@/core/service/api/context';
 import { uniqStrings } from '@/core/service/utils/normalization';
-import { sortStrings, maybeId, withPermissionGraphBypass } from './_user_authz_shared';
-import Role from './role';
-import RoleFieldRule from './role_field_rule';
-import RoleInheritance from './role_inheritance';
-import RoleMethodAccess from './role_method_access';
-import RoleRecordRule from './role_record_rule';
-import RoleUiResource from './role_ui_resource';
-import UserRole from './user_role';
+import { sortStrings, maybeId, withPermissionGraphBypass } from './_authz_shared';
+import Role from '../role';
+import RoleFieldRule from '../role_field_rule';
+import RoleInheritance from '../role_inheritance';
+import RoleMethodAccess from '../role_method_access';
+import RoleRecordRule from '../role_record_rule';
+import RoleUiResource from '../role_ui_resource';
+import UserRole from '../user_role';
 
 /**
  * Return the latest UpdatedAt timestamp matching a condition.

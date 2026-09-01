@@ -6,12 +6,12 @@ import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/co
 import type { Insertable } from '@/core/service/api/input';
 import type { ConditionEnvelope, RecordRuleOp } from '@/core/service/api/authz';
 import { ChoysumError } from '@/core/service/error';
-import { newAuthError, wrapAuthError, GrpcCode, AuthErrCode } from '../error';
-import { _t, _lt } from '../i18n';
-import Session from './session';
-import Role from './role';
-import Token from './token';
-import UserRole from './user_role';
+import { newAuthError, wrapAuthError, GrpcCode, AuthErrCode } from '../../error';
+import { _t, _lt } from '../../i18n';
+import Session from '../session';
+import Role from '../role';
+import Token from '../token';
+import UserRole from '../user_role';
 import { parseModelFullName, parseServiceFullName } from '@/core/service/utils/model_parsing';
 import { uniqStrings } from '@/core/service/utils/normalization';
 import { isIanaTimezone, listIanaTimezoneSelection } from '@/core/service/utils/datetime';
@@ -19,10 +19,10 @@ import { Constraint } from '@/core/service/api/constraint';
 import Language from '@/base/service/models/language';
 import type Company from '@/base/service/models/company';
 import { createServiceByModel } from '@/core/service/rpc';
-import { buildAuthzContextCacheKey, buildMethodAccessCacheKey } from './_request_cache_invalidation';
-import { withPermissionGraphBypass, sortStrings, getCompanyScopeFromRequestContext } from './_user_authz_shared';
-import { evaluateRoleMethodAccess, evaluateUiDerivedMethodDecision, resolveMethodAccessMeta } from './_user_method_access';
-import type { MethodAccessDecision } from './_user_method_access';
+import { buildAuthzContextCacheKey, buildMethodAccessCacheKey } from '../_request_cache_invalidation';
+import { withPermissionGraphBypass, sortStrings, getCompanyScopeFromRequestContext } from './_authz_shared';
+import { evaluateRoleMethodAccess, evaluateUiDerivedMethodDecision, resolveMethodAccessMeta } from './_method_access';
+import type { MethodAccessDecision } from './_method_access';
 import {
   buildScopePreferences,
   computeTokenCompanyScope,
@@ -30,7 +30,7 @@ import {
   normalizeRequestedEnabledCompanyIds,
   normalizeScopeId,
   validateSwitchCompanyScopeInput,
-} from './_user_lifecycle_scope';
+} from './_lifecycle_scope';
 import {
   ensureCreatedUserIdOrThrow,
   ensureRegistrationIdentityUnique,
@@ -41,16 +41,21 @@ import {
   revokeLogoutArtifacts,
   validateAndHashRegistrationInput,
   validateLoginCandidateOrThrow,
-} from './_user_lifecycle_auth';
+} from './_lifecycle_auth';
 
-import { buildAclAggregation } from './_user_permission_state_acl';
-import { buildUiPermissionProjection } from './_user_permission_state_ui';
-import { evaluateFieldRules } from './_user_field_rule_eval';
-import { evaluateRecordRuleCondition } from './_user_record_rule_eval';
-import { buildAuthzContext, computePermStateVersion } from './_user_authz_context';
+import { buildAclAggregation } from './_permission_state_acl';
+import { buildUiPermissionProjection } from './_permission_state_ui';
+import { evaluateFieldRules } from './_field_rule_eval';
+import { evaluateRecordRuleCondition } from './_record_rule_eval';
+import { buildAuthzContext, computePermStateVersion } from './_authz_context';
 
 /**
  * Auth user model with identity, token, and company-scope operations.
+ *
+ * Layout: this file is the only non-`_` entry under `models/user/`. Register /
+ * Login / Refresh / Logout / SwitchCompanyScope orchestrate here and call
+ * adjacent `user/_lifecycle_*` / `user/_authz_*` / eval helpers. Other modules
+ * extend via `@Model('User') export default class User extends UserBase`.
  */
 @Model('User')
 export default class User extends BaseModel {

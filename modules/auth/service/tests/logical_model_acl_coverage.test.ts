@@ -9,7 +9,7 @@ import { withContext as withModelContext } from '@/core/service/api/context';
 import Role from '@/auth/service/models/role';
 import RoleMethodAccess from '@/auth/service/models/role_method_access';
 import RoleFieldRule from '@/auth/service/models/role_field_rule';
-import { evaluateFieldRules } from '@/auth/service/models/_user_field_rule_eval';
+import { evaluateFieldRules } from '@/auth/service/models/user/_field_rule_eval';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaApplicationModel from '@/meta/service/models/application';
 import type MetaFieldModel from '@/meta/service/models/field';

@@ -161,12 +161,12 @@ msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Write"
 msgstr "写"
 
-#: service/models/role_inheritance.ts:36
+#: service/models/role_inheritance.ts:33
 msgctxt "auth.model.RoleInheritance.fields"
 msgid "Child Role"
 msgstr "子角色"
 
-#: service/models/role_inheritance.ts:25
+#: service/models/role_inheritance.ts:22
 msgctxt "auth.model.RoleInheritance.fields"
 msgid "Parent Role"
 msgstr "父角色"
@@ -446,190 +446,130 @@ msgctxt "auth.model.Token.fields"
 msgid "User"
 msgstr "用户"
 
-#: service/models/user.ts:232
+#: service/models/user/user.ts:232
 msgctxt "auth.model.User.fields"
 msgid "Accessible Companies"
 msgstr "可访问公司"
 
-#: service/models/user.ts:246
+#: service/models/user/user.ts:246
 msgctxt "auth.model.User.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/user.ts:148
+#: service/models/user/user.ts:148
 msgctxt "auth.model.User.fields"
 msgid "Avatar"
 msgstr "头像"
 
-#: service/models/user.ts:233
+#: service/models/user/user.ts:233
 msgctxt "auth.model.User.fields"
 msgid "Companies the user may switch to; must stay within role assignments."
 msgstr "用户可切换到的公司；须落在角色授权范围内。"
 
-#: service/models/user.ts:221
+#: service/models/user/user.ts:221
 msgctxt "auth.model.User.fields"
 msgid "Company"
 msgstr "公司"
 
-#: service/models/user.ts:173
+#: service/models/user/user.ts:173
 msgctxt "auth.model.User.fields"
 msgid "Display timezone; empty uses browser timezone on first login."
 msgstr "显示时区；留空则首次登录时使用浏览器时区。"
 
-#: service/models/user.ts:76
+#: service/models/user/user.ts:76
 msgctxt "auth.model.User.fields"
 msgid "Email"
 msgstr "邮箱"
 
-#: service/models/user.ts:110
+#: service/models/user/user.ts:110
 msgctxt "auth.model.User.fields"
 msgid "First Name"
 msgstr "名"
 
-#: service/models/user.ts:131
+#: service/models/user/user.ts:131
 msgctxt "auth.model.User.fields"
 msgid "Full Name"
 msgstr "全名"
 
-#: service/models/user.ts:158
+#: service/models/user/user.ts:158
 msgctxt "auth.model.User.fields"
 msgid "Language"
 msgstr "语言"
 
-#: service/models/user.ts:257
+#: service/models/user/user.ts:257
 msgctxt "auth.model.User.fields"
 msgid "Last Login"
 msgstr "最近登录"
 
-#: service/models/user.ts:121
+#: service/models/user/user.ts:121
 msgctxt "auth.model.User.fields"
 msgid "Last Name"
 msgstr "姓"
 
-#: service/models/user.ts:99
+#: service/models/user/user.ts:99
 msgctxt "auth.model.User.fields"
 msgid "Password Hash"
 msgstr "密码哈希"
 
-#: service/models/user.ts:87
+#: service/models/user/user.ts:87
 msgctxt "auth.model.User.fields"
 msgid "Phone"
 msgstr "电话"
 
-#: service/models/user.ts:185
+#: service/models/user/user.ts:185
 msgctxt "auth.model.User.fields"
 msgid "Preferences"
 msgstr "偏好设置"
 
-#: service/models/user.ts:295
+#: service/models/user/user.ts:295
 msgctxt "auth.model.User.fields"
 msgid "Roles"
 msgstr "角色"
 
-#: service/models/user.ts:268
+#: service/models/user/user.ts:268
 msgctxt "auth.model.User.fields"
 msgid "Sessions"
 msgstr "会话"
 
-#: service/models/user.ts:172
+#: service/models/user/user.ts:172
 msgctxt "auth.model.User.fields"
 msgid "Time Zone"
 msgstr "时区"
 
-#: service/models/user.ts:279
+#: service/models/user/user.ts:279
 msgctxt "auth.model.User.fields"
 msgid "Tokens"
 msgstr "令牌"
 
-#: service/models/user.ts:65
+#: service/models/user/user.ts:65
 msgctxt "auth.model.User.fields"
 msgid "Username"
 msgstr "用户名"
 
-#: service/models/user.ts:159
+#: service/models/user/user.ts:159
 msgctxt "auth.model.User.fields"
 msgid "When set, must match an active base.Language POSIX terminology code."
 msgstr "若填写，须匹配已启用的 base.Language POSIX 术语代码。"
 
-#: service/models/user_role.ts:55
+#: service/models/user_role.ts:53
 msgctxt "auth.model.UserRole.fields"
 msgid "Company"
 msgstr "公司"
 
-#: service/models/user_role.ts:56
+#: service/models/user_role.ts:54
 msgctxt "auth.model.UserRole.fields"
 msgid "Leave empty to grant the role in every company the user can access."
 msgstr "留空表示在用户可访问的每个公司中授予该角色。"
 
-#: service/models/user_role.ts:42
+#: service/models/user_role.ts:40
 msgctxt "auth.model.UserRole.fields"
 msgid "Role"
 msgstr "角色"
 
-#: service/models/user_role.ts:31
+#: service/models/user_role.ts:29
 msgctxt "auth.model.UserRole.fields"
 msgid "User"
 msgstr "用户"
-
-#: service/models/_user_field_rule_eval.ts:126
-msgctxt "service/models/_user_field_rule_eval"
-msgid "Model does not exist"
-msgstr "模型不存在"
-
-#: service/models/_user_lifecycle_auth.ts:269 service/models/_user_lifecycle_auth.ts:359
-msgctxt "service/models/_user_lifecycle_auth"
-msgid "Account is disabled"
-msgstr "账户已禁用"
-
-#: service/models/_user_lifecycle_auth.ts:152
-msgctxt "service/models/_user_lifecycle_auth"
-msgid "Email is already registered"
-msgstr "邮箱已被注册"
-
-#: service/models/_user_lifecycle_auth.ts:345 service/models/_user_lifecycle_auth.ts:379
-msgctxt "service/models/_user_lifecycle_auth"
-msgid "Invalid token payload: missing user id"
-msgstr "无效的令牌载荷：缺少用户 ID"
-
-#: service/models/_user_lifecycle_auth.ts:190
-msgctxt "service/models/_user_lifecycle_auth"
-msgid "Registration failed: Main Company (Code=MAIN) was not found"
-msgstr "注册失败：未找到主公司（Code=MAIN）"
-
-#: service/models/_user_lifecycle_auth.ts:215
-msgctxt "service/models/_user_lifecycle_auth"
-msgid "Registration failed: base.user role is not initialized; load auth bootstrap data first"
-msgstr "注册失败：base.user 角色未初始化，请先加载 auth 引导数据"
-
-#: service/models/_user_lifecycle_auth.ts:353
-msgctxt "service/models/_user_lifecycle_auth"
-msgid "User not found"
-msgstr "用户不存在"
-
-#: service/models/_user_lifecycle_auth.ts:253 service/models/_user_lifecycle_auth.ts:260
-msgctxt "service/models/_user_lifecycle_auth"
-msgid "User not found or password is incorrect"
-msgstr "用户不存在或密码错误"
-
-#: service/models/_user_lifecycle_auth.ts:168
-msgctxt "service/models/_user_lifecycle_auth"
-msgid "User registration failed: missing user id"
-msgstr "用户注册失败：缺少用户 ID"
-
-#: service/models/_user_lifecycle_auth.ts:113
-msgctxt "service/models/_user_lifecycle_auth"
-msgid "Username and password are required"
-msgstr "用户名和密码不能为空"
-
-#: service/models/_user_lifecycle_auth.ts:140
-msgctxt "service/models/_user_lifecycle_auth"
-msgid "Username is already in use"
-msgstr "用户名已被占用"
-
-#: service/models/_user_lifecycle_auth.ts:133
-msgctxt "service/models/_user_lifecycle_auth"
-msgid "Username is required"
-msgstr "用户名不能为空"
 
 #: service/models/session.ts:117
 msgctxt "service/models/session"
@@ -681,92 +621,152 @@ msgctxt "service/models/token"
 msgid "userId is required"
 msgstr "userId 不能为空"
 
-#: service/models/user.ts:930
+#: service/models/user/user.ts:930
 msgctxt "service/models/user"
 msgid "Failed to compute field rule spec"
 msgstr "计算字段规则规格失败"
 
-#: service/models/user.ts:313
+#: service/models/user/user.ts:313
 msgctxt "service/models/user"
 msgid "Invalid IANA timezone: %s"
 msgstr "无效的 IANA 时区：%s"
 
-#: service/models/user.ts:911
+#: service/models/user/user.ts:911
 msgctxt "service/models/user"
 msgid "Invalid model full name; expected \"<app>.<Model>\""
 msgstr "无效的模型全名；期望 \"<app>.<Model>\""
 
-#: service/models/user.ts:342
+#: service/models/user/user.ts:342
 msgctxt "service/models/user"
 msgid "Invalid or inactive language: %s"
 msgstr "无效或未启用的语言：%s"
 
-#: service/models/user.ts:656
+#: service/models/user/user.ts:656
 msgctxt "service/models/user"
 msgid "Logout failed"
 msgstr "退出失败"
 
-#: service/models/user.ts:895
+#: service/models/user/user.ts:895
 msgctxt "service/models/user"
 msgid "Missing identity information (userId)"
 msgstr "缺少身份信息（userId）"
 
-#: service/models/user.ts:903
+#: service/models/user/user.ts:903
 msgctxt "service/models/user"
 msgid "Missing model name (model)"
 msgstr "缺少模型名称（model）"
 
-#: service/models/user.ts:628
+#: service/models/user/user.ts:628
 msgctxt "service/models/user"
 msgid "Switch company scope failed"
 msgstr "切换公司范围失败"
 
-#: service/models/user.ts:645
+#: service/models/user/user.ts:645
 msgctxt "service/models/user"
 msgid "Token is required"
 msgstr "令牌不能为空"
 
-#: service/models/user.ts:476
+#: service/models/user/user.ts:476
 msgctxt "service/models/user"
 msgid "Token refresh failed"
 msgstr "令牌刷新失败"
 
-#: service/models/user.ts:495
+#: service/models/user/user.ts:495
 msgctxt "service/models/user"
 msgid "User is not logged in"
 msgstr "用户未登录"
 
-#: service/models/user.ts:512
+#: service/models/user/user.ts:512
 msgctxt "service/models/user"
 msgid "activeCompanyId cannot be empty"
 msgstr "activeCompanyId 不能为空"
 
-#: service/models/user.ts:563
+#: service/models/user/user.ts:563
 msgctxt "service/models/user"
 msgid "activeCompanyId is outside the allowed company scope"
 msgstr "activeCompanyId 不在允许的公司范围内"
 
-#: service/models/user.ts:578
+#: service/models/user/user.ts:578
 msgctxt "service/models/user"
 msgid "activeCompanyId must be included in enabledCompanyIds"
 msgstr "activeCompanyId 必须包含在 enabledCompanyIds 中"
 
-#: service/models/user.ts:547
+#: service/models/user/user.ts:547
 msgctxt "service/models/user"
 msgid "enabledCompanyIds contains an unauthorized company"
 msgstr "enabledCompanyIds 包含未授权的公司"
 
-#: service/models/user.ts:531
+#: service/models/user/user.ts:531
 msgctxt "service/models/user"
 msgid "enabledCompanyIds must be a string[] or omitted"
 msgstr "enabledCompanyIds 必须是 string[] 或省略"
 
-#: service/models/user.ts:425
+#: service/models/user/_field_rule_eval.ts:126
+msgctxt "service/models/user/_field_rule_eval"
+msgid "Model does not exist"
+msgstr "模型不存在"
+
+#: service/models/user/_lifecycle_auth.ts:269 service/models/user/_lifecycle_auth.ts:359
+msgctxt "service/models/user/_lifecycle_auth"
+msgid "Account is disabled"
+msgstr "账户已禁用"
+
+#: service/models/user/_lifecycle_auth.ts:152
+msgctxt "service/models/user/_lifecycle_auth"
+msgid "Email is already registered"
+msgstr "邮箱已被注册"
+
+#: service/models/user/_lifecycle_auth.ts:345 service/models/user/_lifecycle_auth.ts:379
+msgctxt "service/models/user/_lifecycle_auth"
+msgid "Invalid token payload: missing user id"
+msgstr "无效的令牌载荷：缺少用户 ID"
+
+#: service/models/user/_lifecycle_auth.ts:190
+msgctxt "service/models/user/_lifecycle_auth"
+msgid "Registration failed: Main Company (Code=MAIN) was not found"
+msgstr "注册失败：未找到主公司（Code=MAIN）"
+
+#: service/models/user/_lifecycle_auth.ts:215
+msgctxt "service/models/user/_lifecycle_auth"
+msgid "Registration failed: base.user role is not initialized; load auth bootstrap data first"
+msgstr "注册失败：base.user 角色未初始化，请先加载 auth 引导数据"
+
+#: service/models/user/_lifecycle_auth.ts:353
+msgctxt "service/models/user/_lifecycle_auth"
+msgid "User not found"
+msgstr "用户不存在"
+
+#: service/models/user/_lifecycle_auth.ts:253 service/models/user/_lifecycle_auth.ts:260
+msgctxt "service/models/user/_lifecycle_auth"
+msgid "User not found or password is incorrect"
+msgstr "用户不存在或密码错误"
+
+#: service/models/user/_lifecycle_auth.ts:168
+msgctxt "service/models/user/_lifecycle_auth"
+msgid "User registration failed: missing user id"
+msgstr "用户注册失败：缺少用户 ID"
+
+#: service/models/user/_lifecycle_auth.ts:113
+msgctxt "service/models/user/_lifecycle_auth"
+msgid "Username and password are required"
+msgstr "用户名和密码不能为空"
+
+#: service/models/user/_lifecycle_auth.ts:140
+msgctxt "service/models/user/_lifecycle_auth"
+msgid "Username is already in use"
+msgstr "用户名已被占用"
+
+#: service/models/user/_lifecycle_auth.ts:133
+msgctxt "service/models/user/_lifecycle_auth"
+msgid "Username is required"
+msgstr "用户名不能为空"
+
+#: service/models/user/user.ts:425
 msgctxt "service/models/user@Login"
 msgid "Login failed: unable to create token pair"
 msgstr "登录失败：无法创建令牌对"
 
-#: service/models/user.ts:386
+#: service/models/user/user.ts:386
 msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr "用户注册失败"
@@ -2250,6 +2250,54 @@ msgstr "用户"
 msgctxt "web/views/UserSearchView"
 msgid "Active"
 msgstr "启用"
+
+#~ msgctxt "service/models/_user_field_rule_eval"
+#~ msgid "Model does not exist"
+#~ msgstr "模型不存在"
+
+#~ msgctxt "service/models/_user_lifecycle_auth"
+#~ msgid "Account is disabled"
+#~ msgstr "账户已禁用"
+
+#~ msgctxt "service/models/_user_lifecycle_auth"
+#~ msgid "Email is already registered"
+#~ msgstr "邮箱已被注册"
+
+#~ msgctxt "service/models/_user_lifecycle_auth"
+#~ msgid "Invalid token payload: missing user id"
+#~ msgstr "无效的令牌载荷：缺少用户 ID"
+
+#~ msgctxt "service/models/_user_lifecycle_auth"
+#~ msgid "Registration failed: Main Company (Code=MAIN) was not found"
+#~ msgstr "注册失败：未找到主公司（Code=MAIN）"
+
+#~ msgctxt "service/models/_user_lifecycle_auth"
+#~ msgid "Registration failed: base.user role is not initialized; load auth bootstrap data first"
+#~ msgstr "注册失败：base.user 角色未初始化，请先加载 auth 引导数据"
+
+#~ msgctxt "service/models/_user_lifecycle_auth"
+#~ msgid "User not found"
+#~ msgstr "用户不存在"
+
+#~ msgctxt "service/models/_user_lifecycle_auth"
+#~ msgid "User not found or password is incorrect"
+#~ msgstr "用户不存在或密码错误"
+
+#~ msgctxt "service/models/_user_lifecycle_auth"
+#~ msgid "User registration failed: missing user id"
+#~ msgstr "用户注册失败：缺少用户 ID"
+
+#~ msgctxt "service/models/_user_lifecycle_auth"
+#~ msgid "Username and password are required"
+#~ msgstr "用户名和密码不能为空"
+
+#~ msgctxt "service/models/_user_lifecycle_auth"
+#~ msgid "Username is already in use"
+#~ msgstr "用户名已被占用"
+
+#~ msgctxt "service/models/_user_lifecycle_auth"
+#~ msgid "Username is required"
+#~ msgstr "用户名不能为空"
 
 #~ msgctxt "web/views/RoleFieldRuleFormView"
 #~ msgid "Role is required. Leave Application/Model/Field empty for wider scopes (global / app / model)."

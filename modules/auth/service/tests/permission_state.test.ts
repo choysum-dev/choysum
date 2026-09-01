@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { withContext as withModelContext } from '@/core/service/api/context';
-import User from '@/auth/service/models/user';
-import { parseJsonStringArray } from '@/auth/service/models/_user_authz_shared';
+import User from '@/auth/service/models/user/user';
+import { parseJsonStringArray } from '@/auth/service/models/user/_authz_shared';
 import Role from '@/auth/service/models/role';
 import UserRole from '@/auth/service/models/user_role';
 import RoleInheritance from '@/auth/service/models/role_inheritance';

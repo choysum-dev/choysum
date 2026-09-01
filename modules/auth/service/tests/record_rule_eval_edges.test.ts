@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import RoleRecordRule from '@/auth/service/models/role_record_rule';
-import { buildCompanyGateExpr, evaluateRecordRuleCondition } from '@/auth/service/models/_user_record_rule_eval';
+import { buildCompanyGateExpr, evaluateRecordRuleCondition } from '@/auth/service/models/user/_record_rule_eval';
 import { metaModelId } from './_meta_ids';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaApplicationModel from '@/meta/service/models/application';

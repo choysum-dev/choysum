@@ -3,14 +3,14 @@
 
 import { withContext as withModelContext } from '@/core/service/api/context';
 import { memoizeInReqState } from '@/core/service/api/context';
-import User from '@/auth/service/models/user';
+import User from '@/auth/service/models/user/user';
 import Role from '@/auth/service/models/role';
 import UserRole from '@/auth/service/models/user_role';
 import RoleMethodAccess from '@/auth/service/models/role_method_access';
 import RoleInheritance from '@/auth/service/models/role_inheritance';
-import { evaluateRecordRuleCondition } from '@/auth/service/models/_user_record_rule_eval';
-import { evaluateFieldRules } from '@/auth/service/models/_user_field_rule_eval';
-import { resolveMethodAccessMeta } from '@/auth/service/models/_user_method_access';
+import { evaluateRecordRuleCondition } from '@/auth/service/models/user/_record_rule_eval';
+import { evaluateFieldRules } from '@/auth/service/models/user/_field_rule_eval';
+import { resolveMethodAccessMeta } from '@/auth/service/models/user/_method_access';
 import { metaModelId } from './_meta_ids';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaApplicationModel from '@/meta/service/models/application';

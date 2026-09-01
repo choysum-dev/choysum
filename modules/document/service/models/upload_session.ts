@@ -10,7 +10,7 @@ import { resolveGcBatchSize } from './_gc_config';
 import { paginateBatch } from '@/core/service/utils/pagination';
 import { DEFAULT_UPLOAD_SESSION_TTL_SECONDS } from './_upload';
 import type Company from '@/base/service/models/company';
-import type User from '@/auth/service/models/user';
+import type User from '@/auth/service/models/user/user';
 import type AttachmentContent from './attachment_object';
 
 /**
