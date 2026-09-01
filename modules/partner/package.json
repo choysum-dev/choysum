@@ -23,7 +23,9 @@
     "depends": [
       "core",
       "base",
-      "auth"
+      "auth",
+      "document",
+      "message"
     ],
     "cli": ">=0.0.0-0 <0.0.0",
     "entryPoints": {

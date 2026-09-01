@@ -1,4 +1,4 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-export { default as AttachmentOwnerMixin } from './attachment_owner_model';
+export { default as PartnerCollaborationModel } from './partner_collaboration_model';

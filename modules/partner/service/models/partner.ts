@@ -1,9 +1,10 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Compute, Field, Model } from '@/core/service';
+import { Compute, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { normalizeRefId } from '@/core/service/utils/normalization';
+import PartnerCollaborationModel from '../mixins/partner_collaboration_model';
 import { _t, _lt } from '../i18n';
 import { fail, normalizeOptionalText, normalizeRequiredText, normalizeRequiredTranslatedText, normalizeNonNegativeInt } from './_normalization_bridge';
 import type Company from '@/base/service/models/company';
@@ -27,9 +28,12 @@ type PartnerContactLike = {
 
 /**
  * Company-scoped business partner master record with derived default contacts and addresses.
+ *
+ * Extends {@link PartnerCollaborationModel} for message-thread and attachment-owner
+ * static entry points (both dial platform services; not on BaseModel).
  */
 @Model('Partner', { companyField: 'CompanyId' })
-export default class Partner extends BaseModel {
+export default class Partner extends PartnerCollaborationModel {
   /** Partner display name. */
   @Field({
     type: 'varchar',
