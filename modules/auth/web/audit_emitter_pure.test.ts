@@ -15,7 +15,7 @@ function createSwitchCompanyScopeAuditEmitter(eventName: string) {
 
   const emit = (payload: Record<string, any>) => {
     try {
-      void { event: eventName, traceId: '', ...payload };
+      void { ...payload, event: eventName, traceId: '' };
       // In test, suppress actual console output.
     } catch {
       // ignore

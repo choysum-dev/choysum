@@ -55,7 +55,8 @@ import { buildAuthzContext, computePermStateVersion } from './_authz_context';
  * Layout: this file is the only non-`_` entry under `models/user/`. Register /
  * Login / Refresh / Logout / SwitchCompanyScope orchestrate here and call
  * adjacent `user/_lifecycle_*` / `user/_authz_*` / eval helpers. Other modules
- * extend via `@Model('User') export default class User extends UserBase`.
+ * extend via `@Model('User') export default class User extends UserBase` (import UserBase
+ * from `@/auth/service/models` or `@/auth/service/models/user/user`).
  */
 @Model('User')
 export default class User extends BaseModel {

@@ -176,9 +176,9 @@ export function createSwitchCompanyScopeAuditEmitter(eventName: string): {
       const { req } = getJsCtxAndReq();
       const traceId = typeof req?.traceId === 'string' ? req.traceId : '';
       const out = {
+        ...payload,
         event: eventName,
         traceId,
-        ...payload,
       };
       if (payload?.ok === false) {
         console.warn(`[AUDIT] ${JSON.stringify(out)}`);
