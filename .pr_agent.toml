@@ -49,7 +49,8 @@ parallel_calls = true
 num_code_suggestions_per_chunk = 8
 max_number_of_calls = 5
 suggestions_score_threshold = 0
-persistent_comment = true
+# false = each /improve (manual or auto-on-push) posts a new comment instead of editing the previous one.
+persistent_comment = false
 enable_help_text = false
 enable_chat_text = false
 # Do not post when /improve finds nothing (avoids "No code suggestions found" noise).
