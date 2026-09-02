@@ -2358,3 +2358,40 @@ func TestInjectModelApplication_BatchLoadExternalModelsError(t *testing.T) {
 		t.Fatalf("injectModelApplication() error = %v, want batch load failure", err)
 	}
 }
+
+func TestBackendPluginGetParserResults_EnforcesServiceImportBoundary(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	partnerRoot := filepath.Join(modulesPath, "partner")
+	authSpec := filepath.Join(modulesPath, "auth", "service", "models", "role")
+	source := filepath.Join(partnerRoot, "service", "models", "partner.ts")
+
+	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
+		Env:              newPluginTestScope(),
+		Module:           &meta.Module{Name: "partner", Path: partnerRoot, ApplicationStr: "partner"},
+		ParserResultChan: make(chan *parser.ParserResult, 1),
+		TsExports:        make(map[string]map[string]*parser.Export),
+		ParserResults:    make([]*parser.ParserResult, 0),
+	}}
+	plugin.runtimeOptions = runtimeOptions{modulesPath: modulesPath}
+
+	plugin.ParserResultChan <- &parser.ParserResult{
+		Path: source,
+		Imports: map[string]*parser.Import{
+			"Role": {
+				ModuleSpecPath: authSpec,
+				ModuleSpecText: "@/auth/service/models/role",
+				IsTypeOnly:     false,
+				Line:           2,
+				Column:         1,
+			},
+		},
+	}
+
+	_, err := plugin.GetParserResults()
+	if err == nil || !strings.Contains(err.Error(), "cross-app service import boundary violation") {
+		t.Fatalf("GetParserResults() error = %v, want import boundary failure", err)
+	}
+	if !strings.Contains(err.Error(), "partner -> auth") || !strings.Contains(err.Error(), "dial('app.Model')") {
+		t.Fatalf("GetParserResults() error = %v, want app edge and dial hint", err)
+	}
+}

@@ -1239,6 +1239,10 @@ func (p *BackendPlugin) GetParserResults() ([]*parser.ParserResult, error) {
 		return nil, err
 	}
 
+	if err := p.enforceServiceImportBoundary(results); err != nil {
+		return nil, err
+	}
+
 	if err := p.injectModelApplication(results); err != nil {
 		return nil, err
 	}
