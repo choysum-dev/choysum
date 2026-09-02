@@ -404,6 +404,7 @@ func TestCheckServiceImportBoundary_SortsViolationsDeterministically(t *testing.
 	sourceB := filepath.Join(moduleRoot, "service", "models", "b.ts")
 	authSpec := filepath.Join(modulesPath, "auth", "service", "models", "role")
 	metaSpec := filepath.Join(modulesPath, "meta", "service", "models", "ui_resource")
+	baseSpec := filepath.Join(modulesPath, "base", "service", "models", "company")
 
 	violations := CheckServiceImportBoundary(ServiceImportBoundaryInput{
 		ModulesPath:       modulesPath,
@@ -414,8 +415,10 @@ func TestCheckServiceImportBoundary_SortsViolationsDeterministically(t *testing.
 			{
 				Path: sourceB,
 				Imports: map[string]*parser.Import{
-					"Role": {ModuleSpecPath: authSpec, ModuleSpecText: "@/auth/service/models/role", Line: 5, Column: 2},
-					"UI":   {ModuleSpecPath: metaSpec, ModuleSpecText: "@/meta/service/models/ui_resource", Line: 5, Column: 1},
+					"Role":    {ModuleSpecPath: authSpec, ModuleSpecText: "@/auth/service/models/role", Line: 5, Column: 2},
+					"UI":      {ModuleSpecPath: metaSpec, ModuleSpecText: "@/meta/service/models/ui_resource", Line: 5, Column: 1},
+					"Company": {ModuleSpecPath: baseSpec, ModuleSpecText: "@/base/service/models/company", Line: 5, Column: 1},
+					"Late":    {ModuleSpecPath: authSpec, ModuleSpecText: "@/auth/service/models/role", Line: 8, Column: 1},
 				},
 			},
 			{
@@ -426,8 +429,8 @@ func TestCheckServiceImportBoundary_SortsViolationsDeterministically(t *testing.
 			},
 		},
 	})
-	if len(violations) < 3 {
-		t.Fatalf("expected at least 3 violations, got %#v", violations)
+	if len(violations) < 5 {
+		t.Fatalf("expected at least 5 violations, got %#v", violations)
 	}
 	for i := 1; i < len(violations); i++ {
 		prev, cur := violations[i-1], violations[i]
@@ -439,6 +442,10 @@ func TestCheckServiceImportBoundary_SortsViolationsDeterministically(t *testing.
 		}
 		if prev.SourcePath == cur.SourcePath && prev.Line == cur.Line && prev.Column > cur.Column {
 			t.Fatalf("violations not sorted by column: %#v then %#v", prev, cur)
+		}
+		if prev.SourcePath == cur.SourcePath && prev.Line == cur.Line && prev.Column == cur.Column &&
+			prev.ModuleSpecPath > cur.ModuleSpecPath {
+			t.Fatalf("violations not sorted by module spec: %#v then %#v", prev, cur)
 		}
 	}
 }
@@ -1236,6 +1243,9 @@ func TestScanServiceImportBoundaryOnDisk_ReadSourceError(t *testing.T) {
 		t.Skipf("chmod not permitted: %v", err)
 	}
 	defer os.Chmod(sourceFile, 0o644)
+	if _, err := os.ReadFile(sourceFile); err == nil {
+		t.Skip("environment can still read a mode-000 source file")
+	}
 	if _, err := ScanServiceImportBoundaryOnDisk(ServiceImportBoundaryScanInput{
 		ModulesPath:       modulesPath,
 		ModuleRoot:        moduleRoot,
@@ -1290,6 +1300,9 @@ func TestCheckServiceImportBoundaryOnDisk_PropagatesScanError(t *testing.T) {
 		t.Skipf("chmod not permitted: %v", err)
 	}
 	defer os.Chmod(sourceFile, 0o644)
+	if _, err := os.ReadFile(sourceFile); err == nil {
+		t.Skip("environment can still read a mode-000 source file")
+	}
 	if err := CheckServiceImportBoundaryOnDisk(modulesPath, "solo", ModulePathAliasForBoundary(modulesPath)); err == nil {
 		t.Fatal("expected scan read error")
 	}

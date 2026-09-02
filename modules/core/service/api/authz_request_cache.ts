@@ -8,35 +8,37 @@ const AUTHZ_CTX_PREFIX = 'authzContext::';
 const METHOD_ACCESS_PREFIX = 'methodAccess::';
 const UI_GRANT_PREFIX = 'uiGrantExpansion::';
 
-type CacheGroup = {
-  prefix: string;
-  userScoped: boolean;
-};
-
-const AUTHZ_CACHE_GROUPS: CacheGroup[] = [
-  { prefix: AUTHZ_CTX_PREFIX, userScoped: true },
-  { prefix: METHOD_ACCESS_PREFIX, userScoped: true },
-  { prefix: UI_GRANT_PREFIX, userScoped: false },
-];
-
 type InvalidateOpts = {
   userIds?: string[];
   allUsers?: boolean;
 };
 
+function asTrimmedString(value: unknown): string {
+  if (value == null) return '';
+  return String(value).trim();
+}
+
 /** Build request-scoped authz context cache key. */
 export function buildAuthzContextCacheKey(userId: string, companyScopeKey: string): string {
-  return `${AUTHZ_CTX_PREFIX}${String(userId || '').trim()}::${String(companyScopeKey || '').trim()}`;
+  return `${AUTHZ_CTX_PREFIX}${asTrimmedString(userId)}::${asTrimmedString(companyScopeKey)}`;
 }
 
 /** Build request-scoped method-access cache key. */
 export function buildMethodAccessCacheKey(userId: string, companyId: string, fullMethod: string): string {
-  return `${METHOD_ACCESS_PREFIX}${String(userId || '').trim()}::${String(companyId || '').trim()}::${String(fullMethod || '').trim()}`;
+  return `${METHOD_ACCESS_PREFIX}${asTrimmedString(userId)}::${asTrimmedString(companyId)}::${asTrimmedString(fullMethod)}`;
 }
 
 /** Build request-scoped UI-grant expansion cache key. */
 export function buildUiGrantCacheKey(roleSignature: string): string {
-  return `${UI_GRANT_PREFIX}${String(roleSignature || '').trim()}`;
+  return `${UI_GRANT_PREFIX}${asTrimmedString(roleSignature)}`;
+}
+
+function resolveServiceState(req: unknown): Record<string, unknown> | undefined {
+  if (req == null) return undefined;
+  const state = (req as { __choysumServiceState?: unknown }).__choysumServiceState;
+  if (state == null) return undefined;
+  if (typeof state !== 'object') return undefined;
+  return state as Record<string, unknown>;
 }
 
 /**
@@ -47,28 +49,21 @@ export function buildUiGrantCacheKey(roleSignature: string): string {
  */
 export function invalidateAuthzRequestCaches(opts: InvalidateOpts = {}): void {
   const { jsCtx, req } = getJsCtxAndReq();
-  const state: any = req?.__choysumServiceState;
+  const ids = uniqStrings(opts.userIds == null ? [] : opts.userIds);
+  const invalidateAll = opts.allUsers === true ? true : ids.length === 0;
+  const record = resolveServiceState(req);
 
-  const ids = uniqStrings(opts.userIds || []);
-  const invalidateAll = Boolean(opts.allUsers) || ids.length === 0;
-
-  if (state && typeof state === 'object') {
-    const record = state as Record<string, unknown>;
+  if (record !== undefined) {
     if (invalidateAll) {
-      for (const group of AUTHZ_CACHE_GROUPS) {
-        deleteReqStateKeysByPrefix(record, group.prefix);
-      }
+      deleteReqStateKeysByPrefix(record, AUTHZ_CTX_PREFIX);
+      deleteReqStateKeysByPrefix(record, METHOD_ACCESS_PREFIX);
+      deleteReqStateKeysByPrefix(record, UI_GRANT_PREFIX);
     } else {
-      const userScopedGroups = AUTHZ_CACHE_GROUPS.filter((group) => group.userScoped);
-      const sharedGroups = AUTHZ_CACHE_GROUPS.filter((group) => !group.userScoped);
       for (const uid of ids) {
-        for (const group of userScopedGroups) {
-          deleteReqStateKeysByPrefix(record, `${group.prefix}${uid}::`);
-        }
+        deleteReqStateKeysByPrefix(record, `${AUTHZ_CTX_PREFIX}${uid}::`);
+        deleteReqStateKeysByPrefix(record, `${METHOD_ACCESS_PREFIX}${uid}::`);
       }
-      for (const group of sharedGroups) {
-        deleteReqStateKeysByPrefix(record, group.prefix);
-      }
+      deleteReqStateKeysByPrefix(record, UI_GRANT_PREFIX);
     }
   }
 

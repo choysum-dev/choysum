@@ -36,6 +36,18 @@ test('authz_request_cache: cache key builders trim inputs', () => {
   if (uiGrant !== 'uiGrantExpansion::role-sig') {
     throw new Error(`uiGrant = ${uiGrant}`);
   }
+  if (buildAuthzContextCacheKey('', '') !== 'authzContext::::') {
+    throw new Error('empty authzCtx key');
+  }
+  if (buildMethodAccessCacheKey('', '', '') !== 'methodAccess::::::') {
+    throw new Error('empty method key');
+  }
+  if (buildUiGrantCacheKey('') !== 'uiGrantExpansion::') {
+    throw new Error('empty uiGrant key');
+  }
+  if (buildAuthzContextCacheKey(undefined as any, null as any) !== 'authzContext::::') {
+    throw new Error('nullish authzCtx key');
+  }
 });
 
 test('authz_request_cache: targeted and global invalidation clear memoized entries', () => {
@@ -194,6 +206,21 @@ test('authz_request_cache: invalidateAll clears every cache group prefix', () =>
     }
   } finally {
     restore();
+  }
+});
+
+test('authz_request_cache: invalidation without request object clears jsCtx only', () => {
+  const previous = (globalThis as any).$choysum;
+  delete (globalThis as any).$choysum;
+  try {
+    invalidateAuthzRequestCaches({ allUsers: true });
+    invalidateAuthzCachesForUsers(['u1']);
+  } finally {
+    if (previous === undefined) {
+      delete (globalThis as any).$choysum;
+    } else {
+      (globalThis as any).$choysum = previous;
+    }
   }
 });
 
