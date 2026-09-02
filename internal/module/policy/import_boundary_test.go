@@ -117,6 +117,7 @@ func TestCheckServiceImportBoundary_RejectsDynamicImport(t *testing.T) {
 	modulesPath := testModulesPath(t)
 	moduleRoot := filepath.Join(modulesPath, "auth")
 	source := filepath.Join(moduleRoot, "service", "tests", "observability.test.ts")
+	metaSpec := filepath.Join(modulesPath, "meta", "service", "models", "ui_resource")
 
 	violations := CheckServiceImportBoundary(ServiceImportBoundaryInput{
 		ModulesPath:       modulesPath,
@@ -125,10 +126,13 @@ func TestCheckServiceImportBoundary_RejectsDynamicImport(t *testing.T) {
 		Lookup:            testLookup(),
 		ParserResults: []*parser.ParserResult{{
 			Path: source,
-			RawContent: `
-const mod = await import('@/meta/service/models/ui_resource');
-const t = typeof import('@/base/service/models/company');
-`,
+			DynamicImports: []*parser.Import{{
+				ModuleSpecPath: metaSpec,
+				ModuleSpecText: "@/meta/service/models/ui_resource",
+				IsDynamic:      true,
+				Line:           2,
+				Column:         1,
+			}},
 		}},
 	})
 	if len(violations) != 1 {

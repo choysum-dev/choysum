@@ -52,6 +52,29 @@ func TestCheckServiceImportBoundaryOnDisk_RejectsCrossAppImport(t *testing.T) {
 	}
 }
 
+func TestCheckServiceImportBoundaryOnDisk_RejectsDynamicImport(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	writeModulePackageJSON(t, modulesPath, "auth", "auth")
+	writeModulePackageJSON(t, modulesPath, "meta", "meta")
+
+	serviceFile := filepath.Join(modulesPath, "auth", "service", "tests", "observability.test.ts")
+	if err := os.MkdirAll(filepath.Dir(serviceFile), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	source := "await import('@/meta/service/models/ui_resource');\n"
+	if err := os.WriteFile(serviceFile, []byte(source), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	err := CheckServiceImportBoundaryOnDisk(modulesPath, "auth", ModulePathAliasForBoundary(modulesPath))
+	if err == nil || !strings.Contains(err.Error(), "dynamic import") {
+		t.Fatalf("CheckServiceImportBoundaryOnDisk() error = %v, want dynamic import violation", err)
+	}
+	if !strings.Contains(err.Error(), "auth -> meta") {
+		t.Fatalf("error = %v, want auth -> meta", err)
+	}
+}
+
 func TestCheckServiceImportBoundaryOnDisk_AllowsImportType(t *testing.T) {
 	modulesPath := filepath.Join(t.TempDir(), "modules")
 	writeModulePackageJSON(t, modulesPath, "partner", "partner")

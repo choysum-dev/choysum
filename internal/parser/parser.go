@@ -75,6 +75,7 @@ type ParserResult struct {
 
 	Exports              map[string]*Export
 	Imports              map[string]*Import
+	DynamicImports       []*Import
 	Model                *meta.Model   // backend ts models
 	ModelClassNode       *Class        // model class node
 	ModelExtendsProperty *PropertyNode // extends property in model class

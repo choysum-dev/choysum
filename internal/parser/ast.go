@@ -66,6 +66,8 @@ type Import struct {
 	ModuleSpecEnd   int
 	// IsTypeOnly is true for import type / { type X } bindings (no runtime value import).
 	IsTypeOnly bool
+	// IsDynamic is true for runtime import('module') call expressions.
+	IsDynamic bool
 }
 
 type Export struct {
@@ -199,21 +201,23 @@ type TypeParameter struct {
 }
 
 type TsParser struct {
-	Path       string
-	Content    string
-	Context    context.Context
-	PathAlias  map[string]string
-	ImportsMap map[string]*Import
-	ExportsMap map[string]*Export
+	Path           string
+	Content        string
+	Context        context.Context
+	PathAlias      map[string]string
+	ImportsMap     map[string]*Import
+	DynamicImports []*Import
+	ExportsMap     map[string]*Export
 }
 
 type tsgoImportExportCtx struct {
-	path      string
-	pathAlias map[string]string
-	source    *tsast.SourceFile
-	imports   map[string]*Import
-	exports   map[string]*Export
-	lineMap   []tscore.TextPos
+	path           string
+	pathAlias      map[string]string
+	source         *tsast.SourceFile
+	imports        map[string]*Import
+	dynamicImports []*Import
+	exports        map[string]*Export
+	lineMap        []tscore.TextPos
 }
 
 func (p *TsParser) parseTSGoImportExportCtx() (*tsgoImportExportCtx, error) {
@@ -260,6 +264,8 @@ func (p *TsParser) parseTSGoImportExportCtx() (*tsgoImportExportCtx, error) {
 		}
 		ctx.parseExport(stmt)
 	}
+
+	ctx.collectDynamicImports()
 
 	return ctx, nil
 }
@@ -551,6 +557,7 @@ func (p *TsParser) ParseImport(_ any) error {
 		return err
 	}
 	p.ImportsMap = ctx.imports
+	p.DynamicImports = ctx.dynamicImports
 	return nil
 }
 

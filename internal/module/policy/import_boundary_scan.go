@@ -112,10 +112,11 @@ func ParseServiceSourceFile(pathAlias map[string]string, filePath string, conten
 		return nil, xfmt.Errorf("parse exports in %s: %w", filePath, err)
 	}
 	return &parser.ParserResult{
-		Path:       filePath,
-		RawContent: string(content),
-		Imports:    tsParser.ImportsMap,
-		Exports:    tsParser.ExportsMap,
+		Path:           filePath,
+		RawContent:     string(content),
+		Imports:        tsParser.ImportsMap,
+		DynamicImports: tsParser.DynamicImports,
+		Exports:        tsParser.ExportsMap,
 	}, nil
 }
 

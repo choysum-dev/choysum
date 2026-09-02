@@ -6,7 +6,6 @@ package policy
 import (
 	"fmt"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/choysum-dev/choysum/internal/parser"
@@ -39,8 +38,6 @@ type ServiceImportBoundaryInput struct {
 	ParserResults     []*parser.ParserResult
 	Lookup            ModuleApplicationLookup
 }
-
-var dynamicImportPattern = regexp.MustCompile(`import\s*\(\s*['"]([^'"]+)['"]\s*\)`)
 
 // ModuleNameFromModulesPath returns the top-level module directory for an absolute path.
 func ModuleNameFromModulesPath(modulesPath, absPath string) string {
@@ -209,6 +206,12 @@ func CollectModuleNamesFromParserResult(modulesPath string, result *parser.Parse
 		}
 		collect(imp.ModuleSpecPath)
 	}
+	for _, imp := range result.DynamicImports {
+		if imp == nil {
+			continue
+		}
+		collect(imp.ModuleSpecPath)
+	}
 	for _, exp := range result.Exports {
 		if exp == nil {
 			continue
@@ -239,19 +242,27 @@ func CheckServiceImportBoundary(input ServiceImportBoundaryInput) []ImportBounda
 			if imp == nil || imp.IsTypeOnly {
 				continue
 			}
-			specText := strings.TrimSpace(imp.ModuleSpecText)
-			if specText == "" {
-				specText = imp.Text
-			}
-			violations = appendImportViolation(
+			violations = appendValueImportViolation(
 				violations,
 				result.Path,
 				sourceApp,
-				"import",
-				imp.ModuleSpecPath,
-				specText,
-				imp.Line,
-				imp.Column,
+				importViolationKind(imp),
+				imp,
+				input.ModulesPath,
+				input.Lookup,
+			)
+		}
+
+		for _, imp := range result.DynamicImports {
+			if imp == nil || imp.IsTypeOnly {
+				continue
+			}
+			violations = appendValueImportViolation(
+				violations,
+				result.Path,
+				sourceApp,
+				"dynamic import",
+				imp,
 				input.ModulesPath,
 				input.Lookup,
 			)
@@ -284,102 +295,45 @@ func CheckServiceImportBoundary(input ServiceImportBoundaryInput) []ImportBounda
 				collectExport(wildcard)
 			}
 		}
-
-		violations = appendDynamicImportViolations(
-			violations,
-			result,
-			sourceApp,
-			input.ModulesPath,
-			input.Lookup,
-		)
 	}
 	return violations
 }
 
-func appendDynamicImportViolations(
+func importViolationKind(imp *parser.Import) string {
+	if imp != nil && imp.IsDynamic {
+		return "dynamic import"
+	}
+	return "import"
+}
+
+func appendValueImportViolation(
 	violations []ImportBoundaryViolation,
-	result *parser.ParserResult,
+	sourcePath string,
 	sourceApp string,
+	kind string,
+	imp *parser.Import,
 	modulesPath string,
 	lookup ModuleApplicationLookup,
 ) []ImportBoundaryViolation {
-	content := result.RawContent
-	if content == "" {
-		content = result.Content
-	}
-	if strings.TrimSpace(content) == "" {
+	if imp == nil {
 		return violations
 	}
-
-	for _, match := range dynamicImportPattern.FindAllStringSubmatchIndex(content, -1) {
-		if len(match) < 4 {
-			continue
-		}
-		fullStart := match[0]
-		specStart, specEnd := match[2], match[3]
-		spec := content[specStart:specEnd]
-		if isTypeOnlyDynamicImport(content, fullStart) {
-			continue
-		}
-		moduleSpecPath := resolveDynamicImportSpec(modulesPath, result.Path, spec)
-		line, column := lineColumnAt(content, fullStart)
-		violations = appendImportViolation(
-			violations,
-			result.Path,
-			sourceApp,
-			"dynamic import",
-			moduleSpecPath,
-			spec,
-			line,
-			column,
-			modulesPath,
-			lookup,
-		)
+	specText := strings.TrimSpace(imp.ModuleSpecText)
+	if specText == "" {
+		specText = imp.Text
 	}
-	return violations
-}
-
-func isTypeOnlyDynamicImport(content string, importStart int) bool {
-	if importStart <= 0 {
-		return false
-	}
-	prefix := strings.TrimSpace(content[:importStart])
-	return strings.HasSuffix(prefix, "typeof")
-}
-
-func resolveDynamicImportSpec(modulesPath, sourcePath, spec string) string {
-	spec = strings.Trim(strings.TrimSpace(spec), `"'`)
-	if spec == "" {
-		return ""
-	}
-	switch {
-	case strings.HasPrefix(spec, "./") || strings.HasPrefix(spec, "../"):
-		spec = filepath.Join(filepath.Dir(sourcePath), spec)
-	case strings.HasPrefix(spec, "@/"):
-		spec = filepath.Join(strings.TrimSpace(modulesPath), strings.TrimPrefix(spec, "@/"))
-	}
-	spec = strings.TrimSuffix(spec, ".ts")
-	return filepath.Clean(spec)
-}
-
-func lineColumnAt(content string, offset int) (line int, column int) {
-	if offset < 0 {
-		offset = 0
-	}
-	if offset > len(content) {
-		offset = len(content)
-	}
-	line = 1
-	column = 1
-	for i := 0; i < offset; i++ {
-		if content[i] == '\n' {
-			line++
-			column = 1
-			continue
-		}
-		column++
-	}
-	return line, column
+	return appendImportViolation(
+		violations,
+		sourcePath,
+		sourceApp,
+		kind,
+		imp.ModuleSpecPath,
+		specText,
+		imp.Line,
+		imp.Column,
+		modulesPath,
+		lookup,
+	)
 }
 
 // FormatImportBoundaryError formats violations as a hard-fail install/build error.
