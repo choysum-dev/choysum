@@ -37,6 +37,9 @@ export const ready = true
 	if ctx.Imports["DefaultView"] == nil || ctx.Imports["DefaultView"].ReferenceIdent != "default" {
 		t.Fatalf("unexpected default import: %#v", ctx.Imports["DefaultView"])
 	}
+	if ctx.Imports["DefaultView"].IsTypeOnly {
+		t.Fatalf("expected value default import, IsTypeOnly=true")
+	}
 	if ctx.Imports["alias"] == nil || ctx.Imports["alias"].ReferenceIdent != "named" {
 		t.Fatalf("unexpected aliased import: %#v", ctx.Imports["alias"])
 	}
@@ -109,6 +112,36 @@ export const enabled = true
 	if got := ExportDeclarationName(nil); got != "" {
 		t.Fatalf("ExportDeclarationName(nil) = %q, want empty", got)
 	}
+}
+
+func TestParseImportIsTypeOnly_ParseCtxPath(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "modules", "auth", "service", "user.ts")
+	content := `
+import type TypeOnlyDefault from '@/base/service/models/language'
+import type { TypeNamed } from '@/meta/service/models/model'
+import { type InlineType, InlineValue } from '@/document/service/models/attachment_object'
+import ValueDefault from '@/partner/service/models/partner'
+`
+	ctx, err := Parse(map[string]string{"@": filepath.Join(filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(path)))), "")}, path, content)
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+
+	assertTypeOnly := func(local string, want bool) {
+		imp := ctx.Imports[local]
+		if imp == nil {
+			t.Fatalf("missing import binding %q", local)
+		}
+		if imp.IsTypeOnly != want {
+			t.Fatalf("Imports[%q].IsTypeOnly=%v want %v", local, imp.IsTypeOnly, want)
+		}
+	}
+
+	assertTypeOnly("TypeOnlyDefault", true)
+	assertTypeOnly("TypeNamed", true)
+	assertTypeOnly("InlineType", true)
+	assertTypeOnly("InlineValue", false)
+	assertTypeOnly("ValueDefault", false)
 }
 
 func TestTSGoCtxConvertReferenceWithModuleSpecAndNodeTextGuards(t *testing.T) {

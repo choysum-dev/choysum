@@ -64,6 +64,8 @@ type Import struct {
 	ModuleSpecText  string
 	ModuleSpecStart int
 	ModuleSpecEnd   int
+	// IsTypeOnly is true for import type / { type X } bindings (no runtime value import).
+	IsTypeOnly bool
 }
 
 type Export struct {
@@ -307,7 +309,7 @@ func (c *tsgoImportExportCtx) parseImport(stmt *tsast.Node) {
 	moduleSpecText := strings.TrimSpace(c.nodeText(decl.ModuleSpecifier))
 	importText := strings.TrimSpace(c.nodeText(stmt))
 
-	makeImport := func(referenceIdent string) *Import {
+	makeImport := func(referenceIdent string, isTypeOnly bool) *Import {
 		return &Import{
 			ReferenceIdent:  referenceIdent,
 			ModuleSpecPath:  moduleSpecPath,
@@ -319,6 +321,7 @@ func (c *tsgoImportExportCtx) parseImport(stmt *tsast.Node) {
 			ModuleSpecText:  moduleSpecText,
 			ModuleSpecStart: decl.ModuleSpecifier.Pos(),
 			ModuleSpecEnd:   decl.ModuleSpecifier.End(),
+			IsTypeOnly:      isTypeOnly,
 		}
 	}
 
@@ -326,11 +329,12 @@ func (c *tsgoImportExportCtx) parseImport(stmt *tsast.Node) {
 		return
 	}
 
-	importClause := decl.ImportClause.AsImportClause()
+	importClauseNode := decl.ImportClause
+	importClause := importClauseNode.AsImportClause()
 	if defaultName := importClause.Name(); defaultName != nil {
 		localName := defaultName.Text()
 		if localName != "" {
-			c.imports[localName] = makeImport("default")
+			c.imports[localName] = makeImport("default", ImportBindingIsTypeOnly(importClauseNode, nil))
 		}
 	}
 
@@ -342,7 +346,7 @@ func (c *tsgoImportExportCtx) parseImport(stmt *tsast.Node) {
 	if namedBindings.Kind == tsast.KindNamespaceImport {
 		alias := namedBindings.AsNamespaceImport().Name().Text()
 		if alias != "" {
-			c.imports[alias] = makeImport("*")
+			c.imports[alias] = makeImport("*", ImportBindingIsTypeOnly(importClauseNode, nil))
 		}
 		return
 	}
@@ -361,9 +365,20 @@ func (c *tsgoImportExportCtx) parseImport(stmt *tsast.Node) {
 			if spec.PropertyName != nil {
 				referenceIdent = spec.PropertyName.Text()
 			}
-			c.imports[localName] = makeImport(referenceIdent)
+			c.imports[localName] = makeImport(referenceIdent, ImportBindingIsTypeOnly(importClauseNode, node))
 		}
 	}
+}
+
+// ImportBindingIsTypeOnly reports whether an import binding is type-only (import type / { type X }).
+func ImportBindingIsTypeOnly(importClause, importSpecifier *tsast.Node) bool {
+	if importClause != nil && importClause.IsTypeOnly() {
+		return true
+	}
+	if importSpecifier != nil && importSpecifier.IsTypeOnly() {
+		return true
+	}
+	return false
 }
 
 func (c *tsgoImportExportCtx) convertReferenceWithModuleSpec(referenceIdent string) (string, string) {

@@ -120,7 +120,7 @@ func (c *ParseCtx) parseImport(stmt *tsast.Node) {
 	moduleSpecText := strings.TrimSpace(c.NodeText(decl.ModuleSpecifier))
 	importText := strings.TrimSpace(c.NodeText(stmt))
 
-	makeImport := func(referenceIdent string) *parser.Import {
+	makeImport := func(referenceIdent string, isTypeOnly bool) *parser.Import {
 		return &parser.Import{
 			ReferenceIdent:  referenceIdent,
 			ModuleSpecPath:  moduleSpecPath,
@@ -132,6 +132,7 @@ func (c *ParseCtx) parseImport(stmt *tsast.Node) {
 			ModuleSpecText:  moduleSpecText,
 			ModuleSpecStart: decl.ModuleSpecifier.Pos(),
 			ModuleSpecEnd:   decl.ModuleSpecifier.End(),
+			IsTypeOnly:      isTypeOnly,
 		}
 	}
 
@@ -139,11 +140,12 @@ func (c *ParseCtx) parseImport(stmt *tsast.Node) {
 		return
 	}
 
-	importClause := decl.ImportClause.AsImportClause()
+	importClauseNode := decl.ImportClause
+	importClause := importClauseNode.AsImportClause()
 	if defaultName := importClause.Name(); defaultName != nil {
 		localName := defaultName.Text()
 		if localName != "" {
-			c.Imports[localName] = makeImport("default")
+			c.Imports[localName] = makeImport("default", parser.ImportBindingIsTypeOnly(importClauseNode, nil))
 		}
 	}
 
@@ -155,7 +157,7 @@ func (c *ParseCtx) parseImport(stmt *tsast.Node) {
 	if namedBindings.Kind == tsast.KindNamespaceImport {
 		alias := namedBindings.AsNamespaceImport().Name().Text()
 		if alias != "" {
-			c.Imports[alias] = makeImport("*")
+			c.Imports[alias] = makeImport("*", parser.ImportBindingIsTypeOnly(importClauseNode, nil))
 		}
 		return
 	}
@@ -174,7 +176,7 @@ func (c *ParseCtx) parseImport(stmt *tsast.Node) {
 			if spec.PropertyName != nil {
 				referenceIdent = spec.PropertyName.Text()
 			}
-			c.Imports[localName] = makeImport(referenceIdent)
+			c.Imports[localName] = makeImport(referenceIdent, parser.ImportBindingIsTypeOnly(importClauseNode, node))
 		}
 	}
 }
