@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/choysum-dev/choysum/pkg/bus"
+	taskcontract "github.com/choysum-dev/choysum/pkg/task"
 )
 
 type captureBus struct {
@@ -131,5 +132,85 @@ func TestIsMetaModuleOpJob(t *testing.T) {
 	}
 	if isMetaModuleOpJob(&Job{FullMethod: "meta.MetaModule/PlanOperation"}) {
 		t.Fatal("plan should not tip")
+	}
+}
+
+func TestPublishModuleOpChangedNilDispatcherAndOperatorHelpers(t *testing.T) {
+	var d *Dispatcher
+	d.publishModuleOpChanged(&Job{Id: "j", FullMethod: "meta.MetaModule/ExecuteInstall", TriggeredByUserId: "u"}, "x")
+
+	if moduleOpOperatorUserID(nil) != "" {
+		t.Fatal("nil job operator")
+	}
+	if moduleOpOperatorUserID(&Job{TriggeredByUserId: "  ", SchedulerUserId: " sched "}) != "sched" {
+		t.Fatal("trim scheduler fallback")
+	}
+	if !isMetaModuleOpJob(&Job{FullMethod: "  meta.MetaModule/ExecuteUpgrade  "}) {
+		t.Fatal("trimmed full method should match")
+	}
+}
+
+type failMarkQueue struct {
+	stubTaskQueue
+	failMark bool
+}
+
+func (q failMarkQueue) MarkSucceeded(context.Context, string, taskcontract.QueueSuccess) error {
+	if q.failMark {
+		return context.Canceled
+	}
+	return nil
+}
+func (q failMarkQueue) MarkFailed(context.Context, string, taskcontract.QueueFailure) error {
+	if q.failMark {
+		return context.Canceled
+	}
+	return nil
+}
+func (q failMarkQueue) Retry(context.Context, string, taskcontract.QueueRetry) error {
+	if q.failMark {
+		return context.Canceled
+	}
+	return nil
+}
+func (q failMarkQueue) MarkCancelled(context.Context, string, taskcontract.QueueCancellation) error {
+	if q.failMark {
+		return context.Canceled
+	}
+	return nil
+}
+
+func TestDispatcherSkipsModuleOpTipWhenPersistFails(t *testing.T) {
+	events := &captureBus{}
+	job := &Job{
+		Id:                "job-persist-fail",
+		FullMethod:        "meta.MetaModule/ExecuteInstall",
+		TriggeredByUserId: "user-1",
+	}
+	d := &Dispatcher{queue: failMarkQueue{failMark: true}, events: events}
+	d.succeedJob(nil, job, map[string]any{"ok": true})
+	d.failJob(nil, job, map[string]any{"message": "x"}, nil)
+	d.retryJob(nil, job, 1000, map[string]any{"message": "retry"}, "test")
+	d.markCancelled(nil, job, "cancel")
+	if got := events.snapshot(); len(got) != 0 {
+		t.Fatalf("expected no tips after persist failures, got %#v", got)
+	}
+}
+
+func TestDispatcherPublishesModuleOpTipWhenPersistSucceeds(t *testing.T) {
+	events := &captureBus{}
+	job := &Job{
+		Id:                "job-persist-ok",
+		FullMethod:        "meta.MetaModule/ExecuteUpgrade",
+		TriggeredByUserId: "user-9",
+	}
+	d := &Dispatcher{queue: failMarkQueue{failMark: false}, events: events}
+	d.succeedJob(nil, job, map[string]any{"ok": true})
+	d.failJob(nil, job, map[string]any{"message": "x"}, nil)
+	d.retryJob(nil, job, 1000, map[string]any{"message": "retry"}, "test")
+	d.markCancelled(nil, job, "cancel")
+	got := events.snapshot()
+	if len(got) != 4 {
+		t.Fatalf("tips = %d, want 4", len(got))
 	}
 }

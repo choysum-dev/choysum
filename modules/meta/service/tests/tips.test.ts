@@ -68,6 +68,10 @@ test('meta.tips: publishModuleOpChangedTip skips, publishes, and swallows errors
     expect(published[0].source).toBe('meta.ExecuteInstall');
     expect(published[0].payload.userId).toBe(undefined);
 
+    published.length = 0;
+    await publishModuleOpChangedTip({ jobId: 'job-whitespace-source', source: '   ' });
+    expect(published[0].source).toBe(META_MODULE_OP_TIP_SOURCE);
+
     __setMetaPublishTipForTest(() => {
       throw new Error('bus down');
     });

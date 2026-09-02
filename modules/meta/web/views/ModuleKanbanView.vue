@@ -223,6 +223,7 @@ import {
   createModuleOpProgressSession,
   type ModuleOpStatusSnapshot,
 } from '../composables/useModuleOpProgress';
+import { createModuleKanbanOpProgressHooks } from '../composables/moduleKanbanOpProgress';
 
 defineOptions({ name: 'ModuleKanbanView' });
 
@@ -312,30 +313,25 @@ const action = ref<ModuleAction>('install');
 const targetModule = ref<ClientModelProps<MetaModuleIndex> | null>(null);
 const withDemo = ref(false);
 
-const opProgress = createModuleOpProgressSession({
-  fetchStatus: async (jobId) => (await (moduleStore as any).GetOpStatus(jobId)) as OpStatusResp,
-  isActive: () => dialogVisible.value,
-  onStatus: (status) => {
-    opStatus.value = status;
-  },
-  onTerminal: () => {
-    dialogStep.value = 'result';
-  },
-  onTimeout: () => {
-    dialogStep.value = 'result';
-    opStatus.value = {
-      status: 'dispatching',
-      resultStatus: undefined,
-    } as OpStatusResp;
-    ElMessage.warning(_t('Job is still running in the background; refresh later'));
-  },
-  onTransientNetworkError: () => {
-    ElMessage.warning(_t('Service is restarting; status will retry automatically'));
-  },
-  onHardError: (message) => {
-    ElMessage.error(message || _t('Failed to get status'));
-  },
-});
+const opProgress = createModuleOpProgressSession(
+  createModuleKanbanOpProgressHooks({
+    fetchStatus: async (jobId) => (await (moduleStore as any).GetOpStatus(jobId)) as OpStatusResp,
+    isDialogOpen: () => dialogVisible.value,
+    setOpStatus: (status) => {
+      opStatus.value = status;
+    },
+    setDialogStep: (step) => {
+      dialogStep.value = step;
+    },
+    warn: (message) => {
+      ElMessage.warning(message);
+    },
+    error: (message) => {
+      ElMessage.error(message);
+    },
+    t: (message) => _t(message),
+  })
+);
 
 /**
  * Builds the current dialog title from the selected module action.
@@ -566,6 +562,18 @@ onMounted(async () => {
   } catch {
     // sync unavailable — silently skip, page remains usable
   }
+});
+
+defineExpose({
+  onActionClick,
+  submitOperation,
+  resetDialog,
+  onDialogClose,
+  dialogVisible,
+  dialogStep,
+  opStatus,
+  action,
+  targetModule,
 });
 </script>
 

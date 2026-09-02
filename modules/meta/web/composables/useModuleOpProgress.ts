@@ -55,6 +55,10 @@ function clampRetryDelay(retryAfterMs: number | undefined, fallbackMs: number): 
   return Math.min(POLL_MAX_MS, Math.max(POLL_INITIAL_MS, retryAfterMs));
 }
 
+function errorMessage(error: unknown): string {
+  return String((error as { message?: string })?.message || error || '').trim();
+}
+
 /**
  * C1 Meta module-op progress session: boot Unary + tip-driven refresh +
  * short-backoff poll only after tip stream ends/errors while still non-terminal.
@@ -62,9 +66,11 @@ function clampRetryDelay(retryAfterMs: number | undefined, fallbackMs: number): 
 export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks) {
   let tipController: AbortController | null = null;
   let pollTimer: ReturnType<typeof setTimeout> | undefined;
+  let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
   let sessionGeneration = 0;
   let reachedTerminal = false;
   let transientNotified = false;
+  let timedOut = false;
 
   function clearPoll(): void {
     if (pollTimer != null) {
@@ -73,11 +79,19 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks) {
     }
   }
 
+  function clearDeadline(): void {
+    if (deadlineTimer != null) {
+      clearTimeout(deadlineTimer);
+      deadlineTimer = undefined;
+    }
+  }
+
   function stop(): void {
     sessionGeneration += 1;
     tipController?.abort();
     tipController = null;
     clearPoll();
+    clearDeadline();
   }
 
   function notifyTransient(): void {
@@ -86,15 +100,30 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks) {
     hooks.onTransientNetworkError?.();
   }
 
+  function notifyHardError(error: unknown): void {
+    hooks.onHardError?.(errorMessage(error) || 'Failed to get status');
+  }
+
+  function fireTimeout(generation: number): void {
+    if (generation !== sessionGeneration || !hooks.isActive() || reachedTerminal || timedOut) {
+      return;
+    }
+    timedOut = true;
+    tipController?.abort();
+    clearPoll();
+    clearDeadline();
+    hooks.onTimeout();
+  }
+
   async function applyFetched(
     jobId: string,
     generation: number
   ): Promise<ModuleOpStatusSnapshot | null> {
-    if (generation !== sessionGeneration || !hooks.isActive()) {
+    if (generation !== sessionGeneration || !hooks.isActive() || timedOut) {
       return null;
     }
     const status = await hooks.fetchStatus(jobId);
-    if (generation !== sessionGeneration || !hooks.isActive()) {
+    if (generation !== sessionGeneration || !hooks.isActive() || timedOut) {
       return null;
     }
     hooks.onStatus(status);
@@ -102,6 +131,7 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks) {
       reachedTerminal = true;
       tipController?.abort();
       clearPoll();
+      clearDeadline();
       hooks.onTerminal(status);
       if (status.reload_web && typeof window !== 'undefined') {
         window.location.reload();
@@ -115,7 +145,7 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks) {
     let intervalMs = POLL_INITIAL_MS;
 
     const tick = async () => {
-      if (generation !== sessionGeneration || !hooks.isActive() || reachedTerminal) {
+      if (generation !== sessionGeneration || !hooks.isActive() || reachedTerminal || timedOut) {
         return;
       }
       let status: ModuleOpStatusSnapshot | null = null;
@@ -125,22 +155,22 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks) {
           return;
         }
       } catch (error) {
-        if (generation !== sessionGeneration || !hooks.isActive()) {
+        if (generation !== sessionGeneration || !hooks.isActive() || timedOut) {
           return;
         }
-        const message = String((error as { message?: string })?.message || error || '').trim();
+        const message = errorMessage(error);
         if (isTransientNetworkError(message)) {
           notifyTransient();
         } else {
-          hooks.onHardError?.(message || 'Failed to get status');
+          notifyHardError(error);
         }
       }
 
-      if (generation !== sessionGeneration || !hooks.isActive() || reachedTerminal) {
+      if (generation !== sessionGeneration || !hooks.isActive() || reachedTerminal || timedOut) {
         return;
       }
       if (Date.now() - startAt > MAX_DURATION_MS) {
-        hooks.onTimeout();
+        fireTimeout(generation);
         return;
       }
 
@@ -154,6 +184,11 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks) {
     void tick();
   }
 
+  /**
+   * Watches one job until terminal status, timeout, or stop().
+   * Remains pending for the whole tip/fallback lifecycle (callers such as
+   * ModuleKanbanView.submitOperation intentionally await that full session).
+   */
   async function watch(jobId: string): Promise<void> {
     const id = String(jobId || '').trim();
     stop();
@@ -162,25 +197,26 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks) {
     const generation = sessionGeneration;
     reachedTerminal = false;
     transientNotified = false;
+    timedOut = false;
     const startAt = Date.now();
 
     try {
       const boot = await applyFetched(id, generation);
-      if (generation !== sessionGeneration || !hooks.isActive()) {
+      if (generation !== sessionGeneration || !hooks.isActive() || timedOut) {
         return;
       }
       if (!boot || isTerminalStatus(boot.status)) {
         return;
       }
     } catch (error) {
-      if (generation !== sessionGeneration || !hooks.isActive()) {
+      if (generation !== sessionGeneration || !hooks.isActive() || timedOut) {
         return;
       }
-      const message = String((error as { message?: string })?.message || error || '').trim();
+      const message = errorMessage(error);
       if (isTransientNetworkError(message)) {
         notifyTransient();
       } else {
-        hooks.onHardError?.(message || 'Failed to get status');
+        notifyHardError(error);
       }
       // Still try tip/fallback — boot failure alone is not terminal.
     }
@@ -190,6 +226,10 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks) {
     let debounceTimer: ReturnType<typeof setTimeout> | undefined;
     let refreshChain: Promise<void> = Promise.resolve();
 
+    deadlineTimer = setTimeout(() => {
+      fireTimeout(generation);
+    }, Math.max(0, MAX_DURATION_MS - (Date.now() - startAt)));
+
     const scheduleTipRefresh = () => {
       if (debounceTimer != null) {
         clearTimeout(debounceTimer);
@@ -197,20 +237,20 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks) {
       debounceTimer = setTimeout(() => {
         refreshChain = refreshChain
           .then(async () => {
-            if (signal.aborted || generation !== sessionGeneration || reachedTerminal) {
+            if (signal.aborted || generation !== sessionGeneration || reachedTerminal || timedOut) {
               return;
             }
             try {
               await applyFetched(id, generation);
             } catch (error) {
-              if (signal.aborted || generation !== sessionGeneration) {
+              if (signal.aborted || generation !== sessionGeneration || timedOut) {
                 return;
               }
-              const message = String((error as { message?: string })?.message || error || '').trim();
+              const message = errorMessage(error);
               if (isTransientNetworkError(message)) {
                 notifyTransient();
               } else {
-                hooks.onHardError?.(message || 'Failed to get status');
+                notifyHardError(error);
               }
             }
           })
@@ -229,6 +269,7 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks) {
     } catch {
       // Stream error; fall through to short-backoff poll when still active.
     } finally {
+      clearDeadline();
       if (debounceTimer != null) {
         clearTimeout(debounceTimer);
       }
@@ -237,6 +278,7 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks) {
 
     if (
       generation === sessionGeneration &&
+      !timedOut &&
       !signal.aborted &&
       hooks.isActive() &&
       !reachedTerminal

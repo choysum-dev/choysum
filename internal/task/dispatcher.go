@@ -590,14 +590,15 @@ func (d *Dispatcher) succeedJob(db *gorm.DB, job *Job, result any) {
 	if d.runtimeScope != nil && d.runtimeScope.Context() != nil {
 		ctx = d.runtimeScope.Context()
 	}
-	_ = d.queue.MarkSucceeded(ctx, job.Id, taskcontract.QueueSuccess{
+	if err := d.queue.MarkSucceeded(ctx, job.Id, taskcontract.QueueSuccess{
 		FinishedAt:      now,
 		UpdatedAt:       now,
 		ResultJSON:      resultJSON,
 		ResultHash:      sanitized.Hash,
 		ResultTruncated: sanitized.Truncated,
-	})
-	d.publishModuleOpChanged(job, "task.Dispatcher.succeedJob")
+	}); err == nil {
+		d.publishModuleOpChanged(job, "task.Dispatcher.succeedJob")
+	}
 }
 
 func (d *Dispatcher) failJob(db *gorm.DB, job *Job, errObj any, result any) {
@@ -613,7 +614,7 @@ func (d *Dispatcher) failJob(db *gorm.DB, job *Job, errObj any, result any) {
 	if d.runtimeScope != nil && d.runtimeScope.Context() != nil {
 		ctx = d.runtimeScope.Context()
 	}
-	_ = d.queue.MarkFailed(ctx, job.Id, taskcontract.QueueFailure{
+	if err := d.queue.MarkFailed(ctx, job.Id, taskcontract.QueueFailure{
 		FinishedAt:      now,
 		UpdatedAt:       now,
 		ErrorJSON:       errJSON,
@@ -622,8 +623,9 @@ func (d *Dispatcher) failJob(db *gorm.DB, job *Job, errObj any, result any) {
 		ResultJSON:      resultJSON,
 		ResultHash:      resultSan.Hash,
 		ResultTruncated: resultSan.Truncated,
-	})
-	d.publishModuleOpChanged(job, "task.Dispatcher.failJob")
+	}); err == nil {
+		d.publishModuleOpChanged(job, "task.Dispatcher.failJob")
+	}
 }
 
 func (d *Dispatcher) retryJob(db *gorm.DB, job *Job, retryAfterMs int64, errObj any, source string) {
@@ -676,14 +678,15 @@ func (d *Dispatcher) retryJob(db *gorm.DB, job *Job, retryAfterMs int64, errObj 
 	if d.runtimeScope != nil && d.runtimeScope.Context() != nil {
 		ctx = d.runtimeScope.Context()
 	}
-	_ = d.queue.Retry(ctx, job.Id, taskcontract.QueueRetry{
+	if err := d.queue.Retry(ctx, job.Id, taskcontract.QueueRetry{
 		RunAfter:       runAfter,
 		UpdatedAt:      now,
 		ErrorJSON:      errJSON,
 		ErrorHash:      errSan.Hash,
 		ErrorTruncated: errSan.Truncated,
-	})
-	d.publishModuleOpChanged(job, "task.Dispatcher.retryJob")
+	}); err == nil {
+		d.publishModuleOpChanged(job, "task.Dispatcher.retryJob")
+	}
 	if d.interval > 0 && retryAfterMs <= d.interval.Milliseconds() {
 		d.publishWakeup("run_after")
 	}
@@ -699,13 +702,14 @@ func (d *Dispatcher) markCancelled(db *gorm.DB, job *Job, reason string) {
 	if d.runtimeScope != nil && d.runtimeScope.Context() != nil {
 		ctx = d.runtimeScope.Context()
 	}
-	_ = d.queue.MarkCancelled(ctx, job.Id, taskcontract.QueueCancellation{
+	if err := d.queue.MarkCancelled(ctx, job.Id, taskcontract.QueueCancellation{
 		CancelledAt: now,
 		FinishedAt:  now,
 		UpdatedAt:   now,
 		ErrorJSON:   errJSON,
-	})
-	d.publishModuleOpChanged(job, "task.Dispatcher.markCancelled")
+	}); err == nil {
+		d.publishModuleOpChanged(job, "task.Dispatcher.markCancelled")
+	}
 }
 
 func (d *Dispatcher) backoffMs(attempt int) int64 {

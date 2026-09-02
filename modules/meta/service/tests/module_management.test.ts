@@ -311,15 +311,53 @@ test('meta.MetaModule RequestInstall writes operatorUserId into job payload', as
   resetRequestContext();
   ensureJobMock();
 
-  const moduleName = uid('req_install');
-  const jobId = await MetaModule.RequestInstall(moduleName, true);
-  expect(jobId).toBeTruthy();
+  const published: any[] = [];
+  const { __setMetaPublishTipForTest } = await import('../tips');
+  __setMetaPublishTipForTest(event => {
+    published.push(event);
+  });
+  try {
+    const moduleName = uid('req_install');
+    const jobId = await MetaModule.RequestInstall(moduleName, true);
+    expect(jobId).toBeTruthy();
 
-  const job = await Job.GetJob(jobId, ['Id', 'PayloadJson'] as any);
-  expect(job).toBeTruthy();
-  expect(job.PayloadJson?.moduleName).toBe(moduleName);
-  expect(job.PayloadJson?.withDemo).toBe(true);
-  expect(job.PayloadJson?.operatorUserId).toBe('admin');
+    const job = await Job.GetJob(jobId, ['Id', 'PayloadJson'] as any);
+    expect(job).toBeTruthy();
+    expect(job.PayloadJson?.moduleName).toBe(moduleName);
+    expect(job.PayloadJson?.withDemo).toBe(true);
+    expect(job.PayloadJson?.operatorUserId).toBe('admin');
+    expect(published.some(event => event?.payload?.jobId === jobId)).toBe(true);
+  } finally {
+    __setMetaPublishTipForTest(undefined);
+  }
+});
+
+test('meta.MetaModule RequestInstall publishes lease-conflict tip when forced', async () => {
+  resetRequestContext();
+  ensureJobMock();
+
+  const priorEnv = (globalThis as any).__choysumBackendEnv;
+  const published: any[] = [];
+  const { __setMetaPublishTipForTest } = await import('../tips');
+  __setMetaPublishTipForTest(event => {
+    published.push(event);
+  });
+  (globalThis as any).__choysumBackendEnv = {
+    ...(priorEnv || {}),
+    CHOYSUM_E2E_FORCE_LOCK_CONFLICT: '1',
+  };
+  try {
+    const moduleName = uid('req_lock');
+    const jobId = await MetaModule.RequestInstall(moduleName);
+    expect(jobId).toBeTruthy();
+    const tip = published.find(event => event?.source === 'meta.MetaModule.leaseConflict');
+    expect(tip).toBeTruthy();
+    expect(tip.payload.jobId).toBe(jobId);
+  } finally {
+    if (priorEnv === undefined) delete (globalThis as any).__choysumBackendEnv;
+    else (globalThis as any).__choysumBackendEnv = priorEnv;
+    __setMetaPublishTipForTest(undefined);
+  }
 });
 
 test('meta.MetaModule RequestUninstall writes operatorUserId into job payload', async () => {
