@@ -17,13 +17,15 @@ import { parseModelFullName, parseServiceFullName } from '@/core/service/utils/m
 import { uniqStrings } from '@/core/service/utils/normalization';
 import { isIanaTimezone, listIanaTimezoneSelection } from '@/core/service/utils/datetime';
 import { Constraint } from '@/core/service/api/constraint';
-import Language from '@/base/service/models/language';
+import type LanguageModel from '@/base/service/models/language';
 import type Company from '@/base/service/models/company';
 import { createServiceByModel } from '@/core/service/rpc';
 import { buildAuthzContextCacheKey, buildMethodAccessCacheKey } from '../_request_cache_invalidation';
 import { withPermissionGraphBypass, sortStrings, getCompanyScopeFromRequestContext } from './_authz_shared';
 import { evaluateRoleMethodAccess, evaluateUiDerivedMethodDecision, resolveMethodAccessMeta } from './_method_access';
 import type { MethodAccessDecision } from './_method_access';
+
+const Language = createServiceByModel<typeof LanguageModel>('base.Language');
 import {
   buildScopePreferences,
   computeTokenCompanyScope,

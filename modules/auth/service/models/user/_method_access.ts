@@ -6,7 +6,7 @@ import { createServiceByModel } from '@/core/service/rpc';
 import type MetaApplicationModel from '@/meta/service/models/application';
 import type MetaModelModel from '@/meta/service/models/model';
 import type MetaServiceModel from '@/meta/service/models/service';
-import MetaUiResource from '@/meta/service/models/ui_resource';
+import type MetaUiResourceModel from '@/meta/service/models/ui_resource';
 import { uniqStrings } from '@/core/service/utils/normalization';
 import { buildUiGrantCacheKey } from '../_request_cache_invalidation';
 import RoleMethodAccess from '../role_method_access';
@@ -17,6 +17,7 @@ import { logicalMethodsAllow } from '../_logical_model_registry';
 const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
 const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
 const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
+const MetaUiResource = createServiceByModel<typeof MetaUiResourceModel>('meta.MetaUiResource');
 
 async function metaModelId(appName: string, modelName: string): Promise<string> {
   const rows = await MetaModel.Search(

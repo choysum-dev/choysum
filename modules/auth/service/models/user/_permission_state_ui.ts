@@ -1,13 +1,18 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import MetaUiResource from '@/meta/service/models/ui_resource';
-import MetaUiResourceMenuRoute from '@/meta/service/models/ui_resource_menu_route';
-import MetaUiResourceRouteAction from '@/meta/service/models/ui_resource_route_action';
+import { createServiceByModel } from '@/core/service/rpc';
+import type MetaUiResourceModel from '@/meta/service/models/ui_resource';
+import type MetaUiResourceMenuRouteModel from '@/meta/service/models/ui_resource_menu_route';
+import type MetaUiResourceRouteActionModel from '@/meta/service/models/ui_resource_route_action';
 import RoleUiResource from '../role_ui_resource';
 import { isUiResourceAllowed, maybeId, normalizeScopeRefId, normalizeUiResourceId, parseJsonStringArray, sortStrings } from './_authz_shared';
 import { normalizeRpcRequireKey } from '@/core/service/utils/normalization';
 import { applyToScope, type AclAggregationResult } from './_permission_state_acl';
+
+const MetaUiResource = createServiceByModel<typeof MetaUiResourceModel>('meta.MetaUiResource');
+const MetaUiResourceMenuRoute = createServiceByModel<typeof MetaUiResourceMenuRouteModel>('meta.MetaUiResourceMenuRoute');
+const MetaUiResourceRouteAction = createServiceByModel<typeof MetaUiResourceRouteActionModel>('meta.MetaUiResourceRouteAction');
 
 type UiResourceMeta = {
   dbId: string;

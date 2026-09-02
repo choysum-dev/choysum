@@ -3,7 +3,8 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { getCtxValue, getUserId } from '@/core/service/api/context';
-import Job from '@/task/service/models/job';
+import { createServiceByModel } from '@/core/service/rpc';
+import type JobModel from '@/task/service/models/job';
 import { getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
 import { _t, _lt } from '../i18n';
 import MetaApplication from './application';
@@ -12,6 +13,8 @@ import MetaModel from './model';
 import MetaModuleDependency from './module_dependency';
 import MetaUiResource from './ui_resource';
 import ModuleManagementLog from './module_management_log';
+
+const Job = createServiceByModel<typeof JobModel>('task.Job');
 
 type ModuleAction = 'install' | 'uninstall' | 'upgrade';
 type FailureKind = 'RETRYABLE' | 'NON_RETRYABLE' | 'NONE';
