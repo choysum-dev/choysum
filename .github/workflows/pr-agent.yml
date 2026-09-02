@@ -31,7 +31,13 @@ jobs:
           config.custom_model_max_tokens: "1000000"
           # Increase token limit to properly process large diffs
           config.max_model_tokens: "1000000"
-          # Auto review/describe/improve; project-specific instructions live in .pr_agent.toml
+          # Auto review/describe/improve on open/reopen/ready_for_review.
+          # Project-specific instructions live in .pr_agent.toml
           github_action_config.auto_review: "true"
           github_action_config.auto_describe: "true"
           github_action_config.auto_improve: "true"
+          # Default pr_actions omit synchronize; keep open-time tools on these events only.
+          github_action_config.pr_actions: '["opened", "reopened", "ready_for_review", "review_requested"]'
+          # On each push to an open PR (workflow already listens to synchronize), run /improve.
+          github_action_config.handle_push_trigger: "true"
+          github_action_config.push_commands: '["/improve"]'
