@@ -29,8 +29,8 @@ export function __setMetaPublishTipForTest(fn: PublishTipFn | null | undefined):
 
 export function resolvePublishTip(): PublishTipFn | null {
   if (publishTipOverride !== undefined) return publishTipOverride;
-  const publish = (globalThis as { $choysum?: { bus?: { publish?: PublishTipFn } } }).$choysum?.bus?.publish;
-  return typeof publish === 'function' ? publish.bind((globalThis as any).$choysum.bus) : null;
+  const bus = (globalThis as { $choysum?: { bus?: { publish?: PublishTipFn } } }).$choysum?.bus;
+  return typeof bus?.publish === 'function' ? bus.publish.bind(bus) : null;
 }
 
 /**

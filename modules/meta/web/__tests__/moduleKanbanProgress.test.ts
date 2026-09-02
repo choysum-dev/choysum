@@ -171,4 +171,18 @@ describe('ModuleKanbanView C1 progress integration', () => {
     expect(ElMessage.warning).toHaveBeenCalled();
     expect(modStore.GetOpStatus).toHaveBeenCalled();
   });
+
+  it('routes hard GetOpStatus failures through ElMessage.error', async () => {
+    const { vm } = mountView({
+      GetOpStatus: vi.fn(async () => {
+        throw new Error('status hard fail');
+      }),
+    });
+    onTips.mockResolvedValue(undefined);
+    await vm.onActionClick('install', { ModuleName: 'demo', InstalledStatus: 'uninstalled', Available: true });
+    await flushPromises();
+    await vm.submitOperation();
+    await flushPromises();
+    expect(ElMessage.error).toHaveBeenCalledWith('status hard fail');
+  });
 });

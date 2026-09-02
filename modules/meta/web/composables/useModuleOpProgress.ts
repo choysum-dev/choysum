@@ -158,11 +158,15 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks) {
         if (generation !== sessionGeneration || !hooks.isActive() || timedOut) {
           return;
         }
-        const message = errorMessage(error);
-        if (isTransientNetworkError(message)) {
-          notifyTransient();
-        } else {
-          notifyHardError(error);
+        try {
+          const message = errorMessage(error);
+          if (isTransientNetworkError(message)) {
+            notifyTransient();
+          } else {
+            notifyHardError(error);
+          }
+        } catch {
+          // Progress hooks must not break fallback polling.
         }
       }
 
@@ -212,11 +216,15 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks) {
       if (generation !== sessionGeneration || !hooks.isActive() || timedOut) {
         return;
       }
-      const message = errorMessage(error);
-      if (isTransientNetworkError(message)) {
-        notifyTransient();
-      } else {
-        notifyHardError(error);
+      try {
+        const message = errorMessage(error);
+        if (isTransientNetworkError(message)) {
+          notifyTransient();
+        } else {
+          notifyHardError(error);
+        }
+      } catch {
+        // Progress hooks must not break boot handling.
       }
       // Still try tip/fallback — boot failure alone is not terminal.
     }
@@ -246,15 +254,18 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks) {
               if (signal.aborted || generation !== sessionGeneration || timedOut) {
                 return;
               }
-              const message = errorMessage(error);
-              if (isTransientNetworkError(message)) {
-                notifyTransient();
-              } else {
-                notifyHardError(error);
+              try {
+                const message = errorMessage(error);
+                if (isTransientNetworkError(message)) {
+                  notifyTransient();
+                } else {
+                  notifyHardError(error);
+                }
+              } catch {
+                // Progress hooks must not break tip refresh chaining.
               }
             }
-          })
-          .catch(() => undefined);
+          });
       }, TIP_DEBOUNCE_MS);
     };
 

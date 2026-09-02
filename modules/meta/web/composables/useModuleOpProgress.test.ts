@@ -370,9 +370,215 @@ describe('createModuleOpProgressSession', () => {
       onTimeout: () => undefined,
     });
     await session.watch('job-inactive-poll');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchStatus).toHaveBeenCalled();
     active = false;
     fetchStatus.mockClear();
     await vi.advanceTimersByTimeAsync(5_000);
     expect(fetchStatus).not.toHaveBeenCalled();
+  });
+
+  it('ignores deadline timeout after the dialog becomes inactive', async () => {
+    let active = true;
+    const onTimeout = vi.fn();
+    const fetchStatus = vi.fn(async () => snapshot({ status: 'queued' }));
+    onTips.mockImplementation(async (_stream, _cb, signal?: AbortSignal) => {
+      await new Promise<void>((resolve) => {
+        signal?.addEventListener('abort', () => resolve(), { once: true });
+      });
+    });
+    const session = createModuleOpProgressSession({
+      fetchStatus,
+      isActive: () => active,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout,
+    });
+    const done = session.watch('job-timeout-inactive');
+    await Promise.resolve();
+    await Promise.resolve();
+    active = false;
+    await vi.advanceTimersByTimeAsync(10 * 60 * 1000);
+    expect(onTimeout).not.toHaveBeenCalled();
+    session.stop();
+    await expect(done).resolves.toBeUndefined();
+  });
+
+  it('skips applyFetched when the session is inactive up front', async () => {
+    const fetchStatus = vi.fn(async () => snapshot({ status: 'queued' }));
+    const session = createModuleOpProgressSession({
+      fetchStatus,
+      isActive: () => false,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: () => undefined,
+    });
+    await session.watch('job-inactive-apply');
+    expect(fetchStatus).not.toHaveBeenCalled();
+    expect(onTips).not.toHaveBeenCalled();
+  });
+
+  it('swallows boot errors that arrive after the dialog closes', async () => {
+    let active = true;
+    const onHardError = vi.fn();
+    const fetchStatus = vi.fn(async () => {
+      active = false;
+      throw new Error('boot after close');
+    });
+    const session = createModuleOpProgressSession({
+      fetchStatus,
+      isActive: () => active,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: () => undefined,
+      onHardError,
+    });
+    await session.watch('job-boot-closed');
+    expect(onHardError).not.toHaveBeenCalled();
+    expect(onTips).not.toHaveBeenCalled();
+  });
+
+  it('ignores poll errors after stop bumps the session generation', async () => {
+    const onHardError = vi.fn();
+    let session!: ReturnType<typeof createModuleOpProgressSession>;
+    const fetchStatus = vi
+      .fn()
+      .mockResolvedValueOnce(snapshot({ status: 'queued' }))
+      .mockImplementationOnce(async () => {
+        session.stop();
+        throw new Error('poll after stop');
+      });
+    onTips.mockResolvedValue(undefined);
+    session = createModuleOpProgressSession({
+      fetchStatus,
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: () => undefined,
+      onHardError,
+    });
+    await session.watch('job-poll-stopped');
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(onHardError).not.toHaveBeenCalled();
+  });
+
+  it('drops debounced tip refreshes after stop advances the generation', async () => {
+    let session!: ReturnType<typeof createModuleOpProgressSession>;
+    const fetchStatus = vi.fn(async () => snapshot({ status: 'queued' }));
+    onTips.mockImplementation(async (_stream, callback: () => Promise<void>) => {
+      await callback();
+      await vi.advanceTimersByTimeAsync(40);
+      session.stop();
+      await vi.advanceTimersByTimeAsync(40);
+    });
+    session = createModuleOpProgressSession({
+      fetchStatus,
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: () => undefined,
+    });
+    await session.watch('job-tip-stale-generation');
+    // boot fetch only — debounced tip refresh discarded after stop()
+    expect(fetchStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores tip-refresh failures after stop', async () => {
+    const onHardError = vi.fn();
+    let session!: ReturnType<typeof createModuleOpProgressSession>;
+    const fetchStatus = vi
+      .fn()
+      .mockResolvedValueOnce(snapshot({ status: 'queued' }))
+      .mockImplementationOnce(async () => {
+        session.stop();
+        throw new Error('tip refresh after stop');
+      });
+    onTips.mockImplementation(async (_stream, callback: () => Promise<void>) => {
+      await callback();
+      await vi.advanceTimersByTimeAsync(80);
+    });
+    session = createModuleOpProgressSession({
+      fetchStatus,
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: () => undefined,
+      onHardError,
+    });
+    await session.watch('job-tip-refresh-stop');
+    expect(onHardError).not.toHaveBeenCalled();
+  });
+
+  it('covers optional hard-error hooks and empty error messages', async () => {
+    const onHardError = vi.fn();
+    const fetchStatus = vi
+      .fn()
+      .mockRejectedValueOnce('')
+      .mockResolvedValueOnce(snapshot({ status: 'queued' }))
+      .mockRejectedValueOnce('')
+      .mockResolvedValue(snapshot({ status: 'queued' }));
+    onTips.mockResolvedValue(undefined);
+    const withHook = createModuleOpProgressSession({
+      fetchStatus,
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: () => undefined,
+      onHardError,
+    });
+    await withHook.watch('job-empty-error-message');
+    expect(onHardError).toHaveBeenCalledWith('Failed to get status');
+
+    const withoutHook = createModuleOpProgressSession({
+      fetchStatus,
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: () => undefined,
+    });
+    await withoutHook.watch('job-optional-hard-error');
+    expect(onTips).toHaveBeenCalled();
+  });
+
+  it('treats empty/undefined terminal markers and job ids safely', async () => {
+    const onTerminal = vi.fn();
+    const fetchStatus = vi.fn(async () => snapshot({ status: '' as string }));
+    const session = createModuleOpProgressSession({
+      fetchStatus,
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal,
+      onTimeout: () => undefined,
+    });
+    onTips.mockResolvedValue(undefined);
+    await session.watch(undefined as unknown as string);
+    expect(fetchStatus).not.toHaveBeenCalled();
+    await session.watch('job-empty-status');
+    expect(onTerminal).not.toHaveBeenCalled();
+  });
+
+  it('swallows progress-hook throws from boot and poll paths', async () => {
+    const onHardError = vi.fn(() => {
+      throw new Error('notify threw');
+    });
+    const fetchStatus = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('boot hard'))
+      .mockResolvedValueOnce(snapshot({ status: 'queued' }))
+      .mockRejectedValueOnce(new Error('poll hard'))
+      .mockResolvedValue(snapshot({ status: 'queued' }));
+    onTips.mockResolvedValue(undefined);
+    const session = createModuleOpProgressSession({
+      fetchStatus,
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: () => undefined,
+      onHardError,
+    });
+    await expect(session.watch('job-hook-throw')).resolves.toBeUndefined();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(onHardError).toHaveBeenCalled();
+    session.stop();
   });
 });
