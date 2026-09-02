@@ -5,6 +5,7 @@ package backendplugin
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/choysum-dev/choysum/internal/module/policy"
@@ -13,7 +14,7 @@ import (
 )
 
 func (p *BackendPlugin) enforceServiceImportBoundary(parserResults []*parser.ParserResult) error {
-	if p == nil || p.Module == nil {
+	if p == nil || p.BasePlugin == nil || p.Module == nil {
 		return nil
 	}
 	moduleRoot := strings.TrimSpace(p.Module.Path)
@@ -43,8 +44,11 @@ func resolveSourceApplication(module *meta.Module, modulesPath string, lookup po
 	}
 	name := strings.TrimSpace(module.Name)
 	if name != "" {
-		if app, err := policy.ReadModuleApplicationFromPackageJSON(modulesPath, name); err == nil && strings.TrimSpace(app) != "" {
-			return strings.TrimSpace(app)
+		if app, ok := readModuleApplicationFromExistingPackageJSON(modulesPath, name); ok {
+			return app
+		}
+		if app := strings.TrimSpace(module.ApplicationStr); app != "" {
+			return app
 		}
 		if lookup != nil {
 			if app, ok := lookup(name); ok && strings.TrimSpace(app) != "" {
@@ -56,6 +60,23 @@ func resolveSourceApplication(module *meta.Module, modulesPath string, lookup po
 		}
 	}
 	return strings.TrimSpace(module.ApplicationStr)
+}
+
+func readModuleApplicationFromExistingPackageJSON(modulesPath, moduleName string) (string, bool) {
+	modulesPath = strings.TrimSpace(modulesPath)
+	moduleName = strings.TrimSpace(moduleName)
+	if modulesPath == "" || moduleName == "" {
+		return "", false
+	}
+	packageJSONPath := filepath.Join(modulesPath, moduleName, "package.json")
+	if _, err := os.Stat(packageJSONPath); err != nil {
+		return "", false
+	}
+	app, err := policy.ReadModuleApplicationFromPackageJSON(modulesPath, moduleName)
+	if err != nil || strings.TrimSpace(app) == "" {
+		return "", false
+	}
+	return strings.TrimSpace(app), true
 }
 
 func (p *BackendPlugin) moduleApplicationLookup(parserResults []*parser.ParserResult, modulesPath string) policy.ModuleApplicationLookup {
@@ -76,34 +97,31 @@ func (p *BackendPlugin) moduleApplicationLookup(parserResults []*parser.ParserRe
 		policy.CollectModuleNamesFromParserResult(modulesPath, result, moduleNames)
 	}
 
-	if session := p.Env.Session(); session != nil && len(moduleNames) > 0 {
-		names := make([]string, 0, len(moduleNames))
-		for name := range moduleNames {
-			names = append(names, name)
-		}
-		var modules []meta.Module
-		if err := session.Where("name IN ?", names).Find(&modules).Error; err == nil {
-			for _, mod := range modules {
-				name := strings.TrimSpace(mod.Name)
-				app := strings.TrimSpace(mod.ApplicationStr)
-				if name == "" || app == "" {
-					continue
+	if p.Env != nil && len(moduleNames) > 0 {
+		session := p.Env.Session()
+		if session != nil {
+			names := make([]string, 0, len(moduleNames))
+			for name := range moduleNames {
+				names = append(names, name)
+			}
+			var modules []meta.Module
+			if err := session.Where("name IN ?", names).Find(&modules).Error; err == nil {
+				for _, mod := range modules {
+					name := strings.TrimSpace(mod.Name)
+					app := strings.TrimSpace(mod.ApplicationStr)
+					if name == "" || app == "" {
+						continue
+					}
+					if _, exists := appByModule[name]; exists {
+						continue
+					}
+					appByModule[name] = app
 				}
-				if _, exists := appByModule[name]; exists {
-					continue
-				}
-				appByModule[name] = app
 			}
 		}
 	}
 
-	baseLookup := policy.ModuleApplicationLookupFromMap(appByModule)
-	return func(moduleName string) (string, bool) {
-		if app, ok := baseLookup(moduleName); ok {
-			return app, true
-		}
-		return policy.ResolveModuleApplication(moduleName, nil)
-	}
+	return policy.ModuleApplicationLookupWithDefault(policy.ModuleApplicationLookupFromMap(appByModule))
 }
 
 func mergeModuleApplicationsFromDisk(modulesPath string, appByModule map[string]string) {
@@ -120,7 +138,7 @@ func mergeModuleApplicationsFromDisk(modulesPath string, appByModule map[string]
 			continue
 		}
 		name := strings.TrimSpace(entry.Name())
-		if name == "" {
+		if name == "" || strings.HasPrefix(name, ".") || name == "tmp" || name == "node_modules" || name == ".choysum" {
 			continue
 		}
 		app, err := policy.ReadModuleApplicationFromPackageJSON(modulesPath, name)

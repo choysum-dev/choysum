@@ -1029,3 +1029,49 @@ func TestBuildAppBundleWithInjectedBuilder(t *testing.T) {
 		}
 	})
 }
+
+func TestBuildAppBundleReadsApplicationFromPackageJSON(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	partnerBankDir := filepath.Join(modulesPath, "partner_bank")
+	if err := os.MkdirAll(partnerBankDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	packageJSON := `{
+  "name": "@test/partner-bank",
+  "version": "0.0.0-test",
+  "choysum": {
+    "moduleName": "partner_bank",
+    "application": "partner"
+  }
+}`
+	if err := os.WriteFile(filepath.Join(partnerBankDir, "package.json"), []byte(packageJSON), 0o644); err != nil {
+		t.Fatalf("WriteFile package.json: %v", err)
+	}
+	entry := filepath.Join(t.TempDir(), "entry.ts")
+	if err := os.WriteFile(entry, []byte("export default {};"), 0o644); err != nil {
+		t.Fatalf("write entry file: %v", err)
+	}
+
+	var captured *meta.Module
+	oldBuilder := newBackendBuilderHook
+	defer func() { newBackendBuilderHook = oldBuilder }()
+	newBackendBuilderHook = func(runtimeScope scope.Scope, jsExec jsexecutor.JsExecutor, mod *meta.Module, entryPoint, outFileName, globalName string) any {
+		captured = mod
+		return &buildOnlyStub{}
+	}
+
+	runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
+		ModulesPath: modulesPath,
+		DistPath:    t.TempDir(),
+		Compile:     &config.CompileConfig{BundleMode: "application"},
+	}}
+	if err := buildAppBundle(context.Background(), runtimeScope, nil, "partner_bank", "index.js", "partner_bank", entry); err != nil {
+		t.Fatalf("buildAppBundle() error = %v", err)
+	}
+	if captured == nil {
+		t.Fatal("expected module to be passed to builder hook")
+	}
+	if captured.ApplicationStr != "partner" {
+		t.Fatalf("ApplicationStr = %q, want partner", captured.ApplicationStr)
+	}
+}

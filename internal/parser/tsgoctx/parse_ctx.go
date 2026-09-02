@@ -137,6 +137,7 @@ func (c *ParseCtx) parseImport(stmt *tsast.Node) {
 	}
 
 	if decl.ImportClause == nil {
+		c.Imports[parser.SideEffectImportKey] = makeImport("*", false)
 		return
 	}
 
@@ -163,7 +164,12 @@ func (c *ParseCtx) parseImport(stmt *tsast.Node) {
 	}
 
 	if namedBindings.Kind == tsast.KindNamedImports {
-		for _, node := range namedBindings.AsNamedImports().Elements.Nodes {
+		elements := namedBindings.AsNamedImports().Elements.Nodes
+		if len(elements) == 0 {
+			c.Imports[parser.SideEffectImportKey] = makeImport("*", parser.ImportBindingIsTypeOnly(importClauseNode, nil))
+			return
+		}
+		for _, node := range elements {
 			if node == nil || node.Kind != tsast.KindImportSpecifier {
 				continue
 			}
@@ -199,7 +205,7 @@ func (c *ParseCtx) ConvertReferenceWithModuleSpec(referenceIdent string) (string
 func (c *ParseCtx) parseExport(stmt *tsast.Node) {
 	line, col := c.LineColumn(stmt.Pos())
 	exportText := c.NodeText(stmt)
-	newExport := func(referenceIdent string, moduleSpecPath string) *parser.Export {
+	newExport := func(referenceIdent string, moduleSpecPath string, isTypeOnly bool) *parser.Export {
 		return &parser.Export{
 			ReferenceIdent: referenceIdent,
 			ModuleSpecPath: moduleSpecPath,
@@ -208,6 +214,7 @@ func (c *ParseCtx) parseExport(stmt *tsast.Node) {
 			End:            stmt.End(),
 			Line:           line,
 			Column:         col,
+			IsTypeOnly:     isTypeOnly,
 		}
 	}
 
@@ -217,16 +224,16 @@ func (c *ParseCtx) parseExport(stmt *tsast.Node) {
 			switch expr.Kind {
 			case tsast.KindIdentifier:
 				moduleSpec, ref := c.ConvertReferenceWithModuleSpec(expr.Text())
-				c.Exports["default"] = newExport(ref, moduleSpec)
+				c.Exports["default"] = newExport(ref, moduleSpec, false)
 				return
 			case tsast.KindPropertyAccessExpression:
 				pa := expr.AsPropertyAccessExpression()
 				moduleSpec, _ := c.ConvertReferenceWithModuleSpec(pa.Expression.Text())
-				c.Exports["default"] = newExport(pa.Name().Text(), moduleSpec)
+				c.Exports["default"] = newExport(pa.Name().Text(), moduleSpec, false)
 				return
 			}
 		}
-		c.Exports["default"] = newExport("default", c.CurrentModuleSpecPath())
+		c.Exports["default"] = newExport("default", c.CurrentModuleSpecPath(), false)
 		return
 	}
 
@@ -252,11 +259,12 @@ func (c *ParseCtx) parseExport(stmt *tsast.Node) {
 					if spec.PropertyName != nil {
 						referenceIdent = spec.PropertyName.Text()
 					}
+					isTypeOnly := parser.ExportBindingIsTypeOnly(stmt, node)
 					if moduleSpecPath == "" {
 						resolvedModuleSpec, resolvedRef := c.ConvertReferenceWithModuleSpec(referenceIdent)
-						c.Exports[name] = newExport(resolvedRef, resolvedModuleSpec)
+						c.Exports[name] = newExport(resolvedRef, resolvedModuleSpec, isTypeOnly)
 					} else {
-						c.Exports[name] = newExport(referenceIdent, moduleSpecPath)
+						c.Exports[name] = newExport(referenceIdent, moduleSpecPath, isTypeOnly)
 					}
 				}
 				return
@@ -265,14 +273,14 @@ func (c *ParseCtx) parseExport(stmt *tsast.Node) {
 			if decl.ExportClause.Kind == tsast.KindNamespaceExport {
 				name := decl.ExportClause.AsNamespaceExport().Name().Text()
 				if name != "" {
-					c.Exports[name] = newExport(name, moduleSpecPath)
+					c.Exports[name] = newExport(name, moduleSpecPath, parser.ExportBindingIsTypeOnly(stmt, nil))
 				}
 				return
 			}
 		}
 
 		if moduleSpecPath != "" {
-			wildcard := newExport("*", moduleSpecPath)
+			wildcard := newExport("*", moduleSpecPath, false)
 			if existing, ok := c.Exports["*"]; ok {
 				existing.Wildcard = append(existing.Wildcard, wildcard)
 			} else {
@@ -287,13 +295,13 @@ func (c *ParseCtx) parseExport(stmt *tsast.Node) {
 		if name := ExportDeclarationName(stmt); name != "" {
 			referenceIdent = name
 		}
-		c.Exports["default"] = newExport(referenceIdent, c.CurrentModuleSpecPath())
+		c.Exports["default"] = newExport(referenceIdent, c.CurrentModuleSpecPath(), false)
 		return
 	}
 
 	if HasModifier(stmt, tsast.KindExportKeyword) {
 		if name := ExportDeclarationName(stmt); name != "" {
-			c.Exports[name] = newExport(name, c.CurrentModuleSpecPath())
+			c.Exports[name] = newExport(name, c.CurrentModuleSpecPath(), false)
 		}
 	}
 }

@@ -273,7 +273,7 @@ func CheckServiceImportBoundary(input ServiceImportBoundaryInput) []ImportBounda
 				continue
 			}
 			collectExport := func(entry *parser.Export) {
-				if entry == nil || strings.TrimSpace(entry.ModuleSpecPath) == "" {
+				if entry == nil || entry.IsTypeOnly || strings.TrimSpace(entry.ModuleSpecPath) == "" {
 					return
 				}
 				specText := entry.Text
@@ -361,6 +361,18 @@ func FormatImportBoundaryError(violations []ImportBoundaryViolation) error {
 		)
 	}
 	return fmt.Errorf("%s", b.String())
+}
+
+// ModuleApplicationLookupWithDefault wraps a lookup and falls back to ResolveModuleApplication.
+func ModuleApplicationLookupWithDefault(base ModuleApplicationLookup) ModuleApplicationLookup {
+	return func(moduleName string) (string, bool) {
+		if base != nil {
+			if app, ok := base(moduleName); ok {
+				return app, true
+			}
+		}
+		return ResolveModuleApplication(moduleName, nil)
+	}
 }
 
 // ModuleApplicationLookupFromMap adapts a module-name map for boundary checks.

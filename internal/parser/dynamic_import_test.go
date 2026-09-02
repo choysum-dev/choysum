@@ -38,6 +38,12 @@ const local = import('./local_probe');
 	assertDynamic(1, "./local_probe", false)
 }
 
+func TestImportModuleSpecifierFromExpression_NonLiteral(t *testing.T) {
+	if got := importModuleSpecifierFromExpression(nil); got != "" {
+		t.Fatalf("nil arg = %q", got)
+	}
+}
+
 func TestParseDynamicImports_ParserResult(t *testing.T) {
 	path := "/virtual/modules/auth/service/tests/observability.test.ts"
 	content := `await import('@/meta/service/models/ui_resource');`

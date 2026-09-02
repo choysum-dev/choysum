@@ -28,7 +28,7 @@ func (c *tsgoImportExportCtx) collectDynamicImports() {
 				len(call.Arguments.Nodes) > 0 {
 				spec := importModuleSpecifierFromExpression(call.Arguments.Nodes[0])
 				if spec != "" {
-					c.appendDynamicImport(node, spec, call.Arguments.Nodes[0])
+					c.appendDynamicImport(node, spec, call.Arguments.Nodes[0], importCallIsTypeOnly(node))
 				}
 			}
 		}
@@ -43,7 +43,7 @@ func (c *tsgoImportExportCtx) collectDynamicImports() {
 	}
 }
 
-func (c *tsgoImportExportCtx) appendDynamicImport(callNode *tsast.Node, moduleSpecifier string, specifierNode *tsast.Node) {
+func (c *tsgoImportExportCtx) appendDynamicImport(callNode *tsast.Node, moduleSpecifier string, specifierNode *tsast.Node, isTypeOnly bool) {
 	moduleSpecPath := c.resolveModuleSpec(moduleSpecifier)
 	line, col := c.lineColumn(callNode.Pos())
 	moduleSpecText := moduleSpecifier
@@ -60,7 +60,18 @@ func (c *tsgoImportExportCtx) appendDynamicImport(callNode *tsast.Node, moduleSp
 		ModuleSpecStart: specifierNode.Pos(),
 		ModuleSpecEnd:   specifierNode.End(),
 		IsDynamic:       true,
+		IsTypeOnly:      isTypeOnly,
 	})
+}
+
+func importCallIsTypeOnly(callNode *tsast.Node) bool {
+	for node := callNode; node != nil; node = node.Parent {
+		switch node.Kind {
+		case tsast.KindTypeQuery, tsast.KindImportType:
+			return true
+		}
+	}
+	return false
 }
 
 func importModuleSpecifierFromExpression(arg *tsast.Node) string {
@@ -69,7 +80,7 @@ func importModuleSpecifierFromExpression(arg *tsast.Node) string {
 	}
 	switch arg.Kind {
 	case tsast.KindStringLiteral, tsast.KindNoSubstitutionTemplateLiteral:
-		return strings.Trim(arg.Text(), `"'`)
+		return strings.Trim(arg.Text(), "`\"'")
 	default:
 		return ""
 	}

@@ -52,12 +52,7 @@ func BuildModuleApplicationLookupFromModulesDir(modulesPath string) (ModuleAppli
 		}
 	}
 	baseLookup := ModuleApplicationLookupFromMap(appByModule)
-	return func(moduleName string) (string, bool) {
-		if app, ok := baseLookup(moduleName); ok {
-			return app, true
-		}
-		return ResolveModuleApplication(moduleName, nil)
-	}, nil
+	return ModuleApplicationLookupWithDefault(baseLookup), nil
 }
 
 func shouldSkipModulesDirEntry(name string) bool {
