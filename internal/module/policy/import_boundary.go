@@ -6,6 +6,7 @@ package policy
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/choysum-dev/choysum/internal/parser"
@@ -286,6 +287,18 @@ func CheckServiceImportBoundary(input ServiceImportBoundaryInput) []ImportBounda
 			}
 		}
 	}
+	sort.Slice(violations, func(i, j int) bool {
+		if violations[i].SourcePath != violations[j].SourcePath {
+			return violations[i].SourcePath < violations[j].SourcePath
+		}
+		if violations[i].Line != violations[j].Line {
+			return violations[i].Line < violations[j].Line
+		}
+		if violations[i].Column != violations[j].Column {
+			return violations[i].Column < violations[j].Column
+		}
+		return violations[i].ModuleSpecPath < violations[j].ModuleSpecPath
+	})
 	return violations
 }
 

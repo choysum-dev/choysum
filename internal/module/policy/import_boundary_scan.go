@@ -62,8 +62,11 @@ func BuildModuleApplicationLookupFromModulesDir(modulesPath string) (ModuleAppli
 }
 
 func shouldSkipModulesDirEntry(name string) bool {
+	if strings.HasPrefix(name, ".") {
+		return true
+	}
 	switch name {
-	case ".choysum", "tmp", "node_modules":
+	case "tmp", "node_modules":
 		return true
 	default:
 		return false

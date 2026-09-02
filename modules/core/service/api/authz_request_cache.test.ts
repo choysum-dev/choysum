@@ -197,6 +197,32 @@ test('authz_request_cache: invalidateAll clears every cache group prefix', () =>
   }
 });
 
+test('authz_request_cache: skips missing and null request state', () => {
+  const previous = (globalThis as any).$choysum;
+  const jsCtx: any = { req: {} };
+  (globalThis as any).$choysum = { request: { context: jsCtx } };
+  try {
+    jsCtx[Symbol.for('choysum.recordrule.cache')] = { warm: true };
+    invalidateAuthzRequestCaches({ allUsers: false, userIds: ['u1'] });
+    if (jsCtx[Symbol.for('choysum.recordrule.cache')] !== undefined) {
+      throw new Error('recordrule cache not cleared without state');
+    }
+
+    jsCtx.req.__choysumServiceState = null;
+    jsCtx[Symbol.for('choysum.fieldrule.cache')] = { warm: true };
+    invalidateAuthzRequestCaches({ allUsers: true });
+    if (jsCtx[Symbol.for('choysum.fieldrule.cache')] !== undefined) {
+      throw new Error('fieldrule cache not cleared with null state');
+    }
+  } finally {
+    if (previous === undefined) {
+      delete (globalThis as any).$choysum;
+    } else {
+      (globalThis as any).$choysum = previous;
+    }
+  }
+});
+
 test('authz_request_cache: skips non-object request state', () => {
   const previous = (globalThis as any).$choysum;
   const jsCtx: any = { req: { __choysumServiceState: 'not-object' } };

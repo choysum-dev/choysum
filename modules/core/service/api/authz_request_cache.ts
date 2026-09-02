@@ -53,20 +53,21 @@ export function invalidateAuthzRequestCaches(opts: InvalidateOpts = {}): void {
   const invalidateAll = Boolean(opts.allUsers) || ids.length === 0;
 
   if (state && typeof state === 'object') {
+    const record = state as Record<string, unknown>;
     if (invalidateAll) {
       for (const group of AUTHZ_CACHE_GROUPS) {
-        deleteReqStateKeysByPrefix(state as Record<string, unknown>, group.prefix);
+        deleteReqStateKeysByPrefix(record, group.prefix);
       }
     } else {
+      const userScopedGroups = AUTHZ_CACHE_GROUPS.filter((group) => group.userScoped);
+      const sharedGroups = AUTHZ_CACHE_GROUPS.filter((group) => !group.userScoped);
       for (const uid of ids) {
-        for (const group of AUTHZ_CACHE_GROUPS) {
-          if (!group.userScoped) continue;
-          deleteReqStateKeysByPrefix(state as Record<string, unknown>, `${group.prefix}${uid}::`);
+        for (const group of userScopedGroups) {
+          deleteReqStateKeysByPrefix(record, `${group.prefix}${uid}::`);
         }
       }
-      for (const group of AUTHZ_CACHE_GROUPS) {
-        if (group.userScoped) continue;
-        deleteReqStateKeysByPrefix(state as Record<string, unknown>, group.prefix);
+      for (const group of sharedGroups) {
+        deleteReqStateKeysByPrefix(record, group.prefix);
       }
     }
   }

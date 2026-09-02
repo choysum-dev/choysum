@@ -387,13 +387,59 @@ func TestScanServiceImportBoundaryOnDisk_WalkEntryError(t *testing.T) {
 }
 
 func TestShouldSkipModulesDirEntry(t *testing.T) {
-	for _, name := range []string{".choysum", "tmp", "node_modules"} {
+	for _, name := range []string{".choysum", ".git", ".vscode", "tmp", "node_modules"} {
 		if !shouldSkipModulesDirEntry(name) {
 			t.Fatalf("%q should be skipped", name)
 		}
 	}
 	if shouldSkipModulesDirEntry("auth") {
 		t.Fatal("auth should not be skipped")
+	}
+}
+
+func TestCheckServiceImportBoundary_SortsViolationsDeterministically(t *testing.T) {
+	modulesPath := testModulesPath(t)
+	moduleRoot := filepath.Join(modulesPath, "partner")
+	sourceA := filepath.Join(moduleRoot, "service", "models", "a.ts")
+	sourceB := filepath.Join(moduleRoot, "service", "models", "b.ts")
+	authSpec := filepath.Join(modulesPath, "auth", "service", "models", "role")
+	metaSpec := filepath.Join(modulesPath, "meta", "service", "models", "ui_resource")
+
+	violations := CheckServiceImportBoundary(ServiceImportBoundaryInput{
+		ModulesPath:       modulesPath,
+		ModuleRoot:        moduleRoot,
+		SourceApplication: "partner",
+		Lookup:            testLookup(),
+		ParserResults: []*parser.ParserResult{
+			{
+				Path: sourceB,
+				Imports: map[string]*parser.Import{
+					"Role": {ModuleSpecPath: authSpec, ModuleSpecText: "@/auth/service/models/role", Line: 5, Column: 2},
+					"UI":   {ModuleSpecPath: metaSpec, ModuleSpecText: "@/meta/service/models/ui_resource", Line: 5, Column: 1},
+				},
+			},
+			{
+				Path: sourceA,
+				Imports: map[string]*parser.Import{
+					"Role": {ModuleSpecPath: authSpec, ModuleSpecText: "@/auth/service/models/role", Line: 1, Column: 1},
+				},
+			},
+		},
+	})
+	if len(violations) < 3 {
+		t.Fatalf("expected at least 3 violations, got %#v", violations)
+	}
+	for i := 1; i < len(violations); i++ {
+		prev, cur := violations[i-1], violations[i]
+		if prev.SourcePath > cur.SourcePath {
+			t.Fatalf("violations not sorted by path: %#v then %#v", prev, cur)
+		}
+		if prev.SourcePath == cur.SourcePath && prev.Line > cur.Line {
+			t.Fatalf("violations not sorted by line: %#v then %#v", prev, cur)
+		}
+		if prev.SourcePath == cur.SourcePath && prev.Line == cur.Line && prev.Column > cur.Column {
+			t.Fatalf("violations not sorted by column: %#v then %#v", prev, cur)
+		}
 	}
 }
 
