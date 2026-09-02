@@ -137,7 +137,7 @@ func (c *ParseCtx) parseImport(stmt *tsast.Node) {
 	}
 
 	if decl.ImportClause == nil {
-		c.Imports[parser.SideEffectImportKey] = makeImport("*", false)
+		c.Imports[parser.SideEffectImportMapKey(line, col)] = makeImport("*", false)
 		return
 	}
 
@@ -166,7 +166,7 @@ func (c *ParseCtx) parseImport(stmt *tsast.Node) {
 	if namedBindings.Kind == tsast.KindNamedImports {
 		elements := namedBindings.AsNamedImports().Elements.Nodes
 		if len(elements) == 0 {
-			c.Imports[parser.SideEffectImportKey] = makeImport("*", parser.ImportBindingIsTypeOnly(importClauseNode, nil))
+			c.Imports[parser.SideEffectImportMapKey(line, col)] = makeImport("*", parser.ImportBindingIsTypeOnly(importClauseNode, nil))
 			return
 		}
 		for _, node := range elements {

@@ -131,6 +131,38 @@ test('authz_request_cache: targeted invalidation with explicit allUsers false', 
   }
 });
 
+test('authz_request_cache: default invalidation clears all scoped entries', () => {
+  const jsCtx: any = { req: { __choysumServiceState: {} as Record<string, unknown> } };
+  const restore = setRequest({ context: jsCtx });
+  try {
+    const state = jsCtx.req.__choysumServiceState as Record<string, unknown>;
+    state[buildAuthzContextCacheKey('u1', 'c1')] = { roles: ['r1'] };
+    state[buildUiGrantCacheKey('sig')] = ['res'];
+    invalidateAuthzRequestCaches();
+    if (Object.keys(state).length !== 0) {
+      throw new Error(`expected empty state, got ${Object.keys(state).join(',')}`);
+    }
+  } finally {
+    restore();
+  }
+});
+
+test('authz_request_cache: targeted invalidation clears ui grant prefix', () => {
+  const jsCtx: any = { req: { __choysumServiceState: {} as Record<string, unknown> } };
+  const restore = setRequest({ context: jsCtx });
+  try {
+    const state = jsCtx.req.__choysumServiceState as Record<string, unknown>;
+    const uiGrant = buildUiGrantCacheKey('sig');
+    state[uiGrant] = ['res'];
+    invalidateAuthzRequestCaches({ allUsers: false, userIds: ['u1'] });
+    if (state[uiGrant] !== undefined) {
+      throw new Error('ui grant should clear on targeted invalidation');
+    }
+  } finally {
+    restore();
+  }
+});
+
 test('authz_request_cache: skips non-object request state', () => {
   const previous = (globalThis as any).$choysum;
   const jsCtx: any = { req: { __choysumServiceState: 'not-object' } };

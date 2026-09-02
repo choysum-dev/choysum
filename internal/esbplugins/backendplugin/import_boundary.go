@@ -136,8 +136,8 @@ func mergeModuleApplicationsFromDisk(modulesPath string, appByModule map[string]
 		if name == "" || strings.HasPrefix(name, ".") || name == "tmp" || name == "node_modules" || name == ".choysum" {
 			continue
 		}
-		app, err := policy.ReadModuleApplicationFromPackageJSON(modulesPath, name)
-		if err != nil || strings.TrimSpace(app) == "" {
+		app, ok, err := policy.ReadExplicitModuleApplicationFromPackageJSON(modulesPath, name)
+		if err != nil || !ok || strings.TrimSpace(app) == "" {
 			continue
 		}
 		appByModule[name] = strings.TrimSpace(app)

@@ -39,6 +39,9 @@ func (c *tsgoImportExportCtx) collectDynamicImports() {
 	}
 
 	for _, stmt := range c.source.Statements.Nodes {
+		if stmt == nil {
+			continue
+		}
 		walk(stmt)
 	}
 }

@@ -305,10 +305,20 @@ func (c *tsgoImportExportCtx) lineColumn(pos int) (int, int) {
 	return line + 1, col + 1
 }
 
-const sideEffectImportKey = "__side_effect__"
+const sideEffectImportKeyPrefix = "__side_effect__"
 
-// SideEffectImportKey is the imports-map key for binding-less module imports.
-const SideEffectImportKey = sideEffectImportKey
+// SideEffectImportKey is the imports-map key prefix for binding-less module imports.
+const SideEffectImportKey = sideEffectImportKeyPrefix
+
+// SideEffectImportMapKey returns a collision-free imports-map key for one side-effect import.
+func SideEffectImportMapKey(line, col int) string {
+	return fmt.Sprintf("%s::%d:%d", sideEffectImportKeyPrefix, line, col)
+}
+
+// IsSideEffectImportMapKey reports whether key denotes a side-effect import entry.
+func IsSideEffectImportMapKey(key string) bool {
+	return key == sideEffectImportKeyPrefix || strings.HasPrefix(key, sideEffectImportKeyPrefix+"::")
+}
 
 func (c *tsgoImportExportCtx) parseImport(stmt *tsast.Node) {
 	decl := stmt.AsImportDeclaration()
@@ -339,7 +349,7 @@ func (c *tsgoImportExportCtx) parseImport(stmt *tsast.Node) {
 	}
 
 	if decl.ImportClause == nil {
-		c.imports[sideEffectImportKey] = makeImport("*", false)
+		c.imports[SideEffectImportMapKey(line, col)] = makeImport("*", false)
 		return
 	}
 
@@ -368,7 +378,7 @@ func (c *tsgoImportExportCtx) parseImport(stmt *tsast.Node) {
 	if namedBindings.Kind == tsast.KindNamedImports {
 		elements := namedBindings.AsNamedImports().Elements.Nodes
 		if len(elements) == 0 {
-			c.imports[sideEffectImportKey] = makeImport("*", ImportBindingIsTypeOnly(importClauseNode, nil))
+			c.imports[SideEffectImportMapKey(line, col)] = makeImport("*", ImportBindingIsTypeOnly(importClauseNode, nil))
 			return
 		}
 		for _, node := range elements {

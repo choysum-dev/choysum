@@ -159,8 +159,15 @@ const local = {};
 	if err != nil {
 		t.Fatalf("Parse() error = %v", err)
 	}
-	if imp := ctx.Imports[parser.SideEffectImportKey]; imp == nil || imp.IsTypeOnly {
-		t.Fatalf("side-effect import = %#v", imp)
+	var sideEffect *parser.Import
+	for key, imp := range ctx.Imports {
+		if parser.IsSideEffectImportMapKey(key) {
+			sideEffect = imp
+			break
+		}
+	}
+	if sideEffect == nil || sideEffect.IsTypeOnly {
+		t.Fatalf("side-effect import = %#v", sideEffect)
 	}
 	if exp := ctx.Exports["Role"]; exp == nil || !exp.IsTypeOnly {
 		t.Fatalf("export type Role = %#v", exp)

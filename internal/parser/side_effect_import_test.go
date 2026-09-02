@@ -8,15 +8,38 @@ import (
 	"testing"
 )
 
+func sideEffectImportsFromMap(imports map[string]*Import) []*Import {
+	var out []*Import
+	for key, imp := range imports {
+		if IsSideEffectImportMapKey(key) && imp != nil {
+			out = append(out, imp)
+		}
+	}
+	return out
+}
+
+func TestSideEffectImportMapKey(t *testing.T) {
+	key := SideEffectImportMapKey(2, 3)
+	if !IsSideEffectImportMapKey(key) {
+		t.Fatalf("expected side-effect key %q", key)
+	}
+	if IsSideEffectImportMapKey("Role") {
+		t.Fatal("named import key should not match")
+	}
+	if key == SideEffectImportKey {
+		t.Fatal("expected collision-free key")
+	}
+}
+
 func TestParseSideEffectImport_TsParserPath(t *testing.T) {
 	path := "/virtual/modules/partner/service/models/partner.ts"
 	content := `import '@/auth/service/models/role';`
 	_, ctx := mustParseTSGoCtx(t, path, content)
-	imp := ctx.imports[SideEffectImportKey]
-	if imp == nil || imp.IsTypeOnly {
-		t.Fatalf("side-effect import = %#v", imp)
+	imports := sideEffectImportsFromMap(ctx.imports)
+	if len(imports) != 1 || imports[0].IsTypeOnly {
+		t.Fatalf("side-effect import = %#v", imports)
 	}
-	if got := imp.ModuleSpecPath; got != "/virtual/modules/test/auth/service/models/role" {
+	if got := imports[0].ModuleSpecPath; got != "/virtual/modules/test/auth/service/models/role" {
 		t.Fatalf("ModuleSpecPath = %q", got)
 	}
 }
@@ -25,12 +48,25 @@ func TestParseEmptyNamedImport_TsParserPath(t *testing.T) {
 	path := "/virtual/modules/partner/service/models/partner.ts"
 	content := `import {} from '@/core/service/api/dial';`
 	_, ctx := mustParseTSGoCtx(t, path, content)
-	imp := ctx.imports[SideEffectImportKey]
-	if imp == nil || imp.IsTypeOnly {
-		t.Fatalf("empty named import = %#v", imp)
+	imports := sideEffectImportsFromMap(ctx.imports)
+	if len(imports) != 1 || imports[0].IsTypeOnly {
+		t.Fatalf("empty named import = %#v", imports)
 	}
-	if got := imp.ModuleSpecPath; got != "/virtual/modules/test/core/service/api/dial" {
+	if got := imports[0].ModuleSpecPath; got != "/virtual/modules/test/core/service/api/dial" {
 		t.Fatalf("ModuleSpecPath = %q", got)
+	}
+}
+
+func TestParseMultipleSideEffectImports_TsParserPath(t *testing.T) {
+	path := "/virtual/modules/partner/service/models/partner.ts"
+	content := `
+import '@/core/service/api/dial';
+import '@/auth/service/models/role';
+`
+	_, ctx := mustParseTSGoCtx(t, path, content)
+	imports := sideEffectImportsFromMap(ctx.imports)
+	if len(imports) != 2 {
+		t.Fatalf("expected 2 side-effect imports, got %d: %#v", len(imports), ctx.imports)
 	}
 }
 

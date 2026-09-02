@@ -117,7 +117,7 @@ func TestCheckServiceImportBoundary_RejectsSideEffectImport(t *testing.T) {
 		ParserResults: []*parser.ParserResult{{
 			Path: source,
 			Imports: map[string]*parser.Import{
-				parser.SideEffectImportKey: {
+				parser.SideEffectImportMapKey(1, 1): {
 					ModuleSpecPath: authSpec,
 					IsTypeOnly:     false,
 					Line:           1,
@@ -801,5 +801,64 @@ func TestReadExplicitModuleApplicationFromPackageJSON_ReadError(t *testing.T) {
 	defer os.Chmod(filepath.Join(dir, "package.json"), 0o644)
 	if _, ok, err := ReadExplicitModuleApplicationFromPackageJSON(modulesPath, "locked"); err == nil || ok {
 		t.Fatalf("expected read error, ok=%v err=%v", ok, err)
+	}
+}
+
+func TestCheckServiceImportBoundaryOnDisk_DetectsMultipleSideEffectImports(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	writeModulePackageJSON(t, modulesPath, "partner", "partner")
+	writeModulePackageJSON(t, modulesPath, "auth", "auth")
+	writeModulePackageJSON(t, modulesPath, "core", "core")
+	serviceFile := filepath.Join(modulesPath, "partner", "service", "models", "partner.ts")
+	if err := os.MkdirAll(filepath.Dir(serviceFile), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	source := "import '@/core/service/api/dial';\nimport '@/auth/service/models/role';\n"
+	if err := os.WriteFile(serviceFile, []byte(source), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	err := CheckServiceImportBoundaryOnDisk(modulesPath, "partner", ModulePathAliasForBoundary(modulesPath))
+	if err == nil || !strings.Contains(err.Error(), "partner -> auth") {
+		t.Fatalf("CheckServiceImportBoundaryOnDisk() error = %v, want auth violation", err)
+	}
+}
+
+func TestResolveModuleApplication_EmptyModuleName(t *testing.T) {
+	if _, ok := ResolveModuleApplication("", nil); ok {
+		t.Fatal("empty module name should not resolve")
+	}
+}
+
+func TestBuildModuleApplicationLookupFromModulesDir_InvalidPackageJSON(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	dir := filepath.Join(modulesPath, "broken")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte("{"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if _, err := BuildModuleApplicationLookupFromModulesDir(modulesPath); err == nil {
+		t.Fatal("expected decode error")
+	}
+}
+
+func TestCollectModuleNamesFromParserResult_SideEffectKeys(t *testing.T) {
+	modulesPath := testModulesPath(t)
+	names := make(map[string]struct{})
+	CollectModuleNamesFromParserResult(modulesPath, &parser.ParserResult{
+		Imports: map[string]*parser.Import{
+			parser.SideEffectImportMapKey(1, 1): {
+				ModuleSpecPath: filepath.Join(modulesPath, "auth", "service", "models", "role"),
+			},
+			parser.SideEffectImportMapKey(2, 1): {
+				ModuleSpecPath: filepath.Join(modulesPath, "core", "service", "api", "dial"),
+			},
+		},
+	}, names)
+	for _, want := range []string{"auth", "core"} {
+		if _, ok := names[want]; !ok {
+			t.Fatalf("missing module %q in %#v", want, names)
+		}
 	}
 }
