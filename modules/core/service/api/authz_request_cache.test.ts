@@ -88,3 +88,26 @@ test('authz_request_cache: targeted and global invalidation clear memoized entri
     restore();
   }
 });
+
+test('authz_request_cache: invalidation clears jsCtx caches without request state', () => {
+  const previous = (globalThis as any).$choysum;
+  const jsCtx: any = { req: {} };
+  (globalThis as any).$choysum = { request: { context: jsCtx } };
+  try {
+    jsCtx[Symbol.for('choysum.recordrule.cache')] = { warm: true };
+    jsCtx[Symbol.for('choysum.fieldrule.cache')] = { warm: true };
+    invalidateAuthzRequestCaches();
+    if (jsCtx[Symbol.for('choysum.recordrule.cache')] !== undefined) {
+      throw new Error('recordrule cache not cleared without state');
+    }
+    if (jsCtx[Symbol.for('choysum.fieldrule.cache')] !== undefined) {
+      throw new Error('fieldrule cache not cleared without state');
+    }
+  } finally {
+    if (previous === undefined) {
+      delete (globalThis as any).$choysum;
+    } else {
+      (globalThis as any).$choysum = previous;
+    }
+  }
+});

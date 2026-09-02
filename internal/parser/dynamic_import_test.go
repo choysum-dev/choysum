@@ -3,7 +3,11 @@
 
 package parser
 
-import "testing"
+import (
+	"testing"
+
+	tsast "github.com/buke/typescript-go-internal/pkg/ast"
+)
 
 func TestParseDynamicImports_TsParserPath(t *testing.T) {
 	path := "/virtual/modules/auth/service/tests/observability.test.ts"
@@ -41,6 +45,78 @@ const local = import('./local_probe');
 func TestImportModuleSpecifierFromExpression_NonLiteral(t *testing.T) {
 	if got := importModuleSpecifierFromExpression(nil); got != "" {
 		t.Fatalf("nil arg = %q", got)
+	}
+}
+
+func TestImportCallIsTypeOnly(t *testing.T) {
+	_, ctx := mustParseTSGoCtx(t, "/virtual/modules/auth/service/tests/dynamic.ts", `const m = await import('./x');`)
+	call := findFirstImportCallNode(ctx)
+	if call == nil {
+		t.Fatal("expected import() call node")
+	}
+	if importCallIsTypeOnly(call) {
+		t.Fatal("runtime import() should not be type-only")
+	}
+	if importCallIsTypeOnly(nil) {
+		t.Fatal("nil call should not be type-only")
+	}
+
+	typeQuery := &tsast.Node{Kind: tsast.KindTypeQuery}
+	if !importCallIsTypeOnly(&tsast.Node{Kind: tsast.KindCallExpression, Parent: typeQuery}) {
+		t.Fatal("TypeQuery parent should mark type-only")
+	}
+	importType := &tsast.Node{Kind: tsast.KindImportType}
+	if !importCallIsTypeOnly(&tsast.Node{Kind: tsast.KindCallExpression, Parent: importType}) {
+		t.Fatal("ImportType parent should mark type-only")
+	}
+}
+
+func findFirstImportCallNode(ctx *tsgoImportExportCtx) *tsast.Node {
+	if ctx == nil || ctx.source == nil {
+		return nil
+	}
+	var found *tsast.Node
+	var walk func(*tsast.Node)
+	walk = func(node *tsast.Node) {
+		if node == nil || found != nil {
+			return
+		}
+		if node.Kind == tsast.KindCallExpression {
+			call := node.AsCallExpression()
+			if call != nil && call.Expression != nil && call.Expression.Kind == tsast.KindImportKeyword {
+				found = node
+				return
+			}
+		}
+		node.ForEachChild(func(child *tsast.Node) bool {
+			walk(child)
+			return false
+		})
+	}
+	for _, stmt := range ctx.source.Statements.Nodes {
+		walk(stmt)
+	}
+	return found
+}
+
+func TestCollectDynamicImports_NilReceiver(t *testing.T) {
+	var c *tsgoImportExportCtx
+	c.collectDynamicImports()
+}
+
+func TestImportModuleSpecifierFromExpression_DefaultBranch(t *testing.T) {
+	path := "/virtual/modules/auth/service/tests/dynamic.ts"
+	content := `const key = 'meta'; await import(key);`
+	p := &TsParser{
+		Path:      path,
+		Content:   content,
+		PathAlias: map[string]string{"@/*": "/virtual/modules/*"},
+	}
+	if err := p.ParseImport(nil); err != nil {
+		t.Fatalf("ParseImport() error = %v", err)
+	}
+	if len(p.DynamicImports) != 0 {
+		t.Fatalf("non-literal dynamic import len = %d, want 0", len(p.DynamicImports))
 	}
 }
 

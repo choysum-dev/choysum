@@ -62,3 +62,28 @@ test('authz_bypass: withPermissionGraphBypass toggles companyMode and bypass dep
     restore();
   }
 });
+
+test('authz_bypass: withPermissionGraphBypass noops when req is not an object record', async () => {
+  const restore = setRequest({ context: { req: true } });
+  try {
+    const got = await withPermissionGraphBypass(async () => 'plain');
+    if (got !== 'plain') {
+      throw new Error(`expected plain, got ${String(got)}`);
+    }
+  } finally {
+    restore();
+  }
+});
+
+test('authz_bypass: withPermissionGraphBypass removes companyMode when absent before call', async () => {
+  const req: any = { __choysumServiceState: {} };
+  const restore = setRequest({ context: { req } });
+  try {
+    await withPermissionGraphBypass(async () => undefined);
+    if ('companyMode' in req) {
+      throw new Error('companyMode should be removed when it was absent initially');
+    }
+  } finally {
+    restore();
+  }
+});

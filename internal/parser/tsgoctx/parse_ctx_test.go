@@ -144,6 +144,48 @@ import ValueDefault from '@/partner/service/models/partner'
 	assertTypeOnly("ValueDefault", false)
 }
 
+func TestParseSideEffectAndExportPaths_ParseCtxPath(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	path := filepath.Join(modulesPath, "partner", "service", "models", "partner.ts")
+	content := `
+import '@/auth/service/models/role';
+import {} from '@/core/service/api/dial';
+export type { Role } from '@/auth/service/models/role';
+export * as auth from '@/auth/service/models/role';
+export default local;
+const local = {};
+`
+	ctx, err := Parse(map[string]string{"@/*": filepath.Join(modulesPath, "*")}, path, content)
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	if imp := ctx.Imports[parser.SideEffectImportKey]; imp == nil || imp.IsTypeOnly {
+		t.Fatalf("side-effect import = %#v", imp)
+	}
+	if exp := ctx.Exports["Role"]; exp == nil || !exp.IsTypeOnly {
+		t.Fatalf("export type Role = %#v", exp)
+	}
+	if exp := ctx.Exports["auth"]; exp == nil || exp.IsTypeOnly {
+		t.Fatalf("namespace export auth = %#v", exp)
+	}
+	if exp := ctx.Exports["default"]; exp == nil || exp.IsTypeOnly {
+		t.Fatalf("default export = %#v", exp)
+	}
+}
+
+func TestParseExportAssignmentFallback_ParseCtxPath(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	path := filepath.Join(modulesPath, "partner", "service", "models", "partner.ts")
+	content := `export default (1 as unknown);`
+	ctx, err := Parse(map[string]string{"@/*": filepath.Join(modulesPath, "*")}, path, content)
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	if exp := ctx.Exports["default"]; exp == nil {
+		t.Fatal("expected default export")
+	}
+}
+
 func TestTSGoCtxConvertReferenceWithModuleSpecAndNodeTextGuards(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "views", "child.ts")
 	content := `

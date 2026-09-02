@@ -5,7 +5,6 @@ package backendplugin
 
 import (
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/choysum-dev/choysum/internal/module/policy"
@@ -68,12 +67,8 @@ func readModuleApplicationFromExistingPackageJSON(modulesPath, moduleName string
 	if modulesPath == "" || moduleName == "" {
 		return "", false
 	}
-	packageJSONPath := filepath.Join(modulesPath, moduleName, "package.json")
-	if _, err := os.Stat(packageJSONPath); err != nil {
-		return "", false
-	}
-	app, err := policy.ReadModuleApplicationFromPackageJSON(modulesPath, moduleName)
-	if err != nil || strings.TrimSpace(app) == "" {
+	app, ok, err := policy.ReadExplicitModuleApplicationFromPackageJSON(modulesPath, moduleName)
+	if err != nil || !ok {
 		return "", false
 	}
 	return strings.TrimSpace(app), true

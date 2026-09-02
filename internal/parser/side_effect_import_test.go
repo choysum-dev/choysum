@@ -47,6 +47,55 @@ func TestParseExportTypeOnly_TsParserPath(t *testing.T) {
 	}
 }
 
+func TestParseExportAssignmentPropertyAccess_TsParserPath(t *testing.T) {
+	path := "/virtual/modules/partner/service/models/partner.ts"
+	content := `
+import dial from '@/core/service/api/dial';
+export default dial.create;
+`
+	_, ctx := mustParseTSGoCtx(t, path, content)
+	exp := ctx.exports["default"]
+	if exp == nil {
+		t.Fatal("expected default export")
+	}
+	if exp.ReferenceIdent != "create" {
+		t.Fatalf("ReferenceIdent = %q, want create", exp.ReferenceIdent)
+	}
+}
+
+func TestParseNamespaceExport_TsParserPath(t *testing.T) {
+	path := "/virtual/modules/partner/service/models/partner.ts"
+	content := `export * as auth from '@/auth/service/models/role';`
+	_, ctx := mustParseTSGoCtx(t, path, content)
+	exp := ctx.exports["auth"]
+	if exp == nil || exp.IsTypeOnly {
+		t.Fatalf("namespace export = %#v", exp)
+	}
+}
+
+func TestParseExportAssignmentFallback_TsParserPath(t *testing.T) {
+	path := "/virtual/modules/partner/service/models/partner.ts"
+	content := `export default (1 as unknown);`
+	_, ctx := mustParseTSGoCtx(t, path, content)
+	exp := ctx.exports["default"]
+	if exp == nil {
+		t.Fatal("expected default export")
+	}
+	if exp.ModuleSpecPath == "" {
+		t.Fatalf("default export = %#v", exp)
+	}
+}
+
+func TestExportBindingIsTypeOnly_SpecifierBranch(t *testing.T) {
+	path := "/virtual/modules/partner/service/models/partner.ts"
+	content := `export { type Role } from '@/auth/service/models/role';`
+	_, ctx := mustParseTSGoCtx(t, path, content)
+	exp := ctx.exports["Role"]
+	if exp == nil || !exp.IsTypeOnly {
+		t.Fatalf("inline export type = %#v", exp)
+	}
+}
+
 func TestParseDynamicImport_TemplateLiteral(t *testing.T) {
 	path := "/virtual/modules/auth/service/tests/observability.test.ts"
 	content := "await import(`@/meta/service/models/ui_resource`);\n"
