@@ -280,11 +280,12 @@ func (c *ParseCtx) parseExport(stmt *tsast.Node) {
 		}
 
 		if moduleSpecPath != "" {
-			wildcard := newExport("*", moduleSpecPath, false)
+			isTypeOnly := parser.ExportBindingIsTypeOnly(stmt, nil)
+			wildcard := newExport("*", moduleSpecPath, isTypeOnly)
 			if existing, ok := c.Exports["*"]; ok {
 				existing.Wildcard = append(existing.Wildcard, wildcard)
 			} else {
-				c.Exports["*"] = &parser.Export{Wildcard: []*parser.Export{wildcard}}
+				c.Exports["*"] = &parser.Export{Wildcard: []*parser.Export{wildcard}, IsTypeOnly: isTypeOnly}
 			}
 		}
 		return

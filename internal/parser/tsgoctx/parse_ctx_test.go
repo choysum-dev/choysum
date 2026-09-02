@@ -186,6 +186,23 @@ func TestParseExportAssignmentFallback_ParseCtxPath(t *testing.T) {
 	}
 }
 
+func TestParseExportTypeWildcard_ParseCtxPath(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	path := filepath.Join(modulesPath, "partner", "service", "models", "partner.ts")
+	content := `export type * from '@/auth/service/models/role';`
+	ctx, err := Parse(map[string]string{"@/*": filepath.Join(modulesPath, "*")}, path, content)
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	wildcard := ctx.Exports["*"]
+	if wildcard == nil || len(wildcard.Wildcard) != 1 {
+		t.Fatalf("wildcard export = %#v", wildcard)
+	}
+	if !wildcard.IsTypeOnly || !wildcard.Wildcard[0].IsTypeOnly {
+		t.Fatalf("export type wildcard IsTypeOnly=false: %#v", wildcard)
+	}
+}
+
 func TestTSGoCtxConvertReferenceWithModuleSpecAndNodeTextGuards(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "views", "child.ts")
 	content := `

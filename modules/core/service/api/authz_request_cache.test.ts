@@ -111,3 +111,41 @@ test('authz_request_cache: invalidation clears jsCtx caches without request stat
     }
   }
 });
+
+test('authz_request_cache: targeted invalidation with explicit allUsers false', () => {
+  const jsCtx: any = { req: { __choysumServiceState: {} as Record<string, unknown> } };
+  const restore = setRequest({ context: jsCtx });
+  try {
+    const state = jsCtx.req.__choysumServiceState as Record<string, unknown>;
+    const u1Ctx = buildAuthzContextCacheKey('u1', 'c1');
+    const u2Ctx = buildAuthzContextCacheKey('u2', 'c1');
+    state[u1Ctx] = { roles: ['r1'] };
+    state[u2Ctx] = { roles: ['r2'] };
+    invalidateAuthzRequestCaches({ allUsers: false, userIds: ['u1'] });
+    if (state[u1Ctx] !== undefined) throw new Error('u1Ctx not cleared');
+    if (JSON.stringify(state[u2Ctx]) !== JSON.stringify({ roles: ['r2'] })) {
+      throw new Error('u2Ctx should remain');
+    }
+  } finally {
+    restore();
+  }
+});
+
+test('authz_request_cache: skips non-object request state', () => {
+  const previous = (globalThis as any).$choysum;
+  const jsCtx: any = { req: { __choysumServiceState: 'not-object' } };
+  (globalThis as any).$choysum = { request: { context: jsCtx } };
+  try {
+    jsCtx[Symbol.for('choysum.recordrule.cache')] = { warm: true };
+    invalidateAuthzRequestCaches({ userIds: ['u1'] });
+    if (jsCtx[Symbol.for('choysum.recordrule.cache')] !== undefined) {
+      throw new Error('recordrule cache not cleared');
+    }
+  } finally {
+    if (previous === undefined) {
+      delete (globalThis as any).$choysum;
+    } else {
+      (globalThis as any).$choysum = previous;
+    }
+  }
+});

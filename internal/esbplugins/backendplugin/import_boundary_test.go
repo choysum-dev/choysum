@@ -68,6 +68,14 @@ func TestResolveSourceApplication_PrefersPackageJSONAndApplicationStr(t *testing
 		}
 	})
 
+	t.Run("lookup with empty application falls through", func(t *testing.T) {
+		lookup := policy.ModuleApplicationLookup(func(string) (string, bool) { return "", true })
+		got := resolveSourceApplication(&meta.Module{Name: "auth"}, modulesPath, lookup)
+		if got != "auth" {
+			t.Fatalf("application = %q, want auth", got)
+		}
+	})
+
 	t.Run("lookup fills gap before name heuristic", func(t *testing.T) {
 		lookup := policy.ModuleApplicationLookupFromMap(map[string]string{"mapped_module": "mapped"})
 		got := resolveSourceApplication(&meta.Module{Name: "mapped_module"}, modulesPath, lookup)
@@ -239,6 +247,78 @@ func TestEnforceServiceImportBoundary_ReturnsViolationError(t *testing.T) {
 	}})
 	if err == nil || !strings.Contains(err.Error(), "cross-app service import boundary violation") {
 		t.Fatalf("enforceServiceImportBoundary() error = %v, want boundary failure", err)
+	}
+}
+
+func TestResolveSourceApplication_EmptyNameUsesApplicationStr(t *testing.T) {
+	got := resolveSourceApplication(&meta.Module{ApplicationStr: "enterprise"}, t.TempDir(), nil)
+	if got != "enterprise" {
+		t.Fatalf("application = %q, want enterprise", got)
+	}
+}
+
+func TestModuleApplicationLookup_SkipsSessionWhenDiskAlreadyIndexed(t *testing.T) {
+	testScope, db := newPluginSessionTestScope(t)
+	migrateBackendPluginMetadata(t, db)
+	modulesPath := testScope.cfg.ModulesPath
+	writeBoundaryPackageJSON(t, modulesPath, "auth", "auth")
+	if err := db.Create(&meta.Module{Name: "auth", ApplicationStr: "session_override", Path: filepath.Join(modulesPath, "auth")}).Error; err != nil {
+		t.Fatalf("create module row: %v", err)
+	}
+
+	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
+		Env:    testScope,
+		Module: &meta.Module{Name: "auth", Path: filepath.Join(modulesPath, "auth"), ApplicationStr: "auth"},
+	}}
+	plugin.runtimeOptions = runtimeOptions{modulesPath: modulesPath}
+	lookup := plugin.moduleApplicationLookup(nil, modulesPath)
+	if app, ok := lookup("auth"); !ok || app != "auth" {
+		t.Fatalf("disk application should win, got %q ok=%v", app, ok)
+	}
+}
+
+func TestMergeModuleApplicationsFromDisk_SkipsInvalidPackageJSON(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	dir := filepath.Join(modulesPath, "broken")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte("{"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	appByModule := make(map[string]string)
+	mergeModuleApplicationsFromDisk(modulesPath, appByModule)
+	if len(appByModule) != 0 {
+		t.Fatalf("expected no entries, got %#v", appByModule)
+	}
+}
+
+func TestModuleApplicationLookup_IgnoresSessionRowsWithEmptyFields(t *testing.T) {
+	testScope, db := newPluginSessionTestScope(t)
+	migrateBackendPluginMetadata(t, db)
+	modulesPath := testScope.cfg.ModulesPath
+	writeBoundaryPackageJSON(t, modulesPath, "auth", "auth")
+	for _, row := range []meta.Module{
+		{Name: "", ApplicationStr: "orphan", Path: filepath.Join(modulesPath, "orphan")},
+		{Name: "blank_app", ApplicationStr: "", Path: filepath.Join(modulesPath, "blank_app")},
+	} {
+		if err := db.Create(&row).Error; err != nil {
+			t.Fatalf("create module row: %v", err)
+		}
+	}
+
+	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
+		Env:    testScope,
+		Module: &meta.Module{Name: "auth", Path: filepath.Join(modulesPath, "auth"), ApplicationStr: "auth"},
+	}}
+	plugin.runtimeOptions = runtimeOptions{modulesPath: modulesPath}
+	lookup := plugin.moduleApplicationLookup([]*parser.ParserResult{{
+		Imports: map[string]*parser.Import{
+			"X": {ModuleSpecPath: filepath.Join(modulesPath, "blank_app", "service", "models", "x")},
+		},
+	}}, modulesPath)
+	if app, ok := lookup("blank_app"); !ok || app != "blank_app" {
+		t.Fatalf("blank_app fallback = %q ok=%v", app, ok)
 	}
 }
 

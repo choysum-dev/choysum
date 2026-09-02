@@ -96,6 +96,19 @@ func TestExportBindingIsTypeOnly_SpecifierBranch(t *testing.T) {
 	}
 }
 
+func TestParseExportTypeWildcard_TsParserPath(t *testing.T) {
+	path := "/virtual/modules/partner/service/models/partner.ts"
+	content := `export type * from '@/auth/service/models/role';`
+	_, ctx := mustParseTSGoCtx(t, path, content)
+	wildcard := ctx.exports["*"]
+	if wildcard == nil || len(wildcard.Wildcard) != 1 {
+		t.Fatalf("wildcard export = %#v", wildcard)
+	}
+	if !wildcard.IsTypeOnly || !wildcard.Wildcard[0].IsTypeOnly {
+		t.Fatalf("export type wildcard IsTypeOnly=false: %#v", wildcard)
+	}
+}
+
 func TestParseDynamicImport_TemplateLiteral(t *testing.T) {
 	path := "/virtual/modules/auth/service/tests/observability.test.ts"
 	content := "await import(`@/meta/service/models/ui_resource`);\n"

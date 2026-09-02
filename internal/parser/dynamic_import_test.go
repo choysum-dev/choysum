@@ -99,9 +99,23 @@ func findFirstImportCallNode(ctx *tsgoImportExportCtx) *tsast.Node {
 	return found
 }
 
+func TestCollectDynamicImports_NilSource(t *testing.T) {
+	c := &tsgoImportExportCtx{}
+	c.collectDynamicImports()
+}
+
 func TestCollectDynamicImports_NilReceiver(t *testing.T) {
 	var c *tsgoImportExportCtx
 	c.collectDynamicImports()
+}
+
+func TestCollectDynamicImports_SkipsNilChildNodes(t *testing.T) {
+	path := "/virtual/modules/auth/service/tests/dynamic.ts"
+	content := `await import('./a'); await import('./b');`
+	_, ctx := mustParseTSGoCtx(t, path, content)
+	if len(ctx.dynamicImports) != 2 {
+		t.Fatalf("dynamicImports len = %d, want 2", len(ctx.dynamicImports))
+	}
 }
 
 func TestImportModuleSpecifierFromExpression_DefaultBranch(t *testing.T) {

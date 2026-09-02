@@ -87,3 +87,15 @@ test('authz_bypass: withPermissionGraphBypass removes companyMode when absent be
     restore();
   }
 });
+
+test('authz_bypass: withPermissionGraphBypass noops when req is numeric carrier', async () => {
+  const restore = setRequest({ context: { req: 1 } });
+  try {
+    const got = await withPermissionGraphBypass(async () => 'num');
+    if (got !== 'num') {
+      throw new Error(`expected num, got ${String(got)}`);
+    }
+  } finally {
+    restore();
+  }
+});

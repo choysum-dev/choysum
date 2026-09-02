@@ -592,3 +592,214 @@ func TestCheckServiceImportBoundaryOnDisk_ReadPackageJSONError(t *testing.T) {
 		t.Fatal("expected package.json decode error")
 	}
 }
+
+func TestDefaultApplicationForModuleName_Empty(t *testing.T) {
+	if got := DefaultApplicationForModuleName(""); got != "" {
+		t.Fatalf("empty module name = %q", got)
+	}
+}
+
+func TestPathUnderModules(t *testing.T) {
+	modulesPath := testModulesPath(t)
+	authSpec := filepath.Join(modulesPath, "auth", "service", "models", "role")
+	if !pathUnderModules(modulesPath, authSpec) {
+		t.Fatal("expected abs path under modules")
+	}
+	if pathUnderModules(modulesPath, "auth/service/models/role") {
+		t.Fatal("relative path should not match")
+	}
+	if pathUnderModules("", authSpec) {
+		t.Fatal("empty modules path should not match")
+	}
+}
+
+func TestIsAllowedTarget(t *testing.T) {
+	if !isAllowedTarget("", "auth") {
+		t.Fatal("empty source should allow")
+	}
+	if !isAllowedTarget("partner", "") {
+		t.Fatal("empty target should allow")
+	}
+	if !isAllowedTarget("partner", "core") {
+		t.Fatal("core target should allow")
+	}
+	if !isAllowedTarget("partner", "partner") {
+		t.Fatal("same app should allow")
+	}
+	if isAllowedTarget("partner", "auth") {
+		t.Fatal("cross-app should not allow")
+	}
+}
+
+func TestResolveTarget(t *testing.T) {
+	modulesPath := testModulesPath(t)
+	authSpec := filepath.Join(modulesPath, "auth", "service", "models", "role")
+	mod, app, ok := resolveTarget(modulesPath, authSpec, testLookup())
+	if !ok || mod != "auth" || app != "auth" {
+		t.Fatalf("resolveTarget() = %q %q ok=%v", mod, app, ok)
+	}
+	if _, _, ok := resolveTarget(modulesPath, "", testLookup()); ok {
+		t.Fatal("empty spec should miss")
+	}
+}
+
+func TestReadModuleApplicationFromPackageJSON_EmptyModulesPath(t *testing.T) {
+	if app, err := ReadModuleApplicationFromPackageJSON("", "partner_bank"); err != nil || app != "partner" {
+		t.Fatalf("empty modules path fallback = %q err=%v", app, err)
+	}
+	if _, ok, err := ReadExplicitModuleApplicationFromPackageJSON("", "auth"); err != nil || ok {
+		t.Fatalf("empty modules path explicit = ok=%v err=%v", ok, err)
+	}
+}
+
+func TestIsServiceTypeScriptSource(t *testing.T) {
+	if isServiceTypeScriptSource("model.js") {
+		t.Fatal(".js should be skipped")
+	}
+	if !isServiceTypeScriptSource("model.ts") {
+		t.Fatal(".ts should match")
+	}
+	if isServiceTypeScriptSource("model.d.ts") {
+		t.Fatal(".d.ts should be skipped")
+	}
+}
+
+func TestCheckServiceImportBoundary_AllowsExportTypeWildcard(t *testing.T) {
+	modulesPath := testModulesPath(t)
+	moduleRoot := filepath.Join(modulesPath, "partner")
+	source := filepath.Join(moduleRoot, "service", "models", "partner.ts")
+	authSpec := filepath.Join(modulesPath, "auth", "service", "models", "role")
+
+	violations := CheckServiceImportBoundary(ServiceImportBoundaryInput{
+		ModulesPath:       modulesPath,
+		ModuleRoot:        moduleRoot,
+		SourceApplication: "partner",
+		Lookup:            testLookup(),
+		ParserResults: []*parser.ParserResult{{
+			Path: source,
+			Exports: map[string]*parser.Export{
+				"*": {
+					IsTypeOnly: true,
+					Wildcard: []*parser.Export{{
+						ModuleSpecPath: authSpec,
+						IsTypeOnly:     true,
+						Line:           1,
+						Column:         1,
+					}},
+				},
+			},
+		}},
+	})
+	if len(violations) != 0 {
+		t.Fatalf("expected no export type wildcard violations, got %#v", violations)
+	}
+}
+
+func TestCheckServiceImportBoundary_SkipsNilImportAndEmptyExportSpec(t *testing.T) {
+	modulesPath := testModulesPath(t)
+	moduleRoot := filepath.Join(modulesPath, "partner")
+	source := filepath.Join(moduleRoot, "service", "models", "partner.ts")
+	violations := CheckServiceImportBoundary(ServiceImportBoundaryInput{
+		ModulesPath:       modulesPath,
+		ModuleRoot:        moduleRoot,
+		SourceApplication: "partner",
+		Lookup:            testLookup(),
+		ParserResults: []*parser.ParserResult{{
+			Path: source,
+			Imports: map[string]*parser.Import{
+				"nil": nil,
+			},
+			Exports: map[string]*parser.Export{
+				"empty": {
+					ModuleSpecPath: "",
+					IsTypeOnly:     false,
+					Line:           1,
+					Column:         1,
+				},
+			},
+		}},
+	})
+	if len(violations) != 0 {
+		t.Fatalf("expected no violations, got %#v", violations)
+	}
+}
+
+func TestBuildModuleApplicationLookupFromModulesDir_SkipsEmptyApplication(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	dir := filepath.Join(modulesPath, "empty_app")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	content := `{
+  "name": "@test/empty_app",
+  "version": "0.0.0-test",
+  "choysum": { "moduleName": "empty_app" }
+}`
+	if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	writeModulePackageJSON(t, modulesPath, "auth", "auth")
+	lookup, err := BuildModuleApplicationLookupFromModulesDir(modulesPath)
+	if err != nil {
+		t.Fatalf("BuildModuleApplicationLookupFromModulesDir() error = %v", err)
+	}
+	if app, ok := lookup("empty_app"); !ok || app != "empty_app" {
+		t.Fatalf("empty_app fallback = %q ok=%v", app, ok)
+	}
+}
+
+func TestCheckServiceImportBoundaryOnDisk_AllowsExportTypeWildcard(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	writeModulePackageJSON(t, modulesPath, "partner", "partner")
+	writeModulePackageJSON(t, modulesPath, "auth", "auth")
+	serviceFile := filepath.Join(modulesPath, "partner", "service", "models", "partner.ts")
+	if err := os.MkdirAll(filepath.Dir(serviceFile), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	source := "export type * from '@/auth/service/models/role';\n"
+	if err := os.WriteFile(serviceFile, []byte(source), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if err := CheckServiceImportBoundaryOnDisk(modulesPath, "partner", ModulePathAliasForBoundary(modulesPath)); err != nil {
+		t.Fatalf("CheckServiceImportBoundaryOnDisk() error = %v", err)
+	}
+}
+
+func TestResolveTarget_EmptyModuleNameFromModulesRoot(t *testing.T) {
+	modulesPath := testModulesPath(t)
+	if _, _, ok := resolveTarget(modulesPath, modulesPath, testLookup()); ok {
+		t.Fatal("modules root should not resolve")
+	}
+}
+
+func TestModuleNameFromModulesPath_EmptyFirstSegment(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	if got := ModuleNameFromModulesPath(modulesPath, filepath.Join(modulesPath, ".hidden", "file.ts")); got != ".hidden" {
+		t.Fatalf("first segment = %q", got)
+	}
+}
+
+func TestResolveModuleApplication_LookupReturnsEmptyApp(t *testing.T) {
+	lookup := ModuleApplicationLookup(func(string) (string, bool) { return "", true })
+	if app, ok := ResolveModuleApplication("auth", lookup); !ok || app != "auth" {
+		t.Fatalf("fallback auth = %q ok=%v", app, ok)
+	}
+}
+
+func TestReadExplicitModuleApplicationFromPackageJSON_ReadError(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	dir := filepath.Join(modulesPath, "locked")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte(`{"choysum":{"application":"auth"}}`), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if err := os.Chmod(filepath.Join(dir, "package.json"), 0o000); err != nil {
+		t.Skipf("chmod not permitted: %v", err)
+	}
+	defer os.Chmod(filepath.Join(dir, "package.json"), 0o644)
+	if _, ok, err := ReadExplicitModuleApplicationFromPackageJSON(modulesPath, "locked"); err == nil || ok {
+		t.Fatalf("expected read error, ok=%v err=%v", ok, err)
+	}
+}

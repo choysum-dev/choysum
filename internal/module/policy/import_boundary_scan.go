@@ -67,9 +67,13 @@ func shouldSkipModulesDirEntry(name string) bool {
 // ReadExplicitModuleApplicationFromPackageJSON returns choysum.application when set in package.json.
 // ok is false when package.json is missing or the application field is absent/empty.
 func ReadExplicitModuleApplicationFromPackageJSON(modulesPath, moduleName string) (application string, ok bool, err error) {
+	modulesPath = strings.TrimSpace(modulesPath)
 	moduleName = strings.TrimSpace(moduleName)
 	if moduleName == "" {
 		return "", false, xfmt.Errorf("module name is required")
+	}
+	if modulesPath == "" {
+		return "", false, nil
 	}
 	packageJSONPath := filepath.Join(modulesPath, moduleName, "package.json")
 	data, readErr := os.ReadFile(packageJSONPath)
@@ -92,9 +96,13 @@ func ReadExplicitModuleApplicationFromPackageJSON(modulesPath, moduleName string
 
 // ReadModuleApplicationFromPackageJSON reads choysum.application for a module directory.
 func ReadModuleApplicationFromPackageJSON(modulesPath, moduleName string) (string, error) {
+	modulesPath = strings.TrimSpace(modulesPath)
 	moduleName = strings.TrimSpace(moduleName)
 	if moduleName == "" {
 		return "", xfmt.Errorf("module name is required")
+	}
+	if modulesPath == "" {
+		return DefaultApplicationForModuleName(moduleName), nil
 	}
 	packageJSONPath := filepath.Join(modulesPath, moduleName, "package.json")
 	data, err := os.ReadFile(packageJSONPath)

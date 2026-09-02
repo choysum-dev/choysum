@@ -504,11 +504,12 @@ func (c *tsgoImportExportCtx) parseExport(stmt *tsast.Node) {
 		}
 
 		if moduleSpecPath != "" {
-			wildcard := newExport("*", moduleSpecPath, false)
+			isTypeOnly := ExportBindingIsTypeOnly(stmt, nil)
+			wildcard := newExport("*", moduleSpecPath, isTypeOnly)
 			if existing, ok := c.exports["*"]; ok {
 				existing.Wildcard = append(existing.Wildcard, wildcard)
 			} else {
-				c.exports["*"] = &Export{Wildcard: []*Export{wildcard}}
+				c.exports["*"] = &Export{Wildcard: []*Export{wildcard}, IsTypeOnly: isTypeOnly}
 			}
 		}
 		return
