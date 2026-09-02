@@ -8,4 +8,5 @@ export {
   invalidateAllAuthzCaches,
   invalidateAuthzCachesForUsers,
   invalidateAuthzRequestCaches,
-} from '@/core/service/api/authz_request_cache';
+} from '../api/authz_request_cache';
+export { withPermissionGraphBypass } from '../api/authz_bypass';

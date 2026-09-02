@@ -42,6 +42,7 @@ func (p *tsParser) parse() (*parser.ParserResult, error) {
 		RawContent:           p.Content,
 		Imports:              ctx.Imports,
 		Exports:              ctx.Exports,
+		DynamicImports:       ctx.DynamicImports,
 		UiResourceDecls:      uiDecls,
 		UiResourceDeclIssues: uiIssues,
 	}, nil

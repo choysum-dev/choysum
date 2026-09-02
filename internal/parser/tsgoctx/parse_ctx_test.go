@@ -37,6 +37,9 @@ export const ready = true
 	if ctx.Imports["DefaultView"] == nil || ctx.Imports["DefaultView"].ReferenceIdent != "default" {
 		t.Fatalf("unexpected default import: %#v", ctx.Imports["DefaultView"])
 	}
+	if ctx.Imports["DefaultView"].IsTypeOnly {
+		t.Fatalf("expected value default import, IsTypeOnly=true")
+	}
 	if ctx.Imports["alias"] == nil || ctx.Imports["alias"].ReferenceIdent != "named" {
 		t.Fatalf("unexpected aliased import: %#v", ctx.Imports["alias"])
 	}
@@ -108,6 +111,102 @@ export const enabled = true
 
 	if got := ExportDeclarationName(nil); got != "" {
 		t.Fatalf("ExportDeclarationName(nil) = %q, want empty", got)
+	}
+}
+
+func TestParseImportIsTypeOnly_ParseCtxPath(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "modules", "auth", "service", "user.ts")
+	content := `
+import type TypeOnlyDefault from '@/base/service/models/language'
+import type { TypeNamed } from '@/meta/service/models/model'
+import { type InlineType, InlineValue } from '@/document/service/models/attachment_object'
+import ValueDefault from '@/partner/service/models/partner'
+`
+	ctx, err := Parse(map[string]string{"@": filepath.Join(filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(path)))), "")}, path, content)
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+
+	assertTypeOnly := func(local string, want bool) {
+		imp := ctx.Imports[local]
+		if imp == nil {
+			t.Fatalf("missing import binding %q", local)
+		}
+		if imp.IsTypeOnly != want {
+			t.Fatalf("Imports[%q].IsTypeOnly=%v want %v", local, imp.IsTypeOnly, want)
+		}
+	}
+
+	assertTypeOnly("TypeOnlyDefault", true)
+	assertTypeOnly("TypeNamed", true)
+	assertTypeOnly("InlineType", true)
+	assertTypeOnly("InlineValue", false)
+	assertTypeOnly("ValueDefault", false)
+}
+
+func TestParseSideEffectAndExportPaths_ParseCtxPath(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	path := filepath.Join(modulesPath, "partner", "service", "models", "partner.ts")
+	content := `
+import '@/auth/service/models/role';
+import {} from '@/core/service/api/dial';
+export type { Role } from '@/auth/service/models/role';
+export * as auth from '@/auth/service/models/role';
+export default local;
+const local = {};
+`
+	ctx, err := Parse(map[string]string{"@/*": filepath.Join(modulesPath, "*")}, path, content)
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	var sideEffect *parser.Import
+	for key, imp := range ctx.Imports {
+		if parser.IsSideEffectImportMapKey(key) {
+			sideEffect = imp
+			break
+		}
+	}
+	if sideEffect == nil || sideEffect.IsTypeOnly {
+		t.Fatalf("side-effect import = %#v", sideEffect)
+	}
+	if exp := ctx.Exports["Role"]; exp == nil || !exp.IsTypeOnly {
+		t.Fatalf("export type Role = %#v", exp)
+	}
+	if exp := ctx.Exports["auth"]; exp == nil || exp.IsTypeOnly {
+		t.Fatalf("namespace export auth = %#v", exp)
+	}
+	if exp := ctx.Exports["default"]; exp == nil || exp.IsTypeOnly {
+		t.Fatalf("default export = %#v", exp)
+	}
+}
+
+func TestParseExportAssignmentFallback_ParseCtxPath(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	path := filepath.Join(modulesPath, "partner", "service", "models", "partner.ts")
+	content := `export default (1 as unknown);`
+	ctx, err := Parse(map[string]string{"@/*": filepath.Join(modulesPath, "*")}, path, content)
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	if exp := ctx.Exports["default"]; exp == nil {
+		t.Fatal("expected default export")
+	}
+}
+
+func TestParseExportTypeWildcard_ParseCtxPath(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	path := filepath.Join(modulesPath, "partner", "service", "models", "partner.ts")
+	content := `export type * from '@/auth/service/models/role';`
+	ctx, err := Parse(map[string]string{"@/*": filepath.Join(modulesPath, "*")}, path, content)
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	wildcard := ctx.Exports["*"]
+	if wildcard == nil || len(wildcard.Wildcard) != 1 {
+		t.Fatalf("wildcard export = %#v", wildcard)
+	}
+	if !wildcard.IsTypeOnly || !wildcard.Wildcard[0].IsTypeOnly {
+		t.Fatalf("export type wildcard IsTypeOnly=false: %#v", wildcard)
 	}
 }
 

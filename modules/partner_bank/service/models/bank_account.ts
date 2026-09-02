@@ -4,15 +4,18 @@
 import { Field, Model } from '@/core/service';
 import MessageThreadModel from '@/core/service/mixins/message_thread_model';
 import { Constraint } from '@/core/service/api/constraint';
+import { createServiceByModel } from '@/core/service/rpc';
 import { _t, _lt } from '../i18n';
 import { fail, normalizeOptionalText, normalizeRequiredText } from './_normalization_bridge';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { maskAccountNo, normalizeAccountType } from './_bank_account_defaults';
-import Bank from '@/base/service/models/bank';
+import type BankModel from '@/base/service/models/bank';
 import type Company from '@/base/service/models/company';
 import type Country from '@/base/service/models/country';
 import type Currency from '@/base/service/models/currency';
 import type Partner from '@/partner/service/models/partner';
+
+const Bank = createServiceByModel<typeof BankModel>('base.Bank');
 
 /**
  * Company-scoped partner bank account record.
@@ -46,7 +49,7 @@ export default class BankAccount extends MessageThreadModel {
   CompanyId: string;
 
   /** Linked bank reference. */
-  @Field<Bank>({
+  @Field<BankModel>({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Bank' },
     condition: ['IsActive', '=', true],

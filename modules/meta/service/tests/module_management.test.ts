@@ -2,10 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { RepositoryFactory } from '@/core/service/orm/repository';
+import { createServiceByModel } from '@/core/service/rpc';
 import MetaModule from '@/meta/service/models/module';
 import MetaModuleIndex from '@/meta/service/models/module_index';
 import ModuleManagementLog from '@/meta/service/models/module_management_log';
-import Job from '@/task/service/models/job';
+import type JobModel from '@/task/service/models/job';
+
+const Job = createServiceByModel<typeof JobModel>('task.Job');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');

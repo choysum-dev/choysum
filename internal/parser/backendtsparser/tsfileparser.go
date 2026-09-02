@@ -414,6 +414,7 @@ func (p *tsFileParser) parse() (*parser.ParserResult, error) {
 		return nil, xfmt.Errorf("failed to parse import: %w", err)
 	}
 	parserResult.Imports = p.ImportsMap
+	parserResult.DynamicImports = p.DynamicImports
 
 	err = p.ParseExport(nil)
 	if err != nil {

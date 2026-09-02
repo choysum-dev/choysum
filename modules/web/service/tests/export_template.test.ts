@@ -1,13 +1,19 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import Role from '@/auth/service/models/role';
-import User from '@/auth/service/models/user/user';
-import UserRole from '@/auth/service/models/user_role';
 import { withContext as withModelContext } from '@/core/service/api/context';
 import { ChoysumError } from '@/core/service/error';
-import MetaModelData from '@/meta/service/models/model_data';
+import { createServiceByModel } from '@/core/service/rpc';
+import type RoleModel from '@/auth/service/models/role';
+import type UserModel from '@/auth/service/models/user/user';
+import type UserRoleModel from '@/auth/service/models/user_role';
+import type MetaModelDataModel from '@/meta/service/models/model_data';
 import ExportTemplate from '@/web/service/models/export_template';
+
+const Role = createServiceByModel<typeof RoleModel>('auth.Role');
+const User = createServiceByModel<typeof UserModel>('auth.User');
+const UserRole = createServiceByModel<typeof UserRoleModel>('auth.UserRole');
+const MetaModelData = createServiceByModel<typeof MetaModelDataModel>('meta.MetaModelData');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');

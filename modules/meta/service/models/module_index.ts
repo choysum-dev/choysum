@@ -3,8 +3,9 @@
 
 import { BaseModel, Field, Model, SqlCompute } from '@/core/service';
 import { getModelRepository } from '@/core/service/orm/model';
+import { createServiceByModel } from '@/core/service/rpc';
 import { sql } from 'kysely';
-import Job from '@/task/service/models/job';
+import type JobModel from '@/task/service/models/job';
 import { getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
 import { normalizeFields, normalizeLimit, normalizeOffset } from '@/core/service/utils/normalization';
 import { _t, _lt } from '../i18n';
@@ -28,6 +29,7 @@ import {
   type RequestSyncParams,
 } from './_module_index_query';
 
+const Job = createServiceByModel<typeof JobModel>('task.Job');
 
 async function findRunningJobId(fullMethod: string, requestedOrigin: ModuleSyncOriginType): Promise<string> {
   const running = await Job.Search(

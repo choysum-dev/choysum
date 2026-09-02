@@ -1,9 +1,13 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { BaseModel, Model } from '@/core/service';
 import { ChoysumError } from '@/core/service/error';
 import CompanyScopedResource from '@/auth/service/models/company_scoped_resource';
-import UoMCategory from '@/base/service/models/uom_category';
+
+/** Cross-app domain probe: metadata application is base while the test runs in auth. */
+@Model('SoftDeleteDomainProbe', { application: 'base' })
+class SoftDeleteDomainProbe extends BaseModel {}
 
 function ensureRequestContext(): any {
   const root: any = (globalThis as any).$choysum ?? {};
@@ -26,7 +30,7 @@ function resetRequestContext(): void {
     depth: 0,
     recordRuleMode: 'allowlist',
     fieldRuleMode: 'skip',
-    recordRuleAllow: ['auth.CompanyScopedResource:read', 'CompanyScopedResource:read', 'base.UoMCategory:read', 'UoMCategory:read'],
+    recordRuleAllow: ['auth.CompanyScopedResource:read', 'CompanyScopedResource:read', 'base.SoftDeleteDomainProbe:read', 'SoftDeleteDomainProbe:read'],
   };
   jsCtx.identity = {};
 
@@ -50,7 +54,7 @@ test('auth.soft_delete_options: cross-app conflict domain matrix (Search/Count/R
   resetRequestContext();
 
   const cases = [
-    { model: UoMCategory as any, domain: 'base' },
+    { model: SoftDeleteDomainProbe as any, domain: 'base' },
     { model: CompanyScopedResource as any, domain: 'auth' },
   ];
 

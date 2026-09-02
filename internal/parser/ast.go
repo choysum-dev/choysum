@@ -64,6 +64,10 @@ type Import struct {
 	ModuleSpecText  string
 	ModuleSpecStart int
 	ModuleSpecEnd   int
+	// IsTypeOnly is true for import type / { type X } bindings (no runtime value import).
+	IsTypeOnly bool
+	// IsDynamic is true for runtime import('module') call expressions.
+	IsDynamic bool
 }
 
 type Export struct {
@@ -74,6 +78,8 @@ type Export struct {
 	End            int
 	Line           int
 	Column         int
+	// IsTypeOnly is true for export type / { type X } re-exports (no runtime value export).
+	IsTypeOnly bool
 
 	Wildcard []*Export // only for Wildcard export like export * from "./test1"; export * from "./test2";
 }
@@ -197,21 +203,23 @@ type TypeParameter struct {
 }
 
 type TsParser struct {
-	Path       string
-	Content    string
-	Context    context.Context
-	PathAlias  map[string]string
-	ImportsMap map[string]*Import
-	ExportsMap map[string]*Export
+	Path           string
+	Content        string
+	Context        context.Context
+	PathAlias      map[string]string
+	ImportsMap     map[string]*Import
+	DynamicImports []*Import
+	ExportsMap     map[string]*Export
 }
 
 type tsgoImportExportCtx struct {
-	path      string
-	pathAlias map[string]string
-	source    *tsast.SourceFile
-	imports   map[string]*Import
-	exports   map[string]*Export
-	lineMap   []tscore.TextPos
+	path           string
+	pathAlias      map[string]string
+	source         *tsast.SourceFile
+	imports        map[string]*Import
+	dynamicImports []*Import
+	exports        map[string]*Export
+	lineMap        []tscore.TextPos
 }
 
 func (p *TsParser) parseTSGoImportExportCtx() (*tsgoImportExportCtx, error) {
@@ -259,6 +267,8 @@ func (p *TsParser) parseTSGoImportExportCtx() (*tsgoImportExportCtx, error) {
 		ctx.parseExport(stmt)
 	}
 
+	ctx.collectDynamicImports()
+
 	return ctx, nil
 }
 
@@ -295,6 +305,21 @@ func (c *tsgoImportExportCtx) lineColumn(pos int) (int, int) {
 	return line + 1, col + 1
 }
 
+const sideEffectImportKeyPrefix = "__side_effect__"
+
+// SideEffectImportKey is the imports-map key prefix for binding-less module imports.
+const SideEffectImportKey = sideEffectImportKeyPrefix
+
+// SideEffectImportMapKey returns a collision-free imports-map key for one side-effect import.
+func SideEffectImportMapKey(line, col int) string {
+	return fmt.Sprintf("%s::%d:%d", sideEffectImportKeyPrefix, line, col)
+}
+
+// IsSideEffectImportMapKey reports whether key denotes a side-effect import entry.
+func IsSideEffectImportMapKey(key string) bool {
+	return key == sideEffectImportKeyPrefix || strings.HasPrefix(key, sideEffectImportKeyPrefix+"::")
+}
+
 func (c *tsgoImportExportCtx) parseImport(stmt *tsast.Node) {
 	decl := stmt.AsImportDeclaration()
 	moduleSpecifier := strings.Trim(decl.ModuleSpecifier.Text(), `"'`)
@@ -307,7 +332,7 @@ func (c *tsgoImportExportCtx) parseImport(stmt *tsast.Node) {
 	moduleSpecText := strings.TrimSpace(c.nodeText(decl.ModuleSpecifier))
 	importText := strings.TrimSpace(c.nodeText(stmt))
 
-	makeImport := func(referenceIdent string) *Import {
+	makeImport := func(referenceIdent string, isTypeOnly bool) *Import {
 		return &Import{
 			ReferenceIdent:  referenceIdent,
 			ModuleSpecPath:  moduleSpecPath,
@@ -319,18 +344,21 @@ func (c *tsgoImportExportCtx) parseImport(stmt *tsast.Node) {
 			ModuleSpecText:  moduleSpecText,
 			ModuleSpecStart: decl.ModuleSpecifier.Pos(),
 			ModuleSpecEnd:   decl.ModuleSpecifier.End(),
+			IsTypeOnly:      isTypeOnly,
 		}
 	}
 
 	if decl.ImportClause == nil {
+		c.imports[SideEffectImportMapKey(line, col)] = makeImport("*", false)
 		return
 	}
 
-	importClause := decl.ImportClause.AsImportClause()
+	importClauseNode := decl.ImportClause
+	importClause := importClauseNode.AsImportClause()
 	if defaultName := importClause.Name(); defaultName != nil {
 		localName := defaultName.Text()
 		if localName != "" {
-			c.imports[localName] = makeImport("default")
+			c.imports[localName] = makeImport("default", ImportBindingIsTypeOnly(importClauseNode, nil))
 		}
 	}
 
@@ -342,13 +370,18 @@ func (c *tsgoImportExportCtx) parseImport(stmt *tsast.Node) {
 	if namedBindings.Kind == tsast.KindNamespaceImport {
 		alias := namedBindings.AsNamespaceImport().Name().Text()
 		if alias != "" {
-			c.imports[alias] = makeImport("*")
+			c.imports[alias] = makeImport("*", ImportBindingIsTypeOnly(importClauseNode, nil))
 		}
 		return
 	}
 
 	if namedBindings.Kind == tsast.KindNamedImports {
-		for _, node := range namedBindings.AsNamedImports().Elements.Nodes {
+		elements := namedBindings.AsNamedImports().Elements.Nodes
+		if len(elements) == 0 {
+			c.imports[SideEffectImportMapKey(line, col)] = makeImport("*", ImportBindingIsTypeOnly(importClauseNode, nil))
+			return
+		}
+		for _, node := range elements {
 			if node == nil || node.Kind != tsast.KindImportSpecifier {
 				continue
 			}
@@ -361,9 +394,31 @@ func (c *tsgoImportExportCtx) parseImport(stmt *tsast.Node) {
 			if spec.PropertyName != nil {
 				referenceIdent = spec.PropertyName.Text()
 			}
-			c.imports[localName] = makeImport(referenceIdent)
+			c.imports[localName] = makeImport(referenceIdent, ImportBindingIsTypeOnly(importClauseNode, node))
 		}
 	}
+}
+
+// ImportBindingIsTypeOnly reports whether an import binding is type-only (import type / { type X }).
+func ImportBindingIsTypeOnly(importClause, importSpecifier *tsast.Node) bool {
+	if importClause != nil && importClause.IsTypeOnly() {
+		return true
+	}
+	if importSpecifier != nil && importSpecifier.IsTypeOnly() {
+		return true
+	}
+	return false
+}
+
+// ExportBindingIsTypeOnly reports whether an export binding is type-only (export type / { type X }).
+func ExportBindingIsTypeOnly(exportDecl, exportSpecifier *tsast.Node) bool {
+	if exportDecl != nil && exportDecl.IsTypeOnly() {
+		return true
+	}
+	if exportSpecifier != nil && exportSpecifier.IsTypeOnly() {
+		return true
+	}
+	return false
 }
 
 func (c *tsgoImportExportCtx) convertReferenceWithModuleSpec(referenceIdent string) (string, string) {
@@ -384,7 +439,7 @@ func (c *tsgoImportExportCtx) convertReferenceWithModuleSpec(referenceIdent stri
 func (c *tsgoImportExportCtx) parseExport(stmt *tsast.Node) {
 	line, col := c.lineColumn(stmt.Pos())
 	exportText := c.nodeText(stmt)
-	newExport := func(referenceIdent string, moduleSpecPath string) *Export {
+	newExport := func(referenceIdent string, moduleSpecPath string, isTypeOnly bool) *Export {
 		return &Export{
 			ReferenceIdent: referenceIdent,
 			ModuleSpecPath: moduleSpecPath,
@@ -393,6 +448,7 @@ func (c *tsgoImportExportCtx) parseExport(stmt *tsast.Node) {
 			End:            stmt.End(),
 			Line:           line,
 			Column:         col,
+			IsTypeOnly:     isTypeOnly,
 		}
 	}
 
@@ -402,16 +458,16 @@ func (c *tsgoImportExportCtx) parseExport(stmt *tsast.Node) {
 			switch expr.Kind {
 			case tsast.KindIdentifier:
 				moduleSpec, ref := c.convertReferenceWithModuleSpec(expr.Text())
-				c.exports["default"] = newExport(ref, moduleSpec)
+				c.exports["default"] = newExport(ref, moduleSpec, false)
 				return
 			case tsast.KindPropertyAccessExpression:
 				pa := expr.AsPropertyAccessExpression()
 				moduleSpec, _ := c.convertReferenceWithModuleSpec(pa.Expression.Text())
-				c.exports["default"] = newExport(pa.Name().Text(), moduleSpec)
+				c.exports["default"] = newExport(pa.Name().Text(), moduleSpec, false)
 				return
 			}
 		}
-		c.exports["default"] = newExport("default", c.currentModuleSpecPath())
+		c.exports["default"] = newExport("default", c.currentModuleSpecPath(), false)
 		return
 	}
 
@@ -437,11 +493,12 @@ func (c *tsgoImportExportCtx) parseExport(stmt *tsast.Node) {
 					if spec.PropertyName != nil {
 						referenceIdent = spec.PropertyName.Text()
 					}
+					isTypeOnly := ExportBindingIsTypeOnly(stmt, node)
 					if moduleSpecPath == "" {
 						resolvedModuleSpec, resolvedRef := c.convertReferenceWithModuleSpec(referenceIdent)
-						c.exports[name] = newExport(resolvedRef, resolvedModuleSpec)
+						c.exports[name] = newExport(resolvedRef, resolvedModuleSpec, isTypeOnly)
 					} else {
-						c.exports[name] = newExport(referenceIdent, moduleSpecPath)
+						c.exports[name] = newExport(referenceIdent, moduleSpecPath, isTypeOnly)
 					}
 				}
 				return
@@ -450,18 +507,19 @@ func (c *tsgoImportExportCtx) parseExport(stmt *tsast.Node) {
 			if decl.ExportClause.Kind == tsast.KindNamespaceExport {
 				name := decl.ExportClause.AsNamespaceExport().Name().Text()
 				if name != "" {
-					c.exports[name] = newExport(name, moduleSpecPath)
+					c.exports[name] = newExport(name, moduleSpecPath, ExportBindingIsTypeOnly(stmt, nil))
 				}
 				return
 			}
 		}
 
 		if moduleSpecPath != "" {
-			wildcard := newExport("*", moduleSpecPath)
+			isTypeOnly := ExportBindingIsTypeOnly(stmt, nil)
+			wildcard := newExport("*", moduleSpecPath, isTypeOnly)
 			if existing, ok := c.exports["*"]; ok {
 				existing.Wildcard = append(existing.Wildcard, wildcard)
 			} else {
-				c.exports["*"] = &Export{Wildcard: []*Export{wildcard}}
+				c.exports["*"] = &Export{Wildcard: []*Export{wildcard}, IsTypeOnly: isTypeOnly}
 			}
 		}
 		return
@@ -472,13 +530,13 @@ func (c *tsgoImportExportCtx) parseExport(stmt *tsast.Node) {
 		if name := tsgoExportDeclarationName(stmt); name != "" {
 			referenceIdent = name
 		}
-		c.exports["default"] = newExport(referenceIdent, c.currentModuleSpecPath())
+		c.exports["default"] = newExport(referenceIdent, c.currentModuleSpecPath(), false)
 		return
 	}
 
 	if tsgoIsExportDeclaration(stmt) {
 		if name := tsgoExportDeclarationName(stmt); name != "" {
-			c.exports[name] = newExport(name, c.currentModuleSpecPath())
+			c.exports[name] = newExport(name, c.currentModuleSpecPath(), false)
 		}
 	}
 }
@@ -536,6 +594,8 @@ func (p *TsParser) ParseImport(_ any) error {
 		return err
 	}
 	p.ImportsMap = ctx.imports
+	p.DynamicImports = ctx.dynamicImports
+	p.ExportsMap = ctx.exports
 	return nil
 }
 
