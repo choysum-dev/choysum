@@ -17,6 +17,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/choysum-dev/choysum/internal/module/policy"
 	moddeps "github.com/choysum-dev/choysum/internal/testing/moddeps"
 	noderuntime "github.com/choysum-dev/choysum/internal/testing/noderuntime"
 	testsemantics "github.com/choysum-dev/choysum/internal/testing/semantics"
@@ -242,6 +243,17 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 	}
 	if err := validateTypecheckToolchainVersions(moduleRoots...); err != nil {
 		return err
+	}
+
+	serviceDir := filepath.Join(modulesRoot, app, "service")
+	if st, err := os.Stat(serviceDir); err == nil && st.IsDir() {
+		if err := policy.CheckServiceImportBoundaryOnDisk(
+			modulesRoot,
+			app,
+			policy.ModulePathAliasForBoundary(modulesRoot),
+		); err != nil {
+			return xfmt.Errorf("typecheck: %w", err)
+		}
 	}
 
 	npxPath, err := resolveNpxPath(opts.NpmPath)

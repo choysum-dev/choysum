@@ -665,3 +665,41 @@ func TestTypecheckApp_AdditionalPaths(t *testing.T) {
 		}
 	})
 }
+
+func TestTypecheckApp_ServiceImportBoundary(t *testing.T) {
+	repoRoot := t.TempDir()
+	modulesPath := t.TempDir()
+
+	makeDir(t, filepath.Join(modulesPath, "partner"))
+	writeFile(t, filepath.Join(modulesPath, "partner", "package.json"), `{
+  "name": "@test/partner",
+  "version": "0.0.0-test",
+  "choysum": {"moduleName":"partner","application":"partner"}
+}`)
+	makeDir(t, filepath.Join(modulesPath, "auth"))
+	writeFile(t, filepath.Join(modulesPath, "auth", "package.json"), `{
+  "name": "@test/auth",
+  "version": "0.0.0-test",
+  "choysum": {"moduleName":"auth","application":"auth"}
+}`)
+	makeDir(t, filepath.Join(modulesPath, "partner", "service", "models"))
+	writeFile(
+		t,
+		filepath.Join(modulesPath, "partner", "service", "models", "partner.ts"),
+		"import Role from '@/auth/service/models/role';\nexport default {};\n",
+	)
+
+	npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
+	err := TypecheckApp(context.Background(), RunOptions{
+		ModulesPath: modulesPath,
+		NpmPath:     npmPath,
+		RepoRoot:    repoRoot,
+		TmpPath:     t.TempDir(),
+	}, "partner")
+	if err == nil || !strings.Contains(err.Error(), "typecheck: cross-app service import boundary violation") {
+		t.Fatalf("TypecheckApp() error = %v, want import boundary failure", err)
+	}
+	if !strings.Contains(err.Error(), "partner -> auth") {
+		t.Fatalf("TypecheckApp() error = %v, want partner -> auth edge", err)
+	}
+}
