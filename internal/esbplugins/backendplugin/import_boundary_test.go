@@ -143,7 +143,9 @@ func TestMergeModuleApplicationsFromDisk_SkipsNonModuleDirs(t *testing.T) {
 	writeBoundaryPackageJSON(t, modulesPath, "auth", "auth")
 
 	appByModule := make(map[string]string)
-	mergeModuleApplicationsFromDisk(modulesPath, appByModule)
+	if err := mergeModuleApplicationsFromDisk(modulesPath, appByModule); err != nil {
+		t.Fatalf("mergeModuleApplicationsFromDisk() error = %v", err)
+	}
 	if _, ok := appByModule["node_modules"]; ok {
 		t.Fatal("node_modules should not be indexed")
 	}
@@ -151,9 +153,15 @@ func TestMergeModuleApplicationsFromDisk_SkipsNonModuleDirs(t *testing.T) {
 		t.Fatalf("auth app = %q", appByModule["auth"])
 	}
 
-	mergeModuleApplicationsFromDisk("", appByModule)
-	mergeModuleApplicationsFromDisk(modulesPath, nil)
-	mergeModuleApplicationsFromDisk(filepath.Join(t.TempDir(), "missing"), make(map[string]string))
+	if err := mergeModuleApplicationsFromDisk("", appByModule); err != nil {
+		t.Fatalf("empty modules path error = %v", err)
+	}
+	if err := mergeModuleApplicationsFromDisk(modulesPath, nil); err != nil {
+		t.Fatalf("nil map error = %v", err)
+	}
+	if err := mergeModuleApplicationsFromDisk(filepath.Join(t.TempDir(), "missing"), make(map[string]string)); err != nil {
+		t.Fatalf("missing modules dir should noop, got %v", err)
+	}
 }
 
 func TestModuleApplicationLookup_NilEnvDoesNotPanic(t *testing.T) {
@@ -162,8 +170,8 @@ func TestModuleApplicationLookup_NilEnvDoesNotPanic(t *testing.T) {
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Module: &meta.Module{Name: "auth", ApplicationStr: "auth"},
 	}}
-	if lookup := plugin.moduleApplicationLookup(nil, modulesPath); lookup == nil {
-		t.Fatal("expected lookup")
+	if lookup, err := plugin.moduleApplicationLookup(nil, modulesPath); err != nil || lookup == nil {
+		t.Fatalf("moduleApplicationLookup() lookup=%v err=%v", lookup, err)
 	}
 }
 
@@ -183,11 +191,14 @@ func TestModuleApplicationLookup_SessionFallback(t *testing.T) {
 	}}
 	plugin.runtimeOptions = runtimeOptions{modulesPath: modulesPath}
 
-	lookup := plugin.moduleApplicationLookup([]*parser.ParserResult{{
+	lookup, err := plugin.moduleApplicationLookup([]*parser.ParserResult{{
 		Imports: map[string]*parser.Import{
 			"X": {ModuleSpecPath: filepath.Join(modulesPath, "session_only", "service", "models", "x")},
 		},
 	}}, modulesPath)
+	if err != nil {
+		t.Fatalf("moduleApplicationLookup() error = %v", err)
+	}
 	if app, ok := lookup("session_only"); !ok || app != "session_app" {
 		t.Fatalf("session lookup session_only = %q ok=%v", app, ok)
 	}
@@ -271,7 +282,10 @@ func TestModuleApplicationLookup_SkipsSessionWhenDiskAlreadyIndexed(t *testing.T
 		Module: &meta.Module{Name: "auth", Path: filepath.Join(modulesPath, "auth"), ApplicationStr: "auth"},
 	}}
 	plugin.runtimeOptions = runtimeOptions{modulesPath: modulesPath}
-	lookup := plugin.moduleApplicationLookup(nil, modulesPath)
+	lookup, err := plugin.moduleApplicationLookup(nil, modulesPath)
+	if err != nil {
+		t.Fatalf("moduleApplicationLookup() error = %v", err)
+	}
 	if app, ok := lookup("auth"); !ok || app != "auth" {
 		t.Fatalf("disk application should win, got %q ok=%v", app, ok)
 	}
@@ -287,7 +301,9 @@ func TestMergeModuleApplicationsFromDisk_SkipsInvalidPackageJSON(t *testing.T) {
 		t.Fatalf("WriteFile: %v", err)
 	}
 	appByModule := make(map[string]string)
-	mergeModuleApplicationsFromDisk(modulesPath, appByModule)
+	if err := mergeModuleApplicationsFromDisk(modulesPath, appByModule); err == nil {
+		t.Fatal("expected invalid package.json decode error")
+	}
 	if len(appByModule) != 0 {
 		t.Fatalf("expected no entries, got %#v", appByModule)
 	}
@@ -324,11 +340,14 @@ func TestModuleApplicationLookup_SessionFillsMissingPackageApplication(t *testin
 	}}
 	plugin.runtimeOptions = runtimeOptions{modulesPath: modulesPath}
 
-	lookup := plugin.moduleApplicationLookup([]*parser.ParserResult{{
+	lookup, err := plugin.moduleApplicationLookup([]*parser.ParserResult{{
 		Imports: map[string]*parser.Import{
 			"Base": {ModuleSpecPath: filepath.Join(modulesPath, "enterprise_module", "service", "models", "base")},
 		},
 	}}, modulesPath)
+	if err != nil {
+		t.Fatalf("moduleApplicationLookup() error = %v", err)
+	}
 	if app, ok := lookup("enterprise_module"); !ok || app != "enterprise" {
 		t.Fatalf("enterprise_module app = %q ok=%v, want enterprise from session", app, ok)
 	}
@@ -349,7 +368,9 @@ func TestMergeModuleApplicationsFromDisk_SkipsImplicitPackageFallback(t *testing
 		t.Fatalf("WriteFile: %v", err)
 	}
 	appByModule := make(map[string]string)
-	mergeModuleApplicationsFromDisk(modulesPath, appByModule)
+	if err := mergeModuleApplicationsFromDisk(modulesPath, appByModule); err != nil {
+		t.Fatalf("mergeModuleApplicationsFromDisk() error = %v", err)
+	}
 	if _, ok := appByModule["enterprise_module"]; ok {
 		t.Fatalf("implicit package fallback should not populate appByModule: %#v", appByModule)
 	}
@@ -374,11 +395,14 @@ func TestModuleApplicationLookup_IgnoresSessionRowsWithEmptyFields(t *testing.T)
 		Module: &meta.Module{Name: "auth", Path: filepath.Join(modulesPath, "auth"), ApplicationStr: "auth"},
 	}}
 	plugin.runtimeOptions = runtimeOptions{modulesPath: modulesPath}
-	lookup := plugin.moduleApplicationLookup([]*parser.ParserResult{{
+	lookup, err := plugin.moduleApplicationLookup([]*parser.ParserResult{{
 		Imports: map[string]*parser.Import{
 			"X": {ModuleSpecPath: filepath.Join(modulesPath, "blank_app", "service", "models", "x")},
 		},
 	}}, modulesPath)
+	if err != nil {
+		t.Fatalf("moduleApplicationLookup() error = %v", err)
+	}
 	if app, ok := lookup("blank_app"); !ok || app != "blank_app" {
 		t.Fatalf("blank_app fallback = %q ok=%v", app, ok)
 	}
@@ -393,11 +417,46 @@ func TestMergeModuleApplicationsFromDisk_SkipsFilesAndReadDirError(t *testing.T)
 		t.Fatalf("WriteFile: %v", err)
 	}
 	appByModule := make(map[string]string)
-	mergeModuleApplicationsFromDisk(modulesPath, appByModule)
+	if err := mergeModuleApplicationsFromDisk(modulesPath, appByModule); err != nil {
+		t.Fatalf("mergeModuleApplicationsFromDisk() error = %v", err)
+	}
 	if len(appByModule) != 0 {
 		t.Fatalf("expected no entries, got %#v", appByModule)
 	}
-	mergeModuleApplicationsFromDisk(filepath.Join(t.TempDir(), "missing"), make(map[string]string))
+	if err := mergeModuleApplicationsFromDisk(filepath.Join(t.TempDir(), "missing"), make(map[string]string)); err != nil {
+		t.Fatalf("missing modules dir should noop, got %v", err)
+	}
+}
+
+func TestMergeModuleApplicationsFromDisk_ReadDirOnFile(t *testing.T) {
+	filePath := filepath.Join(t.TempDir(), "not-a-dir")
+	if err := os.WriteFile(filePath, []byte("x"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if err := mergeModuleApplicationsFromDisk(filePath, make(map[string]string)); err == nil {
+		t.Fatal("expected read dir error for file path")
+	}
+}
+
+func TestEnforceServiceImportBoundary_LookupBuildFailure(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	dir := filepath.Join(modulesPath, "broken")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte("{"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
+		Module: &meta.Module{Name: "auth", Path: filepath.Join(modulesPath, "auth"), ApplicationStr: "auth"},
+	}}
+	plugin.runtimeOptions = runtimeOptions{modulesPath: modulesPath}
+
+	err := plugin.enforceServiceImportBoundary(nil)
+	if err == nil || !strings.Contains(err.Error(), "decode broken package.json") {
+		t.Fatalf("enforceServiceImportBoundary() error = %v, want lookup build failure", err)
+	}
 }
 
 func writeBoundaryPackageJSON(t *testing.T, modulesPath, moduleName, application string) {

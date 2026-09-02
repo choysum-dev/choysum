@@ -157,3 +157,27 @@ void state;
 		t.Fatalf("unexpected default export module spec path: %s", defaultExport.ModuleSpecPath)
 	}
 }
+
+func TestVueParser_ParseDynamicImportsFromScriptBlocks(t *testing.T) {
+	runtimeScope := newVueParserTestScope()
+	module := &meta.Module{Path: "/virtual/modules/auth", ApplicationStr: "auth"}
+	p := NewVueParser(runtimeScope, module)
+
+	path := "/virtual/modules/auth/web/views/DynamicView.vue"
+	content := `<template><div /></template>
+<script setup lang="ts">
+const mod = await import('@/meta/service/models/ui_resource');
+void mod;
+</script>`
+
+	r, err := p.Parse(map[string]string{"@/*": "/virtual/modules/*"}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	if len(r.DynamicImports) != 1 {
+		t.Fatalf("DynamicImports len = %d, want 1", len(r.DynamicImports))
+	}
+	if got := r.DynamicImports[0].ModuleSpecPath; got != "/virtual/modules/meta/service/models/ui_resource" {
+		t.Fatalf("ModuleSpecPath = %q", got)
+	}
+}

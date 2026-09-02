@@ -29,6 +29,10 @@ func mergeExports(dst map[string]*parser.Export, src map[string]*parser.Export) 
 	tsgoctx.MergeExports(dst, src)
 }
 
+func mergeDynamicImports(dst []*parser.Import, src []*parser.Import) []*parser.Import {
+	return tsgoctx.MergeDynamicImports(dst, src)
+}
+
 func exportDeclarationName(stmt *tsast.Node) string {
 	return tsgoctx.ExportDeclarationName(stmt)
 }

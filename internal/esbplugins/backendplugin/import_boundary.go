@@ -10,6 +10,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/module/policy"
 	"github.com/choysum-dev/choysum/internal/parser"
 	"github.com/choysum-dev/choysum/pkg/meta"
+	xfmt "golang.org/x/exp/errors/fmt"
 )
 
 func (p *BackendPlugin) enforceServiceImportBoundary(parserResults []*parser.ParserResult) error {
@@ -22,7 +23,10 @@ func (p *BackendPlugin) enforceServiceImportBoundary(parserResults []*parser.Par
 	}
 
 	runtimeOptions := p.resolvedRuntimeOptions()
-	lookup := p.moduleApplicationLookup(parserResults, runtimeOptions.modulesPath)
+	lookup, err := p.moduleApplicationLookup(parserResults, runtimeOptions.modulesPath)
+	if err != nil {
+		return err
+	}
 	sourceApp := resolveSourceApplication(p.Module, runtimeOptions.modulesPath, lookup)
 	if sourceApp == "" {
 		return nil
@@ -74,9 +78,11 @@ func readModuleApplicationFromExistingPackageJSON(modulesPath, moduleName string
 	return strings.TrimSpace(app), true
 }
 
-func (p *BackendPlugin) moduleApplicationLookup(parserResults []*parser.ParserResult, modulesPath string) policy.ModuleApplicationLookup {
+func (p *BackendPlugin) moduleApplicationLookup(parserResults []*parser.ParserResult, modulesPath string) (policy.ModuleApplicationLookup, error) {
 	appByModule := make(map[string]string)
-	mergeModuleApplicationsFromDisk(modulesPath, appByModule)
+	if err := mergeModuleApplicationsFromDisk(modulesPath, appByModule); err != nil {
+		return nil, err
+	}
 
 	moduleNames := make(map[string]struct{})
 	for name := range appByModule {
@@ -116,17 +122,20 @@ func (p *BackendPlugin) moduleApplicationLookup(parserResults []*parser.ParserRe
 		}
 	}
 
-	return policy.ModuleApplicationLookupWithDefault(policy.ModuleApplicationLookupFromMap(appByModule))
+	return policy.ModuleApplicationLookupWithDefault(policy.ModuleApplicationLookupFromMap(appByModule)), nil
 }
 
-func mergeModuleApplicationsFromDisk(modulesPath string, appByModule map[string]string) {
+func mergeModuleApplicationsFromDisk(modulesPath string, appByModule map[string]string) error {
 	modulesPath = strings.TrimSpace(modulesPath)
 	if modulesPath == "" || appByModule == nil {
-		return
+		return nil
 	}
 	entries, err := os.ReadDir(modulesPath)
 	if err != nil {
-		return
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return xfmt.Errorf("read modules dir: %w", err)
 	}
 	for _, entry := range entries {
 		if !entry.IsDir() {
@@ -137,9 +146,13 @@ func mergeModuleApplicationsFromDisk(modulesPath string, appByModule map[string]
 			continue
 		}
 		app, ok, err := policy.ReadExplicitModuleApplicationFromPackageJSON(modulesPath, name)
-		if err != nil || !ok || strings.TrimSpace(app) == "" {
+		if err != nil {
+			return err
+		}
+		if !ok || strings.TrimSpace(app) == "" {
 			continue
 		}
 		appByModule[name] = strings.TrimSpace(app)
 	}
+	return nil
 }

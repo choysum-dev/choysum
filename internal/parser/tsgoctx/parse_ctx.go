@@ -15,12 +15,13 @@ import (
 )
 
 type ParseCtx struct {
-	Path      string
-	PathAlias map[string]string
-	Source    *tsast.SourceFile
-	Imports   map[string]*parser.Import
-	Exports   map[string]*parser.Export
-	lineMap   []tscore.TextPos
+	Path           string
+	PathAlias      map[string]string
+	Source         *tsast.SourceFile
+	Imports        map[string]*parser.Import
+	Exports        map[string]*parser.Export
+	DynamicImports []*parser.Import
+	lineMap        []tscore.TextPos
 }
 
 func Parse(pathAlias map[string]string, path string, content string) (*ParseCtx, error) {
@@ -71,6 +72,8 @@ func ParseWithKind(pathAlias map[string]string, path string, content string, for
 		}
 		ctx.parseExport(stmt)
 	}
+
+	ctx.collectDynamicImports()
 
 	return ctx, nil
 }
@@ -365,4 +368,11 @@ func MergeExports(dst map[string]*parser.Export, src map[string]*parser.Export) 
 		}
 		dst[k] = v
 	}
+}
+
+func MergeDynamicImports(dst []*parser.Import, src []*parser.Import) []*parser.Import {
+	if len(src) == 0 {
+		return dst
+	}
+	return append(dst, src...)
 }

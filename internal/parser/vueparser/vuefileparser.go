@@ -29,6 +29,7 @@ func (p *vueFileParser) parseScriptBlock(path string, scriptContent string, pars
 	}
 	mergeImports(parserResult.Imports, ctx.Imports)
 	mergeExports(parserResult.Exports, ctx.Exports)
+	parserResult.DynamicImports = mergeDynamicImports(parserResult.DynamicImports, ctx.DynamicImports)
 
 	uiDecls, uiIssues := collectUiResourceDecls(path, scriptContent)
 	parserResult.UiResourceDecls = append(parserResult.UiResourceDecls, uiDecls...)

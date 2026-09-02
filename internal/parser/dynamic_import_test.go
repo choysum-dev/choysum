@@ -43,7 +43,7 @@ const local = import('./local_probe');
 }
 
 func TestImportModuleSpecifierFromExpression_NonLiteral(t *testing.T) {
-	if got := importModuleSpecifierFromExpression(nil); got != "" {
+	if got := ImportModuleSpecifierFromExpression(nil); got != "" {
 		t.Fatalf("nil arg = %q", got)
 	}
 }
@@ -54,19 +54,19 @@ func TestImportCallIsTypeOnly(t *testing.T) {
 	if call == nil {
 		t.Fatal("expected import() call node")
 	}
-	if importCallIsTypeOnly(call) {
+	if ImportCallIsTypeOnly(call) {
 		t.Fatal("runtime import() should not be type-only")
 	}
-	if importCallIsTypeOnly(nil) {
+	if ImportCallIsTypeOnly(nil) {
 		t.Fatal("nil call should not be type-only")
 	}
 
 	typeQuery := &tsast.Node{Kind: tsast.KindTypeQuery}
-	if !importCallIsTypeOnly(&tsast.Node{Kind: tsast.KindCallExpression, Parent: typeQuery}) {
+	if !ImportCallIsTypeOnly(&tsast.Node{Kind: tsast.KindCallExpression, Parent: typeQuery}) {
 		t.Fatal("TypeQuery parent should mark type-only")
 	}
 	importType := &tsast.Node{Kind: tsast.KindImportType}
-	if !importCallIsTypeOnly(&tsast.Node{Kind: tsast.KindCallExpression, Parent: importType}) {
+	if !ImportCallIsTypeOnly(&tsast.Node{Kind: tsast.KindCallExpression, Parent: importType}) {
 		t.Fatal("ImportType parent should mark type-only")
 	}
 }
@@ -131,6 +131,18 @@ func TestImportModuleSpecifierFromExpression_DefaultBranch(t *testing.T) {
 	}
 	if len(p.DynamicImports) != 0 {
 		t.Fatalf("non-literal dynamic import len = %d, want 0", len(p.DynamicImports))
+	}
+}
+
+func TestParseDynamicImports_SkipsImportWithoutArguments(t *testing.T) {
+	path := "/virtual/modules/auth/service/tests/dynamic.ts"
+	content := `const f = import();`
+	p := &TsParser{Path: path, Content: content}
+	if err := p.ParseImport(nil); err != nil {
+		t.Fatalf("ParseImport() error = %v", err)
+	}
+	if len(p.DynamicImports) != 0 {
+		t.Fatalf("import() without args len = %d, want 0", len(p.DynamicImports))
 	}
 }
 

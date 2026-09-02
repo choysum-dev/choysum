@@ -862,3 +862,172 @@ func TestCollectModuleNamesFromParserResult_SideEffectKeys(t *testing.T) {
 		}
 	}
 }
+
+func TestCollectModuleNamesFromParserResult_DynamicImports(t *testing.T) {
+	modulesPath := testModulesPath(t)
+	names := make(map[string]struct{})
+	CollectModuleNamesFromParserResult(modulesPath, &parser.ParserResult{
+		DynamicImports: []*parser.Import{{
+			ModuleSpecPath: filepath.Join(modulesPath, "meta", "service", "models", "ui_resource"),
+		}},
+	}, names)
+	if _, ok := names["meta"]; !ok {
+		t.Fatalf("expected meta from dynamic import, got %#v", names)
+	}
+}
+
+func TestCheckServiceImportBoundary_DynamicImportViolation(t *testing.T) {
+	modulesPath := testModulesPath(t)
+	moduleRoot := filepath.Join(modulesPath, "partner")
+	source := filepath.Join(moduleRoot, "service", "models", "partner.ts")
+	authSpec := filepath.Join(modulesPath, "auth", "service", "models", "role")
+	violations := CheckServiceImportBoundary(ServiceImportBoundaryInput{
+		ModulesPath:       modulesPath,
+		ModuleRoot:        moduleRoot,
+		SourceApplication: "partner",
+		Lookup:            testLookup(),
+		ParserResults: []*parser.ParserResult{{
+			Path: source,
+			DynamicImports: []*parser.Import{{
+				ModuleSpecPath: authSpec,
+				ModuleSpecText: "@/auth/service/models/role",
+				IsDynamic:      true,
+				IsTypeOnly:     false,
+				Line:           3,
+				Column:         7,
+			}},
+		}},
+	})
+	if len(violations) != 1 || violations[0].Kind != "dynamic import" {
+		t.Fatalf("expected dynamic import violation, got %#v", violations)
+	}
+}
+
+func TestCheckServiceImportBoundary_SkipsNonServicePath(t *testing.T) {
+	modulesPath := testModulesPath(t)
+	moduleRoot := filepath.Join(modulesPath, "partner")
+	webPath := filepath.Join(moduleRoot, "web", "views", "list.ts")
+	authSpec := filepath.Join(modulesPath, "auth", "service", "models", "role")
+	violations := CheckServiceImportBoundary(ServiceImportBoundaryInput{
+		ModulesPath:       modulesPath,
+		ModuleRoot:        moduleRoot,
+		SourceApplication: "partner",
+		Lookup:            testLookup(),
+		ParserResults: []*parser.ParserResult{{
+			Path: webPath,
+			Imports: map[string]*parser.Import{
+				"Role": {ModuleSpecPath: authSpec, IsTypeOnly: false, Line: 1, Column: 1},
+			},
+		}},
+	})
+	if len(violations) != 0 {
+		t.Fatalf("expected no violations outside service tree, got %#v", violations)
+	}
+}
+
+func TestCheckServiceImportBoundary_ExportValueViolation(t *testing.T) {
+	modulesPath := testModulesPath(t)
+	moduleRoot := filepath.Join(modulesPath, "partner")
+	source := filepath.Join(moduleRoot, "service", "models", "partner.ts")
+	authSpec := filepath.Join(modulesPath, "auth", "service", "models", "role")
+	violations := CheckServiceImportBoundary(ServiceImportBoundaryInput{
+		ModulesPath:       modulesPath,
+		ModuleRoot:        moduleRoot,
+		SourceApplication: "partner",
+		Lookup:            testLookup(),
+		ParserResults: []*parser.ParserResult{{
+			Path: source,
+			Exports: map[string]*parser.Export{
+				"Role": {
+					ModuleSpecPath: authSpec,
+					IsTypeOnly:     false,
+					Line:           1,
+					Column:         1,
+				},
+			},
+		}},
+	})
+	if len(violations) != 1 || violations[0].Kind != "export" {
+		t.Fatalf("expected export violation, got %#v", violations)
+	}
+}
+
+func TestPathUnderModules_EmptySpec(t *testing.T) {
+	modulesPath := testModulesPath(t)
+	if pathUnderModules(modulesPath, "") {
+		t.Fatal("empty spec should not match")
+	}
+}
+
+func TestResolveTarget_LookupMissUsesDefault(t *testing.T) {
+	modulesPath := testModulesPath(t)
+	spec := filepath.Join(modulesPath, "auth", "service", "models", "role")
+	mod, app, ok := resolveTarget(modulesPath, spec, nil)
+	if !ok || mod != "auth" || app != "auth" {
+		t.Fatalf("resolveTarget() = %q %q ok=%v", mod, app, ok)
+	}
+}
+
+func TestBuildModuleApplicationLookupFromModulesDir_SkipsFiles(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	if err := os.MkdirAll(modulesPath, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(modulesPath, "readme.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	writeModulePackageJSON(t, modulesPath, "auth", "auth")
+	lookup, err := BuildModuleApplicationLookupFromModulesDir(modulesPath)
+	if err != nil {
+		t.Fatalf("BuildModuleApplicationLookupFromModulesDir() error = %v", err)
+	}
+	if app, ok := lookup("auth"); !ok || app != "auth" {
+		t.Fatalf("auth lookup = %q ok=%v", app, ok)
+	}
+}
+
+func TestReadExplicitModuleApplicationFromPackageJSON_EmptyModuleName(t *testing.T) {
+	if _, ok, err := ReadExplicitModuleApplicationFromPackageJSON("/modules", ""); err == nil || ok {
+		t.Fatalf("empty module name = ok=%v err=%v", ok, err)
+	}
+}
+
+func TestReadModuleApplicationFromPackageJSON_EmptyModuleName(t *testing.T) {
+	if _, err := ReadModuleApplicationFromPackageJSON("/modules", ""); err == nil {
+		t.Fatal("expected empty module name error")
+	}
+}
+
+func TestParseServiceSourceFile_EmptyPath(t *testing.T) {
+	if _, err := ParseServiceSourceFile(nil, "", []byte("export {};")); err == nil {
+		t.Fatal("expected empty path error")
+	}
+}
+
+func TestScanServiceImportBoundaryOnDisk_SkipsScanDirs(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	writeModulePackageJSON(t, modulesPath, "solo", "solo")
+	moduleRoot := filepath.Join(modulesPath, "solo")
+	serviceRoot := filepath.Join(moduleRoot, "service", "node_modules")
+	if err := os.MkdirAll(serviceRoot, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	violations, err := ScanServiceImportBoundaryOnDisk(ServiceImportBoundaryScanInput{
+		ModulesPath:       modulesPath,
+		ModuleRoot:        moduleRoot,
+		SourceApplication: "solo",
+		PathAlias:         ModulePathAliasForBoundary(modulesPath),
+	})
+	if err != nil || len(violations) != 0 {
+		t.Fatalf("skipped scan dir = violations %#v err=%v", violations, err)
+	}
+}
+
+func TestCheckServiceImportBoundaryOnDisk_EmptyInputs(t *testing.T) {
+	if err := CheckServiceImportBoundaryOnDisk("", "auth", nil); err != nil {
+		t.Fatalf("empty modules path = %v", err)
+	}
+	if err := CheckServiceImportBoundaryOnDisk("/modules", "", nil); err != nil {
+		t.Fatalf("empty module name = %v", err)
+	}
+}

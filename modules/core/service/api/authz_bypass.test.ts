@@ -101,6 +101,18 @@ test('authz_bypass: withPermissionGraphBypass returns fn result', async () => {
   }
 });
 
+test('authz_bypass: withPermissionGraphBypass noops when service state cannot init', async () => {
+  const restore = setRequest({ context: { req: null } });
+  try {
+    const got = await withPermissionGraphBypass(async () => 'null-req');
+    if (got !== 'null-req') {
+      throw new Error(`expected null-req, got ${String(got)}`);
+    }
+  } finally {
+    restore();
+  }
+});
+
 test('authz_bypass: withPermissionGraphBypass noops when req is numeric carrier', async () => {
   const restore = setRequest({ context: { req: 1 } });
   try {
