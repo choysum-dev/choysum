@@ -24,6 +24,7 @@ import (
 	internalbackendbuilder "github.com/choysum-dev/choysum/internal/module/artifact/build/backend"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
+	"github.com/choysum-dev/choysum/internal/module/policy"
 	"github.com/choysum-dev/choysum/internal/server/middleware/auth/grpcauth"
 	internalservice "github.com/choysum-dev/choysum/internal/service"
 	cov "github.com/choysum-dev/choysum/internal/testing/coverage"
@@ -1330,9 +1331,13 @@ func buildAppBundle(ctx context.Context, runtimeScope scope.Scope, jsExec jsexec
 
 	mod := &meta.Module{
 		Name:              app,
-		ApplicationStr:    app,
 		Path:              filepath.Join(runtimeOptionsFromScope(runtimeScope).modulesPath, app),
 		ServiceEntryPoint: entryPoint,
+	}
+	if application, err := policy.ReadModuleApplicationFromPackageJSON(runtimeOptionsFromScope(runtimeScope).modulesPath, app); err == nil && strings.TrimSpace(application) != "" {
+		mod.ApplicationStr = strings.TrimSpace(application)
+	} else {
+		mod.ApplicationStr = app
 	}
 
 	b := newBackendBuilderHook(runtimeScope, jsExec, mod, entryPoint, outFileName, globalName)
