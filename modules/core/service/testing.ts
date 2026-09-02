@@ -16,3 +16,8 @@ export function setTestRepository(modelCtor: TestRepositoryCtor, repository: Tes
 }
 
 export const buildRelationAliasCandidates = buildOrmRelationAliasCandidates;
+
+export {
+  invalidateAuthzCachesForUsers,
+  withPermissionGraphBypass,
+} from './testing/authz';

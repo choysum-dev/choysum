@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { getIdentity, getReadonlyCtx, getJsCtxAndReq, getOrInitReqServiceState, withBypassDepths } from '@/core/service/api/context';
+import { getIdentity, getReadonlyCtx } from '@/core/service/api/context';
 import {
   uniqStrings,
   normalizeRpcRequireKey,
@@ -16,27 +16,7 @@ import {
 // Re-export core utilities for backward compat — other auth helpers import these from this module.
 export { sortStrings, maybeId, normalizeScopeRefId, normalizeUiResourceId, parseJsonStringArray };
 
-/**
- * Execute fn with RecordRule and FieldRule bypass.
- */
-export async function withPermissionGraphBypass<T>(fn: () => Promise<T>): Promise<T> {
-  const { req } = getJsCtxAndReq();
-  if (!req) return await fn();
-
-  const state = getOrInitReqServiceState(req);
-  if (!state) return await fn();
-
-  const hadCompanyMode = Object.prototype.hasOwnProperty.call(req, 'companyMode');
-  const prevCompanyMode = req.companyMode;
-  req.companyMode = 'skip';
-
-  try {
-    return await withBypassDepths(state, ['recordRuleBypassDepth', 'fieldRuleBypassDepth'], fn);
-  } finally {
-    if (hadCompanyMode) req.companyMode = prevCompanyMode;
-    else delete req.companyMode;
-  }
-}
+export { withPermissionGraphBypass } from '@/core/service/api/authz_bypass';
 
 /**
  * Read active and enabled company scope from request overrides or identity metadata.
