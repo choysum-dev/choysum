@@ -9,6 +9,7 @@ type TipCallOptions = { signal?: AbortSignal };
 type TipHubClient = {
   subscribeThread(req: { model: string; resId: string }, options?: TipCallOptions): AsyncIterable<Tip>;
   subscribeNotifications(req?: object, options?: TipCallOptions): AsyncIterable<Tip>;
+  subscribeModuleOp(req: { jobId: string }, options?: TipCallOptions): AsyncIterable<Tip>;
 };
 
 const tipHubClient = CreateWebClient(TipHub);
@@ -30,6 +31,10 @@ export function subscribeThread(model: string, resId: string, signal?: AbortSign
 
 export function subscribeNotifications(signal?: AbortSignal): AsyncIterable<Tip> {
   return tipHub().subscribeNotifications({}, callOptions(signal));
+}
+
+export function subscribeModuleOp(jobId: string, signal?: AbortSignal): AsyncIterable<Tip> {
+  return tipHub().subscribeModuleOp({ jobId }, callOptions(signal));
 }
 
 export async function onTips(

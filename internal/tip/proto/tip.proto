@@ -26,7 +26,14 @@ message SubscribeThreadReq {
 
 message SubscribeNotificationsReq {}
 
+message SubscribeModuleOpReq {
+  string job_id = 1;
+}
+
 service TipHub {
   rpc SubscribeThread(SubscribeThreadReq) returns (stream Tip);
   rpc SubscribeNotifications(SubscribeNotificationsReq) returns (stream Tip);
+  // SubscribeModuleOp streams tips for one Meta module-op job.
+  // Tip is best-effort; clients re-read status via MetaModule.GetOpStatus.
+  rpc SubscribeModuleOp(SubscribeModuleOpReq) returns (stream Tip);
 }

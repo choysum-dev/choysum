@@ -13,16 +13,20 @@ const mocks = vi.hoisted(() => ({
   subscribeNotifications: vi.fn(async function* () {
     yield { topic: 'message.notification.user', userId: 'u1' };
   }),
+  subscribeModuleOp: vi.fn(async function* () {
+    yield { topic: 'meta.module_op.changed', resId: 'job-1', userId: 'u1' };
+  }),
 }));
 
 vi.mock('../rpc/client_factory', () => ({
   CreateWebClient: () => () => ({
     subscribeThread: mocks.subscribeThread,
     subscribeNotifications: mocks.subscribeNotifications,
+    subscribeModuleOp: mocks.subscribeModuleOp,
   }),
 }));
 
-import { onTips, subscribeNotifications, subscribeThread } from './client';
+import { onTips, subscribeModuleOp, subscribeNotifications, subscribeThread } from './client';
 
 describe('core/web tip TipHub client', () => {
   it('subscribes through CreateWebClient and yields tips', async () => {
@@ -34,20 +38,31 @@ describe('core/web tip TipHub client', () => {
     await onTips(subscribeNotifications(signal), async (tip) => {
       tips.push(tip);
     });
+    await onTips(subscribeModuleOp('job-1', signal), async (tip) => {
+      tips.push(tip);
+    });
 
     expect(mocks.subscribeThread).toHaveBeenCalledWith({ model: 'message.thread', resId: '42' }, { signal });
     expect(mocks.subscribeNotifications).toHaveBeenCalledWith({}, { signal });
-    expect(tips.map((tip) => tip.topic)).toEqual(['message.thread.changed', 'message.notification.user']);
+    expect(mocks.subscribeModuleOp).toHaveBeenCalledWith({ jobId: 'job-1' }, { signal });
+    expect(tips.map((tip) => tip.topic)).toEqual([
+      'message.thread.changed',
+      'message.notification.user',
+      'meta.module_op.changed',
+    ]);
     expect(tips[0]?.resId).toBe('42');
     expect(tips[1]?.userId).toBe('u1');
+    expect(tips[2]?.resId).toBe('job-1');
   });
 
   it('omits CallOptions when no abort signal is provided', async () => {
     await onTips(subscribeThread('message.thread', '7'), async () => {});
     await onTips(subscribeNotifications(), async () => {});
+    await onTips(subscribeModuleOp('job-7'), async () => {});
 
     expect(mocks.subscribeThread).toHaveBeenLastCalledWith({ model: 'message.thread', resId: '7' }, undefined);
     expect(mocks.subscribeNotifications).toHaveBeenLastCalledWith({}, undefined);
+    expect(mocks.subscribeModuleOp).toHaveBeenLastCalledWith({ jobId: 'job-7' }, undefined);
   });
 
   it('stops onTips when the abort signal is already aborted', async () => {

@@ -668,3 +668,145 @@ func TestPayloadStringAndEventToTip(t *testing.T) {
 		t.Fatal("non-string payload value should be empty")
 	}
 }
+
+func TestSubscribeModuleOpFiltersAndCancels(t *testing.T) {
+	inner := inprocess.NewInProcessBus()
+	subscribed := make(chan struct{}, 1)
+	events := &subscribedBus{inner: inner, subscribed: subscribed}
+	h := New(events)
+
+	ctx, cancel := context.WithCancel(identityCtx("user-1"))
+	defer cancel()
+	stream := &testStream{ctx: ctx, sent: make(chan struct{}, 8)}
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- h.SubscribeModuleOp(&tippb.SubscribeModuleOpReq{JobId: "job-1"}, stream)
+	}()
+	waitSubscribed(t, subscribed)
+
+	if err := inner.Publish(context.Background(), bus.Event{
+		Topic:  bus.TopicMetaModuleOpChanged,
+		Source: "mismatch-job",
+		Payload: map[string]any{
+			"jobId":  "other",
+			"resId":  "other",
+			"userId": "user-1",
+		},
+	}); err != nil {
+		t.Fatalf("Publish mismatch job: %v", err)
+	}
+	if err := inner.Publish(context.Background(), bus.Event{
+		Topic:  bus.TopicMetaModuleOpChanged,
+		Source: "mismatch-user",
+		Payload: map[string]any{
+			"jobId":  "job-1",
+			"resId":  "job-1",
+			"userId": "user-2",
+		},
+	}); err != nil {
+		t.Fatalf("Publish mismatch user: %v", err)
+	}
+	if err := inner.Publish(context.Background(), bus.Event{
+		Topic:  bus.TopicMetaModuleOpChanged,
+		Source: "match",
+		At:     time.UnixMilli(1_700_000_000_100).UTC(),
+		Payload: map[string]any{
+			"model":  "task.Job",
+			"jobId":  "job-1",
+			"resId":  "job-1",
+			"userId": "user-1",
+		},
+	}); err != nil {
+		t.Fatalf("Publish match: %v", err)
+	}
+
+	select {
+	case <-stream.sent:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for matching tip")
+	}
+
+	got := stream.snapshot()
+	if len(got) != 1 {
+		t.Fatalf("tips = %#v, want 1 matching tip", got)
+	}
+	if got[0].GetTopic() != bus.TopicMetaModuleOpChanged || got[0].GetSource() != "match" {
+		t.Fatalf("unexpected tip metadata: %#v", got[0])
+	}
+	if got[0].GetResId() != "job-1" || got[0].GetUserId() != "user-1" || got[0].GetModel() != "task.Job" {
+		t.Fatalf("unexpected tip locators: %#v", got[0])
+	}
+
+	cancel()
+	select {
+	case err := <-errCh:
+		if status.Code(err) != codes.Canceled {
+			t.Fatalf("SubscribeModuleOp after cancel: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for canceled subscribe")
+	}
+
+	if err := inner.Publish(context.Background(), bus.Event{
+		Topic: bus.TopicMetaModuleOpChanged,
+		Payload: map[string]any{
+			"jobId":  "job-1",
+			"userId": "user-1",
+		},
+	}); err != nil {
+		t.Fatalf("Publish after cancel: %v", err)
+	}
+	if got := stream.snapshot(); len(got) != 1 {
+		t.Fatalf("tips after cancel = %#v, want no further Send", got)
+	}
+}
+
+func TestSubscribeModuleOpMatchesResIdWhenJobIdMissing(t *testing.T) {
+	inner := inprocess.NewInProcessBus()
+	subscribed := make(chan struct{}, 1)
+	events := &subscribedBus{inner: inner, subscribed: subscribed}
+	h := New(events)
+
+	ctx, cancel := context.WithCancel(identityCtx("user-9"))
+	defer cancel()
+	stream := &testStream{ctx: ctx, sent: make(chan struct{}, 4)}
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- h.SubscribeModuleOp(&tippb.SubscribeModuleOpReq{JobId: "job-res"}, stream)
+	}()
+	waitSubscribed(t, subscribed)
+
+	if err := inner.Publish(context.Background(), bus.Event{
+		Topic:  bus.TopicMetaModuleOpChanged,
+		Source: "res-only",
+		Payload: map[string]any{
+			"resId":  "job-res",
+			"userId": "user-9",
+		},
+	}); err != nil {
+		t.Fatalf("Publish: %v", err)
+	}
+	select {
+	case <-stream.sent:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for resId tip")
+	}
+	cancel()
+	waitStreamErr(t, errCh, codes.Canceled)
+}
+
+func TestSubscribeModuleOpInvalidArgument(t *testing.T) {
+	h := New(inprocess.NewInProcessBus())
+	err := h.SubscribeModuleOp(&tippb.SubscribeModuleOpReq{}, &testStream{ctx: identityCtx("user-1")})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("empty job_id: %v", err)
+	}
+}
+
+func TestSubscribeModuleOpUnauthenticated(t *testing.T) {
+	h := New(inprocess.NewInProcessBus())
+	err := h.SubscribeModuleOp(&tippb.SubscribeModuleOpReq{JobId: "job-1"}, &testStream{ctx: context.Background()})
+	if status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("unauthenticated: %v", err)
+	}
+}

@@ -7,6 +7,7 @@ import { createServiceByModel } from '@/core/service/rpc';
 import type JobModel from '@/task/service/models/job';
 import { getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
 import { _t, _lt } from '../i18n';
+import { publishModuleOpChangedTip } from '../tips';
 import MetaApplication from './application';
 import MetaComponent from './component';
 import MetaModel from './model';
@@ -294,10 +295,11 @@ export default class MetaModule extends BaseModel {
 
     const payload: Record<string, unknown> = { moduleName: name, operatorUserId: userId, ...(extraPayload || {}) };
     const job = await Job.EnqueueJob('meta', method, payload, userId, userId, undefined, 0, 0);
+    const jobId = String((job as any)?.Id || '').trim();
 
-    if (forceLockConflict && (job as any)?.Id) {
+    if (forceLockConflict && jobId) {
       const retryAfterMs = 2500;
-      await (Job as any).UpdateById((job as any).Id, {
+      await (Job as any).UpdateById(jobId, {
         Status: 'failed',
         RunAfter: new Date(Date.now() + retryAfterMs),
         LastErrorJson: {
@@ -307,9 +309,12 @@ export default class MetaModule extends BaseModel {
           details: { retry_after_ms: retryAfterMs },
         },
       });
+      await publishModuleOpChangedTip({ jobId, userId, source: 'meta.MetaModule.leaseConflict' });
+    } else if (jobId) {
+      await publishModuleOpChangedTip({ jobId, userId });
     }
 
-    return String((job as any)?.Id || '').trim();
+    return jobId;
   }
 
   static async GetOpStatus(jobId: string): Promise<OpStatusResp> {

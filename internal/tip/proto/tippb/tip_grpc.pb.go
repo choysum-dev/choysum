@@ -24,6 +24,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	TipHub_SubscribeThread_FullMethodName        = "/tip.TipHub/SubscribeThread"
 	TipHub_SubscribeNotifications_FullMethodName = "/tip.TipHub/SubscribeNotifications"
+	TipHub_SubscribeModuleOp_FullMethodName      = "/tip.TipHub/SubscribeModuleOp"
 )
 
 // TipHubClient is the client API for TipHub service.
@@ -32,6 +33,9 @@ const (
 type TipHubClient interface {
 	SubscribeThread(ctx context.Context, in *SubscribeThreadReq, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Tip], error)
 	SubscribeNotifications(ctx context.Context, in *SubscribeNotificationsReq, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Tip], error)
+	// SubscribeModuleOp streams tips for one Meta module-op job.
+	// Tip is best-effort; clients re-read status via MetaModule.GetOpStatus.
+	SubscribeModuleOp(ctx context.Context, in *SubscribeModuleOpReq, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Tip], error)
 }
 
 type tipHubClient struct {
@@ -80,12 +84,34 @@ func (c *tipHubClient) SubscribeNotifications(ctx context.Context, in *Subscribe
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type TipHub_SubscribeNotificationsClient = grpc.ServerStreamingClient[Tip]
 
+func (c *tipHubClient) SubscribeModuleOp(ctx context.Context, in *SubscribeModuleOpReq, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Tip], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &TipHub_ServiceDesc.Streams[2], TipHub_SubscribeModuleOp_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[SubscribeModuleOpReq, Tip]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type TipHub_SubscribeModuleOpClient = grpc.ServerStreamingClient[Tip]
+
 // TipHubServer is the server API for TipHub service.
 // All implementations must embed UnimplementedTipHubServer
 // for forward compatibility.
 type TipHubServer interface {
 	SubscribeThread(*SubscribeThreadReq, grpc.ServerStreamingServer[Tip]) error
 	SubscribeNotifications(*SubscribeNotificationsReq, grpc.ServerStreamingServer[Tip]) error
+	// SubscribeModuleOp streams tips for one Meta module-op job.
+	// Tip is best-effort; clients re-read status via MetaModule.GetOpStatus.
+	SubscribeModuleOp(*SubscribeModuleOpReq, grpc.ServerStreamingServer[Tip]) error
 	mustEmbedUnimplementedTipHubServer()
 }
 
@@ -101,6 +127,9 @@ func (UnimplementedTipHubServer) SubscribeThread(*SubscribeThreadReq, grpc.Serve
 }
 func (UnimplementedTipHubServer) SubscribeNotifications(*SubscribeNotificationsReq, grpc.ServerStreamingServer[Tip]) error {
 	return status.Error(codes.Unimplemented, "method SubscribeNotifications not implemented")
+}
+func (UnimplementedTipHubServer) SubscribeModuleOp(*SubscribeModuleOpReq, grpc.ServerStreamingServer[Tip]) error {
+	return status.Error(codes.Unimplemented, "method SubscribeModuleOp not implemented")
 }
 func (UnimplementedTipHubServer) mustEmbedUnimplementedTipHubServer() {}
 func (UnimplementedTipHubServer) testEmbeddedByValue()                {}
@@ -145,6 +174,17 @@ func _TipHub_SubscribeNotifications_Handler(srv interface{}, stream grpc.ServerS
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type TipHub_SubscribeNotificationsServer = grpc.ServerStreamingServer[Tip]
 
+func _TipHub_SubscribeModuleOp_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SubscribeModuleOpReq)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(TipHubServer).SubscribeModuleOp(m, &grpc.GenericServerStream[SubscribeModuleOpReq, Tip]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type TipHub_SubscribeModuleOpServer = grpc.ServerStreamingServer[Tip]
+
 // TipHub_ServiceDesc is the grpc.ServiceDesc for TipHub service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -161,6 +201,11 @@ var TipHub_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "SubscribeNotifications",
 			Handler:       _TipHub_SubscribeNotifications_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "SubscribeModuleOp",
+			Handler:       _TipHub_SubscribeModuleOp_Handler,
 			ServerStreams: true,
 		},
 	},
