@@ -16,3 +16,7 @@ const TopicMessageNotificationUser = "message.notification.user"
 // TopicAuditFieldChangeAppended notifies a Form Chatter thread that field-change
 // history was appended for a business record (best-effort; Unary remains authoritative).
 const TopicAuditFieldChangeAppended = "audit.field_change.appended"
+
+// TopicMetaModuleOpChanged notifies that a Meta module install/uninstall/upgrade
+// job status changed. Tip is best-effort; Unary GetOpStatus remains authoritative.
+const TopicMetaModuleOpChanged = "meta.module_op.changed"

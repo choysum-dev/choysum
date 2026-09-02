@@ -206,6 +206,50 @@ func (*SubscribeNotificationsReq) Descriptor() ([]byte, []int) {
 	return file_tip_proto_rawDescGZIP(), []int{2}
 }
 
+type SubscribeModuleOpReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	JobId         string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SubscribeModuleOpReq) Reset() {
+	*x = SubscribeModuleOpReq{}
+	mi := &file_tip_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SubscribeModuleOpReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SubscribeModuleOpReq) ProtoMessage() {}
+
+func (x *SubscribeModuleOpReq) ProtoReflect() protoreflect.Message {
+	mi := &file_tip_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SubscribeModuleOpReq.ProtoReflect.Descriptor instead.
+func (*SubscribeModuleOpReq) Descriptor() ([]byte, []int) {
+	return file_tip_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *SubscribeModuleOpReq) GetJobId() string {
+	if x != nil {
+		return x.JobId
+	}
+	return ""
+}
+
 var File_tip_proto protoreflect.FileDescriptor
 
 const file_tip_proto_rawDesc = "" +
@@ -224,10 +268,13 @@ const file_tip_proto_rawDesc = "" +
 	"\x12SubscribeThreadReq\x12\x14\n" +
 	"\x05model\x18\x01 \x01(\tR\x05model\x12\x15\n" +
 	"\x06res_id\x18\x02 \x01(\tR\x05resId\"\x1b\n" +
-	"\x19SubscribeNotificationsReq2\x86\x01\n" +
+	"\x19SubscribeNotificationsReq\"-\n" +
+	"\x14SubscribeModuleOpReq\x12\x15\n" +
+	"\x06job_id\x18\x01 \x01(\tR\x05jobId2\xc2\x01\n" +
 	"\x06TipHub\x126\n" +
 	"\x0fSubscribeThread\x12\x17.tip.SubscribeThreadReq\x1a\b.tip.Tip0\x01\x12D\n" +
-	"\x16SubscribeNotifications\x12\x1e.tip.SubscribeNotificationsReq\x1a\b.tip.Tip0\x01B?Z=github.com/choysum-dev/choysum/internal/tip/proto/tippb;tippbb\x06proto3"
+	"\x16SubscribeNotifications\x12\x1e.tip.SubscribeNotificationsReq\x1a\b.tip.Tip0\x01\x12:\n" +
+	"\x11SubscribeModuleOp\x12\x19.tip.SubscribeModuleOpReq\x1a\b.tip.Tip0\x01B?Z=github.com/choysum-dev/choysum/internal/tip/proto/tippb;tippbb\x06proto3"
 
 var (
 	file_tip_proto_rawDescOnce sync.Once
@@ -241,19 +288,22 @@ func file_tip_proto_rawDescGZIP() []byte {
 	return file_tip_proto_rawDescData
 }
 
-var file_tip_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_tip_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_tip_proto_goTypes = []any{
 	(*Tip)(nil),                       // 0: tip.Tip
 	(*SubscribeThreadReq)(nil),        // 1: tip.SubscribeThreadReq
 	(*SubscribeNotificationsReq)(nil), // 2: tip.SubscribeNotificationsReq
+	(*SubscribeModuleOpReq)(nil),      // 3: tip.SubscribeModuleOpReq
 }
 var file_tip_proto_depIdxs = []int32{
 	1, // 0: tip.TipHub.SubscribeThread:input_type -> tip.SubscribeThreadReq
 	2, // 1: tip.TipHub.SubscribeNotifications:input_type -> tip.SubscribeNotificationsReq
-	0, // 2: tip.TipHub.SubscribeThread:output_type -> tip.Tip
-	0, // 3: tip.TipHub.SubscribeNotifications:output_type -> tip.Tip
-	2, // [2:4] is the sub-list for method output_type
-	0, // [0:2] is the sub-list for method input_type
+	3, // 2: tip.TipHub.SubscribeModuleOp:input_type -> tip.SubscribeModuleOpReq
+	0, // 3: tip.TipHub.SubscribeThread:output_type -> tip.Tip
+	0, // 4: tip.TipHub.SubscribeNotifications:output_type -> tip.Tip
+	0, // 5: tip.TipHub.SubscribeModuleOp:output_type -> tip.Tip
+	3, // [3:6] is the sub-list for method output_type
+	0, // [0:3] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -270,7 +320,7 @@ func file_tip_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tip_proto_rawDesc), len(file_tip_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

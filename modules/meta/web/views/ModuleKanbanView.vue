@@ -219,6 +219,10 @@ import { defineAction } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
+import {
+  createModuleOpProgressSession,
+  type ModuleOpStatusSnapshot,
+} from '../composables/useModuleOpProgress';
 
 defineOptions({ name: 'ModuleKanbanView' });
 
@@ -294,20 +298,9 @@ type PlanOperationResp = {
 };
 
 /**
- * Polling snapshot returned while a module action is executing.
+ * Operation status snapshot returned while a module action is executing.
  */
-type OpStatusResp = {
-  status: string;
-  summary?: any;
-  resultStatus?: 'SUCCEEDED' | 'FAILED';
-  failureKind?: 'RETRYABLE' | 'NON_RETRYABLE' | 'NONE';
-  reload_triggered?: boolean;
-  reload_failed?: boolean;
-  reload_web?: boolean;
-  retryAfterMs?: number;
-  errorDomain?: string;
-  errorCode?: string;
-};
+type OpStatusResp = ModuleOpStatusSnapshot;
 
 const dialogVisible = ref(false);
 const dialogStep = ref<'plan' | 'progress' | 'result'>('plan');
@@ -318,8 +311,31 @@ const opStatus = ref<OpStatusResp | null>(null);
 const action = ref<ModuleAction>('install');
 const targetModule = ref<ClientModelProps<MetaModuleIndex> | null>(null);
 const withDemo = ref(false);
-const pollTimer = ref<number | undefined>(undefined);
-const pollIntervalMs = ref(1000);
+
+const opProgress = createModuleOpProgressSession({
+  fetchStatus: async (jobId) => (await (moduleStore as any).GetOpStatus(jobId)) as OpStatusResp,
+  isActive: () => dialogVisible.value,
+  onStatus: (status) => {
+    opStatus.value = status;
+  },
+  onTerminal: () => {
+    dialogStep.value = 'result';
+  },
+  onTimeout: () => {
+    dialogStep.value = 'result';
+    opStatus.value = {
+      status: 'dispatching',
+      resultStatus: undefined,
+    } as OpStatusResp;
+    ElMessage.warning(_t('Job is still running in the background; refresh later'));
+  },
+  onTransientNetworkError: () => {
+    ElMessage.warning(_t('Service is restarting; status will retry automatically'));
+  },
+  onHardError: (message) => {
+    ElMessage.error(message || _t('Failed to get status'));
+  },
+});
 
 /**
  * Builds the current dialog title from the selected module action.
@@ -463,7 +479,7 @@ async function onActionClick(nextAction: ModuleAction, record: ClientModelProps<
 }
 
 /**
- * Dispatches the selected module action and starts polling its job status.
+ * Dispatches the selected module action and watches its job status (C1 tip + fallback).
  */
 async function submitOperation() {
   if (!targetModule.value) return;
@@ -476,7 +492,7 @@ async function submitOperation() {
     else if (action.value === 'uninstall') jobId = await (moduleStore as any).RequestUninstall(moduleName);
     else jobId = await (moduleStore as any).RequestUpgrade(moduleName);
     executeLoading.value = false;
-    await pollOpStatus(jobId);
+    await opProgress.watch(jobId);
   } catch (error: any) {
     executeLoading.value = false;
     dialogStep.value = 'result';
@@ -491,74 +507,6 @@ async function submitOperation() {
 }
 
 /**
- * Polls the backend operation job until a terminal state or reload request is observed.
- */
-async function pollOpStatus(jobId: string) {
-  clearPolling();
-  pollIntervalMs.value = 1000;
-  const startAt = Date.now();
-  const maxDuration = 10 * 60 * 1000;
-  let transientErrorNotified = false;
-
-  const tick = async () => {
-    if (!dialogVisible.value) return;
-    try {
-      const status = (await (moduleStore as any).GetOpStatus(jobId)) as OpStatusResp;
-      opStatus.value = status;
-      if (status?.status === 'succeeded' || status?.status === 'failed' || status?.status === 'cancelled') {
-        dialogStep.value = 'result';
-        if (status?.reload_web) {
-          window.location.reload();
-          return;
-        }
-        return;
-      }
-    } catch (error: any) {
-      const message = String(error?.message || error || '').trim();
-      const isTransient =
-        message.includes('Failed to fetch') ||
-        message.includes('NetworkError') ||
-        message.includes('ERR_CONNECTION_REFUSED') ||
-        message.includes('Load failed');
-      if (isTransient) {
-        if (!transientErrorNotified) {
-          ElMessage.warning(_t('Service is restarting; status will retry automatically'));
-          transientErrorNotified = true;
-        }
-      } else {
-        ElMessage.error(message || _t('Failed to get status'));
-      }
-    }
-
-    if (Date.now() - startAt > maxDuration) {
-      dialogStep.value = 'result';
-      opStatus.value = {
-        status: 'dispatching',
-        resultStatus: undefined,
-      } as OpStatusResp;
-      ElMessage.warning(_t('Job is still running in the background; refresh later'));
-      return;
-    }
-
-    const nextDelay = opStatus.value?.retryAfterMs ? Math.min(5000, Math.max(1000, opStatus.value.retryAfterMs)) : pollIntervalMs.value;
-    pollIntervalMs.value = Math.min(5000, pollIntervalMs.value + 500);
-    pollTimer.value = window.setTimeout(tick, nextDelay);
-  };
-
-  await tick();
-}
-
-/**
- * Clears the pending operation-status polling timer.
- */
-function clearPolling() {
-  if (pollTimer.value) {
-    window.clearTimeout(pollTimer.value);
-    pollTimer.value = undefined;
-  }
-}
-
-/**
  * Resets dialog state before a new module action starts.
  */
 function resetDialog() {
@@ -567,14 +515,14 @@ function resetDialog() {
   dialogStep.value = 'plan';
   planLoading.value = false;
   executeLoading.value = false;
-  clearPolling();
+  opProgress.stop();
 }
 
 /**
- * Stops polling when the dialog is dismissed.
+ * Stops tip/poll when the dialog is dismissed.
  */
 function onDialogClose() {
-  clearPolling();
+  opProgress.stop();
 }
 
 /**
@@ -605,7 +553,7 @@ async function onSyncIndex() {
 }
 
 onBeforeUnmount(() => {
-  clearPolling();
+  opProgress.stop();
 });
 
 /**

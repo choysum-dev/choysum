@@ -38,6 +38,7 @@ func WithBusProvider(scopeProvider jsengine.ScopeProvider) jsengine.JsEngineOpti
 		busObj.Set("topicMessageThreadChanged", jse.Ctx.String(bus.TopicMessageThreadChanged))
 		busObj.Set("topicMessageNotificationUser", jse.Ctx.String(bus.TopicMessageNotificationUser))
 		busObj.Set("topicDispatchWakeup", jse.Ctx.String(bus.TopicDispatchWakeup))
+		busObj.Set("topicMetaModuleOpChanged", jse.Ctx.String(bus.TopicMetaModuleOpChanged))
 		choysumObj.Set("bus", busObj)
 
 		globalsObj.Set("$choysum", choysumObj)

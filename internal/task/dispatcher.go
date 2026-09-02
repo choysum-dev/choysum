@@ -597,6 +597,7 @@ func (d *Dispatcher) succeedJob(db *gorm.DB, job *Job, result any) {
 		ResultHash:      sanitized.Hash,
 		ResultTruncated: sanitized.Truncated,
 	})
+	d.publishModuleOpChanged(job, "task.Dispatcher.succeedJob")
 }
 
 func (d *Dispatcher) failJob(db *gorm.DB, job *Job, errObj any, result any) {
@@ -622,6 +623,7 @@ func (d *Dispatcher) failJob(db *gorm.DB, job *Job, errObj any, result any) {
 		ResultHash:      resultSan.Hash,
 		ResultTruncated: resultSan.Truncated,
 	})
+	d.publishModuleOpChanged(job, "task.Dispatcher.failJob")
 }
 
 func (d *Dispatcher) retryJob(db *gorm.DB, job *Job, retryAfterMs int64, errObj any, source string) {
@@ -681,6 +683,7 @@ func (d *Dispatcher) retryJob(db *gorm.DB, job *Job, retryAfterMs int64, errObj 
 		ErrorHash:      errSan.Hash,
 		ErrorTruncated: errSan.Truncated,
 	})
+	d.publishModuleOpChanged(job, "task.Dispatcher.retryJob")
 	if d.interval > 0 && retryAfterMs <= d.interval.Milliseconds() {
 		d.publishWakeup("run_after")
 	}
@@ -702,6 +705,7 @@ func (d *Dispatcher) markCancelled(db *gorm.DB, job *Job, reason string) {
 		UpdatedAt:   now,
 		ErrorJSON:   errJSON,
 	})
+	d.publishModuleOpChanged(job, "task.Dispatcher.markCancelled")
 }
 
 func (d *Dispatcher) backoffMs(attempt int) int64 {

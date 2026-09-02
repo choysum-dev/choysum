@@ -24,6 +24,7 @@ const (
 	payloadKeyResID     = "resId"
 	payloadKeyMessageID = "messageId"
 	payloadKeyUserID    = "userId"
+	payloadKeyJobID     = "jobId"
 )
 
 // Hub serves TipHub server-streaming RPCs by subscribing to the host EventBus.
@@ -98,6 +99,33 @@ func (h *Hub) SubscribeNotifications(_ *tippb.SubscribeNotificationsReq, stream 
 		payloadUser := payloadString(event, payloadKeyUserID)
 		return payloadUser != "" && payloadUser == userID
 	})
+}
+
+// SubscribeModuleOp streams tips for one Meta module-op job owned by the caller.
+// Auth is pinned to the tip payload userId matching the authenticated operator;
+// job ownership is enforced by matching that userId (tips are stamped by the publisher).
+func (h *Hub) SubscribeModuleOp(req *tippb.SubscribeModuleOpReq, stream grpc.ServerStreamingServer[tippb.Tip]) error {
+	identity, err := requireIdentity(stream.Context())
+	if err != nil {
+		return err
+	}
+	jobID := strings.TrimSpace(req.GetJobId())
+	if jobID == "" {
+		return status.Error(codes.InvalidArgument, "job_id is required")
+	}
+	userID := strings.TrimSpace(identity.GetUserID())
+	match := func(event bus.Event) bool {
+		payloadJob := payloadString(event, payloadKeyJobID)
+		if payloadJob == "" {
+			payloadJob = payloadString(event, payloadKeyResID)
+		}
+		if payloadJob == "" || payloadJob != jobID {
+			return false
+		}
+		payloadUser := payloadString(event, payloadKeyUserID)
+		return payloadUser != "" && payloadUser == userID
+	}
+	return h.serve(stream, identity, []string{bus.TopicMetaModuleOpChanged}, match)
 }
 
 func (h *Hub) serve(stream grpc.ServerStreamingServer[tippb.Tip], identity auth.Identity, topics []string, match func(bus.Event) bool) error {
