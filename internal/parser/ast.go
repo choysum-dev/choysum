@@ -595,6 +595,7 @@ func (p *TsParser) ParseImport(_ any) error {
 	}
 	p.ImportsMap = ctx.imports
 	p.DynamicImports = ctx.dynamicImports
+	p.ExportsMap = ctx.exports
 	return nil
 }
 

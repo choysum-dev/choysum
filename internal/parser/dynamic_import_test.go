@@ -134,6 +134,24 @@ func TestImportModuleSpecifierFromExpression_DefaultBranch(t *testing.T) {
 	}
 }
 
+func TestCollectDynamicImports_NilStatementNode(t *testing.T) {
+	path := "/virtual/modules/auth/service/tests/dynamic.ts"
+	content := `await import('./x');`
+	_, ctx := mustParseTSGoCtx(t, path, content)
+	ctx.source.Statements.Nodes = append([]*tsast.Node{nil}, ctx.source.Statements.Nodes...)
+	ctx.dynamicImports = nil
+	ctx.collectDynamicImports()
+	if len(ctx.dynamicImports) != 1 {
+		t.Fatalf("dynamicImports len = %d, want 1", len(ctx.dynamicImports))
+	}
+}
+
+func TestCollectDynamicImports_WalkNilNode(t *testing.T) {
+	c := &tsgoImportExportCtx{}
+	c.walkDynamicImports(nil)
+	c.collectDynamicImports()
+}
+
 func TestParseDynamicImports_SkipsImportWithoutArguments(t *testing.T) {
 	path := "/virtual/modules/auth/service/tests/dynamic.ts"
 	content := `const f = import();`

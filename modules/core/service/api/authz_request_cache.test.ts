@@ -163,6 +163,40 @@ test('authz_request_cache: targeted invalidation clears ui grant prefix', () => 
   }
 });
 
+test('authz_request_cache: targeted invalidation preserves other users entries', () => {
+  const jsCtx: any = { req: { __choysumServiceState: {} as Record<string, unknown> } };
+  const restore = setRequest({ context: jsCtx });
+  try {
+    const state = jsCtx.req.__choysumServiceState as Record<string, unknown>;
+    const u1Method = buildMethodAccessCacheKey('u1', 'c1', '/auth.User/Browse');
+    const u2Method = buildMethodAccessCacheKey('u2', 'c1', '/auth.User/Browse');
+    state[u1Method] = true;
+    state[u2Method] = true;
+    invalidateAuthzRequestCaches({ allUsers: false, userIds: ['u1'] });
+    if (state[u1Method] !== undefined) throw new Error('u1Method not cleared');
+    if (state[u2Method] !== true) throw new Error('u2Method should remain');
+  } finally {
+    restore();
+  }
+});
+
+test('authz_request_cache: invalidateAll clears every cache group prefix', () => {
+  const jsCtx: any = { req: { __choysumServiceState: {} as Record<string, unknown> } };
+  const restore = setRequest({ context: jsCtx });
+  try {
+    const state = jsCtx.req.__choysumServiceState as Record<string, unknown>;
+    state[buildAuthzContextCacheKey('u1', 'c1')] = { roles: ['r1'] };
+    state[buildMethodAccessCacheKey('u1', 'c1', '/auth.User/Browse')] = true;
+    state[buildUiGrantCacheKey('sig')] = ['res'];
+    invalidateAuthzRequestCaches({ allUsers: true });
+    if (Object.keys(state).length !== 0) {
+      throw new Error(`expected empty state, got ${Object.keys(state).join(',')}`);
+    }
+  } finally {
+    restore();
+  }
+});
+
 test('authz_request_cache: skips non-object request state', () => {
   const previous = (globalThis as any).$choysum;
   const jsCtx: any = { req: { __choysumServiceState: 'not-object' } };

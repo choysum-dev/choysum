@@ -24,6 +24,12 @@ type ServiceImportBoundaryScanInput struct {
 	Lookup            ModuleApplicationLookup
 }
 
+var statPath = os.Stat
+
+var walkServiceTree = func(root string, walkFn fs.WalkDirFunc) error {
+	return filepath.WalkDir(root, walkFn)
+}
+
 // BuildModuleApplicationLookupFromModulesDir indexes choysum.application from each module package.json.
 func BuildModuleApplicationLookupFromModulesDir(modulesPath string) (ModuleApplicationLookup, error) {
 	modulesPath = strings.TrimSpace(modulesPath)
@@ -137,9 +143,6 @@ func ParseServiceSourceFile(pathAlias map[string]string, filePath string, conten
 	if err := tsParser.ParseImport(nil); err != nil {
 		return nil, xfmt.Errorf("parse imports in %s: %w", filePath, err)
 	}
-	if err := tsParser.ParseExport(nil); err != nil {
-		return nil, xfmt.Errorf("parse exports in %s: %w", filePath, err)
-	}
 	return &parser.ParserResult{
 		Path:           filePath,
 		RawContent:     string(content),
@@ -158,7 +161,7 @@ func ScanServiceImportBoundaryOnDisk(input ServiceImportBoundaryScanInput) ([]Im
 		return nil, nil
 	}
 	serviceRoot := filepath.Join(moduleRoot, "service")
-	st, err := os.Stat(serviceRoot)
+	st, err := statPath(serviceRoot)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
@@ -179,7 +182,7 @@ func ScanServiceImportBoundaryOnDisk(input ServiceImportBoundaryScanInput) ([]Im
 	}
 
 	var parserResults []*parser.ParserResult
-	walkErr := filepath.WalkDir(serviceRoot, func(path string, d fs.DirEntry, err error) error {
+	walkErr := walkServiceTree(serviceRoot, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}

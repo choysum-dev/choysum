@@ -6,6 +6,7 @@ package tsgoctx
 import (
 	"testing"
 
+	tsast "github.com/buke/typescript-go-internal/pkg/ast"
 	"github.com/choysum-dev/choysum/internal/parser"
 )
 
@@ -31,6 +32,27 @@ func TestParseCtxCollectDynamicImports_NilReceiverAndSource(t *testing.T) {
 
 	c := &ParseCtx{}
 	c.collectDynamicImports()
+}
+
+func TestParseCtxCollectDynamicImports_NilStatementNode(t *testing.T) {
+	path := "/virtual/modules/auth/service/tests/dynamic.ts"
+	content := `await import('./meta');`
+	ctx, err := Parse(nil, path, content)
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	ctx.Source.Statements.Nodes = append([]*tsast.Node{nil}, ctx.Source.Statements.Nodes...)
+	ctx.DynamicImports = nil
+	ctx.collectDynamicImports()
+	if len(ctx.DynamicImports) != 1 {
+		t.Fatalf("DynamicImports len = %d, want 1", len(ctx.DynamicImports))
+	}
+}
+
+func TestParseCtxCollectDynamicImports_WalkNilNode(t *testing.T) {
+	ctx := &ParseCtx{}
+	ctx.walkDynamicImports(nil)
+	ctx.collectDynamicImports()
 }
 
 func TestMergeDynamicImports(t *testing.T) {

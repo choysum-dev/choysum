@@ -55,9 +55,6 @@ func ModuleNameFromModulesPath(modulesPath, absPath string) string {
 		return ""
 	}
 	parts := strings.Split(rel, "/")
-	if len(parts) == 0 || strings.TrimSpace(parts[0]) == "" {
-		return ""
-	}
 	return strings.TrimSpace(parts[0])
 }
 
@@ -89,11 +86,7 @@ func ResolveModuleApplication(moduleName string, lookup ModuleApplicationLookup)
 			}
 		}
 	}
-	app := DefaultApplicationForModuleName(moduleName)
-	if app == "" {
-		return "", false
-	}
-	return app, true
+	return DefaultApplicationForModuleName(moduleName), true
 }
 
 // IsModuleServiceSource reports whether path is under moduleRoot/service/.
@@ -138,10 +131,7 @@ func resolveTarget(modulesPath, moduleSpecPath string, lookup ModuleApplicationL
 	if targetModule == "" {
 		return "", "", false
 	}
-	targetApp, ok = ResolveModuleApplication(targetModule, lookup)
-	if !ok {
-		return "", "", false
-	}
+	targetApp, _ = ResolveModuleApplication(targetModule, lookup)
 	return targetModule, targetApp, true
 }
 

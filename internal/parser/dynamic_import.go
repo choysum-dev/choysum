@@ -14,36 +14,35 @@ func (c *tsgoImportExportCtx) collectDynamicImports() {
 		return
 	}
 
-	var walk func(node *tsast.Node)
-	walk = func(node *tsast.Node) {
-		if node == nil {
-			return
-		}
-		if node.Kind == tsast.KindCallExpression {
-			call := node.AsCallExpression()
-			if call != nil &&
-				call.Expression != nil &&
-				call.Expression.Kind == tsast.KindImportKeyword &&
-				call.Arguments != nil &&
-				len(call.Arguments.Nodes) > 0 {
-				spec := ImportModuleSpecifierFromExpression(call.Arguments.Nodes[0])
-				if spec != "" {
-					c.appendDynamicImport(node, spec, call.Arguments.Nodes[0], ImportCallIsTypeOnly(node))
-				}
-			}
-		}
-		node.ForEachChild(func(child *tsast.Node) bool {
-			walk(child)
-			return false
-		})
-	}
-
 	for _, stmt := range c.source.Statements.Nodes {
 		if stmt == nil {
 			continue
 		}
-		walk(stmt)
+		c.walkDynamicImports(stmt)
 	}
+}
+
+func (c *tsgoImportExportCtx) walkDynamicImports(node *tsast.Node) {
+	if node == nil {
+		return
+	}
+	if node.Kind == tsast.KindCallExpression {
+		call := node.AsCallExpression()
+		if call != nil &&
+			call.Expression != nil &&
+			call.Expression.Kind == tsast.KindImportKeyword &&
+			call.Arguments != nil &&
+			len(call.Arguments.Nodes) > 0 {
+			spec := ImportModuleSpecifierFromExpression(call.Arguments.Nodes[0])
+			if spec != "" {
+				c.appendDynamicImport(node, spec, call.Arguments.Nodes[0], ImportCallIsTypeOnly(node))
+			}
+		}
+	}
+	node.ForEachChild(func(child *tsast.Node) bool {
+		c.walkDynamicImports(child)
+		return false
+	})
 }
 
 func (c *tsgoImportExportCtx) appendDynamicImport(callNode *tsast.Node, moduleSpecifier string, specifierNode *tsast.Node, isTypeOnly bool) {

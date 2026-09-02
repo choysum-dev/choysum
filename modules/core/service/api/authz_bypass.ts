@@ -11,7 +11,6 @@ export async function withPermissionGraphBypass<T>(fn: () => Promise<T>): Promis
   if (!req) return await fn();
 
   const state = getOrInitReqServiceState(req);
-  if (!state) return await fn();
 
   const hadCompanyMode = Object.prototype.hasOwnProperty.call(req, 'companyMode');
   const prevCompanyMode = req.companyMode;

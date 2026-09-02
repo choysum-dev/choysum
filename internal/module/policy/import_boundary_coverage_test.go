@@ -4,6 +4,8 @@
 package policy
 
 import (
+	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -339,20 +341,15 @@ func TestScanServiceImportBoundaryOnDisk_StatError(t *testing.T) {
 	modulesPath := filepath.Join(t.TempDir(), "modules")
 	writeModulePackageJSON(t, modulesPath, "solo", "solo")
 	moduleRoot := filepath.Join(modulesPath, "solo")
-	serviceRoot := filepath.Join(moduleRoot, "service")
-	if err := os.MkdirAll(serviceRoot, 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(moduleRoot, "service"), 0o755); err != nil {
 		t.Fatalf("MkdirAll: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(serviceRoot, "blocked.ts"), []byte("export {};"), 0o644); err != nil {
-		t.Fatalf("WriteFile: %v", err)
+
+	origStat := statPath
+	statPath = func(string) (os.FileInfo, error) {
+		return nil, fmt.Errorf("permission denied")
 	}
-	if err := os.Chmod(serviceRoot, 0o000); err != nil {
-		t.Skipf("chmod not permitted: %v", err)
-	}
-	defer os.Chmod(serviceRoot, 0o755)
-	if _, readErr := os.ReadDir(serviceRoot); readErr == nil {
-		t.Skip("chmod did not block directory access in this environment")
-	}
+	t.Cleanup(func() { statPath = origStat })
 
 	_, err := ScanServiceImportBoundaryOnDisk(ServiceImportBoundaryScanInput{
 		ModulesPath:       modulesPath,
@@ -360,8 +357,32 @@ func TestScanServiceImportBoundaryOnDisk_StatError(t *testing.T) {
 		SourceApplication: "solo",
 		PathAlias:         ModulePathAliasForBoundary(modulesPath),
 	})
-	if err == nil {
-		t.Fatal("expected walk/stat error")
+	if err == nil || !strings.Contains(err.Error(), "stat service dir") {
+		t.Fatalf("expected stat service dir error, got %v", err)
+	}
+}
+
+func TestScanServiceImportBoundaryOnDisk_WalkEntryError(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	writeModulePackageJSON(t, modulesPath, "solo", "solo")
+	moduleRoot := filepath.Join(modulesPath, "solo")
+	if err := os.MkdirAll(filepath.Join(moduleRoot, "service"), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+
+	origWalk := walkServiceTree
+	walkServiceTree = func(_ string, walkFn fs.WalkDirFunc) error {
+		return walkFn("", nil, fmt.Errorf("walk denied"))
+	}
+	t.Cleanup(func() { walkServiceTree = origWalk })
+
+	_, err := ScanServiceImportBoundaryOnDisk(ServiceImportBoundaryScanInput{
+		ModulesPath:       modulesPath,
+		ModuleRoot:        moduleRoot,
+		SourceApplication: "solo",
+	})
+	if err == nil || !strings.Contains(err.Error(), "walk denied") {
+		t.Fatalf("expected walk entry error, got %v", err)
 	}
 }
 
@@ -1029,5 +1050,213 @@ func TestCheckServiceImportBoundaryOnDisk_EmptyInputs(t *testing.T) {
 	}
 	if err := CheckServiceImportBoundaryOnDisk("/modules", "", nil); err != nil {
 		t.Fatalf("empty module name = %v", err)
+	}
+}
+
+func TestModuleNameFromModulesPath_RelativeBaseError(t *testing.T) {
+	if got := ModuleNameFromModulesPath("modules", filepath.Join(testModulesPath(t), "auth", "service", "x.ts")); got != "" {
+		t.Fatalf("relative modules base = %q, want empty", got)
+	}
+}
+
+func TestIsModuleServiceSource_RelativeRootError(t *testing.T) {
+	root := filepath.Join(testModulesPath(t), "auth")
+	if IsModuleServiceSource("auth", filepath.Join(root, "service", "x.ts")) {
+		t.Fatal("relative module root should not match")
+	}
+}
+
+func TestPathUnderModules_RelativeBaseError(t *testing.T) {
+	spec := filepath.Join(testModulesPath(t), "auth", "service", "x.ts")
+	if pathUnderModules("modules", spec) {
+		t.Fatal("relative modules path should not match")
+	}
+}
+
+func TestResolveModuleApplication_LookupMissWithEmptyDefault(t *testing.T) {
+	if app, ok := ResolveModuleApplication("   ", nil); ok || app != "" {
+		t.Fatalf("whitespace module = %q ok=%v", app, ok)
+	}
+}
+
+func TestCheckServiceImportBoundary_SkipsNilDynamicImportAndExport(t *testing.T) {
+	modulesPath := testModulesPath(t)
+	moduleRoot := filepath.Join(modulesPath, "partner")
+	source := filepath.Join(moduleRoot, "service", "models", "partner.ts")
+	violations := CheckServiceImportBoundary(ServiceImportBoundaryInput{
+		ModulesPath:       modulesPath,
+		ModuleRoot:        moduleRoot,
+		SourceApplication: "partner",
+		Lookup:            testLookup(),
+		ParserResults: []*parser.ParserResult{{
+			Path:           source,
+			DynamicImports: []*parser.Import{nil},
+			Exports:        map[string]*parser.Export{"nil": nil},
+		}},
+	})
+	if len(violations) != 0 {
+		t.Fatalf("expected no violations, got %#v", violations)
+	}
+}
+
+func TestCollectModuleNamesFromParserResult_NilExportEntry(t *testing.T) {
+	names := make(map[string]struct{})
+	CollectModuleNamesFromParserResult(testModulesPath(t), &parser.ParserResult{
+		Exports: map[string]*parser.Export{"nil": nil},
+	}, names)
+	if len(names) != 0 {
+		t.Fatalf("expected no names, got %#v", names)
+	}
+}
+
+func TestBuildModuleApplicationLookupFromModulesDir_SkipsNodeModules(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	broken := filepath.Join(modulesPath, "node_modules", "broken")
+	if err := os.MkdirAll(broken, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(broken, "package.json"), []byte("{"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	writeModulePackageJSON(t, modulesPath, "auth", "auth")
+	lookup, err := BuildModuleApplicationLookupFromModulesDir(modulesPath)
+	if err != nil {
+		t.Fatalf("node_modules should be skipped, err=%v", err)
+	}
+	if app, ok := lookup("auth"); !ok || app != "auth" {
+		t.Fatalf("auth lookup = %q ok=%v", app, ok)
+	}
+}
+
+func TestReadModuleApplicationFromPackageJSON_ReadError(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	dir := filepath.Join(modulesPath, "locked")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte(`{"choysum":{"application":"auth"}}`), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if err := os.Chmod(filepath.Join(dir, "package.json"), 0o000); err != nil {
+		t.Skipf("chmod not permitted: %v", err)
+	}
+	defer os.Chmod(filepath.Join(dir, "package.json"), 0o644)
+	if _, err := ReadModuleApplicationFromPackageJSON(modulesPath, "locked"); err == nil {
+		t.Fatal("expected read error")
+	}
+}
+
+func TestScanServiceImportBoundaryOnDisk_LookupBuildError(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	writeModulePackageJSON(t, modulesPath, "solo", "solo")
+	dir := filepath.Join(modulesPath, "broken")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte("{"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	moduleRoot := filepath.Join(modulesPath, "solo")
+	serviceRoot := filepath.Join(moduleRoot, "service")
+	if err := os.MkdirAll(serviceRoot, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(serviceRoot, "ok.ts"), []byte("export {};"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if _, err := ScanServiceImportBoundaryOnDisk(ServiceImportBoundaryScanInput{
+		ModulesPath:       modulesPath,
+		ModuleRoot:        moduleRoot,
+		SourceApplication: "solo",
+		PathAlias:         ModulePathAliasForBoundary(modulesPath),
+	}); err == nil {
+		t.Fatal("expected lookup build error")
+	}
+}
+
+func TestScanServiceImportBoundaryOnDisk_ReadSourceError(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	writeModulePackageJSON(t, modulesPath, "solo", "solo")
+	moduleRoot := filepath.Join(modulesPath, "solo")
+	serviceRoot := filepath.Join(moduleRoot, "service")
+	if err := os.MkdirAll(serviceRoot, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	sourceFile := filepath.Join(serviceRoot, "blocked.ts")
+	if err := os.WriteFile(sourceFile, []byte("export {};"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if err := os.Chmod(sourceFile, 0o000); err != nil {
+		t.Skipf("chmod not permitted: %v", err)
+	}
+	defer os.Chmod(sourceFile, 0o644)
+	if _, err := ScanServiceImportBoundaryOnDisk(ServiceImportBoundaryScanInput{
+		ModulesPath:       modulesPath,
+		ModuleRoot:        moduleRoot,
+		SourceApplication: "solo",
+		PathAlias:         ModulePathAliasForBoundary(modulesPath),
+	}); err == nil {
+		t.Fatal("expected read source error")
+	}
+}
+
+func TestScanServiceImportBoundaryOnDisk_MissingServiceDir(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	writeModulePackageJSON(t, modulesPath, "solo", "solo")
+	moduleRoot := filepath.Join(modulesPath, "solo")
+	violations, err := ScanServiceImportBoundaryOnDisk(ServiceImportBoundaryScanInput{
+		ModulesPath:       modulesPath,
+		ModuleRoot:        moduleRoot,
+		SourceApplication: "solo",
+	})
+	if err != nil || len(violations) != 0 {
+		t.Fatalf("missing service dir = violations %#v err=%v", violations, err)
+	}
+}
+
+func TestReadExplicitModuleApplicationFromPackageJSON_InvalidJSON(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	dir := filepath.Join(modulesPath, "broken")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte("{"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if _, ok, err := ReadExplicitModuleApplicationFromPackageJSON(modulesPath, "broken"); err == nil || ok {
+		t.Fatalf("expected decode error, ok=%v err=%v", ok, err)
+	}
+}
+
+func TestCheckServiceImportBoundaryOnDisk_PropagatesScanError(t *testing.T) {
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	writeModulePackageJSON(t, modulesPath, "solo", "solo")
+	moduleRoot := filepath.Join(modulesPath, "solo")
+	serviceRoot := filepath.Join(moduleRoot, "service")
+	if err := os.MkdirAll(serviceRoot, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	sourceFile := filepath.Join(serviceRoot, "blocked.ts")
+	if err := os.WriteFile(sourceFile, []byte("export {};"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if err := os.Chmod(sourceFile, 0o000); err != nil {
+		t.Skipf("chmod not permitted: %v", err)
+	}
+	defer os.Chmod(sourceFile, 0o644)
+	if err := CheckServiceImportBoundaryOnDisk(modulesPath, "solo", ModulePathAliasForBoundary(modulesPath)); err == nil {
+		t.Fatal("expected scan read error")
+	}
+}
+
+func TestParseServiceSourceFile_IncludesExportsFromSingleParse(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "model.ts")
+	content := "export type { Role } from '@/auth/service/models/role';\n"
+	result, err := ParseServiceSourceFile(ModulePathAliasForBoundary(testModulesPath(t)), path, []byte(content))
+	if err != nil {
+		t.Fatalf("ParseServiceSourceFile() error = %v", err)
+	}
+	if len(result.Exports) == 0 {
+		t.Fatal("expected exports from ParseImport")
 	}
 }
