@@ -1,17 +1,30 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import Role from '@/auth/service/models/role';
-import User from '@/auth/service/models/user/user';
-import UserRole from '@/auth/service/models/user_role';
 import { withContext as withModelContext } from '@/core/service/api/context';
 import { ChoysumError } from '@/core/service/error';
+import { lookupModelCtorByFullName } from '@/core/service/orm/model/model_ctor_lookup';
 import { createServiceByModel } from '@/core/service/rpc';
+import type RoleModel from '@/auth/service/models/role';
+import type UserModel from '@/auth/service/models/user/user';
+import type UserRoleModel from '@/auth/service/models/user_role';
 import type MetaModel from '@/meta/service/models/model';
-import MetaModelData from '@/meta/service/models/model_data';
+import type MetaModelDataModel from '@/meta/service/models/model_data';
 import UserFilter from '@/web/service/models/user_filter';
 
+const Role = createServiceByModel<typeof RoleModel>('auth.Role');
+const User = createServiceByModel<typeof UserModel>('auth.User');
+const UserRole = createServiceByModel<typeof UserRoleModel>('auth.UserRole');
+const MetaModelData = createServiceByModel<typeof MetaModelDataModel>('meta.MetaModelData');
 const MetaModelService = createServiceByModel<typeof MetaModel>('meta.MetaModel');
+
+function getUserModel(): typeof UserModel {
+  const ctor = lookupModelCtorByFullName('auth.User');
+  if (!ctor) {
+    throw new Error('auth.User model ctor is not registered');
+  }
+  return ctor as typeof UserModel;
+}
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -1049,7 +1062,7 @@ test('deleting auth.User does not cascade UserFilter rows with CreatedUid', asyn
   await withModelContext(
     { activeCompanyId: companyId, enabledCompanyIds: [companyId] } as any,
     async () => {
-      await User.sudo(() => User.DeleteById(creator), { hint: 'web.UserFilter.au9.deleteUser' });
+      await getUserModel().sudo(() => User.DeleteById(creator), { hint: 'web.UserFilter.au9.deleteUser' });
     },
     { merge: false }
   );

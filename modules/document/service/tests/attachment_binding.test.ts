@@ -3,12 +3,20 @@
 
 import { withContext } from '@/core/service/api/context';
 import { ChoysumError } from '@/core/service/error';
-import Role from '@/auth/service/models/role';
-import RoleFieldRule from '@/auth/service/models/role_field_rule';
-import User from '@/auth/service/models/user/user';
-import UserRole from '@/auth/service/models/user_role';
-import MetaField from '@/meta/service/models/field';
-import MetaModel from '@/meta/service/models/model';
+import { createServiceByModel } from '@/core/service/rpc';
+import type RoleModel from '@/auth/service/models/role';
+import type RoleFieldRuleModel from '@/auth/service/models/role_field_rule';
+import type UserModel from '@/auth/service/models/user/user';
+import type UserRoleModel from '@/auth/service/models/user_role';
+import type MetaFieldModel from '@/meta/service/models/field';
+import type MetaModelModel from '@/meta/service/models/model';
+
+const Role = createServiceByModel<typeof RoleModel>('auth.Role');
+const RoleFieldRule = createServiceByModel<typeof RoleFieldRuleModel>('auth.RoleFieldRule');
+const User = createServiceByModel<typeof UserModel>('auth.User');
+const UserRole = createServiceByModel<typeof UserRoleModel>('auth.UserRole');
+const MetaField = createServiceByModel<typeof MetaFieldModel>('meta.MetaField');
+const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
 import AttachmentBinding, {
   documentHardDeleteBindingForTest,
   documentPurgeConflictingUnboundBindingsForTest,

@@ -4,12 +4,15 @@
 import { withContext as withModelContext } from '@/core/service/api/context';
 import Role from '@/auth/service/models/role';
 import RoleUiResource from '@/auth/service/models/role_ui_resource';
-import MetaUiResource from '@/meta/service/models/ui_resource';
-import MetaUiResourceMenuRoute from '@/meta/service/models/ui_resource_menu_route';
-import MetaUiResourceRouteAction from '@/meta/service/models/ui_resource_route_action';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaApplicationModel from '@/meta/service/models/application';
+import type MetaUiResourceModel from '@/meta/service/models/ui_resource';
+import type MetaUiResourceMenuRouteModel from '@/meta/service/models/ui_resource_menu_route';
+import type MetaUiResourceRouteActionModel from '@/meta/service/models/ui_resource_route_action';
 const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
+const MetaUiResource = createServiceByModel<typeof MetaUiResourceModel>('meta.MetaUiResource');
+const MetaUiResourceMenuRoute = createServiceByModel<typeof MetaUiResourceMenuRouteModel>('meta.MetaUiResourceMenuRoute');
+const MetaUiResourceRouteAction = createServiceByModel<typeof MetaUiResourceRouteActionModel>('meta.MetaUiResourceRouteAction');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');

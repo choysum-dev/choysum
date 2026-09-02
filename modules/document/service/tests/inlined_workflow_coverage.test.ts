@@ -3,9 +3,13 @@
 
 import { withContext } from '@/core/service/api/context';
 import { ChoysumError } from '@/core/service/error';
-import RoleRecordRule from '@/auth/service/models/role_record_rule';
-import MetaModel from '@/meta/service/models/model';
-import { withPermissionGraphBypass } from '@/auth/service/models/user/_authz_shared';
+import { createServiceByModel } from '@/core/service/rpc';
+import { withPermissionGraphBypass } from '@/core/service/testing';
+import type RoleRecordRuleModel from '@/auth/service/models/role_record_rule';
+import type MetaModelModel from '@/meta/service/models/model';
+
+const RoleRecordRule = createServiceByModel<typeof RoleRecordRuleModel>('auth.RoleRecordRule');
+const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
 import AttachmentObject from '../models/attachment_object';
 import UploadSession from '../models/upload_session';
 import StoredContent from '../models/stored_content';

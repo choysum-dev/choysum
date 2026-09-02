@@ -3,6 +3,11 @@
 
 import { evaluateRoleMethodAccess } from '@/auth/service/models/user/_method_access';
 import RoleMethodAccess from '@/auth/service/models/role_method_access';
+import RoleUiResource from '@/auth/service/models/role_ui_resource';
+import { createServiceByModel } from '@/core/service/rpc';
+import type MetaUiResourceModel from '@/meta/service/models/ui_resource';
+
+const MetaUiResource = createServiceByModel<typeof MetaUiResourceModel>('meta.MetaUiResource');
 
 test('evaluateRoleMethodAccess returns deny allow and empty diagnostics with hitRuleIds', async () => {
   const orig = (RoleMethodAccess as any).Search;
@@ -182,8 +187,6 @@ test('evaluateRoleMethodAccess returns deny allow and empty diagnostics with hit
 
 test('evaluateUiDerivedMethodDecision returns reason and hitRuleIds', async () => {
   const { evaluateUiDerivedMethodDecision } = await import('@/auth/service/models/user/_method_access');
-  const RoleUiResource = (await import('@/auth/service/models/role_ui_resource')).default;
-  const MetaUiResource = (await import('@/meta/service/models/ui_resource')).default;
 
   // Isolate from sibling tests that may have warmed UI-grant request caches.
   const root: any = (globalThis as any).$choysum ?? {};

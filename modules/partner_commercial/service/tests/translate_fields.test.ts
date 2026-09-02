@@ -1,12 +1,16 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import Company from '@/base/service/models/company';
-import Currency from '@/base/service/models/currency';
+import { createServiceByModel } from '@/core/service/rpc';
+import type CompanyModel from '@/base/service/models/company';
+import type CurrencyModel from '@/base/service/models/currency';
 import Partner from '@/partner/service/models/partner';
 import PartnerIdentifier from '@/partner_commercial/service/models/partner_identifier';
 import { MetadataStorage } from '@/core/service/api/metadata';
 import { withContext } from '@/core/service/api/context';
+
+const Company = createServiceByModel<typeof CompanyModel>('base.Company');
+const Currency = createServiceByModel<typeof CurrencyModel>('base.Currency');
 
 function uid(prefix: string): string {
   const xid = (globalThis as any).$choysum?.xid?.New?.();

@@ -6,11 +6,12 @@ import { getTestRepository } from '@/core/service/testing';
 import Role from '@/auth/service/models/role';
 import RoleMethodAccess from '@/auth/service/models/role_method_access';
 import RoleUiResource from '@/auth/service/models/role_ui_resource';
-import MetaUiResource from '@/meta/service/models/ui_resource';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaServiceModel from '@/meta/service/models/service';
+import type MetaUiResourceModel from '@/meta/service/models/ui_resource';
 import { metaApplicationId, metaModelId } from './_meta_ids';
 const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
+const MetaUiResource = createServiceByModel<typeof MetaUiResourceModel>('meta.MetaUiResource');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
