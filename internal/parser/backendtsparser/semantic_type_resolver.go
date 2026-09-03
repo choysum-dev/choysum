@@ -29,6 +29,9 @@ const (
 	protoTypeEmpty  = "google.protobuf.Empty"
 
 	envDisableSemanticProto = "CHOYSUM_DISABLE_SEMANTIC_PROTO"
+
+	// Cap retained Programs so large module trees do not pin unbounded checker state.
+	defaultSemanticProgramCacheLimit = 16
 )
 
 // Test overrides for coverage of rare failure paths.
@@ -38,16 +41,18 @@ var (
 	semanticProgramSourceFile = func(program *compiler.Program, path string) *ast.SourceFile {
 		return program.GetSourceFile(path)
 	}
+	semanticProgramCacheLimit = defaultSemanticProgramCacheLimit
 )
 
 // semanticTypeResolver reduces service method parameter/return types to protobuf
 // scalars via typescript-go-internal checker. Failures fall back to text mapping.
 type semanticTypeResolver struct {
-	mu       sync.Mutex
-	cache    map[string]*semanticFileState
-	disabled bool
-	initOnce sync.Once
-	logger   *slog.Logger
+	mu         sync.Mutex
+	cache      map[string]*semanticFileState
+	cacheOrder []string // oldest → newest path keys for LRU eviction
+	disabled   bool
+	initOnce   sync.Once
+	logger     *slog.Logger
 }
 
 type semanticFileState struct {
@@ -138,6 +143,7 @@ func (r *semanticTypeResolver) trySemantic(path, content, className, methodName,
 
 func (r *semanticTypeResolver) ensureFileLocked(path, content string) (*semanticFileState, error) {
 	if cached, ok := r.cache[path]; ok && cached != nil && cached.content == content {
+		r.touchCacheLocked(path)
 		return cached, nil
 	}
 
@@ -150,8 +156,37 @@ func (r *semanticTypeResolver) ensureFileLocked(path, content string) (*semantic
 		program: program,
 		file:    file,
 	}
-	r.cache[path] = state
+	r.putCacheLocked(path, state)
 	return state, nil
+}
+
+func (r *semanticTypeResolver) touchCacheLocked(path string) {
+	for i, cachedPath := range r.cacheOrder {
+		if cachedPath != path {
+			continue
+		}
+		r.cacheOrder = append(r.cacheOrder[:i], r.cacheOrder[i+1:]...)
+		break
+	}
+	r.cacheOrder = append(r.cacheOrder, path)
+}
+
+func (r *semanticTypeResolver) putCacheLocked(path string, state *semanticFileState) {
+	r.cache[path] = state
+	r.touchCacheLocked(path)
+	limit := semanticProgramCacheLimit
+	if limit <= 0 {
+		limit = defaultSemanticProgramCacheLimit
+	}
+	for len(r.cache) > limit && len(r.cacheOrder) > 0 {
+		oldest := r.cacheOrder[0]
+		r.cacheOrder = r.cacheOrder[1:]
+		if oldest == path {
+			// Keep the entry just inserted; it was also recorded as newest.
+			continue
+		}
+		delete(r.cache, oldest)
+	}
 }
 
 func buildSemanticProgram(path, content string) (*compiler.Program, *ast.SourceFile, error) {

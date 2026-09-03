@@ -352,6 +352,60 @@ export default class Demo {
 		}
 	})
 
+	t.Run("program cache is bounded and replaces content", func(t *testing.T) {
+		prevLimit := semanticProgramCacheLimit
+		semanticProgramCacheLimit = 2
+		defer func() { semanticProgramCacheLimit = prevLimit }()
+
+		r := newSemanticTypeResolver(nil)
+		contentA := `
+export default class Demo {
+  public static async Echo(v: string): Promise<string> { return v }
+}
+`
+		paths := []string{
+			"/virtual/modules/demo/service/a.ts",
+			"/virtual/modules/demo/service/b.ts",
+			"/virtual/modules/demo/service/c.ts",
+		}
+		for _, path := range paths {
+			got := r.resolveProtoType(path, contentA, "Demo", "Echo", "v", false, "string")
+			if got != "string" {
+				t.Fatalf("path %s got %q", path, got)
+			}
+		}
+		r.mu.Lock()
+		size := len(r.cache)
+		_, hasA := r.cache[paths[0]]
+		_, hasC := r.cache[paths[2]]
+		r.mu.Unlock()
+		if size != 2 {
+			t.Fatalf("cache size=%d, want 2", size)
+		}
+		if hasA {
+			t.Fatal("oldest path should have been evicted")
+		}
+		if !hasC {
+			t.Fatal("newest path should remain cached")
+		}
+
+		contentB := `
+export default class Demo {
+  public static async Echo(v: number): Promise<number> { return v }
+}
+`
+		got := r.resolveProtoType(paths[2], contentB, "Demo", "Echo", "v", false, "number")
+		if got != "double" {
+			t.Fatalf("content replace got %q", got)
+		}
+		r.mu.Lock()
+		cached := r.cache[paths[2]]
+		r.mu.Unlock()
+		if cached == nil || cached.content != contentB {
+			t.Fatal("expected cache entry replaced for updated content")
+		}
+	})
+
 	t.Run("helper edge coverage", func(t *testing.T) {
 		if nodeNameText(nil) != "" {
 			t.Fatal("nil node name")
