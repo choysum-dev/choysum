@@ -553,6 +553,13 @@ func TestTimestampWellKnownRoundTrip(t *testing.T) {
 	if err := AnyToMessage(map[string]interface{}{"seconds": json.Number("7"), "nanos": int64(8)}, msg2d); err != nil {
 		t.Fatalf("AnyToMessage(map json.Number): %v", err)
 	}
+	msg2e := dynamicpb.NewMessage(desc)
+	if err := AnyToMessage(map[string]interface{}{"seconds": json.Number("9"), "nanos": json.Number("10")}, msg2e); err != nil {
+		t.Fatalf("AnyToMessage(map json.Number nanos): %v", err)
+	}
+	if err := AnyToMessage(map[string]interface{}{"nanos": json.Number("x")}, dynamicpb.NewMessage(desc)); err == nil {
+		t.Fatal("expected bad json.Number nanos")
+	}
 	if err := AnyToMessage(map[string]interface{}{"seconds": true}, dynamicpb.NewMessage(desc)); err == nil {
 		t.Fatal("expected bad seconds type")
 	}

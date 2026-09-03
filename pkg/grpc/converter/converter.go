@@ -643,6 +643,12 @@ func timestampNanosFromAny(v interface{}) (int32, error) {
 		n = int64(typed)
 	case int64:
 		n = typed
+	case json.Number:
+		parsed, err := typed.Int64()
+		if err != nil {
+			return 0, xfmt.Errorf("invalid Timestamp nanos: %w", err)
+		}
+		n = parsed
 	default:
 		return 0, xfmt.Errorf("invalid Timestamp nanos type %T", v)
 	}
