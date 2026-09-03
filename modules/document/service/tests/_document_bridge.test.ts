@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ChoysumError } from '@/core/service/error';
-import { requireText, requireUserId, requireCompanyId, assertPrincipal } from '../models/_normalizers';
+import { requireText, requireUserId, requireCompanyId, assertPrincipal } from '../models/_document_bridge';
 
-test('document normalizers: requireText returns trimmed string for valid input', () => {
+test('document._document_bridge: requireText returns trimmed string for valid input', () => {
   expect(requireText('  hello  ', 'testField')).toBe('hello');
   expect(requireText('world', 'testField')).toBe('world');
 });
 
-test('document normalizers: requireText throws INVALID_ARGUMENT for empty/whitespace', () => {
+test('document._document_bridge: requireText throws INVALID_ARGUMENT for empty/whitespace', () => {
   let caught: ChoysumError | undefined;
   try {
     requireText('', 'testField');
@@ -36,7 +36,7 @@ test('document normalizers: requireText throws INVALID_ARGUMENT for empty/whites
   expect(caught!.metadata?.field).toBe('undefField');
 });
 
-test('document normalizers: requireUserId throws UNAUTHENTICATED for empty identity', () => {
+test('document._document_bridge: requireUserId throws UNAUTHENTICATED for empty identity', () => {
   let caught: ChoysumError | undefined;
   try {
     requireUserId('');
@@ -54,7 +54,7 @@ test('document normalizers: requireUserId throws UNAUTHENTICATED for empty ident
   expect(caught!.code).toBe('UNAUTHENTICATED');
 });
 
-test('document normalizers: requireCompanyId throws PERMISSION_DENIED for empty company', () => {
+test('document._document_bridge: requireCompanyId throws PERMISSION_DENIED for empty company', () => {
   let caught: ChoysumError | undefined;
   try {
     requireCompanyId('', 'prepare');
@@ -73,7 +73,7 @@ test('document normalizers: requireCompanyId throws PERMISSION_DENIED for empty 
   expect(caught!.metadata?.stage).toBe('finalize');
 });
 
-test('document normalizers: assertPrincipal validates required fields', () => {
+test('document._document_bridge: assertPrincipal validates required fields', () => {
   const principal = assertPrincipal({
     userId: 'usr_test',
     activeCompanyId: 'cmp_test',
@@ -84,7 +84,7 @@ test('document normalizers: assertPrincipal validates required fields', () => {
   expect(principal.enabledCompanyIds).toEqual(['cmp_a', 'cmp_b']);
 });
 
-test('document normalizers: assertPrincipal filters empty enabledCompanyIds entries', () => {
+test('document._document_bridge: assertPrincipal filters empty enabledCompanyIds entries', () => {
   const principal = assertPrincipal({
     userId: 'usr_test',
     activeCompanyId: 'cmp_test',
@@ -93,7 +93,7 @@ test('document normalizers: assertPrincipal filters empty enabledCompanyIds entr
   expect(principal.enabledCompanyIds).toEqual(['cmp_a', 'cmp_b']);
 });
 
-test('document normalizers: assertPrincipal treats missing enabledCompanyIds as undefined', () => {
+test('document._document_bridge: assertPrincipal treats missing enabledCompanyIds as undefined', () => {
   const principal = assertPrincipal({
     userId: 'usr_test',
     activeCompanyId: 'cmp_test',
@@ -103,7 +103,7 @@ test('document normalizers: assertPrincipal treats missing enabledCompanyIds as 
   expect(principal.enabledCompanyIds).toBeUndefined();
 });
 
-test('document normalizers: assertPrincipal throws for non-array enabledCompanyIds', () => {
+test('document._document_bridge: assertPrincipal throws for non-array enabledCompanyIds', () => {
   let caught: ChoysumError | undefined;
   try {
     assertPrincipal({
@@ -118,7 +118,7 @@ test('document normalizers: assertPrincipal throws for non-array enabledCompanyI
   expect(caught!.code).toBe('INVALID_ARGUMENT');
 });
 
-test('document normalizers: assertPrincipal throws for missing userId', () => {
+test('document._document_bridge: assertPrincipal throws for missing userId', () => {
   let caught: ChoysumError | undefined;
   try {
     assertPrincipal({ activeCompanyId: 'cmp_test' });
@@ -129,7 +129,7 @@ test('document normalizers: assertPrincipal throws for missing userId', () => {
   expect(caught!.code).toBe('INVALID_ARGUMENT');
 });
 
-test('document normalizers: assertPrincipal throws for missing activeCompanyId', () => {
+test('document._document_bridge: assertPrincipal throws for missing activeCompanyId', () => {
   let caught: ChoysumError | undefined;
   try {
     assertPrincipal({ userId: 'usr_test' });

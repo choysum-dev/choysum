@@ -17,7 +17,7 @@ export function requireText(value: unknown, fieldName: string): string {
   if (!text) {
     throw throwDocumentError(
       DocumentErrCode.INVALID_ARGUMENT,
-      _t('%s is required', { scope: 'service/models/_normalizers' }, fieldName),
+      _t('%s is required', { scope: 'service/models/_document_bridge' }, fieldName),
       GrpcCode.InvalidArgument,
       { field: fieldName }
     );
@@ -33,7 +33,7 @@ export function requireUserId(rawUserId: unknown): string {
   if (!userId) {
     throw throwDocumentError(
       DocumentErrCode.UNAUTHENTICATED,
-      _t('Authentication is required', { scope: 'service/models/_normalizers' }),
+      _t('Authentication is required', { scope: 'service/models/_document_bridge' }),
       GrpcCode.Unauthenticated
     );
   }
@@ -48,7 +48,7 @@ export function requireCompanyId(rawCompanyId: unknown, stage: string): string {
   if (!companyId) {
     throw throwDocumentError(
       DocumentErrCode.PERMISSION_DENIED,
-      _t('activeCompanyId is required for document operations', { scope: 'service/models/_normalizers' }),
+      _t('activeCompanyId is required for document operations', { scope: 'service/models/_document_bridge' }),
       GrpcCode.PermissionDenied,
       { stage }
     );
@@ -94,7 +94,7 @@ export function assertPrincipal(raw: unknown): PrincipalContext {
     if (!Array.isArray(rawEnabledCompanyIds)) {
       throwDocumentError(
         DocumentErrCode.INVALID_ARGUMENT,
-        _t('principal.enabledCompanyIds must be an array', { scope: 'service/models/_normalizers' }),
+        _t('principal.enabledCompanyIds must be an array', { scope: 'service/models/_document_bridge' }),
         GrpcCode.InvalidArgument,
         { field: 'principal.enabledCompanyIds' }
       );

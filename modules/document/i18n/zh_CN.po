@@ -316,18 +316,18 @@ msgctxt "service/models/_binding_field_limits"
 msgid "upload exceeds field maxWidth"
 msgstr "上传超过字段最大宽度"
 
-#: service/models/_normalizers.ts:19
-msgctxt "service/models/_normalizers"
+#: service/models/_document_bridge.ts:19
+msgctxt "service/models/_document_bridge"
 msgid "%s is required"
 msgstr "%s 为必填项"
 
-#: service/models/_normalizers.ts:35
-msgctxt "service/models/_normalizers"
+#: service/models/_document_bridge.ts:35
+msgctxt "service/models/_document_bridge"
 msgid "Authentication is required"
 msgstr "需要身份认证"
 
-#: service/models/_normalizers.ts:50
-msgctxt "service/models/_normalizers"
+#: service/models/_document_bridge.ts:50
+msgctxt "service/models/_document_bridge"
 msgid "activeCompanyId is required for document operations"
 msgstr "文档操作需要 activeCompanyId"
 

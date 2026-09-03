@@ -15,7 +15,7 @@ import { PrepareUploadResp, FinalizeUploadResp, UploadedPayloadRef, PrincipalCon
 import { DocumentErrCode, throwDocumentError } from '../error';
 import type AttachmentContent from './attachment_object';
 import type AttachmentUploadSession from './upload_session';
-import { requireText } from './_normalizers';
+import { requireText } from './_document_bridge';
 import { isDisallowedInlinePayloadID, DEFAULT_MAX_UPLOAD_BYTES, EMPTY_SHA256 } from './_upload';
 
 const { _t } = createTranslate('document');

@@ -3,13 +3,13 @@
 
 import { NormalizationError } from '@/core/service/utils/normalization';
 import { ChoysumError } from '@/core/service/error';
-import { fail, mapNormalizationToPartnerBank, normalizeOptionalText, assertRequiredText } from '@/partner_bank/service/models/_normalization_bridge';
+import { fail, mapNormalizationToPartnerBank, normalizeOptionalText, assertRequiredText } from '@/partner_bank/service/models/_partner_bank_bridge';
 
 // ---------------------------------------------------------------------------
 // fail
 // ---------------------------------------------------------------------------
 
-test('partner_bank._normalization_bridge: fail throws ChoysumError with domain=partner_bank code=InvalidArgument', () => {
+test('partner_bank._partner_bank_bridge: fail throws ChoysumError with domain=partner_bank code=InvalidArgument', () => {
   let err: unknown;
   try {
     fail('something wrong');
@@ -27,7 +27,7 @@ test('partner_bank._normalization_bridge: fail throws ChoysumError with domain=p
 // mapNormalizationToPartnerBank
 // ---------------------------------------------------------------------------
 
-test('partner_bank._normalization_bridge: mapNormalizationToPartnerBank maps normalization errors', () => {
+test('partner_bank._partner_bank_bridge: mapNormalizationToPartnerBank maps normalization errors', () => {
   let err: unknown;
   try {
     mapNormalizationToPartnerBank(
@@ -46,7 +46,7 @@ test('partner_bank._normalization_bridge: mapNormalizationToPartnerBank maps nor
   expect(ce.message).toBe('Mapped required message');
 });
 
-test('partner_bank._normalization_bridge: mapNormalizationToPartnerBank passes through non-normalization errors', () => {
+test('partner_bank._partner_bank_bridge: mapNormalizationToPartnerBank passes through non-normalization errors', () => {
   const boom = new Error('boom');
   let err: unknown;
   try {
@@ -62,7 +62,7 @@ test('partner_bank._normalization_bridge: mapNormalizationToPartnerBank passes t
   expect(err).toBe(boom);
 });
 
-test('partner_bank._normalization_bridge: mapNormalizationToPartnerBank returns result on success', () => {
+test('partner_bank._partner_bank_bridge: mapNormalizationToPartnerBank returns result on success', () => {
   const result = mapNormalizationToPartnerBank(
     () => 'ok',
     () => 'ignored'
@@ -74,32 +74,32 @@ test('partner_bank._normalization_bridge: mapNormalizationToPartnerBank returns 
 // normalizeOptionalText
 // ---------------------------------------------------------------------------
 
-test('partner_bank._normalization_bridge: normalizeOptionalText returns undefined for undefined', () => {
+test('partner_bank._partner_bank_bridge: normalizeOptionalText returns undefined for undefined', () => {
   expect(normalizeOptionalText(undefined)).toBe(undefined);
 });
 
-test('partner_bank._normalization_bridge: normalizeOptionalText returns null for null', () => {
+test('partner_bank._partner_bank_bridge: normalizeOptionalText returns null for null', () => {
   expect(normalizeOptionalText(null)).toBe(null);
 });
 
-test('partner_bank._normalization_bridge: normalizeOptionalText returns null for empty', () => {
+test('partner_bank._partner_bank_bridge: normalizeOptionalText returns null for empty', () => {
   expect(normalizeOptionalText('')).toBe(null);
   expect(normalizeOptionalText('   ')).toBe(null);
 });
 
-test('partner_bank._normalization_bridge: normalizeOptionalText trims value', () => {
+test('partner_bank._partner_bank_bridge: normalizeOptionalText trims value', () => {
   expect(normalizeOptionalText('  abc  ')).toBe('abc');
 });
 
-test('partner_bank._normalization_bridge: normalizeOptionalText preserves case by default', () => {
+test('partner_bank._partner_bank_bridge: normalizeOptionalText preserves case by default', () => {
   expect(normalizeOptionalText('MyValue')).toBe('MyValue');
 });
 
-test('partner_bank._normalization_bridge: normalizeOptionalText uppercases with upper option', () => {
+test('partner_bank._partner_bank_bridge: normalizeOptionalText uppercases with upper option', () => {
   expect(normalizeOptionalText('  abc  ', { upper: true })).toBe('ABC');
 });
 
-test('partner_bank._normalization_bridge: normalizeOptionalText lowercases with lower option', () => {
+test('partner_bank._partner_bank_bridge: normalizeOptionalText lowercases with lower option', () => {
   expect(normalizeOptionalText('  ABC  ', { lower: true })).toBe('abc');
 });
 
@@ -107,18 +107,18 @@ test('partner_bank._normalization_bridge: normalizeOptionalText lowercases with 
 // assertRequiredText
 // ---------------------------------------------------------------------------
 
-test('partner_bank._normalization_bridge: assertRequiredText trims value', () => {
+test('partner_bank._partner_bank_bridge: assertRequiredText trims value', () => {
   expect(assertRequiredText('  AccountName  ', 'AccountName')).toBe('AccountName');
 });
 
-test('partner_bank._normalization_bridge: assertRequiredText throws for empty', () => {
+test('partner_bank._partner_bank_bridge: assertRequiredText throws for empty', () => {
   expect(() => assertRequiredText('', 'AccountName')).toThrow();
   expect(() => assertRequiredText('   ', 'AccountName')).toThrow();
   expect(() => assertRequiredText(undefined, 'AccountName')).toThrow();
   expect(() => assertRequiredText(null, 'AccountName')).toThrow();
 });
 
-test('partner_bank._normalization_bridge: assertRequiredText error message includes fieldName', () => {
+test('partner_bank._partner_bank_bridge: assertRequiredText error message includes fieldName', () => {
   let err: unknown;
   try {
     assertRequiredText('', 'AccountName');
@@ -129,10 +129,10 @@ test('partner_bank._normalization_bridge: assertRequiredText error message inclu
   expect((err as ChoysumError).message).toBe('AccountName is required');
 });
 
-test('partner_bank._normalization_bridge: assertRequiredText uppercases with upper option', () => {
+test('partner_bank._partner_bank_bridge: assertRequiredText uppercases with upper option', () => {
   expect(assertRequiredText('  abc  ', 'Field', { upper: true })).toBe('ABC');
 });
 
-test('partner_bank._normalization_bridge: assertRequiredText preserves case without upper option', () => {
+test('partner_bank._partner_bank_bridge: assertRequiredText preserves case without upper option', () => {
   expect(assertRequiredText('  abc  ', 'Field')).toBe('abc');
 });

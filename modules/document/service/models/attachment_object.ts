@@ -25,7 +25,7 @@ import { GrpcCode, DocumentErrCode, throwDocumentError } from '../error';
 import type AttachmentUploadSession from './upload_session';
 import type AttachmentMutationLedger from './attachment_mutation_ledger';
 import { assertOwnerWriteAuthorization } from './_owner_authorization';
-import { requireText, requireUserId, requireCompanyId } from './_normalizers';
+import { requireText, requireUserId, requireCompanyId } from './_document_bridge';
 import { mustLoadOne } from './_query_loaders';
 import { garbageCollectUnboundObjects } from './_attachment_gc';
 import { isMimeTypeAllowed } from '@/core/service/utils/mime';

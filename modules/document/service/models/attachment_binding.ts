@@ -25,7 +25,7 @@ import { toDate } from '@/core/service/utils/datetime';
 import { GrpcCode, DocumentErrCode, throwDocumentError } from '../error';
 import type AttachmentMutationLedger from './attachment_mutation_ledger';
 import type StoredContent from './stored_content';
-import { requireText, requireUserId, requireCompanyId } from './_normalizers';
+import { requireText, requireUserId, requireCompanyId } from './_document_bridge';
 import { assertOwnerReadAuthorization, assertOwnerWriteAuthorization } from './_owner_authorization';
 import { assertBindReq, assertUnbindReq, assertBatchDescribeReq, assertResolveDownloadContentReq, normalizePrincipalCompanyIds, assertDownloadDisposition, resolveDownloadSemantics, buildDescriptor, buildPayloadReadTicket, parseBindResp, parseUnbindResp, assertCompanyMatch } from './_attachment_binding_codec';
 import { validateAttachmentContentFieldLimits } from './_binding_field_limits';

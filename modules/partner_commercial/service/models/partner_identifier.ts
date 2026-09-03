@@ -4,7 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { _t, _lt } from '../i18n';
-import { fail, normalizeOptionalRefId, normalizeOptionalText, normalizeOptionalTranslatedText, assertRequiredText, toDateOrUndefined } from './_normalization_bridge';
+import { fail, normalizeOptionalRefId, normalizeOptionalText, normalizeOptionalTranslatedText, assertRequiredText, toDateOrUndefined } from './_partner_commercial_bridge';
 import type Company from '@/base/service/models/company';
 import type Country from '@/base/service/models/country';
 import type Partner from '@/partner/service/models/partner';

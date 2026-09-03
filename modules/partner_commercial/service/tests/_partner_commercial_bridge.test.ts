@@ -11,13 +11,13 @@ import {
   normalizeOptionalTranslatedText,
   assertRequiredText,
   toDateOrUndefined,
-} from '@/partner_commercial/service/models/_normalization_bridge';
+} from '@/partner_commercial/service/models/_partner_commercial_bridge';
 
 // ---------------------------------------------------------------------------
 // fail
 // ---------------------------------------------------------------------------
 
-test('partner_commercial._normalization_bridge: fail throws ChoysumError with domain=partner_commercial code=InvalidArgument', () => {
+test('partner_commercial._partner_commercial_bridge: fail throws ChoysumError with domain=partner_commercial code=InvalidArgument', () => {
   let err: unknown;
   try {
     fail('something wrong');
@@ -35,7 +35,7 @@ test('partner_commercial._normalization_bridge: fail throws ChoysumError with do
 // mapNormalizationToPartnerCommercial
 // ---------------------------------------------------------------------------
 
-test('partner_commercial._normalization_bridge: mapNormalizationToPartnerCommercial maps normalization errors', () => {
+test('partner_commercial._partner_commercial_bridge: mapNormalizationToPartnerCommercial maps normalization errors', () => {
   let err: unknown;
   try {
     mapNormalizationToPartnerCommercial(
@@ -54,7 +54,7 @@ test('partner_commercial._normalization_bridge: mapNormalizationToPartnerCommerc
   expect(ce.message).toBe('Mapped required message');
 });
 
-test('partner_commercial._normalization_bridge: mapNormalizationToPartnerCommercial passes through non-normalization errors', () => {
+test('partner_commercial._partner_commercial_bridge: mapNormalizationToPartnerCommercial passes through non-normalization errors', () => {
   const boom = new Error('boom');
   let err: unknown;
   try {
@@ -70,7 +70,7 @@ test('partner_commercial._normalization_bridge: mapNormalizationToPartnerCommerc
   expect(err).toBe(boom);
 });
 
-test('partner_commercial._normalization_bridge: mapNormalizationToPartnerCommercial returns result on success', () => {
+test('partner_commercial._partner_commercial_bridge: mapNormalizationToPartnerCommercial returns result on success', () => {
   expect(
     mapNormalizationToPartnerCommercial(
       () => 'ok',
@@ -83,28 +83,28 @@ test('partner_commercial._normalization_bridge: mapNormalizationToPartnerCommerc
 // normalizeOptionalText
 // ---------------------------------------------------------------------------
 
-test('partner_commercial._normalization_bridge: normalizeOptionalText returns undefined for undefined', () => {
+test('partner_commercial._partner_commercial_bridge: normalizeOptionalText returns undefined for undefined', () => {
   expect(normalizeOptionalText(undefined)).toBe(undefined);
 });
 
-test('partner_commercial._normalization_bridge: normalizeOptionalText returns null for null', () => {
+test('partner_commercial._partner_commercial_bridge: normalizeOptionalText returns null for null', () => {
   expect(normalizeOptionalText(null)).toBe(null);
 });
 
-test('partner_commercial._normalization_bridge: normalizeOptionalText returns null for empty', () => {
+test('partner_commercial._partner_commercial_bridge: normalizeOptionalText returns null for empty', () => {
   expect(normalizeOptionalText('')).toBe(null);
   expect(normalizeOptionalText('   ')).toBe(null);
 });
 
-test('partner_commercial._normalization_bridge: normalizeOptionalText trims value', () => {
+test('partner_commercial._partner_commercial_bridge: normalizeOptionalText trims value', () => {
   expect(normalizeOptionalText('  abc  ')).toBe('abc');
 });
 
-test('partner_commercial._normalization_bridge: normalizeOptionalText lowercases with lower option', () => {
+test('partner_commercial._partner_commercial_bridge: normalizeOptionalText lowercases with lower option', () => {
   expect(normalizeOptionalText('  ABC  ', { lower: true })).toBe('abc');
 });
 
-test('partner_commercial._normalization_bridge: normalizeOptionalText uppercases with upper option', () => {
+test('partner_commercial._partner_commercial_bridge: normalizeOptionalText uppercases with upper option', () => {
   expect(normalizeOptionalText('  abc  ', { upper: true })).toBe('ABC');
 });
 
@@ -112,25 +112,25 @@ test('partner_commercial._normalization_bridge: normalizeOptionalText uppercases
 // normalizeOptionalRefId
 // ---------------------------------------------------------------------------
 
-test('partner_commercial._normalization_bridge: normalizeOptionalRefId returns undefined for undefined', () => {
+test('partner_commercial._partner_commercial_bridge: normalizeOptionalRefId returns undefined for undefined', () => {
   expect(normalizeOptionalRefId(undefined)).toBe(undefined);
 });
 
-test('partner_commercial._normalization_bridge: normalizeOptionalRefId returns null for null', () => {
+test('partner_commercial._partner_commercial_bridge: normalizeOptionalRefId returns null for null', () => {
   expect(normalizeOptionalRefId(null)).toBe(null);
 });
 
-test('partner_commercial._normalization_bridge: normalizeOptionalRefId returns null for empty', () => {
+test('partner_commercial._partner_commercial_bridge: normalizeOptionalRefId returns null for empty', () => {
   expect(normalizeOptionalRefId('')).toBe(null);
   expect(normalizeOptionalRefId('   ')).toBe(null);
 });
 
-test('partner_commercial._normalization_bridge: normalizeOptionalRefId resolves object Id', () => {
+test('partner_commercial._partner_commercial_bridge: normalizeOptionalRefId resolves object Id', () => {
   expect(normalizeOptionalRefId({ Id: '123' })).toBe('123');
   expect(normalizeOptionalRefId({ id: '456' })).toBe('456');
 });
 
-test('partner_commercial._normalization_bridge: normalizeOptionalRefId trims string', () => {
+test('partner_commercial._partner_commercial_bridge: normalizeOptionalRefId trims string', () => {
   expect(normalizeOptionalRefId('  abc  ')).toBe('abc');
 });
 
@@ -138,18 +138,18 @@ test('partner_commercial._normalization_bridge: normalizeOptionalRefId trims str
 // assertRequiredText
 // ---------------------------------------------------------------------------
 
-test('partner_commercial._normalization_bridge: assertRequiredText trims value', () => {
+test('partner_commercial._partner_commercial_bridge: assertRequiredText trims value', () => {
   expect(assertRequiredText('  Value  ', 'Value')).toBe('Value');
 });
 
-test('partner_commercial._normalization_bridge: assertRequiredText throws for empty', () => {
+test('partner_commercial._partner_commercial_bridge: assertRequiredText throws for empty', () => {
   expect(() => assertRequiredText('', 'Value')).toThrow();
   expect(() => assertRequiredText('   ', 'Value')).toThrow();
   expect(() => assertRequiredText(undefined, 'Value')).toThrow();
   expect(() => assertRequiredText(null, 'Value')).toThrow();
 });
 
-test('partner_commercial._normalization_bridge: assertRequiredText error message includes fieldName', () => {
+test('partner_commercial._partner_commercial_bridge: assertRequiredText error message includes fieldName', () => {
   let err: unknown;
   try {
     assertRequiredText('', 'IdentifierType');
@@ -160,11 +160,11 @@ test('partner_commercial._normalization_bridge: assertRequiredText error message
   expect((err as ChoysumError).message).toBe('IdentifierType is required');
 });
 
-test('partner_commercial._normalization_bridge: assertRequiredText lowercases with lower option', () => {
+test('partner_commercial._partner_commercial_bridge: assertRequiredText lowercases with lower option', () => {
   expect(assertRequiredText('  ABC  ', 'Field', { lower: true })).toBe('abc');
 });
 
-test('partner_commercial._normalization_bridge: assertRequiredText uppercases with upper option', () => {
+test('partner_commercial._partner_commercial_bridge: assertRequiredText uppercases with upper option', () => {
   expect(assertRequiredText('  abc  ', 'Field', { upper: true })).toBe('ABC');
 });
 
@@ -172,24 +172,24 @@ test('partner_commercial._normalization_bridge: assertRequiredText uppercases wi
 // toDateOrUndefined
 // ---------------------------------------------------------------------------
 
-test('partner_commercial._normalization_bridge: toDateOrUndefined returns undefined for undefined/null/empty', () => {
+test('partner_commercial._partner_commercial_bridge: toDateOrUndefined returns undefined for undefined/null/empty', () => {
   expect(toDateOrUndefined(undefined, 'ValidFrom')).toBe(undefined);
   expect(toDateOrUndefined(null, 'ValidFrom')).toBe(undefined);
   expect(toDateOrUndefined('', 'ValidFrom')).toBe(undefined);
 });
 
-test('partner_commercial._normalization_bridge: toDateOrUndefined returns Date instance as-is', () => {
+test('partner_commercial._partner_commercial_bridge: toDateOrUndefined returns Date instance as-is', () => {
   const d = new Date('2024-06-15T12:00:00Z');
   expect(toDateOrUndefined(d, 'ValidFrom')).toBe(d);
 });
 
-test('partner_commercial._normalization_bridge: toDateOrUndefined parses ISO string', () => {
+test('partner_commercial._partner_commercial_bridge: toDateOrUndefined parses ISO string', () => {
   const result = toDateOrUndefined('2024-06-15T12:00:00Z', 'ValidFrom');
   expect(result instanceof Date).toBe(true);
   expect(result?.toISOString()).toBe('2024-06-15T12:00:00.000Z');
 });
 
-test('partner_commercial._normalization_bridge: toDateOrUndefined throws for invalid string', () => {
+test('partner_commercial._partner_commercial_bridge: toDateOrUndefined throws for invalid string', () => {
   let err: unknown;
   try {
     toDateOrUndefined('invalid', 'ValidFrom');
@@ -200,7 +200,7 @@ test('partner_commercial._normalization_bridge: toDateOrUndefined throws for inv
   expect((err as ChoysumError).message).toBe('ValidFrom must be a valid datetime');
 });
 
-test('partner_commercial._normalization_bridge: toDateOrUndefined throws for NaN Date instance', () => {
+test('partner_commercial._partner_commercial_bridge: toDateOrUndefined throws for NaN Date instance', () => {
   let err: unknown;
   try {
     toDateOrUndefined(new Date('invalid'), 'ValidTo');
@@ -211,7 +211,7 @@ test('partner_commercial._normalization_bridge: toDateOrUndefined throws for NaN
   expect((err as ChoysumError).message).toBe('ValidTo must be a valid datetime');
 });
 
-test('partner_commercial._normalization_bridge: normalizeOptionalTranslatedText accepts lang maps', () => {
+test('partner_commercial._partner_commercial_bridge: normalizeOptionalTranslatedText accepts lang maps', () => {
   expect(normalizeOptionalTranslatedText(undefined)).toBeUndefined();
   expect(normalizeOptionalTranslatedText({ en_US: ' A ', zh_CN: '  ' })).toEqual({ en_US: 'A', zh_CN: '' });
   expect(normalizeOptionalTranslatedText(' Solo ')).toBe('Solo');

@@ -6,7 +6,7 @@ import MessageThreadModel from '@/core/service/mixins/message_thread_model';
 import { Constraint } from '@/core/service/api/constraint';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { _t, _lt } from '../i18n';
-import { fail, normalizeOptionalText, normalizeOptionalTranslatedText, normalizeSequenceInt, translatedTextHasValue } from './_normalization_bridge';
+import { fail, normalizeOptionalText, normalizeOptionalTranslatedText, normalizeSequenceInt, translatedTextHasValue } from './_partner_bridge';
 import type Address from '@/base/service/models/address';
 import type Company from '@/base/service/models/company';
 import Partner from './partner';

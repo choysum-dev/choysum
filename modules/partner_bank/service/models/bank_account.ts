@@ -6,7 +6,7 @@ import MessageThreadModel from '@/core/service/mixins/message_thread_model';
 import { Constraint } from '@/core/service/api/constraint';
 import { createServiceByModel } from '@/core/service/rpc';
 import { _t, _lt } from '../i18n';
-import { fail, normalizeOptionalText, assertRequiredText } from './_normalization_bridge';
+import { fail, normalizeOptionalText, assertRequiredText } from './_partner_bank_bridge';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { maskAccountNo, assertAccountType } from './_bank_account_defaults';
 import type BankModel from '@/base/service/models/bank';

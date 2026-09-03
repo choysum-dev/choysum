@@ -5,7 +5,7 @@
  * Partner service model exports.
  *
  * Layout exemplar: field/constraint/compute logic on the model class; at most one
- * `_normalization_bridge.ts` bypass. Prefer this shape for new domain models.
+ * `_partner_bridge.ts` bypass. Prefer this shape for new domain models.
  */
 export { default as Partner } from './partner';
 export { default as PartnerContact } from './partner_contact';

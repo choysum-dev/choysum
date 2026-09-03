@@ -6,7 +6,7 @@ import { Constraint } from '@/core/service/api/constraint';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import PartnerCollaborationModel from '../mixins/partner_collaboration_model';
 import { _t, _lt } from '../i18n';
-import { fail, normalizeOptionalText, assertRequiredText, assertRequiredTranslatedText, assertNonNegativeInt } from './_normalization_bridge';
+import { fail, normalizeOptionalText, assertRequiredText, assertRequiredTranslatedText, assertNonNegativeInt } from './_partner_bridge';
 import type Company from '@/base/service/models/company';
 import type Country from '@/base/service/models/country';
 import type Currency from '@/base/service/models/currency';

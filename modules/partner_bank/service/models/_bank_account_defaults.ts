@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { fail, normalizeOptionalText } from './_normalization_bridge';
+import { fail, normalizeOptionalText } from './_partner_bank_bridge';
 import { createTranslate } from '@/core/service/i18n';
 
 const { _t } = createTranslate('partner_bank');

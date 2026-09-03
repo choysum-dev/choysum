@@ -322,18 +322,18 @@ msgctxt "service/models/_binding_field_limits"
 msgid "upload exceeds field maxWidth"
 msgstr ""
 
-#: service/models/_normalizers.ts:19
-msgctxt "service/models/_normalizers"
+#: service/models/_document_bridge.ts:19
+msgctxt "service/models/_document_bridge"
 msgid "%s is required"
 msgstr ""
 
-#: service/models/_normalizers.ts:35
-msgctxt "service/models/_normalizers"
+#: service/models/_document_bridge.ts:35
+msgctxt "service/models/_document_bridge"
 msgid "Authentication is required"
 msgstr ""
 
-#: service/models/_normalizers.ts:50
-msgctxt "service/models/_normalizers"
+#: service/models/_document_bridge.ts:50
+msgctxt "service/models/_document_bridge"
 msgid "activeCompanyId is required for document operations"
 msgstr ""
 

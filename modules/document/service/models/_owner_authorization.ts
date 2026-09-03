@@ -10,7 +10,7 @@ import { createTranslate } from '@/core/service/i18n';
 import { GrpcCode } from '../error';
 import { newDocumentError, DocumentErrCode } from '../error';
 import { observePermissionDenied } from './_owner_authorization_observability';
-import { normalizeLooseOptionalText, normalizeCompanyIdList } from './_normalizers';
+import { normalizeLooseOptionalText, normalizeCompanyIdList } from './_document_bridge';
 
 const { _t } = createTranslate('document');
 
