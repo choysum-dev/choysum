@@ -575,6 +575,11 @@ func TestTimestampWellKnownRoundTrip(t *testing.T) {
 	if err := AnyToMessage(float64(-11.25), msg4b); err != nil {
 		t.Fatalf("AnyToMessage(neg float): %v", err)
 	}
+	secField := desc.Fields().ByName("seconds")
+	nanosField := desc.Fields().ByName("nanos")
+	if msg4b.Get(secField).Int() != -12 || msg4b.Get(nanosField).Int() != 750_000_000 {
+		t.Fatalf("neg float parts seconds=%d nanos=%d, want -12 / 750000000", msg4b.Get(secField).Int(), msg4b.Get(nanosField).Int())
+	}
 	msg5 := dynamicpb.NewMessage(desc)
 	if err := AnyToMessage(12, msg5); err != nil {
 		t.Fatalf("AnyToMessage(int): %v", err)
@@ -592,6 +597,35 @@ func TestTimestampWellKnownRoundTrip(t *testing.T) {
 	if err := AnyToMessage([]byte("x"), dynamicpb.NewMessage(desc)); err == nil {
 		t.Fatal("expected unsupported type error")
 	}
+	if err := AnyToMessage(map[string]interface{}{"seconds": float64(1.5)}, dynamicpb.NewMessage(desc)); err == nil {
+		t.Fatal("expected fractional seconds rejection")
+	}
+	if err := AnyToMessage(map[string]interface{}{"seconds": float64(1), "nanos": float64(-1)}, dynamicpb.NewMessage(desc)); err == nil {
+		t.Fatal("expected negative nanos rejection")
+	}
+	if err := AnyToMessage(map[string]interface{}{"seconds": float64(1), "nanos": int64(1_000_000_000)}, dynamicpb.NewMessage(desc)); err == nil {
+		t.Fatal("expected oversized nanos rejection")
+	}
+	if err := AnyToMessage(map[string]interface{}{"seconds": int64(-62_135_596_801)}, dynamicpb.NewMessage(desc)); err == nil {
+		t.Fatal("expected CheckValid underflow rejection")
+	}
+	if err := AnyToMessage(math.NaN(), dynamicpb.NewMessage(desc)); err == nil {
+		t.Fatal("expected NaN rejection")
+	}
+
+	invalidOut := dynamicpb.NewMessage(desc)
+	invalidOut.Set(secField, protoreflect.ValueOfInt64(1))
+	invalidOut.Set(nanosField, protoreflect.ValueOfInt32(-1))
+	if _, err := MessageToAny(invalidOut); err == nil {
+		t.Fatal("expected extract CheckValid rejection for negative nanos")
+	}
+	invalidOut2 := dynamicpb.NewMessage(desc)
+	invalidOut2.Set(secField, protoreflect.ValueOfInt64(-62_135_596_801))
+	invalidOut2.Set(nanosField, protoreflect.ValueOfInt32(0))
+	if _, err := MessageToAny(invalidOut2); err == nil {
+		t.Fatal("expected extract CheckValid rejection for underflow seconds")
+	}
+
 	if err := setProtoTimestamp(nil, nil); err == nil {
 		t.Fatal("expected nil msg error")
 	}

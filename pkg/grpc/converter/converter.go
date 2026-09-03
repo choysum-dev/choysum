@@ -16,6 +16,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // MessageToMap converts a dynamicpb.Message to a map[string]interface{}
@@ -218,7 +219,11 @@ func extractProtoTimestamp(msg protoreflect.ProtoMessage) (interface{}, error) {
 	fields := ref.Descriptor().Fields()
 	seconds := ref.Get(fields.ByName("seconds")).Int()
 	nanos := ref.Get(fields.ByName("nanos")).Int()
-	t := time.Unix(seconds, nanos).UTC()
+	ts := &timestamppb.Timestamp{Seconds: seconds, Nanos: int32(nanos)}
+	if err := ts.CheckValid(); err != nil {
+		return nil, err
+	}
+	t := ts.AsTime().UTC()
 	if nanos == 0 {
 		return t.Format(time.RFC3339), nil
 	}
@@ -541,56 +546,105 @@ func setProtoTimestamp(v interface{}, msg *dynamicpb.Message) error {
 		seconds = parsed.Unix()
 		nanos = int32(parsed.Nanosecond())
 	case float64:
-		seconds = int64(val)
-		frac := val - float64(seconds)
-		if frac < 0 {
-			frac = -frac
+		sec, nano, err := float64ToTimestampParts(val)
+		if err != nil {
+			return err
 		}
-		nanos = int32(math.Round(frac * 1e9))
+		seconds, nanos = sec, nano
 	case int:
 		seconds = int64(val)
 	case int64:
 		seconds = val
 	case map[string]interface{}:
 		if s, ok := val["seconds"]; ok {
-			switch typed := s.(type) {
-			case float64:
-				seconds = int64(typed)
-			case int64:
-				seconds = typed
-			case int:
-				seconds = int64(typed)
-			case json.Number:
-				i, err := typed.Int64()
-				if err != nil {
-					return xfmt.Errorf("invalid Timestamp seconds: %w", err)
-				}
-				seconds = i
-			default:
-				return xfmt.Errorf("invalid Timestamp seconds type %T", s)
+			sec, err := timestampSecondsFromAny(s)
+			if err != nil {
+				return err
 			}
+			seconds = sec
 		}
 		if n, ok := val["nanos"]; ok {
-			switch typed := n.(type) {
-			case float64:
-				nanos = int32(typed)
-			case int32:
-				nanos = typed
-			case int:
-				nanos = int32(typed)
-			case int64:
-				nanos = int32(typed)
-			default:
-				return xfmt.Errorf("invalid Timestamp nanos type %T", n)
+			nano, err := timestampNanosFromAny(n)
+			if err != nil {
+				return err
 			}
+			nanos = nano
 		}
 	default:
 		return xfmt.Errorf("unsupported Timestamp value type %T", v)
 	}
 
+	ts := &timestamppb.Timestamp{Seconds: seconds, Nanos: nanos}
+	if err := ts.CheckValid(); err != nil {
+		return err
+	}
 	msg.Set(secondsField, protoreflect.ValueOfInt64(seconds))
 	msg.Set(nanosField, protoreflect.ValueOfInt32(nanos))
 	return nil
+}
+
+// float64ToTimestampParts splits a unix-seconds float into protobuf Timestamp
+// seconds/nanos. Uses floor so negative fractions stay exact (e.g. -11.25).
+func float64ToTimestampParts(val float64) (int64, int32, error) {
+	if math.IsNaN(val) || math.IsInf(val, 0) {
+		return 0, 0, xfmt.Errorf("invalid Timestamp float %v", val)
+	}
+	sec := math.Floor(val)
+	seconds := int64(sec)
+	n := int64(math.Round((val - sec) * 1e9))
+	if n >= 1e9 {
+		seconds++
+		n -= 1e9
+	}
+	if n < 0 || n >= 1e9 {
+		return 0, 0, xfmt.Errorf("invalid Timestamp nanos derived from %v", val)
+	}
+	return seconds, int32(n), nil
+}
+
+func timestampSecondsFromAny(v interface{}) (int64, error) {
+	switch typed := v.(type) {
+	case float64:
+		if typed != math.Trunc(typed) {
+			return 0, xfmt.Errorf("Timestamp seconds must be whole, got %v", typed)
+		}
+		return int64(typed), nil
+	case int64:
+		return typed, nil
+	case int:
+		return int64(typed), nil
+	case json.Number:
+		i, err := typed.Int64()
+		if err != nil {
+			return 0, xfmt.Errorf("invalid Timestamp seconds: %w", err)
+		}
+		return i, nil
+	default:
+		return 0, xfmt.Errorf("invalid Timestamp seconds type %T", v)
+	}
+}
+
+func timestampNanosFromAny(v interface{}) (int32, error) {
+	var n int64
+	switch typed := v.(type) {
+	case float64:
+		if typed != math.Trunc(typed) {
+			return 0, xfmt.Errorf("Timestamp nanos must be whole, got %v", typed)
+		}
+		n = int64(typed)
+	case int32:
+		n = int64(typed)
+	case int:
+		n = int64(typed)
+	case int64:
+		n = typed
+	default:
+		return 0, xfmt.Errorf("invalid Timestamp nanos type %T", v)
+	}
+	if n < 0 || n >= 1e9 {
+		return 0, xfmt.Errorf("Timestamp nanos out of range: %d", n)
+	}
+	return int32(n), nil
 }
 
 // setProtoList sets an array to google.protobuf.ListValue
