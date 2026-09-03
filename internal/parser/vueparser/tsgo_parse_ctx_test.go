@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	tsast "github.com/buke/typescript-go-internal/pkg/ast"
-	tscore "github.com/buke/typescript-go-internal/pkg/core"
+	tsast "github.com/buke/typescript-go-internal/v7/pkg/ast"
+	tscore "github.com/buke/typescript-go-internal/v7/pkg/core"
 	"github.com/choysum-dev/choysum/internal/parser"
 )
 

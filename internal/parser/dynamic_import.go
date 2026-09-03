@@ -6,7 +6,7 @@ package parser
 import (
 	"strings"
 
-	tsast "github.com/buke/typescript-go-internal/pkg/ast"
+	tsast "github.com/buke/typescript-go-internal/v7/pkg/ast"
 )
 
 func (c *tsgoImportExportCtx) collectDynamicImports() {

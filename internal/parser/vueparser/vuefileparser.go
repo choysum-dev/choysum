@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/antchfx/htmlquery"
-	tscore "github.com/buke/typescript-go-internal/pkg/core"
+	tscore "github.com/buke/typescript-go-internal/v7/pkg/core"
 	"github.com/choysum-dev/choysum/internal/parser"
 	"github.com/choysum-dev/choysum/internal/parser/vueparser/vuesfchtmlparser"
 	"github.com/choysum-dev/choysum/pkg/meta"

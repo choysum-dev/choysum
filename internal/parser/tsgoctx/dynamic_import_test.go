@@ -6,7 +6,7 @@ package tsgoctx
 import (
 	"testing"
 
-	tsast "github.com/buke/typescript-go-internal/pkg/ast"
+	tsast "github.com/buke/typescript-go-internal/v7/pkg/ast"
 	"github.com/choysum-dev/choysum/internal/parser"
 )
 
