@@ -612,6 +612,27 @@ func TestTimestampWellKnownRoundTrip(t *testing.T) {
 	if err := AnyToMessage(math.NaN(), dynamicpb.NewMessage(desc)); err == nil {
 		t.Fatal("expected NaN rejection")
 	}
+	if err := AnyToMessage(math.Inf(1), dynamicpb.NewMessage(desc)); err == nil {
+		t.Fatal("expected +Inf rejection")
+	}
+	if err := AnyToMessage(float64(-62_135_596_801), dynamicpb.NewMessage(desc)); err == nil {
+		t.Fatal("expected float underflow rejection")
+	}
+	if err := AnyToMessage(float64(253_402_300_800), dynamicpb.NewMessage(desc)); err == nil {
+		t.Fatal("expected float overflow rejection")
+	}
+	if err := AnyToMessage(map[string]interface{}{"seconds": float64(1), "nanos": float64(1.5)}, dynamicpb.NewMessage(desc)); err == nil {
+		t.Fatal("expected fractional nanos rejection")
+	}
+
+	carryMsg := dynamicpb.NewMessage(desc)
+	carryIn := 10.0 + (1e9-0.4)/1e9 // rounds nanos to 1e9 → carry into seconds
+	if err := AnyToMessage(carryIn, carryMsg); err != nil {
+		t.Fatalf("AnyToMessage(carry): %v", err)
+	}
+	if carryMsg.Get(secField).Int() != 11 || carryMsg.Get(nanosField).Int() != 0 {
+		t.Fatalf("carry parts seconds=%d nanos=%d, want 11 / 0", carryMsg.Get(secField).Int(), carryMsg.Get(nanosField).Int())
+	}
 
 	invalidOut := dynamicpb.NewMessage(desc)
 	invalidOut.Set(secField, protoreflect.ValueOfInt64(1))

@@ -589,15 +589,20 @@ func float64ToTimestampParts(val float64) (int64, int32, error) {
 	if math.IsNaN(val) || math.IsInf(val, 0) {
 		return 0, 0, xfmt.Errorf("invalid Timestamp float %v", val)
 	}
+	// Reject before float→int64 conversion; matches timestamppb.CheckValid bounds.
+	const (
+		minTimestampSeconds     = -62135596800
+		maxTimestampSecondsExcl = 253402300800
+	)
+	if val < float64(minTimestampSeconds) || val >= float64(maxTimestampSecondsExcl) {
+		return 0, 0, xfmt.Errorf("Timestamp float %v out of range", val)
+	}
 	sec := math.Floor(val)
 	seconds := int64(sec)
 	n := int64(math.Round((val - sec) * 1e9))
 	if n >= 1e9 {
 		seconds++
 		n -= 1e9
-	}
-	if n < 0 || n >= 1e9 {
-		return 0, 0, xfmt.Errorf("invalid Timestamp nanos derived from %v", val)
 	}
 	return seconds, int32(n), nil
 }
