@@ -574,6 +574,18 @@ func TestTimestampWellKnownRoundTrip(t *testing.T) {
 	if err := AnyToMessage(time.Unix(10, 0).UTC(), msg3); err != nil {
 		t.Fatalf("AnyToMessage(time): %v", err)
 	}
+	msg3p := dynamicpb.NewMessage(desc)
+	ptr := time.Unix(14, 15).UTC()
+	if err := AnyToMessage(&ptr, msg3p); err != nil {
+		t.Fatalf("AnyToMessage(*time.Time): %v", err)
+	}
+	if err := AnyToMessage((*time.Time)(nil), dynamicpb.NewMessage(desc)); err != nil {
+		t.Fatalf("AnyToMessage(nil *time.Time): %v", err)
+	}
+	msg2f := dynamicpb.NewMessage(desc)
+	if err := AnyToMessage(map[string]interface{}{"seconds": int32(11), "nanos": int32(12)}, msg2f); err != nil {
+		t.Fatalf("AnyToMessage(map int32 seconds): %v", err)
+	}
 	msg4 := dynamicpb.NewMessage(desc)
 	if err := AnyToMessage(float64(11.5), msg4); err != nil {
 		t.Fatalf("AnyToMessage(float): %v", err)

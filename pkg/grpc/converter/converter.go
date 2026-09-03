@@ -535,6 +535,12 @@ func setProtoTimestamp(v interface{}, msg *dynamicpb.Message) error {
 	case time.Time:
 		seconds = val.Unix()
 		nanos = int32(val.Nanosecond())
+	case *time.Time:
+		if val == nil {
+			return nil
+		}
+		seconds = val.Unix()
+		nanos = int32(val.Nanosecond())
 	case string:
 		parsed, err := time.Parse(time.RFC3339Nano, val)
 		if err != nil {
@@ -613,6 +619,8 @@ func timestampSecondsFromAny(v interface{}) (int64, error) {
 		if typed != math.Trunc(typed) {
 			return 0, xfmt.Errorf("Timestamp seconds must be whole, got %v", typed)
 		}
+		return int64(typed), nil
+	case int32:
 		return int64(typed), nil
 	case int64:
 		return typed, nil
