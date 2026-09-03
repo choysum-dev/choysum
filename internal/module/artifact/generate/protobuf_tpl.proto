@@ -13,7 +13,7 @@ option go_package = "github.com/project-choysum/choysum/pkg/{{.Name}}/grpcclient
 // Model: {{$model.Name}}
 service {{$model.Name}} {
     {{- range $index, $service := $model.Services}}
-    rpc {{$service.Name}} ( {{ if $service.Parameters }}{{$model.Name}}_{{$service.Name}}_Req{{else}}google.protobuf.Empty{{end}} ) returns ( {{ if ne $service.TsTypeAnnotation "void" }}{{$model.Name}}_{{$service.Name}}_Resp{{else}}google.protobuf.Empty{{end}} ) {}
+    rpc {{$service.Name}} ( {{ if $service.Parameters }}{{$model.Name}}_{{$service.Name}}_Req{{else}}google.protobuf.Empty{{end}} ) returns ( {{ if ne $service.ProtobufType "google.protobuf.Empty" }}{{$model.Name}}_{{$service.Name}}_Resp{{else}}google.protobuf.Empty{{end}} ) {}
     {{- end}}
 }
 
@@ -26,7 +26,7 @@ message {{$model.Name}}_{{$service.Name}}_Req {
 }
         {{- end}}
 
-        {{- if ne $service.TsTypeAnnotation "void" }} 
+        {{- if ne $service.ProtobufType "google.protobuf.Empty" }} 
 message {{$model.Name}}_{{$service.Name}}_Resp {
     {{$service.ProtobufType}} result = 1;
 }

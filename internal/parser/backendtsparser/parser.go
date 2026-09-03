@@ -4,6 +4,8 @@
 package backendtsparser
 
 import (
+	"log/slog"
+
 	"github.com/choysum-dev/choysum/internal/parser"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -12,6 +14,7 @@ import (
 type backendtsParser struct {
 	runtimeScope scope.Scope
 	module       *meta.Module
+	semantic     *semanticTypeResolver
 }
 
 func (p *backendtsParser) Parse(pathAlias map[string]string, path string, content string) (*parser.ParserResult, error) {
@@ -23,6 +26,7 @@ func (p *backendtsParser) Parse(pathAlias map[string]string, path string, conten
 	modelParser := &tsFileParser{
 		runtimeScope: p.runtimeScope,
 		ownerModule:  ownerModule,
+		semantic:     p.semantic,
 		TsParser: &parser.TsParser{
 			Path:      path,
 			Content:   content,
@@ -34,8 +38,13 @@ func (p *backendtsParser) Parse(pathAlias map[string]string, path string, conten
 }
 
 func NewTsParser(runtimeScope scope.Scope, module *meta.Module) parser.Parser {
+	var logger *slog.Logger
+	if runtimeScope != nil {
+		logger = runtimeScope.Logger()
+	}
 	return &backendtsParser{
 		runtimeScope: runtimeScope,
 		module:       module,
+		semantic:     newSemanticTypeResolver(logger),
 	}
 }

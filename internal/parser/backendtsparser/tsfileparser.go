@@ -19,6 +19,7 @@ type tsFileParser struct {
 	*parser.TsParser
 	runtimeScope      scope.Scope
 	ownerModule       string
+	semantic          *semanticTypeResolver
 	referenceOutput   bool
 	referenceScope    string
 	translateBindings map[string]parser.TranslateBinding
@@ -87,16 +88,23 @@ func getProtoTypeFromTsType(tsType string) string {
 	}
 	switch tsType {
 	case "string":
-		return "string"
+		return protoTypeString
 	case "number":
-		return "double"
+		return protoTypeDouble
 	case "boolean":
-		return "bool"
+		return protoTypeBool
 	case "void":
-		return "google.protobuf.Empty"
+		return protoTypeEmpty
 	default:
 		return "google.protobuf.Value"
 	}
+}
+
+func (p *tsFileParser) resolveProtobufType(className, methodName, paramName string, isReturn bool, tsAnnotation string) string {
+	if p != nil && p.semantic != nil {
+		return p.semantic.resolveProtoType(p.Path, p.Content, className, methodName, paramName, isReturn, tsAnnotation)
+	}
+	return getProtoTypeFromTsType(tsAnnotation)
 }
 
 func (p *tsFileParser) parseModel() (*meta.Model, *parser.Class, *parser.PropertyNode, error) {
@@ -331,7 +339,7 @@ func (p *tsFileParser) parseModel() (*meta.Model, *parser.Class, *parser.Propert
 			service := &meta.Service{
 				Name:                  memberMethod.Name,
 				TsTypeAnnotation:      memberMethod.TypeAnnotation,
-				ProtobufType:          getProtoTypeFromTsType(memberMethod.TypeAnnotation),
+				ProtobufType:          p.resolveProtobufType(model.ClassName, memberMethod.Name, "", true, memberMethod.TypeAnnotation),
 				AccessibilityModifier: memberMethod.AccessibilityModifier,
 				IsStatic:              memberMethod.IsStatic,
 			}
@@ -378,7 +386,7 @@ func (p *tsFileParser) parseModel() (*meta.Model, *parser.Class, *parser.Propert
 					parameter := &meta.Parameter{
 						Name:             param.Name,
 						TsTypeAnnotation: param.TypeAnnotation,
-						ProtobufType:     getProtoTypeFromTsType(param.TypeAnnotation),
+						ProtobufType:     p.resolveProtobufType(model.ClassName, memberMethod.Name, param.Name, false, param.TypeAnnotation),
 					}
 					service.Parameters = append(service.Parameters, parameter)
 				}
