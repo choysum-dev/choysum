@@ -31,6 +31,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protodesc"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -1728,6 +1732,54 @@ func TestMethodHandlerErrorAndInterceptorPaths(t *testing.T) {
 	}
 	if !intercepted || resp != "intercepted" {
 		t.Fatalf("expected interceptor result, got resp=%#v intercepted=%v", resp, intercepted)
+	}
+}
+
+func TestDescriptorCodecListRoundTrip(t *testing.T) {
+	fileProto := &descriptorpb.FileDescriptorProto{
+		Syntax:  proto.String("proto3"),
+		Name:    proto.String("demo_list.proto"),
+		Package: proto.String("demo"),
+		MessageType: []*descriptorpb.DescriptorProto{{
+			Name: proto.String("Tags"),
+			Field: []*descriptorpb.FieldDescriptorProto{{
+				Name:   proto.String("tags"),
+				Number: proto.Int32(1),
+				Label:  descriptorpb.FieldDescriptorProto_LABEL_REPEATED.Enum(),
+				Type:   descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum(),
+			}},
+		}},
+	}
+	fd, err := protodesc.NewFile(fileProto, nil)
+	if err != nil {
+		t.Fatalf("protodesc.NewFile: %v", err)
+	}
+	msgDesc := fd.Messages().ByName("Tags")
+	if msgDesc == nil {
+		t.Fatal("missing Tags message")
+	}
+	tagsField := msgDesc.Fields().ByName("tags")
+
+	reqMsg := dynamicpb.NewMessage(msgDesc)
+	list := reqMsg.Mutable(tagsField).List()
+	list.Append(protoreflect.ValueOfString("a"))
+	list.Append(protoreflect.ValueOfString("b"))
+
+	got, err := serviceCodec.listToAny(reqMsg.Get(tagsField).List(), tagsField)
+	if err != nil {
+		t.Fatalf("listToAny: %v", err)
+	}
+	if len(got) != 2 || got[0] != "a" || got[1] != "b" {
+		t.Fatalf("listToAny got %#v", got)
+	}
+
+	respMsg := dynamicpb.NewMessage(msgDesc)
+	if err := serviceCodec.anyToList([]interface{}{"x", "y"}, respMsg, tagsField); err != nil {
+		t.Fatalf("anyToList: %v", err)
+	}
+	outList := respMsg.Get(tagsField).List()
+	if outList.Len() != 2 || outList.Get(0).String() != "x" || outList.Get(1).String() != "y" {
+		t.Fatalf("anyToList populated %#v", outList)
 	}
 }
 

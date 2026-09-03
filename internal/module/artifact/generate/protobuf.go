@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
@@ -59,6 +60,7 @@ func (g *protobufGenerator) generate(ctx context.Context, app *meta.Application)
 		"index": func(i int, start int) int {
 			return i + start
 		},
+		"needsTimestamp": protobufNeedsTimestamp,
 	}).Parse(tplStr)
 	if err != nil {
 		return nil, err
@@ -118,6 +120,31 @@ func (g *protobufGenerator) generate(ctx context.Context, app *meta.Application)
 			Name:     "protobuf",
 			OutPaths: OutPaths,
 		}}, nil
+}
+
+func protobufNeedsTimestamp(app *meta.Application) bool {
+	if app == nil {
+		return false
+	}
+	for _, model := range app.Models {
+		if model == nil {
+			continue
+		}
+		for _, service := range model.Services {
+			if service == nil {
+				continue
+			}
+			if strings.Contains(service.ProtobufType, "google.protobuf.Timestamp") {
+				return true
+			}
+			for _, param := range service.Parameters {
+				if param != nil && strings.Contains(param.ProtobufType, "google.protobuf.Timestamp") {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 // copyEmbeddedProtoFiles copies embedded proto assets into destDir.

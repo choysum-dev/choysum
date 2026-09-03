@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/buke/typescript-go-internal/v7/pkg/ast"
 	"github.com/buke/typescript-go-internal/v7/pkg/bundled"
@@ -24,10 +25,14 @@ import (
 )
 
 const (
-	protoTypeString = "string"
-	protoTypeDouble = "double"
-	protoTypeBool   = "bool"
-	protoTypeEmpty  = "google.protobuf.Empty"
+	protoTypeString     = "string"
+	protoTypeDouble     = "double"
+	protoTypeBool       = "bool"
+	protoTypeEmpty      = "google.protobuf.Empty"
+	protoTypeInt64      = "int64"
+	protoTypeTimestamp  = "google.protobuf.Timestamp"
+	protoTypeValue      = "google.protobuf.Value"
+	protoRepeatedPrefix = "repeated "
 
 	envDisableSemanticProto = "CHOYSUM_DISABLE_SEMANTIC_PROTO"
 
@@ -96,12 +101,25 @@ func (r *semanticTypeResolver) logWarn(msg string, args ...any) {
 	r.logger.Warn(msg, args...)
 }
 
+func (r *semanticTypeResolver) logDebug(msg string, args ...any) {
+	if r == nil || r.logger == nil {
+		return
+	}
+	r.logger.Debug(msg, args...)
+}
+
 // resolveProtoType prefers semantic reduction, then text mapping.
 func (r *semanticTypeResolver) resolveProtoType(path, content, className, methodName, paramName string, isReturn bool, tsAnnotation string) string {
 	if mapped, ok := r.trySemantic(path, content, className, methodName, paramName, isReturn); ok {
+		r.logDebug("semantic protobuf mapping hit",
+			"path", path, "method", methodName, "param", paramName, "is_return", isReturn, "protobuf_type", mapped)
 		return mapped
 	}
-	return getProtoTypeFromTsType(tsAnnotation)
+	fallback := getProtoTypeFromTsType(tsAnnotation)
+	r.logDebug("semantic protobuf mapping fallback",
+		"path", path, "method", methodName, "param", paramName, "is_return", isReturn,
+		"ts_annotation", tsAnnotation, "protobuf_type", fallback)
+	return fallback
 }
 
 func (r *semanticTypeResolver) trySemantic(path, content, className, methodName, paramName string, isReturn bool) (string, bool) {
@@ -152,6 +170,7 @@ func (r *semanticTypeResolver) ensureFile(path, content string) (*semanticFileSt
 	if cached, ok := r.cache[path]; ok && cached != nil && cached.content == content {
 		r.touchCacheLocked(path)
 		r.mu.Unlock()
+		r.logDebug("semantic program cache hit", "path", path)
 		return cached, nil
 	}
 	r.mu.Unlock()
@@ -166,10 +185,14 @@ func (r *semanticTypeResolver) ensureFile(path, content string) (*semanticFileSt
 		}
 		r.mu.Unlock()
 
+		start := time.Now()
 		program, file, buildErr := buildSemanticProgramImpl(path, content)
+		elapsed := time.Since(start)
 		if buildErr != nil {
+			r.logDebug("semantic program build failed", "path", path, "elapsed_ms", elapsed.Milliseconds(), "err", buildErr)
 			return nil, buildErr
 		}
+		r.logDebug("semantic program build ok", "path", path, "elapsed_ms", elapsed.Milliseconds())
 		state := &semanticFileState{
 			content: content,
 			program: program,
@@ -383,7 +406,175 @@ func mapCheckerTypeToProto(c *checker.Checker, t *checker.Type, isReturn bool) (
 	if t.IsUnion() {
 		parts = t.Types()
 	}
+	parts = stripNullishParts(parts)
+	if len(parts) == 0 {
+		if isReturn {
+			return protoTypeEmpty, true
+		}
+		return "", false
+	}
+	if len(parts) == 1 {
+		t = parts[0]
+		if c.IsArrayType(t) {
+			elem := c.GetElementTypeOfArrayType(t)
+			if elem == nil {
+				return "", false
+			}
+			mapped, ok := mapCheckerTypeToProto(c, elem, false)
+			if !ok || strings.HasPrefix(mapped, protoRepeatedPrefix) {
+				return "", false
+			}
+			switch mapped {
+			case protoTypeString, protoTypeDouble, protoTypeBool, protoTypeInt64:
+				return protoRepeatedPrefix + mapped, true
+			default:
+				return "", false
+			}
+		}
+		if mapped, ok := mapSpecialCheckerType(c, t); ok {
+			return mapped, true
+		}
+		return mapProtoParts([]*checker.Type{t}, isReturn)
+	}
+	// String enums are unions of enum-literal members; classify before scalar fallback.
+	if mapped, ok := classifyEnumLikeParts(parts); ok {
+		return mapped, true
+	}
 	return mapProtoParts(parts, isReturn)
+}
+
+func stripNullishParts(parts []*checker.Type) []*checker.Type {
+	out := make([]*checker.Type, 0, len(parts))
+	for _, part := range parts {
+		if part == nil {
+			continue
+		}
+		flags := part.Flags()
+		switch {
+		case flags == checker.TypeFlagsNull, flags == checker.TypeFlagsUndefined:
+			continue
+		case flags&^(checker.TypeFlagsNull|checker.TypeFlagsUndefined) == 0:
+			continue
+		default:
+			out = append(out, part)
+		}
+	}
+	hasNonVoidLike := false
+	for _, part := range out {
+		if part.Flags()&checker.TypeFlagsVoidLike == 0 {
+			hasNonVoidLike = true
+			break
+		}
+	}
+	if !hasNonVoidLike {
+		return out
+	}
+	filtered := make([]*checker.Type, 0, len(out))
+	for _, part := range out {
+		if part.Flags()&checker.TypeFlagsVoidLike != 0 {
+			continue
+		}
+		filtered = append(filtered, part)
+	}
+	return filtered
+}
+
+func mapSpecialCheckerType(c *checker.Checker, t *checker.Type) (string, bool) {
+	if t == nil {
+		return "", false
+	}
+	if t.Flags()&checker.TypeFlagsBigIntLike != 0 {
+		return protoTypeInt64, true
+	}
+	if name := typeSymbolName(t); name != "" {
+		switch name {
+		case "Date":
+			return protoTypeTimestamp, true
+		case "Decimal", "BigDecimal":
+			return protoTypeString, true
+		}
+	}
+	if mapped, ok := mapEnumCheckerType(c, t); ok {
+		return mapped, true
+	}
+	return "", false
+}
+
+func mapEnumCheckerType(c *checker.Checker, t *checker.Type) (string, bool) {
+	if t == nil {
+		return "", false
+	}
+	if mapped, ok := classifyEnumLikeType(t); ok {
+		return mapped, true
+	}
+	sym := t.Symbol()
+	if sym == nil || sym.Flags&ast.SymbolFlagsEnum == 0 {
+		return "", false
+	}
+	declared := c.GetDeclaredTypeOfSymbol(sym)
+	if declared == nil {
+		return "", false
+	}
+	if mapped, ok := classifyEnumLikeType(declared); ok {
+		return mapped, true
+	}
+	// Numeric and mixed enums default to double, matching number→double.
+	return protoTypeDouble, true
+}
+
+// classifyEnumLikeType maps enum / enum-literal unions to string or double.
+// String enums are typically unions of EnumLiteral+StringLiteral members.
+func classifyEnumLikeType(t *checker.Type) (string, bool) {
+	if t == nil {
+		return "", false
+	}
+	if t.Flags()&checker.TypeFlagsEnumLike != 0 {
+		if t.Flags()&checker.TypeFlagsStringLike != 0 {
+			return protoTypeString, true
+		}
+		if t.Flags()&checker.TypeFlagsNumberLike != 0 {
+			return protoTypeDouble, true
+		}
+	}
+	if !t.IsUnion() {
+		return "", false
+	}
+	return classifyEnumLikeParts(t.Types())
+}
+
+func classifyEnumLikeParts(parts []*checker.Type) (string, bool) {
+	if len(parts) == 0 {
+		return "", false
+	}
+	sawString := false
+	sawNumber := false
+	for _, part := range parts {
+		if part == nil || part.Flags()&checker.TypeFlagsEnumLike == 0 {
+			return "", false
+		}
+		switch {
+		case part.Flags()&checker.TypeFlagsStringLike != 0:
+			sawString = true
+		case part.Flags()&checker.TypeFlagsNumberLike != 0:
+			sawNumber = true
+		default:
+			return "", false
+		}
+	}
+	if sawString && !sawNumber {
+		return protoTypeString, true
+	}
+	if sawNumber {
+		return protoTypeDouble, true
+	}
+	return "", false
+}
+
+func typeSymbolName(t *checker.Type) string {
+	if t == nil || t.Symbol() == nil {
+		return ""
+	}
+	return strings.TrimSpace(t.Symbol().Name)
 }
 
 func mapProtoParts(parts []*checker.Type, isReturn bool) (string, bool) {
@@ -407,6 +598,8 @@ func mapProtoParts(parts []*checker.Type, isReturn bool) (string, bool) {
 		return protoTypeDouble, true
 	case all(checker.TypeFlagsBooleanLike):
 		return protoTypeBool, true
+	case all(checker.TypeFlagsBigIntLike):
+		return protoTypeInt64, true
 	case isReturn && all(checker.TypeFlagsVoidLike):
 		return protoTypeEmpty, true
 	default:

@@ -134,8 +134,17 @@ func (r invocationRuntime) executeUnary(
 	for index := 0; index < reqMsg.Descriptor().Fields().Len(); index++ {
 		field := reqMsg.Descriptor().Fields().Get(index)
 		value := reqMsg.Get(field)
-		message := field.Message()
 
+		if field.IsList() {
+			listArg, err := serviceCodec.listToAny(value.List(), field)
+			if err != nil {
+				return nil, xfmt.Errorf("Error converting list field %s: %w", field.TextName(), err)
+			}
+			jsRequest.Args = append(jsRequest.Args, listArg)
+			continue
+		}
+
+		message := field.Message()
 		if message != nil {
 			msgJSON, err := serviceCodec.messageToAny(value.Message())
 			if err != nil {
@@ -157,7 +166,11 @@ func (r invocationRuntime) executeUnary(
 	outMsg := serviceCodec.newMessage(outputMsgDesc)
 	resultField := outMsg.Descriptor().Fields().ByTextName("result")
 	if resultField != nil {
-		if resultField.Message() != nil {
+		if resultField.IsList() {
+			if err := serviceCodec.anyToList(jsResponse.Result, outMsg, resultField); err != nil {
+				return nil, xfmt.Errorf("Error converting result list to proto: %w", err)
+			}
+		} else if resultField.Message() != nil {
 			resultMsg := serviceCodec.newMessage(resultField.Message())
 			if err := serviceCodec.anyToMessage(jsResponse.Result, resultMsg); err != nil {
 				return nil, xfmt.Errorf("Error converting result to message: %w", err)

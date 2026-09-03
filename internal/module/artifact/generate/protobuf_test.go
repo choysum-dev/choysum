@@ -53,6 +53,97 @@ func TestProtobufGenerateUsesProtobufTypeForEmptyReturns(t *testing.T) {
 	}
 }
 
+func TestProtobufGenerateRepeatedAndTimestamp(t *testing.T) {
+	runtimeScope := newGeneratorScope(t)
+	protoDir := t.TempDir()
+	distAppDir := filepath.Join(t.TempDir(), "apps", "crm")
+	gen := &protobufGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "crm"}, modulesProtoDir: protoDir, distAppDir: distAppDir}
+
+	app := &meta.Application{
+		Name: "crm",
+		Models: []*meta.Model{{
+			Name: "Partner",
+			Services: []*meta.Service{
+				{
+					Name:                  "ListTags",
+					AccessibilityModifier: "public",
+					IsStatic:              true,
+					ProtobufType:          "repeated string",
+					Parameters: []*meta.Parameter{{
+						Name:         "tags",
+						ProtobufType: "repeated string",
+					}},
+				},
+				{
+					Name:                  "Touch",
+					AccessibilityModifier: "public",
+					IsStatic:              true,
+					ProtobufType:          "google.protobuf.Timestamp",
+					Parameters: []*meta.Parameter{{
+						Name:         "at",
+						ProtobufType: "google.protobuf.Timestamp",
+					}},
+				},
+			},
+		}},
+	}
+
+	if _, err := gen.generate(context.Background(), app); err != nil {
+		t.Fatalf("generate() error = %v", err)
+	}
+	content, err := os.ReadFile(filepath.Join(protoDir, "crm.proto"))
+	if err != nil {
+		t.Fatalf("read crm.proto: %v", err)
+	}
+	text := string(content)
+	if !strings.Contains(text, `import "google/protobuf/timestamp.proto";`) {
+		t.Fatalf("expected timestamp import, got:\n%s", text)
+	}
+	if !strings.Contains(text, "repeated string tags = 1;") {
+		t.Fatalf("expected repeated string param, got:\n%s", text)
+	}
+	if !strings.Contains(text, "repeated string result = 1;") {
+		t.Fatalf("expected repeated string result, got:\n%s", text)
+	}
+	if !strings.Contains(text, "google.protobuf.Timestamp at = 1;") {
+		t.Fatalf("expected Timestamp param, got:\n%s", text)
+	}
+	if _, err := os.Stat(filepath.Join(protoDir, "google", "protobuf", "timestamp.proto")); err != nil {
+		t.Fatalf("expected embedded timestamp.proto copied: %v", err)
+	}
+}
+
+func TestProtobufGenerateOmitsTimestampImportWhenUnused(t *testing.T) {
+	runtimeScope := newGeneratorScope(t)
+	protoDir := t.TempDir()
+	distAppDir := filepath.Join(t.TempDir(), "apps", "crm")
+	gen := &protobufGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "crm"}, modulesProtoDir: protoDir, distAppDir: distAppDir}
+
+	app := &meta.Application{
+		Name: "crm",
+		Models: []*meta.Model{{
+			Name: "Partner",
+			Services: []*meta.Service{{
+				Name:                  "Echo",
+				AccessibilityModifier: "public",
+				IsStatic:              true,
+				ProtobufType:          "string",
+				Parameters:            []*meta.Parameter{{Name: "v", ProtobufType: "string"}},
+			}},
+		}},
+	}
+	if _, err := gen.generate(context.Background(), app); err != nil {
+		t.Fatalf("generate() error = %v", err)
+	}
+	content, err := os.ReadFile(filepath.Join(protoDir, "crm.proto"))
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	if strings.Contains(string(content), "timestamp.proto") {
+		t.Fatalf("did not expect timestamp import:\n%s", content)
+	}
+}
+
 func TestProtobufGenerateWritesEmbeddedAssetsAndAppProto(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
 	protoDir := t.TempDir()

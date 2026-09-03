@@ -4,6 +4,9 @@
 syntax = "proto3";
 import "google/protobuf/struct.proto";
 import "google/protobuf/empty.proto";
+{{- if needsTimestamp .}}
+import "google/protobuf/timestamp.proto";
+{{- end}}
 
 package {{.Name}};
 option go_package = "github.com/project-choysum/choysum/pkg/{{.Name}}/grpcclient/{{.Name}}pb;{{.Name}}pb";

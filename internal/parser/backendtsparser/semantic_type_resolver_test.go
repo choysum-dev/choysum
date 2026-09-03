@@ -114,12 +114,112 @@ export default class Demo {
 		t.Fatalf("Mixed params=%v", mixed.Parameters)
 	}
 
-	for _, name := range []string{"NullableString", "OptionalNumber", "AnyValue"} {
+	nullable := byName["NullableString"]
+	if nullable == nil || nullable.ProtobufType != "string" {
+		t.Fatalf("NullableString ProtobufType=%v, want string after nullish strip", nullable)
+	}
+	optional := byName["OptionalNumber"]
+	if optional == nil || optional.ProtobufType != "double" {
+		t.Fatalf("OptionalNumber ProtobufType=%v, want double after nullish strip", optional)
+	}
+	anyValue := byName["AnyValue"]
+	if anyValue == nil || anyValue.ProtobufType != "google.protobuf.Value" {
+		t.Fatalf("AnyValue ProtobufType=%v, want Value", anyValue)
+	}
+}
+
+func TestSemanticTypeResolver_Phase2ExtendedMappings(t *testing.T) {
+	if !bundled.Embedded {
+		t.Skip("bundled libs not embedded")
+	}
+	if os.Getenv(envDisableSemanticProto) == "1" {
+		t.Skip("semantic protobuf mapping disabled in environment")
+	}
+
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.Module{Path: "/virtual/modules/demo", ApplicationStr: "demo", Name: "demo"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/demo/service/phase2.ts"
+	content := `
+type Id = string
+type Decimal = string
+enum Mode { Read = 'read', Write = 'write' }
+enum Level { Low = 1, High = 2 }
+
+export default class Demo {
+  public static async Tags(tags: string[]): Promise<number[]> {
+    return [1]
+  }
+
+  public static async AliasTags(tags: Id[]): Promise<Id[]> {
+    return tags
+  }
+
+  public static async Nested(tags: string[][]): Promise<string[][]> {
+    return tags
+  }
+
+  public static async WithEnum(mode: Mode, level: Level): Promise<Mode> {
+    return mode
+  }
+
+  public static async WithBigInt(n: bigint): Promise<bigint> {
+    return n
+  }
+
+  public static async WithDate(at: Date): Promise<Date> {
+    return at
+  }
+
+  public static async WithDecimal(amount: Decimal): Promise<Decimal> {
+    return amount
+  }
+
+  public static async NullishArray(tags: string[] | null): Promise<string[] | undefined> {
+    return tags ?? []
+  }
+}
+`
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	if r.Model == nil {
+		t.Fatal("expected model")
+	}
+	byName := map[string]*meta.Service{}
+	for _, service := range r.Model.Services {
+		byName[service.Name] = service
+	}
+
+	assertService := func(name, wantReturn string, wantParams ...string) {
+		t.Helper()
 		service := byName[name]
-		if service == nil || service.ProtobufType != "google.protobuf.Value" {
-			t.Fatalf("%s ProtobufType=%v, want Value", name, service)
+		if service == nil {
+			t.Fatalf("missing %s", name)
+		}
+		if service.ProtobufType != wantReturn {
+			t.Fatalf("%s return ProtobufType=%q, want %q", name, service.ProtobufType, wantReturn)
+		}
+		if len(service.Parameters) != len(wantParams) {
+			t.Fatalf("%s params=%v, want %v", name, service.Parameters, wantParams)
+		}
+		for i, want := range wantParams {
+			if service.Parameters[i].ProtobufType != want {
+				t.Fatalf("%s param[%d]=%q, want %q", name, i, service.Parameters[i].ProtobufType, want)
+			}
 		}
 	}
+
+	assertService("Tags", "repeated double", "repeated string")
+	assertService("AliasTags", "repeated string", "repeated string")
+	assertService("Nested", "google.protobuf.Value", "google.protobuf.Value")
+	assertService("WithEnum", "string", "string", "double")
+	assertService("WithBigInt", "int64", "int64")
+	assertService("WithDate", "google.protobuf.Timestamp", "google.protobuf.Timestamp")
+	assertService("WithDecimal", "string", "string")
+	assertService("NullishArray", "repeated string", "repeated string")
 }
 
 func TestSemanticTypeResolver_UsesSelectedModelClass(t *testing.T) {

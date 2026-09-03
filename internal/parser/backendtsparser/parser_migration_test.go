@@ -105,6 +105,12 @@ func TestGetProtoTypeFromTsType(t *testing.T) {
 		"void":            "google.protobuf.Empty",
 		"Promise<number>": "double",
 		"CustomType":      "google.protobuf.Value",
+		"bigint":          "int64",
+		"Date":            "google.protobuf.Timestamp",
+		"string[]":        "repeated string",
+		"Array<number>":   "repeated double",
+		"boolean[]":       "repeated bool",
+		"bigint[]":        "repeated int64",
 	}
 
 	for input, want := range tests {
