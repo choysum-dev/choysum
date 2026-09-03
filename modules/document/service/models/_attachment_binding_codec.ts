@@ -17,7 +17,7 @@ import {
 import { DocumentErrCode, GrpcCode, throwDocumentError } from '../error';
 import type AttachmentBinding from './attachment_binding';
 import type AttachmentContent from './attachment_object';
-import { requireText, normalizePrincipal } from './_normalizers';
+import { requireText, assertPrincipal, normalizeCompanyIdList } from './_normalizers';
 import { inlineMimeAllowed, mimeSuffix } from '@/core/service/utils/mime';
 
 const { _t } = createTranslate('document');
@@ -60,29 +60,29 @@ export type ResolvedDownloadSemantics = {
 };
 
 // ---------------------------------------------------------------------------
-// Request normalizers
+// Request assertions
 // ---------------------------------------------------------------------------
 
-export function normalizeBindReq(req: BindReq | undefined | null): NormalizedBindReq {
+export function assertBindReq(req: BindReq | undefined | null): NormalizedBindReq {
   return {
     attachmentContentId: requireText(req?.attachmentObjectId, 'attachmentObjectId'),
     ownerModel: requireText(req?.ownerModel, 'ownerModel'),
     ownerRecordId: requireText(req?.ownerRecordId, 'ownerRecordId'),
     fieldName: requireText(req?.fieldName, 'fieldName'),
     displayFileName: normalizeOptionalString(req?.displayFileName),
-    downloadDisposition: normalizeDownloadDisposition(req?.downloadDisposition),
+    downloadDisposition: assertDownloadDisposition(req?.downloadDisposition),
     mutationId: requireText(req?.mutationId, 'mutationId'),
   };
 }
 
-export function normalizeUnbindReq(req: UnbindReq | undefined | null): NormalizedUnbindReq {
+export function assertUnbindReq(req: UnbindReq | undefined | null): NormalizedUnbindReq {
   return {
     attachmentBindingId: requireText(req?.attachmentBindingId, 'attachmentBindingId'),
     mutationId: requireText(req?.mutationId, 'mutationId'),
   };
 }
 
-export function normalizeBatchDescribeReq(req: BatchDescribeReq | undefined | null): NormalizedBatchDescribeReq {
+export function assertBatchDescribeReq(req: BatchDescribeReq | undefined | null): NormalizedBatchDescribeReq {
   const rawIds = req?.attachmentBindingIds;
   if (rawIds === undefined || rawIds === null) {
     return { attachmentBindingIds: [] };
@@ -123,10 +123,10 @@ export function normalizeBatchDescribeReq(req: BatchDescribeReq | undefined | nu
   return { attachmentBindingIds: deduped };
 }
 
-export function normalizeResolveDownloadContentReq(req: ResolveDownloadContentReq | undefined | null): NormalizedResolveDownloadContentReq {
+export function assertResolveDownloadContentReq(req: ResolveDownloadContentReq | undefined | null): NormalizedResolveDownloadContentReq {
   return {
     attachmentBindingId: requireText(req?.attachmentBindingId, 'attachmentBindingId'),
-    principal: normalizePrincipal(req?.principal),
+    principal: assertPrincipal(req?.principal),
   };
 }
 
@@ -135,18 +135,10 @@ export function normalizeResolveDownloadContentReq(req: ResolveDownloadContentRe
 // ---------------------------------------------------------------------------
 
 export function normalizePrincipalCompanyIds(principal: PrincipalContext, activeCompanyId: string): string[] {
-  const values = Array.isArray(principal.enabledCompanyIds)
-    ? principal.enabledCompanyIds.map(item => normalizeOptionalString(item)).filter((item): item is string => Boolean(item))
-    : [];
-
-  const normalizedActiveCompanyId = normalizeOptionalString(activeCompanyId);
-  if (normalizedActiveCompanyId && !values.includes(normalizedActiveCompanyId)) {
-    values.unshift(normalizedActiveCompanyId);
-  }
-  return Array.from(new Set(values));
+  return normalizeCompanyIdList(principal.enabledCompanyIds, activeCompanyId);
 }
 
-export function normalizeDownloadDisposition(value: unknown): DownloadDisposition {
+export function assertDownloadDisposition(value: unknown): DownloadDisposition {
   const disposition = normalizeOptionalString(value);
   if (disposition === undefined) return 'attachment';
   if (disposition === 'inline' || disposition === 'attachment') return disposition;
@@ -180,7 +172,7 @@ export function resolveDownloadSemantics(binding: AttachmentBinding, attachmentC
 }
 
 export function resolveDownloadDispositionForResponse(value: unknown, mimeType: string): DownloadDisposition {
-  const requested = normalizeDownloadDisposition(value);
+  const requested = assertDownloadDisposition(value);
   if (requested === 'inline' && inlineMimeAllowed(mimeType)) {
     return 'inline';
   }

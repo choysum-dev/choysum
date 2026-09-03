@@ -3,7 +3,7 @@
 
 import { NormalizationError } from '@/core/service/utils/normalization';
 import { ChoysumError } from '@/core/service/error';
-import { fail, mapNormalizationToPartnerBank, normalizeOptionalText, normalizeRequiredText } from '@/partner_bank/service/models/_normalization_bridge';
+import { fail, mapNormalizationToPartnerBank, normalizeOptionalText, assertRequiredText } from '@/partner_bank/service/models/_normalization_bridge';
 
 // ---------------------------------------------------------------------------
 // fail
@@ -104,24 +104,24 @@ test('partner_bank._normalization_bridge: normalizeOptionalText lowercases with 
 });
 
 // ---------------------------------------------------------------------------
-// normalizeRequiredText
+// assertRequiredText
 // ---------------------------------------------------------------------------
 
-test('partner_bank._normalization_bridge: normalizeRequiredText trims value', () => {
-  expect(normalizeRequiredText('  AccountName  ', 'AccountName')).toBe('AccountName');
+test('partner_bank._normalization_bridge: assertRequiredText trims value', () => {
+  expect(assertRequiredText('  AccountName  ', 'AccountName')).toBe('AccountName');
 });
 
-test('partner_bank._normalization_bridge: normalizeRequiredText throws for empty', () => {
-  expect(() => normalizeRequiredText('', 'AccountName')).toThrow();
-  expect(() => normalizeRequiredText('   ', 'AccountName')).toThrow();
-  expect(() => normalizeRequiredText(undefined, 'AccountName')).toThrow();
-  expect(() => normalizeRequiredText(null, 'AccountName')).toThrow();
+test('partner_bank._normalization_bridge: assertRequiredText throws for empty', () => {
+  expect(() => assertRequiredText('', 'AccountName')).toThrow();
+  expect(() => assertRequiredText('   ', 'AccountName')).toThrow();
+  expect(() => assertRequiredText(undefined, 'AccountName')).toThrow();
+  expect(() => assertRequiredText(null, 'AccountName')).toThrow();
 });
 
-test('partner_bank._normalization_bridge: normalizeRequiredText error message includes fieldName', () => {
+test('partner_bank._normalization_bridge: assertRequiredText error message includes fieldName', () => {
   let err: unknown;
   try {
-    normalizeRequiredText('', 'AccountName');
+    assertRequiredText('', 'AccountName');
   } catch (e) {
     err = e;
   }
@@ -129,10 +129,10 @@ test('partner_bank._normalization_bridge: normalizeRequiredText error message in
   expect((err as ChoysumError).message).toBe('AccountName is required');
 });
 
-test('partner_bank._normalization_bridge: normalizeRequiredText uppercases with upper option', () => {
-  expect(normalizeRequiredText('  abc  ', 'Field', { upper: true })).toBe('ABC');
+test('partner_bank._normalization_bridge: assertRequiredText uppercases with upper option', () => {
+  expect(assertRequiredText('  abc  ', 'Field', { upper: true })).toBe('ABC');
 });
 
-test('partner_bank._normalization_bridge: normalizeRequiredText preserves case without upper option', () => {
-  expect(normalizeRequiredText('  abc  ', 'Field')).toBe('abc');
+test('partner_bank._normalization_bridge: assertRequiredText preserves case without upper option', () => {
+  expect(assertRequiredText('  abc  ', 'Field')).toBe('abc');
 });

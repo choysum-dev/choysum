@@ -4,7 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { _t, _lt } from '../i18n';
-import { fail, normalizeOptionalRefId, normalizeOptionalText, normalizeOptionalTranslatedText, normalizeRequiredText, toDateOrUndefined } from './_normalization_bridge';
+import { fail, normalizeOptionalRefId, normalizeOptionalText, normalizeOptionalTranslatedText, assertRequiredText, toDateOrUndefined } from './_normalization_bridge';
 import type Company from '@/base/service/models/company';
 import type Country from '@/base/service/models/country';
 import type Partner from '@/partner/service/models/partner';
@@ -137,8 +137,8 @@ export default class PartnerIdentifier extends BaseModel {
   /** Ensures the partner does not duplicate an identifier type and value pair. */
   private static async ensureUniqueIdentifier(values: Record<string, any>, currentId?: string): Promise<void> {
     const partnerId = normalizeOptionalRefId(values.PartnerId);
-    const identifierType = normalizeRequiredText(values.IdentifierType, 'IdentifierType', { lower: true });
-    const identifierValue = normalizeRequiredText(values.Value, 'Value', { upper: true });
+    const identifierType = assertRequiredText(values.IdentifierType, 'IdentifierType', { lower: true });
+    const identifierValue = assertRequiredText(values.Value, 'Value', { upper: true });
 
     if (!partnerId) fail(_t('PartnerId is required', { scope: 'service/models/partner_identifier' }));
 
@@ -165,7 +165,7 @@ export default class PartnerIdentifier extends BaseModel {
     if (values.IsPrimary !== true) return;
 
     const partnerId = normalizeOptionalRefId(values.PartnerId);
-    const identifierType = normalizeRequiredText(values.IdentifierType, 'IdentifierType', { lower: true });
+    const identifierType = assertRequiredText(values.IdentifierType, 'IdentifierType', { lower: true });
     if (!partnerId) fail(_t('PartnerId is required', { scope: 'service/models/partner_identifier' }));
 
     const rows = await this.Search(

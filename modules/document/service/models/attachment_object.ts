@@ -29,8 +29,8 @@ import { requireText, requireUserId, requireCompanyId } from './_normalizers';
 import { mustLoadOne } from './_query_loaders';
 import { garbageCollectUnboundObjects } from './_attachment_gc';
 import { isMimeTypeAllowed } from '@/core/service/utils/mime';
-import { DEFAULT_UPLOAD_SESSION_TTL_SECONDS, DEFAULT_MAX_UPLOAD_BYTES, EMPTY_SHA256, normalizePrepareUploadReq, normalizeAuthorizeUploadPutReq, normalizeCommitUploadPutReq, assertUploadSessionPrincipal, assertFinalizeIdentity, assertPrepareReplayConsistency } from './_upload';
-import { throwUploadSessionExpired, throwUploadSessionFinalized, normalizeAllowedMimeTypes, buildPayloadWriteTicket, buildUploadedPayloadRefFromPayloadId, normalizeUploadedPayloadRef, isSessionExpired, buildPrepareUploadResp, buildFinalizeResp } from './_attachment_upload_codec';
+import { DEFAULT_UPLOAD_SESSION_TTL_SECONDS, DEFAULT_MAX_UPLOAD_BYTES, EMPTY_SHA256, assertPrepareUploadReq, assertAuthorizeUploadPutReq, assertCommitUploadPutReq, assertUploadSessionPrincipal, assertFinalizeIdentity, assertPrepareReplayConsistency } from './_upload';
+import { throwUploadSessionExpired, throwUploadSessionFinalized, normalizeAllowedMimeTypes, buildPayloadWriteTicket, buildUploadedPayloadRefFromPayloadId, parseUploadedPayloadRefFromUnknown, isSessionExpired, buildPrepareUploadResp, buildFinalizeResp } from './_attachment_upload_codec';
 
 /**
  * AttachmentContent stores finalized payload metadata and drives the upload workflow.
@@ -339,7 +339,7 @@ async function mustLoadAttachmentContent(attachmentContentId: string): Promise<A
 // ---------------------------------------------------------------------------
 
 async function prepareUpload(req: PrepareUploadReq): Promise<PrepareUploadResp> {
-  const normalized = normalizePrepareUploadReq(req);
+  const normalized = assertPrepareUploadReq(req);
   const companyId = requireCompanyId(AttachmentContent.companyId, 'prepare');
   const issuerUserId = requireUserId(AttachmentContent.userId);
 
@@ -398,7 +398,7 @@ async function finalizeUpload(req: FinalizeUploadReq): Promise<FinalizeUploadRes
 }
 
 async function authorizeUploadPut(req: AuthorizeUploadPutReq): Promise<AuthorizeUploadPutResp> {
-  const normalized = normalizeAuthorizeUploadPutReq(req);
+  const normalized = assertAuthorizeUploadPutReq(req);
   const session = await mustLoadUploadSession(normalized.uploadId);
 
   assertUploadSessionPrincipal(session, normalized.principal, 'authorize_upload_put');
@@ -461,7 +461,7 @@ async function authorizeUploadPut(req: AuthorizeUploadPutReq): Promise<Authorize
 }
 
 async function commitUploadPut(req: CommitUploadPutReq): Promise<CommitUploadPutResp> {
-  const normalized = normalizeCommitUploadPutReq(req);
+  const normalized = assertCommitUploadPutReq(req);
   const session = await mustLoadUploadSession(normalized.uploadId);
 
   assertUploadSessionPrincipal(session, normalized.principal, 'commit_upload_put');
@@ -570,7 +570,7 @@ async function runGarbageCollection(nowISO?: string): Promise<Record<string, unk
 }
 
 async function createUploadSessionInternal(req: PrepareUploadReq): Promise<string> {
-  const normalized = normalizePrepareUploadReq(req);
+  const normalized = assertPrepareUploadReq(req);
   const companyId = requireCompanyId(AttachmentContent.companyId, 'prepare');
   const issuerUserId = requireUserId(AttachmentContent.userId);
 
@@ -634,7 +634,7 @@ async function finalizeUploadInternal(uploadId: string): Promise<FinalizeUploadR
   const checksumSha256 = normalizeChecksumSha256(session.UploadedChecksumSha256) ?? normalizeChecksumSha256(session.ChecksumSha256) ?? EMPTY_SHA256;
   const mimeType = normalizeOptionalString(session.UploadedContentType) ?? normalizeOptionalString(session.ProposedContentType) ?? 'application/octet-stream';
 
-  const uploadedPayloadRef = normalizeUploadedPayloadRef(session.UploadedPayloadRef);
+  const uploadedPayloadRef = parseUploadedPayloadRefFromUnknown(session.UploadedPayloadRef);
   const companyId = requireText(session.CompanyId, 'companyId');
   const storedContentId = await resolveStoredContentIdForFinalize(uploadedPayloadRef, normalizedUploadId, companyId);
 

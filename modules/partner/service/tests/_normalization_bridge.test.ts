@@ -7,11 +7,11 @@ import {
   fail,
   mapNormalizationToPartner,
   normalizeOptionalText,
-  normalizeRequiredText,
-  normalizeRequiredTranslatedText,
+  assertRequiredText,
+  assertRequiredTranslatedText,
   normalizeOptionalTranslatedText,
   translatedTextHasValue,
-  normalizeNonNegativeInt,
+  assertNonNegativeInt,
   normalizeSequenceInt,
 } from '@/partner/service/models/_normalization_bridge';
 
@@ -121,17 +121,17 @@ test('partner._normalization_bridge: normalizeOptionalText returns unchanged whe
 });
 
 // ---------------------------------------------------------------------------
-// normalizeRequiredText
+// assertRequiredText
 // ---------------------------------------------------------------------------
 
-test('partner._normalization_bridge: normalizeRequiredText returns trimmed string', () => {
-  expect(normalizeRequiredText('  hello  ', 'Name')).toBe('hello');
+test('partner._normalization_bridge: assertRequiredText returns trimmed string', () => {
+  expect(assertRequiredText('  hello  ', 'Name')).toBe('hello');
 });
 
-test('partner._normalization_bridge: normalizeRequiredText throws with field name on empty', () => {
+test('partner._normalization_bridge: assertRequiredText throws with field name on empty', () => {
   let err: unknown;
   try {
-    normalizeRequiredText('', 'Name');
+    assertRequiredText('', 'Name');
   } catch (e) {
     err = e;
   }
@@ -140,10 +140,10 @@ test('partner._normalization_bridge: normalizeRequiredText throws with field nam
   expect(ce.message).toBe('Name is required');
 });
 
-test('partner._normalization_bridge: normalizeRequiredText throws with field name on whitespace', () => {
+test('partner._normalization_bridge: assertRequiredText throws with field name on whitespace', () => {
   let err: unknown;
   try {
-    normalizeRequiredText('   ', 'Code');
+    assertRequiredText('   ', 'Code');
   } catch (e) {
     err = e;
   }
@@ -152,10 +152,10 @@ test('partner._normalization_bridge: normalizeRequiredText throws with field nam
   expect(ce.message).toBe('Code is required');
 });
 
-test('partner._normalization_bridge: normalizeRequiredText throws with custom field name', () => {
+test('partner._normalization_bridge: assertRequiredText throws with custom field name', () => {
   let err: unknown;
   try {
-    normalizeRequiredText('', 'CustomField');
+    assertRequiredText('', 'CustomField');
   } catch (e) {
     err = e;
   }
@@ -165,33 +165,33 @@ test('partner._normalization_bridge: normalizeRequiredText throws with custom fi
 });
 
 // ---------------------------------------------------------------------------
-// normalizeNonNegativeInt
+// assertNonNegativeInt
 // ---------------------------------------------------------------------------
 
-test('partner._normalization_bridge: normalizeNonNegativeInt returns undefined for undefined', () => {
-  expect(normalizeNonNegativeInt(undefined, 'Rank')).toBeUndefined();
+test('partner._normalization_bridge: assertNonNegativeInt returns undefined for undefined', () => {
+  expect(assertNonNegativeInt(undefined, 'Rank')).toBeUndefined();
 });
 
-test('partner._normalization_bridge: normalizeNonNegativeInt returns 0 for null', () => {
-  expect(normalizeNonNegativeInt(null, 'Rank')).toBe(0);
+test('partner._normalization_bridge: assertNonNegativeInt returns 0 for null', () => {
+  expect(assertNonNegativeInt(null, 'Rank')).toBe(0);
 });
 
-test('partner._normalization_bridge: normalizeNonNegativeInt returns 0 for zero', () => {
-  expect(normalizeNonNegativeInt(0, 'Rank')).toBe(0);
+test('partner._normalization_bridge: assertNonNegativeInt returns 0 for zero', () => {
+  expect(assertNonNegativeInt(0, 'Rank')).toBe(0);
 });
 
-test('partner._normalization_bridge: normalizeNonNegativeInt returns positive integer', () => {
-  expect(normalizeNonNegativeInt(42, 'Rank')).toBe(42);
+test('partner._normalization_bridge: assertNonNegativeInt returns positive integer', () => {
+  expect(assertNonNegativeInt(42, 'Rank')).toBe(42);
 });
 
-test('partner._normalization_bridge: normalizeNonNegativeInt parses numeric string', () => {
-  expect(normalizeNonNegativeInt('5', 'Rank')).toBe(5);
+test('partner._normalization_bridge: assertNonNegativeInt parses numeric string', () => {
+  expect(assertNonNegativeInt('5', 'Rank')).toBe(5);
 });
 
-test('partner._normalization_bridge: normalizeNonNegativeInt throws for negative', () => {
+test('partner._normalization_bridge: assertNonNegativeInt throws for negative', () => {
   let err: unknown;
   try {
-    normalizeNonNegativeInt(-1, 'Rank');
+    assertNonNegativeInt(-1, 'Rank');
   } catch (e) {
     err = e;
   }
@@ -199,10 +199,10 @@ test('partner._normalization_bridge: normalizeNonNegativeInt throws for negative
   expect((err as ChoysumError).message).toBe('Rank must be a non-negative integer');
 });
 
-test('partner._normalization_bridge: normalizeNonNegativeInt throws for non-integer', () => {
+test('partner._normalization_bridge: assertNonNegativeInt throws for non-integer', () => {
   let err: unknown;
   try {
-    normalizeNonNegativeInt(3.5, 'Rank');
+    assertNonNegativeInt(3.5, 'Rank');
   } catch (e) {
     err = e;
   }
@@ -210,10 +210,10 @@ test('partner._normalization_bridge: normalizeNonNegativeInt throws for non-inte
   expect((err as ChoysumError).message).toBe('Rank must be a non-negative integer');
 });
 
-test('partner._normalization_bridge: normalizeNonNegativeInt throws for NaN', () => {
+test('partner._normalization_bridge: assertNonNegativeInt throws for NaN', () => {
   let err: unknown;
   try {
-    normalizeNonNegativeInt(NaN, 'Rank');
+    assertNonNegativeInt(NaN, 'Rank');
   } catch (e) {
     err = e;
   }
@@ -221,10 +221,10 @@ test('partner._normalization_bridge: normalizeNonNegativeInt throws for NaN', ()
   expect((err as ChoysumError).message).toBe('Rank must be a non-negative integer');
 });
 
-test('partner._normalization_bridge: normalizeNonNegativeInt throws for Infinity', () => {
+test('partner._normalization_bridge: assertNonNegativeInt throws for Infinity', () => {
   let err: unknown;
   try {
-    normalizeNonNegativeInt(Infinity, 'Rank');
+    assertNonNegativeInt(Infinity, 'Rank');
   } catch (e) {
     err = e;
   }
@@ -297,18 +297,18 @@ test('partner._normalization_bridge: normalizeSequenceInt throws for Infinity', 
   expect((err as ChoysumError).message).toBe('Sequence must be an integer');
 });
 
-test('partner._normalization_bridge: normalizeRequiredTranslatedText accepts lang maps', () => {
-  expect(normalizeRequiredTranslatedText({ en_US: ' Acme ', zh_CN: '' }, 'Name')).toEqual({
+test('partner._normalization_bridge: assertRequiredTranslatedText accepts lang maps', () => {
+  expect(assertRequiredTranslatedText({ en_US: ' Acme ', zh_CN: '' }, 'Name')).toEqual({
     en_US: 'Acme',
     zh_CN: '',
   });
-  expect(normalizeRequiredTranslatedText(' Solo ', 'Name')).toBe('Solo');
+  expect(assertRequiredTranslatedText(' Solo ', 'Name')).toBe('Solo');
 });
 
-test('partner._normalization_bridge: normalizeRequiredTranslatedText rejects empty maps', () => {
+test('partner._normalization_bridge: assertRequiredTranslatedText rejects empty maps', () => {
   let err: unknown;
   try {
-    normalizeRequiredTranslatedText({ en_US: '  ', zh_CN: '' }, 'Name');
+    assertRequiredTranslatedText({ en_US: '  ', zh_CN: '' }, 'Name');
   } catch (e) {
     err = e;
   }

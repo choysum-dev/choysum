@@ -14,4 +14,4 @@ export const fail = bridge.fail;
 export const mapNormalizationToPartnerBank = bridge.mapNormalizationError;
 
 export const normalizeOptionalText = bridge.normalizeOptionalText;
-export const normalizeRequiredText = bridge.normalizeRequiredText;
+export const assertRequiredText = bridge.normalizeRequiredText;

@@ -57,15 +57,56 @@ export function requireCompanyId(rawCompanyId: unknown, stage: string): string {
 }
 
 /**
- * Normalize a loose principal input into a typed PrincipalContext.
+ * Trim optional text, coercing finite numbers to strings.
  */
-export function normalizePrincipal(raw: unknown): PrincipalContext {
+export function normalizeLooseOptionalText(value: unknown): string | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+  return normalizeOptionalString(value);
+}
+
+/**
+ * Build a deduplicated company-id list, always including the active company when present.
+ */
+export function normalizeCompanyIdList(value: unknown, activeCompanyId: string): string[] {
+  const out: string[] = [];
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const text = normalizeOptionalString(item);
+      if (text) out.push(text);
+    }
+  }
+  const normalizedActive = normalizeOptionalString(activeCompanyId);
+  if (out.length === 0 && normalizedActive) out.push(normalizedActive);
+  if (normalizedActive && !out.includes(normalizedActive)) out.unshift(normalizedActive);
+  return Array.from(new Set(out));
+}
+
+/**
+ * Validate and normalize a loose principal input into a typed PrincipalContext.
+ */
+export function assertPrincipal(raw: unknown): PrincipalContext {
   const principal = asRecord(raw);
+  const rawEnabledCompanyIds = principal?.enabledCompanyIds;
+  let enabledCompanyIds: string[] | undefined;
+  if (rawEnabledCompanyIds !== undefined && rawEnabledCompanyIds !== null) {
+    if (!Array.isArray(rawEnabledCompanyIds)) {
+      throwDocumentError(
+        DocumentErrCode.INVALID_ARGUMENT,
+        _t('principal.enabledCompanyIds must be an array', { scope: 'service/models/_normalizers' }),
+        GrpcCode.InvalidArgument,
+        { field: 'principal.enabledCompanyIds' }
+      );
+    }
+    enabledCompanyIds = rawEnabledCompanyIds
+      .map(item => normalizeOptionalString(item))
+      .filter((item): item is string => Boolean(item));
+  }
+
   return {
     userId: requireText(principal?.userId, 'principal.userId'),
     activeCompanyId: requireText(principal?.activeCompanyId, 'principal.activeCompanyId'),
-    enabledCompanyIds: Array.isArray(principal?.enabledCompanyIds)
-      ? (principal?.enabledCompanyIds as unknown[]).map(item => normalizeOptionalString(item)).filter((item): item is string => Boolean(item))
-      : undefined,
+    enabledCompanyIds,
   };
 }

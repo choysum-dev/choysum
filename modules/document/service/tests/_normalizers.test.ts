@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ChoysumError } from '@/core/service/error';
-import { requireText, requireUserId, requireCompanyId, normalizePrincipal } from '../models/_normalizers';
+import { requireText, requireUserId, requireCompanyId, assertPrincipal } from '../models/_normalizers';
 
 test('document normalizers: requireText returns trimmed string for valid input', () => {
   expect(requireText('  hello  ', 'testField')).toBe('hello');
@@ -73,8 +73,8 @@ test('document normalizers: requireCompanyId throws PERMISSION_DENIED for empty 
   expect(caught!.metadata?.stage).toBe('finalize');
 });
 
-test('document normalizers: normalizePrincipal validates required fields', () => {
-  const principal = normalizePrincipal({
+test('document normalizers: assertPrincipal validates required fields', () => {
+  const principal = assertPrincipal({
     userId: 'usr_test',
     activeCompanyId: 'cmp_test',
     enabledCompanyIds: ['cmp_a', 'cmp_b'],
@@ -84,8 +84,8 @@ test('document normalizers: normalizePrincipal validates required fields', () =>
   expect(principal.enabledCompanyIds).toEqual(['cmp_a', 'cmp_b']);
 });
 
-test('document normalizers: normalizePrincipal filters empty enabledCompanyIds entries', () => {
-  const principal = normalizePrincipal({
+test('document normalizers: assertPrincipal filters empty enabledCompanyIds entries', () => {
+  const principal = assertPrincipal({
     userId: 'usr_test',
     activeCompanyId: 'cmp_test',
     enabledCompanyIds: ['cmp_a', '', '  ', 'cmp_b'],
@@ -93,8 +93,8 @@ test('document normalizers: normalizePrincipal filters empty enabledCompanyIds e
   expect(principal.enabledCompanyIds).toEqual(['cmp_a', 'cmp_b']);
 });
 
-test('document normalizers: normalizePrincipal treats missing enabledCompanyIds as undefined', () => {
-  const principal = normalizePrincipal({
+test('document normalizers: assertPrincipal treats missing enabledCompanyIds as undefined', () => {
+  const principal = assertPrincipal({
     userId: 'usr_test',
     activeCompanyId: 'cmp_test',
   });
@@ -103,19 +103,14 @@ test('document normalizers: normalizePrincipal treats missing enabledCompanyIds 
   expect(principal.enabledCompanyIds).toBeUndefined();
 });
 
-test('document normalizers: normalizePrincipal treats non-array enabledCompanyIds as undefined', () => {
-  const principal = normalizePrincipal({
-    userId: 'usr_test',
-    activeCompanyId: 'cmp_test',
-    enabledCompanyIds: 'not-an-array',
-  });
-  expect(principal.enabledCompanyIds).toBeUndefined();
-});
-
-test('document normalizers: normalizePrincipal throws for missing userId', () => {
+test('document normalizers: assertPrincipal throws for non-array enabledCompanyIds', () => {
   let caught: ChoysumError | undefined;
   try {
-    normalizePrincipal({ activeCompanyId: 'cmp_test' });
+    assertPrincipal({
+      userId: 'usr_test',
+      activeCompanyId: 'cmp_test',
+      enabledCompanyIds: 'not-an-array',
+    });
   } catch (err) {
     caught = err as ChoysumError;
   }
@@ -123,10 +118,21 @@ test('document normalizers: normalizePrincipal throws for missing userId', () =>
   expect(caught!.code).toBe('INVALID_ARGUMENT');
 });
 
-test('document normalizers: normalizePrincipal throws for missing activeCompanyId', () => {
+test('document normalizers: assertPrincipal throws for missing userId', () => {
   let caught: ChoysumError | undefined;
   try {
-    normalizePrincipal({ userId: 'usr_test' });
+    assertPrincipal({ activeCompanyId: 'cmp_test' });
+  } catch (err) {
+    caught = err as ChoysumError;
+  }
+  expect(caught).toBeDefined();
+  expect(caught!.code).toBe('INVALID_ARGUMENT');
+});
+
+test('document normalizers: assertPrincipal throws for missing activeCompanyId', () => {
+  let caught: ChoysumError | undefined;
+  try {
+    assertPrincipal({ userId: 'usr_test' });
   } catch (err) {
     caught = err as ChoysumError;
   }

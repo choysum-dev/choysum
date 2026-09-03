@@ -28,7 +28,7 @@ import AttachmentObject from '../models/attachment_object';
 import AttachmentMutationLedger from '../models/attachment_mutation_ledger';
 import UploadSession from '../models/upload_session';
 import StoredContent from '../models/stored_content';
-import { normalizeBatchDescribeReq } from '../models/_attachment_binding_codec';
+import { assertBatchDescribeReq } from '../models/_attachment_binding_codec';
 import {
   ensureAuthUserOwnerRecordRuleGrants,
   ensureAuthUserOwnerFieldRuleGrants,
@@ -1182,7 +1182,7 @@ test('document.attachment_binding: BatchDescribe rejects when attachmentBindingI
   const oversizedIds = Array.from({ length: 201 }, (_, i) => `bid_${i}`);
   let caught: ChoysumError | undefined;
   try {
-    normalizeBatchDescribeReq({ attachmentBindingIds: oversizedIds } as any);
+    assertBatchDescribeReq({ attachmentBindingIds: oversizedIds } as any);
   } catch (err) {
     caught = err as ChoysumError;
   }

@@ -9,7 +9,7 @@ import {
   normalizeOptionalRefId,
   normalizeOptionalText,
   normalizeOptionalTranslatedText,
-  normalizeRequiredText,
+  assertRequiredText,
   toDateOrUndefined,
 } from '@/partner_commercial/service/models/_normalization_bridge';
 
@@ -135,24 +135,24 @@ test('partner_commercial._normalization_bridge: normalizeOptionalRefId trims str
 });
 
 // ---------------------------------------------------------------------------
-// normalizeRequiredText
+// assertRequiredText
 // ---------------------------------------------------------------------------
 
-test('partner_commercial._normalization_bridge: normalizeRequiredText trims value', () => {
-  expect(normalizeRequiredText('  Value  ', 'Value')).toBe('Value');
+test('partner_commercial._normalization_bridge: assertRequiredText trims value', () => {
+  expect(assertRequiredText('  Value  ', 'Value')).toBe('Value');
 });
 
-test('partner_commercial._normalization_bridge: normalizeRequiredText throws for empty', () => {
-  expect(() => normalizeRequiredText('', 'Value')).toThrow();
-  expect(() => normalizeRequiredText('   ', 'Value')).toThrow();
-  expect(() => normalizeRequiredText(undefined, 'Value')).toThrow();
-  expect(() => normalizeRequiredText(null, 'Value')).toThrow();
+test('partner_commercial._normalization_bridge: assertRequiredText throws for empty', () => {
+  expect(() => assertRequiredText('', 'Value')).toThrow();
+  expect(() => assertRequiredText('   ', 'Value')).toThrow();
+  expect(() => assertRequiredText(undefined, 'Value')).toThrow();
+  expect(() => assertRequiredText(null, 'Value')).toThrow();
 });
 
-test('partner_commercial._normalization_bridge: normalizeRequiredText error message includes fieldName', () => {
+test('partner_commercial._normalization_bridge: assertRequiredText error message includes fieldName', () => {
   let err: unknown;
   try {
-    normalizeRequiredText('', 'IdentifierType');
+    assertRequiredText('', 'IdentifierType');
   } catch (e) {
     err = e;
   }
@@ -160,12 +160,12 @@ test('partner_commercial._normalization_bridge: normalizeRequiredText error mess
   expect((err as ChoysumError).message).toBe('IdentifierType is required');
 });
 
-test('partner_commercial._normalization_bridge: normalizeRequiredText lowercases with lower option', () => {
-  expect(normalizeRequiredText('  ABC  ', 'Field', { lower: true })).toBe('abc');
+test('partner_commercial._normalization_bridge: assertRequiredText lowercases with lower option', () => {
+  expect(assertRequiredText('  ABC  ', 'Field', { lower: true })).toBe('abc');
 });
 
-test('partner_commercial._normalization_bridge: normalizeRequiredText uppercases with upper option', () => {
-  expect(normalizeRequiredText('  abc  ', 'Field', { upper: true })).toBe('ABC');
+test('partner_commercial._normalization_bridge: assertRequiredText uppercases with upper option', () => {
+  expect(assertRequiredText('  abc  ', 'Field', { upper: true })).toBe('ABC');
 });
 
 // ---------------------------------------------------------------------------

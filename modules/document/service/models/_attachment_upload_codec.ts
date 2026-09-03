@@ -142,7 +142,7 @@ export function buildUploadedPayloadRefFromPayloadId(payloadId: string): Uploade
   );
 }
 
-export function normalizeUploadedPayloadRef(raw: unknown): UploadedPayloadRef | undefined {
+export function parseUploadedPayloadRefFromUnknown(raw: unknown): UploadedPayloadRef | undefined {
   if (raw === undefined || raw === null) return undefined;
 
   if (typeof raw === 'string') {
@@ -153,7 +153,7 @@ export function normalizeUploadedPayloadRef(raw: unknown): UploadedPayloadRef | 
 
     try {
       const parsed = JSON.parse(text) as Record<string, unknown>;
-      return normalizeUploadedPayloadRef(parsed);
+      return parseUploadedPayloadRefFromUnknown(parsed);
     } catch {
       return buildUploadedPayloadRefFromPayloadId(text);
     }

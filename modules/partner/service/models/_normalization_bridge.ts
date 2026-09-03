@@ -14,9 +14,9 @@ export const fail = bridge.fail;
 export const mapNormalizationToPartner = bridge.mapNormalizationError;
 
 export const normalizeOptionalText = bridge.normalizeOptionalText;
-export const normalizeRequiredText = bridge.normalizeRequiredText;
-export const normalizeRequiredTranslatedText = bridge.normalizeRequiredTranslatedText;
+export const assertRequiredText = bridge.normalizeRequiredText;
+export const assertRequiredTranslatedText = bridge.normalizeRequiredTranslatedText;
 export const normalizeOptionalTranslatedText = bridge.normalizeOptionalTranslatedText;
 export const translatedTextHasValue = bridge.translatedTextHasValue;
-export const normalizeNonNegativeInt = bridge.normalizeNonNegativeInt;
+export const assertNonNegativeInt = bridge.normalizeNonNegativeInt;
 export const normalizeSequenceInt = bridge.normalizeSequenceInt;

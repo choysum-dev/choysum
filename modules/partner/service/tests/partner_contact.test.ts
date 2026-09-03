@@ -5,45 +5,45 @@ import PartnerContact from '@/partner/service/models/partner_contact';
 import { ChoysumError } from '@/core/service/error';
 
 // ---------------------------------------------------------------------------
-// normalizeAddressType
+// assertAddressType
 // ---------------------------------------------------------------------------
 
-test('partner_contact: normalizeAddressType returns undefined for undefined', () => {
-  const result = (PartnerContact as any).normalizeAddressType(undefined);
+test('partner_contact: assertAddressType returns undefined for undefined', () => {
+  const result = (PartnerContact as any).assertAddressType(undefined);
   expect(result).toBeUndefined();
 });
 
-test('partner_contact: normalizeAddressType returns null for null', () => {
-  const result = (PartnerContact as any).normalizeAddressType(null);
+test('partner_contact: assertAddressType returns null for null', () => {
+  const result = (PartnerContact as any).assertAddressType(null);
   expect(result).toBeNull();
 });
 
-test('partner_contact: normalizeAddressType returns null for empty string', () => {
-  const result = (PartnerContact as any).normalizeAddressType('');
+test('partner_contact: assertAddressType returns null for empty string', () => {
+  const result = (PartnerContact as any).assertAddressType('');
   expect(result).toBeNull();
 });
 
-test('partner_contact: normalizeAddressType lowercases valid type', () => {
-  const result = (PartnerContact as any).normalizeAddressType('BILLING');
+test('partner_contact: assertAddressType lowercases valid type', () => {
+  const result = (PartnerContact as any).assertAddressType('BILLING');
   expect(result).toBe('billing');
 });
 
-test('partner_contact: normalizeAddressType returns valid type unchanged when already lowercase', () => {
-  const result = (PartnerContact as any).normalizeAddressType('shipping');
+test('partner_contact: assertAddressType returns valid type unchanged when already lowercase', () => {
+  const result = (PartnerContact as any).assertAddressType('shipping');
   expect(result).toBe('shipping');
 });
 
-test('partner_contact: normalizeAddressType accepts all valid types', () => {
+test('partner_contact: assertAddressType accepts all valid types', () => {
   const validTypes = ['billing', 'shipping', 'office', 'registered', 'other'];
   for (const t of validTypes) {
-    expect((PartnerContact as any).normalizeAddressType(t)).toBe(t);
+    expect((PartnerContact as any).assertAddressType(t)).toBe(t);
   }
 });
 
-test('partner_contact: normalizeAddressType throws for invalid type', () => {
+test('partner_contact: assertAddressType throws for invalid type', () => {
   let err: unknown;
   try {
-    (PartnerContact as any).normalizeAddressType('invalid');
+    (PartnerContact as any).assertAddressType('invalid');
   } catch (e) {
     err = e;
   }

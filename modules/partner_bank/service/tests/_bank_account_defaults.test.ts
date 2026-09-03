@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ChoysumError } from '@/core/service/error';
-import { ACCOUNT_TYPES, maskAccountNo, normalizeAccountType, pickDefaultBankAccountId } from '@/partner_bank/service/models/_bank_account_defaults';
+import { ACCOUNT_TYPES, maskAccountNo, assertAccountType, pickDefaultBankAccountId } from '@/partner_bank/service/models/_bank_account_defaults';
 
 // ---------------------------------------------------------------------------
 // maskAccountNo
@@ -46,46 +46,46 @@ test('partner_bank._bank_account_defaults: maskAccountNo handles account number 
 });
 
 // ---------------------------------------------------------------------------
-// normalizeAccountType
+// assertAccountType
 // ---------------------------------------------------------------------------
 
-test('partner_bank._bank_account_defaults: normalizeAccountType returns valid type', () => {
-  expect(normalizeAccountType('checking')).toBe('checking');
-  expect(normalizeAccountType('savings')).toBe('savings');
-  expect(normalizeAccountType('corporate')).toBe('corporate');
-  expect(normalizeAccountType('other')).toBe('other');
+test('partner_bank._bank_account_defaults: assertAccountType returns valid type', () => {
+  expect(assertAccountType('checking')).toBe('checking');
+  expect(assertAccountType('savings')).toBe('savings');
+  expect(assertAccountType('corporate')).toBe('corporate');
+  expect(assertAccountType('other')).toBe('other');
 });
 
-test('partner_bank._bank_account_defaults: normalizeAccountType trims value', () => {
-  expect(normalizeAccountType('  checking  ')).toBe('checking');
+test('partner_bank._bank_account_defaults: assertAccountType trims value', () => {
+  expect(assertAccountType('  checking  ')).toBe('checking');
 });
 
-test('partner_bank._bank_account_defaults: normalizeAccountType rejects case-mismatched input', () => {
+test('partner_bank._bank_account_defaults: assertAccountType rejects case-mismatched input', () => {
   let err: unknown;
   try {
-    normalizeAccountType('Checking');
+    assertAccountType('Checking');
   } catch (e) {
     err = e;
   }
   expect(err instanceof ChoysumError).toBe(true);
 });
 
-test('partner_bank._bank_account_defaults: normalizeAccountType returns undefined for undefined', () => {
-  expect(normalizeAccountType(undefined)).toBe(undefined);
+test('partner_bank._bank_account_defaults: assertAccountType returns undefined for undefined', () => {
+  expect(assertAccountType(undefined)).toBe(undefined);
 });
 
-test('partner_bank._bank_account_defaults: normalizeAccountType returns null for null', () => {
-  expect(normalizeAccountType(null)).toBe(null);
+test('partner_bank._bank_account_defaults: assertAccountType returns null for null', () => {
+  expect(assertAccountType(null)).toBe(null);
 });
 
-test('partner_bank._bank_account_defaults: normalizeAccountType returns null for empty', () => {
-  expect(normalizeAccountType('')).toBe(null);
+test('partner_bank._bank_account_defaults: assertAccountType returns null for empty', () => {
+  expect(assertAccountType('')).toBe(null);
 });
 
-test('partner_bank._bank_account_defaults: normalizeAccountType throws for invalid type', () => {
+test('partner_bank._bank_account_defaults: assertAccountType throws for invalid type', () => {
   let err: unknown;
   try {
-    normalizeAccountType('invalid');
+    assertAccountType('invalid');
   } catch (e) {
     err = e;
   }
