@@ -4,10 +4,12 @@
 package converter
 
 import (
+	"encoding/json"
 	"math"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
@@ -16,6 +18,7 @@ import (
 	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func testDescriptors(t *testing.T) (protoreflect.MessageDescriptor, protoreflect.MessageDescriptor, protoreflect.MessageDescriptor, protoreflect.MessageDescriptor, protoreflect.MessageDescriptor, protoreflect.EnumDescriptor) {
@@ -219,8 +222,8 @@ func TestAnyToMessageSliceAndWellKnownHelpers(t *testing.T) {
 	}
 
 	listDyn := dynamicpb.NewMessage((&structpb.ListValue{}).ProtoReflect().Descriptor())
-	if err := setProtoList([]interface{}{true, "x", float64(3)}, listDyn); err != nil {
-		t.Fatalf("setProtoList: %v", err)
+	if err := AnyToMessage([]interface{}{true, "x", float64(3)}, listDyn); err != nil {
+		t.Fatalf("AnyToMessage(list): %v", err)
 	}
 	got, err = extractProtoList(listDyn)
 	if err != nil {
@@ -507,5 +510,166 @@ func TestAnyToMessageSimpleValueAndMessageToAnyForAny(t *testing.T) {
 	numberFirst := dynamicpb.NewMessage(numberFirstDesc)
 	if err := AnyToMessage("bad", numberFirst); err == nil || !strings.Contains(err.Error(), "cannot convert string to int32") {
 		t.Fatalf("expected AnyToMessage numeric conversion error, got %v", err)
+	}
+}
+
+func TestTimestampWellKnownRoundTrip(t *testing.T) {
+	desc := (&timestamppb.Timestamp{}).ProtoReflect().Descriptor()
+	msg := dynamicpb.NewMessage(desc)
+
+	if err := AnyToMessage("2020-01-02T03:04:05.006Z", msg); err != nil {
+		t.Fatalf("AnyToMessage(string): %v", err)
+	}
+	got, err := MessageToAny(msg)
+	if err != nil {
+		t.Fatalf("MessageToAny: %v", err)
+	}
+	if got != "2020-01-02T03:04:05.006Z" {
+		t.Fatalf("round-trip got %#v", got)
+	}
+
+	msgRFC := dynamicpb.NewMessage(desc)
+	if err := AnyToMessage("2020-01-02T03:04:05Z", msgRFC); err != nil {
+		t.Fatalf("AnyToMessage(RFC3339): %v", err)
+	}
+	gotRFC, err := MessageToAny(msgRFC)
+	if err != nil || gotRFC != "2020-01-02T03:04:05Z" {
+		t.Fatalf("RFC3339 round-trip %#v %v", gotRFC, err)
+	}
+
+	msg2 := dynamicpb.NewMessage(desc)
+	if err := AnyToMessage(map[string]interface{}{"seconds": float64(1), "nanos": float64(2)}, msg2); err != nil {
+		t.Fatalf("AnyToMessage(map): %v", err)
+	}
+	msg2b := dynamicpb.NewMessage(desc)
+	if err := AnyToMessage(map[string]interface{}{"seconds": int64(3), "nanos": int32(4)}, msg2b); err != nil {
+		t.Fatalf("AnyToMessage(map typed): %v", err)
+	}
+	msg2c := dynamicpb.NewMessage(desc)
+	if err := AnyToMessage(map[string]interface{}{"seconds": int(5), "nanos": int(6)}, msg2c); err != nil {
+		t.Fatalf("AnyToMessage(map int): %v", err)
+	}
+	msg2d := dynamicpb.NewMessage(desc)
+	if err := AnyToMessage(map[string]interface{}{"seconds": json.Number("7"), "nanos": int64(8)}, msg2d); err != nil {
+		t.Fatalf("AnyToMessage(map json.Number): %v", err)
+	}
+	msg2e := dynamicpb.NewMessage(desc)
+	if err := AnyToMessage(map[string]interface{}{"seconds": json.Number("9"), "nanos": json.Number("10")}, msg2e); err != nil {
+		t.Fatalf("AnyToMessage(map json.Number nanos): %v", err)
+	}
+	if err := AnyToMessage(map[string]interface{}{"nanos": json.Number("x")}, dynamicpb.NewMessage(desc)); err == nil {
+		t.Fatal("expected bad json.Number nanos")
+	}
+	if err := AnyToMessage(map[string]interface{}{"seconds": true}, dynamicpb.NewMessage(desc)); err == nil {
+		t.Fatal("expected bad seconds type")
+	}
+	if err := AnyToMessage(map[string]interface{}{"nanos": true}, dynamicpb.NewMessage(desc)); err == nil {
+		t.Fatal("expected bad nanos type")
+	}
+	if err := AnyToMessage(map[string]interface{}{"seconds": json.Number("x")}, dynamicpb.NewMessage(desc)); err == nil {
+		t.Fatal("expected bad json.Number seconds")
+	}
+
+	msg3 := dynamicpb.NewMessage(desc)
+	if err := AnyToMessage(time.Unix(10, 0).UTC(), msg3); err != nil {
+		t.Fatalf("AnyToMessage(time): %v", err)
+	}
+	msg3p := dynamicpb.NewMessage(desc)
+	ptr := time.Unix(14, 15).UTC()
+	if err := AnyToMessage(&ptr, msg3p); err != nil {
+		t.Fatalf("AnyToMessage(*time.Time): %v", err)
+	}
+	if err := AnyToMessage((*time.Time)(nil), dynamicpb.NewMessage(desc)); err != nil {
+		t.Fatalf("AnyToMessage(nil *time.Time): %v", err)
+	}
+	msg2f := dynamicpb.NewMessage(desc)
+	if err := AnyToMessage(map[string]interface{}{"seconds": int32(11), "nanos": int32(12)}, msg2f); err != nil {
+		t.Fatalf("AnyToMessage(map int32 seconds): %v", err)
+	}
+	msg4 := dynamicpb.NewMessage(desc)
+	if err := AnyToMessage(float64(11.5), msg4); err != nil {
+		t.Fatalf("AnyToMessage(float): %v", err)
+	}
+	msg4b := dynamicpb.NewMessage(desc)
+	if err := AnyToMessage(float64(-11.25), msg4b); err != nil {
+		t.Fatalf("AnyToMessage(neg float): %v", err)
+	}
+	secField := desc.Fields().ByName("seconds")
+	nanosField := desc.Fields().ByName("nanos")
+	if msg4b.Get(secField).Int() != -12 || msg4b.Get(nanosField).Int() != 750_000_000 {
+		t.Fatalf("neg float parts seconds=%d nanos=%d, want -12 / 750000000", msg4b.Get(secField).Int(), msg4b.Get(nanosField).Int())
+	}
+	msg5 := dynamicpb.NewMessage(desc)
+	if err := AnyToMessage(12, msg5); err != nil {
+		t.Fatalf("AnyToMessage(int): %v", err)
+	}
+	msg6 := dynamicpb.NewMessage(desc)
+	if err := AnyToMessage(int64(13), msg6); err != nil {
+		t.Fatalf("AnyToMessage(int64): %v", err)
+	}
+	if err := AnyToMessage(nil, dynamicpb.NewMessage(desc)); err != nil {
+		t.Fatalf("AnyToMessage(nil): %v", err)
+	}
+	if err := AnyToMessage("not-a-time", dynamicpb.NewMessage(desc)); err == nil {
+		t.Fatal("expected invalid timestamp string error")
+	}
+	if err := AnyToMessage([]byte("x"), dynamicpb.NewMessage(desc)); err == nil {
+		t.Fatal("expected unsupported type error")
+	}
+	if err := AnyToMessage(map[string]interface{}{"seconds": float64(1.5)}, dynamicpb.NewMessage(desc)); err == nil {
+		t.Fatal("expected fractional seconds rejection")
+	}
+	if err := AnyToMessage(map[string]interface{}{"seconds": float64(1), "nanos": float64(-1)}, dynamicpb.NewMessage(desc)); err == nil {
+		t.Fatal("expected negative nanos rejection")
+	}
+	if err := AnyToMessage(map[string]interface{}{"seconds": float64(1), "nanos": int64(1_000_000_000)}, dynamicpb.NewMessage(desc)); err == nil {
+		t.Fatal("expected oversized nanos rejection")
+	}
+	if err := AnyToMessage(map[string]interface{}{"seconds": int64(-62_135_596_801)}, dynamicpb.NewMessage(desc)); err == nil {
+		t.Fatal("expected CheckValid underflow rejection")
+	}
+	if err := AnyToMessage(math.NaN(), dynamicpb.NewMessage(desc)); err == nil {
+		t.Fatal("expected NaN rejection")
+	}
+	if err := AnyToMessage(math.Inf(1), dynamicpb.NewMessage(desc)); err == nil {
+		t.Fatal("expected +Inf rejection")
+	}
+	if err := AnyToMessage(float64(-62_135_596_801), dynamicpb.NewMessage(desc)); err == nil {
+		t.Fatal("expected float underflow rejection")
+	}
+	if err := AnyToMessage(float64(253_402_300_800), dynamicpb.NewMessage(desc)); err == nil {
+		t.Fatal("expected float overflow rejection")
+	}
+	if err := AnyToMessage(map[string]interface{}{"seconds": float64(1), "nanos": float64(1.5)}, dynamicpb.NewMessage(desc)); err == nil {
+		t.Fatal("expected fractional nanos rejection")
+	}
+
+	carryMsg := dynamicpb.NewMessage(desc)
+	carryIn := 10.0 + (1e9-0.4)/1e9 // rounds nanos to 1e9 → carry into seconds
+	if err := AnyToMessage(carryIn, carryMsg); err != nil {
+		t.Fatalf("AnyToMessage(carry): %v", err)
+	}
+	if carryMsg.Get(secField).Int() != 11 || carryMsg.Get(nanosField).Int() != 0 {
+		t.Fatalf("carry parts seconds=%d nanos=%d, want 11 / 0", carryMsg.Get(secField).Int(), carryMsg.Get(nanosField).Int())
+	}
+
+	invalidOut := dynamicpb.NewMessage(desc)
+	invalidOut.Set(secField, protoreflect.ValueOfInt64(1))
+	invalidOut.Set(nanosField, protoreflect.ValueOfInt32(-1))
+	if _, err := MessageToAny(invalidOut); err == nil {
+		t.Fatal("expected extract CheckValid rejection for negative nanos")
+	}
+	invalidOut2 := dynamicpb.NewMessage(desc)
+	invalidOut2.Set(secField, protoreflect.ValueOfInt64(-62_135_596_801))
+	invalidOut2.Set(nanosField, protoreflect.ValueOfInt32(0))
+	if _, err := MessageToAny(invalidOut2); err == nil {
+		t.Fatal("expected extract CheckValid rejection for underflow seconds")
+	}
+
+	if err := setProtoTimestamp(nil, nil); err == nil {
+		t.Fatal("expected nil msg error")
+	}
+	if _, err := extractProtoTimestamp(nil); err == nil {
+		t.Fatal("expected nil extract error")
 	}
 }

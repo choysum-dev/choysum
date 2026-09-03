@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
@@ -59,6 +60,7 @@ func (g *protobufGenerator) generate(ctx context.Context, app *meta.Application)
 		"index": func(i int, start int) int {
 			return i + start
 		},
+		"needsTimestamp": protobufNeedsTimestamp,
 	}).Parse(tplStr)
 	if err != nil {
 		return nil, err
@@ -74,7 +76,7 @@ func (g *protobufGenerator) generate(ctx context.Context, app *meta.Application)
 			return err
 		}
 		// Copy embedded proto files into the modules proto directory for generators and frontend code.
-		embeddedProtoFiles, err := g.copyEmbeddedProtoFiles(protoDir)
+		embeddedProtoFiles, err := g.copyEmbeddedProtoFiles(protoDir, protobufNeedsTimestamp(app))
 		if err != nil {
 			return xfmt.Errorf("error copying embedded proto files: %w", err)
 		}
@@ -120,8 +122,34 @@ func (g *protobufGenerator) generate(ctx context.Context, app *meta.Application)
 		}}, nil
 }
 
+func protobufNeedsTimestamp(app *meta.Application) bool {
+	if app == nil {
+		return false
+	}
+	for _, model := range app.Models {
+		if model == nil {
+			continue
+		}
+		for _, service := range model.Services {
+			if service == nil {
+				continue
+			}
+			if strings.Contains(service.ProtobufType, "google.protobuf.Timestamp") {
+				return true
+			}
+			for _, param := range service.Parameters {
+				if param != nil && strings.Contains(param.ProtobufType, "google.protobuf.Timestamp") {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
 // copyEmbeddedProtoFiles copies embedded proto assets into destDir.
-func (g *protobufGenerator) copyEmbeddedProtoFiles(destDir string) ([]string, error) {
+// timestamp.proto is copied only when includeTimestamp is true.
+func (g *protobufGenerator) copyEmbeddedProtoFiles(destDir string, includeTimestamp bool) ([]string, error) {
 	var outPaths []string
 	err := fs.WalkDir(protoFS, "assets", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -131,6 +159,9 @@ func (g *protobufGenerator) copyEmbeddedProtoFiles(destDir string) ([]string, er
 		relPath, err := filepath.Rel("assets", path)
 		if err != nil {
 			return err
+		}
+		if !includeTimestamp && filepath.ToSlash(relPath) == "google/protobuf/timestamp.proto" {
+			return nil
 		}
 
 		destPath := filepath.Join(destDir, relPath)

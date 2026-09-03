@@ -95,8 +95,20 @@ func getProtoTypeFromTsType(tsType string) string {
 		return protoTypeBool
 	case "void":
 		return protoTypeEmpty
+	case "bigint":
+		return protoTypeInt64
+	case "Date":
+		return protoTypeTimestamp
+	case "string[]", "Array<string>":
+		return protoRepeatedPrefix + protoTypeString
+	case "number[]", "Array<number>":
+		return protoRepeatedPrefix + protoTypeDouble
+	case "boolean[]", "Array<boolean>":
+		return protoRepeatedPrefix + protoTypeBool
+	case "bigint[]", "Array<bigint>":
+		return protoRepeatedPrefix + protoTypeInt64
 	default:
-		return "google.protobuf.Value"
+		return protoTypeValue
 	}
 }
 

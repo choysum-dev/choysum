@@ -9,12 +9,14 @@ import (
 	"math"
 	"reflect"
 	"strconv"
+	"time"
 
 	xfmt "golang.org/x/exp/errors/fmt"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // MessageToMap converts a dynamicpb.Message to a map[string]interface{}
@@ -89,6 +91,8 @@ func extractWellKnownType(msg protoreflect.Message) (interface{}, error) {
 		return extractProtoList(protoMsg)
 	case "google.protobuf.Any":
 		return extractProtoAny(protoMsg)
+	case "google.protobuf.Timestamp":
+		return extractProtoTimestamp(protoMsg)
 	default:
 		// Use generic JSON conversion as fallback
 		return messageToAnyGeneric(protoMsg)
@@ -205,6 +209,27 @@ func extractProtoAny(msg protoreflect.ProtoMessage) (interface{}, error) {
 	return messageToAnyGeneric(msg)
 }
 
+// extractProtoTimestamp returns an RFC3339 / RFC3339Nano string for Timestamp.
+// Callers (CreateServerApiService, web codecs) already treat Date as ISO strings.
+func extractProtoTimestamp(msg protoreflect.ProtoMessage) (interface{}, error) {
+	if msg == nil {
+		return nil, xfmt.Errorf("nil timestamp message")
+	}
+	ref := msg.ProtoReflect()
+	fields := ref.Descriptor().Fields()
+	seconds := ref.Get(fields.ByName("seconds")).Int()
+	nanos := ref.Get(fields.ByName("nanos")).Int()
+	ts := &timestamppb.Timestamp{Seconds: seconds, Nanos: int32(nanos)}
+	if err := ts.CheckValid(); err != nil {
+		return nil, err
+	}
+	t := ts.AsTime().UTC()
+	if nanos == 0 {
+		return t.Format(time.RFC3339), nil
+	}
+	return t.Format(time.RFC3339Nano), nil
+}
+
 // messageToAnyGeneric provides a generic JSON conversion method
 func messageToAnyGeneric(msg protoreflect.ProtoMessage) (interface{}, error) {
 	marshaler := protojson.MarshalOptions{
@@ -236,6 +261,8 @@ func AnyToMessage(v interface{}, msg *dynamicpb.Message) error {
 		return setProtoStruct(v, msg)
 	} else if msg.Descriptor().FullName() == "google.protobuf.ListValue" {
 		return setProtoList(v, msg)
+	} else if msg.Descriptor().FullName() == "google.protobuf.Timestamp" {
+		return setProtoTimestamp(v, msg)
 	}
 
 	// Process based on value type
@@ -490,6 +517,155 @@ func setProtoStruct(v interface{}, msg *dynamicpb.Message) error {
 	return nil
 }
 
+// setProtoTimestamp populates google.protobuf.Timestamp from an ISO string,
+// unix seconds (int/float), time.Time, or {seconds,nanos} map.
+func setProtoTimestamp(v interface{}, msg *dynamicpb.Message) error {
+	if msg == nil || msg.Descriptor().FullName() != "google.protobuf.Timestamp" {
+		return xfmt.Errorf("expected google.protobuf.Timestamp")
+	}
+	fields := msg.Descriptor().Fields()
+	secondsField := fields.ByName("seconds")
+	nanosField := fields.ByName("nanos")
+
+	var seconds int64
+	var nanos int32
+	switch val := v.(type) {
+	case nil:
+		return nil
+	case time.Time:
+		seconds = val.Unix()
+		nanos = int32(val.Nanosecond())
+	case *time.Time:
+		if val == nil {
+			return nil
+		}
+		seconds = val.Unix()
+		nanos = int32(val.Nanosecond())
+	case string:
+		parsed, err := time.Parse(time.RFC3339Nano, val)
+		if err != nil {
+			parsed, err = time.Parse(time.RFC3339, val)
+		}
+		if err != nil {
+			return xfmt.Errorf("invalid Timestamp string %q: %w", val, err)
+		}
+		seconds = parsed.Unix()
+		nanos = int32(parsed.Nanosecond())
+	case float64:
+		sec, nano, err := float64ToTimestampParts(val)
+		if err != nil {
+			return err
+		}
+		seconds, nanos = sec, nano
+	case int:
+		seconds = int64(val)
+	case int64:
+		seconds = val
+	case map[string]interface{}:
+		if s, ok := val["seconds"]; ok {
+			sec, err := timestampSecondsFromAny(s)
+			if err != nil {
+				return err
+			}
+			seconds = sec
+		}
+		if n, ok := val["nanos"]; ok {
+			nano, err := timestampNanosFromAny(n)
+			if err != nil {
+				return err
+			}
+			nanos = nano
+		}
+	default:
+		return xfmt.Errorf("unsupported Timestamp value type %T", v)
+	}
+
+	ts := &timestamppb.Timestamp{Seconds: seconds, Nanos: nanos}
+	if err := ts.CheckValid(); err != nil {
+		return err
+	}
+	msg.Set(secondsField, protoreflect.ValueOfInt64(seconds))
+	msg.Set(nanosField, protoreflect.ValueOfInt32(nanos))
+	return nil
+}
+
+// float64ToTimestampParts splits a unix-seconds float into protobuf Timestamp
+// seconds/nanos. Uses floor so negative fractions stay exact (e.g. -11.25).
+func float64ToTimestampParts(val float64) (int64, int32, error) {
+	if math.IsNaN(val) || math.IsInf(val, 0) {
+		return 0, 0, xfmt.Errorf("invalid Timestamp float %v", val)
+	}
+	// Reject before float→int64 conversion; matches timestamppb.CheckValid bounds.
+	const (
+		minTimestampSeconds     = -62135596800
+		maxTimestampSecondsExcl = 253402300800
+	)
+	if val < float64(minTimestampSeconds) || val >= float64(maxTimestampSecondsExcl) {
+		return 0, 0, xfmt.Errorf("Timestamp float %v out of range", val)
+	}
+	sec := math.Floor(val)
+	seconds := int64(sec)
+	n := int64(math.Round((val - sec) * 1e9))
+	if n >= 1e9 {
+		seconds++
+		n -= 1e9
+	}
+	return seconds, int32(n), nil
+}
+
+func timestampSecondsFromAny(v interface{}) (int64, error) {
+	switch typed := v.(type) {
+	case float64:
+		if typed != math.Trunc(typed) {
+			return 0, xfmt.Errorf("Timestamp seconds must be whole, got %v", typed)
+		}
+		return int64(typed), nil
+	case int32:
+		return int64(typed), nil
+	case int64:
+		return typed, nil
+	case int:
+		return int64(typed), nil
+	case json.Number:
+		i, err := typed.Int64()
+		if err != nil {
+			return 0, xfmt.Errorf("invalid Timestamp seconds: %w", err)
+		}
+		return i, nil
+	default:
+		return 0, xfmt.Errorf("invalid Timestamp seconds type %T", v)
+	}
+}
+
+func timestampNanosFromAny(v interface{}) (int32, error) {
+	var n int64
+	switch typed := v.(type) {
+	case float64:
+		if typed != math.Trunc(typed) {
+			return 0, xfmt.Errorf("Timestamp nanos must be whole, got %v", typed)
+		}
+		n = int64(typed)
+	case int32:
+		n = int64(typed)
+	case int:
+		n = int64(typed)
+	case int64:
+		n = typed
+	case json.Number:
+		parsed, err := typed.Int64()
+		if err != nil {
+			return 0, xfmt.Errorf("invalid Timestamp nanos: %w", err)
+		}
+		n = parsed
+	default:
+		return 0, xfmt.Errorf("invalid Timestamp nanos type %T", v)
+	}
+	if n < 0 || n >= 1e9 {
+		return 0, xfmt.Errorf("Timestamp nanos out of range: %d", n)
+	}
+	return int32(n), nil
+}
+
 // setProtoList sets an array to google.protobuf.ListValue
 func setProtoList(v interface{}, msg *dynamicpb.Message) error {
 	// Ensure we're handling google.protobuf.ListValue
@@ -534,7 +710,8 @@ func isWellKnownType(desc protoreflect.MessageDescriptor) bool {
 	return fullName == "google.protobuf.Value" ||
 		fullName == "google.protobuf.Struct" ||
 		fullName == "google.protobuf.ListValue" ||
-		fullName == "google.protobuf.Any"
+		fullName == "google.protobuf.Any" ||
+		fullName == "google.protobuf.Timestamp"
 }
 
 // ConvertToProtoValue converts a Go value to protoreflect.Value

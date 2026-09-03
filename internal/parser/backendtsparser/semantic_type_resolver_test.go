@@ -114,11 +114,231 @@ export default class Demo {
 		t.Fatalf("Mixed params=%v", mixed.Parameters)
 	}
 
-	for _, name := range []string{"NullableString", "OptionalNumber", "AnyValue"} {
+	nullable := byName["NullableString"]
+	if nullable == nil || nullable.ProtobufType != "string" {
+		t.Fatalf("NullableString ProtobufType=%v, want string after nullish strip", nullable)
+	}
+	optional := byName["OptionalNumber"]
+	if optional == nil || optional.ProtobufType != "double" {
+		t.Fatalf("OptionalNumber ProtobufType=%v, want double after nullish strip", optional)
+	}
+	anyValue := byName["AnyValue"]
+	if anyValue == nil || anyValue.ProtobufType != "google.protobuf.Value" {
+		t.Fatalf("AnyValue ProtobufType=%v, want Value", anyValue)
+	}
+}
+
+func TestSemanticTypeResolver_Phase2ExtendedMappings(t *testing.T) {
+	if !bundled.Embedded {
+		t.Skip("bundled libs not embedded")
+	}
+	if os.Getenv(envDisableSemanticProto) == "1" {
+		t.Skip("semantic protobuf mapping disabled in environment")
+	}
+
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.Module{Path: "/virtual/modules/demo", ApplicationStr: "demo", Name: "demo"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/demo/service/phase2.ts"
+	content := `
+type Id = string
+type Decimal = string
+enum Mode { Read = 'read', Write = 'write' }
+enum Level { Low = 1, High = 2 }
+
+export default class Demo {
+  public static async Tags(tags: string[]): Promise<number[]> {
+    return [1]
+  }
+
+  public static async AliasTags(tags: Id[]): Promise<Id[]> {
+    return tags
+  }
+
+  public static async Nested(tags: string[][]): Promise<string[][]> {
+    return tags
+  }
+
+  public static async WithEnum(mode: Mode, level: Level): Promise<Mode> {
+    return mode
+  }
+
+  public static async WithBigInt(n: bigint): Promise<bigint> {
+    return n
+  }
+
+  public static async WithDate(at: Date): Promise<Date> {
+    return at
+  }
+
+  public static async WithDecimal(amount: Decimal): Promise<Decimal> {
+    return amount
+  }
+
+  public static async NullishArray(tags: string[] | null): Promise<string[] | undefined> {
+    return tags ?? []
+  }
+}
+`
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	if r.Model == nil {
+		t.Fatal("expected model")
+	}
+	byName := map[string]*meta.Service{}
+	for _, service := range r.Model.Services {
+		byName[service.Name] = service
+	}
+
+	assertService := func(name, wantReturn string, wantParams ...string) {
+		t.Helper()
 		service := byName[name]
-		if service == nil || service.ProtobufType != "google.protobuf.Value" {
-			t.Fatalf("%s ProtobufType=%v, want Value", name, service)
+		if service == nil {
+			t.Fatalf("missing %s", name)
 		}
+		if service.ProtobufType != wantReturn {
+			t.Fatalf("%s return ProtobufType=%q, want %q", name, service.ProtobufType, wantReturn)
+		}
+		if len(service.Parameters) != len(wantParams) {
+			t.Fatalf("%s params=%v, want %v", name, service.Parameters, wantParams)
+		}
+		for i, want := range wantParams {
+			if service.Parameters[i].ProtobufType != want {
+				t.Fatalf("%s param[%d]=%q, want %q", name, i, service.Parameters[i].ProtobufType, want)
+			}
+		}
+	}
+
+	assertService("Tags", "repeated double", "repeated string")
+	assertService("AliasTags", "repeated string", "repeated string")
+	assertService("Nested", "google.protobuf.Value", "google.protobuf.Value")
+	assertService("WithEnum", "string", "string", "double")
+	assertService("WithBigInt", "int64", "int64")
+	assertService("WithDate", "google.protobuf.Timestamp", "google.protobuf.Timestamp")
+	assertService("WithDecimal", "string", "string")
+	assertService("NullishArray", "repeated string", "repeated string")
+}
+
+func TestSemanticTypeResolver_Phase2HelperEdges(t *testing.T) {
+	if !bundled.Embedded {
+		t.Skip("bundled libs not embedded")
+	}
+	if os.Getenv(envDisableSemanticProto) == "1" {
+		t.Skip("semantic protobuf mapping disabled in environment")
+	}
+
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.Module{Path: "/virtual/modules/demo", ApplicationStr: "demo", Name: "demo"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/demo/service/phase2_edges.ts"
+	content := `
+enum Mode { Read = 'read', Write = 'write' }
+enum Level { Low = 1, High = 2 }
+enum Mixed { A = 1, B = 'b' }
+class Decimal { amount: string }
+class BigDecimal { amount: string }
+
+export default class Demo {
+  public static async OnlyNullish(): Promise<null | undefined> {
+    return null
+  }
+
+  public static async ParamNullish(x: null | undefined): Promise<void> {
+    return
+  }
+
+  public static async StringOrVoid(v: string | void | null): Promise<string | void> {
+    return v as string
+  }
+
+  public static async Dates(items: Date[]): Promise<Date[]> {
+    return items
+  }
+
+  public static async BigInts(items: bigint[]): Promise<bigint[]> {
+    return items
+  }
+
+  public static async WithDecimalClass(amount: Decimal): Promise<BigDecimal> {
+    return amount as any
+  }
+
+  public static async EnumLit(m: Mode.Read): Promise<Mode.Read> {
+    return m
+  }
+
+  public static async LevelLit(l: Level.Low): Promise<Level.Low> {
+    return l
+  }
+
+	public static async MixedEnum(m: Mixed): Promise<Mixed> {
+    return m
+  }
+
+  public static async BigLit(n: 1n | 2n): Promise<1n | 2n> {
+    return n
+  }
+}
+`
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	byName := map[string]*meta.Service{}
+	for _, service := range r.Model.Services {
+		byName[service.Name] = service
+	}
+	assert := func(name, wantReturn string, wantParams ...string) {
+		t.Helper()
+		service := byName[name]
+		if service == nil {
+			t.Fatalf("missing %s", name)
+		}
+		if service.ProtobufType != wantReturn {
+			t.Fatalf("%s return=%q want %q", name, service.ProtobufType, wantReturn)
+		}
+		if len(wantParams) == 0 {
+			return
+		}
+		if len(service.Parameters) != len(wantParams) {
+			t.Fatalf("%s params=%v want %v", name, service.Parameters, wantParams)
+		}
+		for i, want := range wantParams {
+			if service.Parameters[i].ProtobufType != want {
+				t.Fatalf("%s param[%d]=%q want %q", name, i, service.Parameters[i].ProtobufType, want)
+			}
+		}
+	}
+
+	assert("OnlyNullish", "google.protobuf.Empty")
+	assert("ParamNullish", "google.protobuf.Empty", "google.protobuf.Value")
+	assert("StringOrVoid", "string", "string")
+	assert("Dates", "google.protobuf.Value", "google.protobuf.Value")
+	assert("BigInts", "repeated int64", "repeated int64")
+	assert("WithDecimalClass", "string", "string")
+	assert("EnumLit", "string", "string")
+	assert("LevelLit", "double", "double")
+	assert("MixedEnum", "double", "double")
+	assert("BigLit", "int64", "int64")
+
+	if got, ok := mapSpecialCheckerType(nil, nil); ok || got != "" {
+		t.Fatalf("mapSpecial nil (%q,%v)", got, ok)
+	}
+	if got, ok := mapEnumCheckerType(nil, nil); ok || got != "" {
+		t.Fatalf("mapEnum nil (%q,%v)", got, ok)
+	}
+	if got, ok := classifyEnumLikeType(nil); ok || got != "" {
+		t.Fatalf("classifyEnum nil (%q,%v)", got, ok)
+	}
+	if got, ok := classifyEnumLikeParts(nil); ok || got != "" {
+		t.Fatalf("classifyParts nil (%q,%v)", got, ok)
+	}
+	if got := stripNullishParts([]*checker.Type{nil}); len(got) != 0 {
+		t.Fatalf("strip nil part got %#v", got)
 	}
 }
 
