@@ -46,7 +46,11 @@ export function createModuleKanbanOpProgressHooks(
       bindings.warn(bindings.messages.serviceRestarting());
     },
     onHardError: (message) => {
-      bindings.error(message || bindings.messages.failedToGetStatus());
+      if (!message || message === 'Failed to get status') {
+        bindings.error(bindings.messages.failedToGetStatus());
+        return;
+      }
+      bindings.error(message);
     },
   };
 }

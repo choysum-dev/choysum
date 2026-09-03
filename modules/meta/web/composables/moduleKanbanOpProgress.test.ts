@@ -58,5 +58,8 @@ describe('createModuleKanbanOpProgressHooks', () => {
     hooks.onHardError?.('');
     expect(failedToGetStatus).toHaveBeenCalledTimes(1);
     expect(error).toHaveBeenCalledWith('Failed to get status');
+    hooks.onHardError?.('Failed to get status');
+    expect(failedToGetStatus).toHaveBeenCalledTimes(2);
+    expect(error).toHaveBeenLastCalledWith('Failed to get status');
   });
 });
