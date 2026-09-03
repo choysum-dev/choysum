@@ -107,10 +107,7 @@ func (r *semanticTypeResolver) trySemantic(path, content, className, methodName,
 		return "", false
 	}
 
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	state, err := r.ensureFileLocked(path, content)
+	state, err := r.ensureFile(path, content)
 	if err != nil {
 		// Keep semantic mapping enabled for other files; only this lookup falls back.
 		r.logWarn("semantic protobuf mapping failed for file", "path", path, "err", err)
@@ -141,11 +138,16 @@ func (r *semanticTypeResolver) trySemantic(path, content, className, methodName,
 	return mapCheckerTypeToProto(c, c.GetTypeFromTypeNode(typeNode), isReturn)
 }
 
-func (r *semanticTypeResolver) ensureFileLocked(path, content string) (*semanticFileState, error) {
+// ensureFile returns a cached Program for path/content. Compilation runs without
+// holding r.mu so concurrent file parses are not serialized on Program build.
+func (r *semanticTypeResolver) ensureFile(path, content string) (*semanticFileState, error) {
+	r.mu.Lock()
 	if cached, ok := r.cache[path]; ok && cached != nil && cached.content == content {
 		r.touchCacheLocked(path)
+		r.mu.Unlock()
 		return cached, nil
 	}
+	r.mu.Unlock()
 
 	program, file, err := buildSemanticProgramImpl(path, content)
 	if err != nil {
@@ -155,6 +157,13 @@ func (r *semanticTypeResolver) ensureFileLocked(path, content string) (*semantic
 		content: content,
 		program: program,
 		file:    file,
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if cached, ok := r.cache[path]; ok && cached != nil && cached.content == content {
+		r.touchCacheLocked(path)
+		return cached, nil
 	}
 	r.putCacheLocked(path, state)
 	return state, nil
@@ -292,7 +301,7 @@ func findParamTypeNode(nodes []*ast.Node, paramName string) *ast.Node {
 		return nil
 	}
 	for _, paramNode := range nodes {
-		if paramNode == nil {
+		if paramNode == nil || paramNode.Kind != ast.KindParameter {
 			continue
 		}
 		paramDecl := paramNode.AsParameterDeclaration()

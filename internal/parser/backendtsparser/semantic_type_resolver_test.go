@@ -441,8 +441,9 @@ export default class Demo {
 			t.Fatal("unnamed method should have empty name text")
 		}
 		unnamedParam := factory.NewParameterDeclaration(nil, nil, nil, nil, nil, nil)
-		if findParamTypeNode([]*ast.Node{nil, unnamedParam}, "x") != nil {
-			t.Fatal("nil/unnamed params should not match")
+		nonParam := factory.NewMethodDeclaration(nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		if findParamTypeNode([]*ast.Node{nil, unnamedParam, nonParam}, "x") != nil {
+			t.Fatal("nil/unnamed/non-parameter nodes should not match")
 		}
 		if findParamTypeNode(nil, "") != nil {
 			t.Fatal("empty param name")
