@@ -100,9 +100,9 @@ func getProtoTypeFromTsType(tsType string) string {
 	}
 }
 
-func (p *tsFileParser) resolveProtobufType(methodName, paramName string, isReturn bool, tsAnnotation string) string {
+func (p *tsFileParser) resolveProtobufType(className, methodName, paramName string, isReturn bool, tsAnnotation string) string {
 	if p != nil && p.semantic != nil {
-		return p.semantic.resolveProtoType(p.Path, p.Content, methodName, paramName, isReturn, tsAnnotation)
+		return p.semantic.resolveProtoType(p.Path, p.Content, className, methodName, paramName, isReturn, tsAnnotation)
 	}
 	return getProtoTypeFromTsType(tsAnnotation)
 }
@@ -339,7 +339,7 @@ func (p *tsFileParser) parseModel() (*meta.Model, *parser.Class, *parser.Propert
 			service := &meta.Service{
 				Name:                  memberMethod.Name,
 				TsTypeAnnotation:      memberMethod.TypeAnnotation,
-				ProtobufType:          p.resolveProtobufType(memberMethod.Name, "", true, memberMethod.TypeAnnotation),
+				ProtobufType:          p.resolveProtobufType(model.ClassName, memberMethod.Name, "", true, memberMethod.TypeAnnotation),
 				AccessibilityModifier: memberMethod.AccessibilityModifier,
 				IsStatic:              memberMethod.IsStatic,
 			}
@@ -386,7 +386,7 @@ func (p *tsFileParser) parseModel() (*meta.Model, *parser.Class, *parser.Propert
 					parameter := &meta.Parameter{
 						Name:             param.Name,
 						TsTypeAnnotation: param.TypeAnnotation,
-						ProtobufType:     p.resolveProtobufType(memberMethod.Name, param.Name, false, param.TypeAnnotation),
+						ProtobufType:     p.resolveProtobufType(model.ClassName, memberMethod.Name, param.Name, false, param.TypeAnnotation),
 					}
 					service.Parameters = append(service.Parameters, parameter)
 				}

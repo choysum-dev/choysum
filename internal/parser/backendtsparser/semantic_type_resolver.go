@@ -31,6 +31,15 @@ const (
 	envDisableSemanticProto = "CHOYSUM_DISABLE_SEMANTIC_PROTO"
 )
 
+// Test overrides for coverage of rare failure paths.
+var (
+	semanticLibsEmbedded      = bundled.Embedded
+	buildSemanticProgramImpl  = buildSemanticProgram
+	semanticProgramSourceFile = func(program *compiler.Program, path string) *ast.SourceFile {
+		return program.GetSourceFile(path)
+	}
+)
+
 // semanticTypeResolver reduces service method parameter/return types to protobuf
 // scalars via typescript-go-internal checker. Failures fall back to text mapping.
 type semanticTypeResolver struct {
@@ -61,7 +70,7 @@ func (r *semanticTypeResolver) ensureEnabled() bool {
 			r.logWarn("semantic protobuf mapping disabled via " + envDisableSemanticProto)
 			return
 		}
-		if !bundled.Embedded {
+		if !semanticLibsEmbedded {
 			r.disabled = true
 			r.logWarn("semantic protobuf mapping disabled: typescript-go bundled libs are not embedded")
 		}
@@ -77,14 +86,14 @@ func (r *semanticTypeResolver) logWarn(msg string, args ...any) {
 }
 
 // resolveProtoType prefers semantic reduction, then text mapping.
-func (r *semanticTypeResolver) resolveProtoType(path, content, methodName, paramName string, isReturn bool, tsAnnotation string) string {
-	if mapped, ok := r.trySemantic(path, content, methodName, paramName, isReturn); ok {
+func (r *semanticTypeResolver) resolveProtoType(path, content, className, methodName, paramName string, isReturn bool, tsAnnotation string) string {
+	if mapped, ok := r.trySemantic(path, content, className, methodName, paramName, isReturn); ok {
 		return mapped
 	}
 	return getProtoTypeFromTsType(tsAnnotation)
 }
 
-func (r *semanticTypeResolver) trySemantic(path, content, methodName, paramName string, isReturn bool) (string, bool) {
+func (r *semanticTypeResolver) trySemantic(path, content, className, methodName, paramName string, isReturn bool) (string, bool) {
 	if r == nil || !r.ensureEnabled() {
 		return "", false
 	}
@@ -98,15 +107,12 @@ func (r *semanticTypeResolver) trySemantic(path, content, methodName, paramName 
 
 	state, err := r.ensureFileLocked(path, content)
 	if err != nil {
-		r.disabled = true
-		r.logWarn("semantic protobuf mapping disabled after program init failure", "path", path, "err", err)
-		return "", false
-	}
-	if state == nil || state.file == nil || state.program == nil {
+		// Keep semantic mapping enabled for other files; only this lookup falls back.
+		r.logWarn("semantic protobuf mapping failed for file", "path", path, "err", err)
 		return "", false
 	}
 
-	method := findClassMethodNode(state.file, methodName)
+	method := findClassMethodNode(state.file, className, methodName)
 	if method == nil {
 		return "", false
 	}
@@ -115,23 +121,11 @@ func (r *semanticTypeResolver) trySemantic(path, content, methodName, paramName 
 	if isReturn {
 		typeNode = methodDecl.Type
 	} else {
-		if paramName == "" || methodDecl.Parameters == nil {
-			return "", false
+		var nodes []*ast.Node
+		if methodDecl.Parameters != nil {
+			nodes = methodDecl.Parameters.Nodes
 		}
-		for _, paramNode := range methodDecl.Parameters.Nodes {
-			if paramNode == nil || paramNode.Kind != ast.KindParameter {
-				continue
-			}
-			paramDecl := paramNode.AsParameterDeclaration()
-			if paramDecl.Name() == nil {
-				continue
-			}
-			name := strings.TrimSpace(paramDecl.Name().Text())
-			if name == paramName {
-				typeNode = paramDecl.Type
-				break
-			}
-		}
+		typeNode = findParamTypeNode(nodes, paramName)
 	}
 	if typeNode == nil {
 		return "", false
@@ -147,7 +141,7 @@ func (r *semanticTypeResolver) ensureFileLocked(path, content string) (*semantic
 		return cached, nil
 	}
 
-	program, file, err := buildSemanticProgram(path, content)
+	program, file, err := buildSemanticProgramImpl(path, content)
 	if err != nil {
 		return nil, err
 	}
@@ -171,6 +165,7 @@ func buildSemanticProgram(path, content string) (*compiler.Program, *ast.SourceF
 		Target:                 core.ScriptTargetES2020,
 		Module:                 core.ModuleKindESNext,
 		ModuleResolution:       core.ModuleResolutionKindBundler,
+		StrictNullChecks:       core.TSTrue,
 		SkipLibCheck:           core.TSTrue,
 		NoEmit:                 core.TSTrue,
 		ExperimentalDecorators: core.TSTrue,
@@ -186,7 +181,7 @@ func buildSemanticProgram(path, content string) (*compiler.Program, *ast.SourceF
 		},
 		SingleThreaded: core.TSTrue,
 	})
-	file := program.GetSourceFile(path)
+	file := semanticProgramSourceFile(program, path)
 	if file == nil {
 		return nil, nil, errSemanticSourceFileMissing
 	}
@@ -227,7 +222,7 @@ func normalizeSemanticPath(path string) string {
 	return filepath.ToSlash(filepath.Clean(path))
 }
 
-func findClassMethodNode(file *ast.SourceFile, methodName string) *ast.Node {
+func findClassMethodNode(file *ast.SourceFile, className, methodName string) *ast.Node {
 	if file == nil || methodName == "" {
 		return nil
 	}
@@ -235,16 +230,42 @@ func findClassMethodNode(file *ast.SourceFile, methodName string) *ast.Node {
 		if stmt == nil || stmt.Kind != ast.KindClassDeclaration {
 			continue
 		}
+		if className != "" && nodeNameText(stmt) != className {
+			continue
+		}
 		for _, member := range stmt.Members() {
 			if member == nil || member.Kind != ast.KindMethodDeclaration {
 				continue
 			}
-			if member.Name() == nil {
-				continue
-			}
-			if strings.TrimSpace(member.Name().Text()) == methodName {
+			if nodeNameText(member) == methodName {
 				return member
 			}
+		}
+	}
+	return nil
+}
+
+func nodeNameText(node *ast.Node) string {
+	if node == nil || node.Name() == nil {
+		return ""
+	}
+	return strings.TrimSpace(node.Name().Text())
+}
+
+func findParamTypeNode(nodes []*ast.Node, paramName string) *ast.Node {
+	if paramName == "" {
+		return nil
+	}
+	for _, paramNode := range nodes {
+		if paramNode == nil {
+			continue
+		}
+		paramDecl := paramNode.AsParameterDeclaration()
+		if paramDecl.Name() == nil {
+			continue
+		}
+		if strings.TrimSpace(paramDecl.Name().Text()) == paramName {
+			return paramDecl.Type
 		}
 	}
 	return nil
@@ -265,6 +286,10 @@ func mapCheckerTypeToProto(c *checker.Checker, t *checker.Type, isReturn bool) (
 	if t.IsUnion() {
 		parts = t.Types()
 	}
+	return mapProtoParts(parts, isReturn)
+}
+
+func mapProtoParts(parts []*checker.Type, isReturn bool) (string, bool) {
 	if len(parts) == 0 {
 		return "", false
 	}
