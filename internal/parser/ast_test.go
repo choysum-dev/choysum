@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	tsast "github.com/buke/typescript-go-internal/pkg/ast"
+	tsast "github.com/buke/typescript-go-internal/v7/pkg/ast"
 )
 
 func mustParseTSGoCtx(t *testing.T, path string, content string) (*TsParser, *tsgoImportExportCtx) {

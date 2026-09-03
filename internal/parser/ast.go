@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	tsast "github.com/buke/typescript-go-internal/pkg/ast"
-	tscore "github.com/buke/typescript-go-internal/pkg/core"
-	tsparser "github.com/buke/typescript-go-internal/pkg/parser"
-	tspath "github.com/buke/typescript-go-internal/pkg/tspath"
+	tsast "github.com/buke/typescript-go-internal/v7/pkg/ast"
+	tscore "github.com/buke/typescript-go-internal/v7/pkg/core"
+	tsparser "github.com/buke/typescript-go-internal/v7/pkg/parser"
+	tspath "github.com/buke/typescript-go-internal/v7/pkg/tspath"
 )
 
 type AstTree = tsast.SourceFile

@@ -9,9 +9,9 @@ import (
 	"sort"
 	"strings"
 
-	tsast "github.com/buke/typescript-go-internal/pkg/ast"
-	tscore "github.com/buke/typescript-go-internal/pkg/core"
-	tsparser "github.com/buke/typescript-go-internal/pkg/parser"
+	tsast "github.com/buke/typescript-go-internal/v7/pkg/ast"
+	tscore "github.com/buke/typescript-go-internal/v7/pkg/core"
+	tsparser "github.com/buke/typescript-go-internal/v7/pkg/parser"
 )
 
 type typeFetchDependencyTarget struct {

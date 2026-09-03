@@ -11,8 +11,10 @@ describe('createModuleKanbanOpProgressHooks', () => {
     const setDialogStep = vi.fn();
     const warn = vi.fn();
     const error = vi.fn();
-    const t = vi.fn((message: string) => `t:${message}`);
     const fetchStatus = vi.fn(async () => ({ status: 'queued' }));
+    const jobStillRunning = vi.fn(() => 'Job is still running in the background; refresh later');
+    const serviceRestarting = vi.fn(() => 'Service is restarting; status will retry automatically');
+    const failedToGetStatus = vi.fn(() => 'Failed to get status');
 
     const hooks = createModuleKanbanOpProgressHooks({
       fetchStatus,
@@ -21,7 +23,11 @@ describe('createModuleKanbanOpProgressHooks', () => {
       setDialogStep,
       warn,
       error,
-      t,
+      messages: {
+        jobStillRunning,
+        serviceRestarting,
+        failedToGetStatus,
+      },
     });
 
     expect(hooks.isActive()).toBe(true);
@@ -39,14 +45,21 @@ describe('createModuleKanbanOpProgressHooks', () => {
       status: 'dispatching',
       resultStatus: undefined,
     });
-    expect(warn).toHaveBeenCalledWith('t:Job is still running in the background; refresh later');
+    expect(jobStillRunning).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith('Job is still running in the background; refresh later');
 
     hooks.onTransientNetworkError?.();
-    expect(warn).toHaveBeenCalledWith('t:Service is restarting; status will retry automatically');
+    expect(serviceRestarting).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith('Service is restarting; status will retry automatically');
 
     hooks.onHardError?.('boom');
     expect(error).toHaveBeenCalledWith('boom');
+    expect(failedToGetStatus).not.toHaveBeenCalled();
     hooks.onHardError?.('');
-    expect(error).toHaveBeenCalledWith('t:Failed to get status');
+    expect(failedToGetStatus).toHaveBeenCalledTimes(1);
+    expect(error).toHaveBeenCalledWith('Failed to get status');
+    hooks.onHardError?.('Failed to get status');
+    expect(failedToGetStatus).toHaveBeenCalledTimes(2);
+    expect(error).toHaveBeenLastCalledWith('Failed to get status');
   });
 });

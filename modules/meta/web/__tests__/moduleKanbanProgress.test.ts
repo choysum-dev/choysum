@@ -168,7 +168,7 @@ describe('ModuleKanbanView C1 progress integration', () => {
     await vi.advanceTimersByTimeAsync(10 * 60 * 1000);
     await pending;
     expect(vm.dialogStep).toBe('result');
-    expect(ElMessage.warning).toHaveBeenCalled();
+    expect(ElMessage.warning).toHaveBeenCalledWith('Job is still running in the background; refresh later');
     expect(modStore.GetOpStatus).toHaveBeenCalled();
   });
 
@@ -184,5 +184,41 @@ describe('ModuleKanbanView C1 progress integration', () => {
     await vm.submitOperation();
     await flushPromises();
     expect(ElMessage.error).toHaveBeenCalledWith('status hard fail');
+  });
+
+  it('localizes transient network notifications from tip refresh', async () => {
+    const getOpStatus = vi
+      .fn()
+      .mockResolvedValueOnce({ status: 'queued' })
+      .mockRejectedValueOnce(new Error('Failed to fetch'))
+      .mockResolvedValue({ status: 'succeeded', resultStatus: 'SUCCEEDED' });
+    const { vm } = mountView({ GetOpStatus: getOpStatus });
+    onTips.mockImplementation(async (_stream, callback: () => Promise<void>) => {
+      await callback();
+      await vi.advanceTimersByTimeAsync(80);
+    });
+
+    await vm.onActionClick('install', { ModuleName: 'demo', InstalledStatus: 'uninstalled', Available: true });
+    await flushPromises();
+    await vm.submitOperation();
+    await flushPromises();
+
+    expect(ElMessage.warning).toHaveBeenCalledWith('Service is restarting; status will retry automatically');
+  });
+
+  it('localizes empty hard-error fallback notifications', async () => {
+    const getOpStatus = vi
+      .fn()
+      .mockRejectedValueOnce('')
+      .mockResolvedValue({ status: 'succeeded', resultStatus: 'SUCCEEDED' });
+    const { vm } = mountView({ GetOpStatus: getOpStatus });
+    onTips.mockResolvedValue(undefined);
+
+    await vm.onActionClick('install', { ModuleName: 'demo', InstalledStatus: 'uninstalled', Available: true });
+    await flushPromises();
+    await vm.submitOperation();
+    await flushPromises();
+
+    expect(ElMessage.error).toHaveBeenCalledWith('Failed to get status');
   });
 });

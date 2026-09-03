@@ -532,119 +532,119 @@ msgctxt "meta.model.MetaModelRaw.fields"
 msgid "Table Name"
 msgstr ""
 
-#: service/models/module.ts:137
-#: service/models/module.ts:176
+#: service/models/module.ts:141
+#: service/models/module.ts:180
 msgctxt "meta.model.MetaModule.fields"
 msgid "Application"
 msgstr ""
 
-#: service/models/module.ts:155
+#: service/models/module.ts:159
 msgctxt "meta.model.MetaModule.fields"
 msgid "Author"
 msgstr ""
 
-#: service/models/module.ts:173
+#: service/models/module.ts:177
 msgctxt "meta.model.MetaModule.fields"
 msgid "Category"
 msgstr ""
 
-#: service/models/module.ts:189
+#: service/models/module.ts:193
 msgctxt "meta.model.MetaModule.fields"
 msgid "Components"
 msgstr ""
 
-#: service/models/module.ts:149
-#: service/models/module.ts:208
+#: service/models/module.ts:153
+#: service/models/module.ts:212
 msgctxt "meta.model.MetaModule.fields"
 msgid "Dependencies"
 msgstr ""
 
-#: service/models/module.ts:220
+#: service/models/module.ts:224
 msgctxt "meta.model.MetaModule.fields"
 msgid "Dependents"
 msgstr ""
 
-#: service/models/module.ts:134
+#: service/models/module.ts:138
 msgctxt "meta.model.MetaModule.fields"
 msgid "Description"
 msgstr ""
 
-#: service/models/module.ts:140
+#: service/models/module.ts:144
 msgctxt "meta.model.MetaModule.fields"
 msgid "Entry Points"
 msgstr ""
 
-#: service/models/module.ts:152
+#: service/models/module.ts:156
 msgctxt "meta.model.MetaModule.fields"
 msgid "External Dependencies"
 msgstr ""
 
-#: service/models/module.ts:161
+#: service/models/module.ts:165
 msgctxt "meta.model.MetaModule.fields"
 msgid "Homepage"
 msgstr ""
 
-#: service/models/module.ts:158
+#: service/models/module.ts:162
 msgctxt "meta.model.MetaModule.fields"
 msgid "License"
 msgstr ""
 
-#: service/models/module.ts:182
+#: service/models/module.ts:186
 msgctxt "meta.model.MetaModule.fields"
 msgid "Models"
 msgstr ""
 
-#: service/models/module.ts:119
+#: service/models/module.ts:123
 msgctxt "meta.model.MetaModule.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/module.ts:167
+#: service/models/module.ts:171
 msgctxt "meta.model.MetaModule.fields"
 msgid "Path"
 msgstr ""
 
-#: service/models/module.ts:164
+#: service/models/module.ts:168
 msgctxt "meta.model.MetaModule.fields"
 msgid "Repository"
 msgstr ""
 
-#: service/models/module.ts:146
+#: service/models/module.ts:150
 msgctxt "meta.model.MetaModule.fields"
 msgid "Service Entry Point"
 msgstr ""
 
-#: service/models/module.ts:122
+#: service/models/module.ts:126
 msgctxt "meta.model.MetaModule.fields"
 msgid "Short Description"
 msgstr ""
 
-#: service/models/module.ts:170
+#: service/models/module.ts:174
 msgctxt "meta.model.MetaModule.fields"
 msgid "Status"
 msgstr ""
 
-#: service/models/module.ts:131
+#: service/models/module.ts:135
 msgctxt "meta.model.MetaModule.fields"
 msgid "Summary"
 msgstr ""
 
-#: service/models/module.ts:128
+#: service/models/module.ts:132
 msgctxt "meta.model.MetaModule.fields"
 msgid "Tarball"
 msgstr ""
 
-#: service/models/module.ts:196
+#: service/models/module.ts:200
 msgctxt "meta.model.MetaModule.fields"
 msgid "UI Resources"
 msgstr ""
 
-#: service/models/module.ts:125
+#: service/models/module.ts:129
 msgctxt "meta.model.MetaModule.fields"
 msgid "Version"
 msgstr ""
 
-#: service/models/module.ts:143
+#: service/models/module.ts:147
 msgctxt "meta.model.MetaModule.fields"
 msgid "Web Entry Point"
 msgstr ""
@@ -659,82 +659,82 @@ msgctxt "meta.model.MetaModuleDependency.fields"
 msgid "Module"
 msgstr ""
 
-#: service/models/module_index.ts:81
+#: service/models/module_index.ts:83
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Available"
 msgstr ""
 
-#: service/models/module_index.ts:96
+#: service/models/module_index.ts:98
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Batch Synced At"
 msgstr ""
 
-#: service/models/module_index.ts:102
+#: service/models/module_index.ts:104
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Error Message"
 msgstr ""
 
-#: service/models/module_index.ts:144
+#: service/models/module_index.ts:146
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Install Status"
 msgstr ""
 
-#: service/models/module_index.ts:161
+#: service/models/module_index.ts:163
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Installed Version"
 msgstr ""
 
-#: service/models/module_index.ts:93
+#: service/models/module_index.ts:95
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Last Synced At"
 msgstr ""
 
-#: service/models/module_index.ts:90
+#: service/models/module_index.ts:92
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Local Path"
 msgstr ""
 
-#: service/models/module_index.ts:120
+#: service/models/module_index.ts:122
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Local Version"
 msgstr ""
 
-#: service/models/module_index.ts:87
+#: service/models/module_index.ts:89
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Manifest JSON"
 msgstr ""
 
-#: service/models/module_index.ts:72
+#: service/models/module_index.ts:74
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Module Name"
 msgstr ""
 
-#: service/models/module_index.ts:78
+#: service/models/module_index.ts:80
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Origin Ref"
 msgstr ""
 
-#: service/models/module_index.ts:75
+#: service/models/module_index.ts:77
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Origin Type"
 msgstr ""
 
-#: service/models/module_index.ts:108
+#: service/models/module_index.ts:110
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Origin Types"
 msgstr ""
 
-#: service/models/module_index.ts:132
+#: service/models/module_index.ts:134
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Registry Version"
 msgstr ""
 
-#: service/models/module_index.ts:99
+#: service/models/module_index.ts:101
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Sync Revision"
 msgstr ""
 
-#: service/models/module_index.ts:84
+#: service/models/module_index.ts:86
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Version"
 msgstr ""
@@ -1125,33 +1125,33 @@ msgctxt "service/models/model_data"
 msgid "external id key must not have empty module or name"
 msgstr ""
 
-#: service/models/module.ts:314
+#: service/models/module.ts:322
 msgctxt "service/models/module"
 msgid "jobId cannot be empty"
 msgstr ""
 
-#: service/models/module.ts:303
+#: service/models/module.ts:308
 msgctxt "service/models/module"
 msgid "lease conflict"
 msgstr ""
 
-#: service/models/module.ts:254
+#: service/models/module.ts:258
 msgctxt "service/models/module"
 msgid "module not found"
 msgstr ""
 
-#: service/models/module.ts:282
+#: service/models/module.ts:286
 msgctxt "service/models/module"
 msgid "moduleName cannot be empty"
 msgstr ""
 
-#: service/models/module.ts:242
+#: service/models/module.ts:246
 msgctxt "service/models/module"
 msgid "plan was regenerated from the latest module state"
 msgstr ""
 
-#: service/models/module_index.ts:304
-#: service/models/module_index.ts:378
+#: service/models/module_index.ts:306
+#: service/models/module_index.ts:380
 msgctxt "service/models/module_index"
 msgid "originType must be one of: local, registry, all"
 msgstr ""
@@ -1271,7 +1271,7 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Board View"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:180
+#: web/views/ModuleKanbanView.vue:196
 msgctxt "web/views/ModuleKanbanView"
 msgid "Broken"
 msgstr ""
@@ -1281,7 +1281,7 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Cancel"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:132
+#: web/views/ModuleKanbanView.vue:148
 msgctxt "web/views/ModuleKanbanView"
 msgid "Completed"
 msgstr ""
@@ -1296,12 +1296,12 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Confirm the impact of this operation"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:179
+#: web/views/ModuleKanbanView.vue:195
 msgctxt "web/views/ModuleKanbanView"
 msgid "Disabled"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:183
+#: web/views/ModuleKanbanView.vue:199
 msgctxt "web/views/ModuleKanbanView"
 msgid "Dispatching"
 msgstr ""
@@ -1331,17 +1331,17 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Execution Status"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:182
+#: web/views/ModuleKanbanView.vue:198
 msgctxt "web/views/ModuleKanbanView"
 msgid "Failed"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:325
+#: web/views/ModuleKanbanView.vue:131
 msgctxt "web/views/ModuleKanbanView"
 msgid "Failed to get status"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:254
+#: web/views/ModuleKanbanView.vue:270
 msgctxt "web/views/ModuleKanbanView"
 msgid "Failed to load plan"
 msgstr ""
@@ -1361,13 +1361,13 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Install"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:124
-#: web/views/ModuleKanbanView.vue:39
+#: web/views/ModuleKanbanView.vue:140
+#: web/views/ModuleKanbanView.vue:44
 msgctxt "web/views/ModuleKanbanView"
 msgid "Install Module"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:177
+#: web/views/ModuleKanbanView.vue:193
 msgctxt "web/views/ModuleKanbanView"
 msgid "Installed"
 msgstr ""
@@ -1377,7 +1377,7 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Installed:"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:335
+#: web/views/ModuleKanbanView.vue:129
 msgctxt "web/views/ModuleKanbanView"
 msgid "Job is still running in the background; refresh later"
 msgstr ""
@@ -1402,12 +1402,12 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "No modules"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:178
+#: web/views/ModuleKanbanView.vue:194
 msgctxt "web/views/ModuleKanbanView"
 msgid "Not Installed"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:133
+#: web/views/ModuleKanbanView.vue:149
 msgctxt "web/views/ModuleKanbanView"
 msgid "Operation Failed"
 msgstr ""
@@ -1417,7 +1417,7 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Operation History"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:134
+#: web/views/ModuleKanbanView.vue:150
 msgctxt "web/views/ModuleKanbanView"
 msgid "Operation Succeeded"
 msgstr ""
@@ -1427,7 +1427,7 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Operation in progress, please wait"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:285
+#: web/views/ModuleKanbanView.vue:301
 msgctxt "web/views/ModuleKanbanView"
 msgid "Operation request failed"
 msgstr ""
@@ -1437,7 +1437,7 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Origin:"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:184
+#: web/views/ModuleKanbanView.vue:200
 msgctxt "web/views/ModuleKanbanView"
 msgid "Queued"
 msgstr ""
@@ -1467,7 +1467,7 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Risks"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:321
+#: web/views/ModuleKanbanView.vue:130
 msgctxt "web/views/ModuleKanbanView"
 msgid "Service is restarting; status will retry automatically"
 msgstr ""
@@ -1477,12 +1477,12 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Status:"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:181
+#: web/views/ModuleKanbanView.vue:197
 msgctxt "web/views/ModuleKanbanView"
 msgid "Succeeded"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:134
+#: web/views/ModuleKanbanView.vue:150
 msgctxt "web/views/ModuleKanbanView"
 msgid "Succeeded but reload failed"
 msgstr ""
@@ -1497,22 +1497,22 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Sync Index"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:51
+#: web/views/ModuleKanbanView.vue:56
 msgctxt "web/views/ModuleKanbanView"
 msgid "Sync Module Index"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:397
+#: web/views/ModuleKanbanView.vue:345
 msgctxt "web/views/ModuleKanbanView"
 msgid "Sync failed: %s"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:395
+#: web/views/ModuleKanbanView.vue:343
 msgctxt "web/views/ModuleKanbanView"
 msgid "Sync job triggered"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:395
+#: web/views/ModuleKanbanView.vue:343
 msgctxt "web/views/ModuleKanbanView"
 msgid "Sync job triggered: all:%s"
 msgstr ""
@@ -1532,7 +1532,7 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Triggered"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:175
+#: web/views/ModuleKanbanView.vue:191
 msgctxt "web/views/ModuleKanbanView"
 msgid "Unavailable"
 msgstr ""
@@ -1542,13 +1542,13 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Uninstall"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:124
-#: web/views/ModuleKanbanView.vue:47
+#: web/views/ModuleKanbanView.vue:140
+#: web/views/ModuleKanbanView.vue:52
 msgctxt "web/views/ModuleKanbanView"
 msgid "Uninstall Module"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:185
+#: web/views/ModuleKanbanView.vue:201
 msgctxt "web/views/ModuleKanbanView"
 msgid "Unknown"
 msgstr ""
@@ -1558,8 +1558,8 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Upgrade"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:124
-#: web/views/ModuleKanbanView.vue:43
+#: web/views/ModuleKanbanView.vue:140
+#: web/views/ModuleKanbanView.vue:48
 msgctxt "web/views/ModuleKanbanView"
 msgid "Upgrade Module"
 msgstr ""
