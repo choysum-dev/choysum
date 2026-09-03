@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/buke/typescript-go-internal/v7/pkg/ast"
@@ -494,6 +495,22 @@ func TestSemanticOverlayRejectsEmptyPathMatch(t *testing.T) {
 	// Empty/blank source paths must not become a catch-all overlay match.
 	if got, ok := fs.ReadFile("/virtual/modules/demo/service/x.ts"); ok && got == "secret" {
 		t.Fatal("empty overlay path must not serve overlay content for other lookups")
+	}
+}
+
+func TestSemanticOverlayPathMatch(t *testing.T) {
+	const overlay = "/Virtual/Modules/Demo/service/Model.ts"
+	if semanticOverlayPathMatch("", overlay, true) {
+		t.Fatal("empty overlay must not match")
+	}
+	if !semanticOverlayPathMatch(overlay, overlay, true) {
+		t.Fatal("exact match required on case-sensitive FS")
+	}
+	if semanticOverlayPathMatch(overlay, strings.ToLower(overlay), true) {
+		t.Fatal("case-sensitive FS must reject casing drift")
+	}
+	if !semanticOverlayPathMatch(overlay, strings.ToLower(overlay), false) {
+		t.Fatal("case-insensitive FS must accept casing drift")
 	}
 }
 

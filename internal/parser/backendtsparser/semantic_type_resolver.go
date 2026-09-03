@@ -241,21 +241,33 @@ func (e semanticInitError) Error() string { return string(e) }
 func newSemanticOverlayFS(path, content string) vfs.FS {
 	normalized := normalizeSemanticPath(path)
 	base := osvfs.FS()
+	caseSensitive := base.UseCaseSensitiveFileNames()
 	overlay := wrapvfs.Wrap(base, wrapvfs.Replacements{
 		FileExists: func(p string) bool {
-			if normalized != "" && normalizeSemanticPath(p) == normalized {
+			if semanticOverlayPathMatch(normalized, p, caseSensitive) {
 				return true
 			}
 			return base.FileExists(p)
 		},
 		ReadFile: func(p string) (string, bool) {
-			if normalized != "" && normalizeSemanticPath(p) == normalized {
+			if semanticOverlayPathMatch(normalized, p, caseSensitive) {
 				return content, true
 			}
 			return base.ReadFile(p)
 		},
 	})
 	return bundled.WrapFS(overlay)
+}
+
+func semanticOverlayPathMatch(normalizedOverlay, requestPath string, caseSensitive bool) bool {
+	if normalizedOverlay == "" {
+		return false
+	}
+	got := normalizeSemanticPath(requestPath)
+	if caseSensitive {
+		return got == normalizedOverlay
+	}
+	return strings.EqualFold(got, normalizedOverlay)
 }
 
 func normalizeSemanticPath(path string) string {
