@@ -286,7 +286,8 @@ func findClassMethodNode(file *ast.SourceFile, className, methodName string) *as
 		if stmt == nil || stmt.Kind != ast.KindClassDeclaration {
 			continue
 		}
-		if className != "" && nodeNameText(stmt) != className {
+		name := nodeNameText(stmt)
+		if className != "" && name != "" && name != className {
 			continue
 		}
 		for _, member := range stmt.Members() {

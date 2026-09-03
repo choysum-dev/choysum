@@ -161,6 +161,34 @@ export default class Demo {
 	}
 }
 
+func TestSemanticTypeResolver_AnonymousDefaultExportClass(t *testing.T) {
+	if !bundled.Embedded {
+		t.Skip("bundled libs not embedded")
+	}
+	if os.Getenv(envDisableSemanticProto) == "1" {
+		t.Skip("semantic protobuf mapping disabled in environment")
+	}
+
+	path := "/virtual/modules/demo/service/anon.ts"
+	content := `
+export default class {
+  public static async Fetch(id: string): Promise<string> {
+    return id
+  }
+}
+`
+	r := newSemanticTypeResolver(nil)
+	// Callers may pass a logical model name even when the class declaration is anonymous.
+	got := r.resolveProtoType(path, content, "AnonModel", "Fetch", "id", false, "string")
+	if got != "string" {
+		t.Fatalf("anonymous class param ProtobufType=%q, want string", got)
+	}
+	got = r.resolveProtoType(path, content, "AnonModel", "Fetch", "", true, "string")
+	if got != "string" {
+		t.Fatalf("anonymous class return ProtobufType=%q, want string", got)
+	}
+}
+
 func TestSemanticTypeResolver_FallsBackWhenDisabled(t *testing.T) {
 	t.Setenv(envDisableSemanticProto, "1")
 
