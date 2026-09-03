@@ -299,21 +299,37 @@ func findClassMethodNode(file *ast.SourceFile, className, methodName string) *as
 	if file == nil || methodName == "" {
 		return nil
 	}
+	var anonymous *ast.Node
 	for _, stmt := range file.Statements.Nodes {
 		if stmt == nil || stmt.Kind != ast.KindClassDeclaration {
 			continue
 		}
 		name := nodeNameText(stmt)
-		if className != "" && name != "" && name != className {
+		method := findMethodDeclaration(stmt, methodName)
+		if method == nil {
 			continue
 		}
-		for _, member := range stmt.Members() {
-			if member == nil || member.Kind != ast.KindMethodDeclaration {
-				continue
-			}
-			if nodeNameText(member) == methodName {
-				return member
-			}
+		if className == "" {
+			return method
+		}
+		switch {
+		case name == className:
+			return method
+		case name == "" && anonymous == nil:
+			// Unnamed default-export class is only a fallback when className is set.
+			anonymous = method
+		}
+	}
+	return anonymous
+}
+
+func findMethodDeclaration(class *ast.Node, methodName string) *ast.Node {
+	for _, member := range class.Members() {
+		if member == nil || member.Kind != ast.KindMethodDeclaration {
+			continue
+		}
+		if nodeNameText(member) == methodName {
+			return member
 		}
 	}
 	return nil

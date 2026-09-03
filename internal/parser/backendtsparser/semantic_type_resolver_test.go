@@ -174,21 +174,58 @@ func TestSemanticTypeResolver_AnonymousDefaultExportClass(t *testing.T) {
 
 	path := "/virtual/modules/demo/service/anon.ts"
 	content := `
+type Alias = string
 export default class {
-  public static async Fetch(id: string): Promise<string> {
+  public static async Fetch(id: Alias): Promise<Alias> {
+    return id
+  }
+}
+`
+	if getProtoTypeFromTsType("Alias") != "google.protobuf.Value" {
+		t.Fatal("text fallback for Alias must be Value so this test can detect semantic miss")
+	}
+	r := newSemanticTypeResolver(nil)
+	// Callers may pass a logical model name even when the class declaration is anonymous.
+	got := r.resolveProtoType(path, content, "AnonModel", "Fetch", "id", false, "Alias")
+	if got != "string" {
+		t.Fatalf("anonymous class param ProtobufType=%q, want string from semantic Alias", got)
+	}
+	got = r.resolveProtoType(path, content, "AnonModel", "Fetch", "", true, "Alias")
+	if got != "string" {
+		t.Fatalf("anonymous class return ProtobufType=%q, want string from semantic Alias", got)
+	}
+}
+
+func TestSemanticTypeResolver_PrefersNamedClassOverAnonymous(t *testing.T) {
+	if !bundled.Embedded {
+		t.Skip("bundled libs not embedded")
+	}
+	if os.Getenv(envDisableSemanticProto) == "1" {
+		t.Skip("semantic protobuf mapping disabled in environment")
+	}
+
+	path := "/virtual/modules/demo/service/named_over_anon.ts"
+	content := `
+type Alias = string
+export default class {
+  public static async Fetch(id: number): Promise<number> {
+    return id
+  }
+}
+class Target {
+  public static async Fetch(id: Alias): Promise<Alias> {
     return id
   }
 }
 `
 	r := newSemanticTypeResolver(nil)
-	// Callers may pass a logical model name even when the class declaration is anonymous.
-	got := r.resolveProtoType(path, content, "AnonModel", "Fetch", "id", false, "string")
+	got := r.resolveProtoType(path, content, "Target", "Fetch", "id", false, "Alias")
 	if got != "string" {
-		t.Fatalf("anonymous class param ProtobufType=%q, want string", got)
+		t.Fatalf("param ProtobufType=%q, want string from named Target (not anonymous number)", got)
 	}
-	got = r.resolveProtoType(path, content, "AnonModel", "Fetch", "", true, "string")
+	got = r.resolveProtoType(path, content, "Target", "Fetch", "", true, "Alias")
 	if got != "string" {
-		t.Fatalf("anonymous class return ProtobufType=%q, want string", got)
+		t.Fatalf("return ProtobufType=%q, want string from named Target", got)
 	}
 }
 
