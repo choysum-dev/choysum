@@ -3,6 +3,12 @@
 
 import type { ModuleOpProgressHooks, ModuleOpStatusSnapshot } from './useModuleOpProgress';
 
+export type ModuleKanbanOpProgressMessages = {
+  jobStillRunning: string;
+  serviceRestarting: string;
+  failedToGetStatus: string;
+};
+
 export type ModuleKanbanOpProgressBindings = {
   fetchStatus: (jobId: string) => Promise<ModuleOpStatusSnapshot>;
   isDialogOpen: () => boolean;
@@ -10,7 +16,7 @@ export type ModuleKanbanOpProgressBindings = {
   setDialogStep: (step: 'plan' | 'progress' | 'result') => void;
   warn: (message: string) => void;
   error: (message: string) => void;
-  t: (message: string) => string;
+  messages: ModuleKanbanOpProgressMessages;
 };
 
 /**
@@ -34,13 +40,13 @@ export function createModuleKanbanOpProgressHooks(
         status: 'dispatching',
         resultStatus: undefined,
       });
-      bindings.warn(bindings.t('Job is still running in the background; refresh later'));
+      bindings.warn(bindings.messages.jobStillRunning);
     },
     onTransientNetworkError: () => {
-      bindings.warn(bindings.t('Service is restarting; status will retry automatically'));
+      bindings.warn(bindings.messages.serviceRestarting);
     },
     onHardError: (message) => {
-      bindings.error(message || bindings.t('Failed to get status'));
+      bindings.error(message || bindings.messages.failedToGetStatus);
     },
   };
 }
