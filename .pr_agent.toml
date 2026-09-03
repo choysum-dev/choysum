@@ -21,8 +21,7 @@ num_max_findings = 12
 inline_key_issues = true
 persistent_comment = true
 enable_help_text = false
-# Do not post when nothing actionable was found (avoids "No major issues detected" noise).
-publish_output_no_suggestions = false
+publish_output_no_suggestions = true
 extra_instructions = """\
 Choysum is a TypeScript-first ERP framework with a Go core engine and compile-time IMD module extensions.
 
