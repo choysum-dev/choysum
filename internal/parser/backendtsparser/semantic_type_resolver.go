@@ -20,6 +20,7 @@ import (
 	"github.com/buke/typescript-go-internal/v7/pkg/vfs"
 	"github.com/buke/typescript-go-internal/v7/pkg/vfs/osvfs"
 	"github.com/buke/typescript-go-internal/v7/pkg/vfs/wrapvfs"
+	"golang.org/x/sync/singleflight"
 )
 
 const (
@@ -50,6 +51,7 @@ type semanticTypeResolver struct {
 	mu         sync.Mutex
 	cache      map[string]*semanticFileState
 	cacheOrder []string // oldest → newest path keys for LRU eviction
+	builds     singleflight.Group
 	disabled   bool
 	initOnce   sync.Once
 	logger     *slog.Logger
@@ -133,13 +135,14 @@ func (r *semanticTypeResolver) trySemantic(path, content, className, methodName,
 		return "", false
 	}
 
-	c, done := state.program.GetTypeCheckerForFile(context.Background(), state.file)
+	// Exclusive access: cached Programs are shared across concurrent lookups.
+	c, done := state.program.GetTypeCheckerForFileExclusive(context.Background(), state.file)
 	defer done()
 	return mapCheckerTypeToProto(c, c.GetTypeFromTypeNode(typeNode), isReturn)
 }
 
 // ensureFile returns a cached Program for path/content. Compilation runs without
-// holding r.mu so concurrent file parses are not serialized on Program build.
+// holding r.mu; concurrent misses for the same path+content share one build.
 func (r *semanticTypeResolver) ensureFile(path, content string) (*semanticFileState, error) {
 	r.mu.Lock()
 	if cached, ok := r.cache[path]; ok && cached != nil && cached.content == content {
@@ -149,24 +152,38 @@ func (r *semanticTypeResolver) ensureFile(path, content string) (*semanticFileSt
 	}
 	r.mu.Unlock()
 
-	program, file, err := buildSemanticProgramImpl(path, content)
+	v, err, _ := r.builds.Do(path+"\x00"+content, func() (any, error) {
+		r.mu.Lock()
+		if cached, ok := r.cache[path]; ok && cached != nil && cached.content == content {
+			r.touchCacheLocked(path)
+			r.mu.Unlock()
+			return cached, nil
+		}
+		r.mu.Unlock()
+
+		program, file, buildErr := buildSemanticProgramImpl(path, content)
+		if buildErr != nil {
+			return nil, buildErr
+		}
+		state := &semanticFileState{
+			content: content,
+			program: program,
+			file:    file,
+		}
+
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		if cached, ok := r.cache[path]; ok && cached != nil && cached.content == content {
+			r.touchCacheLocked(path)
+			return cached, nil
+		}
+		r.putCacheLocked(path, state)
+		return state, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	state := &semanticFileState{
-		content: content,
-		program: program,
-		file:    file,
-	}
-
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if cached, ok := r.cache[path]; ok && cached != nil && cached.content == content {
-		r.touchCacheLocked(path)
-		return cached, nil
-	}
-	r.putCacheLocked(path, state)
-	return state, nil
+	return v.(*semanticFileState), nil
 }
 
 func (r *semanticTypeResolver) touchCacheLocked(path string) {

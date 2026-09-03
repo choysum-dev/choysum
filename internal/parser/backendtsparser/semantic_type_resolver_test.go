@@ -11,7 +11,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/buke/typescript-go-internal/v7/pkg/ast"
 	"github.com/buke/typescript-go-internal/v7/pkg/bundled"
@@ -491,7 +494,7 @@ export default class Demo {
 		if err != nil {
 			t.Fatalf("build: %v", err)
 		}
-		c, done := program.GetTypeCheckerForFile(context.Background(), file)
+		c, done := program.GetTypeCheckerForFileExclusive(context.Background(), file)
 		defer done()
 		if got, ok := mapCheckerTypeToProto(c, c.GetAnyType(), true); ok || got != "" {
 			t.Fatalf("any (%q,%v)", got, ok)
@@ -503,6 +506,94 @@ export default class Demo {
 			t.Fatalf("unknown (%q,%v)", got, ok)
 		}
 	})
+}
+
+func TestSemanticTypeResolver_ConcurrentSameFileBuildsOnce(t *testing.T) {
+	if !bundled.Embedded {
+		t.Skip("bundled libs not embedded")
+	}
+	if os.Getenv(envDisableSemanticProto) == "1" {
+		t.Skip("semantic protobuf mapping disabled in environment")
+	}
+
+	orig := buildSemanticProgramImpl
+	t.Cleanup(func() { buildSemanticProgramImpl = orig })
+
+	var builds atomic.Int32
+	buildSemanticProgramImpl = func(path, content string) (*compiler.Program, *ast.SourceFile, error) {
+		builds.Add(1)
+		time.Sleep(50 * time.Millisecond)
+		return orig(path, content)
+	}
+
+	r := newSemanticTypeResolver(nil)
+	path := "/virtual/modules/demo/service/concurrent.ts"
+	content := `
+export default class Demo {
+  public static async Echo(v: string): Promise<string> { return v }
+}
+`
+	const n = 8
+	var wg sync.WaitGroup
+	errs := make(chan string, n)
+	wg.Add(n)
+	for range n {
+		go func() {
+			defer wg.Done()
+			got := r.resolveProtoType(path, content, "Demo", "Echo", "v", false, "string")
+			if got != "string" {
+				errs <- "got " + got
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Fatal(err)
+	}
+	if got := builds.Load(); got != 1 {
+		t.Fatalf("builds=%d, want 1", got)
+	}
+}
+
+func TestSemanticTypeResolver_ConcurrentCachedLookups(t *testing.T) {
+	if !bundled.Embedded {
+		t.Skip("bundled libs not embedded")
+	}
+	if os.Getenv(envDisableSemanticProto) == "1" {
+		t.Skip("semantic protobuf mapping disabled in environment")
+	}
+
+	r := newSemanticTypeResolver(nil)
+	path := "/virtual/modules/demo/service/cached_concurrent.ts"
+	content := `
+export default class Demo {
+  public static async Echo(v: string): Promise<number> { return 1 }
+}
+`
+	if got := r.resolveProtoType(path, content, "Demo", "Echo", "", true, "number"); got != "double" {
+		t.Fatalf("warm cache got %q", got)
+	}
+
+	const n = 16
+	var wg sync.WaitGroup
+	errs := make(chan string, n)
+	wg.Add(n)
+	for range n {
+		go func() {
+			defer wg.Done()
+			ret := r.resolveProtoType(path, content, "Demo", "Echo", "", true, "number")
+			param := r.resolveProtoType(path, content, "Demo", "Echo", "v", false, "string")
+			if ret != "double" || param != "string" {
+				errs <- "ret=" + ret + " param=" + param
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Fatal(err)
+	}
 }
 
 func TestResolveProtobufType_WithoutSemanticFallsBack(t *testing.T) {
