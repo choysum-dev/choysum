@@ -404,6 +404,31 @@ export default class Demo {
 		if cached == nil || cached.content != contentB {
 			t.Fatal("expected cache entry replaced for updated content")
 		}
+
+		// When the newest key is also front of cacheOrder, stop without dropping it from order.
+		semanticProgramCacheLimit = 1
+		r.mu.Lock()
+		r.cacheOrder = []string{paths[2]}
+		r.cache = map[string]*semanticFileState{
+			paths[2]:             cached,
+			"/virtual/orphan.ts": cached,
+		}
+		r.putCacheLocked(paths[2], cached)
+		if _, ok := r.cache[paths[2]]; !ok {
+			r.mu.Unlock()
+			t.Fatal("newest path must remain in cache")
+		}
+		found := false
+		for _, ordered := range r.cacheOrder {
+			if ordered == paths[2] {
+				found = true
+				break
+			}
+		}
+		r.mu.Unlock()
+		if !found {
+			t.Fatal("newest path must remain in cacheOrder")
+		}
 	})
 
 	t.Run("helper edge coverage", func(t *testing.T) {
@@ -460,6 +485,14 @@ func TestResolveProtobufType_WithoutSemanticFallsBack(t *testing.T) {
 func TestMapCheckerTypeToProto_NilSafe(t *testing.T) {
 	if got, ok := mapCheckerTypeToProto(nil, nil, true); ok || got != "" {
 		t.Fatalf("got (%q, %v)", got, ok)
+	}
+}
+
+func TestSemanticOverlayRejectsEmptyPathMatch(t *testing.T) {
+	fs := newSemanticOverlayFS("   ", "secret")
+	// Empty/blank source paths must not become a catch-all overlay match.
+	if got, ok := fs.ReadFile("/virtual/modules/demo/service/x.ts"); ok && got == "secret" {
+		t.Fatal("empty overlay path must not serve overlay content for other lookups")
 	}
 }
 

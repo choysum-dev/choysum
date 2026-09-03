@@ -180,11 +180,11 @@ func (r *semanticTypeResolver) putCacheLocked(path string, state *semanticFileSt
 	}
 	for len(r.cache) > limit && len(r.cacheOrder) > 0 {
 		oldest := r.cacheOrder[0]
-		r.cacheOrder = r.cacheOrder[1:]
 		if oldest == path {
-			// Keep the entry just inserted; it was also recorded as newest.
-			continue
+			// Newly inserted entry is newest; do not drop it from cacheOrder.
+			break
 		}
+		r.cacheOrder = r.cacheOrder[1:]
 		delete(r.cache, oldest)
 	}
 }
@@ -234,13 +234,13 @@ func newSemanticOverlayFS(path, content string) vfs.FS {
 	base := osvfs.FS()
 	overlay := wrapvfs.Wrap(base, wrapvfs.Replacements{
 		FileExists: func(p string) bool {
-			if normalizeSemanticPath(p) == normalized {
+			if normalized != "" && normalizeSemanticPath(p) == normalized {
 				return true
 			}
 			return base.FileExists(p)
 		},
 		ReadFile: func(p string) (string, bool) {
-			if normalizeSemanticPath(p) == normalized {
+			if normalized != "" && normalizeSemanticPath(p) == normalized {
 				return content, true
 			}
 			return base.ReadFile(p)
