@@ -10,7 +10,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 	"text/template"
 
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
@@ -59,22 +58,6 @@ func (g *protobufGenerator) generate(ctx context.Context, app *meta.Application)
 	tpl, err := template.New(app.Name).Funcs(template.FuncMap{
 		"index": func(i int, start int) int {
 			return i + start
-		},
-		"toValueType": func(tsType string) string {
-			switch {
-			case strings.HasPrefix(tsType, "number"):
-				return "double"
-			case strings.HasPrefix(tsType, "string"):
-				return "string"
-			case strings.HasPrefix(tsType, "boolean"):
-				return "bool"
-			case strings.HasPrefix(tsType, "void"):
-				return "google.protobuf.Empty"
-			case strings.HasPrefix(tsType, "any"):
-				return "google.protobuf.Value"
-			default:
-				return "google.protobuf.Value"
-			}
 		},
 	}).Parse(tplStr)
 	if err != nil {

@@ -16,6 +16,43 @@ import (
 	"github.com/choysum-dev/choysum/pkg/meta"
 )
 
+func TestProtobufGenerateUsesProtobufTypeForEmptyReturns(t *testing.T) {
+	runtimeScope := newGeneratorScope(t)
+	protoDir := t.TempDir()
+	distAppDir := filepath.Join(t.TempDir(), "apps", "crm")
+	gen := &protobufGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "crm"}, modulesProtoDir: protoDir, distAppDir: distAppDir}
+
+	app := &meta.Application{
+		Name: "crm",
+		Models: []*meta.Model{{
+			Name: "Partner",
+			Services: []*meta.Service{{
+				Name:                  "Create",
+				AccessibilityModifier: "public",
+				IsStatic:              true,
+				// Text annotation still looks non-void; ProtobufType is the source of truth.
+				TsTypeAnnotation: "Promise<void>",
+				ProtobufType:     "google.protobuf.Empty",
+			}},
+		}},
+	}
+
+	if _, err := gen.generate(context.Background(), app); err != nil {
+		t.Fatalf("generate() error = %v", err)
+	}
+	content, err := os.ReadFile(filepath.Join(protoDir, "crm.proto"))
+	if err != nil {
+		t.Fatalf("read crm.proto: %v", err)
+	}
+	text := string(content)
+	if !strings.Contains(text, "rpc Create ( google.protobuf.Empty ) returns ( google.protobuf.Empty )") {
+		t.Fatalf("expected Empty return rpc, got:\n%s", text)
+	}
+	if strings.Contains(text, "Partner_Create_Resp") {
+		t.Fatalf("did not expect Resp message for Empty return, got:\n%s", text)
+	}
+}
+
 func TestProtobufGenerateWritesEmbeddedAssetsAndAppProto(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
 	protoDir := t.TempDir()
