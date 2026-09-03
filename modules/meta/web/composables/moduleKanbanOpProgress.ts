@@ -4,9 +4,9 @@
 import type { ModuleOpProgressHooks, ModuleOpStatusSnapshot } from './useModuleOpProgress';
 
 export type ModuleKanbanOpProgressMessages = {
-  jobStillRunning: string;
-  serviceRestarting: string;
-  failedToGetStatus: string;
+  jobStillRunning: () => string;
+  serviceRestarting: () => string;
+  failedToGetStatus: () => string;
 };
 
 export type ModuleKanbanOpProgressBindings = {
@@ -40,13 +40,13 @@ export function createModuleKanbanOpProgressHooks(
         status: 'dispatching',
         resultStatus: undefined,
       });
-      bindings.warn(bindings.messages.jobStillRunning);
+      bindings.warn(bindings.messages.jobStillRunning());
     },
     onTransientNetworkError: () => {
-      bindings.warn(bindings.messages.serviceRestarting);
+      bindings.warn(bindings.messages.serviceRestarting());
     },
     onHardError: (message) => {
-      bindings.error(message || bindings.messages.failedToGetStatus);
+      bindings.error(message || bindings.messages.failedToGetStatus());
     },
   };
 }

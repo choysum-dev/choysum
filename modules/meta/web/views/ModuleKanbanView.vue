@@ -330,9 +330,9 @@ const opProgress = createModuleOpProgressSession(
       ElMessage.error(message);
     },
     messages: {
-      jobStillRunning: _t('Job is still running in the background; refresh later'),
-      serviceRestarting: _t('Service is restarting; status will retry automatically'),
-      failedToGetStatus: _t('Failed to get status'),
+      jobStillRunning: () => _t('Job is still running in the background; refresh later'),
+      serviceRestarting: () => _t('Service is restarting; status will retry automatically'),
+      failedToGetStatus: () => _t('Failed to get status'),
     },
   })
 );

@@ -12,6 +12,9 @@ describe('createModuleKanbanOpProgressHooks', () => {
     const warn = vi.fn();
     const error = vi.fn();
     const fetchStatus = vi.fn(async () => ({ status: 'queued' }));
+    const jobStillRunning = vi.fn(() => 'Job is still running in the background; refresh later');
+    const serviceRestarting = vi.fn(() => 'Service is restarting; status will retry automatically');
+    const failedToGetStatus = vi.fn(() => 'Failed to get status');
 
     const hooks = createModuleKanbanOpProgressHooks({
       fetchStatus,
@@ -21,9 +24,9 @@ describe('createModuleKanbanOpProgressHooks', () => {
       warn,
       error,
       messages: {
-        jobStillRunning: 'Job is still running in the background; refresh later',
-        serviceRestarting: 'Service is restarting; status will retry automatically',
-        failedToGetStatus: 'Failed to get status',
+        jobStillRunning,
+        serviceRestarting,
+        failedToGetStatus,
       },
     });
 
@@ -42,14 +45,18 @@ describe('createModuleKanbanOpProgressHooks', () => {
       status: 'dispatching',
       resultStatus: undefined,
     });
+    expect(jobStillRunning).toHaveBeenCalledTimes(1);
     expect(warn).toHaveBeenCalledWith('Job is still running in the background; refresh later');
 
     hooks.onTransientNetworkError?.();
+    expect(serviceRestarting).toHaveBeenCalledTimes(1);
     expect(warn).toHaveBeenCalledWith('Service is restarting; status will retry automatically');
 
     hooks.onHardError?.('boom');
     expect(error).toHaveBeenCalledWith('boom');
+    expect(failedToGetStatus).not.toHaveBeenCalled();
     hooks.onHardError?.('');
+    expect(failedToGetStatus).toHaveBeenCalledTimes(1);
     expect(error).toHaveBeenCalledWith('Failed to get status');
   });
 });
