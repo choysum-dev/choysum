@@ -419,6 +419,78 @@ export default class Demo {
 		if findClassMethodNode(file, "Demo", "Y") == nil {
 			t.Fatal("expected Demo.Y")
 		}
+		if findClassMethodNode(file, "", "Y") == nil {
+			t.Fatal("empty className should accept first matching class method")
+		}
+		if findClassMethodNode(nil, "Demo", "Y") != nil {
+			t.Fatal("nil file")
+		}
+	})
+
+	t.Run("program cache default limit when unset", func(t *testing.T) {
+		prevLimit := semanticProgramCacheLimit
+		semanticProgramCacheLimit = 0
+		defer func() { semanticProgramCacheLimit = prevLimit }()
+
+		r := newSemanticTypeResolver(nil)
+		r.mu.Lock()
+		state := &semanticFileState{content: "x"}
+		r.putCacheLocked("/virtual/limit0.ts", state)
+		if r.cache["/virtual/limit0.ts"] != state {
+			r.mu.Unlock()
+			t.Fatal("expected cache insert with default limit")
+		}
+		r.mu.Unlock()
+	})
+
+	t.Run("singleflight sees cache filled after outer miss", func(t *testing.T) {
+		r := newSemanticTypeResolver(nil)
+		path := "/virtual/modules/demo/service/inflight_hit.ts"
+		content := `
+export default class Demo {
+  public static async Echo(v: string): Promise<string> { return v }
+}
+`
+		program, file, err := buildSemanticProgram(path, content)
+		if err != nil {
+			t.Fatalf("build: %v", err)
+		}
+		preloaded := &semanticFileState{content: content, program: program, file: file}
+
+		prevMiss := semanticAfterCacheMissUnlock
+		prevBuild := semanticAfterProgramBuild
+		defer func() {
+			semanticAfterCacheMissUnlock = prevMiss
+			semanticAfterProgramBuild = prevBuild
+		}()
+
+		semanticAfterCacheMissUnlock = func() {
+			r.mu.Lock()
+			r.putCacheLocked(path, preloaded)
+			r.mu.Unlock()
+		}
+		state, err := r.ensureFile(path, content)
+		if err != nil {
+			t.Fatalf("ensureFile: %v", err)
+		}
+		if state != preloaded {
+			t.Fatal("expected singleflight to reuse cache filled after outer miss")
+		}
+
+		r2 := newSemanticTypeResolver(nil)
+		semanticAfterCacheMissUnlock = prevMiss
+		semanticAfterProgramBuild = func() {
+			r2.mu.Lock()
+			r2.putCacheLocked(path, preloaded)
+			r2.mu.Unlock()
+		}
+		state, err = r2.ensureFile(path, content)
+		if err != nil {
+			t.Fatalf("ensureFile after build: %v", err)
+		}
+		if state != preloaded {
+			t.Fatal("expected publish path to reuse cache filled during build")
+		}
 	})
 
 	t.Run("program cache is bounded and replaces content", func(t *testing.T) {

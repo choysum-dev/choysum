@@ -43,6 +43,10 @@ var (
 		return program.GetSourceFile(path)
 	}
 	semanticProgramCacheLimit = defaultSemanticProgramCacheLimit
+	// Invoked after an outer cache miss unlock, before singleflight.Do.
+	semanticAfterCacheMissUnlock = func() {}
+	// Invoked after a successful Program build, before the final cache publish.
+	semanticAfterProgramBuild = func() {}
 )
 
 // semanticTypeResolver reduces service method parameter/return types to protobuf
@@ -151,6 +155,7 @@ func (r *semanticTypeResolver) ensureFile(path, content string) (*semanticFileSt
 		return cached, nil
 	}
 	r.mu.Unlock()
+	semanticAfterCacheMissUnlock()
 
 	v, err, _ := r.builds.Do(path+"\x00"+content, func() (any, error) {
 		r.mu.Lock()
@@ -170,6 +175,8 @@ func (r *semanticTypeResolver) ensureFile(path, content string) (*semanticFileSt
 			program: program,
 			file:    file,
 		}
+
+		semanticAfterProgramBuild()
 
 		r.mu.Lock()
 		defer r.mu.Unlock()
