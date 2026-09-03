@@ -37,6 +37,7 @@ import (
 	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type helperScope struct {
@@ -1740,27 +1741,92 @@ func TestDescriptorCodecListRoundTrip(t *testing.T) {
 		Syntax:  proto.String("proto3"),
 		Name:    proto.String("demo_list.proto"),
 		Package: proto.String("demo"),
-		MessageType: []*descriptorpb.DescriptorProto{{
-			Name: proto.String("Tags"),
-			Field: []*descriptorpb.FieldDescriptorProto{{
-				Name:   proto.String("tags"),
-				Number: proto.Int32(1),
-				Label:  descriptorpb.FieldDescriptorProto_LABEL_REPEATED.Enum(),
-				Type:   descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum(),
-			}},
-		}},
+		MessageType: []*descriptorpb.DescriptorProto{
+			{
+				Name: proto.String("Tags"),
+				Field: []*descriptorpb.FieldDescriptorProto{{
+					Name:   proto.String("tags"),
+					Number: proto.Int32(1),
+					Label:  descriptorpb.FieldDescriptorProto_LABEL_REPEATED.Enum(),
+					Type:   descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum(),
+				}},
+			},
+			{
+				Name: proto.String("Nested"),
+				Field: []*descriptorpb.FieldDescriptorProto{{
+					Name:   proto.String("label"),
+					Number: proto.Int32(1),
+					Label:  descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(),
+					Type:   descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum(),
+				}},
+			},
+			{
+				Name: proto.String("Items"),
+				Field: []*descriptorpb.FieldDescriptorProto{{
+					Name:     proto.String("items"),
+					Number:   proto.Int32(1),
+					Label:    descriptorpb.FieldDescriptorProto_LABEL_REPEATED.Enum(),
+					Type:     descriptorpb.FieldDescriptorProto_TYPE_MESSAGE.Enum(),
+					TypeName: proto.String(".demo.Nested"),
+				}},
+			},
+			{
+				Name: proto.String("Flags"),
+				Field: []*descriptorpb.FieldDescriptorProto{{
+					Name:   proto.String("flags"),
+					Number: proto.Int32(1),
+					Label:  descriptorpb.FieldDescriptorProto_LABEL_REPEATED.Enum(),
+					Type:   descriptorpb.FieldDescriptorProto_TYPE_BOOL.Enum(),
+				}},
+			},
+			{
+				Name: proto.String("Times"),
+				Field: []*descriptorpb.FieldDescriptorProto{{
+					Name:     proto.String("times"),
+					Number:   proto.Int32(1),
+					Label:    descriptorpb.FieldDescriptorProto_LABEL_REPEATED.Enum(),
+					Type:     descriptorpb.FieldDescriptorProto_TYPE_MESSAGE.Enum(),
+					TypeName: proto.String(".google.protobuf.Timestamp"),
+				}},
+			},
+		},
+		Dependency: []string{"google/protobuf/timestamp.proto"},
 	}
-	fd, err := protodesc.NewFile(fileProto, nil)
+	tsFile := (&timestamppb.Timestamp{}).ProtoReflect().Descriptor().ParentFile()
+	files, err := protodesc.NewFiles(&descriptorpb.FileDescriptorSet{
+		File: []*descriptorpb.FileDescriptorProto{
+			protodesc.ToFileDescriptorProto(tsFile),
+			fileProto,
+		},
+	})
 	if err != nil {
-		t.Fatalf("protodesc.NewFile: %v", err)
+		t.Fatalf("NewFiles: %v", err)
 	}
-	msgDesc := fd.Messages().ByName("Tags")
-	if msgDesc == nil {
-		t.Fatal("missing Tags message")
+	var tagsDesc, itemsDesc, flagsDesc, timesDesc protoreflect.MessageDescriptor
+	files.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
+		if fd.Package() != "demo" {
+			return true
+		}
+		tagsDesc = fd.Messages().ByName("Tags")
+		itemsDesc = fd.Messages().ByName("Items")
+		flagsDesc = fd.Messages().ByName("Flags")
+		timesDesc = fd.Messages().ByName("Times")
+		return false
+	})
+	if tagsDesc == nil || itemsDesc == nil || flagsDesc == nil || timesDesc == nil {
+		t.Fatal("missing descriptors")
 	}
-	tagsField := msgDesc.Fields().ByName("tags")
+	tagsField := tagsDesc.Fields().ByName("tags")
+	itemsField := itemsDesc.Fields().ByName("items")
+	flagsField := flagsDesc.Fields().ByName("flags")
+	timesField := timesDesc.Fields().ByName("times")
 
-	reqMsg := dynamicpb.NewMessage(msgDesc)
+	empty, err := serviceCodec.listToAny(nil, tagsField)
+	if err != nil || len(empty) != 0 {
+		t.Fatalf("listToAny(nil) = %#v, %v", empty, err)
+	}
+
+	reqMsg := dynamicpb.NewMessage(tagsDesc)
 	list := reqMsg.Mutable(tagsField).List()
 	list.Append(protoreflect.ValueOfString("a"))
 	list.Append(protoreflect.ValueOfString("b"))
@@ -1773,13 +1839,256 @@ func TestDescriptorCodecListRoundTrip(t *testing.T) {
 		t.Fatalf("listToAny got %#v", got)
 	}
 
-	respMsg := dynamicpb.NewMessage(msgDesc)
+	respMsg := dynamicpb.NewMessage(tagsDesc)
 	if err := serviceCodec.anyToList([]interface{}{"x", "y"}, respMsg, tagsField); err != nil {
 		t.Fatalf("anyToList: %v", err)
 	}
 	outList := respMsg.Get(tagsField).List()
 	if outList.Len() != 2 || outList.Get(0).String() != "x" || outList.Get(1).String() != "y" {
 		t.Fatalf("anyToList populated %#v", outList)
+	}
+	if _, ok := asInterfaceSlice(nil); !ok {
+		t.Fatal("nil should convert to empty slice")
+	}
+	if _, ok := asInterfaceSlice("nope"); ok {
+		t.Fatal("non-slice should fail")
+	}
+	if err := serviceCodec.anyToList("bad", respMsg, tagsField); err == nil {
+		t.Fatal("expected anyToList type error")
+	}
+	if err := serviceCodec.anyToList([]interface{}{"z"}, nil, tagsField); err == nil {
+		t.Fatal("expected invalid list field error")
+	}
+	if err := serviceCodec.anyToList([]interface{}{"x"}, dynamicpb.NewMessage(flagsDesc), flagsField); err == nil {
+		t.Fatal("expected scalar convert error")
+	}
+
+	itemsMsg := dynamicpb.NewMessage(itemsDesc)
+	nestedDesc := itemsField.Message()
+	nested := dynamicpb.NewMessage(nestedDesc)
+	nested.Set(nestedDesc.Fields().ByName("label"), protoreflect.ValueOfString("n1"))
+	itemsMsg.Mutable(itemsField).List().Append(protoreflect.ValueOf(nested))
+	msgItems, err := serviceCodec.listToAny(itemsMsg.Get(itemsField).List(), itemsField)
+	if err != nil {
+		t.Fatalf("listToAny(message): %v", err)
+	}
+	if len(msgItems) != 1 {
+		t.Fatalf("expected 1 nested item, got %#v", msgItems)
+	}
+	outItems := dynamicpb.NewMessage(itemsDesc)
+	if err := serviceCodec.anyToList([]interface{}{map[string]interface{}{"label": "n2"}}, outItems, itemsField); err != nil {
+		t.Fatalf("anyToList(message): %v", err)
+	}
+	if outItems.Get(itemsField).List().Len() != 1 {
+		t.Fatalf("expected nested list len 1")
+	}
+	outTimes := dynamicpb.NewMessage(timesDesc)
+	if err := serviceCodec.anyToList([]interface{}{"not-a-rfc3339"}, outTimes, timesField); err == nil {
+		t.Fatal("expected nested timestamp convert error")
+	}
+	timesMsg := dynamicpb.NewMessage(timesDesc)
+	goodTS := dynamicpb.NewMessage(timesField.Message())
+	if err := serviceCodec.anyToMessage("2020-01-02T03:04:05Z", goodTS); err != nil {
+		t.Fatalf("seed timestamp: %v", err)
+	}
+	timesMsg.Mutable(timesField).List().Append(protoreflect.ValueOf(goodTS))
+	if _, err := serviceCodec.listToAny(timesMsg.Get(timesField).List(), timesField); err != nil {
+		t.Fatalf("listToAny(timestamp): %v", err)
+	}
+
+	orig := convertMessageToAny
+	t.Cleanup(func() { convertMessageToAny = orig })
+	convertMessageToAny = func(msg protoreflect.Message) (interface{}, error) {
+		return nil, errors.New("forced message convert failure")
+	}
+	if _, err := serviceCodec.listToAny(timesMsg.Get(timesField).List(), timesField); err == nil {
+		t.Fatal("expected listToAny message convert error")
+	}
+}
+
+func TestExecuteUnaryRepeatedAndTimestampRoundTrip(t *testing.T) {
+	fileProto := &descriptorpb.FileDescriptorProto{
+		Syntax:  proto.String("proto3"),
+		Name:    proto.String("demo_unary.proto"),
+		Package: proto.String("demo"),
+		Dependency: []string{
+			"google/protobuf/timestamp.proto",
+		},
+		MessageType: []*descriptorpb.DescriptorProto{
+			{
+				Name: proto.String("TagsReq"),
+				Field: []*descriptorpb.FieldDescriptorProto{{
+					Name:   proto.String("tags"),
+					Number: proto.Int32(1),
+					Label:  descriptorpb.FieldDescriptorProto_LABEL_REPEATED.Enum(),
+					Type:   descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum(),
+				}},
+			},
+			{
+				Name: proto.String("TagsResp"),
+				Field: []*descriptorpb.FieldDescriptorProto{{
+					Name:   proto.String("result"),
+					Number: proto.Int32(1),
+					Label:  descriptorpb.FieldDescriptorProto_LABEL_REPEATED.Enum(),
+					Type:   descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum(),
+				}},
+			},
+			{
+				Name: proto.String("TouchReq"),
+				Field: []*descriptorpb.FieldDescriptorProto{{
+					Name:     proto.String("at"),
+					Number:   proto.Int32(1),
+					Label:    descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(),
+					Type:     descriptorpb.FieldDescriptorProto_TYPE_MESSAGE.Enum(),
+					TypeName: proto.String(".google.protobuf.Timestamp"),
+				}},
+			},
+			{
+				Name: proto.String("TouchResp"),
+				Field: []*descriptorpb.FieldDescriptorProto{{
+					Name:     proto.String("result"),
+					Number:   proto.Int32(1),
+					Label:    descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(),
+					Type:     descriptorpb.FieldDescriptorProto_TYPE_MESSAGE.Enum(),
+					TypeName: proto.String(".google.protobuf.Timestamp"),
+				}},
+			},
+		},
+	}
+
+	tsFile := (&timestamppb.Timestamp{}).ProtoReflect().Descriptor().ParentFile()
+	files, err := protodesc.NewFiles(&descriptorpb.FileDescriptorSet{
+		File: []*descriptorpb.FileDescriptorProto{
+			protodesc.ToFileDescriptorProto(tsFile),
+			fileProto,
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewFiles: %v", err)
+	}
+	var tagsReq, tagsResp, touchReq, touchResp protoreflect.MessageDescriptor
+	files.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
+		if fd.Package() != "demo" {
+			return true
+		}
+		tagsReq = fd.Messages().ByName("TagsReq")
+		tagsResp = fd.Messages().ByName("TagsResp")
+		touchReq = fd.Messages().ByName("TouchReq")
+		touchResp = fd.Messages().ByName("TouchResp")
+		return false
+	})
+	if tagsReq == nil || tagsResp == nil || touchReq == nil || touchResp == nil {
+		t.Fatal("missing message descriptors")
+	}
+
+	runtimeScope := newHelperScope(t.TempDir())
+	svc := &ApplicationService{
+		runtimeScope: runtimeScope,
+		jsExecutor: &stubJsExecutor{execute: func(ctx context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+			return &jsengine.JsResponse{Id: req.Id, Result: req.Args[0]}, nil
+		}},
+	}
+
+	reqMsg := dynamicpb.NewMessage(tagsReq)
+	tagsField := tagsReq.Fields().ByName("tags")
+	reqMsg.Mutable(tagsField).List().Append(protoreflect.ValueOfString("a"))
+	reqMsg.Mutable(tagsField).List().Append(protoreflect.ValueOfString("b"))
+	out, err := svc.executeUnary(context.Background(), runtimeScope, map[string]interface{}{}, nil, "demo", "Demo", "Tags", tagsResp, reqMsg)
+	if err != nil {
+		t.Fatalf("executeUnary(list): %v", err)
+	}
+	resultField := tagsResp.Fields().ByName("result")
+	gotList := out.Get(resultField).List()
+	if gotList.Len() != 2 || gotList.Get(0).String() != "a" || gotList.Get(1).String() != "b" {
+		t.Fatalf("unexpected list result %#v", gotList)
+	}
+
+	touchIn := dynamicpb.NewMessage(touchReq)
+	atField := touchReq.Fields().ByName("at")
+	tsMsg := dynamicpb.NewMessage(atField.Message())
+	if err := serviceCodec.anyToMessage("2020-01-02T03:04:05Z", tsMsg); err != nil {
+		t.Fatalf("seed timestamp: %v", err)
+	}
+	touchIn.Set(atField, protoreflect.ValueOf(tsMsg))
+	touchOut, err := svc.executeUnary(context.Background(), runtimeScope, map[string]interface{}{}, nil, "demo", "Demo", "Touch", touchResp, touchIn)
+	if err != nil {
+		t.Fatalf("executeUnary(timestamp): %v", err)
+	}
+	touchResult := touchOut.Get(touchResp.Fields().ByName("result")).Message()
+	gotTS, err := serviceCodec.messageToAny(touchResult)
+	if err != nil {
+		t.Fatalf("messageToAny(timestamp): %v", err)
+	}
+	if gotTS != "2020-01-02T03:04:05Z" {
+		t.Fatalf("timestamp round-trip got %#v", gotTS)
+	}
+
+	svc.jsExecutor = &stubJsExecutor{execute: func(ctx context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+		return &jsengine.JsResponse{Id: req.Id, Result: "not-an-array"}, nil
+	}}
+	if _, err := svc.executeUnary(context.Background(), runtimeScope, map[string]interface{}{}, nil, "demo", "Demo", "Tags", tagsResp, reqMsg); err == nil {
+		t.Fatal("expected list result conversion error")
+	}
+
+	orig := convertMessageToAny
+	t.Cleanup(func() { convertMessageToAny = orig })
+	convertMessageToAny = func(msg protoreflect.Message) (interface{}, error) {
+		return nil, errors.New("forced list arg convert failure")
+	}
+	// Reuse touch request which has a message field; force list path via times-like list on tags is scalar-only.
+	// Build a request with repeated timestamp messages to hit listToAny error in executeUnary.
+	timesReqFile := &descriptorpb.FileDescriptorProto{
+		Syntax:  proto.String("proto3"),
+		Name:    proto.String("demo_times_req.proto"),
+		Package: proto.String("demotimes"),
+		Dependency: []string{
+			"google/protobuf/timestamp.proto",
+		},
+		MessageType: []*descriptorpb.DescriptorProto{{
+			Name: proto.String("TimesReq"),
+			Field: []*descriptorpb.FieldDescriptorProto{{
+				Name:     proto.String("times"),
+				Number:   proto.Int32(1),
+				Label:    descriptorpb.FieldDescriptorProto_LABEL_REPEATED.Enum(),
+				Type:     descriptorpb.FieldDescriptorProto_TYPE_MESSAGE.Enum(),
+				TypeName: proto.String(".google.protobuf.Timestamp"),
+			}},
+		}, {
+			Name: proto.String("TimesResp"),
+			Field: []*descriptorpb.FieldDescriptorProto{{
+				Name:   proto.String("result"),
+				Number: proto.Int32(1),
+				Label:  descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(),
+				Type:   descriptorpb.FieldDescriptorProto_TYPE_BOOL.Enum(),
+			}},
+		}},
+	}
+	timesFiles, err := protodesc.NewFiles(&descriptorpb.FileDescriptorSet{
+		File: []*descriptorpb.FileDescriptorProto{
+			protodesc.ToFileDescriptorProto(tsFile),
+			timesReqFile,
+		},
+	})
+	if err != nil {
+		t.Fatalf("times NewFiles: %v", err)
+	}
+	var timesReq, timesResp protoreflect.MessageDescriptor
+	timesFiles.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
+		if fd.Package() != "demotimes" {
+			return true
+		}
+		timesReq = fd.Messages().ByName("TimesReq")
+		timesResp = fd.Messages().ByName("TimesResp")
+		return false
+	})
+	timesIn := dynamicpb.NewMessage(timesReq)
+	timesField := timesReq.Fields().ByName("times")
+	one := dynamicpb.NewMessage(timesField.Message())
+	_ = serviceCodec.anyToMessage("2020-01-02T03:04:05Z", one)
+	timesIn.Mutable(timesField).List().Append(protoreflect.ValueOf(one))
+	svc.jsExecutor = &stubJsExecutor{}
+	if _, err := svc.executeUnary(context.Background(), runtimeScope, map[string]interface{}{}, nil, "demo", "Demo", "Times", timesResp, timesIn); err == nil {
+		t.Fatal("expected list arg conversion error")
 	}
 }
 

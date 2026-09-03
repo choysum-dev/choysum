@@ -14,6 +14,9 @@ import (
 // serviceCodec owns protobuf descriptor lookup and message conversion for internal/service.
 var serviceCodec descriptorCodec
 
+// Overridable for tests that need MessageToAny failures.
+var convertMessageToAny = converter.MessageToAny
+
 type descriptorCodec struct{}
 
 // ProtobufMessage -> JavaScript Object
@@ -56,7 +59,7 @@ func (descriptorCodec) listToAny(list protoreflect.List, field protoreflect.Fiel
 	for i := 0; i < list.Len(); i++ {
 		item := list.Get(i)
 		if field.Message() != nil {
-			msgJSON, err := converter.MessageToAny(item.Message())
+			msgJSON, err := convertMessageToAny(item.Message())
 			if err != nil {
 				return nil, err
 			}

@@ -142,6 +142,31 @@ func TestProtobufGenerateOmitsTimestampImportWhenUnused(t *testing.T) {
 	if strings.Contains(string(content), "timestamp.proto") {
 		t.Fatalf("did not expect timestamp import:\n%s", content)
 	}
+	if _, err := os.Stat(filepath.Join(protoDir, "google", "protobuf", "timestamp.proto")); !os.IsNotExist(err) {
+		t.Fatalf("expected timestamp.proto not copied when unused, err=%v", err)
+	}
+}
+
+func TestProtobufNeedsTimestamp(t *testing.T) {
+	if protobufNeedsTimestamp(nil) {
+		t.Fatal("nil app")
+	}
+	if protobufNeedsTimestamp(&meta.Application{Models: []*meta.Model{nil, {Name: "M", Services: []*meta.Service{nil}}}}) {
+		t.Fatal("nil model/service")
+	}
+	if !protobufNeedsTimestamp(&meta.Application{Models: []*meta.Model{{
+		Services: []*meta.Service{{
+			ProtobufType: "string",
+			Parameters:   []*meta.Parameter{nil, {ProtobufType: "google.protobuf.Timestamp"}},
+		}},
+	}}}) {
+		t.Fatal("expected param Timestamp")
+	}
+	if !protobufNeedsTimestamp(&meta.Application{Models: []*meta.Model{{
+		Services: []*meta.Service{{ProtobufType: "google.protobuf.Timestamp"}},
+	}}}) {
+		t.Fatal("expected return Timestamp")
+	}
 }
 
 func TestProtobufGenerateWritesEmbeddedAssetsAndAppProto(t *testing.T) {

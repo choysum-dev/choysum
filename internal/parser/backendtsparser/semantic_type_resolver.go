@@ -417,9 +417,6 @@ func mapCheckerTypeToProto(c *checker.Checker, t *checker.Type, isReturn bool) (
 		t = parts[0]
 		if c.IsArrayType(t) {
 			elem := c.GetElementTypeOfArrayType(t)
-			if elem == nil {
-				return "", false
-			}
 			mapped, ok := mapCheckerTypeToProto(c, elem, false)
 			if !ok || strings.HasPrefix(mapped, protoRepeatedPrefix) {
 				return "", false
@@ -450,14 +447,11 @@ func stripNullishParts(parts []*checker.Type) []*checker.Type {
 			continue
 		}
 		flags := part.Flags()
-		switch {
-		case flags == checker.TypeFlagsNull, flags == checker.TypeFlagsUndefined:
+		// Drop pure nullish constituents (null, undefined, or combinations of only those).
+		if flags&^(checker.TypeFlagsNull|checker.TypeFlagsUndefined) == 0 {
 			continue
-		case flags&^(checker.TypeFlagsNull|checker.TypeFlagsUndefined) == 0:
-			continue
-		default:
-			out = append(out, part)
 		}
+		out = append(out, part)
 	}
 	hasNonVoidLike := false
 	for _, part := range out {
@@ -500,46 +494,26 @@ func mapSpecialCheckerType(c *checker.Checker, t *checker.Type) (string, bool) {
 	return "", false
 }
 
-func mapEnumCheckerType(c *checker.Checker, t *checker.Type) (string, bool) {
-	if t == nil {
-		return "", false
-	}
-	if mapped, ok := classifyEnumLikeType(t); ok {
-		return mapped, true
-	}
-	sym := t.Symbol()
-	if sym == nil || sym.Flags&ast.SymbolFlagsEnum == 0 {
-		return "", false
-	}
-	declared := c.GetDeclaredTypeOfSymbol(sym)
-	if declared == nil {
-		return "", false
-	}
-	if mapped, ok := classifyEnumLikeType(declared); ok {
-		return mapped, true
-	}
-	// Numeric and mixed enums default to double, matching number→double.
-	return protoTypeDouble, true
+func mapEnumCheckerType(_ *checker.Checker, t *checker.Type) (string, bool) {
+	// Enum and enum-literal unions are classified from type flags / union parts.
+	return classifyEnumLikeType(t)
 }
 
-// classifyEnumLikeType maps enum / enum-literal unions to string or double.
-// String enums are typically unions of EnumLiteral+StringLiteral members.
+// classifyEnumLikeType maps enum / enum-literal types to string or double.
+// Multi-member string enums are handled via classifyEnumLikeParts from the
+// union splitter in mapCheckerTypeToProto.
 func classifyEnumLikeType(t *checker.Type) (string, bool) {
 	if t == nil {
 		return "", false
 	}
-	if t.Flags()&checker.TypeFlagsEnumLike != 0 {
-		if t.Flags()&checker.TypeFlagsStringLike != 0 {
-			return protoTypeString, true
-		}
-		if t.Flags()&checker.TypeFlagsNumberLike != 0 {
-			return protoTypeDouble, true
-		}
-	}
-	if !t.IsUnion() {
+	if t.Flags()&checker.TypeFlagsEnumLike == 0 {
 		return "", false
 	}
-	return classifyEnumLikeParts(t.Types())
+	if t.Flags()&checker.TypeFlagsStringLike != 0 {
+		return protoTypeString, true
+	}
+	// Numeric and other enum-like types follow number→double.
+	return protoTypeDouble, true
 }
 
 func classifyEnumLikeParts(parts []*checker.Type) (string, bool) {
@@ -552,22 +526,20 @@ func classifyEnumLikeParts(parts []*checker.Type) (string, bool) {
 		if part == nil || part.Flags()&checker.TypeFlagsEnumLike == 0 {
 			return "", false
 		}
-		switch {
-		case part.Flags()&checker.TypeFlagsStringLike != 0:
+		if part.Flags()&checker.TypeFlagsStringLike != 0 {
 			sawString = true
-		case part.Flags()&checker.TypeFlagsNumberLike != 0:
+		}
+		if part.Flags()&checker.TypeFlagsNumberLike != 0 {
 			sawNumber = true
-		default:
-			return "", false
 		}
 	}
-	if sawString && !sawNumber {
+	switch {
+	case sawString && !sawNumber:
 		return protoTypeString, true
-	}
-	if sawNumber {
+	default:
+		// Numeric, mixed, or unclassified enum-like unions map like number→double.
 		return protoTypeDouble, true
 	}
-	return "", false
 }
 
 func typeSymbolName(t *checker.Type) string {
