@@ -26,7 +26,7 @@ jobs:
           GOOGLE_AI_STUDIO.GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           # Specify the Gemini model to replace the default OpenAI configuration
           config.model: "gemini/gemini-3.8-flash"
-          config.fallback_models: '["gemini/gemini-3.7-flash", "gemini/gemini-3.6-flash", "gemini/gemini-3.5-flash", "gemini/gemini-3.4-flash"]'
+          config.fallback_models: '["gemini/gemini-3.7-flash", "gemini/gemini-3.6-flash", "gemini/gemini-3.5-flash"]'
           # Required for models not yet listed in PR-Agent's built-in MAX_TOKENS table
           config.custom_model_max_tokens: "1000000"
           # Increase token limit to properly process large diffs
