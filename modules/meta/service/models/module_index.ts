@@ -306,8 +306,10 @@ export default class MetaModuleIndex extends BaseModel {
     const force = !!params.force;
     const ifStale = !!params.ifStale;
     if (!force && !ifStale) return '';
-    let originType: ModuleSyncOriginType = assertOriginType('all');
-    if (params.originType != null) {
+    let originType: ModuleSyncOriginType;
+    if (params.originType == null) {
+      originType = assertOriginType('all');
+    } else {
       originType = assertOriginType(params.originType);
     }
 
@@ -380,8 +382,10 @@ export default class MetaModuleIndex extends BaseModel {
     if (typeof syncIndex !== 'function') {
       throw new Error('moduleManagement.syncIndex is not implemented');
     }
-    let normalizedOriginType: ModuleSyncOriginType = assertOriginType('all');
-    if (originType != null) {
+    let normalizedOriginType: ModuleSyncOriginType;
+    if (originType == null) {
+      normalizedOriginType = assertOriginType('all');
+    } else {
       normalizedOriginType = assertOriginType(originType);
     }
     return await syncIndex({ originType: normalizedOriginType, force: !!force });

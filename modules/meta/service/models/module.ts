@@ -367,7 +367,7 @@ export default class MetaModule extends BaseModel {
     const nextRetryAt = retryAfterMs && (job as any)?.RunAfter ? new Date((job as any).RunAfter) : undefined;
 
     const resultStatus = result?.resultStatus || (status === 'failed' || status === 'cancelled' ? 'FAILED' : undefined);
-    let failureKind: FailureKind = 'NONE';
+    let failureKind: FailureKind;
     if (status === 'cancelled') {
       failureKind = 'NON_RETRYABLE';
     } else if (status === 'failed') {
@@ -376,6 +376,8 @@ export default class MetaModule extends BaseModel {
     } else if (resultStatus === 'FAILED') {
       const source = resolveFailureSource(err, result);
       failureKind = classifyRetryability(source);
+    } else {
+      failureKind = 'NONE';
     }
     const summary = result?.summary || (resultStatus === 'FAILED' ? { code: 'MODULE_OPERATION_FAILED', message: err?.message } : undefined);
 
