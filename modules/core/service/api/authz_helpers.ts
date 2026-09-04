@@ -49,7 +49,7 @@ function isConditionExprShape(value: unknown, depth = 0): value is ConditionExpr
   if (key !== 'And' && key !== 'Or') return false;
 
   const children = record[key];
-  if (!Array.isArray(children)) return false;
+  if (!Array.isArray(children) || children.length === 0) return false;
   return children.every(child => isConditionExprShape(child, depth + 1));
 }
 

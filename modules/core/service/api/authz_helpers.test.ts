@@ -153,6 +153,16 @@ test('authz helpers parse condition envelope for true/false/expr and reject inva
     expr: { Or: null },
   });
 
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: { And: [] },
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: { Or: [] },
+  });
+
   let deep: unknown = ['Id', '=', '1'];
   for (let i = 0; i < 33; i += 1) {
     deep = { And: [deep] };

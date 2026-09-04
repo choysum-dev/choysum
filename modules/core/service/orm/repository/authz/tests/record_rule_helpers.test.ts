@@ -349,6 +349,13 @@ test('record rule helper fail-closes invalid envelope kind and coerces expr reas
           reason: 'invalid_record_rule_envelope',
         });
 
+        // Parse failures are not cached: a later valid fetch for the same key can succeed.
+        (AuthUserService as any).GetRecordRuleCondition = async () => ({ kind: 'true', reason: 'recovered' });
+        expect(await fetchRepositoryRecordRuleEnvelope(deps, 'read')).toEqual({
+          kind: 'true',
+          reason: 'recovered',
+        });
+
         const secondDeps = createDeps().deps;
         (AuthUserService as any).GetRecordRuleCondition = async () => ({ kind: 'expr', expr: ['Id', '=', '1'], reason: 1 });
         expect(await fetchRepositoryRecordRuleEnvelope(secondDeps, 'write')).toEqual({

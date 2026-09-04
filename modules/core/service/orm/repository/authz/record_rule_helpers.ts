@@ -123,7 +123,7 @@ export async function fetchRepositoryRecordRuleEnvelope(params: RepositoryRecord
       cache.set(key, env);
       return env;
     }
-    // Auth expected but temporarily unreachable: fail-closed (PR-F-1 / §5.9).
+    // Auth expected but temporarily unreachable: fail-closed deny-all.
     if (isAuthServiceUnavailable(error)) {
       const env: ConditionEnvelope = { kind: 'false', reason: 'auth_service_unavailable' };
       cache.set(key, env);
@@ -136,15 +136,14 @@ export async function fetchRepositoryRecordRuleEnvelope(params: RepositoryRecord
     );
   }
 
-  let env: ConditionEnvelope;
   try {
-    env = parseConditionEnvelopeFromUnknown(result);
+    const env = parseConditionEnvelopeFromUnknown(result);
+    cache.set(key, env);
+    return env;
   } catch {
-    // Unparseable authz envelope from service: fail-closed deny.
-    env = { kind: 'false', reason: 'invalid_record_rule_envelope' };
+    // Unparseable authz envelope: fail-closed deny without caching (allow retry on later fetch).
+    return { kind: 'false', reason: 'invalid_record_rule_envelope' };
   }
-  cache.set(key, env);
-  return env;
 }
 
 function getActiveCompanyIdForRepositoryRecordRuleToken(params: RepositoryRecordRuleDeps): string {
