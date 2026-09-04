@@ -112,6 +112,39 @@ describe('OBinaryField normalize helpers', () => {
     expect(wrapper.find('.o-binary-current').exists()).toBe(true);
   });
 
+  async function mountDisplay(binding: UseField) {
+    return mount(OBinaryField as any, {
+      props: {
+        binding,
+        renderMode: 'display',
+        uploadProps: { drag: false, showFileList: false },
+      },
+      global: {
+        stubs: {
+          OFieldBase: defineComponent({
+            name: 'OFieldBase',
+            props: { binding: { type: Object, required: false } },
+            setup(props, { slots }) {
+              return () =>
+                h(
+                  'div',
+                  slots.display?.({
+                    fieldValue: () => (props.binding as UseField | undefined)?.fieldRef?.() ?? ref(null),
+                    renderMode: 'form',
+                  })
+                );
+            },
+          }),
+          'el-upload': ElUploadStub,
+          'el-button': { template: '<button class="btn"><slot /></button>' },
+          'el-icon': { template: '<i><slot /></i>' },
+          Document: true,
+          UploadFilled: true,
+        },
+      },
+    });
+  }
+
   it('covers objectId-only and downloadUrl-only attachment resolution', async () => {
     const objectOnly = makeBinding({
       value: { attachmentObjectId: '  obj-only  ', kind: 'set' },
@@ -124,77 +157,33 @@ describe('OBinaryField normalize helpers', () => {
     });
     expect((await mountField(objectIdAlias)).find('.o-binary-current').exists()).toBe(true);
 
-    const urlFallback = makeBinding({
-      value: { url: '  /files/via-url.bin  ', kind: 'set' },
-    });
-    const urlWrapper = await mount(OBinaryField as any, {
-      props: {
-        binding: urlFallback,
-        renderMode: 'display',
-        uploadProps: { drag: false, showFileList: false },
-      },
-      global: {
-        stubs: {
-          OFieldBase: defineComponent({
-            name: 'OFieldBase',
-            props: { binding: { type: Object, required: false } },
-            setup(props, { slots }) {
-              return () =>
-                h(
-                  'div',
-                  slots.display?.({
-                    fieldValue: () => (props.binding as UseField | undefined)?.fieldRef?.() ?? ref(null),
-                    renderMode: 'form',
-                  })
-                );
-            },
-          }),
-          'el-upload': ElUploadStub,
-          'el-button': { template: '<button class="btn"><slot /></button>' },
-          'el-icon': { template: '<i><slot /></i>' },
-          Document: true,
-          UploadFilled: true,
-        },
-      },
-    });
-    await flushPromises();
-    expect(urlWrapper.html()).toContain('/files/via-url.bin');
-
     const downloadOnly = makeBinding({
       value: { downloadUrl: '  /files/only.bin  ', kind: 'set' },
     });
-    const downloadWrapper = await mount(OBinaryField as any, {
-      props: {
-        binding: downloadOnly,
-        renderMode: 'display',
-        uploadProps: { drag: false, showFileList: false },
-      },
-      global: {
-        stubs: {
-          OFieldBase: defineComponent({
-            name: 'OFieldBase',
-            props: { binding: { type: Object, required: false } },
-            setup(props, { slots }) {
-              return () =>
-                h(
-                  'div',
-                  slots.display?.({
-                    fieldValue: () => (props.binding as UseField | undefined)?.fieldRef?.() ?? ref(null),
-                    renderMode: 'form',
-                  })
-                );
-            },
-          }),
-          'el-upload': ElUploadStub,
-          'el-button': { template: '<button class="btn"><slot /></button>' },
-          'el-icon': { template: '<i><slot /></i>' },
-          Document: true,
-          UploadFilled: true,
-        },
-      },
-    });
+    const downloadWrapper = await mountDisplay(downloadOnly);
     await flushPromises();
     expect(downloadWrapper.html()).toContain('/files/only.bin');
+  });
+
+  it('covers resolveDownloadUrl fallback chain', async () => {
+    const cases: Array<{ value: Record<string, unknown>; expectHref: string }> = [
+      { value: { url: '  /files/via-url.bin  ', kind: 'set' }, expectHref: '/files/via-url.bin' },
+      { value: { previewUrl: '  /files/via-preview.bin  ', kind: 'set' }, expectHref: '/files/via-preview.bin' },
+      {
+        value: { descriptor: { downloadUrl: '  /files/desc-dl.bin  ' }, kind: 'set' },
+        expectHref: '/files/desc-dl.bin',
+      },
+      {
+        value: { descriptor: { previewUrl: '  /files/desc-preview.bin  ' }, kind: 'set' },
+        expectHref: '/files/desc-preview.bin',
+      },
+    ];
+
+    for (const c of cases) {
+      const wrapper = await mountDisplay(makeBinding({ value: c.value }));
+      await flushPromises();
+      expect(wrapper.html()).toContain(c.expectHref);
+    }
   });
 
   it('treats string values and clear/noop kinds via hasAttachment', async () => {

@@ -431,13 +431,12 @@ describe('OImageField upload limit gate (PR-P2-F3)', () => {
     const previewWrapper = await mountField(withPreview);
     await flushPromises();
     expect(previewWrapper.find('.o-image-current__preview').attributes('src')).toBe('/preview/img.png');
+  });
 
-    const downloadViaUrl = makeBinding({
-      value: { url: '  /dl/via-url.png  ', kind: 'set' },
-    });
-    const downloadWrapper = await mount(OImageField as any, {
+  async function mountImageDisplay(binding: UseField) {
+    return mount(OImageField as any, {
       props: {
-        binding: downloadViaUrl,
+        binding,
         renderMode: 'display',
         uploadProps: { drag: false, showFileList: false },
       },
@@ -465,8 +464,28 @@ describe('OImageField upload limit gate (PR-P2-F3)', () => {
         },
       },
     });
-    await flushPromises();
-    expect(downloadWrapper.html()).toContain('/dl/via-url.png');
+  }
+
+  it('covers resolveDownloadUrl and resolvePreviewUrl fallback chains', async () => {
+    const cases: Array<{ value: Record<string, unknown>; expectUrl: string }> = [
+      { value: { url: '  /dl/via-url.png  ', kind: 'set' }, expectUrl: '/dl/via-url.png' },
+      { value: { previewUrl: '  /dl/via-preview.png  ', kind: 'set' }, expectUrl: '/dl/via-preview.png' },
+      { value: { thumbnailUrl: '  /dl/via-thumb.png  ', kind: 'set' }, expectUrl: '/dl/via-thumb.png' },
+      {
+        value: { descriptor: { downloadUrl: '  /dl/desc-download.png  ' }, kind: 'set' },
+        expectUrl: '/dl/desc-download.png',
+      },
+      {
+        value: { descriptor: { previewUrl: '  /dl/desc-preview.png  ' }, kind: 'set' },
+        expectUrl: '/dl/desc-preview.png',
+      },
+    ];
+
+    for (const c of cases) {
+      const wrapper = await mountImageDisplay(makeBinding({ value: c.value }));
+      await flushPromises();
+      expect(wrapper.html()).toContain(c.expectUrl);
+    }
   });
 
   it('treats string attachment values and clear/noop kinds', async () => {
@@ -485,37 +504,8 @@ describe('OImageField upload limit gate (PR-P2-F3)', () => {
         kind: 'set',
       },
     });
-    const downloadWrapper = await mount(OImageField as any, {
-      props: {
-        binding: downloadOnly,
-        renderMode: 'display',
-        uploadProps: { drag: false, showFileList: false },
-      },
-      global: {
-        stubs: {
-          OFieldBase: defineComponent({
-            name: 'OFieldBase',
-            props: { binding: { type: Object, required: false } },
-            setup(props, { slots }) {
-              return () =>
-                h(
-                  'div',
-                  slots.display?.({
-                    fieldValue: () => (props.binding as UseField | undefined)?.fieldRef?.() ?? ref(null),
-                    renderMode: 'form',
-                  })
-                );
-            },
-          }),
-          'el-upload': ElUploadStub,
-          'el-button': { template: '<button class="btn"><slot /></button>' },
-          'el-icon': { template: '<i><slot /></i>' },
-          Picture: true,
-          UploadFilled: true,
-        },
-      },
-    });
+    const downloadWrapper = await mountImageDisplay(downloadOnly);
     await flushPromises();
-    expect(downloadWrapper.find('a.o-image-display-card, a').exists() || downloadWrapper.html().includes('/dl/only.png')).toBe(true);
+    expect(downloadWrapper.html()).toContain('/dl/only.png');
   });
 });
