@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from 'vitest';
-import { asPresentCondition } from './absent';
+import { asPresentCondition, combinePresentConditions } from './absent';
 
 describe('asPresentCondition', () => {
   it('returns undefined for nullish, empty array, and empty object', () => {
@@ -18,5 +18,16 @@ describe('asPresentCondition', () => {
     expect(asPresentCondition({ a: 1 })).toEqual({ a: 1 });
     expect(asPresentCondition(false)).toBe(false);
     expect(asPresentCondition(0)).toBe(0);
+  });
+});
+
+describe('combinePresentConditions', () => {
+  it('uses nullish checks so present 0/false are preserved', () => {
+    expect(combinePresentConditions(false, { A: 1 })).toEqual({ And: [false, { A: 1 }] });
+    expect(combinePresentConditions(0, { A: 1 })).toEqual({ And: [0, { A: 1 }] });
+    expect(combinePresentConditions({ A: 1 }, false)).toEqual({ And: [{ A: 1 }, false] });
+    expect(combinePresentConditions(undefined, { A: 1 })).toEqual({ A: 1 });
+    expect(combinePresentConditions({ A: 1 }, null)).toEqual({ A: 1 });
+    expect(combinePresentConditions(undefined, null)).toBeUndefined();
   });
 });

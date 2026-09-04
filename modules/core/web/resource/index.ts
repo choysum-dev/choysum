@@ -156,6 +156,9 @@ function normalizeRequires(value: unknown): NormalizedResourceRequire[] {
     if (!isObjectRecord(item)) {
       throw new Error('invalid_resource_requires');
     }
+    if (typeof item.model !== 'string' || (item.method != null && typeof item.method !== 'string')) {
+      throw new Error('invalid_resource_requires');
+    }
     const model = normalizeOptionalString(item.model);
     if (!model) {
       throw new Error('invalid_resource_requires');
@@ -220,11 +223,12 @@ export function getResourceDeclarationFromMeta(meta?: ObjectRecord | null): Reso
 
 export function defineRoute<T extends RouteRecordRaw>(id: ResourceId, config: DefineRouteOptions<T>): T {
   const normalizedTitle = normalizeResourceTitle(config.title);
+  const sequence = normalizeSequence(config.sequence);
   const declaration = registerResourceDeclaration({
     id,
     kind: 'route',
     ...normalizedTitle,
-    sequence: normalizeSequence(config.sequence),
+    sequence,
     path: normalizeTitle((config as { path?: unknown })?.path),
     actions: normalizeActions(config.actions),
     requires: normalizeRequires(config.requires),
@@ -232,7 +236,7 @@ export function defineRoute<T extends RouteRecordRaw>(id: ResourceId, config: De
     override: Boolean(config.override),
   } satisfies RouteResourceDeclaration);
 
-  const { actions: _actions, title, sequence, requires: _requires, defaultRoles: _defaultRoles, override: _override, ...routeConfig } = config;
+  const { actions: _actions, title, sequence: _sequence, requires: _requires, defaultRoles: _defaultRoles, override: _override, ...routeConfig } = config;
 
   const meta = withResourceMeta(routeConfig.meta, declaration);
   if (normalizedTitle.title && meta.pageTitle == null) {
@@ -241,8 +245,8 @@ export function defineRoute<T extends RouteRecordRaw>(id: ResourceId, config: De
   if (normalizedTitle.titleText && meta.pageTitleText == null) {
     meta.pageTitleText = normalizedTitle.titleText;
   }
-  if (Number.isFinite(Number(sequence))) {
-    meta.routeSequence = Number(sequence);
+  if (sequence !== undefined) {
+    meta.routeSequence = sequence;
   }
 
   return {
@@ -253,12 +257,13 @@ export function defineRoute<T extends RouteRecordRaw>(id: ResourceId, config: De
 
 export function defineMenu(id: ResourceId, config: DefineMenuOptions): MenuItem {
   const normalizedTitle = normalizeResourceTitle(config.title);
+  const sequence = normalizeSequence(config.sequence);
   const declaration = registerResourceDeclaration({
     id,
     kind: 'menu',
     title: normalizedTitle.title ?? id,
     titleText: normalizedTitle.titleText,
-    sequence: normalizeSequence(config.sequence),
+    sequence,
     path: normalizeTitle(config.path),
     parentMenu: normalizeTitle(config.parentMenu),
     requires: normalizeRequires(config.requires),
@@ -272,7 +277,7 @@ export function defineMenu(id: ResourceId, config: DefineMenuOptions): MenuItem 
     titleText: normalizedTitle.titleText,
     icon: config.icon,
     path: config.path,
-    order: config.sequence,
+    order: sequence,
     children: config.children,
     meta: withResourceMeta(config.meta, declaration),
   };

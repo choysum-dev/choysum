@@ -16,7 +16,7 @@ import { userClearedDefaultFilters, userClearedDefaultGroups } from '@/web/web/q
 import { exportFieldSelection } from '@/web/web/query/utils/registry/field';
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
 import { filtersToQuery } from '@/web/web/query/utils/condition/builder';
-import { asPresentCondition } from '@/web/web/query/utils/condition/absent';
+import { asPresentCondition, combinePresentConditions } from '@/web/web/query/utils/condition/absent';
 
 // ListViewModel & GroupBySpec now centralized in query/types.ts
 
@@ -414,12 +414,7 @@ export function createListController(store: WebModelStore<any>): IListController
     return asPresentCondition(f);
   }
   function combineFilters(a?: any, b?: any): any | undefined {
-    const A = normalizeFilter(a);
-    const B = normalizeFilter(b);
-    if (!A && !B) return undefined;
-    if (!A) return B;
-    if (!B) return A;
-    return { And: [A, B] } as any;
+    return combinePresentConditions(a, b) as any;
   }
 
   // buildUnifiedQuery now owns QueryContext construction.

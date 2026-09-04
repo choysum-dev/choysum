@@ -222,6 +222,20 @@ describe('resource declaration helpers', () => {
     ).toThrow('invalid_resource_requires');
 
     expect(() =>
+      defineRoute('demo.route.numeric_model', {
+        path: '/demo',
+        requires: [{ model: 1 as any }],
+      } as any)
+    ).toThrow('invalid_resource_requires');
+
+    expect(() =>
+      defineRoute('demo.route.object_method', {
+        path: '/demo',
+        requires: [{ model: 'demo.Model', method: {} as any }],
+      } as any)
+    ).toThrow('invalid_resource_requires');
+
+    expect(() =>
       defineRoute('demo.route.invalid_roles', {
         path: '/demo',
         defaultRoles: 'base.user' as any,
@@ -265,6 +279,14 @@ describe('resource declaration helpers', () => {
       actions: [],
       sequence: undefined,
     });
+    expect((route as any).meta?.routeSequence).toBeUndefined();
+
+    const menu = defineMenu('demo.menu.nullish_sequence', {
+      title: 'Demo',
+      sequence: '' as any,
+    });
+    expect(menu.order).toBeUndefined();
+    expect(getResourceDeclarationFromMeta(menu.meta as any)?.sequence).toBeUndefined();
   });
 
   it('dedupes requires and rejects invalid sequence values', () => {

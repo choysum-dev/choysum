@@ -231,9 +231,15 @@ export function createKanbanController(store: WebModelStore<any>): IKanbanContro
     const targetLanes = uniqueKeys.map(k => lanes.value.find(l => l.key === k)).filter(Boolean) as Lane[];
     if (!targetLanes.length) return;
 
-    // Combine lane conditions with OR. A lane without a condition naturally means "all".
+    // Combine lane conditions with OR. A lane without a condition means "all":
+    // if any selected lane is unconditioned, do not constrain the batch query.
+    const presentLaneConditions = targetLanes.map(l => asPresentCondition(l.condition));
     const combinedCondition =
-      targetLanes.length === 1 ? targetLanes[0].condition : { Or: targetLanes.map(l => l.condition).filter(c => asPresentCondition(c) !== undefined) };
+      targetLanes.length === 1
+        ? presentLaneConditions[0]
+        : presentLaneConditions.some(c => c === undefined)
+          ? undefined
+          : { Or: presentLaneConditions };
 
     // Let the unified query builder merge global and lane-specific conditions.
     const ctx = buildUnifiedQuery(store, {
