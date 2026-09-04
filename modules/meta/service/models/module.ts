@@ -64,11 +64,20 @@ type ModuleOpBridgeResult = {
   errorMessage?: string;
 };
 
+function pickErrString(err: any, primary: string, secondary: string): string {
+  if (err == null) return '';
+  const primaryValue = err[primary];
+  if (primaryValue != null && String(primaryValue) !== '') return String(primaryValue);
+  const secondaryValue = err[secondary];
+  if (secondaryValue != null && String(secondaryValue) !== '') return String(secondaryValue);
+  return '';
+}
+
 function classifyFailureKind(status: string, err?: any): FailureKind {
   if (status === 'cancelled') return 'NON_RETRYABLE';
   if (status !== 'failed') return 'NONE';
-  const domain = String(err?.domain || err?.errorDomain || '').toLowerCase();
-  const code = String(err?.code || err?.errorCode || '').toUpperCase();
+  const domain = pickErrString(err, 'domain', 'errorDomain').toLowerCase();
+  const code = pickErrString(err, 'code', 'errorCode').toUpperCase();
   if (domain === 'meta.lock' && code === 'LEASE_CONFLICT') return 'RETRYABLE';
   if (domain === 'module_management' && code === 'LOCK_LEASE_LOST') return 'RETRYABLE';
   return 'NON_RETRYABLE';

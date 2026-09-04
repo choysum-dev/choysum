@@ -606,6 +606,55 @@ test('meta.MetaModule GetOpStatus supports succeeded status with failed result',
   expect(status.reload_web).toBe(false);
 });
 
+test('meta.MetaModule GetOpStatus maps plain failures as non-retryable', async () => {
+  resetRequestContext();
+  ensureModuleManagementBridge();
+  ensureJobMock();
+
+  const moduleName = uid('plain_fail');
+  const job = await Job.EnqueueJob('meta', 'meta.MetaModule/ExecuteUpgrade', { moduleName, operatorUserId: 'admin' }, 'admin', 'admin');
+
+  await (Job as any).UpdateById(
+    job.Id as any,
+    {
+      Status: 'failed',
+      LastErrorJson: { message: 'boom' },
+      ResultJson: null,
+    } as any
+  );
+
+  const status = await MetaModule.GetOpStatus(job.Id as any);
+  expect(status.status).toBe('failed');
+  expect(status.resultStatus).toBe('FAILED');
+  expect(status.failureKind).toBe('NON_RETRYABLE');
+});
+
+test('meta.MetaModule GetOpStatus maps retryable lock conflicts via errorDomain/errorCode', async () => {
+  resetRequestContext();
+  ensureModuleManagementBridge();
+  ensureJobMock();
+
+  const moduleName = uid('lock_conflict_alt');
+  const job = await Job.EnqueueJob('meta', 'meta.MetaModule/ExecuteUpgrade', { moduleName, operatorUserId: 'admin' }, 'admin', 'admin');
+
+  await (Job as any).UpdateById(
+    job.Id as any,
+    {
+      Status: 'failed',
+      LastErrorJson: {
+        errorDomain: 'meta.lock',
+        errorCode: 'LEASE_CONFLICT',
+        message: 'lease conflict',
+        details: { retry_after_ms: 1000 },
+      },
+    } as any
+  );
+
+  const status = await MetaModule.GetOpStatus(job.Id as any);
+  expect(status.failureKind).toBe('RETRYABLE');
+  expect(status.retryAfterMs).toBe(1000);
+});
+
 test('meta.MetaModule GetOpStatus maps cancelled jobs as non-retryable failures', async () => {
   resetRequestContext();
   ensureModuleManagementBridge();
@@ -833,6 +882,28 @@ test('meta.MetaModuleIndex RequestSync(force) does not reuse running job', async
   }
 });
 
+test('meta.MetaModuleIndex RequestSync defaults null originType to all', async () => {
+  resetRequestContext();
+  ensureJobMock();
+
+  const restoreSearch = mockJobSearch([]);
+  const originalEnqueue = (Job as any).EnqueueJob;
+  let enqueuedOrigin: unknown;
+  (Job as any).EnqueueJob = async (_app: string, _method: string, payload: any) => {
+    enqueuedOrigin = payload?.originType;
+    return { Id: 'job_default_all_origin' };
+  };
+
+  try {
+    const jobId = await MetaModuleIndex.RequestSync({ originType: null as any, force: true, ifStale: false });
+    expect(jobId).toBe('job_default_all_origin');
+    expect(enqueuedOrigin).toBe('all');
+  } finally {
+    (Job as any).EnqueueJob = originalEnqueue;
+    restoreSearch();
+  }
+});
+
 test('meta.MetaModuleIndex RequestSync rejects invalid originType', async () => {
   resetRequestContext();
   ensureJobMock();
@@ -841,6 +912,28 @@ test('meta.MetaModuleIndex RequestSync rejects invalid originType', async () => 
     () => MetaModuleIndex.RequestSync({ originType: 'remote' as any, force: true, ifStale: false }),
     'originType'
   );
+});
+
+test('meta.MetaModuleIndex Sync defaults omitted originType to all', async () => {
+  resetRequestContext();
+  ensureModuleManagementBridge();
+
+  const root: any = (globalThis as any).$choysum;
+  const seen: Array<{ originType?: string; force?: boolean }> = [];
+  root.moduleManagement.syncIndex = async (params: any) => {
+    seen.push(params);
+    return { ok: true };
+  };
+
+  await MetaModuleIndex.Sync(undefined, false);
+  await MetaModuleIndex.Sync(null as any, true);
+  await MetaModuleIndex.Sync('local', false);
+
+  expect(seen).toEqual([
+    { originType: 'all', force: false },
+    { originType: 'all', force: true },
+    { originType: 'local', force: false },
+  ]);
 });
 
 test('meta.MetaModuleIndex Sync rejects invalid originType before bridge call', async () => {
