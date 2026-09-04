@@ -11,6 +11,7 @@ import { getRepositoryCurrentReq, getFieldRuleBypassDepth } from './authz_runtim
 import type { SelectionNode } from '../projection';
 import type { RepositoryPermissionDeniedFn } from './types';
 import { getRuntimeEnvFlag } from '@/core/utils/env';
+import { parseFieldRuleSpecFromUnknown } from '@/core/service/api/authz_helpers';
 import { asObjectRecord } from '../../../../utils/object';
 import type { ObjectRecord } from '../../../../utils/types';
 import { _t } from '@/core/service/i18n_binder';
@@ -121,28 +122,6 @@ function buildRepositoryFieldRuleCacheKey(params: Pick<RepositoryFieldRuleDeps, 
   return `fr|${model}|u=${userId}|c=${companyIds}|m=${method}|frm=${mode}|g=${enabled}`;
 }
 
-function normalizeRepositoryFieldRuleSpec(input: unknown): RepositoryFieldRuleSpec {
-  const value = asObjectRecord(input) ?? {};
-
-  const toStringArray = (raw: unknown): string[] => {
-    if (!Array.isArray(raw)) return [];
-    const output: string[] = [];
-    for (const item of raw) {
-      const legacyNormalized = String(item ?? '').trim();
-      if (legacyNormalized) output.push(legacyNormalized);
-    }
-    return Array.from(new Set(output)).sort();
-  };
-
-  const hitRuleIds = toStringArray(value.hitRuleIds);
-  return {
-    denyReadFields: toStringArray(value.denyReadFields),
-    denyWriteFields: toStringArray(value.denyWriteFields),
-    reason: typeof value.reason === 'string' ? value.reason : undefined,
-    ...(hitRuleIds.length ? { hitRuleIds } : {}),
-  };
-}
-
 export async function getRepositoryFieldRuleSpec(params: RepositoryFieldRuleDeps): Promise<RepositoryFieldRuleSpec> {
   if (!repositoryFieldRuleEnabled()) {
     return { denyReadFields: [], denyWriteFields: [], reason: 'field_rule_disabled' };
@@ -176,7 +155,7 @@ export async function getRepositoryFieldRuleSpec(params: RepositoryFieldRuleDeps
       cache.set(key, spec);
       return spec;
     }
-    // Auth expected but temporarily unreachable: fail-closed deny-all (PR-F-1 / §5.9).
+    // Auth expected but temporarily unreachable: fail-closed deny-all.
     if (isAuthServiceUnavailable(error)) {
       const spec = buildFailClosedFieldRuleSpec(params.meta, 'auth_service_unavailable');
       cache.set(key, spec);
@@ -189,7 +168,17 @@ export async function getRepositoryFieldRuleSpec(params: RepositoryFieldRuleDeps
     );
   }
 
-  const spec = normalizeRepositoryFieldRuleSpec(result);
+  let spec: RepositoryFieldRuleSpec;
+  try {
+    spec = parseFieldRuleSpecFromUnknown(result);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw params.permissionDenied(
+      'field_rule_spec_invalid',
+      _t('invalid field rule spec', { scope: 'service/orm/repository/authz/field_rule_helpers' }),
+      { model, detail }
+    );
+  }
   cache.set(key, spec);
   return spec;
 }

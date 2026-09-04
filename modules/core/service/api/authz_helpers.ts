@@ -30,11 +30,11 @@ export function normalizeHitRuleIds(value: unknown): string[] | undefined {
 }
 
 /**
- * Normalize a loose value into a condition-envelope shape.
+ * Parse a loose value into a typed condition envelope; throws when shape is invalid.
  */
-export function normalizeConditionEnvelope(value: unknown): ConditionEnvelope {
+export function parseConditionEnvelopeFromUnknown(value: unknown): ConditionEnvelope {
   const record = asPlainRecord(value);
-  if (!record) return { kind: 'false', reason: 'invalid_record_rule_envelope' };
+  if (!record) throw new Error('invalid_record_rule_envelope');
 
   const kind = normalizeOptionalString(record.kind);
   const reason = normalizeOptionalString(record.reason);
@@ -48,9 +48,10 @@ export function normalizeConditionEnvelope(value: unknown): ConditionEnvelope {
     if (exprIsArray || exprRecord) {
       return { kind: 'expr', expr: record.expr as ConditionExpr, ...diagnostics };
     }
+    throw new Error('invalid_record_rule_envelope');
   }
 
-  return { kind: 'false', reason: 'invalid_record_rule_envelope' };
+  throw new Error('invalid_record_rule_envelope');
 }
 
 export type FieldRuleSpec = {
@@ -61,13 +62,11 @@ export type FieldRuleSpec = {
 };
 
 /**
- * Normalize a loose value into a field-rule spec shape.
+ * Parse a loose value into a typed field-rule spec; throws when shape is invalid.
  */
-export function normalizeFieldRuleSpec(value: unknown): FieldRuleSpec {
+export function parseFieldRuleSpecFromUnknown(value: unknown): FieldRuleSpec {
   const record = asPlainRecord(value);
-  if (!record) {
-    return { denyReadFields: [], denyWriteFields: [] };
-  }
+  if (!record) throw new Error('invalid_field_rule_spec');
 
   const hitRuleIds = normalizeHitRuleIds(record.hitRuleIds);
   return {

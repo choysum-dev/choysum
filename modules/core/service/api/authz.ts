@@ -2,5 +2,5 @@
 // SPDX-License-Identifier: Apache-2.0
 
 export type { RecordRuleOp, ConditionExpr, ConditionEnvelope } from '../orm/repository/types';
-export { normalizeConditionEnvelope, normalizeFieldRuleSpec, normalizeHitRuleIds, replaceConditionExprTokens } from './authz_helpers';
+export { parseConditionEnvelopeFromUnknown, parseFieldRuleSpecFromUnknown, normalizeHitRuleIds, replaceConditionExprTokens } from './authz_helpers';
 export type { ConditionTokenValues, FieldRuleSpec } from './authz_helpers';

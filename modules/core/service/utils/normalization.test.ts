@@ -27,30 +27,30 @@ import {
   NormalizationError,
   parseDecimalInput,
   toPositiveDecimal,
-  normalizePositiveDecimalString,
-  normalizeCodeRequired,
+  assertPositiveDecimalString,
+  assertCodeRequired,
   normalizeCodeOptional,
-  normalizeName,
+  assertName,
   requireRefId,
   normalizeNullableString,
-  normalizeOptionalNonEmptyString,
+  assertOptionalNonEmptyString,
   isExpiredAt,
   roundToCurrencyAmount,
-  normalizeRequiredText,
+  assertRequiredText,
   parsePositiveInt,
   parseBigInt,
-  normalizeDecimalDigits,
-  normalizeDateString,
-  normalizeEnumValue,
+  assertDecimalDigits,
+  assertDateString,
+  assertEnumValue,
   resolveModelRefId,
   asRecord,
   normalizeOptionalNonNegativeInt,
   normalizeOptionalText,
   normalizeOptionalRefId,
   normalizeOptionalTranslatedText,
-  normalizeRequiredTranslatedText,
+  assertRequiredTranslatedText,
   translatedTextHasValue,
-  normalizeNonNegativeInt,
+  assertNonNegativeInt,
   normalizeSequenceInt,
 } from '@/core/service/utils/normalization';
 
@@ -356,9 +356,9 @@ test('parseDecimalInput reports required and invalid decimal codes', () => {
   }
 });
 
-test('toPositiveDecimal and normalizePositiveDecimalString work for positive decimals', () => {
+test('toPositiveDecimal and assertPositiveDecimalString work for positive decimals', () => {
   expect(toPositiveDecimal('1.25').eq(new Decimal('1.25'))).toBe(true);
-  expect(normalizePositiveDecimalString('2.50')).toBe('2.5');
+  expect(assertPositiveDecimalString('2.50')).toBe('2.5');
 });
 
 test('toPositiveDecimal reports non_positive_decimal', () => {
@@ -371,10 +371,10 @@ test('toPositiveDecimal reports non_positive_decimal', () => {
   }
 });
 
-test('normalizeRequiredText trims and rejects empty', () => {
-  expect(normalizeRequiredText('  hello  ')).toBe('hello');
+test('assertRequiredText trims and rejects empty', () => {
+  expect(assertRequiredText('  hello  ')).toBe('hello');
   try {
-    normalizeRequiredText('   ');
+    assertRequiredText('   ');
     expect(false).toBe(true);
   } catch (err) {
     expect(err instanceof NormalizationError).toBe(true);
@@ -382,14 +382,14 @@ test('normalizeRequiredText trims and rejects empty', () => {
   }
 });
 
-test('normalizeCodeRequired trims and uppercases by default', () => {
-  expect(normalizeCodeRequired('  abc  ')).toBe('ABC');
-  expect(normalizeCodeRequired('  MiXeD  ', { uppercase: false })).toBe('MiXeD');
+test('assertCodeRequired trims and uppercases by default', () => {
+  expect(assertCodeRequired('  abc  ')).toBe('ABC');
+  expect(assertCodeRequired('  MiXeD  ', { uppercase: false })).toBe('MiXeD');
 });
 
-test('normalizeCodeRequired reports required for empty values', () => {
+test('assertCodeRequired reports required for empty values', () => {
   try {
-    normalizeCodeRequired('  ');
+    assertCodeRequired('  ');
     expect(false).toBe(true);
   } catch (err) {
     expect(err instanceof NormalizationError).toBe(true);
@@ -405,12 +405,12 @@ test('normalizeCodeOptional preserves undefined/null and normalizes strings', ()
   expect(normalizeCodeOptional('  MiXeD  ', { uppercase: false })).toBe('MiXeD');
 });
 
-test('normalizeName and requireRefId report required', () => {
-  expect(normalizeName('  Name  ')).toBe('Name');
+test('assertName and requireRefId report required', () => {
+  expect(assertName('  Name  ')).toBe('Name');
   expect(requireRefId({ Id: 'id_1' })).toBe('id_1');
 
   try {
-    normalizeName('');
+    assertName('');
     expect(false).toBe(true);
   } catch (err) {
     expect(err instanceof NormalizationError).toBe(true);
@@ -433,13 +433,13 @@ test('normalizeNullableString converts nullish/empty to null', () => {
   expect(normalizeNullableString('  x  ')).toBe('x');
 });
 
-test('normalizeOptionalNonEmptyString handles optional/required/max-length semantics', () => {
-  expect(normalizeOptionalNonEmptyString(undefined)).toBeUndefined();
-  expect(normalizeOptionalNonEmptyString(null)).toBeUndefined();
-  expect(normalizeOptionalNonEmptyString('  ok  ', { maxLength: 10 })).toBe('ok');
+test('assertOptionalNonEmptyString handles optional/required/max-length semantics', () => {
+  expect(assertOptionalNonEmptyString(undefined)).toBeUndefined();
+  expect(assertOptionalNonEmptyString(null)).toBeUndefined();
+  expect(assertOptionalNonEmptyString('  ok  ', { maxLength: 10 })).toBe('ok');
 
   try {
-    normalizeOptionalNonEmptyString('   ');
+    assertOptionalNonEmptyString('   ');
     expect(false).toBe(true);
   } catch (err) {
     expect(err instanceof NormalizationError).toBe(true);
@@ -447,7 +447,7 @@ test('normalizeOptionalNonEmptyString handles optional/required/max-length seman
   }
 
   try {
-    normalizeOptionalNonEmptyString('toolong', { maxLength: 3 });
+    assertOptionalNonEmptyString('toolong', { maxLength: 3 });
     expect(false).toBe(true);
   } catch (err) {
     expect(err instanceof NormalizationError).toBe(true);
@@ -510,11 +510,11 @@ test('parseBigInt parses bigint-like values and reports invalid inputs', () => {
   }
 });
 
-test('normalizeDecimalDigits validates required and non-negative integer', () => {
-  expect(normalizeDecimalDigits('2')).toBe(2);
+test('assertDecimalDigits validates required and non-negative integer', () => {
+  expect(assertDecimalDigits('2')).toBe(2);
 
   try {
-    normalizeDecimalDigits('');
+    assertDecimalDigits('');
     expect(false).toBe(true);
   } catch (err) {
     expect(err instanceof NormalizationError).toBe(true);
@@ -522,7 +522,7 @@ test('normalizeDecimalDigits validates required and non-negative integer', () =>
   }
 
   try {
-    normalizeDecimalDigits(-1);
+    assertDecimalDigits(-1);
     expect(false).toBe(true);
   } catch (err) {
     expect(err instanceof NormalizationError).toBe(true);
@@ -530,11 +530,11 @@ test('normalizeDecimalDigits validates required and non-negative integer', () =>
   }
 });
 
-test('normalizeDateString validates date-only format and calendar value', () => {
-  expect(normalizeDateString('2024-07-08')).toBe('2024-07-08');
+test('assertDateString validates date-only format and calendar value', () => {
+  expect(assertDateString('2024-07-08')).toBe('2024-07-08');
 
   try {
-    normalizeDateString('');
+    assertDateString('');
     expect(false).toBe(true);
   } catch (err) {
     expect(err instanceof NormalizationError).toBe(true);
@@ -542,7 +542,7 @@ test('normalizeDateString validates date-only format and calendar value', () => 
   }
 
   try {
-    normalizeDateString('2024/07/08');
+    assertDateString('2024/07/08');
     expect(false).toBe(true);
   } catch (err) {
     expect(err instanceof NormalizationError).toBe(true);
@@ -550,7 +550,7 @@ test('normalizeDateString validates date-only format and calendar value', () => 
   }
 
   try {
-    normalizeDateString('2024-02-30');
+    assertDateString('2024-02-30');
     expect(false).toBe(true);
   } catch (err) {
     expect(err instanceof NormalizationError).toBe(true);
@@ -559,23 +559,29 @@ test('normalizeDateString validates date-only format and calendar value', () => 
 });
 
 // ---------------------------------------------------------------------------
-// normalizeEnumValue
+// assertEnumValue
 // ---------------------------------------------------------------------------
 
-test('normalizeEnumValue returns default for nullish/empty', () => {
-  expect(normalizeEnumValue(undefined, ['a', 'b'] as const, 'a')).toBe('a');
-  expect(normalizeEnumValue(null, ['a', 'b'] as const, 'b')).toBe('b');
-  expect(normalizeEnumValue('', ['a', 'b'] as const, 'a')).toBe('a');
+test('assertEnumValue throws required for nullish/empty', () => {
+  for (const value of [undefined, null, ''] as const) {
+    try {
+      assertEnumValue(value, ['a', 'b'] as const);
+      expect(false).toBe(true);
+    } catch (err) {
+      expect(err instanceof NormalizationError).toBe(true);
+      expect((err as NormalizationError).code).toBe('required');
+    }
+  }
 });
 
-test('normalizeEnumValue returns matching value', () => {
-  expect(normalizeEnumValue('a', ['a', 'b'] as const, 'b')).toBe('a');
-  expect(normalizeEnumValue('  b  ', ['a', 'b'] as const, 'a')).toBe('b');
+test('assertEnumValue returns matching value', () => {
+  expect(assertEnumValue('a', ['a', 'b'] as const)).toBe('a');
+  expect(assertEnumValue('  b  ', ['a', 'b'] as const)).toBe('b');
 });
 
-test('normalizeEnumValue throws invalid_enum_value for unknown values', () => {
+test('assertEnumValue throws invalid_enum_value for unknown values', () => {
   try {
-    normalizeEnumValue('c', ['a', 'b'] as const, 'a');
+    assertEnumValue('c', ['a', 'b'] as const);
     expect(false).toBe(true);
   } catch (err) {
     expect(err instanceof NormalizationError).toBe(true);
@@ -713,14 +719,14 @@ test('normalizeOptionalTranslatedText accepts scalars and lang maps', () => {
   expect(normalizeOptionalTranslatedText({ en_US: ' A ', zh_CN: '  ' })).toEqual({ en_US: 'A', zh_CN: '' });
 });
 
-test('normalizeRequiredTranslatedText accepts lang maps and rejects empty maps', () => {
-  expect(normalizeRequiredTranslatedText({ en_US: ' Acme ', zh_CN: '' })).toEqual({
+test('assertRequiredTranslatedText accepts lang maps and rejects empty maps', () => {
+  expect(assertRequiredTranslatedText({ en_US: ' Acme ', zh_CN: '' })).toEqual({
     en_US: 'Acme',
     zh_CN: '',
   });
-  expect(normalizeRequiredTranslatedText(' Solo ')).toBe('Solo');
+  expect(assertRequiredTranslatedText(' Solo ')).toBe('Solo');
   try {
-    normalizeRequiredTranslatedText({ en_US: '  ', zh_CN: '' });
+    assertRequiredTranslatedText({ en_US: '  ', zh_CN: '' });
     expect(false).toBe(true);
   } catch (err) {
     expect(err instanceof NormalizationError).toBe(true);
@@ -735,15 +741,15 @@ test('translatedTextHasValue detects non-empty scalars and maps', () => {
   expect(translatedTextHasValue(null)).toBe(false);
 });
 
-test('normalizeNonNegativeInt and normalizeSequenceInt validate integers', () => {
-  expect(normalizeNonNegativeInt(undefined)).toBeUndefined();
-  expect(normalizeNonNegativeInt(null)).toBe(0);
-  expect(normalizeNonNegativeInt(5)).toBe(5);
+test('assertNonNegativeInt and normalizeSequenceInt validate integers', () => {
+  expect(assertNonNegativeInt(undefined)).toBeUndefined();
+  expect(assertNonNegativeInt(null)).toBe(0);
+  expect(assertNonNegativeInt(5)).toBe(5);
   expect(normalizeSequenceInt(undefined)).toBeUndefined();
   expect(normalizeSequenceInt(null)).toBe(10);
   expect(normalizeSequenceInt(-3)).toBe(-3);
   try {
-    normalizeNonNegativeInt(-1);
+    assertNonNegativeInt(-1);
     expect(false).toBe(true);
   } catch (err) {
     expect(err instanceof NormalizationError).toBe(true);

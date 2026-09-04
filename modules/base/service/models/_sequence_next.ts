@@ -3,7 +3,7 @@
 
 import { ChoysumError, GrpcCode, raiseDomainError } from '@/core/service/error';
 import { createTranslate } from '@/core/service/i18n';
-import { asBigInt, isExpiredAt, normalizeOptionalNonEmptyString, parsePositiveInt } from '@/core/service/utils/normalization';
+import { asBigInt, isExpiredAt, assertOptionalNonEmptyString, parsePositiveInt } from '@/core/service/utils/normalization';
 import { buildPaddedNumberItems, resolvePaddedNumberFormat } from '@/core/service/utils/format';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
 import { mapNormalizationToBase, assertCodeRequired } from './_normalizers';
@@ -30,7 +30,7 @@ function assertCount(count: unknown): number {
 
 function assertIdempotencyKey(key: unknown): string | undefined {
   return mapNormalizationToBase(
-    () => normalizeOptionalNonEmptyString(key, { maxLength: IDEMPOTENCY_KEY_MAX_LENGTH }),
+    () => assertOptionalNonEmptyString(key, { maxLength: IDEMPOTENCY_KEY_MAX_LENGTH }),
     err => {
       if (err.code === 'required') return _t('IdempotencyKey must be non-empty', { scope: 'service/models/_sequence_next' });
       if (err.code === 'string_too_long') return _t('IdempotencyKey is too long', { scope: 'service/models/_sequence_next' });

@@ -50,11 +50,11 @@ test('createDomainNormalizationBridge mapNormalizationError passes through other
   ).toThrow('boom');
 });
 
-test('createDomainNormalizationBridge normalizeRequiredText uses field name', () => {
-  expect(bridge.normalizeRequiredText('  ok  ', 'Name')).toBe('ok');
+test('createDomainNormalizationBridge assertRequiredText uses field name', () => {
+  expect(bridge.assertRequiredText('  ok  ', 'Name')).toBe('ok');
   let err: unknown;
   try {
-    bridge.normalizeRequiredText('', 'Name');
+    bridge.assertRequiredText('', 'Name');
   } catch (e) {
     err = e;
   }
@@ -68,11 +68,11 @@ test('createDomainNormalizationBridge covers translated helpers', () => {
 
   let err: unknown;
   try {
-    bridge.normalizeRequiredTranslatedText({ en_US: '  ', zh_CN: '' }, 'Name');
+    bridge.assertRequiredTranslatedText({ en_US: '  ', zh_CN: '' }, 'Name');
   } catch (e) {
     err = e;
   }
   expect(err instanceof ChoysumError).toBe(true);
   expect((err as ChoysumError).message).toBe('Name is required');
-  expect(bridge.normalizeRequiredTranslatedText({ en_US: 'Hello' }, 'Name')).toEqual({ en_US: 'Hello' });
+  expect(bridge.assertRequiredTranslatedText({ en_US: 'Hello' }, 'Name')).toEqual({ en_US: 'Hello' });
 });

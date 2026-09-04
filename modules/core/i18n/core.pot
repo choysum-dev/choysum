@@ -265,17 +265,17 @@ msgid "validation pipeline failed"
 msgstr ""
 
 #: service/utils/domain_normalization_bridge.ts:72
-msgctxt "service/utils/domain_normalization_bridge@normalizeNonNegativeInt"
+msgctxt "service/utils/domain_normalization_bridge@assertNonNegativeInt"
 msgid "%s must be a non-negative integer"
 msgstr ""
 
 #: service/utils/domain_normalization_bridge.ts:58
-msgctxt "service/utils/domain_normalization_bridge@normalizeRequiredText"
+msgctxt "service/utils/domain_normalization_bridge@assertRequiredText"
 msgid "%s is required"
 msgstr ""
 
 #: service/utils/domain_normalization_bridge.ts:65
-msgctxt "service/utils/domain_normalization_bridge@normalizeRequiredTranslatedText"
+msgctxt "service/utils/domain_normalization_bridge@assertRequiredTranslatedText"
 msgid "%s is required"
 msgstr ""
 
@@ -285,7 +285,7 @@ msgid "Sequence must be an integer"
 msgstr ""
 
 #: service/utils/domain_normalization_bridge.ts:87
-msgctxt "service/utils/domain_normalization_bridge@toDateOrUndefined"
+msgctxt "service/utils/domain_normalization_bridge@assertDateOrUndefined"
 msgid "%s must be a valid datetime"
 msgstr ""
 

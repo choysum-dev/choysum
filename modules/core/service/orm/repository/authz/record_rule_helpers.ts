@@ -6,7 +6,7 @@ import { AuthUserService, isAuthServiceNotPresent, isAuthServiceUnavailable } fr
 import { getRepositoryCurrentReq } from './authz_runtime';
 import type { RepositoryPermissionDeniedFn } from './types';
 import type { BaseQueryCondition, ConditionEnvelope, RecordRuleOp } from '../types';
-import { normalizeHitRuleIds } from '@/core/service/api/authz_helpers';
+import { parseConditionEnvelopeFromUnknown } from '@/core/service/api/authz_helpers';
 import { asObjectRecord, isObjectRecord } from '../../../../utils/object';
 import type { UnknownRecord } from '../../../../utils/types';
 import { _t } from '@/core/service/i18n_binder';
@@ -84,24 +84,6 @@ function getRepositoryTopLevelRecordRuleAllowlist(): { enabled: boolean; allow: 
   return { enabled: true, allow, method };
 }
 
-function normalizeRepositoryRecordRuleEnvelope(input: unknown): ConditionEnvelope {
-  const value = asObjectRecord(input) ?? {};
-  const kind = String(value.kind || '').trim();
-  const reason = typeof value.reason === 'string' ? value.reason : undefined;
-  const hitRuleIds = normalizeHitRuleIds(value.hitRuleIds);
-  const diagnostics = {
-    reason,
-    ...(hitRuleIds ? { hitRuleIds } : {}),
-  };
-  if (kind === 'true') return { kind: 'true', ...diagnostics };
-  if (kind === 'false') return { kind: 'false', ...diagnostics };
-  if (kind === 'expr') {
-    if (!value.expr) return { kind: 'false', reason: 'invalid_record_rule_envelope_missing_expr' };
-    return { kind: 'expr', expr: value.expr as BaseQueryCondition, ...diagnostics };
-  }
-  return { kind: 'false', reason: 'invalid_record_rule_envelope_kind' };
-}
-
 export async function fetchRepositoryRecordRuleEnvelope(params: RepositoryRecordRuleDeps, op: RecordRuleOp): Promise<ConditionEnvelope> {
   if (!params.recordRuleEnabled()) return { kind: 'true', reason: 'record_rule_disabled' };
   if (params.isControlPlaneMetaModel()) return { kind: 'true', reason: 'control_plane_meta_model' };
@@ -154,7 +136,13 @@ export async function fetchRepositoryRecordRuleEnvelope(params: RepositoryRecord
     );
   }
 
-  const env = normalizeRepositoryRecordRuleEnvelope(result);
+  let env: ConditionEnvelope;
+  try {
+    env = parseConditionEnvelopeFromUnknown(result);
+  } catch {
+    // Unparseable authz envelope from service: fail-closed deny.
+    env = { kind: 'false', reason: 'invalid_record_rule_envelope' };
+  }
   cache.set(key, env);
   return env;
 }

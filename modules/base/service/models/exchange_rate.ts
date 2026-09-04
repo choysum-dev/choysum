@@ -3,7 +3,7 @@
 
 import { BaseModel, Decimal, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { normalizeRefId, normalizeDateString, toPositiveDecimal } from '@/core/service/utils/normalization';
+import { normalizeRefId, assertDateString, toPositiveDecimal } from '@/core/service/utils/normalization';
 import { businessToday } from '@/core/service/utils/datetime';
 import { _t, _lt } from '../i18n';
 import Company from './company';
@@ -75,7 +75,7 @@ export default class ExchangeRate extends BaseModel {
     // Date-only business keys must be YYYY-MM-DD strings. Reject Date objects:
     // toISOString().slice(0, 10) reinterprets local midnights as UTC calendar days.
     return mapNormalizationToBase(
-      () => normalizeDateString(value),
+      () => assertDateString(value),
       err => {
         if (err.code === 'required') return _t('Date is required', { scope: 'service/models/exchange_rate' });
         if (err.code === 'invalid_date_value') return _t('Date is invalid', { scope: 'service/models/exchange_rate' });

@@ -10,6 +10,10 @@ import { logServerRpcError } from './server_errors';
 import { tryLocalServiceCall } from './server_routing';
 import type { UnknownRecord } from '../../utils/types';
 
+/**
+ * Representation normalize (C) for RPC payloads: plain model/Date/Decimal
+ * shapes for transport. No domain validation or shape invention.
+ */
 function normalizeModelAwareValue(input: unknown, seen: WeakMap<object, unknown> = new WeakMap()): unknown {
   if (input == null) return input;
 

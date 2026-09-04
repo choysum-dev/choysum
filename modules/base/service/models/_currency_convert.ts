@@ -4,7 +4,7 @@
 import { Decimal } from '@/core/service';
 import { ChoysumError, GrpcCode } from '@/core/service/error';
 import { createTranslate } from '@/core/service/i18n';
-import { normalizeDateString, parseDecimalInput, resolveModelRefId, roundToCurrencyAmount, toDateOnlyString } from '@/core/service/utils/normalization';
+import { assertDateString, parseDecimalInput, resolveModelRefId, roundToCurrencyAmount, toDateOnlyString } from '@/core/service/utils/normalization';
 import { mapNormalizationToBase, assertRatePolicyMode, assertRoundingMode } from './_normalizers';
 import type Currency from './currency';
 import type { CurrencyConvertParams, CurrencyConvertResult } from './currency';
@@ -74,7 +74,7 @@ export async function convertCurrency(
   }
 
   const date = mapNormalizationToBase(
-    () => normalizeDateString(params?.Date),
+    () => assertDateString(params?.Date),
     err => {
       if (err.code === 'required') return _t('Date is required', { scope: 'service/models/_currency_convert' });
       if (err.code === 'invalid_date_value') return _t('Date is invalid', { scope: 'service/models/_currency_convert' });

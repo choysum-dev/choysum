@@ -6,12 +6,12 @@ import type { TranslateFn } from '@/core/service/i18n';
 import { toDate } from '@/core/service/utils/datetime';
 import {
   NormalizationError,
-  normalizeNonNegativeInt as normalizeNonNegativeIntCore,
+  assertNonNegativeInt as assertNonNegativeIntCore,
+  assertRequiredText as assertRequiredTextCore,
+  assertRequiredTranslatedText as assertRequiredTranslatedTextCore,
   normalizeOptionalRefId,
   normalizeOptionalText,
   normalizeOptionalTranslatedText,
-  normalizeRequiredText as normalizeRequiredTextCore,
-  normalizeRequiredTranslatedText as normalizeRequiredTranslatedTextCore,
   normalizeSequenceInt as normalizeSequenceIntCore,
   translatedTextHasValue,
 } from '@/core/service/utils/normalization';
@@ -47,10 +47,10 @@ export function createDomainNormalizationBridge(domain: string, _t: TranslateFn,
     }
   }
 
-  function normalizeRequiredText(value: unknown, fieldName: string, opts?: { upper?: boolean; lower?: boolean }): string {
+  function assertRequiredText(value: unknown, fieldName: string, opts?: { upper?: boolean; lower?: boolean }): string {
     return mapNormalizationError(
       () => {
-        let normalized = normalizeRequiredTextCore(value);
+        let normalized = assertRequiredTextCore(value);
         if (opts?.lower) normalized = normalized.toLowerCase();
         if (opts?.upper) normalized = normalized.toUpperCase();
         return normalized;
@@ -59,16 +59,16 @@ export function createDomainNormalizationBridge(domain: string, _t: TranslateFn,
     );
   }
 
-  function normalizeRequiredTranslatedText(value: unknown, fieldName: string): string | Record<string, string> {
+  function assertRequiredTranslatedText(value: unknown, fieldName: string): string | Record<string, string> {
     return mapNormalizationError(
-      () => normalizeRequiredTranslatedTextCore(value),
+      () => assertRequiredTranslatedTextCore(value),
       () => _t('%s is required', { scope }, fieldName)
     );
   }
 
-  function normalizeNonNegativeInt(value: unknown, fieldName: string): number | undefined {
+  function assertNonNegativeInt(value: unknown, fieldName: string): number | undefined {
     return mapNormalizationError(
-      () => normalizeNonNegativeIntCore(value),
+      () => assertNonNegativeIntCore(value),
       () => _t('%s must be a non-negative integer', { scope }, fieldName)
     );
   }
@@ -80,7 +80,7 @@ export function createDomainNormalizationBridge(domain: string, _t: TranslateFn,
     );
   }
 
-  function toDateOrUndefined(value: unknown, fieldName: string): Date | undefined {
+  function assertDateOrUndefined(value: unknown, fieldName: string): Date | undefined {
     if (value === undefined || value === null || value === '') return undefined;
     const result = toDate(value);
     if (result === undefined) {
@@ -96,11 +96,11 @@ export function createDomainNormalizationBridge(domain: string, _t: TranslateFn,
     normalizeOptionalRefId,
     normalizeOptionalTranslatedText,
     translatedTextHasValue,
-    normalizeRequiredText,
-    normalizeRequiredTranslatedText,
-    normalizeNonNegativeInt,
+    assertRequiredText,
+    assertRequiredTranslatedText,
+    assertNonNegativeInt,
     normalizeSequenceInt,
-    toDateOrUndefined,
+    assertDateOrUndefined,
   };
 }
 
