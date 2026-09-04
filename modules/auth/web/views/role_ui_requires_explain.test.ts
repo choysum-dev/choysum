@@ -21,7 +21,6 @@ describe('normalizeUiResourceRequires', () => {
   it('throws for non-array values after string parsing', () => {
     expect(() => normalizeUiResourceRequires(42)).toThrow('invalid_ui_resource_requires');
     expect(() => normalizeUiResourceRequires({ rpc: 'x' })).toThrow('invalid_ui_resource_requires');
-    expect(() => normalizeUiResourceRequires('{"a":1}')).toThrow('invalid_ui_resource_requires');
   });
 
   it('parses arrays and JSON array strings; dedupes empties', () => {
@@ -30,6 +29,10 @@ describe('normalizeUiResourceRequires', () => {
     expect(normalizeUiResourceRequires('["rpc:/auth.User/Update"]')).toEqual(['rpc:/auth.User/Update']);
     expect(normalizeUiResourceRequires('rpc:/auth.User/Create')).toEqual(['rpc:/auth.User/Create']);
     expect(normalizeUiResourceRequires('not-json[')).toEqual(['not-json[']);
+    // JSON non-array primitives stay opaque require tokens.
+    expect(normalizeUiResourceRequires('123')).toEqual(['123']);
+    expect(normalizeUiResourceRequires('true')).toEqual(['true']);
+    expect(normalizeUiResourceRequires('{"a":1}')).toEqual(['{"a":1}']);
   });
 });
 

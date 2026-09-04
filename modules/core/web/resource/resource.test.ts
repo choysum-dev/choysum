@@ -215,9 +215,23 @@ describe('resource declaration helpers', () => {
     ).toThrow('invalid_resource_requires');
 
     expect(() =>
+      defineRoute('demo.route.non_object_require', {
+        path: '/demo',
+        requires: ['auth.User'] as any,
+      } as any)
+    ).toThrow('invalid_resource_requires');
+
+    expect(() =>
       defineRoute('demo.route.invalid_roles', {
         path: '/demo',
         defaultRoles: 'base.user' as any,
+      } as any)
+    ).toThrow('invalid_resource_default_roles');
+
+    expect(() =>
+      defineRoute('demo.route.non_string_roles', {
+        path: '/demo',
+        defaultRoles: [1] as any,
       } as any)
     ).toThrow('invalid_resource_default_roles');
 
@@ -227,5 +241,67 @@ describe('resource declaration helpers', () => {
         actions: 1 as any,
       } as any)
     ).toThrow('invalid_resource_actions');
+
+    expect(() =>
+      defineRoute('demo.route.non_string_actions', {
+        path: '/demo',
+        actions: [null] as any,
+      } as any)
+    ).toThrow('invalid_resource_actions');
+  });
+
+  it('accepts nullish list fields and blank/duplicate string entries as empty', () => {
+    const route = defineRoute('demo.route.nullish_lists', {
+      path: '/demo',
+      requires: null as any,
+      defaultRoles: null as any,
+      actions: undefined,
+      sequence: '',
+    } as any);
+
+    expect(getResourceDeclarationFromMeta((route as any).meta)).toMatchObject({
+      requires: [],
+      defaultRoles: [],
+      actions: [],
+      sequence: undefined,
+    });
+  });
+
+  it('dedupes requires and rejects invalid sequence values', () => {
+    const route = defineRoute('demo.route.dedupe_requires', {
+      path: '/demo',
+      requires: [
+        { model: 'demo.Model', method: 'Browse' },
+        { model: 'demo.Model', method: 'Browse' },
+        { model: 'demo.Model' },
+      ],
+      defaultRoles: ['role.a', '', 'role.a', '  role.b  '],
+      actions: ['a1', 'a1', '  a2  ', ''],
+      sequence: 0,
+    } as any);
+
+    expect(getResourceDeclarationFromMeta((route as any).meta)).toMatchObject({
+      requires: [
+        { kind: 'rpc', model: 'demo.Model', method: 'Browse' },
+        { kind: 'rpc', model: 'demo.Model' },
+      ],
+      defaultRoles: ['role.a', 'role.b'],
+      actions: ['a1', 'a2'],
+      sequence: 0,
+    });
+
+    expect(() =>
+      defineRoute('demo.route.bad_sequence', {
+        path: '/demo',
+        sequence: -1,
+      } as any)
+    ).toThrow();
+
+    expect(() =>
+      defineRoute('demo.route.obj_sequence', {
+        path: '/demo',
+        sequence: true as any,
+      } as any)
+    ).toThrow();
   });
 });

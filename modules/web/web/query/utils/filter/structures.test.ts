@@ -137,6 +137,9 @@ describe('filter structures helpers', () => {
       expect(() => toFilters(bad as any)).toThrow(/invalid_named_filter_query/);
     }
 
+    expect(() => toFilters(['primitive'] as any)).toThrow(/invalid_named_filter_query/);
+    expect(() => toFilters([42] as any)).toThrow(/invalid_named_filter_query/);
+
     const groupShaped = toFilters({
       name: 'AlreadyGroup',
       query: { id: 'g', logic: 'Or', children: [{ id: 'c', field: 'Name', operator: '=', value: 'a' }] },

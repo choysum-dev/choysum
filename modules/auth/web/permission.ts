@@ -95,8 +95,12 @@ function canResource(
   ctx: PermissionCtx,
   scope: CompanyScope = 'enabled'
 ): boolean {
+  // Explicitly absent ids skip the check. Present-but-unnormalizable ids fail closed.
+  if (id === undefined || id === null) return true;
+  if (typeof id === 'string' && id.trim() === '') return true;
+
   const rid = normalizeUiResourceId(id);
-  if (!rid) return true;
+  if (!rid) return false;
   if (!state) return false;
   const set = effectiveUiSet(state, ctx, scope, kind);
   if (set.has('*')) return true;

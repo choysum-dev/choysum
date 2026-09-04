@@ -67,12 +67,24 @@ describe('permission helpers', () => {
     const ctx = { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] };
 
     expect(canRoute('', state, ctx)).toBe(true);
+    expect(canRoute('   ', state, ctx)).toBe(true);
     expect(canMenu(undefined, state, ctx)).toBe(true);
     expect(hasAction('', state, ctx)).toBe(true);
 
     expect(canRoute('auth.route.x', null, ctx)).toBe(false);
     expect(canMenu('auth.menu.x', undefined, ctx)).toBe(false);
     expect(hasAction('auth.action.x', null, ctx)).toBe(false);
+  });
+
+  it('fails closed for present ids that cannot normalize to a resource id', () => {
+    const state = makeState({
+      '*': { ui: { routes: ['auth.route.ok'], menus: [], actions: [] } },
+    });
+    const ctx = { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] };
+
+    expect(canRoute({} as any, state, ctx)).toBe(false);
+    expect(canRoute({ foo: 1 } as any, state, ctx)).toBe(false);
+    expect(canMenu({ Id: '  ' } as any, state, ctx)).toBe(false);
   });
 
   it('falls back to active company when enabledCompanyIds is empty', () => {
@@ -103,6 +115,12 @@ describe('permission helpers', () => {
           actions: ['  auth.action.trimmed  '],
         },
       },
+      c1: {
+        ui: {
+          routes: 'not-an-array' as any,
+          menus: null as any,
+        },
+      },
     });
 
     const ctx = { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] };
@@ -110,5 +128,21 @@ describe('permission helpers', () => {
     expect(canRoute('auth.route.trimmed', state, ctx)).toBe(true);
     expect(canMenu('auth.menu.trimmed', state, ctx)).toBe(true);
     expect(hasAction('auth.action.trimmed', state, ctx)).toBe(true);
+  });
+
+  it('returns empty set when active scope has no active company', () => {
+    const state = makeState({
+      c1: { ui: { routes: ['auth.route.c1'] } },
+    });
+    const ctx = { activeCompanyId: '', enabledCompanyIds: ['c1'] };
+    expect(canRoute('auth.route.c1', state, ctx, 'active')).toBe(false);
+  });
+
+  it('returns empty set when enabled and active company ids are both absent', () => {
+    const state = makeState({
+      c1: { ui: { routes: ['auth.route.c1'] } },
+    });
+    const ctx = { activeCompanyId: undefined, enabledCompanyIds: [] };
+    expect(canRoute('auth.route.c1', state, ctx)).toBe(false);
   });
 });

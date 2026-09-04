@@ -16,7 +16,8 @@ export function normalizeUiResourceRequires(raw: unknown): string[] {
     const trimmed = value.trim();
     if (!trimmed) return [];
     try {
-      value = JSON.parse(trimmed);
+      const parsed = JSON.parse(trimmed);
+      value = Array.isArray(parsed) ? parsed : [trimmed];
     } catch {
       return [trimmed];
     }

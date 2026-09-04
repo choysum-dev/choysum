@@ -131,14 +131,18 @@ export function toFilters(input?: NamedFilter | NamedFilter[] | ConditionGroup |
   const out: ConditionGroup[] = [];
   for (const it of arr) {
     if (!it) continue;
-    if ('query' in (it as object)) {
+    if (typeof it === 'object' && it !== null && 'query' in it) {
       const nf = it as NamedFilter;
       if (!nf.name) continue;
       if (nf.query == null) continue;
       const group = queryConditionToGroup(nf.query, nf.name);
       if (!group) throw new Error('invalid_named_filter_query');
       out.push(group);
-    } else if (isGroup(it as any)) out.push(it as ConditionGroup);
+    } else if (isGroup(it as any)) {
+      out.push(it as ConditionGroup);
+    } else {
+      throw new Error('invalid_named_filter_query');
+    }
   }
   return out;
 }
