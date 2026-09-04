@@ -5,24 +5,24 @@ import * as authzApi from './authz';
 
 test('core/service/api authz sub-entry runtime export surface is stable', () => {
   expect(Object.keys(authzApi).sort()).toEqual([
-    'normalizeConditionEnvelope',
-    'normalizeFieldRuleSpec',
     'normalizeHitRuleIds',
+    'parseConditionEnvelopeFromUnknown',
+    'parseFieldRuleSpecFromUnknown',
     'replaceConditionExprTokens',
   ]);
 });
 
 test('core/service/api authz sub-entry exports are live runtime bindings', () => {
-  expect(typeof authzApi.normalizeConditionEnvelope).toBe('function');
-  expect(typeof authzApi.normalizeFieldRuleSpec).toBe('function');
+  expect(typeof authzApi.parseConditionEnvelopeFromUnknown).toBe('function');
+  expect(typeof authzApi.parseFieldRuleSpecFromUnknown).toBe('function');
   expect(typeof authzApi.normalizeHitRuleIds).toBe('function');
   expect(typeof authzApi.replaceConditionExprTokens).toBe('function');
 });
 
 test('core/service/api authz sub-entry supports safe require replay', () => {
   const replay = require('./authz');
-  expect(replay.normalizeConditionEnvelope).toBe(authzApi.normalizeConditionEnvelope);
-  expect(replay.normalizeFieldRuleSpec).toBe(authzApi.normalizeFieldRuleSpec);
+  expect(replay.parseConditionEnvelopeFromUnknown).toBe(authzApi.parseConditionEnvelopeFromUnknown);
+  expect(replay.parseFieldRuleSpecFromUnknown).toBe(authzApi.parseFieldRuleSpecFromUnknown);
   expect(replay.normalizeHitRuleIds).toBe(authzApi.normalizeHitRuleIds);
   expect(replay.replaceConditionExprTokens).toBe(authzApi.replaceConditionExprTokens);
 });

@@ -3,7 +3,7 @@
 
 import { dial } from '@/core/service';
 import { assertRecordReadable } from '@/core/service/orm/model';
-import { normalizeConditionEnvelope, normalizeFieldRuleSpec, replaceConditionExprTokens } from '@/core/service/api/authz';
+import { parseConditionEnvelopeFromUnknown, parseFieldRuleSpecFromUnknown, replaceConditionExprTokens } from '@/core/service/api/authz';
 import type { ConditionEnvelope, ConditionExpr, FieldRuleSpec, RecordRuleOp } from '@/core/service/api/authz';
 import { normalizeOptionalString } from '@/core/service/utils/normalization';
 import { createTranslate } from '@/core/service/i18n';
@@ -172,7 +172,7 @@ async function fetchRecordRuleEnvelope(ownerModel: string, op: RecordRuleOp, sta
   const authService = getAuthUserService(stage);
   try {
     const raw = await authService.GetRecordRuleCondition(ownerModel, op);
-    return normalizeConditionEnvelope(raw);
+    return parseConditionEnvelopeFromUnknown(raw);
   } catch (err) {
     throw permissionDenied(stage, _t('failed to fetch owner record rule condition', { scope: 'service/models/_owner_authorization' }), {
       ownerModel,
@@ -186,7 +186,7 @@ async function fetchFieldRuleSpec(ownerModel: string, stage: OwnerPermissionStag
   const authService = getAuthUserService(stage);
   try {
     const raw = await authService.GetFieldRuleSpec(ownerModel);
-    return normalizeFieldRuleSpec(raw);
+    return parseFieldRuleSpecFromUnknown(raw);
   } catch (err) {
     throw permissionDenied(stage, _t('failed to fetch owner field rule spec', { scope: 'service/models/_owner_authorization' }), {
       ownerModel,

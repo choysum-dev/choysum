@@ -10,7 +10,7 @@ import {
   normalizeOptionalText,
   normalizeOptionalTranslatedText,
   assertRequiredText,
-  toDateOrUndefined,
+  assertDateOrUndefined,
 } from '@/partner_commercial/service/models/_partner_commercial_bridge';
 
 // ---------------------------------------------------------------------------
@@ -169,30 +169,30 @@ test('partner_commercial._partner_commercial_bridge: assertRequiredText uppercas
 });
 
 // ---------------------------------------------------------------------------
-// toDateOrUndefined
+// assertDateOrUndefined
 // ---------------------------------------------------------------------------
 
-test('partner_commercial._partner_commercial_bridge: toDateOrUndefined returns undefined for undefined/null/empty', () => {
-  expect(toDateOrUndefined(undefined, 'ValidFrom')).toBe(undefined);
-  expect(toDateOrUndefined(null, 'ValidFrom')).toBe(undefined);
-  expect(toDateOrUndefined('', 'ValidFrom')).toBe(undefined);
+test('partner_commercial._partner_commercial_bridge: assertDateOrUndefined returns undefined for undefined/null/empty', () => {
+  expect(assertDateOrUndefined(undefined, 'ValidFrom')).toBe(undefined);
+  expect(assertDateOrUndefined(null, 'ValidFrom')).toBe(undefined);
+  expect(assertDateOrUndefined('', 'ValidFrom')).toBe(undefined);
 });
 
-test('partner_commercial._partner_commercial_bridge: toDateOrUndefined returns Date instance as-is', () => {
+test('partner_commercial._partner_commercial_bridge: assertDateOrUndefined returns Date instance as-is', () => {
   const d = new Date('2024-06-15T12:00:00Z');
-  expect(toDateOrUndefined(d, 'ValidFrom')).toBe(d);
+  expect(assertDateOrUndefined(d, 'ValidFrom')).toBe(d);
 });
 
-test('partner_commercial._partner_commercial_bridge: toDateOrUndefined parses ISO string', () => {
-  const result = toDateOrUndefined('2024-06-15T12:00:00Z', 'ValidFrom');
+test('partner_commercial._partner_commercial_bridge: assertDateOrUndefined parses ISO string', () => {
+  const result = assertDateOrUndefined('2024-06-15T12:00:00Z', 'ValidFrom');
   expect(result instanceof Date).toBe(true);
   expect(result?.toISOString()).toBe('2024-06-15T12:00:00.000Z');
 });
 
-test('partner_commercial._partner_commercial_bridge: toDateOrUndefined throws for invalid string', () => {
+test('partner_commercial._partner_commercial_bridge: assertDateOrUndefined throws for invalid string', () => {
   let err: unknown;
   try {
-    toDateOrUndefined('invalid', 'ValidFrom');
+    assertDateOrUndefined('invalid', 'ValidFrom');
   } catch (e) {
     err = e;
   }
@@ -200,10 +200,10 @@ test('partner_commercial._partner_commercial_bridge: toDateOrUndefined throws fo
   expect((err as ChoysumError).message).toBe('ValidFrom must be a valid datetime');
 });
 
-test('partner_commercial._partner_commercial_bridge: toDateOrUndefined throws for NaN Date instance', () => {
+test('partner_commercial._partner_commercial_bridge: assertDateOrUndefined throws for NaN Date instance', () => {
   let err: unknown;
   try {
-    toDateOrUndefined(new Date('invalid'), 'ValidTo');
+    assertDateOrUndefined(new Date('invalid'), 'ValidTo');
   } catch (e) {
     err = e;
   }

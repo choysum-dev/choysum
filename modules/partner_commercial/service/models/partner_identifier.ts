@@ -4,7 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { _t, _lt } from '../i18n';
-import { fail, normalizeOptionalRefId, normalizeOptionalText, normalizeOptionalTranslatedText, assertRequiredText, toDateOrUndefined } from './_partner_commercial_bridge';
+import { fail, normalizeOptionalRefId, normalizeOptionalText, normalizeOptionalTranslatedText, assertRequiredText, assertDateOrUndefined } from './_partner_commercial_bridge';
 import type Company from '@/base/service/models/company';
 import type Country from '@/base/service/models/country';
 import type Partner from '@/partner/service/models/partner';
@@ -197,8 +197,8 @@ export default class PartnerIdentifier extends BaseModel {
     values.IssuedBy = normalizeOptionalTranslatedText(values.IssuedBy);
     values.Notes = normalizeOptionalTranslatedText(values.Notes);
 
-    values.ValidFrom = toDateOrUndefined(values.ValidFrom, 'ValidFrom');
-    values.ValidTo = toDateOrUndefined(values.ValidTo, 'ValidTo');
+    values.ValidFrom = assertDateOrUndefined(values.ValidFrom, 'ValidFrom');
+    values.ValidTo = assertDateOrUndefined(values.ValidTo, 'ValidTo');
 
     // The draft proxy already provides current-record values through its
     // get chain.  Fall back to a persisted Browse only when a required

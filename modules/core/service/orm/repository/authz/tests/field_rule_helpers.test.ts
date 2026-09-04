@@ -553,8 +553,8 @@ test('field rule helper normalizes fetched spec and reuses cached value', async 
       (AuthUserService as any).GetFieldRuleSpec = async () => {
         calls += 1;
         return {
-          denyReadFields: [' Name ', '', 'Name', 'Id'],
-          denyWriteFields: [' Amount ', '', 'Amount'],
+          denyReadFields: [' Name ', 'Name', 'Id'],
+          denyWriteFields: [' Amount ', 'Amount'],
           reason: 1,
         };
       };
@@ -564,9 +564,9 @@ test('field rule helper normalizes fetched spec and reuses cached value', async 
         const first = await getRepositoryFieldRuleSpec(deps);
         const second = await getRepositoryFieldRuleSpec(deps);
         expect(first).toEqual({
-          denyReadFields: ['Id', 'Name'],
+          denyReadFields: ['Name', 'Id'],
           denyWriteFields: ['Amount'],
-          reason: undefined,
+          reason: '1',
         });
         expect(second).toEqual(first);
         expect(calls === 1 || calls === 2).toBe(true);
@@ -577,7 +577,7 @@ test('field rule helper normalizes fetched spec and reuses cached value', async 
   );
 });
 
-test('field rule helper keeps repository normalization semantics after core-helper reuse', async () => {
+test('field rule helper parses fetched spec via shared authz parser', async () => {
   await withPatchedChoysum(
     {
       request: {
@@ -593,18 +593,54 @@ test('field rule helper keeps repository normalization semantics after core-help
     async () => {
       const original = AuthUserService.GetFieldRuleSpec;
       (AuthUserService as any).GetFieldRuleSpec = async () => ({
-        denyReadFields: [false, 0, ' Name ', '', 'Id', 'Name'],
-        denyWriteFields: [0, false, ' Amount ', '', 'Amount'],
+        denyReadFields: [' Name ', 'Id', 'Name'],
+        denyWriteFields: [' Amount ', 'Amount'],
         reason: '  keep_raw_reason  ',
       });
 
       try {
         const { deps } = createDeps();
         expect(await getRepositoryFieldRuleSpec(deps)).toEqual({
-          denyReadFields: ['0', 'Id', 'Name', 'false'],
-          denyWriteFields: ['0', 'Amount', 'false'],
-          reason: '  keep_raw_reason  ',
+          denyReadFields: ['Name', 'Id'],
+          denyWriteFields: ['Amount'],
+          reason: 'keep_raw_reason',
         });
+      } finally {
+        (AuthUserService as any).GetFieldRuleSpec = original;
+      }
+    }
+  );
+});
+
+test('field rule helper rejects malformed deny-list elements from shared parser', async () => {
+  await withPatchedChoysum(
+    {
+      request: {
+        context: {
+          req: {
+            depth: 0,
+            method: 'Search',
+            fieldRuleMode: 'default',
+          },
+        },
+      },
+    },
+    async () => {
+      const original = AuthUserService.GetFieldRuleSpec;
+      (AuthUserService as any).GetFieldRuleSpec = async () => ({
+        denyReadFields: [null, 'Name'],
+        denyWriteFields: [],
+      });
+
+      try {
+        const { deps } = createDeps();
+        let message = '';
+        try {
+          await getRepositoryFieldRuleSpec(deps);
+        } catch (error) {
+          message = String((error as Error)?.message || error);
+        }
+        expect(message.includes('field_rule_spec_invalid')).toBe(true);
       } finally {
         (AuthUserService as any).GetFieldRuleSpec = original;
       }
@@ -886,7 +922,7 @@ test('field rule helper normalizes missing spec fields to empty arrays and write
         expect(await getRepositoryFieldRuleSpec(deps)).toEqual({
           denyReadFields: [],
           denyWriteFields: [],
-          reason: undefined,
+          reason: '1',
         });
 
         await assertRepositoryFieldRuleWriteAllowed({ ...deps, payload: { Name: 'x' } });
@@ -945,7 +981,7 @@ test('field rule helper cache key keeps enabled marker 1 on default runtime-scop
       (AuthUserService as any).GetFieldRuleSpec = async () => {
         calls += 1;
         return {
-          denyReadFields: [undefined, 'A'],
+          denyReadFields: ['A'],
           denyWriteFields: ['B'],
         };
       };
@@ -965,7 +1001,7 @@ test('field rule helper cache key keeps enabled marker 1 on default runtime-scop
   );
 });
 
-test('field rule helper normalizes undefined service response to empty spec object', async () => {
+test('field rule helper rejects undefined service response as invalid spec', async () => {
   await withPatchedChoysum(
     {
       request: {
@@ -983,11 +1019,13 @@ test('field rule helper normalizes undefined service response to empty spec obje
       (AuthUserService as any).GetFieldRuleSpec = async () => undefined;
       try {
         const { deps } = createDeps();
-        expect(await getRepositoryFieldRuleSpec(deps)).toEqual({
-          denyReadFields: [],
-          denyWriteFields: [],
-          reason: undefined,
-        });
+        let message = '';
+        try {
+          await getRepositoryFieldRuleSpec(deps);
+        } catch (error) {
+          message = String((error as Error)?.message || error);
+        }
+        expect(message.includes('field_rule_spec_invalid')).toBe(true);
       } finally {
         (AuthUserService as any).GetFieldRuleSpec = original;
       }

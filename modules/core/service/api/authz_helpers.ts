@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { normalizeOptionalString, normalizeStringArray } from '../utils/normalization';
+import { normalizeOptionalString } from '../utils/normalization';
 import type { ConditionExpr, ConditionEnvelope } from './authz';
 
 function asPlainRecord(value: unknown): Record<string, unknown> | null {
@@ -30,11 +30,45 @@ export function normalizeHitRuleIds(value: unknown): string[] | undefined {
 }
 
 /**
- * Normalize a loose value into a condition-envelope shape.
+ * True when value matches the repository condition-tree shape (tuple / And / Or).
  */
-export function normalizeConditionEnvelope(value: unknown): ConditionEnvelope {
+function isConditionExprShape(value: unknown, depth = 0): value is ConditionExpr {
+  if (depth > 32) return false;
+
+  if (Array.isArray(value)) {
+    const operand = value[2];
+    return (
+      value.length === 3 &&
+      typeof value[0] === 'string' &&
+      value[0].trim() !== '' &&
+      typeof value[1] === 'string' &&
+      value[1].trim() !== '' &&
+      operand !== undefined &&
+      typeof operand !== 'function' &&
+      typeof operand !== 'symbol'
+    );
+  }
+
   const record = asPlainRecord(value);
-  if (!record) return { kind: 'false', reason: 'invalid_record_rule_envelope' };
+  if (!record) return false;
+
+  const keys = Object.keys(record);
+  if (keys.length !== 1) return false;
+
+  const key = keys[0];
+  if (key !== 'And' && key !== 'Or') return false;
+
+  const children = record[key];
+  if (!Array.isArray(children) || children.length === 0) return false;
+  return children.every(child => isConditionExprShape(child, depth + 1));
+}
+
+/**
+ * Parse a loose value into a typed condition envelope; throws when shape is invalid.
+ */
+export function parseConditionEnvelopeFromUnknown(value: unknown): ConditionEnvelope {
+  const record = asPlainRecord(value);
+  if (!record) throw new Error('invalid_record_rule_envelope');
 
   const kind = normalizeOptionalString(record.kind);
   const reason = normalizeOptionalString(record.reason);
@@ -43,14 +77,13 @@ export function normalizeConditionEnvelope(value: unknown): ConditionEnvelope {
   if (kind === 'true') return { kind: 'true', ...diagnostics };
   if (kind === 'false') return { kind: 'false', ...diagnostics };
   if (kind === 'expr') {
-    const exprIsArray = Array.isArray(record.expr);
-    const exprRecord = asPlainRecord(record.expr);
-    if (exprIsArray || exprRecord) {
-      return { kind: 'expr', expr: record.expr as ConditionExpr, ...diagnostics };
+    if (!isConditionExprShape(record.expr)) {
+      throw new Error('invalid_record_rule_envelope');
     }
+    return { kind: 'expr', expr: record.expr, ...diagnostics };
   }
 
-  return { kind: 'false', reason: 'invalid_record_rule_envelope' };
+  throw new Error('invalid_record_rule_envelope');
 }
 
 export type FieldRuleSpec = {
@@ -60,19 +93,45 @@ export type FieldRuleSpec = {
   hitRuleIds?: string[];
 };
 
-/**
- * Normalize a loose value into a field-rule spec shape.
- */
-export function normalizeFieldRuleSpec(value: unknown): FieldRuleSpec {
-  const record = asPlainRecord(value);
-  if (!record) {
-    return { denyReadFields: [], denyWriteFields: [] };
+function parseDenyFieldList(value: unknown): string[] {
+  if (value == null) return [];
+  if (!Array.isArray(value)) throw new Error('invalid_field_rule_spec');
+
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const item of value) {
+    if (typeof item !== 'string') throw new Error('invalid_field_rule_spec');
+    const field = item.trim();
+    if (!field) throw new Error('invalid_field_rule_spec');
+    if (seen.has(field)) continue;
+    seen.add(field);
+    out.push(field);
   }
+  return out;
+}
+
+/**
+ * Format parse/authz failure detail for permission-denied metadata.
+ */
+export function formatAuthzParseFailureDetail(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
+/**
+ * Parse a loose value into a typed field-rule spec; throws when shape is invalid.
+ *
+ * Missing or null deny lists default to empty arrays. Present non-array deny
+ * lists or non-string / blank deny-list elements throw (do not wash to allow-all).
+ */
+export function parseFieldRuleSpecFromUnknown(value: unknown): FieldRuleSpec {
+  const record = asPlainRecord(value);
+  if (!record) throw new Error('invalid_field_rule_spec');
 
   const hitRuleIds = normalizeHitRuleIds(record.hitRuleIds);
   return {
-    denyReadFields: normalizeStringArray(record.denyReadFields),
-    denyWriteFields: normalizeStringArray(record.denyWriteFields),
+    denyReadFields: parseDenyFieldList(record.denyReadFields),
+    denyWriteFields: parseDenyFieldList(record.denyWriteFields),
     reason: normalizeOptionalString(record.reason),
     ...(hitRuleIds ? { hitRuleIds } : {}),
   };

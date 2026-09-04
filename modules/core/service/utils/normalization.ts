@@ -354,15 +354,18 @@ export function resolveModelRefId(obj: unknown, fieldName: string): unknown {
 }
 
 /**
- * Normalize a value against a fixed set of allowed string literals.
+ * Assert a value is one of the allowed string literals.
  *
- * - Returns {@link defaultValue} when value is undefined, null, or empty.
+ * - Throws {@link NormalizationError} with code `required` when value is undefined, null, or empty.
  * - Returns the matching allowed value when present.
  * - Throws {@link NormalizationError} with code `invalid_enum_value` otherwise.
  */
-export function normalizeEnumValue<T extends string>(value: unknown, allowed: readonly T[], defaultValue: T): T {
-  if (value === undefined || value === null || value === '') return defaultValue;
+export function assertEnumValue<T extends string>(value: unknown, allowed: readonly T[]): T {
+  if (value === undefined || value === null) {
+    raiseNormalizationError('required');
+  }
   const s = String(value).trim();
+  if (!s) raiseNormalizationError('required');
   if ((allowed as readonly string[]).includes(s)) return s as T;
   raiseNormalizationError('invalid_enum_value');
 }
@@ -429,16 +432,16 @@ export function toPositiveDecimal(value: unknown): Decimal {
 }
 
 /**
- * Normalize positive decimal as canonical string.
+ * Assert positive decimal and return canonical string.
  */
-export function normalizePositiveDecimalString(value: unknown): string {
+export function assertPositiveDecimalString(value: unknown): string {
   return toPositiveDecimal(value).toString();
 }
 
 /**
- * Normalize a required code string: trim, optional uppercase, and reject empty.
+ * Assert a required code string: trim, optional uppercase, and reject empty.
  */
-export function normalizeCodeRequired(value: unknown, opts?: { uppercase?: boolean }): string {
+export function assertCodeRequired(value: unknown, opts?: { uppercase?: boolean }): string {
   let code = String(value ?? '').trim();
   if (opts?.uppercase !== false) {
     code = code.toUpperCase();
@@ -463,9 +466,9 @@ export function normalizeCodeOptional(value: unknown, opts?: { uppercase?: boole
 }
 
 /**
- * Normalize a required name string.
+ * Assert a required name string.
  */
-export function normalizeName(value: unknown): string {
+export function assertName(value: unknown): string {
   const name = String(value ?? '').trim();
   if (!name) {
     raiseNormalizationError('required');
@@ -494,13 +497,13 @@ export function normalizeNullableString(value: unknown): string | null {
 }
 
 /**
- * Normalize an optional user-provided text value.
+ * Assert an optional user-provided text value when present.
  *
  * - undefined/null => undefined
  * - empty/whitespace => required error
  * - length > maxLength => string_too_long error
  */
-export function normalizeOptionalNonEmptyString(value: unknown, opts?: { maxLength?: number }): string | undefined {
+export function assertOptionalNonEmptyString(value: unknown, opts?: { maxLength?: number }): string | undefined {
   if (value === undefined || value === null) return undefined;
 
   const normalized = String(value).trim();
@@ -559,9 +562,9 @@ export function roundToCurrencyAmount(amount: Decimal, currency?: CurrencyRoundi
 }
 
 /**
- * Normalize required text by trimming and rejecting empty values.
+ * Assert required text by trimming and rejecting empty values.
  */
-export function normalizeRequiredText(value: unknown): string {
+export function assertRequiredText(value: unknown): string {
   const normalized = String(value ?? '').trim();
   if (!normalized) {
     raiseNormalizationError('required');
@@ -626,12 +629,12 @@ export function normalizeOptionalTranslatedText(
 }
 
 /**
- * Normalize a required translated field: scalar string or `{ lang: string }` map.
+ * Assert a required translated field: scalar string or `{ lang: string }` map.
  *
  * Empty maps / all-empty values raise {@link NormalizationError} `required`.
  * Per-lang empty strings are allowed (data-i18n D12).
  */
-export function normalizeRequiredTranslatedText(value: unknown): string | Record<string, string> {
+export function assertRequiredTranslatedText(value: unknown): string | Record<string, string> {
   if (isTranslatedLangMap(value)) {
     const out: Record<string, string> = {};
     for (const [lang, raw] of Object.entries(value)) {
@@ -645,7 +648,7 @@ export function normalizeRequiredTranslatedText(value: unknown): string | Record
     }
     return out;
   }
-  return normalizeRequiredText(value);
+  return assertRequiredText(value);
 }
 
 /** True when a scalar or lang-map translated value has any non-empty text. */
@@ -659,13 +662,13 @@ export function translatedTextHasValue(value: unknown): boolean {
 }
 
 /**
- * Normalize a non-negative integer field.
+ * Assert a non-negative integer field.
  *
  * - undefined → undefined
  * - null → 0
  * - otherwise → integer >= 0, or {@link NormalizationError} `invalid_integer`
  */
-export function normalizeNonNegativeInt(value: unknown): number | undefined {
+export function assertNonNegativeInt(value: unknown): number | undefined {
   if (value === undefined) return undefined;
   if (value === null) return 0;
   if (typeof value !== 'number' && typeof value !== 'string') {
@@ -737,9 +740,9 @@ export function parseBigInt(value: unknown): bigint {
 }
 
 /**
- * Parse non-negative integer decimal digits.
+ * Assert non-negative integer decimal digits.
  */
-export function normalizeDecimalDigits(value: unknown): number {
+export function assertDecimalDigits(value: unknown): number {
   const val = typeof value === 'string' ? value.trim() : value;
   if (val === undefined || val === null || val === '') {
     raiseNormalizationError('required');
@@ -755,9 +758,9 @@ export function normalizeDecimalDigits(value: unknown): number {
 }
 
 /**
- * Parse and validate YYYY-MM-DD date-only string.
+ * Assert YYYY-MM-DD date-only string.
  */
-export function normalizeDateString(value: unknown): string {
+export function assertDateString(value: unknown): string {
   if (value === undefined || value === null || value === '') {
     raiseNormalizationError('required');
   }

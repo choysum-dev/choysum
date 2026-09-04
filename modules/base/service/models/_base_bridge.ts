@@ -4,9 +4,9 @@
 import { createTranslate } from '@/core/service/i18n';
 import { createDomainNormalizationBridge } from '@/core/service/utils/domain_normalization_bridge';
 import {
+  assertCodeRequired as assertCodeRequiredCore,
+  assertName as assertNameCore,
   normalizeCodeOptional as normalizeCodeOptionalCore,
-  normalizeCodeRequired as normalizeCodeRequiredCore,
-  normalizeName as normalizeNameCore,
   normalizeNullableString as normalizeNullableStringCore,
   requireRefId as requireRefIdCore,
 } from '@/core/service/utils/normalization';
@@ -20,7 +20,7 @@ export const fail = bridge.fail;
 export const mapNormalizationToBase = bridge.mapNormalizationError;
 
 /** Validate a required translated field: string or `{ lang: string }` map. */
-export const assertRequiredTranslatedText = bridge.normalizeRequiredTranslatedText;
+export const assertRequiredTranslatedText = bridge.assertRequiredTranslatedText;
 
 /** Normalize an optional code field: trim, optionally uppercase. */
 export const normalizeCodeOptional = normalizeCodeOptionalCore;
@@ -33,7 +33,7 @@ export const normalizeNullableString = normalizeNullableStringCore;
  */
 export function assertCodeRequired(value: any, opts?: { uppercase?: boolean }): string {
   return mapNormalizationToBase(
-    () => normalizeCodeRequiredCore(value, opts),
+    () => assertCodeRequiredCore(value, opts),
     () => _t('Code is required', { scope: 'service/models/_base_bridge' })
   );
 }
@@ -43,7 +43,7 @@ export function assertCodeRequired(value: any, opts?: { uppercase?: boolean }): 
  */
 export function assertName(value: any): string {
   return mapNormalizationToBase(
-    () => normalizeNameCore(value),
+    () => assertNameCore(value),
     () => _t('Name is required', { scope: 'service/models/_base_bridge' })
   );
 }

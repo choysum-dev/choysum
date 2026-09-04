@@ -3,7 +3,7 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { normalizeRefId, normalizeRequiredText as normalizeRequiredTextCore } from '@/core/service/utils/normalization';
+import { normalizeRefId, assertRequiredText as assertRequiredTextCore } from '@/core/service/utils/normalization';
 import { isIanaTimezone, listIanaTimezoneSelection } from '@/core/service/utils/datetime';
 import { raiseDomainError } from '@/core/service/error';
 import { _t, _lt } from '../i18n';
@@ -108,16 +108,16 @@ export default class Company extends BaseModel {
   })
   AddressId?: Address;
 
-  private static normalizeRequiredText(value: unknown, fieldName: string): string {
+  private static assertRequiredText(value: unknown, fieldName: string): string {
     return mapNormalizationToBase(
-      () => normalizeRequiredTextCore(value),
+      () => assertRequiredTextCore(value),
       () => _t('%s is required', { scope: 'service/models/company' }, fieldName)
     );
   }
 
   private static async ensureUnique(values: Record<string, any>, currentId?: string): Promise<void> {
     const name = assertRequiredTranslatedText(values.Name, 'Name');
-    const code = this.normalizeRequiredText(values.Code, 'Code');
+    const code = this.assertRequiredText(values.Code, 'Code');
 
     const byCode = await this.Search(
       {

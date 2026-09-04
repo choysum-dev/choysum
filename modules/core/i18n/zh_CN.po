@@ -1,27 +1,27 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
-#: service/orm/model/model.ts:429
+#: service/orm/model/model.ts:430
 msgctxt "core.model.BaseModel.fields"
 msgid "Created At"
 msgstr "创建时间"
 
-#: service/orm/model/model.ts:465
+#: service/orm/model/model.ts:466
 msgctxt "core.model.BaseModel.fields"
 msgid "Created By"
 msgstr "创建人"
 
-#: service/orm/model/model.ts:451
+#: service/orm/model/model.ts:452
 msgctxt "core.model.BaseModel.fields"
 msgid "Deleted At"
 msgstr "删除时间"
 
-#: service/orm/model/model.ts:493
+#: service/orm/model/model.ts:494
 msgctxt "core.model.BaseModel.fields"
 msgid "Deleted By"
 msgstr "删除人"
 
-#: service/orm/model/model.ts:407
+#: service/orm/model/model.ts:408
 msgctxt "core.model.BaseModel.fields"
 msgid "Display Name"
 msgstr "显示名称"
@@ -31,22 +31,22 @@ msgctxt "core.model.BaseModel.fields"
 msgid "Parent Path"
 msgstr "父级路径"
 
-#: service/orm/model/model.ts:440
+#: service/orm/model/model.ts:441
 msgctxt "core.model.BaseModel.fields"
 msgid "Updated At"
 msgstr "更新时间"
 
-#: service/orm/model/model.ts:479
+#: service/orm/model/model.ts:480
 msgctxt "core.model.BaseModel.fields"
 msgid "Updated By"
 msgstr "更新人"
 
-#: service/orm/model/model.ts:286
+#: service/orm/model/model.ts:287
 msgctxt "service/orm/model/model"
 msgid "current company is required"
 msgstr "需要当前公司"
 
-#: service/orm/model/model.ts:275
+#: service/orm/model/model.ts:276
 msgctxt "service/orm/model/model"
 msgid "current user is required"
 msgstr "需要当前用户"
@@ -71,7 +71,7 @@ msgctxt "service/orm/model/model_soft_delete_scope"
 msgid "withDeleted and onlyDeleted cannot both be true"
 msgstr "withDeleted 与 onlyDeleted 不能同时为 true"
 
-#: service/orm/model/model_update.ts:648
+#: service/orm/model/model_update.ts:664
 msgctxt "service/orm/model/model_update"
 msgid "Update failed: Record %s not found."
 msgstr "更新失败：未找到记录 %s。"
@@ -106,15 +106,20 @@ msgctxt "service/orm/repository/authz/company_scope"
 msgid "ownership field cannot be null on private company-isolated model"
 msgstr "私有公司隔离模型上 ownership 字段不能为空"
 
-#: service/orm/repository/authz/field_rule_helpers.ts:186
+#: service/orm/repository/authz/field_rule_helpers.ts:165
 msgctxt "service/orm/repository/authz/field_rule_helpers"
 msgid "failed to fetch field rule spec"
 msgstr "获取字段规则规格失败"
 
-#: service/orm/repository/authz/field_rule_helpers.ts:231
+#: service/orm/repository/authz/field_rule_helpers.ts:219
 msgctxt "service/orm/repository/authz/field_rule_helpers"
 msgid "field rule readonly violation"
 msgstr "字段规则只读约束冲突"
+
+#: service/orm/repository/authz/field_rule_helpers.ts:176
+msgctxt "service/orm/repository/authz/field_rule_helpers"
+msgid "invalid field rule spec"
+msgstr "字段规则规格无效"
 
 #: service/orm/repository/authz/record_rule.ts:181
 msgctxt "service/orm/repository/authz/record_rule"
@@ -131,42 +136,42 @@ msgctxt "service/orm/repository/authz/record_rule"
 msgid "target set violates record rule"
 msgstr "目标集合违反记录规则"
 
-#: service/orm/repository/authz/record_rule_helpers.ts:116
+#: service/orm/repository/authz/record_rule_helpers.ts:98
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "entry record rule allowlist miss"
 msgstr "记录规则白名单未命中"
 
-#: service/orm/repository/authz/record_rule_helpers.ts:151
+#: service/orm/repository/authz/record_rule_helpers.ts:133
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "failed to fetch record rule condition"
 msgstr "获取记录规则条件失败"
 
-#: service/orm/repository/authz/record_rule_helpers.ts:215
+#: service/orm/repository/authz/record_rule_helpers.ts:203
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "invalid JSON in record rule condition"
 msgstr "记录规则条件中的 JSON 无效"
 
-#: service/orm/repository/authz/record_rule_helpers.ts:240
+#: service/orm/repository/authz/record_rule_helpers.ts:228
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "invalid record rule condition shape (type=%s, isArray=%s, preview=%s)"
 msgstr "记录规则条件形状无效（type=%s, isArray=%s, preview=%s）"
 
-#: service/orm/repository/authz/record_rule_helpers.ts:166
+#: service/orm/repository/authz/record_rule_helpers.ts:154
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "missing ctx.activeCompanyId for $companyId token"
 msgstr "$companyId 令牌缺少 ctx.activeCompanyId"
 
-#: service/orm/repository/authz/record_rule_helpers.ts:178
+#: service/orm/repository/authz/record_rule_helpers.ts:166
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "missing ctx.enabledCompanyIds for $companyIds token"
 msgstr "$companyIds 令牌缺少 ctx.enabledCompanyIds"
 
-#: service/orm/repository/authz/record_rule_helpers.ts:264
+#: service/orm/repository/authz/record_rule_helpers.ts:252
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "missing identity.userId for $userId token"
 msgstr "$userId 令牌缺少 identity.userId"
 
-#: service/orm/repository/authz/record_rule_helpers.ts:278
+#: service/orm/repository/authz/record_rule_helpers.ts:266
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "unknown token in record rule condition"
 msgstr "记录规则条件中存在未知令牌"
@@ -251,18 +256,23 @@ msgctxt "service/runtime/validation/engine"
 msgid "validation pipeline failed"
 msgstr "校验流水线失败"
 
+#: service/utils/domain_normalization_bridge.ts:87
+msgctxt "service/utils/domain_normalization_bridge@assertDateOrUndefined"
+msgid "%s must be a valid datetime"
+msgstr "%s 必须是有效的日期时间"
+
 #: service/utils/domain_normalization_bridge.ts:72
-msgctxt "service/utils/domain_normalization_bridge@normalizeNonNegativeInt"
+msgctxt "service/utils/domain_normalization_bridge@assertNonNegativeInt"
 msgid "%s must be a non-negative integer"
 msgstr "%s 必须是非负整数"
 
 #: service/utils/domain_normalization_bridge.ts:58
-msgctxt "service/utils/domain_normalization_bridge@normalizeRequiredText"
+msgctxt "service/utils/domain_normalization_bridge@assertRequiredText"
 msgid "%s is required"
 msgstr "%s 为必填项"
 
 #: service/utils/domain_normalization_bridge.ts:65
-msgctxt "service/utils/domain_normalization_bridge@normalizeRequiredTranslatedText"
+msgctxt "service/utils/domain_normalization_bridge@assertRequiredTranslatedText"
 msgid "%s is required"
 msgstr "%s 为必填项"
 
@@ -270,11 +280,6 @@ msgstr "%s 为必填项"
 msgctxt "service/utils/domain_normalization_bridge@normalizeSequenceInt"
 msgid "Sequence must be an integer"
 msgstr "序号必须是整数"
-
-#: service/utils/domain_normalization_bridge.ts:87
-msgctxt "service/utils/domain_normalization_bridge@toDateOrUndefined"
-msgid "%s must be a valid datetime"
-msgstr "%s 必须是有效的日期时间"
 
 #: web/error/ui.ts:15
 msgctxt "web/error/ui"

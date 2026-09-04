@@ -232,15 +232,22 @@ test('record rule helper allowlist hit returns allow envelope and service invali
     },
     async () => {
       const original = AuthUserService.GetRecordRuleCondition;
+      const originalError = console.error;
+      const logs: string[] = [];
+      console.error = (...args: unknown[]) => {
+        logs.push(args.map(arg => String(arg)).join(' '));
+      };
       (AuthUserService as any).GetRecordRuleCondition = async () => ({ kind: 'expr' });
       try {
         const { deps } = createDeps();
         expect(await fetchRepositoryRecordRuleEnvelope(deps, 'read')).toEqual({
           kind: 'false',
-          reason: 'invalid_record_rule_envelope_missing_expr',
+          reason: 'invalid_record_rule_envelope',
         });
+        expect(logs.some(line => line.includes('record_rule_envelope_parse_failed'))).toBe(true);
       } finally {
         (AuthUserService as any).GetRecordRuleCondition = original;
+        console.error = originalError;
       }
     }
   );
@@ -326,7 +333,7 @@ test('record rule helper handles depth or mode outside top-level allowlist', asy
   );
 });
 
-test('record rule helper normalizes invalid envelope kind and expr reason typing', async () => {
+test('record rule helper fail-closes invalid envelope kind and coerces expr reason via parse', async () => {
   await withPatchedChoysum(
     {
       request: {
@@ -346,7 +353,14 @@ test('record rule helper normalizes invalid envelope kind and expr reason typing
         const { deps } = createDeps();
         expect(await fetchRepositoryRecordRuleEnvelope(deps, 'read')).toEqual({
           kind: 'false',
-          reason: 'invalid_record_rule_envelope_kind',
+          reason: 'invalid_record_rule_envelope',
+        });
+
+        // Parse failures are not cached: a later valid fetch for the same key can succeed.
+        (AuthUserService as any).GetRecordRuleCondition = async () => ({ kind: 'true', reason: 'recovered' });
+        expect(await fetchRepositoryRecordRuleEnvelope(deps, 'read')).toEqual({
+          kind: 'true',
+          reason: 'recovered',
         });
 
         const secondDeps = createDeps().deps;
@@ -354,7 +368,7 @@ test('record rule helper normalizes invalid envelope kind and expr reason typing
         expect(await fetchRepositoryRecordRuleEnvelope(secondDeps, 'write')).toEqual({
           kind: 'expr',
           expr: ['Id', '=', '1'],
-          reason: undefined,
+          reason: '1',
         });
       } finally {
         (AuthUserService as any).GetRecordRuleCondition = original;
@@ -486,10 +500,10 @@ test('record rule helper normalizes true false expr and empty envelopes from ser
       const original = AuthUserService.GetRecordRuleCondition;
       try {
         (AuthUserService as any).GetRecordRuleCondition = async () => ({ kind: 'true', reason: 1 });
-        expect(await fetchRepositoryRecordRuleEnvelope(createDeps().deps, 'read')).toEqual({ kind: 'true', reason: undefined });
+        expect(await fetchRepositoryRecordRuleEnvelope(createDeps().deps, 'read')).toEqual({ kind: 'true', reason: '1' });
 
         (AuthUserService as any).GetRecordRuleCondition = async () => ({ kind: 'false', reason: 1 });
-        expect(await fetchRepositoryRecordRuleEnvelope(createDeps({ userId: 'u2' }).deps, 'read')).toEqual({ kind: 'false', reason: undefined });
+        expect(await fetchRepositoryRecordRuleEnvelope(createDeps({ userId: 'u2' }).deps, 'read')).toEqual({ kind: 'false', reason: '1' });
 
         (AuthUserService as any).GetRecordRuleCondition = async () => ({ kind: 'expr', expr: ['Id', '=', '1'], reason: 'ok' });
         expect(await fetchRepositoryRecordRuleEnvelope(createDeps({ userId: 'u3' }).deps, 'read')).toEqual({
@@ -556,7 +570,7 @@ test('record rule helper normalizes true false expr and empty envelopes from ser
         (AuthUserService as any).GetRecordRuleCondition = async () => undefined;
         expect(await fetchRepositoryRecordRuleEnvelope(createDeps({ userId: 'u4' }).deps, 'read')).toEqual({
           kind: 'false',
-          reason: 'invalid_record_rule_envelope_kind',
+          reason: 'invalid_record_rule_envelope',
         });
       } finally {
         (AuthUserService as any).GetRecordRuleCondition = original;

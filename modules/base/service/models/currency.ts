@@ -3,7 +3,7 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { normalizeDecimalDigits, normalizePositiveDecimalString } from '@/core/service/utils/normalization';
+import { assertDecimalDigits, assertPositiveDecimalString } from '@/core/service/utils/normalization';
 import { _t, _lt } from '../i18n';
 import { mapNormalizationToBase, assertCodeRequired } from './_normalizers';
 import { convertCurrency } from './_currency_convert';
@@ -94,14 +94,14 @@ export default class Currency extends BaseModel {
   validateCurrencyConstraint(): void {
     this.Code = assertCodeRequired(this.Code as string);
     (this as any).DecimalDigits = mapNormalizationToBase(
-      () => normalizeDecimalDigits(this.DecimalDigits),
+      () => assertDecimalDigits(this.DecimalDigits),
       err =>
         err.code === 'required'
           ? _t('DecimalDigits is required', { scope: 'service/models/currency' })
           : _t('DecimalDigits must be a non-negative integer', { scope: 'service/models/currency' })
     );
     (this as any).Rounding = mapNormalizationToBase(
-      () => normalizePositiveDecimalString(this.Rounding),
+      () => assertPositiveDecimalString(this.Rounding),
       err =>
         err.code === 'non_positive_decimal'
           ? _t('Rounding must be greater than 0', { scope: 'service/models/currency' })

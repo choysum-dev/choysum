@@ -1,16 +1,41 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { normalizeConditionEnvelope, normalizeFieldRuleSpec, normalizeHitRuleIds, replaceConditionExprTokens } from './authz_helpers';
+import {
+  parseConditionEnvelopeFromUnknown,
+  parseFieldRuleSpecFromUnknown,
+  formatAuthzParseFailureDetail,
+  normalizeHitRuleIds,
+  replaceConditionExprTokens,
+} from './authz_helpers';
 
-test('authz helpers normalize condition envelope for true/false/expr and invalid inputs', () => {
-  expect(normalizeConditionEnvelope(undefined as any)).toEqual({
-    kind: 'false',
-    reason: 'invalid_record_rule_envelope',
-  });
+function expectParseEnvelopeThrow(value: unknown): void {
+  let message = '';
+  try {
+    parseConditionEnvelopeFromUnknown(value);
+  } catch (error) {
+    message = String((error as Error)?.message || error);
+  }
+  expect(/invalid_record_rule_envelope/.test(message)).toBe(true);
+}
+
+function expectParseFieldRuleThrow(value: unknown): void {
+  let message = '';
+  try {
+    parseFieldRuleSpecFromUnknown(value);
+  } catch (error) {
+    message = String((error as Error)?.message || error);
+  }
+  expect(/invalid_field_rule_spec/.test(message)).toBe(true);
+}
+
+test('authz helpers parse condition envelope for true/false/expr and reject invalid inputs', () => {
+  expectParseEnvelopeThrow(undefined);
+  expectParseEnvelopeThrow(null);
+  expectParseEnvelopeThrow('not-an-envelope');
 
   expect(
-    normalizeConditionEnvelope({
+    parseConditionEnvelopeFromUnknown({
       kind: 'true',
       reason: '  allow  ',
     })
@@ -20,7 +45,7 @@ test('authz helpers normalize condition envelope for true/false/expr and invalid
   });
 
   expect(
-    normalizeConditionEnvelope({
+    parseConditionEnvelopeFromUnknown({
       kind: 'false',
       reason: '  denied  ',
     })
@@ -30,7 +55,7 @@ test('authz helpers normalize condition envelope for true/false/expr and invalid
   });
 
   expect(
-    normalizeConditionEnvelope({
+    parseConditionEnvelopeFromUnknown({
       kind: 'expr',
       expr: ['OwnerId', '=', '$userId'],
       reason: '  scoped  ',
@@ -44,7 +69,7 @@ test('authz helpers normalize condition envelope for true/false/expr and invalid
   });
 
   expect(
-    normalizeConditionEnvelope({
+    parseConditionEnvelopeFromUnknown({
       kind: 'true',
       reason: 'allow',
       hitRuleIds: 'hit_2,hit_1,hit_1',
@@ -56,7 +81,7 @@ test('authz helpers normalize condition envelope for true/false/expr and invalid
   });
 
   expect(
-    normalizeConditionEnvelope({
+    parseConditionEnvelopeFromUnknown({
       kind: 'false',
       reason: 'deny',
       hitRuleIds: ['', '  '],
@@ -67,7 +92,7 @@ test('authz helpers normalize condition envelope for true/false/expr and invalid
   });
 
   expect(
-    normalizeConditionEnvelope({
+    parseConditionEnvelopeFromUnknown({
       kind: 'false',
       reason: 'deny_hits',
       hitRuleIds: ['rr_z', 'rr_a'],
@@ -79,7 +104,7 @@ test('authz helpers normalize condition envelope for true/false/expr and invalid
   });
 
   expect(
-    normalizeConditionEnvelope({
+    parseConditionEnvelopeFromUnknown({
       kind: 'expr',
       expr: { And: [['Id', '=', '1']] },
       reason: 'object_expr',
@@ -92,39 +117,114 @@ test('authz helpers normalize condition envelope for true/false/expr and invalid
     hitRuleIds: ['only_one'],
   });
 
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: null,
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: {},
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: { Foo: [] },
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: ['OwnerId', '='],
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: ['', '=', '1'],
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: ['  ', '=', '1'],
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: ['Id', '', '1'],
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: ['Id', '  ', '1'],
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: ['Id', '=', undefined],
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: ['Id', '=', () => 'x'],
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: ['Id', '=', Symbol('x')],
+  });
+
   expect(
-    normalizeConditionEnvelope({
+    parseConditionEnvelopeFromUnknown({
       kind: 'expr',
-      expr: null,
+      expr: ['DeletedAt', '=', null],
     })
   ).toEqual({
-    kind: 'false',
-    reason: 'invalid_record_rule_envelope',
+    kind: 'expr',
+    expr: ['DeletedAt', '=', null],
+    reason: undefined,
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: 'not-a-condition',
+    reason: 'bad_expr',
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: { And: 'not-array' },
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: { Or: null },
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: { And: [] },
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: { Or: [] },
+  });
+
+  let deep: unknown = ['Id', '=', '1'];
+  for (let i = 0; i < 33; i += 1) {
+    deep = { And: [deep] };
+  }
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: deep,
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'unknown',
+    reason: 'x',
   });
 
   expect(
-    normalizeConditionEnvelope({
-      kind: 'expr',
-      expr: 'not-a-condition',
-      reason: 'bad_expr',
-    })
-  ).toEqual({
-    kind: 'false',
-    reason: 'invalid_record_rule_envelope',
-  });
-
-  expect(
-    normalizeConditionEnvelope({
-      kind: 'unknown',
-      reason: 'x',
-    })
-  ).toEqual({
-    kind: 'false',
-    reason: 'invalid_record_rule_envelope',
-  });
-
-  expect(
-    normalizeConditionEnvelope({
+    parseConditionEnvelopeFromUnknown({
       kind: 'expr',
       expr: ['OwnerId', '=', '1'],
       reason: 'no_hits',
@@ -207,16 +307,15 @@ test('authz helpers non-strict mode keeps unknown tokens unchanged', () => {
   expect(out).toEqual(['OwnerId', '=', '$tenantId']);
 });
 
-test('authz helpers normalize field rule spec and reason from loose payloads', () => {
-  expect(normalizeFieldRuleSpec(undefined as any)).toEqual({
-    denyReadFields: [],
-    denyWriteFields: [],
-  });
+test('authz helpers parse field rule spec and reject invalid payloads', () => {
+  expectParseFieldRuleThrow(undefined);
+  expectParseFieldRuleThrow(null);
+  expectParseFieldRuleThrow('not-a-spec');
 
   expect(
-    normalizeFieldRuleSpec({
-      denyReadFields: [' Name ', '', 'Name', null, 'Id'],
-      denyWriteFields: [' Amount ', '', 'Amount', 'Locked'],
+    parseFieldRuleSpecFromUnknown({
+      denyReadFields: [' Name ', 'Name', 'Id'],
+      denyWriteFields: [' Amount ', 'Amount', 'Locked'],
       reason: '  from_auth  ',
       hitRuleIds: ['fr_2', 'fr_1', 'fr_1'],
     })
@@ -228,9 +327,7 @@ test('authz helpers normalize field rule spec and reason from loose payloads', (
   });
 
   expect(
-    normalizeFieldRuleSpec({
-      denyReadFields: 'not-array',
-      denyWriteFields: 1,
+    parseFieldRuleSpecFromUnknown({
       reason: '   ',
     })
   ).toEqual({
@@ -240,7 +337,47 @@ test('authz helpers normalize field rule spec and reason from loose payloads', (
   });
 
   expect(
-    normalizeFieldRuleSpec({
+    parseFieldRuleSpecFromUnknown({
+      denyReadFields: null,
+      denyWriteFields: null,
+    })
+  ).toEqual({
+    denyReadFields: [],
+    denyWriteFields: [],
+    reason: undefined,
+  });
+
+  expectParseFieldRuleThrow({
+    denyReadFields: 'not-array',
+    denyWriteFields: [],
+  });
+  expectParseFieldRuleThrow({
+    denyReadFields: [],
+    denyWriteFields: 1,
+  });
+  expectParseFieldRuleThrow({
+    denyReadFields: [null],
+    denyWriteFields: [],
+  });
+  expectParseFieldRuleThrow({
+    denyReadFields: [1],
+    denyWriteFields: [],
+  });
+  expectParseFieldRuleThrow({
+    denyReadFields: [''],
+    denyWriteFields: [],
+  });
+  expectParseFieldRuleThrow({
+    denyReadFields: ['  '],
+    denyWriteFields: [],
+  });
+  expectParseFieldRuleThrow({
+    denyReadFields: [],
+    denyWriteFields: [false],
+  });
+
+  expect(
+    parseFieldRuleSpecFromUnknown({
       denyReadFields: [],
       denyWriteFields: [],
       hitRuleIds: ' fr_b , ,fr_a ',
@@ -253,6 +390,12 @@ test('authz helpers normalize field rule spec and reason from loose payloads', (
   });
 });
 
+test('authz helpers formatAuthzParseFailureDetail covers Error and non-Error', () => {
+  expect(formatAuthzParseFailureDetail(new Error('invalid_field_rule_spec'))).toBe('invalid_field_rule_spec');
+  expect(formatAuthzParseFailureDetail('raw-detail')).toBe('raw-detail');
+  expect(formatAuthzParseFailureDetail(42)).toBe('42');
+});
+
 test('authz helpers normalizeHitRuleIds covers array string and non-list inputs', () => {
   expect(normalizeHitRuleIds([' b ', '', 'a', 'a', null, undefined, 0])).toEqual(['0', 'a', 'b']);
   expect(normalizeHitRuleIds([])).toBe(undefined);
@@ -262,4 +405,18 @@ test('authz helpers normalizeHitRuleIds covers array string and non-list inputs'
   expect(normalizeHitRuleIds(', ,')).toBe(undefined);
   expect(normalizeHitRuleIds(undefined)).toBe(undefined);
   expect(normalizeHitRuleIds(12 as any)).toBe(undefined);
+});
+
+// Local dial (ORM / document owner) and gRPC Value results both feed these parsers;
+// invalid shapes must fail the same way (no wash-to-allow / wash-to-false at D5).
+test('authz D5 parsers: local and gRPC consumers share identical fail-hard errors', () => {
+  const badEnvelopes = [null, undefined, 'not-envelope', 1, [], { kind: 'maybe' }, { kind: 'expr' }];
+  for (const value of badEnvelopes) {
+    expect(() => parseConditionEnvelopeFromUnknown(value)).toThrow(/invalid_record_rule_envelope/);
+  }
+
+  const badFieldSpecs = [null, undefined, 'not-spec', 1, []];
+  for (const value of badFieldSpecs) {
+    expect(() => parseFieldRuleSpecFromUnknown(value)).toThrow(/invalid_field_rule_spec/);
+  }
 });

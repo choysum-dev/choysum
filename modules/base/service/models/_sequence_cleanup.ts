@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { normalizeDateString } from '@/core/service/utils/normalization';
+import { assertDateString } from '@/core/service/utils/normalization';
 import { createTranslate } from '@/core/service/i18n';
 import { mapNormalizationToBase } from './_normalizers';
 import type { SequenceCleanupIdempotencyParams, SequenceCleanupIdempotencyResult } from './sequence';
@@ -16,7 +16,7 @@ export async function cleanupSequenceIdempotency(params?: SequenceCleanupIdempot
     cutoff = new Date();
   } else {
     const normalizedOlderThan = mapNormalizationToBase(
-      () => normalizeDateString(olderThan),
+      () => assertDateString(olderThan),
       err => {
         if (err.code === 'required') return _t('OlderThan is required', { scope: 'service/models/_sequence_cleanup' });
         if (err.code === 'invalid_date_value') return _t('OlderThan is invalid', { scope: 'service/models/_sequence_cleanup' });

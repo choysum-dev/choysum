@@ -14,10 +14,10 @@ export type NormalizedPagination = {
 };
 
 /**
- * Normalize limit/offset from loose user input into safe numeric values.
+ * Representation normalize (C): map loose limit/offset into safe numerics.
  *
- * Delegates to {@link normalizeLimit} and {@link normalizeOffset} so that
- * string-encoded numbers (common in query parameters) are coerced consistently.
+ * Soft defaults stay here (invalid/missing offset → 0; invalid limit → undefined),
+ * not domain assert. Delegates to {@link normalizeLimit} / {@link normalizeOffset}.
  */
 export function normalizePagination(options?: PaginationParams): NormalizedPagination {
   const limit = normalizeLimit(options?.limit) ?? undefined;
