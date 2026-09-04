@@ -5,6 +5,7 @@ import { RepositoryFactory } from '@/core/service/orm/repository';
 import { createServiceByModel } from '@/core/service/rpc';
 import MetaModule from '@/meta/service/models/module';
 import MetaModuleIndex from '@/meta/service/models/module_index';
+import { DEFAULT_MODULE_INDEX_SEARCH } from '@/meta/service/models/_module_index_query';
 import ModuleManagementLog from '@/meta/service/models/module_management_log';
 import type JobModel from '@/task/service/models/job';
 
@@ -840,7 +841,7 @@ test('meta.MetaModuleIndex Search honors requested fields after aggregation', as
   ]);
 
   try {
-    const rows = await (MetaModuleIndex as any).Search(undefined, { fields: ['ModuleName', 'RegistryVersion'], limit: 10 });
+    const rows = await (MetaModuleIndex as any).Search(DEFAULT_MODULE_INDEX_SEARCH, { fields: ['ModuleName', 'RegistryVersion'], limit: 10 });
     expect(Array.isArray(rows)).toBe(true);
     expect(rows.length).toBe(1);
     expect(typeof rows[0].toPlainObject).toBe('function');
@@ -879,7 +880,7 @@ test('meta.MetaModuleIndex Search projection returns model instances and blocks 
   ]);
 
   try {
-    const rows = await (MetaModuleIndex as any).Search(undefined, { fields: ['ModuleName', '__proto__', 'constructor', 'prototype'], limit: 10 });
+    const rows = await (MetaModuleIndex as any).Search(DEFAULT_MODULE_INDEX_SEARCH, { fields: ['ModuleName', '__proto__', 'constructor', 'prototype'], limit: 10 });
     expect(Array.isArray(rows)).toBe(true);
     expect(rows.length).toBe(1);
     expect(rows[0].ModuleName).toBe('auth');
@@ -940,7 +941,7 @@ test('meta.MetaModuleIndex Search prefers MetaModule status over aggregate defau
   ]);
 
   try {
-    const rows = await (MetaModuleIndex as any).Search(undefined, { fields: ['ModuleName', 'InstalledStatus', 'InstalledVersion'], limit: 10 });
+    const rows = await (MetaModuleIndex as any).Search(DEFAULT_MODULE_INDEX_SEARCH, { fields: ['ModuleName', 'InstalledStatus', 'InstalledVersion'], limit: 10 });
     expect(Array.isArray(rows)).toBe(true);
     expect(rows.length).toBe(1);
     expect(rows[0].ModuleName).toBe('auth');
@@ -975,7 +976,7 @@ test('meta.MetaModuleIndex Search hydrates with no field filter and empty aggreg
   const restoreBaseSearch = mockMetaModuleIndexBaseSearch([]);
 
   try {
-    const rows = await (MetaModuleIndex as any).Search(undefined, { limit: 10 });
+    const rows = await (MetaModuleIndex as any).Search(DEFAULT_MODULE_INDEX_SEARCH, { limit: 10 });
     expect(Array.isArray(rows)).toBe(true);
     expect(rows.length).toBe(0);
   } finally {

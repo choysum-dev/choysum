@@ -183,7 +183,7 @@ export default class MetaModuleIndex extends BaseModel {
     condition: any[] | Record<string, any> = DEFAULT_MODULE_INDEX_SEARCH,
     options?: any
   ): Promise<T[]> {
-    const normalized = assertSearchCondition(condition ?? DEFAULT_MODULE_INDEX_SEARCH);
+    const normalized = assertSearchCondition(condition);
     const rawOptions = { ...(options || {}) };
     const requestedFields = normalizeFields(rawOptions.fields);
     const sortSpecs = parseSortSpecs(rawOptions.orderBy);
@@ -292,7 +292,7 @@ export default class MetaModuleIndex extends BaseModel {
     condition: any[] | Record<string, any> = DEFAULT_MODULE_INDEX_SEARCH,
     options?: any
   ): Promise<number> {
-    const normalized = assertSearchCondition(condition ?? DEFAULT_MODULE_INDEX_SEARCH);
+    const normalized = assertSearchCondition(condition);
     const readGroupCountOptions: Record<string, unknown> = {
       groupby: 'ModuleName',
       condition: normalized,

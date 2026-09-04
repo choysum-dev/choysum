@@ -48,7 +48,7 @@ describe('assertFieldPerm', () => {
     expect(assertFieldPerm('  ALLOW  ')).toBe('allow');
   });
 
-  test('returns null for unrecognized string', () => {
+  test('throws for unrecognized string; blank stays null', () => {
     expect(() => assertFieldPerm('maybe')).toThrow(/allow|deny/);
     expect(assertFieldPerm('')).toBeNull();
   });
@@ -59,8 +59,8 @@ describe('assertFieldPerm', () => {
     expect(assertFieldPerm({ id: 'allow' })).toBe('allow');
   });
 
-  test('returns null for unrecognized object', () => {
-    expect(assertFieldPerm({})).toBeNull();
+  test('throws for unrecognized object', () => {
+    expect(() => assertFieldPerm({})).toThrow(/allow|deny/);
   });
 });
 

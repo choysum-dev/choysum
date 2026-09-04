@@ -48,6 +48,10 @@ describe('assertSearchCondition', () => {
   it('exposes DEFAULT_MODULE_INDEX_SEARCH for callers that want the catalog default', () => {
     expect(DEFAULT_MODULE_INDEX_SEARCH).toEqual(['Available', '=', true]);
   });
+  it('rejects null / non-object conditions', () => {
+    expect(() => assertSearchCondition(null as any)).toThrow(/required/);
+    expect(() => assertSearchCondition(42 as any)).toThrow(/array or object/);
+  });
 });
 
 // --------------- toText ---------------

@@ -650,17 +650,17 @@ msgid "Target currency %s not found"
 msgstr ""
 
 #: service/models/_base_bridge.ts:39
-msgctxt "service/models/_base_bridge@assertCodeRequired"
+msgctxt "service/models/_base_bridge"
 msgid "Code is required"
 msgstr ""
 
 #: service/models/_base_bridge.ts:49
-msgctxt "service/models/_base_bridge@assertName"
+msgctxt "service/models/_base_bridge"
 msgid "Name is required"
 msgstr ""
 
 #: service/models/_base_bridge.ts:59
-msgctxt "service/models/_base_bridge@assertRefId"
+msgctxt "service/models/_base_bridge"
 msgid "%s is required"
 msgstr ""
 
@@ -679,12 +679,12 @@ msgctxt "service/models/_option_validators"
 msgid "Direction must be ltr or rtl"
 msgstr ""
 
-#: service/models/_option_validators.ts:54
+#: service/models/_option_validators.ts:64
 msgctxt "service/models/_option_validators"
 msgid "RatePolicy.Mode must be exact or latest_before"
 msgstr ""
 
-#: service/models/_option_validators.ts:65
+#: service/models/_option_validators.ts:76
 msgctxt "service/models/_option_validators"
 msgid "Rounding.Mode must be currency or none"
 msgstr ""

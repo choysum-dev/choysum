@@ -18,7 +18,6 @@ const DEFAULT_IDEMPOTENCY_TTL_DAYS = 7;
 const IDEMPOTENCY_KEY_MAX_LENGTH = 200;
 
 function assertCount(count: unknown): number {
-  if (count == null) return 1;
   const n = mapNormalizationToBase(
     () => parsePositiveInt(count),
     () => _t('Count must be an integer >= 1', { scope: 'service/models/_sequence_next' })
@@ -163,7 +162,7 @@ export async function nextSequence(
   params: SequenceNextParams
 ): Promise<SequenceNextResult> {
   const code = assertCodeRequired(params?.Code, { uppercase: false });
-  const count = assertCount(params?.Count);
+  const count = assertCount(params?.Count ?? 1);
   const idemKey = assertIdempotencyKey(params?.IdempotencyKey);
   const dryRun = params?.DryRun === true;
 

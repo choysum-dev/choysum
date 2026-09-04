@@ -86,6 +86,11 @@ export async function convertCurrency(
     () => _t('Invalid Amount', { scope: 'service/models/_currency_convert' })
   );
 
+  const mode = assertRatePolicyMode(params?.RatePolicy?.Mode) ?? 'latest_before';
+  const allowFallbackToGlobal = Boolean(params?.RatePolicy?.AllowFallbackToGlobal ?? true);
+  const roundingMode = assertRoundingMode(params?.Rounding?.Mode) ?? 'currency';
+  const overrideDigits = params?.Rounding?.ToDecimalDigitsOverride;
+
   if (fromCurrencyId === toCurrencyId) {
     return { Amount: amount };
   }
@@ -106,11 +111,6 @@ export async function convertCurrency(
       GrpcCode.FailedPrecondition
     );
   }
-
-  const mode = assertRatePolicyMode(params?.RatePolicy?.Mode) ?? 'latest_before';
-  const allowFallbackToGlobal = Boolean(params?.RatePolicy?.AllowFallbackToGlobal ?? true);
-  const roundingMode = assertRoundingMode(params?.Rounding?.Mode) ?? 'currency';
-  const overrideDigits = params?.Rounding?.ToDecimalDigitsOverride;
 
   const warnings: string[] = [];
   const rateUsed: any = {};
