@@ -6,6 +6,7 @@ import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { PaginationState, OrderByState } from './state';
 import type { GroupBySpec } from './types';
 import { filtersToQuery } from '@/web/web/query/utils/condition/builder';
+import { asPresentCondition } from '@/web/web/query/utils/condition/absent';
 
 export interface QueryContext {
   shape: 'collection' | 'groups'; // query execution shape
@@ -123,15 +124,9 @@ export function buildUnifiedQuery(
   const uiCondition = filtersToQuery(ui, kw, kwFields, (store as any)?.fieldsMetadata);
 
   // Merge forced conditions with any supplied parent condition.
-  const normalize = (f?: any) => {
-    if (f == null) return undefined as any;
-    if (Array.isArray(f) && f.length === 0) return undefined as any;
-    if (typeof f === 'object' && !Array.isArray(f) && Object.keys(f).length === 0) return undefined as any;
-    return f;
-  };
   const combine = (a?: any, b?: any) => {
-    const A = normalize(a);
-    const B = normalize(b);
+    const A = asPresentCondition(a);
+    const B = asPresentCondition(b);
     if (!A && !B) return undefined;
     if (!A) return B;
     if (!B) return A;

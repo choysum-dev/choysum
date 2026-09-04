@@ -121,15 +121,21 @@ describe('filter structures helpers', () => {
     expect(arr[0].name).toBe('A');
   });
 
-  it('toFilters converts Choysum And/Or trees and skips invalid query shapes', () => {
+  it('toFilters skips null query and blank name, throws on invalid query shapes', () => {
     expect(toFilters({ name: 'NullQ', query: null } as any)).toEqual([]);
-    expect(toFilters({ name: 'BadArr', query: ['only', 'two'] } as any)).toEqual([]);
-    expect(toFilters({ name: 'Str', query: 'nope' } as any)).toEqual([]);
-    expect(toFilters({ name: 'EmptyAnd', query: { And: [] } } as any)).toEqual([]);
-    expect(toFilters({ name: 'EmptyOr', query: { Or: [] } } as any)).toEqual([]);
-    expect(toFilters({ name: 'JunkParts', query: { And: [null, 'x', { foo: 1 }] } } as any)).toEqual([]);
-    expect(toFilters({ name: 'NonStringLeaf', query: [1, '=', 2] } as any)).toEqual([]);
-    expect(toFilters({ name: 'NonStringOp', query: ['A', 1, 2] } as any)).toEqual([]);
+    expect(toFilters({ name: '', query: ['A', '=', 1] } as any)).toEqual([]);
+
+    for (const bad of [
+      { name: 'BadArr', query: ['only', 'two'] },
+      { name: 'Str', query: 'nope' },
+      { name: 'EmptyAnd', query: { And: [] } },
+      { name: 'EmptyOr', query: { Or: [] } },
+      { name: 'JunkParts', query: { And: [null, 'x', { foo: 1 }] } },
+      { name: 'NonStringLeaf', query: [1, '=', 2] },
+      { name: 'NonStringOp', query: ['A', 1, 2] },
+    ]) {
+      expect(() => toFilters(bad as any)).toThrow(/invalid_named_filter_query/);
+    }
 
     const groupShaped = toFilters({
       name: 'AlreadyGroup',

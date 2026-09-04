@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { RouteLocationNormalized } from 'vue-router';
+import { normalizeOptionalString } from '@/core/service/utils/normalization';
 import { useAuthStore } from '../stores/auth';
 import { canRoute } from '@/auth/web/permission';
 import { appRoutes } from './routes';
@@ -13,7 +14,7 @@ const DEFAULT_SEQUENCE = Number.POSITIVE_INFINITY;
  * Normalize a route path into an absolute application path.
  */
 function normalizeRoutePath(path: unknown): string {
-  const raw = String(path || '').trim();
+  const raw = normalizeOptionalString(path);
   if (!raw) return '';
   return raw.startsWith('/') ? raw : `/${raw}`;
 }

@@ -131,18 +131,20 @@ export function toFilters(input?: NamedFilter | NamedFilter[] | ConditionGroup |
   const out: ConditionGroup[] = [];
   for (const it of arr) {
     if (!it) continue;
-    if ((it as any).query) {
+    if ('query' in (it as object)) {
       const nf = it as NamedFilter;
       if (!nf.name) continue;
+      if (nf.query == null) continue;
       const group = queryConditionToGroup(nf.query, nf.name);
-      if (group) out.push(group);
+      if (!group) throw new Error('invalid_named_filter_query');
+      out.push(group);
     } else if (isGroup(it as any)) out.push(it as ConditionGroup);
   }
   return out;
 }
 
 /**
- * Cleans filter groups by discarding invalid nodes and empty groups.
+ * Prunes incomplete draft filter nodes (C representation); does not invent backend query shapes.
  */
 export function normalizeFilters(filters: ConditionGroup[] = []): ConditionGroup[] {
   /**

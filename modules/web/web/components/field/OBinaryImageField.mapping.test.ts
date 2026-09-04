@@ -31,8 +31,8 @@ describe('OBinaryField/OImageField mapping contract', () => {
     const s = source('OBinaryField.vue');
 
     expect(s).toContain("kind: 'set'");
-    expect(s).toContain('proposedFileName: normalizeText(file.name)');
-    expect(s).toContain('clientContentType: normalizeText(file.type)');
+    expect(s).toContain('proposedFileName: normalizeOptionalString(file.name)');
+    expect(s).toContain('clientContentType: normalizeOptionalString(file.type)');
     expect(s).toContain('valueRef.value = null;');
     expect(s).toContain('async function removeBinary(');
     expect(s).toContain('await onFieldChange();');

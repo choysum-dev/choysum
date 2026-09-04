@@ -24,7 +24,7 @@ describe('resource declaration helpers', () => {
       actions: ['auth.action.user_create'],
       defaultRoles: ['base.user', ' base.user '],
       override: true,
-      requires: [{ model: 'auth.User' }, { model: 'auth.User', method: 'Browse' }, { model: ' ' } as any],
+      requires: [{ model: 'auth.User' }, { model: 'auth.User', method: 'Browse' }],
       sequence: 30,
       path: '/auth/users',
       name: 'UserList',
@@ -197,5 +197,35 @@ describe('resource declaration helpers', () => {
     expect(defineModelActions('invalid')).toEqual({});
     expect(defineModelActions('auth.')).toEqual({});
     expect(defineModelActions('.User')).toEqual({});
+  });
+
+  it('throws on invalid resource requires, default roles, and actions', () => {
+    expect(() =>
+      defineRoute('demo.route.invalid_requires', {
+        path: '/demo',
+        requires: { model: 'demo.Model' } as any,
+      } as any)
+    ).toThrow('invalid_resource_requires');
+
+    expect(() =>
+      defineRoute('demo.route.blank_model', {
+        path: '/demo',
+        requires: [{ model: ' ' }],
+      } as any)
+    ).toThrow('invalid_resource_requires');
+
+    expect(() =>
+      defineRoute('demo.route.invalid_roles', {
+        path: '/demo',
+        defaultRoles: 'base.user' as any,
+      } as any)
+    ).toThrow('invalid_resource_default_roles');
+
+    expect(() =>
+      defineRoute('demo.route.invalid_actions', {
+        path: '/demo',
+        actions: 1 as any,
+      } as any)
+    ).toThrow('invalid_resource_actions');
   });
 });

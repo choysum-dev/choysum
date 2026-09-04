@@ -16,6 +16,7 @@ import { userClearedDefaultFilters, userClearedDefaultGroups } from '@/web/web/q
 import { exportFieldSelection } from '@/web/web/query/utils/registry/field';
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
 import { filtersToQuery } from '@/web/web/query/utils/condition/builder';
+import { asPresentCondition } from '@/web/web/query/utils/condition/absent';
 
 // ListViewModel & GroupBySpec now centralized in query/types.ts
 
@@ -410,11 +411,7 @@ export function createListController(store: WebModelStore<any>): IListController
   }
 
   function normalizeFilter<F = any>(f?: F): F | undefined {
-    if (f == null) return undefined as any;
-    // Treat [] and {} as an absent condition.
-    if (Array.isArray(f) && f.length === 0) return undefined as any;
-    if (typeof f === 'object' && !Array.isArray(f) && Object.keys(f as any).length === 0) return undefined as any;
-    return f as any;
+    return asPresentCondition(f);
   }
   function combineFilters(a?: any, b?: any): any | undefined {
     const A = normalizeFilter(a);

@@ -10,6 +10,7 @@ import { exportFieldSelection, pathsToFieldSelection, ensureRootId } from './uti
 import { exportMetrics } from './utils/registry/metric';
 import { createStoreByModel } from '../stores/registry';
 import { getTokenProvider } from '@/core/web/rpc/providers';
+import { normalizeOptionalString } from '@/core/service/utils/normalization';
 
 /**
  * Hydrates ManyToOneRef fields in bulk.
@@ -155,8 +156,7 @@ async function hydrateManyToManyRefs(store: WebModelStore<any>, items: any[]) {
 }
 
 function normalizeIdText(value: unknown): string | undefined {
-  const text = String(value ?? '').trim();
-  return text ? text : undefined;
+  return normalizeOptionalString(value);
 }
 
 function isInternalStorageBindingContentUrl(rawUrl: string): boolean {

@@ -3,9 +3,10 @@
 
 import type { RouteRecordRaw } from 'vue-router';
 import type { MenuItem } from '../menu';
-import { asObjectRecord } from '../../utils/object';
+import { asObjectRecord, isObjectRecord } from '../../utils/object';
 import type { ObjectRecord } from '../../utils/types';
 import { isTermReference, createTermReference, type TermReference } from '../../service/i18n';
+import { assertNonNegativeInt, normalizeOptionalString } from '../../service/utils/normalization';
 
 export type ResourceId = string;
 export type ResourceKind = 'route' | 'menu' | 'action';
@@ -99,8 +100,7 @@ export type ModelActions = {
 const resourceDeclarations = new Map<ResourceId, ResourceDeclaration>();
 
 function normalizeTitle(value: unknown): string | undefined {
-  const normalized = typeof value === 'string' ? value.trim() : '';
-  return normalized || undefined;
+  return normalizeOptionalString(value);
 }
 
 function normalizeResourceTitle(value: unknown): { title?: string; titleText?: TermReference } {
@@ -113,26 +113,54 @@ function normalizeResourceTitle(value: unknown): { title?: string; titleText?: T
 }
 
 function normalizeSequence(value: unknown): number | undefined {
-  const normalized = Number(value);
-  return Number.isFinite(normalized) ? normalized : undefined;
+  if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) {
+    return undefined;
+  }
+  return assertNonNegativeInt(value);
+}
+
+function normalizeStringListField(value: unknown, errorCode: string): string[] {
+  if (value == null) return [];
+  if (!Array.isArray(value)) {
+    throw new Error(errorCode);
+  }
+
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const item of value) {
+    if (typeof item !== 'string') {
+      throw new Error(errorCode);
+    }
+    const normalized = item.trim();
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    out.push(normalized);
+  }
+  return out;
 }
 
 function normalizeDefaultRoles(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return Array.from(new Set(value.map(item => String(item || '').trim()).filter(Boolean)));
+  return normalizeStringListField(value, 'invalid_resource_default_roles');
 }
 
 function normalizeRequires(value: unknown): NormalizedResourceRequire[] {
-  if (!Array.isArray(value)) return [];
+  if (value == null) return [];
+  if (!Array.isArray(value)) {
+    throw new Error('invalid_resource_requires');
+  }
 
   const out: NormalizedResourceRequire[] = [];
   const seen = new Set<string>();
 
   for (const item of value) {
-    const requireItem = asObjectRecord(item);
-    const model = String(requireItem?.model || '').trim();
-    if (!model) continue;
-    const method = normalizeTitle(requireItem?.method);
+    if (!isObjectRecord(item)) {
+      throw new Error('invalid_resource_requires');
+    }
+    const model = normalizeOptionalString(item.model);
+    if (!model) {
+      throw new Error('invalid_resource_requires');
+    }
+    const method = normalizeOptionalString(item.method);
     const kind: 'rpc' = 'rpc';
     const key = `${kind}:${model}:${method ?? ''}`;
     if (seen.has(key)) continue;
@@ -144,8 +172,7 @@ function normalizeRequires(value: unknown): NormalizedResourceRequire[] {
 }
 
 function normalizeActions(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return Array.from(new Set(value.map(item => String(item || '').trim()).filter(Boolean)));
+  return normalizeStringListField(value, 'invalid_resource_actions');
 }
 
 function cloneDeclaration<T extends ResourceDeclaration>(declaration: T): T {

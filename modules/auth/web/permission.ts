@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { normalizeScopeId, normalizeUiResourceId } from '@/core/service/utils/normalization';
+
 /**
  * Company scope selector used by permission lookups.
  */
@@ -37,20 +39,6 @@ export type PermissionState = {
 };
 
 /**
- * Normalize a company identifier into a trimmed string.
- */
-function normalizeCompanyId(v: unknown): string {
-  return String(v ?? '').trim();
-}
-
-/**
- * Normalize a UI resource identifier into a trimmed string.
- */
-function normalizeResourceId(v: unknown): string {
-  return String(v ?? '').trim();
-}
-
-/**
  * Remove duplicate strings while preserving first-seen order.
  */
 function uniq(arr: string[]): string[] {
@@ -65,8 +53,8 @@ function effectiveUiSetForCompany(state: PermissionState, companyId: string, kin
   const g = by['*']?.ui ?? {};
   const c = by[companyId]?.ui ?? {};
 
-  const globalValues = Array.isArray(g[kind]) ? g[kind].map(normalizeResourceId).filter(Boolean) : [];
-  const companyValues = Array.isArray(c[kind]) ? c[kind].map(normalizeResourceId).filter(Boolean) : [];
+  const globalValues = Array.isArray(g[kind]) ? g[kind].map(normalizeUiResourceId).filter(Boolean) : [];
+  const companyValues = Array.isArray(c[kind]) ? c[kind].map(normalizeUiResourceId).filter(Boolean) : [];
   return new Set(uniq([...globalValues, ...companyValues]));
 }
 
@@ -85,8 +73,8 @@ function effectiveUiSetForCompanies(state: PermissionState, companyIds: string[]
  * Resolve the effective UI set for the requested company scope.
  */
 function effectiveUiSet(state: PermissionState, ctx: PermissionCtx, scope: CompanyScope, kind: keyof PermissionUiSet): Set<string> {
-  const activeCompanyId = normalizeCompanyId(ctx.activeCompanyId);
-  const enabledCompanyIds = (ctx.enabledCompanyIds ?? []).map(normalizeCompanyId).filter(Boolean);
+  const activeCompanyId = normalizeScopeId(ctx.activeCompanyId);
+  const enabledCompanyIds = (ctx.enabledCompanyIds ?? []).map(normalizeScopeId).filter(Boolean);
 
   if (scope === 'active') {
     if (!activeCompanyId) return new Set<string>();
@@ -107,7 +95,7 @@ function canResource(
   ctx: PermissionCtx,
   scope: CompanyScope = 'enabled'
 ): boolean {
-  const rid = String(id || '').trim();
+  const rid = normalizeUiResourceId(id);
   if (!rid) return true;
   if (!state) return false;
   const set = effectiveUiSet(state, ctx, scope, kind);

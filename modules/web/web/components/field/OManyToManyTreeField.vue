@@ -95,6 +95,7 @@ import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import { createTranslate } from '@/web/web/i18n';
+import { normalizeRefId as normalizeRefIdCore } from '@/core/service/utils/normalization';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/OManyToManyTreeField' });
 
@@ -272,16 +273,11 @@ const effectiveRootCondition = computed<AnyQueryCondition | []>(() => {
   return { And: parts } as any;
 });
 
-function normalizeRefId(v: any): string | null {
-  if (v == null) return null;
-  if (typeof v === 'object' && v !== null && typeof (v as any).toEntity === 'function') {
-    const entity = (v as any).toEntity();
-    const s = String(entity?.Id ?? '').trim();
-    if (s) return s;
+function normalizeRefId(v: unknown): string | null {
+  if (v != null && typeof v === 'object' && typeof (v as { toEntity?: () => unknown }).toEntity === 'function') {
+    return normalizeRefIdCore((v as { toEntity: () => unknown }).toEntity());
   }
-  const raw = typeof v === 'object' && v !== null ? (v as any).Id : v;
-  const s = String(raw ?? '').trim();
-  return s ? s : null;
+  return normalizeRefIdCore(v);
 }
 
 function parseChildrenValue(raw: any): any[] {
