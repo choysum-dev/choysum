@@ -88,19 +88,21 @@ export default class ExchangeRate extends BaseModel {
     return this.coerceDateKey(value);
   }
 
-  private static resolveCurrencyId(value: unknown): string {
-    if (typeof value === 'string') return value.trim();
-    if (value != null && typeof value === 'object') {
-      const rawId = (value as any).Id ?? (value as any).id;
-      if (rawId == null) return '';
-      return String(rawId).trim();
-    }
-    return '';
-  }
-
   private static async ensureUniqueTuple(values: Record<string, any>, currentId?: string): Promise<void> {
     const scopeKey = String(values.CompanyScopeKey ?? (normalizeRefId(values.CompanyId) || '__GLOBAL__'));
-    const currencyId = ExchangeRate.resolveCurrencyId(values.CurrencyId);
+    let currencyId = '';
+    const currencyRaw = values.CurrencyId;
+    if (typeof currencyRaw === 'string') {
+      currencyId = currencyRaw.trim();
+    } else if (currencyRaw != null && typeof currencyRaw === 'object') {
+      let rawId = (currencyRaw as any).Id;
+      if (rawId == null) {
+        rawId = (currencyRaw as any).id;
+      }
+      if (rawId != null) {
+        currencyId = String(rawId).trim();
+      }
+    }
     if (!currencyId) {
       fail(_t('%s is required', { scope: 'service/models/exchange_rate' }, 'CurrencyId'));
     }

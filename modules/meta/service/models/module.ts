@@ -88,12 +88,6 @@ function resolveFailureSource(err: any, result: any): any {
   return undefined;
 }
 
-function resolveOpFailureKind(status: string, resultStatus: string | undefined, err?: any): FailureKind {
-  if (status === 'cancelled') return 'NON_RETRYABLE';
-  if (status === 'failed' || resultStatus === 'FAILED') return classifyRetryability(err);
-  return 'NONE';
-}
-
 async function loadExecutionTimes(jobId: string): Promise<{ startedAt?: Date; finishedAt?: Date }> {
   if (!jobId) return {};
   const root: any = (globalThis as any)?.$choysum;
@@ -373,7 +367,16 @@ export default class MetaModule extends BaseModel {
     const nextRetryAt = retryAfterMs && (job as any)?.RunAfter ? new Date((job as any).RunAfter) : undefined;
 
     const resultStatus = result?.resultStatus || (status === 'failed' || status === 'cancelled' ? 'FAILED' : undefined);
-    const failureKind = resolveOpFailureKind(status, resultStatus, resolveFailureSource(err, result));
+    let failureKind: FailureKind = 'NONE';
+    if (status === 'cancelled') {
+      failureKind = 'NON_RETRYABLE';
+    } else if (status === 'failed') {
+      const source = resolveFailureSource(err, result);
+      failureKind = classifyRetryability(source);
+    } else if (resultStatus === 'FAILED') {
+      const source = resolveFailureSource(err, result);
+      failureKind = classifyRetryability(source);
+    }
     const summary = result?.summary || (resultStatus === 'FAILED' ? { code: 'MODULE_OPERATION_FAILED', message: err?.message } : undefined);
 
     return {
