@@ -199,3 +199,23 @@ test('partner_commercial: validateEntity Browse catch skips persisted backfill',
     (PartnerIdentifier as any).Browse = originalBrowse;
   }
 });
+
+test('partner_commercial: validateEntity assertRequiredText path for primary identifier', async () => {
+  const originalSearch = (PartnerIdentifier as any).Search;
+  (PartnerIdentifier as any).Search = async () => [];
+  try {
+    const values: Record<string, any> = {
+      PartnerId: 'partner-1',
+      CompanyId: 'company-1',
+      IdentifierType: '  TAX_ID  ',
+      Value: '  ab12  ',
+      IsPrimary: true,
+    };
+    await (PartnerIdentifier as any).validateEntity(values);
+    expect(values.IdentifierType).toBe('tax_id');
+    expect(values.Value).toBe('AB12');
+    expect(values.IsPrimary).toBe(true);
+  } finally {
+    (PartnerIdentifier as any).Search = originalSearch;
+  }
+});

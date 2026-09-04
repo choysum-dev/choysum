@@ -873,3 +873,29 @@ test('inlined owner auth coverage: probe and expr scope denials', async () => {
     }
   });
 });
+
+test('inlined owner auth coverage: numeric ids coerce through shared document bridge helpers', async () => {
+  resetRequestContext();
+  await withDocumentScope(async () => {
+    await assertOwnerWriteAuthorization({
+      stage: 'prepare',
+      ownerModel: 'auth.User',
+      ownerRecordId: 42 as any,
+      fieldName: 'Avatar',
+      operation: 'create',
+      companyId: TEST_COMPANY_ID,
+      companyIds: [99 as any, TEST_COMPANY_ID, ''],
+      userId: TEST_USER_ID,
+    });
+
+    await assertOwnerReadAuthorization({
+      stage: 'descriptor',
+      ownerModel: 'auth.User',
+      ownerRecordId: TEST_USER_ID,
+      fieldName: 'Avatar',
+      companyId: TEST_COMPANY_ID,
+      companyIds: undefined,
+      userId: TEST_USER_ID,
+    });
+  });
+});

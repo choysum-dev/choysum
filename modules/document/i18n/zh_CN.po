@@ -131,107 +131,107 @@ msgctxt "document.model.AttachmentMutationLedger.fields"
 msgid "Status"
 msgstr "状态"
 
-#: service/models/upload_session.ts:209
+#: service/models/upload_session.ts:208
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Allowed MIME Types"
 msgstr "允许的 MIME 类型"
 
-#: service/models/upload_session.ts:254
+#: service/models/upload_session.ts:253
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Attachment Content"
 msgstr "附件内容"
 
-#: service/models/upload_session.ts:96
+#: service/models/upload_session.ts:95
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Business Request"
 msgstr "业务请求"
 
-#: service/models/upload_session.ts:136
+#: service/models/upload_session.ts:135
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Checksum SHA-256"
 msgstr "SHA-256 校验和"
 
-#: service/models/upload_session.ts:268
+#: service/models/upload_session.ts:267
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Company"
 msgstr "公司"
 
-#: service/models/upload_session.ts:221
+#: service/models/upload_session.ts:220
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Expires At"
 msgstr "过期时间"
 
-#: service/models/upload_session.ts:52
+#: service/models/upload_session.ts:51
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Field Name"
 msgstr "字段名"
 
-#: service/models/upload_session.ts:82
+#: service/models/upload_session.ts:81
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Issuer User"
 msgstr "签发用户"
 
-#: service/models/upload_session.ts:187
+#: service/models/upload_session.ts:186
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Max Upload Bytes"
 msgstr "最大上传字节"
 
-#: service/models/upload_session.ts:68
+#: service/models/upload_session.ts:67
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Operation"
 msgstr "操作"
 
-#: service/models/upload_session.ts:29
+#: service/models/upload_session.ts:28
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Owner Model"
 msgstr "所属模型"
 
-#: service/models/upload_session.ts:40
+#: service/models/upload_session.ts:39
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Owner Record"
 msgstr "所属记录"
 
-#: service/models/upload_session.ts:116
+#: service/models/upload_session.ts:115
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Proposed Content Type"
 msgstr "拟议内容类型"
 
-#: service/models/upload_session.ts:106
+#: service/models/upload_session.ts:105
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Proposed File Name"
 msgstr "拟议文件名"
 
-#: service/models/upload_session.ts:125
+#: service/models/upload_session.ts:124
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Proposed Size Bytes"
 msgstr "拟议字节大小"
 
-#: service/models/upload_session.ts:200
+#: service/models/upload_session.ts:199
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Required Checksum Algorithm"
 msgstr "要求的校验算法"
 
-#: service/models/upload_session.ts:240
+#: service/models/upload_session.ts:239
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Status"
 msgstr "状态"
 
-#: service/models/upload_session.ts:156
+#: service/models/upload_session.ts:155
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Uploaded Checksum SHA-256"
 msgstr "已上传 SHA-256 校验和"
 
-#: service/models/upload_session.ts:166
+#: service/models/upload_session.ts:165
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Uploaded Content Type"
 msgstr "已上传内容类型"
 
-#: service/models/upload_session.ts:177
+#: service/models/upload_session.ts:176
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Uploaded Payload Ref"
 msgstr "已上传载荷引用"
 
-#: service/models/upload_session.ts:145
+#: service/models/upload_session.ts:144
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Uploaded Size Bytes"
 msgstr "已上传字节大小"
@@ -261,7 +261,7 @@ msgctxt "document.model.StoredContent.fields"
 msgid "Status"
 msgstr "状态"
 
-#: service/models/_attachment_binding_codec.ts:291
+#: service/models/_attachment_binding_codec.ts:283
 msgctxt "service/models/_attachment_binding_codec"
 msgid "Attachment resource company scope mismatch"
 msgstr "附件资源的公司范围不匹配"
@@ -276,7 +276,7 @@ msgctxt "service/models/_attachment_binding_codec"
 msgid "attachmentBindingIds must be an array"
 msgstr "attachmentBindingIds 必须是数组"
 
-#: service/models/_attachment_binding_codec.ts:154
+#: service/models/_attachment_binding_codec.ts:146
 msgctxt "service/models/_attachment_binding_codec"
 msgid "downloadDisposition must be inline or attachment"
 msgstr "downloadDisposition 必须是 inline 或 attachment"
@@ -331,67 +331,72 @@ msgctxt "service/models/_document_bridge"
 msgid "activeCompanyId is required for document operations"
 msgstr "文档操作需要 activeCompanyId"
 
-#: service/models/_owner_authorization.ts:307
+#: service/models/_document_bridge.ts:98
+msgctxt "service/models/_document_bridge"
+msgid "principal.enabledCompanyIds must be an array"
+msgstr "principal.enabledCompanyIds 必须是数组"
+
+#: service/models/_owner_authorization.ts:295
 msgctxt "service/models/_owner_authorization"
 msgid "%s is required"
 msgstr "%s 为必填项"
 
-#: service/models/_owner_authorization.ts:201
+#: service/models/_owner_authorization.ts:202
 msgctxt "service/models/_owner_authorization"
 msgid "auth service is unavailable for owner authorization check"
 msgstr "所有者授权检查时认证服务不可用"
 
-#: service/models/_owner_authorization.ts:190
+#: service/models/_owner_authorization.ts:191
 msgctxt "service/models/_owner_authorization"
 msgid "failed to fetch owner field rule spec"
 msgstr "获取所有者字段规则规格失败"
 
-#: service/models/_owner_authorization.ts:176
+#: service/models/_owner_authorization.ts:177
 msgctxt "service/models/_owner_authorization"
 msgid "failed to fetch owner record rule condition"
 msgstr "获取所有者记录规则条件失败"
 
-#: service/models/_owner_authorization.ts:147
+#: service/models/_owner_authorization.ts:148
 msgctxt "service/models/_owner_authorization"
 msgid "owner field read is denied by field rule"
 msgstr "所有者字段读取被字段规则拒绝"
 
-#: service/models/_owner_authorization.ts:87
+#: service/models/_owner_authorization.ts:88
 msgctxt "service/models/_owner_authorization"
 msgid "owner field write is denied by field rule"
 msgstr "所有者字段写入被字段规则拒绝"
 
-#: service/models/_owner_authorization.ts:135
+#: service/models/_owner_authorization.ts:136
 msgctxt "service/models/_owner_authorization"
 msgid "owner read is denied by record rule"
 msgstr "所有者读取被记录规则拒绝"
 
-#: service/models/_owner_authorization.ts:159
+#: service/models/_owner_authorization.ts:160
 msgctxt "service/models/_owner_authorization"
 msgid "owner read target is not allowed by record rule scope"
 msgstr "所有者读取目标不在记录规则范围内"
 
-#: service/models/_owner_authorization.ts:261
+#: service/models/_owner_authorization.ts:262
 msgctxt "service/models/_owner_authorization"
 msgid "owner record rule contains invalid token mapping"
 msgstr "所有者记录规则包含无效的令牌映射"
 
-#: service/models/_owner_authorization.ts:217
+#: service/models/_owner_authorization.ts:218
 msgctxt "service/models/_owner_authorization"
 msgid "owner target is not readable"
 msgstr "所有者目标不可读"
 
-#: service/models/_owner_authorization.ts:76
+#: service/models/_owner_authorization.ts:77
 msgctxt "service/models/_owner_authorization"
 msgid "owner write is denied by record rule"
 msgstr "所有者写入被记录规则拒绝"
 
-#: service/models/_owner_authorization.ts:109
+#: service/models/_owner_authorization.ts:110
 msgctxt "service/models/_owner_authorization"
 msgid "owner write target is not allowed by record rule scope"
 msgstr "所有者写入目标不在记录规则范围内"
 
-#: service/models/_owner_authorization.ts:97
+#: service/models/_owner_authorization.ts:98
 msgctxt "service/models/_owner_authorization"
 msgid "ownerRecordId is required for owner write check"
 msgstr "所有者写入检查需要 ownerRecordId"

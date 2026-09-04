@@ -68,18 +68,20 @@ export function normalizeLooseOptionalText(value: unknown): string | undefined {
 
 /**
  * Build a deduplicated company-id list, always including the active company when present.
+ * Finite numeric ids are coerced to strings (same as {@link normalizeLooseOptionalText}).
  */
 export function normalizeCompanyIdList(value: unknown, activeCompanyId: string): string[] {
   const out: string[] = [];
   if (Array.isArray(value)) {
     for (const item of value) {
-      const text = normalizeOptionalString(item);
+      const text = normalizeLooseOptionalText(item);
       if (text) out.push(text);
     }
   }
-  const normalizedActive = normalizeOptionalString(activeCompanyId);
-  if (out.length === 0 && normalizedActive) out.push(normalizedActive);
-  if (normalizedActive && !out.includes(normalizedActive)) out.unshift(normalizedActive);
+  const normalizedActive = normalizeLooseOptionalText(activeCompanyId);
+  if (normalizedActive && !out.includes(normalizedActive)) {
+    out.unshift(normalizedActive);
+  }
   return Array.from(new Set(out));
 }
 
@@ -92,7 +94,7 @@ export function assertPrincipal(raw: unknown): PrincipalContext {
   let enabledCompanyIds: string[] | undefined;
   if (rawEnabledCompanyIds !== undefined && rawEnabledCompanyIds !== null) {
     if (!Array.isArray(rawEnabledCompanyIds)) {
-      throwDocumentError(
+      throw throwDocumentError(
         DocumentErrCode.INVALID_ARGUMENT,
         _t('principal.enabledCompanyIds must be an array', { scope: 'service/models/_document_bridge' }),
         GrpcCode.InvalidArgument,

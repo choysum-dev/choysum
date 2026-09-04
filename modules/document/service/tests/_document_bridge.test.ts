@@ -2,7 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ChoysumError } from '@/core/service/error';
-import { requireText, requireUserId, requireCompanyId, assertPrincipal } from '../models/_document_bridge';
+import {
+  requireText,
+  requireUserId,
+  requireCompanyId,
+  assertPrincipal,
+  normalizeLooseOptionalText,
+  normalizeCompanyIdList,
+} from '../models/_document_bridge';
 
 test('document._document_bridge: requireText returns trimmed string for valid input', () => {
   expect(requireText('  hello  ', 'testField')).toBe('hello');
@@ -138,4 +145,30 @@ test('document._document_bridge: assertPrincipal throws for missing activeCompan
   }
   expect(caught).toBeDefined();
   expect(caught!.code).toBe('INVALID_ARGUMENT');
+});
+
+test('document._document_bridge: assertPrincipal treats null enabledCompanyIds as undefined', () => {
+  const principal = assertPrincipal({
+    userId: 'usr_test',
+    activeCompanyId: 'cmp_test',
+    enabledCompanyIds: null,
+  });
+  expect(principal.enabledCompanyIds).toBeUndefined();
+});
+
+test('document._document_bridge: normalizeLooseOptionalText coerces finite numbers', () => {
+  expect(normalizeLooseOptionalText(42)).toBe('42');
+  expect(normalizeLooseOptionalText(0)).toBe('0');
+  expect(normalizeLooseOptionalText(Number.NaN)).toBeUndefined();
+  expect(normalizeLooseOptionalText(Number.POSITIVE_INFINITY)).toBeUndefined();
+  expect(normalizeLooseOptionalText('  text  ')).toBe('text');
+  expect(normalizeLooseOptionalText(undefined)).toBeUndefined();
+});
+
+test('document._document_bridge: normalizeCompanyIdList dedupes and prepends active company', () => {
+  expect(normalizeCompanyIdList(['cmp_b', '', 'cmp_a'], 'cmp_active')).toEqual(['cmp_active', 'cmp_b', 'cmp_a']);
+  expect(normalizeCompanyIdList(['cmp_active', 'cmp_b'], 'cmp_active')).toEqual(['cmp_active', 'cmp_b']);
+  expect(normalizeCompanyIdList(undefined, 'cmp_only')).toEqual(['cmp_only']);
+  expect(normalizeCompanyIdList([42, 'cmp_b'], 'cmp_active')).toEqual(['cmp_active', '42', 'cmp_b']);
+  expect(normalizeCompanyIdList('not-an-array', '')).toEqual([]);
 });

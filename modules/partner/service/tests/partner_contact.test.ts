@@ -119,10 +119,34 @@ test('partner_contact: validateEntity trims Title/Department lang maps', async (
     PartnerId: 'p-1',
     CompanyId: 'c-1',
     Name: 'Jane',
+    AddressType: 'BILLING',
     Title: { en_US: ' VP ', zh_CN: ' 经理 ' },
     Department: { en_US: ' Sales ' },
   };
   await (PartnerContact as any).validateEntity(values, undefined);
   expect(values.Title).toEqual({ en_US: 'VP', zh_CN: '经理' });
   expect(values.Department).toEqual({ en_US: 'Sales' });
+  expect(values.AddressType).toBe('billing');
+});
+
+test('partner_contact: validateEntity backfills AddressType from persisted row', async () => {
+  const originalBrowse = (PartnerContact as any).Browse;
+  (PartnerContact as any).Browse = async () => ({
+    PartnerId: { Id: 'p-persisted' },
+    CompanyId: 'c-persisted',
+    AddressType: 'shipping',
+    AddressId: 'addr-persisted',
+  });
+  try {
+    const values: Record<string, any> = {
+      Name: 'Backfill',
+    };
+    await (PartnerContact as any).validateEntity(values, 'contact-1');
+    expect(values.PartnerId).toBe('p-persisted');
+    expect(values.CompanyId).toBe('c-persisted');
+    expect(values.AddressType).toBe('shipping');
+    expect(values.AddressId).toBe('addr-persisted');
+  } finally {
+    (PartnerContact as any).Browse = originalBrowse;
+  }
 });
