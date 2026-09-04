@@ -304,18 +304,10 @@ export default class MetaModuleIndex extends BaseModel {
   }
 
   static async RequestSync(params: RequestSyncParams = {}): Promise<string> {
+    const originType = originTypeOrAll(params.originType);
     const force = !!params.force;
     const ifStale = !!params.ifStale;
     if (!force && !ifStale) return '';
-    return await this.requestSyncWithOrigin(params, force, ifStale);
-  }
-
-  private static async requestSyncWithOrigin(
-    params: RequestSyncParams,
-    force: boolean,
-    ifStale: boolean
-  ): Promise<string> {
-    const originType = originTypeOrAll(params.originType);
 
     if (ifStale && !force && isTruthyFlag(getBackendEnvText('CHOYSUM_E2E_SKIP_INDEX_STALE_SYNC', 'choysum_e2e_skip_index_stale_sync'))) {
       return '';

@@ -377,12 +377,13 @@ export default class MetaModule extends BaseModel {
 
     const resultStatus = result?.resultStatus || (status === 'failed' || status === 'cancelled' ? 'FAILED' : undefined);
     const summary = result?.summary || (resultStatus === 'FAILED' ? { code: 'MODULE_OPERATION_FAILED', message: err?.message } : undefined);
+    const failureKind = resolveOpFailureKind(status, resultStatus, err, result);
 
     return {
       status,
       summary,
       resultStatus,
-      failureKind: resolveOpFailureKind(status, resultStatus, err, result),
+      failureKind,
       createdAt: (job as any)?.CreatedAt,
       startedAt: exec?.startedAt,
       finishedAt: (job as any)?.FinishedAt || exec?.finishedAt,
