@@ -41,15 +41,11 @@ export type EnqueueRecordExportResult = {
   taskJobId: string;
 };
 
-function assertSelection(value: string | undefined, allowed: Set<string>, label: string): string {
-  const normalized = String(value ?? '').trim();
-  if (!normalized) {
-    throw new Error(`data transfer ${label} is required`);
+function assertSelection(value: string, allowed: Set<string>, label: string): string {
+  if (!allowed.has(value)) {
+    throw new Error(`unsupported data transfer ${label} ${JSON.stringify(value)}`);
   }
-  if (!allowed.has(normalized)) {
-    throw new Error(`unsupported data transfer ${label} ${JSON.stringify(normalized)}`);
-  }
-  return normalized;
+  return value;
 }
 
 /**

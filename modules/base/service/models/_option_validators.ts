@@ -6,8 +6,6 @@ import { normalizeOptionalString } from '@/core/service/utils/normalization';
 import { fail } from './_base_bridge';
 
 const { _t } = createTranslate('base');
-const scope = 'service/models/_option_validators';
-
 function assertEnumMember<T extends string>(
   value: unknown,
   allowed: readonly T[],
@@ -27,7 +25,7 @@ function assertEnumMember<T extends string>(
  * Undefined means omitted; null/empty means cleared; invalid values fail.
  */
 export function assertDirection(value: unknown): 'ltr' | 'rtl' | null | undefined {
-  return assertEnumMember(value, ['ltr', 'rtl'] as const, _t('Direction must be ltr or rtl', { scope }));
+  return assertEnumMember(value, ['ltr', 'rtl'] as const, _t('Direction must be ltr or rtl', { scope: 'service/models/_option_validators' }));
 }
 
 /**
@@ -38,7 +36,7 @@ export function assertCurrencySymbolPosition(value: unknown): 'before' | 'after'
   return assertEnumMember(
     value,
     ['before', 'after'] as const,
-    _t('CurrencySymbolPosition must be before or after', { scope })
+    _t('CurrencySymbolPosition must be before or after', { scope: 'service/models/_option_validators' })
   );
 }
 
@@ -50,7 +48,7 @@ export function assertCurrencySymbolSpacing(value: unknown): boolean | null | un
   if (value === undefined) return undefined;
   if (value === null || value === '') return null;
   if (typeof value === 'boolean') return value;
-  fail(_t('CurrencySymbolSpacing must be a boolean', { scope }));
+  fail(_t('CurrencySymbolSpacing must be a boolean', { scope: 'service/models/_option_validators' }));
 }
 
 /**
@@ -61,7 +59,7 @@ export function assertRatePolicyMode(value: unknown): 'exact' | 'latest_before' 
   return assertEnumMember(
     value,
     ['exact', 'latest_before'] as const,
-    _t('RatePolicy.Mode must be exact or latest_before', { scope })
+    _t('RatePolicy.Mode must be exact or latest_before', { scope: 'service/models/_option_validators' })
   );
 }
 
@@ -73,6 +71,6 @@ export function assertRoundingMode(value: unknown): 'currency' | 'none' | null |
   return assertEnumMember(
     value,
     ['currency', 'none'] as const,
-    _t('Rounding.Mode must be currency or none', { scope })
+    _t('Rounding.Mode must be currency or none', { scope: 'service/models/_option_validators' })
   );
 }

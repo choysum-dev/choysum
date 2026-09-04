@@ -162,7 +162,8 @@ export async function nextSequence(
   params: SequenceNextParams
 ): Promise<SequenceNextResult> {
   const code = assertCodeRequired(params?.Code, { uppercase: false });
-  const count = assertCount(params?.Count ?? 1);
+  const countRaw = params?.Count;
+  const count = assertCount(countRaw === undefined || countRaw === null ? 1 : countRaw);
   const idemKey = assertIdempotencyKey(params?.IdempotencyKey);
   const dryRun = params?.DryRun === true;
 

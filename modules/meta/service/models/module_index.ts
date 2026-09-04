@@ -306,7 +306,10 @@ export default class MetaModuleIndex extends BaseModel {
     const force = !!params.force;
     const ifStale = !!params.ifStale;
     if (!force && !ifStale) return '';
-    const originType = assertOriginType(params.originType ?? 'all');
+    const requestedOrigin = params.originType;
+    const originType = assertOriginType(
+      requestedOrigin === undefined || requestedOrigin === null ? 'all' : requestedOrigin
+    );
 
     if (ifStale && !force && isTruthyFlag(getBackendEnvText('CHOYSUM_E2E_SKIP_INDEX_STALE_SYNC', 'choysum_e2e_skip_index_stale_sync'))) {
       return '';
@@ -377,7 +380,9 @@ export default class MetaModuleIndex extends BaseModel {
     if (typeof syncIndex !== 'function') {
       throw new Error('moduleManagement.syncIndex is not implemented');
     }
-    const normalizedOriginType = assertOriginType(originType ?? 'all');
+    const normalizedOriginType = assertOriginType(
+      originType === undefined || originType === null ? 'all' : originType
+    );
     return await syncIndex({ originType: normalizedOriginType, force: !!force });
   }
 }

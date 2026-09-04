@@ -659,82 +659,82 @@ msgctxt "meta.model.MetaModuleDependency.fields"
 msgid "Module"
 msgstr ""
 
-#: service/models/module_index.ts:83
+#: service/models/module_index.ts:88
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Available"
 msgstr ""
 
-#: service/models/module_index.ts:98
+#: service/models/module_index.ts:103
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Batch Synced At"
 msgstr ""
 
-#: service/models/module_index.ts:104
+#: service/models/module_index.ts:109
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Error Message"
 msgstr ""
 
-#: service/models/module_index.ts:146
+#: service/models/module_index.ts:151
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Install Status"
 msgstr ""
 
-#: service/models/module_index.ts:163
+#: service/models/module_index.ts:168
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Installed Version"
 msgstr ""
 
-#: service/models/module_index.ts:95
+#: service/models/module_index.ts:100
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Last Synced At"
 msgstr ""
 
-#: service/models/module_index.ts:92
+#: service/models/module_index.ts:97
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Local Path"
 msgstr ""
 
-#: service/models/module_index.ts:122
+#: service/models/module_index.ts:127
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Local Version"
 msgstr ""
 
-#: service/models/module_index.ts:89
+#: service/models/module_index.ts:94
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Manifest JSON"
 msgstr ""
 
-#: service/models/module_index.ts:74
+#: service/models/module_index.ts:79
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Module Name"
 msgstr ""
 
-#: service/models/module_index.ts:80
+#: service/models/module_index.ts:85
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Origin Ref"
 msgstr ""
 
-#: service/models/module_index.ts:77
+#: service/models/module_index.ts:82
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Origin Type"
 msgstr ""
 
-#: service/models/module_index.ts:110
+#: service/models/module_index.ts:115
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Origin Types"
 msgstr ""
 
-#: service/models/module_index.ts:134
+#: service/models/module_index.ts:139
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Registry Version"
 msgstr ""
 
-#: service/models/module_index.ts:101
+#: service/models/module_index.ts:106
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Sync Revision"
 msgstr ""
 
-#: service/models/module_index.ts:86
+#: service/models/module_index.ts:91
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Version"
 msgstr ""
@@ -1148,12 +1148,6 @@ msgstr ""
 #: service/models/module.ts:246
 msgctxt "service/models/module"
 msgid "plan was regenerated from the latest module state"
-msgstr ""
-
-#: service/models/module_index.ts:306
-#: service/models/module_index.ts:380
-msgctxt "service/models/module_index"
-msgid "originType must be one of: local, registry, all"
 msgstr ""
 
 #: service/models/ui_resource.ts:108

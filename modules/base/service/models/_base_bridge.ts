@@ -13,8 +13,6 @@ import {
 
 const { _t } = createTranslate('base');
 const bridge = createDomainNormalizationBridge('base', _t);
-const scope = 'service/models/_base_bridge';
-
 /** Throw a base-domain InvalidArgument error. */
 export const fail = bridge.fail;
 
@@ -36,7 +34,7 @@ export const normalizeNullableString = normalizeNullableStringCore;
 export function assertCodeRequired(value: any, opts?: { uppercase?: boolean }): string {
   return mapNormalizationToBase(
     () => normalizeCodeRequiredCore(value, opts),
-    () => _t('Code is required', { scope })
+    () => _t('Code is required', { scope: 'service/models/_base_bridge' })
   );
 }
 
@@ -46,7 +44,7 @@ export function assertCodeRequired(value: any, opts?: { uppercase?: boolean }): 
 export function assertName(value: any): string {
   return mapNormalizationToBase(
     () => normalizeNameCore(value),
-    () => _t('Name is required', { scope })
+    () => _t('Name is required', { scope: 'service/models/_base_bridge' })
   );
 }
 
@@ -56,6 +54,6 @@ export function assertName(value: any): string {
 export function assertRefId(value: unknown, fieldName: string): string {
   return mapNormalizationToBase(
     () => requireRefIdCore(value),
-    () => _t('%s is required', { scope }, fieldName)
+    () => _t('%s is required', { scope: 'service/models/_base_bridge' }, fieldName)
   );
 }

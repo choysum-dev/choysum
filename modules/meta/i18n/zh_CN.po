@@ -651,82 +651,82 @@ msgctxt "meta.model.MetaModuleDependency.fields"
 msgid "Module"
 msgstr "模块"
 
-#: service/models/module_index.ts:83
+#: service/models/module_index.ts:88
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Available"
 msgstr "可用"
 
-#: service/models/module_index.ts:98
+#: service/models/module_index.ts:103
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Batch Synced At"
 msgstr "批次同步时间"
 
-#: service/models/module_index.ts:104
+#: service/models/module_index.ts:109
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Error Message"
 msgstr "错误信息"
 
-#: service/models/module_index.ts:146
+#: service/models/module_index.ts:151
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Install Status"
 msgstr "安装状态"
 
-#: service/models/module_index.ts:163
+#: service/models/module_index.ts:168
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Installed Version"
 msgstr "已装版本"
 
-#: service/models/module_index.ts:95
+#: service/models/module_index.ts:100
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Last Synced At"
 msgstr "最近同步时间"
 
-#: service/models/module_index.ts:92
+#: service/models/module_index.ts:97
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Local Path"
 msgstr "本地路径"
 
-#: service/models/module_index.ts:122
+#: service/models/module_index.ts:127
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Local Version"
 msgstr "本地版本"
 
-#: service/models/module_index.ts:89
+#: service/models/module_index.ts:94
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Manifest JSON"
 msgstr "清单 JSON"
 
-#: service/models/module_index.ts:74
+#: service/models/module_index.ts:79
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Module Name"
 msgstr "模块名"
 
-#: service/models/module_index.ts:80
+#: service/models/module_index.ts:85
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Origin Ref"
 msgstr "来源标识"
 
-#: service/models/module_index.ts:77
+#: service/models/module_index.ts:82
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Origin Type"
 msgstr "来源类型"
 
-#: service/models/module_index.ts:110
+#: service/models/module_index.ts:115
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Origin Types"
 msgstr "来源类型"
 
-#: service/models/module_index.ts:134
+#: service/models/module_index.ts:139
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Registry Version"
 msgstr "仓库版本"
 
-#: service/models/module_index.ts:101
+#: service/models/module_index.ts:106
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Sync Revision"
 msgstr "同步版本"
 
-#: service/models/module_index.ts:86
+#: service/models/module_index.ts:91
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Version"
 msgstr "版本"
@@ -1140,11 +1140,6 @@ msgstr "moduleName 不能为空"
 msgctxt "service/models/module"
 msgid "plan was regenerated from the latest module state"
 msgstr "计划已根据最新模块状态重新生成"
-
-#: service/models/module_index.ts:306 service/models/module_index.ts:380
-msgctxt "service/models/module_index"
-msgid "originType must be one of: local, registry, all"
-msgstr "originType 必须是 local、registry 或 all"
 
 #: service/models/ui_resource.ts:108
 msgctxt "service/models/ui_resource"
@@ -1680,3 +1675,7 @@ msgstr "结果"
 msgctxt "web/views/ModuleLogListView"
 msgid "Started At"
 msgstr "开始时间"
+
+#~ msgctxt "service/models/module_index"
+#~ msgid "originType must be one of: local, registry, all"
+#~ msgstr "originType 必须是 local、registry 或 all"

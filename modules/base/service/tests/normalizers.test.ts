@@ -13,6 +13,7 @@ import {
   assertDirection,
   assertName,
   assertRatePolicyMode,
+  assertRefId,
   assertRoundingMode,
 } from '@/base/service/models/_normalizers';
 
@@ -137,6 +138,13 @@ test('base._normalizers: assertName null/undefined throws', () => {
   expect(() => assertName(undefined)).toThrow();
 });
 
+test('base._normalizers: assertRefId resolves id and rejects empty', () => {
+  expect(assertRefId('c1', 'CurrencyId')).toBe('c1');
+  expect(assertRefId({ Id: 'c2' }, 'CurrencyId')).toBe('c2');
+  expect(() => assertRefId('', 'CurrencyId')).toThrow(/CurrencyId/);
+  expect(() => assertRefId({ Id: '' }, 'CurrencyId')).toThrow(/CurrencyId/);
+});
+
 // ---------------------------------------------------------------------------
 // option validators (from _option_validators via _normalizers barrel)
 // ---------------------------------------------------------------------------
@@ -161,10 +169,31 @@ test('base._normalizers: assertCurrencySymbolPosition does not wash empty to bef
   expect(assertCurrencySymbolPosition('')).toBeNull();
 });
 
-test('base._normalizers: assertCurrencySymbolSpacing rejects non-boolean', () => {
-  expect(() => assertCurrencySymbolSpacing('yes')).toThrow('CurrencySymbolSpacing must be a boolean');
+test('base._normalizers: assertCurrencySymbolSpacing allows omit and clear', () => {
+  expect(assertCurrencySymbolSpacing(undefined)).toBeUndefined();
+  expect(assertCurrencySymbolSpacing(null)).toBeNull();
+  expect(assertCurrencySymbolSpacing('')).toBeNull();
+});
+
+test('base._normalizers: assertCurrencySymbolSpacing accepts boolean and rejects non-boolean', () => {
   expect(assertCurrencySymbolSpacing(true)).toBe(true);
   expect(assertCurrencySymbolSpacing(false)).toBe(false);
+  expect(() => assertCurrencySymbolSpacing('yes')).toThrow('CurrencySymbolSpacing must be a boolean');
+});
+
+test('base._normalizers: assertDirection rejects whitespace-only', () => {
+  expect(() => assertDirection('   ')).toThrow('Direction must be ltr or rtl');
+});
+
+test('base._normalizers: assertRatePolicyMode allows clear', () => {
+  expect(assertRatePolicyMode(null)).toBeNull();
+  expect(assertRatePolicyMode('')).toBeNull();
+  expect(assertRatePolicyMode('exact')).toBe('exact');
+});
+
+test('base._normalizers: assertRoundingMode allows clear and accepts currency', () => {
+  expect(assertRoundingMode(null)).toBeNull();
+  expect(assertRoundingMode('currency')).toBe('currency');
 });
 
 test('base._normalizers: assertRatePolicyMode invalid throws', () => {
