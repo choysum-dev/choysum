@@ -691,6 +691,30 @@ test('meta.MetaModule GetOpStatus classifies ResultJson lock conflicts without L
   expect(status.failureKind).toBe('RETRYABLE');
   expect(status.errorDomain).toBe('meta.lock');
   expect(status.errorCode).toBe('LEASE_CONFLICT');
+
+  // FAILED with no LastErrorJson and no ResultJson error fields → pickErrString(null).
+  await (Job as any).UpdateById(
+    job.Id as any,
+    {
+      Status: 'failed',
+      LastErrorJson: null,
+      ResultJson: { resultStatus: 'FAILED' },
+    } as any
+  );
+  const emptySource = await MetaModule.GetOpStatus(job.Id as any);
+  expect(emptySource.failureKind).toBe('NON_RETRYABLE');
+
+  // ResultJson carries only errorCode (no domain) for resolveFailureSource code branch.
+  await (Job as any).UpdateById(
+    job.Id as any,
+    {
+      Status: 'failed',
+      LastErrorJson: null,
+      ResultJson: { resultStatus: 'FAILED', errorCode: 'ONLY_CODE' },
+    } as any
+  );
+  const codeOnlyPath = await MetaModule.GetOpStatus(job.Id as any);
+  expect(codeOnlyPath.failureKind).toBe('NON_RETRYABLE');
 });
 
 test('meta.MetaModule GetOpStatus maps mismatched lock codes as non-retryable', async () => {

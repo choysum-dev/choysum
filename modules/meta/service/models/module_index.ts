@@ -307,7 +307,6 @@ export default class MetaModuleIndex extends BaseModel {
     const force = !!params.force;
     const ifStale = !!params.ifStale;
     if (!force && !ifStale) return '';
-    // istanbul ignore next
     const originType = originTypeOrAll(params.originType);
 
     if (ifStale && !force && isTruthyFlag(getBackendEnvText('CHOYSUM_E2E_SKIP_INDEX_STALE_SYNC', 'choysum_e2e_skip_index_stale_sync'))) {
@@ -379,7 +378,6 @@ export default class MetaModuleIndex extends BaseModel {
     if (typeof syncIndex !== 'function') {
       throw new Error('moduleManagement.syncIndex is not implemented');
     }
-    // istanbul ignore next
     const normalizedOriginType = originTypeOrAll(originType);
     return await syncIndex({ originType: normalizedOriginType, force: !!force });
   }

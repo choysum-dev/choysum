@@ -126,6 +126,22 @@ test('base.exchange_rate: validates DateString and positive Rate', async () => {
       }
       expect(missingCurrencyNull instanceof ChoysumError).toBe(true);
 
+      let missingCurrencyNumber: unknown;
+      try {
+        await (ExchangeRate as any).ensureUniqueTuple(
+          {
+            CompanyId: (company as any).Id,
+            CompanyScopeKey: String((company as any).Id),
+            CurrencyId: 0,
+            Date: '2026-01-02',
+          },
+          undefined
+        );
+      } catch (err) {
+        missingCurrencyNumber = err;
+      }
+      expect(missingCurrencyNumber instanceof ChoysumError).toBe(true);
+
       let missingCurrencyObj: unknown;
       try {
         await (ExchangeRate as any).ensureUniqueTuple(

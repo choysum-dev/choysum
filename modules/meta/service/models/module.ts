@@ -81,6 +81,13 @@ function classifyRetryability(err?: any): FailureKind {
   return 'NON_RETRYABLE';
 }
 
+function resolveFailureSource(err: any, result: any): any {
+  if (err != null) return err;
+  if (pickErrString(result, 'domain', 'errorDomain')) return result;
+  if (pickErrString(result, 'code', 'errorCode')) return result;
+  return undefined;
+}
+
 function resolveOpFailureKind(status: string, resultStatus: string | undefined, err?: any): FailureKind {
   if (status === 'cancelled') return 'NON_RETRYABLE';
   if (status === 'failed' || resultStatus === 'FAILED') return classifyRetryability(err);
@@ -366,14 +373,8 @@ export default class MetaModule extends BaseModel {
     const nextRetryAt = retryAfterMs && (job as any)?.RunAfter ? new Date((job as any).RunAfter) : undefined;
 
     const resultStatus = result?.resultStatus || (status === 'failed' || status === 'cancelled' ? 'FAILED' : undefined);
-    // istanbul ignore next
-    // Prefer LastErrorJson; fall back to ResultJson fields from logical executeModuleOp failures.
-    const failureKind = resolveOpFailureKind(status, resultStatus, err ?? result);
-    const summary =
-      result?.summary ||
-      (resultStatus === 'FAILED'
-        ? { code: 'MODULE_OPERATION_FAILED', message: err?.message || result?.errorMessage }
-        : undefined);
+    const failureKind = resolveOpFailureKind(status, resultStatus, resolveFailureSource(err, result));
+    const summary = result?.summary || (resultStatus === 'FAILED' ? { code: 'MODULE_OPERATION_FAILED', message: err?.message } : undefined);
 
     return {
       status,

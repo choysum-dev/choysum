@@ -100,7 +100,6 @@ export default class ExchangeRate extends BaseModel {
 
   private static async ensureUniqueTuple(values: Record<string, any>, currentId?: string): Promise<void> {
     const scopeKey = String(values.CompanyScopeKey ?? (normalizeRefId(values.CompanyId) || '__GLOBAL__'));
-    // istanbul ignore next
     const currencyId = ExchangeRate.resolveCurrencyId(values.CurrencyId);
     if (!currencyId) {
       fail(_t('%s is required', { scope: 'service/models/exchange_rate' }, 'CurrencyId'));
