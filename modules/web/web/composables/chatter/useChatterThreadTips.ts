@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { onBeforeUnmount, watch, type Ref } from 'vue';
+import { onScopeDispose, watch, type Ref } from 'vue';
 import { onTips, subscribeThread } from '@/core/web/tip';
 
 const POLL_FALLBACK_MS = 30_000;
@@ -63,7 +63,8 @@ export function useChatterThreadTips(
     void startTips();
   }, { immediate: true });
 
-  onBeforeUnmount(() => {
+  // onScopeDispose works in component setup and standalone effectScope (unit tests).
+  onScopeDispose(() => {
     stopTips();
   });
 }
