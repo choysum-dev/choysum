@@ -180,6 +180,7 @@ test('authz helpers parse condition envelope for true/false/expr and reject inva
   ).toEqual({
     kind: 'expr',
     expr: ['DeletedAt', '=', null],
+    reason: undefined,
   });
 
   expectParseEnvelopeThrow({
