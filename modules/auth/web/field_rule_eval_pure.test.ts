@@ -3,18 +3,18 @@
 
 import { describe, test, expect } from 'vitest';
 
-function normalizeFieldPerm(v: any): 'allow' | 'deny' | null {
+function assertFieldPerm(v: any): 'allow' | 'deny' | null {
   if (v == null) return null;
   if (typeof v === 'object') {
     const raw = (v as any)?.value ?? (v as any)?.Value ?? (v as any)?.id ?? (v as any)?.Id;
-    if (raw != null && raw !== v) return normalizeFieldPerm(raw);
+    if (raw != null && raw !== v) return assertFieldPerm(raw);
   }
   const s = String(v ?? '')
     .trim()
     .toLowerCase();
   if (!s) return null;
   if (s === 'allow' || s === 'deny') return s;
-  return null;
+  throw new Error("invalid field rule permission: must be 'allow' or 'deny'");
 }
 
 function pickField(obj: any, keys: string[]): any {
@@ -36,31 +36,31 @@ function pickField(obj: any, keys: string[]): any {
   return undefined;
 }
 
-describe('normalizeFieldPerm', () => {
+describe('assertFieldPerm', () => {
   test('returns null for null/undefined', () => {
-    expect(normalizeFieldPerm(null)).toBeNull();
-    expect(normalizeFieldPerm(undefined)).toBeNull();
+    expect(assertFieldPerm(null)).toBeNull();
+    expect(assertFieldPerm(undefined)).toBeNull();
   });
 
   test('returns allow/deny for string input', () => {
-    expect(normalizeFieldPerm('allow')).toBe('allow');
-    expect(normalizeFieldPerm('deny')).toBe('deny');
-    expect(normalizeFieldPerm('  ALLOW  ')).toBe('allow');
+    expect(assertFieldPerm('allow')).toBe('allow');
+    expect(assertFieldPerm('deny')).toBe('deny');
+    expect(assertFieldPerm('  ALLOW  ')).toBe('allow');
   });
 
   test('returns null for unrecognized string', () => {
-    expect(normalizeFieldPerm('maybe')).toBeNull();
-    expect(normalizeFieldPerm('')).toBeNull();
+    expect(() => assertFieldPerm('maybe')).toThrow(/allow|deny/);
+    expect(assertFieldPerm('')).toBeNull();
   });
 
   test('unwraps objects with value/Value/id/Id', () => {
-    expect(normalizeFieldPerm({ value: 'allow' })).toBe('allow');
-    expect(normalizeFieldPerm({ Value: 'deny' })).toBe('deny');
-    expect(normalizeFieldPerm({ id: 'allow' })).toBe('allow');
+    expect(assertFieldPerm({ value: 'allow' })).toBe('allow');
+    expect(assertFieldPerm({ Value: 'deny' })).toBe('deny');
+    expect(assertFieldPerm({ id: 'allow' })).toBe('allow');
   });
 
   test('returns null for unrecognized object', () => {
-    expect(normalizeFieldPerm({})).toBeNull();
+    expect(assertFieldPerm({})).toBeNull();
   });
 });
 

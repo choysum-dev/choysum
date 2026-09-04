@@ -2,27 +2,27 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Backward-compatible re-export barrel.
+ * Re-export barrel for base domain bridge helpers and option validators.
  *
- * Generic normalization bridge → ./_normalization_bridge
- * Enum/option validators      → ./_option_normalizers
+ * Generic domain bridge → ./_base_bridge
+ * Enum/option validators → ./_option_validators
  */
 
 export {
   fail,
   mapNormalizationToBase,
-  normalizeCodeRequired,
+  assertCodeRequired,
   normalizeCodeOptional,
-  normalizeName,
+  assertName,
   normalizeNullableString,
-  normalizeRequiredTranslatedText,
-  requireRefId,
-} from './_normalization_bridge';
+  assertRequiredTranslatedText,
+  assertRefId,
+} from './_base_bridge';
 
 export {
-  normalizeCurrencySymbolPosition,
-  normalizeCurrencySymbolSpacing,
-  normalizeDirection,
-  normalizeRatePolicyMode,
-  normalizeRoundingMode,
-} from './_option_normalizers';
+  assertCurrencySymbolPosition,
+  assertCurrencySymbolSpacing,
+  assertDirection,
+  assertRatePolicyMode,
+  assertRoundingMode,
+} from './_option_validators';

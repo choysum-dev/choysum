@@ -7,12 +7,13 @@ import {
   fail,
   mapNormalizationToBase,
   normalizeCodeOptional,
-  normalizeCodeRequired,
-  normalizeCurrencySymbolPosition,
-  normalizeDirection,
-  normalizeName,
-  normalizeRatePolicyMode,
-  normalizeRoundingMode,
+  assertCodeRequired,
+  assertCurrencySymbolPosition,
+  assertCurrencySymbolSpacing,
+  assertDirection,
+  assertName,
+  assertRatePolicyMode,
+  assertRoundingMode,
 } from '@/base/service/models/_normalizers';
 
 // ---------------------------------------------------------------------------
@@ -73,25 +74,25 @@ test('base._normalizers: mapNormalizationToBase passes through non-normalization
 });
 
 // ---------------------------------------------------------------------------
-// normalizeCodeRequired
+// assertCodeRequired
 // ---------------------------------------------------------------------------
 
-test('base._normalizers: normalizeCodeRequired trim + uppercase', () => {
-  expect(normalizeCodeRequired('  abc  ')).toBe('ABC');
+test('base._normalizers: assertCodeRequired trim + uppercase', () => {
+  expect(assertCodeRequired('  abc  ')).toBe('ABC');
 });
 
-test('base._normalizers: normalizeCodeRequired empty throws', () => {
-  expect(() => normalizeCodeRequired('')).toThrow();
-  expect(() => normalizeCodeRequired('   ')).toThrow();
+test('base._normalizers: assertCodeRequired empty throws', () => {
+  expect(() => assertCodeRequired('')).toThrow();
+  expect(() => assertCodeRequired('   ')).toThrow();
 });
 
-test('base._normalizers: normalizeCodeRequired null/undefined throws', () => {
-  expect(() => normalizeCodeRequired(null)).toThrow();
-  expect(() => normalizeCodeRequired(undefined)).toThrow();
+test('base._normalizers: assertCodeRequired null/undefined throws', () => {
+  expect(() => assertCodeRequired(null)).toThrow();
+  expect(() => assertCodeRequired(undefined)).toThrow();
 });
 
-test('base._normalizers: normalizeCodeRequired with uppercase=false preserves case', () => {
-  expect(normalizeCodeRequired('  MyCode  ', { uppercase: false })).toBe('MyCode');
+test('base._normalizers: assertCodeRequired with uppercase=false preserves case', () => {
+  expect(assertCodeRequired('  MyCode  ', { uppercase: false })).toBe('MyCode');
 });
 
 // ---------------------------------------------------------------------------
@@ -119,39 +120,61 @@ test('base._normalizers: normalizeCodeOptional with uppercase=false preserves ca
 });
 
 // ---------------------------------------------------------------------------
-// normalizeName
+// assertName
 // ---------------------------------------------------------------------------
 
-test('base._normalizers: normalizeName trim', () => {
-  expect(normalizeName('  Hello World  ')).toBe('Hello World');
+test('base._normalizers: assertName trim', () => {
+  expect(assertName('  Hello World  ')).toBe('Hello World');
 });
 
-test('base._normalizers: normalizeName empty throws', () => {
-  expect(() => normalizeName('')).toThrow();
-  expect(() => normalizeName('   ')).toThrow();
+test('base._normalizers: assertName empty throws', () => {
+  expect(() => assertName('')).toThrow();
+  expect(() => assertName('   ')).toThrow();
 });
 
-test('base._normalizers: normalizeName null/undefined throws', () => {
-  expect(() => normalizeName(null)).toThrow();
-  expect(() => normalizeName(undefined)).toThrow();
+test('base._normalizers: assertName null/undefined throws', () => {
+  expect(() => assertName(null)).toThrow();
+  expect(() => assertName(undefined)).toThrow();
 });
 
 // ---------------------------------------------------------------------------
-// option normalizers (from _option_normalizers via _normalizers barrel)
+// option validators (from _option_validators via _normalizers barrel)
 // ---------------------------------------------------------------------------
 
-test('base._normalizers: normalizeDirection invalid throws InvalidArgument', () => {
-  expect(() => normalizeDirection('bogus')).toThrow('Direction must be ltr or rtl');
+test('base._normalizers: assertDirection invalid throws InvalidArgument', () => {
+  expect(() => assertDirection('bogus')).toThrow('Direction must be ltr or rtl');
 });
 
-test('base._normalizers: normalizeCurrencySymbolPosition invalid throws', () => {
-  expect(() => normalizeCurrencySymbolPosition('bogus')).toThrow('CurrencySymbolPosition must be before or after');
+test('base._normalizers: assertDirection allows omit and clear', () => {
+  expect(assertDirection(undefined)).toBeUndefined();
+  expect(assertDirection(null)).toBeNull();
+  expect(assertDirection('ltr')).toBe('ltr');
 });
 
-test('base._normalizers: normalizeRatePolicyMode invalid throws', () => {
-  expect(() => normalizeRatePolicyMode('bogus')).toThrow('RatePolicy.Mode must be exact or latest_before');
+test('base._normalizers: assertCurrencySymbolPosition invalid throws', () => {
+  expect(() => assertCurrencySymbolPosition('bogus')).toThrow('CurrencySymbolPosition must be before or after');
 });
 
-test('base._normalizers: normalizeRoundingMode invalid throws', () => {
-  expect(() => normalizeRoundingMode('bogus')).toThrow('Rounding.Mode must be currency or none');
+test('base._normalizers: assertCurrencySymbolPosition does not wash empty to before', () => {
+  expect(assertCurrencySymbolPosition(undefined)).toBeUndefined();
+  expect(assertCurrencySymbolPosition(null)).toBeNull();
+  expect(assertCurrencySymbolPosition('')).toBeNull();
+});
+
+test('base._normalizers: assertCurrencySymbolSpacing rejects non-boolean', () => {
+  expect(() => assertCurrencySymbolSpacing('yes')).toThrow('CurrencySymbolSpacing must be a boolean');
+  expect(assertCurrencySymbolSpacing(true)).toBe(true);
+  expect(assertCurrencySymbolSpacing(false)).toBe(false);
+});
+
+test('base._normalizers: assertRatePolicyMode invalid throws', () => {
+  expect(() => assertRatePolicyMode('bogus')).toThrow('RatePolicy.Mode must be exact or latest_before');
+});
+
+test('base._normalizers: assertRatePolicyMode does not wash omit to latest_before', () => {
+  expect(assertRatePolicyMode(undefined)).toBeUndefined();
+});
+
+test('base._normalizers: assertRoundingMode invalid throws', () => {
+  expect(() => assertRoundingMode('bogus')).toThrow('Rounding.Mode must be currency or none');
 });

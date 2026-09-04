@@ -6,7 +6,7 @@ import { createTranslate } from '@/core/service/i18n';
 import { asBigInt, isExpiredAt, normalizeOptionalNonEmptyString, parsePositiveInt } from '@/core/service/utils/normalization';
 import { buildPaddedNumberItems, resolvePaddedNumberFormat } from '@/core/service/utils/format';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
-import { mapNormalizationToBase, normalizeCodeRequired } from './_normalizers';
+import { mapNormalizationToBase, assertCodeRequired } from './_normalizers';
 import { buildSequenceIdempotencyPayload, buildSequenceNextResult } from './_sequence_next_payload';
 import type Sequence from './sequence';
 import type { SequenceNextItem, SequenceNextParams, SequenceNextResult } from './sequence';
@@ -17,7 +17,7 @@ const IDEMPOTENCY_TTL_ENV_KEY = 'CHOYSUM_BASE_SEQUENCE_IDEMPOTENCY_TTL_DAYS';
 const DEFAULT_IDEMPOTENCY_TTL_DAYS = 7;
 const IDEMPOTENCY_KEY_MAX_LENGTH = 200;
 
-function normalizeCount(count: unknown): number {
+function assertCount(count: unknown): number {
   if (count == null) return 1;
   const n = mapNormalizationToBase(
     () => parsePositiveInt(count),
@@ -29,7 +29,7 @@ function normalizeCount(count: unknown): number {
   return n;
 }
 
-function normalizeIdempotencyKey(key: unknown): string | undefined {
+function assertIdempotencyKey(key: unknown): string | undefined {
   return mapNormalizationToBase(
     () => normalizeOptionalNonEmptyString(key, { maxLength: IDEMPOTENCY_KEY_MAX_LENGTH }),
     err => {
@@ -162,9 +162,9 @@ export async function nextSequence(
   },
   params: SequenceNextParams
 ): Promise<SequenceNextResult> {
-  const code = normalizeCodeRequired(params?.Code, { uppercase: false });
-  const count = normalizeCount(params?.Count);
-  const idemKey = normalizeIdempotencyKey(params?.IdempotencyKey);
+  const code = assertCodeRequired(params?.Code, { uppercase: false });
+  const count = assertCount(params?.Count);
+  const idemKey = assertIdempotencyKey(params?.IdempotencyKey);
   const dryRun = params?.DryRun === true;
 
   const seq = await resolveSequence(model, params?.CompanyId, code);

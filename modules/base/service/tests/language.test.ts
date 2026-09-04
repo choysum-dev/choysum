@@ -101,8 +101,6 @@ test('base.language: CurrencySymbolPosition defaults + spacing defaults', async 
       Name: uid('Language'),
       Code: companyCode8(),
       Direction: 'ltr' as any,
-      CurrencySymbolPosition: null as any,
-      CurrencySymbolSpacing: null as any,
       IsActive: true,
     } as any,
     ['Id', 'CurrencySymbolPosition', 'CurrencySymbolSpacing', 'Grouping'] as any

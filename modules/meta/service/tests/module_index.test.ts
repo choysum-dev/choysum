@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
-  normalizeSearchCondition,
+  assertSearchCondition,
+  DEFAULT_MODULE_INDEX_SEARCH,
   toText,
   toComparableValue,
   parseSortSpecs,
@@ -15,7 +16,7 @@ import {
   toPlainRecord,
   pickNewestTimestamp,
   aggregateRows,
-  normalizeOriginType,
+  assertOriginType,
   canReuseRunningSync,
   type ModuleIndexRecord,
 } from '../models/_module_index_query';
@@ -27,22 +28,25 @@ function record(fields: Partial<ModuleIndexRecord>): ModuleIndexRecord {
   return fields as ModuleIndexRecord;
 }
 
-// --------------- normalizeSearchCondition ---------------
+// --------------- assertSearchCondition ---------------
 
-describe('normalizeSearchCondition', () => {
-  it('returns empty array as a default condition', () => {
-    expect(normalizeSearchCondition([])).toEqual(['Available', '=', true]);
+describe('assertSearchCondition', () => {
+  it('rejects empty array', () => {
+    expect(() => assertSearchCondition([])).toThrow(/must not be empty/);
   });
-  it('returns empty object as default condition', () => {
-    expect(normalizeSearchCondition({})).toEqual(['Available', '=', true]);
+  it('rejects empty object', () => {
+    expect(() => assertSearchCondition({})).toThrow(/must not be empty/);
   });
   it('returns non-empty array unchanged', () => {
     const cond = ['ModuleName', '=', 'test'];
-    expect(normalizeSearchCondition(cond)).toBe(cond);
+    expect(assertSearchCondition(cond)).toBe(cond);
   });
   it('returns non-empty object unchanged', () => {
     const cond = { ModuleName: 'test' };
-    expect(normalizeSearchCondition(cond)).toBe(cond);
+    expect(assertSearchCondition(cond)).toBe(cond);
+  });
+  it('exposes DEFAULT_MODULE_INDEX_SEARCH for callers that want the catalog default', () => {
+    expect(DEFAULT_MODULE_INDEX_SEARCH).toEqual(['Available', '=', true]);
   });
 });
 
@@ -488,22 +492,22 @@ describe('aggregateRows', () => {
   });
 });
 
-// --------------- normalizeOriginType ---------------
+// --------------- assertOriginType ---------------
 
-describe('normalizeOriginType', () => {
-  it('returns all for empty/undefined', () => {
-    expect(normalizeOriginType()).toBe('all');
-    expect(normalizeOriginType('')).toBe('all');
+describe('assertOriginType', () => {
+  it('rejects empty/undefined (callers apply ?? all)', () => {
+    expect(() => assertOriginType()).toThrow(/originType/);
+    expect(() => assertOriginType('')).toThrow(/originType/);
   });
   it('returns all for "all"', () => {
-    expect(normalizeOriginType('all')).toBe('all');
+    expect(assertOriginType('all')).toBe('all');
   });
   it('returns local/registry', () => {
-    expect(normalizeOriginType('local')).toBe('local');
-    expect(normalizeOriginType('registry')).toBe('registry');
+    expect(assertOriginType('local')).toBe('local');
+    expect(assertOriginType('registry')).toBe('registry');
   });
-  it('returns empty string for invalid', () => {
-    expect(normalizeOriginType('invalid')).toBe('');
+  it('rejects invalid', () => {
+    expect(() => assertOriginType('invalid')).toThrow(/originType/);
   });
 });
 

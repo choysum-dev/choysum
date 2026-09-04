@@ -64,7 +64,7 @@ type ModuleOpBridgeResult = {
   errorMessage?: string;
 };
 
-function normalizeFailureKind(status: string, err?: any): FailureKind {
+function classifyFailureKind(status: string, err?: any): FailureKind {
   if (status === 'cancelled') return 'NON_RETRYABLE';
   if (status !== 'failed') return 'NONE';
   const domain = String(err?.domain || err?.errorDomain || '').toLowerCase();
@@ -353,9 +353,9 @@ export default class MetaModule extends BaseModel {
     const nextRetryAt = retryAfterMs && (job as any)?.RunAfter ? new Date((job as any).RunAfter) : undefined;
 
     const resultStatus = result?.resultStatus || (status === 'failed' || status === 'cancelled' ? 'FAILED' : undefined);
-    let failureKind = normalizeFailureKind(status, err);
+    let failureKind = classifyFailureKind(status, err);
     if (resultStatus === 'FAILED' && failureKind === 'NONE') {
-      failureKind = normalizeFailureKind('failed', err);
+      failureKind = classifyFailureKind('failed', err);
     }
     const summary = result?.summary || (resultStatus === 'FAILED' ? { code: 'MODULE_OPERATION_FAILED', message: err?.message } : undefined);
 

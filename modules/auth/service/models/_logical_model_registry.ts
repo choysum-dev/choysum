@@ -23,10 +23,10 @@ import {
 export { isRegisteredLogicalModelName, listLogicalModelNames, listLogicalModelSelection };
 
 /**
- * Normalize a logical model short name for write validation.
+ * Assert a logical model short name for write validation.
  * Empty → null. Non-empty unregistered → throws.
  */
-export function normalizeLogicalModelName(raw: unknown): string | null {
+export function assertLogicalModelName(raw: unknown): string | null {
   if (raw == null) return null;
   const n = String(raw).trim();
   if (!n) return null;
@@ -47,10 +47,10 @@ export function canonicalizeLogicalMethodName(raw: unknown): string {
 }
 
 /**
- * Normalize LogicalMethods JSON payload to string[] | null.
+ * Assert LogicalMethods JSON payload to string[] | null.
  * null / [] / missing → null (meaning "all methods" at eval time).
  */
-export function normalizeLogicalMethods(raw: unknown): string[] | null {
+export function assertLogicalMethods(raw: unknown): string[] | null {
   if (raw == null) return null;
   let arr: unknown[] | null = null;
   if (Array.isArray(raw)) {
@@ -94,7 +94,7 @@ export function logicalMethodsAllow(methods: unknown, methodName: string): boole
     .trim()
     .toLowerCase();
   if (!want) return false;
-  const list = normalizeLogicalMethods(methods);
+  const list = assertLogicalMethods(methods);
   if (list == null) return true;
   return list.some(m => m.toLowerCase() === want);
 }

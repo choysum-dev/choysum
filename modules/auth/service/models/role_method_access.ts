@@ -12,7 +12,7 @@ import type MetaApplication from '@/meta/service/models/application';
 import type MetaModel from '@/meta/service/models/model';
 import type MetaService from '@/meta/service/models/service';
 import AuthzMutationModel from '../mixins/authz_mutation_model';
-import { listLogicalModelSelection, normalizeLogicalMethods } from './_logical_model_registry';
+import { listLogicalModelSelection, assertLogicalMethods } from './_logical_model_registry';
 import { assertExclusiveScope } from './_rule_scope_helpers';
 
 /**
@@ -163,13 +163,13 @@ export default class RoleMethodAccess extends AuthzMutationModel {
   }
 
   /**
-   * Normalize LogicalMethods; clear them unless scope is LogicalModel.
-   * Call after assertExclusiveScope so LogicalModelName is already normalized.
+   * Assert LogicalMethods; clear them unless scope is LogicalModel.
+   * Call after assertExclusiveScope so LogicalModelName is already asserted.
    *
    * @param previousLogicalModelName Persisted LogicalModelName for update rename checks.
    *   When omitted on an update that touches LogicalModelName without LogicalMethods, treat as a rename.
    */
-  private static _normalizeLogicalMethodsPayload(
+  private static _assertLogicalMethodsPayload(
     values: Record<string, any>,
     mode: 'create' | 'update',
     previousLogicalModelName?: string | null
@@ -182,9 +182,9 @@ export default class RoleMethodAccess extends AuthzMutationModel {
     if (mode === 'update' && !touchesMethods && !touchesLogicalName) return;
 
     if (touchesMethods) {
-      (values as any).LogicalMethods = normalizeLogicalMethods((values as any).LogicalMethods);
+      (values as any).LogicalMethods = assertLogicalMethods((values as any).LogicalMethods);
     } else if (mode === 'create') {
-      (values as any).LogicalMethods = normalizeLogicalMethods((values as any).LogicalMethods);
+      (values as any).LogicalMethods = assertLogicalMethods((values as any).LogicalMethods);
     }
 
     // When LogicalModelName is present in the payload (create always after assert, or update touching scope),
@@ -215,7 +215,7 @@ export default class RoleMethodAccess extends AuthzMutationModel {
     previousLogicalModelName?: string | null
   ): void {
     assertExclusiveScope(values, mode, 'method');
-    RoleMethodAccess._normalizeLogicalMethodsPayload(values, mode, previousLogicalModelName);
+    RoleMethodAccess._assertLogicalMethodsPayload(values, mode, previousLogicalModelName);
     RoleMethodAccess._coerceSourceManual(values, mode);
   }
 

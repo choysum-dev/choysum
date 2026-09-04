@@ -426,7 +426,8 @@ test('P2-2 eval edges: defensive fallbacks for empty/null inputs', async () => {
     (RoleRecordRule as any).Search = async () => [
       {
         RoleId: { Id: roleId },
-        Kind: null, // normalizeKind → grant
+        Kind: null, // assertKind(Kind ?? 'grant') → grant for stored nullish
+
         Condition: { And: [['Name', '=', 'z']] },
         MetaModelId: modelId,
         MetaApplicationId: null,

@@ -5,7 +5,7 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { raiseDomainError } from '@/core/service/error';
 import { _t, _lt } from '../i18n';
-import { normalizeCurrencySymbolPosition, normalizeCurrencySymbolSpacing, normalizeDirection } from './_normalizers';
+import { assertCurrencySymbolPosition, assertCurrencySymbolSpacing, assertDirection } from './_normalizers';
 import {
   formatDateWithLanguage,
   formatNumberWithLanguage,
@@ -230,13 +230,13 @@ export default class Language extends BaseModel {
   @Constraint<Language>(['Direction', 'CurrencySymbolPosition', 'CurrencySymbolSpacing', 'IsActive', 'Code'])
   async validateLanguageConstraint(): Promise<void> {
     if (this.Direction != null) {
-      this.Direction = normalizeDirection(this.Direction) as any;
+      this.Direction = assertDirection(this.Direction) as any;
     }
     if (this.CurrencySymbolPosition !== undefined) {
-      (this as any).CurrencySymbolPosition = normalizeCurrencySymbolPosition(this.CurrencySymbolPosition);
+      (this as any).CurrencySymbolPosition = assertCurrencySymbolPosition(this.CurrencySymbolPosition);
     }
     if (this.CurrencySymbolSpacing !== undefined) {
-      (this as any).CurrencySymbolSpacing = normalizeCurrencySymbolSpacing(this.CurrencySymbolSpacing);
+      (this as any).CurrencySymbolSpacing = assertCurrencySymbolSpacing(this.CurrencySymbolSpacing);
     }
 
     // Refuse deactivating the last active language (update path only).

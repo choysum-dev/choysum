@@ -1452,18 +1452,23 @@ test('RoleRecordRule coverage: empty RoleId string, CreateMany null, Field Kind 
     );
     expect(String((withDefault as any)?.Kind || '')).toBe('grant');
 
-    // Kind present but nullish hits `_normalizeKind`'s `v ?? 'grant'` branch.
-    const nullKind = await RoleRecordRule.Create(
-      {
-        RoleId: { Id: roleId } as any,
-        Kind: null as any,
-        MetaModelId: modelId,
-        MetaApplicationId: null,
-        PermRead: true,
-      } as any,
-      ['Id', 'Kind'] as any
-    );
-    expect(String((nullKind as any)?.Kind || '')).toBe('grant');
+    // Explicit null Kind fails; omit the field so the schema default applies.
+    let nullKindError: unknown;
+    try {
+      await RoleRecordRule.Create(
+        {
+          RoleId: { Id: roleId } as any,
+          Kind: null as any,
+          MetaModelId: modelId,
+          MetaApplicationId: null,
+          PermRead: true,
+        } as any,
+        ['Id', 'Kind'] as any
+      );
+    } catch (err) {
+      nullKindError = err;
+    }
+    expect(String((nullKindError as any)?.message || nullKindError)).toMatch(/Kind/);
   });
 });
 

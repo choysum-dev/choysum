@@ -18,8 +18,9 @@ import {
   canReuseRunningSync,
   compareBySpecs,
   extractGroupedModuleNames,
-  normalizeOriginType,
-  normalizeSearchCondition,
+  assertOriginType,
+  assertSearchCondition,
+  DEFAULT_MODULE_INDEX_SEARCH,
   parseSortSpecs,
   projectFields,
   toPlainRecord,
@@ -57,8 +58,12 @@ async function findRunningJobId(fullMethod: string, requestedOrigin: ModuleSyncO
     const originValue = (payload as any)?.originType;
     if (!String(originValue || '').trim()) continue;
 
-    const runningOrigin = normalizeOriginType(String(originValue));
-    if (!runningOrigin) continue;
+    let runningOrigin: ModuleSyncOriginType;
+    try {
+      runningOrigin = assertOriginType(String(originValue));
+    } catch {
+      continue;
+    }
     if (canReuseRunningSync(requestedOrigin, runningOrigin)) {
       return jobId;
     }
@@ -175,10 +180,10 @@ export default class MetaModuleIndex extends BaseModel {
 
   static async Search<T extends BaseModel>(
     this: { new (...args: any[]): T } & typeof BaseModel,
-    condition: any[] | Record<string, any> = [],
+    condition: any[] | Record<string, any> = DEFAULT_MODULE_INDEX_SEARCH,
     options?: any
   ): Promise<T[]> {
-    const normalized = normalizeSearchCondition(condition);
+    const normalized = assertSearchCondition(condition ?? DEFAULT_MODULE_INDEX_SEARCH);
     const rawOptions = { ...(options || {}) };
     const requestedFields = normalizeFields(rawOptions.fields);
     const sortSpecs = parseSortSpecs(rawOptions.orderBy);
@@ -284,10 +289,10 @@ export default class MetaModuleIndex extends BaseModel {
 
   static async Count<T extends BaseModel>(
     this: { new (...args: any[]): T } & typeof BaseModel,
-    condition: any[] | Record<string, any> = [],
+    condition: any[] | Record<string, any> = DEFAULT_MODULE_INDEX_SEARCH,
     options?: any
   ): Promise<number> {
-    const normalized = normalizeSearchCondition(condition);
+    const normalized = assertSearchCondition(condition ?? DEFAULT_MODULE_INDEX_SEARCH);
     const readGroupCountOptions: Record<string, unknown> = {
       groupby: 'ModuleName',
       condition: normalized,
@@ -301,10 +306,7 @@ export default class MetaModuleIndex extends BaseModel {
     const force = !!params.force;
     const ifStale = !!params.ifStale;
     if (!force && !ifStale) return '';
-    const originType = normalizeOriginType(params.originType);
-    if (!originType) {
-      throw new Error(_t('originType must be one of: local, registry, all', { scope: 'service/models/module_index' }));
-    }
+    const originType = assertOriginType(params.originType ?? 'all');
 
     if (ifStale && !force && isTruthyFlag(getBackendEnvText('CHOYSUM_E2E_SKIP_INDEX_STALE_SYNC', 'choysum_e2e_skip_index_stale_sync'))) {
       return '';
@@ -375,10 +377,7 @@ export default class MetaModuleIndex extends BaseModel {
     if (typeof syncIndex !== 'function') {
       throw new Error('moduleManagement.syncIndex is not implemented');
     }
-    const normalizedOriginType = normalizeOriginType(originType);
-    if (!normalizedOriginType) {
-      throw new Error(_t('originType must be one of: local, registry, all', { scope: 'service/models/module_index' }));
-    }
+    const normalizedOriginType = assertOriginType(originType ?? 'all');
     return await syncIndex({ originType: normalizedOriginType, force: !!force });
   }
 }

@@ -5,7 +5,7 @@ import { Decimal } from '@/core/service';
 import { ChoysumError, GrpcCode } from '@/core/service/error';
 import { createTranslate } from '@/core/service/i18n';
 import { normalizeDateString, parseDecimalInput, resolveModelRefId, roundToCurrencyAmount, toDateOnlyString } from '@/core/service/utils/normalization';
-import { mapNormalizationToBase, normalizeRatePolicyMode, normalizeRoundingMode } from './_normalizers';
+import { mapNormalizationToBase, assertRatePolicyMode, assertRoundingMode } from './_normalizers';
 import type Currency from './currency';
 import type { CurrencyConvertParams, CurrencyConvertResult } from './currency';
 
@@ -107,9 +107,9 @@ export async function convertCurrency(
     );
   }
 
-  const mode = normalizeRatePolicyMode(params?.RatePolicy?.Mode);
+  const mode = assertRatePolicyMode(params?.RatePolicy?.Mode) ?? 'latest_before';
   const allowFallbackToGlobal = Boolean(params?.RatePolicy?.AllowFallbackToGlobal ?? true);
-  const roundingMode = normalizeRoundingMode(params?.Rounding?.Mode);
+  const roundingMode = assertRoundingMode(params?.Rounding?.Mode) ?? 'currency';
   const overrideDigits = params?.Rounding?.ToDecimalDigitsOverride;
 
   const warnings: string[] = [];

@@ -41,8 +41,11 @@ export type EnqueueRecordExportResult = {
   taskJobId: string;
 };
 
-function normalizeSelection(value: string | undefined, fallback: string, allowed: Set<string>, label: string): string {
-  const normalized = String(value || '').trim() || fallback;
+function assertSelection(value: string | undefined, allowed: Set<string>, label: string): string {
+  const normalized = String(value ?? '').trim();
+  if (!normalized) {
+    throw new Error(`data transfer ${label} is required`);
+  }
   if (!allowed.has(normalized)) {
     throw new Error(`unsupported data transfer ${label} ${JSON.stringify(normalized)}`);
   }
@@ -187,8 +190,8 @@ export default class DataTransferJob extends BaseModel {
     if (!specSnapshot || typeof specSnapshot !== 'object') {
       throw new Error('specSnapshot is required');
     }
-    const profile = normalizeSelection(input?.profile, 'record', ALLOWED_PROFILES, 'profile');
-    const policy = normalizeSelection(input?.policy, 'atomic', ALLOWED_POLICIES, 'policy');
+    const profile = assertSelection(String(input?.profile ?? '').trim() || 'record', ALLOWED_PROFILES, 'profile');
+    const policy = assertSelection(String(input?.policy ?? '').trim() || 'atomic', ALLOWED_POLICIES, 'policy');
 
     const row = await this.Create({
       Profile: profile,
@@ -231,7 +234,7 @@ export default class DataTransferJob extends BaseModel {
     if (!specSnapshot || typeof specSnapshot !== 'object') {
       throw new Error('specSnapshot is required');
     }
-    const profile = normalizeSelection(input?.profile, 'record', ALLOWED_EXPORT_PROFILES, 'profile');
+    const profile = assertSelection(String(input?.profile ?? '').trim() || 'record', ALLOWED_EXPORT_PROFILES, 'profile');
 
     const row = await this.Create({
       Profile: profile,

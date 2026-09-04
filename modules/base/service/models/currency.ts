@@ -5,7 +5,7 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { normalizeDecimalDigits, normalizePositiveDecimalString } from '@/core/service/utils/normalization';
 import { _t, _lt } from '../i18n';
-import { mapNormalizationToBase, normalizeCodeRequired } from './_normalizers';
+import { mapNormalizationToBase, assertCodeRequired } from './_normalizers';
 import { convertCurrency } from './_currency_convert';
 
 export type CurrencyConvertRatePolicy = {
@@ -92,7 +92,7 @@ export default class Currency extends BaseModel {
 
   @Constraint<Currency>(['Code', 'DecimalDigits', 'Rounding'])
   validateCurrencyConstraint(): void {
-    this.Code = normalizeCodeRequired(this.Code as string);
+    this.Code = assertCodeRequired(this.Code as string);
     (this as any).DecimalDigits = mapNormalizationToBase(
       () => normalizeDecimalDigits(this.DecimalDigits),
       err =>

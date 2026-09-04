@@ -151,10 +151,13 @@ export default class RoleRecordRule extends AuthzMutationModel {
   PermDelete: boolean;
 
   /**
-   * Normalize Kind and reject unsupported values.
+   * Assert Kind is grant or restrict; omit the field so the schema default applies.
    */
-  private static _normalizeKind(v: any): RoleRecordRuleKind {
-    const kind = String(v ?? 'grant')
+  private static _assertKind(v: any): RoleRecordRuleKind {
+    if (v == null || v === '') {
+      throw new Error("invalid RoleRecordRule Kind: must be 'grant' or 'restrict'");
+    }
+    const kind = String(v)
       .trim()
       .toLowerCase();
     if (kind === 'grant' || kind === 'restrict') return kind;
@@ -170,7 +173,7 @@ export default class RoleRecordRule extends AuthzMutationModel {
   private static _validateKind(values: Record<string, any>, mode: 'create' | 'update'): void {
     const touchesKind = Object.prototype.hasOwnProperty.call(values, 'Kind');
     if (!touchesKind) return;
-    (values as any).Kind = this._normalizeKind((values as any).Kind);
+    (values as any).Kind = this._assertKind((values as any).Kind);
   }
 
   /**

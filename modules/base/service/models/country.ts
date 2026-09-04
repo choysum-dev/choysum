@@ -5,7 +5,7 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { _t, _lt } from '../i18n';
 import Currency from './currency';
-import { fail, normalizeCodeRequired } from './_normalizers';
+import { fail, assertCodeRequired } from './_normalizers';
 
 @Model('Country')
 export default class Country extends BaseModel {
@@ -104,7 +104,7 @@ export default class Country extends BaseModel {
 
   @Constraint<Country>(['Code', 'AddressFormat'])
   validateCountryConstraint(): void {
-    this.Code = normalizeCodeRequired(this.Code as string);
+    this.Code = assertCodeRequired(this.Code as string);
     if (this.AddressFormat != null) {
       this.AddressFormat = this.validateAddressFormat(this.AddressFormat) as any;
     }

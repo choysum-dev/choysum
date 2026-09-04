@@ -6,7 +6,7 @@ import { Constraint } from '@/core/service/api/constraint';
 import { _lt } from '../i18n';
 import Company from './company';
 import { normalizeRefId } from '@/core/service/utils/normalization';
-import { normalizeCodeRequired } from './_normalizers';
+import { assertCodeRequired } from './_normalizers';
 import { nextSequence } from './_sequence_next';
 import { cleanupSequenceIdempotency } from './_sequence_cleanup';
 
@@ -130,7 +130,7 @@ export default class Sequence extends BaseModel {
 
   @Constraint<Sequence>(['Code', 'CompanyId'])
   validateSequenceConstraint(): void {
-    (this as any).Code = normalizeCodeRequired(this.Code, { uppercase: false });
+    (this as any).Code = assertCodeRequired(this.Code, { uppercase: false });
     // CompanyScopeKey is always derived from CompanyId.
     (this as any).CompanyScopeKey = normalizeRefId(this.CompanyId) || '__GLOBAL__';
   }

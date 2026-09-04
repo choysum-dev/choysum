@@ -15,18 +15,18 @@ const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.
 const MetaField = createServiceByModel<typeof MetaFieldModel>('meta.MetaField');
 const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
 
-function normalizeFieldPerm(v: any): 'allow' | 'deny' | null {
+function assertFieldPerm(v: any): 'allow' | 'deny' | null {
   if (v == null) return null;
   if (typeof v === 'object') {
     const raw = (v as any)?.value ?? (v as any)?.Value ?? (v as any)?.id ?? (v as any)?.Id;
-    if (raw != null && raw !== v) return normalizeFieldPerm(raw);
+    if (raw != null && raw !== v) return assertFieldPerm(raw);
   }
   const s = String(v ?? '')
     .trim()
     .toLowerCase();
   if (!s) return null;
   if (s === 'allow' || s === 'deny') return s;
-  return null;
+  throw new Error("invalid field rule permission: must be 'allow' or 'deny'");
 }
 
 function pickField(obj: any, keys: string[]): any {
@@ -235,8 +235,8 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
     const irModel = normalizeRefId(pickField(r, ['MetaModelId', 'meta_model_id', 'irModelId']));
     const irField = normalizeRefId(pickField(r, ['MetaFieldId', 'meta_field_id', 'irFieldId']));
     const logicalName = String(pickField(r, ['LogicalModelName', 'logical_model_name']) ?? '').trim() || null;
-    const permRead = normalizeFieldPerm(pickField(r, ['PermRead', 'perm_read', 'permRead']));
-    const permWrite = normalizeFieldPerm(pickField(r, ['PermWrite', 'perm_write', 'permWrite']));
+    const permRead = assertFieldPerm(pickField(r, ['PermRead', 'perm_read', 'permRead']));
+    const permWrite = assertFieldPerm(pickField(r, ['PermWrite', 'perm_write', 'permWrite']));
 
     const rule: Record<string, unknown> = { irApp, irModel, irField, logicalName, permRead, permWrite };
     if (rid) rule.__rid = rid;

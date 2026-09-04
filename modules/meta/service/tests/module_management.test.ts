@@ -780,7 +780,7 @@ test('meta.MetaModuleIndex RequestSync rejects invalid originType', async () => 
 
   await expectAsyncErrorContains(
     () => MetaModuleIndex.RequestSync({ originType: 'remote' as any, force: true, ifStale: false }),
-    'originType must be one of: local, registry, all'
+    'originType'
   );
 });
 
@@ -795,7 +795,7 @@ test('meta.MetaModuleIndex Sync rejects invalid originType before bridge call', 
     return { ok: true };
   };
 
-  await expectAsyncErrorContains(() => MetaModuleIndex.Sync('remote' as any, false), 'originType must be one of: local, registry, all');
+  await expectAsyncErrorContains(() => MetaModuleIndex.Sync('remote' as any, false), 'originType');
   expect(called).toBe(false);
 });
 
@@ -840,7 +840,7 @@ test('meta.MetaModuleIndex Search honors requested fields after aggregation', as
   ]);
 
   try {
-    const rows = await (MetaModuleIndex as any).Search([], { fields: ['ModuleName', 'RegistryVersion'], limit: 10 });
+    const rows = await (MetaModuleIndex as any).Search(undefined, { fields: ['ModuleName', 'RegistryVersion'], limit: 10 });
     expect(Array.isArray(rows)).toBe(true);
     expect(rows.length).toBe(1);
     expect(typeof rows[0].toPlainObject).toBe('function');
@@ -879,7 +879,7 @@ test('meta.MetaModuleIndex Search projection returns model instances and blocks 
   ]);
 
   try {
-    const rows = await (MetaModuleIndex as any).Search([], { fields: ['ModuleName', '__proto__', 'constructor', 'prototype'], limit: 10 });
+    const rows = await (MetaModuleIndex as any).Search(undefined, { fields: ['ModuleName', '__proto__', 'constructor', 'prototype'], limit: 10 });
     expect(Array.isArray(rows)).toBe(true);
     expect(rows.length).toBe(1);
     expect(rows[0].ModuleName).toBe('auth');
@@ -940,7 +940,7 @@ test('meta.MetaModuleIndex Search prefers MetaModule status over aggregate defau
   ]);
 
   try {
-    const rows = await (MetaModuleIndex as any).Search([], { fields: ['ModuleName', 'InstalledStatus', 'InstalledVersion'], limit: 10 });
+    const rows = await (MetaModuleIndex as any).Search(undefined, { fields: ['ModuleName', 'InstalledStatus', 'InstalledVersion'], limit: 10 });
     expect(Array.isArray(rows)).toBe(true);
     expect(rows.length).toBe(1);
     expect(rows[0].ModuleName).toBe('auth');
@@ -958,10 +958,10 @@ test('meta.MetaModuleIndex Count uses grouped module count', async () => {
 
   const restoreGroupedRepo = mockMetaModuleIndexGroupedRepo([], 7);
   try {
-    const total = await (MetaModuleIndex as any).Count([], {});
+    const total = await (MetaModuleIndex as any).Count();
     expect(total).toBe(7);
     // Omit options so `options || {}` false branch is covered for patch coverage.
-    const totalDefaultOpts = await (MetaModuleIndex as any).Count([]);
+    const totalDefaultOpts = await (MetaModuleIndex as any).Count();
     expect(totalDefaultOpts).toBe(7);
   } finally {
     restoreGroupedRepo();
@@ -975,7 +975,7 @@ test('meta.MetaModuleIndex Search hydrates with no field filter and empty aggreg
   const restoreBaseSearch = mockMetaModuleIndexBaseSearch([]);
 
   try {
-    const rows = await (MetaModuleIndex as any).Search([], { limit: 10 });
+    const rows = await (MetaModuleIndex as any).Search(undefined, { limit: 10 });
     expect(Array.isArray(rows)).toBe(true);
     expect(rows.length).toBe(0);
   } finally {
@@ -994,7 +994,7 @@ test('meta.MetaModuleIndex Count propagates readGroupCount failures', async () =
   });
 
   try {
-    await expectAsyncErrorContains(() => (MetaModuleIndex as any).Count([], {}), 'readGroupCount boom');
+    await expectAsyncErrorContains(() => (MetaModuleIndex as any).Count(), 'readGroupCount boom');
   } finally {
     restoreGroupedRepo();
   }

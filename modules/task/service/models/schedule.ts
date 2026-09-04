@@ -10,7 +10,7 @@ import { toDate, listIanaTimezoneSelection } from '@/core/service/utils/datetime
 import { _lt } from '../i18n';
 import Job from './job';
 import { clampLimit } from './_limit';
-import { computeNextRunAt, normalizeTimezone, applyNextRunPreview } from './_cron';
+import { computeNextRunAt, assertTimezone, applyNextRunPreview } from './_cron';
 
 /**
  * Filter and pagination options for paged schedule listing.
@@ -190,7 +190,7 @@ export default class Schedule extends BaseModel {
   /** Validate and normalize Timezone on generic Create / UpdateById paths. */
   @Constraint<Schedule>(['Timezone'])
   validateTimezoneConstraint(): void {
-    this.Timezone = normalizeTimezone(this.Timezone);
+    this.Timezone = assertTimezone(this.Timezone);
   }
 
   /** Creates a persisted schedule with an initial next-run preview. */
@@ -205,7 +205,7 @@ export default class Schedule extends BaseModel {
     timezone: string,
     timeoutMs: number = 0
   ): Promise<Schedule> {
-    const tz = normalizeTimezone(timezone);
+    const tz = assertTimezone(timezone);
     const timeoutValue = Number.isFinite(timeoutMs) && timeoutMs > 0 ? Math.floor(timeoutMs) : 0;
     const now = new Date();
     const nextRunAt = computeNextRunAt(
@@ -234,7 +234,7 @@ export default class Schedule extends BaseModel {
   /** Updates a schedule and recomputes its next-run preview when needed. */
   static async UpdateSchedule(scheduleId: string, values: Partial<Schedule>): Promise<Schedule> {
     const existing = await this.Browse(scheduleId);
-    normalizeTimezone(values.Timezone ?? existing.Timezone);
+    assertTimezone(values.Timezone ?? existing.Timezone);
     if (typeof values.TimeoutMs === 'number') {
       values.TimeoutMs = Number.isFinite(values.TimeoutMs) && values.TimeoutMs > 0 ? Math.floor(values.TimeoutMs) : 0;
     }
