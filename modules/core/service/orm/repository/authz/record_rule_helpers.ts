@@ -6,7 +6,7 @@ import { AuthUserService, isAuthServiceNotPresent, isAuthServiceUnavailable } fr
 import { getRepositoryCurrentReq } from './authz_runtime';
 import type { RepositoryPermissionDeniedFn } from './types';
 import type { BaseQueryCondition, ConditionEnvelope, RecordRuleOp } from '../types';
-import { parseConditionEnvelopeFromUnknown } from '@/core/service/api/authz_helpers';
+import { formatAuthzParseFailureDetail, parseConditionEnvelopeFromUnknown } from '@/core/service/api/authz_helpers';
 import { asObjectRecord, isObjectRecord } from '../../../../utils/object';
 import type { UnknownRecord } from '../../../../utils/types';
 import { _t } from '@/core/service/i18n_binder';
@@ -148,7 +148,7 @@ export async function fetchRepositoryRecordRuleEnvelope(params: RepositoryRecord
           event: 'record_rule_envelope_parse_failed',
           model,
           op,
-          detail: error instanceof Error ? error.message : String(error),
+          detail: formatAuthzParseFailureDetail(error),
         })}`
       );
     } catch {
