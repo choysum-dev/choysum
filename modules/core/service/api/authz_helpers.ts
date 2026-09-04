@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { normalizeOptionalString, normalizeStringArray } from '../utils/normalization';
+import { normalizeOptionalString } from '../utils/normalization';
 import type { ConditionExpr, ConditionEnvelope } from './authz';
 
 function asPlainRecord(value: unknown): Record<string, unknown> | null {
@@ -86,7 +86,18 @@ export type FieldRuleSpec = {
 function parseDenyFieldList(value: unknown): string[] {
   if (value === undefined) return [];
   if (!Array.isArray(value)) throw new Error('invalid_field_rule_spec');
-  return normalizeStringArray(value);
+
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const item of value) {
+    if (typeof item !== 'string') throw new Error('invalid_field_rule_spec');
+    const field = item.trim();
+    if (!field) throw new Error('invalid_field_rule_spec');
+    if (seen.has(field)) continue;
+    seen.add(field);
+    out.push(field);
+  }
+  return out;
 }
 
 /**
@@ -100,8 +111,8 @@ export function formatAuthzParseFailureDetail(error: unknown): string {
 /**
  * Parse a loose value into a typed field-rule spec; throws when shape is invalid.
  *
- * Missing deny lists default to empty arrays. Present non-array deny lists throw
- * (do not wash to allow-all).
+ * Missing deny lists default to empty arrays. Present non-array deny lists or
+ * non-string / blank deny-list elements throw (do not wash to allow-all).
  */
 export function parseFieldRuleSpecFromUnknown(value: unknown): FieldRuleSpec {
   const record = asPlainRecord(value);

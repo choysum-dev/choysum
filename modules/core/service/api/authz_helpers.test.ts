@@ -144,6 +144,25 @@ test('authz helpers parse condition envelope for true/false/expr and reject inva
   });
 
   expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: { And: 'not-array' },
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: { Or: null },
+  });
+
+  let deep: unknown = ['Id', '=', '1'];
+  for (let i = 0; i < 33; i += 1) {
+    deep = { And: [deep] };
+  }
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: deep,
+  });
+
+  expectParseEnvelopeThrow({
     kind: 'unknown',
     reason: 'x',
   });
@@ -239,8 +258,8 @@ test('authz helpers parse field rule spec and reject invalid payloads', () => {
 
   expect(
     parseFieldRuleSpecFromUnknown({
-      denyReadFields: [' Name ', '', 'Name', null, 'Id'],
-      denyWriteFields: [' Amount ', '', 'Amount', 'Locked'],
+      denyReadFields: [' Name ', 'Name', 'Id'],
+      denyWriteFields: [' Amount ', 'Amount', 'Locked'],
       reason: '  from_auth  ',
       hitRuleIds: ['fr_2', 'fr_1', 'fr_1'],
     })
@@ -268,6 +287,26 @@ test('authz helpers parse field rule spec and reject invalid payloads', () => {
   expectParseFieldRuleThrow({
     denyReadFields: [],
     denyWriteFields: 1,
+  });
+  expectParseFieldRuleThrow({
+    denyReadFields: [null],
+    denyWriteFields: [],
+  });
+  expectParseFieldRuleThrow({
+    denyReadFields: [1],
+    denyWriteFields: [],
+  });
+  expectParseFieldRuleThrow({
+    denyReadFields: [''],
+    denyWriteFields: [],
+  });
+  expectParseFieldRuleThrow({
+    denyReadFields: ['  '],
+    denyWriteFields: [],
+  });
+  expectParseFieldRuleThrow({
+    denyReadFields: [],
+    denyWriteFields: [false],
   });
 
   expect(
