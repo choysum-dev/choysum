@@ -416,6 +416,11 @@ describe('OImageField upload limit gate (PR-P2-F3)', () => {
     await flushPromises();
     expect(wrapper.find('.o-image-current').exists()).toBe(true);
 
+    const objectIdAlias = makeBinding({
+      value: { objectId: '  alias-img  ', kind: 'set' },
+    });
+    expect((await mountField(objectIdAlias)).find('.o-image-current').exists()).toBe(true);
+
     const withPreview = makeBinding({
       value: {
         previewUrl: '  /preview/img.png  ',
@@ -426,6 +431,42 @@ describe('OImageField upload limit gate (PR-P2-F3)', () => {
     const previewWrapper = await mountField(withPreview);
     await flushPromises();
     expect(previewWrapper.find('.o-image-current__preview').attributes('src')).toBe('/preview/img.png');
+
+    const downloadViaUrl = makeBinding({
+      value: { url: '  /dl/via-url.png  ', kind: 'set' },
+    });
+    const downloadWrapper = await mount(OImageField as any, {
+      props: {
+        binding: downloadViaUrl,
+        renderMode: 'display',
+        uploadProps: { drag: false, showFileList: false },
+      },
+      global: {
+        stubs: {
+          OFieldBase: defineComponent({
+            name: 'OFieldBase',
+            props: { binding: { type: Object, required: false } },
+            setup(props, { slots }) {
+              return () =>
+                h(
+                  'div',
+                  slots.display?.({
+                    fieldValue: () => (props.binding as UseField | undefined)?.fieldRef?.() ?? ref(null),
+                    renderMode: 'form',
+                  })
+                );
+            },
+          }),
+          'el-upload': ElUploadStub,
+          'el-button': { template: '<button class="btn"><slot /></button>' },
+          'el-icon': { template: '<i><slot /></i>' },
+          Picture: true,
+          UploadFilled: true,
+        },
+      },
+    });
+    await flushPromises();
+    expect(downloadWrapper.html()).toContain('/dl/via-url.png');
   });
 
   it('treats string attachment values and clear/noop kinds', async () => {

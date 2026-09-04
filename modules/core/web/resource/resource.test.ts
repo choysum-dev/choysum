@@ -236,6 +236,13 @@ describe('resource declaration helpers', () => {
     ).toThrow('invalid_resource_requires');
 
     expect(() =>
+      defineRoute('demo.route.http_kind', {
+        path: '/demo',
+        requires: [{ kind: 'http' as any, model: 'demo.Model' }],
+      } as any)
+    ).toThrow('invalid_resource_requires');
+
+    expect(() =>
       defineRoute('demo.route.invalid_roles', {
         path: '/demo',
         defaultRoles: 'base.user' as any,

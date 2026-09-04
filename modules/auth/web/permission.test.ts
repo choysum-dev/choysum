@@ -188,6 +188,22 @@ describe('permission helpers', () => {
     expect(canRoute('auth.route.c1', state, ctx, 'active')).toBe(false);
   });
 
+  it('treats nullish enabledCompanyIds as empty via nullish coalescing', () => {
+    const state = makeState({
+      '*': { ui: { routes: [], menus: [], actions: [] } },
+      c1: {
+        ui: {
+          routes: ['auth.route.c1'],
+          menus: ['auth.menu.c1'],
+          actions: ['auth.action.c1'],
+        },
+      },
+    });
+
+    expect(canRoute('auth.route.c1', state, { activeCompanyId: 'c1', enabledCompanyIds: null as any })).toBe(true);
+    expect(canRoute('auth.route.c1', state, { activeCompanyId: 'c1' } as any)).toBe(true);
+  });
+
   it('returns empty set when enabled and active company ids are both absent', () => {
     const state = makeState({
       c1: { ui: { routes: ['auth.route.c1'] } },

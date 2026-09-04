@@ -71,4 +71,17 @@ describe('listController filter normalize/combine', () => {
     const ctx = buildPlan.mock.calls[0]?.[0] as any;
     expect(ctx.filters).toEqual({ A: 1 });
   });
+
+  it('preserves falsy forcedCondition values false and 0', async () => {
+    const storeFalse = makeStore();
+    const ctrlFalse = createListController(storeFalse);
+    await ctrlFalse.apply({ forcedCondition: false as any } as any);
+    expect(buildPlan.mock.calls[0]?.[0]?.filters).toBe(false);
+
+    buildPlan.mockClear();
+    const storeZero = makeStore();
+    const ctrlZero = createListController(storeZero);
+    await ctrlZero.apply({ forcedCondition: 0 as any } as any);
+    expect(buildPlan.mock.calls[0]?.[0]?.filters).toBe(0);
+  });
 });

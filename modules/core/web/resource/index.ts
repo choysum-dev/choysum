@@ -159,6 +159,9 @@ function normalizeRequires(value: unknown): NormalizedResourceRequire[] {
     if (typeof item.model !== 'string' || (item.method != null && typeof item.method !== 'string')) {
       throw new Error('invalid_resource_requires');
     }
+    if (item.kind != null && item.kind !== 'rpc') {
+      throw new Error('invalid_resource_requires');
+    }
     const model = normalizeOptionalString(item.model);
     if (!model) {
       throw new Error('invalid_resource_requires');

@@ -334,5 +334,52 @@ describe('formController attachment protocol', () => {
       );
       expect(out.Avatar).toMatchObject({ displayFileName: value });
     }
+
+    const fromFileLike = await __normalizeAttachmentFieldsInPayloadForTest(
+      store,
+      {
+        Avatar: {
+          kind: 'set',
+          attachmentObjectId: 'ao-names',
+          file: { name: '  nested-file.bin  ' },
+        },
+      },
+      { operation: 'update', ownerModel: 'demo.Asset', ownerRecordId: 'RID-1', fields: ['Avatar'] }
+    );
+    expect(fromFileLike.Avatar).toMatchObject({ displayFileName: 'nested-file.bin' });
+  });
+
+  test('upload uses proposed* fields and defaults content type when absent', async () => {
+    const service = newAttachmentService('ao-proposed');
+    const ctx = newCtx(service);
+    const blob = new Blob([new Uint8Array([1])], { type: '' });
+
+    await __resolveAttachmentFieldValueForTest(
+      {
+        kind: 'set',
+        file: blob,
+        proposedFileName: '  proposed.bin  ',
+        proposedContentType: 'application/x-proposed',
+      },
+      ctx
+    );
+    const prepareProposed = service.PrepareUpload.mock.calls[0]?.[0] as any;
+    expect(prepareProposed?.proposedFileName).toBe('proposed.bin');
+    expect(prepareProposed?.proposedContentType).toBe('application/x-proposed');
+
+    const serviceDefault = newAttachmentService('ao-default-ct');
+    serviceDefault.PrepareUpload = vi.fn(async () => ({
+      uploadId: 'upload-1',
+      uploadTarget: {
+        method: undefined,
+        url: 'https://example.com/upload',
+        headers: {},
+      },
+    }));
+    const ctxDefault = newCtx(serviceDefault);
+    const bareBlob = new Blob([new Uint8Array([2])]); // empty type
+    await __resolveAttachmentFieldValueForTest({ kind: 'set', file: bareBlob }, ctxDefault);
+    const prepareDefault = serviceDefault.PrepareUpload.mock.calls[0]?.[0] as any;
+    expect(prepareDefault?.proposedContentType).toBe('application/octet-stream');
   });
 });

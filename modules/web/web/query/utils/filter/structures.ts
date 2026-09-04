@@ -109,7 +109,7 @@ function queryConditionToGroup(query: any, name?: string): ConditionGroup | null
   const children: Array<Condition | ConditionGroup> = [];
   for (const part of parts) {
     const sub = queryConditionToGroup(part);
-    if (!sub) continue;
+    if (!sub) return null;
     if (sub.children.length === 1 && !sub.name) children.push(sub.children[0]);
     else children.push(sub);
   }

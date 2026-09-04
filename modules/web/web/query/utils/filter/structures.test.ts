@@ -141,6 +141,13 @@ describe('filter structures helpers', () => {
     expect(() => toFilters([42] as any)).toThrow(/invalid_named_filter_query/);
     // Nested array entries must not be treated as incomplete NamedFilter objects.
     expect(() => toFilters([['nested']] as any)).toThrow(/invalid_named_filter_query/);
+    // Partially invalid And/Or trees must fail the whole named filter.
+    expect(() =>
+      toFilters({
+        name: 'Mixed',
+        query: { And: [['Name', '=', 'x'], ['only', 'two']] },
+      } as any)
+    ).toThrow(/invalid_named_filter_query/);
 
     const groupShaped = toFilters({
       name: 'AlreadyGroup',

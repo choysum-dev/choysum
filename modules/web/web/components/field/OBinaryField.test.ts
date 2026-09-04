@@ -119,6 +119,47 @@ describe('OBinaryField normalize helpers', () => {
     const objectWrapper = await mountField(objectOnly);
     expect(objectWrapper.find('.o-binary-current').exists()).toBe(true);
 
+    const objectIdAlias = makeBinding({
+      value: { objectId: '  alias-obj  ', kind: 'set' },
+    });
+    expect((await mountField(objectIdAlias)).find('.o-binary-current').exists()).toBe(true);
+
+    const urlFallback = makeBinding({
+      value: { url: '  /files/via-url.bin  ', kind: 'set' },
+    });
+    const urlWrapper = await mount(OBinaryField as any, {
+      props: {
+        binding: urlFallback,
+        renderMode: 'display',
+        uploadProps: { drag: false, showFileList: false },
+      },
+      global: {
+        stubs: {
+          OFieldBase: defineComponent({
+            name: 'OFieldBase',
+            props: { binding: { type: Object, required: false } },
+            setup(props, { slots }) {
+              return () =>
+                h(
+                  'div',
+                  slots.display?.({
+                    fieldValue: () => (props.binding as UseField | undefined)?.fieldRef?.() ?? ref(null),
+                    renderMode: 'form',
+                  })
+                );
+            },
+          }),
+          'el-upload': ElUploadStub,
+          'el-button': { template: '<button class="btn"><slot /></button>' },
+          'el-icon': { template: '<i><slot /></i>' },
+          Document: true,
+          UploadFilled: true,
+        },
+      },
+    });
+    await flushPromises();
+    expect(urlWrapper.html()).toContain('/files/via-url.bin');
+
     const downloadOnly = makeBinding({
       value: { downloadUrl: '  /files/only.bin  ', kind: 'set' },
     });

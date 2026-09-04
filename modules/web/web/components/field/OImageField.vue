@@ -236,7 +236,9 @@ function resolveBindingId(raw: unknown): string | undefined {
 
 function resolveObjectId(raw: unknown): string | undefined {
   if (!isAttachmentObject(raw)) return undefined;
-  return normalizeOptionalString(raw.attachmentObjectId ?? raw.objectId);
+  const fromAttachmentObjectId = normalizeOptionalString(raw.attachmentObjectId);
+  if (fromAttachmentObjectId) return fromAttachmentObjectId;
+  return normalizeOptionalString(raw.objectId);
 }
 
 function resolveFileName(raw: unknown): string | undefined {
@@ -327,13 +329,33 @@ function formatSize(sizeBytes: number | undefined): string | undefined {
 function resolveDownloadUrl(raw: unknown): string | undefined {
   if (!isAttachmentObject(raw)) return undefined;
   const descriptor = resolveDescriptor(raw);
-  return normalizeOptionalString(raw.downloadUrl ?? raw.url ?? raw.previewUrl ?? raw.thumbnailUrl ?? descriptor?.downloadUrl ?? descriptor?.previewUrl);
+  const fromDownloadUrl = normalizeOptionalString(raw.downloadUrl);
+  if (fromDownloadUrl) return fromDownloadUrl;
+  const fromUrl = normalizeOptionalString(raw.url);
+  if (fromUrl) return fromUrl;
+  const fromPreviewUrl = normalizeOptionalString(raw.previewUrl);
+  if (fromPreviewUrl) return fromPreviewUrl;
+  const fromThumbnailUrl = normalizeOptionalString(raw.thumbnailUrl);
+  if (fromThumbnailUrl) return fromThumbnailUrl;
+  const fromDescriptorDownload = normalizeOptionalString(descriptor?.downloadUrl);
+  if (fromDescriptorDownload) return fromDescriptorDownload;
+  return normalizeOptionalString(descriptor?.previewUrl);
 }
 
 function resolvePreviewUrl(raw: unknown): string | undefined {
   if (!isAttachmentObject(raw)) return undefined;
   const descriptor = resolveDescriptor(raw);
-  return normalizeOptionalString(raw.previewUrl ?? raw.url ?? raw.thumbnailUrl ?? raw.downloadUrl ?? descriptor?.previewUrl ?? descriptor?.downloadUrl);
+  const fromPreviewUrl = normalizeOptionalString(raw.previewUrl);
+  if (fromPreviewUrl) return fromPreviewUrl;
+  const fromUrl = normalizeOptionalString(raw.url);
+  if (fromUrl) return fromUrl;
+  const fromThumbnailUrl = normalizeOptionalString(raw.thumbnailUrl);
+  if (fromThumbnailUrl) return fromThumbnailUrl;
+  const fromDownloadUrl = normalizeOptionalString(raw.downloadUrl);
+  if (fromDownloadUrl) return fromDownloadUrl;
+  const fromDescriptorPreview = normalizeOptionalString(descriptor?.previewUrl);
+  if (fromDescriptorPreview) return fromDescriptorPreview;
+  return normalizeOptionalString(descriptor?.downloadUrl);
 }
 
 function resolveLinkHref(raw: unknown): string | undefined {

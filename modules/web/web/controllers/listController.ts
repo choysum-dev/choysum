@@ -16,7 +16,7 @@ import { userClearedDefaultFilters, userClearedDefaultGroups } from '@/web/web/q
 import { exportFieldSelection } from '@/web/web/query/utils/registry/field';
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
 import { filtersToQuery } from '@/web/web/query/utils/condition/builder';
-import { asPresentCondition, combinePresentConditions } from '@/web/web/query/utils/condition/absent';
+import { combinePresentConditions } from '@/web/web/query/utils/condition/absent';
 
 // ListViewModel & GroupBySpec now centralized in query/types.ts
 
@@ -210,14 +210,7 @@ export function createListController(store: WebModelStore<any>): IListController
 
       // Merge the call-site forced condition last.
       const forcedCondition = hasForcedConditionOverride ? (effectiveOverrides as any).forcedCondition : undefined;
-      const finalCondition = (() => {
-        const A = normalizeFilter(compiledFromUi);
-        const B = normalizeFilter(forcedCondition);
-        if (!A && !B) return undefined;
-        if (!A) return B;
-        if (!B) return A;
-        return { And: [A, B] } as any;
-      })();
+      const finalCondition = combinePresentConditions(compiledFromUi, forcedCondition) as any;
 
       // Persist keyword, keywordFields, and UI filters so cross-view restores remain stable.
       if (effectiveOverrides) {
@@ -410,9 +403,6 @@ export function createListController(store: WebModelStore<any>): IListController
     await apply({ appliedGroups: gb, kind: gb.length > 0 ? 'group' : 'search' });
   }
 
-  function normalizeFilter<F = any>(f?: F): F | undefined {
-    return asPresentCondition(f);
-  }
   function combineFilters(a?: any, b?: any): any | undefined {
     return combinePresentConditions(a, b) as any;
   }

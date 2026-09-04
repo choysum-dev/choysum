@@ -46,7 +46,8 @@ describe('OBinaryField/OImageField mapping contract', () => {
       "type UploadPassthroughProps = Partial<Pick<UploadProps, 'drag' | 'multiple' | 'limit' | 'disabled' | 'showFileList' | 'listType' | 'onExceed'>>;"
     );
     expect(s).toContain('resolvePreviewUrl(raw: unknown): string | undefined');
-    expect(s).toContain('raw.previewUrl ?? raw.url ?? raw.thumbnailUrl');
+    expect(s).toContain('const fromPreviewUrl = normalizeOptionalString(raw.previewUrl)');
+    expect(s).toContain('const fromThumbnailUrl = normalizeOptionalString(raw.thumbnailUrl)');
     expect(s).toContain(':drag="shouldUseDragMode(fieldValue().value)"');
     expect(s).toContain('UploadFilled');
     expect(s).toContain('@click="removeImage(fieldValue, onFieldChange)"');
