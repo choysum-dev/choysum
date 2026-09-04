@@ -8,7 +8,7 @@ import { businessToday } from '@/core/service/utils/datetime';
 import { _t, _lt } from '../i18n';
 import Company from './company';
 import Currency from './currency';
-import { fail, mapNormalizationToBase, assertRefId } from './_normalizers';
+import { fail, mapNormalizationToBase } from './_normalizers';
 
 @Model('ExchangeRate', { companyField: 'CompanyId' })
 export default class ExchangeRate extends BaseModel {
@@ -90,7 +90,10 @@ export default class ExchangeRate extends BaseModel {
 
   private static async ensureUniqueTuple(values: Record<string, any>, currentId?: string): Promise<void> {
     const scopeKey = String(values.CompanyScopeKey ?? (normalizeRefId(values.CompanyId) || '__GLOBAL__'));
-    const currencyId = assertRefId(values.CurrencyId, 'CurrencyId');
+    const currencyId = normalizeRefId(values.CurrencyId);
+    if (!currencyId) {
+      fail(_t('%s is required', { scope: 'service/models/exchange_rate' }, 'CurrencyId'));
+    }
     const dateKey = this.dateKey(values.Date);
 
     const conflicts = await this.Search(

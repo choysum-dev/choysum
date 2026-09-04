@@ -73,9 +73,7 @@ function pickErrString(err: any, primary: string, secondary: string): string {
   return '';
 }
 
-function classifyFailureKind(status: string, err?: any): FailureKind {
-  if (status === 'cancelled') return 'NON_RETRYABLE';
-  if (status !== 'failed') return 'NONE';
+function classifyRetryability(err?: any): FailureKind {
   const domain = pickErrString(err, 'domain', 'errorDomain').toLowerCase();
   const code = pickErrString(err, 'code', 'errorCode').toUpperCase();
   if (domain === 'meta.lock' && code === 'LEASE_CONFLICT') return 'RETRYABLE';
@@ -362,9 +360,14 @@ export default class MetaModule extends BaseModel {
     const nextRetryAt = retryAfterMs && (job as any)?.RunAfter ? new Date((job as any).RunAfter) : undefined;
 
     const resultStatus = result?.resultStatus || (status === 'failed' || status === 'cancelled' ? 'FAILED' : undefined);
-    let failureKind = classifyFailureKind(status, err);
+    let failureKind: FailureKind = 'NONE';
+    if (status === 'cancelled') {
+      failureKind = 'NON_RETRYABLE';
+    } else if (status === 'failed') {
+      failureKind = classifyRetryability(err);
+    }
     if (resultStatus === 'FAILED' && failureKind === 'NONE') {
-      failureKind = classifyFailureKind('failed', err);
+      failureKind = classifyRetryability(err);
     }
     const summary = result?.summary || (resultStatus === 'FAILED' ? { code: 'MODULE_OPERATION_FAILED', message: err?.message } : undefined);
 

@@ -17,6 +17,7 @@ import {
   pickNewestTimestamp,
   aggregateRows,
   assertOriginType,
+  originTypeOrAll,
   canReuseRunningSync,
   type ModuleIndexRecord,
 } from '../models/_module_index_query';
@@ -512,6 +513,17 @@ describe('assertOriginType', () => {
   });
   it('rejects invalid', () => {
     expect(() => assertOriginType('invalid')).toThrow(/originType/);
+  });
+});
+
+describe('originTypeOrAll', () => {
+  it('defaults nullish to all', () => {
+    expect(originTypeOrAll(undefined)).toBe('all');
+    expect(originTypeOrAll(null)).toBe('all');
+  });
+  it('asserts provided values', () => {
+    expect(originTypeOrAll('local')).toBe('local');
+    expect(() => originTypeOrAll('remote' as any)).toThrow(/originType/);
   });
 });
 

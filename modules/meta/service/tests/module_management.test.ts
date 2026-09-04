@@ -655,6 +655,60 @@ test('meta.MetaModule GetOpStatus maps retryable lock conflicts via errorDomain/
   expect(status.retryAfterMs).toBe(1000);
 });
 
+test('meta.MetaModule GetOpStatus maps mismatched lock codes as non-retryable', async () => {
+  resetRequestContext();
+  ensureModuleManagementBridge();
+  ensureJobMock();
+
+  const moduleName = uid('lock_mismatch');
+  const job = await Job.EnqueueJob('meta', 'meta.MetaModule/ExecuteUpgrade', { moduleName, operatorUserId: 'admin' }, 'admin', 'admin');
+
+  await (Job as any).UpdateById(
+    job.Id as any,
+    {
+      Status: 'failed',
+      LastErrorJson: {
+        domain: 'meta.lock',
+        code: 'OTHER',
+        message: 'not a lease conflict',
+      },
+    } as any
+  );
+
+  const status = await MetaModule.GetOpStatus(job.Id as any);
+  expect(status.failureKind).toBe('NON_RETRYABLE');
+
+  await (Job as any).UpdateById(
+    job.Id as any,
+    {
+      Status: 'failed',
+      LastErrorJson: {
+        domain: '',
+        errorDomain: 'module_management',
+        code: '',
+        errorCode: 'LOCK_LEASE_LOST',
+        message: 'lease lost via alt keys',
+      },
+    } as any
+  );
+  const alt = await MetaModule.GetOpStatus(job.Id as any);
+  expect(alt.failureKind).toBe('RETRYABLE');
+
+  await (Job as any).UpdateById(
+    job.Id as any,
+    {
+      Status: 'failed',
+      LastErrorJson: {
+        domain: 'module_management',
+        code: 'OTHER',
+        message: 'not lease lost',
+      },
+    } as any
+  );
+  const mismatchMgmt = await MetaModule.GetOpStatus(job.Id as any);
+  expect(mismatchMgmt.failureKind).toBe('NON_RETRYABLE');
+});
+
 test('meta.MetaModule GetOpStatus maps cancelled jobs as non-retryable failures', async () => {
   resetRequestContext();
   ensureModuleManagementBridge();

@@ -870,6 +870,11 @@ msgctxt "service/models/currency"
 msgid "Rounding must be greater than 0"
 msgstr ""
 
+#: service/models/exchange_rate.ts:95
+msgctxt "service/models/exchange_rate"
+msgid "%s is required"
+msgstr ""
+
 #: service/models/exchange_rate.ts:81
 msgctxt "service/models/exchange_rate"
 msgid "Date is invalid"
@@ -885,17 +890,17 @@ msgctxt "service/models/exchange_rate"
 msgid "Date must be YYYY-MM-DD"
 msgstr ""
 
-#: service/models/exchange_rate.ts:109
+#: service/models/exchange_rate.ts:112
 msgctxt "service/models/exchange_rate"
 msgid "ExchangeRate must be unique for CompanyId + CurrencyId + Date"
 msgstr ""
 
-#: service/models/exchange_rate.ts:119
+#: service/models/exchange_rate.ts:122
 msgctxt "service/models/exchange_rate"
 msgid "Rate must be a valid decimal"
 msgstr ""
 
-#: service/models/exchange_rate.ts:118
+#: service/models/exchange_rate.ts:121
 msgctxt "service/models/exchange_rate"
 msgid "Rate must be greater than 0"
 msgstr ""

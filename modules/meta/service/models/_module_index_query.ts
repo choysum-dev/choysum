@@ -322,6 +322,12 @@ export function assertOriginType(value?: string): ModuleSyncOriginType {
   throw new Error(`invalid originType: must be all|local|registry, got ${JSON.stringify(value)}`);
 }
 
+/** Resolve an optional originType, defaulting nullish input to `all`. */
+export function originTypeOrAll(value?: string | null): ModuleSyncOriginType {
+  if (value == null) return assertOriginType('all');
+  return assertOriginType(value);
+}
+
 export function canReuseRunningSync(requested: ModuleSyncOriginType, running: ModuleSyncOriginType): boolean {
   if (requested === 'all') return running === 'all';
   if (running === 'all') return true;
