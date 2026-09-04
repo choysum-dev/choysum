@@ -58,9 +58,11 @@ export function requireCompanyId(rawCompanyId: unknown, stage: string): string {
 
 /**
  * Trim optional text, coercing finite numbers to strings.
+ * Non-finite numbers (NaN / ±Infinity) are treated as absent.
  */
 export function normalizeLooseOptionalText(value: unknown): string | undefined {
-  if (typeof value === 'number' && Number.isFinite(value)) {
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return undefined;
     return String(value);
   }
   return normalizeOptionalString(value);
