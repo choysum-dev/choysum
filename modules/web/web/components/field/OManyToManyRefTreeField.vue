@@ -95,6 +95,7 @@ import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import { createTranslate } from '@/web/web/i18n';
+import { normalizeTreeRefId as normalizeRefId } from './treeRefId';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/OManyToManyRefTreeField' });
 
@@ -273,13 +274,6 @@ const effectiveRootCondition = computed<AnyQueryCondition | []>(() => {
   if (parts.length === 1) return parts[0];
   return { And: parts } as any;
 });
-
-function normalizeRefId(v: any): string | null {
-  if (v == null) return null;
-  const raw = typeof v === 'object' && v !== null ? (v as any).Id : v;
-  const s = String(raw ?? '').trim();
-  return s ? s : null;
-}
 
 function parseChildrenValue(raw: any): any[] {
   if (Array.isArray(raw)) return raw;

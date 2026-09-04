@@ -16,6 +16,7 @@ import { userClearedDefaultFilters, userClearedDefaultGroups } from '@/web/web/q
 import { exportFieldSelection } from '@/web/web/query/utils/registry/field';
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
 import { filtersToQuery } from '@/web/web/query/utils/condition/builder';
+import { combinePresentConditions } from '@/web/web/query/utils/condition/absent';
 
 // ListViewModel & GroupBySpec now centralized in query/types.ts
 
@@ -209,14 +210,7 @@ export function createListController(store: WebModelStore<any>): IListController
 
       // Merge the call-site forced condition last.
       const forcedCondition = hasForcedConditionOverride ? (effectiveOverrides as any).forcedCondition : undefined;
-      const finalCondition = (() => {
-        const A = normalizeFilter(compiledFromUi);
-        const B = normalizeFilter(forcedCondition);
-        if (!A && !B) return undefined;
-        if (!A) return B;
-        if (!B) return A;
-        return { And: [A, B] } as any;
-      })();
+      const finalCondition = combinePresentConditions(compiledFromUi, forcedCondition) as any;
 
       // Persist keyword, keywordFields, and UI filters so cross-view restores remain stable.
       if (effectiveOverrides) {
@@ -409,20 +403,8 @@ export function createListController(store: WebModelStore<any>): IListController
     await apply({ appliedGroups: gb, kind: gb.length > 0 ? 'group' : 'search' });
   }
 
-  function normalizeFilter<F = any>(f?: F): F | undefined {
-    if (f == null) return undefined as any;
-    // Treat [] and {} as an absent condition.
-    if (Array.isArray(f) && f.length === 0) return undefined as any;
-    if (typeof f === 'object' && !Array.isArray(f) && Object.keys(f as any).length === 0) return undefined as any;
-    return f as any;
-  }
   function combineFilters(a?: any, b?: any): any | undefined {
-    const A = normalizeFilter(a);
-    const B = normalizeFilter(b);
-    if (!A && !B) return undefined;
-    if (!A) return B;
-    if (!B) return A;
-    return { And: [A, B] } as any;
+    return combinePresentConditions(a, b) as any;
   }
 
   // buildUnifiedQuery now owns QueryContext construction.

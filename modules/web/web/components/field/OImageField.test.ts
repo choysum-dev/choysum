@@ -397,6 +397,115 @@ describe('OImageField upload limit gate (PR-P2-F3)', () => {
     expect(binding.fieldRef().value).toMatchObject({
       kind: 'set',
       fileName: 'photo.png',
+      originalFileName: 'photo.png',
+      proposedFileName: 'photo.png',
+      proposedContentType: 'image/png',
+      clientContentType: 'image/png',
+      displayName: 'photo.png',
     });
+  });
+
+  it('resolves object id and download/preview urls for existing attachments', async () => {
+    const binding = makeBinding({
+      value: {
+        attachmentObjectId: '  obj-img  ',
+        kind: 'set',
+      },
+    });
+    const wrapper = await mountField(binding);
+    await flushPromises();
+    expect(wrapper.find('.o-image-current').exists()).toBe(true);
+
+    const objectIdAlias = makeBinding({
+      value: { objectId: '  alias-img  ', kind: 'set' },
+    });
+    expect((await mountField(objectIdAlias)).find('.o-image-current').exists()).toBe(true);
+
+    const withPreview = makeBinding({
+      value: {
+        previewUrl: '  /preview/img.png  ',
+        fileName: 'img.png',
+        kind: 'set',
+      },
+    });
+    const previewWrapper = await mountField(withPreview);
+    await flushPromises();
+    expect(previewWrapper.find('.o-image-current__preview').attributes('src')).toBe('/preview/img.png');
+  });
+
+  async function mountImageDisplay(binding: UseField) {
+    return mount(OImageField as any, {
+      props: {
+        binding,
+        renderMode: 'display',
+        uploadProps: { drag: false, showFileList: false },
+      },
+      global: {
+        stubs: {
+          OFieldBase: defineComponent({
+            name: 'OFieldBase',
+            props: { binding: { type: Object, required: false } },
+            setup(props, { slots }) {
+              return () =>
+                h(
+                  'div',
+                  slots.display?.({
+                    fieldValue: () => (props.binding as UseField | undefined)?.fieldRef?.() ?? ref(null),
+                    renderMode: 'form',
+                  })
+                );
+            },
+          }),
+          'el-upload': ElUploadStub,
+          'el-button': { template: '<button class="btn"><slot /></button>' },
+          'el-icon': { template: '<i><slot /></i>' },
+          Picture: true,
+          UploadFilled: true,
+        },
+      },
+    });
+  }
+
+  it('covers resolveDownloadUrl and resolvePreviewUrl fallback chains', async () => {
+    const cases: Array<{ value: Record<string, unknown>; expectUrl: string }> = [
+      { value: { url: '  /dl/via-url.png  ', kind: 'set' }, expectUrl: '/dl/via-url.png' },
+      { value: { previewUrl: '  /dl/via-preview.png  ', kind: 'set' }, expectUrl: '/dl/via-preview.png' },
+      { value: { thumbnailUrl: '  /dl/via-thumb.png  ', kind: 'set' }, expectUrl: '/dl/via-thumb.png' },
+      {
+        value: { descriptor: { downloadUrl: '  /dl/desc-download.png  ' }, kind: 'set' },
+        expectUrl: '/dl/desc-download.png',
+      },
+      {
+        value: { descriptor: { previewUrl: '  /dl/desc-preview.png  ' }, kind: 'set' },
+        expectUrl: '/dl/desc-preview.png',
+      },
+    ];
+
+    for (const c of cases) {
+      const wrapper = await mountImageDisplay(makeBinding({ value: c.value }));
+      await flushPromises();
+      expect(wrapper.html()).toContain(c.expectUrl);
+    }
+  });
+
+  it('treats string attachment values and clear/noop kinds', async () => {
+    const stringBinding = makeBinding({ value: '  photo.png  ' });
+    const stringWrapper = await mountField(stringBinding);
+    expect(stringWrapper.find('.o-image-current').exists()).toBe(true);
+
+    const clearBinding = makeBinding({ value: { kind: 'CLEAR' } });
+    const clearWrapper = await mountField(clearBinding);
+    expect(clearWrapper.find('.o-image-current').exists()).toBe(false);
+
+    const downloadOnly = makeBinding({
+      value: {
+        attachmentBindingId: 'bind-x',
+        downloadUrl: '  /dl/only.png  ',
+        kind: 'set',
+      },
+    });
+    const downloadWrapper = await mountImageDisplay(downloadOnly);
+    await flushPromises();
+    expect(downloadWrapper.html()).toContain('/dl/only.png');
   });
 });

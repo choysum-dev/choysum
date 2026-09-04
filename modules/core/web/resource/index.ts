@@ -3,9 +3,10 @@
 
 import type { RouteRecordRaw } from 'vue-router';
 import type { MenuItem } from '../menu';
-import { asObjectRecord } from '../../utils/object';
+import { asObjectRecord, isObjectRecord } from '../../utils/object';
 import type { ObjectRecord } from '../../utils/types';
 import { isTermReference, createTermReference, type TermReference } from '../../service/i18n';
+import { assertNonNegativeInt, normalizeOptionalString } from '../../service/utils/normalization';
 
 export type ResourceId = string;
 export type ResourceKind = 'route' | 'menu' | 'action';
@@ -99,8 +100,7 @@ export type ModelActions = {
 const resourceDeclarations = new Map<ResourceId, ResourceDeclaration>();
 
 function normalizeTitle(value: unknown): string | undefined {
-  const normalized = typeof value === 'string' ? value.trim() : '';
-  return normalized || undefined;
+  return normalizeOptionalString(value);
 }
 
 function normalizeResourceTitle(value: unknown): { title?: string; titleText?: TermReference } {
@@ -113,26 +113,60 @@ function normalizeResourceTitle(value: unknown): { title?: string; titleText?: T
 }
 
 function normalizeSequence(value: unknown): number | undefined {
-  const normalized = Number(value);
-  return Number.isFinite(normalized) ? normalized : undefined;
+  if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) {
+    return undefined;
+  }
+  return assertNonNegativeInt(value);
+}
+
+function normalizeStringListField(value: unknown, errorCode: string): string[] {
+  if (value == null) return [];
+  if (!Array.isArray(value)) {
+    throw new Error(errorCode);
+  }
+
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const item of value) {
+    if (typeof item !== 'string') {
+      throw new Error(errorCode);
+    }
+    const normalized = item.trim();
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    out.push(normalized);
+  }
+  return out;
 }
 
 function normalizeDefaultRoles(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return Array.from(new Set(value.map(item => String(item || '').trim()).filter(Boolean)));
+  return normalizeStringListField(value, 'invalid_resource_default_roles');
 }
 
 function normalizeRequires(value: unknown): NormalizedResourceRequire[] {
-  if (!Array.isArray(value)) return [];
+  if (value == null) return [];
+  if (!Array.isArray(value)) {
+    throw new Error('invalid_resource_requires');
+  }
 
   const out: NormalizedResourceRequire[] = [];
   const seen = new Set<string>();
 
   for (const item of value) {
-    const requireItem = asObjectRecord(item);
-    const model = String(requireItem?.model || '').trim();
-    if (!model) continue;
-    const method = normalizeTitle(requireItem?.method);
+    if (!isObjectRecord(item)) {
+      throw new Error('invalid_resource_requires');
+    }
+    if (typeof item.model !== 'string' || (item.method != null && typeof item.method !== 'string')) {
+      throw new Error('invalid_resource_requires');
+    }
+    if (item.kind != null && item.kind !== 'rpc') {
+      throw new Error('invalid_resource_requires');
+    }
+    const model = normalizeOptionalString(item.model);
+    if (!model) {
+      throw new Error('invalid_resource_requires');
+    }
+    const method = normalizeOptionalString(item.method);
     const kind: 'rpc' = 'rpc';
     const key = `${kind}:${model}:${method ?? ''}`;
     if (seen.has(key)) continue;
@@ -144,8 +178,7 @@ function normalizeRequires(value: unknown): NormalizedResourceRequire[] {
 }
 
 function normalizeActions(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return Array.from(new Set(value.map(item => String(item || '').trim()).filter(Boolean)));
+  return normalizeStringListField(value, 'invalid_resource_actions');
 }
 
 function cloneDeclaration<T extends ResourceDeclaration>(declaration: T): T {
@@ -193,11 +226,12 @@ export function getResourceDeclarationFromMeta(meta?: ObjectRecord | null): Reso
 
 export function defineRoute<T extends RouteRecordRaw>(id: ResourceId, config: DefineRouteOptions<T>): T {
   const normalizedTitle = normalizeResourceTitle(config.title);
+  const sequence = normalizeSequence(config.sequence);
   const declaration = registerResourceDeclaration({
     id,
     kind: 'route',
     ...normalizedTitle,
-    sequence: normalizeSequence(config.sequence),
+    sequence,
     path: normalizeTitle((config as { path?: unknown })?.path),
     actions: normalizeActions(config.actions),
     requires: normalizeRequires(config.requires),
@@ -205,7 +239,7 @@ export function defineRoute<T extends RouteRecordRaw>(id: ResourceId, config: De
     override: Boolean(config.override),
   } satisfies RouteResourceDeclaration);
 
-  const { actions: _actions, title, sequence, requires: _requires, defaultRoles: _defaultRoles, override: _override, ...routeConfig } = config;
+  const { actions: _actions, title, sequence: _sequence, requires: _requires, defaultRoles: _defaultRoles, override: _override, ...routeConfig } = config;
 
   const meta = withResourceMeta(routeConfig.meta, declaration);
   if (normalizedTitle.title && meta.pageTitle == null) {
@@ -214,8 +248,8 @@ export function defineRoute<T extends RouteRecordRaw>(id: ResourceId, config: De
   if (normalizedTitle.titleText && meta.pageTitleText == null) {
     meta.pageTitleText = normalizedTitle.titleText;
   }
-  if (Number.isFinite(Number(sequence))) {
-    meta.routeSequence = Number(sequence);
+  if (sequence !== undefined) {
+    meta.routeSequence = sequence;
   }
 
   return {
@@ -226,12 +260,13 @@ export function defineRoute<T extends RouteRecordRaw>(id: ResourceId, config: De
 
 export function defineMenu(id: ResourceId, config: DefineMenuOptions): MenuItem {
   const normalizedTitle = normalizeResourceTitle(config.title);
+  const sequence = normalizeSequence(config.sequence);
   const declaration = registerResourceDeclaration({
     id,
     kind: 'menu',
     title: normalizedTitle.title ?? id,
     titleText: normalizedTitle.titleText,
-    sequence: normalizeSequence(config.sequence),
+    sequence,
     path: normalizeTitle(config.path),
     parentMenu: normalizeTitle(config.parentMenu),
     requires: normalizeRequires(config.requires),
@@ -245,7 +280,7 @@ export function defineMenu(id: ResourceId, config: DefineMenuOptions): MenuItem 
     titleText: normalizedTitle.titleText,
     icon: config.icon,
     path: config.path,
-    order: config.sequence,
+    order: sequence,
     children: config.children,
     meta: withResourceMeta(config.meta, declaration),
   };

@@ -123,6 +123,7 @@ import { Document, UploadFilled } from '@element-plus/icons-vue';
 import OFieldBase, { type FieldStateExpr } from './OFieldBase.vue';
 import { createTranslate } from '@/web/web/i18n';
 import { computed } from 'vue';
+import { normalizeOptionalString } from '@/core/service/utils/normalization';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/OBinaryField' });
 
@@ -190,11 +191,6 @@ const uploadShowFileList = uploadConfig.showFileList ?? false;
 const uploadDisabled = uploadConfig.disabled ?? false;
 const replaceButtonText = computed(() => (uploadMultiple ? uploadButtonText.value : _t('Replace file')));
 
-function normalizeText(value: unknown): string | undefined {
-  const text = String(value ?? '').trim();
-  return text ? text : undefined;
-}
-
 function isAttachmentObject(raw: unknown): raw is AttachmentLike {
   return !!raw && typeof raw === 'object' && !Array.isArray(raw);
 }
@@ -208,25 +204,27 @@ function resolveDescriptor(raw: unknown): AttachmentLike | undefined {
 function resolveBindingId(raw: unknown): string | undefined {
   if (!isAttachmentObject(raw)) return undefined;
   const descriptor = resolveDescriptor(raw);
-  return normalizeText(raw.attachmentBindingId ?? raw.bindingId ?? raw.Id ?? raw.id ?? descriptor?.id);
+  return normalizeOptionalString(raw.attachmentBindingId ?? raw.bindingId ?? raw.Id ?? raw.id ?? descriptor?.id);
 }
 
 function resolveObjectId(raw: unknown): string | undefined {
   if (!isAttachmentObject(raw)) return undefined;
-  return normalizeText(raw.attachmentObjectId ?? raw.objectId);
+  const fromAttachmentObjectId = normalizeOptionalString(raw.attachmentObjectId);
+  if (fromAttachmentObjectId) return fromAttachmentObjectId;
+  return normalizeOptionalString(raw.objectId);
 }
 
 function resolveFileName(raw: unknown): string | undefined {
-  if (typeof raw === 'string') return normalizeText(raw);
+  if (typeof raw === 'string') return normalizeOptionalString(raw);
   if (!isAttachmentObject(raw)) return undefined;
   const descriptor = resolveDescriptor(raw);
-  return normalizeText(raw.fileName ?? raw.displayName ?? raw.name ?? raw.originalFileName ?? descriptor?.fileName);
+  return normalizeOptionalString(raw.fileName ?? raw.displayName ?? raw.name ?? raw.originalFileName ?? descriptor?.fileName);
 }
 
 function resolveMimeType(raw: unknown): string | undefined {
   if (!isAttachmentObject(raw)) return undefined;
   const descriptor = resolveDescriptor(raw);
-  return normalizeText(raw.mimeType ?? raw.contentType ?? raw.clientContentType ?? raw.proposedContentType ?? descriptor?.mimeType);
+  return normalizeOptionalString(raw.mimeType ?? raw.contentType ?? raw.clientContentType ?? raw.proposedContentType ?? descriptor?.mimeType);
 }
 
 function resolveSizeBytes(raw: unknown): number | undefined {
@@ -240,14 +238,22 @@ function resolveSizeBytes(raw: unknown): number | undefined {
 function resolveDownloadUrl(raw: unknown): string | undefined {
   if (!isAttachmentObject(raw)) return undefined;
   const descriptor = resolveDescriptor(raw);
-  return normalizeText(raw.downloadUrl ?? raw.url ?? raw.previewUrl ?? descriptor?.downloadUrl ?? descriptor?.previewUrl);
+  const fromDownloadUrl = normalizeOptionalString(raw.downloadUrl);
+  if (fromDownloadUrl) return fromDownloadUrl;
+  const fromUrl = normalizeOptionalString(raw.url);
+  if (fromUrl) return fromUrl;
+  const fromPreviewUrl = normalizeOptionalString(raw.previewUrl);
+  if (fromPreviewUrl) return fromPreviewUrl;
+  const fromDescriptorDownload = normalizeOptionalString(descriptor?.downloadUrl);
+  if (fromDescriptorDownload) return fromDescriptorDownload;
+  return normalizeOptionalString(descriptor?.previewUrl);
 }
 
 function hasAttachment(raw: unknown): boolean {
   if (raw == null) return false;
-  if (typeof raw === 'string') return !!normalizeText(raw);
+  if (typeof raw === 'string') return !!normalizeOptionalString(raw);
   if (isAttachmentObject(raw)) {
-    const kind = normalizeText(raw.kind)?.toLowerCase();
+    const kind = normalizeOptionalString(raw.kind)?.toLowerCase();
     if (kind === 'noop' || kind === 'clear') return false;
     return !!(resolveBindingId(raw) || resolveFileName(raw) || resolveObjectId(raw) || resolveDownloadUrl(raw) || raw.file);
   }
@@ -294,16 +300,18 @@ function isTableRenderMode(renderMode: unknown): boolean {
 
 async function applySelectedBinary(file: UploadRawFile, fieldValue: ValueRefGetter, onFieldChange?: OnFieldChange): Promise<void> {
   const valueRef = fieldValue();
+  const fileName = normalizeOptionalString(file.name);
+  const contentType = normalizeOptionalString(file.type);
 
   valueRef.value = {
     kind: 'set',
     file,
-    fileName: normalizeText(file.name),
-    originalFileName: normalizeText(file.name),
-    proposedFileName: normalizeText(file.name),
-    proposedContentType: normalizeText(file.type),
-    clientContentType: normalizeText(file.type),
-    displayName: normalizeText(file.name),
+    fileName,
+    originalFileName: fileName,
+    proposedFileName: fileName,
+    proposedContentType: contentType,
+    clientContentType: contentType,
+    displayName: fileName,
   };
 
   if (typeof onFieldChange === 'function') {

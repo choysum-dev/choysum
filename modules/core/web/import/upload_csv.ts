@@ -4,6 +4,7 @@
 import { getCurrentRequestContext } from '@/core/rpc/context';
 import { getCSRFProvider, getTokenProvider } from '@/core/web/rpc/providers';
 import { createStoreByModel } from '@/core/web/stores/registry';
+import { normalizeOptionalString } from '@/core/service/utils/normalization';
 
 type PrepareUploadReq = {
   ownerModel: string;
@@ -37,11 +38,6 @@ export type UploadImportCsvOptions = {
   file: File;
   businessRequestId?: string;
 };
-
-function normalizeText(value: unknown): string | undefined {
-  const text = String(value ?? '').trim();
-  return text === '' ? undefined : text;
-}
 
 function newBusinessRequestId(prefix: string): string {
   const base =
@@ -78,7 +74,7 @@ async function applyInternalUploadAuthHeaders(headers: Headers): Promise<void> {
     const csrfProvider = getCSRFProvider();
     if (csrfProvider) {
       try {
-        const csrfToken = normalizeText(await csrfProvider.getCSRFToken());
+        const csrfToken = normalizeOptionalString(await csrfProvider.getCSRFToken());
         if (csrfToken) headers.set('X-XSRF-TOKEN', csrfToken);
       } catch {
         // best effort
@@ -96,7 +92,7 @@ async function applyInternalUploadAuthHeaders(headers: Headers): Promise<void> {
         // best effort
       }
       try {
-        const token = normalizeText(await tokenProvider.getToken());
+        const token = normalizeOptionalString(await tokenProvider.getToken());
         if (token) headers.set('Authorization', `Bearer ${token}`);
       } catch {
         // best effort
@@ -110,7 +106,7 @@ async function applyInternalUploadAuthHeaders(headers: Headers): Promise<void> {
       const pairs: string[] = [];
       for (const [key, value] of Object.entries(ctx || {})) {
         const normalizedKey = key.trim().toLowerCase();
-        const normalizedValue = normalizeText(value);
+        const normalizedValue = normalizeOptionalString(value);
         if (!normalizedKey || !normalizedValue) continue;
         const baggageKey = normalizedKey.startsWith('ctx.') ? normalizedKey : `ctx.${normalizedKey}`;
         pairs.push(`${encodeURIComponent(baggageKey)}=${encodeURIComponent(normalizedValue)}`);
@@ -123,19 +119,19 @@ async function applyInternalUploadAuthHeaders(headers: Headers): Promise<void> {
 }
 
 async function uploadToTarget(fieldName: string, target: NonNullable<PrepareUploadResp['uploadTarget']>, body: Blob): Promise<void> {
-  const url = normalizeText(target?.url);
+  const url = normalizeOptionalString(target?.url);
   if (!url) {
     throw new Error(`${fieldName}: upload target url is empty`);
   }
-  const method = (normalizeText(target?.method) || 'PUT').toUpperCase();
+  const method = (normalizeOptionalString(target?.method) || 'PUT').toUpperCase();
   if (method !== 'PUT') {
     throw new Error(`${fieldName}: unsupported upload method ${method}`);
   }
 
   const headers = new Headers();
   for (const [k, v] of Object.entries(target?.headers || {})) {
-    const key = normalizeText(k);
-    const value = normalizeText(v);
+    const key = normalizeOptionalString(k);
+    const value = normalizeOptionalString(v);
     if (key && value) headers.set(key, value);
   }
 
@@ -160,10 +156,10 @@ async function uploadToTarget(fieldName: string, target: NonNullable<PrepareUplo
  */
 export async function uploadImportCsv(options: UploadImportCsvOptions): Promise<string> {
   const service = resolveAttachmentContentService();
-  const fieldName = normalizeText(options.fieldName) || 'ImportSource';
-  const businessRequestId = normalizeText(options.businessRequestId) || newBusinessRequestId('import.csv');
+  const fieldName = normalizeOptionalString(options.fieldName) || 'ImportSource';
+  const businessRequestId = normalizeOptionalString(options.businessRequestId) || newBusinessRequestId('import.csv');
   const file = options.file;
-  const contentType = normalizeText(file.type) || 'text/csv';
+  const contentType = normalizeOptionalString(file.type) || 'text/csv';
   const checksumSha256 = await sha256Hex(file);
 
   const prepared = await service.PrepareUpload({
@@ -171,13 +167,13 @@ export async function uploadImportCsv(options: UploadImportCsvOptions): Promise<
     fieldName,
     operation: 'create',
     businessRequestId,
-    proposedFileName: normalizeText(file.name) || 'import.csv',
+    proposedFileName: normalizeOptionalString(file.name) || 'import.csv',
     proposedContentType: contentType,
     proposedSizeBytes: file.size,
     checksumSha256,
   });
 
-  const uploadId = normalizeText(prepared.uploadId);
+  const uploadId = normalizeOptionalString(prepared.uploadId);
   if (!uploadId || !prepared.uploadTarget) {
     throw new Error('PrepareUpload did not return upload target');
   }
@@ -185,7 +181,7 @@ export async function uploadImportCsv(options: UploadImportCsvOptions): Promise<
   await uploadToTarget(fieldName, prepared.uploadTarget, file);
 
   const finalized = await service.FinalizeUpload({ uploadId, businessRequestId });
-  const sourceRef = normalizeText(finalized.attachmentObjectId);
+  const sourceRef = normalizeOptionalString(finalized.attachmentObjectId);
   if (!sourceRef) {
     throw new Error('FinalizeUpload did not return attachmentObjectId');
   }

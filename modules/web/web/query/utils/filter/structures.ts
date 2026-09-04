@@ -109,7 +109,7 @@ function queryConditionToGroup(query: any, name?: string): ConditionGroup | null
   const children: Array<Condition | ConditionGroup> = [];
   for (const part of parts) {
     const sub = queryConditionToGroup(part);
-    if (!sub) continue;
+    if (!sub) return null;
     if (sub.children.length === 1 && !sub.name) children.push(sub.children[0]);
     else children.push(sub);
   }
@@ -131,18 +131,27 @@ export function toFilters(input?: NamedFilter | NamedFilter[] | ConditionGroup |
   const out: ConditionGroup[] = [];
   for (const it of arr) {
     if (!it) continue;
-    if ((it as any).query) {
+    if (isGroup(it as any)) {
+      out.push(it as ConditionGroup);
+    } else if (typeof it === 'object' && 'query' in it) {
       const nf = it as NamedFilter;
       if (!nf.name) continue;
+      if (nf.query == null) continue;
       const group = queryConditionToGroup(nf.query, nf.name);
-      if (group) out.push(group);
-    } else if (isGroup(it as any)) out.push(it as ConditionGroup);
+      if (!group) throw new Error('invalid_named_filter_query');
+      out.push(group);
+    } else if (typeof it === 'object' && !Array.isArray(it)) {
+      // Incomplete NamedFilter-like objects without query are skipped.
+      continue;
+    } else {
+      throw new Error('invalid_named_filter_query');
+    }
   }
   return out;
 }
 
 /**
- * Cleans filter groups by discarding invalid nodes and empty groups.
+ * Prunes incomplete draft filter nodes (C representation); does not invent backend query shapes.
  */
 export function normalizeFilters(filters: ConditionGroup[] = []): ConditionGroup[] {
   /**

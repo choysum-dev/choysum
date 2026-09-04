@@ -13,6 +13,7 @@ import { exportFieldSelection, pathsToFieldSelection, ensureRootId } from '@/web
 import { buildUnifiedQuery } from '@/web/web/query/context';
 import { stableStringify } from '@/web/web/query/planner';
 import { handoffCache } from '@/web/web/query/utils/handoff';
+import { asPresentCondition } from '@/web/web/query/utils/condition/absent';
 
 // Lane & IKanbanController centralized in query/types.ts
 
@@ -208,13 +209,6 @@ export function createKanbanController(store: WebModelStore<any>): IKanbanContro
     const metricSpecs: Array<{ field: string; agg: string; alias?: string }> = exportMetrics(store.storeId) || [];
     const fields = metricSpecs.map(m => ({ field: m.field, agg: m.agg, alias: m.alias })) as any[];
 
-    // Normalize empty conditions for fallback handling.
-    const normalize = (f: any): any | undefined => {
-      if (!f) return undefined;
-      if (Array.isArray(f) && f.length === 0) return undefined;
-      if (typeof f === 'object' && !Array.isArray(f) && Object.keys(f).length === 0) return undefined;
-      return f;
-    };
     const AGG_SUFFIX = ['__sum', '__avg', '__min', '__max', '__count', '__count_distinct'];
 
     // Default aggregate values for empty result sets.
@@ -237,9 +231,15 @@ export function createKanbanController(store: WebModelStore<any>): IKanbanContro
     const targetLanes = uniqueKeys.map(k => lanes.value.find(l => l.key === k)).filter(Boolean) as Lane[];
     if (!targetLanes.length) return;
 
-    // Combine lane conditions with OR. A lane without a condition naturally means "all".
+    // Combine lane conditions with OR. A lane without a condition means "all":
+    // if any selected lane is unconditioned, do not constrain the batch query.
+    const presentLaneConditions = targetLanes.map(l => asPresentCondition(l.condition));
     const combinedCondition =
-      targetLanes.length === 1 ? targetLanes[0].condition : { Or: targetLanes.map(l => l.condition).filter(c => normalize(c) !== undefined) };
+      targetLanes.length === 1
+        ? presentLaneConditions[0]
+        : presentLaneConditions.some(c => c === undefined)
+          ? undefined
+          : { Or: presentLaneConditions };
 
     // Let the unified query builder merge global and lane-specific conditions.
     const ctx = buildUnifiedQuery(store, {

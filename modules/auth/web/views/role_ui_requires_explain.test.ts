@@ -11,23 +11,28 @@ import {
 } from './role_ui_requires_explain';
 
 describe('normalizeUiResourceRequires', () => {
-  it('returns empty for nullish, blank strings, and non-arrays', () => {
+  it('returns empty for nullish and blank strings', () => {
     expect(normalizeUiResourceRequires(null)).toEqual([]);
     expect(normalizeUiResourceRequires(undefined)).toEqual([]);
     expect(normalizeUiResourceRequires('')).toEqual([]);
     expect(normalizeUiResourceRequires('   ')).toEqual([]);
-    expect(normalizeUiResourceRequires(42)).toEqual([]);
-    expect(normalizeUiResourceRequires({ rpc: 'x' })).toEqual([]);
-    expect(normalizeUiResourceRequires('{"a":1}')).toEqual([]);
+  });
+
+  it('throws for non-array values after string parsing', () => {
+    expect(() => normalizeUiResourceRequires(42)).toThrow('invalid_ui_resource_requires');
+    expect(() => normalizeUiResourceRequires({ rpc: 'x' })).toThrow('invalid_ui_resource_requires');
   });
 
   it('parses arrays and JSON array strings; dedupes empties', () => {
-    expect(normalizeUiResourceRequires(['rpc:/auth.User/Browse', 'rpc:/auth.User/Browse', '', null])).toEqual([
-      'rpc:/auth.User/Browse',
-    ]);
+    expect(normalizeUiResourceRequires(['rpc:/auth.User/Browse', 'rpc:/auth.User/Browse', ''])).toEqual(['rpc:/auth.User/Browse']);
+    expect(() => normalizeUiResourceRequires(['rpc:/auth.User/Browse', null])).toThrow('invalid_ui_resource_requires');
     expect(normalizeUiResourceRequires('["rpc:/auth.User/Update"]')).toEqual(['rpc:/auth.User/Update']);
     expect(normalizeUiResourceRequires('rpc:/auth.User/Create')).toEqual(['rpc:/auth.User/Create']);
     expect(normalizeUiResourceRequires('not-json[')).toEqual(['not-json[']);
+    // JSON non-array primitives stay opaque require tokens.
+    expect(normalizeUiResourceRequires('123')).toEqual(['123']);
+    expect(normalizeUiResourceRequires('true')).toEqual(['true']);
+    expect(normalizeUiResourceRequires('{"a":1}')).toEqual(['{"a":1}']);
   });
 });
 

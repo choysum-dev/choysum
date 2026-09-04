@@ -2,7 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { __resolveAttachmentFieldValueForTest } from './formController';
+
+vi.mock('@/web/web/stores/registry', () => ({
+  createStoreByModel: vi.fn(),
+}));
+
+import { createStoreByModel } from '@/web/web/stores/registry';
+import { __normalizeAttachmentFieldsInPayloadForTest, __resolveAttachmentFieldValueForTest, __looksLikeUploadEnvelopeForTest } from './formController';
 import { setTokenProvider, setCSRFProvider } from '@/core/web/rpc';
 import { setGlobalRequestContextProvider, clearGlobalRequestContextProvider } from '@/core/rpc/context';
 
@@ -69,6 +75,7 @@ describe('formController attachment protocol', () => {
     resetTokenProvider();
     resetCSRFProvider();
     clearGlobalRequestContextProvider();
+    (createStoreByModel as any).mockReset();
   });
 
   afterEach(() => {
@@ -171,5 +178,208 @@ describe('formController attachment protocol', () => {
     expect(headers.get('authorization')).toBe('Bearer token-upload');
     expect(headers.get('baggage')).toContain('ctx.activecompanyid=company_a');
     expect(headers.get('baggage')).toContain('ctx.tz=Asia%2FShanghai');
+  });
+
+  test('buildAttachmentWritePayload keeps displayFileName and downloadDisposition', async () => {
+    const service = newAttachmentService('ao-meta');
+    (createStoreByModel as any).mockImplementation((modelName: string) => {
+      if (modelName === 'document.AttachmentContent') return service;
+      throw new Error(`unexpected model: ${modelName}`);
+    });
+
+    const store = {
+      fullModelName: 'demo.Asset',
+      storeId: 'demo.Asset',
+      getContext: () => ({}),
+      fieldsMetadata: { Avatar: { type: 'image' } },
+    } as any;
+
+    const withDisposition = await __normalizeAttachmentFieldsInPayloadForTest(
+      store,
+      {
+        Avatar: {
+          kind: 'set',
+          attachmentObjectId: 'ao-meta',
+          displayFileName: '  avatar.png  ',
+          downloadDisposition: 'Inline',
+        },
+      },
+      { operation: 'update', ownerModel: 'demo.Asset', ownerRecordId: 'RID-1', fields: ['Avatar'] }
+    );
+    expect(withDisposition.Avatar).toEqual({
+      attachmentObjectId: 'ao-meta',
+      displayFileName: 'avatar.png',
+      downloadDisposition: 'inline',
+    });
+
+    const withAttachmentDisp = await __normalizeAttachmentFieldsInPayloadForTest(
+      store,
+      {
+        Avatar: {
+          kind: 'set',
+          attachmentObjectId: 'ao-meta',
+          displayName: 'from-display-name',
+          downloadDisposition: 'ATTACHMENT',
+        },
+      },
+      { operation: 'update', ownerModel: 'demo.Asset', ownerRecordId: 'RID-1', fields: ['Avatar'] }
+    );
+    expect(withAttachmentDisp.Avatar).toMatchObject({
+      displayFileName: 'from-display-name',
+      downloadDisposition: 'attachment',
+    });
+
+    await expect(
+      __normalizeAttachmentFieldsInPayloadForTest(
+        store,
+        {
+          Avatar: {
+            kind: 'set',
+            attachmentObjectId: 'ao-meta',
+            downloadDisposition: 'stream',
+          },
+        },
+        { operation: 'update', ownerModel: 'demo.Asset', ownerRecordId: 'RID-1', fields: ['Avatar'] }
+      )
+    ).rejects.toThrow();
+  });
+
+  test('upload failure surfaces JSON error metadata from response body', async () => {
+    const service = newAttachmentService('ao-fail');
+    const ctx = newCtx(service);
+    const blob = new Blob([new Uint8Array([1])], { type: 'application/octet-stream' });
+
+    globalThis.fetch = vi.fn(async () => ({
+      ok: false,
+      status: 502,
+      text: async () =>
+        JSON.stringify({
+          code: 'upload_denied',
+          message: 'quota exceeded',
+          metadata: { reason: 'size', stage: 'put' },
+        }),
+    })) as any;
+
+    await expect(__resolveAttachmentFieldValueForTest(blob, ctx)).rejects.toThrow(
+      /upload failed with HTTP 502 \(upload_denied \| quota exceeded \| reason=size \| stage=put\)/
+    );
+  });
+
+  test('set envelope uses fileName / contentType fallbacks when preferred fields absent', async () => {
+    const service = newAttachmentService('ao-fallback');
+    const ctx = newCtx(service);
+    const blob = new Blob([new Uint8Array([9])], { type: 'application/pdf' });
+
+    const resolved = await __resolveAttachmentFieldValueForTest(
+      {
+        kind: 'set',
+        file: blob,
+        fileName: '  doc.pdf  ',
+        contentType: 'application/pdf',
+      },
+      ctx
+    );
+
+    expect(resolved).toEqual({ kind: 'set', attachmentObjectId: 'ao-fallback' });
+    const prepareReq = service.PrepareUpload.mock.calls[0]?.[0] as any;
+    expect(prepareReq?.proposedFileName).toBe('doc.pdf');
+    expect(prepareReq?.proposedContentType).toBe('application/pdf');
+
+    const service2 = newAttachmentService('ao-fallback-2');
+    const ctx2 = newCtx(service2);
+    await __resolveAttachmentFieldValueForTest(
+      {
+        kind: 'set',
+        file: blob,
+        originalFileName: '  orig.pdf  ',
+        clientContentType: 'application/x-pdf',
+      },
+      ctx2
+    );
+    const prepareReq2 = service2.PrepareUpload.mock.calls[0]?.[0] as any;
+    expect(prepareReq2?.proposedFileName).toBe('orig.pdf');
+    expect(prepareReq2?.proposedContentType).toBe('application/x-pdf');
+  });
+
+  test('looksLikeUploadEnvelope recognizes kind-only envelopes', () => {
+    expect(__looksLikeUploadEnvelopeForTest({ kind: 'set' })).toBe(true);
+    expect(__looksLikeUploadEnvelopeForTest({ kind: 'CLEAR' })).toBe(true);
+    expect(__looksLikeUploadEnvelopeForTest({ kind: 'noop' })).toBe(true);
+    expect(__looksLikeUploadEnvelopeForTest({ kind: 'other' })).toBe(false);
+    expect(__looksLikeUploadEnvelopeForTest({ name: 'x' })).toBe(false);
+  });
+
+  test('displayFileName falls back through name fields', async () => {
+    const service = newAttachmentService('ao-names');
+    (createStoreByModel as any).mockImplementation((modelName: string) => {
+      if (modelName === 'document.AttachmentContent') return service;
+      throw new Error(`unexpected model: ${modelName}`);
+    });
+    const store = {
+      fullModelName: 'demo.Asset',
+      storeId: 'demo.Asset',
+      getContext: () => ({}),
+      fieldsMetadata: { Avatar: { type: 'image' } },
+    } as any;
+
+    for (const [key, value] of [
+      ['fileName', 'from-file-name'],
+      ['originalFileName', 'from-original'],
+      ['proposedFileName', 'from-proposed'],
+    ] as const) {
+      const out = await __normalizeAttachmentFieldsInPayloadForTest(
+        store,
+        { Avatar: { kind: 'set', attachmentObjectId: 'ao-names', [key]: value } },
+        { operation: 'update', ownerModel: 'demo.Asset', ownerRecordId: 'RID-1', fields: ['Avatar'] }
+      );
+      expect(out.Avatar).toMatchObject({ displayFileName: value });
+    }
+
+    const fromFileLike = await __normalizeAttachmentFieldsInPayloadForTest(
+      store,
+      {
+        Avatar: {
+          kind: 'set',
+          attachmentObjectId: 'ao-names',
+          file: { name: '  nested-file.bin  ' },
+        },
+      },
+      { operation: 'update', ownerModel: 'demo.Asset', ownerRecordId: 'RID-1', fields: ['Avatar'] }
+    );
+    expect(fromFileLike.Avatar).toMatchObject({ displayFileName: 'nested-file.bin' });
+  });
+
+  test('upload uses proposed* fields and defaults content type when absent', async () => {
+    const service = newAttachmentService('ao-proposed');
+    const ctx = newCtx(service);
+    const blob = new Blob([new Uint8Array([1])], { type: '' });
+
+    await __resolveAttachmentFieldValueForTest(
+      {
+        kind: 'set',
+        file: blob,
+        proposedFileName: '  proposed.bin  ',
+        proposedContentType: 'application/x-proposed',
+      },
+      ctx
+    );
+    const prepareProposed = service.PrepareUpload.mock.calls[0]?.[0] as any;
+    expect(prepareProposed?.proposedFileName).toBe('proposed.bin');
+    expect(prepareProposed?.proposedContentType).toBe('application/x-proposed');
+
+    const serviceDefault = newAttachmentService('ao-default-ct');
+    serviceDefault.PrepareUpload = vi.fn(async () => ({
+      uploadId: 'upload-1',
+      uploadTarget: {
+        method: undefined,
+        url: 'https://example.com/upload',
+        headers: {},
+      },
+    }));
+    const ctxDefault = newCtx(serviceDefault);
+    const bareBlob = new Blob([new Uint8Array([2])]); // empty type
+    await __resolveAttachmentFieldValueForTest({ kind: 'set', file: bareBlob }, ctxDefault);
+    const prepareDefault = serviceDefault.PrepareUpload.mock.calls[0]?.[0] as any;
+    expect(prepareDefault?.proposedContentType).toBe('application/octet-stream');
   });
 });

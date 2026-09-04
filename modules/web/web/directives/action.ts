@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { Directive, DirectiveBinding } from 'vue';
+import { normalizeOptionalString } from '@/core/service/utils/normalization';
 
 type BoolOperator = 'or' | 'and';
 type ActionMode = 'hide' | 'disable';
@@ -50,7 +51,7 @@ const PREV_DISPLAY_KEY = '__choysum_v_action_prev_display__';
 function normalizeIds(ids: string | string[] | undefined): string[] {
   if (!ids) return [];
   const list = Array.isArray(ids) ? ids : [ids];
-  return list.map(v => String(v || '').trim()).filter(Boolean);
+  return list.map(v => normalizeOptionalString(v)).filter((v): v is string => Boolean(v));
 }
 
 /**

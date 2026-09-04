@@ -19,6 +19,7 @@ import { createAbortableRequests, isCancellation, CancellationError } from '@/we
 import { handoffCache, flashRead } from '@/web/web/query/utils/handoff';
 import { getCurrentRequestContext } from '@/core/rpc/context';
 import { getTokenProvider, getCSRFProvider } from '@/core/web/rpc/providers';
+import { assertEnumValue, normalizeOptionalString } from '@/core/service/utils/normalization';
 
 // FormMode & FormViewModel centralized in query/types.ts
 
@@ -103,22 +104,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
-function normalizeText(value: unknown): string | undefined {
-  const text = String(value ?? '').trim();
-  return text === '' ? undefined : text;
-}
-
 function normalizeAttachmentDownloadDisposition(value: unknown): AttachmentDownloadDisposition | undefined {
-  const normalized = normalizeText(value)?.toLowerCase();
-  if (normalized === 'inline' || normalized === 'attachment') {
-    return normalized;
-  }
-  return undefined;
+  const normalized = normalizeOptionalString(value, { lower: true });
+  if (!normalized) return undefined;
+  return assertEnumValue(normalized, ['inline', 'attachment'] as const);
 }
 
 function resolveAttachmentDisplayFileName(raw: unknown): string | undefined {
   if (typeof File !== 'undefined' && raw instanceof File) {
-    return normalizeText(raw.name);
+    return normalizeOptionalString(raw.name);
   }
 
   if (!isRecord(raw)) {
@@ -126,16 +120,19 @@ function resolveAttachmentDisplayFileName(raw: unknown): string | undefined {
   }
 
   const fileLike = raw.file ?? raw.blob ?? raw.data;
-  const fileLikeName = isRecord(fileLike) ? normalizeText(fileLike.name) : undefined;
+  const fileLikeName = isRecord(fileLike) ? normalizeOptionalString(fileLike.name) : undefined;
 
-  return (
-    normalizeText(raw.displayFileName) ||
-    normalizeText(raw.displayName) ||
-    normalizeText(raw.fileName) ||
-    normalizeText(raw.originalFileName) ||
-    normalizeText(raw.proposedFileName) ||
-    fileLikeName
-  );
+  const displayFileName = normalizeOptionalString(raw.displayFileName);
+  if (displayFileName) return displayFileName;
+  const displayName = normalizeOptionalString(raw.displayName);
+  if (displayName) return displayName;
+  const fileName = normalizeOptionalString(raw.fileName);
+  if (fileName) return fileName;
+  const originalFileName = normalizeOptionalString(raw.originalFileName);
+  if (originalFileName) return originalFileName;
+  const proposedFileName = normalizeOptionalString(raw.proposedFileName);
+  if (proposedFileName) return proposedFileName;
+  return fileLikeName;
 }
 
 function buildAttachmentWritePayload(raw: unknown, attachmentObjectId: string): string | Record<string, unknown> {
@@ -166,7 +163,7 @@ function buildBaggage(items: Record<string, string>): string {
       normalizedKey = `ctx.${normalizedKey}`;
     }
 
-    const normalizedValue = normalizeText(value);
+    const normalizedValue = normalizeOptionalString(value);
     if (!normalizedKey || !normalizedValue) {
       continue;
     }
@@ -177,7 +174,7 @@ function buildBaggage(items: Record<string, string>): string {
 }
 
 function isInternalDocumentUploadTarget(url: string): boolean {
-  const trimmed = normalizeText(url);
+  const trimmed = normalizeOptionalString(url);
   if (!trimmed) return false;
   if (trimmed.startsWith('/')) {
     return trimmed.startsWith('/_document/uploads/');
@@ -202,7 +199,7 @@ async function applyInternalUploadAuthHeaders(headers: Headers): Promise<void> {
     const csrfProvider = getCSRFProvider();
     if (csrfProvider) {
       try {
-        const csrfToken = normalizeText(await csrfProvider.getCSRFToken());
+        const csrfToken = normalizeOptionalString(await csrfProvider.getCSRFToken());
         if (csrfToken) {
           headers.set('X-XSRF-TOKEN', csrfToken);
         }
@@ -225,7 +222,7 @@ async function applyInternalUploadAuthHeaders(headers: Headers): Promise<void> {
       }
 
       try {
-        const token = normalizeText(await tokenProvider.getToken());
+        const token = normalizeOptionalString(await tokenProvider.getToken());
         if (token) {
           headers.set('Authorization', `Bearer ${token}`);
         }
@@ -263,10 +260,10 @@ async function describeUploadError(response: Response): Promise<string | undefin
       message?: unknown;
       metadata?: Record<string, unknown>;
     };
-    const code = normalizeText(payload?.code);
-    const message = normalizeText(payload?.message);
-    const reason = normalizeText(payload?.metadata?.reason);
-    const stage = normalizeText(payload?.metadata?.stage);
+    const code = normalizeOptionalString(payload?.code);
+    const message = normalizeOptionalString(payload?.message);
+    const reason = normalizeOptionalString(payload?.metadata?.reason);
+    const stage = normalizeOptionalString(payload?.metadata?.stage);
 
     const details = [code, message, reason ? `reason=${reason}` : undefined, stage ? `stage=${stage}` : undefined].filter(Boolean);
     if (details.length > 0) {
@@ -291,7 +288,7 @@ function looksLikeUploadEnvelope(value: unknown): boolean {
   if (Array.isArray(value)) return true;
   if ('attachmentObjectId' in value) return true;
   if ('file' in value || 'blob' in value || 'data' in value) return true;
-  const kind = normalizeText(value.kind)?.toLowerCase();
+  const kind = normalizeOptionalString(value.kind)?.toLowerCase();
   return kind === 'set' || kind === 'clear' || kind === 'noop';
 }
 
@@ -368,12 +365,12 @@ async function runWithStoreContext<T>(store: WebModelStore<any>, service: Attach
 }
 
 async function uploadToTarget(fieldName: string, target: NonNullable<PrepareUploadResp['uploadTarget']>, body: Blob): Promise<void> {
-  const url = normalizeText(target?.url);
+  const url = normalizeOptionalString(target?.url);
   if (!url) {
     throw new Error(`[Attachment] ${fieldName}: upload target url is empty.`);
   }
 
-  const method = (normalizeText(target?.method) || 'PUT').toUpperCase();
+  const method = (normalizeOptionalString(target?.method) || 'PUT').toUpperCase();
   if (method !== 'PUT') {
     throw new Error(`[Attachment] ${fieldName}: unsupported upload target method '${method}'.`);
   }
@@ -381,8 +378,8 @@ async function uploadToTarget(fieldName: string, target: NonNullable<PrepareUplo
   const headers = new Headers();
   const rawHeaders = target?.headers || {};
   for (const [k, v] of Object.entries(rawHeaders)) {
-    const key = normalizeText(k);
-    const value = normalizeText(v);
+    const key = normalizeOptionalString(k);
+    const value = normalizeOptionalString(v);
     if (!key || !value) continue;
     headers.set(key, value);
   }
@@ -417,23 +414,35 @@ async function resolveUploadInputToObjectId(
 ): Promise<string> {
   const operation = ctx.operation;
   const ownerModel = ctx.ownerModel;
-  const ownerRecordId = normalizeText(ctx.ownerRecordId);
+  const ownerRecordId = normalizeOptionalString(ctx.ownerRecordId);
 
-  const preferredFileName =
-    normalizeText(recordLike?.proposedFileName) ||
-    normalizeText(recordLike?.fileName) ||
-    normalizeText(recordLike?.originalFileName) ||
-    (typeof File !== 'undefined' && blob instanceof File ? normalizeText(blob.name) : undefined);
+  const preferredFileName = (() => {
+    const fromProposed = normalizeOptionalString(recordLike?.proposedFileName);
+    if (fromProposed) return fromProposed;
+    const fromFileName = normalizeOptionalString(recordLike?.fileName);
+    if (fromFileName) return fromFileName;
+    const fromOriginal = normalizeOptionalString(recordLike?.originalFileName);
+    if (fromOriginal) return fromOriginal;
+    if (typeof File !== 'undefined' && blob instanceof File) {
+      return normalizeOptionalString(blob.name);
+    }
+    return undefined;
+  })();
 
-  const contentType =
-    normalizeText(recordLike?.proposedContentType) ||
-    normalizeText(recordLike?.contentType) ||
-    normalizeText(recordLike?.clientContentType) ||
-    normalizeText((blob as any)?.type) ||
-    'application/octet-stream';
+  const contentType = (() => {
+    const fromProposed = normalizeOptionalString(recordLike?.proposedContentType);
+    if (fromProposed) return fromProposed;
+    const fromContentType = normalizeOptionalString(recordLike?.contentType);
+    if (fromContentType) return fromContentType;
+    const fromClient = normalizeOptionalString(recordLike?.clientContentType);
+    if (fromClient) return fromClient;
+    const fromBlob = normalizeOptionalString((blob as any)?.type);
+    if (fromBlob) return fromBlob;
+    return 'application/octet-stream';
+  })();
 
-  const businessRequestId = normalizeText(recordLike?.businessRequestId) || newBusinessRequestId(fieldName);
-  const checksumSha256 = normalizeText(recordLike?.checksumSha256) || (await sha256Hex(blob));
+  const businessRequestId = normalizeOptionalString(recordLike?.businessRequestId) || newBusinessRequestId(fieldName);
+  const checksumSha256 = normalizeOptionalString(recordLike?.checksumSha256) || (await sha256Hex(blob));
 
   const prepareReq: PrepareUploadReq = {
     ownerModel,
@@ -453,7 +462,7 @@ async function resolveUploadInputToObjectId(
     return await ctx.service.PrepareUpload(prepareReq);
   });
 
-  const uploadId = normalizeText(prepared?.uploadId);
+  const uploadId = normalizeOptionalString(prepared?.uploadId);
   const uploadTarget = prepared?.uploadTarget;
   if (!uploadId || !uploadTarget) {
     throw new Error(`[Attachment] ${fieldName}: PrepareUpload returned invalid upload target.`);
@@ -468,7 +477,7 @@ async function resolveUploadInputToObjectId(
     });
   });
 
-  const attachmentObjectId = normalizeText(finalized?.attachmentObjectId);
+  const attachmentObjectId = normalizeOptionalString(finalized?.attachmentObjectId);
   if (!attachmentObjectId) {
     throw new Error(`[Attachment] ${fieldName}: FinalizeUpload did not return attachmentObjectId.`);
   }
@@ -480,7 +489,7 @@ async function resolveAttachmentFieldValue(raw: unknown, ctx: AttachmentResoluti
   if (raw === undefined) return { kind: 'omit' };
   if (raw === null) return { kind: 'clear' };
 
-  const text = typeof raw === 'string' ? normalizeText(raw) : undefined;
+  const text = typeof raw === 'string' ? normalizeOptionalString(raw) : undefined;
   if (text) {
     return { kind: 'set', attachmentObjectId: text };
   }
@@ -498,11 +507,11 @@ async function resolveAttachmentFieldValue(raw: unknown, ctx: AttachmentResoluti
     throw new Error(`[Attachment] ${ctx.fieldName}: expected attachmentObjectId string | null | omitted.`);
   }
 
-  const kind = normalizeText(raw.kind)?.toLowerCase();
+  const kind = normalizeOptionalString(raw.kind)?.toLowerCase();
   if (kind === 'noop') return { kind: 'omit' };
   if (kind === 'clear') return { kind: 'clear' };
 
-  const attachmentObjectId = normalizeText(raw.attachmentObjectId);
+  const attachmentObjectId = normalizeOptionalString(raw.attachmentObjectId);
   if (attachmentObjectId) {
     return { kind: 'set', attachmentObjectId };
   }
@@ -750,7 +759,7 @@ export function createFormController(store: WebModelStore<any>): IFormViewContro
         }
       } else {
         const id = vm.original?.Id ?? vm.original?.id;
-        const ownerRecordId = normalizeText(id);
+        const ownerRecordId = normalizeOptionalString(id);
         if (!ownerRecordId) {
           throw new Error('Update failed: record id is empty.');
         }
@@ -880,3 +889,4 @@ export type FormController = ReturnType<typeof createFormController>;
 // Test hooks: lock attachment orchestration protocol without coupling to full controller lifecycle.
 export const __resolveAttachmentFieldValueForTest = resolveAttachmentFieldValue;
 export const __normalizeAttachmentFieldsInPayloadForTest = normalizeAttachmentFieldsInPayload;
+export const __looksLikeUploadEnvelopeForTest = looksLikeUploadEnvelope;

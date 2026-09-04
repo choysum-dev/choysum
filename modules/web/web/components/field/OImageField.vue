@@ -136,6 +136,7 @@ import { computed } from 'vue';
 import OFieldBase, { type FieldStateExpr } from './OFieldBase.vue';
 import { createTranslate } from '@/web/web/i18n';
 import { resolveImageFieldLimitsFromSources, reportImageFieldValidation } from './imageFieldLimits';
+import { normalizeOptionalString } from '@/core/service/utils/normalization';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/OImageField' });
 
@@ -217,11 +218,6 @@ const uploadShowFileList = uploadConfig.showFileList ?? false;
 const uploadDisabled = uploadConfig.disabled ?? false;
 const replaceButtonText = computed(() => (uploadMultiple ? uploadButtonText.value : _t('Replace image')));
 
-function normalizeText(value: unknown): string | undefined {
-  const text = String(value ?? '').trim();
-  return text ? text : undefined;
-}
-
 function isAttachmentObject(raw: unknown): raw is AttachmentLike {
   return !!raw && typeof raw === 'object' && !Array.isArray(raw);
 }
@@ -235,25 +231,27 @@ function resolveDescriptor(raw: unknown): AttachmentLike | undefined {
 function resolveBindingId(raw: unknown): string | undefined {
   if (!isAttachmentObject(raw)) return undefined;
   const descriptor = resolveDescriptor(raw);
-  return normalizeText(raw.attachmentBindingId ?? raw.bindingId ?? raw.Id ?? raw.id ?? descriptor?.id);
+  return normalizeOptionalString(raw.attachmentBindingId ?? raw.bindingId ?? raw.Id ?? raw.id ?? descriptor?.id);
 }
 
 function resolveObjectId(raw: unknown): string | undefined {
   if (!isAttachmentObject(raw)) return undefined;
-  return normalizeText(raw.attachmentObjectId ?? raw.objectId);
+  const fromAttachmentObjectId = normalizeOptionalString(raw.attachmentObjectId);
+  if (fromAttachmentObjectId) return fromAttachmentObjectId;
+  return normalizeOptionalString(raw.objectId);
 }
 
 function resolveFileName(raw: unknown): string | undefined {
-  if (typeof raw === 'string') return normalizeText(raw);
+  if (typeof raw === 'string') return normalizeOptionalString(raw);
   if (!isAttachmentObject(raw)) return undefined;
   const descriptor = resolveDescriptor(raw);
-  return normalizeText(raw.fileName ?? raw.displayName ?? raw.name ?? raw.originalFileName ?? descriptor?.fileName);
+  return normalizeOptionalString(raw.fileName ?? raw.displayName ?? raw.name ?? raw.originalFileName ?? descriptor?.fileName);
 }
 
 function resolveMimeType(raw: unknown): string | undefined {
   if (!isAttachmentObject(raw)) return undefined;
   const descriptor = resolveDescriptor(raw);
-  return normalizeText(raw.mimeType ?? raw.contentType ?? raw.clientContentType ?? raw.proposedContentType ?? descriptor?.mimeType);
+  return normalizeOptionalString(raw.mimeType ?? raw.contentType ?? raw.clientContentType ?? raw.proposedContentType ?? descriptor?.mimeType);
 }
 
 function resolveSizeBytes(raw: unknown): number | undefined {
@@ -292,9 +290,9 @@ async function createLocalPreview(file: Blob): Promise<string | undefined> {
 
 function hasAttachment(raw: unknown): boolean {
   if (raw == null) return false;
-  if (typeof raw === 'string') return !!normalizeText(raw);
+  if (typeof raw === 'string') return !!normalizeOptionalString(raw);
   if (isAttachmentObject(raw)) {
-    const kind = normalizeText(raw.kind)?.toLowerCase();
+    const kind = normalizeOptionalString(raw.kind)?.toLowerCase();
     if (kind === 'noop' || kind === 'clear') return false;
     return !!(resolveBindingId(raw) || resolveFileName(raw) || resolveObjectId(raw) || resolvePreviewUrl(raw) || resolveDownloadUrl(raw) || raw.file);
   }
@@ -331,13 +329,33 @@ function formatSize(sizeBytes: number | undefined): string | undefined {
 function resolveDownloadUrl(raw: unknown): string | undefined {
   if (!isAttachmentObject(raw)) return undefined;
   const descriptor = resolveDescriptor(raw);
-  return normalizeText(raw.downloadUrl ?? raw.url ?? raw.previewUrl ?? raw.thumbnailUrl ?? descriptor?.downloadUrl ?? descriptor?.previewUrl);
+  const fromDownloadUrl = normalizeOptionalString(raw.downloadUrl);
+  if (fromDownloadUrl) return fromDownloadUrl;
+  const fromUrl = normalizeOptionalString(raw.url);
+  if (fromUrl) return fromUrl;
+  const fromPreviewUrl = normalizeOptionalString(raw.previewUrl);
+  if (fromPreviewUrl) return fromPreviewUrl;
+  const fromThumbnailUrl = normalizeOptionalString(raw.thumbnailUrl);
+  if (fromThumbnailUrl) return fromThumbnailUrl;
+  const fromDescriptorDownload = normalizeOptionalString(descriptor?.downloadUrl);
+  if (fromDescriptorDownload) return fromDescriptorDownload;
+  return normalizeOptionalString(descriptor?.previewUrl);
 }
 
 function resolvePreviewUrl(raw: unknown): string | undefined {
   if (!isAttachmentObject(raw)) return undefined;
   const descriptor = resolveDescriptor(raw);
-  return normalizeText(raw.previewUrl ?? raw.url ?? raw.thumbnailUrl ?? raw.downloadUrl ?? descriptor?.previewUrl ?? descriptor?.downloadUrl);
+  const fromPreviewUrl = normalizeOptionalString(raw.previewUrl);
+  if (fromPreviewUrl) return fromPreviewUrl;
+  const fromUrl = normalizeOptionalString(raw.url);
+  if (fromUrl) return fromUrl;
+  const fromThumbnailUrl = normalizeOptionalString(raw.thumbnailUrl);
+  if (fromThumbnailUrl) return fromThumbnailUrl;
+  const fromDownloadUrl = normalizeOptionalString(raw.downloadUrl);
+  if (fromDownloadUrl) return fromDownloadUrl;
+  const fromDescriptorPreview = normalizeOptionalString(descriptor?.previewUrl);
+  if (fromDescriptorPreview) return fromDescriptorPreview;
+  return normalizeOptionalString(descriptor?.downloadUrl);
 }
 
 function resolveLinkHref(raw: unknown): string | undefined {
@@ -362,17 +380,19 @@ async function applySelectedImage(file: UploadRawFile, fieldValue: ValueRefGette
   const valueRef = fieldValue();
   revokeBlobPreview(valueRef.value);
   const previewUrl = await createLocalPreview(file);
+  const fileName = normalizeOptionalString(file.name);
+  const contentType = normalizeOptionalString(file.type);
 
   valueRef.value = {
     kind: 'set',
     file,
-    fileName: normalizeText(file.name),
-    originalFileName: normalizeText(file.name),
-    proposedFileName: normalizeText(file.name),
-    proposedContentType: normalizeText(file.type),
-    clientContentType: normalizeText(file.type),
+    fileName,
+    originalFileName: fileName,
+    proposedFileName: fileName,
+    proposedContentType: contentType,
+    clientContentType: contentType,
     previewUrl,
-    displayName: normalizeText(file.name),
+    displayName: fileName,
   };
 
   if (typeof onFieldChange === 'function') {

@@ -75,6 +75,13 @@ describe('filter structures helpers', () => {
     const group = createFilter('Or', [createCondition('Code', '=', 'x')]);
     expect(toFilters(group)[0]).toBe(group);
     expect(toFilters({ name: '', query: ['A', '=', 1] } as any)).toEqual([]);
+
+    // ConditionGroup with a spurious query property must still be kept as a group.
+    const groupWithQuery = {
+      ...createFilter('And', [createCondition('Name', '=', 'n')]),
+      query: ['bogus', '=', 1],
+    } as any;
+    expect(toFilters(groupWithQuery)[0]).toBe(groupWithQuery);
   });
 
   it('normalizeFilters drops incomplete nodes and empty groups', () => {
@@ -121,15 +128,33 @@ describe('filter structures helpers', () => {
     expect(arr[0].name).toBe('A');
   });
 
-  it('toFilters converts Choysum And/Or trees and skips invalid query shapes', () => {
+  it('toFilters skips null query and blank name, throws on invalid query shapes', () => {
     expect(toFilters({ name: 'NullQ', query: null } as any)).toEqual([]);
-    expect(toFilters({ name: 'BadArr', query: ['only', 'two'] } as any)).toEqual([]);
-    expect(toFilters({ name: 'Str', query: 'nope' } as any)).toEqual([]);
-    expect(toFilters({ name: 'EmptyAnd', query: { And: [] } } as any)).toEqual([]);
-    expect(toFilters({ name: 'EmptyOr', query: { Or: [] } } as any)).toEqual([]);
-    expect(toFilters({ name: 'JunkParts', query: { And: [null, 'x', { foo: 1 }] } } as any)).toEqual([]);
-    expect(toFilters({ name: 'NonStringLeaf', query: [1, '=', 2] } as any)).toEqual([]);
-    expect(toFilters({ name: 'NonStringOp', query: ['A', 1, 2] } as any)).toEqual([]);
+    expect(toFilters({ name: '', query: ['A', '=', 1] } as any)).toEqual([]);
+
+    for (const bad of [
+      { name: 'BadArr', query: ['only', 'two'] },
+      { name: 'Str', query: 'nope' },
+      { name: 'EmptyAnd', query: { And: [] } },
+      { name: 'EmptyOr', query: { Or: [] } },
+      { name: 'JunkParts', query: { And: [null, 'x', { foo: 1 }] } },
+      { name: 'NonStringLeaf', query: [1, '=', 2] },
+      { name: 'NonStringOp', query: ['A', 1, 2] },
+    ]) {
+      expect(() => toFilters(bad as any)).toThrow(/invalid_named_filter_query/);
+    }
+
+    expect(() => toFilters(['primitive'] as any)).toThrow(/invalid_named_filter_query/);
+    expect(() => toFilters([42] as any)).toThrow(/invalid_named_filter_query/);
+    // Nested array entries must not be treated as incomplete NamedFilter objects.
+    expect(() => toFilters([['nested']] as any)).toThrow(/invalid_named_filter_query/);
+    // Partially invalid And/Or trees must fail the whole named filter.
+    expect(() =>
+      toFilters({
+        name: 'Mixed',
+        query: { And: [['Name', '=', 'x'], ['only', 'two']] },
+      } as any)
+    ).toThrow(/invalid_named_filter_query/);
 
     const groupShaped = toFilters({
       name: 'AlreadyGroup',

@@ -1,26 +1,39 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+function invalidUiResourceRequires(): never {
+  throw new Error('invalid_ui_resource_requires');
+}
+
 /**
- * Normalize MetaUiResource.Requires for RoleForm explain panel (UI-Option-A).
+ * Normalize MetaUiResource.Requires for the RoleForm explain panel.
  */
 export function normalizeUiResourceRequires(raw: unknown): string[] {
   if (raw == null) return [];
+
   let value: unknown = raw;
   if (typeof value === 'string') {
     const trimmed = value.trim();
     if (!trimmed) return [];
     try {
-      value = JSON.parse(trimmed);
+      const parsed = JSON.parse(trimmed);
+      value = Array.isArray(parsed) ? parsed : [trimmed];
     } catch {
       return [trimmed];
     }
   }
-  if (!Array.isArray(value)) return [];
+
+  if (!Array.isArray(value)) {
+    invalidUiResourceRequires();
+  }
+
   const out: string[] = [];
   const seen = new Set<string>();
   for (const item of value) {
-    const s = String(item ?? '').trim();
+    if (typeof item !== 'string') {
+      invalidUiResourceRequires();
+    }
+    const s = item.trim();
     if (!s || seen.has(s)) continue;
     seen.add(s);
     out.push(s);

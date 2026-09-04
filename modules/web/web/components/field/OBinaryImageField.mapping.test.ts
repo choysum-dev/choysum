@@ -31,8 +31,8 @@ describe('OBinaryField/OImageField mapping contract', () => {
     const s = source('OBinaryField.vue');
 
     expect(s).toContain("kind: 'set'");
-    expect(s).toContain('proposedFileName: normalizeText(file.name)');
-    expect(s).toContain('clientContentType: normalizeText(file.type)');
+    expect(s).toContain('const fileName = normalizeOptionalString(file.name)');
+    expect(s).toContain('const contentType = normalizeOptionalString(file.type)');
     expect(s).toContain('valueRef.value = null;');
     expect(s).toContain('async function removeBinary(');
     expect(s).toContain('await onFieldChange();');
@@ -46,7 +46,8 @@ describe('OBinaryField/OImageField mapping contract', () => {
       "type UploadPassthroughProps = Partial<Pick<UploadProps, 'drag' | 'multiple' | 'limit' | 'disabled' | 'showFileList' | 'listType' | 'onExceed'>>;"
     );
     expect(s).toContain('resolvePreviewUrl(raw: unknown): string | undefined');
-    expect(s).toContain('raw.previewUrl ?? raw.url ?? raw.thumbnailUrl');
+    expect(s).toContain('const fromPreviewUrl = normalizeOptionalString(raw.previewUrl)');
+    expect(s).toContain('const fromThumbnailUrl = normalizeOptionalString(raw.thumbnailUrl)');
     expect(s).toContain(':drag="shouldUseDragMode(fieldValue().value)"');
     expect(s).toContain('UploadFilled');
     expect(s).toContain('@click="removeImage(fieldValue, onFieldChange)"');
