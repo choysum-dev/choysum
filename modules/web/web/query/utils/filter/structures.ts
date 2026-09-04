@@ -140,7 +140,7 @@ export function toFilters(input?: NamedFilter | NamedFilter[] | ConditionGroup |
       out.push(group);
     } else if (isGroup(it as any)) {
       out.push(it as ConditionGroup);
-    } else if (typeof it === 'object') {
+    } else if (typeof it === 'object' && !Array.isArray(it)) {
       // Incomplete NamedFilter-like objects without query are skipped.
       continue;
     } else {

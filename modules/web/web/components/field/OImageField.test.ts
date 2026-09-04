@@ -397,6 +397,84 @@ describe('OImageField upload limit gate (PR-P2-F3)', () => {
     expect(binding.fieldRef().value).toMatchObject({
       kind: 'set',
       fileName: 'photo.png',
+      originalFileName: 'photo.png',
+      proposedFileName: 'photo.png',
+      proposedContentType: 'image/png',
+      clientContentType: 'image/png',
+      displayName: 'photo.png',
     });
+  });
+
+  it('resolves object id and download/preview urls for existing attachments', async () => {
+    const binding = makeBinding({
+      value: {
+        attachmentObjectId: '  obj-img  ',
+        kind: 'set',
+      },
+    });
+    const wrapper = await mountField(binding);
+    await flushPromises();
+    expect(wrapper.find('.o-image-current').exists()).toBe(true);
+
+    const withPreview = makeBinding({
+      value: {
+        previewUrl: '  /preview/img.png  ',
+        fileName: 'img.png',
+        kind: 'set',
+      },
+    });
+    const previewWrapper = await mountField(withPreview);
+    await flushPromises();
+    expect(previewWrapper.find('.o-image-current__preview').attributes('src')).toBe('/preview/img.png');
+  });
+
+  it('treats string attachment values and clear/noop kinds', async () => {
+    const stringBinding = makeBinding({ value: '  photo.png  ' });
+    const stringWrapper = await mountField(stringBinding);
+    expect(stringWrapper.find('.o-image-current').exists()).toBe(true);
+
+    const clearBinding = makeBinding({ value: { kind: 'CLEAR' } });
+    const clearWrapper = await mountField(clearBinding);
+    expect(clearWrapper.find('.o-image-current').exists()).toBe(false);
+
+    const downloadOnly = makeBinding({
+      value: {
+        attachmentBindingId: 'bind-x',
+        downloadUrl: '  /dl/only.png  ',
+        kind: 'set',
+      },
+    });
+    const downloadWrapper = await mount(OImageField as any, {
+      props: {
+        binding: downloadOnly,
+        renderMode: 'display',
+        uploadProps: { drag: false, showFileList: false },
+      },
+      global: {
+        stubs: {
+          OFieldBase: defineComponent({
+            name: 'OFieldBase',
+            props: { binding: { type: Object, required: false } },
+            setup(props, { slots }) {
+              return () =>
+                h(
+                  'div',
+                  slots.display?.({
+                    fieldValue: () => (props.binding as UseField | undefined)?.fieldRef?.() ?? ref(null),
+                    renderMode: 'form',
+                  })
+                );
+            },
+          }),
+          'el-upload': ElUploadStub,
+          'el-button': { template: '<button class="btn"><slot /></button>' },
+          'el-icon': { template: '<i><slot /></i>' },
+          Picture: true,
+          UploadFilled: true,
+        },
+      },
+    });
+    await flushPromises();
+    expect(downloadWrapper.find('a.o-image-display-card, a').exists() || downloadWrapper.html().includes('/dl/only.png')).toBe(true);
   });
 });

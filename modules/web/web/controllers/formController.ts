@@ -122,14 +122,17 @@ function resolveAttachmentDisplayFileName(raw: unknown): string | undefined {
   const fileLike = raw.file ?? raw.blob ?? raw.data;
   const fileLikeName = isRecord(fileLike) ? normalizeOptionalString(fileLike.name) : undefined;
 
-  return (
-    normalizeOptionalString(raw.displayFileName) ||
-    normalizeOptionalString(raw.displayName) ||
-    normalizeOptionalString(raw.fileName) ||
-    normalizeOptionalString(raw.originalFileName) ||
-    normalizeOptionalString(raw.proposedFileName) ||
-    fileLikeName
-  );
+  const displayFileName = normalizeOptionalString(raw.displayFileName);
+  if (displayFileName) return displayFileName;
+  const displayName = normalizeOptionalString(raw.displayName);
+  if (displayName) return displayName;
+  const fileName = normalizeOptionalString(raw.fileName);
+  if (fileName) return fileName;
+  const originalFileName = normalizeOptionalString(raw.originalFileName);
+  if (originalFileName) return originalFileName;
+  const proposedFileName = normalizeOptionalString(raw.proposedFileName);
+  if (proposedFileName) return proposedFileName;
+  return fileLikeName;
 }
 
 function buildAttachmentWritePayload(raw: unknown, attachmentObjectId: string): string | Record<string, unknown> {
@@ -413,18 +416,30 @@ async function resolveUploadInputToObjectId(
   const ownerModel = ctx.ownerModel;
   const ownerRecordId = normalizeOptionalString(ctx.ownerRecordId);
 
-  const preferredFileName =
-    normalizeOptionalString(recordLike?.proposedFileName) ||
-    normalizeOptionalString(recordLike?.fileName) ||
-    normalizeOptionalString(recordLike?.originalFileName) ||
-    (typeof File !== 'undefined' && blob instanceof File ? normalizeOptionalString(blob.name) : undefined);
+  const preferredFileName = (() => {
+    const fromProposed = normalizeOptionalString(recordLike?.proposedFileName);
+    if (fromProposed) return fromProposed;
+    const fromFileName = normalizeOptionalString(recordLike?.fileName);
+    if (fromFileName) return fromFileName;
+    const fromOriginal = normalizeOptionalString(recordLike?.originalFileName);
+    if (fromOriginal) return fromOriginal;
+    if (typeof File !== 'undefined' && blob instanceof File) {
+      return normalizeOptionalString(blob.name);
+    }
+    return undefined;
+  })();
 
-  const contentType =
-    normalizeOptionalString(recordLike?.proposedContentType) ||
-    normalizeOptionalString(recordLike?.contentType) ||
-    normalizeOptionalString(recordLike?.clientContentType) ||
-    normalizeOptionalString((blob as any)?.type) ||
-    'application/octet-stream';
+  const contentType = (() => {
+    const fromProposed = normalizeOptionalString(recordLike?.proposedContentType);
+    if (fromProposed) return fromProposed;
+    const fromContentType = normalizeOptionalString(recordLike?.contentType);
+    if (fromContentType) return fromContentType;
+    const fromClient = normalizeOptionalString(recordLike?.clientContentType);
+    if (fromClient) return fromClient;
+    const fromBlob = normalizeOptionalString((blob as any)?.type);
+    if (fromBlob) return fromBlob;
+    return 'application/octet-stream';
+  })();
 
   const businessRequestId = normalizeOptionalString(recordLike?.businessRequestId) || newBusinessRequestId(fieldName);
   const checksumSha256 = normalizeOptionalString(recordLike?.checksumSha256) || (await sha256Hex(blob));
@@ -874,3 +889,4 @@ export type FormController = ReturnType<typeof createFormController>;
 // Test hooks: lock attachment orchestration protocol without coupling to full controller lifecycle.
 export const __resolveAttachmentFieldValueForTest = resolveAttachmentFieldValue;
 export const __normalizeAttachmentFieldsInPayloadForTest = normalizeAttachmentFieldsInPayload;
+export const __looksLikeUploadEnvelopeForTest = looksLikeUploadEnvelope;

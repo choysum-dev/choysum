@@ -290,16 +290,18 @@ function isTableRenderMode(renderMode: unknown): boolean {
 
 async function applySelectedBinary(file: UploadRawFile, fieldValue: ValueRefGetter, onFieldChange?: OnFieldChange): Promise<void> {
   const valueRef = fieldValue();
+  const fileName = normalizeOptionalString(file.name);
+  const contentType = normalizeOptionalString(file.type);
 
   valueRef.value = {
     kind: 'set',
     file,
-    fileName: normalizeOptionalString(file.name),
-    originalFileName: normalizeOptionalString(file.name),
-    proposedFileName: normalizeOptionalString(file.name),
-    proposedContentType: normalizeOptionalString(file.type),
-    clientContentType: normalizeOptionalString(file.type),
-    displayName: normalizeOptionalString(file.name),
+    fileName,
+    originalFileName: fileName,
+    proposedFileName: fileName,
+    proposedContentType: contentType,
+    clientContentType: contentType,
+    displayName: fileName,
   };
 
   if (typeof onFieldChange === 'function') {

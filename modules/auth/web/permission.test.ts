@@ -85,6 +85,33 @@ describe('permission helpers', () => {
     expect(canRoute({} as any, state, ctx)).toBe(false);
     expect(canRoute({ foo: 1 } as any, state, ctx)).toBe(false);
     expect(canMenu({ Id: '  ' } as any, state, ctx)).toBe(false);
+    expect(canRoute(null, state, ctx)).toBe(true);
+    expect(canRoute(undefined, state, ctx)).toBe(true);
+    expect(canRoute('', state, ctx)).toBe(true);
+    expect(canRoute('   ', state, ctx)).toBe(true);
+  });
+
+  it('normalizes company scope ids when resolving enabled/active sets', () => {
+    const state = makeState({
+      '*': { ui: { routes: [], menus: [], actions: [] } },
+      c1: {
+        ui: {
+          routes: ['auth.route.c1'],
+          menus: ['auth.menu.c1'],
+          actions: ['auth.action.c1'],
+        },
+      },
+    });
+
+    const ctx = {
+      activeCompanyId: '  c1  ',
+      enabledCompanyIds: ['  c1  ', '', null as any, { Id: 'x' } as any],
+    };
+
+    expect(canRoute('auth.route.c1', state, ctx)).toBe(true);
+    expect(canRoute('auth.route.c1', state, ctx, 'active')).toBe(true);
+    expect(canMenu('auth.menu.c1', state, ctx)).toBe(true);
+    expect(hasAction('auth.action.c1', state, ctx)).toBe(true);
   });
 
   it('falls back to active company when enabledCompanyIds is empty', () => {
@@ -128,6 +155,29 @@ describe('permission helpers', () => {
     expect(canRoute('auth.route.trimmed', state, ctx)).toBe(true);
     expect(canMenu('auth.menu.trimmed', state, ctx)).toBe(true);
     expect(hasAction('auth.action.trimmed', state, ctx)).toBe(true);
+  });
+
+  it('treats non-array global ui lists as empty', () => {
+    const state = makeState({
+      '*': {
+        ui: {
+          routes: 'bad' as any,
+          menus: 1 as any,
+          actions: { x: 1 } as any,
+        },
+      },
+      c1: {
+        ui: {
+          routes: ['auth.route.c1'],
+          menus: ['auth.menu.c1'],
+          actions: ['auth.action.c1'],
+        },
+      },
+    });
+    const ctx = { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] };
+    expect(canRoute('auth.route.c1', state, ctx)).toBe(true);
+    expect(canMenu('auth.menu.c1', state, ctx)).toBe(true);
+    expect(hasAction('auth.action.c1', state, ctx)).toBe(true);
   });
 
   it('returns empty set when active scope has no active company', () => {

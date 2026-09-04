@@ -358,17 +358,19 @@ async function applySelectedImage(file: UploadRawFile, fieldValue: ValueRefGette
   const valueRef = fieldValue();
   revokeBlobPreview(valueRef.value);
   const previewUrl = await createLocalPreview(file);
+  const fileName = normalizeOptionalString(file.name);
+  const contentType = normalizeOptionalString(file.type);
 
   valueRef.value = {
     kind: 'set',
     file,
-    fileName: normalizeOptionalString(file.name),
-    originalFileName: normalizeOptionalString(file.name),
-    proposedFileName: normalizeOptionalString(file.name),
-    proposedContentType: normalizeOptionalString(file.type),
-    clientContentType: normalizeOptionalString(file.type),
+    fileName,
+    originalFileName: fileName,
+    proposedFileName: fileName,
+    proposedContentType: contentType,
+    clientContentType: contentType,
     previewUrl,
-    displayName: normalizeOptionalString(file.name),
+    displayName: fileName,
   };
 
   if (typeof onFieldChange === 'function') {
