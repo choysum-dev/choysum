@@ -82,10 +82,12 @@ function classifyRetryability(err?: any): FailureKind {
 }
 
 function resolveFailureSource(err: any, result: any): any {
-  if (err != null) return err;
+  if (pickErrString(err, 'domain', 'errorDomain')) return err;
+  if (pickErrString(err, 'code', 'errorCode')) return err;
   if (pickErrString(result, 'domain', 'errorDomain')) return result;
   if (pickErrString(result, 'code', 'errorCode')) return result;
-  return undefined;
+  if (err != null) return err;
+  return result;
 }
 
 async function loadExecutionTimes(jobId: string): Promise<{ startedAt?: Date; finishedAt?: Date }> {

@@ -692,6 +692,29 @@ test('meta.MetaModule GetOpStatus classifies ResultJson lock conflicts without L
   expect(status.errorDomain).toBe('meta.lock');
   expect(status.errorCode).toBe('LEASE_CONFLICT');
 
+  // Unstructured LastErrorJson must not hide structured ResultJson lock conflicts.
+  await (Job as any).UpdateById(
+    job.Id as any,
+    {
+      Status: 'succeeded',
+      LastErrorJson: { message: 'failed' },
+      ResultJson: {
+        resultStatus: 'FAILED',
+        errorDomain: 'meta.lock',
+        errorCode: 'LEASE_CONFLICT',
+        errorMessage: 'lease conflict',
+        summary: { code: 'MODULE_OPERATION_FAILED', params: { moduleName, action: 'upgrade' } },
+        moduleName,
+        action: 'upgrade',
+        operatorUserId: 'admin',
+      },
+    } as any
+  );
+  const unstructuredErr = await MetaModule.GetOpStatus(job.Id as any);
+  expect(unstructuredErr.failureKind).toBe('RETRYABLE');
+  expect(unstructuredErr.errorDomain).toBe('meta.lock');
+  expect(unstructuredErr.errorCode).toBe('LEASE_CONFLICT');
+
   // FAILED with no LastErrorJson and no ResultJson error fields → pickErrString(null).
   await (Job as any).UpdateById(
     job.Id as any,
