@@ -304,6 +304,11 @@ function errorMessage(err: unknown): string {
   return normalizeLooseOptionalText(err) ?? 'unknown_error';
 }
 
+/** Test seam for owner-auth failure detail normalization. */
+export function documentOwnerAuthErrorMessageForTest(err: unknown): string {
+  return errorMessage(err);
+}
+
 /** Test seam for owner record probe branches (Id-only and expr-augmented). */
 export async function documentProbeOwnerRecordForTest(
   stage: OwnerPermissionStage,

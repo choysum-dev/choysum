@@ -103,9 +103,13 @@ export function assertPrincipal(raw: unknown): PrincipalContext {
         { field: 'principal.enabledCompanyIds' }
       );
     }
-    enabledCompanyIds = rawEnabledCompanyIds
-      .map(item => normalizeOptionalString(item))
-      .filter((item): item is string => Boolean(item));
+    enabledCompanyIds = Array.from(
+      new Set(
+        rawEnabledCompanyIds
+          .map(item => normalizeLooseOptionalText(item))
+          .filter((item): item is string => Boolean(item))
+      )
+    );
   }
 
   return {

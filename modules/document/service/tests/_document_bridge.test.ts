@@ -100,6 +100,15 @@ test('document._document_bridge: assertPrincipal filters empty enabledCompanyIds
   expect(principal.enabledCompanyIds).toEqual(['cmp_a', 'cmp_b']);
 });
 
+test('document._document_bridge: assertPrincipal coerces numeric ids and dedupes', () => {
+  const principal = assertPrincipal({
+    userId: 'usr_test',
+    activeCompanyId: 'cmp_test',
+    enabledCompanyIds: [42, 'cmp_a', 'cmp_a', Number.NaN],
+  });
+  expect(principal.enabledCompanyIds).toEqual(['42', 'cmp_a']);
+});
+
 test('document._document_bridge: assertPrincipal treats missing enabledCompanyIds as undefined', () => {
   const principal = assertPrincipal({
     userId: 'usr_test',
