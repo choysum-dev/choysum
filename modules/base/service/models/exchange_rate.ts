@@ -90,16 +90,24 @@ export default class ExchangeRate extends BaseModel {
 
   private static async ensureUniqueTuple(values: Record<string, any>, currentId?: string): Promise<void> {
     const scopeKey = String(values.CompanyScopeKey ?? (normalizeRefId(values.CompanyId) || '__GLOBAL__'));
-    const currencyRaw = values.CurrencyId;
-    const currencyId =
-      typeof currencyRaw === 'string' || (currencyRaw != null && typeof currencyRaw === 'object')
-        ? normalizeRefId(currencyRaw)
-        : null;
+    const dateKey = this.dateKey(values.Date);
+    await this.assertUniqueScopeCurrencyDate(scopeKey, dateKey, values.CurrencyId, currentId);
+  }
+
+  /** Resolve CurrencyId ref and fail when CompanyScopeKey+CurrencyId+Date already exists. */
+  private static async assertUniqueScopeCurrencyDate(
+    scopeKey: string,
+    dateKey: string,
+    currencyRaw: unknown,
+    currentId?: string
+  ): Promise<void> {
+    let currencyId: string | null = null;
+    if (typeof currencyRaw === 'string' || (currencyRaw != null && typeof currencyRaw === 'object')) {
+      currencyId = normalizeRefId(currencyRaw);
+    }
     if (!currencyId) {
       fail(_t('%s is required', { scope: 'service/models/exchange_rate' }, 'CurrencyId'));
     }
-    const dateKey = this.dateKey(values.Date);
-
     const conflicts = await this.Search(
       {
         And: [

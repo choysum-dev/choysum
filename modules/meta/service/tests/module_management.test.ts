@@ -568,6 +568,7 @@ test('meta.MetaModule GetOpStatus returns summary and reload flags', async () =>
   const status = await MetaModule.GetOpStatus(job.Id as any);
   expect(status.status).toBe('succeeded');
   expect(status.resultStatus).toBe('SUCCEEDED');
+  expect(status.failureKind).toBe('NONE');
   expect(status.reload_web).toBe(true);
   expect(status.moduleName).toBe(moduleName);
   expect(status.action).toBe('install');
