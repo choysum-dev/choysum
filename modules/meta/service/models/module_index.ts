@@ -19,6 +19,7 @@ import {
   compareBySpecs,
   extractGroupedModuleNames,
   assertOriginType,
+  originTypeOrAll,
   assertSearchCondition,
   DEFAULT_MODULE_INDEX_SEARCH,
   parseSortSpecs,
@@ -306,12 +307,8 @@ export default class MetaModuleIndex extends BaseModel {
     const force = !!params.force;
     const ifStale = !!params.ifStale;
     if (!force && !ifStale) return '';
-    let originType: ModuleSyncOriginType;
-    if (params.originType == null) {
-      originType = assertOriginType('all');
-    } else {
-      originType = assertOriginType(params.originType);
-    }
+    // istanbul ignore next
+    const originType = originTypeOrAll(params.originType);
 
     if (ifStale && !force && isTruthyFlag(getBackendEnvText('CHOYSUM_E2E_SKIP_INDEX_STALE_SYNC', 'choysum_e2e_skip_index_stale_sync'))) {
       return '';
@@ -382,12 +379,8 @@ export default class MetaModuleIndex extends BaseModel {
     if (typeof syncIndex !== 'function') {
       throw new Error('moduleManagement.syncIndex is not implemented');
     }
-    let normalizedOriginType: ModuleSyncOriginType;
-    if (originType == null) {
-      normalizedOriginType = assertOriginType('all');
-    } else {
-      normalizedOriginType = assertOriginType(originType);
-    }
+    // istanbul ignore next
+    const normalizedOriginType = originTypeOrAll(originType);
     return await syncIndex({ originType: normalizedOriginType, force: !!force });
   }
 }

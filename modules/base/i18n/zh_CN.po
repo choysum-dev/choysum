@@ -861,7 +861,7 @@ msgctxt "service/models/currency"
 msgid "Rounding must be greater than 0"
 msgstr "Rounding 必须大于 0"
 
-#: service/models/exchange_rate.ts:102
+#: service/models/exchange_rate.ts:106
 msgctxt "service/models/exchange_rate"
 msgid "%s is required"
 msgstr "%s 为必填项"
@@ -881,17 +881,17 @@ msgctxt "service/models/exchange_rate"
 msgid "Date must be YYYY-MM-DD"
 msgstr "日期格式必须为 YYYY-MM-DD"
 
-#: service/models/exchange_rate.ts:119
+#: service/models/exchange_rate.ts:123
 msgctxt "service/models/exchange_rate"
 msgid "ExchangeRate must be unique for CompanyId + CurrencyId + Date"
 msgstr "ExchangeRate 在相同 CompanyId、CurrencyId 和 Date 下必须唯一"
 
-#: service/models/exchange_rate.ts:129
+#: service/models/exchange_rate.ts:133
 msgctxt "service/models/exchange_rate"
 msgid "Rate must be a valid decimal"
 msgstr "Rate 必须为有效的小数"
 
-#: service/models/exchange_rate.ts:128
+#: service/models/exchange_rate.ts:132
 msgctxt "service/models/exchange_rate"
 msgid "Rate must be greater than 0"
 msgstr "Rate 必须大于 0"
