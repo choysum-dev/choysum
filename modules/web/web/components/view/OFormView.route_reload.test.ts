@@ -5,7 +5,7 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { config, flushPromises, mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
-import { defineComponent, reactive } from 'vue';
+import { defineComponent, h, reactive } from 'vue';
 
 const { emitCancelableMock } = vi.hoisted(() => ({
   emitCancelableMock: vi.fn(async () => true),
@@ -13,12 +13,16 @@ const { emitCancelableMock } = vi.hoisted(() => ({
 
 const ElFormStub = defineComponent({
   name: 'ElFormStub',
+  props: {
+    model: { type: Object, required: false },
+    hideRequiredAsterisk: { type: Boolean, required: false },
+  },
   setup(_, { slots, expose }) {
     expose({
       clearValidate: () => {},
       validate: async () => true,
     });
-    return () => slots.default?.();
+    return () => h('form', { class: 'el-form-stub' }, slots.default?.());
   },
 });
 

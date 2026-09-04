@@ -118,11 +118,13 @@ export function buildCompanyGateExpr(
   return { Or: [companyIn, shared] } as any;
 }
 
-function normalizeKind(raw: unknown): RoleRecordRuleKind {
-  const kind = String(raw ?? 'grant')
-    .trim()
-    .toLowerCase();
-  return kind === 'restrict' ? 'restrict' : 'grant';
+function assertKind(raw: unknown): RoleRecordRuleKind {
+  // Nullish Kind is treated as grant; empty/unrecognized values fail closed.
+  if (raw == null) return 'grant';
+  const kind = String(raw).trim().toLowerCase();
+  if (kind === 'restrict') return 'restrict';
+  if (kind === 'grant') return 'grant';
+  throw new Error("invalid RoleRecordRule Kind: must be 'grant' or 'restrict'");
 }
 
 function isTrueCondition(cond: unknown): boolean {
@@ -255,7 +257,7 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
       const globalScoped = !rModelId && !rAppId;
       if (!modelScoped && !appScoped && !globalScoped) continue;
 
-      const kind = normalizeKind((r as any).Kind);
+      const kind = assertKind((r as any).Kind);
       const expr = buildRuleExpr(r, companyGate, input.roleScopesById || {});
       const ruleId = String((r as any)?.Id || '').trim();
       if (kind === 'restrict') {

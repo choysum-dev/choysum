@@ -426,8 +426,16 @@ test('P2-2 eval edges: defensive fallbacks for empty/null inputs', async () => {
     (RoleRecordRule as any).Search = async () => [
       {
         RoleId: { Id: roleId },
-        Kind: null, // normalizeKind → grant
+        Kind: null, // assertKind(null) → grant
+
         Condition: { And: [['Name', '=', 'z']] },
+        MetaModelId: modelId,
+        MetaApplicationId: null,
+      },
+      {
+        RoleId: { Id: roleId },
+        // Kind omitted → assertKind(undefined) → grant
+        Condition: { And: [['Name', '=', 'z2']] },
         MetaModelId: modelId,
         MetaApplicationId: null,
       },
@@ -440,9 +448,61 @@ test('P2-2 eval edges: defensive fallbacks for empty/null inputs', async () => {
       roleIds: null as any,
       roleScopesById: undefined as any,
     });
-    // No roles + only RoleId-null audience in query, but mock returns role-scoped row → still accepted by loop.
-    // With roleIds null, audience is everyone-only; mock still returns our row and eval uses it.
     expect(['expr', 'false']).toContain(env.kind);
+
+    (RoleRecordRule as any).Search = async () => [
+      {
+        RoleId: { Id: roleId },
+        Kind: 'bogus',
+        Condition: { And: [['Name', '=', 'z']] },
+        MetaModelId: modelId,
+        MetaApplicationId: null,
+      },
+    ];
+    let badKindErr: unknown;
+    try {
+      await evaluateRecordRuleCondition({
+        appName: 'auth',
+        modelName: 'CompanyScopedResource',
+        hasCompany: false,
+        opValue: 'read',
+        roleIds: [roleId],
+        roleScopesById: { [roleId]: { global: true, companies: [] } },
+      });
+    } catch (err) {
+      badKindErr = err;
+    }
+    expect(String((badKindErr as any)?.message || badKindErr)).toMatch(/Kind/);
+
+    (RoleRecordRule as any).Search = async () => [
+      {
+        RoleId: { Id: roleId },
+        Kind: 'restrict',
+        Condition: { And: [['Name', '=', 'z']] },
+        MetaModelId: modelId,
+        MetaApplicationId: null,
+      },
+    ];
+    const envRestrict = await evaluateRecordRuleCondition({
+      appName: 'auth',
+      modelName: 'CompanyScopedResource',
+      hasCompany: false,
+      opValue: 'read',
+      roleIds: [roleId],
+      roleScopesById: { [roleId]: { global: true, companies: [] } },
+    });
+    expect(['expr', 'false']).toContain(envRestrict.kind);
+
+    // Restore a grant-shaped rule for the company-gate fallback path below.
+    (RoleRecordRule as any).Search = async () => [
+      {
+        RoleId: { Id: roleId },
+        Kind: 'grant',
+        Condition: { And: [['Name', '=', 'z']] },
+        MetaModelId: modelId,
+        MetaApplicationId: null,
+      },
+    ];
 
     const env2 = await evaluateRecordRuleCondition({
       appName: 'auth',

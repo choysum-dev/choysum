@@ -7,7 +7,7 @@ import type MetaModelModel from '@/meta/service/models/model';
 import type MetaServiceModel from '@/meta/service/models/service';
 import RoleMethodAccess from '../role_method_access';
 import { maybeId } from './_authz_shared';
-import { normalizeLogicalMethods } from '../_logical_model_registry';
+import { assertLogicalMethods } from '../_logical_model_registry';
 
 const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
 const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
@@ -193,7 +193,7 @@ export async function buildAclAggregation(
       if (models.length === 0) continue;
       let methods: string[] | null;
       try {
-        methods = normalizeLogicalMethods((a as any).LogicalMethods);
+        methods = assertLogicalMethods((a as any).LogicalMethods);
       } catch {
         // Malformed payload: deny → model-wide (fail closed); allow → skip (no over-grant).
         if (mode === 'deny') methods = null;

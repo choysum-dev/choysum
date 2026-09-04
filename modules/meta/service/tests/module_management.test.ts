@@ -5,6 +5,7 @@ import { RepositoryFactory } from '@/core/service/orm/repository';
 import { createServiceByModel } from '@/core/service/rpc';
 import MetaModule from '@/meta/service/models/module';
 import MetaModuleIndex from '@/meta/service/models/module_index';
+import { DEFAULT_MODULE_INDEX_SEARCH } from '@/meta/service/models/_module_index_query';
 import ModuleManagementLog from '@/meta/service/models/module_management_log';
 import type JobModel from '@/task/service/models/job';
 
@@ -567,6 +568,7 @@ test('meta.MetaModule GetOpStatus returns summary and reload flags', async () =>
   const status = await MetaModule.GetOpStatus(job.Id as any);
   expect(status.status).toBe('succeeded');
   expect(status.resultStatus).toBe('SUCCEEDED');
+  expect(status.failureKind).toBe('NONE');
   expect(status.reload_web).toBe(true);
   expect(status.moduleName).toBe(moduleName);
   expect(status.action).toBe('install');
@@ -603,6 +605,235 @@ test('meta.MetaModule GetOpStatus supports succeeded status with failed result',
   expect(status.failureKind).toBe('NON_RETRYABLE');
   expect(status.summary?.code).toBe('MODULE_OPERATION_FAILED');
   expect(status.reload_web).toBe(false);
+});
+
+test('meta.MetaModule GetOpStatus maps plain failures as non-retryable', async () => {
+  resetRequestContext();
+  ensureModuleManagementBridge();
+  ensureJobMock();
+
+  const moduleName = uid('plain_fail');
+  const job = await Job.EnqueueJob('meta', 'meta.MetaModule/ExecuteUpgrade', { moduleName, operatorUserId: 'admin' }, 'admin', 'admin');
+
+  await (Job as any).UpdateById(
+    job.Id as any,
+    {
+      Status: 'failed',
+      LastErrorJson: { message: 'boom' },
+      ResultJson: null,
+    } as any
+  );
+
+  const status = await MetaModule.GetOpStatus(job.Id as any);
+  expect(status.status).toBe('failed');
+  expect(status.resultStatus).toBe('FAILED');
+  expect(status.failureKind).toBe('NON_RETRYABLE');
+});
+
+test('meta.MetaModule GetOpStatus maps retryable lock conflicts via errorDomain/errorCode', async () => {
+  resetRequestContext();
+  ensureModuleManagementBridge();
+  ensureJobMock();
+
+  const moduleName = uid('lock_conflict_alt');
+  const job = await Job.EnqueueJob('meta', 'meta.MetaModule/ExecuteUpgrade', { moduleName, operatorUserId: 'admin' }, 'admin', 'admin');
+
+  await (Job as any).UpdateById(
+    job.Id as any,
+    {
+      Status: 'failed',
+      LastErrorJson: {
+        errorDomain: 'meta.lock',
+        errorCode: 'LEASE_CONFLICT',
+        message: 'lease conflict',
+        details: { retry_after_ms: 1000 },
+      },
+    } as any
+  );
+
+  const status = await MetaModule.GetOpStatus(job.Id as any);
+  expect(status.failureKind).toBe('RETRYABLE');
+  expect(status.retryAfterMs).toBe(1000);
+});
+
+test('meta.MetaModule GetOpStatus classifies ResultJson lock conflicts without LastErrorJson', async () => {
+  resetRequestContext();
+  ensureModuleManagementBridge();
+  ensureJobMock();
+
+  const moduleName = uid('result_lock_conflict');
+  const job = await Job.EnqueueJob('meta', 'meta.MetaModule/ExecuteUpgrade', { moduleName, operatorUserId: 'admin' }, 'admin', 'admin');
+
+  // Logical executeModuleOp failures are stored on ResultJson; the worker leaves LastErrorJson unset.
+  await (Job as any).UpdateById(
+    job.Id as any,
+    {
+      Status: 'succeeded',
+      LastErrorJson: null,
+      ResultJson: {
+        resultStatus: 'FAILED',
+        errorDomain: 'meta.lock',
+        errorCode: 'LEASE_CONFLICT',
+        errorMessage: 'lease conflict',
+        summary: { code: 'MODULE_OPERATION_FAILED', params: { moduleName, action: 'upgrade' } },
+        reload_web: false,
+        reload_triggered: false,
+        reload_failed: false,
+        moduleName,
+        action: 'upgrade',
+        operatorUserId: 'admin',
+      },
+    } as any
+  );
+
+  const status = await MetaModule.GetOpStatus(job.Id as any);
+  expect(status.status).toBe('succeeded');
+  expect(status.resultStatus).toBe('FAILED');
+  expect(status.failureKind).toBe('RETRYABLE');
+  expect(status.errorDomain).toBe('meta.lock');
+  expect(status.errorCode).toBe('LEASE_CONFLICT');
+
+  // Unstructured LastErrorJson must not hide structured ResultJson lock conflicts.
+  await (Job as any).UpdateById(
+    job.Id as any,
+    {
+      Status: 'succeeded',
+      LastErrorJson: { message: 'failed' },
+      ResultJson: {
+        resultStatus: 'FAILED',
+        errorDomain: 'meta.lock',
+        errorCode: 'LEASE_CONFLICT',
+        errorMessage: 'lease conflict',
+        summary: { code: 'MODULE_OPERATION_FAILED', params: { moduleName, action: 'upgrade' } },
+        moduleName,
+        action: 'upgrade',
+        operatorUserId: 'admin',
+      },
+    } as any
+  );
+  const unstructuredErr = await MetaModule.GetOpStatus(job.Id as any);
+  expect(unstructuredErr.failureKind).toBe('RETRYABLE');
+  expect(unstructuredErr.errorDomain).toBe('meta.lock');
+  expect(unstructuredErr.errorCode).toBe('LEASE_CONFLICT');
+
+  // FAILED with no LastErrorJson and no ResultJson error fields → pickErrString(null).
+  await (Job as any).UpdateById(
+    job.Id as any,
+    {
+      Status: 'failed',
+      LastErrorJson: null,
+      ResultJson: { resultStatus: 'FAILED' },
+    } as any
+  );
+  const emptySource = await MetaModule.GetOpStatus(job.Id as any);
+  expect(emptySource.failureKind).toBe('NON_RETRYABLE');
+
+  // ResultJson carries only errorCode (no domain) for resolveFailureSource code branch.
+  await (Job as any).UpdateById(
+    job.Id as any,
+    {
+      Status: 'failed',
+      LastErrorJson: null,
+      ResultJson: { resultStatus: 'FAILED', errorCode: 'ONLY_CODE' },
+    } as any
+  );
+  const codeOnlyPath = await MetaModule.GetOpStatus(job.Id as any);
+  expect(codeOnlyPath.failureKind).toBe('NON_RETRYABLE');
+});
+
+test('meta.MetaModule GetOpStatus maps mismatched lock codes as non-retryable', async () => {
+  resetRequestContext();
+  ensureModuleManagementBridge();
+  ensureJobMock();
+
+  const moduleName = uid('lock_mismatch');
+  const job = await Job.EnqueueJob('meta', 'meta.MetaModule/ExecuteUpgrade', { moduleName, operatorUserId: 'admin' }, 'admin', 'admin');
+
+  await (Job as any).UpdateById(
+    job.Id as any,
+    {
+      Status: 'failed',
+      LastErrorJson: {
+        domain: 'meta.lock',
+        code: 'OTHER',
+        message: 'not a lease conflict',
+      },
+    } as any
+  );
+
+  const status = await MetaModule.GetOpStatus(job.Id as any);
+  expect(status.failureKind).toBe('NON_RETRYABLE');
+
+  await (Job as any).UpdateById(
+    job.Id as any,
+    {
+      Status: 'failed',
+      LastErrorJson: {
+        domain: '',
+        errorDomain: 'module_management',
+        code: '',
+        errorCode: 'LOCK_LEASE_LOST',
+        message: 'lease lost via alt keys',
+      },
+    } as any
+  );
+  const alt = await MetaModule.GetOpStatus(job.Id as any);
+  expect(alt.failureKind).toBe('RETRYABLE');
+
+  await (Job as any).UpdateById(
+    job.Id as any,
+    {
+      Status: 'failed',
+      LastErrorJson: {
+        domain: 'module_management',
+        code: 'OTHER',
+        message: 'not lease lost',
+      },
+    } as any
+  );
+  const mismatchMgmt = await MetaModule.GetOpStatus(job.Id as any);
+  expect(mismatchMgmt.failureKind).toBe('NON_RETRYABLE');
+});
+
+test('meta.MetaModule GetOpStatus maps cancelled jobs as non-retryable failures', async () => {
+  resetRequestContext();
+  ensureModuleManagementBridge();
+  ensureJobMock();
+
+  const moduleName = uid('cancelled_op');
+  const job = await Job.EnqueueJob('meta', 'meta.MetaModule/ExecuteUpgrade', { moduleName, operatorUserId: 'admin' }, 'admin', 'admin');
+
+  await (Job as any).UpdateById(job.Id as any, { Status: 'cancelled', ResultJson: null } as any);
+
+  const status = await MetaModule.GetOpStatus(job.Id as any);
+  expect(status.status).toBe('cancelled');
+  expect(status.resultStatus).toBe('FAILED');
+  expect(status.failureKind).toBe('NON_RETRYABLE');
+});
+
+test('meta.MetaModule GetOpStatus maps retryable lock lease lost', async () => {
+  resetRequestContext();
+  ensureModuleManagementBridge();
+  ensureJobMock();
+
+  const moduleName = uid('lock_lease_lost');
+  const job = await Job.EnqueueJob('meta', 'meta.MetaModule/ExecuteUpgrade', { moduleName, operatorUserId: 'admin' }, 'admin', 'admin');
+
+  await (Job as any).UpdateById(
+    job.Id as any,
+    {
+      Status: 'failed',
+      LastErrorJson: { domain: 'module_management', code: 'LOCK_LEASE_LOST', message: 'lease lost' },
+      ResultJson: null,
+    } as any
+  );
+
+  const status = await MetaModule.GetOpStatus(job.Id as any);
+  expect(status.status).toBe('failed');
+  expect(status.resultStatus).toBe('FAILED');
+  expect(status.failureKind).toBe('RETRYABLE');
+  expect(status.errorDomain).toBe('module_management');
+  expect(status.errorCode).toBe('LOCK_LEASE_LOST');
 });
 
 test('meta.MetaModule GetOpStatus maps retryable lock conflicts', async () => {
@@ -718,6 +949,23 @@ test('meta.MetaModuleIndex RequestSync(all) enqueues when stale', async () => {
   }
 });
 
+test('meta.MetaModuleIndex RequestSync ignores invalid running origin and enqueues', async () => {
+  resetRequestContext();
+  ensureJobMock();
+
+  const restoreSearch = mockJobSearch([{ Id: 'job_running_bad_origin', PayloadJson: { originType: 'remote' } }]);
+  const originalEnqueue = (Job as any).EnqueueJob;
+  (Job as any).EnqueueJob = async () => ({ Id: 'job_after_skip_invalid_origin' });
+
+  try {
+    const jobId = await MetaModuleIndex.RequestSync({ originType: 'local', ifStale: true, force: false });
+    expect(jobId).toBe('job_after_skip_invalid_origin');
+  } finally {
+    (Job as any).EnqueueJob = originalEnqueue;
+    restoreSearch();
+  }
+});
+
 test('meta.MetaModuleIndex RequestSync reuses running job for non-force requests', async () => {
   resetRequestContext();
   ensureJobMock();
@@ -774,14 +1022,58 @@ test('meta.MetaModuleIndex RequestSync(force) does not reuse running job', async
   }
 });
 
+test('meta.MetaModuleIndex RequestSync defaults null originType to all', async () => {
+  resetRequestContext();
+  ensureJobMock();
+
+  const restoreSearch = mockJobSearch([]);
+  const originalEnqueue = (Job as any).EnqueueJob;
+  let enqueuedOrigin: unknown;
+  (Job as any).EnqueueJob = async (_app: string, _method: string, payload: any) => {
+    enqueuedOrigin = payload?.originType;
+    return { Id: 'job_default_all_origin' };
+  };
+
+  try {
+    const jobId = await MetaModuleIndex.RequestSync({ originType: null as any, force: true, ifStale: false });
+    expect(jobId).toBe('job_default_all_origin');
+    expect(enqueuedOrigin).toBe('all');
+  } finally {
+    (Job as any).EnqueueJob = originalEnqueue;
+    restoreSearch();
+  }
+});
+
 test('meta.MetaModuleIndex RequestSync rejects invalid originType', async () => {
   resetRequestContext();
   ensureJobMock();
 
   await expectAsyncErrorContains(
     () => MetaModuleIndex.RequestSync({ originType: 'remote' as any, force: true, ifStale: false }),
-    'originType must be one of: local, registry, all'
+    'originType'
   );
+});
+
+test('meta.MetaModuleIndex Sync defaults omitted originType to all', async () => {
+  resetRequestContext();
+  ensureModuleManagementBridge();
+
+  const root: any = (globalThis as any).$choysum;
+  const seen: Array<{ originType?: string; force?: boolean }> = [];
+  root.moduleManagement.syncIndex = async (params: any) => {
+    seen.push(params);
+    return { ok: true };
+  };
+
+  await MetaModuleIndex.Sync(undefined, false);
+  await MetaModuleIndex.Sync(null as any, true);
+  await MetaModuleIndex.Sync('local', false);
+
+  expect(seen).toEqual([
+    { originType: 'all', force: false },
+    { originType: 'all', force: true },
+    { originType: 'local', force: false },
+  ]);
 });
 
 test('meta.MetaModuleIndex Sync rejects invalid originType before bridge call', async () => {
@@ -795,7 +1087,7 @@ test('meta.MetaModuleIndex Sync rejects invalid originType before bridge call', 
     return { ok: true };
   };
 
-  await expectAsyncErrorContains(() => MetaModuleIndex.Sync('remote' as any, false), 'originType must be one of: local, registry, all');
+  await expectAsyncErrorContains(() => MetaModuleIndex.Sync('remote' as any, false), 'originType');
   expect(called).toBe(false);
 });
 
@@ -840,7 +1132,7 @@ test('meta.MetaModuleIndex Search honors requested fields after aggregation', as
   ]);
 
   try {
-    const rows = await (MetaModuleIndex as any).Search([], { fields: ['ModuleName', 'RegistryVersion'], limit: 10 });
+    const rows = await (MetaModuleIndex as any).Search(undefined, { fields: ['ModuleName', 'RegistryVersion'], limit: 10 });
     expect(Array.isArray(rows)).toBe(true);
     expect(rows.length).toBe(1);
     expect(typeof rows[0].toPlainObject).toBe('function');
@@ -879,7 +1171,7 @@ test('meta.MetaModuleIndex Search projection returns model instances and blocks 
   ]);
 
   try {
-    const rows = await (MetaModuleIndex as any).Search([], { fields: ['ModuleName', '__proto__', 'constructor', 'prototype'], limit: 10 });
+    const rows = await (MetaModuleIndex as any).Search(DEFAULT_MODULE_INDEX_SEARCH, { fields: ['ModuleName', '__proto__', 'constructor', 'prototype'], limit: 10 });
     expect(Array.isArray(rows)).toBe(true);
     expect(rows.length).toBe(1);
     expect(rows[0].ModuleName).toBe('auth');
@@ -940,7 +1232,7 @@ test('meta.MetaModuleIndex Search prefers MetaModule status over aggregate defau
   ]);
 
   try {
-    const rows = await (MetaModuleIndex as any).Search([], { fields: ['ModuleName', 'InstalledStatus', 'InstalledVersion'], limit: 10 });
+    const rows = await (MetaModuleIndex as any).Search(DEFAULT_MODULE_INDEX_SEARCH, { fields: ['ModuleName', 'InstalledStatus', 'InstalledVersion'], limit: 10 });
     expect(Array.isArray(rows)).toBe(true);
     expect(rows.length).toBe(1);
     expect(rows[0].ModuleName).toBe('auth');
@@ -958,10 +1250,10 @@ test('meta.MetaModuleIndex Count uses grouped module count', async () => {
 
   const restoreGroupedRepo = mockMetaModuleIndexGroupedRepo([], 7);
   try {
-    const total = await (MetaModuleIndex as any).Count([], {});
+    const total = await (MetaModuleIndex as any).Count();
     expect(total).toBe(7);
     // Omit options so `options || {}` false branch is covered for patch coverage.
-    const totalDefaultOpts = await (MetaModuleIndex as any).Count([]);
+    const totalDefaultOpts = await (MetaModuleIndex as any).Count();
     expect(totalDefaultOpts).toBe(7);
   } finally {
     restoreGroupedRepo();
@@ -975,7 +1267,7 @@ test('meta.MetaModuleIndex Search hydrates with no field filter and empty aggreg
   const restoreBaseSearch = mockMetaModuleIndexBaseSearch([]);
 
   try {
-    const rows = await (MetaModuleIndex as any).Search([], { limit: 10 });
+    const rows = await (MetaModuleIndex as any).Search(DEFAULT_MODULE_INDEX_SEARCH, { limit: 10 });
     expect(Array.isArray(rows)).toBe(true);
     expect(rows.length).toBe(0);
   } finally {
@@ -994,7 +1286,7 @@ test('meta.MetaModuleIndex Count propagates readGroupCount failures', async () =
   });
 
   try {
-    await expectAsyncErrorContains(() => (MetaModuleIndex as any).Count([], {}), 'readGroupCount boom');
+    await expectAsyncErrorContains(() => (MetaModuleIndex as any).Count(), 'readGroupCount boom');
   } finally {
     restoreGroupedRepo();
   }

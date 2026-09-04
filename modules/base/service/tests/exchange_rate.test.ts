@@ -93,6 +93,117 @@ test('base.exchange_rate: validates DateString and positive Rate', async () => {
         );
       });
 
+      let missingCurrency: unknown;
+      try {
+        await (ExchangeRate as any).ensureUniqueTuple(
+          {
+            CompanyId: (company as any).Id,
+            CompanyScopeKey: String((company as any).Id),
+            CurrencyId: '',
+            Date: '2026-01-02',
+          },
+          undefined
+        );
+      } catch (err) {
+        missingCurrency = err;
+      }
+      expect(missingCurrency instanceof ChoysumError).toBe(true);
+      expect(String((missingCurrency as ChoysumError).message || '')).toMatch(/CurrencyId/);
+
+      let missingCurrencyNull: unknown;
+      try {
+        await (ExchangeRate as any).ensureUniqueTuple(
+          {
+            CompanyId: (company as any).Id,
+            CompanyScopeKey: String((company as any).Id),
+            CurrencyId: null,
+            Date: '2026-01-02',
+          },
+          undefined
+        );
+      } catch (err) {
+        missingCurrencyNull = err;
+      }
+      expect(missingCurrencyNull instanceof ChoysumError).toBe(true);
+
+      let missingCurrencyNumber: unknown;
+      try {
+        await (ExchangeRate as any).ensureUniqueTuple(
+          {
+            CompanyId: (company as any).Id,
+            CompanyScopeKey: String((company as any).Id),
+            CurrencyId: 0,
+            Date: '2026-01-02',
+          },
+          undefined
+        );
+      } catch (err) {
+        missingCurrencyNumber = err;
+      }
+      expect(missingCurrencyNumber instanceof ChoysumError).toBe(true);
+
+      let missingCurrencyObj: unknown;
+      try {
+        await (ExchangeRate as any).ensureUniqueTuple(
+          {
+            CompanyId: (company as any).Id,
+            CompanyScopeKey: String((company as any).Id),
+            CurrencyId: { Id: '' },
+            Date: '2026-01-02',
+          },
+          undefined
+        );
+      } catch (err) {
+        missingCurrencyObj = err;
+      }
+      expect(missingCurrencyObj instanceof ChoysumError).toBe(true);
+
+      let missingCurrencyObjNullId: unknown;
+      try {
+        await (ExchangeRate as any).ensureUniqueTuple(
+          {
+            CompanyId: (company as any).Id,
+            CompanyScopeKey: String((company as any).Id),
+            CurrencyId: { Id: null },
+            Date: '2026-01-02',
+          },
+          undefined
+        );
+      } catch (err) {
+        missingCurrencyObjNullId = err;
+      }
+      expect(missingCurrencyObjNullId instanceof ChoysumError).toBe(true);
+
+      await (ExchangeRate as any).ensureUniqueTuple(
+        {
+          CompanyId: (company as any).Id,
+          CompanyScopeKey: String((company as any).Id),
+          CurrencyId: (rateCurrency as any).Id,
+          Date: '2026-01-10',
+        },
+        undefined
+      );
+
+      await (ExchangeRate as any).ensureUniqueTuple(
+        {
+          CompanyId: (company as any).Id,
+          CompanyScopeKey: String((company as any).Id),
+          CurrencyId: { Id: (rateCurrency as any).Id },
+          Date: '2026-01-11',
+        },
+        undefined
+      );
+
+      await (ExchangeRate as any).ensureUniqueTuple(
+        {
+          CompanyId: (company as any).Id,
+          CompanyScopeKey: String((company as any).Id),
+          CurrencyId: { id: (rateCurrency as any).Id },
+          Date: '2026-01-12',
+        },
+        undefined
+      );
+
       const created = await ExchangeRate.Create(
         {
           CompanyId: (company as any).Id,

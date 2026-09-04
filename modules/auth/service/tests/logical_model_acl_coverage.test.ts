@@ -254,8 +254,8 @@ test('RoleMethodAccess: LogicalMethods normalize, reject non-logical, clear on n
     expect((methodsOnly[0] as any)?.LogicalMethods).toEqual(['Set']);
 
     // Private helper no-ops on nullish values.
-    expect(() => (RoleMethodAccess as any)._normalizeLogicalMethodsPayload(null, 'update')).not.toThrow();
-    expect(() => (RoleMethodAccess as any)._normalizeLogicalMethodsPayload(undefined, 'create')).not.toThrow();
+    expect(() => (RoleMethodAccess as any)._assertLogicalMethodsPayload(null, 'update')).not.toThrow();
+    expect(() => (RoleMethodAccess as any)._assertLogicalMethodsPayload(undefined, 'create')).not.toThrow();
     expect((RoleMethodAccess as any)._needsPreviousLogicalModelName(null)).toBe(false);
     expect((RoleMethodAccess as any)._needsPreviousLogicalModelName(undefined)).toBe(false);
     expect((RoleMethodAccess as any)._needsPreviousLogicalModelName({ LogicalModelName: null })).toBe(false);

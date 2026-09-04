@@ -79,7 +79,19 @@ describe('usePageContext', () => {
   });
 
   it('throws when neither prop nor page store is available', () => {
-    expect(() => resolvePageStore(undefined, 'Missing')).toThrow(/Missing requires a store/);
+    let threw: unknown;
+    const Orphan = defineComponent({
+      setup() {
+        try {
+          resolvePageStore(undefined, 'Missing');
+        } catch (err) {
+          threw = err;
+        }
+        return () => h('div');
+      },
+    });
+    mount(Orphan);
+    expect(String((threw as Error)?.message || threw)).toMatch(/Missing requires a store/);
   });
 
   it('soft-resolves optional store from the page context', () => {

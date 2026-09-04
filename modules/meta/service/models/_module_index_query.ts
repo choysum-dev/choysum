@@ -32,10 +32,27 @@ export type ModuleIndexRecord = {
   RegistryVersion?: string;
 };
 
-export function normalizeSearchCondition(condition: any[] | Record<string, any>): any {
+/** Default search when the caller omits a filter (not applied to empty/invalid payloads). */
+export const DEFAULT_MODULE_INDEX_SEARCH: any = ['Available', '=', true];
+
+/**
+ * Assert a module-index search condition shape.
+ * Empty array/object is rejected — callers that want the catalog default must pass
+ * {@link DEFAULT_MODULE_INDEX_SEARCH} explicitly.
+ */
+export function assertSearchCondition(condition: any[] | Record<string, any>): any {
+  if (condition == null) {
+    throw new Error('search condition is required');
+  }
   const emptyArray = Array.isArray(condition) && condition.length === 0;
-  const emptyObject = !Array.isArray(condition) && condition && typeof condition === 'object' && Object.keys(condition).length === 0;
-  return emptyArray || emptyObject ? (['Available', '=', true] as any) : condition;
+  const emptyObject = !Array.isArray(condition) && typeof condition === 'object' && Object.keys(condition).length === 0;
+  if (emptyArray || emptyObject) {
+    throw new Error('search condition must not be empty');
+  }
+  if (!Array.isArray(condition) && typeof condition !== 'object') {
+    throw new Error('search condition must be an array or object');
+  }
+  return condition;
 }
 
 type SortSpec = { field: string; desc: boolean };
@@ -293,15 +310,22 @@ export function aggregateRows(rows: ModuleIndexRecord[]): ModuleIndexRecord[] {
   return merged;
 }
 
-export function normalizeOriginType(value?: string): ModuleSyncOriginType | '' {
-  const raw = String(value || '')
+/**
+ * Assert a module sync origin type.
+ * Omitted/blank values are not washed here — callers apply `?? 'all'` when that is the API default.
+ */
+export function assertOriginType(value?: string): ModuleSyncOriginType {
+  const raw = String(value ?? '')
     .trim()
     .toLowerCase();
-  if (raw === 'all') return 'all';
-  if (raw === '') return 'all';
-  if (raw === 'local') return 'local';
-  if (raw === 'registry') return 'registry';
-  return '';
+  if (raw === 'all' || raw === 'local' || raw === 'registry') return raw;
+  throw new Error(`invalid originType: must be all|local|registry, got ${JSON.stringify(value)}`);
+}
+
+/** Resolve an optional originType, defaulting nullish input to `all`. */
+export function originTypeOrAll(value?: string | null): ModuleSyncOriginType {
+  if (value == null) return assertOriginType('all');
+  return assertOriginType(value);
 }
 
 export function canReuseRunningSync(requested: ModuleSyncOriginType, running: ModuleSyncOriginType): boolean {

@@ -138,6 +138,67 @@ test('evaluateFieldRules skips app-scope Or when applicationId empty and drops m
   }
 });
 
+test('evaluateFieldRules rejects unrecognized field permissions', async () => {
+  ensureRequestContext();
+  const origModel = (MetaModel as any).Search;
+  const origApp = (MetaApplication as any).Search;
+  const origField = (MetaField as any).Search;
+  const origRules = (RoleFieldRule as any).Search;
+
+  try {
+    (MetaModel as any).Search = async () => [{ Id: 'model-1', ModuleId: null, UpdatedAt: '2026-08-05T12:00:00.000Z' }];
+    (MetaApplication as any).Search = async () => [];
+    (MetaField as any).Search = async () => [{ Id: 'f1', Name: 'Login' }];
+
+    (RoleFieldRule as any).Search = async () => [
+      {
+        Id: 'rule-unwrap-perm',
+        MetaModelId: 'model-1',
+        MetaFieldId: 'f1',
+        MetaApplicationId: null,
+        PermRead: { value: 'deny' },
+        PermWrite: { Value: 'allow' },
+      },
+    ];
+    const unwrapped = await evaluateFieldRules({
+      appName: 'auth',
+      modelName: 'User',
+      modelFullName: 'auth.User',
+      roleIds: ['r1'],
+    });
+    expect(unwrapped.denyReadFields).toContain('Login');
+
+    (RoleFieldRule as any).Search = async () => [
+      {
+        Id: 'rule-bad-perm',
+        MetaModelId: 'model-1',
+        MetaFieldId: null,
+        MetaApplicationId: null,
+        PermRead: 'maybe',
+        PermWrite: { value: 'nope' },
+      },
+    ];
+
+    let err: unknown;
+    try {
+      await evaluateFieldRules({
+        appName: 'auth',
+        modelName: 'User',
+        modelFullName: 'auth.User',
+        roleIds: ['r1'],
+      });
+    } catch (e) {
+      err = e;
+    }
+    expect(String((err as any)?.message || err)).toMatch(/allow|deny/);
+  } finally {
+    (MetaModel as any).Search = origModel;
+    (MetaApplication as any).Search = origApp;
+    (MetaField as any).Search = origField;
+    (RoleFieldRule as any).Search = origRules;
+  }
+});
+
 test('evaluateFieldRules app rule continues when irApp mismatches resolved applicationId', async () => {
   ensureRequestContext();
   const origModel = (MetaModel as any).Search;

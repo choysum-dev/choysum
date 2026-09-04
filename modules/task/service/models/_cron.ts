@@ -177,9 +177,9 @@ export function computeNextRunAt(schedule: { CronExpr?: string; Timezone?: strin
 }
 
 /**
- * Validates and normalizes an IANA timezone.
+ * Asserts an IANA timezone string.
  */
-export function normalizeTimezone(value?: string): string {
+export function assertTimezone(value?: string): string {
   const tz = (value ?? '').trim();
   if (!tz) {
     throw new Error(_t('timezone is required', { scope: 'service/models/_cron' }));

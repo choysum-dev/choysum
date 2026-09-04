@@ -596,12 +596,27 @@ msgctxt "base.model.UoMCategory.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/_currency_convert.ts:101 service/models/_currency_convert.ts:98
+#: service/models/_base_bridge.ts:57
+msgctxt "service/models/_base_bridge"
+msgid "%s is required"
+msgstr "%s 为必填项"
+
+#: service/models/_base_bridge.ts:37
+msgctxt "service/models/_base_bridge"
+msgid "Code is required"
+msgstr "编码为必填项"
+
+#: service/models/_base_bridge.ts:47
+msgctxt "service/models/_base_bridge"
+msgid "Name is required"
+msgstr "名称为必填项"
+
+#: service/models/_currency_convert.ts:103 service/models/_currency_convert.ts:106
 msgctxt "service/models/_currency_convert"
 msgid "Company not found"
 msgstr "未找到公司"
 
-#: service/models/_currency_convert.ts:105
+#: service/models/_currency_convert.ts:110
 msgctxt "service/models/_currency_convert"
 msgid "Company.CurrencyId is required"
 msgstr "Company.CurrencyId 为必填项"
@@ -641,38 +656,28 @@ msgctxt "service/models/_currency_convert"
 msgid "Target currency %s not found"
 msgstr "未找到目标币种 %s"
 
-#: service/models/_normalization_bridge.ts:39
-msgctxt "service/models/_normalization_bridge@normalizeCodeRequired"
-msgid "Code is required"
-msgstr "编码为必填项"
-
-#: service/models/_normalization_bridge.ts:49
-msgctxt "service/models/_normalization_bridge@normalizeName"
-msgid "Name is required"
-msgstr "名称为必填项"
-
-#: service/models/_normalization_bridge.ts:59
-msgctxt "service/models/_normalization_bridge@requireRefId"
-msgid "%s is required"
-msgstr "%s 为必填项"
-
-#: service/models/_option_normalizers.ts:30
-msgctxt "service/models/_option_normalizers"
+#: service/models/_option_validators.ts:38
+msgctxt "service/models/_option_validators"
 msgid "CurrencySymbolPosition must be before or after"
 msgstr "CurrencySymbolPosition 必须为 before 或 after"
 
-#: service/models/_option_normalizers.ts:19
-msgctxt "service/models/_option_normalizers"
+#: service/models/_option_validators.ts:51
+msgctxt "service/models/_option_validators"
+msgid "CurrencySymbolSpacing must be a boolean"
+msgstr "CurrencySymbolSpacing 必须为布尔值"
+
+#: service/models/_option_validators.ts:28
+msgctxt "service/models/_option_validators"
 msgid "Direction must be ltr or rtl"
 msgstr "Direction 必须为 ltr 或 rtl"
 
-#: service/models/_option_normalizers.ts:54
-msgctxt "service/models/_option_normalizers"
+#: service/models/_option_validators.ts:61
+msgctxt "service/models/_option_validators"
 msgid "RatePolicy.Mode must be exact or latest_before"
 msgstr "RatePolicy.Mode 必须为 exact 或 latest_before"
 
-#: service/models/_option_normalizers.ts:65
-msgctxt "service/models/_option_normalizers"
+#: service/models/_option_validators.ts:73
+msgctxt "service/models/_option_validators"
 msgid "Rounding.Mode must be currency or none"
 msgstr "Rounding.Mode 必须为 currency 或 none"
 
@@ -691,37 +696,37 @@ msgctxt "service/models/_sequence_cleanup"
 msgid "OlderThan must be YYYY-MM-DD"
 msgstr "OlderThan 格式必须为 YYYY-MM-DD"
 
-#: service/models/_sequence_next.ts:24
+#: service/models/_sequence_next.ts:23
 msgctxt "service/models/_sequence_next"
 msgid "Count must be an integer >= 1"
 msgstr "Count 必须为大于或等于 1 的整数"
 
-#: service/models/_sequence_next.ts:27
+#: service/models/_sequence_next.ts:26
 msgctxt "service/models/_sequence_next"
 msgid "Count must be within 1..1000"
 msgstr "Count 必须在 1 到 1000 之间"
 
-#: service/models/_sequence_next.ts:75
+#: service/models/_sequence_next.ts:74
 msgctxt "service/models/_sequence_next"
 msgid "IdempotencyKey conflict with different request"
 msgstr "IdempotencyKey 与其他请求冲突"
 
-#: service/models/_sequence_next.ts:38
+#: service/models/_sequence_next.ts:37
 msgctxt "service/models/_sequence_next"
 msgid "IdempotencyKey is invalid"
 msgstr "IdempotencyKey 无效"
 
-#: service/models/_sequence_next.ts:37
+#: service/models/_sequence_next.ts:36
 msgctxt "service/models/_sequence_next"
 msgid "IdempotencyKey is too long"
 msgstr "IdempotencyKey 过长"
 
-#: service/models/_sequence_next.ts:36
+#: service/models/_sequence_next.ts:35
 msgctxt "service/models/_sequence_next"
 msgid "IdempotencyKey must be non-empty"
 msgstr "IdempotencyKey 不能为空"
 
-#: service/models/_sequence_next.ts:153
+#: service/models/_sequence_next.ts:152
 msgctxt "service/models/_sequence_next"
 msgid "Sequence allocation conflicted; please retry"
 msgstr "序列号分配发生冲突，请重试"
@@ -731,12 +736,12 @@ msgctxt "service/models/_sequence_next"
 msgid "Sequence is inactive"
 msgstr "序列未启用"
 
-#: service/models/_sequence_next.ts:131 service/models/_sequence_next.ts:197
+#: service/models/_sequence_next.ts:130 service/models/_sequence_next.ts:197
 msgctxt "service/models/_sequence_next"
 msgid "Sequence not found"
 msgstr "未找到序列"
 
-#: service/models/_sequence_next.ts:119
+#: service/models/_sequence_next.ts:118
 msgctxt "service/models/_sequence_next"
 msgid "Sequence not found for Code=%s"
 msgstr "未找到 Code=%s 的序列"
@@ -856,6 +861,11 @@ msgctxt "service/models/currency"
 msgid "Rounding must be greater than 0"
 msgstr "Rounding 必须大于 0"
 
+#: service/models/exchange_rate.ts:106
+msgctxt "service/models/exchange_rate"
+msgid "%s is required"
+msgstr "%s 为必填项"
+
 #: service/models/exchange_rate.ts:81
 msgctxt "service/models/exchange_rate"
 msgid "Date is invalid"
@@ -871,17 +881,17 @@ msgctxt "service/models/exchange_rate"
 msgid "Date must be YYYY-MM-DD"
 msgstr "日期格式必须为 YYYY-MM-DD"
 
-#: service/models/exchange_rate.ts:109
+#: service/models/exchange_rate.ts:123
 msgctxt "service/models/exchange_rate"
 msgid "ExchangeRate must be unique for CompanyId + CurrencyId + Date"
 msgstr "ExchangeRate 在相同 CompanyId、CurrencyId 和 Date 下必须唯一"
 
-#: service/models/exchange_rate.ts:119
+#: service/models/exchange_rate.ts:133
 msgctxt "service/models/exchange_rate"
 msgid "Rate must be a valid decimal"
 msgstr "Rate 必须为有效的小数"
 
-#: service/models/exchange_rate.ts:118
+#: service/models/exchange_rate.ts:132
 msgctxt "service/models/exchange_rate"
 msgid "Rate must be greater than 0"
 msgstr "Rate 必须大于 0"

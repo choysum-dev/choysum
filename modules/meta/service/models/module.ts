@@ -64,14 +64,37 @@ type ModuleOpBridgeResult = {
   errorMessage?: string;
 };
 
-function normalizeFailureKind(status: string, err?: any): FailureKind {
-  if (status === 'cancelled') return 'NON_RETRYABLE';
-  if (status !== 'failed') return 'NONE';
-  const domain = String(err?.domain || err?.errorDomain || '').toLowerCase();
-  const code = String(err?.code || err?.errorCode || '').toUpperCase();
+function pickErrString(err: any, primary: string, secondary: string): string {
+  if (err == null) return '';
+  const primaryValue = err[primary];
+  if (primaryValue != null && String(primaryValue) !== '') return String(primaryValue);
+  const secondaryValue = err[secondary];
+  if (secondaryValue != null && String(secondaryValue) !== '') return String(secondaryValue);
+  return '';
+}
+
+function classifyRetryability(err?: any): FailureKind {
+  const domain = pickErrString(err, 'domain', 'errorDomain').toLowerCase();
+  const code = pickErrString(err, 'code', 'errorCode').toUpperCase();
   if (domain === 'meta.lock' && code === 'LEASE_CONFLICT') return 'RETRYABLE';
   if (domain === 'module_management' && code === 'LOCK_LEASE_LOST') return 'RETRYABLE';
   return 'NON_RETRYABLE';
+}
+
+function resolveFailureSource(err: any, result: any): any {
+  if (pickErrString(err, 'domain', 'errorDomain')) return err;
+  if (pickErrString(err, 'code', 'errorCode')) return err;
+  if (pickErrString(result, 'domain', 'errorDomain')) return result;
+  if (pickErrString(result, 'code', 'errorCode')) return result;
+  if (err != null) return err;
+  return result;
+}
+
+function resolveOpFailureKind(status: string, resultStatus: string | undefined, err: any, result: any): FailureKind {
+  if (status === 'cancelled') return 'NON_RETRYABLE';
+  if (status === 'failed') return classifyRetryability(resolveFailureSource(err, result));
+  if (resultStatus === 'FAILED') return classifyRetryability(resolveFailureSource(err, result));
+  return 'NONE';
 }
 
 async function loadExecutionTimes(jobId: string): Promise<{ startedAt?: Date; finishedAt?: Date }> {
@@ -353,11 +376,8 @@ export default class MetaModule extends BaseModel {
     const nextRetryAt = retryAfterMs && (job as any)?.RunAfter ? new Date((job as any).RunAfter) : undefined;
 
     const resultStatus = result?.resultStatus || (status === 'failed' || status === 'cancelled' ? 'FAILED' : undefined);
-    let failureKind = normalizeFailureKind(status, err);
-    if (resultStatus === 'FAILED' && failureKind === 'NONE') {
-      failureKind = normalizeFailureKind('failed', err);
-    }
     const summary = result?.summary || (resultStatus === 'FAILED' ? { code: 'MODULE_OPERATION_FAILED', message: err?.message } : undefined);
+    const failureKind = resolveOpFailureKind(status, resultStatus, err, result);
 
     return {
       status,

@@ -6,7 +6,7 @@ import { Constraint } from '@/core/service/api/constraint';
 import { toPositiveDecimal } from '@/core/service/utils/normalization';
 import { _t, _lt } from '../i18n';
 import UoMCategory from './uom_category';
-import { fail, mapNormalizationToBase, normalizeRequiredTranslatedText, requireRefId } from './_normalizers';
+import { fail, mapNormalizationToBase, assertRequiredTranslatedText, assertRefId } from './_normalizers';
 
 @Model('UoM')
 export default class UoM extends BaseModel {
@@ -110,8 +110,8 @@ export default class UoM extends BaseModel {
   }
 
   private static async validateEntity(values: Record<string, any>, currentId?: string): Promise<void> {
-    const name = normalizeRequiredTranslatedText(values.Name, 'Name');
-    const categoryId = requireRefId(values.CategoryId, 'CategoryId');
+    const name = assertRequiredTranslatedText(values.Name, 'Name');
+    const categoryId = assertRefId(values.CategoryId, 'CategoryId');
 
     const isRef = values.IsReference === true;
     const factor = mapNormalizationToBase(

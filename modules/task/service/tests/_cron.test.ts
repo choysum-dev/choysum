@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { isIanaTimezone, parseTimezoneOffsetMinutes } from '@/core/service/utils/datetime';
-import { parseCronField, parseCronExpr, nextCronTime, computeNextRunAt, normalizeTimezone, applyNextRunPreview } from '@/task/service/models/_cron';
+import { parseCronField, parseCronExpr, nextCronTime, computeNextRunAt, assertTimezone, applyNextRunPreview } from '@/task/service/models/_cron';
 
 test('task._cron parseTimezoneOffsetMinutes parses UTC', () => {
   expect(parseTimezoneOffsetMinutes('UTC')).toBe(0);
@@ -160,11 +160,11 @@ test('task._cron computeNextRunAt computes next run for daily schedule', () => {
   }
 });
 
-test('task._cron normalizeTimezone validates IANA', () => {
-  expect(normalizeTimezone('UTC')).toBe('UTC');
-  expect(normalizeTimezone('Asia/Shanghai')).toBe('Asia/Shanghai');
-  expect(() => normalizeTimezone('')).toThrow('timezone is required');
-  expect(() => normalizeTimezone('Not/A_Zone')).toThrow('invalid timezone');
+test('task._cron assertTimezone validates IANA', () => {
+  expect(assertTimezone('UTC')).toBe('UTC');
+  expect(assertTimezone('Asia/Shanghai')).toBe('Asia/Shanghai');
+  expect(() => assertTimezone('')).toThrow('timezone is required');
+  expect(() => assertTimezone('Not/A_Zone')).toThrow('invalid timezone');
 });
 
 test('task._cron applyNextRunPreview fills missing NextRunAt', () => {

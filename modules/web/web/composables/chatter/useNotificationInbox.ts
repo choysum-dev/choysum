@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, onScopeDispose, ref } from 'vue';
 import { onTips, subscribeNotifications } from '@/core/web/tip';
 import { getNotificationStore } from './chatterStores';
 import type { InboxNotificationRow } from './chatterTypes';
@@ -121,7 +121,8 @@ export function useNotificationInbox(enabled: () => boolean) {
     loading.value = false;
   }
 
-  onBeforeUnmount(() => {
+  // onScopeDispose works in component setup and standalone effectScope (unit tests).
+  onScopeDispose(() => {
     deactivate();
   });
 

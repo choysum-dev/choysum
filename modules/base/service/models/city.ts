@@ -7,7 +7,7 @@ import { normalizeRefId } from '@/core/service/utils/normalization';
 import { _t, _lt } from '../i18n';
 import Country from './country';
 import State from './state';
-import { fail, normalizeCodeOptional, normalizeRequiredTranslatedText, requireRefId } from './_normalizers';
+import { fail, normalizeCodeOptional, assertRequiredTranslatedText, assertRefId } from './_normalizers';
 
 @Model('City')
 export default class City extends BaseModel {
@@ -69,9 +69,9 @@ export default class City extends BaseModel {
   }
 
   private static async ensureUniqueness(values: Record<string, any>, currentId?: string): Promise<void> {
-    const countryId = requireRefId(values.CountryId, 'CountryId');
+    const countryId = assertRefId(values.CountryId, 'CountryId');
     const stateId = normalizeRefId(values.StateId) ?? null;
-    const name = normalizeRequiredTranslatedText(values.Name, 'Name');
+    const name = assertRequiredTranslatedText(values.Name, 'Name');
     const code = normalizeCodeOptional(values.Code);
     await City.ensureStateCountryConsistency(countryId, stateId);
 

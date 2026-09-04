@@ -13,16 +13,14 @@ import {
 
 const { _t } = createTranslate('base');
 const bridge = createDomainNormalizationBridge('base', _t);
-const scope = 'service/models/_normalization_bridge';
-
 /** Throw a base-domain InvalidArgument error. */
 export const fail = bridge.fail;
 
 /** Map a domain-agnostic normalization failure into base-domain InvalidArgument. */
 export const mapNormalizationToBase = bridge.mapNormalizationError;
 
-/** Normalize a required translated field: string or `{ lang: string }` map. */
-export const normalizeRequiredTranslatedText = bridge.normalizeRequiredTranslatedText;
+/** Validate a required translated field: string or `{ lang: string }` map. */
+export const assertRequiredTranslatedText = bridge.normalizeRequiredTranslatedText;
 
 /** Normalize an optional code field: trim, optionally uppercase. */
 export const normalizeCodeOptional = normalizeCodeOptionalCore;
@@ -31,31 +29,31 @@ export const normalizeCodeOptional = normalizeCodeOptionalCore;
 export const normalizeNullableString = normalizeNullableStringCore;
 
 /**
- * Normalize a required code field: trim, optionally uppercase, fail if empty.
+ * Validate a required code field: trim, optionally uppercase, fail if empty.
  */
-export function normalizeCodeRequired(value: any, opts?: { uppercase?: boolean }): string {
+export function assertCodeRequired(value: any, opts?: { uppercase?: boolean }): string {
   return mapNormalizationToBase(
     () => normalizeCodeRequiredCore(value, opts),
-    () => _t('Code is required', { scope })
+    () => _t('Code is required', { scope: 'service/models/_base_bridge' })
   );
 }
 
 /**
- * Normalize a required name field: trim, fail if empty.
+ * Validate a required name field: trim, fail if empty.
  */
-export function normalizeName(value: any): string {
+export function assertName(value: any): string {
   return mapNormalizationToBase(
     () => normalizeNameCore(value),
-    () => _t('Name is required', { scope })
+    () => _t('Name is required', { scope: 'service/models/_base_bridge' })
   );
 }
 
 /**
  * Resolve and require a reference ID, failing with InvalidArgument if empty.
  */
-export function requireRefId(value: unknown, fieldName: string): string {
+export function assertRefId(value: unknown, fieldName: string): string {
   return mapNormalizationToBase(
     () => requireRefIdCore(value),
-    () => _t('%s is required', { scope }, fieldName)
+    () => _t('%s is required', { scope: 'service/models/_base_bridge' }, fieldName)
   );
 }

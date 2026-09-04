@@ -115,6 +115,14 @@ test('base.sequence: Next returns monotonic formatted values', async () => {
       expect(second.Items.length).toBe(1);
       expect(second.Items[0].Number).toBe(3);
       expect(second.Items[0].Value).toBe('SO/0003');
+
+      const defaultCount = await Sequence.Next({ CompanyId: companyId, Code: seqCode });
+      expect(defaultCount.Items.length).toBe(1);
+      expect(defaultCount.Items[0].Number).toBe(4);
+
+      const nullCount = await Sequence.Next({ CompanyId: companyId, Code: seqCode, Count: null as any });
+      expect(nullCount.Items.length).toBe(1);
+      expect(nullCount.Items[0].Number).toBe(5);
     },
     { merge: false }
   );

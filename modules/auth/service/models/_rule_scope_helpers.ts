@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { normalizeRefId } from '@/core/service/utils/normalization';
-import { normalizeLogicalModelName } from './_logical_model_registry';
+import { assertLogicalModelName } from './_logical_model_registry';
 
 /**
  * Scope profile for the four Role* rule models.
@@ -137,7 +137,7 @@ export function assertExclusiveScope(values: Record<string, any>, mode: AssertEx
   const ids = {} as Record<ScopeFieldKey, string | null>;
   for (const f of spec.fields) {
     if (f === 'LogicalModelName') {
-      ids[f] = normalizeLogicalModelName((values as any)[f]);
+      ids[f] = assertLogicalModelName((values as any)[f]);
     } else {
       ids[f] = normalizeRefId((values as any)[f]);
     }

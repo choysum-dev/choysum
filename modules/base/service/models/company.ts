@@ -11,7 +11,7 @@ import Address from './address';
 import Country from './country';
 import Currency from './currency';
 import Language from './language';
-import { fail, mapNormalizationToBase, normalizeRequiredTranslatedText } from './_normalizers';
+import { fail, mapNormalizationToBase, assertRequiredTranslatedText } from './_normalizers';
 
 @Model('Company', { parentField: 'ParentId' })
 export default class Company extends BaseModel {
@@ -116,7 +116,7 @@ export default class Company extends BaseModel {
   }
 
   private static async ensureUnique(values: Record<string, any>, currentId?: string): Promise<void> {
-    const name = normalizeRequiredTranslatedText(values.Name, 'Name');
+    const name = assertRequiredTranslatedText(values.Name, 'Name');
     const code = this.normalizeRequiredText(values.Code, 'Code');
 
     const byCode = await this.Search(
@@ -132,7 +132,7 @@ export default class Company extends BaseModel {
     values.Code = code;
   }
 
-  private static normalizeCurrencyId(value: unknown): string {
+  private static assertCurrencyId(value: unknown): string {
     const id = normalizeRefId(value);
     if (!id) {
       raiseDomainError('base', 'InvalidArgument', _t('CurrencyId is required', { scope: 'service/models/company' }));
@@ -140,7 +140,7 @@ export default class Company extends BaseModel {
     return id;
   }
 
-  private static normalizeTimezone(value: unknown): string {
+  private static assertTimezone(value: unknown): string {
     const timezone = String(value ?? '').trim();
     if (!timezone) {
       raiseDomainError('base', 'InvalidArgument', _t('Timezone is required', { scope: 'service/models/company' }));
@@ -180,8 +180,8 @@ export default class Company extends BaseModel {
 
     // Timezone and CurrencyId are always required; normalize on `this`
     // so the draft proxy auto-collects the writeback.
-    (this as any).Timezone = Company.normalizeTimezone(this.Timezone);
-    (this as any).CurrencyId = Company.normalizeCurrencyId(this.CurrencyId);
+    (this as any).Timezone = Company.assertTimezone(this.Timezone);
+    (this as any).CurrencyId = Company.assertCurrencyId(this.CurrencyId);
 
     await Company.ensureUnique(this as any, currentId);
 

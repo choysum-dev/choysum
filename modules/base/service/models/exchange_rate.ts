@@ -8,7 +8,7 @@ import { businessToday } from '@/core/service/utils/datetime';
 import { _t, _lt } from '../i18n';
 import Company from './company';
 import Currency from './currency';
-import { fail, mapNormalizationToBase, requireRefId } from './_normalizers';
+import { fail, mapNormalizationToBase } from './_normalizers';
 
 @Model('ExchangeRate', { companyField: 'CompanyId' })
 export default class ExchangeRate extends BaseModel {
@@ -90,9 +90,24 @@ export default class ExchangeRate extends BaseModel {
 
   private static async ensureUniqueTuple(values: Record<string, any>, currentId?: string): Promise<void> {
     const scopeKey = String(values.CompanyScopeKey ?? (normalizeRefId(values.CompanyId) || '__GLOBAL__'));
-    const currencyId = requireRefId(values.CurrencyId, 'CurrencyId');
     const dateKey = this.dateKey(values.Date);
+    await this.assertUniqueScopeCurrencyDate(scopeKey, dateKey, values.CurrencyId, currentId);
+  }
 
+  /** Resolve CurrencyId ref and fail when CompanyScopeKey+CurrencyId+Date already exists. */
+  private static async assertUniqueScopeCurrencyDate(
+    scopeKey: string,
+    dateKey: string,
+    currencyRaw: unknown,
+    currentId?: string
+  ): Promise<void> {
+    let currencyId: string | null = null;
+    if (typeof currencyRaw === 'string' || (currencyRaw != null && typeof currencyRaw === 'object')) {
+      currencyId = normalizeRefId(currencyRaw);
+    }
+    if (!currencyId) {
+      fail(_t('%s is required', { scope: 'service/models/exchange_rate' }, 'CurrencyId'));
+    }
     const conflicts = await this.Search(
       {
         And: [

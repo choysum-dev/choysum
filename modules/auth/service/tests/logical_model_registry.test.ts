@@ -6,8 +6,8 @@ import {
   isRegisteredLogicalModelName,
   listLogicalModelNames,
   logicalMethodsAllow,
-  normalizeLogicalMethods,
-  normalizeLogicalModelName,
+  assertLogicalMethods,
+  assertLogicalModelName,
 } from '@/auth/service/models/_logical_model_registry';
 
 test('logical model names come from core platform-inject self-registration', () => {
@@ -18,28 +18,28 @@ test('logical model names come from core platform-inject self-registration', () 
   expect(isRegisteredLogicalModelName('')).toBe(false);
 });
 
-test('normalizeLogicalModelName rejects unregistered names', () => {
-  expect(normalizeLogicalModelName(null)).toBe(null);
-  expect(normalizeLogicalModelName('  ')).toBe(null);
-  expect(normalizeLogicalModelName('FieldDefault')).toBe('FieldDefault');
-  expect(() => normalizeLogicalModelName('Partner')).toThrow(/not a registered logical model/);
+test('assertLogicalModelName rejects unregistered names', () => {
+  expect(assertLogicalModelName(null)).toBe(null);
+  expect(assertLogicalModelName('  ')).toBe(null);
+  expect(assertLogicalModelName('FieldDefault')).toBe('FieldDefault');
+  expect(() => assertLogicalModelName('Partner')).toThrow(/not a registered logical model/);
 });
 
-test('normalizeLogicalMethods canonicalizes PascalCase and dedupes case-insensitively', () => {
-  expect(normalizeLogicalMethods(null)).toBe(null);
-  expect(normalizeLogicalMethods([])).toBe(null);
-  expect(normalizeLogicalMethods(['search', 'Browse', 'SEARCH'])).toEqual(['Search', 'Browse']);
+test('assertLogicalMethods canonicalizes PascalCase and dedupes case-insensitively', () => {
+  expect(assertLogicalMethods(null)).toBe(null);
+  expect(assertLogicalMethods([])).toBe(null);
+  expect(assertLogicalMethods(['search', 'Browse', 'SEARCH'])).toEqual(['Search', 'Browse']);
   expect(canonicalizeLogicalMethodName('getEffective')).toBe('GetEffective');
   expect(canonicalizeLogicalMethodName('   ')).toBe('');
   expect(canonicalizeLogicalMethodName(null)).toBe('');
   expect(canonicalizeLogicalMethodName(undefined)).toBe('');
-  expect(normalizeLogicalMethods('["Update"]')).toEqual(['Update']);
-  expect(normalizeLogicalMethods('  ')).toBe(null);
-  expect(normalizeLogicalMethods(['Search', '  '])).toEqual(['Search']);
-  expect(() => normalizeLogicalMethods('not-json')).toThrow(/must be a JSON string array/);
-  expect(() => normalizeLogicalMethods('{}')).toThrow(/must be a JSON string array/);
-  expect(() => normalizeLogicalMethods(42 as any)).toThrow(/must be a string array/);
-  expect(() => normalizeLogicalMethods([1 as any])).toThrow(/each entry must be a string/);
+  expect(assertLogicalMethods('["Update"]')).toEqual(['Update']);
+  expect(assertLogicalMethods('  ')).toBe(null);
+  expect(assertLogicalMethods(['Search', '  '])).toEqual(['Search']);
+  expect(() => assertLogicalMethods('not-json')).toThrow(/must be a JSON string array/);
+  expect(() => assertLogicalMethods('{}')).toThrow(/must be a JSON string array/);
+  expect(() => assertLogicalMethods(42 as any)).toThrow(/must be a string array/);
+  expect(() => assertLogicalMethods([1 as any])).toThrow(/each entry must be a string/);
 });
 
 test('logicalMethodsAllow treats null/empty as all methods', () => {

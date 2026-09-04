@@ -35,49 +35,51 @@ const i18n = createI18n({
   messages: { en: {} },
 });
 
+const elementPlusStubs = {
+  ElDialog: {
+    name: 'ElDialog',
+    props: ['modelValue', 'title'],
+    emits: ['update:modelValue', 'close', 'open', 'closed'],
+    template:
+      '<div class="dialog-stub"><div data-test="dialog-title">{{ title }}</div><button data-test="dialog-close" @click="$emit(\'update:modelValue\', false)">x</button><slot /><slot name="footer" /></div>',
+    mounted() {
+      if (this.modelValue) {
+        this.$emit('open');
+      }
+    },
+  },
+  ElAlert: {
+    template: '<div class="el-alert-stub"><slot name="title" /></div>',
+  },
+  ElButton: {
+    emits: ['click'],
+    template: '<button @click="$emit(\'click\')"><slot /></button>',
+  },
+  ElSelect: {
+    props: ['modelValue'],
+    emits: ['update:modelValue', 'change'],
+    template:
+      '<select data-test="import-field-select" :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value); $emit(\'change\', $event.target.value)"><slot /></select>',
+  },
+  ElOption: {
+    props: ['label', 'value'],
+    template: '<option :value="value">{{ label }}</option>',
+  },
+  ElUpload: { template: '<div class="upload-stub"><slot /></div>' },
+  ElSteps: { template: '<div class="steps-stub"><slot /></div>' },
+  ElStep: { template: '<div class="step-stub" />' },
+  ElTable: { template: '<div class="table-stub"><slot /></div>' },
+  ElTableColumn: { template: '<div />' },
+  ElResult: { template: '<div class="el-result-stub" />' },
+};
+
 async function mountPanel(open = true, props: Record<string, unknown> = {}) {
   const { default: ImportPanel } = await import('./ImportPanel.vue');
   return mount(ImportPanel, {
     props: { model: 'partner.Partner', companyId: 'cmp-1', modelValue: open, ...props },
     global: {
       plugins: [i18n],
-      stubs: {
-        ElDialog: {
-          name: 'ElDialog',
-          props: ['modelValue', 'title'],
-          emits: ['update:modelValue', 'close', 'open', 'closed'],
-          template:
-            '<div class="dialog-stub"><div data-test="dialog-title">{{ title }}</div><button data-test="dialog-close" @click="$emit(\'update:modelValue\', false)">x</button><slot /><slot name="footer" /></div>',
-          mounted() {
-            if (this.modelValue) {
-              this.$emit('open');
-            }
-          },
-        },
-        ElAlert: {
-          template: '<div class="el-alert-stub"><slot name="title" /></div>',
-        },
-        ElButton: {
-          emits: ['click'],
-          template: '<button @click="$emit(\'click\')"><slot /></button>',
-        },
-        ElSelect: {
-          props: ['modelValue'],
-          emits: ['update:modelValue', 'change'],
-          template:
-            '<select data-test="import-field-select" :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value); $emit(\'change\', $event.target.value)"><slot /></select>',
-        },
-        ElOption: {
-          props: ['label', 'value'],
-          template: '<option :value="value">{{ label }}</option>',
-        },
-        ElUpload: { template: '<div class="upload-stub"><slot /></div>' },
-        ElSteps: { template: '<div class="steps-stub"><slot /></div>' },
-        ElStep: { template: '<div class="step-stub" />' },
-        ElTable: { template: '<div class="table-stub"><slot /></div>' },
-        ElTableColumn: { template: '<div />' },
-        ElResult: { template: '<div class="el-result-stub" />' },
-      },
+      stubs: elementPlusStubs,
     },
   });
 }
@@ -488,18 +490,7 @@ describe('ImportPanel', () => {
   });
 
   it('renders dialog bindings and preview alert title', async () => {
-    const { default: ImportPanel } = await import('./ImportPanel.vue');
-    const wrapper = mount(ImportPanel, {
-      props: { companyId: 'cmp-1', modelValue: true },
-      attachTo: document.body,
-      global: {
-        plugins: [i18n],
-        stubs: {
-          ElDialog: false,
-          ElAlert: false,
-        },
-      },
-    });
+    const wrapper = await mountPanel(true, { companyId: 'cmp-1' });
     (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
     await (wrapper.vm as any).uploadAndPreview();
     await flushPromises();
@@ -510,18 +501,7 @@ describe('ImportPanel', () => {
 
   it('handles commitImport string errors and omits company id prop', async () => {
     runImport.mockRejectedValue('commit failed');
-    const { default: ImportPanel } = await import('./ImportPanel.vue');
-    const wrapper = mount(ImportPanel, {
-      props: { modelValue: true },
-      global: {
-        plugins: [i18n],
-        stubs: {
-          ElDialog: {
-            template: '<div class="dialog-stub"><slot /><slot name="footer" /></div>',
-          },
-        },
-      },
-    });
+    const wrapper = await mountPanel(true, { companyId: undefined });
     (wrapper.vm as any).sourceRef = 'att-src-1';
     (wrapper.vm as any).previewReport = { stats: { error: 0 } };
     await (wrapper.vm as any).commitImport();
@@ -566,23 +546,7 @@ describe('ImportPanel', () => {
   });
 
   it('passes empty company id to preview when prop is omitted', async () => {
-    const { default: ImportPanel } = await import('./ImportPanel.vue');
-    const wrapper = mount(ImportPanel, {
-      props: { modelValue: true },
-      global: {
-        plugins: [i18n],
-        stubs: {
-          ElDialog: {
-            props: ['modelValue'],
-            emits: ['update:modelValue', 'close'],
-            template: '<div class="dialog-stub"><slot /><slot name="footer" /></div>',
-          },
-          ElAlert: {
-            template: '<div class="el-alert-stub"><slot name="title" /></div>',
-          },
-        },
-      },
-    });
+    const wrapper = await mountPanel(true, { companyId: undefined });
     (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
     await (wrapper.vm as any).uploadAndPreview();
     await flushPromises();
@@ -717,25 +681,7 @@ describe('ImportPanel', () => {
 
   it('auto-matches only leaf catalog paths and prefers columnMapping prop', async () => {
     parseHeaders.mockResolvedValue({ headers: ['Name', 'CompanyId', 'CompanyId/Code', 'Extra'] });
-    const { default: ImportPanel } = await import('./ImportPanel.vue');
-    const wrapper = mount(ImportPanel, {
-      props: {
-        model: 'partner.Partner',
-        modelValue: true,
-        columnMapping: { Extra: 'Name' },
-      },
-      global: {
-        plugins: [i18n],
-        stubs: {
-          ElDialog: {
-            props: ['modelValue'],
-            emits: ['update:modelValue', 'close'],
-            template: '<div class="dialog-stub"><slot /><slot name="footer" /></div>',
-          },
-          ElAlert: { template: '<div class="el-alert-stub"><slot name="title" /></div>' },
-        },
-      },
-    });
+    const wrapper = await mountPanel(true, { columnMapping: { Extra: 'Name' } });
     await (wrapper.vm as any).loadCatalog();
     await flushPromises();
     (wrapper.vm as any).onFileSelected({ raw: new File(['x'], 'partners.csv', { type: 'text/csv' }) });
@@ -1076,20 +1022,7 @@ describe('ImportPanel', () => {
   });
 
   it('uses custom upload hint when provided', async () => {
-    const { default: ImportPanel } = await import('./ImportPanel.vue');
-    const wrapper = mount(ImportPanel, {
-      props: { model: 'partner.Partner', modelValue: true, uploadHint: 'Custom hint' },
-      global: {
-        plugins: [i18n],
-        stubs: {
-          ElDialog: {
-            props: ['modelValue', 'title'],
-            emits: ['update:modelValue', 'close'],
-            template: '<div class="dialog-stub"><span data-test="dialog-title">{{ title }}</span><slot /><slot name="footer" /></div>',
-          },
-        },
-      },
-    });
+    const wrapper = await mountPanel(true, { uploadHint: 'Custom hint' });
     expect((wrapper.vm as any).resolvedUploadHint).toBe('Custom hint');
     expect(wrapper.find('[data-test="dialog-title"]').text()).toBeTruthy();
   });

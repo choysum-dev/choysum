@@ -8,7 +8,7 @@ import Country from './country';
 import State from './state';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { _t, _lt } from '../i18n';
-import { fail, normalizeNullableString, requireRefId } from './_normalizers';
+import { fail, normalizeNullableString, assertRefId } from './_normalizers';
 
 @Model('Address')
 export default class Address extends BaseModel {
@@ -84,7 +84,7 @@ export default class Address extends BaseModel {
   }
 
   private static async validateEntity(values: Record<string, any>): Promise<void> {
-    const countryId = requireRefId(values.CountryId, 'CountryId');
+    const countryId = assertRefId(values.CountryId, 'CountryId');
     const stateId = normalizeRefId(values.StateId);
     const cityId = normalizeRefId(values.CityId);
     const zip = normalizeNullableString(values.Zip);
