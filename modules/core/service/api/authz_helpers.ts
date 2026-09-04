@@ -36,7 +36,13 @@ function isConditionExprShape(value: unknown, depth = 0): value is ConditionExpr
   if (depth > 32) return false;
 
   if (Array.isArray(value)) {
-    return value.length === 3 && typeof value[0] === 'string' && typeof value[1] === 'string';
+    return (
+      value.length === 3 &&
+      typeof value[0] === 'string' &&
+      value[0].trim() !== '' &&
+      typeof value[1] === 'string' &&
+      value[1].trim() !== ''
+    );
   }
 
   const record = asPlainRecord(value);

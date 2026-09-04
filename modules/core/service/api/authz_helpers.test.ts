@@ -139,6 +139,26 @@ test('authz helpers parse condition envelope for true/false/expr and reject inva
 
   expectParseEnvelopeThrow({
     kind: 'expr',
+    expr: ['', '=', '1'],
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: ['  ', '=', '1'],
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: ['Id', '', '1'],
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: ['Id', '  ', '1'],
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
     expr: 'not-a-condition',
     reason: 'bad_expr',
   });
