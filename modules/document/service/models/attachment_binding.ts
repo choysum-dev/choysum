@@ -25,9 +25,9 @@ import { toDate } from '@/core/service/utils/datetime';
 import { GrpcCode, DocumentErrCode, throwDocumentError } from '../error';
 import type AttachmentMutationLedger from './attachment_mutation_ledger';
 import type StoredContent from './stored_content';
-import { requireText, requireUserId, requireCompanyId } from './_normalizers';
+import { requireText, requireUserId, requireCompanyId } from './_document_bridge';
 import { assertOwnerReadAuthorization, assertOwnerWriteAuthorization } from './_owner_authorization';
-import { normalizeBindReq, normalizeUnbindReq, normalizeBatchDescribeReq, normalizeResolveDownloadContentReq, normalizePrincipalCompanyIds, normalizeDownloadDisposition, resolveDownloadSemantics, buildDescriptor, buildPayloadReadTicket, parseBindResp, parseUnbindResp, assertCompanyMatch } from './_attachment_binding_codec';
+import { assertBindReq, assertUnbindReq, assertBatchDescribeReq, assertResolveDownloadContentReq, normalizePrincipalCompanyIds, assertDownloadDisposition, resolveDownloadSemantics, buildDescriptor, buildPayloadReadTicket, parseBindResp, parseUnbindResp, assertCompanyMatch } from './_attachment_binding_codec';
 import { validateAttachmentContentFieldLimits } from './_binding_field_limits';
 
 /**
@@ -433,7 +433,7 @@ async function patchBindingPresentation(binding: AttachmentBinding,
 ): Promise<AttachmentBinding> {
   const bindingId = requireText(binding.Id, 'attachmentBindingId');
   const currentDisplayFileName = normalizeOptionalString(binding.DisplayFileName);
-  const currentDisposition = normalizeDownloadDisposition(binding.DownloadDisposition);
+  const currentDisposition = assertDownloadDisposition(binding.DownloadDisposition);
 
   if (currentDisplayFileName === displayFileName && currentDisposition === downloadDisposition) {
     return binding;
@@ -563,7 +563,7 @@ async function recordMutationSuccess(
 // ---------------------------------------------------------------------------
 
 async function bindAttachment(req: BindReq): Promise<BindResp> {
-  const normalized = normalizeBindReq(req);
+  const normalized = assertBindReq(req);
   const companyId = requireCompanyId(AttachmentBinding.companyId, 'bind');
   const userId = requireUserId(AttachmentBinding.userId);
 
@@ -642,7 +642,7 @@ async function bindAttachment(req: BindReq): Promise<BindResp> {
 }
 
 async function unbindAttachment(req: UnbindReq): Promise<UnbindResp> {
-  const normalized = normalizeUnbindReq(req);
+  const normalized = assertUnbindReq(req);
   const companyId = requireCompanyId(AttachmentBinding.companyId, 'unbind');
   const userId = requireUserId(AttachmentBinding.userId);
 
@@ -732,7 +732,7 @@ function collectBindingsForDescribe(bindings: unknown[]): {
 async function batchDescribeAttachments(req: BatchDescribeReq): Promise<BatchDescribeResp> {
   const AttachmentContentModel = getAttachmentContentModel();
 
-  const normalized = normalizeBatchDescribeReq(req);
+  const normalized = assertBatchDescribeReq(req);
   if (normalized.attachmentBindingIds.length === 0) {
     return { items: [] };
   }
@@ -811,7 +811,7 @@ async function batchDescribeAttachments(req: BatchDescribeReq): Promise<BatchDes
 }
 
 async function resolveDownloadContent(req: ResolveDownloadContentReq): Promise<ResolveDownloadContentResp> {
-  const normalized = normalizeResolveDownloadContentReq(req);
+  const normalized = assertResolveDownloadContentReq(req);
   assertPrincipalParityWithRuntimeContext(normalized.principal, 'resolve_download_content');
 
   const binding = await mustLoadActiveBindingById(normalized.attachmentBindingId);

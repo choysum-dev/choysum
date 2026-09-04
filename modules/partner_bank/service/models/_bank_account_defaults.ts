@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { fail, normalizeOptionalText } from './_normalization_bridge';
+import { fail, normalizeOptionalText } from './_partner_bank_bridge';
 import { createTranslate } from '@/core/service/i18n';
 
 const { _t } = createTranslate('partner_bank');
@@ -25,12 +25,12 @@ export function maskAccountNo(accountNo: string): { last4: string | null; masked
 }
 
 /**
- * Normalize and validate the account category.
+ * Validate and normalize the account category.
  *
  * Returns undefined / null / the trimmed value when valid,
  * and throws a partner_bank InvalidArgument error on unknown values.
  */
-export function normalizeAccountType(value: unknown): string | null | undefined {
+export function assertAccountType(value: unknown): string | null | undefined {
   const normalized = normalizeOptionalText(value);
   if (normalized == null) return normalized;
   if (!ACCOUNT_TYPES.has(normalized)) {

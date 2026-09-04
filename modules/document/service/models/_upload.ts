@@ -12,7 +12,7 @@ import { createTranslate } from '@/core/service/i18n';
 import { GrpcCode } from '../error';
 import { DocumentErrCode, throwDocumentError } from '../error';
 import type { PrincipalContext, PrepareUploadReq, AuthorizeUploadPutReq, CommitUploadPutReq } from '../contracts';
-import { requireText, requireUserId, requireCompanyId, normalizePrincipal } from './_normalizers';
+import { requireText, requireUserId, requireCompanyId, assertPrincipal } from './_document_bridge';
 import { DEFAULT_GLOBAL_MAX_UPLOAD_BYTES } from '@/core/service/orm/upload_limits';
 import type AttachmentUploadSession from './upload_session';
 
@@ -105,7 +105,7 @@ export function isDisallowedInlinePayloadID(payloadId: string): boolean {
   return payloadId.startsWith('inline:') || payloadId.startsWith('inline_base64:') || payloadId.startsWith('data:') || payloadId.startsWith('s3:');
 }
 
-export function normalizePayloadReceiptID(payloadId: unknown): string {
+export function assertPayloadReceiptID(payloadId: unknown): string {
   const id = requireText(payloadId, 'payloadReceipt.payloadId');
   if (isDisallowedInlinePayloadID(id)) {
     throwDocumentError(
@@ -124,7 +124,7 @@ export function normalizePayloadReceiptID(payloadId: unknown): string {
 // Request normalizers
 // ---------------------------------------------------------------------------
 
-export function normalizePrepareUploadReq(req: PrepareUploadReq | undefined | null): NormalizedPrepareUploadReq {
+export function assertPrepareUploadReq(req: PrepareUploadReq | undefined | null): NormalizedPrepareUploadReq {
   const ownerModel = requireText(req?.ownerModel, 'ownerModel');
   const fieldName = requireText(req?.fieldName, 'fieldName');
   const operation = requireText(req?.operation, 'operation');
@@ -161,9 +161,9 @@ export function normalizePrepareUploadReq(req: PrepareUploadReq | undefined | nu
   };
 }
 
-export function normalizeAuthorizeUploadPutReq(req: AuthorizeUploadPutReq | undefined | null): NormalizedAuthorizeUploadPutReq {
+export function assertAuthorizeUploadPutReq(req: AuthorizeUploadPutReq | undefined | null): NormalizedAuthorizeUploadPutReq {
   const uploadId = requireText(req?.uploadId, 'uploadId');
-  const principal = normalizePrincipal(req?.principal);
+  const principal = assertPrincipal(req?.principal);
   const requestMeta = asRecord(req?.requestMeta);
 
   return {
@@ -180,16 +180,16 @@ export function normalizeAuthorizeUploadPutReq(req: AuthorizeUploadPutReq | unde
   };
 }
 
-export function normalizeCommitUploadPutReq(req: CommitUploadPutReq | undefined | null): NormalizedCommitUploadPutReq {
+export function assertCommitUploadPutReq(req: CommitUploadPutReq | undefined | null): NormalizedCommitUploadPutReq {
   const uploadId = requireText(req?.uploadId, 'uploadId');
-  const principal = normalizePrincipal(req?.principal);
+  const principal = assertPrincipal(req?.principal);
   const payloadReceipt = asRecord(req?.payloadReceipt);
 
   return {
     uploadId,
     principal,
     payloadReceipt: {
-      payloadId: normalizePayloadReceiptID(payloadReceipt?.payloadId),
+      payloadId: assertPayloadReceiptID(payloadReceipt?.payloadId),
       sizeBytes: parseRequiredNonNegativeInt(payloadReceipt?.sizeBytes, 'payloadReceipt.sizeBytes'),
       checksumSha256: requireText(normalizeChecksumSha256(payloadReceipt?.checksumSha256), 'payloadReceipt.checksumSha256'),
       contentType: normalizeContentType(payloadReceipt?.contentType),

@@ -16,5 +16,5 @@ export const mapNormalizationToPartnerCommercial = bridge.mapNormalizationError;
 export const normalizeOptionalRefId = bridge.normalizeOptionalRefId;
 export const normalizeOptionalText = bridge.normalizeOptionalText;
 export const normalizeOptionalTranslatedText = bridge.normalizeOptionalTranslatedText;
-export const normalizeRequiredText = bridge.normalizeRequiredText;
+export const assertRequiredText = bridge.normalizeRequiredText;
 export const toDateOrUndefined = bridge.toDateOrUndefined;

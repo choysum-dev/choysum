@@ -6,7 +6,7 @@ import { Constraint } from '@/core/service/api/constraint';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import PartnerCollaborationModel from '../mixins/partner_collaboration_model';
 import { _t, _lt } from '../i18n';
-import { fail, normalizeOptionalText, normalizeRequiredText, normalizeRequiredTranslatedText, normalizeNonNegativeInt } from './_normalization_bridge';
+import { fail, normalizeOptionalText, assertRequiredText, assertRequiredTranslatedText, assertNonNegativeInt } from './_partner_bridge';
 import type Company from '@/base/service/models/company';
 import type Country from '@/base/service/models/country';
 import type Currency from '@/base/service/models/currency';
@@ -317,7 +317,7 @@ export default class Partner extends PartnerCollaborationModel {
   /** Ensures the company-scoped partner code remains unique. */
   private static async ensureUniqueCode(values: Record<string, any>, currentId?: string): Promise<void> {
     const companyId = normalizeRefId(values.CompanyId);
-    const code = normalizeRequiredText(values.Code, 'Code').toUpperCase();
+    const code = assertRequiredText(values.Code, 'Code').toUpperCase();
     if (!companyId) fail(_t('CompanyId is required', { scope: 'service/models/partner' }));
 
     const rows = await this.Search(
@@ -338,18 +338,18 @@ export default class Partner extends PartnerCollaborationModel {
 
   /** Normalizes and validates partner values before persistence. */
   private static async validateEntity(values: Record<string, any>, currentId?: string): Promise<void> {
-    values.Name = normalizeRequiredTranslatedText(values.Name, 'Name');
-    values.Code = normalizeRequiredText(values.Code, 'Code').toUpperCase();
+    values.Name = assertRequiredTranslatedText(values.Name, 'Name');
+    values.Code = assertRequiredText(values.Code, 'Code').toUpperCase();
     values.CompanyId = normalizeRefId(values.CompanyId);
     values.Reference = normalizeOptionalText(values.Reference, { upper: true });
     values.Email = normalizeOptionalText(values.Email, { lower: true });
     values.Phone = normalizeOptionalText(values.Phone);
     values.Mobile = normalizeOptionalText(values.Mobile);
 
-    const customerRank = normalizeNonNegativeInt(values.CustomerRank, 'CustomerRank');
+    const customerRank = assertNonNegativeInt(values.CustomerRank, 'CustomerRank');
     if (customerRank !== undefined) values.CustomerRank = customerRank;
 
-    const supplierRank = normalizeNonNegativeInt(values.SupplierRank, 'SupplierRank');
+    const supplierRank = assertNonNegativeInt(values.SupplierRank, 'SupplierRank');
     if (supplierRank !== undefined) values.SupplierRank = supplierRank;
 
     await this.ensureUniqueCode(values, currentId);

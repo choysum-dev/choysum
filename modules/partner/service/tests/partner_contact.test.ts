@@ -5,45 +5,45 @@ import PartnerContact from '@/partner/service/models/partner_contact';
 import { ChoysumError } from '@/core/service/error';
 
 // ---------------------------------------------------------------------------
-// normalizeAddressType
+// assertAddressType
 // ---------------------------------------------------------------------------
 
-test('partner_contact: normalizeAddressType returns undefined for undefined', () => {
-  const result = (PartnerContact as any).normalizeAddressType(undefined);
+test('partner_contact: assertAddressType returns undefined for undefined', () => {
+  const result = (PartnerContact as any).assertAddressType(undefined);
   expect(result).toBeUndefined();
 });
 
-test('partner_contact: normalizeAddressType returns null for null', () => {
-  const result = (PartnerContact as any).normalizeAddressType(null);
+test('partner_contact: assertAddressType returns null for null', () => {
+  const result = (PartnerContact as any).assertAddressType(null);
   expect(result).toBeNull();
 });
 
-test('partner_contact: normalizeAddressType returns null for empty string', () => {
-  const result = (PartnerContact as any).normalizeAddressType('');
+test('partner_contact: assertAddressType returns null for empty string', () => {
+  const result = (PartnerContact as any).assertAddressType('');
   expect(result).toBeNull();
 });
 
-test('partner_contact: normalizeAddressType lowercases valid type', () => {
-  const result = (PartnerContact as any).normalizeAddressType('BILLING');
+test('partner_contact: assertAddressType lowercases valid type', () => {
+  const result = (PartnerContact as any).assertAddressType('BILLING');
   expect(result).toBe('billing');
 });
 
-test('partner_contact: normalizeAddressType returns valid type unchanged when already lowercase', () => {
-  const result = (PartnerContact as any).normalizeAddressType('shipping');
+test('partner_contact: assertAddressType returns valid type unchanged when already lowercase', () => {
+  const result = (PartnerContact as any).assertAddressType('shipping');
   expect(result).toBe('shipping');
 });
 
-test('partner_contact: normalizeAddressType accepts all valid types', () => {
+test('partner_contact: assertAddressType accepts all valid types', () => {
   const validTypes = ['billing', 'shipping', 'office', 'registered', 'other'];
   for (const t of validTypes) {
-    expect((PartnerContact as any).normalizeAddressType(t)).toBe(t);
+    expect((PartnerContact as any).assertAddressType(t)).toBe(t);
   }
 });
 
-test('partner_contact: normalizeAddressType throws for invalid type', () => {
+test('partner_contact: assertAddressType throws for invalid type', () => {
   let err: unknown;
   try {
-    (PartnerContact as any).normalizeAddressType('invalid');
+    (PartnerContact as any).assertAddressType('invalid');
   } catch (e) {
     err = e;
   }
@@ -119,10 +119,34 @@ test('partner_contact: validateEntity trims Title/Department lang maps', async (
     PartnerId: 'p-1',
     CompanyId: 'c-1',
     Name: 'Jane',
+    AddressType: 'BILLING',
     Title: { en_US: ' VP ', zh_CN: ' 经理 ' },
     Department: { en_US: ' Sales ' },
   };
   await (PartnerContact as any).validateEntity(values, undefined);
   expect(values.Title).toEqual({ en_US: 'VP', zh_CN: '经理' });
   expect(values.Department).toEqual({ en_US: 'Sales' });
+  expect(values.AddressType).toBe('billing');
+});
+
+test('partner_contact: validateEntity backfills AddressType from persisted row', async () => {
+  const originalBrowse = (PartnerContact as any).Browse;
+  (PartnerContact as any).Browse = async () => ({
+    PartnerId: { Id: 'p-persisted' },
+    CompanyId: 'c-persisted',
+    AddressType: 'shipping',
+    AddressId: 'addr-persisted',
+  });
+  try {
+    const values: Record<string, any> = {
+      Name: 'Backfill',
+    };
+    await (PartnerContact as any).validateEntity(values, 'contact-1');
+    expect(values.PartnerId).toBe('p-persisted');
+    expect(values.CompanyId).toBe('c-persisted');
+    expect(values.AddressType).toBe('shipping');
+    expect(values.AddressId).toBe('addr-persisted');
+  } finally {
+    (PartnerContact as any).Browse = originalBrowse;
+  }
 });

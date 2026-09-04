@@ -15,7 +15,7 @@ import { PrepareUploadResp, FinalizeUploadResp, UploadedPayloadRef, PrincipalCon
 import { DocumentErrCode, throwDocumentError } from '../error';
 import type AttachmentContent from './attachment_object';
 import type AttachmentUploadSession from './upload_session';
-import { requireText } from './_normalizers';
+import { requireText } from './_document_bridge';
 import { isDisallowedInlinePayloadID, DEFAULT_MAX_UPLOAD_BYTES, EMPTY_SHA256 } from './_upload';
 
 const { _t } = createTranslate('document');
@@ -142,7 +142,7 @@ export function buildUploadedPayloadRefFromPayloadId(payloadId: string): Uploade
   );
 }
 
-export function normalizeUploadedPayloadRef(raw: unknown): UploadedPayloadRef | undefined {
+export function parseUploadedPayloadRefFromUnknown(raw: unknown): UploadedPayloadRef | undefined {
   if (raw === undefined || raw === null) return undefined;
 
   if (typeof raw === 'string') {
@@ -153,7 +153,7 @@ export function normalizeUploadedPayloadRef(raw: unknown): UploadedPayloadRef | 
 
     try {
       const parsed = JSON.parse(text) as Record<string, unknown>;
-      return normalizeUploadedPayloadRef(parsed);
+      return parseUploadedPayloadRefFromUnknown(parsed);
     } catch {
       return buildUploadedPayloadRefFromPayloadId(text);
     }

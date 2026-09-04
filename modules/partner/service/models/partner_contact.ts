@@ -6,7 +6,7 @@ import MessageThreadModel from '@/core/service/mixins/message_thread_model';
 import { Constraint } from '@/core/service/api/constraint';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { _t, _lt } from '../i18n';
-import { fail, normalizeOptionalText, normalizeOptionalTranslatedText, normalizeSequenceInt, translatedTextHasValue } from './_normalization_bridge';
+import { fail, normalizeOptionalText, normalizeOptionalTranslatedText, normalizeSequenceInt, translatedTextHasValue } from './_partner_bridge';
 import type Address from '@/base/service/models/address';
 import type Company from '@/base/service/models/company';
 import Partner from './partner';
@@ -183,8 +183,8 @@ export default class PartnerContact extends MessageThreadModel {
   })
   Notes?: string;
 
-  /** Normalizes and validates the contact address category. */
-  private static normalizeAddressType(value: unknown): string | null | undefined {
+  /** Validates and normalizes the contact address category. */
+  private static assertAddressType(value: unknown): string | null | undefined {
     const normalized = normalizeOptionalText(value, { lower: true });
     if (normalized == null) return normalized;
     if (!ADDRESS_TYPES.has(normalized)) {
@@ -196,7 +196,7 @@ export default class PartnerContact extends MessageThreadModel {
   /** Ensures each partner has only one default contact per address category. */
   private static async ensureDefaultAddressUnique(values: Record<string, any>, currentId?: string): Promise<void> {
     const partnerId = normalizeRefId(values.PartnerId);
-    const addressType = this.normalizeAddressType(values.AddressType);
+    const addressType = this.assertAddressType(values.AddressType);
     const isDefault = values.IsDefault === true;
     const addressId = normalizeRefId(values.AddressId);
 
@@ -249,7 +249,7 @@ export default class PartnerContact extends MessageThreadModel {
     values.Department = normalizeOptionalTranslatedText(values.Department);
     values.ContactRole = normalizeOptionalText(values.ContactRole, { lower: true });
     values.AddressId = normalizeRefId(values.AddressId);
-    values.AddressType = this.normalizeAddressType(values.AddressType);
+    values.AddressType = this.assertAddressType(values.AddressType);
     values.AttentionTo = normalizeOptionalText(values.AttentionTo);
 
     // During updates the draft proxy may return raw IDs for unsubmitted ref
@@ -274,7 +274,7 @@ export default class PartnerContact extends MessageThreadModel {
         }
         if (values.CompanyId == null) values.CompanyId = normalizeRefId((persisted as any)?.CompanyId);
         if (values.AddressId == null && !addressIdProvided) values.AddressId = normalizeRefId((persisted as any)?.AddressId);
-        if (values.AddressType == null && !addressTypeProvided) values.AddressType = this.normalizeAddressType((persisted as any)?.AddressType);
+        if (values.AddressType == null && !addressTypeProvided) values.AddressType = this.assertAddressType((persisted as any)?.AddressType);
       }
     }
 

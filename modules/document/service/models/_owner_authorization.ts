@@ -10,6 +10,7 @@ import { createTranslate } from '@/core/service/i18n';
 import { GrpcCode } from '../error';
 import { newDocumentError, DocumentErrCode } from '../error';
 import { observePermissionDenied } from './_owner_authorization_observability';
+import { normalizeLooseOptionalText, normalizeCompanyIdList } from './_document_bridge';
 
 const { _t } = createTranslate('document');
 
@@ -65,7 +66,7 @@ export async function assertOwnerWriteAuthorization(input: OwnerWriteAuthorizati
   const ownerModel = requireText(input.ownerModel, 'ownerModel', stage);
   const fieldName = requireText(input.fieldName, 'fieldName', stage);
   const companyId = requireText(input.companyId, 'companyId', stage);
-  const companyIds = normalizeCompanyIds(input.companyIds, companyId);
+  const companyIds = normalizeCompanyIdList(input.companyIds, companyId);
   const userId = requireText(input.userId, 'userId', stage);
   const operation = input.operation;
 
@@ -92,7 +93,7 @@ export async function assertOwnerWriteAuthorization(input: OwnerWriteAuthorizati
     });
   }
 
-  const ownerRecordId = normalizeOptionalText(input.ownerRecordId);
+  const ownerRecordId = normalizeLooseOptionalText(input.ownerRecordId);
   if (operation === 'update' && !ownerRecordId) {
     throw permissionDenied(stage, _t('ownerRecordId is required for owner write check', { scope: 'service/models/_owner_authorization' }), {
       ownerModel,
@@ -126,7 +127,7 @@ export async function assertOwnerReadAuthorization(input: OwnerReadAuthorization
   const ownerRecordId = requireText(input.ownerRecordId, 'ownerRecordId', stage);
   const fieldName = requireText(input.fieldName, 'fieldName', stage);
   const companyId = requireText(input.companyId, 'companyId', stage);
-  const companyIds = normalizeCompanyIds(input.companyIds, companyId);
+  const companyIds = normalizeCompanyIdList(input.companyIds, companyId);
   const userId = requireText(input.userId, 'userId', stage);
 
   const envelope = await fetchRecordRuleEnvelope(ownerModel, 'read', stage);
@@ -264,19 +265,6 @@ function replaceTokensForOwnerRecordRule(
   }
 }
 
-function normalizeCompanyIds(value: unknown, activeCompanyId: string): string[] {
-  const out: string[] = [];
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const text = normalizeOptionalText(item);
-      if (text) out.push(text);
-    }
-  }
-  if (out.length === 0 && activeCompanyId) out.push(activeCompanyId);
-  if (activeCompanyId && !out.includes(activeCompanyId)) out.unshift(activeCompanyId);
-  return Array.from(new Set(out));
-}
-
 function isFieldDenied(deniedFields: string[], fieldName: string): boolean {
   const target = fieldName.trim().toLowerCase();
   return deniedFields.some(field => field.trim().toLowerCase() === target);
@@ -295,32 +283,30 @@ function permissionDenied(stage: OwnerPermissionStage, message: string, metadata
 function stringifyMetadata(metadata: Record<string, unknown>): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(metadata)) {
-    const text = normalizeOptionalText(v);
+    const text = normalizeLooseOptionalText(v);
     if (text) out[k] = text;
   }
   return out;
 }
 
 function requireText(value: unknown, fieldName: string, stage: OwnerPermissionStage): string {
-  const text = normalizeOptionalText(value);
+  const text = normalizeLooseOptionalText(value);
   if (!text) {
     throw permissionDenied(stage, _t('%s is required', { scope: 'service/models/_owner_authorization' }, fieldName), { field: fieldName });
   }
   return text;
 }
 
-function normalizeOptionalText(value: unknown): string | undefined {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return String(value);
-  }
-  return normalizeOptionalString(value);
-}
-
 function errorMessage(err: unknown): string {
   if (err instanceof Error) {
-    return normalizeOptionalText(err.message) ?? 'unknown_error';
+    return normalizeLooseOptionalText(err.message) ?? 'unknown_error';
   }
-  return normalizeOptionalText(err) ?? 'unknown_error';
+  return normalizeLooseOptionalText(err) ?? 'unknown_error';
+}
+
+/** Test seam for owner-auth failure detail normalization. */
+export function documentOwnerAuthErrorMessageForTest(err: unknown): string {
+  return errorMessage(err);
 }
 
 /** Test seam for owner record probe branches (Id-only and expr-augmented). */
