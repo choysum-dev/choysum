@@ -367,8 +367,13 @@ export default class MetaModule extends BaseModel {
 
     const resultStatus = result?.resultStatus || (status === 'failed' || status === 'cancelled' ? 'FAILED' : undefined);
     // istanbul ignore next
-    const failureKind = resolveOpFailureKind(status, resultStatus, err);
-    const summary = result?.summary || (resultStatus === 'FAILED' ? { code: 'MODULE_OPERATION_FAILED', message: err?.message } : undefined);
+    // Prefer LastErrorJson; fall back to ResultJson fields from logical executeModuleOp failures.
+    const failureKind = resolveOpFailureKind(status, resultStatus, err ?? result);
+    const summary =
+      result?.summary ||
+      (resultStatus === 'FAILED'
+        ? { code: 'MODULE_OPERATION_FAILED', message: err?.message || result?.errorMessage }
+        : undefined);
 
     return {
       status,

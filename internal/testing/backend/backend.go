@@ -1106,7 +1106,7 @@ func makeTestScope(ctx context.Context, baseScope scope.Scope, app string, dbDia
 			sqlitePath = filepath.Join(tmpDir, fmt.Sprintf("%s-%d.sqlite", app, time.Now().UnixNano()))
 		}
 		dbCopy.Dialect = "sqlite"
-		dbCopy.DSN = fmt.Sprintf("file:%s?mode=rwc&_fk=1&_busy_timeout=10000&_journal_mode=WAL", sqlitePath)
+		dbCopy.DSN = fmt.Sprintf("file:%s?mode=rwc&_fk=1&_busy_timeout=60000&_journal_mode=WAL", sqlitePath)
 		if !keep {
 			cleanupDB = func() { cleanupSQLiteFiles(sqlitePath) }
 		}

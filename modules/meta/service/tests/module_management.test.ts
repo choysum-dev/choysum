@@ -655,6 +655,44 @@ test('meta.MetaModule GetOpStatus maps retryable lock conflicts via errorDomain/
   expect(status.retryAfterMs).toBe(1000);
 });
 
+test('meta.MetaModule GetOpStatus classifies ResultJson lock conflicts without LastErrorJson', async () => {
+  resetRequestContext();
+  ensureModuleManagementBridge();
+  ensureJobMock();
+
+  const moduleName = uid('result_lock_conflict');
+  const job = await Job.EnqueueJob('meta', 'meta.MetaModule/ExecuteUpgrade', { moduleName, operatorUserId: 'admin' }, 'admin', 'admin');
+
+  // Logical executeModuleOp failures are stored on ResultJson; the worker leaves LastErrorJson unset.
+  await (Job as any).UpdateById(
+    job.Id as any,
+    {
+      Status: 'succeeded',
+      LastErrorJson: null,
+      ResultJson: {
+        resultStatus: 'FAILED',
+        errorDomain: 'meta.lock',
+        errorCode: 'LEASE_CONFLICT',
+        errorMessage: 'lease conflict',
+        summary: { code: 'MODULE_OPERATION_FAILED', params: { moduleName, action: 'upgrade' } },
+        reload_web: false,
+        reload_triggered: false,
+        reload_failed: false,
+        moduleName,
+        action: 'upgrade',
+        operatorUserId: 'admin',
+      },
+    } as any
+  );
+
+  const status = await MetaModule.GetOpStatus(job.Id as any);
+  expect(status.status).toBe('succeeded');
+  expect(status.resultStatus).toBe('FAILED');
+  expect(status.failureKind).toBe('RETRYABLE');
+  expect(status.errorDomain).toBe('meta.lock');
+  expect(status.errorCode).toBe('LEASE_CONFLICT');
+});
+
 test('meta.MetaModule GetOpStatus maps mismatched lock codes as non-retryable', async () => {
   resetRequestContext();
   ensureModuleManagementBridge();
