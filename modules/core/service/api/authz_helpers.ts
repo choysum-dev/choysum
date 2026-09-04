@@ -94,7 +94,7 @@ export type FieldRuleSpec = {
 };
 
 function parseDenyFieldList(value: unknown): string[] {
-  if (value === undefined) return [];
+  if (value == null) return [];
   if (!Array.isArray(value)) throw new Error('invalid_field_rule_spec');
 
   const out: string[] = [];
@@ -121,8 +121,8 @@ export function formatAuthzParseFailureDetail(error: unknown): string {
 /**
  * Parse a loose value into a typed field-rule spec; throws when shape is invalid.
  *
- * Missing deny lists default to empty arrays. Present non-array deny lists or
- * non-string / blank deny-list elements throw (do not wash to allow-all).
+ * Missing or null deny lists default to empty arrays. Present non-array deny
+ * lists or non-string / blank deny-list elements throw (do not wash to allow-all).
  */
 export function parseFieldRuleSpecFromUnknown(value: unknown): FieldRuleSpec {
   const record = asPlainRecord(value);

@@ -336,6 +336,17 @@ test('authz helpers parse field rule spec and reject invalid payloads', () => {
     reason: undefined,
   });
 
+  expect(
+    parseFieldRuleSpecFromUnknown({
+      denyReadFields: null,
+      denyWriteFields: null,
+    })
+  ).toEqual({
+    denyReadFields: [],
+    denyWriteFields: [],
+    reason: undefined,
+  });
+
   expectParseFieldRuleThrow({
     denyReadFields: 'not-array',
     denyWriteFields: [],
