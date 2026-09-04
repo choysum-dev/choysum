@@ -232,6 +232,11 @@ test('record rule helper allowlist hit returns allow envelope and service invali
     },
     async () => {
       const original = AuthUserService.GetRecordRuleCondition;
+      const originalError = console.error;
+      const logs: string[] = [];
+      console.error = (...args: unknown[]) => {
+        logs.push(args.map(arg => String(arg)).join(' '));
+      };
       (AuthUserService as any).GetRecordRuleCondition = async () => ({ kind: 'expr' });
       try {
         const { deps } = createDeps();
@@ -239,8 +244,10 @@ test('record rule helper allowlist hit returns allow envelope and service invali
           kind: 'false',
           reason: 'invalid_record_rule_envelope',
         });
+        expect(logs.some(line => line.includes('record_rule_envelope_parse_failed'))).toBe(true);
       } finally {
         (AuthUserService as any).GetRecordRuleCondition = original;
+        console.error = originalError;
       }
     }
   );

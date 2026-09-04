@@ -159,6 +159,31 @@ test('authz helpers parse condition envelope for true/false/expr and reject inva
 
   expectParseEnvelopeThrow({
     kind: 'expr',
+    expr: ['Id', '=', undefined],
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: ['Id', '=', () => 'x'],
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: ['Id', '=', Symbol('x')],
+  });
+
+  expect(
+    parseConditionEnvelopeFromUnknown({
+      kind: 'expr',
+      expr: ['DeletedAt', '=', null],
+    })
+  ).toEqual({
+    kind: 'expr',
+    expr: ['DeletedAt', '=', null],
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
     expr: 'not-a-condition',
     reason: 'bad_expr',
   });

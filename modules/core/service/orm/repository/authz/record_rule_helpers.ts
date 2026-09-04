@@ -140,8 +140,20 @@ export async function fetchRepositoryRecordRuleEnvelope(params: RepositoryRecord
     const env = parseConditionEnvelopeFromUnknown(result);
     cache.set(key, env);
     return env;
-  } catch {
+  } catch (error) {
     // Unparseable authz envelope: fail-closed deny without caching (allow retry on later fetch).
+    try {
+      console.error(
+        `[AUTHZ] ${JSON.stringify({
+          event: 'record_rule_envelope_parse_failed',
+          model,
+          op,
+          detail: error instanceof Error ? error.message : String(error),
+        })}`
+      );
+    } catch {
+      // ignore logging failures
+    }
     return { kind: 'false', reason: 'invalid_record_rule_envelope' };
   }
 }
