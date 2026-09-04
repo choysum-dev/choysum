@@ -140,6 +140,9 @@ export function toFilters(input?: NamedFilter | NamedFilter[] | ConditionGroup |
       out.push(group);
     } else if (isGroup(it as any)) {
       out.push(it as ConditionGroup);
+    } else if (typeof it === 'object' && it !== null) {
+      // Incomplete NamedFilter-like objects without query are skipped.
+      continue;
     } else {
       throw new Error('invalid_named_filter_query');
     }
