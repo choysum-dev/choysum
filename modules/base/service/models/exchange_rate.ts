@@ -90,7 +90,14 @@ export default class ExchangeRate extends BaseModel {
 
   private static async ensureUniqueTuple(values: Record<string, any>, currentId?: string): Promise<void> {
     const scopeKey = String(values.CompanyScopeKey ?? (normalizeRefId(values.CompanyId) || '__GLOBAL__'));
-    const currencyId = normalizeRefId(values.CurrencyId);
+    let currencyId = '';
+    const currencyRaw = values.CurrencyId;
+    if (typeof currencyRaw === 'string') {
+      currencyId = currencyRaw.trim();
+    } else if (currencyRaw != null && typeof currencyRaw === 'object') {
+      const rawId = (currencyRaw as any).Id ?? (currencyRaw as any).id;
+      currencyId = rawId == null ? '' : String(rawId).trim();
+    }
     if (!currencyId) {
       fail(_t('%s is required', { scope: 'service/models/exchange_rate' }, 'CurrencyId'));
     }
