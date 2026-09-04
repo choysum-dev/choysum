@@ -361,10 +361,11 @@ export function resolveModelRefId(obj: unknown, fieldName: string): unknown {
  * - Throws {@link NormalizationError} with code `invalid_enum_value` otherwise.
  */
 export function assertEnumValue<T extends string>(value: unknown, allowed: readonly T[]): T {
-  if (value === undefined || value === null || value === '') {
+  if (value === undefined || value === null) {
     raiseNormalizationError('required');
   }
   const s = String(value).trim();
+  if (!s) raiseNormalizationError('required');
   if ((allowed as readonly string[]).includes(s)) return s as T;
   raiseNormalizationError('invalid_enum_value');
 }

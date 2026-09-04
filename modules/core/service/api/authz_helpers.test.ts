@@ -4,6 +4,7 @@
 import {
   parseConditionEnvelopeFromUnknown,
   parseFieldRuleSpecFromUnknown,
+  formatAuthzParseFailureDetail,
   normalizeHitRuleIds,
   replaceConditionExprTokens,
 } from './authz_helpers';
@@ -123,6 +124,21 @@ test('authz helpers parse condition envelope for true/false/expr and reject inva
 
   expectParseEnvelopeThrow({
     kind: 'expr',
+    expr: {},
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: { Foo: [] },
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
+    expr: ['OwnerId', '='],
+  });
+
+  expectParseEnvelopeThrow({
+    kind: 'expr',
     expr: 'not-a-condition',
     reason: 'bad_expr',
   });
@@ -237,14 +253,21 @@ test('authz helpers parse field rule spec and reject invalid payloads', () => {
 
   expect(
     parseFieldRuleSpecFromUnknown({
-      denyReadFields: 'not-array',
-      denyWriteFields: 1,
       reason: '   ',
     })
   ).toEqual({
     denyReadFields: [],
     denyWriteFields: [],
     reason: undefined,
+  });
+
+  expectParseFieldRuleThrow({
+    denyReadFields: 'not-array',
+    denyWriteFields: [],
+  });
+  expectParseFieldRuleThrow({
+    denyReadFields: [],
+    denyWriteFields: 1,
   });
 
   expect(
@@ -259,6 +282,12 @@ test('authz helpers parse field rule spec and reject invalid payloads', () => {
     reason: undefined,
     hitRuleIds: ['fr_a', 'fr_b'],
   });
+});
+
+test('authz helpers formatAuthzParseFailureDetail covers Error and non-Error', () => {
+  expect(formatAuthzParseFailureDetail(new Error('invalid_field_rule_spec'))).toBe('invalid_field_rule_spec');
+  expect(formatAuthzParseFailureDetail('raw-detail')).toBe('raw-detail');
+  expect(formatAuthzParseFailureDetail(42)).toBe('42');
 });
 
 test('authz helpers normalizeHitRuleIds covers array string and non-list inputs', () => {

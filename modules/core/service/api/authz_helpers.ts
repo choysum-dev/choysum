@@ -30,6 +30,30 @@ export function normalizeHitRuleIds(value: unknown): string[] | undefined {
 }
 
 /**
+ * True when value matches the repository condition-tree shape (tuple / And / Or).
+ */
+function isConditionExprShape(value: unknown, depth = 0): value is ConditionExpr {
+  if (depth > 32) return false;
+
+  if (Array.isArray(value)) {
+    return value.length === 3 && typeof value[0] === 'string' && typeof value[1] === 'string';
+  }
+
+  const record = asPlainRecord(value);
+  if (!record) return false;
+
+  const keys = Object.keys(record);
+  if (keys.length !== 1) return false;
+
+  const key = keys[0];
+  if (key !== 'And' && key !== 'Or') return false;
+
+  const children = record[key];
+  if (!Array.isArray(children)) return false;
+  return children.every(child => isConditionExprShape(child, depth + 1));
+}
+
+/**
  * Parse a loose value into a typed condition envelope; throws when shape is invalid.
  */
 export function parseConditionEnvelopeFromUnknown(value: unknown): ConditionEnvelope {
@@ -43,12 +67,10 @@ export function parseConditionEnvelopeFromUnknown(value: unknown): ConditionEnve
   if (kind === 'true') return { kind: 'true', ...diagnostics };
   if (kind === 'false') return { kind: 'false', ...diagnostics };
   if (kind === 'expr') {
-    const exprIsArray = Array.isArray(record.expr);
-    const exprRecord = asPlainRecord(record.expr);
-    if (exprIsArray || exprRecord) {
-      return { kind: 'expr', expr: record.expr as ConditionExpr, ...diagnostics };
+    if (!isConditionExprShape(record.expr)) {
+      throw new Error('invalid_record_rule_envelope');
     }
-    throw new Error('invalid_record_rule_envelope');
+    return { kind: 'expr', expr: record.expr, ...diagnostics };
   }
 
   throw new Error('invalid_record_rule_envelope');
@@ -61,8 +83,25 @@ export type FieldRuleSpec = {
   hitRuleIds?: string[];
 };
 
+function parseDenyFieldList(value: unknown): string[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) throw new Error('invalid_field_rule_spec');
+  return normalizeStringArray(value);
+}
+
+/**
+ * Format parse/authz failure detail for permission-denied metadata.
+ */
+export function formatAuthzParseFailureDetail(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
 /**
  * Parse a loose value into a typed field-rule spec; throws when shape is invalid.
+ *
+ * Missing deny lists default to empty arrays. Present non-array deny lists throw
+ * (do not wash to allow-all).
  */
 export function parseFieldRuleSpecFromUnknown(value: unknown): FieldRuleSpec {
   const record = asPlainRecord(value);
@@ -70,8 +109,8 @@ export function parseFieldRuleSpecFromUnknown(value: unknown): FieldRuleSpec {
 
   const hitRuleIds = normalizeHitRuleIds(record.hitRuleIds);
   return {
-    denyReadFields: normalizeStringArray(record.denyReadFields),
-    denyWriteFields: normalizeStringArray(record.denyWriteFields),
+    denyReadFields: parseDenyFieldList(record.denyReadFields),
+    denyWriteFields: parseDenyFieldList(record.denyWriteFields),
     reason: normalizeOptionalString(record.reason),
     ...(hitRuleIds ? { hitRuleIds } : {}),
   };

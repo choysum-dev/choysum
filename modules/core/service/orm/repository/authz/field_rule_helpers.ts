@@ -11,7 +11,7 @@ import { getRepositoryCurrentReq, getFieldRuleBypassDepth } from './authz_runtim
 import type { SelectionNode } from '../projection';
 import type { RepositoryPermissionDeniedFn } from './types';
 import { getRuntimeEnvFlag } from '@/core/utils/env';
-import { parseFieldRuleSpecFromUnknown } from '@/core/service/api/authz_helpers';
+import { formatAuthzParseFailureDetail, parseFieldRuleSpecFromUnknown } from '@/core/service/api/authz_helpers';
 import { asObjectRecord } from '../../../../utils/object';
 import type { ObjectRecord } from '../../../../utils/types';
 import { _t } from '@/core/service/i18n_binder';
@@ -172,11 +172,10 @@ export async function getRepositoryFieldRuleSpec(params: RepositoryFieldRuleDeps
   try {
     spec = parseFieldRuleSpecFromUnknown(result);
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
     throw params.permissionDenied(
       'field_rule_spec_invalid',
       _t('invalid field rule spec', { scope: 'service/orm/repository/authz/field_rule_helpers' }),
-      { model, detail }
+      { model, detail: formatAuthzParseFailureDetail(error) }
     );
   }
   cache.set(key, spec);

@@ -563,7 +563,7 @@ test('assertDateString validates date-only format and calendar value', () => {
 // ---------------------------------------------------------------------------
 
 test('assertEnumValue throws required for nullish/empty', () => {
-  for (const value of [undefined, null, ''] as const) {
+  for (const value of [undefined, null, '', '   '] as const) {
     try {
       assertEnumValue(value, ['a', 'b'] as const);
       expect(false).toBe(true);
