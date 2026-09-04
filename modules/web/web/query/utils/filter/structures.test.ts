@@ -75,6 +75,13 @@ describe('filter structures helpers', () => {
     const group = createFilter('Or', [createCondition('Code', '=', 'x')]);
     expect(toFilters(group)[0]).toBe(group);
     expect(toFilters({ name: '', query: ['A', '=', 1] } as any)).toEqual([]);
+
+    // ConditionGroup with a spurious query property must still be kept as a group.
+    const groupWithQuery = {
+      ...createFilter('And', [createCondition('Name', '=', 'n')]),
+      query: ['bogus', '=', 1],
+    } as any;
+    expect(toFilters(groupWithQuery)[0]).toBe(groupWithQuery);
   });
 
   it('normalizeFilters drops incomplete nodes and empty groups', () => {
