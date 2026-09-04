@@ -19,8 +19,9 @@ import { recordFieldTrackingEvents } from './field_tracking';
 import type { UnknownRecord } from '../../../utils/types';
 import { asObjectRecord } from '../../../utils/object';
 import { createServiceByModel } from '../../rpc';
+import { assertOptionalDownloadDisposition, type DownloadDispositionValue } from '../../utils/normalization';
 
-type AttachmentDownloadDisposition = 'inline' | 'attachment';
+type AttachmentDownloadDisposition = DownloadDispositionValue;
 type AttachmentWriteAction =
   | {
       kind: 'set';
@@ -53,14 +54,6 @@ type AttachmentBindingServiceLike = {
 function normalizeText(value: unknown): string | undefined {
   const text = String(value ?? '').trim();
   return text === '' ? undefined : text;
-}
-
-function normalizeDownloadDisposition(value: unknown): AttachmentDownloadDisposition | undefined {
-  const normalized = normalizeText(value)?.toLowerCase();
-  if (normalized === 'inline' || normalized === 'attachment') {
-    return normalized;
-  }
-  return undefined;
 }
 
 function isAttachmentFieldType(type: unknown): boolean {
@@ -136,7 +129,7 @@ function normalizeAttachmentWriteAction(raw: unknown, fieldName: string): Attach
         normalizeText(record.fileName) ||
         normalizeText(record.originalFileName) ||
         normalizeText(record.proposedFileName),
-      downloadDisposition: normalizeDownloadDisposition(record.downloadDisposition),
+      downloadDisposition: assertOptionalDownloadDisposition(record.downloadDisposition),
     };
   }
 

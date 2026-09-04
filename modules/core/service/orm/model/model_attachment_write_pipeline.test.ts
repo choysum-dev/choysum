@@ -150,3 +150,41 @@ test('attachment write pipeline model exclusions remain explicit for storage int
   expect(__isUpdateAttachmentWritePipelineEnabledForTest('document.UploadSession')).toBe(false);
   expect(__isUpdateAttachmentWritePipelineEnabledForTest('demo.Asset')).toBe(true);
 });
+
+test('create attachment pipeline rejects invalid downloadDisposition', () => {
+  const fields = new Map<string, { type?: string }>([['Avatar', { type: 'binary' }]]);
+  const input = {
+    Avatar: {
+      kind: 'set',
+      attachmentObjectId: 'ao-bad',
+      mutationId: 'mut-bad',
+      downloadDisposition: 'stream',
+    },
+  } as any;
+
+  try {
+    __collectCreateAttachmentWriteActionsForTest(fields as any, input);
+    expect(false).toBe(true);
+  } catch (err: any) {
+    expect(String(err?.code ?? err?.message ?? err)).toMatch(/invalid_enum_value/);
+  }
+});
+
+test('update attachment pipeline rejects invalid downloadDisposition', () => {
+  const fields = new Map<string, { type?: string }>([['Avatar', { type: 'binary' }]]);
+  const input = {
+    Avatar: {
+      kind: 'set',
+      attachmentObjectId: 'ao-bad',
+      mutationId: 'mut-bad',
+      downloadDisposition: 'stream',
+    },
+  } as any;
+
+  try {
+    __collectUpdateAttachmentWriteActionsForTest(fields as any, input);
+    expect(false).toBe(true);
+  } catch (err: any) {
+    expect(String(err?.code ?? err?.message ?? err)).toMatch(/invalid_enum_value/);
+  }
+});

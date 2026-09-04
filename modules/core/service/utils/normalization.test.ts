@@ -52,6 +52,8 @@ import {
   translatedTextHasValue,
   assertNonNegativeInt,
   normalizeSequenceInt,
+  assertOptionalDownloadDisposition,
+  assertDownloadDisposition,
 } from '@/core/service/utils/normalization';
 
 test('normalizeOptionalString returns trimmed string or undefined', () => {
@@ -773,4 +775,26 @@ test('normalizeOptionalTranslatedText skips blank langs and applies case options
   ).toEqual({ en_US: 'ABC', fr_FR: 'X' });
   expect(translatedTextHasValue(42)).toBe(false);
   expect(translatedTextHasValue({ en_US: 1 as any })).toBe(false);
+});
+
+test('assertOptionalDownloadDisposition accepts whitelist and omits blank', () => {
+  expect(assertOptionalDownloadDisposition(undefined)).toBe(undefined);
+  expect(assertOptionalDownloadDisposition('')).toBe(undefined);
+  expect(assertOptionalDownloadDisposition('  Inline  ')).toBe('inline');
+  expect(assertOptionalDownloadDisposition('ATTACHMENT')).toBe('attachment');
+});
+
+test('assertOptionalDownloadDisposition throws invalid_enum_value for unknown values', () => {
+  try {
+    assertOptionalDownloadDisposition('stream');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('invalid_enum_value');
+  }
+});
+
+test('assertDownloadDisposition defaults blank to attachment', () => {
+  expect(assertDownloadDisposition(undefined)).toBe('attachment');
+  expect(assertDownloadDisposition('inline')).toBe('inline');
 });

@@ -834,3 +834,29 @@ export function normalizeContentType(value: unknown): string | undefined {
   const normalized = token.trim().toLowerCase();
   return normalized || undefined;
 }
+
+/** Allowed Content-Disposition style values for attachment download/bind. */
+export type DownloadDispositionValue = 'inline' | 'attachment';
+
+/**
+ * Assert an optional download disposition whitelist.
+ *
+ * - blank / null / undefined → `undefined` (caller may default)
+ * - `inline` / `attachment` (case-insensitive) → canonical lowercase
+ * - anything else → {@link NormalizationError} `invalid_enum_value`
+ */
+export function assertOptionalDownloadDisposition(value: unknown): DownloadDispositionValue | undefined {
+  const disposition = normalizeOptionalString(value, { lower: true });
+  if (disposition === undefined) return undefined;
+  if (disposition === 'inline' || disposition === 'attachment') return disposition;
+  raiseNormalizationError('invalid_enum_value');
+}
+
+/**
+ * Assert download disposition, defaulting blank input to `attachment`.
+ *
+ * Invalid non-blank values raise {@link NormalizationError} `invalid_enum_value`.
+ */
+export function assertDownloadDisposition(value: unknown): DownloadDispositionValue {
+  return assertOptionalDownloadDisposition(value) ?? 'attachment';
+}

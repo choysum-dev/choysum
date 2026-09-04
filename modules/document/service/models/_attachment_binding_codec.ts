@@ -1,7 +1,14 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { normalizeOptionalString, asRecord, normalizeOptionalNonNegativeInt, normalizeChecksumSha256 } from '@/core/service/utils/normalization';
+import {
+  normalizeOptionalString,
+  asRecord,
+  normalizeOptionalNonNegativeInt,
+  normalizeChecksumSha256,
+  assertDownloadDisposition as assertDownloadDispositionValue,
+  NormalizationError,
+} from '@/core/service/utils/normalization';
 import { createTranslate } from '@/core/service/i18n';
 import {
   DownloadDisposition,
@@ -139,17 +146,22 @@ export function normalizePrincipalCompanyIds(principal: PrincipalContext, active
 }
 
 export function assertDownloadDisposition(value: unknown): DownloadDisposition {
-  const disposition = normalizeOptionalString(value);
-  if (disposition === undefined) return 'attachment';
-  if (disposition === 'inline' || disposition === 'attachment') return disposition;
-  throwDocumentError(
-    DocumentErrCode.INVALID_ARGUMENT,
-    _t('downloadDisposition must be inline or attachment', { scope: 'service/models/_attachment_binding_codec' }),
-    GrpcCode.InvalidArgument,
-    {
-      downloadDisposition: disposition,
+  try {
+    return assertDownloadDispositionValue(value);
+  } catch (err) {
+    if (err instanceof NormalizationError && err.code === 'invalid_enum_value') {
+      const disposition = normalizeOptionalString(value);
+      throwDocumentError(
+        DocumentErrCode.INVALID_ARGUMENT,
+        _t('downloadDisposition must be inline or attachment', { scope: 'service/models/_attachment_binding_codec' }),
+        GrpcCode.InvalidArgument,
+        {
+          downloadDisposition: disposition,
+        }
+      );
     }
-  );
+    throw err;
+  }
 }
 
 // ---------------------------------------------------------------------------
