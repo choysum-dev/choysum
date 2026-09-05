@@ -48,8 +48,9 @@ func Check(ctx context.Context, opts Options) (Result, error) {
 		return Result{}, err
 	}
 
-	fs := newTypecheckFS(opts.Overlays)
-	files = appendOverlayServiceRoots(files, modulesPath, opts.App, scope, opts.Overlays, fs.UseCaseSensitiveFileNames())
+	overlays := resolveOverlaysAgainstModules(opts.Overlays, modulesPath)
+	fs := newTypecheckFS(overlays)
+	files = appendOverlayServiceRoots(files, modulesPath, opts.App, scope, overlays, fs.UseCaseSensitiveFileNames())
 	if coreAmbient := filepath.ToSlash(filepath.Join(modulesPath, "core", "types", "$choysum.d.ts")); fs.FileExists(coreAmbient) {
 		files = appendUniqueSlash(files, coreAmbient)
 	}
@@ -82,6 +83,26 @@ func Check(ctx context.Context, opts Options) (Result, error) {
 
 // Test hook for mid-phase cancellation coverage.
 var ctxErr = func(ctx context.Context) error { return ctx.Err() }
+
+// resolveOverlaysAgainstModules makes overlay keys absolute under modulesPath
+// so relative overlay paths do not resolve against the process CWD.
+func resolveOverlaysAgainstModules(overlays map[string]string, modulesPath string) map[string]string {
+	if len(overlays) == 0 {
+		return nil
+	}
+	out := make(map[string]string, len(overlays))
+	for k, v := range overlays {
+		path := strings.TrimSpace(k)
+		if path == "" {
+			continue
+		}
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(modulesPath, path)
+		}
+		out[normalizePathKey(path)] = v
+	}
+	return out
+}
 
 // appendOverlayServiceRoots adds overlay-only paths that match ScopeService
 // collection rules (app-root *.ts / service/**), including virtual files.

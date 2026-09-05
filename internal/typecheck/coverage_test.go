@@ -241,9 +241,42 @@ func TestAppendOverlayServiceRoots(t *testing.T) {
 	// Case-insensitive / trimmed app matching.
 	got = appendOverlayServiceRoots(nil, "/Repo/Modules", " demo ", ScopeService, map[string]string{
 		"/repo/modules/demo/service/a.ts": "x",
+		"/Repo/Modules/demo/web/ui.ts":    "x",
 	}, false)
 	if len(got) != 1 || !strings.HasSuffix(strings.ToLower(got[0]), "/demo/service/a.ts") {
 		t.Fatalf("case-insensitive overlay root = %v", got)
+	}
+}
+
+func TestCutPathPrefix(t *testing.T) {
+	if _, ok := cutPathPrefix("ab", "ABCD/", false); ok {
+		t.Fatal("short path must miss")
+	}
+	if _, ok := cutPathPrefix("/abcdef/x.ts", "/app/", false); ok {
+		t.Fatal("wrong prefix must miss")
+	}
+	rel, ok := cutPathPrefix("/App/x.ts", "/app/", false)
+	if !ok || rel != "x.ts" {
+		t.Fatalf("got %q %v", rel, ok)
+	}
+}
+
+func TestResolveOverlaysAgainstModules(t *testing.T) {
+	modules := t.TempDir()
+	got := resolveOverlaysAgainstModules(map[string]string{
+		"demo/service/a.ts": "export {};\n",
+		"  ":                "x",
+		filepath.Join(modules, "demo", "index.ts"): "export {};\n",
+	}, modules)
+	if len(got) != 2 {
+		t.Fatalf("got %#v", got)
+	}
+	relKey := normalizePathKey(filepath.Join(modules, "demo", "service", "a.ts"))
+	if _, ok := got[relKey]; !ok {
+		t.Fatalf("relative overlay not resolved: %#v", got)
+	}
+	if resolveOverlaysAgainstModules(nil, modules) != nil {
+		t.Fatal("nil overlays")
 	}
 }
 
@@ -304,16 +337,6 @@ func TestCheck_CanceledBetweenPhases(t *testing.T) {
 		if _, err := Check(t.Context(), Options{ModulesPath: modules, RepoRoot: repo, App: "demo"}); !errors.Is(err, context.Canceled) {
 			t.Fatalf("failAt=%d err=%v", failAt, err)
 		}
-	}
-}
-
-func TestCutPathPrefix(t *testing.T) {
-	if _, ok := cutPathPrefix("ab", "ABCD/", false); ok {
-		t.Fatal("short path must miss")
-	}
-	rel, ok := cutPathPrefix("/App/x.ts", "/app/", false)
-	if !ok || rel != "x.ts" {
-		t.Fatalf("got %q %v", rel, ok)
 	}
 }
 
