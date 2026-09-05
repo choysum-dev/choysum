@@ -54,7 +54,8 @@ func Check(ctx context.Context, opts Options) (Result, error) {
 	var ambientOverlays map[string]string
 	if scope == ScopeNoVue {
 		ambientOverlays = BuiltInAmbientOverlays(modulesPath)
-		overlays = mergeOverlays(overlays, ambientOverlays)
+		// User overlays win over built-in ambient on the same path.
+		overlays = mergeOverlays(ambientOverlays, overlays)
 	}
 	fs := newTypecheckFS(overlays)
 	files = appendOverlayRoots(files, modulesPath, opts.App, scope, overlays, fs.UseCaseSensitiveFileNames())
