@@ -11,6 +11,11 @@ import "google/protobuf/timestamp.proto";
 package {{.Name}};
 option go_package = "github.com/project-choysum/choysum/pkg/{{.Name}}/grpcclient/{{.Name}}pb;{{.Name}}pb";
 
+{{- range $msg := sharedObjectMessages .}}
+
+{{ messageSource $msg }}
+{{- end}}
+
 {{- range $model := .Models}}
 
 // Model: {{$model.Name}}

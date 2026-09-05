@@ -99,18 +99,24 @@ export default User;
 
 func TestGetProtoTypeFromTsType(t *testing.T) {
 	tests := map[string]string{
-		"string":          "string",
-		"number":          "double",
-		"boolean":         "bool",
-		"void":            "google.protobuf.Empty",
-		"Promise<number>": "double",
-		"CustomType":      "google.protobuf.Value",
-		"bigint":          "int64",
-		"Date":            "google.protobuf.Timestamp",
-		"string[]":        "repeated string",
-		"Array<number>":   "repeated double",
-		"boolean[]":       "repeated bool",
-		"bigint[]":        "repeated int64",
+		"string":                        "string",
+		"number":                        "double",
+		"boolean":                       "bool",
+		"void":                          "google.protobuf.Empty",
+		"Promise<number>":               "double",
+		"CustomType":                    "google.protobuf.Value",
+		"bigint":                        "int64",
+		"Date":                          "google.protobuf.Timestamp",
+		"string[]":                      "repeated string",
+		"Array<number>":                 "repeated double",
+		"boolean[]":                     "repeated bool",
+		"bigint[]":                      "repeated int64",
+		"FieldRuleSpec":                 "FieldRuleSpec",
+		"Promise<FieldRuleSpec>":        "FieldRuleSpec",
+		"ConditionEnvelope":             "ConditionEnvelope",
+		"Promise<ConditionEnvelope>":    "ConditionEnvelope",
+		"FieldRuleSpec | null":          "FieldRuleSpec",
+		"Promise<ConditionEnvelope | undefined>": "ConditionEnvelope",
 	}
 
 	for input, want := range tests {

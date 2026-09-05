@@ -16,6 +16,66 @@ import (
 	"github.com/choysum-dev/choysum/pkg/meta"
 )
 
+func TestProtobufGenerateSharedObjectMessages(t *testing.T) {
+	runtimeScope := newGeneratorScope(t)
+	protoDir := t.TempDir()
+	distAppDir := filepath.Join(t.TempDir(), "apps", "auth")
+	gen := &protobufGenerator{runtimeScope: runtimeScope, module: &meta.Module{ApplicationStr: "auth"}, modulesProtoDir: protoDir, distAppDir: distAppDir}
+
+	app := &meta.Application{
+		Name: "auth",
+		Models: []*meta.Model{{
+			Name: "User",
+			Services: []*meta.Service{
+				{
+					Name:                  "GetFieldRuleSpec",
+					AccessibilityModifier: "public",
+					IsStatic:              true,
+					ProtobufType:          "FieldRuleSpec",
+					Parameters: []*meta.Parameter{{
+						Name:         "model",
+						ProtobufType: "string",
+					}},
+				},
+				{
+					Name:                  "GetRecordRuleCondition",
+					AccessibilityModifier: "public",
+					IsStatic:              true,
+					ProtobufType:          "ConditionEnvelope",
+					Parameters: []*meta.Parameter{
+						{Name: "model", ProtobufType: "string"},
+						{Name: "op", ProtobufType: "string"},
+					},
+				},
+			},
+		}},
+	}
+
+	if _, err := gen.generate(context.Background(), app); err != nil {
+		t.Fatalf("generate() error = %v", err)
+	}
+	content, err := os.ReadFile(filepath.Join(protoDir, "auth.proto"))
+	if err != nil {
+		t.Fatalf("read auth.proto: %v", err)
+	}
+	text := string(content)
+	for _, want := range []string{
+		"message ConditionEnvelope {",
+		"message FieldRuleSpec {",
+		"repeated string denyReadFields = 1;",
+		"google.protobuf.Value expr = 2;",
+		"FieldRuleSpec result = 1;",
+		"ConditionEnvelope result = 1;",
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("expected %q in proto, got:\n%s", want, text)
+		}
+	}
+	if strings.Contains(text, "google.protobuf.Value result = 1;") {
+		t.Fatalf("did not expect Value result for whitelist returns:\n%s", text)
+	}
+}
+
 func TestProtobufGenerateUsesProtobufTypeForEmptyReturns(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
 	protoDir := t.TempDir()

@@ -21,6 +21,7 @@ import (
 	"github.com/buke/typescript-go-internal/v7/pkg/vfs"
 	"github.com/buke/typescript-go-internal/v7/pkg/vfs/osvfs"
 	"github.com/buke/typescript-go-internal/v7/pkg/vfs/wrapvfs"
+	"github.com/choysum-dev/choysum/internal/protobuf/objectmessages"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -402,6 +403,11 @@ func mapCheckerTypeToProto(c *checker.Checker, t *checker.Type, isReturn bool) (
 		t = promised
 	}
 
+	// Named object messages must be recognized before union expansion (e.g. ConditionEnvelope).
+	if mapped, ok := mapRegisteredObjectMessage(t); ok {
+		return mapped, true
+	}
+
 	parts := []*checker.Type{t}
 	if t.IsUnion() {
 		parts = t.Types()
@@ -415,6 +421,9 @@ func mapCheckerTypeToProto(c *checker.Checker, t *checker.Type, isReturn bool) (
 	}
 	if len(parts) == 1 {
 		t = parts[0]
+		if mapped, ok := mapRegisteredObjectMessage(t); ok {
+			return mapped, true
+		}
 		if c.IsArrayType(t) {
 			elem := c.GetElementTypeOfArrayType(t)
 			mapped, ok := mapCheckerTypeToProto(c, elem, false)
@@ -438,6 +447,29 @@ func mapCheckerTypeToProto(c *checker.Checker, t *checker.Type, isReturn bool) (
 		return mapped, true
 	}
 	return mapProtoParts(parts, isReturn)
+}
+
+// mapRegisteredObjectMessage maps whitelisted TS object type aliases to protobuf messages.
+func mapRegisteredObjectMessage(t *checker.Type) (string, bool) {
+	name := typeAliasOrSymbolName(t)
+	if name == "" {
+		return "", false
+	}
+	return objectmessages.ProtoNameForTS(name)
+}
+
+func typeAliasOrSymbolName(t *checker.Type) string {
+	if t == nil {
+		return ""
+	}
+	if alias := t.Alias(); alias != nil {
+		if sym := alias.Symbol(); sym != nil {
+			if name := strings.TrimSpace(sym.Name); name != "" {
+				return name
+			}
+		}
+	}
+	return typeSymbolName(t)
 }
 
 func stripNullishParts(parts []*checker.Type) []*checker.Type {

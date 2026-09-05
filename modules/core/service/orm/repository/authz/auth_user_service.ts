@@ -26,7 +26,7 @@ export const AuthUserService = {
         { name: 'op', type: 'string', value: args[1] as string },
       ];
     },
-    { name: 'result', type: 'google.protobuf.Value' }
+    { name: 'result', type: 'ConditionEnvelope' }
   ),
   GetFieldRuleSpec: CreateServerApiService<RpcArgMapper>(
     'auth.User',
@@ -34,7 +34,7 @@ export const AuthUserService = {
     (...args) => {
       return [{ name: 'model', type: 'string', value: args[0] as string }];
     },
-    { name: 'result', type: 'google.protobuf.Value' }
+    { name: 'result', type: 'FieldRuleSpec' }
   ),
 } as {
   GetRecordRuleCondition(model: string, op: RecordRuleOp): Promise<unknown>;

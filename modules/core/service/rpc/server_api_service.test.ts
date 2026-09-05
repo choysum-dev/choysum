@@ -331,6 +331,126 @@ test('server transport keeps google.protobuf.Value semantics aligned for local a
   }
 });
 
+test('server transport keeps FieldRuleSpec message semantics aligned for local and remote paths', async () => {
+  const originalPool = (globalThis as any).pool;
+  const originalChoysum = (globalThis as any).$choysum;
+
+  const spec = {
+    denyReadFields: ['Secret'],
+    denyWriteFields: ['Secret', 'Token'],
+    reason: 'deny',
+    hitRuleIds: ['r1'],
+  };
+
+  try {
+    (globalThis as any).pool = {
+      get: (serviceName: string) => {
+        if (serviceName !== 'auth.User') return undefined;
+        return {
+          GetFieldRuleSpec: async () => ({ ...spec }),
+        };
+      },
+    };
+
+    stubBridge(async () => {
+      throw new Error('bridge should not be called for local FieldRuleSpec method');
+    });
+
+    const localService = CreateServerApiService<any>(
+      'auth.User',
+      'GetFieldRuleSpec',
+      (model: string) => [{ name: 'model', type: 'string', value: model }],
+      { name: 'result', type: 'FieldRuleSpec' }
+    );
+
+    expect(await localService('demo.Model')).toEqual(spec);
+
+    const unaryCalls: any[] = [];
+    (globalThis as any).pool = undefined;
+    stubBridge(async (serviceName: string, methodName: string, request: any) => {
+      unaryCalls.push({ serviceName, methodName, request });
+      return { result: { ...spec } };
+    });
+
+    const remoteService = CreateServerApiService<any>(
+      'auth.User',
+      'GetFieldRuleSpec',
+      (model: string) => [{ name: 'model', type: 'string', value: model }],
+      { name: 'result', type: 'FieldRuleSpec' }
+    );
+
+    expect(await remoteService('demo.Model')).toEqual(spec);
+    expect(unaryCalls).toEqual([
+      {
+        serviceName: 'auth.User',
+        methodName: 'GetFieldRuleSpec',
+        request: { model: 'demo.Model' },
+      },
+    ]);
+  } finally {
+    (globalThis as any).pool = originalPool;
+    (globalThis as any).$choysum = originalChoysum;
+  }
+});
+
+test('FieldRuleSpec dirty payloads fail-hard the same way on local and remote paths', async () => {
+  const { parseFieldRuleSpecFromUnknown } = await import('../api/authz_helpers');
+  const originalPool = (globalThis as any).pool;
+  const originalChoysum = (globalThis as any).$choysum;
+
+  const dirty = { denyReadFields: 'not-an-array' };
+
+  try {
+    (globalThis as any).pool = {
+      get: (serviceName: string) => {
+        if (serviceName !== 'auth.User') return undefined;
+        return {
+          GetFieldRuleSpec: async () => dirty,
+        };
+      },
+    };
+    stubBridge(async () => {
+      throw new Error('bridge should not be called for local dirty FieldRuleSpec');
+    });
+
+    const localService = CreateServerApiService<any>(
+      'auth.User',
+      'GetFieldRuleSpec',
+      (model: string) => [{ name: 'model', type: 'string', value: model }],
+      { name: 'result', type: 'FieldRuleSpec' }
+    );
+
+    let localErr: unknown;
+    try {
+      parseFieldRuleSpecFromUnknown(await localService('demo.Model'));
+    } catch (err) {
+      localErr = err;
+    }
+    expect(String(localErr)).toMatch(/invalid_field_rule_spec/);
+
+    (globalThis as any).pool = undefined;
+    stubBridge(async () => ({ result: dirty }));
+
+    const remoteService = CreateServerApiService<any>(
+      'auth.User',
+      'GetFieldRuleSpec',
+      (model: string) => [{ name: 'model', type: 'string', value: model }],
+      { name: 'result', type: 'FieldRuleSpec' }
+    );
+
+    let remoteErr: unknown;
+    try {
+      parseFieldRuleSpecFromUnknown(await remoteService('demo.Model'));
+    } catch (err) {
+      remoteErr = err;
+    }
+    expect(String(remoteErr)).toMatch(/invalid_field_rule_spec/);
+  } finally {
+    (globalThis as any).pool = originalPool;
+    (globalThis as any).$choysum = originalChoysum;
+  }
+});
+
 test('server transport covers rich normalize branches and local handled undefined return paths', async () => {
   const originalPool = (globalThis as any).pool;
   const originalChoysum = (globalThis as any).$choysum;
