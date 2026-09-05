@@ -51,15 +51,15 @@ func Check(ctx context.Context, opts Options) (Result, error) {
 	}
 
 	overlays := resolveOverlaysAgainstModules(opts.Overlays, modulesPath)
+	var ambientOverlays map[string]string
 	if scope == ScopeNoVue {
-		overlays = mergeOverlays(overlays, BuiltInAmbientOverlays(modulesPath))
+		ambientOverlays = BuiltInAmbientOverlays(modulesPath)
+		overlays = mergeOverlays(overlays, ambientOverlays)
 	}
 	fs := newTypecheckFS(overlays)
 	files = appendOverlayRoots(files, modulesPath, opts.App, scope, overlays, fs.UseCaseSensitiveFileNames())
-	if scope == ScopeNoVue {
-		for _, ambient := range AmbientRootFiles(modulesPath) {
-			files = appendUniqueSlash(files, ambient)
-		}
+	for _, ambient := range sortedOverlayPaths(ambientOverlays) {
+		files = appendUniqueSlash(files, ambient)
 	}
 	if coreAmbient := filepath.ToSlash(filepath.Join(modulesPath, "core", "types", "$choysum.d.ts")); fs.FileExists(coreAmbient) {
 		files = appendUniqueSlash(files, coreAmbient)
@@ -141,14 +141,9 @@ func appendOverlayRoots(files []string, modulesPath, app string, scope Scope, ov
 			continue
 		}
 		lower := strings.ToLower(norm)
-		allowTSX := scope == ScopeNoVue
 		isTSX := strings.HasSuffix(lower, ".tsx")
 		isTS := strings.HasSuffix(lower, ".ts")
-		if isTSX {
-			if !allowTSX {
-				continue
-			}
-		} else if !isTS {
+		if !(isTS || (isTSX && scope == ScopeNoVue)) {
 			continue
 		}
 		rel, ok := cutPathPrefix(norm, appRoot+"/", caseSensitive)

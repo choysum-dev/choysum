@@ -134,10 +134,10 @@ func walkTSTree(ctx context.Context, root string, add func(string), allowTSX boo
 
 func isCollectableTSName(name string, allowTSX bool) bool {
 	lower := strings.ToLower(name)
-	if strings.HasSuffix(lower, ".tsx") {
-		return allowTSX
+	if allowTSX && strings.HasSuffix(lower, ".tsx") {
+		return true
 	}
-	return strings.HasSuffix(lower, ".d.ts") || strings.HasSuffix(lower, ".ts")
+	return strings.HasSuffix(lower, ".ts")
 }
 
 // Test hooks for hard-to-trigger filesystem failures.

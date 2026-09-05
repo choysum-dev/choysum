@@ -8,10 +8,13 @@ import (
 	"strings"
 )
 
+// Cached once: subpath stubs are fully static.
+var subpathStubsContent = buildSubpathStubs()
+
 // SubpathStubOverlay returns the relative ambient path and declarations for
 // subpath imports that lack individual .d.ts coverage (locales, assets, etc.).
 func SubpathStubOverlay() (relPath, content string) {
-	return "subpath-stubs.d.ts", buildSubpathStubs()
+	return "subpath-stubs.d.ts", subpathStubsContent
 }
 
 func buildSubpathStubs() string {

@@ -37,10 +37,17 @@ func BuiltInAmbientOverlays(modulesPath string) map[string]string {
 // AmbientRootFiles returns sorted absolute ambient .d.ts paths to include as
 // program roots for scopes that need web ambient (ScopeNoVue).
 func AmbientRootFiles(modulesPath string) []string {
-	overlays := BuiltInAmbientOverlays(modulesPath)
+	return sortedOverlayPaths(BuiltInAmbientOverlays(modulesPath))
+}
+
+// sortedOverlayPaths returns normalized overlay keys in sorted order.
+func sortedOverlayPaths(overlays map[string]string) []string {
+	if len(overlays) == 0 {
+		return nil
+	}
 	files := make([]string, 0, len(overlays))
 	for path := range overlays {
-		files = append(files, normalizePathKey(path))
+		files = append(files, path)
 	}
 	slices.Sort(files)
 	return files
