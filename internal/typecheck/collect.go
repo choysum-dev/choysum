@@ -121,7 +121,7 @@ var (
 
 func shouldSkipScanDir(name string) bool {
 	switch strings.ToLower(name) {
-	case "node_modules", "dist", ".choysum", "tmp", "tests", "__tests__", "coverage", "e2e":
+	case "node_modules", "dist", ".choysum", "tmp", "test", "tests", "__tests__", "coverage", "e2e":
 		return true
 	default:
 		return false

@@ -52,6 +52,7 @@ func TestCollectRootFiles_ServiceExtras(t *testing.T) {
 	app := filepath.Join(modules, "demo")
 	mustMkdir(t, filepath.Join(app, "service", "node_modules", "pkg"))
 	mustMkdir(t, filepath.Join(app, "service", "__tests__"))
+	mustMkdir(t, filepath.Join(app, "service", "test"))
 	mustWrite(t, filepath.Join(app, "env.d.ts"), "export {};\n")
 	mustWrite(t, filepath.Join(app, "skip.gen.ts"), "export {};\n")
 	mustWrite(t, filepath.Join(app, "ok.spec.ts"), "export {};\n")
@@ -62,6 +63,7 @@ func TestCollectRootFiles_ServiceExtras(t *testing.T) {
 	mustWrite(t, filepath.Join(app, "service", "skip.gen.d.ts"), "export {};\n")
 	mustWrite(t, filepath.Join(app, "service", "node_modules", "pkg", "x.ts"), "export {};\n")
 	mustWrite(t, filepath.Join(app, "service", "__tests__", "t.ts"), "export {};\n")
+	mustWrite(t, filepath.Join(app, "service", "test", "helper.ts"), "export {};\n")
 	mustWrite(t, filepath.Join(app, "readme.md"), "x\n")
 
 	files, err := CollectRootFiles(modules, "demo", ScopeService)
@@ -72,7 +74,7 @@ func TestCollectRootFiles_ServiceExtras(t *testing.T) {
 	if !strings.Contains(joined, "env.d.ts") || !strings.Contains(joined, "types.d.ts") || !strings.Contains(joined, "a.ts") {
 		t.Fatalf("missing expected files: %v", files)
 	}
-	for _, ban := range []string{"skip.gen.ts", "ok.spec.ts", "ok.test.d.ts", "skip.gen.d.ts", "node_modules/pkg/x.ts", "__tests__/t.ts"} {
+	for _, ban := range []string{"skip.gen.ts", "ok.spec.ts", "ok.test.d.ts", "skip.gen.d.ts", "node_modules/pkg/x.ts", "__tests__/t.ts", "test/helper.ts"} {
 		if strings.Contains(joined, ban) {
 			t.Fatalf("unexpected %s in %v", ban, files)
 		}
