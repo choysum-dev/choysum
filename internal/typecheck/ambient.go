@@ -26,10 +26,10 @@ func BuiltInAmbientOverlays(modulesPath string) map[string]string {
 	root := AmbientRoot(modulesPath)
 	out := make(map[string]string, 2)
 	if rel, content := ViteClientOverlay(); rel != "" {
-		out[filepath.ToSlash(filepath.Join(root, rel))] = content
+		out[normalizePathKey(filepath.Join(root, rel))] = content
 	}
 	if rel, content := SubpathStubOverlay(); rel != "" {
-		out[filepath.ToSlash(filepath.Join(root, rel))] = content
+		out[normalizePathKey(filepath.Join(root, rel))] = content
 	}
 	return out
 }

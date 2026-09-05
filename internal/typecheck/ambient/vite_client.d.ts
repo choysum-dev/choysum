@@ -22,7 +22,7 @@ interface ImportMeta {
     dispose: (cb: (...args: any[]) => void) => void;
     invalidate: (...args: any[]) => void;
   };
-  glob: (pattern: string, options?: Record<string, any>) => Record<string, any>;
+  glob: (pattern: string | string[], options?: Record<string, any>) => Record<string, any>;
 }
 
 declare module "*.module.css" {
@@ -110,6 +110,16 @@ declare module "*.webm" {
 declare module "*.json" {
   const value: any;
   export default value;
+}
+
+declare module "*?raw" {
+  const content: string;
+  export default content;
+}
+
+declare module "*?url" {
+  const src: string;
+  export default src;
 }
 
 declare module "vite/client" {}

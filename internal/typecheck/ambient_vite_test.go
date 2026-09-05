@@ -70,17 +70,7 @@ func TestBuiltInAmbientOverlays_NoDiskVite(t *testing.T) {
 			t.Fatalf("ambient path %q missing %s", f, ambientDirName)
 		}
 		if _, ok := overlays[f]; !ok {
-			// keys may differ only by slash normalization
-			found := false
-			for k := range overlays {
-				if normalizePathKey(k) == f {
-					found = true
-					break
-				}
-			}
-			if !found {
-				t.Fatalf("root %q not in overlays %#v", f, overlays)
-			}
+			t.Fatalf("root %q not in overlays %#v", f, overlays)
 		}
 	}
 }
