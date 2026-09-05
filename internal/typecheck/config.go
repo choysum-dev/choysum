@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/buke/typescript-go-internal/v7/pkg/collections"
@@ -29,8 +30,13 @@ func BuildCompilerOptions(modulesPath, repoRoot string) (*core.CompilerOptions, 
 		return nil, err
 	}
 	pathsMap := collections.NewOrderedMapWithSizeHint[string, []string](len(paths) + 1)
-	for alias, targets := range paths {
-		pathsMap.Set(alias, targets)
+	aliases := make([]string, 0, len(paths))
+	for alias := range paths {
+		aliases = append(aliases, alias)
+	}
+	slices.Sort(aliases)
+	for _, alias := range aliases {
+		pathsMap.Set(alias, paths[alias])
 	}
 	if _, ok := pathsMap.Get("@/*"); !ok {
 		pathsMap.Set("@/*", []string{filepath.ToSlash(filepath.Join(pathsBase, "*"))})

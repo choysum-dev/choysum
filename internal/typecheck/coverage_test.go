@@ -287,6 +287,9 @@ func TestHostLookupCaseInsensitive(t *testing.T) {
 	if _, ok := lookupOverlay(overlays, "/foo/bar.ts", false); !ok {
 		t.Fatal("expected case-insensitive hit")
 	}
+	if _, ok := lookupOverlay(overlays, "/other.ts", false); ok {
+		t.Fatal("expected case-insensitive miss")
+	}
 	if _, ok := lookupOverlay(overlays, "/foo/bar.ts", true); ok {
 		t.Fatal("expected case-sensitive miss")
 	}
