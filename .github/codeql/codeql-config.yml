@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+# SPDX-License-Identifier: LGPL-3.0-or-later
+#
+# Shared CodeQL config for .github/workflows/codeql.yml.
+# paths-ignore applies to javascript-typescript (and other non-build scans).
+
+name: "Choysum CodeQL"
+
+paths-ignore:
+  # language-core service-script goldens (fixtures for GoldenCoder; not product TS)
+  - "internal/typecheck/testdata/vue/golden/**"
