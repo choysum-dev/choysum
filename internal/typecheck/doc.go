@@ -6,4 +6,5 @@
 //
 // ScopeService covers app-root and service trees; ScopeNoVue also covers web
 // TS/TSX and embeds vite/client plus subpath ambient declarations.
+// ScopeAll adds web .vue files via Coder service-script overlays (Strategy B).
 package typecheck

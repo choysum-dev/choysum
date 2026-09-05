@@ -1,0 +1,6 @@
+# SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+# Vue language-core goldens: collapse in GitHub diffs; mark as generated.
+internal/typecheck/testdata/vue/golden/*.service.txt linguist-generated=true
+internal/typecheck/testdata/vue/golden/*.mappings.json linguist-generated=true

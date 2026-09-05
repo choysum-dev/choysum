@@ -1,0 +1,86 @@
+{
+  "embeddedId": "script_ts",
+  "scriptKind": "ts",
+  "sourceSHA256": "dde0d7e10f410b184ba3d2b376f66de948b8e831c7a92c5a860403aeed270f3d",
+  "mappings": [
+    {
+      "sourceFile": "/fixtures/parent_type_err.vue",
+      "sourceStart": 24,
+      "sourceEnd": 59,
+      "generatedStart": 146,
+      "generatedEnd": 181,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/parent_type_err.vue",
+      "sourceStart": 59,
+      "sourceEnd": 117,
+      "generatedStart": 181,
+      "generatedEnd": 239,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/parent_type_err.vue",
+      "sourceStart": 142,
+      "sourceEnd": 147,
+      "generatedStart": 818,
+      "generatedEnd": 823,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/parent_type_err.vue",
+      "sourceStart": 141,
+      "sourceEnd": 141,
+      "generatedStart": 918,
+      "generatedEnd": 918,
+      "verification": {}
+    },
+    {
+      "sourceFile": "/fixtures/parent_type_err.vue",
+      "sourceStart": 150,
+      "sourceEnd": 150,
+      "generatedStart": 925,
+      "generatedEnd": 925,
+      "verification": {}
+    },
+    {
+      "sourceFile": "/fixtures/parent_type_err.vue",
+      "sourceStart": 142,
+      "sourceEnd": 142,
+      "generatedStart": 936,
+      "generatedEnd": 936,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/parent_type_err.vue",
+      "sourceStart": 147,
+      "sourceEnd": 147,
+      "generatedStart": 939,
+      "generatedEnd": 939,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/parent_type_err.vue",
+      "sourceStart": 141,
+      "sourceEnd": 141,
+      "generatedStart": 937,
+      "generatedEnd": 937
+    },
+    {
+      "sourceFile": "/fixtures/parent_type_err.vue",
+      "sourceStart": 24,
+      "sourceEnd": 24,
+      "generatedStart": 1199,
+      "generatedEnd": 1199,
+      "verification": {}
+    },
+    {
+      "sourceFile": "/fixtures/parent_type_err.vue",
+      "sourceStart": 117,
+      "sourceEnd": 117,
+      "generatedStart": 1211,
+      "generatedEnd": 1211,
+      "verification": {}
+    }
+  ]
+}

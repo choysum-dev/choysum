@@ -1,0 +1,103 @@
+{
+  "embeddedId": "script_ts",
+  "scriptKind": "ts",
+  "sourceSHA256": "9fe1ec33736f2229bb476969c2a329e0984aed169360c6bebc7831eae7cd01e0",
+  "mappings": [
+    {
+      "sourceFile": "/fixtures/define_props.vue",
+      "sourceStart": 24,
+      "sourceEnd": 25,
+      "generatedStart": 146,
+      "generatedEnd": 147,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/define_props.vue",
+      "sourceStart": 25,
+      "sourceEnd": 25,
+      "generatedStart": 147,
+      "generatedEnd": 147,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/define_props.vue",
+      "sourceStart": 51,
+      "sourceEnd": 68,
+      "generatedStart": 166,
+      "generatedEnd": 183,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/define_props.vue",
+      "sourceStart": 25,
+      "sourceEnd": 51,
+      "generatedStart": 185,
+      "generatedEnd": 211,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/define_props.vue",
+      "sourceStart": 68,
+      "sourceEnd": 73,
+      "generatedStart": 222,
+      "generatedEnd": 227,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/define_props.vue",
+      "sourceStart": 98,
+      "sourceEnd": 100,
+      "generatedStart": 938,
+      "generatedEnd": 940,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/define_props.vue",
+      "sourceStart": 120,
+      "sourceEnd": 122,
+      "generatedStart": 959,
+      "generatedEnd": 961,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/define_props.vue",
+      "sourceStart": 98,
+      "sourceEnd": 98,
+      "generatedStart": 963,
+      "generatedEnd": 963,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/define_props.vue",
+      "sourceStart": 100,
+      "sourceEnd": 100,
+      "generatedStart": 966,
+      "generatedEnd": 966,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/define_props.vue",
+      "sourceStart": 103,
+      "sourceEnd": 116,
+      "generatedStart": 970,
+      "generatedEnd": 983,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/define_props.vue",
+      "sourceStart": 24,
+      "sourceEnd": 24,
+      "generatedStart": 1037,
+      "generatedEnd": 1037,
+      "verification": {}
+    },
+    {
+      "sourceFile": "/fixtures/define_props.vue",
+      "sourceStart": 73,
+      "sourceEnd": 73,
+      "generatedStart": 1049,
+      "generatedEnd": 1049,
+      "verification": {}
+    }
+  ]
+}

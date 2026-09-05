@@ -1,0 +1,118 @@
+{
+  "embeddedId": "script_ts",
+  "scriptKind": "ts",
+  "sourceSHA256": "ea9e020b0c4c01c8cc5b745a18fc32e378b40943f8183d24bf90add25ea1b95c",
+  "mappings": [
+    {
+      "sourceFile": "/fixtures/template_unknown.vue",
+      "sourceStart": 24,
+      "sourceEnd": 25,
+      "generatedStart": 146,
+      "generatedEnd": 147,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/template_unknown.vue",
+      "sourceStart": 25,
+      "sourceEnd": 42,
+      "generatedStart": 147,
+      "generatedEnd": 164,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/template_unknown.vue",
+      "sourceStart": 67,
+      "sourceEnd": 70,
+      "generatedStart": 771,
+      "generatedEnd": 774,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/template_unknown.vue",
+      "sourceStart": 89,
+      "sourceEnd": 92,
+      "generatedStart": 793,
+      "generatedEnd": 796,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/template_unknown.vue",
+      "sourceStart": 67,
+      "sourceEnd": 67,
+      "generatedStart": 798,
+      "generatedEnd": 798,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/template_unknown.vue",
+      "sourceStart": 70,
+      "sourceEnd": 70,
+      "generatedStart": 801,
+      "generatedEnd": 801,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/template_unknown.vue",
+      "sourceStart": 73,
+      "sourceEnd": 74,
+      "generatedStart": 805,
+      "generatedEnd": 806,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/template_unknown.vue",
+      "sourceStart": 74,
+      "sourceEnd": 74,
+      "generatedStart": 806,
+      "generatedEnd": 806,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/template_unknown.vue",
+      "sourceStart": 84,
+      "sourceEnd": 84,
+      "generatedStart": 826,
+      "generatedEnd": 826,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/template_unknown.vue",
+      "sourceStart": 74,
+      "sourceEnd": 84,
+      "generatedStart": 816,
+      "generatedEnd": 826,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/template_unknown.vue",
+      "sourceStart": 84,
+      "sourceEnd": 85,
+      "generatedStart": 826,
+      "generatedEnd": 827,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/template_unknown.vue",
+      "sourceStart": 74,
+      "sourceEnd": 84,
+      "generatedStart": 891,
+      "generatedEnd": 901
+    },
+    {
+      "sourceFile": "/fixtures/template_unknown.vue",
+      "sourceStart": 24,
+      "sourceEnd": 24,
+      "generatedStart": 911,
+      "generatedEnd": 911,
+      "verification": {}
+    },
+    {
+      "sourceFile": "/fixtures/template_unknown.vue",
+      "sourceStart": 42,
+      "sourceEnd": 42,
+      "generatedStart": 923,
+      "generatedEnd": 923,
+      "verification": {}
+    }
+  ]
+}

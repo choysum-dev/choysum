@@ -55,15 +55,16 @@ func CollectRootFiles(ctx context.Context, modulesPath, app string, scope Scope)
 	}
 
 	switch scope {
-	case ScopeService, ScopeNoVue:
+	case ScopeService, ScopeNoVue, ScopeAll:
 		if err := collectAppRootTS(ctx, appRoot, add); err != nil {
 			return nil, err
 		}
-		if err := walkTSTree(ctx, filepath.Join(appRoot, "service"), add, false); err != nil {
+		if err := walkTSTree(ctx, filepath.Join(appRoot, "service"), add, false, false); err != nil {
 			return nil, err
 		}
-		if scope == ScopeNoVue {
-			if err := walkTSTree(ctx, filepath.Join(appRoot, "web"), add, true); err != nil {
+		if scope == ScopeNoVue || scope == ScopeAll {
+			allowVue := scope == ScopeAll
+			if err := walkTSTree(ctx, filepath.Join(appRoot, "web"), add, true, allowVue); err != nil {
 				return nil, err
 			}
 		}
@@ -90,7 +91,7 @@ func collectAppRootTS(ctx context.Context, appRoot string, add func(string)) err
 			continue
 		}
 		name := e.Name()
-		if !isCollectableTSName(name, false) || shouldSkipTSFileName(name) {
+		if !isCollectableTSName(name, false, false) || shouldSkipTSFileName(name) {
 			continue
 		}
 		add(filepath.Join(appRoot, name))
@@ -98,8 +99,8 @@ func collectAppRootTS(ctx context.Context, appRoot string, add func(string)) err
 	return nil
 }
 
-// walkTSTree walks root for .ts / .d.ts (and optionally .tsx). Missing root is OK.
-func walkTSTree(ctx context.Context, root string, add func(string), allowTSX bool) error {
+// walkTSTree walks root for .ts / .d.ts (and optionally .tsx / .vue). Missing root is OK.
+func walkTSTree(ctx context.Context, root string, add func(string), allowTSX, allowVue bool) error {
 	st, err := stat(root)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -124,7 +125,7 @@ func walkTSTree(ctx context.Context, root string, add func(string), allowTSX boo
 			return nil
 		}
 		name := d.Name()
-		if !isCollectableTSName(name, allowTSX) || shouldSkipTSFileName(name) {
+		if !isCollectableTSName(name, allowTSX, allowVue) || shouldSkipTSFileName(name) {
 			return nil
 		}
 		add(path)
@@ -132,8 +133,11 @@ func walkTSTree(ctx context.Context, root string, add func(string), allowTSX boo
 	})
 }
 
-func isCollectableTSName(name string, allowTSX bool) bool {
+func isCollectableTSName(name string, allowTSX, allowVue bool) bool {
 	lower := strings.ToLower(name)
+	if strings.HasSuffix(lower, ".vue") {
+		return allowVue
+	}
 	if allowTSX && strings.HasSuffix(lower, ".tsx") {
 		return true
 	}
@@ -167,7 +171,8 @@ func shouldSkipTSFileName(name string) bool {
 	lower := strings.ToLower(name)
 	if strings.HasSuffix(lower, ".test.ts") || strings.HasSuffix(lower, ".spec.ts") ||
 		strings.HasSuffix(lower, ".test.tsx") || strings.HasSuffix(lower, ".spec.tsx") ||
-		strings.HasSuffix(lower, ".test.d.ts") || strings.HasSuffix(lower, ".spec.d.ts") {
+		strings.HasSuffix(lower, ".test.d.ts") || strings.HasSuffix(lower, ".spec.d.ts") ||
+		strings.HasSuffix(lower, ".test.vue") || strings.HasSuffix(lower, ".spec.vue") {
 		return true
 	}
 	if strings.Contains(lower, ".gen.") {

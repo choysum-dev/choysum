@@ -1,0 +1,71 @@
+{
+  "embeddedId": "script_ts",
+  "scriptKind": "ts",
+  "sourceSHA256": "cfd2144a1ce203d20d93e525f3223b646aabf88fb09f0ee5adbbd1cf14c06b53",
+  "mappings": [
+    {
+      "sourceFile": "/fixtures/Parent.vue",
+      "sourceStart": 24,
+      "sourceEnd": 59,
+      "generatedStart": 146,
+      "generatedEnd": 181,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/Parent.vue",
+      "sourceStart": 59,
+      "sourceEnd": 106,
+      "generatedStart": 181,
+      "generatedEnd": 228,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/Parent.vue",
+      "sourceStart": 131,
+      "sourceEnd": 134,
+      "generatedStart": 835,
+      "generatedEnd": 838,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/Parent.vue",
+      "sourceStart": 143,
+      "sourceEnd": 146,
+      "generatedStart": 857,
+      "generatedEnd": 860,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/Parent.vue",
+      "sourceStart": 131,
+      "sourceEnd": 131,
+      "generatedStart": 862,
+      "generatedEnd": 862,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/Parent.vue",
+      "sourceStart": 134,
+      "sourceEnd": 134,
+      "generatedStart": 865,
+      "generatedEnd": 865,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/Parent.vue",
+      "sourceStart": 24,
+      "sourceEnd": 24,
+      "generatedStart": 920,
+      "generatedEnd": 920,
+      "verification": {}
+    },
+    {
+      "sourceFile": "/fixtures/Parent.vue",
+      "sourceStart": 106,
+      "sourceEnd": 106,
+      "generatedStart": 932,
+      "generatedEnd": 932,
+      "verification": {}
+    }
+  ]
+}
