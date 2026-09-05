@@ -48,7 +48,10 @@ func Check(ctx context.Context, opts Options) (Result, error) {
 	fs := newTypecheckFS(opts.Overlays)
 	host := newHost(modulesPath, fs)
 	program := buildProgram(host, files, compilerOpts)
-	diags := collectDiagnostics(ctx, program)
+	diags, err := collectDiagnostics(ctx, program)
+	if err != nil {
+		return Result{}, err
+	}
 	return toResult(diags), nil
 }
 

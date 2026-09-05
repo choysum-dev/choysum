@@ -23,7 +23,10 @@ func TestProgram_ServiceOK(t *testing.T) {
 	}
 	host := newHost(modules, newTypecheckFS(nil))
 	program := buildProgram(host, files, opts)
-	diags := collectDiagnostics(t.Context(), program)
+	diags, err := collectDiagnostics(t.Context(), program)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, d := range diags {
 		if d.Category().Name() == "error" {
 			t.Fatalf("unexpected error: %s", d.Localize(locale.Default))
@@ -43,7 +46,10 @@ func TestProgram_ServiceTypeError(t *testing.T) {
 	}
 	host := newHost(modules, newTypecheckFS(nil))
 	program := buildProgram(host, files, opts)
-	diags := collectDiagnostics(t.Context(), program)
+	diags, err := collectDiagnostics(t.Context(), program)
+	if err != nil {
+		t.Fatal(err)
+	}
 	found := false
 	for _, d := range diags {
 		if d.Category().Name() != "error" {

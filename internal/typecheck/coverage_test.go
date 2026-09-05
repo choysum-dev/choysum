@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/buke/typescript-go-internal/v7/pkg/ast"
+	"github.com/buke/typescript-go-internal/v7/pkg/compiler"
 	"github.com/buke/typescript-go-internal/v7/pkg/core"
 	"github.com/buke/typescript-go-internal/v7/pkg/diagnostics"
 	"github.com/buke/typescript-go-internal/v7/pkg/locale"
@@ -190,6 +191,61 @@ func TestCheck_CanceledContext(t *testing.T) {
 	}
 }
 
+func TestCheck_CanceledDuringDiagnostics(t *testing.T) {
+	repo, modules := fixtureRoots(t, "service_ok")
+	ctx, cancel := context.WithCancel(t.Context())
+	orig := absPath
+	t.Cleanup(func() { absPath = orig })
+	calls := 0
+	absPath = func(path string) (string, error) {
+		abs, err := orig(path)
+		calls++
+		if calls >= 2 {
+			cancel()
+		}
+		return abs, err
+	}
+	if _, err := Check(ctx, Options{ModulesPath: modules, RepoRoot: repo, App: "demo"}); !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestCollectDiagnostics_CancelPaths(t *testing.T) {
+	repo, modules := fixtureRoots(t, "service_ok")
+	opts, err := BuildCompilerOptions(modules, repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := CollectRootFiles(modules, "demo", ScopeService)
+	if err != nil {
+		t.Fatal(err)
+	}
+	program := buildProgram(newHost(modules, newTypecheckFS(nil)), files, opts)
+
+	orig := runProgramDiagnostics
+	t.Cleanup(func() { runProgramDiagnostics = orig })
+
+	ctx, cancel := context.WithCancel(t.Context())
+	runProgramDiagnostics = func(context.Context, *compiler.Program) []*ast.Diagnostic {
+		cancel()
+		return nil
+	}
+	if _, err := collectDiagnostics(ctx, program); !errors.Is(err, context.Canceled) {
+		t.Fatalf("soft cancel err = %v", err)
+	}
+
+	runProgramDiagnostics = func(context.Context, *compiler.Program) []*ast.Diagnostic {
+		panic("boom")
+	}
+	defer func() {
+		if r := recover(); r != "boom" {
+			t.Fatalf("recover = %#v", r)
+		}
+	}()
+	_, _ = collectDiagnostics(t.Context(), program)
+	t.Fatal("expected panic")
+}
+
 func TestCollectRootFiles_StatErrors(t *testing.T) {
 	dir := t.TempDir()
 	modules := filepath.Join(dir, "modules")
@@ -315,6 +371,13 @@ func TestResolveTypeRootsAndTypes(t *testing.T) {
 	if len(roots) != 0 {
 		t.Fatalf("expected empty roots, got %v", roots)
 	}
+
+	fileAsTypes := t.TempDir()
+	mustMkdir(t, filepath.Join(fileAsTypes, "node_modules"))
+	mustWrite(t, filepath.Join(fileAsTypes, "node_modules", "@types"), "not a dir")
+	if got := resolveTypeRoots(fileAsTypes); len(got) != 0 {
+		t.Fatalf("file @types must be ignored, got %v", got)
+	}
 }
 
 func TestResolveModulePathsForTest(t *testing.T) {
@@ -437,7 +500,10 @@ func TestProgram_NilContext(t *testing.T) {
 		t.Fatal(err)
 	}
 	program := buildProgram(newHost(modules, newTypecheckFS(nil)), files, opts)
-	diags := collectDiagnostics(nil, program)
+	diags, err := collectDiagnostics(nil, program)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, d := range diags {
 		if d.Category().Name() == "error" {
 			t.Fatalf("%s", d.Localize(locale.Default))

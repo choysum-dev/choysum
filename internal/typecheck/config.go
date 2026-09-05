@@ -117,13 +117,13 @@ func resolveModulePaths(modulesRoot string) (map[string][]string, string, error)
 func resolveTypeRoots(repoRoot string) []string {
 	var roots []string
 	localTypes := filepath.Join(repoRoot, "node_modules", "@types")
-	if _, err := os.Stat(localTypes); err == nil {
+	if st, err := os.Stat(localTypes); err == nil && st.IsDir() {
 		roots = append(roots, filepath.ToSlash(localTypes))
 	}
 	// Optional explicit global types root only — never shell out to npm.
 	if globalRoot := strings.TrimSpace(os.Getenv("CHOYSUM_NPM_GLOBAL_ROOT")); globalRoot != "" {
 		globalTypes := filepath.Join(globalRoot, "@types")
-		if _, err := os.Stat(globalTypes); err == nil {
+		if st, err := os.Stat(globalTypes); err == nil && st.IsDir() {
 			roots = append(roots, filepath.ToSlash(globalTypes))
 		}
 	}

@@ -25,10 +25,29 @@ func buildProgram(host compiler.CompilerHost, fileNames []string, opts *core.Com
 	})
 }
 
-func collectDiagnostics(ctx context.Context, program *compiler.Program) []*ast.Diagnostic {
+func collectDiagnostics(ctx context.Context, program *compiler.Program) (diags []*ast.Diagnostic, err error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	defer func() {
+		if r := recover(); r != nil {
+			// typescript-go panics when a checker observes a canceled context.
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				err = ctxErr
+				return
+			}
+			panic(r)
+		}
+	}()
+	diags = runProgramDiagnostics(ctx, program)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return diags, nil
+}
+
+// Test hook for diagnostic collection edge cases.
+var runProgramDiagnostics = func(ctx context.Context, program *compiler.Program) []*ast.Diagnostic {
 	return compiler.GetDiagnosticsOfAnyProgram(
 		ctx,
 		program,
