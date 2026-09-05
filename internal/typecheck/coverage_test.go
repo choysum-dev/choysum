@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -66,6 +67,8 @@ func TestCollectRootFiles_ServiceExtras(t *testing.T) {
 	mustWrite(t, filepath.Join(app, "service", "__tests__", "t.ts"), "export {};\n")
 	mustWrite(t, filepath.Join(app, "service", "test", "helper.ts"), "export {};\n")
 	mustWrite(t, filepath.Join(app, "service", ".git", "objects", "hidden.ts"), "export {};\n")
+	mustWrite(t, filepath.Join(app, ".hidden.ts"), "export {};\n")
+	mustWrite(t, filepath.Join(app, "service", ".swap.ts"), "export {};\n")
 	mustWrite(t, filepath.Join(app, "readme.md"), "x\n")
 
 	files, err := CollectRootFiles(t.Context(), modules, "demo", ScopeService)
@@ -76,7 +79,7 @@ func TestCollectRootFiles_ServiceExtras(t *testing.T) {
 	if !strings.Contains(joined, "env.d.ts") || !strings.Contains(joined, "types.d.ts") || !strings.Contains(joined, "a.ts") {
 		t.Fatalf("missing expected files: %v", files)
 	}
-	for _, ban := range []string{"skip.gen.ts", "ok.spec.ts", "ok.test.d.ts", "skip.gen.d.ts", "node_modules/pkg/x.ts", "__tests__/t.ts", "test/helper.ts", ".git/objects/hidden.ts"} {
+	for _, ban := range []string{"skip.gen.ts", "ok.spec.ts", "ok.test.d.ts", "skip.gen.d.ts", "node_modules/pkg/x.ts", "__tests__/t.ts", "test/helper.ts", ".git/objects/hidden.ts", ".hidden.ts", ".swap.ts"} {
 		if strings.Contains(joined, ban) {
 			t.Fatalf("unexpected %s in %v", ban, files)
 		}
@@ -221,6 +224,7 @@ func TestAppendOverlayServiceRoots(t *testing.T) {
 		"/repo/modules/demo/service/nested/b.ts": "x",
 		"/repo/modules/demo/web/ui.ts":           "x",
 		"/repo/modules/demo/readme.md":           "x",
+		"/repo/modules/demo/.hidden.ts":          "x",
 		"/repo/modules/other/x.ts":               "x",
 		"  ":                                     "x",
 	}, true)
@@ -230,8 +234,12 @@ func TestAppendOverlayServiceRoots(t *testing.T) {
 			t.Fatalf("missing %s in %v", want, got)
 		}
 	}
-	if strings.Contains(joined, "web/ui.ts") || strings.Contains(joined, "other/x.ts") || strings.Contains(joined, "readme.md") {
+	if strings.Contains(joined, "web/ui.ts") || strings.Contains(joined, "other/x.ts") ||
+		strings.Contains(joined, "readme.md") || strings.Contains(joined, ".hidden.ts") {
 		t.Fatalf("unexpected roots: %v", got)
+	}
+	if len(got) != 3 || !slices.IsSorted(got) {
+		t.Fatalf("overlay roots must be sorted: %v", got)
 	}
 	if appendOverlayServiceRoots([]string{"a"}, modules, app, Scope(99), map[string]string{"x": "y"}, true)[0] != "a" {
 		t.Fatal("non-service scope must be unchanged")
@@ -279,6 +287,9 @@ func TestResolveOverlaysAgainstModules(t *testing.T) {
 	}
 	if resolveOverlaysAgainstModules(nil, modules) != nil {
 		t.Fatal("nil overlays")
+	}
+	if resolveOverlaysAgainstModules(map[string]string{"  ": "x", "": "y"}, modules) != nil {
+		t.Fatal("whitespace-only overlays must be nil")
 	}
 }
 
@@ -826,6 +837,9 @@ func TestShouldSkipTSFileName_Dts(t *testing.T) {
 	}
 	if !shouldSkipTSFileName("ok.test.d.ts") || !shouldSkipTSFileName("ok.spec.d.ts") {
 		t.Fatal("test declaration files must be skipped")
+	}
+	if !shouldSkipTSFileName(".hidden.ts") {
+		t.Fatal("dotfiles must be skipped")
 	}
 }
 

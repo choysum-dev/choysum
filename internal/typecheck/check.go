@@ -8,6 +8,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -101,6 +102,9 @@ func resolveOverlaysAgainstModules(overlays map[string]string, modulesPath strin
 		}
 		out[normalizePathKey(path)] = v
 	}
+	if len(out) == 0 {
+		return nil
+	}
 	return out
 }
 
@@ -112,7 +116,12 @@ func appendOverlayServiceRoots(files []string, modulesPath, app string, scope Sc
 	}
 	app = strings.TrimSpace(app)
 	appRoot := filepath.ToSlash(filepath.Join(modulesPath, app))
-	for path := range overlays {
+	overlayKeys := make([]string, 0, len(overlays))
+	for k := range overlays {
+		overlayKeys = append(overlayKeys, k)
+	}
+	slices.Sort(overlayKeys)
+	for _, path := range overlayKeys {
 		norm := normalizePathKey(path)
 		if norm == "" || shouldSkipTSFileName(filepath.Base(norm)) {
 			continue

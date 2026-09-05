@@ -144,6 +144,9 @@ func shouldSkipScanDir(name string) bool {
 }
 
 func shouldSkipTSFileName(name string) bool {
+	if strings.HasPrefix(name, ".") {
+		return true
+	}
 	lower := strings.ToLower(name)
 	if strings.HasSuffix(lower, ".test.ts") || strings.HasSuffix(lower, ".spec.ts") ||
 		strings.HasSuffix(lower, ".test.d.ts") || strings.HasSuffix(lower, ".spec.d.ts") {
