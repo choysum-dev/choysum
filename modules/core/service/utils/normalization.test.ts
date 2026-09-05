@@ -54,6 +54,7 @@ import {
   normalizeSequenceInt,
   assertOptionalDownloadDisposition,
   assertDownloadDisposition,
+  parseDownloadDisposition,
 } from '@/core/service/utils/normalization';
 
 test('normalizeOptionalString returns trimmed string or undefined', () => {
@@ -797,4 +798,10 @@ test('assertOptionalDownloadDisposition throws invalid_enum_value for unknown va
 test('assertDownloadDisposition defaults blank to attachment', () => {
   expect(assertDownloadDisposition(undefined)).toBe('attachment');
   expect(assertDownloadDisposition('inline')).toBe('inline');
+});
+
+test('parseDownloadDisposition returns ok/false without throwing', () => {
+  expect(parseDownloadDisposition(undefined)).toEqual({ ok: true, value: undefined });
+  expect(parseDownloadDisposition('Inline')).toEqual({ ok: true, value: 'inline' });
+  expect(parseDownloadDisposition('stream')).toEqual({ ok: false, raw: 'stream' });
 });

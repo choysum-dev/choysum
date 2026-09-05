@@ -838,6 +838,25 @@ export function normalizeContentType(value: unknown): string | undefined {
 /** Allowed Content-Disposition style values for attachment download/bind. */
 export type DownloadDispositionValue = 'inline' | 'attachment';
 
+/** Shared parse result for download disposition whitelist checks. */
+export type DownloadDispositionParseResult =
+  | { ok: true; value: DownloadDispositionValue | undefined }
+  | { ok: false; raw: string };
+
+/**
+ * Parse an optional download disposition whitelist without throwing.
+ *
+ * - blank / null / undefined → `{ ok: true, value: undefined }`
+ * - `inline` / `attachment` (case-insensitive) → `{ ok: true, value }`
+ * - anything else → `{ ok: false, raw }` (trimmed lowercase token)
+ */
+export function parseDownloadDisposition(value: unknown): DownloadDispositionParseResult {
+  const disposition = normalizeOptionalString(value, { lower: true });
+  if (disposition === undefined) return { ok: true, value: undefined };
+  if (disposition === 'inline' || disposition === 'attachment') return { ok: true, value: disposition };
+  return { ok: false, raw: disposition };
+}
+
 /**
  * Assert an optional download disposition whitelist.
  *
@@ -846,10 +865,9 @@ export type DownloadDispositionValue = 'inline' | 'attachment';
  * - anything else → {@link NormalizationError} `invalid_enum_value`
  */
 export function assertOptionalDownloadDisposition(value: unknown): DownloadDispositionValue | undefined {
-  const disposition = normalizeOptionalString(value, { lower: true });
-  if (disposition === undefined) return undefined;
-  if (disposition === 'inline' || disposition === 'attachment') return disposition;
-  raiseNormalizationError('invalid_enum_value');
+  const parsed = parseDownloadDisposition(value);
+  if (!parsed.ok) raiseNormalizationError('invalid_enum_value');
+  return parsed.value;
 }
 
 /**

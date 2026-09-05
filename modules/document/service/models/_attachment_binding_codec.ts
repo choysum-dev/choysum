@@ -6,8 +6,7 @@ import {
   asRecord,
   normalizeOptionalNonNegativeInt,
   normalizeChecksumSha256,
-  assertDownloadDisposition as assertDownloadDispositionValue,
-  NormalizationError,
+  parseDownloadDisposition,
 } from '@/core/service/utils/normalization';
 import { createTranslate } from '@/core/service/i18n';
 import {
@@ -146,22 +145,18 @@ export function normalizePrincipalCompanyIds(principal: PrincipalContext, active
 }
 
 export function assertDownloadDisposition(value: unknown): DownloadDisposition {
-  try {
-    return assertDownloadDispositionValue(value);
-  } catch (err) {
-    if (err instanceof NormalizationError && err.code === 'invalid_enum_value') {
-      const disposition = normalizeOptionalString(value);
-      throwDocumentError(
-        DocumentErrCode.INVALID_ARGUMENT,
-        _t('downloadDisposition must be inline or attachment', { scope: 'service/models/_attachment_binding_codec' }),
-        GrpcCode.InvalidArgument,
-        {
-          downloadDisposition: disposition,
-        }
-      );
-    }
-    throw err;
+  const parsed = parseDownloadDisposition(value);
+  if (!parsed.ok) {
+    throwDocumentError(
+      DocumentErrCode.INVALID_ARGUMENT,
+      _t('downloadDisposition must be inline or attachment', { scope: 'service/models/_attachment_binding_codec' }),
+      GrpcCode.InvalidArgument,
+      {
+        downloadDisposition: parsed.raw,
+      }
+    );
   }
+  return parsed.value ?? 'attachment';
 }
 
 // ---------------------------------------------------------------------------
