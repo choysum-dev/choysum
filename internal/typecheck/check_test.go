@@ -64,6 +64,46 @@ func TestCheck_ServiceTypeError(t *testing.T) {
 	}
 }
 
+func TestCheck_WebTSFixture(t *testing.T) {
+	repo, modules := fixtureRoots(t, "web_ts_ok")
+	res, err := Check(t.Context(), Options{
+		ModulesPath: modules,
+		RepoRoot:    repo,
+		App:         "demo",
+		Scope:       ScopeNoVue,
+	})
+	if err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	if res.HasErrors() {
+		t.Fatalf("unexpected errors: %+v", res.Diagnostics)
+	}
+
+	repoErr, modulesErr := fixtureRoots(t, "web_ts_err")
+	resErr, err := Check(t.Context(), Options{
+		ModulesPath: modulesErr,
+		RepoRoot:    repoErr,
+		App:         "demo",
+		Scope:       ScopeNoVue,
+	})
+	if err != nil {
+		t.Fatalf("Check err fixture: %v", err)
+	}
+	if !resErr.HasErrors() {
+		t.Fatal("expected type errors in web_ts_err")
+	}
+	found := false
+	for _, d := range resErr.Diagnostics {
+		if d.Category == "error" && strings.Contains(d.File, "bad.ts") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected bad.ts diagnostic, got %#v", resErr.Diagnostics)
+	}
+}
+
 func fixtureRoots(t *testing.T, name string) (repoRoot, modulesPath string) {
 	t.Helper()
 	src := filepath.Join("testdata", name)

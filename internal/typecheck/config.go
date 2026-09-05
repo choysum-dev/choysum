@@ -17,7 +17,7 @@ import (
 )
 
 // BuildCompilerOptions builds compiler options aligned with the historical
-// typecheck temporary tsconfig (service / strict / bundler).
+// typecheck temporary tsconfig (service + web TS/TSX / strict / bundler).
 //
 // Relative path aliases are resolved against tsconfig compilerOptions.baseUrl
 // when set (default: modules root). CompilerOptions.BaseUrl itself is not set:
@@ -50,6 +50,7 @@ func BuildCompilerOptions(modulesPath, repoRoot string) (*core.CompilerOptions, 
 		Target:                           core.ScriptTargetES2020,
 		Module:                           core.ModuleKindESNext,
 		ModuleResolution:                 core.ModuleResolutionKindBundler,
+		Jsx:                              core.JsxEmitPreserve,
 		Strict:                           core.TSTrue,
 		StrictNullChecks:                 core.TSTrue,
 		StrictPropertyInitialization:     core.TSFalse,

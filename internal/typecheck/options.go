@@ -10,6 +10,9 @@ const (
 	// ScopeService checks modules/<app>/*.ts and modules/<app>/service/**/*.ts
 	// plus shared .d.ts under the app (excluding web/ and test trees).
 	ScopeService Scope = iota
+	// ScopeNoVue checks ScopeService roots plus modules/<app>/web/**/*.{ts,tsx}
+	// and web .d.ts. It skips .vue files.
+	ScopeNoVue
 )
 
 // Options configures a Check run for a single application.
