@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 // Package vue provides Vue SFC service-script codegen and diagnostic remap
-// for Go-native typecheck. PR-3 uses GoldenCoder (committed goldens); QuickJS
-// language-core lands in a later PR.
+// for Go-native typecheck. Default ScopeAll uses QuickJSCoder (embedded
+// language-core); GoldenCoder remains available for fixture tests.
 package vue
 
 // HelperVirtualRoot is the stable VFS prefix for vendored language-core helpers.

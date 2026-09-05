@@ -99,16 +99,19 @@ func TestCheck_VueImportChild(t *testing.T) {
 	}
 }
 
-func TestCheck_ScopeAll_RequiresCoder(t *testing.T) {
+func TestCheck_ScopeAll_DefaultQuickJS(t *testing.T) {
 	repo, modules := fixtureRoots(t, "vue_check_ok")
-	_, err := Check(t.Context(), Options{
+	res, err := Check(t.Context(), Options{
 		ModulesPath: modules,
 		RepoRoot:    repo,
 		App:         "demo",
 		Scope:       ScopeAll,
 	})
-	if err == nil || !strings.Contains(err.Error(), "VueGoldenDir") {
-		t.Fatalf("err = %v", err)
+	if err != nil {
+		t.Fatalf("Check with default QuickJSCoder: %v", err)
+	}
+	if res.HasErrors() {
+		t.Fatalf("unexpected errors: %+v", res.Diagnostics)
 	}
 }
 

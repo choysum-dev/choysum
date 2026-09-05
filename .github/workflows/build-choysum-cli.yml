@@ -50,7 +50,7 @@ jobs:
           set -euo pipefail
           embed_hash="$(
             {
-              find internal/bootstrap/web/dist pkg/jsengine/scripts/vuesfc/dist -type f -print0 \
+              find internal/bootstrap/web/dist pkg/jsengine/scripts/vuesfc/dist pkg/jsengine/scripts/vuevirtual/dist -type f -print0 \
                 | sort -z \
                 | xargs -0 sha256sum
             } | sha256sum | awk '{print $1}'

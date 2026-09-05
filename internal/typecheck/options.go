@@ -30,9 +30,11 @@ type Options struct {
 	Overlays    map[string]string // optional slash-path → content overrides
 
 	// Coder produces Vue service scripts for ScopeAll. When nil and ScopeAll,
-	// Check constructs vue.NewGoldenCoder(VueGoldenDir).
+	// Check uses a cached QuickJSCoder (embedded language-core). Set Coder or
+	// VueGoldenDir to override (tests often use GoldenCoder).
 	Coder vue.Coder
 	// VueGoldenDir is the directory of committed *.vue.service.txt goldens.
+	// When Coder is nil and VueGoldenDir is set, Check uses GoldenCoder.
 	VueGoldenDir string
 }
 

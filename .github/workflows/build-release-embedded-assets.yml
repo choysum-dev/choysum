@@ -30,8 +30,18 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Setup Node (vuevirtual npm deps)
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
       - name: Build Vue SFC embed asset (go generate)
         run: go generate ./pkg/jsengine/scripts/vuesfc/...
+
+      - name: Build Vue virtual embed asset (go generate)
+        run: |
+          npm install --prefix pkg/jsengine/scripts/vuevirtual
+          go generate ./pkg/jsengine/scripts/vuevirtual/...
 
       - name: Generate bootstrap web assets (go generate)
         run: go generate ./internal/bootstrap/web/...
@@ -50,7 +60,8 @@ jobs:
           mkdir -p "$OUTPUT_DIR"
           tar -czf "$ARCHIVE_PATH" \
             internal/bootstrap/web/dist \
-            pkg/jsengine/scripts/vuesfc/dist/index.js
+            pkg/jsengine/scripts/vuesfc/dist/index.js \
+            pkg/jsengine/scripts/vuevirtual/dist/index.js
 
           (
             cd "$OUTPUT_DIR"
