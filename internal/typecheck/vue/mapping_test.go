@@ -109,14 +109,14 @@ func TestGoldenCoder_LoadsFixture(t *testing.T) {
 
 	// Corrupt mappings JSON.
 	badDir := t.TempDir()
-	mustWrite(t, filepath.Join(badDir, "x.vue.service.ts"), "export {};\n")
+	mustWrite(t, filepath.Join(badDir, "x.vue.service.txt"), "export {};\n")
 	mustWrite(t, filepath.Join(badDir, "x.vue.mappings.json"), "{not-json")
 	if _, err := vue.NewGoldenCoder(badDir).CreateServiceScript("x.vue", "", vue.CodegenOptions{}); err == nil {
 		t.Fatal("expected parse error")
 	}
 	// Missing mappings file.
 	badDir2 := t.TempDir()
-	mustWrite(t, filepath.Join(badDir2, "y.vue.service.ts"), "export {};\n")
+	mustWrite(t, filepath.Join(badDir2, "y.vue.service.txt"), "export {};\n")
 	if _, err := vue.NewGoldenCoder(badDir2).CreateServiceScript("y.vue", "", vue.CodegenOptions{}); err == nil {
 		t.Fatal("expected missing meta")
 	}

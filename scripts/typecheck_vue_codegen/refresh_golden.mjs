@@ -44,7 +44,9 @@ function main() {
       currentDirectory: "/fixtures",
     });
     const base = path.join(goldenDir, name);
-    fs.writeFileSync(`${base}.service.ts`, result.content);
+    // .service.txt (not .ts): content is TypeScript, but must not be scanned as
+    // product JS/TS by Code Quality / CodeQL extractors.
+    fs.writeFileSync(`${base}.service.txt`, result.content);
     fs.writeFileSync(
       `${base}.mappings.json`,
       JSON.stringify(
@@ -58,7 +60,7 @@ function main() {
         2,
       ) + "\n",
     );
-    console.log("wrote", path.relative(repoRoot, `${base}.service.ts`));
+    console.log("wrote", path.relative(repoRoot, `${base}.service.txt`));
   }
 }
 

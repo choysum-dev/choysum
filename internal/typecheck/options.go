@@ -32,7 +32,7 @@ type Options struct {
 	// Coder produces Vue service scripts for ScopeAll. When nil and ScopeAll,
 	// Check constructs vue.NewGoldenCoder(VueGoldenDir).
 	Coder vue.Coder
-	// VueGoldenDir is the directory of committed *.vue.service.ts goldens.
+	// VueGoldenDir is the directory of committed *.vue.service.txt goldens.
 	VueGoldenDir string
 }
 

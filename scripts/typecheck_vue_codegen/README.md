@@ -32,7 +32,7 @@ node scripts/typecheck_vue_codegen/refresh_golden.mjs
 
 Writes:
 
-- `internal/typecheck/testdata/vue/golden/<Fixture>.vue.service.ts`
+- `internal/typecheck/testdata/vue/golden/<Fixture>.vue.service.txt`
 - `internal/typecheck/testdata/vue/golden/<Fixture>.vue.mappings.json`
 
 from `internal/typecheck/testdata/vue/fixtures/*.vue`.

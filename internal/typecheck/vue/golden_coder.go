@@ -32,9 +32,10 @@ func NewGoldenCoder(goldenDir string) *GoldenCoder {
 	return &GoldenCoder{GoldenDir: goldenDir}
 }
 
-// CreateServiceScript loads <basename>.service.ts and <basename>.mappings.json
-// from GoldenDir. Lookup is by basename (fixture goldens). When source is
-// non-empty it must match the golden sourceSHA256.
+// CreateServiceScript loads <basename>.service.txt and <basename>.mappings.json
+// from GoldenDir. Lookup is by basename (fixture goldens). The .txt suffix keeps
+// language-core output out of JS/TS static analysis. When source is non-empty
+// it must match the golden sourceSHA256.
 func (c *GoldenCoder) CreateServiceScript(path, source string, _ CodegenOptions) (ServiceScript, error) {
 	if c == nil || strings.TrimSpace(c.GoldenDir) == "" {
 		return ServiceScript{}, fmt.Errorf("vue: GoldenCoder.GoldenDir is required")
@@ -43,7 +44,7 @@ func (c *GoldenCoder) CreateServiceScript(path, source string, _ CodegenOptions)
 	if base == "" || base == "." || base == string(filepath.Separator) {
 		return ServiceScript{}, fmt.Errorf("vue: invalid vue path %q", path)
 	}
-	servicePath := filepath.Join(c.GoldenDir, base+".service.ts")
+	servicePath := filepath.Join(c.GoldenDir, base+".service.txt")
 	metaPath := filepath.Join(c.GoldenDir, base+".mappings.json")
 	content, err := os.ReadFile(servicePath)
 	if err != nil {
