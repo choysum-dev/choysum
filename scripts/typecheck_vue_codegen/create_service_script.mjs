@@ -155,7 +155,6 @@ export function rewriteVueHelperReferences(content) {
   ];
   /** @type {{ index: number, delta: number }[]} */
   const edits = [];
-  let out = content;
   // Apply left-to-right so later match indices stay valid in the original string;
   // track deltas in original coordinates for mapping adjustment.
   const matches = [];
@@ -168,7 +167,7 @@ export function rewriteVueHelperReferences(content) {
   }
   matches.sort((a, b) => a.index - b.index);
   let shift = 0;
-  out = content;
+  let out = content;
   for (const m of matches) {
     const at = m.index + shift;
     out = out.slice(0, at) + m.to + out.slice(at + m.from.length);
