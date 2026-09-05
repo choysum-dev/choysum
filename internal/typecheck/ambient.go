@@ -24,11 +24,24 @@ func AmbientRoot(modulesPath string) string {
 // absolute slash paths under AmbientRoot(modulesPath).
 func BuiltInAmbientOverlays(modulesPath string) map[string]string {
 	root := AmbientRoot(modulesPath)
-	out := make(map[string]string, 2)
+	out := make(map[string]string, 3)
 	if rel, content := ViteClientOverlay(); rel != "" {
 		out[normalizePathKey(filepath.Join(root, rel))] = content
 	}
 	if rel, content := SubpathStubOverlay(); rel != "" {
+		out[normalizePathKey(filepath.Join(root, rel))] = content
+	}
+	return out
+}
+
+// BuiltInVueAmbientOverlays returns BuiltInAmbientOverlays plus the vue shim.
+func BuiltInVueAmbientOverlays(modulesPath string) map[string]string {
+	out := BuiltInAmbientOverlays(modulesPath)
+	if out == nil {
+		out = make(map[string]string, 1)
+	}
+	root := AmbientRoot(modulesPath)
+	if rel, content := VueShimOverlay(); rel != "" {
 		out[normalizePathKey(filepath.Join(root, rel))] = content
 	}
 	return out

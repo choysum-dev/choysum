@@ -1,0 +1,117 @@
+{
+  "embeddedId": "script_ts",
+  "scriptKind": "ts",
+  "mappings": [
+    {
+      "sourceFile": "/fixtures/script_setup_ok.vue",
+      "sourceStart": 24,
+      "sourceEnd": 25,
+      "generatedStart": 146,
+      "generatedEnd": 147,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/script_setup_ok.vue",
+      "sourceStart": 25,
+      "sourceEnd": 54,
+      "generatedStart": 147,
+      "generatedEnd": 176,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/script_setup_ok.vue",
+      "sourceStart": 79,
+      "sourceEnd": 82,
+      "generatedStart": 932,
+      "generatedEnd": 935,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/script_setup_ok.vue",
+      "sourceStart": 94,
+      "sourceEnd": 97,
+      "generatedStart": 954,
+      "generatedEnd": 957,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/script_setup_ok.vue",
+      "sourceStart": 79,
+      "sourceEnd": 79,
+      "generatedStart": 959,
+      "generatedEnd": 959,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/script_setup_ok.vue",
+      "sourceStart": 82,
+      "sourceEnd": 82,
+      "generatedStart": 962,
+      "generatedEnd": 962,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/script_setup_ok.vue",
+      "sourceStart": 85,
+      "sourceEnd": 86,
+      "generatedStart": 966,
+      "generatedEnd": 967,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/script_setup_ok.vue",
+      "sourceStart": 86,
+      "sourceEnd": 86,
+      "generatedStart": 967,
+      "generatedEnd": 967,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/script_setup_ok.vue",
+      "sourceStart": 89,
+      "sourceEnd": 89,
+      "generatedStart": 980,
+      "generatedEnd": 980,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/script_setup_ok.vue",
+      "sourceStart": 86,
+      "sourceEnd": 89,
+      "generatedStart": 977,
+      "generatedEnd": 980,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/script_setup_ok.vue",
+      "sourceStart": 89,
+      "sourceEnd": 90,
+      "generatedStart": 980,
+      "generatedEnd": 981,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/script_setup_ok.vue",
+      "sourceStart": 86,
+      "sourceEnd": 89,
+      "generatedStart": 1045,
+      "generatedEnd": 1048
+    },
+    {
+      "sourceFile": "/fixtures/script_setup_ok.vue",
+      "sourceStart": 24,
+      "sourceEnd": 24,
+      "generatedStart": 1058,
+      "generatedEnd": 1058,
+      "verification": {}
+    },
+    {
+      "sourceFile": "/fixtures/script_setup_ok.vue",
+      "sourceStart": 54,
+      "sourceEnd": 54,
+      "generatedStart": 1070,
+      "generatedEnd": 1070,
+      "verification": {}
+    }
+  ]
+}

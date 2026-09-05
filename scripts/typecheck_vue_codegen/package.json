@@ -1,0 +1,9 @@
+{
+  "name": "typecheck-vue-codegen",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@vue/language-core": "3.3.7",
+    "typescript": "6.0.3"
+  }
+}

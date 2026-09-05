@@ -10,11 +10,14 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/choysum-dev/choysum/internal/typecheck/vue"
 )
 
 // Check typechecks an application's TypeScript roots using
 // typescript-go-internal. It does not invoke Node or vue-tsc.
 // ScopeNoVue includes web TS/TSX plus embedded vite/client and subpath ambient.
+// ScopeAll also includes .vue files via Coder service-script overlays (Strategy A).
 func Check(ctx context.Context, opts Options) (Result, error) {
 	if err := validateOptions(opts); err != nil {
 		return Result{}, err
@@ -52,15 +55,35 @@ func Check(ctx context.Context, opts Options) (Result, error) {
 
 	overlays := resolveOverlaysAgainstModules(opts.Overlays, modulesPath)
 	var ambientOverlays map[string]string
-	if scope == ScopeNoVue {
+	var vueScripts map[string]vue.ServiceScript
+	switch scope {
+	case ScopeNoVue:
 		ambientOverlays = BuiltInAmbientOverlays(modulesPath)
-		// User overlays win over built-in ambient on the same path.
 		overlays = mergeOverlays(ambientOverlays, overlays)
+	case ScopeAll:
+		ambientOverlays = BuiltInVueAmbientOverlays(modulesPath)
+		overlays = mergeOverlays(ambientOverlays, overlays)
+		coder, err := resolveVueCoder(opts)
+		if err != nil {
+			return Result{}, err
+		}
+		vueOverlays, scripts, err := prepareVueOverlays(coder, collectVuePaths(files), modulesPath)
+		if err != nil {
+			return Result{}, err
+		}
+		vueScripts = scripts
+		overlays = mergeOverlays(overlays, vueOverlays)
+		files = rewriteVueRootsToProgramPaths(files)
 	}
 	fs := newTypecheckFS(overlays)
 	files = appendOverlayRoots(files, modulesPath, opts.App, scope, overlays, fs.UseCaseSensitiveFileNames())
 	for _, ambient := range sortedOverlayPaths(ambientOverlays) {
 		files = appendUniqueSlash(files, ambient)
+	}
+	if scope == ScopeAll {
+		for _, helper := range sortedOverlayPaths(vue.HelperOverlays()) {
+			files = appendUniqueSlash(files, normalizePathKey(helper))
+		}
 	}
 	if coreAmbient := filepath.ToSlash(filepath.Join(modulesPath, "core", "types", "$choysum.d.ts")); fs.FileExists(coreAmbient) {
 		files = appendUniqueSlash(files, coreAmbient)
@@ -89,7 +112,9 @@ func Check(ctx context.Context, opts Options) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	return toResult(diags), nil
+	res := toResult(diags)
+	res.Diagnostics = remapDiagnostics(res.Diagnostics, vueScripts)
+	return res, nil
 }
 
 // Test hook for mid-phase cancellation coverage.
@@ -122,7 +147,7 @@ func resolveOverlaysAgainstModules(overlays map[string]string, modulesPath strin
 // rules (app-root / service / web), including virtual files.
 func appendOverlayRoots(files []string, modulesPath, app string, scope Scope, overlays map[string]string, caseSensitive bool) []string {
 	switch scope {
-	case ScopeService, ScopeNoVue:
+	case ScopeService, ScopeNoVue, ScopeAll:
 	default:
 		return files
 	}
@@ -136,15 +161,22 @@ func appendOverlayRoots(files []string, modulesPath, app string, scope Scope, ov
 		overlayKeys = append(overlayKeys, k)
 	}
 	slices.Sort(overlayKeys)
+	allowTSX := scope == ScopeNoVue || scope == ScopeAll
+	allowVue := scope == ScopeAll
 	for _, path := range overlayKeys {
 		norm := normalizePathKey(path)
 		if norm == "" || shouldSkipTSFileName(filepath.Base(norm)) {
 			continue
 		}
 		lower := strings.ToLower(norm)
+		isVue := strings.HasSuffix(lower, ".vue")
 		isTSX := strings.HasSuffix(lower, ".tsx")
 		isTS := strings.HasSuffix(lower, ".ts")
-		if !(isTS || (isTSX && scope == ScopeNoVue)) {
+		if isVue {
+			if !allowVue {
+				continue
+			}
+		} else if !(isTS || (isTSX && allowTSX)) {
 			continue
 		}
 		rel, ok := cutPathPrefix(norm, appRoot+"/", caseSensitive)
@@ -152,8 +184,8 @@ func appendOverlayRoots(files []string, modulesPath, app string, scope Scope, ov
 			continue
 		}
 		if !strings.Contains(rel, "/") {
-			// App-root roots are .ts / .d.ts only (not .tsx), matching CollectRootFiles.
-			if isTSX {
+			// App-root roots are .ts / .d.ts only (not .tsx / .vue).
+			if isTSX || isVue {
 				continue
 			}
 			files = appendUniqueSlash(files, norm)
@@ -165,11 +197,11 @@ func appendOverlayRoots(files []string, modulesPath, app string, scope Scope, ov
 		}
 		switch {
 		case strings.HasPrefix(relLower, "service/"):
-			if isTSX {
+			if isTSX || isVue {
 				continue
 			}
-		case scope == ScopeNoVue && strings.HasPrefix(relLower, "web/"):
-			// web allows .ts and .tsx
+		case allowTSX && strings.HasPrefix(relLower, "web/"):
+			// web allows .ts/.tsx and, for ScopeAll, .vue
 		default:
 			continue
 		}
@@ -182,6 +214,10 @@ func appendOverlayRoots(files []string, modulesPath, app string, scope Scope, ov
 			}
 		}
 		if skip {
+			continue
+		}
+		if isVue {
+			files = appendUniqueSlash(files, toVueProgramPath(norm))
 			continue
 		}
 		files = appendUniqueSlash(files, norm)

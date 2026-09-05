@@ -3,6 +3,8 @@
 
 package typecheck
 
+import "github.com/choysum-dev/choysum/internal/typecheck/vue"
+
 // Scope selects which roots Check includes.
 type Scope int
 
@@ -13,6 +15,9 @@ const (
 	// ScopeNoVue checks ScopeService roots plus modules/<app>/web/**/*.{ts,tsx}
 	// and web .d.ts. It skips .vue files.
 	ScopeNoVue
+	// ScopeAll checks ScopeNoVue roots plus modules/<app>/web/**/*.vue
+	// (Host serves language-core service scripts via Coder overlays).
+	ScopeAll
 )
 
 // Options configures a Check run for a single application.
@@ -23,6 +28,12 @@ type Options struct {
 	Scope       Scope // zero value is ScopeService
 	KeepDir     string
 	Overlays    map[string]string // optional slash-path → content overrides
+
+	// Coder produces Vue service scripts for ScopeAll. When nil and ScopeAll,
+	// Check constructs vue.NewGoldenCoder(VueGoldenDir).
+	Coder vue.Coder
+	// VueGoldenDir is the directory of committed *.vue.service.ts goldens.
+	VueGoldenDir string
 }
 
 // CodegenOptions is reserved for Vue service-script generation.

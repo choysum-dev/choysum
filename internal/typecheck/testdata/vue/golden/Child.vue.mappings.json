@@ -1,0 +1,117 @@
+{
+  "embeddedId": "script_ts",
+  "scriptKind": "ts",
+  "mappings": [
+    {
+      "sourceFile": "/fixtures/Child.vue",
+      "sourceStart": 24,
+      "sourceEnd": 25,
+      "generatedStart": 146,
+      "generatedEnd": 147,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/Child.vue",
+      "sourceStart": 25,
+      "sourceEnd": 56,
+      "generatedStart": 147,
+      "generatedEnd": 178,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/Child.vue",
+      "sourceStart": 81,
+      "sourceEnd": 85,
+      "generatedStart": 938,
+      "generatedEnd": 942,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/Child.vue",
+      "sourceStart": 99,
+      "sourceEnd": 103,
+      "generatedStart": 961,
+      "generatedEnd": 965,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/Child.vue",
+      "sourceStart": 81,
+      "sourceEnd": 81,
+      "generatedStart": 967,
+      "generatedEnd": 967,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/Child.vue",
+      "sourceStart": 85,
+      "sourceEnd": 85,
+      "generatedStart": 970,
+      "generatedEnd": 970,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/Child.vue",
+      "sourceStart": 88,
+      "sourceEnd": 89,
+      "generatedStart": 974,
+      "generatedEnd": 975,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/Child.vue",
+      "sourceStart": 89,
+      "sourceEnd": 89,
+      "generatedStart": 975,
+      "generatedEnd": 975,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/Child.vue",
+      "sourceStart": 94,
+      "sourceEnd": 94,
+      "generatedStart": 990,
+      "generatedEnd": 990,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/Child.vue",
+      "sourceStart": 89,
+      "sourceEnd": 94,
+      "generatedStart": 985,
+      "generatedEnd": 990,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/Child.vue",
+      "sourceStart": 94,
+      "sourceEnd": 95,
+      "generatedStart": 990,
+      "generatedEnd": 991,
+      "verification": true
+    },
+    {
+      "sourceFile": "/fixtures/Child.vue",
+      "sourceStart": 89,
+      "sourceEnd": 94,
+      "generatedStart": 1056,
+      "generatedEnd": 1061
+    },
+    {
+      "sourceFile": "/fixtures/Child.vue",
+      "sourceStart": 24,
+      "sourceEnd": 24,
+      "generatedStart": 1071,
+      "generatedEnd": 1071,
+      "verification": {}
+    },
+    {
+      "sourceFile": "/fixtures/Child.vue",
+      "sourceStart": 56,
+      "sourceEnd": 56,
+      "generatedStart": 1083,
+      "generatedEnd": 1083,
+      "verification": {}
+    }
+  ]
+}
