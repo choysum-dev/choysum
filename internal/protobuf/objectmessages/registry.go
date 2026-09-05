@@ -93,18 +93,18 @@ func CollectUsed(protoTypes ...string) []Def {
 		if pt == "" {
 			continue
 		}
-		// Strip repeated prefix if present (future nested use).
+		// Strip repeated prefix if present (e.g. repeated FieldRuleSpec).
 		pt = strings.TrimPrefix(pt, "repeated ")
 		pt = strings.TrimSpace(pt)
-		if def, ok := Lookup(pt); ok {
-			seen[def.ProtoName] = def
+		def, ok := Lookup(pt)
+		if !ok {
+			// ProtoName may differ from TSName in future registry entries.
+			def, ok = lookupByProtoName(pt)
+		}
+		if !ok {
 			continue
 		}
-		for _, def := range registry {
-			if def.ProtoName == pt {
-				seen[def.ProtoName] = def
-			}
-		}
+		seen[def.ProtoName] = def
 	}
 	out := make([]Def, 0, len(seen))
 	for _, def := range seen {
@@ -114,6 +114,16 @@ func CollectUsed(protoTypes ...string) []Def {
 		return out[i].ProtoName < out[j].ProtoName
 	})
 	return out
+}
+
+func lookupByProtoName(protoName string) (Def, bool) {
+	protoName = strings.TrimSpace(protoName)
+	for _, def := range registry {
+		if def.ProtoName == protoName {
+			return def, true
+		}
+	}
+	return Def{}, false
 }
 
 // All returns a copy of the full registry (stable ProtoName order).

@@ -24,6 +24,15 @@ import (
 	"github.com/choysum-dev/choysum/pkg/meta"
 )
 
+func TestTypeAliasOrSymbolName_Nil(t *testing.T) {
+	if got := typeAliasOrSymbolName(nil); got != "" {
+		t.Fatalf("typeAliasOrSymbolName(nil)=%q", got)
+	}
+	if mapped, ok := mapRegisteredObjectMessage(nil); ok || mapped != "" {
+		t.Fatalf("mapRegisteredObjectMessage(nil)=(%q,%v)", mapped, ok)
+	}
+}
+
 func TestSemanticTypeResolver_MapsAliasesAndLiteralUnions(t *testing.T) {
 	if !bundled.Embedded {
 		t.Skip("bundled libs not embedded")
@@ -163,8 +172,16 @@ export default class User {
     return { kind: 'true' }
   }
 
+  public static async NullableFieldRule(spec: FieldRuleSpec | null): Promise<FieldRuleSpec | null | undefined> {
+    return spec
+  }
+
   public static async AnonymousObject(): Promise<{ name: string }> {
     return { name: '' }
+  }
+
+  public static async ListFieldRules(): Promise<FieldRuleSpec[]> {
+    return []
   }
 }
 `
@@ -190,9 +207,20 @@ export default class User {
 	if cond == nil || cond.ProtobufType != "ConditionEnvelope" {
 		t.Fatalf("GetRecordRuleCondition ProtobufType=%v, want ConditionEnvelope", cond)
 	}
+	nullable := byName["NullableFieldRule"]
+	if nullable == nil || nullable.ProtobufType != "FieldRuleSpec" {
+		t.Fatalf("NullableFieldRule return ProtobufType=%v, want FieldRuleSpec", nullable)
+	}
+	if len(nullable.Parameters) != 1 || nullable.Parameters[0].ProtobufType != "FieldRuleSpec" {
+		t.Fatalf("NullableFieldRule params=%v", nullable.Parameters)
+	}
 	anon := byName["AnonymousObject"]
 	if anon == nil || anon.ProtobufType != "google.protobuf.Value" {
 		t.Fatalf("AnonymousObject ProtobufType=%v, want Value", anon)
+	}
+	list := byName["ListFieldRules"]
+	if list == nil || list.ProtobufType != "repeated FieldRuleSpec" {
+		t.Fatalf("ListFieldRules ProtobufType=%v, want repeated FieldRuleSpec", list)
 	}
 }
 

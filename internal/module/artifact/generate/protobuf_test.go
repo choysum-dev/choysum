@@ -76,6 +76,64 @@ func TestProtobufGenerateSharedObjectMessages(t *testing.T) {
 	}
 }
 
+func TestProtobufGenerateTemplateParseError(t *testing.T) {
+	old := tplStr
+	tplStr = "{{"
+	t.Cleanup(func() { tplStr = old })
+
+	runtimeScope := newGeneratorScope(t)
+	gen := &protobufGenerator{
+		runtimeScope:    runtimeScope,
+		module:          &meta.Module{ApplicationStr: "crm"},
+		modulesProtoDir: t.TempDir(),
+		distAppDir:      filepath.Join(t.TempDir(), "apps", "crm"),
+	}
+	_, err := gen.generate(context.Background(), &meta.Application{
+		Name: "crm",
+		Models: []*meta.Model{{
+			Name:     "Partner",
+			Services: []*meta.Service{{Name: "Echo", ProtobufType: "string"}},
+		}},
+	})
+	if err == nil {
+		t.Fatal("expected template parse error")
+	}
+}
+
+func TestProtobufSharedObjectMessagesNilAndSparse(t *testing.T) {
+	if got := protobufSharedObjectMessages(nil); got != nil {
+		t.Fatalf("nil app: %+v", got)
+	}
+	app := &meta.Application{
+		Name: "auth",
+		Models: []*meta.Model{
+			nil,
+			{
+				Name: "User",
+				Services: []*meta.Service{
+					nil,
+					{
+						Name:         "GetFieldRuleSpec",
+						ProtobufType: "FieldRuleSpec",
+						Parameters: []*meta.Parameter{
+							nil,
+							{Name: "model", ProtobufType: "string"},
+						},
+					},
+					{
+						Name:         "List",
+						ProtobufType: "repeated ConditionEnvelope",
+					},
+				},
+			},
+		},
+	}
+	got := protobufSharedObjectMessages(app)
+	if len(got) != 2 || got[0].ProtoName != "ConditionEnvelope" || got[1].ProtoName != "FieldRuleSpec" {
+		t.Fatalf("shared messages: %+v", got)
+	}
+}
+
 func TestProtobufGenerateUsesProtobufTypeForEmptyReturns(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
 	protoDir := t.TempDir()

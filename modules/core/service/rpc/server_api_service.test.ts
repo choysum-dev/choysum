@@ -393,12 +393,25 @@ test('server transport keeps FieldRuleSpec message semantics aligned for local a
   }
 });
 
-test('FieldRuleSpec dirty payloads fail-hard the same way on local and remote paths', async () => {
+test('AuthUserService FieldRuleSpec dirty payloads fail-hard on local and remote paths', async () => {
   const { parseFieldRuleSpecFromUnknown } = await import('../api/authz_helpers');
+  const { AuthUserService } = await import('../orm/repository/authz/auth_user_service');
   const originalPool = (globalThis as any).pool;
   const originalChoysum = (globalThis as any).$choysum;
 
+  // Fail-hard is enforced by the repository consumer parse (same as getRepositoryFieldRuleSpec),
+  // after AuthUserService returns over either local pool or remote unary.
   const dirty = { denyReadFields: 'not-an-array' };
+
+  async function expectParseFailHard(run: () => Promise<unknown>) {
+    let err: unknown;
+    try {
+      parseFieldRuleSpecFromUnknown(await run());
+    } catch (e) {
+      err = e;
+    }
+    expect(String(err)).toMatch(/invalid_field_rule_spec/);
+  }
 
   try {
     (globalThis as any).pool = {
@@ -413,38 +426,12 @@ test('FieldRuleSpec dirty payloads fail-hard the same way on local and remote pa
       throw new Error('bridge should not be called for local dirty FieldRuleSpec');
     });
 
-    const localService = CreateServerApiService<any>(
-      'auth.User',
-      'GetFieldRuleSpec',
-      (model: string) => [{ name: 'model', type: 'string', value: model }],
-      { name: 'result', type: 'FieldRuleSpec' }
-    );
-
-    let localErr: unknown;
-    try {
-      parseFieldRuleSpecFromUnknown(await localService('demo.Model'));
-    } catch (err) {
-      localErr = err;
-    }
-    expect(String(localErr)).toMatch(/invalid_field_rule_spec/);
+    await expectParseFailHard(() => AuthUserService.GetFieldRuleSpec('demo.Model'));
 
     (globalThis as any).pool = undefined;
     stubBridge(async () => ({ result: dirty }));
 
-    const remoteService = CreateServerApiService<any>(
-      'auth.User',
-      'GetFieldRuleSpec',
-      (model: string) => [{ name: 'model', type: 'string', value: model }],
-      { name: 'result', type: 'FieldRuleSpec' }
-    );
-
-    let remoteErr: unknown;
-    try {
-      parseFieldRuleSpecFromUnknown(await remoteService('demo.Model'));
-    } catch (err) {
-      remoteErr = err;
-    }
-    expect(String(remoteErr)).toMatch(/invalid_field_rule_spec/);
+    await expectParseFailHard(() => AuthUserService.GetFieldRuleSpec('demo.Model'));
   } finally {
     (globalThis as any).pool = originalPool;
     (globalThis as any).$choysum = originalChoysum;

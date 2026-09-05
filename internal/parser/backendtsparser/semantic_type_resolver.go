@@ -434,6 +434,9 @@ func mapCheckerTypeToProto(c *checker.Checker, t *checker.Type, isReturn bool) (
 			case protoTypeString, protoTypeDouble, protoTypeBool, protoTypeInt64:
 				return protoRepeatedPrefix + mapped, true
 			default:
+				if objectmessages.IsRegisteredProtoName(mapped) {
+					return protoRepeatedPrefix + mapped, true
+				}
 				return "", false
 			}
 		}

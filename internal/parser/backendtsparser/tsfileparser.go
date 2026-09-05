@@ -87,10 +87,8 @@ func getProtoTypeFromTsType(tsType string) string {
 	if strings.HasPrefix(tsType, "Promise<") && strings.HasSuffix(tsType, ">") {
 		tsType = strings.TrimSpace(tsType[8 : len(tsType)-1])
 	}
-	if name := leadingTypeIdentifier(tsType); name != "" {
-		if protoName, ok := objectmessages.ProtoNameForTS(name); ok {
-			return protoName
-		}
+	if protoName, ok := registeredObjectProtoFromAnnotation(tsType); ok {
+		return protoName
 	}
 	switch tsType {
 	case "string":
@@ -116,6 +114,64 @@ func getProtoTypeFromTsType(tsType string) string {
 	default:
 		return protoTypeValue
 	}
+}
+
+// registeredObjectProtoFromAnnotation maps a registered object type annotation
+// (optionally array-wrapped, optionally nullish-unioned) to a protobuf type.
+// Mixed unions such as FieldRuleSpec | string are not mapped.
+func registeredObjectProtoFromAnnotation(tsType string) (string, bool) {
+	tsType = strings.TrimSpace(tsType)
+	if tsType == "" {
+		return "", false
+	}
+
+	isArray := false
+	inner := tsType
+	if strings.HasSuffix(inner, "[]") {
+		isArray = true
+		inner = strings.TrimSpace(inner[:len(inner)-2])
+	} else if strings.HasPrefix(inner, "Array<") && strings.HasSuffix(inner, ">") {
+		isArray = true
+		inner = strings.TrimSpace(inner[6 : len(inner)-1])
+	}
+
+	name := leadingTypeIdentifier(inner)
+	if name == "" {
+		return "", false
+	}
+	rest := strings.TrimSpace(inner[len(name):])
+	if !isNullishOnlyTypeSuffix(rest) {
+		return "", false
+	}
+	protoName, ok := objectmessages.ProtoNameForTS(name)
+	if !ok {
+		return "", false
+	}
+	if isArray {
+		return protoRepeatedPrefix + protoName, true
+	}
+	return protoName, true
+}
+
+// isNullishOnlyTypeSuffix reports whether rest is empty or only `| null` /
+// `| undefined` constituents (spaces allowed).
+func isNullishOnlyTypeSuffix(rest string) bool {
+	rest = strings.TrimSpace(rest)
+	if rest == "" {
+		return true
+	}
+	for rest != "" {
+		if !strings.HasPrefix(rest, "|") {
+			return false
+		}
+		rest = strings.TrimSpace(rest[1:])
+		part := leadingTypeIdentifier(rest)
+		if part != "null" && part != "undefined" {
+			return false
+		}
+		rest = strings.TrimSpace(rest[len(part):])
+	}
+	return true
 }
 
 // leadingTypeIdentifier returns the leading TypeScript identifier from a type
