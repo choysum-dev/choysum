@@ -1,6 +1,7 @@
 {
   "embeddedId": "script_ts",
   "scriptKind": "ts",
+  "sourceSHA256": "cfd2144a1ce203d20d93e525f3223b646aabf88fb09f0ee5adbbd1cf14c06b53",
   "mappings": [
     {
       "sourceFile": "/fixtures/Parent.vue",

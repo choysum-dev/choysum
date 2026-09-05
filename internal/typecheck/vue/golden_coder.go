@@ -4,6 +4,8 @@
 package vue
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -12,15 +14,17 @@ import (
 )
 
 // GoldenCoder loads committed language-core goldens for .vue fixtures.
-// It does not invoke Node or QuickJS.
+// It is fixture-oriented (basename lookup) and verifies sourceSHA256 when
+// source is non-empty. It does not invoke Node or QuickJS.
 type GoldenCoder struct {
 	GoldenDir string
 }
 
 type goldenMeta struct {
-	EmbeddedID string        `json:"embeddedId"`
-	ScriptKind string        `json:"scriptKind"`
-	Mappings   []SpanMapping `json:"mappings"`
+	EmbeddedID   string        `json:"embeddedId"`
+	ScriptKind   string        `json:"scriptKind"`
+	SourceSHA256 string        `json:"sourceSHA256"`
+	Mappings     []SpanMapping `json:"mappings"`
 }
 
 // NewGoldenCoder returns a Coder that reads service scripts from goldenDir.
@@ -29,10 +33,9 @@ func NewGoldenCoder(goldenDir string) *GoldenCoder {
 }
 
 // CreateServiceScript loads <basename>.service.ts and <basename>.mappings.json
-// from GoldenDir. The path argument may be any absolute/relative .vue path;
-// only the base name is used for lookup.
+// from GoldenDir. Lookup is by basename (fixture goldens). When source is
+// non-empty it must match the golden sourceSHA256.
 func (c *GoldenCoder) CreateServiceScript(path, source string, _ CodegenOptions) (ServiceScript, error) {
-	_ = source // golden is authoritative for PR-3; content hash matching lands with QuickJS.
 	if c == nil || strings.TrimSpace(c.GoldenDir) == "" {
 		return ServiceScript{}, fmt.Errorf("vue: GoldenCoder.GoldenDir is required")
 	}
@@ -54,10 +57,18 @@ func (c *GoldenCoder) CreateServiceScript(path, source string, _ CodegenOptions)
 	if err := json.Unmarshal(metaBytes, &meta); err != nil {
 		return ServiceScript{}, fmt.Errorf("vue: parse golden %s: %w", metaPath, err)
 	}
+	if source != "" && meta.SourceSHA256 != "" {
+		sum := sha256.Sum256([]byte(source))
+		got := hex.EncodeToString(sum[:])
+		if got != meta.SourceSHA256 {
+			return ServiceScript{}, fmt.Errorf("vue: source SHA-256 mismatch for %s (got %s want %s); refresh goldens or use a real Coder", base, got, meta.SourceSHA256)
+		}
+	}
 	return ServiceScript{
-		EmbeddedID: meta.EmbeddedID,
-		ScriptKind: meta.ScriptKind,
-		Content:    string(content),
-		Mappings:   meta.Mappings,
+		EmbeddedID:    meta.EmbeddedID,
+		ScriptKind:    meta.ScriptKind,
+		Content:       string(content),
+		SourceContent: source,
+		Mappings:      meta.Mappings,
 	}, nil
 }

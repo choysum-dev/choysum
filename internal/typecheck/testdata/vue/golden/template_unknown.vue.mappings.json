@@ -1,6 +1,7 @@
 {
   "embeddedId": "script_ts",
   "scriptKind": "ts",
+  "sourceSHA256": "ea9e020b0c4c01c8cc5b745a18fc32e378b40943f8183d24bf90add25ea1b95c",
   "mappings": [
     {
       "sourceFile": "/fixtures/template_unknown.vue",

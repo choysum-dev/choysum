@@ -27,10 +27,11 @@ type SpanMapping struct {
 
 // ServiceScript is the language-core service embedded for one .vue file.
 type ServiceScript struct {
-	EmbeddedID string
-	ScriptKind string // ts|tsx|js|jsx
-	Content    string
-	Mappings   []SpanMapping
+	EmbeddedID    string
+	ScriptKind    string // ts|tsx|js|jsx
+	Content       string
+	SourceContent string // original SFC text used for line/column remap
+	Mappings      []SpanMapping
 }
 
 // CodegenOptions configures CreateServiceScript.

@@ -37,9 +37,6 @@ func BuiltInAmbientOverlays(modulesPath string) map[string]string {
 // BuiltInVueAmbientOverlays returns BuiltInAmbientOverlays plus the vue shim.
 func BuiltInVueAmbientOverlays(modulesPath string) map[string]string {
 	out := BuiltInAmbientOverlays(modulesPath)
-	if out == nil {
-		out = make(map[string]string, 1)
-	}
 	root := AmbientRoot(modulesPath)
 	if rel, content := VueShimOverlay(); rel != "" {
 		out[normalizePathKey(filepath.Join(root, rel))] = content

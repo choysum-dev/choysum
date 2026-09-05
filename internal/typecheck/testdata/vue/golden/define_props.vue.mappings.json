@@ -1,6 +1,7 @@
 {
   "embeddedId": "script_ts",
   "scriptKind": "ts",
+  "sourceSHA256": "9fe1ec33736f2229bb476969c2a329e0984aed169360c6bebc7831eae7cd01e0",
   "mappings": [
     {
       "sourceFile": "/fixtures/define_props.vue",

@@ -13,7 +13,8 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import crypto from "node:crypto";
+import { fileURLToPath } from "node:url";
 import { createServiceScript } from "./create_service_script.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -50,6 +51,7 @@ function main() {
         {
           embeddedId: result.embeddedId,
           scriptKind: result.scriptKind,
+          sourceSHA256: crypto.createHash("sha256").update(source).digest("hex"),
           mappings: result.mappings,
         },
         null,

@@ -17,7 +17,7 @@ import (
 // Check typechecks an application's TypeScript roots using
 // typescript-go-internal. It does not invoke Node or vue-tsc.
 // ScopeNoVue includes web TS/TSX plus embedded vite/client and subpath ambient.
-// ScopeAll also includes .vue files via Coder service-script overlays (Strategy A).
+// ScopeAll also includes .vue files via Coder service-script overlays (Strategy B).
 func Check(ctx context.Context, opts Options) (Result, error) {
 	if err := validateOptions(opts); err != nil {
 		return Result{}, err
@@ -67,7 +67,7 @@ func Check(ctx context.Context, opts Options) (Result, error) {
 		if err != nil {
 			return Result{}, err
 		}
-		vueOverlays, scripts, err := prepareVueOverlays(coder, collectVuePaths(files), modulesPath)
+		vueOverlays, scripts, err := prepareVueOverlays(coder, collectVuePaths(files), modulesPath, overlays)
 		if err != nil {
 			return Result{}, err
 		}

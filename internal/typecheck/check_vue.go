@@ -14,7 +14,8 @@ import (
 
 // prepareVueOverlays builds Strategy-B overlays: each .vue and .vue.ts path maps
 // to the same service-script text, plus language-core helper declaration files.
-func prepareVueOverlays(coder vue.Coder, vuePaths []string, modulesPath string) (map[string]string, map[string]vue.ServiceScript, error) {
+// Source text prefers existingOverlays, then disk; a missing source is an error.
+func prepareVueOverlays(coder vue.Coder, vuePaths []string, modulesPath string, existingOverlays map[string]string) (map[string]string, map[string]vue.ServiceScript, error) {
 	if coder == nil {
 		return nil, nil, fmt.Errorf("typecheck: Vue Coder is required for ScopeAll")
 	}
@@ -26,13 +27,16 @@ func prepareVueOverlays(coder vue.Coder, vuePaths []string, modulesPath string) 
 	opts := vue.CodegenOptions{CurrentDirectory: modulesPath}
 	for _, vuePath := range vuePaths {
 		norm := normalizePathKey(vuePath)
-		src, err := os.ReadFile(vuePath)
-		if err != nil {
-			src = nil
-		}
-		script, err := coder.CreateServiceScript(norm, string(src), opts)
+		src, err := readVueSource(norm, vuePath, existingOverlays)
 		if err != nil {
 			return nil, nil, err
+		}
+		script, err := coder.CreateServiceScript(norm, src, opts)
+		if err != nil {
+			return nil, nil, err
+		}
+		if script.SourceContent == "" {
+			script.SourceContent = src
 		}
 		prog := normalizePathKey(toVueProgramPath(norm))
 		out[norm] = script.Content
@@ -41,6 +45,22 @@ func prepareVueOverlays(coder vue.Coder, vuePaths []string, modulesPath string) 
 		scripts[prog] = script
 	}
 	return out, scripts, nil
+}
+
+func readVueSource(norm, vuePath string, existingOverlays map[string]string) (string, error) {
+	if existingOverlays != nil {
+		if content, ok := existingOverlays[norm]; ok {
+			return content, nil
+		}
+		if content, ok := existingOverlays[filepath.ToSlash(vuePath)]; ok {
+			return content, nil
+		}
+	}
+	src, err := os.ReadFile(vuePath)
+	if err != nil {
+		return "", fmt.Errorf("typecheck: read vue source %s: %w", vuePath, err)
+	}
+	return string(src), nil
 }
 
 func collectVuePaths(files []string) []string {
@@ -87,9 +107,13 @@ func remapDiagnostics(diags []Diagnostic, scripts map[string]vue.ServiceScript) 
 			}
 		}
 		if ok {
-			if srcPos, mapped := vue.RemapOffset(script.Mappings, d.Start); mapped {
-				d.Start = srcPos
-				if line, col, lok := lineColumnFromFile(vueFile, srcPos); lok {
+			if srcStart, srcLen, mapped := vue.RemapRange(script.Mappings, d.Start, d.Length); mapped {
+				d.Start = srcStart
+				d.Length = srcLen
+				if line, col, lok := lineColumnFromBytes([]byte(script.SourceContent), srcStart); lok {
+					d.Line = line
+					d.Column = col
+				} else if line, col, lok := lineColumnFromFile(vueFile, srcStart); lok {
 					d.Line = line
 					d.Column = col
 				} else {
@@ -111,6 +135,16 @@ func remapDiagnostics(diags []Diagnostic, scripts map[string]vue.ServiceScript) 
 func lineColumnFromFile(path string, pos int) (line, col int, ok bool) {
 	data, err := os.ReadFile(path)
 	if err != nil || pos < 0 {
+		return 0, 0, false
+	}
+	return lineColumnFromBytes(data, pos)
+}
+
+func lineColumnFromBytes(data []byte, pos int) (line, col int, ok bool) {
+	if pos < 0 {
+		return 0, 0, false
+	}
+	if len(data) == 0 {
 		return 0, 0, false
 	}
 	if pos > len(data) {

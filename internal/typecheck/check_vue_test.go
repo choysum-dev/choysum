@@ -4,6 +4,7 @@
 package typecheck
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -140,5 +141,209 @@ func TestRewriteVueRootsAndAmbient(t *testing.T) {
 	overlays := BuiltInVueAmbientOverlays(dir)
 	if len(overlays) != 3 {
 		t.Fatalf("want vite+subpath+vue shim, got %d", len(overlays))
+	}
+}
+
+type errCoder struct{}
+
+func (errCoder) CreateServiceScript(string, string, vue.CodegenOptions) (vue.ServiceScript, error) {
+	return vue.ServiceScript{}, errors.New("coder boom")
+}
+
+type emptySourceCoder struct {
+	inner vue.Coder
+}
+
+func (c emptySourceCoder) CreateServiceScript(path, source string, opts vue.CodegenOptions) (vue.ServiceScript, error) {
+	s, err := c.inner.CreateServiceScript(path, source, opts)
+	if err != nil {
+		return s, err
+	}
+	s.SourceContent = ""
+	return s, nil
+}
+
+func TestPrepareVueOverlays_ErrorsAndOverlaySource(t *testing.T) {
+	if _, _, err := prepareVueOverlays(nil, nil, "", nil); err == nil {
+		t.Fatal("nil coder")
+	}
+	dir := t.TempDir()
+	vuePath := filepath.Join(dir, "Missing.vue")
+	if _, _, err := prepareVueOverlays(vue.NewGoldenCoder(vueGoldenDir(t)), []string{vuePath}, dir, nil); err == nil {
+		t.Fatal("missing disk source")
+	}
+	norm := normalizePathKey(vuePath)
+	overlays := map[string]string{norm: "<script setup lang=\"ts\"></script>\n"}
+	if _, _, err := prepareVueOverlays(errCoder{}, []string{vuePath}, dir, overlays); err == nil || !strings.Contains(err.Error(), "coder boom") {
+		t.Fatalf("err = %v", err)
+	}
+
+	fixture := string(mustReadFixture(t, "script_setup_ok.vue"))
+	baseDir := filepath.Join(dir, "nested")
+	if err := os.MkdirAll(baseDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	known := filepath.Join(baseDir, "script_setup_ok.vue")
+	mustWrite(t, known, fixture)
+	// Build an unclean path without filepath.Join (Join Clean's ".." away).
+	unclean := dir + string(filepath.Separator) + "nested" + string(filepath.Separator) + ".." + string(filepath.Separator) + "nested" + string(filepath.Separator) + "script_setup_ok.vue"
+	if filepath.ToSlash(unclean) == normalizePathKey(unclean) {
+		t.Fatal("test setup: unclean path collapsed; cannot exercise ToSlash overlay key")
+	}
+	overlaysSlash := map[string]string{filepath.ToSlash(unclean): fixture}
+	got, scripts, err := prepareVueOverlays(emptySourceCoder{inner: vue.NewGoldenCoder(vueGoldenDir(t))}, []string{unclean}, dir, overlaysSlash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if scripts[normalizePathKey(unclean)].SourceContent == "" {
+		t.Fatal("SourceContent should be filled from src when coder leaves it empty")
+	}
+	if got[normalizePathKey(unclean)] == "" {
+		t.Fatal("missing overlay content")
+	}
+}
+
+func mustReadFixture(t *testing.T, name string) []byte {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join("testdata", "vue", "fixtures", name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+
+func TestRemapDiagnostics_Helpers(t *testing.T) {
+	diags := []Diagnostic{{File: "/x.ts", Start: 1, Length: 1}}
+	if got := remapDiagnostics(diags, nil); len(got) != 1 {
+		t.Fatal("empty scripts passthrough")
+	}
+	src := "a\nb\nc"
+	tmp := t.TempDir()
+	vueDisk := filepath.Join(tmp, "A.vue")
+	mustWrite(t, vueDisk, src)
+
+	scripts := map[string]vue.ServiceScript{
+		normalizePathKey(vueDisk + ".ts"): {
+			SourceContent: src,
+			Mappings: []vue.SpanMapping{
+				{SourceStart: 2, SourceEnd: 3, GeneratedStart: 10, GeneratedEnd: 11, Verification: true},
+			},
+		},
+	}
+	got := remapDiagnostics([]Diagnostic{{
+		File:   vueDisk + ".ts",
+		Start:  10,
+		Length: 1,
+		Line:   99,
+		Column: 99,
+	}}, scripts)
+	if len(got) != 1 || got[0].File != normalizePathKey(vueDisk) || got[0].Start != 2 || got[0].Line != 2 {
+		t.Fatalf("%#v", got)
+	}
+
+	// Mapped but SourceContent empty → fall back to disk line/col.
+	scriptsNoSrc := map[string]vue.ServiceScript{
+		normalizePathKey(vueDisk + ".ts"): {
+			Mappings: []vue.SpanMapping{
+				{SourceStart: 2, SourceEnd: 3, GeneratedStart: 10, GeneratedEnd: 11, Verification: true},
+			},
+		},
+	}
+	got = remapDiagnostics([]Diagnostic{{File: vueDisk + ".ts", Start: 10, Length: 1}}, scriptsNoSrc)
+	if got[0].Line != 2 {
+		t.Fatalf("disk fallback %#v", got[0])
+	}
+
+	// Mapped but neither SourceContent nor disk → clear line/col.
+	scriptsMissing := map[string]vue.ServiceScript{
+		normalizePathKey("/no/disk/A.vue.ts"): {
+			Mappings: []vue.SpanMapping{
+				{SourceStart: 2, SourceEnd: 3, GeneratedStart: 10, GeneratedEnd: 11, Verification: true},
+			},
+		},
+	}
+	got = remapDiagnostics([]Diagnostic{{File: "/no/disk/A.vue.ts", Start: 10, Length: 1, Line: 3}}, scriptsMissing)
+	if got[0].Line != 0 || got[0].Column != 0 || got[0].File != normalizePathKey("/no/disk/A.vue") {
+		t.Fatalf("%#v", got[0])
+	}
+
+	// Lookup via filepath.ToSlash when normalize key misses (unclean path).
+	uncleanVue := tmp + string(filepath.Separator) + "sub" + string(filepath.Separator) + ".." + string(filepath.Separator) + "A.vue"
+	scriptsSlash := map[string]vue.ServiceScript{
+		filepath.ToSlash(uncleanVue): {
+			SourceContent: src,
+			Mappings: []vue.SpanMapping{
+				{SourceStart: 0, SourceEnd: 1, GeneratedStart: 1, GeneratedEnd: 2, Verification: true},
+			},
+		},
+	}
+	got = remapDiagnostics([]Diagnostic{{File: uncleanVue, Start: 1, Length: 1}}, scriptsSlash)
+	if got[0].File != normalizePathKey(uncleanVue) {
+		t.Fatalf("%#v", got[0])
+	}
+
+	// .vue.ts diagnostic with script keyed only under .vue path.
+	scriptsVueOnly := map[string]vue.ServiceScript{
+		normalizePathKey(vueDisk): {
+			SourceContent: src,
+			Mappings: []vue.SpanMapping{
+				{SourceStart: 2, SourceEnd: 3, GeneratedStart: 10, GeneratedEnd: 11, Verification: true},
+			},
+		},
+	}
+	got = remapDiagnostics([]Diagnostic{{File: vueDisk + ".ts", Start: 10, Length: 1}}, scriptsVueOnly)
+	if got[0].File != normalizePathKey(vueDisk) || got[0].Start != 2 {
+		t.Fatalf("%#v", got[0])
+	}
+
+	// Unmapped diagnostic still strips .vue.ts suffix.
+	got = remapDiagnostics([]Diagnostic{{File: vueDisk + ".ts", Start: 999, Length: 1, Line: 7}}, scripts)
+	if got[0].File != normalizePathKey(vueDisk) || got[0].Line != 7 {
+		t.Fatalf("%#v", got)
+	}
+
+	line, col, ok := lineColumnFromBytes(nil, 0)
+	if ok || line != 0 || col != 0 {
+		t.Fatal("empty bytes")
+	}
+	line, col, ok = lineColumnFromBytes([]byte("ab"), -1)
+	if ok {
+		t.Fatal("negative")
+	}
+	line, col, ok = lineColumnFromBytes([]byte("ab"), 100)
+	if !ok || line != 1 || col != 3 {
+		t.Fatalf("clamp %d %d %v", line, col, ok)
+	}
+	if _, _, ok := lineColumnFromFile("/no/such/file", 0); ok {
+		t.Fatal("missing file")
+	}
+	if _, _, ok := lineColumnFromFile(vueDisk, -1); ok {
+		t.Fatal("negative pos")
+	}
+	if line, col, ok := lineColumnFromFile(vueDisk, 2); !ok || line != 2 || col != 1 {
+		t.Fatalf("disk line %d %d %v", line, col, ok)
+	}
+}
+
+func TestResolveVueCoder_AbsError(t *testing.T) {
+	orig := absPath
+	t.Cleanup(func() { absPath = orig })
+	absPath = func(string) (string, error) { return "", errors.New("abs boom") }
+	if _, err := resolveVueCoder(Options{VueGoldenDir: "x"}); err == nil || !strings.Contains(err.Error(), "abs boom") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestCheck_VueCoderError(t *testing.T) {
+	repo, modules := fixtureRoots(t, "vue_check_ok")
+	_, err := Check(t.Context(), Options{
+		ModulesPath: modules,
+		RepoRoot:    repo,
+		App:         "demo",
+		Scope:       ScopeAll,
+		Coder:       errCoder{},
+	})
+	if err == nil || !strings.Contains(err.Error(), "coder boom") {
+		t.Fatalf("err = %v", err)
 	}
 }

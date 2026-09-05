@@ -37,8 +37,29 @@ func RemapOffset(mappings []SpanMapping, generatedPos int) (sourcePos int, ok bo
 	if len(hits) == 0 {
 		return 0, false
 	}
-	sort.Slice(hits, func(i, j int) bool {
+	sort.SliceStable(hits, func(i, j int) bool {
 		return hits[i].genStart > hits[j].genStart
 	})
 	return hits[0].sourcePos, true
+}
+
+// RemapRange maps a generated diagnostic [start, start+length) into source
+// coordinates. Length is recomputed from the remapped inclusive end.
+func RemapRange(mappings []SpanMapping, generatedStart, generatedLength int) (sourceStart, sourceLength int, ok bool) {
+	srcStart, ok := RemapOffset(mappings, generatedStart)
+	if !ok {
+		return 0, 0, false
+	}
+	if generatedLength <= 0 {
+		return srcStart, 0, true
+	}
+	last := generatedStart + generatedLength - 1
+	srcEnd, okEnd := RemapOffset(mappings, last)
+	if !okEnd {
+		return srcStart, 1, true
+	}
+	if srcEnd < srcStart {
+		return srcStart, 0, true
+	}
+	return srcStart, srcEnd - srcStart + 1, true
 }
