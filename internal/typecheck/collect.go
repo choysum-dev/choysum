@@ -62,6 +62,9 @@ func CollectRootFiles(modulesPath, app string, scope Scope) ([]string, error) {
 			lower := strings.ToLower(name)
 			switch {
 			case strings.HasSuffix(lower, ".d.ts"):
+				if shouldSkipTSFileName(name) {
+					continue
+				}
 				add(filepath.Join(appRoot, name))
 			case strings.HasSuffix(lower, ".ts"):
 				if shouldSkipTSFileName(name) {
@@ -92,6 +95,9 @@ func CollectRootFiles(modulesPath, app string, scope Scope) ([]string, error) {
 				lower := strings.ToLower(name)
 				switch {
 				case strings.HasSuffix(lower, ".d.ts"):
+					if shouldSkipTSFileName(name) {
+						return nil
+					}
 					add(path)
 				case strings.HasSuffix(lower, ".ts"):
 					if shouldSkipTSFileName(name) {
@@ -134,10 +140,8 @@ func shouldSkipScanDir(name string) bool {
 
 func shouldSkipTSFileName(name string) bool {
 	lower := strings.ToLower(name)
-	if strings.HasSuffix(lower, ".d.ts") {
-		return false
-	}
-	if strings.HasSuffix(lower, ".test.ts") || strings.HasSuffix(lower, ".spec.ts") {
+	if strings.HasSuffix(lower, ".test.ts") || strings.HasSuffix(lower, ".spec.ts") ||
+		strings.HasSuffix(lower, ".test.d.ts") || strings.HasSuffix(lower, ".spec.d.ts") {
 		return true
 	}
 	if strings.Contains(lower, ".gen.") {

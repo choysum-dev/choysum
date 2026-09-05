@@ -54,9 +54,11 @@ func TestCollectRootFiles_ServiceExtras(t *testing.T) {
 	mustWrite(t, filepath.Join(app, "env.d.ts"), "export {};\n")
 	mustWrite(t, filepath.Join(app, "skip.gen.ts"), "export {};\n")
 	mustWrite(t, filepath.Join(app, "ok.spec.ts"), "export {};\n")
+	mustWrite(t, filepath.Join(app, "ok.test.d.ts"), "export {};\n")
 	mustWrite(t, filepath.Join(app, "service", "a.ts"), "export {};\n")
 	mustWrite(t, filepath.Join(app, "service", "a.ts"), "export {};\n") // duplicate path via add
 	mustWrite(t, filepath.Join(app, "service", "types.d.ts"), "export {};\n")
+	mustWrite(t, filepath.Join(app, "service", "skip.gen.d.ts"), "export {};\n")
 	mustWrite(t, filepath.Join(app, "service", "node_modules", "pkg", "x.ts"), "export {};\n")
 	mustWrite(t, filepath.Join(app, "service", "__tests__", "t.ts"), "export {};\n")
 	mustWrite(t, filepath.Join(app, "readme.md"), "x\n")
@@ -69,7 +71,7 @@ func TestCollectRootFiles_ServiceExtras(t *testing.T) {
 	if !strings.Contains(joined, "env.d.ts") || !strings.Contains(joined, "types.d.ts") || !strings.Contains(joined, "a.ts") {
 		t.Fatalf("missing expected files: %v", files)
 	}
-	for _, ban := range []string{"skip.gen.ts", "ok.spec.ts", "node_modules/pkg/x.ts", "__tests__/t.ts"} {
+	for _, ban := range []string{"skip.gen.ts", "ok.spec.ts", "ok.test.d.ts", "skip.gen.d.ts", "node_modules/pkg/x.ts", "__tests__/t.ts"} {
 		if strings.Contains(joined, ban) {
 			t.Fatalf("unexpected %s in %v", ban, files)
 		}
@@ -516,7 +518,10 @@ func TestCollectRootFiles_WalkCallbackError(t *testing.T) {
 
 func TestShouldSkipTSFileName_Dts(t *testing.T) {
 	if shouldSkipTSFileName("types.d.ts") {
-		t.Fatal("d.ts must not be skipped by name helper")
+		t.Fatal("ambient d.ts must not be skipped")
+	}
+	if !shouldSkipTSFileName("ok.test.d.ts") || !shouldSkipTSFileName("ok.spec.d.ts") {
+		t.Fatal("test declaration files must be skipped")
 	}
 }
 
