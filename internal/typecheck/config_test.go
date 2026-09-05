@@ -34,3 +34,27 @@ func TestBuildCompilerOptions_PathsAlias(t *testing.T) {
 		t.Fatalf("path target = %q, want %q", targets[0], want)
 	}
 }
+
+func TestBuildCompilerOptions_JSONC(t *testing.T) {
+	dir := t.TempDir()
+	modules := filepath.Join(dir, "modules")
+	mustMkdir(t, modules)
+	mustWrite(t, filepath.Join(modules, "tsconfig.json"), `{
+  // comment
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@demo/*": ["./demo/*"],
+    },
+  },
+}
+`)
+	opts, err := BuildCompilerOptions(modules, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	targets, ok := opts.Paths.Get("@demo/*")
+	if !ok || len(targets) != 1 {
+		t.Fatalf("expected @demo/* from JSONC tsconfig, got %v ok=%v", targets, ok)
+	}
+}

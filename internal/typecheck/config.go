@@ -13,6 +13,7 @@ import (
 
 	"github.com/buke/typescript-go-internal/v7/pkg/collections"
 	"github.com/buke/typescript-go-internal/v7/pkg/core"
+	"github.com/tailscale/hujson"
 )
 
 // BuildCompilerOptions builds compiler options aligned with the historical
@@ -83,6 +84,11 @@ func resolveModulePaths(modulesRoot string) (map[string][]string, string, error)
 			BaseURL string              `json:"baseUrl"`
 			Paths   map[string][]string `json:"paths"`
 		} `json:"compilerOptions"`
+	}
+	// tsconfig.json is JSONC (comments / trailing commas); standardize first.
+	if hv, err := hujson.Parse(data); err == nil {
+		hv.Standardize()
+		data = hv.Pack()
 	}
 	if err := json.Unmarshal(data, &tsconfig); err != nil {
 		return nil, "", fmt.Errorf("typecheck: parse %s: %w", tsconfigPath, err)
