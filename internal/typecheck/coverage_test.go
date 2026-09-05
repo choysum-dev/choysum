@@ -218,8 +218,9 @@ func TestAppendOverlayServiceRoots(t *testing.T) {
 		"/repo/modules/demo/service/a.ts":        "x",
 		"/repo/modules/demo/service/nested/b.ts": "x",
 		"/repo/modules/demo/web/ui.ts":           "x",
+		"/repo/modules/demo/readme.md":           "x",
 		"/repo/modules/other/x.ts":               "x",
-		"  ":                                     "x",
+		"  ": "x",
 	})
 	joined := strings.Join(got, "\n")
 	for _, want := range []string{"demo/index.ts", "service/a.ts", "service/nested/b.ts"} {
@@ -227,11 +228,14 @@ func TestAppendOverlayServiceRoots(t *testing.T) {
 			t.Fatalf("missing %s in %v", want, got)
 		}
 	}
-	if strings.Contains(joined, "web/ui.ts") || strings.Contains(joined, "other/x.ts") {
+	if strings.Contains(joined, "web/ui.ts") || strings.Contains(joined, "other/x.ts") || strings.Contains(joined, "readme.md") {
 		t.Fatalf("unexpected roots: %v", got)
 	}
 	if appendOverlayServiceRoots([]string{"a"}, modules, app, Scope(99), map[string]string{"x": "y"})[0] != "a" {
 		t.Fatal("non-service scope must be unchanged")
+	}
+	if appendOverlayServiceRoots([]string{"a"}, modules, app, ScopeService, nil)[0] != "a" {
+		t.Fatal("empty overlays must be unchanged")
 	}
 }
 
