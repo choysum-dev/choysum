@@ -22,8 +22,14 @@ func CollectRootFiles(modulesPath, app string, scope Scope) ([]string, error) {
 	}
 	modulesPath = filepath.Clean(modulesPath)
 	appRoot := filepath.Join(modulesPath, app)
-	st, err := os.Stat(appRoot)
-	if err != nil || !st.IsDir() {
+	st, err := stat(appRoot)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, ErrNoRootFiles
+		}
+		return nil, err
+	}
+	if !st.IsDir() {
 		return nil, ErrNoRootFiles
 	}
 
@@ -66,7 +72,12 @@ func CollectRootFiles(modulesPath, app string, scope Scope) ([]string, error) {
 		}
 
 		serviceRoot := filepath.Join(appRoot, "service")
-		if st, err := os.Stat(serviceRoot); err == nil && st.IsDir() {
+		st, err := stat(serviceRoot)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				return nil, err
+			}
+		} else if st.IsDir() {
 			err := walkDir(serviceRoot, func(path string, d fs.DirEntry, err error) error {
 				if err != nil {
 					return err
@@ -109,6 +120,7 @@ var (
 	absPath = filepath.Abs
 	readDir = os.ReadDir
 	walkDir = filepath.WalkDir
+	stat    = os.Stat
 )
 
 func shouldSkipScanDir(name string) bool {

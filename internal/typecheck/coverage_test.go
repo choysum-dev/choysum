@@ -4,6 +4,7 @@
 package typecheck
 
 import (
+	"context"
 	"errors"
 	"io/fs"
 	"os"
@@ -175,6 +176,54 @@ func TestCheck_AbsErrors(t *testing.T) {
 func TestCheck_CollectError(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := Check(t.Context(), Options{ModulesPath: dir, RepoRoot: dir, App: "missing"}); !errors.Is(err, ErrNoRootFiles) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestCheck_CanceledContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if _, err := Check(ctx, Options{ModulesPath: "m", RepoRoot: "r", App: "a"}); !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestCollectRootFiles_StatErrors(t *testing.T) {
+	dir := t.TempDir()
+	modules := filepath.Join(dir, "modules")
+	app := filepath.Join(modules, "demo")
+	mustMkdir(t, app)
+	mustWrite(t, filepath.Join(app, "a.ts"), "export {};\n")
+
+	orig := stat
+	t.Cleanup(func() { stat = orig })
+
+	stat = func(name string) (os.FileInfo, error) {
+		if filepath.Base(name) == "demo" {
+			return nil, errors.New("app stat boom")
+		}
+		return orig(name)
+	}
+	if _, err := CollectRootFiles(modules, "demo", ScopeService); err == nil || !strings.Contains(err.Error(), "app stat boom") {
+		t.Fatalf("err = %v", err)
+	}
+
+	stat = func(name string) (os.FileInfo, error) {
+		if filepath.Base(name) == "service" {
+			return nil, errors.New("service stat boom")
+		}
+		return orig(name)
+	}
+	if _, err := CollectRootFiles(modules, "demo", ScopeService); err == nil || !strings.Contains(err.Error(), "service stat boom") {
+		t.Fatalf("err = %v", err)
+	}
+
+	// App path exists but is a file → ErrNoRootFiles.
+	modules2 := filepath.Join(dir, "modules2")
+	mustMkdir(t, modules2)
+	mustWrite(t, filepath.Join(modules2, "demo"), "not a dir")
+	stat = orig
+	if _, err := CollectRootFiles(modules2, "demo", ScopeService); !errors.Is(err, ErrNoRootFiles) {
 		t.Fatalf("err = %v", err)
 	}
 }

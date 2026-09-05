@@ -18,6 +18,9 @@ func Check(ctx context.Context, opts Options) (Result, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	if err := ctx.Err(); err != nil {
+		return Result{}, err
+	}
 
 	modulesPath, err := absPath(opts.ModulesPath)
 	if err != nil {
