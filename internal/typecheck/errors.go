@@ -13,6 +13,7 @@ var (
 	ErrRepoRootRequired    = errors.New("typecheck: repo_root is required")
 	ErrAppRequired         = errors.New("typecheck: app is required")
 	ErrNoRootFiles         = errors.New("typecheck: no checkable TypeScript roots")
+	ErrUnsupportedScope    = errors.New("typecheck: unsupported scope")
 )
 
 func validateOptions(opts Options) error {

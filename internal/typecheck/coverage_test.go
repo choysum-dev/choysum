@@ -31,7 +31,7 @@ func TestCollectRootFiles_Validation(t *testing.T) {
 	}
 	modules := t.TempDir()
 	mustMkdir(t, filepath.Join(modules, "demo"))
-	if _, err := CollectRootFiles(modules, "demo", Scope(99)); err == nil || !strings.Contains(err.Error(), "unsupported scope") {
+	if _, err := CollectRootFiles(modules, "demo", Scope(99)); !errors.Is(err, ErrUnsupportedScope) {
 		t.Fatalf("err = %v", err)
 	}
 }
@@ -381,6 +381,12 @@ func TestResolveTypeRootsAndTypes(t *testing.T) {
 	}
 	if got := resolveCompilerTypes(nil); got != nil {
 		t.Fatalf("empty = %v", got)
+	}
+
+	fileNode := t.TempDir()
+	mustWrite(t, filepath.Join(fileNode, "node"), "not a dir")
+	if got := resolveCompilerTypes([]string{fileNode}); got != nil {
+		t.Fatalf("file named node must be ignored, got %v", got)
 	}
 
 	global := t.TempDir()

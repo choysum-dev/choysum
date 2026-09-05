@@ -4,7 +4,6 @@
 package typecheck
 
 import (
-	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -102,7 +101,7 @@ func CollectRootFiles(modulesPath, app string, scope Scope) ([]string, error) {
 			}
 		}
 	default:
-		return nil, errors.New("typecheck: unsupported scope")
+		return nil, ErrUnsupportedScope
 	}
 
 	if len(files) == 0 {

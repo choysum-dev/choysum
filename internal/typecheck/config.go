@@ -86,10 +86,12 @@ func resolveModulePaths(modulesRoot string) (map[string][]string, string, error)
 		} `json:"compilerOptions"`
 	}
 	// tsconfig.json is JSONC (comments / trailing commas); standardize first.
-	if hv, err := hujson.Parse(data); err == nil {
-		hv.Standardize()
-		data = hv.Pack()
+	hv, err := hujson.Parse(data)
+	if err != nil {
+		return nil, "", fmt.Errorf("typecheck: parse %s: %w", tsconfigPath, err)
 	}
+	hv.Standardize()
+	data = hv.Pack()
 	if err := json.Unmarshal(data, &tsconfig); err != nil {
 		return nil, "", fmt.Errorf("typecheck: parse %s: %w", tsconfigPath, err)
 	}
@@ -132,7 +134,7 @@ func resolveTypeRoots(repoRoot string) []string {
 
 func resolveCompilerTypes(typeRoots []string) []string {
 	for _, root := range typeRoots {
-		if _, err := os.Stat(filepath.Join(root, "node")); err == nil {
+		if st, err := os.Stat(filepath.Join(root, "node")); err == nil && st.IsDir() {
 			return []string{"node"}
 		}
 	}
