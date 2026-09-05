@@ -4,7 +4,6 @@
 package typecheck
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -38,23 +37,18 @@ func TestSubpathStubOverlay(t *testing.T) {
 
 func TestAmbientRoot_Absolute(t *testing.T) {
 	dir := t.TempDir()
-	relModules := filepath.Join(dir, "modules")
-	mustMkdir(t, relModules)
-	// Use a relative modules path from cwd.
-	cwd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chdir(cwd) })
-	if err := os.Chdir(dir); err != nil {
-		t.Fatal(err)
+	origAbsPath := absPath
+	t.Cleanup(func() { absPath = origAbsPath })
+	absPath = func(path string) (string, error) {
+		return filepath.Join(dir, path), nil
 	}
 	got := AmbientRoot("modules")
 	if !filepath.IsAbs(got) {
 		t.Fatalf("AmbientRoot must be absolute, got %q", got)
 	}
-	if !strings.HasSuffix(filepath.ToSlash(got), "/modules/"+ambientDirName) {
-		t.Fatalf("AmbientRoot = %q", got)
+	want := filepath.Join(dir, "modules", ambientDirName)
+	if got != want {
+		t.Fatalf("AmbientRoot = %q, want %q", got, want)
 	}
 }
 
