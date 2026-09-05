@@ -18,7 +18,6 @@ import (
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/trace"
-	xfmt "golang.org/x/exp/errors/fmt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -138,7 +137,7 @@ func (r invocationRuntime) executeUnary(
 		if field.IsList() {
 			listArg, err := serviceCodec.listToAny(value.List(), field)
 			if err != nil {
-				return nil, xfmt.Errorf("Error converting list field %s: %w", field.TextName(), err)
+				return nil, status.Errorf(codes.InvalidArgument, "Error converting list field %s: %v", field.TextName(), err)
 			}
 			jsRequest.Args = append(jsRequest.Args, listArg)
 			continue
@@ -148,11 +147,10 @@ func (r invocationRuntime) executeUnary(
 		if message != nil {
 			msgJSON, err := serviceCodec.messageToAny(value.Message())
 			if err != nil {
-				return nil, xfmt.Errorf("Error converting message to Any: %w", err)
+				return nil, status.Errorf(codes.InvalidArgument, "Error converting message to Any: %v", err)
 			}
-			if msgJSON != nil {
-				jsRequest.Args = append(jsRequest.Args, msgJSON)
-			}
+			// Always occupy this arg slot (including JS null for unset/null Value).
+			jsRequest.Args = append(jsRequest.Args, msgJSON)
 		} else {
 			jsRequest.Args = append(jsRequest.Args, value.Interface())
 		}
@@ -168,18 +166,18 @@ func (r invocationRuntime) executeUnary(
 	if resultField != nil {
 		if resultField.IsList() {
 			if err := serviceCodec.anyToList(jsResponse.Result, outMsg, resultField); err != nil {
-				return nil, xfmt.Errorf("Error converting result list to proto: %w", err)
+				return nil, status.Errorf(codes.InvalidArgument, "Error converting result list to proto: %v", err)
 			}
 		} else if resultField.Message() != nil {
 			resultMsg := serviceCodec.newMessage(resultField.Message())
 			if err := serviceCodec.anyToMessage(jsResponse.Result, resultMsg); err != nil {
-				return nil, xfmt.Errorf("Error converting result to message: %w", err)
+				return nil, status.Errorf(codes.InvalidArgument, "Error converting result to message: %v", err)
 			}
 			outMsg.Set(resultField, protoreflect.ValueOf(resultMsg))
 		} else {
 			protoValue, err := serviceCodec.convertToProtoValue(jsResponse.Result, resultField)
 			if err != nil {
-				return nil, xfmt.Errorf("Error converting result to proto value: %w", err)
+				return nil, status.Errorf(codes.InvalidArgument, "Error converting result to proto value: %v", err)
 			}
 			outMsg.Set(resultField, protoValue)
 		}

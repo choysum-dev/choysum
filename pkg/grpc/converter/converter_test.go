@@ -176,13 +176,16 @@ func TestMessageToAnyAndMapCoverWellKnownAndGenericMessages(t *testing.T) {
 func TestAnyToMessageSliceAndWellKnownHelpers(t *testing.T) {
 	containerDesc, noListDesc, emptyDesc, _, repeatedNestedDesc, _ := testDescriptors(t)
 	container := dynamicpb.NewMessage(containerDesc)
-	if err := SliceToMessage([]interface{}{"a", 2}, container); err != nil {
+	if err := SliceToMessage([]interface{}{"a", "2"}, container); err != nil {
 		t.Fatalf("SliceToMessage(container): %v", err)
 	}
 	tagsField := containerDesc.Fields().ByName("tags")
 	tags := container.Get(tagsField).List()
 	if tags.Len() != 2 || tags.Get(0).String() != "a" || tags.Get(1).String() != "2" {
 		t.Fatalf("unexpected tags list: %#v", tags)
+	}
+	if err := SliceToMessage([]interface{}{"a", 2}, dynamicpb.NewMessage(containerDesc)); err == nil || !strings.Contains(err.Error(), "cannot convert") {
+		t.Fatalf("expected SliceToMessage non-string item error, got %v", err)
 	}
 
 	noList := dynamicpb.NewMessage(noListDesc)
@@ -351,7 +354,7 @@ func TestSetProtoHelpersAndConvertToProtoValue(t *testing.T) {
 		{name: "score", in: int64(9), want: float64(9)},
 		{name: "raw", in: []byte("ab"), want: []byte("ab")},
 		{name: "total", in: float64(11), want: uint64(11)},
-		{name: "name", in: 123, want: "123"},
+		{name: "name", in: "choysum", want: "choysum"},
 		{name: "status", in: int32(1), want: protoreflect.EnumNumber(1)},
 		{name: "status", in: "STATUS_READY", want: statusEnum.Values().ByName("STATUS_READY").Number()},
 	}
@@ -403,6 +406,9 @@ func TestSetProtoHelpersAndConvertToProtoValue(t *testing.T) {
 	if _, err := ConvertToProtoValue("bad", fields.ByName("enabled")); err == nil || !strings.Contains(err.Error(), "cannot convert string to bool") {
 		t.Fatalf("expected bool conversion error, got %v", err)
 	}
+	if _, err := ConvertToProtoValue(123, fields.ByName("name")); err == nil || !strings.Contains(err.Error(), "cannot convert") {
+		t.Fatalf("expected string conversion error for non-string, got %v", err)
+	}
 	if _, err := ConvertToProtoValue("bad", fields.ByName("count")); err == nil || !strings.Contains(err.Error(), "cannot convert string to int32") {
 		t.Fatalf("expected int32 conversion error, got %v", err)
 	}
@@ -444,22 +450,15 @@ func TestSetProtoHelpersAndConvertToProtoValue(t *testing.T) {
 	}
 }
 
-func TestMapToMessageHandlesRepeatedMessagesMapsAndIgnoredFields(t *testing.T) {
+func TestMapToMessageHandlesRepeatedMessagesMapsAndRejectsIllegalFields(t *testing.T) {
 	containerDesc, _, _, _, _, _ := testDescriptors(t)
 	container := dynamicpb.NewMessage(containerDesc)
 	if err := MapToMessage(map[string]interface{}{
-		"missing":    "ignored",
-		"name":       nil,
-		"count":      "bad",
+		"name":       nil, // explicit null omits optional field
 		"items":      []interface{}{map[string]interface{}{"label": "first"}, map[string]interface{}{"label": "second"}},
 		"attributes": map[string]interface{}{"primary": map[string]interface{}{"label": "core"}},
 	}, container); err != nil {
-		t.Fatalf("MapToMessage: %v", err)
-	}
-
-	countField := containerDesc.Fields().ByName("count")
-	if container.Has(countField) {
-		t.Fatal("expected invalid basic conversion to be ignored")
+		t.Fatalf("MapToMessage(valid): %v", err)
 	}
 
 	itemsField := containerDesc.Fields().ByName("items")
@@ -480,6 +479,25 @@ func TestMapToMessageHandlesRepeatedMessagesMapsAndIgnoredFields(t *testing.T) {
 	primary := attrs.Get(protoreflect.ValueOfString("primary").MapKey()).Message()
 	if primary.Get(primary.Descriptor().Fields().ByName("label")).String() != "core" {
 		t.Fatalf("unexpected map value: %v", primary.Interface())
+	}
+
+	if err := MapToMessage(map[string]interface{}{"missing": "x"}, dynamicpb.NewMessage(containerDesc)); err == nil || !strings.Contains(err.Error(), "unknown field") {
+		t.Fatalf("expected unknown field error, got %v", err)
+	}
+	if err := MapToMessage(map[string]interface{}{"count": "bad"}, dynamicpb.NewMessage(containerDesc)); err == nil || !strings.Contains(err.Error(), "count") {
+		t.Fatalf("expected count conversion error, got %v", err)
+	}
+	if err := MapToMessage(map[string]interface{}{"items": "not-a-list"}, dynamicpb.NewMessage(containerDesc)); err == nil || !strings.Contains(err.Error(), "expects a list") {
+		t.Fatalf("expected list type error, got %v", err)
+	}
+	if err := MapToMessage(map[string]interface{}{"tags": []string{"x", "y"}}, dynamicpb.NewMessage(containerDesc)); err != nil {
+		t.Fatalf("MapToMessage([]string tags): %v", err)
+	}
+	if err := MapToMessage(map[string]interface{}{"name": 42}, dynamicpb.NewMessage(containerDesc)); err == nil || !strings.Contains(err.Error(), "cannot convert") {
+		t.Fatalf("expected string conversion error, got %v", err)
+	}
+	if err := SliceToMessage([]interface{}{1, "bad"}, dynamicpb.NewMessage(containerDesc)); err == nil {
+		t.Fatal("expected SliceToMessage item conversion error")
 	}
 }
 

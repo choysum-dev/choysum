@@ -252,6 +252,30 @@ func TestTaskWorkerBuildExecuteJobResp(t *testing.T) {
 	}
 }
 
+func TestTaskWorkerBuildExecuteJobRespEncodeFailures(t *testing.T) {
+	svc := &ApplicationService{name: "task"}
+	adapter := svc.taskWorkerAdapter()
+
+	_, err := adapter.buildExecuteJobResp(executeJobResponse{
+		Status: "SUCCEEDED",
+		Result: func() {},
+	})
+	if status.Code(err) != codes.InvalidArgument || !strings.Contains(status.Convert(err).Message(), "encode job result") {
+		t.Fatalf("expected InvalidArgument for unsupported result, got %v", err)
+	}
+
+	_, err = adapter.buildExecuteJobResp(executeJobResponse{
+		Status: "FAILED_NON_RETRYABLE",
+		Error: map[string]any{
+			"message": "boom",
+			"details": map[string]any{"bad": func() {}},
+		},
+	})
+	if status.Code(err) != codes.InvalidArgument || !strings.Contains(status.Convert(err).Message(), "encode job error") {
+		t.Fatalf("expected InvalidArgument for unsupported error details, got %v", err)
+	}
+}
+
 func TestTaskExecutionStoreAlreadyRunningRetryAfterMax(t *testing.T) {
 	store := taskExecutionStore{}
 	if got := store.alreadyRunningRetryAfterMax(); got != 60*time.Second {
