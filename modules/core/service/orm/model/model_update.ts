@@ -24,8 +24,9 @@ import { getCurrencyFieldName } from '../metadata/decimal_like';
 import { createServiceByModel } from '../../rpc';
 import { applyInverseWriteback } from '../../runtime/compute/inverse_writeback';
 import { _t } from '@/core/service/i18n_binder';
+import { assertOptionalDownloadDisposition, type DownloadDispositionValue } from '../../utils/normalization';
 
-type AttachmentDownloadDisposition = 'inline' | 'attachment';
+type AttachmentDownloadDisposition = DownloadDispositionValue;
 type AttachmentWriteAction =
   | {
       kind: 'set';
@@ -66,14 +67,6 @@ type AttachmentBindingServiceLike = {
 function normalizeText(value: unknown): string | undefined {
   const text = String(value ?? '').trim();
   return text === '' ? undefined : text;
-}
-
-function normalizeDownloadDisposition(value: unknown): AttachmentDownloadDisposition | undefined {
-  const normalized = normalizeText(value)?.toLowerCase();
-  if (normalized === 'inline' || normalized === 'attachment') {
-    return normalized;
-  }
-  return undefined;
 }
 
 function isAttachmentFieldType(type: unknown): boolean {
@@ -149,7 +142,7 @@ function normalizeAttachmentWriteAction(raw: unknown, fieldName: string): Attach
         normalizeText(record.fileName) ||
         normalizeText(record.originalFileName) ||
         normalizeText(record.proposedFileName),
-      downloadDisposition: normalizeDownloadDisposition(record.downloadDisposition),
+      downloadDisposition: assertOptionalDownloadDisposition(record.downloadDisposition),
     };
   }
 

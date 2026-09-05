@@ -52,6 +52,9 @@ import {
   translatedTextHasValue,
   assertNonNegativeInt,
   normalizeSequenceInt,
+  assertOptionalDownloadDisposition,
+  assertDownloadDisposition,
+  parseDownloadDisposition,
 } from '@/core/service/utils/normalization';
 
 test('normalizeOptionalString returns trimmed string or undefined', () => {
@@ -773,4 +776,32 @@ test('normalizeOptionalTranslatedText skips blank langs and applies case options
   ).toEqual({ en_US: 'ABC', fr_FR: 'X' });
   expect(translatedTextHasValue(42)).toBe(false);
   expect(translatedTextHasValue({ en_US: 1 as any })).toBe(false);
+});
+
+test('assertOptionalDownloadDisposition accepts whitelist and omits blank', () => {
+  expect(assertOptionalDownloadDisposition(undefined)).toBe(undefined);
+  expect(assertOptionalDownloadDisposition('')).toBe(undefined);
+  expect(assertOptionalDownloadDisposition('  Inline  ')).toBe('inline');
+  expect(assertOptionalDownloadDisposition('ATTACHMENT')).toBe('attachment');
+});
+
+test('assertOptionalDownloadDisposition throws invalid_enum_value for unknown values', () => {
+  try {
+    assertOptionalDownloadDisposition('stream');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('invalid_enum_value');
+  }
+});
+
+test('assertDownloadDisposition defaults blank to attachment', () => {
+  expect(assertDownloadDisposition(undefined)).toBe('attachment');
+  expect(assertDownloadDisposition('inline')).toBe('inline');
+});
+
+test('parseDownloadDisposition returns ok/false without throwing', () => {
+  expect(parseDownloadDisposition(undefined)).toEqual({ ok: true, value: undefined });
+  expect(parseDownloadDisposition('Inline')).toEqual({ ok: true, value: 'inline' });
+  expect(parseDownloadDisposition('stream')).toEqual({ ok: false, raw: 'stream' });
 });

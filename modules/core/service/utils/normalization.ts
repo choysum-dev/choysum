@@ -834,3 +834,47 @@ export function normalizeContentType(value: unknown): string | undefined {
   const normalized = token.trim().toLowerCase();
   return normalized || undefined;
 }
+
+/** Allowed Content-Disposition style values for attachment download/bind. */
+export type DownloadDispositionValue = 'inline' | 'attachment';
+
+/** Shared parse result for download disposition whitelist checks. */
+export type DownloadDispositionParseResult =
+  | { ok: true; value: DownloadDispositionValue | undefined }
+  | { ok: false; raw: string };
+
+/**
+ * Parse an optional download disposition whitelist without throwing.
+ *
+ * - blank / null / undefined → `{ ok: true, value: undefined }`
+ * - `inline` / `attachment` (case-insensitive) → `{ ok: true, value }`
+ * - anything else → `{ ok: false, raw }` (trimmed lowercase token)
+ */
+export function parseDownloadDisposition(value: unknown): DownloadDispositionParseResult {
+  const disposition = normalizeOptionalString(value, { lower: true });
+  if (disposition === undefined) return { ok: true, value: undefined };
+  if (disposition === 'inline' || disposition === 'attachment') return { ok: true, value: disposition };
+  return { ok: false, raw: disposition };
+}
+
+/**
+ * Assert an optional download disposition whitelist.
+ *
+ * - blank / null / undefined → `undefined` (caller may default)
+ * - `inline` / `attachment` (case-insensitive) → canonical lowercase
+ * - anything else → {@link NormalizationError} `invalid_enum_value`
+ */
+export function assertOptionalDownloadDisposition(value: unknown): DownloadDispositionValue | undefined {
+  const parsed = parseDownloadDisposition(value);
+  if (!parsed.ok) raiseNormalizationError('invalid_enum_value');
+  return parsed.value;
+}
+
+/**
+ * Assert download disposition, defaulting blank input to `attachment`.
+ *
+ * Invalid non-blank values raise {@link NormalizationError} `invalid_enum_value`.
+ */
+export function assertDownloadDisposition(value: unknown): DownloadDispositionValue {
+  return assertOptionalDownloadDisposition(value) ?? 'attachment';
+}
