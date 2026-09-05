@@ -37,18 +37,26 @@ func TestSubpathStubOverlay(t *testing.T) {
 
 func TestAmbientRoot_Absolute(t *testing.T) {
 	dir := t.TempDir()
-	origAbsPath := absPath
-	t.Cleanup(func() { absPath = origAbsPath })
-	absPath = func(path string) (string, error) {
-		return filepath.Join(dir, path), nil
-	}
-	got := AmbientRoot("modules")
+	got := AmbientRoot(dir)
 	if !filepath.IsAbs(got) {
 		t.Fatalf("AmbientRoot must be absolute, got %q", got)
 	}
-	want := filepath.Join(dir, "modules", ambientDirName)
+	want := filepath.Join(dir, ambientDirName)
 	if got != want {
 		t.Fatalf("AmbientRoot = %q, want %q", got, want)
+	}
+
+	gotRel := AmbientRoot("modules")
+	if !filepath.IsAbs(gotRel) {
+		t.Fatalf("AmbientRoot must be absolute for relative input, got %q", gotRel)
+	}
+	absModules, err := filepath.Abs("modules")
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantRel := filepath.Join(absModules, ambientDirName)
+	if gotRel != wantRel {
+		t.Fatalf("AmbientRoot(relative) = %q, want %q", gotRel, wantRel)
 	}
 }
 
@@ -83,7 +91,12 @@ func TestMergeOverlays(t *testing.T) {
 		map[string]string{"/a.ts": "1", "  ": "x"},
 		map[string]string{"/a.ts": "2", "/b.ts": "3"},
 	)
-	if got["/a.ts"] != "2" || got["/b.ts"] != "3" {
+	if len(got) != 2 {
+		t.Fatalf("expected 2 elements, got %d: %#v", len(got), got)
+	}
+	a := normalizePathKey("/a.ts")
+	b := normalizePathKey("/b.ts")
+	if got[a] != "2" || got[b] != "3" {
 		t.Fatalf("got %#v", got)
 	}
 }
