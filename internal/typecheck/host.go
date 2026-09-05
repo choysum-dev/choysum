@@ -49,7 +49,14 @@ func normalizeOverlayMap(overlays map[string]string) map[string]string {
 	}
 	out := make(map[string]string, len(overlays))
 	for k, v := range overlays {
-		out[normalizePathKey(k)] = v
+		key := normalizePathKey(k)
+		if key == "" {
+			continue
+		}
+		out[key] = v
+	}
+	if len(out) == 0 {
+		return nil
 	}
 	return out
 }
@@ -59,6 +66,9 @@ func lookupOverlay(overlays map[string]string, requestPath string, caseSensitive
 		return "", false
 	}
 	key := normalizePathKey(requestPath)
+	if key == "" {
+		return "", false
+	}
 	if content, ok := overlays[key]; ok {
 		return content, true
 	}

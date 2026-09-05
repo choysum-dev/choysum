@@ -351,6 +351,12 @@ func TestHostLookupCaseInsensitive(t *testing.T) {
 	if normalizeOverlayMap(nil) != nil {
 		t.Fatal("nil map")
 	}
+	if normalizeOverlayMap(map[string]string{"  ": "x", "": "y"}) != nil {
+		t.Fatal("blank-only overlays should normalize to nil")
+	}
+	if _, ok := lookupOverlay(map[string]string{"/a.ts": "x"}, "  ", true); ok {
+		t.Fatal("blank lookup must miss")
+	}
 	h := newHost(".", newTypecheckFS(nil))
 	if h == nil {
 		t.Fatal("host")
