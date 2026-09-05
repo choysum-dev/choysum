@@ -86,15 +86,17 @@ export function createServiceScript(fileName, source, options = {}) {
   }
 
   const rawContent = service.snapshot.getText(0, service.snapshot.getLength());
-  const content = rewriteVueHelperReferences(rawContent);
-  const genDelta = content.length - rawContent.length;
+  const { content, edits } = rewriteVueHelperReferences(rawContent);
   const lang = service.id.slice("script_".length);
   const mappings = flattenCodeMappings(fileName, service.mappings ?? []).map(
-    (m) => ({
-      ...m,
-      generatedStart: m.generatedStart + genDelta,
-      generatedEnd: m.generatedEnd + genDelta,
-    }),
+    (m) => {
+      const delta = cumulativeDeltaAfter(edits, m.generatedStart);
+      return {
+        ...m,
+        generatedStart: m.generatedStart + delta,
+        generatedEnd: m.generatedEnd + cumulativeDeltaAfter(edits, m.generatedEnd),
+      };
+    },
   );
 
   return {
@@ -103,6 +105,17 @@ export function createServiceScript(fileName, source, options = {}) {
     content,
     mappings,
   };
+}
+
+/** Sum of length deltas for edits that start at or before pos. */
+export function cumulativeDeltaAfter(edits, pos) {
+  let delta = 0;
+  for (const e of edits) {
+    if (e.index <= pos) {
+      delta += e.delta;
+    }
+  }
+  return delta;
 }
 
 export function flattenCodeMappings(sourceFile, mappings) {
@@ -130,15 +143,40 @@ export function flattenCodeMappings(sourceFile, mappings) {
 }
 
 export function rewriteVueHelperReferences(content) {
-  return content
-    .replace(
-      /\/\/\/\s*<reference\s+types="[^"]*template-helpers\.d\.ts"\s*\/>/g,
-      `/// <reference path="${VUE_HELPER_TEMPLATE}" />`,
-    )
-    .replace(
-      /\/\/\/\s*<reference\s+types="[^"]*props-fallback\.d\.ts"\s*\/>/g,
-      `/// <reference path="${VUE_HELPER_PROPS}" />`,
-    );
+  const replacements = [
+    {
+      re: /\/\/\/\s*<reference\s+types="[^"]*template-helpers\.d\.ts"\s*\/>/g,
+      to: `/// <reference path="${VUE_HELPER_TEMPLATE}" />`,
+    },
+    {
+      re: /\/\/\/\s*<reference\s+types="[^"]*props-fallback\.d\.ts"\s*\/>/g,
+      to: `/// <reference path="${VUE_HELPER_PROPS}" />`,
+    },
+  ];
+  /** @type {{ index: number, delta: number }[]} */
+  const edits = [];
+  let out = content;
+  // Apply left-to-right so later match indices stay valid in the original string;
+  // track deltas in original coordinates for mapping adjustment.
+  const matches = [];
+  for (const { re, to } of replacements) {
+    re.lastIndex = 0;
+    let m;
+    while ((m = re.exec(content)) !== null) {
+      matches.push({ index: m.index, from: m[0], to });
+    }
+  }
+  matches.sort((a, b) => a.index - b.index);
+  let shift = 0;
+  out = content;
+  for (const m of matches) {
+    const at = m.index + shift;
+    out = out.slice(0, at) + m.to + out.slice(at + m.from.length);
+    const delta = m.to.length - m.from.length;
+    edits.push({ index: m.index, delta });
+    shift += delta;
+  }
+  return { content: out, edits };
 }
 
 /** CLI helper: resolve module from local or repo root node_modules. */

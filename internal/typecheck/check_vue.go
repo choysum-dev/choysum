@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/choysum-dev/choysum/internal/typecheck/vue"
@@ -73,6 +74,86 @@ func collectVuePaths(files []string) []string {
 	return out
 }
 
+// collectVueOverlayPaths returns ScopeAll-eligible .vue paths that exist only
+// (or also) in overlays, using the same app/web/test filters as appendOverlayRoots.
+func collectVueOverlayPaths(modulesPath, app string, overlays map[string]string, caseSensitive bool) []string {
+	if len(overlays) == 0 {
+		return nil
+	}
+	app = strings.TrimSpace(app)
+	appRoot := filepath.ToSlash(filepath.Join(modulesPath, app))
+	keys := make([]string, 0, len(overlays))
+	for k := range overlays {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	var out []string
+	for _, path := range keys {
+		norm := normalizePathKey(path)
+		if norm == "" || !strings.HasSuffix(strings.ToLower(norm), ".vue") {
+			continue
+		}
+		if shouldSkipTSFileName(filepath.Base(norm)) {
+			continue
+		}
+		rel, ok := cutPathPrefix(norm, appRoot+"/", caseSensitive)
+		if !ok || !strings.Contains(rel, "/") {
+			continue
+		}
+		relLower := rel
+		if !caseSensitive {
+			relLower = strings.ToLower(rel)
+		}
+		if !strings.HasPrefix(relLower, "web/") {
+			continue
+		}
+		parts := strings.Split(rel, "/")
+		skip := false
+		for _, part := range parts[:len(parts)-1] {
+			if shouldSkipScanDir(part) {
+				skip = true
+				break
+			}
+		}
+		if skip {
+			continue
+		}
+		out = append(out, norm)
+	}
+	return out
+}
+
+func mergeVuePaths(diskPaths, overlayPaths []string) []string {
+	if len(overlayPaths) == 0 {
+		return diskPaths
+	}
+	seen := make(map[string]struct{}, len(diskPaths)+len(overlayPaths))
+	out := make([]string, 0, len(diskPaths)+len(overlayPaths))
+	for _, p := range diskPaths {
+		k := normalizePathKey(p)
+		if k == "" {
+			continue
+		}
+		if _, ok := seen[k]; ok {
+			continue
+		}
+		seen[k] = struct{}{}
+		out = append(out, p)
+	}
+	for _, p := range overlayPaths {
+		k := normalizePathKey(p)
+		if k == "" {
+			continue
+		}
+		if _, ok := seen[k]; ok {
+			continue
+		}
+		seen[k] = struct{}{}
+		out = append(out, p)
+	}
+	return out
+}
+
 func resolveVueCoder(opts Options) (vue.Coder, error) {
 	if opts.Coder != nil {
 		return opts.Coder, nil
@@ -106,8 +187,10 @@ func remapDiagnostics(diags []Diagnostic, scripts map[string]vue.ServiceScript) 
 				script, ok = scripts[normalizePathKey(v)]
 			}
 		}
+		remapped := false
 		if ok {
 			if srcStart, srcLen, mapped := vue.RemapRange(script.Mappings, d.Start, d.Length); mapped {
+				remapped = true
 				d.Start = srcStart
 				d.Length = srcLen
 				if line, col, lok := lineColumnFromBytes([]byte(script.SourceContent), srcStart); lok {
@@ -124,6 +207,10 @@ func remapDiagnostics(diags []Diagnostic, scripts map[string]vue.ServiceScript) 
 		}
 		if v, isVueProg := fromVueProgramPath(normalizePathKey(d.File)); isVueProg {
 			d.File = v
+			if !remapped {
+				// Keep the .vue path for attribution, but drop generated coordinates.
+				d.Start, d.Length, d.Line, d.Column = 0, 0, 0, 0
+			}
 		} else if ok {
 			d.File = normalizePathKey(vueFile)
 		}

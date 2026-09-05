@@ -3,18 +3,14 @@
 
 package vue
 
-import "sort"
-
 // RemapOffset maps a generated (service script) offset to a source .vue offset.
 // Segments use half-open ranges [GeneratedStart, GeneratedEnd).
 // Mappings with Verification == false are skipped.
 // When multiple segments cover pos, the one with the greatest GeneratedStart wins.
 func RemapOffset(mappings []SpanMapping, generatedPos int) (sourcePos int, ok bool) {
-	type hit struct {
-		sourcePos int
-		genStart  int
-	}
-	var hits []hit
+	bestGenStart := -1
+	bestSource := 0
+	found := false
 	for _, m := range mappings {
 		if m.Verification == false {
 			continue
@@ -24,23 +20,24 @@ func RemapOffset(mappings []SpanMapping, generatedPos int) (sourcePos int, ok bo
 		}
 		genLen := m.GeneratedEnd - m.GeneratedStart
 		srcLen := m.SourceEnd - m.SourceStart
-		if genLen <= 0 || srcLen <= 0 {
-			hits = append(hits, hit{sourcePos: m.SourceStart, genStart: m.GeneratedStart})
-			continue
+		pos := m.SourceStart
+		if genLen > 0 && srcLen > 0 {
+			delta := generatedPos - m.GeneratedStart
+			if delta >= srcLen {
+				delta = srcLen - 1
+			}
+			pos = m.SourceStart + delta
 		}
-		delta := generatedPos - m.GeneratedStart
-		if delta >= srcLen {
-			delta = srcLen - 1
+		if !found || m.GeneratedStart > bestGenStart {
+			found = true
+			bestGenStart = m.GeneratedStart
+			bestSource = pos
 		}
-		hits = append(hits, hit{sourcePos: m.SourceStart + delta, genStart: m.GeneratedStart})
 	}
-	if len(hits) == 0 {
+	if !found {
 		return 0, false
 	}
-	sort.SliceStable(hits, func(i, j int) bool {
-		return hits[i].genStart > hits[j].genStart
-	})
-	return hits[0].sourcePos, true
+	return bestSource, true
 }
 
 // RemapRange maps a generated diagnostic [start, start+length) into source

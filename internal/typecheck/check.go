@@ -67,7 +67,12 @@ func Check(ctx context.Context, opts Options) (Result, error) {
 		if err != nil {
 			return Result{}, err
 		}
-		vueOverlays, scripts, err := prepareVueOverlays(coder, collectVuePaths(files), modulesPath, overlays)
+		caseSensitive := newTypecheckFS(overlays).UseCaseSensitiveFileNames()
+		vuePaths := mergeVuePaths(
+			collectVuePaths(files),
+			collectVueOverlayPaths(modulesPath, opts.App, overlays, caseSensitive),
+		)
+		vueOverlays, scripts, err := prepareVueOverlays(coder, vuePaths, modulesPath, overlays)
 		if err != nil {
 			return Result{}, err
 		}

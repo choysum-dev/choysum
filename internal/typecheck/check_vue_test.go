@@ -129,6 +129,41 @@ func TestCheck_VueWithExplicitCoder(t *testing.T) {
 	}
 }
 
+func TestCollectVueOverlayPaths(t *testing.T) {
+	if got := collectVueOverlayPaths("/m", "demo", nil, true); len(got) != 0 {
+		t.Fatalf("%v", got)
+	}
+	modules := "/repo/modules"
+	app := "demo"
+	overlays := map[string]string{
+		"/repo/modules/demo/web/App.vue":         "<script setup lang=\"ts\"></script>",
+		"/repo/modules/demo/web/skip.spec.vue":   "x",
+		"/repo/modules/demo/service/X.vue":       "x",
+		"/repo/modules/demo/web/ui.ts":           "x",
+		"/repo/modules/other/web/O.vue":          "x",
+		"/repo/modules/demo/web/__tests__/T.vue": "x",
+		"/REPO/MODULES/demo/web/Case.vue":        "x",
+	}
+	got := collectVueOverlayPaths(modules, app, overlays, true)
+	if len(got) != 1 || !strings.HasSuffix(got[0], "web/App.vue") {
+		t.Fatalf("%v", got)
+	}
+	gotCI := collectVueOverlayPaths(modules, app, overlays, false)
+	foundCase := false
+	for _, p := range gotCI {
+		if strings.Contains(strings.ToLower(p), "web/case.vue") {
+			foundCase = true
+		}
+	}
+	if !foundCase {
+		t.Fatalf("case-insensitive overlay miss: %v", gotCI)
+	}
+	merged := mergeVuePaths([]string{"/disk/A.vue", "", "/disk/A.vue"}, append(got, "", got[0]))
+	if len(merged) != 2 {
+		t.Fatalf("%v", merged)
+	}
+}
+
 func TestRewriteVueRootsAndAmbient(t *testing.T) {
 	got := rewriteVueRootsToProgramPaths([]string{"/a.ts", "/b.vue"})
 	if len(got) != 2 || got[1] != "/b.vue.ts" {
@@ -296,9 +331,9 @@ func TestRemapDiagnostics_Helpers(t *testing.T) {
 		t.Fatalf("%#v", got[0])
 	}
 
-	// Unmapped diagnostic still strips .vue.ts suffix.
+	// Unmapped diagnostic still strips .vue.ts suffix, but clears generated coords.
 	got = remapDiagnostics([]Diagnostic{{File: vueDisk + ".ts", Start: 999, Length: 1, Line: 7}}, scripts)
-	if got[0].File != normalizePathKey(vueDisk) || got[0].Line != 7 {
+	if got[0].File != normalizePathKey(vueDisk) || got[0].Line != 0 || got[0].Column != 0 || got[0].Start != 0 {
 		t.Fatalf("%#v", got)
 	}
 
