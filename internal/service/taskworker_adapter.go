@@ -249,21 +249,25 @@ func (a taskWorkerAdapter) buildExecuteJobResp(resp executeJobResponse) (any, er
 	if resp.Result != nil {
 		if field := fields.ByName("result"); field != nil {
 			valueMsg := serviceCodec.newMessage(field.Message())
-			_ = serviceCodec.anyToMessage(resp.Result, valueMsg)
+			if err := serviceCodec.anyToMessage(resp.Result, valueMsg); err != nil {
+				return nil, status.Errorf(codes.InvalidArgument, "encode job result: %v", err)
+			}
 			out.Set(field, protoreflect.ValueOfMessage(valueMsg))
 		}
 	}
 	if resp.Error != nil && errDesc != nil {
 		if field := fields.ByName("error"); field != nil {
 			errMsg := serviceCodec.newMessage(errDesc)
-			a.setTaskError(errMsg, resp.Error)
+			if err := a.setTaskError(errMsg, resp.Error); err != nil {
+				return nil, status.Errorf(codes.InvalidArgument, "encode job error: %v", err)
+			}
 			out.Set(field, protoreflect.ValueOfMessage(errMsg))
 		}
 	}
 	return out, nil
 }
 
-func (a taskWorkerAdapter) setTaskError(msg *dynamicpb.Message, errMap map[string]any) {
+func (a taskWorkerAdapter) setTaskError(msg *dynamicpb.Message, errMap map[string]any) error {
 	fields := msg.Descriptor().Fields()
 	if field := fields.ByName("grpc_code"); field != nil {
 		if value, ok := errMap["grpc_code"]; ok {
@@ -293,14 +297,19 @@ func (a taskWorkerAdapter) setTaskError(msg *dynamicpb.Message, errMap map[strin
 		}
 	}
 	if field := fields.ByName("details"); field != nil {
-		if value, ok := errMap["details"]; ok {
-			if detailMap, ok := toAnyMap(value); ok {
-				detailsMsg := serviceCodec.newMessage(field.Message())
-				_ = serviceCodec.anyToMessage(detailMap, detailsMsg)
-				msg.Set(field, protoreflect.ValueOfMessage(detailsMsg))
+		if value, ok := errMap["details"]; ok && value != nil {
+			detailMap, ok := toAnyMap(value)
+			if !ok {
+				return fmt.Errorf("details expects a map, got %T", value)
 			}
+			detailsMsg := serviceCodec.newMessage(field.Message())
+			if err := serviceCodec.anyToMessage(detailMap, detailsMsg); err != nil {
+				return err
+			}
+			msg.Set(field, protoreflect.ValueOfMessage(detailsMsg))
 		}
 	}
+	return nil
 }
 
 func (a taskWorkerAdapter) statusToEnum(status string) protoreflect.EnumNumber {

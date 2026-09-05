@@ -252,6 +252,78 @@ func TestTaskWorkerBuildExecuteJobResp(t *testing.T) {
 	}
 }
 
+func TestTaskWorkerBuildExecuteJobRespEncodeFailures(t *testing.T) {
+	svc := &ApplicationService{name: "task"}
+	adapter := svc.taskWorkerAdapter()
+
+	_, err := adapter.buildExecuteJobResp(executeJobResponse{
+		Status: "SUCCEEDED",
+		Result: func() {},
+	})
+	if status.Code(err) != codes.InvalidArgument || !strings.Contains(status.Convert(err).Message(), "encode job result") {
+		t.Fatalf("expected InvalidArgument for unsupported result, got %v", err)
+	}
+
+	_, err = adapter.buildExecuteJobResp(executeJobResponse{
+		Status: "FAILED_NON_RETRYABLE",
+		Error: map[string]any{
+			"message": "boom",
+			"details": map[string]any{"bad": func() {}},
+		},
+	})
+	if status.Code(err) != codes.InvalidArgument || !strings.Contains(status.Convert(err).Message(), "encode job error") {
+		t.Fatalf("expected InvalidArgument for unsupported error details, got %v", err)
+	}
+
+	_, err = adapter.buildExecuteJobResp(executeJobResponse{
+		Status: "FAILED_NON_RETRYABLE",
+		Error: map[string]any{
+			"message": "boom",
+			"details": "not-a-map",
+		},
+	})
+	if status.Code(err) != codes.InvalidArgument || !strings.Contains(status.Convert(err).Message(), "encode job error") {
+		t.Fatalf("expected InvalidArgument for non-map details, got %v", err)
+	}
+
+	resp, err := adapter.buildExecuteJobResp(executeJobResponse{
+		Status: "FAILED_NON_RETRYABLE",
+		Error: map[string]any{
+			"message": "boom",
+			"details": nil,
+		},
+	})
+	if err != nil {
+		t.Fatalf("expected explicit null details to be omitted, got %v", err)
+	}
+	protoMsg, ok := resp.(interface{ ProtoReflect() protoreflect.Message })
+	if !ok {
+		t.Fatalf("response does not implement ProtoReflect: %T", resp)
+	}
+	respMap, err := converter.MessageToMap(protoMsg.ProtoReflect())
+	if err != nil {
+		t.Fatalf("MessageToMap(null details): %v", err)
+	}
+	errVal := requireAnyMap(t, respMap["error"])
+	if _, hasDetails := errVal["details"]; hasDetails {
+		t.Fatalf("expected details to stay unset for null, got %#v", errVal)
+	}
+
+	errMsg := dynamicpb.NewMessage(mustTaskWorkerErrorDesc(t))
+	if err := setTaskError(errMsg, map[string]any{"message": "via-wrapper", "details": map[string]any{"k": "v"}}); err != nil {
+		t.Fatalf("setTaskError wrapper: %v", err)
+	}
+}
+
+func mustTaskWorkerErrorDesc(t *testing.T) protoreflect.MessageDescriptor {
+	t.Helper()
+	_, _, _, errDesc, err := taskWorkerDescriptors("task")
+	if err != nil {
+		t.Fatalf("taskWorkerDescriptors: %v", err)
+	}
+	return errDesc
+}
+
 func TestTaskExecutionStoreAlreadyRunningRetryAfterMax(t *testing.T) {
 	store := taskExecutionStore{}
 	if got := store.alreadyRunningRetryAfterMax(); got != 60*time.Second {

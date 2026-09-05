@@ -285,81 +285,126 @@ func AnyToMessage(v interface{}, msg *dynamicpb.Message) error {
 	}
 }
 
-// MapToMessage converts a map to a message
+// MapToMessage converts a map to a message.
+// Unknown keys, wrong container shapes, and per-field conversion failures return an error.
 func MapToMessage(m map[string]interface{}, msg *dynamicpb.Message) error {
 	for k, v := range m {
+		field := msg.Descriptor().Fields().ByTextName(k)
+		if field == nil {
+			return xfmt.Errorf("unknown field %q on message %s", k, msg.Descriptor().FullName())
+		}
 		if v == nil {
+			// Explicit null omits a known optional field; it is not a type error.
 			continue
 		}
 
-		field := msg.Descriptor().Fields().ByTextName(k)
-		if field == nil {
-			continue // Skip unknown fields
+		if field.IsList() && !field.IsMap() {
+			slice, ok := asInterfaceSlice(v)
+			if !ok {
+				return xfmt.Errorf("field %s expects a list, got %T", field.TextName(), v)
+			}
+			listValue := msg.Mutable(field).List()
+			for i, item := range slice {
+				if field.Message() != nil {
+					nestedMsg := dynamicpb.NewMessage(field.Message())
+					if err := AnyToMessage(item, nestedMsg); err != nil {
+						return xfmt.Errorf("field %s[%d]: %w", field.TextName(), i, err)
+					}
+					listValue.Append(protoreflect.ValueOf(nestedMsg))
+					continue
+				}
+
+				protoValue, err := ConvertToProtoValue(item, field)
+				if err != nil {
+					return xfmt.Errorf("field %s[%d]: %w", field.TextName(), i, err)
+				}
+				listValue.Append(protoValue)
+			}
+			continue
 		}
 
-		if field.IsList() {
-			if slice, ok := v.([]interface{}); ok {
-				listValue := msg.Mutable(field).List()
-				for _, item := range slice {
-					if field.Message() != nil {
-						nestedMsg := dynamicpb.NewMessage(field.Message())
-						if err := AnyToMessage(item, nestedMsg); err != nil {
-							return err
-						}
-						listValue.Append(protoreflect.ValueOf(nestedMsg))
-						continue
-					}
-
-					protoValue, err := ConvertToProtoValue(item, field)
-					if err != nil {
-						continue
-					}
-					listValue.Append(protoValue)
-				}
+		if field.IsMap() {
+			mapValue, ok := asStringKeyedMap(v)
+			if !ok {
+				return xfmt.Errorf("field %s expects a map, got %T", field.TextName(), v)
 			}
-		} else if field.IsMap() {
-			// Handle map fields
-			if mapValue, ok := v.(map[string]interface{}); ok {
-				fieldMap := msg.Mutable(field).Map()
-				valueDesc := field.MapValue().Message()
-				for mapKey, mapVal := range mapValue {
+			if field.MapKey().Kind() != protoreflect.StringKind {
+				return xfmt.Errorf("field %s: unsupported map key kind %s", field.TextName(), field.MapKey().Kind())
+			}
+			fieldMap := msg.Mutable(field).Map()
+			valueDesc := field.MapValue().Message()
+			for mapKey, mapVal := range mapValue {
+				if valueDesc != nil {
 					valueMsg := dynamicpb.NewMessage(valueDesc)
 					if err := AnyToMessage(mapVal, valueMsg); err != nil {
-						return err
+						return xfmt.Errorf("field %s[%q]: %w", field.TextName(), mapKey, err)
 					}
-
-					var keyValue protoreflect.Value
-					switch field.MapKey().Kind() {
-					case protoreflect.StringKind:
-						keyValue = protoreflect.ValueOfString(mapKey)
-					default:
-						continue
-					}
-
-					fieldMap.Set(protoreflect.MapKey(keyValue), protoreflect.ValueOf(valueMsg))
+					fieldMap.Set(protoreflect.ValueOfString(mapKey).MapKey(), protoreflect.ValueOf(valueMsg))
+					continue
 				}
+				protoValue, err := ConvertToProtoValue(mapVal, field.MapValue())
+				if err != nil {
+					return xfmt.Errorf("field %s[%q]: %w", field.TextName(), mapKey, err)
+				}
+				fieldMap.Set(protoreflect.ValueOfString(mapKey).MapKey(), protoValue)
 			}
-		} else if field.Message() != nil {
-			// Regular message fields
+			continue
+		}
+
+		if field.Message() != nil {
 			nestedMsg := dynamicpb.NewMessage(field.Message())
 			if err := AnyToMessage(v, nestedMsg); err != nil {
-				return err
+				return xfmt.Errorf("field %s: %w", field.TextName(), err)
 			}
 			msg.Set(field, protoreflect.ValueOf(nestedMsg))
-		} else {
-			// Basic type fields
-			protoValue, err := ConvertToProtoValue(v, field)
-			if err != nil {
-				continue // Ignore fields with conversion errors
-			}
-			msg.Set(field, protoValue)
+			continue
 		}
+
+		protoValue, err := ConvertToProtoValue(v, field)
+		if err != nil {
+			return xfmt.Errorf("field %s: %w", field.TextName(), err)
+		}
+		msg.Set(field, protoValue)
 	}
 
 	return nil
 }
 
-// SliceToMessage converts a slice to a message, suitable for repeated fields
+// asInterfaceSlice accepts []interface{} and common typed slices produced by Go callers
+// (e.g. []string for repeated string fields). Non-slice values return false.
+func asInterfaceSlice(v interface{}) ([]interface{}, bool) {
+	switch typed := v.(type) {
+	case []interface{}:
+		return typed, true
+	case []string:
+		out := make([]interface{}, len(typed))
+		for i, s := range typed {
+			out[i] = s
+		}
+		return out, true
+	default:
+		return nil, false
+	}
+}
+
+// asStringKeyedMap accepts map[string]interface{} and map[string]string.
+func asStringKeyedMap(v interface{}) (map[string]interface{}, bool) {
+	switch typed := v.(type) {
+	case map[string]interface{}:
+		return typed, true
+	case map[string]string:
+		out := make(map[string]interface{}, len(typed))
+		for k, val := range typed {
+			out[k] = val
+		}
+		return out, true
+	default:
+		return nil, false
+	}
+}
+
+// SliceToMessage converts a slice to a message, suitable for repeated fields.
+// Item conversion failures return an error (no skipped items).
 func SliceToMessage(slice []interface{}, msg *dynamicpb.Message) error {
 	// Find the first list field
 	var field protoreflect.FieldDescriptor
@@ -375,22 +420,21 @@ func SliceToMessage(slice []interface{}, msg *dynamicpb.Message) error {
 		return xfmt.Errorf("no suitable repeated field found in message %s", msg.Descriptor().FullName())
 	}
 
-	// Populate list field
 	list := msg.Mutable(field).List()
-	for _, item := range slice {
+	for i, item := range slice {
 		if field.Message() != nil {
 			nestedMsg := dynamicpb.NewMessage(field.Message())
 			if err := AnyToMessage(item, nestedMsg); err != nil {
-				return err
+				return xfmt.Errorf("index %d: %w", i, err)
 			}
 			list.Append(protoreflect.ValueOf(nestedMsg))
-		} else {
-			protoValue, err := ConvertToProtoValue(item, field)
-			if err != nil {
-				continue
-			}
-			list.Append(protoValue)
+			continue
 		}
+		protoValue, err := ConvertToProtoValue(item, field)
+		if err != nil {
+			return xfmt.Errorf("index %d: %w", i, err)
+		}
+		list.Append(protoValue)
 	}
 
 	return nil
@@ -818,8 +862,7 @@ func ConvertToProtoValue(v interface{}, field protoreflect.FieldDescriptor) (pro
 		if s, ok := v.(string); ok {
 			return protoreflect.ValueOfString(s), nil
 		}
-		// Try to convert non-string values to string
-		return protoreflect.ValueOfString(fmt.Sprintf("%v", v)), nil
+		return protoreflect.Value{}, xfmt.Errorf("cannot convert %T to string", v)
 
 	case protoreflect.BytesKind:
 		if b, ok := v.([]byte); ok {

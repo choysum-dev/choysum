@@ -71,8 +71,8 @@ func (s *ApplicationService) buildExecuteJobResp(resp executeJobResponse) (any, 
 	return s.taskWorkerAdapter().buildExecuteJobResp(resp)
 }
 
-func setTaskError(msg *dynamicpb.Message, errMap map[string]any) {
-	taskWorkerAdapter{}.setTaskError(msg, errMap)
+func setTaskError(msg *dynamicpb.Message, errMap map[string]any) error {
+	return taskWorkerAdapter{}.setTaskError(msg, errMap)
 }
 
 func statusToEnum(status string) protoreflect.EnumNumber {

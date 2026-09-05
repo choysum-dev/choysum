@@ -24,7 +24,7 @@ type descriptorCodec struct{}
 
 // messageToAny converts a protobuf message to a JavaScript compatible object
 func (descriptorCodec) messageToAny(msg protoreflect.Message) (interface{}, error) {
-	return converter.MessageToAny(msg)
+	return convertMessageToAny(msg)
 }
 
 // messageToMap converts a protobuf message into a map representation.
@@ -67,6 +67,34 @@ func (descriptorCodec) listToAny(list protoreflect.List, field protoreflect.Fiel
 			continue
 		}
 		out = append(out, item.Interface())
+	}
+	return out, nil
+}
+
+// mapToAny converts a protobuf map field into a JS-friendly map[string]any.
+func (descriptorCodec) mapToAny(m protoreflect.Map, field protoreflect.FieldDescriptor) (map[string]any, error) {
+	if m == nil {
+		return map[string]any{}, nil
+	}
+	out := make(map[string]any, m.Len())
+	var walkErr error
+	m.Range(func(key protoreflect.MapKey, value protoreflect.Value) bool {
+		var converted any
+		if field.MapValue().Message() != nil {
+			msgJSON, err := convertMessageToAny(value.Message())
+			if err != nil {
+				walkErr = err
+				return false
+			}
+			converted = msgJSON
+		} else {
+			converted = value.Interface()
+		}
+		out[key.String()] = converted
+		return true
+	})
+	if walkErr != nil {
+		return nil, walkErr
 	}
 	return out, nil
 }
