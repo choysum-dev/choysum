@@ -5,7 +5,6 @@ package typecheck
 
 import (
 	_ "embed"
-	"path/filepath"
 )
 
 //go:embed ambient/vite_client.d.ts
@@ -14,5 +13,5 @@ var viteClientDTS string
 // ViteClientOverlay returns the relative ambient path (under the typecheck
 // ambient root) and embedded vite/client declarations.
 func ViteClientOverlay() (relPath, content string) {
-	return filepath.ToSlash(filepath.Join("vite", "client.d.ts")), viteClientDTS
+	return "vite/client.d.ts", viteClientDTS
 }

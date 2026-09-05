@@ -18,10 +18,6 @@ func buildSubpathStubs() string {
 	stubs := []string{
 		"dayjs/locale/*",
 		"dayjs/plugin/*",
-		"*.css",
-		"*.scss",
-		"*.sass",
-		"*.svg",
 		"element-plus/es/locale/lang/*",
 		"@element-plus/icons-vue",
 		"nprogress",
@@ -33,15 +29,9 @@ func buildSubpathStubs() string {
 	for _, mod := range stubs {
 		fmt.Fprintf(&b, "declare module %q;\n", mod)
 	}
+	// ImportMeta / CSS/SVG asset modules live in the vite/client ambient only —
+	// declaring them here would duplicate global index signatures and module shapes.
 	b.WriteString(`
-interface ImportMetaEnv {
-	readonly [key: string]: string | undefined;
-}
-
-interface ImportMeta {
-	readonly env: ImportMetaEnv;
-}
-
 declare module "@bufbuild/protobuf/codegenv2" {
   export type Message = any;
   export type GenFile = any;

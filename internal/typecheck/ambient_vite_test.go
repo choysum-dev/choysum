@@ -4,6 +4,7 @@
 package typecheck
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -29,6 +30,31 @@ func TestSubpathStubOverlay(t *testing.T) {
 	}
 	if !strings.Contains(content, `declare module "dayjs/locale/*"`) {
 		t.Fatal("missing dayjs stub")
+	}
+	if strings.Contains(content, "interface ImportMetaEnv") || strings.Contains(content, `declare module "*.css"`) {
+		t.Fatal("subpath stubs must not redeclare vite/client globals or CSS modules")
+	}
+}
+
+func TestAmbientRoot_Absolute(t *testing.T) {
+	dir := t.TempDir()
+	relModules := filepath.Join(dir, "modules")
+	mustMkdir(t, relModules)
+	// Use a relative modules path from cwd.
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(cwd) })
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	got := AmbientRoot("modules")
+	if !filepath.IsAbs(got) {
+		t.Fatalf("AmbientRoot must be absolute, got %q", got)
+	}
+	if !strings.HasSuffix(filepath.ToSlash(got), "/modules/"+ambientDirName) {
+		t.Fatalf("AmbientRoot = %q", got)
 	}
 }
 

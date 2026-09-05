@@ -13,6 +13,10 @@ const ambientDirName = ".typecheck-ambient"
 
 // AmbientRoot returns the absolute ambient directory under modulesPath.
 func AmbientRoot(modulesPath string) string {
+	modulesPath = filepath.Clean(modulesPath)
+	if abs, err := absPath(modulesPath); err == nil {
+		modulesPath = abs
+	}
 	return filepath.Clean(filepath.Join(modulesPath, ambientDirName))
 }
 
@@ -22,10 +26,10 @@ func BuiltInAmbientOverlays(modulesPath string) map[string]string {
 	root := AmbientRoot(modulesPath)
 	out := make(map[string]string, 2)
 	if rel, content := ViteClientOverlay(); rel != "" {
-		out[filepath.ToSlash(filepath.Join(root, filepath.FromSlash(rel)))] = content
+		out[filepath.ToSlash(filepath.Join(root, rel))] = content
 	}
 	if rel, content := SubpathStubOverlay(); rel != "" {
-		out[filepath.ToSlash(filepath.Join(root, filepath.FromSlash(rel)))] = content
+		out[filepath.ToSlash(filepath.Join(root, rel))] = content
 	}
 	return out
 }

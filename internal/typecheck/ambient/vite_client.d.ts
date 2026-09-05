@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 // Minimal vite/client ambient for Choysum Go-native typecheck.
 // Self-contained (no relative /// <reference>) so node_modules/vite is not required.
 
@@ -35,10 +38,22 @@ declare module "*.module.sass" {
   export default classes;
 }
 
-declare module "*.css" {}
-declare module "*.scss" {}
-declare module "*.sass" {}
-declare module "*.less" {}
+declare module "*.css" {
+  const src: string;
+  export default src;
+}
+declare module "*.scss" {
+  const src: string;
+  export default src;
+}
+declare module "*.sass" {
+  const src: string;
+  export default src;
+}
+declare module "*.less" {
+  const src: string;
+  export default src;
+}
 
 declare module "*.svg" {
   const src: string;
