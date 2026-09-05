@@ -9,7 +9,6 @@ import (
 )
 
 func TestOverlayReadFile(t *testing.T) {
-	t.Parallel()
 	dir := t.TempDir()
 	diskFile := filepath.Join(dir, "on_disk.ts")
 	mustWrite(t, diskFile, "export const fromDisk = 1;\n")

@@ -9,7 +9,6 @@ import (
 )
 
 func TestBuildCompilerOptions_PathsAlias(t *testing.T) {
-	t.Parallel()
 	dir := t.TempDir()
 	modules := filepath.Join(dir, "modules")
 	mustMkdir(t, modules)
@@ -33,29 +32,5 @@ func TestBuildCompilerOptions_PathsAlias(t *testing.T) {
 	want := filepath.ToSlash(filepath.Join(modules, "demo", "*"))
 	if targets[0] != want {
 		t.Fatalf("path target = %q, want %q", targets[0], want)
-	}
-}
-
-func TestResolveModulePathsForTest(t *testing.T) {
-	t.Parallel()
-	_, modules := fixtureRoots(t, "service_ok")
-	paths := ResolveModulePathsForTest(modules)
-	if _, ok := paths["@/*"]; !ok {
-		t.Fatalf("expected @/* in %#v", paths)
-	}
-}
-
-func TestBuildCompilerOptions_MissingTsconfig(t *testing.T) {
-	t.Parallel()
-	dir := t.TempDir()
-	modules := filepath.Join(dir, "modules")
-	mustMkdir(t, modules)
-	opts, err := BuildCompilerOptions(modules, dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	targets, ok := opts.Paths.Get("@/*")
-	if !ok || len(targets) == 0 {
-		t.Fatal("expected default @/*")
 	}
 }

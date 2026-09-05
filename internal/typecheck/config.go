@@ -5,8 +5,8 @@ package typecheck
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -16,17 +16,24 @@ import (
 
 // BuildCompilerOptions builds compiler options aligned with the historical
 // typecheck temporary tsconfig (service / strict / bundler).
+//
+// Relative path aliases are resolved against tsconfig compilerOptions.baseUrl
+// when set (default: modules root). CompilerOptions.BaseUrl itself is not set:
+// typescript-go rejects that option (TS5102).
 func BuildCompilerOptions(modulesPath, repoRoot string) (*core.CompilerOptions, error) {
 	modulesPath = filepath.Clean(modulesPath)
 	repoRoot = filepath.Clean(repoRoot)
 
-	paths := resolveModulePaths(modulesPath)
+	paths, pathsBase, err := resolveModulePaths(modulesPath)
+	if err != nil {
+		return nil, err
+	}
 	pathsMap := collections.NewOrderedMapWithSizeHint[string, []string](len(paths) + 1)
 	for alias, targets := range paths {
 		pathsMap.Set(alias, targets)
 	}
 	if _, ok := pathsMap.Get("@/*"); !ok {
-		pathsMap.Set("@/*", []string{filepath.ToSlash(filepath.Join(modulesPath, "*"))})
+		pathsMap.Set("@/*", []string{filepath.ToSlash(filepath.Join(pathsBase, "*"))})
 	}
 
 	typeRoots := resolveTypeRoots(repoRoot)
@@ -46,7 +53,7 @@ func BuildCompilerOptions(modulesPath, repoRoot string) (*core.CompilerOptions, 
 		NoEmit:                           core.TSTrue,
 		Lib:                              []string{"es2020", "dom", "dom.iterable"},
 		Paths:                            pathsMap,
-		PathsBasePath:                    filepath.ToSlash(modulesPath),
+		PathsBasePath:                    filepath.ToSlash(pathsBase),
 		TypeRoots:                        typeRoots,
 		Types:                            types,
 		ForceConsistentCasingInFileNames: core.TSTrue,
@@ -54,20 +61,32 @@ func BuildCompilerOptions(modulesPath, repoRoot string) (*core.CompilerOptions, 
 	return opts, nil
 }
 
-func resolveModulePaths(modulesRoot string) map[string][]string {
+func resolveModulePaths(modulesRoot string) (map[string][]string, string, error) {
 	out := make(map[string][]string)
+	pathsBase := modulesRoot
 	tsconfigPath := filepath.Join(modulesRoot, "tsconfig.json")
-	data, err := os.ReadFile(tsconfigPath)
+	data, err := readFile(tsconfigPath)
 	if err != nil {
-		return out
+		if os.IsNotExist(err) {
+			return out, pathsBase, nil
+		}
+		return nil, "", fmt.Errorf("typecheck: read %s: %w", tsconfigPath, err)
 	}
 	var tsconfig struct {
 		CompilerOptions struct {
-			Paths map[string][]string `json:"paths"`
+			BaseURL string              `json:"baseUrl"`
+			Paths   map[string][]string `json:"paths"`
 		} `json:"compilerOptions"`
 	}
 	if err := json.Unmarshal(data, &tsconfig); err != nil {
-		return out
+		return nil, "", fmt.Errorf("typecheck: parse %s: %w", tsconfigPath, err)
+	}
+	if base := strings.TrimSpace(tsconfig.CompilerOptions.BaseURL); base != "" {
+		if filepath.IsAbs(base) {
+			pathsBase = filepath.Clean(base)
+		} else {
+			pathsBase = filepath.Clean(filepath.Join(modulesRoot, base))
+		}
 	}
 	for alias, targets := range tsconfig.CompilerOptions.Paths {
 		var absTargets []string
@@ -75,12 +94,12 @@ func resolveModulePaths(modulesRoot string) map[string][]string {
 			if filepath.IsAbs(t) {
 				absTargets = append(absTargets, filepath.ToSlash(t))
 			} else {
-				absTargets = append(absTargets, filepath.ToSlash(filepath.Join(modulesRoot, t)))
+				absTargets = append(absTargets, filepath.ToSlash(filepath.Join(pathsBase, t)))
 			}
 		}
 		out[alias] = absTargets
 	}
-	return out
+	return out, pathsBase, nil
 }
 
 func resolveTypeRoots(repoRoot string) []string {
@@ -89,24 +108,14 @@ func resolveTypeRoots(repoRoot string) []string {
 	if _, err := os.Stat(localTypes); err == nil {
 		roots = append(roots, filepath.ToSlash(localTypes))
 	}
-	if globalRoot := resolveGlobalNpmRootBestEffort(); globalRoot != "" {
+	// Optional explicit global types root only — never shell out to npm.
+	if globalRoot := strings.TrimSpace(os.Getenv("CHOYSUM_NPM_GLOBAL_ROOT")); globalRoot != "" {
 		globalTypes := filepath.Join(globalRoot, "@types")
 		if _, err := os.Stat(globalTypes); err == nil {
 			roots = append(roots, filepath.ToSlash(globalTypes))
 		}
 	}
 	return roots
-}
-
-func resolveGlobalNpmRootBestEffort() string {
-	if override := strings.TrimSpace(os.Getenv("CHOYSUM_NPM_GLOBAL_ROOT")); override != "" {
-		return override
-	}
-	out, err := exec.Command("npm", "root", "-g").Output()
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(out))
 }
 
 func resolveCompilerTypes(typeRoots []string) []string {
@@ -119,6 +128,9 @@ func resolveCompilerTypes(typeRoots []string) []string {
 }
 
 // ResolveModulePathsForTest exposes path resolution for unit tests.
-func ResolveModulePathsForTest(modulesRoot string) map[string][]string {
+func ResolveModulePathsForTest(modulesRoot string) (map[string][]string, string, error) {
 	return resolveModulePaths(modulesRoot)
 }
+
+// Test hooks for hard-to-trigger filesystem failures.
+var readFile = os.ReadFile

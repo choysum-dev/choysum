@@ -13,11 +13,14 @@ import (
 
 // CollectRootFiles returns absolute slash-normalized TypeScript roots for scope.
 func CollectRootFiles(modulesPath, app string, scope Scope) ([]string, error) {
-	modulesPath = filepath.Clean(modulesPath)
 	app = strings.TrimSpace(app)
-	if modulesPath == "" || app == "" {
+	if strings.TrimSpace(modulesPath) == "" {
+		return nil, ErrModulesPathRequired
+	}
+	if app == "" {
 		return nil, ErrAppRequired
 	}
+	modulesPath = filepath.Clean(modulesPath)
 	appRoot := filepath.Join(modulesPath, app)
 	st, err := os.Stat(appRoot)
 	if err != nil || !st.IsDir() {
@@ -27,7 +30,7 @@ func CollectRootFiles(modulesPath, app string, scope Scope) ([]string, error) {
 	var files []string
 	seen := make(map[string]struct{})
 	add := func(path string) {
-		abs, err := filepath.Abs(path)
+		abs, err := absPath(path)
 		if err != nil {
 			abs = path
 		}
@@ -41,7 +44,7 @@ func CollectRootFiles(modulesPath, app string, scope Scope) ([]string, error) {
 
 	switch scope {
 	case ScopeService:
-		entries, err := os.ReadDir(appRoot)
+		entries, err := readDir(appRoot)
 		if err != nil {
 			return nil, err
 		}
@@ -64,7 +67,7 @@ func CollectRootFiles(modulesPath, app string, scope Scope) ([]string, error) {
 
 		serviceRoot := filepath.Join(appRoot, "service")
 		if st, err := os.Stat(serviceRoot); err == nil && st.IsDir() {
-			err := filepath.WalkDir(serviceRoot, func(path string, d fs.DirEntry, err error) error {
+			err := walkDir(serviceRoot, func(path string, d fs.DirEntry, err error) error {
 				if err != nil {
 					return err
 				}
@@ -100,6 +103,13 @@ func CollectRootFiles(modulesPath, app string, scope Scope) ([]string, error) {
 	}
 	return files, nil
 }
+
+// Test hooks for hard-to-trigger filesystem failures.
+var (
+	absPath = filepath.Abs
+	readDir = os.ReadDir
+	walkDir = filepath.WalkDir
+)
 
 func shouldSkipScanDir(name string) bool {
 	switch strings.ToLower(name) {

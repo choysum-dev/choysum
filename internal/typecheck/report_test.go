@@ -10,7 +10,6 @@ import (
 )
 
 func TestFormatStderr_StableShape(t *testing.T) {
-	t.Parallel()
 	var buf bytes.Buffer
 	FormatStderr(&buf, []Diagnostic{{
 		File:     "modules/demo/service/bad.ts",

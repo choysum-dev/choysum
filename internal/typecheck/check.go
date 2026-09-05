@@ -19,11 +19,11 @@ func Check(ctx context.Context, opts Options) (Result, error) {
 		ctx = context.Background()
 	}
 
-	modulesPath, err := filepath.Abs(opts.ModulesPath)
+	modulesPath, err := absPath(opts.ModulesPath)
 	if err != nil {
 		return Result{}, err
 	}
-	repoRoot, err := filepath.Abs(opts.RepoRoot)
+	repoRoot, err := absPath(opts.RepoRoot)
 	if err != nil {
 		return Result{}, err
 	}

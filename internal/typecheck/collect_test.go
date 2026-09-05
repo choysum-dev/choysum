@@ -11,7 +11,6 @@ import (
 )
 
 func TestCollectRootFiles_Service(t *testing.T) {
-	t.Parallel()
 	dir := t.TempDir()
 	modules := filepath.Join(dir, "modules")
 	app := filepath.Join(modules, "demo")
@@ -35,7 +34,7 @@ func TestCollectRootFiles_Service(t *testing.T) {
 			t.Fatalf("missing %s in %v", want, files)
 		}
 	}
-	for _, ban := range []string{"a.test.ts", "ui.ts", filepath.Join("tests", "b.ts")} {
+	for _, ban := range []string{"a.test.ts", "ui.ts", "tests/b.ts"} {
 		if strings.Contains(joined, ban) {
 			t.Fatalf("unexpected %s in %v", ban, files)
 		}

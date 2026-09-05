@@ -5,7 +5,6 @@ package typecheck
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/buke/typescript-go-internal/v7/pkg/diagnostics"
 )
@@ -31,7 +30,7 @@ type Result struct {
 func (r Result) Err() error {
 	var n int
 	for _, d := range r.Diagnostics {
-		if d.Category == diagnostics.CategoryError.Name() || d.Category == "error" {
+		if d.Category == "error" {
 			n++
 		}
 	}
@@ -57,6 +56,6 @@ func normalizeCategory(c diagnostics.Category) string {
 	case diagnostics.CategoryMessage:
 		return "message"
 	default:
-		return strings.ToLower(c.Name())
+		return "unknown"
 	}
 }

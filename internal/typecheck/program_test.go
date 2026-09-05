@@ -12,7 +12,6 @@ import (
 )
 
 func TestProgram_ServiceOK(t *testing.T) {
-	t.Parallel()
 	repo, modules := fixtureRoots(t, "service_ok")
 	opts, err := BuildCompilerOptions(modules, repo)
 	if err != nil {
@@ -33,7 +32,6 @@ func TestProgram_ServiceOK(t *testing.T) {
 }
 
 func TestProgram_ServiceTypeError(t *testing.T) {
-	t.Parallel()
 	repo, modules := fixtureRoots(t, "service_err")
 	opts, err := BuildCompilerOptions(modules, repo)
 	if err != nil {

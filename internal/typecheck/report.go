@@ -62,10 +62,15 @@ func positionToLineColumn(file *ast.SourceFile, pos int) (line, column int) {
 	if file == nil || pos < 0 {
 		return 0, 0
 	}
-	starts := file.ECMALineMap()
+	starts := fileLineMap(file)
 	if len(starts) == 0 {
 		return 1, pos + 1
 	}
 	line0, byteOffset := core.PositionToLineAndByteOffset(pos, starts)
 	return line0 + 1, byteOffset + 1
+}
+
+// Test hook: SourceFile.ECMALineMap never returns an empty slice for real files.
+var fileLineMap = func(file *ast.SourceFile) []core.TextPos {
+	return file.ECMALineMap()
 }
