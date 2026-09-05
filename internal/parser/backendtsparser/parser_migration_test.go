@@ -99,18 +99,32 @@ export default User;
 
 func TestGetProtoTypeFromTsType(t *testing.T) {
 	tests := map[string]string{
-		"string":          "string",
-		"number":          "double",
-		"boolean":         "bool",
-		"void":            "google.protobuf.Empty",
-		"Promise<number>": "double",
-		"CustomType":      "google.protobuf.Value",
-		"bigint":          "int64",
-		"Date":            "google.protobuf.Timestamp",
-		"string[]":        "repeated string",
-		"Array<number>":   "repeated double",
-		"boolean[]":       "repeated bool",
-		"bigint[]":        "repeated int64",
+		"string":                                 "string",
+		"number":                                 "double",
+		"boolean":                                "bool",
+		"void":                                   "google.protobuf.Empty",
+		"Promise<number>":                        "double",
+		"CustomType":                             "google.protobuf.Value",
+		"bigint":                                 "int64",
+		"Date":                                   "google.protobuf.Timestamp",
+		"string[]":                               "repeated string",
+		"Array<number>":                          "repeated double",
+		"boolean[]":                              "repeated bool",
+		"bigint[]":                               "repeated int64",
+		"FieldRuleSpec":                          "FieldRuleSpec",
+		"Promise<FieldRuleSpec>":                 "FieldRuleSpec",
+		"ConditionEnvelope":                      "ConditionEnvelope",
+		"Promise<ConditionEnvelope>":             "ConditionEnvelope",
+		"FieldRuleSpec | null":                   "FieldRuleSpec",
+		"Promise<ConditionEnvelope | undefined>": "ConditionEnvelope",
+		"FieldRuleSpec[]":                        "repeated FieldRuleSpec",
+		"Array<ConditionEnvelope>":               "repeated ConditionEnvelope",
+		"Promise<ConditionEnvelope[]>":           "repeated ConditionEnvelope",
+		"FieldRuleSpec | string":                 "google.protobuf.Value",
+		"Promise<FieldRuleSpec | string>":        "google.protobuf.Value",
+		"FieldRuleSpec | null | undefined":       "FieldRuleSpec",
+		"FieldRuleSpec|null":                     "FieldRuleSpec",
+		"|bogus":                                 "google.protobuf.Value",
 	}
 
 	for input, want := range tests {
@@ -2106,18 +2120,29 @@ export default class BehaviorsModel extends BaseModel {
 
 func TestGetProtoTypeFromTsType_EdgeCases(t *testing.T) {
 	tests := map[string]string{
-		"":                 "google.protobuf.Value",
-		"   ":              "google.protobuf.Value",
-		"  string  ":       "string",
-		"Promise<void>":    "google.protobuf.Empty",
-		"Promise<boolean>": "bool",
-		"Promise<string>":  "string",
-		"Promise<Custom>":  "google.protobuf.Value",
+		"":                      "google.protobuf.Value",
+		"   ":                   "google.protobuf.Value",
+		"  string  ":            "string",
+		"Promise<void>":         "google.protobuf.Empty",
+		"Promise<boolean>":      "bool",
+		"Promise<string>":       "string",
+		"Promise<Custom>":       "google.protobuf.Value",
+		"[]":                    "google.protobuf.Value",
+		"{ name: string }":      "google.protobuf.Value",
+		"123":                   "google.protobuf.Value",
+		"FieldRuleSpec & Other": "google.protobuf.Value",
+		"FieldRuleSpec |":       "google.protobuf.Value",
 	}
 	for input, want := range tests {
 		if got := getProtoTypeFromTsType(input); got != want {
 			t.Fatalf("getProtoTypeFromTsType(%q) = %q, want %q", input, got, want)
 		}
+	}
+	if got := leadingTypeIdentifier(""); got != "" {
+		t.Fatalf("leadingTypeIdentifier empty = %q", got)
+	}
+	if got := leadingTypeIdentifier("[]"); got != "" {
+		t.Fatalf("leadingTypeIdentifier [] = %q", got)
 	}
 }
 

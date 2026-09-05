@@ -15,6 +15,7 @@ import (
 
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
+	"github.com/choysum-dev/choysum/internal/protobuf/objectmessages"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -60,7 +61,9 @@ func (g *protobufGenerator) generate(ctx context.Context, app *meta.Application)
 		"index": func(i int, start int) int {
 			return i + start
 		},
-		"needsTimestamp": protobufNeedsTimestamp,
+		"needsTimestamp":       protobufNeedsTimestamp,
+		"sharedObjectMessages": protobufSharedObjectMessages,
+		"messageSource":        objectmessages.MessageSource,
 	}).Parse(tplStr)
 	if err != nil {
 		return nil, err
@@ -145,6 +148,32 @@ func protobufNeedsTimestamp(app *meta.Application) bool {
 		}
 	}
 	return false
+}
+
+// protobufSharedObjectMessages collects whitelist object messages referenced by
+// the application's service parameter/return ProtobufType values.
+func protobufSharedObjectMessages(app *meta.Application) []objectmessages.Def {
+	if app == nil {
+		return nil
+	}
+	var types []string
+	for _, model := range app.Models {
+		if model == nil {
+			continue
+		}
+		for _, service := range model.Services {
+			if service == nil {
+				continue
+			}
+			types = append(types, service.ProtobufType)
+			for _, param := range service.Parameters {
+				if param != nil {
+					types = append(types, param.ProtobufType)
+				}
+			}
+		}
+	}
+	return objectmessages.CollectUsed(types...)
 }
 
 // copyEmbeddedProtoFiles copies embedded proto assets into destDir.

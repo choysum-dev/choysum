@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/choysum-dev/choysum/internal/parser"
+	"github.com/choysum-dev/choysum/internal/protobuf/objectmessages"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -84,7 +85,10 @@ func (p *tsFileParser) detectReferenceFactory() {
 func getProtoTypeFromTsType(tsType string) string {
 	tsType = strings.TrimSpace(tsType)
 	if strings.HasPrefix(tsType, "Promise<") && strings.HasSuffix(tsType, ">") {
-		tsType = tsType[8 : len(tsType)-1]
+		tsType = strings.TrimSpace(tsType[8 : len(tsType)-1])
+	}
+	if protoName, ok := registeredObjectProtoFromAnnotation(tsType); ok {
+		return protoName
 	}
 	switch tsType {
 	case "string":
@@ -110,6 +114,86 @@ func getProtoTypeFromTsType(tsType string) string {
 	default:
 		return protoTypeValue
 	}
+}
+
+// registeredObjectProtoFromAnnotation maps a registered object type annotation
+// (optionally array-wrapped, optionally nullish-unioned) to a protobuf type.
+// Mixed unions such as FieldRuleSpec | string are not mapped.
+func registeredObjectProtoFromAnnotation(tsType string) (string, bool) {
+	tsType = strings.TrimSpace(tsType)
+	if tsType == "" {
+		return "", false
+	}
+
+	isArray := false
+	inner := tsType
+	if strings.HasSuffix(inner, "[]") {
+		isArray = true
+		inner = strings.TrimSpace(inner[:len(inner)-2])
+	} else if strings.HasPrefix(inner, "Array<") && strings.HasSuffix(inner, ">") {
+		isArray = true
+		inner = strings.TrimSpace(inner[6 : len(inner)-1])
+	}
+
+	name := leadingTypeIdentifier(inner)
+	if name == "" {
+		return "", false
+	}
+	rest := strings.TrimSpace(inner[len(name):])
+	if !isNullishOnlyTypeSuffix(rest) {
+		return "", false
+	}
+	protoName, ok := objectmessages.ProtoNameForTS(name)
+	if !ok {
+		return "", false
+	}
+	if isArray {
+		return protoRepeatedPrefix + protoName, true
+	}
+	return protoName, true
+}
+
+// isNullishOnlyTypeSuffix reports whether rest is empty or only `| null` /
+// `| undefined` constituents (spaces allowed).
+func isNullishOnlyTypeSuffix(rest string) bool {
+	rest = strings.TrimSpace(rest)
+	if rest == "" {
+		return true
+	}
+	for rest != "" {
+		if !strings.HasPrefix(rest, "|") {
+			return false
+		}
+		rest = strings.TrimSpace(rest[1:])
+		part := leadingTypeIdentifier(rest)
+		if part != "null" && part != "undefined" {
+			return false
+		}
+		rest = strings.TrimSpace(rest[len(part):])
+	}
+	return true
+}
+
+// leadingTypeIdentifier returns the leading TypeScript identifier from a type
+// annotation (e.g. FieldRuleSpec from "FieldRuleSpec | null").
+func leadingTypeIdentifier(tsType string) string {
+	tsType = strings.TrimSpace(tsType)
+	if tsType == "" {
+		return ""
+	}
+	end := 0
+	for end < len(tsType) {
+		c := tsType[end]
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c == '$' || (end > 0 && c >= '0' && c <= '9') {
+			end++
+			continue
+		}
+		break
+	}
+	if end == 0 {
+		return ""
+	}
+	return tsType[:end]
 }
 
 func (p *tsFileParser) resolveProtobufType(className, methodName, paramName string, isReturn bool, tsAnnotation string) string {

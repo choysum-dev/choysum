@@ -24,6 +24,15 @@ import (
 	"github.com/choysum-dev/choysum/pkg/meta"
 )
 
+func TestTypeAliasOrSymbolName_Nil(t *testing.T) {
+	if got := typeAliasOrSymbolName(nil); got != "" {
+		t.Fatalf("typeAliasOrSymbolName(nil)=%q", got)
+	}
+	if mapped, ok := mapRegisteredObjectMessage(nil); ok || mapped != "" {
+		t.Fatalf("mapRegisteredObjectMessage(nil)=(%q,%v)", mapped, ok)
+	}
+}
+
 func TestSemanticTypeResolver_MapsAliasesAndLiteralUnions(t *testing.T) {
 	if !bundled.Embedded {
 		t.Skip("bundled libs not embedded")
@@ -125,6 +134,93 @@ export default class Demo {
 	anyValue := byName["AnyValue"]
 	if anyValue == nil || anyValue.ProtobufType != "google.protobuf.Value" {
 		t.Fatalf("AnyValue ProtobufType=%v, want Value", anyValue)
+	}
+}
+
+func TestSemanticTypeResolver_RegisteredObjectMessages(t *testing.T) {
+	if !bundled.Embedded {
+		t.Skip("bundled libs not embedded")
+	}
+	if os.Getenv(envDisableSemanticProto) == "1" {
+		t.Skip("semantic protobuf mapping disabled in environment")
+	}
+
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.Module{Path: "/virtual/modules/demo", ApplicationStr: "demo", Name: "demo"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/demo/service/authz_messages.ts"
+	content := `
+export type FieldRuleSpec = {
+  denyReadFields: string[];
+  denyWriteFields: string[];
+  reason?: string;
+  hitRuleIds?: string[];
+};
+
+export type ConditionEnvelope =
+  | { kind: 'true'; reason?: string; hitRuleIds?: string[] }
+  | { kind: 'false'; reason?: string; hitRuleIds?: string[] }
+  | { kind: 'expr'; expr: unknown; reason?: string; hitRuleIds?: string[] };
+
+export default class User {
+  public static async GetFieldRuleSpec(model: string): Promise<FieldRuleSpec> {
+    return { denyReadFields: [], denyWriteFields: [] }
+  }
+
+  public static async GetRecordRuleCondition(model: string, op: string): Promise<ConditionEnvelope> {
+    return { kind: 'true' }
+  }
+
+  public static async NullableFieldRule(spec: FieldRuleSpec | null): Promise<FieldRuleSpec | null | undefined> {
+    return spec
+  }
+
+  public static async AnonymousObject(): Promise<{ name: string }> {
+    return { name: '' }
+  }
+
+  public static async ListFieldRules(): Promise<FieldRuleSpec[]> {
+    return []
+  }
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	if r.Model == nil {
+		t.Fatal("expected model")
+	}
+
+	byName := map[string]*meta.Service{}
+	for _, service := range r.Model.Services {
+		byName[service.Name] = service
+	}
+
+	field := byName["GetFieldRuleSpec"]
+	if field == nil || field.ProtobufType != "FieldRuleSpec" {
+		t.Fatalf("GetFieldRuleSpec ProtobufType=%v, want FieldRuleSpec", field)
+	}
+	cond := byName["GetRecordRuleCondition"]
+	if cond == nil || cond.ProtobufType != "ConditionEnvelope" {
+		t.Fatalf("GetRecordRuleCondition ProtobufType=%v, want ConditionEnvelope", cond)
+	}
+	nullable := byName["NullableFieldRule"]
+	if nullable == nil || nullable.ProtobufType != "FieldRuleSpec" {
+		t.Fatalf("NullableFieldRule return ProtobufType=%v, want FieldRuleSpec", nullable)
+	}
+	if len(nullable.Parameters) != 1 || nullable.Parameters[0].ProtobufType != "FieldRuleSpec" {
+		t.Fatalf("NullableFieldRule params=%v", nullable.Parameters)
+	}
+	anon := byName["AnonymousObject"]
+	if anon == nil || anon.ProtobufType != "google.protobuf.Value" {
+		t.Fatalf("AnonymousObject ProtobufType=%v, want Value", anon)
+	}
+	list := byName["ListFieldRules"]
+	if list == nil || list.ProtobufType != "repeated FieldRuleSpec" {
+		t.Fatalf("ListFieldRules ProtobufType=%v, want repeated FieldRuleSpec", list)
 	}
 }
 

@@ -5,7 +5,7 @@ import { Model, Field, Compute } from '@/core/service';
 import AttachmentOwnerMixin from '@/core/service/mixins/attachment_owner_model';
 import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
 import type { Insertable } from '@/core/service/api/input';
-import type { ConditionEnvelope, RecordRuleOp } from '@/core/service/api/authz';
+import type { ConditionEnvelope, FieldRuleSpec, RecordRuleOp } from '@/core/service/api/authz';
 import { ChoysumError } from '@/core/service/error';
 import { newAuthError, wrapAuthError, GrpcCode, AuthErrCode } from '../../error';
 import { _t, _lt } from '../../i18n';
@@ -845,7 +845,7 @@ export default class User extends AttachmentOwnerMixin {
    * - userId comes from the current request identity.
    * - model should be "<app>.<Model>" such as "base.Company".
    * - op should be "read" | "write" | "create" | "delete".
-   * - the return value is a ConditionEnvelope that maps to google.protobuf.Value on the proto side.
+   * - returns a ConditionEnvelope (proto message; expr may still be Value-shaped).
    */
   static async GetRecordRuleCondition(model: string, op: string): Promise<ConditionEnvelope> {
     try {
@@ -891,14 +891,9 @@ export default class User extends AttachmentOwnerMixin {
    * Notes:
    * - userId comes from the current request identity.
    * - model should be "<app>.<Model>" such as "auth.User".
-   * - the return value is a structured object that maps to google.protobuf.Value on the proto side.
+   * - returns a FieldRuleSpec protobuf message.
    */
-  static async GetFieldRuleSpec(model: string): Promise<{
-    denyReadFields: string[];
-    denyWriteFields: string[];
-    reason?: string;
-    hitRuleIds?: string[];
-  }> {
+  static async GetFieldRuleSpec(model: string): Promise<FieldRuleSpec> {
     try {
       const userId = this.userId;
       if (!userId) {

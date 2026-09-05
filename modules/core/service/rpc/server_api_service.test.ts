@@ -331,6 +331,113 @@ test('server transport keeps google.protobuf.Value semantics aligned for local a
   }
 });
 
+test('server transport keeps FieldRuleSpec message semantics aligned for local and remote paths', async () => {
+  const originalPool = (globalThis as any).pool;
+  const originalChoysum = (globalThis as any).$choysum;
+
+  const spec = {
+    denyReadFields: ['Secret'],
+    denyWriteFields: ['Secret', 'Token'],
+    reason: 'deny',
+    hitRuleIds: ['r1'],
+  };
+
+  try {
+    (globalThis as any).pool = {
+      get: (serviceName: string) => {
+        if (serviceName !== 'auth.User') return undefined;
+        return {
+          GetFieldRuleSpec: async () => ({ ...spec }),
+        };
+      },
+    };
+
+    stubBridge(async () => {
+      throw new Error('bridge should not be called for local FieldRuleSpec method');
+    });
+
+    const localService = CreateServerApiService<any>(
+      'auth.User',
+      'GetFieldRuleSpec',
+      (model: string) => [{ name: 'model', type: 'string', value: model }],
+      { name: 'result', type: 'FieldRuleSpec' }
+    );
+
+    expect(await localService('demo.Model')).toEqual(spec);
+
+    const unaryCalls: any[] = [];
+    (globalThis as any).pool = undefined;
+    stubBridge(async (serviceName: string, methodName: string, request: any) => {
+      unaryCalls.push({ serviceName, methodName, request });
+      return { result: { ...spec } };
+    });
+
+    const remoteService = CreateServerApiService<any>(
+      'auth.User',
+      'GetFieldRuleSpec',
+      (model: string) => [{ name: 'model', type: 'string', value: model }],
+      { name: 'result', type: 'FieldRuleSpec' }
+    );
+
+    expect(await remoteService('demo.Model')).toEqual(spec);
+    expect(unaryCalls).toEqual([
+      {
+        serviceName: 'auth.User',
+        methodName: 'GetFieldRuleSpec',
+        request: { model: 'demo.Model' },
+      },
+    ]);
+  } finally {
+    (globalThis as any).pool = originalPool;
+    (globalThis as any).$choysum = originalChoysum;
+  }
+});
+
+test('AuthUserService FieldRuleSpec dirty payloads fail-hard on local and remote paths', async () => {
+  const { parseFieldRuleSpecFromUnknown } = await import('../api/authz_helpers');
+  const { AuthUserService } = await import('../orm/repository/authz/auth_user_service');
+  const originalPool = (globalThis as any).pool;
+  const originalChoysum = (globalThis as any).$choysum;
+
+  // Fail-hard is enforced by the repository consumer parse (same as getRepositoryFieldRuleSpec),
+  // after AuthUserService returns over either local pool or remote unary.
+  const dirty = { denyReadFields: 'not-an-array' };
+
+  async function expectParseFailHard(run: () => Promise<unknown>) {
+    let err: unknown;
+    try {
+      parseFieldRuleSpecFromUnknown(await run());
+    } catch (e) {
+      err = e;
+    }
+    expect(String(err)).toMatch(/invalid_field_rule_spec/);
+  }
+
+  try {
+    (globalThis as any).pool = {
+      get: (serviceName: string) => {
+        if (serviceName !== 'auth.User') return undefined;
+        return {
+          GetFieldRuleSpec: async () => dirty,
+        };
+      },
+    };
+    stubBridge(async () => {
+      throw new Error('bridge should not be called for local dirty FieldRuleSpec');
+    });
+
+    await expectParseFailHard(() => AuthUserService.GetFieldRuleSpec('demo.Model'));
+
+    (globalThis as any).pool = undefined;
+    stubBridge(async () => ({ result: dirty }));
+
+    await expectParseFailHard(() => AuthUserService.GetFieldRuleSpec('demo.Model'));
+  } finally {
+    (globalThis as any).pool = originalPool;
+    (globalThis as any).$choysum = originalChoysum;
+  }
+});
+
 test('server transport covers rich normalize branches and local handled undefined return paths', async () => {
   const originalPool = (globalThis as any).pool;
   const originalChoysum = (globalThis as any).$choysum;
