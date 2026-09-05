@@ -132,8 +132,11 @@ var (
 )
 
 func shouldSkipScanDir(name string) bool {
+	if strings.HasPrefix(name, ".") {
+		return true
+	}
 	switch strings.ToLower(name) {
-	case "node_modules", "dist", ".choysum", "tmp", "test", "tests", "__tests__", "coverage", "e2e":
+	case "node_modules", "dist", "tmp", "test", "tests", "__tests__", "coverage", "e2e":
 		return true
 	default:
 		return false

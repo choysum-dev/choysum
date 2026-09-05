@@ -160,7 +160,7 @@ func cutPathPrefix(path, prefix string, caseSensitive bool) (string, bool) {
 	if len(path) < len(prefix) {
 		return "", false
 	}
-	if !strings.HasPrefix(strings.ToLower(path), strings.ToLower(prefix)) {
+	if !strings.EqualFold(path[:len(prefix)], prefix) {
 		return "", false
 	}
 	return path[len(prefix):], true
