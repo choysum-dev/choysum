@@ -20,18 +20,18 @@ import (
 )
 
 func TestCollectRootFiles_Validation(t *testing.T) {
-	if _, err := CollectRootFiles("  ", "demo", ScopeService); !errors.Is(err, ErrModulesPathRequired) {
+	if _, err := CollectRootFiles(t.Context(), "  ", "demo", ScopeService); !errors.Is(err, ErrModulesPathRequired) {
 		t.Fatalf("err = %v", err)
 	}
-	if _, err := CollectRootFiles(t.TempDir(), "", ScopeService); !errors.Is(err, ErrAppRequired) {
+	if _, err := CollectRootFiles(t.Context(), t.TempDir(), "", ScopeService); !errors.Is(err, ErrAppRequired) {
 		t.Fatalf("err = %v", err)
 	}
-	if _, err := CollectRootFiles(t.TempDir(), "missing", ScopeService); !errors.Is(err, ErrNoRootFiles) {
+	if _, err := CollectRootFiles(t.Context(), t.TempDir(), "missing", ScopeService); !errors.Is(err, ErrNoRootFiles) {
 		t.Fatalf("err = %v", err)
 	}
 	modules := t.TempDir()
 	mustMkdir(t, filepath.Join(modules, "demo"))
-	if _, err := CollectRootFiles(modules, "demo", Scope(99)); !errors.Is(err, ErrUnsupportedScope) {
+	if _, err := CollectRootFiles(t.Context(), modules, "demo", Scope(99)); !errors.Is(err, ErrUnsupportedScope) {
 		t.Fatalf("err = %v", err)
 	}
 }
@@ -41,7 +41,7 @@ func TestCollectRootFiles_EmptyApp(t *testing.T) {
 	modules := filepath.Join(dir, "modules")
 	app := filepath.Join(modules, "demo")
 	mustMkdir(t, app)
-	if _, err := CollectRootFiles(modules, "demo", ScopeService); !errors.Is(err, ErrNoRootFiles) {
+	if _, err := CollectRootFiles(t.Context(), modules, "demo", ScopeService); !errors.Is(err, ErrNoRootFiles) {
 		t.Fatalf("err = %v", err)
 	}
 }
@@ -66,7 +66,7 @@ func TestCollectRootFiles_ServiceExtras(t *testing.T) {
 	mustWrite(t, filepath.Join(app, "service", "test", "helper.ts"), "export {};\n")
 	mustWrite(t, filepath.Join(app, "readme.md"), "x\n")
 
-	files, err := CollectRootFiles(modules, "demo", ScopeService)
+	files, err := CollectRootFiles(t.Context(), modules, "demo", ScopeService)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestCollectRootFiles_ReadDirError(t *testing.T) {
 	readDir = func(string) ([]os.DirEntry, error) {
 		return nil, errors.New("readdir boom")
 	}
-	if _, err := CollectRootFiles(modules, "demo", ScopeService); err == nil || !strings.Contains(err.Error(), "readdir boom") {
+	if _, err := CollectRootFiles(t.Context(), modules, "demo", ScopeService); err == nil || !strings.Contains(err.Error(), "readdir boom") {
 		t.Fatalf("err = %v", err)
 	}
 }
@@ -107,7 +107,7 @@ func TestCollectRootFiles_AbsFallback(t *testing.T) {
 	absPath = func(string) (string, error) {
 		return "", errors.New("abs boom")
 	}
-	files, err := CollectRootFiles(modules, "demo", ScopeService)
+	files, err := CollectRootFiles(t.Context(), modules, "demo", ScopeService)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,8 +220,8 @@ func TestAppendOverlayServiceRoots(t *testing.T) {
 		"/repo/modules/demo/web/ui.ts":           "x",
 		"/repo/modules/demo/readme.md":           "x",
 		"/repo/modules/other/x.ts":               "x",
-		"  ": "x",
-	})
+		"  ":                                     "x",
+	}, true)
 	joined := strings.Join(got, "\n")
 	for _, want := range []string{"demo/index.ts", "service/a.ts", "service/nested/b.ts"} {
 		if !strings.Contains(joined, want) {
@@ -231,11 +231,100 @@ func TestAppendOverlayServiceRoots(t *testing.T) {
 	if strings.Contains(joined, "web/ui.ts") || strings.Contains(joined, "other/x.ts") || strings.Contains(joined, "readme.md") {
 		t.Fatalf("unexpected roots: %v", got)
 	}
-	if appendOverlayServiceRoots([]string{"a"}, modules, app, Scope(99), map[string]string{"x": "y"})[0] != "a" {
+	if appendOverlayServiceRoots([]string{"a"}, modules, app, Scope(99), map[string]string{"x": "y"}, true)[0] != "a" {
 		t.Fatal("non-service scope must be unchanged")
 	}
-	if appendOverlayServiceRoots([]string{"a"}, modules, app, ScopeService, nil)[0] != "a" {
+	if appendOverlayServiceRoots([]string{"a"}, modules, app, ScopeService, nil, true)[0] != "a" {
 		t.Fatal("empty overlays must be unchanged")
+	}
+
+	// Case-insensitive / trimmed app matching.
+	got = appendOverlayServiceRoots(nil, "/Repo/Modules", " demo ", ScopeService, map[string]string{
+		"/repo/modules/demo/service/a.ts": "x",
+	}, false)
+	if len(got) != 1 || !strings.HasSuffix(strings.ToLower(got[0]), "/demo/service/a.ts") {
+		t.Fatalf("case-insensitive overlay root = %v", got)
+	}
+}
+
+func TestCollectRootFiles_Canceled(t *testing.T) {
+	dir := t.TempDir()
+	modules := filepath.Join(dir, "modules")
+	app := filepath.Join(modules, "demo")
+	mustMkdir(t, filepath.Join(app, "service"))
+	mustWrite(t, filepath.Join(app, "service", "a.ts"), "export {};\n")
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if _, err := CollectRootFiles(ctx, modules, "demo", ScopeService); !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v", err)
+	}
+	if _, err := CollectRootFiles(nil, modules, "demo", ScopeService); err != nil {
+		t.Fatalf("nil ctx: %v", err)
+	}
+
+	// Cancel mid-walk.
+	ctx, cancel = context.WithCancel(t.Context())
+	origWalk := walkDir
+	t.Cleanup(func() { walkDir = origWalk })
+	walkDir = func(root string, fn fs.WalkDirFunc) error {
+		cancel()
+		return origWalk(root, fn)
+	}
+	if _, err := CollectRootFiles(ctx, modules, "demo", ScopeService); !errors.Is(err, context.Canceled) {
+		t.Fatalf("mid-walk err = %v", err)
+	}
+
+	ctx, cancel = context.WithCancel(t.Context())
+	origRead := readDir
+	t.Cleanup(func() { readDir = origRead })
+	readDir = func(name string) ([]os.DirEntry, error) {
+		cancel()
+		return origRead(name)
+	}
+	walkDir = origWalk
+	if _, err := CollectRootFiles(ctx, modules, "demo", ScopeService); !errors.Is(err, context.Canceled) {
+		t.Fatalf("mid-readdir err = %v", err)
+	}
+}
+
+func TestCheck_CanceledBetweenPhases(t *testing.T) {
+	repo, modules := fixtureRoots(t, "service_ok")
+	orig := ctxErr
+	t.Cleanup(func() { ctxErr = orig })
+	for failAt := 2; failAt <= 6; failAt++ {
+		n := 0
+		target := failAt
+		ctxErr = func(ctx context.Context) error {
+			n++
+			if n == target {
+				return context.Canceled
+			}
+			return ctx.Err()
+		}
+		if _, err := Check(t.Context(), Options{ModulesPath: modules, RepoRoot: repo, App: "demo"}); !errors.Is(err, context.Canceled) {
+			t.Fatalf("failAt=%d err=%v", failAt, err)
+		}
+	}
+}
+
+func TestCutPathPrefix(t *testing.T) {
+	if _, ok := cutPathPrefix("ab", "ABCD/", false); ok {
+		t.Fatal("short path must miss")
+	}
+	rel, ok := cutPathPrefix("/App/x.ts", "/app/", false)
+	if !ok || rel != "x.ts" {
+		t.Fatalf("got %q %v", rel, ok)
+	}
+}
+
+func TestNormalizePathKey_Abs(t *testing.T) {
+	dir := t.TempDir()
+	key := normalizePathKey(filepath.Join(dir, "a.ts"))
+	if key == "" || strings.Contains(key, "\\") {
+		t.Fatalf("key = %q", key)
+	}
+	if normalizePathKey("  ") != "" {
+		t.Fatal("blank")
 	}
 }
 
@@ -306,7 +395,7 @@ func TestCollectDiagnostics_CancelPaths(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := CollectRootFiles(modules, "demo", ScopeService)
+	files, err := CollectRootFiles(t.Context(), modules, "demo", ScopeService)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -324,6 +413,15 @@ func TestCollectDiagnostics_CancelPaths(t *testing.T) {
 		t.Fatalf("soft cancel err = %v", err)
 	}
 
+	ctx, cancel = context.WithCancel(t.Context())
+	runProgramDiagnostics = func(context.Context, *compiler.Program) []*ast.Diagnostic {
+		cancel()
+		panic("Checker was previously cancelled")
+	}
+	if _, err := collectDiagnostics(ctx, program); !errors.Is(err, context.Canceled) {
+		t.Fatalf("panic cancel err = %v", err)
+	}
+
 	runProgramDiagnostics = func(context.Context, *compiler.Program) []*ast.Diagnostic {
 		panic("boom")
 	}
@@ -334,6 +432,20 @@ func TestCollectDiagnostics_CancelPaths(t *testing.T) {
 	}()
 	_, _ = collectDiagnostics(t.Context(), program)
 	t.Fatal("expected panic")
+}
+
+func TestCheck_CollectDiagnosticsError(t *testing.T) {
+	repo, modules := fixtureRoots(t, "service_ok")
+	orig := runProgramDiagnostics
+	t.Cleanup(func() { runProgramDiagnostics = orig })
+	ctx, cancel := context.WithCancel(t.Context())
+	runProgramDiagnostics = func(context.Context, *compiler.Program) []*ast.Diagnostic {
+		cancel()
+		panic("Checker was previously cancelled")
+	}
+	if _, err := Check(ctx, Options{ModulesPath: modules, RepoRoot: repo, App: "demo"}); !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v", err)
+	}
 }
 
 func TestCollectRootFiles_StatErrors(t *testing.T) {
@@ -352,7 +464,7 @@ func TestCollectRootFiles_StatErrors(t *testing.T) {
 		}
 		return orig(name)
 	}
-	if _, err := CollectRootFiles(modules, "demo", ScopeService); err == nil || !strings.Contains(err.Error(), "app stat boom") {
+	if _, err := CollectRootFiles(t.Context(), modules, "demo", ScopeService); err == nil || !strings.Contains(err.Error(), "app stat boom") {
 		t.Fatalf("err = %v", err)
 	}
 
@@ -362,7 +474,7 @@ func TestCollectRootFiles_StatErrors(t *testing.T) {
 		}
 		return orig(name)
 	}
-	if _, err := CollectRootFiles(modules, "demo", ScopeService); err == nil || !strings.Contains(err.Error(), "service stat boom") {
+	if _, err := CollectRootFiles(t.Context(), modules, "demo", ScopeService); err == nil || !strings.Contains(err.Error(), "service stat boom") {
 		t.Fatalf("err = %v", err)
 	}
 
@@ -371,7 +483,7 @@ func TestCollectRootFiles_StatErrors(t *testing.T) {
 	mustMkdir(t, modules2)
 	mustWrite(t, filepath.Join(modules2, "demo"), "not a dir")
 	stat = orig
-	if _, err := CollectRootFiles(modules2, "demo", ScopeService); !errors.Is(err, ErrNoRootFiles) {
+	if _, err := CollectRootFiles(t.Context(), modules2, "demo", ScopeService); !errors.Is(err, ErrNoRootFiles) {
 		t.Fatalf("err = %v", err)
 	}
 }
@@ -596,7 +708,7 @@ func TestProgram_NilContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := CollectRootFiles(modules, "demo", ScopeService)
+	files, err := CollectRootFiles(t.Context(), modules, "demo", ScopeService)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -647,7 +759,7 @@ func TestCollectRootFiles_DedupAndWalkError(t *testing.T) {
 	origAbs := absPath
 	t.Cleanup(func() { absPath = origAbs })
 	absPath = func(string) (string, error) { return "/dedup", nil }
-	files, err := CollectRootFiles(modules, "demo", ScopeService)
+	files, err := CollectRootFiles(t.Context(), modules, "demo", ScopeService)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -661,7 +773,7 @@ func TestCollectRootFiles_DedupAndWalkError(t *testing.T) {
 	walkDir = func(string, fs.WalkDirFunc) error {
 		return errors.New("walk boom")
 	}
-	if _, err := CollectRootFiles(modules, "demo", ScopeService); err == nil || !strings.Contains(err.Error(), "walk boom") {
+	if _, err := CollectRootFiles(t.Context(), modules, "demo", ScopeService); err == nil || !strings.Contains(err.Error(), "walk boom") {
 		t.Fatalf("err = %v", err)
 	}
 }
@@ -678,7 +790,7 @@ func TestCollectRootFiles_WalkCallbackError(t *testing.T) {
 	walkDir = func(root string, fn fs.WalkDirFunc) error {
 		return fn(root, nil, errors.New("entry boom"))
 	}
-	if _, err := CollectRootFiles(modules, "demo", ScopeService); err == nil || !strings.Contains(err.Error(), "entry boom") {
+	if _, err := CollectRootFiles(t.Context(), modules, "demo", ScopeService); err == nil || !strings.Contains(err.Error(), "entry boom") {
 		t.Fatalf("err = %v", err)
 	}
 }

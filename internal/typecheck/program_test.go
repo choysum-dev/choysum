@@ -17,7 +17,7 @@ func TestProgram_ServiceOK(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := CollectRootFiles(modules, "demo", ScopeService)
+	files, err := CollectRootFiles(t.Context(), modules, "demo", ScopeService)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +40,7 @@ func TestProgram_ServiceTypeError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := CollectRootFiles(modules, "demo", ScopeService)
+	files, err := CollectRootFiles(t.Context(), modules, "demo", ScopeService)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -24,7 +24,7 @@ func TestCollectRootFiles_Service(t *testing.T) {
 	mustWrite(t, filepath.Join(app, "web", "ui.ts"), "export {};\n")
 	mustWrite(t, filepath.Join(app, "service", "nested", "c.ts"), "export {};\n")
 
-	files, err := CollectRootFiles(modules, "demo", ScopeService)
+	files, err := CollectRootFiles(t.Context(), modules, "demo", ScopeService)
 	if err != nil {
 		t.Fatal(err)
 	}

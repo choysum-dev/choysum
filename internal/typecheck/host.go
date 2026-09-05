@@ -88,5 +88,8 @@ func normalizePathKey(path string) string {
 	if path == "" {
 		return ""
 	}
+	if abs, err := absPath(path); err == nil {
+		path = abs
+	}
 	return filepath.ToSlash(filepath.Clean(path))
 }

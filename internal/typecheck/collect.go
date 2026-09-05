@@ -4,6 +4,7 @@
 package typecheck
 
 import (
+	"context"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -11,7 +12,13 @@ import (
 )
 
 // CollectRootFiles returns absolute slash-normalized TypeScript roots for scope.
-func CollectRootFiles(modulesPath, app string, scope Scope) ([]string, error) {
+func CollectRootFiles(ctx context.Context, modulesPath, app string, scope Scope) ([]string, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	app = strings.TrimSpace(app)
 	if strings.TrimSpace(modulesPath) == "" {
 		return nil, ErrModulesPathRequired
@@ -54,6 +61,9 @@ func CollectRootFiles(modulesPath, app string, scope Scope) ([]string, error) {
 			return nil, err
 		}
 		for _, e := range entries {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
 			if e.IsDir() {
 				continue
 			}
@@ -77,6 +87,9 @@ func CollectRootFiles(modulesPath, app string, scope Scope) ([]string, error) {
 		} else if st.IsDir() {
 			err := walkDir(serviceRoot, func(path string, d fs.DirEntry, err error) error {
 				if err != nil {
+					return err
+				}
+				if err := ctx.Err(); err != nil {
 					return err
 				}
 				if d.IsDir() {
