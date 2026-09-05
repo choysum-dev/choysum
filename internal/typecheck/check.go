@@ -12,8 +12,9 @@ import (
 	"strings"
 )
 
-// Check typechecks an application's service TypeScript roots using
+// Check typechecks an application's TypeScript roots using
 // typescript-go-internal. It does not invoke Node or vue-tsc.
+// ScopeNoVue includes web TS/TSX plus embedded vite/client and subpath ambient.
 func Check(ctx context.Context, opts Options) (Result, error) {
 	if err := validateOptions(opts); err != nil {
 		return Result{}, err
@@ -50,8 +51,17 @@ func Check(ctx context.Context, opts Options) (Result, error) {
 	}
 
 	overlays := resolveOverlaysAgainstModules(opts.Overlays, modulesPath)
+	var ambientOverlays map[string]string
+	if scope == ScopeNoVue {
+		ambientOverlays = BuiltInAmbientOverlays(modulesPath)
+		// User overlays win over built-in ambient on the same path.
+		overlays = mergeOverlays(ambientOverlays, overlays)
+	}
 	fs := newTypecheckFS(overlays)
-	files = appendOverlayServiceRoots(files, modulesPath, opts.App, scope, overlays, fs.UseCaseSensitiveFileNames())
+	files = appendOverlayRoots(files, modulesPath, opts.App, scope, overlays, fs.UseCaseSensitiveFileNames())
+	for _, ambient := range sortedOverlayPaths(ambientOverlays) {
+		files = appendUniqueSlash(files, ambient)
+	}
 	if coreAmbient := filepath.ToSlash(filepath.Join(modulesPath, "core", "types", "$choysum.d.ts")); fs.FileExists(coreAmbient) {
 		files = appendUniqueSlash(files, coreAmbient)
 	}
@@ -108,10 +118,15 @@ func resolveOverlaysAgainstModules(overlays map[string]string, modulesPath strin
 	return out
 }
 
-// appendOverlayServiceRoots adds overlay-only paths that match ScopeService
-// collection rules (app-root *.ts / service/**), including virtual files.
-func appendOverlayServiceRoots(files []string, modulesPath, app string, scope Scope, overlays map[string]string, caseSensitive bool) []string {
-	if scope != ScopeService || len(overlays) == 0 {
+// appendOverlayRoots adds overlay-only paths that match the scope collection
+// rules (app-root / service / web), including virtual files.
+func appendOverlayRoots(files []string, modulesPath, app string, scope Scope, overlays map[string]string, caseSensitive bool) []string {
+	switch scope {
+	case ScopeService, ScopeNoVue:
+	default:
+		return files
+	}
+	if len(overlays) == 0 {
 		return files
 	}
 	app = strings.TrimSpace(app)
@@ -127,7 +142,9 @@ func appendOverlayServiceRoots(files []string, modulesPath, app string, scope Sc
 			continue
 		}
 		lower := strings.ToLower(norm)
-		if !strings.HasSuffix(lower, ".ts") {
+		isTSX := strings.HasSuffix(lower, ".tsx")
+		isTS := strings.HasSuffix(lower, ".ts")
+		if !(isTS || (isTSX && scope == ScopeNoVue)) {
 			continue
 		}
 		rel, ok := cutPathPrefix(norm, appRoot+"/", caseSensitive)
@@ -135,15 +152,25 @@ func appendOverlayServiceRoots(files []string, modulesPath, app string, scope Sc
 			continue
 		}
 		if !strings.Contains(rel, "/") {
+			// App-root roots are .ts / .d.ts only (not .tsx), matching CollectRootFiles.
+			if isTSX {
+				continue
+			}
 			files = appendUniqueSlash(files, norm)
 			continue
 		}
-		svcPrefix := "service/"
-		if caseSensitive {
-			if !strings.HasPrefix(rel, svcPrefix) {
+		relLower := rel
+		if !caseSensitive {
+			relLower = strings.ToLower(rel)
+		}
+		switch {
+		case strings.HasPrefix(relLower, "service/"):
+			if isTSX {
 				continue
 			}
-		} else if !strings.HasPrefix(strings.ToLower(rel), svcPrefix) {
+		case scope == ScopeNoVue && strings.HasPrefix(relLower, "web/"):
+			// web allows .ts and .tsx
+		default:
 			continue
 		}
 		parts := strings.Split(rel, "/")

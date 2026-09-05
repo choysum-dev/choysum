@@ -215,10 +215,10 @@ func TestCheck_OverlayOnlyRoots(t *testing.T) {
 	}
 }
 
-func TestAppendOverlayServiceRoots(t *testing.T) {
+func TestAppendOverlayRoots(t *testing.T) {
 	modules := "/repo/modules"
 	app := "demo"
-	got := appendOverlayServiceRoots(nil, modules, app, ScopeService, map[string]string{
+	got := appendOverlayRoots(nil, modules, app, ScopeService, map[string]string{
 		"/repo/modules/demo/index.ts":            "x",
 		"/repo/modules/demo/service/a.ts":        "x",
 		"/repo/modules/demo/service/nested/b.ts": "x",
@@ -241,20 +241,44 @@ func TestAppendOverlayServiceRoots(t *testing.T) {
 	if len(got) != 3 || !slices.IsSorted(got) {
 		t.Fatalf("overlay roots must be sorted: %v", got)
 	}
-	if appendOverlayServiceRoots([]string{"a"}, modules, app, Scope(99), map[string]string{"x": "y"}, true)[0] != "a" {
-		t.Fatal("non-service scope must be unchanged")
+	if appendOverlayRoots([]string{"a"}, modules, app, Scope(99), map[string]string{"x": "y"}, true)[0] != "a" {
+		t.Fatal("unsupported scope must be unchanged")
 	}
-	if appendOverlayServiceRoots([]string{"a"}, modules, app, ScopeService, nil, true)[0] != "a" {
+	if appendOverlayRoots([]string{"a"}, modules, app, ScopeService, nil, true)[0] != "a" {
 		t.Fatal("empty overlays must be unchanged")
 	}
 
 	// Case-insensitive / trimmed app matching.
-	got = appendOverlayServiceRoots(nil, "/Repo/Modules", " demo ", ScopeService, map[string]string{
+	got = appendOverlayRoots(nil, "/Repo/Modules", " demo ", ScopeService, map[string]string{
 		"/repo/modules/demo/service/a.ts": "x",
 		"/Repo/Modules/demo/web/ui.ts":    "x",
 	}, false)
 	if len(got) != 1 || !strings.HasSuffix(strings.ToLower(got[0]), "/demo/service/a.ts") {
 		t.Fatalf("case-insensitive overlay root = %v", got)
+	}
+
+	got = appendOverlayRoots(nil, modules, app, ScopeNoVue, map[string]string{
+		"/repo/modules/demo/web/ui.ts":      "x",
+		"/repo/modules/demo/web/Widget.tsx": "x",
+		"/repo/modules/demo/web/skip.vue":   "x",
+		"/repo/modules/demo/index.tsx":      "x",
+		"/repo/modules/demo/service/x.tsx":  "x",
+	}, true)
+	joined = strings.Join(got, "\n")
+	if !strings.Contains(joined, "web/ui.ts") || !strings.Contains(joined, "Widget.tsx") {
+		t.Fatalf("NoVue overlays missing web roots: %v", got)
+	}
+	if strings.Contains(joined, "index.tsx") || strings.Contains(joined, "service/x.tsx") || strings.Contains(joined, "skip.vue") {
+		t.Fatalf("unexpected NoVue overlay roots: %v", got)
+	}
+
+	// ScopeService must ignore .tsx overlays entirely.
+	got = appendOverlayRoots(nil, modules, app, ScopeService, map[string]string{
+		"/repo/modules/demo/web/Widget.tsx": "x",
+		"/repo/modules/demo/index.tsx":      "x",
+	}, true)
+	if len(got) != 0 {
+		t.Fatalf("ScopeService must skip tsx overlays: %v", got)
 	}
 }
 
@@ -512,6 +536,32 @@ func TestCollectRootFiles_StatErrors(t *testing.T) {
 	}
 	if _, err := CollectRootFiles(t.Context(), modules, "demo", ScopeService); err == nil || !strings.Contains(err.Error(), "service stat boom") {
 		t.Fatalf("err = %v", err)
+	}
+
+	mustMkdir(t, filepath.Join(app, "service"))
+	mustWrite(t, filepath.Join(app, "service", "s.ts"), "export {};\n")
+	stat = func(name string) (os.FileInfo, error) {
+		if filepath.Base(name) == "web" {
+			return nil, errors.New("web stat boom")
+		}
+		return orig(name)
+	}
+	if _, err := CollectRootFiles(t.Context(), modules, "demo", ScopeNoVue); err == nil || !strings.Contains(err.Error(), "web stat boom") {
+		t.Fatalf("err = %v", err)
+	}
+
+	// service path exists but is a file → skipped (not an error), still collects app-root.
+	appFileSvc := filepath.Join(modules, "demo_filesvc")
+	mustMkdir(t, appFileSvc)
+	mustWrite(t, filepath.Join(appFileSvc, "a.ts"), "export {};\n")
+	mustWrite(t, filepath.Join(appFileSvc, "service"), "not a dir")
+	stat = orig
+	files, err := CollectRootFiles(t.Context(), modules, "demo_filesvc", ScopeService)
+	if err != nil {
+		t.Fatalf("file-as-service-dir: %v", err)
+	}
+	if len(files) == 0 {
+		t.Fatal("expected app-root files when service is a file")
 	}
 
 	// App path exists but is a file → ErrNoRootFiles.

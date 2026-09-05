@@ -55,61 +55,15 @@ func CollectRootFiles(ctx context.Context, modulesPath, app string, scope Scope)
 	}
 
 	switch scope {
-	case ScopeService:
-		entries, err := readDir(appRoot)
-		if err != nil {
+	case ScopeService, ScopeNoVue:
+		if err := collectAppRootTS(ctx, appRoot, add); err != nil {
 			return nil, err
 		}
-		for _, e := range entries {
-			if err := ctx.Err(); err != nil {
-				return nil, err
-			}
-			if e.IsDir() {
-				continue
-			}
-			name := e.Name()
-			lower := strings.ToLower(name)
-			switch {
-			case strings.HasSuffix(lower, ".d.ts"), strings.HasSuffix(lower, ".ts"):
-				if shouldSkipTSFileName(name) {
-					continue
-				}
-				add(filepath.Join(appRoot, name))
-			}
+		if err := walkTSTree(ctx, filepath.Join(appRoot, "service"), add, false); err != nil {
+			return nil, err
 		}
-
-		serviceRoot := filepath.Join(appRoot, "service")
-		st, err := stat(serviceRoot)
-		if err != nil {
-			if !os.IsNotExist(err) {
-				return nil, err
-			}
-		} else if st.IsDir() {
-			err := walkDir(serviceRoot, func(path string, d fs.DirEntry, err error) error {
-				if err != nil {
-					return err
-				}
-				if err := ctx.Err(); err != nil {
-					return err
-				}
-				if d.IsDir() {
-					if shouldSkipScanDir(d.Name()) {
-						return fs.SkipDir
-					}
-					return nil
-				}
-				name := d.Name()
-				lower := strings.ToLower(name)
-				switch {
-				case strings.HasSuffix(lower, ".d.ts"), strings.HasSuffix(lower, ".ts"):
-					if shouldSkipTSFileName(name) {
-						return nil
-					}
-					add(path)
-				}
-				return nil
-			})
-			if err != nil {
+		if scope == ScopeNoVue {
+			if err := walkTSTree(ctx, filepath.Join(appRoot, "web"), add, true); err != nil {
 				return nil, err
 			}
 		}
@@ -121,6 +75,69 @@ func CollectRootFiles(ctx context.Context, modulesPath, app string, scope Scope)
 		return nil, ErrNoRootFiles
 	}
 	return files, nil
+}
+
+func collectAppRootTS(ctx context.Context, appRoot string, add func(string)) error {
+	entries, err := readDir(appRoot)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if !isCollectableTSName(name, false) || shouldSkipTSFileName(name) {
+			continue
+		}
+		add(filepath.Join(appRoot, name))
+	}
+	return nil
+}
+
+// walkTSTree walks root for .ts / .d.ts (and optionally .tsx). Missing root is OK.
+func walkTSTree(ctx context.Context, root string, add func(string), allowTSX bool) error {
+	st, err := stat(root)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	if !st.IsDir() {
+		return nil
+	}
+	return walkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if d.IsDir() {
+			if shouldSkipScanDir(d.Name()) {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		name := d.Name()
+		if !isCollectableTSName(name, allowTSX) || shouldSkipTSFileName(name) {
+			return nil
+		}
+		add(path)
+		return nil
+	})
+}
+
+func isCollectableTSName(name string, allowTSX bool) bool {
+	lower := strings.ToLower(name)
+	if allowTSX && strings.HasSuffix(lower, ".tsx") {
+		return true
+	}
+	return strings.HasSuffix(lower, ".ts")
 }
 
 // Test hooks for hard-to-trigger filesystem failures.
@@ -149,6 +166,7 @@ func shouldSkipTSFileName(name string) bool {
 	}
 	lower := strings.ToLower(name)
 	if strings.HasSuffix(lower, ".test.ts") || strings.HasSuffix(lower, ".spec.ts") ||
+		strings.HasSuffix(lower, ".test.tsx") || strings.HasSuffix(lower, ".spec.tsx") ||
 		strings.HasSuffix(lower, ".test.d.ts") || strings.HasSuffix(lower, ".spec.d.ts") {
 		return true
 	}
