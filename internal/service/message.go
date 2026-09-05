@@ -24,7 +24,7 @@ type descriptorCodec struct{}
 
 // messageToAny converts a protobuf message to a JavaScript compatible object
 func (descriptorCodec) messageToAny(msg protoreflect.Message) (interface{}, error) {
-	return converter.MessageToAny(msg)
+	return convertMessageToAny(msg)
 }
 
 // messageToMap converts a protobuf message into a map representation.

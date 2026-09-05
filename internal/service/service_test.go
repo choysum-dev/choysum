@@ -2412,7 +2412,7 @@ func TestExecuteUnaryMapFieldAndConvertInvalidArgument(t *testing.T) {
 	convertMessageToAny = func(msg protoreflect.Message) (interface{}, error) {
 		return nil, errors.New("forced message convert failure")
 	}
-	if _, err := svc.executeUnary(context.Background(), runtimeScope, map[string]interface{}{}, nil, "demomap", "Demo", "Touch", touchResp, touchIn); status.Code(err) != codes.InvalidArgument {
+	if _, err := svc.executeUnary(context.Background(), runtimeScope, map[string]interface{}{}, nil, "demomap", "Demo", "Touch", touchResp, touchIn); status.Code(err) != codes.InvalidArgument || !strings.Contains(status.Convert(err).Message(), "Error converting message to Any") {
 		t.Fatalf("expected InvalidArgument for message arg convert, got %v", err)
 	}
 	convertMessageToAny = orig
@@ -2420,7 +2420,7 @@ func TestExecuteUnaryMapFieldAndConvertInvalidArgument(t *testing.T) {
 	svc.jsExecutor = &stubJsExecutor{execute: func(ctx context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
 		return &jsengine.JsResponse{Id: req.Id, Result: 123}, nil
 	}}
-	if _, err := svc.executeUnary(context.Background(), runtimeScope, map[string]interface{}{}, nil, "demomap", "Demo", "Touch", touchResp, touchIn); status.Code(err) != codes.InvalidArgument {
+	if _, err := svc.executeUnary(context.Background(), runtimeScope, map[string]interface{}{}, nil, "demomap", "Demo", "Touch", touchResp, touchIn); status.Code(err) != codes.InvalidArgument || !strings.Contains(status.Convert(err).Message(), "Error converting result to proto value") {
 		t.Fatalf("expected InvalidArgument for scalar result convert, got %v", err)
 	}
 }
