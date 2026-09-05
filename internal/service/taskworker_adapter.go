@@ -297,7 +297,7 @@ func (a taskWorkerAdapter) setTaskError(msg *dynamicpb.Message, errMap map[strin
 		}
 	}
 	if field := fields.ByName("details"); field != nil {
-		if value, ok := errMap["details"]; ok {
+		if value, ok := errMap["details"]; ok && value != nil {
 			detailMap, ok := toAnyMap(value)
 			if !ok {
 				return fmt.Errorf("details expects a map, got %T", value)

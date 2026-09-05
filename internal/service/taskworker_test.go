@@ -286,6 +286,29 @@ func TestTaskWorkerBuildExecuteJobRespEncodeFailures(t *testing.T) {
 		t.Fatalf("expected InvalidArgument for non-map details, got %v", err)
 	}
 
+	resp, err := adapter.buildExecuteJobResp(executeJobResponse{
+		Status: "FAILED_NON_RETRYABLE",
+		Error: map[string]any{
+			"message": "boom",
+			"details": nil,
+		},
+	})
+	if err != nil {
+		t.Fatalf("expected explicit null details to be omitted, got %v", err)
+	}
+	protoMsg, ok := resp.(interface{ ProtoReflect() protoreflect.Message })
+	if !ok {
+		t.Fatalf("response does not implement ProtoReflect: %T", resp)
+	}
+	respMap, err := converter.MessageToMap(protoMsg.ProtoReflect())
+	if err != nil {
+		t.Fatalf("MessageToMap(null details): %v", err)
+	}
+	errVal := requireAnyMap(t, respMap["error"])
+	if _, hasDetails := errVal["details"]; hasDetails {
+		t.Fatalf("expected details to stay unset for null, got %#v", errVal)
+	}
+
 	errMsg := dynamicpb.NewMessage(mustTaskWorkerErrorDesc(t))
 	if err := setTaskError(errMsg, map[string]any{"message": "via-wrapper", "details": map[string]any{"k": "v"}}); err != nil {
 		t.Fatalf("setTaskError wrapper: %v", err)
