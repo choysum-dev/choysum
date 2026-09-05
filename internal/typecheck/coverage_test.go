@@ -344,6 +344,11 @@ func TestBuildCompilerOptions_BaseURLAndErrors(t *testing.T) {
 	if _, err := BuildCompilerOptions(modules, dir); err == nil || !strings.Contains(err.Error(), "parse") {
 		t.Fatalf("err = %v", err)
 	}
+
+	mustWrite(t, filepath.Join(modules, "tsconfig.json"), `{"compilerOptions":{"paths":"bad"}}`)
+	if _, err := BuildCompilerOptions(modules, dir); err == nil || !strings.Contains(err.Error(), "parse") {
+		t.Fatalf("unmarshal err = %v", err)
+	}
 }
 
 func TestBuildCompilerOptions_AbsBaseURL(t *testing.T) {
