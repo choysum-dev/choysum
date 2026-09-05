@@ -289,17 +289,16 @@ func AnyToMessage(v interface{}, msg *dynamicpb.Message) error {
 // Unknown keys, wrong container shapes, and per-field conversion failures return an error.
 func MapToMessage(m map[string]interface{}, msg *dynamicpb.Message) error {
 	for k, v := range m {
-		if v == nil {
-			// Explicit null omits the field (optional unset); it is not a type error.
-			continue
-		}
-
 		field := msg.Descriptor().Fields().ByTextName(k)
 		if field == nil {
 			return xfmt.Errorf("unknown field %q on message %s", k, msg.Descriptor().FullName())
 		}
+		if v == nil {
+			// Explicit null omits a known optional field; it is not a type error.
+			continue
+		}
 
-		if field.IsList() {
+		if field.IsList() && !field.IsMap() {
 			slice, ok := asInterfaceSlice(v)
 			if !ok {
 				return xfmt.Errorf("field %s expects a list, got %T", field.TextName(), v)

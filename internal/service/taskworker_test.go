@@ -274,6 +274,31 @@ func TestTaskWorkerBuildExecuteJobRespEncodeFailures(t *testing.T) {
 	if status.Code(err) != codes.InvalidArgument || !strings.Contains(status.Convert(err).Message(), "encode job error") {
 		t.Fatalf("expected InvalidArgument for unsupported error details, got %v", err)
 	}
+
+	_, err = adapter.buildExecuteJobResp(executeJobResponse{
+		Status: "FAILED_NON_RETRYABLE",
+		Error: map[string]any{
+			"message": "boom",
+			"details": "not-a-map",
+		},
+	})
+	if status.Code(err) != codes.InvalidArgument || !strings.Contains(status.Convert(err).Message(), "encode job error") {
+		t.Fatalf("expected InvalidArgument for non-map details, got %v", err)
+	}
+
+	errMsg := dynamicpb.NewMessage(mustTaskWorkerErrorDesc(t))
+	if err := setTaskError(errMsg, map[string]any{"message": "via-wrapper", "details": map[string]any{"k": "v"}}); err != nil {
+		t.Fatalf("setTaskError wrapper: %v", err)
+	}
+}
+
+func mustTaskWorkerErrorDesc(t *testing.T) protoreflect.MessageDescriptor {
+	t.Helper()
+	_, _, _, errDesc, err := taskWorkerDescriptors("task")
+	if err != nil {
+		t.Fatalf("taskWorkerDescriptors: %v", err)
+	}
+	return errDesc
 }
 
 func TestTaskExecutionStoreAlreadyRunningRetryAfterMax(t *testing.T) {

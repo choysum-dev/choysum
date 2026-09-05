@@ -71,6 +71,34 @@ func (descriptorCodec) listToAny(list protoreflect.List, field protoreflect.Fiel
 	return out, nil
 }
 
+// mapToAny converts a protobuf map field into a JS-friendly map[string]any.
+func (descriptorCodec) mapToAny(m protoreflect.Map, field protoreflect.FieldDescriptor) (map[string]any, error) {
+	if m == nil {
+		return map[string]any{}, nil
+	}
+	out := make(map[string]any, m.Len())
+	var walkErr error
+	m.Range(func(key protoreflect.MapKey, value protoreflect.Value) bool {
+		var converted any
+		if field.MapValue().Message() != nil {
+			msgJSON, err := convertMessageToAny(value.Message())
+			if err != nil {
+				walkErr = err
+				return false
+			}
+			converted = msgJSON
+		} else {
+			converted = value.Interface()
+		}
+		out[key.String()] = converted
+		return true
+	})
+	if walkErr != nil {
+		return nil, walkErr
+	}
+	return out, nil
+}
+
 // anyToList populates a repeated field on msg from a JS array-like value.
 func (c descriptorCodec) anyToList(v interface{}, msg *dynamicpb.Message, field protoreflect.FieldDescriptor) error {
 	if msg == nil || field == nil || !field.IsList() {

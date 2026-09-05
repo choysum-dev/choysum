@@ -134,6 +134,16 @@ func (r invocationRuntime) executeUnary(
 		field := reqMsg.Descriptor().Fields().Get(index)
 		value := reqMsg.Get(field)
 
+		// Maps report IsList() too; convert before the list branch to avoid Value.List()/Message() panics.
+		if field.IsMap() {
+			mapArg, err := serviceCodec.mapToAny(value.Map(), field)
+			if err != nil {
+				return nil, status.Errorf(codes.InvalidArgument, "Error converting map field %s: %v", field.TextName(), err)
+			}
+			jsRequest.Args = append(jsRequest.Args, mapArg)
+			continue
+		}
+
 		if field.IsList() {
 			listArg, err := serviceCodec.listToAny(value.List(), field)
 			if err != nil {

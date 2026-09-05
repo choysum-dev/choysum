@@ -55,6 +55,24 @@ func testDescriptors(t *testing.T) (protoreflect.MessageDescriptor, protoreflect
 						{Name: proto.String("key"), Number: proto.Int32(1), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
 						{Name: proto.String("value"), Number: proto.Int32(2), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_MESSAGE.Enum(), TypeName: proto.String(".convertertest.Nested")},
 					},
+				}, {
+					Name: proto.String("LabelsEntry"),
+					Options: &descriptorpb.MessageOptions{
+						MapEntry: proto.Bool(true),
+					},
+					Field: []*descriptorpb.FieldDescriptorProto{
+						{Name: proto.String("key"), Number: proto.Int32(1), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+						{Name: proto.String("value"), Number: proto.Int32(2), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					},
+				}, {
+					Name: proto.String("IntLabelsEntry"),
+					Options: &descriptorpb.MessageOptions{
+						MapEntry: proto.Bool(true),
+					},
+					Field: []*descriptorpb.FieldDescriptorProto{
+						{Name: proto.String("key"), Number: proto.Int32(1), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_INT32.Enum()},
+						{Name: proto.String("value"), Number: proto.Int32(2), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					},
 				}},
 				Field: []*descriptorpb.FieldDescriptorProto{
 					{Name: proto.String("name"), Number: proto.Int32(1), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
@@ -71,6 +89,8 @@ func testDescriptors(t *testing.T) (protoreflect.MessageDescriptor, protoreflect
 					{Name: proto.String("small_count"), Number: proto.Int32(12), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_UINT32.Enum()},
 					{Name: proto.String("items"), Number: proto.Int32(13), Label: descriptorpb.FieldDescriptorProto_LABEL_REPEATED.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_MESSAGE.Enum(), TypeName: proto.String(".convertertest.Nested")},
 					{Name: proto.String("attributes"), Number: proto.Int32(14), Label: descriptorpb.FieldDescriptorProto_LABEL_REPEATED.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_MESSAGE.Enum(), TypeName: proto.String(".convertertest.Container.AttributesEntry")},
+					{Name: proto.String("labels"), Number: proto.Int32(15), Label: descriptorpb.FieldDescriptorProto_LABEL_REPEATED.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_MESSAGE.Enum(), TypeName: proto.String(".convertertest.Container.LabelsEntry")},
+					{Name: proto.String("int_labels"), Number: proto.Int32(16), Label: descriptorpb.FieldDescriptorProto_LABEL_REPEATED.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_MESSAGE.Enum(), TypeName: proto.String(".convertertest.Container.IntLabelsEntry")},
 				},
 			},
 			{
@@ -484,6 +504,9 @@ func TestMapToMessageHandlesRepeatedMessagesMapsAndRejectsIllegalFields(t *testi
 	if err := MapToMessage(map[string]interface{}{"missing": "x"}, dynamicpb.NewMessage(containerDesc)); err == nil || !strings.Contains(err.Error(), "unknown field") {
 		t.Fatalf("expected unknown field error, got %v", err)
 	}
+	if err := MapToMessage(map[string]interface{}{"missing": nil}, dynamicpb.NewMessage(containerDesc)); err == nil || !strings.Contains(err.Error(), "unknown field") {
+		t.Fatalf("expected unknown nil field error, got %v", err)
+	}
 	if err := MapToMessage(map[string]interface{}{"count": "bad"}, dynamicpb.NewMessage(containerDesc)); err == nil || !strings.Contains(err.Error(), "count") {
 		t.Fatalf("expected count conversion error, got %v", err)
 	}
@@ -495,6 +518,37 @@ func TestMapToMessageHandlesRepeatedMessagesMapsAndRejectsIllegalFields(t *testi
 	}
 	if err := MapToMessage(map[string]interface{}{"name": 42}, dynamicpb.NewMessage(containerDesc)); err == nil || !strings.Contains(err.Error(), "cannot convert") {
 		t.Fatalf("expected string conversion error, got %v", err)
+	}
+	if err := MapToMessage(map[string]interface{}{"items": []interface{}{map[string]interface{}{"unknown": "x"}}}, dynamicpb.NewMessage(containerDesc)); err == nil || !strings.Contains(err.Error(), "unknown field") {
+		t.Fatalf("expected nested list item error, got %v", err)
+	}
+	if err := MapToMessage(map[string]interface{}{"tags": []interface{}{1}}, dynamicpb.NewMessage(containerDesc)); err == nil || !strings.Contains(err.Error(), "cannot convert") {
+		t.Fatalf("expected scalar list item error, got %v", err)
+	}
+	if err := MapToMessage(map[string]interface{}{"attributes": "not-a-map"}, dynamicpb.NewMessage(containerDesc)); err == nil || !strings.Contains(err.Error(), "expects a map") {
+		t.Fatalf("expected map type error, got %v", err)
+	}
+	if err := MapToMessage(map[string]interface{}{"int_labels": map[string]interface{}{"1": "a"}}, dynamicpb.NewMessage(containerDesc)); err == nil || !strings.Contains(err.Error(), "unsupported map key kind") {
+		t.Fatalf("expected unsupported map key kind error, got %v", err)
+	}
+	if err := MapToMessage(map[string]interface{}{"attributes": map[string]interface{}{"k": map[string]interface{}{"unknown": "x"}}}, dynamicpb.NewMessage(containerDesc)); err == nil || !strings.Contains(err.Error(), "unknown field") {
+		t.Fatalf("expected nested map message conversion error, got %v", err)
+	}
+	if err := MapToMessage(map[string]interface{}{"labels": map[string]string{"env": "prod"}}, dynamicpb.NewMessage(containerDesc)); err != nil {
+		t.Fatalf("MapToMessage(map[string]string labels): %v", err)
+	}
+	if err := MapToMessage(map[string]interface{}{"labels": map[string]interface{}{"env": 1}}, dynamicpb.NewMessage(containerDesc)); err == nil || !strings.Contains(err.Error(), "cannot convert") {
+		t.Fatalf("expected scalar map value conversion error, got %v", err)
+	}
+	if err := MapToMessage(map[string]interface{}{"nested": map[string]interface{}{"unknown": "x"}}, dynamicpb.NewMessage(containerDesc)); err == nil || !strings.Contains(err.Error(), "unknown field") {
+		t.Fatalf("expected nested message field error, got %v", err)
+	}
+	if err := SliceToMessage([]interface{}{map[string]interface{}{"unknown": "x"}}, dynamicpb.NewMessage(containerDesc)); err == nil {
+		t.Fatal("expected SliceToMessage nested item conversion error")
+	}
+	_, _, _, _, repeatedNestedDesc, _ := testDescriptors(t)
+	if err := SliceToMessage([]interface{}{map[string]interface{}{"unknown": "x"}}, dynamicpb.NewMessage(repeatedNestedDesc)); err == nil || !strings.Contains(err.Error(), "index 0") {
+		t.Fatalf("expected SliceToMessage nested message index error, got %v", err)
 	}
 	if err := SliceToMessage([]interface{}{1, "bad"}, dynamicpb.NewMessage(containerDesc)); err == nil {
 		t.Fatal("expected SliceToMessage item conversion error")

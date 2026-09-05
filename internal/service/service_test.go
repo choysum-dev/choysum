@@ -2220,6 +2220,211 @@ func TestExecuteUnaryValueArgArityAndConvertInvalidArgument(t *testing.T) {
 	}
 }
 
+func TestExecuteUnaryMapFieldAndConvertInvalidArgument(t *testing.T) {
+	fileProto := &descriptorpb.FileDescriptorProto{
+		Syntax:  proto.String("proto3"),
+		Name:    proto.String("demo_map_unary.proto"),
+		Package: proto.String("demomap"),
+		MessageType: []*descriptorpb.DescriptorProto{
+			{
+				Name: proto.String("LabelsReq"),
+				NestedType: []*descriptorpb.DescriptorProto{{
+					Name:    proto.String("LabelsEntry"),
+					Options: &descriptorpb.MessageOptions{MapEntry: proto.Bool(true)},
+					Field: []*descriptorpb.FieldDescriptorProto{
+						{Name: proto.String("key"), Number: proto.Int32(1), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+						{Name: proto.String("value"), Number: proto.Int32(2), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+					},
+				}},
+				Field: []*descriptorpb.FieldDescriptorProto{{
+					Name:     proto.String("labels"),
+					Number:   proto.Int32(1),
+					Label:    descriptorpb.FieldDescriptorProto_LABEL_REPEATED.Enum(),
+					Type:     descriptorpb.FieldDescriptorProto_TYPE_MESSAGE.Enum(),
+					TypeName: proto.String(".demomap.LabelsReq.LabelsEntry"),
+				}},
+			},
+			{
+				Name: proto.String("LabelsResp"),
+				Field: []*descriptorpb.FieldDescriptorProto{{
+					Name:   proto.String("result"),
+					Number: proto.Int32(1),
+					Label:  descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(),
+					Type:   descriptorpb.FieldDescriptorProto_TYPE_BOOL.Enum(),
+				}},
+			},
+			{
+				Name: proto.String("TouchReq"),
+				Field: []*descriptorpb.FieldDescriptorProto{{
+					Name:     proto.String("at"),
+					Number:   proto.Int32(1),
+					Label:    descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(),
+					Type:     descriptorpb.FieldDescriptorProto_TYPE_MESSAGE.Enum(),
+					TypeName: proto.String(".google.protobuf.Timestamp"),
+				}},
+			},
+			{
+				Name: proto.String("TouchResp"),
+				Field: []*descriptorpb.FieldDescriptorProto{{
+					Name:   proto.String("result"),
+					Number: proto.Int32(1),
+					Label:  descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(),
+					Type:   descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum(),
+				}},
+			},
+		},
+		Dependency: []string{"google/protobuf/timestamp.proto"},
+	}
+	tsFile := (&timestamppb.Timestamp{}).ProtoReflect().Descriptor().ParentFile()
+	files, err := protodesc.NewFiles(&descriptorpb.FileDescriptorSet{
+		File: []*descriptorpb.FileDescriptorProto{
+			protodesc.ToFileDescriptorProto(tsFile),
+			fileProto,
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewFiles: %v", err)
+	}
+	var labelsReq, labelsResp, touchReq, touchResp protoreflect.MessageDescriptor
+	files.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
+		if fd.Package() != "demomap" {
+			return true
+		}
+		labelsReq = fd.Messages().ByName("LabelsReq")
+		labelsResp = fd.Messages().ByName("LabelsResp")
+		touchReq = fd.Messages().ByName("TouchReq")
+		touchResp = fd.Messages().ByName("TouchResp")
+		return false
+	})
+	if labelsReq == nil || labelsResp == nil || touchReq == nil || touchResp == nil {
+		t.Fatal("missing message descriptors")
+	}
+
+	runtimeScope := newHelperScope(t.TempDir())
+	var capturedArgs []any
+	svc := &ApplicationService{
+		runtimeScope: runtimeScope,
+		jsExecutor: &stubJsExecutor{execute: func(ctx context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+			capturedArgs = append([]any(nil), req.Args...)
+			return &jsengine.JsResponse{Id: req.Id, Result: true}, nil
+		}},
+	}
+
+	reqMsg := dynamicpb.NewMessage(labelsReq)
+	labelsField := labelsReq.Fields().ByName("labels")
+	reqMsg.Mutable(labelsField).Map().Set(protoreflect.ValueOfString("env").MapKey(), protoreflect.ValueOfString("prod"))
+	if _, err := svc.executeUnary(context.Background(), runtimeScope, map[string]interface{}{}, nil, "demomap", "Demo", "Labels", labelsResp, reqMsg); err != nil {
+		t.Fatalf("executeUnary(map): %v", err)
+	}
+	labelsArg, ok := capturedArgs[0].(map[string]any)
+	if !ok || labelsArg["env"] != "prod" {
+		t.Fatalf("unexpected map arg: %#v", capturedArgs)
+	}
+
+	// Message-valued map + forced convert failure → InvalidArgument.
+	attrsFile := &descriptorpb.FileDescriptorProto{
+		Syntax:  proto.String("proto3"),
+		Name:    proto.String("demo_map_msg_unary.proto"),
+		Package: proto.String("demomapmsg"),
+		MessageType: []*descriptorpb.DescriptorProto{
+			{
+				Name: proto.String("Nested"),
+				Field: []*descriptorpb.FieldDescriptorProto{{
+					Name:   proto.String("label"),
+					Number: proto.Int32(1),
+					Label:  descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(),
+					Type:   descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum(),
+				}},
+			},
+			{
+				Name: proto.String("AttrsReq"),
+				NestedType: []*descriptorpb.DescriptorProto{{
+					Name:    proto.String("AttrsEntry"),
+					Options: &descriptorpb.MessageOptions{MapEntry: proto.Bool(true)},
+					Field: []*descriptorpb.FieldDescriptorProto{
+						{Name: proto.String("key"), Number: proto.Int32(1), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum()},
+						{Name: proto.String("value"), Number: proto.Int32(2), Label: descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(), Type: descriptorpb.FieldDescriptorProto_TYPE_MESSAGE.Enum(), TypeName: proto.String(".demomapmsg.Nested")},
+					},
+				}},
+				Field: []*descriptorpb.FieldDescriptorProto{{
+					Name:     proto.String("attrs"),
+					Number:   proto.Int32(1),
+					Label:    descriptorpb.FieldDescriptorProto_LABEL_REPEATED.Enum(),
+					Type:     descriptorpb.FieldDescriptorProto_TYPE_MESSAGE.Enum(),
+					TypeName: proto.String(".demomapmsg.AttrsReq.AttrsEntry"),
+				}},
+			},
+			{
+				Name: proto.String("AttrsResp"),
+				Field: []*descriptorpb.FieldDescriptorProto{{
+					Name:   proto.String("result"),
+					Number: proto.Int32(1),
+					Label:  descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(),
+					Type:   descriptorpb.FieldDescriptorProto_TYPE_BOOL.Enum(),
+				}},
+			},
+		},
+	}
+	attrsFiles, err := protodesc.NewFiles(&descriptorpb.FileDescriptorSet{File: []*descriptorpb.FileDescriptorProto{attrsFile}})
+	if err != nil {
+		t.Fatalf("attrs NewFiles: %v", err)
+	}
+	var attrsReq, attrsResp protoreflect.MessageDescriptor
+	attrsFiles.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
+		if fd.Package() != "demomapmsg" {
+			return true
+		}
+		attrsReq = fd.Messages().ByName("AttrsReq")
+		attrsResp = fd.Messages().ByName("AttrsResp")
+		return false
+	})
+	attrsIn := dynamicpb.NewMessage(attrsReq)
+	attrsField := attrsReq.Fields().ByName("attrs")
+	nested := dynamicpb.NewMessage(attrsField.MapValue().Message())
+	nested.Set(nested.Descriptor().Fields().ByName("label"), protoreflect.ValueOfString("core"))
+	attrsIn.Mutable(attrsField).Map().Set(protoreflect.ValueOfString("primary").MapKey(), protoreflect.ValueOfMessage(nested))
+
+	orig := convertMessageToAny
+	t.Cleanup(func() { convertMessageToAny = orig })
+	convertMessageToAny = func(msg protoreflect.Message) (interface{}, error) {
+		return nil, errors.New("forced map value convert failure")
+	}
+	if _, err := svc.executeUnary(context.Background(), runtimeScope, map[string]interface{}{}, nil, "demomapmsg", "Demo", "Attrs", attrsResp, attrsIn); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("expected InvalidArgument for map value convert, got %v", err)
+	}
+	convertMessageToAny = orig
+
+	if got, err := serviceCodec.mapToAny(nil, attrsField); err != nil || len(got) != 0 {
+		t.Fatalf("mapToAny(nil) = %#v, %v", got, err)
+	}
+	okMap, err := serviceCodec.mapToAny(attrsIn.Get(attrsField).Map(), attrsField)
+	if err != nil || okMap["primary"] == nil {
+		t.Fatalf("mapToAny(message values) = %#v, %v", okMap, err)
+	}
+
+	touchIn := dynamicpb.NewMessage(touchReq)
+	atField := touchReq.Fields().ByName("at")
+	tsMsg := dynamicpb.NewMessage(atField.Message())
+	if err := serviceCodec.anyToMessage("2020-01-02T03:04:05Z", tsMsg); err != nil {
+		t.Fatalf("seed timestamp: %v", err)
+	}
+	touchIn.Set(atField, protoreflect.ValueOf(tsMsg))
+	convertMessageToAny = func(msg protoreflect.Message) (interface{}, error) {
+		return nil, errors.New("forced message convert failure")
+	}
+	if _, err := svc.executeUnary(context.Background(), runtimeScope, map[string]interface{}{}, nil, "demomap", "Demo", "Touch", touchResp, touchIn); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("expected InvalidArgument for message arg convert, got %v", err)
+	}
+	convertMessageToAny = orig
+
+	svc.jsExecutor = &stubJsExecutor{execute: func(ctx context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+		return &jsengine.JsResponse{Id: req.Id, Result: 123}, nil
+	}}
+	if _, err := svc.executeUnary(context.Background(), runtimeScope, map[string]interface{}{}, nil, "demomap", "Demo", "Touch", touchResp, touchIn); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("expected InvalidArgument for scalar result convert, got %v", err)
+	}
+}
+
 func TestExecuteUnaryPropagatesExecutorErrors(t *testing.T) {
 	methodDesc, reqDesc, _, _, err := taskWorkerDescriptors("task")
 	if err != nil {

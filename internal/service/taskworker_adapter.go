@@ -298,13 +298,15 @@ func (a taskWorkerAdapter) setTaskError(msg *dynamicpb.Message, errMap map[strin
 	}
 	if field := fields.ByName("details"); field != nil {
 		if value, ok := errMap["details"]; ok {
-			if detailMap, ok := toAnyMap(value); ok {
-				detailsMsg := serviceCodec.newMessage(field.Message())
-				if err := serviceCodec.anyToMessage(detailMap, detailsMsg); err != nil {
-					return err
-				}
-				msg.Set(field, protoreflect.ValueOfMessage(detailsMsg))
+			detailMap, ok := toAnyMap(value)
+			if !ok {
+				return fmt.Errorf("details expects a map, got %T", value)
 			}
+			detailsMsg := serviceCodec.newMessage(field.Message())
+			if err := serviceCodec.anyToMessage(detailMap, detailsMsg); err != nil {
+				return err
+			}
+			msg.Set(field, protoreflect.ValueOfMessage(detailsMsg))
 		}
 	}
 	return nil
