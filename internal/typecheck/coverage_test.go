@@ -173,6 +173,68 @@ func TestCheck_OverlayAmbient(t *testing.T) {
 	}
 }
 
+func TestCheck_OverlayOnlyRoots(t *testing.T) {
+	dir := t.TempDir()
+	modules := filepath.Join(dir, "modules")
+	mustMkdir(t, modules)
+	mustWrite(t, filepath.Join(modules, "tsconfig.json"), `{"compilerOptions":{"paths":{"@/*":["./*"]}}}`)
+
+	virtual := filepath.ToSlash(filepath.Join(modules, "demo", "service", "virtual.ts"))
+	res, err := Check(t.Context(), Options{
+		ModulesPath: modules,
+		RepoRoot:    dir,
+		App:         "demo",
+		Overlays: map[string]string{
+			virtual: "export const n: number = 1;\n",
+			filepath.ToSlash(filepath.Join(modules, "demo", "web", "ui.ts")):            "export {};\n",
+			filepath.ToSlash(filepath.Join(modules, "demo", "service", "test", "h.ts")): "export {};\n",
+			filepath.ToSlash(filepath.Join(modules, "demo", "service", "skip.spec.ts")): "export {};\n",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.HasErrors() {
+		t.Fatalf("unexpected: %#v", res.Diagnostics)
+	}
+
+	if _, err := Check(t.Context(), Options{
+		ModulesPath: modules,
+		RepoRoot:    dir,
+		App:         "demo",
+		Overlays: map[string]string{
+			filepath.ToSlash(filepath.Join(modules, "demo", "web", "ui.ts")): "export {};\n",
+		},
+	}); !errors.Is(err, ErrNoRootFiles) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestAppendOverlayServiceRoots(t *testing.T) {
+	modules := "/repo/modules"
+	app := "demo"
+	got := appendOverlayServiceRoots(nil, modules, app, ScopeService, map[string]string{
+		"/repo/modules/demo/index.ts":            "x",
+		"/repo/modules/demo/service/a.ts":        "x",
+		"/repo/modules/demo/service/nested/b.ts": "x",
+		"/repo/modules/demo/web/ui.ts":           "x",
+		"/repo/modules/other/x.ts":               "x",
+		"  ":                                     "x",
+	})
+	joined := strings.Join(got, "\n")
+	for _, want := range []string{"demo/index.ts", "service/a.ts", "service/nested/b.ts"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("missing %s in %v", want, got)
+		}
+	}
+	if strings.Contains(joined, "web/ui.ts") || strings.Contains(joined, "other/x.ts") {
+		t.Fatalf("unexpected roots: %v", got)
+	}
+	if appendOverlayServiceRoots([]string{"a"}, modules, app, Scope(99), map[string]string{"x": "y"})[0] != "a" {
+		t.Fatal("non-service scope must be unchanged")
+	}
+}
+
 func TestCheck_AbsErrors(t *testing.T) {
 	orig := absPath
 	t.Cleanup(func() { absPath = orig })

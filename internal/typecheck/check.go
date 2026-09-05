@@ -5,8 +5,10 @@ package typecheck
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Check typechecks an application's service TypeScript roots using
@@ -34,12 +36,19 @@ func Check(ctx context.Context, opts Options) (Result, error) {
 	scope := opts.Scope
 	files, err := CollectRootFiles(modulesPath, opts.App, scope)
 	if err != nil {
-		return Result{}, err
+		if !errors.Is(err, ErrNoRootFiles) || len(opts.Overlays) == 0 {
+			return Result{}, err
+		}
+		files = nil
 	}
 
 	fs := newTypecheckFS(opts.Overlays)
+	files = appendOverlayServiceRoots(files, modulesPath, opts.App, scope, opts.Overlays)
 	if coreAmbient := filepath.ToSlash(filepath.Join(modulesPath, "core", "types", "$choysum.d.ts")); fs.FileExists(coreAmbient) {
 		files = appendUniqueSlash(files, coreAmbient)
+	}
+	if len(files) == 0 {
+		return Result{}, ErrNoRootFiles
 	}
 
 	compilerOpts, err := BuildCompilerOptions(modulesPath, repoRoot)
@@ -54,6 +63,49 @@ func Check(ctx context.Context, opts Options) (Result, error) {
 		return Result{}, err
 	}
 	return toResult(diags), nil
+}
+
+// appendOverlayServiceRoots adds overlay-only paths that match ScopeService
+// collection rules (app-root *.ts / service/**), including virtual files.
+func appendOverlayServiceRoots(files []string, modulesPath, app string, scope Scope, overlays map[string]string) []string {
+	if scope != ScopeService || len(overlays) == 0 {
+		return files
+	}
+	appRoot := filepath.ToSlash(filepath.Join(modulesPath, app))
+	for path := range overlays {
+		norm := normalizePathKey(path)
+		if norm == "" || shouldSkipTSFileName(filepath.Base(norm)) {
+			continue
+		}
+		lower := strings.ToLower(norm)
+		if !strings.HasSuffix(lower, ".ts") {
+			continue
+		}
+		rel, ok := strings.CutPrefix(norm, appRoot+"/")
+		if !ok {
+			continue
+		}
+		if !strings.Contains(rel, "/") {
+			files = appendUniqueSlash(files, norm)
+			continue
+		}
+		if !strings.HasPrefix(rel, "service/") {
+			continue
+		}
+		parts := strings.Split(rel, "/")
+		skip := false
+		for _, part := range parts[:len(parts)-1] {
+			if shouldSkipScanDir(part) {
+				skip = true
+				break
+			}
+		}
+		if skip {
+			continue
+		}
+		files = appendUniqueSlash(files, norm)
+	}
+	return files
 }
 
 func fileExists(path string) bool {
