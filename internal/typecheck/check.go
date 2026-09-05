@@ -36,8 +36,10 @@ func Check(ctx context.Context, opts Options) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	if coreAmbient := filepath.Join(modulesPath, "core", "types", "$choysum.d.ts"); fileExists(coreAmbient) {
-		files = appendUniqueSlash(files, filepath.ToSlash(coreAmbient))
+
+	fs := newTypecheckFS(opts.Overlays)
+	if coreAmbient := filepath.ToSlash(filepath.Join(modulesPath, "core", "types", "$choysum.d.ts")); fs.FileExists(coreAmbient) {
+		files = appendUniqueSlash(files, coreAmbient)
 	}
 
 	compilerOpts, err := BuildCompilerOptions(modulesPath, repoRoot)
@@ -45,7 +47,6 @@ func Check(ctx context.Context, opts Options) (Result, error) {
 		return Result{}, err
 	}
 
-	fs := newTypecheckFS(opts.Overlays)
 	host := newHost(modulesPath, fs)
 	program := buildProgram(host, files, compilerOpts)
 	diags, err := collectDiagnostics(ctx, program)

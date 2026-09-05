@@ -149,6 +149,28 @@ func TestCheck_MoreBranches(t *testing.T) {
 	}
 }
 
+func TestCheck_OverlayAmbient(t *testing.T) {
+	repo, modules := fixtureRoots(t, "service_ok")
+	ambient := filepath.ToSlash(filepath.Join(modules, "core", "types", "$choysum.d.ts"))
+	res, err := Check(t.Context(), Options{
+		ModulesPath: modules,
+		RepoRoot:    repo,
+		App:         "demo",
+		Overlays: map[string]string{
+			ambient: "export {};\n",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.HasErrors() {
+		t.Fatalf("unexpected: %#v", res.Diagnostics)
+	}
+	if fileExists(filepath.Join(modules, "core", "types", "$choysum.d.ts")) {
+		t.Fatal("ambient should exist only via overlay")
+	}
+}
+
 func TestCheck_AbsErrors(t *testing.T) {
 	orig := absPath
 	t.Cleanup(func() { absPath = orig })
