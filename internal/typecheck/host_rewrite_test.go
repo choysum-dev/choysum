@@ -16,6 +16,10 @@ declare module 'https://esm.sh/@vue/runtime-core@3.5.35/dist/runtime-core.d.ts' 
 declare module 'https://esm.sh/vue@3.5.35/dist/vue.d.mts' {
   interface GlobalComponents {}
 }
+declare module 'https://esm.sh/dayjs@1.11.21/locale/*' {
+  const locale: any;
+  export = locale;
+}
 declare module '@other' {}
 `
 	got := rewriteEsmShDeclareModules(in)
@@ -24,6 +28,12 @@ declare module '@other' {}
 	}
 	if !strings.Contains(got, "declare module 'vue'") {
 		t.Fatalf("vue: %s", got)
+	}
+	if !strings.Contains(got, "declare module 'dayjs/locale/*'") {
+		t.Fatalf("dayjs locale subpath: %s", got)
+	}
+	if strings.Contains(got, "declare module 'dayjs' {") && strings.Contains(got, "export = locale") {
+		t.Fatalf("must not map locale/* onto bare dayjs: %s", got)
 	}
 	if strings.Contains(got, "https://esm.sh/") {
 		t.Fatalf("leftover esm.sh module id: %s", got)
@@ -60,6 +70,7 @@ func TestSuppressVueTemplateParityNoise(t *testing.T) {
 		{File: "/a.vue", Code: 7031, Message: "Binding element '$event' implicitly has an 'any' type."},
 		{File: "/a.ts", Code: 2339, Message: "Property '$el' does not exist"},
 		{File: "/a.vue", Code: 2322, Message: "Type '{ onClick: () => void; }' is not assignable"},
+		{File: "/a.vue", Code: 2339, Message: "Property 'default' does not exist on type '{}'."},
 		{File: "/a.vue", Code: 1000, Message: "real error"},
 	}
 	got := suppressVueTemplateParityNoise(diags)

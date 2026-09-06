@@ -641,32 +641,32 @@ func TestResolveTypeRootsAndTypes(t *testing.T) {
 	dir := t.TempDir()
 	local := filepath.Join(dir, "node_modules", "@types", "node")
 	mustMkdir(t, local)
-	roots := resolveTypeRoots(dir)
+	roots := resolveTypeRoots(dir, dir)
 	if len(roots) != 1 {
 		t.Fatalf("roots = %v", roots)
 	}
-	if got := resolveCompilerTypes(roots); len(got) != 1 || got[0] != "node" {
+	if got := resolveCompilerTypes(dir, roots); len(got) != 1 || got[0] != "node" {
 		t.Fatalf("types = %v", got)
 	}
-	if got := resolveCompilerTypes(nil); got != nil {
+	if got := resolveCompilerTypes(dir, nil); got != nil {
 		t.Fatalf("empty = %v", got)
 	}
 
 	fileNode := t.TempDir()
 	mustWrite(t, filepath.Join(fileNode, "node"), "not a dir")
-	if got := resolveCompilerTypes([]string{fileNode}); got != nil {
+	if got := resolveCompilerTypes(dir, []string{fileNode}); got != nil {
 		t.Fatalf("file named node must be ignored, got %v", got)
 	}
 
 	global := t.TempDir()
 	mustMkdir(t, filepath.Join(global, "@types"))
 	t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", global)
-	roots = resolveTypeRoots(dir)
+	roots = resolveTypeRoots(dir, dir)
 	if len(roots) != 2 {
 		t.Fatalf("roots with global = %v", roots)
 	}
 	t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", filepath.Join(dir, "missing-global"))
-	roots = resolveTypeRoots(t.TempDir())
+	roots = resolveTypeRoots(t.TempDir(), t.TempDir())
 	if len(roots) != 0 {
 		t.Fatalf("expected empty roots, got %v", roots)
 	}
@@ -674,7 +674,7 @@ func TestResolveTypeRootsAndTypes(t *testing.T) {
 	fileAsTypes := t.TempDir()
 	mustMkdir(t, filepath.Join(fileAsTypes, "node_modules"))
 	mustWrite(t, filepath.Join(fileAsTypes, "node_modules", "@types"), "not a dir")
-	if got := resolveTypeRoots(fileAsTypes); len(got) != 0 {
+	if got := resolveTypeRoots(fileAsTypes, fileAsTypes); len(got) != 0 {
 		t.Fatalf("file @types must be ignored, got %v", got)
 	}
 }

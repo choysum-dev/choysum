@@ -17,16 +17,57 @@ import (
 
 // esm.sh type-fetch .d.ts files rewrite module augmentations to
 // declare module 'https://esm.sh/<pkg>@ver/...' which does not merge into
-// package-name modules (breaks vue GlobalComponents / GlobalDirectives).
+// package-name modules. Map those IDs back carefully:
+//
+//	https://esm.sh/@vue/runtime-core@3.5.35/dist/runtime-core.d.ts → @vue/runtime-core
+//	https://esm.sh/dayjs@1.11.21/locale/* → dayjs/locale/*  (keep subpath!)
 var esmShDeclareModuleRE = regexp.MustCompile(
-	`declare module 'https://esm\.sh/((?:@[^/'@]+/)?[^/'@]+)(?:@[^/']+)?(?:/[^']*)?'`,
+	`declare module 'https://esm\.sh/((?:@[^/'@]+/)?[^/'@]+)(?:@[^/']+)?(/[^']*)?'`,
 )
 
 func rewriteEsmShDeclareModules(content string) string {
 	if !strings.Contains(content, "declare module 'https://esm.sh/") {
 		return content
 	}
-	return esmShDeclareModuleRE.ReplaceAllString(content, "declare module '$1'")
+	return esmShDeclareModuleRE.ReplaceAllStringFunc(content, func(full string) string {
+		m := esmShDeclareModuleRE.FindStringSubmatch(full)
+		if len(m) < 3 {
+			return full
+		}
+		pkg, sub := m[1], m[2]
+		mod := esmShURLToModuleID(pkg, sub)
+		return "declare module '" + mod + "'"
+	})
+}
+
+// esmShURLToModuleID maps an esm.sh declare-module URL to a TypeScript module id.
+func esmShURLToModuleID(pkg, sub string) string {
+	if sub == "" || sub == "/" {
+		return pkg
+	}
+	if isEsmShPackageMainTypePath(pkg, sub) {
+		return pkg
+	}
+	mod := pkg + sub
+	mod = strings.TrimSuffix(mod, ".d.ts")
+	mod = strings.TrimSuffix(mod, ".d.mts")
+	return mod
+}
+
+func isEsmShPackageMainTypePath(pkg, sub string) bool {
+	base := filepath.Base(sub)
+	name := strings.TrimSuffix(strings.TrimSuffix(base, ".d.ts"), ".d.mts")
+	if name == "*" || name == "" {
+		return false
+	}
+	pkgBase := pkg
+	if i := strings.LastIndex(pkg, "/"); i >= 0 {
+		pkgBase = pkg[i+1:]
+	}
+	if name == "index" || name == pkgBase {
+		return true
+	}
+	return false
 }
 
 func isEsmShTypeFetchPath(p string) bool {

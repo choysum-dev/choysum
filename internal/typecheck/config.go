@@ -43,8 +43,8 @@ func BuildCompilerOptions(modulesPath, repoRoot string) (*core.CompilerOptions, 
 		pathsMap.Set("@/*", []string{filepath.ToSlash(filepath.Join(pathsBase, "*"))})
 	}
 
-	typeRoots := resolveTypeRoots(repoRoot)
-	types := resolveCompilerTypes(typeRoots)
+	typeRoots := resolveTypeRoots(modulesPath, repoRoot)
+	types := resolveCompilerTypes(modulesPath, typeRoots)
 
 	opts := &core.CompilerOptions{
 		Target:                           core.ScriptTargetES2020,
@@ -195,25 +195,160 @@ func hasResolvableVueTypes(modulesPath, repoRoot string) bool {
 	return false
 }
 
-func resolveTypeRoots(repoRoot string) []string {
+func resolveTypeRoots(modulesPath, repoRoot string) []string {
 	var roots []string
-	localTypes := filepath.Join(repoRoot, "node_modules", "@types")
-	if st, err := os.Stat(localTypes); err == nil && st.IsDir() {
-		roots = append(roots, filepath.ToSlash(localTypes))
-	}
-	// Optional explicit global types root only — never shell out to npm.
-	if globalRoot := strings.TrimSpace(os.Getenv("CHOYSUM_NPM_GLOBAL_ROOT")); globalRoot != "" {
-		globalTypes := filepath.Join(globalRoot, "@types")
-		if st, err := os.Stat(globalTypes); err == nil && st.IsDir() {
-			roots = append(roots, filepath.ToSlash(globalTypes))
+	seen := map[string]struct{}{}
+	add := func(p string) {
+		p = filepath.ToSlash(filepath.Clean(p))
+		if p == "" {
+			return
 		}
+		if _, ok := seen[p]; ok {
+			return
+		}
+		if st, err := os.Stat(filepath.FromSlash(p)); err != nil || !st.IsDir() {
+			return
+		}
+		seen[p] = struct{}{}
+		roots = append(roots, p)
+	}
+
+	// Prefer modules/tsconfig.json typeRoots (type-fetch under ~/.choysum).
+	for _, raw := range readTsconfigTypeRoots(modulesPath) {
+		abs := raw
+		if !filepath.IsAbs(raw) {
+			abs = filepath.Join(modulesPath, raw)
+		}
+		abs = rewriteChoysumTypesPath(filepath.ToSlash(abs))
+		// typeRoots entries are directories; rewriteChoysumTypesPath may leave a
+		// missing file path — also try directory existence via choysum home.
+		if !typePathExists(abs) && !dirExists(abs) {
+			if alt := rewriteChoysumTypesDir(abs); alt != "" {
+				abs = alt
+			}
+		}
+		add(abs)
+	}
+
+	// Opportunistic only — typecheck must not require node_modules.
+	add(filepath.Join(repoRoot, "node_modules", "@types"))
+	if globalRoot := strings.TrimSpace(os.Getenv("CHOYSUM_NPM_GLOBAL_ROOT")); globalRoot != "" {
+		add(filepath.Join(globalRoot, "@types"))
 	}
 	return roots
 }
 
-func resolveCompilerTypes(typeRoots []string) []string {
+func readTsconfigTypeRoots(modulesRoot string) []string {
+	tsconfigPath := filepath.Join(modulesRoot, "tsconfig.json")
+	data, err := readFile(tsconfigPath)
+	if err != nil {
+		return nil
+	}
+	var tsconfig struct {
+		CompilerOptions struct {
+			TypeRoots []string `json:"typeRoots"`
+			Types     []string `json:"types"`
+		} `json:"compilerOptions"`
+	}
+	hv, err := hujson.Parse(data)
+	if err != nil {
+		return nil
+	}
+	hv.Standardize()
+	if err := json.Unmarshal(hv.Pack(), &tsconfig); err != nil {
+		return nil
+	}
+	return tsconfig.CompilerOptions.TypeRoots
+}
+
+func readTsconfigTypes(modulesRoot string) []string {
+	tsconfigPath := filepath.Join(modulesRoot, "tsconfig.json")
+	data, err := readFile(tsconfigPath)
+	if err != nil {
+		return nil
+	}
+	var tsconfig struct {
+		CompilerOptions struct {
+			Types []string `json:"types"`
+		} `json:"compilerOptions"`
+	}
+	hv, err := hujson.Parse(data)
+	if err != nil {
+		return nil
+	}
+	hv.Standardize()
+	if err := json.Unmarshal(hv.Pack(), &tsconfig); err != nil {
+		return nil
+	}
+	return tsconfig.CompilerOptions.Types
+}
+
+func dirExists(path string) bool {
+	st, err := os.Stat(filepath.FromSlash(path))
+	return err == nil && st.IsDir()
+}
+
+// rewriteChoysumTypesDir remaps missing /.choysum/pkg/types/... directories onto
+// $CHOYSUM_HOME/pkg/types (same marker logic as rewriteChoysumTypesPath).
+func rewriteChoysumTypesDir(abs string) string {
+	abs = filepath.ToSlash(abs)
+	const marker = "/.choysum/pkg/types/"
+	idx := strings.Index(abs, marker)
+	if idx < 0 {
+		const markerExact = "/.choysum/pkg/types"
+		if !strings.HasSuffix(abs, markerExact) {
+			return ""
+		}
+		idx = strings.Index(abs, markerExact)
+		if idx < 0 {
+			return ""
+		}
+		home := choysumHomeDir()
+		if home == "" {
+			return ""
+		}
+		alt := filepath.ToSlash(filepath.Join(home, "pkg", "types"))
+		if dirExists(alt) {
+			return alt
+		}
+		return ""
+	}
+	if dirExists(abs) {
+		return abs
+	}
+	home := choysumHomeDir()
+	if home == "" {
+		return ""
+	}
+	suffix := abs[idx+len(marker):]
+	alt := filepath.ToSlash(filepath.Join(home, "pkg", "types", filepath.FromSlash(suffix)))
+	if dirExists(alt) {
+		return alt
+	}
+	return ""
+}
+
+func resolveCompilerTypes(modulesPath string, typeRoots []string) []string {
+	if configured := readTsconfigTypes(modulesPath); len(configured) > 0 {
+		var out []string
+		for _, name := range configured {
+			name = strings.TrimSpace(name)
+			if name == "" {
+				continue
+			}
+			for _, root := range typeRoots {
+				if dirExists(filepath.Join(root, name)) {
+					out = append(out, name)
+					break
+				}
+			}
+		}
+		if len(out) > 0 {
+			return out
+		}
+	}
 	for _, root := range typeRoots {
-		if st, err := os.Stat(filepath.Join(root, "node")); err == nil && st.IsDir() {
+		if dirExists(filepath.Join(root, "node")) {
 			return []string{"node"}
 		}
 	}

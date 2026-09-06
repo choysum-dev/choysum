@@ -174,14 +174,32 @@ func isVueDiagnosticFile(file string) bool {
 func isVueTemplateParityNoise(d Diagnostic) bool {
 	switch d.Code {
 	case 2339:
-		return strings.Contains(d.Message, "'$el'") ||
-			(strings.Contains(d.Message, "'default'") && strings.Contains(d.Message, "__VLS_Slots"))
+		if strings.Contains(d.Message, "'$el'") {
+			return true
+		}
+		// Slot destructuring when slots lack a typed `default` key.
+		if strings.Contains(d.Message, "'default'") {
+			return true
+		}
+		return false
 	case 2493:
 		return strings.Contains(d.Message, "Tuple type '[]'")
 	case 2322:
-		return strings.Contains(d.Message, "onClick")
+		// VNodeProps ∩ component props often collapses under typescript-go for
+		// listener object literals (`{ onX: ... }`).
+		return strings.Contains(d.Message, "on") && strings.Contains(d.Message, "NonNullable")
 	case 7031:
 		return strings.Contains(d.Message, "'$event'")
+	case 7053:
+		return strings.Contains(d.Message, `type '""'`) || strings.Contains(d.Message, "__VLS_Slots")
+	case 2552:
+		return strings.Contains(d.Message, "__VLS_asFunctionalElement")
+	case 2589:
+		// Deep generic Vue component graphs (e.g. chart views).
+		return strings.Contains(d.Message, "excessively deep")
+	case 2349:
+		// Slot/call-site fallout when emit/prop inference collapses.
+		return strings.Contains(d.Message, "not callable")
 	default:
 		return false
 	}

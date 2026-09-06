@@ -546,7 +546,8 @@ class BaseModel {
    * Loads additional fields onto this model instance.
    */
   async load(fields?: ModelLoadFieldSelection, options?: SoftDeleteOptions): Promise<this> {
-    return await loadModelInstance(this, fields, options);
+    // FieldSelection<ObjectRecord> widens T away from polymorphic `this` under typescript-go.
+    return (await loadModelInstance(this, fields as FieldSelection<this>, options)) as this;
   }
 
   /**
