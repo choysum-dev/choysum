@@ -820,6 +820,30 @@ func TestFormatError(t *testing.T) {
 
 // ---- WithModulePath tests ----
 
+func TestWithExtraQuery(t *testing.T) {
+	r := New(WithTarget("es2020"), WithExtraQuery("bundle", " &dev=false "))
+	if r.extraQuery != "bundle&dev=false" {
+		t.Fatalf("extraQuery = %q, want bundle&dev=false", r.extraQuery)
+	}
+	got := r.bareImportURL("typescript@6.0.3")
+	want := "https://esm.sh/typescript@6.0.3?target=es2020&bundle&dev=false"
+	if got != want {
+		t.Fatalf("bareImportURL = %q, want %q", got, want)
+	}
+}
+
+func TestWithExtraQuery_Empty(t *testing.T) {
+	r := New(WithTarget("es2020"), WithExtraQuery("", "  "))
+	if r.extraQuery != "" {
+		t.Fatalf("extraQuery = %q, want empty", r.extraQuery)
+	}
+	got := r.bareImportURL("path-browserify@1.0.1")
+	want := "https://esm.sh/path-browserify@1.0.1?target=es2020"
+	if got != want {
+		t.Fatalf("bareImportURL = %q, want %q", got, want)
+	}
+}
+
 func TestWithModulePath(t *testing.T) {
 	r := New(WithModulePath("/tmp/modules"))
 	if r.modulePath != "/tmp/modules" {

@@ -28,11 +28,9 @@ git-ignored, so they must exist before you can install modules or run the app.
 Regenerate + build after a fresh checkout or after changing embedded/web code:
 
 ```bash
-go generate ./pkg/jsengine/scripts/vuesfc/...   # needs network (esm.sh)
-# vuevirtual: prefer local npm (language-core+typescript); see package README
-(cd pkg/jsengine/scripts/vuevirtual && npm install)
-go generate ./pkg/jsengine/scripts/vuevirtual/...
-go generate ./internal/bootstrap/web/...         # needs network (esm.sh); 404 type-fetch warnings are harmless
+go generate ./pkg/jsengine/scripts/vuesfc/...      # needs network (esm.sh)
+go generate ./pkg/jsengine/scripts/vuevirtual/...  # needs network (esm.sh)
+go generate ./internal/bootstrap/web/...          # needs network (esm.sh); 404 type-fetch warnings are harmless
 go build -o choysum .
 ```
 

@@ -3,10 +3,10 @@
 
 //go:build ignore
 
-// gen.go builds the vuevirtual embeddable script (dist/index.js).
-// Prefer local node_modules (npm install in this directory) because
-// @vue/language-core + typescript are large and often fail on esm.sh.
-// Falls back to the choysum-esm-resolver CDN plugin when node_modules is absent.
+// gen.go builds the vuevirtual embeddable script (dist/index.js) using the
+// Go esbuild API with the choysum-esm-resolver plugin. All bare imports
+// are resolved through the ESM CDN with local caching — no node_modules
+// required (same path as vuesfc).
 //
 // Invoke via: go generate ./pkg/jsengine/scripts/vuevirtual/...
 
@@ -33,12 +33,20 @@ func main() {
 		cacheDir = filepath.Join(home, ".choysum")
 	}
 
+	client := esmresolver.NewTypeFetchHTTPClient(30 * time.Second)
+	typesDir := filepath.Join(cacheDir, "pkg", "types")
+	if results, err := esmresolver.FetchTypesForModule(client, "https://esm.sh", typesDir, "."); err == nil {
+		if err := esmresolver.UpdateTsconfigPaths("tsconfig.json", results); err != nil {
+			fmt.Fprintf(os.Stderr, "gen.go: warning: %v\n", err)
+		}
+	} else {
+		fmt.Fprintf(os.Stderr, "gen.go: warning: failed to fetch types: %v\n", err)
+	}
+
 	entryPoint := "src/index.ts"
 	outFile := "dist/index.js"
-	useLocal := fileExists("node_modules/@vue/language-core/package.json") &&
-		fileExists("node_modules/typescript/package.json")
 
-	opts := api.BuildOptions{
+	result := api.Build(api.BuildOptions{
 		EntryPoints:       []string{entryPoint},
 		Outfile:           outFile,
 		Bundle:            true,
@@ -55,33 +63,19 @@ func main() {
 		Alias: map[string]string{
 			"path": "path-browserify",
 		},
-		Write: true,
-	}
-
-	if useLocal {
-		fmt.Println("vuevirtual: bundling from local node_modules")
-		opts.AbsWorkingDir, _ = os.Getwd()
-	} else {
-		fmt.Println("vuevirtual: bundling via esm.sh resolver (no local node_modules)")
-		client := esmresolver.NewTypeFetchHTTPClient(30 * time.Second)
-		typesDir := filepath.Join(cacheDir, "pkg", "types")
-		if results, err := esmresolver.FetchTypesForModule(client, "https://esm.sh", typesDir, "."); err == nil {
-			if err := esmresolver.UpdateTsconfigPaths("tsconfig.json", results); err != nil {
-				fmt.Fprintf(os.Stderr, "gen.go: warning: %v\n", err)
-			}
-		} else {
-			fmt.Fprintf(os.Stderr, "gen.go: warning: failed to fetch types: %v\n", err)
-		}
-		opts.Plugins = []api.Plugin{
+		Plugins: []api.Plugin{
 			esmresolver.New(
 				esmresolver.WithCacheDir(cacheDir),
 				esmresolver.WithTarget("es2020"),
+				// language-core entry with ?target= alone 500s on esm.sh;
+				// &bundle returns a working re-export.
+				esmresolver.WithExtraQuery("bundle"),
 				esmresolver.WithModulePath("."),
 			).Plugin(),
-		}
-	}
+		},
+		Write: true,
+	})
 
-	result := api.Build(opts)
 	if len(result.Errors) > 0 {
 		for _, e := range result.Errors {
 			loc := ""
@@ -89,9 +83,6 @@ func main() {
 				loc = fmt.Sprintf("%s:%d:%d ", e.Location.File, e.Location.Line, e.Location.Column)
 			}
 			fmt.Fprintf(os.Stderr, "gen.go: %s%s\n", loc, e.Text)
-		}
-		if !useLocal {
-			fmt.Fprintf(os.Stderr, "gen.go: tip: cd pkg/jsengine/scripts/vuevirtual && npm install\n")
 		}
 		os.Exit(1)
 	}
@@ -102,9 +93,4 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Printf("vuevirtual: built %s (%d bytes)\n", outFile, info.Size())
-}
-
-func fileExists(path string) bool {
-	st, err := os.Stat(path)
-	return err == nil && !st.IsDir()
 }

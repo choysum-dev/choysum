@@ -68,12 +68,6 @@ jobs:
         go-version-file: go.mod
         cache: true
 
-    - name: Setup Node (vuevirtual npm deps)
-      if: matrix.language == 'go' && matrix.build-mode == 'manual'
-      uses: actions/setup-node@v6
-      with:
-        node-version: "22"
-
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v4
@@ -101,10 +95,7 @@ jobs:
         set -euo pipefail
 
         go generate ./pkg/jsengine/scripts/vuesfc/...
-
-        npm install --prefix pkg/jsengine/scripts/vuevirtual
         go generate ./pkg/jsengine/scripts/vuevirtual/...
-
         go generate ./internal/bootstrap/web/...
 
         go build ./...

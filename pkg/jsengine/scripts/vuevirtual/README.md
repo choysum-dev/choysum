@@ -12,18 +12,20 @@ QuickJS-embeddable facade over `@vue/language-core@3.3.7` that exports
 
 ## Generate (required before `go build` / tests that embed)
 
-From the repository root:
+From the repository root (same path as `vuesfc` — esm.sh + local cache, no
+`node_modules`):
 
 ```bash
-# Prefer local install (large language-core + typescript; esm.sh often fails):
-cd pkg/jsengine/scripts/vuevirtual && npm install && cd -
 go generate ./pkg/jsengine/scripts/vuevirtual/...
 ```
 
-Writes git-ignored `dist/index.js` (~3.9 MB). When `node_modules` is absent,
-`gen.go` falls back to the esm.sh resolver (may fail for this package).
+Writes git-ignored `dist/index.js` (several MB). Needs network on first run;
+cache lives under `$CHOYSUM_HOME/pkg/esm` (default `~/.choysum/pkg/esm`).
 
-Pinned in `package.json` (and used by local npm install):
+`gen.go` pins versions via `esm.lock` and requests `?target=es2020&bundle`
+so esm.sh can serve `@vue/language-core` (bare `?target=` alone may 500).
+
+Pinned in `package.json` / `esm.lock`:
 
 - `@vue/language-core@3.3.7`
 - `typescript@6.0.3`

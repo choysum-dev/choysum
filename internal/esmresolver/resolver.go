@@ -78,6 +78,7 @@ type Resolver struct {
 	upstream     string
 	cacheDir     string
 	target       string
+	extraQuery   string // additional query params after target= (e.g. "bundle")
 	offline      bool
 	moduleName   string
 	application  string
@@ -119,6 +120,25 @@ func WithTarget(target string) Option {
 	return func(r *Resolver) {
 		if target != "" {
 			r.target = target
+		}
+	}
+}
+
+// WithExtraQuery appends additional query parameters to bare-import esm.sh URLs
+// after target=. For example WithExtraQuery("bundle") yields
+// ?target=es2020&bundle. Empty segments are ignored.
+func WithExtraQuery(params ...string) Option {
+	return func(r *Resolver) {
+		var parts []string
+		for _, p := range params {
+			p = strings.TrimSpace(p)
+			p = strings.TrimPrefix(p, "&")
+			if p != "" {
+				parts = append(parts, p)
+			}
+		}
+		if len(parts) > 0 {
+			r.extraQuery = strings.Join(parts, "&")
 		}
 	}
 }
@@ -309,17 +329,15 @@ func (r *Resolver) Plugin() api.Plugin {
 
 				// CSS imports from any target are external.
 				if args.Kind == api.ResolveCSSURLToken {
-					resolvedURL := fmt.Sprintf("%s/%s?target=%s", r.upstream, spec, r.target)
 					return api.OnResolveResult{
-						Path:     resolvedURL,
+						Path:     r.bareImportURL(spec),
 						External: true,
 					}, nil
 				}
 
 				// Map bare import to esm.sh URL.
-				esmURL := fmt.Sprintf("%s/%s?target=%s", r.upstream, spec, r.target)
 				return api.OnResolveResult{
-					Path:      esmURL,
+					Path:      r.bareImportURL(spec),
 					Namespace: "choysum-esm",
 				}, nil
 			})
@@ -442,6 +460,15 @@ func (r *Resolver) Plugin() api.Plugin {
 			})
 		},
 	}
+}
+
+// bareImportURL builds the esm.sh URL for a bare import specifier.
+func (r *Resolver) bareImportURL(spec string) string {
+	url := fmt.Sprintf("%s/%s?target=%s", r.upstream, spec, r.target)
+	if q := strings.TrimSpace(r.extraQuery); q != "" {
+		url += "&" + q
+	}
+	return url
 }
 
 func (r *Resolver) effectiveLockfilePath() string {
