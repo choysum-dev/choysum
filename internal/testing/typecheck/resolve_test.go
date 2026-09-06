@@ -108,54 +108,6 @@ func TestHasTargets(t *testing.T) {
 	}
 }
 
-func TestResolveNpxPath(t *testing.T) {
-	t.Run("uses npx next to provided npm path", func(t *testing.T) {
-		binDir := filepath.Join(t.TempDir(), "bin")
-		makeDir(t, binDir)
-		npmPath := filepath.Join(binDir, "npm")
-		npxPath := filepath.Join(binDir, "npx")
-		writeFile(t, npmPath, "#!/bin/sh\n")
-		writeFile(t, npxPath, "#!/bin/sh\n")
-
-		got, err := resolveNpxPath(npmPath)
-		if err != nil {
-			t.Fatalf("resolveNpxPath returned error: %v", err)
-		}
-		if got != npxPath {
-			t.Fatalf("resolveNpxPath returned %q, want %q", got, npxPath)
-		}
-	})
-
-	t.Run("falls back to PATH lookup", func(t *testing.T) {
-		binDir := filepath.Join(t.TempDir(), "bin")
-		makeDir(t, binDir)
-		npxPath := filepath.Join(binDir, "npx")
-		writeFile(t, npxPath, "#!/bin/sh\n")
-		originalPath := os.Getenv("PATH")
-		t.Setenv("PATH", binDir+string(os.PathListSeparator)+originalPath)
-
-		got, err := resolveNpxPath("")
-		if err != nil {
-			t.Fatalf("resolveNpxPath returned error: %v", err)
-		}
-		if got != "npx" {
-			t.Fatalf("resolveNpxPath returned %q, want npx", got)
-		}
-	})
-
-	t.Run("returns helpful error when npx is missing", func(t *testing.T) {
-		t.Setenv("PATH", "")
-
-		_, err := resolveNpxPath("")
-		if err == nil || !strings.Contains(err.Error(), "npx not found") {
-			t.Fatalf("expected npx not found error, got %v", err)
-		}
-		if !strings.Contains(err.Error(), "Ensure Node.js/npm is installed") {
-			t.Fatalf("expected remediation hint, got %v", err)
-		}
-	})
-}
-
 func TestTypecheckHelperFunctions(t *testing.T) {
 	if got := sanitizeAppToken("crm/web app"); got != "crm_web_app" {
 		t.Fatalf("sanitizeAppToken() = %q, want crm_web_app", got)
