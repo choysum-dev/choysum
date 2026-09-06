@@ -380,3 +380,15 @@ func TestEnsureNodeCompilerTypes_AdjacentVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestDefaultFetchTypeDefinitionAndHTTPClient(t *testing.T) {
+	client := defaultTypeFetchHTTPClient()
+	if client == nil || client.Timeout == 0 {
+		t.Fatalf("default client: %#v", client)
+	}
+	// Unreachable upstream: covers the default wrapper body without a network success path.
+	_, _, err := defaultFetchTypeDefinition(context.Background(), client, "http://127.0.0.1:1", t.TempDir(), "pkg", "1.0.0")
+	if err == nil {
+		t.Fatal("expected discover error from unreachable upstream")
+	}
+}

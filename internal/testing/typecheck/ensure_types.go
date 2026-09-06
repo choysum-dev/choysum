@@ -30,19 +30,23 @@ var (
 	npmExactVersionRE  = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$`)
 
 	typeFetchUpstream      = config.DefaultESMUpstreamURL
-	newTypeFetchHTTPClient = func() *http.Client {
-		return esmresolver.NewTypeFetchHTTPClient(30 * time.Second)
-	}
-	fetchTypeDefinition = func(ctx context.Context, client *http.Client, upstream, typesDir, pkg, version string) (*esmresolver.TypeFetchResult, []esmresolver.TypeFetchResult, error) {
-		return esmresolver.FetchTypeDefinitionContext(ctx, client, upstream, typesDir, pkg, version)
-	}
-	updateTsconfigPaths = esmresolver.UpdateTsconfigPaths
+	newTypeFetchHTTPClient = defaultTypeFetchHTTPClient
+	fetchTypeDefinition    = defaultFetchTypeDefinition
+	updateTsconfigPaths    = esmresolver.UpdateTsconfigPaths
 
 	filepathAbs = filepath.Abs
 	filepathRel = filepath.Rel
 
 	preferTypesWriteDir = gonative.PreferTypesWriteDir
 )
+
+func defaultTypeFetchHTTPClient() *http.Client {
+	return esmresolver.NewTypeFetchHTTPClient(30 * time.Second)
+}
+
+func defaultFetchTypeDefinition(ctx context.Context, client *http.Client, upstream, typesDir, pkg, version string) (*esmresolver.TypeFetchResult, []esmresolver.TypeFetchResult, error) {
+	return esmresolver.FetchTypeDefinitionContext(ctx, client, upstream, typesDir, pkg, version)
+}
 
 // ensureTypeAssets downloads critical type-fetch .d.ts files (vue + @types/node)
 // when modules/tsconfig cannot resolve `vue`. It intentionally does not walk the

@@ -145,6 +145,11 @@ func filterDiagnosticsToApp(diags []Diagnostic, modulesPath, app string) []Diagn
 	prefix := filepath.ToSlash(filepath.Join(modulesPath, app)) + "/"
 	out := make([]Diagnostic, 0, len(diags))
 	for _, d := range diags {
+		// Keep filepath-less diagnostics (program/global errors) for the app run.
+		if d.File == "" {
+			out = append(out, d)
+			continue
+		}
 		file := filepath.ToSlash(d.File)
 		if strings.HasPrefix(file, prefix) {
 			out = append(out, d)

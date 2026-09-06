@@ -152,10 +152,14 @@ func TestFilterDiagnosticsToApp(t *testing.T) {
 		{File: "/repo/modules/auth/web/A.vue", Code: 1},
 		{File: "/repo/modules/web/web/B.vue", Code: 2},
 		{File: "/repo/modules/auth/service/x.ts", Code: 3},
+		{File: "", Code: 4, Message: "global"},
 	}
 	got := filterDiagnosticsToApp(diags, "/repo/modules", "auth")
-	if len(got) != 2 {
+	if len(got) != 3 {
 		t.Fatalf("got %d %#v", len(got), got)
+	}
+	if got[2].File != "" || got[2].Code != 4 {
+		t.Fatalf("expected empty-file diagnostic kept: %#v", got[2])
 	}
 }
 

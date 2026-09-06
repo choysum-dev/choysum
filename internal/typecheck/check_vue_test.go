@@ -442,6 +442,8 @@ func TestCollectModulesWebVuePaths(t *testing.T) {
 	mustMkdir(t, filepath.Join(modules, ".git"))
 	mustMkdir(t, filepath.Join(modules, ".vscode"))
 	mustMkdir(t, filepath.Join(modules, "tmp"))
+	// Non-directory entries at the modules root must be skipped.
+	mustWrite(t, filepath.Join(modules, "README.md"), "x\n")
 	mustMkdir(t, filepath.Join(modules, "no-web", "service"))
 	mustMkdir(t, filepath.Join(modules, "demo", "web", "ui"))
 	mustWrite(t, filepath.Join(modules, "demo", "web", "ui", "App.vue"), "<template></template>\n")
@@ -452,6 +454,12 @@ func TestCollectModulesWebVuePaths(t *testing.T) {
 	mustWrite(t, filepath.Join(modules, "demo", "web", ".cache", "X.vue"), "<template></template>\n")
 	mustMkdir(t, filepath.Join(modules, "demo", "web", "node_modules", "pkg"))
 	mustWrite(t, filepath.Join(modules, "demo", "web", "node_modules", "pkg", "X.vue"), "<template></template>\n")
+	mustMkdir(t, filepath.Join(modules, "demo", "web", "dist"))
+	mustWrite(t, filepath.Join(modules, "demo", "web", "dist", "Built.vue"), "<template></template>\n")
+	mustMkdir(t, filepath.Join(modules, "demo", "web", "tmp"))
+	mustWrite(t, filepath.Join(modules, "demo", "web", "tmp", "Tmp.vue"), "<template></template>\n")
+	mustMkdir(t, filepath.Join(modules, "demo", "web", "tests"))
+	mustWrite(t, filepath.Join(modules, "demo", "web", "tests", "T.vue"), "<template></template>\n")
 
 	got, err := collectModulesWebVuePaths(modules)
 	if err != nil {
