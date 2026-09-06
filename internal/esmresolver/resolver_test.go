@@ -821,7 +821,7 @@ func TestFormatError(t *testing.T) {
 // ---- WithModulePath tests ----
 
 func TestWithExtraQuery(t *testing.T) {
-	r := New(WithTarget("es2020"), WithExtraQuery("bundle", " &dev=false "))
+	r := New(WithTarget("es2020"), WithExtraQuery("bundle", " &dev=false& "))
 	if r.extraQuery != "bundle&dev=false" {
 		t.Fatalf("extraQuery = %q, want bundle&dev=false", r.extraQuery)
 	}
@@ -832,8 +832,15 @@ func TestWithExtraQuery(t *testing.T) {
 	}
 }
 
+func TestWithExtraQuery_Compose(t *testing.T) {
+	r := New(WithTarget("es2020"), WithExtraQuery("bundle"), WithExtraQuery("&dev=false&"))
+	if r.extraQuery != "bundle&dev=false" {
+		t.Fatalf("extraQuery = %q, want bundle&dev=false", r.extraQuery)
+	}
+}
+
 func TestWithExtraQuery_Empty(t *testing.T) {
-	r := New(WithTarget("es2020"), WithExtraQuery("", "  "))
+	r := New(WithTarget("es2020"), WithExtraQuery("", "  ", "&"))
 	if r.extraQuery != "" {
 		t.Fatalf("extraQuery = %q, want empty", r.extraQuery)
 	}

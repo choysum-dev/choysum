@@ -126,20 +126,26 @@ func WithTarget(target string) Option {
 
 // WithExtraQuery appends additional query parameters to bare-import esm.sh URLs
 // after target=. For example WithExtraQuery("bundle") yields
-// ?target=es2020&bundle. Empty segments are ignored.
+// ?target=es2020&bundle. Empty segments are ignored. Multiple WithExtraQuery
+// options compose (append) rather than replace.
 func WithExtraQuery(params ...string) Option {
 	return func(r *Resolver) {
 		var parts []string
 		for _, p := range params {
-			p = strings.TrimSpace(p)
-			p = strings.TrimPrefix(p, "&")
+			p = strings.Trim(strings.TrimSpace(p), "&")
 			if p != "" {
 				parts = append(parts, p)
 			}
 		}
-		if len(parts) > 0 {
-			r.extraQuery = strings.Join(parts, "&")
+		if len(parts) == 0 {
+			return
 		}
+		joined := strings.Join(parts, "&")
+		if r.extraQuery != "" {
+			r.extraQuery += "&" + joined
+			return
+		}
+		r.extraQuery = joined
 	}
 }
 
