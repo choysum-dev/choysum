@@ -69,7 +69,7 @@ func TestSuppressVueTemplateParityNoise(t *testing.T) {
 		{File: "/a.vue", Code: 2339, Message: "Property '$el' does not exist"},
 		{File: "/a.vue", Code: 7031, Message: "Binding element '$event' implicitly has an 'any' type."},
 		{File: "/a.ts", Code: 2339, Message: "Property '$el' does not exist"},
-		{File: "/a.vue", Code: 2322, Message: "Type '{ onClick: () => void; }' is not assignable"},
+		{File: "/a.vue", Code: 2322, Message: "Type '{ onClick: () => void; }' is not assignable to type 'NonNullable<...>'"},
 		{File: "/a.vue", Code: 2339, Message: "Property 'default' does not exist on type '{}'."},
 		{File: "/a.vue", Code: 1000, Message: "real error"},
 	}

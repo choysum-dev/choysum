@@ -222,6 +222,9 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 	if err != nil {
 		return err
 	}
+	if err := ensureTypeAssets(ctx, opts.Stderr, modulesRoot, app); err != nil {
+		return err
+	}
 
 	serviceDir := filepath.Join(modulesRoot, app, "service")
 	if st, err := os.Stat(serviceDir); err == nil && st.IsDir() {

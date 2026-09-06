@@ -128,7 +128,11 @@ func resolveModulePaths(modulesRoot, repoRoot string) (map[string][]string, stri
 }
 
 // rewriteChoysumTypesPath remaps repo-relative ../../.choysum/pkg/types/... entries
-// that point at a missing tree onto $CHOYSUM_HOME/pkg/types (default ~/.choysum).
+// that point at a missing tree onto type-fetch caches. modules/tsconfig paths are
+// relative to modules/ (`../../.choysum/...`), so they only resolve to ~/.choysum
+// when the repo itself lives at $HOME/<name>. CI checkouts under
+// $GITHUB_WORKSPACE do not; search CHOYSUM_HOME, ~/.choysum, and CHOYSUM_TEST_TMP
+// cache instead.
 func rewriteChoysumTypesPath(abs string) string {
 	abs = filepath.ToSlash(abs)
 	const marker = "/.choysum/pkg/types/"
@@ -139,27 +143,66 @@ func rewriteChoysumTypesPath(abs string) string {
 	if typePathExists(abs) {
 		return abs
 	}
-	home := choysumHomeDir()
-	if home == "" {
-		return abs
-	}
 	suffix := abs[idx+len(marker):]
-	alt := filepath.ToSlash(filepath.Join(home, "pkg", "types", filepath.FromSlash(suffix)))
-	if typePathExists(alt) {
-		return alt
+	for _, root := range choysumTypesSearchRoots() {
+		alt := filepath.ToSlash(filepath.Join(root, filepath.FromSlash(suffix)))
+		if typePathExists(alt) {
+			return alt
+		}
 	}
 	return abs
 }
 
-func choysumHomeDir() string {
-	if v := strings.TrimSpace(os.Getenv("CHOYSUM_HOME")); v != "" {
-		return filepath.Clean(v)
+// RewriteChoysumTypesPath is the exported form of rewriteChoysumTypesPath for
+// typecheck orchestration (missing-asset prechecks).
+func RewriteChoysumTypesPath(abs string) string {
+	return rewriteChoysumTypesPath(abs)
+}
+
+// HasResolvableVueTypes reports whether modules/tsconfig can resolve the `vue`
+// package via type-fetch path assets (not node_modules).
+func HasResolvableVueTypes(modulesPath, repoRoot string) bool {
+	return hasResolvableVueTypes(modulesPath, repoRoot)
+}
+
+// choysumTypesSearchRoots returns candidate directories that hold type-fetch .d.ts
+// files (each entry is the `…/pkg/types` directory itself).
+func choysumTypesSearchRoots() []string {
+	var roots []string
+	seen := map[string]struct{}{}
+	add := func(p string) {
+		p = filepath.Clean(strings.TrimSpace(p))
+		if p == "" || p == "." {
+			return
+		}
+		if _, ok := seen[p]; ok {
+			return
+		}
+		seen[p] = struct{}{}
+		roots = append(roots, p)
 	}
-	home, err := os.UserHomeDir()
-	if err != nil {
+	if v := strings.TrimSpace(os.Getenv("CHOYSUM_HOME")); v != "" {
+		add(filepath.Join(v, "pkg", "types"))
+	}
+	// CLI test harness durable cache (unit/e2e/typecheck).
+	if tmp := strings.TrimSpace(os.Getenv("CHOYSUM_TEST_TMP")); tmp != "" {
+		add(filepath.Join(tmp, "cache", "pkg", "types"))
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		add(filepath.Join(home, ".choysum", "pkg", "types"))
+	}
+	return roots
+}
+
+// PreferTypesWriteDir picks where typecheck should download missing type-fetch
+// assets: CHOYSUM_HOME, then CHOYSUM_TEST_TMP cache, then ~/.choysum.
+func PreferTypesWriteDir() string {
+	roots := choysumTypesSearchRoots()
+	if len(roots) == 0 {
 		return ""
 	}
-	return filepath.Join(home, ".choysum")
+	// Search order already prefers writable CLI/cache homes over ~/.choysum.
+	return roots[0]
 }
 
 func typePathExists(path string) bool {
@@ -289,7 +332,7 @@ func dirExists(path string) bool {
 }
 
 // rewriteChoysumTypesDir remaps missing /.choysum/pkg/types/... directories onto
-// $CHOYSUM_HOME/pkg/types (same marker logic as rewriteChoysumTypesPath).
+// type-fetch caches (same search roots as rewriteChoysumTypesPath).
 func rewriteChoysumTypesDir(abs string) string {
 	abs = filepath.ToSlash(abs)
 	const marker = "/.choysum/pkg/types/"
@@ -299,31 +342,22 @@ func rewriteChoysumTypesDir(abs string) string {
 		if !strings.HasSuffix(abs, markerExact) {
 			return ""
 		}
-		idx = strings.Index(abs, markerExact)
-		if idx < 0 {
-			return ""
-		}
-		home := choysumHomeDir()
-		if home == "" {
-			return ""
-		}
-		alt := filepath.ToSlash(filepath.Join(home, "pkg", "types"))
-		if dirExists(alt) {
-			return alt
+		for _, root := range choysumTypesSearchRoots() {
+			if dirExists(root) {
+				return filepath.ToSlash(root)
+			}
 		}
 		return ""
 	}
 	if dirExists(abs) {
 		return abs
 	}
-	home := choysumHomeDir()
-	if home == "" {
-		return ""
-	}
 	suffix := abs[idx+len(marker):]
-	alt := filepath.ToSlash(filepath.Join(home, "pkg", "types", filepath.FromSlash(suffix)))
-	if dirExists(alt) {
-		return alt
+	for _, root := range choysumTypesSearchRoots() {
+		alt := filepath.ToSlash(filepath.Join(root, filepath.FromSlash(suffix)))
+		if dirExists(alt) {
+			return alt
+		}
 	}
 	return ""
 }

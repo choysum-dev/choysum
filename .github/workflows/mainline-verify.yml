@@ -133,6 +133,41 @@ jobs:
           use_oidc: true
           verbose: true
 
+  prepare-typecheck-types:
+    name: main / prepare-typecheck-types
+    if: ${{ needs.discover-modules.outputs.modules_json != '[]' }}
+    needs:
+      - discover-modules
+      - build-choysum-cli
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Download choysum CLI
+        uses: actions/download-artifact@v8
+        with:
+          name: main-choysum-cli
+          path: .choysum/tmp
+
+      - name: Make choysum CLI executable
+        run: chmod +x .choysum/tmp/choysum
+
+      - name: Setup CLI testing pkg cache
+        uses: ./.github/actions/setup-cli-testing-cache
+
+      - name: Warm type-fetch assets into CLI pkg cache
+        run: |
+          set -euo pipefail
+          CHOYSUM_BIN="$(pwd)/.choysum/tmp/choysum"
+          # Idempotent: cached packages are reused. Needed because restore-keys may
+          # return an ESM-only or otherwise incomplete pkg tree without types.
+          echo "Warming type-fetch cache via type-fetch --all"
+          "$CHOYSUM_BIN" type-fetch --all
+
   typecheck-shard:
     name: main / typecheck-shard (${{ matrix.module }})
     if: ${{ needs.discover-modules.outputs.modules_json != '[]' }}
@@ -141,6 +176,7 @@ jobs:
       - prepare-root-node-modules
       - discover-modules
       - build-choysum-cli
+      - prepare-typecheck-types
     strategy:
       fail-fast: false
       matrix:

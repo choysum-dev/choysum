@@ -58,13 +58,30 @@ func newTypecheckCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() c
 			}
 
 			ctx := cmd.Context()
-			boundCtx, testTmp, _, err := testingpathing.BindCLITestRuntimePaths(ctx, repoRoot)
+			boundCtx, testTmp, runHome, err := testingpathing.BindCLITestRuntimePaths(ctx, repoRoot)
 			if err != nil {
 				return err
 			}
 			ctx = boundCtx
 			if keep {
 				fmt.Fprintf(cmd.ErrOrStderr(), "choysum test typecheck: kept CLI test tmp root: %s\n", testTmp)
+			}
+
+			// Point type-fetch rewrite/search at the per-run home (pkg → durable
+			// CHOYSUM_TEST_TMP cache). Repo-relative ../../.choysum paths only
+			// hit ~/.choysum when the checkout lives under $HOME/<name>.
+			prevChoysumHome, hadChoysumHome := os.LookupEnv("CHOYSUM_HOME")
+			if strings.TrimSpace(runHome) != "" {
+				if err := os.Setenv("CHOYSUM_HOME", runHome); err != nil {
+					return xfmt.Errorf("typecheck: set CHOYSUM_HOME: %w", err)
+				}
+				defer func() {
+					if hadChoysumHome {
+						_ = os.Setenv("CHOYSUM_HOME", prevChoysumHome)
+						return
+					}
+					_ = os.Unsetenv("CHOYSUM_HOME")
+				}()
 			}
 
 			opts := pkgtypecheck.RunOptions{

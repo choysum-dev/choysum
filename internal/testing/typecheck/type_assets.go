@@ -13,6 +13,7 @@ import (
 
 	moddeps "github.com/choysum-dev/choysum/internal/testing/moddeps"
 	noderuntime "github.com/choysum-dev/choysum/internal/testing/noderuntime"
+	gonative "github.com/choysum-dev/choysum/internal/typecheck"
 	"github.com/tailscale/hujson"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
@@ -236,9 +237,10 @@ func hasAnyExistingTypeAsset(pathEntries []string, modulesRoot string) bool {
 		if !filepath.IsAbs(resolvedPath) {
 			resolvedPath = filepath.Join(modulesRoot, filepath.FromSlash(resolvedPath))
 		}
+		resolvedPath = gonative.RewriteChoysumTypesPath(filepath.ToSlash(resolvedPath))
 
 		if strings.ContainsAny(resolvedPath, "*?[]") {
-			matches, err := filepath.Glob(resolvedPath)
+			matches, err := filepath.Glob(filepath.FromSlash(resolvedPath))
 			if err != nil {
 				continue
 			}
@@ -250,7 +252,7 @@ func hasAnyExistingTypeAsset(pathEntries []string, modulesRoot string) bool {
 			continue
 		}
 
-		if st, err := os.Stat(resolvedPath); err == nil && !st.IsDir() {
+		if st, err := os.Stat(filepath.FromSlash(resolvedPath)); err == nil && !st.IsDir() {
 			return true
 		}
 	}
