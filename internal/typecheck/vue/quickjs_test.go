@@ -47,7 +47,7 @@ func TestQuickJSCoder_MatchesGolden(t *testing.T) {
 }
 
 func TestQuickJSCoder_NoNode(t *testing.T) {
-	t.Setenv("PATH", "/usr/bin:/bin")
+	t.Setenv("PATH", t.TempDir())
 	fixturePath := filepath.Join("..", "testdata", "vue", "fixtures", "script_setup_ok.vue")
 	source, err := os.ReadFile(fixturePath)
 	if err != nil {

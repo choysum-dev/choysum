@@ -132,6 +132,39 @@ func TestCheck_VueWithExplicitCoder(t *testing.T) {
 	}
 }
 
+func TestCheck_DoesNotCloseCallerCoder(t *testing.T) {
+	repo, modules := fixtureRoots(t, "vue_check_ok")
+	inner := vue.NewGoldenCoder(vueGoldenDir(t))
+	c := &closeTrackingCoder{inner: inner}
+	_, err := Check(t.Context(), Options{
+		ModulesPath: modules,
+		RepoRoot:    repo,
+		App:         "demo",
+		Scope:       ScopeAll,
+		Coder:       c,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.closed {
+		t.Fatal("Check closed caller-supplied Coder")
+	}
+}
+
+type closeTrackingCoder struct {
+	inner  vue.Coder
+	closed bool
+}
+
+func (c *closeTrackingCoder) CreateServiceScript(path, source string, opts vue.CodegenOptions) (vue.ServiceScript, error) {
+	return c.inner.CreateServiceScript(path, source, opts)
+}
+
+func (c *closeTrackingCoder) Close() error {
+	c.closed = true
+	return nil
+}
+
 func TestCollectVueOverlayPaths(t *testing.T) {
 	if got := collectVueOverlayPaths("/m", "demo", nil, true); len(got) != 0 {
 		t.Fatalf("%v", got)

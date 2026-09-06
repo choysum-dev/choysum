@@ -133,7 +133,10 @@ func (c *QuickJSCoder) CreateServiceScript(path, source string, opts CodegenOpti
 	// Round-trip via JSON so mapping.verification (bool or object) decodes into any.
 	stringify := eng.Ctx.Eval("JSON.stringify")
 	defer stringify.Free()
-	if stringify.IsException() || !stringify.IsFunction() {
+	if stringify.IsException() {
+		return ServiceScript{}, fmt.Errorf("vue: JSON.stringify unavailable: %w", eng.Ctx.Exception())
+	}
+	if !stringify.IsFunction() {
 		return ServiceScript{}, fmt.Errorf("vue: JSON.stringify unavailable")
 	}
 	jsonVal := stringify.Execute(eng.Ctx.Null(), ret)
