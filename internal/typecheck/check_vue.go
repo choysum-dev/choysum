@@ -159,14 +159,20 @@ func resolveVueCoder(opts Options) (vue.Coder, error) {
 		return opts.Coder, nil
 	}
 	dir := strings.TrimSpace(opts.VueGoldenDir)
-	if dir == "" {
-		return nil, fmt.Errorf("typecheck: ScopeAll requires Options.Coder or Options.VueGoldenDir")
+	if dir != "" {
+		abs, err := absPath(dir)
+		if err != nil {
+			return nil, err
+		}
+		return vue.NewGoldenCoder(abs), nil
 	}
-	abs, err := absPath(dir)
-	if err != nil {
-		return nil, err
+	return vue.NewCachedCoder(vue.NewQuickJSCoder()), nil
+}
+
+func closeVueCoder(coder vue.Coder) {
+	if cl, ok := coder.(interface{ Close() error }); ok {
+		_ = cl.Close()
 	}
-	return vue.NewGoldenCoder(abs), nil
 }
 
 func remapDiagnostics(diags []Diagnostic, scripts map[string]vue.ServiceScript) []Diagnostic {

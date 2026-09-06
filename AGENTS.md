@@ -22,13 +22,15 @@ runtime. Tooling versions (Go 1.26.x, Node 22, Python 3) are already installed.
 ### Build the CLI (required before install/run; artifacts are git-ignored)
 
 The embedded assets (`internal/bootstrap/web/dist`,
-`pkg/jsengine/scripts/vuesfc/dist/index.js`) and the `choysum` binary are all
+`pkg/jsengine/scripts/vuesfc/dist/index.js`,
+`pkg/jsengine/scripts/vuevirtual/dist/index.js`) and the `choysum` binary are all
 git-ignored, so they must exist before you can install modules or run the app.
 Regenerate + build after a fresh checkout or after changing embedded/web code:
 
 ```bash
-go generate ./pkg/jsengine/scripts/vuesfc/...   # needs network (esm.sh)
-go generate ./internal/bootstrap/web/...         # needs network (esm.sh); 404 type-fetch warnings are harmless
+go generate ./pkg/jsengine/scripts/vuesfc/...      # needs network (esm.sh)
+go generate ./pkg/jsengine/scripts/vuevirtual/...  # needs network (esm.sh)
+go generate ./internal/bootstrap/web/...          # needs network (esm.sh); 404 type-fetch warnings are harmless
 go build -o choysum .
 ```
 

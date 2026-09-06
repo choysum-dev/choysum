@@ -820,6 +820,68 @@ func TestFormatError(t *testing.T) {
 
 // ---- WithModulePath tests ----
 
+func TestWithExtraQuery(t *testing.T) {
+	r := New(WithTarget("es2020"), WithExtraQuery("bundle", " &dev=false& "))
+	if r.extraQuery != "bundle&dev=false" {
+		t.Fatalf("extraQuery = %q, want bundle&dev=false", r.extraQuery)
+	}
+	got := r.bareImportURL("typescript@6.0.3")
+	want := "https://esm.sh/typescript@6.0.3?target=es2020&bundle&dev=false"
+	if got != want {
+		t.Fatalf("bareImportURL = %q, want %q", got, want)
+	}
+}
+
+func TestWithExtraQuery_Compose(t *testing.T) {
+	r := New(WithTarget("es2020"), WithExtraQuery("bundle"), WithExtraQuery("&dev=false&"))
+	if r.extraQuery != "bundle&dev=false" {
+		t.Fatalf("extraQuery = %q, want bundle&dev=false", r.extraQuery)
+	}
+}
+
+func TestWithExtraQuery_Empty(t *testing.T) {
+	r := New(WithTarget("es2020"), WithExtraQuery("", "  ", "&"))
+	if r.extraQuery != "" {
+		t.Fatalf("extraQuery = %q, want empty", r.extraQuery)
+	}
+	got := r.bareImportURL("path-browserify@1.0.1")
+	want := "https://esm.sh/path-browserify@1.0.1?target=es2020"
+	if got != want {
+		t.Fatalf("bareImportURL = %q, want %q", got, want)
+	}
+}
+
+func TestResolver_Plugin_BareCSSURL_UsesExtraQuery(t *testing.T) {
+	dir := t.TempDir()
+	r := New(
+		WithUpstream("https://esm.example"),
+		WithCacheDir(dir),
+		WithTarget("es2020"),
+		WithExtraQuery("bundle"),
+	)
+	entry := filepath.Join(dir, "entry.css")
+	if err := os.WriteFile(entry, []byte("body{background:url(test-pkg)}"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	result := api.Build(api.BuildOptions{
+		EntryPoints: []string{entry},
+		Bundle:      true,
+		Write:       false,
+		Plugins:     []api.Plugin{r.Plugin()},
+	})
+	if len(result.Errors) > 0 {
+		t.Fatalf("build failed: %v", result.Errors)
+	}
+	if len(result.OutputFiles) != 1 {
+		t.Fatalf("expected 1 output file, got %d", len(result.OutputFiles))
+	}
+	out := string(result.OutputFiles[0].Contents)
+	want := "https://esm.example/test-pkg?target=es2020&bundle"
+	if !strings.Contains(out, want) {
+		t.Fatalf("output missing %q:\n%s", want, out)
+	}
+}
+
 func TestWithModulePath(t *testing.T) {
 	r := New(WithModulePath("/tmp/modules"))
 	if r.modulePath != "/tmp/modules" {

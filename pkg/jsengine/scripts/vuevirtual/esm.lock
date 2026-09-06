@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "packages": {
+    "@vue/language-core": {
+      "version": "3.3.7",
+      "resolved": "https://esm.sh/@vue/language-core@3.3.7"
+    },
+    "path-browserify": {
+      "version": "1.0.1",
+      "resolved": "https://esm.sh/path-browserify@1.0.1"
+    },
+    "typescript": {
+      "version": "6.0.3",
+      "resolved": "https://esm.sh/typescript@6.0.3"
+    }
+  }
+}

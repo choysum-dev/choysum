@@ -67,6 +67,10 @@ func Check(ctx context.Context, opts Options) (Result, error) {
 		if err != nil {
 			return Result{}, err
 		}
+		// Only close coders we create; caller-supplied Options.Coder stays open.
+		if opts.Coder == nil {
+			defer closeVueCoder(coder)
+		}
 		caseSensitive := newTypecheckFS(overlays).UseCaseSensitiveFileNames()
 		vuePaths := mergeVuePaths(
 			collectVuePaths(files),

@@ -40,7 +40,7 @@ jobs:
         with:
           persist-credentials: false
 
-      # Skip go generate when bootstrap/vuesfc sources (+ generator Go deps) are unchanged.
+      # Skip go generate when bootstrap/vuesfc/vuevirtual sources (+ generator Go deps) are unchanged.
       - name: Restore embedded assets cache
         id: embedded-cache
         if: ${{ inputs.docs_only != 'true' }}
@@ -49,7 +49,8 @@ jobs:
           path: |
             internal/bootstrap/web/dist
             pkg/jsengine/scripts/vuesfc/dist
-          key: ${{ runner.os }}-embedded-v2-${{ hashFiles('go.mod', 'go.sum', 'internal/bootstrap/web/generate.go', 'internal/bootstrap/web/gen.go', 'internal/bootstrap/web/package.json', 'internal/bootstrap/web/tsconfig.json', 'internal/bootstrap/web/index.html', 'internal/bootstrap/web/src/**', 'pkg/jsengine/scripts/vuesfc/**/*.go', 'pkg/jsengine/scripts/vuesfc/package.json', 'pkg/jsengine/scripts/vuesfc/tsconfig.json', 'pkg/jsengine/scripts/vuesfc/src/**', 'internal/esmresolver/**/*.go', 'internal/vueplugin/**/*.go', 'internal/defaultengine/**/*.go', 'internal/defaultjsexecutor/**/*.go', 'internal/module/artifact/generate/grpcwebplugin/gots/**/*.go', 'pkg/config/**/*.go', 'pkg/jsexecutor/**/*.go', 'pkg/scope/**/*.go') }}
+            pkg/jsengine/scripts/vuevirtual/dist
+          key: ${{ runner.os }}-embedded-v3-${{ hashFiles('go.mod', 'go.sum', 'internal/bootstrap/web/generate.go', 'internal/bootstrap/web/gen.go', 'internal/bootstrap/web/package.json', 'internal/bootstrap/web/tsconfig.json', 'internal/bootstrap/web/index.html', 'internal/bootstrap/web/src/**', 'pkg/jsengine/scripts/vuesfc/**/*.go', 'pkg/jsengine/scripts/vuesfc/package.json', 'pkg/jsengine/scripts/vuesfc/esm.lock', 'pkg/jsengine/scripts/vuesfc/tsconfig.json', 'pkg/jsengine/scripts/vuesfc/src/**', 'pkg/jsengine/scripts/vuevirtual/**/*.go', 'pkg/jsengine/scripts/vuevirtual/package.json', 'pkg/jsengine/scripts/vuevirtual/esm.lock', 'pkg/jsengine/scripts/vuevirtual/src/**', 'internal/esmresolver/**/*.go', 'internal/vueplugin/**/*.go', 'internal/defaultengine/**/*.go', 'internal/defaultjsexecutor/**/*.go', 'internal/module/artifact/generate/grpcwebplugin/gots/**/*.go', 'pkg/config/**/*.go', 'pkg/jsexecutor/**/*.go', 'pkg/scope/**/*.go') }}
 
       # Generators honor CHOYSUM_HOME as the cache root (else ~/.choysum). Align with
       # the workspace path we restore/save below so ESM hits are effective.
@@ -58,7 +59,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: .choysum/pkg/esm
-          key: ${{ runner.os }}-esm-generate-v1-${{ hashFiles('go.mod', 'go.sum', 'internal/bootstrap/web/package.json', 'pkg/jsengine/scripts/vuesfc/package.json') }}
+          key: ${{ runner.os }}-esm-generate-v1-${{ hashFiles('go.mod', 'go.sum', 'internal/bootstrap/web/package.json', 'pkg/jsengine/scripts/vuesfc/package.json', 'pkg/jsengine/scripts/vuesfc/esm.lock', 'pkg/jsengine/scripts/vuevirtual/package.json', 'pkg/jsengine/scripts/vuevirtual/esm.lock') }}
           restore-keys: |
             ${{ runner.os }}-esm-generate-v1-
 
@@ -75,6 +76,12 @@ jobs:
           CHOYSUM_HOME: ${{ github.workspace }}/.choysum
         run: go generate ./pkg/jsengine/scripts/vuesfc/...
 
+      - name: Build Vue virtual embed asset (go generate)
+        if: ${{ inputs.docs_only != 'true' && steps.embedded-cache.outputs.cache-hit != 'true' }}
+        env:
+          CHOYSUM_HOME: ${{ github.workspace }}/.choysum
+        run: go generate ./pkg/jsengine/scripts/vuevirtual/...
+
       - name: Generate bootstrap web assets (go generate)
         if: ${{ inputs.docs_only != 'true' && steps.embedded-cache.outputs.cache-hit != 'true' }}
         env:
@@ -88,7 +95,8 @@ jobs:
           mkdir -p "$(dirname "$ARCHIVE_PATH")"
           tar -czf "$ARCHIVE_PATH" \
             internal/bootstrap/web/dist \
-            pkg/jsengine/scripts/vuesfc/dist/index.js
+            pkg/jsengine/scripts/vuesfc/dist/index.js \
+            pkg/jsengine/scripts/vuevirtual/dist/index.js
 
       - name: Upload embedded assets
         if: ${{ inputs.docs_only != 'true' }}
