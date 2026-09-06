@@ -29,11 +29,11 @@ declare module "vue" {
   export function defineModel<T = any>(options?: any): any;
   export function defineOptions(options: any): void;
   export function withDefaults<T, D>(props: T, defaults: D): any;
-  export interface Ref<T = any> {
-    value: T;
-  }
-  export function ref<T = any>(value?: T): Ref<T>;
-  export function computed<T = any>(getter: any): ComputedRef<T>;
+  // Template auto-unwrap is not modeled here; keep Ref/ComputedRef as any so
+  // fallback typecheck does not treat .value / comparisons as hard errors.
+  export type Ref<T = any> = any;
+  export function ref<T = any>(value?: T): any;
+  export function computed<T = any>(getter: any): any;
   export function watch<T = any>(
     source: any,
     cb: (value: T, oldValue: T, onCleanup?: (fn: () => void) => void) => any,
@@ -54,7 +54,7 @@ declare module "vue" {
   export function inject(key: any, defaultValue?: any): any;
   export function provide(key: any, value: any): void;
   export function readonly<T>(target: T): T;
-  export function shallowRef<T = any>(value?: T): Ref<T>;
+  export function shallowRef<T = any>(value?: T): any;
   export function shallowReactive<T extends object>(target: T): T;
   export function markRaw<T>(value: T): T;
   export function toRaw<T>(observed: T): T;
@@ -84,8 +84,8 @@ declare module "vue" {
   export type App = any;
   export type Component = any;
   export type Plugin<Options extends unknown[] = unknown[]> = any;
-  export type ComputedRef<T = any> = Ref<T>;
-  export type WritableComputedRef<T = any> = Ref<T>;
+  export type ComputedRef<T = any> = any;
+  export type WritableComputedRef<T = any> = any;
   export type PropType<T = any> = any;
   export type PublicProps = any;
   export type VNode = any;
@@ -95,7 +95,7 @@ declare module "vue" {
   export type InjectionKey<T = any> = any;
   export type MaybeRefOrGetter<T = any> = any;
   export type MaybeRef<T = any> = any;
-  export type ShallowRef<T = any> = Ref<T>;
+  export type ShallowRef<T = any> = any;
   export type ObjectDirective<T = any, V = any> = any;
   export type ExtractPropTypes<T> = any;
   export type DefineComponent<T = any> = any;

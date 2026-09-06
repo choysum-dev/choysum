@@ -136,6 +136,8 @@ func TestTypecheckApp_KeepDirMkdirFailure(t *testing.T) {
 
 func TestTypecheckApp_CheckReturnsError(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
+	t.Setenv("CHOYSUM_HOME", "")
+	t.Setenv("CHOYSUM_TEST_TMP", "")
 	repoRoot := t.TempDir()
 	modulesPath := t.TempDir()
 	makeDir(t, filepath.Join(modulesPath, "auth", "service"))

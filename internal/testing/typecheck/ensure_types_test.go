@@ -6,6 +6,7 @@ package typecheck
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -71,11 +72,51 @@ func TestEnsureTypeAssets_NoVuePathMapping(t *testing.T) {
 }
 `)
 	var stderr strings.Builder
-	if err := ensureTypeAssets(context.Background(), &stderr, modules, "demo"); err != nil {
-		t.Fatal(err)
+	err := ensureTypeAssets(context.Background(), &stderr, modules, "demo")
+	if err == nil || !strings.Contains(err.Error(), "cannot resolve vue version") {
+		t.Fatalf("err = %v", err)
 	}
 	if !strings.Contains(stderr.String(), "fetching critical type assets") {
 		t.Fatalf("expected fetch notice, got %q", stderr.String())
+	}
+}
+
+func TestEnsureTypeAssets_DiscoversVueFromTypesCache(t *testing.T) {
+	origFetch := fetchTypeDefinition
+	origClient := newTypeFetchHTTPClient
+	t.Cleanup(func() {
+		fetchTypeDefinition = origFetch
+		newTypeFetchHTTPClient = origClient
+	})
+	newTypeFetchHTTPClient = func() *http.Client { return &http.Client{} }
+
+	tmp := t.TempDir()
+	t.Setenv("CHOYSUM_TEST_TMP", tmp)
+	t.Setenv("CHOYSUM_HOME", "")
+	typesDir := filepath.Join(tmp, "cache", "pkg", "types")
+	makeDir(t, typesDir)
+	writeCompleteVueGraph(t, typesDir, "3.5.35")
+
+	modules := t.TempDir()
+	// No tsconfig — mirrors CI shards after checkout (modules/tsconfig is gitignored).
+	fetchTypeDefinition = func(_ *http.Client, _, td, pkg, ver string) (*esmresolver.TypeFetchResult, []esmresolver.TypeFetchResult, error) {
+		if pkg != "vue" || ver != "3.5.35" {
+			t.Fatalf("unexpected fetch %s@%s", pkg, ver)
+		}
+		p := filepath.Join(td, "esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts")
+		return &esmresolver.TypeFetchResult{Package: "vue", Version: ver, CachedPath: p, FromCache: true}, nil, nil
+	}
+
+	var stderr strings.Builder
+	if err := ensureTypeAssets(context.Background(), &stderr, modules, "auth"); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stderr.String(), "ensuring vue@3.5.35") {
+		t.Fatalf("stderr=%q", stderr.String())
+	}
+	paths := readModuleTSConfigPaths(modules)
+	if _, ok := paths["vue"]; !ok {
+		t.Fatalf("expected vue path written into modules/tsconfig, got %#v", paths)
 	}
 }
 
@@ -264,7 +305,7 @@ func TestEnsureTypeAssets_FetchSuccessAndFailures(t *testing.T) {
 			return &esmresolver.TypeFetchResult{CachedPath: filepath.Join(home, "pkg", "types", "wrong-name.d.ts")}, nil, nil
 		}
 		err := ensureTypeAssets(context.Background(), nil, modules, "demo")
-		if err == nil || !strings.Contains(err.Error(), "vue types still missing") {
+		if err == nil || !strings.Contains(err.Error(), "type-fetch entry missing") {
 			t.Fatalf("err = %v", err)
 		}
 	})
@@ -443,5 +484,25 @@ func TestWriteTypeRootBridge(t *testing.T) {
 	writeFile(t, nested, "export {}\n")
 	if err := writeTypeRootBridge(bad, "node", nested); err == nil {
 		t.Fatal("expected mkdir failure")
+	}
+}
+
+func writeCompleteVueGraph(t *testing.T, typesDir, ver string) {
+	t.Helper()
+	entry := filepath.Join(typesDir, fmt.Sprintf("esm.sh_vue@%s_dist_vue.d.mts.d.ts", ver))
+	writeFile(t, entry, "export * from './runtime-dom';\n")
+	for _, name := range []string{
+		fmt.Sprintf("esm.sh_@vue_runtime-dom@%s_dist_runtime-dom.d.ts.d.ts", ver),
+		fmt.Sprintf("esm.sh_@vue_runtime-core@%s_dist_runtime-core.d.ts.d.ts", ver),
+		fmt.Sprintf("esm.sh_@vue_reactivity@%s_dist_reactivity.d.ts.d.ts", ver),
+	} {
+		body := "export {}\n"
+		if strings.Contains(name, "runtime-core") {
+			body = "export type PropType<T> = any;\ndeclare function h(...args: any[]): any;\n"
+		}
+		if strings.Contains(name, "reactivity") {
+			body = "export declare function toRef(...args: any[]): any;\n"
+		}
+		writeFile(t, filepath.Join(typesDir, name), body)
 	}
 }

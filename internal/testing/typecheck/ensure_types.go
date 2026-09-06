@@ -5,6 +5,7 @@ package typecheck
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -23,12 +24,15 @@ import (
 var (
 	typesNodeVersionRE = regexp.MustCompile(`esm\.sh_@types_node@([^/_]+)`)
 	esmShPkgVersionRE  = regexp.MustCompile(`(?:^|/)esm\.sh_(.+?)@([^/_]+)`)
+	vueTypesEntryVerRE = regexp.MustCompile(`(?i)^esm\.sh_vue@([^/_]+)`)
+	npmExactVersionRE  = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$`)
 
 	typeFetchUpstream      = config.DefaultESMUpstreamURL
 	newTypeFetchHTTPClient = func() *http.Client {
 		return esmresolver.NewTypeFetchHTTPClient(30 * time.Second)
 	}
 	fetchTypeDefinition = esmresolver.FetchTypeDefinition
+	updateTsconfigPaths = esmresolver.UpdateTsconfigPaths
 
 	filepathAbs = filepath.Abs
 	filepathRel = filepath.Rel
@@ -41,8 +45,11 @@ var (
 // full module depends closure — packages like @vicons/material have thousands of
 // transitive declaration files and would make typecheck cold-start untenable.
 //
-// Committed modules/tsconfig path mappings are left unchanged; gonative rewrite
-// remaps ../../.choysum/pkg/types/… onto CHOYSUM_HOME / CHOYSUM_TEST_TMP caches.
+// modules/tsconfig.json is gitignored: CI shards restore the durable pkg cache
+// but start without path mappings. When the harness env is set, this function
+// discovers a vue version (tsconfig pin → types cache → package.json), ensures
+// the type-fetch graph exists, then writes a `vue` paths entry so the checker
+// resolves real Vue types instead of the ambient stub.
 func ensureTypeAssets(ctx context.Context, stderr io.Writer, modulesRoot, app string) error {
 	if ctx == nil {
 		ctx = context.Background()
@@ -88,22 +95,36 @@ func ensureTypeAssets(ctx context.Context, stderr io.Writer, modulesRoot, app st
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	vueVersion := resolvePinnedPackageVersion(modulesRoot, "vue")
+	vueVersion := resolveVueVersion(modulesRoot, typesDir)
 	if vueVersion == "" {
-		// No pinned vue path in tsconfig — nothing to fetch (fixture / non-Vue).
-		if stderr != nil {
-			_, _ = fmt.Fprintf(stderr, "# typecheck %s: no pinned vue path in modules/tsconfig; skipping type-fetch\n", app)
-		}
-		return nil
+		return xfmt.Errorf("typecheck: cannot resolve vue version (no modules/tsconfig pin, no esm.sh_vue@* under %s, and no package.json vue dependency)", typesDir)
+	}
+	if stderr != nil {
+		_, _ = fmt.Fprintf(stderr, "# typecheck %s: ensuring vue@%s type-fetch graph\n", app, vueVersion)
 	}
 	// Incomplete durable caches may leave vue@ver.d.ts and/or empty sibling
 	// stubs that pass Stat but export nothing. Purge them so FetchTypeDefinition
 	// re-walks the real esm.sh_vue@ver entry and its @vue/runtime-* imports.
 	purgeIncompleteVueTypeFetch(typesDir, vueVersion)
-	if _, _, err := fetchTypeDefinition(client, upstream, typesDir, "vue", vueVersion); err != nil {
+	vueResult, _, err := fetchTypeDefinition(client, upstream, typesDir, "vue", vueVersion)
+	if err != nil {
 		return xfmt.Errorf("typecheck: fetch vue@%s: %w", vueVersion, err)
 	}
 	if err := ensureNodeCompilerTypes(client, upstream, typesDir, modulesRoot); err != nil {
+		return err
+	}
+
+	vueCached := ""
+	if vueResult != nil {
+		vueCached = strings.TrimSpace(vueResult.CachedPath)
+	}
+	if vueCached == "" || !gonative.VueTypeEntryComplete(vueCached) {
+		vueCached = findCompleteVueEntry(typesDir, vueVersion)
+	}
+	if vueCached == "" {
+		return xfmt.Errorf("typecheck: vue@%s type-fetch entry missing under %s", vueVersion, typesDir)
+	}
+	if err := ensureVueTsconfigPath(modulesRoot, vueCached); err != nil {
 		return err
 	}
 
@@ -161,6 +182,9 @@ func purgeIncompleteVueTypeFetch(typesDir, vueVersion string) {
 func ensureNodeCompilerTypes(client *http.Client, upstream, typesDir, modulesRoot string) error {
 	version := resolvePinnedTypesNodeVersion(modulesRoot)
 	if version == "" {
+		version = resolveVueAdjacentNodeVersion(typesDir)
+	}
+	if version == "" {
 		return nil
 	}
 	result, _, err := fetchTypeDefinition(client, upstream, typesDir, "@types/node", version)
@@ -196,6 +220,207 @@ func resolvePinnedPackageVersion(modulesRoot, pkgName string) string {
 			if m := typesNodeVersionRE.FindStringSubmatch(entry); len(m) == 2 {
 				return m[1]
 			}
+		}
+	}
+	return ""
+}
+
+// resolveVueVersion picks a concrete vue version for type-fetch when
+// modules/tsconfig is missing or has no vue pin (common on CI shards).
+func resolveVueVersion(modulesRoot, typesDir string) string {
+	if v := resolvePinnedPackageVersion(modulesRoot, "vue"); v != "" {
+		return v
+	}
+	if v := resolveVueVersionFromTypesDir(typesDir); v != "" {
+		return v
+	}
+	return resolveVueVersionFromPackageJSON(modulesRoot)
+}
+
+func resolveVueVersionFromTypesDir(typesDir string) string {
+	typesDir = filepath.Clean(strings.TrimSpace(typesDir))
+	if typesDir == "" {
+		return ""
+	}
+	entries, err := os.ReadDir(typesDir)
+	if err != nil {
+		return ""
+	}
+	var complete, anyVer string
+	for _, ent := range entries {
+		if ent.IsDir() {
+			continue
+		}
+		m := vueTypesEntryVerRE.FindStringSubmatch(ent.Name())
+		if len(m) != 2 {
+			continue
+		}
+		ver := m[1]
+		if anyVer == "" {
+			anyVer = ver
+		}
+		if gonative.VueTypeEntryComplete(filepath.Join(typesDir, ent.Name())) {
+			complete = ver
+			break
+		}
+	}
+	if complete != "" {
+		return complete
+	}
+	return anyVer
+}
+
+func resolveVueVersionFromPackageJSON(modulesRoot string) string {
+	modulesRoot = filepath.Clean(strings.TrimSpace(modulesRoot))
+	if modulesRoot == "" {
+		return ""
+	}
+	// Prefer apps that ship Vue SFCs; fall back to any module package.json.
+	candidates := []string{"web", "auth", "core", "meta"}
+	seen := map[string]struct{}{}
+	for _, name := range candidates {
+		seen[name] = struct{}{}
+		if v := readPackageJSONVueVersion(filepath.Join(modulesRoot, name, "package.json")); v != "" {
+			return v
+		}
+	}
+	entries, err := os.ReadDir(modulesRoot)
+	if err != nil {
+		return ""
+	}
+	for _, ent := range entries {
+		if !ent.IsDir() {
+			continue
+		}
+		name := ent.Name()
+		if _, ok := seen[name]; ok {
+			continue
+		}
+		if v := readPackageJSONVueVersion(filepath.Join(modulesRoot, name, "package.json")); v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+func readPackageJSONVueVersion(path string) string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	var pkg struct {
+		Dependencies     map[string]string `json:"dependencies"`
+		DevDependencies  map[string]string `json:"devDependencies"`
+		PeerDependencies map[string]string `json:"peerDependencies"`
+	}
+	if err := json.Unmarshal(data, &pkg); err != nil {
+		return ""
+	}
+	for _, m := range []map[string]string{pkg.Dependencies, pkg.DevDependencies, pkg.PeerDependencies} {
+		if v := normalizeNPMVersion(m["vue"]); v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+func normalizeNPMVersion(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw == "*" || strings.HasPrefix(raw, "workspace:") || strings.HasPrefix(raw, "file:") {
+		return ""
+	}
+	raw = strings.TrimPrefix(raw, "npm:")
+	for _, prefix := range []string{">=", "<=", "^", "~", "=", "v", ">"} {
+		if strings.HasPrefix(raw, prefix) {
+			raw = strings.TrimSpace(strings.TrimPrefix(raw, prefix))
+		}
+	}
+	if i := strings.IndexAny(raw, " ||"); i >= 0 {
+		raw = strings.TrimSpace(raw[:i])
+	}
+	if !npmExactVersionRE.MatchString(raw) {
+		return ""
+	}
+	return raw
+}
+
+func findCompleteVueEntry(typesDir, vueVersion string) string {
+	typesDir = filepath.Clean(strings.TrimSpace(typesDir))
+	vueVersion = strings.TrimSpace(vueVersion)
+	if typesDir == "" || vueVersion == "" {
+		return ""
+	}
+	preferred := []string{
+		fmt.Sprintf("esm.sh_vue@%s_dist_vue.d.mts.d.ts", vueVersion),
+		fmt.Sprintf("esm.sh_vue@%s.d.ts", vueVersion),
+	}
+	for _, name := range preferred {
+		p := filepath.Join(typesDir, name)
+		if gonative.VueTypeEntryComplete(p) {
+			return p
+		}
+	}
+	entries, err := os.ReadDir(typesDir)
+	if err != nil {
+		return ""
+	}
+	prefix := "esm.sh_vue@" + vueVersion
+	for _, ent := range entries {
+		if ent.IsDir() {
+			continue
+		}
+		name := ent.Name()
+		if !strings.HasPrefix(name, prefix) {
+			continue
+		}
+		if rest := strings.TrimPrefix(name, prefix); rest != "" &&
+			!strings.HasPrefix(rest, "_") && !strings.HasPrefix(rest, "/") && !strings.HasPrefix(rest, ".") {
+			continue
+		}
+		p := filepath.Join(typesDir, name)
+		if gonative.VueTypeEntryComplete(p) {
+			return p
+		}
+	}
+	return ""
+}
+
+func ensureVueTsconfigPath(modulesRoot, vueCachedPath string) error {
+	vueCachedPath = filepath.Clean(strings.TrimSpace(vueCachedPath))
+	if vueCachedPath == "" {
+		return nil
+	}
+	tsconfigPath := filepath.Join(modulesRoot, "tsconfig.json")
+	results := []esmresolver.TypeFetchResult{{
+		Package:    "vue",
+		CachedPath: vueCachedPath,
+	}}
+	if err := updateTsconfigPaths(tsconfigPath, results); err != nil {
+		// modules/tsconfig is gitignored and may be corrupt; replace so CI
+		// shards can bind the restored vue graph.
+		_ = os.Remove(tsconfigPath)
+		if err2 := updateTsconfigPaths(tsconfigPath, results); err2 != nil {
+			return xfmt.Errorf("typecheck: write vue tsconfig path: %w", err)
+		}
+	}
+	return nil
+}
+
+func resolveVueAdjacentNodeVersion(typesDir string) string {
+	typesDir = filepath.Clean(strings.TrimSpace(typesDir))
+	if typesDir == "" {
+		return ""
+	}
+	entries, err := os.ReadDir(typesDir)
+	if err != nil {
+		return ""
+	}
+	for _, ent := range entries {
+		if ent.IsDir() {
+			continue
+		}
+		if m := typesNodeVersionRE.FindStringSubmatch(ent.Name()); len(m) == 2 {
+			return m[1]
 		}
 	}
 	return ""
