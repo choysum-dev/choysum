@@ -288,6 +288,41 @@ func TestHasResolvableVueTypes(t *testing.T) {
 	}
 }
 
+func TestHasResolvableVueTypes_IncompleteTypeFetchGraph(t *testing.T) {
+	dir := t.TempDir()
+	modules := filepath.Join(dir, "modules")
+	mustMkdir(t, modules)
+	home := t.TempDir()
+	t.Setenv("CHOYSUM_HOME", home)
+	t.Setenv("CHOYSUM_TEST_TMP", "")
+
+	entry := filepath.Join(home, "pkg", "types", "esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts")
+	mustMkdir(t, filepath.Dir(entry))
+	mustWrite(t, entry, `export * from"./esm.sh_@vue_runtime-dom@3.5.35_dist_runtime-dom.d.ts.d.ts";`+"\n")
+	mustWrite(t, filepath.Join(modules, "tsconfig.json"), `{
+  "compilerOptions": {
+    "paths": {
+      "vue": ["../../.choysum/pkg/types/esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts"]
+    }
+  }
+}
+`)
+	if HasResolvableVueTypes(modules, dir) {
+		t.Fatal("entry without runtime-* siblings must not count as resolvable")
+	}
+
+	for _, name := range []string{
+		"esm.sh_@vue_runtime-dom@3.5.35_dist_runtime-dom.d.ts.d.ts",
+		"esm.sh_@vue_runtime-core@3.5.35_dist_runtime-core.d.ts.d.ts",
+		"esm.sh_@vue_reactivity@3.5.35_dist_reactivity.d.ts.d.ts",
+	} {
+		mustWrite(t, filepath.Join(home, "pkg", "types", name), "export {}\n")
+	}
+	if !HasResolvableVueTypes(modules, dir) {
+		t.Fatal("expected complete type-fetch vue graph")
+	}
+}
+
 func TestResolveTypeRoots_TypeRootsRewrite(t *testing.T) {
 	repo := t.TempDir()
 	modules := filepath.Join(repo, "modules")

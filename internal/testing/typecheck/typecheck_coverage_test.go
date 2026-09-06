@@ -81,6 +81,7 @@ func TestTypecheckApp_RelativePaths(t *testing.T) {
 func TestTypecheckApp_EnsureTypeAssetsFailure(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 	t.Setenv("CHOYSUM_HOME", t.TempDir())
+	t.Setenv("CHOYSUM_TEST_TMP", "")
 	orig := preferTypesWriteDir
 	t.Cleanup(func() { preferTypesWriteDir = orig })
 	preferTypesWriteDir = func() string { return "" }

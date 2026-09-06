@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -228,15 +229,52 @@ func typePathExists(path string) bool {
 
 // hasResolvableVueTypes reports whether Vue package types are available via
 // modules/tsconfig paths (type-fetch under ~/.choysum/pkg/types). Does not
-// consult node_modules.
+// consult node_modules. A type-fetch vue entry alone is not enough — the entry
+// only re-exports @vue/runtime-dom; without those siblings the module resolves
+// but exports almost nothing (compileToFunction only).
 func hasResolvableVueTypes(modulesPath, repoRoot string) bool {
 	paths, _, err := resolveModulePaths(modulesPath, repoRoot)
 	if err != nil {
 		return false
 	}
-	// resolveModulePaths only keeps targets that typePathExists already.
-	_, ok := paths["vue"]
-	return ok
+	targets, ok := paths["vue"]
+	if !ok {
+		return false
+	}
+	for _, t := range targets {
+		if vueTypeEntryComplete(t) {
+			return true
+		}
+	}
+	return false
+}
+
+// vueTypeEntryComplete reports whether a resolved `vue` paths target is usable.
+// Type-fetch entries named esm.sh_vue@<ver>_… must also have runtime-dom /
+// runtime-core / reactivity siblings in the same directory.
+func vueTypeEntryComplete(entry string) bool {
+	entry = strings.TrimSpace(entry)
+	if entry == "" || !typePathExists(entry) {
+		return false
+	}
+	base := filepath.Base(filepath.FromSlash(entry))
+	m := regexp.MustCompile(`(?i)^esm\.sh_vue@([^/_]+)`).FindStringSubmatch(base)
+	if len(m) != 2 {
+		// Fixture / non-type-fetch targets: presence is enough.
+		return true
+	}
+	ver := m[1]
+	dir := filepath.Dir(filepath.FromSlash(entry))
+	for _, name := range []string{
+		fmt.Sprintf("esm.sh_@vue_runtime-dom@%s_dist_runtime-dom.d.ts.d.ts", ver),
+		fmt.Sprintf("esm.sh_@vue_runtime-core@%s_dist_runtime-core.d.ts.d.ts", ver),
+		fmt.Sprintf("esm.sh_@vue_reactivity@%s_dist_reactivity.d.ts.d.ts", ver),
+	} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			return false
+		}
+	}
+	return true
 }
 
 func resolveTypeRoots(modulesPath, repoRoot string) []string {

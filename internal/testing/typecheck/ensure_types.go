@@ -63,6 +63,11 @@ func ensureTypeAssets(ctx context.Context, stderr io.Writer, modulesRoot, app st
 	}
 
 	typesDir := preferTypesWriteDir()
+	// When the durable CLI cache is configured, repair incomplete graphs there
+	// so subsequent jobs / cache saves see the full vue transitive set.
+	if tmp := strings.TrimSpace(os.Getenv("CHOYSUM_TEST_TMP")); tmp != "" {
+		typesDir = filepath.Clean(filepath.Join(tmp, "cache", "pkg", "types"))
+	}
 	if typesDir == "" {
 		return xfmt.Errorf("typecheck: cannot resolve type-fetch write dir (set CHOYSUM_HOME or CHOYSUM_TEST_TMP)")
 	}
@@ -88,6 +93,8 @@ func ensureTypeAssets(ctx context.Context, stderr io.Writer, modulesRoot, app st
 		// Fixture / non-Vue apps: no vue path mapping to fetch.
 		return nil
 	}
+	// Incomplete caches may leave only the vue entry .d.ts; FetchTypeDefinition
+	// re-walks missing local imports and materializes @vue/runtime-* siblings.
 	if _, _, err := fetchTypeDefinition(client, upstream, typesDir, "vue", vueVersion); err != nil {
 		return xfmt.Errorf("typecheck: fetch vue@%s: %w", vueVersion, err)
 	}

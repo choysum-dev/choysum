@@ -24,10 +24,10 @@ runs:
       uses: actions/cache@v6
       with:
         path: .choysum/tmp/cli-testing/cache/pkg
-        key: ${{ runner.os }}-cli-pkg-v2-${{ hashFiles('go.mod', 'go.sum', 'modules/*/package.json', 'modules/tsconfig.json') }}
+        key: ${{ runner.os }}-cli-pkg-v3-${{ hashFiles('go.mod', 'go.sum', 'modules/*/package.json', 'modules/tsconfig.json') }}
         restore-keys: |
+          ${{ runner.os }}-cli-pkg-v3-
           ${{ runner.os }}-cli-pkg-v2-
-          ${{ runner.os }}-cli-pkg-v1-
 
     - name: Link ~/.choysum/pkg to CLI testing pkg cache
       shell: bash

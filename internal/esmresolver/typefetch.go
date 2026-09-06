@@ -322,10 +322,13 @@ func fetchTypeDefinitionWithState(ctx context.Context, client *http.Client, upst
 		state = newTypeFetchState(defaultTypeFetchParallelism)
 	}
 
-	// Check cache first.
+	// Check cache first — but only accept a complete local import graph.
 	cacheFile := typesCachePath(typesDir, pkg, version)
-	if _, err := os.Stat(cacheFile); err == nil {
-		return &TypeFetchResult{Package: pkg, Version: version, CachedPath: cacheFile, FromCache: true}, nil, nil
+	if data, err := os.ReadFile(cacheFile); err == nil {
+		imports := parseDTSImports(string(data))
+		if !hasMissingLocalCachedImports(typesDir, cacheFile, imports) {
+			return &TypeFetchResult{Package: pkg, Version: version, CachedPath: cacheFile, FromCache: true}, nil, nil
+		}
 	}
 
 	// Step 1: HEAD request to discover the types URL.

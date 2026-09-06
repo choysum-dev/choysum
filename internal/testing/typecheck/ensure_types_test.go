@@ -216,6 +216,16 @@ func TestEnsureTypeAssets_FetchSuccessAndFailures(t *testing.T) {
 				if err := os.WriteFile(p, []byte("export {}\n"), 0o644); err != nil {
 					t.Fatal(err)
 				}
+				// Transitive siblings required for HasResolvableVueTypes.
+				for _, name := range []string{
+					"esm.sh_@vue_runtime-dom@3.5.0_dist_runtime-dom.d.ts.d.ts",
+					"esm.sh_@vue_runtime-core@3.5.0_dist_runtime-core.d.ts.d.ts",
+					"esm.sh_@vue_reactivity@3.5.0_dist_reactivity.d.ts.d.ts",
+				} {
+					if err := os.WriteFile(filepath.Join(typesDir, name), []byte("export {}\n"), 0o644); err != nil {
+						t.Fatal(err)
+					}
+				}
 				return &esmresolver.TypeFetchResult{CachedPath: p}, nil, nil
 			case "@types/node":
 				p := filepath.Join(typesDir, "esm.sh_@types_node@22.20.1_index.d.ts.d.ts")
