@@ -870,7 +870,9 @@ func TestRunWithDefaultsUsesInjectedTypecheck(t *testing.T) {
 	_ = os.PathSeparator
 }
 
-func TestRunWithDefaultsPropagatesTmpPathToTypecheck(t *testing.T) {
+func TestRunWithDefaultsWithTypecheckNoNode(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+
 	repoRoot := t.TempDir()
 	modulesPath := filepath.Join(repoRoot, "modules")
 	if err := os.MkdirAll(filepath.Join(modulesPath, "auth", "service"), 0o755); err != nil {
@@ -879,39 +881,11 @@ func TestRunWithDefaultsPropagatesTmpPathToTypecheck(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(modulesPath, "auth", "service", "index.ts"), []byte("export const auth = 1\n"), 0o644); err != nil {
 		t.Fatalf("WriteFile auth service ts: %v", err)
 	}
-	if err := os.MkdirAll(filepath.Join(repoRoot, "node_modules", "vue-tsc"), 0o755); err != nil {
-		t.Fatalf("MkdirAll vue-tsc: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(repoRoot, "node_modules", "vue-tsc", "package.json"), []byte("{}"), 0o644); err != nil {
-		t.Fatalf("WriteFile vue-tsc package.json: %v", err)
-	}
 
-	tmpRoot := filepath.Join(t.TempDir(), "legacy-tmp-root")
 	cliTmp := filepath.Join(t.TempDir(), "cli-test-tmp")
 	t.Setenv(testingpathing.EnvCLITestTMP, cliTmp)
-	binDir := t.TempDir()
-	npmPath := filepath.Join(binDir, "npm")
-	if err := os.WriteFile(npmPath, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
-		t.Fatalf("WriteFile npm stub: %v", err)
-	}
-	vueTSCPath := filepath.Join(binDir, "vue-tsc")
-	if err := os.WriteFile(vueTSCPath, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
-		t.Fatalf("WriteFile vue-tsc stub: %v", err)
-	}
-	capturePath := filepath.Join(t.TempDir(), "captured-tsconfig-path.txt")
-	npxPath := filepath.Join(binDir, "npx")
-	npxScript := "#!/bin/sh\nprev=\"\"\nfor arg in \"$@\"; do\n  if [ \"$prev\" = \"-p\" ]; then\n    printf '%s' \"$arg\" > \"$CHOYSUM_CAPTURE_TSCONFIG_PATH\"\n    break\n  fi\n  prev=\"$arg\"\ndone\nexit 0\n"
-	if err := os.WriteFile(npxPath, []byte(npxScript), 0o755); err != nil {
-		t.Fatalf("WriteFile npx stub: %v", err)
-	}
-	vitePath := filepath.Join(binDir, "vite")
-	if err := os.WriteFile(vitePath, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
-		t.Fatalf("WriteFile vite stub: %v", err)
-	}
-	t.Setenv("CHOYSUM_CAPTURE_TSCONFIG_PATH", capturePath)
-	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
-	runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath, TmpPath: tmpRoot}}
+	runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath, TmpPath: filepath.Join(t.TempDir(), "legacy-tmp-root")}}
 	err := RunWithDefaults(context.Background(), RunOptions{
 		Env:           runtimeScope,
 		ModulesPath:   modulesPath,
@@ -932,41 +906,6 @@ func TestRunWithDefaultsPropagatesTmpPathToTypecheck(t *testing.T) {
 		RunFrontend: noopRunFrontend,
 	})
 	if err != nil {
-		t.Fatalf("RunWithDefaults: %v", err)
-	}
-
-	captured, err := os.ReadFile(capturePath)
-	if err != nil {
-		t.Fatalf("ReadFile captured tsconfig path: %v", err)
-	}
-	tsconfigPath := strings.TrimSpace(string(captured))
-	if tsconfigPath == "" {
-		t.Fatalf("expected captured tsconfig path")
-	}
-
-	typecheckTmpDir, err := testingpathing.ResolveTestingTmpDir(repoRoot, cliTmp, "typecheck")
-	if err != nil {
-		t.Fatalf("ResolveTestingTmpDir(typecheck): %v", err)
-	}
-	workspaceTestingRoot := filepath.Dir(typecheckTmpDir)
-	if filepath.Base(tsconfigPath) == "" {
-		t.Fatalf("expected non-empty tsconfig basename")
-	}
-	gotTmpDir := filepath.Dir(tsconfigPath)
-	if filepath.Base(gotTmpDir) != "auth" {
-		t.Fatalf("expected typecheck app leaf dir, got %q", gotTmpDir)
-	}
-	if filepath.Base(filepath.Dir(gotTmpDir)) != "typecheck" {
-		t.Fatalf("expected typecheck parent dir, got %q", filepath.Dir(gotTmpDir))
-	}
-	if !strings.HasPrefix(filepath.Clean(gotTmpDir), filepath.Clean(workspaceTestingRoot)+string(filepath.Separator)) {
-		t.Fatalf("typecheck tmp dir = %q, want prefix %q", gotTmpDir, workspaceTestingRoot)
-	}
-	if strings.HasPrefix(filepath.Clean(gotTmpDir), filepath.Clean(tmpRoot)+string(filepath.Separator)) {
-		t.Fatalf("typecheck tmp must not use production/legacy TmpPath %q, got %q", tmpRoot, gotTmpDir)
-	}
-	runID := filepath.Base(filepath.Dir(filepath.Dir(gotTmpDir)))
-	if strings.TrimSpace(runID) == "" || runID == "testing" || runID == filepath.Base(workspaceTestingRoot) {
-		t.Fatalf("expected non-empty run-id segment in typecheck tmp dir, got %q", runID)
+		t.Fatalf("RunWithDefaults with typecheck (no Node): %v", err)
 	}
 }

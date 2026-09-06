@@ -17,6 +17,13 @@ import (
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
+var (
+	typecheckGetwd                   = os.Getwd
+	typecheckBindCLITestRuntimePaths = testingpathing.BindCLITestRuntimePaths
+	typecheckSetenv                  = os.Setenv
+	typecheckUnsetenv                = os.Unsetenv
+)
+
 func newTypecheckCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliruntime.Options) *cobra.Command {
 	var all bool
 	var keep bool
@@ -52,19 +59,36 @@ func newTypecheckCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() c
 				target = strings.TrimSpace(args[0])
 			}
 
-			repoRoot, _ := os.Getwd()
+			repoRoot, _ := typecheckGetwd()
 			if strings.TrimSpace(repoRoot) == "" {
 				return xfmt.Errorf("typecheck: cannot determine repo root")
 			}
 
 			ctx := cmd.Context()
-			boundCtx, testTmp, _, err := testingpathing.BindCLITestRuntimePaths(ctx, repoRoot)
+			boundCtx, testTmp, runHome, err := typecheckBindCLITestRuntimePaths(ctx, repoRoot)
 			if err != nil {
 				return err
 			}
 			ctx = boundCtx
 			if keep {
 				fmt.Fprintf(cmd.ErrOrStderr(), "choysum test typecheck: kept CLI test tmp root: %s\n", testTmp)
+			}
+
+			// Point type-fetch rewrite/search at the per-run home (pkg → durable
+			// CHOYSUM_TEST_TMP cache). Repo-relative ../../.choysum paths only
+			// hit ~/.choysum when the checkout lives under $HOME/<name>.
+			prevChoysumHome, hadChoysumHome := os.LookupEnv("CHOYSUM_HOME")
+			if strings.TrimSpace(runHome) != "" {
+				if err := typecheckSetenv("CHOYSUM_HOME", runHome); err != nil {
+					return xfmt.Errorf("typecheck: set CHOYSUM_HOME: %w", err)
+				}
+				defer func() {
+					if hadChoysumHome {
+						_ = typecheckSetenv("CHOYSUM_HOME", prevChoysumHome)
+						return
+					}
+					_ = typecheckUnsetenv("CHOYSUM_HOME")
+				}()
 			}
 
 			opts := pkgtypecheck.RunOptions{

@@ -12,6 +12,8 @@ import (
 )
 
 func TestRun(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+
 	t.Run("requires modules path", func(t *testing.T) {
 		err := Run(context.Background(), RunOptions{})
 		if err == nil || !strings.Contains(err.Error(), "modules_path is required") {
@@ -40,7 +42,6 @@ func TestRun(t *testing.T) {
 	t.Run("prints no tests found when target has no ts inputs", func(t *testing.T) {
 		modulesPath := t.TempDir()
 		makeDir(t, filepath.Join(modulesPath, "auth", "service"))
-		t.Setenv("PATH", "")
 		var stdout strings.Builder
 
 		err := Run(context.Background(), RunOptions{
@@ -65,15 +66,10 @@ func TestRun(t *testing.T) {
 		writeFile(t, filepath.Join(modulesPath, "alpha", "service", "index.ts"), "export const a = 1\n")
 		makeDir(t, filepath.Join(modulesPath, ".choysum", "service"))
 		makeDir(t, filepath.Join(modulesPath, "tmp", "web"))
-		makeDir(t, filepath.Join(repoRoot, "node_modules", "vite"))
-		writeFile(t, filepath.Join(repoRoot, "node_modules", "vite", "client.d.ts"), "declare interface ImportMetaEnv {}\n")
-
-		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
 
 		var stderr strings.Builder
 		err := Run(context.Background(), RunOptions{
 			ModulesPath: modulesPath,
-			NpmPath:     npmPath,
 			RepoRoot:    repoRoot,
 			Stderr:      &stderr,
 		})
@@ -94,7 +90,6 @@ func TestRun(t *testing.T) {
 		modulesPath := filepath.Join(repoRoot, "modules")
 		makeDir(t, filepath.Join(modulesPath, "auth", "service"))
 		writeFile(t, filepath.Join(modulesPath, "auth", "service", "index.ts"), "export const auth = 1\n")
-		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
 
 		originalWD, err := os.Getwd()
 		if err != nil {
@@ -109,7 +104,6 @@ func TestRun(t *testing.T) {
 
 		err = Run(context.Background(), RunOptions{
 			ModulesPath: modulesPath,
-			NpmPath:     npmPath,
 			Target:      "auth",
 			Stderr:      &strings.Builder{},
 		})
@@ -126,17 +120,15 @@ func TestRun(t *testing.T) {
 		}
 	})
 
-	t.Run("propagates typecheck app errors", func(t *testing.T) {
+	t.Run("propagates typecheck diagnostics as failure", func(t *testing.T) {
 		repoRoot := t.TempDir()
 		modulesPath := t.TempDir()
 		makeDir(t, filepath.Join(modulesPath, "auth", "service"))
-		writeFile(t, filepath.Join(modulesPath, "auth", "service", "index.ts"), "export const auth = 1\n")
-		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "printf 'compile failed'; exit 7\n")
+		writeFile(t, filepath.Join(modulesPath, "auth", "service", "bad.ts"), "const x: number = 'nope'\n")
 
 		var stderr strings.Builder
 		err := Run(context.Background(), RunOptions{
 			ModulesPath: modulesPath,
-			NpmPath:     npmPath,
 			RepoRoot:    repoRoot,
 			Target:      "auth",
 			Stderr:      &stderr,
@@ -144,8 +136,8 @@ func TestRun(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), "typecheck failed for auth") {
 			t.Fatalf("expected typecheck failure, got %v", err)
 		}
-		if !strings.Contains(stderr.String(), "compile failed\n") {
-			t.Fatalf("expected command output to be forwarded to stderr, got %q", stderr.String())
+		if !strings.Contains(stderr.String(), "TS") {
+			t.Fatalf("expected TS diagnostics on stderr, got %q", stderr.String())
 		}
 	})
 
@@ -153,14 +145,13 @@ func TestRun(t *testing.T) {
 		repoRoot := t.TempDir()
 		modulesPath := t.TempDir()
 		makeDir(t, filepath.Join(modulesPath, "auth", "service"))
-		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
+		writeFile(t, filepath.Join(modulesPath, "auth", "service", "index.ts"), "export const auth = 1\n")
 
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 
 		err := Run(ctx, RunOptions{
 			ModulesPath: modulesPath,
-			NpmPath:     npmPath,
 			RepoRoot:    repoRoot,
 			Target:      "auth",
 		})
@@ -168,38 +159,4 @@ func TestRun(t *testing.T) {
 			t.Fatalf("expected context canceled, got %v", err)
 		}
 	})
-}
-
-func makeFakeTypecheckTooling(t *testing.T, repoRoot string, scriptBody string) (string, string, string) {
-	t.Helper()
-
-	binDir := filepath.Join(t.TempDir(), "bin")
-	makeDir(t, binDir)
-
-	npmPath := filepath.Join(binDir, "npm")
-	npxPath := filepath.Join(binDir, "npx")
-	vueTscPath := filepath.Join(binDir, "vue-tsc")
-	vitePath := filepath.Join(binDir, "vite")
-	writeFile(t, npmPath, "#!/bin/sh\nexit 0\n")
-	writeFile(t, npxPath, "#!/bin/sh\nset -eu\nif [ -n \"${CHOYSUM_CAPTURE_TSCONFIG_PATH:-}\" ]; then\n  printf '%s\\n' \"$4\" > \"$CHOYSUM_CAPTURE_TSCONFIG_PATH\"\nfi\nif [ -n \"${CHOYSUM_COPY_TSCONFIG:-}\" ]; then\n  cp \"$4\" \"$CHOYSUM_COPY_TSCONFIG\"\nfi\n"+scriptBody)
-	writeFile(t, vueTscPath, "#!/bin/sh\nexit 0\n")
-	writeFile(t, vitePath, "#!/bin/sh\nexit 0\n")
-
-	// Prepend binDir to PATH so exec.LookPath finds the fake binaries
-	// while system commands (cp, printf, etc.) remain available.
-	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
-
-	// Create a minimal @types/node so the generated tsconfig includes it.
-	makeDir(t, filepath.Join(repoRoot, "node_modules", "@types", "node"))
-	writeFile(t, filepath.Join(repoRoot, "node_modules", "@types", "node", "index.d.ts"), "// @types/node\n")
-	writeFile(t, filepath.Join(repoRoot, "node_modules", "@types", "node", "package.json"), "{}\n")
-	makeDir(t, filepath.Join(repoRoot, "node_modules", "vue-tsc"))
-	writeFile(t, filepath.Join(repoRoot, "node_modules", "vue-tsc", "package.json"), "{}\n")
-	makeDir(t, filepath.Join(repoRoot, "node_modules", "vite"))
-	writeFile(t, filepath.Join(repoRoot, "node_modules", "vite", "package.json"), "{}\n")
-	writeFile(t, filepath.Join(repoRoot, "node_modules", "vite", "client.d.ts"), "declare module 'vite/client' {}\n")
-
-	copyPath := filepath.Join(t.TempDir(), "captured.tsconfig.json")
-	argsPath := filepath.Join(t.TempDir(), "npx.args.txt")
-	return npmPath, copyPath, argsPath
 }

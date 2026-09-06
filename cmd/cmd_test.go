@@ -1603,6 +1603,96 @@ func TestNewTypecheckCmd_AdditionalRunEPaths(t *testing.T) {
 	})
 }
 
+func TestNewTypecheckCmd_KeepAndChoysumHome(t *testing.T) {
+	modulesPath := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(modulesPath, "auth", "service"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(modulesPath, "auth", "service", "index.ts"), []byte("export const auth = 1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := newCommandTestConfig(modulesPath)
+	scopeGetter := func() scope.Scope { return &commandTestScope{cfg: cfg} }
+	cmd := newTypecheckCmd(scopeGetter, commandRuntimeOptionsFromScope(scopeGetter))
+
+	if err := cmd.Args(cmd, []string{"auth"}); err != nil {
+		t.Fatalf("Args(auth) = %v", err)
+	}
+
+	prevHome, hadHome := os.LookupEnv("CHOYSUM_HOME")
+	t.Cleanup(func() {
+		if hadHome {
+			_ = os.Setenv("CHOYSUM_HOME", prevHome)
+			return
+		}
+		_ = os.Unsetenv("CHOYSUM_HOME")
+	})
+	if err := os.Setenv("CHOYSUM_HOME", t.TempDir()); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := cmd.Flags().Set("keep", "true"); err != nil {
+		t.Fatal(err)
+	}
+	var stderr strings.Builder
+	cmd.SetErr(&stderr)
+	if err := cmd.RunE(cmd, []string{"auth"}); err != nil {
+		t.Fatalf("RunE = %v", err)
+	}
+	if !strings.Contains(stderr.String(), "kept CLI test tmp root:") {
+		t.Fatalf("stderr = %q", stderr.String())
+	}
+}
+
+func TestNewTypecheckCmd_ErrorHooks(t *testing.T) {
+	modulesPath := t.TempDir()
+	cfg := newCommandTestConfig(modulesPath)
+	scopeGetter := func() scope.Scope { return &commandTestScope{cfg: cfg} }
+
+	t.Run("empty getwd", func(t *testing.T) {
+		orig := typecheckGetwd
+		t.Cleanup(func() { typecheckGetwd = orig })
+		typecheckGetwd = func() (string, error) { return "", nil }
+		cmd := newTypecheckCmd(scopeGetter, commandRuntimeOptionsFromScope(scopeGetter))
+		err := cmd.RunE(cmd, []string{"auth"})
+		if err == nil || !strings.Contains(err.Error(), "cannot determine repo root") {
+			t.Fatalf("err = %v", err)
+		}
+	})
+
+	t.Run("bind runtime paths error", func(t *testing.T) {
+		orig := typecheckBindCLITestRuntimePaths
+		t.Cleanup(func() { typecheckBindCLITestRuntimePaths = orig })
+		typecheckBindCLITestRuntimePaths = func(ctx context.Context, workspaceRoot string) (context.Context, string, string, error) {
+			return ctx, "", "", errors.New("bind boom")
+		}
+		cmd := newTypecheckCmd(scopeGetter, commandRuntimeOptionsFromScope(scopeGetter))
+		err := cmd.RunE(cmd, []string{"auth"})
+		if err == nil || !strings.Contains(err.Error(), "bind boom") {
+			t.Fatalf("err = %v", err)
+		}
+	})
+
+	t.Run("setenv CHOYSUM_HOME error", func(t *testing.T) {
+		origBind := typecheckBindCLITestRuntimePaths
+		origSet := typecheckSetenv
+		t.Cleanup(func() {
+			typecheckBindCLITestRuntimePaths = origBind
+			typecheckSetenv = origSet
+		})
+		typecheckBindCLITestRuntimePaths = func(ctx context.Context, workspaceRoot string) (context.Context, string, string, error) {
+			return ctx, t.TempDir(), t.TempDir(), nil
+		}
+		typecheckSetenv = func(string, string) error { return errors.New("setenv boom") }
+		cmd := newTypecheckCmd(scopeGetter, commandRuntimeOptionsFromScope(scopeGetter))
+		err := cmd.RunE(cmd, []string{"auth"})
+		if err == nil || !strings.Contains(err.Error(), "set CHOYSUM_HOME") {
+			t.Fatalf("err = %v", err)
+		}
+	})
+}
+
 func TestInstallUpgradeUninstallCommandConstruction(t *testing.T) {
 	envGetter := func() scope.Scope { return nil }
 

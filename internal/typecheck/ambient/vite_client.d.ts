@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: LGPL-3.0-or-later
+// @ts-nocheck
 
 // Minimal vite/client ambient for Choysum Go-native typecheck.
 // Self-contained (no relative /// <reference>) so node_modules/vite is not required.

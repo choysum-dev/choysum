@@ -14,8 +14,11 @@ import { toTransportObject as toTransportObjectImpl } from './model_runtime';
 import { collectModelUpstreamInverseFields, getModelRuntimeMetadata, recomputeModelMetadata, triggerModelUpstream } from './model_runtime_service_facade';
 import { getRuntimeErrorMessage, runWithValidationBypass } from './model_write_helpers';
 import type { ValidationBypassCapable } from './model_write_helpers';
-import type { UnknownRecord } from '../../../utils/types';
+import type { ObjectRecord, UnknownRecord } from '../../../utils/types';
 import { _t } from '@/core/service/i18n_binder';
+
+/** Wide field list for instance load; avoids FieldSelection<ConcreteModel> circularity. */
+type InstanceLoadFieldSelection = FieldSelection<ObjectRecord>;
 
 type InstanceRepositoryLike = ValidationBypassCapable & {
   update(values: UnknownRecord, condition: unknown): Promise<Array<unknown>>;
@@ -46,7 +49,7 @@ function resolveInstanceReadRepository(instance: BaseModel, options?: SoftDelete
   return resolveRepositoryWithSoftDeleteOptions(instance.constructor as RuntimeModelCtor, options) as unknown as InstanceRepositoryLike;
 }
 
-function mergeFields<T extends BaseModel>(instance: T, newFields: FieldSelection<T>): void {
+function mergeFields(instance: BaseModel, newFields: InstanceLoadFieldSelection): void {
   const state = stateOf(instance);
   if (!Array.isArray(state.fields)) {
     state.fields = [];
@@ -211,12 +214,16 @@ export async function deleteModelInstance(instance: BaseModel, options?: DeleteO
   invokeSymbol<void>(instance, MODEL_SYMBOLS.resetChanges);
 }
 
-export async function loadModelInstance<T extends BaseModel>(instance: T, fields?: FieldSelection<T>, options?: SoftDeleteOptions): Promise<T> {
+export async function loadModelInstance<T extends BaseModel>(
+  instance: T,
+  fields?: InstanceLoadFieldSelection,
+  options?: SoftDeleteOptions
+): Promise<T> {
   if (!instance.Id) {
     throw new Error('Cannot load an instance without Id');
   }
 
-  const fieldsToLoad: FieldSelection<T> = fields && fields.length > 0 ? fields : (['*'] as FieldSelection<T>);
+  const fieldsToLoad: InstanceLoadFieldSelection = fields && fields.length > 0 ? fields : ['*'];
   const repository = resolveInstanceReadRepository(instance, options);
   const results = await repository.search(['Id', '=', instance.Id], {
     fields: fieldsToLoad,
@@ -237,8 +244,10 @@ export async function reloadModelInstance<T extends BaseModel>(instance: T, opti
   }
 
   const instanceState = stateOf(instance);
-  const fieldsToReload: FieldSelection<T> =
-    Array.isArray(instanceState.fields) && instanceState.fields.length > 0 ? (instanceState.fields as FieldSelection<T>) : (['*'] as FieldSelection<T>);
+  const fieldsToReload: InstanceLoadFieldSelection =
+    Array.isArray(instanceState.fields) && instanceState.fields.length > 0
+      ? (instanceState.fields as InstanceLoadFieldSelection)
+      : ['*'];
   await loadModelInstance(instance, fieldsToReload, options);
 
   resetModelChanges(instance);

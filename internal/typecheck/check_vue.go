@@ -4,7 +4,9 @@
 package typecheck
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -12,6 +14,9 @@ import (
 
 	"github.com/choysum-dev/choysum/internal/typecheck/vue"
 )
+
+// walkModulesWebVueDir is filepath.WalkDir for collectModulesWebVuePaths; tests may override.
+var walkModulesWebVueDir = filepath.WalkDir
 
 // prepareVueOverlays builds Strategy-B overlays: each .vue and .vue.ts path maps
 // to the same service-script text, plus language-core helper declaration files.
@@ -72,6 +77,64 @@ func collectVuePaths(files []string) []string {
 		}
 	}
 	return out
+}
+
+// collectModulesWebVuePaths returns every modules/<app>/web/**/*.vue path
+// (excluding test trees) so cross-app SFC imports receive service-script overlays.
+// Walk I/O errors are returned so Check does not continue with a partial overlay set.
+func collectModulesWebVuePaths(modulesPath string) ([]string, error) {
+	modulesPath = filepath.Clean(modulesPath)
+	entries, err := os.ReadDir(modulesPath)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("typecheck: read modules root %s: %w", modulesPath, err)
+	}
+	var out []string
+	for _, ent := range entries {
+		if !ent.IsDir() {
+			continue
+		}
+		name := ent.Name()
+		if strings.HasPrefix(name, ".") || name == "tmp" {
+			continue
+		}
+		webDir := filepath.Join(modulesPath, name, "web")
+		st, err := os.Stat(webDir)
+		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				continue
+			}
+			return nil, fmt.Errorf("typecheck: stat module web dir %s: %w", webDir, err)
+		}
+		if !st.IsDir() {
+			continue
+		}
+		if err := walkModulesWebVueDir(webDir, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				base := d.Name()
+				if strings.HasPrefix(base, ".") || base == "node_modules" || base == "dist" ||
+					base == "tmp" || base == "tests" || base == "__tests__" {
+					return fs.SkipDir
+				}
+				return nil
+			}
+			if shouldSkipTSFileName(d.Name()) {
+				return nil
+			}
+			if strings.HasSuffix(strings.ToLower(d.Name()), ".vue") {
+				out = append(out, normalizePathKey(path))
+			}
+			return nil
+		}); err != nil {
+			return nil, fmt.Errorf("typecheck: walk modules web vue under %s: %w", webDir, err)
+		}
+	}
+	return out, nil
 }
 
 // collectVueOverlayPaths returns ScopeAll-eligible .vue paths that exist only
@@ -197,6 +260,7 @@ func remapDiagnostics(diags []Diagnostic, scripts map[string]vue.ServiceScript) 
 		if ok {
 			if srcStart, srcLen, mapped := vue.RemapRange(script.Mappings, d.Start, d.Length); mapped {
 				remapped = true
+				d.FromVueTemplate = true
 				d.Start = srcStart
 				d.Length = srcLen
 				if line, col, lok := lineColumnFromBytes([]byte(script.SourceContent), srcStart); lok {

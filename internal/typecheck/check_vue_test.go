@@ -4,7 +4,9 @@
 package typecheck
 
 import (
+	"context"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -209,9 +211,10 @@ func TestRewriteVueRootsAndAmbient(t *testing.T) {
 		t.Fatal("plain vue must not match")
 	}
 	dir := t.TempDir()
-	overlays := BuiltInVueAmbientOverlays(dir)
-	if len(overlays) != 3 {
-		t.Fatalf("want vite+subpath+vue shim, got %d", len(overlays))
+	overlays := BuiltInVueAmbientOverlays(dir, dir)
+	// No resolvable vue types → vite + subpath + vue shim + directives + vue module stub.
+	if len(overlays) != 5 {
+		t.Fatalf("want vite+subpath+vue shim+directives+vue stub, got %d", len(overlays))
 	}
 }
 
@@ -396,11 +399,162 @@ func TestRemapDiagnostics_Helpers(t *testing.T) {
 	}
 }
 
+func TestCollectModulesWebVuePaths_WalkEntryError(t *testing.T) {
+	modules := t.TempDir()
+	mustMkdir(t, filepath.Join(modules, "demo", "web"))
+	orig := walkModulesWebVueDir
+	t.Cleanup(func() { walkModulesWebVueDir = orig })
+	walkModulesWebVueDir = func(root string, fn fs.WalkDirFunc) error {
+		return fn(filepath.Join(root, "broken.vue"), nil, errors.New("walk entry"))
+	}
+	got, err := collectModulesWebVuePaths(modules)
+	if err == nil || !strings.Contains(err.Error(), "walk entry") {
+		t.Fatalf("err = %v", err)
+	}
+	if got != nil {
+		t.Fatalf("got %v", got)
+	}
+}
+
+func TestCollectModulesWebVuePaths_ReadDirError(t *testing.T) {
+	// ReadDir on a regular file fails with a non-ErrNotExist error (ENOTDIR).
+	notDir := filepath.Join(t.TempDir(), "not-a-dir")
+	mustWrite(t, notDir, "x\n")
+	got, err := collectModulesWebVuePaths(notDir)
+	if err == nil {
+		t.Fatal("expected read error for non-directory modules root")
+	}
+	if !strings.Contains(err.Error(), "read modules root") {
+		t.Fatalf("err = %v", err)
+	}
+	if got != nil {
+		t.Fatalf("got %v", got)
+	}
+}
+
+func TestCollectModulesWebVuePaths(t *testing.T) {
+	if got, err := collectModulesWebVuePaths(filepath.Join(t.TempDir(), "missing")); err != nil || len(got) != 0 {
+		t.Fatalf("missing modules root should return nil,nil got %v %v", got, err)
+	}
+
+	modules := t.TempDir()
+	mustMkdir(t, filepath.Join(modules, ".choysum"))
+	mustMkdir(t, filepath.Join(modules, ".git"))
+	mustMkdir(t, filepath.Join(modules, ".vscode"))
+	mustMkdir(t, filepath.Join(modules, "tmp"))
+	// Non-directory entries at the modules root must be skipped.
+	mustWrite(t, filepath.Join(modules, "README.md"), "x\n")
+	mustMkdir(t, filepath.Join(modules, "no-web", "service"))
+	mustMkdir(t, filepath.Join(modules, "demo", "web", "ui"))
+	mustWrite(t, filepath.Join(modules, "demo", "web", "ui", "App.vue"), "<template></template>\n")
+	mustWrite(t, filepath.Join(modules, "demo", "web", "ui", "skip.spec.vue"), "<template></template>\n")
+	mustMkdir(t, filepath.Join(modules, "demo", "web", "__tests__"))
+	mustWrite(t, filepath.Join(modules, "demo", "web", "__tests__", "Hidden.vue"), "<template></template>\n")
+	mustMkdir(t, filepath.Join(modules, "demo", "web", ".cache"))
+	mustWrite(t, filepath.Join(modules, "demo", "web", ".cache", "X.vue"), "<template></template>\n")
+	mustMkdir(t, filepath.Join(modules, "demo", "web", "node_modules", "pkg"))
+	mustWrite(t, filepath.Join(modules, "demo", "web", "node_modules", "pkg", "X.vue"), "<template></template>\n")
+	mustMkdir(t, filepath.Join(modules, "demo", "web", "dist"))
+	mustWrite(t, filepath.Join(modules, "demo", "web", "dist", "Built.vue"), "<template></template>\n")
+	mustMkdir(t, filepath.Join(modules, "demo", "web", "tmp"))
+	mustWrite(t, filepath.Join(modules, "demo", "web", "tmp", "Tmp.vue"), "<template></template>\n")
+	mustMkdir(t, filepath.Join(modules, "demo", "web", "tests"))
+	mustWrite(t, filepath.Join(modules, "demo", "web", "tests", "T.vue"), "<template></template>\n")
+
+	got, err := collectModulesWebVuePaths(modules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || !strings.HasSuffix(got[0], "web/ui/App.vue") {
+		t.Fatalf("got %v", got)
+	}
+}
+
+func TestCollectModulesWebVuePaths_StatPermissionError(t *testing.T) {
+	modules := t.TempDir()
+	locked := filepath.Join(modules, "locked")
+	mustMkdir(t, locked)
+	if err := os.Chmod(locked, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(locked, 0o755) })
+
+	_, err := collectModulesWebVuePaths(modules)
+	if err == nil {
+		t.Fatal("expected stat error for unreadable module dir child")
+	}
+	if !strings.Contains(err.Error(), "stat module web dir") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestCollectModulesWebVuePaths_WebIsFile(t *testing.T) {
+	modules := t.TempDir()
+	mustMkdir(t, filepath.Join(modules, "demo"))
+	mustWrite(t, filepath.Join(modules, "demo", "web"), "not a directory\n")
+	mustMkdir(t, filepath.Join(modules, "ok", "web"))
+	mustWrite(t, filepath.Join(modules, "ok", "web", "A.vue"), "<template></template>\n")
+
+	got, err := collectModulesWebVuePaths(modules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || !strings.HasSuffix(got[0], "ok/web/A.vue") {
+		t.Fatalf("got %v", got)
+	}
+}
+
+func TestCheck_CollectModulesWebVuePathsError(t *testing.T) {
+	repo := t.TempDir()
+	modules := filepath.Join(repo, "modules")
+	locked := filepath.Join(modules, "locked")
+	mustMkdir(t, locked)
+	if err := os.Chmod(locked, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(locked, 0o755) })
+	mustMkdir(t, filepath.Join(modules, "demo", "web"))
+	mustWrite(t, filepath.Join(modules, "demo", "web", "A.vue"), "<script setup lang=\"ts\"></script>\n")
+
+	_, err := Check(context.Background(), Options{
+		ModulesPath:  modules,
+		RepoRoot:     repo,
+		App:          "demo",
+		Scope:        ScopeAll,
+		VueGoldenDir: vueGoldenDir(t),
+	})
+	if err == nil || !strings.Contains(err.Error(), "stat module web dir") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
 func TestResolveVueCoder_AbsError(t *testing.T) {
 	orig := absPath
 	t.Cleanup(func() { absPath = orig })
 	absPath = func(string) (string, error) { return "", errors.New("abs boom") }
 	if _, err := resolveVueCoder(Options{VueGoldenDir: "x"}); err == nil || !strings.Contains(err.Error(), "abs boom") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestCheck_VueGoldenDirError(t *testing.T) {
+	repo, modules := fixtureRoots(t, "vue_check_ok")
+	orig := absPath
+	t.Cleanup(func() { absPath = orig })
+	absPath = func(p string) (string, error) {
+		if strings.TrimSpace(p) == "relative/golden" {
+			return "", errors.New("abs boom")
+		}
+		return orig(p)
+	}
+	_, err := Check(t.Context(), Options{
+		ModulesPath:  modules,
+		RepoRoot:     repo,
+		App:          "demo",
+		Scope:        ScopeAll,
+		VueGoldenDir: "relative/golden",
+	})
+	if err == nil || !strings.Contains(err.Error(), "abs boom") {
 		t.Fatalf("err = %v", err)
 	}
 }

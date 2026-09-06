@@ -174,6 +174,83 @@ jobs:
           use_oidc: true
           verbose: true
 
+  prepare-typecheck-types:
+    name: pr / prepare-typecheck-types
+    if: ${{ needs.discover-impact.outputs.impacted_modules_json != '[]' }}
+    needs:
+      - discover-impact
+      - build-choysum-cli
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Download choysum CLI
+        uses: actions/download-artifact@v8
+        with:
+          name: pr-choysum-cli
+          path: .choysum/tmp
+
+      - name: Make choysum CLI executable
+        run: chmod +x .choysum/tmp/choysum
+
+      - name: Setup CLI testing pkg cache
+        uses: ./.github/actions/setup-cli-testing-cache
+
+      - name: Warm type-fetch assets into CLI pkg cache
+        run: |
+          set -euo pipefail
+          CHOYSUM_BIN="$(pwd)/.choysum/tmp/choysum"
+          # Idempotent: cached packages are reused. Needed because restore-keys may
+          # return an ESM-only or otherwise incomplete pkg tree without types.
+          echo "Warming type-fetch cache via type-fetch --all"
+          "$CHOYSUM_BIN" type-fetch --all
+          # Force-repair vue: --all can keep hollow runtime-* siblings that Stat
+          # as present. Delete the package cache + entry so the next fetch
+          # re-materializes @vue/runtime-dom/core/reactivity.
+          types_dir="${CHOYSUM_TEST_TMP}/cache/pkg/types"
+          mkdir -p "$types_dir"
+          rm -f "$types_dir"/vue@*.d.ts \
+            "$types_dir"/esm.sh_vue@* \
+            "$types_dir"/esm.sh_@vue_runtime-dom@* \
+            "$types_dir"/esm.sh_@vue_runtime-core@* \
+            "$types_dir"/esm.sh_@vue_reactivity@*
+          echo "Re-fetching vue type graph"
+          "$CHOYSUM_BIN" type-fetch web
+          # Require the tsconfig-pinned vue entry (not a hollow/wrong-version graph).
+          # Keep this a one-liner: a <<-heredoc with unindented Python breaks YAML.
+          pinned="$(grep -oE 'esm\.sh_vue@[0-9][^/_"]+' modules/tsconfig.json | head -1 | sed 's/.*@//')"
+          if [[ -z "$pinned" ]]; then
+            echo "error: pinned vue version not found in modules/tsconfig.json" >&2
+            exit 1
+          fi
+          echo "Pinned vue from tsconfig: $pinned"
+          vue_entry="$types_dir/esm.sh_vue@${pinned}_dist_vue.d.mts.d.ts"
+          core_dts="$types_dir/esm.sh_@vue_runtime-core@${pinned}_dist_runtime-core.d.ts.d.ts"
+          react_dts="$types_dir/esm.sh_@vue_reactivity@${pinned}_dist_reactivity.d.ts.d.ts"
+          if [[ ! -s "$vue_entry" || ! -s "$core_dts" || ! -s "$react_dts" ]]; then
+            echo "error: pinned vue@$pinned type-fetch graph missing under $types_dir" >&2
+            ls -la "$types_dir"/esm.sh_vue@* "$types_dir"/esm.sh_@vue_runtime-* "$types_dir"/esm.sh_@vue_reactivity@* 2>/dev/null || true
+            exit 1
+          fi
+          if ! grep -Eq '\bPropType\b' "$core_dts"; then
+            echo "error: runtime-core@$pinned missing PropType (hollow?)" >&2
+            exit 1
+          fi
+          if ! grep -Eq '\btoRef\b' "$react_dts"; then
+            echo "error: reactivity@$pinned missing toRef (hollow?)" >&2
+            exit 1
+          fi
+          core_bytes="$(wc -c < "$core_dts" | tr -d ' ')"
+          if [[ "$core_bytes" -lt 10000 ]]; then
+            echo "error: runtime-core@$pinned too small (${core_bytes} bytes); expected full .d.ts" >&2
+            exit 1
+          fi
+          echo "Vue type-fetch graph OK (vue@$pinned, runtime-core ${core_bytes} bytes)"
+
   typecheck-shard:
     name: pr / typecheck-shard (${{ matrix.module }})
     if: ${{ needs.discover-impact.outputs.impacted_modules_json != '[]' }}
@@ -182,6 +259,7 @@ jobs:
       - discover-impact
       - prepare-root-node-modules
       - build-choysum-cli
+      - prepare-typecheck-types
     strategy:
       fail-fast: false
       matrix:

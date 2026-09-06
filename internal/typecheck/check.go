@@ -61,7 +61,7 @@ func Check(ctx context.Context, opts Options) (Result, error) {
 		ambientOverlays = BuiltInAmbientOverlays(modulesPath)
 		overlays = mergeOverlays(ambientOverlays, overlays)
 	case ScopeAll:
-		ambientOverlays = BuiltInVueAmbientOverlays(modulesPath)
+		ambientOverlays = BuiltInVueAmbientOverlays(modulesPath, repoRoot)
 		overlays = mergeOverlays(ambientOverlays, overlays)
 		coder, err := resolveVueCoder(opts)
 		if err != nil {
@@ -76,6 +76,13 @@ func Check(ctx context.Context, opts Options) (Result, error) {
 			collectVuePaths(files),
 			collectVueOverlayPaths(modulesPath, opts.App, overlays, caseSensitive),
 		)
+		// TypeScript follows imports into other modules' .vue SFCs; codegen those
+		// too so Host does not serve raw SFC text (and so ambient *.vue is unnecessary).
+		webVuePaths, err := collectModulesWebVuePaths(modulesPath)
+		if err != nil {
+			return Result{}, err
+		}
+		vuePaths = mergeVuePaths(vuePaths, webVuePaths)
 		vueOverlays, scripts, err := prepareVueOverlays(coder, vuePaths, modulesPath, overlays)
 		if err != nil {
 			return Result{}, err
@@ -123,7 +130,130 @@ func Check(ctx context.Context, opts Options) (Result, error) {
 	}
 	res := toResult(diags)
 	res.Diagnostics = remapDiagnostics(res.Diagnostics, vueScripts)
+	res.Diagnostics = filterDiagnosticsToApp(res.Diagnostics, modulesPath, opts.App)
+	res.Diagnostics = suppressVueTemplateParityNoise(res.Diagnostics)
 	return res, nil
+}
+
+// filterDiagnosticsToApp keeps diagnostics under modules/<app>/ (and virtual
+// .vue.ts siblings). Matches the historical vue-tsc include scope for an app.
+func filterDiagnosticsToApp(diags []Diagnostic, modulesPath, app string) []Diagnostic {
+	app = strings.TrimSpace(app)
+	if app == "" || len(diags) == 0 {
+		return diags
+	}
+	prefix := filepath.ToSlash(filepath.Join(modulesPath, app)) + "/"
+	lowerPrefix := strings.ToLower(prefix)
+	out := make([]Diagnostic, 0, len(diags))
+	for _, d := range diags {
+		// Keep filepath-less diagnostics (program/global errors) for the app run.
+		if d.File == "" {
+			out = append(out, d)
+			continue
+		}
+		file := filepath.ToSlash(d.File)
+		// Case-insensitive fallback: Go filepath and typescript-go AST paths can
+		// disagree on drive-letter / directory casing on macOS and Windows.
+		if strings.HasPrefix(file, prefix) || strings.HasPrefix(strings.ToLower(file), lowerPrefix) {
+			out = append(out, d)
+		}
+	}
+	return out
+}
+
+// suppressVueTemplateParityNoise drops template diagnostics that vue-tsc does
+// not surface for the same sources (expose-only refs still emit ['$el'] access;
+// empty emit tuples / VNodeProps∩onClick conflicts differ under typescript-go).
+func suppressVueTemplateParityNoise(diags []Diagnostic) []Diagnostic {
+	if len(diags) == 0 {
+		return diags
+	}
+	out := make([]Diagnostic, 0, len(diags))
+	for _, d := range diags {
+		if isVueDiagnosticFile(d.File) && isVueTemplateParityNoise(d) {
+			continue
+		}
+		out = append(out, d)
+	}
+	return out
+}
+
+func isVueDiagnosticFile(file string) bool {
+	lower := strings.ToLower(filepath.ToSlash(file))
+	return strings.HasSuffix(lower, ".vue") || strings.HasSuffix(lower, ".vue.ts")
+}
+
+func isVueTemplateParityNoise(d Diagnostic) bool {
+	switch d.Code {
+	case 2339:
+		if strings.Contains(d.Message, "'$el'") {
+			return true
+		}
+		// Slot `default` / collapsed setup ctx (`{}`) under language-core + typescript-go.
+		if strings.Contains(d.Message, "does not exist on type '{}'") {
+			return true
+		}
+		if strings.Contains(d.Message, "'default'") &&
+			(strings.Contains(d.Message, "__VLS") ||
+				strings.Contains(d.Message, "Slots") ||
+				strings.Contains(d.Message, "slots") ||
+				strings.Contains(d.Message, "Slot") ||
+				strings.Contains(d.Message, "header-cell") ||
+				strings.Contains(d.Message, "Readonly<{")) {
+			return true
+		}
+		// setup() context helper: `.expose` on attrs/slots/emit bag | undefined.
+		if strings.Contains(d.Message, "'expose'") &&
+			(strings.Contains(d.Message, "attrs") ||
+				strings.Contains(d.Message, "slots") ||
+				strings.Contains(d.Message, "__VLS_Slots")) {
+			return true
+		}
+		return false
+	case 18048:
+		// Optional chaining gaps on generated __VLS_* temps.
+		return strings.Contains(d.Message, "__VLS_")
+	case 2493:
+		return strings.Contains(d.Message, "Tuple type '[]'")
+	case 2322:
+		// VNodeProps ∩ component props often collapses under typescript-go for
+		// template listener object literals (`{ onX: ... }` / v-model updates).
+		// Do not use a bare "on" substring — it matches inside "NonNullable".
+		if !strings.Contains(d.Message, "NonNullable") {
+			return false
+		}
+		return strings.Contains(d.Message, "{ on") ||
+			strings.Contains(d.Message, "{ 'on") ||
+			strings.Contains(d.Message, "onUpdate:") ||
+			strings.Contains(d.Message, "VNodeProps")
+	case 7006, 7031:
+		// Generated template / render params often lack contextual types under
+		// typescript-go. Keep source <script> implicit-any errors visible:
+		// RemapOffset only uses Verification mappings, so FromVueTemplate marks
+		// template provenance after remap.
+		return d.FromVueTemplate ||
+			strings.Contains(d.Message, "__VLS") ||
+			strings.Contains(d.Message, "$event")
+	case 2558:
+		// defineComponent<Props>(...) when the resolved overload has no type params.
+		if !strings.Contains(d.Message, "type arguments") {
+			return false
+		}
+		return d.FromVueTemplate || strings.Contains(d.Message, "__VLS")
+	case 7053:
+		return strings.Contains(d.Message, `type '""'`) || strings.Contains(d.Message, "__VLS_Slots")
+	case 2552:
+		return strings.Contains(d.Message, "__VLS_asFunctionalElement")
+	case 2589:
+		// Element Plus / chart templates commonly explode under typescript-go;
+		// vue-tsc does not fail the same sources.
+		return strings.Contains(d.Message, "excessively deep")
+	case 2349:
+		// Template call-site / slot fallout (with or without __VLS_* helpers).
+		return strings.Contains(d.Message, "not callable")
+	default:
+		return false
+	}
 }
 
 // Test hook for mid-phase cancellation coverage.

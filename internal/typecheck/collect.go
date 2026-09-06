@@ -157,7 +157,9 @@ func shouldSkipScanDir(name string) bool {
 		return true
 	}
 	switch strings.ToLower(name) {
-	case "node_modules", "dist", "tmp", "test", "tests", "__tests__", "coverage", "e2e":
+	// Match historical vue-tsc excludes: skip plural tests trees, not singular
+	// `test/` or `e2e/` (those were typechecked under the old include globs).
+	case "node_modules", "dist", "tmp", "tests", "__tests__", "coverage":
 		return true
 	default:
 		return false

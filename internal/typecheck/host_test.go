@@ -5,8 +5,40 @@ package typecheck
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+func TestNewTypecheckFS_EsmShDiskRewrite(t *testing.T) {
+	dir := t.TempDir()
+	esmFile := filepath.Join(dir, "pkg", "types", "esm.sh_vue@3.5.0_dist_vue.d.ts")
+	mustMkdir(t, filepath.Dir(esmFile))
+	mustWrite(t, esmFile, `declare module 'https://esm.sh/vue@3.5.35/dist/vue.d.mts' { export const x: number; }`+"\n")
+
+	fs := newTypecheckFS(nil)
+	got, ok := fs.ReadFile(filepath.ToSlash(esmFile))
+	if !ok {
+		t.Fatal("expected disk read")
+	}
+	if strings.Contains(got, "https://esm.sh/") {
+		t.Fatalf("expected esm.sh rewrite on disk read, got %q", got)
+	}
+	if !strings.Contains(got, "declare module 'vue'") {
+		t.Fatalf("got %q", got)
+	}
+
+	if content, ok := fs.ReadFile(filepath.ToSlash(filepath.Join(dir, "missing.ts"))); ok || content != "" {
+		t.Fatalf("missing file should miss, ok=%v content=%q", ok, content)
+	}
+}
+
+func TestRewriteEsmShDeclareModules_ShortMatchPassthrough(t *testing.T) {
+	in := "declare module 'https://esm.sh/' { export {} }"
+	got := rewriteEsmShDeclareModules(in)
+	if got != in {
+		t.Fatalf("short match should passthrough, got %q", got)
+	}
+}
 
 func TestOverlayReadFile(t *testing.T) {
 	dir := t.TempDir()

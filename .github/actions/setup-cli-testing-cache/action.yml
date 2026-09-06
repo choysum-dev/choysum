@@ -2,6 +2,11 @@ name: Setup CLI testing pkg cache
 description: >
   Point CHOYSUM_TEST_TMP at a workspace path and restore/save the durable
   ESM/types pkg cache used during module prepare-runtime (unit/e2e/typecheck).
+  Also links $HOME/.choysum/pkg at the cache so `choysum type-fetch` (which
+  writes under DefaultChoysumPath ≈ ~/.choysum) and typecheck path rewrite share
+  one tree. Repo-relative modules/tsconfig paths (`../../.choysum/pkg/types`)
+  only resolve to ~/.choysum when the checkout lives under $HOME/<name>; CI
+  workspaces need this link plus rewrite fallbacks.
 
 runs:
   using: composite
@@ -19,6 +24,20 @@ runs:
       uses: actions/cache@v6
       with:
         path: .choysum/tmp/cli-testing/cache/pkg
-        key: ${{ runner.os }}-cli-pkg-v1-${{ hashFiles('go.mod', 'go.sum', 'modules/*/package.json') }}
+        key: ${{ runner.os }}-cli-pkg-v6-${{ hashFiles('go.mod', 'go.sum', 'modules/*/package.json', 'modules/tsconfig.json') }}
         restore-keys: |
-          ${{ runner.os }}-cli-pkg-v1-
+          ${{ runner.os }}-cli-pkg-v6-
+
+    - name: Link ~/.choysum/pkg to CLI testing pkg cache
+      shell: bash
+      run: |
+        set -euo pipefail
+        pkg_cache="${GITHUB_WORKSPACE}/.choysum/tmp/cli-testing/cache/pkg"
+        mkdir -p "$pkg_cache"
+        mkdir -p "${HOME}/.choysum"
+        link_path="${HOME}/.choysum/pkg"
+        if [ -L "$link_path" ] || [ -e "$link_path" ]; then
+          rm -rf "$link_path"
+        fi
+        ln -s "$pkg_cache" "$link_path"
+        echo "Linked $link_path -> $pkg_cache"

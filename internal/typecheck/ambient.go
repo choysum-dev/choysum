@@ -34,12 +34,22 @@ func BuiltInAmbientOverlays(modulesPath string) map[string]string {
 	return out
 }
 
-// BuiltInVueAmbientOverlays returns BuiltInAmbientOverlays plus the vue shim.
-func BuiltInVueAmbientOverlays(modulesPath string) map[string]string {
+// BuiltInVueAmbientOverlays returns BuiltInAmbientOverlays plus Vue SFC shims.
+// When real `vue` types cannot be resolved (no node_modules/vue and no usable
+// modules/tsconfig paths entry), a minimal `vue` module stub is also included.
+func BuiltInVueAmbientOverlays(modulesPath, repoRoot string) map[string]string {
 	out := BuiltInAmbientOverlays(modulesPath)
 	root := AmbientRoot(modulesPath)
 	if rel, content := VueShimOverlay(); rel != "" {
 		out[normalizePathKey(filepath.Join(root, rel))] = content
+	}
+	if rel, content := VueDirectivesOverlay(); rel != "" {
+		out[normalizePathKey(filepath.Join(root, rel))] = content
+	}
+	if !hasResolvableVueTypes(modulesPath, repoRoot) {
+		if rel, content := VueModuleStubOverlay(); rel != "" {
+			out[normalizePathKey(filepath.Join(root, rel))] = content
+		}
 	}
 	return out
 }

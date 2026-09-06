@@ -79,7 +79,10 @@ func TestCollectRootFiles_ServiceExtras(t *testing.T) {
 	if !strings.Contains(joined, "env.d.ts") || !strings.Contains(joined, "types.d.ts") || !strings.Contains(joined, "a.ts") {
 		t.Fatalf("missing expected files: %v", files)
 	}
-	for _, ban := range []string{"skip.gen.ts", "ok.spec.ts", "ok.test.d.ts", "skip.gen.d.ts", "node_modules/pkg/x.ts", "__tests__/t.ts", "test/helper.ts", ".git/objects/hidden.ts", ".hidden.ts", ".swap.ts"} {
+	if !strings.Contains(joined, "test/helper.ts") {
+		t.Fatalf("singular test/ dir should be included: %v", files)
+	}
+	for _, ban := range []string{"skip.gen.ts", "ok.spec.ts", "ok.test.d.ts", "skip.gen.d.ts", "node_modules/pkg/x.ts", "__tests__/t.ts", ".git/objects/hidden.ts", ".hidden.ts", ".swap.ts"} {
 		if strings.Contains(joined, ban) {
 			t.Fatalf("unexpected %s in %v", ban, files)
 		}
@@ -279,6 +282,15 @@ func TestAppendOverlayRoots(t *testing.T) {
 	}, true)
 	if len(got) != 0 {
 		t.Fatalf("ScopeService must skip tsx overlays: %v", got)
+	}
+	// ScopeAll: web .vue overlays included; __tests__ trees skipped.
+	got = appendOverlayRoots(nil, modules, app, ScopeAll, map[string]string{
+		"/repo/modules/demo/web/Ok.vue":          "x",
+		"/repo/modules/demo/web/__tests__/T.vue": "x",
+		"/repo/modules/demo/web/tests/H.vue":     "x",
+	}, true)
+	if len(got) != 1 || !strings.HasSuffix(got[0], "web/Ok.vue.ts") {
+		t.Fatalf("ScopeAll vue overlay roots = %v", got)
 	}
 }
 
@@ -639,34 +651,40 @@ func TestBuildCompilerOptions_AbsBaseURL(t *testing.T) {
 
 func TestResolveTypeRootsAndTypes(t *testing.T) {
 	dir := t.TempDir()
+	// Isolate from the developer's ~/.choysum typeRoots bridges.
+	t.Setenv("CHOYSUM_HOME", t.TempDir())
+	t.Setenv("CHOYSUM_TEST_TMP", "")
+	origHome := userHomeDir
+	t.Cleanup(func() { userHomeDir = origHome })
+	userHomeDir = func() (string, error) { return filepath.Join(t.TempDir(), "no-home"), nil }
 	local := filepath.Join(dir, "node_modules", "@types", "node")
 	mustMkdir(t, local)
-	roots := resolveTypeRoots(dir)
+	roots := resolveTypeRoots(dir, dir)
 	if len(roots) != 1 {
 		t.Fatalf("roots = %v", roots)
 	}
-	if got := resolveCompilerTypes(roots); len(got) != 1 || got[0] != "node" {
+	if got := resolveCompilerTypes(dir, roots); len(got) != 1 || got[0] != "node" {
 		t.Fatalf("types = %v", got)
 	}
-	if got := resolveCompilerTypes(nil); got != nil {
+	if got := resolveCompilerTypes(dir, nil); got != nil {
 		t.Fatalf("empty = %v", got)
 	}
 
 	fileNode := t.TempDir()
 	mustWrite(t, filepath.Join(fileNode, "node"), "not a dir")
-	if got := resolveCompilerTypes([]string{fileNode}); got != nil {
+	if got := resolveCompilerTypes(dir, []string{fileNode}); got != nil {
 		t.Fatalf("file named node must be ignored, got %v", got)
 	}
 
 	global := t.TempDir()
 	mustMkdir(t, filepath.Join(global, "@types"))
 	t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", global)
-	roots = resolveTypeRoots(dir)
+	roots = resolveTypeRoots(dir, dir)
 	if len(roots) != 2 {
 		t.Fatalf("roots with global = %v", roots)
 	}
 	t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", filepath.Join(dir, "missing-global"))
-	roots = resolveTypeRoots(t.TempDir())
+	roots = resolveTypeRoots(t.TempDir(), t.TempDir())
 	if len(roots) != 0 {
 		t.Fatalf("expected empty roots, got %v", roots)
 	}
@@ -674,14 +692,14 @@ func TestResolveTypeRootsAndTypes(t *testing.T) {
 	fileAsTypes := t.TempDir()
 	mustMkdir(t, filepath.Join(fileAsTypes, "node_modules"))
 	mustWrite(t, filepath.Join(fileAsTypes, "node_modules", "@types"), "not a dir")
-	if got := resolveTypeRoots(fileAsTypes); len(got) != 0 {
+	if got := resolveTypeRoots(fileAsTypes, fileAsTypes); len(got) != 0 {
 		t.Fatalf("file @types must be ignored, got %v", got)
 	}
 }
 
 func TestResolveModulePathsForTest(t *testing.T) {
 	_, modules := fixtureRoots(t, "service_ok")
-	paths, base, err := ResolveModulePathsForTest(modules)
+	paths, base, err := ResolveModulePathsForTest(modules, filepath.Dir(modules))
 	if err != nil {
 		t.Fatal(err)
 	}
