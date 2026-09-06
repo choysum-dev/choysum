@@ -11,14 +11,15 @@ import (
 
 // Diagnostic is a stable, remappable typecheck finding.
 type Diagnostic struct {
-	File     string
-	Start    int
-	Length   int
-	Line     int // 1-based; 0 if unknown
-	Column   int // 1-based; 0 if unknown
-	Code     int32
-	Category string
-	Message  string
+	File            string
+	Start           int
+	Length          int
+	Line            int // 1-based; 0 if unknown
+	Column          int // 1-based; 0 if unknown
+	Code            int32
+	Category        string
+	Message         string
+	FromVueTemplate bool // set when remapped via language-core verification mappings
 }
 
 // Result holds diagnostics from Check.

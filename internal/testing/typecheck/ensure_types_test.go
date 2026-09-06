@@ -101,7 +101,7 @@ func TestEnsureTypeAssets_DiscoversVueFromTypesCache(t *testing.T) {
 
 	modules := t.TempDir()
 	// No tsconfig — mirrors CI shards after checkout (modules/tsconfig is gitignored).
-	fetchTypeDefinition = func(_ *http.Client, _, td, pkg, ver string) (*esmresolver.TypeFetchResult, []esmresolver.TypeFetchResult, error) {
+	fetchTypeDefinition = func(_ context.Context, _ *http.Client, _, td, pkg, ver string) (*esmresolver.TypeFetchResult, []esmresolver.TypeFetchResult, error) {
 		if pkg != "vue" || ver != "3.5.35" {
 			t.Fatalf("unexpected fetch %s@%s", pkg, ver)
 		}
@@ -176,6 +176,23 @@ func TestResolvePinnedPackageVersion(t *testing.T) {
 	}
 }
 
+func TestVueTypesEntryVerRE_DeclarationSuffix(t *testing.T) {
+	cases := []struct {
+		name string
+		want string
+	}{
+		{"esm.sh_vue@3.5.35.d.ts", "3.5.35"},
+		{"esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts", "3.5.35"},
+		{"esm.sh_vue@3.5.35", "3.5.35"},
+	}
+	for _, tt := range cases {
+		m := vueTypesEntryVerRE.FindStringSubmatch(tt.name)
+		if len(m) != 2 || m[1] != tt.want {
+			t.Fatalf("%s: got %#v want %q", tt.name, m, tt.want)
+		}
+	}
+}
+
 func TestResolvePinnedPackageVersion_TypesNodeFallbackRE(t *testing.T) {
 	modules := t.TempDir()
 	// Primary RE matches a wrong package first; @types/node fallback RE still wins.
@@ -223,7 +240,7 @@ func TestEnsureTypeAssets_FetchSuccessAndFailures(t *testing.T) {
 
 	t.Run("vue fetch error", func(t *testing.T) {
 		_, modules := setup(t)
-		fetchTypeDefinition = func(*http.Client, string, string, string, string) (*esmresolver.TypeFetchResult, []esmresolver.TypeFetchResult, error) {
+		fetchTypeDefinition = func(context.Context, *http.Client, string, string, string, string) (*esmresolver.TypeFetchResult, []esmresolver.TypeFetchResult, error) {
 			return nil, nil, errors.New("network down")
 		}
 		err := ensureTypeAssets(context.Background(), io.Discard, modules, "demo")
@@ -234,7 +251,7 @@ func TestEnsureTypeAssets_FetchSuccessAndFailures(t *testing.T) {
 
 	t.Run("node fetch error", func(t *testing.T) {
 		_, modules := setup(t)
-		fetchTypeDefinition = func(_ *http.Client, _, typesDir, pkg, _ string) (*esmresolver.TypeFetchResult, []esmresolver.TypeFetchResult, error) {
+		fetchTypeDefinition = func(_ context.Context, _ *http.Client, _, typesDir, pkg, _ string) (*esmresolver.TypeFetchResult, []esmresolver.TypeFetchResult, error) {
 			if pkg == "vue" {
 				p := filepath.Join(typesDir, "esm.sh_vue@3.5.0_dist_vue.d.mts.d.ts")
 				if err := os.WriteFile(p, []byte("export {}\n"), 0o644); err != nil {
@@ -252,7 +269,7 @@ func TestEnsureTypeAssets_FetchSuccessAndFailures(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		home, modules := setup(t)
-		fetchTypeDefinition = func(_ *http.Client, _, typesDir, pkg, _ string) (*esmresolver.TypeFetchResult, []esmresolver.TypeFetchResult, error) {
+		fetchTypeDefinition = func(_ context.Context, _ *http.Client, _, typesDir, pkg, _ string) (*esmresolver.TypeFetchResult, []esmresolver.TypeFetchResult, error) {
 			switch pkg {
 			case "vue":
 				p := filepath.Join(typesDir, "esm.sh_vue@3.5.0_dist_vue.d.mts.d.ts")
@@ -302,7 +319,7 @@ func TestEnsureTypeAssets_FetchSuccessAndFailures(t *testing.T) {
 
 	t.Run("vue still missing after fetch", func(t *testing.T) {
 		home, modules := setup(t)
-		fetchTypeDefinition = func(*http.Client, string, string, string, string) (*esmresolver.TypeFetchResult, []esmresolver.TypeFetchResult, error) {
+		fetchTypeDefinition = func(context.Context, *http.Client, string, string, string, string) (*esmresolver.TypeFetchResult, []esmresolver.TypeFetchResult, error) {
 			// Pretend fetch succeeded but wrote nothing resolvable.
 			return &esmresolver.TypeFetchResult{CachedPath: filepath.Join(home, "pkg", "types", "wrong-name.d.ts")}, nil, nil
 		}
@@ -328,17 +345,17 @@ func TestEnsureNodeCompilerTypes_FetchBranches(t *testing.T) {
 `)
 	typesDir := t.TempDir()
 
-	fetchTypeDefinition = func(*http.Client, string, string, string, string) (*esmresolver.TypeFetchResult, []esmresolver.TypeFetchResult, error) {
+	fetchTypeDefinition = func(context.Context, *http.Client, string, string, string, string) (*esmresolver.TypeFetchResult, []esmresolver.TypeFetchResult, error) {
 		return nil, nil, nil
 	}
-	if err := ensureNodeCompilerTypes(&http.Client{}, "https://esm.sh", typesDir, modules); err != nil {
+	if err := ensureNodeCompilerTypes(context.Background(), &http.Client{}, "https://esm.sh", typesDir, modules); err != nil {
 		t.Fatal(err)
 	}
 
-	fetchTypeDefinition = func(*http.Client, string, string, string, string) (*esmresolver.TypeFetchResult, []esmresolver.TypeFetchResult, error) {
+	fetchTypeDefinition = func(context.Context, *http.Client, string, string, string, string) (*esmresolver.TypeFetchResult, []esmresolver.TypeFetchResult, error) {
 		return &esmresolver.TypeFetchResult{CachedPath: "   "}, nil, nil
 	}
-	if err := ensureNodeCompilerTypes(&http.Client{}, "https://esm.sh", typesDir, modules); err != nil {
+	if err := ensureNodeCompilerTypes(context.Background(), &http.Client{}, "https://esm.sh", typesDir, modules); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -381,7 +398,7 @@ func TestEnsureTypeAssets_EmptyPreferWriteDir(t *testing.T) {
 func TestEnsureNodeCompilerTypes_NoPinnedVersion(t *testing.T) {
 	modules := t.TempDir()
 	writeFile(t, filepath.Join(modules, "tsconfig.json"), `{"compilerOptions":{"paths":{}}}`)
-	if err := ensureNodeCompilerTypes(&http.Client{}, "https://esm.sh", t.TempDir(), modules); err != nil {
+	if err := ensureNodeCompilerTypes(context.Background(), &http.Client{}, "https://esm.sh", t.TempDir(), modules); err != nil {
 		t.Fatal(err)
 	}
 }

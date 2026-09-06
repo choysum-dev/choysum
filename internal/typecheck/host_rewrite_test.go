@@ -145,14 +145,15 @@ func TestSuppressVueTemplateParityNoise(t *testing.T) {
 		{File: "/a.vue", Code: 2339, Message: "Property 'default' does not exist on type 'Readonly<{ row?: ((props: TableV2RowSlotProps) => any) | undefined; 'header-cell'?: any }>'."},
 		{File: "/a.vue", Code: 2589, Message: "Type instantiation is excessively deep and possibly infinite."},
 		{File: "/a.vue", Code: 2349, Message: "This expression is not callable."},
+		{File: "/a.vue", Code: 7006, Message: "Parameter 'userId' implicitly has an 'any' type."}, // script-level, keep
 		{File: "/a.vue", Code: 1000, Message: "real error"},
 	}
 	got := suppressVueTemplateParityNoise(diags)
-	// .ts $el kept; NonNullable-without-on kept; real 1000 kept.
-	if len(got) != 3 {
+	// .ts $el kept; NonNullable-without-on kept; script-level 7006 kept; real 1000 kept.
+	if len(got) != 4 {
 		t.Fatalf("got %d %#v", len(got), got)
 	}
-	if got[0].File != "/a.ts" || got[1].Code != 2322 || got[2].Code != 1000 {
+	if got[0].File != "/a.ts" || got[1].Code != 2322 || got[2].Code != 7006 || got[3].Code != 1000 {
 		t.Fatalf("%#v", got)
 	}
 }
@@ -174,15 +175,21 @@ func TestIsVueTemplateParityNoise_RemainingCodes(t *testing.T) {
 		{Code: 18048, Message: "'__VLS_3' is possibly 'undefined'."},
 		{Code: 2339, Message: "Property 'expose' does not exist on type '{ attrs: any; slots: __VLS_Slots; emit: any; } | undefined'."},
 		{Code: 2339, Message: "Property '_t' does not exist on type '{}'."},
-		{Code: 7006, Message: "Parameter 'props' implicitly has an 'any' type."},
-		{Code: 7031, Message: "Binding element 'attrs' implicitly has an 'any' type."},
-		{Code: 2558, Message: "Expected 0 type arguments, but got 1."},
+		{Code: 7006, Message: "Parameter 'props' implicitly has an 'any' type.", FromVueTemplate: true},
+		{Code: 7031, Message: "Binding element 'attrs' implicitly has an 'any' type.", FromVueTemplate: true},
+		{Code: 2558, Message: "Expected 0 type arguments, but got 1.", FromVueTemplate: true},
 		{Code: 2322, Message: "Type '{ 'onUpdate:modelValue': (v: any) => void; }' is not assignable to type 'NonNullable<Partial<Props>>'."},
 	}
 	for _, d := range cases {
 		if !isVueTemplateParityNoise(d) {
 			t.Fatalf("expected noise for %#v", d)
 		}
+	}
+	if isVueTemplateParityNoise(Diagnostic{Code: 7006, Message: "Parameter 'userId' implicitly has an 'any' type."}) {
+		t.Fatal("script-level 7006 must not be noise without FromVueTemplate")
+	}
+	if isVueTemplateParityNoise(Diagnostic{Code: 2558, Message: "Expected 0 type arguments, but got 1."}) {
+		t.Fatal("script-level 2558 must not be noise without FromVueTemplate")
 	}
 	if isVueTemplateParityNoise(Diagnostic{Code: 2493, Message: "other tuple"}) {
 		t.Fatal("2493 without Tuple type '[]'")

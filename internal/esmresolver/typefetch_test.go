@@ -2309,7 +2309,9 @@ func TestPurgeVueTypeFetchGraph_VersionBoundary(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	purgeVueTypeFetchGraph(typesDir, "3.5.1")
+	if err := purgeVueTypeFetchGraph(typesDir, "3.5.1"); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := os.Stat(drop); !os.IsNotExist(err) {
 		t.Fatalf("expected 3.5.1 entry removed, err=%v", err)
 	}

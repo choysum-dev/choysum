@@ -329,7 +329,7 @@ func vueTypeEntryComplete(entry string) bool {
 // Word-boundary markers so ExtractPropTypes does not count as PropType.
 var (
 	vueTypeFetchEntryRE = regexp.MustCompile(`(?i)^esm\.sh_vue@`)
-	vueTypeEntryVerRE   = regexp.MustCompile(`(?i)^esm\.sh_vue@([^/_]+)`)
+	vueTypeEntryVerRE   = regexp.MustCompile(`(?i)^esm\.sh_vue@([0-9][^/_]*?)(?:_|\.d\.|$)`)
 	vueCoreExportRE     = regexp.MustCompile(`\bPropType\b|declare function h\b|function h<`)
 	vueToRefExportRE    = regexp.MustCompile(`\btoRef\b`)
 )

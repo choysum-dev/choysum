@@ -219,13 +219,19 @@ func isVueTemplateParityNoise(d Diagnostic) bool {
 			strings.Contains(d.Message, "onUpdate:") ||
 			strings.Contains(d.Message, "VNodeProps")
 	case 7006, 7031:
-		// Generated script-setup / render params (props, attrs, v-model, $event)
-		// often lack contextual types under typescript-go; vue-tsc does not
-		// surface them. Only applies to .vue via isVueDiagnosticFile.
-		return true
+		// Generated template / render params often lack contextual types under
+		// typescript-go. Keep source <script> implicit-any errors visible:
+		// RemapOffset only uses Verification mappings, so FromVueTemplate marks
+		// template provenance after remap.
+		return d.FromVueTemplate ||
+			strings.Contains(d.Message, "__VLS") ||
+			strings.Contains(d.Message, "$event")
 	case 2558:
 		// defineComponent<Props>(...) when the resolved overload has no type params.
-		return strings.Contains(d.Message, "type arguments")
+		if !strings.Contains(d.Message, "type arguments") {
+			return false
+		}
+		return d.FromVueTemplate || strings.Contains(d.Message, "__VLS")
 	case 7053:
 		return strings.Contains(d.Message, `type '""'`) || strings.Contains(d.Message, "__VLS_Slots")
 	case 2552:

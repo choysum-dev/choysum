@@ -102,7 +102,13 @@ func collectModulesWebVuePaths(modulesPath string) ([]string, error) {
 		}
 		webDir := filepath.Join(modulesPath, name, "web")
 		st, err := os.Stat(webDir)
-		if err != nil || !st.IsDir() {
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, fmt.Errorf("typecheck: stat module web dir %s: %w", webDir, err)
+		}
+		if !st.IsDir() {
 			continue
 		}
 		if err := walkModulesWebVueDir(webDir, func(path string, d fs.DirEntry, err error) error {
@@ -254,6 +260,7 @@ func remapDiagnostics(diags []Diagnostic, scripts map[string]vue.ServiceScript) 
 		if ok {
 			if srcStart, srcLen, mapped := vue.RemapRange(script.Mappings, d.Start, d.Length); mapped {
 				remapped = true
+				d.FromVueTemplate = true
 				d.Start = srcStart
 				d.Length = srcLen
 				if line, col, lok := lineColumnFromBytes([]byte(script.SourceContent), srcStart); lok {

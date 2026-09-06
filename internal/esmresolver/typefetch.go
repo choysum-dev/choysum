@@ -303,12 +303,18 @@ func (p *PackageJSON) CollectDependencies() map[string]string {
 // to the type cache directory. Returns the cached file path and all transitive
 // type dependencies that were fetched.
 func FetchTypeDefinition(client *http.Client, upstream, typesDir, pkg, version string) (*TypeFetchResult, []TypeFetchResult, error) {
+	return FetchTypeDefinitionContext(context.Background(), client, upstream, typesDir, pkg, version)
+}
+
+// FetchTypeDefinitionContext is FetchTypeDefinition with an explicit context for
+// discovery/download cancellation.
+func FetchTypeDefinitionContext(ctx context.Context, client *http.Client, upstream, typesDir, pkg, version string) (*TypeFetchResult, []TypeFetchResult, error) {
 	if client == nil {
 		client = NewTypeFetchHTTPClient(typeFetchRequestTimeout)
 	}
 
 	state := newTypeFetchState(defaultTypeFetchParallelism)
-	return fetchTypeDefinitionWithState(context.Background(), client, upstream, typesDir, pkg, version, state)
+	return fetchTypeDefinitionWithState(ctx, client, upstream, typesDir, pkg, version, state)
 }
 
 func fetchTypeDefinitionWithState(ctx context.Context, client *http.Client, upstream, typesDir, pkg, version string, state *typeFetchState) (*TypeFetchResult, []TypeFetchResult, error) {
@@ -332,7 +338,9 @@ func fetchTypeDefinitionWithState(ctx context.Context, client *http.Client, upst
 			// Purge hollow URL-derived files before discover/recurse — otherwise
 			// fetchTypeRecursive cache-hits the same incomplete graph.
 			if pkg == "vue" && vueTypeFetchEntryIncomplete(typesDir, version) {
-				purgeVueTypeFetchGraph(typesDir, version)
+				if err := purgeVueTypeFetchGraph(typesDir, version); err != nil {
+					return nil, nil, fmt.Errorf("purge incomplete vue@%s type-fetch graph: %w", version, err)
+				}
 			} else {
 				return &TypeFetchResult{Package: pkg, Version: version, CachedPath: cacheFile, FromCache: true}, nil, nil
 			}
@@ -1596,30 +1604,39 @@ func vueTypeFetchEntryNameMatches(name, version string) bool {
 
 // purgeVueTypeFetchGraph removes the package cache and URL-derived vue@ver
 // files so a subsequent fetch cannot cache-hit a hollow graph.
-func purgeVueTypeFetchGraph(typesDir, version string) {
+func purgeVueTypeFetchGraph(typesDir, version string) error {
 	typesDir = filepath.Clean(strings.TrimSpace(typesDir))
 	version = strings.TrimSpace(version)
 	if typesDir == "" || version == "" {
-		return
+		return nil
 	}
-	_ = os.Remove(typesCachePath(typesDir, "vue", version))
+	if err := os.Remove(typesCachePath(typesDir, "vue", version)); err != nil && !os.IsNotExist(err) {
+		return err
+	}
 	entries, err := os.ReadDir(typesDir)
 	if err != nil {
-		return
+		return err
 	}
 	for _, ent := range entries {
 		if ent.IsDir() || !vueTypeFetchEntryNameMatches(ent.Name(), version) {
 			continue
 		}
-		_ = os.Remove(filepath.Join(typesDir, ent.Name()))
+		path := filepath.Join(typesDir, ent.Name())
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return err
+		}
 	}
 	for _, sib := range []string{
 		fmt.Sprintf("esm.sh_@vue_runtime-dom@%s_dist_runtime-dom.d.ts.d.ts", version),
 		fmt.Sprintf("esm.sh_@vue_runtime-core@%s_dist_runtime-core.d.ts.d.ts", version),
 		fmt.Sprintf("esm.sh_@vue_reactivity@%s_dist_reactivity.d.ts.d.ts", version),
 	} {
-		_ = os.Remove(filepath.Join(typesDir, sib))
+		path := filepath.Join(typesDir, sib)
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return err
+		}
 	}
+	return nil
 }
 
 var (

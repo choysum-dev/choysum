@@ -288,6 +288,34 @@ func TestHasResolvableVueTypes(t *testing.T) {
 	}
 }
 
+func TestVueTypeEntryVerRE_DeclarationSuffix(t *testing.T) {
+	m := vueTypeEntryVerRE.FindStringSubmatch("esm.sh_vue@3.5.35.d.ts")
+	if len(m) != 2 || m[1] != "3.5.35" {
+		t.Fatalf("got %#v", m)
+	}
+	// Sibling lookup must use the semantic version, not "3.5.35.d.ts".
+	typesDir := t.TempDir()
+	entry := filepath.Join(typesDir, "esm.sh_vue@3.5.35.d.ts")
+	mustWrite(t, entry, "export {}\n")
+	for _, name := range []string{
+		"esm.sh_@vue_runtime-dom@3.5.35_dist_runtime-dom.d.ts.d.ts",
+		"esm.sh_@vue_runtime-core@3.5.35_dist_runtime-core.d.ts.d.ts",
+		"esm.sh_@vue_reactivity@3.5.35_dist_reactivity.d.ts.d.ts",
+	} {
+		body := "export {}\n"
+		if strings.Contains(name, "runtime-core") {
+			body = "export type PropType<T> = any;\ndeclare function h(...args: any[]): any;\n"
+		}
+		if strings.Contains(name, "reactivity") {
+			body = "export declare function toRef(...args: any[]): any;\n"
+		}
+		mustWrite(t, filepath.Join(typesDir, name), body)
+	}
+	if !VueTypeEntryComplete(entry) {
+		t.Fatal("expected complete graph when version strips .d.ts suffix")
+	}
+}
+
 func TestHasResolvableVueTypes_IncompleteTypeFetchGraph(t *testing.T) {
 	dir := t.TempDir()
 	modules := filepath.Join(dir, "modules")

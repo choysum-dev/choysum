@@ -457,6 +457,24 @@ func TestCollectModulesWebVuePaths(t *testing.T) {
 	}
 }
 
+func TestCollectModulesWebVuePaths_StatPermissionError(t *testing.T) {
+	modules := t.TempDir()
+	locked := filepath.Join(modules, "locked")
+	mustMkdir(t, locked)
+	if err := os.Chmod(locked, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(locked, 0o755) })
+
+	_, err := collectModulesWebVuePaths(modules)
+	if err == nil {
+		t.Fatal("expected stat error for unreadable module dir child")
+	}
+	if !strings.Contains(err.Error(), "stat module web dir") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
 func TestResolveVueCoder_AbsError(t *testing.T) {
 	orig := absPath
 	t.Cleanup(func() { absPath = orig })

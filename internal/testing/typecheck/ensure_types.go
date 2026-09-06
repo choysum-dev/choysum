@@ -22,16 +22,20 @@ import (
 )
 
 var (
-	typesNodeVersionRE = regexp.MustCompile(`esm\.sh_@types_node@([^/_]+)`)
-	esmShPkgVersionRE  = regexp.MustCompile(`(?:^|/)esm\.sh_(.+?)@([^/_]+)`)
-	vueTypesEntryVerRE = regexp.MustCompile(`(?i)^esm\.sh_vue@([^/_]+)`)
+	typesNodeVersionRE = regexp.MustCompile(`esm\.sh_@types_node@([0-9][^/_]*?)(?:_|\.d\.|/|$)`)
+	esmShPkgVersionRE  = regexp.MustCompile(`(?:^|/)esm\.sh_(.+?)@([0-9][^/_]*?)(?:_|\.d\.|/|$)`)
+	// Stop before cache separators or declaration suffixes so
+	// esm.sh_vue@3.5.35.d.ts yields 3.5.35 (not 3.5.35.d.ts).
+	vueTypesEntryVerRE = regexp.MustCompile(`(?i)^esm\.sh_vue@([0-9][^/_]*?)(?:_|\.d\.|$)`)
 	npmExactVersionRE  = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$`)
 
 	typeFetchUpstream      = config.DefaultESMUpstreamURL
 	newTypeFetchHTTPClient = func() *http.Client {
 		return esmresolver.NewTypeFetchHTTPClient(30 * time.Second)
 	}
-	fetchTypeDefinition = esmresolver.FetchTypeDefinition
+	fetchTypeDefinition = func(ctx context.Context, client *http.Client, upstream, typesDir, pkg, version string) (*esmresolver.TypeFetchResult, []esmresolver.TypeFetchResult, error) {
+		return esmresolver.FetchTypeDefinitionContext(ctx, client, upstream, typesDir, pkg, version)
+	}
 	updateTsconfigPaths = esmresolver.UpdateTsconfigPaths
 
 	filepathAbs = filepath.Abs
@@ -111,11 +115,11 @@ func ensureTypeAssets(ctx context.Context, stderr io.Writer, modulesRoot, app st
 	// stubs that pass Stat but export nothing. Purge them so FetchTypeDefinition
 	// re-walks the real esm.sh_vue@ver entry and its @vue/runtime-* imports.
 	purgeIncompleteVueTypeFetch(typesDir, vueVersion)
-	vueResult, _, err := fetchTypeDefinition(client, upstream, typesDir, "vue", vueVersion)
+	vueResult, _, err := fetchTypeDefinition(ctx, client, upstream, typesDir, "vue", vueVersion)
 	if err != nil {
 		return xfmt.Errorf("typecheck: fetch vue@%s: %w", vueVersion, err)
 	}
-	if err := ensureNodeCompilerTypes(client, upstream, typesDir, modulesRoot); err != nil {
+	if err := ensureNodeCompilerTypes(ctx, client, upstream, typesDir, modulesRoot); err != nil {
 		return err
 	}
 
@@ -184,7 +188,7 @@ func purgeIncompleteVueTypeFetch(typesDir, vueVersion string) {
 	}
 }
 
-func ensureNodeCompilerTypes(client *http.Client, upstream, typesDir, modulesRoot string) error {
+func ensureNodeCompilerTypes(ctx context.Context, client *http.Client, upstream, typesDir, modulesRoot string) error {
 	version := resolvePinnedTypesNodeVersion(modulesRoot)
 	if version == "" {
 		version = resolveVueAdjacentNodeVersion(typesDir)
@@ -192,7 +196,7 @@ func ensureNodeCompilerTypes(client *http.Client, upstream, typesDir, modulesRoo
 	if version == "" {
 		return nil
 	}
-	result, _, err := fetchTypeDefinition(client, upstream, typesDir, "@types/node", version)
+	result, _, err := fetchTypeDefinition(ctx, client, upstream, typesDir, "@types/node", version)
 	if err != nil {
 		return xfmt.Errorf("typecheck: fetch @types/node@%s: %w", version, err)
 	}
@@ -405,7 +409,7 @@ func ensureVueTsconfigPath(modulesRoot, vueCachedPath string) error {
 		// shards can bind the restored vue graph.
 		_ = os.Remove(tsconfigPath)
 		if err2 := updateTsconfigPaths(tsconfigPath, results); err2 != nil {
-			return xfmt.Errorf("typecheck: write vue tsconfig path: %w", err)
+			return xfmt.Errorf("typecheck: write vue tsconfig path: %w", err2)
 		}
 	}
 	return nil

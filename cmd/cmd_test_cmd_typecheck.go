@@ -21,6 +21,7 @@ var (
 	typecheckGetwd                   = os.Getwd
 	typecheckBindCLITestRuntimePaths = testingpathing.BindCLITestRuntimePaths
 	typecheckSetenv                  = os.Setenv
+	typecheckUnsetenv                = os.Unsetenv
 )
 
 func newTypecheckCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliruntime.Options) *cobra.Command {
@@ -83,10 +84,10 @@ func newTypecheckCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() c
 				}
 				defer func() {
 					if hadChoysumHome {
-						_ = os.Setenv("CHOYSUM_HOME", prevChoysumHome)
+						_ = typecheckSetenv("CHOYSUM_HOME", prevChoysumHome)
 						return
 					}
-					_ = os.Unsetenv("CHOYSUM_HOME")
+					_ = typecheckUnsetenv("CHOYSUM_HOME")
 				}()
 			}
 
