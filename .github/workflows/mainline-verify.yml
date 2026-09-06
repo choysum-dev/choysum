@@ -177,19 +177,12 @@ jobs:
           echo "Re-fetching vue type graph"
           "$CHOYSUM_BIN" type-fetch web
           # Require the tsconfig-pinned vue entry (not a hollow/wrong-version graph).
-          pinned="$(python3 - <<'PY'
-import re, pathlib
-text = pathlib.Path("modules/tsconfig.json").read_text()
-# Match the vue paths entry without full JSONC parse (comments/trailing commas).
-m = re.search(
-    r'"vue"\s*:\s*\[\s*"([^"]*esm\.sh_vue@([^/_"]+)[^"]*)"',
-    text,
-)
-if not m:
-    raise SystemExit("pinned vue version not found in modules/tsconfig.json")
-print(m.group(2))
-PY
-)"
+          # Keep this a one-liner: a <<-heredoc with unindented Python breaks YAML.
+          pinned="$(grep -oE 'esm\.sh_vue@[0-9][^/_"]+' modules/tsconfig.json | head -1 | sed 's/.*@//')"
+          if [[ -z "$pinned" ]]; then
+            echo "error: pinned vue version not found in modules/tsconfig.json" >&2
+            exit 1
+          fi
           echo "Pinned vue from tsconfig: $pinned"
           vue_entry="$types_dir/esm.sh_vue@${pinned}_dist_vue.d.mts.d.ts"
           core_dts="$types_dir/esm.sh_@vue_runtime-core@${pinned}_dist_runtime-core.d.ts.d.ts"
