@@ -4,6 +4,7 @@
 package typecheck
 
 import (
+	"context"
 	"errors"
 	"io/fs"
 	"os"
@@ -471,6 +472,46 @@ func TestCollectModulesWebVuePaths_StatPermissionError(t *testing.T) {
 		t.Fatal("expected stat error for unreadable module dir child")
 	}
 	if !strings.Contains(err.Error(), "stat module web dir") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestCollectModulesWebVuePaths_WebIsFile(t *testing.T) {
+	modules := t.TempDir()
+	mustMkdir(t, filepath.Join(modules, "demo"))
+	mustWrite(t, filepath.Join(modules, "demo", "web"), "not a directory\n")
+	mustMkdir(t, filepath.Join(modules, "ok", "web"))
+	mustWrite(t, filepath.Join(modules, "ok", "web", "A.vue"), "<template></template>\n")
+
+	got, err := collectModulesWebVuePaths(modules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || !strings.HasSuffix(got[0], "ok/web/A.vue") {
+		t.Fatalf("got %v", got)
+	}
+}
+
+func TestCheck_CollectModulesWebVuePathsError(t *testing.T) {
+	repo := t.TempDir()
+	modules := filepath.Join(repo, "modules")
+	locked := filepath.Join(modules, "locked")
+	mustMkdir(t, locked)
+	if err := os.Chmod(locked, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(locked, 0o755) })
+	mustMkdir(t, filepath.Join(modules, "demo", "web"))
+	mustWrite(t, filepath.Join(modules, "demo", "web", "A.vue"), "<script setup lang=\"ts\"></script>\n")
+
+	_, err := Check(context.Background(), Options{
+		ModulesPath:  modules,
+		RepoRoot:     repo,
+		App:          "demo",
+		Scope:        ScopeAll,
+		VueGoldenDir: vueGoldenDir(t),
+	})
+	if err == nil || !strings.Contains(err.Error(), "stat module web dir") {
 		t.Fatalf("err = %v", err)
 	}
 }

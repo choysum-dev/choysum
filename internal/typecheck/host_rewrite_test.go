@@ -191,6 +191,12 @@ func TestIsVueTemplateParityNoise_RemainingCodes(t *testing.T) {
 	if isVueTemplateParityNoise(Diagnostic{Code: 2558, Message: "Expected 0 type arguments, but got 1."}) {
 		t.Fatal("script-level 2558 must not be noise without FromVueTemplate")
 	}
+	if isVueTemplateParityNoise(Diagnostic{Code: 2322, Message: "Type 'string' is not assignable to type 'number'."}) {
+		t.Fatal("2322 without NonNullable must not be noise")
+	}
+	if isVueTemplateParityNoise(Diagnostic{Code: 2558, Message: "Expected 0 arguments, but got 1."}) {
+		t.Fatal("2558 without type arguments must not be noise")
+	}
 	if isVueTemplateParityNoise(Diagnostic{Code: 2493, Message: "other tuple"}) {
 		t.Fatal("2493 without Tuple type '[]'")
 	}

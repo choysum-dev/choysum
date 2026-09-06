@@ -147,11 +147,12 @@ func ensureTypeAssets(ctx context.Context, stderr io.Writer, modulesRoot, app st
 // next FetchTypeDefinition cannot early-return on a stale vue@ver.d.ts while
 // leaving a hollow esm.sh_vue@ver entry in place.
 func purgeIncompleteVueTypeFetch(typesDir, vueVersion string) {
-	typesDir = filepath.Clean(strings.TrimSpace(typesDir))
+	typesDir = strings.TrimSpace(typesDir)
 	vueVersion = strings.TrimSpace(vueVersion)
 	if typesDir == "" || vueVersion == "" {
 		return
 	}
+	typesDir = filepath.Clean(typesDir)
 	pkgCache := filepath.Join(typesDir, fmt.Sprintf("vue@%s.d.ts", vueVersion))
 	_ = os.Remove(pkgCache)
 
@@ -247,10 +248,11 @@ func resolveVueVersion(modulesRoot, typesDir string) string {
 }
 
 func resolveVueVersionFromTypesDir(typesDir string) string {
-	typesDir = filepath.Clean(strings.TrimSpace(typesDir))
+	typesDir = strings.TrimSpace(typesDir)
 	if typesDir == "" {
 		return ""
 	}
+	typesDir = filepath.Clean(typesDir)
 	entries, err := os.ReadDir(typesDir)
 	if err != nil {
 		return ""
@@ -280,10 +282,11 @@ func resolveVueVersionFromTypesDir(typesDir string) string {
 }
 
 func resolveVueVersionFromPackageJSON(modulesRoot string) string {
-	modulesRoot = filepath.Clean(strings.TrimSpace(modulesRoot))
+	modulesRoot = strings.TrimSpace(modulesRoot)
 	if modulesRoot == "" {
 		return ""
 	}
+	modulesRoot = filepath.Clean(modulesRoot)
 	// Prefer apps that ship Vue SFCs; fall back to any module package.json.
 	candidates := []string{"web", "auth", "core", "meta"}
 	seen := map[string]struct{}{}
@@ -354,11 +357,12 @@ func normalizeNPMVersion(raw string) string {
 }
 
 func findCompleteVueEntry(typesDir, vueVersion string) string {
-	typesDir = filepath.Clean(strings.TrimSpace(typesDir))
+	typesDir = strings.TrimSpace(typesDir)
 	vueVersion = strings.TrimSpace(vueVersion)
 	if typesDir == "" || vueVersion == "" {
 		return ""
 	}
+	typesDir = filepath.Clean(typesDir)
 	preferred := []string{
 		fmt.Sprintf("esm.sh_vue@%s_dist_vue.d.mts.d.ts", vueVersion),
 		fmt.Sprintf("esm.sh_vue@%s.d.ts", vueVersion),
@@ -395,10 +399,11 @@ func findCompleteVueEntry(typesDir, vueVersion string) string {
 }
 
 func ensureVueTsconfigPath(modulesRoot, vueCachedPath string) error {
-	vueCachedPath = filepath.Clean(strings.TrimSpace(vueCachedPath))
+	vueCachedPath = strings.TrimSpace(vueCachedPath)
 	if vueCachedPath == "" {
 		return nil
 	}
+	vueCachedPath = filepath.Clean(vueCachedPath)
 	tsconfigPath := filepath.Join(modulesRoot, "tsconfig.json")
 	results := []esmresolver.TypeFetchResult{{
 		Package:    "vue",
@@ -416,10 +421,11 @@ func ensureVueTsconfigPath(modulesRoot, vueCachedPath string) error {
 }
 
 func resolveVueAdjacentNodeVersion(typesDir string) string {
-	typesDir = filepath.Clean(strings.TrimSpace(typesDir))
+	typesDir = strings.TrimSpace(typesDir)
 	if typesDir == "" {
 		return ""
 	}
+	typesDir = filepath.Clean(typesDir)
 	entries, err := os.ReadDir(typesDir)
 	if err != nil {
 		return ""

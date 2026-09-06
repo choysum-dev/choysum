@@ -288,6 +288,90 @@ func TestHasResolvableVueTypes(t *testing.T) {
 	}
 }
 
+func TestVueTypeEntryComplete_EmptyAndReadErrors(t *testing.T) {
+	if VueTypeEntryComplete("") {
+		t.Fatal("empty")
+	}
+	if VueTypeEntryComplete(filepath.Join(t.TempDir(), "missing.d.ts")) {
+		t.Fatal("missing")
+	}
+
+	typesDir := t.TempDir()
+	entry := filepath.Join(typesDir, "esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts")
+	mustWrite(t, entry, "export {}\n")
+	for _, name := range []string{
+		"esm.sh_@vue_runtime-dom@3.5.35_dist_runtime-dom.d.ts.d.ts",
+		"esm.sh_@vue_runtime-core@3.5.35_dist_runtime-core.d.ts.d.ts",
+		"esm.sh_@vue_reactivity@3.5.35_dist_reactivity.d.ts.d.ts",
+	} {
+		mustWrite(t, filepath.Join(typesDir, name), "export {}\n")
+	}
+	core := filepath.Join(typesDir, "esm.sh_@vue_runtime-core@3.5.35_dist_runtime-core.d.ts.d.ts")
+	react := filepath.Join(typesDir, "esm.sh_@vue_reactivity@3.5.35_dist_reactivity.d.ts.d.ts")
+	mustWrite(t, core, "export type PropType<T> = any;\n")
+	mustWrite(t, react, "export declare function toRef(): any;\n")
+	if !VueTypeEntryComplete(entry) {
+		t.Fatal("expected complete")
+	}
+
+	if err := os.Chmod(core, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(core, 0o644) })
+	if VueTypeEntryComplete(entry) {
+		t.Fatal("unreadable core")
+	}
+	_ = os.Chmod(core, 0o644)
+	mustWrite(t, core, "export type PropType<T> = any;\n")
+	if err := os.Chmod(react, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(react, 0o644) })
+	if VueTypeEntryComplete(entry) {
+		t.Fatal("unreadable react")
+	}
+}
+
+func TestRewriteChoysumTypesPath_IncompleteLocalFallback(t *testing.T) {
+	repo := t.TempDir()
+	home := t.TempDir()
+	t.Setenv("CHOYSUM_HOME", home)
+	t.Setenv("CHOYSUM_TEST_TMP", "")
+	origHome := userHomeDir
+	t.Cleanup(func() { userHomeDir = origHome })
+	userHomeDir = func() (string, error) { return filepath.Join(t.TempDir(), "no-home"), nil }
+
+	// Incomplete local abs under /.choysum/pkg/types/ — pick returns incomplete,
+	// then search finds a complete copy under CHOYSUM_HOME.
+	localTypes := filepath.Join(repo, ".choysum", "pkg", "types")
+	localEntry := filepath.Join(localTypes, "esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts")
+	mustMkdir(t, localTypes)
+	mustWrite(t, localEntry, "export {}\n")
+	mustWrite(t, filepath.Join(localTypes, "esm.sh_@vue_runtime-dom@3.5.35_dist_runtime-dom.d.ts.d.ts"), "export {}\n")
+	mustWrite(t, filepath.Join(localTypes, "esm.sh_@vue_runtime-core@3.5.35_dist_runtime-core.d.ts.d.ts"), "export {}\n")
+	mustWrite(t, filepath.Join(localTypes, "esm.sh_@vue_reactivity@3.5.35_dist_reactivity.d.ts.d.ts"), "export {}\n")
+
+	homeTypes := filepath.Join(home, "pkg", "types")
+	homeEntry := filepath.Join(homeTypes, "esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts")
+	mustMkdir(t, homeTypes)
+	mustWrite(t, homeEntry, "export {}\n")
+	mustWrite(t, filepath.Join(homeTypes, "esm.sh_@vue_runtime-dom@3.5.35_dist_runtime-dom.d.ts.d.ts"), "export {}\n")
+	mustWrite(t, filepath.Join(homeTypes, "esm.sh_@vue_runtime-core@3.5.35_dist_runtime-core.d.ts.d.ts"), "export type PropType<T> = any;\ndeclare function h(...args: any[]): any;\n")
+	mustWrite(t, filepath.Join(homeTypes, "esm.sh_@vue_reactivity@3.5.35_dist_reactivity.d.ts.d.ts"), "export declare function toRef(...args: any[]): any;\n")
+
+	got := RewriteChoysumTypesPath(filepath.ToSlash(localEntry))
+	if got != filepath.ToSlash(homeEntry) {
+		t.Fatalf("got %q want %q", got, homeEntry)
+	}
+
+	// Only incomplete copies everywhere → return incomplete fallback.
+	t.Setenv("CHOYSUM_HOME", t.TempDir())
+	got = RewriteChoysumTypesPath(filepath.ToSlash(localEntry))
+	if got != filepath.ToSlash(localEntry) {
+		t.Fatalf("incomplete fallback got %q", got)
+	}
+}
+
 func TestVueTypeEntryVerRE_DeclarationSuffix(t *testing.T) {
 	m := vueTypeEntryVerRE.FindStringSubmatch("esm.sh_vue@3.5.35.d.ts")
 	if len(m) != 2 || m[1] != "3.5.35" {

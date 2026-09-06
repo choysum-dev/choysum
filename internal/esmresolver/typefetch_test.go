@@ -2323,6 +2323,156 @@ func TestPurgeVueTypeFetchGraph_VersionBoundary(t *testing.T) {
 	}
 }
 
+func TestPurgeVueTypeFetchGraph_ErrorPaths(t *testing.T) {
+	if err := purgeVueTypeFetchGraph("", "1.0.0"); err != nil {
+		t.Fatal(err)
+	}
+	if err := purgeVueTypeFetchGraph(t.TempDir(), ""); err != nil {
+		t.Fatal(err)
+	}
+
+	// ReadDir fails (hooked for cross-platform coverage).
+	origReadDir := purgeVueReadDir
+	t.Cleanup(func() { purgeVueReadDir = origReadDir })
+	purgeVueReadDir = func(string) ([]os.DirEntry, error) {
+		return nil, errors.New("readdir boom")
+	}
+	if err := purgeVueTypeFetchGraph(t.TempDir(), "1.0.0"); err == nil || !strings.Contains(err.Error(), "readdir boom") {
+		t.Fatalf("expected ReadDir error, got %v", err)
+	}
+	purgeVueReadDir = origReadDir
+
+	// Package-cache path is a non-empty directory → Remove fails before ReadDir.
+	typesDirPkg := t.TempDir()
+	pkgCache := filepath.Join(typesDirPkg, "vue@3.0.0.d.ts")
+	if err := os.MkdirAll(filepath.Join(pkgCache, "nested"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(pkgCache, "nested", "x"), []byte("x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := purgeVueTypeFetchGraph(typesDirPkg, "3.0.0"); err == nil {
+		t.Fatal("expected remove error for non-empty package cache dir")
+	}
+
+	// Non-empty directory sibling cannot be removed.
+	typesDir := t.TempDir()
+	entry := filepath.Join(typesDir, "esm.sh_vue@1.0.0_dist_vue.d.mts.d.ts")
+	if err := os.WriteFile(entry, []byte("export {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sib := filepath.Join(typesDir, "esm.sh_@vue_runtime-dom@1.0.0_dist_runtime-dom.d.ts.d.ts")
+	if err := os.MkdirAll(filepath.Join(sib, "nested"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sib, "nested", "x"), []byte("x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := purgeVueTypeFetchGraph(typesDir, "1.0.0"); err == nil {
+		t.Fatal("expected remove error for non-empty sibling dir")
+	}
+
+	// Entry file remove fails when the types dir is not writable.
+	typesDir2 := t.TempDir()
+	entry2 := filepath.Join(typesDir2, "esm.sh_vue@2.0.0_dist_vue.d.mts.d.ts")
+	if err := os.WriteFile(entry2, []byte("export {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(typesDir2, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(typesDir2, 0o755) })
+	if err := purgeVueTypeFetchGraph(typesDir2, "2.0.0"); err == nil {
+		t.Fatal("expected remove error for read-only types dir")
+	}
+}
+
+func TestVueTypeFetchEntryIncomplete_Branches(t *testing.T) {
+	if vueTypeFetchEntryIncomplete("", "3.5.35") {
+		t.Fatal("empty typesDir")
+	}
+	if vueTypeFetchEntryIncomplete(t.TempDir(), "") {
+		t.Fatal("empty version")
+	}
+	if vueTypeFetchEntryIncomplete(filepath.Join(t.TempDir(), "missing"), "3.5.35") {
+		t.Fatal("missing dir")
+	}
+
+	typesDir := t.TempDir()
+	// No esm.sh entry → incomplete.
+	if !vueTypeFetchEntryIncomplete(typesDir, "3.5.35") {
+		t.Fatal("no entry should be incomplete")
+	}
+
+	entry := filepath.Join(typesDir, "esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts")
+	if err := os.WriteFile(entry, []byte("export {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Missing siblings → incomplete.
+	if !vueTypeFetchEntryIncomplete(typesDir, "3.5.35") {
+		t.Fatal("missing siblings")
+	}
+
+	for _, name := range []string{
+		"esm.sh_@vue_runtime-dom@3.5.35_dist_runtime-dom.d.ts.d.ts",
+		"esm.sh_@vue_runtime-core@3.5.35_dist_runtime-core.d.ts.d.ts",
+		"esm.sh_@vue_reactivity@3.5.35_dist_reactivity.d.ts.d.ts",
+	} {
+		if err := os.WriteFile(filepath.Join(typesDir, name), []byte("export {}\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Hollow core/react exports → incomplete.
+	if !vueTypeFetchEntryIncomplete(typesDir, "3.5.35") {
+		t.Fatal("hollow exports")
+	}
+
+	core := filepath.Join(typesDir, "esm.sh_@vue_runtime-core@3.5.35_dist_runtime-core.d.ts.d.ts")
+	react := filepath.Join(typesDir, "esm.sh_@vue_reactivity@3.5.35_dist_reactivity.d.ts.d.ts")
+	if err := os.WriteFile(core, []byte("export type PropType<T> = any;\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(react, []byte("export declare function toRef(): any;\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if vueTypeFetchEntryIncomplete(typesDir, "3.5.35") {
+		t.Fatal("complete graph should not be incomplete")
+	}
+
+	// Unreadable reactivity after Stat succeeds.
+	if err := os.Chmod(react, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(react, 0o644) })
+	if !vueTypeFetchEntryIncomplete(typesDir, "3.5.35") {
+		t.Fatal("unreadable react should be incomplete")
+	}
+}
+
+func TestFetchTypeDefinition_PurgeErrorPropagates(t *testing.T) {
+	typesDir := t.TempDir()
+	pkgCache := filepath.Join(typesDir, "vue@3.5.35.d.ts")
+	if err := os.WriteFile(pkgCache, []byte("export {};\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	entry := filepath.Join(typesDir, "esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts")
+	if err := os.WriteFile(entry, []byte("export {};\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sib := filepath.Join(typesDir, "esm.sh_@vue_runtime-dom@3.5.35_dist_runtime-dom.d.ts.d.ts")
+	if err := os.MkdirAll(filepath.Join(sib, "nested"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sib, "nested", "x"), []byte("x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, err := FetchTypeDefinition(nil, "https://esm.sh", typesDir, "vue", "3.5.35")
+	if err == nil || !strings.Contains(err.Error(), "purge incomplete vue") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
 func TestFetchTypeDefinition_RepairsIncompleteVueGraph(t *testing.T) {
 	typesURLPath := "/types/vue@3.5.35/dist/vue.d.mts"
 	headCalls, getCalls := 0, 0
@@ -2381,4 +2531,3 @@ func TestFetchTypeDefinition_RepairsIncompleteVueGraph(t *testing.T) {
 		t.Fatalf("hollow runtime-core should be purged before repair, err=%v", err)
 	}
 }
-

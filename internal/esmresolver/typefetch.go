@@ -1554,11 +1554,12 @@ func typesCachePath(typesDir, pkg, version string) string {
 // vueTypeFetchEntryIncomplete reports whether typesDir has an esm.sh_vue@ver
 // entry whose @vue/runtime-* siblings are missing or hollow (empty export {}).
 func vueTypeFetchEntryIncomplete(typesDir, version string) bool {
-	typesDir = filepath.Clean(strings.TrimSpace(typesDir))
+	typesDir = strings.TrimSpace(typesDir)
 	version = strings.TrimSpace(version)
 	if typesDir == "" || version == "" {
 		return false
 	}
+	typesDir = filepath.Clean(typesDir)
 	entries, err := os.ReadDir(typesDir)
 	if err != nil {
 		return false
@@ -1605,15 +1606,16 @@ func vueTypeFetchEntryNameMatches(name, version string) bool {
 // purgeVueTypeFetchGraph removes the package cache and URL-derived vue@ver
 // files so a subsequent fetch cannot cache-hit a hollow graph.
 func purgeVueTypeFetchGraph(typesDir, version string) error {
-	typesDir = filepath.Clean(strings.TrimSpace(typesDir))
+	typesDir = strings.TrimSpace(typesDir)
 	version = strings.TrimSpace(version)
 	if typesDir == "" || version == "" {
 		return nil
 	}
+	typesDir = filepath.Clean(typesDir)
 	if err := os.Remove(typesCachePath(typesDir, "vue", version)); err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	entries, err := os.ReadDir(typesDir)
+	entries, err := purgeVueReadDir(typesDir)
 	if err != nil {
 		return err
 	}
@@ -1642,6 +1644,8 @@ func purgeVueTypeFetchGraph(typesDir, version string) error {
 var (
 	vueTypeFetchCoreExportRE = regexp.MustCompile(`\bPropType\b|declare function h\b|function h<`)
 	vueTypeFetchToRefRE      = regexp.MustCompile(`\btoRef\b`)
+
+	purgeVueReadDir = os.ReadDir
 )
 
 func writeTypeCacheFile(typesDir string, cacheFile string, content []byte) error {
