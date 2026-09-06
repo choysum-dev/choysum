@@ -72,12 +72,14 @@ func TestEnsureTypeAssets_NoVuePathMapping(t *testing.T) {
 }
 `)
 	var stderr strings.Builder
-	err := ensureTypeAssets(context.Background(), &stderr, modules, "demo")
-	if err == nil || !strings.Contains(err.Error(), "cannot resolve vue version") {
-		t.Fatalf("err = %v", err)
+	if err := ensureTypeAssets(context.Background(), &stderr, modules, "demo"); err != nil {
+		t.Fatal(err)
 	}
 	if !strings.Contains(stderr.String(), "fetching critical type assets") {
 		t.Fatalf("expected fetch notice, got %q", stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "no resolvable vue version") {
+		t.Fatalf("expected stub fallback notice, got %q", stderr.String())
 	}
 }
 

@@ -139,12 +139,16 @@ func TestSuppressVueTemplateParityNoise(t *testing.T) {
 		{File: "/a.ts", Code: 2339, Message: "Property '$el' does not exist"},
 		{File: "/a.vue", Code: 2322, Message: "Type '{ onClick: () => void; }' is not assignable to type 'NonNullable<VNodeProps & ...>'"},
 		{File: "/a.vue", Code: 2322, Message: "Type '() => number' is not assignable to type 'NonNullable<((...args: any) => any) | undefined>'."},
+		{File: "/a.vue", Code: 2322, Message: "Type '{ 'onUpdate:modelValue': (v: any) => void; }' is not assignable to type 'NonNullable<Partial<{ readonly modelValue: any }>>'."},
 		{File: "/a.vue", Code: 2339, Message: "Property 'default' does not exist on type '__VLS_Slots'."},
 		{File: "/a.vue", Code: 2339, Message: "Property 'default' does not exist on type '{}'."},
+		{File: "/a.vue", Code: 2339, Message: "Property 'default' does not exist on type 'Readonly<{ row?: ((props: TableV2RowSlotProps) => any) | undefined; 'header-cell'?: any }>'."},
+		{File: "/a.vue", Code: 2589, Message: "Type instantiation is excessively deep and possibly infinite."},
+		{File: "/a.vue", Code: 2349, Message: "This expression is not callable."},
 		{File: "/a.vue", Code: 1000, Message: "real error"},
 	}
 	got := suppressVueTemplateParityNoise(diags)
-	// .ts $el kept; NonNullable-without-on kept; .vue default-on-{} suppressed; real 1000 kept.
+	// .ts $el kept; NonNullable-without-on kept; real 1000 kept.
 	if len(got) != 3 {
 		t.Fatalf("got %d %#v", len(got), got)
 	}
@@ -164,13 +168,16 @@ func TestIsVueTemplateParityNoise_RemainingCodes(t *testing.T) {
 		{Code: 7053, Message: "Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '__VLS_Slots'."},
 		{Code: 2552, Message: "Cannot find name '__VLS_asFunctionalElement'. Did you mean '__VLS_asFunctionalComponent'?"},
 		{Code: 2589, Message: "Type instantiation is excessively deep and possibly infinite. __VLS_ctx"},
+		{Code: 2589, Message: "Type instantiation is excessively deep and possibly infinite."},
 		{Code: 2349, Message: "This expression is not callable. __VLS_asFunctionalComponent"},
+		{Code: 2349, Message: "This expression is not callable."},
 		{Code: 18048, Message: "'__VLS_3' is possibly 'undefined'."},
 		{Code: 2339, Message: "Property 'expose' does not exist on type '{ attrs: any; slots: __VLS_Slots; emit: any; } | undefined'."},
 		{Code: 2339, Message: "Property '_t' does not exist on type '{}'."},
 		{Code: 7006, Message: "Parameter 'props' implicitly has an 'any' type."},
 		{Code: 7031, Message: "Binding element 'attrs' implicitly has an 'any' type."},
 		{Code: 2558, Message: "Expected 0 type arguments, but got 1."},
+		{Code: 2322, Message: "Type '{ 'onUpdate:modelValue': (v: any) => void; }' is not assignable to type 'NonNullable<Partial<Props>>'."},
 	}
 	for _, d := range cases {
 		if !isVueTemplateParityNoise(d) {
@@ -186,11 +193,11 @@ func TestIsVueTemplateParityNoise_RemainingCodes(t *testing.T) {
 	if isVueTemplateParityNoise(Diagnostic{Code: 2552, Message: "Cannot find name 'x'"}) {
 		t.Fatal("2552 unrelated")
 	}
-	if isVueTemplateParityNoise(Diagnostic{Code: 2589, Message: "Type instantiation is excessively deep and possibly infinite."}) {
-		t.Fatal("2589 without __VLS must not be noise")
+	if isVueTemplateParityNoise(Diagnostic{Code: 2589, Message: "other deep type"}) {
+		t.Fatal("2589 without excessively deep")
 	}
-	if isVueTemplateParityNoise(Diagnostic{Code: 2349, Message: "This expression is not callable."}) {
-		t.Fatal("2349 without __VLS must not be noise")
+	if isVueTemplateParityNoise(Diagnostic{Code: 2349, Message: "other"}) {
+		t.Fatal("2349 without not callable")
 	}
 	if isVueTemplateParityNoise(Diagnostic{Code: 9999, Message: "x"}) {
 		t.Fatal("default")

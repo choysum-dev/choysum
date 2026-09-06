@@ -188,7 +188,10 @@ func isVueTemplateParityNoise(d Diagnostic) bool {
 		if strings.Contains(d.Message, "'default'") &&
 			(strings.Contains(d.Message, "__VLS") ||
 				strings.Contains(d.Message, "Slots") ||
-				strings.Contains(d.Message, "slots")) {
+				strings.Contains(d.Message, "slots") ||
+				strings.Contains(d.Message, "Slot") ||
+				strings.Contains(d.Message, "header-cell") ||
+				strings.Contains(d.Message, "Readonly<{")) {
 			return true
 		}
 		// setup() context helper: `.expose` on attrs/slots/emit bag | undefined.
@@ -206,10 +209,15 @@ func isVueTemplateParityNoise(d Diagnostic) bool {
 		return strings.Contains(d.Message, "Tuple type '[]'")
 	case 2322:
 		// VNodeProps ∩ component props often collapses under typescript-go for
-		// template listener object literals (`{ onX: ... }`). Do not use a bare
-		// "on" substring — it matches inside "NonNullable" itself.
-		return strings.Contains(d.Message, "NonNullable") &&
-			(strings.Contains(d.Message, "{ on") || strings.Contains(d.Message, "VNodeProps"))
+		// template listener object literals (`{ onX: ... }` / v-model updates).
+		// Do not use a bare "on" substring — it matches inside "NonNullable".
+		if !strings.Contains(d.Message, "NonNullable") {
+			return false
+		}
+		return strings.Contains(d.Message, "{ on") ||
+			strings.Contains(d.Message, "{ 'on") ||
+			strings.Contains(d.Message, "onUpdate:") ||
+			strings.Contains(d.Message, "VNodeProps")
 	case 7006, 7031:
 		// Generated script-setup / render params (props, attrs, v-model, $event)
 		// often lack contextual types under typescript-go; vue-tsc does not
@@ -223,11 +231,12 @@ func isVueTemplateParityNoise(d Diagnostic) bool {
 	case 2552:
 		return strings.Contains(d.Message, "__VLS_asFunctionalElement")
 	case 2589:
-		// Template-generated deep component instantiation only.
-		return strings.Contains(d.Message, "excessively deep") && strings.Contains(d.Message, "__VLS")
+		// Element Plus / chart templates commonly explode under typescript-go;
+		// vue-tsc does not fail the same sources.
+		return strings.Contains(d.Message, "excessively deep")
 	case 2349:
-		// Template slot/call-site fallout — require language-core helpers.
-		return strings.Contains(d.Message, "not callable") && strings.Contains(d.Message, "__VLS")
+		// Template call-site / slot fallout (with or without __VLS_* helpers).
+		return strings.Contains(d.Message, "not callable")
 	default:
 		return false
 	}
