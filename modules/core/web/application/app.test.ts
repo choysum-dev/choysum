@@ -107,8 +107,9 @@ describe('createApp', () => {
     const app = createApp(RootComponent);
     const nestedInstall = vi.fn();
     const nestedPlugin = { install: nestedInstall };
-    const parentInstall = vi.fn((targetApp: any) => {
-      targetApp.use(nestedPlugin, { source: 'parent' });
+    // Call the Proxy app.use (not the raw Vue app) so allowDirectUseDepth permits it.
+    const parentInstall = vi.fn(() => {
+      app.use(nestedPlugin as any, { source: 'parent' });
     });
 
     app.usePlugin('parent', { install: parentInstall } as any);
