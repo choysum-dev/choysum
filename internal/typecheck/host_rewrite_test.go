@@ -93,6 +93,12 @@ func TestEsmShURLToModuleID(t *testing.T) {
 	if got := esmShURLToModuleID("vue", "/index.d.ts"); got != "vue" {
 		t.Fatalf("index main: %q", got)
 	}
+	if got := esmShURLToModuleID("vue", "/dist/index.d.ts"); got != "vue" {
+		t.Fatalf("dist index main: %q", got)
+	}
+	if got := esmShURLToModuleID("dayjs", "/locale/index.d.ts"); got != "dayjs/locale/index" {
+		t.Fatalf("nested locale index must keep subpath: %q", got)
+	}
 	if got := esmShURLToModuleID("dayjs", "/locale/*"); got != "dayjs/locale/*" {
 		t.Fatalf("wildcard sub: %q", got)
 	}

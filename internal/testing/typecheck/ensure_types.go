@@ -96,9 +96,7 @@ func ensureTypeAssets(ctx context.Context, stderr io.Writer, modulesRoot, app st
 
 	upstream := typeFetchUpstream
 	client := newTypeFetchHTTPClient()
-	if transport, ok := client.Transport.(*http.Transport); ok {
-		defer transport.CloseIdleConnections()
-	}
+	defer client.CloseIdleConnections()
 
 	if err := ctx.Err(); err != nil {
 		return err

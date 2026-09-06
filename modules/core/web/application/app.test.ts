@@ -124,4 +124,77 @@ describe('createApp', () => {
 
     expect(() => (app as any).use({ install() {} })).toThrow(/usePlugin/);
   });
+
+  it('mounts without plugins and validates usePlugin inputs', () => {
+    const app = createApp(RootComponent);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    expect(app.mount('#empty')).toBeTruthy();
+    expect(() => app.usePlugin('', { install() {} } as any)).toThrow(/cannot be empty/);
+    expect(() => app.usePlugin('broken', undefined as any)).toThrow(/no valid plugin/);
+
+    errorSpy.mockRestore();
+  });
+
+  it('installs plugins immediately when deferred is false', () => {
+    const app = createApp(RootComponent);
+    const install = vi.fn();
+
+    app.usePlugin('eager', { install } as any, { mode: 'sync' }, false);
+
+    expect(install).toHaveBeenCalledTimes(1);
+    expect(vueMocks.installed).toHaveLength(1);
+    expect((app as any).eager).toBeTruthy();
+  });
+
+  it('installs plugins registered after mount', () => {
+    const app = createApp(RootComponent);
+    app.mount('#app');
+
+    const install = vi.fn();
+    app.usePlugin('late', { install } as any);
+
+    expect(install).toHaveBeenCalledTimes(1);
+    expect(vueMocks.installed).toHaveLength(1);
+  });
+
+  it('logs and continues when deferred plugin install fails on mount', () => {
+    const app = createApp(RootComponent);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const boom = new Error('install boom');
+
+    app.usePlugin('bad', {
+      install() {
+        throw boom;
+      },
+    } as any);
+
+    expect(app.mount('#app')).toBeTruthy();
+    expect(errorSpy).toHaveBeenCalled();
+    expect(String(errorSpy.mock.calls[0]?.[0])).toContain('Plugin bad registration failed');
+
+    errorSpy.mockRestore();
+  });
+
+  it('logs and continues when immediate plugin install fails', () => {
+    const app = createApp(RootComponent);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const boom = new Error('eager boom');
+
+    app.usePlugin(
+      'eager-bad',
+      {
+        install() {
+          throw boom;
+        },
+      } as any,
+      undefined,
+      false
+    );
+
+    expect(errorSpy).toHaveBeenCalled();
+    expect(String(errorSpy.mock.calls[0]?.[0])).toContain('Immediate registration failed for plugin eager-bad');
+
+    errorSpy.mockRestore();
+  });
 });

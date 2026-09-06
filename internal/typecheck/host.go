@@ -53,7 +53,9 @@ func esmShURLToModuleID(pkg, sub string) string {
 }
 
 func isEsmShPackageMainTypePath(pkg, sub string) bool {
-	base := path.Base(sub)
+	clean := path.Clean(sub)
+	dir := path.Dir(clean)
+	base := path.Base(clean)
 	name := strings.TrimSuffix(strings.TrimSuffix(base, ".d.ts"), ".d.mts")
 	if name == "*" || name == "" {
 		return false
@@ -62,8 +64,16 @@ func isEsmShPackageMainTypePath(pkg, sub string) bool {
 	if i := strings.LastIndex(pkg, "/"); i >= 0 {
 		pkgBase = pkg[i+1:]
 	}
-	if name == "index" || name == pkgBase {
+	if name == pkgBase {
 		return true
+	}
+	// Only treat package-root index files as the main entry — nested
+	// …/locale/index.d.ts must keep its subpath module id.
+	if name == "index" {
+		switch dir {
+		case "/", "/dist", "/types", "/lib", "/dist/types":
+			return true
+		}
 	}
 	return false
 }

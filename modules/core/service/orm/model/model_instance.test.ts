@@ -80,12 +80,17 @@ test('loadModelInstance merges fields and hydrates model data', async () => {
     const instance = newHarness({ Id: 'MI-2' });
     await loadModelInstance(instance as any, ['Id'] as any);
     await loadModelInstance(instance as any, ['Name'] as any);
+    // Empty selection falls back to wildcard (same as omitted fields).
+    await loadModelInstance(instance as any, [] as any);
+    await loadModelInstance(instance as any);
 
     expect(instance.Name).toBe('loaded-name');
-    expect(instance.fields).toEqual(['Id', 'Name']);
-    expect(searchCalls.length).toBe(2);
+    expect(instance.fields).toEqual(['Id', 'Name', '*', '*']);
+    expect(searchCalls.length).toBe(4);
     expect(searchCalls[0]).toEqual({ condition: ['Id', '=', 'MI-2'], options: { fields: ['Id'] } });
     expect(searchCalls[1]).toEqual({ condition: ['Id', '=', 'MI-2'], options: { fields: ['Name'] } });
+    expect(searchCalls[2]).toEqual({ condition: ['Id', '=', 'MI-2'], options: { fields: ['*'] } });
+    expect(searchCalls[3]).toEqual({ condition: ['Id', '=', 'MI-2'], options: { fields: ['*'] } });
   } finally {
     RepositoryFactory.getRepository = originalGetRepository;
   }

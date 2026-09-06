@@ -50,9 +50,6 @@ export function createApp(rootComponent: Component, rootProps?: ObjectRecord): C
   let app!: ChoysumWebApp;
 
   function registerPlugin<T>(name: string, plugin: T): void {
-    if (plugins.has(name)) {
-      return;
-    }
     plugins.set(name, plugin);
   }
 
