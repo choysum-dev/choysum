@@ -400,16 +400,12 @@ func TestRun(t *testing.T) {
 		}
 	})
 
-	t.Run("aggregates coverage and frontend preflight errors in a single block", func(t *testing.T) {
+	t.Run("aggregates frontend preflight errors and forwards coverage flag", func(t *testing.T) {
 		var stderr strings.Builder
 		backendCalls := 0
 		coverageSeen := false
 		preflightErr := errors.New("frontend deps missing")
-		binDir := t.TempDir()
 		repoRoot := t.TempDir()
-		t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", filepath.Join(t.TempDir(), "missing-global-node-modules"))
-		writeRunnerExec(t, filepath.Join(binDir, "node"), "#!/bin/sh\nexit 0\n")
-		t.Setenv("PATH", binDir)
 
 		err := Run(context.Background(), RunOptions{
 			Env:         newEnv(t.TempDir()),
@@ -448,11 +444,6 @@ func TestRun(t *testing.T) {
 		errText := stderr.String()
 		for _, want := range []string{
 			"Error: unit preflight failed for auth. tests were not started.",
-			"missing 1 required module(s): istanbul-lib-instrument",
-			"npm install -g istanbul-lib-instrument",
-			"retry:",
-			"go run . test unit auth",
-			"additional preflight errors:",
 			"- frontend dependency preflight:",
 			"frontend deps missing",
 		} {
@@ -460,26 +451,22 @@ func TestRun(t *testing.T) {
 				t.Fatalf("expected %q in aggregated preflight output, got %q", want, errText)
 			}
 		}
+		if strings.Contains(errText, "istanbul-lib-instrument") {
+			t.Fatalf("did not expect coverage Node preflight in output, got %q", errText)
+		}
 	})
 
-	t.Run("reuses cached coverage preflight error across backend apps", func(t *testing.T) {
-		var stderr strings.Builder
+	t.Run("coverage alone does not block backend apps via preflight", func(t *testing.T) {
 		backendCalls := 0
-		binDir := t.TempDir()
-		repoRoot := t.TempDir()
-		t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", filepath.Join(t.TempDir(), "missing-global-node-modules"))
-		writeRunnerExec(t, filepath.Join(binDir, "node"), "#!/bin/sh\nexit 0\n")
-		t.Setenv("PATH", binDir)
-
 		err := Run(context.Background(), RunOptions{
 			Env:         newEnv(t.TempDir()),
 			ModulesPath: t.TempDir(),
 			Target:      "all",
-			RepoRoot:    repoRoot,
+			RepoRoot:    t.TempDir(),
 			RunBE:       true,
 			Coverage:    true,
 			Stdout:      io.Discard,
-			Stderr:      &stderr,
+			Stderr:      io.Discard,
 			ResolveApps: func(runtimeScope scope.Scope, arg string, runBE bool, runFE bool) ([]string, error) {
 				return []string{"auth", "base"}, nil
 			},
@@ -491,15 +478,11 @@ func TestRun(t *testing.T) {
 			},
 			RunFrontend: noopRunFrontend,
 		})
-		if err == nil || !strings.Contains(err.Error(), "tests failed") {
-			t.Fatalf("expected aggregated tests failed error, got %v", err)
+		if err != nil {
+			t.Fatalf("Run returned error: %v", err)
 		}
-		if backendCalls != 0 {
-			t.Fatalf("expected backend not to run after preflight failures, got %d calls", backendCalls)
-		}
-		errText := stderr.String()
-		if strings.Count(errText, "missing 1 required module(s): istanbul-lib-instrument") != 2 {
-			t.Fatalf("expected per-app coverage preflight output for two apps, got %q", errText)
+		if backendCalls != 2 {
+			t.Fatalf("expected both backend apps to run without coverage preflight, got %d calls", backendCalls)
 		}
 	})
 
@@ -628,18 +611,8 @@ func TestRun(t *testing.T) {
 		}
 	})
 
-	t.Run("coverage report and check branches return errors when tooling missing", func(t *testing.T) {
+	t.Run("coverage report and check fail when nyc_output is empty", func(t *testing.T) {
 		repoRoot := t.TempDir()
-		binDir := t.TempDir()
-		writeRunnerExec(t, filepath.Join(binDir, "node"), "#!/bin/sh\nexit 0\n")
-		t.Setenv("PATH", binDir)
-		marker := filepath.Join(repoRoot, "node_modules", "istanbul-lib-instrument", "package.json")
-		if err := os.MkdirAll(filepath.Dir(marker), 0o755); err != nil {
-			t.Fatalf("mkdir coverage marker dir: %v", err)
-		}
-		if err := os.WriteFile(marker, []byte("{}"), 0o644); err != nil {
-			t.Fatalf("write coverage marker: %v", err)
-		}
 
 		err := Run(context.Background(), RunOptions{
 			Env:               newEnv(t.TempDir()),
@@ -662,8 +635,8 @@ func TestRun(t *testing.T) {
 			},
 			RunFrontend: noopRunFrontend,
 		})
-		if err == nil || !strings.Contains(err.Error(), "--coverage-report requires npx") {
-			t.Fatalf("expected coverage report tooling error, got %v", err)
+		if err == nil || !(strings.Contains(err.Error(), "no coverage json found") || strings.Contains(err.Error(), "read nyc_output") || strings.Contains(err.Error(), "nyc_output")) {
+			t.Fatalf("expected empty coverage report error, got %v", err)
 		}
 
 		err = Run(context.Background(), RunOptions{
@@ -687,8 +660,8 @@ func TestRun(t *testing.T) {
 			},
 			RunFrontend: noopRunFrontend,
 		})
-		if err == nil || !strings.Contains(err.Error(), "--coverage-check requires npx") {
-			t.Fatalf("expected coverage check tooling error, got %v", err)
+		if err == nil || !(strings.Contains(err.Error(), "no coverage json found") || strings.Contains(err.Error(), "read nyc_output") || strings.Contains(err.Error(), "nyc_output")) {
+			t.Fatalf("expected empty coverage check error, got %v", err)
 		}
 	})
 }
