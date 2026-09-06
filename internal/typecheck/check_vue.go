@@ -103,7 +103,7 @@ func collectModulesWebVuePaths(modulesPath string) ([]string, error) {
 		webDir := filepath.Join(modulesPath, name, "web")
 		st, err := os.Stat(webDir)
 		if err != nil {
-			if os.IsNotExist(err) {
+			if errors.Is(err, fs.ErrNotExist) {
 				continue
 			}
 			return nil, fmt.Errorf("typecheck: stat module web dir %s: %w", webDir, err)

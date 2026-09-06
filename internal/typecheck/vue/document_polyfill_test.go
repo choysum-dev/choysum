@@ -33,7 +33,8 @@ func TestDocumentMinPolyfill_DecodeEntitiesOrder(t *testing.T) {
 		return v.String()
 	}
 
-	// Escaped numeric entity must stay literal (amp before numeric would decode to "A").
+	// Escaped numeric entity must stay literal (amp must not be decoded before
+	// leaving a bare &#…; that a second pass would expand).
 	got := eval(`(() => {
 		var el = document.createElement("div");
 		el.innerHTML = "&amp;#65;";
@@ -50,5 +51,15 @@ func TestDocumentMinPolyfill_DecodeEntitiesOrder(t *testing.T) {
 	})()`)
 	if got != "A & B A" {
 		t.Fatalf("mixed entities: got %q", got)
+	}
+
+	// Single-pass: &#38;amp; must not expand twice into "&".
+	got = eval(`(() => {
+		var el = document.createElement("div");
+		el.innerHTML = "&#38;amp;";
+		return el.textContent;
+	})()`)
+	if got != "&amp;" {
+		t.Fatalf("no double-decode: got %q want &amp;", got)
 	}
 }

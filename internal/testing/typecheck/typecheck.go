@@ -265,9 +265,11 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 		return formatTypecheckFailureWithGuidance(app, err, err.Error(), warnedMissingTypeAssets)
 	}
 
-	gonative.FormatStderr(opts.Stderr, res.Diagnostics)
 	var dump strings.Builder
 	gonative.FormatStderr(&dump, res.Diagnostics)
+	if opts.Stderr != nil && dump.Len() > 0 {
+		_, _ = io.WriteString(opts.Stderr, dump.String())
+	}
 	if keepDir != "" {
 		diagPath := filepath.Join(keepDir, "diagnostics.txt")
 		if writeErr := os.WriteFile(diagPath, []byte(dump.String()), 0o644); writeErr != nil {

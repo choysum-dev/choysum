@@ -258,6 +258,16 @@ func TestPurgeIncompleteVueTypeFetch(t *testing.T) {
 		t.Fatal("3.5.10 must survive")
 	}
 
+	// Sibling stubs are purged even when no esm.sh_vue@ver entry exists.
+	typesDirSib := t.TempDir()
+	writeFile(t, filepath.Join(typesDirSib, "vue@3.5.1.d.ts"), "export {}\n")
+	sibOnly := filepath.Join(typesDirSib, "esm.sh_@vue_runtime-core@3.5.1_dist_runtime-core.d.ts.d.ts")
+	writeFile(t, sibOnly, "export {}\n")
+	purgeIncompleteVueTypeFetch(typesDirSib, "3.5.1")
+	if _, err := os.Stat(sibOnly); !os.IsNotExist(err) {
+		t.Fatal("orphan siblings should be removed")
+	}
+
 	// Complete graph is left in place (including vue@ver.d.ts package cache).
 	typesDir2 := t.TempDir()
 	writeCompleteVueGraph(t, typesDir2, "3.5.35")

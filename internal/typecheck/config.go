@@ -156,14 +156,12 @@ func rewriteChoysumTypesPath(abs string) string {
 		}
 		return candidate, true
 	}
+	var incompleteFallback string
 	if got, ok := pick(abs); ok {
 		return got
 	} else if got != "" {
 		// Incomplete local hit — keep searching for a complete copy.
-	}
-	var incompleteFallback string
-	if typePathExists(abs) && isVueTypeFetchEntryPath(abs) && !vueTypeEntryComplete(abs) {
-		incompleteFallback = abs
+		incompleteFallback = got
 	}
 	for _, root := range choysumTypesSearchRoots() {
 		alt := filepath.ToSlash(filepath.Join(root, filepath.FromSlash(suffix)))

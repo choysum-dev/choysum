@@ -12,25 +12,30 @@ const documentMinPolyfill = `(function () {
     return;
   }
 
+  var NAMED_ENTITIES = {
+    nbsp: "\u00A0",
+    quot: '"',
+    apos: "'",
+    lt: "<",
+    gt: ">",
+    amp: "&"
+  };
+
+  // Single-pass decode avoids secondary expansion (e.g. &#38;amp; → &amp; → &).
   function decodeEntities(s) {
-    return String(s)
-      .replace(/&nbsp;/g, "\u00A0")
-      .replace(/&quot;/g, '"')
-      .replace(/&apos;/g, "'")
-      .replace(/&#39;/g, "'")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&#x([0-9a-fA-F]+);/g, function (_, h) {
-        var cp = parseInt(h, 16);
-        if (!isFinite(cp) || cp < 0 || cp > 0x10FFFF) return "";
-        return String.fromCodePoint(cp);
-      })
-      .replace(/&#(\d+);/g, function (_, n) {
-        var cp = +n;
-        if (!isFinite(cp) || cp < 0 || cp > 0x10FFFF) return "";
-        return String.fromCodePoint(cp);
-      })
-      .replace(/&amp;/g, "&");
+    return String(s).replace(/&(?:(nbsp|quot|apos|lt|gt|amp)|#39|#x([0-9a-fA-F]+)|#(\d+));/gi, function (m, named, hex, dec) {
+      if (named) return NAMED_ENTITIES[named.toLowerCase()];
+      if (m.toLowerCase() === "&#39;") return "'";
+      if (hex) {
+        var h = parseInt(hex, 16);
+        return isFinite(h) && h >= 0 && h <= 0x10FFFF ? String.fromCodePoint(h) : "";
+      }
+      if (dec) {
+        var d = +dec;
+        return isFinite(d) && d >= 0 && d <= 0x10FFFF ? String.fromCodePoint(d) : "";
+      }
+      return m;
+    });
   }
 
   function Element(tag) {

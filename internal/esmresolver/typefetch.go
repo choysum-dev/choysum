@@ -328,20 +328,19 @@ func fetchTypeDefinitionWithState(ctx context.Context, client *http.Client, upst
 		state = newTypeFetchState(defaultTypeFetchParallelism)
 	}
 
-	// Check cache first — but only accept a complete local import graph.
-	cacheFile := typesCachePath(typesDir, pkg, version)
-	if data, err := os.ReadFile(cacheFile); err == nil {
-		imports := parseDTSImports(string(data))
-		if !hasMissingLocalCachedImports(typesDir, cacheFile, imports) {
-			// vue@ver.d.ts may be complete while the tsconfig-mapped
-			// esm.sh_vue@ver entry still lacks @vue/runtime-* siblings.
-			// Purge hollow URL-derived files before discover/recurse — otherwise
-			// fetchTypeRecursive cache-hits the same incomplete graph.
-			if pkg == "vue" && vueTypeFetchEntryIncomplete(typesDir, version) {
-				if err := purgeVueTypeFetchGraph(typesDir, version); err != nil {
-					return nil, nil, fmt.Errorf("purge incomplete vue@%s type-fetch graph: %w", version, err)
-				}
-			} else {
+	// Hollow esm.sh_vue@ver graphs must be purged before any cache hit — including
+	// when vue@ver.d.ts is missing or its import graph is incomplete — otherwise
+	// fetchTypeRecursive can still treat leftover sibling stubs as valid.
+	if pkg == "vue" && vueTypeFetchEntryIncomplete(typesDir, version) {
+		if err := purgeVueTypeFetchGraph(typesDir, version); err != nil {
+			return nil, nil, fmt.Errorf("purge incomplete vue@%s type-fetch graph: %w", version, err)
+		}
+	} else {
+		// Check cache first — but only accept a complete local import graph.
+		cacheFile := typesCachePath(typesDir, pkg, version)
+		if data, err := os.ReadFile(cacheFile); err == nil {
+			imports := parseDTSImports(string(data))
+			if !hasMissingLocalCachedImports(typesDir, cacheFile, imports) {
 				return &TypeFetchResult{Package: pkg, Version: version, CachedPath: cacheFile, FromCache: true}, nil, nil
 			}
 		}
@@ -1569,27 +1568,30 @@ func vueTypeFetchEntryIncomplete(typesDir, version string) bool {
 	coreName := fmt.Sprintf("esm.sh_@vue_runtime-core@%s_dist_runtime-core.d.ts.d.ts", version)
 	sawEntry := false
 	for _, ent := range entries {
-		if ent.IsDir() || !vueTypeFetchEntryNameMatches(ent.Name(), version) {
-			continue
+		if !ent.IsDir() && vueTypeFetchEntryNameMatches(ent.Name(), version) {
+			sawEntry = true
+			break
 		}
-		sawEntry = true
-		for _, name := range []string{domName, coreName, reactName} {
-			if _, err := os.Stat(filepath.Join(typesDir, name)); err != nil {
-				return true
-			}
-		}
-		coreData, err := os.ReadFile(filepath.Join(typesDir, coreName))
-		if err != nil || !vueTypeFetchCoreExportRE.Match(coreData) {
-			return true
-		}
-		reactData, err := os.ReadFile(filepath.Join(typesDir, reactName))
-		if err != nil || !vueTypeFetchToRefRE.Match(reactData) {
+	}
+	if !sawEntry {
+		// No esm.sh entry yet — package-cache hit alone is not enough for tsconfig
+		// paths that point at esm.sh_vue@ver_….
+		return true
+	}
+	for _, name := range []string{domName, coreName, reactName} {
+		if _, err := os.Stat(filepath.Join(typesDir, name)); err != nil {
 			return true
 		}
 	}
-	// No esm.sh entry yet — package-cache hit alone is not enough for tsconfig
-	// paths that point at esm.sh_vue@ver_….
-	return !sawEntry
+	coreData, err := os.ReadFile(filepath.Join(typesDir, coreName))
+	if err != nil || !vueTypeFetchCoreExportRE.Match(coreData) {
+		return true
+	}
+	reactData, err := os.ReadFile(filepath.Join(typesDir, reactName))
+	if err != nil || !vueTypeFetchToRefRE.Match(reactData) {
+		return true
+	}
+	return false
 }
 
 // vueTypeFetchEntryNameMatches reports whether name is an esm.sh_vue@ver entry

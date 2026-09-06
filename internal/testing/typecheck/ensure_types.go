@@ -182,13 +182,14 @@ func purgeIncompleteVueTypeFetch(typesDir, vueVersion string) {
 		entry := filepath.Join(typesDir, name)
 		// Reachable only when no complete entry exists (see early return above).
 		_ = os.Remove(entry)
-		for _, sib := range []string{
-			fmt.Sprintf("esm.sh_@vue_runtime-dom@%s_dist_runtime-dom.d.ts.d.ts", vueVersion),
-			fmt.Sprintf("esm.sh_@vue_runtime-core@%s_dist_runtime-core.d.ts.d.ts", vueVersion),
-			fmt.Sprintf("esm.sh_@vue_reactivity@%s_dist_reactivity.d.ts.d.ts", vueVersion),
-		} {
-			_ = os.Remove(filepath.Join(typesDir, sib))
-		}
+	}
+	// Sibling paths depend only on vueVersion — purge once after entry removal.
+	for _, sib := range []string{
+		fmt.Sprintf("esm.sh_@vue_runtime-dom@%s_dist_runtime-dom.d.ts.d.ts", vueVersion),
+		fmt.Sprintf("esm.sh_@vue_runtime-core@%s_dist_runtime-core.d.ts.d.ts", vueVersion),
+		fmt.Sprintf("esm.sh_@vue_reactivity@%s_dist_reactivity.d.ts.d.ts", vueVersion),
+	} {
+		_ = os.Remove(filepath.Join(typesDir, sib))
 	}
 }
 
