@@ -23,6 +23,17 @@ import (
 var (
 	typesNodeVersionRE = regexp.MustCompile(`esm\.sh_@types_node@([^/_]+)`)
 	esmShPkgVersionRE  = regexp.MustCompile(`(?:^|/)esm\.sh_(.+?)@([^/_]+)`)
+
+	typeFetchUpstream      = config.DefaultESMUpstreamURL
+	newTypeFetchHTTPClient = func() *http.Client {
+		return esmresolver.NewTypeFetchHTTPClient(30 * time.Second)
+	}
+	fetchTypeDefinition = esmresolver.FetchTypeDefinition
+
+	filepathAbs = filepath.Abs
+	filepathRel = filepath.Rel
+
+	preferTypesWriteDir = gonative.PreferTypesWriteDir
 )
 
 // ensureTypeAssets downloads critical type-fetch .d.ts files (vue + @types/node)
@@ -51,7 +62,7 @@ func ensureTypeAssets(ctx context.Context, stderr io.Writer, modulesRoot, app st
 		return nil
 	}
 
-	typesDir := gonative.PreferTypesWriteDir()
+	typesDir := preferTypesWriteDir()
 	if typesDir == "" {
 		return xfmt.Errorf("typecheck: cannot resolve type-fetch write dir (set CHOYSUM_HOME or CHOYSUM_TEST_TMP)")
 	}
@@ -63,8 +74,8 @@ func ensureTypeAssets(ctx context.Context, stderr io.Writer, modulesRoot, app st
 		_, _ = fmt.Fprintf(stderr, "# typecheck %s: fetching critical type assets into %s\n", app, typesDir)
 	}
 
-	upstream := config.DefaultESMUpstreamURL
-	client := esmresolver.NewTypeFetchHTTPClient(30 * time.Second)
+	upstream := typeFetchUpstream
+	client := newTypeFetchHTTPClient()
 	if transport, ok := client.Transport.(*http.Transport); ok {
 		defer transport.CloseIdleConnections()
 	}
@@ -77,7 +88,7 @@ func ensureTypeAssets(ctx context.Context, stderr io.Writer, modulesRoot, app st
 		// Fixture / non-Vue apps: no vue path mapping to fetch.
 		return nil
 	}
-	if _, _, err := esmresolver.FetchTypeDefinition(client, upstream, typesDir, "vue", vueVersion); err != nil {
+	if _, _, err := fetchTypeDefinition(client, upstream, typesDir, "vue", vueVersion); err != nil {
 		return xfmt.Errorf("typecheck: fetch vue@%s: %w", vueVersion, err)
 	}
 	if err := ensureNodeCompilerTypes(client, upstream, typesDir, modulesRoot); err != nil {
@@ -95,7 +106,7 @@ func ensureNodeCompilerTypes(client *http.Client, upstream, typesDir, modulesRoo
 	if version == "" {
 		return nil
 	}
-	result, _, err := esmresolver.FetchTypeDefinition(client, upstream, typesDir, "@types/node", version)
+	result, _, err := fetchTypeDefinition(client, upstream, typesDir, "@types/node", version)
 	if err != nil {
 		return xfmt.Errorf("typecheck: fetch @types/node@%s: %w", version, err)
 	}
@@ -139,15 +150,21 @@ func writeTypeRootBridge(typesDir, typeName, cachedPath string) error {
 	if typeName == "" || cachedPath == "" {
 		return nil
 	}
-	absTypesDir, err := filepath.Abs(typesDir)
+	absTypesDir, err := filepathAbs(typesDir)
 	if err != nil {
 		return err
 	}
+	if realTypesDir, err := filepath.EvalSymlinks(absTypesDir); err == nil {
+		absTypesDir = realTypesDir
+	}
 	if !filepath.IsAbs(cachedPath) {
-		cachedPath, err = filepath.Abs(cachedPath)
+		cachedPath, err = filepathAbs(cachedPath)
 		if err != nil {
 			return err
 		}
+	}
+	if realCachedPath, err := filepath.EvalSymlinks(cachedPath); err == nil {
+		cachedPath = realCachedPath
 	}
 	if !strings.HasPrefix(cachedPath, absTypesDir+string(os.PathSeparator)) {
 		return nil
@@ -156,7 +173,7 @@ func writeTypeRootBridge(typesDir, typeName, cachedPath string) error {
 	if err := os.MkdirAll(typePkgDir, 0o755); err != nil {
 		return err
 	}
-	relCachedPath, err := filepath.Rel(typePkgDir, cachedPath)
+	relCachedPath, err := filepathRel(typePkgDir, cachedPath)
 	if err != nil {
 		return err
 	}

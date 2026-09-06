@@ -22,10 +22,10 @@ const documentMinPolyfill = `(function () {
       .replace(/&gt;/g, ">")
       .replace(/&amp;/g, "&")
       .replace(/&#x([0-9a-fA-F]+);/g, function (_, h) {
-        return String.fromCharCode(parseInt(h, 16));
+        return String.fromCodePoint(parseInt(h, 16));
       })
       .replace(/&#(\d+);/g, function (_, n) {
-        return String.fromCharCode(+n);
+        return String.fromCodePoint(+n);
       });
   }
 
@@ -44,8 +44,8 @@ const documentMinPolyfill = `(function () {
       this._html = String(v);
       this.children = [];
       this.childNodes = [];
-      // Attribute decode path: <div foo="...">
-      var attr = /^<div\s+foo="([^"]*)"\s*>/i.exec(this._html);
+      // Attribute decode path: <div foo="..."> or self-closing <div foo="..." />
+      var attr = /^<div\s+foo="([^"]*)"\s*\/?>/i.exec(this._html);
       if (attr) {
         var child = new Element("div");
         child.attrs.foo = decodeEntities(attr[1]);

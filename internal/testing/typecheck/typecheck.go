@@ -39,6 +39,17 @@ var errNoTypecheckInputs = errors.New("typecheck: no checkable ts inputs")
 
 var errTypecheckInputFound = errors.New("typecheck: input found")
 
+// walkTypecheckInputsDir is filepath.WalkDir; tests may override for scan errors.
+var walkTypecheckInputsDir = filepath.WalkDir
+
+// Test hooks for otherwise unreachable OS edge cases.
+var (
+	osGetwd              = os.Getwd
+	osTempDir            = os.TempDir
+	nativeCheck          = gonative.Check
+	resolveTestingTmpDir = testingpathing.ResolveTestingTmpDirFromContext
+)
+
 // Run typechecks one app or all apps under ModulesPath.
 func Run(ctx context.Context, opts RunOptions) error {
 	if ctx == nil {
@@ -57,7 +68,7 @@ func Run(ctx context.Context, opts RunOptions) error {
 		opts.Stderr = os.Stderr
 	}
 	if strings.TrimSpace(opts.RepoRoot) == "" {
-		wd, _ := os.Getwd()
+		wd, _ := osGetwd()
 		opts.RepoRoot = wd
 	}
 	if strings.TrimSpace(opts.RepoRoot) == "" {
@@ -110,11 +121,7 @@ func ResolveApps(modulesPath string, target string) ([]string, error) {
 		if err != nil || !st.IsDir() {
 			return nil, xfmt.Errorf("%s", testsemantics.PrefixForCommand("typecheck", testsemantics.UnknownAppMessage(target)))
 		}
-		hasTargets, err := HasTargets(modulesPath, target)
-		if err != nil {
-			return nil, err
-		}
-		if !hasTargets {
+		if !HasTargets(modulesPath, target) {
 			return nil, nil
 		}
 		return []string{target}, nil
@@ -134,11 +141,7 @@ func ResolveApps(modulesPath string, target string) ([]string, error) {
 		if name == ".choysum" || name == "tmp" {
 			continue
 		}
-		hasTargets, err := HasTargets(modulesPath, name)
-		if err != nil {
-			return nil, err
-		}
-		if hasTargets {
+		if HasTargets(modulesPath, name) {
 			apps = append(apps, name)
 		}
 	}
@@ -146,16 +149,16 @@ func ResolveApps(modulesPath string, target string) ([]string, error) {
 }
 
 // HasTargets reports whether app has a service/ or web/ directory.
-func HasTargets(modulesPath string, app string) (bool, error) {
+func HasTargets(modulesPath string, app string) bool {
 	serviceDir := filepath.Join(modulesPath, app, "service")
 	webDir := filepath.Join(modulesPath, app, "web")
 	if st, err := os.Stat(serviceDir); err == nil && st.IsDir() {
-		return true, nil
+		return true
 	}
 	if st, err := os.Stat(webDir); err == nil && st.IsDir() {
-		return true, nil
+		return true
 	}
-	return false, nil
+	return false
 }
 
 // TypecheckApp runs Go-native typecheck for one application (no Node / vue-tsc).
@@ -170,7 +173,7 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 		return xfmt.Errorf("typecheck: modules_path is required")
 	}
 	if strings.TrimSpace(opts.RepoRoot) == "" {
-		wd, _ := os.Getwd()
+		wd, _ := osGetwd()
 		opts.RepoRoot = wd
 	}
 	if strings.TrimSpace(opts.RepoRoot) == "" {
@@ -190,15 +193,12 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 
 	tmpRoot := testingpathing.EffectiveCLITestTmpRoot(ctx, opts.TmpPath)
 	if tmpRoot == "" {
-		tmpRoot = os.TempDir()
+		tmpRoot = osTempDir()
 	}
 	if !filepath.IsAbs(tmpRoot) {
 		tmpRoot, _ = filepath.Abs(tmpRoot)
 	}
 	tmpRoot = filepath.Clean(tmpRoot)
-	if strings.TrimSpace(tmpRoot) == "" {
-		return xfmt.Errorf("typecheck: cannot determine tmp path")
-	}
 	if opts.Stdout == nil {
 		opts.Stdout = os.Stdout
 	}
@@ -239,7 +239,7 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 
 	var keepDir string
 	if opts.Keep {
-		tmpTsconfigRoot, err := testingpathing.ResolveTestingTmpDirFromContext(ctx, repoRoot, tmpRoot, "typecheck")
+		tmpTsconfigRoot, err := resolveTestingTmpDir(ctx, repoRoot, tmpRoot, "typecheck")
 		if err != nil {
 			return xfmt.Errorf("typecheck: resolve tmp dir: %w", err)
 		}
@@ -251,7 +251,7 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 	}
 
 	fmt.Fprintf(opts.Stderr, "# typecheck %s\n", app)
-	res, err := gonative.Check(ctx, gonative.Options{
+	res, err := nativeCheck(ctx, gonative.Options{
 		ModulesPath: modulesRoot,
 		RepoRoot:    repoRoot,
 		App:         app,
@@ -266,16 +266,17 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 	}
 
 	gonative.FormatStderr(opts.Stderr, res.Diagnostics)
+	var dump strings.Builder
+	gonative.FormatStderr(&dump, res.Diagnostics)
 	if keepDir != "" {
-		var dump strings.Builder
-		gonative.FormatStderr(&dump, res.Diagnostics)
-		_ = os.WriteFile(filepath.Join(keepDir, "diagnostics.txt"), []byte(dump.String()), 0o644)
+		diagPath := filepath.Join(keepDir, "diagnostics.txt")
+		if writeErr := os.WriteFile(diagPath, []byte(dump.String()), 0o644); writeErr != nil {
+			fmt.Fprintf(opts.Stderr, "choysum test typecheck: write %s: %v\n", diagPath, writeErr)
+		}
 	}
 
 	if err := res.Err(); err != nil {
-		var diagOut strings.Builder
-		gonative.FormatStderr(&diagOut, res.Diagnostics)
-		return formatTypecheckFailureWithGuidance(app, err, diagOut.String(), warnedMissingTypeAssets)
+		return formatTypecheckFailureWithGuidance(app, err, dump.String(), warnedMissingTypeAssets)
 	}
 	fmt.Fprintf(opts.Stderr, "# typecheck %s ok\n", app)
 	return nil
@@ -296,7 +297,7 @@ func hasTypecheckInputs(modulesPath string, app string) (bool, error) {
 	if err != nil || !st.IsDir() {
 		return false, nil
 	}
-	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+	err = walkTypecheckInputsDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}

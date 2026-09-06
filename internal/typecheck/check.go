@@ -186,8 +186,10 @@ func isVueTemplateParityNoise(d Diagnostic) bool {
 		return strings.Contains(d.Message, "Tuple type '[]'")
 	case 2322:
 		// VNodeProps ∩ component props often collapses under typescript-go for
-		// listener object literals (`{ onX: ... }`).
-		return strings.Contains(d.Message, "on") && strings.Contains(d.Message, "NonNullable")
+		// template listener object literals (`{ onX: ... }`). Do not use a bare
+		// "on" substring — it matches inside "NonNullable" itself.
+		return strings.Contains(d.Message, "NonNullable") &&
+			(strings.Contains(d.Message, "{ on") || strings.Contains(d.Message, "VNodeProps"))
 	case 7031:
 		return strings.Contains(d.Message, "'$event'")
 	case 7053:

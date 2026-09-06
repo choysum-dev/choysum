@@ -97,10 +97,7 @@ func TestHasTargets(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := HasTargets(modulesPath, tt.app)
-			if err != nil {
-				t.Fatalf("HasTargets returned error: %v", err)
-			}
+			got := HasTargets(modulesPath, tt.app)
 			if got != tt.want {
 				t.Fatalf("HasTargets(%q) = %v, want %v", tt.app, got, tt.want)
 			}

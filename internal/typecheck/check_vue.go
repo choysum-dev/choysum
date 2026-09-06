@@ -14,6 +14,9 @@ import (
 	"github.com/choysum-dev/choysum/internal/typecheck/vue"
 )
 
+// walkModulesWebVueDir is filepath.WalkDir for collectModulesWebVuePaths; tests may override.
+var walkModulesWebVueDir = filepath.WalkDir
+
 // prepareVueOverlays builds Strategy-B overlays: each .vue and .vue.ts path maps
 // to the same service-script text, plus language-core helper declaration files.
 // Source text prefers existingOverlays, then disk; a missing source is an error.
@@ -97,7 +100,7 @@ func collectModulesWebVuePaths(modulesPath string) []string {
 		if err != nil || !st.IsDir() {
 			continue
 		}
-		_ = filepath.WalkDir(webDir, func(path string, d fs.DirEntry, err error) error {
+		_ = walkModulesWebVueDir(webDir, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}

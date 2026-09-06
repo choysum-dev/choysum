@@ -16,6 +16,9 @@ import (
 	"github.com/tailscale/hujson"
 )
 
+// userHomeDir is os.UserHomeDir; tests may override when covering empty-root paths.
+var userHomeDir = os.UserHomeDir
+
 // BuildCompilerOptions builds compiler options aligned with the historical
 // typecheck temporary tsconfig (service + web TS/TSX / strict / bundler).
 //
@@ -107,7 +110,7 @@ func resolveModulePaths(modulesRoot, repoRoot string) (map[string][]string, stri
 	for alias, targets := range tsconfig.CompilerOptions.Paths {
 		var absTargets []string
 		for _, t := range targets {
-			abs := t
+			var abs string
 			if !filepath.IsAbs(t) {
 				abs = filepath.ToSlash(filepath.Join(pathsBase, t))
 			} else {
@@ -172,9 +175,6 @@ func choysumTypesSearchRoots() []string {
 	seen := map[string]struct{}{}
 	add := func(p string) {
 		p = filepath.Clean(strings.TrimSpace(p))
-		if p == "" || p == "." {
-			return
-		}
 		if _, ok := seen[p]; ok {
 			return
 		}
@@ -188,7 +188,7 @@ func choysumTypesSearchRoots() []string {
 	if tmp := strings.TrimSpace(os.Getenv("CHOYSUM_TEST_TMP")); tmp != "" {
 		add(filepath.Join(tmp, "cache", "pkg", "types"))
 	}
-	if home, err := os.UserHomeDir(); err == nil {
+	if home, err := userHomeDir(); err == nil {
 		add(filepath.Join(home, ".choysum", "pkg", "types"))
 	}
 	return roots
@@ -214,8 +214,16 @@ func typePathExists(path string) bool {
 	if strings.ContainsAny(path, "*?[") {
 		return true
 	}
-	st, err := os.Stat(filepath.FromSlash(path))
-	return err == nil && !st.IsDir()
+	if _, err := os.Stat(filepath.FromSlash(path)); err == nil {
+		return true // file or directory (TS may resolve index.*)
+	}
+	// Extensionless / directory-index targets used by some path mappings.
+	for _, suffix := range []string{".d.ts", ".d.mts", ".ts", "/index.d.ts", "/index.d.mts", "/index.ts"} {
+		if st, err := os.Stat(filepath.FromSlash(path + suffix)); err == nil && !st.IsDir() {
+			return true
+		}
+	}
+	return false
 }
 
 // hasResolvableVueTypes reports whether Vue package types are available via
@@ -226,16 +234,9 @@ func hasResolvableVueTypes(modulesPath, repoRoot string) bool {
 	if err != nil {
 		return false
 	}
-	targets, ok := paths["vue"]
-	if !ok {
-		return false
-	}
-	for _, t := range targets {
-		if typePathExists(t) {
-			return true
-		}
-	}
-	return false
+	// resolveModulePaths only keeps targets that typePathExists already.
+	_, ok := paths["vue"]
+	return ok
 }
 
 func resolveTypeRoots(modulesPath, repoRoot string) []string {
@@ -243,9 +244,6 @@ func resolveTypeRoots(modulesPath, repoRoot string) []string {
 	seen := map[string]struct{}{}
 	add := func(p string) {
 		p = filepath.ToSlash(filepath.Clean(p))
-		if p == "" {
-			return
-		}
 		if _, ok := seen[p]; ok {
 			return
 		}

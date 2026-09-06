@@ -147,20 +147,8 @@ func matchTSConfigPathPattern(pattern string, moduleName string) ([]string, bool
 	}
 	remain = strings.TrimPrefix(remain, parts[0])
 
-	for i := 1; i < len(parts); i++ {
+	for i := 1; i < len(parts)-1; i++ {
 		segment := parts[i]
-		if i == len(parts)-1 {
-			if segment == "" {
-				starMatches = append(starMatches, remain)
-				return starMatches, true
-			}
-			if !strings.HasSuffix(remain, segment) {
-				return nil, false
-			}
-			starMatches = append(starMatches, remain[:len(remain)-len(segment)])
-			return starMatches, true
-		}
-
 		if segment == "" {
 			starMatches = append(starMatches, "")
 			continue
@@ -174,6 +162,15 @@ func matchTSConfigPathPattern(pattern string, moduleName string) ([]string, bool
 		remain = remain[index+len(segment):]
 	}
 
+	segment := parts[len(parts)-1]
+	if segment == "" {
+		starMatches = append(starMatches, remain)
+		return starMatches, true
+	}
+	if !strings.HasSuffix(remain, segment) {
+		return nil, false
+	}
+	starMatches = append(starMatches, remain[:len(remain)-len(segment)])
 	return starMatches, true
 }
 

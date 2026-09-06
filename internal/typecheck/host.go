@@ -22,18 +22,15 @@ import (
 //	https://esm.sh/@vue/runtime-core@3.5.35/dist/runtime-core.d.ts → @vue/runtime-core
 //	https://esm.sh/dayjs@1.11.21/locale/* → dayjs/locale/*  (keep subpath!)
 var esmShDeclareModuleRE = regexp.MustCompile(
-	`declare module 'https://esm\.sh/((?:@[^/'@]+/)?[^/'@]+)(?:@[^/']+)?(/[^']*)?'`,
+	`declare module ['"]https://esm\.sh/((?:@[^/'"@]+/)?[^/'"@]+)(?:@[^/'"]+)?(/[^'"]*)?['"]`,
 )
 
 func rewriteEsmShDeclareModules(content string) string {
-	if !strings.Contains(content, "declare module 'https://esm.sh/") {
+	if !strings.Contains(content, "https://esm.sh/") || !strings.Contains(content, "declare module") {
 		return content
 	}
 	return esmShDeclareModuleRE.ReplaceAllStringFunc(content, func(full string) string {
 		m := esmShDeclareModuleRE.FindStringSubmatch(full)
-		if len(m) < 3 {
-			return full
-		}
 		pkg, sub := m[1], m[2]
 		mod := esmShURLToModuleID(pkg, sub)
 		return "declare module '" + mod + "'"

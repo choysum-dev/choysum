@@ -19,7 +19,9 @@ declare module "vue" {
   export type GlobalDirectives = Record<string, any>;
   export function defineComponent(options: any): any;
   export function defineProps<T = any>(): T;
+  export function defineProps(props: Record<string, any>): any;
   export function defineEmits<T = any>(): any;
+  export function defineEmits(emits: any): any;
   export function defineExpose(exposed: any): void;
   export function defineSlots<T = any>(): T;
   export function defineModel<T = any>(options?: any): any;

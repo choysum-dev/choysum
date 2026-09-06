@@ -79,7 +79,10 @@ func TestCollectRootFiles_ServiceExtras(t *testing.T) {
 	if !strings.Contains(joined, "env.d.ts") || !strings.Contains(joined, "types.d.ts") || !strings.Contains(joined, "a.ts") {
 		t.Fatalf("missing expected files: %v", files)
 	}
-	for _, ban := range []string{"skip.gen.ts", "ok.spec.ts", "ok.test.d.ts", "skip.gen.d.ts", "node_modules/pkg/x.ts", "__tests__/t.ts", "test/helper.ts", ".git/objects/hidden.ts", ".hidden.ts", ".swap.ts"} {
+	if !strings.Contains(joined, "test/helper.ts") {
+		t.Fatalf("singular test/ dir should be included: %v", files)
+	}
+	for _, ban := range []string{"skip.gen.ts", "ok.spec.ts", "ok.test.d.ts", "skip.gen.d.ts", "node_modules/pkg/x.ts", "__tests__/t.ts", ".git/objects/hidden.ts", ".hidden.ts", ".swap.ts"} {
 		if strings.Contains(joined, ban) {
 			t.Fatalf("unexpected %s in %v", ban, files)
 		}
@@ -279,6 +282,15 @@ func TestAppendOverlayRoots(t *testing.T) {
 	}, true)
 	if len(got) != 0 {
 		t.Fatalf("ScopeService must skip tsx overlays: %v", got)
+	}
+	// ScopeAll: web .vue overlays included; __tests__ trees skipped.
+	got = appendOverlayRoots(nil, modules, app, ScopeAll, map[string]string{
+		"/repo/modules/demo/web/Ok.vue":          "x",
+		"/repo/modules/demo/web/__tests__/T.vue": "x",
+		"/repo/modules/demo/web/tests/H.vue":     "x",
+	}, true)
+	if len(got) != 1 || !strings.HasSuffix(got[0], "web/Ok.vue.ts") {
+		t.Fatalf("ScopeAll vue overlay roots = %v", got)
 	}
 }
 
