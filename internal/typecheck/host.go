@@ -4,6 +4,7 @@
 package typecheck
 
 import (
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -52,7 +53,7 @@ func esmShURLToModuleID(pkg, sub string) string {
 }
 
 func isEsmShPackageMainTypePath(pkg, sub string) bool {
-	base := filepath.Base(sub)
+	base := path.Base(sub)
 	name := strings.TrimSuffix(strings.TrimSuffix(base, ".d.ts"), ".d.mts")
 	if name == "*" || name == "" {
 		return false

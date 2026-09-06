@@ -2283,3 +2283,100 @@ func TestEnsureTsconfigCompilerTypeRoots_AbsError(t *testing.T) {
 		t.Fatalf("expected absolute types dir error, got %v", err)
 	}
 }
+
+func TestVueTypeFetchEntryNameMatches_VersionBoundary(t *testing.T) {
+	if !vueTypeFetchEntryNameMatches("esm.sh_vue@3.5.1_dist_vue.d.mts.d.ts", "3.5.1") {
+		t.Fatal("exact version should match")
+	}
+	if vueTypeFetchEntryNameMatches("esm.sh_vue@3.5.10_dist_vue.d.mts.d.ts", "3.5.1") {
+		t.Fatal("3.5.1 must not match 3.5.10")
+	}
+	if vueTypeFetchEntryNameMatches("esm.sh_vue@3.5.13_dist_vue.d.mts.d.ts", "3.5.1") {
+		t.Fatal("3.5.1 must not match 3.5.13")
+	}
+}
+
+func TestPurgeVueTypeFetchGraph_VersionBoundary(t *testing.T) {
+	typesDir := filepath.Join(t.TempDir(), "types")
+	if err := os.MkdirAll(typesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	keep := filepath.Join(typesDir, "esm.sh_vue@3.5.10_dist_vue.d.mts.d.ts")
+	drop := filepath.Join(typesDir, "esm.sh_vue@3.5.1_dist_vue.d.mts.d.ts")
+	sib := filepath.Join(typesDir, "esm.sh_@vue_runtime-core@3.5.1_dist_runtime-core.d.ts.d.ts")
+	for _, p := range []string{keep, drop, sib} {
+		if err := os.WriteFile(p, []byte("export {};\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	purgeVueTypeFetchGraph(typesDir, "3.5.1")
+	if _, err := os.Stat(drop); !os.IsNotExist(err) {
+		t.Fatalf("expected 3.5.1 entry removed, err=%v", err)
+	}
+	if _, err := os.Stat(sib); !os.IsNotExist(err) {
+		t.Fatalf("expected 3.5.1 sibling removed, err=%v", err)
+	}
+	if _, err := os.Stat(keep); err != nil {
+		t.Fatalf("3.5.10 entry must survive purge of 3.5.1: %v", err)
+	}
+}
+
+func TestFetchTypeDefinition_RepairsIncompleteVueGraph(t *testing.T) {
+	typesURLPath := "/types/vue@3.5.35/dist/vue.d.mts"
+	headCalls, getCalls := 0, 0
+
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			headCalls++
+			w.Header().Set("x-typescript-types", srv.URL+typesURLPath)
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		getCalls++
+		// Self-contained entry (no transitive imports) so repair need not rebuild
+		// the full @vue/runtime-* graph in this unit test.
+		fmt.Fprint(w, "export declare const compileToFunction: any;\n")
+	}))
+	defer srv.Close()
+
+	typesDir := filepath.Join(t.TempDir(), "types")
+	if err := os.MkdirAll(typesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	pkgCache := filepath.Join(typesDir, "vue@3.5.35.d.ts")
+	entry := filepath.Join(typesDir, "esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts")
+	dom := filepath.Join(typesDir, "esm.sh_@vue_runtime-dom@3.5.35_dist_runtime-dom.d.ts.d.ts")
+	core := filepath.Join(typesDir, "esm.sh_@vue_runtime-core@3.5.35_dist_runtime-core.d.ts.d.ts")
+	react := filepath.Join(typesDir, "esm.sh_@vue_reactivity@3.5.35_dist_reactivity.d.ts.d.ts")
+	for _, p := range []string{entry, dom, core, react} {
+		if err := os.WriteFile(p, []byte("export {};\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(pkgCache, []byte(`export * from "./esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts";`+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(entry, []byte(`export * from "./esm.sh_@vue_runtime-dom@3.5.35_dist_runtime-dom.d.ts.d.ts";`+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !vueTypeFetchEntryIncomplete(typesDir, "3.5.35") {
+		t.Fatal("precondition: hollow graph must be incomplete")
+	}
+
+	result, _, err := FetchTypeDefinition(srv.Client(), srv.URL, typesDir, "vue", "3.5.35")
+	if err != nil {
+		t.Fatalf("FetchTypeDefinition: %v", err)
+	}
+	if result == nil || result.FromCache {
+		t.Fatalf("expected network repair after purge, got %+v", result)
+	}
+	if headCalls == 0 || getCalls == 0 {
+		t.Fatalf("expected discover+download after purge (head=%d get=%d)", headCalls, getCalls)
+	}
+	// Hollow URL-derived files must have been removed before recurse.
+	if _, err := os.Stat(core); !os.IsNotExist(err) {
+		t.Fatalf("hollow runtime-core should be purged before repair, err=%v", err)
+	}
+}
+

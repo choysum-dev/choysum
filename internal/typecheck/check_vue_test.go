@@ -415,6 +415,22 @@ func TestCollectModulesWebVuePaths_WalkEntryError(t *testing.T) {
 	}
 }
 
+func TestCollectModulesWebVuePaths_ReadDirError(t *testing.T) {
+	// ReadDir on a regular file fails with a non-ErrNotExist error (ENOTDIR).
+	notDir := filepath.Join(t.TempDir(), "not-a-dir")
+	mustWrite(t, notDir, "x\n")
+	got, err := collectModulesWebVuePaths(notDir)
+	if err == nil {
+		t.Fatal("expected read error for non-directory modules root")
+	}
+	if !strings.Contains(err.Error(), "read modules root") {
+		t.Fatalf("err = %v", err)
+	}
+	if got != nil {
+		t.Fatalf("got %v", got)
+	}
+}
+
 func TestCollectModulesWebVuePaths(t *testing.T) {
 	if got, err := collectModulesWebVuePaths(filepath.Join(t.TempDir(), "missing")); err != nil || len(got) != 0 {
 		t.Fatalf("missing modules root should return nil,nil got %v %v", got, err)

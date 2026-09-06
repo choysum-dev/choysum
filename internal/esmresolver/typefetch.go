@@ -329,8 +329,10 @@ func fetchTypeDefinitionWithState(ctx context.Context, client *http.Client, upst
 		if !hasMissingLocalCachedImports(typesDir, cacheFile, imports) {
 			// vue@ver.d.ts may be complete while the tsconfig-mapped
 			// esm.sh_vue@ver entry still lacks @vue/runtime-* siblings.
+			// Purge hollow URL-derived files before discover/recurse — otherwise
+			// fetchTypeRecursive cache-hits the same incomplete graph.
 			if pkg == "vue" && vueTypeFetchEntryIncomplete(typesDir, version) {
-				// Fall through to discover + recursive repair.
+				purgeVueTypeFetchGraph(typesDir, version)
 			} else {
 				return &TypeFetchResult{Package: pkg, Version: version, CachedPath: cacheFile, FromCache: true}, nil, nil
 			}
@@ -1553,13 +1555,12 @@ func vueTypeFetchEntryIncomplete(typesDir, version string) bool {
 	if err != nil {
 		return false
 	}
-	prefix := "esm.sh_vue@" + version
 	domName := fmt.Sprintf("esm.sh_@vue_runtime-dom@%s_dist_runtime-dom.d.ts.d.ts", version)
 	reactName := fmt.Sprintf("esm.sh_@vue_reactivity@%s_dist_reactivity.d.ts.d.ts", version)
 	coreName := fmt.Sprintf("esm.sh_@vue_runtime-core@%s_dist_runtime-core.d.ts.d.ts", version)
 	sawEntry := false
 	for _, ent := range entries {
-		if ent.IsDir() || !strings.HasPrefix(ent.Name(), prefix) {
+		if ent.IsDir() || !vueTypeFetchEntryNameMatches(ent.Name(), version) {
 			continue
 		}
 		sawEntry = true
@@ -1580,6 +1581,45 @@ func vueTypeFetchEntryIncomplete(typesDir, version string) bool {
 	// No esm.sh entry yet — package-cache hit alone is not enough for tsconfig
 	// paths that point at esm.sh_vue@ver_….
 	return !sawEntry
+}
+
+// vueTypeFetchEntryNameMatches reports whether name is an esm.sh_vue@ver entry
+// for exactly version (not a longer prefix like 3.5.1 matching 3.5.10).
+func vueTypeFetchEntryNameMatches(name, version string) bool {
+	prefix := "esm.sh_vue@" + version
+	if !strings.HasPrefix(name, prefix) {
+		return false
+	}
+	rest := strings.TrimPrefix(name, prefix)
+	return rest == "" || strings.HasPrefix(rest, "_") || strings.HasPrefix(rest, "/") || strings.HasPrefix(rest, ".")
+}
+
+// purgeVueTypeFetchGraph removes the package cache and URL-derived vue@ver
+// files so a subsequent fetch cannot cache-hit a hollow graph.
+func purgeVueTypeFetchGraph(typesDir, version string) {
+	typesDir = filepath.Clean(strings.TrimSpace(typesDir))
+	version = strings.TrimSpace(version)
+	if typesDir == "" || version == "" {
+		return
+	}
+	_ = os.Remove(typesCachePath(typesDir, "vue", version))
+	entries, err := os.ReadDir(typesDir)
+	if err != nil {
+		return
+	}
+	for _, ent := range entries {
+		if ent.IsDir() || !vueTypeFetchEntryNameMatches(ent.Name(), version) {
+			continue
+		}
+		_ = os.Remove(filepath.Join(typesDir, ent.Name()))
+	}
+	for _, sib := range []string{
+		fmt.Sprintf("esm.sh_@vue_runtime-dom@%s_dist_runtime-dom.d.ts.d.ts", version),
+		fmt.Sprintf("esm.sh_@vue_runtime-core@%s_dist_runtime-core.d.ts.d.ts", version),
+		fmt.Sprintf("esm.sh_@vue_reactivity@%s_dist_reactivity.d.ts.d.ts", version),
+	} {
+		_ = os.Remove(filepath.Join(typesDir, sib))
+	}
 }
 
 var (

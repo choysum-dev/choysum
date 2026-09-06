@@ -183,7 +183,7 @@ func rewriteChoysumTypesPath(abs string) string {
 // entry produced by type-fetch (needs runtime-* siblings to be usable).
 func isVueTypeFetchEntryPath(path string) bool {
 	base := filepath.Base(filepath.FromSlash(path))
-	return regexp.MustCompile(`(?i)^esm\.sh_vue@`).MatchString(base)
+	return vueTypeFetchEntryRE.MatchString(base)
 }
 
 // RewriteChoysumTypesPath is the exported form of rewriteChoysumTypesPath for
@@ -295,7 +295,7 @@ func vueTypeEntryComplete(entry string) bool {
 		return false
 	}
 	base := filepath.Base(filepath.FromSlash(entry))
-	m := regexp.MustCompile(`(?i)^esm\.sh_vue@([^/_]+)`).FindStringSubmatch(base)
+	m := vueTypeEntryVerRE.FindStringSubmatch(base)
 	if len(m) != 2 {
 		// Fixture / non-type-fetch targets: presence is enough.
 		return true
@@ -328,8 +328,10 @@ func vueTypeEntryComplete(entry string) bool {
 
 // Word-boundary markers so ExtractPropTypes does not count as PropType.
 var (
-	vueCoreExportRE  = regexp.MustCompile(`\bPropType\b|declare function h\b|function h<`)
-	vueToRefExportRE = regexp.MustCompile(`\btoRef\b`)
+	vueTypeFetchEntryRE = regexp.MustCompile(`(?i)^esm\.sh_vue@`)
+	vueTypeEntryVerRE   = regexp.MustCompile(`(?i)^esm\.sh_vue@([^/_]+)`)
+	vueCoreExportRE     = regexp.MustCompile(`\bPropType\b|declare function h\b|function h<`)
+	vueToRefExportRE    = regexp.MustCompile(`\btoRef\b`)
 )
 
 func resolveTypeRoots(modulesPath, repoRoot string) []string {

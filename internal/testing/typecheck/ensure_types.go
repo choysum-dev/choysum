@@ -138,6 +138,11 @@ func purgeIncompleteVueTypeFetch(typesDir, vueVersion string) {
 		if !strings.HasPrefix(name, prefix) {
 			continue
 		}
+		// Require a version delimiter so purging 3.5.1 does not match 3.5.10.
+		if rest := strings.TrimPrefix(name, prefix); rest != "" &&
+			!strings.HasPrefix(rest, "_") && !strings.HasPrefix(rest, "/") && !strings.HasPrefix(rest, ".") {
+			continue
+		}
 		entry := filepath.Join(typesDir, name)
 		if gonative.VueTypeEntryComplete(entry) {
 			continue

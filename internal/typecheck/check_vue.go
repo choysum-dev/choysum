@@ -4,6 +4,7 @@
 package typecheck
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -85,7 +86,10 @@ func collectModulesWebVuePaths(modulesPath string) ([]string, error) {
 	modulesPath = filepath.Clean(modulesPath)
 	entries, err := os.ReadDir(modulesPath)
 	if err != nil {
-		return nil, nil
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("typecheck: read modules root %s: %w", modulesPath, err)
 	}
 	var out []string
 	for _, ent := range entries {
