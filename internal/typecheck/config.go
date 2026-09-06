@@ -4,7 +4,6 @@
 package typecheck
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -311,16 +310,27 @@ func vueTypeEntryComplete(entry string) bool {
 			return false
 		}
 	}
-	domData, err := os.ReadFile(filepath.Join(dir, domName))
-	if err != nil || !bytes.Contains(domData, []byte("PropType")) {
+	// Prefer runtime-core markers: runtime-dom often only mentions ExtractPropTypes
+	// (substring of PropType) while re-exporting the real PropType/h from core.
+	coreData, err := os.ReadFile(filepath.Join(dir, coreName))
+	if err != nil {
+		return false
+	}
+	if !vueCoreExportRE.Match(coreData) {
 		return false
 	}
 	reactData, err := os.ReadFile(filepath.Join(dir, reactName))
-	if err != nil || !bytes.Contains(reactData, []byte("toRef")) {
+	if err != nil || !vueToRefExportRE.Match(reactData) {
 		return false
 	}
 	return true
 }
+
+// Word-boundary markers so ExtractPropTypes does not count as PropType.
+var (
+	vueCoreExportRE  = regexp.MustCompile(`\bPropType\b|declare function h\b|function h<`)
+	vueToRefExportRE = regexp.MustCompile(`\btoRef\b`)
+)
 
 func resolveTypeRoots(modulesPath, repoRoot string) []string {
 	var roots []string

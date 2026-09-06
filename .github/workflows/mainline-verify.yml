@@ -167,6 +167,21 @@ jobs:
           # return an ESM-only or otherwise incomplete pkg tree without types.
           echo "Warming type-fetch cache via type-fetch --all"
           "$CHOYSUM_BIN" type-fetch --all
+          types_dir="${CHOYSUM_TEST_TMP}/cache/pkg/types"
+          mkdir -p "$types_dir"
+          rm -f "$types_dir"/vue@*.d.ts \
+            "$types_dir"/esm.sh_vue@* \
+            "$types_dir"/esm.sh_@vue_runtime-dom@* \
+            "$types_dir"/esm.sh_@vue_runtime-core@* \
+            "$types_dir"/esm.sh_@vue_reactivity@*
+          echo "Re-fetching vue type graph"
+          "$CHOYSUM_BIN" type-fetch web
+          if ! grep -Rql --include='esm.sh_@vue_runtime-core@*_dist_runtime-core.d.ts.d.ts' -E '\bPropType\b' "$types_dir"; then
+            echo "error: vue type-fetch graph still incomplete under $types_dir" >&2
+            ls -la "$types_dir"/esm.sh_vue@* "$types_dir"/esm.sh_@vue_* 2>/dev/null || true
+            exit 1
+          fi
+          echo "Vue type-fetch graph OK"
 
   typecheck-shard:
     name: main / typecheck-shard (${{ matrix.module }})

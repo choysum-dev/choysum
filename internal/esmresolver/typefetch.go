@@ -4,7 +4,6 @@
 package esmresolver
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -1569,12 +1568,12 @@ func vueTypeFetchEntryIncomplete(typesDir, version string) bool {
 				return true
 			}
 		}
-		domData, err := os.ReadFile(filepath.Join(typesDir, domName))
-		if err != nil || !bytes.Contains(domData, []byte("PropType")) {
+		coreData, err := os.ReadFile(filepath.Join(typesDir, coreName))
+		if err != nil || !vueTypeFetchCoreExportRE.Match(coreData) {
 			return true
 		}
 		reactData, err := os.ReadFile(filepath.Join(typesDir, reactName))
-		if err != nil || !bytes.Contains(reactData, []byte("toRef")) {
+		if err != nil || !vueTypeFetchToRefRE.Match(reactData) {
 			return true
 		}
 	}
@@ -1582,6 +1581,11 @@ func vueTypeFetchEntryIncomplete(typesDir, version string) bool {
 	// paths that point at esm.sh_vue@ver_….
 	return !sawEntry
 }
+
+var (
+	vueTypeFetchCoreExportRE = regexp.MustCompile(`\bPropType\b|declare function h\b|function h<`)
+	vueTypeFetchToRefRE      = regexp.MustCompile(`\btoRef\b`)
+)
 
 func writeTypeCacheFile(typesDir string, cacheFile string, content []byte) error {
 	absTypesDir := strings.TrimSpace(typesDir)

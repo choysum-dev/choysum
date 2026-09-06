@@ -320,8 +320,8 @@ func TestHasResolvableVueTypes_IncompleteTypeFetchGraph(t *testing.T) {
 		"esm.sh_@vue_reactivity@3.5.35_dist_reactivity.d.ts.d.ts",
 	} {
 		content := "export {}\n"
-		if strings.Contains(name, "runtime-dom") {
-			content = "export type PropType<T> = any;\nexport function h(...args: any[]): any;\n"
+		if strings.Contains(name, "runtime-core") {
+			content = "export type PropType<T> = any;\ndeclare function h(...args: any[]): any;\n"
 		}
 		if strings.Contains(name, "reactivity") {
 			content = "export declare function toRef(...args: any[]): any;\n"
@@ -333,9 +333,9 @@ func TestHasResolvableVueTypes_IncompleteTypeFetchGraph(t *testing.T) {
 	}
 
 	// Hollow siblings (Stat-ok, no real exports) must not count as complete.
-	mustWrite(t, filepath.Join(home, "pkg", "types", "esm.sh_@vue_runtime-dom@3.5.35_dist_runtime-dom.d.ts.d.ts"), "export {}\n")
+	mustWrite(t, filepath.Join(home, "pkg", "types", "esm.sh_@vue_runtime-core@3.5.35_dist_runtime-core.d.ts.d.ts"), "export {}\n")
 	if HasResolvableVueTypes(modules, dir) {
-		t.Fatal("empty runtime-dom sibling must not count as resolvable")
+		t.Fatal("empty runtime-core sibling must not count as resolvable")
 	}
 }
 

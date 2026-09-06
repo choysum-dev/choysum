@@ -223,8 +223,8 @@ func TestEnsureTypeAssets_FetchSuccessAndFailures(t *testing.T) {
 					"esm.sh_@vue_reactivity@3.5.0_dist_reactivity.d.ts.d.ts",
 				} {
 					body := "export {}\n"
-					if strings.Contains(name, "runtime-dom") {
-						body = "export type PropType<T> = any;\n"
+					if strings.Contains(name, "runtime-core") {
+						body = "export type PropType<T> = any;\ndeclare function h(...args: any[]): any;\n"
 					}
 					if strings.Contains(name, "reactivity") {
 						body = "export declare function toRef(...args: any[]): any;\n"

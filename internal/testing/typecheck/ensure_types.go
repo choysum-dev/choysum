@@ -90,7 +90,7 @@ func ensureTypeAssets(ctx context.Context, stderr io.Writer, modulesRoot, app st
 	}
 	vueVersion := resolvePinnedPackageVersion(modulesRoot, "vue")
 	if vueVersion == "" {
-		// Fixture / non-Vue apps: no vue path mapping to fetch.
+		// No pinned vue path in tsconfig — nothing to fetch (fixture / non-Vue).
 		return nil
 	}
 	// Incomplete durable caches may leave vue@ver.d.ts and/or empty sibling
