@@ -104,11 +104,12 @@ func ensureTypeAssets(ctx context.Context, stderr io.Writer, modulesRoot, app st
 	vueVersion := resolveVueVersion(modulesRoot, typesDir)
 	if vueVersion == "" {
 		// Fixtures / non-Vue modules often set CHOYSUM_HOME without a vue pin,
-		// types cache, or package.json dependency. Fall back to the ambient stub.
+		// types cache, or package.json dependency. Fall back to the ambient stub,
+		// but still bridge pinned @types/node when present.
 		if stderr != nil {
 			_, _ = fmt.Fprintf(stderr, "# typecheck %s: no resolvable vue version; using ambient stub\n", app)
 		}
-		return nil
+		return ensureNodeCompilerTypes(ctx, client, upstream, typesDir, modulesRoot)
 	}
 	if stderr != nil {
 		_, _ = fmt.Fprintf(stderr, "# typecheck %s: ensuring vue@%s type-fetch graph\n", app, vueVersion)

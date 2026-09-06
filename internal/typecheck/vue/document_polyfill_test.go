@@ -62,4 +62,23 @@ func TestDocumentMinPolyfill_DecodeEntitiesOrder(t *testing.T) {
 	if got != "&amp;" {
 		t.Fatalf("no double-decode: got %q want &amp;", got)
 	}
+
+	got = eval(`(() => {
+		var el = document.createElement("div");
+		el.innerHTML = '<div foo="a&amp;b" />';
+		return el.children[0].getAttribute("foo") + "|" + el.textContent;
+	})()`)
+	if got != "a&b|" {
+		t.Fatalf("attr decode path: got %q want a&b|", got)
+	}
+
+	// Trailing content must not take the attribute branch (would zero textContent).
+	got = eval(`(() => {
+		var el = document.createElement("div");
+		el.innerHTML = '<div foo="x">tail';
+		return el.children.length + "|" + el.textContent;
+	})()`)
+	if got != "0|tail" {
+		t.Fatalf("non-anchored attr noise: got %q want 0|tail", got)
+	}
 }

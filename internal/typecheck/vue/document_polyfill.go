@@ -54,7 +54,8 @@ const documentMinPolyfill = `(function () {
       this.children = [];
       this.childNodes = [];
       // Attribute decode path: <div foo="..."> or self-closing <div foo="..." />
-      var attr = /^<div\s+foo="([^"]*)"\s*\/?>/i.exec(this._html);
+      // Full-string match only — leading/trailing noise must use the text path.
+      var attr = /^<div\s+foo="([\s\S]*)"\s*\/?>\s*$/i.exec(this._html);
       if (attr) {
         var child = new Element("div");
         child.attrs.foo = decodeEntities(attr[1]);

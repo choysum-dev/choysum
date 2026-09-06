@@ -143,6 +143,7 @@ func filterDiagnosticsToApp(diags []Diagnostic, modulesPath, app string) []Diagn
 		return diags
 	}
 	prefix := filepath.ToSlash(filepath.Join(modulesPath, app)) + "/"
+	lowerPrefix := strings.ToLower(prefix)
 	out := make([]Diagnostic, 0, len(diags))
 	for _, d := range diags {
 		// Keep filepath-less diagnostics (program/global errors) for the app run.
@@ -151,7 +152,9 @@ func filterDiagnosticsToApp(diags []Diagnostic, modulesPath, app string) []Diagn
 			continue
 		}
 		file := filepath.ToSlash(d.File)
-		if strings.HasPrefix(file, prefix) {
+		// Case-insensitive fallback: Go filepath and typescript-go AST paths can
+		// disagree on drive-letter / directory casing on macOS and Windows.
+		if strings.HasPrefix(file, prefix) || strings.HasPrefix(strings.ToLower(file), lowerPrefix) {
 			out = append(out, d)
 		}
 	}

@@ -159,13 +159,18 @@ func TestFilterDiagnosticsToApp(t *testing.T) {
 		{File: "/repo/modules/web/web/B.vue", Code: 2},
 		{File: "/repo/modules/auth/service/x.ts", Code: 3},
 		{File: "", Code: 4, Message: "global"},
+		// Casing differs from modulesPath (common on macOS/Windows volumes).
+		{File: "/Repo/Modules/auth/web/C.vue", Code: 5},
 	}
 	got := filterDiagnosticsToApp(diags, "/repo/modules", "auth")
-	if len(got) != 3 {
+	if len(got) != 4 {
 		t.Fatalf("got %d %#v", len(got), got)
 	}
 	if got[2].File != "" || got[2].Code != 4 {
 		t.Fatalf("expected empty-file diagnostic kept: %#v", got[2])
+	}
+	if got[3].Code != 5 {
+		t.Fatalf("expected case-insensitive app match: %#v", got[3])
 	}
 }
 

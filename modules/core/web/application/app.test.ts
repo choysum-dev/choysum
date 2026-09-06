@@ -197,4 +197,13 @@ describe('createApp', () => {
 
     errorSpy.mockRestore();
   });
+
+  it('forwards Vue App props and returns undefined for unknown keys', () => {
+    const app = createApp(RootComponent) as any;
+
+    expect(app.config).toEqual({ globalProperties: {} });
+    expect(typeof app.provide).toBe('function');
+    expect(app.missingPlugin).toBeUndefined();
+    expect(app[Symbol('choysum')]).toBeUndefined();
+  });
 });
