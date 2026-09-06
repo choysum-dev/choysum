@@ -115,6 +115,9 @@ func TestIsEsmShTypeFetchPath(t *testing.T) {
 	if !isEsmShTypeFetchPath("/Users/me/.choysum/pkg/types/esm.sh_vue@1.d.ts") {
 		t.Fatal("home types")
 	}
+	if !isEsmShTypeFetchPath("/home/runner/.choysum/pkg/types/vue@3.5.35.d.ts") {
+		t.Fatal("package cache under pkg/types")
+	}
 	if isEsmShTypeFetchPath("/Users/me/choysum/modules/auth/web/App.vue") {
 		t.Fatal("app path")
 	}

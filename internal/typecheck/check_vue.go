@@ -97,7 +97,7 @@ func collectModulesWebVuePaths(modulesPath string) ([]string, error) {
 			continue
 		}
 		name := ent.Name()
-		if name == ".choysum" || name == "tmp" || name == ".typecheck-ambient" {
+		if strings.HasPrefix(name, ".") || name == "tmp" {
 			continue
 		}
 		webDir := filepath.Join(modulesPath, name, "web")
@@ -117,8 +117,8 @@ func collectModulesWebVuePaths(modulesPath string) ([]string, error) {
 			}
 			if d.IsDir() {
 				base := d.Name()
-				if base == "node_modules" || base == "dist" || base == ".choysum" || base == "tmp" ||
-					base == "tests" || base == "__tests__" {
+				if strings.HasPrefix(base, ".") || base == "node_modules" || base == "dist" ||
+					base == "tmp" || base == "tests" || base == "__tests__" {
 					return fs.SkipDir
 				}
 				return nil

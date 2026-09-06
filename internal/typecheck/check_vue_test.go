@@ -439,6 +439,8 @@ func TestCollectModulesWebVuePaths(t *testing.T) {
 
 	modules := t.TempDir()
 	mustMkdir(t, filepath.Join(modules, ".choysum"))
+	mustMkdir(t, filepath.Join(modules, ".git"))
+	mustMkdir(t, filepath.Join(modules, ".vscode"))
 	mustMkdir(t, filepath.Join(modules, "tmp"))
 	mustMkdir(t, filepath.Join(modules, "no-web", "service"))
 	mustMkdir(t, filepath.Join(modules, "demo", "web", "ui"))
@@ -446,6 +448,8 @@ func TestCollectModulesWebVuePaths(t *testing.T) {
 	mustWrite(t, filepath.Join(modules, "demo", "web", "ui", "skip.spec.vue"), "<template></template>\n")
 	mustMkdir(t, filepath.Join(modules, "demo", "web", "__tests__"))
 	mustWrite(t, filepath.Join(modules, "demo", "web", "__tests__", "Hidden.vue"), "<template></template>\n")
+	mustMkdir(t, filepath.Join(modules, "demo", "web", ".cache"))
+	mustWrite(t, filepath.Join(modules, "demo", "web", ".cache", "X.vue"), "<template></template>\n")
 	mustMkdir(t, filepath.Join(modules, "demo", "web", "node_modules", "pkg"))
 	mustWrite(t, filepath.Join(modules, "demo", "web", "node_modules", "pkg", "X.vue"), "<template></template>\n")
 

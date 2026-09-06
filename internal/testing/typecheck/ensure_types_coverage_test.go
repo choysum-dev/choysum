@@ -258,13 +258,18 @@ func TestPurgeIncompleteVueTypeFetch(t *testing.T) {
 		t.Fatal("3.5.10 must survive")
 	}
 
-	// Complete graph is left in place.
+	// Complete graph is left in place (including vue@ver.d.ts package cache).
 	typesDir2 := t.TempDir()
 	writeCompleteVueGraph(t, typesDir2, "3.5.35")
 	entry := filepath.Join(typesDir2, "esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts")
+	pkgCache := filepath.Join(typesDir2, "vue@3.5.35.d.ts")
+	writeFile(t, pkgCache, "export {}\n")
 	purgeIncompleteVueTypeFetch(typesDir2, "3.5.35")
 	if _, err := os.Stat(entry); err != nil {
 		t.Fatal("complete entry must remain")
+	}
+	if _, err := os.Stat(pkgCache); err != nil {
+		t.Fatal("complete graph must not delete vue@ver.d.ts package cache")
 	}
 }
 

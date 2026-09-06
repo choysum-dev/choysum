@@ -188,6 +188,16 @@ func TestTypePathExists_Branches(t *testing.T) {
 	if !typePathExists(filepath.ToSlash(tsBase)) {
 		t.Fatal(".ts")
 	}
+	tsxBase := filepath.Join(dir, "tsxonly")
+	mustWrite(t, tsxBase+".tsx", "export {}\n")
+	if !typePathExists(filepath.ToSlash(tsxBase)) {
+		t.Fatal(".tsx")
+	}
+	vueBase := filepath.Join(dir, "vueonly")
+	mustWrite(t, vueBase+".vue", "<template></template>\n")
+	if !typePathExists(filepath.ToSlash(vueBase)) {
+		t.Fatal(".vue")
+	}
 
 	if typePathExists(filepath.Join(dir, "totally-missing")) {
 		t.Fatal("missing path")

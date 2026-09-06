@@ -254,7 +254,7 @@ func typePathExists(path string) bool {
 		return true // file or directory (TS may resolve index.*)
 	}
 	// Extensionless / directory-index targets used by some path mappings.
-	for _, suffix := range []string{".d.ts", ".d.mts", ".ts", "/index.d.ts", "/index.d.mts", "/index.ts"} {
+	for _, suffix := range []string{".d.ts", ".d.mts", ".ts", ".tsx", ".vue", "/index.d.ts", "/index.d.mts", "/index.ts", "/index.tsx"} {
 		if st, err := os.Stat(filepath.FromSlash(path + suffix)); err == nil && !st.IsDir() {
 			return true
 		}

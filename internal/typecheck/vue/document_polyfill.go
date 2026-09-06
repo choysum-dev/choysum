@@ -20,7 +20,6 @@ const documentMinPolyfill = `(function () {
       .replace(/&#39;/g, "'")
       .replace(/&lt;/g, "<")
       .replace(/&gt;/g, ">")
-      .replace(/&amp;/g, "&")
       .replace(/&#x([0-9a-fA-F]+);/g, function (_, h) {
         var cp = parseInt(h, 16);
         if (!isFinite(cp) || cp < 0 || cp > 0x10FFFF) return "";
@@ -30,7 +29,8 @@ const documentMinPolyfill = `(function () {
         var cp = +n;
         if (!isFinite(cp) || cp < 0 || cp > 0x10FFFF) return "";
         return String.fromCodePoint(cp);
-      });
+      })
+      .replace(/&amp;/g, "&");
   }
 
   function Element(tag) {

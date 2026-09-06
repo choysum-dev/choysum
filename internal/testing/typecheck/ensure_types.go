@@ -153,6 +153,11 @@ func purgeIncompleteVueTypeFetch(typesDir, vueVersion string) {
 		return
 	}
 	typesDir = filepath.Clean(typesDir)
+	// Keep a complete local graph intact so FetchTypeDefinition can cache-hit
+	// without deleting vue@ver.d.ts and re-fetching from the network.
+	if findCompleteVueEntry(typesDir, vueVersion) != "" {
+		return
+	}
 	pkgCache := filepath.Join(typesDir, fmt.Sprintf("vue@%s.d.ts", vueVersion))
 	_ = os.Remove(pkgCache)
 
@@ -175,9 +180,7 @@ func purgeIncompleteVueTypeFetch(typesDir, vueVersion string) {
 			continue
 		}
 		entry := filepath.Join(typesDir, name)
-		if gonative.VueTypeEntryComplete(entry) {
-			continue
-		}
+		// Reachable only when no complete entry exists (see early return above).
 		_ = os.Remove(entry)
 		for _, sib := range []string{
 			fmt.Sprintf("esm.sh_@vue_runtime-dom@%s_dist_runtime-dom.d.ts.d.ts", vueVersion),

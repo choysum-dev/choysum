@@ -70,7 +70,9 @@ func isEsmShPackageMainTypePath(pkg, sub string) bool {
 
 func isEsmShTypeFetchPath(p string) bool {
 	p = filepath.ToSlash(p)
-	return strings.Contains(p, "/pkg/types/esm.sh_") || strings.Contains(p, "/.choysum/pkg/types/esm.sh_")
+	// Any type-fetch cache file under pkg/types (esm.sh_* entries and package
+	// caches such as vue@ver.d.ts) may contain declare module 'https://esm.sh/…'.
+	return strings.Contains(p, "/pkg/types/")
 }
 
 func newTypecheckFS(overlays map[string]string) vfs.FS {
