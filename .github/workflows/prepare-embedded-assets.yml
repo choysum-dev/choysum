@@ -50,7 +50,7 @@ jobs:
             internal/bootstrap/web/dist
             pkg/jsengine/scripts/vuesfc/dist
             pkg/jsengine/scripts/vuevirtual/dist
-          key: ${{ runner.os }}-embedded-v3-${{ hashFiles('go.mod', 'go.sum', 'internal/bootstrap/web/generate.go', 'internal/bootstrap/web/gen.go', 'internal/bootstrap/web/package.json', 'internal/bootstrap/web/tsconfig.json', 'internal/bootstrap/web/index.html', 'internal/bootstrap/web/src/**', 'pkg/jsengine/scripts/vuesfc/**/*.go', 'pkg/jsengine/scripts/vuesfc/package.json', 'pkg/jsengine/scripts/vuesfc/tsconfig.json', 'pkg/jsengine/scripts/vuesfc/src/**', 'pkg/jsengine/scripts/vuevirtual/**/*.go', 'pkg/jsengine/scripts/vuevirtual/package.json', 'pkg/jsengine/scripts/vuevirtual/esm.lock', 'pkg/jsengine/scripts/vuevirtual/src/**', 'internal/esmresolver/**/*.go', 'internal/vueplugin/**/*.go', 'internal/defaultengine/**/*.go', 'internal/defaultjsexecutor/**/*.go', 'internal/module/artifact/generate/grpcwebplugin/gots/**/*.go', 'pkg/config/**/*.go', 'pkg/jsexecutor/**/*.go', 'pkg/scope/**/*.go') }}
+          key: ${{ runner.os }}-embedded-v3-${{ hashFiles('go.mod', 'go.sum', 'internal/bootstrap/web/generate.go', 'internal/bootstrap/web/gen.go', 'internal/bootstrap/web/package.json', 'internal/bootstrap/web/tsconfig.json', 'internal/bootstrap/web/index.html', 'internal/bootstrap/web/src/**', 'pkg/jsengine/scripts/vuesfc/**/*.go', 'pkg/jsengine/scripts/vuesfc/package.json', 'pkg/jsengine/scripts/vuesfc/esm.lock', 'pkg/jsengine/scripts/vuesfc/tsconfig.json', 'pkg/jsengine/scripts/vuesfc/src/**', 'pkg/jsengine/scripts/vuevirtual/**/*.go', 'pkg/jsengine/scripts/vuevirtual/package.json', 'pkg/jsengine/scripts/vuevirtual/esm.lock', 'pkg/jsengine/scripts/vuevirtual/src/**', 'internal/esmresolver/**/*.go', 'internal/vueplugin/**/*.go', 'internal/defaultengine/**/*.go', 'internal/defaultjsexecutor/**/*.go', 'internal/module/artifact/generate/grpcwebplugin/gots/**/*.go', 'pkg/config/**/*.go', 'pkg/jsexecutor/**/*.go', 'pkg/scope/**/*.go') }}
 
       # Generators honor CHOYSUM_HOME as the cache root (else ~/.choysum). Align with
       # the workspace path we restore/save below so ESM hits are effective.
@@ -59,7 +59,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: .choysum/pkg/esm
-          key: ${{ runner.os }}-esm-generate-v1-${{ hashFiles('go.mod', 'go.sum', 'internal/bootstrap/web/package.json', 'pkg/jsengine/scripts/vuesfc/package.json', 'pkg/jsengine/scripts/vuevirtual/package.json', 'pkg/jsengine/scripts/vuevirtual/esm.lock') }}
+          key: ${{ runner.os }}-esm-generate-v1-${{ hashFiles('go.mod', 'go.sum', 'internal/bootstrap/web/package.json', 'pkg/jsengine/scripts/vuesfc/package.json', 'pkg/jsengine/scripts/vuesfc/esm.lock', 'pkg/jsengine/scripts/vuevirtual/package.json', 'pkg/jsengine/scripts/vuevirtual/esm.lock') }}
           restore-keys: |
             ${{ runner.os }}-esm-generate-v1-
 
