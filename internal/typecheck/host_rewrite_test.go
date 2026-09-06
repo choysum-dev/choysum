@@ -111,6 +111,30 @@ func TestRewriteEsmShDeclareModules_PassthroughUnmatched(t *testing.T) {
 	}
 }
 
+func TestRewriteEsmShDeclareModules_VersionedCDNPrefix(t *testing.T) {
+	in := `
+declare module 'https://esm.sh/v135/@vue/runtime-core@3.5.35/dist/runtime-core.d.ts' {
+  export interface GlobalComponents {}
+}
+declare module "https://esm.sh/v135/vue@3.5.35/dist/vue.d.mts" {
+  export const x: number;
+}
+`
+	got := rewriteEsmShDeclareModules(in)
+	if !strings.Contains(got, "declare module '@vue/runtime-core'") {
+		t.Fatalf("scoped with /v135/: %s", got)
+	}
+	if !strings.Contains(got, "declare module 'vue'") {
+		t.Fatalf("vue with /v135/: %s", got)
+	}
+	if strings.Contains(got, "declare module 'v135'") {
+		t.Fatalf("must not treat CDN build prefix as package: %s", got)
+	}
+	if strings.Contains(got, "https://esm.sh/") {
+		t.Fatalf("leftover: %s", got)
+	}
+}
+
 func TestIsEsmShTypeFetchPath(t *testing.T) {
 	if !isEsmShTypeFetchPath("/Users/me/.choysum/pkg/types/esm.sh_vue@1.d.ts") {
 		t.Fatal("home types")

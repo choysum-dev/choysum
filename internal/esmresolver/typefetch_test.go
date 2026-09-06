@@ -2331,9 +2331,21 @@ func TestPurgeVueTypeFetchGraph_ErrorPaths(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// ReadDir fails (hooked for cross-platform coverage).
+	// Missing typesDir: ReadDir ErrNotExist is ignored (nothing to purge).
+	missing := filepath.Join(t.TempDir(), "no-such-types")
+	if err := purgeVueTypeFetchGraph(missing, "1.0.0"); err != nil {
+		t.Fatalf("missing dir should be ok: %v", err)
+	}
 	origReadDir := purgeVueReadDir
 	t.Cleanup(func() { purgeVueReadDir = origReadDir })
+	purgeVueReadDir = func(string) ([]os.DirEntry, error) {
+		return nil, os.ErrNotExist
+	}
+	if err := purgeVueTypeFetchGraph(t.TempDir(), "1.0.0"); err != nil {
+		t.Fatalf("hooked ErrNotExist should be ok: %v", err)
+	}
+
+	// ReadDir fails (hooked for cross-platform coverage).
 	purgeVueReadDir = func(string) ([]os.DirEntry, error) {
 		return nil, errors.New("readdir boom")
 	}

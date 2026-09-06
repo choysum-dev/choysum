@@ -1617,6 +1617,9 @@ func purgeVueTypeFetchGraph(typesDir, version string) error {
 	}
 	entries, err := purgeVueReadDir(typesDir)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
 		return err
 	}
 	for _, ent := range entries {
