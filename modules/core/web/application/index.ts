@@ -42,18 +42,18 @@ export function createApp(rootComponent: Component, rootProps?: ObjectRecord): C
   let allowDirectUseDepth = 0;
 
   const originalUse = vueApp.use.bind(vueApp);
+  const originalMount = vueApp.mount.bind(vueApp);
 
   plugins.set('vueApp', vueApp);
 
-  const enhancedApp = vueApp as ChoysumWebApp;
+  // Filled after Proxy construction so fluent methods always return the public app.
+  let app!: ChoysumWebApp;
 
-  function registerPlugin<T>(name: string, plugin: T): ChoysumWebApp {
+  function registerPlugin<T>(name: string, plugin: T): void {
     if (plugins.has(name)) {
-      return enhancedApp;
+      return;
     }
-
     plugins.set(name, plugin);
-    return enhancedApp;
   }
 
   function runWithDirectUseAllowed<T>(fn: () => T): T {
@@ -87,75 +87,73 @@ export function createApp(rootComponent: Component, rootProps?: ObjectRecord): C
     pendingPlugins.length = 0;
   }
 
-  const mutableApp = enhancedApp as ChoysumWebApp & {
-    setup: (setup: WebPluginSetup) => ChoysumWebApp;
-    use: (plugin: VuePlugin, ...options: unknown[]) => ChoysumWebApp;
-    usePlugin: (name: string, plugin: VuePlugin, options?: unknown, deferred?: boolean) => ChoysumWebApp;
-    mount: ChoysumWebApp['mount'];
-  };
+  // Choysum fluent API lives on a plain object and is exposed via Proxy — never
+  // assigned onto Vue App's this-typed methods (avoids typescript-go collisions).
+  const choysumMethods = {
+    setup(setup: WebPluginSetup): ChoysumWebApp {
+      setup(app);
+      return app;
+    },
 
-  // Assign through `any` so typescript-go does not require fluent methods to
-  // return the full mutableApp intersection (App method this-types collide).
-  (mutableApp as any).setup = function (setup: WebPluginSetup): ChoysumWebApp {
-    setup(this);
-    return this;
-  };
-
-  (mutableApp as any).use = function (plugin: VuePlugin<unknown[]>, ...options: unknown[]): ChoysumWebApp {
-    if (allowDirectUseDepth > 0) {
-      return originalUse(plugin, ...options) as unknown as ChoysumWebApp;
-    }
-
-    throw new Error('ChoysumWebApp disables app.use(...); use app.usePlugin(name, plugin, options?) instead');
-  };
-
-  (mutableApp as any).usePlugin = function (name: string, plugin: VuePlugin, options?: unknown, deferred: boolean = true): ChoysumWebApp {
-    if (!name) {
-      throw new Error('Plugin name cannot be empty');
-    }
-
-    if (!plugin) {
-      throw new Error(`Failed to register plugin "${name}": no valid plugin object was provided`);
-    }
-
-    if (plugins.has(name)) {
-      return this;
-    }
-
-    registerPlugin(name, plugin);
-
-    if (isMounted) {
-      installPlugin(plugin, options);
-    } else if (deferred) {
-      pendingPlugins.push({ name, plugin, options });
-    } else {
-      try {
-        installPlugin(plugin, options);
-      } catch (error) {
-        console.error(`Immediate registration failed for plugin ${name}:`, error);
+    use(plugin: VuePlugin<unknown[]>, ...options: unknown[]): ChoysumWebApp {
+      if (allowDirectUseDepth > 0) {
+        originalUse(plugin, ...options);
+        return app;
       }
-    }
 
-    return this;
+      throw new Error('ChoysumWebApp disables app.use(...); use app.usePlugin(name, plugin, options?) instead');
+    },
+
+    usePlugin(name: string, plugin: VuePlugin, options?: unknown, deferred: boolean = true): ChoysumWebApp {
+      if (!name) {
+        throw new Error('Plugin name cannot be empty');
+      }
+
+      if (!plugin) {
+        throw new Error(`Failed to register plugin "${name}": no valid plugin object was provided`);
+      }
+
+      if (plugins.has(name)) {
+        return app;
+      }
+
+      registerPlugin(name, plugin);
+
+      if (isMounted) {
+        installPlugin(plugin, options);
+      } else if (deferred) {
+        pendingPlugins.push({ name, plugin, options });
+      } else {
+        try {
+          installPlugin(plugin, options);
+        } catch (error) {
+          console.error(`Immediate registration failed for plugin ${name}:`, error);
+        }
+      }
+
+      return app;
+    },
+
+    mount(...args: Parameters<App['mount']>): ReturnType<App['mount']> {
+      if (isMounted) {
+        return mountedResult as ReturnType<App['mount']>;
+      }
+
+      flushPendingPlugins();
+      isMounted = true;
+      mountedResult = originalMount(...args);
+      return mountedResult as ReturnType<App['mount']>;
+    },
   };
 
-  const originalMount = vueApp.mount;
-  mutableApp.mount = function (...args: Parameters<typeof originalMount>) {
-    if (isMounted) {
-      return mountedResult as ReturnType<typeof originalMount>;
-    }
+  app = new Proxy(vueApp, {
+    get(target, prop, receiver) {
+      if (prop === 'setup' || prop === 'use' || prop === 'usePlugin' || prop === 'mount') {
+        return choysumMethods[prop];
+      }
 
-    flushPendingPlugins();
-    isMounted = true;
-    mountedResult = originalMount.apply(vueApp, args);
-
-    return mountedResult as ReturnType<typeof originalMount>;
-  } as ChoysumWebApp['mount'];
-
-  return new Proxy(enhancedApp, {
-    get(target, prop: string | symbol) {
       if (prop in target) {
-        return target[prop as keyof typeof target];
+        return Reflect.get(target, prop, receiver);
       }
 
       if (typeof prop === 'string' && plugins.has(prop)) {
@@ -165,6 +163,8 @@ export function createApp(rootComponent: Component, rootProps?: ObjectRecord): C
       return undefined;
     },
   }) as ChoysumWebApp;
+
+  return app;
 }
 
 export function getPlugins<T extends ObjectRecord>(app: ChoysumWebApp, _typeHint: T): T {
