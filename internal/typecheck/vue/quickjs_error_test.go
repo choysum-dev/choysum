@@ -133,6 +133,31 @@ func TestQuickJSCoder_ErrorPaths(t *testing.T) {
 		}
 	})
 
+	t.Run("json stringify eval exception", func(t *testing.T) {
+		orig := vueVirtualScriptContent
+		t.Cleanup(func() { vueVirtualScriptContent = orig })
+		vueVirtualScriptContent = func() string {
+			return `
+				Object.defineProperty(JSON, "stringify", {
+					configurable: true,
+					get: function() { throw new Error("stringify getter boom"); }
+				});
+				var vuevirtual = { createServiceScript: function() {
+					return { embeddedId: "script_ts", scriptKind: "ts", content: "export {}", mappings: [] };
+				} };
+			`
+		}
+		c := NewQuickJSCoder()
+		t.Cleanup(func() { _ = c.Close() })
+		_, err := c.CreateServiceScript("a.vue", "x", CodegenOptions{})
+		if err == nil || !strings.Contains(err.Error(), "JSON.stringify unavailable") {
+			t.Fatalf("err=%v", err)
+		}
+		if !strings.Contains(err.Error(), "stringify getter boom") {
+			t.Fatalf("expected drained exception in err, got %v", err)
+		}
+	})
+
 	t.Run("stringify throws", func(t *testing.T) {
 		orig := vueVirtualScriptContent
 		t.Cleanup(func() { vueVirtualScriptContent = orig })
