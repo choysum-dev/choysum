@@ -144,10 +144,11 @@ func TestSuppressVueTemplateParityNoise(t *testing.T) {
 		{File: "/a.vue", Code: 1000, Message: "real error"},
 	}
 	got := suppressVueTemplateParityNoise(diags)
-	if len(got) != 4 {
+	// .ts $el kept; NonNullable-without-on kept; .vue default-on-{} suppressed; real 1000 kept.
+	if len(got) != 3 {
 		t.Fatalf("got %d %#v", len(got), got)
 	}
-	if got[0].File != "/a.ts" || got[1].Code != 2322 || got[2].Message != "Property 'default' does not exist on type '{}'." || got[3].Code != 1000 {
+	if got[0].File != "/a.ts" || got[1].Code != 2322 || got[2].Code != 1000 {
 		t.Fatalf("%#v", got)
 	}
 }
@@ -155,7 +156,7 @@ func TestSuppressVueTemplateParityNoise(t *testing.T) {
 func TestIsVueTemplateParityNoise_RemainingCodes(t *testing.T) {
 	keep := Diagnostic{File: "/a.vue", Code: 2339, Message: "Property 'foo' does not exist on type 'Bar'."}
 	if isVueTemplateParityNoise(keep) {
-		t.Fatal("2339 without $el/default must not be noise")
+		t.Fatal("2339 without $el/default/{} must not be noise")
 	}
 	cases := []Diagnostic{
 		{Code: 2493, Message: "Tuple type '[]' of length '0' has no element at index '0'."},
@@ -164,6 +165,12 @@ func TestIsVueTemplateParityNoise_RemainingCodes(t *testing.T) {
 		{Code: 2552, Message: "Cannot find name '__VLS_asFunctionalElement'. Did you mean '__VLS_asFunctionalComponent'?"},
 		{Code: 2589, Message: "Type instantiation is excessively deep and possibly infinite. __VLS_ctx"},
 		{Code: 2349, Message: "This expression is not callable. __VLS_asFunctionalComponent"},
+		{Code: 18048, Message: "'__VLS_3' is possibly 'undefined'."},
+		{Code: 2339, Message: "Property 'expose' does not exist on type '{ attrs: any; slots: __VLS_Slots; emit: any; } | undefined'."},
+		{Code: 2339, Message: "Property '_t' does not exist on type '{}'."},
+		{Code: 7006, Message: "Parameter 'props' implicitly has an 'any' type."},
+		{Code: 7031, Message: "Binding element 'attrs' implicitly has an 'any' type."},
+		{Code: 2558, Message: "Expected 0 type arguments, but got 1."},
 	}
 	for _, d := range cases {
 		if !isVueTemplateParityNoise(d) {

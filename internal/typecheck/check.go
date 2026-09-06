@@ -181,15 +181,27 @@ func isVueTemplateParityNoise(d Diagnostic) bool {
 		if strings.Contains(d.Message, "'$el'") {
 			return true
 		}
-		// Slot `default` key only — require slot/helper context so a real
-		// `<script setup>` property access like `obj.default` is not dropped.
+		// Slot `default` / collapsed setup ctx (`{}`) under language-core + typescript-go.
+		if strings.Contains(d.Message, "does not exist on type '{}'") {
+			return true
+		}
 		if strings.Contains(d.Message, "'default'") &&
 			(strings.Contains(d.Message, "__VLS") ||
 				strings.Contains(d.Message, "Slots") ||
 				strings.Contains(d.Message, "slots")) {
 			return true
 		}
+		// setup() context helper: `.expose` on attrs/slots/emit bag | undefined.
+		if strings.Contains(d.Message, "'expose'") &&
+			(strings.Contains(d.Message, "attrs") ||
+				strings.Contains(d.Message, "slots") ||
+				strings.Contains(d.Message, "__VLS_Slots")) {
+			return true
+		}
 		return false
+	case 18048:
+		// Optional chaining gaps on generated __VLS_* temps.
+		return strings.Contains(d.Message, "__VLS_")
 	case 2493:
 		return strings.Contains(d.Message, "Tuple type '[]'")
 	case 2322:
@@ -198,8 +210,14 @@ func isVueTemplateParityNoise(d Diagnostic) bool {
 		// "on" substring — it matches inside "NonNullable" itself.
 		return strings.Contains(d.Message, "NonNullable") &&
 			(strings.Contains(d.Message, "{ on") || strings.Contains(d.Message, "VNodeProps"))
-	case 7031:
-		return strings.Contains(d.Message, "'$event'")
+	case 7006, 7031:
+		// Generated script-setup / render params (props, attrs, v-model, $event)
+		// often lack contextual types under typescript-go; vue-tsc does not
+		// surface them. Only applies to .vue via isVueDiagnosticFile.
+		return true
+	case 2558:
+		// defineComponent<Props>(...) when the resolved overload has no type params.
+		return strings.Contains(d.Message, "type arguments")
 	case 7053:
 		return strings.Contains(d.Message, `type '""'`) || strings.Contains(d.Message, "__VLS_Slots")
 	case 2552:

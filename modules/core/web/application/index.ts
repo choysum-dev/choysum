@@ -94,12 +94,14 @@ export function createApp(rootComponent: Component, rootProps?: ObjectRecord): C
     mount: ChoysumWebApp['mount'];
   };
 
-  mutableApp.setup = function (setup: WebPluginSetup): ChoysumWebApp {
+  // Assign through `any` so typescript-go does not require fluent methods to
+  // return the full mutableApp intersection (App method this-types collide).
+  (mutableApp as any).setup = function (setup: WebPluginSetup): ChoysumWebApp {
     setup(this);
     return this;
   };
 
-  mutableApp.use = function (plugin: VuePlugin<unknown[]>, ...options: unknown[]): ChoysumWebApp {
+  (mutableApp as any).use = function (plugin: VuePlugin<unknown[]>, ...options: unknown[]): ChoysumWebApp {
     if (allowDirectUseDepth > 0) {
       return originalUse(plugin, ...options) as unknown as ChoysumWebApp;
     }
@@ -107,7 +109,7 @@ export function createApp(rootComponent: Component, rootProps?: ObjectRecord): C
     throw new Error('ChoysumWebApp disables app.use(...); use app.usePlugin(name, plugin, options?) instead');
   };
 
-  mutableApp.usePlugin = function (name: string, plugin: VuePlugin, options?: unknown, deferred: boolean = true): ChoysumWebApp {
+  (mutableApp as any).usePlugin = function (name: string, plugin: VuePlugin, options?: unknown, deferred: boolean = true): ChoysumWebApp {
     if (!name) {
       throw new Error('Plugin name cannot be empty');
     }

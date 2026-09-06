@@ -176,12 +176,43 @@ jobs:
             "$types_dir"/esm.sh_@vue_reactivity@*
           echo "Re-fetching vue type graph"
           "$CHOYSUM_BIN" type-fetch web
-          if ! grep -Rql --include='esm.sh_@vue_runtime-core@*_dist_runtime-core.d.ts.d.ts' -E '\bPropType\b' "$types_dir"; then
-            echo "error: vue type-fetch graph still incomplete under $types_dir" >&2
-            ls -la "$types_dir"/esm.sh_vue@* "$types_dir"/esm.sh_@vue_* 2>/dev/null || true
+          # Require the tsconfig-pinned vue entry (not a hollow/wrong-version graph).
+          pinned="$(python3 - <<'PY'
+import re, pathlib
+text = pathlib.Path("modules/tsconfig.json").read_text()
+# Match the vue paths entry without full JSONC parse (comments/trailing commas).
+m = re.search(
+    r'"vue"\s*:\s*\[\s*"([^"]*esm\.sh_vue@([^/_"]+)[^"]*)"',
+    text,
+)
+if not m:
+    raise SystemExit("pinned vue version not found in modules/tsconfig.json")
+print(m.group(2))
+PY
+)"
+          echo "Pinned vue from tsconfig: $pinned"
+          vue_entry="$types_dir/esm.sh_vue@${pinned}_dist_vue.d.mts.d.ts"
+          core_dts="$types_dir/esm.sh_@vue_runtime-core@${pinned}_dist_runtime-core.d.ts.d.ts"
+          react_dts="$types_dir/esm.sh_@vue_reactivity@${pinned}_dist_reactivity.d.ts.d.ts"
+          if [[ ! -s "$vue_entry" || ! -s "$core_dts" || ! -s "$react_dts" ]]; then
+            echo "error: pinned vue@$pinned type-fetch graph missing under $types_dir" >&2
+            ls -la "$types_dir"/esm.sh_vue@* "$types_dir"/esm.sh_@vue_runtime-* "$types_dir"/esm.sh_@vue_reactivity@* 2>/dev/null || true
             exit 1
           fi
-          echo "Vue type-fetch graph OK"
+          if ! grep -Eq '\bPropType\b' "$core_dts"; then
+            echo "error: runtime-core@$pinned missing PropType (hollow?)" >&2
+            exit 1
+          fi
+          if ! grep -Eq '\btoRef\b' "$react_dts"; then
+            echo "error: reactivity@$pinned missing toRef (hollow?)" >&2
+            exit 1
+          fi
+          core_bytes="$(wc -c < "$core_dts" | tr -d ' ')"
+          if [[ "$core_bytes" -lt 10000 ]]; then
+            echo "error: runtime-core@$pinned too small (${core_bytes} bytes); expected full .d.ts" >&2
+            exit 1
+          fi
+          echo "Vue type-fetch graph OK (vue@$pinned, runtime-core ${core_bytes} bytes)"
 
   typecheck-shard:
     name: main / typecheck-shard (${{ matrix.module }})

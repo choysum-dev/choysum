@@ -91,6 +91,9 @@ func ensureTypeAssets(ctx context.Context, stderr io.Writer, modulesRoot, app st
 	vueVersion := resolvePinnedPackageVersion(modulesRoot, "vue")
 	if vueVersion == "" {
 		// No pinned vue path in tsconfig — nothing to fetch (fixture / non-Vue).
+		if stderr != nil {
+			_, _ = fmt.Fprintf(stderr, "# typecheck %s: no pinned vue path in modules/tsconfig; skipping type-fetch\n", app)
+		}
 		return nil
 	}
 	// Incomplete durable caches may leave vue@ver.d.ts and/or empty sibling
